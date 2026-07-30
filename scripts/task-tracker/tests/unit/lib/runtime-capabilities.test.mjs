@@ -105,6 +105,15 @@ test('AC2: assembleCapabilities groups flat members by reference', () => {
   assert.equal(typeof caps.issueBodyMutator.mutate, 'function');
 });
 
+test('workLeaseGuard capability exposes only the governed-effect verifier', () => {
+  const verifyGovernedEffect = async () => ({ allowed: true });
+  const caps = assembleCapabilities({ verifyGovernedEffect });
+
+  assert.deepEqual(CAPABILITY_SURFACES.workLeaseGuard, ['verifyGovernedEffect']);
+  assert.deepEqual(Object.keys(caps.workLeaseGuard), ['verifyGovernedEffect']);
+  assert.equal(caps.workLeaseGuard.verifyGovernedEffect, verifyGovernedEffect);
+});
+
 test('strict sub-issue capability fetches project identity and Status name in one query', () => {
   const src = readFileSync(path.resolve(here, '..', '..', 'runtime.mjs'), 'utf8');
   const start = src.indexOf('ctx.fetchSubIssueBoardSnapshot = async');

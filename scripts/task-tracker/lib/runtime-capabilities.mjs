@@ -54,6 +54,7 @@ export const CAPABILITY_SURFACES = {
     'getIssueClosedState',
   ],
   issueBodyMutator: ['mutate'],
+  workLeaseGuard: ['verifyGovernedEffect'],
 };
 
 // Pluck the listed keys off the flat ctx into a fresh object. Functions are
@@ -75,8 +76,16 @@ export function assembleCapabilities(ctx) {
   const timingRecorder = pick(ctx, CAPABILITY_SURFACES.timingRecorder);
   const stateRunner = pick(ctx, CAPABILITY_SURFACES.stateRunner);
   const githubClient = pick(ctx, CAPABILITY_SURFACES.githubClient);
+  const workLeaseGuard = pick(ctx, CAPABILITY_SURFACES.workLeaseGuard);
   const issueBodyMutator = {
     mutate: (args) => mutateIssueBody({ deps: { pexec: ctx.pexec }, ...args }),
   };
-  return { projectConfig, timingRecorder, stateRunner, githubClient, issueBodyMutator };
+  return {
+    projectConfig,
+    timingRecorder,
+    stateRunner,
+    githubClient,
+    issueBodyMutator,
+    workLeaseGuard,
+  };
 }
