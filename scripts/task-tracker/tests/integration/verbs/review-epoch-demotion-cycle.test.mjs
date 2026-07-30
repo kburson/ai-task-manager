@@ -21,6 +21,8 @@ import { runDemote } from '../../../verbs/demote.mjs';
 import { verbReview } from '../../../verbs/review.mjs';
 import { runVerbTest } from '../../../verbs/test.mjs';
 
+const FIXTURE_ISSUE = 91050;
+const FIXTURE_TARGET = `#${FIXTURE_ISSUE}`;
 const REVIEW_COMMENTS = [
   {
     body: [
@@ -33,8 +35,15 @@ const REVIEW_COMMENTS = [
       '| 2026-06-19 00:02:00 -05:00 | resumed |  |  |  | 0 | answered |',
     ].join('\n'),
   },
-  { body: '<!-- aitm-refined-estimate: 1050 -->\n\n### Planned Estimate\n\n| Field | Value |' },
-  { body: buildPlanApprovalAuditComment({ issueNumber: 1050, ts: '2026-06-19T00:00:00Z' }) },
+  {
+    body: `<!-- aitm-refined-estimate: ${FIXTURE_ISSUE} -->\n\n### Planned Estimate\n\n| Field | Value |`,
+  },
+  {
+    body: buildPlanApprovalAuditComment({
+      issueNumber: FIXTURE_ISSUE,
+      ts: '2026-06-19T00:00:00Z',
+    }),
+  },
   { body: '### 🔗 Commits\n\n- def5678 fixture deliverable' },
   { body: '## New Automated Tests\n\n- `fixture.test.mjs`\n  - exercises authority renewal' },
 ];
@@ -96,7 +105,7 @@ test('#1050 hermetic incident: demote, Test, Review verb, stale close refusal, f
   ].join('\n');
   let liveBody = initial;
   const demoted = await runDemote({
-    issueNumber: 1050,
+    issueNumber: FIXTURE_ISSUE,
     cfg: { repo: 'o/r' },
     rework: 'renew review authority',
     now: () => '2026-07-29T10:03:00Z',
@@ -120,8 +129,8 @@ test('#1050 hermetic incident: demote, Test, Review verb, stale close refusal, f
   writeFileSync(
     statePath,
     JSON.stringify({
-      active: '#1050',
-      lastActive: '#1050',
+      active: FIXTURE_TARGET,
+      lastActive: FIXTURE_TARGET,
       entryStartTs: '2026-07-29T10:30:00Z',
       wordsAtEntryStart: 0,
       lastWordMarker: 0,
@@ -131,7 +140,7 @@ test('#1050 hermetic incident: demote, Test, Review verb, stale close refusal, f
   try {
     const tested = await runVerbTest({
       cfg: { repo: 'o/r' },
-      issueNumber: 1050,
+      issueNumber: FIXTURE_ISSUE,
       projectDir,
       now: () => '2026-07-29T10:30:00Z',
       deps: {
@@ -166,7 +175,7 @@ test('#1050 hermetic incident: demote, Test, Review verb, stale close refusal, f
       cfg: { repo: 'o/r', projectId: 'PROJ', idleThresholdMinutes: 5 },
       statePath,
       projectDir,
-      rest: ['#1050'],
+      rest: [FIXTURE_TARGET],
       SKIP_NETWORK: false,
       pexec: async (cmd, args = []) => {
         if (cmd === 'git') return { stdout: newSha, stderr: '' };
@@ -215,7 +224,7 @@ test('#1050 hermetic incident: demote, Test, Review verb, stale close refusal, f
     );
 
     const approved = await runApprove({
-      issueNumber: 1050,
+      issueNumber: FIXTURE_ISSUE,
       cfg: { repo: 'o/r' },
       human: true,
       deps: {
