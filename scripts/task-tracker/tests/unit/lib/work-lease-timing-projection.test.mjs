@@ -81,6 +81,130 @@ try {
     hostileSubOperationId
   );
 
+  for (const [issueNumber, deltaHeader] of [
+    [1042, 'Δ Words'],
+    [1043, 'ΔWords'],
+  ]) {
+    const legacyProjection = `acquire:legacy-${issueNumber}:timing`;
+    const legacySubOperation = `${legacyProjection}:bind`;
+    const legacyProjectedRow = row('update', `legacy projected row ${issueNumber}`);
+    const legacyStore = JSON.parse(readFileSync(storePath, 'utf8'));
+    legacyStore.comments.push({
+      id: `C_${legacyStore.nextId++}`,
+      url: `https://example/legacy-${issueNumber}`,
+      issue: String(issueNumber),
+      body: [
+        '## ⏱ Timing Log',
+        `| Timestamp | Event | Active | Idle | ${deltaHeader} | Word Marker | Description |`,
+        '| --- | --- | --- | --- | --- | --- | --- |',
+      ].join('\n'),
+    });
+    writeFileSync(storePath, JSON.stringify(legacyStore));
+    await postTimingEvent({
+      issueNumber,
+      repo: 'owner/repo',
+      row: legacyProjectedRow,
+      projectionId: legacyProjection,
+      subOperationId: legacySubOperation,
+      projDir: tmp,
+    });
+    const legacyBodyAfterRemoteSuccess = timingBody(String(issueNumber));
+    assert.deepEqual(
+      await postTimingEvent({
+        issueNumber,
+        repo: 'owner/repo',
+        row: legacyProjectedRow,
+        projectionId: legacyProjection,
+        subOperationId: legacySubOperation,
+        projDir: tmp,
+      }),
+      {
+        status: 'already-reconciled',
+        projectionId: legacyProjection,
+        subOperationId: legacySubOperation,
+      }
+    );
+    assert.equal(
+      timingBody(String(issueNumber)),
+      legacyBodyAfterRemoteSuccess,
+      `${deltaHeader}: network-success/local-crash replay must be an exact no-op`
+    );
+    assert.equal(
+      legacyBodyAfterRemoteSuccess.split(`legacy projected row ${issueNumber}`).length - 1,
+      1
+    );
+  }
+
+  const trailingTableProjection = 'acquire:trailing-foreign-table:timing';
+  const trailingTableSubOperation = `${trailingTableProjection}:bind`;
+  const trailingTableRow = row('update', 'projected before trailing foreign table');
+  const trailingTableStore = JSON.parse(readFileSync(storePath, 'utf8'));
+  trailingTableStore.comments.push({
+    id: `C_${trailingTableStore.nextId++}`,
+    url: 'https://example/trailing-foreign-table',
+    issue: '1044',
+    body: [
+      '⏱ Timing Log',
+      '| Timestamp | Event | Active | Idle | Δ Words | Word Marker | Description | Δ Words (full) |',
+      '|---|---|---|---|---|---|---|---|',
+      '',
+      '| Foreign key | Foreign value |',
+      '|---|---|',
+      '| alpha | beta |',
+    ].join('\n'),
+  });
+  writeFileSync(storePath, JSON.stringify(trailingTableStore));
+  assert.deepEqual(
+    await postTimingEvent({
+      issueNumber: 1044,
+      repo: 'owner/repo',
+      row: trailingTableRow,
+      projectionId: trailingTableProjection,
+      subOperationId: trailingTableSubOperation,
+      projDir: tmp,
+    }),
+    {
+      status: 'posted',
+      projectionId: trailingTableProjection,
+      subOperationId: trailingTableSubOperation,
+    }
+  );
+  const trailingTableBodyAfterFirst = timingBody('1044');
+  assert.ok(
+    trailingTableBodyAfterFirst.indexOf('projected before trailing foreign table') <
+      trailingTableBodyAfterFirst.indexOf('| Foreign key |'),
+    'projected row must land inside the canonical Timing Log table region'
+  );
+  assert.deepEqual(
+    await readTimingProjection({
+      issueNumber: 1044,
+      repo: 'owner/repo',
+      projectionId: trailingTableProjection,
+      subOperationIds: [trailingTableSubOperation],
+    }),
+    {
+      reconciled: true,
+      projectionName: 'timing',
+      projectionId: trailingTableProjection,
+    }
+  );
+  assert.deepEqual(
+    await postTimingEvent({
+      issueNumber: 1044,
+      repo: 'owner/repo',
+      row: trailingTableRow,
+      projectionId: trailingTableProjection,
+      subOperationId: trailingTableSubOperation,
+      projDir: tmp,
+    }),
+    {
+      status: 'already-reconciled',
+      projectionId: trailingTableProjection,
+      subOperationId: trailingTableSubOperation,
+    }
+  );
+  assert.equal(timingBody('1044'), trailingTableBodyAfterFirst);
+
   const forgedProjection = 'acquire:forged-receipt:timing';
   const forgedSubOperation = `${forgedProjection}:bind`;
   const forgedMarker = timingProjectionMarker({

@@ -49,7 +49,12 @@ const TABLE_HEADER = [
   '| Timestamp | Event | Active | Idle | Δ Words | Word Marker | Description | Δ Words (full) |',
   '|---|---|---|---|---|---|---|---|',
 ].join('\n');
-const [TABLE_HEADER_ROW, TABLE_SEPARATOR_ROW] = TABLE_HEADER.split('\n');
+const [TABLE_HEADER_ROW] = TABLE_HEADER.split('\n');
+const TIMING_TABLE_COLUMN_COUNT_BY_HEADER = new Map([
+  [TABLE_HEADER_ROW, 8],
+  ['| Timestamp | Event | Active | Idle | Δ Words | Word Marker | Description |', 7],
+  ['| Timestamp | Event | Active | Idle | ΔWords | Word Marker | Description |', 7],
+]);
 
 export function fmtTs(iso) {
   const d = new Date(iso);
@@ -429,12 +434,14 @@ function projectionReceiptFromTimingRow(line, rowIndex) {
   return { projectionId, subOperationId, rowIndex };
 }
 
-// Only a structurally valid Timing Log data row can prove a projection. A
-// receipt quoted in prose, a Markdown code fence, a Description cell, after the
-// row-sec marker, or beside another receipt is deliberately ignored.
-export function parseTimingProjectionReceipts(body) {
+function isCanonicalTableSeparator(line, columnCount) {
+  if (typeof line !== 'string' || !line.startsWith('|')) return false;
+  const separatorCell = String.raw`\s*:?-{3,}:?\s*\|`;
+  return new RegExp(`^\\|(?:${separatorCell}){${columnCount}}$`).test(line);
+}
+
+function locateCanonicalTimingTableRegion(body) {
   const lines = String(body ?? '').split('\n');
-  const receipts = [];
   let fence = null;
   let sawTimingHeading = false;
   let tableRowStart = -1;
@@ -460,26 +467,39 @@ export function parseTimingProjectionReceipts(body) {
       sawTimingHeading = true;
       continue;
     }
+    const columnCount = TIMING_TABLE_COLUMN_COUNT_BY_HEADER.get(line);
     if (
       sawTimingHeading &&
-      line === TABLE_HEADER_ROW &&
-      lines[lineIndex + 1] === TABLE_SEPARATOR_ROW
+      columnCount &&
+      isCanonicalTableSeparator(lines[lineIndex + 1], columnCount)
     ) {
       tableRowStart = lineIndex + 2;
       break;
     }
   }
-  if (tableRowStart < 0) return receipts;
+  if (tableRowStart < 0) return null;
 
-  // Projection receipts are authoritative only within the single contiguous
-  // data-row region immediately following the canonical Timing Log
-  // header/separator. Leading whitespace is meaningful Markdown here:
-  // indented rows are code, not table data.
-  for (let lineIndex = tableRowStart; lineIndex < lines.length; lineIndex += 1) {
-    const line = lines[lineIndex];
+  let tableRowEnd = tableRowStart;
+  while (tableRowEnd < lines.length) {
+    const line = lines[tableRowEnd];
     if (!line.startsWith('|')) break;
     const parsedRow = parseTimingRow(line);
     if (!parsedRow || !isTableTimingTimestamp(parsedRow.ts)) break;
+    tableRowEnd += 1;
+  }
+  return { lines, tableRowStart, tableRowEnd };
+}
+
+// Only a structurally valid Timing Log data row can prove a projection. A
+// receipt quoted in prose, a Markdown code fence, a Description cell, after the
+// row-sec marker, or beside another receipt is deliberately ignored.
+export function parseTimingProjectionReceipts(body) {
+  const region = locateCanonicalTimingTableRegion(body);
+  if (!region) return [];
+
+  const receipts = [];
+  for (let lineIndex = region.tableRowStart; lineIndex < region.tableRowEnd; lineIndex += 1) {
+    const line = region.lines[lineIndex];
     const receipt = projectionReceiptFromTimingRow(line, lineIndex);
     if (receipt) receipts.push(receipt);
   }
@@ -563,22 +583,30 @@ function appendRow(body, row, { projection } = {}) {
     }
   }
 
-  const lines = body.split('\n');
+  const canonicalRegion = locateCanonicalTimingTableRegion(body);
+  const lines = canonicalRegion?.lines ?? body.split('\n');
   let lastTableIdx = -1;
-  for (let i = 0; i < lines.length; i++) {
-    if (
-      lines[i].startsWith('| ') &&
-      !lines[i].startsWith('| Timestamp') &&
-      !lines[i].startsWith('|---')
-    ) {
-      lastTableIdx = i;
-    }
-  }
-  if (lastTableIdx === -1) {
+  if (canonicalRegion) {
+    lastTableIdx = canonicalRegion.tableRowEnd - 1;
+  } else {
+    // Legacy comments without the canonical Timing Log header retain the
+    // historical global-table fallback rather than changing their append
+    // placement as part of projection receipt hardening.
     for (let i = 0; i < lines.length; i++) {
-      if (lines[i].startsWith('|---')) {
+      if (
+        lines[i].startsWith('| ') &&
+        !lines[i].startsWith('| Timestamp') &&
+        !lines[i].startsWith('|---')
+      ) {
         lastTableIdx = i;
-        break;
+      }
+    }
+    if (lastTableIdx === -1) {
+      for (let i = 0; i < lines.length; i++) {
+        if (lines[i].startsWith('|---')) {
+          lastTableIdx = i;
+          break;
+        }
       }
     }
   }
