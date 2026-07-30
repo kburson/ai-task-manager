@@ -1,5 +1,3 @@
-import { randomUUID } from 'node:crypto';
-
 import { WorkLeaseError, validateRenewRequest, validateVerifyRequest } from '@kburson/aitm-ledger';
 
 import { getActiveTask, setActiveTask } from '../../session-state.mjs';
@@ -84,7 +82,32 @@ function expectedLease(session, issueId, worktreeId) {
   return persisted;
 }
 
-function normalizeAuthorityLease(value, expected, issueId, worktreeId) {
+function normalizeHolderIdentity(value) {
+  if (value === undefined) return {};
+  const identity = object(value, 'trusted holder identity');
+  const normalized = {};
+  for (const field of ['provider', 'agentRunId']) {
+    if (identity[field] === undefined) continue;
+    if (typeof identity[field] !== 'string' || identity[field].trim() === '') {
+      throw leaseError(
+        'invalid-request',
+        `trusted holder identity ${field} must be a non-empty string`
+      );
+    }
+    normalized[field] = identity[field];
+  }
+  return normalized;
+}
+
+function normalizeAuthorityLease(
+  value,
+  expected,
+  issueId,
+  worktreeId,
+  sessionId,
+  hostId,
+  holderIdentity
+) {
   const lease = object(value, 'authority lease');
   if (lease.projectId !== expected.projectId || lease.leaseId !== expected.leaseId) {
     throw leaseError('lease-not-held', 'authority lease does not match the persisted work lease');
@@ -101,14 +124,37 @@ function normalizeAuthorityLease(value, expected, issueId, worktreeId) {
   if (!['active', 'paused'].includes(lease.state)) {
     throw leaseError('lease-not-held', 'authority lease is not ownership-retaining');
   }
-  if (lease?.holder?.worktreeId !== worktreeId) {
+  const holder = lease.holder;
+  if (
+    !holder ||
+    typeof holder !== 'object' ||
+    holder.worktreeId !== worktreeId ||
+    holder.sessionId !== sessionId ||
+    holder.hostId !== hostId
+  ) {
     throw leaseError('lease-not-held', 'authority lease does not belong to the canonical worktree');
+  }
+  for (const [field, expectedValue] of Object.entries(holderIdentity)) {
+    if (holder[field] !== expectedValue) {
+      throw leaseError(
+        'lease-not-held',
+        `authority lease holder ${field} does not match the trusted session identity`
+      );
+    }
   }
   parseTimestamp(lease.heartbeatAt, 'authority lease heartbeatAt');
   return lease;
 }
 
-function verifiedAuthorityLease(result, expected, issueId, worktreeId) {
+function verifiedAuthorityLease(
+  result,
+  expected,
+  issueId,
+  worktreeId,
+  sessionId,
+  hostId,
+  holderIdentity
+) {
   const response = object(result, 'authority verify response');
   if (typeof response.allowed !== 'boolean') {
     throw leaseError('invalid-request', 'authority verify response allowed flag is malformed');
@@ -116,7 +162,15 @@ function verifiedAuthorityLease(result, expected, issueId, worktreeId) {
   if (response.allowed !== true) {
     throw leaseError('lease-not-held', 'authority did not allow the governed effect');
   }
-  return normalizeAuthorityLease(response.lease, expected, issueId, worktreeId);
+  return normalizeAuthorityLease(
+    response.lease,
+    expected,
+    issueId,
+    worktreeId,
+    sessionId,
+    hostId,
+    holderIdentity
+  );
 }
 
 function renewRequest(lease, requestedAt, idempotencyKey) {
@@ -140,6 +194,13 @@ function renewalDue(lease, nowMs, forceRenewal) {
   );
 }
 
+function renewalIdempotencyKey(lease, requestedAt) {
+  const bucket = Math.floor(
+    parseTimestamp(requestedAt, 'renewal requestedAt') / WORK_LEASE_HEARTBEAT_AGE_MS
+  );
+  return `renew:${lease.leaseId}:${lease.fencingToken}:${bucket}`;
+}
+
 // Verify authority immediately before a governed effect.  The dependencies are
 // intentionally injectable: local SQLite methods are synchronous while the
 // HTTPS implementation is asynchronous, and await normalizes both contracts.
@@ -153,11 +214,11 @@ export async function verifyGovernedEffect({
   forceRenewal = false,
   heartbeat = false,
   heartbeatOwnerKey: suppliedHeartbeatOwnerKey,
+  holderIdentity,
   loadSession = getActiveTask,
   saveSession = setActiveTask,
   resolveWorktreeIdentity: resolveIdentity = resolveWorktreeIdentity,
   now = () => new Date(),
-  randomUUID: createId = randomUUID,
 } = {}) {
   const canonicalIssueId = canonicalIssue(issueId);
   if (typeof sessionId !== 'string' || sessionId.trim() === '') {
@@ -194,6 +255,7 @@ export async function verifyGovernedEffect({
   }
 
   const persistedLease = expectedLease(session, canonicalIssueId, worktree.worktreeId);
+  const trustedHolderIdentity = normalizeHolderIdentity(holderIdentity);
   const ownerKey = suppliedHeartbeatOwnerKey ?? heartbeatOwnerKey(sessionId, persistedLease);
   if (typeof ownerKey !== 'string' || ownerKey.trim() === '') {
     throw leaseError('invalid-request', 'heartbeat owner identity is required');
@@ -214,7 +276,10 @@ export async function verifyGovernedEffect({
       await store.verify(verifyRequest),
       persistedLease,
       canonicalIssueId,
-      worktree.worktreeId
+      worktree.worktreeId,
+      sessionId,
+      hostId,
+      trustedHolderIdentity
     );
   } catch (error) {
     throw stableError(error, 'authority-unavailable', 'work-lease authority verification failed');
@@ -224,21 +289,16 @@ export async function verifyGovernedEffect({
     if (typeof store.renew !== 'function') {
       throw leaseError('invalid-request', 'work-lease authority renew operation is required');
     }
-    let idempotencyKey;
-    try {
-      idempotencyKey = createId();
-    } catch (error) {
-      throw stableError(error, 'invalid-request', 'cannot create work-lease renewal identity');
-    }
-    if (typeof idempotencyKey !== 'string' || idempotencyKey.trim() === '') {
-      throw leaseError('invalid-request', 'work-lease renewal identity is malformed');
-    }
+    const idempotencyKey = renewalIdempotencyKey(persistedLease, verifiedAt);
     try {
       authorityLease = normalizeAuthorityLease(
         await store.renew(renewRequest(persistedLease, verifiedAt, idempotencyKey)),
         persistedLease,
         canonicalIssueId,
-        worktree.worktreeId
+        worktree.worktreeId,
+        sessionId,
+        hostId,
+        trustedHolderIdentity
       );
     } catch (error) {
       throw stableError(error, 'authority-unavailable', 'work-lease authority renewal failed');
@@ -276,6 +336,7 @@ export function createWorkLeaseHeartbeat({
   verifyEffect = verifyGovernedEffect,
   setInterval: setIntervalImpl = globalThis.setInterval,
   clearInterval: clearIntervalImpl = globalThis.clearInterval,
+  processEvents = process,
   ...verifyOptions
 } = {}) {
   if (typeof ownerKey !== 'string' || ownerKey.trim() === '') {
@@ -283,7 +344,12 @@ export function createWorkLeaseHeartbeat({
   }
   const existing = heartbeatOwners.get(ownerKey);
   if (existing) return existing;
-  if (typeof verifyEffect !== 'function' || typeof setIntervalImpl !== 'function') {
+  if (
+    typeof verifyEffect !== 'function' ||
+    typeof setIntervalImpl !== 'function' ||
+    typeof processEvents?.once !== 'function' ||
+    typeof processEvents?.removeListener !== 'function'
+  ) {
     throw leaseError('invalid-request', 'heartbeat dependencies are unavailable');
   }
 
@@ -305,14 +371,17 @@ export function createWorkLeaseHeartbeat({
   };
   const timer = setIntervalImpl(tick, WORK_LEASE_HEARTBEAT_INTERVAL_MS);
   timer?.unref?.();
+  let controller;
+  const onProcessExit = () => stop();
   const stop = () => {
     if (stopped) return;
     stopped = true;
     clearIntervalImpl?.(timer);
-    heartbeatFailures.delete(ownerKey);
+    processEvents.removeListener('exit', onProcessExit);
     if (heartbeatOwners.get(ownerKey) === controller) heartbeatOwners.delete(ownerKey);
   };
-  const controller = Object.freeze({ ownerKey, timer, stop, shutdown: stop });
+  controller = Object.freeze({ ownerKey, timer, stop, shutdown: stop });
   heartbeatOwners.set(ownerKey, controller);
+  processEvents.once('exit', onProcessExit);
   return controller;
 }

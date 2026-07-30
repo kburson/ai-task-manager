@@ -53,6 +53,12 @@ test('AC1: buildContext decomposes into named capability objects', () => {
     );
     // issueBodyMutator is the one synthesized capability (a narrow wrapper).
     assert.equal(typeof ctx.issueBodyMutator.mutate, 'function');
+    assert.equal(typeof ctx.verifyGovernedEffect, 'function');
+    assert.equal(
+      ctx.workLeaseGuard.verifyGovernedEffect,
+      ctx.verifyGovernedEffect,
+      'the runtime capability exposes the bound governed-effect verifier'
+    );
   } finally {
     if (prev === undefined) delete process.env.TT_SKIP_NETWORK;
     else process.env.TT_SKIP_NETWORK = prev;

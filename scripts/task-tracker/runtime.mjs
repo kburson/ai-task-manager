@@ -42,6 +42,7 @@ import { runMoveStateHost } from '../gh/move-state.mjs';
 import { getProjectDir } from './paths.mjs';
 import { GH_API_TIMEOUT_MS } from './lib/process-timeouts.mjs';
 import { assembleCapabilities } from './lib/runtime-capabilities.mjs';
+import { verifyGovernedEffect } from './lib/work-lease/guard.mjs';
 import { normalizeIssueCloseSnapshot } from './lib/closed-issue-convergence.mjs';
 import { normalizeSubIssueBoardSnapshot } from './lib/sub-issue-board-snapshot.mjs';
 
@@ -277,6 +278,7 @@ export function buildContext(rawArgv = process.argv.slice(2)) {
     minutesBetween,
     CLOSE_OWNED_CHECKBOXES,
     uncheckedPreCloseCheckboxes,
+    verifyGovernedEffect,
   };
 
   ctx.safePostTiming = async (issue, row) => {

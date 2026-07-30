@@ -16,7 +16,7 @@ function lease(overrides = {}) {
     issueId: '1049',
     state: 'active',
     heartbeatAt: '2026-07-30T11:56:00.000Z',
-    holder: { worktreeId: 'wt-1' },
+    holder: { worktreeId: 'wt-1', sessionId: 'session-1', hostId: 'host-1' },
     ...overrides,
   };
 }
@@ -58,7 +58,6 @@ function baseOptions(overrides = {}) {
     saveSession: (_sessionId, next) => calls.saved.push(next),
     resolveWorktreeIdentity: () => ({ worktreeId: 'wt-1' }),
     now: () => new Date(NOW),
-    randomUUID: () => 'renew-1',
     calls,
     ...overrides,
   };
@@ -113,6 +112,37 @@ test('verifyGovernedEffect rejects missing or mismatched persisted authority bef
       name
     );
     assert.equal(options.calls.verify.length, 0, `${name} must not call authority`);
+  }
+});
+
+test('verifyGovernedEffect requires the authority holder session, host, and supplied trusted identity', async () => {
+  for (const [name, holder, holderIdentity] of [
+    ['wrong session', { worktreeId: 'wt-1', sessionId: 'session-2', hostId: 'host-1' }, undefined],
+    ['wrong host', { worktreeId: 'wt-1', sessionId: 'session-1', hostId: 'host-2' }, undefined],
+    [
+      'wrong trusted provider',
+      {
+        worktreeId: 'wt-1',
+        sessionId: 'session-1',
+        hostId: 'host-1',
+        provider: 'claude',
+        agentRunId: 'run-1',
+      },
+      { provider: 'codex', agentRunId: 'run-1' },
+    ],
+  ]) {
+    const options = baseOptions({
+      ...(holderIdentity === undefined ? {} : { holderIdentity }),
+      store: {
+        verify: () => ({ allowed: true, lease: lease({ holder }) }),
+        renew: () => lease(),
+      },
+    });
+    await assert.rejects(
+      () => verifyGovernedEffect(options),
+      (error) => error instanceof WorkLeaseError && error.code === 'lease-not-held',
+      name
+    );
   }
 });
 
@@ -189,7 +219,7 @@ test('verifyGovernedEffect renews at the threshold and on a forced resume with a
       projectId: 'project-1',
       leaseId: 'lease-1',
       fencingToken: '42',
-      idempotencyKey: 'renew-1',
+      idempotencyKey: `renew:lease-1:42:${Math.floor(Date.parse(NOW) / FIVE_MINUTES)}`,
       requestedAt: NOW,
       ttlMs: 15 * 60 * 1000,
     },
@@ -211,6 +241,28 @@ test('verifyGovernedEffect renews at the threshold and on a forced resume with a
     1,
     'resume forces renewal before the five-minute threshold'
   );
+
+  const renewalKeys = [];
+  for (const requestedAt of [
+    '2026-07-30T12:00:00.001Z',
+    '2026-07-30T12:04:59.999Z',
+    '2026-07-30T12:05:00.000Z',
+  ]) {
+    const options = baseOptions({
+      forceRenewal: true,
+      now: () => new Date(requestedAt),
+      store: {
+        verify: () => ({ allowed: true, lease: lease({ heartbeatAt: NOW }) }),
+        renew(request) {
+          renewalKeys.push(request.idempotencyKey);
+          return lease({ heartbeatAt: request.requestedAt });
+        },
+      },
+    });
+    await verifyGovernedEffect(options);
+  }
+  assert.equal(renewalKeys[0], renewalKeys[1], 'same renewal bucket replays the exact key');
+  assert.notEqual(renewalKeys[1], renewalKeys[2], 'next renewal bucket advances the key');
 });
 
 test('createWorkLeaseHeartbeat is unreferenced, single-flight, stoppable, and remembers a failure for the next preflight', async () => {
@@ -260,6 +312,7 @@ test('createWorkLeaseHeartbeat is unreferenced, single-flight, stoppable, and re
   });
   await failedHeartbeat.timer.tick();
   assert.equal(heartbeatCalls, 1);
+  failedHeartbeat.shutdown();
   await assert.rejects(
     () => verifyGovernedEffect(failureOptions),
     (error) => error instanceof WorkLeaseError && error.code === 'authority-unavailable'
@@ -269,5 +322,31 @@ test('createWorkLeaseHeartbeat is unreferenced, single-flight, stoppable, and re
     1,
     'a remembered heartbeat failure does not skip the next authority preflight'
   );
-  failedHeartbeat.stop();
+});
+
+test('createWorkLeaseHeartbeat registers one removable process-exit listener per owner', () => {
+  const listeners = [];
+  const removed = [];
+  const processEvents = {
+    once(event, listener) {
+      listeners.push({ event, listener });
+    },
+    removeListener(event, listener) {
+      removed.push({ event, listener });
+    },
+  };
+  const heartbeat = createWorkLeaseHeartbeat({
+    ownerKey: 'owner-process',
+    verifyEffect: async () => {},
+    setInterval: () => ({ unref: () => {} }),
+    clearInterval: () => {},
+    processEvents,
+  });
+  assert.equal(listeners.length, 1);
+  assert.equal(listeners[0].event, 'exit');
+  assert.equal(createWorkLeaseHeartbeat({ ownerKey: 'owner-process' }), heartbeat);
+  assert.equal(listeners.length, 1, 'duplicate owner registration must not leak listeners');
+
+  heartbeat.stop();
+  assert.deepEqual(removed, [{ event: 'exit', listener: listeners[0].listener }]);
 });
