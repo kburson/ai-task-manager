@@ -189,6 +189,7 @@ AITM introduces a storage-neutral `WorkLeaseStore` interface:
 acquire(request) -> lease
 renew(leaseId, fencingToken) -> lease
 verify(leaseId, fencingToken, operation) -> decision
+switchLease(leaseId, fencingToken, targetRequest) -> lease
 handoff(leaseId, fencingToken, recipient) -> lease
 release(leaseId, fencingToken, reason) -> result
 takeover(request, expectedToken, reason) -> lease
@@ -211,7 +212,14 @@ A lease contains:
 Two uniqueness constraints are authoritative:
 
 1. one active write lease per issue;
-2. one active write lease per worktree/agent run.
+2. one active write lease per canonical worktree.
+
+`switchLease` atomically releases the current issue and acquires the target
+issue in one storage transaction. If target acquisition fails, the current
+lease remains unchanged. A handoff to an epic orchestrator retains the child
+worktree identity and changes the holder to an integration principal; an
+orchestrator's separate epic lease is attached to its distinct epic worktree
+and does not violate worktree uniqueness.
 
 ### Durable local backend
 
@@ -221,6 +229,14 @@ state at:
 ```text
 <main-worktree>/.db/aitm/project.sqlite
 ```
+
+The lease child establishes the minimal `@kburson/aitm-ledger` workspace
+boundary needed for this authority and raises the supported Node.js floor to
+`>=22.15.0`. That keeps local storage on the built-in `node:sqlite` API without
+an experimental runtime flag and aligns the stabilization work with the
+previously designed hybrid-ledger package boundary. The child does not
+implement the unrelated event journal, Insights projections, or hosted
+PostgreSQL service.
 
 It is never stored under `.tmp/aitm`. Every linked worktree resolves the same
 main-worktree database. Acquisition, fencing-token increment, renewal, handoff,
@@ -281,6 +297,8 @@ audited handoff.
 - `pause` retains the lease and records paused state.
 - `stop`, `close`, and explicit abandonment release it.
 - Agent → orchestrator transfer uses audited handoff, not a second acquisition.
+- Issue switching uses the atomic lease switch operation; it never releases
+  first.
 - Review may retain or hand off the lease; it never silently drops ownership.
 - Takeover is explicit, reasoned, and increments the fencing token.
 - A live holder is never automatically displaced.
