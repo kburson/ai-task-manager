@@ -546,6 +546,72 @@ try {
       )
   );
 
+  // Fault Z switch planning persists the required reengagement before the
+  // outgoing departure. Both transition-scoped sub-operations reconcile in
+  // order, and remote-success/local-crash replay is an exact no-op.
+  const faultZProjection = 'switchLease:switch:session-1:1048:1051:request-1:timing';
+  const faultZReengage = 'outgoing:reengage';
+  const faultZDeparture = 'outgoing:switch-out';
+  await postTimingEvent({
+    issueNumber: 1052,
+    repo: 'owner/repo',
+    row: row('pause:other', 'open source departure'),
+    projDir: tmp,
+  });
+  const faultZResumedRow = row('resumed', 'interposed source reengagement');
+  const faultZSwitchRow = row('switch-out:#1051', 'outgoing atomic switch');
+  for (const [projectedRow, subOperationId] of [
+    [faultZResumedRow, faultZReengage],
+    [faultZSwitchRow, faultZDeparture],
+  ]) {
+    await postTimingEvent({
+      issueNumber: 1052,
+      repo: 'owner/repo',
+      row: projectedRow,
+      projectionId: faultZProjection,
+      subOperationId,
+      projDir: tmp,
+    });
+  }
+  const faultZBody = timingBody('1052');
+  assert.deepEqual(
+    await readTimingProjection({
+      issueNumber: 1052,
+      repo: 'owner/repo',
+      projectionId: faultZProjection,
+      subOperationIds: [faultZReengage, faultZDeparture],
+    }),
+    { reconciled: true, projectionName: 'timing', projectionId: faultZProjection }
+  );
+  for (const [projectedRow, subOperationId] of [
+    [faultZResumedRow, faultZReengage],
+    [faultZSwitchRow, faultZDeparture],
+  ]) {
+    await postTimingEvent({
+      issueNumber: 1052,
+      repo: 'owner/repo',
+      row: projectedRow,
+      projectionId: faultZProjection,
+      subOperationId,
+      projDir: tmp,
+    });
+  }
+  assert.equal(timingBody('1052'), faultZBody);
+  assert.ok(
+    faultZBody.indexOf(
+      timingProjectionMarker({
+        projectionId: faultZProjection,
+        subOperationId: faultZReengage,
+      })
+    ) <
+      faultZBody.indexOf(
+        timingProjectionMarker({
+          projectionId: faultZProjection,
+          subOperationId: faultZDeparture,
+        })
+      )
+  );
+
   const sharedRowProjection = 'acquire:shared-row:timing';
   const sharedFirst = `${sharedRowProjection}:departure`;
   const sharedSecond = `${sharedRowProjection}:bind`;

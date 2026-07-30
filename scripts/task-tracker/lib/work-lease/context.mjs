@@ -87,6 +87,10 @@ function projectionIdentity(operation, idempotencyKey, name) {
   return `${operation}:${idempotencyKey}:${name}`;
 }
 
+function compensationProjectionIdentity(idempotencyKey, name) {
+  return `compensation:${idempotencyKey}:${name}`;
+}
+
 function canonicalIssue(value) {
   const match = String(value ?? '').match(/^#?([1-9]\d*)$/);
   if (!match) throw new TypeError('work-lease intent issueId must be a canonical positive decimal');
@@ -96,7 +100,12 @@ function canonicalIssue(value) {
 function validateIntentRequest(operation, request) {
   if (operation === 'acquire') validateAcquireRequest(request);
   else if (operation === 'resume') validateRenewRequest(request);
-  else validateSwitchLeaseRequest(request);
+  else {
+    validateSwitchLeaseRequest(request);
+    if (request.target.requestedAt !== request.switchedAt) {
+      throw new TypeError('work-lease switch target timestamp must match switchedAt');
+    }
+  }
 }
 
 function snapshotDigest(present, bytesBase64 = '') {
@@ -182,6 +191,49 @@ function validateProjectionProof(proof, name, projectionId) {
   }
   assertNoSecretMaterial(proof);
   return cloneDurableJson(proof);
+}
+
+function validateSwitchReceiptCorrelation(receipt, request, label) {
+  plainObject(receipt, `${label} receipt`);
+  const lease = plainObject(receipt.lease, `${label} receipt lease`);
+  const transition = plainObject(receipt.transition, `${label} receipt transition`);
+  if (
+    lease.projectId !== request.projectId ||
+    lease.issueId !== request.target.issueId ||
+    lease.mode !== 'write' ||
+    lease.state !== 'active' ||
+    lease.leaseId === request.leaseId ||
+    canonicalRequestJson(lease.holder) !== canonicalRequestJson(request.target.holder)
+  ) {
+    throw new Error(`${label} receipt target lease does not match request`);
+  }
+  try {
+    if (BigInt(lease.fencingToken) <= BigInt(request.fencingToken)) {
+      throw new Error('not advanced');
+    }
+  } catch {
+    throw new Error(`${label} receipt target fence did not advance`);
+  }
+  const expectedExpiresAt = new Date(
+    Date.parse(request.switchedAt) + request.target.ttlMs
+  ).toISOString();
+  if (
+    lease.acquiredAt !== request.switchedAt ||
+    lease.heartbeatAt !== request.switchedAt ||
+    lease.expiresAt !== expectedExpiresAt
+  ) {
+    throw new Error(`${label} receipt target chronology does not match request`);
+  }
+  if (
+    typeof transition.transitionId !== 'string' ||
+    transition.transitionId.trim() === '' ||
+    transition.fromIssueId !== request.issueId ||
+    transition.fromLeaseId !== request.leaseId ||
+    transition.fromToken !== request.fencingToken ||
+    transition.toIssueId !== request.target.issueId
+  ) {
+    throw new Error(`${label} receipt transition does not match request`);
+  }
 }
 
 export function normalizeLeaseContext(value) {
@@ -296,7 +348,269 @@ export function validateWorkLeaseIntent(intent, { requireAllProjections = false 
       nonEmptyString(projection.completedAt, `work-lease ${name} projection completedAt`);
     }
   }
+  if (intent.forwardPhase !== undefined) {
+    if (intent.operation !== 'switchLease' || intent.receipt === undefined) {
+      throw new Error('work-lease forward phase requires a persisted switch receipt');
+    }
+    const forwardPhase = plainObject(intent.forwardPhase, 'work-lease forward phase');
+    if (forwardPhase.transitionId !== intent.transitionId) {
+      throw new Error('work-lease forward phase transition does not match');
+    }
+    nonEmptyString(forwardPhase.committedAt, 'work-lease forward phase committedAt');
+    const githubProjectionId = intent.projections.github?.projectionId;
+    validateProjectionProof(forwardPhase.claimProof, 'github-claim', githubProjectionId);
+  } else if (
+    intent.operation === 'switchLease' &&
+    Object.values(intent.projections).some((projection) => projection.completed === true)
+  ) {
+    throw new Error('work-lease switch projection requires a committed forward phase');
+  }
+  if (intent.forwardPhase !== undefined && intent.compensation !== undefined) {
+    throw new Error('work-lease forward phase and compensation are mutually exclusive');
+  }
+  if (intent.compensation !== undefined) {
+    validateWorkLeaseCompensation(intent, { requireAllProjections });
+  }
   return request;
+}
+
+export function attachIntentForwardPhase(
+  intent,
+  { claimProof, transitionId, committedAt = new Date().toISOString() } = {}
+) {
+  validateWorkLeaseIntent(intent, { requireAllProjections: true });
+  if (intent.operation !== 'switchLease' || intent.receipt === undefined) {
+    throw new Error('work-lease forward phase requires a persisted switch receipt');
+  }
+  if (intent.compensation !== undefined || intent.transitionId !== transitionId) {
+    throw new Error('work-lease forward phase cannot start from this recovery state');
+  }
+  const githubProjectionId = intent.projections.github.projectionId;
+  const durableProof = validateProjectionProof(claimProof, 'github-claim', githubProjectionId);
+  nonEmptyString(committedAt, 'work-lease forward phase committedAt');
+  const forwardPhase = {
+    transitionId,
+    committedAt,
+    claimProof: durableProof,
+  };
+  if (intent.forwardPhase !== undefined) {
+    if (canonicalRequestJson(intent.forwardPhase) === canonicalRequestJson(forwardPhase)) {
+      return intent;
+    }
+    throw new Error('work-lease forward phase cannot be overwritten');
+  }
+  return { ...intent, forwardPhase };
+}
+
+export function validateWorkLeaseCompensation(intent, { requireAllProjections = false } = {}) {
+  plainObject(intent, 'work-lease intent');
+  if (intent.operation !== 'switchLease' || intent.receipt === undefined) {
+    throw new Error('work-lease compensation requires a persisted switch receipt');
+  }
+  const compensation = plainObject(intent.compensation, 'work-lease compensation');
+  assertNoSecretMaterial(compensation);
+  nonEmptyString(compensation.reason, 'work-lease compensation reason');
+  if (compensation.forwardTransitionId !== intent.transitionId) {
+    throw new Error('work-lease compensation forward transition does not match');
+  }
+  nonEmptyString(compensation.canonicalRequest, 'work-lease compensation canonicalRequest');
+  const request = JSON.parse(compensation.canonicalRequest);
+  validateIntentRequest('switchLease', request);
+  if (compensation.idempotencyKey !== request.idempotencyKey) {
+    throw new Error('work-lease compensation idempotency identity does not match');
+  }
+  plainObject(compensation.projections, 'work-lease compensation projections');
+  if (requireAllProjections) {
+    const names = Object.keys(compensation.projections).sort();
+    if (
+      names.length !== WORK_LEASE_PROJECTIONS.length ||
+      names.some((name, index) => name !== [...WORK_LEASE_PROJECTIONS].sort()[index])
+    ) {
+      throw new Error('work-lease compensation requires all four persisted projections');
+    }
+  }
+  for (const [name, projection] of Object.entries(compensation.projections)) {
+    validateProjectionName(name);
+    plainObject(projection, `work-lease compensation ${name} projection`);
+    if (!Object.hasOwn(projection, 'input')) {
+      throw new Error(`work-lease compensation ${name} projection input is missing`);
+    }
+    cloneDurableJson(projection.input);
+    const expectedId = compensationProjectionIdentity(request.idempotencyKey, name);
+    if (projection.projectionId !== expectedId) {
+      throw new Error(`work-lease compensation ${name} projection identity does not match`);
+    }
+    if (typeof projection.completed !== 'boolean') {
+      throw new Error(`work-lease compensation ${name} projection completion is malformed`);
+    }
+    if (projection.completed) {
+      validateProjectionProof(projection.reconciliationProof, name, projection.projectionId);
+      nonEmptyString(
+        projection.completedAt,
+        `work-lease compensation ${name} projection completedAt`
+      );
+    }
+  }
+  if (compensation.receipt !== undefined) {
+    const receiptTransitionId = compensation.receipt?.transition?.transitionId;
+    nonEmptyString(receiptTransitionId, 'work-lease compensation receipt transitionId');
+    if (compensation.transitionId !== receiptTransitionId) {
+      throw new Error('work-lease compensation receipt transition does not match');
+    }
+    validateSwitchReceiptCorrelation(compensation.receipt, request, 'work-lease compensation');
+  } else if (compensation.transitionId !== undefined) {
+    throw new Error('work-lease compensation transition requires a receipt');
+  }
+  return request;
+}
+
+export function attachIntentCompensation(intent, { request, reason, projectionInputs } = {}) {
+  validateWorkLeaseIntent(intent, { requireAllProjections: true });
+  if (intent.operation !== 'switchLease' || intent.receipt === undefined) {
+    throw new Error('work-lease compensation requires a persisted switch receipt');
+  }
+  if (
+    intent.forwardPhase !== undefined ||
+    Object.values(intent.projections).some((projection) => projection.completed === true)
+  ) {
+    throw new Error('work-lease compensation is forbidden after forward phase commitment');
+  }
+  assertNoSecretMaterial(request);
+  assertNoSecretMaterial(projectionInputs);
+  validateIntentRequest('switchLease', request);
+  if (reason !== 'target-ineligible-after-switch') {
+    throw new Error('work-lease compensation reason is invalid');
+  }
+  plainObject(projectionInputs, 'work-lease compensation projection inputs');
+  const forwardRequest = readWorkLeaseIntentRequest(intent);
+  const forwardReceipt = intent.receipt;
+  const forwardTransitionId = intent.transitionId;
+  const expectedRequest = {
+    projectId: forwardRequest.projectId,
+    issueId: forwardRequest.target.issueId,
+    leaseId: forwardReceipt?.lease?.leaseId,
+    fencingToken: forwardReceipt?.lease?.fencingToken,
+    idempotencyKey: `compensate:${forwardTransitionId}`,
+    switchedAt: forwardRequest.switchedAt,
+    target: {
+      projectId: forwardRequest.projectId,
+      issueId: forwardRequest.issueId,
+      mode: 'write',
+      idempotencyKey: `compensate-target:${forwardTransitionId}`,
+      requestedAt: forwardRequest.switchedAt,
+      ttlMs: forwardRequest.target.ttlMs,
+      holder: forwardRequest.target.holder,
+    },
+  };
+  if (canonicalRequestJson(request) !== canonicalRequestJson(expectedRequest)) {
+    throw new Error(
+      'work-lease compensation request does not match the immutable forward transition'
+    );
+  }
+  const projections = {};
+  for (const [name, input] of Object.entries(projectionInputs)) {
+    validateProjectionName(name);
+    projections[name] = {
+      input: cloneDurableJson(input),
+      projectionId: compensationProjectionIdentity(request.idempotencyKey, name),
+      completed: false,
+    };
+  }
+  const compensation = {
+    canonicalRequest: canonicalRequestJson(request),
+    idempotencyKey: request.idempotencyKey,
+    forwardTransitionId: intent.transitionId,
+    reason,
+    projections,
+  };
+  if (intent.compensation !== undefined) {
+    if (canonicalRequestJson(intent.compensation) === canonicalRequestJson(compensation)) {
+      return intent;
+    }
+    throw new Error('work-lease compensation cannot be overwritten');
+  }
+  return { ...intent, compensation };
+}
+
+export function attachIntentCompensationReceipt(intent, { receipt, transitionId } = {}) {
+  validateWorkLeaseIntent(intent, { requireAllProjections: true });
+  const compensation = plainObject(intent.compensation, 'work-lease compensation');
+  if (receipt === undefined) {
+    throw new TypeError('work-lease compensation receipt is required');
+  }
+  assertNoSecretMaterial(receipt);
+  const durableReceipt = cloneDurableJson(receipt);
+  const receiptTransitionId = durableReceipt?.transition?.transitionId;
+  const persistedTransitionId = transitionId ?? receiptTransitionId;
+  nonEmptyString(persistedTransitionId, 'work-lease compensation transitionId');
+  if (
+    receiptTransitionId !== undefined &&
+    transitionId !== undefined &&
+    receiptTransitionId !== transitionId
+  ) {
+    throw new Error('work-lease compensation receipt transition does not match');
+  }
+  if (compensation.receipt !== undefined) {
+    if (
+      canonicalRequestJson(compensation.receipt) === canonicalRequestJson(durableReceipt) &&
+      compensation.transitionId === persistedTransitionId
+    ) {
+      return intent;
+    }
+    throw new Error('work-lease compensation receipt cannot be overwritten');
+  }
+  return {
+    ...intent,
+    compensation: {
+      ...compensation,
+      receipt: durableReceipt,
+      transitionId: persistedTransitionId,
+    },
+  };
+}
+
+export function checkpointIntentCompensationProjection(
+  intent,
+  name,
+  reconciliationProof,
+  expectedTransitionId,
+  completedAt = new Date().toISOString()
+) {
+  validateWorkLeaseIntent(intent, { requireAllProjections: true });
+  validateProjectionName(name);
+  const compensation = plainObject(intent.compensation, 'work-lease compensation');
+  if (compensation.receipt === undefined || compensation.transitionId !== expectedTransitionId) {
+    throw new Error('work-lease compensation transition does not match');
+  }
+  const projection = compensation.projections?.[name];
+  if (!projection) {
+    throw new Error(`work-lease compensation projection ${name} has no persisted input`);
+  }
+  const durableProof = validateProjectionProof(reconciliationProof, name, projection.projectionId);
+  if (projection.completed === true) return intent;
+  nonEmptyString(completedAt, 'work-lease compensation projection completedAt');
+  return {
+    ...intent,
+    compensation: {
+      ...compensation,
+      projections: {
+        ...compensation.projections,
+        [name]: {
+          ...projection,
+          completed: true,
+          completedAt,
+          reconciliationProof: durableProof,
+        },
+      },
+    },
+  };
+}
+
+export function workLeaseCompensationReconciled(intent) {
+  if (intent?.compensation?.receipt === undefined) return false;
+  return WORK_LEASE_PROJECTIONS.every(
+    (name) => intent.compensation.projections?.[name]?.completed === true
+  );
 }
 
 export function attachIntentReceipt(intent, { receipt, transitionId } = {}) {
@@ -372,6 +686,9 @@ export function checkpointIntentProjection(
   assertIntentTransition(intent, expectedTransitionId);
   if (intent.receipt === undefined) {
     throw new Error('work-lease intent receipt must be persisted before projection checkpoints');
+  }
+  if (intent.operation === 'switchLease' && intent.forwardPhase === undefined) {
+    throw new Error('work-lease switch forward phase must commit before projection checkpoints');
   }
   const projection = intent.projections?.[name];
   if (!projection) {

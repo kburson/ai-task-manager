@@ -68,6 +68,60 @@ try {
     projectionId,
   });
 
+  const switchInput = {
+    sourceIssue: '#1049',
+    targetIssue: '#1051',
+    source: projectedInput,
+    target: { ...projectedInput, issue: '#1051' },
+  };
+  const targetLease = {
+    projectId: 'project-1',
+    leaseId: 'lease-target',
+    fencingToken: '9',
+    worktreeId: projectedInput.binding.worktreeId,
+  };
+  const switchProjectionId = 'switchLease:switch-1:fleet';
+  fleetRegistry.switchTaskProjection(tmp, switchInput, targetLease, switchProjectionId, 'forward');
+  assert.equal(readFleet(preferred)['#1049'], undefined);
+  assert.deepEqual(readFleet(preferred)['#1051'], {
+    worktreePath: tmp,
+    branch: 'feature/child/1049',
+    kind: 'main',
+    startedAt: '2026-07-30T12:00:00.000Z',
+    status: 'active',
+    binding: projectedInput.binding,
+    lease: targetLease,
+    projectionId: switchProjectionId,
+  });
+  const switchedBytes = JSON.stringify(readFleet(preferred));
+  fleetRegistry.switchTaskProjection(tmp, switchInput, targetLease, switchProjectionId, 'forward');
+  assert.equal(JSON.stringify(readFleet(preferred)), switchedBytes, 'switch replay is exact');
+
+  const restoredLease = {
+    ...targetLease,
+    leaseId: 'lease-source-restored',
+    fencingToken: '11',
+  };
+  const compensationProjectionId = 'compensation:compensate-1:fleet';
+  fleetRegistry.switchTaskProjection(
+    tmp,
+    switchInput,
+    restoredLease,
+    compensationProjectionId,
+    'compensation'
+  );
+  assert.equal(readFleet(preferred)['#1051'], undefined);
+  assert.deepEqual(readFleet(preferred)['#1049'], {
+    worktreePath: tmp,
+    branch: 'feature/child/1049',
+    kind: 'main',
+    startedAt: '2026-07-30T12:00:00.000Z',
+    status: 'active',
+    binding: projectedInput.binding,
+    lease: restoredLease,
+    projectionId: compensationProjectionId,
+  });
+
   setTaskStatus(tmp, '#3', 'paused');
   fleet = readFleet(preferred);
   assert.equal(fleet['#3'].status, 'paused');

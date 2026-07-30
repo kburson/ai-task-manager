@@ -13,13 +13,19 @@ import path from 'node:path';
 import { activeTaskPath, sessionDir } from './paths.mjs';
 import {
   assertIntentTransition,
+  attachIntentCompensation,
+  attachIntentCompensationReceipt,
+  attachIntentForwardPhase,
   attachIntentReceipt,
+  checkpointIntentCompensationProjection,
   checkpointIntentProjection,
   createPriorSessionSnapshot,
   createWorkLeaseIntent,
   normalizePriorSessionSnapshot,
   normalizeLeaseContext,
   setIntentProjectionInput,
+  validateWorkLeaseCompensation,
+  workLeaseCompensationReconciled,
   workLeaseIntentReconciled,
   workLeaseIntentsEqual,
 } from './lib/work-lease/context.mjs';
@@ -303,6 +309,24 @@ export function setWorkLeaseIntent(sid, input, projDir) {
       throw new Error('resume intent request does not match the current session authority lease');
     }
   }
+  if (intent.operation === 'switchLease') {
+    let lease;
+    try {
+      lease = normalizeLeaseContext(base.lease);
+    } catch {
+      throw new Error('switch intent requires the current session source lease');
+    }
+    if (
+      lease.projectId !== request.projectId ||
+      lease.leaseId !== request.leaseId ||
+      lease.fencingToken !== request.fencingToken
+    ) {
+      throw new Error('switch intent request does not match the current session source lease');
+    }
+    if (lease.worktreeId !== request.target.holder.worktreeId) {
+      throw new Error('switch intent target holder does not match the source worktree');
+    }
+  }
   const next = {
     ...base,
     ...(currentIssue == null ? { leaseIssue: `#${intentIssue}` } : {}),
@@ -322,6 +346,142 @@ export function attachWorkLeaseIntentReceipt(sid, receipt, projDir) {
       workLeaseIntent: attachIntentReceipt(existing.workLeaseIntent, receipt),
     };
   });
+}
+
+export function commitWorkLeaseForwardPhase(sid, forwardPhase, projDir) {
+  return mutateActiveTask(sid, projDir, (existing) => {
+    if (!existing?.workLeaseIntent) {
+      throw new Error('work-lease intent is not persisted');
+    }
+    return {
+      ...existing,
+      workLeaseIntent: attachIntentForwardPhase(existing.workLeaseIntent, forwardPhase),
+    };
+  });
+}
+
+export function setWorkLeaseCompensation(sid, compensation, projDir) {
+  return mutateActiveTask(sid, projDir, (existing) => {
+    if (!existing?.workLeaseIntent) {
+      throw new Error('work-lease intent is not persisted');
+    }
+    return {
+      ...existing,
+      workLeaseIntent: attachIntentCompensation(existing.workLeaseIntent, compensation),
+    };
+  });
+}
+
+export function attachWorkLeaseCompensationReceipt(sid, receipt, projDir) {
+  return mutateActiveTask(sid, projDir, (existing) => {
+    if (!existing?.workLeaseIntent?.compensation) {
+      throw new Error('work-lease compensation is not persisted');
+    }
+    return {
+      ...existing,
+      workLeaseIntent: attachIntentCompensationReceipt(existing.workLeaseIntent, receipt),
+    };
+  });
+}
+
+export function checkpointWorkLeaseCompensationProjection(
+  sid,
+  projection,
+  reconciliationProof,
+  expectedTransitionId,
+  completedAt,
+  projDir
+) {
+  return mutateActiveTask(sid, projDir, (existing) => {
+    if (!existing?.workLeaseIntent?.compensation) {
+      throw new Error('work-lease compensation is not persisted');
+    }
+    return {
+      ...existing,
+      workLeaseIntent: checkpointIntentCompensationProjection(
+        existing.workLeaseIntent,
+        projection,
+        reconciliationProof,
+        expectedTransitionId,
+        completedAt
+      ),
+    };
+  });
+}
+
+export function restoreCompensatedActiveTask(
+  sid,
+  compensatedLease,
+  expectedTransitionId,
+  expectedProjectionId,
+  projDir
+) {
+  const p = activeTaskPath(sid, projDir);
+  const existing = readJsonForMutation(p);
+  const intent = existing?.workLeaseIntent;
+  const compensationRequest = validateWorkLeaseCompensation(intent, {
+    requireAllProjections: true,
+  });
+  const compensation = intent.compensation;
+  if (
+    compensation.transitionId !== expectedTransitionId ||
+    compensation.projections.session?.projectionId !== expectedProjectionId
+  ) {
+    throw new Error('work-lease compensation session projection identity does not match');
+  }
+  const lease = normalizeLeaseContext(compensatedLease);
+  const receiptLease = compensation.receipt?.lease;
+  if (
+    lease.projectId !== receiptLease?.projectId ||
+    lease.leaseId !== receiptLease?.leaseId ||
+    lease.fencingToken !== receiptLease?.fencingToken ||
+    lease.worktreeId !== compensationRequest.target.holder.worktreeId
+  ) {
+    throw new Error('work-lease compensation session lease does not match receipt');
+  }
+  const snapshot = normalizePriorSessionSnapshot(intent.priorSessionSnapshot);
+  if (!snapshot.present) {
+    throw new Error('work-lease compensation source snapshot is missing');
+  }
+  let prior;
+  try {
+    prior = parseJsonForMutation(Buffer.from(snapshot.bytesBase64, 'base64').toString('utf8'));
+  } catch {
+    throw new Error('work-lease compensation source snapshot is malformed');
+  }
+  if (canonicalIssue(authorityIssue(prior)) !== compensationRequest.target.issueId) {
+    throw new Error('work-lease compensation source snapshot issue does not match');
+  }
+  let priorLease;
+  try {
+    priorLease = normalizeLeaseContext(prior.lease);
+  } catch {
+    throw new Error('work-lease compensation source snapshot lease is malformed');
+  }
+  const next = {
+    ...prior,
+    lease,
+    workLeaseIntent: intent,
+  };
+  atomicWrite(p, next);
+  const readback = readJsonForMutation(p);
+  const priorNonAuthority = { ...prior };
+  const readbackNonAuthority = { ...readback };
+  delete priorNonAuthority.lease;
+  delete priorNonAuthority.workLeaseIntent;
+  delete readbackNonAuthority.lease;
+  delete readbackNonAuthority.workLeaseIntent;
+  if (
+    canonicalIssue(authorityIssue(readback)) !== compensationRequest.target.issueId ||
+    JSON.stringify(readbackNonAuthority) !== JSON.stringify(priorNonAuthority) ||
+    JSON.stringify(readback.lease) !== JSON.stringify(lease) ||
+    readback.workLeaseIntent?.compensation?.transitionId !== expectedTransitionId ||
+    readback.lease.leaseId === priorLease.leaseId ||
+    readback.lease.fencingToken === priorLease.fencingToken
+  ) {
+    throw new Error('work-lease compensation session readback does not match');
+  }
+  return readback;
 }
 
 export function setWorkLeaseProjectionInput(sid, projection, input, expectedTransitionId, projDir) {
@@ -370,9 +530,15 @@ export function clearWorkLeaseIntent(sid, expectedTransitionId, projDir) {
   let cleared = false;
   mutateActiveTask(sid, projDir, (existing) => {
     const intent = existing?.workLeaseIntent;
-    if (!intent || !workLeaseIntentReconciled(intent)) return null;
+    if (!intent) return null;
+    const compensated = workLeaseCompensationReconciled(intent);
+    if (!compensated && !workLeaseIntentReconciled(intent)) return null;
     try {
-      assertIntentTransition(intent, expectedTransitionId);
+      if (compensated) {
+        if (intent.compensation.transitionId !== expectedTransitionId) return null;
+      } else {
+        assertIntentTransition(intent, expectedTransitionId);
+      }
     } catch {
       return null;
     }

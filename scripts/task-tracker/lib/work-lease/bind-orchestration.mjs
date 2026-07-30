@@ -3,8 +3,10 @@ import { readFileSync } from 'node:fs';
 import { isDeepStrictEqual } from 'node:util';
 
 import { loadState, saveState, advanceWordMarker } from '../../state.mjs';
+import { rawProjectConfig } from '../../config.mjs';
 import {
   registerTaskProjection,
+  switchTaskProjection,
   readFleet,
   fleetRegistryPath,
   findMainWorktreePath,
@@ -17,8 +19,14 @@ import {
   saveMarker,
   countWords,
 } from '../../word-counter.mjs';
-import { getActiveTask, setActiveTask } from '../../session-state.mjs';
+import {
+  getActiveTask,
+  restoreCompensatedActiveTask,
+  setActiveTask,
+} from '../../session-state.mjs';
 import { consumePendingPauseForBind } from '../../orphan-finalize.mjs';
+import { bothGatesExplicit } from '../gate-resolve.mjs';
+import { loadSession as loadRuntimeSession } from '../session-store.mjs';
 import { refuseReadOnlyBindPreflight, runReadOnlyBindPreflight } from '../verb-preflight.mjs';
 import {
   formatClaimAuditComment,
@@ -31,6 +39,10 @@ import {
   coordinateWorkLeaseResume,
   createWorkLeaseHeartbeat,
 } from './guard.mjs';
+import {
+  coordinateWorkLeaseSwitch,
+  validateSwitchGithubProjectionInput,
+} from './switch-orchestration.mjs';
 import { enqueueTimingProjection } from '../../queue.mjs';
 import {
   resolveBindEvent,
@@ -261,7 +273,7 @@ async function applyTimingProjection(ctx, { input, projectionId }) {
     !isNonEmptyString(input.issueNumber) ||
     typeof input.skippedNetwork !== 'boolean' ||
     !isPlainObject(input.decision) ||
-    !['bind', 'resume', 'self'].includes(input.decision.mode) ||
+    !['bind', 'resume', 'self', 'switch'].includes(input.decision.mode) ||
     (input.decision.selectedEvent !== null && !isNonEmptyString(input.decision.selectedEvent)) ||
     (input.decision.emittedEvent !== null && !isNonEmptyString(input.decision.emittedEvent)) ||
     !Number.isSafeInteger(input.decision.idleSec) ||
@@ -283,6 +295,7 @@ async function applyTimingProjection(ctx, { input, projectionId }) {
       !isPlainObject(item) ||
       !isNonEmptyString(item.row) ||
       !isNonEmptyString(item.subOperationId) ||
+      (item.issueNumber !== undefined && !/^[1-9]\d*$/.test(item.issueNumber)) ||
       item.projectionId !== projectionId
     ) {
       throw new Error('persisted timing projection row is malformed');
@@ -306,9 +319,10 @@ async function applyTimingProjection(ctx, { input, projectionId }) {
   const gh = await import('../../gh-timing-comment.mjs');
   const post = ctx.postTimingProjection ?? gh.postTimingEvent;
   for (const item of input.rows) {
+    const issueNumber = item.issueNumber ?? input.issueNumber;
     try {
       await post({
-        issueNumber: input.issueNumber,
+        issueNumber,
         repo: input.repo,
         row: item.row,
         projectionId,
@@ -318,7 +332,7 @@ async function applyTimingProjection(ctx, { input, projectionId }) {
     } catch (error) {
       enqueueTimingProjection(
         {
-          issue: input.issueNumber,
+          issue: item.issueNumber ?? input.issueNumber,
           row: item.row,
           projectionId,
           subOperationId: item.subOperationId,
@@ -329,14 +343,23 @@ async function applyTimingProjection(ctx, { input, projectionId }) {
     }
   }
   const readProjection = ctx.readTimingProjection ?? gh.readTimingProjection;
-  const proof = await readProjection({
-    issueNumber: input.issueNumber,
-    repo: input.repo,
-    projectionId,
-    subOperationIds: input.rows.map((item) => item.subOperationId),
-  });
-  if (proof?.reconciled !== true || proof.projectionId !== projectionId) {
-    throw new Error('timing projection remote read-back does not match');
+  const operationsByIssue = new Map();
+  for (const item of input.rows) {
+    const issueNumber = item.issueNumber ?? input.issueNumber;
+    const operations = operationsByIssue.get(issueNumber) ?? [];
+    operations.push(item.subOperationId);
+    operationsByIssue.set(issueNumber, operations);
+  }
+  for (const [issueNumber, subOperationIds] of operationsByIssue) {
+    const proof = await readProjection({
+      issueNumber,
+      repo: input.repo,
+      projectionId,
+      subOperationIds,
+    });
+    if (proof?.reconciled !== true || proof.projectionId !== projectionId) {
+      throw new Error('timing projection remote read-back does not match');
+    }
   }
   return projectionProof('timing', projectionId);
 }
@@ -359,6 +382,14 @@ async function applyGithubProjection(ctx, { input, projectionId }) {
   if ((input.assigneePolicy === 'offline') !== input.skippedNetwork) {
     throw new Error('persisted GitHub offline policy is inconsistent');
   }
+  if (input.switch || String(projectionId).startsWith('switchLease:')) {
+    validateSwitchGithubProjectionInput(input, {
+      sourceIssueId: input.switch?.sourceIssue,
+      targetIssueId: input.issueNumber,
+      sessionId: input.switch?.sessionId,
+      projectionId,
+    });
+  }
   if (input.skippedNetwork) return projectionProof('github', projectionId);
   if (typeof ctx.applyWorkLeaseGithubProjection === 'function') {
     return requireProjectionProof(
@@ -367,23 +398,350 @@ async function applyGithubProjection(ctx, { input, projectionId }) {
       projectionId
     );
   }
-  if (!input.claimRequired) return projectionProof('github', projectionId);
-  if (typeof input.auditBody !== 'string' || input.auditBody === '') {
-    throw new Error('persisted GitHub claim audit is malformed');
+  if (input.claimRequired) {
+    if (typeof input.auditBody !== 'string' || input.auditBody === '') {
+      throw new Error('persisted GitHub claim audit is malformed');
+    }
+    const reconcile = ctx.reconcileClaimAuditProjection ?? reconcileClaimAuditProjection;
+    const proof = await reconcile({
+      issueNumber: input.issueNumber,
+      repo: input.repo,
+      projectionId,
+      body: input.auditBody,
+      listComments: ctx.listIssueComments,
+      postComment: ctx.postIssueComment,
+    });
+    if (proof?.reconciled !== true || proof.projectionId !== projectionId) {
+      throw new Error('GitHub projection remote read-back does not match');
+    }
   }
-  const reconcile = ctx.reconcileClaimAuditProjection ?? reconcileClaimAuditProjection;
-  const proof = await reconcile({
-    issueNumber: input.issueNumber,
-    repo: input.repo,
-    projectionId,
-    body: input.auditBody,
-    listComments: ctx.listIssueComments,
-    postComment: ctx.postIssueComment,
-  });
-  if (proof?.reconciled !== true || proof.projectionId !== projectionId) {
-    throw new Error('GitHub projection remote read-back does not match');
+  if (input.switch) {
+    if (
+      !isPlainObject(input.switch) ||
+      !/^#[1-9]\d*$/.test(input.switch.sourceIssue) ||
+      !isNonEmptyString(input.switch.sessionId) ||
+      !isNonEmptyString(input.switch.jsonlPath) ||
+      !isNonEmptyString(input.switch.ts)
+    ) {
+      throw new Error('persisted GitHub switch projection is malformed');
+    }
+    const sessionRef = await ctx.safeRecordSessionRef(input.switch.sourceIssue, {
+      sid: input.switch.sessionId,
+      jsonlPath: input.switch.jsonlPath,
+      ts: input.switch.ts,
+    });
+    if (sessionRef?.ok !== true) {
+      throw new Error('GitHub switch session reference did not reconcile');
+    }
+    await ctx.runLogIssueTime(input.switch.sourceIssue);
   }
   return projectionProof('github', projectionId);
+}
+
+async function buildGovernedSwitchPlan(
+  ctx,
+  { source, target, state, sessionId, requestId, eligibility, binding }
+) {
+  const plan = await buildGovernedBindPlan(ctx, {
+    target,
+    state,
+    sessionId,
+    mode: 'bind',
+    operation: 'switchLease',
+    requestId,
+    eligibility,
+    binding,
+  });
+  const idempotencyKey = `switch:${sessionId}:${source.replace(/^#/, '')}:${target.replace(/^#/, '')}:${requestId}`;
+  const projectionIds = Object.fromEntries(
+    ['session', 'fleet', 'timing', 'github'].map((name) => [
+      name,
+      `switchLease:${idempotencyKey}:${name}`,
+    ])
+  );
+  const sourceFleet =
+    readFleet(fleetRegistryPath(findMainWorktreePath(ctx.projectDir)))[source] ?? {};
+  const sourceInput = {
+    issue: source,
+    worktreePath: binding.displayPath,
+    branch: binding.branch,
+    kind: sourceFleet.kind,
+    startedAt: sourceFleet.startedAt ?? state.entryStartTs ?? plan.ts,
+    status: 'active',
+    binding,
+  };
+  const sourceLastRow =
+    eligibility.skippedNetwork === true || typeof ctx.safeReadLastRow !== 'function'
+      ? null
+      : await ctx.safeReadLastRow(source);
+  const outgoing =
+    eligibility.skippedNetwork === true
+      ? null
+      : await ctx.flushActiveToGH(
+          durableJson(state),
+          `switch-out:${target}`,
+          `Switching out to task ${target}`,
+          undefined,
+          { suppressRowWords: true, computeOnly: true, precomputedLastRow: sourceLastRow }
+        );
+  const incomingRows = plan.projectionInputs.timing.rows.map((item) => ({
+    ...item,
+    issueNumber: target.replace(/^#/, ''),
+    subOperationId: `incoming:${item.subOperationId}`,
+    projectionId: projectionIds.timing,
+  }));
+  const outgoingPrecedingRows = outgoing?.precedingRows ?? [];
+  if (
+    !Array.isArray(outgoingPrecedingRows) ||
+    outgoingPrecedingRows.length > 1 ||
+    outgoingPrecedingRows.some((row) => !isNonEmptyString(row))
+  ) {
+    throw new Error('computed outgoing switch timing prelude is malformed');
+  }
+  plan.projectionInputs.session.switch = { sourceIssue: source, targetIssue: target };
+  plan.projectionInputs.fleet = {
+    sourceIssue: source,
+    targetIssue: target,
+    source: sourceInput,
+    target: plan.projectionInputs.fleet,
+  };
+  plan.projectionInputs.timing = {
+    ...plan.projectionInputs.timing,
+    decision: {
+      ...plan.projectionInputs.timing.decision,
+      mode: 'switch',
+    },
+    sourceIssue: source,
+    targetIssue: target,
+    rows: eligibility.skippedNetwork
+      ? []
+      : [
+          ...outgoingPrecedingRows.map((row) => ({
+            issueNumber: source.replace(/^#/, ''),
+            row,
+            subOperationId: 'outgoing:reengage',
+            projectionId: projectionIds.timing,
+          })),
+          {
+            issueNumber: source.replace(/^#/, ''),
+            row: outgoing.row,
+            subOperationId: 'outgoing:switch-out',
+            projectionId: projectionIds.timing,
+          },
+          ...incomingRows,
+        ],
+  };
+  plan.projectionInputs.github.switch = {
+    sourceIssue: source,
+    targetIssue: target,
+    sessionId,
+    jsonlPath: jsonlPath(sessionId),
+    ts: plan.ts,
+  };
+  plan.projectionInputs = durableJson(plan.projectionInputs);
+  return { ...plan, idempotencyKey, projectionIds };
+}
+
+async function applySwitchProjection(
+  ctx,
+  { phase, input, lease, transitionId, projectionName, projectionId, sessionId }
+) {
+  if (phase === 'compensation') {
+    const forwardInput = input?.forwardInput;
+    if (projectionName === 'session') {
+      if (typeof ctx.applyWorkLeaseSwitchCompensationSessionProjection === 'function') {
+        return requireProjectionProof(
+          await ctx.applyWorkLeaseSwitchCompensationSessionProjection({
+            input,
+            lease,
+            transitionId,
+            projectionId,
+          }),
+          'session',
+          projectionId
+        );
+      }
+      restoreCompensatedActiveTask(sessionId, lease, transitionId, projectionId, ctx.projectDir);
+      return projectionProof('session', projectionId);
+    }
+    if (projectionName === 'fleet') {
+      if (typeof ctx.applyWorkLeaseSwitchCompensationFleetProjection === 'function') {
+        return requireProjectionProof(
+          await ctx.applyWorkLeaseSwitchCompensationFleetProjection({
+            input,
+            lease,
+            transitionId,
+            projectionId,
+          }),
+          'fleet',
+          projectionId
+        );
+      }
+      switchTaskProjection(ctx.projectDir, forwardInput, lease, projectionId, 'compensation');
+      return projectionProof('fleet', projectionId);
+    }
+    return projectionProof(projectionName, projectionId);
+  }
+  if (projectionName === 'fleet') {
+    if (typeof ctx.applyWorkLeaseSwitchFleetProjection === 'function') {
+      return requireProjectionProof(
+        await ctx.applyWorkLeaseSwitchFleetProjection({
+          input,
+          lease,
+          transitionId,
+          projectionId,
+        }),
+        'fleet',
+        projectionId
+      );
+    }
+    switchTaskProjection(ctx.projectDir, input, lease, projectionId, 'forward');
+    return projectionProof('fleet', projectionId);
+  }
+  const apply = {
+    session: applySessionProjection,
+    timing: applyTimingProjection,
+    github: applyGithubProjection,
+  }[projectionName];
+  return apply(ctx, { input, lease, projectionId, projectionName });
+}
+
+async function verbSwitchGoverned(
+  ctx,
+  { source, target, state, session, sessionId, identity, eligibility, readEligibility, binding }
+) {
+  const persistedIntent =
+    session?.workLeaseIntent?.operation === 'switchLease' ? session.workLeaseIntent : null;
+  const requestId = persistedIntent ? 'persisted-switch-replay' : randomUUID();
+  const plan = persistedIntent
+    ? {
+        ts: JSON.parse(persistedIntent.canonicalRequest).switchedAt,
+        requestId,
+        idempotencyKey: persistedIntent.idempotencyKey,
+        projectionIds: Object.fromEntries(
+          Object.entries(persistedIntent.projections).map(([name, projection]) => [
+            name,
+            projection.projectionId,
+          ])
+        ),
+        projectionInputs: Object.fromEntries(
+          Object.entries(persistedIntent.projections).map(([name, projection]) => [
+            name,
+            durableJson(projection.input),
+          ])
+        ),
+      }
+    : await buildGovernedSwitchPlan(ctx, {
+        source,
+        target,
+        state,
+        sessionId,
+        requestId,
+        eligibility,
+        binding,
+      });
+  plan.projectionInputs.session.kanbanState = eligibility.kanbanState ?? null;
+  plan.projectionInputs.session.reviewRemediationHint = eligibility.reviewRemediationHint ?? null;
+  if (plan.projectionInputs.github.claimRequired) {
+    plan.projectionInputs.github.auditBody = formatClaimAuditComment({
+      verb: ctx.verb || 'start',
+      issueNumber: target.replace(/^#/, ''),
+      currentUser: plan.projectionInputs.github.currentUser,
+      projectionId: plan.projectionIds.github,
+    });
+  }
+  const projections = Object.fromEntries(
+    ['session', 'fleet', 'timing', 'github'].map((name) => [
+      name,
+      (options) =>
+        applySwitchProjection(ctx, {
+          ...options,
+          sessionId,
+          projectionName: name,
+        }),
+    ])
+  );
+  const coordinate = ctx.coordinateWorkLeaseSwitch ?? coordinateWorkLeaseSwitch;
+  const result = await coordinate({
+    sourceIssueId: source,
+    targetIssueId: target,
+    sessionId,
+    projectDir: ctx.projectDir,
+    hostId: identity.hostId,
+    provider: identity.provider,
+    agentRunId: identity.agentRunId,
+    pid: identity.pid,
+    branch: identity.branch,
+    getStore: async () => ctx.getWorkLeaseStore(),
+    preparedEligibility: eligibility,
+    readEligibility,
+    reconcileClaim: ({ input, projectionId, liveEligibility }) =>
+      reconcilePreparedAssigneeClaim({
+        input,
+        projectionId,
+        liveEligibility,
+        deps: ctx.claimAssigneeDeps,
+      }),
+    projectionInputs: plan.projectionInputs,
+    projections,
+    resolveWorktreeIdentity: ctx.resolveWorktreeIdentity,
+    now: () => new Date(plan.ts),
+    randomUUID: () => requestId,
+  });
+  const startHeartbeat = ctx.createWorkLeaseHeartbeat ?? createWorkLeaseHeartbeat;
+  startHeartbeat({
+    ownerKey: heartbeatOwnerKey(sessionId, result.lease),
+    verifyEffect: ctx.verifyGovernedEffect,
+    issueId: target.replace(/^#/, ''),
+    sessionId,
+    projectDir: ctx.projectDir,
+    hostId: identity.hostId,
+    operation: 'task-bind',
+    store: ctx.getWorkLeaseStore(),
+    holderIdentity: { ...binding },
+  });
+  if (!eligibility.skippedNetwork) {
+    const audit = ctx.runMoveInvariantAudit ?? runMoveInvariantAudit;
+    await audit({ issueNumber: target.replace(/^#/, ''), cfg: ctx.cfg });
+  }
+  const reviewHint = result.projectionInputs?.session?.reviewRemediationHint;
+  const kanbanState = result.projectionInputs?.session?.kanbanState;
+  if (kanbanState && !isPickupDirectiveEligible(kanbanState)) {
+    console.log(formatPickupDirectiveDeferredBanner(target, kanbanState));
+  }
+  if (reviewHint) console.log(reviewHint);
+  console.log(`Active: ${target}. Previous: ${source} ended.`);
+  if (ctx.cfg?.repo && !eligibility.skippedNetwork) {
+    try {
+      const { reconcileDiscuss } = await import('../discuss-label.mjs');
+      const { formatDiscussStartBanner } = await import('../discuss-marker.mjs');
+      const { pending } = await reconcileDiscuss({
+        issueNumber: Number(target.replace(/^#/, '')),
+        repo: ctx.cfg.repo,
+        cfg: ctx.cfg,
+      });
+      if (pending) console.log(formatDiscussStartBanner(target));
+    } catch {
+      // Advisory-only reconciliation never invalidates an authoritative switch.
+    }
+  }
+  try {
+    if (eligibility.skippedNetwork) return result;
+    if (!bothGatesExplicit(rawProjectConfig())) {
+      const runtimeSession = loadRuntimeSession(sessionId);
+      const issueNumber = target.replace(/^#/, '');
+      const parent = await ctx.fetchParentIssue(issueNumber);
+      const rootKey = parent == null ? issueNumber : String(parent);
+      if (runtimeSession.lastPromptedParent !== rootKey) {
+        console.log(`PROMPT_REQUIRED: auto-mode #${rootKey}`);
+        const { saveSession } = await import('../session-store.mjs');
+        saveSession({ ...runtimeSession, lastPromptedParent: rootKey });
+      }
+    }
+  } catch {
+    // Prompting is advisory and occurs only after durable reconciliation.
+  }
+  return result;
 }
 
 async function buildGovernedBindPlan(
@@ -600,6 +958,25 @@ async function verbResumeGoverned(ctx) {
   if (!sessionId) throw new Error('governed bind requires a session identity');
   const session = getActiveTask(sessionId, ctx.projectDir);
   const boundIssue = session?.issue ?? session?.leaseIssue;
+  const persistedSwitch =
+    session?.workLeaseIntent?.operation === 'switchLease'
+      ? JSON.parse(session.workLeaseIntent.canonicalRequest)
+      : null;
+  if (persistedSwitch && canonicalIssueRef(persistedSwitch.target.issueId) !== target) {
+    throw new Error(
+      `unreconciled atomic switch targets ${canonicalIssueRef(persistedSwitch.target.issueId)}, not ${target}`
+    );
+  }
+  if (
+    !persistedSwitch &&
+    boundIssue &&
+    canonicalIssueRef(boundIssue) !== target &&
+    ctx.cfg?.autoEndOnSwitch === false
+  ) {
+    throw new Error(
+      `autoEndOnSwitch=false: finish ${canonicalIssueRef(boundIssue)} manually or enable autoEndOnSwitch before binding ${target}`
+    );
+  }
   const preflight = ctx.runReadOnlyBindPreflight ?? runReadOnlyBindPreflight;
   const readEligibility = () =>
     preflight({
@@ -609,7 +986,14 @@ async function verbResumeGoverned(ctx) {
       allowIssueSwitch: true,
       deps: ctx.bindPreflightDeps,
     });
-  const eligibility = await readEligibility();
+  const eligibility = persistedSwitch
+    ? {
+        ok: true,
+        ...session.workLeaseIntent.projections.github.input,
+        assignees: session.workLeaseIntent.projections.github.input.preparedAssignees,
+        assigneeKind: session.workLeaseIntent.projections.github.input.preparedKind,
+      }
+    : await readEligibility();
   if (!eligibility?.ok) {
     const refuse = ctx.refuseReadOnlyBindPreflight ?? refuseReadOnlyBindPreflight;
     refuse({
@@ -617,11 +1001,6 @@ async function verbResumeGoverned(ctx) {
       verb: ctx.verb || (noArgument ? 'resume' : 'start'),
     });
     return;
-  }
-  if (boundIssue && canonicalIssueRef(boundIssue) !== target) {
-    throw new Error(
-      `atomic work-lease switch is required before rebinding ${canonicalIssueRef(boundIssue)} to ${target}`
-    );
   }
   const binding = await buildTrustedWorkLeaseBinding({
     projectDir: ctx.projectDir,
@@ -633,6 +1012,20 @@ async function verbResumeGoverned(ctx) {
     branch: identity.branch,
     resolveWorktreeIdentity: ctx.resolveWorktreeIdentity,
   });
+  if (persistedSwitch || (boundIssue && canonicalIssueRef(boundIssue) !== target)) {
+    const runSwitch = ctx.verbSwitchGoverned ?? verbSwitchGoverned;
+    return runSwitch(ctx, {
+      source: canonicalIssueRef(persistedSwitch?.issueId ?? boundIssue),
+      target,
+      state,
+      session,
+      sessionId,
+      identity,
+      eligibility,
+      readEligibility,
+      binding,
+    });
+  }
 
   const selfHeldLease =
     !noArgument && state.active === target && session?.lease && !session?.workLeaseIntent;

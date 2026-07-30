@@ -17,6 +17,7 @@ import {
   captureActiveTaskSnapshot,
   clearActiveTaskLease,
   clearWorkLeaseIntent,
+  commitWorkLeaseForwardPhase,
   getActiveTask,
   restoreActiveTaskSnapshot,
   setActiveTask,
@@ -555,6 +556,7 @@ test('intent receipt and projection checkpoints update atomically and clear only
           target: acquireRequest({
             issueId: '1051',
             idempotencyKey: 'acquire:session-1:#1051',
+            requestedAt: '2026-07-30T12:01:00.000Z',
           }),
         },
         projectionInputs: {
@@ -587,6 +589,32 @@ test('intent receipt and projection checkpoints update atomically and clear only
       'github',
       { from: '#1049', to: '#1051' },
       'transition-1',
+      dir
+    );
+    assert.throws(
+      () =>
+        checkpointWorkLeaseProjection(
+          'session-1',
+          'session',
+          reconciliationProof('session-1', 'session', dir),
+          'transition-1',
+          '2026-07-30T12:01:20.000Z',
+          dir
+        ),
+      /forward phase must commit/
+    );
+    commitWorkLeaseForwardPhase(
+      'session-1',
+      {
+        claimProof: {
+          reconciled: true,
+          projectionName: 'github-claim',
+          projectionId: getActiveTask('session-1', dir).workLeaseIntent.projections.github
+            .projectionId,
+        },
+        transitionId: 'transition-1',
+        committedAt: '2026-07-30T12:01:30.000Z',
+      },
       dir
     );
     checkpointWorkLeaseProjection(
@@ -634,6 +662,74 @@ test('intent receipt and projection checkpoints update atomically and clear only
     assert.equal(clearWorkLeaseIntent('session-1', 'transition-1', dir), true);
     assert.equal(getActiveTask('session-1', dir).workLeaseIntent, undefined);
     assert.deepEqual(getActiveTask('session-1', dir).lease, LEASE);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('switch intent correlates the exact source lease and one shared authority timestamp', () => {
+  const dir = sandbox();
+  try {
+    setActiveTask('session-1', { issue: '#1049', lease: LEASE }, dir);
+    const before = readFileSync(activeTaskPath('session-1', dir));
+    const request = {
+      projectId: LEASE.projectId,
+      issueId: '1049',
+      leaseId: LEASE.leaseId,
+      fencingToken: LEASE.fencingToken,
+      idempotencyKey: 'switch:session-1:1049:1051:request-1',
+      switchedAt: '2026-07-30T12:01:00.000Z',
+      target: acquireRequest({
+        issueId: '1051',
+        idempotencyKey: 'switch-target:session-1:1051:request-1',
+        requestedAt: '2026-07-30T12:01:00.000Z',
+      }),
+    };
+    const projectionInputs = {
+      session: {},
+      fleet: {},
+      timing: {},
+      github: {},
+    };
+
+    for (const mutate of [
+      (value) => ({ ...value, projectId: 'project-foreign' }),
+      (value) => ({ ...value, leaseId: 'lease-foreign' }),
+      (value) => ({ ...value, fencingToken: '41' }),
+      (value) => ({
+        ...value,
+        target: { ...value.target, requestedAt: '2026-07-30T12:01:01.000Z' },
+      }),
+      (value) => ({
+        ...value,
+        target: {
+          ...value.target,
+          holder: { ...value.target.holder, worktreeId: 'worktree-foreign' },
+        },
+      }),
+    ]) {
+      assert.throws(
+        () =>
+          setWorkLeaseIntent(
+            'session-1',
+            { operation: 'switchLease', request: mutate(request), projectionInputs },
+            dir
+          ),
+        /switch intent|switch target|timestamp|source|worktree/i
+      );
+      assert.deepEqual(
+        readFileSync(activeTaskPath('session-1', dir)),
+        before,
+        'invalid switch intent must not alter source session bytes'
+      );
+    }
+
+    const persisted = setWorkLeaseIntent(
+      'session-1',
+      { operation: 'switchLease', request, projectionInputs },
+      dir
+    );
+    assert.deepEqual(JSON.parse(persisted.workLeaseIntent.canonicalRequest), request);
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }

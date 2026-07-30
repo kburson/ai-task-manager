@@ -543,13 +543,17 @@ export function buildContext(rawArgv = process.argv.slice(2)) {
     // advance `entryStartTs`, so a flush (e.g. `pause`) after intervening
     // move-state rows previously re-counted wall time those rows already logged.
     // `resolveFlushStartMs` picks the later mark; when there is no readable prior
-    // row (computeOnly/SKIP_NETWORK/unreadable body → null), it falls back to
-    // `entryStartTs`, preserving the pre-fix window exactly.
+    // row (SKIP_NETWORK/unreadable body → null), it falls back to
+    // `entryStartTs`, preserving the pre-fix window exactly. A compute-only
+    // caller may supply a read-only precomputed tail so durable planning keeps
+    // the same anchor without performing effects inside the flush helper.
     const entryStartMs = new Date(state.entryStartTs).getTime();
     // #822 — read the whole tail row (ts + Event slug) in one fetch. The ts
     // still anchors the Active-duration window (#720); the Event slug lets the
     // Fault Z guard below detect an unclosed finalize/orphan `idle` tail.
-    const lastRow = opts.computeOnly ? null : await ctx.safeReadLastRow(state.active);
+    const lastRow = opts.computeOnly
+      ? (opts.precomputedLastRow ?? null)
+      : await ctx.safeReadLastRow(state.active);
     const lastRowMs =
       lastRow?.ts && Number.isFinite(Date.parse(lastRow.ts)) ? Date.parse(lastRow.ts) : null;
     const startMs = resolveFlushStartMs(entryStartMs, lastRowMs);
@@ -606,8 +610,8 @@ export function buildContext(rawArgv = process.argv.slice(2)) {
     // rows, and every row is timestamped when written, carrying elapsed work in
     // its duration cells, not in timestamp deltas. The reengagement thus sits
     // immediately before the departure at the same instant, closing the idle.
+    const precedingRows = [];
     if (
-      !opts.computeOnly &&
       activeSec > 0 &&
       isDepartureEvent(effectiveEvent) &&
       lastRow &&
@@ -623,7 +627,8 @@ export function buildContext(rawArgv = process.argv.slice(2)) {
         wordMarker,
         description: 'resumed',
       });
-      await ctx.safePostTiming(state.active, reengageRow);
+      if (opts.computeOnly) precedingRows.push(reengageRow);
+      else await ctx.safePostTiming(state.active, reengageRow);
     }
     // #720 — build through `buildRow` with second precision (not `buildFlushRow`,
     // which minute-quantizes via `toSec = round(min)*60`). Pause/flush rows now
@@ -653,6 +658,7 @@ export function buildContext(rawArgv = process.argv.slice(2)) {
       deltaWords,
       wordMarker,
       lastWordMarker: wordMarker,
+      precedingRows,
     };
   };
 

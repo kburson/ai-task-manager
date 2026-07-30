@@ -179,7 +179,7 @@ export function formatAssigneeUnverifiable({ verb, issueNumber, error }) {
 // #769 — audit trail written to the issue when Full-Auto auto-claims an
 // unassigned issue. Mirrors the existing `aitm-full-auto-*` audit discipline so
 // the machine-driven assignment is visible and greppable.
-function claimAuditProjectionMarker(projectionId) {
+export function claimAuditProjectionMarker(projectionId) {
   if (typeof projectionId !== 'string' || projectionId.trim() === '') {
     throw new TypeError('claim audit projectionId is required');
   }

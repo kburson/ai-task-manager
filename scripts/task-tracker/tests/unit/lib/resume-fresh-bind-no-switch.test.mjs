@@ -13,7 +13,8 @@ test('fresh session adoption is owned by the governed acquire coordinator', () =
   assert.match(source, /coordinateWorkLeaseAcquire/);
 });
 
-test('cross-issue bind refuses pending atomic switch instead of entering a legacy switch path', () => {
-  assert.match(source, /atomic work-lease switch is required/);
-  assert.doesNotMatch(source, /verbSwitch|verbResumeLegacy/);
+test('cross-issue bind routes through the atomic coordinator without a legacy path', () => {
+  assert.match(source, /coordinateWorkLeaseSwitch/);
+  assert.match(source, /verbSwitchGoverned/);
+  assert.doesNotMatch(source, /atomic work-lease switch is required|verbResumeLegacy/);
 });

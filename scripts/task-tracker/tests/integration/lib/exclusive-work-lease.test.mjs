@@ -2426,11 +2426,41 @@ function governedResumeContext(dir, { rest, state, session, coordinator = 'acqui
       },
       coordinateWorkLeaseAcquire: runCoordinator,
       coordinateWorkLeaseResume: runCoordinator,
+      coordinateWorkLeaseSwitch: async (input) => {
+        events.push('switchLease');
+        const sourceTimingRows = input.projectionInputs.timing.rows.filter(
+          (item) => item.issueNumber === '1048'
+        );
+        assert.deepEqual(
+          sourceTimingRows.map((item) => item.subOperationId),
+          ['outgoing:reengage', 'outgoing:switch-out']
+        );
+        assert.match(sourceTimingRows[0].row, /\|\s*resumed\s*\|/);
+        assert.match(sourceTimingRows[1].row, /\|\s*switch-out:#1049\s*\|/);
+        for (const name of ['session', 'fleet', 'timing', 'github']) {
+          const projectionId =
+            input.projectionInputs[name].rows?.[0]?.projectionId ??
+            `switchLease:switch:${input.sessionId}:1048:1049:request-1:${name}`;
+          await input.projections[name]({
+            phase: 'forward',
+            input: input.projectionInputs[name],
+            lease: durableLease,
+            transitionId: 'transition-switch',
+            projectionName: name,
+            projectionId,
+          });
+        }
+        return { lease: durableLease, projectionInputs: input.projectionInputs };
+      },
       applyWorkLeaseSessionProjection: async ({ projectionId }) => {
         events.push('session');
         return { reconciled: true, projectionName: 'session', projectionId };
       },
       applyWorkLeaseFleetProjection: async ({ projectionId }) => {
+        events.push('fleet');
+        return { reconciled: true, projectionName: 'fleet', projectionId };
+      },
+      applyWorkLeaseSwitchFleetProjection: async ({ projectionId }) => {
         events.push('fleet');
         return { reconciled: true, projectionName: 'fleet', projectionId };
       },
@@ -2445,6 +2475,23 @@ function governedResumeContext(dir, { rest, state, session, coordinator = 'acqui
       createWorkLeaseHeartbeat: () => events.push('heartbeat'),
       readWorkLeaseKanbanProjection: async () => null,
       readTimingCommentBody: async () => ({ status: 'absent', body: '', error: null }),
+      safeReadLastRow: async () => {
+        events.push('prepare-tail');
+        return { ts: '2026-07-30T11:55:00.000Z', event: 'develop:started' };
+      },
+      flushActiveToGH: async (_state, _event, _description, _phase, options) => {
+        events.push('prepare-outgoing');
+        assert.deepEqual(options?.precomputedLastRow, {
+          ts: '2026-07-30T11:55:00.000Z',
+          event: 'develop:started',
+        });
+        return {
+          precedingRows: ['| 2026-07-30 12:00 +00:00 | resumed |  |  | 0 | 0 | resumed |'],
+          row: '| 2026-07-30 12:00 +00:00 | switch-out:#1049 |  |  | 0 | 0 | switch |',
+          deltaMin: 0,
+          deltaWords: 0,
+        };
+      },
       drainQueueIfAny: async () => events.push('queue'),
       safePostTiming: async () => events.push('legacy-timing'),
       seedKanban: async () => events.push('legacy-kanban'),
@@ -3111,7 +3158,7 @@ for (const [field, authorityValue] of [
   });
 }
 
-test('genuine cross-issue bind refuses before unsafe legacy switch', async () => {
+test('genuine cross-issue bind routes through atomic switch before every projection', async () => {
   const dir = sandbox();
   try {
     const { ctx, events } = governedResumeContext(dir, {
@@ -3128,8 +3175,52 @@ test('genuine cross-issue bind refuses before unsafe legacy switch', async () =>
       },
       coordinator: 'resume',
     });
-    await assert.rejects(() => verbResume(ctx), /atomic work-lease switch/i);
-    assert.deepEqual(events, ['preflight']);
+    await verbResume(ctx);
+    assert.deepEqual(events, [
+      'preflight',
+      'prepare-tail',
+      'prepare-outgoing',
+      'switchLease',
+      'session',
+      'fleet',
+      'timing',
+      'github',
+      'heartbeat',
+      'audit',
+    ]);
+    assert.equal(events.includes('unsafe-switch'), false);
+    assert.equal(events.includes('legacy-timing'), false);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('autoEndOnSwitch false refuses a cross-issue switch before preflight or authority', async () => {
+  const dir = sandbox();
+  try {
+    const { ctx, events } = governedResumeContext(dir, {
+      rest: ['#1049'],
+      state: { active: '#1048', lastActive: '#1048' },
+      session: {
+        issue: '#1048',
+        lease: {
+          projectId: LEASE.projectId,
+          leaseId: LEASE.leaseId,
+          fencingToken: LEASE.fencingToken,
+          worktreeId: WORKTREE.worktreeId,
+        },
+      },
+      coordinator: 'resume',
+    });
+    ctx.cfg.autoEndOnSwitch = false;
+
+    await assert.rejects(
+      () => verbResume(ctx),
+      /autoEndOnSwitch=false.*finish.*#1048.*enable autoEndOnSwitch/i
+    );
+    assert.deepEqual(events, []);
+    assert.equal(loadState(ctx.statePath).active, '#1048');
+    assert.equal(getActiveTask(ctx.getWorkLeaseIdentity().sessionId, dir).issue, '#1048');
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }

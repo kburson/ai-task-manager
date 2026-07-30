@@ -293,6 +293,118 @@ export function registerTaskProjection(projectDir, input, projectionId) {
   return receipt;
 }
 
+// Atomically replace one issue projection with another for a fenced
+// cross-issue switch. The source/target pair is mutated under one fleet lock,
+// and neither side may overwrite a projection owned by a different worktree.
+// Compensation uses the same helper in reverse while installing the newly
+// fenced source lease returned by the compensating authority transition.
+export function switchTaskProjection(projectDir, input, lease, projectionId, phase = 'forward') {
+  if (!input || typeof input !== 'object' || Array.isArray(input)) {
+    throw new TypeError('fleet switch projection input must be an object');
+  }
+  if (!['forward', 'compensation'].includes(phase)) {
+    throw new TypeError('fleet switch projection phase is invalid');
+  }
+  if (
+    !/^#[1-9]\d*$/.test(input.sourceIssue) ||
+    !/^#[1-9]\d*$/.test(input.targetIssue) ||
+    input.sourceIssue === input.targetIssue
+  ) {
+    throw new TypeError('fleet switch projection requires distinct canonical issues');
+  }
+  if (typeof projectionId !== 'string' || projectionId.trim() === '') {
+    throw new TypeError('fleet switch projectionId is required');
+  }
+  const projectedInput = phase === 'forward' ? input.target : input.source;
+  if (!projectedInput || typeof projectedInput !== 'object' || Array.isArray(projectedInput)) {
+    throw new TypeError('fleet switch projected binding is malformed');
+  }
+  const destinationIssue = phase === 'forward' ? input.targetIssue : input.sourceIssue;
+  const departureIssue = phase === 'forward' ? input.sourceIssue : input.targetIssue;
+  if (projectedInput.issue !== destinationIssue) {
+    throw new TypeError('fleet switch projected issue does not match phase');
+  }
+  for (const field of ['worktreePath', 'branch', 'startedAt', 'status']) {
+    if (typeof projectedInput[field] !== 'string' || projectedInput[field].trim() === '') {
+      throw new TypeError(`fleet switch projection ${field} is required`);
+    }
+  }
+  if (projectedInput.status !== 'active') {
+    throw new TypeError('fleet switch projection requires an active binding');
+  }
+  const binding = projectedInput.binding;
+  if (
+    !binding ||
+    typeof binding !== 'object' ||
+    Array.isArray(binding) ||
+    binding.displayPath !== projectedInput.worktreePath ||
+    binding.branch !== projectedInput.branch ||
+    !Number.isSafeInteger(binding.pid) ||
+    binding.pid <= 0
+  ) {
+    throw new TypeError('fleet switch projection binding identity is malformed');
+  }
+  if (
+    !lease ||
+    typeof lease !== 'object' ||
+    Array.isArray(lease) ||
+    !['projectId', 'leaseId', 'fencingToken', 'worktreeId'].every(
+      (field) => typeof lease[field] === 'string' && lease[field].trim() !== ''
+    ) ||
+    lease.worktreeId !== binding.worktreeId
+  ) {
+    throw new TypeError('fleet switch projection lease is malformed');
+  }
+  const mainPath = findMainWorktreePath(projectDir);
+  const registryPath = fleetRegistryPath(mainPath);
+  const kind =
+    projectedInput.kind ?? (projectedInput.worktreePath === mainPath ? 'main' : 'worktree');
+  if (!['main', 'worktree'].includes(kind)) {
+    throw new TypeError('fleet switch projection kind is invalid');
+  }
+  const projected = {
+    worktreePath: projectedInput.worktreePath,
+    branch: projectedInput.branch,
+    kind,
+    startedAt: projectedInput.startedAt,
+    status: projectedInput.status,
+    binding: JSON.parse(JSON.stringify(binding)),
+    lease: JSON.parse(JSON.stringify(lease)),
+    projectionId,
+  };
+  const sameOwner = (entry) =>
+    !entry ||
+    (entry.worktreePath === projectedInput.worktreePath &&
+      entry.branch === projectedInput.branch &&
+      (entry.binding?.worktreeId ?? binding.worktreeId) === binding.worktreeId);
+  withLock(registryPath, () => {
+    const fleet = readFleet(registryPath);
+    const departure = fleet[departureIssue];
+    const destination = fleet[destinationIssue];
+    if (!sameOwner(departure) || !sameOwner(destination)) {
+      throw new Error('fleet switch projection refuses foreign binding drift');
+    }
+    if (
+      destination &&
+      JSON.stringify(destination) === JSON.stringify(projected) &&
+      departure === undefined
+    ) {
+      return;
+    }
+    delete fleet[departureIssue];
+    fleet[destinationIssue] = projected;
+    writeFleet(registryPath, fleet);
+  });
+  const readback = readFleet(registryPath);
+  if (
+    readback[departureIssue] !== undefined ||
+    JSON.stringify(readback[destinationIssue]) !== JSON.stringify(projected)
+  ) {
+    throw new Error('fleet switch projection read-back does not match');
+  }
+  return projected;
+}
+
 export function deregisterTask(projectDir, issueRef) {
   const mainPath = findMainWorktreePath(projectDir);
   const rPath = fleetRegistryPath(mainPath);

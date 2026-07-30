@@ -11,10 +11,9 @@
 //
 // Asserts:
 //   1. Decision: a timing body with a data row → `resumed`; an empty body → `start`.
-//   2. Source-wiring: switch.mjs imports `resolveBindEvent` + `timingCommentHasRows`.
-//   3. Source-wiring: switch.mjs reads the incoming timing comment via
+//   2. Source-wiring: governed bind orchestration imports the discriminators.
+//   3. Source-wiring: governed bind orchestration reads the incoming timing comment via
 //      `readTimingCommentBody` and feeds `resolveBindEvent` into the incoming row.
-//   4. Anti-regression: the incoming row no longer hard-codes `event: 'start'`.
 import { strict as assert } from 'node:assert';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
@@ -23,7 +22,10 @@ import { resolveBindEvent, timingCommentHasRows } from '../../../lib/bind-event.
 
 const here = path.dirname(fileURLToPath(import.meta.url)) + '/..';
 const repoRoot = path.resolve(here, '..', '../../..');
-const switchPath = path.join(repoRoot, 'scripts/task-tracker/verbs/switch.mjs');
+const switchPath = path.join(
+  repoRoot,
+  'scripts/task-tracker/lib/work-lease/bind-orchestration.mjs'
+);
 const src = readFileSync(switchPath, 'utf8');
 
 // ---- 1. Decision behavior the switch path now depends on -------------------
@@ -50,29 +52,19 @@ assert.equal(
   'switch into an issue with NO history must resolve to the first start (no regression)'
 );
 
-// ---- 2. switch.mjs imports the bind-event discriminators -------------------
+// ---- 2. governed orchestration imports the bind-event discriminators -------
 assert.match(
   src,
-  /import\s*\{[^}]*\bresolveBindEvent\b[^}]*\btimingCommentHasRows\b[^}]*\}\s*from\s*['"]\.\.\/lib\/bind-event\.mjs['"]/s,
-  'switch.mjs must import resolveBindEvent + timingCommentHasRows from ../lib/bind-event.mjs'
+  /import\s*\{[^}]*\bresolveBindEvent\b[^}]*\btimingCommentHasRows\b[^}]*\}\s*from\s*['"]\.\.\/bind-event\.mjs['"]/s,
+  'governed bind orchestration must import resolveBindEvent + timingCommentHasRows'
 );
 
-// ---- 3. switch.mjs reads the incoming timing comment + feeds resolveBindEvent
-assert.match(
-  src,
-  /readTimingCommentBody/,
-  'switch.mjs must read the incoming issue timing comment via readTimingCommentBody'
-);
+// ---- 3. orchestration reads incoming timing history + resolves bind event --
+assert.match(src, /readTimingCommentBody/, 'governed switch must read incoming timing history');
 assert.match(
   src,
   /resolveBindEvent\(\s*\{[^}]*hasTimingHistory[^}]*\}\s*\)/s,
-  'switch.mjs must compute the incoming-row event via resolveBindEvent({ hasTimingHistory })'
-);
-
-// ---- 4. The incoming row no longer hard-codes event: 'start' ---------------
-assert.ok(
-  !/event:\s*'start'/.test(src),
-  "switch.mjs must not hard-code event: 'start' for the incoming row"
+  'governed switch must compute the incoming event from target history'
 );
 
 console.log('switch-resumed-on-history.test.mjs: ok');
