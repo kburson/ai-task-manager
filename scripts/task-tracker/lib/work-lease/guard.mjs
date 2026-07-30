@@ -221,7 +221,12 @@ function normalizeAuthorityLease(
       );
     }
   }
-  parseTimestamp(lease.heartbeatAt, 'authority lease heartbeatAt');
+  const acquiredAt = parseTimestamp(lease.acquiredAt, 'authority lease acquiredAt');
+  const heartbeatAt = parseTimestamp(lease.heartbeatAt, 'authority lease heartbeatAt');
+  const expiresAt = parseTimestamp(lease.expiresAt, 'authority lease expiresAt');
+  if (heartbeatAt < acquiredAt || expiresAt <= heartbeatAt) {
+    throw leaseError('invalid-request', 'authority lease timestamps are inconsistent');
+  }
   return lease;
 }
 
@@ -264,10 +269,15 @@ async function verifyCurrentReplayAuthority({
 }) {
   if (typeof store?.verify !== 'function') {
     throw leaseError(
-      'invalid-request',
+      'authority-unavailable',
       'work-lease authority verify operation is required for receipt replay'
     );
   }
+  const replayFailure = (error, message) => {
+    if (['fence-stale', 'lease-not-held'].includes(error?.code)) return error;
+    const diagnostic = error?.message ? `: ${error.message}` : '';
+    return leaseError('authority-unavailable', `${message}${diagnostic}`);
+  };
   const verifyRequest = {
     projectId: expectedLease.projectId,
     leaseId: expectedLease.leaseId,
@@ -277,7 +287,7 @@ async function verifyCurrentReplayAuthority({
   };
   validateVerifyRequest(verifyRequest);
   try {
-    return verifiedAuthorityLease(
+    let authorityLease = verifiedAuthorityLease(
       await store.verify(verifyRequest),
       expectedLease,
       issueId,
@@ -286,10 +296,52 @@ async function verifyCurrentReplayAuthority({
       hostId,
       holderIdentity
     );
+    const verifiedAtMs = parseTimestamp(
+      verifyRequest.verifiedAt,
+      'work-lease replay verification time'
+    );
+    const expiresAtMs = parseTimestamp(authorityLease.expiresAt, 'authority lease expiresAt');
+    if (renewalDue(authorityLease, verifiedAtMs, false) || expiresAtMs <= verifiedAtMs) {
+      if (typeof store.renew !== 'function') {
+        throw leaseError(
+          'authority-unavailable',
+          'work-lease authority renew operation is required for receipt replay'
+        );
+      }
+      const renewal = renewalRequestIdentity(expectedLease, verifyRequest.verifiedAt);
+      const request = renewRequest(expectedLease, renewal.requestedAt, renewal.idempotencyKey);
+      authorityLease = normalizeAuthorityLease(
+        await store.renew(request),
+        expectedLease,
+        issueId,
+        worktreeId,
+        sessionId,
+        hostId,
+        holderIdentity
+      );
+      const expectedExpiresAt = new Date(
+        parseTimestamp(request.requestedAt, 'renewal request requestedAt') + request.ttlMs
+      ).toISOString();
+      if (
+        authorityLease.heartbeatAt !== request.requestedAt ||
+        authorityLease.expiresAt !== expectedExpiresAt
+      ) {
+        throw leaseError(
+          'authority-unavailable',
+          'receipt replay renewal does not match its deterministic request'
+        );
+      }
+    }
+    if (parseTimestamp(authorityLease.expiresAt, 'authority lease expiresAt') <= verifiedAtMs) {
+      throw leaseError(
+        'authority-unavailable',
+        'receipt replay authority is not live at verification time'
+      );
+    }
+    return authorityLease;
   } catch (error) {
-    throw stableError(
+    throw replayFailure(
       error,
-      'authority-unavailable',
       'current work-lease authority could not be verified for receipt replay'
     );
   }

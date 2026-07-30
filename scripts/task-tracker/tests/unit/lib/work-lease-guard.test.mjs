@@ -16,7 +16,9 @@ function lease(overrides = {}) {
     fencingToken: '42',
     issueId: '1049',
     state: 'active',
+    acquiredAt: '2026-07-30T11:00:00.000Z',
     heartbeatAt: '2026-07-30T11:56:00.000Z',
+    expiresAt: '2026-07-30T13:00:00.000Z',
     holder: { worktreeId: 'wt-1', sessionId: 'session-1', hostId: 'host-1' },
     ...overrides,
   };

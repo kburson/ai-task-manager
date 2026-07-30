@@ -778,6 +778,38 @@ test('persisted acquire receipt verifies current authority before claim, project
     const originalIntent = structuredClone(getActiveTask('session-1', dir).workLeaseIntent);
     assert.equal(originalIntent.receipt.leaseId, LEASE.leaseId);
 
+    const malformedLog = [];
+    const malformed = options(dir, {
+      getStore: async () => ({
+        projectId: LEASE.projectId,
+        verify(request) {
+          malformedLog.push(`verify:${request.verifiedAt}`);
+          return {
+            allowed: true,
+            lease: { ...LEASE, expiresAt: 'not-a-timestamp' },
+          };
+        },
+      }),
+      readEligibility: async () => assert.fail('malformed expiry must fail before eligibility'),
+      reconcileClaim: async () => assert.fail('malformed expiry must fail before claim'),
+      projections: Object.fromEntries(
+        ['session', 'fleet', 'timing', 'github'].map((name) => [
+          name,
+          async () => assert.fail(`malformed expiry must fail before ${name}`),
+        ])
+      ),
+      now: () => DELAYED_NOW,
+    });
+    await assert.rejects(
+      () => coordinateWorkLeaseAcquire(malformed.input),
+      (error) =>
+        error instanceof WorkLeaseError &&
+        error.code === 'authority-unavailable' &&
+        /expiresAt/.test(error.message)
+    );
+    assert.deepEqual(malformedLog, [`verify:${DELAYED_NOW.toISOString()}`]);
+    assert.deepEqual(getActiveTask('session-1', dir).workLeaseIntent, originalIntent);
+
     const staleLog = [];
     let heartbeatCalls = 0;
     let checkpointCalls = 0;
@@ -831,15 +863,62 @@ test('persisted acquire receipt verifies current authority before claim, project
 
     const replayLog = [];
     const verifiedRequests = [];
+    const renewalRequests = [];
+    let currentAuthority = {
+      ...LEASE,
+      state: 'paused',
+      heartbeatAt: '2026-07-30T12:00:00.000Z',
+      expiresAt: '2026-07-30T12:05:00.000Z',
+    };
+    let renewalResponseLost = true;
+    const replayStore = {
+      projectId: LEASE.projectId,
+      verify(request) {
+        verifiedRequests.push(structuredClone(request));
+        replayLog.push('verify');
+        return { allowed: true, lease: currentAuthority };
+      },
+      renew(request) {
+        renewalRequests.push(structuredClone(request));
+        replayLog.push('renew');
+        currentAuthority = {
+          ...currentAuthority,
+          heartbeatAt: request.requestedAt,
+          expiresAt: new Date(Date.parse(request.requestedAt) + request.ttlMs).toISOString(),
+        };
+        if (renewalResponseLost) {
+          renewalResponseLost = false;
+          throw new Error('replay renewal response lost');
+        }
+        return currentAuthority;
+      },
+    };
+    const responseLost = options(dir, {
+      getStore: async () => replayStore,
+      readEligibility: async () =>
+        assert.fail('response-lost renewal must fail before eligibility'),
+      reconcileClaim: async () => assert.fail('response-lost renewal must fail before claim'),
+      projections: Object.fromEntries(
+        ['session', 'fleet', 'timing', 'github'].map((name) => [
+          name,
+          async () => assert.fail(`response-lost renewal must fail before ${name}`),
+        ])
+      ),
+      now: () => DELAYED_NOW,
+    });
+    await assert.rejects(
+      () => coordinateWorkLeaseAcquire(responseLost.input),
+      (error) =>
+        error instanceof WorkLeaseError &&
+        error.code === 'authority-unavailable' &&
+        /replay renewal response lost/.test(error.message)
+    );
+    assert.deepEqual(replayLog, ['verify', 'renew']);
+    assert.deepEqual(getActiveTask('session-1', dir).workLeaseIntent, originalIntent);
+
+    replayLog.length = 0;
     const delayed = options(dir, {
-      getStore: async () => ({
-        projectId: LEASE.projectId,
-        verify(request) {
-          verifiedRequests.push(structuredClone(request));
-          replayLog.push('verify');
-          return { allowed: true, lease: LEASE };
-        },
-      }),
+      getStore: async () => replayStore,
       readEligibility: async () => {
         replayLog.push('eligibility');
         return {
@@ -885,6 +964,25 @@ test('persisted acquire receipt verifies current authority before claim, project
         fencingToken: LEASE.fencingToken,
         operation: 'task-bind',
         verifiedAt: DELAYED_NOW.toISOString(),
+      },
+      {
+        projectId: LEASE.projectId,
+        leaseId: LEASE.leaseId,
+        fencingToken: LEASE.fencingToken,
+        operation: 'task-bind',
+        verifiedAt: DELAYED_NOW.toISOString(),
+      },
+    ]);
+    assert.deepEqual(renewalRequests, [
+      {
+        projectId: LEASE.projectId,
+        leaseId: LEASE.leaseId,
+        fencingToken: LEASE.fencingToken,
+        idempotencyKey: `renew:${LEASE.leaseId}:${LEASE.fencingToken}:${Math.floor(
+          DELAYED_NOW.getTime() / (5 * 60 * 1000)
+        )}`,
+        requestedAt: DELAYED_NOW.toISOString(),
+        ttlMs: 15 * 60 * 1000,
       },
     ]);
     assert.deepEqual(replayLog, [
@@ -1545,6 +1643,89 @@ test('persisted resume receipt verifies current full holder before claim, projec
     const pendingSession = structuredClone(getActiveTask('session-1', dir));
     const originalIntent = structuredClone(pendingSession.workLeaseIntent);
     assert.equal(originalIntent.receipt.leaseId, LEASE.leaseId);
+
+    const malformedLog = [];
+    const malformed = resumeOptions(dir, {
+      getStore: async () => ({
+        projectId: LEASE.projectId,
+        verify(request) {
+          malformedLog.push(`verify:${request.verifiedAt}`);
+          return {
+            allowed: true,
+            lease: {
+              ...LEASE,
+              heartbeatAt: '2026-07-30T12:05:00.000Z',
+              expiresAt: '2026-07-30T12:05:00.000Z',
+            },
+          };
+        },
+      }),
+      readEligibility: async () => assert.fail('malformed chronology must fail before eligibility'),
+      reconcileClaim: async () => assert.fail('malformed chronology must fail before claim'),
+      projections: Object.fromEntries(
+        ['session', 'fleet', 'timing', 'github'].map((name) => [
+          name,
+          async () => assert.fail(`malformed chronology must fail before ${name}`),
+        ])
+      ),
+      now: () => DELAYED_NOW,
+    });
+    setActiveTask('session-1', pendingSession, dir);
+    await assert.rejects(
+      () => workLeaseGuard.coordinateWorkLeaseResume(malformed.input),
+      (error) =>
+        error instanceof WorkLeaseError &&
+        error.code === 'authority-unavailable' &&
+        /timestamps are inconsistent/.test(error.message)
+    );
+    assert.deepEqual(malformedLog, [`verify:${DELAYED_NOW.toISOString()}`]);
+    assert.deepEqual(getActiveTask('session-1', dir).workLeaseIntent, originalIntent);
+
+    const expiredLog = [];
+    const expired = resumeOptions(dir, {
+      getStore: async () => ({
+        projectId: LEASE.projectId,
+        verify(request) {
+          expiredLog.push(`verify:${request.verifiedAt}`);
+          return {
+            allowed: true,
+            lease: {
+              ...LEASE,
+              heartbeatAt: '2026-07-30T12:00:00.000Z',
+              expiresAt: '2026-07-30T12:05:00.000Z',
+            },
+          };
+        },
+        renew(request) {
+          expiredLog.push(`renew:${request.idempotencyKey}`);
+          throw new Error('remote replay renewal unavailable');
+        },
+      }),
+      readEligibility: async () => assert.fail('unrenewed expiry must fail before eligibility'),
+      reconcileClaim: async () => assert.fail('unrenewed expiry must fail before claim'),
+      projections: Object.fromEntries(
+        ['session', 'fleet', 'timing', 'github'].map((name) => [
+          name,
+          async () => assert.fail(`unrenewed expiry must fail before ${name}`),
+        ])
+      ),
+      now: () => DELAYED_NOW,
+    });
+    setActiveTask('session-1', pendingSession, dir);
+    await assert.rejects(
+      () => workLeaseGuard.coordinateWorkLeaseResume(expired.input),
+      (error) =>
+        error instanceof WorkLeaseError &&
+        error.code === 'authority-unavailable' &&
+        /remote replay renewal unavailable/.test(error.message)
+    );
+    assert.deepEqual(expiredLog, [
+      `verify:${DELAYED_NOW.toISOString()}`,
+      `renew:renew:${LEASE.leaseId}:${LEASE.fencingToken}:${Math.floor(
+        DELAYED_NOW.getTime() / (5 * 60 * 1000)
+      )}`,
+    ]);
+    assert.deepEqual(getActiveTask('session-1', dir).workLeaseIntent, originalIntent);
 
     const log = [];
     let checkpointCalls = 0;
