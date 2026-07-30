@@ -265,6 +265,48 @@ test('verifyGovernedEffect renews at the threshold and on a forced resume with a
   assert.notEqual(renewalKeys[1], renewalKeys[2], 'next renewal bucket advances the key');
 });
 
+test('verifyGovernedEffect replays a response-lost renewal byte-for-byte within its bucket', async () => {
+  const renewals = new Map();
+  const calls = [];
+  let responseLost = true;
+  const store = {
+    verify: () => ({ allowed: true, lease: lease({ heartbeatAt: '2026-07-30T11:55:00.000Z' }) }),
+    renew(request) {
+      calls.push(request);
+      const canonical = JSON.stringify(request);
+      const existing = renewals.get(request.idempotencyKey);
+      if (existing && existing.canonical !== canonical) {
+        throw new WorkLeaseError('idempotency-conflict', 'renewal replay changed its request');
+      }
+      if (existing) return existing.lease;
+      const renewed = lease({ heartbeatAt: request.requestedAt });
+      renewals.set(request.idempotencyKey, { canonical, lease: renewed });
+      if (responseLost) {
+        responseLost = false;
+        throw new Error('renewal response lost');
+      }
+      return renewed;
+    },
+  };
+  const options = (now) =>
+    baseOptions({
+      forceRenewal: true,
+      now: () => new Date(now),
+      store,
+    });
+
+  await assert.rejects(
+    () => verifyGovernedEffect(options('2026-07-30T12:01:00.001Z')),
+    (error) => error instanceof WorkLeaseError && error.code === 'authority-unavailable'
+  );
+  await verifyGovernedEffect(options('2026-07-30T12:04:59.999Z'));
+
+  assert.deepEqual(calls[1], calls[0], 'same bucket retries the exact authority request');
+  await verifyGovernedEffect(options('2026-07-30T12:05:00.000Z'));
+  assert.notEqual(calls[2].idempotencyKey, calls[1].idempotencyKey);
+  assert.notEqual(calls[2].requestedAt, calls[1].requestedAt);
+});
+
 test('createWorkLeaseHeartbeat is unreferenced, single-flight, stoppable, and remembers a failure for the next preflight', async () => {
   let callback;
   let detachedTimerCount = 0;
@@ -299,7 +341,7 @@ test('createWorkLeaseHeartbeat is unreferenced, single-flight, stoppable, and re
   heartbeat.shutdown();
   assert.equal(cleared, 1);
 
-  const failureOptions = baseOptions({ heartbeatOwnerKey: 'owner-failure' });
+  const failureOptions = baseOptions({ heartbeatOwnerKey: 'owner-failure', forceRenewal: true });
   let heartbeatCalls = 0;
   const failedHeartbeat = createWorkLeaseHeartbeat({
     ownerKey: 'owner-failure',
@@ -322,6 +364,16 @@ test('createWorkLeaseHeartbeat is unreferenced, single-flight, stoppable, and re
     1,
     'a remembered heartbeat failure does not skip the next authority preflight'
   );
+  assert.equal(failureOptions.calls.renew.length, 0, 'remembered failure blocks renewal');
+  assert.equal(
+    failureOptions.calls.saved.length,
+    0,
+    'remembered failure blocks session persistence'
+  );
+  await verifyGovernedEffect(failureOptions);
+  assert.equal(failureOptions.calls.verify.length, 2, 'the following preflight verifies again');
+  assert.equal(failureOptions.calls.renew.length, 1, 'the following preflight can renew');
+  assert.equal(failureOptions.calls.saved.length, 1, 'the following preflight can persist');
 });
 
 test('createWorkLeaseHeartbeat registers one removable process-exit listener per owner', () => {

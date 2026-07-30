@@ -194,11 +194,14 @@ function renewalDue(lease, nowMs, forceRenewal) {
   );
 }
 
-function renewalIdempotencyKey(lease, requestedAt) {
+function renewalRequestIdentity(lease, verifiedAt) {
   const bucket = Math.floor(
-    parseTimestamp(requestedAt, 'renewal requestedAt') / WORK_LEASE_HEARTBEAT_AGE_MS
+    parseTimestamp(verifiedAt, 'renewal verifiedAt') / WORK_LEASE_HEARTBEAT_AGE_MS
   );
-  return `renew:${lease.leaseId}:${lease.fencingToken}:${bucket}`;
+  return {
+    idempotencyKey: `renew:${lease.leaseId}:${lease.fencingToken}:${bucket}`,
+    requestedAt: new Date(bucket * WORK_LEASE_HEARTBEAT_AGE_MS).toISOString(),
+  };
 }
 
 // Verify authority immediately before a governed effect.  The dependencies are
@@ -285,14 +288,22 @@ export async function verifyGovernedEffect({
     throw stableError(error, 'authority-unavailable', 'work-lease authority verification failed');
   }
 
+  const rememberedFailure = heartbeatFailures.get(ownerKey);
+  if (rememberedFailure && !heartbeat) {
+    heartbeatFailures.delete(ownerKey);
+    throw rememberedFailure;
+  }
+
   if (renewalDue(authorityLease, Date.parse(verifiedAt), forceRenewal)) {
     if (typeof store.renew !== 'function') {
       throw leaseError('invalid-request', 'work-lease authority renew operation is required');
     }
-    const idempotencyKey = renewalIdempotencyKey(persistedLease, verifiedAt);
+    const renewal = renewalRequestIdentity(persistedLease, verifiedAt);
     try {
       authorityLease = normalizeAuthorityLease(
-        await store.renew(renewRequest(persistedLease, verifiedAt, idempotencyKey)),
+        await store.renew(
+          renewRequest(persistedLease, renewal.requestedAt, renewal.idempotencyKey)
+        ),
         persistedLease,
         canonicalIssueId,
         worktree.worktreeId,
@@ -321,11 +332,6 @@ export async function verifyGovernedEffect({
     );
   }
 
-  const rememberedFailure = heartbeatFailures.get(ownerKey);
-  if (rememberedFailure && !heartbeat) {
-    heartbeatFailures.delete(ownerKey);
-    throw rememberedFailure;
-  }
   return { allowed: true, lease: authorityLease };
 }
 
