@@ -121,6 +121,13 @@ export function prepareAgentReviewPassStamp({ body, ts, validators = [] } = {}) 
   };
 }
 
+// A passing proof binds Review to the exact remote body that supplied its Test
+// evidence. `versionedWriteBody` normally rebases a serialized edit after a
+// verify race, but that would preserve a proof prepared against a stale body.
+// Fail closed instead: the next review invocation prepares a new proof from a
+// new gate snapshot and performs a fresh one-shot write.
+export const PROOF_STAMP_MAX_RETRIES = 1;
+
 // `mutateIssueBody` supplies the fresh locked base only at write time. Keep the
 // authority read and serialization inside that callback so a body change after
 // the gate snapshot cannot be turned into a stale passing proof.
@@ -934,8 +941,10 @@ export async function verbReview(ctx) {
 
       if (gate.pass) {
         let finalPassStamp = null;
+        let passWriteResult = null;
+        let passWriteError = null;
         try {
-          await mutateBodyFn({
+          passWriteResult = await mutateBodyFn({
             issueNumber: issueNum,
             repo: cfg.repo,
             mutate: makeAgentReviewPassMutator({
@@ -949,13 +958,18 @@ export async function verbReview(ctx) {
             timeout: GH_API_TIMEOUT_MS,
             deps: { pexec },
             evidenceStamp: true,
+            maxRetries: PROOF_STAMP_MAX_RETRIES,
           });
         } catch (e) {
+          passWriteError = e;
           console.error(`[task-tracker] failed to stamp Agent Review Passed: ${e.message}`);
         }
-        if (!finalPassStamp?.ok) {
+        if (!finalPassStamp?.ok || passWriteError || passWriteResult?.status !== 'ok') {
           failures = [
-            `persisted-test-evidence: ${finalPassStamp?.reason || 'pass-stamp-write-failed'}`,
+            `persisted-test-evidence: ${
+              finalPassStamp?.reason ||
+              (passWriteError ? 'pass-stamp-write-failed' : 'pass-stamp-not-persisted')
+            }`,
           ];
         }
       }

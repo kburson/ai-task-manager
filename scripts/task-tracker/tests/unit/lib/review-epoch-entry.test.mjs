@@ -5,9 +5,12 @@ import { stampAgentReviewPassed } from '../../../lib/agent-review/review-gate.mj
 import { parseDodVerifiedMarker } from '../../../lib/markers.mjs';
 import { parseReviewAuthority, reviewEpochId } from '../../../lib/review-authority.mjs';
 import { latestStageEntry, stampEntryMarker } from '../../../lib/stage-entry-markers.mjs';
+import { BodyWriteRefusalError } from '../../../lib/versioned-issue-write.mjs';
+import { mutateIssueBody } from '../../../lib/issue-body-mutate.mjs';
 import { runVerbTest } from '../../../verbs/test.mjs';
 import {
   makeAgentReviewPassMutator,
+  PROOF_STAMP_MAX_RETRIES,
   prepareAgentReviewPassStamp,
   validatePersistedTestEvidence,
 } from '../../../verbs/review.mjs';
@@ -188,4 +191,44 @@ test('the versioned Review mutator rejects evidence changed after preparation', 
   });
   assert.equal(returned, changedBase, 'a stale fresh base must not gain passing evidence');
   assert.doesNotMatch(returned, /aitm-agent-review-proof|gate="agent-review"[^>]*result="pass"/);
+});
+
+test('proof-bearing Review stamp fails closed when a versioned-write conflict changes Test evidence', async () => {
+  assert.equal(PROOF_STAMP_MAX_RETRIES, 1);
+  const initial = [
+    `<!-- aitm-entered-review ts="${REVIEW_ONE}" -->`,
+    `<!-- aitm-test-started sha="${VERIFIED_SHA}" ts="2026-07-29T09:00:00.000Z" -->`,
+    `<!-- aitm-dod-verified sha="${VERIFIED_SHA}" ts="2026-07-29T09:59:00.000Z" -->`,
+    '- [ ] Agent Review Passed',
+  ].join('\n');
+  const changedDuringVerify = initial.replace(VERIFIED_SHA, 'old1234');
+  const fetched = [initial, changedDuringVerify];
+  let reads = 0;
+  let prepares = 0;
+
+  await assert.rejects(
+    () =>
+      mutateIssueBody({
+        issueNumber: 1050,
+        repo: 'o/r',
+        maxRetries: PROOF_STAMP_MAX_RETRIES,
+        evidenceStamp: true,
+        mutate: makeAgentReviewPassMutator({
+          ts: '2026-07-29T10:01:00.000Z',
+          validators: ['required-comments'],
+          onPrepared: () => {
+            prepares += 1;
+          },
+        }),
+        deps: {
+          fetchBody: async () => fetched[reads++],
+          pushBody: async () => {},
+        },
+      }),
+    (error) => error instanceof BodyWriteRefusalError && error.reason === 'max-retries-exceeded'
+  );
+
+  assert.equal(prepares, 1, 'the stale proof must not be rebased onto the changed body');
+  assert.equal(reads, 2, 'initial fetch plus conflicting verify fetch; no retry base is accepted');
+  assert.doesNotMatch(changedDuringVerify, /aitm-agent-review-proof/);
 });
