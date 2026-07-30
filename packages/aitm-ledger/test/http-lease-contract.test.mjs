@@ -289,6 +289,7 @@ test('success envelopes validate operation-specific status and fencing fields', 
       payload: createHttpSuccessEnvelope({ allowed: true, lease: lease() }),
       request: {
         projectId: 'project-1',
+        issueId: '1049',
         leaseId: 'lease-1',
         fencingToken: '1',
         operation: 'source-write',
@@ -441,8 +442,8 @@ test('success responses must correlate to the originating fenced request', () =>
         lease: lease({ issueId: '1051', leaseId: 'lease-2', fencingToken: '3' }),
         transition: {
           transitionId: 'transition-1',
-          fromIssueId: '1049',
-          fromLeaseId: 'other-lease',
+          fromIssueId: 'WRONG-ISSUE',
+          fromLeaseId: 'lease-1',
           fromToken: '1',
           toIssueId: '1051',
         },

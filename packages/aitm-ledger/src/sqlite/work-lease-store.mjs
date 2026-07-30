@@ -440,6 +440,13 @@ export class SqliteWorkLeaseStore extends WorkLeaseStore {
   switchLease(request) {
     return this.#mutate('switch', request, validateSwitchLeaseRequest, () => {
       const current = this.#lease(request);
+      if (current.issueId !== request.issueId) {
+        throw new WorkLeaseError('lease-not-held', 'outgoing issue does not match the lease', {
+          leaseId: current.leaseId,
+          expectedIssueId: current.issueId,
+          receivedIssueId: request.issueId,
+        });
+      }
       this.#assertAvailable(
         request.projectId,
         request.target.issueId,

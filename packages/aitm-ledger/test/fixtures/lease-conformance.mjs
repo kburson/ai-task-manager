@@ -196,6 +196,13 @@ export class MemoryLeaseStore extends WorkLeaseStore {
   switchLease(request) {
     return this.#mutate('switch', request, validateSwitchLeaseRequest, () => {
       const current = this.#lease(request);
+      if (current.issueId !== request.issueId) {
+        throw new WorkLeaseError('lease-not-held', 'outgoing issue does not match the lease', {
+          leaseId: current.leaseId,
+          expectedIssueId: current.issueId,
+          receivedIssueId: request.issueId,
+        });
+      }
       const issueLease = this.#currentByIssue(
         request.projectId,
         request.target.issueId,
@@ -478,8 +485,38 @@ export async function assertLeaseStoreConformance({ createStore, assert }) {
   const switchCurrent = await switchStore.acquire(
     acquireRequest({ idempotencyKey: 'switch-base' })
   );
+  await expectCode(
+    () =>
+      switchStore.switchLease({
+        projectId,
+        issueId: 'wrong-outgoing-issue',
+        leaseId: switchCurrent.leaseId,
+        fencingToken: switchCurrent.fencingToken,
+        idempotencyKey: 'wrong-switch-source',
+        switchedAt: '2026-07-30T12:03:30.000Z',
+        target: acquireRequest({
+          issueId: '1051',
+          idempotencyKey: 'wrong-switch-target',
+        }),
+      }),
+    'lease-not-held'
+  );
+  assert.equal(
+    (
+      await switchStore.verify({
+        projectId,
+        leaseId: switchCurrent.leaseId,
+        fencingToken: switchCurrent.fencingToken,
+        operation: 'task-bind',
+        verifiedAt: requestedAt,
+      })
+    ).allowed,
+    true,
+    'source-issue mismatch preserves the outgoing lease'
+  );
   const switchRequest = {
     projectId,
+    issueId: '1049',
     leaseId: switchCurrent.leaseId,
     fencingToken: switchCurrent.fencingToken,
     idempotencyKey: 'conformance-switch',
@@ -523,6 +560,7 @@ export async function assertLeaseStoreConformance({ createStore, assert }) {
   );
   const failedSwitchRequest = {
     projectId,
+    issueId: '1049',
     leaseId: preserved.leaseId,
     fencingToken: preserved.fencingToken,
     idempotencyKey: 'failed-switch',

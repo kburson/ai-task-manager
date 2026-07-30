@@ -151,10 +151,11 @@ export function validateSwitchLeaseRequest(request) {
   validateMutationEnvelope(request, 'switchedAt');
   exactKeys(
     request,
-    ['projectId', 'leaseId', 'fencingToken', 'idempotencyKey', 'switchedAt', 'target'],
+    ['projectId', 'issueId', 'leaseId', 'fencingToken', 'idempotencyKey', 'switchedAt', 'target'],
     [],
     'request'
   );
+  nonEmpty(request.issueId, 'issueId');
   nonEmpty(request.leaseId, 'leaseId');
   assertFencingToken(request.fencingToken);
   validateAcquireRequest(request.target);

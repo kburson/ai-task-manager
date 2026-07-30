@@ -189,7 +189,7 @@ AITM introduces a storage-neutral `WorkLeaseStore` interface:
 acquire(request) -> lease
 renew(leaseId, fencingToken) -> lease
 verify(leaseId, fencingToken, operation) -> decision
-switchLease(leaseId, fencingToken, targetRequest) -> lease
+switchLease(issueId, leaseId, fencingToken, targetRequest) -> lease
 handoff(leaseId, fencingToken, recipient) -> lease
 release(leaseId, fencingToken, reason) -> result
 takeover(request, expectedToken, reason) -> lease

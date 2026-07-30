@@ -351,6 +351,10 @@ function correlateResult(operation, result, request) {
       'switch transition lease does not match the request'
     );
     requireResponse(
+      result.transition.fromIssueId === request?.issueId,
+      'switch transition source issue does not match the request'
+    );
+    requireResponse(
       result.transition.fromToken === request?.fencingToken,
       'switch transition fence does not match the request'
     );

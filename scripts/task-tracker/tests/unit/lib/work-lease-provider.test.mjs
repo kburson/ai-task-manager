@@ -247,6 +247,7 @@ test('every operation uses the specified endpoint, method, and body semantics', 
       'switchLease',
       {
         ...current,
+        issueId: '1049',
         idempotencyKey: 'switch-1',
         switchedAt: NOW,
         target: acquire({

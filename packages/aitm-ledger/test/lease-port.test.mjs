@@ -470,6 +470,7 @@ test('memory conformance: renew, handoff, switch, and takeover are fenced and id
   const current = workerStore.acquire(acquire());
   const switched = workerStore.switchLease({
     projectId: 'project-1',
+    issueId: '1049',
     leaseId: current.leaseId,
     fencingToken: current.fencingToken,
     idempotencyKey: 'switch-1',
@@ -485,6 +486,7 @@ test('memory conformance: renew, handoff, switch, and takeover are fenced and id
   assert.deepEqual(
     workerStore.switchLease({
       projectId: 'project-1',
+      issueId: '1049',
       leaseId: current.leaseId,
       fencingToken: current.fencingToken,
       idempotencyKey: 'switch-1',
@@ -517,6 +519,7 @@ test('memory conformance: renew, handoff, switch, and takeover are fenced and id
     () =>
       failureStore.switchLease({
         projectId: 'project-1',
+        issueId: '1049',
         leaseId: preserved.leaseId,
         fencingToken: preserved.fencingToken,
         idempotencyKey: 'failed-switch',

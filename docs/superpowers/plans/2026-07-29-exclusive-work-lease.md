@@ -147,8 +147,10 @@ expiry, and switch supersession advance the fence; renewal does not.
 worktreeId, pathHash, branch, pid }`. `RenewRequest` contains `projectId`,
 `leaseId`, `fencingToken`, `idempotencyKey`, `requestedAt`, and `ttlMs`.
 `VerifyRequest` contains `projectId`, `leaseId`, `fencingToken`, `operation`,
-and `verifiedAt`. `SwitchLeaseRequest` contains the current lease identity plus
-one target acquisition request. `ReleaseRequest` contains the lease identity,
+and `verifiedAt`. `SwitchLeaseRequest` contains the current project, issue,
+lease, and fencing identity plus one target acquisition request; the source
+issue is required so the returned transition receipt can be correlated without
+adapter-side inference. `ReleaseRequest` contains the lease identity,
 `releasedAt`, idempotency key, and a nonempty reason.
 
 The lease adds `leaseId`, `fencingToken`, `state`, `acquiredAt`, `heartbeatAt`,
