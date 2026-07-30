@@ -15,6 +15,8 @@ import { postTimingEvent, buildRow, readTimingCommentBody, bodyOf } from './gh-t
 import { lastRowTsFromBody, lastRowFromBody } from './lib/timing-rows.mjs';
 import { isDepartureEvent } from './lib/timing-events/index.mjs';
 import { PHASE_EVENTS, resolvePhaseEvent } from './phase-events.mjs';
+import { parseIssueFieldDb } from './issue-field-db.mjs';
+import { loadProjectFieldDefs } from './project-fields.mjs';
 
 // Re-exported so downstream verbs (promote/demote/review/new/close/switch —
 // sub-issues #128, #129 of epic #126) can pull the canonical table without
@@ -35,12 +37,15 @@ import {
   computeActiveAndIdleSeconds,
   resolveFlushStartMs,
 } from './active-time.mjs';
-import { mostRecentSessionRef, recordSessionRefOnChange } from './lib/session-ref.mjs';
-import { serializeMarker } from './lib/marker-grammar.mjs';
+import {
+  mostRecentSessionRef,
+  recordSessionRefOnChange,
+  sessionRefForOperation,
+} from './lib/session-ref.mjs';
 import { mutateIssueBody } from './lib/issue-body-mutate.mjs';
 import { advanceWordMarker } from './state.mjs';
 import { findMainWorktreePath, currentBranch } from './fleet-registry.mjs';
-import { gql, splitRepo } from '../gh/lib/github-projects.mjs';
+import { gql, projectValuesForIssue, splitRepo } from '../gh/lib/github-projects.mjs';
 import { runMoveStateHost } from '../gh/move-state.mjs';
 import { getProjectDir } from './paths.mjs';
 import { GH_API_TIMEOUT_MS } from './lib/process-timeouts.mjs';
@@ -49,6 +54,7 @@ import { verifyGovernedEffect } from './lib/work-lease/guard.mjs';
 import { createWorkLeaseProvider } from './lib/work-lease/provider.mjs';
 import { normalizeIssueCloseSnapshot } from './lib/closed-issue-convergence.mjs';
 import { normalizeSubIssueBoardSnapshot } from './lib/sub-issue-board-snapshot.mjs';
+import { reconcileIssueTimeProjection } from './lib/work-lease/issue-time-projection.mjs';
 
 const pexec = promisify(execFile);
 
@@ -363,14 +369,15 @@ export function buildContext(rawArgv = process.argv.slice(2)) {
         deps: { pexec },
       });
       const recent = mostRecentSessionRef(res?.body);
+      const receipt = operationId ? sessionRefForOperation(res?.body, operationId) : recent;
       if (
-        recent?.sid !== sid ||
-        recent?.jsonlPath !== jp ||
-        (operationId && (recent?.ts !== ts || recent.operationId !== operationId))
+        receipt?.sid !== sid ||
+        receipt?.jsonlPath !== jp ||
+        (operationId && (receipt?.ts !== ts || receipt.operationId !== operationId))
       ) {
         throw new Error('session reference remote read-back does not match');
       }
-      return { ok: true, status: res?.status, recent };
+      return { ok: true, status: res?.status, recent, receipt };
     } catch (err) {
       return { ok: false, err: err.message };
     }
@@ -457,7 +464,7 @@ export function buildContext(rawArgv = process.argv.slice(2)) {
       resolved?.description ??
       LEGACY_DESCRIPTION_FALLBACKS[effectiveEvent] ??
       effectiveEvent;
-    const ts = nowIso();
+    const ts = opts.ts ?? nowIso();
     const sid = currentSessionId();
     let deltaWords = 0;
     // #795 — full-expansion per-row delta (stay-abreast + full tool inputs +
@@ -672,43 +679,45 @@ export function buildContext(rawArgv = process.argv.slice(2)) {
     };
   };
 
-  ctx.runLogIssueTime = async (issue, { subOperationId } = {}) => {
+  ctx.runLogIssueTime = async (issue, { subOperationId, expected } = {}) => {
     if (SKIP_NETWORK) return { skipped: true };
     const scriptPath = new URL('../gh/log-issue-time.mjs', import.meta.url).pathname;
     try {
-      const { stdout } = await pexec(process.execPath, [scriptPath, issue], {
-        timeout: GH_API_TIMEOUT_MS,
-      });
-      if (stdout.trim()) console.log(stdout.trim());
-      let body;
-      if (subOperationId) {
-        const marker = serializeMarker('switch-projection', { op: subOperationId });
-        const result = await mutateIssueBody({
-          issueNumber: String(issue).replace(/^#/, ''),
-          repo: cfg.repo,
-          mutate: (base) => {
-            if (base.includes(marker)) return base;
-            const fields = /^[^\n]*<!--\s*aitm-fields:/m.exec(base);
-            if (!fields) return `${base.trimEnd()}\n${marker}\n`;
-            const lineStart = base.lastIndexOf('\n', fields.index) + 1;
-            return `${base.slice(0, lineStart)}${marker}\n\n${base.slice(lineStart)}`;
-          },
-          deps: { pexec },
+      const issueNumber = String(issue).replace(/^#/, '');
+      const runMutation = async () => {
+        const { stdout } = await pexec(process.execPath, [scriptPath, issue], {
+          timeout: GH_API_TIMEOUT_MS,
         });
-        body = result?.body;
-        if (!body?.includes(marker)) {
-          throw new Error('issue-time suboperation remote read-back does not match');
-        }
-      } else {
+        if (stdout.trim()) console.log(stdout.trim());
+      };
+      const readState = async () => {
         const { stdout: issueJson } = await pexec(
           'gh',
-          ['issue', 'view', String(issue).replace(/^#/, ''), '--repo', cfg.repo, '--json', 'body'],
+          ['issue', 'view', issueNumber, '--repo', cfg.repo, '--json', 'body'],
           { timeout: GH_API_TIMEOUT_MS }
         );
-        body = JSON.parse(issueJson).body;
+        const body = JSON.parse(issueJson).body;
+        if (typeof body !== 'string') {
+          throw new Error('issue body read-back is malformed');
+        }
+        const fields = parseIssueFieldDb(body);
+        const projectFields = await projectValuesForIssue({
+          cfg,
+          fieldDefs: loadProjectFieldDefs(projectDir),
+          issueNumber,
+        });
+        return { body, bodyFields: fields?.values ?? {}, projectFields };
+      };
+      if (subOperationId) {
+        const proof = await reconcileIssueTimeProjection({
+          expected,
+          readState,
+          mutate: runMutation,
+        });
+        return { ...proof, subOperationId };
       }
-      if (typeof body !== 'string') throw new Error('issue body read-back is malformed');
-      return { body, ...(subOperationId ? { subOperationId } : {}) };
+      await runMutation();
+      return await readState();
     } catch (err) {
       // Fail-loud: silent swallow here is the root cause of #180 (board fields
       // never written, body cache stays null, close completes anyway). No env

@@ -61,6 +61,18 @@ export function mostRecentSessionRef(body) {
   return all.length ? all[all.length - 1] : null;
 }
 
+// A governed operation is an immutable receipt, not the currently-active
+// session owner. Search the complete append-only history so a retry remains a
+// no-op even when another session reference was appended in the meantime.
+export function sessionRefForOperation(body, operationId) {
+  if (!operationId) return null;
+  const matches = parseSessionRefs(body).filter((entry) => entry.operationId === operationId);
+  if (matches.length > 1) {
+    throw new Error('session reference operation receipt is duplicated');
+  }
+  return matches[0] ?? null;
+}
+
 // Insert a new entry's marker line. Append-only: places the marker immediately
 // before the `<!-- aitm-fields:` trailer (the other progress markers'
 // neighborhood), falling back to end-of-body when no trailer exists. Pure.
@@ -87,13 +99,21 @@ export function appendSessionRef(body, { sid, jsonlPath, ts, operationId } = {})
 export function recordSessionRefOnChange(body, { sid, jsonlPath, ts, operationId } = {}) {
   const src = String(body || '');
   if (!sid) return { body: src, appended: false };
+  if (operationId) {
+    const receipt = sessionRefForOperation(src, operationId);
+    if (receipt) {
+      if (receipt.sid !== sid || receipt.jsonlPath !== (jsonlPath || '') || receipt.ts !== ts) {
+        throw new Error('session reference operation receipt does not match');
+      }
+      return { body: src, appended: false };
+    }
+    return {
+      body: appendSessionRef(src, { sid, jsonlPath, ts, operationId }),
+      appended: true,
+    };
+  }
   const recent = mostRecentSessionRef(src);
-  if (
-    recent &&
-    recent.sid === sid &&
-    recent.jsonlPath === (jsonlPath || '') &&
-    (!operationId || recent.operationId === operationId)
-  ) {
+  if (recent && recent.sid === sid && recent.jsonlPath === (jsonlPath || '')) {
     return { body: src, appended: false };
   }
   return {

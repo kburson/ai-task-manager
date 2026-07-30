@@ -4,7 +4,6 @@ import path from 'node:path';
 import { isDeepStrictEqual } from 'node:util';
 
 import { loadState, saveState, advanceWordMarker } from '../../state.mjs';
-import { parseIssueFieldDb } from '../../issue-field-db.mjs';
 import { rawProjectConfig } from '../../config.mjs';
 import {
   registerTaskProjection,
@@ -47,6 +46,7 @@ import {
   validateSwitchGithubProjectionInput,
 } from './switch-orchestration.mjs';
 import { enqueueTimingProjection } from '../../queue.mjs';
+import { deriveIssueTimeExpectedFields } from './issue-time-projection.mjs';
 import {
   resolveBindEvent,
   timingCommentHasRows,
@@ -487,23 +487,21 @@ async function applyGithubProjection(ctx, { input, projectionId }) {
     });
     if (
       sessionRef?.ok !== true ||
-      sessionRef.recent?.sid !== input.switch.sessionId ||
-      sessionRef.recent?.jsonlPath !== input.switch.jsonlPath ||
-      sessionRef.recent?.ts !== input.switch.ts ||
-      sessionRef.recent?.operationId !== input.switch.subOperations.sessionRef
+      sessionRef.receipt?.sid !== input.switch.sessionId ||
+      sessionRef.receipt?.jsonlPath !== input.switch.jsonlPath ||
+      sessionRef.receipt?.ts !== input.switch.ts ||
+      sessionRef.receipt?.operationId !== input.switch.subOperations.sessionRef
     ) {
       throw new Error('GitHub switch session reference did not reconcile');
     }
     const issueTime = await ctx.runLogIssueTime(input.switch.sourceIssue, {
       projectionId,
       subOperationId: input.switch.subOperations.issueTime,
+      expected: input.switch.issueTimeExpected,
     });
-    const fields = parseIssueFieldDb(issueTime?.body);
     if (
       issueTime?.subOperationId !== input.switch.subOperations.issueTime ||
-      fields?.ok !== true ||
-      !fields.values ||
-      typeof fields.values !== 'object'
+      issueTime?.reconciled !== true
     ) {
       throw new Error('GitHub switch issue-time remote read-back does not match');
     }
@@ -555,7 +553,12 @@ async function buildGovernedSwitchPlan(
           `switch-out:${target}`,
           `Switching out to task ${target}`,
           undefined,
-          { suppressRowWords: true, computeOnly: true, precomputedLastRow: sourceLastRow }
+          {
+            suppressRowWords: true,
+            computeOnly: true,
+            precomputedLastRow: sourceLastRow,
+            ts: plan.ts,
+          }
         );
   const incomingRows = plan.projectionInputs.timing.rows.map((item) => ({
     ...item,
@@ -615,11 +618,36 @@ async function buildGovernedSwitchPlan(
     sessionId,
     jsonlPath: jsonlPath(sessionId),
     ts: plan.ts,
+    issueTimeExpected: null,
     subOperations: {
       sessionRef: `${projectionIds.github}:source-session-ref`,
       issueTime: `${projectionIds.github}:source-issue-time`,
     },
   };
+  if (!eligibility.skippedNetwork) {
+    const timingGh = await import('../../gh-timing-comment.mjs');
+    const read = ctx.readTimingCommentBody ?? timingGh.readTimingCommentBody;
+    const sourceTiming = await read({
+      issueNumber: source.replace(/^#/, ''),
+      repo: ctx.cfg.repo,
+    });
+    const sourceRows = plan.projectionInputs.timing.rows
+      .filter((item) => item.issueNumber === source.replace(/^#/, ''))
+      .map((item) => item.row)
+      .join('\n');
+    const sourceBody = timingGh.bodyOf(sourceTiming);
+    const timingBody = sourceBody.includes('| Timestamp |')
+      ? sourceBody
+      : [
+          '| Timestamp | Event | Active | Idle | Δ Words | Word Marker | Description | Δ Words (full) |',
+          '|---|---|---|---|---|---|---|---|',
+          sourceBody,
+        ].join('\n');
+    plan.projectionInputs.github.switch.issueTimeExpected = deriveIssueTimeExpectedFields(
+      `${timingBody}\n${sourceRows}`,
+      ctx.cfg.reviewPauseThresholdMin
+    );
+  }
   plan.projectionInputs = durableJson(plan.projectionInputs);
   return { ...plan, idempotencyKey, projectionIds };
 }
@@ -772,6 +800,13 @@ async function verbSwitchGoverned(
         deps: ctx.claimAssigneeDeps,
       }),
     projectionInputs: plan.projectionInputs,
+    projectionContext: {
+      statePath: ctx.statePath,
+      markerPath: markerPathFor(sessionId),
+      pendingPausePath: pendingPausePath(sessionId, ctx.projectDir),
+      displayPath: binding.displayPath,
+      sourceState: durableJson(state),
+    },
     projections,
     resolveWorktreeIdentity: ctx.resolveWorktreeIdentity,
     requestTimestamp: plan.ts,

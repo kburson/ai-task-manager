@@ -1,5 +1,6 @@
 // @story #1049
 import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
 import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import test from 'node:test';
@@ -33,7 +34,7 @@ const HISTORICAL_NOW = new Date('2026-07-30T11:45:00.000Z');
 const DELAYED_NOW = new Date('2026-07-30T12:10:00.000Z');
 const WORKTREE = {
   worktreeId: 'wt:v1:worktree-1',
-  pathHash: 'path-hash-1',
+  pathHash: createHash('sha256').update('/repo/worktree-1').digest('hex'),
   displayPath: '/repo/worktree-1',
 };
 const LEASE = {
@@ -2490,9 +2491,13 @@ function governedResumeContext(dir, { rest, state, session, coordinator = 'acqui
           ts: '2026-07-30T11:55:00.000Z',
           event: 'develop:started',
         });
+        const timingTs = new Date(options.ts)
+          .toISOString()
+          .replace('T', ' ')
+          .replace(/\.\d{3}Z$/, ' +00:00');
         return {
-          precedingRows: ['| 2026-07-30 12:00 +00:00 | resumed |  |  | 0 | 0 | resumed |'],
-          row: '| 2026-07-30 12:00 +00:00 | switch-out:#1049 |  |  | 0 | 0 | switch |',
+          precedingRows: [`| ${timingTs} | resumed |  |  | 0 | 0 | resumed |`],
+          row: `| ${timingTs} | switch-out:#1049 |  |  | 0 | 0 | switch |`,
           deltaMin: 0,
           deltaWords: 0,
         };
@@ -3225,7 +3230,7 @@ test('production GitHub switch suboperations survive response loss with exact re
       remoteSessionRefs.add(input.operationId);
       return {
         ok: true,
-        recent: {
+        receipt: {
           sid: input.sid,
           jsonlPath: input.jsonlPath,
           ts: input.ts,
@@ -3240,7 +3245,7 @@ test('production GitHub switch suboperations survive response loss with exact re
         throw new Error('issue-time response lost after remote success');
       }
       return {
-        body: '<!-- aitm-fields: {"schema":1,"values":{"engagedTime":"1m"}} -->',
+        reconciled: true,
         subOperationId: input.subOperationId,
       };
     };

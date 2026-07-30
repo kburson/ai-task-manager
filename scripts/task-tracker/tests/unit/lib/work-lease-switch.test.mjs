@@ -1,5 +1,6 @@
 // @story #1049
 import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
 import { readFileSync, rmSync, writeFileSync } from 'node:fs';
 import test from 'node:test';
 
@@ -18,10 +19,11 @@ import {
 } from '../../../session-state.mjs';
 
 const NOW = new Date('2026-07-30T12:00:00.000Z');
+const DISPLAY_PATH = '/repo/worktree-1';
 const WORKTREE = Object.freeze({
   worktreeId: 'wt:v1:worktree-1',
-  pathHash: 'path-hash-1',
-  displayPath: '/repo/worktree-1',
+  pathHash: createHash('sha256').update(DISPLAY_PATH).digest('hex'),
+  displayPath: DISPLAY_PATH,
 });
 const HOLDER = Object.freeze({
   principalKind: 'worker',
@@ -126,21 +128,81 @@ function switchOptions(dir, overrides = {}) {
     session: {
       sessionId: 'session-1',
       switch: { sourceIssue: '#1049', targetIssue: '#1051' },
+      state: {
+        active: '#1051',
+        lastActive: '#1051',
+        entryStartTs: NOW.toISOString(),
+        wordsAtEntryStart: 12,
+        pausedAtTs: null,
+      },
+      activeTask: {
+        issue: '#1051',
+        entryStartTs: NOW.toISOString(),
+        wordsAtStart: 12,
+        boundAt: NOW.toISOString(),
+      },
+      marker: {
+        path: '/projection/word-marker',
+        line: 1,
+        words: 12,
+        wordsFull: 12,
+        task: '#1051',
+        ts: NOW.toISOString(),
+      },
+      compensationSnapshot: {
+        globalState: { path: '/projection/state', present: false, bytesBase64: '' },
+        wordMarker: { path: '/projection/word-marker', present: false, bytesBase64: '' },
+        pendingPause: { path: '/projection/pending-pause', present: false, bytesBase64: '' },
+      },
+      orphanFinalize: {
+        enabled: true,
+        sessionId: 'session-1',
+        reason: 'orphan-finalize',
+      },
     },
     fleet: {
       sourceIssue: '#1049',
       targetIssue: '#1051',
-      source: { issue: '#1049' },
-      target: { issue: '#1051' },
+      source: {
+        issue: '#1049',
+        worktreePath: DISPLAY_PATH,
+        branch: HOLDER.branch,
+        startedAt: '2026-07-30T11:45:00.000Z',
+        status: 'active',
+        binding: { ...HOLDER },
+      },
+      target: {
+        issue: '#1051',
+        worktreePath: DISPLAY_PATH,
+        branch: HOLDER.branch,
+        startedAt: NOW.toISOString(),
+        status: 'active',
+        binding: { ...HOLDER },
+      },
     },
     timing: {
       skippedNetwork: false,
       sourceIssue: '#1049',
       targetIssue: '#1051',
-      operations: ['outgoing', 'incoming'],
+      decision: {
+        mode: 'switch',
+        emittedEvent: 'start',
+        suppressed: false,
+        syntheticGap: null,
+      },
       rows: [
-        { issueNumber: '1049', subOperationId: 'outgoing:switch-out' },
-        { issueNumber: '1051', subOperationId: 'incoming:bind' },
+        {
+          issueNumber: '1049',
+          row: '| 2026-07-30 12:00:00 +00:00 | switch-out:#1051 | 0 |',
+          subOperationId: 'outgoing:switch-out',
+          projectionId: 'switchLease:switch:session-1:1049:1051:request-1:timing',
+        },
+        {
+          issueNumber: '1051',
+          row: '| 2026-07-30 12:00:00 +00:00 | start | 0 |',
+          subOperationId: 'incoming:bind',
+          projectionId: 'switchLease:switch:session-1:1049:1051:request-1:timing',
+        },
       ],
     },
     github: {
@@ -161,6 +223,15 @@ function switchOptions(dir, overrides = {}) {
         sessionId: 'session-1',
         jsonlPath: jsonlPath('session-1'),
         ts: NOW.toISOString(),
+        issueTimeExpected: {
+          bodyFields: { engagedTime: 1, sessionTime: 1, reviewTime: 0, planTime: 0 },
+          projectFields: {
+            engagedTime: '00d 00h 01m 00s',
+            sessionTime: '00d 00h 01m 00s',
+            reviewTime: '00d 00h 00m 00s',
+            planTime: '00d 00h 00m 00s',
+          },
+        },
         subOperations: {
           sessionRef: 'switchLease:switch:session-1:1049:1051:request-1:github:source-session-ref',
           issueTime: 'switchLease:switch:session-1:1049:1051:request-1:github:source-issue-time',
@@ -222,6 +293,18 @@ function switchOptions(dir, overrides = {}) {
         };
       },
       projectionInputs,
+      projectionContext: {
+        statePath: '/projection/state',
+        markerPath: '/projection/word-marker',
+        pendingPausePath: '/projection/pending-pause',
+        displayPath: DISPLAY_PATH,
+        sourceState: {
+          active: '#1049',
+          lastActive: '#1049',
+          entryStartTs: '2026-07-30T11:45:00.000Z',
+          wordsAtEntryStart: 12,
+        },
+      },
       projections,
       resolveWorktreeIdentity: async () => {
         log.push('identity');
@@ -764,6 +847,15 @@ test('offline and assignment-disabled switch gates never invoke the claim mutato
         currentUser: '',
         preparedKind: 'network-skipped',
         preparedAssignees: [],
+        switch: {
+          ...base.input.projectionInputs.github.switch,
+          issueTimeExpected: null,
+        },
+      };
+      base.input.projectionInputs.timing = {
+        ...base.input.projectionInputs.timing,
+        skippedNetwork: true,
+        rows: [],
       };
       base.input.preparedEligibility = {
         ok: true,
@@ -918,37 +1010,55 @@ test('malformed recovered GitHub input fails before identity, authority replay, 
 
 test('malformed recovered non-GitHub inputs fail before identity, provider, or authority replay', async (t) => {
   const cases = {
-    session: (input) => {
-      input.switch.targetIssue = '#999';
+    'session wrapper': {
+      projection: 'session',
+      corrupt: (input) => {
+        input.switch.targetIssue = '#999';
+      },
     },
-    fleet: (input) => {
-      input.sourceIssue = '#999';
+    'fleet wrapper': {
+      projection: 'fleet',
+      corrupt: (input) => {
+        input.sourceIssue = '#999';
+      },
     },
-    timing: (input) => {
-      input.rows = [{ issueNumber: '999', subOperationId: 'wrong-issue' }];
+    'timing wrapper': {
+      projection: 'timing',
+      corrupt: (input) => {
+        input.rows = [{ issueNumber: '999', subOperationId: 'wrong-issue' }];
+      },
+    },
+    'session active task': {
+      projection: 'session',
+      corrupt: (input) => {
+        input.activeTask = { issue: '#9999' };
+      },
+    },
+    'fleet target branch': {
+      projection: 'fleet',
+      corrupt: (input) => {
+        input.target.branch = 'attacker/branch';
+      },
+    },
+    'timing arbitrary operation': {
+      projection: 'timing',
+      corrupt: (input) => {
+        input.rows = [
+          {
+            issueNumber: '1049',
+            subOperationId: 'attacker:arbitrary-write',
+            projectionId: input.rows[0]?.projectionId,
+          },
+        ];
+      },
     },
   };
-  for (const [name, corrupt] of Object.entries(cases)) {
+  for (const [name, { projection, corrupt }] of Object.entries(cases)) {
     await t.test(name, async () => {
       const dir = sandbox();
       try {
         seedSource(dir);
         const first = switchOptions(dir);
-        first.input.projectionInputs.session.sessionId = 'session-1';
-        first.input.projectionInputs.session.switch = {
-          sourceIssue: '#1049',
-          targetIssue: '#1051',
-        };
-        first.input.projectionInputs.fleet = {
-          sourceIssue: '#1049',
-          targetIssue: '#1051',
-          source: { issue: '#1049' },
-          target: { issue: '#1051' },
-        };
-        first.input.projectionInputs.timing.rows = [
-          { issueNumber: '1049', subOperationId: 'outgoing:switch-out' },
-          { issueNumber: '1051', subOperationId: 'incoming:bind' },
-        ];
         first.store.switchLease = async () => {
           throw new WorkLeaseError('authority-unavailable', 'response lost');
         };
@@ -959,7 +1069,7 @@ test('malformed recovered non-GitHub inputs fail before identity, provider, or a
 
         const persistedPath = activeTaskPath('session-1', dir);
         const persisted = JSON.parse(readFileSync(persistedPath, 'utf8'));
-        corrupt(persisted.workLeaseIntent.projections[name].input);
+        corrupt(persisted.workLeaseIntent.projections[projection].input);
         writeFileSync(persistedPath, `${JSON.stringify(persisted, null, 2)}\n`);
 
         const retry = switchOptions(dir);

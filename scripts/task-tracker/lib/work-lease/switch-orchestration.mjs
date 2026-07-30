@@ -1,4 +1,4 @@
-import { randomUUID as defaultRandomUUID } from 'node:crypto';
+import { createHash, randomUUID as defaultRandomUUID } from 'node:crypto';
 
 import {
   canonicalRequestJson,
@@ -34,6 +34,7 @@ import {
   WORK_LEASE_HEARTBEAT_AGE_MS,
   WORK_LEASE_TTL_MS,
 } from './guard.mjs';
+import { validateIssueTimeExpectedFields } from './issue-time-projection.mjs';
 
 const TERMINAL_SWITCH_CODES = new Set([
   'invalid-request',
@@ -114,6 +115,18 @@ function sameJson(left, right) {
 
 function stableHolder(holder) {
   return Object.fromEntries(LOGICAL_HOLDER_FIELDS.map((field) => [field, holder?.[field]]));
+}
+
+function validFileSnapshot(snapshot, expectedPath) {
+  return (
+    snapshot &&
+    typeof snapshot === 'object' &&
+    !Array.isArray(snapshot) &&
+    snapshot.path === expectedPath &&
+    typeof snapshot.present === 'boolean' &&
+    typeof snapshot.bytesBase64 === 'string' &&
+    (snapshot.present || snapshot.bytesBase64 === '')
+  );
 }
 
 function sourceSessionFromSnapshot(intent) {
@@ -339,6 +352,23 @@ export function validateSwitchGithubProjectionInput(
           'persisted GitHub switch operation does not match the immutable request'
         );
       }
+      if (value.skippedNetwork) {
+        if (switchInput.issueTimeExpected !== null) {
+          throw leaseError(
+            'invalid-request',
+            'offline switch issue-time expectation is unexpected'
+          );
+        }
+      } else {
+        try {
+          validateIssueTimeExpectedFields(switchInput.issueTimeExpected);
+        } catch {
+          throw leaseError(
+            'invalid-request',
+            'persisted switch issue-time expectation is malformed'
+          );
+        }
+      }
     } else if (!isCanonicalTimestamp(switchInput.ts)) {
       throw leaseError('invalid-request', 'persisted GitHub switch timestamp is malformed');
     }
@@ -372,7 +402,7 @@ export function validateSwitchGithubProjectionInput(
 
 export function validateSwitchProjectionInputs(
   projections,
-  { sourceIssueId, targetIssueId, sessionId, request } = {}
+  { sourceIssueId, targetIssueId, sessionId, request, projectionContext } = {}
 ) {
   const source = canonicalIssue(sourceIssueId ?? request?.issueId, 'persisted switch source');
   const target = canonicalIssue(
@@ -395,19 +425,84 @@ export function validateSwitchProjectionInputs(
   if (
     session.sessionId !== trustedSessionId ||
     session.switch?.sourceIssue !== sourceRef ||
-    session.switch?.targetIssue !== targetRef
+    session.switch?.targetIssue !== targetRef ||
+    session.activeTask?.issue !== targetRef ||
+    session.activeTask?.entryStartTs !== request?.switchedAt ||
+    session.activeTask?.boundAt !== request?.switchedAt ||
+    session.state?.active !== targetRef ||
+    session.state?.lastActive !== targetRef ||
+    session.state?.entryStartTs !== request?.switchedAt ||
+    session.state?.wordsAtEntryStart !== session.activeTask?.wordsAtStart ||
+    session.marker?.task !== targetRef ||
+    session.marker?.ts !== request?.switchedAt
   ) {
     throw leaseError(
       'invalid-request',
       'persisted session switch input does not match source, target, or session'
     );
   }
+  const context = object(projectionContext, 'persisted switch projection context');
+  const sourceState = object(context.sourceState, 'persisted switch source state');
+  const mutableStateKeys = new Set([
+    'active',
+    'lastActive',
+    'entryStartTs',
+    'wordsAtEntryStart',
+    'pausedAtTs',
+    'lastWordMarker',
+  ]);
+  const removedStateKeys = new Set(['paused', 'pauseReasonSlug', 'pauseReasonText']);
+  const stateShapeMatches =
+    Object.keys(session.state).every(
+      (key) =>
+        Object.hasOwn(sourceState, key) || mutableStateKeys.has(key) || removedStateKeys.has(key)
+    ) &&
+    Object.entries(sourceState).every(
+      ([key, value]) =>
+        mutableStateKeys.has(key) ||
+        removedStateKeys.has(key) ||
+        sameJson(session.state[key], value)
+    );
+  if (
+    !stateShapeMatches ||
+    session.state.pausedAtTs !== null ||
+    session.orphanFinalize?.enabled !== true ||
+    session.orphanFinalize?.sessionId !== trustedSessionId ||
+    session.orphanFinalize?.reason !== 'orphan-finalize' ||
+    session.marker.path !== context.markerPath ||
+    !Number.isSafeInteger(session.marker.line) ||
+    session.marker.line < 0 ||
+    !Number.isSafeInteger(session.marker.words) ||
+    session.marker.words !== session.activeTask.wordsAtStart ||
+    !Number.isSafeInteger(session.marker.wordsFull) ||
+    session.marker.wordsFull < session.marker.words ||
+    !validFileSnapshot(session.compensationSnapshot?.globalState, context.statePath) ||
+    !validFileSnapshot(session.compensationSnapshot?.wordMarker, context.markerPath) ||
+    !validFileSnapshot(session.compensationSnapshot?.pendingPause, context.pendingPausePath)
+  ) {
+    throw leaseError('invalid-request', 'persisted session switch recovery paths do not match');
+  }
   const fleet = values.fleet;
+  const trustedBranch = request?.target?.holder?.branch;
+  const trustedBinding = stableHolder(request?.target?.holder);
+  const expectedPathHash = createHash('sha256').update(context.displayPath).digest('hex');
   if (
     fleet.sourceIssue !== sourceRef ||
     fleet.targetIssue !== targetRef ||
     fleet.source?.issue !== sourceRef ||
-    fleet.target?.issue !== targetRef
+    fleet.target?.issue !== targetRef ||
+    fleet.source.worktreePath !== context.displayPath ||
+    fleet.target.worktreePath !== context.displayPath ||
+    fleet.source.branch !== trustedBranch ||
+    fleet.target.branch !== trustedBranch ||
+    fleet.source.status !== 'active' ||
+    fleet.target.status !== 'active' ||
+    fleet.target.startedAt !== request?.switchedAt ||
+    !isCanonicalTimestamp(fleet.source.startedAt) ||
+    Date.parse(fleet.source.startedAt) > Date.parse(request?.switchedAt) ||
+    !sameJson(stableHolder(fleet.source.binding), trustedBinding) ||
+    !sameJson(stableHolder(fleet.target.binding), trustedBinding) ||
+    request?.target?.holder?.pathHash !== expectedPathHash
   ) {
     throw leaseError(
       'invalid-request',
@@ -415,17 +510,66 @@ export function validateSwitchProjectionInputs(
     );
   }
   const timing = values.timing;
+  const timingProjectionId = projections?.timing?.projectionId;
+  const expectedOperations = [
+    ['outgoing:reengage', source],
+    ['outgoing:switch-out', source],
+    ['incoming:synthetic-departure', target],
+    ['incoming:bind', target],
+  ];
+  let priorOperationIndex = -1;
+  let sawSwitchOut = false;
+  const timingRowsMalformed =
+    !Array.isArray(timing.rows) ||
+    timing.rows.some((row) => {
+      const operationIndex = expectedOperations.findIndex(
+        ([operation]) => operation === row?.subOperationId
+      );
+      const expectedIssue = expectedOperations[operationIndex]?.[1];
+      if (
+        operationIndex < 0 ||
+        operationIndex <= priorOperationIndex ||
+        String(row?.issueNumber) !== expectedIssue ||
+        row?.projectionId !== timingProjectionId ||
+        typeof row?.row !== 'string' ||
+        row.row === ''
+      ) {
+        return true;
+      }
+      priorOperationIndex = operationIndex;
+      sawSwitchOut ||= row.subOperationId === 'outgoing:switch-out';
+      const event = row.row.split('|')[2]?.trim();
+      const expectedEvent =
+        row.subOperationId === 'outgoing:reengage'
+          ? 'resumed'
+          : row.subOperationId === 'outgoing:switch-out'
+            ? `switch-out:${targetRef}`
+            : row.subOperationId === 'incoming:synthetic-departure'
+              ? 'pause:auto-detected-gap'
+              : timing.decision?.emittedEvent;
+      if (!expectedEvent || event !== expectedEvent) return true;
+      if (row.subOperationId === 'incoming:synthetic-departure') return false;
+      const timestamp = row.row.match(
+        /\b(\d{4}-\d{2}-\d{2}) (\d{2}:\d{2}(?::\d{2})?) ([+-]\d{2}:\d{2})\b/
+      );
+      if (!timestamp) return true;
+      return (
+        Math.floor(Date.parse(`${timestamp[1]}T${timestamp[2]}${timestamp[3]}`) / 1000) !==
+        Math.floor(Date.parse(request?.switchedAt) / 1000)
+      );
+    });
   if (
     timing.sourceIssue !== sourceRef ||
     timing.targetIssue !== targetRef ||
-    !Array.isArray(timing.rows) ||
-    timing.rows.some(
-      (row) =>
-        !row ||
-        ![source, target].includes(String(row.issueNumber)) ||
-        typeof row.subOperationId !== 'string' ||
-        row.subOperationId === ''
-    )
+    timing.decision?.mode !== 'switch' ||
+    (!timing.skippedNetwork &&
+      ((timing.decision?.suppressed === true) !==
+        !timing.rows?.some((row) => row.subOperationId === 'incoming:bind') ||
+        Boolean(timing.decision?.syntheticGap) !==
+          Boolean(
+            timing.rows?.some((row) => row.subOperationId === 'incoming:synthetic-departure')
+          ))) ||
+    (timing.skippedNetwork ? timing.rows?.length !== 0 : timingRowsMalformed || !sawSwitchOut)
   ) {
     throw leaseError(
       'invalid-request',
@@ -828,6 +972,7 @@ export async function coordinateWorkLeaseSwitch({
   readEligibility,
   reconcileClaim,
   projectionInputs,
+  projectionContext,
   projections,
   loadSession = getActiveTask,
   saveIntent = setWorkLeaseIntent,
@@ -875,6 +1020,7 @@ export async function coordinateWorkLeaseSwitch({
       targetIssueId: target,
       sessionId,
       request: existingRequest,
+      projectionContext,
     });
   } else {
     const githubInput = validateSwitchGithubProjectionInput(projectionInputs.github, {
@@ -963,6 +1109,7 @@ export async function coordinateWorkLeaseSwitch({
     targetIssueId: target,
     sessionId,
     request,
+    projectionContext,
   });
 
   let receipt = intent.receipt;
