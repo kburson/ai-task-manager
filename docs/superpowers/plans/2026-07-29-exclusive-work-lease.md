@@ -48,8 +48,8 @@ the fencing token before governed effects. Fleet remains a projection.
 - SQLite and HTTPS share a closed operation vocabulary. Unknown operations fail
   validation. Reuse of an idempotency key for a different canonical request
   fails with `idempotency-conflict`.
-- The reviewed file inventory has 208 task assignments across 195 unique paths:
-  Tasks 1-7 contain 13, 5, 17, 5, 146, 18, and 4 paths respectively.
+- The reviewed file inventory has 239 task assignments across 209 unique paths:
+  Tasks 1-7 contain 13, 5, 17, 5, 146, 49, and 4 paths respectively.
   Lifecycle authority paths intentionally reappear in later tasks when the
   same provider, session, close, or fleet boundary needs another governed
   increment. If
@@ -607,41 +607,202 @@ real Git worktree directory. Raw display text never participates in uniqueness.
 - Modify: `packages/aitm-ledger/src/lease/port.mjs`
 - Modify: `packages/aitm-ledger/src/lease/schema.mjs`
 - Modify: `packages/aitm-ledger/src/lease/http-contract.mjs`
-- Modify: `packages/aitm-ledger/src/sqlite/migrations/001-leases.mjs`
+- Create:
+  `packages/aitm-ledger/src/sqlite/migrations/002-lease-lifecycle.mjs`
+- Modify: `packages/aitm-ledger/src/sqlite/open.mjs`
 - Modify: `packages/aitm-ledger/src/sqlite/work-lease-store.mjs`
 - Modify: `scripts/task-tracker/lib/work-lease/provider.mjs`
 - Modify: `scripts/task-tracker/lib/work-lease/http-store.mjs`
 - Modify: `scripts/task-tracker/lib/work-lease/context.mjs`
 - Modify: `scripts/task-tracker/lib/work-lease/guard.mjs`
+- Modify:
+  `scripts/task-tracker/lib/work-lease/bind-orchestration.mjs`
+- Create:
+  `scripts/task-tracker/lib/work-lease/lifecycle-orchestration.mjs`
 - Modify: `scripts/task-tracker/session-state.mjs`
+- Modify: `scripts/task-tracker/state.mjs`
 - Modify: `scripts/task-tracker/fleet-registry.mjs`
 - Modify: `scripts/task-tracker/verbs/pause.mjs`
 - Modify: `scripts/task-tracker/verbs/stop.mjs`
 - Modify: `scripts/task-tracker/verbs/close.mjs`
+- Modify: `scripts/task-tracker/verbs/review.mjs`
 - Modify: `scripts/task-tracker/verbs/fleet.mjs`
-- Modify: `scripts/task-tracker/cut-child-worktree.mjs`
+- Modify: `scripts/task-tracker/merge-back.mjs`
+- Modify: `scripts/task-tracker/verbs/chore-mode.mjs`
+- Modify: `scripts/task-tracker/hook-handler.mjs`
+- Modify: `scripts/task-tracker/verbs/new.mjs`
+- Modify:
+  `packages/aitm-ledger/test/fixtures/lease-conformance.mjs`
+- Modify:
+  `packages/aitm-ledger/test/fixtures/sqlite-contender.mjs`
+- Modify: `packages/aitm-ledger/test/lease-port.test.mjs`
+- Modify: `packages/aitm-ledger/test/http-lease-contract.test.mjs`
+- Modify:
+  `packages/aitm-ledger/test/sqlite-work-lease-store.test.mjs`
+- Modify: `packages/aitm-ledger/test/package-contract.test.mjs`
 - Create:
   `scripts/task-tracker/tests/unit/lib/work-lease-lifecycle.test.mjs`
 - Modify:
+  `scripts/task-tracker/tests/unit/lib/work-lease-guard.test.mjs`
+- Modify:
+  `scripts/task-tracker/tests/unit/lib/work-lease-provider.test.mjs`
+- Modify:
+  `scripts/task-tracker/tests/unit/lib/work-lease-session-state.test.mjs`
+- Modify:
+  `scripts/task-tracker/tests/unit/lib/work-lease-switch.test.mjs`
+- Modify:
+  `scripts/task-tracker/tests/unit/lib/fleet-registry.test.mjs`
+- Modify:
+  `scripts/task-tracker/tests/unit/lib/fleet-registry-gc.test.mjs`
+- Modify:
+  `scripts/task-tracker/tests/unit/lib/verb-start-resume-stop.test.mjs`
+- Modify:
+  `scripts/task-tracker/tests/unit/lib/coverage-review.test.mjs`
+- Modify:
+  `scripts/task-tracker/tests/unit/verbs/coverage-fleet.test.mjs`
+- Modify:
+  `scripts/task-tracker/tests/unit/verbs/close-governed-boundary.test.mjs`
+- Modify:
+  `scripts/task-tracker/tests/unit/lib/chore-mode-verb.test.mjs`
+- Modify:
+  `scripts/task-tracker/tests/unit/lib/hook-session-start.test.mjs`
+- Modify:
+  `scripts/task-tracker/tests/slow/lib/coverage-hook-handler.test.mjs`
+- Modify:
+  `scripts/task-tracker/tests/integration/lib/exclusive-work-lease.test.mjs`
+- Modify: `scripts/task-tracker/merge-back.test.mjs`
+- Modify: `scripts/task-tracker/cut-child-worktree.test.mjs`
+- Modify: `scripts/task-tracker/tests/slow/lib/epic-tree.test.mjs`
+- Modify:
   `scripts/task-tracker/tests/integration/lib/two-sessions-same-issue.test.mjs`
 
-- [ ] Add failing tests: pause retains with the paused TTL, resume renews,
-      remote renewal loss fences writes, stop/close release, Review explicitly
-      retains or hands off, deregistration cannot delete another holder,
-      takeover audits reason/token, active/paused uniqueness, terminal release
-      of uniqueness, handoff leaving the new holder active, and fleet
-      reconstruction from lease plus bind observations.
-- [ ] Run focused tests. Expected RED.
-- [ ] Implement ownership-checked lifecycle operations and reconstruct fleet
-      from `work_leases` plus `work_bindings`; these lease-scoped binding
-      observations are not the unrelated general event journal. Fleet
-      deregistration and stale pruning are holder/token checked and can neither
-      release authority nor delete another holder. Review handoff increments the
-      fence and changes the principal; pause never releases uniqueness;
-      stop/close release only the matching holder and token.
-- [ ] Re-run. Expected GREEN.
+**Interfaces and lifecycle matrix:**
+
+- Extend every lifecycle request with its exact current holder identity and
+  binding identity `{ sessionId, issueId, worktreeId }`; adapters validate the
+  same canonical request and return the same receipt shape. No adapter may infer
+  a holder from fleet or session cache state.
+- `verify` accepts only an `active` lease and refuses `paused` or terminal
+  leases. `renew` is compare-and-swap over the exact project, lease, fence,
+  holder, binding, and expected state. The only legal renew transitions are
+  `active -> active` heartbeat with the 15-minute TTL, `active -> paused` with
+  the 24-hour TTL, and `paused -> active` with the 15-minute TTL.
+- `handoff` accepts an exact `active` or `paused` worker lease and returns the
+  same lease in `active` state with an incremented fence and an `integration`
+  principal. It preserves project, issue, worktree identity, canonical display
+  path, path hash, and branch. The old token and worker holder fail immediately.
+- `release` is the last authority operation in a terminal workflow and succeeds
+  only for the exact current holder, binding, lease, and token. Exact replay is
+  idempotent; a foreign or stale release cannot clear retained ownership.
+- Retain the closed port operation `observe(selector)` and extend its selector
+  union with project-only `{ projectId }`, returning `{ leases, bindings }` for
+  that form. It returns all retained (`active` or `paused`) leases plus their
+  exact bindings for one project. Provider, SQLite, and HTTPS expose the same
+  operation and canonical result; HTTP no longer rejects this project-only
+  selector. Fleet is a cache projection of this result and is never authority.
+
+#### Task 6A: Contract and v2 Migration
+
+- [ ] Add failing conformance, HTTP, SQLite, contender, and package-contract
+      tests for the lifecycle matrix, exact holder/binding checks, active-only
+      verification, project observation, replay, stale fences, and migration.
+      Run the six ledger test and fixture consumers named above. Expected RED.
+- [ ] Never edit `001-leases.mjs`: it is immutable history for databases that
+      have already recorded schema version 1. Implement
+      `002-lease-lifecycle.mjs` and register it after 001 in `open.mjs`.
+      Migration 002 rebuilds only `work_bindings` in one transaction with
+      primary key `(project_id, lease_id)`, adds nullable `display_path`, copies
+      every v1 binding row unchanged with `display_path = NULL`, and adds
+      project-scoped binding indexes for session, issue, and worktree
+      observation. Retain the existing `work_leases` primary key, state model,
+      partial uniqueness, and all `work_lease_events` schema/data unchanged. A
+      fresh install running 001 then 002 and a v1 upgrade converge to the same
+      schema.
+- [ ] Test migration application, exact data copy, idempotent second open, and
+      injected mid-migration failure. Assert lease/event schema and bytes are
+      untouched. The failure must roll back binding schema/data and
+      `schema_migrations` version 2 as one transaction. Re-run the ledger tests
+      and do not begin 6B until they are GREEN.
+- [ ] Implement the provider-neutral schemas and store operations first, then
+      SQLite, then HTTPS. Preserve canonical JSON and idempotency parity across
+      both adapters; project observation returns authority rows, never cached
+      fleet entries.
+
+#### Task 6B: Lifecycle Ordering and Crash Recovery
+
+- [ ] Add failing task-tracker tests for exact non-secret lifecycle intents,
+      response-loss replay, stale holder/binding refusal, hook restart recovery,
+      chore-mode entry/exit, `/task new` while bound, and two simultaneous
+      sessions. Expected RED after 6A is green.
+- [ ] Create `lifecycle-orchestration.mjs` as the single coordinator for pause,
+      stop, close, and handoff request/receipt/checkpoint recovery. It persists
+      the exact canonical non-secret request before authority mutation, attaches
+      and validates the receipt before projections, and checkpoints naturally
+      idempotent session, timing, GitHub, and fleet projections. Restart replays
+      the byte-identical request; local cache state never fabricates success.
+- [ ] Keep resume acquisition/renewal and all resume recovery edits in
+      `bind-orchestration.mjs`; do not create a second resume path in lifecycle
+      orchestration. Resume changes `paused -> active` and validates authority
+      first, before queue, session, timing, GitHub, fleet, hook heartbeat, or any
+      other work effect.
+- [ ] Enforce workflow order: pause completes its timing/session/GitHub/fleet
+      projections and changes authority `active -> paused` last; stop and close
+      finish all terminal projections and release authority last. Chore-mode
+      entry uses the same pause-last protocol, chore-mode exit with `--resume`
+      uses bind-orchestration's authority-first resume, and `/task new` uses the
+      governed bind/switch path rather than directly rewriting fleet or session.
+- [ ] Preserve lifecycle intents and matching lease context through generic
+      `state.mjs` and `session-state.mjs` saves. `hook-handler.mjs` recovers an
+      incomplete journal before heartbeat or session recovery and never treats
+      fleet presence as proof of authority. Re-run the lifecycle, guard,
+      provider, session, switch, start/resume/stop, close, chore, hook,
+      exclusive-work-lease, and two-sessions-same-issue tests. Do not begin 6C until
+      they are GREEN.
+
+#### Task 6C: Authoritative Fleet Reconstruction
+
+- [ ] Add failing fleet and fleet-GC tests proving project observation includes
+      every retained lease and binding, excludes terminal leases, and cannot be
+      replaced by a locally plausible cache. Expected RED.
+- [ ] Rebuild fleet from the provider's project-scoped lease-and-binding
+      observation. Projection rows retain lease ID and fence so later refreshes
+      can reject stale cache writers, but the registry grants no permission and
+      can never satisfy a governed gate.
+- [ ] Make deregistration, stale pruning, and GC projection-only and
+      compare-and-swap checked. They cannot release a lease, delete another
+      holder's row, or make an unavailable authority appear idle. `/task fleet`
+      reports authoritative unavailability separately from an empty project.
+- [ ] Re-run fleet registry, fleet GC, fleet coverage, provider, and concurrent
+      exclusive-work-lease tests. Do not begin 6D until they are GREEN.
+
+#### Task 6D: Review Handoff and Merge Integration
+
+- [ ] Add failing Review, merge-back, cut-child, and slow epic-tree tests for
+      worker-to-integration handoff, old-fence refusal, crash replay, dual
+      controller/child authority, and exact release ordering. Expected RED.
+- [ ] Review handoff is the final child-side operation after every Review
+      mutation and projection succeeds. It changes the child worker's exact
+      `active` or `paused` lease into an active integration lease, increments
+      its fence, and leaves the separate epic controller lease unchanged.
+- [ ] Resolve the cut/handoff semantic boundary explicitly:
+      `cut-child-worktree.mjs` only creates the child branch/worktree under the
+      epic controller and never owns or performs handoff. The child's worker
+      lease is acquired by the normal bind path in that worktree. Handoff occurs
+      only when that child reaches Review, so keep the cut-child production file
+      out of Task 6 while retaining its regression test.
+- [ ] `merge-back.mjs` requires the epic controller authority for epic branch
+      mutations and the exact active child integration lease as the consumable
+      handoff proof; neither authority substitutes for the other. After tests,
+      fast-forward merge, child worktree removal, and child branch cleanup all
+      succeed, release the child integration lease last with its exact holder
+      and fence. A failed or interrupted merge retains the integration lease and
+      replays its durable receipt/checkpoints without duplicate cleanup.
+- [ ] Re-run Review coverage, close boundary, merge-back, cut-child, exclusive
+      integration, two-sessions-same-issue, and slow epic-tree. Expected GREEN,
+      with no worker/integration overlap, no authority inferred from fleet, and
+      no release before cleanup.
 - [ ] Commit:
-      `git commit -m "[#${AITM_WORK_LEASE_ISSUE}] feat(lease): govern handoff and fleet projection"`.
+      `git commit -m "[#${AITM_WORK_LEASE_ISSUE}] feat(lease): govern lifecycle handoff and fleet projection"`.
 
 ### Task 7: Documentation and Full Verification
 
