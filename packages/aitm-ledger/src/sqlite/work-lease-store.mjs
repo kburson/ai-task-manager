@@ -307,6 +307,7 @@ export class SqliteWorkLeaseStore extends WorkLeaseStore {
       binding.issueId !== lease.issueId ||
       binding.worktreeId !== lease.holder.worktreeId ||
       binding.fencingToken !== lease.fencingToken ||
+      !/^[0-9a-f]{64}$/.test(lease.holder.pathHash) ||
       (binding.displayPath !== null &&
         (typeof binding.displayPath !== 'string' ||
           binding.displayPath.trim() === '' ||

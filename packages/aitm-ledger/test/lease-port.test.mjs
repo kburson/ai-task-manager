@@ -79,6 +79,11 @@ test('lifecycle contract requires exact authority identity and legal state TTL t
     { ...base, lifecycle: { expectedState: 'paused', nextState: 'paused' } },
     { ...base, binding: binding({ displayPath: '/workspace/wrong' }) },
     { ...base, holder: holder({ pathHash: 'not-a-sha256' }) },
+    {
+      ...base,
+      holder: holder({ pathHash: 'not-a-sha256' }),
+      binding: binding({ displayPath: null }),
+    },
   ]) {
     assert.throws(
       () => validateRenewRequest(invalid),

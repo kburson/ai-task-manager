@@ -47,6 +47,13 @@ function issueIdentifier(value, label = 'issueId') {
   return value;
 }
 
+function pathHash(value, label = 'pathHash') {
+  if (typeof value !== 'string' || !/^[0-9a-f]{64}$/.test(value)) {
+    invalidRequest(`${label} must be a lowercase SHA-256 digest`);
+  }
+  return value;
+}
+
 function timestamp(value, label) {
   nonEmpty(value, label);
   if (
@@ -100,6 +107,7 @@ export function validateHolder(value, { principalKind = 'worker', label = 'holde
   for (const key of principalKind === 'worker' ? workerOnly : []) {
     nonEmpty(value[key], `${label}.${key}`);
   }
+  if (principalKind === 'worker') pathHash(value.pathHash, `${label}.pathHash`);
   return value;
 }
 
@@ -126,6 +134,7 @@ export function validateLeaseHolder(value, { label = 'holder' } = {}) {
   if (!Number.isSafeInteger(value.pid) || value.pid <= 0) {
     invalidRequest(`${label}.pid must be a positive safe integer`);
   }
+  pathHash(value.pathHash, `${label}.pathHash`);
   return value;
 }
 

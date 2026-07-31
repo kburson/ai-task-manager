@@ -338,6 +338,10 @@ test('project observation requires canonical issue IDs and verifies non-null bin
       leases: [lease()],
       bindings: [binding({ displayPath: '/workspace/hash-mismatch' })],
     },
+    {
+      leases: [lease({ holder: holder({ pathHash: 'not-a-canonical-hash' }) })],
+      bindings: [binding({ displayPath: null })],
+    },
   ]) {
     assert.throws(
       () =>
@@ -440,6 +444,102 @@ test('HTTP lifecycle receipts correlate issue, holder, and acquire chronology ex
           status: 201,
           payload: createHttpSuccessEnvelope(corrupted),
           request: acquire(),
+        }),
+      (error) => error.code === 'authority-unavailable'
+    );
+  }
+});
+
+test('switch and takeover receipts correlate acquisition chronology exactly', () => {
+  const targetHolder = holder({ agentRunId: 'run-2', sessionId: 'session-2', pid: 456 });
+  const target = acquire({
+    issueId: '1050',
+    idempotencyKey: 'switch-target',
+    holder: targetHolder,
+  });
+  const switchRequest = {
+    projectId: 'project-1',
+    issueId: '1049',
+    leaseId: 'lease-1',
+    fencingToken: '1',
+    ...requestAuthority(),
+    idempotencyKey: 'switch-1',
+    switchedAt: NOW,
+    target,
+  };
+  const switchResult = {
+    lease: lease({
+      issueId: '1050',
+      leaseId: 'lease-2',
+      fencingToken: '2',
+      holder: targetHolder,
+    }),
+    transition: {
+      transitionId: 'transition-1',
+      fromIssueId: '1049',
+      fromLeaseId: 'lease-1',
+      fromToken: '1',
+      toIssueId: '1050',
+    },
+  };
+  for (const chronology of [
+    { acquiredAt: '2026-07-30T11:59:59.000Z' },
+    { heartbeatAt: '2026-07-30T12:00:01.000Z' },
+    { expiresAt: '2026-07-30T12:14:59.000Z' },
+  ]) {
+    assert.throws(
+      () =>
+        parseHttpLeaseResponse({
+          operation: 'switchLease',
+          status: 200,
+          payload: createHttpSuccessEnvelope({
+            ...switchResult,
+            lease: { ...switchResult.lease, ...chronology },
+          }),
+          request: switchRequest,
+        }),
+      (error) => error.code === 'authority-unavailable'
+    );
+  }
+
+  const requester = holder({ agentRunId: 'run-3', sessionId: 'session-3', pid: 789 });
+  const takeoverRequest = {
+    projectId: 'project-1',
+    issueId: '1049',
+    expectedLeaseId: 'lease-1',
+    expectedToken: '1',
+    expectedHolder: holder(),
+    expectedBinding: requestAuthority().binding,
+    requester,
+    requesterBinding: requestAuthority(requester).binding,
+    ttlMs: 900_000,
+    observedAt: NOW,
+    idempotencyKey: 'takeover-1',
+    reason: 'holder dead',
+    evidence: {
+      kind: 'operator-attestation',
+      hostId: 'host-1',
+      pid: 123,
+      checkedAt: NOW,
+      detailsHash: 'proof',
+    },
+  };
+  const takeoverResult = lease({
+    leaseId: 'lease-2',
+    fencingToken: '2',
+    holder: requester,
+  });
+  for (const chronology of [
+    { acquiredAt: '2026-07-30T11:59:59.000Z' },
+    { heartbeatAt: '2026-07-30T12:00:01.000Z' },
+  ]) {
+    assert.throws(
+      () =>
+        parseHttpLeaseResponse({
+          operation: 'takeover',
+          status: 201,
+          payload: createHttpSuccessEnvelope({ ...takeoverResult, ...chronology }),
+          request: takeoverRequest,
         }),
       (error) => error.code === 'authority-unavailable'
     );

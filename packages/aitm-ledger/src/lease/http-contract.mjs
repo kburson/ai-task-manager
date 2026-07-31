@@ -229,6 +229,9 @@ function validateResponseHolder(holder) {
   if (!Number.isSafeInteger(holder.pid) || holder.pid <= 0) {
     failUnavailable('lease.holder.pid is invalid');
   }
+  if (!/^[0-9a-f]{64}$/.test(holder.pathHash)) {
+    failUnavailable('lease.holder.pathHash is invalid');
+  }
 }
 
 function validateLease(lease) {
@@ -412,6 +415,19 @@ function correlateResult(operation, result, request) {
     requireAdvancedFence(result.lease.fencingToken, request?.fencingToken);
     correlateHolder(result.lease.holder, request?.target?.holder);
     requireResponse(
+      result.lease.acquiredAt === request?.switchedAt,
+      'switch acquisition timestamp is inconsistent'
+    );
+    requireResponse(
+      result.lease.heartbeatAt === request?.switchedAt,
+      'switch heartbeat is inconsistent'
+    );
+    requireResponse(
+      result.lease.expiresAt ===
+        new Date(Date.parse(request?.switchedAt) + request?.target?.ttlMs).toISOString(),
+      'switch expiry is inconsistent'
+    );
+    requireResponse(
       result.transition.fromLeaseId === request?.leaseId,
       'switch transition lease does not match the request'
     );
@@ -467,6 +483,14 @@ function correlateResult(operation, result, request) {
     );
     requireAdvancedFence(result.fencingToken, request?.expectedToken);
     correlateHolder(result.holder, request?.requester);
+    requireResponse(
+      result.acquiredAt === request?.observedAt,
+      'takeover acquisition timestamp is inconsistent'
+    );
+    requireResponse(
+      result.heartbeatAt === request?.observedAt,
+      'takeover heartbeat is inconsistent'
+    );
     requireResponse(
       result.expiresAt === new Date(Date.parse(request?.observedAt) + request?.ttlMs).toISOString(),
       'takeover expiry is inconsistent'

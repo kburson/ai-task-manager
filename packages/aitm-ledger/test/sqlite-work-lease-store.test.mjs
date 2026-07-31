@@ -301,6 +301,14 @@ test('issue and worktree observations fail unavailable for every corrupt binding
           "UPDATE work_bindings SET display_path = '/workspace/hash-mismatch' WHERE lease_id = ?"
         )
         .run(lease.leaseId),
+    (db, lease) => {
+      db.prepare('UPDATE work_bindings SET display_path = NULL WHERE lease_id = ?').run(
+        lease.leaseId
+      );
+      db.prepare(
+        "UPDATE work_leases SET path_hash = 'not-a-canonical-hash' WHERE lease_id = ?"
+      ).run(lease.leaseId);
+    },
   ];
   for (const corrupt of corruptions) {
     for (const selector of [
