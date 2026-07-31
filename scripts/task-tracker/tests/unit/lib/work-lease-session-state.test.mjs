@@ -113,9 +113,12 @@ function acquireRequest(overrides = {}) {
     requestedAt: '2026-07-30T12:00:00.000Z',
     ttlMs: 15 * 60 * 1000,
     holder,
-    binding:
-      overrides.binding ??
-      { ...BINDING, sessionId: holder.sessionId, issueId, worktreeId: holder.worktreeId },
+    binding: overrides.binding ?? {
+      ...BINDING,
+      sessionId: holder.sessionId,
+      issueId,
+      worktreeId: holder.worktreeId,
+    },
     ...overrides,
   };
 }

@@ -39,6 +39,7 @@ import {
   timingProjectionMarker,
 } from '../../../gh-timing-comment.mjs';
 import { canonicalTimingQueueProjection } from '../../../lib/timing-queue-projection.mjs';
+import { authenticateTransitionMutationCommit } from '../../../lib/work-lease/transition-projection-authority.mjs';
 import { readFileSync as readSourceFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
@@ -72,6 +73,31 @@ const LEASE = {
   heartbeatAt: NOW.toISOString(),
   expiresAt: '2026-07-30T12:15:00.000Z',
 };
+
+function stickyAuthority({
+  lease = LEASE,
+  sessionId = 'session-1',
+  issueId = '1049',
+  branch = LEASE.holder.branch,
+} = {}) {
+  const holder = { ...LEASE.holder, sessionId, branch };
+  const worktreeId = lease.worktreeId ?? lease.holder?.worktreeId ?? holder.worktreeId;
+  return {
+    lease: {
+      projectId: lease.projectId,
+      leaseId: lease.leaseId,
+      fencingToken: lease.fencingToken,
+      worktreeId,
+    },
+    holder,
+    binding: {
+      sessionId,
+      issueId,
+      worktreeId,
+      displayPath: WORKTREE.displayPath,
+    },
+  };
+}
 
 function governedApprovalFixture({ verifyEffect } = {}) {
   const calls = [];
@@ -190,12 +216,7 @@ async function runIntegratedGovernedClose({ staleAt = null } = {}) {
       leaseIssue: '#1049',
       entryStartTs: new Date(Date.now() - 60_000).toISOString(),
       wordsAtStart: 0,
-      lease: {
-        projectId: LEASE.projectId,
-        leaseId: LEASE.leaseId,
-        fencingToken: LEASE.fencingToken,
-        worktreeId: WORKTREE.worktreeId,
-      },
+      ...stickyAuthority({ sessionId }),
     },
     dir
   );
@@ -336,12 +357,16 @@ test('Nth stale close fence preserves active binding and suppresses later effect
   }
 });
 
-function switchProjectionAuthorityFixture() {
+async function switchProjectionAuthorityFixture() {
+  const sourceAuthority = stickyAuthority({ issueId: '1048' });
+  const targetAuthority = stickyAuthority({ issueId: '1049' });
   const request = {
     projectId: LEASE.projectId,
     issueId: '1048',
     leaseId: LEASE.leaseId,
     fencingToken: LEASE.fencingToken,
+    holder: sourceAuthority.holder,
+    binding: sourceAuthority.binding,
     idempotencyKey: 'switch:session-1:1048:1049:request-fixture',
     switchedAt: NOW.toISOString(),
     target: {
@@ -351,14 +376,17 @@ function switchProjectionAuthorityFixture() {
       idempotencyKey: 'switch-target:session-1:1049:request-fixture',
       requestedAt: NOW.toISOString(),
       ttlMs: 900_000,
-      holder: { ...LEASE.holder },
+      holder: targetAuthority.holder,
+      binding: targetAuthority.binding,
     },
   };
   const receipt = {
     lease: {
       ...LEASE,
+      issueId: '1049',
       leaseId: 'lease-switch-target',
       fencingToken: '8',
+      holder: targetAuthority.holder,
       audit: { operation: 'switch' },
     },
     transition: {
@@ -369,7 +397,21 @@ function switchProjectionAuthorityFixture() {
       toIssueId: '1049',
     },
   };
-  return { request, receipt };
+  const commitAuthority = await authenticateTransitionMutationCommit({
+    store: {
+      replayMutation: async (selector) => ({
+        selector,
+        outcome: 'committed',
+        statusCode: 200,
+        result: receipt,
+      }),
+    },
+    rawRequest: request,
+    request,
+    receipt,
+    transitionId: 'transition-switch',
+  });
+  return { commitAuthority, request, receipt };
 }
 
 function sandbox() {
@@ -456,10 +498,22 @@ function options(dir, overrides = {}) {
       projections: Object.fromEntries(
         ['session', 'fleet', 'timing', 'github'].map((name) => [
           name,
-          async ({ lease, projectionName, projectionId }) => {
+          async ({ lease, request, projectionName, projectionId }) => {
             log.push(name);
             if (name === 'session') {
-              setActiveTask('session-1', { issue: '#1049', lease }, dir);
+              setActiveTask(
+                'session-1',
+                {
+                  issue: '#1049',
+                  ...stickyAuthority({
+                    lease,
+                    sessionId: request.holder.sessionId,
+                    issueId: request.issueId,
+                    branch: request.holder.branch,
+                  }),
+                },
+                dir
+              );
             }
             return { reconciled: true, projectionName, projectionId };
           },
@@ -487,12 +541,7 @@ function resumeOptions(dir, overrides = {}) {
     'session-1',
     {
       issue: '#1049',
-      lease: {
-        projectId: LEASE.projectId,
-        leaseId: LEASE.leaseId,
-        fencingToken: LEASE.fencingToken,
-        worktreeId: WORKTREE.worktreeId,
-      },
+      ...stickyAuthority(),
     },
     dir
   );
@@ -1002,10 +1051,22 @@ test('response-lost assignment with an unavailable read retains the grant and re
     retry.input.projections = Object.fromEntries(
       ['session', 'fleet', 'timing', 'github'].map((name) => [
         name,
-        async ({ input, lease, projectionName, projectionId }) => {
+        async ({ input, lease, request, projectionName, projectionId }) => {
           projectionEffects.push({ input, projectionName, projectionId });
           if (name === 'session') {
-            setActiveTask('session-1', { issue: '#1049', lease }, dir);
+            setActiveTask(
+              'session-1',
+              {
+                issue: '#1049',
+                ...stickyAuthority({
+                  lease,
+                  sessionId: request.holder.sessionId,
+                  issueId: request.issueId,
+                  branch: request.holder.branch,
+                }),
+              },
+              dir
+            );
           }
           return { reconciled: true, projectionName, projectionId };
         },
@@ -1157,6 +1218,8 @@ test('pre-existing acquire without a receipt proves current authority after hist
         fencingToken: LEASE.fencingToken,
         operation: 'task-bind',
         verifiedAt: DELAYED_NOW.toISOString(),
+        holder: LEASE.holder,
+        binding: stickyAuthority().binding,
       },
     ]);
     assert.equal(checkpointCalls, 0);
@@ -1273,7 +1336,6 @@ test('persisted acquire receipt verifies current authority before claim, project
     const renewalRequests = [];
     let currentAuthority = {
       ...LEASE,
-      state: 'paused',
       heartbeatAt: '2026-07-30T12:00:00.000Z',
       expiresAt: '2026-07-30T12:05:00.000Z',
     };
@@ -1346,10 +1408,22 @@ test('persisted acquire receipt verifies current authority before claim, project
       projections: Object.fromEntries(
         ['session', 'fleet', 'timing', 'github'].map((name) => [
           name,
-          async ({ lease, projectionName, projectionId }) => {
+          async ({ lease, request, projectionName, projectionId }) => {
             replayLog.push(name);
             if (name === 'session') {
-              setActiveTask('session-1', { issue: '#1049', lease }, dir);
+              setActiveTask(
+                'session-1',
+                {
+                  issue: '#1049',
+                  ...stickyAuthority({
+                    lease,
+                    sessionId: request.holder.sessionId,
+                    issueId: request.issueId,
+                    branch: request.holder.branch,
+                  }),
+                },
+                dir
+              );
             }
             return { reconciled: true, projectionName, projectionId };
           },
@@ -1371,6 +1445,8 @@ test('persisted acquire receipt verifies current authority before claim, project
         fencingToken: LEASE.fencingToken,
         operation: 'task-bind',
         verifiedAt: DELAYED_NOW.toISOString(),
+        holder: LEASE.holder,
+        binding: stickyAuthority().binding,
       },
       {
         projectId: LEASE.projectId,
@@ -1378,6 +1454,8 @@ test('persisted acquire receipt verifies current authority before claim, project
         fencingToken: LEASE.fencingToken,
         operation: 'task-bind',
         verifiedAt: DELAYED_NOW.toISOString(),
+        holder: LEASE.holder,
+        binding: stickyAuthority().binding,
       },
     ]);
     assert.deepEqual(renewalRequests, [
@@ -1390,6 +1468,8 @@ test('persisted acquire receipt verifies current authority before claim, project
         )}`,
         requestedAt: DELAYED_NOW.toISOString(),
         ttlMs: 15 * 60 * 1000,
+        holder: LEASE.holder,
+        binding: stickyAuthority().binding,
       },
     ]);
     assert.deepEqual(replayLog, [
@@ -2288,6 +2368,8 @@ test('pre-existing resume without a receipt re-proves liveness after historical 
       )}`,
       requestedAt: DELAYED_NOW.toISOString(),
       ttlMs: 15 * 60 * 1000,
+      holder: LEASE.holder,
+      binding: stickyAuthority().binding,
     });
     assert.equal(checkpointCalls, 0);
     assert.equal(heartbeatCalls, 0);
@@ -2685,7 +2767,24 @@ function governedResumeContext(dir, { rest, state, session, coordinator = 'acqui
   process.env.AI_TASK_MANAGER_SESSION_ID = sessionId;
   const statePath = path.join(dir, `${sessionId}-state.json`);
   writeFileSync(statePath, JSON.stringify(state), 'utf8');
-  if (session) setActiveTask(sessionId, session, dir);
+  if (session) {
+    let persistedSession = session;
+    if (session.lease && (session.holder === undefined || session.binding === undefined)) {
+      const issueId = String(
+        session.leaseIssue ?? session.issue ?? state?.active ?? state?.lastActive
+      ).replace(/^#/, '');
+      persistedSession = {
+        ...session,
+        ...stickyAuthority({
+          lease: session.lease,
+          sessionId,
+          issueId,
+          branch: 'feature/child/1049',
+        }),
+      };
+    }
+    setActiveTask(sessionId, persistedSession, dir);
+  }
   const events = [];
   const durableLease = {
     projectId: LEASE.projectId,
@@ -2700,10 +2799,12 @@ function governedResumeContext(dir, { rest, state, session, coordinator = 'acqui
     const issueId = String(input.issueId).replace(/^#/, '');
     const idempotencyKey = `${coordinator}:${input.sessionId}:${issueId}:${requestId}`;
     const projectionSetId = `${coordinator}:${idempotencyKey}`;
+    const authority = stickyAuthority({ sessionId: input.sessionId, issueId });
     for (const name of ['session', 'fleet', 'timing', 'github']) {
       await input.projections[name]({
         input: input.projectionInputs[name],
         lease: durableLease,
+        request: authority,
         projectionName: name,
         projectionId: `${projectionSetId}:${name}`,
       });
@@ -2742,6 +2843,67 @@ function governedResumeContext(dir, { rest, state, session, coordinator = 'acqui
       coordinateWorkLeaseResume: runCoordinator,
       coordinateWorkLeaseSwitch: async (input) => {
         events.push('switchLease');
+        const sourceIssueId = String(input.sourceIssueId).replace(/^#/, '');
+        const targetIssueId = String(input.targetIssueId).replace(/^#/, '');
+        const sourceAuthority = stickyAuthority({
+          sessionId: input.sessionId,
+          issueId: sourceIssueId,
+        });
+        const targetAuthority = stickyAuthority({
+          sessionId: input.sessionId,
+          issueId: targetIssueId,
+        });
+        const request = {
+          projectId: LEASE.projectId,
+          issueId: sourceIssueId,
+          leaseId: LEASE.leaseId,
+          fencingToken: LEASE.fencingToken,
+          holder: sourceAuthority.holder,
+          binding: sourceAuthority.binding,
+          idempotencyKey: `switch:${input.sessionId}:${sourceIssueId}:${targetIssueId}:request-1`,
+          switchedAt: NOW.toISOString(),
+          target: {
+            projectId: LEASE.projectId,
+            issueId: targetIssueId,
+            mode: 'write',
+            idempotencyKey: `switch-target:${input.sessionId}:${targetIssueId}:request-1`,
+            requestedAt: NOW.toISOString(),
+            ttlMs: 15 * 60 * 1000,
+            holder: targetAuthority.holder,
+            binding: targetAuthority.binding,
+          },
+        };
+        const receipt = {
+          lease: {
+            ...LEASE,
+            issueId: targetIssueId,
+            leaseId: 'lease-target',
+            fencingToken: '9',
+            holder: targetAuthority.holder,
+            audit: {},
+          },
+          transition: {
+            transitionId: 'transition-switch',
+            fromIssueId: sourceIssueId,
+            fromLeaseId: LEASE.leaseId,
+            fromToken: LEASE.fencingToken,
+            toIssueId: targetIssueId,
+          },
+        };
+        const commitAuthority = await authenticateTransitionMutationCommit({
+          store: {
+            replayMutation: async (selector) => ({
+              selector,
+              outcome: 'committed',
+              statusCode: 200,
+              result: receipt,
+            }),
+          },
+          rawRequest: request,
+          request,
+          receipt,
+          transitionId: 'transition-switch',
+        });
         const sourceTimingRows = input.projectionInputs.timing.rows.filter(
           (item) => item.issueNumber === '1048'
         );
@@ -2760,9 +2922,12 @@ function governedResumeContext(dir, { rest, state, session, coordinator = 'acqui
             ) ??
             `switchLease:switch:${input.sessionId}:1048:1049:request-1:${name}`;
           await input.projections[name]({
+            commitAuthority,
             phase: 'forward',
             input: input.projectionInputs[name],
             lease: durableLease,
+            receipt,
+            request,
             transitionId: 'transition-switch',
             projectionName: name,
             projectionId,
@@ -3578,7 +3743,7 @@ test('production GitHub switch sub-operations survive response loss with exact r
         transitionId: 'transition-switch',
         projectionName: 'github',
         projectionId,
-        ...switchProjectionAuthorityFixture(),
+        ...(await switchProjectionAuthorityFixture()),
       };
       await assert.rejects(
         () => input.projections.github(options),
@@ -3765,7 +3930,7 @@ test('queued source timing survives delivery and checkpoint loss with one stable
         transitionId: 'transition-switch',
         projectionName: 'timing',
         projectionId: timingProjectionId,
-        ...switchProjectionAuthorityFixture(),
+        ...(await switchProjectionAuthorityFixture()),
       };
       await assert.rejects(
         () => input.projections.timing(timingOptions),
@@ -4004,6 +4169,7 @@ test('claim-first compensation restores exact global, marker, pending-pause, and
     ];
     ctx.now = () => clock[Math.min(clockIndex++, clock.length - 1)];
     let currentAuthority;
+    let currentReceipt;
     const store = {
       projectId: LEASE.projectId,
       async switchLease(request) {
@@ -4024,7 +4190,7 @@ test('claim-first compensation restores exact global, marker, pending-pause, and
           audit: {},
         };
         currentAuthority = lease;
-        return {
+        currentReceipt = {
           lease,
           transition: {
             transitionId: request.idempotencyKey.startsWith('compensate:')
@@ -4035,6 +4201,15 @@ test('claim-first compensation restores exact global, marker, pending-pause, and
             fromToken: request.fencingToken,
             toIssueId: request.target.issueId,
           },
+        };
+        return currentReceipt;
+      },
+      async replayMutation(selector) {
+        return {
+          selector,
+          outcome: 'committed',
+          statusCode: 200,
+          result: currentReceipt,
         };
       },
       async verify() {

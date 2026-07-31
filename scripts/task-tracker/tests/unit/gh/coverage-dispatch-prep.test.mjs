@@ -199,12 +199,7 @@ test('dispatch uses one anchor-owned root, a narrow move continuation, and timin
     AITM_FENCING_TOKEN: '7',
     AITM_LEASE_RECEIPT: 'untrusted',
   };
-  h.overrides.postTimingEvent = async ({
-    issueNumber,
-    operation,
-    withGovernedEffect,
-    env,
-  }) => {
+  h.overrides.postTimingEvent = async ({ issueNumber, operation, withGovernedEffect, env }) => {
     assert.equal(issueNumber, '#42');
     assert.equal(operation, 'branch-worktree-orchestration');
     assert.deepEqual(env, {

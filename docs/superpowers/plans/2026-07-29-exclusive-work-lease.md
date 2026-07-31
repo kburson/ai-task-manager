@@ -737,8 +737,8 @@ real Git worktree directory. Raw display text never participates in uniqueness.
   allocates a fence, changes a lease/binding, or evaluates current lease state.
   SQLite, HTTPS, and task-tracker adapters expose the same canonical selector
   and exact result union: committed `{ selector, outcome: 'committed',
-  statusCode, result }`, rejected `{ selector, outcome: 'rejected', statusCode,
-  error }`, or absent `{ selector, outcome: 'absent' }`. Public selector
+statusCode, result }`, rejected `{ selector, outcome: 'rejected', statusCode,
+error }`, or absent `{ selector, outcome: 'absent' }`. Public selector
   operations use port names including `switchLease`; SQLite maps that one name
   to historical event operation `switch` only at this read boundary. A missing
   project/key is absent; an existing project/key whose operation or digest

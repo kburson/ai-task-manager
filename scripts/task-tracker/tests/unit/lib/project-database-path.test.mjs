@@ -3,9 +3,9 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import { mkdtempSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
-import os from 'node:os';
 import path from 'node:path';
 
+import { projectScratchDir } from '../../../lib/scratch-dir.mjs';
 import { resolveMainWorktreePath } from '../../../lib/main-worktree-path.mjs';
 import { resolveProjectDatabasePath } from '../../../lib/ledger/project-database-path.mjs';
 
@@ -42,7 +42,7 @@ test('authority resolution fails closed while fleet may explicitly request fallb
 });
 
 test('main and linked worktrees converge on one authoritative database', () => {
-  const root = mkdtempSync(path.join(os.tmpdir(), 'aitm-linked-ledger-'));
+  const root = mkdtempSync(path.join(projectScratchDir('test'), 'aitm-linked-ledger-'));
   const main = path.join(root, 'main');
   const childOne = path.join(root, 'child-one');
   const childTwo = path.join(root, 'child-two');

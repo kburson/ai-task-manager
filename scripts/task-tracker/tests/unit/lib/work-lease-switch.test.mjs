@@ -4,11 +4,7 @@ import { createHash } from 'node:crypto';
 import { readFileSync, rmSync, writeFileSync } from 'node:fs';
 import test from 'node:test';
 
-import {
-  canonicalRequestDigest,
-  canonicalRequestJson,
-  WorkLeaseError,
-} from '@kburson/aitm-ledger';
+import { canonicalRequestDigest, canonicalRequestJson, WorkLeaseError } from '@kburson/aitm-ledger';
 
 import { claimAuditProjectionMarker } from '../../../lib/assignee-guard.mjs';
 import { mkdtempProjectIsolated } from '../../../lib/scratch-dir.mjs';
@@ -681,13 +677,19 @@ test('missing or drifted forward replay preserves the attached journal before an
     );
     const journalPath = activeTaskPath('session-1', dir);
     const attachedBytes = readFileSync(journalPath);
-    assert.equal(log.some((entry) => entry === 'eligibility' || entry.startsWith('projection:')), false);
+    assert.equal(
+      log.some((entry) => entry === 'eligibility' || entry.startsWith('projection:')),
+      false
+    );
 
     store.replayMutation = async (selector) => ({
       selector,
       outcome: 'committed',
       statusCode: 200,
-      result: { ...FORWARD_RECEIPT, transition: { ...FORWARD_RECEIPT.transition, toIssueId: '9999' } },
+      result: {
+        ...FORWARD_RECEIPT,
+        transition: { ...FORWARD_RECEIPT.transition, toIssueId: '9999' },
+      },
     });
     await assert.rejects(
       () => coordinateWorkLeaseSwitch(input),

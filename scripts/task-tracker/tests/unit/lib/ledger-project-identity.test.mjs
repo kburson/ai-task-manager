@@ -2,14 +2,14 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
-import os from 'node:os';
 import path from 'node:path';
 
 import { openProjectDatabase } from '../../../../../packages/aitm-ledger/src/sqlite/open.mjs';
 import { ensureLedgerProjectIdentity } from '../../../lib/ledger/project-identity.mjs';
+import { projectScratchDir } from '../../../lib/scratch-dir.mjs';
 
 function sandbox() {
-  const root = mkdtempSync(path.join(os.tmpdir(), 'aitm-project-id-'));
+  const root = mkdtempSync(path.join(projectScratchDir('test'), 'aitm-project-id-'));
   return {
     root,
     dbPath: path.join(root, '.db', 'aitm', 'project.sqlite'),

@@ -226,7 +226,11 @@ export async function backfillPersistedWorkLeaseAuthority({
   try {
     await saveSession(sessionId, { ...session, ...authority }, projectDir);
   } catch (error) {
-    throw stableError(error, 'authority-unavailable', 'cannot persist observed work-lease authority');
+    throw stableError(
+      error,
+      'authority-unavailable',
+      'cannot persist observed work-lease authority'
+    );
   }
   return authority;
 }
@@ -1476,9 +1480,7 @@ export async function verifyGovernedEffect({
     const renewal = renewalRequestIdentity(persistedLease, verifiedAt);
     try {
       authorityLease = normalizeAuthorityLease(
-        await store.renew(
-          renewRequest(authority, renewal.requestedAt, renewal.idempotencyKey)
-        ),
+        await store.renew(renewRequest(authority, renewal.requestedAt, renewal.idempotencyKey)),
         persistedLease,
         canonicalIssueId,
         worktree.worktreeId,

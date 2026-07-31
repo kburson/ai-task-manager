@@ -157,8 +157,7 @@ export async function postNewAutomatedTestsComment({ cfg, issueNumber, cwd, deps
   if (entries.length === 0) return { status: 'no-tests' };
 
   const body = buildNewAutomatedTestsComment(entries);
-  const create = () =>
-    createComment({ cfg, issueNumber, body, exec: deps.pexec, env: deps.env });
+  const create = () => createComment({ cfg, issueNumber, body, exec: deps.pexec, env: deps.env });
   if (typeof deps.withGovernedEffect === 'function') {
     await deps.withGovernedEffect(
       {

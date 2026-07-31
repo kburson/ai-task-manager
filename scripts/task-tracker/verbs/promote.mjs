@@ -325,21 +325,18 @@ export async function runPromote({
     processExec(command, args, { ...options, env: ownedChildEnv });
   const ownedGql = (query, variables, options = {}) =>
     gql(query, variables, { ...options, env: ownedChildEnv });
-  const ownedProjectValues = (options) =>
-    projectValuesForIssue({ ...options, runGql: ownedGql });
+  const ownedProjectValues = (options) => projectValuesForIssue({ ...options, runGql: ownedGql });
   const refinementDeps = {
     ...(deps.refinementEstimate || deps.groomEstimate),
     projectValuesForIssue:
-      (deps.refinementEstimate || deps.groomEstimate)?.projectValuesForIssue ||
-      ownedProjectValues,
+      (deps.refinementEstimate || deps.groomEstimate)?.projectValuesForIssue || ownedProjectValues,
     pexec: ownedPexec,
     env: ownedChildEnv,
     gql: ownedGql,
   };
   const refineToPlanGateDeps = {
     ...deps.refineToPlanGateDeps,
-    projectValuesForIssue:
-      deps.refineToPlanGateDeps?.projectValuesForIssue || ownedProjectValues,
+    projectValuesForIssue: deps.refineToPlanGateDeps?.projectValuesForIssue || ownedProjectValues,
     pexec: ownedPexec,
     env: ownedChildEnv,
     gql: ownedGql,

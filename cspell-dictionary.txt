@@ -268,3 +268,6 @@ unbypassable
 monotonize
 chrono
 multistep
+purgeable
+reparent
+unleased

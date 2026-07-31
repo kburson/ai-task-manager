@@ -1071,7 +1071,18 @@ async function buildGovernedSwitchPlan(
 
 async function applySwitchProjection(
   ctx,
-  { phase, input, lease, receipt, request, transitionId, projectionName, projectionId, sessionId }
+  {
+    commitAuthority,
+    phase,
+    input,
+    lease,
+    receipt,
+    request,
+    transitionId,
+    projectionName,
+    projectionId,
+    sessionId,
+  }
 ) {
   if (phase === 'compensation') {
     const forwardInput = input?.forwardInput;
@@ -1138,6 +1149,8 @@ async function applySwitchProjection(
     github: applyGithubProjection,
   }[projectionName];
   return apply(ctx, {
+    commitAuthority,
+    phase,
     input,
     lease,
     receipt,

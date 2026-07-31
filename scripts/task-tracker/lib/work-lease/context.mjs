@@ -146,28 +146,12 @@ function validateHistoricalCommittedSwitchIntent(intent, request) {
   }
   exactKeys(
     request,
-    [
-      'projectId',
-      'issueId',
-      'leaseId',
-      'fencingToken',
-      'idempotencyKey',
-      'switchedAt',
-      'target',
-    ],
+    ['projectId', 'issueId', 'leaseId', 'fencingToken', 'idempotencyKey', 'switchedAt', 'target'],
     'historical switch request'
   );
   exactKeys(
     request.target,
-    [
-      'projectId',
-      'issueId',
-      'mode',
-      'idempotencyKey',
-      'requestedAt',
-      'ttlMs',
-      'holder',
-    ],
+    ['projectId', 'issueId', 'mode', 'idempotencyKey', 'requestedAt', 'ttlMs', 'holder'],
     'historical switch target'
   );
   nonEmptyString(request.projectId, 'historical switch projectId');

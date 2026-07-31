@@ -194,9 +194,7 @@ test('develop-to-test production git and GH helpers receive only the owned lease
     calls.push({ command, args, env: options.env });
     if (command === 'gh' && args[0] === 'issue' && args[1] === 'view') {
       return {
-        stdout: JSON.stringify([
-          { body: '### 🔗 Commits\n<!-- aitm-commits shas="deadbeef" -->' },
-        ]),
+        stdout: JSON.stringify([{ body: '### 🔗 Commits\n<!-- aitm-commits shas="deadbeef" -->' }]),
       };
     }
     if (command === 'git') {

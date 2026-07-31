@@ -5,6 +5,8 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import { emitSelfDoc, wantsHelp } from '../lib/self-doc.mjs';
+
 const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(SCRIPT_DIR, '..', '..');
 const LEDGER_NAME = '@kburson/aitm-ledger';
@@ -70,5 +72,9 @@ export function publishLedgerIfNeeded({
 }
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  if (wantsHelp(process.argv.slice(2))) {
+    emitSelfDoc('publish-ledger-if-needed');
+    process.exit(0);
+  }
   publishLedgerIfNeeded();
 }

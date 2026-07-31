@@ -3,7 +3,6 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
-import os from 'node:os';
 import path from 'node:path';
 import { createHash } from 'node:crypto';
 
@@ -21,6 +20,7 @@ import {
 } from '../../../../../packages/aitm-ledger/test/fixtures/lease-conformance.mjs';
 import { HttpWorkLeaseStore } from '../../../lib/work-lease/http-store.mjs';
 import { createWorkLeaseProvider } from '../../../lib/work-lease/provider.mjs';
+import { projectScratchDir } from '../../../lib/scratch-dir.mjs';
 
 const PROJECT_ID = '11111111-1111-4111-8111-111111111111';
 const NOW = '2026-07-30T12:00:00.000Z';
@@ -650,7 +650,7 @@ test('provider selection opens local only in local mode and never falls back fro
 });
 
 test('default local provider resolves the strict main database and initializes matching identity', () => {
-  const root = mkdtempSync(path.join(os.tmpdir(), 'aitm-provider-local-'));
+  const root = mkdtempSync(path.join(projectScratchDir('test'), 'aitm-provider-local-'));
   const configPath = path.join(root, '.ai-task-manager', 'task-tracker.json');
   try {
     execFileSync('git', ['init', '-b', 'trunk', root], { stdio: 'ignore' });
@@ -681,7 +681,7 @@ test('default local provider resolves the strict main database and initializes m
 });
 
 test('default local provider bootstraps an empty ledger identity and exposes the winner', () => {
-  const root = mkdtempSync(path.join(os.tmpdir(), 'aitm-provider-bootstrap-'));
+  const root = mkdtempSync(path.join(projectScratchDir('test'), 'aitm-provider-bootstrap-'));
   const configPath = path.join(root, '.ai-task-manager', 'task-tracker.json');
   try {
     execFileSync('git', ['init', '-b', 'trunk', root], { stdio: 'ignore' });
