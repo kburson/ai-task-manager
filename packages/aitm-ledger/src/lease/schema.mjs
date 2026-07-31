@@ -497,7 +497,7 @@ function replayExactKeys(value, expected, label) {
   return value;
 }
 
-function validateReplayLease(value) {
+function validateReplayLease(value, selector) {
   const lease = replayExactKeys(
     value,
     [
@@ -529,10 +529,34 @@ function validateReplayLease(value) {
     timestamp(lease.heartbeatAt, 'lease.heartbeatAt');
     timestamp(lease.expiresAt, 'lease.expiresAt');
     object(lease.audit, 'lease.audit');
+    if (lease.projectId !== selector.projectId) throw new Error('project');
+    if (
+      Date.parse(lease.acquiredAt) > Date.parse(lease.heartbeatAt) ||
+      Date.parse(lease.heartbeatAt) >= Date.parse(lease.expiresAt)
+    ) {
+      throw new Error('chronology');
+    }
   } catch {
     replayUnavailable('mutation replay lease is malformed');
   }
   return lease;
+}
+
+function validateReplayLeaseForOperation(lease, operation) {
+  const expected = {
+    acquire: { states: ['active'], principalKind: 'worker' },
+    renew: { states: ['active', 'paused'] },
+    switchLease: { states: ['active'], principalKind: 'worker' },
+    handoff: { states: ['active'], principalKind: 'integration' },
+    release: { states: ['released'] },
+    takeover: { states: ['active'], principalKind: 'worker' },
+  }[operation];
+  if (
+    !expected?.states.includes(lease.state) ||
+    (expected.principalKind && lease.holder.principalKind !== expected.principalKind)
+  ) {
+    replayUnavailable('mutation replay lease contradicts its operation');
+  }
 }
 
 function validateReplayTransition(value) {
@@ -594,10 +618,19 @@ export function validateReplayMutationOutcome(value, selector) {
         ['lease', 'transition'],
         'switch replay result'
       );
-      validateReplayLease(result.lease);
+      validateReplayLease(result.lease, selector);
+      validateReplayLeaseForOperation(result.lease, selector.operation);
       validateReplayTransition(result.transition);
+      if (
+        result.lease.issueId !== result.transition.toIssueId ||
+        result.lease.leaseId === result.transition.fromLeaseId ||
+        BigInt(result.lease.fencingToken) <= BigInt(result.transition.fromToken)
+      ) {
+        replayUnavailable('switch replay result is intrinsically inconsistent');
+      }
     } else {
-      validateReplayLease(outcome.result);
+      validateReplayLease(outcome.result, selector);
+      validateReplayLeaseForOperation(outcome.result, selector.operation);
     }
     return outcome;
   }

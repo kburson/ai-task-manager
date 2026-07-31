@@ -335,6 +335,33 @@ test('mutation replay reads the exact recorded outcome without changing authorit
 });
 
 test('mutation replay fails closed on corrupt rows without mutating authority', () => {
+  const corruptSwitch = (mutate) => (db) => {
+    const sourceLease = JSON.parse(
+      db.prepare('SELECT response_json FROM work_lease_events').get().response_json
+    );
+    const result = {
+      lease: {
+        ...sourceLease,
+        issueId: '1050',
+        leaseId: 'switch-target-lease',
+        fencingToken: '2',
+      },
+      transition: {
+        transitionId: 'transition-1',
+        fromIssueId: '1049',
+        fromLeaseId: sourceLease.leaseId,
+        fromToken: sourceLease.fencingToken,
+        toIssueId: '1050',
+      },
+    };
+    mutate(result);
+    db.prepare(
+      `UPDATE work_lease_events
+          SET operation = 'switch',
+              response_json = ?,
+              status_code = 200`
+    ).run(JSON.stringify(result));
+  };
   const corruptions = [
     {
       name: 'unknown stored operation',
@@ -360,6 +387,63 @@ test('mutation replay fails closed on corrupt rows without mutating authority', 
             "UPDATE work_lease_events SET response_json = json_set(response_json, '$.holder', json('{}'))"
           )
           .run(),
+    },
+    {
+      name: 'cross-project lease',
+      apply: (db) =>
+        db
+          .prepare(
+            "UPDATE work_lease_events SET response_json = json_set(response_json, '$.projectId', 'other-project')"
+          )
+          .run(),
+    },
+    {
+      name: 'wrong valid state for acquire',
+      apply: (db) =>
+        db
+          .prepare(
+            "UPDATE work_lease_events SET response_json = json_set(response_json, '$.state', 'paused')"
+          )
+          .run(),
+    },
+    {
+      name: 'wrong valid principal for acquire',
+      apply: (db) =>
+        db
+          .prepare(
+            "UPDATE work_lease_events SET response_json = json_set(response_json, '$.holder.principalKind', 'integration')"
+          )
+          .run(),
+    },
+    {
+      name: 'bad lease chronology',
+      apply: (db) =>
+        db
+          .prepare(
+            "UPDATE work_lease_events SET response_json = json_set(response_json, '$.heartbeatAt', response_json ->> '$.expiresAt')"
+          )
+          .run(),
+    },
+    {
+      name: 'switch target issue contradiction',
+      operation: 'switchLease',
+      apply: corruptSwitch((result) => {
+        result.transition.toIssueId = '1051';
+      }),
+    },
+    {
+      name: 'switch lease identity contradiction',
+      operation: 'switchLease',
+      apply: corruptSwitch((result) => {
+        result.lease.leaseId = result.transition.fromLeaseId;
+      }),
+    },
+    {
+      name: 'switch fencing contradiction',
+      operation: 'switchLease',
+      apply: corruptSwitch((result) => {
+        result.lease.fencingToken = result.transition.fromToken;
+      }),
     },
     {
       name: 'rejected wrong status',
@@ -461,7 +545,7 @@ test('mutation replay fails closed on corrupt rows without mutating authority', 
     store.acquire(request);
     const selector = {
       projectId: request.projectId,
-      operation: 'acquire',
+      operation: corruption.operation ?? 'acquire',
       idempotencyKey: request.idempotencyKey,
       requestDigest: canonicalRequestDigest(request),
     };

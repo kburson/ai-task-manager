@@ -411,7 +411,10 @@ test('mutation replay rejects forged operation outcomes and unsanitized errors',
     selector,
     outcome: 'committed',
     statusCode: 200,
-    result: { lease: lease({ issueId: '1050' }), transition },
+    result: {
+      lease: lease({ issueId: '1050', leaseId: 'lease-2', fencingToken: '2' }),
+      transition,
+    },
   };
   const rejected = {
     selector,
@@ -419,12 +422,12 @@ test('mutation replay rejects forged operation outcomes and unsanitized errors',
     statusCode: 409,
     error: { code: 'idempotency-conflict', message: 'request conflict', details: {} },
   };
-  const parse = (result) =>
+  const parse = (result, request = selector) =>
     parseHttpLeaseResponse({
       operation: 'replayMutation',
       status: 200,
       payload: createHttpSuccessEnvelope(result),
-      request: selector,
+      request,
     });
 
   assert.deepEqual(parse(committed), committed);
@@ -442,6 +445,68 @@ test('mutation replay rejects forged operation outcomes and unsanitized errors',
       ...committed,
       result: { ...committed.result, transition: { ...transition, fromToken: '0' } },
     },
+    {
+      ...committed,
+      result: {
+        ...committed.result,
+        lease: { ...committed.result.lease, projectId: 'other-project' },
+      },
+    },
+    {
+      ...committed,
+      result: { ...committed.result, lease: { ...committed.result.lease, state: 'paused' } },
+    },
+    {
+      ...committed,
+      result: {
+        ...committed.result,
+        lease: {
+          ...committed.result.lease,
+          holder: { ...committed.result.lease.holder, principalKind: 'integration' },
+        },
+      },
+    },
+    {
+      ...committed,
+      result: {
+        ...committed.result,
+        lease: {
+          ...committed.result.lease,
+          acquiredAt: '2026-07-30T12:00:01.000Z',
+        },
+      },
+    },
+    {
+      ...committed,
+      result: {
+        ...committed.result,
+        lease: {
+          ...committed.result.lease,
+          heartbeatAt: committed.result.lease.expiresAt,
+        },
+      },
+    },
+    {
+      ...committed,
+      result: {
+        ...committed.result,
+        transition: { ...transition, toIssueId: '1051' },
+      },
+    },
+    {
+      ...committed,
+      result: {
+        ...committed.result,
+        lease: { ...committed.result.lease, leaseId: transition.fromLeaseId },
+      },
+    },
+    {
+      ...committed,
+      result: {
+        ...committed.result,
+        lease: { ...committed.result.lease, fencingToken: transition.fromToken },
+      },
+    },
     { ...rejected, statusCode: 412 },
     { ...rejected, error: { ...rejected.error, retryable: false } },
     { ...rejected, error: { ...rejected.error, details: [] } },
@@ -456,6 +521,33 @@ test('mutation replay rejects forged operation outcomes and unsanitized errors',
     assert.throws(
       () => parse(forged),
       (error) => error.code === 'authority-unavailable'
+    );
+  }
+
+  const operationContradictions = [
+    ['acquire', lease({ state: 'paused' })],
+    ['acquire', lease({ holder: holder({ principalKind: 'integration' }) })],
+    ['renew', lease({ state: 'released' })],
+    ['handoff', lease()],
+    ['release', lease()],
+    ['takeover', lease({ holder: holder({ principalKind: 'integration' }) })],
+  ];
+  for (const [operation, result] of operationContradictions) {
+    const operationSelector = {
+      ...selector,
+      operation,
+      idempotencyKey: `${operation}-contradiction`,
+    };
+    const replay = {
+      selector: operationSelector,
+      outcome: 'committed',
+      statusCode: 200,
+      result,
+    };
+    assert.throws(
+      () => parse(replay, operationSelector),
+      (error) => error.code === 'authority-unavailable',
+      operation
     );
   }
 });
