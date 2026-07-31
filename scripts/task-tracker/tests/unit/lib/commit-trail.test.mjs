@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 // @story #82
+// cspell:ignore nohup
 // Unit tests for commit-trail lib helpers.
 
 import { strict as assert } from 'node:assert';
@@ -73,6 +74,8 @@ import { defaultIsReachable } from '../../../commit-trail-handler.mjs';
     'exec git commit -m x',
     'time git commit -m x',
     'nice -n 5 git commit -m x',
+    'nice -5 git commit -m x',
+    'nohup git commit -m x',
     '{ git commit -m x; }',
     '! git commit -m x',
     'if true; then git commit -m x; fi',

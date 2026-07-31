@@ -116,11 +116,11 @@ export function entrypointCandidates(repoRelPath) {
 // [argv0, resolvedPath, ...extraArgs] — this makes the module's isMain check
 // pass and its argv reads resolve. Hooks are non-security: on no-resolution we
 // fail OPEN (exit 0 + stderr diagnostic), never closed.
-export function hookBootstrapCommand(repoRelPath, ...extraArgs) {
+function hookBootstrapProgram(repoRelPath, extraArgs) {
   const candidates = JSON.stringify(entrypointCandidates(repoRelPath));
   const argvTail = extraArgs.map((a) => JSON.stringify(String(a))).join(',');
   const label = repoRelPath.split('/').pop();
-  const program =
+  return (
     `const {existsSync}=require('fs');` +
     `const {resolve}=require('path');` +
     `const {pathToFileURL}=require('url');` +
@@ -129,6 +129,16 @@ export function hookBootstrapCommand(repoRelPath, ...extraArgs) {
     `if(!p){process.stderr.write('aitm ${label}: hook entrypoint unresolved ` +
     `(node_modules + repo-relative both absent) — skipping\\n');process.exit(0);}` +
     `process.argv=[process.argv[0],p${argvTail ? ',' + argvTail : ''}];` +
-    `import(pathToFileURL(p).href);`;
-  return `node -e "${program}"`;
+    `import(pathToFileURL(p).href);`
+  );
+}
+
+export function hookBootstrapCommand(repoRelPath, ...extraArgs) {
+  return `node -e ${JSON.stringify(hookBootstrapProgram(repoRelPath, extraArgs))}`;
+}
+
+// Unsafe shell serialization shipped before #1049. Retained only so both
+// installers can remove the exact broken command during idempotent migration.
+export function legacyHookBootstrapCommand(repoRelPath, ...extraArgs) {
+  return `node -e "${hookBootstrapProgram(repoRelPath, extraArgs)}"`;
 }

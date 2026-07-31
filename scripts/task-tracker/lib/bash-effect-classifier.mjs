@@ -4,6 +4,7 @@
 // Positively proven reads/tests/builds are effect-free; everything ambiguous
 // fails closed to `source-write`. Commit detection is segment-aware and parses
 // issue refs only from actual commit-message sources.
+// cspell:ignore nohup
 
 import { isAbsolute, relative, resolve } from 'node:path';
 
@@ -118,6 +119,8 @@ function shellTokens(command) {
       if (source[i + 1] === char && ['>', '<', '|', '&'].includes(char)) {
         value += source[++i];
       } else if ((char === '>' || char === '<') && source[i + 1] === '&') {
+        value += source[++i];
+      } else if (char === '>' && source[i + 1] === '|') {
         value += source[++i];
       }
       tokens.push({ type: 'operator', value, start: i + 1 - value.length, end: i + 1 });
@@ -340,11 +343,22 @@ export function unwrapCommandWords(inputWords) {
       words.shift();
       if (words[0] === '-n' || words[0] === '--adjustment') words.splice(0, 2);
       else if (words[0]?.startsWith('--adjustment=')) words.shift();
+      else if (/^-\d+$/.test(words[0] || '')) words.shift();
+      changed = true;
+      continue;
+    }
+    if (head === 'nohup') {
+      words.shift();
+      while (words[0]?.startsWith('-')) words.shift();
       changed = true;
     }
   }
   while (words[0] && CONTROL_PREFIXES.has(words[0])) words.shift();
   return words;
+}
+
+function quoteShellWord(word) {
+  return `'${String(word).replaceAll("'", "'\\''")}'`;
 }
 
 function findEmbeddedCommands(segment) {
@@ -357,7 +371,7 @@ function findEmbeddedCommands(segment) {
     for (i += 1; i < words.length && words[i] !== ';' && words[i] !== '+'; i++) {
       if (words[i] !== '{}') body.push(words[i]);
     }
-    if (body.length > 0) commands.push(body.join(' '));
+    if (body.length > 0) commands.push(body.map(quoteShellWord).join(' '));
   }
   return commands;
 }
@@ -379,9 +393,16 @@ export function collectCommandSegments(command) {
             (word) => word === '--command' || (/^-[^-]+$/.test(word) && word.includes('c'))
           )
         : -1;
-      if (shellFlag >= 0 && normalized[shellFlag + 1]) collect(normalized[shellFlag + 1]);
-      else if (normalized.length > 0) collected.push(segment);
-      for (const embedded of findEmbeddedCommands(segment)) collect(embedded);
+      const embeddedCommands = findEmbeddedCommands(segment);
+      if (shellFlag >= 0 && normalized[shellFlag + 1]) {
+        collect(normalized[shellFlag + 1]);
+      } else if (
+        normalized.length > 0 &&
+        !(head === 'find' && embeddedCommands.length > 0 && !findMutatesStartPaths(normalized))
+      ) {
+        collected.push(segment);
+      }
+      for (const embedded of embeddedCommands) collect(embedded);
     }
     for (const nested of nestedCommandBodies(source)) collect(nested);
   }
@@ -428,6 +449,35 @@ function isSedMutation(words) {
   );
 }
 
+function findStartPaths(words) {
+  const paths = [];
+  let positionalOnly = false;
+  for (let i = 1; i < words.length; i++) {
+    const word = words[i];
+    if (!positionalOnly && word === '--') {
+      positionalOnly = true;
+      continue;
+    }
+    if (!positionalOnly && (word.startsWith('-') || word === '!' || word === '(')) break;
+    paths.push(word);
+  }
+  return paths;
+}
+
+function findMutatesStartPaths(words) {
+  if (words.includes('-delete')) return true;
+  for (let i = 1; i < words.length; i++) {
+    if (!/^-(?:exec|execdir|ok|okdir)$/.test(words[i])) continue;
+    const body = [];
+    for (i += 1; i < words.length && words[i] !== ';' && words[i] !== '+'; i++) {
+      if (words[i] !== '{}') body.push(words[i]);
+    }
+    const embedded = unwrapCommandWords(body);
+    if (['rm', 'rmdir'].includes(basename(embedded[0]))) return true;
+  }
+  return false;
+}
+
 function sedTargets(words) {
   if (!isSedMutation(words)) return [];
   const targets = [];
@@ -468,10 +518,7 @@ function extractSegmentWriteTargets(command) {
   const tokens = shellTokens(command);
   for (let i = 0; i < tokens.length; i++) {
     const token = tokens[i];
-    if (
-      token.type !== 'operator' ||
-      (token.value !== '>' && token.value !== '>>' && token.value !== '>&')
-    ) {
+    if (token.type !== 'operator' || !['>', '>>', '>|', '>&'].includes(token.value)) {
       continue;
     }
     const next = tokens[i + 1];
@@ -532,6 +579,9 @@ function extractSegmentWriteTargets(command) {
   } else if (head === 'sed') {
     for (const operand of sedTargets(words)) targets.add(operand);
   } else if (head === 'find') {
+    if (findMutatesStartPaths(words)) {
+      for (const startPath of findStartPaths(words)) targets.add(startPath);
+    }
     for (let i = 1; i < words.length; i++) {
       if (/^-(?:fprintf|fprint|fprint0|fls)$/.test(words[i]) && words[i + 1]) {
         targets.add(words[++i]);
@@ -593,6 +643,7 @@ function issueRefs(text) {
 
 function commitMessageRefs(words, commitIndex, readCommitMessageFile) {
   const messages = [];
+  let unresolved = false;
   for (let i = commitIndex + 1; i < words.length; i++) {
     const word = words[i];
     if (word === '-m' || word === '--message') {
@@ -609,19 +660,47 @@ function commitMessageRefs(words, commitIndex, readCommitMessageFile) {
       else if (words[i + 1]) messages.push(words[++i]);
       continue;
     }
+    if (
+      word === '-C' ||
+      word === '-c' ||
+      word === '--reuse-message' ||
+      word === '--reedit-message'
+    ) {
+      unresolved = true;
+      i += 1;
+      continue;
+    }
+    if (
+      /^-[Cc].+/.test(word) ||
+      word.startsWith('--reuse-message=') ||
+      word.startsWith('--reedit-message=')
+    ) {
+      unresolved = true;
+      continue;
+    }
     let file = null;
     if (word === '-F' || word === '--file') file = words[++i];
     else if (word.startsWith('--file=')) file = word.slice('--file='.length);
     else if (/^-F.+/.test(word)) file = word.slice(2);
-    if (file && readCommitMessageFile) {
+    if (file === '-') {
+      unresolved = true;
+    } else if (file && readCommitMessageFile) {
       try {
         messages.push(readCommitMessageFile(file));
       } catch {
-        // An unreadable message file carries no statically provable ref.
+        unresolved = true;
       }
+    } else if (file) {
+      unresolved = true;
     }
   }
-  return [...new Set(messages.flatMap(issueRefs))];
+  if (
+    words.slice(commitIndex + 1).includes('--amend') &&
+    words.slice(commitIndex + 1).includes('--no-edit')
+  ) {
+    unresolved = true;
+  }
+  return { refs: [...new Set(messages.flatMap(issueRefs))], unresolved };
 }
 
 export function detectCommitCommands(command, { readCommitMessageFile } = {}) {
@@ -630,9 +709,11 @@ export function detectCommitCommands(command, { readCommitMessageFile } = {}) {
     const words = unwrapCommandWords(shellWords(segment));
     const git = gitCommand(words);
     if (git?.subcommand !== 'commit') continue;
+    const message = commitMessageRefs(words, git.index, readCommitMessageFile);
     commits.push({
       segment,
-      refs: commitMessageRefs(words, git.index, readCommitMessageFile),
+      refs: message.refs,
+      messageSourceUnresolved: message.unresolved,
       isAmend: words.slice(git.index + 1).includes('--amend'),
     });
   }
@@ -759,7 +840,6 @@ function isReadOnly(segment, classifyActivity) {
       );
     }
     if (words[1] === 'auth' && words[2] === 'status') return true;
-    if (words[1] === 'issue' && (words[2] === 'reopen' || words[2] === 'edit')) return true;
     return new Set([
       'issue list',
       'issue status',

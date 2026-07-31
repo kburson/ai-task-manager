@@ -230,6 +230,7 @@ export function classifyBash(command, policy = DEFAULT_POLICY) {
 
   // `git commit ...`
   if (/^git\s+commit\b/.test(cmd)) return 'COMMIT_CODE';
+  if (/^gh\s+issue\s+(?:edit|reopen)\b/.test(cmd)) return 'WRITE_ISSUE';
 
   // Test runners — longest-first so `npm run test` wins over `npm`.
   const testRunners = [...(policy.testRunners || [])].sort((a, b) => b.length - a.length);
@@ -246,11 +247,18 @@ export function classifyBash(command, policy = DEFAULT_POLICY) {
   // Write targets (redirect / tee / touch / mkdir / rm).
   const targets = extractWriteTargets(cmd);
   if (targets.length > 0) {
+    // Project-local scratch writes are intentionally outside issue authority
+    // and must remain usable in every workflow state. This is target-role aware:
+    // mixed commands still classify from their non-scratch destination(s).
+    if (targets.every((target) => target === '.tmp' || target.startsWith('.tmp/'))) {
+      return 'READ_*';
+    }
     // Classify the most-specific target — if any matches code or docs, return that.
     // Iterate by precedence: WRITE_ISSUE > WRITE_DOCS > WRITE_CODE > WRITE_OTHER.
     let best = 'WRITE_OTHER';
     for (const t of targets) {
-      const cls = classifyEdit(t, policy);
+      let cls = classifyEdit(t, policy);
+      if (cls === 'WRITE_OTHER') cls = classifyEdit(`${t.replace(/\/$/, '')}/.aitm-target`, policy);
       if (cls === 'WRITE_ISSUE') return 'WRITE_ISSUE';
       if (cls === 'WRITE_DOCS') best = 'WRITE_DOCS';
       else if (cls === 'WRITE_CODE' && best !== 'WRITE_DOCS') best = 'WRITE_CODE';

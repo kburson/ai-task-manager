@@ -1,5 +1,5 @@
 // @story #1049
-// cspell:ignore execdir fprint okdir
+// cspell:ignore execdir fprint nohup okdir
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
@@ -51,6 +51,19 @@ test('file-descriptor redirects write files while true descriptor duplication re
   assert.deepEqual(duplicated.calls, []);
 });
 
+test('clobber redirects govern source writes while preserving scratch-only writes', async () => {
+  const source = await authorityCalls('printf x >| src/clobbered.mjs');
+  assert.equal(source.result.decision, 'allow');
+  assert.deepEqual(
+    source.calls.map((call) => call.operation),
+    ['source-write']
+  );
+
+  const scratch = await authorityCalls('printf x >| .tmp/inspect/clobbered.txt');
+  assert.equal(scratch.result.decision, 'allow');
+  assert.deepEqual(scratch.calls, []);
+});
+
 test('process substitutions recurse for source effects and defeat whole-command AITM bypass', async () => {
   for (const command of [
     'cat <(touch src/process-input.mjs)',
@@ -70,8 +83,13 @@ test('process substitutions recurse for source effects and defeat whole-command 
 test('quoted outside paths in descriptors, process substitutions, and target directories pure-block before authority', async () => {
   for (const command of [
     'printf x 2> "/tmp/stderr.mjs"',
+    'printf x >| "/tmp/clobbered.mjs"',
     'cat <(touch "/tmp/process-input.mjs")',
     'cp --target-directory="/tmp/outside" .tmp/inspect/input',
+    "find . -exec sh -c 'touch /tmp/find-plus.mjs' {} +",
+    "find . -exec sh -c 'touch /tmp/find-semicolon.mjs' {} \\;",
+    'find /tmp -delete',
+    'find /tmp -exec rm {} +',
   ]) {
     let authorityCount = 0;
     const result = await runBashGuard(
@@ -101,6 +119,8 @@ test('sed, find, and target-directory mutation forms are governed', async () => 
     'mv --target-directory src .tmp/inspect/input',
     'mv --target-directory=.tmp/inspect src/input.mjs',
     'install -t src .tmp/inspect/input',
+    "find . -exec sh -c 'touch src/find-plus.mjs' {} +",
+    "find . -exec sh -c 'touch src/find-semicolon.mjs' {} \\;",
   ]) {
     const { result, calls } = await authorityCalls(command);
     assert.equal(result.decision, 'allow', command);
@@ -119,6 +139,8 @@ test('operand roles preserve scratch-only writes', async () => {
     'mkdir -m 755 .tmp/inspect/mode-dir',
     'touch -r src/reference.mjs .tmp/inspect/stamped.mjs',
     'install -m 755 src/input.mjs .tmp/inspect/installed.mjs',
+    "find . -exec sh -c 'touch .tmp/inspect/find-plus.txt' {} +",
+    "find . -exec sh -c 'touch .tmp/inspect/find-semicolon.txt' {} \\;",
   ]) {
     const { result, calls } = await authorityCalls(command);
     assert.equal(result.decision, 'allow', command);
@@ -134,10 +156,14 @@ test('commit grammar normalizes execution wrappers, shell clusters, control word
     'exec git commit -m "[#1049] exec"',
     'time git commit -m "[#1049] time"',
     'nice -n 5 git commit -m "[#1049] nice"',
+    'nice -5 git commit -m "[#1049] nice shorthand"',
+    'nohup git commit -m "[#1049] nohup"',
     '{ git commit -m "[#1049] group"; }',
     '! git commit -m "[#1049] negated"',
     'if true; then git commit -m "[#1049] conditional"; fi',
     'cat <(git commit -m "[#1049] process commit")',
+    'find . -exec sh -c \'git commit -m "[#1049] find plus"\' {} +',
+    'find . -exec sh -c \'git commit -m "[#1049] find semicolon"\' {} \\;',
   ]) {
     const { result, calls } = await authorityCalls(command);
     assert.equal(result.decision, 'allow', command);
@@ -146,6 +172,25 @@ test('commit grammar normalizes execution wrappers, shell clusters, control word
       ['issue-attributed-commit'],
       command
     );
+  }
+});
+
+test('unresolved commit-message sources fail closed before lease authority', async () => {
+  for (const command of [
+    'git commit -F -',
+    'git commit -F .tmp/inspect/missing-message.txt',
+    'git commit -C HEAD',
+    'git commit --reuse-message=HEAD',
+    'git commit --amend --no-edit',
+  ]) {
+    const { result, calls } = await authorityCalls(command, {
+      readCommitMessageFile: () => {
+        throw new Error('unreadable');
+      },
+    });
+    assert.equal(result.decision, 'block', command);
+    assert.equal(result.code, 'bash-commit-message-unresolved', command);
+    assert.deepEqual(calls, [], command);
   }
 });
 
@@ -195,13 +240,29 @@ test('common unbound analysis commands and env-wrapped exact AITM remain authori
   }
 });
 
+test('GitHub issue mutations are never treated as authority-free reads', async () => {
+  const edit = await authorityCalls('gh issue edit 1049 --add-label bug');
+  assert.equal(edit.result.decision, 'allow');
+  assert.deepEqual(
+    edit.calls.map((call) => call.operation),
+    ['source-write']
+  );
+
+  const reopen = await authorityCalls('gh issue reopen 1049');
+  assert.equal(reopen.result.decision, 'block');
+  assert.match(reopen.result.reason, /task reconcile/);
+  assert.deepEqual(reopen.calls, []);
+});
+
 test('missing and stale authority prevent representative parser effects', async () => {
   for (const authorityCode of ['lease-not-held', 'fence-stale']) {
     for (const command of [
       'printf x 2> src/stderr.mjs',
+      'printf x >| src/clobbered.mjs',
       'cat <(touch src/process-input.mjs)',
       'sed -ni s/old/new/ src/edited.mjs',
       'cp --target-directory=src .tmp/inspect/input',
+      "find . -exec sh -c 'touch src/find-authority.mjs' {} +",
     ]) {
       let callbackCount = 0;
       const result = await runBashGuard(

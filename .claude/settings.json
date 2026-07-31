@@ -6,7 +6,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node -e \"const {existsSync}=require('fs');const {resolve}=require('path');const {pathToFileURL}=require('url');const c=[\"node_modules/ai-task-manager/scripts/task-tracker/ensure-worktree-seeded.mjs\",\"scripts/task-tracker/ensure-worktree-seeded.mjs\"];const p=c.map(x=>resolve(process.cwd(),x)).find(existsSync);if(!p){process.stderr.write('aitm ensure-worktree-seeded.mjs: hook entrypoint unresolved (node_modules + repo-relative both absent) — skipping\\n');process.exit(0);}process.argv=[process.argv[0],p];import(pathToFileURL(p).href);\""
+            "command": "node -e \"const {existsSync}=require('fs');const {resolve}=require('path');const {pathToFileURL}=require('url');const c=[\\\"node_modules/ai-task-manager/scripts/task-tracker/ensure-worktree-seeded.mjs\\\",\\\"scripts/task-tracker/ensure-worktree-seeded.mjs\\\"];const p=c.map(x=>resolve(process.cwd(),x)).find(existsSync);if(!p){process.stderr.write('aitm ensure-worktree-seeded.mjs: hook entrypoint unresolved (node_modules + repo-relative both absent) — skipping\\\\n');process.exit(0);}process.argv=[process.argv[0],p];import(pathToFileURL(p).href);\""
           }
         ]
       },
@@ -15,7 +15,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node -e \"const {existsSync}=require('fs');const {resolve}=require('path');const {pathToFileURL}=require('url');const c=[\"node_modules/ai-task-manager/scripts/task-tracker/hook-handler.mjs\",\"scripts/task-tracker/hook-handler.mjs\"];const p=c.map(x=>resolve(process.cwd(),x)).find(existsSync);if(!p){process.stderr.write('aitm hook-handler.mjs: hook entrypoint unresolved (node_modules + repo-relative both absent) — skipping\\n');process.exit(0);}process.argv=[process.argv[0],p];import(pathToFileURL(p).href);\""
+            "command": "node -e \"const {existsSync}=require('fs');const {resolve}=require('path');const {pathToFileURL}=require('url');const c=[\\\"node_modules/ai-task-manager/scripts/task-tracker/hook-handler.mjs\\\",\\\"scripts/task-tracker/hook-handler.mjs\\\"];const p=c.map(x=>resolve(process.cwd(),x)).find(existsSync);if(!p){process.stderr.write('aitm hook-handler.mjs: hook entrypoint unresolved (node_modules + repo-relative both absent) — skipping\\\\n');process.exit(0);}process.argv=[process.argv[0],p];import(pathToFileURL(p).href);\""
           }
         ]
       },
@@ -24,7 +24,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node -e \"const {existsSync}=require('fs');const {resolve}=require('path');const {pathToFileURL}=require('url');const c=[\"node_modules/ai-task-manager/scripts/task-tracker/hooks/memory-index.mjs\",\"scripts/task-tracker/hooks/memory-index.mjs\"];const p=c.map(x=>resolve(process.cwd(),x)).find(existsSync);if(!p){process.stderr.write('aitm memory-index.mjs: hook entrypoint unresolved (node_modules + repo-relative both absent) — skipping\\n');process.exit(0);}process.argv=[process.argv[0],p];import(pathToFileURL(p).href);\""
+            "command": "node -e \"const {existsSync}=require('fs');const {resolve}=require('path');const {pathToFileURL}=require('url');const c=[\\\"node_modules/ai-task-manager/scripts/task-tracker/hooks/memory-index.mjs\\\",\\\"scripts/task-tracker/hooks/memory-index.mjs\\\"];const p=c.map(x=>resolve(process.cwd(),x)).find(existsSync);if(!p){process.stderr.write('aitm memory-index.mjs: hook entrypoint unresolved (node_modules + repo-relative both absent) — skipping\\\\n');process.exit(0);}process.argv=[process.argv[0],p];import(pathToFileURL(p).href);\""
           }
         ]
       }
@@ -35,7 +35,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node -e \"const {existsSync}=require('fs');const {resolve}=require('path');const {pathToFileURL}=require('url');const c=[\"node_modules/ai-task-manager/scripts/task-tracker/hook-handler.mjs\",\"scripts/task-tracker/hook-handler.mjs\"];const p=c.map(x=>resolve(process.cwd(),x)).find(existsSync);if(!p){process.stderr.write('aitm hook-handler.mjs: hook entrypoint unresolved (node_modules + repo-relative both absent) — skipping\\n');process.exit(0);}process.argv=[process.argv[0],p];import(pathToFileURL(p).href);\""
+            "command": "node -e \"const {existsSync}=require('fs');const {resolve}=require('path');const {pathToFileURL}=require('url');const c=[\\\"node_modules/ai-task-manager/scripts/task-tracker/hook-handler.mjs\\\",\\\"scripts/task-tracker/hook-handler.mjs\\\"];const p=c.map(x=>resolve(process.cwd(),x)).find(existsSync);if(!p){process.stderr.write('aitm hook-handler.mjs: hook entrypoint unresolved (node_modules + repo-relative both absent) — skipping\\\\n');process.exit(0);}process.argv=[process.argv[0],p];import(pathToFileURL(p).href);\""
           }
         ]
       }
@@ -46,7 +46,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node -e \"const {existsSync}=require('fs');const {resolve}=require('path');const {pathToFileURL}=require('url');const c=[\"node_modules/ai-task-manager/scripts/task-tracker/hook-handler.mjs\",\"scripts/task-tracker/hook-handler.mjs\"];const p=c.map(x=>resolve(process.cwd(),x)).find(existsSync);if(!p){process.stderr.write('aitm hook-handler.mjs: hook entrypoint unresolved (node_modules + repo-relative both absent) — skipping\\n');process.exit(0);}process.argv=[process.argv[0],p];import(pathToFileURL(p).href);\""
+            "command": "node -e \"const {existsSync}=require('fs');const {resolve}=require('path');const {pathToFileURL}=require('url');const c=[\\\"node_modules/ai-task-manager/scripts/task-tracker/hook-handler.mjs\\\",\\\"scripts/task-tracker/hook-handler.mjs\\\"];const p=c.map(x=>resolve(process.cwd(),x)).find(existsSync);if(!p){process.stderr.write('aitm hook-handler.mjs: hook entrypoint unresolved (node_modules + repo-relative both absent) — skipping\\\\n');process.exit(0);}process.argv=[process.argv[0],p];import(pathToFileURL(p).href);\""
           }
         ]
       },
@@ -55,7 +55,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node -e \"const {existsSync}=require('fs');const {resolve}=require('path');const {pathToFileURL}=require('url');const c=[\"node_modules/ai-task-manager/scripts/task-tracker/hooks/memory-index.mjs\",\"scripts/task-tracker/hooks/memory-index.mjs\"];const p=c.map(x=>resolve(process.cwd(),x)).find(existsSync);if(!p){process.stderr.write('aitm memory-index.mjs: hook entrypoint unresolved (node_modules + repo-relative both absent) — skipping\\n');process.exit(0);}process.argv=[process.argv[0],p];import(pathToFileURL(p).href);\""
+            "command": "node -e \"const {existsSync}=require('fs');const {resolve}=require('path');const {pathToFileURL}=require('url');const c=[\\\"node_modules/ai-task-manager/scripts/task-tracker/hooks/memory-index.mjs\\\",\\\"scripts/task-tracker/hooks/memory-index.mjs\\\"];const p=c.map(x=>resolve(process.cwd(),x)).find(existsSync);if(!p){process.stderr.write('aitm memory-index.mjs: hook entrypoint unresolved (node_modules + repo-relative both absent) — skipping\\\\n');process.exit(0);}process.argv=[process.argv[0],p];import(pathToFileURL(p).href);\""
           }
         ]
       }
@@ -111,7 +111,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node -e \"const {existsSync}=require('fs');const {resolve}=require('path');const {pathToFileURL}=require('url');const c=[\"node_modules/ai-task-manager/scripts/task-tracker/hooks/on-ask.mjs\",\"scripts/task-tracker/hooks/on-ask.mjs\"];const p=c.map(x=>resolve(process.cwd(),x)).find(existsSync);if(!p){process.stderr.write('aitm on-ask.mjs: hook entrypoint unresolved (node_modules + repo-relative both absent) — skipping\\n');process.exit(0);}process.argv=[process.argv[0],p,\"pause\"];import(pathToFileURL(p).href);\""
+            "command": "node -e \"const {existsSync}=require('fs');const {resolve}=require('path');const {pathToFileURL}=require('url');const c=[\\\"node_modules/ai-task-manager/scripts/task-tracker/hooks/on-ask.mjs\\\",\\\"scripts/task-tracker/hooks/on-ask.mjs\\\"];const p=c.map(x=>resolve(process.cwd(),x)).find(existsSync);if(!p){process.stderr.write('aitm on-ask.mjs: hook entrypoint unresolved (node_modules + repo-relative both absent) — skipping\\\\n');process.exit(0);}process.argv=[process.argv[0],p,\\\"pause\\\"];import(pathToFileURL(p).href);\""
           }
         ]
       }
@@ -122,7 +122,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node -e \"const {existsSync}=require('fs');const {resolve}=require('path');const {pathToFileURL}=require('url');const c=[\"node_modules/ai-task-manager/scripts/task-tracker/commit-trail-handler.mjs\",\"scripts/task-tracker/commit-trail-handler.mjs\"];const p=c.map(x=>resolve(process.cwd(),x)).find(existsSync);if(!p){process.stderr.write('aitm commit-trail-handler.mjs: hook entrypoint unresolved (node_modules + repo-relative both absent) — skipping\\n');process.exit(0);}process.argv=[process.argv[0],p];import(pathToFileURL(p).href);\""
+            "command": "node -e \"const {existsSync}=require('fs');const {resolve}=require('path');const {pathToFileURL}=require('url');const c=[\\\"node_modules/ai-task-manager/scripts/task-tracker/commit-trail-handler.mjs\\\",\\\"scripts/task-tracker/commit-trail-handler.mjs\\\"];const p=c.map(x=>resolve(process.cwd(),x)).find(existsSync);if(!p){process.stderr.write('aitm commit-trail-handler.mjs: hook entrypoint unresolved (node_modules + repo-relative both absent) — skipping\\\\n');process.exit(0);}process.argv=[process.argv[0],p];import(pathToFileURL(p).href);\""
           }
         ]
       },
@@ -131,7 +131,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node -e \"const {existsSync}=require('fs');const {resolve}=require('path');const {pathToFileURL}=require('url');const c=[\"node_modules/ai-task-manager/scripts/task-tracker/hooks/on-ask.mjs\",\"scripts/task-tracker/hooks/on-ask.mjs\"];const p=c.map(x=>resolve(process.cwd(),x)).find(existsSync);if(!p){process.stderr.write('aitm on-ask.mjs: hook entrypoint unresolved (node_modules + repo-relative both absent) — skipping\\n');process.exit(0);}process.argv=[process.argv[0],p,\"resume\"];import(pathToFileURL(p).href);\""
+            "command": "node -e \"const {existsSync}=require('fs');const {resolve}=require('path');const {pathToFileURL}=require('url');const c=[\\\"node_modules/ai-task-manager/scripts/task-tracker/hooks/on-ask.mjs\\\",\\\"scripts/task-tracker/hooks/on-ask.mjs\\\"];const p=c.map(x=>resolve(process.cwd(),x)).find(existsSync);if(!p){process.stderr.write('aitm on-ask.mjs: hook entrypoint unresolved (node_modules + repo-relative both absent) — skipping\\\\n');process.exit(0);}process.argv=[process.argv[0],p,\\\"resume\\\"];import(pathToFileURL(p).href);\""
           }
         ]
       }
@@ -142,7 +142,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node -e \"const {existsSync}=require('fs');const {resolve}=require('path');const {pathToFileURL}=require('url');const c=[\"node_modules/ai-task-manager/scripts/task-tracker/hooks/on-stop.mjs\",\"scripts/task-tracker/hooks/on-stop.mjs\"];const p=c.map(x=>resolve(process.cwd(),x)).find(existsSync);if(!p){process.stderr.write('aitm on-stop.mjs: hook entrypoint unresolved (node_modules + repo-relative both absent) — skipping\\n');process.exit(0);}process.argv=[process.argv[0],p];import(pathToFileURL(p).href);\""
+            "command": "node -e \"const {existsSync}=require('fs');const {resolve}=require('path');const {pathToFileURL}=require('url');const c=[\\\"node_modules/ai-task-manager/scripts/task-tracker/hooks/on-stop.mjs\\\",\\\"scripts/task-tracker/hooks/on-stop.mjs\\\"];const p=c.map(x=>resolve(process.cwd(),x)).find(existsSync);if(!p){process.stderr.write('aitm on-stop.mjs: hook entrypoint unresolved (node_modules + repo-relative both absent) — skipping\\\\n');process.exit(0);}process.argv=[process.argv[0],p];import(pathToFileURL(p).href);\""
           }
         ]
       },
@@ -151,7 +151,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node -e \"const {existsSync}=require('fs');const {resolve}=require('path');const {pathToFileURL}=require('url');const c=[\"node_modules/ai-task-manager/scripts/task-tracker/hooks/stop-audit-pause-resume.mjs\",\"scripts/task-tracker/hooks/stop-audit-pause-resume.mjs\"];const p=c.map(x=>resolve(process.cwd(),x)).find(existsSync);if(!p){process.stderr.write('aitm stop-audit-pause-resume.mjs: hook entrypoint unresolved (node_modules + repo-relative both absent) — skipping\\n');process.exit(0);}process.argv=[process.argv[0],p];import(pathToFileURL(p).href);\""
+            "command": "node -e \"const {existsSync}=require('fs');const {resolve}=require('path');const {pathToFileURL}=require('url');const c=[\\\"node_modules/ai-task-manager/scripts/task-tracker/hooks/stop-audit-pause-resume.mjs\\\",\\\"scripts/task-tracker/hooks/stop-audit-pause-resume.mjs\\\"];const p=c.map(x=>resolve(process.cwd(),x)).find(existsSync);if(!p){process.stderr.write('aitm stop-audit-pause-resume.mjs: hook entrypoint unresolved (node_modules + repo-relative both absent) — skipping\\\\n');process.exit(0);}process.argv=[process.argv[0],p];import(pathToFileURL(p).href);\""
           }
         ]
       }
@@ -162,7 +162,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node -e \"const {existsSync}=require('fs');const {resolve}=require('path');const {pathToFileURL}=require('url');const c=[\"node_modules/ai-task-manager/scripts/task-tracker/hooks/on-user-prompt.mjs\",\"scripts/task-tracker/hooks/on-user-prompt.mjs\"];const p=c.map(x=>resolve(process.cwd(),x)).find(existsSync);if(!p){process.stderr.write('aitm on-user-prompt.mjs: hook entrypoint unresolved (node_modules + repo-relative both absent) — skipping\\n');process.exit(0);}process.argv=[process.argv[0],p];import(pathToFileURL(p).href);\""
+            "command": "node -e \"const {existsSync}=require('fs');const {resolve}=require('path');const {pathToFileURL}=require('url');const c=[\\\"node_modules/ai-task-manager/scripts/task-tracker/hooks/on-user-prompt.mjs\\\",\\\"scripts/task-tracker/hooks/on-user-prompt.mjs\\\"];const p=c.map(x=>resolve(process.cwd(),x)).find(existsSync);if(!p){process.stderr.write('aitm on-user-prompt.mjs: hook entrypoint unresolved (node_modules + repo-relative both absent) — skipping\\\\n');process.exit(0);}process.argv=[process.argv[0],p];import(pathToFileURL(p).href);\""
           }
         ]
       }

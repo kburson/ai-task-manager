@@ -104,6 +104,37 @@ test('classifyBash: touch/mkdir code path', () => {
   assert.equal(classifyBash("printf '%s' 'touch' 'src/not-a-command.ts'"), 'READ_*');
 });
 
+test('classifyBash: intended scratch-only writes are allowed but source targets remain code', () => {
+  for (const command of [
+    'cp src/input.mjs .tmp/inspect/output.mjs',
+    'touch .tmp/inspect/touched.mjs',
+    'install -m 755 src/input.mjs .tmp/inspect/installed.mjs',
+    'mkdir -m 755 .tmp/inspect/directory',
+    'printf x >| .tmp/inspect/clobbered.txt',
+    "find . -exec sh -c 'touch .tmp/inspect/found.txt' {} +",
+    'find .tmp/inspect -delete',
+  ]) {
+    assert.equal(classifyBash(command), 'READ_*', command);
+  }
+
+  for (const command of [
+    'cp .tmp/inspect/input.mjs src/output.mjs',
+    'touch src/touched.mjs',
+    'install -m 755 .tmp/inspect/input.mjs src/installed.mjs',
+    'mkdir -m 755 src/directory',
+    'printf x >| src/clobbered.mjs',
+    "find . -exec sh -c 'touch src/found.mjs' {} \\;",
+    'find src -delete',
+  ]) {
+    assert.equal(classifyBash(command), 'WRITE_CODE', command);
+  }
+});
+
+test('classifyBash: GitHub issue mutations are issue writes, not reads', () => {
+  assert.equal(classifyBash('gh issue edit 1049 --add-label bug'), 'WRITE_ISSUE');
+  assert.equal(classifyBash('gh issue reopen 1049'), 'WRITE_ISSUE');
+});
+
 // ---------------------------------------------------------------------------
 // STATE_MATRIX + isAllowed
 // ---------------------------------------------------------------------------

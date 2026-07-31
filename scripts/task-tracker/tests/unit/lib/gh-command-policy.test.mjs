@@ -58,11 +58,11 @@ function runGuard(command) {
   assert.match(r.reason, /\/task close/, 'reason must point to /task close');
 }
 
-// 3. `gh issue reopen` is allowed — no task-tracker verb equivalent exists;
-//    session-recovery workflow (SKILL.md §2b) legitimately uses it.
+// 3. `gh issue reopen` bypasses task-state reconciliation and is refused.
 {
   const r = runGuard('gh issue reopen 42');
-  assert.equal(r.blocked, false, 'gh issue reopen must be allowed (no task-tracker alternative)');
+  assert.equal(r.blocked, true, 'gh issue reopen must be refused');
+  assert.match(r.reason, /reopen/i);
 }
 
 // 4a. `gh issue view` is allowed (read-only)
@@ -77,10 +77,11 @@ function runGuard(command) {
   assert.equal(r.blocked, false, 'gh issue list must be allowed');
 }
 
-// 5. `gh issue edit` without body flag (label-only) is allowed
+// 5. `gh issue edit` without body still requires active issue authority.
 {
   const r = runGuard('gh issue edit 42 --add-label bug');
-  assert.equal(r.blocked, false, 'gh issue edit with --add-label only must be allowed');
+  assert.equal(r.blocked, true, 'gh issue edit with --add-label must not be authority-free');
+  assert.match(r.reason, /no active issue is bound/i);
 }
 
 // 5b. grep containing "gh issue create" as a search pattern must NOT be blocked

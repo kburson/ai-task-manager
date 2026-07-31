@@ -271,6 +271,12 @@ async function evaluate(input, deps = {}) {
         '  Use `/task close` — it validates the DoD, flushes timing, and moves the issue to Done atomically.'
     );
   }
+  if (/\bgh\s+issue\s+reopen\b/.test(scanned)) {
+    block(
+      'Direct `gh issue reopen` is forbidden.\n' +
+        '  Use `/task reconcile` so issue state, board state, and session binding remain aligned.'
+    );
+  }
 
   // #487 — refuse direct `node node_modules/ai-task-manager/scripts/...`
   // invocations of commands the `aitm` orchestrator already exposes, steering to
@@ -446,6 +452,13 @@ function canonicalIssue(value) {
 async function authorizeAcceptedCommand({ effectAnalysis, projectRoot, deps }) {
   const { commits, sourceTargets, requiresSource } = effectAnalysis;
   if (commits.length === 0 && !requiresSource) return;
+  if (commits.some((commit) => commit.messageSourceUnresolved)) {
+    block(
+      `[task-tracker] Refusing git commit: the effective commit message cannot be resolved before execution.\n` +
+        `  Use an inline -m/--message or a readable message file so issue attribution can be verified.`,
+      'bash-commit-message-unresolved'
+    );
+  }
 
   const [{ isChoreModeActive }, { readBoundState }] = await Promise.all([
     import('./lib/chore-mode.mjs'),

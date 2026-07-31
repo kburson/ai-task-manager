@@ -45,6 +45,25 @@ const CODEX_PROMPT_TIMESTAMP_HOOK_CMD =
   'node node_modules/ai-task-manager/scripts/task-tracker/hooks/codex-prompt-timestamp.mjs';
 const LEGACY_TIMING_HOOK_CMD = '.claude/hooks/task-tracker.sh';
 const LEGACY_COMMIT_TRAIL_HOOK_CMD = '.claude/hooks/commit-trail.sh';
+function unsafeHookBootstrapCommand(repoRelPath, ...extraArgs) {
+  const candidates = JSON.stringify([`node_modules/ai-task-manager/${repoRelPath}`, repoRelPath]);
+  const argvTail = extraArgs.map((arg) => JSON.stringify(String(arg))).join(',');
+  const label = repoRelPath.split('/').pop();
+  const program =
+    `const {existsSync}=require('fs');` +
+    `const {resolve}=require('path');` +
+    `const {pathToFileURL}=require('url');` +
+    `const c=${candidates};` +
+    `const p=c.map(x=>resolve(process.cwd(),x)).find(existsSync);` +
+    `if(!p){process.stderr.write('aitm ${label}: hook entrypoint unresolved ` +
+    `(node_modules + repo-relative both absent) — skipping\\n');process.exit(0);}` +
+    `process.argv=[process.argv[0],p${argvTail ? ',' + argvTail : ''}];` +
+    `import(pathToFileURL(p).href);`;
+  return `node -e "${program}"`;
+}
+const UNSAFE_COMMIT_TRAIL_HOOK_CMD = unsafeHookBootstrapCommand(
+  'scripts/task-tracker/commit-trail-handler.mjs'
+);
 const CANONICAL_DOCS = [
   'README.md',
   'docs/DESIGN.md',
@@ -489,6 +508,7 @@ try {
   );
 
   mkdirSync(path.join(legacyTarget, '.claude'), { recursive: true });
+  mkdirSync(path.join(legacyTarget, '.codex'), { recursive: true });
   writeFileSync(
     path.join(legacyTarget, '.claude', 'settings.json'),
     JSON.stringify(
@@ -506,7 +526,28 @@ try {
           PostToolUse: [
             {
               matcher: 'Bash',
-              hooks: [{ type: 'command', command: LEGACY_COMMIT_TRAIL_HOOK_CMD }],
+              hooks: [
+                { type: 'command', command: LEGACY_COMMIT_TRAIL_HOOK_CMD },
+                { type: 'command', command: UNSAFE_COMMIT_TRAIL_HOOK_CMD },
+              ],
+            },
+          ],
+        },
+      },
+      null,
+      2
+    ) + '\n',
+    'utf8'
+  );
+  writeFileSync(
+    path.join(legacyTarget, '.codex', 'hooks.json'),
+    JSON.stringify(
+      {
+        hooks: {
+          PostToolUse: [
+            {
+              matcher: 'Bash',
+              hooks: [{ type: 'command', command: UNSAFE_COMMIT_TRAIL_HOOK_CMD }],
             },
           ],
         },
@@ -541,6 +582,24 @@ try {
     hasHookCommand(migratedSettings, 'PostToolUse', LEGACY_COMMIT_TRAIL_HOOK_CMD),
     false,
     'PostToolUse legacy commit-trail hook must be migrated'
+  );
+  assert.equal(
+    hasHookCommand(migratedSettings, 'PostToolUse', UNSAFE_COMMIT_TRAIL_HOOK_CMD),
+    false,
+    'Claude PostToolUse unsafe inline bootstrap must be migrated'
+  );
+  const migratedCodexHooks = JSON.parse(
+    readFileSync(path.join(legacyTarget, '.codex', 'hooks.json'), 'utf8')
+  );
+  assert.equal(
+    hookCommandCount(migratedCodexHooks, 'PostToolUse', COMMIT_TRAIL_HOOK_CMD),
+    1,
+    'Codex PostToolUse must have one safe commit-trail hook after migration'
+  );
+  assert.equal(
+    hasHookCommand(migratedCodexHooks, 'PostToolUse', UNSAFE_COMMIT_TRAIL_HOOK_CMD),
+    false,
+    'Codex PostToolUse unsafe inline bootstrap must be migrated'
   );
 
   writeSkill('using-superpowers');
