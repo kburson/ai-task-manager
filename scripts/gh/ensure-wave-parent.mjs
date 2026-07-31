@@ -361,14 +361,8 @@ export async function runEnsureWaveParent({
           leaseContext,
           tokenEnv: cfg.workLease?.tokenEnv,
         });
-        const claim = claimWaveCreateIntent(journalPath, {
-          waveIdValue,
-          requestDigest: request.requestDigest,
-        });
-        const { intent } = claim;
-        if (!claim.claimed) {
-          return recoverIntent({ intent, journalPath, waveIdValue, env });
-        }
+        let intent;
+        let ownsCreateClaim = false;
         try {
           const issueNumber = await createInternal({
             title: request.title,
@@ -380,13 +374,25 @@ export async function runEnsureWaveParent({
             withGovernedEffect,
             authorityIssueId: controllerIssueId,
             env,
+            beforeRemoteCreate: async () => {
+              const claim = claimWaveCreateIntent(journalPath, {
+                waveIdValue,
+                requestDigest: request.requestDigest,
+              });
+              intent = claim.intent;
+              ownsCreateClaim = claim.claimed;
+              if (claim.claimed) return null;
+              return recoverIntent({ intent, journalPath, waveIdValue, env });
+            },
             deps: deps.createIssueDeps || {},
             reconcile: false,
           });
-          persistWaveCreateReceipt(journalPath, intent, issueNumber);
+          if (ownsCreateClaim) {
+            persistWaveCreateReceipt(journalPath, intent, issueNumber);
+          }
           return issueNumber;
         } catch (error) {
-          if (error?.partialIssueNumber) {
+          if (ownsCreateClaim && error?.partialIssueNumber) {
             persistWaveCreateReceipt(journalPath, intent, error.partialIssueNumber);
           }
           throw error;

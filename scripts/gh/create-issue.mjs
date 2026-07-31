@@ -276,11 +276,12 @@ function ownedBodyDeps(env) {
       return JSON.parse(out).body;
     },
     pushBody: async (repo, issueNumber, body) => {
-      execFileSync(
-        'gh',
-        ['issue', 'edit', String(issueNumber), '-R', repo, '--body-file', '-'],
-        { encoding: 'utf8', timeout: GH_API_TIMEOUT_MS, env, input: body }
-      );
+      execFileSync('gh', ['issue', 'edit', String(issueNumber), '-R', repo, '--body-file', '-'], {
+        encoding: 'utf8',
+        timeout: GH_API_TIMEOUT_MS,
+        env,
+        input: body,
+      });
     },
   };
 }
@@ -365,6 +366,7 @@ export async function createGovernedInternalIssue({
   withGovernedEffect,
   authorityIssueId,
   env,
+  beforeRemoteCreate,
   deps = {},
   reconcile = true,
 } = {}) {
@@ -397,16 +399,17 @@ export async function createGovernedInternalIssue({
   let tmpDir;
 
   try {
-    let issueNumber;
-    await governController('evidence-mutation', async () => {
-      if (typeof createIssue === 'function') {
-        issueNumber = await createIssue({ title, bodyContent: stampedBody, cfg, env });
-        return;
-      }
+    let bodyFilePath;
+    if (typeof createIssue !== 'function') {
       tmpDir = mkdtempSync(path.join(projectScratchDir('test'), 'aitm-create-issue-'));
-      const bodyFilePath = path.join(tmpDir, 'body.md');
+      bodyFilePath = path.join(tmpDir, 'body.md');
       writeFileSync(bodyFilePath, stampedBody, 'utf8');
-      issueNumber = throwForGovernedCreateOutcome(
+    }
+    const invokeRemoteCreate = async () => {
+      if (typeof createIssue === 'function') {
+        return createIssue({ title, bodyContent: stampedBody, cfg, env });
+      }
+      return throwForGovernedCreateOutcome(
         createOutcome(
           {
             title,
@@ -417,6 +420,18 @@ export async function createGovernedInternalIssue({
           { env }
         )
       );
+    };
+
+    let issueNumber;
+    await governController('evidence-mutation', async () => {
+      if (typeof beforeRemoteCreate === 'function') {
+        const recoveredIssueNumber = await beforeRemoteCreate();
+        if (recoveredIssueNumber != null) {
+          issueNumber = recoveredIssueNumber;
+          return;
+        }
+      }
+      issueNumber = await invokeRemoteCreate();
     });
     if (!issueNumber) {
       throw new Error('createGovernedInternalIssue: create did not return an issue number');

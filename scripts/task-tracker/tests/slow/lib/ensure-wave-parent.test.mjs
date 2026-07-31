@@ -821,7 +821,9 @@ async function runDurableCreateRecovery({ partialIssueNumber, authoritativeIssue
         },
       };
     },
-    createGovernedInternalIssue: async ({ bodyContent }) => {
+    createGovernedInternalIssue: async ({ bodyContent, beforeRemoteCreate }) => {
+      const recovered = await beforeRemoteCreate?.();
+      if (recovered != null) return recovered;
       createCalls += 1;
       createdBody = bodyContent;
       const error = new Error(
@@ -1004,7 +1006,9 @@ console.log('test 12 passed: unresolved authoritative listing refuses without du
       if (thisSearch === 2) await aCompleted;
       return null;
     },
-    createGovernedInternalIssue: async ({ bodyContent }) => {
+    createGovernedInternalIssue: async ({ bodyContent, beforeRemoteCreate }) => {
+      const recovered = await beforeRemoteCreate?.();
+      if (recovered != null) return recovered;
       createCalls += 1;
       const number = 1099 + createCalls;
       bodies.set(number, bodyContent);
@@ -1073,4 +1077,163 @@ console.log('test 12 passed: unresolved authoritative listing refuses without du
     rmSync(sandbox, { recursive: true, force: true });
   }
   console.log('test 15 passed: 16-process journal race admits exactly one create claimant');
+}
+
+{
+  const { runEnsureWaveParent } = await import(new URL(`file://${HELPER}`).href);
+  const sandbox = mkdtempSync(path.join(projectScratchDir('test'), 'tt-ewp-stale-create-'));
+  const cfg = {
+    repo: 'test-owner/test-repo',
+    projectId: 'PVT_test',
+    workLease: { tokenEnv: 'REMOTE_LEASE_BEARER' },
+  };
+  let createCalls = 0;
+  let createdBody = '';
+  const deps = {
+    projectDir: sandbox,
+    env: {},
+    classify: async () => ({ kind: 'all-solo', solos: [10, 11] }),
+    findExistingParentByWaveId: async () => null,
+    findAuthoritativeParentByWaveId: async () => null,
+    createIssueDeps: {
+      createIssue: async ({ bodyContent }) => {
+        createCalls += 1;
+        createdBody = bodyContent;
+        return 1200;
+      },
+    },
+    reconcileGovernedInternalIssue: async ({ issueNumber }) => ({ issueNumber }),
+    getIssueNodeId: async ({ issueNumber }) => `ISS_${issueNumber}`,
+    addSubIssue: async () => {},
+    ensureParentEpicTitle: async () => {},
+    postTimingEvent: async () => {},
+  };
+  const staleBeforeCreate = async (_options, callback) =>
+    callback({
+      leaseContext: {
+        projectId: cfg.projectId,
+        leaseId: 'lease-controller',
+        fencingToken: '42',
+        worktreeId: 'wt-controller',
+      },
+      reverify: async () => {
+        const error = new Error('stale immediately before remote create');
+        error.code = 'fence-stale';
+        throw error;
+      },
+    });
+  const validAuthority = async (_options, callback) =>
+    callback({
+      leaseContext: {
+        projectId: cfg.projectId,
+        leaseId: 'lease-controller',
+        fencingToken: '43',
+        worktreeId: 'wt-controller',
+      },
+      reverify: async () => {},
+    });
+  const args = ['--children', '10,11', '--purpose', 'stale before create', '--anchor', '900'];
+  try {
+    await assert.rejects(
+      runEnsureWaveParent({
+        rawArgs: args,
+        cfg,
+        deps: { ...deps, withGovernedEffect: staleBeforeCreate },
+      }),
+      (error) => error.code === 'fence-stale'
+    );
+    assert.equal(createCalls, 0, 'stale authority refuses before the remote create callback');
+    const journalDir = path.join(sandbox, '.db', 'aitm', 'wave-parent-create-intents');
+    assert.deepEqual(
+      existsSync(journalDir) ? readdirSync(journalDir) : [],
+      [],
+      'stale pre-create refusal leaves no journal claim'
+    );
+
+    const recovered = await runEnsureWaveParent({
+      rawArgs: args,
+      cfg,
+      deps: { ...deps, withGovernedEffect: validAuthority },
+    });
+    assert.equal(recovered.parentNumber, 1200);
+    assert.equal(createCalls, 1, 'valid retry creates exactly once');
+    assert.match(createdBody, /<!-- wave-id: 10-11\.5ef68ca70c -->/);
+  } finally {
+    rmSync(sandbox, { recursive: true, force: true });
+  }
+  console.log('test 16 passed: stale pre-create authority leaves no orphaned journal claim');
+}
+
+{
+  const { runEnsureWaveParent } = await import(new URL(`file://${HELPER}`).href);
+  const sandbox = mkdtempSync(path.join(projectScratchDir('test'), 'tt-ewp-local-prep-'));
+  const invalidProjectRoot = path.join(sandbox, 'not-a-directory');
+  writeFileSync(invalidProjectRoot, 'file blocks scratch directory creation');
+  const originalProjectDir = process.env.AI_TASK_MANAGER_PROJECT_DIR;
+  const cfg = {
+    repo: 'test-owner/test-repo',
+    projectId: 'PVT_test',
+    workLease: { tokenEnv: 'REMOTE_LEASE_BEARER' },
+  };
+  let createCalls = 0;
+  const validAuthority = async (_options, callback) =>
+    callback({
+      leaseContext: {
+        projectId: cfg.projectId,
+        leaseId: 'lease-controller',
+        fencingToken: '44',
+        worktreeId: 'wt-controller',
+      },
+      reverify: async () => {},
+    });
+  const deps = {
+    projectDir: sandbox,
+    env: {},
+    classify: async () => ({ kind: 'all-solo', solos: [10, 11] }),
+    withGovernedEffect: validAuthority,
+    findExistingParentByWaveId: async () => null,
+    findAuthoritativeParentByWaveId: async () => null,
+    createIssueDeps: {
+      createOutcome: () => {
+        createCalls += 1;
+        return {
+          status: 0,
+          stdout: 'https://github.com/test-owner/test-repo/issues/1201\n',
+          stderr: '',
+        };
+      },
+    },
+    reconcileGovernedInternalIssue: async ({ issueNumber }) => ({ issueNumber }),
+    getIssueNodeId: async ({ issueNumber }) => `ISS_${issueNumber}`,
+    addSubIssue: async () => {},
+    ensureParentEpicTitle: async () => {},
+    postTimingEvent: async () => {},
+  };
+  const args = ['--children', '10,11', '--purpose', 'local prep failure', '--anchor', '900'];
+  try {
+    process.env.AI_TASK_MANAGER_PROJECT_DIR = invalidProjectRoot;
+    await assert.rejects(runEnsureWaveParent({ rawArgs: args, cfg, deps }), /not a directory/i);
+    assert.equal(createCalls, 0, 'local body preparation fails before remote create');
+    const journalDir = path.join(sandbox, '.db', 'aitm', 'wave-parent-create-intents');
+    assert.deepEqual(
+      existsSync(journalDir) ? readdirSync(journalDir) : [],
+      [],
+      'local preparation failure leaves no journal claim'
+    );
+
+    if (originalProjectDir === undefined) delete process.env.AI_TASK_MANAGER_PROJECT_DIR;
+    else process.env.AI_TASK_MANAGER_PROJECT_DIR = originalProjectDir;
+    const retried = await runEnsureWaveParent({ rawArgs: args, cfg, deps });
+    assert.equal(retried.parentNumber, 1201);
+    assert.equal(
+      createCalls,
+      1,
+      'valid retry creates exactly once after local preparation recovers'
+    );
+  } finally {
+    if (originalProjectDir === undefined) delete process.env.AI_TASK_MANAGER_PROJECT_DIR;
+    else process.env.AI_TASK_MANAGER_PROJECT_DIR = originalProjectDir;
+    rmSync(sandbox, { recursive: true, force: true });
+  }
+  console.log('test 17 passed: local body preparation failure leaves no journal claim');
 }

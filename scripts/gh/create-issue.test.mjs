@@ -57,6 +57,33 @@ test('buildShapeFlags forwards section files for non-stub shapes without --kind 
   assert.equal(flags.includes('--kind'), false);
 });
 
+test('governed beforeRemoteCreate can recover an issue after authority and before remote create', async () => {
+  const events = [];
+  const issueNumber = await createGovernedInternalIssue({
+    title: 'Wave: test',
+    bodyContent: 'body',
+    cfg: { repo: 'test/repo', projectId: 'PVT_test' },
+    authorityIssueId: 900,
+    reconcile: false,
+    withGovernedEffect: async (_options, callback) => {
+      events.push('authority');
+      return callback({});
+    },
+    beforeRemoteCreate: async () => {
+      events.push('prepare');
+      return 777;
+    },
+    deps: {
+      createIssue: async () => {
+        events.push('create');
+        return 778;
+      },
+    },
+  });
+  assert.equal(issueNumber, 777);
+  assert.deepEqual(events, ['authority', 'prepare']);
+});
+
 for (const failure of [
   {
     name: 'generic create failure',
