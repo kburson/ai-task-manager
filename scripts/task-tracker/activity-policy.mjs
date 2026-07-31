@@ -296,6 +296,8 @@ function shellWriteTokens(command) {
 export function extractWriteTargets(command) {
   const targets = new Set();
   const tokens = shellWriteTokens(String(command || ''));
+  let commandStart = true;
+  let commandWrapper = false;
 
   for (let i = 0; i < tokens.length; i++) {
     const token = tokens[i];
@@ -304,22 +306,42 @@ export function extractWriteTargets(command) {
       if (target?.type === 'word' && target.value) targets.add(target.value);
       continue;
     }
-    if (token.type !== 'word') continue;
-
-    if (token.value === 'tee') {
-      let cursor = i + 1;
-      while (tokens[cursor]?.type === 'word' && tokens[cursor].value.startsWith('-')) cursor += 1;
-      if (tokens[cursor]?.type === 'word' && tokens[cursor].value) {
-        targets.add(tokens[cursor].value);
-      }
+    if (token.type === 'operator') {
+      commandStart = true;
+      commandWrapper = false;
       continue;
     }
+    if (token.type !== 'word' || !commandStart) continue;
+    if (/^[A-Za-z_][A-Za-z0-9_]*=/.test(token.value)) continue;
+    if (['env', 'command'].includes(token.value)) {
+      commandWrapper = true;
+      continue;
+    }
+    if (commandWrapper && token.value.startsWith('-')) continue;
+    commandStart = false;
+    commandWrapper = false;
 
-    if (['touch', 'mkdir', 'rmdir', 'rm'].includes(token.value)) {
-      let cursor = i + 1;
-      while (tokens[cursor]?.type === 'word' && tokens[cursor].value.startsWith('-')) cursor += 1;
-      if (tokens[cursor]?.type === 'word' && tokens[cursor].value) {
-        targets.add(tokens[cursor].value);
+    if (['tee', 'touch', 'mkdir', 'rmdir', 'rm', 'cp', 'mv', 'install'].includes(token.value)) {
+      for (let cursor = i + 1; cursor < tokens.length; cursor++) {
+        const operand = tokens[cursor];
+        if (operand.type === 'operator') break;
+        if (operand.type !== 'word' || !operand.value || operand.value.startsWith('-')) continue;
+        targets.add(operand.value);
+      }
+    }
+
+    if (['git', 'diff', 'sort'].includes(token.value)) {
+      for (let cursor = i + 1; cursor < tokens.length; cursor++) {
+        const operand = tokens[cursor];
+        if (operand.type === 'operator') break;
+        if (operand.type !== 'word') continue;
+        if (operand.value === '-o' || operand.value === '--output') {
+          const target = tokens[cursor + 1];
+          if (target?.type === 'word' && target.value) targets.add(target.value);
+          continue;
+        }
+        const attached = operand.value.match(/^(?:--output=|-o)(.+)$/);
+        if (attached?.[1]) targets.add(attached[1]);
       }
     }
   }

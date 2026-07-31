@@ -71,6 +71,7 @@ test('classifyBash: redirect write target classified by path', () => {
 test('classifyBash: tee write target', () => {
   assert.equal(classifyBash('echo x | tee src/foo.ts'), 'WRITE_CODE');
   assert.equal(classifyBash('echo x | tee -a docs/notes.md'), 'WRITE_DOCS');
+  assert.equal(classifyBash('echo x | tee .tmp/safe src/foo.ts'), 'WRITE_CODE');
 });
 
 test('classifyBash: heredoc write target', () => {
@@ -98,6 +99,9 @@ test('classifyBash: shell metachars inside quoted args do not trigger write dete
 test('classifyBash: touch/mkdir code path', () => {
   assert.equal(classifyBash('touch src/new.ts'), 'WRITE_CODE');
   assert.equal(classifyBash('mkdir -p docs/sub'), 'WRITE_DOCS');
+  assert.equal(classifyBash('touch .tmp/safe src/new.ts'), 'WRITE_CODE');
+  assert.equal(classifyBash('rm .tmp/safe docs/removed.md'), 'WRITE_DOCS');
+  assert.equal(classifyBash("printf '%s' 'touch' 'src/not-a-command.ts'"), 'READ_*');
 });
 
 // ---------------------------------------------------------------------------

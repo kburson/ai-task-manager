@@ -22,6 +22,11 @@ test('pure Bash policy refusals never initialize work-lease authority', async ()
     'gh issue close 1049',
     'gh issue edit 1049 --body "replacement"',
     'node scripts/gh/move-state.mjs 1049 done',
+    'touch "/tmp/quoted-outside.mjs"',
+    'touch ../relative-outside.mjs',
+    'env touch "/tmp/env-wrapper-outside.mjs"',
+    'sh -c "touch /tmp/shell-payload-outside.mjs"',
+    'echo "$(touch ../substitution-outside.mjs)"',
   ];
   for (const command of commands) {
     let governed = 0;
@@ -118,7 +123,7 @@ test('stale source fence blocks before the command callback can run', async () =
 test('missing lease blocks source and bound commit commands with zero callback effect', async () => {
   for (const [command, code] of [
     ['touch src/guarded.mjs', 'bash-source-authority-refused'],
-    ['git commit -m "feat: bound but unleased"', 'bash-commit-authority-refused'],
+    ['git commit -m "feat: bound without lease"', 'bash-commit-authority-refused'],
   ]) {
     let commandCallback = 0;
     const result = await runBashGuard(
@@ -173,6 +178,92 @@ test('issue-attributed commit verifies exact bound target and rejects mismatches
   assert.equal(mismatch.code, 'bash-commit-binding-mismatch');
   assert.match(mismatch.reason, /#1050/);
   assert.match(mismatch.reason, /#1049/);
+});
+
+test('commit wrappers and git global options cannot bypass issue-attributed commit authority', async () => {
+  const commands = [
+    'env git commit -m "[#1049] feat: env wrapper"',
+    'command git commit -m "[#1049] feat: command wrapper"',
+    'sh -c "git commit -m \'[#1049] feat: shell wrapper\'"',
+    '(git commit -m "[#1049] feat: grouped")',
+    'git --git-dir=.git commit -m "[#1049] feat: global option"',
+  ];
+  for (const command of commands) {
+    const calls = [];
+    const result = await runBashGuard(
+      { tool_name: 'Bash', tool_input: { command } },
+      baseDeps({
+        withGovernedEffect: async (options, callback) => {
+          calls.push(options);
+          return callback();
+        },
+      })
+    );
+    assert.equal(result.decision, 'allow', command);
+    assert.deepEqual(
+      calls.map(({ issueId, operation }) => ({ issueId, operation })),
+      [{ issueId: '1049', operation: 'issue-attributed-commit' }],
+      command
+    );
+  }
+
+  for (const command of commands) {
+    let commandCallback = 0;
+    const result = await runBashGuard(
+      { tool_name: 'Bash', tool_input: { command } },
+      baseDeps({
+        withGovernedEffect: async () => {
+          const error = new Error('wrapped commit fence is stale');
+          error.code = 'fence-stale';
+          throw error;
+        },
+        onAuthorizedCommand: () => {
+          commandCallback += 1;
+        },
+      })
+    );
+    assert.equal(result.decision, 'block', command);
+    assert.equal(result.code, 'bash-commit-authority-refused', command);
+    assert.match(result.reason, /fence-stale/, command);
+    assert.equal(commandCallback, 0, command);
+  }
+});
+
+test('commit attribution is parsed only from genuine commit segments', async () => {
+  const calls = [];
+  const result = await runBashGuard(
+    {
+      tool_name: 'Bash',
+      tool_input: { command: 'echo "[#1050]" && git commit -m "token-less"' },
+    },
+    baseDeps({
+      withGovernedEffect: async (options, callback) => {
+        calls.push(options);
+        return callback();
+      },
+    })
+  );
+  assert.equal(result.decision, 'allow');
+  assert.deepEqual(
+    calls.map(({ issueId, operation }) => ({ issueId, operation })),
+    [{ issueId: '1049', operation: 'issue-attributed-commit' }]
+  );
+
+  let governed = 0;
+  const mismatch = await runBashGuard(
+    {
+      tool_name: 'Bash',
+      tool_input: { command: 'echo "[#1049]" && env git commit -m "[#1050] wrong"' },
+    },
+    baseDeps({
+      withGovernedEffect: async () => {
+        governed += 1;
+      },
+    })
+  );
+  assert.equal(mismatch.decision, 'block');
+  assert.equal(mismatch.code, 'bash-commit-binding-mismatch');
+  assert.equal(governed, 0);
 });
 
 test('sanctioned AITM commands bypass Bash authority but arbitrary node scripts do not', async () => {
@@ -232,7 +323,7 @@ test('read, test, build, scratch, chore, and unbound commits preserve authority 
   }
 });
 
-test('tokenless commit with an active binding is session-attributed and governed', async () => {
+test('token-less commit with an active binding is session-attributed and governed', async () => {
   const calls = [];
   const result = await runBashGuard(
     { tool_name: 'Bash', tool_input: { command: 'git commit -m "feat: warning comes later"' } },

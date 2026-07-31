@@ -2,7 +2,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { mkdirSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -291,6 +291,31 @@ test('#1049: exact installed Bash bootstrap blocks stale attributed commit autho
     assert.equal(decision.decision, 'block');
     assert.match(decision.reason, /issue-attributed-commit/);
     assert.match(decision.reason, /fence-stale/);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('#1049: exact installed Bash bootstrap blocks an unbound inline Node source effect', () => {
+  const dir = installedGuardSandbox();
+  const target = resolve(dir, 'src', 'inline-write.mjs');
+  try {
+    mkdirSync(resolve(dir, 'src'), { recursive: true });
+    const result = runBootstrap(
+      'bash-guard',
+      dir,
+      JSON.stringify({
+        tool_name: 'Bash',
+        tool_input: {
+          command: "node -e \"require('node:fs').writeFileSync('src/inline-write.mjs', 'x')\"",
+        },
+      })
+    );
+    assert.equal(result.status, 0, result.stderr);
+    const decision = JSON.parse(result.stdout);
+    assert.equal(decision.decision, 'block');
+    assert.match(decision.reason, /no active issue is bound/);
+    assert.equal(existsSync(target), false, 'blocked command must not create the target file');
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }

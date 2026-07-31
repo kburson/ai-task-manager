@@ -15,7 +15,9 @@
 // ~/.claude/ writes: always blocked (read-only for the task manager).
 //
 // Detects write targets via output redirections (>/>>), tee, and common
-// write-oriented commands. Everything else is treated as a read.
+// write-oriented commands. After pure policy checks, only positively proven
+// reads/tests/builds bypass source authority; ambiguous executable segments
+// fail closed to the governed source-write operation.
 //
 // `/tmp` contract (issue #199): system `/tmp` and `/private/tmp` are out of
 // scope for both reads and writes. The canonical scratch directory is
@@ -102,10 +104,11 @@ async function evaluate(input, deps = {}) {
 
   // Guard-logic dependencies are imported dynamically so a throw during their
   // own module evaluation is catchable and fails closed (see contract above).
-  const { evaluateGhEdit, evaluateGhCreate, evaluateGhApiCreate } =
+  const { evaluateGhEdit, evaluateGhCreate, evaluateGhApiCreate, splitCommandSegments } =
     await import('./lib/gh-edit-guard.mjs');
   const { evaluateGhProject } = await import('./lib/gh-project-guard.mjs');
   const { evaluateAitmPath } = await import('./lib/aitm-path-guard.mjs');
+  const { extractWriteTargets } = await import('./activity-policy.mjs');
   const { GIT_TIMEOUT_MS } = await import('./lib/process-timeouts.mjs');
   const { configPath } = await import('./paths.mjs');
 
@@ -289,9 +292,14 @@ async function evaluate(input, deps = {}) {
   const teeRe = /\btee\s+(?:-a\s+)?(\/[a-zA-Z0-9._~/-]+)/g;
   for (const [, p] of scanned.matchAll(teeRe)) writePaths.add(p);
 
-  // touch, mkdir, rmdir, rm — first absolute path argument is the target
+  // Legacy absolute-path extraction remains as a defensive overlap. The
+  // command-position-aware extractor below covers quoted, relative, wrapped,
+  // and multi-operand forms.
   const writeCommandRe = /\b(?:touch|mkdir|rmdir|rm)\s+(?:-[^\s]+\s+)*(\/[a-zA-Z0-9._~/-]+)/g;
   for (const [, p] of scanned.matchAll(writeCommandRe)) writePaths.add(p);
+  for (const segment of collectCommandSegments(command, splitCommandSegments)) {
+    for (const target of extractWriteTargets(segment)) writePaths.add(target);
+  }
 
   // --- Extract all absolute paths ---
   // Lookbehind ensures we match only boundary-anchored paths, not mid-segment slashes
@@ -301,7 +309,12 @@ async function evaluate(input, deps = {}) {
 
   // --- Validate write targets ---
   for (const p of writePaths) {
-    if (!WRITE_ALLOWED.some((prefix) => p.startsWith(prefix))) {
+    if (p === '-') continue;
+    const resolvedTarget = isAbsolute(p) ? resolve(p) : resolve(projectRoot, p);
+    const projectRelative = relative(resolve(projectRoot), resolvedTarget);
+    const insideProject =
+      projectRelative === '' || (!projectRelative.startsWith('..') && !isAbsolute(projectRelative));
+    if (!insideProject || p === '~' || p.startsWith('~/')) {
       block(
         `Write operation to path outside allowed scope: ${p}\n  (writes permitted only inside the project root; use \`./.tmp/\` for scratch — \`./.tmp/gh/\` for issue bodies, \`./.tmp/plan/\` for create-issue fragments; system \`/tmp\` and \`/private/tmp\` are not allowed)`
       );
@@ -347,7 +360,7 @@ async function evaluate(input, deps = {}) {
   // time. Unlike the fail-closed verb preflight, fetch failures PASS here so an
   // offline `gh` never wedges every commit. Token-less/chore commits carry no
   // `[#N]` and pass — the visible escape hatch.
-  await checkCommitAssigneeLock({ command, scanned, projectRoot });
+  await checkCommitAssigneeLock({ command, projectRoot });
 
   // All pure policy checks passed. Only now may the guard initialize durable
   // authority for shell source writes or a session-attributed commit.
@@ -356,16 +369,11 @@ async function evaluate(input, deps = {}) {
   // #769 — commit-time assignee-lock check. Nested so it shares `block()` and
   // the resolved `projectRoot`/`configPath`. Any block() short-circuits with
   // exit 0; every fetch/parse failure is swallowed so commits are never wedged.
-  async function checkCommitAssigneeLock({
-    command: rawCommand,
-    scanned: scannedCommand,
-    projectRoot: root,
-  }) {
-    // Detect a genuine `git commit` action on the quote-stripped command so a
-    // commit *message* that mentions "git commit" does not self-trigger.
-    const GIT_COMMIT_RE = /\bgit\s+(?:-\S+\s+|--[\w-]+(?:=\S+)?\s+)*commit\b/;
-    const commitSegments = scannedCommand.split(/&&|\|\||[;&|\n]|\$\(/);
-    if (!commitSegments.some((seg) => GIT_COMMIT_RE.test(seg))) return;
+  async function checkCommitAssigneeLock({ command: rawCommand, projectRoot: root }) {
+    const commitSegments = collectCommandSegments(rawCommand, splitCommandSegments).filter(
+      isCommitSegment
+    );
+    if (commitSegments.length === 0) return;
 
     // Offline escape — consistent with the verb preflight's TT_SKIP_NETWORK gate.
     if (process.env.TT_SKIP_NETWORK === '1') return;
@@ -375,9 +383,9 @@ async function evaluate(input, deps = {}) {
     if ((cfg.preferences?.gateAssigneeMatch ?? true) === false) return;
 
     const { parseCommitIssueRefs, checkAssigneeMatch } = await import('./lib/assignee-guard.mjs');
-    // `[#N]` tokens live inside the quoted commit message, so parse the RAW
-    // command (scanned blanks quoted regions).
-    const refs = parseCommitIssueRefs(rawCommand);
+    // `[#N]` tokens live inside quoted commit messages. Parse only the raw
+    // genuine commit segments so neighboring prose cannot borrow attribution.
+    const refs = [...new Set(commitSegments.flatMap((segment) => parseCommitIssueRefs(segment)))];
     if (refs.length === 0) return; // token-less / chore — escape hatch
 
     const cache = {};
@@ -442,25 +450,405 @@ function isScratchTarget(target) {
   return target === '.tmp' || target.startsWith('.tmp/');
 }
 
-function isSanctionedAitmCommand(command, splitCommandSegments) {
-  const segments = splitCommandSegments(command)
-    .map((segment) => segment.trim())
-    .filter(Boolean);
-  if (segments.length === 0) return false;
-  const AITM_COMMAND_RE =
-    /^(?:[A-Za-z_][A-Za-z0-9_]*=\S+\s+)*npx(?:\s+--yes)?\s+(?:aitm|ai-task-manager)\b/;
-  return segments.every((segment) => AITM_COMMAND_RE.test(segment));
+function shellWords(command) {
+  const words = [];
+  let word = '';
+  let quote = null;
+  for (let i = 0; i < command.length; i++) {
+    const char = command[i];
+    if (quote) {
+      if (char === quote) {
+        quote = null;
+      } else if (quote === '"' && char === '\\' && i + 1 < command.length) {
+        word += command[++i];
+      } else {
+        word += char;
+      }
+      continue;
+    }
+    if (char === "'" || char === '"') {
+      quote = char;
+      continue;
+    }
+    if (char === '\\' && i + 1 < command.length) {
+      word += command[++i];
+      continue;
+    }
+    if (/\s/.test(char)) {
+      if (word) words.push(word);
+      word = '';
+      continue;
+    }
+    word += char;
+  }
+  if (word) words.push(word);
+  return words;
 }
 
-function hasArbitraryNodeScript(command, splitCommandSegments, classifyBash) {
-  const NODE_SCRIPT_RE =
-    /^(?:[A-Za-z_][A-Za-z0-9_]*=\S+\s+)*node(?:\s+--[\w-]+(?:=\S+)?)*\s+(?:\.\/)?scripts\/\S+/;
-  return splitCommandSegments(command).some((segment) => {
-    const trimmed = segment.trim();
-    const activity = classifyBash(trimmed);
-    if (activity === 'RUN_TESTS' || activity === 'RUN_BUILD') return false;
-    return NODE_SCRIPT_RE.test(trimmed);
-  });
+function nestedCommandBodies(command) {
+  const bodies = [];
+
+  function scan(source) {
+    let quote = null;
+    for (let i = 0; i < source.length; i++) {
+      const char = source[i];
+      if (quote === "'") {
+        if (char === "'") quote = null;
+        continue;
+      }
+      if (char === "'" && quote !== '"') {
+        quote = "'";
+        continue;
+      }
+      if (char === '\\') {
+        i += 1;
+        continue;
+      }
+      if (char === '"') {
+        quote = quote === '"' ? null : '"';
+        continue;
+      }
+      if (char === '`') {
+        let end = i + 1;
+        while (end < source.length && source[end] !== '`') {
+          if (source[end] === '\\') end += 1;
+          end += 1;
+        }
+        const body = source.slice(i + 1, end);
+        if (body.trim()) bodies.push(body);
+        i = end;
+        continue;
+      }
+      if (char !== '$' || source[i + 1] !== '(') continue;
+
+      let depth = 1;
+      let innerQuote = null;
+      let end = i + 2;
+      for (; end < source.length && depth > 0; end++) {
+        const inner = source[end];
+        if (innerQuote === "'") {
+          if (inner === "'") innerQuote = null;
+          continue;
+        }
+        if (inner === "'" && innerQuote !== '"') {
+          innerQuote = "'";
+          continue;
+        }
+        if (inner === '\\') {
+          end += 1;
+          continue;
+        }
+        if (inner === '"') {
+          innerQuote = innerQuote === '"' ? null : '"';
+          continue;
+        }
+        if (inner === '(') depth += 1;
+        if (inner === ')') depth -= 1;
+      }
+      const body = source.slice(i + 2, depth === 0 ? end - 1 : source.length);
+      if (body.trim()) bodies.push(body);
+      i = depth === 0 ? end - 1 : source.length;
+    }
+  }
+
+  scan(String(command || ''));
+  return bodies;
+}
+
+function stripGroupingParens(segment) {
+  return segment
+    .trim()
+    .replace(/^\(\s*/, '')
+    .replace(/\s*\)+$/, '')
+    .trim();
+}
+
+function collectCommandSegments(command, splitCommandSegments) {
+  const collected = [];
+  const seenBodies = new Set();
+
+  function collect(source) {
+    if (!source || seenBodies.has(source)) return;
+    seenBodies.add(source);
+
+    for (const rawSegment of splitCommandSegments(source)) {
+      const segment = stripGroupingParens(rawSegment);
+      if (!segment) continue;
+      const words = shellWords(segment);
+      const head = words[0]?.split('/').pop();
+      const shellFlag = ['bash', 'sh', 'zsh'].includes(head)
+        ? words.findIndex((word) => word === '-c' || word === '--command')
+        : -1;
+      if (shellFlag >= 0 && words[shellFlag + 1]) {
+        collect(words[shellFlag + 1]);
+      } else {
+        collected.push(segment);
+      }
+    }
+
+    for (const nested of nestedCommandBodies(source)) collect(nested);
+  }
+
+  collect(String(command || ''));
+  return [...new Set(collected)];
+}
+
+function unwrapCommandWords(words) {
+  const remaining = [...words];
+  while (remaining[0] && /^[A-Za-z_][A-Za-z0-9_]*=/.test(remaining[0])) remaining.shift();
+
+  while (remaining.length > 0) {
+    const head = remaining[0].split('/').pop();
+    if (head === 'env') {
+      remaining.shift();
+      while (
+        remaining[0] &&
+        (remaining[0].startsWith('-') || /^[A-Za-z_][A-Za-z0-9_]*=/.test(remaining[0]))
+      ) {
+        remaining.shift();
+      }
+      continue;
+    }
+    if (head === 'command' && remaining[1] !== '-v' && remaining[1] !== '-V') {
+      remaining.shift();
+      while (remaining[0]?.startsWith('-')) remaining.shift();
+      continue;
+    }
+    break;
+  }
+  return remaining;
+}
+
+function gitSubcommand(words) {
+  if (words[0]?.split('/').pop() !== 'git') return null;
+  for (let i = 1; i < words.length; i++) {
+    const word = words[i];
+    if (word === '-c' || word === '-C' || word === '--git-dir' || word === '--work-tree') {
+      i += 1;
+      continue;
+    }
+    if (word.startsWith('-')) continue;
+    return word;
+  }
+  return null;
+}
+
+function isCommitSegment(segment) {
+  return gitSubcommand(unwrapCommandWords(shellWords(segment))) === 'commit';
+}
+
+function isSanctionedAitmCommand(command, segments) {
+  if (nestedCommandBodies(command).length > 0 || segments.length !== 1) return false;
+  const segment = segments[0].trim();
+  const words = shellWords(segment);
+  while (words[0] && /^[A-Za-z_][A-Za-z0-9_]*=/.test(words[0])) words.shift();
+  if (words[0] !== 'npx') return false;
+  let cursor = 1;
+  if (words[cursor] === '--yes') cursor += 1;
+  return words[cursor] === 'aitm' || words[cursor] === 'ai-task-manager';
+}
+
+const READ_ONLY_BINS = new Set([
+  '[',
+  'basename',
+  'cat',
+  'cmp',
+  'cut',
+  'date',
+  'diff',
+  'dirname',
+  'echo',
+  'false',
+  'file',
+  'grep',
+  'head',
+  'hostname',
+  'id',
+  'jq',
+  'ls',
+  'printf',
+  'pwd',
+  'realpath',
+  'rg',
+  'sort',
+  'stat',
+  'tail',
+  'test',
+  'tr',
+  'true',
+  'type',
+  'uname',
+  'uniq',
+  'wc',
+  'which',
+  'whoami',
+]);
+
+const READ_ONLY_GIT_SUBCOMMANDS = new Set([
+  'blame',
+  'cat-file',
+  'describe',
+  'diff',
+  'grep',
+  'log',
+  'ls-files',
+  'ls-tree',
+  'rev-list',
+  'rev-parse',
+  'show',
+  'status',
+]);
+
+function isProvenReadOnly(segment, classifyBash) {
+  const words = unwrapCommandWords(shellWords(segment));
+  if (words.length === 0) return true;
+  const normalized = words.join(' ');
+  const activity = classifyBash(normalized);
+  if (activity === 'RUN_TESTS' || activity === 'RUN_BUILD') return true;
+
+  const head = words[0].split('/').pop();
+  if (
+    (head === 'sort' || head === 'diff') &&
+    words.some(
+      (word) =>
+        word === '-o' ||
+        word === '--output' ||
+        word.startsWith('--output=') ||
+        (head === 'sort' && /^-o.+/.test(word))
+    )
+  ) {
+    return false;
+  }
+  if (READ_ONLY_BINS.has(head)) return true;
+  if (head === 'command' && (words[1] === '-v' || words[1] === '-V')) return true;
+  if (head === 'env' && words.length === 1) return true;
+  if (head === 'node') {
+    const preload = words.some(
+      (word) => word === '-r' || word === '--require' || word.startsWith('--require=')
+    );
+    return words[1] === '--check' && !preload;
+  }
+  if (head === 'npm') {
+    const safeScript = words[1] === 'run' && (words[2] === 'lint' || words[2] === 'format:check');
+    const mutationFlag = words.some(
+      (word) => word === '--fix' || word === '--write' || word.startsWith('--fix=')
+    );
+    return safeScript && !mutationFlag;
+  }
+  if (head === 'find') {
+    // cspell:ignore execdir fprint okdir
+    const mutationPrimaries = new Set([
+      '-delete',
+      '-exec',
+      '-execdir',
+      '-fls',
+      '-fprint',
+      '-fprint0',
+      '-ok',
+      '-okdir',
+    ]);
+    return !words.some((word) => mutationPrimaries.has(word));
+  }
+  if (head === 'sed') {
+    return !words.some((word) => word === '-i' || word.startsWith('-i') || word === '--in-place');
+  }
+  if (head === 'git') {
+    const subcommand = gitSubcommand(words);
+    if (words.some((word) => word === '--output' || word.startsWith('--output='))) return false;
+    if (READ_ONLY_GIT_SUBCOMMANDS.has(subcommand)) return true;
+    if (subcommand === 'branch') {
+      return words.some((word) => ['--list', '--show-current', '-a', '-r'].includes(word));
+    }
+    if (subcommand === 'config') {
+      return words.some((word) =>
+        ['--get', '--get-all', '--get-regexp', '--list', '-l', '--show-origin'].includes(word)
+      );
+    }
+    if (subcommand === 'worktree') {
+      const worktreeIndex = words.indexOf('worktree');
+      return words.slice(worktreeIndex + 1).find((word) => !word.startsWith('-')) === 'list';
+    }
+    return false;
+  }
+  if (head === 'gh') {
+    if (words[1] === 'api') {
+      return !words.some(
+        (word) =>
+          word === '-F' ||
+          word.startsWith('-F') ||
+          word === '-f' ||
+          word.startsWith('-f') ||
+          word === '-X' ||
+          word.startsWith('-X') ||
+          word === '--field' ||
+          word.startsWith('--field=') ||
+          word === '--input' ||
+          word.startsWith('--input=') ||
+          word === '--method' ||
+          word.startsWith('--method=')
+      );
+    }
+    if (words[1] === 'issue' && (words[2] === 'reopen' || words[2] === 'edit')) {
+      // The pure gh policy above already refuses body edits and lifecycle
+      // closes. Reopen and metadata-only edits remain intentional legacy
+      // escape paths and do not produce a local source effect.
+      return true;
+    }
+    const key = `${words[1] || ''} ${words[2] || ''}`;
+    return new Set([
+      'issue list',
+      'issue status',
+      'issue view',
+      'pr checks',
+      'pr diff',
+      'pr list',
+      'pr status',
+      'pr view',
+      'repo list',
+      'repo view',
+      'run list',
+      'run view',
+      'workflow list',
+      'workflow view',
+    ]).has(key);
+  }
+  return false;
+}
+
+function sourceEffectProfile({
+  command,
+  projectRoot,
+  splitCommandSegments,
+  classifyBash,
+  extractWriteTargets,
+}) {
+  const segments = collectCommandSegments(command, splitCommandSegments);
+  const commitSegments = segments.filter(isCommitSegment);
+  const writeTargets = segments
+    .flatMap((segment) => extractWriteTargets(segment))
+    .map((target) => normalizeShellTarget(target, projectRoot))
+    .filter(Boolean);
+  const sourceTargets = writeTargets.filter((target) => !isScratchTarget(target));
+
+  if (
+    commitSegments.length === 0 &&
+    sourceTargets.length === 0 &&
+    isSanctionedAitmCommand(command, segments)
+  ) {
+    return { commitSegments, sourceTargets, requiresSource: false };
+  }
+
+  let requiresSource = sourceTargets.length > 0;
+  for (const segment of segments) {
+    if (isCommitSegment(segment) || isProvenReadOnly(segment, classifyBash)) continue;
+    const segmentTargets = extractWriteTargets(segment)
+      .map((target) => normalizeShellTarget(target, projectRoot))
+      .filter(Boolean);
+    if (segmentTargets.length > 0 && segmentTargets.every(isScratchTarget)) continue;
+    requiresSource = true;
+  }
+
+  return { commitSegments, sourceTargets, requiresSource };
 }
 
 function canonicalIssue(value) {
@@ -469,29 +857,19 @@ function canonicalIssue(value) {
 }
 
 async function authorizeAcceptedCommand({ command, projectRoot, deps }) {
-  const [{ classifyBash, extractWriteTargets }, { detectGitCommit }, { splitCommandSegments }] =
-    await Promise.all([
-      import('./activity-policy.mjs'),
-      import('./lib/commit-trail.mjs'),
-      import('./lib/gh-edit-guard.mjs'),
-    ]);
+  const [{ classifyBash, extractWriteTargets }, { splitCommandSegments }] = await Promise.all([
+    import('./activity-policy.mjs'),
+    import('./lib/gh-edit-guard.mjs'),
+  ]);
 
-  const commit = detectGitCommit(command);
-  const writeTargets = extractWriteTargets(command)
-    .map((target) => normalizeShellTarget(target, projectRoot))
-    .filter(Boolean);
-  const sourceTargets = writeTargets.filter((target) => !isScratchTarget(target));
-  const arbitraryNodeScript = hasArbitraryNodeScript(command, splitCommandSegments, classifyBash);
-
-  if (
-    !commit.isCommit &&
-    sourceTargets.length === 0 &&
-    !arbitraryNodeScript &&
-    isSanctionedAitmCommand(command, splitCommandSegments)
-  ) {
-    return;
-  }
-  if (!commit.isCommit && sourceTargets.length === 0 && !arbitraryNodeScript) return;
+  const { commitSegments, sourceTargets, requiresSource } = sourceEffectProfile({
+    command,
+    projectRoot,
+    splitCommandSegments,
+    classifyBash,
+    extractWriteTargets,
+  });
+  if (commitSegments.length === 0 && !requiresSource) return;
 
   const [{ isChoreModeActive }, { readBoundState }] = await Promise.all([
     import('./lib/chore-mode.mjs'),
@@ -504,32 +882,39 @@ async function authorizeAcceptedCommand({ command, projectRoot, deps }) {
   const boundIssue = canonicalIssue(activeIssue);
   const operations = [];
 
-  if (commit.isCommit) {
+  if (commitSegments.length > 0) {
     const { parseCommitIssueRefs } = await import('./lib/assignee-guard.mjs');
-    const refs = parseCommitIssueRefs(command).map(String);
+    const refs = [
+      ...new Set(commitSegments.flatMap((segment) => parseCommitIssueRefs(segment).map(String))),
+    ];
     if (!boundIssue) {
-      if (refs.length === 0) return;
-      block(
-        `[task-tracker] Refusing issue-attributed git commit: ${refs.map((id) => `#${id}`).join(', ')} has no active session binding.\n` +
-          `  Bind the intended issue before committing so its exclusive work lease can be verified.`,
-        'bash-commit-no-bound-issue'
-      );
+      if (refs.length === 0) {
+        if (!requiresSource) return;
+      } else {
+        block(
+          `[task-tracker] Refusing issue-attributed git commit: ${refs.map((id) => `#${id}`).join(', ')} has no active session binding.\n` +
+            `  Bind the intended issue before committing so its exclusive work lease can be verified.`,
+          'bash-commit-no-bound-issue'
+        );
+      }
     }
-    const mismatches = refs.filter((id) => id !== boundIssue);
-    if (mismatches.length > 0) {
-      block(
-        `[task-tracker] Refusing git commit: message target ${mismatches.map((id) => `#${id}`).join(', ')} differs from active binding #${boundIssue}.\n` +
-          `  A commit may only attribute the issue whose session lease is currently bound.`,
-        'bash-commit-binding-mismatch'
-      );
+    if (boundIssue) {
+      const mismatches = refs.filter((id) => id !== boundIssue);
+      if (mismatches.length > 0) {
+        block(
+          `[task-tracker] Refusing git commit: message target ${mismatches.map((id) => `#${id}`).join(', ')} differs from active binding #${boundIssue}.\n` +
+            `  A commit may only attribute the issue whose session lease is currently bound.`,
+          'bash-commit-binding-mismatch'
+        );
+      }
+      operations.push('issue-attributed-commit');
     }
-    operations.push('issue-attributed-commit');
   }
 
-  if (sourceTargets.length > 0 || arbitraryNodeScript) {
+  if (requiresSource) {
     if (!boundIssue) {
       const targets =
-        sourceTargets.length > 0 ? sourceTargets.join(', ') : 'unclassified node script';
+        sourceTargets.length > 0 ? sourceTargets.join(', ') : 'unclassified shell segment';
       block(
         `[task-tracker] Refusing shell source mutation: no active issue is bound.\n` +
           `  Targets: ${targets}`,
