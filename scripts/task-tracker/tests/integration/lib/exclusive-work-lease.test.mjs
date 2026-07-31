@@ -69,6 +69,42 @@ const LEASE = {
   expiresAt: '2026-07-30T12:15:00.000Z',
 };
 
+function switchProjectionAuthorityFixture() {
+  const request = {
+    projectId: LEASE.projectId,
+    issueId: '1048',
+    leaseId: LEASE.leaseId,
+    fencingToken: LEASE.fencingToken,
+    idempotencyKey: 'switch:session-1:1048:1049:request-fixture',
+    switchedAt: NOW.toISOString(),
+    target: {
+      projectId: LEASE.projectId,
+      issueId: '1049',
+      mode: 'write',
+      idempotencyKey: 'switch-target:session-1:1049:request-fixture',
+      requestedAt: NOW.toISOString(),
+      ttlMs: 900_000,
+      holder: { ...LEASE.holder },
+    },
+  };
+  const receipt = {
+    lease: {
+      ...LEASE,
+      leaseId: 'lease-switch-target',
+      fencingToken: '8',
+      audit: { operation: 'switch' },
+    },
+    transition: {
+      transitionId: 'transition-switch',
+      fromIssueId: '1048',
+      fromLeaseId: LEASE.leaseId,
+      fromToken: LEASE.fencingToken,
+      toIssueId: '1049',
+    },
+  };
+  return { request, receipt };
+}
+
 function sandbox() {
   return mkdtempProjectIsolated('tt-exclusive-bind-');
 }
@@ -3235,7 +3271,7 @@ test('production GitHub switch sub-operations survive response loss with exact r
     const remoteIssueTimes = new Set();
     let issueTimeResponseLost = false;
     ctx.applyWorkLeaseGithubProjection = undefined;
-    ctx.safeRecordSessionRef = async (_issue, input) => {
+    ctx.safeRecordTransitionSessionRef = async (_issue, input) => {
       remoteSessionRefs.add(input.operationId);
       return {
         ok: true,
@@ -3247,7 +3283,7 @@ test('production GitHub switch sub-operations survive response loss with exact r
         },
       };
     };
-    ctx.runLogIssueTime = async (_issue, input) => {
+    ctx.runTransitionLogIssueTime = async (_issue, input) => {
       remoteIssueTimes.add(input.subOperationId);
       if (!issueTimeResponseLost) {
         issueTimeResponseLost = true;
@@ -3275,6 +3311,7 @@ test('production GitHub switch sub-operations survive response loss with exact r
         transitionId: 'transition-switch',
         projectionName: 'github',
         projectionId,
+        ...switchProjectionAuthorityFixture(),
       };
       await assert.rejects(
         () => input.projections.github(options),
@@ -3396,7 +3433,7 @@ test('queued source timing survives delivery and checkpoint loss with one stable
     };
 
     ctx.applyWorkLeaseGithubProjection = undefined;
-    ctx.safeRecordSessionRef = async (_issue, input) => ({
+    ctx.safeRecordTransitionSessionRef = async (_issue, input) => ({
       ok: true,
       receipt: {
         sid: input.sid,
@@ -3407,7 +3444,7 @@ test('queued source timing survives delivery and checkpoint loss with one stable
     });
     let issueTimeMutations = 0;
     let exactIssueTimeState = null;
-    ctx.runLogIssueTime = async (_issue, input) => {
+    ctx.runTransitionLogIssueTime = async (_issue, input) => {
       const proof = await reconcileIssueTimeProjection({
         expected: input.expected,
         readState: async () => structuredClone(exactIssueTimeState),
@@ -3453,6 +3490,7 @@ test('queued source timing survives delivery and checkpoint loss with one stable
         transitionId: 'transition-switch',
         projectionName: 'timing',
         projectionId: timingProjectionId,
+        ...switchProjectionAuthorityFixture(),
       };
       await assert.rejects(
         () => input.projections.timing(timingOptions),

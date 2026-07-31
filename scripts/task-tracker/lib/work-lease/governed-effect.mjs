@@ -21,6 +21,19 @@ export const GOVERNED_EFFECT_OPERATIONS = Object.freeze([
 ]);
 
 const OPERATION_SET = new Set(GOVERNED_EFFECT_OPERATIONS);
+const AUTHORITY_ERROR_CODES = new Set([
+  'invalid-request',
+  'idempotency-conflict',
+  'lease-contended',
+  'worktree-contended',
+  'fence-stale',
+  'authority-unauthenticated',
+  'authority-forbidden',
+  'authority-unavailable',
+  'holder-live',
+  'lease-not-held',
+  'main-worktree-unresolved',
+]);
 const HOLDER_IDENTITY_FIELDS = Object.freeze([
   'principalKind',
   'provider',
@@ -41,6 +54,10 @@ export function assertGovernedEffectOperation(operation) {
     throw invalid(`unknown governed effect operation: ${String(operation ?? '')}`);
   }
   return operation;
+}
+
+export function isGovernedAuthorityError(error) {
+  return error instanceof WorkLeaseError || AUTHORITY_ERROR_CODES.has(error?.code);
 }
 
 function requiredString(value, label) {

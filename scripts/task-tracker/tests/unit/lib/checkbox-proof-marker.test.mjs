@@ -14,6 +14,7 @@ import { mutateIssueBody, CheckboxProofMissingError } from '../../../lib/issue-b
 function fakeDeps(initialBody) {
   let body = initialBody;
   return {
+    withGovernedEffect: async (_options, callback) => callback({ reverify: async () => {} }),
     fetchBody: async () => body,
     pushBody: async (_repo, _n, next) => {
       body = next;

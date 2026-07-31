@@ -53,6 +53,7 @@ import {
   removeExactQueueEntries,
 } from '../../queue.mjs';
 import { deriveIssueTimeExpectedFields } from './issue-time-projection.mjs';
+import { deriveTransitionProjectionAuthority } from './transition-projection-authority.mjs';
 import {
   resolveBindEvent,
   timingCommentHasRows,
@@ -361,7 +362,10 @@ async function applyFleetProjection(ctx, { input, projectionId }) {
   return projectionProof('fleet', projectionId);
 }
 
-async function applyTimingProjection(ctx, { input, projectionId }) {
+async function applyTimingProjection(
+  ctx,
+  { input, projectionId, receipt, request, transitionId } = {}
+) {
   if (
     !isPlainObject(input) ||
     !isNonEmptyString(input.issueNumber) ||
@@ -435,7 +439,10 @@ async function applyTimingProjection(ctx, { input, projectionId }) {
   }
   if (input.decision.mode !== 'switch') await ctx.drainQueueIfAny();
   const gh = await import('../../gh-timing-comment.mjs');
-  const post = ctx.postTimingProjection ?? gh.postTimingEvent;
+  const transitionProjection = input.decision.mode === 'switch';
+  const post =
+    ctx.postTimingProjection ??
+    (transitionProjection ? gh.postTransitionTimingProjection : gh.postTimingEvent);
   const deliveries = [
     ...queuedSourceEntries.map((queued) => ({
       issueNumber: String(queued.entry.issue).replace(/^#/, ''),
@@ -448,12 +455,28 @@ async function applyTimingProjection(ctx, { input, projectionId }) {
   ];
   for (const item of deliveries) {
     const issueNumber = item.issueNumber ?? input.issueNumber;
+    const stableProjectionId = item.projectionId ?? projectionId;
+    const authority = transitionProjection
+      ? deriveTransitionProjectionAuthority({
+          receipt,
+          request,
+          transitionId,
+          projectionName: 'timing',
+          projectionId: stableProjectionId,
+          subOperationId: item.subOperationId,
+          issueId: issueNumber,
+          operation: 'evidence-mutation',
+        })
+      : null;
     try {
       await post({
+        ...(transitionProjection
+          ? { authority, transitionId, projectionName: 'timing' }
+          : { withGovernedEffect: ctx.withGovernedEffect }),
         issueNumber,
         repo: input.repo,
         row: item.row,
-        projectionId: item.projectionId ?? projectionId,
+        projectionId: stableProjectionId,
         subOperationId: item.subOperationId,
         projDir: ctx.projectDir,
       });
@@ -518,7 +541,10 @@ async function applyTimingProjection(ctx, { input, projectionId }) {
   return projectionProof('timing', projectionId);
 }
 
-async function applyGithubProjection(ctx, { input, projectionId }) {
+async function applyGithubProjection(
+  ctx,
+  { input, projectionId, receipt, request, transitionId } = {}
+) {
   if (
     !input ||
     typeof input !== 'object' ||
@@ -579,11 +605,24 @@ async function applyGithubProjection(ctx, { input, projectionId }) {
     ) {
       throw new Error('persisted GitHub switch projection is malformed');
     }
-    const sessionRef = await ctx.safeRecordSessionRef(input.switch.sourceIssue, {
+    const sessionRefAuthority = deriveTransitionProjectionAuthority({
+      receipt,
+      request,
+      transitionId,
+      projectionName: 'github',
+      projectionId,
+      subOperationId: input.switch.subOperations.sessionRef,
+      issueId: input.switch.sourceIssue,
+      operation: 'evidence-mutation',
+    });
+    const sessionRef = await ctx.safeRecordTransitionSessionRef(input.switch.sourceIssue, {
       sid: input.switch.sessionId,
       jsonlPath: input.switch.jsonlPath,
       ts: input.switch.ts,
       operationId: input.switch.subOperations.sessionRef,
+      authority: sessionRefAuthority,
+      transitionId,
+      projectionId,
     });
     if (
       sessionRef?.ok !== true ||
@@ -594,7 +633,19 @@ async function applyGithubProjection(ctx, { input, projectionId }) {
     ) {
       throw new Error('GitHub switch session reference did not reconcile');
     }
-    const issueTime = await ctx.runLogIssueTime(input.switch.sourceIssue, {
+    const issueTimeAuthority = deriveTransitionProjectionAuthority({
+      receipt,
+      request,
+      transitionId,
+      projectionName: 'github',
+      projectionId,
+      subOperationId: input.switch.subOperations.issueTime,
+      issueId: input.switch.sourceIssue,
+      operation: 'evidence-mutation',
+    });
+    const issueTime = await ctx.runTransitionLogIssueTime(input.switch.sourceIssue, {
+      authority: issueTimeAuthority,
+      transitionId,
       projectionId,
       subOperationId: input.switch.subOperations.issueTime,
       expected: input.switch.issueTimeExpected,
@@ -808,7 +859,7 @@ async function buildGovernedSwitchPlan(
 
 async function applySwitchProjection(
   ctx,
-  { phase, input, lease, transitionId, projectionName, projectionId, sessionId }
+  { phase, input, lease, receipt, request, transitionId, projectionName, projectionId, sessionId }
 ) {
   if (phase === 'compensation') {
     const forwardInput = input?.forwardInput;
@@ -874,7 +925,15 @@ async function applySwitchProjection(
     timing: applyTimingProjection,
     github: applyGithubProjection,
   }[projectionName];
-  return apply(ctx, { input, lease, projectionId, projectionName });
+  return apply(ctx, {
+    input,
+    lease,
+    receipt,
+    request,
+    transitionId,
+    projectionId,
+    projectionName,
+  });
 }
 
 async function verbSwitchGoverned(

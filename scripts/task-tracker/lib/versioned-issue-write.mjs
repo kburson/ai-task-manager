@@ -290,6 +290,10 @@ export async function versionedWriteBody({
   }
   const fetchBody = deps.fetchBody || ghFetchBody;
   const pushBody = deps.pushBody || ghPushBody;
+  const beforePush = deps.beforePush;
+  if (beforePush !== undefined && typeof beforePush !== 'function') {
+    throw new TypeError('versionedWriteBody: deps.beforePush must be a function');
+  }
 
   let attempts = 0;
   let lastBase = null;
@@ -349,6 +353,7 @@ export async function versionedWriteBody({
     const targetVersion = remoteVersion + 1;
     const stamped = stampBodyVersion(stripVersion(ourLocal), targetVersion);
 
+    await beforePush?.({ issueNumber, repo, attempt: attempts, targetVersion });
     await pushBody(repo, issueNumber, stamped);
 
     // Verify our exact body landed. Version alone is insufficient: two

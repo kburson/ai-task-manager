@@ -20,6 +20,12 @@ import {
   classifyTimingEvent,
   isEmittableTimingEvent,
 } from './lib/timing-events/index.mjs';
+import { loadConfig } from './config.mjs';
+import {
+  createRuntimeGovernedEffectAdapter,
+  isGovernedAuthorityError,
+} from './lib/work-lease/governed-effect.mjs';
+import { assertTransitionProjectionAuthority } from './lib/work-lease/transition-projection-authority.mjs';
 const pexec = promisify(execFile);
 
 // #568 — raised by `appendRow` when a second `start` row is attempted over a
@@ -739,50 +745,114 @@ export async function postTimingEvent({
   retries = 2,
   lock = true,
   projDir,
+  withGovernedEffect,
+  deps = {},
 } = {}) {
   const projection = normalizeTimingProjection(projectionId, subOperationId);
   const durableRow = rowWithProjectionMarker(row, projection);
-  const work = async () => {
-    const existing = await findTimingComment(issueNumber, repo, { timeoutMs });
-    if (existing) {
-      if (projection) {
-        const effect = reconcileTimingProjectionRowEffect(existing.body, {
-          ...projection,
-          row,
-        });
-        if (effect.status === 'present') {
-          return {
-            status: 'already-reconciled',
-            projectionId: projection.projectionId,
-            subOperationId: projection.subOperationId,
-          };
+  const stableProjectDir = projDir || getProjectDir();
+  const govern =
+    withGovernedEffect ??
+    createRuntimeGovernedEffectAdapter({
+      projectDir: stableProjectDir,
+      config: deps.config || loadConfig(),
+    });
+  const find = deps.findTimingComment || findTimingComment;
+  const create = deps.createTimingComment || createTimingComment;
+  const update = deps.updateTimingComment || updateTimingComment;
+  const work = async () =>
+    govern(
+      {
+        issueId: normalizeTimingIssueNumber(issueNumber),
+        operation: 'evidence-mutation',
+        heartbeat: true,
+      },
+      async (authority) => {
+        const existing = await find(issueNumber, repo, { timeoutMs });
+        if (existing) {
+          if (projection) {
+            const effect = reconcileTimingProjectionRowEffect(existing.body, {
+              ...projection,
+              row,
+            });
+            if (effect.status === 'present') {
+              return {
+                status: 'already-reconciled',
+                projectionId: projection.projectionId,
+                subOperationId: projection.subOperationId,
+              };
+            }
+            await authority.reverify();
+            await update(existing.id, repo, effect.body, { timeoutMs });
+          } else {
+            const updated = appendRow(existing.body, durableRow, { projection });
+            await authority.reverify();
+            await update(existing.id, repo, updated, { timeoutMs });
+          }
+        } else {
+          const initial = projection
+            ? reconcileTimingProjectionRowEffect(buildInitialComment(), {
+                ...projection,
+                row,
+              }).body
+            : appendRow(buildInitialComment(), durableRow, { projection });
+          await authority.reverify();
+          await create(issueNumber, repo, initial, { timeoutMs });
         }
-        await updateTimingComment(existing.id, repo, effect.body, { timeoutMs });
-      } else {
-        const updated = appendRow(existing.body, durableRow, { projection });
-        await updateTimingComment(existing.id, repo, updated, { timeoutMs });
+        if (!projection) return undefined;
+        return {
+          status: 'posted',
+          projectionId: projection.projectionId,
+          subOperationId: projection.subOperationId,
+        };
       }
-    } else {
-      const initial = projection
-        ? reconcileTimingProjectionRowEffect(buildInitialComment(), {
-            ...projection,
-            row,
-          }).body
-        : appendRow(buildInitialComment(), durableRow, { projection });
-      await createTimingComment(issueNumber, repo, initial, { timeoutMs });
-    }
-    if (!projection) return undefined;
-    return {
-      status: 'posted',
-      projectionId: projection.projectionId,
-      subOperationId: projection.subOperationId,
-    };
-  };
+    );
   if (!lock) {
     return work();
   }
-  const lockPath = timingLockPath(issueNumber, projDir || getProjectDir());
-  return withLock(lockPath, work, { timeoutMs: Math.max(timeoutMs * 3, 5_000), retries });
+  const lockPath = timingLockPath(issueNumber, stableProjectDir);
+  return withLock(lockPath, work, {
+    timeoutMs: Math.max(timeoutMs * 3, 5_000),
+    retries,
+    shouldRetry: (error) => !isGovernedAuthorityError(error),
+  });
+}
+
+export async function postTransitionTimingProjection({
+  authority,
+  transitionId,
+  projectionName,
+  projectionId,
+  subOperationId,
+  issueNumber,
+  ...options
+} = {}) {
+  const expected = {
+    transitionId,
+    projectionName,
+    projectionId,
+    subOperationId,
+    issueId: normalizeTimingIssueNumber(issueNumber),
+    operation: 'evidence-mutation',
+  };
+  assertTransitionProjectionAuthority(authority, expected);
+  const verifyProjection = async () => assertTransitionProjectionAuthority(authority, expected);
+  return postTimingEvent({
+    ...options,
+    issueNumber,
+    projectionId,
+    subOperationId,
+    withGovernedEffect: async (governedOptions, callback) => {
+      if (
+        governedOptions.issueId !== expected.issueId ||
+        governedOptions.operation !== expected.operation
+      ) {
+        throw new TypeError('transition timing authority route does not match');
+      }
+      await verifyProjection();
+      return callback({ reverify: verifyProjection });
+    },
+  });
 }
 
 // Fetch the timing-comment body (where rows actually live). State-move

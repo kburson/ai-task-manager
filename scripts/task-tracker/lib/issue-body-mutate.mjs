@@ -57,6 +57,13 @@ import {
 } from './body-invariants.mjs';
 import { findUnboldPlanMetadataLabels } from './plan-metadata.mjs';
 import { formatDefectHint } from './defect-hint.mjs';
+import { loadConfig } from '../config.mjs';
+import { getProjectDir } from '../paths.mjs';
+import {
+  assertGovernedEffectOperation,
+  createRuntimeGovernedEffectAdapter,
+} from './work-lease/governed-effect.mjs';
+import { assertTransitionProjectionAuthority } from './work-lease/transition-projection-authority.mjs';
 
 export {
   CheckboxProofMissingError,
@@ -84,6 +91,50 @@ export class MarkerLossError extends Error {
   }
 }
 
+export async function mutateTransitionProjectionIssueBody({
+  authority,
+  transitionId,
+  projectionName,
+  projectionId,
+  subOperationId,
+  issueNumber,
+  repo,
+  mutate,
+  deps = {},
+  ...options
+} = {}) {
+  const expected = {
+    transitionId,
+    projectionName,
+    projectionId,
+    subOperationId,
+    issueId: String(issueNumber).replace(/^#/, ''),
+    operation: 'evidence-mutation',
+  };
+  assertTransitionProjectionAuthority(authority, expected);
+  const verifyProjection = async () => assertTransitionProjectionAuthority(authority, expected);
+  return mutateIssueBody({
+    ...options,
+    issueNumber,
+    repo,
+    mutate,
+    operation: 'evidence-mutation',
+    deps: {
+      ...deps,
+      withGovernedEffect: async (governedOptions, callback) => {
+        if (
+          governedOptions.issueId !== expected.issueId ||
+          governedOptions.operation !== expected.operation
+        ) {
+          throw new TypeError('transition projection issue-body authority route does not match');
+        }
+        await verifyProjection();
+        return callback({ reverify: verifyProjection });
+      },
+    },
+  });
+}
+
 export async function mutateIssueBody({
   issueNumber,
   repo,
@@ -95,6 +146,7 @@ export async function mutateIssueBody({
   evidenceStamp = false,
   expectedRemovedHeadings = [],
   allowLargeShrink = false,
+  operation = 'issue-body-mutation',
 } = {}) {
   const warn = deps.warn || ((msg) => console.error(msg));
   if (issueNumber == null) throw new Error('mutateIssueBody: issueNumber is required');
@@ -102,6 +154,7 @@ export async function mutateIssueBody({
   if (typeof mutate !== 'function') {
     throw new TypeError('mutateIssueBody: mutate must be a function (baseBody) => newBody');
   }
+  assertGovernedEffectOperation(operation);
 
   // Wrap caller's mutate with a marker-loss check. The wrapper runs the
   // original mutate, diffs invariant markers between `base` and `next`,
@@ -182,5 +235,29 @@ export async function mutateIssueBody({
     return next;
   };
 
-  return versionedWriteBody({ issueNumber, repo, mutate: guardedMutate, deps, maxRetries });
+  const projectDir = deps.projectDir || getProjectDir(deps.env);
+  const withGovernedEffect =
+    deps.withGovernedEffect ??
+    createRuntimeGovernedEffectAdapter({
+      projectDir,
+      config: deps.config || loadConfig(),
+    });
+  return withGovernedEffect(
+    {
+      issueId: String(issueNumber).replace(/^#/, ''),
+      operation,
+      heartbeat: true,
+    },
+    async (effect) =>
+      versionedWriteBody({
+        issueNumber,
+        repo,
+        mutate: guardedMutate,
+        deps: {
+          ...deps,
+          beforePush: async () => effect.reverify(),
+        },
+        maxRetries,
+      })
+  );
 }

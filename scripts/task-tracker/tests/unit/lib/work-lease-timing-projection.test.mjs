@@ -49,6 +49,9 @@ function postTimingEvent(options) {
   return postTimingEventWithProductionTimeout({
     ...options,
     timeoutMs: options?.timeoutMs ?? FAKE_GH_TIMEOUT_MS,
+    withGovernedEffect:
+      options?.withGovernedEffect ??
+      (async (_governedOptions, callback) => callback({ reverify: async () => {} })),
   });
 }
 

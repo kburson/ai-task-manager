@@ -50,6 +50,7 @@ function makeStore(initialBody) {
   let fetches = 0;
   return {
     deps: {
+      withGovernedEffect: async (_options, callback) => callback({ reverify: async () => {} }),
       fetchBody: async () => {
         fetches++;
         return body;
@@ -124,7 +125,10 @@ test('AC2: mutateIssueBody passes `body` through alongside status/version', asyn
     issueNumber: 7,
     repo: 'o/r',
     mutate: (base) => `${base}\nappended`,
-    deps: store.deps,
+    deps: {
+      ...store.deps,
+      withGovernedEffect: async (_options, callback) => callback({ reverify: async () => {} }),
+    },
   });
   assert.equal(res.status, 'ok');
   assert.equal(typeof res.version, 'number');

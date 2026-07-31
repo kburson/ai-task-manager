@@ -243,6 +243,7 @@ test('proof-bearing Review stamp fails closed when a versioned-write conflict ch
           },
         }),
         deps: {
+          withGovernedEffect: async (_options, callback) => callback({ reverify: async () => {} }),
           fetchBody: async () => fetched[reads++],
           pushBody: async () => {},
         },

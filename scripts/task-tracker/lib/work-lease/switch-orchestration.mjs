@@ -209,7 +209,7 @@ function validateSwitchIntentCorrelation({ intent, sourceIssueId, targetIssueId,
   return request;
 }
 
-function validateSwitchReceipt(receipt, request) {
+export function validateSwitchReceipt(receipt, request) {
   const value = object(receipt, 'switch receipt');
   const lease = object(value.lease, 'switch receipt lease');
   const transition = object(value.transition, 'switch receipt transition');

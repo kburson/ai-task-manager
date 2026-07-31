@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { mkdtempSync, writeFileSync, chmodSync, mkdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
+import { pathToFileURL } from 'node:url';
 import { projectScratchDir } from '../../../lib/scratch-dir.mjs';
 
 const repoRoot = new URL('../../../../..', import.meta.url).pathname;
@@ -108,6 +109,27 @@ function makeEnv({ initialBody, fieldNodes }) {
   return { temp, callLog, stateBody, env };
 }
 
+function runGovernedLive({ temp, env }, args) {
+  const runner = join(temp, 'run-log-issue-time.mjs');
+  writeFileSync(
+    runner,
+    [
+      `import { main } from ${JSON.stringify(pathToFileURL(script).href)};`,
+      'const code = await main(process.argv.slice(2), {',
+      '  withGovernedEffect: async (_options, callback) =>',
+      '    callback({ reverify: async () => {} }),',
+      '});',
+      'process.exitCode = code;',
+      '',
+    ].join('\n')
+  );
+  return spawnSync(process.execPath, [runner, ...args], {
+    encoding: 'utf8',
+    env,
+    cwd: repoRoot,
+  });
+}
+
 // 1. --dry-run shows startTime from earliest timing row without writing
 {
   const { env, stateBody } = makeEnv({
@@ -129,15 +151,12 @@ function makeEnv({ initialBody, fieldNodes }) {
 
 // 2. Live run repairs startTime AND routes the body write through mutateIssueBody
 {
-  const { callLog, stateBody, env } = makeEnv({
+  const fixture = makeEnv({
     initialBody: BODY_NO_START,
     fieldNodes: FIELDS_WITH_ENGAGED,
   });
-  const result = spawnSync(process.execPath, [script, '999'], {
-    encoding: 'utf8',
-    env,
-    cwd: repoRoot,
-  });
+  const { callLog, stateBody } = fixture;
+  const result = runGovernedLive(fixture, ['999']);
 
   assert.equal(result.status, 0, `live run failed\n${result.stderr}\n${result.stdout}`);
   assert.match(result.stdout, /Start Time \(repaired\).*2026-05-15 09:00/);
@@ -164,12 +183,12 @@ function makeEnv({ initialBody, fieldNodes }) {
 
 // 3. No startTime repair when already set in the issue body DB
 {
-  const { env, callLog } = makeEnv({ initialBody: BODY_WITH_START, fieldNodes: FIELDS_NO_ENGAGED });
-  const result = spawnSync(process.execPath, [script, '999'], {
-    encoding: 'utf8',
-    env,
-    cwd: repoRoot,
+  const fixture = makeEnv({
+    initialBody: BODY_WITH_START,
+    fieldNodes: FIELDS_NO_ENGAGED,
   });
+  const { callLog } = fixture;
+  const result = runGovernedLive(fixture, ['999']);
 
   assert.equal(result.status, 0, `noop run failed\n${result.stderr}\n${result.stdout}`);
   assert.ok(

@@ -33,6 +33,10 @@ import {
   readFleet,
 } from './fleet-registry.mjs';
 import { getProjectDir, sessionDir } from './paths.mjs';
+import {
+  createRuntimeGovernedEffectAdapter,
+  isGovernedAuthorityError,
+} from './lib/work-lease/governed-effect.mjs';
 
 const pexec = promisify(execFile);
 
@@ -40,6 +44,10 @@ const projectDir = getProjectDir();
 const cfg = loadConfig();
 const statePath = path.join(projectDir, cfg.statePath);
 const queuePath = path.join(projectDir, cfg.queuePath);
+const withHookGovernedEffect = createRuntimeGovernedEffectAdapter({
+  projectDir,
+  config: cfg,
+});
 
 // Decides whether a stale `lastActive` reflects a paused task or a closed/gone
 // one. /task pause persists `status: "paused"` in the fleet registry; /task
@@ -96,6 +104,27 @@ export function claimRecoveryOnce(lockPath) {
   }
 }
 
+export async function runGovernedHookIssueEffect(
+  { issue, skipNetwork = false, withGovernedEffect } = {},
+  callback
+) {
+  if (typeof callback !== 'function') {
+    throw new TypeError('governed hook callback is required');
+  }
+  if (skipNetwork) return callback(null);
+  if (typeof withGovernedEffect !== 'function') {
+    throw new TypeError('governed hook effect adapter is required');
+  }
+  return withGovernedEffect(
+    {
+      issueId: String(issue).replace(/^#/, ''),
+      operation: 'evidence-mutation',
+      heartbeat: true,
+    },
+    callback
+  );
+}
+
 function readStdin() {
   try {
     return readFileSync(0, 'utf8');
@@ -106,28 +135,59 @@ function readStdin() {
 
 export async function postHookQueuedTimingEvent(
   event,
-  { repo, timeoutMs, post = postTimingEvent } = {}
+  { repo, timeoutMs, post = postTimingEvent, withGovernedEffect } = {}
 ) {
   if (event?.kind !== 'timing') return undefined;
-  return post({
-    issueNumber: event.issue,
-    repo,
-    row: event.row,
-    ...(event.projectionId === undefined ? {} : { projectionId: event.projectionId }),
-    ...(event.subOperationId === undefined ? {} : { subOperationId: event.subOperationId }),
-    timeoutMs,
-  });
+  if (typeof withGovernedEffect !== 'function') {
+    throw new TypeError('queued timing governed-effect adapter is required');
+  }
+  return withGovernedEffect(
+    {
+      issueId: String(event.issue).replace(/^#/, ''),
+      operation: 'evidence-mutation',
+      heartbeat: true,
+    },
+    () =>
+      post({
+        issueNumber: event.issue,
+        repo,
+        row: event.row,
+        ...(event.projectionId === undefined ? {} : { projectionId: event.projectionId }),
+        ...(event.subOperationId === undefined ? {} : { subOperationId: event.subOperationId }),
+        timeoutMs,
+      })
+  );
 }
 
-async function safePost(issue, row) {
+async function reverifyAuthority(authority) {
+  if (authority) await authority.reverify();
+}
+
+function reuseHookAuthority(issue, authority) {
+  return async (options, callback) => {
+    if (
+      String(options?.issueId).replace(/^#/, '') !== String(issue).replace(/^#/, '') ||
+      options?.operation !== 'evidence-mutation'
+    ) {
+      throw new TypeError('hook timing effect does not match its governed issue unit');
+    }
+    await reverifyAuthority(authority);
+    return callback(authority);
+  };
+}
+
+async function safePost(issue, row, authority) {
+  if (process.env.TT_SKIP_NETWORK === '1') return;
   try {
     await postTimingEvent({
       issueNumber: issue,
       repo: cfg.repo,
       row,
       timeoutMs: cfg.hookNetworkTimeoutMs,
+      withGovernedEffect: reuseHookAuthority(issue, authority),
     });
-  } catch {
+  } catch (error) {
+    if (isGovernedAuthorityError(error)) throw error;
     enqueue({ kind: 'timing', issue, row }, queuePath);
   }
 }
@@ -140,59 +200,80 @@ async function onPreCompact(sid) {
   // no wall-time window to flush on pre-compact, so skip rather than
   // dereference a null timestamp.
   if (!s.entryStartTs) return;
-  const marker = loadMarker(markerPathFor(sid));
-  const {
-    count: newWords,
-    totalLines,
-    fullExpansion: newWordsFull,
-  } = countWords(jsonlPath(sid), marker.line);
-  const ts = new Date().toISOString();
-  // #475 AC1 — advance + persist the durable monotonic marker on every flush.
-  const wordMarker = advanceWordMarker(s.lastWordMarker, s.wordsAtEntryStart + newWords);
-  const startMs = new Date(s.entryStartTs).getTime();
-  const endMs = Date.now();
-  const events = collectEventTimestamps(jsonlPath(sid), startMs, endMs);
-  const { activeMin, idleMin } = computeActiveAndIdleMinutes({
-    startMs,
-    endMs,
-    events,
-    idleThresholdMs: cfg.idleThresholdMinutes * 60_000,
-  });
-  const row = buildRow({
-    ts,
-    event: 'pre-compact-flush',
-    activeMin,
-    idleMin,
-    deltaWords: newWords,
-    deltaWordsFull: newWordsFull,
-    wordMarker,
-    description: 'context compacted',
-  });
-  await safePost(s.active, row);
-  saveMarker(markerPathFor(sid), totalLines, 0, s.active);
-  saveState(
-    { ...s, entryStartTs: ts, wordsAtEntryStart: wordMarker, lastWordMarker: wordMarker },
-    statePath
+  await runGovernedHookIssueEffect(
+    {
+      issue: s.active,
+      skipNetwork: process.env.TT_SKIP_NETWORK === '1',
+      withGovernedEffect: withHookGovernedEffect,
+    },
+    async (authority) => {
+      const marker = loadMarker(markerPathFor(sid));
+      const {
+        count: newWords,
+        totalLines,
+        fullExpansion: newWordsFull,
+      } = countWords(jsonlPath(sid), marker.line);
+      const ts = new Date().toISOString();
+      // #475 AC1 — advance + persist the durable monotonic marker on every flush.
+      const wordMarker = advanceWordMarker(s.lastWordMarker, s.wordsAtEntryStart + newWords);
+      const startMs = new Date(s.entryStartTs).getTime();
+      const endMs = Date.now();
+      const events = collectEventTimestamps(jsonlPath(sid), startMs, endMs);
+      const { activeMin, idleMin } = computeActiveAndIdleMinutes({
+        startMs,
+        endMs,
+        events,
+        idleThresholdMs: cfg.idleThresholdMinutes * 60_000,
+      });
+      const row = buildRow({
+        ts,
+        event: 'pre-compact-flush',
+        activeMin,
+        idleMin,
+        deltaWords: newWords,
+        deltaWordsFull: newWordsFull,
+        wordMarker,
+        description: 'context compacted',
+      });
+      await safePost(s.active, row, authority);
+      await reverifyAuthority(authority);
+      saveMarker(markerPathFor(sid), totalLines, 0, s.active);
+      await reverifyAuthority(authority);
+      saveState(
+        { ...s, entryStartTs: ts, wordsAtEntryStart: wordMarker, lastWordMarker: wordMarker },
+        statePath
+      );
+    }
   );
 }
 
 async function onPostCompact(sid) {
   const s = loadState(statePath);
   if (!s.active || s.active === 'discover') return;
-  const { totalLines } = countWords(jsonlPath(sid), 0);
-  saveMarker(markerPathFor(sid), totalLines, 0, s.active);
-  const row = buildRow({
-    ts: new Date().toISOString(),
-    event: 'post-compact-resume',
-    activeMin: 0,
-    idleMin: 0,
-    deltaWords: 0,
-    deltaWordsFull: 0,
-    // #475 AC1 — carry the durable marker forward across compact
-    wordMarker: advanceWordMarker(s.lastWordMarker, s.wordsAtEntryStart),
-    description: 'resumed after compact',
-  });
-  await safePost(s.active, row);
+  await runGovernedHookIssueEffect(
+    {
+      issue: s.active,
+      skipNetwork: process.env.TT_SKIP_NETWORK === '1',
+      withGovernedEffect: withHookGovernedEffect,
+    },
+    async (authority) => {
+      const { totalLines } = countWords(jsonlPath(sid), 0);
+      await reverifyAuthority(authority);
+      saveMarker(markerPathFor(sid), totalLines, 0, s.active);
+      const row = buildRow({
+        ts: new Date().toISOString(),
+        event: 'post-compact-resume',
+        activeMin: 0,
+        idleMin: 0,
+        deltaWords: 0,
+        deltaWordsFull: 0,
+        // #475 AC1 — carry the durable marker forward across compact
+        wordMarker: advanceWordMarker(s.lastWordMarker, s.wordsAtEntryStart),
+        description: 'resumed after compact',
+      });
+      await safePost(s.active, row, authority);
+    }
+  );
 }
 
 function emitWorktreeBanner() {
@@ -218,9 +299,29 @@ async function bestEffortDrainQueue() {
         postHookQueuedTimingEvent(evt, {
           repo: cfg.repo,
           timeoutMs: cfg.hookNetworkTimeoutMs,
+          withGovernedEffect: withHookGovernedEffect,
         }),
       queuePath
     );
+  } catch (error) {
+    if (isGovernedAuthorityError(error)) throw error;
+    /* best-effort: failure must not abort the primary operation */
+  }
+}
+
+async function bestEffortSessionMaintenance() {
+  await bestEffortDrainQueue();
+  try {
+    const { sweepOrphans } = await import('./lib/session-store.mjs');
+    const { loadConfig } = await import('./config.mjs');
+    const c = loadConfig();
+    sweepOrphans({ maxAgeMs: c.deadSessionMaxAgeMs });
+  } catch {
+    /* best-effort: failure must not abort the primary operation */
+  }
+  try {
+    const { sweepStaleSessionDirs } = await import('./orphan-finalize.mjs');
+    await sweepStaleSessionDirs({ projDir: projectDir });
   } catch {
     /* best-effort: failure must not abort the primary operation */
   }
@@ -280,32 +381,12 @@ async function onSessionStart(sid) {
   // #575 — no template self-heal: `.ai-task-manager/templates/` is git-tracked
   // (#574), so a fresh `git worktree add` checkout already carries every
   // behavioral contract. Seeding is structurally unnecessary.
-  await bestEffortDrainQueue();
-  // (#89) Sweep orphaned session-override files older than the configured TTL.
-  try {
-    const { sweepOrphans } = await import('./lib/session-store.mjs');
-    const { loadConfig } = await import('./config.mjs');
-    const c = loadConfig();
-    sweepOrphans({ maxAgeMs: c.deadSessionMaxAgeMs });
-  } catch {
-    /* best-effort: failure must not abort the primary operation */
-  }
-  // (#215) Sweep stale `.ai-task-manager/sessions/<sid>/` dirs older than
-  // `sessionRetentionDays`. Any orphan pause marker in the dir is finalized
-  // BEFORE removal (row goes to the issue named in the marker). Best-effort
-  // — never blocks session startup. All marker I/O is centralized in
-  // orphan-finalize.mjs (see AC8).
-  try {
-    const { sweepStaleSessionDirs } = await import('./orphan-finalize.mjs');
-    await sweepStaleSessionDirs({ projDir: projectDir });
-  } catch {
-    /* best-effort: failure must not abort the primary operation */
-  }
-  if (sid) ensureSessionTracking(sid);
   const s = loadState(statePath);
 
   // Nothing active and nothing paused
   if (!s.active && !s.lastActive) {
+    if (sid) ensureSessionTracking(sid);
+    await bestEffortSessionMaintenance();
     console.log('[task-tracker] No active task.');
     if (sid) {
       const { totalLines } = countWords(jsonlPath(sid), 0);
@@ -317,6 +398,8 @@ async function onSessionStart(sid) {
   // No active task — could be paused or closed. Disambiguate via fleet
   // registry: pause persists `status: "paused"`, close removes the entry.
   if (!s.active) {
+    if (sid) ensureSessionTracking(sid);
+    await bestEffortSessionMaintenance();
     let fleet = {};
     try {
       // #441 — guard-time lazy auto-reap. This is the only readFleet on the
@@ -351,6 +434,8 @@ async function onSessionStart(sid) {
 
   // Discovery bucket active
   if (s.active === 'discover') {
+    if (sid) ensureSessionTracking(sid);
+    await bestEffortSessionMaintenance();
     console.log('[task-tracker] Discovery bucket active. Use /task new to promote to an issue.');
     if (sid) {
       const { totalLines } = countWords(jsonlPath(sid), 0);
@@ -367,93 +452,105 @@ async function onSessionStart(sid) {
   // is terminal, drop the stale binding and return WITHOUT posting. A null
   // fetch (offline / gh error) is "unknown" → fall open to the existing
   // recovery/rebind behavior; never sacrifice real wall-time recovery to a blip.
-  const activeState = await fetchIssueState(s.active, {
-    repo: cfg.repo,
-    timeoutMs: cfg.hookNetworkTimeoutMs,
-  });
-  if (isTerminalIssueState(activeState)) {
-    clearActive(statePath);
-    if (sid) {
-      const { totalLines } = countWords(jsonlPath(sid), 0);
-      saveMarker(markerPathFor(sid), totalLines, 0, null);
-    }
-    console.log(
-      `[task-tracker] ${s.active} reached Done out-of-band — timer unbound, no recovery logged.`
-    );
-    return;
-  }
-
-  // Active task — session closed without /task pause; recover unlogged wall time
-  const nowTs = new Date().toISOString();
-  const wallMin = s.entryStartTs
-    ? Math.round((Date.now() - new Date(s.entryStartTs).getTime()) / 60000)
-    : 0;
-
-  if (wallMin > 0) {
-    // #709 — idempotent per session id. Two racing SessionStart invocations both
-    // read the same pre-write `entryStartTs` and compute the same `wallMin`;
-    // without a claim they double-stamp the recovery row ~1s apart. Claim an
-    // atomic O_EXCL lock under the session dir — only the winner posts. No sid
-    // (no session context) retains today's behavior. Claim-machinery failure
-    // fails open to posting rather than dropping real recovered time.
-    let mayPostRecovery = true;
-    if (sid) {
-      try {
-        const dir = sessionDir(sid);
-        mkdirSync(dir, { recursive: true });
-        mayPostRecovery = claimRecoveryOnce(path.join(dir, 'recovery.lock'));
-      } catch {
-        mayPostRecovery = true;
-      }
-    }
-    if (mayPostRecovery) {
-      // #475 AC1 — carried-forward durable marker (recovery row, no live session)
-      const wordMarker = advanceWordMarker(s.lastWordMarker, s.wordsAtEntryStart);
-      const recoveryRows = buildOrphanRecoveryRowSpecs({ wallMin, wordMarker }).map((spec) =>
-        buildRow({ ts: nowTs, ...spec })
-      );
-      for (const recoveryRow of recoveryRows) {
-        await safePost(s.active, recoveryRow);
-      }
-    }
-  }
-
-  let newWordBaseline = s.wordsAtEntryStart;
-  if (sid) {
-    const { totalLines, count, fullExpansion } = countWords(jsonlPath(sid), 0);
-    newWordBaseline = count;
-    // #795 — persist the full-expansion baseline alongside the stay-abreast
-    // count so the runtime flush path reads a meaningful `wordsFull` cursor.
-    saveMarker(markerPathFor(sid), totalLines, count, s.active, fullExpansion);
-    const startRow = buildRow({
-      ts: nowTs,
-      event: 'session-start',
-      activeMin: 0,
-      idleMin: 0,
-      deltaWords: 0,
-      deltaWordsFull: 0,
-      // #475 AC1 — monotonic carry-forward of the durable marker
-      wordMarker: advanceWordMarker(s.lastWordMarker, newWordBaseline),
-      description: 'session resumed',
-    });
-    await safePost(s.active, startRow);
-  }
-
-  saveState(
+  await runGovernedHookIssueEffect(
     {
-      ...s,
-      entryStartTs: nowTs,
-      wordsAtEntryStart: newWordBaseline,
-      // #475 AC1 — persist the durable monotonic marker across the recovery.
-      lastWordMarker: advanceWordMarker(s.lastWordMarker, newWordBaseline),
+      issue: s.active,
+      skipNetwork: process.env.TT_SKIP_NETWORK === '1',
+      withGovernedEffect: withHookGovernedEffect,
     },
-    statePath
-  );
+    async (authority) => {
+      if (sid) ensureSessionTracking(sid);
+      await bestEffortSessionMaintenance();
+      const activeState = await fetchIssueState(s.active, {
+        repo: cfg.repo,
+        timeoutMs: cfg.hookNetworkTimeoutMs,
+      });
+      if (isTerminalIssueState(activeState)) {
+        await reverifyAuthority(authority);
+        clearActive(statePath);
+        if (sid) {
+          const { totalLines } = countWords(jsonlPath(sid), 0);
+          await reverifyAuthority(authority);
+          saveMarker(markerPathFor(sid), totalLines, 0, null);
+        }
+        console.log(
+          `[task-tracker] ${s.active} reached Done out-of-band — timer unbound, no recovery logged.`
+        );
+        return;
+      }
 
-  const recoveryNote =
-    wallMin > 0 ? ` — logged ~${wallMin} min from prior session (wall time only)` : '';
-  console.log(
-    `[task-tracker] ${s.active} is active${recoveryNote}. Use /task pause or /task end before closing Claude, running /clear, or switching sessions.`
+      // Active task — session closed without /task pause; recover unlogged wall time
+      const nowTs = new Date().toISOString();
+      const wallMin = s.entryStartTs
+        ? Math.round((Date.now() - new Date(s.entryStartTs).getTime()) / 60000)
+        : 0;
+
+      if (wallMin > 0) {
+        // #709 — idempotent per session id. Two racing SessionStart invocations both
+        // read the same pre-write `entryStartTs` and compute the same `wallMin`;
+        // without a claim they double-stamp the recovery row ~1s apart. Claim an
+        // atomic O_EXCL lock under the session dir — only the winner posts. No sid
+        // (no session context) retains today's behavior. Claim-machinery failure
+        // fails open to posting rather than dropping real recovered time.
+        let mayPostRecovery = true;
+        if (sid) {
+          try {
+            await reverifyAuthority(authority);
+            const dir = sessionDir(sid);
+            mkdirSync(dir, { recursive: true });
+            mayPostRecovery = claimRecoveryOnce(path.join(dir, 'recovery.lock'));
+          } catch (error) {
+            if (isGovernedAuthorityError(error)) throw error;
+            mayPostRecovery = true;
+          }
+        }
+        if (mayPostRecovery) {
+          const wordMarker = advanceWordMarker(s.lastWordMarker, s.wordsAtEntryStart);
+          const recoveryRows = buildOrphanRecoveryRowSpecs({ wallMin, wordMarker }).map((spec) =>
+            buildRow({ ts: nowTs, ...spec })
+          );
+          for (const recoveryRow of recoveryRows) {
+            await safePost(s.active, recoveryRow, authority);
+          }
+        }
+      }
+
+      let newWordBaseline = s.wordsAtEntryStart;
+      if (sid) {
+        const { totalLines, count, fullExpansion } = countWords(jsonlPath(sid), 0);
+        newWordBaseline = count;
+        await reverifyAuthority(authority);
+        saveMarker(markerPathFor(sid), totalLines, count, s.active, fullExpansion);
+        const startRow = buildRow({
+          ts: nowTs,
+          event: 'session-start',
+          activeMin: 0,
+          idleMin: 0,
+          deltaWords: 0,
+          deltaWordsFull: 0,
+          wordMarker: advanceWordMarker(s.lastWordMarker, newWordBaseline),
+          description: 'session resumed',
+        });
+        await safePost(s.active, startRow, authority);
+      }
+
+      await reverifyAuthority(authority);
+      saveState(
+        {
+          ...s,
+          entryStartTs: nowTs,
+          wordsAtEntryStart: newWordBaseline,
+          lastWordMarker: advanceWordMarker(s.lastWordMarker, newWordBaseline),
+        },
+        statePath
+      );
+
+      const recoveryNote =
+        wallMin > 0 ? ` — logged ~${wallMin} min from prior session (wall time only)` : '';
+      console.log(
+        `[task-tracker] ${s.active} is active${recoveryNote}. Use /task pause or /task end before closing Claude, running /clear, or switching sessions.`
+      );
+    }
   );
 }
 

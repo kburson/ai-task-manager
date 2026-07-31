@@ -2,6 +2,8 @@ import { existsSync, readFileSync, writeFileSync, mkdirSync, renameSync } from '
 import path from 'node:path';
 import { isDeepStrictEqual } from 'node:util';
 import { legacyPathFor } from './paths.mjs';
+import { withLock } from './locks.mjs';
+import { isGovernedAuthorityError } from './lib/work-lease/governed-effect.mjs';
 
 function read(queuePath) {
   let readPath = queuePath;
@@ -74,17 +76,28 @@ export function enqueueTimingProjection(
 }
 
 export async function drain(handler, queuePath) {
-  const items = read(queuePath);
-  const failed = [];
-  for (const item of items) {
-    try {
-      await handler(item);
-    } catch {
-      failed.push(item);
+  return withLock(`${queuePath}.drain.lock`, async () => {
+    const items = read(queuePath);
+    const succeeded = [];
+    let failed = 0;
+    for (const item of items) {
+      try {
+        await handler(item);
+        succeeded.push(item);
+      } catch {
+        failed += 1;
+      }
     }
-  }
-  write(failed, queuePath);
-  return failed.length === 0;
+    if (succeeded.length > 0) {
+      const latest = read(queuePath);
+      for (const item of succeeded) {
+        const index = latest.findIndex((candidate) => isDeepStrictEqual(candidate, item));
+        if (index >= 0) latest.splice(index, 1);
+      }
+      write(latest, queuePath);
+    }
+    return failed === 0;
+  });
 }
 
 // Remove only the exact entries whose remote effects have already received a
@@ -116,23 +129,37 @@ export function removeExactQueueEntries(entries, queuePath) {
 // `/task close` to clear queue entries for the closing issue — once an issue
 // is Done, residual rows are not interesting and must not re-queue forever.
 export async function drainAndDiscard(handler, queuePath, predicate) {
-  const items = read(queuePath);
-  const kept = [];
-  const targeted = [];
-  for (const item of items) {
-    if (predicate(item)) targeted.push(item);
-    else kept.push(item);
-  }
-  let delivered = 0;
-  let discarded = 0;
-  for (const item of targeted) {
-    try {
-      await handler(item);
-      delivered++;
-    } catch {
-      discarded++;
+  return withLock(`${queuePath}.drain.lock`, async () => {
+    const items = read(queuePath);
+    const targeted = items.filter(predicate);
+    const consumed = [];
+    let delivered = 0;
+    let discarded = 0;
+    let authorityRefused = 0;
+    for (const item of targeted) {
+      try {
+        await handler(item);
+        delivered++;
+        consumed.push(item);
+      } catch (error) {
+        if (isGovernedAuthorityError(error)) {
+          authorityRefused++;
+        } else {
+          discarded++;
+          consumed.push(item);
+        }
+      }
     }
-  }
-  write(kept, queuePath);
-  return { delivered, discarded };
+    if (consumed.length > 0) {
+      const latest = read(queuePath);
+      for (const item of consumed) {
+        const index = latest.findIndex((candidate) => isDeepStrictEqual(candidate, item));
+        if (index >= 0) latest.splice(index, 1);
+      }
+      write(latest, queuePath);
+    }
+    return authorityRefused > 0
+      ? { delivered, discarded, authorityRefused }
+      : { delivered, discarded };
+  });
 }

@@ -42,7 +42,7 @@ import {
   recordSessionRefOnChange,
   sessionRefForOperation,
 } from './lib/session-ref.mjs';
-import { mutateIssueBody } from './lib/issue-body-mutate.mjs';
+import { mutateIssueBody, mutateTransitionProjectionIssueBody } from './lib/issue-body-mutate.mjs';
 import { advanceWordMarker } from './state.mjs';
 import { findMainWorktreePath, currentBranch } from './fleet-registry.mjs';
 import { gql, projectValuesForIssue, splitRepo } from '../gh/lib/github-projects.mjs';
@@ -52,10 +52,14 @@ import { GH_API_TIMEOUT_MS } from './lib/process-timeouts.mjs';
 import { assembleCapabilities } from './lib/runtime-capabilities.mjs';
 import { verifyGovernedEffect } from './lib/work-lease/guard.mjs';
 import { createWorkLeaseProvider } from './lib/work-lease/provider.mjs';
-import { createGovernedEffectAdapter } from './lib/work-lease/governed-effect.mjs';
+import {
+  createGovernedEffectAdapter,
+  isGovernedAuthorityError,
+} from './lib/work-lease/governed-effect.mjs';
 import { normalizeIssueCloseSnapshot } from './lib/closed-issue-convergence.mjs';
 import { normalizeSubIssueBoardSnapshot } from './lib/sub-issue-board-snapshot.mjs';
 import { reconcileIssueTimeProjection } from './lib/work-lease/issue-time-projection.mjs';
+import { assertTransitionProjectionAuthority } from './lib/work-lease/transition-projection-authority.mjs';
 
 const pexec = promisify(execFile);
 
@@ -249,17 +253,28 @@ export function handleMigrateResult(result, { stderr = process.stderr, exit = pr
 
 export async function postRuntimeQueuedTimingEvent(
   event,
-  { repo, timeoutMs, post = postTimingEvent } = {}
+  { repo, timeoutMs, post = postTimingEvent, withGovernedEffect } = {}
 ) {
   if (event?.kind !== 'timing') return undefined;
-  return post({
-    issueNumber: event.issue,
-    repo,
-    row: event.row,
-    ...(event.projectionId === undefined ? {} : { projectionId: event.projectionId }),
-    ...(event.subOperationId === undefined ? {} : { subOperationId: event.subOperationId }),
-    timeoutMs,
-  });
+  if (typeof withGovernedEffect !== 'function') {
+    throw new TypeError('queued timing governed-effect adapter is required');
+  }
+  return withGovernedEffect(
+    {
+      issueId: String(event.issue).replace(/^#/, ''),
+      operation: 'evidence-mutation',
+      heartbeat: true,
+    },
+    () =>
+      post({
+        issueNumber: event.issue,
+        repo,
+        row: event.row,
+        ...(event.projectionId === undefined ? {} : { projectionId: event.projectionId }),
+        ...(event.subOperationId === undefined ? {} : { subOperationId: event.subOperationId }),
+        timeoutMs,
+      })
+  );
 }
 
 // Legacy per-event description fallbacks. Used only when a caller does not
@@ -363,9 +378,11 @@ export function buildContext(rawArgv = process.argv.slice(2)) {
         repo: cfg.repo,
         row,
         timeoutMs: cfg.hookNetworkTimeoutMs,
+        withGovernedEffect: ctx.withGovernedEffect,
       });
       return { ok: true };
     } catch (err) {
+      if (isGovernedAuthorityError(err)) throw err;
       enqueue({ kind: 'timing', issue, row }, queuePath);
       return { ok: false, queued: true, err: err.message };
     }
@@ -383,7 +400,8 @@ export function buildContext(rawArgv = process.argv.slice(2)) {
         repo: cfg.repo,
         mutate: (base) =>
           recordSessionRefOnChange(base, { sid, jsonlPath: jp, ts, operationId }).body,
-        deps: { pexec },
+        operation: 'evidence-mutation',
+        deps: { pexec, withGovernedEffect: ctx.withGovernedEffect },
       });
       const recent = mostRecentSessionRef(res?.body);
       const receipt = operationId ? sessionRefForOperation(res?.body, operationId) : recent;
@@ -396,8 +414,39 @@ export function buildContext(rawArgv = process.argv.slice(2)) {
       }
       return { ok: true, status: res?.status, recent, receipt };
     } catch (err) {
+      if (isGovernedAuthorityError(err)) throw err;
       return { ok: false, err: err.message };
     }
+  };
+
+  ctx.safeRecordTransitionSessionRef = async (
+    issue,
+    { sid, jsonlPath: jp, ts, operationId, authority, transitionId, projectionId }
+  ) => {
+    if (SKIP_NETWORK) return { ok: true, skipped: true };
+    const res = await mutateTransitionProjectionIssueBody({
+      authority,
+      transitionId,
+      projectionName: 'github',
+      projectionId,
+      subOperationId: operationId,
+      issueNumber: String(issue).replace(/^#/, ''),
+      repo: cfg.repo,
+      mutate: (base) =>
+        recordSessionRefOnChange(base, { sid, jsonlPath: jp, ts, operationId }).body,
+      deps: { pexec },
+    });
+    const recent = mostRecentSessionRef(res?.body);
+    const receipt = sessionRefForOperation(res?.body, operationId);
+    if (
+      receipt?.sid !== sid ||
+      receipt?.jsonlPath !== jp ||
+      receipt?.ts !== ts ||
+      receipt?.operationId !== operationId
+    ) {
+      throw new Error('transition session reference remote read-back does not match');
+    }
+    return { ok: true, status: res?.status, recent, receipt };
   };
 
   // #720 — read the timestamp (ms) of the most recent existing timing-log row,
@@ -447,6 +496,7 @@ export function buildContext(rawArgv = process.argv.slice(2)) {
         postRuntimeQueuedTimingEvent(evt, {
           repo: cfg.repo,
           timeoutMs: cfg.hookNetworkTimeoutMs,
+          withGovernedEffect: ctx.withGovernedEffect,
         }),
       queuePath
     );
@@ -460,6 +510,7 @@ export function buildContext(rawArgv = process.argv.slice(2)) {
         await postRuntimeQueuedTimingEvent(evt, {
           repo: cfg.repo,
           timeoutMs: cfg.hookNetworkTimeoutMs,
+          withGovernedEffect: ctx.withGovernedEffect,
         });
       },
       queuePath,
@@ -745,6 +796,57 @@ export function buildContext(rawArgv = process.argv.slice(2)) {
           `Retry when GitHub is reachable.`
       );
     }
+  };
+
+  ctx.runTransitionLogIssueTime = async (
+    issue,
+    { authority, transitionId, projectionId, subOperationId, expected } = {}
+  ) => {
+    if (SKIP_NETWORK) return { skipped: true };
+    const issueNumber = String(issue).replace(/^#/, '');
+    const exact = {
+      transitionId,
+      projectionName: 'github',
+      projectionId,
+      subOperationId,
+      issueId: issueNumber,
+      operation: 'evidence-mutation',
+    };
+    const verifyProjection = async () => assertTransitionProjectionAuthority(authority, exact);
+    const readState = async () => {
+      const { stdout: issueJson } = await pexec(
+        'gh',
+        ['issue', 'view', issueNumber, '--repo', cfg.repo, '--json', 'body'],
+        { timeout: GH_API_TIMEOUT_MS }
+      );
+      const body = JSON.parse(issueJson).body;
+      if (typeof body !== 'string') throw new Error('issue body read-back is malformed');
+      const fields = parseIssueFieldDb(body);
+      const projectFields = await projectValuesForIssue({
+        cfg,
+        fieldDefs: loadProjectFieldDefs(projectDir),
+        issueNumber,
+      });
+      return { body, bodyFields: fields?.values ?? {}, projectFields };
+    };
+    const mutate = async () => {
+      const { main: runIssueTime } = await import('../gh/log-issue-time.mjs');
+      const code = await runIssueTime([issueNumber], {
+        withGovernedEffect: async (options, callback) => {
+          if (
+            String(options?.issueId) !== issueNumber ||
+            options?.operation !== 'evidence-mutation'
+          ) {
+            throw new TypeError('transition issue-time authority route does not match');
+          }
+          await verifyProjection();
+          return callback({ reverify: verifyProjection });
+        },
+      });
+      if (code !== 0) throw new Error(`transition issue-time mutation exited ${code}`);
+    };
+    const proof = await reconcileIssueTimeProjection({ expected, readState, mutate });
+    return { ...proof, subOperationId };
   };
 
   ctx.runMigrate = async (args) => {

@@ -27,6 +27,8 @@ import {
 import { firstStartTimestamp } from '../task-tracker/gh-timing-comment.mjs';
 import { gh, gql, splitRepo, writeProjectFieldValue } from './lib/github-projects.mjs';
 import { wantsHelp, emitSelfDoc } from '../lib/self-doc.mjs';
+import { getProjectDir } from '../task-tracker/paths.mjs';
+import { createRuntimeGovernedEffectAdapter } from '../task-tracker/lib/work-lease/governed-effect.mjs';
 
 export const DURATION_FIELD_LABELS = {
   engagedTime: 'Engaged',
@@ -61,6 +63,38 @@ export function formatRollupSummaryLines({
     `  ${DURATION_FIELD_LABELS.reviewTime.padEnd(19)}: ${reviewMin} min  (threshold ${thresholdMin} min)`,
     `  ${DURATION_FIELD_LABELS.planTime.padEnd(19)}: ${planMin} min`,
   ];
+}
+
+export async function runGovernedIssueTimeWrites({
+  issueNumber,
+  bodyWrite,
+  projectWrites = [],
+  writeProjectField = writeProjectFieldValue,
+  withGovernedEffect,
+} = {}) {
+  if (
+    typeof bodyWrite !== 'function' ||
+    typeof writeProjectField !== 'function' ||
+    typeof withGovernedEffect !== 'function' ||
+    !Array.isArray(projectWrites)
+  ) {
+    throw new TypeError('governed issue-time mutation capabilities are required');
+  }
+  return withGovernedEffect(
+    {
+      issueId: String(issueNumber).replace(/^#/, ''),
+      operation: 'evidence-mutation',
+      heartbeat: true,
+    },
+    async (authority) => {
+      await authority.reverify();
+      await bodyWrite(authority);
+      for (const item of projectWrites) {
+        await authority.reverify();
+        await writeProjectField(item);
+      }
+    }
+  );
 }
 
 let issueNumber = '';
@@ -143,7 +177,7 @@ async function fetchProjectMeta() {
 
 // ---- Main ----
 
-export async function main(argv = process.argv.slice(2)) {
+export async function main(argv = process.argv.slice(2), deps = {}) {
   if (wantsHelp(argv)) {
     emitSelfDoc('log-issue-time');
     return 0;
@@ -265,25 +299,6 @@ export async function main(argv = process.argv.slice(2)) {
   // (see #180), so this is stable regardless of any concurrent body edit.
   const values = ensureIssueFieldDb(issueBody, fieldDefs, writeUpdates, { overrideKeys }).values;
 
-  // Body write goes through mutateIssueBody — fetch-and-write in one
-  // transaction, marker-invariant safe (#361/#409) — wrapped in bounded
-  // retry/backoff so a transient gh failure neither aborts the flush nor
-  // tears the body. The `mutate` recomputes the transform against the FRESH
-  // base mutateIssueBody fetches, not the earlier read. The timing data lives
-  // in the ⏱ comment (read-only here), so an exhausted retry rethrows loudly
-  // without dropping a row or corrupting the body.
-  await withRetry(() =>
-    mutateIssueBody({
-      issueNumber: Number(issueNumber),
-      repo: cfg.repo,
-      mutate: (base) => {
-        let next = ensureIssueFieldDb(base, fieldDefs, writeUpdates, { overrideKeys }).body;
-        if (stageRollup.visits.length) next = upsertStageRollupMarker(next, stageRollup);
-        return next;
-      },
-    })
-  );
-
   // #399 — board writes carry fixed-width duration strings at second
   // precision. The body marker (`values`) stays in minutes; `secondsByKey`
   // feeds the true seconds totals so `buildFieldSyncPlan` formats the four
@@ -295,22 +310,60 @@ export async function main(argv = process.argv.slice(2)) {
     planTime: planMin * 60,
   };
   const syncPlan = buildFieldSyncPlan({ cfg, fieldDefs, values, secondsByKey });
-  for (const item of syncPlan) {
-    await writeProjectFieldValue({
-      projectId: cfg.projectId,
-      itemId,
-      fieldId: item.fieldId,
-      value: item.value,
-    });
-  }
+  const projectWrites = syncPlan.map((item) => ({
+    projectId: cfg.projectId,
+    itemId,
+    fieldId: item.fieldId,
+    value: item.value,
+  }));
 
   if (repairedStartTime && startTimeFieldId) {
-    await writeProjectFieldValue({
+    projectWrites.push({
       projectId: cfg.projectId,
       itemId,
       fieldId: startTimeFieldId,
       value: { text: repairedStartTime },
     });
+  }
+  const withGovernedEffect =
+    deps.withGovernedEffect ??
+    createRuntimeGovernedEffectAdapter({
+      projectDir: getProjectDir(),
+      config: cfg,
+    });
+  await runGovernedIssueTimeWrites({
+    issueNumber,
+    projectWrites,
+    writeProjectField: deps.writeProjectField ?? writeProjectFieldValue,
+    withGovernedEffect,
+    bodyWrite: async (authority) =>
+      withRetry(() =>
+        mutateIssueBody({
+          issueNumber: Number(issueNumber),
+          repo: cfg.repo,
+          mutate: (base) => {
+            let next = ensureIssueFieldDb(base, fieldDefs, writeUpdates, { overrideKeys }).body;
+            if (stageRollup.visits.length) next = upsertStageRollupMarker(next, stageRollup);
+            return next;
+          },
+          operation: 'evidence-mutation',
+          deps: {
+            withGovernedEffect: async (options, callback) => {
+              if (
+                String(options?.issueId) !== issueNumber ||
+                options?.operation !== 'evidence-mutation'
+              ) {
+                throw new TypeError('issue-time body mutation escaped its governed issue');
+              }
+              await authority.reverify();
+              return callback(authority);
+            },
+          },
+        })
+      ),
+  });
+
+  if (repairedStartTime && startTimeFieldId) {
     console.log(`  Start Time (repaired): ${repairedStartTime}`);
   }
 
