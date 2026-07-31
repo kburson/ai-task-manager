@@ -44,5 +44,6 @@
   "gateAnalysisToDevelopment": true,
   "gateReviewToDone": true,
   "gatePlanRefineWip": false,
-  "fieldDisposition": "PVTSSF_lAHOABCEY84BXillzhZHqZA"
+  "fieldDisposition": "PVTSSF_lAHOABCEY84BXillzhZHqZA",
+  "ledgerProjectId": "3ad65206-3a8a-49ab-bf34-26a40c441e26"
 }
