@@ -736,10 +736,16 @@ real Git worktree directory. Raw display text never participates in uniqueness.
   status plus success response or stable error; it never inserts an event,
   allocates a fence, changes a lease/binding, or evaluates current lease state.
   SQLite, HTTPS, and task-tracker adapters expose the same canonical selector
-  and result. Missing records and any operation/key/digest mismatch return no
-  authenticated replay rather than falling back to local receipt/session/fleet
-  data. HTTP uses a dedicated authenticated read-only route and never accepts
-  an idempotency header for this lookup.
+  and exact result union: committed `{ selector, outcome: 'committed',
+  statusCode, result }`, rejected `{ selector, outcome: 'rejected', statusCode,
+  error }`, or absent `{ selector, outcome: 'absent' }`. Public selector
+  operations use port names including `switchLease`; SQLite maps that one name
+  to historical event operation `switch` only at this read boundary. A missing
+  project/key is absent; an existing project/key whose operation or digest
+  differs is `idempotency-conflict`; a corrupt row is
+  `authority-unavailable`. HTTP uses authenticated non-mutating `POST` at
+  `/v1/work-leases:replay-mutation` with the strict selector JSON body, no query,
+  and no `Idempotency-Key`, so keys and digests do not enter URL logs.
 
 #### Task 6A: Contract and v2 Migration
 
@@ -796,10 +802,13 @@ real Git worktree directory. Raw display text never participates in uniqueness.
 - Validate the mutation receipt against the attached request before atomically
   attaching it. Before any forward or compensation transition projection,
   authenticate the exact persisted raw request digest and exact persisted
-  response through `replayMutation`; mint an opaque in-memory commit proof only
-  from that successful authoritative replay. Transition projection seams require
-  and correlate the live proof, so raw request plus local receipt is never
-  sufficient. Authority state is never fabricated from session, fleet, or a
+  response through `replayMutation`; only a committed 2xx exact-response replay
+  may mint an opaque in-memory commit proof. Gate the pre-loop target claim and
+  every forward and compensation projection with that proof. Current-target
+  `verify` remains a separate liveness/fence check and can never substitute for
+  mutation replay. Transition projection seams require and correlate the live
+  proof, so raw request plus local receipt is never sufficient. Authority state
+  is never fabricated from session, fleet, or a
   checkpoint. Restore heartbeat scheduling for unrelated surviving owners, but
   never restore the retired/paused old owner. For terminal release, perform only
   fenced local authority/session cleanup and journal deletion after the valid
