@@ -29,6 +29,7 @@ async function runOfflineClose({
   drainResult = { delivered: 0, retained: 0, authorityRefused: 0 },
   flushResult = { delivered: 0, discarded: 0, authorityRefused: 0 },
   reverifyFailureAt = null,
+  duringDrain,
 } = {}) {
   const dir = mkdtempSync(join(projectScratchDir('test'), 'aitm-close-governed-'));
   const statePath = join(dir, 'state.json');
@@ -58,6 +59,7 @@ async function runOfflineClose({
     pexec: async () => ({ stdout: '{}', stderr: '' }),
     drainQueueIfAny: async () => {
       events.push('drain');
+      await duringDrain?.({ statePath });
       return drainResult;
     },
     flushAndForgetQueueFor: async () => {
@@ -191,6 +193,20 @@ test('invalid disposition refusal is pure and does not drain queue or open mutat
   }
 });
 
+for (const malformedTarget of ['#abc', '#0', '#01']) {
+  test(`malformed explicit target ${malformedTarget} refuses before fallback, queue, or authority`, async () => {
+    const run = await runOfflineClose({ active: '#1049', rest: [malformedTarget] });
+    try {
+      assert.equal(run.error, undefined);
+      assert.equal(run.result.status, 'invalid-target');
+      assert.deepEqual(run.events, []);
+      assert.equal(run.state.active, '#1049');
+    } finally {
+      rmSync(run.dir, { recursive: true, force: true });
+    }
+  });
+}
+
 test('ordinary close uses one lock and one heartbeat root through the final effect', async () => {
   const run = await runOfflineClose();
   try {
@@ -209,6 +225,25 @@ test('ordinary close uses one lock and one heartbeat root through the final effe
     }
     assert.equal(run.state.active, null);
     assert.deepEqual(run.state.lease, state().lease, 'clearActive must retain lease context');
+  } finally {
+    rmSync(run.dir, { recursive: true, force: true });
+  }
+});
+
+test('binding changed during queue drain refuses inside root before every issue effect', async () => {
+  const run = await runOfflineClose({
+    duringDrain: async ({ statePath }) => {
+      writeFileSync(statePath, JSON.stringify(state('#1050')));
+    },
+  });
+  try {
+    assert.equal(run.error, undefined);
+    assert.equal(run.result.status, 'binding-changed');
+    assert.equal(run.state.active, '#1050');
+    for (const forbidden of ['targeted-flush', 'timing', 'done', 'log', 'lifecycle']) {
+      assert.ok(!run.events.includes(forbidden), `must not emit ${forbidden}`);
+    }
+    assert.deepEqual(run.events.slice(-2), ['heartbeat-stop', 'release']);
   } finally {
     rmSync(run.dir, { recursive: true, force: true });
   }
@@ -239,6 +274,20 @@ test('queue receipt authority refusal retains rows and aborts before lock or clo
   }
 });
 
+test('ordinary pre-root queue delivery failures remain retained and do not block close', async () => {
+  const run = await runOfflineClose({
+    drainResult: { delivered: 0, retained: 2, authorityRefused: 0 },
+  });
+  try {
+    assert.equal(run.error, undefined);
+    assert.equal(run.result.status, 'completed');
+    assert.ok(run.events.includes('root'));
+    assert.equal(run.state.active, null);
+  } finally {
+    rmSync(run.dir, { recursive: true, force: true });
+  }
+});
+
 test('targeted queue authority refusal blocks terminal close and retains active state', async () => {
   const run = await runOfflineClose({
     flushResult: { delivered: 0, discarded: 0, authorityRefused: 1 },
@@ -247,6 +296,23 @@ test('targeted queue authority refusal blocks terminal close and retains active 
     assert.equal(run.state.active, '#1049');
     assert.ok(!run.events.includes('done'));
     assert.ok(!run.events.includes('lifecycle'));
+  } finally {
+    rmSync(run.dir, { recursive: true, force: true });
+  }
+});
+
+test('close --as targeted authority refusal aborts before disposition or terminal effects', async () => {
+  const run = await runOfflineClose({
+    rest: ['#1049', '--as', 'not-planned'],
+    flushResult: { delivered: 0, discarded: 0, authorityRefused: 1 },
+  });
+  try {
+    assert.equal(run.error, undefined);
+    assert.equal(run.result.status, 'queue-authority-refused');
+    assert.equal(run.state.active, '#1049');
+    assert.ok(!run.events.includes('done'));
+    assert.ok(!run.events.includes('lifecycle'));
+    assert.deepEqual(run.events.slice(-2), ['heartbeat-stop', 'release']);
   } finally {
     rmSync(run.dir, { recursive: true, force: true });
   }

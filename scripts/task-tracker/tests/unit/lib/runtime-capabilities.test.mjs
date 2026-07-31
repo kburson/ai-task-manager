@@ -298,8 +298,7 @@ test('AC2: verbClose is migrated to the narrow capability interface', () => {
 test('AC3: verbClose runs against a narrow fixture (no active task path)', async () => {
   const dir = mkdtempProjectIsolated('aitm-561-');
   const statePath = path.join(dir, 'task-tracker-state.json');
-  // No active task and no target arg → the early "no active task" return,
-  // which touches only timingRecorder.drainQueueIfAny + projectConfig.statePath.
+  // No active task and no target arg → pure pre-queue "no active task" outcome.
   writeFileSync(statePath, JSON.stringify({ active: null, lastActive: null }));
 
   let drained = false;
@@ -321,12 +320,12 @@ test('AC3: verbClose runs against a narrow fixture (no active task path)', async
 
   try {
     const result = await verbClose(fixture);
-    assert.equal(result, undefined, 'early return is void');
+    assert.deepEqual(result, { status: 'no-target' });
   } finally {
     console.log = origLog;
   }
 
-  assert.ok(drained, 'verbClose drained the timing queue via the timingRecorder capability');
+  assert.equal(drained, false, 'pure no-target classification must not drain the timing queue');
   assert.ok(
     logs.some((l) => l.includes('no active task')),
     'verbClose reported "no active task" running on the fixture alone'

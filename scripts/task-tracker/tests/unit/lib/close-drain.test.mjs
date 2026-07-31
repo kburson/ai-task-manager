@@ -91,4 +91,39 @@ function makeFlushAndForget(handler) {
   rmSync(t, { recursive: true });
 }
 
+// Scenario 5 — the real runtime pre-root adapter preserves and distinguishes
+// ordinary delivery failures from governed authority refusals.
+{
+  const t = mkdtempSync(path.join(projectScratchDir('test'), 'tt-cd-runtime-'));
+  const p = path.join(t, 'queue.json');
+  const previousProjectDir = process.env.AI_TASK_MANAGER_PROJECT_DIR;
+  process.env.AI_TASK_MANAGER_PROJECT_DIR = t;
+  try {
+    const { drainRuntimeTimingQueue } = await import('../../../runtime.mjs');
+    enqueue({ issue: '#197', row: 'delivered' }, p);
+    enqueue({ issue: '#197', row: 'ordinary-retained' }, p);
+    enqueue({ issue: '#197', row: 'authority-retained' }, p);
+    const result = await drainRuntimeTimingQueue({
+      queuePath: p,
+      handler: async (event) => {
+        if (event.row === 'ordinary-retained') throw new Error('network down');
+        if (event.row === 'authority-retained') {
+          const error = new Error('stale queue authority');
+          error.code = 'fence-stale';
+          throw error;
+        }
+      },
+    });
+    assert.deepEqual(result, { delivered: 1, retained: 1, authorityRefused: 1 });
+    assert.deepEqual(
+      peek(p).map((event) => event.row),
+      ['ordinary-retained', 'authority-retained']
+    );
+  } finally {
+    if (previousProjectDir === undefined) delete process.env.AI_TASK_MANAGER_PROJECT_DIR;
+    else process.env.AI_TASK_MANAGER_PROJECT_DIR = previousProjectDir;
+    rmSync(t, { recursive: true });
+  }
+}
+
 console.log('close-drain.test.mjs: all passed');

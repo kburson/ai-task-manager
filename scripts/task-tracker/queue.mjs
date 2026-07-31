@@ -147,13 +147,15 @@ export async function drain(handler, queuePath, deps = {}) {
   return withQueueDrainClaim(queuePath, async () => {
     const items = withQueueMutationLock(queuePath, () => read(queuePath));
     const succeeded = [];
-    let failed = 0;
+    let retained = 0;
+    let authorityRefused = 0;
     for (const item of items) {
       try {
         await handler(item);
         succeeded.push(item);
-      } catch {
-        failed += 1;
+      } catch (error) {
+        if (isGovernedAuthorityError(error)) authorityRefused += 1;
+        else retained += 1;
       }
     }
     if (succeeded.length > 0) {
@@ -167,7 +169,12 @@ export async function drain(handler, queuePath, deps = {}) {
         write(latest, queuePath, deps);
       });
     }
-    return failed === 0;
+    const result = {
+      delivered: succeeded.length,
+      retained,
+      authorityRefused,
+    };
+    return deps.structuredResult === true ? result : retained === 0 && authorityRefused === 0;
   });
 }
 

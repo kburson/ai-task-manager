@@ -127,7 +127,20 @@ export async function runDispose({
   const terminalCfg = cfg || { repo, projectId };
 
   // 1. Flush + stop timing before the body is closed out.
-  if (typeof flushTiming === 'function') await flushTiming(issueNumber);
+  const flushResult =
+    typeof flushTiming === 'function' ? await flushTiming(issueNumber) : undefined;
+  if (Number(flushResult?.authorityRefused || 0) > 0) {
+    return {
+      status: 'queue-authority-refused',
+      exitCode: 1,
+      issueNumber,
+      reason: key,
+      of: ofRef,
+      stateReason,
+      retained: true,
+      flushResult,
+    };
+  }
 
   // 2. Stamp the audit marker on the body.
   if (typeof mutateIssueBody === 'function') {

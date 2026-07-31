@@ -162,6 +162,11 @@ function closeOutcome({ status, exitCode, result } = {}) {
   };
 }
 
+function canonicalIssueRef(value) {
+  const ref = String(value ?? '');
+  return /^#[1-9]\d*$/.test(ref) ? ref : null;
+}
+
 export async function prepareClose(ctx) {
   const projectConfig = ctx.projectConfig ?? ctx;
   const { statePath } = projectConfig;
@@ -170,7 +175,18 @@ export async function prepareClose(ctx) {
     ctx.convergenceTailProfile === undefined ? 'task-owner' : ctx.convergenceTailProfile
   ).name;
   const initialState = loadState(statePath);
-  const target = rest.find((arg) => /^#\d+$/.test(arg));
+  const malformedTarget = rest.find(
+    (arg) => String(arg).startsWith('#') && canonicalIssueRef(arg) == null
+  );
+  if (malformedTarget !== undefined) {
+    return {
+      outcome: closeOutcome({ status: 'invalid-target', exitCode: 1 }),
+      message: `close requires a canonical positive issue target, got ${JSON.stringify(
+        malformedTarget
+      )}`,
+    };
+  }
+  const target = rest.find((arg) => canonicalIssueRef(arg) != null);
   const closeTarget = target || initialState.active || '';
 
   if (!closeTarget) {
@@ -183,13 +199,16 @@ export async function prepareClose(ctx) {
     return { kind: 'discover', closeTarget, initialState };
   }
 
-  const closeIssueNum = closeTarget.replace(/^#/, '');
-  if (!/^\d+$/.test(closeIssueNum)) {
+  const canonicalCloseTarget = canonicalIssueRef(closeTarget);
+  if (!canonicalCloseTarget) {
     return {
       outcome: closeOutcome({ status: 'invalid-target', exitCode: 1 }),
-      message: `close requires a numeric issue target, got ${JSON.stringify(closeTarget)}`,
+      message: `close requires a canonical positive issue target, got ${JSON.stringify(
+        closeTarget
+      )}`,
     };
   }
+  const closeIssueNum = canonicalCloseTarget.slice(1);
 
   const asIdx = rest.indexOf('--as');
   let disposition = null;
@@ -341,6 +360,20 @@ export async function executeClosePlan(ctx, preparedPlan, scope) {
 
   const closeTarget = preparedPlan.closeTarget;
   const closeIssueNum = preparedPlan.closeIssueNum;
+  if (!dryRun) {
+    const refreshedActive = canonicalIssueRef(initialState.active);
+    const explicitAdoption = Boolean(target && !initialState.active);
+    if (
+      (!explicitAdoption && refreshedActive !== closeTarget) ||
+      (initialState.active && !refreshedActive)
+    ) {
+      console.error(
+        `[task-tracker] ⛔ Refusing to close ${closeTarget}: active binding changed to ` +
+          `${initialState.active || 'none'} while queued timing was drained.`
+      );
+      return closeOutcome({ status: 'binding-changed', exitCode: 7 });
+    }
+  }
   // #708 — `--repair` forces the full atomic close pipeline even when the board
   // is already Done / the issue already CLOSED (e.g. a PR closing-reference
   // auto-closed it out-of-band), so the timing flush, lifecycle-box ticking, and
@@ -415,6 +448,13 @@ export async function executeClosePlan(ctx, preparedPlan, scope) {
         warn: (msg) => console.error(`[task-tracker] warn: ${msg}`),
       },
     });
+    if (result.status === 'queue-authority-refused') {
+      console.error(
+        `[task-tracker] ⛔ Refusing to close ${closeTarget} as ${result.reason}: ` +
+          'queued timing authority was refused; retained the queued row for retry.'
+      );
+      return closeOutcome({ status: result.status, exitCode: result.exitCode });
+    }
     // Clear local active-task state so a subsequent bind is clean.
     try {
       await scope.effect(() => clearActive(statePath));

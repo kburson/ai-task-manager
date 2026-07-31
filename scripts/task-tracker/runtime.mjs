@@ -78,6 +78,16 @@ export function minutesBetween(aIso, bIso) {
   return Math.round((new Date(bIso) - new Date(aIso)) / 60000);
 }
 
+export async function drainRuntimeTimingQueue({
+  queuePath,
+  handler,
+  skipNetwork = false,
+  drainQueue = drain,
+} = {}) {
+  if (skipNetwork) return { delivered: 0, retained: 0, authorityRefused: 0 };
+  return drainQueue(handler, queuePath, { structuredResult: true });
+}
+
 export function createLazyWorkLeaseStore(factory) {
   if (typeof factory !== 'function') {
     throw new TypeError('work-lease provider factory must be a function');
@@ -489,16 +499,16 @@ export function buildContext(rawArgv = process.argv.slice(2)) {
   };
 
   ctx.drainQueueIfAny = async () => {
-    if (SKIP_NETWORK) return;
-    await drain(
-      (evt) =>
+    return drainRuntimeTimingQueue({
+      queuePath,
+      skipNetwork: SKIP_NETWORK,
+      handler: (evt) =>
         postRuntimeQueuedTimingEvent(evt, {
           repo: cfg.repo,
           timeoutMs: cfg.hookNetworkTimeoutMs,
           withGovernedEffect: ctx.withGovernedEffect,
         }),
-      queuePath
-    );
+    });
   };
 
   ctx.flushAndForgetQueueFor = async (issueRef) => {

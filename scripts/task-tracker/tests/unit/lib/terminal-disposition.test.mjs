@@ -161,6 +161,32 @@ test('close-as retains the board item and writes matching terminal values', asyn
   assert.ok(!('deleteProjectV2Item' in deps));
 });
 
+test('close-as authority-refused timing flush retains the row and precedes every mutation', async () => {
+  const events = [];
+  const result = await runDispose({
+    issueNumber: 1035,
+    reason: 'not-planned',
+    repo: cfg.repo,
+    projectId: cfg.projectId,
+    cfg,
+    deps: {
+      flushTiming: async () => {
+        events.push('flush');
+        return { delivered: 0, discarded: 0, authorityRefused: 1 };
+      },
+      mutateIssueBody: async () => events.push('marker'),
+      writeDisposition: async () => events.push('disposition'),
+      moveToDone: async () => events.push('done'),
+      pexec: async () => events.push('close'),
+      postComment: async () => events.push('comment'),
+    },
+  });
+
+  assert.equal(result.status, 'queue-authority-refused');
+  assert.equal(result.exitCode, 1);
+  assert.deepEqual(events, ['flush']);
+});
+
 test('supersede writes Replaced before its marker, Done bypass, and close', async () => {
   const events = [];
   const result = await runSupersede({
