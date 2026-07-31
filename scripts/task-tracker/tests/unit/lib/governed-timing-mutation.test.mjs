@@ -46,6 +46,33 @@ test('stale timing authority invokes zero timing-comment read or mutation effect
   assert.deepEqual(effects, []);
 });
 
+test('timing mutation can continue an exact approval-mutation scope', async () => {
+  const events = [];
+  await postTimingEvent({
+    issueNumber: 1049,
+    repo: 'owner/repo',
+    row: ROW,
+    operation: 'approval-mutation',
+    lock: false,
+    withGovernedEffect: async (options, callback) => {
+      events.push(`continue:${options.issueId}:${options.operation}`);
+      return callback({
+        reverify: async () => {
+          events.push('reverify');
+        },
+      });
+    },
+    deps: {
+      findTimingComment: async () => null,
+      createTimingComment: async () => {
+        events.push('create');
+      },
+    },
+  });
+
+  assert.deepEqual(events, ['continue:1049:approval-mutation', 'reverify', 'create']);
+});
+
 test('timing retry obtains fresh authority and reverifies before each remote mutation', async () => {
   const events = [];
   let updateAttempts = 0;

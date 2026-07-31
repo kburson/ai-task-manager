@@ -250,6 +250,22 @@ function approvalSatisfiesRequest(body, authority, human) {
   );
 }
 
+function incompleteReviewResult(issueNumber, body) {
+  const reason = agentReviewIncompleteReason(body) || 'review-incomplete';
+  return {
+    status: 'agent-review-incomplete',
+    reason,
+    message:
+      reason === 'review-failed'
+        ? `#${issueNumber} carries an \`aitm-review-failed\` marker — the Agent Review Gate objected and its objections are unresolved. Fix them in place, then re-run \`/task review #${issueNumber}\` before approving.`
+        : `#${issueNumber} has no passing Agent Review evidence — the Review state's action has not completed. Run \`/task review #${issueNumber}\` first; the human approval is the exit condition, not the action.`,
+  };
+}
+
+function requiresApprovalRepair(authority, human) {
+  return shouldArchiveApproval(authority) || shouldReplaceWithHumanApproval(authority, human);
+}
+
 function serializeApprovalHistory(approval, ts) {
   const props = {
     schema: '1',
@@ -390,12 +406,24 @@ export async function runApprove({ issueNumber, cfg, projectDir, deps = {}, huma
   if (approvalSatisfiesRequest(initialBody, initialAuthority, human)) {
     return { status: 'already-approved' };
   }
+  if (
+    !requiresApprovalRepair(initialAuthority, human) &&
+    !hasCompleteCurrentPassingReview(initialBody, initialAuthority)
+  ) {
+    return incompleteReviewResult(issueNumber, initialBody);
+  }
 
   return lockIssue({ issue: issueNumber, verb: 'approve', projDir: stableProjectDir }, async () => {
     let body = await fetchIssueBody({ issueNumber, repo: cfg.repo });
     let authority = deriveAuthorityForBody(body);
     if (approvalSatisfiesRequest(body, authority, human)) {
       return { status: 'already-approved' };
+    }
+    if (
+      !requiresApprovalRepair(authority, human) &&
+      !hasCompleteCurrentPassingReview(body, authority)
+    ) {
+      return incompleteReviewResult(issueNumber, body);
     }
     return withVerbMutationScope(
       {
@@ -409,7 +437,7 @@ export async function runApprove({ issueNumber, cfg, projectDir, deps = {}, huma
         // invalidated before we consider a replacement. This prevents a stale
         // lifecycle tick or Full-Auto footnote from being mistaken for current
         // human authority while the current Review still lacks a passing proof.
-        if (shouldArchiveApproval(authority) || shouldReplaceWithHumanApproval(authority, human)) {
+        if (requiresApprovalRepair(authority, human)) {
           const archiveResult = await scope.effect(() =>
             mutateBody({
               issueNumber,
@@ -439,15 +467,7 @@ export async function runApprove({ issueNumber, cfg, projectDir, deps = {}, huma
         // is never asked to sign off on a story the agent has not signed off on
         // (observed on #878, where the gate ran only after the human was asked).
         if (!hasCompleteCurrentPassingReview(body, authority)) {
-          const reason = agentReviewIncompleteReason(body) || 'review-incomplete';
-          return {
-            status: 'agent-review-incomplete',
-            reason,
-            message:
-              reason === 'review-failed'
-                ? `#${issueNumber} carries an \`aitm-review-failed\` marker — the Agent Review Gate objected and its objections are unresolved. Fix them in place, then re-run \`/task review #${issueNumber}\` before approving.`
-                : `#${issueNumber} has no passing Agent Review evidence — the Review state's action has not completed. Run \`/task review #${issueNumber}\` first; the human approval is the exit condition, not the action.`,
-          };
+          return incompleteReviewResult(issueNumber, body);
         }
         const ts = nowIso();
         // #979 — env-only Full-Auto detection misclassifies a genuinely
@@ -581,17 +601,8 @@ export async function runApprove({ issueNumber, cfg, projectDir, deps = {}, huma
                 wordMarker: durableWordMarker(getProjectDir()),
                 description: `WARN: lifecycle-tick-noop 'passed-final-review' — customized DoD or legacy heading; stamp <!-- aitm-lifecycle-optout: passed-final-review --> to acknowledge.`,
               }),
-              withGovernedEffect: async (options, callback) => {
-                if (
-                  String(options?.issueId).replace(/^#/, '') !== String(issueNumber) ||
-                  options?.operation !== 'evidence-mutation'
-                ) {
-                  throw new TypeError('approve lifecycle warning authority route does not match');
-                }
-                return callback({
-                  reverify: () => scope.effect(async () => {}),
-                });
-              },
+              operation: 'approval-mutation',
+              withGovernedEffect: scope.continue,
             });
           } catch (err) {
             if (isGovernedAuthorityError(err)) throw err;

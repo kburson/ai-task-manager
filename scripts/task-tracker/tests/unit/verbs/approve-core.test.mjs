@@ -247,6 +247,12 @@ function makeDeps(overrides = {}) {
 
   assert.equal(r.status, 'approved');
   assert.equal(calls.writes.length, 2, 'archive and replacement are separate fresh-base writes');
+  assert.deepEqual(calls.locks, ['lock'], 'stale approval repair must acquire the issue lock');
+  assert.equal(
+    calls.authority[0],
+    'authorize:58:approval-mutation',
+    'stale approval repair must open exact approval authority'
+  );
   assert.match(getBody(), /aitm-review-approval-history[^>]*provenance="human"/);
   assert.match(
     getBody(),

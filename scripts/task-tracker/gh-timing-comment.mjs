@@ -750,6 +750,7 @@ export async function postTimingEvent({
   lock = true,
   projDir,
   withGovernedEffect,
+  operation = 'evidence-mutation',
   deps = {},
 } = {}) {
   const projection = normalizeTimingProjection(projectionId, subOperationId);
@@ -768,7 +769,7 @@ export async function postTimingEvent({
     govern(
       {
         issueId: normalizeTimingIssueNumber(issueNumber),
-        operation: 'evidence-mutation',
+        operation,
         heartbeat: true,
       },
       async (authority) => {

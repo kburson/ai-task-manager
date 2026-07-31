@@ -108,7 +108,7 @@ test('empty and non-string bodies are incomplete, not crashes', () => {
 // ── the verb ────────────────────────────────────────────────────────────────
 
 function approveWith(body, extra = {}) {
-  const calls = { mutated: 0, commented: 0 };
+  const calls = { mutated: 0, commented: 0, locks: 0, authority: 0 };
   let current = body;
   return {
     calls,
@@ -137,7 +137,14 @@ function approveWith(body, extra = {}) {
           deriveDrivers: () => [],
           detectFullAuto: () => ({ fired: true, signals: 'test' }),
           nowIso: () => '2026-07-18T02:00:00Z',
-          withGovernedEffect: async (_options, callback) => callback({ reverify: async () => {} }),
+          withIssueLock: async (_options, callback) => {
+            calls.locks += 1;
+            return callback();
+          },
+          withGovernedEffect: async (_options, callback) => {
+            calls.authority += 1;
+            return callback({ reverify: async () => {} });
+          },
           ...extra,
         },
       }),
@@ -152,6 +159,8 @@ test('approve refuses when the gate has not run, and writes nothing', async () =
   assert.match(res.message, /Run `\/task review #881` first/);
   assert.equal(calls.mutated, 0, 'no approval marker may be stamped');
   assert.equal(calls.commented, 0, 'no Review Notes may be posted');
+  assert.equal(calls.locks, 0, 'pure incomplete refusal must not acquire the issue lock');
+  assert.equal(calls.authority, 0, 'pure incomplete refusal must not open lease authority');
 });
 
 test('approve refuses while an objection is unresolved', async () => {
@@ -164,6 +173,8 @@ test('approve refuses while an objection is unresolved', async () => {
   assert.equal(res.reason, 'review-failed');
   assert.match(res.message, /aitm-review-failed/);
   assert.equal(calls.mutated, 0);
+  assert.equal(calls.locks, 0, 'failed review refusal must not acquire the issue lock');
+  assert.equal(calls.authority, 0, 'failed review refusal must not open lease authority');
 });
 
 test('approve proceeds once the state action has passed', async () => {
