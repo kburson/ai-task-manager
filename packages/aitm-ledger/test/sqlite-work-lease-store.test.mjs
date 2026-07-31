@@ -334,6 +334,164 @@ test('mutation replay reads the exact recorded outcome without changing authorit
   store.close();
 });
 
+test('mutation replay fails closed on corrupt rows without mutating authority', () => {
+  const corruptions = [
+    {
+      name: 'unknown stored operation',
+      apply: (db) => db.prepare("UPDATE work_lease_events SET operation = 'unknown'").run(),
+    },
+    {
+      name: 'public switch operation stored internally',
+      apply: (db) => db.prepare("UPDATE work_lease_events SET operation = 'switchLease'").run(),
+    },
+    {
+      name: 'forged result object',
+      apply: (db) => db.prepare("UPDATE work_lease_events SET response_json = '{}'").run(),
+    },
+    {
+      name: 'invalid success status',
+      apply: (db) => db.prepare('UPDATE work_lease_events SET status_code = 299').run(),
+    },
+    {
+      name: 'malformed lease',
+      apply: (db) =>
+        db
+          .prepare(
+            "UPDATE work_lease_events SET response_json = json_set(response_json, '$.holder', json('{}'))"
+          )
+          .run(),
+    },
+    {
+      name: 'rejected wrong status',
+      apply: (db) =>
+        db
+          .prepare(
+            `UPDATE work_lease_events
+                SET response_json = NULL,
+                    error_json = ?,
+                    status_code = 412`
+          )
+          .run(
+            JSON.stringify({
+              code: 'idempotency-conflict',
+              message: 'request conflict',
+              details: {},
+            })
+          ),
+    },
+    {
+      name: 'rejected extra key',
+      apply: (db) =>
+        db
+          .prepare(
+            `UPDATE work_lease_events
+                SET response_json = NULL,
+                    error_json = ?,
+                    status_code = 409`
+          )
+          .run(
+            JSON.stringify({
+              code: 'idempotency-conflict',
+              message: 'request conflict',
+              details: {},
+              retryable: false,
+            })
+          ),
+    },
+    {
+      name: 'rejected malformed details',
+      apply: (db) =>
+        db
+          .prepare(
+            `UPDATE work_lease_events
+                SET response_json = NULL,
+                    error_json = ?,
+                    status_code = 409`
+          )
+          .run(
+            JSON.stringify({
+              code: 'idempotency-conflict',
+              message: 'request conflict',
+              details: [],
+            })
+          ),
+    },
+    {
+      name: 'rejected password detail',
+      apply: (db) =>
+        db
+          .prepare(
+            `UPDATE work_lease_events
+                SET response_json = NULL,
+                    error_json = ?,
+                    status_code = 409`
+          )
+          .run(
+            JSON.stringify({
+              code: 'idempotency-conflict',
+              message: 'request conflict',
+              details: { password: 'do-not-return' },
+            })
+          ),
+    },
+    {
+      name: 'rejected authorization detail',
+      apply: (db) =>
+        db
+          .prepare(
+            `UPDATE work_lease_events
+                SET response_json = NULL,
+                    error_json = ?,
+                    status_code = 409`
+          )
+          .run(
+            JSON.stringify({
+              code: 'idempotency-conflict',
+              message: 'request conflict',
+              details: { nested: { authorization: 'Bearer secret' } },
+            })
+          ),
+    },
+  ];
+
+  for (const corruption of corruptions) {
+    const db = openProjectDatabase({ databasePath: ':memory:' });
+    const store = new SqliteWorkLeaseStore({ db, uuid: () => 'replay-corrupt-lease' });
+    const request = acquire({ idempotencyKey: 'replay-corrupt' });
+    store.acquire(request);
+    const selector = {
+      projectId: request.projectId,
+      operation: 'acquire',
+      idempotencyKey: request.idempotencyKey,
+      requestDigest: canonicalRequestDigest(request),
+    };
+    corruption.apply(db);
+    const before = {
+      events: db.prepare('SELECT * FROM work_lease_events').all(),
+      leases: db.prepare('SELECT * FROM work_leases').all(),
+      bindings: db.prepare('SELECT * FROM work_bindings').all(),
+      fences: db.prepare('SELECT * FROM lease_fences').all(),
+    };
+
+    assert.throws(
+      () => store.replayMutation(selector),
+      (error) => error.code === 'authority-unavailable',
+      corruption.name
+    );
+    assert.deepEqual(
+      {
+        events: db.prepare('SELECT * FROM work_lease_events').all(),
+        leases: db.prepare('SELECT * FROM work_leases').all(),
+        bindings: db.prepare('SELECT * FROM work_bindings').all(),
+        fences: db.prepare('SELECT * FROM lease_fences').all(),
+      },
+      before,
+      corruption.name
+    );
+    store.close();
+  }
+});
+
 test('issue and worktree observations fail unavailable for every corrupt binding invariant', () => {
   const corruptions = [
     (db, lease) => db.prepare('DELETE FROM work_bindings WHERE lease_id = ?').run(lease.leaseId),

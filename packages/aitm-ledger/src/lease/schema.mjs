@@ -1,6 +1,12 @@
 import { createHash } from 'node:crypto';
+import { isDeepStrictEqual } from 'node:util';
 
-import { invalidRequest } from './errors.mjs';
+import {
+  LEASE_ERROR_CODES,
+  WorkLeaseError,
+  invalidRequest,
+  sanitizeLeaseDetails,
+} from './errors.mjs';
 
 export const LEASE_OPERATIONS = Object.freeze([
   'task-bind',
@@ -32,6 +38,29 @@ export const MUTATING_LEASE_OPERATIONS = Object.freeze([
   'release',
   'takeover',
 ]);
+
+const REPLAY_SUCCESS_STATUS = Object.freeze({
+  acquire: new Set([200, 201]),
+  renew: new Set([200]),
+  switchLease: new Set([200]),
+  handoff: new Set([200]),
+  release: new Set([200]),
+  takeover: new Set([200, 201]),
+});
+
+const REPLAY_ERROR_STATUS = Object.freeze({
+  'invalid-request': 400,
+  'authority-unauthenticated': 401,
+  'authority-forbidden': 403,
+  'idempotency-conflict': 409,
+  'lease-contended': 409,
+  'worktree-contended': 409,
+  'holder-live': 409,
+  'fence-stale': 412,
+  'lease-not-held': 412,
+  'authority-unavailable': 503,
+  'main-worktree-unresolved': 503,
+});
 
 function object(value, label) {
   if (!value || typeof value !== 'object' || Array.isArray(value)) {
@@ -450,6 +479,149 @@ export function validateReplayMutationSelector(selector) {
     invalidRequest('selector.requestDigest must be a lowercase SHA-256 digest');
   }
   return selector;
+}
+
+function replayUnavailable(message) {
+  throw new WorkLeaseError('authority-unavailable', message);
+}
+
+function replayExactKeys(value, expected, label) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    replayUnavailable(`${label} must be an object`);
+  }
+  const actual = Object.keys(value).sort();
+  const wanted = [...expected].sort();
+  if (actual.length !== wanted.length || actual.some((key, index) => key !== wanted[index])) {
+    replayUnavailable(`${label} has an unknown shape`);
+  }
+  return value;
+}
+
+function validateReplayLease(value) {
+  const lease = replayExactKeys(
+    value,
+    [
+      'projectId',
+      'issueId',
+      'mode',
+      'leaseId',
+      'fencingToken',
+      'state',
+      'holder',
+      'acquiredAt',
+      'heartbeatAt',
+      'expiresAt',
+      'audit',
+    ],
+    'mutation replay lease'
+  );
+  try {
+    nonEmpty(lease.projectId, 'lease.projectId');
+    issueIdentifier(lease.issueId, 'lease.issueId');
+    if (lease.mode !== 'write') throw new Error('mode');
+    nonEmpty(lease.leaseId, 'lease.leaseId');
+    assertFencingToken(lease.fencingToken);
+    if (![...OWNERSHIP_RETAINING_STATES, ...TERMINAL_LEASE_STATES].includes(lease.state)) {
+      throw new Error('state');
+    }
+    validateLeaseHolder(lease.holder);
+    timestamp(lease.acquiredAt, 'lease.acquiredAt');
+    timestamp(lease.heartbeatAt, 'lease.heartbeatAt');
+    timestamp(lease.expiresAt, 'lease.expiresAt');
+    object(lease.audit, 'lease.audit');
+  } catch {
+    replayUnavailable('mutation replay lease is malformed');
+  }
+  return lease;
+}
+
+function validateReplayTransition(value) {
+  const transition = replayExactKeys(
+    value,
+    ['transitionId', 'fromIssueId', 'fromLeaseId', 'fromToken', 'toIssueId'],
+    'mutation replay transition'
+  );
+  try {
+    nonEmpty(transition.transitionId, 'transition.transitionId');
+    issueIdentifier(transition.fromIssueId, 'transition.fromIssueId');
+    nonEmpty(transition.fromLeaseId, 'transition.fromLeaseId');
+    assertFencingToken(transition.fromToken);
+    issueIdentifier(transition.toIssueId, 'transition.toIssueId');
+  } catch {
+    replayUnavailable('mutation replay transition is malformed');
+  }
+  return transition;
+}
+
+export function validateReplayMutationOutcome(value, selector) {
+  try {
+    validateReplayMutationSelector(selector);
+  } catch {
+    replayUnavailable('mutation replay selector is malformed');
+  }
+  const outcome = replayExactKeys(
+    value,
+    value?.outcome === 'absent'
+      ? ['selector', 'outcome']
+      : value?.outcome === 'committed'
+        ? ['selector', 'outcome', 'statusCode', 'result']
+        : value?.outcome === 'rejected'
+          ? ['selector', 'outcome', 'statusCode', 'error']
+          : [],
+    'mutation replay outcome'
+  );
+  const recordedSelector = replayExactKeys(
+    outcome.selector,
+    ['projectId', 'operation', 'idempotencyKey', 'requestDigest'],
+    'mutation replay outcome selector'
+  );
+  for (const key of ['projectId', 'operation', 'idempotencyKey', 'requestDigest']) {
+    if (recordedSelector[key] !== selector[key]) {
+      replayUnavailable(`mutation replay selector ${key} does not match`);
+    }
+  }
+  if (outcome.outcome === 'absent') return outcome;
+  if (!Number.isInteger(outcome.statusCode)) {
+    replayUnavailable('mutation replay statusCode is malformed');
+  }
+  if (outcome.outcome === 'committed') {
+    if (!REPLAY_SUCCESS_STATUS[selector.operation]?.has(outcome.statusCode)) {
+      replayUnavailable('mutation replay committed status is invalid');
+    }
+    if (selector.operation === 'switchLease') {
+      const result = replayExactKeys(
+        outcome.result,
+        ['lease', 'transition'],
+        'switch replay result'
+      );
+      validateReplayLease(result.lease);
+      validateReplayTransition(result.transition);
+    } else {
+      validateReplayLease(outcome.result);
+    }
+    return outcome;
+  }
+  if (outcome.outcome !== 'rejected') replayUnavailable('mutation replay outcome is invalid');
+  const error = replayExactKeys(
+    outcome.error,
+    ['code', 'message', 'details'],
+    'mutation replay error'
+  );
+  if (
+    !LEASE_ERROR_CODES.includes(error.code) ||
+    REPLAY_ERROR_STATUS[error.code] !== outcome.statusCode ||
+    typeof error.message !== 'string' ||
+    error.message.trim() === '' ||
+    !error.details ||
+    typeof error.details !== 'object' ||
+    Array.isArray(error.details)
+  ) {
+    replayUnavailable('mutation replay rejected outcome is malformed');
+  }
+  if (!isDeepStrictEqual(error.details, sanitizeLeaseDetails(error.details))) {
+    replayUnavailable('mutation replay error details are not canonically sanitized');
+  }
+  return outcome;
 }
 
 function stable(value, seen = new Map(), location = '$') {

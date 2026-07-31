@@ -9,6 +9,7 @@ import {
   validateHandoffRequest,
   validateObserveSelector,
   validateReleaseRequest,
+  validateReplayMutationOutcome,
   validateReplayMutationSelector,
   validateRenewRequest,
   validateSwitchLeaseRequest,
@@ -603,48 +604,7 @@ function validateResult(operation, result, request) {
     return result;
   }
   if (operation === 'replayMutation') {
-    assertObject(result, 'mutation replay result');
-    const selector = assertObject(result.selector, 'mutation replay selector', {
-      exactKeys: ['projectId', 'operation', 'idempotencyKey', 'requestDigest'],
-    });
-    for (const key of ['projectId', 'operation', 'idempotencyKey', 'requestDigest']) {
-      requireResponse(selector[key] === request[key], `mutation replay ${key} is inconsistent`);
-    }
-    if (result.outcome === 'absent') {
-      assertObject(result, 'mutation replay result', { exactKeys: ['selector', 'outcome'] });
-      return result;
-    }
-    requireResponse(
-      Number.isInteger(result.statusCode) && result.statusCode >= 200 && result.statusCode <= 599,
-      'mutation replay statusCode is invalid'
-    );
-    if (result.outcome === 'committed') {
-      assertObject(result, 'mutation replay result', {
-        exactKeys: ['selector', 'outcome', 'statusCode', 'result'],
-      });
-      requireResponse(
-        result.statusCode >= 200 && result.statusCode < 300,
-        'committed replay status is invalid'
-      );
-      assertObject(result.result, 'mutation replay committed result');
-    } else if (result.outcome === 'rejected') {
-      assertObject(result, 'mutation replay result', {
-        exactKeys: ['selector', 'outcome', 'statusCode', 'error'],
-      });
-      requireResponse(result.statusCode >= 400, 'rejected replay status is invalid');
-      const error = assertObject(result.error, 'mutation replay error', {
-        exactKeys: ['code', 'message', 'details'],
-      });
-      requireResponse(
-        LEASE_ERROR_CODES.includes(error.code) && ERROR_STATUS[error.code] === result.statusCode,
-        'mutation replay error status is inconsistent'
-      );
-      assertString(error.message, 'mutation replay error.message');
-      assertObject(error.details, 'mutation replay error.details');
-    } else {
-      failUnavailable('mutation replay outcome is invalid');
-    }
-    return result;
+    return validateReplayMutationOutcome(result, request);
   }
   failUnavailable('response operation is unknown');
 }

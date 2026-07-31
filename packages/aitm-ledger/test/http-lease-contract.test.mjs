@@ -393,6 +393,73 @@ test('POST mutation replay is authenticated, header-free, and validates an exact
   }
 });
 
+test('mutation replay rejects forged operation outcomes and unsanitized errors', () => {
+  const selector = {
+    projectId: 'project-1',
+    operation: 'switchLease',
+    idempotencyKey: 'switch-1',
+    requestDigest: 'a'.repeat(64),
+  };
+  const transition = {
+    transitionId: 'transition-1',
+    fromIssueId: '1049',
+    fromLeaseId: 'lease-1',
+    fromToken: '1',
+    toIssueId: '1050',
+  };
+  const committed = {
+    selector,
+    outcome: 'committed',
+    statusCode: 200,
+    result: { lease: lease({ issueId: '1050' }), transition },
+  };
+  const rejected = {
+    selector,
+    outcome: 'rejected',
+    statusCode: 409,
+    error: { code: 'idempotency-conflict', message: 'request conflict', details: {} },
+  };
+  const parse = (result) =>
+    parseHttpLeaseResponse({
+      operation: 'replayMutation',
+      status: 200,
+      payload: createHttpSuccessEnvelope(result),
+      request: selector,
+    });
+
+  assert.deepEqual(parse(committed), committed);
+  assert.deepEqual(parse(rejected), rejected);
+
+  for (const forged of [
+    { ...committed, result: {} },
+    { ...committed, statusCode: 201 },
+    { ...committed, statusCode: 299 },
+    {
+      ...committed,
+      result: { ...committed.result, lease: { ...committed.result.lease, holder: {} } },
+    },
+    {
+      ...committed,
+      result: { ...committed.result, transition: { ...transition, fromToken: '0' } },
+    },
+    { ...rejected, statusCode: 412 },
+    { ...rejected, error: { ...rejected.error, retryable: false } },
+    { ...rejected, error: { ...rejected.error, details: [] } },
+    { ...rejected, error: { ...rejected.error, details: { password: 'do-not-return' } } },
+    {
+      ...rejected,
+      error: { ...rejected.error, details: { nested: { authorization: 'Bearer secret' } } },
+    },
+    { ...rejected, error: { ...rejected.error, code: 'not-a-lease-error' } },
+    { ...committed, selector: { ...selector, operation: 'unknown' } },
+  ]) {
+    assert.throws(
+      () => parse(forged),
+      (error) => error.code === 'authority-unavailable'
+    );
+  }
+});
+
 test('project observation requires canonical issue IDs and verifies non-null binding paths', () => {
   const validNullPath = { leases: [lease()], bindings: [binding({ displayPath: null })] };
   assert.deepEqual(

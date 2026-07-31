@@ -1,7 +1,7 @@
 import { createHash, randomUUID } from 'node:crypto';
 // cspell:ignore SAVEPOINT
 
-import { LEASE_ERROR_CODES, WorkLeaseError } from '../lease/errors.mjs';
+import { WorkLeaseError } from '../lease/errors.mjs';
 import { WorkLeaseStore } from '../lease/port.mjs';
 import {
   OWNERSHIP_RETAINING_STATES,
@@ -11,6 +11,7 @@ import {
   validateHandoffRequest,
   validateObserveSelector,
   validateReleaseRequest,
+  validateReplayMutationOutcome,
   validateReplayMutationSelector,
   validateRenewRequest,
   validateSwitchLeaseRequest,
@@ -19,6 +20,14 @@ import {
 } from '../lease/schema.mjs';
 
 const RETAINING_SQL = "('active','paused')";
+const STORED_MUTATION_OPERATIONS = new Set([
+  'acquire',
+  'renew',
+  'switch',
+  'handoff',
+  'release',
+  'takeover',
+]);
 
 function parseJson(value, fallback = {}) {
   try {
@@ -834,7 +843,18 @@ export class SqliteWorkLeaseStore extends WorkLeaseStore {
       )
       .get(selector.projectId, selector.idempotencyKey);
     const durableSelector = structuredClone(selector);
-    if (!event) return { selector: durableSelector, outcome: 'absent' };
+    if (!event) {
+      return validateReplayMutationOutcome(
+        { selector: durableSelector, outcome: 'absent' },
+        selector
+      );
+    }
+    if (!STORED_MUTATION_OPERATIONS.has(event.operation)) {
+      throw new WorkLeaseError(
+        'authority-unavailable',
+        'recorded mutation replay operation is corrupt'
+      );
+    }
     const recordedOperation = event.operation === 'switch' ? 'switchLease' : event.operation;
     if (
       recordedOperation !== selector.operation ||
@@ -859,16 +879,12 @@ export class SqliteWorkLeaseStore extends WorkLeaseStore {
     } catch {
       throw new WorkLeaseError('authority-unavailable', 'recorded mutation replay JSON is corrupt');
     }
-    if (
-      !Number.isInteger(statusCode) ||
-      (response === null) === (error === null) ||
-      (response !== null && (statusCode < 200 || statusCode >= 300)) ||
-      (error !== null && (statusCode < 400 || !LEASE_ERROR_CODES.includes(error?.code)))
-    ) {
-      throw new WorkLeaseError('authority-unavailable', 'recorded mutation replay row is corrupt');
-    }
-    return response !== null
-      ? { selector: durableSelector, outcome: 'committed', statusCode, result: response }
-      : { selector: durableSelector, outcome: 'rejected', statusCode, error };
+    const outcome =
+      response !== null && error === null
+        ? { selector: durableSelector, outcome: 'committed', statusCode, result: response }
+        : response === null && error !== null
+          ? { selector: durableSelector, outcome: 'rejected', statusCode, error }
+          : { selector: durableSelector, outcome: 'corrupt', statusCode };
+    return validateReplayMutationOutcome(outcome, selector);
   }
 }
