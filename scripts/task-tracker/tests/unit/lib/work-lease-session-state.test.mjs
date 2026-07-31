@@ -286,11 +286,13 @@ test('same-issue generic writes preserve exact sticky authority and fenced clear
       { lease: LEASE, holder: HOLDER, binding: BINDING }
     );
 
-    assert.equal(clearActiveTaskLease('session-1', '41', dir), false);
+    assert.equal(clearActiveTaskLease('session-1', 'wrong-lease', '42', dir), false);
+    assert.deepEqual(getActiveTask('session-1', dir).lease, LEASE);
+    assert.equal(clearActiveTaskLease('session-1', LEASE.leaseId, '41', dir), false);
     assert.deepEqual(getActiveTask('session-1', dir).holder, HOLDER);
     assert.deepEqual(getActiveTask('session-1', dir).binding, BINDING);
 
-    assert.equal(clearActiveTaskLease('session-1', '42', dir), true);
+    assert.equal(clearActiveTaskLease('session-1', LEASE.leaseId, '42', dir), true);
     const cleared = getActiveTask('session-1', dir);
     assert.equal(cleared.lease, undefined);
     assert.equal(cleared.holder, undefined);
@@ -383,15 +385,17 @@ test('generic state saves retain paused authority without restoring an active bi
   }
 });
 
-test('lease clear is stale-token safe', () => {
+test('lease clear requires the exact lease and fence', () => {
   const dir = sandbox();
   try {
     setActiveTask('session-1', { issue: '#1049', ...stickyAuthority() }, dir);
 
-    assert.equal(clearActiveTaskLease('session-1', '41', dir), false);
+    assert.equal(clearActiveTaskLease('session-1', 'wrong-lease', '42', dir), false);
+    assert.deepEqual(getActiveTask('session-1', dir).lease, LEASE);
+    assert.equal(clearActiveTaskLease('session-1', LEASE.leaseId, '41', dir), false);
     assert.deepEqual(getActiveTask('session-1', dir).lease, LEASE);
 
-    assert.equal(clearActiveTaskLease('session-1', '42', dir), true);
+    assert.equal(clearActiveTaskLease('session-1', LEASE.leaseId, '42', dir), true);
     assert.equal(getActiveTask('session-1', dir).lease, undefined);
   } finally {
     rmSync(dir, { recursive: true, force: true });

@@ -1,7 +1,9 @@
 import { randomUUID as defaultRandomUUID } from 'node:crypto';
 
 import {
+  canonicalRequestDigest,
   canonicalRequestJson,
+  validateReplayMutationOutcome,
   WorkLeaseError,
   validateAcquireRequest,
   validateRenewRequest,
@@ -696,6 +698,61 @@ function releaseAfterClaimRequest(lease, request, acquiredAt) {
   };
 }
 
+async function recoverCommittedPostClaimRelease({
+  store,
+  durableLease,
+  request,
+  acquiredAt,
+  sessionId,
+  intent,
+  projectDir,
+  restoreSnapshot,
+}) {
+  if (typeof store?.replayMutation !== 'function') return false;
+  const releaseRequest = releaseAfterClaimRequest(durableLease, request, acquiredAt);
+  const selector = Object.freeze({
+    projectId: releaseRequest.projectId,
+    operation: 'release',
+    idempotencyKey: releaseRequest.idempotencyKey,
+    requestDigest: canonicalRequestDigest(releaseRequest),
+  });
+  let outcome;
+  try {
+    outcome = validateReplayMutationOutcome(await store.replayMutation(selector), selector);
+  } catch (error) {
+    throw stableError(
+      error,
+      'authority-unavailable',
+      'post-claim release replay could not be proven'
+    );
+  }
+  if (outcome.outcome !== 'committed') return false;
+  if (
+    outcome.result.leaseId !== durableLease.leaseId ||
+    outcome.result.state !== 'released' ||
+    outcome.result.audit?.releasedAt !== releaseRequest.releasedAt ||
+    outcome.result.audit?.reason !== releaseRequest.reason
+  ) {
+    throw leaseError(
+      'authority-unavailable',
+      'post-claim release replay does not match the persisted acquire'
+    );
+  }
+  const restored = await restoreSnapshot(
+    sessionId,
+    intent.priorSessionSnapshot,
+    request.idempotencyKey,
+    projectDir
+  );
+  if (!restored) {
+    throw leaseError(
+      'authority-unavailable',
+      'cannot restore prior session after committed post-claim release'
+    );
+  }
+  throw leaseError('authority-forbidden', 'lease was released after assignee recheck');
+}
+
 function validateProjectionProof(proof, projectionName, projectionId) {
   if (
     !proof ||
@@ -972,6 +1029,16 @@ export async function coordinateWorkLeaseAcquire({
   receipt = intent.receipt;
   const { durableLease, acquiredAt } = validateAcquireReceipt(receipt, request);
   if (replayingPersistedIntent) {
+    await recoverCommittedPostClaimRelease({
+      store,
+      durableLease,
+      request,
+      acquiredAt,
+      sessionId,
+      intent,
+      projectDir,
+      restoreSnapshot,
+    });
     await verifyCurrentReplayAuthority({
       store,
       authority: {

@@ -279,12 +279,16 @@ export function clearActiveTask(sid, projDir) {
   }
 }
 
-// Removes granted authority only when the caller still holds the exact fence.
+// Removes granted authority only when the caller still holds the exact lease and fence.
 // A delayed cleanup from an older holder is therefore an idempotent no-op.
-export function clearActiveTaskLease(sid, expectedFencingToken, projDir) {
+export function clearActiveTaskLease(sid, expectedLeaseId, expectedFencingToken, projDir) {
   let cleared = false;
   mutateActiveTask(sid, projDir, (existing) => {
-    if (!existing?.lease || existing.lease.fencingToken !== expectedFencingToken) {
+    if (
+      !existing?.lease ||
+      existing.lease.leaseId !== expectedLeaseId ||
+      existing.lease.fencingToken !== expectedFencingToken
+    ) {
       return null;
     }
     const next = { ...existing };

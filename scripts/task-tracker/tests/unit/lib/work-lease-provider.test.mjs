@@ -3,6 +3,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { hostname } from 'node:os';
 import path from 'node:path';
 import { createHash } from 'node:crypto';
 
@@ -703,6 +704,58 @@ test('default local provider bootstraps an empty ledger identity and exposes the
       store.db.prepare("SELECT value FROM ledger_metadata WHERE key = 'ledgerProjectId'").get()
         .value,
       store.projectId
+    );
+    store.close();
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('default local provider refuses operator takeover of a live same-host PID', () => {
+  const root = mkdtempSync(path.join(projectScratchDir('test'), 'aitm-provider-liveness-'));
+  const configPath = path.join(root, '.ai-task-manager', 'task-tracker.json');
+  try {
+    execFileSync('git', ['init', '-b', 'trunk', root], { stdio: 'ignore' });
+    mkdirSync(path.dirname(configPath), { recursive: true });
+    const config = {
+      projectId: 'PVT_GITHUB_PROJECT',
+      ledgerProjectId: PROJECT_ID,
+      workLease: { authority: 'local' },
+    };
+    writeFileSync(configPath, JSON.stringify(config));
+    const store = createWorkLeaseProvider({ config, projectDir: root });
+    const liveHolder = holder({ hostId: hostname(), pid: process.pid });
+    const granted = store.acquire(acquire({ holder: liveHolder }));
+    const requester = holder({
+      agentRunId: 'run-2',
+      sessionId: 'session-2',
+      worktreeId: 'wt:v1:two',
+      pid: process.pid + 1,
+    });
+    assert.throws(
+      () =>
+        store.takeover({
+          projectId: PROJECT_ID,
+          issueId: '1049',
+          expectedLeaseId: granted.leaseId,
+          expectedToken: granted.fencingToken,
+          expectedHolder: granted.holder,
+          expectedBinding: acquire({ holder: liveHolder }).binding,
+          requester,
+          requesterBinding: acquire({ holder: requester }).binding,
+          ttlMs: 900_000,
+          observedAt: NOW,
+          idempotencyKey: 'takeover-live-local-pid',
+          reason: 'stale unrelated attestation must not displace a live holder',
+          evidence: {
+            kind: 'operator-attestation',
+            hostId: 'unrelated-host',
+            pid: 1,
+            checkedAt: '2020-01-01T00:00:00.000Z',
+            detailsHash: 'stale-unrelated-evidence',
+          },
+        }),
+      (error) => error.code === 'holder-live'
     );
     store.close();
   } finally {

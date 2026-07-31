@@ -5,7 +5,7 @@ import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import test from 'node:test';
 
-import { WorkLeaseError } from '@kburson/aitm-ledger';
+import { canonicalRequestDigest, WorkLeaseError } from '@kburson/aitm-ledger';
 
 import { reconcilePreparedAssigneeClaim } from '../../../lib/assignee-guard.mjs';
 import { mkdtempProjectIsolated } from '../../../lib/scratch-dir.mjs';
@@ -1936,7 +1936,7 @@ for (const code of [
   });
 }
 
-test('response-lost release replays byte-identical request then restores the durable snapshot', async () => {
+test('response-lost release proves the committed mutation then restores the durable snapshot', async () => {
   const dir = sandbox();
   try {
     setActiveTask('session-1', { issue: '#1049', wordsAtStart: 29 }, dir);
@@ -1949,21 +1949,41 @@ test('response-lost release replays byte-identical request then restores the dur
     };
     const releaseRequests = [];
     let releaseAttempts = 0;
+    let releasedLease;
     const store = {
       projectId: 'project-1',
       async acquire() {
         return lateLease;
       },
       async verify() {
+        if (releasedLease) {
+          throw new WorkLeaseError('lease-not-held', 'lease is terminal');
+        }
         return { allowed: true, lease: lateLease };
       },
       async release(request) {
         releaseRequests.push(structuredClone(request));
         releaseAttempts += 1;
+        releasedLease = {
+          ...lateLease,
+          fencingToken: '8',
+          state: 'released',
+          audit: { releasedAt: request.releasedAt, reason: request.reason },
+        };
         if (releaseAttempts === 1) {
           throw new WorkLeaseError('authority-unavailable', 'release response lost');
         }
-        return { released: true };
+        return releasedLease;
+      },
+      async replayMutation(selector) {
+        assert.equal(selector.operation, 'release');
+        assert.equal(selector.requestDigest, canonicalRequestDigest(releaseRequests[0]));
+        return {
+          selector,
+          outcome: 'committed',
+          statusCode: 200,
+          result: releasedLease,
+        };
       },
     };
     const attempt = () =>
@@ -1976,10 +1996,13 @@ test('response-lost release replays byte-identical request then restores the dur
 
     await assert.rejects(() => coordinateWorkLeaseAcquire(attempt()), /release response lost/);
     assert.ok(getActiveTask('session-1', dir).workLeaseIntent.receipt);
-    await assert.rejects(() => coordinateWorkLeaseAcquire(attempt()), /foreign assignee/);
+    await assert.rejects(
+      () => coordinateWorkLeaseAcquire(attempt()),
+      (error) => error instanceof WorkLeaseError && error.code === 'authority-forbidden'
+    );
     assert.equal(releaseRequests[0].releasedAt, lateLease.acquiredAt);
     assert.ok(releaseRequests[0].releasedAt >= lateLease.acquiredAt);
-    assert.deepEqual(releaseRequests[1], releaseRequests[0]);
+    assert.equal(releaseRequests.length, 1);
     assert.deepEqual(readFileSync(activeTaskPath('session-1', dir)), before);
   } finally {
     rmSync(dir, { recursive: true, force: true });

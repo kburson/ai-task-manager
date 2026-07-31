@@ -10,6 +10,7 @@ import { emitSelfDoc, wantsHelp } from '../lib/self-doc.mjs';
 const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(SCRIPT_DIR, '..', '..');
 const LEDGER_NAME = '@kburson/aitm-ledger';
+export const NPM_PUBLIC_REGISTRY = 'https://registry.npmjs.org/';
 
 function parsePublishedVersion(stdout) {
   try {
@@ -49,10 +50,14 @@ export function publishLedgerIfNeeded({
     throw new Error(`root dependency and ledger version must match exactly (${version})`);
   }
 
-  const lookup = spawn('npm', ['view', `${LEDGER_NAME}@${version}`, 'version', '--json'], {
-    cwd: root,
-    encoding: 'utf8',
-  });
+  const lookup = spawn(
+    'npm',
+    ['view', `${LEDGER_NAME}@${version}`, 'version', '--json', '--registry', NPM_PUBLIC_REGISTRY],
+    {
+      cwd: root,
+      encoding: 'utf8',
+    }
+  );
   const decision = decideLedgerPublish({
     status: lookup.status,
     stdout: lookup.stdout,
@@ -64,10 +69,22 @@ export function publishLedgerIfNeeded({
     return decision;
   }
 
-  publish('npm', ['publish', '--access', 'public', '--workspace', LEDGER_NAME], {
-    cwd: root,
-    stdio: 'inherit',
-  });
+  publish(
+    'npm',
+    [
+      'publish',
+      '--access',
+      'public',
+      '--workspace',
+      LEDGER_NAME,
+      '--registry',
+      NPM_PUBLIC_REGISTRY,
+    ],
+    {
+      cwd: root,
+      stdio: 'inherit',
+    }
+  );
   return decision;
 }
 

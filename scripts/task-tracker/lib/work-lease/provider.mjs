@@ -1,4 +1,5 @@
 import { SqliteWorkLeaseStore, WorkLeaseError, openProjectDatabase } from '@kburson/aitm-ledger';
+import { hostname } from 'node:os';
 
 import { configPath, getProjectDir } from '../../paths.mjs';
 import { resolveProjectDatabasePath } from '../ledger/project-database-path.mjs';
@@ -50,6 +51,18 @@ function exposeProjectIdentity(store, identity) {
     }
   }
   return store;
+}
+
+function isLocalHolderLive(holder) {
+  if (holder?.hostId !== hostname()) return null;
+  try {
+    process.kill(holder.pid, 0);
+    return true;
+  } catch (error) {
+    if (error?.code === 'ESRCH') return false;
+    if (error?.code === 'EPERM') return true;
+    return null;
+  }
 }
 
 export function createWorkLeaseProvider({
@@ -119,7 +132,10 @@ export function createWorkLeaseProvider({
       if (configuredProjectId && identity !== configuredProjectId) {
         invalid('local lease project identity differs from persisted configuration');
       }
-      return exposeProjectIdentity(new LocalStore({ db, isHolderLive }), identity);
+      return exposeProjectIdentity(
+        new LocalStore({ db, isHolderLive: isHolderLive ?? isLocalHolderLive }),
+        identity
+      );
     } catch (error) {
       try {
         db.close();

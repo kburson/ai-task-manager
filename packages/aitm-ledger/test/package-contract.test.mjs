@@ -58,10 +58,12 @@ test('ledger workspace publishes an independently consumable ESM package', async
   assert.equal(ledgerModule.LEDGER_PACKAGE_NAME, '@kburson/aitm-ledger');
 });
 
-test('ledger release decision is idempotent and fails closed on ambiguous registry errors', async () => {
+test('ledger release decision is idempotent and pins lookup and publish to the public registry', async () => {
   const releaseScript = join(ROOT, 'scripts', 'release', 'publish-ledger-if-needed.mjs');
   assert.ok(existsSync(releaseScript), 'ledger release helper is missing');
-  const { decideLedgerPublish } = await import(pathToFileURL(releaseScript).href);
+  const { decideLedgerPublish, NPM_PUBLIC_REGISTRY, publishLedgerIfNeeded } = await import(
+    pathToFileURL(releaseScript).href
+  );
 
   assert.equal(
     decideLedgerPublish({ status: 0, stdout: '"1.0.0"\n', stderr: '', version: '1.0.0' }),
@@ -90,6 +92,24 @@ test('ledger release decision is idempotent and fails closed on ambiguous regist
     () => decideLedgerPublish({ status: 0, stdout: '"2.0.0"', stderr: '', version: '1.0.0' }),
     /unexpected version/
   );
+
+  const calls = [];
+  assert.equal(
+    publishLedgerIfNeeded({
+      root: ROOT,
+      spawn(command, args, options) {
+        calls.push({ kind: 'lookup', command, args, options });
+        return { status: 1, stdout: '', stderr: 'npm error code E404' };
+      },
+      publish(command, args, options) {
+        calls.push({ kind: 'publish', command, args, options });
+      },
+    }),
+    'publish'
+  );
+  assert.equal(NPM_PUBLIC_REGISTRY, 'https://registry.npmjs.org/');
+  assert.deepEqual(calls[0].args.slice(-2), ['--registry', NPM_PUBLIC_REGISTRY]);
+  assert.deepEqual(calls[1].args.slice(-2), ['--registry', NPM_PUBLIC_REGISTRY]);
 });
 
 test('ledger dry-run pack contains runtime only and root pack keeps the workspace separate', () => {
