@@ -66,21 +66,21 @@ delivery cap is recorded immutably in Scope and Plan Metadata and is always belo
 four hours. Board Size and Estimate may be set only through the sanctioned
 Refine workflow after the child is selected for work.
 
-| Order | Child scope | Original-plan mapping | Delivery cap |
-| ---: | --- | --- | ---: |
-| 1 | Lifecycle journal core | Task 6B2: lifecycle coordinator and two-phase journal | 3h |
-| 2 | Global heartbeat quiescence | Task 6B2: global drain and safe owner restoration | 2.5h |
-| 3 | Resume holder rotation and response-loss recovery | Task 6B2: `nextHolder`, park/resume replay, concurrency | 3.5h |
-| 4 | Pause and stop lifecycle ordering | Task 6B3: pause-last and terminal stop ordering | 3h |
-| 5 | Close release matrix | Task 6B3: exact terminal/non-terminal release matrix | 3.5h |
-| 6 | Chore, new-task, and hook recovery | Task 6B3: chore mode, `/task new`, hook and upgrade recovery | 3h |
-| 7 | Authoritative fleet reconstruction | Task 6C: rebuild from authoritative lease/binding observation | 3h |
-| 8 | Fleet GC and unavailable reporting | Task 6C: CAS-safe projection GC and unavailable/empty distinction | 2.5h |
-| 9 | Review worker-to-integration handoff | Task 6D: final child-side handoff and old-fence refusal | 3h |
-| 10 | Merge-back dual authority | Task 6D: epic controller plus child integration authority | 3.5h |
-| 11 | Work-lease operator documentation | Task 7: operator and architecture documentation | 2h |
-| 12 | Bounded full verification and package evidence | Task 7: bounded lanes, package evidence, exact coverage | 3h |
-| 13 | Work-lease final integration gate | Cross-issue review, exact delta, integration readiness | 3.5h |
+| Order | Child scope                                       | Original-plan mapping                                             | Delivery cap |
+| ----: | ------------------------------------------------- | ----------------------------------------------------------------- | -----------: |
+|     1 | Lifecycle journal core                            | Task 6B2: lifecycle coordinator and two-phase journal             |           3h |
+|     2 | Global heartbeat quiescence                       | Task 6B2: global drain and safe owner restoration                 |         2.5h |
+|     3 | Resume holder rotation and response-loss recovery | Task 6B2: `nextHolder`, park/resume replay, concurrency           |         3.5h |
+|     4 | Pause and stop lifecycle ordering                 | Task 6B3: pause-last and terminal stop ordering                   |           3h |
+|     5 | Close release matrix                              | Task 6B3: exact terminal/non-terminal release matrix              |         3.5h |
+|     6 | Chore, new-task, and hook recovery                | Task 6B3: chore mode, `/task new`, hook and upgrade recovery      |           3h |
+|     7 | Authoritative fleet reconstruction                | Task 6C: rebuild from authoritative lease/binding observation     |           3h |
+|     8 | Fleet GC and unavailable reporting                | Task 6C: CAS-safe projection GC and unavailable/empty distinction |         2.5h |
+|     9 | Review worker-to-integration handoff              | Task 6D: final child-side handoff and old-fence refusal           |           3h |
+|    10 | Merge-back dual authority                         | Task 6D: epic controller plus child integration authority         |         3.5h |
+|    11 | Work-lease operator documentation                 | Task 7: operator and architecture documentation                   |           2h |
+|    12 | Bounded full verification and package evidence    | Task 7: bounded lanes, package evidence, exact coverage           |           3h |
+|    13 | Work-lease final integration gate                 | Cross-issue review, exact delta, integration readiness            |         3.5h |
 
 ## Dependency Policy
 
