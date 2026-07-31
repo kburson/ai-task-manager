@@ -162,17 +162,28 @@ test('real buildContext resume renewal reaches the retained private verifier', a
       fencingToken: '42',
       worktreeId: worktree.worktreeId,
     };
-    setActiveTask(sessionId, { issue: '#1049', lease: persistedLease }, projectDir);
     const holder = {
       principalKind: 'worker',
       provider: identity.provider,
       agentRunId: identity.agentRunId,
       sessionId,
       hostId: identity.hostId,
+      pid: identity.pid,
       worktreeId: worktree.worktreeId,
       pathHash: worktree.pathHash,
       branch: identity.branch,
     };
+    const binding = {
+      sessionId,
+      issueId: '1049',
+      worktreeId: worktree.worktreeId,
+      displayPath: worktree.displayPath,
+    };
+    setActiveTask(
+      sessionId,
+      { issue: '#1049', lease: persistedLease, holder, binding },
+      projectDir
+    );
     const leaseAt = (timestamp) => ({
       ...persistedLease,
       issueId: '1049',
@@ -197,7 +208,7 @@ test('real buildContext resume renewal reaches the retained private verifier', a
     await renewWorkLeaseBeforeResume(ctx, {
       issue: '#1049',
       sessionId,
-      holderIdentity: holder,
+      holderIdentity: { ...holder, displayPath: worktree.displayPath },
     });
     assert.deepEqual(calls, ['verify:task-bind', 'renew']);
   } finally {

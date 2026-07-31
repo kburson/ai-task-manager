@@ -55,6 +55,7 @@ import {
 } from '../../queue.mjs';
 import { deriveIssueTimeExpectedFields } from './issue-time-projection.mjs';
 import {
+  assertTransitionMutationCommitAuthority,
   deriveTransitionProjectionAuthority,
   deriveTransitionTimingQueueAliasAuthority,
   deriveTransitionTimingQueueAliasCollisionGroupAuthority,
@@ -271,7 +272,7 @@ function validateSessionProjectionInput(input) {
   }
 }
 
-async function applySessionProjection(ctx, { input, lease, projectionId }) {
+async function applySessionProjection(ctx, { input, lease, request, projectionId }) {
   validateSessionProjectionInput(input);
   if (typeof ctx.applyWorkLeaseSessionProjection === 'function') {
     return requireProjectionProof(
@@ -298,12 +299,16 @@ async function applySessionProjection(ctx, { input, lease, projectionId }) {
   }
   saveState(input.state, ctx.statePath);
   const current = getActiveTask(input.sessionId, ctx.projectDir) ?? {};
+  const authorityRequest = request?.target ?? request;
+  const authorityHolder = request?.nextHolder ?? authorityRequest?.holder;
   setActiveTask(
     input.sessionId,
     {
       ...current,
       ...input.activeTask,
       lease,
+      holder: authorityHolder,
+      binding: authorityRequest?.binding,
       kanbanState: input.kanbanState,
     },
     ctx.projectDir
@@ -321,6 +326,8 @@ async function applySessionProjection(ctx, { input, lease, projectionId }) {
     persisted?.lease?.leaseId !== lease.leaseId ||
     persisted?.lease?.fencingToken !== lease.fencingToken ||
     persisted?.lease?.worktreeId !== lease.worktreeId ||
+    !isDeepStrictEqual(persisted?.holder, authorityHolder) ||
+    !isDeepStrictEqual(persisted?.binding, authorityRequest?.binding) ||
     persisted?.kanbanState !== input.kanbanState ||
     !isDeepStrictEqual(persistedGlobal, durableJson(expectedGlobal))
   ) {
@@ -376,18 +383,18 @@ async function applyFleetProjection(ctx, { input, projectionId }) {
 
 export async function applyTimingProjection(
   ctx,
-  { input, projectionId, receipt, request, transitionId } = {}
+  { input, projectionId, receipt, request, transitionId, commitAuthority, phase } = {}
 ) {
   return applyTimingProjectionWithQueueClaim(
     ctx,
-    { input, projectionId, receipt, request, transitionId },
+    { input, projectionId, receipt, request, transitionId, commitAuthority, phase },
     false
   );
 }
 
 async function applyTimingProjectionWithQueueClaim(
   ctx,
-  { input, projectionId, receipt, request, transitionId },
+  { input, projectionId, receipt, request, transitionId, commitAuthority, phase },
   queueDrainClaimed
 ) {
   if (
@@ -422,6 +429,14 @@ async function applyTimingProjectionWithQueueClaim(
     ) {
       throw new Error('persisted timing projection row is malformed');
     }
+  }
+  if (input.decision.mode === 'switch') {
+    assertTransitionMutationCommitAuthority(commitAuthority, {
+      request,
+      receipt,
+      transitionId,
+      phase,
+    });
   }
   const queuedSourceEntries = input.queuedSourceEntries ?? [];
   if (!Array.isArray(queuedSourceEntries)) {
@@ -480,7 +495,7 @@ async function applyTimingProjectionWithQueueClaim(
     return withQueueDrainClaim(ctx.queuePath, () =>
       applyTimingProjectionWithQueueClaim(
         ctx,
-        { input, projectionId, receipt, request, transitionId },
+        { input, projectionId, receipt, request, transitionId, commitAuthority, phase },
         true
       )
     );
@@ -563,16 +578,20 @@ async function applyTimingProjectionWithQueueClaim(
       ? null
       : item.collisionGroup
         ? deriveTransitionTimingQueueAliasCollisionGroupAuthority({
+            commitAuthority,
             receipt,
             request,
             transitionId,
+            phase,
             members: item.sealedMembers,
           })
         : item.alias
           ? deriveTransitionTimingQueueAliasAuthority({
+              commitAuthority,
               receipt,
               request,
               transitionId,
+              phase,
               entry: item.entry,
               entryIndex: item.entryIndex,
               switchProjectionId: projectionId,
@@ -584,9 +603,11 @@ async function applyTimingProjectionWithQueueClaim(
               operation: 'evidence-mutation',
             })
           : deriveTransitionProjectionAuthority({
+              commitAuthority,
               receipt,
               request,
               transitionId,
+              phase,
               projectionName: 'timing',
               projectionId: stableProjectionId,
               subOperationId: item.subOperationId,
@@ -734,7 +755,7 @@ async function applyTimingProjectionWithQueueClaim(
 
 async function applyGithubProjection(
   ctx,
-  { input, projectionId, receipt, request, transitionId } = {}
+  { input, projectionId, receipt, request, transitionId, commitAuthority, phase } = {}
 ) {
   if (
     !input ||
@@ -759,6 +780,12 @@ async function applyGithubProjection(
       targetIssueId: input.issueNumber,
       sessionId: input.switch?.sessionId,
       projectionId,
+    });
+    assertTransitionMutationCommitAuthority(commitAuthority, {
+      request,
+      receipt,
+      transitionId,
+      phase,
     });
   }
   if (input.skippedNetwork) return projectionProof('github', projectionId);
@@ -797,9 +824,11 @@ async function applyGithubProjection(
       throw new Error('persisted GitHub switch projection is malformed');
     }
     const sessionRefAuthority = deriveTransitionProjectionAuthority({
+      commitAuthority,
       receipt,
       request,
       transitionId,
+      phase,
       projectionName: 'github',
       projectionId,
       subOperationId: input.switch.subOperations.sessionRef,
@@ -825,9 +854,11 @@ async function applyGithubProjection(
       throw new Error('GitHub switch session reference did not reconcile');
     }
     const issueTimeAuthority = deriveTransitionProjectionAuthority({
+      commitAuthority,
       receipt,
       request,
       transitionId,
+      phase,
       projectionName: 'github',
       projectionId,
       subOperationId: input.switch.subOperations.issueTime,
@@ -1629,14 +1660,14 @@ async function verbResumeGoverned(ctx) {
   const projections = Object.fromEntries(
     ['session', 'fleet', 'timing', 'github'].map((name) => [
       name,
-      async ({ input, lease, projectionName, projectionId }) => {
+      async ({ input, lease, request, projectionName, projectionId }) => {
         const apply = {
           session: applySessionProjection,
           fleet: applyFleetProjection,
           timing: applyTimingProjection,
           github: applyGithubProjection,
         }[name];
-        return apply(ctx, { input, lease, projectionId, projectionName });
+        return apply(ctx, { input, lease, request, projectionId, projectionName });
       },
     ])
   );

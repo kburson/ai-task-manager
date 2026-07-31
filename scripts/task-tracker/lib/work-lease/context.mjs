@@ -2,6 +2,9 @@ import {
   assertFencingToken,
   canonicalRequestJson,
   validateAcquireRequest,
+  validateBindingIdentity,
+  validateHolder,
+  validateLeaseHolder,
   validateRenewRequest,
   validateSwitchLeaseRequest,
 } from '@kburson/aitm-ledger';
@@ -106,6 +109,96 @@ function validateIntentRequest(operation, request) {
       throw new TypeError('work-lease switch target timestamp must match switchedAt');
     }
   }
+}
+
+function exactKeys(value, expected, label) {
+  plainObject(value, label);
+  const actual = Object.keys(value).sort();
+  const wanted = [...expected].sort();
+  if (actual.length !== wanted.length || actual.some((key, index) => key !== wanted[index])) {
+    throw new TypeError(`${label} does not have the recognized historical shape`);
+  }
+}
+
+function canonicalTimestamp(value, label) {
+  nonEmptyString(value, label);
+  if (
+    !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/.test(value) ||
+    !Number.isFinite(Date.parse(value)) ||
+    new Date(value).toISOString() !== value
+  ) {
+    throw new TypeError(`${label} must be a canonical UTC ISO timestamp`);
+  }
+  return value;
+}
+
+function validateHistoricalCommittedSwitchIntent(intent, request) {
+  if (
+    intent.operation !== 'switchLease' ||
+    intent.receipt === undefined ||
+    intent.transitionId === undefined ||
+    intent.forwardPhase === undefined ||
+    intent.compensation !== undefined
+  ) {
+    throw new TypeError(
+      'historical switch recovery requires receipt, transitionId, committed forward phase, and no compensation'
+    );
+  }
+  exactKeys(
+    request,
+    [
+      'projectId',
+      'issueId',
+      'leaseId',
+      'fencingToken',
+      'idempotencyKey',
+      'switchedAt',
+      'target',
+    ],
+    'historical switch request'
+  );
+  exactKeys(
+    request.target,
+    [
+      'projectId',
+      'issueId',
+      'mode',
+      'idempotencyKey',
+      'requestedAt',
+      'ttlMs',
+      'holder',
+    ],
+    'historical switch target'
+  );
+  nonEmptyString(request.projectId, 'historical switch projectId');
+  canonicalIssue(request.issueId);
+  nonEmptyString(request.leaseId, 'historical switch leaseId');
+  assertFencingToken(request.fencingToken);
+  nonEmptyString(request.idempotencyKey, 'historical switch idempotencyKey');
+  canonicalTimestamp(request.switchedAt, 'historical switch switchedAt');
+  if (
+    request.target.projectId !== request.projectId ||
+    request.target.issueId === request.issueId ||
+    canonicalIssue(request.target.issueId) !== request.target.issueId ||
+    request.target.mode !== 'write' ||
+    request.target.requestedAt !== request.switchedAt ||
+    request.target.ttlMs !== 900_000
+  ) {
+    throw new TypeError('historical switch target does not match its source request');
+  }
+  nonEmptyString(request.target.idempotencyKey, 'historical switch target idempotencyKey');
+  validateHolder(request.target.holder);
+  if (canonicalRequestJson(request) !== intent.canonicalRequest) {
+    throw new TypeError('historical switch canonical request bytes are not canonical');
+  }
+  validateSwitchReceiptCorrelation(intent.receipt, request, 'historical committed switch');
+  if (
+    intent.receipt.transition.transitionId !== intent.transitionId ||
+    intent.forwardPhase.transitionId !== intent.transitionId
+  ) {
+    throw new TypeError('historical switch transition identity does not match');
+  }
+  return request;
 }
 
 function snapshotDigest(present, bytesBase64 = '') {
@@ -254,6 +347,31 @@ export function normalizeLeaseContext(value) {
   return Object.freeze(context);
 }
 
+export function normalizeWorkLeaseAuthority(value, { issueId } = {}) {
+  const authority = plainObject(value, 'work-lease authority');
+  const keys = Object.keys(authority).sort();
+  if (keys.join(',') !== 'binding,holder,lease') {
+    throw new TypeError('work-lease authority must contain exactly lease, holder, and binding');
+  }
+  assertNoSecretMaterial(authority);
+  const lease = normalizeLeaseContext(authority.lease);
+  const holder = cloneDurableJson(authority.holder, '$.holder');
+  const binding = cloneDurableJson(authority.binding, '$.binding');
+  validateLeaseHolder(holder);
+  validateBindingIdentity(binding, {
+    holder,
+    ...(issueId === undefined ? {} : { issueId: canonicalIssue(issueId) }),
+  });
+  if (lease.worktreeId !== holder.worktreeId || lease.worktreeId !== binding.worktreeId) {
+    throw new TypeError('work-lease authority worktree identity does not match');
+  }
+  return Object.freeze({
+    lease,
+    holder: Object.freeze(holder),
+    binding: Object.freeze(binding),
+  });
+}
+
 export function leaseContextEnvironment(value) {
   if (value == null) return {};
   const lease = normalizeLeaseContext(value);
@@ -313,7 +431,12 @@ export function validateWorkLeaseIntent(intent, { requireAllProjections = false 
     throw new TypeError('work-lease intent operation is malformed');
   }
   const request = readWorkLeaseIntentRequest(intent);
-  validateIntentRequest(intent.operation, request);
+  try {
+    validateIntentRequest(intent.operation, request);
+  } catch (error) {
+    if (intent.operation !== 'switchLease') throw error;
+    validateHistoricalCommittedSwitchIntent(intent, request);
+  }
   if (intent.operation === 'resume') canonicalIssue(intent.issueId);
   if (intent.idempotencyKey !== request.idempotencyKey) {
     throw new Error('work-lease intent idempotency identity does not match');
@@ -490,6 +613,8 @@ export function attachIntentCompensation(intent, { request, reason, projectionIn
     issueId: forwardRequest.target.issueId,
     leaseId: forwardReceipt?.lease?.leaseId,
     fencingToken: forwardReceipt?.lease?.fencingToken,
+    holder: forwardRequest.target.holder,
+    binding: forwardRequest.target.binding,
     idempotencyKey: `compensate:${forwardTransitionId}`,
     switchedAt: request.switchedAt,
     target: {
@@ -499,7 +624,8 @@ export function attachIntentCompensation(intent, { request, reason, projectionIn
       idempotencyKey: `compensate-target:${forwardTransitionId}`,
       requestedAt: request.switchedAt,
       ttlMs: forwardRequest.target.ttlMs,
-      holder: forwardRequest.target.holder,
+      holder: forwardRequest.holder,
+      binding: forwardRequest.binding,
     },
   };
   if (canonicalRequestJson(request) !== canonicalRequestJson(expectedRequest)) {

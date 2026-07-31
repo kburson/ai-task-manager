@@ -8,6 +8,34 @@ import { createWorkLeaseHeartbeat, verifyGovernedEffect } from '../../../lib/wor
 
 const NOW = '2026-07-30T12:00:00.000Z';
 const FIVE_MINUTES = 5 * 60 * 1000;
+const HOLDER = Object.freeze({
+  principalKind: 'worker',
+  provider: 'codex',
+  agentRunId: 'run-1',
+  sessionId: 'session-1',
+  hostId: 'host-1',
+  pid: 123,
+  worktreeId: 'wt-1',
+  pathHash: 'ea0135bca5e3bd815f5b7b8f8c83d86f584697bc29e0cc3b30937153abef2844',
+  branch: 'feature/child/1049',
+});
+const BINDING = Object.freeze({
+  sessionId: 'session-1',
+  issueId: '1049',
+  worktreeId: 'wt-1',
+  displayPath: '/project',
+});
+
+function observedBinding(overrides = {}) {
+  return {
+    projectId: 'project-1',
+    leaseId: 'lease-1',
+    ...BINDING,
+    fencingToken: '42',
+    observedAt: NOW,
+    ...overrides,
+  };
+}
 
 function lease(overrides = {}) {
   return {
@@ -19,7 +47,7 @@ function lease(overrides = {}) {
     acquiredAt: '2026-07-30T11:00:00.000Z',
     heartbeatAt: '2026-07-30T11:56:00.000Z',
     expiresAt: '2026-07-30T13:00:00.000Z',
-    holder: { worktreeId: 'wt-1', sessionId: 'session-1', hostId: 'host-1' },
+    holder: HOLDER,
     ...overrides,
   };
 }
@@ -33,6 +61,8 @@ function session(overrides = {}) {
       fencingToken: '42',
       worktreeId: 'wt-1',
     },
+    holder: HOLDER,
+    binding: BINDING,
     ...overrides,
   };
 }
@@ -66,8 +96,9 @@ function baseOptions(overrides = {}) {
   };
 }
 
-test('verifyGovernedEffect awaits sync or async authority verification and persists only lease identity', async () => {
+test('verifyGovernedEffect uses and preserves exact persisted authority including old PID', async () => {
   const options = baseOptions();
+  options.holderIdentity = { ...HOLDER, pid: 999, displayPath: '/project' };
   options.store.verify = async (request) => {
     options.calls.verify.push(request);
     return { allowed: true, lease: lease({ heartbeatAt: NOW }) };
@@ -83,6 +114,8 @@ test('verifyGovernedEffect awaits sync or async authority verification and persi
       fencingToken: '42',
       operation: 'source-write',
       verifiedAt: NOW,
+      holder: HOLDER,
+      binding: BINDING,
     },
   ]);
   assert.deepEqual(options.calls.saved, [
@@ -94,8 +127,83 @@ test('verifyGovernedEffect awaits sync or async authority verification and persi
         fencingToken: '42',
         worktreeId: 'wt-1',
       },
+      holder: HOLDER,
+      binding: BINDING,
     },
   ]);
+});
+
+test('verifyGovernedEffect backfills a legacy lease only from exact authoritative observation', async () => {
+  const options = baseOptions({
+    holderIdentity: { ...HOLDER, pid: 999, displayPath: '/project' },
+    loadSession: () => {
+      const { holder: _holder, binding: _binding, ...legacy } = session();
+      return legacy;
+    },
+  });
+  options.store.observe = (selector) => {
+    assert.deepEqual(selector, { projectId: 'project-1' });
+    return { leases: [lease({ heartbeatAt: NOW })], bindings: [observedBinding()] };
+  };
+
+  await verifyGovernedEffect(options);
+
+  assert.equal(options.calls.saved.length, 2, 'backfill and verified save are both durable');
+  assert.deepEqual(options.calls.saved[0].holder, HOLDER);
+  assert.deepEqual(options.calls.saved[0].binding, BINDING);
+  assert.deepEqual(options.calls.verify[0].holder, HOLDER);
+  assert.deepEqual(options.calls.verify[0].binding, BINDING);
+});
+
+test('legacy authority backfill refuses unavailable, ambiguous, or mismatched observations', async () => {
+  const legacySession = () => {
+    const { holder: _holder, binding: _binding, ...legacy } = session();
+    return legacy;
+  };
+  for (const [name, observe] of [
+    ['unavailable', () => Promise.reject(new Error('offline'))],
+    [
+      'ambiguous',
+      () => ({
+        leases: [lease(), lease()],
+        bindings: [observedBinding(), observedBinding()],
+      }),
+    ],
+    [
+      'mismatch',
+      () => ({
+        leases: [lease({ fencingToken: '43' })],
+        bindings: [observedBinding({ fencingToken: '43' })],
+      }),
+    ],
+  ]) {
+    const options = baseOptions({ loadSession: legacySession });
+    options.store.observe = observe;
+    await assert.rejects(
+      () => verifyGovernedEffect(options),
+      (error) => error instanceof WorkLeaseError && error.code === 'authority-unavailable',
+      name
+    );
+    assert.equal(options.calls.verify.length, 0, `${name} must not verify with fabricated data`);
+    assert.equal(options.calls.saved.length, 0, `${name} must not persist a partial backfill`);
+  }
+
+  const partial = baseOptions({
+    loadSession: () => {
+      const { binding: _binding, ...holderOnly } = session();
+      return holderOnly;
+    },
+  });
+  let observed = false;
+  partial.store.observe = () => {
+    observed = true;
+    return { leases: [lease()], bindings: [observedBinding()] };
+  };
+  await assert.rejects(
+    () => verifyGovernedEffect(partial),
+    (error) => error instanceof WorkLeaseError && error.code === 'authority-unavailable'
+  );
+  assert.equal(observed, false, 'a partial tuple is corruption, not a legacy backfill candidate');
 });
 
 test('verifyGovernedEffect rejects missing or mismatched persisted authority before an effect', async () => {
@@ -259,6 +367,8 @@ test('verifyGovernedEffect renews at the threshold and on a forced resume with a
       idempotencyKey: `renew:lease-1:42:${Math.floor(Date.parse(NOW) / FIVE_MINUTES)}`,
       requestedAt: NOW,
       ttlMs: 15 * 60 * 1000,
+      holder: HOLDER,
+      binding: BINDING,
     },
   ]);
 

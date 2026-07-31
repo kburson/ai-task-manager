@@ -203,6 +203,23 @@ test('heartbeat failure is remembered by lease identity across operation names',
   const leaseOwner = 'session-1:project-1:lease-1:42:wt-1';
   let heartbeatFails = false;
   let operationBCallbacks = 0;
+  const holder = {
+    principalKind: 'worker',
+    provider: 'codex',
+    agentRunId: 'run-1',
+    sessionId: 'session-1',
+    hostId: 'host-1',
+    pid: 123,
+    worktreeId: 'wt-1',
+    pathHash: 'ea0135bca5e3bd815f5b7b8f8c83d86f584697bc29e0cc3b30937153abef2844',
+    branch: 'feature/child/1049',
+  };
+  const binding = {
+    sessionId: 'session-1',
+    issueId: '1049',
+    worktreeId: 'wt-1',
+    displayPath: '/project',
+  };
   const persisted = {
     issue: '#1049',
     lease: {
@@ -211,6 +228,8 @@ test('heartbeat failure is remembered by lease identity across operation names',
       fencingToken: '42',
       worktreeId: 'wt-1',
     },
+    holder,
+    binding,
   };
   const rawVerify = (options) =>
     verifyGovernedEffect({
@@ -233,12 +252,7 @@ test('heartbeat failure is remembered by lease identity across operation names',
             acquiredAt: '2026-07-30T11:00:00.000Z',
             heartbeatAt: '2026-07-30T12:00:00.000Z',
             expiresAt: '2026-07-30T12:15:00.000Z',
-            holder: {
-              principalKind: 'worker',
-              worktreeId: 'wt-1',
-              sessionId: 'session-1',
-              hostId: 'host-1',
-            },
+            holder,
           }),
         };
       },

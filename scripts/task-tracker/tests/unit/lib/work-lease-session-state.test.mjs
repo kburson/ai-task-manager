@@ -9,6 +9,7 @@ import {
   leaseContextEnvironment,
   normalizeLeaseContext,
   readWorkLeaseIntentRequest,
+  validateWorkLeaseIntent,
 } from '../../../lib/work-lease/context.mjs';
 import {
   activeTaskPath,
@@ -32,30 +33,89 @@ const LEASE = Object.freeze({
   fencingToken: '42',
   worktreeId: 'worktree-1',
 });
+const HOLDER = Object.freeze({
+  principalKind: 'worker',
+  provider: 'codex',
+  agentRunId: 'run-1',
+  sessionId: 'session-1',
+  hostId: 'host-1',
+  pid: 123,
+  worktreeId: 'worktree-1',
+  pathHash: 'ea0135bca5e3bd815f5b7b8f8c83d86f584697bc29e0cc3b30937153abef2844',
+  branch: 'feature/child/1049',
+});
+const BINDING = Object.freeze({
+  sessionId: 'session-1',
+  issueId: '1049',
+  worktreeId: 'worktree-1',
+  displayPath: '/project',
+});
+
+function stickyAuthority({ sessionId = 'session-1', issueId = '1049' } = {}) {
+  const holder = { ...HOLDER, sessionId };
+  return {
+    lease: LEASE,
+    holder,
+    binding: { ...BINDING, sessionId, issueId },
+  };
+}
 
 function sandbox() {
   return mkdtempSync(path.join(projectScratchDir('test'), 'tt-work-lease-session-'));
 }
 
+const HISTORICAL_SWITCH_FIXTURE = new URL(
+  '../../fixtures/pre-canonical-timing-queue-intent.json',
+  import.meta.url
+);
+
+function historicalSwitchIntent() {
+  return JSON.parse(readFileSync(HISTORICAL_SWITCH_FIXTURE, 'utf8')).workLeaseIntent;
+}
+
+test('committed historical switch journal is accepted only with every recovery gate', () => {
+  const committed = historicalSwitchIntent();
+  assert.equal(validateWorkLeaseIntent(committed, { requireAllProjections: true }).issueId, '1049');
+
+  for (const mutate of [
+    (intent) => delete intent.receipt,
+    (intent) => delete intent.transitionId,
+    (intent) => delete intent.forwardPhase,
+    (intent) => {
+      intent.transitionId = 'other-transition';
+    },
+    (intent) => {
+      intent.compensation = { reason: 'forbidden-legacy-compensation' };
+    },
+    (intent) => {
+      const request = JSON.parse(intent.canonicalRequest);
+      request.unrecognized = true;
+      intent.canonicalRequest = JSON.stringify(request);
+    },
+  ]) {
+    const candidate = structuredClone(committed);
+    mutate(candidate);
+    assert.throws(
+      () => validateWorkLeaseIntent(candidate, { requireAllProjections: true }),
+      /historical|switch|receipt|transition|forward|compensation|request/
+    );
+  }
+});
+
 function acquireRequest(overrides = {}) {
+  const holder = { ...(overrides.holder ?? HOLDER) };
+  const issueId = overrides.issueId ?? '1049';
   return {
     projectId: 'project-1',
-    issueId: '1049',
+    issueId,
     mode: 'write',
     idempotencyKey: 'acquire:session-1:#1049',
     requestedAt: '2026-07-30T12:00:00.000Z',
-    ttlMs: 300_000,
-    holder: {
-      principalKind: 'worker',
-      provider: 'codex',
-      agentRunId: 'run-1',
-      sessionId: 'session-1',
-      hostId: 'host-1',
-      pid: 123,
-      worktreeId: 'worktree-1',
-      pathHash: 'path-1',
-      branch: 'feature/child/1049',
-    },
+    ttlMs: 15 * 60 * 1000,
+    holder,
+    binding:
+      overrides.binding ??
+      { ...BINDING, sessionId: holder.sessionId, issueId, worktreeId: holder.worktreeId },
     ...overrides,
   };
 }
@@ -68,6 +128,8 @@ function resumeRequest(overrides = {}) {
     idempotencyKey: 'resume:session-1:1049:request-1',
     requestedAt: '2026-07-30T12:05:00.000Z',
     ttlMs: 15 * 60 * 1000,
+    holder: HOLDER,
+    binding: BINDING,
     ...overrides,
   };
 }
@@ -175,7 +237,7 @@ test('same-issue generic writes preserve lease and kanban while cross-issue writ
   try {
     setActiveTask(
       'session-1',
-      { issue: '#1049', lease: LEASE, kanbanState: 'develop', wordsAtStart: 1 },
+      { issue: '#1049', ...stickyAuthority(), kanbanState: 'develop', wordsAtStart: 1 },
       dir
     );
 
@@ -196,13 +258,105 @@ test('same-issue generic writes preserve lease and kanban while cross-issue writ
   }
 });
 
+test('same-issue generic writes preserve exact sticky authority and fenced clear removes it atomically', () => {
+  const dir = sandbox();
+  try {
+    setActiveTask(
+      'session-1',
+      {
+        issue: '#1049',
+        lease: LEASE,
+        holder: HOLDER,
+        binding: BINDING,
+        wordsAtStart: 1,
+      },
+      dir
+    );
+
+    setActiveTask('session-1', { issue: '#1049', wordsAtStart: 2 }, dir);
+    assert.deepEqual(
+      {
+        lease: getActiveTask('session-1', dir).lease,
+        holder: getActiveTask('session-1', dir).holder,
+        binding: getActiveTask('session-1', dir).binding,
+      },
+      { lease: LEASE, holder: HOLDER, binding: BINDING }
+    );
+
+    assert.equal(clearActiveTaskLease('session-1', '41', dir), false);
+    assert.deepEqual(getActiveTask('session-1', dir).holder, HOLDER);
+    assert.deepEqual(getActiveTask('session-1', dir).binding, BINDING);
+
+    assert.equal(clearActiveTaskLease('session-1', '42', dir), true);
+    const cleared = getActiveTask('session-1', dir);
+    assert.equal(cleared.lease, undefined);
+    assert.equal(cleared.holder, undefined);
+    assert.equal(cleared.binding, undefined);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('sticky authority rejects incomplete, unknown, or secret-bearing members before persistence', () => {
+  const dir = sandbox();
+  try {
+    assert.throws(
+      () => setActiveTask('incomplete', { issue: '#1049', lease: LEASE }, dir),
+      /exactly lease, holder, and binding/
+    );
+    assert.equal(getActiveTask('incomplete', dir), null);
+
+    assert.throws(
+      () =>
+        setActiveTask(
+          'unknown',
+          {
+            issue: '#1049',
+            lease: LEASE,
+            holder: { ...HOLDER, currentPidHint: 999 },
+            binding: BINDING,
+          },
+          dir
+        ),
+      /not allowed/
+    );
+    assert.equal(getActiveTask('unknown', dir), null);
+
+    assert.throws(
+      () =>
+        setActiveTask(
+          'secret',
+          {
+            issue: '#1049',
+            lease: LEASE,
+            holder: HOLDER,
+            binding: { ...BINDING, tokenEnv: 'AITM_LEASE_AUTH_TOKEN' },
+          },
+          dir
+        ),
+      /secret lease material/
+    );
+    assert.equal(getActiveTask('secret', dir), null);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
 test('generic state saves retain paused authority without restoring an active bind', () => {
   const dir = sandbox();
   const statePath = path.join(dir, '.tmp', 'aitm', 'state', 'task-tracker-state.json');
   const priorSid = process.env.AI_TASK_MANAGER_SESSION_ID;
   process.env.AI_TASK_MANAGER_SESSION_ID = 'session-paused';
   try {
-    setActiveTask('session-paused', { issue: '#1049', lease: LEASE, kanbanState: 'develop' }, dir);
+    setActiveTask(
+      'session-paused',
+      {
+        issue: '#1049',
+        ...stickyAuthority({ sessionId: 'session-paused' }),
+        kanbanState: 'develop',
+      },
+      dir
+    );
     saveState(
       {
         active: null,
@@ -229,7 +383,7 @@ test('generic state saves retain paused authority without restoring an active bi
 test('lease clear is stale-token safe', () => {
   const dir = sandbox();
   try {
-    setActiveTask('session-1', { issue: '#1049', lease: LEASE }, dir);
+    setActiveTask('session-1', { issue: '#1049', ...stickyAuthority() }, dir);
 
     assert.equal(clearActiveTaskLease('session-1', '41', dir), false);
     assert.deepEqual(getActiveTask('session-1', dir).lease, LEASE);
@@ -355,7 +509,11 @@ test('intent persists one exact request and rejects credential material before m
     );
     assert.equal(getActiveTask('session-bearer-key', dir), null);
 
-    setActiveTask('session-mismatch', { issue: '#1049', lease: LEASE }, dir);
+    setActiveTask(
+      'session-mismatch',
+      { issue: '#1049', ...stickyAuthority({ sessionId: 'session-mismatch' }) },
+      dir
+    );
     assert.throws(
       () =>
         setWorkLeaseIntent(
@@ -382,7 +540,7 @@ test('resume intent persists one exact renew request and four issue-correlated p
       'session-1',
       {
         issue: '#1049',
-        lease: LEASE,
+        ...stickyAuthority(),
       },
       dir
     );
@@ -435,7 +593,7 @@ test('resume intent persists one exact renew request and four issue-correlated p
       'session-other-issue',
       {
         issue: '#1049',
-        lease: LEASE,
+        ...stickyAuthority({ sessionId: 'session-other-issue' }),
       },
       dir
     );
@@ -541,7 +699,7 @@ test('intent, receipt, and projection persistence is idempotent but never overwr
 test('intent receipt and projection checkpoints update atomically and clear only after reconciliation', () => {
   const dir = sandbox();
   try {
-    setActiveTask('session-1', { issue: '#1049', lease: LEASE }, dir);
+    setActiveTask('session-1', { issue: '#1049', ...stickyAuthority() }, dir);
     setWorkLeaseIntent(
       'session-1',
       {
@@ -551,6 +709,8 @@ test('intent receipt and projection checkpoints update atomically and clear only
           issueId: '1049',
           leaseId: 'lease-1',
           fencingToken: '42',
+          holder: HOLDER,
+          binding: BINDING,
           idempotencyKey: 'switch:1049:1051',
           switchedAt: '2026-07-30T12:01:00.000Z',
           target: acquireRequest({
@@ -670,13 +830,15 @@ test('intent receipt and projection checkpoints update atomically and clear only
 test('switch intent correlates the exact source lease and one shared authority timestamp', () => {
   const dir = sandbox();
   try {
-    setActiveTask('session-1', { issue: '#1049', lease: LEASE }, dir);
+    setActiveTask('session-1', { issue: '#1049', ...stickyAuthority() }, dir);
     const before = readFileSync(activeTaskPath('session-1', dir));
     const request = {
       projectId: LEASE.projectId,
       issueId: '1049',
       leaseId: LEASE.leaseId,
       fencingToken: LEASE.fencingToken,
+      holder: HOLDER,
+      binding: BINDING,
       idempotencyKey: 'switch:session-1:1049:1051:request-1',
       switchedAt: '2026-07-30T12:01:00.000Z',
       target: acquireRequest({

@@ -23,6 +23,7 @@ import {
   createWorkLeaseIntent,
   normalizePriorSessionSnapshot,
   normalizeLeaseContext,
+  normalizeWorkLeaseAuthority,
   setIntentProjectionInput,
   validateWorkLeaseCompensation,
   workLeaseCompensationReconciled,
@@ -181,6 +182,23 @@ export function setActiveTask(sid, record, projDir) {
   }
   const { state: _droppedState, ...recordWithoutState } = record;
   void _droppedState;
+  const suppliedAuthorityKeys = ['lease', 'holder', 'binding'].filter((key) =>
+    Object.hasOwn(recordWithoutState, key)
+  );
+  if (suppliedAuthorityKeys.length > 0) {
+    if (suppliedAuthorityKeys.length !== 3) {
+      throw new TypeError('work-lease authority must contain exactly lease, holder, and binding');
+    }
+    const authority = normalizeWorkLeaseAuthority(
+      {
+        lease: recordWithoutState.lease,
+        holder: recordWithoutState.holder,
+        binding: recordWithoutState.binding,
+      },
+      { issueId: authorityIssue(recordWithoutState) }
+    );
+    Object.assign(recordWithoutState, authority);
+  }
   const existing = readJsonForMutation(activeTaskPath(sid, projDir));
   const existingAuthorityIssue = canonicalIssue(authorityIssue(existing));
   const recordAuthorityIssue = canonicalIssue(authorityIssue(record));
@@ -193,8 +211,27 @@ export function setActiveTask(sid, record, projDir) {
   if (sameAuthorityIssue && !('kanbanState' in recordWithoutState) && existing.kanbanState) {
     stickyIssueState.kanbanState = existing.kanbanState;
   }
-  if (sameAuthorityIssue && !('lease' in recordWithoutState) && existing.lease) {
-    stickyIssueState.lease = normalizeLeaseContext(existing.lease);
+  if (
+    sameAuthorityIssue &&
+    !('lease' in recordWithoutState) &&
+    !('holder' in recordWithoutState) &&
+    !('binding' in recordWithoutState) &&
+    existing.lease
+  ) {
+    if (existing.holder === undefined && existing.binding === undefined) {
+      // Read-only compatibility for a pre-6B1 session. Governed use must
+      // backfill this lease from authoritative project observation before it
+      // can construct any request.
+      stickyIssueState.lease = normalizeLeaseContext(existing.lease);
+    } else {
+      Object.assign(
+        stickyIssueState,
+        normalizeWorkLeaseAuthority(
+          { lease: existing.lease, holder: existing.holder, binding: existing.binding },
+          { issueId: authorityIssue(existing) }
+        )
+      );
+    }
   }
   // An incomplete intent is a crash-recovery record, not granted authority.
   // Keep it through generic projections (including an issue switch) until the
@@ -202,9 +239,6 @@ export function setActiveTask(sid, record, projDir) {
   const stickyIntent = {};
   if (!('workLeaseIntent' in recordWithoutState) && existing?.workLeaseIntent) {
     stickyIntent.workLeaseIntent = existing.workLeaseIntent;
-  }
-  if (recordWithoutState.lease !== undefined) {
-    recordWithoutState.lease = normalizeLeaseContext(recordWithoutState.lease);
   }
   const payload = {
     issue: record.issue ?? null,
@@ -255,6 +289,8 @@ export function clearActiveTaskLease(sid, expectedFencingToken, projDir) {
     }
     const next = { ...existing };
     delete next.lease;
+    delete next.holder;
+    delete next.binding;
     if (next.issue == null && !next.workLeaseIntent) delete next.leaseIssue;
     cleared = true;
     return next;

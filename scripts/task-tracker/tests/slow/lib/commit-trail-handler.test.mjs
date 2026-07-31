@@ -175,6 +175,23 @@ function setupSandbox({ active = '#42', repo = 'o/r' } = {}) {
     const hostId = os.hostname();
     const worktree = resolveWorktreeIdentity(sandbox, { hostId });
     const store = createWorkLeaseProvider({ config, projectDir: sandbox });
+    const holder = {
+      principalKind: 'worker',
+      provider: 'codex',
+      agentRunId: TRAIL_SESSION_ID,
+      sessionId: TRAIL_SESSION_ID,
+      hostId,
+      worktreeId: worktree.worktreeId,
+      pathHash: worktree.pathHash,
+      branch: 'trunk',
+      pid: process.pid,
+    };
+    const binding = {
+      sessionId: TRAIL_SESSION_ID,
+      issueId,
+      worktreeId: worktree.worktreeId,
+      displayPath: worktree.displayPath,
+    };
     const lease = store.acquire({
       projectId: LEDGER_PROJECT_ID,
       issueId,
@@ -182,17 +199,8 @@ function setupSandbox({ active = '#42', repo = 'o/r' } = {}) {
       idempotencyKey: `commit-trail:${issueId}`,
       requestedAt: new Date().toISOString(),
       ttlMs: 900_000,
-      holder: {
-        principalKind: 'worker',
-        provider: 'codex',
-        agentRunId: TRAIL_SESSION_ID,
-        sessionId: TRAIL_SESSION_ID,
-        hostId,
-        worktreeId: worktree.worktreeId,
-        pathHash: worktree.pathHash,
-        branch: 'trunk',
-        pid: process.pid,
-      },
+      holder,
+      binding,
     });
     store.close();
     const sessionDir = path.join(sandbox, '.tmp', 'aitm', 'sessions', TRAIL_SESSION_ID);
@@ -208,6 +216,8 @@ function setupSandbox({ active = '#42', repo = 'o/r' } = {}) {
           fencingToken: lease.fencingToken,
           worktreeId: worktree.worktreeId,
         },
+        holder,
+        binding,
       })
     );
   }

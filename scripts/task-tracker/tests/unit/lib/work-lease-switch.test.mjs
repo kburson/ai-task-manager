@@ -4,7 +4,11 @@ import { createHash } from 'node:crypto';
 import { readFileSync, rmSync, writeFileSync } from 'node:fs';
 import test from 'node:test';
 
-import { canonicalRequestJson, WorkLeaseError } from '@kburson/aitm-ledger';
+import {
+  canonicalRequestDigest,
+  canonicalRequestJson,
+  WorkLeaseError,
+} from '@kburson/aitm-ledger';
 
 import { claimAuditProjectionMarker } from '../../../lib/assignee-guard.mjs';
 import { mkdtempProjectIsolated } from '../../../lib/scratch-dir.mjs';
@@ -37,6 +41,14 @@ const HOLDER = Object.freeze({
   pathHash: WORKTREE.pathHash,
   branch: 'feature/child/1049',
 });
+const SOURCE_HOLDER = Object.freeze({ ...HOLDER, pid: 77 });
+const SOURCE_BINDING = Object.freeze({
+  sessionId: 'session-1',
+  issueId: '1049',
+  worktreeId: WORKTREE.worktreeId,
+  displayPath: DISPLAY_PATH,
+});
+const TARGET_BINDING = Object.freeze({ ...SOURCE_BINDING, issueId: '1051' });
 const SOURCE_LEASE = Object.freeze({
   projectId: 'project-1',
   leaseId: 'lease-source',
@@ -74,7 +86,7 @@ const COMPENSATION_AUTHORITY_LEASE = Object.freeze({
   leaseId: 'lease-source-restored',
   fencingToken: '11',
   state: 'active',
-  holder: HOLDER,
+  holder: SOURCE_HOLDER,
   acquiredAt: COMPENSATION_AT,
   heartbeatAt: COMPENSATION_AT,
   expiresAt: '2026-07-30T12:15:00.000Z',
@@ -104,6 +116,8 @@ function seedSource(dir) {
       wordsAtStart: 12,
       paused: false,
       lease: SOURCE_LEASE,
+      holder: SOURCE_HOLDER,
+      binding: SOURCE_BINDING,
     },
     dir
   );
@@ -123,6 +137,25 @@ function switchOptions(dir, overrides = {}) {
       );
       log.push(`authority:${request.idempotencyKey}`);
       return FORWARD_RECEIPT;
+    },
+    async replayMutation(selector) {
+      const intent = getActiveTask('session-1', dir).workLeaseIntent;
+      const compensation = selector.idempotencyKey.startsWith('compensate:');
+      const journal = compensation ? intent.compensation : intent;
+      const persistedRequest = JSON.parse(journal.canonicalRequest);
+      assert.deepEqual(selector, {
+        projectId: persistedRequest.projectId,
+        operation: 'switchLease',
+        idempotencyKey: persistedRequest.idempotencyKey,
+        requestDigest: canonicalRequestDigest(persistedRequest),
+      });
+      log.push(`replay:${selector.idempotencyKey}`);
+      return {
+        selector,
+        outcome: 'committed',
+        statusCode: 200,
+        result: compensation ? COMPENSATION_RECEIPT : FORWARD_RECEIPT,
+      };
     },
     async verify() {
       log.push('verify');
@@ -343,6 +376,7 @@ test('switch persists exact intent before authority and reconciles claim before 
       'identity',
       'provider',
       'authority:switch:session-1:1049:1051:request-1',
+      'replay:switch:session-1:1049:1051:request-1',
       'eligibility',
       'claim',
       'projection:forward:session:transition-forward',
@@ -350,6 +384,60 @@ test('switch persists exact intent before authority and reconciles claim before 
       'projection:forward:timing:transition-forward',
       'projection:forward:github:transition-forward',
     ]);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('switch request keeps exact persisted source authority and a fresh trusted target binding', async () => {
+  const dir = sandbox();
+  try {
+    seedSource(dir);
+    const fixture = switchOptions(dir);
+    let captured;
+    fixture.store.switchLease = async (request) => {
+      captured = structuredClone(request);
+      return FORWARD_RECEIPT;
+    };
+
+    await coordinateWorkLeaseSwitch(fixture.input);
+
+    assert.deepEqual(captured.holder, SOURCE_HOLDER);
+    assert.equal(captured.holder.pid, 77);
+    assert.deepEqual(captured.binding, SOURCE_BINDING);
+    assert.deepEqual(captured.target.holder, HOLDER);
+    assert.equal(captured.target.holder.pid, 123);
+    assert.deepEqual(captured.target.binding, TARGET_BINDING);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('switch refuses a persisted source holder from another logical worker before authority', async () => {
+  const dir = sandbox();
+  try {
+    setActiveTask(
+      'session-1',
+      {
+        issue: '#1049',
+        lease: SOURCE_LEASE,
+        holder: { ...SOURCE_HOLDER, provider: 'claude', agentRunId: 'foreign-run' },
+        binding: SOURCE_BINDING,
+      },
+      dir
+    );
+    const fixture = switchOptions(dir);
+    let called = false;
+    fixture.store.switchLease = async () => {
+      called = true;
+      return FORWARD_RECEIPT;
+    };
+
+    await assert.rejects(
+      () => coordinateWorkLeaseSwitch(fixture.input),
+      (error) => error instanceof WorkLeaseError && error.code === 'lease-not-held'
+    );
+    assert.equal(called, false);
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
@@ -404,6 +492,8 @@ test('definitive foreign target persists and proves deterministic compensation b
         pauseReasonSlug: 'question',
         pendingPause: { preserved: true },
         lease: SOURCE_LEASE,
+        holder: SOURCE_HOLDER,
+        binding: SOURCE_BINDING,
       },
       dir
     );
@@ -443,6 +533,8 @@ test('definitive foreign target persists and proves deterministic compensation b
       issueId: '1051',
       leaseId: TARGET_AUTHORITY_LEASE.leaseId,
       fencingToken: TARGET_AUTHORITY_LEASE.fencingToken,
+      holder: HOLDER,
+      binding: TARGET_BINDING,
       idempotencyKey: 'compensate:transition-forward',
       switchedAt: COMPENSATION_AT,
       target: {
@@ -452,7 +544,8 @@ test('definitive foreign target persists and proves deterministic compensation b
         idempotencyKey: 'compensate-target:transition-forward',
         requestedAt: COMPENSATION_AT,
         ttlMs: 15 * 60 * 1000,
-        holder: HOLDER,
+        holder: SOURCE_HOLDER,
+        binding: SOURCE_BINDING,
       },
     });
     const restored = getActiveTask('session-1', dir);
@@ -574,6 +667,45 @@ test('unprovable compensation authority retains receipt and recovery state fail 
   }
 });
 
+test('missing or drifted forward replay preserves the attached journal before any effect', async () => {
+  const dir = sandbox();
+  try {
+    seedSource(dir);
+    const { input, store, log } = switchOptions(dir);
+    store.replayMutation = async () => {
+      throw new WorkLeaseError('authority-unavailable', 'replay unavailable');
+    };
+    await assert.rejects(
+      () => coordinateWorkLeaseSwitch(input),
+      (error) => error.code === 'transition-projection-refused'
+    );
+    const journalPath = activeTaskPath('session-1', dir);
+    const attachedBytes = readFileSync(journalPath);
+    assert.equal(log.some((entry) => entry === 'eligibility' || entry.startsWith('projection:')), false);
+
+    store.replayMutation = async (selector) => ({
+      selector,
+      outcome: 'committed',
+      statusCode: 200,
+      result: { ...FORWARD_RECEIPT, transition: { ...FORWARD_RECEIPT.transition, toIssueId: '9999' } },
+    });
+    await assert.rejects(
+      () => coordinateWorkLeaseSwitch(input),
+      (error) => error.code === 'transition-projection-refused'
+    );
+    assert.deepEqual(readFileSync(journalPath), attachedBytes);
+
+    delete store.replayMutation;
+    await assert.rejects(
+      () => coordinateWorkLeaseSwitch(input),
+      (error) => error.code === 'transition-projection-refused'
+    );
+    assert.deepEqual(readFileSync(journalPath), attachedBytes);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
 test('ambiguous forward response retains recovery state and replays byte-identical request', async () => {
   const dir = sandbox();
   try {
@@ -614,7 +746,9 @@ test('receipt-less restart accepts PID churn but verifies recovered authority be
   try {
     seedSource(dir);
     const first = switchOptions(dir);
-    first.store.switchLease = async () => {
+    let persistedRequest;
+    first.store.switchLease = async (request) => {
+      persistedRequest = structuredClone(request);
       throw new WorkLeaseError('authority-unavailable', 'response lost');
     };
     await assert.rejects(() => coordinateWorkLeaseSwitch(first.input));
@@ -631,8 +765,10 @@ test('receipt-less restart accepts PID churn but verifies recovered authority be
         };
       },
     });
-    retry.store.switchLease = async () => {
+    retry.store.switchLease = async (request) => {
       retry.log.push('authority:replay');
+      assert.deepEqual(request, persistedRequest);
+      assert.equal(request.target.holder.pid, 123, 'restart PID must not rewrite target identity');
       return FORWARD_RECEIPT;
     };
     retry.store.verify = async () => {
@@ -646,6 +782,39 @@ test('receipt-less restart accepts PID churn but verifies recovered authority be
       retry.log.indexOf('verify:recovered') < retry.log.indexOf('eligibility:retry'),
       'historical receipt recovered on restart must be verified before a fresh target gate'
     );
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('switch receipt replay refuses a paused allowed authority before the target gate', async () => {
+  const dir = sandbox();
+  try {
+    seedSource(dir);
+    const first = switchOptions(dir);
+    first.store.switchLease = async () => {
+      throw new WorkLeaseError('authority-unavailable', 'response lost');
+    };
+    await assert.rejects(() => coordinateWorkLeaseSwitch(first.input));
+
+    let eligibilityRead = false;
+    const retry = switchOptions(dir, {
+      readEligibility: async () => {
+        eligibilityRead = true;
+        return { ok: true };
+      },
+    });
+    retry.store.switchLease = async () => FORWARD_RECEIPT;
+    retry.store.verify = async () => ({
+      allowed: true,
+      lease: { ...TARGET_AUTHORITY_LEASE, state: 'paused' },
+    });
+
+    await assert.rejects(
+      () => coordinateWorkLeaseSwitch(retry.input),
+      (error) => error instanceof WorkLeaseError && error.code === 'authority-unavailable'
+    );
+    assert.equal(eligibilityRead, false);
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }

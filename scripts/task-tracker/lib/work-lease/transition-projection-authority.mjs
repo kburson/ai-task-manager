@@ -1,9 +1,15 @@
-import { validateSwitchLeaseRequest } from '@kburson/aitm-ledger';
+import {
+  canonicalRequestDigest,
+  canonicalRequestJson,
+  validateReplayMutationOutcome,
+  validateSwitchLeaseRequest,
+} from '@kburson/aitm-ledger';
 
 import { validateSwitchReceipt } from './switch-orchestration.mjs';
 import { resolveTimingQueueJournalProjection } from '../timing-queue-projection.mjs';
 
 const proofs = new WeakMap();
+const mutationCommitProofs = new WeakMap();
 const timingQueueAliasProofs = new WeakMap();
 const timingQueueAliasCollisionGroupProofs = new WeakMap();
 
@@ -88,16 +94,94 @@ function validateReceipt(receiptInput, requestInput, transitionIdInput) {
   };
 }
 
+export async function authenticateTransitionMutationCommit({
+  store,
+  rawRequest,
+  request = rawRequest,
+  receipt,
+  transitionId,
+  phase = 'forward',
+} = {}) {
+  const receiptIdentity = validateReceipt(receipt, request, transitionId);
+  if (!['forward', 'compensation'].includes(phase)) {
+    throw refusal('mutation commit phase must be forward or compensation');
+  }
+  const raw = object(rawRequest, 'persisted raw request');
+  if (
+    raw.projectId !== request.projectId ||
+    raw.idempotencyKey !== request.idempotencyKey ||
+    typeof store?.replayMutation !== 'function'
+  ) {
+    throw refusal('mutation replay authority is unavailable');
+  }
+  const selector = Object.freeze({
+    projectId: raw.projectId,
+    operation: 'switchLease',
+    idempotencyKey: raw.idempotencyKey,
+    requestDigest: canonicalRequestDigest(raw),
+  });
+  let outcome;
+  try {
+    outcome = validateReplayMutationOutcome(await store.replayMutation(selector), selector);
+  } catch (error) {
+    throw refusal(`mutation replay failed: ${error?.message || 'unknown replay error'}`);
+  }
+  if (
+    outcome.outcome !== 'committed' ||
+    canonicalRequestJson(outcome.result) !== canonicalRequestJson(receipt)
+  ) {
+    throw refusal('mutation replay did not return the exact committed receipt');
+  }
+  const proof = Object.freeze(Object.create(null));
+  mutationCommitProofs.set(
+    proof,
+    Object.freeze({
+      ...receiptIdentity,
+      phase,
+      rawRequestDigest: selector.requestDigest,
+      requestJson: canonicalRequestJson(request),
+      receiptJson: canonicalRequestJson(receipt),
+    })
+  );
+  return proof;
+}
+
+export function assertTransitionMutationCommitAuthority(
+  proof,
+  { request, receipt, transitionId, phase = 'forward' } = {}
+) {
+  const actual = mutationCommitProofs.get(proof);
+  if (!actual) throw refusal('proof is not a live in-memory mutation commit proof');
+  const identity = validateReceipt(receipt, request, transitionId);
+  if (
+    actual.transitionId !== identity.transitionId ||
+    actual.phase !== phase ||
+    actual.requestJson !== canonicalRequestJson(request) ||
+    actual.receiptJson !== canonicalRequestJson(receipt)
+  ) {
+    throw refusal('mutation commit proof does not match the transition');
+  }
+  return proof;
+}
+
 export function deriveTransitionProjectionAuthority({
+  commitAuthority,
   receipt,
   request,
   transitionId,
+  phase = 'forward',
   projectionName,
   projectionId,
   subOperationId,
   issueId,
   operation,
 } = {}) {
+  assertTransitionMutationCommitAuthority(commitAuthority, {
+    request,
+    receipt,
+    transitionId,
+    phase,
+  });
   const receiptIdentity = validateReceipt(receipt, request, transitionId);
   const affectedIssueId = canonicalIssue(issueId, 'affected issue');
   if (![receiptIdentity.sourceIssueId, receiptIdentity.targetIssueId].includes(affectedIssueId)) {
@@ -161,9 +245,11 @@ export function assertTransitionProjectionAuthority(proof, expected = {}) {
 }
 
 export function deriveTransitionTimingQueueAliasAuthority({
+  commitAuthority,
   receipt,
   request,
   transitionId,
+  phase = 'forward',
   entry,
   entryIndex,
   switchProjectionId,
@@ -194,9 +280,11 @@ export function deriveTransitionTimingQueueAliasAuthority({
     throw refusal('timing queue journal alias does not match canonical delivery');
   }
   const journalAuthority = deriveTransitionProjectionAuthority({
+    commitAuthority,
     receipt,
     request,
     transitionId,
+    phase,
     projectionName: 'timing',
     projectionId: journalProjectionId,
     subOperationId: journalSubOperationId,
@@ -289,9 +377,11 @@ function collisionGroupMemberExpected(member, label) {
 }
 
 export function deriveTransitionTimingQueueAliasCollisionGroupAuthority({
+  commitAuthority,
   receipt,
   request,
   transitionId,
+  phase = 'forward',
   members,
 } = {}) {
   if (!Array.isArray(members) || members.length < 2) {
@@ -318,9 +408,11 @@ export function deriveTransitionTimingQueueAliasCollisionGroupAuthority({
     journalIdentities.add(journalIdentity);
     deliveryIdentity = stableDeliveryIdentity;
     const authority = deriveTransitionTimingQueueAliasAuthority({
+      commitAuthority,
       receipt,
       request,
       transitionId,
+      phase,
       ...expected,
     });
     return Object.freeze({ ...expected, authority });

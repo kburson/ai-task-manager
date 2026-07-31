@@ -19,6 +19,7 @@ import {
 } from '../../session-state.mjs';
 import {
   normalizeLeaseContext,
+  normalizeWorkLeaseAuthority,
   validateWorkLeaseIntent,
   WORK_LEASE_PROJECTIONS,
 } from './context.mjs';
@@ -131,6 +132,105 @@ function expectedLease(session, issueId, worktreeId) {
   return persisted;
 }
 
+function persistedAuthority(session, issueId, worktreeId) {
+  const lease = expectedLease(session, issueId, worktreeId);
+  try {
+    return normalizeWorkLeaseAuthority(
+      { lease, holder: session?.holder, binding: session?.binding },
+      { issueId }
+    );
+  } catch (error) {
+    throw stableError(
+      error,
+      'authority-unavailable',
+      'persisted work-lease authority tuple is malformed'
+    );
+  }
+}
+
+function requestBindingFromObservation(value) {
+  const binding = object(value, 'observed work-lease binding');
+  return {
+    sessionId: binding.sessionId,
+    issueId: binding.issueId,
+    worktreeId: binding.worktreeId,
+    displayPath: binding.displayPath,
+  };
+}
+
+export async function backfillPersistedWorkLeaseAuthority({
+  session,
+  issueId,
+  sessionId,
+  projectDir,
+  worktreeId,
+  hostId,
+  store,
+  saveSession,
+  allowedStates = ['active'],
+}) {
+  const lease = expectedLease(session, issueId, worktreeId);
+  if (session.holder !== undefined || session.binding !== undefined) {
+    throw leaseError('authority-unavailable', 'persisted work-lease authority tuple is incomplete');
+  }
+  if (typeof store?.observe !== 'function') {
+    throw leaseError('authority-unavailable', 'work-lease authority observation is required');
+  }
+  let observation;
+  try {
+    observation = await store.observe({ projectId: lease.projectId });
+  } catch (error) {
+    throw stableError(error, 'authority-unavailable', 'work-lease authority observation failed');
+  }
+  const leases = Array.isArray(observation?.leases) ? observation.leases : [];
+  const bindings = Array.isArray(observation?.bindings) ? observation.bindings : [];
+  const matchingLeases = leases.filter(
+    (candidate) =>
+      candidate?.projectId === lease.projectId &&
+      candidate?.leaseId === lease.leaseId &&
+      candidate?.fencingToken === lease.fencingToken &&
+      candidate?.issueId === issueId &&
+      allowedStates.includes(candidate?.state) &&
+      candidate?.holder?.sessionId === sessionId &&
+      candidate?.holder?.hostId === hostId &&
+      candidate?.holder?.worktreeId === worktreeId
+  );
+  const matchingBindings = bindings.filter(
+    (candidate) =>
+      candidate?.projectId === lease.projectId &&
+      candidate?.leaseId === lease.leaseId &&
+      candidate?.fencingToken === lease.fencingToken &&
+      candidate?.sessionId === sessionId &&
+      candidate?.issueId === issueId &&
+      candidate?.worktreeId === worktreeId
+  );
+  if (matchingLeases.length !== 1 || matchingBindings.length !== 1) {
+    throw leaseError(
+      'authority-unavailable',
+      'authoritative work-lease observation is absent, ambiguous, or mismatched'
+    );
+  }
+  let authority;
+  try {
+    authority = normalizeWorkLeaseAuthority(
+      {
+        lease,
+        holder: matchingLeases[0].holder,
+        binding: requestBindingFromObservation(matchingBindings[0]),
+      },
+      { issueId }
+    );
+  } catch (error) {
+    throw stableError(error, 'authority-unavailable', 'observed work-lease authority is malformed');
+  }
+  try {
+    await saveSession(sessionId, { ...session, ...authority }, projectDir);
+  } catch (error) {
+    throw stableError(error, 'authority-unavailable', 'cannot persist observed work-lease authority');
+  }
+  return authority;
+}
+
 function normalizeHolderIdentity(value) {
   if (value === undefined) return {};
   const identity = object(value, 'trusted holder identity');
@@ -200,8 +300,8 @@ function normalizeAuthorityLease(
   if (lease.issueId !== issueId) {
     throw leaseError('lease-not-held', 'authority lease does not belong to the requested issue');
   }
-  if (!['active', 'paused'].includes(lease.state)) {
-    throw leaseError('lease-not-held', 'authority lease is not ownership-retaining');
+  if (lease.state !== 'active') {
+    throw leaseError('lease-not-held', 'authority lease is not active');
   }
   const holder = lease.holder;
   if (
@@ -259,7 +359,7 @@ function verifiedAuthorityLease(
 
 async function verifyCurrentReplayAuthority({
   store,
-  expectedLease,
+  authority,
   issueId,
   worktreeId,
   sessionId,
@@ -267,6 +367,7 @@ async function verifyCurrentReplayAuthority({
   holderIdentity,
   now,
 }) {
+  const { lease: expectedLease, holder, binding } = authority;
   if (typeof store?.verify !== 'function') {
     throw leaseError(
       'authority-unavailable',
@@ -284,6 +385,8 @@ async function verifyCurrentReplayAuthority({
     fencingToken: expectedLease.fencingToken,
     operation: 'task-bind',
     verifiedAt: canonicalTimestamp(now(), 'work-lease replay verification time'),
+    holder,
+    binding,
   };
   validateVerifyRequest(verifyRequest);
   try {
@@ -309,7 +412,7 @@ async function verifyCurrentReplayAuthority({
         );
       }
       const renewal = renewalRequestIdentity(expectedLease, verifyRequest.verifiedAt);
-      const request = renewRequest(expectedLease, renewal.requestedAt, renewal.idempotencyKey);
+      const request = renewRequest(authority, renewal.requestedAt, renewal.idempotencyKey);
       authorityLease = normalizeAuthorityLease(
         await store.renew(request),
         expectedLease,
@@ -347,7 +450,8 @@ async function verifyCurrentReplayAuthority({
   }
 }
 
-function renewRequest(lease, requestedAt, idempotencyKey) {
+function renewRequest(authority, requestedAt, idempotencyKey) {
+  const { lease, holder, binding } = authority;
   const request = {
     projectId: lease.projectId,
     leaseId: lease.leaseId,
@@ -355,6 +459,8 @@ function renewRequest(lease, requestedAt, idempotencyKey) {
     idempotencyKey,
     requestedAt,
     ttlMs: WORK_LEASE_TTL_MS,
+    holder,
+    binding,
   };
   validateRenewRequest(request);
   return request;
@@ -461,6 +567,13 @@ function validateAcquireIntentCorrelation({ intent, holder, issueId, store }) {
   }
   if (!sameDurableJson(stableHolderIdentity(request.holder), stableHolderIdentity(holder))) {
     throw leaseError('invalid-request', 'persisted acquire holder does not match trusted holder');
+  }
+  if (
+    request.binding.sessionId !== holder.sessionId ||
+    request.binding.issueId !== issueId ||
+    request.binding.worktreeId !== holder.worktreeId
+  ) {
+    throw leaseError('invalid-request', 'persisted acquire binding does not match trusted holder');
   }
   return request;
 }
@@ -574,6 +687,8 @@ function releaseAfterClaimRequest(lease, request, acquiredAt) {
     idempotencyKey: `release-after-claim:${request.idempotencyKey}`,
     releasedAt: acquiredAt,
     reason: 'assignee-changed-after-acquire',
+    holder: request.holder,
+    binding: request.binding,
   };
 }
 
@@ -767,7 +882,7 @@ export async function coordinateWorkLeaseAcquire({
     }
   }
 
-  holder = await buildTrustedWorkLeaseHolder({
+  const trustedBinding = await buildTrustedWorkLeaseBinding({
     projectDir,
     hostId,
     provider,
@@ -777,6 +892,8 @@ export async function coordinateWorkLeaseAcquire({
     branch,
     resolveWorktreeIdentity: resolveIdentity,
   });
+  const { displayPath, ...trustedHolder } = trustedBinding;
+  holder = Object.freeze(trustedHolder);
   store = await getStore();
 
   if (existingIntent) {
@@ -797,6 +914,12 @@ export async function coordinateWorkLeaseAcquire({
       requestedAt,
       ttlMs: WORK_LEASE_TTL_MS,
       holder,
+      binding: {
+        sessionId,
+        issueId: canonicalIssueId,
+        worktreeId: holder.worktreeId,
+        displayPath,
+      },
     };
     await saveIntent(sessionId, { operation: 'acquire', request, projectionInputs }, projectDir);
     intent = (await loadSession(sessionId, projectDir))?.workLeaseIntent;
@@ -845,17 +968,18 @@ export async function coordinateWorkLeaseAcquire({
   receipt = intent.receipt;
   const { durableLease, acquiredAt } = validateAcquireReceipt(receipt, request);
   if (replayingPersistedIntent) {
-    const trustedAuthorityHolder = Object.fromEntries(
-      STABLE_HOLDER_FIELDS.map((field) => [field, holder[field]])
-    );
     await verifyCurrentReplayAuthority({
       store,
-      expectedLease: durableLease,
+      authority: {
+        lease: durableLease,
+        holder: request.holder,
+        binding: request.binding,
+      },
       issueId: canonicalIssueId,
       worktreeId: durableLease.worktreeId,
       sessionId,
       hostId,
-      holderIdentity: trustedAuthorityHolder,
+      holderIdentity: request.holder,
       now,
     });
   }
@@ -1028,13 +1152,35 @@ export async function coordinateWorkLeaseResume({
   if (!session || typeof session !== 'object') {
     throw leaseError('lease-not-held', 'session has no persisted work lease');
   }
-  let persistedLease = expectedLease(session, canonicalIssueId, worktreeId);
+  let authority =
+    session.holder === undefined && session.binding === undefined
+      ? await backfillPersistedWorkLeaseAuthority({
+          session,
+          issueId: canonicalIssueId,
+          sessionId,
+          projectDir,
+          worktreeId,
+          hostId: trustedHostId,
+          store,
+          saveSession: setActiveTask,
+          allowedStates: ['active', 'paused'],
+        })
+      : persistedAuthority(session, canonicalIssueId, worktreeId);
+  for (const [field, expectedValue] of Object.entries(trustedAuthorityHolder)) {
+    if (authority.holder[field] !== expectedValue) {
+      throw leaseError(
+        'lease-not-held',
+        `persisted resume holder ${field} does not match the trusted session identity`
+      );
+    }
+  }
+  let persistedLease = authority.lease;
   let intent = session.workLeaseIntent;
   const replayingPersistedIntent = Boolean(intent);
   if (!intent) {
     const requestedAt = canonicalTimestamp(now(), 'work-lease resume time');
     const request = renewRequest(
-      persistedLease,
+      authority,
       requestedAt,
       `resume:${sessionId}:${canonicalIssueId}:${randomUUID()}`
     );
@@ -1066,6 +1212,8 @@ export async function coordinateWorkLeaseResume({
       fencingToken: persistedLease.fencingToken,
       operation: 'task-bind',
       verifiedAt: request.requestedAt,
+      holder: authority.holder,
+      binding: authority.binding,
     };
     validateVerifyRequest(verifyRequest);
     try {
@@ -1077,7 +1225,7 @@ export async function coordinateWorkLeaseResume({
           worktreeId,
           sessionId,
           trustedHostId,
-          trustedAuthorityHolder
+          authority.holder
         );
       }
       receipt = await store.renew(request);
@@ -1106,14 +1254,15 @@ export async function coordinateWorkLeaseResume({
       worktreeId,
       sessionId,
       trustedHostId,
-      trustedAuthorityHolder
+      authority.holder
     );
     await attachReceipt(sessionId, { receipt }, projectDir);
   }
 
   session = await loadSession(sessionId, projectDir);
   intent = session?.workLeaseIntent;
-  persistedLease = expectedLease(session, canonicalIssueId, worktreeId);
+  authority = persistedAuthority(session, canonicalIssueId, worktreeId);
+  persistedLease = authority.lease;
   request = validateResumeIntentCorrelation({
     intent,
     issueId: canonicalIssueId,
@@ -1129,7 +1278,7 @@ export async function coordinateWorkLeaseResume({
     worktreeId,
     sessionId,
     trustedHostId,
-    trustedAuthorityHolder
+    authority.holder
   );
   const durableLease = normalizeLeaseContext({
     projectId: authorityLease.projectId,
@@ -1140,12 +1289,16 @@ export async function coordinateWorkLeaseResume({
   if (replayingPersistedIntent) {
     await verifyCurrentReplayAuthority({
       store,
-      expectedLease: durableLease,
+      authority: {
+        lease: durableLease,
+        holder: request.holder,
+        binding: request.binding,
+      },
       issueId: canonicalIssueId,
       worktreeId,
       sessionId,
       hostId: trustedHostId,
-      holderIdentity: trustedAuthorityHolder,
+      holderIdentity: request.holder,
       now,
     });
   }
@@ -1255,8 +1408,29 @@ export async function verifyGovernedEffect({
     throw leaseError('invalid-request', 'canonical worktree identity is malformed');
   }
 
-  const persistedLease = expectedLease(session, canonicalIssueId, worktree.worktreeId);
+  const authority =
+    session.holder === undefined && session.binding === undefined
+      ? await backfillPersistedWorkLeaseAuthority({
+          session,
+          issueId: canonicalIssueId,
+          sessionId,
+          projectDir,
+          worktreeId: worktree.worktreeId,
+          hostId,
+          store,
+          saveSession,
+        })
+      : persistedAuthority(session, canonicalIssueId, worktree.worktreeId);
+  const persistedLease = authority.lease;
   const trustedHolderIdentity = normalizeHolderIdentity(holderIdentity);
+  for (const [field, expectedValue] of Object.entries(trustedHolderIdentity)) {
+    if (authority.holder[field] !== expectedValue) {
+      throw leaseError(
+        'lease-not-held',
+        `persisted work-lease holder ${field} does not match the trusted session identity`
+      );
+    }
+  }
   const ownerKey =
     suppliedHeartbeatOwnerKey ?? workLeaseHeartbeatOwnerKey(sessionId, persistedLease);
   if (typeof ownerKey !== 'string' || ownerKey.trim() === '') {
@@ -1269,6 +1443,8 @@ export async function verifyGovernedEffect({
     fencingToken: persistedLease.fencingToken,
     operation,
     verifiedAt,
+    holder: authority.holder,
+    binding: authority.binding,
   };
   validateVerifyRequest(verifyRequest);
 
@@ -1301,7 +1477,7 @@ export async function verifyGovernedEffect({
     try {
       authorityLease = normalizeAuthorityLease(
         await store.renew(
-          renewRequest(persistedLease, renewal.requestedAt, renewal.idempotencyKey)
+          renewRequest(authority, renewal.requestedAt, renewal.idempotencyKey)
         ),
         persistedLease,
         canonicalIssueId,
@@ -1322,7 +1498,11 @@ export async function verifyGovernedEffect({
     worktreeId: worktree.worktreeId,
   });
   try {
-    await saveSession(sessionId, { ...session, lease: durableLease }, projectDir);
+    await saveSession(
+      sessionId,
+      { ...session, lease: durableLease, holder: authority.holder, binding: authority.binding },
+      projectDir
+    );
   } catch (error) {
     throw stableError(
       error,

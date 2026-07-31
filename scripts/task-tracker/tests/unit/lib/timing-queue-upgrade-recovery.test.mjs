@@ -5,6 +5,7 @@ import { createHash } from 'node:crypto';
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import test from 'node:test';
+import { canonicalRequestDigest } from '@kburson/aitm-ledger';
 
 import * as timingGh from '../../../gh-timing-comment.mjs';
 import {
@@ -22,6 +23,7 @@ import {
   resolveTimingQueueJournalProjection,
 } from '../../../lib/timing-queue-projection.mjs';
 import {
+  authenticateTransitionMutationCommit,
   deriveTransitionTimingQueueAliasAuthority,
   deriveTransitionTimingQueueAliasCollisionGroupAuthority,
   isTransitionProjectionAuthorityError,
@@ -46,9 +48,11 @@ const EMPTY_BODY = [
   '| Timestamp | Event | Active | Idle | Δ Words | Word Marker | Description | Δ Words (full) |',
   '|---|---|---|---|---|---|---|---|',
 ].join('\n');
+let STANDARD_COMMIT_AUTHORITY;
 
 function switchAuthorityFixture() {
-  const holder = {
+  const displayPath = '/repo/worktree-1';
+  const sourceHolder = {
     principalKind: 'worker',
     provider: 'codex',
     agentRunId: 'run-1',
@@ -56,16 +60,30 @@ function switchAuthorityFixture() {
     hostId: 'host-1',
     pid: 123,
     worktreeId: 'worktree-1',
-    pathHash: 'path-hash-1',
+    pathHash: createHash('sha256').update(displayPath).digest('hex'),
     branch: 'feature/child/1049',
   };
+  const targetHolder = { ...sourceHolder };
+  const sourceBinding = {
+    sessionId: 'session-1',
+    issueId: '1048',
+    worktreeId: 'worktree-1',
+    displayPath,
+  };
+  const targetBinding = {
+    ...sourceBinding,
+    issueId: '1049',
+  };
   return {
+    commitAuthority: STANDARD_COMMIT_AUTHORITY,
     transitionId: 'transition-1',
     request: {
       projectId: 'project-1',
       issueId: '1048',
       leaseId: 'source-lease',
       fencingToken: '7',
+      holder: sourceHolder,
+      binding: sourceBinding,
       idempotencyKey: 'switch:session-1:1048:1049:request-1',
       switchedAt: '2026-07-30T12:00:00.000Z',
       target: {
@@ -75,7 +93,8 @@ function switchAuthorityFixture() {
         idempotencyKey: 'switch-target:session-1:1049:request-1',
         requestedAt: '2026-07-30T12:00:00.000Z',
         ttlMs: 900_000,
-        holder,
+        holder: targetHolder,
+        binding: targetBinding,
       },
     },
     receipt: {
@@ -86,7 +105,7 @@ function switchAuthorityFixture() {
         state: 'active',
         leaseId: 'target-lease',
         fencingToken: '8',
-        holder,
+        holder: targetHolder,
         acquiredAt: '2026-07-30T12:00:00.000Z',
         heartbeatAt: '2026-07-30T12:00:00.000Z',
         expiresAt: '2026-07-30T12:15:00.000Z',
@@ -101,6 +120,24 @@ function switchAuthorityFixture() {
       },
     },
   };
+}
+
+{
+  const { request, receipt, transitionId } = switchAuthorityFixture();
+  STANDARD_COMMIT_AUTHORITY = await authenticateTransitionMutationCommit({
+    store: {
+      replayMutation: async (selector) => ({
+        selector,
+        outcome: 'committed',
+        statusCode: 200,
+        result: receipt,
+      }),
+    },
+    rawRequest: request,
+    request,
+    receipt,
+    transitionId,
+  });
 }
 
 function legacyJournal() {
@@ -228,6 +265,65 @@ function readUpgradeFixture() {
 function readCollisionUpgradeFixture() {
   const bytes = readFileSync(collisionUpgradeFixturePath);
   return { bytes, value: JSON.parse(bytes) };
+}
+
+function historicalTargetBinding(intent) {
+  const request = JSON.parse(intent.canonicalRequest);
+  return {
+    projectId: request.projectId,
+    leaseId: intent.receipt.lease.leaseId,
+    fencingToken: intent.receipt.lease.fencingToken,
+    sessionId: request.target.holder.sessionId,
+    issueId: request.target.issueId,
+    worktreeId: request.target.holder.worktreeId,
+    displayPath: '/repo/worktree-1',
+  };
+}
+
+function historicalObservation(intent, { leases, bindings } = {}) {
+  return {
+    leases: leases ?? [structuredClone(intent.receipt.lease)],
+    bindings: bindings ?? [historicalTargetBinding(intent)],
+  };
+}
+
+async function historicalProjectionAuthority(intent) {
+  const rawRequest = JSON.parse(intent.canonicalRequest);
+  const displayPath = '/repo/worktree-1';
+  const request = {
+    ...rawRequest,
+    holder: { ...rawRequest.target.holder },
+    binding: {
+      sessionId: rawRequest.target.holder.sessionId,
+      issueId: rawRequest.issueId,
+      worktreeId: rawRequest.target.holder.worktreeId,
+      displayPath,
+    },
+    target: {
+      ...rawRequest.target,
+      binding: {
+        sessionId: rawRequest.target.holder.sessionId,
+        issueId: rawRequest.target.issueId,
+        worktreeId: rawRequest.target.holder.worktreeId,
+        displayPath,
+      },
+    },
+  };
+  const commitAuthority = await authenticateTransitionMutationCommit({
+    store: {
+      replayMutation: async (selector) => ({
+        selector,
+        outcome: 'committed',
+        statusCode: 200,
+        result: intent.receipt,
+      }),
+    },
+    rawRequest,
+    request,
+    receipt: intent.receipt,
+    transitionId: intent.transitionId,
+  });
+  return { request, receipt: intent.receipt, transitionId: intent.transitionId, commitAuthority };
 }
 
 function upgradeRemote(fixture, receiptState = 'neither') {
@@ -490,6 +586,7 @@ test('byte-exact pre-upgrade switch journal replays once and clears after upgrad
     const ctx = upgradeProjectionContext(dir, queuePath, remoteState);
     const persistedRequest = JSON.parse(fixture.value.workLeaseIntent.canonicalRequest);
     const persistedReceipt = fixture.value.workLeaseIntent.receipt;
+    const authorityOrder = [];
     const projectionInputs = Object.fromEntries(
       Object.entries(fixture.value.workLeaseIntent.projections).map(([name, projection]) => [
         name,
@@ -499,7 +596,11 @@ test('byte-exact pre-upgrade switch journal replays once and clears after upgrad
     const projections = {
       session: async () => assert.fail('completed session projection must not replay'),
       fleet: async () => assert.fail('completed fleet projection must not replay'),
-      timing: (options) => applyTimingProjection(ctx, options),
+      timing: (options) => {
+        authorityOrder.push('timing');
+        assert.deepEqual(authorityOrder.slice(0, 2), ['replay', 'verify']);
+        return applyTimingProjection(ctx, options);
+      },
       github: async ({ projectionName, projectionId }) => ({
         reconciled: true,
         projectionName,
@@ -519,7 +620,23 @@ test('byte-exact pre-upgrade switch journal replays once and clears after upgrad
       getStore: async () => ({
         projectId: 'project-1',
         switchLease: async () => assert.fail('persisted receipt must not replay authority'),
-        verify: async () => ({ allowed: true, lease: persistedReceipt.lease }),
+        replayMutation: async (selector) => {
+          authorityOrder.push('replay');
+          assert.equal(selector.requestDigest, canonicalRequestDigest(persistedRequest));
+          return { selector, outcome: 'committed', statusCode: 200, result: persistedReceipt };
+        },
+        verify: async (verifyRequest) => {
+          authorityOrder.push('verify');
+          assert.deepEqual(authorityOrder, ['replay', 'verify']);
+          assert.deepEqual(verifyRequest.holder, persistedRequest.target.holder);
+          assert.deepEqual(verifyRequest.binding, {
+            sessionId: 'session-1',
+            issueId: '1051',
+            worktreeId: 'wt:v1:worktree-1',
+            displayPath: '/repo/worktree-1',
+          });
+          return { allowed: true, lease: persistedReceipt.lease };
+        },
       }),
       preparedEligibility: {
         ok: true,
@@ -558,6 +675,7 @@ test('byte-exact pre-upgrade switch journal replays once and clears after upgrad
     assert.equal(getActiveTask('session-1', dir).workLeaseIntent, undefined);
     assert.equal(remoteState.writes(), 1);
     assert.equal(parseTimingProjectionReceipts(remoteState.body()).length, 1);
+    assert.deepEqual(authorityOrder.slice(0, 3), ['replay', 'verify', 'timing']);
   } finally {
     if (priorProjectDir === undefined) delete process.env.AI_TASK_MANAGER_PROJECT_DIR;
     else process.env.AI_TASK_MANAGER_PROJECT_DIR = priorProjectDir;
@@ -581,13 +699,11 @@ test('upgrade alias refusal preserves exact queue and journal bytes', async () =
     const ctx = upgradeProjectionContext(dir, queuePath, remoteState);
 
     await assert.rejects(
-      () =>
+      async () =>
         applyTimingProjection(ctx, {
+          ...(await historicalProjectionAuthority(intent)),
           input: timing.input,
           projectionId: timing.projectionId,
-          receipt: intent.receipt,
-          request: JSON.parse(intent.canonicalRequest),
-          transitionId: intent.transitionId,
         }),
       /timing queue alias/
     );
@@ -637,9 +753,7 @@ test('ordinary callers cannot forge or alter the sealed collision member list', 
     const members = collisionMembers(fixture);
     const canonical = canonicalTimingQueueProjection(members[0].entry);
     const authority = deriveTransitionTimingQueueAliasCollisionGroupAuthority({
-      receipt: intent.receipt,
-      request: JSON.parse(intent.canonicalRequest),
-      transitionId: intent.transitionId,
+      ...(await historicalProjectionAuthority(intent)),
       members,
     });
     const remoteState = collisionRemote(fixture, 'neither');
@@ -719,11 +833,9 @@ for (const state of ['legacy', 'canonical', 'neither']) {
       const result = await applyTimingProjection(
         upgradeProjectionContext(dir, queuePath, remoteState),
         {
+          ...(await historicalProjectionAuthority(intent)),
           input: timing.input,
           projectionId: timing.projectionId,
-          receipt: intent.receipt,
-          request: JSON.parse(intent.canonicalRequest),
-          transitionId: intent.transitionId,
         }
       );
 
@@ -775,6 +887,12 @@ test('byte-exact pre-upgrade collision journal replays once and clears after upg
       getStore: async () => ({
         projectId: 'project-1',
         switchLease: async () => assert.fail('persisted receipt must not replay authority'),
+        replayMutation: async (selector) => ({
+          selector,
+          outcome: 'committed',
+          statusCode: 200,
+          result: intent.receipt,
+        }),
         verify: async () => ({ allowed: true, lease: intent.receipt.lease }),
       }),
       preparedEligibility: {
@@ -851,11 +969,9 @@ test('collision group retains every exact queue member until remote read-back su
     });
     const ctx = upgradeProjectionContext(dir, queuePath, remoteState);
     const options = {
+      ...(await historicalProjectionAuthority(intent)),
       input: timing.input,
       projectionId: timing.projectionId,
-      receipt: intent.receipt,
-      request: JSON.parse(intent.canonicalRequest),
-      transitionId: intent.transitionId,
     };
 
     await assert.rejects(
@@ -901,13 +1017,11 @@ for (const state of [
       const remoteBefore = remoteState.body();
 
       await assert.rejects(
-        () =>
+        async () =>
           applyTimingProjection(upgradeProjectionContext(dir, queuePath, remoteState), {
+            ...(await historicalProjectionAuthority(intent)),
             input: timing.input,
             projectionId: timing.projectionId,
-            receipt: intent.receipt,
-            request: JSON.parse(intent.canonicalRequest),
-            transitionId: intent.transitionId,
           }),
         /timing queue|persisted timing source/
       );
@@ -958,13 +1072,11 @@ for (const mutation of ['mixed-journal', 'forged-journal', 'ordinary-canonical']
       };
 
       await assert.rejects(
-        () =>
+        async () =>
           applyTimingProjection(ctx, {
+            ...(await historicalProjectionAuthority(intent)),
             input: timing.input,
             projectionId: timing.projectionId,
-            receipt: intent.receipt,
-            request: JSON.parse(intent.canonicalRequest),
-            transitionId: intent.transitionId,
           }),
         /persisted timing source queue entry is malformed/
       );
@@ -1003,11 +1115,9 @@ test('generic drain owns the legacy queue entry before sealed upgrade recovery',
 
     let sealedSettled = false;
     const sealed = applyTimingProjection(upgradeProjectionContext(dir, queuePath, remoteState), {
+      ...(await historicalProjectionAuthority(intent)),
       input: timing.input,
       projectionId: timing.projectionId,
-      receipt: intent.receipt,
-      request: JSON.parse(intent.canonicalRequest),
-      transitionId: intent.transitionId,
     }).finally(() => {
       sealedSettled = true;
     });
@@ -1045,11 +1155,9 @@ test('sealed upgrade recovery owns the legacy queue entry before generic drain',
       return postAlias(input);
     };
     const sealed = applyTimingProjection(ctx, {
+      ...(await historicalProjectionAuthority(intent)),
       input: timing.input,
       projectionId: timing.projectionId,
-      receipt: intent.receipt,
-      request: JSON.parse(intent.canonicalRequest),
-      transitionId: intent.transitionId,
     });
     await aliasPostReached.promise;
 
@@ -1105,11 +1213,9 @@ test('generic drain owns a legacy collision group before sealed recovery', async
 
     let sealedSettled = false;
     const sealed = applyTimingProjection(upgradeProjectionContext(dir, queuePath, remoteState), {
+      ...(await historicalProjectionAuthority(intent)),
       input: timing.input,
       projectionId: timing.projectionId,
-      receipt: intent.receipt,
-      request: JSON.parse(intent.canonicalRequest),
-      transitionId: intent.transitionId,
     }).finally(() => {
       sealedSettled = true;
     });
@@ -1153,11 +1259,9 @@ test('sealed recovery owns a legacy collision group before generic drain', async
       return reconcileCollision(input);
     };
     const sealed = applyTimingProjection(ctx, {
+      ...(await historicalProjectionAuthority(intent)),
       input: timing.input,
       projectionId: timing.projectionId,
-      receipt: intent.receipt,
-      request: JSON.parse(intent.canonicalRequest),
-      transitionId: intent.transitionId,
     });
     await collisionPostReached.promise;
 

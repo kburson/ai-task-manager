@@ -20,17 +20,20 @@ import {
   getActiveTask,
   restoreActiveTaskSnapshot,
   setWorkLeaseCompensation,
+  setActiveTask,
   setWorkLeaseIntent,
 } from '../../session-state.mjs';
 import {
   normalizeLeaseContext,
+  normalizeWorkLeaseAuthority,
   normalizePriorSessionSnapshot,
   validateWorkLeaseCompensation,
   validateWorkLeaseIntent,
   WORK_LEASE_PROJECTIONS,
 } from './context.mjs';
 import {
-  buildTrustedWorkLeaseHolder,
+  backfillPersistedWorkLeaseAuthority,
+  buildTrustedWorkLeaseBinding,
   WORK_LEASE_HEARTBEAT_AGE_MS,
   WORK_LEASE_TTL_MS,
 } from './guard.mjs';
@@ -45,6 +48,10 @@ import {
 } from './switch-projection-integrity.mjs';
 import { reconcileTimingProjectionRowEffect } from '../../gh-timing-comment.mjs';
 import { resolveTimingQueueJournalProjection } from '../timing-queue-projection.mjs';
+import {
+  assertTransitionMutationCommitAuthority,
+  authenticateTransitionMutationCommit,
+} from './transition-projection-authority.mjs';
 
 const TERMINAL_SWITCH_CODES = new Set([
   'invalid-request',
@@ -151,17 +158,44 @@ function sourceSessionFromSnapshot(intent) {
   }
 }
 
-function validateSwitchIntentCorrelation({ intent, sourceIssueId, targetIssueId, holder, store }) {
+function currentSwitchProjectionRequest(rawRequest, targetBinding) {
+  if (rawRequest.holder !== undefined && rawRequest.binding !== undefined) return rawRequest;
+  const historicalHolder = Object.freeze({ ...rawRequest.target.holder });
+  const sourceBinding = Object.freeze({
+    ...targetBinding,
+    issueId: rawRequest.issueId,
+  });
+  const request = Object.freeze({
+    ...rawRequest,
+    holder: historicalHolder,
+    binding: sourceBinding,
+    target: Object.freeze({
+      ...rawRequest.target,
+      holder: historicalHolder,
+      binding: Object.freeze({ ...targetBinding }),
+    }),
+  });
+  validateSwitchLeaseRequest(request);
+  return request;
+}
+
+function validateSwitchIntentCorrelation({
+  intent,
+  sourceIssueId,
+  targetIssueId,
+  targetHolder,
+  targetBinding,
+  store,
+}) {
   if (intent?.operation !== 'switchLease') {
     throw leaseError(
       'invalid-request',
       'persisted work-lease intent operation must be switchLease'
     );
   }
-  let request;
+  let rawRequest;
   try {
-    request = validateWorkLeaseIntent(intent, { requireAllProjections: true });
-    validateSwitchLeaseRequest(request);
+    rawRequest = validateWorkLeaseIntent(intent, { requireAllProjections: true });
   } catch (error) {
     throw stableError(
       error,
@@ -169,6 +203,8 @@ function validateSwitchIntentCorrelation({ intent, sourceIssueId, targetIssueId,
       `persisted switch intent is malformed: ${error?.message || 'unknown validation error'}`
     );
   }
+  const historical = rawRequest.holder === undefined || rawRequest.binding === undefined;
+  const request = currentSwitchProjectionRequest(rawRequest, targetBinding);
   if (request.projectId !== store?.projectId) {
     throw leaseError('invalid-request', 'persisted switch project does not match authority');
   }
@@ -183,8 +219,17 @@ function validateSwitchIntentCorrelation({ intent, sourceIssueId, targetIssueId,
   if (request.target.requestedAt !== request.switchedAt) {
     throw leaseError('invalid-request', 'persisted switch target timestamp does not match');
   }
-  if (!sameJson(stableHolder(request.target.holder), stableHolder(holder))) {
+  if (!sameJson(stableHolder(request.target.holder), stableHolder(targetHolder))) {
     throw leaseError('invalid-request', 'persisted switch holder does not match trusted holder');
+  }
+  if (!sameJson(stableHolder(request.holder), stableHolder(targetHolder))) {
+    throw leaseError(
+      'lease-not-held',
+      'persisted switch source holder does not match the trusted logical worker'
+    );
+  }
+  if (!sameJson(request.target.binding, targetBinding)) {
+    throw leaseError('invalid-request', 'persisted switch binding does not match trusted binding');
   }
 
   const sourceSession = sourceSessionFromSnapshot(intent);
@@ -193,17 +238,32 @@ function validateSwitchIntentCorrelation({ intent, sourceIssueId, targetIssueId,
     'persisted switch source issue'
   );
   let sourceLease;
+  let sourceAuthority;
   try {
-    sourceLease = normalizeLeaseContext(sourceSession.lease);
+    if (historical) sourceLease = normalizeLeaseContext(sourceSession.lease);
+    else {
+      sourceAuthority = normalizeWorkLeaseAuthority(
+        {
+          lease: sourceSession.lease,
+          holder: sourceSession.holder,
+          binding: sourceSession.binding,
+        },
+        { issueId: sourceIssueId }
+      );
+      sourceLease = sourceAuthority.lease;
+    }
   } catch {
-    throw leaseError('invalid-request', 'persisted switch source lease is malformed');
+    throw leaseError('invalid-request', 'persisted switch source authority is malformed');
   }
   if (
     snapshotIssue !== sourceIssueId ||
     sourceLease.projectId !== request.projectId ||
     sourceLease.leaseId !== request.leaseId ||
     sourceLease.fencingToken !== request.fencingToken ||
-    sourceLease.worktreeId !== request.target.holder.worktreeId
+    sourceLease.worktreeId !== request.target.holder.worktreeId ||
+    (!historical &&
+      (!sameJson(request.holder, sourceAuthority.holder) ||
+        !sameJson(request.binding, sourceAuthority.binding)))
   ) {
     throw leaseError('invalid-request', 'persisted switch request does not match source authority');
   }
@@ -825,6 +885,8 @@ async function verifyReceiptAuthority({ store, receipt, request, sessionId, host
     fencingToken: durableLease.fencingToken,
     operation: 'task-bind',
     verifiedAt,
+    holder: request.target.holder,
+    binding: request.target.binding,
   };
   validateVerifyRequest(verifyRequest);
   let result;
@@ -840,7 +902,7 @@ async function verifyReceiptAuthority({ store, receipt, request, sessionId, host
       authorityLease.issueId !== request.target.issueId ||
       authorityLease.leaseId !== durableLease.leaseId ||
       authorityLease.fencingToken !== durableLease.fencingToken ||
-      !['active', 'paused'].includes(authorityLease.state) ||
+      authorityLease.state !== 'active' ||
       authorityLease.holder?.sessionId !== sessionId ||
       authorityLease.holder?.hostId !== hostId ||
       !sameJson(authorityLease.holder, request.target.holder)
@@ -878,6 +940,8 @@ async function verifyReceiptAuthority({ store, receipt, request, sessionId, host
       idempotencyKey: `renew:${durableLease.leaseId}:${durableLease.fencingToken}:${bucket}`,
       requestedAt,
       ttlMs: WORK_LEASE_TTL_MS,
+      holder: request.target.holder,
+      binding: request.target.binding,
     };
     validateRenewRequest(renewRequest);
     try {
@@ -918,6 +982,8 @@ function deterministicCompensationRequest(forwardRequest, forwardReceipt, compen
     issueId: forwardRequest.target.issueId,
     leaseId: targetLease.leaseId,
     fencingToken: targetLease.fencingToken,
+    holder: forwardRequest.target.holder,
+    binding: forwardRequest.target.binding,
     idempotencyKey: `compensate:${transitionId}`,
     switchedAt: compensationAt,
     target: {
@@ -927,7 +993,8 @@ function deterministicCompensationRequest(forwardRequest, forwardReceipt, compen
       idempotencyKey: `compensate-target:${transitionId}`,
       requestedAt: compensationAt,
       ttlMs: forwardRequest.target.ttlMs,
-      holder: forwardRequest.target.holder,
+      holder: forwardRequest.holder,
+      binding: forwardRequest.binding,
     },
   };
   validateSwitchLeaseRequest(request);
@@ -1051,6 +1118,14 @@ async function coordinateSwitchCompensation({
   if (intent.compensation.transitionId !== transitionId) {
     throw leaseError('invalid-request', 'persisted compensation transition does not match receipt');
   }
+  const commitAuthority = await authenticateTransitionMutationCommit({
+    store,
+    rawRequest: request,
+    request,
+    receipt,
+    transitionId,
+    phase: 'compensation',
+  });
   await verifyReceiptAuthority({
     store,
     receipt,
@@ -1064,7 +1139,14 @@ async function coordinateSwitchCompensation({
   for (const name of WORK_LEASE_PROJECTIONS) {
     const projection = currentIntent.compensation.projections[name];
     if (projection.completed === true) continue;
+    assertTransitionMutationCommitAuthority(commitAuthority, {
+      request,
+      receipt,
+      transitionId,
+      phase: 'compensation',
+    });
     const proof = await projections[name]({
+      commitAuthority,
       phase: 'compensation',
       input: projection.input,
       lease: durableLease,
@@ -1159,20 +1241,22 @@ export async function coordinateWorkLeaseSwitch({
     const existingRequest = validateWorkLeaseIntent(existingIntent, {
       requireAllProjections: true,
     });
-    validateSwitchProjectionInputs(existingIntent.projections, {
-      sourceIssueId: source,
-      targetIssueId: target,
-      sessionId,
-      request: existingRequest,
-      projectionContext,
-    });
+    if (existingRequest.holder !== undefined && existingRequest.binding !== undefined) {
+      validateSwitchProjectionInputs(existingIntent.projections, {
+        sourceIssueId: source,
+        targetIssueId: target,
+        sessionId,
+        request: existingRequest,
+        projectionContext,
+      });
+    }
   } else {
     const githubInput = validateSwitchGithubProjectionInput(projectionInputs.github, {
       targetIssueId: target,
     });
     validatePreparedEligibility(preparedEligibility, githubInput);
   }
-  const holder = await buildTrustedWorkLeaseHolder({
+  const trustedTarget = await buildTrustedWorkLeaseBinding({
     projectDir,
     hostId: trustedHostId,
     provider,
@@ -1181,6 +1265,14 @@ export async function coordinateWorkLeaseSwitch({
     pid,
     branch,
     ...(resolveWorktreeIdentity ? { resolveWorktreeIdentity } : {}),
+  });
+  const { displayPath: targetDisplayPath, ...targetHolderValue } = trustedTarget;
+  const targetHolder = Object.freeze(targetHolderValue);
+  const targetBinding = Object.freeze({
+    sessionId,
+    issueId: target,
+    worktreeId: targetHolder.worktreeId,
+    displayPath: targetDisplayPath,
   });
   const store = await getStore();
 
@@ -1191,21 +1283,43 @@ export async function coordinateWorkLeaseSwitch({
       intent,
       sourceIssueId: source,
       targetIssueId: target,
-      holder,
+      targetHolder,
+      targetBinding,
       store,
     });
   } else {
-    let sourceLease;
-    try {
-      sourceLease = normalizeLeaseContext(existing?.lease);
-    } catch {
-      throw leaseError('lease-not-held', 'session has no source work lease for switch');
+    const sourceAuthority =
+      existing?.holder === undefined && existing?.binding === undefined
+        ? await backfillPersistedWorkLeaseAuthority({
+            session: existing,
+            issueId: source,
+            sessionId,
+            projectDir,
+            worktreeId: targetHolder.worktreeId,
+            hostId: trustedHostId,
+            store,
+            saveSession: setActiveTask,
+          })
+        : normalizeWorkLeaseAuthority(
+            {
+              lease: existing?.lease,
+              holder: existing?.holder,
+              binding: existing?.binding,
+            },
+            { issueId: source }
+          );
+    const { lease: sourceLease } = sourceAuthority;
+    if (!sameJson(stableHolder(sourceAuthority.holder), stableHolder(targetHolder))) {
+      throw leaseError(
+        'lease-not-held',
+        'source session holder does not match the trusted logical worker'
+      );
     }
     if (
       canonicalIssue(existing?.issue ?? existing?.leaseIssue, 'switch source session issue') !==
         source ||
       sourceLease.projectId !== store?.projectId ||
-      sourceLease.worktreeId !== holder.worktreeId
+      sourceLease.worktreeId !== targetHolder.worktreeId
     ) {
       throw leaseError('lease-not-held', 'source session authority does not match switch request');
     }
@@ -1221,6 +1335,8 @@ export async function coordinateWorkLeaseSwitch({
       issueId: source,
       leaseId: sourceLease.leaseId,
       fencingToken: sourceLease.fencingToken,
+      holder: sourceAuthority.holder,
+      binding: sourceAuthority.binding,
       idempotencyKey: `switch:${sessionId}:${source}:${target}:${requestId}`,
       switchedAt,
       target: {
@@ -1235,7 +1351,8 @@ export async function coordinateWorkLeaseSwitch({
         }),
         requestedAt: switchedAt,
         ttlMs: WORK_LEASE_TTL_MS,
-        holder,
+        holder: targetHolder,
+        binding: targetBinding,
       },
     };
     validateSwitchLeaseRequest(request);
@@ -1249,7 +1366,8 @@ export async function coordinateWorkLeaseSwitch({
       intent,
       sourceIssueId: source,
       targetIssueId: target,
-      holder,
+      targetHolder,
+      targetBinding,
       store,
     });
   }
@@ -1291,7 +1409,8 @@ export async function coordinateWorkLeaseSwitch({
     intent,
     sourceIssueId: source,
     targetIssueId: target,
-    holder,
+    targetHolder,
+    targetBinding,
     store,
   });
   receipt = intent.receipt;
@@ -1299,6 +1418,15 @@ export async function coordinateWorkLeaseSwitch({
   if (intent.transitionId !== transitionId) {
     throw leaseError('invalid-request', 'persisted switch transition does not match receipt');
   }
+  const rawRequest = validateWorkLeaseIntent(intent, { requireAllProjections: true });
+  const commitAuthority = await authenticateTransitionMutationCommit({
+    store,
+    rawRequest,
+    request,
+    receipt,
+    transitionId,
+    phase: 'forward',
+  });
   if (intent.compensation) {
     return coordinateSwitchCompensation({
       sessionId,
@@ -1330,6 +1458,12 @@ export async function coordinateWorkLeaseSwitch({
   }
 
   if (!intent.forwardPhase) {
+    assertTransitionMutationCommitAuthority(commitAuthority, {
+      request,
+      receipt,
+      transitionId,
+      phase: 'forward',
+    });
     let claimProof;
     try {
       claimProof = await reconcileTargetClaim({
@@ -1374,7 +1508,8 @@ export async function coordinateWorkLeaseSwitch({
       intent,
       sourceIssueId: source,
       targetIssueId: target,
-      holder,
+      targetHolder,
+      targetBinding,
       store,
     });
   }
@@ -1383,7 +1518,14 @@ export async function coordinateWorkLeaseSwitch({
   for (const name of WORK_LEASE_PROJECTIONS) {
     const projection = currentIntent.projections[name];
     if (projection.completed === true) continue;
+    assertTransitionMutationCommitAuthority(commitAuthority, {
+      request,
+      receipt,
+      transitionId,
+      phase: 'forward',
+    });
     const proof = await projections[name]({
+      commitAuthority,
       phase: 'forward',
       input: projection.input,
       lease: durableLease,
@@ -1409,7 +1551,8 @@ export async function coordinateWorkLeaseSwitch({
       intent: currentIntent,
       sourceIssueId: source,
       targetIssueId: target,
-      holder,
+      targetHolder,
+      targetBinding,
       store,
     });
     if (currentIntent.transitionId !== transitionId) {

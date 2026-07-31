@@ -150,6 +150,12 @@ function installStaleLease(dir, { sessionId = 'codex-apply-patch-stale' } = {}) 
     branch: 'trunk',
     pid: process.pid,
   };
+  const binding = {
+    sessionId,
+    issueId: '1049',
+    worktreeId: worktree.worktreeId,
+    displayPath: worktree.displayPath,
+  };
   const granted = store.acquire({
     projectId,
     issueId: '1049',
@@ -158,6 +164,7 @@ function installStaleLease(dir, { sessionId = 'codex-apply-patch-stale' } = {}) 
     requestedAt,
     ttlMs: 900_000,
     holder,
+    binding,
   });
   store.close();
 
@@ -175,6 +182,8 @@ function installStaleLease(dir, { sessionId = 'codex-apply-patch-stale' } = {}) 
           fencingToken: String(BigInt(granted.fencingToken) + 1n),
           worktreeId: worktree.worktreeId,
         },
+        holder,
+        binding,
       },
       null,
       2

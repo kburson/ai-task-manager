@@ -2,8 +2,10 @@
 
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { canonicalRequestDigest } from '@kburson/aitm-ledger';
 
 import {
+  authenticateTransitionMutationCommit,
   assertTransitionProjectionAuthority,
   deriveTransitionProjectionAuthority,
 } from '../../../lib/work-lease/transition-projection-authority.mjs';
@@ -19,14 +21,24 @@ const holder = Object.freeze({
   hostId: 'host-1',
   pid: 123,
   worktreeId: 'worktree-1',
-  pathHash: 'path-hash-1',
+  pathHash: 'ea0135bca5e3bd815f5b7b8f8c83d86f584697bc29e0cc3b30937153abef2844',
   branch: 'feature/child/1049',
 });
+const sourceHolder = Object.freeze({ ...holder, pid: 77 });
+const sourceBinding = Object.freeze({
+  sessionId: 'session-1',
+  issueId: '1048',
+  worktreeId: 'worktree-1',
+  displayPath: '/project',
+});
+const targetBinding = Object.freeze({ ...sourceBinding, issueId: '1049' });
 const request = Object.freeze({
   projectId: 'project-1',
   issueId: '1048',
   leaseId: 'source-lease',
   fencingToken: '7',
+  holder: sourceHolder,
+  binding: sourceBinding,
   idempotencyKey: 'switch:session-1:1048:1049:request-1',
   switchedAt: '2026-07-30T12:00:00.000Z',
   target: Object.freeze({
@@ -37,6 +49,7 @@ const request = Object.freeze({
     requestedAt: '2026-07-30T12:00:00.000Z',
     ttlMs: 900_000,
     holder,
+    binding: targetBinding,
   }),
 });
 const receipt = Object.freeze({
@@ -61,11 +74,27 @@ const receipt = Object.freeze({
     toIssueId: '1049',
   }),
 });
+const commitAuthority = await authenticateTransitionMutationCommit({
+  store: {
+    replayMutation: async (selector) => ({
+      selector,
+      outcome: 'committed',
+      statusCode: 200,
+      result: receipt,
+    }),
+  },
+  rawRequest: request,
+  request,
+  receipt,
+  transitionId: 'transition-1',
+});
 
 test('transition projection authority exposes a dedicated non-boolean proof API', async () => {
   const api = await import('../../../lib/work-lease/transition-projection-authority.mjs').catch(
     () => ({})
   );
+  assert.equal(typeof api.authenticateTransitionMutationCommit, 'function');
+  assert.equal(typeof api.assertTransitionMutationCommitAuthority, 'function');
   assert.equal(typeof api.deriveTransitionProjectionAuthority, 'function');
   assert.equal(typeof api.assertTransitionProjectionAuthority, 'function');
 });
@@ -79,6 +108,7 @@ test('central body and timing seams expose dedicated transition-projection entry
 
 function derive(overrides = {}) {
   return deriveTransitionProjectionAuthority({
+    commitAuthority,
     receipt,
     request,
     transitionId: 'transition-1',
@@ -90,6 +120,24 @@ function derive(overrides = {}) {
     ...overrides,
   });
 }
+
+test('transition commit proof authenticates the exact raw request digest and receipt', async () => {
+  let replaySelector;
+  const proof = await authenticateTransitionMutationCommit({
+    store: {
+      replayMutation: async (selector) => {
+        replaySelector = selector;
+        return { selector, outcome: 'committed', statusCode: 200, result: receipt };
+      },
+    },
+    rawRequest: request,
+    request,
+    receipt,
+    transitionId: 'transition-1',
+  });
+  assert.equal(replaySelector.requestDigest, canonicalRequestDigest(request));
+  assert.equal(JSON.stringify(proof), '{}');
+});
 
 test('fresh branded proof validates exact receipt, projection, operation, and affected issue', () => {
   const proof = derive();
