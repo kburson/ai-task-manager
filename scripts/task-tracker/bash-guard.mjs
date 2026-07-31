@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // INTERNAL — DO NOT INVOKE DIRECTLY, and not exposed through `aitm`.
-// Plumbing: invoked only by the Claude Code hook runner, never by a human or
-// the AI. See bin/aitm-registry.mjs (INTERNAL map) for the rationale.
+// Plumbing: invoked by the Claude Code and Codex hook runners, never by a human
+// or the AI. See bin/aitm-registry.mjs (INTERNAL map) for the rationale.
 //
 // PreToolUse hook — enforces read/write path scoping on Bash commands.
 //
@@ -41,32 +41,26 @@
 import { readFileSync } from 'node:fs';
 import { execSync } from 'node:child_process';
 import { homedir } from 'node:os';
-import { join } from 'node:path';
+import { isAbsolute, join, relative, resolve } from 'node:path';
 
-// --- Phase 1: parse stdin -------------------------------------------------
-// A malformed payload is not a guard failure — preserve the intentional
-// pass-through (exit 0, no block). This stays OUTSIDE the fail-closed try below
-// so a bad harness payload can never be mistaken for an internal guard error.
-let input;
-try {
-  input = JSON.parse(readFileSync(0, 'utf8'));
-} catch {
-  process.exit(0); // malformed payload — don't block
+class BashPolicyBlock extends Error {
+  constructor(reason, code) {
+    super(reason);
+    this.reason = reason;
+    this.code = code;
+  }
 }
 
-// --- Phase 2: evaluate, failing CLOSED on any internal error --------------
-try {
-  await evaluate(input);
-  process.exit(0); // all checks passed
-} catch (err) {
-  failClosed(err);
+function allow(reason) {
+  return { decision: 'allow', reason };
 }
 
-// Normal policy block — a command violated a rule. Exit 0 with the decision
-// (Claude Code reads the block from the stdout JSON, not the exit code).
-function block(reason) {
-  process.stdout.write(JSON.stringify({ decision: 'block', reason }));
-  process.exit(0);
+// Normal policy block — a command violated a rule. Throwing a private signal
+// keeps the large policy evaluator short-circuiting without terminating an
+// importing test process; main translates it back to the historical exit-0
+// JSON decision.
+function block(reason, code) {
+  throw new BashPolicyBlock(reason, code);
 }
 
 // Fail closed — the guard could not complete evaluation. Emit a block decision
@@ -79,10 +73,26 @@ function failClosed(err) {
     detail +
     '\n  Fix the guard before re-running; do not bypass it.';
   process.stdout.write(JSON.stringify({ decision: 'block', reason }));
-  process.exit(1);
+  process.exitCode = 1;
 }
 
-async function evaluate(input) {
+export async function runBashGuard(input, deps = {}) {
+  try {
+    await evaluate(input, deps);
+    return allow('bash-policy-and-authority-allowed');
+  } catch (error) {
+    if (error instanceof BashPolicyBlock) {
+      return {
+        decision: 'block',
+        reason: error.reason,
+        ...(error.code ? { code: error.code } : {}),
+      };
+    }
+    throw error;
+  }
+}
+
+async function evaluate(input, deps = {}) {
   // #751 AC3 — test-only fault-injection seam. Lets the regression test force
   // the guard's internal evaluation to throw, so the fail-closed path can be
   // exercised deterministically from a subprocess. Never set in production.
@@ -100,21 +110,23 @@ async function evaluate(input) {
   const { configPath } = await import('./paths.mjs');
 
   const command = input?.tool_input?.command ?? '';
-  if (!command) process.exit(0);
+  if (!command) return;
 
   // Resolve project root; fall back to cwd when not in a git repo.
-  let projectRoot;
-  try {
-    projectRoot = execSync('git rev-parse --show-toplevel', {
-      encoding: 'utf8',
-      stdio: ['ignore', 'pipe', 'ignore'],
-      timeout: GIT_TIMEOUT_MS,
-    }).trim();
-  } catch {
-    projectRoot = process.cwd();
+  let projectRoot = deps.projectRoot;
+  if (!projectRoot) {
+    try {
+      projectRoot = execSync('git rev-parse --show-toplevel', {
+        encoding: 'utf8',
+        stdio: ['ignore', 'pipe', 'ignore'],
+        timeout: GIT_TIMEOUT_MS,
+      }).trim();
+    } catch {
+      projectRoot = process.cwd();
+    }
   }
 
-  const homeDir = homedir();
+  const homeDir = deps.homeDir || homedir();
   const claudeDir = join(homeDir, '.claude');
 
   // Unconditionally dangerous patterns — block regardless of path.
@@ -337,7 +349,9 @@ async function evaluate(input) {
   // `[#N]` and pass — the visible escape hatch.
   await checkCommitAssigneeLock({ command, scanned, projectRoot });
 
-  // All checks passed — evaluate() returns and the caller exits 0.
+  // All pure policy checks passed. Only now may the guard initialize durable
+  // authority for shell source writes or a session-attributed commit.
+  await authorizeAcceptedCommand({ command, projectRoot, deps });
 
   // #769 — commit-time assignee-lock check. Nested so it shares `block()` and
   // the resolved `projectRoot`/`configPath`. Any block() short-circuits with
@@ -413,4 +427,182 @@ async function evaluate(input) {
     }
     return null;
   }
+}
+
+function normalizeShellTarget(target, projectRoot) {
+  const raw = String(target || '').replace(/^['"]|['"]$/g, '');
+  if (!raw) return '';
+  if (!isAbsolute(raw)) return raw.replace(/^\.\//, '');
+  const rel = relative(resolve(projectRoot), resolve(raw));
+  if (!rel.startsWith('..') && !isAbsolute(rel)) return rel.split('\\').join('/');
+  return raw;
+}
+
+function isScratchTarget(target) {
+  return target === '.tmp' || target.startsWith('.tmp/');
+}
+
+function isSanctionedAitmCommand(command, splitCommandSegments) {
+  const segments = splitCommandSegments(command)
+    .map((segment) => segment.trim())
+    .filter(Boolean);
+  if (segments.length === 0) return false;
+  const AITM_COMMAND_RE =
+    /^(?:[A-Za-z_][A-Za-z0-9_]*=\S+\s+)*npx(?:\s+--yes)?\s+(?:aitm|ai-task-manager)\b/;
+  return segments.every((segment) => AITM_COMMAND_RE.test(segment));
+}
+
+function hasArbitraryNodeScript(command, splitCommandSegments, classifyBash) {
+  const NODE_SCRIPT_RE =
+    /^(?:[A-Za-z_][A-Za-z0-9_]*=\S+\s+)*node(?:\s+--[\w-]+(?:=\S+)?)*\s+(?:\.\/)?scripts\/\S+/;
+  return splitCommandSegments(command).some((segment) => {
+    const trimmed = segment.trim();
+    const activity = classifyBash(trimmed);
+    if (activity === 'RUN_TESTS' || activity === 'RUN_BUILD') return false;
+    return NODE_SCRIPT_RE.test(trimmed);
+  });
+}
+
+function canonicalIssue(value) {
+  const match = String(value ?? '').match(/^#?([1-9]\d*)$/);
+  return match?.[1] ?? null;
+}
+
+async function authorizeAcceptedCommand({ command, projectRoot, deps }) {
+  const [{ classifyBash, extractWriteTargets }, { detectGitCommit }, { splitCommandSegments }] =
+    await Promise.all([
+      import('./activity-policy.mjs'),
+      import('./lib/commit-trail.mjs'),
+      import('./lib/gh-edit-guard.mjs'),
+    ]);
+
+  const commit = detectGitCommit(command);
+  const writeTargets = extractWriteTargets(command)
+    .map((target) => normalizeShellTarget(target, projectRoot))
+    .filter(Boolean);
+  const sourceTargets = writeTargets.filter((target) => !isScratchTarget(target));
+  const arbitraryNodeScript = hasArbitraryNodeScript(command, splitCommandSegments, classifyBash);
+
+  if (
+    !commit.isCommit &&
+    sourceTargets.length === 0 &&
+    !arbitraryNodeScript &&
+    isSanctionedAitmCommand(command, splitCommandSegments)
+  ) {
+    return;
+  }
+  if (!commit.isCommit && sourceTargets.length === 0 && !arbitraryNodeScript) return;
+
+  const [{ isChoreModeActive }, { readBoundState }] = await Promise.all([
+    import('./lib/chore-mode.mjs'),
+    import('./lib/bound-state.mjs'),
+  ]);
+  const choreActive = (deps.isChoreModeActive || isChoreModeActive)(projectRoot);
+  if (choreActive) return;
+
+  const { activeIssue } = (deps.readBoundState || readBoundState)(projectRoot);
+  const boundIssue = canonicalIssue(activeIssue);
+  const operations = [];
+
+  if (commit.isCommit) {
+    const { parseCommitIssueRefs } = await import('./lib/assignee-guard.mjs');
+    const refs = parseCommitIssueRefs(command).map(String);
+    if (!boundIssue) {
+      if (refs.length === 0) return;
+      block(
+        `[task-tracker] Refusing issue-attributed git commit: ${refs.map((id) => `#${id}`).join(', ')} has no active session binding.\n` +
+          `  Bind the intended issue before committing so its exclusive work lease can be verified.`,
+        'bash-commit-no-bound-issue'
+      );
+    }
+    const mismatches = refs.filter((id) => id !== boundIssue);
+    if (mismatches.length > 0) {
+      block(
+        `[task-tracker] Refusing git commit: message target ${mismatches.map((id) => `#${id}`).join(', ')} differs from active binding #${boundIssue}.\n` +
+          `  A commit may only attribute the issue whose session lease is currently bound.`,
+        'bash-commit-binding-mismatch'
+      );
+    }
+    operations.push('issue-attributed-commit');
+  }
+
+  if (sourceTargets.length > 0 || arbitraryNodeScript) {
+    if (!boundIssue) {
+      const targets =
+        sourceTargets.length > 0 ? sourceTargets.join(', ') : 'unclassified node script';
+      block(
+        `[task-tracker] Refusing shell source mutation: no active issue is bound.\n` +
+          `  Targets: ${targets}`,
+        'bash-source-no-bound-issue'
+      );
+    }
+    operations.push('source-write');
+  }
+
+  let withGovernedEffect = deps.withGovernedEffect;
+  if (!withGovernedEffect) {
+    const { createRuntimeGovernedEffectAdapter } =
+      await import('./lib/work-lease/governed-effect.mjs');
+    const config =
+      deps.config ||
+      (() => {
+        const configFile = join(projectRoot, '.ai-task-manager', 'task-tracker.json');
+        return JSON.parse(readFileSync(configFile, 'utf8'));
+      })();
+    withGovernedEffect = createRuntimeGovernedEffectAdapter({
+      projectDir: projectRoot,
+      config,
+    });
+  }
+
+  for (const operation of [...new Set(operations)]) {
+    try {
+      await withGovernedEffect(
+        {
+          issueId: boundIssue,
+          operation,
+          heartbeat: true,
+        },
+        async () => {
+          await deps.onAuthorizedCommand?.({ operation, issueId: boundIssue });
+        }
+      );
+    } catch (error) {
+      const authorityCode =
+        typeof error?.code === 'string' && error.code.trim() ? error.code.trim() : 'unknown';
+      const detail = error?.message ? `: ${error.message}` : '';
+      const prefix = operation === 'source-write' ? 'source' : 'commit';
+      block(
+        `[task-tracker] Bash command refused: ${operation} authority ${authorityCode}${detail}\n` +
+          `  The shell command did not receive permission to run.`,
+        `bash-${prefix}-authority-refused`
+      );
+    }
+  }
+}
+
+async function main() {
+  let input;
+  try {
+    input = JSON.parse(readFileSync(0, 'utf8'));
+  } catch {
+    return;
+  }
+
+  try {
+    const result = await runBashGuard(input);
+    if (result.decision === 'block') {
+      process.stdout.write(JSON.stringify({ decision: 'block', reason: result.reason }));
+    }
+  } catch (error) {
+    failClosed(error);
+  }
+}
+
+export const runGuardBootstrap = main;
+
+const isMain =
+  import.meta.url === `file://${process.argv[1]}` || process.argv[1]?.endsWith('bash-guard.mjs');
+if (isMain) {
+  runGuardBootstrap();
 }

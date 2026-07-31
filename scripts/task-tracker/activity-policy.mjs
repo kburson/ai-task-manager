@@ -222,55 +222,107 @@ function startsWithCommand(command, pattern) {
   return next === '' || /\s|;|&|\|/.test(next);
 }
 
-// Extract write targets from a bash command line. Mirrors `bash-guard.mjs`
-// patterns (`redirectRe`, `teeRe`, `writeCommandRe`) but accepts relative
-// paths as well as absolute. Returns an array of target path strings.
-// Replace any single- or double-quoted substring with same-length spaces so
-// downstream regexes don't match shell metacharacters that appear inside
-// quoted arguments (e.g. `<pkg-version>` in a `/task check` label string,
-// which would otherwise look like a redirect). Preserves byte offsets and
-// keeps the rest of the command structure intact.
-function stripQuotedRegions(command) {
-  let out = '';
+// Tokenize only the shell surface needed by write-target extraction. Quote
+// contents remain one word so a quoted target is visible, while metacharacters
+// and command names inside quoted prose never become operators/commands.
+function shellWriteTokens(command) {
+  const tokens = [];
+  let word = '';
+  let wordStart = -1;
   let i = 0;
+  const flushWord = () => {
+    if (wordStart === -1) return;
+    tokens.push({ type: 'word', value: word, start: wordStart, end: i });
+    word = '';
+    wordStart = -1;
+  };
+
   while (i < command.length) {
     const c = command[i];
+    if (/\s/.test(c)) {
+      flushWord();
+      i += 1;
+      continue;
+    }
     if (c === "'" || c === '"') {
       const quote = c;
-      out += ' ';
+      if (wordStart === -1) wordStart = i;
       i += 1;
-      while (i < command.length && command[i] !== quote) {
-        out += ' ';
+      while (i < command.length) {
+        if (command[i] === quote) {
+          i += 1;
+          break;
+        }
+        if (quote === '"' && command[i] === '\\' && i + 1 < command.length) {
+          word += command[i + 1];
+          i += 2;
+          continue;
+        }
+        word += command[i];
         i += 1;
       }
-      if (i < command.length) {
-        out += ' ';
-        i += 1;
-      }
-    } else {
-      out += c;
-      i += 1;
+      continue;
     }
+    if ('><;|&'.includes(c)) {
+      flushWord();
+      let value = c;
+      if (command[i + 1] === c && ['>', '|', '&'].includes(c)) {
+        value += c;
+        i += 2;
+      } else if (c === '>' && command[i + 1] === '&') {
+        value += '&';
+        i += 2;
+      } else {
+        i += 1;
+      }
+      const previous = command[i - value.length - 1];
+      const fdRedirect = c === '>' && previous != null && /[0-9&]/.test(previous);
+      tokens.push({ type: 'operator', value: fdRedirect ? `fd${value}` : value });
+      continue;
+    }
+    if (wordStart === -1) wordStart = i;
+    if (c === '\\' && i + 1 < command.length) {
+      word += command[i + 1];
+      i += 2;
+      continue;
+    }
+    word += c;
+    i += 1;
   }
-  return out;
+  flushWord();
+  return tokens;
 }
 
-function extractWriteTargets(command) {
+export function extractWriteTargets(command) {
   const targets = new Set();
-  const scanned = stripQuotedRegions(command);
+  const tokens = shellWriteTokens(String(command || ''));
 
-  // Redirections: `> path` or `>> path` (not `>&`, not `2>`).
-  const redirectRe = /(?<![0-9&])>>?\s*([^\s;|&<>]+)/g;
-  for (const [, p] of scanned.matchAll(redirectRe)) targets.add(p);
+  for (let i = 0; i < tokens.length; i++) {
+    const token = tokens[i];
+    if (token.type === 'operator' && ['>', '>>'].includes(token.value)) {
+      const target = tokens[i + 1];
+      if (target?.type === 'word' && target.value) targets.add(target.value);
+      continue;
+    }
+    if (token.type !== 'word') continue;
 
-  // `tee [-a] path`
-  const teeRe = /\btee\s+(?:-a\s+)?([^\s;|&<>]+)/g;
-  for (const [, p] of scanned.matchAll(teeRe)) targets.add(p);
+    if (token.value === 'tee') {
+      let cursor = i + 1;
+      while (tokens[cursor]?.type === 'word' && tokens[cursor].value.startsWith('-')) cursor += 1;
+      if (tokens[cursor]?.type === 'word' && tokens[cursor].value) {
+        targets.add(tokens[cursor].value);
+      }
+      continue;
+    }
 
-  // `touch|mkdir|rmdir|rm` — first non-flag argument is the target. Supports
-  // multiple flags before the path (e.g., `mkdir -p`).
-  const writeCommandRe = /\b(?:touch|mkdir|rmdir|rm)\s+((?:-[^\s]+\s+)*)([^\s;|&<>]+)/g;
-  for (const m of scanned.matchAll(writeCommandRe)) targets.add(m[2]);
+    if (['touch', 'mkdir', 'rmdir', 'rm'].includes(token.value)) {
+      let cursor = i + 1;
+      while (tokens[cursor]?.type === 'word' && tokens[cursor].value.startsWith('-')) cursor += 1;
+      if (tokens[cursor]?.type === 'word' && tokens[cursor].value) {
+        targets.add(tokens[cursor].value);
+      }
+    }
+  }
 
   return [...targets];
 }

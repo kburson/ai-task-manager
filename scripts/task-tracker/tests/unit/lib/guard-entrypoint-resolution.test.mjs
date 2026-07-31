@@ -270,6 +270,32 @@ test('#1049: exact installed activity bootstrap blocks stale apply_patch authori
   }
 });
 
+test('#1049: exact installed Bash bootstrap blocks stale attributed commit authority', () => {
+  const dir = installedGuardSandbox();
+  try {
+    const env = {
+      ...installStaleLease(dir, { sessionId: 'codex-bash-commit-stale' }),
+      TT_SKIP_NETWORK: '1',
+    };
+    const result = runBootstrap(
+      'bash-guard',
+      dir,
+      JSON.stringify({
+        tool_name: 'Bash',
+        tool_input: { command: 'git commit -m "[#1049] feat: guarded commit"' },
+      }),
+      env
+    );
+    assert.equal(result.status, 0, result.stderr);
+    const decision = JSON.parse(result.stdout);
+    assert.equal(decision.decision, 'block');
+    assert.match(decision.reason, /issue-attributed-commit/);
+    assert.match(decision.reason, /fence-stale/);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
 test('#1049: exact installed source and activity bootstraps pass malformed payloads', () => {
   const dir = installedGuardSandbox();
   try {

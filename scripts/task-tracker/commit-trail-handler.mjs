@@ -9,7 +9,9 @@
 // Reads the Claude Code tool-call payload from stdin:
 //   { tool_name, tool_input: { command }, tool_response: { exit_code, ... }, cwd }
 //
-// Silent on all failures: this hook must never break the developer's shell.
+// This hook never breaks the developer's shell. Ordinary Git/GitHub failures
+// remain stderr-only; lost commit authority is also explicit on stderr and
+// prevents every remaining remote mutation/readback.
 
 import { readFileSync, existsSync } from 'node:fs';
 import { execFile } from 'node:child_process';
@@ -30,6 +32,7 @@ import { GIT_TIMEOUT_MS } from './lib/process-timeouts.mjs';
 import { isChoreModeActive } from './lib/chore-mode.mjs';
 import { lintCommitSubject } from './lib/commit-attribution-format.mjs';
 import { statePath as resolveStatePath } from './paths.mjs';
+import { createRuntimeGovernedEffectAdapter } from './lib/work-lease/governed-effect.mjs';
 
 // #327 — chore-mode commit-subject gate.
 //
@@ -181,39 +184,89 @@ export async function defaultIsReachable(sha, { cwd, pexec: pexecDep = pexec } =
   }
 }
 
-export async function postCommitTrail({ issueNumber, repo, info, timeoutMs = 5000, deps = {} }) {
+export async function postCommitTrail({
+  issueNumber,
+  repo,
+  info,
+  cwd,
+  projectDir = cwd,
+  timeoutMs = 5000,
+  deps = {},
+}) {
   const find = deps.find || findTrailComment;
   const create = deps.create || createTrailComment;
   const update = deps.update || updateTrailComment;
 
-  const existing = await find(issueNumber, repo, { timeoutMs });
-  const worktreeCols = existing ? hasWorktreeCols(existing.body) : info.isWorktree;
-  const commitUrl = info.commitUrl || `https://github.com/${repo}/commit/${info.sha}`;
-  const row = buildRow({ ...info, commitUrl }, { worktreeCols });
-
-  if (existing) {
-    // #732 — reconcile (never prune): tolerate unreachable/rewritten SHAs and
-    // back-fill the informational-ledger caveat onto legacy trails.
-    const reconciled = await reconcileLedger(existing.body, { issueNumber });
-    const parsed = parseMarker(reconciled);
-    if (parsed.shas.has(info.sha)) {
-      if (reconciled !== existing.body) {
-        await update(existing.id, reconciled, { timeoutMs });
-        return { action: 'reconciled' };
-      }
-      return { action: 'noop-duplicate' };
+  let withGovernedEffect = deps.withGovernedEffect;
+  if (!withGovernedEffect) {
+    if (!projectDir) {
+      throw new Error('postCommitTrail: projectDir is required for commit authority');
     }
-    let next = appendCommitRow(reconciled, row);
-    next = updateMarker(next, info.sha);
-    await update(existing.id, next, { timeoutMs });
-    return { action: 'updated' };
-  } else {
-    let body = buildInitialTrail({ worktreeCols, issueNumber });
-    body = appendCommitRow(body, row);
-    body = updateMarker(body, info.sha);
-    await create(issueNumber, repo, body, { timeoutMs });
-    return { action: 'created' };
+    const cfgPath = path.join(projectDir, '.ai-task-manager', 'task-tracker.json');
+    const config = deps.config || JSON.parse(readFileSync(cfgPath, 'utf8'));
+    withGovernedEffect = createRuntimeGovernedEffectAdapter({ projectDir, config });
   }
+
+  return withGovernedEffect(
+    {
+      issueId: String(issueNumber).replace(/^#/, ''),
+      operation: 'issue-attributed-commit',
+      heartbeat: true,
+    },
+    async (authority) => {
+      if (typeof authority?.reverify !== 'function') {
+        throw new Error('postCommitTrail: authority reverify seam is required');
+      }
+
+      const verifiedFind = async () => {
+        await authority.reverify();
+        return find(issueNumber, repo, { timeoutMs });
+      };
+      const verifyReadback = async (expectedBody) => {
+        const remote = await verifiedFind();
+        if (!remote || remote.body !== expectedBody) {
+          const error = new Error('commit-trail remote readback does not match the fenced write');
+          error.code = 'authority-unavailable';
+          throw error;
+        }
+      };
+
+      const existing = await verifiedFind();
+      const worktreeCols = existing ? hasWorktreeCols(existing.body) : info.isWorktree;
+      const commitUrl = info.commitUrl || `https://github.com/${repo}/commit/${info.sha}`;
+      const row = buildRow({ ...info, commitUrl }, { worktreeCols });
+
+      if (existing) {
+        // #732 — reconcile (never prune): tolerate unreachable/rewritten SHAs and
+        // back-fill the informational-ledger caveat onto legacy trails.
+        const reconciled = await reconcileLedger(existing.body, { issueNumber });
+        const parsed = parseMarker(reconciled);
+        if (parsed.shas.has(info.sha)) {
+          if (reconciled !== existing.body) {
+            await authority.reverify();
+            await update(existing.id, reconciled, { timeoutMs });
+            await verifyReadback(reconciled);
+            return { action: 'reconciled' };
+          }
+          return { action: 'noop-duplicate' };
+        }
+        let next = appendCommitRow(reconciled, row);
+        next = updateMarker(next, info.sha);
+        await authority.reverify();
+        await update(existing.id, next, { timeoutMs });
+        await verifyReadback(next);
+        return { action: 'updated' };
+      }
+
+      let body = buildInitialTrail({ worktreeCols, issueNumber });
+      body = appendCommitRow(body, row);
+      body = updateMarker(body, info.sha);
+      await authority.reverify();
+      await create(issueNumber, repo, body, { timeoutMs });
+      await verifyReadback(body);
+      return { action: 'created' };
+    }
+  );
 }
 
 async function main() {
@@ -269,9 +322,10 @@ async function main() {
   if (!repo) return;
 
   try {
-    await postCommitTrail({ issueNumber, repo, info, cwd });
+    await postCommitTrail({ issueNumber, repo, info, cwd, projectDir });
   } catch (err) {
-    process.stderr.write(`[commit-trail] gh error: ${err.message}\n`);
+    const code = err?.code ? `${err.code}: ` : '';
+    process.stderr.write(`[commit-trail] issue-attributed-commit refused: ${code}${err.message}\n`);
   }
 }
 

@@ -8,33 +8,43 @@ import { strict as assert } from 'node:assert';
 import { execFile, spawn } from 'node:child_process';
 import { promisify } from 'node:util';
 import { mkdirSync, writeFileSync, chmodSync, rmSync, existsSync, readFileSync } from 'node:fs';
+import os from 'node:os';
 import { projectScratchDir, mkdtempProjectIsolated } from '../../../lib/scratch-dir.mjs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { postCommitTrail } from '../../../commit-trail-handler.mjs';
 import { TRAIL_HEADING } from '../../../lib/commit-trail.mjs';
+import { createWorkLeaseProvider } from '../../../lib/work-lease/provider.mjs';
+import { resolveWorktreeIdentity } from '../../../lib/work-lease/worktree-identity.mjs';
 
 const pexec = promisify(execFile);
 const __dir = path.dirname(fileURLToPath(import.meta.url)) + '/..';
 const HANDLER = path.resolve(__dir, '..', '..', 'commit-trail-handler.mjs');
+const TRAIL_SESSION_ID = 'commit-trail-handler-test';
+const LEDGER_PROJECT_ID = '11111111-1111-4111-8111-111111111111';
 
 function makeFakeGh({ findResponse = null, failCreate = false, failUpdate = false } = {}) {
   const calls = { find: [], create: [], update: [] };
+  let remote = findResponse;
   return {
     calls,
     deps: {
+      withGovernedEffect: async (_options, callback) =>
+        callback({ reverify: async () => ({ allowed: true }) }),
       find: async (issueNumber, repo) => {
         calls.find.push({ issueNumber, repo });
-        return findResponse;
+        return remote;
       },
       create: async (issueNumber, repo, body) => {
         calls.create.push({ issueNumber, repo, body });
         if (failCreate) throw new Error('gh create failed');
+        remote = { id: 'C_CREATED', body };
       },
       update: async (id, body) => {
         calls.update.push({ id, body });
         if (failUpdate) throw new Error('gh update failed');
+        remote = { id, body };
       },
     },
   };
@@ -140,9 +150,14 @@ function makeFakeGh({ findResponse = null, failCreate = false, failUpdate = fals
 function setupSandbox({ active = '#42', repo = 'o/r' } = {}) {
   const sandbox = mkdtempProjectIsolated('aitm-trail-');
   mkdirSync(path.join(sandbox, '.ai-task-manager'), { recursive: true });
+  const config = {
+    repo,
+    ledgerProjectId: LEDGER_PROJECT_ID,
+    workLease: { authority: 'local' },
+  };
   writeFileSync(
     path.join(sandbox, '.ai-task-manager', 'task-tracker.json'),
-    JSON.stringify({ repo })
+    JSON.stringify(config)
   );
   if (active) {
     // #573: the global ledger lives under `.tmp/aitm/state/`.
@@ -154,6 +169,45 @@ function setupSandbox({ active = '#42', repo = 'o/r' } = {}) {
         lastActive: active,
         entryStartTs: new Date().toISOString(),
         wordsAtEntryStart: 0,
+      })
+    );
+    const issueId = String(active).replace(/^#/, '');
+    const hostId = os.hostname();
+    const worktree = resolveWorktreeIdentity(sandbox, { hostId });
+    const store = createWorkLeaseProvider({ config, projectDir: sandbox });
+    const lease = store.acquire({
+      projectId: LEDGER_PROJECT_ID,
+      issueId,
+      mode: 'write',
+      idempotencyKey: `commit-trail:${issueId}`,
+      requestedAt: new Date().toISOString(),
+      ttlMs: 900_000,
+      holder: {
+        principalKind: 'worker',
+        provider: 'codex',
+        agentRunId: TRAIL_SESSION_ID,
+        sessionId: TRAIL_SESSION_ID,
+        hostId,
+        worktreeId: worktree.worktreeId,
+        pathHash: worktree.pathHash,
+        branch: 'trunk',
+        pid: process.pid,
+      },
+    });
+    store.close();
+    const sessionDir = path.join(sandbox, '.tmp', 'aitm', 'sessions', TRAIL_SESSION_ID);
+    mkdirSync(sessionDir, { recursive: true });
+    writeFileSync(
+      path.join(sessionDir, 'active-task.json'),
+      JSON.stringify({
+        issue: active,
+        kanbanState: 'develop',
+        lease: {
+          projectId: LEDGER_PROJECT_ID,
+          leaseId: lease.leaseId,
+          fencingToken: lease.fencingToken,
+          worktreeId: worktree.worktreeId,
+        },
       })
     );
   }
@@ -169,6 +223,8 @@ function makeShim(sandbox, { gitOutputs = {}, ghBehavior = 'success' } = {}) {
   writeFileSync(path.join(binDir, 'package.json'), JSON.stringify({ type: 'module' }));
   const logPath = path.join(sandbox, 'shim.log');
   writeFileSync(logPath, '');
+  const remotePath = path.join(sandbox, 'remote-trail.txt');
+  writeFileSync(remotePath, '');
 
   const gitShim = path.join(binDir, 'git');
   writeFileSync(
@@ -183,6 +239,10 @@ for (const [pattern, output] of Object.entries(outputs)) {
     fs.writeSync(1, output);
     process.exit(0);
   }
+}
+if (args.startsWith('worktree list --porcelain -z')) {
+  fs.writeSync(1, 'worktree ' + ${JSON.stringify(sandbox)} + '\\0HEAD test\\0branch refs/heads/trunk\\0\\0');
+  process.exit(0);
 }
 process.exit(0);
 `
@@ -203,7 +263,20 @@ if (behavior === 'fail') {
 }
 // 'issue view ... --json comments' → return no comments by default
 if (args[0] === 'issue' && args[1] === 'view') {
-  fs.writeSync(1, JSON.stringify({ comments: [] }));
+  const body = fs.readFileSync(${JSON.stringify(remotePath)}, 'utf8');
+  fs.writeSync(1, JSON.stringify({
+    comments: body ? [{ id: 'C_REMOTE', url: 'https://example.test/comment', body }] : []
+  }));
+  process.exit(0);
+}
+if (args[0] === 'issue' && args[1] === 'comment') {
+  const bodyIndex = args.indexOf('--body');
+  fs.writeFileSync(${JSON.stringify(remotePath)}, bodyIndex === -1 ? '' : args[bodyIndex + 1]);
+  process.exit(0);
+}
+if (args[0] === 'api' && args[1] === 'graphql') {
+  const bodyArg = args.find((arg) => arg.startsWith('body='));
+  if (bodyArg) fs.writeFileSync(${JSON.stringify(remotePath)}, bodyArg.slice('body='.length));
   process.exit(0);
 }
 process.exit(0);
@@ -226,6 +299,8 @@ async function runHandler(payload, { sandbox, binDir, env = {} }) {
         ...process.env,
         PATH: `${binDir}:${process.env.PATH}`,
         AI_TASK_MANAGER_PROJECT_DIR: sandbox,
+        AI_TASK_MANAGER_APP_NAME: 'codex',
+        AI_TASK_MANAGER_SESSION_ID: TRAIL_SESSION_ID,
         ...env,
       },
     });
