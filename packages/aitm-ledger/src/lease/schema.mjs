@@ -17,6 +17,8 @@ export const LEASE_OPERATIONS = Object.freeze([
 
 export const OWNERSHIP_RETAINING_STATES = Object.freeze(['active', 'paused']);
 export const TERMINAL_LEASE_STATES = Object.freeze(['released', 'expired', 'superseded']);
+export const ACTIVE_LEASE_TTL_MS = 900_000;
+export const PAUSED_LEASE_TTL_MS = 86_400_000;
 export const TAKEOVER_EVIDENCE_KINDS = Object.freeze([
   'local-process-dead',
   'remote-expired',
@@ -101,6 +103,65 @@ export function validateHolder(value, { principalKind = 'worker', label = 'holde
   return value;
 }
 
+export function validateLeaseHolder(value, { label = 'holder' } = {}) {
+  object(value, label);
+  if (!['worker', 'integration'].includes(value.principalKind)) {
+    invalidRequest(`${label}.principalKind is invalid`);
+  }
+  const required = [
+    'principalKind',
+    'provider',
+    'agentRunId',
+    'sessionId',
+    'hostId',
+    'worktreeId',
+    'pathHash',
+    'branch',
+    'pid',
+  ];
+  exactKeys(value, required, [], label);
+  for (const key of required.filter((key) => !['principalKind', 'pid'].includes(key))) {
+    nonEmpty(value[key], `${label}.${key}`);
+  }
+  if (!Number.isSafeInteger(value.pid) || value.pid <= 0) {
+    invalidRequest(`${label}.pid must be a positive safe integer`);
+  }
+  return value;
+}
+
+export function validateBindingIdentity(
+  value,
+  { label = 'binding', holder, issueId, requireDisplayPath = false } = {}
+) {
+  object(value, label);
+  exactKeys(value, ['sessionId', 'issueId', 'worktreeId', 'displayPath'], [], label);
+  nonEmpty(value.sessionId, `${label}.sessionId`);
+  issueIdentifier(value.issueId, `${label}.issueId`);
+  nonEmpty(value.worktreeId, `${label}.worktreeId`);
+  if (value.displayPath === null) {
+    if (requireDisplayPath) invalidRequest(`${label}.displayPath must be a non-empty string`);
+  } else {
+    nonEmpty(value.displayPath, `${label}.displayPath`);
+  }
+  if (holder) {
+    if (value.sessionId !== holder.sessionId)
+      invalidRequest(`${label}.sessionId must match holder`);
+    if (value.worktreeId !== holder.worktreeId) {
+      invalidRequest(`${label}.worktreeId must match holder`);
+    }
+    if (
+      value.displayPath !== null &&
+      createHash('sha256').update(value.displayPath).digest('hex') !== holder.pathHash
+    ) {
+      invalidRequest(`${label}.displayPath does not match holder.pathHash`);
+    }
+  }
+  if (issueId != null && value.issueId !== issueId) {
+    invalidRequest(`${label}.issueId must match request.issueId`);
+  }
+  return value;
+}
+
 function validateMutationEnvelope(request, timestampKey) {
   object(request, 'request');
   nonEmpty(request.projectId, 'projectId');
@@ -112,14 +173,20 @@ export function validateAcquireRequest(request) {
   validateMutationEnvelope(request, 'requestedAt');
   exactKeys(
     request,
-    ['projectId', 'issueId', 'mode', 'idempotencyKey', 'requestedAt', 'ttlMs', 'holder'],
+    ['projectId', 'issueId', 'mode', 'idempotencyKey', 'requestedAt', 'ttlMs', 'holder', 'binding'],
     [],
     'request'
   );
   issueIdentifier(request.issueId);
   if (request.mode !== 'write') invalidRequest('mode must be write');
   ttl(request.ttlMs);
+  if (request.ttlMs !== ACTIVE_LEASE_TTL_MS) invalidRequest('active ttlMs must be 900000');
   validateHolder(request.holder);
+  validateBindingIdentity(request.binding, {
+    holder: request.holder,
+    issueId: request.issueId,
+    requireDisplayPath: true,
+  });
   return request;
 }
 
@@ -127,13 +194,36 @@ export function validateRenewRequest(request) {
   validateMutationEnvelope(request, 'requestedAt');
   exactKeys(
     request,
-    ['projectId', 'leaseId', 'fencingToken', 'idempotencyKey', 'requestedAt', 'ttlMs'],
-    [],
+    [
+      'projectId',
+      'leaseId',
+      'fencingToken',
+      'idempotencyKey',
+      'requestedAt',
+      'ttlMs',
+      'holder',
+      'binding',
+    ],
+    ['lifecycle'],
     'request'
   );
   nonEmpty(request.leaseId, 'leaseId');
   assertFencingToken(request.fencingToken);
   ttl(request.ttlMs);
+  validateLeaseHolder(request.holder);
+  validateBindingIdentity(request.binding, { holder: request.holder });
+  if (request.lifecycle !== undefined) {
+    object(request.lifecycle, 'lifecycle');
+    exactKeys(request.lifecycle, ['expectedState', 'nextState'], [], 'lifecycle');
+  }
+  const expectedState = request.lifecycle?.expectedState ?? 'active';
+  const nextState = request.lifecycle?.nextState ?? 'active';
+  const transition = `${expectedState}->${nextState}`;
+  if (!['active->active', 'active->paused', 'paused->active'].includes(transition)) {
+    invalidRequest('renew state transition is invalid');
+  }
+  const expectedTtl = nextState === 'paused' ? PAUSED_LEASE_TTL_MS : ACTIVE_LEASE_TTL_MS;
+  if (request.ttlMs !== expectedTtl) invalidRequest(`ttlMs must be ${expectedTtl}`);
   return request;
 }
 
@@ -141,7 +231,7 @@ export function validateVerifyRequest(request) {
   object(request, 'request');
   exactKeys(
     request,
-    ['projectId', 'leaseId', 'fencingToken', 'operation', 'verifiedAt'],
+    ['projectId', 'leaseId', 'fencingToken', 'operation', 'verifiedAt', 'holder', 'binding'],
     [],
     'request'
   );
@@ -152,6 +242,8 @@ export function validateVerifyRequest(request) {
     invalidRequest('operation is not in the work-lease vocabulary');
   }
   timestamp(request.verifiedAt, 'verifiedAt');
+  validateLeaseHolder(request.holder);
+  validateBindingIdentity(request.binding, { holder: request.holder });
   return request;
 }
 
@@ -159,13 +251,25 @@ export function validateSwitchLeaseRequest(request) {
   validateMutationEnvelope(request, 'switchedAt');
   exactKeys(
     request,
-    ['projectId', 'issueId', 'leaseId', 'fencingToken', 'idempotencyKey', 'switchedAt', 'target'],
+    [
+      'projectId',
+      'issueId',
+      'leaseId',
+      'fencingToken',
+      'holder',
+      'binding',
+      'idempotencyKey',
+      'switchedAt',
+      'target',
+    ],
     [],
     'request'
   );
   issueIdentifier(request.issueId);
   nonEmpty(request.leaseId, 'leaseId');
   assertFencingToken(request.fencingToken);
+  validateLeaseHolder(request.holder);
+  validateBindingIdentity(request.binding, { holder: request.holder, issueId: request.issueId });
   validateAcquireRequest(request.target);
   if (request.target.projectId !== request.projectId) {
     invalidRequest('switch target projectId must match current projectId');
@@ -184,6 +288,9 @@ export function validateHandoffRequest(request) {
       'idempotencyKey',
       'handedOffAt',
       'reason',
+      'ttlMs',
+      'holder',
+      'binding',
       'recipient',
     ],
     [],
@@ -192,7 +299,18 @@ export function validateHandoffRequest(request) {
   nonEmpty(request.leaseId, 'leaseId');
   assertFencingToken(request.fencingToken);
   nonEmpty(request.reason, 'reason');
-  validateHolder(request.recipient, { principalKind: 'integration', label: 'recipient' });
+  if (ttl(request.ttlMs) !== ACTIVE_LEASE_TTL_MS) invalidRequest('handoff ttlMs must be 900000');
+  validateLeaseHolder(request.holder);
+  validateBindingIdentity(request.binding, { holder: request.holder });
+  validateLeaseHolder(request.recipient, { label: 'recipient' });
+  if (request.recipient.principalKind !== 'integration') {
+    invalidRequest('recipient.principalKind must be integration');
+  }
+  for (const key of ['worktreeId', 'pathHash', 'branch']) {
+    if (request.recipient[key] !== request.holder[key]) {
+      invalidRequest(`recipient.${key} must preserve holder.${key}`);
+    }
+  }
   return request;
 }
 
@@ -200,13 +318,24 @@ export function validateReleaseRequest(request) {
   validateMutationEnvelope(request, 'releasedAt');
   exactKeys(
     request,
-    ['projectId', 'leaseId', 'fencingToken', 'idempotencyKey', 'releasedAt', 'reason'],
+    [
+      'projectId',
+      'leaseId',
+      'fencingToken',
+      'idempotencyKey',
+      'releasedAt',
+      'reason',
+      'holder',
+      'binding',
+    ],
     [],
     'request'
   );
   nonEmpty(request.leaseId, 'leaseId');
   assertFencingToken(request.fencingToken);
   nonEmpty(request.reason, 'reason');
+  validateLeaseHolder(request.holder);
+  validateBindingIdentity(request.binding, { holder: request.holder });
   return request;
 }
 
@@ -219,7 +348,11 @@ export function validateTakeoverRequest(request) {
       'issueId',
       'expectedLeaseId',
       'expectedToken',
+      'expectedHolder',
+      'expectedBinding',
       'requester',
+      'requesterBinding',
+      'ttlMs',
       'observedAt',
       'idempotencyKey',
       'reason',
@@ -231,7 +364,20 @@ export function validateTakeoverRequest(request) {
   issueIdentifier(request.issueId);
   nonEmpty(request.expectedLeaseId, 'expectedLeaseId');
   assertFencingToken(request.expectedToken, 'expectedToken');
+  validateLeaseHolder(request.expectedHolder, { label: 'expectedHolder' });
+  validateBindingIdentity(request.expectedBinding, {
+    label: 'expectedBinding',
+    holder: request.expectedHolder,
+    issueId: request.issueId,
+  });
   validateHolder(request.requester);
+  validateBindingIdentity(request.requesterBinding, {
+    label: 'requesterBinding',
+    holder: request.requester,
+    issueId: request.issueId,
+    requireDisplayPath: true,
+  });
+  if (ttl(request.ttlMs) !== ACTIVE_LEASE_TTL_MS) invalidRequest('takeover ttlMs must be 900000');
   nonEmpty(request.reason, 'reason');
   object(request.evidence, 'evidence');
   exactKeys(
@@ -257,7 +403,8 @@ export function validateObserveSelector(selector) {
   exactKeys(selector, ['projectId'], ['issueId', 'worktreeId'], 'selector');
   nonEmpty(selector.projectId, 'projectId');
   const keys = ['issueId', 'worktreeId'].filter((key) => selector[key] != null);
-  if (keys.length !== 1) invalidRequest('selector requires exactly one of issueId or worktreeId');
+  if (keys.length > 1) invalidRequest('selector allows at most one of issueId or worktreeId');
+  if (keys.length === 0) return selector;
   if (keys[0] === 'issueId') issueIdentifier(selector.issueId);
   else nonEmpty(selector.worktreeId, 'worktreeId');
   return selector;

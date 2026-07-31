@@ -1,6 +1,7 @@
 // @story #1049
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
 
 import {
   HTTP_LEASE_ROUTES,
@@ -12,6 +13,8 @@ import {
 } from '../src/index.mjs';
 
 const NOW = '2026-07-30T12:00:00.000Z';
+const DISPLAY_PATH = '/workspace/1049';
+const PATH_HASH = createHash('sha256').update(DISPLAY_PATH).digest('hex');
 
 function holder(overrides = {}) {
   return {
@@ -21,7 +24,7 @@ function holder(overrides = {}) {
     sessionId: 'session-1',
     hostId: 'host-1',
     worktreeId: 'wt:v1:one',
-    pathHash: 'path-one',
+    pathHash: PATH_HASH,
     branch: 'feature/child/1049',
     pid: 123,
     ...overrides,
@@ -29,15 +32,49 @@ function holder(overrides = {}) {
 }
 
 function acquire(overrides = {}) {
+  const requestHolder = overrides.holder ?? holder();
+  const issueId = overrides.issueId ?? '1049';
   return {
     projectId: 'project-1',
-    issueId: '1049',
+    issueId,
     mode: 'write',
     idempotencyKey: 'acquire-1',
     requestedAt: NOW,
     ttlMs: 900_000,
-    holder: holder(),
+    holder: requestHolder,
+    binding: {
+      sessionId: requestHolder.sessionId,
+      issueId,
+      worktreeId: requestHolder.worktreeId,
+      displayPath: DISPLAY_PATH,
+    },
     ...overrides,
+  };
+}
+
+function binding(overrides = {}) {
+  return {
+    projectId: 'project-1',
+    leaseId: 'lease-1',
+    sessionId: 'session-1',
+    issueId: '1049',
+    worktreeId: 'wt:v1:one',
+    displayPath: DISPLAY_PATH,
+    fencingToken: '1',
+    observedAt: NOW,
+    ...overrides,
+  };
+}
+
+function requestAuthority(requestHolder = holder(), issueId = '1049') {
+  return {
+    holder: requestHolder,
+    binding: {
+      sessionId: requestHolder.sessionId,
+      issueId,
+      worktreeId: requestHolder.worktreeId,
+      displayPath: DISPLAY_PATH,
+    },
   };
 }
 
@@ -159,6 +196,7 @@ test('idempotency header must exactly match the mutating body and is absent for 
         fencingToken: '1',
         operation: 'source-write',
         verifiedAt: NOW,
+        ...requestAuthority(),
       },
     })
   );
@@ -178,13 +216,14 @@ test('idempotency header must exactly match the mutating body and is absent for 
           fencingToken: '1',
           operation: 'source-write',
           verifiedAt: NOW,
+          ...requestAuthority(),
         },
       }),
     (error) => error.code === 'invalid-request'
   );
 });
 
-test('GET observation requires exactly one selector and represents absence explicitly', () => {
+test('GET observation accepts project scope and validates correlated binding receipts', () => {
   const issue = validateHttpLeaseRequest({
     method: 'GET',
     pathname: '/v1/work-leases',
@@ -209,8 +248,41 @@ test('GET observation requires exactly one selector and represents absence expli
     (error) => error.code === 'invalid-request'
   );
 
+  assert.deepEqual(
+    validateHttpLeaseRequest({
+      method: 'GET',
+      pathname: '/v1/work-leases',
+      headers: { authorization: 'Bearer secret' },
+      query: new URLSearchParams({ projectId: 'project-1' }),
+    }),
+    { operation: 'observe', request: { projectId: 'project-1' } }
+  );
+  assert.deepEqual(
+    parseHttpLeaseResponse({
+      operation: 'observe',
+      status: 200,
+      payload: createHttpSuccessEnvelope({ leases: [lease()], bindings: [binding()] }),
+      request: { projectId: 'project-1' },
+    }),
+    { leases: [lease()], bindings: [binding()] }
+  );
+  for (const bad of [
+    { leases: [lease()], bindings: [] },
+    { leases: [lease()], bindings: [binding({ displayPath: null, leaseId: 'wrong' })] },
+  ]) {
+    assert.throws(
+      () =>
+        parseHttpLeaseResponse({
+          operation: 'observe',
+          status: 200,
+          payload: createHttpSuccessEnvelope(bad),
+          request: { projectId: 'project-1' },
+        }),
+      (error) => error.code === 'authority-unavailable'
+    );
+  }
+
   for (const query of [
-    new URLSearchParams({ projectId: 'project-1' }),
     new URLSearchParams({
       projectId: 'project-1',
       issueId: '1049',
@@ -294,6 +366,7 @@ test('success envelopes validate operation-specific status and fencing fields', 
         fencingToken: '1',
         operation: 'source-write',
         verifiedAt: NOW,
+        ...requestAuthority(),
       },
     }),
     { allowed: true, lease: lease() }
@@ -356,6 +429,7 @@ test('success responses must correlate to the originating fenced request', () =>
     fencingToken: '1',
     operation: 'source-write',
     verifiedAt: NOW,
+    ...requestAuthority(),
   };
   const releaseRequest = {
     projectId: 'project-1',

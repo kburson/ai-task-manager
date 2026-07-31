@@ -1,6 +1,7 @@
 // @story #1049
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
 
 import {
   LEASE_OPERATIONS,
@@ -9,6 +10,7 @@ import {
   canonicalRequestDigest,
   validateAcquireRequest,
   validateHandoffRequest,
+  validateRenewRequest,
   validateTakeoverRequest,
   validateVerifyRequest,
 } from '../src/index.mjs';
@@ -19,6 +21,8 @@ import {
 } from './fixtures/lease-conformance.mjs';
 
 const NOW = '2026-07-30T12:00:00.000Z';
+const DISPLAY_PATH = '/workspace/1049';
+const PATH_HASH = createHash('sha256').update(DISPLAY_PATH).digest('hex');
 
 function holder(overrides = {}) {
   return {
@@ -28,22 +32,80 @@ function holder(overrides = {}) {
     sessionId: 'session-1',
     hostId: 'host-1',
     worktreeId: 'wt:v1:one',
-    pathHash: 'path-one',
+    pathHash: PATH_HASH,
     branch: 'feature/child/1049',
     pid: 123,
     ...overrides,
   };
 }
 
+function binding(overrides = {}) {
+  return {
+    sessionId: 'session-1',
+    issueId: '1049',
+    worktreeId: 'wt:v1:one',
+    displayPath: DISPLAY_PATH,
+    ...overrides,
+  };
+}
+
+function authorityFor(lease, overrides = {}) {
+  return {
+    holder: lease.holder,
+    binding: binding({
+      sessionId: lease.holder.sessionId,
+      issueId: lease.issueId,
+      worktreeId: lease.holder.worktreeId,
+      ...overrides,
+    }),
+  };
+}
+
+test('lifecycle contract requires exact authority identity and legal state TTL transitions', () => {
+  const base = {
+    projectId: 'project-1',
+    leaseId: 'lease-1',
+    fencingToken: '1',
+    idempotencyKey: 'renew-1',
+    requestedAt: NOW,
+    lifecycle: { expectedState: 'active', nextState: 'paused' },
+    ttlMs: 86_400_000,
+    holder: holder(),
+    binding: binding(),
+  };
+  assert.doesNotThrow(() => validateRenewRequest(base));
+  for (const invalid of [
+    { ...base, lifecycle: { expectedState: 'active', nextState: 'active' }, ttlMs: 86_400_000 },
+    { ...base, lifecycle: { expectedState: 'paused', nextState: 'paused' } },
+    { ...base, binding: binding({ displayPath: '/workspace/wrong' }) },
+    { ...base, holder: holder({ pathHash: 'not-a-sha256' }) },
+  ]) {
+    assert.throws(
+      () => validateRenewRequest(invalid),
+      (error) => error.code === 'invalid-request'
+    );
+  }
+  const { lifecycle: _lifecycle, ...heartbeat } = base;
+  assert.doesNotThrow(() => validateRenewRequest({ ...heartbeat, ttlMs: 900_000 }));
+});
+
 function acquire(overrides = {}) {
+  const requestHolder = overrides.holder ?? holder();
+  const issueId = overrides.issueId ?? '1049';
   return {
     projectId: 'project-1',
-    issueId: '1049',
+    issueId,
     mode: 'write',
     idempotencyKey: 'acquire-1',
     requestedAt: NOW,
     ttlMs: 900_000,
-    holder: holder(),
+    holder: requestHolder,
+    binding: {
+      sessionId: requestHolder.sessionId,
+      issueId,
+      worktreeId: requestHolder.worktreeId,
+      displayPath: DISPLAY_PATH,
+    },
     ...overrides,
   };
 }
@@ -55,6 +117,9 @@ function integrationRecipient(overrides = {}) {
     agentRunId: 'integration-1',
     sessionId: 'orchestrator-1',
     hostId: 'host-1',
+    worktreeId: 'wt:v1:one',
+    pathHash: PATH_HASH,
+    branch: 'feature/child/1049',
     pid: 456,
     ...overrides,
   };
@@ -98,6 +163,8 @@ test('closed operation vocabulary accepts every canonical name and rejects alias
         fencingToken: '1',
         operation,
         verifiedAt: NOW,
+        holder: holder(),
+        binding: binding(),
       })
     );
   }
@@ -110,6 +177,8 @@ test('closed operation vocabulary accepts every canonical name and rejects alias
           fencingToken: '1',
           operation,
           verifiedAt: NOW,
+          holder: holder(),
+          binding: binding(),
         }),
       (error) => error.code === 'invalid-request'
     );
@@ -123,6 +192,8 @@ test('closed operation vocabulary accepts every canonical name and rejects alias
           fencingToken: '1',
           operation: 'task-bind',
           verifiedAt,
+          holder: holder(),
+          binding: binding(),
         }),
       (error) => error.code === 'invalid-request'
     );
@@ -159,6 +230,9 @@ test('request validators reject malformed holder, handoff identity changes, and 
       idempotencyKey: 'handoff-1',
       handedOffAt: NOW,
       reason: 'ready to integrate',
+      ttlMs: 900_000,
+      holder: holder(),
+      binding: binding(),
       recipient: integrationRecipient(),
     })
   );
@@ -171,6 +245,9 @@ test('request validators reject malformed holder, handoff identity changes, and 
         idempotencyKey: 'handoff-1',
         handedOffAt: NOW,
         reason: 'ready',
+        ttlMs: 900_000,
+        holder: holder(),
+        binding: binding(),
         recipient: integrationRecipient({ worktreeId: 'replacement' }),
       }),
     (error) => error.code === 'invalid-request'
@@ -182,10 +259,14 @@ test('request validators reject malformed holder, handoff identity changes, and 
         issueId: '1049',
         expectedLeaseId: 'lease-1',
         expectedToken: '1',
+        expectedHolder: holder(),
+        expectedBinding: binding(),
         idempotencyKey: 'takeover-1',
         observedAt: NOW,
         reason: 'dead holder',
         requester: holder(),
+        requesterBinding: binding(),
+        ttlMs: 900_000,
         evidence: { kind: 'operator-attestation' },
       }),
     (error) => error.code === 'invalid-request'
@@ -223,6 +304,7 @@ test('memory conformance: uniqueness, exact replay, conflict, verification, and 
         idempotencyKey: 'acquire-1',
         releasedAt: NOW,
         reason: 'different operation',
+        ...authorityFor(first),
       }),
     (error) => error.code === 'idempotency-conflict'
   );
@@ -247,6 +329,7 @@ test('memory conformance: uniqueness, exact replay, conflict, verification, and 
     fencingToken: first.fencingToken,
     operation: 'source-write',
     verifiedAt: NOW,
+    ...authorityFor(first),
   });
   assert.equal(allowed.allowed, true);
 
@@ -257,6 +340,7 @@ test('memory conformance: uniqueness, exact replay, conflict, verification, and 
     idempotencyKey: 'release-1',
     releasedAt: NOW,
     reason: 'done',
+    ...authorityFor(first),
   });
   assert.equal(released.state, 'released');
   assert.ok(BigInt(released.fencingToken) > BigInt(first.fencingToken));
@@ -268,6 +352,7 @@ test('memory conformance: uniqueness, exact replay, conflict, verification, and 
       idempotencyKey: 'release-1',
       releasedAt: NOW,
       reason: 'done',
+      ...authorityFor(first),
     }),
     released,
     'replay precedes stale-fence evaluation'
@@ -280,6 +365,7 @@ test('memory conformance: uniqueness, exact replay, conflict, verification, and 
         fencingToken: first.fencingToken,
         operation: 'close',
         verifiedAt: NOW,
+        ...authorityFor(first),
       }),
     (error) => error.code === 'fence-stale'
   );
@@ -303,6 +389,7 @@ test('terminal mutation errors replay even after authority state changes', () =>
     idempotencyKey: 'release-winner',
     releasedAt: NOW,
     reason: 'make issue available',
+    ...authorityFor(winner),
   });
   assert.throws(
     () => store.acquire(contended),
@@ -337,6 +424,7 @@ test('recordable invalid requests replay and corrected payload reuse conflicts',
     idempotencyKey: 'bigint-invalid',
     requestedAt: NOW,
     ttlMs: 900_000,
+    ...authorityFor(lease),
   };
   assert.throws(
     () => store.renew(invalidToken),
@@ -363,7 +451,7 @@ test('takeover cannot claim a worktree that retains another issue lease', () => 
         agentRunId: 'run-2',
         sessionId: 'session-2',
         worktreeId: 'wt:v1:two',
-        pathHash: 'path-two',
+        pathHash: PATH_HASH,
         pid: 456,
       }),
     })
@@ -375,6 +463,8 @@ test('takeover cannot claim a worktree that retains another issue lease', () => 
         issueId: '1049',
         expectedLeaseId: observed.leaseId,
         expectedToken: observed.fencingToken,
+        expectedHolder: observed.holder,
+        expectedBinding: authorityFor(observed).binding,
         idempotencyKey: 'takeover-conflicting-worktree',
         observedAt: NOW,
         reason: 'confirmed dead',
@@ -385,6 +475,11 @@ test('takeover cannot claim a worktree that retains another issue lease', () => 
           pathHash: other.holder.pathHash,
           pid: 789,
         }),
+        requesterBinding: binding({
+          sessionId: 'session-3',
+          worktreeId: other.holder.worktreeId,
+        }),
+        ttlMs: 900_000,
         evidence: {
           kind: 'local-process-dead',
           hostId: 'host-1',
@@ -402,6 +497,7 @@ test('takeover cannot claim a worktree that retains another issue lease', () => 
       fencingToken: observed.fencingToken,
       operation: 'task-bind',
       verifiedAt: NOW,
+      ...authorityFor(observed),
     }).allowed,
     true
   );
@@ -417,6 +513,7 @@ test('memory conformance: renew, handoff, switch, and takeover are fenced and id
     idempotencyKey: 'renew-1',
     requestedAt: '2026-07-30T12:01:00.000Z',
     ttlMs: 900_000,
+    ...authorityFor(lease),
   });
   assert.equal(renewed.fencingToken, lease.fencingToken, 'renew does not advance fence');
   assert.deepEqual(
@@ -427,6 +524,7 @@ test('memory conformance: renew, handoff, switch, and takeover are fenced and id
       idempotencyKey: 'renew-1',
       requestedAt: '2026-07-30T12:01:00.000Z',
       ttlMs: 900_000,
+      ...authorityFor(lease),
     }),
     renewed
   );
@@ -438,6 +536,8 @@ test('memory conformance: renew, handoff, switch, and takeover are fenced and id
     idempotencyKey: 'handoff-1',
     handedOffAt: '2026-07-30T12:02:00.000Z',
     reason: 'integrate',
+    ttlMs: 900_000,
+    ...authorityFor(renewed),
     recipient: integrationRecipient(),
   });
   assert.equal(handed.state, 'active');
@@ -453,6 +553,8 @@ test('memory conformance: renew, handoff, switch, and takeover are fenced and id
       idempotencyKey: 'handoff-1',
       handedOffAt: '2026-07-30T12:02:00.000Z',
       reason: 'integrate',
+      ttlMs: 900_000,
+      ...authorityFor(renewed),
       recipient: integrationRecipient(),
     }),
     handed,
@@ -466,6 +568,7 @@ test('memory conformance: renew, handoff, switch, and takeover are fenced and id
         fencingToken: lease.fencingToken,
         operation: 'close',
         verifiedAt: NOW,
+        ...authorityFor(lease),
       }),
     (error) => error.code === 'fence-stale'
   );
@@ -477,6 +580,7 @@ test('memory conformance: renew, handoff, switch, and takeover are fenced and id
     issueId: '1049',
     leaseId: current.leaseId,
     fencingToken: current.fencingToken,
+    ...authorityFor(current),
     idempotencyKey: 'switch-1',
     switchedAt: NOW,
     target: acquire({
@@ -493,6 +597,7 @@ test('memory conformance: renew, handoff, switch, and takeover are fenced and id
       issueId: '1049',
       leaseId: current.leaseId,
       fencingToken: current.fencingToken,
+      ...authorityFor(current),
       idempotencyKey: 'switch-1',
       switchedAt: NOW,
       target: acquire({
@@ -514,7 +619,7 @@ test('memory conformance: renew, handoff, switch, and takeover are fenced and id
         agentRunId: 'run-2',
         sessionId: 'session-2',
         worktreeId: 'wt:v1:two',
-        pathHash: 'path-two',
+        pathHash: PATH_HASH,
         pid: 456,
       }),
     })
@@ -526,6 +631,7 @@ test('memory conformance: renew, handoff, switch, and takeover are fenced and id
         issueId: '1049',
         leaseId: preserved.leaseId,
         fencingToken: preserved.fencingToken,
+        ...authorityFor(preserved),
         idempotencyKey: 'failed-switch',
         switchedAt: NOW,
         target: acquire({
@@ -543,6 +649,7 @@ test('memory conformance: renew, handoff, switch, and takeover are fenced and id
       fencingToken: preserved.fencingToken,
       operation: 'task-bind',
       verifiedAt: NOW,
+      ...authorityFor(preserved),
     }).allowed,
     true,
     'failed switch preserves the old lease'
@@ -555,10 +662,14 @@ test('memory conformance: renew, handoff, switch, and takeover are fenced and id
     issueId: '1049',
     expectedLeaseId: observed.leaseId,
     expectedToken: observed.fencingToken,
+    expectedHolder: observed.holder,
+    expectedBinding: authorityFor(observed).binding,
     idempotencyKey: 'takeover-1',
     observedAt: NOW,
     reason: 'confirmed dead',
     requester: holder({ agentRunId: 'run-2', sessionId: 'session-2', pid: 999 }),
+    requesterBinding: binding({ sessionId: 'session-2' }),
+    ttlMs: 900_000,
     evidence: {
       kind: 'local-process-dead',
       hostId: 'host-1',
@@ -575,10 +686,14 @@ test('memory conformance: renew, handoff, switch, and takeover are fenced and id
       issueId: '1049',
       expectedLeaseId: observed.leaseId,
       expectedToken: observed.fencingToken,
+      expectedHolder: observed.holder,
+      expectedBinding: authorityFor(observed).binding,
       idempotencyKey: 'takeover-1',
       observedAt: NOW,
       reason: 'confirmed dead',
       requester: holder({ agentRunId: 'run-2', sessionId: 'session-2', pid: 999 }),
+      requesterBinding: binding({ sessionId: 'session-2' }),
+      ttlMs: 900_000,
       evidence: {
         kind: 'local-process-dead',
         hostId: 'host-1',

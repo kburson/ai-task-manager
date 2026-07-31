@@ -103,6 +103,7 @@ test('ledger dry-run pack contains runtime only and root pack keeps the workspac
     'src/lease/port.mjs',
     'src/lease/schema.mjs',
     'src/sqlite/migrations/001-leases.mjs',
+    'src/sqlite/migrations/002-lease-lifecycle.mjs',
     'src/sqlite/open.mjs',
     'src/sqlite/work-lease-store.mjs',
   ]) {

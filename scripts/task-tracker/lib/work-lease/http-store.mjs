@@ -247,6 +247,8 @@ export class HttpWorkLeaseStore extends WorkLeaseStore {
 
   async observe(selector) {
     const observation = await this.#request('observe', selector);
-    return observation.lease;
+    return selector.issueId == null && selector.worktreeId == null
+      ? observation
+      : observation.lease;
   }
 }

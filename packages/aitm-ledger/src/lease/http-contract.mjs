@@ -257,6 +257,32 @@ function validateLease(lease) {
   return lease;
 }
 
+function validateBinding(binding) {
+  assertObject(binding, 'binding', {
+    exactKeys: [
+      'projectId',
+      'leaseId',
+      'sessionId',
+      'issueId',
+      'worktreeId',
+      'displayPath',
+      'fencingToken',
+      'observedAt',
+    ],
+  });
+  for (const key of ['projectId', 'leaseId', 'sessionId', 'issueId', 'worktreeId']) {
+    assertString(binding[key], `binding.${key}`);
+  }
+  if (binding.displayPath !== null) assertString(binding.displayPath, 'binding.displayPath');
+  try {
+    assertFencingToken(binding.fencingToken, 'binding.fencingToken');
+  } catch {
+    failUnavailable('binding.fencingToken is invalid');
+  }
+  assertTimestamp(binding.observedAt, 'binding.observedAt');
+  return binding;
+}
+
 function validateTransition(value) {
   assertObject(value, 'transition', {
     exactKeys: ['transitionId', 'fromIssueId', 'fromLeaseId', 'fromToken', 'toIssueId'],
@@ -325,7 +351,17 @@ function correlateResult(operation, result, request) {
       result.fencingToken === request?.fencingToken,
       'renew response fencing token does not match the request'
     );
-    requireRetaining(result);
+    requireResponse(
+      result.state === (request?.lifecycle?.nextState ?? 'active'),
+      'renew response state does not match the request'
+    );
+    correlateHolder(result.holder, request?.holder);
+    requireResponse(result.heartbeatAt === request?.requestedAt, 'renew heartbeat is inconsistent');
+    requireResponse(
+      result.expiresAt ===
+        new Date(Date.parse(request?.requestedAt) + request?.ttlMs).toISOString(),
+      'renew expiry is inconsistent'
+    );
     return;
   }
   if (operation === 'verify') {
@@ -334,7 +370,8 @@ function correlateResult(operation, result, request) {
       result.lease.fencingToken === request?.fencingToken,
       'verify response fencing token does not match the request'
     );
-    requireRetaining(result.lease);
+    requireResponse(result.lease.state === 'active', 'verify response lease is not active');
+    correlateHolder(result.lease.holder, request?.holder);
     return;
   }
   if (operation === 'switchLease') {
@@ -369,6 +406,15 @@ function correlateResult(operation, result, request) {
     requireResponse(result.state === 'active', 'handoff response is not active');
     requireAdvancedFence(result.fencingToken, request?.fencingToken);
     correlateHolder(result.holder, request?.recipient);
+    requireResponse(
+      result.heartbeatAt === request?.handedOffAt,
+      'handoff heartbeat is inconsistent'
+    );
+    requireResponse(
+      result.expiresAt ===
+        new Date(Date.parse(request?.handedOffAt) + request?.ttlMs).toISOString(),
+      'handoff expiry is inconsistent'
+    );
     return;
   }
   if (operation === 'release') {
@@ -386,6 +432,44 @@ function correlateResult(operation, result, request) {
     );
     requireAdvancedFence(result.fencingToken, request?.expectedToken);
     correlateHolder(result.holder, request?.requester);
+    requireResponse(
+      result.expiresAt === new Date(Date.parse(request?.observedAt) + request?.ttlMs).toISOString(),
+      'takeover expiry is inconsistent'
+    );
+    return;
+  }
+  if (operation === 'observe' && request?.issueId == null && request?.worktreeId == null) {
+    requireResponse(
+      result.leases.length === result.bindings.length,
+      'observation bindings are incomplete'
+    );
+    for (let index = 0; index < result.leases.length; index += 1) {
+      const lease = result.leases[index];
+      const binding = result.bindings[index];
+      if (index > 0) {
+        requireResponse(
+          result.leases[index - 1].leaseId.localeCompare(lease.leaseId) < 0,
+          'project observation is not deterministically sorted'
+        );
+      }
+      requireResponse(
+        lease.projectId === request.projectId,
+        'observed lease project is inconsistent'
+      );
+      requireRetaining(lease);
+      requireResponse(binding.projectId === lease.projectId, 'binding project is inconsistent');
+      requireResponse(binding.leaseId === lease.leaseId, 'binding lease is inconsistent');
+      requireResponse(binding.issueId === lease.issueId, 'binding issue is inconsistent');
+      requireResponse(
+        binding.sessionId === lease.holder.sessionId,
+        'binding session is inconsistent'
+      );
+      requireResponse(
+        binding.worktreeId === lease.holder.worktreeId,
+        'binding worktree is inconsistent'
+      );
+      requireResponse(binding.fencingToken === lease.fencingToken, 'binding fence is inconsistent');
+    }
     return;
   }
   if (operation === 'observe' && result.lease !== null) {
@@ -431,8 +515,17 @@ function validateResult(operation, result, request) {
     return result;
   }
   if (operation === 'observe') {
-    assertObject(result, 'observation result', { exactKeys: ['lease'] });
-    if (result.lease !== null) validateLease(result.lease);
+    if (request.issueId == null && request.worktreeId == null) {
+      assertObject(result, 'project observation result', { exactKeys: ['leases', 'bindings'] });
+      if (!Array.isArray(result.leases) || !Array.isArray(result.bindings)) {
+        failUnavailable('project observation arrays are invalid');
+      }
+      result.leases.forEach(validateLease);
+      result.bindings.forEach(validateBinding);
+    } else {
+      assertObject(result, 'observation result', { exactKeys: ['lease'] });
+      if (result.lease !== null) validateLease(result.lease);
+    }
     correlateResult(operation, result, request);
     return result;
   }

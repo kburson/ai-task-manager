@@ -5,6 +5,7 @@ import { execFileSync } from 'node:child_process';
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import { createHash } from 'node:crypto';
 
 import {
   WorkLeaseError,
@@ -23,6 +24,8 @@ import { createWorkLeaseProvider } from '../../../lib/work-lease/provider.mjs';
 
 const PROJECT_ID = '11111111-1111-4111-8111-111111111111';
 const NOW = '2026-07-30T12:00:00.000Z';
+const DISPLAY_PATH = '/workspace/1049';
+const PATH_HASH = createHash('sha256').update(DISPLAY_PATH).digest('hex');
 
 function holder(overrides = {}) {
   return {
@@ -32,7 +35,7 @@ function holder(overrides = {}) {
     sessionId: 'session-1',
     hostId: 'host-1',
     worktreeId: 'wt:v1:one',
-    pathHash: 'path-one',
+    pathHash: PATH_HASH,
     branch: 'feature/child/1049',
     pid: 123,
     ...overrides,
@@ -40,15 +43,35 @@ function holder(overrides = {}) {
 }
 
 function acquire(overrides = {}) {
+  const requestHolder = overrides.holder ?? holder();
+  const issueId = overrides.issueId ?? '1049';
   return {
     projectId: PROJECT_ID,
-    issueId: '1049',
+    issueId,
     mode: 'write',
     idempotencyKey: 'acquire-1',
     requestedAt: NOW,
     ttlMs: 900_000,
-    holder: holder(),
+    holder: requestHolder,
+    binding: {
+      sessionId: requestHolder.sessionId,
+      issueId,
+      worktreeId: requestHolder.worktreeId,
+      displayPath: DISPLAY_PATH,
+    },
     ...overrides,
+  };
+}
+
+function requestAuthority(requestHolder = holder(), issueId = '1049') {
+  return {
+    holder: requestHolder,
+    binding: {
+      sessionId: requestHolder.sessionId,
+      issueId,
+      worktreeId: requestHolder.worktreeId,
+      displayPath: DISPLAY_PATH,
+    },
   };
 }
 
@@ -91,7 +114,14 @@ function conformanceFetch(authority) {
         query: url.searchParams,
       });
       const result = await authority[validated.operation](validated.request);
-      const httpResult = validated.operation === 'observe' ? { lease: result } : result;
+      const httpResult =
+        validated.operation === 'observe' &&
+        validated.request.issueId == null &&
+        validated.request.worktreeId == null
+          ? result
+          : validated.operation === 'observe'
+            ? { lease: result }
+            : result;
       const status = ['acquire', 'takeover'].includes(validated.operation) ? 201 : 200;
       return response(status, createHttpSuccessEnvelope(httpResult));
     } catch (error) {
@@ -233,6 +263,7 @@ test('every operation uses the specified endpoint, method, and body semantics', 
         idempotencyKey: 'renew-1',
         requestedAt: NOW,
         ttlMs: 900_000,
+        ...requestAuthority(),
       },
     ],
     [
@@ -241,6 +272,7 @@ test('every operation uses the specified endpoint, method, and body semantics', 
         ...current,
         operation: 'source-write',
         verifiedAt: NOW,
+        ...requestAuthority(),
       },
     ],
     [
@@ -248,6 +280,7 @@ test('every operation uses the specified endpoint, method, and body semantics', 
       {
         ...current,
         issueId: '1049',
+        ...requestAuthority(),
         idempotencyKey: 'switch-1',
         switchedAt: NOW,
         target: acquire({
@@ -264,12 +297,17 @@ test('every operation uses the specified endpoint, method, and body semantics', 
         idempotencyKey: 'handoff-1',
         handedOffAt: NOW,
         reason: 'integrate',
+        ttlMs: 900_000,
+        ...requestAuthority(),
         recipient: {
           principalKind: 'integration',
           provider: 'codex',
           agentRunId: 'integration-1',
           sessionId: 'orchestrator-1',
           hostId: 'host-1',
+          worktreeId: 'wt:v1:one',
+          pathHash: PATH_HASH,
+          branch: 'feature/child/1049',
           pid: 456,
         },
       },
@@ -281,6 +319,7 @@ test('every operation uses the specified endpoint, method, and body semantics', 
         idempotencyKey: 'release-1',
         releasedAt: NOW,
         reason: 'done',
+        ...requestAuthority(),
       },
     ],
     [
@@ -290,7 +329,13 @@ test('every operation uses the specified endpoint, method, and body semantics', 
         issueId: '1049',
         expectedLeaseId: 'lease-1',
         expectedToken: '1',
+        expectedHolder: holder(),
+        expectedBinding: requestAuthority().binding,
         requester: holder({ agentRunId: 'run-2', sessionId: 'session-2', pid: 456 }),
+        requesterBinding: requestAuthority(
+          holder({ agentRunId: 'run-2', sessionId: 'session-2', pid: 456 })
+        ).binding,
+        ttlMs: 900_000,
         observedAt: NOW,
         idempotencyKey: 'takeover-1',
         reason: 'dead holder',
@@ -379,6 +424,7 @@ test('missing credentials and transport failures fail closed without leaking tok
           fencingToken: '1',
           operation: 'source-write',
           verifiedAt: NOW,
+          ...requestAuthority(),
         }),
       (error) =>
         error.code === 'authority-unavailable' &&
@@ -420,6 +466,7 @@ test('request timeout actively aborts transport and remote echoes cannot expose 
         fencingToken: '1',
         operation: 'source-write',
         verifiedAt: NOW,
+        ...requestAuthority(),
       }),
     (error) => error.code === 'authority-unavailable'
   );
@@ -456,6 +503,7 @@ test('request timeout actively aborts transport and remote echoes cannot expose 
         fencingToken: '1',
         operation: 'source-write',
         verifiedAt: NOW,
+        ...requestAuthority(),
       }),
     (error) => error.code === 'authority-unavailable'
   );

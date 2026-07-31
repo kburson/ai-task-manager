@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+// cspell:ignore SAVEPOINT
 
 import { WorkLeaseError } from '../lease/errors.mjs';
 import { WorkLeaseStore } from '../lease/port.mjs';
@@ -76,6 +77,20 @@ function rowToLease(row) {
     heartbeatAt: row.heartbeat_at,
     expiresAt: row.expires_at,
     audit: parseJson(row.audit_json),
+  };
+}
+
+function rowToBinding(row) {
+  if (!row) return null;
+  return {
+    projectId: row.project_id,
+    leaseId: row.lease_id,
+    sessionId: row.session_id,
+    issueId: row.issue_id,
+    worktreeId: row.worktree_id,
+    displayPath: row.display_path,
+    fencingToken: asToken(row.fencing_token),
+    observedAt: row.observed_at,
   };
 }
 
@@ -245,7 +260,7 @@ export class SqliteWorkLeaseStore extends WorkLeaseStore {
     return statement.get(leaseId);
   }
 
-  #lease(request) {
+  #lease(request, { activeOnly = false } = {}) {
     const lease = rowToLease(this.#rowById(request.leaseId));
     if (!lease || lease.projectId !== request.projectId) {
       throw new WorkLeaseError('lease-not-held', 'lease is not held', {
@@ -266,7 +281,51 @@ export class SqliteWorkLeaseStore extends WorkLeaseStore {
         state: lease.state,
       });
     }
+    if (activeOnly && lease.state !== 'active') {
+      throw new WorkLeaseError('lease-not-held', 'lease is not active', {
+        leaseId: request.leaseId,
+        state: lease.state,
+      });
+    }
     return lease;
+  }
+
+  #bindingByLease(projectId, leaseId) {
+    const statement = readBigInt(
+      this.db.prepare('SELECT * FROM work_bindings WHERE project_id = ? AND lease_id = ?')
+    );
+    return rowToBinding(statement.get(projectId, leaseId));
+  }
+
+  #assertAuthority(lease, request, { holderKey = 'holder', bindingKey = 'binding' } = {}) {
+    const holder = request[holderKey];
+    for (const key of Object.keys(lease.holder)) {
+      if (holder?.[key] !== lease.holder[key]) {
+        throw new WorkLeaseError('lease-not-held', 'lease holder does not match', {
+          leaseId: lease.leaseId,
+        });
+      }
+    }
+    const expected = request[bindingKey];
+    const binding = this.#bindingByLease(lease.projectId, lease.leaseId);
+    if (!binding || binding.fencingToken !== lease.fencingToken) {
+      throw new WorkLeaseError('lease-not-held', 'lease binding is absent or stale', {
+        leaseId: lease.leaseId,
+      });
+    }
+    for (const key of ['sessionId', 'issueId', 'worktreeId']) {
+      if (expected?.[key] !== binding[key]) {
+        throw new WorkLeaseError('lease-not-held', 'lease binding does not match', {
+          leaseId: lease.leaseId,
+        });
+      }
+    }
+    if (binding.displayPath !== null && expected?.displayPath !== binding.displayPath) {
+      throw new WorkLeaseError('lease-not-held', 'lease binding path does not match', {
+        leaseId: lease.leaseId,
+      });
+    }
+    return { ...binding, displayPath: binding.displayPath ?? expected?.displayPath ?? null };
   }
 
   #currentByIssue(projectId, issueId, exceptLeaseId = null) {
@@ -360,30 +419,32 @@ export class SqliteWorkLeaseStore extends WorkLeaseStore {
         lease.expiresAt,
         JSON.stringify(lease.audit)
       );
-    this.#writeBinding(lease, acquiredAt);
+    this.#writeBinding(lease, request.binding, acquiredAt);
     return lease;
   }
 
-  #writeBinding(lease, observedAt) {
+  #writeBinding(lease, binding, observedAt) {
     this.db
       .prepare(
         `INSERT INTO work_bindings(
-           project_id, session_id, issue_id, worktree_id, lease_id,
+           project_id, lease_id, session_id, issue_id, worktree_id, display_path,
            fencing_token, observed_at
-         ) VALUES (?, ?, ?, ?, ?, ?, ?)
-         ON CONFLICT(project_id, session_id) DO UPDATE SET
+         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+         ON CONFLICT(project_id, lease_id) DO UPDATE SET
+           session_id = excluded.session_id,
            issue_id = excluded.issue_id,
            worktree_id = excluded.worktree_id,
-           lease_id = excluded.lease_id,
+           display_path = excluded.display_path,
            fencing_token = excluded.fencing_token,
            observed_at = excluded.observed_at`
       )
       .run(
         lease.projectId,
-        lease.holder.sessionId,
-        lease.issueId,
-        lease.holder.worktreeId,
         lease.leaseId,
+        binding.sessionId,
+        binding.issueId,
+        binding.worktreeId,
+        binding.displayPath,
         BigInt(lease.fencingToken),
         observedAt
       );
@@ -409,16 +470,29 @@ export class SqliteWorkLeaseStore extends WorkLeaseStore {
   renew(request) {
     return this.#mutate('renew', request, validateRenewRequest, () => {
       const lease = this.#lease(request);
+      const binding = this.#assertAuthority(lease, request);
+      const expectedState = request.lifecycle?.expectedState ?? 'active';
+      const nextState = request.lifecycle?.nextState ?? 'active';
+      if (lease.state !== expectedState) {
+        throw new WorkLeaseError('lease-not-held', 'lease state does not match', {
+          leaseId: lease.leaseId,
+          expectedState,
+          currentState: lease.state,
+        });
+      }
       const expiresAt = isoAfter(request.requestedAt, request.ttlMs);
       this.db
-        .prepare('UPDATE work_leases SET heartbeat_at = ?, expires_at = ? WHERE lease_id = ?')
-        .run(request.requestedAt, expiresAt, lease.leaseId);
+        .prepare(
+          'UPDATE work_leases SET state = ?, heartbeat_at = ?, expires_at = ? WHERE lease_id = ?'
+        )
+        .run(nextState, request.requestedAt, expiresAt, lease.leaseId);
       const result = {
         ...lease,
+        state: nextState,
         heartbeatAt: request.requestedAt,
         expiresAt,
       };
-      this.#writeBinding(result, request.requestedAt);
+      this.#writeBinding(result, binding, request.requestedAt);
       return {
         result,
         event: {
@@ -434,12 +508,15 @@ export class SqliteWorkLeaseStore extends WorkLeaseStore {
 
   verify(request) {
     validateVerifyRequest(request);
-    return { allowed: true, lease: this.#lease(request) };
+    const lease = this.#lease(request, { activeOnly: true });
+    this.#assertAuthority(lease, request);
+    return { allowed: true, lease };
   }
 
   switchLease(request) {
     return this.#mutate('switch', request, validateSwitchLeaseRequest, () => {
       const current = this.#lease(request);
+      this.#assertAuthority(current, request);
       if (current.issueId !== request.issueId) {
         throw new WorkLeaseError('lease-not-held', 'outgoing issue does not match the lease', {
           leaseId: current.leaseId,
@@ -497,13 +574,9 @@ export class SqliteWorkLeaseStore extends WorkLeaseStore {
   handoff(request) {
     return this.#mutate('handoff', request, validateHandoffRequest, () => {
       const lease = this.#lease(request);
+      const binding = this.#assertAuthority(lease, request);
       const token = this.#allocateFence(request.projectId);
-      const holder = {
-        ...structuredClone(request.recipient),
-        worktreeId: lease.holder.worktreeId,
-        pathHash: lease.holder.pathHash,
-        branch: lease.holder.branch,
-      };
+      const holder = structuredClone(request.recipient);
       const audit = {
         ...lease.audit,
         handedOffAt: request.handedOffAt,
@@ -512,12 +585,13 @@ export class SqliteWorkLeaseStore extends WorkLeaseStore {
         priorToken: lease.fencingToken,
         reason: request.reason,
       };
+      const expiresAt = isoAfter(request.handedOffAt, request.ttlMs);
       this.db
         .prepare(
           `UPDATE work_leases SET
              fencing_token = ?, principal_kind = ?, provider = ?,
              agent_run_id = ?, session_id = ?, host_id = ?, pid = ?,
-             heartbeat_at = ?, audit_json = ?
+             state = 'active', heartbeat_at = ?, expires_at = ?, audit_json = ?
            WHERE lease_id = ?`
         )
         .run(
@@ -529,6 +603,7 @@ export class SqliteWorkLeaseStore extends WorkLeaseStore {
           holder.hostId,
           holder.pid,
           request.handedOffAt,
+          expiresAt,
           JSON.stringify(audit),
           lease.leaseId
         );
@@ -539,10 +614,16 @@ export class SqliteWorkLeaseStore extends WorkLeaseStore {
         ...lease,
         fencingToken: token,
         holder,
+        state: 'active',
         heartbeatAt: request.handedOffAt,
+        expiresAt,
         audit,
       };
-      this.#writeBinding(result, request.handedOffAt);
+      this.#writeBinding(
+        result,
+        { ...binding, sessionId: request.recipient.sessionId },
+        request.handedOffAt
+      );
       return {
         result,
         event: {
@@ -559,6 +640,7 @@ export class SqliteWorkLeaseStore extends WorkLeaseStore {
   release(request) {
     return this.#mutate('release', request, validateReleaseRequest, () => {
       const lease = this.#lease(request);
+      this.#assertAuthority(lease, request);
       const token = this.#allocateFence(request.projectId);
       const audit = {
         ...lease.audit,
@@ -608,6 +690,10 @@ export class SqliteWorkLeaseStore extends WorkLeaseStore {
           currentToken: observed.fencingToken,
         });
       }
+      this.#assertAuthority(observed, request, {
+        holderKey: 'expectedHolder',
+        bindingKey: 'expectedBinding',
+      });
       const holderLiveness = this.isHolderLive(observed.holder, request.evidence);
       if (holderLiveness === true) {
         throw new WorkLeaseError('holder-live', 'live holder cannot be displaced', {
@@ -671,8 +757,9 @@ export class SqliteWorkLeaseStore extends WorkLeaseStore {
           mode: 'write',
           idempotencyKey: request.idempotencyKey,
           requestedAt: request.observedAt,
-          ttlMs: 900_000,
+          ttlMs: request.ttlMs,
           holder: request.requester,
+          binding: request.requesterBinding,
         },
         request.observedAt
       );
@@ -691,6 +778,42 @@ export class SqliteWorkLeaseStore extends WorkLeaseStore {
 
   observe(selector) {
     validateObserveSelector(selector);
+    if (selector.issueId == null && selector.worktreeId == null) {
+      const statement = readBigInt(
+        this.db.prepare(
+          `SELECT * FROM work_leases
+            WHERE project_id = ? AND state IN ${RETAINING_SQL}
+            ORDER BY lease_id`
+        )
+      );
+      const leases = statement.all(selector.projectId).map(rowToLease);
+      const bindings = leases.map((lease) =>
+        this.#bindingByLease(selector.projectId, lease.leaseId)
+      );
+      for (let index = 0; index < leases.length; index += 1) {
+        const lease = leases[index];
+        const binding = bindings[index];
+        if (
+          !binding ||
+          binding.projectId !== lease.projectId ||
+          binding.leaseId !== lease.leaseId ||
+          binding.issueId !== lease.issueId ||
+          binding.worktreeId !== lease.holder.worktreeId ||
+          binding.sessionId !== lease.holder.sessionId ||
+          binding.fencingToken !== lease.fencingToken
+        ) {
+          throw new WorkLeaseError(
+            'authority-unavailable',
+            'retaining lease has no correlated binding',
+            { projectId: selector.projectId, leaseId: lease.leaseId }
+          );
+        }
+      }
+      return {
+        leases,
+        bindings,
+      };
+    }
     return selector.issueId != null
       ? this.#currentByIssue(selector.projectId, selector.issueId)
       : this.#currentByWorktree(selector.projectId, selector.worktreeId);

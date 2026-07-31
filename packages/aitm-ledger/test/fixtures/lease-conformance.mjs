@@ -1,4 +1,5 @@
 import { WorkLeaseStore } from '../../src/lease/port.mjs';
+import { createHash } from 'node:crypto';
 import {
   OWNERSHIP_RETAINING_STATES,
   canonicalRequestDigest,
@@ -24,6 +25,7 @@ function expiresAt(timestamp, ttlMs) {
 export class MemoryLeaseStore extends WorkLeaseStore {
   #leases = new Map();
   #idempotency = new Map();
+  #bindings = new Map();
   #leaseNumber = 0;
   #transitionNumber = 0;
   #fence = 0n;
@@ -57,7 +59,30 @@ export class MemoryLeaseStore extends WorkLeaseStore {
     );
   }
 
-  #lease(request) {
+  #bindingFor(lease) {
+    return this.#bindings.get(lease.leaseId);
+  }
+
+  #assertAuthority(lease, request) {
+    if (JSON.stringify(lease.holder) !== JSON.stringify(request.holder)) {
+      throw new WorkLeaseError('lease-not-held', 'lease holder does not match');
+    }
+    const binding = this.#bindingFor(lease);
+    for (const key of ['sessionId', 'issueId', 'worktreeId']) {
+      if (binding?.[key] !== request.binding[key]) {
+        throw new WorkLeaseError('lease-not-held', 'lease binding does not match');
+      }
+    }
+    if (binding.displayPath !== null && binding.displayPath !== request.binding.displayPath) {
+      throw new WorkLeaseError('lease-not-held', 'lease binding path does not match');
+    }
+    if (binding.displayPath === null && request.binding.displayPath !== null) {
+      binding.displayPath = request.binding.displayPath;
+    }
+    return binding;
+  }
+
+  #lease(request, { activeOnly = false } = {}) {
     const lease = this.#leases.get(request.leaseId);
     if (!lease || lease.projectId !== request.projectId) {
       throw new WorkLeaseError('lease-not-held', 'lease is not held', {
@@ -74,6 +99,12 @@ export class MemoryLeaseStore extends WorkLeaseStore {
     }
     if (!this.#retains(lease)) {
       throw new WorkLeaseError('lease-not-held', 'lease is terminal', {
+        leaseId: request.leaseId,
+        state: lease.state,
+      });
+    }
+    if (activeOnly && lease.state !== 'active') {
+      throw new WorkLeaseError('lease-not-held', 'lease is not active', {
         leaseId: request.leaseId,
         state: lease.state,
       });
@@ -151,6 +182,13 @@ export class MemoryLeaseStore extends WorkLeaseStore {
       audit: {},
     };
     this.#leases.set(lease.leaseId, lease);
+    this.#bindings.set(lease.leaseId, {
+      projectId: lease.projectId,
+      leaseId: lease.leaseId,
+      ...clone(request.binding),
+      fencingToken: lease.fencingToken,
+      observedAt: acquiredAt,
+    });
     return lease;
   }
 
@@ -181,21 +219,32 @@ export class MemoryLeaseStore extends WorkLeaseStore {
   renew(request) {
     return this.#mutate('renew', request, validateRenewRequest, () => {
       const lease = this.#lease(request);
+      this.#assertAuthority(lease, request);
+      const expectedState = request.lifecycle?.expectedState ?? 'active';
+      const nextState = request.lifecycle?.nextState ?? 'active';
+      if (lease.state !== expectedState) {
+        throw new WorkLeaseError('lease-not-held', 'lease state does not match');
+      }
+      lease.state = nextState;
       lease.heartbeatAt = request.requestedAt;
       lease.expiresAt = expiresAt(request.requestedAt, request.ttlMs);
+      const binding = this.#bindingFor(lease);
+      binding.observedAt = request.requestedAt;
       return lease;
     });
   }
 
   verify(request) {
     validateVerifyRequest(request);
-    const lease = this.#lease(request);
+    const lease = this.#lease(request, { activeOnly: true });
+    this.#assertAuthority(lease, request);
     return { allowed: true, lease: clone(lease) };
   }
 
   switchLease(request) {
     return this.#mutate('switch', request, validateSwitchLeaseRequest, () => {
       const current = this.#lease(request);
+      this.#assertAuthority(current, request);
       if (current.issueId !== request.issueId) {
         throw new WorkLeaseError('lease-not-held', 'outgoing issue does not match the lease', {
           leaseId: current.leaseId,
@@ -258,17 +307,17 @@ export class MemoryLeaseStore extends WorkLeaseStore {
   handoff(request) {
     return this.#mutate('handoff', request, validateHandoffRequest, () => {
       const lease = this.#lease(request);
+      const binding = this.#assertAuthority(lease, request);
       const priorHolder = lease.holder;
       const priorToken = lease.fencingToken;
       lease.fencingToken = this.#nextFence();
-      lease.holder = {
-        ...clone(request.recipient),
-        worktreeId: priorHolder.worktreeId,
-        pathHash: priorHolder.pathHash,
-        branch: priorHolder.branch,
-      };
+      lease.holder = clone(request.recipient);
       lease.state = 'active';
       lease.heartbeatAt = request.handedOffAt;
+      lease.expiresAt = expiresAt(request.handedOffAt, request.ttlMs);
+      binding.sessionId = request.recipient.sessionId;
+      binding.fencingToken = lease.fencingToken;
+      binding.observedAt = request.handedOffAt;
       lease.audit = {
         ...lease.audit,
         handedOffAt: request.handedOffAt,
@@ -284,6 +333,7 @@ export class MemoryLeaseStore extends WorkLeaseStore {
   release(request) {
     return this.#mutate('release', request, validateReleaseRequest, () => {
       const lease = this.#lease(request);
+      this.#assertAuthority(lease, request);
       lease.fencingToken = this.#nextFence();
       lease.state = 'released';
       lease.audit = {
@@ -291,6 +341,7 @@ export class MemoryLeaseStore extends WorkLeaseStore {
         releasedAt: request.releasedAt,
         reason: request.reason,
       };
+      this.#bindings.delete(lease.leaseId);
       return lease;
     });
   }
@@ -313,6 +364,15 @@ export class MemoryLeaseStore extends WorkLeaseStore {
           expectedToken: request.expectedToken,
           currentToken: observed.fencingToken,
         });
+      }
+      if (JSON.stringify(observed.holder) !== JSON.stringify(request.expectedHolder)) {
+        throw new WorkLeaseError('lease-not-held', 'expected holder does not match');
+      }
+      const observedBinding = this.#bindingFor(observed);
+      for (const key of ['sessionId', 'issueId', 'worktreeId', 'displayPath']) {
+        if (observedBinding?.[key] !== request.expectedBinding[key]) {
+          throw new WorkLeaseError('lease-not-held', 'expected binding does not match');
+        }
       }
       const worktreeLease = this.#currentByWorktree(
         request.projectId,
@@ -338,6 +398,7 @@ export class MemoryLeaseStore extends WorkLeaseStore {
         reason: request.reason,
         evidence: clone(request.evidence),
       };
+      this.#bindings.delete(observed.leaseId);
       return this.#newLease(
         {
           projectId: request.projectId,
@@ -345,8 +406,9 @@ export class MemoryLeaseStore extends WorkLeaseStore {
           mode: 'write',
           idempotencyKey: request.idempotencyKey,
           requestedAt: request.observedAt,
-          ttlMs: 900_000,
+          ttlMs: request.ttlMs,
           holder: request.requester,
+          binding: request.requesterBinding,
         },
         { acquiredAt: request.observedAt }
       );
@@ -355,6 +417,19 @@ export class MemoryLeaseStore extends WorkLeaseStore {
 
   observe(selector) {
     validateObserveSelector(selector);
+    if (selector.issueId == null && selector.worktreeId == null) {
+      const leases = [...this.#leases.values()]
+        .filter((lease) => lease.projectId === selector.projectId && this.#retains(lease))
+        .sort((a, b) => a.leaseId.localeCompare(b.leaseId));
+      const bindings = leases.map((lease) => this.#bindingFor(lease));
+      if (bindings.some((binding) => !binding)) {
+        throw new WorkLeaseError('authority-unavailable', 'retaining lease has no binding');
+      }
+      return {
+        leases: clone(leases),
+        bindings: clone(bindings),
+      };
+    }
     const lease =
       selector.issueId != null
         ? this.#currentByIssue(selector.projectId, selector.issueId)
@@ -370,6 +445,7 @@ export function createMemoryLeaseStore() {
 export async function assertLeaseStoreConformance({ createStore, assert }) {
   const requestedAt = '2026-07-30T12:00:00.000Z';
   const projectId = 'conformance-project';
+  const displayPath = '/workspace/conformance';
   const baseHolder = {
     principalKind: 'worker',
     provider: 'conformance',
@@ -377,7 +453,7 @@ export async function assertLeaseStoreConformance({ createStore, assert }) {
     sessionId: 'session-1',
     hostId: 'host-1',
     worktreeId: 'wt:v1:conformance',
-    pathHash: 'path-conformance',
+    pathHash: createHash('sha256').update(displayPath).digest('hex'),
     branch: 'feature/conformance',
     pid: 123,
   };
@@ -385,14 +461,29 @@ export async function assertLeaseStoreConformance({ createStore, assert }) {
     issueId = '1049',
     idempotencyKey = 'conformance-acquire',
     holder = baseHolder,
-  } = {}) => ({
-    projectId,
-    issueId,
-    mode: 'write',
-    idempotencyKey,
-    requestedAt,
-    ttlMs: 900_000,
-    holder,
+    bindingPath = displayPath,
+  } = {}) => {
+    return {
+      projectId,
+      issueId,
+      mode: 'write',
+      idempotencyKey,
+      requestedAt,
+      ttlMs: 900_000,
+      holder,
+      binding: {
+        sessionId: holder.sessionId,
+        issueId,
+        worktreeId: holder.worktreeId,
+        displayPath: bindingPath,
+      },
+    };
+  };
+  const bindingOf = (lease, path = displayPath) => ({
+    sessionId: lease.holder.sessionId,
+    issueId: lease.issueId,
+    worktreeId: lease.holder.worktreeId,
+    displayPath: path,
   });
   const expectCode = async (fn, code) => {
     await assert.rejects(
@@ -405,7 +496,15 @@ export async function assertLeaseStoreConformance({ createStore, assert }) {
   const request = acquireRequest();
   const acquired = await store.acquire(request);
   assert.deepEqual(await store.acquire(request), acquired);
-  await expectCode(() => store.acquire({ ...request, issueId: '1051' }), 'idempotency-conflict');
+  await expectCode(
+    () =>
+      store.acquire({
+        ...request,
+        issueId: '1051',
+        binding: { ...request.binding, issueId: '1051' },
+      }),
+    'idempotency-conflict'
+  );
   assert.deepEqual(await store.observe({ projectId, issueId: request.issueId }), acquired);
   assert.equal(
     (
@@ -415,6 +514,8 @@ export async function assertLeaseStoreConformance({ createStore, assert }) {
         fencingToken: acquired.fencingToken,
         operation: 'task-bind',
         verifiedAt: requestedAt,
+        holder: acquired.holder,
+        binding: bindingOf(acquired),
       })
     ).allowed,
     true
@@ -426,11 +527,57 @@ export async function assertLeaseStoreConformance({ createStore, assert }) {
     fencingToken: acquired.fencingToken,
     idempotencyKey: 'conformance-renew',
     requestedAt: '2026-07-30T12:01:00.000Z',
+    lifecycle: { expectedState: 'active', nextState: 'active' },
     ttlMs: 900_000,
+    holder: acquired.holder,
+    binding: bindingOf(acquired),
   };
   const renewed = await store.renew(renewRequest);
   assert.equal(renewed.fencingToken, acquired.fencingToken);
   assert.deepEqual(await store.renew(renewRequest), renewed);
+  await expectCode(
+    () =>
+      store.renew({
+        ...renewRequest,
+        idempotencyKey: 'foreign-renew',
+        holder: { ...renewed.holder, pid: renewed.holder.pid + 1 },
+      }),
+    'lease-not-held'
+  );
+  assert.deepEqual(await store.observe({ projectId, issueId: request.issueId }), renewed);
+
+  const paused = await store.renew({
+    ...renewRequest,
+    idempotencyKey: 'conformance-pause',
+    requestedAt: '2026-07-30T12:01:10.000Z',
+    lifecycle: { expectedState: 'active', nextState: 'paused' },
+    ttlMs: 86_400_000,
+  });
+  assert.equal(paused.state, 'paused');
+  await expectCode(
+    () =>
+      store.verify({
+        projectId,
+        leaseId: paused.leaseId,
+        fencingToken: paused.fencingToken,
+        operation: 'task-bind',
+        verifiedAt: '2026-07-30T12:01:15.000Z',
+        holder: paused.holder,
+        binding: bindingOf(paused),
+      }),
+    'lease-not-held'
+  );
+  const projectObservation = await store.observe({ projectId });
+  assert.deepEqual(projectObservation.leases, [paused]);
+  assert.equal(projectObservation.bindings.length, 1);
+  assert.equal(projectObservation.bindings[0].leaseId, paused.leaseId);
+  const resumed = await store.renew({
+    ...renewRequest,
+    idempotencyKey: 'conformance-resume',
+    requestedAt: '2026-07-30T12:01:20.000Z',
+    lifecycle: { expectedState: 'paused', nextState: 'active' },
+  });
+  assert.equal(resumed.state, 'active');
 
   const handoffRequest = {
     projectId,
@@ -439,15 +586,31 @@ export async function assertLeaseStoreConformance({ createStore, assert }) {
     idempotencyKey: 'conformance-handoff',
     handedOffAt: '2026-07-30T12:02:00.000Z',
     reason: 'integration',
+    ttlMs: 900_000,
+    holder: resumed.holder,
+    binding: bindingOf(resumed),
     recipient: {
       principalKind: 'integration',
       provider: 'conformance',
       agentRunId: 'integration-1',
       sessionId: 'orchestrator-1',
       hostId: 'host-1',
+      worktreeId: resumed.holder.worktreeId,
+      pathHash: resumed.holder.pathHash,
+      branch: resumed.holder.branch,
       pid: 456,
     },
   };
+  await expectCode(
+    () =>
+      store.handoff({
+        ...handoffRequest,
+        idempotencyKey: 'foreign-handoff',
+        recipient: { ...handoffRequest.recipient, worktreeId: 'wt:v1:replacement' },
+      }),
+    'invalid-request'
+  );
+  assert.deepEqual(await store.observe({ projectId, issueId: request.issueId }), resumed);
   const handed = await store.handoff(handoffRequest);
   assert.equal(handed.state, 'active');
   assert.equal(handed.leaseId, acquired.leaseId);
@@ -462,6 +625,8 @@ export async function assertLeaseStoreConformance({ createStore, assert }) {
         fencingToken: acquired.fencingToken,
         operation: 'review-mutation',
         verifiedAt: requestedAt,
+        holder: acquired.holder,
+        binding: bindingOf(acquired),
       }),
     'fence-stale'
   );
@@ -473,7 +638,19 @@ export async function assertLeaseStoreConformance({ createStore, assert }) {
     idempotencyKey: 'conformance-release',
     releasedAt: '2026-07-30T12:03:00.000Z',
     reason: 'conformance complete',
+    holder: handed.holder,
+    binding: bindingOf(handed),
   };
+  await expectCode(
+    () =>
+      store.release({
+        ...releaseRequest,
+        idempotencyKey: 'foreign-release',
+        holder: { ...handed.holder, pid: handed.holder.pid + 1 },
+      }),
+    'lease-not-held'
+  );
+  assert.deepEqual(await store.observe({ projectId, issueId: request.issueId }), handed);
   const released = await store.release(releaseRequest);
   assert.deepEqual(await store.release(releaseRequest), released);
   assert.equal(await store.observe({ projectId, issueId: request.issueId }), null);
@@ -489,6 +666,8 @@ export async function assertLeaseStoreConformance({ createStore, assert }) {
         issueId: '999',
         leaseId: switchCurrent.leaseId,
         fencingToken: switchCurrent.fencingToken,
+        holder: switchCurrent.holder,
+        binding: { ...bindingOf(switchCurrent), issueId: '999' },
         idempotencyKey: 'wrong-switch-source',
         switchedAt: '2026-07-30T12:03:30.000Z',
         target: acquireRequest({
@@ -506,6 +685,8 @@ export async function assertLeaseStoreConformance({ createStore, assert }) {
         fencingToken: switchCurrent.fencingToken,
         operation: 'task-bind',
         verifiedAt: requestedAt,
+        holder: switchCurrent.holder,
+        binding: bindingOf(switchCurrent),
       })
     ).allowed,
     true,
@@ -516,10 +697,25 @@ export async function assertLeaseStoreConformance({ createStore, assert }) {
     issueId: '1049',
     leaseId: switchCurrent.leaseId,
     fencingToken: switchCurrent.fencingToken,
+    holder: switchCurrent.holder,
+    binding: bindingOf(switchCurrent),
     idempotencyKey: 'conformance-switch',
     switchedAt: '2026-07-30T12:04:00.000Z',
     target: acquireRequest({ issueId: '1051', idempotencyKey: 'switch-target' }),
   };
+  await expectCode(
+    () =>
+      switchStore.switchLease({
+        ...switchRequest,
+        idempotencyKey: 'foreign-switch-source',
+        holder: { ...switchCurrent.holder, pid: switchCurrent.holder.pid + 1 },
+      }),
+    'lease-not-held'
+  );
+  assert.deepEqual(
+    await switchStore.observe({ projectId, issueId: switchCurrent.issueId }),
+    switchCurrent
+  );
   const switched = await switchStore.switchLease(switchRequest);
   assert.equal(switched.lease.issueId, '1051');
   assert.equal(switched.transition.fromIssueId, '1049');
@@ -532,6 +728,8 @@ export async function assertLeaseStoreConformance({ createStore, assert }) {
         fencingToken: switchCurrent.fencingToken,
         operation: 'task-bind',
         verifiedAt: requestedAt,
+        holder: switchCurrent.holder,
+        binding: bindingOf(switchCurrent),
       }),
     'fence-stale'
   );
@@ -545,7 +743,7 @@ export async function assertLeaseStoreConformance({ createStore, assert }) {
     agentRunId: 'run-2',
     sessionId: 'session-2',
     worktreeId: 'wt:v1:other',
-    pathHash: 'path-other',
+    pathHash: createHash('sha256').update('/workspace/other').digest('hex'),
     pid: 456,
   };
   const blocker = await failedSwitchStore.acquire(
@@ -553,6 +751,7 @@ export async function assertLeaseStoreConformance({ createStore, assert }) {
       issueId: '1051',
       idempotencyKey: 'switch-blocker',
       holder: otherHolder,
+      bindingPath: '/workspace/other',
     })
   );
   const failedSwitchRequest = {
@@ -560,6 +759,8 @@ export async function assertLeaseStoreConformance({ createStore, assert }) {
     issueId: '1049',
     leaseId: preserved.leaseId,
     fencingToken: preserved.fencingToken,
+    holder: preserved.holder,
+    binding: bindingOf(preserved),
     idempotencyKey: 'failed-switch',
     switchedAt: '2026-07-30T12:05:00.000Z',
     target: acquireRequest({ issueId: '1051', idempotencyKey: 'failed-target' }),
@@ -573,6 +774,8 @@ export async function assertLeaseStoreConformance({ createStore, assert }) {
         fencingToken: preserved.fencingToken,
         operation: 'task-bind',
         verifiedAt: requestedAt,
+        holder: preserved.holder,
+        binding: bindingOf(preserved),
       })
     ).allowed,
     true
@@ -584,6 +787,8 @@ export async function assertLeaseStoreConformance({ createStore, assert }) {
     idempotencyKey: 'release-blocker',
     releasedAt: '2026-07-30T12:06:00.000Z',
     reason: 'unblock issue',
+    holder: blocker.holder,
+    binding: bindingOf(blocker, '/workspace/other'),
   });
   await expectCode(() => failedSwitchStore.switchLease(failedSwitchRequest), 'lease-contended');
 
@@ -594,6 +799,8 @@ export async function assertLeaseStoreConformance({ createStore, assert }) {
     issueId: observed.issueId,
     expectedLeaseId: observed.leaseId,
     expectedToken: observed.fencingToken,
+    expectedHolder: observed.holder,
+    expectedBinding: bindingOf(observed),
     idempotencyKey: 'conformance-takeover',
     observedAt: '2026-07-30T12:07:00.000Z',
     reason: 'holder confirmed dead',
@@ -603,6 +810,13 @@ export async function assertLeaseStoreConformance({ createStore, assert }) {
       sessionId: 'session-3',
       pid: 789,
     },
+    requesterBinding: {
+      sessionId: 'session-3',
+      issueId: observed.issueId,
+      worktreeId: baseHolder.worktreeId,
+      displayPath,
+    },
+    ttlMs: 900_000,
     evidence: {
       kind: 'local-process-dead',
       hostId: 'host-1',
@@ -623,6 +837,8 @@ export async function assertLeaseStoreConformance({ createStore, assert }) {
         fencingToken: observed.fencingToken,
         operation: 'task-bind',
         verifiedAt: requestedAt,
+        holder: observed.holder,
+        binding: bindingOf(observed),
       }),
     'fence-stale'
   );

@@ -1,4 +1,5 @@
 // @story #1049
+// cspell:ignore notnull
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { fork } from 'node:child_process';
@@ -6,12 +7,17 @@ import { mkdtempSync, rmSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { DatabaseSync } from 'node:sqlite';
+import { createHash } from 'node:crypto';
 
-import { openProjectDatabase } from '../src/sqlite/open.mjs';
+import { openProjectDatabase, runMigrations } from '../src/sqlite/open.mjs';
+import { applyMigration001 } from '../src/sqlite/migrations/001-leases.mjs';
 import { SqliteWorkLeaseStore } from '../src/sqlite/work-lease-store.mjs';
 import { assertLeaseStoreConformance } from './fixtures/lease-conformance.mjs';
 
 const NOW = '2026-07-30T12:00:00.000Z';
+const DISPLAY_PATH = '/workspace/1049';
+const PATH_HASH = createHash('sha256').update(DISPLAY_PATH).digest('hex');
 const CONTENDER_FIXTURE = fileURLToPath(
   new URL('./fixtures/sqlite-contender.mjs', import.meta.url)
 );
@@ -24,7 +30,7 @@ function holder(overrides = {}) {
     sessionId: 'session-1',
     hostId: 'host-1',
     worktreeId: 'wt:v1:one',
-    pathHash: 'path-one',
+    pathHash: PATH_HASH,
     branch: 'feature/child/1049',
     pid: 123,
     ...overrides,
@@ -32,17 +38,177 @@ function holder(overrides = {}) {
 }
 
 function acquire(overrides = {}) {
+  const requestHolder = overrides.holder ?? holder();
+  const issueId = overrides.issueId ?? '1049';
   return {
     projectId: 'project-1',
-    issueId: '1049',
+    issueId,
     mode: 'write',
     idempotencyKey: 'acquire-1',
     requestedAt: NOW,
     ttlMs: 900_000,
-    holder: holder(),
+    holder: requestHolder,
+    binding: {
+      sessionId: requestHolder.sessionId,
+      issueId,
+      worktreeId: requestHolder.worktreeId,
+      displayPath: DISPLAY_PATH,
+    },
     ...overrides,
   };
 }
+
+function bindingFor(requestHolder = holder(), issueId = '1049', displayPath = DISPLAY_PATH) {
+  return {
+    sessionId: requestHolder.sessionId,
+    issueId,
+    worktreeId: requestHolder.worktreeId,
+    displayPath,
+  };
+}
+
+function insertV1Lease(db, { leaseId = 'lease-v1', issueId = '1049', token = 1 } = {}) {
+  db.prepare(
+    `INSERT INTO work_leases(
+       lease_id, project_id, issue_id, mode, fencing_token, state,
+       principal_kind, provider, agent_run_id, session_id, host_id,
+       worktree_id, path_hash, branch, pid, acquired_at, heartbeat_at,
+       expires_at, audit_json
+     ) VALUES (?, 'project-1', ?, 'write', ?, 'active', 'worker', 'codex',
+       'run-1', 'shared-session', 'host-1', ?, 'hash', 'feature/1049', 123,
+       ?, ?, ?, '{}')`
+  ).run(leaseId, issueId, token, `wt:${leaseId}`, NOW, NOW, '2026-07-30T12:15:00.000Z');
+}
+
+test('migration 002 upgrades v1 bindings atomically and permits one session to retain multiple leases', () => {
+  const db = new DatabaseSync(':memory:');
+  db.exec('PRAGMA foreign_keys = ON');
+  applyMigration001(db, () => new Date(NOW));
+  insertV1Lease(db);
+  db.prepare(
+    `INSERT INTO work_bindings(
+       project_id, session_id, issue_id, worktree_id, lease_id, fencing_token, observed_at
+     ) VALUES ('project-1', 'shared-session', '1049', 'wt:lease-v1', 'lease-v1', 1, ?)`
+  ).run(NOW);
+  db.prepare(
+    `INSERT INTO work_lease_events(
+       event_id, project_id, lease_id, event_type, operation, idempotency_key,
+       request_digest, response_json, error_json, status_code, actor_json,
+       reason, prior_token, new_token, canonical_json, created_at
+     ) VALUES ('event-v1', 'project-1', 'lease-v1', 'acquired', 'acquire',
+       'event-key', 'digest', '{}', NULL, 201, '{}', NULL, NULL, 1, '{}', ?)`
+  ).run(NOW);
+  const leaseSchema = db
+    .prepare("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'work_leases'")
+    .get().sql;
+  const eventSchema = db
+    .prepare("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'work_lease_events'")
+    .get().sql;
+  const leaseRows = JSON.stringify(db.prepare('SELECT * FROM work_leases ORDER BY lease_id').all());
+  const eventRows = JSON.stringify(
+    db.prepare('SELECT * FROM work_lease_events ORDER BY event_id').all()
+  );
+
+  assert.throws(
+    () =>
+      runMigrations(db, {
+        now: () => new Date(NOW),
+        migration002Hooks: {
+          afterCopy: () => {
+            throw new Error('injected migration failure');
+          },
+        },
+      }),
+    /injected migration failure/
+  );
+  assert.equal(db.prepare('SELECT 1 FROM schema_migrations WHERE version = 2').get(), undefined);
+  assert.deepEqual(
+    db
+      .prepare('PRAGMA table_info(work_bindings)')
+      .all()
+      .map((column) => column.name),
+    [
+      'project_id',
+      'session_id',
+      'issue_id',
+      'worktree_id',
+      'lease_id',
+      'fencing_token',
+      'observed_at',
+    ]
+  );
+  assert.equal(db.prepare('SELECT COUNT(*) AS count FROM work_bindings').get().count, 1);
+
+  runMigrations(db, { now: () => new Date(NOW) });
+  const columns = db.prepare('PRAGMA table_info(work_bindings)').all();
+  assert.deepEqual(
+    columns
+      .filter((column) => column.pk > 0)
+      .sort((a, b) => a.pk - b.pk)
+      .map((column) => column.name),
+    ['project_id', 'lease_id']
+  );
+  assert.equal(columns.find((column) => column.name === 'display_path').notnull, 0);
+  assert.equal(db.prepare('SELECT display_path FROM work_bindings').get().display_path, null);
+  assert.equal(
+    db.prepare("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'work_leases'").get()
+      .sql,
+    leaseSchema
+  );
+  assert.equal(
+    db
+      .prepare("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'work_lease_events'")
+      .get().sql,
+    eventSchema
+  );
+  assert.equal(
+    JSON.stringify(db.prepare('SELECT * FROM work_leases ORDER BY lease_id').all()),
+    leaseRows
+  );
+  assert.equal(
+    JSON.stringify(db.prepare('SELECT * FROM work_lease_events ORDER BY event_id').all()),
+    eventRows
+  );
+  const bindingIndexes = db
+    .prepare(
+      "SELECT name, sql FROM sqlite_master WHERE type = 'index' AND tbl_name = 'work_bindings' AND sql IS NOT NULL ORDER BY name"
+    )
+    .all();
+  assert.deepEqual(
+    bindingIndexes.map((row) => row.name),
+    ['work_bindings_issue', 'work_bindings_session', 'work_bindings_worktree']
+  );
+  for (const row of bindingIndexes) assert.match(row.sql, /\(project_id,/);
+
+  insertV1Lease(db, { leaseId: 'lease-v2', issueId: '1050', token: 2 });
+  db.prepare(
+    `INSERT INTO work_bindings(
+       project_id, lease_id, session_id, issue_id, worktree_id, display_path,
+       fencing_token, observed_at
+     ) VALUES ('project-1', 'lease-v2', 'shared-session', '1050', 'wt:lease-v2',
+       '/workspace/two', 2, ?)`
+  ).run(NOW);
+  assert.equal(db.prepare('SELECT COUNT(*) AS count FROM work_bindings').get().count, 2);
+  assert.deepEqual(db.prepare('PRAGMA foreign_key_check').all(), []);
+  const versions = db
+    .prepare('SELECT version FROM schema_migrations ORDER BY version')
+    .all()
+    .map((row) => row.version);
+  assert.deepEqual(versions, [1, 2]);
+  runMigrations(db, { now: () => new Date(NOW) });
+  assert.equal(db.prepare('SELECT COUNT(*) AS count FROM work_bindings').get().count, 2);
+  const fresh = openProjectDatabase({ databasePath: ':memory:', now: () => new Date(NOW) });
+  const schemaSql = (database) =>
+    database
+      .prepare(
+        "SELECT type, name, sql FROM sqlite_master WHERE tbl_name = 'work_bindings' AND sql IS NOT NULL ORDER BY type, name"
+      )
+      .all()
+      .map((row) => [row.type, row.name, row.sql]);
+  assert.deepEqual(schemaSql(fresh), schemaSql(db));
+  fresh.close();
+  db.close();
+});
 
 test('open configures durable schema, WAL, foreign keys, and busy timeout', () => {
   const dir = mkdtempSync(path.join(os.tmpdir(), 'aitm-sqlite-open-'));
@@ -88,6 +254,97 @@ test('SQLite adapter satisfies the shared lease conformance suite', async () => 
   }
 });
 
+test('project observation is sorted, correlated, and fails closed on a missing binding', () => {
+  const db = openProjectDatabase({ databasePath: ':memory:' });
+  let sequence = 0;
+  const store = new SqliteWorkLeaseStore({ db, uuid: () => `id-${++sequence}` });
+  const second = store.acquire(
+    acquire({
+      issueId: '1050',
+      idempotencyKey: 'project-second',
+      holder: holder({ worktreeId: 'wt:v1:two' }),
+    })
+  );
+  const first = store.acquire(acquire({ idempotencyKey: 'project-first' }));
+  const observed = store.observe({ projectId: 'project-1' });
+  assert.deepEqual(
+    observed.leases.map((lease) => lease.leaseId),
+    [...observed.leases.map((lease) => lease.leaseId)].sort()
+  );
+  assert.deepEqual(
+    observed.bindings.map((binding) => binding.leaseId),
+    observed.leases.map((lease) => lease.leaseId)
+  );
+  db.prepare('DELETE FROM work_bindings WHERE lease_id = ?').run(second.leaseId);
+  assert.throws(
+    () => store.observe({ projectId: 'project-1' }),
+    (error) => error.code === 'authority-unavailable'
+  );
+  assert.ok(first.leaseId);
+  store.close();
+});
+
+test('trusted renew backfills a v1 null path while wrong path or pid cannot mutate authority', () => {
+  const db = openProjectDatabase({ databasePath: ':memory:' });
+  const store = new SqliteWorkLeaseStore({ db });
+  const lease = store.acquire(acquire());
+  db.prepare('UPDATE work_bindings SET display_path = NULL WHERE lease_id = ?').run(lease.leaseId);
+  assert.equal(store.observe({ projectId: 'project-1' }).bindings[0].displayPath, null);
+
+  const wrongPath = '/workspace/wrong';
+  assert.throws(
+    () =>
+      store.renew({
+        projectId: lease.projectId,
+        leaseId: lease.leaseId,
+        fencingToken: lease.fencingToken,
+        idempotencyKey: 'wrong-path',
+        requestedAt: '2026-07-30T12:01:00.000Z',
+        ttlMs: 900_000,
+        holder: { ...lease.holder, pathHash: createHash('sha256').update(wrongPath).digest('hex') },
+        binding: { ...acquire().binding, displayPath: wrongPath },
+      }),
+    (error) => error.code === 'lease-not-held'
+  );
+  assert.throws(
+    () =>
+      store.verify({
+        projectId: lease.projectId,
+        leaseId: lease.leaseId,
+        fencingToken: lease.fencingToken,
+        operation: 'task-bind',
+        verifiedAt: NOW,
+        holder: { ...lease.holder, pid: lease.holder.pid + 1 },
+        binding: acquire().binding,
+      }),
+    (error) => error.code === 'lease-not-held'
+  );
+  assert.equal(db.prepare('SELECT display_path FROM work_bindings').get().display_path, null);
+
+  const renewed = store.renew({
+    projectId: lease.projectId,
+    leaseId: lease.leaseId,
+    fencingToken: lease.fencingToken,
+    idempotencyKey: 'trusted-backfill',
+    requestedAt: '2026-07-30T12:02:00.000Z',
+    ttlMs: 900_000,
+    holder: lease.holder,
+    binding: acquire().binding,
+  });
+  assert.equal(store.observe({ projectId: 'project-1' }).bindings[0].displayPath, DISPLAY_PATH);
+  store.release({
+    projectId: lease.projectId,
+    leaseId: lease.leaseId,
+    fencingToken: lease.fencingToken,
+    idempotencyKey: 'release-after-backfill',
+    releasedAt: '2026-07-30T12:03:00.000Z',
+    reason: 'done',
+    holder: renewed.holder,
+    binding: acquire().binding,
+  });
+  store.close();
+});
+
 test('linked connections serialize one winner and persist idempotent responses', () => {
   const dir = mkdtempSync(path.join(os.tmpdir(), 'aitm-sqlite-contention-'));
   const databasePath = path.join(dir, 'project.sqlite');
@@ -112,6 +369,8 @@ test('linked connections serialize one winner and persist idempotent responses',
       idempotencyKey: 'release-1',
       releasedAt: NOW,
       reason: 'done',
+      holder: lease.holder,
+      binding: bindingFor(lease.holder, lease.issueId),
     });
     assert.throws(
       () =>
@@ -166,7 +425,7 @@ test('separate processes contend through one database with one sanitized loser',
             agentRunId: 'run-2',
             sessionId: 'session-2',
             worktreeId: 'wt:v1:two',
-            pathHash: 'path-two',
+            pathHash: PATH_HASH,
             pid: 456,
           }),
         })
@@ -217,10 +476,17 @@ test('paused leases retain both unique constraints and live holders resist takeo
         issueId: '1049',
         expectedLeaseId: lease.leaseId,
         expectedToken: lease.fencingToken,
+        expectedHolder: lease.holder,
+        expectedBinding: bindingFor(lease.holder, lease.issueId),
         idempotencyKey: 'live-takeover',
         observedAt: NOW,
         reason: 'operator asked',
         requester: holder({ agentRunId: 'run-4', sessionId: 'session-4', pid: 1000 }),
+        requesterBinding: bindingFor(
+          holder({ agentRunId: 'run-4', sessionId: 'session-4', pid: 1000 }),
+          lease.issueId
+        ),
+        ttlMs: 900_000,
         evidence: {
           kind: 'operator-attestation',
           hostId: 'host-1',
@@ -246,6 +512,8 @@ test('takeover fails closed when liveness authority is unavailable', () => {
         issueId: '1049',
         expectedLeaseId: lease.leaseId,
         expectedToken: lease.fencingToken,
+        expectedHolder: lease.holder,
+        expectedBinding: bindingFor(lease.holder, lease.issueId),
         idempotencyKey: 'unverified-expiry',
         observedAt: '2026-07-30T12:30:00.000Z',
         reason: 'TTL elapsed',
@@ -253,9 +521,20 @@ test('takeover fails closed when liveness authority is unavailable', () => {
           agentRunId: 'run-2',
           sessionId: 'session-2',
           worktreeId: 'wt:v1:two',
-          pathHash: 'path-two',
+          pathHash: PATH_HASH,
           pid: 456,
         }),
+        requesterBinding: bindingFor(
+          holder({
+            agentRunId: 'run-2',
+            sessionId: 'session-2',
+            worktreeId: 'wt:v1:two',
+            pathHash: PATH_HASH,
+            pid: 456,
+          }),
+          lease.issueId
+        ),
+        ttlMs: 900_000,
         evidence: {
           kind: 'remote-expired',
           hostId: 'host-1',
