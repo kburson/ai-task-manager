@@ -14,6 +14,8 @@ import {
   buildTrustedWorkLeaseBinding,
   buildTrustedWorkLeaseHolder,
 } from '../../../lib/work-lease/guard.mjs';
+import { createGovernedEffectAdapter } from '../../../lib/work-lease/governed-effect.mjs';
+import { withVerbMutationScope } from '../../../lib/work-lease/verb-mutation-scope.mjs';
 import * as workLeaseGuard from '../../../lib/work-lease/guard.mjs';
 import {
   activeTaskPath,
@@ -69,6 +71,101 @@ const LEASE = {
   heartbeatAt: NOW.toISOString(),
   expiresAt: '2026-07-30T12:15:00.000Z',
 };
+
+function governedApprovalFixture({ verifyEffect } = {}) {
+  const calls = [];
+  const withGovernedEffect = createGovernedEffectAdapter({
+    projectDir: '/repo/worktree-1',
+    getStore: () => ({ projectId: LEASE.projectId }),
+    getIdentity: () => ({
+      sessionId: LEASE.holder.sessionId,
+      hostId: LEASE.holder.hostId,
+      worktreeId: LEASE.holder.worktreeId,
+    }),
+    verifyEffect:
+      verifyEffect ||
+      (async (options) => {
+        calls.push(`${options.issueId}:${options.operation}`);
+        return { allowed: true, lease: LEASE };
+      }),
+    createHeartbeat: () => ({ stop() {} }),
+  });
+  return { calls, withGovernedEffect };
+}
+
+test('approval mutation scope reuses only the exact issue and operation authority', async () => {
+  const { calls, withGovernedEffect } = governedApprovalFixture();
+  const effects = [];
+
+  await withVerbMutationScope(
+    {
+      issueId: '1049',
+      operation: 'approval-mutation',
+      withGovernedEffect,
+    },
+    async (scope) => {
+      await scope.effect(() => {
+        effects.push('direct');
+      });
+      await scope.continue(
+        { issueId: '1049', operation: 'approval-mutation' },
+        async (authority) => {
+          assert.equal(authority.leaseContext.leaseId, LEASE.leaseId);
+          effects.push('nested');
+        }
+      );
+      await assert.rejects(
+        () =>
+          scope.continue({ issueId: '1049', operation: 'issue-body-mutation' }, async () =>
+            effects.push('wrong-operation')
+          ),
+        /does not match issue\/operation/
+      );
+      await assert.rejects(
+        () =>
+          scope.continue({ issueId: '1050', operation: 'approval-mutation' }, async () =>
+            effects.push('wrong-issue')
+          ),
+        /does not match issue\/operation/
+      );
+    }
+  );
+
+  assert.deepEqual(effects, ['direct', 'nested']);
+  assert.deepEqual(calls, [
+    '1049:approval-mutation',
+    '1049:approval-mutation',
+    '1049:approval-mutation',
+  ]);
+});
+
+test('approval mutation scope denies stale authority before its remote effect', async () => {
+  let verifies = 0;
+  const effects = [];
+  const { withGovernedEffect } = governedApprovalFixture({
+    verifyEffect: async () => {
+      verifies += 1;
+      if (verifies > 1) {
+        throw new WorkLeaseError('fence-stale', 'approval fence is stale');
+      }
+      return { allowed: true, lease: LEASE };
+    },
+  });
+
+  await assert.rejects(
+    () =>
+      withVerbMutationScope(
+        {
+          issueId: '1049',
+          operation: 'approval-mutation',
+          withGovernedEffect,
+        },
+        (scope) => scope.effect(() => effects.push('remote'))
+      ),
+    (error) => error instanceof WorkLeaseError && error.code === 'fence-stale'
+  );
+  assert.deepEqual(effects, []);
+});
 
 function switchProjectionAuthorityFixture() {
   const request = {

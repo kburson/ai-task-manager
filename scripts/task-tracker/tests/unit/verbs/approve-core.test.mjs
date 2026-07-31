@@ -37,6 +37,12 @@ const EPOCH_TWO = `review:2:${REVIEW_TWO}`;
 const PROOF_ONE = 'abc1234';
 const PROOF_TWO = 'def5678';
 
+async function allowApprovalMutation(options, callback) {
+  assert.equal(options.issueId, '58');
+  assert.equal(options.operation, 'approval-mutation');
+  return callback({ reverify: async () => {} });
+}
+
 function reviewProof(epoch, sha) {
   return `<!-- aitm-agent-review-proof schema="1" epoch="${epoch}" sha="${sha}" ts="2026-07-29T10:01:00Z" validators="unit" result="pass" -->`;
 }
@@ -58,7 +64,14 @@ const AGENT_REVIEW_PASSED = [
 ].join('\n');
 
 function makeDeps(overrides = {}) {
-  const calls = { writes: [], bodies: [], stateLookups: 0, comments: [] };
+  const calls = {
+    writes: [],
+    bodies: [],
+    stateLookups: 0,
+    comments: [],
+    authority: [],
+    locks: [],
+  };
   const initialBody =
     overrides.initialBody ??
     '## Acceptance Criteria\n\n- [x] all\n\n<!-- ai-task-manager:fields:start -->\n```json\n{"schema":1,"values":{"size":"S"}}\n```\n<!-- ai-task-manager:fields:end -->\n';
@@ -76,7 +89,8 @@ function makeDeps(overrides = {}) {
       // #295 — closure-form body write. Track both base-in and result-out so
       // tests can assert "mutate produced body X from base Y" rather than just
       // observing the final body.
-      mutateIssueBody: async ({ mutate }) => {
+      mutateIssueBody: async ({ mutate, operation }) => {
+        calls.authority.push(`body:${operation}`);
         const before = body;
         const next = mutate(before);
         if (next !== before) {
@@ -100,10 +114,78 @@ function makeDeps(overrides = {}) {
       },
       fetchComments: async () => [],
       fetchProjectValues: async () => ({}),
+      withIssueLock: async (_options, callback) => {
+        calls.locks.push('lock');
+        return callback();
+      },
+      withGovernedEffect: async (options, callback) => {
+        calls.authority.push(`authorize:${options.issueId}:${options.operation}`);
+        return callback({
+          reverify: async () => {
+            calls.authority.push('reverify');
+          },
+        });
+      },
       ...overrides.deps,
     },
     getBody: () => body,
   };
+}
+
+// #1049 — a mutation attempt acquires the issue lock, authorizes the exact
+// approval boundary, and reverifies immediately before the body effect.
+{
+  const { deps, calls } = makeDeps();
+  const r = await runApprove({ issueNumber: 58, cfg, deps });
+  assert.equal(r.status, 'approved');
+  assert.deepEqual(calls.locks, ['lock']);
+  assert.equal(calls.authority[0], 'authorize:58:approval-mutation');
+  assert.equal(calls.authority.at(-1), 'body:approval-mutation');
+  assert.ok(
+    calls.authority.slice(1, -1).every((event) => event === 'reverify'),
+    `every pre-body authority event must be reverify: ${calls.authority.join(', ')}`
+  );
+}
+
+// #1049 — current approval is a read-only no-op: it needs neither a lock nor
+// lease authority.
+{
+  const current = [
+    `<!-- aitm-entered-review ts="${REVIEW_ONE}" -->`,
+    `<!-- aitm-dod-verified sha="${PROOF_ONE}" ts="2026-07-29T10:00:00Z" -->`,
+    reviewProof(EPOCH_ONE, PROOF_ONE),
+    AGENT_REVIEW_LINE.trim(),
+    reviewApproval({ epoch: EPOCH_ONE, proofSha: PROOF_ONE }),
+  ].join('\n');
+  const { deps, calls } = makeDeps({ initialBody: current });
+  deps.withGovernedEffect = async () => {
+    throw new Error('authority must remain unopened');
+  };
+  const r = await runApprove({ issueNumber: 58, cfg, deps });
+  assert.equal(r.status, 'already-approved');
+  assert.deepEqual(calls.locks, []);
+  assert.deepEqual(calls.authority, []);
+}
+
+// #1049 — denied approval authority prevents every body/comment effect.
+{
+  const { deps, calls } = makeDeps({
+    deps: {
+      withGovernedEffect: async (options) => {
+        calls.authority.push(`authorize:${options.issueId}:${options.operation}`);
+        const error = new Error('stale approval authority');
+        error.code = 'fence-stale';
+        throw error;
+      },
+    },
+  });
+  await assert.rejects(
+    () => runApprove({ issueNumber: 58, cfg, deps }),
+    /stale approval authority/
+  );
+  assert.deepEqual(calls.locks, ['lock']);
+  assert.deepEqual(calls.writes, []);
+  assert.deepEqual(calls.comments, []);
 }
 
 // 1. wrong-state when not in review (develop)
@@ -279,6 +361,7 @@ function makeDeps(overrides = {}) {
       nowIso: () => FIXED_TS,
       detectFullAuto: () => ({ fired: false, signals: '' }),
       promptDrivers: async () => [],
+      withGovernedEffect: allowApprovalMutation,
       mutateIssueBody: async (options) => {
         capturedOptions = options;
         fresh = options.mutate(fresh);
@@ -314,6 +397,7 @@ function makeDeps(overrides = {}) {
       nowIso: () => FIXED_TS,
       detectFullAuto: () => ({ fired: false, signals: '' }),
       promptDrivers: async () => [],
+      withGovernedEffect: allowApprovalMutation,
       mutateIssueBody: async ({ mutate }) => {
         fresh = mutate(fresh);
         return { status: 'no-op', body: fresh };

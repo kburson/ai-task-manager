@@ -39,6 +39,8 @@ const AGENT_REVIEW_PASSED =
 const cfg = { repo: 'o/r' };
 const FIXED_TS = '2026-05-10T00:00:00Z';
 
+const allowGovernedEffect = async (_options, callback) => callback({ reverify: async () => {} });
+
 function makeDeps(overrides = {}) {
   const calls = { writes: [], bodies: [], stateLookups: 0, comments: [] };
   const initialBody =
@@ -85,6 +87,7 @@ function makeDeps(overrides = {}) {
       },
       fetchComments: async () => [],
       fetchProjectValues: async () => ({}),
+      withGovernedEffect: allowGovernedEffect,
       ...overrides.deps,
     },
     getBody: () => body,
@@ -285,6 +288,7 @@ function makeDeps(overrides = {}) {
       postComment: async () => {},
       fetchComments: async () => [],
       fetchProjectValues: async () => ({}),
+      withGovernedEffect: allowGovernedEffect,
     },
   });
   assert.equal(r.status, 'approved');
@@ -333,6 +337,7 @@ function makeDeps(overrides = {}) {
       postComment: async () => {},
       fetchComments: async () => [],
       fetchProjectValues: async () => ({}),
+      withGovernedEffect: allowGovernedEffect,
     },
   });
   assert.equal(r.status, 'approved');

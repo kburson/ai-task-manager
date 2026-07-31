@@ -44,6 +44,8 @@ const REVIEW_TWO = '2026-07-29T11:00:00Z';
 const EPOCH_ONE = `review:1:${REVIEW_ONE}`;
 const EPOCH_TWO = `review:2:${REVIEW_TWO}`;
 
+const allowGovernedEffect = async (_options, callback) => callback({ reverify: async () => {} });
+
 function makeDeps(overrides = {}) {
   const calls = { writes: [], bodies: [], stateLookups: 0, comments: [] };
   const initialBody =
@@ -89,6 +91,7 @@ function makeDeps(overrides = {}) {
       },
       fetchComments: async () => [],
       fetchProjectValues: async () => ({}),
+      withGovernedEffect: allowGovernedEffect,
       ...overrides.deps,
     },
     getBody: () => body,

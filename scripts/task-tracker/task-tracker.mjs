@@ -369,12 +369,16 @@ if (_isMain)
         }
         case 'approve': {
           const { verbApprove } = await import('./verbs/approve.mjs');
-          await verbApprove(ctx.rest, ctx.cfg);
+          await verbApprove(ctx.rest, ctx.cfg, {
+            withGovernedEffect: ctx.workLeaseGuard.withGovernedEffect,
+          });
           break;
         }
         case 'plan-approve': {
           const { verbPlanApprove } = await import('./verbs/plan-approve.mjs');
-          await verbPlanApprove(ctx.rest, ctx.cfg);
+          await verbPlanApprove(ctx.rest, ctx.cfg, {
+            withGovernedEffect: ctx.workLeaseGuard.withGovernedEffect,
+          });
           break;
         }
         case 'user-story':

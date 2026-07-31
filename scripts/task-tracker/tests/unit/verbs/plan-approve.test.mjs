@@ -26,7 +26,15 @@ const cfg = { repo: 'o/r' };
 const FIXED_TS = '2026-05-16T00:00:00Z';
 
 function makeDeps(overrides = {}) {
-  const calls = { writes: [], bodies: [], stateLookups: 0, comments: [], commentReads: 0 };
+  const calls = {
+    writes: [],
+    bodies: [],
+    stateLookups: 0,
+    comments: [],
+    commentReads: 0,
+    authority: [],
+    locks: [],
+  };
   const comments = [...(overrides.comments ?? [])];
   const initialBody =
     overrides.initialBody ??
@@ -41,7 +49,8 @@ function makeDeps(overrides = {}) {
       },
       // #295 — verb now writes via mutateIssueBody({mutate}); closure runs on
       // the FRESH base. Old `writeIssueBody({body})` signature retired.
-      mutateIssueBody: async ({ mutate }) => {
+      mutateIssueBody: async ({ mutate, operation }) => {
+        calls.authority.push(`body:${operation}`);
         if (overrides.beforeMutate) body = overrides.beforeMutate(body);
         const before = body;
         const next = mutate(before);
@@ -61,13 +70,76 @@ function makeDeps(overrides = {}) {
         return comments.map((body) => ({ body }));
       },
       postComment: async ({ body: commentBody }) => {
+        calls.authority.push('comment');
         calls.comments.push(commentBody);
         comments.push(commentBody);
+      },
+      withIssueLock: async (_options, callback) => {
+        calls.locks.push('lock');
+        return callback();
+      },
+      withGovernedEffect: async (options, callback) => {
+        calls.authority.push(`authorize:${options.issueId}:${options.operation}`);
+        return callback({
+          reverify: async () => {
+            calls.authority.push('reverify');
+          },
+        });
       },
       ...overrides.deps,
     },
     getBody: () => body,
   };
+}
+
+// #1049 — marker mutation runs under one locked, exact approval authority.
+{
+  const { deps, calls } = makeDeps();
+  const r = await runPlanApprove({ issueNumber: 122, cfg, deps });
+  assert.equal(r.status, 'approved');
+  assert.deepEqual(calls.locks, ['lock']);
+  assert.deepEqual(calls.authority, [
+    'authorize:122:approval-mutation',
+    'reverify',
+    'body:approval-mutation',
+  ]);
+}
+
+// #1049 — a complete human approval is a pure no-op without lock or authority.
+{
+  const initialBody =
+    '## Scope\n\n<!-- aitm-entered-plan ts="2026-05-01T00:00:00Z" -->\n' +
+    '<!-- aitm-plan-approved ts="2026-05-01T00:00:00Z" -->\n';
+  const { deps, calls } = makeDeps({ initialBody });
+  deps.withGovernedEffect = async () => {
+    throw new Error('authority must remain unopened');
+  };
+  const r = await runPlanApprove({ issueNumber: 122, cfg, deps });
+  assert.equal(r.status, 'already-approved');
+  assert.deepEqual(calls.locks, []);
+  assert.deepEqual(calls.authority, []);
+}
+
+// #1049 — stale authority blocks marker and Full-Auto audit effects.
+{
+  const { deps, calls } = makeDeps({
+    env: { TT_FULL_AUTO: '1' },
+    deps: {
+      withGovernedEffect: async (options) => {
+        calls.authority.push(`authorize:${options.issueId}:${options.operation}`);
+        const error = new Error('stale approval authority');
+        error.code = 'fence-stale';
+        throw error;
+      },
+    },
+  });
+  await assert.rejects(
+    () => runPlanApprove({ issueNumber: 122, cfg, deps }),
+    /stale approval authority/
+  );
+  assert.deepEqual(calls.locks, ['lock']);
+  assert.deepEqual(calls.writes, []);
+  assert.deepEqual(calls.comments, []);
 }
 
 // 1. wrong-state when in review (plan-approve cannot approve Review)

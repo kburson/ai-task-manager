@@ -35,6 +35,7 @@ function makeDeps(initialBody, state = 'plan') {
       },
       getBoardState: async () => state,
       nowIso: () => FIXED_TS,
+      withGovernedEffect: async (_options, callback) => callback({ reverify: async () => {} }),
     },
     getBody: () => body,
   };

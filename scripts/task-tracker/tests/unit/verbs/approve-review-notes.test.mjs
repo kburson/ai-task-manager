@@ -6,6 +6,8 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { runApprove } from '../../../verbs/approve.mjs';
 
+const allowGovernedEffect = async (_options, callback) => callback({ reverify: async () => {} });
+
 // #881 — approve requires evidence that the Agent Review Gate (the Review state's
 // action) passed. Every fixture body below is suffixed with it; tests that care
 // about the refusal path live in approve-agent-review-complete.test.mjs.
@@ -56,6 +58,7 @@ function makeDeps({ tty, env = {}, drivers = [], comments = [], fields = {} } = 
     fetchProjectValues: async () => fields,
     promptDrivers: async () => drivers,
     deriveDrivers: () => ['auto driver A', 'auto driver B'],
+    withGovernedEffect: allowGovernedEffect,
   };
 }
 

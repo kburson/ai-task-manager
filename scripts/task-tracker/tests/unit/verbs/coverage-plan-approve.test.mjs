@@ -38,6 +38,7 @@ function deps({ body = CLEAN_BODY, state = 'plan', onMutate } = {}) {
       if (onMutate) onMutate(mutate(body));
       return { status: 'ok' };
     },
+    withGovernedEffect: async (_options, callback) => callback({ reverify: async () => {} }),
   };
 }
 

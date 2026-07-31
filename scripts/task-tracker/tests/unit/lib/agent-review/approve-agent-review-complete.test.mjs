@@ -137,6 +137,7 @@ function approveWith(body, extra = {}) {
           deriveDrivers: () => [],
           detectFullAuto: () => ({ fired: true, signals: 'test' }),
           nowIso: () => '2026-07-18T02:00:00Z',
+          withGovernedEffect: async (_options, callback) => callback({ reverify: async () => {} }),
           ...extra,
         },
       }),

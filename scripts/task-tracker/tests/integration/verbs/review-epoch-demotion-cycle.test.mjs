@@ -240,6 +240,7 @@ test('#1050 hermetic incident: demote, Test, Review verb, stale close refusal, f
           liveBody = mutate(liveBody);
           return { status: 'ok', body: liveBody };
         },
+        withGovernedEffect: async (_options, callback) => callback({ reverify: async () => {} }),
       },
     });
     assert.equal(approved.status, 'approved');
