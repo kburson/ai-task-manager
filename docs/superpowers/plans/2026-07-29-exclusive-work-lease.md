@@ -48,8 +48,8 @@ the fencing token before governed effects. Fleet remains a projection.
 - SQLite and HTTPS share a closed operation vocabulary. Unknown operations fail
   validation. Reuse of an idempotency key for a different canonical request
   fails with `idempotency-conflict`.
-- The reviewed file inventory has 155 task assignments across 143 unique paths:
-  Tasks 1-7 contain 13, 5, 17, 5, 93, 18, and 4 paths respectively.
+- The reviewed file inventory has 160 task assignments across 148 unique paths:
+  Tasks 1-7 contain 13, 5, 17, 5, 98, 18, and 4 paths respectively.
   Lifecycle authority paths intentionally reappear in later tasks when the
   same provider, session, close, or fleet boundary needs another governed
   increment. If
@@ -428,6 +428,16 @@ real Git worktree directory. Raw display text never participates in uniqueness.
   `scripts/task-tracker/tests/unit/verbs/close-reconcile-lifecycle.test.mjs`
 - Modify:
   `scripts/task-tracker/tests/unit/verbs/close-review-authority-wiring.test.mjs`
+- Modify:
+  `scripts/task-tracker/tests/unit/core/close-board-body-agreement.test.mjs`
+- Modify:
+  `scripts/task-tracker/tests/unit/core/close-flush-timing.test.mjs`
+- Modify:
+  `scripts/task-tracker/tests/unit/lib/close-fail-closed.test.mjs`
+- Modify:
+  `scripts/task-tracker/tests/unit/lib/close-gate-order.test.mjs`
+- Modify:
+  `scripts/task-tracker/tests/unit/lib/cascade-child-close-fail-closed.test.mjs`
 - Modify:
   `scripts/task-tracker/tests/unit/gh/move-state-governed-boundary.test.mjs`
 - Modify:
