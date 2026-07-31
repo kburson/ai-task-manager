@@ -7,14 +7,9 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
-import { fileURLToPath } from 'node:url';
-import { dirname, join } from 'node:path';
 
+import { runActivityGuard } from '../../../activity-guard.mjs';
 import { isInstalledGuardPath } from '../../../lib/installed-guard-path.mjs';
-
-const __dirname = dirname(fileURLToPath(import.meta.url)) + '/..';
-const GUARD_SRC = join(__dirname, '../../activity-guard.mjs');
 
 test('installed guard paths are refused', () => {
   assert.equal(
@@ -66,19 +61,45 @@ test('the predicate is pure — verdict cannot be re-enabled by any external sta
   assert.equal(isInstalledGuardPath.length, 1);
 });
 
-test('interlock fires ahead of the .tmp carve-out, chore-mode bypass, and state checks', () => {
-  // Source-order contract: in activity-guard.mjs the isInstalledGuardPath()
-  // call must precede the `.tmp` carve-out, the isChoreModeActive bypass, and
-  // the isAllowed state check. If a refactor reorders these, this test fails.
-  const src = readFileSync(GUARD_SRC, 'utf8');
-  const idxInterlock = src.indexOf('isInstalledGuardPath(target)');
-  const idxTmp = src.indexOf("target.startsWith('.tmp/')");
-  const idxChore = src.indexOf('isChoreModeActive(projectRoot)');
-  const idxAllowed = src.indexOf('isAllowed(state, activityClass)');
+test('multi-target apply_patch interlock precedes scratch, chore, state, and authority', async () => {
+  let downstreamCalls = 0;
+  const forbidden = () => {
+    downstreamCalls += 1;
+    throw new Error('installed-guard interlock must fire first');
+  };
+  const result = await runActivityGuard(
+    {
+      tool_name: 'apply_patch',
+      tool_input: [
+        '*** Begin Patch',
+        '*** Update File: .tmp/inspect/scratch.mjs',
+        '@@',
+        '-old',
+        '+new',
+        '*** Update File: node_modules/ai-task-manager/scripts/task-tracker/bash-guard.mjs',
+        '@@',
+        '-old',
+        '+new',
+        '*** End Patch',
+      ].join('\n'),
+    },
+    {
+      projectRoot: '/consumer/project',
+      loadPolicy: forbidden,
+      readBoundState: forbidden,
+      isChoreModeActive: () => {
+        downstreamCalls += 1;
+        return true;
+      },
+      withGovernedEffect: forbidden,
+    }
+  );
 
-  assert.ok(idxInterlock > 0, 'interlock call present');
-  assert.ok(idxTmp > 0 && idxChore > 0 && idxAllowed > 0, 'downstream gates present');
-  assert.ok(idxInterlock < idxTmp, 'interlock precedes .tmp carve-out');
-  assert.ok(idxInterlock < idxChore, 'interlock precedes chore-mode bypass');
-  assert.ok(idxInterlock < idxAllowed, 'interlock precedes state allow-check');
+  assert.equal(result.decision, 'block');
+  assert.equal(result.code, 'activity-installed-guard-refused');
+  assert.match(
+    result.reason,
+    /node_modules\/ai-task-manager\/scripts\/task-tracker\/bash-guard\.mjs/
+  );
+  assert.equal(downstreamCalls, 0);
 });
