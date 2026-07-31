@@ -42,14 +42,14 @@ the fencing token before governed effects. Fleet remains a projection.
 - GitHub assignee remains human accountability; mutator locks remain
   short-lived serialization inside a valid lease; fleet is never authority.
 - Read-only status/reporting needs no write lease.
-- The session binding persists the non-secret lease context and preserves it
-  across generic state/timing saves. Authentication secrets are never
-  persisted.
+- The session binding persists the exact non-secret authority tuple
+  `{ lease, holder, binding }` and preserves it across generic state/timing
+  saves. Authentication secrets are never persisted.
 - SQLite and HTTPS share a closed operation vocabulary. Unknown operations fail
   validation. Reuse of an idempotency key for a different canonical request
   fails with `idempotency-conflict`.
-- The reviewed file inventory has 239 task assignments across 209 unique paths:
-  Tasks 1-7 contain 13, 5, 17, 5, 146, 49, and 4 paths respectively.
+- The reviewed file inventory has 247 task assignments across 214 unique paths:
+  Tasks 1-7 contain 13, 5, 17, 5, 146, 57, and 4 paths respectively.
   Lifecycle authority paths intentionally reappear in later tasks when the
   same provider, session, close, or fleet boundary needs another governed
   increment. If
@@ -616,9 +616,14 @@ real Git worktree directory. Raw display text never participates in uniqueness.
 - Modify: `scripts/task-tracker/lib/work-lease/context.mjs`
 - Modify: `scripts/task-tracker/lib/work-lease/guard.mjs`
 - Modify:
+  `scripts/task-tracker/lib/work-lease/switch-orchestration.mjs`
+- Modify:
   `scripts/task-tracker/lib/work-lease/bind-orchestration.mjs`
 - Create:
   `scripts/task-tracker/lib/work-lease/lifecycle-orchestration.mjs`
+- Modify: `scripts/task-tracker/lib/work-lease/governed-effect.mjs`
+- Modify:
+  `scripts/task-tracker/lib/work-lease/transition-projection-authority.mjs`
 - Modify: `scripts/task-tracker/session-state.mjs`
 - Modify: `scripts/task-tracker/state.mjs`
 - Modify: `scripts/task-tracker/fleet-registry.mjs`
@@ -651,6 +656,16 @@ real Git worktree directory. Raw display text never participates in uniqueness.
 - Modify:
   `scripts/task-tracker/tests/unit/lib/work-lease-switch.test.mjs`
 - Modify:
+  `scripts/task-tracker/tests/unit/lib/governed-effect.test.mjs`
+- Modify:
+  `scripts/task-tracker/tests/unit/lib/runtime-capabilities.test.mjs`
+- Modify:
+  `scripts/task-tracker/tests/unit/lib/guard-entrypoint-resolution.test.mjs`
+- Modify:
+  `scripts/task-tracker/tests/unit/lib/timing-queue-upgrade-recovery.test.mjs`
+- Modify:
+  `scripts/task-tracker/tests/slow/lib/commit-trail-handler.test.mjs`
+- Modify:
   `scripts/task-tracker/tests/unit/lib/fleet-registry.test.mjs`
 - Modify:
   `scripts/task-tracker/tests/unit/lib/fleet-registry-gc.test.mjs`
@@ -680,13 +695,26 @@ real Git worktree directory. Raw display text never participates in uniqueness.
 
 - Extend every lifecycle request with its exact current holder identity and
   binding identity `{ sessionId, issueId, worktreeId }`; adapters validate the
-  same canonical request and return the same receipt shape. No adapter may infer
-  a holder from fleet or session cache state.
+  same canonical request and return the same receipt shape. Persist the exact
+  non-secret `{ lease, holder, binding }` tuple as sticky session authority:
+  generic saves preserve all three members, and only a fenced clear matching
+  lease ID and fencing token removes them together. Request builders use that
+  persisted old holder and binding byte-for-byte, including its recorded PID;
+  they never substitute the current process PID or a fleet observation. No
+  adapter may infer a holder from fleet or session cache state.
 - `verify` accepts only an `active` lease and refuses `paused` or terminal
   leases. `renew` is compare-and-swap over the exact project, lease, fence,
   holder, binding, and expected state. The only legal renew transitions are
   `active -> active` heartbeat with the 15-minute TTL, `active -> paused` with
-  the 24-hour TTL, and `paused -> active` with the 15-minute TTL.
+  the 24-hour TTL, and `paused -> active` with the 15-minute TTL. A
+  `paused -> active` request alone requires `nextHolder`; the other renew forms
+  reject it. `nextHolder` must match every logical worker identity field in the
+  current holder and may change only PID, and its binding must exactly match the
+  retained binding. A successful resume retains the lease ID, allocates one new
+  fence, installs that fence in both lease and binding, sets `active` with a
+  15-minute TTL, and writes an event/audit record containing old/new holder and
+  fence identities. Exact replay returns the same receipt; concurrent resumes
+  have exactly one winner and all non-replays fail stale.
 - `handoff` accepts an exact `active` or `paused` worker lease and returns the
   same lease in `active` state with an incremented fence and an `integration`
   principal. It preserves project, issue, worktree identity, canonical display
@@ -730,34 +758,97 @@ real Git worktree directory. Raw display text never participates in uniqueness.
 
 #### Task 6B: Lifecycle Ordering and Crash Recovery
 
-- [ ] Add failing task-tracker tests for exact non-secret lifecycle intents,
-      response-loss replay, stale holder/binding refusal, hook restart recovery,
-      chore-mode entry/exit, `/task new` while bound, and two simultaneous
-      sessions. Expected RED after 6A is green.
-- [ ] Create `lifecycle-orchestration.mjs` as the single coordinator for pause,
-      stop, close, and handoff request/receipt/checkpoint recovery. It persists
-      the exact canonical non-secret request before authority mutation, attaches
-      and validates the receipt before projections, and checkpoints naturally
-      idempotent session, timing, GitHub, and fleet projections. Restart replays
-      the byte-identical request; local cache state never fabricates success.
-- [ ] Keep resume acquisition/renewal and all resume recovery edits in
-      `bind-orchestration.mjs`; do not create a second resume path in lifecycle
-      orchestration. Resume changes `paused -> active` and validates authority
-      first, before queue, session, timing, GitHub, fleet, hook heartbeat, or any
-      other work effect.
-- [ ] Enforce workflow order: pause completes its timing/session/GitHub/fleet
-      projections and changes authority `active -> paused` last; stop and close
-      finish all terminal projections and release authority last. Chore-mode
-      entry uses the same pause-last protocol, chore-mode exit with `--resume`
-      uses bind-orchestration's authority-first resume, and `/task new` uses the
-      governed bind/switch path rather than directly rewriting fleet or session.
-- [ ] Preserve lifecycle intents and matching lease context through generic
-      `state.mjs` and `session-state.mjs` saves. `hook-handler.mjs` recovers an
-      incomplete journal before heartbeat or session recovery and never treats
-      fleet presence as proof of authority. Re-run the lifecycle, guard,
+**Two-phase mutation-last journal:**
+
+- Phase 1 persists only a non-secret operation ID, issue identity, the exact
+  sticky `{ lease, holder, binding }`, stable projection IDs/inputs, and
+  per-projection checkpoints. It contains no authority request or receipt.
+  While the old lease is still active, run and positively reconcile the
+  naturally idempotent pre-authority session, timing, GitHub, fleet, queue, or
+  other workflow projections in their verb-specific order. A restart resumes
+  from checkpoints; it neither repeats a reconciled projection nor treats a
+  local projection as authority.
+- After every pre-authority projection is reconciled, globally quiesce heartbeat
+  ownership: block new registrations/renewals, cancel every owner timer, and
+  await every tracked in-flight renewal promise, not merely the current root
+  owner. Only after the drain resolves, create a fresh `requestedAt`, build the
+  exact canonical request from the journal's persisted old authority, and
+  atomically attach that request to the journal immediately before calling the
+  authority mutation. A crash before request attachment rebuilds a fresh
+  request after recovery and another drain; a crash at or after attachment
+  replays only that byte-identical request.
+- Validate the mutation receipt against the attached request before atomically
+  attaching it. Authority state is never fabricated from session, fleet, or a
+  checkpoint. Restore heartbeat scheduling for unrelated surviving owners, but
+  never restore the retired/paused old owner. For terminal release, perform only
+  fenced local authority/session cleanup and journal deletion after the valid
+  release receipt is durable. For pause, persist the receipt's paused sticky
+  authority before deleting the journal; for resume/handoff, install and start
+  heartbeat only for the receipt's new active authority.
+
+**6B1 — Request builders, sticky authority, and switch callers**
+
+- [ ] Add failing tests across `governed-effect.mjs`, runtime capabilities,
+      transition projection authority, session state, switch orchestration, and
+      their entrypoint callers. Prove generic state/timing saves preserve the
+      exact sticky `{ lease, holder, binding }`, fenced clear removes it as one
+      unit, and lifecycle request builders use its old PID and identities rather
+      than `process.pid`, current runtime identity, or fleet state. Expected RED
+      after 6A is green.
+- [ ] Introduce the shared lifecycle journal/projection authority interfaces and
+      route switch callers through them without yet changing verb-specific
+      lifecycle order. A journal owns stable operation/issue/projection identity,
+      exact sticky authority, canonical request/receipt attachment, checkpoint
+      reconciliation, and fenced cleanup. Persist neither credentials nor token
+      environment names.
+
+**6B2 — Lifecycle journal, resume, and global heartbeat control**
+
+- [ ] Create `lifecycle-orchestration.mjs` as the sole pause, stop, close, and
+      handoff coordinator implementing the two phases above. Add guard APIs that
+      globally quiesce all heartbeat owners and await their in-flight promises,
+      then restore only unrelated surviving owners. Recovery must run before any
+      hook heartbeat/session recovery, and registration must remain blocked
+      throughout request attachment, mutation, and receipt attachment.
+- [ ] Keep resume acquisition/renewal and all resume recovery in
+      `bind-orchestration.mjs`; lifecycle orchestration must not create another
+      resume path. Implement the `paused -> active` `nextHolder` contract before
+      queue, session, timing, GitHub, fleet, hook heartbeat, or any other work
+      effect. Production has no automatic local PID takeover: PID is audited
+      identity and is never silently substituted.
+- [ ] Cover resume response loss explicitly. First replay the exact persisted
+      request and recover its exact successor receipt even if that successor PID
+      is stale for the restarted runtime. Before any governed effect, journal a
+      separate active-to-paused park using that exact successor, then resume
+      paused-to-active with the current runtime as `nextHolder`. Exact replay of
+      either step returns its original receipt; concurrent resume attempts have
+      one winner.
+
+**6B3 — Verb order and terminal close lanes**
+
+- [ ] Route pause, stop, close, chore-mode entry/exit, `/task new`, and hook
+      recovery through the journal. Pause completes and checkpoints all natural
+      projections before `active -> paused`; stop and close complete all
+      terminal projections before release. Chore-mode entry uses pause-last,
+      chore-mode exit with `--resume` uses bind-orchestration's authority-first
+      resume, and `/task new` uses governed bind/switch rather than directly
+      rewriting fleet or session. Commit-trail and timing-queue upgrade recovery
+      must preserve the same ordering and sticky authority.
+- [ ] Encode the audited close release matrix rather than releasing merely
+      because `verbClose` returned. Release only after a terminal result and all
+      its projections reconcile: disposition `closed-as`, board-Done/issue-open
+      `close-issue-completed`, normal `completed`, or closed-issue convergence
+      with `status === 'completed'`. Do not release for pure exits (`no-target`,
+      `invalid-target`, `invalid-disposition`, `discover-cleared`, pre-root queue
+      refusal), binding change, stale/foreign authority, dirty/cancel/prompt or
+      gate refusal, targeted queue refusal, merge/board/GitHub/projection error,
+      or closed-issue convergence `untouched`, `recovered`, `failed`, or
+      `not-handled`. Those lanes retain exact sticky authority and the journal
+      needed to retry; an exception is never success proof.
+- [ ] Re-run the lifecycle, governed-effect, runtime-capability, guard,
       provider, session, switch, start/resume/stop, close, chore, hook,
-      exclusive-work-lease, and two-sessions-same-issue tests. Do not begin 6C until
-      they are GREEN.
+      commit-trail, timing-queue recovery, exclusive-work-lease, and
+      two-sessions-same-issue tests. Do not begin 6C until they are GREEN.
 
 #### Task 6C: Authoritative Fleet Reconstruction
 
