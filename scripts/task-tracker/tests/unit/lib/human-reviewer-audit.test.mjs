@@ -368,3 +368,29 @@ test('Full-Auto path returns error when postComment throws', async () => {
   assert.equal(result.auditPosted, false);
   assert.match(result.error, /rate-limited/);
 });
+
+test('Full-Auto list and post catches preserve governed authority failures', async () => {
+  for (const collaborator of ['listComments', 'postComment']) {
+    const error = Object.assign(new Error(`stale ${collaborator} fence`), {
+      code: 'fence-stale',
+    });
+    await assert.rejects(
+      () =>
+        enforceFullAutoAudit({
+          issueNumber: 169,
+          repo: 'org/repo',
+          body: 'issue body',
+          env: {},
+          listComments: async () => {
+            if (collaborator === 'listComments') throw error;
+            return [];
+          },
+          postComment: async () => {
+            if (collaborator === 'postComment') throw error;
+          },
+        }),
+      (thrown) => thrown === error,
+      collaborator
+    );
+  }
+});

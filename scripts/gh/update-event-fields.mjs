@@ -1,6 +1,5 @@
 #!/usr/bin/env node
-import { existsSync, readFileSync } from 'node:fs';
-import { writeFileSync, unlinkSync } from 'node:fs';
+import { existsSync, readFileSync, writeFileSync, unlinkSync } from 'node:fs';
 import path from 'node:path';
 import { loadConfig } from '../task-tracker/config.mjs';
 import { getProjectDir, projectTmpDir } from '../task-tracker/paths.mjs';
@@ -9,12 +8,13 @@ import { loadProjectFieldDefs } from '../task-tracker/project-fields.mjs';
 import { fmtTs } from '../task-tracker/gh-timing-comment.mjs';
 import { gh, writeProjectFieldValue } from './lib/github-projects.mjs';
 import { STATE_TO_CONFIG_KEY } from '../task-tracker/lib/move-state/policy.mjs';
+import {
+  createRuntimeGovernedEffectAdapter,
+  isGovernedAuthorityError,
+} from '../task-tracker/lib/work-lease/governed-effect.mjs';
 import { wantsHelp, emitSelfDoc } from '../lib/self-doc.mjs';
 
-// Every board state is accepted (#701); states without an event binding are a
-// silent no-op below, so the caller never has to know which states carry events.
 const VALID_STATES = Object.keys(STATE_TO_CONFIG_KEY);
-
 const STATE_TO_EVENT = {
   refine: 'moveToRefine',
   plan: 'moveToPlan',
@@ -24,140 +24,160 @@ const STATE_TO_EVENT = {
   done: 'moveToDone',
 };
 
-const args = process.argv.slice(2);
-if (import.meta.url === `file://${process.argv[1]}` && wantsHelp(args)) {
-  emitSelfDoc('update-event-fields');
-  process.exit(0);
-}
-const issue = args.find((a) => /^#?\d+$/.test(a))?.replace('#', '');
-const state = args.find((a) => VALID_STATES.includes(a));
-// indexOf(-1)+1 would alias args[0] as the item id when the flag is absent —
-// guard the index so a missing flag falls through to the usage guard (#702).
-const idIdx = args.indexOf('--item-id');
-const itemId = idIdx === -1 ? '' : args[idIdx + 1] || '';
-
-// No event bindings exist for this state (backlog, on-deck) — the sync is a
-// no-op by definition, so exit before the arg guard: a missing --item-id is
-// irrelevant when there is nothing to write (#701).
-if (state && !STATE_TO_EVENT[state]) process.exit(0);
-
-if (!issue || !state || !itemId) {
-  console.error(
-    `Usage: update-event-fields.mjs <issue#> <${VALID_STATES.join('|')}> --item-id <project-item-id>`
-  );
-  process.exit(1);
-}
-
-const cfg = loadConfig();
-if (!cfg.projectId) process.exit(0);
-
-function projectDir() {
-  return getProjectDir();
-}
-
-function loadEventBindings() {
-  const local = path.join(projectDir(), '.ai-task-manager', 'project-field-events.json');
+function loadEventBindings(projectDir) {
+  const local = path.join(projectDir, '.ai-task-manager', 'project-field-events.json');
   const fallback = new URL('../../config/project-field-events.default.json', import.meta.url);
   for (const file of [local, fallback]) {
     try {
       if (typeof file === 'string' && !existsSync(file)) continue;
       return JSON.parse(readFileSync(file, 'utf8'));
     } catch {
-      /* best-effort: optional read; fall back to default on parse/IO error */
+      /* optional read; fall through */
     }
   }
   return {};
 }
 
-function today() {
-  return new Date().toISOString().slice(0, 10);
-}
-
-function nowText() {
-  return fmtTs(new Date());
-}
-
 function fieldTypeForKey(fieldDefs, key) {
-  return fieldDefs.find((d) => d.key === key)?.type || '';
+  return fieldDefs.find((definition) => definition.key === key)?.type || '';
 }
 
-async function writeFieldValue(fieldId, type, value) {
-  if (!fieldId) return;
-  if (type === 'date') {
-    await writeProjectFieldValue({
-      projectId: cfg.projectId,
-      itemId,
-      fieldId,
-      value: { date: value },
-    });
-  } else if (type === 'text') {
-    await writeProjectFieldValue({
-      projectId: cfg.projectId,
-      itemId,
-      fieldId,
-      value: { text: value },
-    });
-  } else {
-    await writeProjectFieldValue({
-      projectId: cfg.projectId,
-      itemId,
-      fieldId,
-      value: { number: Number(value) },
-    });
-  }
+function resolveValue(value) {
+  if (value === 'today') return new Date().toISOString().slice(0, 10);
+  if (value === 'now') return fmtTs(new Date());
+  return undefined;
 }
 
-async function fetchIssueBody() {
-  const out = await gh(['issue', 'view', issue, '-R', cfg.repo, '--json', 'body']);
-  return JSON.parse(out).body ?? '';
-}
-
-async function writeIssueBody(body) {
-  const tmp = path.join(projectTmpDir(projectDir()), `aitm-event-fields-${issue}-${Date.now()}.md`);
+async function defaultWriteIssueBody({ projectDir, issue, repo, body, ghFn, reverify }) {
+  const tmp = path.join(projectTmpDir(projectDir), `aitm-event-fields-${issue}-${Date.now()}.md`);
   try {
     writeFileSync(tmp, body, 'utf8');
-    await gh(['issue', 'edit', issue, '-R', cfg.repo, '--body-file', tmp]);
+    await reverify();
+    await ghFn(['issue', 'edit', issue, '-R', repo, '--body-file', tmp]);
   } finally {
     try {
       unlinkSync(tmp);
     } catch {
-      /* best-effort: cleanup; failure is non-fatal */
+      /* best-effort cleanup */
     }
   }
 }
 
-try {
-  const eventName = STATE_TO_EVENT[state];
-  const bindings = loadEventBindings()[eventName] || [];
-  const fieldDefs = loadProjectFieldDefs(projectDir());
-  const issueBody = cfg.repo ? await fetchIssueBody() : '';
-  let ensured = ensureIssueFieldDb(issueBody, fieldDefs);
-  const values = { ...ensured.values };
-  let issueDbChanged = ensured.changed;
-  for (const binding of bindings) {
-    const fieldKey = binding.field;
-    const fieldId =
-      cfg.fieldIds?.[fieldKey] ||
-      cfg[`field${fieldKey[0].toUpperCase()}${fieldKey.slice(1)}`] ||
-      '';
-    const fieldType = fieldTypeForKey(fieldDefs, fieldKey);
-    let resolved;
-    if (binding.value === 'today') resolved = today();
-    else if (binding.value === 'now') resolved = nowText();
-    else continue;
-    if (binding.mode === 'set_once' && values[fieldKey]) {
-      continue;
+// Callable mutation surface used by move-state's in-process tail. Every field
+// and body write reverifies the exact caller-provided issue+operation
+// continuation immediately before the write. Direct CLI use opens one runtime
+// authority root and maps the returned numeric code only after it unwinds.
+export async function main(args = process.argv.slice(2), deps = {}) {
+  if (wantsHelp(args)) {
+    emitSelfDoc('update-event-fields');
+    return 0;
+  }
+
+  const issue = args.find((arg) => /^#?\d+$/.test(arg))?.replace('#', '');
+  const state = args.find((arg) => VALID_STATES.includes(arg));
+  const idIdx = args.indexOf('--item-id');
+  const itemId = idIdx === -1 ? '' : args[idIdx + 1] || '';
+
+  if (state && !STATE_TO_EVENT[state]) return 0;
+  if (!issue || !state || !itemId) {
+    console.error(
+      `Usage: update-event-fields.mjs <issue#> <${VALID_STATES.join('|')}> --item-id <project-item-id>`
+    );
+    return 1;
+  }
+
+  const cfg = deps.cfg || loadConfig();
+  if (!cfg.projectId) return 0;
+  const projectDir = deps.projectDir || getProjectDir();
+  const ghFn = deps.gh || gh;
+  const writeField = deps.writeProjectFieldValue || writeProjectFieldValue;
+  const withGovernedEffect =
+    deps.withGovernedEffect ||
+    createRuntimeGovernedEffectAdapter({
+      projectDir,
+      config: cfg,
+    });
+  const operation = deps.operation || 'lifecycle-mutation';
+  let authorityEntered = false;
+
+  try {
+    const eventName = STATE_TO_EVENT[state];
+    const bindings = (deps.loadEventBindings || loadEventBindings)(projectDir)[eventName] || [];
+    const fieldDefs = (deps.loadProjectFieldDefs || loadProjectFieldDefs)(projectDir);
+    const issueBody = cfg.repo
+      ? await (
+          deps.fetchIssueBody ||
+          (async () => {
+            const out = await ghFn(['issue', 'view', issue, '-R', cfg.repo, '--json', 'body']);
+            return JSON.parse(out).body ?? '';
+          })
+        )()
+      : '';
+    const ensured = ensureIssueFieldDb(issueBody, fieldDefs);
+    const values = { ...ensured.values };
+    let issueDbChanged = ensured.changed;
+
+    await withGovernedEffect({ issueId: issue, operation, heartbeat: true }, async (authority) => {
+      authorityEntered = true;
+      for (const binding of bindings) {
+        const fieldKey = binding.field;
+        const fieldId =
+          cfg.fieldIds?.[fieldKey] ||
+          cfg[`field${fieldKey[0].toUpperCase()}${fieldKey.slice(1)}`] ||
+          '';
+        const resolved = resolveValue(binding.value);
+        if (resolved === undefined) continue;
+        if (binding.mode === 'set_once' && values[fieldKey]) continue;
+
+        values[fieldKey] = resolved;
+        issueDbChanged = true;
+        if (fieldId) {
+          const type = fieldTypeForKey(fieldDefs, fieldKey);
+          const value =
+            type === 'date'
+              ? { date: resolved }
+              : type === 'text'
+                ? { text: resolved }
+                : { number: Number(resolved) };
+          await authority.reverify();
+          await writeField({ projectId: cfg.projectId, itemId, fieldId, value });
+        }
+        console.log(`✓ ${fieldKey} set for #${issue}`);
+      }
+
+      if (issueDbChanged && issueBody) {
+        const updated = ensureIssueFieldDb(issueBody, fieldDefs, values);
+        const writeBody =
+          deps.writeIssueBody ||
+          ((options) =>
+            defaultWriteIssueBody({
+              ...options,
+              projectDir,
+              issue,
+              repo: cfg.repo,
+              ghFn,
+            }));
+        await writeBody({ body: updated.body, reverify: authority.reverify });
+      }
+    });
+    return 0;
+  } catch (error) {
+    if (isGovernedAuthorityError(error) || (deps.withGovernedEffect && !authorityEntered)) {
+      throw error;
     }
-    values[fieldKey] = resolved;
-    issueDbChanged = true;
-    if (fieldId) await writeFieldValue(fieldId, fieldType, resolved);
-    console.log(`✓ ${fieldKey} set for #${issue}`);
+    console.error(`error: event field update failed: ${error.message}`);
+    return 1;
   }
-  if (issueDbChanged && issueBody) {
-    const updated = ensureIssueFieldDb(issueBody, fieldDefs, values);
-    await writeIssueBody(updated.body);
-  }
-} catch (err) {
-  console.error(`error: event field update failed: ${err.message}`);
-  process.exit(1);
+}
+
+if (import.meta.url === `file://${process.argv[1]}`) {
+  main().then(
+    (code) => {
+      process.exitCode = code;
+    },
+    (error) => {
+      console.error(`error: event field update failed: ${error.message}`);
+      process.exitCode = 1;
+    }
+  );
 }

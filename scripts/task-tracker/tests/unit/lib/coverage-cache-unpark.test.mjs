@@ -124,6 +124,29 @@ test('dispatchOnEnterActions: outer catch absorbs an import/lookup failure', asy
   assert.ok(true); // no throw = outer catch handled it
 });
 
+test('dispatchOnEnterActions: governed authority errors are rethrown', async () => {
+  const error = Object.assign(new Error('stale onEnter fence'), { code: 'fence-stale' });
+  await assert.rejects(
+    () =>
+      dispatchOnEnterActions({
+        issueArg: '10',
+        stateArg: 'develop',
+        SKIP_NETWORK: false,
+        cfg: { repo: 'o/r' },
+        deps: {
+          states: {
+            STATES: {
+              develop: {
+                onEnter: [{ id: 'stale', run: async () => Promise.reject(error) }],
+              },
+            },
+          },
+        },
+      }),
+    (thrown) => thrown === error
+  );
+});
+
 // --- refreshKanbanStateCache ------------------------------------------------
 
 test('refreshKanbanStateCache: non-stage stateArg short-circuits', async () => {
@@ -145,18 +168,24 @@ test('refreshKanbanStateCache: non-stage stateArg short-circuits', async () => {
 
 test('refreshKanbanStateCache: refreshes cache for the matching active task', async () => {
   const set = [];
+  const events = [];
   await refreshKanbanStateCache({
     issueArg: '10',
     stateArg: 'develop',
+    reverifyGovernedEffect: async () => events.push('reverify'),
     deps: {
       wordCounter: { currentSessionId: () => 'sid1' },
       sessionState: {
         getActiveTask: () => ({ issue: '#10' }),
-        setSessionKanbanState: (sid, st) => set.push([sid, st]),
+        setSessionKanbanState: (sid, st) => {
+          events.push('set');
+          set.push([sid, st]);
+        },
       },
     },
   });
   assert.deepEqual(set, [['sid1', 'develop']]);
+  assert.deepEqual(events, ['reverify', 'set']);
 });
 
 test('refreshKanbanStateCache: no session id → skip, and mismatched active → skip', async () => {
@@ -275,9 +304,37 @@ test('unparkDoneDependents: enforcement catch absorbs a throw', async () => {
   }
 });
 
+test('unparkDoneDependents: parent authority cannot authorize child mutation', async () => {
+  const savedCascade = process.env.AITM_CASCADE;
+  delete process.env.AITM_CASCADE;
+  let called = false;
+  try {
+    await unparkDoneDependents({
+      issueArg: '10',
+      stateArg: 'done',
+      SKIP_NETWORK: false,
+      cfg: { repo: 'o/r' },
+      withGovernedEffect: async () => {
+        throw new Error('parent continuation must never be called for a child');
+      },
+      deps: {
+        unparkMod: {
+          unparkDependents: async () => {
+            called = true;
+            return [];
+          },
+        },
+      },
+    });
+    assert.equal(called, false, 'unpark fails closed without exact child authority');
+  } finally {
+    if (savedCascade !== undefined) process.env.AITM_CASCADE = savedCascade;
+  }
+});
+
 // --- syncTrackerState -------------------------------------------------------
 
-test('syncTrackerState: syncs the tracker ledger for the new state', () => {
+test('syncTrackerState: syncs the tracker ledger immediately after reverify', async () => {
   const sandbox = mkdtempProjectIsolated('cache-unpark-');
   const savedProjectDir = process.env.AI_TASK_MANAGER_PROJECT_DIR;
   process.env.AI_TASK_MANAGER_PROJECT_DIR = sandbox;
@@ -285,8 +342,14 @@ test('syncTrackerState: syncs the tracker ledger for the new state', () => {
     // #218 strips `state` from the on-disk ledger (issue body is source of
     // truth), so the observable effect is that the load→save round-trip runs
     // and materializes the ledger file in the isolated project dir.
-    syncTrackerState({ stateArg: 'test' });
+    const events = [];
+    await syncTrackerState({
+      stateArg: 'test',
+      reverifyGovernedEffect: async () => events.push('reverify'),
+      deps: { beforeTrackerSave: () => events.push('save') },
+    });
     assert.ok(existsSync(statePath(sandbox)), 'tracker ledger was written');
+    assert.deepEqual(events, ['reverify', 'save']);
   } finally {
     if (savedProjectDir !== undefined) process.env.AI_TASK_MANAGER_PROJECT_DIR = savedProjectDir;
     else delete process.env.AI_TASK_MANAGER_PROJECT_DIR;
@@ -308,8 +371,10 @@ test('syncEventFields: SKIP_NETWORK short-circuits', async () => {
   assert.equal(calls.length, 0);
 });
 
-test('syncEventFields: dispatches the update-event-fields subprocess via ctx.pexec', async () => {
+test('syncEventFields: invokes update-event-fields in-process with the exact continuation', async () => {
   const { pexec, calls } = makePexec();
+  const updates = [];
+  const continuation = async () => {};
   await syncEventFields({
     issueArg: '10',
     stateArg: 'develop',
@@ -317,20 +382,32 @@ test('syncEventFields: dispatches the update-event-fields subprocess via ctx.pex
     SKIP_NETWORK: false,
     pexec,
     __dir: GH_DIR,
+    governedOperation: 'review-mutation',
+    withGovernedEffect: continuation,
+    deps: {
+      updateEventFields: async (args, options) => updates.push({ args, options }),
+    },
   });
-  assert.equal(calls.length, 1);
-  assert.ok(calls[0].args.includes('--item-id'));
-  assert.ok(calls[0].args.includes('IT-1'));
+  assert.equal(calls.length, 0, 'no ungoverned subprocess is spawned');
+  assert.deepEqual(updates[0].args, ['10', 'develop', '--item-id', 'IT-1']);
+  assert.equal(updates[0].options.operation, 'review-mutation');
+  assert.equal(updates[0].options.withGovernedEffect, continuation);
 });
 
-test('syncEventFields: a throwing pexec surfaces a warning, no rethrow', async () => {
-  const { pexec } = makePexec({ throws: true });
+test('syncEventFields: an ordinary in-process update failure surfaces a warning, no rethrow', async () => {
+  const { pexec } = makePexec();
   await syncEventFields({
     issueArg: '10',
     stateArg: 'develop',
+    itemId: 'IT',
     SKIP_NETWORK: false,
     pexec,
     __dir: GH_DIR,
+    deps: {
+      updateEventFields: async () => {
+        throw new Error('sync failed');
+      },
+    },
   });
   assert.ok(true); // warning written, best-effort
 });

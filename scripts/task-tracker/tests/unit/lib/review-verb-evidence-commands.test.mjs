@@ -157,8 +157,8 @@ const reviewSource = readFileSync(reviewVerbPath, 'utf8');
   // The move result is captured into a named binding, not discarded.
   assert.match(
     reviewSource,
-    /const\s+reviewMove\s*=\s*await\s+runMoveState\(target,\s*'review',\s*\{\s*silent:\s*true\s*\}\)/,
-    'review.mjs captures the runMoveState result into `reviewMove`'
+    /const\s+reviewMove\s*=\s*await\s+scopedRunMoveState\(target,\s*'review',\s*\{\s*silent:\s*true\s*\}\)/,
+    'review.mjs captures the scoped runMoveState result into `reviewMove`'
   );
 
   // A genuine refusal (ok:false, not the benign done→done self-loop) gates the
@@ -169,15 +169,16 @@ const reviewSource = readFileSync(reviewVerbPath, 'utf8');
     'review.mjs gates on `ok === false && benign !== true`'
   );
 
-  // The refusal must process.exit before the success banner is reachable.
+  // The refusal must return a structured outcome before the success banner is
+  // reachable, so the authority heartbeat and issue lock unwind first.
   const gateIdx = reviewSource.indexOf('reviewMove.ok === false');
-  const exitIdx = reviewSource.indexOf('process.exit(reviewMove.status', gateIdx);
+  const exitIdx = reviewSource.indexOf('return { exitCode: reviewMove.status', gateIdx);
   const bannerIdx = reviewSource.indexOf('moved to Review — all verification passed', gateIdx);
   assert.ok(gateIdx > 0, 'refusal gate exists');
   assert.ok(exitIdx > gateIdx, 'gate exits non-zero on refusal');
   assert.ok(
     bannerIdx > exitIdx,
-    'success banner sits after the refusal exit (unreachable on refusal)'
+    'success banner sits after the refusal outcome (unreachable on refusal)'
   );
   console.log('PASS: review.mjs gates the success banner on the runMoveState result (#406)');
 
@@ -226,9 +227,9 @@ const reviewSource = readFileSync(reviewVerbPath, 'utf8');
 
   // The only runMoveState calls left target 'develop' (epic branch) and the
   // authoritative 'review' move — never 'test'.
-  const moveTargets = [...reviewSource.matchAll(/runMoveState\(\s*target,\s*'([a-z]+)'/g)].map(
-    (m) => m[1]
-  );
+  const moveTargets = [
+    ...reviewSource.matchAll(/(?:scopedRunMoveState|runMoveState)\(\s*target,\s*'([a-z]+)'/g),
+  ].map((m) => m[1]);
   assert.deepEqual(
     [...new Set(moveTargets)].sort(),
     ['develop', 'review'],

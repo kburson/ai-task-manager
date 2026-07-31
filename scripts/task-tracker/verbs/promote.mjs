@@ -254,6 +254,7 @@ export async function runPromote({
   const getLiveState = deps.getLiveState || defaultGetLiveState;
   const spawnVerb = deps.spawnVerb || defaultSpawnVerb;
   const runMoveState = deps.runMoveState || defaultRunMoveState;
+  const deriveAndRescanFn = deps.deriveAndRescan || deriveAndRescan;
 
   const { body: initialBody } = await fetchIssueBody({ issueNumber, repo: cfg.repo });
   const { state: rawRecorded } = readLastKnownState(initialBody);
@@ -362,7 +363,7 @@ export async function runPromote({
   // failure) and ALWAYS re-fetches the live body so the guard reads ground
   // truth regardless of derive ok/noop/throw.
   if (recorded === 'test' && target === 'review') {
-    const { scanBody } = await deriveAndRescan({
+    const { scanBody } = await deriveAndRescanFn({
       issueNumber,
       repo: cfg.repo,
       scanBody: body,

@@ -7,6 +7,7 @@ import { promisify } from 'node:util';
 
 import { parseIssueFieldDb, stripIssueFieldDb, formatIssueFieldDb } from '../issue-field-db.mjs';
 import { GH_API_TIMEOUT_MS } from './process-timeouts.mjs';
+import { isGovernedAuthorityError } from './work-lease/governed-effect.mjs';
 import { serializeMarker, unescapeValue } from './marker-grammar.mjs';
 import { PROGRESS_MARKERS_HEADING } from './markers.mjs';
 import { stateIds, isEntryHistoryEdge } from './lifecycle-policy/index.mjs';
@@ -426,6 +427,7 @@ export async function postReentryAuditComment({
       return { mode: 'already-present' };
     }
   } catch (err) {
+    if (isGovernedAuthorityError(err)) throw err;
     // best-effort — if list fails, fall through and post (a duplicate is
     // preferable to a silently omitted audit row, mirroring the
     // full-auto-approval policy).
@@ -439,6 +441,7 @@ export async function postReentryAuditComment({
     await post({ repo, issueNumber, body });
     return { mode: 'posted' };
   } catch (err) {
+    if (isGovernedAuthorityError(err)) throw err;
     warn(
       `[reentry-audit] issue #${issueNumber}: comment post FAILED for ${stage}-${v}: ${err.message}`
     );

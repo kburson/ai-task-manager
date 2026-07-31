@@ -243,6 +243,20 @@ export async function stampEntryMarkers(ctx) {
         stage: stateArg,
         visit: nextVisitCount,
         ts: stampTs,
+        listComments: async ({ repo, issueNumber }) => {
+          await ctx.reverifyGovernedEffect?.();
+          const { stdout } = await pexec(
+            'gh',
+            ['issue', 'view', String(issueNumber), '-R', repo, '--json', 'comments'],
+            { timeout: GH_API_TIMEOUT_MS }
+          );
+          const parsed = JSON.parse(stdout || '{}');
+          return Array.isArray(parsed.comments) ? parsed.comments : [];
+        },
+        postComment: async ({ repo, issueNumber, body }) => {
+          await ctx.reverifyGovernedEffect?.();
+          await gh(['issue', 'comment', String(issueNumber), '-R', repo, '--body', body]);
+        },
       });
     }
     return { priorState };
@@ -260,11 +274,12 @@ export async function stampEntryMarkers(ctx) {
       repo: cfg.repo,
       stage: stateArg,
       error: err.message,
-      postComment:
-        ctx.postComment ||
-        (async ({ issueNumber, repo, body }) => {
-          await gh(['issue', 'comment', String(issueNumber), '-R', repo, '--body', body]);
-        }),
+      postComment: async (args) => {
+        await ctx.reverifyGovernedEffect?.();
+        if (ctx.postComment) return ctx.postComment(args);
+        const { issueNumber, repo, body } = args;
+        return gh(['issue', 'comment', String(issueNumber), '-R', repo, '--body', body]);
+      },
     });
   }
 }

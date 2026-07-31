@@ -212,6 +212,7 @@ export async function moveState(ctx) {
         const rb = await rollbackRecordedState(ctx, priorState);
         rolledBack = rb?.rolledBack ?? false;
       } catch (err) {
+        if (isGovernedAuthorityError(err)) throw err;
         process.stderr.write(
           `[move-state] #${ctx.issueArg}: last-known-state rollback to ${priorState} ` +
             `FAILED after board-write failure: ${err.message}\n`

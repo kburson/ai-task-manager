@@ -553,10 +553,10 @@ export async function verbReview(ctx) {
     console.error('Usage: /task review #N');
     process.exit(1);
   }
-  // Queue replay has its own durable transition-receipt authority. Keep it
-  // outside review's verb-scoped lease, but only after a target is resolved so
-  // a genuine usage no-op performs no queued mutation.
-  await drainQueueIfAny();
+  // Queue replay has its own durable transition-receipt authority. It stays
+  // outside review's verb-scoped lease and is deferred until every read-only
+  // refusal below has passed, so a refused review never drains unrelated work.
+  let initialBodyGateRefusal = null;
 
   if (!SKIP_NETWORK) {
     const issueNum = String(target).replace(/^#/, '');
@@ -609,42 +609,7 @@ export async function verbReview(ctx) {
     if (body) {
       const activeGates = DEFAULT_GATES.filter((g) => g.name !== 'verification-commands');
       const result = validateBody(body, { gates: activeGates });
-      if (!result.ok) {
-        await lockIssue({ issue: issueNum, verb: 'review', projDir: projectDir }, () =>
-          withVerbMutationScope(
-            {
-              issueId: issueNum,
-              operation: 'review-mutation',
-              withGovernedEffect: ctx.withGovernedEffect,
-              heartbeat: true,
-            },
-            async (scope) => {
-              const ts = nowIso();
-              const row = buildRow({
-                ts,
-                event: 'gate-refused',
-                activeSec: 0,
-                idleSec: 0,
-                deltaWords: 0,
-                wordMarker: s.lastWordMarker ?? 0,
-                description: `→ test: ${result.refusedRules.map((r) => r.rule).join(', ')}`,
-              });
-              await safePostTiming(target, row, {
-                operation: 'review-mutation',
-                withGovernedEffect: scope.continue,
-              });
-            }
-          )
-        );
-        process.stderr.write('\n');
-        process.stderr.write(`⛔ Refusing to move ${target} to Test:\n`);
-        for (const r of result.refusedRules)
-          process.stderr.write(`   BLOCKED: ${r.rule}: ${r.reason}\n`);
-        process.stderr.write(
-          '\nSee .ai-task-manager/templates/pickup-directive.md Hard Rules.\n\n'
-        );
-        process.exit(4);
-      }
+      if (!result.ok) initialBodyGateRefusal = result;
     }
   }
 
@@ -796,424 +761,481 @@ export async function verbReview(ctx) {
       }
     }
 
-    const govern = ctx.withGovernedEffect;
-    return lockIssue({ issue: issueNum, verb: 'review', projDir: projectDir }, () =>
-      withVerbMutationScope(
-        {
-          issueId: issueNum,
-          operation: 'review-mutation',
-          withGovernedEffect: govern,
-          heartbeat: true,
-        },
-        async (scope) => {
-          // Per-invocation capabilities preserve the one outer review authority
-          // boundary. Nested writers must request this exact issue+operation;
-          // direct local effects reverify immediately before their write.
-          const scopedMutateBody = (options) =>
-            mutateBodyFn({
-              ...options,
-              operation: 'review-mutation',
-              deps: {
-                ...(options.deps || {}),
-                withGovernedEffect: scope.continue,
-              },
-            });
-          const scopedSafePostTiming = (issue, row) =>
-            safePostTiming(issue, row, {
-              operation: 'review-mutation',
-              withGovernedEffect: scope.continue,
-            });
-          const scopedRunMoveState = (issue, state, options = {}) =>
-            runMoveState(issue, state, {
-              ...options,
-              governedOperation: 'review-mutation',
-              withGovernedEffect: scope.continue,
-            });
-
-          const hadActiveSession = hasAgentTiming || s.active === target;
-          await scope.effect(() => saveState(pauseTimingKeepBinding(s, target), statePath));
-          if (hadActiveSession) {
-            try {
-              await scope.effect(() => setTaskStatus(projectDir, target, 'paused'));
-            } catch (error) {
-              if (isGovernedAuthorityError(error)) throw error;
-              /* best-effort: failure must not abort the primary operation */
-            }
-          }
-          console.log(`Review ${target}: task paused.`);
-
-          // #362 — review's tick logic predates the same-line proof-marker invariant.
-          // Every tick here is backed by machine evidence (commandResults from
-          // sandbox-verified runs or derived `failures.length === 0` gates), so
-          // `allowUnverifiedTicks: true` is correct semantically — the evidence
-          // lives in commandResults, not yet stamped inline. Migrating review to
-          // stamp same-line `aitm-verified-at` markers per tick is a follow-up.
-          let normalization = { failures: [], regressions: [] };
-          await scopedMutateBody({
-            issueNumber: issueNum,
-            repo: cfg.repo,
-            mutate: (freshBase) => {
-              normalization = normalizeReviewVerificationCheckboxes({
-                body: freshBase,
-                commandResults,
-                commandFailureReasons,
-                closeOwnedCheckboxes: CLOSE_OWNED_CHECKBOXES,
-              });
-              return normalization.body;
-            },
-            timeout: GH_API_TIMEOUT_MS,
-            deps: { pexec },
-            allowUnverifiedTicks: true,
-          });
-          const { failures, regressions } = normalization;
-
-          if (failures.length > 0) {
-            if (regressions.length > 0) {
-              console.error(`[task-tracker] Regressions detected for ${target}:`);
-              regressions.forEach((r) => console.error(`   REGRESSION: ${r}`));
-            }
-            const _tsR1 = nowIso();
-            const _dR1 = deriveStateMoveDelta(rawBody, _tsR1);
-            // #844 (D6) — emit a V3-legal `test:failed` audit row + `--demote` move
-            // via the shared helper (never a bare `develop` ladder slug).
-            await emitSandboxVerificationFailureTimeline({
-              target,
-              ts: _tsR1,
-              delta: _dR1,
+    // The body-shape gate has a durable refusal audit, unlike the pure gates
+    // above. Only now—after preflight, home-state, DoD/SHA, and epic-child
+    // readiness have all passed—may queue replay or review mutation begin.
+    if (initialBodyGateRefusal) {
+      await drainQueueIfAny();
+      await lockIssue({ issue: issueNum, verb: 'review', projDir: projectDir }, () =>
+        withVerbMutationScope(
+          {
+            issueId: issueNum,
+            operation: 'review-mutation',
+            withGovernedEffect: ctx.withGovernedEffect,
+            heartbeat: true,
+          },
+          async (scope) => {
+            const ts = nowIso();
+            const row = buildRow({
+              ts,
+              event: 'gate-refused',
+              activeSec: 0,
+              idleSec: 0,
+              deltaWords: 0,
               wordMarker: s.lastWordMarker ?? 0,
-              deps: {
-                runMoveState: scopedRunMoveState,
-                safePostTiming: scopedSafePostTiming,
-                buildRow,
-              },
+              description: `→ test: ${initialBodyGateRefusal.refusedRules
+                .map((r) => r.rule)
+                .join(', ')}`,
             });
-            console.error(`[task-tracker] Review failed for ${target}:`);
-            failures.forEach((f) => console.error(`   ${f}`));
-            process.exit(3);
-          }
-          // #257 — completeness gate at test → review. After auto-ticking every
-          // command/evidence-backed item above, reuse the EXACT close-gate scanner so
-          // an incomplete story cannot enter Review and be presented for
-          // review → done approval. `uncheckedPreCloseCheckboxes` already excludes
-          // Lifecycle + close-owned items and strips fenced examples, giving exact
-          // parity with the close gate (single source of truth across both paths).
-          // On any remaining unticked item: refuse, leave the board in Test, emit no
-          // `review-approval` prompt.
-          // #315 — Auto-stamp the two derived Functional DoD keys (`acs`,
-          // `checkboxes`) before the parity scan, mirroring close.mjs. Without this
-          // pass, review refuses promotion on stories whose every AC + every
-          // non-self checkbox is complete but whose derived keys haven't been
-          // stamped yet (close.mjs would stamp them). Best-effort: any failure
-          // (network, version conflict) falls through to the scan with the stale
-          // body — the worst case is the pre-#315 behavior.
-          // #502 — delegate the derive + rescan to `deriveAndRescan`, which ALWAYS
-          // re-fetches the live body before the gate (regardless of derive
-          // ok/noop/throw) and LOGS any failure instead of swallowing it. Fixes the
-          // false `test-to-review-incomplete` refusal caused by scanning the stale
-          // pre-derive `rawBody`.
-          const { scanBody } = await deriveAndRescan({
-            issueNumber: issueNum,
-            repo: cfg.repo,
-            scanBody: rawBody,
-            deps: {
-              pexec,
-              deriveAndStampFunctionalDod: deriveDodFn,
-              nowIso,
+            await safePostTiming(target, row, {
               operation: 'review-mutation',
               withGovernedEffect: scope.continue,
-            },
-          });
-          // #267 — Completeness gate (formerly an inline `uncheckedPreCloseCheckboxes`
-          // call) now lives in `STATES.test.exitGuards` as the
-          // `test-exit-pre-close-completeness` guard. Evaluate the full test→review
-          // exit-guard set here against `scanBody` (which reflects the auto-tick +
-          // derived-DoD refresh above). Refusal surface preserved bit-for-bit:
-          // gate-refused timing row, `⛔ Refusing to move … N incomplete checkbox(es)`,
-          // one indented line per offending checkbox, retry hint, exit 4.
-          {
-            const guardResult = await runGuardsFn('test', 'review', {
-              issueNumber: Number(issueNum),
-              repo: cfg.repo,
-              body: scanBody,
-              cfg,
-              fromState: 'test',
-              toState: 'review',
             });
-            const completenessRefusal = (guardResult.refusals || []).find(
-              (r) => r.id === 'test-exit-pre-close-completeness'
-            );
-            if (completenessRefusal) {
-              const blockers = completenessRefusal.blockers || [];
-              // Recover the original checkbox-label lines from the blocker strings.
-              // Guard formats each blocker as: `test-to-review-incomplete: <line> (the close gate …)`.
-              const stillUnticked = blockers.map((b) =>
-                b
-                  .replace(/^test-to-review-incomplete:\s*/, '')
-                  .replace(/\s*\(the close gate enforces the same set\)\s*$/, '')
-              );
-              const { buildRow: br0 } = await import('../gh-timing-comment.mjs');
-              const _tsR0 = nowIso();
-              const _dR0 = deriveStateMoveDelta(rawBody, _tsR0);
-              await scopedSafePostTiming(
-                target,
-                br0({
-                  ts: _tsR0,
-                  event: 'gate-refused',
-                  activeSec: _dR0.activeSec,
-                  idleSec: _dR0.idleSec,
-                  deltaWords: 0,
-                  // #475 AC1 — carried-forward durable marker (completeness gate refusal, no live session)
-                  wordMarker: s.lastWordMarker ?? 0,
-                  description: `→ review blocked: ${stillUnticked.length} unticked checkbox(es)`,
-                })
-              );
-              process.stderr.write('\n');
-              process.stderr.write(
-                `⛔ Refusing to move ${target} to Review — ${stillUnticked.length} incomplete checkbox(es):\n`
-              );
-              for (const line of stillUnticked) process.stderr.write(`   ${line}\n`);
-              process.stderr.write(
-                '\nTick every item above (the close gate enforces the same set), then retry `/task review`.\n\n'
-              );
-              process.exit(4);
-            }
           }
-          // #881 — the move to Review runs FIRST, unconditionally. Entering Review is
-          // not gated on the agent review: the Agent Review Gate is the ACTION of the
-          // Review state, not an exit condition of Test and not an entry condition of
-          // Review. Test's own exit guards (completeness, above; dod-verified; sandbox
-          // proof) already ran and are the real exit conditions.
-          //
-          // #406 — the move is authoritative. `runMoveState` returns a structured
-          // result; a genuine refusal (`ok:false` and not a benign self-loop) must NOT
-          // fall through to the gate. The matrix gate (`validateTransition`) that
-          // refused live on #233 is not replicated by the inline guards above, so
-          // gating on this result is the only correct check. A re-run while already in
-          // Review is a satisfied no-op (#882) and passes here, which is what makes the
-          // state action re-runnable in place.
-          const reviewMove = await scopedRunMoveState(target, 'review', { silent: true });
-          if (reviewMove && reviewMove.ok === false && reviewMove.benign !== true) {
-            process.stderr.write('\n');
-            process.stderr.write(
-              `⛔ ${target} verification passed but the move to Review was refused:\n`
-            );
-            for (const line of String(reviewMove.stderr || '').split('\n')) {
-              if (line.trim()) process.stderr.write(`   ${line}\n`);
-            }
-            process.stderr.write('\n');
-            process.exit(reviewMove.status || 4);
-          }
-          // #809 — Agent Review Gate: the Review state's action, run on arrival. This
-          // is the objective, machine-checkable half of review sign-off: a pass ticks
-          // the "Agent Review Passed" DoD item and review continues to the human gate;
-          // a failure writes a `review:failed` timing row + an `aitm-review-failed`
-          // body marker listing every objection and LEAVES THE ISSUE IN REVIEW (#881)
-          // with its state action incomplete, to be fixed in place and re-run. With
-          // zero validators registered the gate is a vacuous pass.
+        )
+      );
+      process.stderr.write('\n');
+      process.stderr.write(`⛔ Refusing to move ${target} to Test:\n`);
+      for (const r of initialBodyGateRefusal.refusedRules)
+        process.stderr.write(`   BLOCKED: ${r.rule}: ${r.reason}\n`);
+      process.stderr.write('\nSee .ai-task-manager/templates/pickup-directive.md Hard Rules.\n\n');
+      process.exit(4);
+    }
+
+    await drainQueueIfAny();
+    const govern = ctx.withGovernedEffect;
+    const mutationOutcome = await lockIssue(
+      { issue: issueNum, verb: 'review', projDir: projectDir },
+      () =>
+        withVerbMutationScope(
           {
-            // #881 — re-fetch the body HERE, after the move, not before it. `scanBody`
-            // was captured upstream of `runMoveState`, which stamps `aitm-entered-review`
-            // and writes the `review:started` timing row. Handing the gate that stale
-            // copy made `timing-log-sequence` object against every issue: it read the
-            // new `review:started` row from the live timing log but no matching
-            // `aitm-entered-review` marker in the body, and the failure stamp derived
-            // from the same stale copy then threw `MarkerLossError` for dropping that
-            // very marker. Fetch body and comments together so both halves of the
-            // gate's input come from one post-move snapshot.
-            let comments = [];
-            let gateBody = scanBody;
-            try {
-              const { stdout } = await pexec(
-                'gh',
-                ['issue', 'view', String(issueNum), '--repo', cfg.repo, '--json', 'body,comments'],
-                { timeout: GH_API_TIMEOUT_MS }
-              );
-              const parsed = JSON.parse(stdout || '{}');
-              comments = Array.isArray(parsed.comments) ? parsed.comments : [];
-              if (typeof parsed.body === 'string' && parsed.body.trim()) gateBody = parsed.body;
-            } catch {
-              // Best-effort: a fetch failure leaves `comments` empty and `gateBody` on
-              // the pre-move `scanBody`. Any validator that requires a comment reports
-              // its own failure, so the gate never silently passes on missing evidence.
-              comments = [];
-            }
-            // #940 — the `trunk...HEAD` changed-path set makes the V2 "New Automated
-            // Tests" required-comment diff-aware for `docs-only` issues. Best-effort:
-            // any failure yields [], which is default-deny at the consumer (an unknown
-            // diff keeps the NAT requirement).
-            const changedPaths = await computeReviewChangedPaths({
-              cfg,
-              projectDir,
-              deps: { pexec },
-            });
-            const gate = runAgentReviewGate({
-              body: gateBody,
-              issueNumber: Number(issueNum),
-              repo: cfg.repo,
-              comments,
-              changedPaths,
-            });
-            let failures = gate.pass ? null : gate.failures;
-            let passedValidators = gate.validatorsRun;
-
-            if (gate.pass) {
-              let finalPassStamp = null;
-              let passWriteResult = null;
-              let passWriteError = null;
-              try {
-                passWriteResult = await scopedMutateBody({
-                  issueNumber: issueNum,
-                  repo: cfg.repo,
-                  mutate: makeAgentReviewPassMutator({
-                    ts: nowIso(),
-                    issueNumber: Number(issueNum),
-                    repo: cfg.repo,
-                    comments,
-                    changedPaths,
-                    onPrepared: (prepared) => {
-                      finalPassStamp = prepared;
-                    },
-                  }),
-                  timeout: GH_API_TIMEOUT_MS,
-                  deps: { pexec },
-                  evidenceStamp: true,
-                  maxRetries: PROOF_STAMP_MAX_RETRIES,
-                });
-              } catch (e) {
-                if (isGovernedAuthorityError(e)) throw e;
-                passWriteError = e;
-                console.error(`[task-tracker] failed to stamp Agent Review Passed: ${e.message}`);
-              }
-              if (!finalPassStamp?.ok || passWriteError || passWriteResult?.status !== 'ok') {
-                failures =
-                  finalPassStamp?.failures?.length > 0
-                    ? finalPassStamp.failures
-                    : [
-                        `persisted-test-evidence: ${
-                          finalPassStamp?.reason ||
-                          (passWriteError ? 'pass-stamp-write-failed' : 'pass-stamp-not-persisted')
-                        }`,
-                      ];
-              } else {
-                passedValidators = finalPassStamp.validators;
-              }
-            }
-
-            if (failures) {
-              // FAIL — the Review state's action did not complete. The issue STAYS IN
-              // REVIEW (#881); the objection is fixed in place and `review <N>` re-run.
-              // EPIC #823 timing model v2 (C7 / defect D2) is preserved: the move above
-              // already laid down `test:passed` + `review:started`, so the
-              // `review:failed` row has its preceding `review:started` and the timeline
-              // reads
-              //
-              //   test:passed → review:started → review:failed
-              //
-              // with no `demoted:develop` / `develop:started` pair and (by design) no
-              // `review:approved`.
-              const _tsRF = nowIso();
-              const _dRF = deriveStateMoveDelta(rawBody, _tsRF);
-              const failureResult = await emitReviewGateFailureTimeline({
-                target,
-                issueNum,
-                repo: cfg.repo,
-                failures,
-                prepareFailedBody: (freshBase) => {
-                  // Preserve the Agent Review normalizer without replaying a stale
-                  // snapshot over concurrent edits. Validators are pure, so rerun on
-                  // the writer's base and adopt its verdict, objections, and
-                  // normalized output as one authoritative result.
-                  const freshGate = runAgentReviewGate({
-                    body: freshBase,
-                    issueNumber: Number(issueNum),
-                    repo: cfg.repo,
-                    comments,
-                    changedPaths,
-                  });
-                  if (freshGate.pass) return { body: freshBase, failures: [] };
-                  return {
-                    body: buildReviewFailureBody(
-                      freshGate.normalizedBody ?? freshBase,
-                      freshGate.failures,
-                      _tsRF
-                    ),
-                    failures: freshGate.failures,
-                  };
+            issueId: issueNum,
+            operation: 'review-mutation',
+            withGovernedEffect: govern,
+            heartbeat: true,
+          },
+          async (scope) => {
+            // Per-invocation capabilities preserve the one outer review authority
+            // boundary. Nested writers must request this exact issue+operation;
+            // direct local effects reverify immediately before their write.
+            const scopedMutateBody = (options) =>
+              mutateBodyFn({
+                ...options,
+                operation: 'review-mutation',
+                deps: {
+                  ...(options.deps || {}),
+                  withGovernedEffect: scope.continue,
                 },
-                ts: _tsRF,
-                delta: _dRF,
+              });
+            const scopedSafePostTiming = (issue, row) =>
+              safePostTiming(issue, row, {
+                operation: 'review-mutation',
+                withGovernedEffect: scope.continue,
+              });
+            const scopedRunMoveState = (issue, state, options = {}) =>
+              runMoveState(issue, state, {
+                ...options,
+                governedOperation: 'review-mutation',
+                withGovernedEffect: scope.continue,
+              });
+
+            const hadActiveSession = hasAgentTiming || s.active === target;
+            await scope.effect(() => saveState(pauseTimingKeepBinding(s, target), statePath));
+            if (hadActiveSession) {
+              try {
+                await scope.effect(() => setTaskStatus(projectDir, target, 'paused'));
+              } catch (error) {
+                if (isGovernedAuthorityError(error)) throw error;
+                /* best-effort: failure must not abort the primary operation */
+              }
+            }
+            console.log(`Review ${target}: task paused.`);
+
+            // #362 — review's tick logic predates the same-line proof-marker invariant.
+            // Every tick here is backed by machine evidence (commandResults from
+            // sandbox-verified runs or derived `failures.length === 0` gates), so
+            // `allowUnverifiedTicks: true` is correct semantically — the evidence
+            // lives in commandResults, not yet stamped inline. Migrating review to
+            // stamp same-line `aitm-verified-at` markers per tick is a follow-up.
+            let normalization = { failures: [], regressions: [] };
+            await scopedMutateBody({
+              issueNumber: issueNum,
+              repo: cfg.repo,
+              mutate: (freshBase) => {
+                normalization = normalizeReviewVerificationCheckboxes({
+                  body: freshBase,
+                  commandResults,
+                  commandFailureReasons,
+                  closeOwnedCheckboxes: CLOSE_OWNED_CHECKBOXES,
+                });
+                return normalization.body;
+              },
+              timeout: GH_API_TIMEOUT_MS,
+              deps: { pexec },
+              allowUnverifiedTicks: true,
+            });
+            const { failures, regressions } = normalization;
+
+            if (failures.length > 0) {
+              if (regressions.length > 0) {
+                console.error(`[task-tracker] Regressions detected for ${target}:`);
+                regressions.forEach((r) => console.error(`   REGRESSION: ${r}`));
+              }
+              const _tsR1 = nowIso();
+              const _dR1 = deriveStateMoveDelta(rawBody, _tsR1);
+              // #844 (D6) — emit a V3-legal `test:failed` audit row + `--demote` move
+              // via the shared helper (never a bare `develop` ladder slug).
+              await emitSandboxVerificationFailureTimeline({
+                target,
+                ts: _tsR1,
+                delta: _dR1,
                 wordMarker: s.lastWordMarker ?? 0,
                 deps: {
                   runMoveState: scopedRunMoveState,
                   safePostTiming: scopedSafePostTiming,
-                  mutateBodyFn: scopedMutateBody,
-                  pexec,
+                  buildRow,
                 },
               });
-              if (failureResult.status === 'superseded') {
-                process.stderr.write(
-                  `\n⚠️ ${target} body changed while persisting Review failure; the fresh gate passed. Re-run \`/task review ${target}\` to record the passing result.\n\n`
+              console.error(`[task-tracker] Review failed for ${target}:`);
+              failures.forEach((f) => console.error(`   ${f}`));
+              return { exitCode: 3 };
+            }
+            // #257 — completeness gate at test → review. After auto-ticking every
+            // command/evidence-backed item above, reuse the EXACT close-gate scanner so
+            // an incomplete story cannot enter Review and be presented for
+            // review → done approval. `uncheckedPreCloseCheckboxes` already excludes
+            // Lifecycle + close-owned items and strips fenced examples, giving exact
+            // parity with the close gate (single source of truth across both paths).
+            // On any remaining unticked item: refuse, leave the board in Test, emit no
+            // `review-approval` prompt.
+            // #315 — Auto-stamp the two derived Functional DoD keys (`acs`,
+            // `checkboxes`) before the parity scan, mirroring close.mjs. Without this
+            // pass, review refuses promotion on stories whose every AC + every
+            // non-self checkbox is complete but whose derived keys haven't been
+            // stamped yet (close.mjs would stamp them). Best-effort: any failure
+            // (network, version conflict) falls through to the scan with the stale
+            // body — the worst case is the pre-#315 behavior.
+            // #502 — delegate the derive + rescan to `deriveAndRescan`, which ALWAYS
+            // re-fetches the live body before the gate (regardless of derive
+            // ok/noop/throw) and LOGS any failure instead of swallowing it. Fixes the
+            // false `test-to-review-incomplete` refusal caused by scanning the stale
+            // pre-derive `rawBody`.
+            const { scanBody } = await deriveAndRescan({
+              issueNumber: issueNum,
+              repo: cfg.repo,
+              scanBody: rawBody,
+              deps: {
+                pexec,
+                deriveAndStampFunctionalDod: deriveDodFn,
+                nowIso,
+                operation: 'review-mutation',
+                withGovernedEffect: scope.continue,
+              },
+            });
+            // #267 — Completeness gate (formerly an inline `uncheckedPreCloseCheckboxes`
+            // call) now lives in `STATES.test.exitGuards` as the
+            // `test-exit-pre-close-completeness` guard. Evaluate the full test→review
+            // exit-guard set here against `scanBody` (which reflects the auto-tick +
+            // derived-DoD refresh above). Refusal surface preserved bit-for-bit:
+            // gate-refused timing row, `⛔ Refusing to move … N incomplete checkbox(es)`,
+            // one indented line per offending checkbox, retry hint, exit 4.
+            {
+              const guardResult = await runGuardsFn('test', 'review', {
+                issueNumber: Number(issueNum),
+                repo: cfg.repo,
+                body: scanBody,
+                cfg,
+                fromState: 'test',
+                toState: 'review',
+              });
+              const completenessRefusal = (guardResult.refusals || []).find(
+                (r) => r.id === 'test-exit-pre-close-completeness'
+              );
+              if (completenessRefusal) {
+                const blockers = completenessRefusal.blockers || [];
+                // Recover the original checkbox-label lines from the blocker strings.
+                // Guard formats each blocker as: `test-to-review-incomplete: <line> (the close gate …)`.
+                const stillUnticked = blockers.map((b) =>
+                  b
+                    .replace(/^test-to-review-incomplete:\s*/, '')
+                    .replace(/\s*\(the close gate enforces the same set\)\s*$/, '')
                 );
-                process.exit(3);
+                const { buildRow: br0 } = await import('../gh-timing-comment.mjs');
+                const _tsR0 = nowIso();
+                const _dR0 = deriveStateMoveDelta(rawBody, _tsR0);
+                await scopedSafePostTiming(
+                  target,
+                  br0({
+                    ts: _tsR0,
+                    event: 'gate-refused',
+                    activeSec: _dR0.activeSec,
+                    idleSec: _dR0.idleSec,
+                    deltaWords: 0,
+                    // #475 AC1 — carried-forward durable marker (completeness gate refusal, no live session)
+                    wordMarker: s.lastWordMarker ?? 0,
+                    description: `→ review blocked: ${stillUnticked.length} unticked checkbox(es)`,
+                  })
+                );
+                process.stderr.write('\n');
+                process.stderr.write(
+                  `⛔ Refusing to move ${target} to Review — ${stillUnticked.length} incomplete checkbox(es):\n`
+                );
+                for (const line of stillUnticked) process.stderr.write(`   ${line}\n`);
+                process.stderr.write(
+                  '\nTick every item above (the close gate enforces the same set), then retry `/task review`.\n\n'
+                );
+                return { exitCode: 4 };
               }
-              failures = failureResult.failures;
+            }
+            // #881 — the move to Review runs FIRST, unconditionally. Entering Review is
+            // not gated on the agent review: the Agent Review Gate is the ACTION of the
+            // Review state, not an exit condition of Test and not an entry condition of
+            // Review. Test's own exit guards (completeness, above; dod-verified; sandbox
+            // proof) already ran and are the real exit conditions.
+            //
+            // #406 — the move is authoritative. `runMoveState` returns a structured
+            // result; a genuine refusal (`ok:false` and not a benign self-loop) must NOT
+            // fall through to the gate. The matrix gate (`validateTransition`) that
+            // refused live on #233 is not replicated by the inline guards above, so
+            // gating on this result is the only correct check. A re-run while already in
+            // Review is a satisfied no-op (#882) and passes here, which is what makes the
+            // state action re-runnable in place.
+            const reviewMove = await scopedRunMoveState(target, 'review', { silent: true });
+            if (reviewMove && reviewMove.ok === false && reviewMove.benign !== true) {
               process.stderr.write('\n');
               process.stderr.write(
-                `⛔ Agent Review Gate failed for ${target} — ${failures.length} objection(s):\n`
+                `⛔ ${target} verification passed but the move to Review was refused:\n`
               );
-              for (const f of failures) process.stderr.write(`   ${f}\n`);
-              process.stderr.write(
-                `\n${target} stays in Review with its state action incomplete. Fix the objections\nabove in place — Review permits WRITE_ISSUE/WRITE_DOCS, which is the class of\nfix every registered validator asks for — then re-run \`/task review ${target}\`.\n\n`
-              );
-              process.exit(3);
+              for (const line of String(reviewMove.stderr || '').split('\n')) {
+                if (line.trim()) process.stderr.write(`   ${line}\n`);
+              }
+              process.stderr.write('\n');
+              return { exitCode: reviewMove.status || 4 };
             }
-            // PASS — adopt any normalizer rewrite, clear a stale review-failed marker,
-            // and stamp the PROVEN "Agent Review Passed" box: tick it AND append the
-            // gate's own run-evidence marker (#841), plus an epoch-bound authority
-            // proof tied to the revision persisted by Test. The box carries execution
-            // proof, so the write goes through as a sanctioned `evidenceStamp`
-            // — honest because the gate genuinely ran — WITHOUT the old
-            // `allowUnverifiedTicks` bypass. A body with no such line (old template)
-            // stamps to a noop and skips the write, which the close gate tolerates.
-            // #904 — emit the symmetric `review:passed` timing row, mirroring the fail
-            // path's `review:failed`. Emitted UNCONDITIONALLY on pass (outside the
-            // stamp `if` above, which is skipped for old-template bodies that tick to a
-            // no-op). The Test→Review move already laid down `test:passed` +
-            // `review:started` above the gate block, so this row is strictly monotonic
-            // after `review:started` and lands before `runLogIssueTime`.
-            const _tsRP = nowIso();
-            const _dRP = deriveStateMoveDelta(rawBody, _tsRP);
-            await emitReviewGatePassTimeline({
-              target,
-              ts: _tsRP,
-              delta: _dRP,
-              wordMarker: s.lastWordMarker ?? 0,
-              validators: passedValidators,
-              deps: { safePostTiming: scopedSafePostTiming, buildRow },
+            // #809 — Agent Review Gate: the Review state's action, run on arrival. This
+            // is the objective, machine-checkable half of review sign-off: a pass ticks
+            // the "Agent Review Passed" DoD item and review continues to the human gate;
+            // a failure writes a `review:failed` timing row + an `aitm-review-failed`
+            // body marker listing every objection and LEAVES THE ISSUE IN REVIEW (#881)
+            // with its state action incomplete, to be fixed in place and re-run. With
+            // zero validators registered the gate is a vacuous pass.
+            {
+              // #881 — re-fetch the body HERE, after the move, not before it. `scanBody`
+              // was captured upstream of `runMoveState`, which stamps `aitm-entered-review`
+              // and writes the `review:started` timing row. Handing the gate that stale
+              // copy made `timing-log-sequence` object against every issue: it read the
+              // new `review:started` row from the live timing log but no matching
+              // `aitm-entered-review` marker in the body, and the failure stamp derived
+              // from the same stale copy then threw `MarkerLossError` for dropping that
+              // very marker. Fetch body and comments together so both halves of the
+              // gate's input come from one post-move snapshot.
+              let comments = [];
+              let gateBody = scanBody;
+              try {
+                const { stdout } = await pexec(
+                  'gh',
+                  [
+                    'issue',
+                    'view',
+                    String(issueNum),
+                    '--repo',
+                    cfg.repo,
+                    '--json',
+                    'body,comments',
+                  ],
+                  { timeout: GH_API_TIMEOUT_MS }
+                );
+                const parsed = JSON.parse(stdout || '{}');
+                comments = Array.isArray(parsed.comments) ? parsed.comments : [];
+                if (typeof parsed.body === 'string' && parsed.body.trim()) gateBody = parsed.body;
+              } catch {
+                // Best-effort: a fetch failure leaves `comments` empty and `gateBody` on
+                // the pre-move `scanBody`. Any validator that requires a comment reports
+                // its own failure, so the gate never silently passes on missing evidence.
+                comments = [];
+              }
+              // #940 — the `trunk...HEAD` changed-path set makes the V2 "New Automated
+              // Tests" required-comment diff-aware for `docs-only` issues. Best-effort:
+              // any failure yields [], which is default-deny at the consumer (an unknown
+              // diff keeps the NAT requirement).
+              const changedPaths = await computeReviewChangedPaths({
+                cfg,
+                projectDir,
+                deps: { pexec },
+              });
+              const gate = runAgentReviewGate({
+                body: gateBody,
+                issueNumber: Number(issueNum),
+                repo: cfg.repo,
+                comments,
+                changedPaths,
+              });
+              let failures = gate.pass ? null : gate.failures;
+              let passedValidators = gate.validatorsRun;
+
+              if (gate.pass) {
+                let finalPassStamp = null;
+                let passWriteResult = null;
+                let passWriteError = null;
+                try {
+                  passWriteResult = await scopedMutateBody({
+                    issueNumber: issueNum,
+                    repo: cfg.repo,
+                    mutate: makeAgentReviewPassMutator({
+                      ts: nowIso(),
+                      issueNumber: Number(issueNum),
+                      repo: cfg.repo,
+                      comments,
+                      changedPaths,
+                      onPrepared: (prepared) => {
+                        finalPassStamp = prepared;
+                      },
+                    }),
+                    timeout: GH_API_TIMEOUT_MS,
+                    deps: { pexec },
+                    evidenceStamp: true,
+                    maxRetries: PROOF_STAMP_MAX_RETRIES,
+                  });
+                } catch (e) {
+                  if (isGovernedAuthorityError(e)) throw e;
+                  passWriteError = e;
+                  console.error(`[task-tracker] failed to stamp Agent Review Passed: ${e.message}`);
+                }
+                if (!finalPassStamp?.ok || passWriteError || passWriteResult?.status !== 'ok') {
+                  failures =
+                    finalPassStamp?.failures?.length > 0
+                      ? finalPassStamp.failures
+                      : [
+                          `persisted-test-evidence: ${
+                            finalPassStamp?.reason ||
+                            (passWriteError
+                              ? 'pass-stamp-write-failed'
+                              : 'pass-stamp-not-persisted')
+                          }`,
+                        ];
+                } else {
+                  passedValidators = finalPassStamp.validators;
+                }
+              }
+
+              if (failures) {
+                // FAIL — the Review state's action did not complete. The issue STAYS IN
+                // REVIEW (#881); the objection is fixed in place and `review <N>` re-run.
+                // EPIC #823 timing model v2 (C7 / defect D2) is preserved: the move above
+                // already laid down `test:passed` + `review:started`, so the
+                // `review:failed` row has its preceding `review:started` and the timeline
+                // reads
+                //
+                //   test:passed → review:started → review:failed
+                //
+                // with no `demoted:develop` / `develop:started` pair and (by design) no
+                // `review:approved`.
+                const _tsRF = nowIso();
+                const _dRF = deriveStateMoveDelta(rawBody, _tsRF);
+                const failureResult = await emitReviewGateFailureTimeline({
+                  target,
+                  issueNum,
+                  repo: cfg.repo,
+                  failures,
+                  prepareFailedBody: (freshBase) => {
+                    // Preserve the Agent Review normalizer without replaying a stale
+                    // snapshot over concurrent edits. Validators are pure, so rerun on
+                    // the writer's base and adopt its verdict, objections, and
+                    // normalized output as one authoritative result.
+                    const freshGate = runAgentReviewGate({
+                      body: freshBase,
+                      issueNumber: Number(issueNum),
+                      repo: cfg.repo,
+                      comments,
+                      changedPaths,
+                    });
+                    if (freshGate.pass) return { body: freshBase, failures: [] };
+                    return {
+                      body: buildReviewFailureBody(
+                        freshGate.normalizedBody ?? freshBase,
+                        freshGate.failures,
+                        _tsRF
+                      ),
+                      failures: freshGate.failures,
+                    };
+                  },
+                  ts: _tsRF,
+                  delta: _dRF,
+                  wordMarker: s.lastWordMarker ?? 0,
+                  deps: {
+                    runMoveState: scopedRunMoveState,
+                    safePostTiming: scopedSafePostTiming,
+                    mutateBodyFn: scopedMutateBody,
+                    pexec,
+                  },
+                });
+                if (failureResult.status === 'superseded') {
+                  process.stderr.write(
+                    `\n⚠️ ${target} body changed while persisting Review failure; the fresh gate passed. Re-run \`/task review ${target}\` to record the passing result.\n\n`
+                  );
+                  return { exitCode: 3 };
+                }
+                failures = failureResult.failures;
+                process.stderr.write('\n');
+                process.stderr.write(
+                  `⛔ Agent Review Gate failed for ${target} — ${failures.length} objection(s):\n`
+                );
+                for (const f of failures) process.stderr.write(`   ${f}\n`);
+                process.stderr.write(
+                  `\n${target} stays in Review with its state action incomplete. Fix the objections\nabove in place — Review permits WRITE_ISSUE/WRITE_DOCS, which is the class of\nfix every registered validator asks for — then re-run \`/task review ${target}\`.\n\n`
+                );
+                return { exitCode: 3 };
+              }
+              // PASS — adopt any normalizer rewrite, clear a stale review-failed marker,
+              // and stamp the PROVEN "Agent Review Passed" box: tick it AND append the
+              // gate's own run-evidence marker (#841), plus an epoch-bound authority
+              // proof tied to the revision persisted by Test. The box carries execution
+              // proof, so the write goes through as a sanctioned `evidenceStamp`
+              // — honest because the gate genuinely ran — WITHOUT the old
+              // `allowUnverifiedTicks` bypass. A body with no such line (old template)
+              // stamps to a noop and skips the write, which the close gate tolerates.
+              // #904 — emit the symmetric `review:passed` timing row, mirroring the fail
+              // path's `review:failed`. Emitted UNCONDITIONALLY on pass (outside the
+              // stamp `if` above, which is skipped for old-template bodies that tick to a
+              // no-op). The Test→Review move already laid down `test:passed` +
+              // `review:started` above the gate block, so this row is strictly monotonic
+              // after `review:started` and lands before `runLogIssueTime`.
+              const _tsRP = nowIso();
+              const _dRP = deriveStateMoveDelta(rawBody, _tsRP);
+              await emitReviewGatePassTimeline({
+                target,
+                ts: _tsRP,
+                delta: _dRP,
+                wordMarker: s.lastWordMarker ?? 0,
+                validators: passedValidators,
+                deps: { safePostTiming: scopedSafePostTiming, buildRow },
+              });
+            }
+            // #881 — the authoritative Test→Review move used to sit HERE, after the
+            // Agent Review Gate, which made the gate a precondition of the transition.
+            // It has been hoisted above the gate block: entering Review is unconditional
+            // and the gate is the Review state's action. The refusal handling moved with
+            // it verbatim.
+            // EPIC #823 timing model v2 (C6 / defect D1): the bare `review` row (the
+            // #463 deferred verb-level "starting review" post) and the `review-ready`
+            // state-move row (#516 DEFERRED) are both retired here. runMoveState above
+            // emits the canonical `test:passed` + `review:started` pair, which is the
+            // complete lifecycle record for the test→review transition; the two ad-hoc
+            // rows only re-displayed word/time already carried by those rows and the
+            // durable word marker (see the entry-side note above). `buildDeferredReviewRow`
+            // remains an exported pure helper for its own unit tests; it is no longer
+            // called from the verb path.
+            await runLogIssueTime(target, {
+              operation: 'review-mutation',
+              withGovernedEffect: scope.continue,
             });
+            console.log(`✓ ${target} moved to Review — all verification passed.`);
+            console.log(`PROMPT_REQUIRED: review-approval ${target}`);
+            return { exitCode: null };
           }
-          // #881 — the authoritative Test→Review move used to sit HERE, after the
-          // Agent Review Gate, which made the gate a precondition of the transition.
-          // It has been hoisted above the gate block: entering Review is unconditional
-          // and the gate is the Review state's action. The refusal handling moved with
-          // it verbatim.
-          // EPIC #823 timing model v2 (C6 / defect D1): the bare `review` row (the
-          // #463 deferred verb-level "starting review" post) and the `review-ready`
-          // state-move row (#516 DEFERRED) are both retired here. runMoveState above
-          // emits the canonical `test:passed` + `review:started` pair, which is the
-          // complete lifecycle record for the test→review transition; the two ad-hoc
-          // rows only re-displayed word/time already carried by those rows and the
-          // durable word marker (see the entry-side note above). `buildDeferredReviewRow`
-          // remains an exported pure helper for its own unit tests; it is no longer
-          // called from the verb path.
-          await runLogIssueTime(target, {
-            operation: 'review-mutation',
-            withGovernedEffect: scope.continue,
-          });
-          console.log(`✓ ${target} moved to Review — all verification passed.`);
-          console.log(`PROMPT_REQUIRED: review-approval ${target}`);
-        }
-      )
+        )
     );
+    if (mutationOutcome?.exitCode != null) process.exit(mutationOutcome.exitCode);
+    return;
   }
 }

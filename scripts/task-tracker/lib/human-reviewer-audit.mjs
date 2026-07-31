@@ -23,6 +23,7 @@ import { GH_API_TIMEOUT_MS } from './process-timeouts.mjs';
 import { writeIssueBodyWithRetry } from './state-recording.mjs';
 import { serializeMarker } from './marker-grammar.mjs';
 import { derivePersistedReviewAuthority } from './review-authority.mjs';
+import { isGovernedAuthorityError } from './work-lease/governed-effect.mjs';
 
 const pexec = promisify(execFile);
 
@@ -208,7 +209,8 @@ export async function enforceFullAutoAudit({
   try {
     const comments = await list({ repo, issueNumber });
     alreadyPresent = hasAuditCommentAlready(comments);
-  } catch {
+  } catch (error) {
+    if (isGovernedAuthorityError(error)) throw error;
     // best-effort — if we cannot list, assume not present and post (duplicate
     // is preferable to silent omission)
   }
@@ -225,6 +227,7 @@ export async function enforceFullAutoAudit({
     await post({ repo, issueNumber, body: auditBody });
     return { mode: 'full-auto', auditPosted: true, alreadyPresent: false };
   } catch (err) {
+    if (isGovernedAuthorityError(err)) throw err;
     warn(`[human-reviewer-audit] issue #${issueNumber}: audit-comment post FAILED: ${err.message}`);
     return { mode: 'full-auto', auditPosted: false, alreadyPresent: false, error: err.message };
   }

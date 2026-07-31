@@ -584,10 +584,6 @@ export async function runMoveStateHost({
       process.stderr.write(`⛔ ${err.message}\n`);
       return 7;
     }
-    if (err?.code) {
-      process.stderr.write(`⛔ governed lifecycle mutation refused: ${err.message}\n`);
-      return 8;
-    }
     throw err;
   }
 }

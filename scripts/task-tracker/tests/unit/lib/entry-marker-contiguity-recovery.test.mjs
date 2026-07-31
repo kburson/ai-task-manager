@@ -126,6 +126,52 @@ test('AC3: postStampFailureAudit degrades (no throw) when the post itself fails'
   assert.equal(res.error, 'comment API down');
 });
 
+test('AC3: stamp-failure audit preserves governed authority failure', async () => {
+  const stale = Object.assign(new Error('stale stamp-audit fence'), { code: 'fence-stale' });
+  await assert.rejects(
+    () =>
+      stampEntryMarkers({
+        issueArg: '544',
+        stateArg: 'develop',
+        cfg: CFG,
+        SKIP_NETWORK: false,
+        pexec: async () => {
+          throw new Error('ordinary body fetch failure');
+        },
+        reverifyGovernedEffect: async () => {
+          throw stale;
+        },
+        postComment: async () => {},
+        gh: async () => {},
+      }),
+    (error) => error === stale
+  );
+});
+
+test('re-entry audit list and post each reverify immediately before their effect', async () => {
+  let body = stampEntryMarker('Body.\n', 'review', '2026-06-01T00:00:00.000Z');
+  body = writeLastKnownState(body, 'test');
+  const events = [];
+  await stampEntryMarkers({
+    issueArg: '544',
+    stateArg: 'review',
+    cfg: CFG,
+    SKIP_NETWORK: false,
+    reverifyGovernedEffect: async () => events.push('reverify'),
+    pexec: async (_cmd, args) => {
+      if (args.includes('comments')) {
+        events.push('list');
+        return { stdout: JSON.stringify({ comments: [] }) };
+      }
+      return { stdout: JSON.stringify({ body }) };
+    },
+    gh: async (args) => {
+      events.push(args[1]);
+    },
+  });
+  assert.deepEqual(events, ['reverify', 'edit', 'reverify', 'list', 'reverify', 'comment']);
+});
+
 // ---------------------------------------------------------------------------
 // AC4 — reconcile backfill stamps every missing prior-stage marker.
 // ---------------------------------------------------------------------------

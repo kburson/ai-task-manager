@@ -15,6 +15,7 @@ import { promisify } from 'node:util';
 import { GH_API_TIMEOUT_MS } from './process-timeouts.mjs';
 import { mutateIssueBody } from './issue-body-mutate.mjs';
 import { writeLastKnownState } from '../gh-timing-comment.mjs';
+import { isGovernedAuthorityError } from './work-lease/governed-effect.mjs';
 
 const pexec = promisify(execFile);
 
@@ -84,7 +85,8 @@ export async function writeIssueBodyWithRetry({
     try {
       await writeIssueBody({ issueNumber, repo, body });
       return { status: 'ok', attempts: 1 };
-    } catch {
+    } catch (error) {
+      if (isGovernedAuthorityError(error)) throw error;
       // first attempt failed; retry once
     }
     try {
@@ -94,6 +96,7 @@ export async function writeIssueBodyWithRetry({
       );
       return { status: 'ok', attempts: 2 };
     } catch (err) {
+      if (isGovernedAuthorityError(err)) throw err;
       warn(
         `[state-recording] issue #${issueNumber} marker write to "${target}" FAILED after 2 attempts: ${err.message}`
       );
@@ -110,8 +113,8 @@ export async function writeIssueBodyWithRetry({
         ].join('\n');
         await post({ issueNumber, repo, body: auditBody });
         auditPosted = true;
-      } catch {
-        // audit-only, not correctness-critical
+      } catch (error) {
+        if (isGovernedAuthorityError(error)) throw error;
       }
       return { status: 'failed', attempts: 2, error: err.message, auditPosted };
     }
@@ -150,6 +153,7 @@ export async function writeIssueBodyWithRetry({
       }
       return { status: 'ok', attempts: attempt };
     } catch (err) {
+      if (isGovernedAuthorityError(err)) throw err;
       lastErr = err;
     }
   }
@@ -170,8 +174,8 @@ export async function writeIssueBodyWithRetry({
     ].join('\n');
     await post({ issueNumber, repo, body: auditBody });
     auditPosted = true;
-  } catch {
-    // audit-only, not correctness-critical
+  } catch (error) {
+    if (isGovernedAuthorityError(error)) throw error;
   }
   return { status: 'failed', attempts: 2, error: lastErr.message, auditPosted };
 }

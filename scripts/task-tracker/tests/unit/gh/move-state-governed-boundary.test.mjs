@@ -168,7 +168,7 @@ test('parent close cannot authorize a child cascade with the parent lease', asyn
   assert.deepEqual(events, ['lock', 'verify-child:1050']);
 });
 
-test('TTY-allowed host routes ordinary lifecycle authority and stale proof reaches zero effects', async () => {
+test('TTY-allowed host preserves typed stale authority for its in-process caller', async () => {
   const projectDir = mkdtempProjectIsolated('aitm-tty-governed-');
   const calls = [];
   const env = {
@@ -179,18 +179,21 @@ test('TTY-allowed host routes ordinary lifecycle authority and stale proof reach
   delete env.AITM_INTERNAL;
   delete env.TT_SKIP_NETWORK;
   try {
-    const code = await runMoveStateHost({
-      argv: [process.execPath, 'move-state.mjs', '1049', 'on-deck', '--from', 'backlog'],
-      env,
-      isTty: true,
-      withGovernedEffect: async (options) => {
-        calls.push(options);
-        const error = new Error('stale TTY fence');
-        error.code = 'fence-stale';
-        throw error;
-      },
-    });
-    assert.equal(code, 8);
+    await assert.rejects(
+      () =>
+        runMoveStateHost({
+          argv: [process.execPath, 'move-state.mjs', '1049', 'on-deck', '--from', 'backlog'],
+          env,
+          isTty: true,
+          withGovernedEffect: async (options) => {
+            calls.push(options);
+            const error = new Error('stale TTY fence');
+            error.code = 'fence-stale';
+            throw error;
+          },
+        }),
+      (error) => error.code === 'fence-stale'
+    );
     assert.equal(calls.length, 1);
     assert.equal(calls[0].issueId, '1049');
     assert.equal(calls[0].operation, 'lifecycle-mutation');

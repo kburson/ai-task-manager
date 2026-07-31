@@ -23,12 +23,9 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { decideBodyFetchFailure, BODY_GATED_STATES } from '../../../lib/body-fetch-gate.mjs';
+import { runGovernedLifecycleMutation } from '../../../../gh/move-state.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url)) + '/..';
-const moveSrc = readFileSync(
-  path.resolve(__dirname, '..', '..', '..', 'gh', 'move-state.mjs'),
-  'utf8'
-);
 // #559 relocated the body-fetch + guard pipeline (where decideBodyFetchFailure
 // is invoked) out of the move-state host into the focused guard-execution
 // module. The fail-closed wiring is now asserted against that module; the host
@@ -99,7 +96,7 @@ test('source: body-fetch failure routes through decideBodyFetchFailure', () => {
   );
 });
 
-test('source: fail-closed body-fetch failure exits before the board mutation', () => {
+test('fail-closed body-fetch failure exits before the board mutation', async () => {
   // In the module: the failClosed branch returns the exit descriptor (the host
   // turns it into process.exit) — it must NOT fall through to runGuards.
   const idx = guardSrc.indexOf('decideBodyFetchFailure(');
@@ -109,27 +106,24 @@ test('source: fail-closed body-fetch failure exits before the board mutation', (
     /failClosed/.test(after) && /return \{ exit: decision\.exitCode \}/.test(after),
     'failClosed branch must return the exit descriptor (no fall-through to the mutation)'
   );
-  // In the host: guard execution + its fail-closed return must precede the
-  // board write. #755 moved the item-edit mutation (runStatusWrite) into the
-  // saga core, reached only through moveState(ctx); the same story also made
-  // runMoveStateHost RETURN a numeric exit code instead of calling
-  // process.exit (shape (a) — post-#764 the module is import-only and the
-  // test-only move-state-cli.mjs harness maps the return onto process.exit).
-  // So the guard refusal now short-circuits with
-  // `return guardOutcome.exit` rather than `process.exit(...)`; it must still
-  // occur before the moveState delegation — the sole route to the mutation.
-  const boundaryStart = moveSrc.indexOf('export async function runGovernedLifecycleMutation');
-  const boundaryEnd = moveSrc.indexOf('export async function runOfflineLifecycleProbe');
-  const boundary = moveSrc.slice(boundaryStart, boundaryEnd);
-  const guardIdx = boundary.indexOf('await runGuard(');
-  const refusalIdx = boundary.indexOf('return guardOutcome.exit');
-  const mutationIdx = boundary.indexOf('return runMutation(');
-  assert.ok(
-    guardIdx >= 0 && refusalIdx > guardIdx,
-    'governed lifecycle boundary must return the guard exit code on refusal'
-  );
-  assert.ok(
-    mutationIdx > refusalIdx,
-    'guard refusal must precede and bypass the governed mutation callback'
-  );
+  const calls = [];
+  const exit = await runGovernedLifecycleMutation({
+    issue: '511',
+    verb: 'review',
+    operation: 'review-mutation',
+    projectDir: '/project',
+    alreadyLocked: true,
+    withGovernedEffect: async (_options, callback) =>
+      callback({ reverify: async () => calls.push('reverify') }),
+    runGuard: async () => {
+      calls.push('guard');
+      return { exit: 3 };
+    },
+    runMutation: async () => {
+      calls.push('mutation');
+      return 0;
+    },
+  });
+  assert.equal(exit, 3);
+  assert.deepEqual(calls, ['guard']);
 });

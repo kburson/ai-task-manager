@@ -28,6 +28,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { STATE_TO_CONFIG_KEY } from '../../../../lib/move-state/policy.mjs';
+import { main as updateEventFields } from '../../../../../gh/update-event-fields.mjs';
 
 const __dir = path.dirname(fileURLToPath(import.meta.url)) + '/../..';
 const SCRIPT = path.resolve(__dir, '..', '../../gh/update-event-fields.mjs');
@@ -94,4 +95,96 @@ test('drift guard: every board state is either event-bound or a silent no-op', (
       assert.equal(r.stderr.trim(), '', `${state}: bindingless state must be silent`);
     }
   }
+});
+
+test('in-process update uses one exact review continuation and reverifies each field write', async () => {
+  const events = [];
+  const authorityOptions = [];
+  const result = await updateEventFields(['1049', 'develop', '--item-id', 'IT'], {
+    cfg: {
+      projectId: 'P',
+      repo: '',
+      fieldIds: { startedAt: 'F1', finishedAt: 'F2' },
+    },
+    projectDir: REPO_ROOT,
+    operation: 'review-mutation',
+    loadEventBindings: () => ({
+      moveToDevelopment: [
+        { field: 'startedAt', value: 'now' },
+        { field: 'finishedAt', value: 'today' },
+      ],
+    }),
+    loadProjectFieldDefs: () => [
+      { key: 'startedAt', name: 'Started At', type: 'text' },
+      { key: 'finishedAt', name: 'Finished At', type: 'date' },
+    ],
+    withGovernedEffect: async (options, callback) => {
+      authorityOptions.push(options);
+      return callback({
+        reverify: async () => events.push('reverify'),
+      });
+    },
+    writeProjectFieldValue: async ({ fieldId }) => events.push(`write:${fieldId}`),
+  });
+  assert.equal(result, 0);
+  assert.deepEqual(authorityOptions, [
+    { issueId: '1049', operation: 'review-mutation', heartbeat: true },
+  ]);
+  assert.deepEqual(events, ['reverify', 'write:F1', 'reverify', 'write:F2']);
+});
+
+test('Nth event-field fence failure prevents that and every later write', async () => {
+  const writes = [];
+  let reverifications = 0;
+  const stale = Object.assign(new Error('stale event-field fence'), { code: 'fence-stale' });
+  await assert.rejects(
+    () =>
+      updateEventFields(['1049', 'develop', '--item-id', 'IT'], {
+        cfg: {
+          projectId: 'P',
+          repo: '',
+          fieldIds: { startedAt: 'F1', finishedAt: 'F2' },
+        },
+        projectDir: REPO_ROOT,
+        operation: 'review-mutation',
+        loadEventBindings: () => ({
+          moveToDevelopment: [
+            { field: 'startedAt', value: 'now' },
+            { field: 'finishedAt', value: 'today' },
+          ],
+        }),
+        loadProjectFieldDefs: () => [
+          { key: 'startedAt', name: 'Started At', type: 'text' },
+          { key: 'finishedAt', name: 'Finished At', type: 'date' },
+        ],
+        withGovernedEffect: async (_options, callback) =>
+          callback({
+            reverify: async () => {
+              reverifications += 1;
+              if (reverifications === 2) throw stale;
+            },
+          }),
+        writeProjectFieldValue: async ({ fieldId }) => writes.push(fieldId),
+      }),
+    (error) => error === stale
+  );
+  assert.deepEqual(writes, ['F1']);
+});
+
+test('in-process event-field continuation refusal is preserved for the caller', async () => {
+  const mismatch = new TypeError('verb mutation scope continuation does not match issue/operation');
+  await assert.rejects(
+    () =>
+      updateEventFields(['1049', 'develop', '--item-id', 'IT'], {
+        cfg: { projectId: 'P', repo: '' },
+        projectDir: REPO_ROOT,
+        operation: 'review-mutation',
+        loadEventBindings: () => ({ moveToDevelopment: [] }),
+        loadProjectFieldDefs: () => [],
+        withGovernedEffect: async () => {
+          throw mismatch;
+        },
+      }),
+    (error) => error === mismatch
+  );
 });

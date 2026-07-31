@@ -195,7 +195,15 @@ for (const verb of ['review.mjs', 'promote.mjs']) {
       ),
       `${verb} should import deriveAndRescan`
     );
-    assert.ok(src.includes('deriveAndRescan('), `${verb} should call deriveAndRescan`);
+    const callName = verb === 'promote.mjs' ? 'deriveAndRescanFn(' : 'deriveAndRescan(';
+    assert.ok(src.includes(callName), `${verb} should call ${callName.slice(0, -1)}`);
+    if (verb === 'promote.mjs') {
+      assert.match(
+        src,
+        /const deriveAndRescanFn = deps\.deriveAndRescan \|\| deriveAndRescan/,
+        'promote keeps the production default while exposing an offline test seam'
+      );
+    }
   });
 }
 

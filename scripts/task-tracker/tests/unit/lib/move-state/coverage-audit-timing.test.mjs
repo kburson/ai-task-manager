@@ -115,6 +115,26 @@ test('emitPhasePairRows: forward move emits <prev>:complete then <next>:enter', 
   assert.deepEqual(posted[1].row.__row.phase, { state: 'test', phase: 'enter' });
 });
 
+test('emitPhasePairRows: reverifies immediately before banking the local transcript tail', async () => {
+  const events = [];
+  const posted = [];
+  await emitPhasePairRows({
+    issueArg: '10',
+    stateArg: 'test',
+    resolvedFromState: 'develop',
+    demoteFlag: false,
+    SKIP_NETWORK: false,
+    cfg: { repo: 'o/r' },
+    reverifyGovernedEffect: async () => events.push('reverify'),
+    deps: {
+      ...makeTimingDeps({ posted }),
+      ...phaseEvents({ develop: { complete: true }, test: { enter: true } }),
+      bankTail: () => events.push('bank'),
+    },
+  });
+  assert.deepEqual(events.slice(0, 2), ['reverify', 'bank']);
+});
+
 test('emitPhasePairRows: move to done emits a single done.complete row', async () => {
   const posted = [];
   await emitPhasePairRows({
@@ -248,6 +268,30 @@ test('emitFullAutoReviewAudit: a throwing pexec is swallowed', async () => {
   }
 });
 
+test('emitFullAutoReviewAudit: governed authority errors are rethrown', async () => {
+  const savedCascade = process.env.AITM_CASCADE;
+  delete process.env.AITM_CASCADE;
+  const error = Object.assign(new Error('stale audit fence'), { code: 'fence-stale' });
+  try {
+    await assert.rejects(
+      () =>
+        emitFullAutoReviewAudit({
+          issueArg: '10',
+          stateArg: 'done',
+          SKIP_NETWORK: false,
+          cfg: { repo: 'o/r' },
+          pexec: async () => {
+            throw error;
+          },
+          gh: async () => {},
+        }),
+      (thrown) => thrown === error
+    );
+  } finally {
+    if (savedCascade !== undefined) process.env.AITM_CASCADE = savedCascade;
+  }
+});
+
 // --- emitOutOfBandAudit -----------------------------------------------------
 
 test('emitOutOfBandAudit: no reason short-circuits', async () => {
@@ -304,4 +348,25 @@ test('emitOutOfBandAudit: comment-throw and timing-throw are both swallowed', as
   });
   // Both best-effort catches absorbed their throws.
   assert.equal(posted.length, 0);
+});
+
+test('emitOutOfBandAudit: governed authority failure at comment write is rethrown', async () => {
+  const error = Object.assign(new Error('stale comment fence'), { code: 'fence-stale' });
+  await assert.rejects(
+    () =>
+      emitOutOfBandAudit({
+        issueArg: '10',
+        stateArg: 'review',
+        resolvedFromState: 'develop',
+        outOfBandReason: 'emergency demote',
+        SKIP_NETWORK: false,
+        cfg: { repo: 'o/r' },
+        reverifyGovernedEffect: async () => {},
+        gh: async () => {
+          throw error;
+        },
+        deps: makeTimingDeps({ posted: [] }),
+      }),
+    (thrown) => thrown === error
+  );
 });
