@@ -86,7 +86,7 @@ function cleanup(dir) {
 // Pass cases
 // ---------------------------------------------------------------------------
 
-test('Edit src/foo.ts in develop → pass', () => {
+test('Edit src/foo.ts in develop without a persisted lease → block', () => {
   const dir = makeRepo({ state: 'develop' });
   try {
     const r = runGuard({
@@ -94,13 +94,14 @@ test('Edit src/foo.ts in develop → pass', () => {
       payload: { tool_name: 'Edit', tool_input: { file_path: 'src/foo.ts' } },
     });
     assert.equal(r.code, 0);
-    assert.equal(r.stdout, '');
+    assert.equal(r.decision?.decision, 'block');
+    assert.match(r.decision.reason, /source-write authority/);
   } finally {
     cleanup(dir);
   }
 });
 
-test('Edit docs/notes.md in plan → pass', () => {
+test('Edit docs/notes.md in plan without a persisted lease → block', () => {
   // STATE_MATRIX: analyze allows WRITE_DOCS; groom does NOT (matrix shipped in W1.2).
   // The "Groom + docs" AC item in the issue body was aspirational; the matrix
   // ultimately frozen at #63 only admits WRITE_ISSUE + READ_* in refine.
@@ -111,7 +112,8 @@ test('Edit docs/notes.md in plan → pass', () => {
       payload: { tool_name: 'Edit', tool_input: { file_path: 'docs/notes.md' } },
     });
     assert.equal(r.code, 0);
-    assert.equal(r.stdout, '');
+    assert.equal(r.decision?.decision, 'block');
+    assert.match(r.decision.reason, /source-write authority/);
   } finally {
     cleanup(dir);
   }
@@ -136,7 +138,7 @@ test('Edit docs/notes.md in refine → block per STATE_MATRIX', () => {
   }
 });
 
-test('Edit .github/ISSUE_TEMPLATE/bug.md in refine → pass', () => {
+test('Edit .github/ISSUE_TEMPLATE/bug.md in refine without a persisted lease → block', () => {
   const dir = makeRepo({ state: 'refine' });
   try {
     const r = runGuard({
@@ -147,7 +149,8 @@ test('Edit .github/ISSUE_TEMPLATE/bug.md in refine → pass', () => {
       },
     });
     assert.equal(r.code, 0);
-    assert.equal(r.stdout, '');
+    assert.equal(r.decision?.decision, 'block');
+    assert.match(r.decision.reason, /source-write authority/);
   } finally {
     cleanup(dir);
   }
@@ -455,7 +458,7 @@ function writeSessionCache(dir, sid, record) {
   writeFileSync(path.join(sessDir, 'active-task.json'), JSON.stringify(record));
 }
 
-test('session kanbanState cache supplies state when global state field is absent', () => {
+test('session kanbanState cache supplies state before lease verification', () => {
   const dir = makeRepo({/* no legacy state */});
   writeSessionCache(dir, 'sess-a', { issue: '#65', kanbanState: 'develop' });
   try {
@@ -464,7 +467,8 @@ test('session kanbanState cache supplies state when global state field is absent
       payload: { tool_name: 'Edit', tool_input: { file_path: 'src/foo.ts' } },
     });
     assert.equal(r.code, 0);
-    assert.equal(r.stdout, '');
+    assert.equal(r.decision?.decision, 'block');
+    assert.match(r.decision.reason, /source-write authority/);
   } finally {
     cleanup(dir);
   }
@@ -520,7 +524,7 @@ test('session cache with invalid kanbanState is ignored; falls back', () => {
   }
 });
 
-test('most-recently-modified session cache wins when multiple match', () => {
+test('most-recently-modified session cache wins before lease verification', () => {
   const dir = makeRepo({/* no legacy state */});
   // Older cache says refine
   writeSessionCache(dir, 'sess-old', { issue: '#65', kanbanState: 'refine' });
@@ -533,7 +537,8 @@ test('most-recently-modified session cache wins when multiple match', () => {
       payload: { tool_name: 'Edit', tool_input: { file_path: 'src/foo.ts' } },
     });
     assert.equal(r.code, 0);
-    assert.equal(r.stdout, '');
+    assert.equal(r.decision?.decision, 'block');
+    assert.match(r.decision.reason, /source-write authority/);
   } finally {
     cleanup(dir);
   }

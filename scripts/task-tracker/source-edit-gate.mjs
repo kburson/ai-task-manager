@@ -31,6 +31,7 @@ import { isChoreModeActive } from './lib/chore-mode.mjs';
 import { readDeepDiveSignals } from './lib/deep-dive.mjs';
 import { SCRATCH_REL_PREFIX, statePath as resolveStatePath } from './paths.mjs';
 import { classifyEdit, isAllowed, loadPolicy, DEFAULT_POLICY } from './activity-policy.mjs';
+import { createRuntimeGovernedEffectAdapter } from './lib/work-lease/governed-effect.mjs';
 
 const pexec = promisify(execFile);
 
@@ -303,8 +304,8 @@ export async function fetchIssueSignals(boundIssue, projectDir, deps = {}) {
 }
 
 // Resolves (state, markers) using the cache when warm; falls back to gh.
-export async function resolveIssueSignals(boundIssue, projectDir, deps = {}) {
-  const cached = readCache(projectDir, boundIssue);
+export async function resolveIssueSignals(boundIssue, projectDir, deps = {}, options = {}) {
+  const cached = (deps.readCache || readCache)(projectDir, boundIssue);
   if (cached) {
     return {
       state: cached.state,
@@ -313,8 +314,10 @@ export async function resolveIssueSignals(boundIssue, projectDir, deps = {}) {
       source: 'cache',
     };
   }
-  const fresh = await fetchIssueSignals(boundIssue, projectDir, deps);
-  writeCache(projectDir, { issue: boundIssue, ...fresh });
+  const fresh = await (deps.fetchIssueSignals || fetchIssueSignals)(boundIssue, projectDir, deps);
+  if (options.persistCache !== false) {
+    (deps.writeCache || writeCache)(projectDir, { issue: boundIssue, ...fresh });
+  }
   return { ...fresh, source: 'fetch' };
 }
 
@@ -357,31 +360,100 @@ export async function runHook(payload, deps = {}) {
   const choreModeActive = (deps.isChoreModeActive || isChoreModeActive)(projectDir);
   const boundIssue = (deps.loadBoundIssue || loadBoundIssue)(projectDir);
 
-  let signals = { state: 'unknown', hasPostedMarker: false, hasCompleteMarker: false };
-  if (!choreModeActive && boundIssue) {
-    try {
-      signals = await (deps.resolveIssueSignals || resolveIssueSignals)(
-        boundIssue,
-        projectDir,
-        deps
-      );
-    } catch {
-      // Fetch failures fall through to the pure decide() which will refuse
-      // pre-develop states by default.
-    }
-  }
-
-  return decideSourceEdit({
+  // Resolve unconditional bypasses and the no-binding refusal before any
+  // remote read, cache write, or work-lease authority initialization.
+  const preliminary = decideSourceEdit({
     toolName,
     filePath,
     projectDir,
     boundIssue,
     choreModeActive,
-    issueState: signals.state,
-    hasPostedMarker: signals.hasPostedMarker,
-    hasCompleteMarker: signals.hasCompleteMarker,
-    policy: (deps.loadPolicy || loadPolicy)(projectDir),
+    issueState: 'unknown',
+    hasPostedMarker: false,
+    hasCompleteMarker: false,
   });
+  if (
+    preliminary.reason === 'chore-mode-bypass' ||
+    preliminary.reason === 'allowlisted-path' ||
+    preliminary.code === 'source-edit-no-bound-issue'
+  ) {
+    return preliminary;
+  }
+
+  let signals = { state: 'unknown', hasPostedMarker: false, hasCompleteMarker: false };
+  try {
+    signals = await (deps.resolveIssueSignals || resolveIssueSignals)(
+      boundIssue,
+      projectDir,
+      deps,
+      { persistCache: false }
+    );
+  } catch {
+    // Fetch failures fall through to the pure decide() which will refuse
+    // pre-develop states by default.
+  }
+
+  let policyDecision;
+  try {
+    policyDecision = decideSourceEdit({
+      toolName,
+      filePath,
+      projectDir,
+      boundIssue,
+      choreModeActive,
+      issueState: signals.state,
+      hasPostedMarker: signals.hasPostedMarker,
+      hasCompleteMarker: signals.hasCompleteMarker,
+      policy: (deps.loadPolicy || loadPolicy)(projectDir),
+    });
+  } catch (error) {
+    return sourceEditFailure(error, 'source-edit-policy-failure');
+  }
+  if (policyDecision.decision === 'block') return policyDecision;
+
+  try {
+    const withGovernedEffect = deps.withGovernedEffect
+      ? deps.withGovernedEffect
+      : createRuntimeGovernedEffectAdapter({
+          projectDir,
+          config: deps.config || JSON.parse(readFileSync(configPath(projectDir), 'utf8')),
+        });
+    return await withGovernedEffect(
+      {
+        issueId: boundIssue.replace(/^#/, ''),
+        operation: 'source-write',
+        heartbeat: true,
+      },
+      async () => {
+        // A cold fetch is intentionally not durable until the current fence is
+        // verified. A loser must leave even volatile cache bytes untouched.
+        if (signals.source === 'fetch') {
+          (deps.writeCache || writeCache)(projectDir, {
+            issue: boundIssue,
+            state: signals.state,
+            hasPostedMarker: signals.hasPostedMarker,
+            hasCompleteMarker: signals.hasCompleteMarker,
+          });
+        }
+        return policyDecision;
+      }
+    );
+  } catch (error) {
+    return sourceEditFailure(error, 'source-edit-authority-refused');
+  }
+}
+
+function sourceEditFailure(error, code) {
+  const authorityCode =
+    typeof error?.code === 'string' && error.code.trim() ? error.code.trim() : 'unknown';
+  const detail = error?.message ? `: ${error.message}` : '';
+  return {
+    decision: 'block',
+    code,
+    reason:
+      `[task-tracker] Source-edit refused: work-lease authority ${authorityCode}${detail}\n` +
+      `  No source write or source-edit cache mutation was authorized.`,
+  };
 }
 
 async function main() {
@@ -396,8 +468,7 @@ async function main() {
   try {
     result = await runHook(payload);
   } catch (err) {
-    process.stderr.write(`[source-edit-gate] ${err.message}\n`);
-    process.exit(0);
+    result = sourceEditFailure(err, 'source-edit-gate-failure');
   }
   if (result.decision === 'block') {
     process.stdout.write(JSON.stringify({ decision: 'block', reason: result.reason }));
@@ -410,7 +481,12 @@ const isMain =
   process.argv[1]?.endsWith('source-edit-gate.mjs');
 if (isMain) {
   main().catch((err) => {
-    process.stderr.write(`[source-edit-gate] ${err.message}\n`);
+    process.stdout.write(
+      JSON.stringify({
+        decision: 'block',
+        reason: sourceEditFailure(err, 'source-edit-gate-failure').reason,
+      })
+    );
     process.exit(0);
   });
 }

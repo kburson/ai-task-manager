@@ -9,12 +9,26 @@
 
 import { strict as assert } from 'node:assert';
 import { test } from 'node:test';
-import { mkdirSync, writeFileSync, rmSync, readFileSync, existsSync } from 'node:fs';
+import {
+  mkdirSync,
+  writeFileSync,
+  rmSync,
+  readFileSync,
+  existsSync,
+  statSync,
+  utimesSync,
+} from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { mkdtempProjectIsolated } from '../../../lib/scratch-dir.mjs';
-import { readCache, writeCache, cacheFilePath, CACHE_TTL_MS } from '../../../source-edit-gate.mjs';
+import {
+  readCache,
+  writeCache,
+  cacheFilePath,
+  CACHE_TTL_MS,
+  runHook,
+} from '../../../source-edit-gate.mjs';
 
 // Repo root (…/scripts/task-tracker/tests/unit/ → four levels up). Used so the
 // gitignore assertion runs against the real worktree the suite executes in
@@ -116,4 +130,82 @@ test('#664: the .cache sidecar directory is gitignored', () => {
     encoding: 'utf8',
   }).trim();
   assert.equal(out, '.ai-task-manager/.cache/active-issue.json');
+});
+
+test('#1049: cold source allow verifies authority before persisting cache', async () => {
+  const events = [];
+  const result = await runHook(
+    { tool_name: 'Edit', tool_input: { file_path: 'src/guarded.mjs' } },
+    {
+      projectDir: '/fake/project',
+      isChoreModeActive: () => false,
+      loadBoundIssue: () => '#1049',
+      loadPolicy: () => ({}),
+      resolveIssueSignals: async () => {
+        events.push('fetch');
+        return {
+          state: 'develop',
+          hasPostedMarker: true,
+          hasCompleteMarker: true,
+          source: 'fetch',
+        };
+      },
+      withGovernedEffect: async (options, callback) => {
+        events.push(`verify:${options.issueId}:${options.operation}`);
+        return callback({ reverify: async () => {} });
+      },
+      writeCache: (_projectDir, entry) => {
+        events.push(`cache:${entry.issue}`);
+      },
+    }
+  );
+
+  assert.equal(result.decision, 'allow');
+  assert.deepEqual(events, ['fetch', 'verify:1049:source-write', 'cache:#1049']);
+});
+
+test('#1049: authority refusal leaves an existing cache byte- and mtime-identical', async () => {
+  const { dir, cleanup } = makeProjectDir();
+  try {
+    const sidecar = cacheFilePath(dir);
+    mkdirSync(path.dirname(sidecar), { recursive: true });
+    const beforeBytes = JSON.stringify({
+      issue: '#1049',
+      state: 'develop',
+      fetchedAt: 1,
+      sentinel: 'preserve-me',
+    });
+    writeFileSync(sidecar, beforeBytes);
+    const old = new Date('2020-01-02T03:04:05.000Z');
+    utimesSync(sidecar, old, old);
+    const beforeMtime = statSync(sidecar).mtimeMs;
+
+    const result = await runHook(
+      { tool_name: 'Write', tool_input: { file_path: 'src/guarded.mjs' } },
+      {
+        projectDir: dir,
+        isChoreModeActive: () => false,
+        loadBoundIssue: () => '#1049',
+        resolveIssueSignals: async () => ({
+          state: 'develop',
+          hasPostedMarker: true,
+          hasCompleteMarker: true,
+          source: 'fetch',
+        }),
+        withGovernedEffect: async () => {
+          const error = new Error('lease token is stale');
+          error.code = 'fence-stale';
+          throw error;
+        },
+      }
+    );
+
+    assert.equal(result.decision, 'block');
+    assert.equal(result.code, 'source-edit-authority-refused');
+    assert.match(result.reason, /fence-stale/);
+    assert.equal(readFileSync(sidecar, 'utf8'), beforeBytes);
+    assert.equal(statSync(sidecar).mtimeMs, beforeMtime);
+  } finally {
+    cleanup();
+  }
 });

@@ -231,6 +231,7 @@ test('runHook: bound + develop + markers via injected resolve → allow', async 
         hasPostedMarker: true,
         hasCompleteMarker: true,
       }),
+      withGovernedEffect: async (_options, callback) => callback({ reverify: async () => {} }),
     }
   );
   assert.equal(r.reason, 'state-and-markers-ok');
