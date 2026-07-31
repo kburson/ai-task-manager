@@ -655,6 +655,7 @@ function issueRefs(text) {
 function commitMessageRefs(words, commitIndex, readCommitMessageFile) {
   const messages = [];
   let unresolved = false;
+  let inheritedUnresolved = false;
   let resolved = false;
   const readFileSource = (file) => {
     if (file === '-') {
@@ -705,6 +706,7 @@ function commitMessageRefs(words, commitIndex, readCommitMessageFile) {
           const attached = cluster.slice(offset + 1);
           const argument = attached || words[++i];
           if (option === 'F') readFileSource(argument);
+          if (option === 'C' || option === 'c') inheritedUnresolved = true;
           consumed = true;
           break;
         }
@@ -712,13 +714,16 @@ function commitMessageRefs(words, commitIndex, readCommitMessageFile) {
       if (consumed) continue;
     }
     if (word === '--reuse-message' || word === '--reedit-message') {
+      inheritedUnresolved = true;
       i += 1;
       continue;
     }
     if (word.startsWith('--reuse-message=') || word.startsWith('--reedit-message=')) {
+      inheritedUnresolved = true;
       continue;
     }
     if (word === '--fixup' || word === '--squash' || word === '--template') {
+      if (word !== '--template') inheritedUnresolved = true;
       i += 1;
       continue;
     }
@@ -727,6 +732,7 @@ function commitMessageRefs(words, commitIndex, readCommitMessageFile) {
       word.startsWith('--squash=') ||
       word.startsWith('--template=')
     ) {
+      if (!word.startsWith('--template=')) inheritedUnresolved = true;
       continue;
     }
     let file = null;
@@ -737,7 +743,10 @@ function commitMessageRefs(words, commitIndex, readCommitMessageFile) {
   if (words.slice(commitIndex + 1).includes('--no-edit')) {
     unresolved = true;
   }
-  return { refs: [...new Set(messages.flatMap(issueRefs))], unresolved: unresolved || !resolved };
+  return {
+    refs: [...new Set(messages.flatMap(issueRefs))],
+    unresolved: unresolved || inheritedUnresolved || !resolved,
+  };
 }
 
 export function detectCommitCommands(command, { readCommitMessageFile } = {}) {

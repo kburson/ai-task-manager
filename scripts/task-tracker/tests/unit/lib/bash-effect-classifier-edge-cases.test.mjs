@@ -188,6 +188,12 @@ test('unresolved commit-message sources fail closed before lease authority', asy
     'git commit --amend --no-edit',
     'git commit --fixup=HEAD',
     'git commit --squash=HEAD',
+    'git commit --fixup HEAD -m "[#1049] explicit body"',
+    'git commit --squash HEAD -m "[#1049] explicit body"',
+    'git commit -Cmain -m "[#1049] explicit body"',
+    'git commit -cmain -m "[#1049] explicit body"',
+    'git commit --reuse-message=HEAD -m "[#1049] explicit body"',
+    'git commit --reedit-message=HEAD -m "[#1049] explicit body"',
     'git commit --template=.tmp/inspect/template.txt',
     'git commit -t.tmp/inspect/template.txt',
     'git commit -Cmain',
@@ -231,8 +237,6 @@ test('commit refs come only from message sources and still reject an actually wr
   );
 
   for (const command of [
-    'git commit -Cmain -m "[#1049] explicit override"',
-    'git commit -cmain -m "[#1049] explicit override"',
     'git commit -t.tmp/inspect/template.txt -m "[#1049] explicit override"',
     'git commit -am"[#1049] clustered message"',
     'git commit -m"[#1049] attached message"',
