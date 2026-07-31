@@ -53,7 +53,12 @@ import {
   removeExactQueueEntries,
 } from '../../queue.mjs';
 import { deriveIssueTimeExpectedFields } from './issue-time-projection.mjs';
-import { deriveTransitionProjectionAuthority } from './transition-projection-authority.mjs';
+import {
+  deriveTransitionProjectionAuthority,
+  isTransitionProjectionAuthorityError,
+} from './transition-projection-authority.mjs';
+import { isGovernedAuthorityError } from './governed-effect.mjs';
+import { isTransientGhError } from '../../../gh/lib/with-retry.mjs';
 import {
   resolveBindEvent,
   timingCommentHasRows,
@@ -362,7 +367,7 @@ async function applyFleetProjection(ctx, { input, projectionId }) {
   return projectionProof('fleet', projectionId);
 }
 
-async function applyTimingProjection(
+export async function applyTimingProjection(
   ctx,
   { input, projectionId, receipt, request, transitionId } = {}
 ) {
@@ -481,7 +486,11 @@ async function applyTimingProjection(
         projDir: ctx.projectDir,
       });
     } catch (error) {
-      if (!item.queued) {
+      const shouldQueue =
+        !isGovernedAuthorityError(error) &&
+        !isTransitionProjectionAuthorityError(error) &&
+        isTransientGhError(error);
+      if (!item.queued && shouldQueue) {
         enqueueTimingProjection(
           {
             issue: item.issueNumber ?? input.issueNumber,

@@ -1,9 +1,19 @@
-import { existsSync, readFileSync, writeFileSync, mkdirSync, renameSync } from 'node:fs';
+import {
+  existsSync,
+  readFileSync,
+  writeFileSync,
+  mkdirSync,
+  renameSync,
+  rmdirSync,
+  statSync,
+} from 'node:fs';
 import path from 'node:path';
 import { isDeepStrictEqual } from 'node:util';
 import { legacyPathFor } from './paths.mjs';
-import { withLock } from './locks.mjs';
+import { LOCK_RETRY_MS, LOCK_STALE_MS, DEFAULT_TIMEOUT_MS, withLock } from './locks.mjs';
 import { isGovernedAuthorityError } from './lib/work-lease/governed-effect.mjs';
+
+let tempSequence = 0;
 
 function read(queuePath) {
   let readPath = queuePath;
@@ -20,21 +30,70 @@ function read(queuePath) {
   }
 }
 
-function write(items, queuePath) {
+function write(items, queuePath, deps = {}) {
   mkdirSync(path.dirname(queuePath), { recursive: true });
-  const tmp = queuePath + '.tmp';
+  tempSequence += 1;
+  const tmp = `${queuePath}.tmp-${process.pid}-${tempSequence}`;
+  deps.beforeTempWrite?.(tmp);
   writeFileSync(tmp, JSON.stringify(items, null, 2) + '\n', 'utf8');
   renameSync(tmp, queuePath);
+}
+
+function withQueueMutationLock(queuePath, callback, deps = {}) {
+  const lockPath = `${queuePath}.mutation.lock`;
+  mkdirSync(path.dirname(lockPath), { recursive: true });
+  const timeoutMs = deps.timeoutMs ?? DEFAULT_TIMEOUT_MS;
+  const deadline = Date.now() + timeoutMs;
+  while (true) {
+    try {
+      mkdirSync(lockPath);
+      break;
+    } catch (error) {
+      if (error.code !== 'EEXIST') throw error;
+      try {
+        if (Date.now() - statSync(lockPath).mtimeMs > LOCK_STALE_MS) {
+          try {
+            rmdirSync(lockPath);
+          } catch {
+            // Another process recovered or released it first.
+          }
+          continue;
+        }
+      } catch {
+        // The lock vanished between the failed mkdir and stat.
+      }
+      if (Date.now() > deadline) {
+        throw new Error(`queue: timeout acquiring ${lockPath} after ${timeoutMs}ms`);
+      }
+      Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, LOCK_RETRY_MS);
+    }
+  }
+  try {
+    deps.onMutationLockAcquired?.();
+    return callback();
+  } finally {
+    try {
+      rmdirSync(lockPath);
+    } catch {
+      // Best-effort release after a completed atomic rename.
+    }
+  }
 }
 
 export function peek(queuePath) {
   return read(queuePath);
 }
 
-export function enqueue(event, queuePath) {
-  const items = read(queuePath);
-  items.push({ ...event, queuedAt: new Date().toISOString() });
-  write(items, queuePath);
+export function enqueue(event, queuePath, deps = {}) {
+  return withQueueMutationLock(
+    queuePath,
+    () => {
+      const items = read(queuePath);
+      items.push({ ...event, queuedAt: new Date().toISOString() });
+      write(items, queuePath, deps);
+    },
+    deps
+  );
 }
 
 function requiredProjectionString(value, label) {
@@ -75,9 +134,9 @@ export function enqueueTimingProjection(
   };
 }
 
-export async function drain(handler, queuePath) {
+export async function drain(handler, queuePath, deps = {}) {
   return withLock(`${queuePath}.drain.lock`, async () => {
-    const items = read(queuePath);
+    const items = withQueueMutationLock(queuePath, () => read(queuePath));
     const succeeded = [];
     let failed = 0;
     for (const item of items) {
@@ -89,12 +148,15 @@ export async function drain(handler, queuePath) {
       }
     }
     if (succeeded.length > 0) {
-      const latest = read(queuePath);
-      for (const item of succeeded) {
-        const index = latest.findIndex((candidate) => isDeepStrictEqual(candidate, item));
-        if (index >= 0) latest.splice(index, 1);
-      }
-      write(latest, queuePath);
+      await deps.beforeFinalReconcile?.();
+      withQueueMutationLock(queuePath, () => {
+        const latest = read(queuePath);
+        for (const item of succeeded) {
+          const index = latest.findIndex((candidate) => isDeepStrictEqual(candidate, item));
+          if (index >= 0) latest.splice(index, 1);
+        }
+        write(latest, queuePath, deps);
+      });
     }
     return failed === 0;
   });
@@ -104,33 +166,39 @@ export async function drain(handler, queuePath) {
 // positive reconciliation proof. A retry after local response loss sees the
 // entry already absent and succeeds; changed or newly queued entries never
 // match and remain untouched.
-export function removeExactQueueEntries(entries, queuePath) {
+export function removeExactQueueEntries(entries, queuePath, deps = {}) {
   if (!Array.isArray(entries)) {
     throw new TypeError('exact queue entries must be an array');
   }
-  const items = read(queuePath);
-  let removed = 0;
-  let alreadyAbsent = 0;
-  for (const expected of entries) {
-    const index = items.findIndex((item) => isDeepStrictEqual(item, expected));
-    if (index < 0) {
-      alreadyAbsent += 1;
-      continue;
-    }
-    items.splice(index, 1);
-    removed += 1;
-  }
-  write(items, queuePath);
-  return { reconciled: true, removed, alreadyAbsent };
+  return withQueueMutationLock(
+    queuePath,
+    () => {
+      const items = read(queuePath);
+      let removed = 0;
+      let alreadyAbsent = 0;
+      for (const expected of entries) {
+        const index = items.findIndex((item) => isDeepStrictEqual(item, expected));
+        if (index < 0) {
+          alreadyAbsent += 1;
+          continue;
+        }
+        items.splice(index, 1);
+        removed += 1;
+      }
+      if (removed > 0) write(items, queuePath, deps);
+      return { reconciled: true, removed, alreadyAbsent };
+    },
+    deps
+  );
 }
 
 // Drain only items matching `predicate`, consuming them regardless of handler
 // outcome. Non-matching items are written back untouched. Used at end of
 // `/task close` to clear queue entries for the closing issue — once an issue
 // is Done, residual rows are not interesting and must not re-queue forever.
-export async function drainAndDiscard(handler, queuePath, predicate) {
+export async function drainAndDiscard(handler, queuePath, predicate, deps = {}) {
   return withLock(`${queuePath}.drain.lock`, async () => {
-    const items = read(queuePath);
+    const items = withQueueMutationLock(queuePath, () => read(queuePath));
     const targeted = items.filter(predicate);
     const consumed = [];
     let delivered = 0;
@@ -151,12 +219,15 @@ export async function drainAndDiscard(handler, queuePath, predicate) {
       }
     }
     if (consumed.length > 0) {
-      const latest = read(queuePath);
-      for (const item of consumed) {
-        const index = latest.findIndex((candidate) => isDeepStrictEqual(candidate, item));
-        if (index >= 0) latest.splice(index, 1);
-      }
-      write(latest, queuePath);
+      await deps.beforeFinalReconcile?.();
+      withQueueMutationLock(queuePath, () => {
+        const latest = read(queuePath);
+        for (const item of consumed) {
+          const index = latest.findIndex((candidate) => isDeepStrictEqual(candidate, item));
+          if (index >= 0) latest.splice(index, 1);
+        }
+        write(latest, queuePath, deps);
+      });
     }
     return authorityRefused > 0
       ? { delivered, discarded, authorityRefused }

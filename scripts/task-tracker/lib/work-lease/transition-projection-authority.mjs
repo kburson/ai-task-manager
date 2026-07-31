@@ -4,8 +4,21 @@ import { validateSwitchReceipt } from './switch-orchestration.mjs';
 
 const proofs = new WeakMap();
 
+export class TransitionProjectionAuthorityError extends TypeError {
+  constructor(message) {
+    super(`transition projection authority: ${message}`);
+    this.name = 'TransitionProjectionAuthorityError';
+    this.code = 'transition-projection-refused';
+    Object.seal(this);
+  }
+}
+
+export function isTransitionProjectionAuthorityError(error) {
+  return error instanceof TransitionProjectionAuthorityError;
+}
+
 function refusal(message) {
-  return new TypeError(`transition projection authority: ${message}`);
+  return new TransitionProjectionAuthorityError(message);
 }
 
 function object(value, label) {

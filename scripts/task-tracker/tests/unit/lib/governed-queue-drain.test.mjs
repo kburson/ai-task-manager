@@ -1,7 +1,7 @@
 // @story #1049
 
 import assert from 'node:assert/strict';
-import { mkdtempSync, rmSync, statSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync, statSync } from 'node:fs';
 import path from 'node:path';
 import test from 'node:test';
 
@@ -19,6 +19,7 @@ test('authority-refused queue drain retains exact item without rewriting the que
     enqueue({ kind: 'timing', issue: '#1049', row: 'row-a' }, queuePath);
     const before = peek(queuePath);
     const beforeStat = statSync(queuePath);
+    const beforeBytes = readFileSync(queuePath);
     assert.equal(
       await drain(async () => {
         const error = new Error('stale queued authority');
@@ -28,11 +29,13 @@ test('authority-refused queue drain retains exact item without rewriting the que
       false
     );
     assert.deepEqual(peek(queuePath), before);
+    assert.deepEqual(readFileSync(queuePath), beforeBytes);
     assert.equal(
       statSync(queuePath).ino,
       beforeStat.ino,
       'refusal must not replace the queue file'
     );
+    assert.equal(statSync(queuePath).mtimeMs, beforeStat.mtimeMs, 'refusal must preserve mtime');
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
