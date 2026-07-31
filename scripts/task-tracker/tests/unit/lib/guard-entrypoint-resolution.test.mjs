@@ -118,7 +118,7 @@ function runBootstrap(name, cwd, input, env = process.env) {
   return spawnSync(guardBootstrapCommand(name), {
     cwd,
     input,
-    env,
+    env: { ...env, AI_TASK_MANAGER_PROJECT_DIR: cwd },
     encoding: 'utf8',
     shell: true,
   });
@@ -199,11 +199,13 @@ function installStaleLease(dir, { sessionId = 'codex-apply-patch-stale' } = {}) 
 
 test('#1049: exact installed source bootstrap executes and blocks a governed edit', () => {
   const dir = installedGuardSandbox();
+  const ambientDir = installedGuardSandbox({ active: '#1049', state: 'develop' });
   try {
     const result = runBootstrap(
       'source-edit-gate',
       dir,
-      JSON.stringify({ tool_name: 'Edit', tool_input: { file_path: 'src/guarded.mjs' } })
+      JSON.stringify({ tool_name: 'Edit', tool_input: { file_path: 'src/guarded.mjs' } }),
+      { ...process.env, AI_TASK_MANAGER_PROJECT_DIR: ambientDir }
     );
     assert.equal(result.status, 0, result.stderr);
     const decision = JSON.parse(result.stdout);
@@ -211,6 +213,7 @@ test('#1049: exact installed source bootstrap executes and blocks a governed edi
     assert.match(decision.reason, /no bound issue/);
   } finally {
     rmSync(dir, { recursive: true, force: true });
+    rmSync(ambientDir, { recursive: true, force: true });
   }
 });
 
