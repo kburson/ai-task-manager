@@ -730,12 +730,26 @@ real Git worktree directory. Raw display text never participates in uniqueness.
   exact bindings for one project. Provider, SQLite, and HTTPS expose the same
   operation and canonical result; HTTP no longer rejects this project-only
   selector. Fleet is a cache projection of this result and is never authority.
+- Add the read-only closed port operation `replayMutation(selector)` with exact
+  selector `{ projectId, operation, idempotencyKey, requestDigest }`. It reads
+  one already-recorded `work_lease_events` outcome and returns its exact stored
+  status plus success response or stable error; it never inserts an event,
+  allocates a fence, changes a lease/binding, or evaluates current lease state.
+  SQLite, HTTPS, and task-tracker adapters expose the same canonical selector
+  and result. Missing records and any operation/key/digest mismatch return no
+  authenticated replay rather than falling back to local receipt/session/fleet
+  data. HTTP uses a dedicated authenticated read-only route and never accepts
+  an idempotency header for this lookup.
 
 #### Task 6A: Contract and v2 Migration
 
 - [ ] Add failing conformance, HTTP, SQLite, contender, and package-contract
       tests for the lifecycle matrix, exact holder/binding checks, active-only
-      verification, project observation, replay, stale fences, and migration.
+      verification, project observation, read-only `replayMutation` success and
+      error lookup, stale fences, and migration. Prove replay lookup binds all
+      four selector fields, returns the byte-equivalent recorded outcome, and
+      leaves event/lease/binding/fence rows unchanged for success, error,
+      missing, unsupported, and mismatched selectors.
       Run the six ledger test and fixture consumers named above. Expected RED.
 - [ ] Never edit `001-leases.mjs`: it is immutable history for databases that
       have already recorded schema version 1. Implement
@@ -780,7 +794,12 @@ real Git worktree directory. Raw display text never participates in uniqueness.
   request after recovery and another drain; a crash at or after attachment
   replays only that byte-identical request.
 - Validate the mutation receipt against the attached request before atomically
-  attaching it. Authority state is never fabricated from session, fleet, or a
+  attaching it. Before any forward or compensation transition projection,
+  authenticate the exact persisted raw request digest and exact persisted
+  response through `replayMutation`; mint an opaque in-memory commit proof only
+  from that successful authoritative replay. Transition projection seams require
+  and correlate the live proof, so raw request plus local receipt is never
+  sufficient. Authority state is never fabricated from session, fleet, or a
   checkpoint. Restore heartbeat scheduling for unrelated surviving owners, but
   never restore the retired/paused old owner. For terminal release, perform only
   fenced local authority/session cleanup and journal deletion after the valid
@@ -795,14 +814,25 @@ real Git worktree directory. Raw display text never participates in uniqueness.
       their entrypoint callers. Prove generic state/timing saves preserve the
       exact sticky `{ lease, holder, binding }`, fenced clear removes it as one
       unit, and lifecycle request builders use its old PID and identities rather
-      than `process.pid`, current runtime identity, or fleet state. Expected RED
-      after 6A is green.
+      than `process.pid`, current runtime identity, or fleet state. Prove every
+      modern forward/compensation projection authenticates its exact raw request
+      and response through `replayMutation` before the first effect, and that
+      missing/unsupported/wrong replay, response drift, or an unbranded proof
+      preserves journal and projection bytes fail closed. Expected RED after 6A
+      is green.
 - [ ] Introduce the shared lifecycle journal/projection authority interfaces and
       route switch callers through them without yet changing verb-specific
       lifecycle order. A journal owns stable operation/issue/projection identity,
       exact sticky authority, canonical request/receipt attachment, checkpoint
-      reconciliation, and fenced cleanup. Persist neither credentials nor token
-      environment names.
+      reconciliation, authoritative mutation replay proof, and fenced cleanup.
+      Historical committed switch journals retain their byte-exact old request:
+      accept only the recognized old envelope with matching receipt,
+      transitionId, committed forward phase, and no compensation; authenticate
+      that raw digest/response through `replayMutation`, then build a separate
+      frozen current-schema projection view in memory. Never rewrite the
+      canonical request or replay `switchLease`. Receipt-less, unsupported,
+      missing, error, or mismatched historical replay fails closed before any
+      projection. Persist neither credentials nor token environment names.
 
 **6B2 — Lifecycle journal, resume, and global heartbeat control**
 
