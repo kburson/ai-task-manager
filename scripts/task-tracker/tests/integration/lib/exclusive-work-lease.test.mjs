@@ -2009,6 +2009,79 @@ test('response-lost release proves the committed mutation then restores the dura
   }
 });
 
+for (const [contradiction, corruptRelease] of [
+  ['non-advanced fence', (lease) => ({ ...lease, fencingToken: LEASE.fencingToken })],
+  [
+    'different holder',
+    (lease) => ({
+      ...lease,
+      holder: { ...lease.holder, sessionId: 'foreign-session' },
+    }),
+  ],
+  ['different issue binding', (lease) => ({ ...lease, issueId: '1050' })],
+]) {
+  test(`contradictory ${contradiction} release replay preserves the recovery journal`, async () => {
+    const dir = sandbox();
+    try {
+      setActiveTask('session-1', { issue: '#1049', wordsAtStart: 29 }, dir);
+      const lateLease = {
+        ...LEASE,
+        acquiredAt: '2026-07-30T12:00:05.000Z',
+        heartbeatAt: '2026-07-30T12:00:05.000Z',
+        expiresAt: '2026-07-30T12:15:05.000Z',
+      };
+      let releasedLease;
+      const store = {
+        projectId: 'project-1',
+        async acquire() {
+          return lateLease;
+        },
+        async verify() {
+          if (releasedLease) {
+            throw new WorkLeaseError('lease-not-held', 'lease is terminal');
+          }
+          return { allowed: true, lease: lateLease };
+        },
+        async release(request) {
+          releasedLease = {
+            ...lateLease,
+            fencingToken: '8',
+            state: 'released',
+            audit: { releasedAt: request.releasedAt, reason: request.reason },
+          };
+          throw new WorkLeaseError('authority-unavailable', 'release response lost');
+        },
+        async replayMutation(selector) {
+          return {
+            selector,
+            outcome: 'committed',
+            statusCode: 200,
+            result: corruptRelease(releasedLease),
+          };
+        },
+      };
+      const attempt = () =>
+        options(dir, {
+          getStore: async () => store,
+          reconcileClaim: async () => {
+            throw new WorkLeaseError('authority-forbidden', 'foreign assignee');
+          },
+        }).input;
+
+      await assert.rejects(() => coordinateWorkLeaseAcquire(attempt()), /release response lost/);
+      const pendingJournal = readFileSync(activeTaskPath('session-1', dir));
+      await assert.rejects(
+        () => coordinateWorkLeaseAcquire(attempt()),
+        (error) => error instanceof WorkLeaseError && error.code === 'authority-unavailable'
+      );
+      assert.deepEqual(readFileSync(activeTaskPath('session-1', dir)), pendingJournal);
+      assert.ok(getActiveTask('session-1', dir).workLeaseIntent.receipt);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+}
+
 for (const crashProjection of ['session', 'fleet', 'timing', 'github']) {
   test(`${crashProjection} callback success and checkpoint crash replay one external effect with the same projectionId`, async () => {
     const dir = sandbox();

@@ -3,6 +3,7 @@ import { randomUUID as defaultRandomUUID } from 'node:crypto';
 import {
   canonicalRequestDigest,
   canonicalRequestJson,
+  parseHttpLeaseResponse,
   validateReplayMutationOutcome,
   WorkLeaseError,
   validateAcquireRequest,
@@ -727,11 +728,15 @@ async function recoverCommittedPostClaimRelease({
     );
   }
   if (outcome.outcome !== 'committed') return false;
+  const correlatedRelease = parseHttpLeaseResponse({
+    operation: 'release',
+    status: outcome.statusCode,
+    payload: { result: outcome.result },
+    request: releaseRequest,
+  });
   if (
-    outcome.result.leaseId !== durableLease.leaseId ||
-    outcome.result.state !== 'released' ||
-    outcome.result.audit?.releasedAt !== releaseRequest.releasedAt ||
-    outcome.result.audit?.reason !== releaseRequest.reason
+    correlatedRelease.audit?.releasedAt !== releaseRequest.releasedAt ||
+    correlatedRelease.audit?.reason !== releaseRequest.reason
   ) {
     throw leaseError(
       'authority-unavailable',
