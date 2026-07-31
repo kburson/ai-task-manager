@@ -439,6 +439,8 @@ real Git worktree directory. Raw display text never participates in uniqueness.
 - Modify:
   `scripts/task-tracker/tests/unit/lib/cascade-child-close-fail-closed.test.mjs`
 - Modify:
+  `scripts/task-tracker/tests/characterization/orchestrators.test.mjs`
+- Modify:
   `scripts/task-tracker/tests/unit/gh/move-state-governed-boundary.test.mjs`
 - Modify:
   `scripts/task-tracker/tests/unit/lib/coverage-cache-unpark.test.mjs`
