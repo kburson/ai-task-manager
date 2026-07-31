@@ -327,7 +327,9 @@ real Git worktree directory. Raw display text never participates in uniqueness.
 **Files:**
 
 - Create: `scripts/task-tracker/lib/work-lease/context.mjs`
+- Create: `scripts/task-tracker/lib/work-lease/child-environment.mjs`
 - Create: `scripts/task-tracker/lib/work-lease/guard.mjs`
+- Modify: `scripts/task-tracker/lib/work-lease/governed-effect.mjs`
 - Create: `scripts/task-tracker/lib/work-lease/verb-mutation-scope.mjs`
 - Modify: `scripts/task-tracker/verbs/start.mjs`
 - Modify: `scripts/task-tracker/verbs/resume.mjs`
@@ -378,12 +380,33 @@ real Git worktree directory. Raw display text never participates in uniqueness.
 - Modify: `scripts/task-tracker/commit-trail-handler.mjs`
 - Modify: `scripts/task-tracker/merge-back.mjs`
 - Modify: `scripts/task-tracker/sync-epic.mjs`
+- Modify: `scripts/task-tracker/cut-epic-branch.mjs`
+- Modify: `scripts/task-tracker/cut-child-worktree.mjs`
 - Modify: `scripts/gh/dispatch-prep.mjs`
+- Modify: `scripts/gh/ensure-wave-parent.mjs`
 - Modify: `scripts/gh/log-issue-time.mjs`
 - Modify: `scripts/gh/update-event-fields.mjs`
 - Modify: `scripts/gh/move-state.mjs`
 - Create:
   `scripts/task-tracker/tests/integration/lib/exclusive-work-lease.test.mjs`
+- Create:
+  `scripts/task-tracker/tests/unit/lib/work-lease-child-environment.test.mjs`
+- Modify:
+  `scripts/task-tracker/tests/unit/lib/governed-effect.test.mjs`
+- Modify:
+  `scripts/task-tracker/tests/unit/lib/work-lease-guard.test.mjs`
+- Modify:
+  `scripts/task-tracker/tests/unit/verbs/promote-spawn-timeout.test.mjs`
+- Modify: `scripts/task-tracker/merge-back.test.mjs`
+- Modify: `scripts/task-tracker/sync-epic.test.mjs`
+- Modify: `scripts/task-tracker/cut-epic-branch.test.mjs`
+- Modify: `scripts/task-tracker/cut-child-worktree.test.mjs`
+- Modify:
+  `scripts/task-tracker/tests/unit/gh/coverage-dispatch-prep.test.mjs`
+- Modify:
+  `scripts/task-tracker/tests/unit/gh/dispatch-prep-inprocess.test.mjs`
+- Modify:
+  `scripts/task-tracker/tests/slow/lib/ensure-wave-parent.test.mjs`
 - Create:
   `scripts/task-tracker/tests/unit/verbs/close-governed-boundary.test.mjs`
 - Modify:
