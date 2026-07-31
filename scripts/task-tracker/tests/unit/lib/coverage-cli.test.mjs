@@ -18,6 +18,10 @@ import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, existsSync } from 
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { projectScratchDir } from '../../../lib/scratch-dir.mjs';
+import {
+  guardBootstrapCommand,
+  legacyGuardBootstrapCommand,
+} from '../../../lib/guard-entrypoint.mjs';
 import * as cli from '../../../../../bin/cli.mjs';
 
 const repoRoot = fileURLToPath(new URL('../../../../..', import.meta.url));
@@ -33,6 +37,13 @@ function flatHookCommands(config, event) {
 
 function commandCount(config, event, commandPart) {
   return flatHookCommands(config, event).filter((cmd) => cmd.includes(commandPart)).length;
+}
+
+function exactHookCount(config, event, matcher, command) {
+  return (config.hooks?.[event] ?? []).filter(
+    (entry) =>
+      entry?.matcher === matcher && (entry.hooks ?? []).some((hook) => hook?.command === command)
+  ).length;
 }
 
 function run(argv, opts = {}) {
@@ -134,6 +145,54 @@ test('patchCodexHooksJson creates hooks, is idempotent, tolerates garbage', () =
   writeFileSync(p2, 'nonsense', 'utf8');
   cli.patchCodexHooksJson(p2);
   assert.ok(JSON.parse(readFileSync(p2, 'utf8')).hooks);
+});
+
+test('#1049: Codex PreToolUse dedupes by exact matcher and command', () => {
+  const dir = scratch('cli-codex-guard-matchers-');
+  const p = join(dir, '.codex', 'hooks.json');
+  const sourceMatcher = 'apply_patch|Edit|Write|NotebookEdit';
+  const activityCommand = guardBootstrapCommand('activity-guard');
+  const sourceCommand = guardBootstrapCommand('source-edit-gate');
+
+  cli.patchCodexHooksJson(p);
+  const firstBytes = readFileSync(p, 'utf8');
+  const first = JSON.parse(firstBytes);
+  assert.equal(exactHookCount(first, 'PreToolUse', 'Bash', activityCommand), 1);
+  assert.equal(exactHookCount(first, 'PreToolUse', sourceMatcher, activityCommand), 1);
+  assert.equal(exactHookCount(first, 'PreToolUse', sourceMatcher, sourceCommand), 1);
+
+  cli.patchCodexHooksJson(p);
+  assert.equal(readFileSync(p, 'utf8'), firstBytes, 'repeated patch is byte-identical');
+
+  writeFileSync(
+    p,
+    JSON.stringify({
+      hooks: {
+        PreToolUse: [
+          {
+            matcher: sourceMatcher,
+            hooks: [
+              {
+                type: 'command',
+                command: legacyGuardBootstrapCommand('activity-guard'),
+              },
+            ],
+          },
+        ],
+      },
+    }),
+    'utf8'
+  );
+  cli.patchCodexHooksJson(p);
+  const migrated = JSON.parse(readFileSync(p, 'utf8'));
+  assert.equal(
+    commandCount(migrated, 'PreToolUse', 'import(pathToFileURL(p).href);"'),
+    0,
+    'legacy import-only guard command removed'
+  );
+  assert.equal(exactHookCount(migrated, 'PreToolUse', 'Bash', activityCommand), 1);
+  assert.equal(exactHookCount(migrated, 'PreToolUse', sourceMatcher, activityCommand), 1);
+  assert.equal(exactHookCount(migrated, 'PreToolUse', sourceMatcher, sourceCommand), 1);
 });
 
 test('patchCodexHooksJson registers memory index hooks only when requested', () => {

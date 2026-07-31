@@ -180,3 +180,51 @@ test('#1049: stale activity fence is an explicit no-effect refusal', async () =>
   assert.equal(result.code, 'activity-source-authority-refused');
   assert.match(result.reason, /fence-stale/);
 });
+
+test('#1049: multi-file apply_patch evaluates every class and verifies authority once', async () => {
+  const input = {
+    tool_name: 'apply_patch',
+    tool_input: [
+      '*** Begin Patch',
+      '*** Update File: src/guarded.mjs',
+      '@@',
+      '-old',
+      '+new',
+      '*** Update File: docs/guarded.md',
+      '@@',
+      '-old',
+      '+new',
+      '*** End Patch',
+    ].join('\n'),
+  };
+  const baseDeps = {
+    projectRoot: '/fake/project',
+    loadPolicy: () => ({}),
+    readBoundState: () => ({ activeIssue: '#1049', state: 'develop' }),
+    classifyEdit: (target) => (target.endsWith('.md') ? 'WRITE_DOCS' : 'WRITE_CODE'),
+    isChoreModeActive: () => false,
+  };
+  let governed = 0;
+  const allowed = await runActivityGuard(input, {
+    ...baseDeps,
+    withGovernedEffect: async (_options, callback) => {
+      governed += 1;
+      return callback();
+    },
+  });
+  assert.equal(allowed.decision, 'allow');
+  assert.equal(governed, 1, 'the whole patch shares one source-write authority check');
+
+  governed = 0;
+  const refused = await runActivityGuard(input, {
+    ...baseDeps,
+    readBoundState: () => ({ activeIssue: '#1049', state: 'review' }),
+    withGovernedEffect: async () => {
+      governed += 1;
+    },
+  });
+  assert.equal(refused.decision, 'block');
+  assert.equal(refused.code, 'activity-state-refused');
+  assert.match(refused.reason, /WRITE_CODE/);
+  assert.equal(governed, 0, 'one refused target prevents authority initialization');
+});

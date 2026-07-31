@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // INTERNAL — DO NOT INVOKE DIRECTLY, and not exposed through `aitm`.
-// Plumbing: invoked only by the Claude Code hook runner.
+// Plumbing: invoked by the Claude Code and Codex hook runners.
 //
 // PreToolUse hook — enforces activity/state alignment and verifies the
 // exclusive work lease before an allowed source edit reaches the tool.
@@ -27,9 +27,8 @@ import { buildReason as buildReasonCore } from './lib/activity-block-reason.mjs'
 import { readBoundState } from './lib/bound-state.mjs';
 import { isChoreModeActive } from './lib/chore-mode.mjs';
 import { isInstalledGuardPath } from './lib/installed-guard-path.mjs';
+import { resolveSourceToolTargets, SOURCE_EDIT_TOOLS } from './lib/source-tool-targets.mjs';
 import { createRuntimeGovernedEffectAdapter } from './lib/work-lease/governed-effect.mjs';
-
-const EDIT_TOOLS = new Set(['Edit', 'Write', 'NotebookEdit']);
 
 function allow(reason) {
   return { decision: 'allow', reason };
@@ -57,7 +56,7 @@ export async function runActivityGuard(input, deps = {}) {
   const toolName = input?.tool_name;
   const toolInput = input?.tool_input ?? {};
   if (!toolName) return allow('missing-tool');
-  if (!EDIT_TOOLS.has(toolName) && toolName !== 'Bash') return allow('tool-not-gated');
+  if (!SOURCE_EDIT_TOOLS.has(toolName) && toolName !== 'Bash') return allow('tool-not-gated');
 
   const projectRoot =
     'projectRoot' in deps
@@ -66,23 +65,31 @@ export async function runActivityGuard(input, deps = {}) {
 
   let target;
   let isGovernedEdit = false;
-  if (EDIT_TOOLS.has(toolName)) {
-    const filePath = toolInput?.file_path ?? toolInput?.notebook_path ?? '';
-    if (typeof filePath !== 'string' || !filePath) return allow('missing-edit-path');
-    target = normalizePath(filePath, projectRoot);
+  let editTargets = [];
+  let conservativeApplyPatch = false;
+  if (SOURCE_EDIT_TOOLS.has(toolName)) {
+    const resolved = resolveSourceToolTargets(toolName, toolInput);
+    if (resolved.targets.length === 0) return allow('missing-edit-path');
+    conservativeApplyPatch = toolName === 'apply_patch' && !resolved.exact;
+    editTargets = resolved.targets.map((filePath) => normalizePath(filePath, projectRoot));
 
     // Installed guard self-modification is an unconditional pure refusal. Its
     // position before scratch/chore/state/authority is a pinned contract.
-    if (isInstalledGuardPath(target)) {
+    const installedTarget = editTargets.find((candidate) => isInstalledGuardPath(candidate));
+    if (installedTarget) {
       return blockResult(
-        `Refusing to edit an installed guard file: ${target}\n` +
-          `  Files under an installed \`node_modules/.../scripts\` guard tree are off-limits to the Edit/Write/NotebookEdit tools they gate (self-modification interlock, #659).\n` +
+        `Refusing to edit an installed guard file: ${installedTarget}\n` +
+          `  Files under an installed \`node_modules/.../scripts\` guard tree are off-limits to the source-edit tools they gate (self-modification interlock, #659).\n` +
           `  This refusal is unconditional — neither develop state nor chore-mode grants a bypass. Edit the package in its own source checkout and reinstall; never hand-edit the installed copy.`,
         'activity-installed-guard-refused'
       );
     }
 
-    if (target === '.tmp' || target.startsWith('.tmp/')) return allow('scratch-path');
+    editTargets = editTargets.filter(
+      (candidate) => candidate !== '.tmp' && !candidate.startsWith('.tmp/')
+    );
+    if (editTargets.length === 0) return allow('scratch-path');
+    target = editTargets.join(', ');
     isGovernedEdit = true;
   } else {
     const command = toolInput?.command ?? '';
@@ -96,9 +103,11 @@ export async function runActivityGuard(input, deps = {}) {
       projectRoot
     );
     const state = activeIssue ? recordedState : null;
-    const activityClass = isGovernedEdit
-      ? (deps.classifyEdit || classifyEdit)(target, policy)
-      : (deps.classifyBash || classifyBash)(target, policy);
+    const activityClasses = isGovernedEdit
+      ? conservativeApplyPatch
+        ? ['WRITE_CODE']
+        : editTargets.map((candidate) => (deps.classifyEdit || classifyEdit)(candidate, policy))
+      : [(deps.classifyBash || classifyBash)(target, policy)];
 
     // Chore mode is the sanctioned source-write bypass. It is evaluated after
     // the installed-guard interlock and before authority initialization.
@@ -109,16 +118,18 @@ export async function runActivityGuard(input, deps = {}) {
       return allow('chore-mode-bypass');
     }
 
-    if (activeIssue && state == null && activityClass !== 'READ_*') {
+    const nonReadClass = activityClasses.find((activityClass) => activityClass !== 'READ_*');
+    if (activeIssue && state == null && nonReadClass) {
       return blockResult(
-        buildReason({ activityClass, target, state, activeIssue, toolName }),
+        buildReason({ activityClass: nonReadClass, target, state, activeIssue, toolName }),
         'activity-state-drift'
       );
     }
 
-    if (!isAllowed(state, activityClass)) {
+    const refusedClass = activityClasses.find((activityClass) => !isAllowed(state, activityClass));
+    if (refusedClass) {
       return blockResult(
-        buildReason({ activityClass, target, state, activeIssue, toolName }),
+        buildReason({ activityClass: refusedClass, target, state, activeIssue, toolName }),
         'activity-state-refused'
       );
     }
@@ -129,7 +140,13 @@ export async function runActivityGuard(input, deps = {}) {
 
     if (!activeIssue) {
       return blockResult(
-        buildReason({ activityClass, target, state, activeIssue, toolName }),
+        buildReason({
+          activityClass: activityClasses[0],
+          target,
+          state,
+          activeIssue,
+          toolName,
+        }),
         'activity-source-no-bound-issue'
       );
     }
@@ -204,7 +221,7 @@ async function main() {
     result = await runActivityGuard(input);
   } catch {
     // Preserve the historical pass-through for failures that occur before an
-    // Edit/Write/NotebookEdit mutation is classified.
+    // source-edit mutation is classified.
     return;
   }
   if (result.decision === 'block') {

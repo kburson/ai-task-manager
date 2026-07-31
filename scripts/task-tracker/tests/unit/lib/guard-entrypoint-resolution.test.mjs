@@ -3,6 +3,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { mkdirSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
+import os from 'node:os';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -13,6 +14,8 @@ import {
   guardBootstrapCommand,
 } from '../../../lib/guard-entrypoint.mjs';
 import { mkdtempProjectIsolated } from '../../../lib/scratch-dir.mjs';
+import { createWorkLeaseProvider } from '../../../lib/work-lease/provider.mjs';
+import { resolveWorktreeIdentity } from '../../../lib/work-lease/worktree-identity.mjs';
 
 const CWD = '/proj';
 const NM = resolve(CWD, 'node_modules/ai-task-manager/scripts/task-tracker/bash-guard.mjs');
@@ -111,13 +114,78 @@ function installedGuardSandbox({ active, state } = {}) {
   return dir;
 }
 
-function runBootstrap(name, cwd, input) {
+function runBootstrap(name, cwd, input, env = process.env) {
   return spawnSync(guardBootstrapCommand(name), {
     cwd,
     input,
+    env,
     encoding: 'utf8',
     shell: true,
   });
+}
+
+function installStaleLease(dir, { sessionId = 'codex-apply-patch-stale' } = {}) {
+  const projectId = '11111111-1111-4111-8111-111111111111';
+  const hostId = os.hostname();
+  const worktree = resolveWorktreeIdentity(dir, { hostId });
+  const config = {
+    projectId: 'PVT_GITHUB_PROJECT',
+    ledgerProjectId: projectId,
+    workLease: { authority: 'local' },
+  };
+  writeFileSync(
+    resolve(dir, '.ai-task-manager', 'task-tracker.json'),
+    JSON.stringify(config, null, 2)
+  );
+  const store = createWorkLeaseProvider({ config, projectDir: dir });
+  const requestedAt = new Date().toISOString();
+  const holder = {
+    principalKind: 'worker',
+    provider: 'codex',
+    agentRunId: sessionId,
+    sessionId,
+    hostId,
+    worktreeId: worktree.worktreeId,
+    pathHash: worktree.pathHash,
+    branch: 'trunk',
+    pid: process.pid,
+  };
+  const granted = store.acquire({
+    projectId,
+    issueId: '1049',
+    mode: 'write',
+    idempotencyKey: `bootstrap-stale:${sessionId}`,
+    requestedAt,
+    ttlMs: 900_000,
+    holder,
+  });
+  store.close();
+
+  const sessionDir = resolve(dir, '.tmp', 'aitm', 'sessions', sessionId);
+  mkdirSync(sessionDir, { recursive: true });
+  writeFileSync(
+    resolve(sessionDir, 'active-task.json'),
+    JSON.stringify(
+      {
+        issue: '#1049',
+        kanbanState: 'develop',
+        lease: {
+          projectId,
+          leaseId: granted.leaseId,
+          fencingToken: String(BigInt(granted.fencingToken) + 1n),
+          worktreeId: worktree.worktreeId,
+        },
+      },
+      null,
+      2
+    )
+  );
+  return {
+    ...process.env,
+    AI_TASK_MANAGER_APP_NAME: 'codex',
+    AI_TASK_MANAGER_PROJECT_DIR: dir,
+    AI_TASK_MANAGER_SESSION_ID: sessionId,
+  };
 }
 
 test('#1049: exact installed source bootstrap executes and blocks a governed edit', () => {
@@ -150,6 +218,53 @@ test('#1049: exact installed activity bootstrap executes and blocks pure state r
     assert.equal(decision.decision, 'block');
     assert.match(decision.reason, /WRITE_CODE/);
     assert.match(decision.reason, /refine/);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('#1049: exact installed activity bootstrap classifies pathless apply_patch as WRITE_CODE', () => {
+  const dir = installedGuardSandbox({ active: '#1049', state: 'refine' });
+  try {
+    const result = runBootstrap(
+      'activity-guard',
+      dir,
+      JSON.stringify({ tool_name: 'apply_patch', tool_input: {} })
+    );
+    assert.equal(result.status, 0, result.stderr);
+    const decision = JSON.parse(result.stdout);
+    assert.equal(decision.decision, 'block');
+    assert.match(decision.reason, /WRITE_CODE/);
+    assert.match(decision.reason, /refine/);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('#1049: exact installed activity bootstrap blocks stale apply_patch authority', () => {
+  const dir = installedGuardSandbox();
+  try {
+    const env = installStaleLease(dir);
+    const result = runBootstrap(
+      'activity-guard',
+      dir,
+      JSON.stringify({
+        tool_name: 'apply_patch',
+        tool_input: [
+          '*** Begin Patch',
+          '*** Update File: src/guarded.mjs',
+          '@@',
+          '-old',
+          '+new',
+          '*** End Patch',
+        ].join('\n'),
+      }),
+      env
+    );
+    assert.equal(result.status, 0, result.stderr);
+    const decision = JSON.parse(result.stdout);
+    assert.equal(decision.decision, 'block');
+    assert.match(decision.reason, /fence-stale/);
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }

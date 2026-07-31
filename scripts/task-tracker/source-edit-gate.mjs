@@ -1,9 +1,9 @@
 #!/usr/bin/env node
 // INTERNAL — DO NOT INVOKE DIRECTLY, and not exposed through `aitm`.
-// Plumbing: invoked only by the Claude Code hook runner, never by a human or
-// the AI. See bin/aitm-registry.mjs (INTERNAL map) for the rationale.
+// Plumbing: invoked by the Claude Code and Codex hook runners, never by a human
+// or the AI. See bin/aitm-registry.mjs (INTERNAL map) for the rationale.
 //
-// #327 — PreToolUse source-edit gate for Edit / Write / NotebookEdit.
+// #327 — PreToolUse source-edit gate for Edit / Write / NotebookEdit / apply_patch.
 //
 // Reads the bound issue from `.ai-task-manager/task-tracker-state.json`,
 // fetches (or cache-reads) the issue's board state + deep-dive markers,
@@ -31,6 +31,7 @@ import { isChoreModeActive } from './lib/chore-mode.mjs';
 import { readDeepDiveSignals } from './lib/deep-dive.mjs';
 import { SCRATCH_REL_PREFIX, statePath as resolveStatePath } from './paths.mjs';
 import { classifyEdit, isAllowed, loadPolicy, DEFAULT_POLICY } from './activity-policy.mjs';
+import { resolveSourceToolTargets, SOURCE_EDIT_TOOLS } from './lib/source-tool-targets.mjs';
 import { createRuntimeGovernedEffectAdapter } from './lib/work-lease/governed-effect.mjs';
 
 const pexec = promisify(execFile);
@@ -51,8 +52,6 @@ const POST_DEVELOP_STATES = new Set(['test', 'review', 'done']);
 
 const DEEP_DIVE_POSTED_MARKER = 'aitm-deep-dive-posted';
 const DEEP_DIVE_COMPLETE_MARKER = 'aitm-deep-dive-complete';
-
-const GATED_TOOLS = new Set(['Edit', 'Write', 'NotebookEdit']);
 
 // Normalises a `file_path` from the tool payload into a project-relative
 // path. Absolute paths are made relative to `projectDir` when possible;
@@ -83,8 +82,9 @@ export function decideSourceEdit({
   hasPostedMarker,
   hasCompleteMarker,
   policy = DEFAULT_POLICY,
+  activityClass: suppliedActivityClass,
 }) {
-  if (!GATED_TOOLS.has(toolName)) {
+  if (!SOURCE_EDIT_TOOLS.has(toolName)) {
     return { decision: 'allow', reason: 'tool-not-gated' };
   }
 
@@ -141,7 +141,7 @@ export function decideSourceEdit({
   // lock is class-aware rather than a blanket freeze. Fail-closed: `unknown`
   // already sits in PRE_DEVELOP_STATES above, so an unresolvable state refuses.
   if (POST_DEVELOP_STATES.has(state)) {
-    const activityClass = classifyEdit(relPath, policy);
+    const activityClass = suppliedActivityClass || classifyEdit(relPath, policy);
     if (!isAllowed(state, activityClass)) {
       return {
         decision: 'block',
@@ -345,40 +345,42 @@ function findProjectDir(startDir) {
 
 export async function runHook(payload, deps = {}) {
   const toolName = payload?.tool_name;
-  if (!GATED_TOOLS.has(toolName)) return { decision: 'allow', reason: 'tool-not-gated' };
+  if (!SOURCE_EDIT_TOOLS.has(toolName)) {
+    return { decision: 'allow', reason: 'tool-not-gated' };
+  }
 
   const projectDir =
     'projectDir' in deps ? deps.projectDir : findProjectDir(payload?.cwd || process.cwd());
   if (!projectDir) return { decision: 'allow', reason: 'no-project-dir' };
 
-  const filePath =
-    payload?.tool_input?.file_path ||
-    payload?.tool_input?.notebook_path ||
-    payload?.tool_input?.path ||
-    '';
+  const targetResolution = resolveSourceToolTargets(toolName, payload?.tool_input);
+  const filePaths = targetResolution.targets.length > 0 ? targetResolution.targets : [''];
 
   const choreModeActive = (deps.isChoreModeActive || isChoreModeActive)(projectDir);
   const boundIssue = (deps.loadBoundIssue || loadBoundIssue)(projectDir);
 
   // Resolve unconditional bypasses and the no-binding refusal before any
   // remote read, cache write, or work-lease authority initialization.
-  const preliminary = decideSourceEdit({
-    toolName,
-    filePath,
-    projectDir,
-    boundIssue,
-    choreModeActive,
-    issueState: 'unknown',
-    hasPostedMarker: false,
-    hasCompleteMarker: false,
-  });
-  if (
-    preliminary.reason === 'chore-mode-bypass' ||
-    preliminary.reason === 'allowlisted-path' ||
-    preliminary.code === 'source-edit-no-bound-issue'
-  ) {
-    return preliminary;
+  const preliminary = filePaths.map((filePath) =>
+    decideSourceEdit({
+      toolName,
+      filePath,
+      projectDir,
+      boundIssue,
+      choreModeActive,
+      issueState: 'unknown',
+      hasPostedMarker: false,
+      hasCompleteMarker: false,
+    })
+  );
+  if (preliminary.every((decision) => decision.reason === 'chore-mode-bypass')) {
+    return preliminary[0];
   }
+  if (preliminary.every((decision) => decision.reason === 'allowlisted-path')) {
+    return preliminary[0];
+  }
+  const noBinding = preliminary.find((decision) => decision.code === 'source-edit-no-bound-issue');
+  if (noBinding) return noBinding;
 
   let signals = { state: 'unknown', hasPostedMarker: false, hasCompleteMarker: false };
   try {
@@ -393,23 +395,34 @@ export async function runHook(payload, deps = {}) {
     // pre-develop states by default.
   }
 
-  let policyDecision;
+  let policyDecisions;
   try {
-    policyDecision = decideSourceEdit({
-      toolName,
-      filePath,
-      projectDir,
-      boundIssue,
-      choreModeActive,
-      issueState: signals.state,
-      hasPostedMarker: signals.hasPostedMarker,
-      hasCompleteMarker: signals.hasCompleteMarker,
-      policy: (deps.loadPolicy || loadPolicy)(projectDir),
+    const policy = (deps.loadPolicy || loadPolicy)(projectDir);
+    policyDecisions = filePaths.map((filePath) => {
+      const relPath = normalizePath(filePath, projectDir);
+      const activityClass =
+        toolName === 'apply_patch' && !targetResolution.exact
+          ? 'WRITE_CODE'
+          : (deps.classifyEdit || classifyEdit)(relPath, policy);
+      return decideSourceEdit({
+        toolName,
+        filePath,
+        projectDir,
+        boundIssue,
+        choreModeActive,
+        issueState: signals.state,
+        hasPostedMarker: signals.hasPostedMarker,
+        hasCompleteMarker: signals.hasCompleteMarker,
+        policy,
+        activityClass,
+      });
     });
   } catch (error) {
     return sourceEditFailure(error, 'source-edit-policy-failure');
   }
-  if (policyDecision.decision === 'block') return policyDecision;
+  const policyRefusal = policyDecisions.find((decision) => decision.decision === 'block');
+  if (policyRefusal) return policyRefusal;
+  const policyDecision = policyDecisions[0];
 
   try {
     const withGovernedEffect = deps.withGovernedEffect

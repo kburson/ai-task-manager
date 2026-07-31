@@ -365,6 +365,65 @@ test('#1049: pure state refusal does not open source-write authority', async () 
   assert.equal(governed, false);
 });
 
+test('#1049: source gate evaluates every apply_patch target under one authority check', async () => {
+  const payload = {
+    tool_name: 'apply_patch',
+    tool_input: {
+      patch: [
+        '*** Begin Patch',
+        '*** Update File: src/foo.mjs',
+        '@@',
+        '-old',
+        '+new',
+        '*** Update File: docs/foo.md',
+        '@@',
+        '-old',
+        '+new',
+        '*** End Patch',
+      ].join('\n'),
+    },
+  };
+  const baseDeps = {
+    projectDir: PROJECT_DIR,
+    isChoreModeActive: () => false,
+    loadBoundIssue: () => '#1049',
+    loadPolicy: () => ({}),
+    classifyEdit: (target) => (target.endsWith('.md') ? 'WRITE_DOCS' : 'WRITE_CODE'),
+  };
+  let governed = 0;
+  const allowed = await runHook(payload, {
+    ...baseDeps,
+    resolveIssueSignals: async () => ({
+      state: 'develop',
+      hasPostedMarker: true,
+      hasCompleteMarker: true,
+    }),
+    withGovernedEffect: async (_options, callback) => {
+      governed += 1;
+      return callback();
+    },
+  });
+  assert.equal(allowed.decision, 'allow');
+  assert.equal(governed, 1);
+
+  governed = 0;
+  const refused = await runHook(payload, {
+    ...baseDeps,
+    resolveIssueSignals: async () => ({
+      state: 'review',
+      hasPostedMarker: true,
+      hasCompleteMarker: true,
+    }),
+    withGovernedEffect: async () => {
+      governed += 1;
+    },
+  });
+  assert.equal(refused.decision, 'block');
+  assert.equal(refused.code, 'source-edit-post-develop-lock');
+  assert.match(refused.reason, /WRITE_CODE/);
+  assert.equal(governed, 0);
+});
+
 // ── #658 regression: deep-dive marker grammar detection ────────────────────
 //
 // The gate used to detect markers with `body.includes('<!-- aitm-deep-dive-posted:')`,
