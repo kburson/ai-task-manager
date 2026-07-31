@@ -25,6 +25,8 @@
 import { execFile, execFileSync } from 'node:child_process';
 import { promisify } from 'node:util';
 
+import { isGovernedAuthorityError } from './work-lease/governed-effect.mjs';
+
 const pexecFile = promisify(execFile);
 
 // Branch names probed, in order, when `cfg.trunkRef` is not set.
@@ -151,7 +153,8 @@ export async function fetchTrunk({ cfg, projectDir, deps = {} } = {}) {
     try {
       await git(['fetch', remote, branch]);
       return { fetched: true, remote, branch };
-    } catch {
+    } catch (error) {
+      if (isGovernedAuthorityError(error)) throw error;
       // try the next candidate; offline / no-remote / no-such-branch is fine
     }
   }

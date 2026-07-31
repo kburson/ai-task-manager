@@ -45,6 +45,11 @@ import {
   isAgentReviewComplete,
   agentReviewIncompleteReason,
 } from '../lib/agent-review/review-gate.mjs';
+import { buildOwnedChildEnvironment } from '../lib/work-lease/child-environment.mjs';
+import {
+  createRuntimeGovernedEffectAdapter,
+  isGovernedAuthorityError,
+} from '../lib/work-lease/governed-effect.mjs';
 
 const pexec = promisify(execFile);
 const __dir = path.dirname(fileURLToPath(import.meta.url));
@@ -157,8 +162,13 @@ async function defaultFetchIssueBody({ issueNumber, repo }) {
 
 // #295 — body writes go through `mutateIssueBody({ mutate })`; the closure
 // runs on the FRESH base each push attempt.
-async function defaultMutateIssueBody({ issueNumber, repo, mutate }) {
-  return mutateIssueBody({ issueNumber, repo, mutate, deps: { pexec } });
+async function defaultMutateIssueBody({ issueNumber, repo, mutate, withGovernedEffect }) {
+  return mutateIssueBody({
+    issueNumber,
+    repo,
+    mutate,
+    deps: { pexec, withGovernedEffect },
+  });
 }
 
 async function defaultGetLiveState({ issueNumber, cfg }) {
@@ -200,12 +210,19 @@ export function spawnVerbTimeout(verb) {
   return GH_API_TIMEOUT_MS * 4;
 }
 
-function defaultSpawnVerb({ verb, issueNumber }) {
+export function defaultSpawnVerb(
+  { verb, issueNumber, cfg, leaseContext, baseEnv = process.env },
+  { spawn: spawnImpl = spawn } = {}
+) {
   const script = path.resolve(__dir, '../task-tracker.mjs');
   return new Promise((resolve) => {
-    const child = spawn(process.execPath, [script, verb, String(issueNumber)], {
+    const child = spawnImpl(process.execPath, [script, verb, String(issueNumber)], {
       stdio: ['ignore', 'inherit', 'inherit'],
-      env: { ...process.env },
+      env: buildOwnedChildEnvironment({
+        baseEnv,
+        leaseContext,
+        tokenEnv: cfg?.workLease?.tokenEnv,
+      }),
       timeout: spawnVerbTimeout(verb),
     });
     child.on('exit', (code) => resolve(code ?? 1));
@@ -224,10 +241,16 @@ export const MOVE_STATE_DELEGATE_TIMEOUT_MS = GH_API_TIMEOUT_MS * 2;
 // caller's cwd via getProjectDir (never the package install dir), and it inherits
 // the promote-held advisory lock via env[AITM_ISSUE_LOCK_HELD] so it skips
 // re-acquisition rather than deadlocking. `host` is injectable for tests.
-export function defaultRunMoveState({ issueNumber, target }, { host = runMoveStateHost } = {}) {
+export function defaultRunMoveState(
+  { issueNumber, target, withGovernedEffect, env },
+  { host = runMoveStateHost } = {}
+) {
   return host({
     argv: [process.execPath, 'move-state.mjs', String(issueNumber), target],
-    env: { ...process.env, AITM_INTERNAL: '1', AITM_VERB_CONTEXT: 'promote' },
+    env: { ...env, AITM_INTERNAL: '1', AITM_VERB_CONTEXT: 'promote' },
+    governedIssueId: String(issueNumber),
+    governedOperation: 'lifecycle-mutation',
+    withGovernedEffect,
   });
 }
 
@@ -248,9 +271,59 @@ export async function runPromote({
   if (!cfg) throw new Error('promote: cfg is required');
   const assertBound = deps.assertBound ?? assertBoundToIssue;
   assertBound(issueNumber);
+  if (typeof deps.withGovernedEffect === 'function' && !deps.promoteAuthority) {
+    return deps.withGovernedEffect(
+      {
+        issueId: String(issueNumber),
+        operation: 'lifecycle-mutation',
+        heartbeat: true,
+      },
+      (authority) =>
+        runPromote({
+          issueNumber,
+          cfg,
+          now,
+          deps: {
+            ...deps,
+            withGovernedEffect: undefined,
+            promoteAuthority: authority,
+          },
+        })
+    );
+  }
+
+  const promoteAuthority = deps.promoteAuthority;
+  const withPromoteAuthorization = promoteAuthority
+    ? async (options, callback) => {
+        if (
+          String(options?.issueId).replace(/^#/, '') !== String(issueNumber) ||
+          !['lifecycle-mutation', 'evidence-mutation'].includes(options?.operation)
+        ) {
+          throw new Error('promote authorization scope mismatch');
+        }
+        if (typeof callback !== 'function') {
+          throw new Error('promote authorization callback is required');
+        }
+        await promoteAuthority.reverify();
+        return callback(promoteAuthority);
+      }
+    : undefined;
+  const nestedAuthorization =
+    withPromoteAuthorization ??
+    (async (_options, callback) => callback({ reverify: async () => {}, leaseContext: undefined }));
+  const ownedChildEnv = buildOwnedChildEnvironment({
+    baseEnv: deps.baseEnv ?? process.env,
+    leaseContext: promoteAuthority?.leaseContext,
+    tokenEnv: cfg.workLease?.tokenEnv,
+  });
 
   const fetchIssueBody = deps.fetchIssueBody || defaultFetchIssueBody;
-  const mutateBody = deps.mutateIssueBody || defaultMutateIssueBody;
+  const rawMutateBody = deps.mutateIssueBody || defaultMutateIssueBody;
+  const mutateBody = (options) =>
+    rawMutateBody({
+      ...options,
+      withGovernedEffect: nestedAuthorization,
+    });
   const getLiveState = deps.getLiveState || defaultGetLiveState;
   const spawnVerb = deps.spawnVerb || defaultSpawnVerb;
   const runMoveState = deps.runMoveState || defaultRunMoveState;
@@ -320,7 +393,19 @@ export async function runPromote({
   // already gates human sign-off on — instead of proceeding to `close`.
   if (recorded === 'review' && !isAgentReviewComplete(body)) {
     const reason = agentReviewIncompleteReason(body);
-    const exitCode = await spawnVerb({ verb: 'review', issueNumber, cfg });
+    const exitCode = await (withPromoteAuthorization
+      ? withPromoteAuthorization(
+          { issueId: String(issueNumber), operation: 'lifecycle-mutation' },
+          () =>
+            spawnVerb({
+              verb: 'review',
+              issueNumber,
+              cfg,
+              leaseContext: promoteAuthority.leaseContext,
+              baseEnv: ownedChildEnv,
+            })
+        )
+      : spawnVerb({ verb: 'review', issueNumber, cfg }));
     return {
       status: 'redelegated-to-review',
       reason,
@@ -367,7 +452,12 @@ export async function runPromote({
       issueNumber,
       repo: cfg.repo,
       scanBody: body,
-      deps: { pexec, deriveAndStampFunctionalDod, nowIso },
+      deps: {
+        pexec,
+        deriveAndStampFunctionalDod,
+        nowIso,
+        withGovernedEffect: nestedAuthorization,
+      },
     });
     body = scanBody;
   }
@@ -407,9 +497,30 @@ export async function runPromote({
     ? {
         kind: 'alias',
         verb: aliasVerb,
-        exitCode: await spawnVerb({ verb: aliasVerb, issueNumber, cfg }),
+        exitCode: await (withPromoteAuthorization
+          ? withPromoteAuthorization(
+              { issueId: String(issueNumber), operation: 'lifecycle-mutation' },
+              () =>
+                spawnVerb({
+                  verb: aliasVerb,
+                  issueNumber,
+                  cfg,
+                  leaseContext: promoteAuthority.leaseContext,
+                  baseEnv: ownedChildEnv,
+                })
+            )
+          : spawnVerb({ verb: aliasVerb, issueNumber, cfg })),
       }
-    : { kind: 'direct', exitCode: await runMoveState({ issueNumber, target, cfg }) };
+    : {
+        kind: 'direct',
+        exitCode: await runMoveState({
+          issueNumber,
+          target,
+          cfg,
+          withGovernedEffect: nestedAuthorization,
+          env: ownedChildEnv,
+        }),
+      };
 
   if (transitionResult.exitCode !== 0) {
     // Re-read live board to classify the failure.
@@ -456,7 +567,8 @@ export async function runPromote({
           deps: { mutateIssueBody: mutateBody },
           postComment: deps.postComment,
         });
-      } catch {
+      } catch (error) {
+        if (isGovernedAuthorityError(error)) throw error;
         // best-effort — marker is unreadable; warning still surfaces below.
       }
 
@@ -508,7 +620,8 @@ export async function runPromote({
               } exited ${transitionResult.exitCode})`,
             }),
         });
-      } catch {
+      } catch (error) {
+        if (isGovernedAuthorityError(error)) throw error;
         // best-effort
       }
     }
@@ -562,8 +675,14 @@ export async function runPromote({
   if (target === 'refine') {
     try {
       const stamp = deps.stampStartTime || stampStartTime;
-      await stamp({ cfg, issueNumber, now });
-    } catch {
+      await stamp({
+        cfg,
+        issueNumber,
+        now,
+        deps: { withGovernedEffect: nestedAuthorization },
+      });
+    } catch (error) {
+      if (isGovernedAuthorityError(error)) throw error;
       // best-effort
     }
   }
@@ -578,9 +697,13 @@ export async function runPromote({
         cfg,
         issueNumber,
         plan: refinementPlan,
-        deps: deps.refinementEstimate || deps.groomEstimate,
+        deps: {
+          ...(deps.refinementEstimate || deps.groomEstimate),
+          withGovernedEffect: nestedAuthorization,
+        },
       });
     } catch (err) {
+      if (isGovernedAuthorityError(err)) throw err;
       refinementPost = { status: 'post-failed', error: err.message };
     }
   }
@@ -595,9 +718,13 @@ export async function runPromote({
         cfg,
         issueNumber,
         cwd: guardCtx.projectDir,
-        deps: deps.newAutomatedTestsComment,
+        deps: {
+          ...deps.newAutomatedTestsComment,
+          withGovernedEffect: nestedAuthorization,
+        },
       });
     } catch (err) {
+      if (isGovernedAuthorityError(err)) throw err;
       newTestsPost = { status: 'post-failed', error: err.message };
     }
   }
@@ -639,11 +766,23 @@ export async function verbPromote(rest, cfg, deps = {}) {
 
   let result;
   try {
+    const projectDir = deps.projectDir || getProjectDir();
+    const executionDeps =
+      typeof deps.withGovernedEffect === 'function' || typeof deps.assertBound === 'function'
+        ? deps
+        : {
+            ...deps,
+            projectDir,
+            withGovernedEffect: createRuntimeGovernedEffectAdapter({
+              projectDir,
+              config: cfg,
+            }),
+          };
     result = await withIssueLock(
-      { issue: issueNumber, verb: 'promote', projDir: getProjectDir() },
+      { issue: issueNumber, verb: 'promote', projDir: projectDir },
       // `deps` defaults to `{}` on the real CLI path, so live behaviour is
       // unchanged; verb tests inject the seam to drive every result branch.
-      () => runPromote({ issueNumber, cfg, deps })
+      () => runPromote({ issueNumber, cfg, deps: executionDeps })
     );
   } catch (err) {
     if (err instanceof IssueLockError) {

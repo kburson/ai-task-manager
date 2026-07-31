@@ -21,17 +21,29 @@ function makeDeps() {
     calls,
     deps: {
       graph: (n) => GRAPH[n] ?? { parent: null, children: [] },
-      git: (args) => {
-        calls.push(args);
+      git: (args, options) => {
+        const call = [...args];
+        Object.defineProperty(call, 'options', { value: options });
+        calls.push(call);
         return '';
       },
+      withGovernedEffect: async (_options, callback) =>
+        callback({
+          leaseContext: {
+            projectId: 'project-1',
+            leaseId: 'lease-epic',
+            fencingToken: '42',
+            worktreeId: 'wt-epic',
+          },
+          reverify: async () => {},
+        }),
     },
   };
 }
 
-test('child worktree is based on its epic head, not trunk', () => {
+test('child worktree is based on its epic head, not trunk', async () => {
   const { calls, deps } = makeDeps();
-  const r = cutChildWorktree({ issue: 910, path: '/wt/910', deps });
+  const r = await cutChildWorktree({ issue: 910, path: '/wt/910', deps });
   assert.deepEqual(r, {
     branch: 'feature/child/910',
     path: '/wt/910',
@@ -42,27 +54,95 @@ test('child worktree is based on its epic head, not trunk', () => {
   ]);
 });
 
-test('child of a nested epic is based on the nested epic head', () => {
+test('child of a nested epic is based on the nested epic head', async () => {
   const { calls, deps } = makeDeps();
-  const r = cutChildWorktree({ issue: 920, path: '/wt/920', deps });
+  const r = await cutChildWorktree({ issue: 920, path: '/wt/920', deps });
   assert.equal(r.base, 'feature/epic/911');
   assert.deepEqual(calls, [
     ['worktree', 'add', '-b', 'feature/child/920', '/wt/920', 'feature/epic/911'],
   ]);
 });
 
-test('refuses a non-child issue', () => {
+test('refuses a non-child issue', async () => {
   const { deps } = makeDeps();
-  assert.throws(() => cutChildWorktree({ issue: 905, path: '/wt/x', deps }), /not a child/i);
-  assert.throws(() => cutChildWorktree({ issue: 42, path: '/wt/x', deps }), /not a child/i);
+  await assert.rejects(cutChildWorktree({ issue: 905, path: '/wt/x', deps }), /not a child/i);
+  await assert.rejects(cutChildWorktree({ issue: 42, path: '/wt/x', deps }), /not a child/i);
 });
 
-test('requires issue, path, and injected git', () => {
+test('requires issue, path, and injected git', async () => {
   const { deps } = makeDeps();
-  assert.throws(() => cutChildWorktree({ path: '/wt/x', deps }), /issue/i);
-  assert.throws(() => cutChildWorktree({ issue: 910, deps }), /path/i);
-  assert.throws(
-    () => cutChildWorktree({ issue: 910, path: '/wt/x', deps: { graph: deps.graph } }),
+  await assert.rejects(cutChildWorktree({ path: '/wt/x', deps }), /issue/i);
+  await assert.rejects(cutChildWorktree({ issue: 910, deps }), /path/i);
+  await assert.rejects(
+    cutChildWorktree({ issue: 910, path: '/wt/x', deps: { graph: deps.graph } }),
     /git/i
   );
+});
+
+test('child worktree cut is fenced by its epic controller without Task6 handoff', async () => {
+  const { calls, deps } = makeDeps();
+  const roots = [];
+  let reverifies = 0;
+  deps.withGovernedEffect = async (options, callback) => {
+    roots.push(options);
+    return callback({
+      leaseContext: {
+        projectId: 'project-1',
+        leaseId: 'lease-905',
+        fencingToken: '42',
+        worktreeId: 'wt-905',
+      },
+      reverify: async () => {
+        reverifies += 1;
+      },
+    });
+  };
+  deps.baseEnv = {
+    KEEP_ME: 'yes',
+    AITM_LEASE_ID: 'stale',
+    AITM_LEASE_AUTH_TOKEN: 'secret',
+  };
+
+  await cutChildWorktree({ issue: 910, path: '/wt/910', deps });
+
+  assert.deepEqual(roots, [
+    {
+      issueId: '905',
+      operation: 'branch-worktree-orchestration',
+      heartbeat: true,
+    },
+  ]);
+  assert.equal(reverifies, 1);
+  assert.deepEqual(calls[0].options.env, {
+    KEEP_ME: 'yes',
+    AITM_LEASE_ID: 'lease-905',
+    AITM_FENCING_TOKEN: '42',
+  });
+  assert.equal(
+    calls.some((call) => call.includes('handoff')),
+    false,
+    'lease handoff remains Task6 scope'
+  );
+});
+
+test('child worktree cut rereads lineage inside epic authority before git', async () => {
+  let childReads = 0;
+  const gitCalls = [];
+  const deps = {
+    graph: (issue) => {
+      if (issue === 910) {
+        childReads += 1;
+        return childReads === 1 ? { parent: 905, children: [] } : { parent: 911, children: [] };
+      }
+      return GRAPH[issue] ?? { parent: null, children: [] };
+    },
+    git: (args) => gitCalls.push(args),
+    withGovernedEffect: async (options, callback) => {
+      assert.equal(options.issueId, '905');
+      return callback({ leaseContext: {}, reverify: async () => {} });
+    },
+  };
+
+  await assert.rejects(cutChildWorktree({ issue: 910, path: '/wt/910', deps }), /lineage changed/i);
+  assert.equal(gitCalls.length, 0);
 });

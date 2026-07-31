@@ -106,7 +106,7 @@ function activeSessionIssue(session) {
   return canonicalIssue(session?.issue ?? session?.leaseIssue);
 }
 
-function heartbeatOwnerKey(sessionId, lease) {
+export function workLeaseHeartbeatOwnerKey(sessionId, lease) {
   return [sessionId, lease.projectId, lease.leaseId, lease.fencingToken, lease.worktreeId].join(
     ':'
   );
@@ -1257,7 +1257,8 @@ export async function verifyGovernedEffect({
 
   const persistedLease = expectedLease(session, canonicalIssueId, worktree.worktreeId);
   const trustedHolderIdentity = normalizeHolderIdentity(holderIdentity);
-  const ownerKey = suppliedHeartbeatOwnerKey ?? heartbeatOwnerKey(sessionId, persistedLease);
+  const ownerKey =
+    suppliedHeartbeatOwnerKey ?? workLeaseHeartbeatOwnerKey(sessionId, persistedLease);
   if (typeof ownerKey !== 'string' || ownerKey.trim() === '') {
     throw leaseError('invalid-request', 'heartbeat owner identity is required');
   }
@@ -1347,7 +1348,7 @@ export function createWorkLeaseHeartbeat({
     throw leaseError('invalid-request', 'heartbeat owner identity is required');
   }
   const existing = heartbeatOwners.get(ownerKey);
-  if (existing) return existing;
+  if (existing) return existing.acquire();
   if (
     typeof verifyEffect !== 'function' ||
     typeof setIntervalImpl !== 'function' ||
@@ -1375,17 +1376,28 @@ export function createWorkLeaseHeartbeat({
   };
   const timer = setIntervalImpl(tick, WORK_LEASE_HEARTBEAT_INTERVAL_MS);
   timer?.unref?.();
-  let controller;
-  const onProcessExit = () => stop();
-  const stop = () => {
+  let references = 0;
+  const onProcessExit = () => stopAll();
+  const stopAll = () => {
     if (stopped) return;
     stopped = true;
     clearIntervalImpl?.(timer);
     processEvents.removeListener('exit', onProcessExit);
-    if (heartbeatOwners.get(ownerKey) === controller) heartbeatOwners.delete(ownerKey);
+    if (heartbeatOwners.get(ownerKey) === entry) heartbeatOwners.delete(ownerKey);
   };
-  controller = Object.freeze({ ownerKey, timer, stop, shutdown: stop });
-  heartbeatOwners.set(ownerKey, controller);
+  const acquire = () => {
+    references += 1;
+    let released = false;
+    const stop = () => {
+      if (released || stopped) return;
+      released = true;
+      references -= 1;
+      if (references === 0) stopAll();
+    };
+    return Object.freeze({ ownerKey, timer, stop, shutdown: stop });
+  };
+  const entry = Object.freeze({ acquire });
+  heartbeatOwners.set(ownerKey, entry);
   processEvents.once('exit', onProcessExit);
-  return controller;
+  return acquire();
 }

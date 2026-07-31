@@ -14,8 +14,10 @@ const GRAPH = {
 };
 function makeGit({ ancestor = true, rebaseFails = false } = {}) {
   const calls = [];
-  const git = (args) => {
-    calls.push(args);
+  const git = (args, options) => {
+    const call = [...args];
+    Object.defineProperty(call, 'options', { value: options });
+    calls.push(call);
     if (args[0] === 'merge-base' && args.includes('--is-ancestor')) {
       if (!ancestor) {
         const e = new Error('not an ancestor');
@@ -35,10 +37,49 @@ function makeGit({ ancestor = true, rebaseFails = false } = {}) {
   return git;
 }
 const graph = (n) => GRAPH[n] ?? { parent: null, children: [] };
+const LEASE_CONTEXT = {
+  projectId: 'project-1',
+  leaseId: 'lease-905',
+  fencingToken: '42',
+  worktreeId: 'wt-905',
+};
 
-test('syncEpic rebases the epic onto origin/trunk (default) then force-with-lease pushes', () => {
+function authority({ staleAt = Infinity } = {}) {
+  const calls = [];
+  let verifies = 0;
+  return {
+    calls,
+    get verifies() {
+      return verifies;
+    },
+    withGovernedEffect: async (options, callback) => {
+      calls.push(options);
+      return callback({
+        leaseContext: LEASE_CONTEXT,
+        reverify: async () => {
+          verifies += 1;
+          if (verifies === staleAt) {
+            const error = new Error(`stale at verify ${verifies}`);
+            error.code = 'fence-stale';
+            throw error;
+          }
+        },
+      });
+    },
+  };
+}
+
+function governed(deps) {
+  return {
+    ...deps,
+    withGovernedEffect: async (_options, callback) =>
+      callback({ leaseContext: LEASE_CONTEXT, reverify: async () => {} }),
+  };
+}
+
+test('syncEpic rebases the epic onto origin/trunk (default) then force-with-lease pushes', async () => {
   const git = makeGit();
-  const r = syncEpic({ epic: 905, deps: { graph, git } });
+  const r = await syncEpic({ epic: 905, deps: governed({ graph, git }) });
   assert.equal(r.branch, 'feature/epic/905');
   assert.equal(r.pushed, true);
   assert.equal(r.rebasedOnto, 'origin/trunk');
@@ -48,16 +89,22 @@ test('syncEpic rebases the epic onto origin/trunk (default) then force-with-leas
   ]);
 });
 
-test('syncEpic skips the push when noPushToOrigin is set (rebase-only)', () => {
+test('syncEpic skips the push when noPushToOrigin is set (rebase-only)', async () => {
   const git = makeGit();
-  const r = syncEpic({ epic: 905, deps: { graph, git, noPushToOrigin: true } });
+  const r = await syncEpic({
+    epic: 905,
+    deps: governed({ graph, git, noPushToOrigin: true }),
+  });
   assert.equal(r.pushed, false);
   assert.deepEqual(git.calls, [['rebase', 'origin/trunk', 'feature/epic/905']]);
 });
 
-test('#927 — syncEpic rebases onto the injected resolved ref, and it equals the ancestor-check ref', () => {
+test('#927 — syncEpic rebases onto the injected resolved ref, and it equals the ancestor-check ref', async () => {
   const rebaseGit = makeGit();
-  const r = syncEpic({ epic: 905, deps: { graph, git: rebaseGit, trunk: 'origin/trunk' } });
+  const r = await syncEpic({
+    epic: 905,
+    deps: governed({ graph, git: rebaseGit, trunk: 'origin/trunk' }),
+  });
   assert.equal(r.rebasedOnto, 'origin/trunk');
   assert.deepEqual(rebaseGit.calls[0], ['rebase', 'origin/trunk', 'feature/epic/905']);
 
@@ -73,16 +120,16 @@ test('#927 — syncEpic rebases onto the injected resolved ref, and it equals th
   ]);
 });
 
-test('syncEpic surfaces a rebase conflict rather than pushing a bad state', () => {
+test('syncEpic surfaces a rebase conflict rather than pushing a bad state', async () => {
   const git = makeGit({ rebaseFails: true });
-  assert.throws(() => syncEpic({ epic: 905, deps: { graph, git } }), /rebase/i);
+  await assert.rejects(syncEpic({ epic: 905, deps: governed({ graph, git }) }), /rebase/i);
   // never reached the push
   assert.ok(!git.calls.some((c) => c[0] === 'push'));
 });
 
-test('syncEpic refuses a non-epic issue', () => {
+test('syncEpic refuses a non-epic issue', async () => {
   const git = makeGit();
-  assert.throws(() => syncEpic({ epic: 910, deps: { graph, git } }), /not an epic/i);
+  await assert.rejects(syncEpic({ epic: 910, deps: governed({ graph, git }) }), /not an epic/i);
 });
 
 test('epicNeedsSync: true when origin/trunk is NOT yet an ancestor of the epic', () => {
@@ -101,7 +148,89 @@ test('epicNeedsSync: false when the epic already contains origin/trunk', () => {
   assert.equal(epicNeedsSync({ epic: 905, deps: { graph, git } }), false);
 });
 
-test('requires an issue and injected git', () => {
-  assert.throws(() => syncEpic({ deps: { graph, git: makeGit() } }), /epic/i);
-  assert.throws(() => syncEpic({ epic: 905, deps: { graph } }), /git/i);
+test('requires an issue and injected git', async () => {
+  await assert.rejects(syncEpic({ deps: governed({ graph, git: makeGit() }) }), /epic/i);
+  await assert.rejects(syncEpic({ epic: 905, deps: governed({ graph }) }), /git/i);
+});
+
+test('sync-epic holds one epic root and reverifies before fetch, rebase, and push', async () => {
+  const auth = authority();
+  const git = makeGit();
+  const fetches = [];
+  const result = await syncEpic({
+    epic: 905,
+    deps: {
+      graph,
+      git,
+      fetch: (options) => fetches.push(options),
+      withGovernedEffect: auth.withGovernedEffect,
+      baseEnv: {
+        KEEP_ME: 'yes',
+        REMOTE_LEASE_BEARER: 'secret',
+        AITM_LEASE_ID: 'stale',
+        AITM_FENCING_TOKEN: '7',
+      },
+      tokenEnv: 'REMOTE_LEASE_BEARER',
+    },
+  });
+
+  assert.equal(result.pushed, true);
+  assert.deepEqual(auth.calls, [
+    {
+      issueId: '905',
+      operation: 'branch-worktree-orchestration',
+      heartbeat: true,
+    },
+  ]);
+  assert.equal(auth.verifies, 3);
+  assert.equal(fetches.length, 1);
+  for (const options of [...fetches, ...git.calls.map((args) => args.options)].filter(Boolean)) {
+    assert.deepEqual(options.env, {
+      KEEP_ME: 'yes',
+      AITM_LEASE_ID: 'lease-905',
+      AITM_FENCING_TOKEN: '42',
+    });
+  }
+});
+
+test('sync-epic no-push mode performs no push verification', async () => {
+  const auth = authority({ staleAt: 3 });
+  const git = makeGit();
+  const result = await syncEpic({
+    epic: 905,
+    deps: {
+      graph,
+      git,
+      fetch: () => {},
+      withGovernedEffect: auth.withGovernedEffect,
+      noPushToOrigin: true,
+    },
+  });
+  assert.equal(result.pushed, false);
+  assert.equal(auth.verifies, 2, 'noPush skips both push verification and push callback');
+  assert.equal(
+    git.calls.some((args) => args[0] === 'push'),
+    false
+  );
+});
+
+test('sync-epic stale fence blocks the selected mutating callback', async () => {
+  const auth = authority({ staleAt: 3 });
+  const git = makeGit();
+  await assert.rejects(
+    syncEpic({
+      epic: 905,
+      deps: {
+        graph,
+        git,
+        fetch: () => {},
+        withGovernedEffect: auth.withGovernedEffect,
+      },
+    }),
+    (error) => error.code === 'fence-stale'
+  );
+  assert.equal(
+    git.calls.some((args) => args[0] === 'push'),
+    false
+  );
 });

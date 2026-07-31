@@ -4,7 +4,11 @@ import { WorkLeaseError } from '@kburson/aitm-ledger';
 
 import { currentBranch } from '../../fleet-registry.mjs';
 import { aiAppName, currentSessionId } from '../../word-counter.mjs';
-import { createWorkLeaseHeartbeat, verifyGovernedEffect } from './guard.mjs';
+import {
+  createWorkLeaseHeartbeat,
+  verifyGovernedEffect,
+  workLeaseHeartbeatOwnerKey,
+} from './guard.mjs';
 import { normalizeLeaseContext } from './context.mjs';
 import { createWorkLeaseProvider } from './provider.mjs';
 
@@ -96,10 +100,6 @@ function verifiedLeaseContext(result) {
   });
 }
 
-function commandOwnerKey(sessionId, issueId, operation) {
-  return `governed:${process.pid}:${sessionId}:${String(issueId).replace(/^#/, '')}:${operation}`;
-}
-
 // One operation-aware boundary for governed callbacks. Unknown operations are
 // rejected before runtime identity resolution or lazy authority initialization.
 // Every reverify reloads the persisted session through verifyGovernedEffect;
@@ -130,7 +130,6 @@ export function createGovernedEffectAdapter({
 
     const identity = getIdentity();
     const holderIdentity = trustedHolderIdentity(identity);
-    const heartbeatOwnerKey = commandOwnerKey(identity.sessionId, issueId, operation);
     const verifyOptions = {
       issueId,
       sessionId: identity.sessionId,
@@ -139,13 +138,13 @@ export function createGovernedEffectAdapter({
       operation,
       store: getStore(),
       holderIdentity,
-      heartbeatOwnerKey,
     };
     let verified = await verifyEffect(verifyOptions);
     let leaseContext = verifiedLeaseContext(verified);
+    const heartbeatOwnerKey = workLeaseHeartbeatOwnerKey(identity.sessionId, leaseContext);
 
     const reverify = async () => {
-      verified = await verifyEffect(verifyOptions);
+      verified = await verifyEffect({ ...verifyOptions, heartbeatOwnerKey });
       leaseContext = verifiedLeaseContext(verified);
       return Object.freeze({ allowed: true, lease: verified.lease, leaseContext });
     };

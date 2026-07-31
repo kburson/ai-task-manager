@@ -21,6 +21,9 @@ import { execFileSync } from 'node:child_process';
 import { resolveEpicLineage } from './lib/resolve-epic-lineage.mjs';
 import { parseBranchName } from './lib/branch-name.mjs';
 import { wantsHelp, emitSelfDoc } from '../lib/self-doc.mjs';
+import { createRuntimeGovernedEffectAdapter } from './lib/work-lease/governed-effect.mjs';
+import { withVerbMutationScope } from './lib/work-lease/verb-mutation-scope.mjs';
+import { buildOwnedChildEnvironment } from './lib/work-lease/child-environment.mjs';
 
 // Is `ancestorRef` an ancestor of `descendantRef`? merge-base --is-ancestor
 // signals via exit code; deps.git throws on non-zero.
@@ -33,13 +36,25 @@ function isAncestor(git, ancestorRef, descendantRef) {
   }
 }
 
-export function mergeBack({ child, path, deps } = {}) {
+function sameMergeLineage(expected, actual) {
+  return (
+    actual.role === 'child' &&
+    actual.branch === expected.branch &&
+    actual.epicBranch === expected.epicBranch &&
+    actual.parentBranch === expected.parentBranch
+  );
+}
+
+export async function mergeBack({ child, path, deps } = {}) {
   if (child == null) throw new Error('merge-back: child issue is required');
   if (!deps || typeof deps.git !== 'function') {
     throw new Error('merge-back: deps.git(args) is required');
   }
   if (typeof deps.runTests !== 'function') {
     throw new Error('merge-back: deps.runTests() runner is required');
+  }
+  if (typeof deps.withGovernedEffect !== 'function') {
+    throw new Error('merge-back: deps.withGovernedEffect is required');
   }
   const git = deps.git;
   // The child branch is checked out in its own worktree, so its rebase must run
@@ -61,37 +76,72 @@ export function mergeBack({ child, path, deps } = {}) {
   // Resolve the epic's own parent (the child's grandparent) to know what the epic
   // should sync onto: trunk for a root epic, the outer epic for a nested one.
   const epicIssue = parseBranchName(epicBranch).issue;
-  const grandparent = resolveEpicLineage(epicIssue, { deps }).parentBranch;
+  const expectedEpicLineage = resolveEpicLineage(epicIssue, { deps });
 
-  // 1. Opportunistic epic sync (skip when already current).
-  if (grandparent && !isAncestor(git, grandparent, epicBranch)) {
-    git(['rebase', grandparent, epicBranch]);
-  }
+  return withVerbMutationScope(
+    {
+      issueId: epicIssue,
+      operation: 'branch-worktree-orchestration',
+      withGovernedEffect: deps.withGovernedEffect,
+      heartbeat: true,
+    },
+    async (scope) => {
+      await deps.refreshGraph?.();
+      const liveChildLineage = resolveEpicLineage(child, { deps });
+      const liveEpicLineage = resolveEpicLineage(epicIssue, { deps });
+      if (
+        !sameMergeLineage(childLineage, liveChildLineage) ||
+        liveEpicLineage.role !== 'epic' ||
+        liveEpicLineage.branch !== expectedEpicLineage.branch ||
+        liveEpicLineage.parentBranch !== expectedEpicLineage.parentBranch
+      ) {
+        throw new Error('merge-back: lineage changed before governed git effects');
+      }
 
-  // 2. Rebase the child onto the epic head, from inside the child worktree.
-  // Conflict → refuse.
-  try {
-    wtGit(['rebase', epicBranch, childBranch]);
-  } catch (err) {
-    throw new Error(
-      `merge-back: rebase conflict rebasing ${childBranch} onto ${epicBranch}: ${err.message}`
-    );
-  }
+      const childEnv = buildOwnedChildEnvironment({
+        baseEnv: deps.baseEnv ?? process.env,
+        leaseContext: scope.leaseContext,
+        tokenEnv: deps.tokenEnv,
+      });
+      const fetchResult =
+        typeof deps.fetch === 'function'
+          ? await scope.effect(() => deps.fetch({ env: childEnv }))
+          : undefined;
 
-  // 3. Run the child's tests. Failure → refuse (no merge, no cleanup).
-  if (!deps.runTests({ path, branch: childBranch })) {
-    throw new Error(`merge-back: child ${childBranch} tests failed; refusing to merge`);
-  }
+      const grandparent = fetchResult?.trunk ?? liveEpicLineage.parentBranch;
+      if (
+        grandparent &&
+        !isAncestor((args) => git(args, { env: childEnv }), grandparent, epicBranch)
+      ) {
+        await scope.effect(() => git(['rebase', grandparent, epicBranch], { env: childEnv }));
+      }
 
-  // 4. Fast-forward-only merge into the epic.
-  git(['checkout', epicBranch]);
-  git(['merge', '--ff-only', childBranch]);
+      try {
+        await scope.effect(() => wtGit(['rebase', epicBranch, childBranch], { env: childEnv }));
+      } catch (err) {
+        if (err?.code) throw err;
+        throw new Error(
+          `merge-back: rebase conflict rebasing ${childBranch} onto ${epicBranch}: ${err.message}`
+        );
+      }
 
-  // 5. Cleanup on success.
-  if (path) git(['worktree', 'remove', path]);
-  git(['branch', '-d', childBranch]);
+      const testsPassed = await scope.effect(() =>
+        deps.runTests({ path, branch: childBranch, env: childEnv })
+      );
+      if (!testsPassed) {
+        throw new Error(`merge-back: child ${childBranch} tests failed; refusing to merge`);
+      }
 
-  return { merged: true, epic: epicBranch, child: childBranch };
+      await scope.effect(() => git(['checkout', epicBranch], { env: childEnv }));
+      await scope.effect(() => git(['merge', '--ff-only', childBranch], { env: childEnv }));
+      if (path) {
+        await scope.effect(() => git(['worktree', 'remove', path], { env: childEnv }));
+      }
+      await scope.effect(() => git(['branch', '-d', childBranch], { env: childEnv }));
+
+      return { merged: true, epic: epicBranch, child: childBranch };
+    }
+  );
 }
 
 // ---- CLI wiring (real git + real gh graph + real test runner) -----------------
@@ -105,7 +155,12 @@ async function realGraphNode(issue, cfg) {
 }
 
 function realGit(projectDir) {
-  return (args) => execFileSync('git', args, { cwd: projectDir, encoding: 'utf8' }).trim();
+  return (args, options = {}) =>
+    execFileSync('git', args, {
+      cwd: projectDir,
+      encoding: 'utf8',
+      env: options.env,
+    }).trim();
 }
 
 async function main(argv) {
@@ -121,24 +176,25 @@ async function main(argv) {
   }
   const { loadConfig } = await import('./config.mjs');
   const cfg = loadConfig();
-  const node = await realGraphNode(child, cfg);
+  let node = await realGraphNode(child, cfg);
   const projectDir = cfg.projectDir || process.cwd();
   // #927 — the epic's grandparent, for a root epic, is trunk; the opportunistic
   // epic sync (step 1) rebases the epic onto it. Resolve+fetch the trunk ref so
   // that sync targets origin/trunk, not a stale local `trunk`.
   const { resolveTrunkRef, fetchTrunk } = await import('./lib/trunk-ref.mjs');
-  await fetchTrunk({ cfg, projectDir });
-  const trunk = await resolveTrunkRef({ cfg, projectDir });
+  const trunk =
+    typeof cfg.trunkRef === 'string' && cfg.trunkRef.trim() ? cfg.trunkRef.trim() : 'origin/trunk';
   // #864 — `test:all` is retired; the suite runs only in bounded sections. Run
   // each section sequentially, each under its own 10-minute ceiling. Any section
   // failing (including a ceiling breach) fails the merge-back gate.
   const TEST_SECTIONS = ['test:unit', 'test:integration', 'test:slow'];
-  const runTests = ({ path }) => {
+  const runTests = ({ path, env }) => {
     for (const section of TEST_SECTIONS) {
       try {
         execFileSync('npm', ['run', section], {
           cwd: path || projectDir,
           stdio: 'inherit',
+          env,
         });
       } catch {
         return false;
@@ -151,10 +207,24 @@ async function main(argv) {
     path: wtPath,
     deps: {
       graph: () => node,
+      refreshGraph: async () => {
+        node = await realGraphNode(child, cfg);
+      },
       git: realGit(projectDir),
       worktreeGit: wtPath ? realGit(wtPath) : realGit(projectDir),
       trunk,
+      fetch: async ({ env }) => {
+        const git = (args) => realGit(projectDir)(args, { env });
+        const status = await fetchTrunk({ cfg, projectDir, deps: { git } });
+        return {
+          ...status,
+          trunk: (await resolveTrunkRef({ cfg, projectDir, deps: { git } })) || trunk,
+        };
+      },
       runTests,
+      withGovernedEffect: createRuntimeGovernedEffectAdapter({ projectDir, config: cfg }),
+      baseEnv: process.env,
+      tokenEnv: cfg.workLease?.tokenEnv,
     },
   });
   process.stdout.write(`merged feature/child/${child} into ${epic}\n`);

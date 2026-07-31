@@ -12,6 +12,7 @@ import { getProjectDir } from '../task-tracker/paths.mjs';
 import { wantsHelp, emitSelfDoc } from '../lib/self-doc.mjs';
 import { runMoveStateHost } from './move-state.mjs';
 import { createRuntimeGovernedEffectAdapter } from '../task-tracker/lib/work-lease/governed-effect.mjs';
+import { buildOwnedChildEnvironment } from '../task-tracker/lib/work-lease/child-environment.mjs';
 
 // #764 — flip the board to Development through the in-process runMoveStateHost
 // seam (was: spawn `node scripts/gh/move-state.mjs <issue> develop`). Mirrors
@@ -19,12 +20,12 @@ import { createRuntimeGovernedEffectAdapter } from '../task-tracker/lib/work-lea
 // code the child exit code used to give us, so the caller's non-zero handling is
 // unchanged. host is injectable for offline tests.
 export function defaultRunMoveState(
-  { issue, anchor, withGovernedEffect },
+  { issue, anchor, withGovernedEffect, env },
   { host = runMoveStateHost } = {}
 ) {
   return host({
     argv: [process.execPath, 'move-state.mjs', String(issue), 'develop'],
-    env: { ...process.env, AITM_INTERNAL: '1', AITM_VERB_CONTEXT: 'dispatch' },
+    env: { ...env, AITM_INTERNAL: '1', AITM_VERB_CONTEXT: 'dispatch' },
     governedIssueId: String(anchor),
     governedOperation: 'branch-worktree-orchestration',
     withGovernedEffect,
@@ -145,6 +146,11 @@ export async function main(argv, overrides = {}) {
         issue: args.issue,
         anchor: args.anchor,
         withGovernedEffect: withDispatchAuthorization,
+        env: buildOwnedChildEnvironment({
+          baseEnv: d.baseEnv ?? process.env,
+          leaseContext: effect.leaseContext,
+          tokenEnv: cfg.workLease?.tokenEnv,
+        }),
       });
       if (moveCode !== 0) return { moveCode };
 

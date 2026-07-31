@@ -16,16 +16,23 @@
 import { execFileSync } from 'node:child_process';
 
 import { resolveEpicLineage } from './lib/resolve-epic-lineage.mjs';
+import { parseBranchName } from './lib/branch-name.mjs';
 import { wantsHelp, emitSelfDoc } from '../lib/self-doc.mjs';
+import { createRuntimeGovernedEffectAdapter } from './lib/work-lease/governed-effect.mjs';
+import { withVerbMutationScope } from './lib/work-lease/verb-mutation-scope.mjs';
+import { buildOwnedChildEnvironment } from './lib/work-lease/child-environment.mjs';
 
 // Create `feature/child/<issue>` + its worktree at `path`, based on the child's
 // epic head. Returns `{ branch, path, base }`. Throws if the issue is not a child
 // of an epic, if path is missing, or if git is not injected.
-export function cutChildWorktree({ issue, path, deps } = {}) {
+export async function cutChildWorktree({ issue, path, deps } = {}) {
   if (issue == null) throw new Error('cut-child-worktree: issue is required');
   if (!path) throw new Error('cut-child-worktree: path is required');
   if (!deps || typeof deps.git !== 'function') {
     throw new Error('cut-child-worktree: deps.git(args) is required');
+  }
+  if (typeof deps.withGovernedEffect !== 'function') {
+    throw new Error('cut-child-worktree: deps.withGovernedEffect is required');
   }
   const lineage = resolveEpicLineage(issue, { deps });
   if (lineage.role !== 'child' || !lineage.epicBranch) {
@@ -35,8 +42,35 @@ export function cutChildWorktree({ issue, path, deps } = {}) {
     );
   }
   const base = lineage.epicBranch;
-  deps.git(['worktree', 'add', '-b', lineage.branch, path, base]);
-  return { branch: lineage.branch, path, base };
+  const controllerIssue = parseBranchName(base).issue;
+  return withVerbMutationScope(
+    {
+      issueId: controllerIssue,
+      operation: 'branch-worktree-orchestration',
+      withGovernedEffect: deps.withGovernedEffect,
+      heartbeat: true,
+    },
+    async (scope) => {
+      await deps.refreshGraph?.();
+      const liveLineage = resolveEpicLineage(issue, { deps });
+      if (
+        liveLineage.role !== 'child' ||
+        liveLineage.branch !== lineage.branch ||
+        liveLineage.epicBranch !== lineage.epicBranch
+      ) {
+        throw new Error('cut-child-worktree: lineage changed before governed git effects');
+      }
+      const env = buildOwnedChildEnvironment({
+        baseEnv: deps.baseEnv ?? process.env,
+        leaseContext: scope.leaseContext,
+        tokenEnv: deps.tokenEnv,
+      });
+      await scope.effect(() =>
+        deps.git(['worktree', 'add', '-b', lineage.branch, path, base], { env })
+      );
+      return { branch: lineage.branch, path, base };
+    }
+  );
 }
 
 // ---- CLI wiring (real git + real gh sub-issue graph) --------------------------
@@ -50,7 +84,12 @@ async function realGraphNode(issue, cfg) {
 }
 
 function realGit(projectDir) {
-  return (args) => execFileSync('git', args, { cwd: projectDir, encoding: 'utf8' }).trim();
+  return (args, options = {}) =>
+    execFileSync('git', args, {
+      cwd: projectDir,
+      encoding: 'utf8',
+      env: options.env,
+    }).trim();
 }
 
 async function main(argv) {
@@ -66,7 +105,8 @@ async function main(argv) {
   }
   const { loadConfig } = await import('./config.mjs');
   const cfg = loadConfig();
-  const node = await realGraphNode(issue, cfg);
+  let node = await realGraphNode(issue, cfg);
+  const projectDir = cfg.projectDir || process.cwd();
   const {
     branch,
     path: p,
@@ -74,7 +114,16 @@ async function main(argv) {
   } = cutChildWorktree({
     issue,
     path: wtPath,
-    deps: { graph: () => node, git: realGit(cfg.projectDir || process.cwd()) },
+    deps: {
+      graph: () => node,
+      refreshGraph: async () => {
+        node = await realGraphNode(issue, cfg);
+      },
+      git: realGit(projectDir),
+      withGovernedEffect: createRuntimeGovernedEffectAdapter({ projectDir, config: cfg }),
+      baseEnv: process.env,
+      tokenEnv: cfg.workLease?.tokenEnv,
+    },
   });
   process.stdout.write(`cut ${branch} at ${p} from ${base}\n`);
 }

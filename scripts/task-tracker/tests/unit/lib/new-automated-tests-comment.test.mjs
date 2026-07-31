@@ -127,6 +127,26 @@ test('postNewAutomatedTestsComment: posts a dedicated comment when entries are f
   assert.ok(!created[0].includes('CODE_COMPLETE'));
 });
 
+test('postNewAutomatedTestsComment: controller continuation reverifies immediately before create', async () => {
+  const events = [];
+  const result = await postNewAutomatedTestsComment({
+    cfg: { repo: 'kburson/ai-task-manager' },
+    issueNumber: 674,
+    deps: {
+      listComments: async () => [{ body: '### 🔗 Commits\n<!-- aitm-commits shas="sha1" -->' }],
+      showShaTestDiff: async () => "+++ b/foo.test.mjs\n+test('case one', () => {});",
+      withGovernedEffect: async (options, callback) => {
+        events.push(`scope:${options.issueId}:${options.operation}`);
+        events.push('reverify');
+        return callback({ reverify: async () => {} });
+      },
+      createComment: async () => events.push('comment'),
+    },
+  });
+  assert.equal(result.status, 'posted');
+  assert.deepEqual(events, ['scope:674:evidence-mutation', 'reverify', 'comment']);
+});
+
 test('postNewAutomatedTestsComment: no test files changed means no comment posted', async () => {
   let createCalled = false;
   const result = await postNewAutomatedTestsComment({

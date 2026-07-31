@@ -19,6 +19,45 @@ const GRAPH = {
   910: { parent: 905, children: [] }, // child of 905
 };
 const graph = (n) => GRAPH[n] ?? { parent: null, children: [] };
+const LEASE_CONTEXT = {
+  projectId: 'project-1',
+  leaseId: 'lease-905',
+  fencingToken: '42',
+  worktreeId: 'wt-905',
+};
+
+function authority({ staleAt = Infinity } = {}) {
+  const calls = [];
+  let verifies = 0;
+  return {
+    calls,
+    get verifies() {
+      return verifies;
+    },
+    withGovernedEffect: async (options, callback) => {
+      calls.push(options);
+      return callback({
+        leaseContext: LEASE_CONTEXT,
+        reverify: async () => {
+          verifies += 1;
+          if (verifies === staleAt) {
+            const error = new Error(`stale at verify ${verifies}`);
+            error.code = 'fence-stale';
+            throw error;
+          }
+        },
+      });
+    },
+  };
+}
+
+function governed(deps) {
+  return {
+    ...deps,
+    withGovernedEffect: async (_options, callback) =>
+      callback({ leaseContext: LEASE_CONTEXT, reverify: async () => {} }),
+  };
+}
 
 function makeGit({ grandparentIsAncestor = true, rebaseChildFails = false } = {}) {
   const calls = [];
@@ -44,12 +83,12 @@ function makeGit({ grandparentIsAncestor = true, rebaseChildFails = false } = {}
   return git;
 }
 
-test('clean fast-forward path: sync-skip, rebase child, test, ff, cleanup', () => {
+test('clean fast-forward path: sync-skip, rebase child, test, ff, cleanup', async () => {
   const git = makeGit(); // grandparent already ancestor → epic sync is a no-op
-  const r = mergeBack({
+  const r = await mergeBack({
     child: 910,
     path: '/wt/910',
-    deps: { graph, git, runTests: () => true },
+    deps: governed({ graph, git, runTests: () => true }),
   });
   assert.equal(r.merged, true);
   assert.equal(r.epic, 'feature/epic/905');
@@ -64,27 +103,39 @@ test('clean fast-forward path: sync-skip, rebase child, test, ff, cleanup', () =
   assert.ok(kinds.some((k) => k.startsWith('branch -d feature/child/910')));
 });
 
-test('grandparent advanced: epic is rebased onto trunk before the child merge', () => {
+test('grandparent advanced: epic is rebased onto trunk before the child merge', async () => {
   const git = makeGit({ grandparentIsAncestor: false });
-  mergeBack({ child: 910, path: '/wt/910', deps: { graph, git, runTests: () => true } });
+  await mergeBack({
+    child: 910,
+    path: '/wt/910',
+    deps: governed({ graph, git, runTests: () => true }),
+  });
   const kinds = git.calls.map((c) => c.join(' '));
   assert.ok(kinds.includes('rebase trunk feature/epic/905'));
 });
 
-test('rebase conflict on the child refuses before any merge', () => {
+test('rebase conflict on the child refuses before any merge', async () => {
   const git = makeGit({ rebaseChildFails: true });
-  assert.throws(
-    () => mergeBack({ child: 910, path: '/wt/910', deps: { graph, git, runTests: () => true } }),
+  await assert.rejects(
+    mergeBack({
+      child: 910,
+      path: '/wt/910',
+      deps: governed({ graph, git, runTests: () => true }),
+    }),
     /rebase|conflict/i
   );
   const kinds = git.calls.map((c) => c.join(' '));
   assert.ok(!kinds.some((k) => k.startsWith('merge --ff-only')));
 });
 
-test('post-rebase test failure refuses the merge and skips cleanup', () => {
+test('post-rebase test failure refuses the merge and skips cleanup', async () => {
   const git = makeGit();
-  assert.throws(
-    () => mergeBack({ child: 910, path: '/wt/910', deps: { graph, git, runTests: () => false } }),
+  await assert.rejects(
+    mergeBack({
+      child: 910,
+      path: '/wt/910',
+      deps: governed({ graph, git, runTests: () => false }),
+    }),
     /test/i
   );
   const kinds = git.calls.map((c) => c.join(' '));
@@ -108,20 +159,142 @@ test('#864: the test-runner runs bounded sections, not the retired test:all', ()
   }
 });
 
-test('refuses a non-child issue', () => {
+test('refuses a non-child issue', async () => {
   const git = makeGit();
-  assert.throws(
-    () => mergeBack({ child: 905, path: '/wt/x', deps: { graph, git, runTests: () => true } }),
+  await assert.rejects(
+    mergeBack({
+      child: 905,
+      path: '/wt/x',
+      deps: governed({ graph, git, runTests: () => true }),
+    }),
     /not a child/i
   );
 });
 
-test('requires child, git, and a test runner', () => {
+test('requires child, git, and a test runner', async () => {
   const git = makeGit();
-  assert.throws(
-    () => mergeBack({ path: '/wt/x', deps: { graph, git, runTests: () => true } }),
+  await assert.rejects(
+    mergeBack({ path: '/wt/x', deps: governed({ graph, git, runTests: () => true }) }),
     /child/i
   );
-  assert.throws(() => mergeBack({ child: 910, path: '/wt/x', deps: { graph } }), /git/i);
-  assert.throws(() => mergeBack({ child: 910, path: '/wt/x', deps: { graph, git } }), /runTests/i);
+  await assert.rejects(mergeBack({ child: 910, path: '/wt/x', deps: governed({ graph }) }), /git/i);
+  await assert.rejects(
+    mergeBack({ child: 910, path: '/wt/x', deps: governed({ graph, git }) }),
+    /runTests/i
+  );
 });
+
+test('merge-back holds one epic-owned root across fetch, tests, merge, and cleanup', async () => {
+  const auth = authority();
+  const events = [];
+  const envs = [];
+  const git = (args, options) => {
+    events.push(args.join(' '));
+    envs.push(options?.env);
+    if (args[0] === 'merge-base') return '';
+    return '';
+  };
+  await mergeBack({
+    child: 910,
+    path: '/wt/910',
+    deps: {
+      graph,
+      git,
+      withGovernedEffect: auth.withGovernedEffect,
+      fetch: (_options) => events.push('fetch'),
+      runTests: (options) => {
+        events.push('tests');
+        envs.push(options.env);
+        return true;
+      },
+      baseEnv: {
+        KEEP_ME: 'yes',
+        REMOTE_LEASE_BEARER: 'secret',
+        AITM_LEASE_ID: 'stale',
+        AITM_FENCING_TOKEN: '7',
+        AITM_LEASE_RECEIPT: 'untrusted',
+      },
+      tokenEnv: 'REMOTE_LEASE_BEARER',
+    },
+  });
+
+  assert.deepEqual(auth.calls, [
+    {
+      issueId: '905',
+      operation: 'branch-worktree-orchestration',
+      heartbeat: true,
+    },
+  ]);
+  assert.deepEqual(events, [
+    'fetch',
+    'merge-base --is-ancestor trunk feature/epic/905',
+    'rebase feature/epic/905 feature/child/910',
+    'tests',
+    'checkout feature/epic/905',
+    'merge --ff-only feature/child/910',
+    'worktree remove /wt/910',
+    'branch -d feature/child/910',
+  ]);
+  assert.equal(auth.verifies, 7, 'fetch, tests, and every mutating git step reverify just in time');
+  for (const env of envs.filter(Boolean)) {
+    assert.deepEqual(env, {
+      KEEP_ME: 'yes',
+      AITM_LEASE_ID: 'lease-905',
+      AITM_FENCING_TOKEN: '42',
+    });
+  }
+});
+
+test('stale authority after tests blocks checkout, merge, and cleanup callbacks', async () => {
+  const auth = authority({ staleAt: 4 });
+  const git = makeGit();
+  let tests = 0;
+  await assert.rejects(
+    mergeBack({
+      child: 910,
+      path: '/wt/910',
+      deps: {
+        graph,
+        git,
+        withGovernedEffect: auth.withGovernedEffect,
+        fetch: () => {},
+        runTests: () => {
+          tests += 1;
+          return true;
+        },
+      },
+    }),
+    (error) => error.code === 'fence-stale'
+  );
+  assert.equal(tests, 1);
+  const kinds = git.calls.map((args) => args.join(' '));
+  assert.ok(!kinds.some((kind) => kind.startsWith('checkout ')));
+  assert.ok(!kinds.some((kind) => kind.startsWith('merge --ff-only')));
+  assert.ok(!kinds.some((kind) => kind.startsWith('worktree remove')));
+  assert.ok(!kinds.some((kind) => kind.startsWith('branch -d')));
+});
+
+for (const cleanupFence of [
+  { staleAt: 6, forbidden: 'worktree remove /wt/910' },
+  { staleAt: 7, forbidden: 'branch -d feature/child/910' },
+]) {
+  test(`cleanup fence ${cleanupFence.staleAt} blocks its mutating git callback`, async () => {
+    const auth = authority({ staleAt: cleanupFence.staleAt });
+    const git = makeGit();
+    await assert.rejects(
+      mergeBack({
+        child: 910,
+        path: '/wt/910',
+        deps: {
+          graph,
+          git,
+          withGovernedEffect: auth.withGovernedEffect,
+          fetch: () => {},
+          runTests: () => true,
+        },
+      }),
+      (error) => error.code === 'fence-stale'
+    );
+    assert.ok(!git.calls.map((args) => args.join(' ')).includes(cleanupFence.forbidden));
+  });
+}

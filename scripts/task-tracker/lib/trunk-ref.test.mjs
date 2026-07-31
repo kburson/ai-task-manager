@@ -131,3 +131,18 @@ test('fetchTrunk: NEVER fatal — a failing fetch resolves to {fetched:false}', 
   assert.equal(r.fetched, false);
   assert.equal(r.remote, 'origin');
 });
+
+test('fetchTrunk: best-effort catch preserves governed authority refusal', async () => {
+  const stale = Object.assign(new Error('fence became stale'), { code: 'fence-stale' });
+  await assert.rejects(
+    fetchTrunk({
+      cfg: {},
+      deps: {
+        git: async () => {
+          throw stale;
+        },
+      },
+    }),
+    (error) => error === stale
+  );
+});

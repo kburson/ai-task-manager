@@ -15,14 +15,20 @@ import { execFileSync } from 'node:child_process';
 
 import { resolveEpicLineage } from './lib/resolve-epic-lineage.mjs';
 import { wantsHelp, emitSelfDoc } from '../lib/self-doc.mjs';
+import { createRuntimeGovernedEffectAdapter } from './lib/work-lease/governed-effect.mjs';
+import { withVerbMutationScope } from './lib/work-lease/verb-mutation-scope.mjs';
+import { buildOwnedChildEnvironment } from './lib/work-lease/child-environment.mjs';
 
 // Cut `feature/epic/<issue>` from its resolved parent branch. Returns
 // `{ branch, base }`. Throws if the issue does not resolve to an epic, or if git
 // is not injected.
-export function cutEpicBranch({ issue, deps } = {}) {
+export async function cutEpicBranch({ issue, deps } = {}) {
   if (issue == null) throw new Error('cut-epic-branch: issue is required');
   if (!deps || typeof deps.git !== 'function') {
     throw new Error('cut-epic-branch: deps.git(args) is required');
+  }
+  if (typeof deps.withGovernedEffect !== 'function') {
+    throw new Error('cut-epic-branch: deps.withGovernedEffect is required');
   }
   const lineage = resolveEpicLineage(issue, { deps });
   if (lineage.role !== 'epic') {
@@ -31,8 +37,40 @@ export function cutEpicBranch({ issue, deps } = {}) {
         `only epics get an epic branch`
     );
   }
-  deps.git(['branch', lineage.branch, lineage.parentBranch]);
-  return { branch: lineage.branch, base: lineage.parentBranch };
+  return withVerbMutationScope(
+    {
+      issueId: issue,
+      operation: 'branch-worktree-orchestration',
+      withGovernedEffect: deps.withGovernedEffect,
+      heartbeat: true,
+    },
+    async (scope) => {
+      await deps.refreshGraph?.();
+      const liveLineage = resolveEpicLineage(issue, { deps });
+      if (
+        liveLineage.role !== 'epic' ||
+        liveLineage.branch !== lineage.branch ||
+        liveLineage.parentBranch !== lineage.parentBranch
+      ) {
+        throw new Error('cut-epic-branch: lineage changed before governed git effects');
+      }
+      const env = buildOwnedChildEnvironment({
+        baseEnv: deps.baseEnv ?? process.env,
+        leaseContext: scope.leaseContext,
+        tokenEnv: deps.tokenEnv,
+      });
+      const fetchResult =
+        typeof deps.fetch === 'function'
+          ? await scope.effect(() => deps.fetch({ env }))
+          : undefined;
+      const effectiveBase =
+        !String(liveLineage.parentBranch).startsWith('feature/epic/') && fetchResult?.trunk
+          ? fetchResult.trunk
+          : liveLineage.parentBranch;
+      await scope.effect(() => deps.git(['branch', lineage.branch, effectiveBase], { env }));
+      return { branch: lineage.branch, base: effectiveBase };
+    }
+  );
 }
 
 // ---- CLI wiring (real git + real gh sub-issue graph) --------------------------
@@ -48,7 +86,12 @@ async function realGraphNode(issue, cfg) {
 }
 
 function realGit(projectDir) {
-  return (args) => execFileSync('git', args, { cwd: projectDir, encoding: 'utf8' }).trim();
+  return (args, options = {}) =>
+    execFileSync('git', args, {
+      cwd: projectDir,
+      encoding: 'utf8',
+      env: options.env,
+    }).trim();
 }
 
 async function main(argv) {
@@ -64,16 +107,38 @@ async function main(argv) {
   const { loadConfig } = await import('./config.mjs');
   const cfg = loadConfig();
   const projectDir = cfg.projectDir || process.cwd();
-  const node = await realGraphNode(issue, cfg);
+  let node = await realGraphNode(issue, cfg);
   // #927 — a root epic forks from trunk, so cut from the resolved trunk ref
   // (default origin/trunk) after a fetch, never from a possibly-stale local
   // `trunk`. Nested sub-epics fork from their parent epic head and ignore this.
   const { resolveTrunkRef, fetchTrunk } = await import('./lib/trunk-ref.mjs');
-  await fetchTrunk({ cfg, projectDir });
-  const trunk = await resolveTrunkRef({ cfg, projectDir });
+  const trunk =
+    typeof cfg.trunkRef === 'string' && cfg.trunkRef.trim() ? cfg.trunkRef.trim() : 'origin/trunk';
   const { branch, base } = cutEpicBranch({
     issue,
-    deps: { graph: () => node, git: realGit(projectDir), trunk },
+    deps: {
+      graph: () => node,
+      refreshGraph: async () => {
+        node = await realGraphNode(issue, cfg);
+      },
+      git: realGit(projectDir),
+      trunk,
+      fetch: async ({ env }) => {
+        const git = (args) => realGit(projectDir)(args, { env });
+        const status = await fetchTrunk({
+          cfg,
+          projectDir,
+          deps: { git },
+        });
+        return {
+          ...status,
+          trunk: (await resolveTrunkRef({ cfg, projectDir, deps: { git } })) || trunk,
+        };
+      },
+      withGovernedEffect: createRuntimeGovernedEffectAdapter({ projectDir, config: cfg }),
+      baseEnv: process.env,
+      tokenEnv: cfg.workLease?.tokenEnv,
+    },
   });
   process.stdout.write(`cut ${branch} from ${base}\n`);
 }

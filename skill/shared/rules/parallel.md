@@ -58,7 +58,8 @@ No seeding step. `.ai-task-manager/` config + templates (`task-tracker.json`, `t
 ```bash
 npx aitm ensure-wave-parent \
   --children <N1>,<N2>,<N3> \
-  --purpose "<one-line summary>"
+  --purpose "<one-line summary>" \
+  --anchor <PARENT_OR_CONTROLLER_N>
 ```
 
 Classification:

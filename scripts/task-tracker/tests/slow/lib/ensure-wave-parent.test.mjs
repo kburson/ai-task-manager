@@ -156,7 +156,9 @@ if (argv[0] === 'api' && argv[1] === 'graphql') {
   if (/repository\\(owner:.*\\)\\s*\\{\\s*id\\s*issue/.test(stdinBody)) {
     const body = JSON.parse(stdinBody);
     const n = Number(body.variables.issue);
-    fs.writeSync(1,JSON.stringify({ data: { repository: { id: 'REPO_test', issue: { id: 'ISS_' + n, number: n, title: 't', url: 'u', projectItems: { nodes: [] } } } } }));
+    const st = loadState();
+    const projectNodes = st.added ? [{ id: 'PVTI_new', project: { id: 'PVT_test', title: 'Test Project', url: 'https://github.com/test' } }] : [];
+    fs.writeSync(1,JSON.stringify({ data: { repository: { id: 'REPO_test', issue: { id: 'ISS_' + n, number: n, title: 't', url: 'u', projectItems: { nodes: projectNodes } } } } }));
     process.exit(0);
   }
   // project-tether: node(id:$project) { ... ProjectV2 ... items { nodes } }
@@ -208,8 +210,38 @@ async function runHelper(sandbox, binDir, args) {
     AI_TASK_MANAGER_PROJECT_DIR: sandbox,
     TT_SKIP_NETWORK: '1',
   };
+  const helperUrl = new URL(`file://${HELPER}`).href;
+  const runner = `
+    import { runEnsureWaveParent } from ${JSON.stringify(helperUrl)};
+    let liveBody = '';
+    const withGovernedEffect = async (_options, callback) =>
+      callback({ leaseContext: { projectId: 'PVT_test', leaseId: 'lease-test', fencingToken: '1', worktreeId: 'wt-test' }, reverify: async () => {} });
+    try {
+      await runEnsureWaveParent({
+        rawArgs: ${JSON.stringify(args)},
+        deps: {
+          withGovernedEffect,
+          projectDir: ${JSON.stringify(sandbox)},
+          env: process.env,
+          createIssueDeps: {
+            body: {
+              fetchBody: async () => liveBody,
+              pushBody: async (_repo, _issue, next) => { liveBody = next; },
+            },
+            tether: { retryDelayMs: 0 },
+          },
+        },
+      });
+    } catch (error) {
+      process.stderr.write(error.message + '\\n');
+      process.exitCode = error.exitCode || 1;
+    }
+  `;
   try {
-    const r = await pexec('node', [HELPER, ...args], { env, timeout: 30000 });
+    const r = await pexec('node', ['--input-type=module', '--eval', runner], {
+      env,
+      timeout: 30000,
+    });
     return { code: 0, stdout: r.stdout, stderr: r.stderr };
   } catch (err) {
     return { code: err.code ?? 1, stdout: err.stdout || '', stderr: err.stderr || '' };
@@ -240,6 +272,8 @@ function readCalls(callsLog) {
       '10,11,12',
       '--purpose',
       'wave for X',
+      '--anchor',
+      '900',
     ]);
     assert.equal(r.code, 0, `exit non-zero; stderr:\n${r.stderr}`);
     assert.match(r.stdout, /PARENT: #500/, `expected PARENT: #500; got:\n${r.stdout}`);
@@ -351,7 +385,14 @@ function readCalls(callsLog) {
       parents: { 60: null, 61: null },
       searchIssues: [{ number: 777, body: fakeParentBody }],
     });
-    const r = await runHelper(sandbox, binDir, ['--children', '60,61', '--purpose', 'idempotent']);
+    const r = await runHelper(sandbox, binDir, [
+      '--children',
+      '60,61',
+      '--purpose',
+      'idempotent',
+      '--anchor',
+      '900',
+    ]);
     assert.equal(r.code, 0, `exit non-zero; stderr:\n${r.stderr}`);
     assert.match(
       r.stdout,
@@ -381,7 +422,14 @@ function readCalls(callsLog) {
       newIssueNumber: 800,
     });
     // Run with two solo children — triggers findExistingParentByWaveId search.
-    await runHelper(sandbox, binDir, ['--children', '70,71', '--purpose', 'search-query-test']);
+    await runHelper(sandbox, binDir, [
+      '--children',
+      '70,71',
+      '--purpose',
+      'search-query-test',
+      '--anchor',
+      '900',
+    ]);
     const calls = readCalls(callsLog);
     const searchCall = calls.find((c) => c.argv[0] === 'search' && c.argv[1] === 'issues');
     assert.ok(searchCall, 'expected a gh search issues call');
@@ -394,6 +442,195 @@ function readCalls(callsLog) {
     // The query must still contain the plain wave-id marker text.
     assert.match(queryArg, /wave-id:/, 'search query must contain plain "wave-id:" text');
     console.log('test 7 passed: search query does not contain HTML comment syntax');
+  } finally {
+    rmSync(sandbox, { recursive: true, force: true });
+  }
+}
+
+// ─── Test 8 (#1049): production chain Nth-stale + durable retry ───────────────
+{
+  const { runEnsureWaveParent } = await import(new URL(`file://${HELPER}`).href);
+  const sandbox = mkdtempSync(path.join(projectScratchDir('test'), 'tt-ewp-8-'));
+  const cfg = {
+    repo: 'test-owner/test-repo',
+    projectId: 'PVT_test',
+    kanbanFieldId: 'PVTF_status',
+    kanbanOptionBacklog: 'OPT_backlog',
+    kanbanOptionDevelop: 'OPT_develop',
+  };
+
+  function makeFixture() {
+    const state = {
+      parent: null,
+      creates: 0,
+      projectAdded: false,
+      projectAdds: 0,
+      body: '',
+      links: new Set(),
+      linkAttempts: 0,
+      title: 'Wave: governed',
+      titleUpdates: 0,
+      timing: null,
+      timingCreates: 0,
+    };
+    const runGql = async (query, variables) => {
+      if (/addSubIssue/.test(query)) {
+        state.linkAttempts += 1;
+        if (state.links.has(variables.child)) {
+          const error = new Error('already linked');
+          error.code = 'already-linked';
+          throw error;
+        }
+        state.links.add(variables.child);
+        return { addSubIssue: { issue: { id: variables.parent } } };
+      }
+      if (/updateIssue/.test(query)) {
+        state.title = variables.title;
+        state.titleUpdates += 1;
+        return { updateIssue: { issue: { id: variables.id } } };
+      }
+      if (/node\(id:\$id\).*title/.test(query.replace(/\s+/g, ''))) {
+        return { node: { title: state.title } };
+      }
+      if (/linkProjectV2ToRepository/.test(query)) {
+        return { linkProjectV2ToRepository: { repository: { nameWithOwner: cfg.repo } } };
+      }
+      if (/addProjectV2ItemById/.test(query)) {
+        state.projectAdded = true;
+        state.projectAdds += 1;
+        return { addProjectV2ItemById: { item: { id: 'PVTI_parent' } } };
+      }
+      if (/updateProjectV2ItemFieldValue/.test(query)) {
+        return { updateProjectV2ItemFieldValue: { projectV2Item: { id: 'PVTI_parent' } } };
+      }
+      if (/projectItems\(first: 50\)/.test(query)) {
+        const number = Number(variables.issue);
+        return {
+          repository: {
+            id: 'REPO_test',
+            issue: {
+              id: `ISS_${number}`,
+              number,
+              title: state.title,
+              url: `https://example.test/issues/${number}`,
+              projectItems: {
+                nodes: state.projectAdded
+                  ? [
+                      {
+                        id: 'PVTI_parent',
+                        project: { id: cfg.projectId, title: 'Test', url: 'u' },
+                      },
+                    ]
+                  : [],
+              },
+            },
+          },
+        };
+      }
+      if (/items\(first: 100/.test(query)) {
+        return {
+          node: {
+            title: 'Test',
+            url: 'u',
+            items: {
+              pageInfo: { hasNextPage: false, endCursor: null },
+              nodes: [],
+            },
+          },
+        };
+      }
+      if (/issue\(number:\$n\)\{id\}/.test(query.replace(/\s+/g, ''))) {
+        return { repository: { issue: { id: `ISS_${variables.n}` } } };
+      }
+      throw new Error(`unexpected GraphQL operation: ${query}`);
+    };
+    const createIssueDeps = {
+      createIssue: async ({ bodyContent }) => {
+        state.creates += 1;
+        state.parent = 500;
+        state.body = bodyContent;
+        return state.parent;
+      },
+      tether: { runGql, retryDelayMs: 0 },
+      body: {
+        fetchBody: async () => state.body,
+        pushBody: async (_repo, _issue, next) => {
+          state.body = next;
+        },
+      },
+    };
+    const deps = {
+      projectDir: sandbox,
+      env: {},
+      classify: async () => ({ kind: 'all-solo', solos: [10, 11] }),
+      runGql,
+      findExistingParentByWaveId: async () => state.parent,
+      createIssueDeps,
+      timing: {
+        findTimingComment: async () => state.timing,
+        createTimingComment: async (_issue, _repo, body) => {
+          state.timing = { id: 'TIMING_1', body };
+          state.timingCreates += 1;
+        },
+        updateTimingComment: async (_id, _repo, body) => {
+          state.timing = { id: 'TIMING_1', body };
+        },
+      },
+    };
+    return { state, deps };
+  }
+
+  function authority(staleAt = Infinity) {
+    let verifies = 0;
+    return async (options, callback) => {
+      assert.equal(options.issueId, '900');
+      return callback({
+        leaseContext: {
+          projectId: cfg.projectId,
+          leaseId: 'lease-controller',
+          fencingToken: '42',
+          worktreeId: 'wt-controller',
+        },
+        reverify: async () => {
+          verifies += 1;
+          if (verifies === staleAt) {
+            const error = new Error(`stale controller at effect ${verifies}`);
+            error.code = 'fence-stale';
+            throw error;
+          }
+        },
+      });
+    };
+  }
+
+  async function run(fixture, withGovernedEffect) {
+    return runEnsureWaveParent({
+      rawArgs: ['--children', '10,11', '--purpose', 'governed', '--anchor', '900'],
+      cfg,
+      deps: { ...fixture.deps, withGovernedEffect },
+    });
+  }
+
+  try {
+    for (const staleAt of [4, 10, 11, 13]) {
+      const fixture = makeFixture();
+      await assert.rejects(run(fixture, authority(staleAt)), (error) => {
+        assert.equal(error.code, 'fence-stale');
+        return true;
+      });
+      const result = await run(fixture, authority());
+      assert.equal(result.parentNumber, 500);
+      assert.equal(fixture.state.creates, 1, `staleAt=${staleAt}: no duplicate parent`);
+      assert.equal(fixture.state.projectAdds, 1, `staleAt=${staleAt}: no duplicate project add`);
+      assert.equal(fixture.state.links.size, 2, `staleAt=${staleAt}: both children durable`);
+      assert.match(fixture.state.title, /^🧑‍🧒‍🧒 \[Epic\] /);
+      assert.equal(fixture.state.titleUpdates, 1, `staleAt=${staleAt}: one title mutation`);
+      assert.equal(fixture.state.timingCreates, 1, `staleAt=${staleAt}: one timing create`);
+      assert.match(fixture.state.body, /aitm-entered-develop/);
+    }
+    console.log(
+      'test 8 passed: production create/tether/body/reparent/title/timing chain fences Nth stale and retries without duplicates'
+    );
   } finally {
     rmSync(sandbox, { recursive: true, force: true });
   }

@@ -22,6 +22,8 @@ import {
   defaultFetchOpenChildren,
   DUPLICATE_CHILD_EXIT_CODE,
 } from './lib/duplicate-child-guard.mjs';
+import { tetherIssueToProject } from './lib/project-tether.mjs';
+import { mutateIssueBody } from '../task-tracker/lib/issue-body-mutate.mjs';
 
 // Exit codes (documented contract):
 //   1 — generic failure (gh error, tether failure, internal error)
@@ -289,6 +291,166 @@ function substitutePlaceholders(issueNumber, bodyContent, args, repo) {
 // `[Y|n]` prompt passes explicitly as `--assignee` when the human opts in.
 export function resolveAssignee(args) {
   return typeof args.assignee === 'string' && args.assignee ? args.assignee : null;
+}
+
+/**
+ * In-process issue creation used by controller-owned orchestration.
+ *
+ * The existing controller remains the authority for every transitive write:
+ * issue creation, project tether/status fields, and the new issue's lifecycle
+ * body markers. The newly-created issue is an output, never a substitute lease
+ * holder.
+ */
+export async function createGovernedInternalIssue({
+  title,
+  bodyContent,
+  cfg,
+  priority,
+  rank,
+  finalStatus = 'develop',
+  withGovernedEffect,
+  authorityIssueId,
+  deps = {},
+  reconcile = true,
+} = {}) {
+  if (!title) throw new Error('createGovernedInternalIssue: title is required');
+  if (typeof bodyContent !== 'string') {
+    throw new Error('createGovernedInternalIssue: bodyContent is required');
+  }
+  if (!cfg?.repo || !cfg?.projectId) {
+    throw new Error('createGovernedInternalIssue: repo and projectId are required');
+  }
+  if (typeof withGovernedEffect !== 'function' || !authorityIssueId) {
+    throw new Error(
+      'createGovernedInternalIssue: controller withGovernedEffect and authorityIssueId are required'
+    );
+  }
+
+  const controllerId = String(authorityIssueId).replace(/^#/, '');
+  const governController = (operation, callback) =>
+    withGovernedEffect(
+      {
+        issueId: controllerId,
+        operation,
+        heartbeat: true,
+      },
+      callback
+    );
+  const createIssue = deps.createIssue;
+  const stampedBody = stampEntryMarker(bodyContent, 'backlog', new Date().toISOString());
+  let tmpDir;
+
+  try {
+    let issueNumber;
+    await governController('evidence-mutation', async () => {
+      if (typeof createIssue === 'function') {
+        issueNumber = await createIssue({ title, bodyContent: stampedBody, cfg });
+        return;
+      }
+      tmpDir = mkdtempSync(path.join(projectScratchDir('test'), 'aitm-create-issue-'));
+      const bodyFilePath = path.join(tmpDir, 'body.md');
+      writeFileSync(bodyFilePath, stampedBody, 'utf8');
+      issueNumber = ghCreate(
+        {
+          title,
+          label: [],
+          'body-file': bodyFilePath,
+        },
+        null
+      );
+    });
+    if (!issueNumber) {
+      throw new Error('createGovernedInternalIssue: create did not return an issue number');
+    }
+
+    if (reconcile) {
+      await reconcileGovernedInternalIssue({
+        issueNumber,
+        cfg,
+        priority,
+        rank,
+        finalStatus,
+        withGovernedEffect,
+        authorityIssueId: controllerId,
+        deps,
+      });
+    }
+    return issueNumber;
+  } finally {
+    if (tmpDir) {
+      try {
+        rmSync(tmpDir, { recursive: true, force: true });
+      } catch {
+        // best-effort cleanup
+      }
+    }
+  }
+}
+
+export async function reconcileGovernedInternalIssue({
+  issueNumber,
+  cfg,
+  priority,
+  rank,
+  finalStatus = 'develop',
+  withGovernedEffect,
+  authorityIssueId,
+  deps = {},
+} = {}) {
+  if (!issueNumber || !cfg?.repo || !cfg?.projectId) {
+    throw new Error(
+      'reconcileGovernedInternalIssue: issueNumber, repo, and projectId are required'
+    );
+  }
+  if (typeof withGovernedEffect !== 'function' || !authorityIssueId) {
+    throw new Error(
+      'reconcileGovernedInternalIssue: controller withGovernedEffect and authorityIssueId are required'
+    );
+  }
+  const controllerId = String(authorityIssueId).replace(/^#/, '');
+  const tetherIssue = deps.tetherIssueToProject || tetherIssueToProject;
+  const mutateBody = deps.mutateIssueBody || mutateIssueBody;
+  const tetherOptions = {
+    cfg,
+    issueNumber,
+    priority,
+    rank: rank === undefined ? undefined : Number(rank),
+    withGovernedEffect,
+    authorityIssueId: controllerId,
+    ...(deps.tether || {}),
+  };
+  await tetherIssue({ ...tetherOptions, status: 'backlog' });
+  if (finalStatus && finalStatus !== 'backlog') {
+    await tetherIssue({ ...tetherOptions, status: finalStatus });
+  }
+
+  if (finalStatus === 'develop') {
+    const baseMs = Date.now();
+    const controllerBodyAuthority = (_requested, callback) =>
+      withGovernedEffect(
+        {
+          issueId: controllerId,
+          operation: 'evidence-mutation',
+          heartbeat: true,
+        },
+        callback
+      );
+    await mutateBody({
+      issueNumber,
+      repo: cfg.repo,
+      operation: 'evidence-mutation',
+      mutate: (base) => {
+        let next = stampEntryMarker(base, 'refine', new Date(baseMs).toISOString());
+        next = stampEntryMarker(next, 'plan', new Date(baseMs + 1).toISOString());
+        return stampEntryMarker(next, 'develop', new Date(baseMs + 2).toISOString());
+      },
+      deps: {
+        ...(deps.body || {}),
+        withGovernedEffect: controllerBodyAuthority,
+      },
+    });
+  }
+  return { issueNumber, status: finalStatus };
 }
 
 function enforcePriorityGate(_args) {

@@ -367,7 +367,8 @@ test('createWorkLeaseHeartbeat is unreferenced, single-flight, stoppable, and re
     clearInterval: () => cleared++,
   });
   const sameOwner = createWorkLeaseHeartbeat({ ownerKey: 'owner-1' });
-  assert.equal(sameOwner, heartbeat, 'one heartbeat owns a process lease');
+  assert.notEqual(sameOwner, heartbeat, 'callers receive independent heartbeat references');
+  assert.equal(sameOwner.timer, heartbeat.timer, 'one timer owns a process lease');
   assert.equal(detachedTimerCount, 1);
 
   const first = callback();
@@ -375,6 +376,8 @@ test('createWorkLeaseHeartbeat is unreferenced, single-flight, stoppable, and re
   assert.equal(runs, 1, 'overlapping ticks are suppressed');
   release();
   await Promise.all([first, second]);
+  sameOwner.shutdown();
+  assert.equal(cleared, 0, 'one retained reference keeps the shared heartbeat alive');
   heartbeat.shutdown();
   assert.equal(cleared, 1);
 
@@ -433,9 +436,12 @@ test('createWorkLeaseHeartbeat registers one removable process-exit listener per
   });
   assert.equal(listeners.length, 1);
   assert.equal(listeners[0].event, 'exit');
-  assert.equal(createWorkLeaseHeartbeat({ ownerKey: 'owner-process' }), heartbeat);
+  const secondReference = createWorkLeaseHeartbeat({ ownerKey: 'owner-process' });
+  assert.equal(secondReference.timer, heartbeat.timer);
   assert.equal(listeners.length, 1, 'duplicate owner registration must not leak listeners');
 
+  secondReference.stop();
+  assert.deepEqual(removed, [], 'one retained reference keeps the exit listener registered');
   heartbeat.stop();
   assert.deepEqual(removed, [{ event: 'exit', listener: listeners[0].listener }]);
 });

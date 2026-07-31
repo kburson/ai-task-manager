@@ -18,6 +18,7 @@ import { projectValuesForIssue } from '../../gh/lib/github-projects.mjs';
 import { loadProjectFieldDefs } from '../project-fields.mjs';
 import { GH_API_TIMEOUT_MS } from './process-timeouts.mjs';
 import { mutateIssueBody } from './issue-body-mutate.mjs';
+import { isGovernedAuthorityError } from './work-lease/governed-effect.mjs';
 
 const pexec = promisify(execFile);
 
@@ -102,8 +103,13 @@ async function defaultListCommentBodies({ issueNumber, repo }) {
   return String(stdout || '').split('\n');
 }
 
-async function defaultMutateIssueBody({ issueNumber, repo, mutate }) {
-  await mutateIssueBody({ issueNumber, repo, mutate, deps: { pexec } });
+async function defaultMutateIssueBody({ issueNumber, repo, mutate, withGovernedEffect }) {
+  await mutateIssueBody({
+    issueNumber,
+    repo,
+    mutate,
+    deps: { pexec, withGovernedEffect },
+  });
 }
 
 // On Deck → Refine gate (#133, relocated from Backlog → Refine in #433):
@@ -236,6 +242,17 @@ export async function applyRefinementEstimate({ cfg, issueNumber, plan, deps = {
   const postComment = deps.postComment || defaultPostComment;
   const listCommentBodies = deps.listCommentBodies || defaultListCommentBodies;
   const mutateBody = deps.mutateIssueBody || defaultMutateIssueBody;
+  const governWrite = (callback) =>
+    typeof deps.withGovernedEffect === 'function'
+      ? deps.withGovernedEffect(
+          {
+            issueId: String(issueNumber),
+            operation: 'evidence-mutation',
+            heartbeat: true,
+          },
+          callback
+        )
+      : callback();
 
   try {
     const bodies = await listCommentBodies({ issueNumber, repo: cfg.repo });
@@ -246,14 +263,16 @@ export async function applyRefinementEstimate({ cfg, issueNumber, plan, deps = {
     if (hit) {
       return { status: 'duplicate' };
     }
-  } catch {
+  } catch (error) {
+    if (isGovernedAuthorityError(error)) throw error;
     // Fall through — if we can't list, attempt the post; duplicate risk is
     // limited because re-runs are rare and the marker is human-recoverable.
   }
 
   try {
-    await postComment({ issueNumber, repo: cfg.repo, body: plan.commentBody });
+    await governWrite(() => postComment({ issueNumber, repo: cfg.repo, body: plan.commentBody }));
   } catch (err) {
+    if (isGovernedAuthorityError(err)) throw err;
     return { status: 'post-failed', error: err.message };
   }
 
@@ -264,12 +283,16 @@ export async function applyRefinementEstimate({ cfg, issueNumber, plan, deps = {
   // preserves it. Idempotent: if the rationale marker isn't present, the
   // mutate returns base unchanged and mutateIssueBody no-ops.
   try {
-    await mutateBody({
-      issueNumber,
-      repo: cfg.repo,
-      mutate: (base) => stripRationaleMarker(base),
-    });
-  } catch {
+    await governWrite(() =>
+      mutateBody({
+        issueNumber,
+        repo: cfg.repo,
+        mutate: (base) => stripRationaleMarker(base),
+        withGovernedEffect: deps.withGovernedEffect,
+      })
+    );
+  } catch (error) {
+    if (isGovernedAuthorityError(error)) throw error;
     // Best-effort — comment is already on the issue.
   }
 

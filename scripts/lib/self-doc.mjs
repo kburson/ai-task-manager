@@ -135,7 +135,7 @@ const ROUTABLE_SELF_DOC = {
     audience:
       'Orchestrator before a parallel dispatch loop. Emits `PARENT: #<N>` or `NO_WAVE_PARENT_NEEDED`.',
     usage:
-      'aitm ensure-wave-parent --children 12,13,14 --purpose "<text>" [--priority p0|p1|p2] [--rank <n>] [--dry-run]',
+      'aitm ensure-wave-parent --children 12,13,14 --purpose "<text>" --anchor <controller#> [--priority p0|p1|p2] [--rank <n>] [--dry-run]',
   },
   'dispatch-prep': {
     group: 'Parallel',
@@ -468,7 +468,7 @@ const ROUTABLE_CONTRACTS = Object.freeze({
       exitCode(2, 'arguments or child-parent topology are invalid'),
     ],
     examples: [
-      'npx aitm ensure-wave-parent --children 12,13 --purpose "parser refactor" --dry-run',
+      'npx aitm ensure-wave-parent --children 12,13 --purpose "parser refactor" --anchor 900 --dry-run',
     ],
     relatedCommands: ['dispatch-prep', 'create-issue'],
   }),

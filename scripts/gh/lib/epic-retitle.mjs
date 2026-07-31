@@ -11,7 +11,12 @@
 
 import { EPIC_PREFIX, ensureEpicPrefix } from './kind-prefix.mjs';
 
-export async function ensureParentEpicTitle({ parentId, runGql }) {
+export async function ensureParentEpicTitle({
+  parentId,
+  runGql,
+  withGovernedEffect,
+  authorityIssueId,
+}) {
   if (!parentId) throw new Error('ensureParentEpicTitle: parentId is required');
   if (typeof runGql !== 'function') {
     throw new Error('ensureParentEpicTitle: runGql function is required');
@@ -29,9 +34,25 @@ export async function ensureParentEpicTitle({ parentId, runGql }) {
   }
 
   const next = ensureEpicPrefix(current);
-  await runGql(
-    `mutation($id:ID!,$title:String!){ updateIssue(input:{id:$id,title:$title}){ issue { id } } }`,
-    { id: parentId, title: next }
-  );
+  const update = () =>
+    runGql(
+      `mutation($id:ID!,$title:String!){ updateIssue(input:{id:$id,title:$title}){ issue { id } } }`,
+      { id: parentId, title: next }
+    );
+  if (typeof withGovernedEffect === 'function') {
+    if (!authorityIssueId) {
+      throw new Error('ensureParentEpicTitle: authorityIssueId is required');
+    }
+    await withGovernedEffect(
+      {
+        issueId: String(authorityIssueId).replace(/^#/, ''),
+        operation: 'evidence-mutation',
+        heartbeat: true,
+      },
+      update
+    );
+  } else {
+    await update();
+  }
   return { status: 're-titled', parentId, title: next };
 }

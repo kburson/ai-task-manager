@@ -39,6 +39,7 @@ function harness({ cfg = { repo: 'o/r' }, runMoveState, withGovernedEffect } = {
     postTimingEvent: async (p) => posts.push(p),
     durableWordMarker: () => 'MARK',
     getProjectDir: () => '/proj',
+    baseEnv: { KEEP_ME: 'yes' },
     emitSelfDoc: () => logs.push('self-doc-emitted'),
     log: (s) => logs.push(s),
     err: (s) => errs.push(s),
@@ -148,6 +149,86 @@ test('network happy path: flips board and posts a start timing row', async () =>
   assert.equal(h.posts[0].repo, 'o/r');
   assert.ok(h.logs.includes('verify:7:branch-worktree-orchestration'));
   assert.deepEqual(h.exits, []);
+});
+
+test('dispatch uses one anchor-owned root, a narrow move continuation, and timing after move', async () => {
+  const events = [];
+  let roots = 0;
+  const h = harness({
+    cfg: { repo: 'o/r', workLease: { tokenEnv: 'REMOTE_LEASE_BEARER' } },
+    withGovernedEffect: async (options, callback) => {
+      roots += 1;
+      events.push(`root:${options.issueId}:${options.operation}:${options.heartbeat}`);
+      return callback({
+        leaseContext: {
+          projectId: 'project-1',
+          leaseId: 'lease-7',
+          fencingToken: '42',
+          worktreeId: 'wt-7',
+        },
+        reverify: async () => events.push('reverify'),
+      });
+    },
+    runMoveState: async ({ anchor, withGovernedEffect, env }) => {
+      assert.deepEqual(env, {
+        KEEP_ME: 'yes',
+        AITM_LEASE_ID: 'lease-7',
+        AITM_FENCING_TOKEN: '42',
+      });
+      return withGovernedEffect(
+        {
+          issueId: anchor,
+          operation: 'branch-worktree-orchestration',
+          heartbeat: true,
+        },
+        async () => {
+          events.push('move');
+          return 0;
+        }
+      );
+    },
+  });
+  h.overrides.baseEnv = {
+    KEEP_ME: 'yes',
+    REMOTE_LEASE_BEARER: 'secret',
+    AITM_LEASE_ID: 'stale',
+    AITM_FENCING_TOKEN: '7',
+    AITM_LEASE_RECEIPT: 'untrusted',
+  };
+  h.overrides.postTimingEvent = async () => events.push('timing');
+
+  await main(argv('42', '--anchor', '7'), { ...h.overrides, skipNetwork: false });
+
+  assert.equal(roots, 1, 'the move continuation must not open a second authority root');
+  assert.deepEqual(events, [
+    'root:7:branch-worktree-orchestration:true',
+    'reverify',
+    'move',
+    'timing',
+  ]);
+});
+
+test('a child-bound lease cannot authorize its epic controller', async () => {
+  let callbacks = 0;
+  const h = harness({
+    runMoveState: async () => {
+      callbacks += 1;
+      return 0;
+    },
+    withGovernedEffect: async (options) => {
+      assert.equal(options.issueId, '7', 'the epic/controller anchor owns dispatch');
+      const error = new Error('child #42 cannot authorize epic #7');
+      error.code = 'lease-not-held';
+      throw error;
+    },
+  });
+
+  await assert.rejects(
+    () => main(argv('42', '--anchor', '7'), { ...h.overrides, skipNetwork: false }),
+    (error) => error.code === 'lease-not-held'
+  );
+  assert.equal(callbacks, 0);
+  assert.equal(h.posts.length, 0);
 });
 
 test('non-zero move exit: reports and exits with the move code, posts no row', async () => {

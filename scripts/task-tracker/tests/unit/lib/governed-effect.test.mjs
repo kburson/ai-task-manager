@@ -169,18 +169,18 @@ test('verified effect reverifies freshly and stops one optional heartbeat in fin
   assert.equal(calls.stop, 1);
   assert.equal(
     calls.heartbeat[0].ownerKey,
-    `governed:${process.pid}:session-1:1049:close`,
-    'command heartbeat key cannot collide with the Task5B lease heartbeat owner'
+    'session-1:project-1:lease-1:42:wt-1',
+    'heartbeat identity is the durable lease identity, not the command'
   );
   assert.equal(
     calls.verify[0].heartbeatOwnerKey,
-    calls.heartbeat[0].ownerKey,
-    'initial verify and command heartbeat share the command owner key'
+    undefined,
+    'initial verification resolves the authoritative lease before deriving its heartbeat key'
   );
   assert.equal(
     calls.verify[1].heartbeatOwnerKey,
     calls.heartbeat[0].ownerKey,
-    'reverify observes remembered command-heartbeat failure under the same key'
+    'reverify observes remembered lease-heartbeat failure under the same key'
   );
   assert.equal(calls.heartbeat[0].operation, 'close');
 });
@@ -198,22 +198,11 @@ test('short governed effects do not start a heartbeat unless the caller opts in'
   assert.equal(calls.stop, 0);
 });
 
-test('command heartbeat does not collide with bind heartbeat and its failure blocks reverify', async () => {
+test('heartbeat failure is remembered by lease identity across operation names', async () => {
   const timers = new Map();
-  const cleared = [];
-  const bindOwner = 'session-1:project-1:lease-1:42:wt-1';
-  const bind = createWorkLeaseHeartbeat({
-    ownerKey: bindOwner,
-    verifyEffect: async () => {},
-    setInterval: (tick) => {
-      const timer = { tick, unref() {} };
-      timers.set(bindOwner, timer);
-      return timer;
-    },
-    clearInterval: (timer) => cleared.push(timer),
-  });
-
+  const leaseOwner = 'session-1:project-1:lease-1:42:wt-1';
   let heartbeatFails = false;
+  let operationBCallbacks = 0;
   const persisted = {
     issue: '#1049',
     lease: {
@@ -236,7 +225,7 @@ test('command heartbeat does not collide with bind heartbeat and its failure blo
     getStore: () => ({
       verify: () => {
         if (heartbeatFails) {
-          throw new WorkLeaseError('authority-unavailable', 'command heartbeat lost authority');
+          throw new WorkLeaseError('authority-unavailable', 'lease heartbeat lost authority');
         }
         return {
           allowed: true,
@@ -268,31 +257,26 @@ test('command heartbeat does not collide with bind heartbeat and its failure blo
           timers.set(options.ownerKey, timer);
           return timer;
         },
-        clearInterval: (timer) => cleared.push(timer),
+        clearInterval: () => {},
       }),
   });
 
-  const commandOwner = `governed:${process.pid}:session-1:1049:close`;
-  await withGovernedEffect(
-    { issueId: '1049', operation: 'close', heartbeat: true },
-    async (effect) => {
-      assert.notEqual(timers.get(commandOwner), timers.get(bindOwner));
-      heartbeatFails = true;
-      await timers.get(commandOwner).tick();
-      heartbeatFails = false;
-      await assert.rejects(
-        () => effect.reverify(),
-        (error) =>
-          error instanceof WorkLeaseError &&
-          error.code === 'authority-unavailable' &&
-          /command heartbeat lost authority/.test(error.message)
-      );
-      assert.equal(createWorkLeaseHeartbeat({ ownerKey: bindOwner }), bind);
-    }
+  await withGovernedEffect({ issueId: '1049', operation: 'close', heartbeat: true }, async () => {
+    assert.ok(timers.has(leaseOwner));
+    heartbeatFails = true;
+    await timers.get(leaseOwner).tick();
+    heartbeatFails = false;
+  });
+
+  await assert.rejects(
+    () =>
+      withGovernedEffect({ issueId: '1049', operation: 'review-mutation' }, async () => {
+        operationBCallbacks += 1;
+      }),
+    (error) =>
+      error instanceof WorkLeaseError &&
+      error.code === 'authority-unavailable' &&
+      /lease heartbeat lost authority/.test(error.message)
   );
-  assert.ok(
-    !cleared.includes(timers.get(bindOwner)),
-    'command cleanup must not stop bind heartbeat'
-  );
-  bind.stop();
+  assert.equal(operationBCallbacks, 0, 'remembered failure fences the next operation callback');
 });

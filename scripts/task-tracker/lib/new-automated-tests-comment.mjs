@@ -155,6 +155,18 @@ export async function postNewAutomatedTestsComment({ cfg, issueNumber, cwd, deps
   if (entries.length === 0) return { status: 'no-tests' };
 
   const body = buildNewAutomatedTestsComment(entries);
-  await createComment({ cfg, issueNumber, body });
+  const create = () => createComment({ cfg, issueNumber, body });
+  if (typeof deps.withGovernedEffect === 'function') {
+    await deps.withGovernedEffect(
+      {
+        issueId: String(issueNumber),
+        operation: 'evidence-mutation',
+        heartbeat: true,
+      },
+      create
+    );
+  } else {
+    await create();
+  }
   return { status: 'posted', entries };
 }
