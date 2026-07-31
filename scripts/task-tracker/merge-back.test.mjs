@@ -359,3 +359,28 @@ test('merge-back CLI main awaits the async core before printing resolved values'
     (error) => error === refusal
   );
 });
+
+test('merge-back CLI default test runner rethrows stale authority between sections', async () => {
+  const refusal = Object.assign(new Error('lease became stale'), { code: 'fence-stale' });
+  let sections = 0;
+  await assert.rejects(
+    mergeBackModule.main(['910', '/wt/910'], {
+      loadConfig: () => ({ repo: 'o/r', projectDir: '/proj' }),
+      realGraphNode: async () => GRAPH[910],
+      runCore: async ({ deps }) => {
+        const passed = await deps.runTests({
+          path: '/wt/910',
+          env: {},
+          runSection: async () => {
+            sections += 1;
+            if (sections === 2) throw refusal;
+          },
+        });
+        assert.fail(`stale authority was downgraded to testsPassed=${passed}`);
+      },
+      write: () => assert.fail('must not print success after stale authority'),
+    }),
+    (error) => error === refusal
+  );
+  assert.equal(sections, 2);
+});

@@ -127,6 +127,11 @@ export async function main(argv, overrides = {}) {
       heartbeat: true,
     },
     async (effect) => {
+      const ownedEnv = buildOwnedChildEnvironment({
+        baseEnv: d.baseEnv ?? process.env,
+        leaseContext: effect.leaseContext,
+        tokenEnv: cfg.workLease?.tokenEnv,
+      });
       // The outer controller owns the one command heartbeat. The move-state
       // host receives a narrow reverify-only continuation so it obtains a
       // fresh proof at its own post-lock boundary without starting/stopping a
@@ -146,11 +151,7 @@ export async function main(argv, overrides = {}) {
         issue: args.issue,
         anchor: args.anchor,
         withGovernedEffect: withDispatchAuthorization,
-        env: buildOwnedChildEnvironment({
-          baseEnv: d.baseEnv ?? process.env,
-          leaseContext: effect.leaseContext,
-          tokenEnv: cfg.workLease?.tokenEnv,
-        }),
+        env: ownedEnv,
       });
       if (moveCode !== 0) return { moveCode };
 
@@ -158,7 +159,7 @@ export async function main(argv, overrides = {}) {
       if (!skipNetwork) {
         const withDispatchTimingAuthorization = async (options, callback) => {
           if (
-            String(options?.issueId).replace(/^#/, '') !== args.anchor ||
+            String(options?.issueId).replace(/^#/, '') !== args.issue ||
             options?.operation !== 'branch-worktree-orchestration'
           ) {
             throw new Error('dispatch timing authorization scope mismatch');
@@ -166,6 +167,7 @@ export async function main(argv, overrides = {}) {
           if (typeof callback !== 'function') {
             throw new Error('dispatch timing authorization callback is required');
           }
+          await effect.reverify();
           return callback(effect);
         };
         const row = d.buildRow({
@@ -184,6 +186,7 @@ export async function main(argv, overrides = {}) {
           timeoutMs: cfg.hookNetworkTimeoutMs ?? 5000,
           operation: 'branch-worktree-orchestration',
           withGovernedEffect: withDispatchTimingAuthorization,
+          env: ownedEnv,
         });
       }
       return { moveCode: 0 };

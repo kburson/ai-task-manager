@@ -17,6 +17,17 @@ import { classify, rejectionMessage } from './lib/wave-detect.mjs';
 import { gql, splitRepo } from './lib/github-projects.mjs';
 import { ensureParentEpicTitle } from './lib/epic-retitle.mjs';
 import { ensureWaveParentCore } from './lib/ensure-wave-parent-core.mjs';
+import {
+  assertExactWaveMarker,
+  clearWaveCreateJournal,
+  createWaveCreateIntent,
+  createWaveRequestDigest,
+  fetchWaveParentBody,
+  findAuthoritativeParentByWaveId,
+  persistWaveCreateReceipt,
+  readWaveCreateIntent,
+  waveCreateJournalPath,
+} from './lib/wave-parent-create-journal.mjs';
 import { createGovernedInternalIssue, reconcileGovernedInternalIssue } from './create-issue.mjs';
 import { buildRow, postTimingEvent } from '../task-tracker/gh-timing-comment.mjs';
 import { durableWordMarker } from '../task-tracker/state.mjs';
@@ -87,6 +98,35 @@ function renderTemplate({ purpose, children, waveIdValue }) {
     .replaceAll('{{purpose}}', purpose)
     .replaceAll('{{children}}', children.map((number) => `- [ ] #${number}`).join('\n'))
     .replaceAll('{{wave_id}}', waveIdValue);
+}
+
+function waveCreateRequest({
+  repo,
+  controllerIssueId,
+  children,
+  purpose,
+  waveIdValue,
+  priority,
+  rank,
+}) {
+  const title = `Wave: ${purpose}`.slice(0, 200);
+  const bodyContent = renderTemplate({ purpose, children, waveIdValue });
+  const request = {
+    repo,
+    controllerIssueId: Number(controllerIssueId),
+    children: [...children].map(Number).sort((a, b) => a - b),
+    purpose,
+    waveIdValue,
+    priority: priority ?? null,
+    rank: rank ?? null,
+    title,
+    bodyContent,
+  };
+  return {
+    title,
+    bodyContent,
+    requestDigest: createWaveRequestDigest(request),
+  };
 }
 
 export async function findExistingParentByWaveId({
@@ -202,6 +242,20 @@ export async function runEnsureWaveParent({
   const findExisting = deps.findExistingParentByWaveId || findExistingParentByWaveId;
   const createInternal = deps.createGovernedInternalIssue || createGovernedInternalIssue;
   const reconcileInternal = deps.reconcileGovernedInternalIssue || reconcileGovernedInternalIssue;
+  const fetchRecoveredBody = deps.fetchWaveParentBody || fetchWaveParentBody;
+  const findAuthoritative = deps.findAuthoritativeParentByWaveId || findAuthoritativeParentByWaveId;
+  const requestFor = ({ children, purpose, waveIdValue }) =>
+    waveCreateRequest({
+      repo: cfg.repo,
+      controllerIssueId,
+      children,
+      purpose,
+      waveIdValue,
+      priority: args.priority,
+      rank: args.rank,
+    });
+  const journalFor = (waveIdValue) =>
+    waveCreateJournalPath(projectDir, cfg.repo, waveIdValue);
 
   const parent = await ensureWaveParentCore({
     controllerIssueId,
@@ -211,44 +265,110 @@ export async function runEnsureWaveParent({
     withGovernedEffect,
     deps: {
       waveId,
-      findExistingParent: async ({ waveIdValue, leaseContext }) => {
+      findExistingParent: async ({ children, purpose, waveIdValue, leaseContext }) => {
         const env = buildOwnedChildEnvironment({
           baseEnv: deps.env ?? process.env,
           leaseContext,
           tokenEnv: cfg.workLease?.tokenEnv,
         });
-        const existing = await findExisting({
-          repo: cfg.repo,
+        const request = requestFor({ children, purpose, waveIdValue });
+        const journalPath = journalFor(waveIdValue);
+        const intent = readWaveCreateIntent(journalPath, {
           waveIdValue,
-          assignee: cfg.assignee,
-          env,
+          requestDigest: request.requestDigest,
         });
-        if (existing) {
+        let existing = null;
+        try {
+          existing = await findExisting({
+            repo: cfg.repo,
+            waveIdValue,
+            assignee: cfg.assignee,
+            env,
+          });
+        } catch (error) {
+          if (!intent || isGovernedAuthorityError(error)) throw error;
+          process.stderr.write(
+            `ensure-wave-parent: indexed search unavailable during durable recovery: ${error.message}\n`
+          );
+        }
+        if (existing && !intent) {
           process.stderr.write(
             `ensure-wave-parent: reusing existing parent #${existing} ` +
               `(wave-id ${waveIdValue})\n`
           );
+          return existing;
         }
-        return existing;
+        if (!intent) return null;
+
+        if (intent.issueNumber) {
+          if (existing && Number(existing) !== intent.issueNumber) {
+            throw new Error(
+              `ensure-wave-parent: indexed parent #${existing} conflicts with durable receipt #${intent.issueNumber}`
+            );
+          }
+          const body = await fetchRecoveredBody({
+            repo: cfg.repo,
+            issueNumber: intent.issueNumber,
+            env,
+          });
+          assertExactWaveMarker(body, waveIdValue, intent.issueNumber);
+          return intent.issueNumber;
+        }
+
+        const authoritative = await findAuthoritative({
+          repo: cfg.repo,
+          waveIdValue,
+          runGql,
+          env,
+        });
+        if (!authoritative) {
+          throw new Error(
+            'ensure-wave-parent: prior create outcome remains unknown; refusing a duplicate create'
+          );
+        }
+        persistWaveCreateReceipt(journalPath, intent, authoritative);
+        return authoritative;
       },
-      createParent: ({ children, purpose, waveIdValue, withGovernedEffect, leaseContext }) =>
-        createInternal({
-          title: `Wave: ${purpose}`.slice(0, 200),
-          bodyContent: renderTemplate({ purpose, children, waveIdValue }),
-          cfg,
-          priority: args.priority,
-          rank: args.rank,
-          finalStatus: 'develop',
-          withGovernedEffect,
-          authorityIssueId: controllerIssueId,
-          env: buildOwnedChildEnvironment({
-            baseEnv: deps.env ?? process.env,
-            leaseContext,
-            tokenEnv: cfg.workLease?.tokenEnv,
-          }),
-          deps: deps.createIssueDeps || {},
-          reconcile: false,
-        }),
+      createParent: async ({
+        children,
+        purpose,
+        waveIdValue,
+        withGovernedEffect,
+        leaseContext,
+      }) => {
+        const request = requestFor({ children, purpose, waveIdValue });
+        const journalPath = journalFor(waveIdValue);
+        const intent = createWaveCreateIntent(journalPath, {
+          waveIdValue,
+          requestDigest: request.requestDigest,
+        });
+        try {
+          const issueNumber = await createInternal({
+            title: request.title,
+            bodyContent: request.bodyContent,
+            cfg,
+            priority: args.priority,
+            rank: args.rank,
+            finalStatus: 'develop',
+            withGovernedEffect,
+            authorityIssueId: controllerIssueId,
+            env: buildOwnedChildEnvironment({
+              baseEnv: deps.env ?? process.env,
+              leaseContext,
+              tokenEnv: cfg.workLease?.tokenEnv,
+            }),
+            deps: deps.createIssueDeps || {},
+            reconcile: false,
+          });
+          persistWaveCreateReceipt(journalPath, intent, issueNumber);
+          return issueNumber;
+        } catch (error) {
+          if (error?.partialIssueNumber) {
+            persistWaveCreateReceipt(journalPath, intent, error.partialIssueNumber);
+          }
+          throw error;
+        }
+      },
       ensureParentReady: ({ parentNumber, withGovernedEffect, leaseContext }) =>
         reconcileInternal({
           issueNumber: parentNumber,
@@ -356,6 +476,7 @@ export async function runEnsureWaveParent({
     },
   });
 
+  clearWaveCreateJournal(journalFor(parent.waveIdValue));
   process.stdout.write(`PARENT: #${parent.parentNumber}\n`);
   return { status: 'parent', ...parent };
 }

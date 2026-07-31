@@ -24,6 +24,7 @@ import { wantsHelp, emitSelfDoc } from '../lib/self-doc.mjs';
 import { createRuntimeGovernedEffectAdapter } from './lib/work-lease/governed-effect.mjs';
 import { withVerbMutationScope } from './lib/work-lease/verb-mutation-scope.mjs';
 import { buildOwnedChildEnvironment } from './lib/work-lease/child-environment.mjs';
+import { isGovernedAuthorityError } from './lib/work-lease/governed-effect.mjs';
 
 // Is `ancestorRef` an ancestor of `descendantRef`? merge-base --is-ancestor
 // signals via exit code; deps.git throws on non-zero.
@@ -203,7 +204,8 @@ export async function main(argv, overrides = {}) {
             env,
           })
         );
-      } catch {
+      } catch (error) {
+        if (isGovernedAuthorityError(error)) throw error;
         return false;
       }
     }

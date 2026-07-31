@@ -12,6 +12,10 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
 import { main, parseArgs } from '../../../../gh/dispatch-prep.mjs';
+import {
+  buildRow as realBuildRow,
+  postTimingEvent as realPostTimingEvent,
+} from '../../../gh-timing-comment.mjs';
 
 const argv = (...rest) => ['node', 'dispatch-prep.mjs', ...rest];
 
@@ -199,12 +203,18 @@ test('dispatch uses one anchor-owned root, a narrow move continuation, and timin
     issueNumber,
     operation,
     withGovernedEffect,
+    env,
   }) => {
     assert.equal(issueNumber, '#42');
     assert.equal(operation, 'branch-worktree-orchestration');
+    assert.deepEqual(env, {
+      KEEP_ME: 'yes',
+      AITM_LEASE_ID: 'lease-7',
+      AITM_FENCING_TOKEN: '42',
+    });
     return withGovernedEffect(
       {
-        issueId: '7',
+        issueId: '42',
         operation: 'branch-worktree-orchestration',
         heartbeat: true,
       },
@@ -223,8 +233,93 @@ test('dispatch uses one anchor-owned root, a narrow move continuation, and timin
     'reverify',
     'move',
     'reverify',
+    'reverify',
     'timing',
   ]);
+});
+
+test('dispatch real timing helper authorizes the child under one controller root', async () => {
+  const events = [];
+  let roots = 0;
+  let timingBody = '';
+  const h = harness({
+    cfg: { repo: 'o/r', workLease: { tokenEnv: 'REMOTE_LEASE_BEARER' } },
+    withGovernedEffect: async (options, callback) => {
+      roots += 1;
+      events.push(`root:${options.issueId}`);
+      return callback({
+        leaseContext: {
+          projectId: 'project-1',
+          leaseId: 'lease-7',
+          fencingToken: '42',
+          worktreeId: 'wt-7',
+        },
+        reverify: async () => events.push('reverify'),
+      });
+    },
+    runMoveState: async ({ anchor, withGovernedEffect }) =>
+      withGovernedEffect(
+        {
+          issueId: anchor,
+          operation: 'branch-worktree-orchestration',
+          heartbeat: true,
+        },
+        async () => {
+          events.push('move');
+          return 0;
+        }
+      ),
+  });
+  h.overrides.baseEnv = {
+    KEEP_ME: 'yes',
+    REMOTE_LEASE_BEARER: 'secret',
+    AITM_LEASE_ID: 'stale',
+    AITM_FENCING_TOKEN: '7',
+    AITM_LEASE_RECEIPT: 'untrusted',
+  };
+  h.overrides.buildRow = realBuildRow;
+  h.overrides.postTimingEvent = (options) =>
+    realPostTimingEvent({
+      ...options,
+      lock: false,
+      retries: 0,
+      deps: {
+        findTimingComment: async (issueNumber, _repo, io) => {
+          assert.equal(issueNumber, '#42');
+          assert.deepEqual(io.env, {
+            KEEP_ME: 'yes',
+            AITM_LEASE_ID: 'lease-7',
+            AITM_FENCING_TOKEN: '42',
+          });
+          events.push('find');
+          return null;
+        },
+        createTimingComment: async (issueNumber, _repo, body, io) => {
+          assert.equal(issueNumber, '#42');
+          assert.deepEqual(io.env, {
+            KEEP_ME: 'yes',
+            AITM_LEASE_ID: 'lease-7',
+            AITM_FENCING_TOKEN: '42',
+          });
+          timingBody = body;
+          events.push('create');
+        },
+      },
+    });
+
+  await main(argv('42', '--anchor', '7'), { ...h.overrides, skipNetwork: false });
+
+  assert.equal(roots, 1);
+  assert.deepEqual(events, [
+    'root:7',
+    'reverify',
+    'move',
+    'reverify',
+    'find',
+    'reverify',
+    'create',
+  ]);
+  assert.match(timingBody, /\| start \|/);
 });
 
 test('a child-bound lease cannot authorize its epic controller', async () => {

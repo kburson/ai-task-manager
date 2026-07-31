@@ -21,6 +21,7 @@ import {
   chmodSync,
   rmSync,
   existsSync,
+  readdirSync,
 } from 'node:fs';
 import { projectScratchDir } from '../../../lib/scratch-dir.mjs';
 import path from 'node:path';
@@ -29,6 +30,15 @@ import { fileURLToPath } from 'node:url';
 const pexec = promisify(execFile);
 const __dir = path.dirname(fileURLToPath(import.meta.url)) + '/..';
 const HELPER = path.resolve(__dir, '..', '..', '..', 'gh', 'ensure-wave-parent.mjs');
+const JOURNAL_HELPER = path.resolve(
+  __dir,
+  '..',
+  '..',
+  '..',
+  'gh',
+  'lib',
+  'wave-parent-create-journal.mjs'
+);
 const TIMING_HELPER = path.resolve(__dir, '..', '..', 'gh-timing-comment.mjs');
 
 function writeConfig(sandbox) {
@@ -595,6 +605,7 @@ function readCalls(callsLog) {
       classify: async () => ({ kind: 'all-solo', solos: [10, 11] }),
       runGql,
       findExistingParentByWaveId: async () => state.parent,
+      fetchWaveParentBody: async () => state.body,
       createIssueDeps,
       timing: {
         findTimingComment: async (_issue, _repo, options) => {
@@ -726,3 +737,174 @@ function readCalls(callsLog) {
 }
 
 console.log('ensure-wave-parent: all tests passed');
+
+async function runDurableCreateRecovery({ partialIssueNumber, authoritativeIssueNumber }) {
+  const { runEnsureWaveParent } = await import(new URL(`file://${HELPER}`).href);
+  const sandbox = mkdtempSync(path.join(projectScratchDir('test'), 'tt-ewp-recovery-'));
+  const cfg = {
+    repo: 'test-owner/test-repo',
+    projectId: 'PVT_test',
+    workLease: { tokenEnv: 'REMOTE_LEASE_BEARER' },
+  };
+  let createCalls = 0;
+  let indexedSearchCalls = 0;
+  let reconcileCalls = 0;
+  let createdBody = '';
+  const recoveredNumber = partialIssueNumber || authoritativeIssueNumber;
+  const withGovernedEffect = async (_options, callback) =>
+    callback({
+      leaseContext: {
+        projectId: cfg.projectId,
+        leaseId: 'lease-controller',
+        fencingToken: '42',
+        worktreeId: 'wt-controller',
+      },
+      reverify: async () => {},
+    });
+  const deps = {
+    projectDir: sandbox,
+    env: {},
+    classify: async () => ({ kind: 'all-solo', solos: [10, 11] }),
+    withGovernedEffect,
+    findExistingParentByWaveId: async () => {
+      indexedSearchCalls += 1;
+      return null;
+    },
+    fetchWaveParentBody: async ({ issueNumber }) => {
+      assert.equal(issueNumber, partialIssueNumber);
+      return createdBody;
+    },
+    runGql: async (query) => {
+      assert.match(query, /issues\(first:/);
+      return {
+        repository: {
+          issues: {
+            nodes: authoritativeIssueNumber
+              ? [{ number: authoritativeIssueNumber, body: createdBody }]
+              : [],
+            pageInfo: { hasNextPage: false, endCursor: null },
+          },
+        },
+      };
+    },
+    createGovernedInternalIssue: async ({ bodyContent }) => {
+      createCalls += 1;
+      createdBody = bodyContent;
+      const error = new Error(
+        partialIssueNumber
+          ? `partial-success: #${partialIssueNumber}`
+          : 'gh issue create failed with empty response after server commit'
+      );
+      if (partialIssueNumber) error.partialIssueNumber = partialIssueNumber;
+      error.exitCode = partialIssueNumber ? 6 : 1;
+      throw error;
+    },
+    reconcileGovernedInternalIssue: async ({ issueNumber }) => {
+      assert.equal(issueNumber, recoveredNumber);
+      reconcileCalls += 1;
+      return { issueNumber, status: 'develop' };
+    },
+    getIssueNodeId: async ({ issueNumber }) => `ISS_${issueNumber}`,
+    addSubIssue: async () => {},
+    ensureParentEpicTitle: async () => {},
+    postTimingEvent: async () => {},
+  };
+  const args = ['--children', '10,11', '--purpose', 'durable recovery', '--anchor', '900'];
+  try {
+    await assert.rejects(
+      runEnsureWaveParent({ rawArgs: args, cfg, deps }),
+      partialIssueNumber ? /partial-success/ : /empty response/
+    );
+    const journalDir = path.join(sandbox, '.db', 'aitm', 'wave-parent-create-intents');
+    const journalFiles = readdirSync(journalDir);
+    assert.equal(journalFiles.length, 1, 'unknown outcome is persisted outside purgeable scratch');
+    const durableIntent = JSON.parse(
+      readFileSync(path.join(journalDir, journalFiles[0]), 'utf8')
+    );
+    assert.deepEqual(Object.keys(durableIntent).sort(), [
+      'issueNumber',
+      'requestDigest',
+      'version',
+      'waveIdValue',
+    ]);
+    assert.match(durableIntent.requestDigest, /^[a-f0-9]{64}$/);
+    assert.equal(durableIntent.issueNumber, partialIssueNumber || null);
+    assert.ok(!JSON.stringify(durableIntent).includes('REMOTE_LEASE_BEARER'));
+
+    if (!recoveredNumber) {
+      await assert.rejects(
+        runEnsureWaveParent({ rawArgs: args, cfg, deps }),
+        /outcome remains unknown/
+      );
+      assert.equal(createCalls, 1, 'unresolved outcome must never issue a second create');
+      assert.equal(indexedSearchCalls, 2);
+      assert.equal(reconcileCalls, 0);
+      assert.equal(readdirSync(journalDir).length, 1, 'unresolved intent remains durable');
+      return;
+    }
+
+    const recovered = await runEnsureWaveParent({ rawArgs: args, cfg, deps });
+    assert.equal(recovered.parentNumber, recoveredNumber);
+    assert.equal(createCalls, 1, 'unknown create outcome must never issue a second create');
+    assert.equal(indexedSearchCalls, 2, 'indexed search remains empty on both invocations');
+    assert.equal(reconcileCalls, 1, 'the exact recovered parent is reconciled once');
+    assert.match(createdBody, /<!-- wave-id: 10-11\.5ef68ca70c -->/);
+    assert.deepEqual(
+      existsSync(journalDir) ? readdirSync(journalDir) : [],
+      [],
+      'completed reconciliation removes the durable create receipt'
+    );
+  } finally {
+    rmSync(sandbox, { recursive: true, force: true });
+  }
+}
+
+await runDurableCreateRecovery({ partialIssueNumber: 1000 });
+console.log('test 10 passed: partial create receipt recovers exact parent without duplicate create');
+
+await runDurableCreateRecovery({ authoritativeIssueNumber: 1001 });
+console.log('test 11 passed: empty-response create recovers via authoritative listing without duplicate');
+
+await runDurableCreateRecovery({});
+console.log('test 12 passed: unresolved authoritative listing refuses without duplicate create');
+
+{
+  const { findAuthoritativeParentByWaveId } = await import(
+    new URL(`file://${JOURNAL_HELPER}`).href
+  );
+  let pages = 0;
+  const parent = await findAuthoritativeParentByWaveId({
+    repo: 'test-owner/test-repo',
+    waveIdValue: '10-11.5ef68ca70c',
+    runGql: async (_query, variables) => {
+      pages += 1;
+      if (variables.after == null) {
+        return {
+          repository: {
+            issues: {
+              nodes: [{ number: 999, body: 'unrelated' }],
+              pageInfo: { hasNextPage: true, endCursor: 'page-2' },
+            },
+          },
+        };
+      }
+      assert.equal(variables.after, 'page-2');
+      return {
+        repository: {
+          issues: {
+            nodes: [
+              {
+                number: 1002,
+                body: '<!-- wave-id: 10-11.5ef68ca70c -->',
+              },
+            ],
+            pageInfo: { hasNextPage: false, endCursor: null },
+          },
+        },
+      };
+    },
+  });
+  assert.equal(parent, 1002);
+  assert.equal(pages, 2);
+  console.log('test 13 passed: authoritative recovery exhausts pagination before deciding');
+}
