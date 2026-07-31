@@ -48,8 +48,8 @@ the fencing token before governed effects. Fleet remains a projection.
 - SQLite and HTTPS share a closed operation vocabulary. Unknown operations fail
   validation. Reuse of an idempotency key for a different canonical request
   fails with `idempotency-conflict`.
-- The reviewed file inventory has 119 task assignments across 107 unique paths:
-  Tasks 1-7 contain 13, 5, 17, 5, 57, 18, and 4 paths respectively.
+- The reviewed file inventory has 126 task assignments across 114 unique paths:
+  Tasks 1-7 contain 13, 5, 17, 5, 64, 18, and 4 paths respectively.
   Lifecycle authority paths intentionally reappear in later tasks when the
   same provider, session, close, or fleet boundary needs another governed
   increment. If
@@ -365,6 +365,7 @@ real Git worktree directory. Raw display text never participates in uniqueness.
 - Modify: `scripts/task-tracker/lib/move-state/move-state-core.mjs`
 - Modify: `scripts/task-tracker/lib/move-state/audit-timing.mjs`
 - Modify: `scripts/task-tracker/lib/move-state/cache-unpark.mjs`
+- Modify: `scripts/task-tracker/lib/unpark-dependents.mjs`
 - Modify: `scripts/task-tracker/lib/move-state/github-mutation.mjs`
 - Modify: `scripts/task-tracker/lib/move-state/guard-execution.mjs`
 - Modify: `scripts/task-tracker/lib/move-state/post-commit-tail.mjs`
@@ -377,6 +378,18 @@ real Git worktree directory. Raw display text never participates in uniqueness.
 - Modify: `scripts/gh/move-state.mjs`
 - Create:
   `scripts/task-tracker/tests/integration/lib/exclusive-work-lease.test.mjs`
+- Modify:
+  `scripts/task-tracker/tests/unit/gh/move-state-governed-boundary.test.mjs`
+- Modify:
+  `scripts/task-tracker/tests/unit/lib/coverage-cache-unpark.test.mjs`
+- Modify:
+  `scripts/task-tracker/tests/unit/lib/coverage-review.test.mjs`
+- Modify:
+  `scripts/task-tracker/tests/unit/lib/coverage-unpark-dependents.test.mjs`
+- Modify:
+  `scripts/task-tracker/tests/unit/lib/move-state/event-field-sync-noop.test.mjs`
+- Modify:
+  `scripts/task-tracker/tests/unit/verbs/review-state-action.test.mjs`
 - Modify:
   `scripts/task-tracker/tests/unit/lib/cross-worktree-bind-resume.test.mjs`
 - Modify: `scripts/task-tracker/tests/unit/lib/state.test.mjs`
