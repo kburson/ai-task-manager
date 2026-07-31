@@ -48,8 +48,8 @@ the fencing token before governed effects. Fleet remains a projection.
 - SQLite and HTTPS share a closed operation vocabulary. Unknown operations fail
   validation. Reuse of an idempotency key for a different canonical request
   fails with `idempotency-conflict`.
-- The reviewed file inventory has 117 task assignments across 105 unique paths:
-  Tasks 1-7 contain 13, 5, 17, 5, 55, 18, and 4 paths respectively.
+- The reviewed file inventory has 118 task assignments across 106 unique paths:
+  Tasks 1-7 contain 13, 5, 17, 5, 56, 18, and 4 paths respectively.
   Lifecycle authority paths intentionally reappear in later tasks when the
   same provider, session, close, or fleet boundary needs another governed
   increment. If
@@ -338,6 +338,7 @@ real Git worktree directory. Raw display text never participates in uniqueness.
 - Modify: `scripts/task-tracker/verbs/close.mjs`
 - Modify: `scripts/task-tracker/session-state.mjs`
 - Modify: `scripts/task-tracker/state.mjs`
+- Modify: `scripts/task-tracker/lib/state-recording.mjs`
 - Modify: `scripts/task-tracker/lib/verb-preflight.mjs`
 - Modify: `scripts/task-tracker/lib/assignee-guard.mjs`
 - Modify: `scripts/task-tracker/issue-mutator-lock.mjs`
