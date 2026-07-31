@@ -48,8 +48,8 @@ the fencing token before governed effects. Fleet remains a projection.
 - SQLite and HTTPS share a closed operation vocabulary. Unknown operations fail
   validation. Reuse of an idempotency key for a different canonical request
   fails with `idempotency-conflict`.
-- The reviewed file inventory has 160 task assignments across 148 unique paths:
-  Tasks 1-7 contain 13, 5, 17, 5, 98, 18, and 4 paths respectively.
+- The reviewed file inventory has 178 task assignments across 165 unique paths:
+  Tasks 1-7 contain 13, 5, 17, 5, 116, 18, and 4 paths respectively.
   Lifecycle authority paths intentionally reappear in later tasks when the
   same provider, session, close, or fleet boundary needs another governed
   increment. If
