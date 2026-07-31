@@ -23,7 +23,7 @@ import { strict as assert } from 'node:assert';
 import { test } from 'node:test';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
-import { mkdtempSync, rmSync, mkdirSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -46,13 +46,17 @@ const MOVE_STATE = path.resolve(__dir, '..', 'helpers/move-state-cli.mjs');
 // 1. move-state.mjs — subprocess boundary (exit codes + stdout/stderr text).
 // ===========================================================================
 //
-// move-state is a top-level script with no injectable core; its genuine public
-// boundary is the process contract. We drive it under TT_SKIP_NETWORK=1 (no
-// board write, no marker stamp) and assert only on exit code + emitted text.
+// move-state is import-only in production; its test-only CLI harness preserves
+// the genuine process contract. TT_SKIP_NETWORK=1 is intentionally a silent,
+// lock-only dry-run: it exercises lock ownership, returns the policy/matrix exit
+// code, and invokes none of the guard, status, body, timing, cache, tail, or
+// child-process collaborators. It must not print a "moved" success/readout for a
+// board write that never happened.
 
 function makeMoveStateSandbox() {
   const sandbox = mkdtempSync(path.join(projectScratchDir('test'), 'tt-char-ms-'));
   mkdirSync(path.join(sandbox, '.ai-task-manager'), { recursive: true });
+  mkdirSync(path.join(sandbox, '.tmp', 'aitm', 'locks'), { recursive: true });
   writeFileSync(
     path.join(sandbox, '.ai-task-manager', 'task-tracker.json'),
     JSON.stringify({
@@ -76,6 +80,7 @@ function moveStateEnv(sandbox, extra = {}) {
   return {
     PATH: process.env.PATH,
     HOME: process.env.HOME,
+    NODE_NO_WARNINGS: '1',
     AI_TASK_MANAGER_PROJECT_DIR: sandbox,
     TT_SKIP_NETWORK: '1',
     ...extra,
@@ -83,7 +88,8 @@ function moveStateEnv(sandbox, extra = {}) {
 }
 
 async function runMoveState(args, env) {
-  return pexec(process.execPath, [MOVE_STATE, ...args], { env, timeout: 10000 });
+  const result = await pexec(process.execPath, [MOVE_STATE, ...args], { env, timeout: 10000 });
+  return { ...result, exitCode: 0 };
 }
 
 async function runMoveStateExpectFail(args, env) {
@@ -93,6 +99,32 @@ async function runMoveStateExpectFail(args, env) {
   } catch (e) {
     return e;
   }
+}
+
+function snapshotSandboxState(root, relativeDir = '') {
+  const absoluteDir = path.join(root, relativeDir);
+  const snapshot = [];
+  for (const entry of readdirSync(absoluteDir, { withFileTypes: true })) {
+    const relativePath = path.join(relativeDir, entry.name);
+    if (entry.isDirectory()) {
+      snapshot.push([relativePath, 'directory']);
+      snapshot.push(...snapshotSandboxState(root, relativePath));
+    } else {
+      snapshot.push([relativePath, 'file', readFileSync(path.join(root, relativePath), 'utf8')]);
+    }
+  }
+  return snapshot;
+}
+
+function assertSilentOfflineProbe(result, sandbox, beforeState) {
+  assert.equal(result.exitCode, 0);
+  assert.equal(result.stdout, '', 'offline probe must not claim a board move/readout');
+  assert.equal(result.stderr, '');
+  assert.deepEqual(
+    snapshotSandboxState(sandbox),
+    beforeState,
+    'offline probe left an observable sandbox mutation'
+  );
 }
 
 test('move-state: agent-context call (no env, no TTY) is refused with exit 3', async () => {
@@ -106,11 +138,12 @@ test('move-state: agent-context call (no env, no TTY) is refused with exit 3', a
   }
 });
 
-test('move-state: chokepoint call (AITM_INTERNAL=1) moves and prints confirmation', async () => {
+test('move-state: chokepoint offline probe succeeds silently without mutation', async () => {
   const sandbox = makeMoveStateSandbox();
+  const beforeState = snapshotSandboxState(sandbox);
   try {
     const r = await runMoveState(['123', 'refine'], moveStateEnv(sandbox, { AITM_INTERNAL: '1' }));
-    assert.match(r.stdout, /moved to: refine/);
+    assertSilentOfflineProbe(r, sandbox, beforeState);
   } finally {
     rmSync(sandbox, { recursive: true, force: true });
   }
@@ -130,14 +163,15 @@ test('move-state: illegal matrix transition is refused with exit 5', async () =>
   }
 });
 
-test('move-state: valid forward transition (refine → plan) succeeds', async () => {
+test('move-state: valid forward-transition offline probe succeeds silently without mutation', async () => {
   const sandbox = makeMoveStateSandbox();
+  const beforeState = snapshotSandboxState(sandbox);
   try {
     const r = await runMoveState(
       ['123', 'plan', '--from', 'refine'],
       moveStateEnv(sandbox, { AITM_INTERNAL: '1' })
     );
-    assert.match(r.stdout, /moved to: plan/);
+    assertSilentOfflineProbe(r, sandbox, beforeState);
   } finally {
     rmSync(sandbox, { recursive: true, force: true });
   }
