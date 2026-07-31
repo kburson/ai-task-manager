@@ -88,9 +88,26 @@ test('#864: an unknown lane fails loud', () => {
 test('#1065: shard syntax is strict and one-based', () => {
   assert.deepEqual(parseShard('1/4'), { index: 1, total: 4 });
   assert.deepEqual(parseShard('4/4'), { index: 4, total: 4 });
-  for (const bad of ['0/2', '3/2', '1/0', '1.5/2', '1', 'x/y']) {
+  for (const bad of [
+    '0/2',
+    '3/2',
+    '1/0',
+    '1.5/2',
+    '1',
+    'x/y',
+    '9007199254740993/9007199254740993',
+    `${'9'.repeat(400)}/${'9'.repeat(400)}`,
+  ]) {
     assert.throws(() => parseShard(bad), /--shard must be INDEX\/TOTAL/);
   }
+});
+
+test('#1065: a shard cannot silently select zero files from a non-empty lane', () => {
+  assert.throws(
+    () => selectShardFiles(['only.test.mjs'], { index: 2, total: 2 }),
+    /--shard 2\/2 selects no files from a non-empty lane/
+  );
+  assert.deepEqual(selectShardFiles([], { index: 1, total: 1 }), []);
 });
 
 test('#1065: deterministic shards are disjoint and their union is exact', () => {
