@@ -5,6 +5,7 @@ import { resolveTimingQueueJournalProjection } from '../timing-queue-projection.
 
 const proofs = new WeakMap();
 const timingQueueAliasProofs = new WeakMap();
+const timingQueueAliasCollisionGroupProofs = new WeakMap();
 
 export class TransitionProjectionAuthorityError extends TypeError {
   constructor(message) {
@@ -254,6 +255,133 @@ export function assertTransitionTimingQueueAliasAuthority(proof, expected = {}) 
     actual.subOperationId !== actual.journalSubOperationId
   ) {
     throw refusal('validated timing queue alias journal binding is incomplete');
+  }
+  return proof;
+}
+
+function collisionGroupMemberExpected(member, label) {
+  const entry = object(member?.entry, `${label} entry`);
+  if (!Number.isSafeInteger(member.entryIndex) || member.entryIndex < 0) {
+    throw refusal(`${label} entryIndex must be a non-negative integer`);
+  }
+  return Object.freeze({
+    entry,
+    entryJson: JSON.stringify(entry),
+    entryIndex: member.entryIndex,
+    switchProjectionId: requiredString(member.switchProjectionId, `${label} switchProjectionId`),
+    journalProjectionId: requiredString(member.journalProjectionId, `${label} journalProjectionId`),
+    journalSubOperationId: requiredString(
+      member.journalSubOperationId,
+      `${label} journalSubOperationId`
+    ),
+    deliveryProjectionId: requiredString(
+      member.deliveryProjectionId,
+      `${label} deliveryProjectionId`
+    ),
+    deliverySubOperationId: requiredString(
+      member.deliverySubOperationId,
+      `${label} deliverySubOperationId`
+    ),
+    issueId: canonicalIssue(member.issueId, `${label} issueId`),
+    operation: requiredString(member.operation, `${label} operation`),
+    row: requiredString(entry.row, `${label} row`),
+  });
+}
+
+export function deriveTransitionTimingQueueAliasCollisionGroupAuthority({
+  receipt,
+  request,
+  transitionId,
+  members,
+} = {}) {
+  if (!Array.isArray(members) || members.length < 2) {
+    throw refusal('timing queue alias collision group requires at least two members');
+  }
+  const journalIdentities = new Set();
+  let deliveryIdentity;
+  const validatedMembers = members.map((member, index) => {
+    const expected = collisionGroupMemberExpected(
+      {
+        ...member,
+        operation: 'evidence-mutation',
+      },
+      `timing queue alias collision member ${index}`
+    );
+    const stableDeliveryIdentity = `${expected.deliveryProjectionId}\0${expected.deliverySubOperationId}`;
+    const journalIdentity = `${expected.journalProjectionId}\0${expected.journalSubOperationId}`;
+    if (
+      journalIdentities.has(journalIdentity) ||
+      (deliveryIdentity !== undefined && deliveryIdentity !== stableDeliveryIdentity)
+    ) {
+      throw refusal('timing queue alias collision group identities do not match');
+    }
+    journalIdentities.add(journalIdentity);
+    deliveryIdentity = stableDeliveryIdentity;
+    const authority = deriveTransitionTimingQueueAliasAuthority({
+      receipt,
+      request,
+      transitionId,
+      ...expected,
+    });
+    return Object.freeze({ ...expected, authority });
+  });
+  const first = validatedMembers[0];
+  if (
+    validatedMembers.some((member) => member.issueId !== first.issueId || member.row !== first.row)
+  ) {
+    throw refusal('timing queue alias collision group members are not canonical peers');
+  }
+  const proof = Object.freeze(Object.create(null));
+  timingQueueAliasCollisionGroupProofs.set(proof, Object.freeze(validatedMembers));
+  return proof;
+}
+
+export function assertTransitionTimingQueueAliasCollisionGroupAuthority(
+  proof,
+  { transitionId, members } = {}
+) {
+  const actual = timingQueueAliasCollisionGroupProofs.get(proof);
+  if (!actual) {
+    throw refusal('proof is not a live in-memory timing queue alias collision group proof');
+  }
+  if (!Array.isArray(members) || members.length !== actual.length) {
+    throw refusal('timing queue alias collision group member list does not match');
+  }
+  for (const [index, member] of members.entries()) {
+    const expected = collisionGroupMemberExpected(
+      {
+        ...member,
+        operation: 'evidence-mutation',
+      },
+      `expected timing queue alias collision member ${index}`
+    );
+    const validated = actual[index];
+    for (const field of [
+      'entryJson',
+      'entryIndex',
+      'switchProjectionId',
+      'journalProjectionId',
+      'journalSubOperationId',
+      'deliveryProjectionId',
+      'deliverySubOperationId',
+      'issueId',
+      'operation',
+      'row',
+    ]) {
+      if (validated[field] !== expected[field]) {
+        throw refusal(`timing queue alias collision member ${index} ${field} does not match`);
+      }
+    }
+    assertTransitionTimingQueueAliasAuthority(validated.authority, {
+      transitionId,
+      journalProjectionId: expected.journalProjectionId,
+      journalSubOperationId: expected.journalSubOperationId,
+      deliveryProjectionId: expected.deliveryProjectionId,
+      deliverySubOperationId: expected.deliverySubOperationId,
+      issueId: expected.issueId,
+      operation: expected.operation,
+      row: expected.row,
+    });
   }
   return proof;
 }

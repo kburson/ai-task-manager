@@ -57,6 +57,7 @@ import { deriveIssueTimeExpectedFields } from './issue-time-projection.mjs';
 import {
   deriveTransitionProjectionAuthority,
   deriveTransitionTimingQueueAliasAuthority,
+  deriveTransitionTimingQueueAliasCollisionGroupAuthority,
   isTransitionProjectionAuthorityError,
 } from './transition-projection-authority.mjs';
 import { isGovernedAuthorityError } from './governed-effect.mjs';
@@ -427,7 +428,7 @@ async function applyTimingProjectionWithQueueClaim(
     throw new Error('persisted timing source queue is malformed');
   }
   const journalIdentities = new Set();
-  const deliveryIdentities = new Set();
+  const deliveryGroups = new Map();
   const resolvedQueuedSourceEntries = [];
   for (const [entryIndex, queued] of queuedSourceEntries.entries()) {
     let delivery;
@@ -453,14 +454,24 @@ async function applyTimingProjectionWithQueueClaim(
       !isNonEmptyString(queued.entry.row) ||
       !isNonEmptyString(queued.deliveryProjectionId) ||
       !isNonEmptyString(queued.deliverySubOperationId) ||
-      journalIdentities.has(journalIdentity) ||
-      deliveryIdentities.has(deliveryIdentity)
+      journalIdentities.has(journalIdentity)
     ) {
       throw new Error('persisted timing source queue entry is malformed');
     }
     journalIdentities.add(journalIdentity);
-    deliveryIdentities.add(deliveryIdentity);
-    resolvedQueuedSourceEntries.push({ queued, entryIndex, delivery });
+    const resolved = { queued, entryIndex, delivery, deliveryIdentity };
+    resolvedQueuedSourceEntries.push(resolved);
+    const deliveryGroup = deliveryGroups.get(deliveryIdentity) ?? [];
+    deliveryGroup.push(resolved);
+    deliveryGroups.set(deliveryIdentity, deliveryGroup);
+  }
+  if (
+    [...deliveryGroups.values()].some(
+      (group) =>
+        group.length > 1 && group.some(({ delivery }) => delivery.mode !== 'legacy-switch-alias')
+    )
+  ) {
+    throw new Error('persisted timing source queue entry is malformed');
   }
   if (
     !queueDrainClaimed &&
@@ -496,8 +507,8 @@ async function applyTimingProjectionWithQueueClaim(
   const post =
     ctx.postTimingProjection ??
     (transitionProjection ? gh.postTransitionTimingProjection : gh.postTimingEvent);
-  const deliveries = [
-    ...resolvedQueuedSourceEntries.map(({ queued, entryIndex, delivery }) => ({
+  const queuedDeliveries = resolvedQueuedSourceEntries.map(
+    ({ queued, entryIndex, delivery, deliveryIdentity }) => ({
       issueNumber: String(queued.entry.issue).replace(/^#/, ''),
       row: queued.entry.row,
       projectionId: delivery.deliveryProjectionId,
@@ -507,43 +518,107 @@ async function applyTimingProjectionWithQueueClaim(
       alias: delivery.mode === 'legacy-switch-alias',
       entry: queued.entry,
       entryIndex,
+      deliveryIdentity,
       queued: true,
-    })),
-    ...input.rows,
-  ];
+    })
+  );
+  const deliveries = [];
+  const emittedCollisionGroups = new Set();
+  for (const item of queuedDeliveries) {
+    const collisionMembers = deliveryGroups.get(item.deliveryIdentity);
+    if (collisionMembers.length < 2) {
+      deliveries.push(item);
+      continue;
+    }
+    if (emittedCollisionGroups.has(item.deliveryIdentity)) continue;
+    emittedCollisionGroups.add(item.deliveryIdentity);
+    const members = queuedDeliveries.filter(
+      (candidate) => candidate.deliveryIdentity === item.deliveryIdentity
+    );
+    deliveries.push({
+      collisionGroup: true,
+      queued: true,
+      issueNumber: item.issueNumber,
+      row: item.row,
+      projectionId: item.projectionId,
+      subOperationId: item.subOperationId,
+      members,
+      sealedMembers: members.map((member) => ({
+        entry: member.entry,
+        entryIndex: member.entryIndex,
+        switchProjectionId: projectionId,
+        journalProjectionId: member.journalProjectionId,
+        journalSubOperationId: member.journalSubOperationId,
+        deliveryProjectionId: member.projectionId,
+        deliverySubOperationId: member.subOperationId,
+        issueId: member.issueNumber,
+      })),
+    });
+  }
+  deliveries.push(...input.rows);
   for (const item of deliveries) {
     const issueNumber = item.issueNumber ?? input.issueNumber;
     const stableProjectionId = item.projectionId ?? projectionId;
     const authority = !transitionProjection
       ? null
-      : item.alias
-        ? deriveTransitionTimingQueueAliasAuthority({
+      : item.collisionGroup
+        ? deriveTransitionTimingQueueAliasCollisionGroupAuthority({
             receipt,
             request,
             transitionId,
-            entry: item.entry,
-            entryIndex: item.entryIndex,
-            switchProjectionId: projectionId,
-            journalProjectionId: item.journalProjectionId,
-            journalSubOperationId: item.journalSubOperationId,
-            deliveryProjectionId: stableProjectionId,
-            deliverySubOperationId: item.subOperationId,
-            issueId: issueNumber,
-            operation: 'evidence-mutation',
+            members: item.sealedMembers,
           })
-        : deriveTransitionProjectionAuthority({
-            receipt,
-            request,
-            transitionId,
-            projectionName: 'timing',
-            projectionId: stableProjectionId,
-            subOperationId: item.subOperationId,
-            issueId: issueNumber,
-            operation: 'evidence-mutation',
-          });
+        : item.alias
+          ? deriveTransitionTimingQueueAliasAuthority({
+              receipt,
+              request,
+              transitionId,
+              entry: item.entry,
+              entryIndex: item.entryIndex,
+              switchProjectionId: projectionId,
+              journalProjectionId: item.journalProjectionId,
+              journalSubOperationId: item.journalSubOperationId,
+              deliveryProjectionId: stableProjectionId,
+              deliverySubOperationId: item.subOperationId,
+              issueId: issueNumber,
+              operation: 'evidence-mutation',
+            })
+          : deriveTransitionProjectionAuthority({
+              receipt,
+              request,
+              transitionId,
+              projectionName: 'timing',
+              projectionId: stableProjectionId,
+              subOperationId: item.subOperationId,
+              issueId: issueNumber,
+              operation: 'evidence-mutation',
+            });
     if (item.alias) item.aliasAuthority = authority;
     try {
-      if (item.alias) {
+      if (item.collisionGroup) {
+        const reconcileCollision =
+          ctx.reconcileTimingQueueAliasCollisionGroupProjection ??
+          gh.reconcileTransitionTimingQueueAliasCollisionGroupProjection;
+        const proof = await reconcileCollision({
+          collisionAuthority: authority,
+          transitionId,
+          projectionName: 'timing',
+          members: item.sealedMembers,
+          projectionId: stableProjectionId,
+          subOperationId: item.subOperationId,
+          issueNumber,
+          repo: input.repo,
+          row: item.row,
+          projDir: ctx.projectDir,
+        });
+        if (
+          proof?.reconciled !== true ||
+          proof.projectionId !== item.projectionId ||
+          proof.memberCount !== item.members.length
+        ) {
+          throw new Error('timing queue alias collision remote read-back does not match');
+        }
+      } else if (item.alias) {
         const postAlias =
           ctx.postTimingQueueAliasProjection ?? gh.postTransitionTimingQueueAliasProjection;
         await postAlias({
@@ -593,7 +668,7 @@ async function applyTimingProjectionWithQueueClaim(
   }
   const readProjection = ctx.readTimingProjection ?? gh.readTimingProjection;
   const operationsByIssueAndProjection = new Map();
-  for (const item of deliveries.filter((delivery) => !delivery.alias)) {
+  for (const item of deliveries.filter((delivery) => !delivery.alias && !delivery.collisionGroup)) {
     const issueNumber = item.issueNumber ?? input.issueNumber;
     const stableProjectionId = item.projectionId ?? projectionId;
     const key = `${issueNumber}\0${stableProjectionId}`;

@@ -11,3 +11,4 @@ docs/ai-memory/
 .ai-task-manager/memory/
 # Byte-exact pre-upgrade recovery fixture; formatting would invalidate provenance.
 scripts/task-tracker/tests/fixtures/pre-canonical-timing-queue-intent.json
+scripts/task-tracker/tests/fixtures/pre-canonical-timing-queue-collision-intent.json

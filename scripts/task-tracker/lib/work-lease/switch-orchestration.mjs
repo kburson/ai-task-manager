@@ -550,8 +550,8 @@ export function validateSwitchProjectionInputs(
   const timingProjectionId = projections?.timing?.projectionId;
   const queuedSourceEntries = timing.queuedSourceEntries;
   const queuedJournalIdentities = new Set();
-  const queuedCanonicalIdentities = new Set();
-  const queuedSourceMalformed =
+  const queuedCanonicalGroups = new Map();
+  let queuedSourceMalformed =
     !Array.isArray(queuedSourceEntries) ||
     queuedSourceEntries.some((queued, index) => {
       const entry = queued?.entry;
@@ -585,16 +585,19 @@ export function validateSwitchProjectionInputs(
       }
       const journalIdentity = `${delivery.journalProjectionId}\0${delivery.journalSubOperationId}`;
       const canonicalIdentity = `${delivery.deliveryProjectionId}\0${delivery.deliverySubOperationId}`;
-      if (
-        queuedJournalIdentities.has(journalIdentity) ||
-        queuedCanonicalIdentities.has(canonicalIdentity)
-      ) {
-        return true;
-      }
+      if (queuedJournalIdentities.has(journalIdentity)) return true;
       queuedJournalIdentities.add(journalIdentity);
-      queuedCanonicalIdentities.add(canonicalIdentity);
+      const canonicalGroup = queuedCanonicalGroups.get(canonicalIdentity) ?? [];
+      canonicalGroup.push(delivery);
+      queuedCanonicalGroups.set(canonicalIdentity, canonicalGroup);
       return false;
     });
+  if (!queuedSourceMalformed) {
+    queuedSourceMalformed = [...queuedCanonicalGroups.values()].some(
+      (group) =>
+        group.length > 1 && group.some((delivery) => delivery.mode !== 'legacy-switch-alias')
+    );
+  }
   const expectedOperations = [
     ['outgoing:reengage', source],
     ['outgoing:switch-out', source],

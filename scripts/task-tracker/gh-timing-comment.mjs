@@ -28,6 +28,7 @@ import {
 import {
   assertTransitionProjectionAuthority,
   assertTransitionTimingQueueAliasAuthority,
+  assertTransitionTimingQueueAliasCollisionGroupAuthority,
 } from './lib/work-lease/transition-projection-authority.mjs';
 const pexec = promisify(execFile);
 
@@ -1067,6 +1068,152 @@ export async function readTransitionTimingQueueAliasProjection({
   if (!lock) return work();
   return withLock(timingLockPath(issueNumber, projDir || getProjectDir()), work, {
     timeoutMs: Math.max(timeoutMs * 3, 5_000),
+  });
+}
+
+function inspectTimingQueueAliasCollisionGroupReceipts(
+  body,
+  { members, projectionId, subOperationId, row } = {}
+) {
+  try {
+    const receipts = parseTimingProjectionReceipts(body);
+    const canonicalReceipts = receipts.filter(
+      (receipt) =>
+        receipt.projectionId === projectionId && receipt.subOperationId === subOperationId
+    );
+    const legacyReceipts = members.map((member) =>
+      receipts.filter(
+        (receipt) =>
+          receipt.projectionId === member.journalProjectionId &&
+          receipt.subOperationId === member.journalSubOperationId
+      )
+    );
+    if (canonicalReceipts.length > 1 || legacyReceipts.some((matches) => matches.length > 1)) {
+      throw new Error('one collision receipt family is duplicated');
+    }
+    if (canonicalReceipts.length === 1) {
+      if (legacyReceipts.some((matches) => matches.length !== 0)) {
+        throw new Error('canonical and legacy collision receipts are mixed');
+      }
+      reconcileTimingProjectionRowEffect(body, { projectionId, subOperationId, row });
+      return {
+        status: 'adopted',
+        receiptMode: 'canonical',
+        projectionId,
+        subOperationId,
+        body,
+      };
+    }
+    const legacyReceiptCount = legacyReceipts.filter((matches) => matches.length === 1).length;
+    if (legacyReceiptCount === members.length) {
+      for (const member of members) {
+        reconcileTimingProjectionRowEffect(body, {
+          projectionId: member.journalProjectionId,
+          subOperationId: member.journalSubOperationId,
+          row,
+        });
+      }
+      return {
+        status: 'adopted',
+        receiptMode: 'legacy',
+        projectionId,
+        subOperationId,
+        body,
+      };
+    }
+    if (legacyReceiptCount !== 0) {
+      throw new Error('legacy collision receipt set is incomplete');
+    }
+    const canonical = reconcileTimingProjectionRowEffect(body, {
+      projectionId,
+      subOperationId,
+      row,
+    });
+    return {
+      status: 'missing',
+      receiptMode: 'canonical',
+      projectionId,
+      subOperationId,
+      body: canonical.body,
+    };
+  } catch (error) {
+    throw new Error(`timing queue alias collision reconciliation refused: ${error.message}`);
+  }
+}
+
+function timingQueueAliasCollisionExpected({ transitionId, members } = {}) {
+  return { transitionId, members };
+}
+
+export async function reconcileTransitionTimingQueueAliasCollisionGroupProjection({
+  collisionAuthority,
+  transitionId,
+  projectionName,
+  members,
+  projectionId,
+  subOperationId,
+  issueNumber,
+  repo,
+  row,
+  timeoutMs = 2000,
+  retries = 2,
+  lock = true,
+  projDir,
+  deps = {},
+} = {}) {
+  if (projectionName !== 'timing') {
+    throw new TypeError('timing queue alias collision projectionName must be timing');
+  }
+  const expected = timingQueueAliasCollisionExpected({ transitionId, members });
+  const verifyCollision = async () =>
+    assertTransitionTimingQueueAliasCollisionGroupAuthority(collisionAuthority, expected);
+  await verifyCollision();
+  const find = deps.findTimingComment || findTimingComment;
+  const create = deps.createTimingComment || createTimingComment;
+  const update = deps.updateTimingComment || updateTimingComment;
+  const read = deps.readTimingCommentBody || readTimingCommentBody;
+  const work = async () => {
+    await verifyCollision();
+    const existing = await find(issueNumber, repo, { timeoutMs });
+    const state = inspectTimingQueueAliasCollisionGroupReceipts(
+      existing?.body ?? buildInitialComment(),
+      { members, projectionId, subOperationId, row }
+    );
+    if (state.status === 'missing') {
+      await verifyCollision();
+      if (existing) await update(existing.id, repo, state.body, { timeoutMs });
+      else await create(issueNumber, repo, state.body, { timeoutMs });
+    }
+    await verifyCollision();
+    const result = await read({ issueNumber, repo, timeoutMs, deps });
+    if (result?.status === 'error') {
+      throw new Error('timing queue alias collision read-back is unavailable');
+    }
+    if (result?.status === 'absent') {
+      return {
+        reconciled: false,
+        projectionName: TIMING_PROJECTION_NAME,
+        projectionId,
+      };
+    }
+    const readBack = inspectTimingQueueAliasCollisionGroupReceipts(bodyOf(result), {
+      members,
+      projectionId,
+      subOperationId,
+      row,
+    });
+    return {
+      reconciled: readBack.status === 'adopted',
+      projectionName: TIMING_PROJECTION_NAME,
+      projectionId,
+      receiptMode: readBack.receiptMode,
+      memberCount: members.length,
+    };
+  };
+  if (!lock) return work();
+  return withLock(timingLockPath(issueNumber, projDir || getProjectDir()), work, {
+    timeoutMs: Math.max(timeoutMs * 3, 5_000),
+    retries,
   });
 }
 
