@@ -48,9 +48,11 @@ the fencing token before governed effects. Fleet remains a projection.
 - SQLite and HTTPS share a closed operation vocabulary. Unknown operations fail
   validation. Reuse of an idempotency key for a different canonical request
   fails with `idempotency-conflict`.
-- The reviewed file inventory has 77 task assignments across 76 unique paths:
-  Tasks 1-7 contain 13, 5, 17, 5, 25, 8, and 4 paths respectively;
-  `fleet-registry.mjs` intentionally appears in Tasks 3 and 6. If
+- The reviewed file inventory has 99 task assignments across 87 unique paths:
+  Tasks 1-7 contain 13, 5, 17, 5, 37, 18, and 4 paths respectively.
+  Lifecycle authority paths intentionally reappear in later tasks when the
+  same provider, session, close, or fleet boundary needs another governed
+  increment. If
   implementation discovers another required production path, update this plan
   and its inventory before editing it.
 - This child excludes event write-ahead logging, Insights projections, remote service
@@ -329,6 +331,10 @@ real Git worktree directory. Raw display text never participates in uniqueness.
 - Modify: `scripts/task-tracker/verbs/start.mjs`
 - Modify: `scripts/task-tracker/verbs/resume.mjs`
 - Modify: `scripts/task-tracker/verbs/switch.mjs`
+- Modify: `scripts/task-tracker/verbs/approve.mjs`
+- Modify: `scripts/task-tracker/verbs/plan-approve.mjs`
+- Modify: `scripts/task-tracker/verbs/review.mjs`
+- Modify: `scripts/task-tracker/verbs/close.mjs`
 - Modify: `scripts/task-tracker/session-state.mjs`
 - Modify: `scripts/task-tracker/state.mjs`
 - Modify: `scripts/task-tracker/lib/verb-preflight.mjs`
@@ -436,6 +442,16 @@ real Git worktree directory. Raw display text never participates in uniqueness.
 
 **Files:**
 
+- Modify: `packages/aitm-ledger/src/lease/port.mjs`
+- Modify: `packages/aitm-ledger/src/lease/schema.mjs`
+- Modify: `packages/aitm-ledger/src/lease/http-contract.mjs`
+- Modify: `packages/aitm-ledger/src/sqlite/migrations/001-leases.mjs`
+- Modify: `packages/aitm-ledger/src/sqlite/work-lease-store.mjs`
+- Modify: `scripts/task-tracker/lib/work-lease/provider.mjs`
+- Modify: `scripts/task-tracker/lib/work-lease/http-store.mjs`
+- Modify: `scripts/task-tracker/lib/work-lease/context.mjs`
+- Modify: `scripts/task-tracker/lib/work-lease/guard.mjs`
+- Modify: `scripts/task-tracker/session-state.mjs`
 - Modify: `scripts/task-tracker/fleet-registry.mjs`
 - Modify: `scripts/task-tracker/verbs/pause.mjs`
 - Modify: `scripts/task-tracker/verbs/stop.mjs`
