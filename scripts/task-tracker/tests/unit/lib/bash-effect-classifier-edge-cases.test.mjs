@@ -1,5 +1,5 @@
 // @story #1049
-// cspell:ignore execdir fprint nohup okdir
+// cspell:ignore cmain execdir fprint nohup okdir
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
@@ -189,6 +189,9 @@ test('unresolved commit-message sources fail closed before lease authority', asy
     'git commit --fixup=HEAD',
     'git commit --squash=HEAD',
     'git commit --template=.tmp/inspect/template.txt',
+    'git commit -t.tmp/inspect/template.txt',
+    'git commit -Cmain',
+    'git commit -cmain',
   ]) {
     const { result, calls } = await authorityCalls(command, {
       readCommitMessageFile: () => {
@@ -226,6 +229,33 @@ test('commit refs come only from message sources and still reject an actually wr
     amendedInline.calls.map((call) => call.operation),
     ['issue-attributed-commit']
   );
+
+  for (const command of [
+    'git commit -Cmain -m "[#1049] explicit override"',
+    'git commit -cmain -m "[#1049] explicit override"',
+    'git commit -t.tmp/inspect/template.txt -m "[#1049] explicit override"',
+    'git commit -am"[#1049] clustered message"',
+    'git commit -m"[#1049] attached message"',
+  ]) {
+    const explicit = await authorityCalls(command);
+    assert.equal(explicit.result.decision, 'allow', command);
+    assert.deepEqual(
+      explicit.calls.map((call) => call.operation),
+      ['issue-attributed-commit'],
+      command
+    );
+  }
+
+  let attachedFileReads = 0;
+  const attachedFile = await authorityCalls('git commit -F.tmp/inspect/message.txt', {
+    readCommitMessageFile: () => {
+      attachedFileReads += 1;
+      return '[#1050] wrong attached file';
+    },
+  });
+  assert.equal(attachedFile.result.decision, 'block');
+  assert.equal(attachedFile.result.code, 'bash-commit-binding-mismatch');
+  assert.equal(attachedFileReads, 1);
 
   const wrong = await authorityCalls('time git commit --message="[#1050] wrong"');
   assert.equal(wrong.result.decision, 'block');

@@ -656,67 +656,7 @@ function commitMessageRefs(words, commitIndex, readCommitMessageFile) {
   const messages = [];
   let unresolved = false;
   let resolved = false;
-  for (let i = commitIndex + 1; i < words.length; i++) {
-    const word = words[i];
-    if (word === '-m' || word === '--message') {
-      if (i + 1 < words.length) {
-        messages.push(words[++i]);
-        resolved = true;
-      }
-      continue;
-    }
-    if (word.startsWith('--message=')) {
-      messages.push(word.slice('--message='.length));
-      resolved = true;
-      continue;
-    }
-    if (/^-[^-]*m/.test(word)) {
-      const afterM = word.slice(word.indexOf('m') + 1);
-      if (afterM) {
-        messages.push(afterM);
-        resolved = true;
-      } else if (i + 1 < words.length) {
-        messages.push(words[++i]);
-        resolved = true;
-      }
-      continue;
-    }
-    if (
-      word === '-C' ||
-      word === '-c' ||
-      word === '--reuse-message' ||
-      word === '--reedit-message'
-    ) {
-      unresolved = true;
-      i += 1;
-      continue;
-    }
-    if (
-      /^-[Cc].+/.test(word) ||
-      word.startsWith('--reuse-message=') ||
-      word.startsWith('--reedit-message=')
-    ) {
-      unresolved = true;
-      continue;
-    }
-    if (word === '--fixup' || word === '--squash' || word === '-t' || word === '--template') {
-      unresolved = true;
-      i += 1;
-      continue;
-    }
-    if (
-      word.startsWith('--fixup=') ||
-      word.startsWith('--squash=') ||
-      word.startsWith('--template=') ||
-      (/^-t.+/.test(word) && word !== '--')
-    ) {
-      unresolved = true;
-      continue;
-    }
-    let file = null;
-    if (word === '-F' || word === '--file') file = words[++i];
-    else if (word.startsWith('--file=')) file = word.slice('--file='.length);
-    else if (/^-F.+/.test(word)) file = word.slice(2);
+  const readFileSource = (file) => {
     if (file === '-') {
       unresolved = true;
     } else if (file && readCommitMessageFile) {
@@ -729,6 +669,70 @@ function commitMessageRefs(words, commitIndex, readCommitMessageFile) {
     } else if (file) {
       unresolved = true;
     }
+  };
+  for (let i = commitIndex + 1; i < words.length; i++) {
+    const word = words[i];
+    if (word === '--message') {
+      if (i + 1 < words.length) {
+        messages.push(words[++i]);
+        resolved = true;
+      }
+      continue;
+    }
+    if (word.startsWith('--message=')) {
+      messages.push(word.slice('--message='.length));
+      resolved = true;
+      continue;
+    }
+    if (/^-[^-]+/.test(word)) {
+      const cluster = word.slice(1);
+      let consumed = false;
+      for (let offset = 0; offset < cluster.length; offset++) {
+        const option = cluster[offset];
+        if (option === 'm') {
+          const attached = cluster.slice(offset + 1);
+          if (attached) {
+            messages.push(attached);
+            resolved = true;
+          } else if (i + 1 < words.length) {
+            messages.push(words[++i]);
+            resolved = true;
+          }
+          consumed = true;
+          break;
+        }
+        if (option === 't' || option === 'F' || option === 'C' || option === 'c') {
+          const attached = cluster.slice(offset + 1);
+          const argument = attached || words[++i];
+          if (option === 'F') readFileSource(argument);
+          consumed = true;
+          break;
+        }
+      }
+      if (consumed) continue;
+    }
+    if (word === '--reuse-message' || word === '--reedit-message') {
+      i += 1;
+      continue;
+    }
+    if (word.startsWith('--reuse-message=') || word.startsWith('--reedit-message=')) {
+      continue;
+    }
+    if (word === '--fixup' || word === '--squash' || word === '--template') {
+      i += 1;
+      continue;
+    }
+    if (
+      word.startsWith('--fixup=') ||
+      word.startsWith('--squash=') ||
+      word.startsWith('--template=')
+    ) {
+      continue;
+    }
+    let file = null;
+    if (word === '--file') file = words[++i];
+    else if (word.startsWith('--file=')) file = word.slice('--file='.length);
+    readFileSource(file);
   }
   if (words.slice(commitIndex + 1).includes('--no-edit')) {
     unresolved = true;
