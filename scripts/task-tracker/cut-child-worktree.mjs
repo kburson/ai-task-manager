@@ -75,11 +75,11 @@ export async function cutChildWorktree({ issue, path, deps } = {}) {
 
 // ---- CLI wiring (real git + real gh sub-issue graph) --------------------------
 
-async function realGraphNode(issue, cfg) {
+async function realGraphNode(issue, cfg, { env } = {}) {
   const { fetchParentIssue } = await import('./lib/fetch-parent-issue.mjs');
   const { fetchEpicChildren } = await import('./lib/epic-children-gate.mjs');
-  const parent = await fetchParentIssue({ issueNumber: issue, repo: cfg.repo });
-  const children = await fetchEpicChildren({ cfg, parentEpicNumber: issue });
+  const parent = await fetchParentIssue({ issueNumber: issue, repo: cfg.repo, env });
+  const children = await fetchEpicChildren({ cfg, parentEpicNumber: issue, env });
   return { parent, children: (children || []).map((c) => Number(c.number)) };
 }
 
@@ -103,11 +103,16 @@ export async function main(argv, overrides = {}) {
     process.stderr.write('usage: cut-child-worktree.mjs <issue#> <path>\n');
     process.exit(2);
   }
-  const loadConfig =
-    overrides.loadConfig || (await import('./config.mjs')).loadConfig;
+  const loadConfig = overrides.loadConfig || (await import('./config.mjs')).loadConfig;
   const cfg = loadConfig();
   const graphNode = overrides.realGraphNode || realGraphNode;
-  let node = await graphNode(issue, cfg);
+  const baseEnv = overrides.baseEnv ?? process.env;
+  const preAuthorityEnv = buildOwnedChildEnvironment({
+    baseEnv,
+    leaseContext: undefined,
+    tokenEnv: cfg.workLease?.tokenEnv,
+  });
+  let node = await graphNode(issue, cfg, { env: preAuthorityEnv });
   const projectDir = cfg.projectDir || process.cwd();
   const runCore = overrides.runCore || cutChildWorktree;
   const {
@@ -120,11 +125,11 @@ export async function main(argv, overrides = {}) {
     deps: {
       graph: () => node,
       refreshGraph: async () => {
-        node = await graphNode(issue, cfg);
+        node = await graphNode(issue, cfg, { env: preAuthorityEnv });
       },
       git: realGit(projectDir),
       withGovernedEffect: createRuntimeGovernedEffectAdapter({ projectDir, config: cfg }),
-      baseEnv: process.env,
+      baseEnv,
       tokenEnv: cfg.workLease?.tokenEnv,
     },
   });

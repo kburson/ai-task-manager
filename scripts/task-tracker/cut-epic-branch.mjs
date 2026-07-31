@@ -77,11 +77,11 @@ export async function cutEpicBranch({ issue, deps } = {}) {
 
 // Build the one graph node the resolver needs (parent + children of `issue`),
 // pre-fetched via `gh` so the resolver itself stays synchronous.
-async function realGraphNode(issue, cfg) {
+async function realGraphNode(issue, cfg, { env } = {}) {
   const { fetchParentIssue } = await import('./lib/fetch-parent-issue.mjs');
   const { fetchEpicChildren } = await import('./lib/epic-children-gate.mjs');
-  const parent = await fetchParentIssue({ issueNumber: issue, repo: cfg.repo });
-  const children = await fetchEpicChildren({ cfg, parentEpicNumber: issue });
+  const parent = await fetchParentIssue({ issueNumber: issue, repo: cfg.repo, env });
+  const children = await fetchEpicChildren({ cfg, parentEpicNumber: issue, env });
   return { parent, children: (children || []).map((c) => Number(c.number)) };
 }
 
@@ -104,12 +104,17 @@ export async function main(argv, overrides = {}) {
     process.stderr.write('usage: cut-epic-branch.mjs <issue#>\n');
     process.exit(2);
   }
-  const loadConfig =
-    overrides.loadConfig || (await import('./config.mjs')).loadConfig;
+  const loadConfig = overrides.loadConfig || (await import('./config.mjs')).loadConfig;
   const cfg = loadConfig();
   const projectDir = cfg.projectDir || process.cwd();
   const graphNode = overrides.realGraphNode || realGraphNode;
-  let node = await graphNode(issue, cfg);
+  const baseEnv = overrides.baseEnv ?? process.env;
+  const preAuthorityEnv = buildOwnedChildEnvironment({
+    baseEnv,
+    leaseContext: undefined,
+    tokenEnv: cfg.workLease?.tokenEnv,
+  });
+  let node = await graphNode(issue, cfg, { env: preAuthorityEnv });
   // #927 — a root epic forks from trunk, so cut from the resolved trunk ref
   // (default origin/trunk) after a fetch, never from a possibly-stale local
   // `trunk`. Nested sub-epics fork from their parent epic head and ignore this.
@@ -122,7 +127,7 @@ export async function main(argv, overrides = {}) {
     deps: {
       graph: () => node,
       refreshGraph: async () => {
-        node = await graphNode(issue, cfg);
+        node = await graphNode(issue, cfg, { env: preAuthorityEnv });
       },
       git: realGit(projectDir),
       trunk,
@@ -139,13 +144,11 @@ export async function main(argv, overrides = {}) {
         };
       },
       withGovernedEffect: createRuntimeGovernedEffectAdapter({ projectDir, config: cfg }),
-      baseEnv: process.env,
+      baseEnv,
       tokenEnv: cfg.workLease?.tokenEnv,
     },
   });
-  (overrides.write || process.stdout.write.bind(process.stdout))(
-    `cut ${branch} from ${base}\n`
-  );
+  (overrides.write || process.stdout.write.bind(process.stdout))(`cut ${branch} from ${base}\n`);
 }
 
 const isMain = import.meta.url === `file://${process.argv[1]}`;

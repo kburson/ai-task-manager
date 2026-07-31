@@ -240,9 +240,24 @@ test('sync-epic stale fence blocks the selected mutating callback', async () => 
 test('sync-epic CLI main awaits the async core before printing resolved values', async () => {
   assert.equal(typeof syncEpicModule.main, 'function');
   const output = [];
+  const graphEnvs = [];
   await syncEpicModule.main(['905'], {
-    loadConfig: () => ({ repo: 'o/r', projectDir: '/proj' }),
-    realGraphNode: async () => GRAPH[905],
+    loadConfig: () => ({
+      repo: 'o/r',
+      projectDir: '/proj',
+      workLease: { tokenEnv: 'REMOTE_LEASE_BEARER' },
+    }),
+    baseEnv: {
+      KEEP_ME: 'yes',
+      AITM_LEASE_ID: 'stale',
+      AITM_FENCING_TOKEN: '7',
+      AITM_LEASE_RECEIPT: 'untrusted',
+      REMOTE_LEASE_BEARER: 'secret',
+    },
+    realGraphNode: async (_issue, _cfg, { env }) => {
+      graphEnvs.push(env);
+      return GRAPH[905];
+    },
     runCore: async () => ({
       branch: 'feature/epic/905',
       rebasedOnto: 'origin/trunk',
@@ -251,6 +266,7 @@ test('sync-epic CLI main awaits the async core before printing resolved values',
     write: (text) => output.push(text),
   });
   assert.deepEqual(output, ['synced feature/epic/905 onto origin/trunk and pushed\n']);
+  assert.deepEqual(graphEnvs, [{ KEEP_ME: 'yes' }]);
 
   const refusal = Object.assign(new Error('lease refused'), { code: 'fence-stale' });
   await assert.rejects(

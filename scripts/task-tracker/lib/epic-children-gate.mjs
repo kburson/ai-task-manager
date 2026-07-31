@@ -20,7 +20,7 @@ export function isPendingRecoveryPhase(phase) {
   return PENDING_RECOVERY_PHASES.has(phase);
 }
 
-export async function fetchEpicChildren({ cfg, parentEpicNumber, deps = {} } = {}) {
+export async function fetchEpicChildren({ cfg, parentEpicNumber, env, deps = {} } = {}) {
   if (!cfg) throw new Error('fetchEpicChildren: cfg is required');
   if (!parentEpicNumber) throw new Error('fetchEpicChildren: parentEpicNumber is required');
   const fetchSiblings = deps.fetchSiblings || defaultFetchSiblings;
@@ -28,6 +28,7 @@ export async function fetchEpicChildren({ cfg, parentEpicNumber, deps = {} } = {
     parentEpicNumber,
     repo: cfg.repo,
     projectId: cfg.projectId,
+    env,
   });
   return Array.isArray(children) ? children : [];
 }

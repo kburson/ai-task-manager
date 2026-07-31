@@ -22,6 +22,7 @@ import {
   rmSync,
   existsSync,
   readdirSync,
+  statSync,
 } from 'node:fs';
 import { projectScratchDir } from '../../../lib/scratch-dir.mjs';
 import path from 'node:path';
@@ -308,6 +309,12 @@ function readCalls(callsLog) {
     assert.equal(created.length, 1, 'should create exactly one parent issue');
     const addSubs = calls.filter((c) => /addSubIssue/.test(c.stdinBody || ''));
     assert.equal(addSubs.length, 3, `expected 3 addSubIssue mutations; saw ${addSubs.length}`);
+    const classificationCall = calls.find((call) =>
+      /i0: issue\(number:\$n0\)/.test(call.stdinBody || '')
+    );
+    assert.deepEqual(classificationCall?.env, {
+      KEEP_ME: 'yes',
+    });
     const ownedCalls = calls.filter(
       (call) => !/i0: issue\(number:\$n0\)/.test(call.stdinBody || '')
     );
@@ -486,9 +493,7 @@ function readCalls(callsLog) {
 // ─── Test 8 (#1049): production chain Nth-stale + durable retry ───────────────
 {
   const { runEnsureWaveParent } = await import(new URL(`file://${HELPER}`).href);
-  const { parseTimingProjectionReceipts } = await import(
-    new URL(`file://${TIMING_HELPER}`).href
-  );
+  const { parseTimingProjectionReceipts } = await import(new URL(`file://${TIMING_HELPER}`).href);
   const sandbox = mkdtempSync(path.join(projectScratchDir('test'), 'tt-ewp-8-'));
   const cfg = {
     repo: 'test-owner/test-repo',
@@ -600,7 +605,7 @@ function readCalls(callsLog) {
       },
     };
     const deps = {
-      projectDir: sandbox,
+      projectDir: mkdtempSync(path.join(sandbox, 'fixture-')),
       env: {},
       classify: async () => ({ kind: 'all-solo', solos: [10, 11] }),
       runGql,
@@ -733,6 +738,35 @@ function readCalls(callsLog) {
     /JSON|parse|malformed/i
   );
   assert.equal(creates, 0, 'lookup outage cannot be interpreted as a verified no-match');
+  assert.equal(
+    await findExistingParentByWaveId({
+      repo: 'test-owner/test-repo',
+      waveIdValue: '10-11.deadbeef00',
+      execFile: () =>
+        JSON.stringify([
+          {
+            number: 123,
+            body: '<!-- wave-id: 10-11.deadbeef00-extra -->',
+          },
+        ]),
+    }),
+    null,
+    'indexed reuse requires an exact marker line, not a prefix match'
+  );
+  assert.equal(
+    await findExistingParentByWaveId({
+      repo: 'test-owner/test-repo',
+      waveIdValue: '10-11.deadbeef00',
+      execFile: () =>
+        JSON.stringify([
+          {
+            number: 124,
+            body: 'prelude\n<!-- wave-id: 10-11.deadbeef00 -->\nepilogue',
+          },
+        ]),
+    }),
+    124
+  );
   console.log('test 9 passed: wave-parent lookup outages fail closed');
 }
 
@@ -818,16 +852,16 @@ async function runDurableCreateRecovery({ partialIssueNumber, authoritativeIssue
     const journalDir = path.join(sandbox, '.db', 'aitm', 'wave-parent-create-intents');
     const journalFiles = readdirSync(journalDir);
     assert.equal(journalFiles.length, 1, 'unknown outcome is persisted outside purgeable scratch');
-    const durableIntent = JSON.parse(
-      readFileSync(path.join(journalDir, journalFiles[0]), 'utf8')
-    );
+    const durableIntent = JSON.parse(readFileSync(path.join(journalDir, journalFiles[0]), 'utf8'));
     assert.deepEqual(Object.keys(durableIntent).sort(), [
       'issueNumber',
       'requestDigest',
+      'status',
       'version',
       'waveIdValue',
     ]);
     assert.match(durableIntent.requestDigest, /^[a-f0-9]{64}$/);
+    assert.equal(durableIntent.status, 'pending');
     assert.equal(durableIntent.issueNumber, partialIssueNumber || null);
     assert.ok(!JSON.stringify(durableIntent).includes('REMOTE_LEASE_BEARER'));
 
@@ -849,21 +883,40 @@ async function runDurableCreateRecovery({ partialIssueNumber, authoritativeIssue
     assert.equal(indexedSearchCalls, 2, 'indexed search remains empty on both invocations');
     assert.equal(reconcileCalls, 1, 'the exact recovered parent is reconciled once');
     assert.match(createdBody, /<!-- wave-id: 10-11\.5ef68ca70c -->/);
-    assert.deepEqual(
-      existsSync(journalDir) ? readdirSync(journalDir) : [],
-      [],
-      'completed reconciliation removes the durable create receipt'
+    const completedFiles = readdirSync(journalDir);
+    assert.equal(completedFiles.length, 1, 'completed reconciliation retains one tombstone');
+    assert.ok(
+      !completedFiles.some((name) => name.endsWith('.tmp')),
+      'no temporary residue remains'
     );
+    const completedReceipt = JSON.parse(
+      readFileSync(path.join(journalDir, completedFiles[0]), 'utf8')
+    );
+    assert.equal(statSync(path.join(journalDir, completedFiles[0])).mode & 0o777, 0o600);
+    assert.equal(completedReceipt.status, 'completed');
+    assert.equal(completedReceipt.issueNumber, recoveredNumber);
+    assert.deepEqual(Object.keys(completedReceipt).sort(), [
+      'issueNumber',
+      'requestDigest',
+      'status',
+      'version',
+      'waveIdValue',
+    ]);
+    assert.ok(!JSON.stringify(completedReceipt).includes('REMOTE_LEASE_BEARER'));
   } finally {
     rmSync(sandbox, { recursive: true, force: true });
   }
 }
 
 await runDurableCreateRecovery({ partialIssueNumber: 1000 });
-console.log('test 10 passed: partial create receipt recovers exact parent without duplicate create');
+console.log(
+  'test 10 passed: partial create receipt recovers exact parent without duplicate create'
+);
 
 await runDurableCreateRecovery({ authoritativeIssueNumber: 1001 });
-console.log('test 11 passed: empty-response create recovers via authoritative listing without duplicate');
+console.log(
+  'test 11 passed: empty-response create recovers via authoritative listing without duplicate'
+);
 
 await runDurableCreateRecovery({});
 console.log('test 12 passed: unresolved authoritative listing refuses without duplicate create');
@@ -907,4 +960,117 @@ console.log('test 12 passed: unresolved authoritative listing refuses without du
   assert.equal(parent, 1002);
   assert.equal(pages, 2);
   console.log('test 13 passed: authoritative recovery exhausts pagination before deciding');
+}
+
+{
+  const { runEnsureWaveParent } = await import(new URL(`file://${HELPER}`).href);
+  const sandbox = mkdtempSync(path.join(projectScratchDir('test'), 'tt-ewp-race-'));
+  const cfg = {
+    repo: 'test-owner/test-repo',
+    projectId: 'PVT_test',
+    workLease: { tokenEnv: 'REMOTE_LEASE_BEARER' },
+  };
+  let searchCalls = 0;
+  let createCalls = 0;
+  let releaseSearches;
+  let releaseDelayedB;
+  const bothSearching = new Promise((resolve) => {
+    releaseSearches = resolve;
+  });
+  const aCompleted = new Promise((resolve) => {
+    releaseDelayedB = resolve;
+  });
+  const bodies = new Map();
+  const withGovernedEffect = async (_options, callback) =>
+    callback({
+      leaseContext: {
+        projectId: cfg.projectId,
+        leaseId: 'lease-controller',
+        fencingToken: '42',
+        worktreeId: 'wt-controller',
+      },
+      reverify: async () => {},
+    });
+  const deps = {
+    projectDir: sandbox,
+    env: {},
+    classify: async () => ({ kind: 'all-solo', solos: [10, 11] }),
+    withGovernedEffect,
+    findExistingParentByWaveId: async () => {
+      searchCalls += 1;
+      const thisSearch = searchCalls;
+      if (searchCalls === 2) releaseSearches();
+      await bothSearching;
+      if (thisSearch === 2) await aCompleted;
+      return null;
+    },
+    createGovernedInternalIssue: async ({ bodyContent }) => {
+      createCalls += 1;
+      const number = 1099 + createCalls;
+      bodies.set(number, bodyContent);
+      return number;
+    },
+    fetchWaveParentBody: async ({ issueNumber }) => bodies.get(issueNumber),
+    reconcileGovernedInternalIssue: async ({ issueNumber }) => ({ issueNumber }),
+    getIssueNodeId: async ({ issueNumber }) => `ISS_${issueNumber}`,
+    addSubIssue: async () => {},
+    ensureParentEpicTitle: async () => {},
+    postTimingEvent: async () => {},
+  };
+  const args = ['--children', '10,11', '--purpose', 'delayed race', '--anchor', '900'];
+  try {
+    const aPromise = runEnsureWaveParent({ rawArgs: args, cfg, deps });
+    const bPromise = runEnsureWaveParent({ rawArgs: args, cfg, deps });
+    const a = await aPromise;
+    releaseDelayedB();
+    const b = await bPromise;
+    assert.equal(a.parentNumber, 1100);
+    assert.equal(b.parentNumber, 1100);
+    assert.equal(createCalls, 1, 'delayed contender must reuse the completed create receipt');
+    const journalDir = path.join(sandbox, '.db', 'aitm', 'wave-parent-create-intents');
+    const files = readdirSync(journalDir);
+    assert.equal(files.length, 1);
+    assert.ok(!files.some((name) => name.endsWith('.tmp')));
+    const receipt = JSON.parse(readFileSync(path.join(journalDir, files[0]), 'utf8'));
+    assert.equal(statSync(path.join(journalDir, files[0])).mode & 0o777, 0o600);
+    assert.equal(receipt.status, 'completed');
+    assert.equal(receipt.issueNumber, 1100);
+  } finally {
+    releaseDelayedB();
+    rmSync(sandbox, { recursive: true, force: true });
+  }
+  console.log('test 14 passed: delayed concurrent contender reuses completed receipt');
+}
+
+{
+  const sandbox = mkdtempSync(path.join(projectScratchDir('test'), 'tt-ewp-process-race-'));
+  const journalPath = path.join(sandbox, 'intent.json');
+  const helperUrl = new URL(`file://${JOURNAL_HELPER}`).href;
+  const runner = `
+    import { claimWaveCreateIntent } from ${JSON.stringify(helperUrl)};
+    const result = claimWaveCreateIntent(${JSON.stringify(journalPath)}, {
+      waveIdValue: '10-11.5ef68ca70c',
+      requestDigest: '${'a'.repeat(64)}',
+    });
+    process.stdout.write(JSON.stringify({ claimed: result.claimed }));
+  `;
+  try {
+    const results = await Promise.all(
+      Array.from({ length: 16 }, () =>
+        pexec('node', ['--input-type=module', '--eval', runner], { timeout: 30000 })
+      )
+    );
+    const claims = results.map(({ stdout }) => JSON.parse(stdout).claimed);
+    assert.equal(claims.filter(Boolean).length, 1, 'exactly one process claims create authority');
+    assert.equal(claims.filter((claimed) => !claimed).length, 15);
+    assert.equal(statSync(journalPath).mode & 0o777, 0o600);
+    assert.deepEqual(
+      readdirSync(sandbox),
+      ['intent.json'],
+      '16-process contention leaves one journal and no temporary residue'
+    );
+  } finally {
+    rmSync(sandbox, { recursive: true, force: true });
+  }
+  console.log('test 15 passed: 16-process journal race admits exactly one create claimant');
 }

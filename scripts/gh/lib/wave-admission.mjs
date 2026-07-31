@@ -77,7 +77,7 @@ export function normalizeCloseReason(sub) {
 // each sub-issue's project status (kanban single-select) and Sequence number.
 //
 // Throws if `repo` or `projectId` is missing — wave-admission is fail-closed.
-export async function defaultFetchSiblings({ parentEpicNumber, repo, projectId } = {}) {
+export async function defaultFetchSiblings({ parentEpicNumber, repo, projectId, env } = {}) {
   if (!repo) throw new Error('wave-admission: repo is required');
   if (!projectId) throw new Error('wave-admission: projectId is required');
   const { owner, repoName } = splitRepo(repo);
@@ -114,7 +114,8 @@ export async function defaultFetchSiblings({ parentEpicNumber, repo, projectId }
         }
       }
     }`,
-    { owner, repo: repoName, issue: Number(parentEpicNumber) }
+    { owner, repo: repoName, issue: Number(parentEpicNumber) },
+    { env }
   );
   return mapSubIssueNodes(data?.repository?.issue?.subIssues?.nodes, projectId);
 }

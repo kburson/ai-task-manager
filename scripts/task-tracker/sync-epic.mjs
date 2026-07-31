@@ -111,11 +111,11 @@ export async function syncEpic({ epic, deps } = {}) {
 
 // ---- CLI wiring (real git + real gh sub-issue graph) --------------------------
 
-async function realGraphNode(issue, cfg) {
+async function realGraphNode(issue, cfg, { env } = {}) {
   const { fetchParentIssue } = await import('./lib/fetch-parent-issue.mjs');
   const { fetchEpicChildren } = await import('./lib/epic-children-gate.mjs');
-  const parent = await fetchParentIssue({ issueNumber: issue, repo: cfg.repo });
-  const children = await fetchEpicChildren({ cfg, parentEpicNumber: issue });
+  const parent = await fetchParentIssue({ issueNumber: issue, repo: cfg.repo, env });
+  const children = await fetchEpicChildren({ cfg, parentEpicNumber: issue, env });
   return { parent, children: (children || []).map((c) => Number(c.number)) };
 }
 
@@ -138,12 +138,17 @@ export async function main(argv, overrides = {}) {
     process.stderr.write('usage: sync-epic.mjs <epic#>\n');
     process.exit(2);
   }
-  const loadConfig =
-    overrides.loadConfig || (await import('./config.mjs')).loadConfig;
+  const loadConfig = overrides.loadConfig || (await import('./config.mjs')).loadConfig;
   const cfg = loadConfig();
   const projectDir = cfg.projectDir || process.cwd();
   const graphNode = overrides.realGraphNode || realGraphNode;
-  let node = await graphNode(epic, cfg);
+  const baseEnv = overrides.baseEnv ?? process.env;
+  const preAuthorityEnv = buildOwnedChildEnvironment({
+    baseEnv,
+    leaseContext: undefined,
+    tokenEnv: cfg.workLease?.tokenEnv,
+  });
+  let node = await graphNode(epic, cfg, { env: preAuthorityEnv });
   // #927 — fetch, then resolve the one trunk ref both the ancestor-check and the
   // rebase must agree on. Injecting it makes local `trunk` cosmetic.
   const { resolveTrunkRef, fetchTrunk } = await import('./lib/trunk-ref.mjs');
@@ -155,7 +160,7 @@ export async function main(argv, overrides = {}) {
     deps: {
       graph: () => node,
       refreshGraph: async () => {
-        node = await graphNode(epic, cfg);
+        node = await graphNode(epic, cfg, { env: preAuthorityEnv });
       },
       git: realGit(projectDir),
       trunk,
@@ -173,7 +178,7 @@ export async function main(argv, overrides = {}) {
       },
       noPushToOrigin: !!cfg.noPushToOrigin,
       withGovernedEffect: createRuntimeGovernedEffectAdapter({ projectDir, config: cfg }),
-      baseEnv: process.env,
+      baseEnv,
       tokenEnv: cfg.workLease?.tokenEnv,
     },
   });

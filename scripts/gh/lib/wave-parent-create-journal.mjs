@@ -32,13 +32,17 @@ export function waveCreateJournalPath(projectDir, repo, waveIdValue) {
 }
 
 function validateIntent(intent, { waveIdValue, requestDigest }) {
+  const safeKeys = ['issueNumber', 'requestDigest', 'status', 'version', 'waveIdValue'];
   if (
     !intent ||
+    JSON.stringify(Object.keys(intent).sort()) !== JSON.stringify(safeKeys) ||
     intent.version !== 1 ||
     intent.waveIdValue !== waveIdValue ||
     intent.requestDigest !== requestDigest ||
+    !['pending', 'completed'].includes(intent.status) ||
     (![null, undefined].includes(intent.issueNumber) &&
-      (!Number.isInteger(intent.issueNumber) || intent.issueNumber <= 0))
+      (!Number.isInteger(intent.issueNumber) || intent.issueNumber <= 0)) ||
+    (intent.status === 'completed' && !intent.issueNumber)
   ) {
     throw new Error('ensure-wave-parent: durable create intent does not match this wave request');
   }
@@ -73,20 +77,24 @@ function writeJsonFile(filePath, value, { exclusive = false } = {}) {
   }
 }
 
-export function createWaveCreateIntent(filePath, expected) {
+export function claimWaveCreateIntent(filePath, expected) {
   const intent = {
     version: 1,
     waveIdValue: expected.waveIdValue,
     requestDigest: expected.requestDigest,
+    status: 'pending',
     issueNumber: null,
   };
   try {
     writeJsonFile(filePath, intent, { exclusive: true });
   } catch (error) {
     if (error?.code !== 'EEXIST') throw error;
-    throw new Error('ensure-wave-parent: another create attempt already owns this wave intent');
+    return {
+      claimed: false,
+      intent: readWaveCreateIntent(filePath, expected),
+    };
   }
-  return intent;
+  return { claimed: true, intent };
 }
 
 export function persistWaveCreateReceipt(filePath, intent, issueNumber) {
@@ -94,14 +102,30 @@ export function persistWaveCreateReceipt(filePath, intent, issueNumber) {
   if (!Number.isInteger(normalized) || normalized <= 0) {
     throw new Error('ensure-wave-parent: create receipt issue number is invalid');
   }
-  writeJsonFile(filePath, { ...intent, issueNumber: normalized });
+  writeJsonFile(filePath, {
+    version: intent.version,
+    waveIdValue: intent.waveIdValue,
+    requestDigest: intent.requestDigest,
+    status: 'pending',
+    issueNumber: normalized,
+  });
 }
 
-export function clearWaveCreateJournal(filePath) {
-  rmSync(filePath, { force: true });
+export function completeWaveCreateReceipt(filePath, intent, issueNumber) {
+  const normalized = Number(issueNumber);
+  if (!Number.isInteger(normalized) || normalized <= 0) {
+    throw new Error('ensure-wave-parent: completed receipt issue number is invalid');
+  }
+  writeJsonFile(filePath, {
+    version: intent.version,
+    waveIdValue: intent.waveIdValue,
+    requestDigest: intent.requestDigest,
+    status: 'completed',
+    issueNumber: normalized,
+  });
 }
 
-function exactWaveMarkerCount(body, waveIdValue) {
+export function exactWaveMarkerCount(body, waveIdValue) {
   const marker = `<!-- wave-id: ${waveIdValue} -->`;
   return String(body || '')
     .split('\n')
@@ -116,22 +140,19 @@ export function assertExactWaveMarker(body, waveIdValue, issueNumber) {
   }
 }
 
-export async function fetchWaveParentBody({
-  repo,
-  issueNumber,
-  env,
-  execFile = execFileSync,
-}) {
+export async function fetchWaveParentBody({ repo, issueNumber, env, execFile = execFileSync }) {
   let stdout;
   try {
-    stdout = execFile(
-      'gh',
-      ['issue', 'view', String(issueNumber), '-R', repo, '--json', 'body'],
-      { encoding: 'utf8', timeout: GH_API_TIMEOUT_MS, env }
-    );
+    stdout = execFile('gh', ['issue', 'view', String(issueNumber), '-R', repo, '--json', 'body'], {
+      encoding: 'utf8',
+      timeout: GH_API_TIMEOUT_MS,
+      env,
+    });
   } catch (error) {
     if (isGovernedAuthorityError(error)) throw error;
-    throw new Error(`ensure-wave-parent: failed to verify recovered #${issueNumber}: ${error.message}`);
+    throw new Error(
+      `ensure-wave-parent: failed to verify recovered #${issueNumber}: ${error.message}`
+    );
   }
   try {
     return JSON.parse(stdout).body;
@@ -142,12 +163,7 @@ export async function fetchWaveParentBody({
   }
 }
 
-export async function findAuthoritativeParentByWaveId({
-  repo,
-  waveIdValue,
-  runGql = gql,
-  env,
-}) {
+export async function findAuthoritativeParentByWaveId({ repo, waveIdValue, runGql = gql, env }) {
   const { owner, repoName } = splitRepo(repo);
   const matches = [];
   let after = null;
@@ -166,7 +182,9 @@ export async function findAuthoritativeParentByWaveId({
       if (exactWaveMarkerCount(issue?.body, waveIdValue) === 1) {
         const issueNumber = Number(issue.number);
         if (!Number.isInteger(issueNumber) || issueNumber <= 0) {
-          throw new Error('ensure-wave-parent: authoritative issue listing has invalid issue number');
+          throw new Error(
+            'ensure-wave-parent: authoritative issue listing has invalid issue number'
+          );
         }
         matches.push(issueNumber);
       }

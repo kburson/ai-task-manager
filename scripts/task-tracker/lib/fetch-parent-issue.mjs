@@ -11,7 +11,7 @@
 
 import { splitRepo, gql } from '../../gh/lib/github-projects.mjs';
 
-export async function fetchParentIssue({ issueNumber, repo }) {
+export async function fetchParentIssue({ issueNumber, repo, env }) {
   const { owner, repoName } = splitRepo(repo);
   try {
     const data = await gql(
@@ -21,7 +21,8 @@ export async function fetchParentIssue({ issueNumber, repo }) {
           issue(number: $issue) { parent { number } }
         }
       }`,
-      { owner, repo: repoName, issue: Number(issueNumber) }
+      { owner, repo: repoName, issue: Number(issueNumber) },
+      { env }
     );
     return data?.repository?.issue?.parent?.number ?? null;
   } catch {
