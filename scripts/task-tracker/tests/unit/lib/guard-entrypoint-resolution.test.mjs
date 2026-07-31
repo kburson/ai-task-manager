@@ -321,6 +321,54 @@ test('#1049: exact installed Bash bootstrap blocks an unbound inline Node source
   }
 });
 
+test('#1049: exact installed Bash bootstrap blocks descriptor and outside-path effects without binding', () => {
+  const dir = installedGuardSandbox();
+  try {
+    mkdirSync(resolve(dir, 'src'), { recursive: true });
+    for (const [command, reason] of [
+      ['printf x 2> src/fd-write.mjs', /no active issue is bound/],
+      ['printf x 2> "/tmp/quoted-fd-write.mjs"', /outside allowed scope/],
+    ]) {
+      const result = runBootstrap(
+        'bash-guard',
+        dir,
+        JSON.stringify({ tool_name: 'Bash', tool_input: { command } })
+      );
+      assert.equal(result.status, 0, result.stderr);
+      const decision = JSON.parse(result.stdout);
+      assert.equal(decision.decision, 'block', command);
+      assert.match(decision.reason, reason, command);
+    }
+    assert.equal(existsSync(resolve(dir, 'src', 'fd-write.mjs')), false);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('#1049: exact installed Bash bootstrap blocks a stale process-substitution effect', () => {
+  const dir = installedGuardSandbox();
+  try {
+    mkdirSync(resolve(dir, 'src'), { recursive: true });
+    const env = installStaleLease(dir, { sessionId: 'codex-process-substitution-stale' });
+    const result = runBootstrap(
+      'bash-guard',
+      dir,
+      JSON.stringify({
+        tool_name: 'Bash',
+        tool_input: { command: 'cat <(touch src/process-write.mjs)' },
+      }),
+      env
+    );
+    assert.equal(result.status, 0, result.stderr);
+    const decision = JSON.parse(result.stdout);
+    assert.equal(decision.decision, 'block');
+    assert.match(decision.reason, /fence-stale/);
+    assert.equal(existsSync(resolve(dir, 'src', 'process-write.mjs')), false);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
 test('#1049: exact installed source and activity bootstraps pass malformed payloads', () => {
   const dir = installedGuardSandbox();
   try {

@@ -16,13 +16,15 @@
 // Pure module: classifiers do no I/O. `loadPolicy` reads the filesystem once
 // per call and falls back to defaults on missing/invalid file.
 //
-// Bash command-target extraction (redirect / `tee` / heredoc / `touch|mkdir|rm`)
-// duplicates `bash-guard.mjs` lines 80-105. Epic W2 (#67) will lift those
-// helpers into a shared module and re-import here; the patterns are inlined
-// verbatim until then.
+// Bash command-target extraction is shared with the PreToolUse/PostToolUse
+// effect classifier so activity classification and lease governance cannot
+// diverge on shell grammar.
 
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
+import { extractWriteTargets } from './lib/bash-effect-classifier.mjs';
+
+export { extractWriteTargets };
 
 // ---------------------------------------------------------------------------
 // Defaults
@@ -220,133 +222,6 @@ function startsWithCommand(command, pattern) {
   const next = trimmed.charAt(pattern.length);
   // Boundary: end-of-string, whitespace, semicolon, ampersand, pipe.
   return next === '' || /\s|;|&|\|/.test(next);
-}
-
-// Tokenize only the shell surface needed by write-target extraction. Quote
-// contents remain one word so a quoted target is visible, while metacharacters
-// and command names inside quoted prose never become operators/commands.
-function shellWriteTokens(command) {
-  const tokens = [];
-  let word = '';
-  let wordStart = -1;
-  let i = 0;
-  const flushWord = () => {
-    if (wordStart === -1) return;
-    tokens.push({ type: 'word', value: word, start: wordStart, end: i });
-    word = '';
-    wordStart = -1;
-  };
-
-  while (i < command.length) {
-    const c = command[i];
-    if (/\s/.test(c)) {
-      flushWord();
-      i += 1;
-      continue;
-    }
-    if (c === "'" || c === '"') {
-      const quote = c;
-      if (wordStart === -1) wordStart = i;
-      i += 1;
-      while (i < command.length) {
-        if (command[i] === quote) {
-          i += 1;
-          break;
-        }
-        if (quote === '"' && command[i] === '\\' && i + 1 < command.length) {
-          word += command[i + 1];
-          i += 2;
-          continue;
-        }
-        word += command[i];
-        i += 1;
-      }
-      continue;
-    }
-    if ('><;|&'.includes(c)) {
-      flushWord();
-      let value = c;
-      if (command[i + 1] === c && ['>', '|', '&'].includes(c)) {
-        value += c;
-        i += 2;
-      } else if (c === '>' && command[i + 1] === '&') {
-        value += '&';
-        i += 2;
-      } else {
-        i += 1;
-      }
-      const previous = command[i - value.length - 1];
-      const fdRedirect = c === '>' && previous != null && /[0-9&]/.test(previous);
-      tokens.push({ type: 'operator', value: fdRedirect ? `fd${value}` : value });
-      continue;
-    }
-    if (wordStart === -1) wordStart = i;
-    if (c === '\\' && i + 1 < command.length) {
-      word += command[i + 1];
-      i += 2;
-      continue;
-    }
-    word += c;
-    i += 1;
-  }
-  flushWord();
-  return tokens;
-}
-
-export function extractWriteTargets(command) {
-  const targets = new Set();
-  const tokens = shellWriteTokens(String(command || ''));
-  let commandStart = true;
-  let commandWrapper = false;
-
-  for (let i = 0; i < tokens.length; i++) {
-    const token = tokens[i];
-    if (token.type === 'operator' && ['>', '>>'].includes(token.value)) {
-      const target = tokens[i + 1];
-      if (target?.type === 'word' && target.value) targets.add(target.value);
-      continue;
-    }
-    if (token.type === 'operator') {
-      commandStart = true;
-      commandWrapper = false;
-      continue;
-    }
-    if (token.type !== 'word' || !commandStart) continue;
-    if (/^[A-Za-z_][A-Za-z0-9_]*=/.test(token.value)) continue;
-    if (['env', 'command'].includes(token.value)) {
-      commandWrapper = true;
-      continue;
-    }
-    if (commandWrapper && token.value.startsWith('-')) continue;
-    commandStart = false;
-    commandWrapper = false;
-
-    if (['tee', 'touch', 'mkdir', 'rmdir', 'rm', 'cp', 'mv', 'install'].includes(token.value)) {
-      for (let cursor = i + 1; cursor < tokens.length; cursor++) {
-        const operand = tokens[cursor];
-        if (operand.type === 'operator') break;
-        if (operand.type !== 'word' || !operand.value || operand.value.startsWith('-')) continue;
-        targets.add(operand.value);
-      }
-    }
-
-    if (['git', 'diff', 'sort'].includes(token.value)) {
-      for (let cursor = i + 1; cursor < tokens.length; cursor++) {
-        const operand = tokens[cursor];
-        if (operand.type === 'operator') break;
-        if (operand.type !== 'word') continue;
-        if (operand.value === '-o' || operand.value === '--output') {
-          const target = tokens[cursor + 1];
-          if (target?.type === 'word' && target.value) targets.add(target.value);
-          continue;
-        }
-        const attached = operand.value.match(/^(?:--output=|-o)(.+)$/);
-        if (attached?.[1]) targets.add(attached[1]);
-      }
-    }
-  }
-
-  return [...targets];
 }
 
 export function classifyBash(command, policy = DEFAULT_POLICY) {

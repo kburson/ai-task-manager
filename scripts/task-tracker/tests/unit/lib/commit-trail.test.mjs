@@ -65,6 +65,24 @@ import { defaultIsReachable } from '../../../commit-trail-handler.mjs';
   assert.equal(r.isCommit, true);
 }
 
+// Shared PreToolUse/PostToolUse wrapper and process-substitution grammar
+{
+  for (const command of [
+    'env -u FOO git commit -m x',
+    'env sh -lc "git commit -m x"',
+    'exec git commit -m x',
+    'time git commit -m x',
+    'nice -n 5 git commit -m x',
+    '{ git commit -m x; }',
+    '! git commit -m x',
+    'if true; then git commit -m x; fi',
+    'cat <(git commit -m x)',
+    'git --git-dir=.git commit -m x',
+  ]) {
+    assert.equal(detectGitCommit(command).isCommit, true, command);
+  }
+}
+
 // Empty / non-string
 {
   assert.equal(detectGitCommit('').isCommit, false);
