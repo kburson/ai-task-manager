@@ -1141,8 +1141,22 @@ function inspectTimingQueueAliasCollisionGroupReceipts(
   }
 }
 
-function timingQueueAliasCollisionExpected({ transitionId, members } = {}) {
-  return { transitionId, members };
+function timingQueueAliasCollisionExpected({
+  transitionId,
+  members,
+  issueNumber,
+  row,
+  projectionId,
+  subOperationId,
+} = {}) {
+  return {
+    transitionId,
+    members,
+    issueId: normalizeTimingIssueNumber(issueNumber),
+    row,
+    deliveryProjectionId: projectionId,
+    deliverySubOperationId: subOperationId,
+  };
 }
 
 export async function reconcileTransitionTimingQueueAliasCollisionGroupProjection({
@@ -1164,7 +1178,14 @@ export async function reconcileTransitionTimingQueueAliasCollisionGroupProjectio
   if (projectionName !== 'timing') {
     throw new TypeError('timing queue alias collision projectionName must be timing');
   }
-  const expected = timingQueueAliasCollisionExpected({ transitionId, members });
+  const expected = timingQueueAliasCollisionExpected({
+    transitionId,
+    members,
+    issueNumber,
+    row,
+    projectionId,
+    subOperationId,
+  });
   const verifyCollision = async () =>
     assertTransitionTimingQueueAliasCollisionGroupAuthority(collisionAuthority, expected);
   await verifyCollision();

@@ -674,6 +674,30 @@ test('ordinary callers cannot forge or alter the sealed collision member list', 
         }),
       (error) => isTransitionProjectionAuthorityError(error)
     );
+    const zeroEffectDeps = {
+      findTimingComment: async () => assert.fail('coordinate drift must precede remote read'),
+      createTimingComment: async () => assert.fail('coordinate drift must precede remote create'),
+      updateTimingComment: async () => assert.fail('coordinate drift must precede remote update'),
+      readTimingCommentBody: async () =>
+        assert.fail('coordinate drift must precede remote read-back'),
+    };
+    for (const coordinates of [
+      { issueNumber: '1051' },
+      { issueNumber: '9999' },
+      { row: `${call.row} ` },
+      { projectionId: `${call.projectionId}:attacker` },
+      { subOperationId: `${call.subOperationId}:attacker` },
+    ]) {
+      await assert.rejects(
+        () =>
+          timingGh.reconcileTransitionTimingQueueAliasCollisionGroupProjection({
+            ...call,
+            ...coordinates,
+            deps: zeroEffectDeps,
+          }),
+        (error) => isTransitionProjectionAuthorityError(error)
+      );
+    }
     assert.equal(remoteState.writes(), 0);
   } finally {
     rmSync(dir, { recursive: true, force: true });

@@ -338,7 +338,7 @@ export function deriveTransitionTimingQueueAliasCollisionGroupAuthority({
 
 export function assertTransitionTimingQueueAliasCollisionGroupAuthority(
   proof,
-  { transitionId, members } = {}
+  { transitionId, members, issueId, row, deliveryProjectionId, deliverySubOperationId } = {}
 ) {
   const actual = timingQueueAliasCollisionGroupProofs.get(proof);
   if (!actual) {
@@ -346,6 +346,23 @@ export function assertTransitionTimingQueueAliasCollisionGroupAuthority(
   }
   if (!Array.isArray(members) || members.length !== actual.length) {
     throw refusal('timing queue alias collision group member list does not match');
+  }
+  const effect = {
+    issueId: canonicalIssue(issueId, 'expected timing queue collision issue'),
+    row: requiredString(row, 'expected timing queue collision row'),
+    deliveryProjectionId: requiredString(
+      deliveryProjectionId,
+      'expected timing queue collision deliveryProjectionId'
+    ),
+    deliverySubOperationId: requiredString(
+      deliverySubOperationId,
+      'expected timing queue collision deliverySubOperationId'
+    ),
+  };
+  for (const [field, value] of Object.entries(effect)) {
+    if (actual[0][field] !== value) {
+      throw refusal(`timing queue alias collision effect ${field} does not match`);
+    }
   }
   for (const [index, member] of members.entries()) {
     const expected = collisionGroupMemberExpected(
