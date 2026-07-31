@@ -298,20 +298,30 @@ function makeCloseCtx({ statePath, dir, rest, boardState, sequence }) {
     pexec: async () => ({ stdout: '{}', stderr: '' }),
     drainQueueIfAny: async () => {},
     flushAndForgetQueueFor: async () => ({ delivered: 0, discarded: 0 }),
-    safePostTiming: async (_target, row) => {
-      sequence.push({ kind: 'row', event: eventOf(row) });
-    },
+    safePostTiming: async (_target, row, authority = {}) =>
+      authority.withGovernedEffect(
+        { issueId: '999', operation: authority.operation, heartbeat: true },
+        async () => sequence.push({ kind: 'row', event: eventOf(row) })
+      ),
     runMoveState: async () => ({ ok: true, benign: false }),
-    runMoveStateDone: async () => {
-      sequence.push({ kind: 'move-done' });
-      return { ok: true, benign: false };
-    },
+    runMoveStateDone: async (_target, authority = {}) =>
+      authority.withGovernedEffect(
+        { issueId: '999', operation: authority.operation, heartbeat: true },
+        async () => {
+          sequence.push({ kind: 'move-done' });
+          return { ok: true, benign: false };
+        }
+      ),
     runLogIssueTime: async () => {},
     fetchSubIssues: async () => [],
     getIssueBoardState: async () => boardState,
     getIssueClosedState: async () => false,
     uncheckedPreCloseCheckboxes: () => [],
+    tickLifecycleOnClose: async () => ({ ok: true }),
     nowIso: () => new Date().toISOString(),
+    withIssueLock: async (_options, callback) => callback(),
+    withGovernedEffect: async (_options, callback) =>
+      callback({ leaseContext: null, reverify: async () => {} }),
   };
 }
 

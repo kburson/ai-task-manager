@@ -67,6 +67,9 @@ async function runConverge({ boardState, reconcileSpy }) {
       getIssueClosedState: async () => true,
     },
     tickLifecycleOnClose: reconcileSpy,
+    withIssueLock: async (_options, callback) => callback(),
+    withGovernedEffect: async (_options, callback) =>
+      callback({ leaseContext: {}, reverify: async () => {} }),
   };
   const prevSkip = process.env.TT_SKIP_DIRTY_CHECK;
   process.env.TT_SKIP_DIRTY_CHECK = '1';

@@ -88,6 +88,9 @@ async function runConverge({ issueBody, timingBody }) {
     },
     readTimingCommentBody: async () => ({ status: 'found', body: timingBody, error: null }),
     tickLifecycleOnClose: async () => ({ ok: true }),
+    withIssueLock: async (_options, callback) => callback(),
+    withGovernedEffect: async (_options, callback) =>
+      callback({ leaseContext: {}, reverify: async () => {} }),
   };
   const prevSkip = process.env.TT_SKIP_DIRTY_CHECK;
   process.env.TT_SKIP_DIRTY_CHECK = '1';

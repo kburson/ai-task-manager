@@ -26,6 +26,7 @@ import {
 } from '../../../session-state.mjs';
 import { loadState } from '../../../state.mjs';
 import { renewWorkLeaseBeforeResume, verbResume } from '../../../verbs/resume.mjs';
+import { verbClose } from '../../../verbs/close.mjs';
 import { loadMarker, markerPathFor, saveMarker } from '../../../word-counter.mjs';
 import { pendingPausePath } from '../../../hooks/on-stop.mjs';
 import { enqueue, peek as peekQueue, removeExactQueueEntries } from '../../../queue.mjs';
@@ -165,6 +166,174 @@ test('approval mutation scope denies stale authority before its remote effect', 
     (error) => error instanceof WorkLeaseError && error.code === 'fence-stale'
   );
   assert.deepEqual(effects, []);
+});
+
+async function runIntegratedGovernedClose({ staleAt = null } = {}) {
+  const dir = sandbox();
+  const statePath = path.join(dir, '.ai-task-manager', 'state.json');
+  mkdirSync(path.dirname(statePath), { recursive: true });
+  writeFileSync(
+    statePath,
+    JSON.stringify({
+      active: '#1049',
+      lastActive: '#1049',
+      entryStartTs: new Date(Date.now() - 60_000).toISOString(),
+      wordsAtEntryStart: 0,
+      lastWordMarker: 0,
+    })
+  );
+  const sessionId = 'close-session';
+  setActiveTask(
+    sessionId,
+    {
+      issue: '#1049',
+      leaseIssue: '#1049',
+      entryStartTs: new Date(Date.now() - 60_000).toISOString(),
+      wordsAtStart: 0,
+      lease: {
+        projectId: LEASE.projectId,
+        leaseId: LEASE.leaseId,
+        fencingToken: LEASE.fencingToken,
+        worktreeId: WORKTREE.worktreeId,
+      },
+    },
+    dir
+  );
+
+  const events = [];
+  let verifyCount = 0;
+  let roots = 0;
+  const governed = createGovernedEffectAdapter({
+    projectDir: dir,
+    getStore: () => ({ projectId: LEASE.projectId }),
+    getIdentity: () => ({
+      sessionId,
+      hostId: LEASE.holder.hostId,
+      worktreeId: LEASE.holder.worktreeId,
+    }),
+    verifyEffect: async () => {
+      verifyCount += 1;
+      events.push(`verify:${verifyCount}`);
+      if (verifyCount === staleAt) {
+        throw new WorkLeaseError('fence-stale', 'close fence is stale');
+      }
+      return { allowed: true, lease: LEASE };
+    },
+    createHeartbeat: () => {
+      events.push('heartbeat-start');
+      return { stop: () => events.push('heartbeat-stop') };
+    },
+  });
+  const withGovernedEffect = async (options, callback) => {
+    roots += 1;
+    return governed(options, callback);
+  };
+  const invokeContinuation = (options, effect) =>
+    options.withGovernedEffect(
+      { issueId: '1049', operation: options.operation, heartbeat: true },
+      effect
+    );
+  const previousSession = process.env.AI_TASK_MANAGER_SESSION_ID;
+  const previousDirty = process.env.TT_SKIP_DIRTY_CHECK;
+  process.env.AI_TASK_MANAGER_SESSION_ID = sessionId;
+  process.env.TT_SKIP_DIRTY_CHECK = '1';
+  let error = null;
+  try {
+    await verbClose({
+      cfg: { repo: 'o/r' },
+      statePath,
+      projectDir: dir,
+      rest: ['#1049'],
+      SKIP_NETWORK: true,
+      closeBody: '',
+      pexec: async () => ({ stdout: '{}', stderr: '' }),
+      drainQueueIfAny: async () => ({ authorityRefused: 0 }),
+      flushAndForgetQueueFor: async () => ({
+        delivered: 0,
+        discarded: 0,
+        authorityRefused: 0,
+      }),
+      safePostTiming: async (_target, _row, options) =>
+        invokeContinuation(options, async () => events.push('timing')),
+      runMoveState: async () => ({ ok: true, benign: false }),
+      runMoveStateDone: async (_target, options) =>
+        invokeContinuation(options, async () => {
+          events.push('done');
+          return { ok: true, benign: false };
+        }),
+      runLogIssueTime: async (_target, options) =>
+        invokeContinuation(options, async () => events.push('log')),
+      fetchSubIssues: async () => [],
+      getIssueBoardState: async () => 'review',
+      getIssueClosedState: async () => false,
+      uncheckedPreCloseCheckboxes: () => [],
+      nowIso: () => new Date().toISOString(),
+      tickLifecycleOnClose: async ({ deps }) =>
+        deps.withGovernedEffect(
+          { issueId: '1049', operation: deps.operation, heartbeat: true },
+          async () => {
+            events.push('lifecycle');
+            return { ok: true };
+          }
+        ),
+      withIssueLock: async (_options, callback) => {
+        events.push('lock');
+        try {
+          return await callback();
+        } finally {
+          events.push('lock-release');
+        }
+      },
+      withGovernedEffect,
+    });
+  } catch (caught) {
+    error = caught;
+  } finally {
+    if (previousSession === undefined) delete process.env.AI_TASK_MANAGER_SESSION_ID;
+    else process.env.AI_TASK_MANAGER_SESSION_ID = previousSession;
+    if (previousDirty === undefined) delete process.env.TT_SKIP_DIRTY_CHECK;
+    else process.env.TT_SKIP_DIRTY_CHECK = previousDirty;
+  }
+  return {
+    dir,
+    error,
+    events,
+    roots,
+    session: getActiveTask(sessionId, dir),
+  };
+}
+
+test('close holds one persisted authority root through final remote effect and retains lease', async () => {
+  const run = await runIntegratedGovernedClose();
+  try {
+    assert.equal(run.error, null);
+    assert.equal(run.roots, 1);
+    assert.ok(run.events.indexOf('lifecycle') < run.events.indexOf('heartbeat-stop'));
+    assert.deepEqual(run.events.slice(-2), ['heartbeat-stop', 'lock-release']);
+    assert.equal(run.session.issue, null);
+    assert.equal(run.session.lease.leaseId, LEASE.leaseId);
+    assert.equal(run.session.lease.fencingToken, LEASE.fencingToken);
+    assert.ok(
+      !run.events.some((event) => /release|handoff/.test(event) && event !== 'lock-release')
+    );
+  } finally {
+    rmSync(run.dir, { recursive: true, force: true });
+  }
+});
+
+test('Nth stale close fence preserves active binding and suppresses later effects', async () => {
+  const run = await runIntegratedGovernedClose({ staleAt: 3 });
+  try {
+    assert.equal(run.error?.code, 'fence-stale');
+    assert.equal(run.roots, 1);
+    assert.ok(!run.events.includes('done'));
+    assert.ok(!run.events.includes('lifecycle'));
+    assert.equal(run.session.issue, '#1049');
+    assert.equal(run.session.lease.fencingToken, LEASE.fencingToken);
+    assert.deepEqual(run.events.slice(-2), ['heartbeat-stop', 'lock-release']);
+  } finally {
+    rmSync(run.dir, { recursive: true, force: true });
+  }
 });
 
 function switchProjectionAuthorityFixture() {

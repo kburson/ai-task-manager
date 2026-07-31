@@ -83,6 +83,21 @@ test('resolveOpenPrNumber: parses the first open PR head match; null on none/err
   assert.equal(await resolveOpenPrNumber({ branch: 'b' }), null);
 });
 
+test('read-only full-auto probes rethrow governed authority errors unchanged', async () => {
+  const stale = Object.assign(new Error('stale close fence'), { code: 'fence-stale' });
+  const detect = fakePexec({ 'git rev-parse --git-dir': stale });
+  await assert.rejects(
+    detectLinkedWorktree({ pexec: detect, cwd: '/x' }),
+    (error) => error === stale
+  );
+
+  const resolve = fakePexec({ 'gh pr list --head b': stale });
+  await assert.rejects(
+    resolveOpenPrNumber({ branch: 'b', pexec: resolve }),
+    (error) => error === stale
+  );
+});
+
 test('enableFullAutoMergeForClose: not full-auto → skipped, no gh calls', async () => {
   const px = fakePexec({});
   const r = await enableFullAutoMergeForClose({
@@ -164,4 +179,21 @@ test('enableFullAutoMergeForClose: gh enable errors → exec-failed (issue kept 
   });
   assert.equal(r.status, 'exec-failed');
   assert.match(r.message, /branch protection/);
+});
+
+test('full-auto merge executor rethrows governed authority errors unchanged', async () => {
+  const stale = Object.assign(new Error('stale close fence'), { code: 'fence-stale' });
+  const px = fakePexec({
+    'gh pr list --head b': '[{"number":7}]',
+    'gh pr merge 7 --auto --merge': stale,
+  });
+  await assert.rejects(
+    enableFullAutoMergeForClose({
+      cfg: { fullAutoMerge: { mechanism: 'gh-auto-merge' } },
+      branch: 'b',
+      isFullAuto: true,
+      pexec: px,
+    }),
+    (error) => error === stale
+  );
 });

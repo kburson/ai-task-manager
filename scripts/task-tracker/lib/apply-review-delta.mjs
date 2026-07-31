@@ -23,6 +23,7 @@ import { parseIssueFieldDb } from '../issue-field-db.mjs';
 import { loadProjectFieldDefs } from '../project-fields.mjs';
 import { GH_API_TIMEOUT_MS } from './process-timeouts.mjs';
 import { findReviewNotesComment, parseDrivers } from './review-notes.mjs';
+import { isGovernedAuthorityError } from './work-lease/governed-effect.mjs';
 
 const pexec = promisify(execFile);
 
@@ -41,7 +42,8 @@ async function defaultFetchComments({ issueNumber, repo, exec = pexec }) {
     );
     const parsed = JSON.parse(stdout);
     return Array.isArray(parsed.comments) ? parsed.comments : [];
-  } catch {
+  } catch (error) {
+    if (isGovernedAuthorityError(error)) throw error;
     return [];
   }
 }
@@ -58,16 +60,28 @@ export async function applyReviewDelta({ cfg, issueNumber, body, deps = {} } = {
   const fieldDefsLoader = deps.loadProjectFieldDefs || loadProjectFieldDefs;
   const fetchProjectValues = deps.projectValuesForIssue || projectValuesForIssue;
   const fetchComments = deps.fetchComments || ((a) => defaultFetchComments({ ...a, exec: execFn }));
+  const postMutatingComment = (options) => {
+    if (typeof deps.withGovernedEffect !== 'function') return postComment(options);
+    return deps.withGovernedEffect(
+      {
+        issueId: String(issueNumber),
+        operation: deps.operation || 'close',
+        heartbeat: true,
+      },
+      () => postComment(options)
+    );
+  };
 
   const ts = new Date().toISOString();
   if (process.env.TASK_TRACKER_SKIP_DELTA === '1') {
     try {
-      await postComment({
+      await postMutatingComment({
         issueNumber,
         repo: cfg.repo,
         body: `${DELTA_HEADER}\n\n_Bypassed via \`TASK_TRACKER_SKIP_DELTA=1\` at ${ts}._`,
       });
-    } catch {
+    } catch (error) {
+      if (isGovernedAuthorityError(error)) throw error;
       /* best-effort: GitHub/telemetry side effect; core flow proceeds */
     }
     return { status: 'skipped' };
@@ -97,7 +111,8 @@ export async function applyReviewDelta({ cfg, issueNumber, body, deps = {} } = {
       if (typeof projVals.estimate === 'number') estimateHr = projVals.estimate;
       engagedSec = boardSeconds(projVals.engagedTime);
       planSec = boardSeconds(projVals.planTime);
-    } catch {
+    } catch (error) {
+      if (isGovernedAuthorityError(error)) throw error;
       /* best-effort: failure must not abort the primary operation */
     }
   }
@@ -119,15 +134,17 @@ export async function applyReviewDelta({ cfg, issueNumber, body, deps = {} } = {
     const comments = await fetchComments({ issueNumber, repo: cfg.repo });
     const notes = findReviewNotesComment(comments);
     if (notes) drivers = parseDrivers(notes.body);
-  } catch {
+  } catch (error) {
+    if (isGovernedAuthorityError(error)) throw error;
     /* best-effort: failure must not abort the primary operation */
   }
 
   const commentBody = buildDeltaCommentBody(result, { drivers });
 
   try {
-    await postComment({ issueNumber, repo: cfg.repo, body: commentBody });
+    await postMutatingComment({ issueNumber, repo: cfg.repo, body: commentBody });
   } catch (err) {
+    if (isGovernedAuthorityError(err)) throw err;
     process.stderr.write(`⚠ review-delta: comment post failed: ${err.message}\n`);
     return { status: 'error', result, error: err.message };
   }

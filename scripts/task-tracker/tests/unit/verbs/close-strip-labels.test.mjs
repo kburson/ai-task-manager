@@ -73,6 +73,7 @@ function makeCtx(statePath, dir, over = {}) {
     runMoveState: async () => ({ ok: true, benign: false }),
     runMoveStateDone: async () => ({ ok: true, benign: false }),
     writeTerminalDisposition: async () => ({ disposition: 'Delivered' }),
+    applyReviewDelta: async () => ({ status: 'applied' }),
     runLogIssueTime: async () => {},
     fetchSubIssues: async () => [],
     getIssueBoardState: async () => 'review',
@@ -83,6 +84,9 @@ function makeCtx(statePath, dir, over = {}) {
     // live `gh` (pexec injection does not intercept versionedWriteBody), which
     // stalls the full-suite run. This test asserts only label-strip behavior.
     tickLifecycleOnClose: async () => ({ ok: true }),
+    withIssueLock: async (_options, callback) => callback(),
+    withGovernedEffect: async (_options, callback) =>
+      callback({ leaseContext: {}, reverify: async () => {} }),
     ...over,
   };
 }
@@ -207,6 +211,23 @@ test('label-strip failure is best-effort and does not fail the close', async () 
   });
   assert.match(r.stdout, /Closed #5/);
   assert.match(r.stderr, /failed to strip ToDo\/BLOCKED labels/);
+});
+
+test('label-strip governed authority failure aborts close unchanged', async () => {
+  const stale = Object.assign(new Error('stale close fence'), { code: 'fence-stale' });
+  const r = await run({
+    over: {
+      SKIP_NETWORK: false,
+      closeBody: APPROVED_BODY,
+      getIssueBoardState: async () => 'done',
+      pexec: async (_cmd, args) => {
+        if (args[0] === 'issue' && args[1] === 'edit') throw stale;
+        return { stdout: '', stderr: '' };
+      },
+    },
+  });
+  assert.equal(r.thrown, stale);
+  assert.doesNotMatch(r.stderr, /failed to strip/);
 });
 
 console.log('close-strip-labels.test.mjs: ok');

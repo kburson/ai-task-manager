@@ -28,6 +28,9 @@ import { PHASE_EVENTS } from '../../../phase-events.mjs';
 import { projectScratchDir } from '../../../lib/scratch-dir.mjs';
 import { verbClose } from '../../../verbs/close.mjs';
 
+const allowClose = async (_options, callback) =>
+  callback({ leaseContext: {}, reverify: async () => {} });
+
 const CURRENT_APPROVAL_AUTHORITY = [
   '<!-- aitm-dod-verified sha="abc1234" ts="2026-06-28T00:00:00Z" -->',
   '<!-- aitm-entered-review ts="2026-06-28T00:00:01Z" -->',
@@ -120,6 +123,8 @@ test('verbClose emits review:approved + issue:wrap before the done board move', 
     // and stalls the full-suite run). This test asserts only row-emission order.
     tickLifecycleOnClose: async () => ({ ok: true }),
     nowIso: () => new Date().toISOString(),
+    withIssueLock: async (_options, callback) => callback(),
+    withGovernedEffect: allowClose,
   };
 
   try {
@@ -262,6 +267,8 @@ test('#692 AC2 — retried close does not re-emit an existing review:approved/is
     // and stalls the full-suite run). This test asserts only row-emission order.
     tickLifecycleOnClose: async () => ({ ok: true }),
     nowIso: () => new Date().toISOString(),
+    withIssueLock: async (_options, callback) => callback(),
+    withGovernedEffect: allowClose,
   };
 
   try {
@@ -339,6 +346,8 @@ test('#692 AC3 — review:approved active duration derives from the timing comme
     tickLifecycleOnClose: async () => ({ ok: true }),
     // Close exactly 5 minutes after the review:started row.
     nowIso: () => new Date(closeMs).toISOString(),
+    withIssueLock: async (_options, callback) => callback(),
+    withGovernedEffect: allowClose,
   };
 
   try {

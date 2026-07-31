@@ -103,6 +103,28 @@ test('terminal Done helper writes the configured Status option without option di
   assert.deepEqual(h.writes[0].optionMap, { F_STATUS: { Done: 'O_DONE' } });
 });
 
+test('terminal field helpers reverify immediately before each project write', async () => {
+  const events = [];
+  const deps = {
+    ...writerHarness().deps,
+    reverify: async () => events.push('reverify'),
+    writeProjectFieldValue: async ({ fieldId }) => {
+      events.push(`write:${fieldId}`);
+      return true;
+    },
+  };
+
+  await writeTerminalDisposition({
+    cfg,
+    issueNumber: 1035,
+    disposition: 'Delivered',
+    deps,
+  });
+  await writeTerminalStatusDone({ cfg, issueNumber: 1035, deps });
+
+  assert.deepEqual(events, ['reverify', 'write:F_DISPOSITION', 'reverify', 'write:F_STATUS']);
+});
+
 test('close-as retains the board item and writes matching terminal values', async () => {
   const events = [];
   const deps = {

@@ -31,7 +31,7 @@ test('completed issue already at Done tolerates a failed best-effort body read',
 
   assert.equal(run.result?.action, 'noop');
   assert.equal(run.result?.status, 'completed');
-  assert.equal(run.calls.bodyReads, 1);
+  assert.equal(run.calls.bodyReads, 2);
   assert.equal(run.calls.childSnapshots, 0);
   assert.equal(run.exitCode, 0);
 });
@@ -55,7 +55,7 @@ test('pending recovery on a completed issue already at Done resumes before noop'
   assert.equal(run.result?.status, 'recovered');
   assert.equal(run.result?.durablePhase, 'complete');
   assert.equal(readUnauthorizedCloseRecovery(run.body)?.tx, 'tx-closed-done-resume');
-  assert.equal(run.calls.bodyReads, 1);
+  assert.equal(run.calls.bodyReads, 2);
   assert.equal(run.calls.childSnapshots, 0);
   assert.equal(run.exitCode, 0);
 });
@@ -91,7 +91,7 @@ test('pending recovery on an open issue resumes from its serialized phase', asyn
   assert.equal(run.result?.status, 'recovered');
   assert.equal(run.result?.durablePhase, 'complete');
   assert.equal(readUnauthorizedCloseRecovery(run.body)?.phase, 'complete');
-  assert.equal(run.calls.bodyReads, 1);
+  assert.equal(run.calls.bodyReads, 2);
   assert.deepEqual(run.calls.movesToReview, []);
   assert.equal(run.calls.timingRows.length, 1);
   assert.match(run.calls.timingRows[0], /tx=tx-open-resume/);
@@ -116,7 +116,7 @@ test('pending recovery outranks close-issue for an open issue already at Done', 
   assert.equal(run.result?.action, 'aberration');
   assert.equal(run.result?.status, 'recovered');
   assert.equal(readUnauthorizedCloseRecovery(run.body)?.phase, 'complete');
-  assert.equal(run.calls.bodyReads, 1);
+  assert.equal(run.calls.bodyReads, 2);
   assert.equal(run.calls.issueCloses, 0);
   assert.equal(run.exitCode, 0);
 });
@@ -161,7 +161,7 @@ test('pending recovery on a still-closed issue preserves its durable transaction
   assert.equal(run.result?.status, 'recovered');
   assert.equal(run.result?.durablePhase, 'complete');
   assert.equal(readUnauthorizedCloseRecovery(run.body)?.tx, 'tx-closed-resume');
-  assert.equal(run.calls.bodyReads, 1);
+  assert.equal(run.calls.bodyReads, 2);
   assert.equal(run.calls.childSnapshots, 0);
   assert.equal(run.exitCode, 0);
 });

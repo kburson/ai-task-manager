@@ -45,6 +45,8 @@ function makeDirtyRepo() {
 }
 
 function makeCtx(statePath, dir, over = {}) {
+  const allowClose = async (_options, callback) =>
+    callback({ leaseContext: {}, reverify: async () => {} });
   return {
     cfg: { repo: 'o/r', lifecycleCheckboxesRequired: false },
     statePath,
@@ -59,12 +61,15 @@ function makeCtx(statePath, dir, over = {}) {
     runMoveState: async () => ({ ok: true, benign: false }),
     runMoveStateDone: async () => ({ ok: true, benign: false }),
     writeTerminalDisposition: async () => ({ disposition: 'Delivered' }),
+    applyReviewDelta: async () => ({ status: 'applied' }),
     runLogIssueTime: async () => {},
     fetchSubIssues: async () => [],
     getIssueBoardState: async () => 'review',
     getIssueClosedState: async () => false,
     uncheckedPreCloseCheckboxes: () => [],
     nowIso: () => new Date().toISOString(),
+    withIssueLock: async (_options, callback) => callback(),
+    withGovernedEffect: allowClose,
     // Offline the #753 lifecycle-box reconcile for every verbClose-driven test.
     // The real one reaches live `gh` (the injected pexec does not intercept
     // versionedWriteBody), which stalls the full-suite run. The exported helper
@@ -88,6 +93,8 @@ async function run({ state = baseState(), over = {}, ci, dirty = false } = {}) {
   let repo;
   if (dirty) ctx.projectDir = repo = makeDirtyRepo();
   const real = { exit: process.exit, log: console.log, err: console.error, warn: console.warn };
+  const previousExitCode = process.exitCode;
+  process.exitCode = 0;
   let exitCode = null;
   const stdout = [];
   const stderr = [];
@@ -100,7 +107,8 @@ async function run({ state = baseState(), over = {}, ci, dirty = false } = {}) {
   let thrown = null;
   let finalState = null;
   try {
-    await verbClose(ctx);
+    const outcome = await verbClose(ctx);
+    exitCode = outcome?.exitCode ?? (process.exitCode || null);
   } catch (err) {
     if (!/__exit_\d+__/.test(err.message)) thrown = err;
   } finally {
@@ -109,6 +117,7 @@ async function run({ state = baseState(), over = {}, ci, dirty = false } = {}) {
     console.log = real.log;
     console.error = real.err;
     console.warn = real.warn;
+    process.exitCode = previousExitCode;
     rmSync(dir, { recursive: true, force: true });
     if (repo) rmSync(repo, { recursive: true, force: true });
     setEnv('TT_SKIP_DIRTY_CHECK', prevSkip);
@@ -380,6 +389,9 @@ test('gate-eval failure, no --force → fail-closed exit 3', async () => {
         cmd === 'gh' && args.join(' ').includes('issue view')
           ? { stdout: JSON.stringify({ body: APPROVED_BODY }), stderr: '' }
           : { stdout: '', stderr: '' },
+      uncheckedPreCloseCheckboxes: () => {
+        throw new Error('synthetic close-gate evaluation failure');
+      },
     },
   });
   assert.equal(r.exitCode, 3);

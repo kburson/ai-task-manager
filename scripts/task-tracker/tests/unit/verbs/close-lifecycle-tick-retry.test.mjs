@@ -98,4 +98,25 @@ test('#672 — exhausting all retries returns ok:false with a message', async ()
   });
 });
 
+test('governed authority failure is rethrown unchanged without retry', async () => {
+  const stale = Object.assign(new Error('stale close fence'), { code: 'fence-stale' });
+  let calls = 0;
+  await assert.rejects(
+    tickLifecycleOnClose({
+      cfg,
+      issueNum: 672,
+      pexec: async () => ({ stdout: '', stderr: '' }),
+      deps: {
+        sleep: async () => {},
+        mutateIssueBody: async () => {
+          calls += 1;
+          throw stale;
+        },
+      },
+    }),
+    (error) => error === stale
+  );
+  assert.equal(calls, 1);
+});
+
 console.log('close-lifecycle-tick-retry.test.mjs: all passed');

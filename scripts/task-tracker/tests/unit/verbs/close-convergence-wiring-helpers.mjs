@@ -181,18 +181,20 @@ export async function runClose({
     },
   };
   const issueBodyMutator = {
-    mutate: async ({ mutate }) => {
+    mutate: async ({ mutate, operation, withGovernedEffect }) => {
       calls.mutations += 1;
-      const nextBody = mutate(liveBody);
-      const result =
-        typeof mutationResult === 'function'
-          ? mutationResult({ currentBody: liveBody, nextBody })
-          : mutationResult === undefined
-            ? { status: 'ok', body: nextBody }
-            : mutationResult;
-      if (typeof result?.body === 'string') liveBody = result.body;
-      else if (mutationResult === undefined) liveBody = nextBody;
-      return result;
+      return withGovernedEffect({ issueId: '925', operation, heartbeat: true }, async () => {
+        const nextBody = mutate(liveBody);
+        const result =
+          typeof mutationResult === 'function'
+            ? mutationResult({ currentBody: liveBody, nextBody })
+            : mutationResult === undefined
+              ? { status: 'ok', body: nextBody }
+              : mutationResult;
+        if (typeof result?.body === 'string') liveBody = result.body;
+        else if (mutationResult === undefined) liveBody = nextBody;
+        return result;
+      });
     },
   };
   const previousDirty = process.env.TT_SKIP_DIRTY_CHECK;
@@ -244,6 +246,9 @@ export async function runClose({
         };
       },
       writeTerminalDisposition: async () => ({ status: 'ok' }),
+      withIssueLock: async (_options, callback) => callback(),
+      withGovernedEffect: async (_options, callback) =>
+        callback({ leaseContext: {}, reverify: async () => {} }),
     });
     return {
       result,

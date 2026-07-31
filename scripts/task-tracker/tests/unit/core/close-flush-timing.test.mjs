@@ -49,14 +49,14 @@ assert.equal(
 // `safePostTiming(closeTarget, issueWrapRow)` exactly once (the helper is the
 // single emission point; it is invoked from both the converge fast-path and the
 // full pipeline, but the post text appears once, in the helper body).
-const wrapPostCount = (src.match(/safePostTiming\(closeTarget,\s*issueWrapRow\)/g) || []).length;
+const wrapPostCount = (src.match(/safePostTiming\(closeTarget,\s*issueWrapRow,/g) || []).length;
 assert.equal(
   wrapPostCount,
   1,
   `expected exactly 1 safePostTiming(closeTarget, issueWrapRow) call in verbClose, found ${wrapPostCount}`
 );
 
-const flushCount = (src.match(/await runLogIssueTime\(closeTarget\)/g) || []).length;
+const flushCount = (src.match(/await runLogIssueTime\(closeTarget,/g) || []).length;
 assert.equal(
   flushCount,
   1,
@@ -75,7 +75,7 @@ assert.equal(
 // this ordering check to the TERMINAL (last) board move, not the first.
 const emitMatches = [...src.matchAll(/await emitReviewToDoneClosePair\(\{/g)];
 const doneIdx = emitMatches.length ? emitMatches[emitMatches.length - 1].index : -1;
-const flushIdx = src.indexOf('await runLogIssueTime(closeTarget)');
+const flushIdx = src.indexOf('await runLogIssueTime(closeTarget,');
 const moveDoneMatches = [...src.matchAll(/runMoveStateDone\(/g)];
 const moveDoneIdx = moveDoneMatches.length ? moveDoneMatches[moveDoneMatches.length - 1].index : -1;
 assert.ok(doneIdx >= 0 && flushIdx >= 0 && moveDoneIdx >= 0);

@@ -59,33 +59,20 @@ test('decideCascadeChildClose: absent move result → shouldClose:true (preserve
 
 // ── AC2 + AC3: close.mjs wiring closes the child only on the shouldClose path ───
 
-test('source: cascade loop routes through decideCascadeChildClose', () => {
+test('source: close no longer cascades child mutations under the parent lease', () => {
   assert.ok(
-    /decideCascadeChildClose\(/.test(closeSrc),
-    'close.mjs must call decideCascadeChildClose'
-  );
-  assert.ok(
-    // close.mjs imports lazily via `await import('…')`; accept that idiom or a
-    // static `import { … } from '…'`.
-    /import\((['"])[^'"]*cascade-child-close\.mjs\1\)/.test(closeSrc) ||
-      /import \{[^}]*decideCascadeChildClose[^}]*\} from '[^']*cascade-child-close\.mjs'/s.test(
-        closeSrc
-      ),
-    'decideCascadeChildClose must be imported from lib/cascade-child-close.mjs'
+    !/decideCascadeChildClose\(/.test(closeSrc),
+    'parent close must not reuse its lease to mutate child issues'
   );
 });
 
-test('source: child gh issue close is gated by the decision, not unconditional', () => {
-  // The decision must be evaluated, and the child `issue close` must be reachable
-  // only on the shouldClose branch — the old shape (warn, then unconditional
-  // `gh issue close`) is gone.
-  const decIdx = closeSrc.indexOf('decideCascadeChildClose(');
-  assert.ok(decIdx >= 0);
-  const after = closeSrc.slice(decIdx, decIdx + 700);
-  assert.ok(/shouldClose/.test(after), 'the shouldClose result must guard the child close');
-  // A skip path (continue) must exist so a stuck child does not block the cascade.
+test('source: Review children are refused before any parent terminal mutation', () => {
   assert.ok(
-    /shouldClose[\s\S]{0,400}continue/.test(after),
-    'a non-closing child must continue to the next child'
+    /child issue\(s\) require their own work lease/.test(closeSrc),
+    'close must direct each Review child to its own governed close session'
+  );
+  assert.ok(
+    !/for\s*\([^)]*reviewChildren[\s\S]*?'issue',\s*'close'/s.test(closeSrc),
+    'parent close must not invoke gh issue close for child issues'
   );
 });

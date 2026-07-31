@@ -56,6 +56,7 @@ export async function writeTerminalDisposition({ cfg, issueNumber, disposition, 
     );
   }
   const write = deps.writeProjectFieldValue || writeProjectFieldValue;
+  if (typeof deps.reverify === 'function') await deps.reverify();
   const written = await write({
     projectId: cfg.projectId,
     itemId,
@@ -81,6 +82,7 @@ export async function writeTerminalStatusDone({ cfg, issueNumber, deps = {} } = 
   const itemId = await resolveItem({ cfg, issueNumber, deps });
   const optionMap = { [cfg.kanbanFieldId]: { Done: cfg.kanbanOptionDone } };
   const write = deps.writeProjectFieldValue || writeProjectFieldValue;
+  if (typeof deps.reverify === 'function') await deps.reverify();
   const written = await write({
     projectId: cfg.projectId,
     itemId,

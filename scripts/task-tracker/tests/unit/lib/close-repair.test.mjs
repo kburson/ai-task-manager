@@ -98,6 +98,7 @@ function buildCtx({ statePath, rest, sideEffects }) {
       sideEffects.push(`writeTerminalDisposition:${disposition}`);
       return { disposition };
     },
+    applyReviewDelta: async () => ({ status: 'applied' }),
     runLogIssueTime: async () => {
       sideEffects.push('runLogIssueTime');
     },
@@ -112,6 +113,9 @@ function buildCtx({ statePath, rest, sideEffects }) {
     // The converge-path reconcile behavior is owned by
     // close-reconcile-lifecycle.test.mjs; here it is a pure no-op.
     tickLifecycleOnClose: async () => ({ ok: true }),
+    withIssueLock: async (_options, callback) => callback(),
+    withGovernedEffect: async (_options, callback) =>
+      callback({ leaseContext: {}, reverify: async () => {} }),
   };
 }
 

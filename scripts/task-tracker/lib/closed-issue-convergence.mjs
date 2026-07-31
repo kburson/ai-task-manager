@@ -4,6 +4,7 @@ import { lifecycleSatisfaction } from './lifecycle-dod.mjs';
 import { parseMarker } from './marker-grammar.mjs';
 import { stripFencedCodeBlocks, upsertProgressMarker } from './markers.mjs';
 import { derivePersistedReviewAuthority } from './review-authority.mjs';
+import { isGovernedAuthorityError } from './work-lease/governed-effect.mjs';
 
 const SATISFIED_LIFECYCLE_STATUSES = new Set(['ticked', 'audited', 'optout']);
 const UNAUTHORIZED_CLOSE_PHASES = new Set(['intent', 'reopened', 'review', 'timing', 'complete']);
@@ -401,6 +402,7 @@ export async function runClosedIssueConvergence(input = {}, deps = {}) {
 
     return { action, status: 'not-handled', steps };
   } catch (error) {
+    if (isGovernedAuthorityError(error)) throw error;
     return {
       action,
       status: 'failed',
