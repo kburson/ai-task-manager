@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { buildShapeFlags } from './create-issue.mjs';
+import { buildShapeFlags, createGovernedInternalIssue } from './create-issue.mjs';
 
 // #687 — `buildShapeFlags` is the pure seam that assembles the argv forwarded to
 // `preflight-issue.mjs`. These tests pin the `--kind` forwarding contract without
@@ -56,3 +56,58 @@ test('buildShapeFlags forwards section files for non-stub shapes without --kind 
   assert.equal(flags.includes('--scope-file'), true);
   assert.equal(flags.includes('--kind'), false);
 });
+
+for (const failure of [
+  {
+    name: 'generic create failure',
+    outcome: { status: 1, stdout: '', stderr: 'network failed' },
+    exitCode: 1,
+    partialIssueNumber: undefined,
+  },
+  {
+    name: 'partial-success create failure',
+    outcome: {
+      status: 1,
+      stdout: 'https://github.com/test/repo/issues/777\n',
+      stderr: 'response lost',
+    },
+    exitCode: 6,
+    partialIssueNumber: 777,
+  },
+]) {
+  test(`governed ${failure.name} unwinds controller finalizers before rejection`, async () => {
+    const events = [];
+    const withGovernedEffect = async (_options, callback) => {
+      events.push('root');
+      try {
+        return await callback({
+          reverify: async () => events.push('reverify'),
+        });
+      } finally {
+        events.push('finalizer');
+      }
+    };
+    await assert.rejects(
+      createGovernedInternalIssue({
+        title: 'Wave: test',
+        bodyContent: 'body',
+        cfg: { repo: 'test/repo', projectId: 'PVT_test' },
+        withGovernedEffect,
+        authorityIssueId: 900,
+        reconcile: false,
+        deps: {
+          createOutcome: () => {
+            events.push('create');
+            return failure.outcome;
+          },
+        },
+      }),
+      (error) => {
+        assert.equal(error.exitCode, failure.exitCode);
+        assert.equal(error.partialIssueNumber, failure.partialIssueNumber);
+        return true;
+      }
+    );
+    assert.deepEqual(events, ['root', 'create', 'finalizer']);
+  });
+}

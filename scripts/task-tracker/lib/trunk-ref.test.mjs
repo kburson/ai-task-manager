@@ -146,3 +146,56 @@ test('fetchTrunk: best-effort catch preserves governed authority refusal', async
     (error) => error === stale
   );
 });
+
+test('fetchTrunk reverifies before every retry and stale authority blocks the second fetch', async () => {
+  let fetches = 0;
+  let verifies = 0;
+  const stale = Object.assign(new Error('heartbeat failed before retry'), {
+    code: 'fence-stale',
+  });
+  await assert.rejects(
+    fetchTrunk({
+      cfg: {},
+      deps: {
+        runAttempt: async (callback) => {
+          verifies += 1;
+          if (verifies === 2) throw stale;
+          return callback();
+        },
+        git: async () => {
+          fetches += 1;
+          throw new Error('ordinary first-branch miss');
+        },
+      },
+    }),
+    (error) => error === stale
+  );
+  assert.equal(fetches, 1, 'stale verification prevents the second git fetch callback');
+});
+
+test('trunk ref probes never downgrade governed authority errors to a missing ref', async () => {
+  const stale = Object.assign(new Error('fence became stale'), { code: 'fence-stale' });
+  await assert.rejects(
+    resolveTrunkRef({
+      cfg: {},
+      deps: {
+        git: async () => {
+          throw stale;
+        },
+      },
+    }),
+    (error) => error === stale
+  );
+  assert.throws(
+    () =>
+      resolveTrunkRefSync({
+        cfg: {},
+        deps: {
+          gitSync: () => {
+            throw stale;
+          },
+        },
+      }),
+    (error) => error === stale
+  );
+});

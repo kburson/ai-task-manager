@@ -134,10 +134,10 @@ export async function fieldOptionMap(projectId) {
   return map;
 }
 
-export async function projectValuesForIssue({ cfg, fieldDefs, issueNumber }) {
+export async function projectValuesForIssue({ cfg, fieldDefs, issueNumber, runGql = gql }) {
   if (!cfg?.repo || !cfg.projectId) return {};
   const { owner, repoName } = splitRepo(cfg.repo);
-  const data = await gql(
+  const data = await runGql(
     `
     query($owner: String!, $repo: String!, $issue: Int!) {
       repository(owner: $owner, name: $repo) {
@@ -196,9 +196,10 @@ export async function writeProjectFieldValue({
   fieldId,
   value,
   optionMap = {},
+  runGql = gql,
 }) {
   if (value.number !== undefined) {
-    await gql(
+    await runGql(
       `
       mutation($project: ID!, $item: ID!, $field: ID!, $val: Float!) {
         updateProjectV2ItemFieldValue(input: { projectId: $project, itemId: $item, fieldId: $field, value: { number: $val } }) { projectV2Item { id } }
@@ -206,7 +207,7 @@ export async function writeProjectFieldValue({
       { project: projectId, item: itemId, field: fieldId, val: value.number }
     );
   } else if (value.date !== undefined) {
-    await gql(
+    await runGql(
       `
       mutation($project: ID!, $item: ID!, $field: ID!, $val: Date!) {
         updateProjectV2ItemFieldValue(input: { projectId: $project, itemId: $item, fieldId: $field, value: { date: $val } }) { projectV2Item { id } }
@@ -214,7 +215,7 @@ export async function writeProjectFieldValue({
       { project: projectId, item: itemId, field: fieldId, val: value.date }
     );
   } else if (value.text !== undefined) {
-    await gql(
+    await runGql(
       `
       mutation($project: ID!, $item: ID!, $field: ID!, $val: String!) {
         updateProjectV2ItemFieldValue(input: { projectId: $project, itemId: $item, fieldId: $field, value: { text: $val } }) { projectV2Item { id } }
@@ -224,7 +225,7 @@ export async function writeProjectFieldValue({
   } else if (value.singleSelectOptionName !== undefined) {
     const optionId = optionMap[fieldId]?.[value.singleSelectOptionName];
     if (!optionId) return false;
-    await gql(
+    await runGql(
       `
       mutation($project: ID!, $item: ID!, $field: ID!, $option: String!) {
         updateProjectV2ItemFieldValue(input: { projectId: $project, itemId: $item, fieldId: $field, value: { singleSelectOptionId: $option } }) { projectV2Item { id } }

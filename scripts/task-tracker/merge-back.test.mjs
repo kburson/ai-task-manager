@@ -10,7 +10,9 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { mergeBack } from './merge-back.mjs';
+import * as mergeBackModule from './merge-back.mjs';
+
+const { mergeBack } = mergeBackModule;
 
 const __dir = path.dirname(fileURLToPath(import.meta.url));
 
@@ -201,12 +203,13 @@ test('merge-back holds one epic-owned root across fetch, tests, merge, and clean
       graph,
       git,
       withGovernedEffect: auth.withGovernedEffect,
-      fetch: (_options) => events.push('fetch'),
-      runTests: (options) => {
-        events.push('tests');
-        envs.push(options.env);
-        return true;
-      },
+      fetch: ({ runAttempt }) => runAttempt(() => events.push('fetch')),
+      runTests: ({ runSection, ...options }) =>
+        runSection(() => {
+          events.push('tests');
+          envs.push(options.env);
+          return true;
+        }),
       baseEnv: {
         KEEP_ME: 'yes',
         REMOTE_LEASE_BEARER: 'secret',
@@ -257,11 +260,12 @@ test('stale authority after tests blocks checkout, merge, and cleanup callbacks'
         graph,
         git,
         withGovernedEffect: auth.withGovernedEffect,
-        fetch: () => {},
-        runTests: () => {
-          tests += 1;
-          return true;
-        },
+        fetch: ({ runAttempt }) => runAttempt(() => {}),
+        runTests: ({ runSection }) =>
+          runSection(() => {
+            tests += 1;
+            return true;
+          }),
       },
     }),
     (error) => error.code === 'fence-stale'
@@ -272,6 +276,32 @@ test('stale authority after tests blocks checkout, merge, and cleanup callbacks'
   assert.ok(!kinds.some((kind) => kind.startsWith('merge --ff-only')));
   assert.ok(!kinds.some((kind) => kind.startsWith('worktree remove')));
   assert.ok(!kinds.some((kind) => kind.startsWith('branch -d')));
+});
+
+test('merge test runner reverifies before each bounded npm section', async () => {
+  const auth = authority({ staleAt: 4 });
+  const git = makeGit();
+  const sections = [];
+  await assert.rejects(
+    mergeBack({
+      child: 910,
+      path: '/wt/910',
+      deps: {
+        graph,
+        git,
+        withGovernedEffect: auth.withGovernedEffect,
+        fetch: ({ runAttempt }) => runAttempt(() => {}),
+        runTests: async ({ runSection }) => {
+          for (const section of ['test:unit', 'test:integration', 'test:slow']) {
+            await runSection(async () => sections.push(section));
+          }
+          return true;
+        },
+      },
+    }),
+    (error) => error.code === 'fence-stale'
+  );
+  assert.deepEqual(sections, ['test:unit']);
 });
 
 for (const cleanupFence of [
@@ -289,8 +319,8 @@ for (const cleanupFence of [
           graph,
           git,
           withGovernedEffect: auth.withGovernedEffect,
-          fetch: () => {},
-          runTests: () => true,
+          fetch: ({ runAttempt }) => runAttempt(() => {}),
+          runTests: ({ runSection }) => runSection(() => true),
         },
       }),
       (error) => error.code === 'fence-stale'
@@ -298,3 +328,34 @@ for (const cleanupFence of [
     assert.ok(!git.calls.map((args) => args.join(' ')).includes(cleanupFence.forbidden));
   });
 }
+
+test('merge-back CLI main awaits the async core before printing resolved values', async () => {
+  assert.equal(typeof mergeBackModule.main, 'function');
+  const output = [];
+  let completed = false;
+  await mergeBackModule.main(['910', '/wt/910'], {
+    loadConfig: () => ({ repo: 'o/r', projectDir: '/proj' }),
+    realGraphNode: async () => GRAPH[910],
+    runCore: async () => {
+      await Promise.resolve();
+      completed = true;
+      return { epic: 'feature/epic/905' };
+    },
+    write: (text) => output.push(text),
+  });
+  assert.equal(completed, true);
+  assert.deepEqual(output, ['merged feature/child/910 into feature/epic/905\n']);
+
+  const refusal = Object.assign(new Error('lease refused'), { code: 'fence-stale' });
+  await assert.rejects(
+    mergeBackModule.main(['910', '/wt/910'], {
+      loadConfig: () => ({ repo: 'o/r', projectDir: '/proj' }),
+      realGraphNode: async () => GRAPH[910],
+      runCore: async () => {
+        throw refusal;
+      },
+      write: () => assert.fail('must not print success after rejection'),
+    }),
+    (error) => error === refusal
+  );
+});

@@ -691,8 +691,8 @@ export function reconcileTimingProjectionRowEffect(
 
 // ---- GH shell-out helpers ----
 
-async function ghExec(args, { timeoutMs = 2000 } = {}) {
-  const { stdout } = await pexec('gh', args, { timeout: timeoutMs });
+async function ghExec(args, { timeoutMs = 2000, env } = {}) {
+  const { stdout } = await pexec('gh', args, { timeout: timeoutMs, env });
   return stdout;
 }
 
@@ -700,21 +700,27 @@ export function normalizeTimingIssueNumber(issueNumber) {
   return String(issueNumber ?? '').replace(/^#/, '');
 }
 
-export async function findTimingComment(issueNumber, repo, { timeoutMs } = {}) {
+export async function findTimingComment(issueNumber, repo, { timeoutMs, env } = {}) {
   const num = normalizeTimingIssueNumber(issueNumber);
-  const out = await ghExec(['issue', 'view', num, '-R', repo, '--json', 'comments'], { timeoutMs });
+  const out = await ghExec(['issue', 'view', num, '-R', repo, '--json', 'comments'], {
+    timeoutMs,
+    env,
+  });
   const { comments } = JSON.parse(out);
   const hit = comments.find((c) => c.body.includes(TIMING_HEADING));
   return hit ? { id: hit.id, url: hit.url, body: hit.body } : null;
 }
 
-async function createTimingComment(issueNumber, repo, body, { timeoutMs } = {}) {
+async function createTimingComment(issueNumber, repo, body, { timeoutMs, env } = {}) {
   const num = normalizeTimingIssueNumber(issueNumber);
-  const out = await ghExec(['issue', 'comment', num, '-R', repo, '--body', body], { timeoutMs });
+  const out = await ghExec(['issue', 'comment', num, '-R', repo, '--body', body], {
+    timeoutMs,
+    env,
+  });
   return out.trim(); // URL of new comment
 }
 
-export async function updateTimingComment(commentId, repo, body, { timeoutMs } = {}) {
+export async function updateTimingComment(commentId, repo, body, { timeoutMs, env } = {}) {
   // gh doesn't have edit-comment by id for issues directly;
   // use GraphQL mutation.
   const mutation = `
@@ -723,7 +729,7 @@ export async function updateTimingComment(commentId, repo, body, { timeoutMs } =
     }`;
   await ghExec(
     ['api', 'graphql', '-f', `query=${mutation}`, '-f', `id=${commentId}`, '-f', `body=${body}`],
-    { timeoutMs }
+    { timeoutMs, env }
   );
 }
 
@@ -746,6 +752,7 @@ export async function postTimingEvent({
   projectionId,
   subOperationId,
   timeoutMs = 2000,
+  env,
   retries = 2,
   lock = true,
   projDir,
@@ -773,7 +780,7 @@ export async function postTimingEvent({
         heartbeat: true,
       },
       async (authority) => {
-        const existing = await find(issueNumber, repo, { timeoutMs });
+        const existing = await find(issueNumber, repo, { timeoutMs, env });
         if (existing) {
           if (projection) {
             const effect = reconcileTimingProjectionRowEffect(existing.body, {
@@ -788,11 +795,11 @@ export async function postTimingEvent({
               };
             }
             await authority.reverify();
-            await update(existing.id, repo, effect.body, { timeoutMs });
+            await update(existing.id, repo, effect.body, { timeoutMs, env });
           } else {
             const updated = appendRow(existing.body, durableRow, { projection });
             await authority.reverify();
-            await update(existing.id, repo, updated, { timeoutMs });
+            await update(existing.id, repo, updated, { timeoutMs, env });
           }
         } else {
           const initial = projection
@@ -802,7 +809,7 @@ export async function postTimingEvent({
               }).body
             : appendRow(buildInitialComment(), durableRow, { projection });
           await authority.reverify();
-          await create(issueNumber, repo, initial, { timeoutMs });
+          await create(issueNumber, repo, initial, { timeoutMs, env });
         }
         if (!projection) return undefined;
         return {

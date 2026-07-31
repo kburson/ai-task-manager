@@ -195,7 +195,25 @@ test('dispatch uses one anchor-owned root, a narrow move continuation, and timin
     AITM_FENCING_TOKEN: '7',
     AITM_LEASE_RECEIPT: 'untrusted',
   };
-  h.overrides.postTimingEvent = async () => events.push('timing');
+  h.overrides.postTimingEvent = async ({
+    issueNumber,
+    operation,
+    withGovernedEffect,
+  }) => {
+    assert.equal(issueNumber, '#42');
+    assert.equal(operation, 'branch-worktree-orchestration');
+    return withGovernedEffect(
+      {
+        issueId: '7',
+        operation: 'branch-worktree-orchestration',
+        heartbeat: true,
+      },
+      async (authority) => {
+        await authority.reverify();
+        events.push('timing');
+      }
+    );
+  };
 
   await main(argv('42', '--anchor', '7'), { ...h.overrides, skipNetwork: false });
 
@@ -204,6 +222,7 @@ test('dispatch uses one anchor-owned root, a narrow move continuation, and timin
     'root:7:branch-worktree-orchestration:true',
     'reverify',
     'move',
+    'reverify',
     'timing',
   ]);
 });

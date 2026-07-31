@@ -156,6 +156,18 @@ export async function main(argv, overrides = {}) {
 
       // 2. Post a start row only after the board move.
       if (!skipNetwork) {
+        const withDispatchTimingAuthorization = async (options, callback) => {
+          if (
+            String(options?.issueId).replace(/^#/, '') !== args.anchor ||
+            options?.operation !== 'branch-worktree-orchestration'
+          ) {
+            throw new Error('dispatch timing authorization scope mismatch');
+          }
+          if (typeof callback !== 'function') {
+            throw new Error('dispatch timing authorization callback is required');
+          }
+          return callback(effect);
+        };
         const row = d.buildRow({
           ts: new Date().toISOString(),
           event: 'start',
@@ -170,6 +182,8 @@ export async function main(argv, overrides = {}) {
           repo: cfg.repo,
           row,
           timeoutMs: cfg.hookNetworkTimeoutMs ?? 5000,
+          operation: 'branch-worktree-orchestration',
+          withGovernedEffect: withDispatchTimingAuthorization,
         });
       }
       return { moveCode: 0 };

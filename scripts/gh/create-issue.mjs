@@ -23,6 +23,7 @@ import {
   DUPLICATE_CHILD_EXIT_CODE,
 } from './lib/duplicate-child-guard.mjs';
 import { tetherIssueToProject } from './lib/project-tether.mjs';
+import { gql } from './lib/github-projects.mjs';
 import { mutateIssueBody } from '../task-tracker/lib/issue-body-mutate.mjs';
 
 // Exit codes (documented contract):
@@ -198,7 +199,7 @@ export function buildIssueTitle(args) {
   return ensureKindPrefix(args.title, args.label);
 }
 
-function ghCreate(args, assignee) {
+function ghCreateOutcome(args, assignee, options = {}) {
   const ghArgs = [
     'issue',
     'create',
@@ -212,7 +213,17 @@ function ghCreate(args, assignee) {
   // with no assignee rather than defaulting one on.
   if (typeof assignee === 'string' && assignee) ghArgs.push('--assignee', assignee);
   for (const lbl of args.label) ghArgs.push('--label', lbl);
-  const created = run('gh', ghArgs, { timeout: GH_API_TIMEOUT_MS });
+  const runCommand = options.runCommand || run;
+  const created = runCommand('gh', ghArgs, {
+    timeout: GH_API_TIMEOUT_MS,
+    env: options.env,
+  });
+  const issueNumber = extractIssueNumber(created.stdout);
+  return { ...created, issueNumber };
+}
+
+function ghCreate(args, assignee, options = {}) {
+  const created = ghCreateOutcome(args, assignee, options);
   if (created.status !== 0) {
     process.stderr.write(created.stderr);
     const partialNumber = extractIssueNumber(created.stdout);
@@ -225,10 +236,53 @@ function ghCreate(args, assignee) {
     }
     die(`gh issue create failed (exit ${created.status})`, created.status || 1);
   }
-  const issueNumber = extractIssueNumber(created.stdout);
+  const issueNumber = created.issueNumber;
   if (!issueNumber) die(`could not parse issue number from gh output: ${created.stdout.trim()}`, 1);
   console.error(`✓ created issue #${issueNumber}`);
   return issueNumber;
+}
+
+function throwForGovernedCreateOutcome(created) {
+  const issueNumber = created.issueNumber || extractIssueNumber(created.stdout);
+  if (created.status !== 0) {
+    const error = new Error(
+      issueNumber
+        ? `partial-success: #${issueNumber} — issue was created but gh exited ${created.status}`
+        : `gh issue create failed (exit ${created.status}): ${created.stderr || 'unknown error'}`
+    );
+    error.exitCode = issueNumber ? 6 : created.status || 1;
+    error.partialIssueNumber = issueNumber || undefined;
+    throw error;
+  }
+  if (!issueNumber) {
+    const error = new Error(
+      `could not parse issue number from gh output: ${String(created.stdout || '').trim()}`
+    );
+    error.exitCode = 1;
+    throw error;
+  }
+  return issueNumber;
+}
+
+function ownedBodyDeps(env) {
+  if (!env) return {};
+  return {
+    fetchBody: async (repo, issueNumber) => {
+      const out = execFileSync(
+        'gh',
+        ['issue', 'view', String(issueNumber), '-R', repo, '--json', 'body'],
+        { encoding: 'utf8', timeout: GH_API_TIMEOUT_MS, env }
+      );
+      return JSON.parse(out).body;
+    },
+    pushBody: async (repo, issueNumber, body) => {
+      execFileSync(
+        'gh',
+        ['issue', 'edit', String(issueNumber), '-R', repo, '--body-file', '-'],
+        { encoding: 'utf8', timeout: GH_API_TIMEOUT_MS, env, input: body }
+      );
+    },
+  };
 }
 
 function buildTetherArgs(issueNumber, args, priority) {
@@ -310,6 +364,7 @@ export async function createGovernedInternalIssue({
   finalStatus = 'develop',
   withGovernedEffect,
   authorityIssueId,
+  env,
   deps = {},
   reconcile = true,
 } = {}) {
@@ -337,6 +392,7 @@ export async function createGovernedInternalIssue({
       callback
     );
   const createIssue = deps.createIssue;
+  const createOutcome = deps.createOutcome || ghCreateOutcome;
   const stampedBody = stampEntryMarker(bodyContent, 'backlog', new Date().toISOString());
   let tmpDir;
 
@@ -344,19 +400,22 @@ export async function createGovernedInternalIssue({
     let issueNumber;
     await governController('evidence-mutation', async () => {
       if (typeof createIssue === 'function') {
-        issueNumber = await createIssue({ title, bodyContent: stampedBody, cfg });
+        issueNumber = await createIssue({ title, bodyContent: stampedBody, cfg, env });
         return;
       }
       tmpDir = mkdtempSync(path.join(projectScratchDir('test'), 'aitm-create-issue-'));
       const bodyFilePath = path.join(tmpDir, 'body.md');
       writeFileSync(bodyFilePath, stampedBody, 'utf8');
-      issueNumber = ghCreate(
-        {
-          title,
-          label: [],
-          'body-file': bodyFilePath,
-        },
-        null
+      issueNumber = throwForGovernedCreateOutcome(
+        createOutcome(
+          {
+            title,
+            label: [],
+            'body-file': bodyFilePath,
+          },
+          null,
+          { env }
+        )
       );
     });
     if (!issueNumber) {
@@ -372,6 +431,7 @@ export async function createGovernedInternalIssue({
         finalStatus,
         withGovernedEffect,
         authorityIssueId: controllerId,
+        env,
         deps,
       });
     }
@@ -395,6 +455,7 @@ export async function reconcileGovernedInternalIssue({
   finalStatus = 'develop',
   withGovernedEffect,
   authorityIssueId,
+  env,
   deps = {},
 } = {}) {
   if (!issueNumber || !cfg?.repo || !cfg?.projectId) {
@@ -418,6 +479,8 @@ export async function reconcileGovernedInternalIssue({
     withGovernedEffect,
     authorityIssueId: controllerId,
     ...(deps.tether || {}),
+    runGql: (query, variables, options = {}) =>
+      (deps.tether?.runGql || gql)(query, variables, { ...options, env }),
   };
   await tetherIssue({ ...tetherOptions, status: 'backlog' });
   if (finalStatus && finalStatus !== 'backlog') {
@@ -445,6 +508,7 @@ export async function reconcileGovernedInternalIssue({
         return stampEntryMarker(next, 'develop', new Date(baseMs + 2).toISOString());
       },
       deps: {
+        ...ownedBodyDeps(env),
         ...(deps.body || {}),
         withGovernedEffect: controllerBodyAuthority,
       },

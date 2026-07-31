@@ -61,7 +61,7 @@ export async function cutEpicBranch({ issue, deps } = {}) {
       });
       const fetchResult =
         typeof deps.fetch === 'function'
-          ? await scope.effect(() => deps.fetch({ env }))
+          ? await deps.fetch({ env, runAttempt: scope.effect })
           : undefined;
       const effectiveBase =
         !String(liveLineage.parentBranch).startsWith('feature/epic/') && fetchResult?.trunk
@@ -94,7 +94,7 @@ function realGit(projectDir) {
     }).trim();
 }
 
-async function main(argv) {
+export async function main(argv, overrides = {}) {
   if (wantsHelp(argv)) {
     emitSelfDoc('cut-epic-branch');
     return;
@@ -104,31 +104,34 @@ async function main(argv) {
     process.stderr.write('usage: cut-epic-branch.mjs <issue#>\n');
     process.exit(2);
   }
-  const { loadConfig } = await import('./config.mjs');
+  const loadConfig =
+    overrides.loadConfig || (await import('./config.mjs')).loadConfig;
   const cfg = loadConfig();
   const projectDir = cfg.projectDir || process.cwd();
-  let node = await realGraphNode(issue, cfg);
+  const graphNode = overrides.realGraphNode || realGraphNode;
+  let node = await graphNode(issue, cfg);
   // #927 — a root epic forks from trunk, so cut from the resolved trunk ref
   // (default origin/trunk) after a fetch, never from a possibly-stale local
   // `trunk`. Nested sub-epics fork from their parent epic head and ignore this.
   const { resolveTrunkRef, fetchTrunk } = await import('./lib/trunk-ref.mjs');
   const trunk =
     typeof cfg.trunkRef === 'string' && cfg.trunkRef.trim() ? cfg.trunkRef.trim() : 'origin/trunk';
-  const { branch, base } = cutEpicBranch({
+  const runCore = overrides.runCore || cutEpicBranch;
+  const { branch, base } = await runCore({
     issue,
     deps: {
       graph: () => node,
       refreshGraph: async () => {
-        node = await realGraphNode(issue, cfg);
+        node = await graphNode(issue, cfg);
       },
       git: realGit(projectDir),
       trunk,
-      fetch: async ({ env }) => {
+      fetch: async ({ env, runAttempt }) => {
         const git = (args) => realGit(projectDir)(args, { env });
         const status = await fetchTrunk({
           cfg,
           projectDir,
-          deps: { git },
+          deps: { git, runAttempt },
         });
         return {
           ...status,
@@ -140,7 +143,9 @@ async function main(argv) {
       tokenEnv: cfg.workLease?.tokenEnv,
     },
   });
-  process.stdout.write(`cut ${branch} from ${base}\n`);
+  (overrides.write || process.stdout.write.bind(process.stdout))(
+    `cut ${branch} from ${base}\n`
+  );
 }
 
 const isMain = import.meta.url === `file://${process.argv[1]}`;

@@ -105,7 +105,7 @@ export async function mergeBack({ child, path, deps } = {}) {
       });
       const fetchResult =
         typeof deps.fetch === 'function'
-          ? await scope.effect(() => deps.fetch({ env: childEnv }))
+          ? await deps.fetch({ env: childEnv, runAttempt: scope.effect })
           : undefined;
 
       const grandparent = fetchResult?.trunk ?? liveEpicLineage.parentBranch;
@@ -125,9 +125,12 @@ export async function mergeBack({ child, path, deps } = {}) {
         );
       }
 
-      const testsPassed = await scope.effect(() =>
-        deps.runTests({ path, branch: childBranch, env: childEnv })
-      );
+      const testsPassed = await deps.runTests({
+        path,
+        branch: childBranch,
+        env: childEnv,
+        runSection: scope.effect,
+      });
       if (!testsPassed) {
         throw new Error(`merge-back: child ${childBranch} tests failed; refusing to merge`);
       }
@@ -163,7 +166,7 @@ function realGit(projectDir) {
     }).trim();
 }
 
-async function main(argv) {
+export async function main(argv, overrides = {}) {
   if (wantsHelp(argv)) {
     emitSelfDoc('merge-back');
     return;
@@ -174,9 +177,11 @@ async function main(argv) {
     process.stderr.write('usage: merge-back.mjs <child#> <worktree-path>\n');
     process.exit(2);
   }
-  const { loadConfig } = await import('./config.mjs');
+  const loadConfig =
+    overrides.loadConfig || (await import('./config.mjs')).loadConfig;
   const cfg = loadConfig();
-  let node = await realGraphNode(child, cfg);
+  const graphNode = overrides.realGraphNode || realGraphNode;
+  let node = await graphNode(child, cfg);
   const projectDir = cfg.projectDir || process.cwd();
   // #927 — the epic's grandparent, for a root epic, is trunk; the opportunistic
   // epic sync (step 1) rebases the epic onto it. Resolve+fetch the trunk ref so
@@ -188,34 +193,37 @@ async function main(argv) {
   // each section sequentially, each under its own 10-minute ceiling. Any section
   // failing (including a ceiling breach) fails the merge-back gate.
   const TEST_SECTIONS = ['test:unit', 'test:integration', 'test:slow'];
-  const runTests = ({ path, env }) => {
+  const runTests = async ({ path, env, runSection }) => {
     for (const section of TEST_SECTIONS) {
       try {
-        execFileSync('npm', ['run', section], {
-          cwd: path || projectDir,
-          stdio: 'inherit',
-          env,
-        });
+        await runSection(() =>
+          execFileSync('npm', ['run', section], {
+            cwd: path || projectDir,
+            stdio: 'inherit',
+            env,
+          })
+        );
       } catch {
         return false;
       }
     }
     return true;
   };
-  const { epic } = mergeBack({
+  const runCore = overrides.runCore || mergeBack;
+  const { epic } = await runCore({
     child,
     path: wtPath,
     deps: {
       graph: () => node,
       refreshGraph: async () => {
-        node = await realGraphNode(child, cfg);
+        node = await graphNode(child, cfg);
       },
       git: realGit(projectDir),
       worktreeGit: wtPath ? realGit(wtPath) : realGit(projectDir),
       trunk,
-      fetch: async ({ env }) => {
+      fetch: async ({ env, runAttempt }) => {
         const git = (args) => realGit(projectDir)(args, { env });
-        const status = await fetchTrunk({ cfg, projectDir, deps: { git } });
+        const status = await fetchTrunk({ cfg, projectDir, deps: { git, runAttempt } });
         return {
           ...status,
           trunk: (await resolveTrunkRef({ cfg, projectDir, deps: { git } })) || trunk,
@@ -227,7 +235,9 @@ async function main(argv) {
       tokenEnv: cfg.workLease?.tokenEnv,
     },
   });
-  process.stdout.write(`merged feature/child/${child} into ${epic}\n`);
+  (overrides.write || process.stdout.write.bind(process.stdout))(
+    `merged feature/child/${child} into ${epic}\n`
+  );
 }
 
 const isMain = import.meta.url === `file://${process.argv[1]}`;

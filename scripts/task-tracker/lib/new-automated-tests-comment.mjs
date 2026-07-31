@@ -60,17 +60,18 @@ export function parseTestEntriesFromDiff(diffText) {
   return entries;
 }
 
-async function defaultShowShaTestDiff(sha, { cwd } = {}) {
-  const { stdout } = await pexec('git', ['show', sha, '--', '*.test.mjs'], {
+async function defaultShowShaTestDiff(sha, { cwd, exec = pexec, env } = {}) {
+  const { stdout } = await exec('git', ['show', sha, '--', '*.test.mjs'], {
     cwd,
+    env,
     timeout: 15000,
     maxBuffer: 10 * 1024 * 1024,
   });
   return stdout;
 }
 
-async function defaultListComments({ cfg, issueNumber }) {
-  const { stdout } = await pexec(
+async function defaultListComments({ cfg, issueNumber, exec = pexec, env }) {
+  const { stdout } = await exec(
     'gh',
     [
       'issue',
@@ -83,14 +84,15 @@ async function defaultListComments({ cfg, issueNumber }) {
       '--jq',
       '.comments',
     ],
-    { timeout: 15000 }
+    { timeout: 15000, env }
   );
   return JSON.parse(stdout || '[]');
 }
 
-async function defaultCreateComment({ cfg, issueNumber, body }) {
-  await pexec('gh', ['issue', 'comment', String(issueNumber), '-R', cfg.repo, '--body', body], {
+async function defaultCreateComment({ cfg, issueNumber, body, exec = pexec, env }) {
+  await exec('gh', ['issue', 'comment', String(issueNumber), '-R', cfg.repo, '--body', body], {
     timeout: 15000,
+    env,
   });
 }
 
@@ -101,7 +103,7 @@ export async function collectTestDiffEntries({ shas, cwd, deps = {} } = {}) {
   for (const sha of shas || []) {
     let diffText = '';
     try {
-      diffText = await showShaTestDiff(sha, { cwd });
+      diffText = await showShaTestDiff(sha, { cwd, exec: deps.pexec, env: deps.env });
     } catch {
       continue; // best-effort: a missing/unreachable SHA just contributes nothing
     }
@@ -140,7 +142,7 @@ export async function postNewAutomatedTestsComment({ cfg, issueNumber, cwd, deps
   const listComments = deps.listComments || defaultListComments;
   const createComment = deps.createComment || defaultCreateComment;
 
-  const comments = await listComments({ cfg, issueNumber });
+  const comments = await listComments({ cfg, issueNumber, exec: deps.pexec, env: deps.env });
   const trail = findCommitTrailComment(comments);
   if (!trail) return { status: 'no-commits' };
 
@@ -155,7 +157,8 @@ export async function postNewAutomatedTestsComment({ cfg, issueNumber, cwd, deps
   if (entries.length === 0) return { status: 'no-tests' };
 
   const body = buildNewAutomatedTestsComment(entries);
-  const create = () => createComment({ cfg, issueNumber, body });
+  const create = () =>
+    createComment({ cfg, issueNumber, body, exec: deps.pexec, env: deps.env });
   if (typeof deps.withGovernedEffect === 'function') {
     await deps.withGovernedEffect(
       {

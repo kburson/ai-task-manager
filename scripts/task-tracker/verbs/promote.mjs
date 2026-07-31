@@ -25,7 +25,7 @@ import { actionPolicyFor, normalizeStateId } from '../lib/lifecycle-policy/index
 import { withIssueLock, IssueLockError } from '../issue-mutator-lock.mjs';
 import { getProjectDir } from '../paths.mjs';
 import { readLastKnownState, writeLastKnownState } from '../gh-timing-comment.mjs';
-import { splitRepo, gql } from '../../gh/lib/github-projects.mjs';
+import { splitRepo, gql, projectValuesForIssue } from '../../gh/lib/github-projects.mjs';
 import { applyRefinementEstimate } from '../lib/apply-refinement-estimate.mjs';
 import { stampStartTime } from '../lib/stamp-start-time.mjs';
 import { postNewAutomatedTestsComment } from '../lib/new-automated-tests-comment.mjs';
@@ -144,7 +144,7 @@ export const ALIAS_VERB = Object.fromEntries(
 // Default I/O — extracted so tests inject stubs.
 // ---------------------------------------------------------------------------
 
-async function defaultFetchIssueBody({ issueNumber, repo }) {
+async function defaultFetchIssueBody({ issueNumber, repo, env }) {
   const { owner, repoName } = splitRepo(repo);
   const data = await gql(
     `
@@ -153,7 +153,8 @@ async function defaultFetchIssueBody({ issueNumber, repo }) {
         issue(number: $issue) { body }
       }
     }`,
-    { owner, repo: repoName, issue: Number(issueNumber) }
+    { owner, repo: repoName, issue: Number(issueNumber) },
+    { env }
   );
   const issue = data?.repository?.issue;
   if (!issue) throw new Error(`promote: issue #${issueNumber} not found in ${repo}`);
@@ -162,16 +163,16 @@ async function defaultFetchIssueBody({ issueNumber, repo }) {
 
 // #295 — body writes go through `mutateIssueBody({ mutate })`; the closure
 // runs on the FRESH base each push attempt.
-async function defaultMutateIssueBody({ issueNumber, repo, mutate, withGovernedEffect }) {
+async function defaultMutateIssueBody({ issueNumber, repo, mutate, withGovernedEffect, env }) {
   return mutateIssueBody({
     issueNumber,
     repo,
     mutate,
-    deps: { pexec, withGovernedEffect },
+    deps: { env, withGovernedEffect },
   });
 }
 
-async function defaultGetLiveState({ issueNumber, cfg }) {
+async function defaultGetLiveState({ issueNumber, cfg, env }) {
   const { owner, repoName } = splitRepo(cfg.repo);
   const data = await gql(
     `
@@ -189,7 +190,8 @@ async function defaultGetLiveState({ issueNumber, cfg }) {
         }
       }
     }`,
-    { owner, repo: repoName, issue: Number(issueNumber) }
+    { owner, repo: repoName, issue: Number(issueNumber) },
+    { env }
   );
   const nodes = data?.repository?.issue?.projectItems?.nodes ?? [];
   const node = nodes.find((n) => n.project?.id === cfg.projectId) ?? nodes[0];
@@ -297,7 +299,9 @@ export async function runPromote({
     ? async (options, callback) => {
         if (
           String(options?.issueId).replace(/^#/, '') !== String(issueNumber) ||
-          !['lifecycle-mutation', 'evidence-mutation'].includes(options?.operation)
+          !['lifecycle-mutation', 'evidence-mutation', 'issue-body-mutation'].includes(
+            options?.operation
+          )
         ) {
           throw new Error('promote authorization scope mismatch');
         }
@@ -316,6 +320,30 @@ export async function runPromote({
     leaseContext: promoteAuthority?.leaseContext,
     tokenEnv: cfg.workLease?.tokenEnv,
   });
+  const processExec = deps.pexec || pexec;
+  const ownedPexec = (command, args, options = {}) =>
+    processExec(command, args, { ...options, env: ownedChildEnv });
+  const ownedGql = (query, variables, options = {}) =>
+    gql(query, variables, { ...options, env: ownedChildEnv });
+  const ownedProjectValues = (options) =>
+    projectValuesForIssue({ ...options, runGql: ownedGql });
+  const refinementDeps = {
+    ...(deps.refinementEstimate || deps.groomEstimate),
+    projectValuesForIssue:
+      (deps.refinementEstimate || deps.groomEstimate)?.projectValuesForIssue ||
+      ownedProjectValues,
+    pexec: ownedPexec,
+    env: ownedChildEnv,
+    gql: ownedGql,
+  };
+  const refineToPlanGateDeps = {
+    ...deps.refineToPlanGateDeps,
+    projectValuesForIssue:
+      deps.refineToPlanGateDeps?.projectValuesForIssue || ownedProjectValues,
+    pexec: ownedPexec,
+    env: ownedChildEnv,
+    gql: ownedGql,
+  };
 
   const fetchIssueBody = deps.fetchIssueBody || defaultFetchIssueBody;
   const rawMutateBody = deps.mutateIssueBody || defaultMutateIssueBody;
@@ -323,15 +351,20 @@ export async function runPromote({
     rawMutateBody({
       ...options,
       withGovernedEffect: nestedAuthorization,
+      env: ownedChildEnv,
     });
   const getLiveState = deps.getLiveState || defaultGetLiveState;
   const spawnVerb = deps.spawnVerb || defaultSpawnVerb;
   const runMoveState = deps.runMoveState || defaultRunMoveState;
   const deriveAndRescanFn = deps.deriveAndRescan || deriveAndRescan;
 
-  const { body: initialBody } = await fetchIssueBody({ issueNumber, repo: cfg.repo });
+  const { body: initialBody } = await fetchIssueBody({
+    issueNumber,
+    repo: cfg.repo,
+    env: ownedChildEnv,
+  });
   const { state: rawRecorded } = readLastKnownState(initialBody);
-  const live = (await getLiveState({ issueNumber, cfg })) || null;
+  const live = (await getLiveState({ issueNumber, cfg, env: ownedChildEnv })) || null;
 
   // First-touch bootstrap: a pre-existing issue with no lastKnownState metadata.
   // Sync recorded to live and continue — drift detection has nothing to compare
@@ -453,7 +486,8 @@ export async function runPromote({
       repo: cfg.repo,
       scanBody: body,
       deps: {
-        pexec,
+        pexec: ownedPexec,
+        env: ownedChildEnv,
         deriveAndStampFunctionalDod,
         nowIso,
         withGovernedEffect: nestedAuthorization,
@@ -469,7 +503,15 @@ export async function runPromote({
     toState: target,
     body,
     cfg,
-    deps,
+    deps: {
+      ...deps,
+      refinementEstimate: refinementDeps,
+      groomEstimate: refinementDeps,
+      refineToPlanGateDeps,
+      env: ownedChildEnv,
+      pexec: ownedPexec,
+      gql: ownedGql,
+    },
     projectDir: deps.projectDir || process.env.TASK_TRACKER_PROJECT_DIR || process.cwd(),
   };
   const guardResult = await runGuards(recorded, target, guardCtx);
@@ -531,7 +573,7 @@ export async function runPromote({
     //                            unchanged): keep transition-failed semantics.
     let liveAfter = null;
     try {
-      liveAfter = (await getLiveState({ issueNumber, cfg })) || null;
+      liveAfter = (await getLiveState({ issueNumber, cfg, env: ownedChildEnv })) || null;
     } catch {
       liveAfter = null;
     }
@@ -651,7 +693,7 @@ export async function runPromote({
   if (transitionResult.kind === 'alias') {
     let liveAfter = null;
     try {
-      liveAfter = (await getLiveState({ issueNumber, cfg })) || null;
+      liveAfter = (await getLiveState({ issueNumber, cfg, env: ownedChildEnv })) || null;
     } catch {
       liveAfter = null;
     }
@@ -679,7 +721,10 @@ export async function runPromote({
         cfg,
         issueNumber,
         now,
-        deps: { withGovernedEffect: nestedAuthorization },
+        deps: {
+          withGovernedEffect: nestedAuthorization,
+          gql: ownedGql,
+        },
       });
     } catch (error) {
       if (isGovernedAuthorityError(error)) throw error;
@@ -698,8 +743,10 @@ export async function runPromote({
         issueNumber,
         plan: refinementPlan,
         deps: {
-          ...(deps.refinementEstimate || deps.groomEstimate),
+          ...refinementDeps,
           withGovernedEffect: nestedAuthorization,
+          pexec: ownedPexec,
+          env: ownedChildEnv,
         },
       });
     } catch (err) {
@@ -721,6 +768,8 @@ export async function runPromote({
         deps: {
           ...deps.newAutomatedTestsComment,
           withGovernedEffect: nestedAuthorization,
+          pexec: ownedPexec,
+          env: ownedChildEnv,
         },
       });
     } catch (err) {

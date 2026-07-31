@@ -22,6 +22,8 @@ import { buildRow, postTimingEvent } from '../task-tracker/gh-timing-comment.mjs
 import { durableWordMarker } from '../task-tracker/state.mjs';
 import { getProjectDir } from '../task-tracker/paths.mjs';
 import { createRuntimeGovernedEffectAdapter } from '../task-tracker/lib/work-lease/governed-effect.mjs';
+import { isGovernedAuthorityError } from '../task-tracker/lib/work-lease/governed-effect.mjs';
+import { buildOwnedChildEnvironment } from '../task-tracker/lib/work-lease/child-environment.mjs';
 import { wantsHelp, emitSelfDoc } from '../lib/self-doc.mjs';
 
 const __dir = path.dirname(fileURLToPath(import.meta.url));
@@ -87,7 +89,13 @@ function renderTemplate({ purpose, children, waveIdValue }) {
     .replaceAll('{{wave_id}}', waveIdValue);
 }
 
-export async function findExistingParentByWaveId({ repo, waveIdValue, assignee }) {
+export async function findExistingParentByWaveId({
+  repo,
+  waveIdValue,
+  assignee,
+  env,
+  execFile = execFileSync,
+}) {
   const marker = `wave-id: ${waveIdValue}`;
   const args = [
     'search',
@@ -101,12 +109,14 @@ export async function findExistingParentByWaveId({ repo, waveIdValue, assignee }
   if (assignee) args.push('--author', assignee.replace(/^@/, ''));
   let stdout;
   try {
-    stdout = execFileSync('gh', args, {
+    stdout = execFile('gh', args, {
       encoding: 'utf8',
       timeout: GH_API_TIMEOUT_MS,
+      env,
     });
-  } catch {
-    return null;
+  } catch (error) {
+    if (isGovernedAuthorityError(error)) throw error;
+    throw new Error(`ensure-wave-parent: failed to search for existing wave parent: ${error.message}`);
   }
   try {
     return (
@@ -114,8 +124,8 @@ export async function findExistingParentByWaveId({ repo, waveIdValue, assignee }
         (row) => typeof row.body === 'string' && row.body.includes(marker)
       )?.number || null
     );
-  } catch {
-    return null;
+  } catch (error) {
+    throw new Error(`ensure-wave-parent: malformed existing-parent search response: ${error.message}`);
   }
 }
 
@@ -201,11 +211,17 @@ export async function runEnsureWaveParent({
     withGovernedEffect,
     deps: {
       waveId,
-      findExistingParent: async ({ waveIdValue }) => {
+      findExistingParent: async ({ waveIdValue, leaseContext }) => {
+        const env = buildOwnedChildEnvironment({
+          baseEnv: deps.env ?? process.env,
+          leaseContext,
+          tokenEnv: cfg.workLease?.tokenEnv,
+        });
         const existing = await findExisting({
           repo: cfg.repo,
           waveIdValue,
           assignee: cfg.assignee,
+          env,
         });
         if (existing) {
           process.stderr.write(
@@ -215,7 +231,7 @@ export async function runEnsureWaveParent({
         }
         return existing;
       },
-      createParent: ({ children, purpose, waveIdValue, withGovernedEffect }) =>
+      createParent: ({ children, purpose, waveIdValue, withGovernedEffect, leaseContext }) =>
         createInternal({
           title: `Wave: ${purpose}`.slice(0, 200),
           bodyContent: renderTemplate({ purpose, children, waveIdValue }),
@@ -225,10 +241,15 @@ export async function runEnsureWaveParent({
           finalStatus: 'develop',
           withGovernedEffect,
           authorityIssueId: controllerIssueId,
+          env: buildOwnedChildEnvironment({
+            baseEnv: deps.env ?? process.env,
+            leaseContext,
+            tokenEnv: cfg.workLease?.tokenEnv,
+          }),
           deps: deps.createIssueDeps || {},
           reconcile: false,
         }),
-      ensureParentReady: ({ parentNumber, withGovernedEffect }) =>
+      ensureParentReady: ({ parentNumber, withGovernedEffect, leaseContext }) =>
         reconcileInternal({
           issueNumber: parentNumber,
           cfg,
@@ -237,30 +258,72 @@ export async function runEnsureWaveParent({
           finalStatus: 'develop',
           withGovernedEffect,
           authorityIssueId: controllerIssueId,
+          env: buildOwnedChildEnvironment({
+            baseEnv: deps.env ?? process.env,
+            leaseContext,
+            tokenEnv: cfg.workLease?.tokenEnv,
+          }),
           deps: deps.createIssueDeps || {},
         }),
-      getIssueNodeId: ({ issueNumber }) =>
+      getIssueNodeId: ({ issueNumber, leaseContext }) =>
         (deps.getIssueNodeId || getIssueNodeId)({
           repo: cfg.repo,
           issueNumber,
-          runGql,
+          runGql: (query, variables, options = {}) =>
+            runGql(query, variables, {
+              ...options,
+              env: buildOwnedChildEnvironment({
+                baseEnv: deps.env ?? process.env,
+                leaseContext,
+                tokenEnv: cfg.workLease?.tokenEnv,
+              }),
+            }),
         }),
-      addSubIssue: ({ parentId, childId }) =>
-        (deps.addSubIssue || addSubIssue)({ parentId, childId, runGql }),
-      ensureParentEpicTitle: ({ parentId, withGovernedEffect: controllerContinuation }) =>
+      addSubIssue: ({ parentId, childId, leaseContext }) =>
+        (deps.addSubIssue || addSubIssue)({
+          parentId,
+          childId,
+          runGql: (query, variables, options = {}) =>
+            runGql(query, variables, {
+              ...options,
+              env: buildOwnedChildEnvironment({
+                baseEnv: deps.env ?? process.env,
+                leaseContext,
+                tokenEnv: cfg.workLease?.tokenEnv,
+              }),
+            }),
+        }),
+      ensureParentEpicTitle: ({
+        parentId,
+        withGovernedEffect: controllerContinuation,
+        leaseContext,
+      }) =>
         (deps.ensureParentEpicTitle || ensureParentEpicTitle)({
           parentId,
-          runGql,
+          runGql: (query, variables, options = {}) =>
+            runGql(query, variables, {
+              ...options,
+              env: buildOwnedChildEnvironment({
+                baseEnv: deps.env ?? process.env,
+                leaseContext,
+                tokenEnv: cfg.workLease?.tokenEnv,
+              }),
+            }),
           withGovernedEffect: controllerContinuation,
           authorityIssueId: controllerIssueId,
         }),
-      postTimingEvent: async ({ parentNumber, withGovernedEffect: controllerContinuation }) => {
+      postTimingEvent: async ({
+        parentNumber,
+        waveIdValue,
+        withGovernedEffect: controllerContinuation,
+        leaseContext,
+      }) => {
         if ((deps.env || process.env).TT_SKIP_NETWORK === '1') return;
         const row = buildRow({
           ts: new Date().toISOString(),
           event: 'start',
-          activeMin: 0,
-          idleMin: 0,
+          activeSec: 0,
+          idleSec: 0,
           deltaWords: 0,
           wordMarker: durableWordMarker(projectDir),
           description: `orchestration start — wave fan-out (${classification.solos.length} children)`,
@@ -278,7 +341,14 @@ export async function runEnsureWaveParent({
           issueNumber: `#${parentNumber}`,
           repo: cfg.repo,
           row,
+          projectionId: `wave-parent:${waveIdValue}`,
+          subOperationId: `controller:${controllerIssueId}:orchestration-start`,
           timeoutMs: cfg.hookNetworkTimeoutMs ?? 5000,
+          env: buildOwnedChildEnvironment({
+            baseEnv: deps.env ?? process.env,
+            leaseContext,
+            tokenEnv: cfg.workLease?.tokenEnv,
+          }),
           withGovernedEffect: remapToController,
           deps: deps.timing || {},
         });

@@ -237,10 +237,11 @@ export function ghPushArgs(repo, issueNumber) {
   ];
 }
 
-function ghFetchBody(repo, issueNumber) {
+function ghFetchBody(repo, issueNumber, { env } = {}) {
   return new Promise((resolve, reject) => {
     const proc = spawn('gh', ghFetchArgs(repo, issueNumber), {
       stdio: ['ignore', 'pipe', 'pipe'],
+      env,
     });
     const outP = collectStreamUtf8(proc.stdout);
     const errP = collectStreamUtf8(proc.stderr);
@@ -257,10 +258,11 @@ function ghFetchBody(repo, issueNumber) {
   });
 }
 
-function ghPushBody(repo, issueNumber, body) {
+function ghPushBody(repo, issueNumber, body, { env } = {}) {
   return new Promise((resolve, reject) => {
     const proc = spawn('gh', ghPushArgs(repo, issueNumber), {
       stdio: ['pipe', 'pipe', 'pipe'],
+      env,
     });
     const errP = collectStreamUtf8(proc.stderr);
     proc.on('error', reject);
@@ -288,8 +290,11 @@ export async function versionedWriteBody({
   if (typeof mutate !== 'function') {
     throw new TypeError('versionedWriteBody: mutate must be a function (baseBody) => newBody');
   }
-  const fetchBody = deps.fetchBody || ghFetchBody;
-  const pushBody = deps.pushBody || ghPushBody;
+  const fetchBody =
+    deps.fetchBody || ((targetRepo, targetIssue) => ghFetchBody(targetRepo, targetIssue, deps));
+  const pushBody =
+    deps.pushBody ||
+    ((targetRepo, targetIssue, body) => ghPushBody(targetRepo, targetIssue, body, deps));
   const beforePush = deps.beforePush;
   if (beforePush !== undefined && typeof beforePush !== 'function') {
     throw new TypeError('versionedWriteBody: deps.beforePush must be a function');

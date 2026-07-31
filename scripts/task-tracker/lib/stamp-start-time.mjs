@@ -95,6 +95,7 @@ export async function stampStartTime({ cfg, issueNumber, now = () => new Date(),
         itemId: item.id,
         fieldId: startTimeFieldId,
         value: { text: stamp },
+        runGql: deps.gql,
       });
     if (typeof deps.withGovernedEffect === 'function') {
       await deps.withGovernedEffect(

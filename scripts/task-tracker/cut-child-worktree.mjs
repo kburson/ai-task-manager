@@ -92,7 +92,7 @@ function realGit(projectDir) {
     }).trim();
 }
 
-async function main(argv) {
+export async function main(argv, overrides = {}) {
   if (wantsHelp(argv)) {
     emitSelfDoc('cut-child-worktree');
     return;
@@ -103,21 +103,24 @@ async function main(argv) {
     process.stderr.write('usage: cut-child-worktree.mjs <issue#> <path>\n');
     process.exit(2);
   }
-  const { loadConfig } = await import('./config.mjs');
+  const loadConfig =
+    overrides.loadConfig || (await import('./config.mjs')).loadConfig;
   const cfg = loadConfig();
-  let node = await realGraphNode(issue, cfg);
+  const graphNode = overrides.realGraphNode || realGraphNode;
+  let node = await graphNode(issue, cfg);
   const projectDir = cfg.projectDir || process.cwd();
+  const runCore = overrides.runCore || cutChildWorktree;
   const {
     branch,
     path: p,
     base,
-  } = cutChildWorktree({
+  } = await runCore({
     issue,
     path: wtPath,
     deps: {
       graph: () => node,
       refreshGraph: async () => {
-        node = await realGraphNode(issue, cfg);
+        node = await graphNode(issue, cfg);
       },
       git: realGit(projectDir),
       withGovernedEffect: createRuntimeGovernedEffectAdapter({ projectDir, config: cfg }),
@@ -125,7 +128,9 @@ async function main(argv) {
       tokenEnv: cfg.workLease?.tokenEnv,
     },
   });
-  process.stdout.write(`cut ${branch} at ${p} from ${base}\n`);
+  (overrides.write || process.stdout.write.bind(process.stdout))(
+    `cut ${branch} at ${p} from ${base}\n`
+  );
 }
 
 const isMain = import.meta.url === `file://${process.argv[1]}`;

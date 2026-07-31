@@ -89,7 +89,7 @@ test('promote holds one issue root across bootstrap body and move callbacks', as
 
   const result = await runPromote({ issueNumber: 1049, cfg: CFG, deps });
 
-  assert.equal(result.status, 'promoted');
+  assert.equal(result.status, 'promoted', JSON.stringify(result));
   assert.equal(roots, 1);
   assert.deepEqual(events, [
     'root:1049:lifecycle-mutation:true',
@@ -119,4 +119,145 @@ test('promote best-effort post hook rethrows governed authority failures', async
     runPromote({ issueNumber: 1049, cfg: CFG, deps }),
     (error) => error.code === 'fence-stale'
   );
+});
+
+test('promote authorization admits production issue-body mutation helpers on the same issue', async () => {
+  const events = [];
+  const deps = baseDeps({ body: '## User Story\n\nbootstrap\n', live: 'backlog' });
+  deps.withGovernedEffect = async (_options, callback) =>
+    callback({
+      leaseContext: LEASE_CONTEXT,
+      reverify: async () => events.push('reverify'),
+    });
+  deps.mutateIssueBody = async ({ mutate, withGovernedEffect }) =>
+    withGovernedEffect(
+      {
+        issueId: '1049',
+        operation: 'issue-body-mutation',
+        heartbeat: true,
+      },
+      async () => {
+        mutate('## User Story\n\nbootstrap\n');
+        events.push('body');
+      }
+    );
+  deps.runMoveState = async () => 0;
+
+  const result = await runPromote({ issueNumber: 1049, cfg: CFG, deps });
+  assert.equal(result.status, 'promoted');
+  assert.deepEqual(events, ['reverify', 'body']);
+});
+
+test('test-to-review derive uses production issue-body authority on the same root', async () => {
+  const events = [];
+  const deps = baseDeps({ body: bodyWithState('test'), live: 'test' });
+  deps.withGovernedEffect = async (_options, callback) =>
+    callback({
+      leaseContext: LEASE_CONTEXT,
+      reverify: async () => events.push('reverify'),
+    });
+  deps.deriveAndRescan = async ({ deps: deriveDeps, scanBody }) => {
+    await deriveDeps.withGovernedEffect(
+      {
+        issueId: '1049',
+        operation: 'issue-body-mutation',
+        heartbeat: true,
+      },
+      async () => events.push('derive')
+    );
+    return { scanBody, derived: null, errors: [] };
+  };
+
+  await runPromote({ issueNumber: 1049, cfg: CFG, deps });
+  assert.deepEqual(events, ['reverify', 'derive']);
+});
+
+test('develop-to-test production git and GH helpers receive only the owned lease env', async () => {
+  const calls = [];
+  let liveReads = 0;
+  const deps = baseDeps({ body: bodyWithState('develop'), live: 'develop' });
+  deps.withGovernedEffect = async (_options, callback) =>
+    callback({ leaseContext: LEASE_CONTEXT, reverify: async () => {} });
+  deps.getLiveState = async () => {
+    liveReads += 1;
+    return liveReads === 1 ? 'develop' : 'test';
+  };
+  deps.spawnVerb = async ({ baseEnv }) => {
+    assert.deepEqual(baseEnv, {
+      KEEP_ME: 'yes',
+      AITM_LEASE_ID: 'lease-1049',
+      AITM_FENCING_TOKEN: '42',
+    });
+    return 0;
+  };
+  deps.pexec = async (command, args, options) => {
+    calls.push({ command, args, env: options.env });
+    if (command === 'gh' && args[0] === 'issue' && args[1] === 'view') {
+      return {
+        stdout: JSON.stringify([
+          { body: '### 🔗 Commits\n<!-- aitm-commits shas="deadbeef" -->' },
+        ]),
+      };
+    }
+    if (command === 'git') {
+      return { stdout: '+++ b/new.test.mjs\n+test(\"owned helper env\", () => {});' };
+    }
+    return { stdout: '' };
+  };
+
+  const result = await runPromote({ issueNumber: 1049, cfg: CFG, deps });
+
+  assert.equal(result.status, 'promoted');
+  assert.equal(result.newTestsPost.status, 'posted');
+  assert.deepEqual(
+    calls.map(({ command }) => command),
+    ['gh', 'git', 'gh']
+  );
+  for (const call of calls) {
+    assert.deepEqual(call.env, {
+      KEEP_ME: 'yes',
+      AITM_LEASE_ID: 'lease-1049',
+      AITM_FENCING_TOKEN: '42',
+    });
+  }
+});
+
+test('refine-to-plan production refinement GH helpers receive only the owned lease env', async () => {
+  const rationale =
+    '<!-- aitm-refinement-rationale: {"size":"a","estimate":"b","priority":"c"} -->';
+  const body =
+    `${bodyWithState('refine')}\n` +
+    '<!-- aitm-refine-complete: 2026-07-31T00:00:00Z -->\n' +
+    `${rationale}\n\n## Acceptance Criteria\n- [ ] one\n`;
+  const calls = [];
+  const deps = baseDeps({ body, live: 'refine' });
+  deps.withGovernedEffect = async (_options, callback) =>
+    callback({ leaseContext: LEASE_CONTEXT, reverify: async () => {} });
+  deps.runMoveState = async () => 0;
+  deps.refineToPlanGate = async () => ({ ok: true, blockers: [] });
+  deps.refinementEstimate = {
+    loadProjectFieldDefs: () => [],
+    projectValuesForIssue: async () => ({ size: 'S', estimate: 4, priority: 'P2' }),
+    mutateIssueBody: async () => ({ status: 'ok' }),
+  };
+  deps.pexec = async (command, args, options) => {
+    calls.push({ command, args, env: options.env });
+    return { stdout: '' };
+  };
+
+  const result = await runPromote({ issueNumber: 1049, cfg: CFG, deps });
+
+  assert.equal(result.status, 'promoted', JSON.stringify(result));
+  assert.equal(result.refinementPost.status, 'posted');
+  assert.deepEqual(
+    calls.map(({ command }) => command),
+    ['gh', 'gh']
+  );
+  for (const call of calls) {
+    assert.deepEqual(call.env, {
+      KEEP_ME: 'yes',
+      AITM_LEASE_ID: 'lease-1049',
+      AITM_FENCING_TOKEN: '42',
+    });
+  }
 });

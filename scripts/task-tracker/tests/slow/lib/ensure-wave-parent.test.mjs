@@ -29,6 +29,7 @@ import { fileURLToPath } from 'node:url';
 const pexec = promisify(execFile);
 const __dir = path.dirname(fileURLToPath(import.meta.url)) + '/..';
 const HELPER = path.resolve(__dir, '..', '..', '..', 'gh', 'ensure-wave-parent.mjs');
+const TIMING_HELPER = path.resolve(__dir, '..', '..', 'gh-timing-comment.mjs');
 
 function writeConfig(sandbox) {
   mkdirSync(path.join(sandbox, '.ai-task-manager'), { recursive: true });
@@ -47,6 +48,7 @@ function writeConfig(sandbox) {
         kanbanOptionReview: 'OPT_review',
         kanbanOptionDone: 'OPT_done',
         assignee: '@me',
+        workLease: { tokenEnv: 'REMOTE_LEASE_BEARER' },
       },
       null,
       2
@@ -78,7 +80,16 @@ if (argv[0] === 'api' && argv[1] === 'graphql' && argv.includes('--input') && ar
   for await (const c of process.stdin) chunks.push(c);
   stdinBody = Buffer.concat(chunks).toString('utf8');
 }
-appendFileSync(${JSON.stringify(callsLog)}, JSON.stringify({argv, stdinBody}) + '\\n');
+appendFileSync(${JSON.stringify(callsLog)}, JSON.stringify({
+  argv,
+  stdinBody,
+  env: Object.fromEntries(Object.entries(process.env).filter(([key]) =>
+    key.startsWith('AITM_LEASE_') ||
+    key === 'AITM_FENCING_TOKEN' ||
+    key === 'REMOTE_LEASE_BEARER' ||
+    key === 'KEEP_ME'
+  )),
+}) + '\\n');
 const fx = JSON.parse(readFileSync(${JSON.stringify(fixturePath)}, 'utf8'));
 
 // gh search issues — return existing parent matches (idempotency probe)
@@ -209,6 +220,11 @@ async function runHelper(sandbox, binDir, args) {
     PATH: `${binDir}:${process.env.PATH}`,
     AI_TASK_MANAGER_PROJECT_DIR: sandbox,
     TT_SKIP_NETWORK: '1',
+    KEEP_ME: 'yes',
+    REMOTE_LEASE_BEARER: 'secret',
+    AITM_LEASE_ID: 'stale',
+    AITM_FENCING_TOKEN: '7',
+    AITM_LEASE_RECEIPT: 'untrusted',
   };
   const helperUrl = new URL(`file://${HELPER}`).href;
   const runner = `
@@ -282,6 +298,16 @@ function readCalls(callsLog) {
     assert.equal(created.length, 1, 'should create exactly one parent issue');
     const addSubs = calls.filter((c) => /addSubIssue/.test(c.stdinBody || ''));
     assert.equal(addSubs.length, 3, `expected 3 addSubIssue mutations; saw ${addSubs.length}`);
+    const ownedCalls = calls.filter(
+      (call) => !/i0: issue\(number:\$n0\)/.test(call.stdinBody || '')
+    );
+    for (const call of ownedCalls) {
+      assert.deepEqual(call.env, {
+        AITM_LEASE_ID: 'lease-test',
+        AITM_FENCING_TOKEN: '1',
+        KEEP_ME: 'yes',
+      });
+    }
     console.log('test 1 passed: solo-wave creates parent + 3 addSubIssue calls');
   } finally {
     rmSync(sandbox, { recursive: true, force: true });
@@ -450,6 +476,9 @@ function readCalls(callsLog) {
 // ─── Test 8 (#1049): production chain Nth-stale + durable retry ───────────────
 {
   const { runEnsureWaveParent } = await import(new URL(`file://${HELPER}`).href);
+  const { parseTimingProjectionReceipts } = await import(
+    new URL(`file://${TIMING_HELPER}`).href
+  );
   const sandbox = mkdtempSync(path.join(projectScratchDir('test'), 'tt-ewp-8-'));
   const cfg = {
     repo: 'test-owner/test-repo',
@@ -459,7 +488,7 @@ function readCalls(callsLog) {
     kanbanOptionDevelop: 'OPT_develop',
   };
 
-  function makeFixture() {
+  function makeFixture({ loseTimingResponse = false } = {}) {
     const state = {
       parent: null,
       creates: 0,
@@ -472,6 +501,7 @@ function readCalls(callsLog) {
       titleUpdates: 0,
       timing: null,
       timingCreates: 0,
+      timingResponseLost: false,
     };
     const runGql = async (query, variables) => {
       if (/addSubIssue/.test(query)) {
@@ -567,12 +597,30 @@ function readCalls(callsLog) {
       findExistingParentByWaveId: async () => state.parent,
       createIssueDeps,
       timing: {
-        findTimingComment: async () => state.timing,
-        createTimingComment: async (_issue, _repo, body) => {
+        findTimingComment: async (_issue, _repo, options) => {
+          assert.deepEqual(options.env, {
+            AITM_LEASE_ID: 'lease-controller',
+            AITM_FENCING_TOKEN: '42',
+          });
+          return state.timing;
+        },
+        createTimingComment: async (_issue, _repo, body, options) => {
+          assert.deepEqual(options.env, {
+            AITM_LEASE_ID: 'lease-controller',
+            AITM_FENCING_TOKEN: '42',
+          });
           state.timing = { id: 'TIMING_1', body };
           state.timingCreates += 1;
+          if (loseTimingResponse && !state.timingResponseLost) {
+            state.timingResponseLost = true;
+            throw new Error('timing response lost after durable create');
+          }
         },
-        updateTimingComment: async (_id, _repo, body) => {
+        updateTimingComment: async (_id, _repo, body, options) => {
+          assert.deepEqual(options.env, {
+            AITM_LEASE_ID: 'lease-controller',
+            AITM_FENCING_TOKEN: '42',
+          });
           state.timing = { id: 'TIMING_1', body };
         },
       },
@@ -628,12 +676,53 @@ function readCalls(callsLog) {
       assert.equal(fixture.state.timingCreates, 1, `staleAt=${staleAt}: one timing create`);
       assert.match(fixture.state.body, /aitm-entered-develop/);
     }
+    const responseLossFixture = makeFixture({ loseTimingResponse: true });
+    const responseLossResult = await run(responseLossFixture, authority());
+    assert.equal(responseLossResult.parentNumber, 500);
+    assert.equal(responseLossFixture.state.timingCreates, 1);
+    assert.deepEqual(
+      parseTimingProjectionReceipts(responseLossFixture.state.timing?.body).map(
+        ({ projectionId, subOperationId }) => ({ projectionId, subOperationId })
+      ),
+      [
+        {
+          projectionId: 'wave-parent:10-11.5ef68ca70c',
+          subOperationId: 'controller:900:orchestration-start',
+        },
+      ]
+    );
     console.log(
       'test 8 passed: production create/tether/body/reparent/title/timing chain fences Nth stale and retries without duplicates'
     );
   } finally {
     rmSync(sandbox, { recursive: true, force: true });
   }
+}
+
+// ─── Test 9 (#1049): existing-parent lookup outages fail closed ───────────────
+{
+  const { findExistingParentByWaveId } = await import(new URL(`file://${HELPER}`).href);
+  let creates = 0;
+  await assert.rejects(
+    findExistingParentByWaveId({
+      repo: 'test-owner/test-repo',
+      waveIdValue: '10-11.deadbeef00',
+      execFile: () => {
+        throw new Error('search API unavailable');
+      },
+    }),
+    /unavailable/
+  );
+  await assert.rejects(
+    findExistingParentByWaveId({
+      repo: 'test-owner/test-repo',
+      waveIdValue: '10-11.deadbeef00',
+      execFile: () => '{malformed-json',
+    }),
+    /JSON|parse|malformed/i
+  );
+  assert.equal(creates, 0, 'lookup outage cannot be interpreted as a verified no-match');
+  console.log('test 9 passed: wave-parent lookup outages fail closed');
 }
 
 console.log('ensure-wave-parent: all tests passed');

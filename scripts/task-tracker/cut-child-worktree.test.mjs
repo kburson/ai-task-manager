@@ -6,7 +6,9 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { cutChildWorktree } from './cut-child-worktree.mjs';
+import * as cutChildModule from './cut-child-worktree.mjs';
+
+const { cutChildWorktree } = cutChildModule;
 
 const GRAPH = {
   905: { parent: null, children: [910] }, // root epic
@@ -145,4 +147,35 @@ test('child worktree cut rereads lineage inside epic authority before git', asyn
 
   await assert.rejects(cutChildWorktree({ issue: 910, path: '/wt/910', deps }), /lineage changed/i);
   assert.equal(gitCalls.length, 0);
+});
+
+test('cut-child CLI main awaits the async core before printing resolved values', async () => {
+  assert.equal(typeof cutChildModule.main, 'function');
+  const output = [];
+  await cutChildModule.main(['910', '/wt/910'], {
+    loadConfig: () => ({ repo: 'o/r', projectDir: '/proj' }),
+    realGraphNode: async () => GRAPH[910],
+    runCore: async () => ({
+      branch: 'feature/child/910',
+      path: '/wt/910',
+      base: 'feature/epic/905',
+    }),
+    write: (text) => output.push(text),
+  });
+  assert.deepEqual(output, [
+    'cut feature/child/910 at /wt/910 from feature/epic/905\n',
+  ]);
+
+  const refusal = Object.assign(new Error('lease refused'), { code: 'fence-stale' });
+  await assert.rejects(
+    cutChildModule.main(['910', '/wt/910'], {
+      loadConfig: () => ({ repo: 'o/r', projectDir: '/proj' }),
+      realGraphNode: async () => GRAPH[910],
+      runCore: async () => {
+        throw refusal;
+      },
+      write: () => assert.fail('must not print success after rejection'),
+    }),
+    (error) => error === refusal
+  );
 });

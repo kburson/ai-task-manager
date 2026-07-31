@@ -6,7 +6,9 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { syncEpic, epicNeedsSync } from './sync-epic.mjs';
+import * as syncEpicModule from './sync-epic.mjs';
+
+const { syncEpic, epicNeedsSync } = syncEpicModule;
 
 const GRAPH = {
   905: { parent: null, children: [910] }, // root epic
@@ -162,7 +164,7 @@ test('sync-epic holds one epic root and reverifies before fetch, rebase, and pus
     deps: {
       graph,
       git,
-      fetch: (options) => fetches.push(options),
+      fetch: (options) => options.runAttempt(() => fetches.push(options)),
       withGovernedEffect: auth.withGovernedEffect,
       baseEnv: {
         KEEP_ME: 'yes',
@@ -201,7 +203,7 @@ test('sync-epic no-push mode performs no push verification', async () => {
     deps: {
       graph,
       git,
-      fetch: () => {},
+      fetch: ({ runAttempt }) => runAttempt(() => {}),
       withGovernedEffect: auth.withGovernedEffect,
       noPushToOrigin: true,
     },
@@ -223,7 +225,7 @@ test('sync-epic stale fence blocks the selected mutating callback', async () => 
       deps: {
         graph,
         git,
-        fetch: () => {},
+        fetch: ({ runAttempt }) => runAttempt(() => {}),
         withGovernedEffect: auth.withGovernedEffect,
       },
     }),
@@ -232,5 +234,34 @@ test('sync-epic stale fence blocks the selected mutating callback', async () => 
   assert.equal(
     git.calls.some((args) => args[0] === 'push'),
     false
+  );
+});
+
+test('sync-epic CLI main awaits the async core before printing resolved values', async () => {
+  assert.equal(typeof syncEpicModule.main, 'function');
+  const output = [];
+  await syncEpicModule.main(['905'], {
+    loadConfig: () => ({ repo: 'o/r', projectDir: '/proj' }),
+    realGraphNode: async () => GRAPH[905],
+    runCore: async () => ({
+      branch: 'feature/epic/905',
+      rebasedOnto: 'origin/trunk',
+      pushed: true,
+    }),
+    write: (text) => output.push(text),
+  });
+  assert.deepEqual(output, ['synced feature/epic/905 onto origin/trunk and pushed\n']);
+
+  const refusal = Object.assign(new Error('lease refused'), { code: 'fence-stale' });
+  await assert.rejects(
+    syncEpicModule.main(['905'], {
+      loadConfig: () => ({ repo: 'o/r', projectDir: '/proj' }),
+      realGraphNode: async () => GRAPH[905],
+      runCore: async () => {
+        throw refusal;
+      },
+      write: () => assert.fail('must not print success after rejection'),
+    }),
+    (error) => error === refusal
   );
 });

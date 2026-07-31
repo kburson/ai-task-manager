@@ -78,14 +78,15 @@ export function buildRefinementCommentBody({ issueNumber, size, estimate, priori
   ].join('\n');
 }
 
-async function defaultPostComment({ issueNumber, repo, body }) {
-  await pexec('gh', ['issue', 'comment', String(issueNumber), '-R', repo, '--body', body], {
+async function defaultPostComment({ issueNumber, repo, body, exec = pexec, env }) {
+  await exec('gh', ['issue', 'comment', String(issueNumber), '-R', repo, '--body', body], {
     timeout: GH_API_TIMEOUT_MS,
+    env,
   });
 }
 
-async function defaultListCommentBodies({ issueNumber, repo }) {
-  const { stdout } = await pexec(
+async function defaultListCommentBodies({ issueNumber, repo, exec = pexec, env }) {
+  const { stdout } = await exec(
     'gh',
     [
       'issue',
@@ -98,17 +99,17 @@ async function defaultListCommentBodies({ issueNumber, repo }) {
       '--jq',
       '.comments[].body',
     ],
-    { timeout: GH_API_TIMEOUT_MS }
+    { timeout: GH_API_TIMEOUT_MS, env }
   );
   return String(stdout || '').split('\n');
 }
 
-async function defaultMutateIssueBody({ issueNumber, repo, mutate, withGovernedEffect }) {
+async function defaultMutateIssueBody({ issueNumber, repo, mutate, withGovernedEffect, env }) {
   await mutateIssueBody({
     issueNumber,
     repo,
     mutate,
-    deps: { pexec, withGovernedEffect },
+    deps: { env, withGovernedEffect },
   });
 }
 
@@ -255,7 +256,12 @@ export async function applyRefinementEstimate({ cfg, issueNumber, plan, deps = {
       : callback();
 
   try {
-    const bodies = await listCommentBodies({ issueNumber, repo: cfg.repo });
+    const bodies = await listCommentBodies({
+      issueNumber,
+      repo: cfg.repo,
+      exec: deps.pexec,
+      env: deps.env,
+    });
     const hit = bodies.some((b) => {
       const m = String(b).match(COMMENT_MARKER_RE);
       return m && Number(m[1]) === Number(issueNumber);
@@ -270,7 +276,15 @@ export async function applyRefinementEstimate({ cfg, issueNumber, plan, deps = {
   }
 
   try {
-    await governWrite(() => postComment({ issueNumber, repo: cfg.repo, body: plan.commentBody }));
+    await governWrite(() =>
+      postComment({
+        issueNumber,
+        repo: cfg.repo,
+        body: plan.commentBody,
+        exec: deps.pexec,
+        env: deps.env,
+      })
+    );
   } catch (err) {
     if (isGovernedAuthorityError(err)) throw err;
     return { status: 'post-failed', error: err.message };
@@ -289,6 +303,7 @@ export async function applyRefinementEstimate({ cfg, issueNumber, plan, deps = {
         repo: cfg.repo,
         mutate: (base) => stripRationaleMarker(base),
         withGovernedEffect: deps.withGovernedEffect,
+        env: deps.env,
       })
     );
   } catch (error) {

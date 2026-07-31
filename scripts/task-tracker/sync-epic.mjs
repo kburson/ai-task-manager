@@ -93,7 +93,7 @@ export async function syncEpic({ epic, deps } = {}) {
       });
       const fetchResult =
         typeof deps.fetch === 'function'
-          ? await scope.effect(() => deps.fetch({ env }))
+          ? await deps.fetch({ env, runAttempt: scope.effect })
           : undefined;
       const effectiveTrunk = fetchResult?.trunk ?? trunkRef;
       await scope.effect(() => deps.git(['rebase', effectiveTrunk, lineage.branch], { env }));
@@ -128,7 +128,7 @@ function realGit(projectDir) {
     }).trim();
 }
 
-async function main(argv) {
+export async function main(argv, overrides = {}) {
   if (wantsHelp(argv)) {
     emitSelfDoc('sync-epic');
     return;
@@ -138,30 +138,33 @@ async function main(argv) {
     process.stderr.write('usage: sync-epic.mjs <epic#>\n');
     process.exit(2);
   }
-  const { loadConfig } = await import('./config.mjs');
+  const loadConfig =
+    overrides.loadConfig || (await import('./config.mjs')).loadConfig;
   const cfg = loadConfig();
   const projectDir = cfg.projectDir || process.cwd();
-  let node = await realGraphNode(epic, cfg);
+  const graphNode = overrides.realGraphNode || realGraphNode;
+  let node = await graphNode(epic, cfg);
   // #927 — fetch, then resolve the one trunk ref both the ancestor-check and the
   // rebase must agree on. Injecting it makes local `trunk` cosmetic.
   const { resolveTrunkRef, fetchTrunk } = await import('./lib/trunk-ref.mjs');
   const trunk =
     typeof cfg.trunkRef === 'string' && cfg.trunkRef.trim() ? cfg.trunkRef.trim() : 'origin/trunk';
-  const { branch, rebasedOnto, pushed } = syncEpic({
+  const runCore = overrides.runCore || syncEpic;
+  const { branch, rebasedOnto, pushed } = await runCore({
     epic,
     deps: {
       graph: () => node,
       refreshGraph: async () => {
-        node = await realGraphNode(epic, cfg);
+        node = await graphNode(epic, cfg);
       },
       git: realGit(projectDir),
       trunk,
-      fetch: async ({ env }) => {
+      fetch: async ({ env, runAttempt }) => {
         const git = (args) => realGit(projectDir)(args, { env });
         const status = await fetchTrunk({
           cfg,
           projectDir,
-          deps: { git },
+          deps: { git, runAttempt },
         });
         return {
           ...status,
@@ -174,7 +177,7 @@ async function main(argv) {
       tokenEnv: cfg.workLease?.tokenEnv,
     },
   });
-  process.stdout.write(
+  (overrides.write || process.stdout.write.bind(process.stdout))(
     `synced ${branch} onto ${rebasedOnto}${pushed ? ' and pushed' : ' (rebase-only)'}\n`
   );
 }

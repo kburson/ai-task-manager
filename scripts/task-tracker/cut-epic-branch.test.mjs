@@ -5,7 +5,9 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { cutEpicBranch } from './cut-epic-branch.mjs';
+import * as cutEpicModule from './cut-epic-branch.mjs';
+
+const { cutEpicBranch } = cutEpicModule;
 
 const GRAPH = {
   905: { parent: null, children: [910, 911] }, // root epic
@@ -124,4 +126,29 @@ test('cut-epic refuses changed lineage inside the authority root before git', as
 
   await assert.rejects(cutEpicBranch({ issue: 911, deps }), /lineage changed/i);
   assert.equal(gitCalls.length, 0);
+});
+
+test('cut-epic CLI main awaits the async core before printing resolved values', async () => {
+  assert.equal(typeof cutEpicModule.main, 'function');
+  const output = [];
+  await cutEpicModule.main(['905'], {
+    loadConfig: () => ({ repo: 'o/r', projectDir: '/proj' }),
+    realGraphNode: async () => GRAPH[905],
+    runCore: async () => ({ branch: 'feature/epic/905', base: 'origin/trunk' }),
+    write: (text) => output.push(text),
+  });
+  assert.deepEqual(output, ['cut feature/epic/905 from origin/trunk\n']);
+
+  const refusal = Object.assign(new Error('lease refused'), { code: 'fence-stale' });
+  await assert.rejects(
+    cutEpicModule.main(['905'], {
+      loadConfig: () => ({ repo: 'o/r', projectDir: '/proj' }),
+      realGraphNode: async () => GRAPH[905],
+      runCore: async () => {
+        throw refusal;
+      },
+      write: () => assert.fail('must not print success after rejection'),
+    }),
+    (error) => error === refusal
+  );
 });

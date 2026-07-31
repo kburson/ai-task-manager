@@ -104,6 +104,7 @@ export async function ensureWaveParentCore({
         cfg,
         waveIdValue,
         withGovernedEffect: controllerContinuation,
+        leaseContext: authority.leaseContext,
       };
 
       let parentNumber = await deps.findExistingParent(common);
