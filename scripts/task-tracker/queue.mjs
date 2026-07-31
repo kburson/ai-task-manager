@@ -13,6 +13,8 @@ import { legacyPathFor } from './paths.mjs';
 import { LOCK_RETRY_MS, LOCK_STALE_MS, DEFAULT_TIMEOUT_MS, withLock } from './locks.mjs';
 import { isGovernedAuthorityError } from './lib/work-lease/governed-effect.mjs';
 
+export { canonicalTimingQueueProjection } from './lib/timing-queue-projection.mjs';
+
 let tempSequence = 0;
 
 function read(queuePath) {

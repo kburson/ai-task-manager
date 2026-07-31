@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // @story #1049
-// Both production queue consumers must preserve optional timing projection
-// identity while leaving legacy queue-item delivery byte-for-byte unchanged.
+// Both production queue consumers must preserve durable timing projection
+// identity and derive the same canonical identity for legacy queue entries.
 
 import { strict as assert } from 'node:assert';
 import { mkdtempSync, rmSync } from 'node:fs';
@@ -12,6 +12,7 @@ import { postHookQueuedTimingEvent } from '../../../hook-handler.mjs';
 import { drain, enqueue, peek } from '../../../queue.mjs';
 import { postRuntimeQueuedTimingEvent } from '../../../runtime.mjs';
 import { projectScratchDir } from '../../../lib/scratch-dir.mjs';
+import { canonicalTimingQueueProjection } from '../../../lib/timing-queue-projection.mjs';
 
 const consumers = [
   ['runtime', postRuntimeQueuedTimingEvent],
@@ -21,6 +22,7 @@ const allowGovernedEffect = async (_options, callback) => callback();
 
 for (const [name, consume] of consumers) {
   const projectedCalls = [];
+  const projectedReads = [];
   const projectedResult = await consume(
     {
       kind: 'timing',
@@ -37,6 +39,10 @@ for (const [name, consume] of consumers) {
         projectedCalls.push(input);
         return 'projected-result';
       },
+      read: async (input) => {
+        projectedReads.push(input);
+        return { reconciled: true, projectionId: input.projectionId };
+      },
     }
   );
   assert.equal(projectedResult, 'projected-result', `${name}: forwards projected result`);
@@ -50,26 +56,53 @@ for (const [name, consume] of consumers) {
       timeoutMs: 2345,
     },
   ]);
+  assert.deepEqual(projectedReads, [
+    {
+      issueNumber: 1049,
+      repo: 'owner/repo',
+      projectionId: 'acquire:request-1049:timing',
+      subOperationIds: ['acquire:request-1049:timing:bind'],
+      expectedRows: {
+        'acquire:request-1049:timing:bind': 'prebuilt projected row',
+      },
+      timeoutMs: 2345,
+    },
+  ]);
 
   const legacyCalls = [];
-  const legacyResult = await consume(
-    { kind: 'timing', issue: '#77', row: 'legacy row' },
-    {
-      repo: 'owner/repo',
-      timeoutMs: 3456,
-      withGovernedEffect: allowGovernedEffect,
-      post: async (input) => {
-        legacyCalls.push(input);
-        return 'legacy-result';
-      },
-    }
-  );
+  const legacyReads = [];
+  const legacyEvent = { kind: 'timing', issue: '#77', row: 'legacy row' };
+  const legacyProjection = canonicalTimingQueueProjection(legacyEvent);
+  const legacyResult = await consume(legacyEvent, {
+    repo: 'owner/repo',
+    timeoutMs: 3456,
+    withGovernedEffect: allowGovernedEffect,
+    post: async (input) => {
+      legacyCalls.push(input);
+      return 'legacy-result';
+    },
+    read: async (input) => {
+      legacyReads.push(input);
+      return { reconciled: true, projectionId: input.projectionId };
+    },
+  });
   assert.equal(legacyResult, 'legacy-result', `${name}: forwards legacy result`);
   assert.deepEqual(legacyCalls, [
     {
       issueNumber: '#77',
       repo: 'owner/repo',
       row: 'legacy row',
+      ...legacyProjection,
+      timeoutMs: 3456,
+    },
+  ]);
+  assert.deepEqual(legacyReads, [
+    {
+      issueNumber: '#77',
+      repo: 'owner/repo',
+      projectionId: legacyProjection.projectionId,
+      subOperationIds: [legacyProjection.subOperationId],
+      expectedRows: { [legacyProjection.subOperationId]: 'legacy row' },
       timeoutMs: 3456,
     },
   ]);

@@ -11,7 +11,13 @@ import { execFile, execFileSync } from 'node:child_process';
 import { promisify } from 'node:util';
 import { loadConfig } from './config.mjs';
 import { selfCheckFieldConfig } from './lib/field-config-warn.mjs';
-import { postTimingEvent, buildRow, readTimingCommentBody, bodyOf } from './gh-timing-comment.mjs';
+import {
+  postTimingEvent,
+  buildRow,
+  readTimingCommentBody,
+  readTimingProjection,
+  bodyOf,
+} from './gh-timing-comment.mjs';
 import { lastRowTsFromBody, lastRowFromBody } from './lib/timing-rows.mjs';
 import { isDepartureEvent } from './lib/timing-events/index.mjs';
 import { PHASE_EVENTS, resolvePhaseEvent } from './phase-events.mjs';
@@ -60,6 +66,7 @@ import { normalizeIssueCloseSnapshot } from './lib/closed-issue-convergence.mjs'
 import { normalizeSubIssueBoardSnapshot } from './lib/sub-issue-board-snapshot.mjs';
 import { reconcileIssueTimeProjection } from './lib/work-lease/issue-time-projection.mjs';
 import { assertTransitionProjectionAuthority } from './lib/work-lease/transition-projection-authority.mjs';
+import { deliverTimingQueueProjection } from './lib/timing-queue-projection.mjs';
 
 const pexec = promisify(execFile);
 
@@ -253,28 +260,15 @@ export function handleMigrateResult(result, { stderr = process.stderr, exit = pr
 
 export async function postRuntimeQueuedTimingEvent(
   event,
-  { repo, timeoutMs, post = postTimingEvent, withGovernedEffect } = {}
+  { repo, timeoutMs, post = postTimingEvent, read = readTimingProjection, withGovernedEffect } = {}
 ) {
-  if (event?.kind !== 'timing') return undefined;
-  if (typeof withGovernedEffect !== 'function') {
-    throw new TypeError('queued timing governed-effect adapter is required');
-  }
-  return withGovernedEffect(
-    {
-      issueId: String(event.issue).replace(/^#/, ''),
-      operation: 'evidence-mutation',
-      heartbeat: true,
-    },
-    () =>
-      post({
-        issueNumber: event.issue,
-        repo,
-        row: event.row,
-        ...(event.projectionId === undefined ? {} : { projectionId: event.projectionId }),
-        ...(event.subOperationId === undefined ? {} : { subOperationId: event.subOperationId }),
-        timeoutMs,
-      })
-  );
+  return deliverTimingQueueProjection(event, {
+    repo,
+    timeoutMs,
+    post,
+    read,
+    withGovernedEffect,
+  });
 }
 
 // Legacy per-event description fallbacks. Used only when a caller does not

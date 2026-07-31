@@ -44,6 +44,7 @@ import {
   validateSwitchProjectionIntegrity,
 } from './switch-projection-integrity.mjs';
 import { reconcileTimingProjectionRowEffect } from '../../gh-timing-comment.mjs';
+import { canonicalTimingQueueProjection } from '../timing-queue-projection.mjs';
 
 const TERMINAL_SWITCH_CODES = new Set([
   'invalid-request',
@@ -551,7 +552,7 @@ export function validateSwitchProjectionInputs(
   const queuedDeliveryIdentities = new Set();
   const queuedSourceMalformed =
     !Array.isArray(queuedSourceEntries) ||
-    queuedSourceEntries.some((queued, index) => {
+    queuedSourceEntries.some((queued) => {
       const entry = queued?.entry;
       if (
         !entry ||
@@ -569,16 +570,15 @@ export function validateSwitchProjectionInputs(
       const hasSubOperationId =
         typeof entry.subOperationId === 'string' && entry.subOperationId !== '';
       if (hasProjectionId !== hasSubOperationId) return true;
-      const entryDigest = createHash('sha256')
-        .update(JSON.stringify(entry))
-        .digest('hex')
-        .slice(0, 16);
-      const malformedIdentity = hasProjectionId
-        ? queued.deliveryProjectionId !== entry.projectionId ||
-          queued.deliverySubOperationId !== entry.subOperationId
-        : queued.deliveryProjectionId !== timingProjectionId ||
-          queued.deliverySubOperationId !==
-            `${timingProjectionId}:queued-source:${index}:${entryDigest}`;
+      let delivery;
+      try {
+        delivery = canonicalTimingQueueProjection(entry);
+      } catch {
+        return true;
+      }
+      const malformedIdentity =
+        queued.deliveryProjectionId !== delivery.projectionId ||
+        queued.deliverySubOperationId !== delivery.subOperationId;
       const deliveryIdentity = `${queued.deliveryProjectionId}\0${queued.deliverySubOperationId}`;
       if (malformedIdentity || queuedDeliveryIdentities.has(deliveryIdentity)) return true;
       queuedDeliveryIdentities.add(deliveryIdentity);

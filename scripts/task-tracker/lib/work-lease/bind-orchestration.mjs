@@ -1,4 +1,4 @@
-import { createHash, randomUUID } from 'node:crypto';
+import { randomUUID } from 'node:crypto';
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { isDeepStrictEqual } from 'node:util';
@@ -59,6 +59,7 @@ import {
 } from './transition-projection-authority.mjs';
 import { isGovernedAuthorityError } from './governed-effect.mjs';
 import { isTransientGhError } from '../../../gh/lib/with-retry.mjs';
+import { canonicalTimingQueueProjection } from '../timing-queue-projection.mjs';
 import {
   resolveBindEvent,
   timingCommentHasRows,
@@ -410,6 +411,12 @@ export async function applyTimingProjection(
   }
   const deliveryIdentities = new Set();
   for (const queued of queuedSourceEntries) {
+    let canonicalDelivery;
+    try {
+      canonicalDelivery = canonicalTimingQueueProjection(queued?.entry);
+    } catch {
+      throw new Error('persisted timing source queue entry is malformed');
+    }
     const deliveryIdentity = `${queued?.deliveryProjectionId}\0${queued?.deliverySubOperationId}`;
     if (
       !isPlainObject(queued) ||
@@ -420,6 +427,8 @@ export async function applyTimingProjection(
       !isNonEmptyString(queued.entry.row) ||
       !isNonEmptyString(queued.deliveryProjectionId) ||
       !isNonEmptyString(queued.deliverySubOperationId) ||
+      queued.deliveryProjectionId !== canonicalDelivery.projectionId ||
+      queued.deliverySubOperationId !== canonicalDelivery.subOperationId ||
       deliveryIdentities.has(deliveryIdentity)
     ) {
       throw new Error('persisted timing source queue entry is malformed');
@@ -699,23 +708,13 @@ async function buildGovernedSwitchPlan(
             String(entry.issue).replace(/^#/, '') === source.replace(/^#/, '') &&
             isNonEmptyString(entry.row)
         );
-  const queuedSourceEntries = sourceQueueEntries.map((entry, index) => {
+  const queuedSourceEntries = sourceQueueEntries.map((entry) => {
     const durableEntry = durableJson(entry);
-    const hasProjectionId = isNonEmptyString(entry.projectionId);
-    const hasSubOperationId = isNonEmptyString(entry.subOperationId);
-    if (hasProjectionId !== hasSubOperationId) {
-      throw new Error('queued source timing identity is incomplete');
-    }
-    const entryDigest = createHash('sha256')
-      .update(JSON.stringify(durableEntry))
-      .digest('hex')
-      .slice(0, 16);
+    const delivery = canonicalTimingQueueProjection(durableEntry);
     return {
       entry: durableEntry,
-      deliveryProjectionId: hasProjectionId ? entry.projectionId : projectionIds.timing,
-      deliverySubOperationId: hasSubOperationId
-        ? entry.subOperationId
-        : `${projectionIds.timing}:queued-source:${index}:${entryDigest}`,
+      deliveryProjectionId: delivery.projectionId,
+      deliverySubOperationId: delivery.subOperationId,
     };
   });
   const queuedDeliveryIdentities = new Set(

@@ -35,6 +35,7 @@ import {
   reconcileTimingProjectionRowEffect,
   timingProjectionMarker,
 } from '../../../gh-timing-comment.mjs';
+import { canonicalTimingQueueProjection } from '../../../lib/timing-queue-projection.mjs';
 import { readFileSync as readSourceFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
@@ -3460,6 +3461,14 @@ test('queued source timing survives delivery and checkpoint loss with one stable
       const queued = input.projectionInputs.timing.queuedSourceEntries;
       assert.equal(queued.length, 2);
       assert.equal(queued[0].entry.row.includes('queued source audit'), true);
+      assert.deepEqual(
+        {
+          projectionId: queued[0].deliveryProjectionId,
+          subOperationId: queued[0].deliverySubOperationId,
+        },
+        canonicalTimingQueueProjection(queued[0].entry),
+        'Task5B must share the generic runtime/hook identity for a legacy queue row'
+      );
       assert.equal(queued[1].deliveryProjectionId, 'prior-projection:timing');
       assert.equal(queued[1].deliverySubOperationId, 'prior-projection:timing:test-started');
       assert.equal(queued[0].presentInSourceBody, false);

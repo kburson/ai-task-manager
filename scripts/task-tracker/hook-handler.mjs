@@ -13,7 +13,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { loadConfig } from './config.mjs';
 import { loadState, saveState, advanceWordMarker, clearActive } from './state.mjs';
-import { postTimingEvent, buildRow } from './gh-timing-comment.mjs';
+import { postTimingEvent, readTimingProjection, buildRow } from './gh-timing-comment.mjs';
 import { SUSPICIOUS_GAP_SEC } from './lib/bind-event.mjs';
 import {
   jsonlPath,
@@ -37,6 +37,7 @@ import {
   createRuntimeGovernedEffectAdapter,
   isGovernedAuthorityError,
 } from './lib/work-lease/governed-effect.mjs';
+import { deliverTimingQueueProjection } from './lib/timing-queue-projection.mjs';
 
 const pexec = promisify(execFile);
 
@@ -135,28 +136,15 @@ function readStdin() {
 
 export async function postHookQueuedTimingEvent(
   event,
-  { repo, timeoutMs, post = postTimingEvent, withGovernedEffect } = {}
+  { repo, timeoutMs, post = postTimingEvent, read = readTimingProjection, withGovernedEffect } = {}
 ) {
-  if (event?.kind !== 'timing') return undefined;
-  if (typeof withGovernedEffect !== 'function') {
-    throw new TypeError('queued timing governed-effect adapter is required');
-  }
-  return withGovernedEffect(
-    {
-      issueId: String(event.issue).replace(/^#/, ''),
-      operation: 'evidence-mutation',
-      heartbeat: true,
-    },
-    () =>
-      post({
-        issueNumber: event.issue,
-        repo,
-        row: event.row,
-        ...(event.projectionId === undefined ? {} : { projectionId: event.projectionId }),
-        ...(event.subOperationId === undefined ? {} : { subOperationId: event.subOperationId }),
-        timeoutMs,
-      })
-  );
+  return deliverTimingQueueProjection(event, {
+    repo,
+    timeoutMs,
+    post,
+    read,
+    withGovernedEffect,
+  });
 }
 
 async function reverifyAuthority(authority) {
