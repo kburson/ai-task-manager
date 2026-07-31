@@ -48,8 +48,8 @@ the fencing token before governed effects. Fleet remains a projection.
 - SQLite and HTTPS share a closed operation vocabulary. Unknown operations fail
   validation. Reuse of an idempotency key for a different canonical request
   fails with `idempotency-conflict`.
-- The reviewed file inventory has 204 task assignments across 191 unique paths:
-  Tasks 1-7 contain 13, 5, 17, 5, 142, 18, and 4 paths respectively.
+- The reviewed file inventory has 208 task assignments across 195 unique paths:
+  Tasks 1-7 contain 13, 5, 17, 5, 146, 18, and 4 paths respectively.
   Lifecycle authority paths intentionally reappear in later tasks when the
   same provider, session, close, or fleet boundary needs another governed
   increment. If
@@ -375,6 +375,8 @@ real Git worktree directory. Raw display text never participates in uniqueness.
 - Modify: `scripts/task-tracker/lib/stamp-start-time.mjs`
 - Modify: `scripts/task-tracker/lib/new-automated-tests-comment.mjs`
 - Modify: `scripts/task-tracker/lib/trunk-ref.mjs`
+- Modify: `scripts/task-tracker/lib/fetch-parent-issue.mjs`
+- Modify: `scripts/task-tracker/lib/epic-children-gate.mjs`
 - Modify: `scripts/task-tracker/lib/move-state/move-state-core.mjs`
 - Modify: `scripts/task-tracker/lib/move-state/audit-timing.mjs`
 - Modify: `scripts/task-tracker/lib/move-state/cache-unpark.mjs`
@@ -397,6 +399,8 @@ real Git worktree directory. Raw display text never participates in uniqueness.
 - Modify: `scripts/gh/project-tether.mjs`
 - Modify: `scripts/gh/lib/project-tether.mjs`
 - Modify: `scripts/gh/lib/github-projects.mjs`
+- Modify: `scripts/gh/lib/wave-detect.mjs`
+- Modify: `scripts/gh/lib/wave-admission.mjs`
 - Modify: `scripts/gh/lib/epic-retitle.mjs`
 - Modify: `scripts/gh/log-issue-time.mjs`
 - Modify: `scripts/gh/update-event-fields.mjs`
