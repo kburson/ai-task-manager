@@ -47,6 +47,7 @@ import { emitSelfDoc, wantsHelp } from '../scripts/lib/self-doc.mjs';
 import {
   GUARD_NAMES,
   guardBootstrapCommand,
+  legacyGuardBootstrapCommand,
   hookBootstrapCommand,
 } from '../scripts/task-tracker/lib/guard-entrypoint.mjs';
 
@@ -193,9 +194,10 @@ const LEGACY_COMMIT_TRAIL_HOOK_COMMANDS = ['.claude/hooks/commit-trail.sh'];
 // runs). `patchSettingsJson` removes them and re-registers the `node -e`
 // existence-pick form (`guardBootstrapCommand`) so re-running the installer
 // migrates old settings idempotently instead of leaving both entries.
-const LEGACY_GUARD_HOOK_COMMANDS = GUARD_NAMES.map(
-  (name) => `node node_modules/ai-task-manager/scripts/task-tracker/${name}.mjs`
-);
+const LEGACY_GUARD_HOOK_COMMANDS = GUARD_NAMES.flatMap((name) => [
+  `node node_modules/ai-task-manager/scripts/task-tracker/${name}.mjs`,
+  legacyGuardBootstrapCommand(name),
+]);
 
 function hookEntryHasCommand(entry, command) {
   return (

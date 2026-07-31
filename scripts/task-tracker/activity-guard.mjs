@@ -212,11 +212,15 @@ async function main() {
   }
 }
 
+// Explicit installed-bootstrap seam. Dynamic import must remain side-effect
+// free for unit tests; guardBootstrapCommand invokes this callable exactly once.
+export const runGuardBootstrap = main;
+
 const isMain =
   import.meta.url === `file://${process.argv[1]}` ||
   process.argv[1]?.endsWith('activity-guard.mjs');
 if (isMain) {
-  main().catch((error) => {
+  runGuardBootstrap().catch((error) => {
     process.stdout.write(
       JSON.stringify({
         decision: 'block',

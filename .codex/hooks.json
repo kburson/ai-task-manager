@@ -56,7 +56,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node -e \"const {existsSync}=require('fs');const {resolve}=require('path');const {pathToFileURL}=require('url');const c=[\"node_modules/ai-task-manager/scripts/task-tracker/bash-guard.mjs\",\"scripts/task-tracker/bash-guard.mjs\"];const p=c.map(x=>resolve(process.cwd(),x)).find(existsSync);if(!p){process.stderr.write('aitm bash-guard: guard entrypoint unresolved (node_modules + repo-relative both absent) — failing closed\\n');process.exit(2);}import(pathToFileURL(p).href);\""
+            "command": "node -e \"const {existsSync}=require('fs');const {resolve}=require('path');const {pathToFileURL}=require('url');const c=[\\\"node_modules/ai-task-manager/scripts/task-tracker/bash-guard.mjs\\\",\\\"scripts/task-tracker/bash-guard.mjs\\\"];const p=c.map(x=>resolve(process.cwd(),x)).find(existsSync);if(!p){process.stderr.write('aitm bash-guard: guard entrypoint unresolved (node_modules + repo-relative both absent) — failing closed\\\\n');process.exit(2);}import(pathToFileURL(p).href).then(m=>typeof m.runGuardBootstrap==='function'?m.runGuardBootstrap():undefined);\""
           }
         ],
         "matcher": "Bash"
@@ -65,7 +65,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node -e \"const {existsSync}=require('fs');const {resolve}=require('path');const {pathToFileURL}=require('url');const c=[\"node_modules/ai-task-manager/scripts/task-tracker/activity-guard.mjs\",\"scripts/task-tracker/activity-guard.mjs\"];const p=c.map(x=>resolve(process.cwd(),x)).find(existsSync);if(!p){process.stderr.write('aitm activity-guard: guard entrypoint unresolved (node_modules + repo-relative both absent) — failing closed\\n');process.exit(2);}import(pathToFileURL(p).href);\""
+            "command": "node -e \"const {existsSync}=require('fs');const {resolve}=require('path');const {pathToFileURL}=require('url');const c=[\\\"node_modules/ai-task-manager/scripts/task-tracker/activity-guard.mjs\\\",\\\"scripts/task-tracker/activity-guard.mjs\\\"];const p=c.map(x=>resolve(process.cwd(),x)).find(existsSync);if(!p){process.stderr.write('aitm activity-guard: guard entrypoint unresolved (node_modules + repo-relative both absent) — failing closed\\\\n');process.exit(2);}import(pathToFileURL(p).href).then(m=>typeof m.runGuardBootstrap==='function'?m.runGuardBootstrap():undefined);\""
           }
         ],
         "matcher": "Bash"
@@ -74,7 +74,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node -e \"const {existsSync}=require('fs');const {resolve}=require('path');const {pathToFileURL}=require('url');const c=[\"node_modules/ai-task-manager/scripts/task-tracker/source-edit-gate.mjs\",\"scripts/task-tracker/source-edit-gate.mjs\"];const p=c.map(x=>resolve(process.cwd(),x)).find(existsSync);if(!p){process.stderr.write('aitm source-edit-gate: guard entrypoint unresolved (node_modules + repo-relative both absent) — failing closed\\n');process.exit(2);}import(pathToFileURL(p).href);\""
+            "command": "node -e \"const {existsSync}=require('fs');const {resolve}=require('path');const {pathToFileURL}=require('url');const c=[\\\"node_modules/ai-task-manager/scripts/task-tracker/source-edit-gate.mjs\\\",\\\"scripts/task-tracker/source-edit-gate.mjs\\\"];const p=c.map(x=>resolve(process.cwd(),x)).find(existsSync);if(!p){process.stderr.write('aitm source-edit-gate: guard entrypoint unresolved (node_modules + repo-relative both absent) — failing closed\\\\n');process.exit(2);}import(pathToFileURL(p).href).then(m=>typeof m.runGuardBootstrap==='function'?m.runGuardBootstrap():undefined);\""
           }
         ],
         "matcher": "apply_patch|Edit|Write|NotebookEdit"

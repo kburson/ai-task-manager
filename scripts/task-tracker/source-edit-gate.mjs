@@ -476,11 +476,15 @@ async function main() {
   process.exit(0);
 }
 
+// Explicit installed-bootstrap seam. Dynamic import must remain side-effect
+// free for unit tests; guardBootstrapCommand invokes this callable exactly once.
+export const runGuardBootstrap = main;
+
 const isMain =
   import.meta.url === `file://${process.argv[1]}` ||
   process.argv[1]?.endsWith('source-edit-gate.mjs');
 if (isMain) {
-  main().catch((err) => {
+  runGuardBootstrap().catch((err) => {
     process.stdout.write(
       JSON.stringify({
         decision: 'block',
