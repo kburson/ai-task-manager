@@ -301,6 +301,9 @@ export function validateHandoffRequest(request) {
   nonEmpty(request.reason, 'reason');
   if (ttl(request.ttlMs) !== ACTIVE_LEASE_TTL_MS) invalidRequest('handoff ttlMs must be 900000');
   validateLeaseHolder(request.holder);
+  if (request.holder.principalKind !== 'worker') {
+    invalidRequest('holder.principalKind must be worker');
+  }
   validateBindingIdentity(request.binding, { holder: request.holder });
   validateLeaseHolder(request.recipient, { label: 'recipient' });
   if (request.recipient.principalKind !== 'integration') {

@@ -1,4 +1,4 @@
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 // cspell:ignore SAVEPOINT
 
 import { WorkLeaseError } from '../lease/errors.mjs';
@@ -297,7 +297,33 @@ export class SqliteWorkLeaseStore extends WorkLeaseStore {
     return rowToBinding(statement.get(projectId, leaseId));
   }
 
+  #correlatedBinding(lease) {
+    const binding = this.#bindingByLease(lease.projectId, lease.leaseId);
+    const invalid =
+      !binding ||
+      binding.projectId !== lease.projectId ||
+      binding.leaseId !== lease.leaseId ||
+      binding.sessionId !== lease.holder.sessionId ||
+      binding.issueId !== lease.issueId ||
+      binding.worktreeId !== lease.holder.worktreeId ||
+      binding.fencingToken !== lease.fencingToken ||
+      (binding.displayPath !== null &&
+        (typeof binding.displayPath !== 'string' ||
+          binding.displayPath.trim() === '' ||
+          createHash('sha256').update(binding.displayPath).digest('hex') !==
+            lease.holder.pathHash));
+    if (invalid) {
+      throw new WorkLeaseError(
+        'authority-unavailable',
+        'retaining lease has no correlated binding',
+        { projectId: lease.projectId, leaseId: lease.leaseId }
+      );
+    }
+    return binding;
+  }
+
   #assertAuthority(lease, request, { holderKey = 'holder', bindingKey = 'binding' } = {}) {
+    const binding = this.#correlatedBinding(lease);
     const holder = request[holderKey];
     for (const key of Object.keys(lease.holder)) {
       if (holder?.[key] !== lease.holder[key]) {
@@ -307,12 +333,6 @@ export class SqliteWorkLeaseStore extends WorkLeaseStore {
       }
     }
     const expected = request[bindingKey];
-    const binding = this.#bindingByLease(lease.projectId, lease.leaseId);
-    if (!binding || binding.fencingToken !== lease.fencingToken) {
-      throw new WorkLeaseError('lease-not-held', 'lease binding is absent or stale', {
-        leaseId: lease.leaseId,
-      });
-    }
     for (const key of ['sessionId', 'issueId', 'worktreeId']) {
       if (expected?.[key] !== binding[key]) {
         throw new WorkLeaseError('lease-not-held', 'lease binding does not match', {
@@ -787,35 +807,17 @@ export class SqliteWorkLeaseStore extends WorkLeaseStore {
         )
       );
       const leases = statement.all(selector.projectId).map(rowToLease);
-      const bindings = leases.map((lease) =>
-        this.#bindingByLease(selector.projectId, lease.leaseId)
-      );
-      for (let index = 0; index < leases.length; index += 1) {
-        const lease = leases[index];
-        const binding = bindings[index];
-        if (
-          !binding ||
-          binding.projectId !== lease.projectId ||
-          binding.leaseId !== lease.leaseId ||
-          binding.issueId !== lease.issueId ||
-          binding.worktreeId !== lease.holder.worktreeId ||
-          binding.sessionId !== lease.holder.sessionId ||
-          binding.fencingToken !== lease.fencingToken
-        ) {
-          throw new WorkLeaseError(
-            'authority-unavailable',
-            'retaining lease has no correlated binding',
-            { projectId: selector.projectId, leaseId: lease.leaseId }
-          );
-        }
-      }
+      const bindings = leases.map((lease) => this.#correlatedBinding(lease));
       return {
         leases,
         bindings,
       };
     }
-    return selector.issueId != null
-      ? this.#currentByIssue(selector.projectId, selector.issueId)
-      : this.#currentByWorktree(selector.projectId, selector.worktreeId);
+    const lease =
+      selector.issueId != null
+        ? this.#currentByIssue(selector.projectId, selector.issueId)
+        : this.#currentByWorktree(selector.projectId, selector.worktreeId);
+    if (lease) this.#correlatedBinding(lease);
+    return lease;
   }
 }

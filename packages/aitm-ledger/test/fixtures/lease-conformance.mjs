@@ -619,6 +619,28 @@ export async function assertLeaseStoreConformance({ createStore, assert }) {
   assert.deepEqual(await store.handoff(handoffRequest), handed);
   await expectCode(
     () =>
+      store.handoff({
+        projectId,
+        leaseId: handed.leaseId,
+        fencingToken: handed.fencingToken,
+        idempotencyKey: 'integration-to-integration',
+        handedOffAt: '2026-07-30T12:02:30.000Z',
+        reason: 'invalid second handoff',
+        ttlMs: 900_000,
+        holder: handed.holder,
+        binding: bindingOf(handed),
+        recipient: {
+          ...handed.holder,
+          agentRunId: 'integration-2',
+          sessionId: 'orchestrator-2',
+          pid: 789,
+        },
+      }),
+    'invalid-request'
+  );
+  assert.deepEqual(await store.observe({ projectId, issueId: request.issueId }), handed);
+  await expectCode(
+    () =>
       store.verify({
         projectId,
         leaseId: acquired.leaseId,

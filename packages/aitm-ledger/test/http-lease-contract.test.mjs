@@ -316,6 +316,136 @@ test('GET observation accepts project scope and validates correlated binding rec
   );
 });
 
+test('project observation requires canonical issue IDs and verifies non-null binding paths', () => {
+  const validNullPath = { leases: [lease()], bindings: [binding({ displayPath: null })] };
+  assert.deepEqual(
+    parseHttpLeaseResponse({
+      operation: 'observe',
+      status: 200,
+      payload: createHttpSuccessEnvelope(validNullPath),
+      request: { projectId: 'project-1' },
+    }),
+    validNullPath,
+    'v1 NULL display paths remain observable'
+  );
+
+  for (const result of [
+    {
+      leases: [lease({ issueId: '01' })],
+      bindings: [binding({ issueId: '01' })],
+    },
+    {
+      leases: [lease()],
+      bindings: [binding({ displayPath: '/workspace/hash-mismatch' })],
+    },
+  ]) {
+    assert.throws(
+      () =>
+        parseHttpLeaseResponse({
+          operation: 'observe',
+          status: 200,
+          payload: createHttpSuccessEnvelope(result),
+          request: { projectId: 'project-1' },
+        }),
+      (error) => error.code === 'authority-unavailable'
+    );
+  }
+});
+
+test('HTTP lifecycle receipts correlate issue, holder, and acquire chronology exactly', () => {
+  const integrationHolder = {
+    ...holder(),
+    principalKind: 'integration',
+    agentRunId: 'integration-1',
+    sessionId: 'orchestrator-1',
+    pid: 456,
+  };
+  const requests = {
+    renew: {
+      projectId: 'project-1',
+      leaseId: 'lease-1',
+      fencingToken: '1',
+      idempotencyKey: 'renew-1',
+      requestedAt: NOW,
+      ttlMs: 900_000,
+      ...requestAuthority(),
+    },
+    verify: {
+      projectId: 'project-1',
+      leaseId: 'lease-1',
+      fencingToken: '1',
+      operation: 'source-write',
+      verifiedAt: NOW,
+      ...requestAuthority(),
+    },
+    handoff: {
+      projectId: 'project-1',
+      leaseId: 'lease-1',
+      fencingToken: '1',
+      idempotencyKey: 'handoff-1',
+      handedOffAt: NOW,
+      reason: 'integrate',
+      ttlMs: 900_000,
+      ...requestAuthority(),
+      recipient: integrationHolder,
+    },
+    release: {
+      projectId: 'project-1',
+      leaseId: 'lease-1',
+      fencingToken: '1',
+      idempotencyKey: 'release-1',
+      releasedAt: NOW,
+      reason: 'done',
+      ...requestAuthority(),
+    },
+  };
+  const validResults = {
+    renew: lease(),
+    verify: { allowed: true, lease: lease() },
+    handoff: lease({ fencingToken: '2', holder: integrationHolder }),
+    release: lease({ fencingToken: '2', state: 'released' }),
+  };
+
+  for (const operation of Object.keys(requests)) {
+    const payloadLease =
+      operation === 'verify' ? validResults.verify.lease : validResults[operation];
+    const wrongIssue = { ...payloadLease, issueId: '1050' };
+    const wrongHolder = { ...payloadLease, holder: holder({ sessionId: 'alien-session' }) };
+    for (const corruptedLease of [wrongIssue, wrongHolder]) {
+      const result =
+        operation === 'verify' ? { allowed: true, lease: corruptedLease } : corruptedLease;
+      assert.throws(
+        () =>
+          parseHttpLeaseResponse({
+            operation,
+            status: 200,
+            payload: createHttpSuccessEnvelope(result),
+            request: requests[operation],
+          }),
+        (error) => error.code === 'authority-unavailable',
+        `${operation} must reject an alien issue or holder`
+      );
+    }
+  }
+
+  for (const corrupted of [
+    lease({ acquiredAt: '2026-07-30T11:59:59.000Z' }),
+    lease({ heartbeatAt: '2026-07-30T12:00:01.000Z' }),
+    lease({ expiresAt: '2026-07-30T12:14:59.000Z' }),
+  ]) {
+    assert.throws(
+      () =>
+        parseHttpLeaseResponse({
+          operation: 'acquire',
+          status: 201,
+          payload: createHttpSuccessEnvelope(corrupted),
+          request: acquire(),
+        }),
+      (error) => error.code === 'authority-unavailable'
+    );
+  }
+});
+
 test('POST operations reject query parameters outside the closed contract', () => {
   assert.throws(
     () =>

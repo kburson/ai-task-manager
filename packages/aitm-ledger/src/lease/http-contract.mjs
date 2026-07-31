@@ -1,3 +1,5 @@
+import { createHash } from 'node:crypto';
+
 import { LEASE_ERROR_CODES, WorkLeaseError, sanitizeLeaseDetails } from './errors.mjs';
 import {
   OWNERSHIP_RETAINING_STATES,
@@ -101,6 +103,11 @@ function assertString(value, label) {
   if (typeof value !== 'string' || value.trim() === '') {
     failUnavailable(`${label} is not a non-empty string`);
   }
+}
+
+function assertIssueId(value, label) {
+  assertString(value, label);
+  if (!/^[1-9]\d*$/.test(value)) failUnavailable(`${label} is not a canonical issue ID`);
 }
 
 function assertTimestamp(value, label) {
@@ -239,7 +246,8 @@ function validateLease(lease) {
     'audit',
   ];
   assertObject(lease, 'lease', { exactKeys: required });
-  for (const key of ['projectId', 'issueId', 'leaseId']) assertString(lease[key], `lease.${key}`);
+  for (const key of ['projectId', 'leaseId']) assertString(lease[key], `lease.${key}`);
+  assertIssueId(lease.issueId, 'lease.issueId');
   if (lease.mode !== 'write') failUnavailable('lease.mode is invalid');
   try {
     assertFencingToken(lease.fencingToken);
@@ -270,9 +278,10 @@ function validateBinding(binding) {
       'observedAt',
     ],
   });
-  for (const key of ['projectId', 'leaseId', 'sessionId', 'issueId', 'worktreeId']) {
+  for (const key of ['projectId', 'leaseId', 'sessionId', 'worktreeId']) {
     assertString(binding[key], `binding.${key}`);
   }
+  assertIssueId(binding.issueId, 'binding.issueId');
   if (binding.displayPath !== null) assertString(binding.displayPath, 'binding.displayPath');
   try {
     assertFencingToken(binding.fencingToken, 'binding.fencingToken');
@@ -343,10 +352,26 @@ function correlateResult(operation, result, request) {
     correlateLeaseIdentity(result, request, { issueId: request?.issueId });
     requireResponse(result.state === 'active', 'acquire response is not active');
     correlateHolder(result.holder, request?.holder);
+    requireResponse(
+      result.acquiredAt === request?.requestedAt,
+      'acquire timestamp is inconsistent'
+    );
+    requireResponse(
+      result.heartbeatAt === request?.requestedAt,
+      'acquire heartbeat is inconsistent'
+    );
+    requireResponse(
+      result.expiresAt ===
+        new Date(Date.parse(request?.requestedAt) + request?.ttlMs).toISOString(),
+      'acquire expiry is inconsistent'
+    );
     return;
   }
   if (operation === 'renew') {
-    correlateLeaseIdentity(result, request, { leaseId: request?.leaseId });
+    correlateLeaseIdentity(result, request, {
+      issueId: request?.binding?.issueId,
+      leaseId: request?.leaseId,
+    });
     requireResponse(
       result.fencingToken === request?.fencingToken,
       'renew response fencing token does not match the request'
@@ -365,7 +390,10 @@ function correlateResult(operation, result, request) {
     return;
   }
   if (operation === 'verify') {
-    correlateLeaseIdentity(result.lease, request, { leaseId: request?.leaseId });
+    correlateLeaseIdentity(result.lease, request, {
+      issueId: request?.binding?.issueId,
+      leaseId: request?.leaseId,
+    });
     requireResponse(
       result.lease.fencingToken === request?.fencingToken,
       'verify response fencing token does not match the request'
@@ -402,7 +430,10 @@ function correlateResult(operation, result, request) {
     return;
   }
   if (operation === 'handoff') {
-    correlateLeaseIdentity(result, request, { leaseId: request?.leaseId });
+    correlateLeaseIdentity(result, request, {
+      issueId: request?.binding?.issueId,
+      leaseId: request?.leaseId,
+    });
     requireResponse(result.state === 'active', 'handoff response is not active');
     requireAdvancedFence(result.fencingToken, request?.fencingToken);
     correlateHolder(result.holder, request?.recipient);
@@ -418,9 +449,13 @@ function correlateResult(operation, result, request) {
     return;
   }
   if (operation === 'release') {
-    correlateLeaseIdentity(result, request, { leaseId: request?.leaseId });
+    correlateLeaseIdentity(result, request, {
+      issueId: request?.binding?.issueId,
+      leaseId: request?.leaseId,
+    });
     requireResponse(result.state === 'released', 'release response is not released');
     requireAdvancedFence(result.fencingToken, request?.fencingToken);
+    correlateHolder(result.holder, request?.holder);
     return;
   }
   if (operation === 'takeover') {
@@ -469,6 +504,12 @@ function correlateResult(operation, result, request) {
         'binding worktree is inconsistent'
       );
       requireResponse(binding.fencingToken === lease.fencingToken, 'binding fence is inconsistent');
+      if (binding.displayPath !== null) {
+        requireResponse(
+          createHash('sha256').update(binding.displayPath).digest('hex') === lease.holder.pathHash,
+          'binding path hash is inconsistent'
+        );
+      }
     }
     return;
   }

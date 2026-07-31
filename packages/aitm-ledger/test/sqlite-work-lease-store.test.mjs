@@ -284,6 +284,80 @@ test('project observation is sorted, correlated, and fails closed on a missing b
   store.close();
 });
 
+test('issue and worktree observations fail unavailable for every corrupt binding invariant', () => {
+  const corruptions = [
+    (db, lease) => db.prepare('DELETE FROM work_bindings WHERE lease_id = ?').run(lease.leaseId),
+    (db, lease) =>
+      db
+        .prepare('UPDATE work_bindings SET fencing_token = fencing_token + 1 WHERE lease_id = ?')
+        .run(lease.leaseId),
+    (db, lease) =>
+      db
+        .prepare("UPDATE work_bindings SET project_id = 'moved-project' WHERE lease_id = ?")
+        .run(lease.leaseId),
+    (db, lease) =>
+      db
+        .prepare(
+          "UPDATE work_bindings SET display_path = '/workspace/hash-mismatch' WHERE lease_id = ?"
+        )
+        .run(lease.leaseId),
+  ];
+  for (const corrupt of corruptions) {
+    for (const selector of [
+      { projectId: 'project-1', issueId: '1049' },
+      { projectId: 'project-1', worktreeId: 'wt:v1:one' },
+    ]) {
+      const db = openProjectDatabase({ databasePath: ':memory:' });
+      const store = new SqliteWorkLeaseStore({ db });
+      const lease = store.acquire(acquire());
+      corrupt(db, lease);
+      assert.throws(
+        () => store.observe(selector),
+        (error) => error.code === 'authority-unavailable'
+      );
+      store.close();
+    }
+  }
+});
+
+test('internal binding failure does not poison an exact release replay after repair', () => {
+  const db = openProjectDatabase({ databasePath: ':memory:' });
+  const store = new SqliteWorkLeaseStore({ db });
+  const lease = store.acquire(acquire());
+  const release = {
+    projectId: lease.projectId,
+    leaseId: lease.leaseId,
+    fencingToken: lease.fencingToken,
+    idempotencyKey: 'release-after-binding-repair',
+    releasedAt: '2026-07-30T12:03:00.000Z',
+    reason: 'done',
+    holder: lease.holder,
+    binding: bindingFor(lease.holder, lease.issueId),
+  };
+  db.prepare('DELETE FROM work_bindings WHERE lease_id = ?').run(lease.leaseId);
+  assert.throws(
+    () => store.release(release),
+    (error) => error.code === 'authority-unavailable'
+  );
+  db.prepare(
+    `INSERT INTO work_bindings(
+       project_id, lease_id, session_id, issue_id, worktree_id, display_path,
+       fencing_token, observed_at
+     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+  ).run(
+    lease.projectId,
+    lease.leaseId,
+    lease.holder.sessionId,
+    lease.issueId,
+    lease.holder.worktreeId,
+    DISPLAY_PATH,
+    lease.fencingToken,
+    NOW
+  );
+  assert.equal(store.release(release).state, 'released');
+  store.close();
+});
+
 test('trusted renew backfills a v1 null path while wrong path or pid cannot mutate authority', () => {
   const db = openProjectDatabase({ databasePath: ':memory:' });
   const store = new SqliteWorkLeaseStore({ db });
@@ -316,6 +390,19 @@ test('trusted renew backfills a v1 null path while wrong path or pid cannot muta
         verifiedAt: NOW,
         holder: { ...lease.holder, pid: lease.holder.pid + 1 },
         binding: acquire().binding,
+      }),
+    (error) => error.code === 'lease-not-held'
+  );
+  assert.throws(
+    () =>
+      store.verify({
+        projectId: lease.projectId,
+        leaseId: lease.leaseId,
+        fencingToken: lease.fencingToken,
+        operation: 'task-bind',
+        verifiedAt: NOW,
+        holder: lease.holder,
+        binding: { ...acquire().binding, issueId: '1050' },
       }),
     (error) => error.code === 'lease-not-held'
   );
