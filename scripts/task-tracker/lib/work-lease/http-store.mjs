@@ -49,9 +49,9 @@ function validateProjectId(value) {
 function routeUrl(endpoint, route, request) {
   const url = new URL(route.path.replace(/^\//, ''), endpoint);
   if (route.method === 'GET') {
-    url.searchParams.set('projectId', request.projectId);
-    if (request.issueId != null) url.searchParams.set('issueId', request.issueId);
-    if (request.worktreeId != null) url.searchParams.set('worktreeId', request.worktreeId);
+    for (const [key, value] of Object.entries(request)) {
+      if (value != null) url.searchParams.set(key, value);
+    }
   }
   return url;
 }
@@ -250,5 +250,9 @@ export class HttpWorkLeaseStore extends WorkLeaseStore {
     return selector.issueId == null && selector.worktreeId == null
       ? observation
       : observation.lease;
+  }
+
+  replayMutation(selector) {
+    return this.#request('replayMutation', selector);
   }
 }

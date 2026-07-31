@@ -30,6 +30,10 @@ export class WorkLeaseStore {
   observe() {
     throw new Error('WorkLeaseStore implementation must implement observe');
   }
+
+  replayMutation() {
+    throw new Error('WorkLeaseStore implementation must implement replayMutation');
+  }
 }
 
 export const WORK_LEASE_STORE_METHODS = Object.freeze([
@@ -41,6 +45,7 @@ export const WORK_LEASE_STORE_METHODS = Object.freeze([
   'release',
   'takeover',
   'observe',
+  'replayMutation',
 ]);
 
 export function assertWorkLeaseStore(store) {

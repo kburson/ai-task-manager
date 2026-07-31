@@ -7,6 +7,7 @@ import {
   validateHandoffRequest,
   validateObserveSelector,
   validateReleaseRequest,
+  validateReplayMutationSelector,
   validateRenewRequest,
   validateSwitchLeaseRequest,
   validateTakeoverRequest,
@@ -20,6 +21,18 @@ function clone(value) {
 
 function expiresAt(timestamp, ttlMs) {
   return new Date(Date.parse(timestamp) + ttlMs).toISOString();
+}
+
+function errorStatus(code) {
+  if (code === 'invalid-request') return 400;
+  if (code === 'authority-unauthenticated') return 401;
+  if (code === 'authority-forbidden') return 403;
+  if (
+    ['lease-contended', 'worktree-contended', 'holder-live', 'idempotency-conflict'].includes(code)
+  )
+    return 409;
+  if (['fence-stale', 'lease-not-held'].includes(code)) return 412;
+  return 503;
 }
 
 export class MemoryLeaseStore extends WorkLeaseStore {
@@ -148,7 +161,12 @@ export class MemoryLeaseStore extends WorkLeaseStore {
     try {
       validate(request);
       const result = apply();
-      this.#idempotency.set(scope, { operation, digest, result: clone(result) });
+      this.#idempotency.set(scope, {
+        operation,
+        digest,
+        statusCode: ['acquire', 'takeover'].includes(operation) ? 201 : 200,
+        result: clone(result),
+      });
       return clone(result);
     } catch (error) {
       if (error instanceof WorkLeaseError && error.code !== 'authority-unavailable') {
@@ -160,6 +178,7 @@ export class MemoryLeaseStore extends WorkLeaseStore {
             message: error.message,
             details: clone(error.details),
           },
+          statusCode: errorStatus(error.code),
         });
       }
       throw error;
@@ -436,6 +455,33 @@ export class MemoryLeaseStore extends WorkLeaseStore {
         : this.#currentByWorktree(selector.projectId, selector.worktreeId);
     return lease ? clone(lease) : null;
   }
+
+  replayMutation(selector) {
+    validateReplayMutationSelector(selector);
+    const recorded = this.#idempotency.get(`${selector.projectId}\0${selector.idempotencyKey}`);
+    const durableSelector = clone(selector);
+    if (!recorded) return { selector: durableSelector, outcome: 'absent' };
+    const recordedOperation = recorded.operation === 'switch' ? 'switchLease' : recorded.operation;
+    if (recordedOperation !== selector.operation || recorded.digest !== selector.requestDigest) {
+      throw new WorkLeaseError(
+        'idempotency-conflict',
+        'mutation replay selector does not match the recorded request'
+      );
+    }
+    return recorded.error
+      ? {
+          selector: durableSelector,
+          outcome: 'rejected',
+          statusCode: recorded.statusCode,
+          error: clone(recorded.error),
+        }
+      : {
+          selector: durableSelector,
+          outcome: 'committed',
+          statusCode: recorded.statusCode,
+          result: clone(recorded.result),
+        };
+  }
 }
 
 export function createMemoryLeaseStore() {
@@ -495,6 +541,22 @@ export async function assertLeaseStoreConformance({ createStore, assert }) {
   const store = await createStore();
   const request = acquireRequest();
   const acquired = await store.acquire(request);
+  const replaySelector = {
+    projectId,
+    operation: 'acquire',
+    idempotencyKey: request.idempotencyKey,
+    requestDigest: canonicalRequestDigest(request),
+  };
+  assert.deepEqual(await store.replayMutation(replaySelector), {
+    selector: replaySelector,
+    outcome: 'committed',
+    statusCode: 201,
+    result: acquired,
+  });
+  await expectCode(
+    () => store.replayMutation({ ...replaySelector, requestDigest: '0'.repeat(64) }),
+    'idempotency-conflict'
+  );
   assert.deepEqual(await store.acquire(request), acquired);
   await expectCode(
     () =>
@@ -535,15 +597,23 @@ export async function assertLeaseStoreConformance({ createStore, assert }) {
   const renewed = await store.renew(renewRequest);
   assert.equal(renewed.fencingToken, acquired.fencingToken);
   assert.deepEqual(await store.renew(renewRequest), renewed);
-  await expectCode(
-    () =>
-      store.renew({
-        ...renewRequest,
-        idempotencyKey: 'foreign-renew',
-        holder: { ...renewed.holder, pid: renewed.holder.pid + 1 },
-      }),
-    'lease-not-held'
-  );
+  const foreignRenewRequest = {
+    ...renewRequest,
+    idempotencyKey: 'foreign-renew',
+    holder: { ...renewed.holder, pid: renewed.holder.pid + 1 },
+  };
+  await expectCode(() => store.renew(foreignRenewRequest), 'lease-not-held');
+  const rejectedReplaySelector = {
+    projectId,
+    operation: 'renew',
+    idempotencyKey: foreignRenewRequest.idempotencyKey,
+    requestDigest: canonicalRequestDigest(foreignRenewRequest),
+  };
+  const rejectedReplay = await store.replayMutation(rejectedReplaySelector);
+  assert.equal(rejectedReplay.outcome, 'rejected');
+  assert.deepEqual(rejectedReplay.selector, rejectedReplaySelector);
+  assert.equal(rejectedReplay.statusCode, 412);
+  assert.equal(rejectedReplay.error.code, 'lease-not-held');
   assert.deepEqual(await store.observe({ projectId, issueId: request.issueId }), renewed);
 
   const paused = await store.renew({
@@ -742,6 +812,18 @@ export async function assertLeaseStoreConformance({ createStore, assert }) {
   assert.equal(switched.lease.issueId, '1051');
   assert.equal(switched.transition.fromIssueId, '1049');
   assert.deepEqual(await switchStore.switchLease(switchRequest), switched);
+  const switchReplaySelector = {
+    projectId,
+    operation: 'switchLease',
+    idempotencyKey: switchRequest.idempotencyKey,
+    requestDigest: canonicalRequestDigest(switchRequest),
+  };
+  assert.deepEqual(await switchStore.replayMutation(switchReplaySelector), {
+    selector: switchReplaySelector,
+    outcome: 'committed',
+    statusCode: 200,
+    result: switched,
+  });
   await expectCode(
     () =>
       switchStore.verify({

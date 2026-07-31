@@ -9,6 +9,7 @@ import {
   validateHandoffRequest,
   validateObserveSelector,
   validateReleaseRequest,
+  validateReplayMutationSelector,
   validateRenewRequest,
   validateSwitchLeaseRequest,
   validateTakeoverRequest,
@@ -44,6 +45,11 @@ export const HTTP_LEASE_ROUTES = Object.freeze({
     mutating: true,
   }),
   observe: Object.freeze({ method: 'GET', path: '/v1/work-leases', mutating: false }),
+  replayMutation: Object.freeze({
+    method: 'POST',
+    path: '/v1/work-leases:replay-mutation',
+    mutating: false,
+  }),
 });
 
 const REQUEST_VALIDATORS = Object.freeze({
@@ -55,6 +61,7 @@ const REQUEST_VALIDATORS = Object.freeze({
   release: validateReleaseRequest,
   takeover: validateTakeoverRequest,
   observe: validateObserveSelector,
+  replayMutation: validateReplayMutationSelector,
 });
 
 const ERROR_STATUS = Object.freeze({
@@ -79,6 +86,7 @@ const SUCCESS_STATUS = Object.freeze({
   release: new Set([200]),
   takeover: new Set([200, 201]),
   observe: new Set([200]),
+  replayMutation: new Set([200]),
 });
 
 function failUnavailable(message = 'remote lease authority returned an invalid response') {
@@ -147,10 +155,10 @@ function routeFor(method, pathname) {
   return { operation: match[0], route: match[1] };
 }
 
-function queryObject(query) {
+function queryObject(query, allowedKeys) {
   const parameters =
     query instanceof URLSearchParams ? query : new URLSearchParams(query ? String(query) : '');
-  const allowed = new Set(['projectId', 'issueId', 'worktreeId']);
+  const allowed = new Set(allowedKeys);
   for (const key of parameters.keys()) {
     if (!allowed.has(key) || parameters.getAll(key).length !== 1) {
       throw new WorkLeaseError('invalid-request', 'observation query is invalid');
@@ -172,10 +180,10 @@ export function validateHttpLeaseRequest({ method, pathname, headers = {}, body,
       );
     }
     if (body !== undefined) {
-      throw new WorkLeaseError('invalid-request', 'observation requests cannot have a body');
+      throw new WorkLeaseError('invalid-request', 'read-only lease requests cannot have a body');
     }
-    const request = queryObject(query);
-    REQUEST_VALIDATORS.observe(request);
+    const request = queryObject(query, ['projectId', 'issueId', 'worktreeId']);
+    REQUEST_VALIDATORS[operation](request);
     return { operation, request };
   }
 
@@ -592,6 +600,50 @@ function validateResult(operation, result, request) {
       if (result.lease !== null) validateLease(result.lease);
     }
     correlateResult(operation, result, request);
+    return result;
+  }
+  if (operation === 'replayMutation') {
+    assertObject(result, 'mutation replay result');
+    const selector = assertObject(result.selector, 'mutation replay selector', {
+      exactKeys: ['projectId', 'operation', 'idempotencyKey', 'requestDigest'],
+    });
+    for (const key of ['projectId', 'operation', 'idempotencyKey', 'requestDigest']) {
+      requireResponse(selector[key] === request[key], `mutation replay ${key} is inconsistent`);
+    }
+    if (result.outcome === 'absent') {
+      assertObject(result, 'mutation replay result', { exactKeys: ['selector', 'outcome'] });
+      return result;
+    }
+    requireResponse(
+      Number.isInteger(result.statusCode) && result.statusCode >= 200 && result.statusCode <= 599,
+      'mutation replay statusCode is invalid'
+    );
+    if (result.outcome === 'committed') {
+      assertObject(result, 'mutation replay result', {
+        exactKeys: ['selector', 'outcome', 'statusCode', 'result'],
+      });
+      requireResponse(
+        result.statusCode >= 200 && result.statusCode < 300,
+        'committed replay status is invalid'
+      );
+      assertObject(result.result, 'mutation replay committed result');
+    } else if (result.outcome === 'rejected') {
+      assertObject(result, 'mutation replay result', {
+        exactKeys: ['selector', 'outcome', 'statusCode', 'error'],
+      });
+      requireResponse(result.statusCode >= 400, 'rejected replay status is invalid');
+      const error = assertObject(result.error, 'mutation replay error', {
+        exactKeys: ['code', 'message', 'details'],
+      });
+      requireResponse(
+        LEASE_ERROR_CODES.includes(error.code) && ERROR_STATUS[error.code] === result.statusCode,
+        'mutation replay error status is inconsistent'
+      );
+      assertString(error.message, 'mutation replay error.message');
+      assertObject(error.details, 'mutation replay error.details');
+    } else {
+      failUnavailable('mutation replay outcome is invalid');
+    }
     return result;
   }
   failUnavailable('response operation is unknown');

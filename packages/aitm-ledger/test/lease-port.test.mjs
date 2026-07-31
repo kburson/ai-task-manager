@@ -8,6 +8,7 @@ import {
   WorkLeaseStore,
   assertFencingToken,
   canonicalRequestDigest,
+  validateReplayMutationSelector,
   validateAcquireRequest,
   validateHandoffRequest,
   validateRenewRequest,
@@ -23,6 +24,28 @@ import {
 const NOW = '2026-07-30T12:00:00.000Z';
 const DISPLAY_PATH = '/workspace/1049';
 const PATH_HASH = createHash('sha256').update(DISPLAY_PATH).digest('hex');
+
+test('mutation replay selector is exact, read-only, and digest-bound', () => {
+  const selector = {
+    projectId: 'project-1',
+    operation: 'switchLease',
+    idempotencyKey: 'switch-1',
+    requestDigest: 'a'.repeat(64),
+  };
+  assert.equal(validateReplayMutationSelector(selector), selector);
+  for (const invalid of [
+    { ...selector, operation: 'verify' },
+    { ...selector, requestDigest: 'A'.repeat(64) },
+    { ...selector, requestDigest: 'short' },
+    { ...selector, extra: true },
+  ]) {
+    assert.throws(
+      () => validateReplayMutationSelector(invalid),
+      (error) => error.code === 'invalid-request'
+    );
+  }
+  assert.throws(() => new WorkLeaseStore().replayMutation(), /implement replayMutation/);
+});
 
 function holder(overrides = {}) {
   return {

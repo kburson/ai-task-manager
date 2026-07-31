@@ -105,6 +105,11 @@ test('closed HTTP route vocabulary validates authentication and request schemas'
     release: { method: 'POST', path: '/v1/work-leases:release', mutating: true },
     takeover: { method: 'POST', path: '/v1/work-leases:takeover', mutating: true },
     observe: { method: 'GET', path: '/v1/work-leases', mutating: false },
+    replayMutation: {
+      method: 'POST',
+      path: '/v1/work-leases:replay-mutation',
+      mutating: false,
+    },
   });
 
   const validated = validateHttpLeaseRequest({
@@ -314,6 +319,78 @@ test('GET observation accepts project scope and validates correlated binding rec
     }),
     { lease: null }
   );
+});
+
+test('POST mutation replay is authenticated, header-free, and validates an exact recorded outcome', () => {
+  const selector = {
+    projectId: 'project-1',
+    operation: 'acquire',
+    idempotencyKey: 'acquire-1',
+    requestDigest: 'a'.repeat(64),
+  };
+  assert.deepEqual(
+    validateHttpLeaseRequest({
+      method: 'POST',
+      pathname: '/v1/work-leases:replay-mutation',
+      headers: { authorization: 'Bearer secret', 'content-type': 'application/json' },
+      body: selector,
+    }),
+    { operation: 'replayMutation', request: selector }
+  );
+  assert.throws(
+    () =>
+      validateHttpLeaseRequest({
+        method: 'POST',
+        pathname: '/v1/work-leases:replay-mutation',
+        headers: {
+          authorization: 'Bearer secret',
+          'content-type': 'application/json',
+          'idempotency-key': 'acquire-1',
+        },
+        body: selector,
+      }),
+    (error) => error.code === 'invalid-request'
+  );
+  const replay = {
+    selector,
+    outcome: 'committed',
+    statusCode: 201,
+    result: lease(),
+  };
+  assert.deepEqual(
+    parseHttpLeaseResponse({
+      operation: 'replayMutation',
+      status: 200,
+      payload: createHttpSuccessEnvelope(replay),
+      request: selector,
+    }),
+    replay
+  );
+  assert.deepEqual(
+    parseHttpLeaseResponse({
+      operation: 'replayMutation',
+      status: 200,
+      payload: createHttpSuccessEnvelope({ selector, outcome: 'absent' }),
+      request: selector,
+    }),
+    { selector, outcome: 'absent' }
+  );
+  for (const drift of [
+    { ...replay, selector: { ...selector, operation: 'renew' } },
+    { ...replay, selector: { ...selector, requestDigest: 'b'.repeat(64) } },
+    { selector, outcome: 'committed', statusCode: 201, result: null },
+  ]) {
+    assert.throws(
+      () =>
+        parseHttpLeaseResponse({
+          operation: 'replayMutation',
+          status: 200,
+          payload: createHttpSuccessEnvelope(drift),
+          request: selector,
+        }),
+      (error) => error.code === 'authority-unavailable'
+    );
+  }
 });
 
 test('project observation requires canonical issue IDs and verifies non-null binding paths', () => {

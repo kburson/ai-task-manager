@@ -13,6 +13,7 @@ import { createHash } from 'node:crypto';
 import { openProjectDatabase, runMigrations } from '../src/sqlite/open.mjs';
 import { applyMigration001 } from '../src/sqlite/migrations/001-leases.mjs';
 import { SqliteWorkLeaseStore } from '../src/sqlite/work-lease-store.mjs';
+import { canonicalRequestDigest } from '../src/lease/schema.mjs';
 import { assertLeaseStoreConformance } from './fixtures/lease-conformance.mjs';
 
 const NOW = '2026-07-30T12:00:00.000Z';
@@ -281,6 +282,55 @@ test('project observation is sorted, correlated, and fails closed on a missing b
     (error) => error.code === 'authority-unavailable'
   );
   assert.ok(first.leaseId);
+  store.close();
+});
+
+test('mutation replay reads the exact recorded outcome without changing authority rows', () => {
+  const db = openProjectDatabase({ databasePath: ':memory:' });
+  const store = new SqliteWorkLeaseStore({ db, uuid: () => 'replay-lease' });
+  const request = acquire({ idempotencyKey: 'replay-acquire' });
+  const lease = store.acquire(request);
+  const selector = {
+    projectId: request.projectId,
+    operation: 'acquire',
+    idempotencyKey: request.idempotencyKey,
+    requestDigest: canonicalRequestDigest(request),
+  };
+  const before = {
+    events: db.prepare('SELECT * FROM work_lease_events').all(),
+    leases: db.prepare('SELECT * FROM work_leases').all(),
+    bindings: db.prepare('SELECT * FROM work_bindings').all(),
+    fences: db.prepare('SELECT * FROM lease_fences').all(),
+  };
+  assert.deepEqual(store.replayMutation(selector), {
+    selector,
+    outcome: 'committed',
+    statusCode: 201,
+    result: lease,
+  });
+  for (const mismatch of [
+    { ...selector, operation: 'renew' },
+    { ...selector, requestDigest: 'b'.repeat(64) },
+  ]) {
+    assert.throws(
+      () => store.replayMutation(mismatch),
+      (error) => error.code === 'idempotency-conflict'
+    );
+  }
+  const absentSelector = { ...selector, idempotencyKey: 'missing' };
+  assert.deepEqual(store.replayMutation(absentSelector), {
+    selector: absentSelector,
+    outcome: 'absent',
+  });
+  assert.deepEqual(
+    {
+      events: db.prepare('SELECT * FROM work_lease_events').all(),
+      leases: db.prepare('SELECT * FROM work_leases').all(),
+      bindings: db.prepare('SELECT * FROM work_bindings').all(),
+      fences: db.prepare('SELECT * FROM lease_fences').all(),
+    },
+    before
+  );
   store.close();
 });
 

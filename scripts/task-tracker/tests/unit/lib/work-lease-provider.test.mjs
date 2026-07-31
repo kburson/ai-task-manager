@@ -222,6 +222,17 @@ test('every operation uses the specified endpoint, method, and body semantics', 
       holder: holder({ agentRunId: 'run-2', sessionId: 'session-2', pid: 456 }),
     }),
     observe: { lease: null },
+    replayMutation: {
+      selector: {
+        projectId: PROJECT_ID,
+        operation: 'acquire',
+        idempotencyKey: 'acquire-1',
+        requestDigest: 'a'.repeat(64),
+      },
+      outcome: 'committed',
+      statusCode: 201,
+      result: lease(),
+    },
   };
   const statuses = { acquire: 201, takeover: 201 };
   const store = new HttpWorkLeaseStore({
@@ -234,9 +245,11 @@ test('every operation uses the specified endpoint, method, and body semantics', 
       const operation =
         pathname === '/v1/work-leases'
           ? 'observe'
-          : pathname.slice(pathname.lastIndexOf(':') + 1) === 'switch'
-            ? 'switchLease'
-            : pathname.slice(pathname.lastIndexOf(':') + 1);
+          : pathname === '/v1/work-leases:replay-mutation'
+            ? 'replayMutation'
+            : pathname.slice(pathname.lastIndexOf(':') + 1) === 'switch'
+              ? 'switchLease'
+              : pathname.slice(pathname.lastIndexOf(':') + 1);
       calls.push({ operation, url: String(url), options });
       return response(statuses[operation] ?? 200, { result: results[operation] });
     },
@@ -349,6 +362,15 @@ test('every operation uses the specified endpoint, method, and body semantics', 
   }
   assert.equal(await store.observe({ projectId: PROJECT_ID, issueId: '999' }), null);
   assert.deepEqual(
+    await store.replayMutation({
+      projectId: PROJECT_ID,
+      operation: 'acquire',
+      idempotencyKey: 'acquire-1',
+      requestDigest: 'a'.repeat(64),
+    }),
+    results.replayMutation
+  );
+  assert.deepEqual(
     calls.map(({ operation, options }) => [operation, options.method]),
     [
       ['acquire', 'POST'],
@@ -359,12 +381,16 @@ test('every operation uses the specified endpoint, method, and body semantics', 
       ['release', 'POST'],
       ['takeover', 'POST'],
       ['observe', 'GET'],
+      ['replayMutation', 'POST'],
     ]
   );
   assert.equal('idempotency-key' in calls[2].options.headers, false);
   assert.equal(calls[7].options.body, undefined);
+  assert.deepEqual(JSON.parse(calls[8].options.body), results.replayMutation.selector);
+  assert.equal('idempotency-key' in calls[8].options.headers, false);
   assert.match(calls[7].url, /projectId=.*&issueId=999$/);
   assert.deepEqual(JSON.parse(calls[6].options.body).evidence, takeoverEvidence);
+  assert.doesNotMatch(calls[8].url, /operation|requestDigest|idempotencyKey/);
 });
 
 test('store rejects redirects, malformed envelopes, non-JSON, and remote error/status mismatch', async () => {

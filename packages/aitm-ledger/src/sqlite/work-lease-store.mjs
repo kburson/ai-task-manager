@@ -1,7 +1,7 @@
 import { createHash, randomUUID } from 'node:crypto';
 // cspell:ignore SAVEPOINT
 
-import { WorkLeaseError } from '../lease/errors.mjs';
+import { LEASE_ERROR_CODES, WorkLeaseError } from '../lease/errors.mjs';
 import { WorkLeaseStore } from '../lease/port.mjs';
 import {
   OWNERSHIP_RETAINING_STATES,
@@ -11,6 +11,7 @@ import {
   validateHandoffRequest,
   validateObserveSelector,
   validateReleaseRequest,
+  validateReplayMutationSelector,
   validateRenewRequest,
   validateSwitchLeaseRequest,
   validateTakeoverRequest,
@@ -820,5 +821,54 @@ export class SqliteWorkLeaseStore extends WorkLeaseStore {
         : this.#currentByWorktree(selector.projectId, selector.worktreeId);
     if (lease) this.#correlatedBinding(lease);
     return lease;
+  }
+
+  replayMutation(selector) {
+    validateReplayMutationSelector(selector);
+    const event = this.db
+      .prepare(
+        `SELECT operation, idempotency_key, request_digest, response_json, error_json, status_code
+           FROM work_lease_events
+          WHERE project_id = ?
+            AND idempotency_key = ?`
+      )
+      .get(selector.projectId, selector.idempotencyKey);
+    const durableSelector = structuredClone(selector);
+    if (!event) return { selector: durableSelector, outcome: 'absent' };
+    const recordedOperation = event.operation === 'switch' ? 'switchLease' : event.operation;
+    if (
+      recordedOperation !== selector.operation ||
+      event.request_digest !== selector.requestDigest
+    ) {
+      throw new WorkLeaseError(
+        'idempotency-conflict',
+        'mutation replay selector does not match the recorded request',
+        {
+          projectId: selector.projectId,
+          idempotencyKey: selector.idempotencyKey,
+          operation: selector.operation,
+        }
+      );
+    }
+    const statusCode = Number(event.status_code);
+    let response;
+    let error;
+    try {
+      response = event.response_json === null ? null : JSON.parse(event.response_json);
+      error = event.error_json === null ? null : JSON.parse(event.error_json);
+    } catch {
+      throw new WorkLeaseError('authority-unavailable', 'recorded mutation replay JSON is corrupt');
+    }
+    if (
+      !Number.isInteger(statusCode) ||
+      (response === null) === (error === null) ||
+      (response !== null && (statusCode < 200 || statusCode >= 300)) ||
+      (error !== null && (statusCode < 400 || !LEASE_ERROR_CODES.includes(error?.code)))
+    ) {
+      throw new WorkLeaseError('authority-unavailable', 'recorded mutation replay row is corrupt');
+    }
+    return response !== null
+      ? { selector: durableSelector, outcome: 'committed', statusCode, result: response }
+      : { selector: durableSelector, outcome: 'rejected', statusCode, error };
   }
 }

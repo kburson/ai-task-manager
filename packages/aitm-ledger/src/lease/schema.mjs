@@ -24,6 +24,14 @@ export const TAKEOVER_EVIDENCE_KINDS = Object.freeze([
   'remote-expired',
   'operator-attestation',
 ]);
+export const MUTATING_LEASE_OPERATIONS = Object.freeze([
+  'acquire',
+  'renew',
+  'switchLease',
+  'handoff',
+  'release',
+  'takeover',
+]);
 
 function object(value, label) {
   if (!value || typeof value !== 'object' || Array.isArray(value)) {
@@ -419,6 +427,28 @@ export function validateObserveSelector(selector) {
   if (keys.length === 0) return selector;
   if (keys[0] === 'issueId') issueIdentifier(selector.issueId);
   else nonEmpty(selector.worktreeId, 'worktreeId');
+  return selector;
+}
+
+export function validateReplayMutationSelector(selector) {
+  object(selector, 'selector');
+  exactKeys(
+    selector,
+    ['projectId', 'operation', 'idempotencyKey', 'requestDigest'],
+    [],
+    'selector'
+  );
+  nonEmpty(selector.projectId, 'selector.projectId');
+  if (!MUTATING_LEASE_OPERATIONS.includes(selector.operation)) {
+    invalidRequest('selector.operation is not a mutating lease operation');
+  }
+  nonEmpty(selector.idempotencyKey, 'selector.idempotencyKey');
+  if (
+    typeof selector.requestDigest !== 'string' ||
+    !/^[0-9a-f]{64}$/.test(selector.requestDigest)
+  ) {
+    invalidRequest('selector.requestDigest must be a lowercase SHA-256 digest');
+  }
   return selector;
 }
 
