@@ -18,6 +18,7 @@ import {
   DISCUSS_START_ICON,
   DISCUSS_END_ICON,
 } from '../../../lib/discuss-marker.mjs';
+import { governedEffectDeps } from '../../helpers/governed-effect.mjs';
 
 test('formatDiscussStartBanner: 💬-led, interpolates the ref', () => {
   const out = formatDiscussStartBanner('#495');
@@ -43,6 +44,7 @@ test('finalizeDiscussion: emits the ✅ end banner exactly once after a successf
     let current = base;
     const logs = [];
     const deps = {
+      ...governedEffectDeps,
       fetchBody: async () => current,
       pushBody: async (_repo, _n, body) => {
         current = body;
@@ -69,6 +71,7 @@ test('finalizeDiscussion: does NOT emit the end banner when the body write fails
     const base = ['## Scope', '', 'sparse', '', '{discuss}'].join('\n');
     const logs = [];
     const deps = {
+      ...governedEffectDeps,
       fetchBody: async () => base,
       pushBody: async () => {
         throw new Error('boom');

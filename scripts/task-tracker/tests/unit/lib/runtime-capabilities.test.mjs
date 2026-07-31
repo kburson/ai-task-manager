@@ -132,6 +132,29 @@ test('AC2: assembleCapabilities groups flat members by reference', () => {
   assert.equal(typeof caps.issueBodyMutator.mutate, 'function');
 });
 
+test('issueBodyMutator preserves a caller-scoped governed continuation', async () => {
+  const caps = assembleCapabilities({
+    projectDir: '/tmp/proj',
+    pexec: async () => {
+      throw new Error('remote I/O must remain behind the supplied authority');
+    },
+  });
+  const authorityResult = { authenticated: true };
+  const result = await caps.issueBodyMutator.mutate({
+    issueNumber: 1049,
+    repo: 'o/r',
+    mutate: (body) => body,
+    operation: 'close',
+    withGovernedEffect: async (options) => {
+      assert.equal(options.issueId, '1049');
+      assert.equal(options.operation, 'close');
+      return authorityResult;
+    },
+  });
+
+  assert.equal(result, authorityResult);
+});
+
 test('workLeaseGuard capability exposes only the governed-effect adapter', () => {
   const withGovernedEffect = async () => ({ allowed: true });
   const caps = assembleCapabilities({ withGovernedEffect });

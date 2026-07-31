@@ -56,6 +56,11 @@ export async function verbMirrorDeepDive(ctx) {
     issueNumber: Number(target),
     repo,
     fromComment,
+    deps: {
+      ...ctx.deps,
+      projectDir: ctx.projectDir,
+      withGovernedEffect: ctx.withGovernedEffect ?? ctx.deps?.withGovernedEffect,
+    },
   });
   process.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
 }

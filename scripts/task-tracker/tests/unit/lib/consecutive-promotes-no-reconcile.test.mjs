@@ -2,11 +2,10 @@
 // #210 / #218 — Integration regression: two consecutive forward state
 // transitions must both succeed without an interposed `/task reconcile`.
 //
-// Under #218 the local `state.state` field has been removed entirely; the
-// issue body `aitm-last-known-state` marker is the single source of truth.
-// This test asserts the file-level invariant: after each successful
-// transition, the tracker-state file must NOT contain a `state` field —
-// even when the file was seeded with a stale `state` from legacy data.
+// The #1049 lease boundary made TT_SKIP_NETWORK a true dry-run: it exercises
+// admission/locking but performs no board, body, timing, or local-cache write.
+// These consecutive probes therefore verify that repeated offline promotion
+// attempts succeed without reconcile while leaving the seeded state untouched.
 
 import assert from 'node:assert/strict';
 import { execFile } from 'node:child_process';
@@ -73,12 +72,12 @@ async function testConsecutiveBound() {
 
     await runMoveState(['210', 'test'], env);
     let s = readState(sp);
-    assert.equal(s.state, undefined, '#218: tracker-state must not carry a state field');
+    assert.equal(s.state, 'develop', 'offline probe must not rewrite tracker-state');
     assert.equal(s.active, '#210', 'active binding preserved across transition');
 
     await runMoveState(['210', 'review'], env);
     s = readState(sp);
-    assert.equal(s.state, undefined, '#218: tracker-state stays clean across consecutive promotes');
+    assert.equal(s.state, 'develop', 'second offline probe remains side-effect free');
   } finally {
     rmSync(sandbox, { recursive: true });
   }
@@ -99,12 +98,12 @@ async function testConsecutiveOrchestrator() {
 
     await runMoveState(['311', 'plan'], env);
     let s = readState(sp);
-    assert.equal(s.state, undefined, '#218: state field stripped on orchestrator promote');
+    assert.equal(s.state, 'refine', 'offline orchestrator probe must not rewrite tracker-state');
     assert.equal(s.active, null, 'orchestrator flow must not synthesize an active binding');
 
     await runMoveState(['311', 'develop'], env);
     s = readState(sp);
-    assert.equal(s.state, undefined, '#218: state field stays absent across orchestrator promotes');
+    assert.equal(s.state, 'refine', 'second orchestrator probe remains side-effect free');
   } finally {
     rmSync(sandbox, { recursive: true });
   }

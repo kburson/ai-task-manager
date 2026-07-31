@@ -18,6 +18,7 @@ import path from 'node:path';
 import { mkdtempSync, mkdirSync, writeFileSync, rmSync, chmodSync } from 'node:fs';
 
 import { verbKind } from '../../../verbs/kind.mjs';
+import { withTestGovernedEffect } from '../../helpers/governed-effect.mjs';
 import { projectScratchDir } from '../../../lib/scratch-dir.mjs';
 
 let tmpRoot;
@@ -103,7 +104,11 @@ async function runVerb(ctx) {
   }
 }
 
-const baseCtx = (over) => ({ cfg: { repo: 'o/r' }, ...over });
+const baseCtx = (over) => ({
+  cfg: { repo: 'o/r' },
+  withGovernedEffect: withTestGovernedEffect,
+  ...over,
+});
 
 test('no args → usage error, exit 1', async () => {
   const r = await runVerb(baseCtx({ rest: [], pexec: makePexec() }));

@@ -21,21 +21,17 @@ writeFileSync(
 const env = { ...process.env, AI_TASK_MANAGER_PROJECT_DIR: sandbox, TT_SKIP_NETWORK: '1' };
 
 let r = await pexec('node', [CLI, '#321'], { env });
-assert.match(r.stdout, /Active: #321/);
+assert.match(r.stdout, /Started #321/);
 
 r = await pexec('node', [CLI, 'review', '#321'], { env });
-assert.match(r.stdout, /Review #321/);
-assert.match(r.stdout, /paused/i);
+assert.equal(r.stdout, '', 'offline review is a no-effect probe');
 
 let state = JSON.parse(
   readFileSync(path.join(sandbox, '.tmp', 'aitm', 'state', 'task-tracker-state.json'), 'utf8')
 );
-// #407 — a non-terminal verb (`review`) closes the timing session but KEEPS the
-// issue bound, so the next verb needs no intervening `start <N>` re-bind. The
-// binding is dropped only by an explicit `pause`/session-end. Pre-#407 this
-// asserted `state.active === null`, which encoded the very bug #407 fixes.
+// Offline mode must not synthesize a lifecycle transition or end the session.
 assert.equal(state.active, '#321');
-assert.equal(state.entryStartTs, null);
+assert.ok(state.entryStartTs, 'offline review preserves the active session');
 assert.equal(state.lastActive, '#321');
 
 r = await pexec('node', [CLI, 'close', '#321'], { env });
@@ -81,7 +77,7 @@ assert.match(r.stdout, /\/task close \[#N\]/);
   rmSync(sandbox2, { recursive: true });
 }
 
-// Bug fix: `close #N` with no active task closes the named issue (existing behavior).
+// A named close with no bound lease fails closed even in an offline fixture.
 {
   const sandbox3 = mkdtempProjectIsolated('tt-close-noactive-');
   mkdirSync(path.join(sandbox3, '.ai-task-manager'), { recursive: true });
@@ -91,13 +87,15 @@ assert.match(r.stdout, /\/task close \[#N\]/);
   );
   const env3 = { ...process.env, AI_TASK_MANAGER_PROJECT_DIR: sandbox3, TT_SKIP_NETWORK: '1' };
 
-  const closeResult = await pexec('node', [CLI, 'close', '#400'], { env: env3 });
-  assert.match(closeResult.stdout, /Closed #400/);
-
-  const st = JSON.parse(
-    readFileSync(path.join(sandbox3, '.tmp', 'aitm', 'state', 'task-tracker-state.json'), 'utf8')
-  );
-  assert.equal(st.active, null, 'active should be cleared when closing the only/active issue');
+  let closeError = null;
+  try {
+    await pexec('node', [CLI, 'close', '#400'], { env: env3 });
+  } catch (error) {
+    closeError = error;
+  }
+  assert.ok(closeError, 'named close without a bound lease must fail');
+  assert.match(closeError.stderr, /no persisted work lease/);
+  assert.doesNotMatch(closeError.stdout, /Closed #400/);
 
   rmSync(sandbox3, { recursive: true });
 }

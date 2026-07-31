@@ -189,7 +189,7 @@ test('AC5 helper: a write result carrying no `body` is treated as unverified', (
 
 test('AC3 source: approve captures the write result and asserts marker persistence before success', () => {
   assert.ok(
-    /const writeResult = await mutateBody\(/.test(approveSrc),
+    /const writeResult = await scope\.effect\(\(\) =>\s*mutateBody\(/.test(approveSrc),
     'approve must capture the write result (not discard it)'
   );
   const assertIdx = approveSrc.indexOf('assertMarkerPersisted({');
@@ -253,8 +253,8 @@ test('AC4 source: close gates ONLY the review:approved row on the decision; issu
   // Inside the helper: the approved row is inside the shouldEmit guard; the wrap
   // row is posted after, gated only on pendingClosePairState (idempotency), NOT
   // on approval — it records the terminal close, not an approval claim.
-  const approvedPost = closeSrc.indexOf('safePostTiming(closeTarget, reviewApprovedRow)', guardIdx);
-  const wrapPost = closeSrc.indexOf('safePostTiming(closeTarget, issueWrapRow)', guardIdx);
+  const approvedPost = closeSrc.indexOf('safePostTiming(closeTarget, reviewApprovedRow,', guardIdx);
+  const wrapPost = closeSrc.indexOf('safePostTiming(closeTarget, issueWrapRow,', guardIdx);
   assert.ok(
     approvedPost > guardIdx && wrapPost > approvedPost,
     'the gated approved row sits inside the shouldEmit guard; the wrap row follows it, outside'

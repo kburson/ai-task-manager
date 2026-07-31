@@ -29,7 +29,7 @@ import { locateFunctionalSection } from '../lib/lifecycle-dod.mjs';
 import { dodPath } from '../paths.mjs';
 
 export async function verbKind(ctx) {
-  const { cfg, statePath, rest, pexec } = ctx;
+  const { cfg, statePath, rest, pexec, projectDir, withGovernedEffect } = ctx;
   const args = (rest || []).map((a) => String(a).trim()).filter(Boolean);
 
   let target;
@@ -68,7 +68,12 @@ export async function verbKind(ctx) {
   await mutateIssueBody({
     issueNumber: target,
     repo: cfg.repo,
-    deps: { pexec },
+    deps: {
+      ...ctx.deps,
+      pexec,
+      projectDir,
+      withGovernedEffect: withGovernedEffect ?? ctx.deps?.withGovernedEffect,
+    },
     mutate: (base) => {
       const marked = setIssueKindMarker(base, kind);
       const loc = locateFunctionalSection(marked);

@@ -40,6 +40,21 @@ export const RUN_LANES = Object.freeze(['unit', 'integration', 'fast', 'slow', '
  */
 export const SKIP = new Map([]);
 
+export function parseShard(value) {
+  const match = String(value ?? '').match(/^([1-9]\d*)\/([1-9]\d*)$/);
+  const index = Number(match?.[1]);
+  const total = Number(match?.[2]);
+  if (!match || index > total) {
+    throw new TypeError('run-tests: --shard must be INDEX/TOTAL with 1 <= INDEX <= TOTAL');
+  }
+  return { index, total };
+}
+
+export function selectShardFiles(files, shard) {
+  if (!shard) return [...files];
+  return files.filter((_, offset) => offset % shard.total === shard.index - 1);
+}
+
 /**
  * The sorted repo-relative test paths for a run-lane, sourced entirely from the
  * canonical lane manifest.

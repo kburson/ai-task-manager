@@ -101,7 +101,12 @@ export async function verbAcStamp(ctx) {
   await mutateIssueBody({
     issueNumber: issueNum,
     repo: cfg.repo,
-    deps: { pexec },
+    deps: {
+      ...ctx.deps,
+      pexec,
+      projectDir,
+      withGovernedEffect: ctx.withGovernedEffect ?? ctx.deps?.withGovernedEffect,
+    },
     // #522 — sanctioned stamper: the evidence is derived from the real
     // verifier run executed just above, so the proof-introduction guard is
     // bypassed for this minting site.

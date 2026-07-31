@@ -18,6 +18,7 @@ import path from 'node:path';
 import { mkdtempSync, mkdirSync, writeFileSync, rmSync, chmodSync } from 'node:fs';
 
 import { verbMirrorDeepDive } from '../../../verbs/mirror-deep-dive.mjs';
+import { withTestGovernedEffect } from '../../helpers/governed-effect.mjs';
 import { projectScratchDir } from '../../../lib/scratch-dir.mjs';
 
 let tmpRoot;
@@ -133,7 +134,11 @@ test('happy path: mirrors comment prose into the issue body, prints result', asy
   const storeFile = path.join(tmpRoot, 'body-42.md');
   writeFileSync(storeFile, '# Issue 42\n\nOriginal body, no deep dive yet.\n');
   process.env.AITM_FAKE_BODY_FILE = storeFile;
-  const r = await runVerb({ cfg: { repo: 'o/r' }, rest: ['--from-comment=777', '42'] });
+  const r = await runVerb({
+    cfg: { repo: 'o/r' },
+    rest: ['--from-comment=777', '42'],
+    withGovernedEffect: withTestGovernedEffect,
+  });
   assert.equal(r.threw, null);
   assert.equal(r.exitCode, null);
 });

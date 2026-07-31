@@ -192,7 +192,9 @@ assert.match(
   /const moveResult = await runMoveStateDone\(/,
   'close.mjs must capture the structured runMoveStateDone result'
 );
-// Genuine failure short-circuits the success path with a non-zero exit.
+// Genuine failure short-circuits the success path with a structured refusal;
+// the outer close finalizer maps its exitCode instead of mutating process state
+// inside the convergence transaction.
 assert.match(
   closeSrc,
   /!moveResult\.ok && !moveResult\.benign/,
@@ -200,8 +202,8 @@ assert.match(
 );
 assert.match(
   closeSrc,
-  /process\.exitCode = 1;/,
-  'close.mjs must signal a non-zero outcome on genuine failure'
+  /return moveResult;/,
+  'close.mjs must surface the genuine structured move failure'
 );
 // The "Closed" success line must come AFTER the failure branch (i.e. it is no
 // longer reached unconditionally).

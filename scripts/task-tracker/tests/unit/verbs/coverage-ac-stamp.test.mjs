@@ -18,6 +18,7 @@ import path from 'node:path';
 import { mkdtempSync, mkdirSync, writeFileSync, rmSync, chmodSync } from 'node:fs';
 
 import { verbAcStamp } from '../../../verbs/ac-stamp.mjs';
+import { withTestGovernedEffect } from '../../helpers/governed-effect.mjs';
 import { projectScratchDir } from '../../../lib/scratch-dir.mjs';
 
 const VERIFIER_CMD =
@@ -138,7 +139,10 @@ async function runVerb(ctx) {
 const baseCtx = (over) => ({
   cfg: { repo: 'o/r' },
   projectDir: tmpRoot,
-  deps: { now: () => '2026-06-29T00:00:00.000Z' },
+  deps: {
+    now: () => '2026-06-29T00:00:00.000Z',
+    withGovernedEffect: withTestGovernedEffect,
+  },
   ...over,
 });
 

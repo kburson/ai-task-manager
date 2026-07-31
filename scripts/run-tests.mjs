@@ -41,7 +41,14 @@ import {
 } from './task-tracker/fleet-registry.mjs';
 import { describeSpawnResult, formatFleetLeak, RUN_TESTS_MAX_BUFFER } from './run-tests-report.mjs';
 import { TEST_NO_RETRY_ENV } from './gh/lib/with-retry.mjs';
-import { RUN_LANES, SKIP, laneFiles, discoveryDivergence } from './run-tests-lanes.mjs';
+import {
+  RUN_LANES,
+  SKIP,
+  laneFiles,
+  discoveryDivergence,
+  parseShard,
+  selectShardFiles,
+} from './run-tests-lanes.mjs';
 import { evaluateCeiling } from './run-tests-ceiling.mjs';
 import { wantsHelp, emitSelfDoc } from './lib/self-doc.mjs';
 import {
@@ -63,6 +70,7 @@ const repoRoot = path.resolve(__dir, '..');
 // ---- arg parsing ---------------------------------------------------------
 const VALID_LANES = new Set(RUN_LANES);
 let lane = 'fast';
+let shard = null;
 // #861 — opt-in slow-test report. The per-file timing dataset and JSON artifact
 // are ALWAYS produced; this flag (or AITM_TEST_TIMING=1) only controls whether
 // the human-readable top-N/Pareto/slow-bucket report is printed at the end.
@@ -75,6 +83,20 @@ for (let i = 2; i < process.argv.length; i++) {
     lane = a.slice('--lane='.length);
   } else if (a === '--timing-report') {
     timingReport = true;
+  } else if (a === '--shard') {
+    try {
+      shard = parseShard(process.argv[++i]);
+    } catch (error) {
+      console.error(error.message);
+      process.exit(2);
+    }
+  } else if (a.startsWith('--shard=')) {
+    try {
+      shard = parseShard(a.slice('--shard='.length));
+    } catch (error) {
+      console.error(error.message);
+      process.exit(2);
+    }
   } else {
     console.error(`run-tests: unknown argument: ${a}`);
     process.exit(2);
@@ -99,9 +121,13 @@ if (missing.length || extra.length) {
 }
 
 // Canonical selection: repo-relative paths → { label, full } run entries.
-const files = laneFiles(lane).map((rel) => ({ label: rel, full: path.join(repoRoot, rel) }));
+const files = selectShardFiles(laneFiles(lane), shard).map((rel) => ({
+  label: rel,
+  full: path.join(repoRoot, rel),
+}));
 
-console.log(`▶ lane=${lane} (${files.length} files)\n`);
+const shardLabel = shard ? ` shard=${shard.index}/${shard.total}` : '';
+console.log(`▶ lane=${lane}${shardLabel} (${files.length} files)\n`);
 
 // AC2 (#442) — authoritative runtime guard against test-sandbox registry leaks.
 // A test that creates a non-git sandbox and then reaches `registerTask` will

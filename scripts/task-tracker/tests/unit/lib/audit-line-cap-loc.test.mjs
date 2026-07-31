@@ -5,6 +5,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { countCodeLines } from '../../../lib/count-code-lines.mjs';
+import { classifyLineCap } from '../../audit-line-cap.mjs';
 
 test('blank and whitespace-only lines are not counted', () => {
   const src = ['const a = 1;', '', '   ', '\t', 'const b = 2;'].join('\n');
@@ -69,4 +70,27 @@ test('a file over 400 raw lines but under 400 code LOC is within the cap', () =>
   assert.ok(src.split('\n').length > 400, 'fixture should exceed 400 raw lines');
   assert.equal(countCodeLines(src), CODE);
   assert.ok(countCodeLines(src) <= 400, 'code LOC must be within the 400 cap');
+});
+
+test('a frozen legacy exception may shrink but never grow', () => {
+  const file = 'scripts/task-tracker/tests/unit/lib/legacy.test.mjs';
+  const baseline = { [file]: 450 };
+
+  assert.equal(classifyLineCap({ file, lines: 449, baseline }).status, 'grandfathered');
+  assert.deepEqual(classifyLineCap({ file, lines: 451, baseline }), {
+    status: 'legacy-growth',
+    limit: 450,
+  });
+});
+
+test('an unlisted oversize path cannot inherit another file exception', () => {
+  const baseline = { 'scripts/task-tracker/tests/unit/lib/old.test.mjs': 450 };
+  assert.deepEqual(
+    classifyLineCap({
+      file: 'scripts/task-tracker/tests/unit/lib/renamed.test.mjs',
+      lines: 401,
+      baseline,
+    }),
+    { status: 'new-oversize', limit: 400 }
+  );
 });

@@ -20,6 +20,7 @@ import { mkdtempSync, writeFileSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { projectScratchDir } from '../../../lib/scratch-dir.mjs';
 import { runSupersede, verbSupersede, parseArgs } from '../../../verbs/supersede.mjs';
+import { withTestGovernedEffect } from '../../helpers/governed-effect.mjs';
 
 const cfg = { repo: 'o/r' };
 const FIXED_TS = '2026-06-29T00:00:00Z';
@@ -293,6 +294,7 @@ test('runSupersede: default I/O helpers drive a fake gh end-to-end', async () =>
       byIssue: 4242,
       cfg,
       deps: {
+        withGovernedEffect: withTestGovernedEffect,
         runMoveState: async () => 0,
         writeDisposition: async () => {},
         now,

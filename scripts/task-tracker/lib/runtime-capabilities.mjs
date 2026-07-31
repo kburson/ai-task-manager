@@ -78,7 +78,15 @@ export function assembleCapabilities(ctx) {
   const githubClient = pick(ctx, CAPABILITY_SURFACES.githubClient);
   const workLeaseGuard = pick(ctx, CAPABILITY_SURFACES.workLeaseGuard);
   const issueBodyMutator = {
-    mutate: (args) => mutateIssueBody({ deps: { pexec: ctx.pexec }, ...args }),
+    mutate: ({ withGovernedEffect, ...args }) =>
+      mutateIssueBody({
+        deps: {
+          pexec: ctx.pexec,
+          projectDir: ctx.projectDir,
+          withGovernedEffect: withGovernedEffect ?? ctx.withGovernedEffect,
+        },
+        ...args,
+      }),
   };
   return {
     projectConfig,

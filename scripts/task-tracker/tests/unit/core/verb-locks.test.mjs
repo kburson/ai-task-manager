@@ -24,7 +24,8 @@ function read(rel) {
   return readFileSync(path.join(VERBS, rel), 'utf8');
 }
 
-// State-mutators: must reference the lock module and wrap their run.
+// State-mutators: must reference the lock module and wrap their run. Approve
+// exposes the lock as an injectable seam before entering its lease scope.
 for (const file of ['promote.mjs', 'approve.mjs', 'reconcile.mjs']) {
   const src = read(file);
   assert.match(
@@ -32,7 +33,12 @@ for (const file of ['promote.mjs', 'approve.mjs', 'reconcile.mjs']) {
     /from '\.\.\/issue-mutator-lock\.mjs'/,
     `${file} should import from ../issue-mutator-lock.mjs`
   );
-  assert.match(src, /withIssueLock\s*\(/, `${file} should call withIssueLock(...)`);
+  if (file === 'approve.mjs') {
+    assert.match(src, /deps\.withIssueLock \|\| withIssueLock/);
+    assert.match(src, /lockIssue\s*\(/, `${file} should call the resolved issue lock`);
+  } else {
+    assert.match(src, /withIssueLock\s*\(/, `${file} should call withIssueLock(...)`);
+  }
   assert.match(src, /IssueLockError/, `${file} should handle IssueLockError`);
 }
 

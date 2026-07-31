@@ -133,7 +133,12 @@ export async function verbDodStamp(ctx) {
   await mutateIssueBody({
     issueNumber: issueNum,
     repo: cfg.repo,
-    deps: { pexec },
+    deps: {
+      ...ctx.deps,
+      pexec,
+      projectDir,
+      withGovernedEffect: ctx.withGovernedEffect ?? ctx.deps?.withGovernedEffect,
+    },
     // #522 — sanctioned stamper: evidence derived from the real verifier run
     // executed above; bypass the proof-introduction guard for this minting site.
     evidenceStamp: true,

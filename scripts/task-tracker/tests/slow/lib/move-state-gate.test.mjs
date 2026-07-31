@@ -168,6 +168,7 @@ async function runMove(sandbox, binDir, args, extraEnv = {}) {
     env: {
       ...process.env,
       AITM_INTERNAL: '1',
+      AITM_TEST_GOVERNED_EFFECT: '1',
       AI_TASK_MANAGER_PROJECT_DIR: sandbox,
       PATH: `${binDir}:${process.env.PATH}`,
       ...extraEnv,

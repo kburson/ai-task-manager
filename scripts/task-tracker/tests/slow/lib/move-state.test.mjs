@@ -57,7 +57,8 @@ for (const legacy of ['in-progress', 'in-review', 'r4r', 'ready']) {
   assert.match(e.stderr + e.stdout, /Unknown state/i, `legacy state ${legacy} should be rejected`);
 }
 
-// Test: each new state with TT_SKIP_NETWORK prints success without hitting GH
+// Test: each new state with TT_SKIP_NETWORK completes as a silent, side-effect-
+// free admission probe without claiming a board move.
 for (const state of ['backlog', 'refine', 'plan', 'develop', 'test', 'review', 'done']) {
   const sandbox = mkdtempSync(path.join(projectScratchDir('test'), `tt-ms-${state}-`));
   mkdirSync(path.join(sandbox, '.ai-task-manager'), { recursive: true });
@@ -84,13 +85,12 @@ for (const state of ['backlog', 'refine', 'plan', 'develop', 'test', 'review', '
     TT_SKIP_NETWORK: '1',
     AI_TASK_MANAGER_PROJECT_DIR: sandbox,
   });
-  assert.match(r.stdout, new RegExp(`moved to: ${state}`), `state ${state} should succeed`);
+  assert.doesNotMatch(r.stdout, /moved to:/, `offline ${state} probe must not claim a move`);
   rmSync(sandbox, { recursive: true });
 }
 
-// Test (#218): tracker-state never carries a `state` field. Even if legacy
-// data is on disk, move-state must not preserve or rewrite it — the issue
-// body `aitm-last-known-state` marker is the single source of truth.
+// Test (#1049): the offline boundary performs no local cache write, including
+// migration of a legacy state field.
 {
   const sandbox = mkdtempSync(path.join(projectScratchDir('test'), 'tt-ms-state-write-'));
   mkdirSync(path.join(sandbox, '.ai-task-manager'), { recursive: true });
@@ -123,7 +123,7 @@ for (const state of ['backlog', 'refine', 'plan', 'develop', 'test', 'review', '
     AI_TASK_MANAGER_PROJECT_DIR: sandbox,
   });
   const after = JSON.parse(readFileSync(sp, 'utf8'));
-  assert.equal(after.state, undefined, '#218: state field must be absent from tracker-state');
+  assert.equal(after.state, 'develop', 'offline probe must leave tracker-state untouched');
   assert.equal(after.active, '#777', 'active should be preserved');
 
   rmSync(sandbox, { recursive: true });

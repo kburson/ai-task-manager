@@ -31,7 +31,7 @@ const ghShim = path.join(binDir, 'gh');
 const priorPath = process.env.PATH;
 const priorStore = process.env.FAKE_GH_STORE;
 const priorProjectDir = process.env.AI_TASK_MANAGER_PROJECT_DIR;
-const FAKE_GH_TIMEOUT_MS = 10_000;
+const FAKE_GH_TIMEOUT_MS = 30_000;
 
 mkdirSync(binDir, { recursive: true });
 writeFileSync(ghShim, `#!/bin/sh\nexec "${process.execPath}" "${fakeGh}" "$@"\n`);

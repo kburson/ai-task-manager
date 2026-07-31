@@ -17,6 +17,7 @@ import {
   isDiscussPending,
   convergeDiscuss,
 } from '../../../lib/discuss-marker.mjs';
+import { governedEffectDeps } from '../../helpers/governed-effect.mjs';
 import { findLostMarkers } from '../../../lib/body-invariants.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url)) + '/..';
@@ -170,6 +171,7 @@ test('finalizeDiscussion: scope splice + token consume in one write; prose menti
     let calls = 0;
     let current = base;
     const deps = {
+      ...governedEffectDeps,
       fetchBody: async () => current,
       pushBody: async (_repo, _n, body) => {
         calls += 1;

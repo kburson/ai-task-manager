@@ -1,6 +1,7 @@
 // @story #1049
 
 import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
 import { mkdtempSync, rmSync } from 'node:fs';
 import path from 'node:path';
 import test from 'node:test';
@@ -11,6 +12,7 @@ import {
   reconcileTimingProjectionRowEffect,
 } from '../../../gh-timing-comment.mjs';
 import { applyTimingProjection } from '../../../lib/work-lease/bind-orchestration.mjs';
+import { authenticateTransitionMutationCommit } from '../../../lib/work-lease/transition-projection-authority.mjs';
 import { projectScratchDir } from '../../../lib/scratch-dir.mjs';
 import {
   canonicalTimingQueueProjection,
@@ -29,6 +31,7 @@ const EMPTY_TIMING_BODY = [
   '| Timestamp | Event | Active | Idle | Δ Words | Word Marker | Description | Δ Words (full) |',
   '|---|---|---|---|---|---|---|---|',
 ].join('\n');
+let COMMIT_AUTHORITY;
 
 function deferred() {
   let resolve;
@@ -44,6 +47,7 @@ function fixture() {
 }
 
 function switchAuthorityFixture() {
+  const displayPath = '/repo/worktree-1';
   const holder = {
     principalKind: 'worker',
     provider: 'codex',
@@ -52,16 +56,26 @@ function switchAuthorityFixture() {
     hostId: 'host-1',
     pid: 123,
     worktreeId: 'worktree-1',
-    pathHash: 'path-hash-1',
+    pathHash: createHash('sha256').update(displayPath).digest('hex'),
     branch: 'feature/child/1049',
   };
+  const sourceBinding = {
+    sessionId: 'session-1',
+    issueId: '1048',
+    worktreeId: 'worktree-1',
+    displayPath,
+  };
+  const targetBinding = { ...sourceBinding, issueId: '1049' };
   return {
+    commitAuthority: COMMIT_AUTHORITY,
     transitionId: 'transition-1',
     request: {
       projectId: 'project-1',
       issueId: '1048',
       leaseId: 'source-lease',
       fencingToken: '7',
+      holder,
+      binding: sourceBinding,
       idempotencyKey: 'switch:session-1:1048:1049:request-1',
       switchedAt: '2026-07-30T12:00:00.000Z',
       target: {
@@ -72,6 +86,7 @@ function switchAuthorityFixture() {
         requestedAt: '2026-07-30T12:00:00.000Z',
         ttlMs: 900_000,
         holder,
+        binding: targetBinding,
       },
     },
     receipt: {
@@ -97,6 +112,24 @@ function switchAuthorityFixture() {
       },
     },
   };
+}
+
+{
+  const { request, receipt, transitionId } = switchAuthorityFixture();
+  COMMIT_AUTHORITY = await authenticateTransitionMutationCommit({
+    store: {
+      replayMutation: async (selector) => ({
+        selector,
+        outcome: 'committed',
+        statusCode: 200,
+        result: receipt,
+      }),
+    },
+    rawRequest: request,
+    request,
+    receipt,
+    transitionId,
+  });
 }
 
 function remoteTiming() {

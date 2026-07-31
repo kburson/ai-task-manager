@@ -15,8 +15,14 @@
 // It lives under tests/ so it never ships (package-boundary.test.mjs enforces the
 // pack boundary). Spawn-based tests point their move-state path constant here.
 import { runMoveStateHost } from '../../../gh/move-state.mjs';
+import { withTestGovernedEffect } from './governed-effect.mjs';
 
-runMoveStateHost()
+const testAuthority =
+  process.env.AITM_TEST_GOVERNED_EFFECT === '1'
+    ? { withGovernedEffect: withTestGovernedEffect }
+    : {};
+
+runMoveStateHost(testAuthority)
   .then((code) => process.exit(code ?? 0))
   .catch((err) => {
     process.stderr.write(`move-state-cli.mjs: ${err?.stack || err}\n`);

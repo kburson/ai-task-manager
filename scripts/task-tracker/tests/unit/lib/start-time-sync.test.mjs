@@ -6,7 +6,7 @@ import { spawnSync } from 'node:child_process';
 import { projectScratchDir } from '../../../lib/scratch-dir.mjs';
 
 const repoRoot = new URL('../../../../..', import.meta.url).pathname;
-const script = join(repoRoot, 'scripts/gh/update-event-fields.mjs');
+const script = join(repoRoot, 'scripts/task-tracker/tests/helpers/update-event-fields-cli.mjs');
 
 function makeTempEnv(ghScript) {
   const temp = mkdtempSync(join(projectScratchDir('test'), 'aitm-start-time-sync-'));
@@ -30,7 +30,11 @@ function makeTempEnv(ghScript) {
     })
   );
 
-  const env = { ...process.env, PATH: `${binDir}:${process.env.PATH}` };
+  const env = {
+    ...process.env,
+    PATH: `${binDir}:${process.env.PATH}`,
+    AI_TASK_MANAGER_PROJECT_DIR: temp,
+  };
   return { temp, env };
 }
 

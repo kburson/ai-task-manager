@@ -251,13 +251,19 @@ export function appendUnverifiedTickAudit(body, { label, ts }) {
 //     `--allow-unverified-ticks` honest hatch).
 // Un-ticking is never a claim of proof, so `ensureUnchecked` runs no gate.
 async function runEnsure(ctx, desired) {
-  const { cfg, statePath, projectDir, rest, pexec } = ctx;
+  const { cfg, statePath, projectDir, rest, pexec, withGovernedEffect } = ctx;
   const checking = desired === 'checked';
   // #295 — body writes go through mutateIssueBody({mutate}); closure runs on
   // FRESH base each push attempt. #567 — threads the optional
   // `allowUnverifiedTicks` bypass for the non-demonstrable-AC hatch.
   const mutateBody = ({ issueNumber, repo, mutate, allowUnverifiedTicks = false }) =>
-    mutateIssueBody({ issueNumber, repo, mutate, deps: { pexec }, allowUnverifiedTicks });
+    mutateIssueBody({
+      issueNumber,
+      repo,
+      mutate,
+      deps: { pexec, projectDir, withGovernedEffect },
+      allowUnverifiedTicks,
+    });
   const s = loadState(statePath);
   if (!s.active || s.active === 'discover') {
     console.error('no active task');
@@ -326,6 +332,7 @@ async function runEnsure(ctx, desired) {
       repo: cfg.repo,
       complete: true,
       ts,
+      deps: { pexec, projectDir, withGovernedEffect },
     });
     if (res.status === 'no-op') {
       console.log(`[task-tracker] ✓ Already marked deep-dive-complete on ${s.active}`);
@@ -347,6 +354,7 @@ async function runEnsure(ctx, desired) {
       issueNumber: issueNum,
       repo: cfg.repo,
       mutate: (base) => markDiscussed(base, { ts }),
+      deps: { pexec, projectDir, withGovernedEffect },
     });
     // #486 — the completed discussion is no longer pending, so remove the
     // visible "Discuss" label to keep it a pure mirror of the marker state.
@@ -497,11 +505,17 @@ async function runEnsureBatch({
   labels,
   allowUnverifiedTicks = false,
 }) {
-  const { cfg, projectDir, pexec } = ctx;
+  const { cfg, projectDir, pexec, withGovernedEffect } = ctx;
   const checking = desired === 'checked';
   const auvAllowed = checking && allowUnverifiedTicks;
   const mutateBody = ({ issueNumber, repo, mutate, allowUnverifiedTicks: auv = false }) =>
-    mutateIssueBody({ issueNumber, repo, mutate, deps: { pexec }, allowUnverifiedTicks: auv });
+    mutateIssueBody({
+      issueNumber,
+      repo,
+      mutate,
+      deps: { pexec, projectDir, withGovernedEffect },
+      allowUnverifiedTicks: auv,
+    });
   // The deep-dive-complete special label is a checked-only marker route; under
   // ensureUnchecked it is treated as an ordinary (likely not-found) checkbox.
   const isDeepDive = (l) => checking && /^deep[- ]?dive complete$/i.test(l.trim());
@@ -630,6 +644,7 @@ async function runEnsureBatch({
       repo: cfg.repo,
       complete: true,
       ts,
+      deps: { pexec, projectDir, withGovernedEffect },
     });
     if (res.status === 'no-op') {
       console.log(`[task-tracker] ✓ Already marked deep-dive-complete on ${active}`);

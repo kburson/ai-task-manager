@@ -13,8 +13,6 @@
 // and any body-file write to side files we can inspect.
 
 import { strict as assert } from 'node:assert';
-import { execFile } from 'node:child_process';
-import { promisify } from 'node:util';
 import {
   mkdtempSync,
   mkdirSync,
@@ -26,11 +24,7 @@ import {
 } from 'node:fs';
 import { projectScratchDir } from '../../../lib/scratch-dir.mjs';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
-
-const pexec = promisify(execFile);
-const __dir = path.dirname(fileURLToPath(import.meta.url)) + '/..';
-const CLI = path.resolve(__dir, '..', '..', 'task-tracker.mjs');
+import { runVerbTest } from '../../../verbs/test.mjs';
 
 const sandbox = mkdtempSync(path.join(projectScratchDir('test'), 'tt-test-injection-'));
 try {
@@ -51,6 +45,8 @@ try {
   const pwnedMarker = path.join(sandbox, 'PWNED.txt');
 
   const fixtureBody = [
+    '<!-- aitm-last-known-state: develop -->',
+    '',
     '## Verification Commands',
     '',
     '- [ ] `node --version`',
@@ -148,25 +144,27 @@ process.exit(0);
   );
   chmodSync(ghShim, 0o755);
 
-  const env = {
-    ...process.env,
-    PATH: `${binDir}:${process.env.PATH}`,
-    AI_TASK_MANAGER_PROJECT_DIR: sandbox,
-    TT_SKIP_NETWORK: '',
-  };
-
-  let stdout = '',
-    stderr = '',
-    exitCode = 0;
-  try {
-    const r = await pexec('node', [CLI, 'test', '#999'], { env, timeout: 30000 });
-    stdout = r.stdout;
-    stderr = r.stderr;
-  } catch (err) {
-    stdout = err.stdout || '';
-    stderr = err.stderr || '';
-    exitCode = err.code ?? 1;
-  }
+  let currentBody = fixtureBody;
+  const outcome = await runVerbTest({
+    cfg: { repo: 'test-owner/test-repo' },
+    issueNumber: '999',
+    projectDir: sandbox,
+    deps: {
+      fetchBody: async () => currentBody,
+      mutateBody: async ({ mutate }) => {
+        currentBody = mutate(currentBody);
+        writeFileSync(recordedBodyPath, currentBody);
+        return { status: 'ok', body: currentBody };
+      },
+      postComment: async ({ body }) => writeFileSync(recordedCommentPath, body),
+      getHeadSha: async () => headSha,
+      createWorktree: async () => {},
+      removeWorktree: async () => {},
+      npmCi: async () => {},
+      execInSandbox: async () => ({ exit: 0, stdout: '', stderr: '' }),
+    },
+  });
+  const exitCode = outcome.status === 'failed' ? 1 : 0;
 
   assert.equal(
     existsSync(pwnedMarker),
