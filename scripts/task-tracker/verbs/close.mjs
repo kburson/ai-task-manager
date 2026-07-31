@@ -361,15 +361,17 @@ export async function executeClosePlan(ctx, preparedPlan, scope) {
   const closeTarget = preparedPlan.closeTarget;
   const closeIssueNum = preparedPlan.closeIssueNum;
   if (!dryRun) {
-    const refreshedActive = canonicalIssueRef(initialState.active);
-    const explicitAdoption = Boolean(target && !initialState.active);
-    if (
-      (!explicitAdoption && refreshedActive !== closeTarget) ||
-      (initialState.active && !refreshedActive)
-    ) {
+    const preparedActiveRaw = preparedPlan.initialState?.active ?? null;
+    const refreshedActiveRaw = initialState.active ?? null;
+    const stablePreparedBinding =
+      canonicalIssueRef(preparedActiveRaw) === closeTarget &&
+      canonicalIssueRef(refreshedActiveRaw) === closeTarget;
+    const stableUnboundAdoption = Boolean(target) && !preparedActiveRaw && !refreshedActiveRaw;
+    if (!stablePreparedBinding && !stableUnboundAdoption) {
       console.error(
-        `[task-tracker] ⛔ Refusing to close ${closeTarget}: active binding changed to ` +
-          `${initialState.active || 'none'} while queued timing was drained.`
+        `[task-tracker] ⛔ Refusing to close ${closeTarget}: active binding changed from ` +
+          `${preparedActiveRaw || 'none'} to ${refreshedActiveRaw || 'none'} ` +
+          'while queued timing was drained.'
       );
       return closeOutcome({ status: 'binding-changed', exitCode: 7 });
     }

@@ -230,24 +230,51 @@ test('ordinary close uses one lock and one heartbeat root through the final effe
   }
 });
 
-test('binding changed during queue drain refuses inside root before every issue effect', async () => {
-  const run = await runOfflineClose({
-    duringDrain: async ({ statePath }) => {
-      writeFileSync(statePath, JSON.stringify(state('#1050')));
-    },
-  });
-  try {
-    assert.equal(run.error, undefined);
-    assert.equal(run.result.status, 'binding-changed');
-    assert.equal(run.state.active, '#1050');
-    for (const forbidden of ['targeted-flush', 'timing', 'done', 'log', 'lifecycle']) {
-      assert.ok(!run.events.includes(forbidden), `must not emit ${forbidden}`);
+for (const bindingCase of [
+  { name: 'bound same remains same', prepared: '#1049', refreshed: '#1049', status: 'completed' },
+  { name: 'unbound remains unbound', prepared: null, refreshed: null, status: 'completed' },
+  { name: 'bound disappears', prepared: '#1049', refreshed: null, status: 'binding-changed' },
+  {
+    name: 'bound changes foreign',
+    prepared: '#1049',
+    refreshed: '#1050',
+    status: 'binding-changed',
+  },
+  { name: 'unbound becomes target', prepared: null, refreshed: '#1049', status: 'binding-changed' },
+  {
+    name: 'unbound becomes foreign',
+    prepared: null,
+    refreshed: '#1050',
+    status: 'binding-changed',
+  },
+]) {
+  test(`prepared/live binding matrix: ${bindingCase.name}`, async () => {
+    const run = await runOfflineClose({
+      active: bindingCase.prepared,
+      duringDrain:
+        bindingCase.refreshed === bindingCase.prepared
+          ? undefined
+          : async ({ statePath }) => {
+              writeFileSync(statePath, JSON.stringify(state(bindingCase.refreshed)));
+            },
+    });
+    try {
+      assert.equal(run.error, undefined);
+      assert.equal(run.result.status, bindingCase.status);
+      if (bindingCase.status === 'binding-changed') {
+        assert.equal(run.state.active, bindingCase.refreshed);
+        for (const forbidden of ['targeted-flush', 'timing', 'done', 'log', 'lifecycle']) {
+          assert.ok(!run.events.includes(forbidden), `must not emit ${forbidden}`);
+        }
+        assert.deepEqual(run.events.slice(-2), ['heartbeat-stop', 'release']);
+      } else {
+        assert.ok(run.events.includes('done'));
+      }
+    } finally {
+      rmSync(run.dir, { recursive: true, force: true });
     }
-    assert.deepEqual(run.events.slice(-2), ['heartbeat-stop', 'release']);
-  } finally {
-    rmSync(run.dir, { recursive: true, force: true });
-  }
-});
+  });
+}
 
 test('explicit target state is not saved until authority has been reverified', async () => {
   const run = await runOfflineClose({ active: null, rest: ['#1049'], reverifyFailureAt: 2 });
