@@ -48,8 +48,8 @@ the fencing token before governed effects. Fleet remains a projection.
 - SQLite and HTTPS share a closed operation vocabulary. Unknown operations fail
   validation. Reuse of an idempotency key for a different canonical request
   fails with `idempotency-conflict`.
-- The reviewed file inventory has 188 task assignments across 175 unique paths:
-  Tasks 1-7 contain 13, 5, 17, 5, 126, 18, and 4 paths respectively.
+- The reviewed file inventory has 194 task assignments across 181 unique paths:
+  Tasks 1-7 contain 13, 5, 17, 5, 132, 18, and 4 paths respectively.
   Lifecycle authority paths intentionally reappear in later tasks when the
   same provider, session, close, or fleet boundary needs another governed
   increment. If
@@ -370,6 +370,9 @@ real Git worktree directory. Raw display text never participates in uniqueness.
 - Modify: `scripts/task-tracker/lib/human-reviewer-audit.mjs`
 - Modify: `scripts/task-tracker/lib/review-derive-rescan.mjs`
 - Modify: `scripts/task-tracker/lib/stage-entry-markers.mjs`
+- Modify: `scripts/task-tracker/lib/apply-refinement-estimate.mjs`
+- Modify: `scripts/task-tracker/lib/stamp-start-time.mjs`
+- Modify: `scripts/task-tracker/lib/new-automated-tests-comment.mjs`
 - Modify: `scripts/task-tracker/lib/move-state/move-state-core.mjs`
 - Modify: `scripts/task-tracker/lib/move-state/audit-timing.mjs`
 - Modify: `scripts/task-tracker/lib/move-state/cache-unpark.mjs`
@@ -486,6 +489,12 @@ real Git worktree directory. Raw display text never participates in uniqueness.
   `scripts/task-tracker/tests/unit/lib/coverage-cache-unpark.test.mjs`
 - Modify:
   `scripts/task-tracker/tests/unit/lib/coverage-review.test.mjs`
+- Modify:
+  `scripts/task-tracker/tests/unit/lib/apply-refinement-estimate.test.mjs`
+- Modify:
+  `scripts/task-tracker/tests/unit/lib/coverage-stamp-start-time.test.mjs`
+- Modify:
+  `scripts/task-tracker/tests/unit/lib/new-automated-tests-comment.test.mjs`
 - Modify:
   `scripts/task-tracker/tests/unit/lib/coverage-unpark-dependents.test.mjs`
 - Modify:
