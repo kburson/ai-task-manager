@@ -1,4 +1,5 @@
 // @story #310
+// cspell:ignore nohup
 // Tests for scripts/task-tracker/activity-policy.mjs
 //
 // Covers:
@@ -50,8 +51,24 @@ test('classifyBash: build commands', () => {
 });
 
 test('classifyBash: git commit', () => {
-  assert.equal(classifyBash('git commit -m "msg"'), 'COMMIT_CODE');
-  assert.equal(classifyBash('git commit -am quick'), 'COMMIT_CODE');
+  for (const command of [
+    'git commit -m "msg"',
+    'git commit -am quick',
+    'env -u FOO git commit -m x',
+    'env sh -lc "git commit -m x"',
+    'sh -lc "git commit -m x"',
+    'exec git commit -m x',
+    'time git commit -m x',
+    'nice -n 5 git commit -m x',
+    'nice -5 git commit -m x',
+    'nohup git commit -m x',
+    '{ git commit -m x; }',
+    '! git commit -m x',
+    'if true; then git commit -m x; fi',
+    'cat <(git commit -m x)',
+  ]) {
+    assert.equal(classifyBash(command), 'COMMIT_CODE', command);
+  }
 });
 
 test('classifyBash: READ_* for benign commands', () => {

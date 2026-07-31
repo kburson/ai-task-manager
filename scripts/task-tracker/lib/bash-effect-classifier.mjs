@@ -470,10 +470,21 @@ function findMutatesStartPaths(words) {
     if (!/^-(?:exec|execdir|ok|okdir)$/.test(words[i])) continue;
     const body = [];
     for (i += 1; i < words.length && words[i] !== ';' && words[i] !== '+'; i++) {
-      if (words[i] !== '{}') body.push(words[i]);
+      body.push(words[i]);
     }
-    const embedded = unwrapCommandWords(body);
+    const embedded = unwrapCommandWords(body.filter((word) => word !== '{}'));
     if (['rm', 'rmdir'].includes(basename(embedded[0]))) return true;
+    const shellHead = basename(embedded[0]);
+    const shellFlag = SHELLS.has(shellHead)
+      ? embedded.findIndex(
+          (word) => word === '--command' || (/^-[^-]+$/.test(word) && word.includes('c'))
+        )
+      : -1;
+    if (shellFlag >= 0 && embedded[shellFlag + 1] && body.includes('{}')) {
+      const positionalTarget = (target) =>
+        /^\$(?:[0-9]+|[@*])$|^\$\{(?:[0-9]+|[@*])\}$/.test(target);
+      if (extractSegmentWriteTargets(embedded[shellFlag + 1]).some(positionalTarget)) return true;
+    }
   }
   return false;
 }
@@ -644,20 +655,30 @@ function issueRefs(text) {
 function commitMessageRefs(words, commitIndex, readCommitMessageFile) {
   const messages = [];
   let unresolved = false;
+  let resolved = false;
   for (let i = commitIndex + 1; i < words.length; i++) {
     const word = words[i];
     if (word === '-m' || word === '--message') {
-      if (words[i + 1]) messages.push(words[++i]);
+      if (i + 1 < words.length) {
+        messages.push(words[++i]);
+        resolved = true;
+      }
       continue;
     }
     if (word.startsWith('--message=')) {
       messages.push(word.slice('--message='.length));
+      resolved = true;
       continue;
     }
     if (/^-[^-]*m/.test(word)) {
       const afterM = word.slice(word.indexOf('m') + 1);
-      if (afterM) messages.push(afterM);
-      else if (words[i + 1]) messages.push(words[++i]);
+      if (afterM) {
+        messages.push(afterM);
+        resolved = true;
+      } else if (i + 1 < words.length) {
+        messages.push(words[++i]);
+        resolved = true;
+      }
       continue;
     }
     if (
@@ -678,6 +699,20 @@ function commitMessageRefs(words, commitIndex, readCommitMessageFile) {
       unresolved = true;
       continue;
     }
+    if (word === '--fixup' || word === '--squash' || word === '-t' || word === '--template') {
+      unresolved = true;
+      i += 1;
+      continue;
+    }
+    if (
+      word.startsWith('--fixup=') ||
+      word.startsWith('--squash=') ||
+      word.startsWith('--template=') ||
+      (/^-t.+/.test(word) && word !== '--')
+    ) {
+      unresolved = true;
+      continue;
+    }
     let file = null;
     if (word === '-F' || word === '--file') file = words[++i];
     else if (word.startsWith('--file=')) file = word.slice('--file='.length);
@@ -687,6 +722,7 @@ function commitMessageRefs(words, commitIndex, readCommitMessageFile) {
     } else if (file && readCommitMessageFile) {
       try {
         messages.push(readCommitMessageFile(file));
+        resolved = true;
       } catch {
         unresolved = true;
       }
@@ -694,13 +730,10 @@ function commitMessageRefs(words, commitIndex, readCommitMessageFile) {
       unresolved = true;
     }
   }
-  if (
-    words.slice(commitIndex + 1).includes('--amend') &&
-    words.slice(commitIndex + 1).includes('--no-edit')
-  ) {
+  if (words.slice(commitIndex + 1).includes('--no-edit')) {
     unresolved = true;
   }
-  return { refs: [...new Set(messages.flatMap(issueRefs))], unresolved };
+  return { refs: [...new Set(messages.flatMap(issueRefs))], unresolved: unresolved || !resolved };
 }
 
 export function detectCommitCommands(command, { readCommitMessageFile } = {}) {
@@ -722,6 +755,17 @@ export function detectCommitCommands(command, { readCommitMessageFile } = {}) {
     isAmend: commits.some((commit) => commit.isAmend),
     commits,
   };
+}
+
+export function detectGhIssueCommands(command) {
+  const commands = [];
+  for (const segment of collectCommandSegments(command)) {
+    const words = unwrapCommandWords(shellWords(segment));
+    if (basename(words[0]) !== 'gh' || words[1] !== 'issue') continue;
+    const verb = words[2];
+    if (verb === 'edit' || verb === 'reopen') commands.push({ segment, verb });
+  }
+  return commands;
 }
 
 function normalizeTarget(target, projectRoot) {

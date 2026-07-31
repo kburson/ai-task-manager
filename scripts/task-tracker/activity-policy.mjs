@@ -22,7 +22,11 @@
 
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
-import { extractWriteTargets } from './lib/bash-effect-classifier.mjs';
+import {
+  detectCommitCommands,
+  detectGhIssueCommands,
+  extractWriteTargets,
+} from './lib/bash-effect-classifier.mjs';
 
 export { extractWriteTargets };
 
@@ -228,9 +232,8 @@ export function classifyBash(command, policy = DEFAULT_POLICY) {
   if (typeof command !== 'string' || !command) return 'READ_*';
   const cmd = command.replace(/^\s+/, '');
 
-  // `git commit ...`
-  if (/^git\s+commit\b/.test(cmd)) return 'COMMIT_CODE';
-  if (/^gh\s+issue\s+(?:edit|reopen)\b/.test(cmd)) return 'WRITE_ISSUE';
+  if (detectCommitCommands(cmd).isCommit) return 'COMMIT_CODE';
+  if (detectGhIssueCommands(cmd).length > 0) return 'WRITE_ISSUE';
 
   // Test runners — longest-first so `npm run test` wins over `npm`.
   const testRunners = [...(policy.testRunners || [])].sort((a, b) => b.length - a.length);

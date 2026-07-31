@@ -109,7 +109,8 @@ async function evaluate(input, deps = {}) {
   const { evaluateGhProject } = await import('./lib/gh-project-guard.mjs');
   const { evaluateAitmPath } = await import('./lib/aitm-path-guard.mjs');
   const { classifyBash } = await import('./activity-policy.mjs');
-  const { analyzeBashEffects } = await import('./lib/bash-effect-classifier.mjs');
+  const { analyzeBashEffects, detectGhIssueCommands } =
+    await import('./lib/bash-effect-classifier.mjs');
   const { GIT_TIMEOUT_MS } = await import('./lib/process-timeouts.mjs');
   const { configPath } = await import('./paths.mjs');
 
@@ -271,7 +272,7 @@ async function evaluate(input, deps = {}) {
         '  Use `/task close` — it validates the DoD, flushes timing, and moves the issue to Done atomically.'
     );
   }
-  if (/\bgh\s+issue\s+reopen\b/.test(scanned)) {
+  if (detectGhIssueCommands(command).some(({ verb }) => verb === 'reopen')) {
     block(
       'Direct `gh issue reopen` is forbidden.\n' +
         '  Use `/task reconcile` so issue state, board state, and session binding remain aligned.'

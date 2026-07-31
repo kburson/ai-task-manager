@@ -1,4 +1,5 @@
 // @story #273
+// cspell:ignore nohup
 // #273 — when an active task is bound but its kanbanState cache is absent,
 // the guard's block message must name the issue and include a concrete
 // repair command. Pre-#273 it said "no recorded kanban state" with no path
@@ -227,4 +228,24 @@ test('#1049: multi-file apply_patch evaluates every class and verifies authority
   assert.equal(refused.code, 'activity-state-refused');
   assert.match(refused.reason, /WRITE_CODE/);
   assert.equal(governed, 0, 'one refused target prevents authority initialization');
+});
+
+test('#1049: wrapped commits remain COMMIT_CODE and are refused in Review', async () => {
+  for (const command of [
+    'nice -5 git commit -m "[#1049] wrapped"',
+    'nohup git commit -m "[#1049] wrapped"',
+  ]) {
+    const result = await runActivityGuard(
+      { tool_name: 'Bash', tool_input: { command } },
+      {
+        projectRoot: '/fake/project',
+        loadPolicy: () => ({}),
+        readBoundState: () => ({ activeIssue: '#1049', state: 'review' }),
+        isChoreModeActive: () => false,
+      }
+    );
+    assert.equal(result.decision, 'block', command);
+    assert.equal(result.code, 'activity-state-refused', command);
+    assert.match(result.reason, /COMMIT_CODE/, command);
+  }
 });

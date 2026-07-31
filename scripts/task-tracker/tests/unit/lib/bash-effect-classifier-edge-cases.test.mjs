@@ -90,6 +90,8 @@ test('quoted outside paths in descriptors, process substitutions, and target dir
     "find . -exec sh -c 'touch /tmp/find-semicolon.mjs' {} \\;",
     'find /tmp -delete',
     'find /tmp -exec rm {} +',
+    `find /etc/passwd -exec sh -c 'rm -f "$1"' sh {} \\;`,
+    `find /usr/bin/true -exec sh -c 'rm -f "$1"' sh {} +`,
   ]) {
     let authorityCount = 0;
     const result = await runBashGuard(
@@ -177,11 +179,16 @@ test('commit grammar normalizes execution wrappers, shell clusters, control word
 
 test('unresolved commit-message sources fail closed before lease authority', async () => {
   for (const command of [
+    'git commit',
+    'git commit --amend',
     'git commit -F -',
     'git commit -F .tmp/inspect/missing-message.txt',
     'git commit -C HEAD',
     'git commit --reuse-message=HEAD',
     'git commit --amend --no-edit',
+    'git commit --fixup=HEAD',
+    'git commit --squash=HEAD',
+    'git commit --template=.tmp/inspect/template.txt',
   ]) {
     const { result, calls } = await authorityCalls(command, {
       readCommitMessageFile: () => {
@@ -210,6 +217,13 @@ test('commit refs come only from message sources and still reject an actually wr
   assert.equal(fromFile.result.decision, 'allow');
   assert.deepEqual(
     fromFile.calls.map((call) => call.operation),
+    ['issue-attributed-commit']
+  );
+
+  const amendedInline = await authorityCalls('git commit --amend -m "[#1049] resolved amend"');
+  assert.equal(amendedInline.result.decision, 'allow');
+  assert.deepEqual(
+    amendedInline.calls.map((call) => call.operation),
     ['issue-attributed-commit']
   );
 

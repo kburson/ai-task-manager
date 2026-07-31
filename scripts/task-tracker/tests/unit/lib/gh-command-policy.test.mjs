@@ -58,11 +58,16 @@ function runGuard(command) {
   assert.match(r.reason, /\/task close/, 'reason must point to /task close');
 }
 
-// 3. `gh issue reopen` bypasses task-state reconciliation and is refused.
-{
-  const r = runGuard('gh issue reopen 42');
-  assert.equal(r.blocked, true, 'gh issue reopen must be refused');
-  assert.match(r.reason, /reopen/i);
+// 3. `gh issue reopen` bypasses task-state reconciliation and is refused,
+// including through shell wrappers handled by the shared Bash grammar.
+for (const command of [
+  'gh issue reopen 42',
+  "sh -c 'gh issue reopen 42'",
+  'env sh -lc "gh issue reopen 42"',
+]) {
+  const r = runGuard(command);
+  assert.equal(r.blocked, true, `${command} must be refused`);
+  assert.match(r.reason, /task reconcile/i);
 }
 
 // 4a. `gh issue view` is allowed (read-only)
