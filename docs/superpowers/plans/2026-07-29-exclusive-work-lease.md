@@ -48,8 +48,8 @@ the fencing token before governed effects. Fleet remains a projection.
 - SQLite and HTTPS share a closed operation vocabulary. Unknown operations fail
   validation. Reuse of an idempotency key for a different canonical request
   fails with `idempotency-conflict`.
-- The reviewed file inventory has 127 task assignments across 115 unique paths:
-  Tasks 1-7 contain 13, 5, 17, 5, 65, 18, and 4 paths respectively.
+- The reviewed file inventory has 152 task assignments across 140 unique paths:
+  Tasks 1-7 contain 13, 5, 17, 5, 90, 18, and 4 paths respectively.
   Lifecycle authority paths intentionally reappear in later tasks when the
   same provider, session, close, or fleet boundary needs another governed
   increment. If
@@ -359,6 +359,12 @@ real Git worktree directory. Raw display text never participates in uniqueness.
 - Modify: `scripts/task-tracker/activity-guard.mjs`
 - Modify: `scripts/task-tracker/lib/issue-body-mutate.mjs`
 - Modify: `scripts/task-tracker/lib/functional-dod-derive.mjs`
+- Modify: `scripts/task-tracker/lib/close-disposition.mjs`
+- Modify: `scripts/task-tracker/lib/terminal-disposition.mjs`
+- Modify: `scripts/task-tracker/lib/closed-issue-convergence.mjs`
+- Modify: `scripts/task-tracker/lib/apply-review-delta.mjs`
+- Modify: `scripts/task-tracker/lib/full-auto-merge-execute.mjs`
+- Modify: `scripts/task-tracker/lib/lifecycle-dod.mjs`
 - Modify: `scripts/task-tracker/lib/human-reviewer-audit.mjs`
 - Modify: `scripts/task-tracker/lib/review-derive-rescan.mjs`
 - Modify: `scripts/task-tracker/lib/stage-entry-markers.mjs`
@@ -378,6 +384,44 @@ real Git worktree directory. Raw display text never participates in uniqueness.
 - Modify: `scripts/gh/move-state.mjs`
 - Create:
   `scripts/task-tracker/tests/integration/lib/exclusive-work-lease.test.mjs`
+- Create:
+  `scripts/task-tracker/tests/unit/verbs/close-governed-boundary.test.mjs`
+- Modify:
+  `scripts/task-tracker/tests/unit/lib/terminal-disposition.test.mjs`
+- Modify:
+  `scripts/task-tracker/tests/unit/lib/closed-issue-recovery.test.mjs`
+- Modify:
+  `scripts/task-tracker/tests/unit/lib/closed-issue-recovery-live-state.test.mjs`
+- Modify:
+  `scripts/task-tracker/tests/unit/lib/closed-issue-actions.test.mjs`
+- Modify:
+  `scripts/task-tracker/tests/unit/lib/apply-review-delta.test.mjs`
+- Modify:
+  `scripts/task-tracker/tests/unit/lib/coverage-apply-review-delta.test.mjs`
+- Modify:
+  `scripts/task-tracker/tests/unit/lib/full-auto-merge-execute.test.mjs`
+- Modify:
+  `scripts/task-tracker/tests/unit/lib/full-auto-merge-path.test.mjs`
+- Modify:
+  `scripts/task-tracker/tests/unit/verbs/close-lifecycle-tick-retry.test.mjs`
+- Modify:
+  `scripts/task-tracker/tests/unit/verbs/close-strip-labels.test.mjs`
+- Modify:
+  `scripts/task-tracker/tests/unit/core/close-emission-order.test.mjs`
+- Modify:
+  `scripts/task-tracker/tests/slow/verbs/coverage-close.test.mjs`
+- Modify:
+  `scripts/task-tracker/tests/unit/verbs/close-convergence-wiring-helpers.mjs`
+- Modify:
+  `scripts/task-tracker/tests/unit/verbs/close-convergence-wiring.test.mjs`
+- Modify:
+  `scripts/task-tracker/tests/unit/lib/close-convergence-finalize.test.mjs`
+- Modify:
+  `scripts/task-tracker/tests/unit/lib/close-drain.test.mjs`
+- Modify:
+  `scripts/task-tracker/tests/unit/verbs/close-converge-audit-emission.test.mjs`
+- Modify:
+  `scripts/task-tracker/tests/unit/lib/close-force-atomic.test.mjs`
 - Modify:
   `scripts/task-tracker/tests/unit/gh/move-state-governed-boundary.test.mjs`
 - Modify:
