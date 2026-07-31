@@ -136,8 +136,15 @@ export function enqueueTimingProjection(
   };
 }
 
+export async function withQueueDrainClaim(queuePath, callback) {
+  if (typeof callback !== 'function') {
+    throw new TypeError('queue drain claim callback is required');
+  }
+  return withLock(`${queuePath}.drain.lock`, callback);
+}
+
 export async function drain(handler, queuePath, deps = {}) {
-  return withLock(`${queuePath}.drain.lock`, async () => {
+  return withQueueDrainClaim(queuePath, async () => {
     const items = withQueueMutationLock(queuePath, () => read(queuePath));
     const succeeded = [];
     let failed = 0;
@@ -199,7 +206,7 @@ export function removeExactQueueEntries(entries, queuePath, deps = {}) {
 // `/task close` to clear queue entries for the closing issue — once an issue
 // is Done, residual rows are not interesting and must not re-queue forever.
 export async function drainAndDiscard(handler, queuePath, predicate, deps = {}) {
-  return withLock(`${queuePath}.drain.lock`, async () => {
+  return withQueueDrainClaim(queuePath, async () => {
     const items = withQueueMutationLock(queuePath, () => read(queuePath));
     const targeted = items.filter(predicate);
     const consumed = [];

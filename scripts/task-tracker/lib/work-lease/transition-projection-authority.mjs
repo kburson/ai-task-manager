@@ -1,8 +1,10 @@
 import { validateSwitchLeaseRequest } from '@kburson/aitm-ledger';
 
 import { validateSwitchReceipt } from './switch-orchestration.mjs';
+import { resolveTimingQueueJournalProjection } from '../timing-queue-projection.mjs';
 
 const proofs = new WeakMap();
+const timingQueueAliasProofs = new WeakMap();
 
 export class TransitionProjectionAuthorityError extends TypeError {
   constructor(message) {
@@ -153,6 +155,105 @@ export function assertTransitionProjectionAuthority(proof, expected = {}) {
     !actual.targetFencingToken
   ) {
     throw refusal('validated transition receipt identity is incomplete');
+  }
+  return proof;
+}
+
+export function deriveTransitionTimingQueueAliasAuthority({
+  receipt,
+  request,
+  transitionId,
+  entry,
+  entryIndex,
+  switchProjectionId,
+  journalProjectionId,
+  journalSubOperationId,
+  deliveryProjectionId,
+  deliverySubOperationId,
+  issueId,
+  operation,
+} = {}) {
+  let resolved;
+  try {
+    resolved = resolveTimingQueueJournalProjection({
+      entry,
+      entryIndex,
+      switchProjectionId,
+      journalProjectionId,
+      journalSubOperationId,
+    });
+  } catch (error) {
+    throw refusal(`timing queue journal alias is malformed: ${error.message}`);
+  }
+  if (
+    resolved.mode !== 'legacy-switch-alias' ||
+    resolved.deliveryProjectionId !== deliveryProjectionId ||
+    resolved.deliverySubOperationId !== deliverySubOperationId
+  ) {
+    throw refusal('timing queue journal alias does not match canonical delivery');
+  }
+  const journalAuthority = deriveTransitionProjectionAuthority({
+    receipt,
+    request,
+    transitionId,
+    projectionName: 'timing',
+    projectionId: journalProjectionId,
+    subOperationId: journalSubOperationId,
+    issueId,
+    operation,
+  });
+  const journalProof = proofs.get(journalAuthority);
+  const proof = Object.freeze(Object.create(null));
+  timingQueueAliasProofs.set(
+    proof,
+    Object.freeze({
+      ...journalProof,
+      journalProjectionId,
+      journalSubOperationId,
+      deliveryProjectionId,
+      deliverySubOperationId,
+      row: requiredString(entry?.row, 'timing queue alias row'),
+    })
+  );
+  return proof;
+}
+
+export function assertTransitionTimingQueueAliasAuthority(proof, expected = {}) {
+  const actual = timingQueueAliasProofs.get(proof);
+  if (!actual) throw refusal('proof is not a live in-memory timing queue alias proof');
+  const exact = {
+    transitionId: requiredString(expected.transitionId, 'expected transitionId'),
+    journalProjectionId: requiredString(
+      expected.journalProjectionId,
+      'expected journalProjectionId'
+    ),
+    journalSubOperationId: requiredString(
+      expected.journalSubOperationId,
+      'expected journalSubOperationId'
+    ),
+    deliveryProjectionId: requiredString(
+      expected.deliveryProjectionId,
+      'expected deliveryProjectionId'
+    ),
+    deliverySubOperationId: requiredString(
+      expected.deliverySubOperationId,
+      'expected deliverySubOperationId'
+    ),
+    issueId: canonicalIssue(expected.issueId, 'expected affected issue'),
+    operation: requiredString(expected.operation, 'expected operation'),
+    row: requiredString(expected.row, 'expected timing queue alias row'),
+  };
+  for (const [field, value] of Object.entries(exact)) {
+    if (actual[field] !== value) {
+      throw refusal(`${field} does not match the validated timing queue alias proof`);
+    }
+  }
+  if (
+    actual.projectionName !== 'timing' ||
+    actual.projectionId !== actual.journalProjectionId ||
+    actual.subOperationId !== actual.journalSubOperationId
+  ) {
+    throw refusal('validated timing queue alias journal binding is incomplete');
   }
   return proof;
 }

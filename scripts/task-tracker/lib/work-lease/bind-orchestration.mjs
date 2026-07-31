@@ -51,15 +51,20 @@ import {
   enqueueTimingProjection,
   peek as peekQueue,
   removeExactQueueEntries,
+  withQueueDrainClaim,
 } from '../../queue.mjs';
 import { deriveIssueTimeExpectedFields } from './issue-time-projection.mjs';
 import {
   deriveTransitionProjectionAuthority,
+  deriveTransitionTimingQueueAliasAuthority,
   isTransitionProjectionAuthorityError,
 } from './transition-projection-authority.mjs';
 import { isGovernedAuthorityError } from './governed-effect.mjs';
 import { isTransientGhError } from '../../../gh/lib/with-retry.mjs';
-import { canonicalTimingQueueProjection } from '../timing-queue-projection.mjs';
+import {
+  canonicalTimingQueueProjection,
+  resolveTimingQueueJournalProjection,
+} from '../timing-queue-projection.mjs';
 import {
   resolveBindEvent,
   timingCommentHasRows,
@@ -372,6 +377,18 @@ export async function applyTimingProjection(
   ctx,
   { input, projectionId, receipt, request, transitionId } = {}
 ) {
+  return applyTimingProjectionWithQueueClaim(
+    ctx,
+    { input, projectionId, receipt, request, transitionId },
+    false
+  );
+}
+
+async function applyTimingProjectionWithQueueClaim(
+  ctx,
+  { input, projectionId, receipt, request, transitionId },
+  queueDrainClaimed
+) {
   if (
     !isPlainObject(input) ||
     !isNonEmptyString(input.issueNumber) ||
@@ -409,15 +426,24 @@ export async function applyTimingProjection(
   if (!Array.isArray(queuedSourceEntries)) {
     throw new Error('persisted timing source queue is malformed');
   }
+  const journalIdentities = new Set();
   const deliveryIdentities = new Set();
-  for (const queued of queuedSourceEntries) {
-    let canonicalDelivery;
+  const resolvedQueuedSourceEntries = [];
+  for (const [entryIndex, queued] of queuedSourceEntries.entries()) {
+    let delivery;
     try {
-      canonicalDelivery = canonicalTimingQueueProjection(queued?.entry);
+      delivery = resolveTimingQueueJournalProjection({
+        entry: queued?.entry,
+        entryIndex,
+        switchProjectionId: projectionId,
+        journalProjectionId: queued?.deliveryProjectionId,
+        journalSubOperationId: queued?.deliverySubOperationId,
+      });
     } catch {
       throw new Error('persisted timing source queue entry is malformed');
     }
-    const deliveryIdentity = `${queued?.deliveryProjectionId}\0${queued?.deliverySubOperationId}`;
+    const journalIdentity = `${delivery.journalProjectionId}\0${delivery.journalSubOperationId}`;
+    const deliveryIdentity = `${delivery.deliveryProjectionId}\0${delivery.deliverySubOperationId}`;
     if (
       !isPlainObject(queued) ||
       !isPlainObject(queued.entry) ||
@@ -427,13 +453,26 @@ export async function applyTimingProjection(
       !isNonEmptyString(queued.entry.row) ||
       !isNonEmptyString(queued.deliveryProjectionId) ||
       !isNonEmptyString(queued.deliverySubOperationId) ||
-      queued.deliveryProjectionId !== canonicalDelivery.projectionId ||
-      queued.deliverySubOperationId !== canonicalDelivery.subOperationId ||
+      journalIdentities.has(journalIdentity) ||
       deliveryIdentities.has(deliveryIdentity)
     ) {
       throw new Error('persisted timing source queue entry is malformed');
     }
+    journalIdentities.add(journalIdentity);
     deliveryIdentities.add(deliveryIdentity);
+    resolvedQueuedSourceEntries.push({ queued, entryIndex, delivery });
+  }
+  if (
+    !queueDrainClaimed &&
+    resolvedQueuedSourceEntries.some(({ delivery }) => delivery.mode === 'legacy-switch-alias')
+  ) {
+    return withQueueDrainClaim(ctx.queuePath, () =>
+      applyTimingProjectionWithQueueClaim(
+        ctx,
+        { input, projectionId, receipt, request, transitionId },
+        true
+      )
+    );
   }
   if (input.skippedNetwork) {
     if (input.rows.length !== 0 || queuedSourceEntries.length !== 0) {
@@ -458,11 +497,16 @@ export async function applyTimingProjection(
     ctx.postTimingProjection ??
     (transitionProjection ? gh.postTransitionTimingProjection : gh.postTimingEvent);
   const deliveries = [
-    ...queuedSourceEntries.map((queued) => ({
+    ...resolvedQueuedSourceEntries.map(({ queued, entryIndex, delivery }) => ({
       issueNumber: String(queued.entry.issue).replace(/^#/, ''),
       row: queued.entry.row,
-      projectionId: queued.deliveryProjectionId,
-      subOperationId: queued.deliverySubOperationId,
+      projectionId: delivery.deliveryProjectionId,
+      subOperationId: delivery.deliverySubOperationId,
+      journalProjectionId: delivery.journalProjectionId,
+      journalSubOperationId: delivery.journalSubOperationId,
+      alias: delivery.mode === 'legacy-switch-alias',
+      entry: queued.entry,
+      entryIndex,
       queued: true,
     })),
     ...input.rows,
@@ -470,30 +514,64 @@ export async function applyTimingProjection(
   for (const item of deliveries) {
     const issueNumber = item.issueNumber ?? input.issueNumber;
     const stableProjectionId = item.projectionId ?? projectionId;
-    const authority = transitionProjection
-      ? deriveTransitionProjectionAuthority({
-          receipt,
-          request,
+    const authority = !transitionProjection
+      ? null
+      : item.alias
+        ? deriveTransitionTimingQueueAliasAuthority({
+            receipt,
+            request,
+            transitionId,
+            entry: item.entry,
+            entryIndex: item.entryIndex,
+            switchProjectionId: projectionId,
+            journalProjectionId: item.journalProjectionId,
+            journalSubOperationId: item.journalSubOperationId,
+            deliveryProjectionId: stableProjectionId,
+            deliverySubOperationId: item.subOperationId,
+            issueId: issueNumber,
+            operation: 'evidence-mutation',
+          })
+        : deriveTransitionProjectionAuthority({
+            receipt,
+            request,
+            transitionId,
+            projectionName: 'timing',
+            projectionId: stableProjectionId,
+            subOperationId: item.subOperationId,
+            issueId: issueNumber,
+            operation: 'evidence-mutation',
+          });
+    if (item.alias) item.aliasAuthority = authority;
+    try {
+      if (item.alias) {
+        const postAlias =
+          ctx.postTimingQueueAliasProjection ?? gh.postTransitionTimingQueueAliasProjection;
+        await postAlias({
+          aliasAuthority: authority,
           transitionId,
           projectionName: 'timing',
+          journalProjectionId: item.journalProjectionId,
+          journalSubOperationId: item.journalSubOperationId,
           projectionId: stableProjectionId,
           subOperationId: item.subOperationId,
-          issueId: issueNumber,
-          operation: 'evidence-mutation',
-        })
-      : null;
-    try {
-      await post({
-        ...(transitionProjection
-          ? { authority, transitionId, projectionName: 'timing' }
-          : { withGovernedEffect: ctx.withGovernedEffect }),
-        issueNumber,
-        repo: input.repo,
-        row: item.row,
-        projectionId: stableProjectionId,
-        subOperationId: item.subOperationId,
-        projDir: ctx.projectDir,
-      });
+          issueNumber,
+          repo: input.repo,
+          row: item.row,
+          projDir: ctx.projectDir,
+        });
+      } else {
+        await post({
+          ...(transitionProjection
+            ? { authority, transitionId, projectionName: 'timing' }
+            : { withGovernedEffect: ctx.withGovernedEffect }),
+          issueNumber,
+          repo: input.repo,
+          row: item.row,
+          projectionId: stableProjectionId,
+          subOperationId: item.subOperationId,
+          projDir: ctx.projectDir,
+        });
+      }
     } catch (error) {
       const shouldQueue =
         !isGovernedAuthorityError(error) &&
@@ -515,7 +593,7 @@ export async function applyTimingProjection(
   }
   const readProjection = ctx.readTimingProjection ?? gh.readTimingProjection;
   const operationsByIssueAndProjection = new Map();
-  for (const item of deliveries) {
+  for (const item of deliveries.filter((delivery) => !delivery.alias)) {
     const issueNumber = item.issueNumber ?? input.issueNumber;
     const stableProjectionId = item.projectionId ?? projectionId;
     const key = `${issueNumber}\0${stableProjectionId}`;
@@ -544,6 +622,26 @@ export async function applyTimingProjection(
     });
     if (proof?.reconciled !== true || proof.projectionId !== stableProjectionId) {
       throw new Error('timing projection remote read-back does not match');
+    }
+  }
+  const readAlias =
+    ctx.readTimingQueueAliasProjection ?? gh.readTransitionTimingQueueAliasProjection;
+  for (const item of deliveries.filter((delivery) => delivery.alias)) {
+    const proof = await readAlias({
+      aliasAuthority: item.aliasAuthority,
+      transitionId,
+      projectionName: 'timing',
+      journalProjectionId: item.journalProjectionId,
+      journalSubOperationId: item.journalSubOperationId,
+      projectionId: item.projectionId,
+      subOperationId: item.subOperationId,
+      issueNumber: item.issueNumber,
+      repo: input.repo,
+      row: item.row,
+      projDir: ctx.projectDir,
+    });
+    if (proof?.reconciled !== true || proof.projectionId !== item.journalProjectionId) {
+      throw new Error('timing queue alias remote read-back does not match');
     }
   }
   if (queuedSourceEntries.length > 0) {

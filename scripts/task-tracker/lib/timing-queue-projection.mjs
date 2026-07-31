@@ -51,6 +51,61 @@ export function canonicalTimingQueueProjection(event) {
   });
 }
 
+export function resolveTimingQueueJournalProjection({
+  entry,
+  entryIndex,
+  switchProjectionId,
+  journalProjectionId,
+  journalSubOperationId,
+} = {}) {
+  const canonical = canonicalTimingQueueProjection(entry);
+  const stableSwitchProjectionId = requiredString(switchProjectionId, 'timing switch projectionId');
+  const stableJournalProjectionId = requiredString(
+    journalProjectionId,
+    'timing journal projectionId'
+  );
+  const stableJournalSubOperationId = requiredString(
+    journalSubOperationId,
+    'timing journal subOperationId'
+  );
+  if (!Number.isSafeInteger(entryIndex) || entryIndex < 0) {
+    throw new TypeError('timing queue journal entryIndex must be a non-negative integer');
+  }
+  if (
+    stableJournalProjectionId === canonical.projectionId &&
+    stableJournalSubOperationId === canonical.subOperationId
+  ) {
+    return Object.freeze({
+      mode: 'canonical',
+      journalProjectionId: stableJournalProjectionId,
+      journalSubOperationId: stableJournalSubOperationId,
+      deliveryProjectionId: canonical.projectionId,
+      deliverySubOperationId: canonical.subOperationId,
+    });
+  }
+  const entryHasDurableIdentity =
+    entry.projectionId !== undefined || entry.subOperationId !== undefined;
+  const legacyDigest = createHash('sha256')
+    .update(JSON.stringify(entry))
+    .digest('hex')
+    .slice(0, 16);
+  const expectedLegacySubOperationId = `${stableSwitchProjectionId}:queued-source:${entryIndex}:${legacyDigest}`;
+  if (
+    entryHasDurableIdentity ||
+    stableJournalProjectionId !== stableSwitchProjectionId ||
+    stableJournalSubOperationId !== expectedLegacySubOperationId
+  ) {
+    throw new TypeError('timing queue journal projection identity does not match');
+  }
+  return Object.freeze({
+    mode: 'legacy-switch-alias',
+    journalProjectionId: stableJournalProjectionId,
+    journalSubOperationId: stableJournalSubOperationId,
+    deliveryProjectionId: canonical.projectionId,
+    deliverySubOperationId: canonical.subOperationId,
+  });
+}
+
 export async function deliverTimingQueueProjection(
   event,
   { repo, timeoutMs, post, read, withGovernedEffect } = {}

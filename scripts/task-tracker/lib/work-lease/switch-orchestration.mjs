@@ -44,7 +44,7 @@ import {
   validateSwitchProjectionIntegrity,
 } from './switch-projection-integrity.mjs';
 import { reconcileTimingProjectionRowEffect } from '../../gh-timing-comment.mjs';
-import { canonicalTimingQueueProjection } from '../timing-queue-projection.mjs';
+import { resolveTimingQueueJournalProjection } from '../timing-queue-projection.mjs';
 
 const TERMINAL_SWITCH_CODES = new Set([
   'invalid-request',
@@ -549,10 +549,11 @@ export function validateSwitchProjectionInputs(
   const timing = values.timing;
   const timingProjectionId = projections?.timing?.projectionId;
   const queuedSourceEntries = timing.queuedSourceEntries;
-  const queuedDeliveryIdentities = new Set();
+  const queuedJournalIdentities = new Set();
+  const queuedCanonicalIdentities = new Set();
   const queuedSourceMalformed =
     !Array.isArray(queuedSourceEntries) ||
-    queuedSourceEntries.some((queued) => {
+    queuedSourceEntries.some((queued, index) => {
       const entry = queued?.entry;
       if (
         !entry ||
@@ -572,16 +573,26 @@ export function validateSwitchProjectionInputs(
       if (hasProjectionId !== hasSubOperationId) return true;
       let delivery;
       try {
-        delivery = canonicalTimingQueueProjection(entry);
+        delivery = resolveTimingQueueJournalProjection({
+          entry,
+          entryIndex: index,
+          switchProjectionId: timingProjectionId,
+          journalProjectionId: queued.deliveryProjectionId,
+          journalSubOperationId: queued.deliverySubOperationId,
+        });
       } catch {
         return true;
       }
-      const malformedIdentity =
-        queued.deliveryProjectionId !== delivery.projectionId ||
-        queued.deliverySubOperationId !== delivery.subOperationId;
-      const deliveryIdentity = `${queued.deliveryProjectionId}\0${queued.deliverySubOperationId}`;
-      if (malformedIdentity || queuedDeliveryIdentities.has(deliveryIdentity)) return true;
-      queuedDeliveryIdentities.add(deliveryIdentity);
+      const journalIdentity = `${delivery.journalProjectionId}\0${delivery.journalSubOperationId}`;
+      const canonicalIdentity = `${delivery.deliveryProjectionId}\0${delivery.deliverySubOperationId}`;
+      if (
+        queuedJournalIdentities.has(journalIdentity) ||
+        queuedCanonicalIdentities.has(canonicalIdentity)
+      ) {
+        return true;
+      }
+      queuedJournalIdentities.add(journalIdentity);
+      queuedCanonicalIdentities.add(canonicalIdentity);
       return false;
     });
   const expectedOperations = [

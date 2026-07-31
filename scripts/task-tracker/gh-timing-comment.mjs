@@ -25,7 +25,10 @@ import {
   createRuntimeGovernedEffectAdapter,
   isGovernedAuthorityError,
 } from './lib/work-lease/governed-effect.mjs';
-import { assertTransitionProjectionAuthority } from './lib/work-lease/transition-projection-authority.mjs';
+import {
+  assertTransitionProjectionAuthority,
+  assertTransitionTimingQueueAliasAuthority,
+} from './lib/work-lease/transition-projection-authority.mjs';
 const pexec = promisify(execFile);
 
 // #568 — raised by `appendRow` when a second `start` row is attempted over a
@@ -852,6 +855,218 @@ export async function postTransitionTimingProjection({
       await verifyProjection();
       return callback({ reverify: verifyProjection });
     },
+  });
+}
+
+function inspectTimingQueueAliasReceipts(
+  body,
+  { journalProjectionId, journalSubOperationId, projectionId, subOperationId, row } = {}
+) {
+  try {
+    const receipts = parseTimingProjectionReceipts(body);
+    const journalReceipts = receipts.filter(
+      (receipt) =>
+        receipt.projectionId === journalProjectionId &&
+        receipt.subOperationId === journalSubOperationId
+    );
+    const canonicalReceipts = receipts.filter(
+      (receipt) =>
+        receipt.projectionId === projectionId && receipt.subOperationId === subOperationId
+    );
+    if (journalReceipts.length > 1 || canonicalReceipts.length > 1) {
+      throw new Error('one receipt family is duplicated');
+    }
+    if (journalReceipts.length === 1 && canonicalReceipts.length === 1) {
+      throw new Error('both journal and canonical receipts are present');
+    }
+    if (journalReceipts.length === 1) {
+      reconcileTimingProjectionRowEffect(body, {
+        projectionId: journalProjectionId,
+        subOperationId: journalSubOperationId,
+        row,
+      });
+      return {
+        status: 'adopted',
+        adoptedProjectionId: journalProjectionId,
+        adoptedSubOperationId: journalSubOperationId,
+        body,
+      };
+    }
+    if (canonicalReceipts.length === 1) {
+      reconcileTimingProjectionRowEffect(body, {
+        projectionId,
+        subOperationId,
+        row,
+      });
+      return {
+        status: 'adopted',
+        adoptedProjectionId: projectionId,
+        adoptedSubOperationId: subOperationId,
+        body,
+      };
+    }
+    const canonical = reconcileTimingProjectionRowEffect(body, {
+      projectionId,
+      subOperationId,
+      row,
+    });
+    return {
+      status: 'missing',
+      adoptedProjectionId: projectionId,
+      adoptedSubOperationId: subOperationId,
+      body: canonical.body,
+    };
+  } catch (error) {
+    throw new Error(`timing queue alias reconciliation refused: ${error.message}`);
+  }
+}
+
+function timingQueueAliasExpected({
+  transitionId,
+  journalProjectionId,
+  journalSubOperationId,
+  projectionId,
+  subOperationId,
+  issueNumber,
+  row,
+} = {}) {
+  return {
+    transitionId,
+    journalProjectionId,
+    journalSubOperationId,
+    deliveryProjectionId: projectionId,
+    deliverySubOperationId: subOperationId,
+    issueId: normalizeTimingIssueNumber(issueNumber),
+    operation: 'evidence-mutation',
+    row,
+  };
+}
+
+export async function postTransitionTimingQueueAliasProjection({
+  aliasAuthority,
+  transitionId,
+  projectionName,
+  journalProjectionId,
+  journalSubOperationId,
+  projectionId,
+  subOperationId,
+  issueNumber,
+  repo,
+  row,
+  timeoutMs = 2000,
+  retries = 2,
+  lock = true,
+  projDir,
+  deps = {},
+} = {}) {
+  if (projectionName !== 'timing') {
+    throw new TypeError('timing queue alias projectionName must be timing');
+  }
+  const expected = timingQueueAliasExpected({
+    transitionId,
+    journalProjectionId,
+    journalSubOperationId,
+    projectionId,
+    subOperationId,
+    issueNumber,
+    row,
+  });
+  const verifyAlias = async () =>
+    assertTransitionTimingQueueAliasAuthority(aliasAuthority, expected);
+  await verifyAlias();
+  const find = deps.findTimingComment || findTimingComment;
+  const create = deps.createTimingComment || createTimingComment;
+  const update = deps.updateTimingComment || updateTimingComment;
+  const work = async () => {
+    await verifyAlias();
+    const existing = await find(issueNumber, repo, { timeoutMs });
+    const state = inspectTimingQueueAliasReceipts(existing?.body ?? buildInitialComment(), {
+      journalProjectionId,
+      journalSubOperationId,
+      projectionId,
+      subOperationId,
+      row,
+    });
+    if (state.status === 'adopted') return state;
+    await verifyAlias();
+    if (existing) await update(existing.id, repo, state.body, { timeoutMs });
+    else await create(issueNumber, repo, state.body, { timeoutMs });
+    return { ...state, status: 'posted' };
+  };
+  if (!lock) return work();
+  return withLock(timingLockPath(issueNumber, projDir || getProjectDir()), work, {
+    timeoutMs: Math.max(timeoutMs * 3, 5_000),
+    retries,
+  });
+}
+
+export async function readTransitionTimingQueueAliasProjection({
+  aliasAuthority,
+  transitionId,
+  projectionName,
+  journalProjectionId,
+  journalSubOperationId,
+  projectionId,
+  subOperationId,
+  issueNumber,
+  repo,
+  row,
+  timeoutMs = 2000,
+  lock = true,
+  projDir,
+  deps = {},
+} = {}) {
+  if (projectionName !== 'timing') {
+    throw new TypeError('timing queue alias projectionName must be timing');
+  }
+  const expected = timingQueueAliasExpected({
+    transitionId,
+    journalProjectionId,
+    journalSubOperationId,
+    projectionId,
+    subOperationId,
+    issueNumber,
+    row,
+  });
+  const verifyAlias = async () =>
+    assertTransitionTimingQueueAliasAuthority(aliasAuthority, expected);
+  await verifyAlias();
+  const read = deps.readTimingCommentBody || readTimingCommentBody;
+  const work = async () => {
+    await verifyAlias();
+    const result = await read({ issueNumber, repo, timeoutMs, deps });
+    if (result?.status === 'error') {
+      throw new Error('timing queue alias read-back is unavailable');
+    }
+    if (result?.status === 'absent') {
+      return {
+        reconciled: false,
+        projectionName: TIMING_PROJECTION_NAME,
+        projectionId: journalProjectionId,
+      };
+    }
+    const state = inspectTimingQueueAliasReceipts(bodyOf(result), {
+      journalProjectionId,
+      journalSubOperationId,
+      projectionId,
+      subOperationId,
+      row,
+    });
+    return {
+      reconciled: state.status === 'adopted',
+      projectionName: TIMING_PROJECTION_NAME,
+      projectionId: journalProjectionId,
+      ...(state.status === 'adopted'
+        ? {
+            adoptedProjectionId: state.adoptedProjectionId,
+            adoptedSubOperationId: state.adoptedSubOperationId,
+          }
+        : {}),
+    };
+  };
+  if (!lock) return work();
+  return withLock(timingLockPath(issueNumber, projDir || getProjectDir()), work, {
+    timeoutMs: Math.max(timeoutMs * 3, 5_000),
   });
 }
 
