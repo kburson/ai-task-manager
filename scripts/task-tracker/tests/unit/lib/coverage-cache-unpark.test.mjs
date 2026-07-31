@@ -23,11 +23,9 @@
 import { strict as assert } from 'node:assert';
 import { test } from 'node:test';
 
-import { existsSync } from 'node:fs';
 import path from 'node:path';
 
 import { mkdtempProjectIsolated } from '../../../lib/scratch-dir.mjs';
-import { statePath } from '../../../paths.mjs';
 import {
   dispatchOnEnterActions,
   refreshKanbanStateCache,
@@ -37,11 +35,10 @@ import {
   endTaskTracking,
 } from '../../../lib/move-state/cache-unpark.mjs';
 
-// `syncEventFields`/`endTaskTracking` resolve their subprocess scripts
-// relative to `__dir`, which production wires to `scripts/gh` (the directory
-// of `move-state.mjs`, see `scripts/gh/move-state.mjs:60`) — not the process
-// cwd. Mirror that here so the injected-pexec dispatch tests actually find
-// the real scripts instead of silently no-op'ing.
+// `endTaskTracking` resolves its subprocess script relative to `__dir`, which
+// production wires to `scripts/gh` (the directory of `move-state.mjs`) — not
+// the process cwd. Mirror that here so the injected-pexec test finds the real
+// script instead of silently no-op'ing.
 const GH_DIR = path.resolve(process.cwd(), 'scripts/gh');
 
 // A `pexec`-shaped fake: records every call; optionally throws.
@@ -334,7 +331,7 @@ test('unparkDoneDependents: parent authority cannot authorize child mutation', a
 
 // --- syncTrackerState -------------------------------------------------------
 
-test('syncTrackerState: syncs the tracker ledger immediately after reverify', async () => {
+test('syncTrackerState: reverify is adjacent to the actual tracker save', async () => {
   const sandbox = mkdtempProjectIsolated('cache-unpark-');
   const savedProjectDir = process.env.AI_TASK_MANAGER_PROJECT_DIR;
   process.env.AI_TASK_MANAGER_PROJECT_DIR = sandbox;
@@ -346,10 +343,13 @@ test('syncTrackerState: syncs the tracker ledger immediately after reverify', as
     await syncTrackerState({
       stateArg: 'test',
       reverifyGovernedEffect: async () => events.push('reverify'),
-      deps: { beforeTrackerSave: () => events.push('save') },
+      deps: {
+        beforeTrackerSave: () => events.push('before-save'),
+        saveState: () => events.push('save'),
+      },
     });
-    assert.ok(existsSync(statePath(sandbox)), 'tracker ledger was written');
-    assert.deepEqual(events, ['reverify', 'save']);
+    assert.deepEqual(events, ['before-save', 'reverify', 'save']);
+    assert.deepEqual(events.slice(-2), ['reverify', 'save']);
   } finally {
     if (savedProjectDir !== undefined) process.env.AI_TASK_MANAGER_PROJECT_DIR = savedProjectDir;
     else delete process.env.AI_TASK_MANAGER_PROJECT_DIR;
@@ -374,7 +374,13 @@ test('syncEventFields: SKIP_NETWORK short-circuits', async () => {
 test('syncEventFields: invokes update-event-fields in-process with the exact continuation', async () => {
   const { pexec, calls } = makePexec();
   const updates = [];
-  const continuation = async () => {};
+  const authorityEvents = [];
+  const continuation = async (options, callback) => {
+    authorityEvents.push(`continue:${options.issueId}:${options.operation}`);
+    return callback({
+      reverify: async () => authorityEvents.push('reverify'),
+    });
+  };
   await syncEventFields({
     issueArg: '10',
     stateArg: 'develop',
@@ -385,13 +391,28 @@ test('syncEventFields: invokes update-event-fields in-process with the exact con
     governedOperation: 'review-mutation',
     withGovernedEffect: continuation,
     deps: {
-      updateEventFields: async (args, options) => updates.push({ args, options }),
+      updateEventFields: async (args, options) => {
+        updates.push({ args, options });
+        return options.withGovernedEffect(
+          {
+            issueId: args[0],
+            operation: options.operation,
+            heartbeat: true,
+          },
+          async (authority) => {
+            await authority.reverify();
+            authorityEvents.push('write');
+            return 0;
+          }
+        );
+      },
     },
   });
   assert.equal(calls.length, 0, 'no ungoverned subprocess is spawned');
   assert.deepEqual(updates[0].args, ['10', 'develop', '--item-id', 'IT-1']);
   assert.equal(updates[0].options.operation, 'review-mutation');
   assert.equal(updates[0].options.withGovernedEffect, continuation);
+  assert.deepEqual(authorityEvents, ['continue:10:review-mutation', 'reverify', 'write']);
 });
 
 test('syncEventFields: an ordinary in-process update failure surfaces a warning, no rethrow', async () => {
@@ -420,14 +441,41 @@ test('endTaskTracking: non-done move short-circuits', () => {
   assert.equal(calls.length, 0);
 });
 
-test('endTaskTracking: fires the local task-tracker end on the move to done', () => {
+test('endTaskTracking: awaits the governed local task-tracker end', async () => {
   const savedCascade = process.env.AITM_CASCADE;
   delete process.env.AITM_CASCADE;
   try {
-    const { pexec, calls } = makePexec();
-    endTaskTracking({ stateArg: 'done', SKIP_NETWORK: false, pexec, __dir: GH_DIR });
+    const calls = [];
+    const events = [];
+    let finish;
+    const child = new Promise((resolve) => {
+      finish = resolve;
+    });
+    const pexec = async (cmd, args, opts) => {
+      calls.push({ cmd, args, opts });
+      events.push('spawn');
+      await child;
+      events.push('child-done');
+    };
+    let settled = false;
+    const pending = endTaskTracking({
+      stateArg: 'done',
+      SKIP_NETWORK: false,
+      pexec,
+      __dir: GH_DIR,
+      reverifyGovernedEffect: async () => events.push('reverify'),
+    }).then(() => {
+      settled = true;
+      events.push('returned');
+    });
+    await Promise.resolve();
     assert.equal(calls.length, 1);
     assert.deepEqual(calls[0].args.slice(-1), ['end']);
+    assert.equal(settled, false, 'tail must remain pending while the child is running');
+    assert.deepEqual(events.slice(0, 2), ['reverify', 'spawn']);
+    finish();
+    await pending;
+    assert.deepEqual(events, ['reverify', 'spawn', 'child-done', 'returned']);
   } finally {
     if (savedCascade !== undefined) process.env.AITM_CASCADE = savedCascade;
   }

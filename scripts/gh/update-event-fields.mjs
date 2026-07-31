@@ -5,13 +5,8 @@ import { loadConfig } from '../task-tracker/config.mjs';
 import { getProjectDir, projectTmpDir } from '../task-tracker/paths.mjs';
 import { ensureIssueFieldDb } from '../task-tracker/issue-field-db.mjs';
 import { loadProjectFieldDefs } from '../task-tracker/project-fields.mjs';
-import { fmtTs } from '../task-tracker/gh-timing-comment.mjs';
 import { gh, writeProjectFieldValue } from './lib/github-projects.mjs';
 import { STATE_TO_CONFIG_KEY } from '../task-tracker/lib/move-state/policy.mjs';
-import {
-  createRuntimeGovernedEffectAdapter,
-  isGovernedAuthorityError,
-} from '../task-tracker/lib/work-lease/governed-effect.mjs';
 import { wantsHelp, emitSelfDoc } from '../lib/self-doc.mjs';
 
 const VALID_STATES = Object.keys(STATE_TO_CONFIG_KEY);
@@ -40,6 +35,38 @@ function loadEventBindings(projectDir) {
 
 function fieldTypeForKey(fieldDefs, key) {
   return fieldDefs.find((definition) => definition.key === key)?.type || '';
+}
+
+// Keep the bindingless CLI fast path independent of gh-timing-comment.mjs.
+// That module imports lease authority and therefore Node's experimental
+// SQLite implementation; loading it before the silent no-op guards emits an
+// ExperimentalWarning on Node 25.
+function fmtTs(iso) {
+  const d = new Date(iso);
+  const pad = (n) => String(n).padStart(2, '0');
+  const offsetMin = -d.getTimezoneOffset();
+  const sign = offsetMin >= 0 ? '+' : '-';
+  const abs = Math.abs(offsetMin);
+  const offset = `${sign}${pad(Math.floor(abs / 60))}:${pad(abs % 60)}`;
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())} ${offset}`;
+}
+
+const GOVERNED_AUTHORITY_ERROR_CODES = new Set([
+  'invalid-request',
+  'idempotency-conflict',
+  'lease-contended',
+  'worktree-contended',
+  'fence-stale',
+  'authority-unauthenticated',
+  'authority-forbidden',
+  'authority-unavailable',
+  'holder-live',
+  'lease-not-held',
+  'main-worktree-unresolved',
+]);
+
+function isGovernedAuthorityRefusal(error) {
+  return error?.name === 'WorkLeaseError' || GOVERNED_AUTHORITY_ERROR_CODES.has(error?.code);
 }
 
 function resolveValue(value) {
@@ -93,10 +120,9 @@ export async function main(args = process.argv.slice(2), deps = {}) {
   const writeField = deps.writeProjectFieldValue || writeProjectFieldValue;
   const withGovernedEffect =
     deps.withGovernedEffect ||
-    createRuntimeGovernedEffectAdapter({
-      projectDir,
-      config: cfg,
-    });
+    (
+      await import('../task-tracker/lib/work-lease/governed-effect.mjs')
+    ).createRuntimeGovernedEffectAdapter({ projectDir, config: cfg });
   const operation = deps.operation || 'lifecycle-mutation';
   let authorityEntered = false;
 
@@ -162,7 +188,7 @@ export async function main(args = process.argv.slice(2), deps = {}) {
     });
     return 0;
   } catch (error) {
-    if (isGovernedAuthorityError(error) || (deps.withGovernedEffect && !authorityEntered)) {
+    if (isGovernedAuthorityRefusal(error) || (deps.withGovernedEffect && !authorityEntered)) {
       throw error;
     }
     console.error(`error: event field update failed: ${error.message}`);

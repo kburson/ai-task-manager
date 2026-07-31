@@ -420,10 +420,12 @@ test('the operator is told to fix in place and re-run, not to fix in Develop', (
 // then threw `MarkerLossError` for dropping that marker. Observed live on #881.
 
 test('the gate is handed a body fetched AFTER the move, not the pre-move scanBody', () => {
-  const moveIdx = reviewSrc.indexOf("await runMoveState(target, 'review'");
+  const moveIdx = reviewSrc.indexOf("await scopedRunMoveState(target, 'review'");
   const refetchIdx = reviewSrc.indexOf("'body,comments'");
   const gateIdx = reviewSrc.indexOf('runAgentReviewGate({');
+  assert.notEqual(moveIdx, -1, 'the scoped authoritative move call must exist');
   assert.notEqual(refetchIdx, -1, 'the post-move body+comments re-fetch must exist');
+  assert.notEqual(gateIdx, -1, 'the agent review gate call must exist');
   assert.ok(moveIdx < refetchIdx, 're-fetch must happen after the move that stamps the marker');
   assert.ok(refetchIdx < gateIdx, 're-fetch must happen before the gate consumes it');
   assert.match(

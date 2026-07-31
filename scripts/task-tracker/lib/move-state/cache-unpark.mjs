@@ -153,13 +153,15 @@ export async function unparkDoneDependents(ctx) {
 export async function syncTrackerState(ctx) {
   const { stateArg } = ctx;
   try {
+    const deps = ctx.deps || {};
     const projectDir = getProjectDir();
     const sp = resolveStatePath(projectDir);
     const s = loadState(sp);
     s.state = stateArg;
+    deps.beforeTrackerSave?.();
     await ctx.reverifyGovernedEffect?.();
-    ctx.deps?.beforeTrackerSave?.();
-    saveState(s, sp);
+    const saveTrackerState = deps.saveState || saveState;
+    saveTrackerState(s, sp);
   } catch (err) {
     if (isGovernedAuthorityError(err)) throw err;
     /* best-effort */
@@ -191,7 +193,7 @@ export async function syncEventFields(ctx) {
 }
 
 // End task tracking when moving to done (unless during cascade close)
-export function endTaskTracking(ctx) {
+export async function endTaskTracking(ctx) {
   const { stateArg, SKIP_NETWORK, pexec, __dir } = ctx;
   if (!(stateArg === 'done' && process.env.AITM_CASCADE !== '1' && !SKIP_NETWORK)) return;
   const repoRoot = getProjectDir();
@@ -200,7 +202,16 @@ export function endTaskTracking(ctx) {
     path.resolve(__dir, '../task-tracker/task-tracker.mjs'),
   ];
   const ttScript = ttScriptCandidates.find((s) => existsSync(s));
-  // Fire-and-forget local task-tracker end. Local-fast budget; ignore failures.
-  if (ttScript)
-    pexec(process.execPath, [ttScript, 'end'], { timeout: LOCAL_FAST_TIMEOUT_MS }).catch(() => {});
+  // This is part of the governed tail: fence immediately before spawning and
+  // await completion so the authority scope cannot unwind while the child is
+  // still mutating local task state.
+  if (ttScript) {
+    await ctx.reverifyGovernedEffect?.();
+    try {
+      await pexec(process.execPath, [ttScript, 'end'], { timeout: LOCAL_FAST_TIMEOUT_MS });
+    } catch (error) {
+      if (isGovernedAuthorityError(error)) throw error;
+      /* best-effort local cleanup */
+    }
+  }
 }

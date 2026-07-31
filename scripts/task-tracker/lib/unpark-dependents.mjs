@@ -7,17 +7,19 @@
 //     label. A partial clear (other blockers remain) keeps both the label and a
 //     residual marker.
 //
-// This step is best-effort: every candidate is processed under its own
-// try/catch and the function never throws. The board move that triggered it is
-// already committed, so a failure here must not roll it back. Marker mechanics
-// live in lib/blocked-marker.mjs; this module only orchestrates the side effect
-// through injected `deps` (defaults wrap `gh`).
+// This step is best-effort for ordinary collaborator failures: every candidate
+// is processed under its own try/catch and the committed board move is not
+// rolled back. Governed-authority refusals remain control flow and are rethrown.
+// Marker mechanics live in lib/blocked-marker.mjs; this module only orchestrates
+// the side effect through injected `deps` (defaults wrap `gh`).
 
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { parseBlockedBy, removeBlockedBy, blockedLabelRemoveArgs } from './blocked-marker.mjs';
 import { writeBlockedByField } from './blocked-by-field.mjs';
 import { mutateIssueBody } from './issue-body-mutate.mjs';
+import { isGovernedAuthorityError } from './work-lease/governed-effect.mjs';
+import { withVerbMutationScope } from './work-lease/verb-mutation-scope.mjs';
 
 const pexec = promisify(execFile);
 
@@ -64,8 +66,19 @@ function defaultFetchBody({ repo, exec = pexec }) {
 }
 
 function defaultMutateBody({ repo, exec = pexec }) {
-  return async (issueNumber, mutate) => {
-    await mutateIssueBody({ issueNumber, repo, mutate, deps: { pexec: exec } });
+  return async (issueNumber, mutate, authority = {}) => {
+    await mutateIssueBody({
+      issueNumber,
+      repo,
+      mutate,
+      operation: authority.operation || 'lifecycle-mutation',
+      deps: {
+        pexec: exec,
+        ...(authority.withGovernedEffect
+          ? { withGovernedEffect: authority.withGovernedEffect }
+          : {}),
+      },
+    });
   };
 }
 
@@ -91,7 +104,8 @@ function defaultRunLabel({ repo, exec = pexec }) {
  *       provided listCandidates/fetchBody/mutateBody/runLabel still overrides.
  * @returns {Promise<Array<{issue:number, cleared?:'full'|'partial', error?:string}>>}
  *   one entry per candidate that referenced the Done issue (plus any that
- *   errored). Never throws.
+ *   errored). Ordinary collaborator failures are returned; governed-authority
+ *   refusals are rethrown.
  */
 export async function unparkDependents({ doneIssueNumber, cfg = {}, deps = {} } = {}) {
   const done = Number(doneIssueNumber);
@@ -106,6 +120,25 @@ export async function unparkDependents({ doneIssueNumber, cfg = {}, deps = {} } 
   const fetchBody = deps.fetchBody || defaultFetchBody({ repo, exec });
   const mutateBody = deps.mutateBody || defaultMutateBody({ repo, exec });
   const runLabel = deps.runLabel || defaultRunLabel({ repo, exec });
+  const childWithGovernedEffect = deps.withGovernedEffect;
+
+  const withChildMutationScope = async (issueNumber, callback) => {
+    if (typeof childWithGovernedEffect !== 'function') {
+      return callback({
+        effect: async (effect) => effect(),
+        continue: null,
+      });
+    }
+    return withVerbMutationScope(
+      {
+        issueId: String(issueNumber),
+        operation: 'lifecycle-mutation',
+        withGovernedEffect: childWithGovernedEffect,
+        heartbeat: true,
+      },
+      callback
+    );
+  };
 
   let candidates;
   try {
@@ -127,31 +160,51 @@ export async function unparkDependents({ doneIssueNumber, cfg = {}, deps = {} } 
       // get clobbered. `remaining` is deterministic from `blockers` (which
       // we already verified contains `done`), so we don't need to re-parse
       // the post-mutation body.
-      await mutateBody(issue, (base) => removeBlockedBy(base, done));
       const remaining = blockers.filter((b) => b !== done);
+      await withChildMutationScope(issue, async (scope) => {
+        const bodyMutation = () =>
+          mutateBody(issue, (base) => removeBlockedBy(base, done), {
+            operation: 'lifecycle-mutation',
+            ...(scope.continue ? { withGovernedEffect: scope.continue } : {}),
+          });
+        if (deps.mutateBody) await scope.effect(bodyMutation);
+        else await bodyMutation();
 
-      if (remaining.length === 0) {
-        await runLabel(blockedLabelRemoveArgs(issue));
-        results.push({ issue, cleared: 'full' });
-      } else {
-        results.push({ issue, cleared: 'partial' });
-      }
+        if (remaining.length === 0) {
+          await scope.effect(() => runLabel(blockedLabelRemoveArgs(issue)));
+          results.push({ issue, cleared: 'full' });
+        } else {
+          results.push({ issue, cleared: 'partial' });
+        }
 
-      // Mirror the post-removal marker into the `Blocked By` Project field.
-      // Best-effort; the board move that triggered unpark is already
-      // committed, so a field-write failure must not roll it back.
-      const mirrorDeps = deps.writeFieldValue ? { writeFieldValue: deps.writeFieldValue } : {};
-      try {
-        await writeBlockedByField({
-          issueNumber: issue,
-          refs: remaining,
-          cfg,
-          deps: mirrorDeps,
-        });
-      } catch {
-        /* best-effort */
-      }
+        // Mirror the post-removal marker into the `Blocked By` Project field.
+        // Best-effort; the board move that triggered unpark is already
+        // committed, so a field-write failure must not roll it back.
+        const mirrorDeps = deps.writeFieldValue
+          ? {
+              writeFieldValue: (options) => scope.effect(() => deps.writeFieldValue(options)),
+            }
+          : {
+              exec: (cmd, args, options) => {
+                const isMutation = args.some((arg) => String(arg).startsWith('query=mutation('));
+                if (isMutation) return scope.effect(() => exec(cmd, args, options));
+                return exec(cmd, args, options);
+              },
+            };
+        try {
+          await writeBlockedByField({
+            issueNumber: issue,
+            refs: remaining,
+            cfg,
+            deps: mirrorDeps,
+          });
+        } catch (error) {
+          if (isGovernedAuthorityError(error)) throw error;
+          /* best-effort */
+        }
+      });
     } catch (err) {
+      if (isGovernedAuthorityError(err)) throw err;
       results.push({ issue, error: err.message });
     }
   }

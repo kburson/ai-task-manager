@@ -62,7 +62,10 @@ import { moveState } from '../task-tracker/lib/move-state/move-state-core.mjs';
 import { formatMoveReadout, formatMoveError } from '../task-tracker/lib/move-state/readout.mjs';
 import { resolveTailProfile } from '../task-tracker/lib/move-state/tail-profiles.mjs';
 import { resolveReviewAuthority } from '../task-tracker/lib/human-reviewer-audit.mjs';
-import { createRuntimeGovernedEffectAdapter } from '../task-tracker/lib/work-lease/governed-effect.mjs';
+import {
+  createRuntimeGovernedEffectAdapter,
+  isGovernedAuthorityError,
+} from '../task-tracker/lib/work-lease/governed-effect.mjs';
 
 const pexec = promisify(execFile);
 const __dir = path.dirname(fileURLToPath(import.meta.url));
@@ -583,6 +586,10 @@ export async function runMoveStateHost({
     if (err instanceof IssueLockError) {
       process.stderr.write(`⛔ ${err.message}\n`);
       return 7;
+    }
+    if (isGovernedAuthorityError(err)) {
+      process.stderr.write(`⛔ ${err.message}\n`);
+      return 8;
     }
     throw err;
   }

@@ -168,9 +168,11 @@ test('parent close cannot authorize a child cascade with the parent lease', asyn
   assert.deepEqual(events, ['lock', 'verify-child:1050']);
 });
 
-test('TTY-allowed host preserves typed stale authority for its in-process caller', async () => {
+test('TTY-allowed host maps typed stale authority to governed exit 8 without a stack', async () => {
   const projectDir = mkdtempProjectIsolated('aitm-tty-governed-');
   const calls = [];
+  const stderr = [];
+  const originalWrite = process.stderr.write;
   const env = {
     ...process.env,
     AI_TASK_MANAGER_PROJECT_DIR: projectDir,
@@ -179,25 +181,29 @@ test('TTY-allowed host preserves typed stale authority for its in-process caller
   delete env.AITM_INTERNAL;
   delete env.TT_SKIP_NETWORK;
   try {
-    await assert.rejects(
-      () =>
-        runMoveStateHost({
-          argv: [process.execPath, 'move-state.mjs', '1049', 'on-deck', '--from', 'backlog'],
-          env,
-          isTty: true,
-          withGovernedEffect: async (options) => {
-            calls.push(options);
-            const error = new Error('stale TTY fence');
-            error.code = 'fence-stale';
-            throw error;
-          },
-        }),
-      (error) => error.code === 'fence-stale'
-    );
+    process.stderr.write = (chunk) => {
+      stderr.push(String(chunk));
+      return true;
+    };
+    const exit = await runMoveStateHost({
+      argv: [process.execPath, 'move-state.mjs', '1049', 'on-deck', '--from', 'backlog'],
+      env,
+      isTty: true,
+      withGovernedEffect: async (options) => {
+        calls.push(options);
+        const error = new Error('stale TTY fence');
+        error.code = 'fence-stale';
+        throw error;
+      },
+    });
+    assert.equal(exit, 8);
     assert.equal(calls.length, 1);
     assert.equal(calls[0].issueId, '1049');
     assert.equal(calls[0].operation, 'lifecycle-mutation');
+    assert.match(stderr.join(''), /stale TTY fence/);
+    assert.doesNotMatch(stderr.join(''), /\n\s+at\s/);
   } finally {
+    process.stderr.write = originalWrite;
     rmSync(projectDir, { recursive: true, force: true });
   }
 });

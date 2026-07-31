@@ -136,3 +136,47 @@ test('mirror field-write failure is swallowed — release still reported', async
   assert.deepEqual(labelCalls[0], ['issue', 'edit', '104', '--remove-label', 'BLOCKED']);
   assert.deepEqual(out, [{ issue: 104, cleared: 'full' }]);
 });
+
+test('child authority governs each dependent body, label, and field mutation', async () => {
+  const store = new Map([[104, 'Body.\n\n<!-- aitm-blocked-by: #101 -->\n']]);
+  const events = [];
+  const roots = [];
+  const out = await unparkDependents({
+    doneIssueNumber: 101,
+    cfg: { repo: 'o/r', projectId: 'PVT_x', fieldBlockedBy: 'FIELD_x' },
+    deps: {
+      withGovernedEffect: async (options, callback) => {
+        roots.push(options);
+        events.push('root');
+        return callback({
+          reverify: async () => events.push('reverify'),
+        });
+      },
+      listCandidates: async () => [...store.keys()],
+      fetchBody: async (n) => store.get(n),
+      mutateBody: async (n, mutate) => {
+        events.push('body');
+        store.set(n, mutate(store.get(n)));
+      },
+      runLabel: async () => events.push('label'),
+      writeFieldValue: async () => {
+        events.push('field');
+        return true;
+      },
+    },
+  });
+
+  assert.deepEqual(roots, [
+    {
+      issueId: '104',
+      operation: 'lifecycle-mutation',
+      heartbeat: true,
+    },
+  ]);
+  assert.deepEqual(
+    events,
+    ['root', 'reverify', 'body', 'reverify', 'label', 'reverify', 'field'],
+    'each child mutation consumes exact authority immediately before its write'
+  );
+  assert.deepEqual(out, [{ issue: 104, cleared: 'full' }]);
+});

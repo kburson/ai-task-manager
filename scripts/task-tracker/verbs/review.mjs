@@ -516,6 +516,10 @@ export async function emitSandboxVerificationFailureTimeline({
   });
 }
 
+export function finalizeReviewMutationOutcome(mutationOutcome, { exit = process.exit } = {}) {
+  if (mutationOutcome?.exitCode != null) exit(mutationOutcome.exitCode);
+}
+
 export async function verbReview(ctx) {
   const {
     cfg,
@@ -554,8 +558,8 @@ export async function verbReview(ctx) {
     process.exit(1);
   }
   // Queue replay has its own durable transition-receipt authority. It stays
-  // outside review's verb-scoped lease and is deferred until every read-only
-  // refusal below has passed, so a refused review never drains unrelated work.
+  // outside review's verb-scoped lease and is deferred until the first
+  // governed review mutation (including a durable body-gate refusal audit).
   let initialBodyGateRefusal = null;
 
   if (!SKIP_NETWORK) {
@@ -655,6 +659,47 @@ export async function verbReview(ctx) {
       { timeout: GH_API_TIMEOUT_MS }
     );
     const rawBody = JSON.parse(stdout).body ?? '';
+
+    // Body shape is review's first issue-content gate. Preserve its historical
+    // refusal precedence over DoD/SHA and epic-readiness checks while keeping
+    // its one durable refusal audit inside exact review authority.
+    if (initialBodyGateRefusal) {
+      await drainQueueIfAny();
+      await lockIssue({ issue: issueNum, verb: 'review', projDir: projectDir }, () =>
+        withVerbMutationScope(
+          {
+            issueId: issueNum,
+            operation: 'review-mutation',
+            withGovernedEffect: ctx.withGovernedEffect,
+            heartbeat: true,
+          },
+          async (scope) => {
+            const ts = nowIso();
+            const row = buildRow({
+              ts,
+              event: 'gate-refused',
+              activeSec: 0,
+              idleSec: 0,
+              deltaWords: 0,
+              wordMarker: s.lastWordMarker ?? 0,
+              description: `→ test: ${initialBodyGateRefusal.refusedRules
+                .map((r) => r.rule)
+                .join(', ')}`,
+            });
+            await safePostTiming(target, row, {
+              operation: 'review-mutation',
+              withGovernedEffect: scope.continue,
+            });
+          }
+        )
+      );
+      process.stderr.write('\n');
+      process.stderr.write(`⛔ Refusing to move ${target} to Test:\n`);
+      for (const r of initialBodyGateRefusal.refusedRules)
+        process.stderr.write(`   BLOCKED: ${r.rule}: ${r.reason}\n`);
+      process.stderr.write('\nSee .ai-task-manager/templates/pickup-directive.md Hard Rules.\n\n');
+      process.exit(4);
+    }
 
     // #267 — Early test→review guard fast-path. Evaluate ONLY the
     // `test-exit-dod-verified` guard here so we refuse missing-sandbox-proof
@@ -759,47 +804,6 @@ export async function verbReview(ctx) {
         console.error('Wait for all sub-issues to reach Review, then run `/task review` again.');
         process.exit(3);
       }
-    }
-
-    // The body-shape gate has a durable refusal audit, unlike the pure gates
-    // above. Only now—after preflight, home-state, DoD/SHA, and epic-child
-    // readiness have all passed—may queue replay or review mutation begin.
-    if (initialBodyGateRefusal) {
-      await drainQueueIfAny();
-      await lockIssue({ issue: issueNum, verb: 'review', projDir: projectDir }, () =>
-        withVerbMutationScope(
-          {
-            issueId: issueNum,
-            operation: 'review-mutation',
-            withGovernedEffect: ctx.withGovernedEffect,
-            heartbeat: true,
-          },
-          async (scope) => {
-            const ts = nowIso();
-            const row = buildRow({
-              ts,
-              event: 'gate-refused',
-              activeSec: 0,
-              idleSec: 0,
-              deltaWords: 0,
-              wordMarker: s.lastWordMarker ?? 0,
-              description: `→ test: ${initialBodyGateRefusal.refusedRules
-                .map((r) => r.rule)
-                .join(', ')}`,
-            });
-            await safePostTiming(target, row, {
-              operation: 'review-mutation',
-              withGovernedEffect: scope.continue,
-            });
-          }
-        )
-      );
-      process.stderr.write('\n');
-      process.stderr.write(`⛔ Refusing to move ${target} to Test:\n`);
-      for (const r of initialBodyGateRefusal.refusedRules)
-        process.stderr.write(`   BLOCKED: ${r.rule}: ${r.reason}\n`);
-      process.stderr.write('\nSee .ai-task-manager/templates/pickup-directive.md Hard Rules.\n\n');
-      process.exit(4);
     }
 
     await drainQueueIfAny();
@@ -1235,7 +1239,7 @@ export async function verbReview(ctx) {
           }
         )
     );
-    if (mutationOutcome?.exitCode != null) process.exit(mutationOutcome.exitCode);
+    finalizeReviewMutationOutcome(mutationOutcome);
     return;
   }
 }

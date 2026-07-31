@@ -16,7 +16,12 @@ import { join } from 'node:path';
 import { projectScratchDir } from '../../../lib/scratch-dir.mjs';
 import { buildPlanApprovalAuditComment } from '../../../lib/plan-approval-audit.mjs';
 import { stampEntryMarker } from '../../../lib/stage-entry-markers.mjs';
-import { verbReview, buildDeferredReviewRow } from '../../../verbs/review.mjs';
+import {
+  verbReview,
+  buildDeferredReviewRow,
+  finalizeReviewMutationOutcome,
+} from '../../../verbs/review.mjs';
+import { withVerbMutationScope } from '../../../lib/work-lease/verb-mutation-scope.mjs';
 
 function tmpState(state) {
   const dir = mkdtempSync(join(projectScratchDir('test'), 'aitm-622-'));
@@ -392,8 +397,38 @@ test('validateBody gate refusal → exit 4', async () => {
     assert.equal(calls.lock, 1, 'mutating refusal audit holds the issue lock');
     assert.equal(calls.authority[0].operation, 'review-mutation');
     assert.equal(calls.post.length, 1, 'body-gate refusal records its timing audit');
-    assert.equal(calls.queue, 1, 'audited refusal drains only after all pure gates pass');
+    assert.equal(calls.queue, 1, 'audited refusal drains immediately before its governed audit');
     assert.ok(calls.sequence.indexOf('release') < calls.sequence.indexOf('exit:4'));
+  } finally {
+    process.env.PATH = origPath;
+    if (origProj === undefined) delete process.env.AI_TASK_MANAGER_PROJECT_DIR;
+    else process.env.AI_TASK_MANAGER_PROJECT_DIR = origProj;
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('body-shape refusal precedes DoD, SHA, and epic checks', async () => {
+  const { statePath, dir } = tmpState(baseState());
+  const origPath = process.env.PATH;
+  const origProj = process.env.AI_TASK_MANAGER_PROJECT_DIR;
+  process.env.PATH = '';
+  process.env.AI_TASK_MANAGER_PROJECT_DIR = dir;
+  try {
+    const { ctx, calls } = makeCtx({
+      statePath,
+      gateBody: '- [x] Dependency Map\n',
+      rawBody: '## Definition of Done\n- [ ] missing proof\n',
+    });
+    ctx.runGuards = async () => {
+      throw new Error('DoD guard must not run after a body-shape refusal');
+    };
+    ctx.fetchSubIssues = async () => {
+      throw new Error('epic readiness must not run after a body-shape refusal');
+    };
+    assert.equal(await runExit(ctx), 4);
+    assert.equal(calls.mutate, 0);
+    assert.deepEqual(calls.move, []);
+    assert.equal(calls.post.length, 1, 'only the refusal audit may mutate');
   } finally {
     process.env.PATH = origPath;
     if (origProj === undefined) delete process.env.AI_TASK_MANAGER_PROJECT_DIR;
@@ -714,6 +749,29 @@ test('Nth nested-effect fence failure stops all later review writes and unwinds 
   }
 });
 
+test('later nested-effect fence failure stops the post-move review tail', async () => {
+  const { statePath, dir } = tmpState(baseState());
+  try {
+    const { ctx, calls } = makeCtx({
+      statePath,
+      rawBody: CLEAN_BODY,
+      scanBody: CLEAN_BODY,
+      reverifyFailureAt: 9,
+    });
+    await assert.rejects(
+      () => runExit(ctx),
+      (error) => error.code === 'fence-stale'
+    );
+    assert.equal(calls.mutate, 1, 'normalization body write completed before the stale fence');
+    assert.deepEqual(calls.move, ['review'], 'the nested move completed before the stale fence');
+    assert.deepEqual(calls.post, [], 'later timing writes are fenced');
+    assert.equal(calls.logTime, 0, 'issue-time tail is fenced');
+    assert.deepEqual(calls.sequence.slice(-2), ['heartbeat-stop', 'release']);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
 test('review mutation refusals unwind heartbeat and lock before process exit', async (t) => {
   const cases = [
     {
@@ -790,7 +848,10 @@ test('review mutation refusals unwind heartbeat and lock before process exit', a
 test('review main mutation scope contains no direct process.exit call', () => {
   const source = readFileSync(new URL('../../../verbs/review.mjs', import.meta.url), 'utf8');
   const mutationStart = source.indexOf('const govern = ctx.withGovernedEffect');
-  const mutationEnd = source.indexOf('if (mutationOutcome?.exitCode', mutationStart);
+  const mutationEnd = source.indexOf(
+    'finalizeReviewMutationOutcome(mutationOutcome)',
+    mutationStart
+  );
   assert.ok(mutationStart >= 0, 'main review mutation scope anchor exists');
   assert.ok(mutationEnd > mutationStart, 'post-scope exit boundary exists');
   const mutationSource = source.slice(mutationStart, mutationEnd);
@@ -799,4 +860,35 @@ test('review main mutation scope contains no direct process.exit call', () => {
     /process\.exit\(/,
     'main mutation callbacks return structured outcomes so finally blocks can run'
   );
+});
+
+test('structured review outcome exits only after authority and lock finalizers', async () => {
+  const events = [];
+  const outcome = await (async () => {
+    events.push('lock');
+    try {
+      return await withVerbMutationScope(
+        {
+          issueId: '777',
+          operation: 'review-mutation',
+          withGovernedEffect: async (_options, callback) => {
+            events.push('heartbeat-start');
+            try {
+              return await callback({ reverify: async () => {} });
+            } finally {
+              events.push('heartbeat-stop');
+            }
+          },
+        },
+        async () => ({ exitCode: 4 })
+      );
+    } finally {
+      events.push('release');
+    }
+  })();
+
+  finalizeReviewMutationOutcome(outcome, {
+    exit: (code) => events.push(`exit:${code}`),
+  });
+  assert.deepEqual(events, ['lock', 'heartbeat-start', 'heartbeat-stop', 'release', 'exit:4']);
 });
