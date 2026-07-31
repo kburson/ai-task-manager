@@ -48,8 +48,8 @@ the fencing token before governed effects. Fleet remains a projection.
 - SQLite and HTTPS share a closed operation vocabulary. Unknown operations fail
   validation. Reuse of an idempotency key for a different canonical request
   fails with `idempotency-conflict`.
-- The reviewed file inventory has 194 task assignments across 181 unique paths:
-  Tasks 1-7 contain 13, 5, 17, 5, 132, 18, and 4 paths respectively.
+- The reviewed file inventory has 196 task assignments across 183 unique paths:
+  Tasks 1-7 contain 13, 5, 17, 5, 134, 18, and 4 paths respectively.
   Lifecycle authority paths intentionally reappear in later tasks when the
   same provider, session, close, or fleet boundary needs another governed
   increment. If
@@ -387,6 +387,7 @@ real Git worktree directory. Raw display text never participates in uniqueness.
 - Modify: `scripts/task-tracker/cut-child-worktree.mjs`
 - Modify: `scripts/gh/dispatch-prep.mjs`
 - Modify: `scripts/gh/ensure-wave-parent.mjs`
+- Create: `scripts/gh/lib/ensure-wave-parent-core.mjs`
 - Modify: `scripts/gh/create-issue.mjs`
 - Modify: `scripts/gh/project-tether.mjs`
 - Modify: `scripts/gh/lib/project-tether.mjs`
@@ -416,6 +417,8 @@ real Git worktree directory. Raw display text never participates in uniqueness.
   `scripts/task-tracker/tests/unit/gh/dispatch-prep-inprocess.test.mjs`
 - Modify:
   `scripts/task-tracker/tests/slow/lib/ensure-wave-parent.test.mjs`
+- Create:
+  `scripts/task-tracker/tests/unit/gh/lib/ensure-wave-parent-core.test.mjs`
 - Modify: `scripts/gh/create-issue.test.mjs`
 - Modify:
   `scripts/task-tracker/tests/slow/lib/create-issue.test.mjs`
