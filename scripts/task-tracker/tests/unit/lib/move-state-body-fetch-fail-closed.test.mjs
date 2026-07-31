@@ -118,15 +118,18 @@ test('source: fail-closed body-fetch failure exits before the board mutation', (
   // So the guard refusal now short-circuits with
   // `return guardOutcome.exit` rather than `process.exit(...)`; it must still
   // occur before the moveState delegation — the sole route to the mutation.
-  const guardIdx = moveSrc.indexOf('await runGuardExecution(');
-  const refusalIdx = moveSrc.indexOf('return guardOutcome.exit');
-  const writeIdx = moveSrc.indexOf('await moveState(');
+  const boundaryStart = moveSrc.indexOf('export async function runGovernedLifecycleMutation');
+  const boundaryEnd = moveSrc.indexOf('export async function runOfflineLifecycleProbe');
+  const boundary = moveSrc.slice(boundaryStart, boundaryEnd);
+  const guardIdx = boundary.indexOf('await runGuard(');
+  const refusalIdx = boundary.indexOf('return guardOutcome.exit');
+  const mutationIdx = boundary.indexOf('return runMutation(');
   assert.ok(
     guardIdx >= 0 && refusalIdx > guardIdx,
-    'host must return the guard exit code on a guard refusal'
+    'governed lifecycle boundary must return the guard exit code on refusal'
   );
   assert.ok(
-    writeIdx > refusalIdx,
-    'runGuardExecution + its fail-closed return must precede moveState (the sole route to the item-edit mutation)'
+    mutationIdx > refusalIdx,
+    'guard refusal must precede and bypass the governed mutation callback'
   );
 });

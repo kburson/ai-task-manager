@@ -25,6 +25,7 @@ import '../guard-bootstrap.mjs';
 import { decideBodyFetchFailure } from '../body-fetch-gate.mjs';
 import { parseIssueFieldDb } from '../../issue-field-db.mjs';
 import { durableWordMarker } from '../../state.mjs';
+import { isGovernedAuthorityError } from '../work-lease/governed-effect.mjs';
 import { getProjectDir } from '../../paths.mjs';
 import { detectLinkedWorktree, makeCloseTrunkRefResolver } from '../full-auto-merge-execute.mjs';
 import { refreshPreRefineContiguity } from './contiguity-refresh.mjs';
@@ -221,8 +222,16 @@ export async function runGuardExecution(ctx) {
             wordMarker: durableWordMarker(getProjectDir()),
             description: `→ ${stateArg}: ${ruleNames.join(', ')}`,
           });
-          await postTimingEvent({ issueNumber: issueArg, repo: cfg.repo, row, timeoutMs: 3000 });
-        } catch {
+          await postTimingEvent({
+            issueNumber: issueArg,
+            repo: cfg.repo,
+            row,
+            timeoutMs: 3000,
+            operation: ctx.governedOperation,
+            withGovernedEffect: ctx.withGovernedEffect,
+          });
+        } catch (error) {
+          if (isGovernedAuthorityError(error)) throw error;
           /* fire-and-forget */
         }
       }
@@ -278,8 +287,11 @@ export async function runGuardExecution(ctx) {
             wordMarker: durableWordMarker(getProjectDir()),
             description: `WARN: lifecycle-incomplete (lifecycleCheckboxesRequired=false): ${missLabels}`,
           }),
+          operation: ctx.governedOperation,
+          withGovernedEffect: ctx.withGovernedEffect,
         });
-      } catch {
+      } catch (error) {
+        if (isGovernedAuthorityError(error)) throw error;
         /* fire-and-forget */
       }
     }

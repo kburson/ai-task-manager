@@ -364,7 +364,11 @@ export function buildContext(rawArgv = process.argv.slice(2)) {
     getIdentity: ctx.getWorkLeaseIdentity,
   });
 
-  ctx.safePostTiming = async (issue, row) => {
+  ctx.safePostTiming = async (
+    issue,
+    row,
+    { operation = 'evidence-mutation', withGovernedEffect } = {}
+  ) => {
     if (SKIP_NETWORK) return { ok: true, skipped: true };
     try {
       await postTimingEvent({
@@ -372,7 +376,8 @@ export function buildContext(rawArgv = process.argv.slice(2)) {
         repo: cfg.repo,
         row,
         timeoutMs: cfg.hookNetworkTimeoutMs,
-        withGovernedEffect: ctx.withGovernedEffect,
+        operation,
+        withGovernedEffect: withGovernedEffect ?? ctx.withGovernedEffect,
       });
       return { ok: true };
     } catch (err) {
@@ -741,16 +746,28 @@ export function buildContext(rawArgv = process.argv.slice(2)) {
     };
   };
 
-  ctx.runLogIssueTime = async (issue, { subOperationId, expected } = {}) => {
+  ctx.runLogIssueTime = async (
+    issue,
+    { subOperationId, expected, operation = 'evidence-mutation', withGovernedEffect } = {}
+  ) => {
     if (SKIP_NETWORK) return { skipped: true };
     const scriptPath = new URL('../gh/log-issue-time.mjs', import.meta.url).pathname;
     try {
       const issueNumber = String(issue).replace(/^#/, '');
       const runMutation = async () => {
-        const { stdout } = await pexec(process.execPath, [scriptPath, issue], {
-          timeout: GH_API_TIMEOUT_MS,
-        });
-        if (stdout.trim()) console.log(stdout.trim());
+        if (withGovernedEffect) {
+          const { main: runIssueTime } = await import('../gh/log-issue-time.mjs');
+          const code = await runIssueTime([issueNumber], {
+            operation,
+            withGovernedEffect,
+          });
+          if (code !== 0) throw new Error(`log-issue-time exited ${code}`);
+        } else {
+          const { stdout } = await pexec(process.execPath, [scriptPath, issue], {
+            timeout: GH_API_TIMEOUT_MS,
+          });
+          if (stdout.trim()) console.log(stdout.trim());
+        }
       };
       const readState = async () => {
         const { stdout: issueJson } = await pexec(
@@ -781,6 +798,7 @@ export function buildContext(rawArgv = process.argv.slice(2)) {
       await runMutation();
       return await readState();
     } catch (err) {
+      if (isGovernedAuthorityError(err)) throw err;
       // Fail-loud: silent swallow here is the root cause of #180 (board fields
       // never written, body cache stays null, close completes anyway). No env
       // override exists. For a genuine GitHub outage, re-run when service is
@@ -885,7 +903,7 @@ export function buildContext(rawArgv = process.argv.slice(2)) {
       ...opts,
       skipNetwork: SKIP_NETWORK,
       verbContext: verb,
-      withGovernedEffect: ctx.withGovernedEffect,
+      withGovernedEffect: opts.withGovernedEffect ?? ctx.withGovernedEffect,
     });
 
   ctx.runMoveStateDone = (issue, opts) => ctx.runMoveState(issue, 'done', opts);

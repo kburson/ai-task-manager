@@ -107,7 +107,19 @@ function makeCtx(opts = {}) {
     subs = [],
     childState = 'review',
   } = opts;
-  const calls = { post: [], move: [], guards: [], mutate: 0, logTime: 0 };
+  const calls = {
+    post: [],
+    move: [],
+    guards: [],
+    mutate: 0,
+    logTime: 0,
+    logOptions: [],
+    authority: [],
+    reverify: 0,
+    queue: 0,
+    lock: 0,
+    sequence: [],
+  };
   let gi = 0;
   let liveBody = scanBody || rawBody;
   const ctx = {
@@ -117,7 +129,27 @@ function makeCtx(opts = {}) {
     rest,
     SKIP_NETWORK: false,
     pexec: makePexec({ gateBody, rawBody, scanBody, headSha, getLiveBody: () => liveBody }),
-    drainQueueIfAny: async () => {},
+    drainQueueIfAny: async () => {
+      calls.queue += 1;
+    },
+    withGovernedEffect: async (options, callback) => {
+      calls.authority.push(options);
+      calls.sequence.push('root');
+      return callback({
+        lease: { issueId: '777' },
+        leaseContext: { leaseId: 'lease-review' },
+        reverify: async () => {
+          calls.reverify += 1;
+          calls.sequence.push('reverify');
+        },
+      });
+    },
+    withIssueLock: async (options, callback) => {
+      calls.lock += 1;
+      calls.sequence.push('lock');
+      assert.deepEqual(options, { issue: '777', verb: 'review', projDir: '/proj' });
+      return callback();
+    },
     safePostTiming: async (_t, row) => {
       calls.post.push(row);
     },
@@ -133,8 +165,9 @@ function makeCtx(opts = {}) {
       if (to === 'review') liveBody = stampEntryMarker(liveBody, to, ctx.nowIso());
       return moveResults[to] || { ok: true };
     },
-    runLogIssueTime: async () => {
+    runLogIssueTime: async (_target, options) => {
       calls.logTime += 1;
+      calls.logOptions.push(options);
     },
     fetchSubIssues: async () => subs,
     getIssueBoardState: async () => childState,
@@ -142,6 +175,7 @@ function makeCtx(opts = {}) {
     runReviewPreflight: async () => preflight,
     mutateIssueBody: async ({ mutate }) => {
       calls.mutate += 1;
+      calls.sequence.push('body');
       const next = mutate(liveBody);
       if (next === liveBody) return { status: 'no-op', body: liveBody };
       liveBody = next;
@@ -241,8 +275,11 @@ test('buildDeferredReviewRow: row kind → buildRow row', () => {
 test('no target → exit 1', async () => {
   const { statePath, dir } = tmpState(baseState({ active: 'discover' }));
   try {
-    const { ctx } = makeCtx({ statePath, rest: [] });
+    const { ctx, calls } = makeCtx({ statePath, rest: [] });
     assert.equal(await runExit(ctx), 1);
+    assert.equal(calls.queue, 0, 'queue drain follows successful target resolution');
+    assert.equal(calls.lock, 0);
+    assert.deepEqual(calls.authority, [], 'missing target opens no review mutation authority');
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
@@ -251,11 +288,13 @@ test('no target → exit 1', async () => {
 test('preflight refusal → exit 4', async () => {
   const { statePath, dir } = tmpState(baseState());
   try {
-    const { ctx } = makeCtx({
+    const { ctx, calls } = makeCtx({
       statePath,
       preflight: { ok: false, reasons: ['uncommitted work'] },
     });
     assert.equal(await runExit(ctx), 4);
+    assert.deepEqual(calls.authority, [], 'read-only preflight refusal opens no authority');
+    assert.equal(calls.lock, 0);
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
@@ -268,8 +307,12 @@ test('validateBody gate refusal → exit 4', async () => {
   process.env.PATH = '';
   process.env.AI_TASK_MANAGER_PROJECT_DIR = dir;
   try {
-    const { ctx } = makeCtx({ statePath, gateBody: '- [x] Dependency Map\n' });
+    const { ctx, calls } = makeCtx({ statePath, gateBody: '- [x] Dependency Map\n' });
     assert.equal(await runExit(ctx), 4);
+    assert.equal(calls.authority.length, 1, 'body-gate refusal audits under review authority');
+    assert.equal(calls.lock, 1, 'mutating refusal audit holds the issue lock');
+    assert.equal(calls.authority[0].operation, 'review-mutation');
+    assert.equal(calls.post.length, 1, 'body-gate refusal records its timing audit');
   } finally {
     process.env.PATH = origPath;
     if (origProj === undefined) delete process.env.AI_TASK_MANAGER_PROJECT_DIR;
@@ -300,12 +343,14 @@ test('non-empty clean gate body passes validateBody (no refusal)', async () => {
 test('dod-verified guard refusal → exit 4 (else timing branch)', async () => {
   const { statePath, dir } = tmpState(baseState({ active: '#888' }));
   try {
-    const { ctx } = makeCtx({
+    const { ctx, calls } = makeCtx({
       statePath,
       rawBody: '## Definition of Done\n- [ ] x\n',
       guardSeq: [{ refusals: [{ id: 'test-exit-dod-verified' }] }],
     });
     assert.equal(await runExit(ctx), 4);
+    assert.deepEqual(calls.authority, [], 'missing DoD proof is a read-only refusal');
+    assert.equal(calls.lock, 0);
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
@@ -320,8 +365,10 @@ test('persisted Test marker mismatch → exit 4 without consulting ambient HEAD'
       '<!-- aitm-test-started sha="aaaaaaaa" ts="t" -->',
       '<!-- aitm-dod-verified sha="bbbbbbbb" ts="t" -->',
     ].join('\n');
-    const { ctx } = makeCtx({ statePath, rawBody, headSha: 'bbbbbbbbcccc' });
+    const { ctx, calls } = makeCtx({ statePath, rawBody, headSha: 'bbbbbbbbcccc' });
     assert.equal(await runExit(ctx), 4);
+    assert.deepEqual(calls.authority, [], 'Test SHA mismatch is a read-only refusal');
+    assert.equal(calls.lock, 0);
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
@@ -350,7 +397,7 @@ test('unbacked checkbox → failures revert to Develop, exit 3', async () => {
 test('epic child not in review → exit 3', async () => {
   const { statePath, dir } = tmpState(baseState());
   try {
-    const { ctx } = makeCtx({
+    const { ctx, calls } = makeCtx({
       statePath,
       rawBody: CLEAN_BODY,
       scanBody: CLEAN_BODY,
@@ -358,6 +405,9 @@ test('epic child not in review → exit 3', async () => {
       childState: 'develop',
     });
     assert.equal(await runExit(ctx), 3);
+    assert.deepEqual(calls.authority, [], 'epic child readiness is a read-only refusal');
+    assert.equal(calls.lock, 0);
+    assert.equal(calls.mutate, 0, 'epic refusal does not normalize the issue body');
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
@@ -416,6 +466,8 @@ test('success: all checks pass → moves to Review, prompts approval', async () 
     assert.equal(await runExit(ctx), null);
     assert.ok(calls.move.includes('review'));
     assert.equal(calls.logTime, 1);
+    assert.equal(calls.logOptions[0].operation, 'review-mutation');
+    assert.equal(typeof calls.logOptions[0].withGovernedEffect, 'function');
     // EPIC #823 timing model v2 (C6 / defect D1): the success path no longer
     // emits the two ad-hoc verb rows (bare `review` + `review-ready`); the
     // canonical `test:passed` + `review:started` pair is written by runMoveState
@@ -424,6 +476,19 @@ test('success: all checks pass → moves to Review, prompts approval', async () 
     // mirror the FAIL branch's `review:failed` row.
     assert.equal(calls.post.length, 1);
     assert.match(String(calls.post[0]), /review:passed/);
+    assert.equal(calls.authority.length, 1, 'review owns one outer lease authority session');
+    assert.equal(calls.lock, 1, 'review holds one issue lock around its mutation scope');
+    assert.deepEqual(calls.authority[0], {
+      issueId: '777',
+      operation: 'review-mutation',
+      heartbeat: true,
+    });
+    assert.ok(calls.reverify > 0, 'review reverifies before mutation effects');
+    assert.deepEqual(
+      calls.sequence.slice(0, 3),
+      ['lock', 'root', 'reverify'],
+      'issue lock precedes the one review root and its first effect reverify'
+    );
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
@@ -440,6 +505,72 @@ test('success via else branch (target not the active session)', async () => {
     });
     assert.equal(await runExit(ctx), null);
     assert.ok(calls.move.includes('review'));
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('review authority refusal releases the issue lock before any mutation effect', async () => {
+  const { statePath, dir } = tmpState(baseState());
+  try {
+    const { ctx, calls } = makeCtx({
+      statePath,
+      rawBody: CLEAN_BODY,
+      scanBody: CLEAN_BODY,
+    });
+    const events = [];
+    ctx.withIssueLock = async (_options, callback) => {
+      events.push('lock');
+      try {
+        return await callback();
+      } finally {
+        events.push('release');
+      }
+    };
+    ctx.withGovernedEffect = async () => {
+      events.push('root-refused');
+      const error = new Error('stale review fence');
+      error.code = 'fence-stale';
+      throw error;
+    };
+    await assert.rejects(
+      () => runExit(ctx),
+      (error) => error.code === 'fence-stale'
+    );
+    assert.deepEqual(events, ['lock', 'root-refused', 'release']);
+    assert.equal(calls.mutate, 0);
+    assert.deepEqual(calls.move, []);
+    assert.deepEqual(calls.post, []);
+    assert.equal(calls.logTime, 0);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('nested review writer refuses a mismatched governed operation', async () => {
+  const { statePath, dir } = tmpState(baseState());
+  try {
+    const { ctx, calls } = makeCtx({
+      statePath,
+      rawBody: CLEAN_BODY,
+      scanBody: CLEAN_BODY,
+    });
+    let escaped = false;
+    ctx.mutateIssueBody = async (options) =>
+      options.deps.withGovernedEffect(
+        { issueId: '777', operation: 'evidence-mutation' },
+        async () => {
+          escaped = true;
+        }
+      );
+    await assert.rejects(
+      () => runExit(ctx),
+      /verb mutation scope continuation does not match issue\/operation/
+    );
+    assert.equal(escaped, false);
+    assert.equal(calls.authority.length, 1);
+    assert.deepEqual(calls.move, []);
+    assert.deepEqual(calls.post, []);
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }

@@ -190,6 +190,13 @@ test('#1050 hermetic incident: demote, Test, Review verb, stale close refusal, f
         return { stdout: JSON.stringify({ body: liveBody }), stderr: '' };
       },
       drainQueueIfAny: async () => {},
+      withIssueLock: async (_options, callback) => callback(),
+      withGovernedEffect: async (_options, callback) =>
+        callback({
+          lease: { issueId: '1050' },
+          leaseContext: { leaseId: 'lease-review-1050' },
+          reverify: async () => {},
+        }),
       safePostTiming: async () => {},
       runMoveState: async (_target, target) => {
         if (target === 'review') {

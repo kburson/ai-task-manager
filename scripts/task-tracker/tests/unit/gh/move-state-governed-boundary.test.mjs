@@ -41,10 +41,17 @@ function boundaryFixture(overrides = {}) {
   return { deps, events };
 }
 
-test('governed lifecycle order is lock, verify, heartbeat, guard, mutation', async () => {
+test('governed lifecycle reverifies after its guard immediately before mutation', async () => {
   const { deps, events } = boundaryFixture();
   assert.equal(await runGovernedLifecycleMutation(deps), 0);
-  assert.deepEqual(events, ['lock', 'verify:review-mutation', 'heartbeat', 'guard', 'mutation']);
+  assert.deepEqual(events, [
+    'lock',
+    'verify:review-mutation',
+    'heartbeat',
+    'guard',
+    'reverify',
+    'mutation',
+  ]);
 });
 
 test('stale authority invokes zero guard timing/status/body/spawn or mutation effects', async () => {
@@ -68,7 +75,45 @@ test('stale authority invokes zero guard timing/status/body/spawn or mutation ef
 test('already-held lifecycle lock still verifies before guard and mutation', async () => {
   const { deps, events } = boundaryFixture({ alreadyLocked: true });
   assert.equal(await runGovernedLifecycleMutation(deps), 0);
-  assert.deepEqual(events, ['verify:review-mutation', 'heartbeat', 'guard', 'mutation']);
+  assert.deepEqual(events, [
+    'verify:review-mutation',
+    'heartbeat',
+    'guard',
+    'reverify',
+    'mutation',
+  ]);
+});
+
+test('authority lost during a long lifecycle guard blocks the next mutation', async () => {
+  const { deps, events } = boundaryFixture({
+    runGuard: async () => {
+      events.push('long-guard');
+      return { exit: null };
+    },
+  });
+  deps.withGovernedEffect = async (options, callback) => {
+    events.push(`verify:${options.operation}`);
+    events.push('heartbeat');
+    return callback({
+      reverify: async () => {
+        events.push('reverify-stale');
+        const error = new Error('fence lost during guard');
+        error.code = 'fence-stale';
+        throw error;
+      },
+    });
+  };
+  await assert.rejects(
+    () => runGovernedLifecycleMutation(deps),
+    (error) => error.code === 'fence-stale'
+  );
+  assert.deepEqual(events, [
+    'lock',
+    'verify:review-mutation',
+    'heartbeat',
+    'long-guard',
+    'reverify-stale',
+  ]);
 });
 
 test('guard refusal remains inside authority and invokes zero mutation effects', async () => {

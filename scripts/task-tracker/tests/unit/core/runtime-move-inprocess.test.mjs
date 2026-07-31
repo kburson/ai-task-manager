@@ -6,6 +6,7 @@
 // host's stdout/stderr so the exit-5 self-loop benign classification keeps exact
 // parity with the pre-migration subprocess, and returns the same structured
 // `{ ok, status, benign, stdout, stderr }` result close.mjs consumes.
+import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
@@ -84,6 +85,15 @@ test('lifecycle host refuses an explicit operation that does not match the verb'
     /governed operation lifecycle-mutation does not match review/
   );
   assert.equal(resolveGovernedLifecycleOperation('close', 'close'), 'close');
+});
+
+test('runtime move adapter preserves a per-invocation governed continuation', () => {
+  const source = readFileSync(new URL('../../../runtime.mjs', import.meta.url), 'utf8');
+  assert.match(
+    source,
+    /withGovernedEffect:\s*opts\.withGovernedEffect\s*\?\?\s*ctx\.withGovernedEffect/,
+    'review must be able to pass its scoped continuation without replacing ctx globally'
+  );
 });
 
 test('runMoveStateInProcess folds extraArgs (--force) into the synthetic argv', async () => {

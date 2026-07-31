@@ -23,6 +23,14 @@ import { getProjectDir, projectTmpDir } from '../../paths.mjs';
 import { GH_API_TIMEOUT_MS } from '../process-timeouts.mjs';
 import { writeFileSync, unlinkSync } from 'node:fs';
 import path from 'node:path';
+import { isGovernedAuthorityError } from '../work-lease/governed-effect.mjs';
+
+function governedTimingOptions(ctx) {
+  return {
+    operation: ctx.governedOperation,
+    withGovernedEffect: ctx.withGovernedEffect,
+  };
+}
 
 // Testable seam (#628): the timeline emitters below resolve their gh-backed
 // helper modules through `ctx.deps`. Production assembles `ctx` without a
@@ -104,7 +112,13 @@ export async function emitPhasePairRows(ctx) {
         wordMarker: _phaseMarker,
         description,
       });
-      await postTimingEvent({ issueNumber: issueArg, repo: cfg.repo, row, timeoutMs: 3000 });
+      await postTimingEvent({
+        issueNumber: issueArg,
+        repo: cfg.repo,
+        row,
+        timeoutMs: 3000,
+        ...governedTimingOptions(ctx),
+      });
     } else if (prev && PHASE_EVENTS[prev]?.complete && stateArg !== 'done') {
       // #540 — the move to `done` is the ONE transition where the
       // `<prev>:complete` row is NOT emitted here. `prev` is always `review`
@@ -142,7 +156,13 @@ export async function emitPhasePairRows(ctx) {
         deltaWords,
         wordMarker: _phaseMarker,
       });
-      await postTimingEvent({ issueNumber: issueArg, repo: cfg.repo, row, timeoutMs: 3000 });
+      await postTimingEvent({
+        issueNumber: issueArg,
+        repo: cfg.repo,
+        row,
+        timeoutMs: 3000,
+        ...governedTimingOptions(ctx),
+      });
     }
 
     // Second row: entry into the new state. Share the same `ts` so the
@@ -166,7 +186,13 @@ export async function emitPhasePairRows(ctx) {
         deltaWords: 0,
         wordMarker: _phaseMarker,
       });
-      await postTimingEvent({ issueNumber: issueArg, repo: cfg.repo, row, timeoutMs: 3000 });
+      await postTimingEvent({
+        issueNumber: issueArg,
+        repo: cfg.repo,
+        row,
+        timeoutMs: 3000,
+        ...governedTimingOptions(ctx),
+      });
     } else if (PHASE_EVENTS[stateArg]?.enter) {
       // `<next>:enter` derives from PHASE_EVENTS; honest 0/0 because the
       // paired emission shares ts with the completion row above — no
@@ -179,9 +205,16 @@ export async function emitPhasePairRows(ctx) {
         deltaWords: 0,
         wordMarker: _phaseMarker,
       });
-      await postTimingEvent({ issueNumber: issueArg, repo: cfg.repo, row, timeoutMs: 3000 });
+      await postTimingEvent({
+        issueNumber: issueArg,
+        repo: cfg.repo,
+        row,
+        timeoutMs: 3000,
+        ...governedTimingOptions(ctx),
+      });
     }
   } catch (err) {
+    if (isGovernedAuthorityError(err)) throw err;
     process.stderr.write(`[move-state] #${issueArg}: phase-pair emission failed: ${err.message}\n`);
   }
 }
@@ -292,8 +325,15 @@ export async function emitOutOfBandAudit(ctx) {
       wordMarker: durableWordMarker(getProjectDir()),
       description: `${fromLabel}→${stateArg}: ${outOfBandReason}`,
     });
-    await postTimingEvent({ issueNumber: issueArg, repo: cfg.repo, row, timeoutMs: 3000 });
-  } catch {
+    await postTimingEvent({
+      issueNumber: issueArg,
+      repo: cfg.repo,
+      row,
+      timeoutMs: 3000,
+      ...governedTimingOptions(ctx),
+    });
+  } catch (error) {
+    if (isGovernedAuthorityError(error)) throw error;
     /* best-effort */
   }
 }

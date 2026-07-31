@@ -132,6 +132,10 @@ export async function runGovernedLifecycleMutation({
   const guardedMutation = async (effect) => {
     const guardOutcome = await runGuard(effect);
     if (guardOutcome.exit !== null) return guardOutcome.exit;
+    // Guards can perform slow remote reads. The lease may expire or be fenced
+    // while they run, so their initial authority cannot authorize the later
+    // board/body/timing mutation.
+    await effect.reverify();
     return runMutation(effect);
   };
   const authorize = (callback) =>
@@ -552,6 +556,11 @@ export async function runMoveStateHost({
       projectDir,
       config: cfg,
     });
+  // Nested move-saga writers inherit this exact per-invocation capability.
+  // For review this is the verb scope continuation, so no nested writer opens
+  // a second root authority session or heartbeat.
+  ctx.governedOperation = exactGovernedOperation;
+  ctx.withGovernedEffect = govern;
   try {
     return await runGovernedLifecycleMutation({
       issue: issueArg,
@@ -561,8 +570,14 @@ export async function runMoveStateHost({
       projectDir,
       alreadyLocked: env[ISSUE_LOCK_HELD_ENV] === '1',
       withGovernedEffect: govern,
-      runGuard: () => runGuardExecution(ctx),
-      runMutation,
+      runGuard: (authority) => {
+        ctx.reverifyGovernedEffect = authority.reverify;
+        return runGuardExecution(ctx);
+      },
+      runMutation: (authority) => {
+        ctx.reverifyGovernedEffect = authority.reverify;
+        return runMutation(authority);
+      },
     });
   } catch (err) {
     if (err instanceof IssueLockError) {

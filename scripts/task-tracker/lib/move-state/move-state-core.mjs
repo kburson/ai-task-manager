@@ -17,6 +17,7 @@ import { parseTimingRows } from '../timing-ladder.mjs';
 import { PHASE_EVENTS } from '../../phase-events.mjs';
 import { resolveTailProfile } from './tail-profiles.mjs';
 import { resolveReviewAuthority } from '../human-reviewer-audit.mjs';
+import { isGovernedAuthorityError } from '../work-lease/governed-effect.mjs';
 
 // A timing row whose event closes a phase: any canonical `<state>:complete`
 // slug (`refine:completed`, `test:passed`, `review:approved`, `issue:closed`)
@@ -55,6 +56,10 @@ export async function defaultProbeCompletion(ctx) {
         issueNumber: issueArg,
         repo: cfg.repo,
         mutate: (base) => base,
+        operation: ctx.governedOperation || 'lifecycle-mutation',
+        deps: {
+          ...(ctx.withGovernedEffect ? { withGovernedEffect: ctx.withGovernedEffect } : {}),
+        },
       });
       return res?.body ?? '';
     });
@@ -62,7 +67,8 @@ export async function defaultProbeCompletion(ctx) {
   let body = '';
   try {
     body = await fetchBody();
-  } catch {
+  } catch (error) {
+    if (isGovernedAuthorityError(error)) throw error;
     return notComplete;
   }
 
@@ -112,7 +118,15 @@ export async function defaultWriteSentinel(ctx) {
     ctx._mutateBody ||
     (async ({ mutate }) => {
       const { mutateIssueBody } = await import('../issue-body-mutate.mjs');
-      return mutateIssueBody({ issueNumber: issueArg, repo: cfg.repo, mutate });
+      return mutateIssueBody({
+        issueNumber: issueArg,
+        repo: cfg.repo,
+        mutate,
+        operation: ctx.governedOperation || 'lifecycle-mutation',
+        deps: {
+          ...(ctx.withGovernedEffect ? { withGovernedEffect: ctx.withGovernedEffect } : {}),
+        },
+      });
     });
   const res = await mutateBody({ mutate: (base) => writeMoveCompleteMarker(base, stateArg, ts) });
   if (readMoveCompleteState(res?.body ?? '') === stateArg) return { verified: true };
@@ -161,6 +175,7 @@ export async function moveState(ctx) {
   // dependents/fields that a crash between Status and tail may have skipped.
   const probe = await probeCompletion(ctx);
   if (isMoveComplete({ ...probe, target: ctx.stateArg })) {
+    await ctx.reverifyGovernedEffect?.();
     const tail = await runPostCommitTail(ctx);
     return {
       exit: null,

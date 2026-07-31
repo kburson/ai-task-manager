@@ -113,7 +113,10 @@ test('runtime evidence helpers surface authority refusal instead of enqueueing o
     runtimeSource.indexOf('ctx.safeRecordSessionRef ='),
     runtimeSource.indexOf('ctx.safeReadLastRowTs =')
   );
-  assert.match(safePost, /withGovernedEffect:\s*ctx\.withGovernedEffect/);
+  assert.match(
+    safePost,
+    /withGovernedEffect:\s*withGovernedEffect\s*\?\?\s*ctx\.withGovernedEffect/
+  );
   assert.match(safePost, /if \(isGovernedAuthorityError\(err\)\) throw err/);
   assert.match(safeRecord, /operation:\s*'evidence-mutation'/);
   assert.match(safeRecord, /withGovernedEffect:\s*ctx\.withGovernedEffect/);

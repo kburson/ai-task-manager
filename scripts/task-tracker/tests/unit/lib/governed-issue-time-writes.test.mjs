@@ -52,3 +52,22 @@ test('issue-time re-verifies immediately before body and every ProjectV2 write',
     'project:b',
   ]);
 });
+
+test('review issue-time writes reuse the exact outer review operation', async () => {
+  const effects = [];
+  await runGovernedIssueTimeWrites({
+    issueNumber: '1049',
+    operation: 'review-mutation',
+    bodyWrite: async () => effects.push('body'),
+    projectWrites: [],
+    withGovernedEffect: async (options, callback) => {
+      effects.push(options);
+      return callback({ reverify: async () => effects.push('reverify') });
+    },
+  });
+  assert.deepEqual(effects, [
+    { issueId: '1049', operation: 'review-mutation', heartbeat: true },
+    'reverify',
+    'body',
+  ]);
+});

@@ -71,6 +71,7 @@ export async function runGovernedIssueTimeWrites({
   projectWrites = [],
   writeProjectField = writeProjectFieldValue,
   withGovernedEffect,
+  operation = 'evidence-mutation',
 } = {}) {
   if (
     typeof bodyWrite !== 'function' ||
@@ -83,7 +84,7 @@ export async function runGovernedIssueTimeWrites({
   return withGovernedEffect(
     {
       issueId: String(issueNumber).replace(/^#/, ''),
-      operation: 'evidence-mutation',
+      operation,
       heartbeat: true,
     },
     async (authority) => {
@@ -331,11 +332,13 @@ export async function main(argv = process.argv.slice(2), deps = {}) {
       projectDir: getProjectDir(),
       config: cfg,
     });
+  const operation = deps.operation || 'evidence-mutation';
   await runGovernedIssueTimeWrites({
     issueNumber,
     projectWrites,
     writeProjectField: deps.writeProjectField ?? writeProjectFieldValue,
     withGovernedEffect,
+    operation,
     bodyWrite: async (authority) =>
       withRetry(() =>
         mutateIssueBody({
@@ -346,13 +349,10 @@ export async function main(argv = process.argv.slice(2), deps = {}) {
             if (stageRollup.visits.length) next = upsertStageRollupMarker(next, stageRollup);
             return next;
           },
-          operation: 'evidence-mutation',
+          operation,
           deps: {
             withGovernedEffect: async (options, callback) => {
-              if (
-                String(options?.issueId) !== issueNumber ||
-                options?.operation !== 'evidence-mutation'
-              ) {
+              if (String(options?.issueId) !== issueNumber || options?.operation !== operation) {
                 throw new TypeError('issue-time body mutation escaped its governed issue');
               }
               await authority.reverify();

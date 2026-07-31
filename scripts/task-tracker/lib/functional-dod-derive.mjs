@@ -45,6 +45,8 @@ import {
  *                                          Defaults to `new Date().toISOString()`.
  * @param {object} [args.deps]            — Injected dependencies (pexec, etc.)
  *                                          forwarded to `mutateIssueBody`.
+ * @param {string} [args.operation]        — Exact governed operation inherited
+ *                                          from an outer verb mutation scope.
  * @returns {Promise<{status:'ok'|'noop',attempts:number,version:number}|null>}
  *          The `mutateIssueBody` result. `null` only if the helper itself
  *          early-returns (currently it does not).
@@ -55,6 +57,7 @@ export async function deriveAndStampFunctionalDod({
   sha = 'unknown',
   ts,
   deps = {},
+  operation = 'issue-body-mutation',
 } = {}) {
   if (issueNumber == null) {
     throw new Error('deriveAndStampFunctionalDod: issueNumber is required');
@@ -67,6 +70,7 @@ export async function deriveAndStampFunctionalDod({
     issueNumber,
     repo,
     deps,
+    operation,
     // #522 — sanctioned close-pipeline auto-stamp: the derived `acs`/`checkboxes`
     // evidence is computed from the body's own ticked state at close time, so the
     // proof-introduction guard is bypassed for this minting site.

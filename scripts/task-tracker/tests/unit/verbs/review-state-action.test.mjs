@@ -374,7 +374,7 @@ test('the failure path never passes --demote to anything', async () => {
 // catches it.
 
 test('verbReview performs the authoritative Test → Review move BEFORE running the gate', () => {
-  const moveIdx = reviewSrc.indexOf("await runMoveState(target, 'review'");
+  const moveIdx = reviewSrc.indexOf("await scopedRunMoveState(target, 'review'");
   const gateIdx = reviewSrc.indexOf('runAgentReviewGate({');
   assert.notEqual(moveIdx, -1, 'the authoritative move call must exist');
   assert.notEqual(gateIdx, -1, 'the gate call must exist');
@@ -385,7 +385,7 @@ test('verbReview performs the authoritative Test → Review move BEFORE running 
 });
 
 test('there is exactly ONE authoritative move-to-review call site', () => {
-  const hits = reviewSrc.match(/await runMoveState\(target, 'review'/g) || [];
+  const hits = reviewSrc.match(/await scopedRunMoveState\(target, 'review'/g) || [];
   assert.equal(
     hits.length,
     1,
