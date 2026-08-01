@@ -4,7 +4,8 @@
 // finalization is clean-tree, exact-SHA, and receipt-producing.
 
 import { execFileSync, spawnSync } from 'node:child_process';
-import { realpathSync } from 'node:fs';
+import { existsSync, realpathSync } from 'node:fs';
+import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { wantsHelp, emitSelfDoc } from '../lib/self-doc.mjs';
@@ -172,8 +173,10 @@ export function runDevelopVerification({
         projectDir,
         changedPaths,
       });
+      const pathExists = deps.pathExists || ((file) => existsSync(path.join(projectDir, file)));
+      const fixablePaths = changedPaths.filter(pathExists);
       const steps = [
-        ...buildIterationSteps(changedPaths),
+        ...buildIterationSteps(fixablePaths),
         ...selection.tests.map((file) => ({
           classification: 'test-affected',
           command: 'node',

@@ -402,6 +402,7 @@ describe('runDevelopVerification (#1089)', () => {
         getHeadSha: () => fingerprint.commitSha,
         isClean: () => true,
         buildFingerprint: () => fingerprint,
+        pathExists: () => true,
         now: () => '2026-08-01T18:00:00.000Z',
         ...overrides,
       },
@@ -423,6 +424,33 @@ describe('runDevelopVerification (#1089)', () => {
       ]
     );
     assert.doesNotMatch(JSON.stringify(calls), /test:(?:unit|integration|slow)/);
+  });
+
+  it('iteration excludes deleted and rename-old paths from fixers but keeps impact inputs', () => {
+    let selectedChangedPaths;
+    const { calls, deps } = baseDeps({
+      collectChangedPaths: () => ['lib/deleted.mjs', 'lib/new-name.mjs', 'lib/old-name.mjs'],
+      pathExists: (file) => file === 'lib/new-name.mjs',
+      selectAffectedTests: ({ changedPaths }) => {
+        selectedChangedPaths = changedPaths;
+        return { tests: ['tests/affected.test.mjs'], lanes: [], reasons: [], escalated: false };
+      },
+    });
+    const result = runDevelopVerification({ projectDir: '/repo', mode: 'iteration', deps });
+    assert.equal(result.ok, true);
+    assert.deepEqual(selectedChangedPaths, [
+      'lib/deleted.mjs',
+      'lib/new-name.mjs',
+      'lib/old-name.mjs',
+    ]);
+    assert.deepEqual(
+      calls.map(({ command, args }) => [command, ...args]),
+      [
+        ['npx', 'eslint', '--fix', 'lib/new-name.mjs'],
+        ['npx', 'prettier', '--write', 'lib/new-name.mjs'],
+        ['node', '--test', 'tests/affected.test.mjs'],
+      ]
+    );
   });
 
   it('finalization requires clean committed state and returns a receipt', () => {
