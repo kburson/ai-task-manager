@@ -160,11 +160,11 @@ export async function runClose({
   const previousDirty = process.env.TT_SKIP_DIRTY_CHECK;
   const previousProjectDir = process.env.AI_TASK_MANAGER_PROJECT_DIR;
   const previousExitCode = process.exitCode;
+  process.env.AI_TASK_MANAGER_PROJECT_DIR = dir;
   if (gateReviewToDone !== undefined) {
     const configDir = join(dir, '.ai-task-manager');
     mkdirSync(configDir, { recursive: true });
     writeFileSync(join(configDir, 'task-tracker.json'), JSON.stringify({ gateReviewToDone }));
-    process.env.AI_TASK_MANAGER_PROJECT_DIR = dir;
   }
   process.env.TT_SKIP_DIRTY_CHECK = '1';
   process.exitCode = 0;
