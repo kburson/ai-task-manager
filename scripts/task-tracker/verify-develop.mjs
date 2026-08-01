@@ -18,7 +18,7 @@ const FORMATTABLE_RE = /\.(?:c?js|mjs|json|jsonc|md|ya?ml)$/i;
 const JAVASCRIPT_RE = /\.(?:c?js|mjs)$/i;
 
 export function collectChangedPaths({ cwd = process.cwd() } = {}) {
-  const tracked = execFileSync('git', ['diff', '--diff-filter=ACMR', '--name-only', 'HEAD'], {
+  const tracked = execFileSync('git', ['diff', '--name-status', '--find-renames', '-z', 'HEAD'], {
     cwd,
     encoding: 'utf8',
   });
@@ -28,12 +28,30 @@ export function collectChangedPaths({ cwd = process.cwd() } = {}) {
   });
   return [
     ...new Set(
-      `${tracked}\n${untracked}`
+      `${parseChangedNameStatus(tracked).join('\n')}\n${untracked}`
         .split('\n')
         .map((item) => item.trim())
         .filter(Boolean)
     ),
   ].sort();
+}
+
+export function parseChangedNameStatus(raw) {
+  const tokens = String(raw || '')
+    .split('\0')
+    .filter(Boolean);
+  const paths = [];
+  for (let index = 0; index < tokens.length;) {
+    const status = tokens[index++];
+    const firstPath = tokens[index++];
+    if (!status || !firstPath) break;
+    paths.push(firstPath);
+    if (/^[RC]/.test(status)) {
+      const secondPath = tokens[index++];
+      if (secondPath) paths.push(secondPath);
+    }
+  }
+  return paths;
 }
 
 /** Compatibility export retained for existing callers and regression tests. */

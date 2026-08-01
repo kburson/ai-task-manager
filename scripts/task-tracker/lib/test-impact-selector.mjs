@@ -17,6 +17,8 @@ const IGNORED_DIRECTORIES = new Set([
   'reports',
 ]);
 const STATIC_IMPORT_RE = /(?:import|export)\s+(?:[^'";]*?\s+from\s+)?['"]([^'"]+)['"]/g;
+const TEST_FILE_RE = /\.test\.(?:c?js|mjs)$/i;
+const CODE_FILE_RE = /\.(?:c?js|mjs)$/i;
 
 function normalizeRepoPath(value, label = 'path') {
   if (typeof value !== 'string' || value.trim() === '') {
@@ -171,6 +173,12 @@ export function selectAffectedTests({
       reasons.push({ key, changedPath, test, signal, reason });
     }
   };
+  const escalateLane = (changedPath, lane, signal, reason) => {
+    escalatedLanes.add(lane);
+    for (const test of discovered.filter((candidate) => laneOf(candidate) === lane)) {
+      add(changedPath, test, signal, reason);
+    }
+  };
 
   for (const changedPath of changed) {
     const before = reasons.length;
@@ -203,10 +211,25 @@ export function selectAffectedTests({
       }
       for (const test of manifestTests) add(changedPath, test, 'manifest', rule.reason);
       for (const lane of rule.lanes) {
-        escalatedLanes.add(lane);
-        for (const test of discovered.filter((candidate) => laneOf(candidate) === lane)) {
-          add(changedPath, test, 'lane-escalation', rule.reason);
-        }
+        escalateLane(changedPath, lane, 'lane-escalation', rule.reason);
+      }
+    }
+
+    if (!existsSync(path.join(root, changedPath)) && TEST_FILE_RE.test(changedPath)) {
+      escalateLane(
+        changedPath,
+        laneOf(changedPath),
+        'deleted-test-lane',
+        'deleted test cannot run directly; verify its former lane conservatively'
+      );
+    } else if (!existsSync(path.join(root, changedPath)) && CODE_FILE_RE.test(changedPath)) {
+      for (const lane of LANES) {
+        escalateLane(
+          changedPath,
+          lane,
+          'deleted-path-lane-escalation',
+          'deleted module may have prior consumers absent from the current import graph'
+        );
       }
     }
 

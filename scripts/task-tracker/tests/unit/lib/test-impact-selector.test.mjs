@@ -151,6 +151,40 @@ describe('hybrid affected-test selection', () => {
       },
     ]);
   });
+
+  test('a deleted test escalates its former lane instead of disappearing', () => {
+    const discovered = [
+      'scripts/task-tracker/tests/unit/lib/unit-a.test.mjs',
+      'scripts/task-tracker/tests/integration/integration-a.test.mjs',
+      'scripts/task-tracker/tests/slow/core/slow-a.test.mjs',
+    ];
+    const result = select(
+      ['scripts/task-tracker/tests/integration/deleted.test.mjs'],
+      { schema: 1, rules: [] },
+      discovered
+    );
+    assert.deepEqual(result.lanes, ['integration']);
+    assert.deepEqual(result.tests, [
+      'scripts/task-tracker/tests/integration/integration-a.test.mjs',
+    ]);
+    assert.ok(result.reasons.every(({ signal }) => signal === 'deleted-test-lane'));
+  });
+
+  test('an otherwise-unmapped deleted source escalates every lane conservatively', () => {
+    const discovered = [
+      'scripts/task-tracker/tests/unit/lib/unit-a.test.mjs',
+      'scripts/task-tracker/tests/integration/integration-a.test.mjs',
+      'scripts/task-tracker/tests/slow/core/slow-a.test.mjs',
+    ];
+    const result = select(
+      ['scripts/task-tracker/tests/fixtures/test-impact/lib/deleted-source.mjs'],
+      { schema: 1, rules: [] },
+      discovered
+    );
+    assert.deepEqual(result.lanes, ['unit', 'integration', 'slow']);
+    assert.deepEqual(result.tests, [...discovered].sort());
+    assert.ok(result.reasons.every(({ signal }) => signal === 'deleted-path-lane-escalation'));
+  });
 });
 
 describe('manifest fail-closed validation', () => {

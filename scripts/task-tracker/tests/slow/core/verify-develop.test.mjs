@@ -22,6 +22,7 @@ import { dirname, resolve, join } from 'node:path';
 import {
   buildFinalSteps,
   buildIterationSteps,
+  collectChangedPaths,
   collectTestFiles,
   isMainModule,
   runDevelopVerification,
@@ -265,18 +266,31 @@ describe('collectTestFiles (#855 — untracked test files must not be skipped)',
   });
 });
 
-describe('diff-filter semantics (documentation assertions)', () => {
-  it('ACMR excludes deletions — deleted files do not appear in run list', () => {
-    // Simulate: git diff --diff-filter=ACMR returns no deleted files
-    // A deleted file would have status D; ACMR = Added|Copied|Modified|Renamed
-    const diffOutput =
-      'tests/integration/new-feature.test.mjs\ntests/integration/edited.test.mjs\n';
-    const files = parseTestFiles(diffOutput);
-    // Confirm: the list only contains added/modified files, never a deleted path
-    assert.ok(files.every((f) => !f.includes('deleted')));
-    assert.equal(files.length, 2);
+describe('collectChangedPaths (#1089 — deleted and renamed paths stay visible)', () => {
+  it('includes a deleted tracked source path', () => {
+    const dir = initRepo();
+    try {
+      commitFile(dir, 'lib/deleted.mjs', 'export const value = 1;\n');
+      rmSync(join(dir, 'lib/deleted.mjs'));
+      assert.deepEqual(collectChangedPaths({ cwd: dir }), ['lib/deleted.mjs']);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
   });
 
+  it('includes both the old and new sides of a tracked rename', () => {
+    const dir = initRepo();
+    try {
+      commitFile(dir, 'lib/old-name.mjs', 'export const value = 1;\n');
+      git(['mv', 'lib/old-name.mjs', 'lib/new-name.mjs'], dir);
+      assert.deepEqual(collectChangedPaths({ cwd: dir }), ['lib/new-name.mjs', 'lib/old-name.mjs']);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+});
+
+describe('empty-change semantics', () => {
   it('empty diff produces no-op — exit early without running node --test', () => {
     const files = parseTestFiles('');
     assert.equal(files.length, 0);
