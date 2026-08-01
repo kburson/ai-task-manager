@@ -40,6 +40,7 @@ import {
 import {
   buildVerificationFingerprint,
   createVerificationReceipt,
+  hasVerificationReceiptMarker,
   validateVerificationReceipt,
 } from '../lib/verification-receipt.mjs';
 import { runDevelopVerification } from '../verify-develop.mjs';
@@ -487,10 +488,12 @@ export async function runVerbTest({
     }
   }
   let developEvidence = null;
+  let developReuseRefusal = [];
   if (runDevelopFinalization && currentState === 'develop' && deps.forceRerun !== true) {
     try {
       const currentFingerprint = await buildFingerprint({ projectDir, commitSha: sha });
       const existingReceipt = parseVerificationReceipt(body, 'develop-final');
+      const markerPresent = hasVerificationReceiptMarker(body, 'develop-final');
       const existingValidation = validateVerificationReceipt({
         receipt: existingReceipt,
         expectedIssue: Number(issueNum),
@@ -504,13 +507,26 @@ export async function runVerbTest({
           fingerprint: currentFingerprint,
           validation: existingValidation,
         };
+      } else {
+        developReuseRefusal = markerPresent
+          ? existingValidation.reasons
+          : [{ code: 'receipt-missing' }];
       }
-    } catch {
-      // Missing or unresolvable evidence is not reusable. Finalization below
-      // remains the owning recovery path and returns its structured reason.
+    } catch (error) {
+      developReuseRefusal = [
+        { code: 'fingerprint-unresolvable', message: String(error?.message || error) },
+      ];
     }
   }
   if (runDevelopFinalization && !developEvidence) {
+    if (developReuseRefusal.length > 0) {
+      const codes = developReuseRefusal.map(({ code }) => code).join(', ');
+      await postComment({
+        cfg,
+        issueNum,
+        body: `⚠ Develop-final receipt reuse refused before Test: ${codes}. Running one new Develop finalization.`,
+      });
+    }
     const finalization = await runDevelopFinalization({
       projectDir,
       issueNumber: Number(issueNum),
