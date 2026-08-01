@@ -1,8 +1,8 @@
 {
   "_comment": "#868 pre-move per-lane basename census (frozen at the subsystem-nesting move). test-tree-layout.test.mjs asserts the live laneManifest() basename sets still equal these, proving the reorg dropped no file and preserved every file lane. Regenerate ONLY on a deliberate add/remove/relane, via .tmp/inspect/gen-layout-baseline.mjs.",
   "counts": {
-    "unit": 682,
-    "integration": 6,
+    "unit": 683,
+    "integration": 7,
     "slow": 47
   },
   "lanes": {
@@ -534,6 +534,7 @@
       "review-notes.test.mjs",
       "review-preflight-epic-aware.test.mjs",
       "review-preflight.test.mjs",
+      "review-receipt-reuse.test.mjs",
       "review-proven-box.test.mjs",
       "review-sandbox-demote-slug.test.mjs",
       "review-state-action.test.mjs",
@@ -694,6 +695,7 @@
       "assignee-guard.integration.test.mjs",
       "create-issue-gate-compliance.test.mjs",
       "seven-state-flow.test.mjs",
+      "stage-aware-verification.integration.test.mjs",
       "tracked-templates.test.mjs",
       "two-sessions-different-issues.test.mjs",
       "two-sessions-same-issue.test.mjs"

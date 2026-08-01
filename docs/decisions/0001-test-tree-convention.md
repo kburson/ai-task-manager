@@ -154,6 +154,27 @@ are fast and deterministic; they do not warrant the overhead of the `integration
 Integration tests are excluded from `npm test` (fast lane) and only run under
 `npm run test:all`.
 
+### 6. Impact selection and verification ownership (amended by #1089)
+
+Develop iteration does not rediscover tests by basename alone. The repository
+selector builds a deterministic graph of repository-local static ESM imports and
+unions direct imports, transitive imports, changed tests, shared fixtures, the
+legacy basename signal, and explicit high-blast-radius manifest rules. Every
+selection carries an explanation. Invalid manifest paths, unknown lanes, empty
+reasons, or unmatched high-blast-radius rules fail closed instead of silently
+shrinking coverage.
+
+The selector is a Develop feedback optimization, not a Test substitute. A new
+committed implementation always receives one complete unit, integration, and
+slow Test pass. Develop finalization owns full lint and format; Test owns the
+complete lanes; Review validates Test evidence without repeating either set.
+The exact contract and recovery loop are documented in
+[`docs/guides/workflow.md`](../guides/workflow.md#stage-owned-verification-and-exact-sha-receipts).
+
+Shared fixture modules remain inside `tests/fixtures/` and must be mapped by
+the selector. Changing a shared fixture selects every dependent test; changing
+a global fixture helper or test runner escalates to its declared complete lane.
+
 ---
 
 ## Consequences

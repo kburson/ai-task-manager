@@ -105,6 +105,54 @@ scripts/gh/move-state.mjs 42 develop
 - Move to **Review** automatically when verification passes (ready-for-review).
 - Move to **Done** only by `/task close` after a human approves.
 
+### Stage-owned verification and exact-SHA receipts
+
+Verification work has one owner for each unchanged committed source state:
+
+| Stage                | Owned work                                                                                       | Reused work                                    |
+| -------------------- | ------------------------------------------------------------------------------------------------ | ---------------------------------------------- |
+| Develop iteration    | Changed-file autofix/format and explainable impact-selected tests                                | None                                           |
+| Develop finalization | Full `npm run lint` and `npm run format:check`, exactly once at the clean final SHA              | None                                           |
+| Test                 | Complete unit, integration, and slow lanes in the clean sandbox, plus declared targeted commands | Valid Develop lint/format receipt              |
+| Review               | Finding-driven targeted probes only                                                              | Valid Test receipt; no standard command reruns |
+
+During Develop, `node scripts/task-tracker/verify-develop.mjs --mode iteration`
+is the normal feedback loop. The selector reports every changed path, selected
+test, reason (`changed-test`, direct/transitive import, fixture, basename
+compatibility, or manifest rule), and any lane escalation. Package/lockfile,
+runner, lane-classifier, global-helper, or impact-manifest changes deliberately
+fail closed to the lanes declared by the manifest.
+
+`/task test #N` owns finalization. While the issue is still in Develop it checks
+that the tree is clean and committed, runs full lint and format once, persists
+and reads back an `aitm.verification-receipt/v1` for the complete 40-hex SHA,
+then creates the isolated Test worktree at that exact SHA. Test reuses the two
+validated finalization results and runs `test:unit`, `test:integration`, and
+`test:slow` once. The resulting Test receipt records runtime/config/lockfile
+fingerprints, clean-worktree identity, command classifications, exits, and
+durations. Existing `aitm-test-started` and `aitm-dod-verified` markers remain
+present for backward compatibility.
+
+Review validates the Test receipt, current fingerprint, and both compatibility
+SHA markers. A missing, malformed, red, dirty, stale, or incomplete v1 receipt
+fails closed and takes the audited Test → Develop rework path. Review does not
+rerun lint, format, or complete test lanes. A focused probe arising from a
+concrete review finding is recorded separately as `review-probe` evidence and
+does not alter or masquerade as the Test receipt. Marker-only issues without a
+v1 receipt retain the bounded legacy path; the presence of a malformed v1
+marker can never fall back to it.
+
+Recovery after receipt invalidation is:
+
+1. Bind/resume the issue in Develop and inspect the structured refusal codes.
+2. Run Develop iteration checks, fix the finding, and commit the new source state.
+3. Run `/task test #N` once to produce new finalization and Test receipts.
+4. Retry `/task review #N`.
+
+A Test self-loop with a valid exact-SHA receipt runs no commands. Use `/task
+test #N --force` only for an intentional diagnostic rerun; the override is
+posted to the issue audit trail.
+
 ## Commit Attribution
 
 Attribution is **topology-agnostic and message-based**: a commit is attributed to
