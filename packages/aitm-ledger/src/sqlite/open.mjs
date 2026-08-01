@@ -1,3 +1,4 @@
+// cspell:ignore errcode
 import { mkdirSync } from 'node:fs';
 import path from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
@@ -5,6 +6,27 @@ import { DatabaseSync } from 'node:sqlite';
 import { WorkLeaseError } from '../lease/errors.mjs';
 import { applyMigration001 } from './migrations/001-leases.mjs';
 import { applyMigration002 } from './migrations/002-lease-lifecycle.mjs';
+
+const SQLITE_BUSY_TIMEOUT_MS = 5000;
+const SQLITE_BUSY_RETRY_MS = 10;
+const retrySignal = new Int32Array(new SharedArrayBuffer(4));
+
+function isTransientSqliteLock(error) {
+  return error?.errcode === 5 || error?.errcode === 6;
+}
+
+function enableWalWithRetry(db) {
+  const deadline = Date.now() + SQLITE_BUSY_TIMEOUT_MS;
+  while (true) {
+    try {
+      db.exec('PRAGMA journal_mode = WAL');
+      return;
+    } catch (error) {
+      if (!isTransientSqliteLock(error) || Date.now() >= deadline) throw error;
+      Atomics.wait(retrySignal, 0, 0, SQLITE_BUSY_RETRY_MS);
+    }
+  }
+}
 
 export function runMigrations(db, { now, migration002Hooks } = {}) {
   db.exec('BEGIN IMMEDIATE');
@@ -36,8 +58,8 @@ export function openProjectDatabase({
   const db = new Database(databasePath);
   try {
     db.exec('PRAGMA foreign_keys = ON');
-    db.exec('PRAGMA busy_timeout = 5000');
-    if (databasePath !== ':memory:') db.exec('PRAGMA journal_mode = WAL');
+    db.exec(`PRAGMA busy_timeout = ${SQLITE_BUSY_TIMEOUT_MS}`);
+    if (databasePath !== ':memory:') enableWalWithRetry(db);
     runMigrations(db, { now, migration002Hooks });
     if (expectedLedgerProjectId) {
       const stored = db

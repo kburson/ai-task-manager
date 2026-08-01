@@ -1,5 +1,5 @@
 // @story #1049
-// cspell:ignore notnull
+// cspell:ignore errcode notnull
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { fork } from 'node:child_process';
@@ -232,6 +232,46 @@ test('open configures durable schema, WAL, foreign keys, and busy timeout', () =
     assert.equal(db.prepare('PRAGMA journal_mode').get().journal_mode, 'wal');
     assert.equal(db.prepare('PRAGMA foreign_keys').get().foreign_keys, 1);
     assert.equal(db.prepare('PRAGMA busy_timeout').get().timeout, 5000);
+    db.close();
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('open retries a transient SQLite lock while enabling WAL', () => {
+  const dir = mkdtempSync(path.join(os.tmpdir(), 'aitm-sqlite-open-contention-'));
+  let walAttempts = 0;
+  class TransientlyLockedDatabase {
+    constructor(databasePath) {
+      this.database = new DatabaseSync(databasePath);
+    }
+
+    exec(sql) {
+      if (sql === 'PRAGMA journal_mode = WAL' && ++walAttempts === 1) {
+        const error = new Error('database is locked');
+        error.code = 'ERR_SQLITE_ERROR';
+        error.errcode = 5;
+        throw error;
+      }
+      return this.database.exec(sql);
+    }
+
+    prepare(sql) {
+      return this.database.prepare(sql);
+    }
+
+    close() {
+      return this.database.close();
+    }
+  }
+
+  try {
+    const db = openProjectDatabase({
+      databasePath: path.join(dir, 'project.sqlite'),
+      Database: TransientlyLockedDatabase,
+    });
+    assert.equal(walAttempts, 2);
+    assert.equal(db.prepare('PRAGMA journal_mode').get().journal_mode, 'wal');
     db.close();
   } finally {
     rmSync(dir, { recursive: true, force: true });
