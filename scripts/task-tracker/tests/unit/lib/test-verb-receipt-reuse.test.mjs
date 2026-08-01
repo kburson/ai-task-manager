@@ -175,6 +175,58 @@ test('/task test finalizes Develop, reads back evidence, reuses it, and emits Te
   );
 });
 
+test('/task test reuses a valid Develop-final receipt when retrying unchanged SHA', async () => {
+  let body = upsertVerificationReceipt(issueBody(), developReceipt());
+  let finalizations = 0;
+  const sandboxRuns = [];
+  const result = await runVerbTest({
+    cfg,
+    issueNumber: 1089,
+    projectDir: process.cwd(),
+    now: () => INSTANT,
+    deps: {
+      fetchBody: async () => body,
+      mutateBody: async ({ mutate }) => {
+        body = mutate(body);
+        return { status: 'ok' };
+      },
+      postComment: async () => {},
+      getHeadSha: async () => SHA,
+      buildFingerprint: ({ projectDir }) =>
+        fingerprint(projectDir === process.cwd() ? '/outer' : '/sandbox'),
+      runDevelopFinalization: async () => {
+        finalizations += 1;
+        return { ok: false };
+      },
+      createWorktree: async () => {},
+      removeWorktree: async () => {},
+      npmCi: async () => {},
+      getSandboxHeadSha: async () => SHA,
+      execInSandbox: async ({ argv }) => {
+        sandboxRuns.push(argv.join(' '));
+        return {
+          exit: 0,
+          stdout: '',
+          stderr: '',
+          durationMs: 1,
+          startedAt: INSTANT,
+          completedAt: INSTANT,
+        };
+      },
+      moveState: async () => ({ ok: true }),
+      logIssueTime: async () => {},
+    },
+  });
+
+  assert.equal(result.status, 'passed');
+  assert.equal(finalizations, 0);
+  assert.deepEqual(sandboxRuns.slice(0, 3), [
+    'npm run test:unit',
+    'npm run test:integration',
+    'npm run test:slow',
+  ]);
+});
+
 test('/task test records invalid finalization and never creates a sandbox', async () => {
   let body = issueBody();
   let worktrees = 0;

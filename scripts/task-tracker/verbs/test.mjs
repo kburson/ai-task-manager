@@ -486,7 +486,29 @@ export async function runVerbTest({
     }
   }
   let developEvidence = null;
-  if (runDevelopFinalization) {
+  if (runDevelopFinalization && currentState === 'develop' && deps.forceRerun !== true) {
+    try {
+      const currentFingerprint = await buildFingerprint({ projectDir, commitSha: sha });
+      const existingReceipt = parseVerificationReceipt(body, 'develop-final');
+      const existingValidation = validateVerificationReceipt({
+        receipt: existingReceipt,
+        expectedStage: 'develop-final',
+        fingerprint: currentFingerprint,
+        required: ['lint-full', 'format-full'],
+      });
+      if (existingValidation.ok) {
+        developEvidence = {
+          receipt: existingReceipt,
+          fingerprint: currentFingerprint,
+          validation: existingValidation,
+        };
+      }
+    } catch {
+      // Missing or unresolvable evidence is not reusable. Finalization below
+      // remains the owning recovery path and returns its structured reason.
+    }
+  }
+  if (runDevelopFinalization && !developEvidence) {
     const finalization = await runDevelopFinalization({
       projectDir,
       issueNumber: Number(issueNum),
