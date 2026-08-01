@@ -158,6 +158,7 @@ Reincludes
 reparsed
 repoint
 repoints
+replayable
 requalified
 requalify
 rescan
