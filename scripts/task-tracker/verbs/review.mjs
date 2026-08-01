@@ -62,15 +62,7 @@ const TEST_RECEIPT_REQUIRED = Object.freeze([
   'test-integration',
   'test-slow',
 ]);
-const READ_ONLY_REVIEW_PROBE_BINS = new Set(['git', 'gh', 'rg', 'grep', 'test', '[']);
 const reviewPexec = promisify(execFile);
-
-function firstNonFlagArg(argv, startIndex = 1) {
-  for (let index = startIndex; index < argv.length; index += 1) {
-    if (!argv[index].startsWith('-')) return { token: argv[index], index };
-  }
-  return null;
-}
 
 function isExactProjectFile(token, projectDir, { testFile = false } = {}) {
   if (!projectDir || typeof token !== 'string' || /[*?{}[\]]/.test(token)) return false;
@@ -88,28 +80,24 @@ function isExactProjectFile(token, projectDir, { testFile = false } = {}) {
 }
 
 function isTargetedReviewProbe(argv, projectDir) {
-  if (READ_ONLY_REVIEW_PROBE_BINS.has(argv[0])) return true;
-
   if (argv[0] === 'node') {
-    const testFlagIndex = argv.indexOf('--test');
     return (
-      testFlagIndex >= 0 &&
-      argv
-        .slice(testFlagIndex + 1)
-        .some((token) => isExactProjectFile(token, projectDir, { testFile: true }))
+      argv.length >= 3 &&
+      argv[1] === '--test' &&
+      argv.slice(2).every((token) => isExactProjectFile(token, projectDir, { testFile: true }))
     );
   }
 
-  if (argv[0] !== 'npx') return false;
-  const tool = firstNonFlagArg(argv);
-  if (!tool || !['eslint', 'prettier'].includes(tool.token)) return false;
-  const toolArgs = argv.slice(tool.index + 1);
-  if (tool.token === 'eslint') {
-    return toolArgs.length > 0 && toolArgs.every((token) => isExactProjectFile(token, projectDir));
+  if (argv[0] !== 'npx' || !['eslint', 'prettier'].includes(argv[1])) return false;
+  if (argv[1] === 'eslint') {
+    return (
+      argv.length >= 3 && argv.slice(2).every((token) => isExactProjectFile(token, projectDir))
+    );
   }
   return (
-    toolArgs.includes('--check') &&
-    toolArgs.every((token) => token === '--check' || isExactProjectFile(token, projectDir))
+    argv.length >= 4 &&
+    argv[2] === '--check' &&
+    argv.slice(3).every((token) => isExactProjectFile(token, projectDir))
   );
 }
 

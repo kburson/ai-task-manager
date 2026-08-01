@@ -20,6 +20,7 @@ function fingerprint() {
 }
 
 test('Review probe policy rejects standard full commands and semantic aliases', () => {
+  const focusedTest = 'scripts/task-tracker/tests/unit/lib/review-probe-policy.test.mjs';
   for (const command of [
     'npm run lint',
     'npm run-script lint',
@@ -37,6 +38,10 @@ test('Review probe policy rejects standard full commands and semantic aliases', 
     'node scripts/task-tracker/../run-tests.mjs --lane unit',
     'node --test',
     'node --test scripts/task-tracker/tests/unit/lib/*.test.mjs',
+    `node --test ${focusedTest} scripts/task-tracker/tests/unit/lib`,
+    `node --test ${focusedTest} scripts/run-tests.mjs`,
+    `node --test --test-reporter-destination=report.tap ${focusedTest}`,
+    `node --test --import=data:text/javascript,process.exit(0) ${focusedTest}`,
     'scripts/run-tests.mjs --lane slow',
     './scripts/run-tests.mjs --lane integration',
     'scripts/task-tracker/../run-tests.mjs --lane all',
@@ -45,6 +50,11 @@ test('Review probe policy rejects standard full commands and semantic aliases', 
     'npx eslint scripts/task-tracker/verbs/review.mjs --output-file report.json',
     'npx prettier --check .',
     'npx prettier --write .',
+    'git branch codex-review-probe-write',
+    'git branch -D trunk',
+    'git config aitm.reviewProbeWrite true',
+    'git diff --output=report.patch',
+    'rg aitm scripts/task-tracker/verbs/review.mjs',
   ]) {
     const result = reviewVerb.validateReviewProbeCommand(command, { projectDir: process.cwd() });
     assert.equal(result.ok, false, command);
