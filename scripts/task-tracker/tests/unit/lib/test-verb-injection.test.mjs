@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// @story #137
+// @story #137 #1089
 // E2E: drive `/task test` against an issue body that contains a malicious
 // backtick-wrapped verification command. Asserts:
 //   1. The malicious payload is REJECTED by the allowlist validator — no shell side effect.
@@ -183,6 +183,8 @@ process.exit(0);
     /forbidden semicolon/,
     `expected rejection reason in failure comment; comment was:\n${comment}`
   );
+  assert.match(comment, /node --version/, 'green VC is represented in the result table');
+  assert.match(comment, /node x; touch/, 'rejected VC is represented in the result table');
 
   // The entry marker (aitm-test-started) is stamped BEFORE the VC runs, so the
   // body file will exist on red. What MUST NOT appear is the dod-verified exit

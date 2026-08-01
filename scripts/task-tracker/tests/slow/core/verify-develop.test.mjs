@@ -1,4 +1,4 @@
-// @story #447 #448 #529 #855
+// @story #447 #448 #529 #855 #1089
 /**
  * Unit tests for verify-develop.mjs logic.
  *
@@ -339,6 +339,10 @@ describe('buildLintFormatSteps (#529 — full lint in Develop)', () => {
     const fmtIdx = labels.indexOf('npm run format');
     const lintIdx = labels.indexOf('npm run lint');
     assert.ok(fixIdx < lintIdx && fmtIdx < lintIdx);
+  });
+
+  it('characterizes full lint as Develop-owned before stage-aware finalization (#1089)', () => {
+    assert.equal(steps.filter((step) => step.args.join(' ') === 'run lint').length, 1);
   });
 });
 

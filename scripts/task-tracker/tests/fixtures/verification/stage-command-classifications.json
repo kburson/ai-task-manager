@@ -1,0 +1,19 @@
+{
+  "schema": 1,
+  "commands": [
+    { "classification": "lint-full", "command": "npm run lint", "owner": "develop-final" },
+    {
+      "classification": "format-full",
+      "command": "npm run format:check",
+      "owner": "develop-final"
+    },
+    { "classification": "test-unit", "command": "npm run test:unit", "owner": "test" },
+    {
+      "classification": "test-integration",
+      "command": "npm run test:integration",
+      "owner": "test"
+    },
+    { "classification": "test-slow", "command": "npm run test:slow", "owner": "test" },
+    { "classification": "review-probe", "command": "node --test probe.test.mjs", "owner": "review" }
+  ]
+}

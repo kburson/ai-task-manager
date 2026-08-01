@@ -1,4 +1,4 @@
-// @story #226
+// @story #226 #1089
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -12,15 +12,22 @@ const reviewVerbPath = path.resolve(__dirname, '..', '..', 'verbs', 'review.mjs'
 const reviewSource = readFileSync(reviewVerbPath, 'utf8');
 
 // ---------------------------------------------------------------------------
-// #226: STANDARD_DOD_COMMANDS contract — the three canonical evidence commands
+// #226: STANDARD_DOD_COMMANDS contract — the canonical evidence commands
 // must be exported and contain the expected entries. The review verb's seed
 // relies on this set; any change here is a contract change requiring review.
 // ---------------------------------------------------------------------------
 {
   assert.ok(STANDARD_DOD_COMMANDS instanceof Set, 'STANDARD_DOD_COMMANDS is a Set');
   assert.ok(STANDARD_DOD_COMMANDS.has('npm test'), 'includes npm test');
+  assert.ok(STANDARD_DOD_COMMANDS.has('npm run test:slow'), 'includes npm run test:slow');
+  assert.ok(STANDARD_DOD_COMMANDS.has('npm run test:all'), 'includes legacy npm run test:all');
   assert.ok(STANDARD_DOD_COMMANDS.has('npm run lint'), 'includes npm run lint');
   assert.ok(STANDARD_DOD_COMMANDS.has('npm run format:check'), 'includes npm run format:check');
+  assert.equal(
+    STANDARD_DOD_COMMANDS.size,
+    5,
+    'pre-#1089 Review trust is limited to five standard commands'
+  );
   console.log('PASS: STANDARD_DOD_COMMANDS contract pinned');
 }
 
