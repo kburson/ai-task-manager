@@ -28,6 +28,10 @@ function bodyWithDirectory(directory = validDirectory) {
   return `${legacyBody}\n<!-- aitm-directory\n${JSON.stringify(directory, null, 2)}\n-->\n`;
 }
 
+function bodyWithRawDirectory(directoryJson) {
+  return `${legacyBody}\n<!-- aitm-directory\n${directoryJson}\n-->\n`;
+}
+
 test('legacy fixture remains a body-governed authority source', () => {
   assert.match(legacyBody, /^## Acceptance Criteria$/m);
   assert.match(legacyBody, /^### Lifecycle \(auto-ticked at Review\/Close\)$/m);
@@ -46,6 +50,46 @@ test('a complete v1 directory resolves to frozen github-record authority', () =>
 test('duplicate directories fail closed', () => {
   assert.throws(
     () => locateAuthoritySource({ issueBody: `${bodyWithDirectory()}${bodyWithDirectory()}` }),
+    /authority-directory:duplicate/
+  );
+});
+
+test('a duplicate root schema fails closed even when a known schema appears last', () => {
+  const directoryJson = `{
+  "issueNodeId": "I_kwDOAuthority",
+  "revision": 1,
+  "schema": "aitm.directory/v2",
+  "schema": "aitm.directory/v1",
+  "singletons": {
+    "coordination": "IC_kwDOCoordination",
+    "delivery-contract": "IC_kwDODelivery",
+    "evidence-projection": "IC_kwDOEvidences",
+    "timing": "IC_kwDOTiming"
+  }
+}`;
+
+  assert.throws(
+    () => locateAuthoritySource({ issueBody: bodyWithRawDirectory(directoryJson) }),
+    /authority-directory:duplicate/
+  );
+});
+
+test('a duplicate nested coordination singleton fails closed', () => {
+  const directoryJson = `{
+  "issueNodeId": "I_kwDOAuthority",
+  "revision": 1,
+  "schema": "aitm.directory/v1",
+  "singletons": {
+    "coordination": "IC_kwDOStaleCoordination",
+    "coordination": "IC_kwDOCoordination",
+    "delivery-contract": "IC_kwDODelivery",
+    "evidence-projection": "IC_kwDOEvidences",
+    "timing": "IC_kwDOTiming"
+  }
+}`;
+
+  assert.throws(
+    () => locateAuthoritySource({ issueBody: bodyWithRawDirectory(directoryJson) }),
     /authority-directory:duplicate/
   );
 });

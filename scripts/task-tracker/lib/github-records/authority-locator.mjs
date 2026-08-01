@@ -11,6 +11,117 @@ function directoryError(category) {
   return new TypeError(`authority-directory:${category}`);
 }
 
+function hasDuplicateObjectMembers(json) {
+  let index = 0;
+  let hasDuplicate = false;
+
+  function fail() {
+    throw new SyntaxError('invalid JSON');
+  }
+
+  function skipWhitespace() {
+    while (' \n\r\t'.includes(json[index])) index += 1;
+  }
+
+  function parseString() {
+    if (json[index] !== '"') fail();
+    const start = index;
+    index += 1;
+
+    while (index < json.length) {
+      const character = json[index];
+      if (character === '"') {
+        index += 1;
+        return JSON.parse(json.slice(start, index));
+      }
+      if (character.charCodeAt(0) < 0x20) fail();
+      if (character === '\\') {
+        index += 1;
+        const escape = json[index];
+        if ('"\\/bfnrt'.includes(escape)) index += 1;
+        else if (escape === 'u' && /^[0-9a-fA-F]{4}$/.test(json.slice(index + 1, index + 5))) {
+          index += 5;
+        } else fail();
+      } else {
+        index += 1;
+      }
+    }
+
+    fail();
+  }
+
+  function parseValue() {
+    skipWhitespace();
+    if (json[index] === '{') return parseObject();
+    if (json[index] === '[') return parseArray();
+    if (json[index] === '"') return parseString();
+
+    for (const literal of ['true', 'false', 'null']) {
+      if (json.startsWith(literal, index)) {
+        index += literal.length;
+        return;
+      }
+    }
+
+    const number = json.slice(index).match(/^-?(?:0|[1-9]\d*)(?:\.\d+)?(?:[eE][+-]?\d+)?/);
+    if (!number) fail();
+    index += number[0].length;
+  }
+
+  function parseObject() {
+    index += 1;
+    skipWhitespace();
+    const members = new Set();
+    if (json[index] === '}') {
+      index += 1;
+      return;
+    }
+
+    while (true) {
+      skipWhitespace();
+      const key = parseString();
+      if (members.has(key)) hasDuplicate = true;
+      members.add(key);
+      skipWhitespace();
+      if (json[index] !== ':') fail();
+      index += 1;
+      parseValue();
+      skipWhitespace();
+      if (json[index] === '}') {
+        index += 1;
+        return;
+      }
+      if (json[index] !== ',') fail();
+      index += 1;
+    }
+  }
+
+  function parseArray() {
+    index += 1;
+    skipWhitespace();
+    if (json[index] === ']') {
+      index += 1;
+      return;
+    }
+
+    while (true) {
+      parseValue();
+      skipWhitespace();
+      if (json[index] === ']') {
+        index += 1;
+        return;
+      }
+      if (json[index] !== ',') fail();
+      index += 1;
+    }
+  }
+
+  parseValue();
+  skipWhitespace();
+  if (index !== json.length) fail();
+  return hasDuplicate;
+}
+
 function hasExactlyKeys(value, expectedKeys) {
   if (value === null || typeof value !== 'object' || Array.isArray(value)) return false;
   const keys = Object.keys(value).sort();
@@ -29,8 +140,17 @@ function parseDirectory(issueBody) {
   const payloadEnd = issueBody.indexOf('-->', payloadStart);
   if (payloadEnd === -1) throw directoryError('malformed');
 
+  const payload = issueBody.slice(payloadStart, payloadEnd).trim();
+  let hasDuplicate;
   try {
-    return JSON.parse(issueBody.slice(payloadStart, payloadEnd).trim());
+    hasDuplicate = hasDuplicateObjectMembers(payload);
+  } catch {
+    throw directoryError('malformed');
+  }
+  if (hasDuplicate) throw directoryError('duplicate');
+
+  try {
+    return JSON.parse(payload);
   } catch {
     throw directoryError('malformed');
   }
