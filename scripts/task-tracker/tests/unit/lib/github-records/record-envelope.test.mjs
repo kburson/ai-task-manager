@@ -1,21 +1,23 @@
 // @story #1069
-// cspell:ignore accesstoken apikey authorizationbackup authorizationdecisionpersonalpatbackup authorizationheader authorizationtoken authconfig authtoken authtokenbackup backupauthconfig backupcredentials backuppat backuppatdata bearercredential clientpassword clientsecret cookiebackup customauthmaterial databaseauth databaseauthbackup databasecredentials databasepasswd databasepassword databasepatvalue credentialsbackup ghp githubtoken gitlabtoken gitlabtokenbackup idtoken idtokenbackup myauthbackup mypat mypatbackup noncanonical npmtoken npmtokenbackup passwordbackup passwordpolicymypatbackup personalpat personalpatbackup qwertyuiopasdfgh refreshtoken sessionauth sessionauthconfig sessionauthdata sessioncookie sessioncookiebackup sessioncookies sessioncookievalue sessionpatconfig sessiontoken sessiontokenbackup tokencountdatabaseauthbackup tokenenv tokenvalue
-
+// cspell:ignore accesstoken apikey authorizationbackup authorizationdecisionpersonalpatbackup authorizationheader authorizationtoken authconfig authtoken authtokenbackup backupauthconfig backupcredentials backuppat backuppatdata bearercredential clientpassword clientsecret cookiebackup customauthmaterial databaseauth databaseauthbackup databasecredentials databasepasswd databasepassword databasepatvalue credentialsbackup ghp githubtoken gitlabtoken gitlabtokenbackup idtoken idtokenbackup myauthbackup mypat mypatbackup noncanonical npmtoken npmtokenbackup passwordbackup passwordpassword passwordpolicymypatbackup personalpat personalpatbackup qwertyuiopa qwertyuiopasdfgh randomtoken redactedredacted refreshtoken secretsecretsecret secretword sessionauth sessionauthconfig sessionauthdata sessioncookie sessioncookiebackup sessioncookies sessioncookievalue sessionpatconfig sessiontoken sessiontokenbackup tokencountdatabaseauthbackup tokenenv tokenvalue zxcvbnmasd
 import { strict as assert } from 'node:assert';
 import test from 'node:test';
-
 import { canonicalRecordJson } from '../../../../lib/github-records/canonical-json.mjs';
 import {
   hashRecordPayload,
   parseAitmRecord,
   renderAitmRecord,
 } from '../../../../lib/github-records/record-envelope.mjs';
-
 const payload = { tags: ['x', 'y'], nested: { z: null, a: true }, alpha: 1 };
-
 const payloadHash = 'sha256:ca8d1b5b789a19c4824724d92b02b568948fcfae437eb4c178f377da3faeb9ab';
-const bearerSecretNouns = ['token', 'scheme', 'authentication', 'credentials', 'responsibility'];
-const tokenLikeBearerCandidates = ['abc', 'abc.def', 'abcdefghijklmnop', 'qwertyuiopasdfgh'];
+const bearerSecretNouns =
+  `token tokens scheme authentication credential credentials policy security header headers guidance responsibility`.split(
+    ' '
+  );
+const tokenLikeBearerCandidates =
+  `abc abc.def abcdefghijklmnop qwertyuiopasdfgh qwertyuiopa zxcvbnmasd qwerty secretword randomtoken aaaaa redactedredacted passwordpassword secretsecretsecret aaaaaaaaaaaaaaaa tokenvalue`.split(
+    ' '
+  );
 const credentialSignatures = [
   ...`
     bearer abcdefghijklmnop | Bearer abcdefghijklmnop | BEARER abcdefghijklmnop
@@ -41,22 +43,15 @@ const credentialSignatures = [
     `Bearer ${candidate} is active`,
     `Bearer ${candidate} was accepted`,
     `Bearer ${candidate} remains valid`,
+    `Review Bearer ${candidate} settings`,
   ]),
   ...`ghp_1234567890abcdefghijklmnop | Environment variable GH_TOKEN
     | Environment variable gh_token | -----BEGIN PRIVATE KEY-----`.split(/\s*\|\s*/),
 ];
-const ordinaryBearerProse = `
-  The bearer responsibility remains clear. | The Bearer responsibility remains clear.
-  Bearer tokens are prohibited. | The bearer scheme is documented.
-  Bearer authentication is enabled. | Bearer credentials must not be logged.
-  Bearer policy is documented. | Bearer security is documented. | Bearer headers are redacted.
-  The Bearer responsibility. | Bearer security, policy, and headers are documented.
-  Review bearer authentication settings. | Bearer policy documentation is available.
-  Bearer security guidance follows.
-`
-  .trim()
-  .split(/\s*\|\s*/);
-
+const ordinaryBearerProse =
+  `The bearer responsibility remains clear. | The Bearer responsibility remains clear. | Bearer tokens are prohibited. | The bearer scheme is documented. | Bearer authentication is enabled. | Bearer credentials must not be logged. | Bearer policy is documented. | Bearer security is documented. | Bearer headers are redacted. | The Bearer responsibility. | Bearer security, policy, and headers are documented. | Review bearer authentication settings. | Bearer policy documentation is available. | Bearer security guidance follows. | Bearer token handling is documented. | Bearer credential handling is documented. | Bearer header handling is documented. | Bearer guidance is available.`.split(
+    /\s*\|\s*/
+  );
 const validEnvelope = {
   schema: 'aitm.record/v1',
   recordId: '01J00000000000000000000000',
@@ -74,7 +69,6 @@ const validEnvelope = {
   payloadHash,
   payload,
 };
-
 function envelope(overrides = {}) {
   return { ...validEnvelope, ...overrides };
 }
@@ -225,6 +219,7 @@ test('rendering rejects recursively nested secret-bearing keys and credential va
     databaseauthbackup sessionauthdata mypatbackup personalpatbackup backupauthconfig databasepatvalue
     sessionpatconfig backuppatdata myauthbackup sessionauthconfig customauthmaterial
     passwordpolicymypatbackup tokencountdatabaseauthbackup authorizationdecisionpersonalpatbackup
+    patternAuthBackup authorPatBackup
   `
     .trim()
     .split(/\s+/);
@@ -257,6 +252,11 @@ test('secret scanning permits ordinary policy and token-accounting fields', () =
     credentialPolicyName apiKeyPolicyVersion sessionCookiePolicyName authorName authorityLabel patternName
     pathName patientId authenticationMode authPolicy authorship authorized authMode authConfiguration
     patentId patioMode patchVersion dispatchMode compatMode
+    filePath relativePath myPatternName securityPatchVersion backgroundDispatchStatus primaryPatientId
+    coauthorName userAuthorship primaryAuthorityLabel legacyAuthenticationMode coAuthorityLabel
+    empathyScore spatialIndex repatriationStatus tokenCountAuthor tokenCountAuthority tokenCountPath
+    passwordPolicyAuthenticationMode passwordPolicyPattern fortuneCookieAuthPolicy
+    authorizationDecisionAuthor patternPatience dispatchPattern
   `
     .trim()
     .split(/\s+/);

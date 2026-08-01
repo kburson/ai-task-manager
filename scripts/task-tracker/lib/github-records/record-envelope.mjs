@@ -60,15 +60,17 @@ const COLLAPSED_SENSITIVE_FRAGMENTS = [
 ];
 const COLLAPSED_AUTH_PAT_COMPOUNDS = ['authheader', 'authvalue', 'basicauth', 'githubpat'];
 const FORCED_DANGEROUS_COMPOUNDS = ['authorizationheader', 'authheader'];
-const SAFE_COLLAPSED_AUTH_FAMILIES =
-  'priorauthorization authorizationdecision authentication authconfiguration authpolicy authmode author'.split(
-    ' '
-  );
-const SAFE_COLLAPSED_PAT_FAMILIES = 'dispatch compat pattern patient patent patch path patio'.split(
-  ' '
-);
+const ORDINARY_COLLAPSED_LEXEMES =
+  'priorauthorization authorizationdecision authconfiguration authentication repatriation authorship authorized authority authpolicy authmode author dispatch pattern patience patient patent empathy spatial compat patch path patio'
+    .split(' ')
+    .sort((left, right) => right.length - left.length);
 const AUTHORIZATION_BEARER_RE = /\bauthorization\s*:\s*bearer\b/i;
 const BEARER_CANDIDATE_RE = /\bbearer\s+([A-Za-z0-9._~+/=-]+)/gi;
+const ORDINARY_BEARER_CONCEPTS = new Set(
+  'responsibility token tokens scheme authentication credential credentials policy security header headers guidance'.split(
+    ' '
+  )
+);
 const BEARER_ARTICLE_RE = /\b(?:a|an|the)[\s"'`*_~()[\]{},.;:!?-]*$/i;
 const BEARER_PROSE_PREFIX_RE = /\b(?:describe|document|explain|review)\s+$/i;
 const BEARER_CONTINUATION_WORDS = new Set(
@@ -138,9 +140,11 @@ function containsSensitiveKeyFragment(value) {
   );
 }
 
-function stripSafeCollapsedFamily(value, families) {
-  const family = families.find((candidate) => value.startsWith(candidate));
-  return family === undefined ? value : value.slice(family.length);
+function shieldOrdinaryCollapsedLexemes(value) {
+  return ORDINARY_COLLAPSED_LEXEMES.reduce(
+    (remaining, lexeme) => remaining.replaceAll(lexeme, ''),
+    value
+  );
 }
 
 function containsAuthPatAbbreviation(key, collapsed) {
@@ -150,14 +154,10 @@ function containsAuthPatAbbreviation(key, collapsed) {
     (segment, index) =>
       segment === 'auth' && !['configuration', 'mode', 'policy'].includes(segments[index + 1])
   );
-  const hasCollapsedAuth = stripSafeCollapsedFamily(
-    collapsed,
-    SAFE_COLLAPSED_AUTH_FAMILIES
-  ).includes('auth');
-  const hasCollapsedPat = stripSafeCollapsedFamily(collapsed, SAFE_COLLAPSED_PAT_FAMILIES).includes(
-    'pat'
+  const shielded = shieldOrdinaryCollapsedLexemes(collapsed);
+  return (
+    hasPatSegment || hasUnsafeAuthSegment || shielded.includes('auth') || shielded.includes('pat')
   );
-  return hasPatSegment || hasUnsafeAuthSegment || hasCollapsedAuth || hasCollapsedPat;
 }
 
 function isSafeSemanticKey(collapsed) {
@@ -179,38 +179,9 @@ function hasExplicitBearerContext(before) {
   return /^\s*(?:(?:[-*+>]|\d+[.)])\s*)$/.test(linePrefix) || /:\s*$/.test(linePrefix);
 }
 
-function isMonotonicAlphabetSequence(candidate) {
-  if (candidate.length < 3) return false;
-  const differences = [...candidate.slice(1)].map(
-    (character, index) => character.charCodeAt(0) - candidate.charCodeAt(index)
-  );
-  return (
-    differences.every((difference) => difference === 1) ||
-    differences.every((difference) => difference === -1)
-  );
-}
-
-function hasHighCharacterEntropy(candidate) {
-  if (candidate.length < 16) return false;
-  const frequencies = new Map();
-  for (const character of candidate) {
-    frequencies.set(character, (frequencies.get(character) ?? 0) + 1);
-  }
-  const entropy = [...frequencies.values()].reduce((total, frequency) => {
-    const probability = frequency / candidate.length;
-    return total - probability * Math.log2(probability);
-  }, 0);
-  return frequencies.size / candidate.length >= 0.7 && entropy >= 3.5;
-}
-
-function isTokenLikeBearerCandidate(candidate) {
+function isOrdinaryBearerConcept(candidate) {
   const normalized = candidate.toLowerCase().replace(/[.,;:!?]+$/, '');
-  return (
-    !/^[a-z]+$/.test(normalized) ||
-    normalized.length <= 4 ||
-    isMonotonicAlphabetSequence(normalized) ||
-    hasHighCharacterEntropy(normalized)
-  );
+  return ORDINARY_BEARER_CONCEPTS.has(normalized);
 }
 
 function hasBearerSentenceTail(after) {
@@ -224,7 +195,7 @@ function containsBearerCredential(value) {
   return [...value.matchAll(BEARER_CANDIDATE_RE)].some((match) => {
     const before = value.slice(0, match.index);
     const after = value.slice(match.index + match[0].length);
-    if (hasExplicitBearerContext(before) || isTokenLikeBearerCandidate(match[1])) return true;
+    if (hasExplicitBearerContext(before) || !isOrdinaryBearerConcept(match[1])) return true;
     return (
       !BEARER_ARTICLE_RE.test(before) &&
       !BEARER_PROSE_PREFIX_RE.test(before) &&
