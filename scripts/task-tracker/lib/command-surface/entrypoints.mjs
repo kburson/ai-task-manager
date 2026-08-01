@@ -50,6 +50,7 @@ export const EXECUTABLE_ENTRYPOINTS = Object.freeze([
   ...internalRows(
     'package-lifecycle-cli',
     [
+      'scripts/benchmarks/compare-test-fixtures.mjs',
       'scripts/run-tests.mjs',
       'scripts/dev-env/verify-local-worktree.mjs',
       'scripts/sync-templates.mjs',

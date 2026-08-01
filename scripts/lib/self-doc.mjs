@@ -663,6 +663,29 @@ const DIRECT_SELF_DOC = Object.freeze({
     output: ['Prints per-file and aggregate test results.'],
     relatedCommands: ['npm test', 'npm run test:slow'],
   }),
+  'compare-test-fixtures': directDoc('compare-test-fixtures', {
+    group: 'Package lifecycle',
+    path: 'scripts/benchmarks/compare-test-fixtures.mjs',
+    classification: 'package-lifecycle-cli',
+    synopsis: 'Benchmark old and new test-file compositions in seeded temporary worktrees.',
+    usage:
+      'compare-test-fixtures --baseline-ref <ref> --candidate-ref <ref> --file <path> [--file <path> ...] [--samples <n>] [--output <json>]',
+    arguments: [
+      argument('--baseline-ref <ref>', 'Git ref for the original composition.'),
+      argument('--candidate-ref <ref>', 'Git ref for the candidate composition.'),
+      argument('--file <path>', 'Repeatable path used by both refs.'),
+      argument('--baseline-file <path>', 'Repeatable baseline-only path.'),
+      argument('--candidate-file <path>', 'Repeatable candidate-only path.'),
+      argument('--samples <n>', 'Cold and warm sample count per ref; defaults to five.'),
+      argument('--output <json>', 'Machine-readable result path.'),
+    ],
+    preconditions: ['Both refs must be locally resolvable and repository setup must succeed.'],
+    effects: [
+      'Creates, seeds, measures, and removes two explicit temporary git worktrees without mutating the caller worktree.',
+    ],
+    output: ['Writes benchmark JSON and prints the threshold comparison.'],
+    relatedCommands: ['run-tests', 'npm run test:unit'],
+  }),
   'verify-local-worktree': directDoc('verify-local-worktree', {
     group: 'Package lifecycle',
     path: 'scripts/dev-env/verify-local-worktree.mjs',
