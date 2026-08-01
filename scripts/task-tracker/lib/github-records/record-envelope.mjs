@@ -1,4 +1,4 @@
-// cspell:ignore HJKMNP pousr noncanonical
+// cspell:ignore HJKMNP ically ization ment noncanonical pousr tion
 // cspell:ignore apikey apikeypolicy credentialpolicy fortunecookie passwordpolicy
 // cspell:ignore priorauthorization sessioncookiepolicy tokencount
 // cspell:ignore accesstoken authconfiguration authheader authmode authorizationheader authvalue basicauth
@@ -61,16 +61,21 @@ const COLLAPSED_SENSITIVE_FRAGMENTS = [
 const COLLAPSED_AUTH_PAT_COMPOUNDS = ['authheader', 'authvalue', 'basicauth', 'githubpat'];
 const FORCED_DANGEROUS_COMPOUNDS = ['authorizationheader', 'authheader'];
 const ORDINARY_COLLAPSED_LEXEMES =
-  'priorauthorization authorizationdecision authconfiguration authentication repatriation authorship authorized authority authpolicy authmode author dispatch pattern patience patient patent empathy spatial compat patch path patio'
+  'priorauthorization authorizationdecision authconfiguration authentication authenticity repatriation authorship authorized authority authpolicy authmode author dispatch pattern patience paternity patriarch patient patent empathy spatial compat patella patron patch path patio'
     .split(' ')
     .sort((left, right) => right.length - left.length);
+const SENSITIVE_LEXEME_QUALIFIERS =
+  'header value material data backup key token secret credential password cookie bearer auth pat'.split(
+    ' '
+  );
 const AUTHORIZATION_BEARER_RE = /\bauthorization\s*:\s*bearer\b/i;
 const BEARER_CANDIDATE_RE = /\bbearer\s+([A-Za-z0-9._~+/=-]+)/gi;
 const ORDINARY_BEARER_CONCEPTS = new Set(
-  'responsibility token tokens scheme authentication credential credentials policy security header headers guidance'.split(
+  'responsibility token tokens scheme authentication credential credentials policy security header headers guidance standard standards transport documentation requirement requirements setting settings value values'.split(
     ' '
   )
 );
+const ORDINARY_BEARER_MORPHOLOGY_RE = /^[a-z]{4,}(?:ability|ically|ization|tion|ity|ment|ware)s?$/;
 const BEARER_ARTICLE_RE = /\b(?:a|an|the)[\s"'`*_~()[\]{},.;:!?-]*$/i;
 const BEARER_PROSE_PREFIX_RE = /\b(?:describe|document|explain|review)\s+$/i;
 const BEARER_CONTINUATION_WORDS = new Set(
@@ -140,11 +145,24 @@ function containsSensitiveKeyFragment(value) {
   );
 }
 
-function shieldOrdinaryCollapsedLexemes(value) {
+function removeOrdinaryCollapsedLexemes(value) {
   return ORDINARY_COLLAPSED_LEXEMES.reduce(
     (remaining, lexeme) => remaining.replaceAll(lexeme, ''),
     value
   );
+}
+
+function shieldOrdinaryCollapsedLexemes(value) {
+  return ORDINARY_COLLAPSED_LEXEMES.reduce((remaining, lexeme) => {
+    return remaining.replaceAll(lexeme, (match, offset) => {
+      const suffix = remaining.slice(offset + lexeme.length);
+      const reducedSuffix = removeOrdinaryCollapsedLexemes(suffix);
+      const isSensitive = SENSITIVE_LEXEME_QUALIFIERS.some((qualifier) =>
+        reducedSuffix.includes(qualifier)
+      );
+      return isSensitive ? match : '';
+    });
+  }, value);
 }
 
 function containsAuthPatAbbreviation(key, collapsed) {
@@ -175,13 +193,24 @@ function isSecretKey(key) {
 }
 
 function hasExplicitBearerContext(before) {
-  const linePrefix = before.slice(before.lastIndexOf('\n') + 1);
-  return /^\s*(?:(?:[-*+>]|\d+[.)])\s*)$/.test(linePrefix) || /:\s*$/.test(linePrefix);
+  let linePrefix = before.slice(before.lastIndexOf('\n') + 1).trimEnd();
+  for (let index = 0; index < 3; index += 1) {
+    linePrefix = linePrefix
+      .replace(/[\s"'`*_()[\]{}]+$/, '')
+      .replace(/\b(?:a|an|the)$/i, '')
+      .replace(/[\s"'`*_()[\]{}]+$/, '');
+  }
+  linePrefix = linePrefix.trim().replace(/\s+/g, ' ');
+  const isCredentialLabel = /^(?:\{\s*)?["']?(?:authorization|credential)["']?\s*[:=]$/i.test(
+    linePrefix
+  );
+  const isListPrefix = /^(?:(?:>\s*)*(?:[-*+]|\d+[.)])|>)$/.test(linePrefix);
+  return isCredentialLabel || isListPrefix;
 }
 
 function isOrdinaryBearerConcept(candidate) {
   const normalized = candidate.toLowerCase().replace(/[.,;:!?]+$/, '');
-  return ORDINARY_BEARER_CONCEPTS.has(normalized);
+  return ORDINARY_BEARER_CONCEPTS.has(normalized) || ORDINARY_BEARER_MORPHOLOGY_RE.test(normalized);
 }
 
 function hasBearerSentenceTail(after) {

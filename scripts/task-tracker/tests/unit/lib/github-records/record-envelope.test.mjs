@@ -27,6 +27,11 @@ const credentialSignatures = [
     curl -H "Authorization: Bearer abcdefghijklmnop" https://example.invalid
     | \`Authorization: Bearer abcdefghijklmnop\` | Authorization: Bearer
     Authorization: Bearer responsibility | Bearer tokenvalue | credential: Bearer token is active
+    > - Bearer token is active | - [ ] Bearer token is active | credential = Bearer token is active
+    Authorization = Bearer token is active | credential: **Bearer token**
+    Authorization: \`Bearer token\` | credential: The Bearer token | - The Bearer token
+    > The Bearer credential | credential: (Bearer token) | - **Bearer token**
+    "credential": "Bearer token is active" | Authorization: The Bearer token
   `
     .trim()
     .split(/\s*\|\s*/),
@@ -49,7 +54,7 @@ const credentialSignatures = [
     | Environment variable gh_token | -----BEGIN PRIVATE KEY-----`.split(/\s*\|\s*/),
 ];
 const ordinaryBearerProse =
-  `The bearer responsibility remains clear. | The Bearer responsibility remains clear. | Bearer tokens are prohibited. | The bearer scheme is documented. | Bearer authentication is enabled. | Bearer credentials must not be logged. | Bearer policy is documented. | Bearer security is documented. | Bearer headers are redacted. | The Bearer responsibility. | Bearer security, policy, and headers are documented. | Review bearer authentication settings. | Bearer policy documentation is available. | Bearer security guidance follows. | Bearer token handling is documented. | Bearer credential handling is documented. | Bearer header handling is documented. | Bearer guidance is available.`.split(
+  `The bearer responsibility remains clear. | The Bearer responsibility remains clear. | Bearer tokens are prohibited. | The bearer scheme is documented. | Bearer authentication is enabled. | Bearer credentials must not be logged. | Bearer policy is documented. | Bearer security is documented. | Bearer headers are redacted. | The Bearer responsibility. | Bearer security, policy, and headers are documented. | Review bearer authentication settings. | Bearer policy documentation is available. | Bearer security guidance follows. | Bearer token handling is documented. | Bearer credential handling is documented. | Bearer header handling is documented. | Bearer guidance is available. | Bearer cryptographically derived values are prohibited. | Bearer decentralization guidance follows. | Explain bearer interoperability requirements. | Bearer standards remain documented. | Review bearer transport requirements. | The bearer implementation is documented. | Bearer middleware should redact credentials. | Document bearer compatibility guidance.`.split(
     /\s*\|\s*/
   );
 const validEnvelope = {
@@ -72,11 +77,9 @@ const validEnvelope = {
 function envelope(overrides = {}) {
   return { ...validEnvelope, ...overrides };
 }
-
 function render(overrides = {}, visibleMarkdown = 'Verified by the focused test.\n') {
   return renderAitmRecord({ envelope: envelope(overrides), visibleMarkdown });
 }
-
 function parse(body, overrides = {}) {
   return parseAitmRecord({
     commentNodeId: 'IC_kwDORecord1069',
@@ -86,7 +89,6 @@ function parse(body, overrides = {}) {
     ...overrides,
   });
 }
-
 test('canonical durable JSON sorts nested object keys and preserves array order', () => {
   assert.equal(
     canonicalRecordJson(payload),
@@ -94,7 +96,6 @@ test('canonical durable JSON sorts nested object keys and preserves array order'
   );
   assert.equal(canonicalRecordJson({ b: 2, a: [{ d: 4, c: 3 }] }), '{"a":[{"c":3,"d":4}],"b":2}');
 });
-
 test('canonical durable JSON rejects values that JSON would erase or normalize ambiguously', () => {
   const sparse = [];
   sparse[1] = 'present';
@@ -120,7 +121,6 @@ test('canonical durable JSON rejects values that JSON would erase or normalize a
     assert.throws(() => canonicalRecordJson(value), /canonical-json:invalid/);
   }
 });
-
 test('payload hashes are stable SHA-256 vectors over canonical payload JSON only', () => {
   assert.equal(hashRecordPayload(payload), payloadHash);
   assert.equal(
@@ -128,7 +128,6 @@ test('payload hashes are stable SHA-256 vectors over canonical payload JSON only
     payloadHash
   );
 });
-
 test('a v1 envelope renders and parses as a deeply frozen correlated record', () => {
   const body = render();
   const parsed = parse(body);
@@ -144,7 +143,6 @@ test('a v1 envelope renders and parses as a deeply frozen correlated record', ()
   assert.ok(Object.isFrozen(parsed.envelope.payload));
   assert.ok(Object.isFrozen(parsed.envelope.payload.tags));
 });
-
 test('ordinary visible Markdown changes cannot alter structured authority', () => {
   const first = parse(render({}, 'First presentation.\n'));
   const second = parse(render({}, 'Completely different presentation.\n- [x] Cosmetic\n'));
@@ -159,7 +157,6 @@ test('ordinary visible Markdown changes cannot alter structured authority', () =
   assert.deepEqual(first, manuallyEdited);
   assert.equal(first.envelope.payloadHash, payloadHash);
 });
-
 test('root and authority objects require their exact v1 key sets', () => {
   const { payloadHash: _missing, ...missingRoot } = validEnvelope;
   const rootCases = [missingRoot, { ...validEnvelope, invented: true }];
@@ -220,6 +217,8 @@ test('rendering rejects recursively nested secret-bearing keys and credential va
     sessionpatconfig backuppatdata myauthbackup sessionauthconfig customauthmaterial
     passwordpolicymypatbackup tokencountdatabaseauthbackup authorizationdecisionpersonalpatbackup
     patternAuthBackup authorPatBackup
+    authenticationHeader authenticationValue authenticationMaterial authenticationData
+    authenticationBackup authenticationKey authConfigurationHeader authPolicyHeader
   `
     .trim()
     .split(/\s+/);
@@ -257,6 +256,7 @@ test('secret scanning permits ordinary policy and token-accounting fields', () =
     empathyScore spatialIndex repatriationStatus tokenCountAuthor tokenCountAuthority tokenCountPath
     passwordPolicyAuthenticationMode passwordPolicyPattern fortuneCookieAuthPolicy
     authorizationDecisionAuthor patternPatience dispatchPattern
+    authenticationPolicy patronName paternityStatus patriarchName patellaStatus authenticityScore
   `
     .trim()
     .split(/\s+/);
