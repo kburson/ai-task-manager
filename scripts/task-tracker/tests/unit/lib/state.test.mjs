@@ -120,12 +120,13 @@ assert.equal(s.active, '#201');
   const cwdBefore = process.cwd();
   const relTmp = mkdtempSync(path.join(projectScratchDir('test'), 'tt-state-rel-'));
   // #273 — sid resolution now consults the provider registry env keys
-  // (CLAUDE_CODE_SESSION_ID, CLAUDE_SESSION_ID, CODEX_SESSION_ID, plus
-  // AI_TASK_MANAGER_SESSION_ID). Save+restore so this test pins the
+  // (CLAUDE_CODE_SESSION_ID, CLAUDE_SESSION_ID, CODEX_THREAD_ID,
+  // CODEX_SESSION_ID, plus AI_TASK_MANAGER_SESSION_ID). Save+restore so this test pins the
   // fallback path regardless of the ambient shell.
   const savedEnv = {
     CLAUDE_CODE_SESSION_ID: process.env.CLAUDE_CODE_SESSION_ID,
     CLAUDE_SESSION_ID: process.env.CLAUDE_SESSION_ID,
+    CODEX_THREAD_ID: process.env.CODEX_THREAD_ID,
     CODEX_SESSION_ID: process.env.CODEX_SESSION_ID,
     AI_TASK_MANAGER_SESSION_ID: process.env.AI_TASK_MANAGER_SESSION_ID,
     AI_TASK_MANAGER_PROJECT_DIR: process.env.AI_TASK_MANAGER_PROJECT_DIR,
@@ -196,6 +197,7 @@ assert.equal(advanceWordMarker(undefined, undefined), 0, 'both missing => 0');
   const savedEnv = {
     CLAUDE_CODE_SESSION_ID: process.env.CLAUDE_CODE_SESSION_ID,
     CLAUDE_SESSION_ID: process.env.CLAUDE_SESSION_ID,
+    CODEX_THREAD_ID: process.env.CODEX_THREAD_ID,
     CODEX_SESSION_ID: process.env.CODEX_SESSION_ID,
     AI_TASK_MANAGER_SESSION_ID: process.env.AI_TASK_MANAGER_SESSION_ID,
     AI_TASK_MANAGER_PROJECT_DIR: process.env.AI_TASK_MANAGER_PROJECT_DIR,
