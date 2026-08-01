@@ -45,6 +45,15 @@ test('date-bucketed layout (Codex): finds the rollout file by sid suffix', () =>
   assert.equal(resolved, file);
 });
 
+test('#1092: a Codex Desktop thread id resolves its native rollout suffix', () => {
+  const home = mkdtempProjectIsolated('codex-desktop-resolve-');
+  const bucket = path.join(home, '.codex/sessions/2026/08/01');
+  mkdirSync(bucket, { recursive: true });
+  const file = path.join(bucket, `rollout-2026-08-01T10-50-21-${SID}.jsonl`);
+  writeFileSync(file, '{"type":"response_item"}\n', 'utf8');
+  assert.equal(resolveTranscriptPath({ adapter: codexAdapter, sid: SID, homedir: home }), file);
+});
+
 test('date-bucketed layout: returns null when no matching file exists', () => {
   const home = mkdtempProjectIsolated('codex-miss-');
   const resolved = resolveTranscriptPath({ adapter: codexAdapter, sid: SID, homedir: home });

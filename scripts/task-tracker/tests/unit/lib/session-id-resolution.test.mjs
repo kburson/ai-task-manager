@@ -33,6 +33,19 @@ test('provider env var beats mtime fallback', () => {
   assert.equal(sid, 'provider-sid');
 });
 
+test('#1092: Codex Desktop thread id wins over legacy Codex session id', () => {
+  const env = {
+    CODEX_THREAD_ID: 'desktop-thread',
+    CODEX_SESSION_ID: 'legacy-session',
+  };
+  assert.equal(resolveSessionId({ env }), 'desktop-thread');
+  assert.deepEqual(sessionIdEnvKeys(env).slice(0, 3), [
+    ORCHESTRATOR_ENV_KEY,
+    'CODEX_THREAD_ID',
+    'CODEX_SESSION_ID',
+  ]);
+});
+
 test('mtime fallback picks newest .jsonl when no env var is set', () => {
   const dir = mkdtempSync(path.join(projectScratchDir('test'), 'sid-test-'));
   const old = path.join(dir, 'older.jsonl');
