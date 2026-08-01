@@ -1,6 +1,6 @@
 // cspell:ignore HJKMNP ically ization ment noncanonical pousr tion
 // cspell:ignore apikey apikeypolicy credentialpolicy fortunecookie passwordpolicy
-// cspell:ignore authenticationcredentialpolicy authenticationpasswordpolicy authenticationsessioncookiepolicy authenticationtokencount authpolicytokencount priorauthorization sessioncookiepolicy tokencount
+// cspell:ignore priorauthorization sessioncookiepolicy tokencount
 // cspell:ignore accesstoken authconfiguration authheader authmode authorizationheader authvalue basicauth
 // cspell:ignore bearertoken bearervalue clientsecret ghpat githubpat githubtoken gitpat oauthtoken
 // cspell:ignore refreshtoken secrettoken secretvalue tokenenv
@@ -42,11 +42,6 @@ const SAFE_KEY_FAMILY_PREFIXES = [
   'credentialpolicy',
   'apikeypolicy',
   'sessioncookiepolicy',
-  'authenticationtokencount',
-  'authenticationpasswordpolicy',
-  'authenticationcredentialpolicy',
-  'authenticationsessioncookiepolicy',
-  'authpolicytokencount',
   'fortunecookie',
   'secretary',
   'tokenizer',
@@ -63,34 +58,8 @@ const COLLAPSED_SENSITIVE_FRAGMENTS = [
   'privatekey',
   'bearer',
 ];
-const COLLAPSED_AUTH_PAT_COMPOUNDS = ['authheader', 'authvalue', 'basicauth', 'githubpat'];
-const FORCED_DANGEROUS_COMPOUNDS = ['authorizationheader', 'authheader'];
-const ORDINARY_COLLAPSED_LEXEMES =
-  'priorauthorization authorizationdecision authconfiguration authentication authenticity repatriation authorship authorized authority authpolicy authmode author dispatch pattern patience paternity patriarch patient patent empathy spatial compat patella patron patch path patio'
-    .split(' ')
-    .sort((left, right) => right.length - left.length);
-const ORDINARY_COLLAPSED_LEXEME_PATTERN = ORDINARY_COLLAPSED_LEXEMES.join('|');
-const ORDINARY_COLLAPSED_LEXEME_RE = new RegExp(ORDINARY_COLLAPSED_LEXEME_PATTERN, 'g');
-const ORDINARY_COLLAPSED_LEXEME_START_RE = new RegExp(`^(?:${ORDINARY_COLLAPSED_LEXEME_PATTERN})`);
-const SENSITIVE_LEXEME_AFTER_RE =
-  /^(?:header|value|material(?!ity)|data(?!base)|backup|key(?!note)|token(?!count)|secret|credential(?!policy)|password(?!policy)|cookie(?!policy)|bearer|auth|pat)/;
-const SENSITIVE_LEXEME_BEFORE_RE =
-  /(?:header|value|material|(?<!meta)data|backup|key|token|secret|credential|password|(?<!fortune)cookie|bearer|auth|pat)$/;
-const LEXEME_CONTEXT_WINDOW = 32;
 const AUTHORIZATION_BEARER_RE = /\bauthorization\s*:\s*bearer\b/i;
-const BEARER_CANDIDATE_RE = /\bbearer\s+([A-Za-z0-9._~+/=-]+)/gi;
-const ORDINARY_BEARER_CONCEPTS = new Set(
-  'responsibility token tokens scheme authentication credential credentials policy security header headers guidance standard standards transport documentation requirement requirements setting settings value values cryptographically decentralization interoperability implementation middleware compatibility usage handling support processing behavior flows mechanism'.split(
-    ' '
-  )
-);
-const BEARER_ARTICLE_RE = /\b(?:a|an|the)[\s"'`*_~()[\]{},.;:!?-]*$/i;
-const BEARER_PROSE_PREFIX_RE = /\b(?:describe|document|explain|review)\s+$/i;
-const BEARER_CONTINUATION_WORDS = new Set(
-  'are can could follows had has have is may might must remain remains shall should was were will would'.split(
-    ' '
-  )
-);
+const BEARER_CREDENTIAL_RE = /\bbearer\s+[A-Za-z0-9._~+/=-]+/i;
 const GITHUB_TOKEN_RE = /\b(?:gh[pousr]_[A-Za-z0-9]{16,}|github_pat_[A-Za-z0-9_]{20,})\b/i;
 const TOKEN_ENV_NAME_RE =
   /\b[A-Z][A-Z0-9]*(?:_[A-Z0-9]+)*_(?:ACCESS_TOKEN|API_KEY|AUTH_TOKEN|CLIENT_SECRET|PRIVATE_KEY|TOKEN|PASSWORD|CREDENTIALS)\b/i;
@@ -137,103 +106,35 @@ function collapsedSecretKey(key) {
   return key.toLowerCase().replace(/[^a-z0-9]/g, '');
 }
 
-function secretKeySegments(key) {
-  return key
-    .replace(/([a-z0-9])([A-Z])/g, '$1 $2')
-    .replace(/([A-Z]+)([A-Z][a-z])/g, '$1 $2')
-    .toLowerCase()
-    .split(/[^a-z0-9]+/)
-    .filter(Boolean);
-}
-
 function containsSensitiveKeyFragment(value) {
-  return (
-    COLLAPSED_SENSITIVE_FRAGMENTS.some((fragment) => value.includes(fragment)) ||
-    COLLAPSED_AUTH_PAT_COMPOUNDS.some((compound) => value.includes(compound))
-  );
+  return COLLAPSED_SENSITIVE_FRAGMENTS.some((fragment) => value.includes(fragment));
 }
 
-function shieldOrdinaryCollapsedLexemes(value) {
-  return value.replace(ORDINARY_COLLAPSED_LEXEME_RE, (lexeme, offset, input) => {
-    const before = input.slice(Math.max(0, offset - LEXEME_CONTEXT_WINDOW), offset);
-    const afterOffset = offset + lexeme.length;
-    const after = input.slice(afterOffset, afterOffset + LEXEME_CONTEXT_WINDOW);
-    const sensitiveBefore = SENSITIVE_LEXEME_BEFORE_RE.test(before);
-    const sensitiveAfter =
-      !ORDINARY_COLLAPSED_LEXEME_START_RE.test(after) && SENSITIVE_LEXEME_AFTER_RE.test(after);
-    return sensitiveBefore || sensitiveAfter ? lexeme : '';
-  });
-}
-
-function containsAuthPatAbbreviation(key, collapsed) {
-  const segments = secretKeySegments(key);
-  const hasPatSegment = segments.includes('pat');
-  const hasUnsafeAuthSegment = segments.some(
-    (segment, index) =>
-      segment === 'auth' && !['configuration', 'mode', 'policy'].includes(segments[index + 1])
-  );
-  const shielded = shieldOrdinaryCollapsedLexemes(collapsed);
-  return (
-    hasPatSegment || hasUnsafeAuthSegment || shielded.includes('auth') || shielded.includes('pat')
-  );
+function containsAuthPatAbbreviation(value) {
+  return value.includes('auth') || value.includes('pat');
 }
 
 function isSafeSemanticKey(collapsed) {
   const family = SAFE_KEY_FAMILY_PREFIXES.find((prefix) => collapsed.startsWith(prefix));
   if (family === undefined) return false;
   const suffix = collapsed.slice(family.length);
-  return !containsSensitiveKeyFragment(suffix) && !suffix.includes('header');
+  return (
+    !containsSensitiveKeyFragment(suffix) &&
+    !containsAuthPatAbbreviation(suffix) &&
+    !suffix.includes('header')
+  );
 }
 
 function isSecretKey(key) {
   const collapsed = collapsedSecretKey(key);
-  if (FORCED_DANGEROUS_COMPOUNDS.some((compound) => collapsed.includes(compound))) return true;
-  if (containsAuthPatAbbreviation(key, collapsed)) return true;
-  return !isSafeSemanticKey(collapsed) && containsSensitiveKeyFragment(collapsed);
-}
-
-function hasExplicitBearerContext(before) {
-  const lines = before.split('\n');
-  const currentLine = lines.pop() ?? '';
-  const previousLine = lines.at(-1) ?? '';
-  const isListLine = /^\s*(?:(?:>\s*)+|(?:[-*+]|\d+[.)])\s+|\[[ xX]\]\s+)/.test(currentLine);
-  const normalizeLabelMarkup = (value) => value.replace(/["'`*_[\](){}]/g, '');
-  const labelPattern = /(?:^|[^a-z0-9])(?:authorization|credential|accesstoken|auth|token)\s*[:=]/i;
-  const isSameLineLabel = labelPattern.test(normalizeLabelMarkup(currentLine));
-  const isPreviousLineLabel = new RegExp(`${labelPattern.source}\\s*(?:[>|][-+]?)?\\s*$`, 'i').test(
-    normalizeLabelMarkup(previousLine)
-  );
-  return isListLine || isSameLineLabel || isPreviousLineLabel;
-}
-
-function isOrdinaryBearerConcept(candidate) {
-  const normalized = candidate.toLowerCase().replace(/[.,;:!?]+$/, '');
-  return ORDINARY_BEARER_CONCEPTS.has(normalized);
-}
-
-function hasBearerSentenceTail(after) {
-  const sentence = after.split(/[.!?\n]/, 1)[0];
-  const words = sentence.toLowerCase().match(/[a-z]+/g) ?? [];
-  return words.slice(0, 6).some((word) => BEARER_CONTINUATION_WORDS.has(word));
-}
-
-function containsBearerCredential(value) {
-  if (AUTHORIZATION_BEARER_RE.test(value)) return true;
-  return [...value.matchAll(BEARER_CANDIDATE_RE)].some((match) => {
-    const before = value.slice(0, match.index);
-    const after = value.slice(match.index + match[0].length);
-    if (hasExplicitBearerContext(before) || !isOrdinaryBearerConcept(match[1])) return true;
-    return (
-      !BEARER_ARTICLE_RE.test(before) &&
-      !BEARER_PROSE_PREFIX_RE.test(before) &&
-      !hasBearerSentenceTail(after)
-    );
-  });
+  if (isSafeSemanticKey(collapsed)) return false;
+  return containsSensitiveKeyFragment(collapsed) || containsAuthPatAbbreviation(collapsed);
 }
 
 function containsCredentialSignature(value) {
   return (
-    containsBearerCredential(value) ||
+    AUTHORIZATION_BEARER_RE.test(value) ||
+    BEARER_CREDENTIAL_RE.test(value) ||
     GITHUB_TOKEN_RE.test(value) ||
     TOKEN_ENV_NAME_RE.test(value) ||
     PRIVATE_KEY_RE.test(value)
@@ -295,7 +196,7 @@ function validateEnvelope(envelope) {
   if (typeof envelope.payloadHash !== 'string' || !HASH_RE.test(envelope.payloadHash)) {
     throw recordError('payload-hash');
   }
-  assertNoSecrets(envelope);
+  assertNoSecrets(envelope.payload);
   if (envelope.payloadHash !== hashRecordPayload(envelope.payload)) {
     throw recordError('hash-mismatch');
   }

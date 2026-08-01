@@ -58,10 +58,12 @@ const credentialSignatures = [
   ...`ghp_1234567890abcdefghijklmnop | Environment variable GH_TOKEN
     | Environment variable gh_token | -----BEGIN PRIVATE KEY-----`.split(/\s*\|\s*/),
 ];
-const ordinaryBearerProse =
+const ambiguousBearerProse =
   `The bearer responsibility remains clear. | The Bearer responsibility remains clear. | Bearer tokens are prohibited. | The bearer scheme is documented. | Bearer authentication is enabled. | Bearer credentials must not be logged. | Bearer policy is documented. | Bearer security is documented. | Bearer headers are redacted. | The Bearer responsibility. | Bearer security, policy, and headers are documented. | Review bearer authentication settings. | Bearer policy documentation is available. | Bearer security guidance follows. | Bearer token handling is documented. | Bearer credential handling is documented. | Bearer header handling is documented. | Bearer guidance is available. | Bearer cryptographically derived values are prohibited. | Bearer decentralization guidance follows. | Explain bearer interoperability requirements. | Bearer standards remain documented. | Review bearer transport requirements. | The bearer implementation is documented. | Bearer middleware should redact credentials. | Document bearer compatibility guidance. | Bearer usage is documented. | Bearer handling remains documented. | Bearer support is available. | Bearer processing behavior is documented. | Bearer behavior remains documented. | Bearer flows are documented. | Bearer mechanism is documented.`.split(
     /\s*\|\s*/
   );
+credentialSignatures.push(...ambiguousBearerProse);
+const ordinarySafeProse = ['Ordinary policy documentation remains available.'];
 const validEnvelope = {
   schema: 'aitm.record/v1',
   recordId: '01J00000000000000000000000',
@@ -219,11 +221,24 @@ test('rendering rejects recursively nested secret-bearing keys and credential va
     authenticationBackup authenticationKey authConfigurationHeader authPolicyHeader
     headerAuthentication valueAuthentication materialAuthentication dataAuthentication
     backupAuthentication keyAuthentication headerAuthConfiguration headerAuthPolicy
+    authorName authorityLabel patternName pathName patientId authenticationMode authPolicy authorship
+    authorized authMode authConfiguration patentId patioMode patchVersion dispatchMode compatMode
+    filePath relativePath myPatternName securityPatchVersion backgroundDispatchStatus primaryPatientId
+    coauthorName userAuthorship primaryAuthorityLabel legacyAuthenticationMode coAuthorityLabel
+    empathyScore spatialIndex repatriationStatus tokenCountAuthor tokenCountAuthority tokenCountPath
+    passwordPolicyAuthenticationMode passwordPolicyPattern fortuneCookieAuthPolicy
+    authorizationDecisionAuthor patternPatience dispatchPattern authenticationPolicy patronName
+    paternityStatus patriarchName patellaStatus authenticityScore authenticationMetadata
+    authenticationKeynote authorKeynoteTitle patternMaterialityScore pathMetadata pathDatabaseName
+    authenticationTokenCount authenticationPasswordPolicy authenticationCredentialPolicy
+    authenticationSessionCookiePolicy authPolicyTokenCount
   `
     .trim()
     .split(/\s+/);
   const secretPayloads = [
     { nested: { my_github_token: 'redacted' } },
+    { ['auth'.repeat(40_000)]: 'redacted' },
+    { note: 'Bearer token '.repeat(12_000) },
     ...secretKeys.map((key) => ({ [key]: 'redacted' })),
     ...credentialSignatures.map((note) => ({ note })),
   ];
@@ -246,24 +261,12 @@ test('secret scanning permits ordinary policy and token-accounting fields', () =
     priorAuthorizationState authorizationDecision credentialPolicyVersion apiKeyPolicyName
     sessionCookiePolicyVersion fortuneCookieMessage secretaryName tokenizerMode tokenCountByModel
     passwordPolicyName fortuneCookieRecipe priorAuthorizationDecision authorizationDecisionReason
-    credentialPolicyName apiKeyPolicyVersion sessionCookiePolicyName authorName authorityLabel patternName
-    pathName patientId authenticationMode authPolicy authorship authorized authMode authConfiguration
-    patentId patioMode patchVersion dispatchMode compatMode
-    filePath relativePath myPatternName securityPatchVersion backgroundDispatchStatus primaryPatientId
-    coauthorName userAuthorship primaryAuthorityLabel legacyAuthenticationMode coAuthorityLabel
-    empathyScore spatialIndex repatriationStatus tokenCountAuthor tokenCountAuthority tokenCountPath
-    passwordPolicyAuthenticationMode passwordPolicyPattern fortuneCookieAuthPolicy
-    authorizationDecisionAuthor patternPatience dispatchPattern
-    authenticationPolicy patronName paternityStatus patriarchName patellaStatus authenticityScore
-    authenticationMetadata authenticationKeynote authorKeynoteTitle patternMaterialityScore
-    pathMetadata pathDatabaseName authenticationTokenCount authenticationPasswordPolicy
-    authenticationCredentialPolicy authenticationSessionCookiePolicy authPolicyTokenCount
+    credentialPolicyName apiKeyPolicyVersion sessionCookiePolicyName
   `
     .trim()
     .split(/\s+/);
   const ordinaryPayload = Object.fromEntries(safeKeys.map((key) => [key, 'safe']));
-  ordinaryPayload[`${'authenticationPattern'.repeat(256)}Metadata`] = 'safe';
-  for (const note of ordinaryBearerProse) {
+  for (const note of ordinarySafeProse) {
     const safePayload = { ...ordinaryPayload, note };
     const body = render({ payload: safePayload, payloadHash: hashRecordPayload(safePayload) });
     assert.deepEqual(parse(body).envelope.payload, safePayload);
@@ -277,7 +280,7 @@ test('parsing rejects secret signatures introduced into visible Markdown', () =>
       /record-envelope:secret/
     );
   }
-  for (const prose of ordinaryBearerProse) {
+  for (const prose of ordinarySafeProse) {
     assert.doesNotThrow(() => parse(safeBody.replace('Ordinary presentation.', prose)));
   }
   const unsafeSafeFamily = { passwordPolicyToken: 'redacted' };
@@ -311,7 +314,6 @@ test('record references require canonical uppercase ULIDs and cannot self-link',
   }
   assert.doesNotThrow(() => render({ predecessor: null, supersedes: null }));
 });
-
 test('canonical JSON rejects excessive nesting with a categorized error', () => {
   let nested = 'leaf';
   for (let depth = 0; depth < 80; depth += 1) nested = { nested };
@@ -326,7 +328,6 @@ test('canonical JSON rejects excessive nesting with a categorized error', () => 
     /canonical-json:invalid:nesting/
   );
 });
-
 test('canonical JSON rejects ill-formed Unicode strings and keys', () => {
   const loneHighSurrogate = '\ud800';
   assert.throws(() => canonicalRecordJson(loneHighSurrogate), /canonical-json:invalid:unicode/);
@@ -335,7 +336,6 @@ test('canonical JSON rejects ill-formed Unicode strings and keys', () => {
     /canonical-json:invalid:unicode/
   );
 });
-
 test('marker syntax is bounded and exactly one complete record is required', () => {
   for (const body of [
     'Visible text only',
