@@ -5,7 +5,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, test } from 'node:test';
 
-import { buildLintFormatSteps } from '../../../verify-develop.mjs';
+import { buildFinalSteps, buildIterationSteps } from '../../../verify-develop.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(HERE, '../../../../..');
@@ -21,7 +21,7 @@ const fixture = JSON.parse(
 const testSource = readFileSync(path.join(ROOT, 'scripts/task-tracker/verbs/test.mjs'), 'utf8');
 const reviewSource = readFileSync(path.join(ROOT, 'scripts/task-tracker/verbs/review.mjs'), 'utf8');
 
-describe('pre-#1089 verification stage ownership characterization', () => {
+describe('#1089 verification stage ownership', () => {
   test('pins the shared command-classification vocabulary and owning stages', () => {
     assert.equal(fixture.schema, 1);
     assert.deepEqual(
@@ -37,10 +37,14 @@ describe('pre-#1089 verification stage ownership characterization', () => {
     );
   });
 
-  test('Develop currently runs autofix, format, and full lint in one plan', () => {
+  test('Develop separates affected iteration checks from exact-SHA finalization', () => {
     assert.deepEqual(
-      buildLintFormatSteps().map(({ label }) => label),
-      ['npm run lint:js -- --fix', 'npm run format', 'npm run lint']
+      buildIterationSteps(['src/a.mjs']).map(({ classification }) => classification),
+      ['lint-affected-fix', 'format-affected-fix']
+    );
+    assert.deepEqual(
+      buildFinalSteps().map(({ classification }) => classification),
+      ['lint-full', 'format-full']
     );
   });
 

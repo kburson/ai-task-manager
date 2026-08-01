@@ -95,10 +95,10 @@ const ROUTABLE_SELF_DOC = {
   'verify-develop': {
     group: 'Workflow',
     path: 'scripts/task-tracker/verify-develop.mjs',
-    synopsis:
-      'Develop-phase gate: lint:js --fix, format, then targeted node --test on changed tests.',
-    audience: 'AI/operator before every Develop commit. Never run npm run test:all in Develop.',
-    usage: 'aitm verify-develop',
+    synopsis: 'Run affected Develop iteration checks or clean exact-SHA finalization.',
+    audience:
+      'AI/operator during Develop. Use iteration while editing; Test invokes final with an issue number.',
+    usage: 'aitm verify-develop [--mode iteration|final] [--issue <N>]',
   },
   'value-report': {
     group: 'Reports',
@@ -256,7 +256,10 @@ const ROUTABLE_ARGUMENTS = Object.freeze({
     argument('<issue#>', 'Issue whose timing log is reconciled.'),
     argument('--dry-run', 'Report field writes without applying them.'),
   ],
-  'verify-develop': [],
+  'verify-develop': [
+    argument('--mode iteration|final', 'Affected edit loop (default) or exact-SHA finalization.'),
+    argument('--issue <N>', 'Required in final mode; binds the receipt to its issue.'),
+  ],
   'value-report': [
     argument('--project-id <id>', 'GitHub Project id override.'),
     argument('--repo owner/name', 'Repository override.'),
@@ -413,12 +416,18 @@ const ROUTABLE_CONTRACTS = Object.freeze({
     relatedCommands: ['value-report', 'update-event-fields'],
   }),
   'verify-develop': routableContract({
-    output: ['Prints lint, format, changed-test discovery, and targeted test results.'],
-    exitCodes: [
-      exitCode(0, 'all develop checks passed or no changed tests required execution'),
-      exitCode(1, 'lint, format, diff discovery, or a targeted test failed'),
+    output: [
+      'Prints affected-test explanations and structured command results; final mode also prints the receipt.',
     ],
-    examples: ['npx aitm verify-develop'],
+    exitCodes: [
+      exitCode(0, 'iteration passed, or clean finalization emitted an exact-SHA receipt'),
+      exitCode(1, 'selection, command, cleanliness, SHA, or receipt validation failed'),
+      exitCode(2, 'invalid mode or command argument'),
+    ],
+    examples: [
+      'npx aitm verify-develop --mode iteration',
+      'npx aitm verify-develop --mode final --issue 1089',
+    ],
     relatedCommands: ['test', 'run-tests'],
   }),
   'value-report': routableContract({

@@ -656,6 +656,17 @@ const supplementalVerbRecords = Object.entries(VERB_REFERENCE)
     });
   });
 
+// #1089 — `verify-develop` is a two-mode authority boundary. Refuse catalog
+// construction if its canonical standalone metadata ever collapses iteration
+// and exact-SHA finalization back into an ambiguous single command.
+const verifyDevelopDoc = SELF_DOC['verify-develop'];
+if (
+  !verifyDevelopDoc?.usage.includes('--mode iteration|final') ||
+  !verifyDevelopDoc?.arguments.some(({ name }) => name === '--issue <N>')
+) {
+  throw new Error('command catalog: verify-develop must expose iteration/final and --issue <N>');
+}
+
 const selfDocRecords = Object.entries(SELF_DOC).map(([name, doc]) => {
   const classified = entrypointByCommand.get(name) || entrypointByPath.get(doc.path);
   return normalizeHelpRecord({

@@ -151,11 +151,13 @@ export function decideSourceEdit({
           `  Tool: ${toolName} (activity class: ${activityClass})\n` +
           `  A '${state}'-state ${activityClass} edit is exactly the out-of-band patch the gate forbids.\n` +
           `  Sanctioned remediation loop:\n` +
-          `    demote → fix → verify-develop → re-promote\n` +
+          `    demote → fix → iteration → commit → finalization → re-Test\n` +
           `    /task demote                 — return the issue to 'develop'\n` +
           `    <make the edit + fix>        — now permitted in 'develop'\n` +
-          `    node scripts/task-tracker/verify-develop.mjs\n` +
-          `    /task promote                — advance back through the states\n` +
+          `    node scripts/task-tracker/verify-develop.mjs --mode iteration\n` +
+          `    <commit the clean fix>        — finalization binds evidence to the new SHA\n` +
+          `    node scripts/task-tracker/verify-develop.mjs --mode final --issue <N>\n` +
+          `    /task test <N>                — produce one new Test pass before Review\n` +
           `  Escape hatch:\n` +
           `    chore-mode on "<reason>"     — bypass gate; commits must be \`chore: \``,
       };
