@@ -60,16 +60,48 @@ const TEST_RECEIPT_REQUIRED = Object.freeze([
   'test-integration',
   'test-slow',
 ]);
-const STANDARD_REVIEW_COMMANDS = new Set([
-  'npm run lint',
-  'npm run format:check',
-  'npm run test:unit',
-  'npm run test:integration',
-  'npm run test:slow',
-  'npm test',
-  'npm run test:all',
+const STAGE_OWNED_NPM_SCRIPTS = new Set([
+  'lint',
+  'format:check',
+  'test',
+  'test:unit',
+  'test:integration',
+  'test:slow',
+  'test:all',
 ]);
 const reviewPexec = promisify(execFile);
+
+function firstNonFlagArg(argv, startIndex = 1) {
+  for (let index = startIndex; index < argv.length; index += 1) {
+    if (!argv[index].startsWith('-')) return { token: argv[index], index };
+  }
+  return null;
+}
+
+function isFullTestRunnerEntrypoint(token) {
+  return String(token || '')
+    .replaceAll('\\', '/')
+    .replace(/^\.\//, '')
+    .endsWith('scripts/run-tests.mjs');
+}
+
+function isStageOwnedReviewCommand(argv) {
+  if (argv[0] === 'npm') {
+    const subcommand = firstNonFlagArg(argv);
+    if (!subcommand) return false;
+    if (subcommand.token === 'test') return true;
+    if (subcommand.token !== 'run' && subcommand.token !== 'run-script') return false;
+    const script = firstNonFlagArg(argv, subcommand.index + 1);
+    return STAGE_OWNED_NPM_SCRIPTS.has(script?.token);
+  }
+
+  if (argv[0] === 'node') {
+    const entrypoint = firstNonFlagArg(argv);
+    return isFullTestRunnerEntrypoint(entrypoint?.token);
+  }
+
+  return isFullTestRunnerEntrypoint(argv[0]);
+}
 
 function standardReviewCommandResults() {
   return new Map(
@@ -218,7 +250,7 @@ export function validateReviewProbeCommand(
   const validation = validateCommand(command, { projectDir });
   if (!validation.ok) return validation;
   const identity = validation.argv.join(' ');
-  if (STANDARD_REVIEW_COMMANDS.has(identity)) {
+  if (isStageOwnedReviewCommand(validation.argv)) {
     return {
       ok: false,
       reason: `Review probes must be targeted; '${identity}' is a standard stage-owned command`,

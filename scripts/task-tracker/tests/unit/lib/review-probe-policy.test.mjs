@@ -19,23 +19,32 @@ function fingerprint() {
   };
 }
 
-test('Review probe policy rejects every standard full command and allows a focused test', () => {
+test('Review probe policy rejects standard full commands and semantic aliases', () => {
   for (const command of [
     'npm run lint',
+    'npm run-script lint',
+    'npm run lint -- --quiet',
     'npm run format:check',
     'npm run test:unit',
     'npm run test:integration',
     'npm run test:slow',
     'npm test',
     'npm run test:all',
+    'node scripts/run-tests.mjs',
+    'node ./scripts/run-tests.mjs --lane unit',
+    'scripts/run-tests.mjs --lane slow',
+    './scripts/run-tests.mjs --lane integration',
   ]) {
-    const result = reviewVerb.validateReviewProbeCommand(command, { projectDir: '/project' });
+    const result = reviewVerb.validateReviewProbeCommand(command, { projectDir: process.cwd() });
     assert.equal(result.ok, false, command);
     assert.match(result.reason, /targeted/, command);
   }
+});
+
+test('Review probe policy allows a focused test command', () => {
   assert.deepEqual(
     reviewVerb.validateReviewProbeCommand('node --test focused.test.mjs', {
-      projectDir: '/project',
+      projectDir: process.cwd(),
     }),
     { ok: true, argv: ['node', '--test', 'focused.test.mjs'] }
   );
