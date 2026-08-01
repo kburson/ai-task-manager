@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// @story #90
+// @story #90 #1089
 // Unit tests for scripts/task-tracker/lib/markers.mjs — the hidden-marker
 // helpers used by approve / check verbs and body-gates.
 //
@@ -24,9 +24,72 @@ import {
   hasDeepDiveEvidence,
   backfillDeepDiveCompleteMarker,
   stripFencedCodeBlocks,
+  parseVerificationReceipt,
+  upsertVerificationReceipt,
 } from '../../../lib/markers.mjs';
 
 const TS = '2026-05-11T12:00:00Z';
+
+function verificationReceipt(stage, receiptId, supersedes = null) {
+  return {
+    schema: 'aitm.verification-receipt/v1',
+    receiptId,
+    issue: 1089,
+    stage,
+    commitSha: 'a'.repeat(40),
+    startedAt: '2026-08-01T18:00:00.000Z',
+    completedAt: '2026-08-01T18:00:01.000Z',
+    environment: {
+      node: process.version,
+      platform: `${process.platform}-${process.arch}`,
+      lockfileHash: `sha256:${'a'.repeat(64)}`,
+      configHashes: { 'package.json': `sha256:${'b'.repeat(64)}` },
+      sandbox: { kind: 'worktree', identity: '/tmp/receipt', clean: true },
+    },
+    commands: [
+      {
+        classification: 'lint-full',
+        command: 'npm',
+        args: ['run', 'lint'],
+        exitCode: 0,
+        durationMs: 1000,
+      },
+    ],
+    supersedes,
+  };
+}
+
+// ── #1089 verification receipts: one current marker per stage ───────────────
+{
+  const first = verificationReceipt('develop-final', '01J00000000000000000000000');
+  const testReceipt = verificationReceipt('test', '01J00000000000000000000001');
+  const replacement = verificationReceipt('develop-final', '01J00000000000000000000002');
+  const visible = '## Evidence\n\nKeep this visible text exactly.\n';
+
+  const withDevelop = upsertVerificationReceipt(visible, first);
+  const withBoth = upsertVerificationReceipt(withDevelop, testReceipt);
+  const replaced = upsertVerificationReceipt(withBoth, replacement);
+
+  assert.equal(
+    parseVerificationReceipt(replaced, 'develop-final').receiptId,
+    replacement.receiptId
+  );
+  assert.equal(
+    parseVerificationReceipt(replaced, 'develop-final').supersedes,
+    first.receiptId,
+    'same-stage replacement links to the prior immutable receipt'
+  );
+  assert.equal(parseVerificationReceipt(replaced, 'test').receiptId, testReceipt.receiptId);
+  assert.equal((replaced.match(/aitm-verification-receipt/g) || []).length, 2);
+  assert.ok(replaced.includes(visible.trim()), 'visible body text is preserved');
+
+  const unrelated = replaced.replace('Keep this visible text exactly.', 'Unrelated prose edit.');
+  assert.deepEqual(
+    parseVerificationReceipt(unrelated, 'test'),
+    parseVerificationReceipt(replaced, 'test'),
+    'unrelated issue-body edits do not alter receipt payloads'
+  );
+}
 
 // ── plan-approved: build + has ────────────────────────────────────────────────
 {

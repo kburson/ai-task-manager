@@ -10,6 +10,15 @@ import { parseIssueFieldDb, stripIssueFieldDb, formatIssueFieldDb } from '../iss
 import { mutateIssueBody } from './issue-body-mutate.mjs';
 import { serializeMarker, unescapeValue, parseMarker } from './marker-grammar.mjs';
 
+// Versioned verification evidence lives in its own contract module. Re-export
+// the issue-body helpers here so all authoritative marker writes remain
+// discoverable through the central marker registry.
+export {
+  parseVerificationReceipt,
+  parseVerificationReceipts,
+  upsertVerificationReceipt,
+} from './verification-receipt.mjs';
+
 // ---------------------------------------------------------------------------
 // Phantom-marker hardening (#333)
 //
