@@ -2,9 +2,10 @@
 // Feature-file runner fixture. The git root and frozen configuration are safe
 // to share inside one test file. Spawned children, observations, and environment
 // objects remain per test and are reset explicitly by the caller's beforeEach.
-import { existsSync, rmSync } from 'node:fs';
+import { existsSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import path from 'node:path';
 
-import { mkdtempProjectIsolated } from '../../../lib/scratch-dir.mjs';
+import { projectScratchDir } from '../../../lib/scratch-dir.mjs';
 
 function frozenArray(value) {
   return Object.freeze(Array.isArray(value) ? value.slice() : []);
@@ -15,7 +16,11 @@ export function createRunnerEnvironment(overrides = {}) {
 }
 
 export function createRunnerFixture({ files = [], lanes = [], parallelSafety = {} } = {}) {
-  const root = mkdtempProjectIsolated('runner-feature-');
+  // These cases never invoke git-root discovery, so a repository-shaped root is
+  // sufficient and avoids paying for git init/add/commit in every test process.
+  const root = mkdtempSync(path.join(projectScratchDir('test'), 'runner-feature-'));
+  writeFileSync(path.join(root, 'package.json'), '{}\n');
+  writeFileSync(path.join(root, '.gitignore'), '*\n');
   return {
     kind: 'runner-feature-fixture',
     root,
