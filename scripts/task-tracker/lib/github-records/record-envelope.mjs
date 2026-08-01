@@ -59,7 +59,7 @@ const COLLAPSED_SENSITIVE_FRAGMENTS = [
   'bearer',
 ];
 const AUTHORIZATION_BEARER_RE = /\bauthorization\s*:\s*bearer\b/i;
-const BEARER_CREDENTIAL_RE = /\bbearer\s+(?:\*{1,2}|[`"'(\[<])?[A-Za-z0-9._~+/=-]+/i;
+const BEARER_CREDENTIAL_RE = /\bbearer\s+\S+/i;
 const GITHUB_TOKEN_RE = /\b(?:gh[pousr]_[A-Za-z0-9]{16,}|github_pat_[A-Za-z0-9_]{20,})\b/i;
 const TOKEN_ENV_NAME_RE =
   /\b[A-Z][A-Z0-9]*(?:_[A-Z0-9]+)*_(?:ACCESS_TOKEN|API_KEY|AUTH_TOKEN|CLIENT_SECRET|PRIVATE_KEY|TOKEN|PASSWORD|CREDENTIALS)\b/i;

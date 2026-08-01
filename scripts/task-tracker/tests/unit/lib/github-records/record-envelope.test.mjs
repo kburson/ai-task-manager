@@ -30,7 +30,7 @@ const credentialSignatures = [
     token: Bearer token is active | auth = Bearer token is active | accessToken: Bearer token | - current Bearer token is active | > leaked Bearer token
     credential: leaked Bearer token | {"kind":{"credential":"Bearer token is active"}} | credential: The The Bearer token | - current **The Bearer token**
     **token**: current Bearer token is active | Bearer \`abcdefghijklmnop\` | Bearer "abcdefghijklmnop" | Bearer 'abcdefghijklmnop' |
-    Bearer **abcdefghijklmnop** | Bearer (abcdefghijklmnop) | Bearer [abcdefghijklmnop] | Bearer <abcdefghijklmnop>
+    Bearer **abcdefghijklmnop** | Bearer (abcdefghijklmnop) | Bearer [abcdefghijklmnop] | Bearer <abcdefghijklmnop> | Bearer ***abcdefghijklmnop*** | Bearer \`\`abcdefghijklmnop\`\` | Bearer \`\`\`abcdefghijklmnop\`\`\` | Bearer {abcdefghijklmnop} | Bearer (**abcdefghijklmnop**) | Bearer [**abcdefghijklmnop**] | Bearer ( abcdefghijklmnop ) | Bearer ** abcdefghijklmnop **
   `
     .trim()
     .split(/\s*\|\s*/),
