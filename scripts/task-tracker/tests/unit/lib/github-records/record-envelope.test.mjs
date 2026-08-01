@@ -1,4 +1,5 @@
 // @story #1069
+// cspell:ignore ghp noncanonical
 
 import { strict as assert } from 'node:assert';
 import test from 'node:test';
@@ -118,7 +119,7 @@ test('ordinary visible Markdown changes cannot alter structured authority', () =
   const manuallyEdited = parse(
     render({}, 'First presentation.\n').replace(
       'First presentation.',
-      'Presentation edited to contain Bearer demo_1234567890abcdef.'
+      'Presentation edited without changing the structured record.'
     )
   );
 
@@ -167,17 +168,21 @@ test('schema dispatch and common field validation fail closed', () => {
 
 test('rendering rejects recursively nested secret-bearing keys and credential values', () => {
   const secretPayloads = [
-    { nested: { access_token: 'redacted' } },
-    { items: [{ API_KEY: 'redacted' }] },
-    { password: 'redacted' },
+    { nested: { my_github_token: 'redacted' } },
+    { github_token_backup: 'redacted' },
+    { my_refresh_token: 'redacted' },
+    { token_env_name: 'redacted' },
+    { database_credentials: 'redacted' },
+    { session_credentials: 'redacted' },
+    { client_secret_backup: 'redacted' },
     { database_password: 'redacted' },
     { authorizationHeader: 'redacted' },
-    { cookie: 'redacted' },
     { sessionCookie: 'redacted' },
     { 'x-api-key': 'redacted' },
     { privateKey: 'redacted' },
-    { client_secret: 'redacted' },
-    { note: 'Bearer demo_1234567890abcdef' },
+    { note: 'Bearer abcdefghijklmnop' },
+    { note: 'ghp_1234567890abcdefghijklmnop' },
+    { note: 'Read the token environment name from GH_TOKEN.' },
     { note: '-----BEGIN PRIVATE KEY-----' },
   ];
 
@@ -192,7 +197,7 @@ test('rendering rejects recursively nested secret-bearing keys and credential va
     );
   }
   assert.throws(
-    () => render({}, 'Authorization: Bearer demo_1234567890abcdef'),
+    () => render({}, 'Authorization: Bearer abcdefghijklmnop'),
     /record-envelope:secret/
   );
 });
@@ -201,6 +206,8 @@ test('secret scanning permits ordinary policy and token-accounting fields', () =
   const ordinaryPayload = {
     passwordPolicy: 'Rotate credentials regularly.',
     tokenCount: 42,
+    fortuneCookie: 'Ship small slices.',
+    priorAuthorization: 'superseded',
     note: 'The bearer responsibility remains with the coordinator.',
   };
   const body = render({
@@ -209,6 +216,67 @@ test('secret scanning permits ordinary policy and token-accounting fields', () =
   });
 
   assert.deepEqual(parse(body).envelope.payload, ordinaryPayload);
+});
+
+test('parsing rejects secret signatures introduced into visible Markdown', () => {
+  const safeBody = render({}, 'Ordinary presentation.');
+  for (const visibleMarkdown of [
+    'Bearer abcdefghijklmnop',
+    'ghp_1234567890abcdefghijklmnop',
+    'Environment variable GH_TOKEN',
+    '-----BEGIN PRIVATE KEY-----',
+  ]) {
+    assert.throws(
+      () => parse(safeBody.replace('Ordinary presentation.', visibleMarkdown)),
+      /record-envelope:secret/
+    );
+  }
+});
+
+test('record references require canonical uppercase ULIDs and cannot self-link', () => {
+  const invalidCases = [
+    [{ recordId: 'short' }, /record-envelope:record-id/],
+    [{ recordId: '01j00000000000000000000000' }, /record-envelope:record-id/],
+    [{ recordId: '81J00000000000000000000000' }, /record-envelope:record-id/],
+    [{ authority: { ...validEnvelope.authority, grantId: 'short' } }, /authority-grant-id/],
+    [{ predecessor: 'short' }, /record-envelope:predecessor/],
+    [{ supersedes: 'short' }, /record-envelope:supersedes/],
+    [{ predecessor: validEnvelope.recordId }, /record-envelope:self-link/],
+    [{ supersedes: validEnvelope.recordId }, /record-envelope:self-link/],
+    [
+      { authority: { ...validEnvelope.authority, grantId: validEnvelope.recordId } },
+      /record-envelope:self-link/,
+    ],
+  ];
+
+  for (const [overrides, expectedError] of invalidCases) {
+    assert.throws(() => render(overrides), expectedError);
+  }
+  assert.doesNotThrow(() => render({ predecessor: null, supersedes: null }));
+});
+
+test('canonical JSON rejects excessive nesting with a categorized error', () => {
+  let nested = 'leaf';
+  for (let depth = 0; depth < 80; depth += 1) nested = { nested };
+
+  assert.throws(() => canonicalRecordJson(nested), /canonical-json:invalid:nesting/);
+  const nestedPayloadEnvelope = envelope({
+    payload: nested,
+    payloadHash,
+  });
+  assert.throws(
+    () => renderAitmRecord({ envelope: nestedPayloadEnvelope, visibleMarkdown: '' }),
+    /canonical-json:invalid:nesting/
+  );
+});
+
+test('canonical JSON rejects ill-formed Unicode strings and keys', () => {
+  const loneHighSurrogate = '\ud800';
+  assert.throws(() => canonicalRecordJson(loneHighSurrogate), /canonical-json:invalid:unicode/);
+  assert.throws(
+    () => canonicalRecordJson({ [loneHighSurrogate]: 'value' }),
+    /canonical-json:invalid:unicode/
+  );
 });
 
 test('marker syntax is bounded and exactly one complete record is required', () => {

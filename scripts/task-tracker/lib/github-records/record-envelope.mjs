@@ -1,3 +1,5 @@
+// cspell:ignore HJKMNP pousr noncanonical
+
 import { createHash } from 'node:crypto';
 
 import { canonicalRecordJson } from './canonical-json.mjs';
@@ -21,42 +23,24 @@ const MARKER_RE = /<!--\s*aitm-record(?=\s)/g;
 const MAX_RECORD_JSON_BYTES = 256 * 1024;
 const MAX_COMMENT_BODY_BYTES = 1024 * 1024;
 const HASH_RE = /^sha256:[0-9a-f]{64}$/;
+const ULID_RE = /^[0-7][0-9A-HJKMNP-TV-Z]{25}$/;
 const RECORD_TYPE_RE = /^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$/;
 const REPOSITORY_RE = /^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/;
-const SECRET_KEYS = new Set([
-  'accesstoken',
-  'apikey',
+const SINGLE_SEGMENT_SECRET_KEYS = new Set([
   'authorization',
-  'authorizationheader',
-  'authtoken',
-  'clientsecret',
   'cookie',
   'cookies',
   'credential',
   'credentials',
-  'githubtoken',
-  'idtoken',
   'password',
   'passwd',
-  'privatekey',
-  'refreshtoken',
+  'secret',
   'token',
-  'tokenenv',
-  'tokenenvironment',
-  'tokenenvironmentname',
 ]);
-const SECRET_KEY_SUFFIXES = [
-  'accesstoken',
-  'apikey',
-  'authorization',
-  'authorizationheader',
-  'clientsecret',
-  'cookie',
-  'password',
-  'passwd',
-  'privatekey',
-];
 const BEARER_RE = /\bbearer\s+([A-Za-z0-9._~+/=-]{8,})/i;
+const GITHUB_TOKEN_RE = /\b(?:gh[pousr]_[A-Za-z0-9]{16,}|github_pat_[A-Za-z0-9_]{20,})\b/i;
+const TOKEN_ENV_NAME_RE =
+  /\b[A-Z][A-Z0-9]*(?:_[A-Z0-9]+)*_(?:ACCESS_TOKEN|API_KEY|AUTH_TOKEN|CLIENT_SECRET|PRIVATE_KEY|TOKEN|PASSWORD|CREDENTIALS)\b/;
 const PRIVATE_KEY_RE = /-----BEGIN(?: [A-Z0-9]+)* PRIVATE KEY-----/i;
 
 function recordError(category) {
@@ -85,7 +69,7 @@ function isOpaqueId(value) {
 }
 
 function isRecordId(value) {
-  return isOpaqueId(value) && /^[A-Za-z0-9][A-Za-z0-9._:/-]*$/.test(value);
+  return typeof value === 'string' && ULID_RE.test(value);
 }
 
 function isCanonicalInstant(value) {
@@ -96,21 +80,57 @@ function isCanonicalInstant(value) {
   return Number.isFinite(timestamp) && new Date(timestamp).toISOString() === value;
 }
 
-function normalizedSecretKey(key) {
-  return key.toLowerCase().replace(/[^a-z0-9]/g, '');
+function secretKeySegments(key) {
+  return key
+    .replace(/([a-z0-9])([A-Z])/g, '$1 $2')
+    .replace(/([A-Z]+)([A-Z][a-z])/g, '$1 $2')
+    .toLowerCase()
+    .split(/[^a-z0-9]+/)
+    .filter(Boolean);
+}
+
+function hasAdjacentSegments(segments, first, second) {
+  return segments.some((segment, index) => segment === first && segments[index + 1] === second);
+}
+
+function isSecretTokenSegment(segments, index) {
+  if (segments[index] !== 'token') return false;
+  const before = segments[index - 1];
+  const after = segments[index + 1];
+  return (
+    ['access', 'api', 'auth', 'github', 'gitlab', 'id', 'npm', 'refresh', 'session'].includes(
+      before
+    ) || ['backup', 'env', 'environment', 'secret', 'value'].includes(after)
+  );
 }
 
 function isSecretKey(key) {
-  const normalized = normalizedSecretKey(key);
-  return (
-    SECRET_KEYS.has(normalized) || SECRET_KEY_SUFFIXES.some((suffix) => normalized.endsWith(suffix))
-  );
+  const segments = secretKeySegments(key);
+  if (segments.length === 1 && SINGLE_SEGMENT_SECRET_KEYS.has(segments[0])) return true;
+  if (segments.some((segment) => ['credential', 'credentials', 'passwd'].includes(segment))) {
+    return true;
+  }
+  if (
+    segments.some((segment, index) => segment === 'password' && segments[index + 1] !== 'policy')
+  ) {
+    return true;
+  }
+  if (segments.some((segment, index) => isSecretTokenSegment(segments, index))) return true;
+  if (hasAdjacentSegments(segments, 'api', 'key')) return true;
+  if (hasAdjacentSegments(segments, 'client', 'secret')) return true;
+  if (hasAdjacentSegments(segments, 'private', 'key')) return true;
+  if (hasAdjacentSegments(segments, 'authorization', 'header')) return true;
+  return segments.length === 2 && hasAdjacentSegments(segments, 'session', 'cookie');
 }
 
 function containsCredentialSignature(value) {
   const bearer = value.match(BEARER_RE)?.[1];
-  const looksLikeBearerCredential = bearer?.length >= 16 && /[0-9._~+/=-]/.test(bearer);
-  return looksLikeBearerCredential || PRIVATE_KEY_RE.test(value);
+  return (
+    bearer?.length >= 16 ||
+    GITHUB_TOKEN_RE.test(value) ||
+    TOKEN_ENV_NAME_RE.test(value) ||
+    PRIVATE_KEY_RE.test(value)
+  );
 }
 
 function assertNoSecrets(value) {
@@ -158,6 +178,13 @@ function validateEnvelope(envelope) {
   validateAuthority(envelope.authority);
   assertLink(envelope.predecessor, 'predecessor');
   assertLink(envelope.supersedes, 'supersedes');
+  if (
+    envelope.authority.grantId === envelope.recordId ||
+    envelope.predecessor === envelope.recordId ||
+    envelope.supersedes === envelope.recordId
+  ) {
+    throw recordError('self-link');
+  }
   if (typeof envelope.payloadHash !== 'string' || !HASH_RE.test(envelope.payloadHash)) {
     throw recordError('payload-hash');
   }
@@ -186,7 +213,7 @@ function extractRecordJson(body) {
   const rawRecordJson = body.slice(payloadStart, payloadEnd);
   assertBounded(rawRecordJson, MAX_RECORD_JSON_BYTES, 'too-large');
   const recordJson = rawRecordJson.trim();
-  return recordJson;
+  return { recordJson, visibleMarkdown: body.slice(payloadEnd + 3) };
 }
 
 function deepFreeze(value) {
@@ -227,7 +254,7 @@ export function parseAitmRecord({ commentNodeId, body, expectedRepository, expec
   if (typeof expectedRepository !== 'string') throw recordError('expected-repository');
   if (!Number.isInteger(expectedIssue) || expectedIssue <= 0) throw recordError('expected-issue');
 
-  const recordJson = extractRecordJson(body);
+  const { recordJson, visibleMarkdown } = extractRecordJson(body);
   let envelope;
   try {
     envelope = JSON.parse(recordJson);
@@ -236,6 +263,7 @@ export function parseAitmRecord({ commentNodeId, body, expectedRepository, expec
   }
   if (canonicalRecordJson(envelope) !== recordJson) throw recordError('noncanonical');
   validateEnvelope(envelope);
+  assertNoSecrets(visibleMarkdown);
   if (envelope.repository !== expectedRepository) throw recordError('repository-mismatch');
   if (envelope.issue !== expectedIssue) throw recordError('issue-mismatch');
 

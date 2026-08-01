@@ -1,3 +1,5 @@
+const MAX_NESTING_DEPTH = 64;
+
 function canonicalJsonError(category) {
   return new TypeError(`canonical-json:invalid:${category}`);
 }
@@ -8,7 +10,11 @@ function assertDataProperty(descriptor) {
   }
 }
 
-function serializeArray(value, ancestors) {
+function assertWellFormed(value) {
+  if (!value.isWellFormed()) throw canonicalJsonError('unicode');
+}
+
+function serializeArray(value, ancestors, depth) {
   const keys = Object.keys(value);
   if (
     keys.length !== value.length ||
@@ -20,12 +26,12 @@ function serializeArray(value, ancestors) {
 
   const serialized = keys.map((key) => {
     assertDataProperty(Object.getOwnPropertyDescriptor(value, key));
-    return serializeValue(value[key], ancestors);
+    return serializeValue(value[key], ancestors, depth);
   });
   return `[${serialized.join(',')}]`;
 }
 
-function serializeObject(value, ancestors) {
+function serializeObject(value, ancestors, depth) {
   const prototype = Object.getPrototypeOf(value);
   if (prototype !== Object.prototype && prototype !== null) {
     throw canonicalJsonError('object');
@@ -40,33 +46,39 @@ function serializeObject(value, ancestors) {
   }
 
   const serialized = keys.sort().map((key) => {
+    assertWellFormed(key);
     assertDataProperty(Object.getOwnPropertyDescriptor(value, key));
-    return `${JSON.stringify(key)}:${serializeValue(value[key], ancestors)}`;
+    return `${JSON.stringify(key)}:${serializeValue(value[key], ancestors, depth)}`;
   });
   return `{${serialized.join(',')}}`;
 }
 
-function serializeComposite(value, ancestors) {
+function serializeComposite(value, ancestors, depth) {
   if (ancestors.has(value)) throw canonicalJsonError('cycle');
   ancestors.add(value);
   try {
     return Array.isArray(value)
-      ? serializeArray(value, ancestors)
-      : serializeObject(value, ancestors);
+      ? serializeArray(value, ancestors, depth)
+      : serializeObject(value, ancestors, depth);
   } finally {
     ancestors.delete(value);
   }
 }
 
-function serializeValue(value, ancestors) {
+function serializeValue(value, ancestors, depth) {
   if (value === null) return 'null';
-  if (typeof value === 'boolean' || typeof value === 'string') return JSON.stringify(value);
+  if (typeof value === 'boolean') return JSON.stringify(value);
+  if (typeof value === 'string') {
+    assertWellFormed(value);
+    return JSON.stringify(value);
+  }
   if (typeof value === 'number') {
     if (!Number.isFinite(value) || Object.is(value, -0)) throw canonicalJsonError('number');
     return JSON.stringify(value);
   }
   if (typeof value !== 'object') throw canonicalJsonError('value');
-  return serializeComposite(value, ancestors);
+  if (depth >= MAX_NESTING_DEPTH) throw canonicalJsonError('nesting');
+  return serializeComposite(value, ancestors, depth + 1);
 }
 
 /**
@@ -78,5 +90,5 @@ function serializeValue(value, ancestors) {
  * @returns {string}
  */
 export function canonicalRecordJson(value) {
-  return serializeValue(value, new Set());
+  return serializeValue(value, new Set(), 0);
 }
