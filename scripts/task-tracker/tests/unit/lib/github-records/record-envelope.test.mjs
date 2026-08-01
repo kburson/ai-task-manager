@@ -1,6 +1,6 @@
 // @story #1069
 // cspell:ignore accesstoken apikey authorizationheader clientsecret ghp githubtoken
-// cspell:ignore noncanonical refreshtoken tokenenv
+// cspell:ignore noncanonical refreshtoken tokenenv tokenvalue
 // cspell:ignore authorizationbackup authorizationtoken authtoken authtokenbackup
 // cspell:ignore backupcredentials bearercredential clientpassword cookiebackup
 // cspell:ignore databasecredentials databasepasswd databasepassword credentialsbackup
@@ -38,10 +38,22 @@ const credentialSignatures = [
   'Bearer abcdefghijklmnop suffix text',
   'curl -H "Authorization: Bearer abcdefghijklmnop" https://example.invalid',
   '`Authorization: Bearer abcdefghijklmnop`',
+  'Authorization: Bearer',
+  'Authorization: Bearer responsibility',
+  'Bearer tokenvalue',
   'ghp_1234567890abcdefghijklmnop',
   'Environment variable GH_TOKEN',
   'Environment variable gh_token',
   '-----BEGIN PRIVATE KEY-----',
+];
+const ordinaryBearerProse = [
+  'The bearer responsibility remains clear.',
+  'The Bearer responsibility remains clear.',
+  'Bearer tokens are prohibited.',
+  'The bearer scheme is documented.',
+  'Bearer authentication is enabled.',
+  'Bearer credentials must not be logged.',
+  'The Bearer responsibility.',
 ];
 
 const validEnvelope = {
@@ -204,6 +216,8 @@ test('rendering rejects recursively nested secret-bearing keys and credential va
     databasepasswd passwordbackup clientpassword authtoken authtokenbackup authorizationtoken
     sessiontoken sessiontokenbackup idtoken idtokenbackup npmtoken npmtokenbackup gitlabtoken
     gitlabtokenbackup bearercredential
+    auth AUTH authBackup authData pat PAT patBackup ghPat gitPat priorAuthorizationHeader
+    authorizationDecisionHeader
   `
     .trim()
     .split(/\s+/);
@@ -233,18 +247,16 @@ test('secret scanning permits ordinary policy and token-accounting fields', () =
     priorAuthorizationState authorizationDecision credentialPolicyVersion apiKeyPolicyName
     sessionCookiePolicyVersion fortuneCookieMessage secretaryName tokenizerMode tokenCountByModel
     passwordPolicyName fortuneCookieRecipe priorAuthorizationDecision authorizationDecisionReason
-    credentialPolicyName apiKeyPolicyVersion sessionCookiePolicyName
+    credentialPolicyName apiKeyPolicyVersion sessionCookiePolicyName authorName authorityLabel patternName
   `
     .trim()
     .split(/\s+/);
   const ordinaryPayload = Object.fromEntries(safeKeys.map((key) => [key, 'safe']));
-  ordinaryPayload.note = 'The bearer responsibility remains with the coordinator.';
-  const body = render({
-    payload: ordinaryPayload,
-    payloadHash: hashRecordPayload(ordinaryPayload),
-  });
-
-  assert.deepEqual(parse(body).envelope.payload, ordinaryPayload);
+  for (const note of ordinaryBearerProse) {
+    const safePayload = { ...ordinaryPayload, note };
+    const body = render({ payload: safePayload, payloadHash: hashRecordPayload(safePayload) });
+    assert.deepEqual(parse(body).envelope.payload, safePayload);
+  }
 });
 
 test('parsing rejects secret signatures introduced into visible Markdown', () => {
@@ -255,10 +267,7 @@ test('parsing rejects secret signatures introduced into visible Markdown', () =>
       /record-envelope:secret/
     );
   }
-  for (const prose of [
-    'The bearer responsibility remains clear.',
-    'The Bearer responsibility remains clear.',
-  ]) {
+  for (const prose of ordinaryBearerProse) {
     assert.doesNotThrow(() => parse(safeBody.replace('Ordinary presentation.', prose)));
   }
   const unsafeSafeFamily = { passwordPolicyToken: 'redacted' };

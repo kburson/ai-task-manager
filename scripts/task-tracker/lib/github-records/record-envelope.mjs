@@ -2,7 +2,7 @@
 // cspell:ignore apikey apikeypolicy credentialpolicy fortunecookie passwordpolicy
 // cspell:ignore priorauthorization sessioncookiepolicy tokencount
 // cspell:ignore accesstoken authheader authorizationheader authvalue basicauth
-// cspell:ignore bearertoken bearervalue clientsecret githubpat githubtoken oauthtoken
+// cspell:ignore bearertoken bearervalue clientsecret ghpat githubpat githubtoken gitpat oauthtoken
 // cspell:ignore refreshtoken secrettoken secretvalue tokenenv
 // cspell:ignore authorizationdecision inputtokencount outputtokencount
 
@@ -59,9 +59,18 @@ const COLLAPSED_SENSITIVE_FRAGMENTS = [
   'bearer',
 ];
 const COLLAPSED_AUTH_PAT_COMPOUNDS = ['authheader', 'authvalue', 'basicauth', 'githubpat'];
-const AUTHORIZATION_BEARER_RE = /\bauthorization\s*:\s*bearer\s+[A-Za-z0-9._~+/=-]+/i;
+const FORCED_DANGEROUS_COMPOUNDS = ['authorizationheader', 'authheader'];
+const AUTHORIZATION_BEARER_RE = /\bauthorization\s*:\s*bearer\b/i;
 const BEARER_CANDIDATE_RE = /\bbearer\s+([A-Za-z0-9._~+/=-]+)/gi;
-const ORDINARY_BEARER_NOUNS = new Set(['responsibility']);
+const ORDINARY_BEARER_NOUNS = new Set([
+  'authentication',
+  'credential',
+  'credentials',
+  'responsibility',
+  'scheme',
+  'token',
+  'tokens',
+]);
 const GITHUB_TOKEN_RE = /\b(?:gh[pousr]_[A-Za-z0-9]{16,}|github_pat_[A-Za-z0-9_]{20,})\b/i;
 const TOKEN_ENV_NAME_RE =
   /\b[A-Z][A-Z0-9]*(?:_[A-Z0-9]+)*_(?:ACCESS_TOKEN|API_KEY|AUTH_TOKEN|CLIENT_SECRET|PRIVATE_KEY|TOKEN|PASSWORD|CREDENTIALS)\b/i;
@@ -115,20 +124,39 @@ function containsSensitiveKeyFragment(value) {
   );
 }
 
+function containsAuthPatAbbreviation(value) {
+  const hasAuthPrefix = value.startsWith('auth') && !value.startsWith('author');
+  const hasPatPrefix =
+    /^(?:pat|ghpat|gitpat|githubpat)(?:$|backup|data|header|key|secret|token|value)/.test(value);
+  return hasAuthPrefix || hasPatPrefix;
+}
+
 function isSafeSemanticKey(collapsed) {
   const family = SAFE_KEY_FAMILY_PREFIXES.find((prefix) => collapsed.startsWith(prefix));
-  return family !== undefined && !containsSensitiveKeyFragment(collapsed.slice(family.length));
+  if (family === undefined) return false;
+  const suffix = collapsed.slice(family.length);
+  return (
+    !containsSensitiveKeyFragment(suffix) &&
+    !containsAuthPatAbbreviation(suffix) &&
+    !suffix.includes('header')
+  );
 }
 
 function isSecretKey(key) {
   const collapsed = collapsedSecretKey(key);
+  if (FORCED_DANGEROUS_COMPOUNDS.some((compound) => collapsed.includes(compound))) return true;
+  if (containsAuthPatAbbreviation(collapsed)) return true;
   return !isSafeSemanticKey(collapsed) && containsSensitiveKeyFragment(collapsed);
+}
+
+function normalizedBearerNoun(candidate) {
+  return candidate.toLowerCase().replace(/[.,;:!?]+$/, '');
 }
 
 function containsBearerCredential(value) {
   if (AUTHORIZATION_BEARER_RE.test(value)) return true;
   return [...value.matchAll(BEARER_CANDIDATE_RE)].some(
-    (match) => !ORDINARY_BEARER_NOUNS.has(match[1].toLowerCase())
+    (match) => !ORDINARY_BEARER_NOUNS.has(normalizedBearerNoun(match[1]))
   );
 }
 
