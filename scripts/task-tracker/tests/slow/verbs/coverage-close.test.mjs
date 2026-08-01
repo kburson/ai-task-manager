@@ -79,10 +79,12 @@ function makeCtx(statePath, dir, over = {}) {
 async function run({ state = baseState(), over = {}, ci, dirty = false } = {}) {
   const prevSkip = process.env.TT_SKIP_DIRTY_CHECK;
   const prevCI = process.env.CI;
+  const prevProjectDir = process.env.AI_TASK_MANAGER_PROJECT_DIR;
   const setEnv = (k, v) => (v === undefined ? delete process.env[k] : (process.env[k] = v));
   setEnv('TT_SKIP_DIRTY_CHECK', dirty ? undefined : '1');
   setEnv('CI', ci);
   const { statePath, dir } = tmpState(state);
+  setEnv('AI_TASK_MANAGER_PROJECT_DIR', dir);
   const ctx = makeCtx(statePath, dir, over);
   let repo;
   if (dirty) ctx.projectDir = repo = makeDirtyRepo();
@@ -112,6 +114,7 @@ async function run({ state = baseState(), over = {}, ci, dirty = false } = {}) {
     if (repo) rmSync(repo, { recursive: true, force: true });
     setEnv('TT_SKIP_DIRTY_CHECK', prevSkip);
     setEnv('CI', prevCI);
+    setEnv('AI_TASK_MANAGER_PROJECT_DIR', prevProjectDir);
   }
   return {
     exitCode,
