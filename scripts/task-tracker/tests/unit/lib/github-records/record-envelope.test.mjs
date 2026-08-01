@@ -1,5 +1,6 @@
 // @story #1069
-// cspell:ignore ghp noncanonical
+// cspell:ignore accesstoken apikey authorizationheader clientsecret ghp githubtoken
+// cspell:ignore noncanonical refreshtoken tokenenv
 
 import { strict as assert } from 'node:assert';
 import test from 'node:test';
@@ -177,12 +178,31 @@ test('rendering rejects recursively nested secret-bearing keys and credential va
     { client_secret_backup: 'redacted' },
     { database_password: 'redacted' },
     { authorizationHeader: 'redacted' },
+    { authorizationBackup: 'redacted' },
     { sessionCookie: 'redacted' },
+    { sessionCookieBackup: 'redacted' },
+    { sessionCookies: 'redacted' },
+    { cookieBackup: 'redacted' },
+    { sessionCookieValue: 'redacted' },
     { 'x-api-key': 'redacted' },
+    { apikey: 'redacted' },
+    { APIKEY: 'redacted' },
     { privateKey: 'redacted' },
-    { note: 'Bearer abcdefghijklmnop' },
+    { privatekey: 'redacted' },
+    { clientsecret: 'redacted' },
+    { authorizationheader: 'redacted' },
+    { githubtoken: 'redacted' },
+    { refreshtoken: 'redacted' },
+    { accesstoken: 'redacted' },
+    { tokenenv: 'redacted' },
+    { bearerToken: 'redacted' },
+    { oauthToken: 'redacted' },
+    { secretToken: 'redacted' },
+    { secretValue: 'redacted' },
+    { note: 'Bearer abcdefghijk' },
     { note: 'ghp_1234567890abcdefghijklmnop' },
     { note: 'Read the token environment name from GH_TOKEN.' },
+    { note: 'Read the token environment name from gh_token.' },
     { note: '-----BEGIN PRIVATE KEY-----' },
   ];
 
@@ -196,10 +216,7 @@ test('rendering rejects recursively nested secret-bearing keys and credential va
       /record-envelope:secret/
     );
   }
-  assert.throws(
-    () => render({}, 'Authorization: Bearer abcdefghijklmnop'),
-    /record-envelope:secret/
-  );
+  assert.throws(() => render({}, 'Authorization: Bearer abcdefghijk'), /record-envelope:secret/);
 });
 
 test('secret scanning permits ordinary policy and token-accounting fields', () => {
@@ -208,6 +225,9 @@ test('secret scanning permits ordinary policy and token-accounting fields', () =
     tokenCount: 42,
     fortuneCookie: 'Ship small slices.',
     priorAuthorization: 'superseded',
+    credentialPolicy: 'Do not publish credentials.',
+    apiKeyPolicy: 'Use repository secrets.',
+    sessionCookiePolicy: 'Do not persist session cookies.',
     note: 'The bearer responsibility remains with the coordinator.',
   };
   const body = render({
@@ -221,9 +241,10 @@ test('secret scanning permits ordinary policy and token-accounting fields', () =
 test('parsing rejects secret signatures introduced into visible Markdown', () => {
   const safeBody = render({}, 'Ordinary presentation.');
   for (const visibleMarkdown of [
-    'Bearer abcdefghijklmnop',
+    'Bearer abcdefghijk',
     'ghp_1234567890abcdefghijklmnop',
     'Environment variable GH_TOKEN',
+    'Environment variable gh_token',
     '-----BEGIN PRIVATE KEY-----',
   ]) {
     assert.throws(
@@ -231,6 +252,9 @@ test('parsing rejects secret signatures introduced into visible Markdown', () =>
       /record-envelope:secret/
     );
   }
+  assert.doesNotThrow(() =>
+    parse(safeBody.replace('Ordinary presentation.', 'The bearer responsibility remains clear.'))
+  );
 });
 
 test('record references require canonical uppercase ULIDs and cannot self-link', () => {

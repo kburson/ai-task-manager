@@ -1,4 +1,6 @@
 // cspell:ignore HJKMNP pousr noncanonical
+// cspell:ignore apikey apikeypolicy credentialpolicy fortunecookie passwordpolicy
+// cspell:ignore priorauthorization sessioncookiepolicy tokencount
 
 import { createHash } from 'node:crypto';
 
@@ -26,21 +28,30 @@ const HASH_RE = /^sha256:[0-9a-f]{64}$/;
 const ULID_RE = /^[0-7][0-9A-HJKMNP-TV-Z]{25}$/;
 const RECORD_TYPE_RE = /^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$/;
 const REPOSITORY_RE = /^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/;
-const SINGLE_SEGMENT_SECRET_KEYS = new Set([
-  'authorization',
-  'cookie',
-  'cookies',
+const SAFE_SECRET_LIKE_KEYS = new Set([
+  'apikeypolicy',
+  'credentialpolicy',
+  'fortunecookie',
+  'passwordpolicy',
+  'priorauthorization',
+  'sessioncookiepolicy',
+  'tokencount',
+]);
+const SENSITIVE_KEY_FRAGMENTS = [
+  'token',
+  'secret',
   'credential',
-  'credentials',
   'password',
   'passwd',
-  'secret',
-  'token',
-]);
-const BEARER_RE = /\bbearer\s+([A-Za-z0-9._~+/=-]{8,})/i;
+  'authorization',
+  'cookie',
+  'apikey',
+  'privatekey',
+];
+const BEARER_RE = /\b(bearer)\s+([A-Za-z0-9._~+/=-]+)/i;
 const GITHUB_TOKEN_RE = /\b(?:gh[pousr]_[A-Za-z0-9]{16,}|github_pat_[A-Za-z0-9_]{20,})\b/i;
 const TOKEN_ENV_NAME_RE =
-  /\b[A-Z][A-Z0-9]*(?:_[A-Z0-9]+)*_(?:ACCESS_TOKEN|API_KEY|AUTH_TOKEN|CLIENT_SECRET|PRIVATE_KEY|TOKEN|PASSWORD|CREDENTIALS)\b/;
+  /\b[A-Z][A-Z0-9]*(?:_[A-Z0-9]+)*_(?:ACCESS_TOKEN|API_KEY|AUTH_TOKEN|CLIENT_SECRET|PRIVATE_KEY|TOKEN|PASSWORD|CREDENTIALS)\b/i;
 const PRIVATE_KEY_RE = /-----BEGIN(?: [A-Z0-9]+)* PRIVATE KEY-----/i;
 
 function recordError(category) {
@@ -80,53 +91,22 @@ function isCanonicalInstant(value) {
   return Number.isFinite(timestamp) && new Date(timestamp).toISOString() === value;
 }
 
-function secretKeySegments(key) {
-  return key
-    .replace(/([a-z0-9])([A-Z])/g, '$1 $2')
-    .replace(/([A-Z]+)([A-Z][a-z])/g, '$1 $2')
-    .toLowerCase()
-    .split(/[^a-z0-9]+/)
-    .filter(Boolean);
-}
-
-function hasAdjacentSegments(segments, first, second) {
-  return segments.some((segment, index) => segment === first && segments[index + 1] === second);
-}
-
-function isSecretTokenSegment(segments, index) {
-  if (segments[index] !== 'token') return false;
-  const before = segments[index - 1];
-  const after = segments[index + 1];
-  return (
-    ['access', 'api', 'auth', 'github', 'gitlab', 'id', 'npm', 'refresh', 'session'].includes(
-      before
-    ) || ['backup', 'env', 'environment', 'secret', 'value'].includes(after)
-  );
+function collapsedSecretKey(key) {
+  return key.toLowerCase().replace(/[^a-z0-9]/g, '');
 }
 
 function isSecretKey(key) {
-  const segments = secretKeySegments(key);
-  if (segments.length === 1 && SINGLE_SEGMENT_SECRET_KEYS.has(segments[0])) return true;
-  if (segments.some((segment) => ['credential', 'credentials', 'passwd'].includes(segment))) {
-    return true;
-  }
-  if (
-    segments.some((segment, index) => segment === 'password' && segments[index + 1] !== 'policy')
-  ) {
-    return true;
-  }
-  if (segments.some((segment, index) => isSecretTokenSegment(segments, index))) return true;
-  if (hasAdjacentSegments(segments, 'api', 'key')) return true;
-  if (hasAdjacentSegments(segments, 'client', 'secret')) return true;
-  if (hasAdjacentSegments(segments, 'private', 'key')) return true;
-  if (hasAdjacentSegments(segments, 'authorization', 'header')) return true;
-  return segments.length === 2 && hasAdjacentSegments(segments, 'session', 'cookie');
+  const collapsed = collapsedSecretKey(key);
+  if (SAFE_SECRET_LIKE_KEYS.has(collapsed)) return false;
+  return SENSITIVE_KEY_FRAGMENTS.some((fragment) => collapsed.includes(fragment));
 }
 
 function containsCredentialSignature(value) {
-  const bearer = value.match(BEARER_RE)?.[1];
+  const bearer = value.match(BEARER_RE);
+  const looksLikeBearerCredential =
+    bearer !== null && (bearer[1] !== 'bearer' || /[^A-Za-z]/.test(bearer[2]));
   return (
-    bearer?.length >= 16 ||
+    looksLikeBearerCredential ||
     GITHUB_TOKEN_RE.test(value) ||
     TOKEN_ENV_NAME_RE.test(value) ||
     PRIVATE_KEY_RE.test(value)
