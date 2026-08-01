@@ -1,4 +1,5 @@
 // @story #1070
+// cspell:ignore Unrequested
 import { strict as assert } from 'node:assert';
 import test from 'node:test';
 
