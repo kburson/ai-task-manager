@@ -27,6 +27,7 @@ import {
   loadMarker,
   saveMarker,
   countWords,
+  aiAppName,
 } from './word-counter.mjs';
 import {
   collectEventTimestamps,
@@ -417,7 +418,8 @@ export function buildContext(rawArgv = process.argv.slice(2)) {
     let markerLineToPersist = null;
     if (sid) {
       const marker = loadMarker(markerPathFor(sid));
-      const counted = countWords(jsonlPath(sid), marker.line);
+      const transcriptPath = jsonlPath(sid);
+      const counted = countWords(transcriptPath, marker.line, { provider: aiAppName(), sid });
       deltaWords = counted.count;
       deltaWordsFull = counted.fullExpansion ?? counted.count;
       priorWordsFull = marker.wordsFull ?? marker.words ?? 0;

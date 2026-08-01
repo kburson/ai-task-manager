@@ -187,6 +187,31 @@ function wordCount(text) {
   return text.trim().split(/\s+/).filter(Boolean).length;
 }
 
+const emittedDiagnostics = new Set();
+
+function emitDiagnosticOnce({ code, sid, filePath, onDiagnostic }) {
+  const key = `${code}:${sid || ''}:${filePath || ''}`;
+  if (emittedDiagnostics.has(key)) return;
+  emittedDiagnostics.add(key);
+  const sink = onDiagnostic || ((line) => console.error(line));
+  sink(`⚠ [aitm:word-measurement] ${code} sid=${sid || ''}`);
+}
+
+function countResult({ count = 0, totalLines = 0, fullExpansion = 0, code = null } = {}) {
+  return {
+    count,
+    totalLines,
+    fullExpansion,
+    status: code ? 'unavailable' : 'ok',
+    diagnosticCode: code,
+  };
+}
+
+function unavailableCodexResult(code, { sid, filePath, onDiagnostic }) {
+  emitDiagnosticOnce({ code, sid, filePath, onDiagnostic });
+  return countResult({ code });
+}
+
 // Three-tier word count from `fromLine`:
 //   Tier 1  — monologue + user prose (`text` blocks + string content).
 //   Tier 2  — stay-abreast = Tier 1 + tool-summary chips.  Returned as `count`
@@ -194,21 +219,44 @@ function wordCount(text) {
 //   Tier 3  — full-expansion = stay-abreast + full tool_use inputs + full
 //             tool_result outputs (injection filter applied to results).
 //             Returned as `fullExpansion`.
-export function countWords(filePath, fromLine = 0) {
-  if (!existsSync(filePath)) return { count: 0, totalLines: 0, fullExpansion: 0 };
+export function countWords(filePath, fromLine = 0, options = {}) {
+  const { provider = null, sid = null, onDiagnostic } = options;
+  if (provider === 'codex' && (!sid || sid === 'default-session')) {
+    return unavailableCodexResult('codex-session-unresolved', {
+      sid,
+      filePath,
+      onDiagnostic,
+    });
+  }
+  if (!filePath || !existsSync(filePath)) {
+    if (provider === 'codex') {
+      return unavailableCodexResult('codex-transcript-unresolved', {
+        sid,
+        filePath,
+        onDiagnostic,
+      });
+    }
+    return countResult();
+  }
   const lines = readFileSync(filePath, 'utf8').split('\n').filter(Boolean);
   let tier1 = 0;
   let chipWords = 0;
   let toolInputWords = 0;
   let toolResultWords = 0;
-  for (let i = fromLine; i < lines.length; i++) {
+  let codexSchemaRecognized = false;
+  for (let i = 0; i < lines.length; i++) {
     let obj;
     try {
       obj = JSON.parse(lines[i]);
     } catch {
       continue;
     }
-    const { events } = normalizeTranscriptRecord(obj);
+    const normalized = normalizeTranscriptRecord(obj);
+    if (normalized.schema === 'codex-rollout-v1' && normalized.recognized) {
+      codexSchemaRecognized = true;
+    }
+    if (i < fromLine) continue;
+    const { events } = normalized;
     for (const event of events) {
       if (event.kind === 'text') {
         if (isInjection(event.text)) continue;
@@ -225,5 +273,12 @@ export function countWords(filePath, fromLine = 0) {
   }
   const count = tier1 + chipWords;
   const fullExpansion = count + toolInputWords + toolResultWords;
-  return { count, totalLines: lines.length, fullExpansion };
+  if (provider === 'codex' && !codexSchemaRecognized) {
+    return unavailableCodexResult('codex-schema-unrecognized', {
+      sid,
+      filePath,
+      onDiagnostic,
+    });
+  }
+  return countResult({ count, totalLines: lines.length, fullExpansion });
 }

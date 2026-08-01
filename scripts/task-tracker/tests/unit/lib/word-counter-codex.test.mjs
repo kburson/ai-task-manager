@@ -45,6 +45,9 @@ try {
   assert.equal(prose.count, 5, 'Codex counts visible user and assistant prose exactly once');
   assert.equal(prose.fullExpansion, 5, 'excluded records stay out of every tier');
   assert.equal(prose.totalLines, 9, 'cursor includes malformed physical JSONL lines');
+  const available = countWords(prosePath, 0, { provider: 'codex', sid: 'thread-prose' });
+  assert.equal(available.status, 'ok');
+  assert.equal(available.diagnosticCode, null);
 
   const toolsPath = writeJsonl('tools.jsonl', [
     responseMessage('assistant', [{ type: 'output_text', text: 'working now' }]),
@@ -106,6 +109,47 @@ try {
     responseMessage('assistant', [{ type: 'output_text', text: 'later answer' }]),
   ]);
   assert.equal(countWords(cursorPath, 1).count, 2, 'fromLine skips prior Codex records');
+
+  const diagnostics = [];
+  const onDiagnostic = (line) => diagnostics.push(line);
+  const noSession = countWords('', 0, { provider: 'codex', sid: '', onDiagnostic });
+  assert.equal(noSession.status, 'unavailable');
+  assert.equal(noSession.diagnosticCode, 'codex-session-unresolved');
+
+  const noTranscript = countWords('', 0, {
+    provider: 'codex',
+    sid: 'thread-no-transcript',
+    onDiagnostic,
+  });
+  assert.equal(noTranscript.status, 'unavailable');
+  assert.equal(noTranscript.diagnosticCode, 'codex-transcript-unresolved');
+
+  const unknownPath = writeJsonl('unknown-schema.jsonl', [
+    { type: 'session_meta', payload: { id: 'thread-unknown-schema' } },
+    { type: 'event_msg', payload: { type: 'agent_message', message: 'mirror only' } },
+  ]);
+  const noSchema = countWords(unknownPath, 0, {
+    provider: 'codex',
+    sid: 'thread-unknown-schema',
+    onDiagnostic,
+  });
+  assert.equal(noSchema.status, 'unavailable');
+  assert.equal(noSchema.diagnosticCode, 'codex-schema-unrecognized');
+
+  countWords(unknownPath, 0, {
+    provider: 'codex',
+    sid: 'thread-unknown-schema',
+    onDiagnostic,
+  });
+  assert.deepEqual(
+    diagnostics,
+    [
+      '⚠ [aitm:word-measurement] codex-session-unresolved sid=',
+      '⚠ [aitm:word-measurement] codex-transcript-unresolved sid=thread-no-transcript',
+      '⚠ [aitm:word-measurement] codex-schema-unrecognized sid=thread-unknown-schema',
+    ],
+    'Codex diagnostics are structured, distinct, and deduplicated'
+  );
 } finally {
   rmSync(tmp, { recursive: true, force: true });
 }
