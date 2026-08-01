@@ -1,4 +1,5 @@
 // @story #864
+// Registered by the #1090 discovery-and-lanes feature test.
 // #864 — `unit` and `integration` are first-class selectable run-lanes.
 //
 // Half A of the test-architecture change promotes the two manifest keys to

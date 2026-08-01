@@ -1,4 +1,5 @@
 // @story #531
+// Registered by the #1090 process-and-pool feature test.
 // #531 AC2 — the test runner never surfaces a bare `(exit null)` and never
 // buffer-kills a passing file. A signal-killed child reports its signal +
 // elapsed ms; an errored child reports its `error.code`; the per-file

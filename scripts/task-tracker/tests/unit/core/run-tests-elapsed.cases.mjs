@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 // @story #1090
+// Registered by the #1090 timing-policy feature test.
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 

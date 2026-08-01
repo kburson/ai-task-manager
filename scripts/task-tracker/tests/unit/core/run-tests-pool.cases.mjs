@@ -1,4 +1,5 @@
 // @story #863
+// Registered by the #1090 process-and-pool feature test.
 /**
  * Pool-correctness verifier for #863 (vc:1).
  *

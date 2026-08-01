@@ -1,4 +1,5 @@
 // @story #874
+// Registered by the #1090 discovery-and-lanes feature test.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readdirSync } from 'node:fs';

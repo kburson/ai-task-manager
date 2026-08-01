@@ -1,4 +1,5 @@
 // @story #861
+// Registered by the #1090 timing-policy feature test.
 // Unit tests for the pure timing module (#861). Zero spawns — every function
 // takes plain data, so this runs in the fast (unit) lane.
 import { test } from 'node:test';

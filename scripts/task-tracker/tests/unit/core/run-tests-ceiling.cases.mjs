@@ -1,4 +1,5 @@
 // @story #864
+// Registered by the #1090 timing-policy feature test.
 // #864 — the per-section 10-minute wall-time ceiling is fail-closed.
 //
 // The standing directive is absolute: never a test run over ten minutes. The
