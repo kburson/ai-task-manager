@@ -1,4 +1,5 @@
 // @story #1089
+// cspell:ignore deadbee
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
