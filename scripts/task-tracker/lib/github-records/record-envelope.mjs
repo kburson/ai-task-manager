@@ -1,6 +1,6 @@
 // cspell:ignore HJKMNP ically ization ment noncanonical pousr tion
 // cspell:ignore apikey apikeypolicy credentialpolicy fortunecookie passwordpolicy
-// cspell:ignore priorauthorization sessioncookiepolicy tokencount
+// cspell:ignore authenticationcredentialpolicy authenticationpasswordpolicy authenticationsessioncookiepolicy authenticationtokencount authpolicytokencount priorauthorization sessioncookiepolicy tokencount
 // cspell:ignore accesstoken authconfiguration authheader authmode authorizationheader authvalue basicauth
 // cspell:ignore bearertoken bearervalue clientsecret ghpat githubpat githubtoken gitpat oauthtoken
 // cspell:ignore refreshtoken secrettoken secretvalue tokenenv
@@ -42,6 +42,11 @@ const SAFE_KEY_FAMILY_PREFIXES = [
   'credentialpolicy',
   'apikeypolicy',
   'sessioncookiepolicy',
+  'authenticationtokencount',
+  'authenticationpasswordpolicy',
+  'authenticationcredentialpolicy',
+  'authenticationsessioncookiepolicy',
+  'authpolicytokencount',
   'fortunecookie',
   'secretary',
   'tokenizer',
@@ -64,18 +69,21 @@ const ORDINARY_COLLAPSED_LEXEMES =
   'priorauthorization authorizationdecision authconfiguration authentication authenticity repatriation authorship authorized authority authpolicy authmode author dispatch pattern patience paternity patriarch patient patent empathy spatial compat patella patron patch path patio'
     .split(' ')
     .sort((left, right) => right.length - left.length);
-const SENSITIVE_LEXEME_QUALIFIERS =
-  'header value material data backup key token secret credential password cookie bearer auth pat'.split(
-    ' '
-  );
+const ORDINARY_COLLAPSED_LEXEME_PATTERN = ORDINARY_COLLAPSED_LEXEMES.join('|');
+const ORDINARY_COLLAPSED_LEXEME_RE = new RegExp(ORDINARY_COLLAPSED_LEXEME_PATTERN, 'g');
+const ORDINARY_COLLAPSED_LEXEME_START_RE = new RegExp(`^(?:${ORDINARY_COLLAPSED_LEXEME_PATTERN})`);
+const SENSITIVE_LEXEME_AFTER_RE =
+  /^(?:header|value|material(?!ity)|data(?!base)|backup|key(?!note)|token(?!count)|secret|credential(?!policy)|password(?!policy)|cookie(?!policy)|bearer|auth|pat)/;
+const SENSITIVE_LEXEME_BEFORE_RE =
+  /(?:header|value|material|(?<!meta)data|backup|key|token|secret|credential|password|(?<!fortune)cookie|bearer|auth|pat)$/;
+const LEXEME_CONTEXT_WINDOW = 32;
 const AUTHORIZATION_BEARER_RE = /\bauthorization\s*:\s*bearer\b/i;
 const BEARER_CANDIDATE_RE = /\bbearer\s+([A-Za-z0-9._~+/=-]+)/gi;
 const ORDINARY_BEARER_CONCEPTS = new Set(
-  'responsibility token tokens scheme authentication credential credentials policy security header headers guidance standard standards transport documentation requirement requirements setting settings value values'.split(
+  'responsibility token tokens scheme authentication credential credentials policy security header headers guidance standard standards transport documentation requirement requirements setting settings value values cryptographically decentralization interoperability implementation middleware compatibility usage handling support processing behavior flows mechanism'.split(
     ' '
   )
 );
-const ORDINARY_BEARER_MORPHOLOGY_RE = /^[a-z]{4,}(?:ability|ically|ization|tion|ity|ment|ware)s?$/;
 const BEARER_ARTICLE_RE = /\b(?:a|an|the)[\s"'`*_~()[\]{},.;:!?-]*$/i;
 const BEARER_PROSE_PREFIX_RE = /\b(?:describe|document|explain|review)\s+$/i;
 const BEARER_CONTINUATION_WORDS = new Set(
@@ -145,24 +153,16 @@ function containsSensitiveKeyFragment(value) {
   );
 }
 
-function removeOrdinaryCollapsedLexemes(value) {
-  return ORDINARY_COLLAPSED_LEXEMES.reduce(
-    (remaining, lexeme) => remaining.replaceAll(lexeme, ''),
-    value
-  );
-}
-
 function shieldOrdinaryCollapsedLexemes(value) {
-  return ORDINARY_COLLAPSED_LEXEMES.reduce((remaining, lexeme) => {
-    return remaining.replaceAll(lexeme, (match, offset) => {
-      const suffix = remaining.slice(offset + lexeme.length);
-      const reducedSuffix = removeOrdinaryCollapsedLexemes(suffix);
-      const isSensitive = SENSITIVE_LEXEME_QUALIFIERS.some((qualifier) =>
-        reducedSuffix.includes(qualifier)
-      );
-      return isSensitive ? match : '';
-    });
-  }, value);
+  return value.replace(ORDINARY_COLLAPSED_LEXEME_RE, (lexeme, offset, input) => {
+    const before = input.slice(Math.max(0, offset - LEXEME_CONTEXT_WINDOW), offset);
+    const afterOffset = offset + lexeme.length;
+    const after = input.slice(afterOffset, afterOffset + LEXEME_CONTEXT_WINDOW);
+    const sensitiveBefore = SENSITIVE_LEXEME_BEFORE_RE.test(before);
+    const sensitiveAfter =
+      !ORDINARY_COLLAPSED_LEXEME_START_RE.test(after) && SENSITIVE_LEXEME_AFTER_RE.test(after);
+    return sensitiveBefore || sensitiveAfter ? lexeme : '';
+  });
 }
 
 function containsAuthPatAbbreviation(key, collapsed) {
@@ -193,24 +193,22 @@ function isSecretKey(key) {
 }
 
 function hasExplicitBearerContext(before) {
-  let linePrefix = before.slice(before.lastIndexOf('\n') + 1).trimEnd();
-  for (let index = 0; index < 3; index += 1) {
-    linePrefix = linePrefix
-      .replace(/[\s"'`*_()[\]{}]+$/, '')
-      .replace(/\b(?:a|an|the)$/i, '')
-      .replace(/[\s"'`*_()[\]{}]+$/, '');
-  }
-  linePrefix = linePrefix.trim().replace(/\s+/g, ' ');
-  const isCredentialLabel = /^(?:\{\s*)?["']?(?:authorization|credential)["']?\s*[:=]$/i.test(
-    linePrefix
+  const lines = before.split('\n');
+  const currentLine = lines.pop() ?? '';
+  const previousLine = lines.at(-1) ?? '';
+  const isListLine = /^\s*(?:(?:>\s*)+|(?:[-*+]|\d+[.)])\s+|\[[ xX]\]\s+)/.test(currentLine);
+  const normalizeLabelMarkup = (value) => value.replace(/["'`*_[\](){}]/g, '');
+  const labelPattern = /(?:^|[^a-z0-9])(?:authorization|credential|accesstoken|auth|token)\s*[:=]/i;
+  const isSameLineLabel = labelPattern.test(normalizeLabelMarkup(currentLine));
+  const isPreviousLineLabel = new RegExp(`${labelPattern.source}\\s*(?:[>|][-+]?)?\\s*$`, 'i').test(
+    normalizeLabelMarkup(previousLine)
   );
-  const isListPrefix = /^(?:(?:>\s*)*(?:[-*+]|\d+[.)])|>)$/.test(linePrefix);
-  return isCredentialLabel || isListPrefix;
+  return isListLine || isSameLineLabel || isPreviousLineLabel;
 }
 
 function isOrdinaryBearerConcept(candidate) {
   const normalized = candidate.toLowerCase().replace(/[.,;:!?]+$/, '');
-  return ORDINARY_BEARER_CONCEPTS.has(normalized) || ORDINARY_BEARER_MORPHOLOGY_RE.test(normalized);
+  return ORDINARY_BEARER_CONCEPTS.has(normalized);
 }
 
 function hasBearerSentenceTail(after) {

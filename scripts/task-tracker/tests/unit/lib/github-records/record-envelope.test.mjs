@@ -1,5 +1,5 @@
 // @story #1069
-// cspell:ignore accesstoken apikey authorizationbackup authorizationdecisionpersonalpatbackup authorizationheader authorizationtoken authconfig authtoken authtokenbackup backupauthconfig backupcredentials backuppat backuppatdata bearercredential clientpassword clientsecret cookiebackup customauthmaterial databaseauth databaseauthbackup databasecredentials databasepasswd databasepassword databasepatvalue credentialsbackup ghp githubtoken gitlabtoken gitlabtokenbackup idtoken idtokenbackup myauthbackup mypat mypatbackup noncanonical npmtoken npmtokenbackup passwordbackup passwordpassword passwordpolicymypatbackup personalpat personalpatbackup qwertyuiopa qwertyuiopasdfgh randomtoken redactedredacted refreshtoken secretsecretsecret secretword sessionauth sessionauthconfig sessionauthdata sessioncookie sessioncookiebackup sessioncookies sessioncookievalue sessionpatconfig sessiontoken sessiontokenbackup tokencountdatabaseauthbackup tokenenv tokenvalue zxcvbnmasd
+// cspell:ignore aaaaation aaaaaaaaability abcdefghically accesstoken apikey authorizationbackup authorizationdecisionpersonalpatbackup authorizationheader authorizationtoken authconfig authtoken authtokenbackup backupauthconfig backupcredentials backuppat backuppatdata bearercredential clientpassword clientsecret cookiebackup customauthmaterial databaseauth databaseauthbackup databasecredentials databasepasswd databasepassword databasepatvalue credentialsbackup ghp githubtoken gitlabtoken gitlabtokenbackup idtoken idtokenbackup myauthbackup mypat mypatbackup noncanonical npmtoken npmtokenbackup passwordbackup passwordment passwordpassword passwordpolicymypatbackup personalpat personalpatbackup qwertyization qwertyuiopa qwertyuiopasdfgh qwertyware randomtoken randomware redactedredacted refreshtoken secretization secretsecretsecret secrettion secretword sessionauth sessionauthconfig sessionauthdata sessioncookie sessioncookiebackup sessioncookies sessioncookievalue sessionpatconfig sessiontoken sessiontokenbackup tokencountdatabaseauthbackup tokenenv tokenvalue zxcvbnmasd zxcvbnment zzzzability
 import { strict as assert } from 'node:assert';
 import test from 'node:test';
 import { canonicalRecordJson } from '../../../../lib/github-records/canonical-json.mjs';
@@ -15,7 +15,7 @@ const bearerSecretNouns =
     ' '
   );
 const tokenLikeBearerCandidates =
-  `abc abc.def abcdefghijklmnop qwertyuiopasdfgh qwertyuiopa zxcvbnmasd qwerty secretword randomtoken aaaaa redactedredacted passwordpassword secretsecretsecret aaaaaaaaaaaaaaaa tokenvalue`.split(
+  `abc abc.def abcdefghijklmnop qwertyuiopasdfgh qwertyuiopa zxcvbnmasd qwerty secretword randomtoken aaaaa redactedredacted passwordpassword secretsecretsecret aaaaaaaaaaaaaaaa tokenvalue qwertyization zxcvbnment secretization aaaaaaaaability qwertyware abcdefghically secrettion passwordment randomware aaaaation zzzzability`.split(
     ' '
   );
 const credentialSignatures = [
@@ -32,6 +32,11 @@ const credentialSignatures = [
     Authorization: \`Bearer token\` | credential: The Bearer token | - The Bearer token
     > The Bearer credential | credential: (Bearer token) | - **Bearer token**
     "credential": "Bearer token is active" | Authorization: The Bearer token
+    credential:\n  Bearer token is active | authorization: >-\n  Bearer token is active
+    token: Bearer token is active | auth = Bearer token is active | accessToken: Bearer token
+    - current Bearer token is active | > leaked Bearer token | credential: leaked Bearer token
+    {"kind":{"credential":"Bearer token is active"}} | credential: The The Bearer token
+    - current **The Bearer token** | **token**: current Bearer token is active
   `
     .trim()
     .split(/\s*\|\s*/),
@@ -54,7 +59,7 @@ const credentialSignatures = [
     | Environment variable gh_token | -----BEGIN PRIVATE KEY-----`.split(/\s*\|\s*/),
 ];
 const ordinaryBearerProse =
-  `The bearer responsibility remains clear. | The Bearer responsibility remains clear. | Bearer tokens are prohibited. | The bearer scheme is documented. | Bearer authentication is enabled. | Bearer credentials must not be logged. | Bearer policy is documented. | Bearer security is documented. | Bearer headers are redacted. | The Bearer responsibility. | Bearer security, policy, and headers are documented. | Review bearer authentication settings. | Bearer policy documentation is available. | Bearer security guidance follows. | Bearer token handling is documented. | Bearer credential handling is documented. | Bearer header handling is documented. | Bearer guidance is available. | Bearer cryptographically derived values are prohibited. | Bearer decentralization guidance follows. | Explain bearer interoperability requirements. | Bearer standards remain documented. | Review bearer transport requirements. | The bearer implementation is documented. | Bearer middleware should redact credentials. | Document bearer compatibility guidance.`.split(
+  `The bearer responsibility remains clear. | The Bearer responsibility remains clear. | Bearer tokens are prohibited. | The bearer scheme is documented. | Bearer authentication is enabled. | Bearer credentials must not be logged. | Bearer policy is documented. | Bearer security is documented. | Bearer headers are redacted. | The Bearer responsibility. | Bearer security, policy, and headers are documented. | Review bearer authentication settings. | Bearer policy documentation is available. | Bearer security guidance follows. | Bearer token handling is documented. | Bearer credential handling is documented. | Bearer header handling is documented. | Bearer guidance is available. | Bearer cryptographically derived values are prohibited. | Bearer decentralization guidance follows. | Explain bearer interoperability requirements. | Bearer standards remain documented. | Review bearer transport requirements. | The bearer implementation is documented. | Bearer middleware should redact credentials. | Document bearer compatibility guidance. | Bearer usage is documented. | Bearer handling remains documented. | Bearer support is available. | Bearer processing behavior is documented. | Bearer behavior remains documented. | Bearer flows are documented. | Bearer mechanism is documented.`.split(
     /\s*\|\s*/
   );
 const validEnvelope = {
@@ -103,7 +108,6 @@ test('canonical durable JSON rejects values that JSON would erase or normalize a
   cyclic.self = cyclic;
   const accessor = {};
   Object.defineProperty(accessor, 'value', { enumerable: true, get: () => 1 });
-
   for (const value of [
     undefined,
     1n,
@@ -131,7 +135,6 @@ test('payload hashes are stable SHA-256 vectors over canonical payload JSON only
 test('a v1 envelope renders and parses as a deeply frozen correlated record', () => {
   const body = render();
   const parsed = parse(body);
-
   assert.match(body, /^<!-- aitm-record\n\{"authority":/);
   assert.deepEqual(parsed, {
     commentNodeId: 'IC_kwDORecord1069',
@@ -152,7 +155,6 @@ test('ordinary visible Markdown changes cannot alter structured authority', () =
       'Presentation edited without changing the structured record.'
     )
   );
-
   assert.deepEqual(first, second);
   assert.deepEqual(first, manuallyEdited);
   assert.equal(first.envelope.payloadHash, payloadHash);
@@ -164,7 +166,6 @@ test('root and authority objects require their exact v1 key sets', () => {
     { ...validEnvelope.authority, extra: true },
     { grantId: validEnvelope.authority.grantId, epoch: 4 },
   ];
-
   for (const invalidEnvelope of rootCases) {
     assert.throws(
       () => renderAitmRecord({ envelope: invalidEnvelope, visibleMarkdown: '' }),
@@ -175,7 +176,6 @@ test('root and authority objects require their exact v1 key sets', () => {
     assert.throws(() => render({ authority }), /record-envelope:authority-keys/);
   }
 });
-
 test('schema dispatch and common field validation fail closed', () => {
   const invalidCases = [
     [{ schema: 'aitm.record/v2' }, /record-envelope:unsupported-schema/],
@@ -189,12 +189,10 @@ test('schema dispatch and common field validation fail closed', () => {
     [{ supersedes: 42 }, /record-envelope:supersedes/],
     [{ payloadHash: 'sha256:nope' }, /record-envelope:payload-hash/],
   ];
-
   for (const [overrides, expectedError] of invalidCases) {
     assert.throws(() => render(overrides), expectedError);
   }
 });
-
 test('rendering rejects recursively nested secret-bearing keys and credential values', () => {
   const secretKeys = `
     github_token_backup my_refresh_token token_env_name database_credentials session_credentials
@@ -219,6 +217,8 @@ test('rendering rejects recursively nested secret-bearing keys and credential va
     patternAuthBackup authorPatBackup
     authenticationHeader authenticationValue authenticationMaterial authenticationData
     authenticationBackup authenticationKey authConfigurationHeader authPolicyHeader
+    headerAuthentication valueAuthentication materialAuthentication dataAuthentication
+    backupAuthentication keyAuthentication headerAuthConfiguration headerAuthPolicy
   `
     .trim()
     .split(/\s+/);
@@ -227,7 +227,6 @@ test('rendering rejects recursively nested secret-bearing keys and credential va
     ...secretKeys.map((key) => ({ [key]: 'redacted' })),
     ...credentialSignatures.map((note) => ({ note })),
   ];
-
   for (const secretPayload of secretPayloads) {
     const secretEnvelope = envelope({
       payload: secretPayload,
@@ -240,7 +239,6 @@ test('rendering rejects recursively nested secret-bearing keys and credential va
   }
   assert.throws(() => render({}, 'Authorization: Bearer abcdefghijk'), /record-envelope:secret/);
 });
-
 test('secret scanning permits ordinary policy and token-accounting fields', () => {
   const safeKeys = `
     passwordPolicy tokenCount fortuneCookie priorAuthorization credentialPolicy apiKeyPolicy
@@ -257,17 +255,20 @@ test('secret scanning permits ordinary policy and token-accounting fields', () =
     passwordPolicyAuthenticationMode passwordPolicyPattern fortuneCookieAuthPolicy
     authorizationDecisionAuthor patternPatience dispatchPattern
     authenticationPolicy patronName paternityStatus patriarchName patellaStatus authenticityScore
+    authenticationMetadata authenticationKeynote authorKeynoteTitle patternMaterialityScore
+    pathMetadata pathDatabaseName authenticationTokenCount authenticationPasswordPolicy
+    authenticationCredentialPolicy authenticationSessionCookiePolicy authPolicyTokenCount
   `
     .trim()
     .split(/\s+/);
   const ordinaryPayload = Object.fromEntries(safeKeys.map((key) => [key, 'safe']));
+  ordinaryPayload[`${'authenticationPattern'.repeat(256)}Metadata`] = 'safe';
   for (const note of ordinaryBearerProse) {
     const safePayload = { ...ordinaryPayload, note };
     const body = render({ payload: safePayload, payloadHash: hashRecordPayload(safePayload) });
     assert.deepEqual(parse(body).envelope.payload, safePayload);
   }
 });
-
 test('parsing rejects secret signatures introduced into visible Markdown', () => {
   const safeBody = render({}, 'Ordinary presentation.');
   for (const visibleMarkdown of credentialSignatures) {
@@ -289,7 +290,6 @@ test('parsing rejects secret signatures introduced into visible Markdown', () =>
     /record-envelope:secret/
   );
 });
-
 test('record references require canonical uppercase ULIDs and cannot self-link', () => {
   const invalidCases = [
     [{ recordId: 'short' }, /record-envelope:record-id/],
