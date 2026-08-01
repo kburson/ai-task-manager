@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// @story #154
+// @story #154 #1089
 // #154 — Test→Review SHA drift gate.
 //
 // Coverage:
@@ -116,5 +116,9 @@ assert.ok(
   /HEAD drifted/.test(reviewSrc),
   'verbs/review.mjs must emit a "HEAD drifted" remediation message'
 );
+
+const testSrc = readFileSync(join(repoRoot, 'scripts/task-tracker/verbs/test.mjs'), 'utf8');
+assert.match(testSrc, /getSandboxHeadSha/, 'Test reads the sandbox HEAD independently');
+assert.match(testSrc, /sandboxSha !== sha/, 'Test refuses an outer/sandbox exact-SHA mismatch');
 
 console.log('test-sha-drift-gate: PASS');

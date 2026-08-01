@@ -26,9 +26,23 @@ import { randomBytes } from 'node:crypto';
 import { loadState, saveState, pauseTimingKeepBinding } from '../state.mjs';
 import { projectTmpDir } from '../paths.mjs';
 import { validateVerificationCommand } from '../lib/verification-allowlist.mjs';
-import { parseVerificationCommands } from '../lib/verification-commands.mjs';
+import {
+  parseVerificationCommands,
+  partitionVerificationCommands,
+} from '../lib/verification-commands.mjs';
 import { migrateTestsLaneSplit } from '../lib/tests-lane-split.mjs';
-import { insertDodVerifiedMarker, insertTestStartedMarker } from '../lib/markers.mjs';
+import {
+  insertDodVerifiedMarker,
+  insertTestStartedMarker,
+  parseVerificationReceipt,
+  upsertVerificationReceipt,
+} from '../lib/markers.mjs';
+import {
+  buildVerificationFingerprint,
+  createVerificationReceipt,
+  validateVerificationReceipt,
+} from '../lib/verification-receipt.mjs';
+import { runDevelopVerification } from '../verify-develop.mjs';
 import { autoTickVerified } from '../lib/auto-tick-verified.mjs';
 import { STAGES, parseEntryMarkers, stampEntryMarker } from '../lib/stage-entry-markers.mjs';
 import { mutateIssueBody } from '../lib/issue-body-mutate.mjs';
@@ -172,6 +186,7 @@ async function defaultNpmCi({ path: wtPath }) {
 async function defaultExecInSandbox({ argv, path: wtPath, projectDir }) {
   const timeoutMs = sandboxTimeoutMs();
   const startedAt = Date.now();
+  const startedInstant = new Date().toISOString();
   try {
     const { stdout, stderr } = await pexec(argv[0], argv.slice(1), {
       cwd: wtPath,
@@ -180,7 +195,14 @@ async function defaultExecInSandbox({ argv, path: wtPath, projectDir }) {
       // @story #541 — strip leaked lock state, then set the project dir.
       env: buildSandboxEnv(process.env, { AI_TASK_MANAGER_PROJECT_DIR: projectDir }),
     });
-    return { exit: 0, stdout: String(stdout || ''), stderr: String(stderr || '') };
+    return {
+      exit: 0,
+      stdout: String(stdout || ''),
+      stderr: String(stderr || ''),
+      startedAt: startedInstant,
+      completedAt: new Date().toISOString(),
+      durationMs: Date.now() - startedAt,
+    };
   } catch (err) {
     // #856 — a timeout/signal kill leaves `err.code === null`, so the bare
     // `?? 1` fallback used to render it as `exit 1`, hiding the real cause.
@@ -192,8 +214,15 @@ async function defaultExecInSandbox({ argv, path: wtPath, projectDir }) {
       stdout: String(err.stdout || ''),
       stderr: String(err.stderr || err.message || ''),
       ...(cause ? { cause } : {}),
+      startedAt: startedInstant,
+      completedAt: new Date().toISOString(),
+      durationMs: Date.now() - startedAt,
     };
   }
+}
+
+function defaultRunDevelopFinalization({ projectDir, issueNumber }) {
+  return runDevelopVerification({ projectDir, mode: 'final', issueNumber });
 }
 
 async function defaultFetchBody({ cfg, issueNum }) {
@@ -356,6 +385,9 @@ export async function runVerbTest({
   const removeWorktree = deps.removeWorktree || defaultRemoveWorktree;
   const npmCi = deps.npmCi || defaultNpmCi;
   const execInSandbox = deps.execInSandbox || defaultExecInSandbox;
+  const runDevelopFinalization = deps.runDevelopFinalization;
+  const buildFingerprint = deps.buildFingerprint || buildVerificationFingerprint;
+  const getSandboxHeadSha = deps.getSandboxHeadSha || defaultGetHeadSha;
   const moveState = deps.moveState;
   const logIssueTime = deps.logIssueTime;
   const postNewTests = deps.postNewAutomatedTestsComment;
@@ -365,9 +397,10 @@ export async function runVerbTest({
   // `develop` (first entry) or `test` (in-place re-verify self-loop). A stale
   // bind or a hand-run `/task test` from the wrong stage must not burn a
   // worktree + npm ci for nothing.
+  const currentState = readLastKnownState(body).state;
   assertVerbHomeState({
     verb: 'test',
-    currentState: readLastKnownState(body).state,
+    currentState,
     issueNumber: issueNum,
   });
   const pretick = detectLifecyclePretick(body);
@@ -427,6 +460,71 @@ export async function runVerbTest({
   }
 
   const sha = await getHeadSha({ projectDir });
+  if (runDevelopFinalization && currentState === 'test') {
+    const currentFingerprint = await buildFingerprint({ projectDir, commitSha: sha });
+    const existingTestReceipt = parseVerificationReceipt(body, 'test');
+    const existingValidation = validateVerificationReceipt({
+      receipt: existingTestReceipt,
+      expectedStage: 'test',
+      fingerprint: currentFingerprint,
+      required: ['lint-full', 'format-full', 'test-unit', 'test-integration', 'test-slow'],
+    });
+    if (existingValidation.ok && deps.forceRerun !== true) {
+      return {
+        status: 'already-verified',
+        sha,
+        receipt: existingTestReceipt,
+        reasons: [],
+      };
+    }
+    if (existingValidation.ok && deps.forceRerun === true) {
+      await postComment({
+        cfg,
+        issueNum,
+        body: `⚠ Audited Test re-run override: valid exact-SHA receipt ${existingTestReceipt.receiptId} was bypassed with --force.`,
+      });
+    }
+  }
+  let developEvidence = null;
+  if (runDevelopFinalization) {
+    const finalization = await runDevelopFinalization({
+      projectDir,
+      issueNumber: Number(issueNum),
+    });
+    if (!finalization?.ok || !finalization.receipt || !finalization.fingerprint) {
+      const codes = (finalization?.reasons || []).map(({ code }) => code).join(', ') || 'unknown';
+      await postComment({
+        cfg,
+        issueNum,
+        body: `⛔ Develop finalization refused before Test: ${codes}. The issue remains in Develop.`,
+      });
+      return { status: 'develop-final-invalid', sha, reasons: finalization?.reasons || [] };
+    }
+    await mutateBody({
+      cfg,
+      issueNum,
+      evidenceStamp: true,
+      mutate: (base) => upsertVerificationReceipt(base, finalization.receipt),
+    });
+    body = await fetchBody({ cfg, issueNum });
+    const readBack = parseVerificationReceipt(body, 'develop-final');
+    const validation = validateVerificationReceipt({
+      receipt: readBack,
+      expectedStage: 'develop-final',
+      fingerprint: finalization.fingerprint,
+      required: ['lint-full', 'format-full'],
+    });
+    if (!validation.ok) {
+      const codes = validation.reasons.map(({ code }) => code).join(', ');
+      await postComment({
+        cfg,
+        issueNum,
+        body: `⛔ Develop finalization receipt read-back refused: ${codes}. The issue remains in Develop.`,
+      });
+      return { status: 'develop-final-invalid', sha, reasons: validation.reasons };
+    }
+    developEvidence = { receipt: readBack, fingerprint: finalization.fingerprint, validation };
+  }
   // #563 — per-run-unique path. With a unique token the reclaim below can only
   // ever match THIS run's own leftover, never a concurrent peer's live worktree.
   const wtPath = sandboxWorktreePath({ projectDir, issueNum, sha });
@@ -443,6 +541,9 @@ export async function runVerbTest({
   const results = [];
   let cleanupNeeded = false;
   let setupDiag = null; // #254 — tagged diagnostics from the last failed setup attempt
+  let testFingerprint = null;
+  let evidenceRefusal = null;
+  let partition = null;
   try {
     // #154 — Stamp `aitm-test-started: <sha>:<ts>` BEFORE the sandbox runs so
     // verbReview's preflight can compare outer HEAD at review-time against the
@@ -482,7 +583,98 @@ export async function runVerbTest({
       },
     });
 
-    for (const vc of vcs) {
+    let commandsToRun = vcs;
+    if (developEvidence) {
+      const sandboxSha = await getSandboxHeadSha({ projectDir: wtPath });
+      if (sandboxSha !== sha) {
+        evidenceRefusal = [{ code: 'sha-mismatch', expected: sha, actual: sandboxSha }];
+      } else {
+        testFingerprint = await buildFingerprint({ projectDir: wtPath, commitSha: sha });
+        const validation = validateVerificationReceipt({
+          receipt: developEvidence.receipt,
+          expectedStage: 'develop-final',
+          fingerprint: testFingerprint,
+          required: ['lint-full', 'format-full'],
+        });
+        if (!validation.ok) evidenceRefusal = validation.reasons;
+      }
+
+      if (!evidenceRefusal) {
+        partition = partitionVerificationCommands({
+          commands: vcs,
+          reusableClassifications: developEvidence.validation.reusableCommands.map(
+            ({ classification }) => classification
+          ),
+        });
+        for (const reused of partition.reused) {
+          const source = developEvidence.receipt.commands.find(
+            ({ classification }) => classification === reused.classification
+          );
+          results.push({
+            command: reused.command,
+            classification: reused.classification,
+            passed: true,
+            exit: 0,
+            stdout: '',
+            stderr: '',
+            durationMs: source.durationMs,
+            startedAt: source.startedAt,
+            completedAt: source.completedAt,
+            reusedFrom: developEvidence.receipt.receiptId,
+            receiptCommand: { ...source, reusedFrom: developEvidence.receipt.receiptId },
+          });
+        }
+        for (const lane of partition.completeLanes) {
+          const argv = lane.command.split(' ');
+          const r = await execInSandbox({ argv, path: wtPath, projectDir });
+          results.push({
+            command: lane.command,
+            classification: lane.classification,
+            passed: r.exit === 0,
+            exit: r.exit,
+            cause: r.cause,
+            stdout: r.stdout,
+            stderr: r.stderr,
+            durationMs: r.durationMs ?? 0,
+            startedAt: r.startedAt,
+            completedAt: r.completedAt,
+            receiptCommand: {
+              classification: lane.classification,
+              command: argv[0],
+              args: argv.slice(1),
+              exitCode: r.exit,
+              durationMs: r.durationMs ?? 0,
+              ...(r.startedAt ? { startedAt: r.startedAt } : {}),
+              ...(r.completedAt ? { completedAt: r.completedAt } : {}),
+            },
+          });
+        }
+        const byClassification = new Map(results.map((result) => [result.classification, result]));
+        for (const legacy of partition.compatibility) {
+          const required =
+            legacy.classification === 'test-all-legacy'
+              ? ['test-unit', 'test-integration', 'test-slow']
+              : ['test-unit', 'test-integration'];
+          const passed = required.every(
+            (classification) => byClassification.get(classification)?.passed
+          );
+          results.push({
+            command: legacy.command,
+            classification: legacy.classification,
+            passed,
+            exit: passed ? 0 : 1,
+            stdout: '',
+            stderr: '',
+            durationMs: 0,
+          });
+        }
+        commandsToRun = partition.targeted;
+      } else {
+        commandsToRun = [];
+      }
+    }
+
+    for (const vc of commandsToRun) {
       const validation = validateVerificationCommand(vc.command, { projectDir: wtPath });
       if (!validation.ok) {
         results.push({
@@ -498,12 +690,41 @@ export async function runVerbTest({
       const r = await execInSandbox({ argv: validation.argv, path: wtPath, projectDir });
       results.push({
         command: vc.command,
+        classification: developEvidence ? `test-targeted-${results.length + 1}` : undefined,
         passed: r.exit === 0,
         exit: r.exit,
         cause: r.cause,
         stdout: r.stdout,
         stderr: r.stderr,
+        durationMs: r.durationMs ?? 0,
+        startedAt: r.startedAt,
+        completedAt: r.completedAt,
+        ...(developEvidence
+          ? {
+              receiptCommand: {
+                classification: `test-targeted-${results.length + 1}`,
+                command: validation.argv[0],
+                args: validation.argv.slice(1),
+                exitCode: r.exit,
+                durationMs: r.durationMs ?? 0,
+                ...(r.startedAt ? { startedAt: r.startedAt } : {}),
+                ...(r.completedAt ? { completedAt: r.completedAt } : {}),
+              },
+            }
+          : {}),
       });
+    }
+
+    if (developEvidence && !evidenceRefusal) {
+      const completedFingerprint = await buildFingerprint({ projectDir: wtPath, commitSha: sha });
+      const completedValidation = validateVerificationReceipt({
+        receipt: developEvidence.receipt,
+        expectedStage: 'develop-final',
+        fingerprint: completedFingerprint,
+        required: ['lint-full', 'format-full'],
+      });
+      if (!completedValidation.ok) evidenceRefusal = completedValidation.reasons;
+      testFingerprint = completedFingerprint;
     }
   } catch (err) {
     // #270 — sandbox-setup or sandbox-run threw. The board is still on
@@ -543,6 +764,16 @@ export async function runVerbTest({
     }
   }
 
+  if (evidenceRefusal) {
+    const codes = evidenceRefusal.map(({ code }) => code).join(', ');
+    await postComment({
+      cfg,
+      issueNum,
+      body: `⛔ Develop receipt is invalid in the Test sandbox: ${codes}. Return to Develop and finalize again.`,
+    });
+    return { status: 'develop-evidence-invalid', sha, reasons: evidenceRefusal, wtPath };
+  }
+
   // #973 — a `rejected` result whose reason is a policy-shape mismatch (see
   // `isPolicyShapeRejection` above) must not gate promotion the same way a
   // genuine nonzero-exit `failed` result does. A metachar/injection-vector
@@ -556,6 +787,17 @@ export async function runVerbTest({
 
   if (allGreen) {
     const ts = now();
+    const testReceipt = developEvidence
+      ? createVerificationReceipt({
+          issueNumber: Number(issueNum),
+          stage: 'test',
+          fingerprint: testFingerprint,
+          commands: results
+            .filter(({ receiptCommand }) => receiptCommand)
+            .map(({ receiptCommand }) => receiptCommand),
+          now,
+        })
+      : null;
     // #270 — Gate-first: stamp `aitm-dod-verified` (and a defensive
     // `test`-entry marker for stub moveStates that skip stamping) BEFORE
     // `moveState('test')`. The develop-exit-sandbox-proof guard inside
@@ -563,6 +805,7 @@ export async function runVerbTest({
     // transition. verbTest advances develop→test only; Test→Review is a
     // separate forward verb (`/task review`).
     let stamped = insertDodVerifiedMarker(body, sha, ts);
+    if (testReceipt) stamped = upsertVerificationReceipt(stamped, testReceipt);
     const markers = parseEntryMarkers(stamped);
     const latest = markers
       .slice()
@@ -590,6 +833,7 @@ export async function runVerbTest({
         evidenceStamp: true,
         mutate: (base) => {
           let next = insertDodVerifiedMarker(base, sha, ts);
+          if (testReceipt) next = upsertVerificationReceipt(next, testReceipt);
           const ms = parseEntryMarkers(next);
           const latestM = ms
             .slice()
@@ -636,7 +880,16 @@ export async function runVerbTest({
     });
     if (logIssueTime) await logIssueTime(issueNum);
     if (moveFailed) {
-      return { status: 'move-failed', sha, ts, results, wtPath, target: 'test', move: moveResult };
+      return {
+        status: 'move-failed',
+        sha,
+        ts,
+        results,
+        receipt: testReceipt,
+        wtPath,
+        target: 'test',
+        move: moveResult,
+      };
     }
     // #444 — a benign move result with target 'test' can only be a test→test
     // self-loop: the issue was already in `test` and the sandbox just re-ran the
@@ -655,13 +908,23 @@ export async function runVerbTest({
         sha,
         ts,
         results,
+        receipt: testReceipt,
         wtPath,
         target: 'test',
         move: moveResult,
         newTestsPost,
       };
     }
-    return { status: 'passed', sha, ts, results, wtPath, target: 'test', newTestsPost };
+    return {
+      status: 'passed',
+      sha,
+      ts,
+      results,
+      receipt: testReceipt,
+      wtPath,
+      target: 'test',
+      newTestsPost,
+    };
   }
 
   // #270 — Red path. Gate-first means the board never moved; nothing to undo.
@@ -705,7 +968,13 @@ export async function verbTest(ctx) {
       cfg,
       issueNumber,
       projectDir,
-      deps: { moveState, logIssueTime, postNewAutomatedTestsComment },
+      deps: {
+        moveState,
+        logIssueTime,
+        postNewAutomatedTestsComment,
+        runDevelopFinalization: defaultRunDevelopFinalization,
+        forceRerun: rest.includes('--force'),
+      },
     });
   } catch (err) {
     console.error(`/task test: ${err.message}`);
@@ -744,6 +1013,12 @@ export async function verbTest(ctx) {
       saveState(pauseTimingKeepBinding(s, `#${issueNumber}`), statePath);
       return;
     }
+    case 'already-verified':
+      console.log(
+        `✓ #${issueNumber} already has a valid exact-SHA Test receipt (${result.receipt.receiptId}); standard commands were not rerun.`
+      );
+      saveState(pauseTimingKeepBinding(s, `#${issueNumber}`), statePath);
+      return;
     case 'move-failed': {
       // #406 — sandbox passed but the board move was refused. Do NOT print the
       // success banner; surface the move-state child's real refusal reason and
@@ -765,6 +1040,13 @@ export async function verbTest(ctx) {
       console.error(`✗ #${issueNumber} verification failed in sandbox (${fails} command(s)).`);
       process.exit(3);
     }
+    case 'develop-final-invalid':
+    case 'develop-evidence-invalid':
+      console.error(
+        `✗ #${issueNumber} verification evidence refused: ${result.reasons.map(({ code }) => code).join(', ')}`
+      );
+      process.exit(3);
+      break;
     default:
       console.error(`/task test: unknown result status: ${result.status}`);
       process.exit(1);

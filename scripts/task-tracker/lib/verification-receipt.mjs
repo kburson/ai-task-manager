@@ -133,6 +133,7 @@ function normalizeCommand(result) {
   };
   if (result?.startedAt !== undefined) normalized.startedAt = result.startedAt;
   if (result?.completedAt !== undefined) normalized.completedAt = result.completedAt;
+  if (result?.reusedFrom !== undefined) normalized.reusedFrom = result.reusedFrom;
   return normalized;
 }
 
@@ -202,6 +203,7 @@ function malformedReceipt(receipt) {
     if (!Number.isFinite(command.durationMs) || command.durationMs < 0) return true;
     if (command.startedAt !== undefined && !canonicalInstant(command.startedAt)) return true;
     if (command.completedAt !== undefined && !canonicalInstant(command.completedAt)) return true;
+    if (command.reusedFrom !== undefined && !ULID_RE.test(command.reusedFrom)) return true;
     return false;
   });
 }
@@ -242,7 +244,12 @@ export function validateVerificationReceipt({
   ) {
     reasons.push(reason('config-mismatch'));
   }
-  if (receipt.environment.sandbox.clean !== true) reasons.push(reason('sandbox-dirty'));
+  if (
+    receipt.environment.sandbox.clean !== true ||
+    fingerprint?.environment?.sandbox?.clean !== true
+  ) {
+    reasons.push(reason('sandbox-dirty'));
+  }
 
   const grouped = new Map();
   for (const command of receipt.commands) {

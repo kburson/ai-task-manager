@@ -55,3 +55,47 @@ export function parseVerificationCommands(body) {
   }
   return items;
 }
+
+const STANDARD_CLASSIFICATIONS = new Map([
+  ['npm run lint', 'lint-full'],
+  ['npm run format:check', 'format-full'],
+  ['npm run test:unit', 'test-unit'],
+  ['npm run test:integration', 'test-integration'],
+  ['npm run test:slow', 'test-slow'],
+  ['npm test', 'test-fast-legacy'],
+  ['node scripts/run-tests.mjs', 'test-fast-legacy'],
+  ['npm run test:all', 'test-all-legacy'],
+]);
+
+export const COMPLETE_TEST_LANES = Object.freeze([
+  Object.freeze({ classification: 'test-unit', command: 'npm run test:unit' }),
+  Object.freeze({ classification: 'test-integration', command: 'npm run test:integration' }),
+  Object.freeze({ classification: 'test-slow', command: 'npm run test:slow' }),
+]);
+
+export function classifyVerificationCommand(command) {
+  return STANDARD_CLASSIFICATIONS.get(String(command || '').trim()) || 'targeted';
+}
+
+export function partitionVerificationCommands({
+  commands = [],
+  reusableClassifications = [],
+} = {}) {
+  const reusable = new Set(reusableClassifications);
+  const normalized = commands.map((item) => {
+    const command = typeof item === 'string' ? item : item.command;
+    return {
+      ...(typeof item === 'string' ? {} : item),
+      command,
+      classification: classifyVerificationCommand(command),
+    };
+  });
+  return {
+    reused: normalized.filter(({ classification }) => reusable.has(classification)),
+    completeLanes: COMPLETE_TEST_LANES.map((lane) => ({ ...lane })),
+    targeted: normalized.filter(({ classification }) => classification === 'targeted'),
+    compatibility: normalized.filter(({ classification }) =>
+      ['test-fast-legacy', 'test-all-legacy'].includes(classification)
+    ),
+  };
+}

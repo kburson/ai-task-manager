@@ -48,8 +48,10 @@ describe('#1089 verification stage ownership', () => {
     );
   });
 
-  test('Test currently iterates over every parsed Verification Command', () => {
-    assert.match(testSource, /for \(const vc of vcs\)/);
+  test('Test reuses finalization evidence and executes complete lanes plus targeted commands', () => {
+    assert.match(testSource, /partitionVerificationCommands/);
+    assert.match(testSource, /for \(const lane of partition\.completeLanes\)/);
+    assert.match(testSource, /for \(const reused of partition\.reused\)/);
     assert.match(
       testSource,
       /execInSandbox\(\{ argv: validation\.argv, path: wtPath, projectDir \}\)/
