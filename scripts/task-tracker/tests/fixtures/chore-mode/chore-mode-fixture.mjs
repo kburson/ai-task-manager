@@ -65,6 +65,7 @@ export function resetChoreModeFixture(fixture) {
     transports: [],
     environment: createChoreModeEnvironment(fixture),
   };
+  rmSync(path.join(fixture.root, '.tmp', 'aitm'), { recursive: true, force: true });
   writeFixtureState(fixture);
   return fixture;
 }
