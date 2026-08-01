@@ -46,25 +46,36 @@ const reviewSource = readFileSync(reviewVerbPath, 'utf8');
 }
 
 // ---------------------------------------------------------------------------
-// #226: review.mjs seeds commandResults with STANDARD_DOD_COMMANDS under the
-// sandbox-verified authority. The seed must happen AFTER the sandbox-verified
-// refusal block (which exits when the marker is absent) and BEFORE the
-// evidenceCheckboxes consumer loop. Source-level pin to detect regressions.
+// #1089: Review resolves exact-SHA receipt evidence before the consumer loop.
+// The resolver owns the bounded legacy STANDARD_DOD_COMMANDS seed as well as
+// v1 validation, so the verb must not restore an unconditional trust loop.
 // ---------------------------------------------------------------------------
 {
   const sandboxRefusalIdx = reviewSource.indexOf('missing `aitm-dod-verified` marker');
-  const seedIdx = reviewSource.indexOf('for (const cmd of STANDARD_DOD_COMMANDS)');
+  const resolverIdx = reviewSource.indexOf(
+    'const reviewEvidence = await resolveReviewVerificationEvidence'
+  );
+  const resultIdx = reviewSource.indexOf(
+    'const commandResults = reviewEvidence.commandResults',
+    resolverIdx
+  );
   const evidenceLoopIdx = reviewSource.indexOf('evidenceCommands.filter');
 
   assert.ok(sandboxRefusalIdx > 0, 'sandbox-verified refusal block exists');
-  assert.ok(seedIdx > 0, 'STANDARD_DOD_COMMANDS seed loop exists');
+  assert.ok(resolverIdx > 0, 'receipt resolver call exists');
+  assert.ok(resultIdx > resolverIdx, 'consumer map comes from validated evidence');
   assert.ok(evidenceLoopIdx > 0, 'evidenceCommands consumer loop exists');
   assert.ok(
-    seedIdx > sandboxRefusalIdx,
-    'seed runs after sandbox-verified refusal (only under sandbox authority)'
+    resolverIdx > sandboxRefusalIdx,
+    'receipt validation runs after the marker-presence guard'
   );
-  assert.ok(seedIdx < evidenceLoopIdx, 'seed runs before evidenceCommands consumer loop');
-  console.log('PASS: review.mjs seeds STANDARD_DOD_COMMANDS in the correct position');
+  assert.ok(resultIdx < evidenceLoopIdx, 'validated results seed before evidence consumption');
+  assert.doesNotMatch(
+    reviewSource,
+    /for \(const cmd of STANDARD_DOD_COMMANDS\)[\s\S]*commandResults\.set\(cmd, true\)/,
+    'Review has no unconditional STANDARD_DOD_COMMANDS trust loop'
+  );
+  console.log('PASS: review.mjs validates receipt evidence before command consumption');
 }
 
 // ---------------------------------------------------------------------------

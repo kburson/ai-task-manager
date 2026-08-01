@@ -2,7 +2,11 @@ import { loadState, saveState, pauseTimingKeepBinding } from '../state.mjs';
 import { setTaskStatus } from '../fleet-registry.mjs';
 import { validateVerificationCommand } from '../lib/verification-allowlist.mjs';
 import { validateBody, DEFAULT_GATES } from '../lib/body-gates.mjs';
-import { parseTestStartedMarker } from '../lib/markers.mjs';
+import {
+  parseDodVerifiedMarker,
+  parseTestStartedMarker,
+  parseVerificationReceipt,
+} from '../lib/markers.mjs';
 import { runGuards } from '../lib/guard-registry.mjs';
 import '../lib/guard-bootstrap.mjs';
 import { STANDARD_DOD_COMMANDS } from '../lib/evidence-markers.mjs';
@@ -37,6 +41,136 @@ import {
   stampAgentReviewPassed,
 } from '../lib/agent-review/review-gate.mjs';
 import { computeReviewChangedPaths } from '../lib/review-changed-paths.mjs';
+import {
+  buildVerificationFingerprint,
+  createVerificationReceipt,
+  hasVerificationReceiptMarker,
+  upsertVerificationReceipt,
+  validateVerificationReceipt,
+} from '../lib/verification-receipt.mjs';
+
+const TEST_RECEIPT_REQUIRED = Object.freeze([
+  'lint-full',
+  'format-full',
+  'test-unit',
+  'test-integration',
+  'test-slow',
+]);
+
+function standardReviewCommandResults() {
+  return new Map(
+    [...STANDARD_DOD_COMMANDS, 'npm run test:unit', 'npm run test:integration'].map((command) => [
+      command,
+      true,
+    ])
+  );
+}
+
+function markerMatchesSha(marker, sha) {
+  if (!marker?.sha) return false;
+  return sha.startsWith(marker.sha) || marker.sha.startsWith(sha);
+}
+
+export async function resolveReviewVerificationEvidence({
+  body,
+  projectDir,
+  getHeadSha,
+  buildFingerprint = buildVerificationFingerprint,
+} = {}) {
+  const receipt = parseVerificationReceipt(body, 'test');
+  const commandResults = standardReviewCommandResults();
+  if (!receipt) {
+    if (hasVerificationReceiptMarker(body, 'test')) {
+      return {
+        ok: false,
+        mode: 'receipt-v1',
+        receipt: null,
+        commandResults: new Map(),
+        reasons: [{ code: 'receipt-malformed' }],
+        remediation:
+          'Return to Develop, run Develop finalization, then complete one new Test pass.',
+      };
+    }
+    return { ok: true, mode: 'legacy-marker', receipt: null, commandResults, reasons: [] };
+  }
+
+  let commitSha;
+  try {
+    commitSha = await getHeadSha({ projectDir });
+  } catch {
+    return {
+      ok: false,
+      mode: 'receipt-v1',
+      receipt,
+      commandResults: new Map(),
+      reasons: [{ code: 'head-unresolvable' }],
+      remediation: 'Return to Develop, run Develop finalization, then complete one new Test pass.',
+    };
+  }
+  let fingerprint;
+  try {
+    fingerprint = await buildFingerprint({ projectDir, commitSha });
+  } catch {
+    return {
+      ok: false,
+      mode: 'receipt-v1',
+      receipt,
+      commandResults: new Map(),
+      reasons: [{ code: 'fingerprint-unresolvable' }],
+      remediation: 'Return to Develop, run Develop finalization, then complete one new Test pass.',
+    };
+  }
+  const validation = validateVerificationReceipt({
+    receipt,
+    expectedStage: 'test',
+    fingerprint,
+    required: TEST_RECEIPT_REQUIRED,
+  });
+  const reasons = [...validation.reasons];
+  const testStarted = parseTestStartedMarker(body);
+  const dodVerified = parseDodVerifiedMarker(body);
+  if (!markerMatchesSha(testStarted, commitSha))
+    reasons.push({ code: 'test-started-sha-mismatch' });
+  if (!markerMatchesSha(dodVerified, commitSha))
+    reasons.push({ code: 'dod-verified-sha-mismatch' });
+  if (reasons.length === 0) {
+    for (const command of receipt.commands) {
+      if (!command.classification.startsWith('test-targeted-') || command.exitCode !== 0) continue;
+      commandResults.set([command.command, ...command.args].join(' ').trim(), true);
+    }
+  }
+  return {
+    ok: reasons.length === 0,
+    mode: 'receipt-v1',
+    receipt,
+    fingerprint,
+    commandResults: reasons.length === 0 ? commandResults : new Map(),
+    reasons,
+    remediation: 'Return to Develop, run Develop finalization, then complete one new Test pass.',
+  };
+}
+
+export function appendReviewProbeEvidence({ body, issueNumber, fingerprint, probes, now } = {}) {
+  const prior = parseVerificationReceipt(body, 'review');
+  const commands = (probes || []).map((probe) => ({
+    classification: 'review-probe',
+    command: probe.command,
+    args: probe.args || [],
+    exitCode: probe.exitCode,
+    durationMs: probe.durationMs,
+    ...(probe.startedAt ? { startedAt: probe.startedAt } : {}),
+    ...(probe.completedAt ? { completedAt: probe.completedAt } : {}),
+  }));
+  if (commands.length === 0) return { body: String(body || ''), receipt: null };
+  const receipt = createVerificationReceipt({
+    issueNumber,
+    stage: 'review',
+    fingerprint,
+    commands: [...(prior?.commands || []), ...commands],
+    now,
+  });
+  return { body: upsertVerificationReceipt(body, receipt), receipt };
+}
 
 // #975 — a VC-section checkbox legitimately ticked via the honest
 // `--allow-unverified-ticks` hatch (#567, `check.mjs`'s `ensureChecked`) is
@@ -196,10 +330,10 @@ export async function emitSandboxVerificationFailureTimeline({
   ts,
   delta,
   wordMarker,
+  reason = 'sandbox verification failed',
   deps,
 }) {
   const { runMoveState, safePostTiming, buildRow: buildRowFn = buildRow } = deps;
-  const reason = 'sandbox verification failed';
   await safePostTiming(
     target,
     buildRowFn({
@@ -491,7 +625,41 @@ export async function verbReview(ctx) {
 
     const failures = [];
     const regressions = [];
-    const commandResults = new Map();
+    const getReviewHeadSha =
+      ctx.getReviewHeadSha ||
+      (async ({ projectDir: cwd }) => {
+        const { stdout } = await pexec('git', ['rev-parse', 'HEAD'], {
+          cwd,
+          timeout: 10_000,
+        });
+        return String(stdout || '').trim();
+      });
+    const reviewEvidence = await resolveReviewVerificationEvidence({
+      body: rawBody,
+      projectDir,
+      getHeadSha: getReviewHeadSha,
+      buildFingerprint: ctx.buildVerificationFingerprint || buildVerificationFingerprint,
+    });
+    if (!reviewEvidence.ok) {
+      const codes = reviewEvidence.reasons.map(({ code }) => code).join(', ');
+      const reason = `verification receipt invalid: ${codes}; Develop finalization and a new Test pass required`;
+      const _tsReceipt = nowIso();
+      const _dReceipt = deriveStateMoveDelta(rawBody, _tsReceipt);
+      await emitSandboxVerificationFailureTimeline({
+        target,
+        ts: _tsReceipt,
+        delta: _dReceipt,
+        wordMarker: s.lastWordMarker ?? 0,
+        reason,
+        deps: { runMoveState, safePostTiming, buildRow },
+      });
+      process.stderr.write('\n');
+      process.stderr.write(`⛔ Refusing /task review for ${target}:\n`);
+      process.stderr.write(`   BLOCKED: ${reason}.\n`);
+      process.stderr.write(`   RECOVERY: ${reviewEvidence.remediation}\n\n`);
+      process.exit(4);
+    }
+    const commandResults = reviewEvidence.commandResults;
     const proseCheckboxes = [];
     // #267 — `aitm-dod-verified` presence is now enforced by the
     // `test-exit-dod-verified` guard in `STATES.test.exitGuards`, evaluated
@@ -506,7 +674,7 @@ export async function verbReview(ctx) {
     // hardening pass can require both — for now we only block when the
     // test-started marker is present and mismatched).
     const testStarted = parseTestStartedMarker(rawBody);
-    if (testStarted) {
+    if (reviewEvidence.mode === 'legacy-marker' && testStarted) {
       let currentHeadSha = null;
       try {
         const { stdout } = await pexec('git', ['rev-parse', 'HEAD'], {
@@ -531,14 +699,9 @@ export async function verbReview(ctx) {
         }
       }
     }
-    // #226 — under sandbox-verified authority, the standard DoD commands
-    // (`npm test`, `npm run lint`, `npm run format:check`) are trusted-passed.
-    // Seed commandResults so AC lines whose `aitm-verified cmd="..."` declaration
-    // references these commands resolve as passed evidence instead of
-    // false-positive `unknown evidence command` regressions.
-    for (const cmd of STANDARD_DOD_COMMANDS) {
-      commandResults.set(cmd, true);
-    }
+    // #1089 — standard command results are seeded only by
+    // resolveReviewVerificationEvidence: exact-SHA v1 receipts fail closed;
+    // marker-only issues retain the explicitly bounded legacy compatibility path.
     // #481 — a prose-evidence checkbox carrying run-props with `exit="0"` is
     // backed by the sandbox run `ac-stamp`/`dod-stamp` recorded on its single
     // `aitm-verified` marker. Seed its declared commands as passed so the
@@ -574,8 +737,12 @@ export async function verbReview(ctx) {
           failures.push(`${cb.label} (rejected: ${validation.reason})`);
           continue;
         }
-        // #137 — trust the sandbox-verified marker; do not re-execute.
-        const passed = true;
+        // #1089 — v1 issues trust a targeted command only when it appears in
+        // the exact-SHA Test receipt (or was already seeded by explicit inline
+        // execution proof above). Legacy marker-only issues retain the prior
+        // bounded compatibility behavior. Review never re-executes the command.
+        const passed =
+          reviewEvidence.mode === 'legacy-marker' || commandResults.get(cb.command) === true;
         commandResults.set(cb.command, passed);
         if (passed) {
           if (!cb.checked) lines[cb.lineIndex] = lines[cb.lineIndex].replace('- [ ]', '- [x]');

@@ -58,11 +58,12 @@ describe('#1089 verification stage ownership', () => {
     );
   });
 
-  test('Review currently trusts standard commands only after sandbox evidence', () => {
+  test('Review validates exact-SHA Test evidence and does not run standard commands', () => {
     const refusal = reviewSource.indexOf('missing `aitm-dod-verified` marker');
-    const seed = reviewSource.indexOf('for (const cmd of STANDARD_DOD_COMMANDS)');
+    const resolver = reviewSource.indexOf('resolveReviewVerificationEvidence');
     const consumer = reviewSource.indexOf('evidenceCommands.filter');
-    assert.ok(refusal >= 0 && seed > refusal && consumer > seed);
-    assert.match(reviewSource, /commandResults\.set\(cmd, true\)/);
+    assert.ok(refusal >= 0 && resolver >= 0 && consumer > resolver);
+    assert.match(reviewSource, /validateVerificationReceipt/);
+    assert.doesNotMatch(reviewSource, /for \(const cmd of STANDARD_DOD_COMMANDS\)/);
   });
 });

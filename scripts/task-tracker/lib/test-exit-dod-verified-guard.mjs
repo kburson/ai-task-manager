@@ -12,6 +12,7 @@
 // (other guards / verb-layer surface the absence).
 
 import { hasDodVerifiedMarker } from './markers.mjs';
+import { hasVerificationReceiptMarker, parseVerificationReceipt } from './verification-receipt.mjs';
 
 export const GUARD_ID = 'test-exit-dod-verified';
 
@@ -20,6 +21,14 @@ export const testExitDodVerifiedGuard = {
   run(ctx) {
     if (ctx?.toState && ctx.toState !== 'review') return { ok: true };
     if (typeof ctx?.body !== 'string') return { ok: true };
+    if (
+      hasVerificationReceiptMarker(ctx.body, 'test') &&
+      !parseVerificationReceipt(ctx.body, 'test')
+    ) {
+      const blocker =
+        'test-to-review-receipt-malformed: Test verification receipt is malformed — return to Develop, finalize, and re-run `/task test`.';
+      return { ok: false, reason: blocker, blockers: [blocker] };
+    }
     if (hasDodVerifiedMarker(ctx.body)) return { ok: true };
     const n = String(ctx.issueNumber ?? '').replace(/^#/, '');
     const blocker =

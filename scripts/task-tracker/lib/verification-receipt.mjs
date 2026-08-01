@@ -296,6 +296,13 @@ export function parseVerificationReceipts(body) {
   return receipts;
 }
 
+export function hasVerificationReceiptMarker(body, stage) {
+  for (const match of String(body || '').matchAll(RECEIPT_MARKER_RE)) {
+    if (stage === undefined || match[1] === stage) return true;
+  }
+  return false;
+}
+
 export function parseVerificationReceipt(body, stage) {
   const receipts = parseVerificationReceipts(body);
   const matching =
