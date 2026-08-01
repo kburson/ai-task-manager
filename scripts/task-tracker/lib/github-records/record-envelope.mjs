@@ -4,6 +4,7 @@
 // cspell:ignore accesstoken authheader authorizationheader authvalue basicauth
 // cspell:ignore bearertoken bearervalue clientsecret githubpat githubtoken oauthtoken
 // cspell:ignore refreshtoken secrettoken secretvalue tokenenv
+// cspell:ignore authorizationdecision inputtokencount outputtokencount
 
 import { createHash } from 'node:crypto';
 
@@ -31,40 +32,36 @@ const HASH_RE = /^sha256:[0-9a-f]{64}$/;
 const ULID_RE = /^[0-7][0-9A-HJKMNP-TV-Z]{25}$/;
 const RECORD_TYPE_RE = /^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$/;
 const REPOSITORY_RE = /^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/;
-const SENSITIVE_KEY_SEGMENTS = new Set([
-  'auth',
-  'authorization',
-  'bearer',
-  'cookie',
-  'cookies',
-  'credential',
-  'credentials',
-  'passwd',
-  'password',
-  'secret',
-  'token',
-]);
-const COLLAPSED_SENSITIVE_COMPOUNDS = [
-  'accesstoken',
-  'apikey',
-  'authheader',
-  'authorizationheader',
-  'authvalue',
-  'basicauth',
-  'bearertoken',
-  'bearervalue',
-  'clientsecret',
-  'githubpat',
-  'githubtoken',
-  'oauthtoken',
-  'privatekey',
-  'refreshtoken',
-  'secrettoken',
-  'secretvalue',
-  'tokenenv',
+const SAFE_KEY_FAMILY_PREFIXES = [
+  'inputtokencount',
+  'outputtokencount',
+  'tokencount',
+  'passwordpolicy',
+  'priorauthorization',
+  'authorizationdecision',
+  'credentialpolicy',
+  'apikeypolicy',
+  'sessioncookiepolicy',
+  'fortunecookie',
+  'secretary',
+  'tokenizer',
 ];
-const BEARER_CREDENTIAL_RE =
-  /(?:^|\r?\n)\s*(?:authorization\s*:\s*)?bearer\s+[A-Za-z0-9._~+/=-]+\s*(?=$|\r?\n)/im;
+const COLLAPSED_SENSITIVE_FRAGMENTS = [
+  'token',
+  'secret',
+  'credential',
+  'password',
+  'passwd',
+  'authorization',
+  'cookie',
+  'apikey',
+  'privatekey',
+  'bearer',
+];
+const COLLAPSED_AUTH_PAT_COMPOUNDS = ['authheader', 'authvalue', 'basicauth', 'githubpat'];
+const AUTHORIZATION_BEARER_RE = /\bauthorization\s*:\s*bearer\s+[A-Za-z0-9._~+/=-]+/i;
+const BEARER_CANDIDATE_RE = /\bbearer\s+([A-Za-z0-9._~+/=-]+)/gi;
+const ORDINARY_BEARER_NOUNS = new Set(['responsibility']);
 const GITHUB_TOKEN_RE = /\b(?:gh[pousr]_[A-Za-z0-9]{16,}|github_pat_[A-Za-z0-9_]{20,})\b/i;
 const TOKEN_ENV_NAME_RE =
   /\b[A-Z][A-Z0-9]*(?:_[A-Z0-9]+)*_(?:ACCESS_TOKEN|API_KEY|AUTH_TOKEN|CLIENT_SECRET|PRIVATE_KEY|TOKEN|PASSWORD|CREDENTIALS)\b/i;
@@ -107,54 +104,37 @@ function isCanonicalInstant(value) {
   return Number.isFinite(timestamp) && new Date(timestamp).toISOString() === value;
 }
 
-function secretKeySegments(key) {
-  return key
-    .replace(/([a-z0-9])([A-Z])/g, '$1 $2')
-    .replace(/([A-Z]+)([A-Z][a-z])/g, '$1 $2')
-    .toLowerCase()
-    .split(/[^a-z0-9]+/)
-    .filter(Boolean);
+function collapsedSecretKey(key) {
+  return key.toLowerCase().replace(/[^a-z0-9]/g, '');
 }
 
-function startsWithSegments(segments, prefix, allowedSuffixes = []) {
-  if (!prefix.every((segment, index) => segments[index] === segment)) return false;
-  return segments.slice(prefix.length).every((segment) => allowedSuffixes.includes(segment));
-}
-
-function isSafeSemanticKey(segments) {
-  const tokenCountSuffixes = ['total'];
+function containsSensitiveKeyFragment(value) {
   return (
-    startsWithSegments(segments, ['token', 'count'], tokenCountSuffixes) ||
-    startsWithSegments(segments, ['input', 'token', 'count'], tokenCountSuffixes) ||
-    startsWithSegments(segments, ['output', 'token', 'count'], tokenCountSuffixes) ||
-    startsWithSegments(segments, ['password', 'policy'], ['version']) ||
-    startsWithSegments(segments, ['prior', 'authorization'], ['state']) ||
-    startsWithSegments(segments, ['authorization', 'decision']) ||
-    startsWithSegments(segments, ['credential', 'policy'], ['version']) ||
-    startsWithSegments(segments, ['api', 'key', 'policy'], ['name']) ||
-    startsWithSegments(segments, ['session', 'cookie', 'policy'], ['version']) ||
-    startsWithSegments(segments, ['fortune', 'cookie'], ['message'])
+    COLLAPSED_SENSITIVE_FRAGMENTS.some((fragment) => value.includes(fragment)) ||
+    COLLAPSED_AUTH_PAT_COMPOUNDS.some((compound) => value.includes(compound))
   );
 }
 
-function hasAdjacentSegments(segments, first, second) {
-  return segments.some((segment, index) => segment === first && segments[index + 1] === second);
+function isSafeSemanticKey(collapsed) {
+  const family = SAFE_KEY_FAMILY_PREFIXES.find((prefix) => collapsed.startsWith(prefix));
+  return family !== undefined && !containsSensitiveKeyFragment(collapsed.slice(family.length));
 }
 
 function isSecretKey(key) {
-  const segments = secretKeySegments(key);
-  if (isSafeSemanticKey(segments)) return false;
-  if (segments.some((segment) => SENSITIVE_KEY_SEGMENTS.has(segment))) return true;
-  if (hasAdjacentSegments(segments, 'github', 'pat')) return true;
-  if (hasAdjacentSegments(segments, 'api', 'key')) return true;
-  if (hasAdjacentSegments(segments, 'private', 'key')) return true;
-  const collapsed = segments.join('');
-  return COLLAPSED_SENSITIVE_COMPOUNDS.some((compound) => collapsed.includes(compound));
+  const collapsed = collapsedSecretKey(key);
+  return !isSafeSemanticKey(collapsed) && containsSensitiveKeyFragment(collapsed);
+}
+
+function containsBearerCredential(value) {
+  if (AUTHORIZATION_BEARER_RE.test(value)) return true;
+  return [...value.matchAll(BEARER_CANDIDATE_RE)].some(
+    (match) => !ORDINARY_BEARER_NOUNS.has(match[1].toLowerCase())
+  );
 }
 
 function containsCredentialSignature(value) {
   return (
-    BEARER_CREDENTIAL_RE.test(value) ||
+    containsBearerCredential(value) ||
     GITHUB_TOKEN_RE.test(value) ||
     TOKEN_ENV_NAME_RE.test(value) ||
     PRIVATE_KEY_RE.test(value)

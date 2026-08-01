@@ -1,6 +1,12 @@
 // @story #1069
 // cspell:ignore accesstoken apikey authorizationheader clientsecret ghp githubtoken
 // cspell:ignore noncanonical refreshtoken tokenenv
+// cspell:ignore authorizationbackup authorizationtoken authtoken authtokenbackup
+// cspell:ignore backupcredentials bearercredential clientpassword cookiebackup
+// cspell:ignore databasecredentials databasepasswd databasepassword credentialsbackup
+// cspell:ignore gitlabtoken gitlabtokenbackup idtoken idtokenbackup npmtoken npmtokenbackup
+// cspell:ignore passwordbackup sessioncookie sessioncookiebackup sessioncookies
+// cspell:ignore sessioncookievalue sessiontoken sessiontokenbackup
 
 import { strict as assert } from 'node:assert';
 import test from 'node:test';
@@ -19,6 +25,24 @@ const payload = {
 };
 
 const payloadHash = 'sha256:ca8d1b5b789a19c4824724d92b02b568948fcfae437eb4c178f377da3faeb9ab';
+const credentialSignatures = [
+  'bearer abcdefghijklmnop',
+  'Bearer abcdefghijklmnop',
+  'BEARER abcdefghijklmnop',
+  'bEaReR abcdefghijklmnop',
+  'Bearer abcdefghijk',
+  '- Bearer abcdefghijklmnop',
+  '> Bearer abcdefghijklmnop',
+  'credential: Bearer abcdefghijklmnop',
+  'Use Bearer abcdefghijklmnop for request',
+  'Bearer abcdefghijklmnop suffix text',
+  'curl -H "Authorization: Bearer abcdefghijklmnop" https://example.invalid',
+  '`Authorization: Bearer abcdefghijklmnop`',
+  'ghp_1234567890abcdefghijklmnop',
+  'Environment variable GH_TOKEN',
+  'Environment variable gh_token',
+  '-----BEGIN PRIVATE KEY-----',
+];
 
 const validEnvelope = {
   schema: 'aitm.record/v1',
@@ -175,20 +199,18 @@ test('rendering rejects recursively nested secret-bearing keys and credential va
     privateKey privatekey clientsecret authorizationheader githubtoken refreshtoken accesstoken
     tokenenv bearerToken oauthToken secretToken secretValue authHeader AUTH_HEADER authHeaderBackup
     basicAuth authValue githubPat githubPAT github_pat bearer bearerValue
+    authorizationbackup sessioncookiebackup sessioncookies sessioncookievalue sessioncookie
+    cookiebackup databasecredentials credentialsbackup backupcredentials databasepassword
+    databasepasswd passwordbackup clientpassword authtoken authtokenbackup authorizationtoken
+    sessiontoken sessiontokenbackup idtoken idtokenbackup npmtoken npmtokenbackup gitlabtoken
+    gitlabtokenbackup bearercredential
   `
     .trim()
     .split(/\s+/);
   const secretPayloads = [
     { nested: { my_github_token: 'redacted' } },
     ...secretKeys.map((key) => ({ [key]: 'redacted' })),
-    { note: 'bearer abcdefghijklmnop' },
-    { note: 'Bearer abcdefghijklmnop' },
-    { note: 'BEARER abcdefghijklmnop' },
-    { note: 'bEaReR abcdefghijklmnop' },
-    { note: 'ghp_1234567890abcdefghijklmnop' },
-    { note: 'Read the token environment name from GH_TOKEN.' },
-    { note: 'Read the token environment name from gh_token.' },
-    { note: '-----BEGIN PRIVATE KEY-----' },
+    ...credentialSignatures.map((note) => ({ note })),
   ];
 
   for (const secretPayload of secretPayloads) {
@@ -205,28 +227,18 @@ test('rendering rejects recursively nested secret-bearing keys and credential va
 });
 
 test('secret scanning permits ordinary policy and token-accounting fields', () => {
-  const ordinaryPayload = {
-    passwordPolicy: 'Rotate credentials regularly.',
-    tokenCount: 42,
-    fortuneCookie: 'Ship small slices.',
-    priorAuthorization: 'superseded',
-    credentialPolicy: 'Do not publish credentials.',
-    apiKeyPolicy: 'Use repository secrets.',
-    sessionCookiePolicy: 'Do not persist session cookies.',
-    inputTokenCount: 20,
-    output_token_count: 40,
-    tokenCountTotal: 60,
-    passwordPolicyVersion: 2,
-    priorAuthorizationState: 'superseded',
-    authorizationDecision: 'allowed',
-    credentialPolicyVersion: 3,
-    apiKeyPolicyName: 'repository-only',
-    sessionCookiePolicyVersion: 4,
-    fortuneCookieMessage: 'Ship small slices.',
-    secretaryName: 'maintainer',
-    tokenizerMode: 'deterministic',
-    note: 'The bearer responsibility remains with the coordinator.',
-  };
+  const safeKeys = `
+    passwordPolicy tokenCount fortuneCookie priorAuthorization credentialPolicy apiKeyPolicy
+    sessionCookiePolicy inputTokenCount output_token_count tokenCountTotal passwordPolicyVersion
+    priorAuthorizationState authorizationDecision credentialPolicyVersion apiKeyPolicyName
+    sessionCookiePolicyVersion fortuneCookieMessage secretaryName tokenizerMode tokenCountByModel
+    passwordPolicyName fortuneCookieRecipe priorAuthorizationDecision authorizationDecisionReason
+    credentialPolicyName apiKeyPolicyVersion sessionCookiePolicyName
+  `
+    .trim()
+    .split(/\s+/);
+  const ordinaryPayload = Object.fromEntries(safeKeys.map((key) => [key, 'safe']));
+  ordinaryPayload.note = 'The bearer responsibility remains with the coordinator.';
   const body = render({
     payload: ordinaryPayload,
     payloadHash: hashRecordPayload(ordinaryPayload),
@@ -237,16 +249,7 @@ test('secret scanning permits ordinary policy and token-accounting fields', () =
 
 test('parsing rejects secret signatures introduced into visible Markdown', () => {
   const safeBody = render({}, 'Ordinary presentation.');
-  for (const visibleMarkdown of [
-    'bearer abcdefghijklmnop',
-    'Bearer abcdefghijklmnop',
-    'BEARER abcdefghijklmnop',
-    'bEaReR abcdefghijklmnop',
-    'ghp_1234567890abcdefghijklmnop',
-    'Environment variable GH_TOKEN',
-    'Environment variable gh_token',
-    '-----BEGIN PRIVATE KEY-----',
-  ]) {
+  for (const visibleMarkdown of credentialSignatures) {
     assert.throws(
       () => parse(safeBody.replace('Ordinary presentation.', visibleMarkdown)),
       /record-envelope:secret/
@@ -258,6 +261,15 @@ test('parsing rejects secret signatures introduced into visible Markdown', () =>
   ]) {
     assert.doesNotThrow(() => parse(safeBody.replace('Ordinary presentation.', prose)));
   }
+  const unsafeSafeFamily = { passwordPolicyToken: 'redacted' };
+  assert.throws(
+    () =>
+      render({
+        payload: unsafeSafeFamily,
+        payloadHash: hashRecordPayload(unsafeSafeFamily),
+      }),
+    /record-envelope:secret/
+  );
 });
 
 test('record references require canonical uppercase ULIDs and cannot self-link', () => {
