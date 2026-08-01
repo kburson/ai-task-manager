@@ -1,3 +1,6 @@
+import { execFile } from 'node:child_process';
+import { promisify } from 'node:util';
+
 import { loadState, saveState, pauseTimingKeepBinding } from '../state.mjs';
 import { setTaskStatus } from '../fleet-registry.mjs';
 import { validateVerificationCommand } from '../lib/verification-allowlist.mjs';
@@ -22,7 +25,7 @@ import {
   readLastKnownState,
 } from '../gh-timing-comment.mjs';
 import { assertVerbHomeState } from '../lib/verb-home-state-guard.mjs';
-import { GH_API_TIMEOUT_MS } from '../lib/process-timeouts.mjs';
+import { GH_API_TIMEOUT_MS, sandboxTimeoutMs } from '../lib/process-timeouts.mjs';
 import { deriveStateMoveDelta } from '../lib/timing-rows.mjs';
 import { mutateIssueBody } from '../lib/issue-body-mutate.mjs';
 import { deriveAndStampFunctionalDod } from '../lib/functional-dod-derive.mjs';
@@ -41,6 +44,7 @@ import {
   stampAgentReviewPassed,
 } from '../lib/agent-review/review-gate.mjs';
 import { computeReviewChangedPaths } from '../lib/review-changed-paths.mjs';
+import { canonicalRecordJson } from '../lib/github-records/canonical-json.mjs';
 import {
   buildVerificationFingerprint,
   createVerificationReceipt,
@@ -56,6 +60,7 @@ const TEST_RECEIPT_REQUIRED = Object.freeze([
   'test-integration',
   'test-slow',
 ]);
+const reviewPexec = promisify(execFile);
 
 function standardReviewCommandResults() {
   return new Map(
@@ -154,6 +159,9 @@ export async function resolveReviewVerificationEvidence({
 
 export function appendReviewProbeEvidence({ body, issueNumber, fingerprint, probes, now } = {}) {
   const prior = parseVerificationReceipt(body, 'review');
+  const priorMatchesFingerprint =
+    prior?.commitSha === fingerprint?.commitSha &&
+    canonicalRecordJson(prior?.environment) === canonicalRecordJson(fingerprint?.environment);
   const commands = (probes || []).map((probe) => ({
     classification: 'review-probe',
     command: probe.command,
@@ -168,10 +176,180 @@ export function appendReviewProbeEvidence({ body, issueNumber, fingerprint, prob
     issueNumber,
     stage: 'review',
     fingerprint,
-    commands: [...(prior?.commands || []), ...commands],
+    commands: [...(priorMatchesFingerprint ? prior.commands : []), ...commands],
     now,
   });
   return { body: upsertVerificationReceipt(body, receipt), receipt };
+}
+
+export function parseReviewProbeCommands(rest = []) {
+  const commands = [];
+  for (let index = 0; index < rest.length; index += 1) {
+    const arg = String(rest[index]);
+    if (arg === '--probe') {
+      const command = rest[index + 1];
+      if (!command || String(command).startsWith('--')) {
+        throw new Error('review: --probe requires one quoted command');
+      }
+      commands.push(String(command));
+      index += 1;
+    } else if (arg.startsWith('--probe=')) {
+      const command = arg.slice('--probe='.length);
+      if (!command) throw new Error('review: --probe requires one quoted command');
+      commands.push(command);
+    }
+  }
+  return commands;
+}
+
+async function defaultReviewProbeHeadSha({ projectDir }) {
+  const { stdout } = await reviewPexec('git', ['rev-parse', 'HEAD'], { cwd: projectDir });
+  return String(stdout || '').trim();
+}
+
+async function defaultExecuteReviewProbe({ argv, projectDir }) {
+  const startedAt = new Date().toISOString();
+  const startedMs = Date.now();
+  try {
+    const { stdout, stderr } = await reviewPexec(argv[0], argv.slice(1), {
+      cwd: projectDir,
+      timeout: sandboxTimeoutMs(),
+      maxBuffer: 64 * 1024 * 1024,
+    });
+    return {
+      exitCode: 0,
+      stdout: String(stdout || ''),
+      stderr: String(stderr || ''),
+      durationMs: Date.now() - startedMs,
+      startedAt,
+      completedAt: new Date().toISOString(),
+    };
+  } catch (error) {
+    return {
+      exitCode: Number.isInteger(error.code) ? error.code : 1,
+      stdout: String(error.stdout || ''),
+      stderr: String(error.stderr || error.message || ''),
+      durationMs: Date.now() - startedMs,
+      startedAt,
+      completedAt: new Date().toISOString(),
+    };
+  }
+}
+
+async function defaultReviewProbeFetchBody({ cfg, issueNumber }) {
+  const { stdout } = await reviewPexec(
+    'gh',
+    ['issue', 'view', String(issueNumber), '-R', cfg.repo, '--json', 'body', '--jq', '.body'],
+    { timeout: GH_API_TIMEOUT_MS }
+  );
+  return String(stdout || '');
+}
+
+async function defaultReviewProbeMutateBody({ cfg, issueNumber, mutate }) {
+  return mutateIssueBody({
+    issueNumber,
+    repo: cfg.repo,
+    mutate,
+    evidenceStamp: true,
+    deps: { pexec: reviewPexec },
+  });
+}
+
+export async function runReviewProbes({
+  body,
+  issueNumber,
+  projectDir,
+  commands,
+  cfg = {},
+  now = () => new Date().toISOString(),
+  deps = {},
+} = {}) {
+  const getHeadSha = deps.getHeadSha || defaultReviewProbeHeadSha;
+  const buildFingerprint = deps.buildFingerprint || buildVerificationFingerprint;
+  const validateCommand = deps.validateCommand || validateVerificationCommand;
+  const executeCommand = deps.executeCommand || defaultExecuteReviewProbe;
+  const mutateBody = deps.mutateBody || defaultReviewProbeMutateBody;
+  const fetchBody = deps.fetchBody || defaultReviewProbeFetchBody;
+  const requested = Array.isArray(commands) ? commands : [];
+  if (requested.length === 0) return { status: 'no-probes', probes: [] };
+
+  const testEvidence = await resolveReviewVerificationEvidence({
+    body,
+    issueNumber,
+    projectDir,
+    getHeadSha,
+    buildFingerprint,
+  });
+  if (!testEvidence.ok) {
+    return { status: 'test-evidence-invalid', probes: [], reasons: testEvidence.reasons };
+  }
+
+  const initialSha = await getHeadSha({ projectDir });
+  const initialFingerprint = await buildFingerprint({ projectDir, commitSha: initialSha });
+  const probes = [];
+  for (const command of requested) {
+    const validation = validateCommand(command, { projectDir });
+    if (!validation.ok) {
+      return {
+        status: 'rejected',
+        probes,
+        reasons: [{ code: 'probe-command-rejected', command, reason: validation.reason }],
+      };
+    }
+    const result = await executeCommand({ argv: validation.argv, projectDir });
+    probes.push({
+      command: validation.argv[0],
+      args: validation.argv.slice(1),
+      exitCode: result.exitCode,
+      durationMs: result.durationMs ?? 0,
+      ...(result.startedAt ? { startedAt: result.startedAt } : {}),
+      ...(result.completedAt ? { completedAt: result.completedAt } : {}),
+    });
+  }
+
+  const completedSha = await getHeadSha({ projectDir });
+  const completedFingerprint = await buildFingerprint({
+    projectDir,
+    commitSha: completedSha,
+  });
+  const fingerprintChanged =
+    initialSha !== completedSha ||
+    canonicalRecordJson(initialFingerprint) !== canonicalRecordJson(completedFingerprint);
+  if (fingerprintChanged) {
+    return {
+      status: 'fingerprint-changed',
+      probes,
+      reasons: [{ code: 'probe-fingerprint-changed' }],
+    };
+  }
+
+  let writtenReceipt = null;
+  await mutateBody({
+    cfg,
+    issueNumber,
+    evidenceStamp: true,
+    mutate: (base) => {
+      const appended = appendReviewProbeEvidence({
+        body: base,
+        issueNumber,
+        fingerprint: completedFingerprint,
+        probes,
+        now,
+      });
+      writtenReceipt = appended.receipt;
+      return appended.body;
+    },
+  });
+  const persistedBody = await fetchBody({ cfg, issueNumber });
+  const readBack = parseVerificationReceipt(persistedBody, 'review');
+  if (!writtenReceipt || readBack?.receiptId !== writtenReceipt.receiptId) {
+    return { status: 'readback-failed', probes, reasons: [{ code: 'probe-readback-failed' }] };
+  }
+  return {
+    status: probes.every(({ exitCode }) => exitCode === 0) ? 'passed' : 'failed',
+    probes,
+    receipt: readBack,
+  };
 }
 
 // #975 — a VC-section checkbox legitimately ticked via the honest
@@ -370,6 +548,17 @@ export async function verbReview(ctx) {
     getIssueBoardState,
     nowIso,
   } = ctx;
+  let probeCommands;
+  try {
+    probeCommands = parseReviewProbeCommands(rest);
+  } catch (error) {
+    process.stderr.write(`${error.message}\n`);
+    process.exit(2);
+  }
+  if (SKIP_NETWORK && probeCommands.length > 0) {
+    process.stderr.write('review: --probe refuses with TT_SKIP_NETWORK\n');
+    process.exit(1);
+  }
   // #622 — seam-widen for offline verb testing. These three externals do real
   // network I/O (preflight: git+gh; mutateIssueBody / deriveAndStampFunctionalDod:
   // gh issue edit). The real CLI passes none of them, so each falls back to its
@@ -435,11 +624,40 @@ export async function verbReview(ctx) {
     // authoritative move). A missing/failed best-effort fetch leaves body ''
     // (currentState null), which is a no-op — this guard only refuses a
     // *known* wrong state.
+    const currentState = readLastKnownState(body).state;
     assertVerbHomeState({
       verb: 'review',
-      currentState: readLastKnownState(body).state,
+      currentState,
       issueNumber: issueNum,
     });
+    if (probeCommands.length > 0) {
+      if (currentState !== 'review') {
+        process.stderr.write(
+          `review: --probe requires #${issueNum} to already be in Review; current state is ${currentState || 'unknown'}\n`
+        );
+        process.exit(4);
+      }
+      const probeResult = await runReviewProbes({
+        body,
+        issueNumber: Number(issueNum),
+        projectDir,
+        commands: probeCommands,
+        cfg,
+      });
+      if (probeResult.status === 'passed') {
+        console.log(
+          `✓ #${issueNum} recorded ${probeResult.probes.length} Review probe(s) in receipt ${probeResult.receipt.receiptId}.`
+        );
+        return;
+      }
+      const reasons = (probeResult.reasons || [])
+        .map(({ code, reason }) => `${code}${reason ? `: ${reason}` : ''}`)
+        .join(', ');
+      process.stderr.write(
+        `⛔ #${issueNum} Review probe ${probeResult.status}: ${reasons || 'one or more probes exited nonzero'}\n`
+      );
+      process.exit(probeResult.status === 'failed' ? 3 : 4);
+    }
     if (body) {
       const activeGates = DEFAULT_GATES.filter((g) => g.name !== 'verification-commands');
       const result = validateBody(body, { gates: activeGates });

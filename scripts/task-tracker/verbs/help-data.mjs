@@ -212,13 +212,21 @@ export const VERB_REFERENCE = {
   review: {
     topic: 'board',
     summary: 'Move an issue through Test to Review, flush timing, and pause.',
-    usage: '/task review #N [--duration-minutes N --words N]',
+    usage: '/task review #N [--duration-minutes N --words N] [--probe "command"]',
     flags: [
       { flag: '--duration-minutes <N>', desc: 'agent-reported active minutes (skips JSONL read)' },
       { flag: '--words <N>', desc: 'agent-reported word delta' },
+      {
+        flag: '--probe "<command>"',
+        desc: 'in Review, run one repeatable allowlisted focused probe and record separate evidence',
+      },
     ],
     exitCodes: [GATE_REFUSAL],
-    examples: ['/task review 667', '/task review 667 --duration-minutes 45 --words 1200'],
+    examples: [
+      '/task review 667',
+      '/task review 667 --duration-minutes 45 --words 1200',
+      '/task review 667 --probe "node --test path/to/focused.test.mjs"',
+    ],
   },
   reject: {
     topic: 'board',

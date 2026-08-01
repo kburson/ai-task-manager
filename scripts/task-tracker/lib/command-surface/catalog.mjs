@@ -169,11 +169,15 @@ export const VERB_CONTRACTS = Object.freeze({
   review: contract(
     [
       'The target must be in Test or Review, pass preflight, and have reviewable verification evidence.',
+      'The --probe submode requires the target to already be in Review and the quoted command to pass the verification allowlist.',
     ],
     [
       'Flushes timing, evaluates the review gate, moves Test to Review when needed, and pauses the session.',
+      'With --probe, executes only focused commands at the clean exact SHA and persists a separate Review receipt without rerunning the Review gate.',
     ],
-    ['Prints review findings, state movement, timing totals, and any approval prompt.'],
+    [
+      'Prints review findings, state movement, timing totals, approval prompts, or focused-probe receipt diagnostics.',
+    ],
     [
       exit(3, 'review evidence or board data could not be fetched'),
       MOVE_REFUSAL,

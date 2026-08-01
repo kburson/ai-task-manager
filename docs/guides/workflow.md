@@ -48,7 +48,7 @@ Backward-compat read paths accept the legacy `aitm-groom-*` forms; write paths e
 | `/task plan #N`    | Plan (Sprint-Planning) | Promotes Refine → Plan (Sprint-Planning ceremony: deep-dive analysis, child story breakdown, estimate revision). Refuses on any current state other than Refine. **Not for backlog item generation** — use `/task discover` for that. |
 | `/task develop #N` | Develop                | (Reserved; currently use `/task promote` from Plan after `/task plan-approve`.)                                                                                                                                                       |
 | `/task verify #N`  | Test                   | Runs sandboxed verification of all ACs and test automation; stamps `aitm-dod-verified` marker. (To be built per epic #107.)                                                                                                           |
-| `/task review #N`  | Review                 | Promotes Test → Review after verification passes.                                                                                                                                                                                     |
+| `/task review #N`  | Review                 | Promotes Test → Review after verification passes; in Review, `--probe "command"` records focused evidence without rerunning standard commands.                                                                                        |
 | `/task approve #N` | (gate stamp)           | Stamps the human-approval marker for the current gate (plan→develop or review→done).                                                                                                                                                  |
 | `/task close #N`   | Done                   | Closes the issue and moves Review → Done.                                                                                                                                                                                             |
 | `/task promote #N` | next stage             | Generic one-step advance; used for transitions without bespoke prep.                                                                                                                                                                  |
@@ -141,6 +141,18 @@ concrete review finding is recorded separately as `review-probe` evidence and
 does not alter or masquerade as the Test receipt. Marker-only issues without a
 v1 receipt retain the bounded legacy path; the presence of a malformed v1
 marker can never fall back to it.
+
+Run a focused probe only after the issue is already in Review:
+
+```bash
+npx aitm review 1089 --probe "node --test scripts/task-tracker/tests/unit/lib/review-receipt-reuse.test.mjs"
+```
+
+`--probe` is repeatable. Each command must pass the normal verification
+allowlist, runs without a shell against the current clean exact SHA, and is
+persisted/read back in a Review receipt whether green or red. The submode does
+not run the normal Review gate; rerun plain `npx aitm review 1089` after the
+finding is resolved.
 
 Recovery after receipt invalidation is:
 

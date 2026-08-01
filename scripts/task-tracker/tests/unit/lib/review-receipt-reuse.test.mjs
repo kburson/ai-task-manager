@@ -8,6 +8,7 @@ import {
   emitSandboxVerificationFailureTimeline,
   resolveReviewVerificationEvidence,
 } from '../../../verbs/review.mjs';
+import * as reviewVerb from '../../../verbs/review.mjs';
 import { testExitDodVerifiedGuard } from '../../../lib/test-exit-dod-verified-guard.mjs';
 import {
   createVerificationReceipt,
@@ -255,4 +256,154 @@ test('a reviewer probe appends separate review evidence without mutating the Tes
   assert.equal(reviewReceipt.commands.length, 1);
   assert.equal(reviewReceipt.commands[0].classification, 'review-probe');
   assert.equal(reviewReceipt.commands[0].command, 'node');
+});
+
+test('a reviewer probe drops prior Review evidence from a different fingerprint', () => {
+  const initialProbe = appendReviewProbeEvidence({
+    body: bodyWith(testReceipt()),
+    issueNumber: 1089,
+    fingerprint: fingerprint(),
+    probes: [
+      {
+        command: 'node',
+        args: ['--test', 'old.test.mjs'],
+        exitCode: 0,
+        durationMs: 7,
+      },
+    ],
+    now: () => INSTANT,
+  });
+  const changedFingerprint = fingerprint({ commitSha: 'c'.repeat(40) });
+  const result = appendReviewProbeEvidence({
+    body: initialProbe.body,
+    issueNumber: 1089,
+    fingerprint: changedFingerprint,
+    probes: [
+      {
+        command: 'node',
+        args: ['--test', 'current.test.mjs'],
+        exitCode: 0,
+        durationMs: 9,
+      },
+    ],
+    now: () => INSTANT,
+  });
+  const reviewReceipt = parseVerificationReceipt(result.body, 'review');
+  assert.equal(reviewReceipt.commitSha, changedFingerprint.commitSha);
+  assert.deepEqual(
+    reviewReceipt.commands.map(({ args }) => args),
+    [['--test', 'current.test.mjs']]
+  );
+});
+
+test('Review probe submode executes an allowlisted command and persists read-back evidence', async () => {
+  assert.equal(typeof reviewVerb.runReviewProbes, 'function');
+  let body = bodyWith(testReceipt());
+  let executions = 0;
+  const result = await reviewVerb.runReviewProbes({
+    body,
+    issueNumber: 1089,
+    projectDir: '/project',
+    commands: ['node --test probe.test.mjs'],
+    now: () => INSTANT,
+    deps: {
+      getHeadSha: async () => SHA,
+      buildFingerprint: () => fingerprint(),
+      validateCommand: () => ({ ok: true, argv: ['node', '--test', 'probe.test.mjs'] }),
+      executeCommand: async () => {
+        executions += 1;
+        return {
+          exitCode: 0,
+          durationMs: 7,
+          startedAt: INSTANT,
+          completedAt: INSTANT,
+        };
+      },
+      mutateBody: async ({ mutate }) => {
+        body = mutate(body);
+      },
+      fetchBody: async () => body,
+    },
+  });
+  assert.equal(result.status, 'passed');
+  assert.equal(executions, 1);
+  assert.equal(parseVerificationReceipt(body, 'test').stage, 'test');
+  const reviewReceipt = parseVerificationReceipt(body, 'review');
+  assert.equal(reviewReceipt.issue, 1089);
+  assert.equal(reviewReceipt.commands[0].classification, 'review-probe');
+  assert.deepEqual(reviewReceipt.commands[0].args, ['--test', 'probe.test.mjs']);
+});
+
+test('Review probe submode persists a red probe and returns failure', async () => {
+  assert.equal(typeof reviewVerb.runReviewProbes, 'function');
+  let body = bodyWith(testReceipt());
+  const result = await reviewVerb.runReviewProbes({
+    body,
+    issueNumber: 1089,
+    projectDir: '/project',
+    commands: ['node --test probe.test.mjs'],
+    now: () => INSTANT,
+    deps: {
+      getHeadSha: async () => SHA,
+      buildFingerprint: () => fingerprint(),
+      validateCommand: () => ({ ok: true, argv: ['node', '--test', 'probe.test.mjs'] }),
+      executeCommand: async () => ({
+        exitCode: 1,
+        durationMs: 7,
+        startedAt: INSTANT,
+        completedAt: INSTANT,
+      }),
+      mutateBody: async ({ mutate }) => {
+        body = mutate(body);
+      },
+      fetchBody: async () => body,
+    },
+  });
+  assert.equal(result.status, 'failed');
+  assert.equal(parseVerificationReceipt(body, 'review').commands[0].exitCode, 1);
+});
+
+test('Review probe parser accepts repeatable quoted values and rejects a missing value', () => {
+  assert.deepEqual(
+    reviewVerb.parseReviewProbeCommands([
+      '#1089',
+      '--probe',
+      'node --test one.test.mjs',
+      '--probe=node --test two.test.mjs',
+    ]),
+    ['node --test one.test.mjs', 'node --test two.test.mjs']
+  );
+  assert.throws(() => reviewVerb.parseReviewProbeCommands(['#1089', '--probe']), /requires/);
+});
+
+test('Review probe submode rejects a non-allowlisted command before execution or persistence', async () => {
+  let executions = 0;
+  let writes = 0;
+  const result = await reviewVerb.runReviewProbes({
+    body: bodyWith(testReceipt()),
+    issueNumber: 1089,
+    projectDir: '/project',
+    commands: ['sh -c bad'],
+    deps: {
+      getHeadSha: async () => SHA,
+      buildFingerprint: () => fingerprint(),
+      validateCommand: () => ({ ok: false, reason: 'bin not allowlisted' }),
+      executeCommand: async () => {
+        executions += 1;
+      },
+      mutateBody: async () => {
+        writes += 1;
+      },
+    },
+  });
+  assert.equal(result.status, 'rejected');
+  assert.equal(executions, 0);
+  assert.equal(writes, 0);
+  assert.deepEqual(result.reasons, [
+    {
+      code: 'probe-command-rejected',
+      command: 'sh -c bad',
+      reason: 'bin not allowlisted',
+    },
+  ]);
 });
