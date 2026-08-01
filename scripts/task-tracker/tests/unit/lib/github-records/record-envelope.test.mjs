@@ -168,38 +168,23 @@ test('schema dispatch and common field validation fail closed', () => {
 });
 
 test('rendering rejects recursively nested secret-bearing keys and credential values', () => {
+  const secretKeys = `
+    github_token_backup my_refresh_token token_env_name database_credentials session_credentials
+    client_secret_backup database_password authorizationHeader authorizationBackup sessionCookie
+    sessionCookieBackup sessionCookies cookieBackup sessionCookieValue x-api-key apikey APIKEY
+    privateKey privatekey clientsecret authorizationheader githubtoken refreshtoken accesstoken
+    tokenenv bearerToken oauthToken secretToken secretValue authHeader AUTH_HEADER authHeaderBackup
+    basicAuth authValue githubPat githubPAT github_pat bearer bearerValue
+  `
+    .trim()
+    .split(/\s+/);
   const secretPayloads = [
     { nested: { my_github_token: 'redacted' } },
-    { github_token_backup: 'redacted' },
-    { my_refresh_token: 'redacted' },
-    { token_env_name: 'redacted' },
-    { database_credentials: 'redacted' },
-    { session_credentials: 'redacted' },
-    { client_secret_backup: 'redacted' },
-    { database_password: 'redacted' },
-    { authorizationHeader: 'redacted' },
-    { authorizationBackup: 'redacted' },
-    { sessionCookie: 'redacted' },
-    { sessionCookieBackup: 'redacted' },
-    { sessionCookies: 'redacted' },
-    { cookieBackup: 'redacted' },
-    { sessionCookieValue: 'redacted' },
-    { 'x-api-key': 'redacted' },
-    { apikey: 'redacted' },
-    { APIKEY: 'redacted' },
-    { privateKey: 'redacted' },
-    { privatekey: 'redacted' },
-    { clientsecret: 'redacted' },
-    { authorizationheader: 'redacted' },
-    { githubtoken: 'redacted' },
-    { refreshtoken: 'redacted' },
-    { accesstoken: 'redacted' },
-    { tokenenv: 'redacted' },
-    { bearerToken: 'redacted' },
-    { oauthToken: 'redacted' },
-    { secretToken: 'redacted' },
-    { secretValue: 'redacted' },
-    { note: 'Bearer abcdefghijk' },
+    ...secretKeys.map((key) => ({ [key]: 'redacted' })),
+    { note: 'bearer abcdefghijklmnop' },
+    { note: 'Bearer abcdefghijklmnop' },
+    { note: 'BEARER abcdefghijklmnop' },
+    { note: 'bEaReR abcdefghijklmnop' },
     { note: 'ghp_1234567890abcdefghijklmnop' },
     { note: 'Read the token environment name from GH_TOKEN.' },
     { note: 'Read the token environment name from gh_token.' },
@@ -228,6 +213,18 @@ test('secret scanning permits ordinary policy and token-accounting fields', () =
     credentialPolicy: 'Do not publish credentials.',
     apiKeyPolicy: 'Use repository secrets.',
     sessionCookiePolicy: 'Do not persist session cookies.',
+    inputTokenCount: 20,
+    output_token_count: 40,
+    tokenCountTotal: 60,
+    passwordPolicyVersion: 2,
+    priorAuthorizationState: 'superseded',
+    authorizationDecision: 'allowed',
+    credentialPolicyVersion: 3,
+    apiKeyPolicyName: 'repository-only',
+    sessionCookiePolicyVersion: 4,
+    fortuneCookieMessage: 'Ship small slices.',
+    secretaryName: 'maintainer',
+    tokenizerMode: 'deterministic',
     note: 'The bearer responsibility remains with the coordinator.',
   };
   const body = render({
@@ -241,7 +238,10 @@ test('secret scanning permits ordinary policy and token-accounting fields', () =
 test('parsing rejects secret signatures introduced into visible Markdown', () => {
   const safeBody = render({}, 'Ordinary presentation.');
   for (const visibleMarkdown of [
-    'Bearer abcdefghijk',
+    'bearer abcdefghijklmnop',
+    'Bearer abcdefghijklmnop',
+    'BEARER abcdefghijklmnop',
+    'bEaReR abcdefghijklmnop',
     'ghp_1234567890abcdefghijklmnop',
     'Environment variable GH_TOKEN',
     'Environment variable gh_token',
@@ -252,9 +252,12 @@ test('parsing rejects secret signatures introduced into visible Markdown', () =>
       /record-envelope:secret/
     );
   }
-  assert.doesNotThrow(() =>
-    parse(safeBody.replace('Ordinary presentation.', 'The bearer responsibility remains clear.'))
-  );
+  for (const prose of [
+    'The bearer responsibility remains clear.',
+    'The Bearer responsibility remains clear.',
+  ]) {
+    assert.doesNotThrow(() => parse(safeBody.replace('Ordinary presentation.', prose)));
+  }
 });
 
 test('record references require canonical uppercase ULIDs and cannot self-link', () => {
