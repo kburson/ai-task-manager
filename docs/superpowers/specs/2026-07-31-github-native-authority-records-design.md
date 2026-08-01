@@ -1,8 +1,11 @@
 # GitHub-Native Authority Records Design
 
-**Date:** 2026-07-31  
-**Status:** Approved in chat  
-**Decision record:** `docs/decisions/0002-github-native-authority-records.md`  
+**Date:** 2026-07-31
+
+**Status:** Approved in chat
+
+**Decision record:** `docs/decisions/0002-github-native-authority-records.md`
+
 **Delivery plan:** `docs/superpowers/plans/2026-07-31-github-native-authority-records.md`
 
 ## Goal

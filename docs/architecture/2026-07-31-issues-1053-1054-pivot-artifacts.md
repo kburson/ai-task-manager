@@ -1,6 +1,6 @@
 # Issues 1053 and 1054 Pivot Artifact Record
 
-**Captured:** 2026-07-31  
+**Captured:** 2026-07-31
 **Reason:** Preserve all pre-pivot work before replacing database-backed
 work-lease authority with GitHub-native authority records.
 

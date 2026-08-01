@@ -1,7 +1,9 @@
 # ADR 0002 — GitHub-Native Authority Records
 
-**Date:** 2026-07-31  
-**Status:** Accepted  
+**Date:** 2026-07-31
+
+**Status:** Accepted
+
 **Supersedes:** The SQLite/PostgreSQL/hosted-API authority direction in the
 workspace-authority and work-lease plans associated with #1048, #1049, and #1053
 
