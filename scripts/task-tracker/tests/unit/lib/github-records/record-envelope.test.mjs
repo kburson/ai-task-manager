@@ -1,10 +1,5 @@
 // @story #1069
-// cspell:ignore accesstoken apikey authorizationheader clientsecret ghp githubtoken
-// cspell:ignore backuppat databaseauth mypat noncanonical personalpat refreshtoken sessionauth tokenenv tokenvalue
-// cspell:ignore authorizationbackup authorizationtoken authtoken authtokenbackup
-// cspell:ignore backupcredentials bearercredential clientpassword cookiebackup
-// cspell:ignore databasecredentials databasepasswd databasepassword credentialsbackup gitlabtoken gitlabtokenbackup idtoken idtokenbackup npmtoken npmtokenbackup passwordbackup
-// cspell:ignore sessioncookie sessioncookiebackup sessioncookies sessioncookievalue sessiontoken sessiontokenbackup
+// cspell:ignore accesstoken apikey authorizationbackup authorizationdecisionpersonalpatbackup authorizationheader authorizationtoken authconfig authtoken authtokenbackup backupauthconfig backupcredentials backuppat backuppatdata bearercredential clientpassword clientsecret cookiebackup customauthmaterial databaseauth databaseauthbackup databasecredentials databasepasswd databasepassword databasepatvalue credentialsbackup ghp githubtoken gitlabtoken gitlabtokenbackup idtoken idtokenbackup myauthbackup mypat mypatbackup noncanonical npmtoken npmtokenbackup passwordbackup passwordpolicymypatbackup personalpat personalpatbackup qwertyuiopasdfgh refreshtoken sessionauth sessionauthconfig sessionauthdata sessioncookie sessioncookiebackup sessioncookies sessioncookievalue sessionpatconfig sessiontoken sessiontokenbackup tokencountdatabaseauthbackup tokenenv tokenvalue
 
 import { strict as assert } from 'node:assert';
 import test from 'node:test';
@@ -16,50 +11,51 @@ import {
   renderAitmRecord,
 } from '../../../../lib/github-records/record-envelope.mjs';
 
-const payload = {
-  tags: ['x', 'y'],
-  nested: { z: null, a: true },
-  alpha: 1,
-};
+const payload = { tags: ['x', 'y'], nested: { z: null, a: true }, alpha: 1 };
 
 const payloadHash = 'sha256:ca8d1b5b789a19c4824724d92b02b568948fcfae437eb4c178f377da3faeb9ab';
 const bearerSecretNouns = ['token', 'scheme', 'authentication', 'credentials', 'responsibility'];
+const tokenLikeBearerCandidates = ['abc', 'abc.def', 'abcdefghijklmnop', 'qwertyuiopasdfgh'];
 const credentialSignatures = [
-  'bearer abcdefghijklmnop',
-  'Bearer abcdefghijklmnop',
-  'BEARER abcdefghijklmnop',
-  'bEaReR abcdefghijklmnop',
-  'Bearer abcdefghijk',
-  '- Bearer abcdefghijklmnop',
-  '> Bearer abcdefghijklmnop',
-  'credential: Bearer abcdefghijklmnop',
-  'Use Bearer abcdefghijklmnop for request',
-  'Bearer abcdefghijklmnop suffix text',
-  'curl -H "Authorization: Bearer abcdefghijklmnop" https://example.invalid',
-  '`Authorization: Bearer abcdefghijklmnop`',
-  'Authorization: Bearer',
-  'Authorization: Bearer responsibility',
-  'Bearer tokenvalue',
+  ...`
+    bearer abcdefghijklmnop | Bearer abcdefghijklmnop | BEARER abcdefghijklmnop
+    bEaReR abcdefghijklmnop | Bearer abcdefghijk | - Bearer abcdefghijklmnop
+    > Bearer abcdefghijklmnop | credential: Bearer abcdefghijklmnop
+    Use Bearer abcdefghijklmnop for request | Bearer abcdefghijklmnop suffix text
+    curl -H "Authorization: Bearer abcdefghijklmnop" https://example.invalid
+    | \`Authorization: Bearer abcdefghijklmnop\` | Authorization: Bearer
+    Authorization: Bearer responsibility | Bearer tokenvalue | credential: Bearer token is active
+  `
+    .trim()
+    .split(/\s*\|\s*/),
   ...bearerSecretNouns.flatMap((noun) =>
     ['', '- ', 'credential: '].map((prefix) => `${prefix}Bearer ${noun}`)
   ),
-  'ghp_1234567890abcdefghijklmnop',
-  'Environment variable GH_TOKEN',
-  'Environment variable gh_token',
-  '-----BEGIN PRIVATE KEY-----',
+  ...tokenLikeBearerCandidates.flatMap((candidate) => [
+    `The Bearer ${candidate}`,
+    `A Bearer ${candidate}`,
+    `Use a Bearer ${candidate} for request`,
+    `Use the Bearer ${candidate} for request`,
+    `credential: Bearer ${candidate} is active`,
+    `- Bearer ${candidate} is active`,
+    `Bearer ${candidate} is active`,
+    `Bearer ${candidate} was accepted`,
+    `Bearer ${candidate} remains valid`,
+  ]),
+  ...`ghp_1234567890abcdefghijklmnop | Environment variable GH_TOKEN
+    | Environment variable gh_token | -----BEGIN PRIVATE KEY-----`.split(/\s*\|\s*/),
 ];
-const ordinaryBearerProse = [
-  'The bearer responsibility remains clear.',
-  'The Bearer responsibility remains clear.',
-  'Bearer tokens are prohibited.',
-  'The bearer scheme is documented.',
-  'Bearer authentication is enabled.',
-  'Bearer credentials must not be logged.',
-  'Bearer policy is documented.',
-  'Bearer security is documented.',
-  'Bearer headers are redacted.',
-  'The Bearer responsibility.',
-];
+const ordinaryBearerProse = `
+  The bearer responsibility remains clear. | The Bearer responsibility remains clear.
+  Bearer tokens are prohibited. | The bearer scheme is documented.
+  Bearer authentication is enabled. | Bearer credentials must not be logged.
+  Bearer policy is documented. | Bearer security is documented. | Bearer headers are redacted.
+  The Bearer responsibility. | Bearer security, policy, and headers are documented.
+  Review bearer authentication settings. | Bearer policy documentation is available.
+  Bearer security guidance follows.
+`
+  .trim()
+  .split(/\s*\|\s*/);
 
 const validEnvelope = {
   schema: 'aitm.record/v1',
@@ -226,6 +222,9 @@ test('rendering rejects recursively nested secret-bearing keys and credential va
     databaseAuth databaseauth sessionAuth sessionauth myPat mypat backupPat backuppat personalPat
     personalpat patConfig patMaterial patString patRecord ghPatConfig ghPatMaterial gitPatConfig
     gitPatMaterial passwordPolicyMyPat passwordPolicyBackupPat tokenCountMyPat authorizationDecisionMyPat
+    databaseauthbackup sessionauthdata mypatbackup personalpatbackup backupauthconfig databasepatvalue
+    sessionpatconfig backuppatdata myauthbackup sessionauthconfig customauthmaterial
+    passwordpolicymypatbackup tokencountdatabaseauthbackup authorizationdecisionpersonalpatbackup
   `
     .trim()
     .split(/\s+/);
@@ -256,7 +255,8 @@ test('secret scanning permits ordinary policy and token-accounting fields', () =
     sessionCookiePolicyVersion fortuneCookieMessage secretaryName tokenizerMode tokenCountByModel
     passwordPolicyName fortuneCookieRecipe priorAuthorizationDecision authorizationDecisionReason
     credentialPolicyName apiKeyPolicyVersion sessionCookiePolicyName authorName authorityLabel patternName
-    pathName patientId authenticationMode authPolicy
+    pathName patientId authenticationMode authPolicy authorship authorized authMode authConfiguration
+    patentId patioMode patchVersion dispatchMode compatMode
   `
     .trim()
     .split(/\s+/);

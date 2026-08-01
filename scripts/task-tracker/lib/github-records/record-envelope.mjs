@@ -1,7 +1,7 @@
 // cspell:ignore HJKMNP pousr noncanonical
 // cspell:ignore apikey apikeypolicy credentialpolicy fortunecookie passwordpolicy
 // cspell:ignore priorauthorization sessioncookiepolicy tokencount
-// cspell:ignore accesstoken authheader authorizationheader authvalue basicauth
+// cspell:ignore accesstoken authconfiguration authheader authmode authorizationheader authvalue basicauth
 // cspell:ignore bearertoken bearervalue clientsecret ghpat githubpat githubtoken gitpat oauthtoken
 // cspell:ignore refreshtoken secrettoken secretvalue tokenenv
 // cspell:ignore authorizationdecision inputtokencount outputtokencount
@@ -60,11 +60,22 @@ const COLLAPSED_SENSITIVE_FRAGMENTS = [
 ];
 const COLLAPSED_AUTH_PAT_COMPOUNDS = ['authheader', 'authvalue', 'basicauth', 'githubpat'];
 const FORCED_DANGEROUS_COMPOUNDS = ['authorizationheader', 'authheader'];
+const SAFE_COLLAPSED_AUTH_FAMILIES =
+  'priorauthorization authorizationdecision authentication authconfiguration authpolicy authmode author'.split(
+    ' '
+  );
+const SAFE_COLLAPSED_PAT_FAMILIES = 'dispatch compat pattern patient patent patch path patio'.split(
+  ' '
+);
 const AUTHORIZATION_BEARER_RE = /\bauthorization\s*:\s*bearer\b/i;
 const BEARER_CANDIDATE_RE = /\bbearer\s+([A-Za-z0-9._~+/=-]+)/gi;
 const BEARER_ARTICLE_RE = /\b(?:a|an|the)[\s"'`*_~()[\]{},.;:!?-]*$/i;
-const BEARER_CONTINUATION_RE =
-  /^[\s"'`*_~()[\]{},.;:!?-]*(?:are|can|could|had|has|have|is|may|might|must|remain|remains|shall|should|was|were|will|would)\b/i;
+const BEARER_PROSE_PREFIX_RE = /\b(?:describe|document|explain|review)\s+$/i;
+const BEARER_CONTINUATION_WORDS = new Set(
+  'are can could follows had has have is may might must remain remains shall should was were will would'.split(
+    ' '
+  )
+);
 const GITHUB_TOKEN_RE = /\b(?:gh[pousr]_[A-Za-z0-9]{16,}|github_pat_[A-Za-z0-9_]{20,})\b/i;
 const TOKEN_ENV_NAME_RE =
   /\b[A-Z][A-Z0-9]*(?:_[A-Z0-9]+)*_(?:ACCESS_TOKEN|API_KEY|AUTH_TOKEN|CLIENT_SECRET|PRIVATE_KEY|TOKEN|PASSWORD|CREDENTIALS)\b/i;
@@ -127,6 +138,11 @@ function containsSensitiveKeyFragment(value) {
   );
 }
 
+function stripSafeCollapsedFamily(value, families) {
+  const family = families.find((candidate) => value.startsWith(candidate));
+  return family === undefined ? value : value.slice(family.length);
+}
+
 function containsAuthPatAbbreviation(key, collapsed) {
   const segments = secretKeySegments(key);
   const hasPatSegment = segments.includes('pat');
@@ -134,15 +150,13 @@ function containsAuthPatAbbreviation(key, collapsed) {
     (segment, index) =>
       segment === 'auth' && !['configuration', 'mode', 'policy'].includes(segments[index + 1])
   );
-  const safeAuthPrefix =
-    /^(?:author|authority|authentication|authorized|auth(?:configuration|mode|policy))/.test(
-      collapsed
-    );
-  const safePatPrefix = /^(?:compat|patch|path|patient|pattern|patent|patio)/.test(collapsed);
-  const hasCollapsedAuth =
-    collapsed.endsWith('auth') || (collapsed.startsWith('auth') && !safeAuthPrefix);
-  const hasCollapsedPat =
-    !safePatPrefix && (collapsed.endsWith('pat') || /^(?:ghpat|gitpat|pat)/.test(collapsed));
+  const hasCollapsedAuth = stripSafeCollapsedFamily(
+    collapsed,
+    SAFE_COLLAPSED_AUTH_FAMILIES
+  ).includes('auth');
+  const hasCollapsedPat = stripSafeCollapsedFamily(collapsed, SAFE_COLLAPSED_PAT_FAMILIES).includes(
+    'pat'
+  );
   return hasPatSegment || hasUnsafeAuthSegment || hasCollapsedAuth || hasCollapsedPat;
 }
 
@@ -160,12 +174,62 @@ function isSecretKey(key) {
   return !isSafeSemanticKey(collapsed) && containsSensitiveKeyFragment(collapsed);
 }
 
+function hasExplicitBearerContext(before) {
+  const linePrefix = before.slice(before.lastIndexOf('\n') + 1);
+  return /^\s*(?:(?:[-*+>]|\d+[.)])\s*)$/.test(linePrefix) || /:\s*$/.test(linePrefix);
+}
+
+function isMonotonicAlphabetSequence(candidate) {
+  if (candidate.length < 3) return false;
+  const differences = [...candidate.slice(1)].map(
+    (character, index) => character.charCodeAt(0) - candidate.charCodeAt(index)
+  );
+  return (
+    differences.every((difference) => difference === 1) ||
+    differences.every((difference) => difference === -1)
+  );
+}
+
+function hasHighCharacterEntropy(candidate) {
+  if (candidate.length < 16) return false;
+  const frequencies = new Map();
+  for (const character of candidate) {
+    frequencies.set(character, (frequencies.get(character) ?? 0) + 1);
+  }
+  const entropy = [...frequencies.values()].reduce((total, frequency) => {
+    const probability = frequency / candidate.length;
+    return total - probability * Math.log2(probability);
+  }, 0);
+  return frequencies.size / candidate.length >= 0.7 && entropy >= 3.5;
+}
+
+function isTokenLikeBearerCandidate(candidate) {
+  const normalized = candidate.toLowerCase().replace(/[.,;:!?]+$/, '');
+  return (
+    !/^[a-z]+$/.test(normalized) ||
+    normalized.length <= 4 ||
+    isMonotonicAlphabetSequence(normalized) ||
+    hasHighCharacterEntropy(normalized)
+  );
+}
+
+function hasBearerSentenceTail(after) {
+  const sentence = after.split(/[.!?\n]/, 1)[0];
+  const words = sentence.toLowerCase().match(/[a-z]+/g) ?? [];
+  return words.slice(0, 6).some((word) => BEARER_CONTINUATION_WORDS.has(word));
+}
+
 function containsBearerCredential(value) {
   if (AUTHORIZATION_BEARER_RE.test(value)) return true;
   return [...value.matchAll(BEARER_CANDIDATE_RE)].some((match) => {
     const before = value.slice(0, match.index);
     const after = value.slice(match.index + match[0].length);
-    return !BEARER_ARTICLE_RE.test(before) && !BEARER_CONTINUATION_RE.test(after);
+    if (hasExplicitBearerContext(before) || isTokenLikeBearerCandidate(match[1])) return true;
+    return (
+      !BEARER_ARTICLE_RE.test(before) &&
+      !BEARER_PROSE_PREFIX_RE.test(before) &&
+      !hasBearerSentenceTail(after)
+    );
   });
 }
 
