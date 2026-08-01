@@ -16,10 +16,13 @@ function assertWellFormed(value) {
 
 function serializeArray(value, ancestors, depth) {
   const keys = Object.keys(value);
+  const keySet = new Set(keys);
+  const ownKeys = Reflect.ownKeys(value);
   if (
     keys.length !== value.length ||
     keys.some((key, index) => key !== String(index)) ||
-    Reflect.ownKeys(value).some((key) => key !== 'length' && !keys.includes(key))
+    ownKeys.length !== keys.length + 1 ||
+    ownKeys.some((key) => key !== 'length' && !keySet.has(key))
   ) {
     throw canonicalJsonError('array');
   }
@@ -38,9 +41,11 @@ function serializeObject(value, ancestors, depth) {
   }
 
   const keys = Object.keys(value);
+  const keySet = new Set(keys);
+  const ownKeys = Reflect.ownKeys(value);
   if (
-    Reflect.ownKeys(value).length !== keys.length ||
-    Reflect.ownKeys(value).some((key) => typeof key !== 'string' || !keys.includes(key))
+    ownKeys.length !== keys.length ||
+    ownKeys.some((key) => typeof key !== 'string' || !keySet.has(key))
   ) {
     throw canonicalJsonError('property');
   }

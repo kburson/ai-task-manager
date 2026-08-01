@@ -20,23 +20,17 @@ const tokenLikeBearerCandidates =
   );
 const credentialSignatures = [
   ...`
-    bearer abcdefghijklmnop | Bearer abcdefghijklmnop | BEARER abcdefghijklmnop
-    bEaReR abcdefghijklmnop | Bearer abcdefghijk | - Bearer abcdefghijklmnop
-    > Bearer abcdefghijklmnop | credential: Bearer abcdefghijklmnop
-    Use Bearer abcdefghijklmnop for request | Bearer abcdefghijklmnop suffix text
-    curl -H "Authorization: Bearer abcdefghijklmnop" https://example.invalid
-    | \`Authorization: Bearer abcdefghijklmnop\` | Authorization: Bearer
-    Authorization: Bearer responsibility | Bearer tokenvalue | credential: Bearer token is active
-    > - Bearer token is active | - [ ] Bearer token is active | credential = Bearer token is active
-    Authorization = Bearer token is active | credential: **Bearer token**
-    Authorization: \`Bearer token\` | credential: The Bearer token | - The Bearer token
-    > The Bearer credential | credential: (Bearer token) | - **Bearer token**
-    "credential": "Bearer token is active" | Authorization: The Bearer token
-    credential:\n  Bearer token is active | authorization: >-\n  Bearer token is active
-    token: Bearer token is active | auth = Bearer token is active | accessToken: Bearer token
-    - current Bearer token is active | > leaked Bearer token | credential: leaked Bearer token
-    {"kind":{"credential":"Bearer token is active"}} | credential: The The Bearer token
-    - current **The Bearer token** | **token**: current Bearer token is active
+    bearer abcdefghijklmnop | Bearer abcdefghijklmnop | BEARER abcdefghijklmnop | bEaReR abcdefghijklmnop | Bearer abcdefghijk | - Bearer abcdefghijklmnop
+    > Bearer abcdefghijklmnop | credential: Bearer abcdefghijklmnop | Use Bearer abcdefghijklmnop for request | Bearer abcdefghijklmnop suffix text
+    curl -H "Authorization: Bearer abcdefghijklmnop" https://example.invalid | \`Authorization: Bearer abcdefghijklmnop\` | Authorization: Bearer
+    Authorization: Bearer responsibility | Bearer tokenvalue | credential: Bearer token is active | > - Bearer token is active | - [ ] Bearer token is active
+    credential = Bearer token is active | Authorization = Bearer token is active | credential: **Bearer token** | Authorization: \`Bearer token\`
+    credential: The Bearer token | - The Bearer token | > The Bearer credential | credential: (Bearer token) | - **Bearer token**
+    "credential": "Bearer token is active" | Authorization: The Bearer token | credential:\n  Bearer token is active | authorization: >-\n  Bearer token is active
+    token: Bearer token is active | auth = Bearer token is active | accessToken: Bearer token | - current Bearer token is active | > leaked Bearer token
+    credential: leaked Bearer token | {"kind":{"credential":"Bearer token is active"}} | credential: The The Bearer token | - current **The Bearer token**
+    **token**: current Bearer token is active | Bearer \`abcdefghijklmnop\` | Bearer "abcdefghijklmnop" | Bearer 'abcdefghijklmnop' |
+    Bearer **abcdefghijklmnop** | Bearer (abcdefghijklmnop) | Bearer [abcdefghijklmnop] | Bearer <abcdefghijklmnop>
   `
     .trim()
     .split(/\s*\|\s*/),
@@ -102,6 +96,12 @@ test('canonical durable JSON sorts nested object keys and preserves array order'
     '{"alpha":1,"nested":{"a":true,"z":null},"tags":["x","y"]}'
   );
   assert.equal(canonicalRecordJson({ b: 2, a: [{ d: 4, c: 3 }] }), '{"a":[{"c":3,"d":4}],"b":2}');
+  const largeArray = Array.from({ length: 12_000 }, (_, index) => index);
+  const largeObject = Object.fromEntries(
+    largeArray.map((index) => [`key${String(index).padStart(5, '0')}`, index])
+  );
+  assert.equal(JSON.parse(canonicalRecordJson(largeArray)).length, largeArray.length);
+  assert.deepEqual(JSON.parse(canonicalRecordJson(largeObject)), largeObject);
 });
 test('canonical durable JSON rejects values that JSON would erase or normalize ambiguously', () => {
   const sparse = [];
@@ -110,6 +110,8 @@ test('canonical durable JSON rejects values that JSON would erase or normalize a
   cyclic.self = cyclic;
   const accessor = {};
   Object.defineProperty(accessor, 'value', { enumerable: true, get: () => 1 });
+  const arrayWithExtraProperty = ['present'];
+  arrayWithExtraProperty.extra = true;
   for (const value of [
     undefined,
     1n,
@@ -123,6 +125,7 @@ test('canonical durable JSON rejects values that JSON would erase or normalize a
     sparse,
     cyclic,
     accessor,
+    arrayWithExtraProperty,
   ]) {
     assert.throws(() => canonicalRecordJson(value), /canonical-json:invalid/);
   }
@@ -177,6 +180,17 @@ test('root and authority objects require their exact v1 key sets', () => {
   for (const authority of authorityCases) {
     assert.throws(() => render({ authority }), /record-envelope:authority-keys/);
   }
+  for (const actor of [
+    'Bearer abcdefghijklmnop',
+    'ghp_1234567890abcdefghijklmnop',
+    'GH_TOKEN',
+    '-----BEGIN PRIVATE KEY-----',
+  ]) {
+    const secretEnvelope = envelope({ authority: { ...validEnvelope.authority, actor } });
+    assert.throws(() => render({ authority: secretEnvelope.authority }), /record-envelope:secret/);
+    const rawBody = `<!-- aitm-record\n${canonicalRecordJson(secretEnvelope)}\n-->`;
+    assert.throws(() => parse(rawBody), /record-envelope:secret/);
+  }
 });
 test('schema dispatch and common field validation fail closed', () => {
   const invalidCases = [
@@ -197,40 +211,21 @@ test('schema dispatch and common field validation fail closed', () => {
 });
 test('rendering rejects recursively nested secret-bearing keys and credential values', () => {
   const secretKeys = `
-    github_token_backup my_refresh_token token_env_name database_credentials session_credentials
-    client_secret_backup database_password authorizationHeader authorizationBackup sessionCookie
-    sessionCookieBackup sessionCookies cookieBackup sessionCookieValue x-api-key apikey APIKEY
-    privateKey privatekey clientsecret authorizationheader githubtoken refreshtoken accesstoken
-    tokenenv bearerToken oauthToken secretToken secretValue authHeader AUTH_HEADER authHeaderBackup
-    basicAuth authValue githubPat githubPAT github_pat bearer bearerValue
-    authorizationbackup sessioncookiebackup sessioncookies sessioncookievalue sessioncookie
-    cookiebackup databasecredentials credentialsbackup backupcredentials databasepassword
-    databasepasswd passwordbackup clientpassword authtoken authtokenbackup authorizationtoken
-    sessiontoken sessiontokenbackup idtoken idtokenbackup npmtoken npmtokenbackup gitlabtoken
-    gitlabtokenbackup bearercredential
-    auth AUTH authBackup authData pat PAT patBackup ghPat gitPat priorAuthorizationHeader
-    authorizationDecisionHeader
-    databaseAuth databaseauth sessionAuth sessionauth myPat mypat backupPat backuppat personalPat
-    personalpat patConfig patMaterial patString patRecord ghPatConfig ghPatMaterial gitPatConfig
-    gitPatMaterial passwordPolicyMyPat passwordPolicyBackupPat tokenCountMyPat authorizationDecisionMyPat
-    databaseauthbackup sessionauthdata mypatbackup personalpatbackup backupauthconfig databasepatvalue
-    sessionpatconfig backuppatdata myauthbackup sessionauthconfig customauthmaterial
-    passwordpolicymypatbackup tokencountdatabaseauthbackup authorizationdecisionpersonalpatbackup
-    patternAuthBackup authorPatBackup
-    authenticationHeader authenticationValue authenticationMaterial authenticationData
-    authenticationBackup authenticationKey authConfigurationHeader authPolicyHeader
-    headerAuthentication valueAuthentication materialAuthentication dataAuthentication
-    backupAuthentication keyAuthentication headerAuthConfiguration headerAuthPolicy
-    authorName authorityLabel patternName pathName patientId authenticationMode authPolicy authorship
-    authorized authMode authConfiguration patentId patioMode patchVersion dispatchMode compatMode
-    filePath relativePath myPatternName securityPatchVersion backgroundDispatchStatus primaryPatientId
-    coauthorName userAuthorship primaryAuthorityLabel legacyAuthenticationMode coAuthorityLabel
-    empathyScore spatialIndex repatriationStatus tokenCountAuthor tokenCountAuthority tokenCountPath
-    passwordPolicyAuthenticationMode passwordPolicyPattern fortuneCookieAuthPolicy
-    authorizationDecisionAuthor patternPatience dispatchPattern authenticationPolicy patronName
-    paternityStatus patriarchName patellaStatus authenticityScore authenticationMetadata
-    authenticationKeynote authorKeynoteTitle patternMaterialityScore pathMetadata pathDatabaseName
-    authenticationTokenCount authenticationPasswordPolicy authenticationCredentialPolicy
+    github_token_backup my_refresh_token token_env_name database_credentials session_credentials client_secret_backup database_password authorizationHeader authorizationBackup sessionCookie
+    sessionCookieBackup sessionCookies cookieBackup sessionCookieValue x-api-key apikey APIKEY privateKey privatekey clientsecret authorizationheader githubtoken refreshtoken accesstoken
+    tokenenv bearerToken oauthToken secretToken secretValue authHeader AUTH_HEADER authHeaderBackup basicAuth authValue githubPat githubPAT github_pat bearer bearerValue
+    authorizationbackup sessioncookiebackup sessioncookies sessioncookievalue sessioncookie cookiebackup databasecredentials credentialsbackup backupcredentials databasepassword
+    databasepasswd passwordbackup clientpassword authtoken authtokenbackup authorizationtoken sessiontoken sessiontokenbackup idtoken idtokenbackup npmtoken npmtokenbackup gitlabtoken gitlabtokenbackup bearercredential
+    auth AUTH authBackup authData pat PAT patBackup ghPat gitPat priorAuthorizationHeader authorizationDecisionHeader databaseAuth databaseauth sessionAuth sessionauth myPat mypat backupPat backuppat personalPat
+    personalpat patConfig patMaterial patString patRecord ghPatConfig ghPatMaterial gitPatConfig gitPatMaterial passwordPolicyMyPat passwordPolicyBackupPat tokenCountMyPat authorizationDecisionMyPat
+    databaseauthbackup sessionauthdata mypatbackup personalpatbackup backupauthconfig databasepatvalue sessionpatconfig backuppatdata myauthbackup sessionauthconfig customauthmaterial
+    passwordpolicymypatbackup tokencountdatabaseauthbackup authorizationdecisionpersonalpatbackup patternAuthBackup authorPatBackup authenticationHeader authenticationValue authenticationMaterial authenticationData
+    authenticationBackup authenticationKey authConfigurationHeader authPolicyHeader headerAuthentication valueAuthentication materialAuthentication dataAuthentication backupAuthentication keyAuthentication headerAuthConfiguration headerAuthPolicy
+    authorName authorityLabel patternName pathName patientId authenticationMode authPolicy authorship authorized authMode authConfiguration patentId patioMode patchVersion dispatchMode compatMode
+    filePath relativePath myPatternName securityPatchVersion backgroundDispatchStatus primaryPatientId coauthorName userAuthorship primaryAuthorityLabel legacyAuthenticationMode coAuthorityLabel
+    empathyScore spatialIndex repatriationStatus tokenCountAuthor tokenCountAuthority tokenCountPath passwordPolicyAuthenticationMode passwordPolicyPattern fortuneCookieAuthPolicy
+    authorizationDecisionAuthor patternPatience dispatchPattern authenticationPolicy patronName paternityStatus patriarchName patellaStatus authenticityScore authenticationMetadata
+    authenticationKeynote authorKeynoteTitle patternMaterialityScore pathMetadata pathDatabaseName authenticationTokenCount authenticationPasswordPolicy authenticationCredentialPolicy
     authenticationSessionCookiePolicy authPolicyTokenCount
   `
     .trim()

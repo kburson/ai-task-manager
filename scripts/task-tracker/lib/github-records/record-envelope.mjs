@@ -59,7 +59,7 @@ const COLLAPSED_SENSITIVE_FRAGMENTS = [
   'bearer',
 ];
 const AUTHORIZATION_BEARER_RE = /\bauthorization\s*:\s*bearer\b/i;
-const BEARER_CREDENTIAL_RE = /\bbearer\s+[A-Za-z0-9._~+/=-]+/i;
+const BEARER_CREDENTIAL_RE = /\bbearer\s+(?:\*{1,2}|[`"'(\[<])?[A-Za-z0-9._~+/=-]+/i;
 const GITHUB_TOKEN_RE = /\b(?:gh[pousr]_[A-Za-z0-9]{16,}|github_pat_[A-Za-z0-9_]{20,})\b/i;
 const TOKEN_ENV_NAME_RE =
   /\b[A-Z][A-Z0-9]*(?:_[A-Z0-9]+)*_(?:ACCESS_TOKEN|API_KEY|AUTH_TOKEN|CLIENT_SECRET|PRIVATE_KEY|TOKEN|PASSWORD|CREDENTIALS)\b/i;
@@ -141,17 +141,22 @@ function containsCredentialSignature(value) {
   );
 }
 
-function assertNoSecrets(value) {
+function assertNoSecretKeys(value) {
+  if (value === null || typeof value !== 'object') return;
+
+  for (const key of Object.keys(value)) {
+    if (isSecretKey(key)) throw recordError('secret');
+    assertNoSecretKeys(value[key]);
+  }
+}
+
+function assertNoCredentialValues(value) {
   if (typeof value === 'string') {
     if (containsCredentialSignature(value)) throw recordError('secret');
     return;
   }
   if (value === null || typeof value !== 'object') return;
-
-  for (const key of Object.keys(value)) {
-    if (isSecretKey(key)) throw recordError('secret');
-    assertNoSecrets(value[key]);
-  }
+  for (const child of Object.values(value)) assertNoCredentialValues(child);
 }
 
 function assertLink(value, category) {
@@ -196,7 +201,8 @@ function validateEnvelope(envelope) {
   if (typeof envelope.payloadHash !== 'string' || !HASH_RE.test(envelope.payloadHash)) {
     throw recordError('payload-hash');
   }
-  assertNoSecrets(envelope.payload);
+  assertNoSecretKeys(envelope.payload);
+  assertNoCredentialValues(envelope);
   if (envelope.payloadHash !== hashRecordPayload(envelope.payload)) {
     throw recordError('hash-mismatch');
   }
@@ -243,7 +249,7 @@ export function renderAitmRecord({ envelope, visibleMarkdown = '' } = {}) {
   if (typeof visibleMarkdown !== 'string') throw recordError('visible-markdown');
   if ([...visibleMarkdown.matchAll(MARKER_RE)].length > 0) throw recordError('unsafe-comment');
   validateEnvelope(envelope);
-  assertNoSecrets(visibleMarkdown);
+  assertNoCredentialValues(visibleMarkdown);
   const recordJson = canonicalRecordJson(envelope);
   if (recordJson.includes('--')) throw recordError('unsafe-comment');
   assertBounded(recordJson, MAX_RECORD_JSON_BYTES, 'too-large');
@@ -271,7 +277,7 @@ export function parseAitmRecord({ commentNodeId, body, expectedRepository, expec
   }
   if (canonicalRecordJson(envelope) !== recordJson) throw recordError('noncanonical');
   validateEnvelope(envelope);
-  assertNoSecrets(visibleMarkdown);
+  assertNoCredentialValues(visibleMarkdown);
   if (envelope.repository !== expectedRepository) throw recordError('repository-mismatch');
   if (envelope.issue !== expectedIssue) throw recordError('issue-mismatch');
 
