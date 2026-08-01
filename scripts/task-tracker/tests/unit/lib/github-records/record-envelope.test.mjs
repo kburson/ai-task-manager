@@ -1,12 +1,10 @@
 // @story #1069
 // cspell:ignore accesstoken apikey authorizationheader clientsecret ghp githubtoken
-// cspell:ignore noncanonical refreshtoken tokenenv tokenvalue
+// cspell:ignore backuppat databaseauth mypat noncanonical personalpat refreshtoken sessionauth tokenenv tokenvalue
 // cspell:ignore authorizationbackup authorizationtoken authtoken authtokenbackup
 // cspell:ignore backupcredentials bearercredential clientpassword cookiebackup
-// cspell:ignore databasecredentials databasepasswd databasepassword credentialsbackup
-// cspell:ignore gitlabtoken gitlabtokenbackup idtoken idtokenbackup npmtoken npmtokenbackup
-// cspell:ignore passwordbackup sessioncookie sessioncookiebackup sessioncookies
-// cspell:ignore sessioncookievalue sessiontoken sessiontokenbackup
+// cspell:ignore databasecredentials databasepasswd databasepassword credentialsbackup gitlabtoken gitlabtokenbackup idtoken idtokenbackup npmtoken npmtokenbackup passwordbackup
+// cspell:ignore sessioncookie sessioncookiebackup sessioncookies sessioncookievalue sessiontoken sessiontokenbackup
 
 import { strict as assert } from 'node:assert';
 import test from 'node:test';
@@ -25,6 +23,7 @@ const payload = {
 };
 
 const payloadHash = 'sha256:ca8d1b5b789a19c4824724d92b02b568948fcfae437eb4c178f377da3faeb9ab';
+const bearerSecretNouns = ['token', 'scheme', 'authentication', 'credentials', 'responsibility'];
 const credentialSignatures = [
   'bearer abcdefghijklmnop',
   'Bearer abcdefghijklmnop',
@@ -41,6 +40,9 @@ const credentialSignatures = [
   'Authorization: Bearer',
   'Authorization: Bearer responsibility',
   'Bearer tokenvalue',
+  ...bearerSecretNouns.flatMap((noun) =>
+    ['', '- ', 'credential: '].map((prefix) => `${prefix}Bearer ${noun}`)
+  ),
   'ghp_1234567890abcdefghijklmnop',
   'Environment variable GH_TOKEN',
   'Environment variable gh_token',
@@ -53,6 +55,9 @@ const ordinaryBearerProse = [
   'The bearer scheme is documented.',
   'Bearer authentication is enabled.',
   'Bearer credentials must not be logged.',
+  'Bearer policy is documented.',
+  'Bearer security is documented.',
+  'Bearer headers are redacted.',
   'The Bearer responsibility.',
 ];
 
@@ -218,6 +223,9 @@ test('rendering rejects recursively nested secret-bearing keys and credential va
     gitlabtokenbackup bearercredential
     auth AUTH authBackup authData pat PAT patBackup ghPat gitPat priorAuthorizationHeader
     authorizationDecisionHeader
+    databaseAuth databaseauth sessionAuth sessionauth myPat mypat backupPat backuppat personalPat
+    personalpat patConfig patMaterial patString patRecord ghPatConfig ghPatMaterial gitPatConfig
+    gitPatMaterial passwordPolicyMyPat passwordPolicyBackupPat tokenCountMyPat authorizationDecisionMyPat
   `
     .trim()
     .split(/\s+/);
@@ -248,6 +256,7 @@ test('secret scanning permits ordinary policy and token-accounting fields', () =
     sessionCookiePolicyVersion fortuneCookieMessage secretaryName tokenizerMode tokenCountByModel
     passwordPolicyName fortuneCookieRecipe priorAuthorizationDecision authorizationDecisionReason
     credentialPolicyName apiKeyPolicyVersion sessionCookiePolicyName authorName authorityLabel patternName
+    pathName patientId authenticationMode authPolicy
   `
     .trim()
     .split(/\s+/);

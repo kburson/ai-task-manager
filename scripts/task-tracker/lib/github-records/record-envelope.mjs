@@ -62,15 +62,9 @@ const COLLAPSED_AUTH_PAT_COMPOUNDS = ['authheader', 'authvalue', 'basicauth', 'g
 const FORCED_DANGEROUS_COMPOUNDS = ['authorizationheader', 'authheader'];
 const AUTHORIZATION_BEARER_RE = /\bauthorization\s*:\s*bearer\b/i;
 const BEARER_CANDIDATE_RE = /\bbearer\s+([A-Za-z0-9._~+/=-]+)/gi;
-const ORDINARY_BEARER_NOUNS = new Set([
-  'authentication',
-  'credential',
-  'credentials',
-  'responsibility',
-  'scheme',
-  'token',
-  'tokens',
-]);
+const BEARER_ARTICLE_RE = /\b(?:a|an|the)[\s"'`*_~()[\]{},.;:!?-]*$/i;
+const BEARER_CONTINUATION_RE =
+  /^[\s"'`*_~()[\]{},.;:!?-]*(?:are|can|could|had|has|have|is|may|might|must|remain|remains|shall|should|was|were|will|would)\b/i;
 const GITHUB_TOKEN_RE = /\b(?:gh[pousr]_[A-Za-z0-9]{16,}|github_pat_[A-Za-z0-9_]{20,})\b/i;
 const TOKEN_ENV_NAME_RE =
   /\b[A-Z][A-Z0-9]*(?:_[A-Z0-9]+)*_(?:ACCESS_TOKEN|API_KEY|AUTH_TOKEN|CLIENT_SECRET|PRIVATE_KEY|TOKEN|PASSWORD|CREDENTIALS)\b/i;
@@ -117,6 +111,15 @@ function collapsedSecretKey(key) {
   return key.toLowerCase().replace(/[^a-z0-9]/g, '');
 }
 
+function secretKeySegments(key) {
+  return key
+    .replace(/([a-z0-9])([A-Z])/g, '$1 $2')
+    .replace(/([A-Z]+)([A-Z][a-z])/g, '$1 $2')
+    .toLowerCase()
+    .split(/[^a-z0-9]+/)
+    .filter(Boolean);
+}
+
 function containsSensitiveKeyFragment(value) {
   return (
     COLLAPSED_SENSITIVE_FRAGMENTS.some((fragment) => value.includes(fragment)) ||
@@ -124,40 +127,46 @@ function containsSensitiveKeyFragment(value) {
   );
 }
 
-function containsAuthPatAbbreviation(value) {
-  const hasAuthPrefix = value.startsWith('auth') && !value.startsWith('author');
-  const hasPatPrefix =
-    /^(?:pat|ghpat|gitpat|githubpat)(?:$|backup|data|header|key|secret|token|value)/.test(value);
-  return hasAuthPrefix || hasPatPrefix;
+function containsAuthPatAbbreviation(key, collapsed) {
+  const segments = secretKeySegments(key);
+  const hasPatSegment = segments.includes('pat');
+  const hasUnsafeAuthSegment = segments.some(
+    (segment, index) =>
+      segment === 'auth' && !['configuration', 'mode', 'policy'].includes(segments[index + 1])
+  );
+  const safeAuthPrefix =
+    /^(?:author|authority|authentication|authorized|auth(?:configuration|mode|policy))/.test(
+      collapsed
+    );
+  const safePatPrefix = /^(?:compat|patch|path|patient|pattern|patent|patio)/.test(collapsed);
+  const hasCollapsedAuth =
+    collapsed.endsWith('auth') || (collapsed.startsWith('auth') && !safeAuthPrefix);
+  const hasCollapsedPat =
+    !safePatPrefix && (collapsed.endsWith('pat') || /^(?:ghpat|gitpat|pat)/.test(collapsed));
+  return hasPatSegment || hasUnsafeAuthSegment || hasCollapsedAuth || hasCollapsedPat;
 }
 
 function isSafeSemanticKey(collapsed) {
   const family = SAFE_KEY_FAMILY_PREFIXES.find((prefix) => collapsed.startsWith(prefix));
   if (family === undefined) return false;
   const suffix = collapsed.slice(family.length);
-  return (
-    !containsSensitiveKeyFragment(suffix) &&
-    !containsAuthPatAbbreviation(suffix) &&
-    !suffix.includes('header')
-  );
+  return !containsSensitiveKeyFragment(suffix) && !suffix.includes('header');
 }
 
 function isSecretKey(key) {
   const collapsed = collapsedSecretKey(key);
   if (FORCED_DANGEROUS_COMPOUNDS.some((compound) => collapsed.includes(compound))) return true;
-  if (containsAuthPatAbbreviation(collapsed)) return true;
+  if (containsAuthPatAbbreviation(key, collapsed)) return true;
   return !isSafeSemanticKey(collapsed) && containsSensitiveKeyFragment(collapsed);
-}
-
-function normalizedBearerNoun(candidate) {
-  return candidate.toLowerCase().replace(/[.,;:!?]+$/, '');
 }
 
 function containsBearerCredential(value) {
   if (AUTHORIZATION_BEARER_RE.test(value)) return true;
-  return [...value.matchAll(BEARER_CANDIDATE_RE)].some(
-    (match) => !ORDINARY_BEARER_NOUNS.has(normalizedBearerNoun(match[1]))
-  );
+  return [...value.matchAll(BEARER_CANDIDATE_RE)].some((match) => {
+    const before = value.slice(0, match.index);
+    const after = value.slice(match.index + match[0].length);
+    return !BEARER_ARTICLE_RE.test(before) && !BEARER_CONTINUATION_RE.test(after);
+  });
 }
 
 function containsCredentialSignature(value) {
