@@ -30,10 +30,21 @@ test('Review probe policy rejects standard full commands and semantic aliases', 
     'npm run test:slow',
     'npm test',
     'npm run test:all',
+    'npm run quality',
+    'npm run test:coverage',
     'node scripts/run-tests.mjs',
     'node ./scripts/run-tests.mjs --lane unit',
+    'node scripts/task-tracker/../run-tests.mjs --lane unit',
+    'node --test',
+    'node --test scripts/task-tracker/tests/unit/lib/*.test.mjs',
     'scripts/run-tests.mjs --lane slow',
     './scripts/run-tests.mjs --lane integration',
+    'scripts/task-tracker/../run-tests.mjs --lane all',
+    'npx eslint .',
+    'npx eslint scripts/task-tracker/verbs/review.mjs --fix',
+    'npx eslint scripts/task-tracker/verbs/review.mjs --output-file report.json',
+    'npx prettier --check .',
+    'npx prettier --write .',
   ]) {
     const result = reviewVerb.validateReviewProbeCommand(command, { projectDir: process.cwd() });
     assert.equal(result.ok, false, command);
@@ -42,12 +53,24 @@ test('Review probe policy rejects standard full commands and semantic aliases', 
 });
 
 test('Review probe policy allows a focused test command', () => {
+  const focusedTest = 'scripts/task-tracker/tests/unit/lib/review-probe-policy.test.mjs';
   assert.deepEqual(
-    reviewVerb.validateReviewProbeCommand('node --test focused.test.mjs', {
+    reviewVerb.validateReviewProbeCommand(`node --test ${focusedTest}`, {
       projectDir: process.cwd(),
     }),
-    { ok: true, argv: ['node', '--test', 'focused.test.mjs'] }
+    { ok: true, argv: ['node', '--test', focusedTest] }
   );
+});
+
+test('Review probe policy allows exact-file read-only lint and format probes', () => {
+  const source = 'scripts/task-tracker/verbs/review.mjs';
+  for (const command of [`npx eslint ${source}`, `npx prettier --check ${source}`]) {
+    assert.equal(
+      reviewVerb.validateReviewProbeCommand(command, { projectDir: process.cwd() }).ok,
+      true,
+      command
+    );
+  }
 });
 
 test('Review probe mode validates the complete request before executing any command', async () => {

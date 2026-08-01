@@ -1,4 +1,6 @@
 import { execFile } from 'node:child_process';
+import { statSync } from 'node:fs';
+import path from 'node:path';
 import { promisify } from 'node:util';
 
 import { loadState, saveState, pauseTimingKeepBinding } from '../state.mjs';
@@ -60,15 +62,7 @@ const TEST_RECEIPT_REQUIRED = Object.freeze([
   'test-integration',
   'test-slow',
 ]);
-const STAGE_OWNED_NPM_SCRIPTS = new Set([
-  'lint',
-  'format:check',
-  'test',
-  'test:unit',
-  'test:integration',
-  'test:slow',
-  'test:all',
-]);
+const READ_ONLY_REVIEW_PROBE_BINS = new Set(['git', 'gh', 'rg', 'grep', 'test', '[']);
 const reviewPexec = promisify(execFile);
 
 function firstNonFlagArg(argv, startIndex = 1) {
@@ -78,29 +72,45 @@ function firstNonFlagArg(argv, startIndex = 1) {
   return null;
 }
 
-function isFullTestRunnerEntrypoint(token) {
-  return String(token || '')
-    .replaceAll('\\', '/')
-    .replace(/^\.\//, '')
-    .endsWith('scripts/run-tests.mjs');
+function isExactProjectFile(token, projectDir, { testFile = false } = {}) {
+  if (!projectDir || typeof token !== 'string' || /[*?{}[\]]/.test(token)) return false;
+  if (testFile && !/\.(?:test|spec)\.(?:[cm]?js|ts)$/.test(token)) return false;
+  const resolved = path.resolve(projectDir, token);
+  const relative = path.relative(projectDir, resolved);
+  if (relative === '..' || relative.startsWith(`..${path.sep}`) || path.isAbsolute(relative)) {
+    return false;
+  }
+  try {
+    return statSync(resolved).isFile();
+  } catch {
+    return false;
+  }
 }
 
-function isStageOwnedReviewCommand(argv) {
-  if (argv[0] === 'npm') {
-    const subcommand = firstNonFlagArg(argv);
-    if (!subcommand) return false;
-    if (subcommand.token === 'test') return true;
-    if (subcommand.token !== 'run' && subcommand.token !== 'run-script') return false;
-    const script = firstNonFlagArg(argv, subcommand.index + 1);
-    return STAGE_OWNED_NPM_SCRIPTS.has(script?.token);
-  }
+function isTargetedReviewProbe(argv, projectDir) {
+  if (READ_ONLY_REVIEW_PROBE_BINS.has(argv[0])) return true;
 
   if (argv[0] === 'node') {
-    const entrypoint = firstNonFlagArg(argv);
-    return isFullTestRunnerEntrypoint(entrypoint?.token);
+    const testFlagIndex = argv.indexOf('--test');
+    return (
+      testFlagIndex >= 0 &&
+      argv
+        .slice(testFlagIndex + 1)
+        .some((token) => isExactProjectFile(token, projectDir, { testFile: true }))
+    );
   }
 
-  return isFullTestRunnerEntrypoint(argv[0]);
+  if (argv[0] !== 'npx') return false;
+  const tool = firstNonFlagArg(argv);
+  if (!tool || !['eslint', 'prettier'].includes(tool.token)) return false;
+  const toolArgs = argv.slice(tool.index + 1);
+  if (tool.token === 'eslint') {
+    return toolArgs.length > 0 && toolArgs.every((token) => isExactProjectFile(token, projectDir));
+  }
+  return (
+    toolArgs.includes('--check') &&
+    toolArgs.every((token) => token === '--check' || isExactProjectFile(token, projectDir))
+  );
 }
 
 function standardReviewCommandResults() {
@@ -250,7 +260,7 @@ export function validateReviewProbeCommand(
   const validation = validateCommand(command, { projectDir });
   if (!validation.ok) return validation;
   const identity = validation.argv.join(' ');
-  if (isStageOwnedReviewCommand(validation.argv)) {
+  if (!isTargetedReviewProbe(validation.argv, projectDir)) {
     return {
       ok: false,
       reason: `Review probes must be targeted; '${identity}' is a standard stage-owned command`,
