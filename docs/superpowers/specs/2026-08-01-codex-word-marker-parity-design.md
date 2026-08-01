@@ -38,7 +38,7 @@ user context are not reader effort and must remain excluded.
 This is the smallest patch, but it makes the shared counter own vendor schemas and
 turns every future provider change into another branch in timing code.
 
-### Pre-convert Codex rollouts into Claude JSONL
+### Pre-convert Codex rollout files into Claude JSONL
 
 This reuses the existing counter but creates another mutable transcript, adds
 cursor synchronization, and risks counting stale or partially copied data.

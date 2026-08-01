@@ -338,10 +338,40 @@ registers them in `.claude/settings.json`; Codex registers them in
   inter-turn gap, and (above `pauseThresholdSeconds`) appends one `idle` row to
   the bound issue's `⏱ Timing Log` comment. The marker is then deleted.
 
-Both hooks key on `CLAUDE_SESSION_ID`, `AI_TASK_MANAGER_SESSION_ID`,
-`CODEX_SESSION_ID`, or Codex's hook stdin `session_id` field. They tolerate
+Both hooks key on `AI_TASK_MANAGER_SESSION_ID`, Claude's session keys,
+`CODEX_THREAD_ID`, the legacy `CODEX_SESSION_ID`, or Codex's hook stdin
+`session_id` field. They tolerate
 missing env / missing active task / write failures — a misbehaving hook must
 never break the user's session.
+
+### Codex Desktop Word Markers
+
+Codex Desktop exposes its active conversation as `CODEX_THREAD_ID`. AITM uses
+that key before the legacy `CODEX_SESSION_ID`, then resolves the native rollout
+whose path ends in the same ID:
+
+```text
+~/.codex/sessions/YYYY/MM/DD/rollout-<timestamp>-<thread-id>.jsonl
+```
+
+Word Markers count authoritative `response_item` records only. User
+`input_text` and assistant `output_text` contribute visible prose;
+`custom_tool_call` / `function_call` contribute compact tool chips and expanded
+inputs; their matching output records contribute only to full expansion.
+Developer/system messages, reasoning, `event_msg` mirrors, and injected
+`<recommended_plugins>`, `# AGENTS.md instructions`, or
+`<environment_context>` blocks are excluded from every tier. Claude's native
+message records retain their existing counts.
+
+If Codex measurement is unavailable, AITM leaves the numeric delta at zero and
+emits one deduplicated diagnostic for the exact cause:
+
+- `codex-session-unresolved`: no usable Desktop thread/session identity.
+- `codex-transcript-unresolved`: identity exists but no matching rollout is on disk.
+- `codex-schema-unrecognized`: the rollout exists but has no supported authoritative records.
+
+New lifecycle events use this behavior immediately. AITM does not rewrite or
+backfill historical timing rows.
 
 ## Per-session state layout
 
