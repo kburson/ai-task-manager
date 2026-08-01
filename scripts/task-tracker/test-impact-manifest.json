@@ -1,0 +1,49 @@
+{
+  "schema": 1,
+  "rules": [
+    {
+      "sources": ["package.json", "package-lock.json"],
+      "lanes": ["unit", "integration", "slow"],
+      "reason": "dependency or command-surface change"
+    },
+    {
+      "sources": [
+        ".markdownlint-cli2.jsonc",
+        ".prettierrc.json",
+        "cspell.json",
+        "eslint.config.mjs"
+      ],
+      "lanes": ["unit", "integration", "slow"],
+      "reason": "global verification configuration change"
+    },
+    {
+      "sources": [
+        "scripts/run-tests.mjs",
+        "scripts/run-tests-lanes.mjs",
+        "scripts/task-tracker/lib/discover-test-files.mjs",
+        "scripts/task-tracker/lib/test-lanes.mjs"
+      ],
+      "lanes": ["unit", "integration", "slow"],
+      "reason": "test runner or lane classifier change"
+    },
+    {
+      "sources": [
+        "scripts/task-tracker/find-unit-tests.mjs",
+        "scripts/task-tracker/lib/test-impact-selector.mjs",
+        "scripts/task-tracker/test-impact-manifest.json"
+      ],
+      "lanes": ["unit", "integration", "slow"],
+      "reason": "test-impact authority change"
+    },
+    {
+      "sources": ["scripts/task-tracker/lib/scratch-dir.mjs"],
+      "lanes": ["unit", "integration", "slow"],
+      "reason": "global test sandbox helper change"
+    },
+    {
+      "sources": ["scripts/task-tracker/verbs/*.mjs"],
+      "tests": ["scripts/task-tracker/tests/unit/verbs/*.test.mjs"],
+      "reason": "CLI subprocess coverage is not completely visible through static imports"
+    }
+  ]
+}

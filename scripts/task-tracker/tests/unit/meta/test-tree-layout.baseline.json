@@ -1,7 +1,7 @@
 {
   "_comment": "#868 pre-move per-lane basename census (frozen at the subsystem-nesting move). test-tree-layout.test.mjs asserts the live laneManifest() basename sets still equal these, proving the reorg dropped no file and preserved every file lane. Regenerate ONLY on a deliberate add/remove/relane, via .tmp/inspect/gen-layout-baseline.mjs.",
   "counts": {
-    "unit": 678,
+    "unit": 681,
     "integration": 6,
     "slow": 47
   },
@@ -612,6 +612,7 @@
       "sync-zero-values.test.mjs",
       "templates.test.mjs",
       "test-407-binding-survives.test.mjs",
+      "test-impact-selector.test.mjs",
       "test-parallel-safety.test.mjs",
       "test-rejected-vc-not-scored-as-failed.test.mjs",
       "test-sha-drift-gate.test.mjs",
@@ -666,6 +667,8 @@
       "verb-start-resume-stop.test.mjs",
       "verb-test-sandbox-env.test.mjs",
       "verification-allowlist.test.mjs",
+      "verification-receipt.test.mjs",
+      "verification-stage-ownership.test.mjs",
       "verifier-cache.test.mjs",
       "verifier-provenance-sentinel.test.mjs",
       "verify-move-invariants.test.mjs",
