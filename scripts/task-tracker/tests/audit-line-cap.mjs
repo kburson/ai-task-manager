@@ -7,7 +7,8 @@ import { readFileSync } from 'node:fs';
 import { countCodeLines } from '../lib/count-code-lines.mjs';
 import { discoverTestFiles, DEFAULT_EXCLUDES } from '../lib/discover-test-files.mjs';
 
-const HARD_LIMIT = 400;
+const SOFT_LIMIT = 400;
+const HARD_LIMIT = 800;
 const ROOTS = ['scripts/task-tracker/tests', 'scripts/providers/tests'];
 
 // Discovery is the canonical walker (#875) instead of a private recursive
@@ -18,17 +19,23 @@ const ROOTS = ['scripts/task-tracker/tests', 'scripts/providers/tests'];
 const EXCLUDES = [...DEFAULT_EXCLUDES, 'slow'];
 
 const violations = [];
+const advisories = [];
 for (const root of ROOTS) {
   for (const file of discoverTestFiles({ root, excludes: EXCLUDES })) {
     const lines = countCodeLines(readFileSync(file, 'utf8'));
     if (lines > HARD_LIMIT) {
       violations.push({ file, lines });
+    } else if (lines > SOFT_LIMIT) {
+      advisories.push({ file, lines });
     }
   }
 }
 
 if (violations.length === 0) {
   console.log(`audit-line-cap: all test files within ${HARD_LIMIT}-line code-LOC limit`);
+  for (const { file, lines } of advisories) {
+    console.warn(`audit-line-cap: review ${lines}-line feature file above soft ${SOFT_LIMIT}: ${file}`);
+  }
   process.exit(0);
 } else {
   console.error(

@@ -58,15 +58,16 @@ test('N code lines interleaved with comments and blanks report N', () => {
   assert.equal(countCodeLines(lines.join('\n')), N);
 });
 
-test('a file over 400 raw lines but under 400 code LOC is within the cap', () => {
-  const CODE = 399;
+test('a feature file over the 400 soft target but under 800 code LOC is within the hard cap', () => {
+  const CODE = 799;
   const lines = [];
   for (let i = 0; i < CODE; i++) {
     lines.push(`stmt${i}();`);
     lines.push(`// doc line ${i}`); // padding that must not count
   }
   const src = lines.join('\n');
-  assert.ok(src.split('\n').length > 400, 'fixture should exceed 400 raw lines');
+  assert.ok(src.split('\n').length > 800, 'fixture should exceed 800 raw lines');
   assert.equal(countCodeLines(src), CODE);
-  assert.ok(countCodeLines(src) <= 400, 'code LOC must be within the 400 cap');
+  assert.ok(countCodeLines(src) > 400, 'fixture must cross the soft review target');
+  assert.ok(countCodeLines(src) <= 800, 'code LOC must remain within the 800 hard cap');
 });

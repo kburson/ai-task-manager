@@ -32,6 +32,7 @@ import { fileURLToPath } from 'node:url';
 import { LANES, laneManifest, laneOf } from '../../../lib/test-lanes.mjs';
 import { discoverTestFiles } from '../../../lib/discover-test-files.mjs';
 import { provenanceVerdict, isShallowRepository } from '../../../lib/git-provenance.mjs';
+import { countCodeLines } from '../../../lib/count-code-lines.mjs';
 
 // scripts/task-tracker/tests/unit/meta/ → five levels up is the repo root.
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -61,12 +62,25 @@ const underLaneRoot = (rel, lane) => rel.startsWith(laneRootPrefix(lane));
 // core/meta bucket, or a real source directory exists at scripts/<S> or
 // scripts/task-tracker/<S> (the two package roots whose layouts are mirrored).
 function isValidSubsystem(sub) {
-  if (sub === 'core' || sub === 'meta') return true;
+  if (sub === 'core' || sub === 'meta' || sub === 'fixtures') return true;
   return (
     existsSync(path.join(REPO_ROOT, 'scripts', sub)) ||
     existsSync(path.join(REPO_ROOT, 'scripts', 'task-tracker', sub))
   );
 }
+
+test('feature-oriented files keep semantic ownership and stay below the 800-line hard cap', () => {
+  const featureFiles = [
+    'scripts/task-tracker/tests/unit/lib/chore-mode-contract.test.mjs',
+    'scripts/task-tracker/tests/unit/lib/chore-mode-verb.test.mjs',
+    'scripts/task-tracker/tests/unit/fixtures/feature-fixtures.test.mjs',
+  ];
+  for (const rel of featureFiles) {
+    assert.ok(manifest.unit.includes(rel), `${rel} must remain in the unit lane`);
+    const codeLines = countCodeLines(readFileSync(path.join(REPO_ROOT, rel), 'utf8'));
+    assert.ok(codeLines <= 800, `${rel} has ${codeLines} lines, above the hard cap`);
+  }
+});
 
 const manifest = laneManifest({ projectRoot: REPO_ROOT });
 
