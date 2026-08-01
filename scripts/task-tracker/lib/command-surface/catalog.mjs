@@ -169,7 +169,7 @@ export const VERB_CONTRACTS = Object.freeze({
   review: contract(
     [
       'The target must be in Test or Review, pass preflight, and have reviewable verification evidence.',
-      'The --probe submode requires the target to already be in Review and the quoted command to pass the verification allowlist.',
+      'The --probe mode requires the target to already be in Review and the quoted command to pass the verification allowlist.',
     ],
     [
       'Flushes timing, evaluates the review gate, moves Test to Review when needed, and pauses the session.',

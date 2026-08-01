@@ -150,7 +150,7 @@ npx aitm review 1089 --probe "node --test scripts/task-tracker/tests/unit/lib/re
 
 `--probe` is repeatable. Each command must pass the normal verification
 allowlist, runs without a shell against the current clean exact SHA, and is
-persisted/read back in a Review receipt whether green or red. The submode does
+persisted/read back in a Review receipt whether green or red. The probe mode does
 not run the normal Review gate; rerun plain `npx aitm review 1089` after the
 finding is resolved.
 

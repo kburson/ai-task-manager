@@ -296,7 +296,7 @@ test('a reviewer probe drops prior Review evidence from a different fingerprint'
   );
 });
 
-test('Review probe submode executes an allowlisted command and persists read-back evidence', async () => {
+test('Review probe mode executes an allowlisted command and persists read-back evidence', async () => {
   assert.equal(typeof reviewVerb.runReviewProbes, 'function');
   let body = bodyWith(testReceipt());
   let executions = 0;
@@ -334,7 +334,7 @@ test('Review probe submode executes an allowlisted command and persists read-bac
   assert.deepEqual(reviewReceipt.commands[0].args, ['--test', 'probe.test.mjs']);
 });
 
-test('Review probe submode persists a red probe and returns failure', async () => {
+test('Review probe mode persists a red probe and returns failure', async () => {
   assert.equal(typeof reviewVerb.runReviewProbes, 'function');
   let body = bodyWith(testReceipt());
   const result = await reviewVerb.runReviewProbes({
@@ -376,7 +376,7 @@ test('Review probe parser accepts repeatable quoted values and rejects a missing
   assert.throws(() => reviewVerb.parseReviewProbeCommands(['#1089', '--probe']), /requires/);
 });
 
-test('Review probe submode rejects a non-allowlisted command before execution or persistence', async () => {
+test('Review probe mode rejects a non-allowlisted command before execution or persistence', async () => {
   let executions = 0;
   let writes = 0;
   const result = await reviewVerb.runReviewProbes({
