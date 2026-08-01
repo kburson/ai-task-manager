@@ -380,19 +380,19 @@ export const TIMING_EVENT_BASELINE = Object.freeze({
       'start',
       'resumed',
     ]),
-    timingEmitter('scripts/task-tracker/verbs/review.mjs', 134, 'event-call', "'review:failed'", [
+    timingEmitter('scripts/task-tracker/verbs/review.mjs', 268, 'event-call', "'review:failed'", [
       'review:failed',
     ]),
-    timingEmitter('scripts/task-tracker/verbs/review.mjs', 173, 'event-call', "'review:passed'", [
+    timingEmitter('scripts/task-tracker/verbs/review.mjs', 307, 'event-call', "'review:passed'", [
       'review:passed',
     ]),
-    timingEmitter('scripts/task-tracker/verbs/review.mjs', 207, 'event-call', "'test:failed'", [
+    timingEmitter('scripts/task-tracker/verbs/review.mjs', 341, 'event-call', "'test:failed'", [
       'test:failed',
     ]),
-    timingEmitter('scripts/task-tracker/verbs/review.mjs', 317, 'event-call', "'gate-refused'", [
+    timingEmitter('scripts/task-tracker/verbs/review.mjs', 451, 'event-call', "'gate-refused'", [
       'gate-refused',
     ]),
-    timingEmitter('scripts/task-tracker/verbs/review.mjs', 801, 'event-call', "'gate-refused'", [
+    timingEmitter('scripts/task-tracker/verbs/review.mjs', 968, 'event-call', "'gate-refused'", [
       'gate-refused',
     ]),
     timingEmitter('scripts/task-tracker/verbs/stop.mjs', 13, 'flush-call', "'stop'", ['stop']),
