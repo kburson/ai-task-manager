@@ -161,17 +161,21 @@ const serialEntries = runnable.filter((e) => !poolEligible(e));
 // measures real elapsed execution, not per-file time.
 const sectionStart = process.hrtime.bigint();
 
+const poolStart = process.hrtime.bigint();
 const { results: unitResults, peakConcurrency } = await runPool({
   entries: unitEntries,
   concurrency: CONCURRENCY,
   runOne: runEntry,
 });
+const poolElapsedMs = Number(process.hrtime.bigint() - poolStart) / 1e6;
 
 // Integration + slow: one child at a time, semantics unchanged from the old loop.
+const serialStart = process.hrtime.bigint();
 const serialResults = [];
 for (const entry of serialEntries) {
   serialResults.push(await runEntry(entry));
 }
+const serialElapsedMs = Number(process.hrtime.bigint() - serialStart) / 1e6;
 
 const sectionElapsedMs = Number(process.hrtime.bigint() - sectionStart) / 1e6;
 
@@ -233,6 +237,9 @@ function writeTimingArtifact() {
     const artifact = serializeArtifact(timingRecords, {
       lane,
       generatedAt: new Date().toISOString(),
+      runnerElapsedMs: sectionElapsedMs,
+      poolElapsedMs,
+      serialElapsedMs,
     });
     mkdirSync(path.dirname(TIMING_ARTIFACT_PATH), { recursive: true });
     writeFileSync(TIMING_ARTIFACT_PATH, `${JSON.stringify(artifact, null, 2)}\n`);
@@ -243,7 +250,15 @@ function writeTimingArtifact() {
 writeTimingArtifact();
 
 if (timingReport) {
-  console.log(`\n${formatTimingReport(buildTimingReport(timingRecords))}`);
+  console.log(
+    `\n${formatTimingReport(
+      buildTimingReport(timingRecords, {
+        runnerElapsedMs: sectionElapsedMs,
+        poolElapsedMs,
+        serialElapsedMs,
+      })
+    )}`
+  );
 }
 
 if (failed > 0) {
