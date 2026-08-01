@@ -212,12 +212,14 @@ export function setActiveTask(sid, record, projDir) {
     Object.assign(recordWithoutState, authority);
   }
   const existing = readJsonForMutation(activeTaskPath(sid, projDir));
+  const existingLifecycleJournal = existing?.workLeaseLifecycleJournal
+    ? normalizeLifecycleJournal(existing.workLeaseLifecycleJournal)
+    : null;
   if (Object.hasOwn(recordWithoutState, 'workLeaseLifecycleJournal')) {
     const suppliedJournal = normalizeLifecycleJournal(recordWithoutState.workLeaseLifecycleJournal);
     if (
-      !existing?.workLeaseLifecycleJournal ||
-      JSON.stringify(normalizeLifecycleJournal(existing.workLeaseLifecycleJournal)) !==
-        JSON.stringify(suppliedJournal)
+      !existingLifecycleJournal ||
+      JSON.stringify(existingLifecycleJournal) !== JSON.stringify(suppliedJournal)
     ) {
       throw new Error('generic session write cannot create or replace lifecycle journal');
     }
@@ -227,6 +229,11 @@ export function setActiveTask(sid, record, projDir) {
   const recordAuthorityIssue = canonicalIssue(authorityIssue(record));
   const sameAuthorityIssue =
     existingAuthorityIssue != null && existingAuthorityIssue === recordAuthorityIssue;
+  if (existingLifecycleJournal && recordAuthorityIssue !== null) {
+    if (recordAuthorityIssue !== existingLifecycleJournal.issueId) {
+      throw new Error('cannot switch issue while lifecycle journal is active');
+    }
+  }
   // `kanbanState` and fenced authority are issue-scoped sticky fields. Generic
   // timing/session saves preserve them only while they still describe the same
   // issue. A different issue starts without either projection.
@@ -235,7 +242,7 @@ export function setActiveTask(sid, record, projDir) {
     stickyIssueState.kanbanState = existing.kanbanState;
   }
   if (
-    sameAuthorityIssue &&
+    (sameAuthorityIssue || existingLifecycleJournal) &&
     !('lease' in recordWithoutState) &&
     !('holder' in recordWithoutState) &&
     !('binding' in recordWithoutState) &&
@@ -333,6 +340,13 @@ export function clearActiveTaskLease(sid, expectedLeaseId, expectedFencingToken,
 
 export function setWorkLeaseLifecycleJournal(sid, journalInput, projDir) {
   const journal = normalizeLifecycleJournal(journalInput);
+  if (
+    Object.hasOwn(journal, 'request') ||
+    Object.hasOwn(journal, 'receipt') ||
+    journal.projections.some(({ completed }) => completed)
+  ) {
+    throw new Error('initial journal must be request-free and incomplete');
+  }
   return mutateActiveTask(sid, projDir, (existing) => {
     if (!existing?.lease) throw new Error('lifecycle journal requires persisted session authority');
     const authority = normalizeWorkLeaseAuthority(
@@ -370,19 +384,30 @@ export function updateWorkLeaseLifecycleJournal(sid, expectedOperationId, journa
   });
 }
 
-export function clearWorkLeaseLifecycleJournal(
-  sid,
-  expectedOperationId,
-  expectedLeaseId,
-  expectedFencingToken,
-  projDir
-) {
+export function clearWorkLeaseLifecycleJournal(sid, expectedJournalInput, projDir) {
+  const expectedJournal = normalizeLifecycleJournal(expectedJournalInput);
+  if (
+    !expectedJournal.request ||
+    !expectedJournal.receipt ||
+    expectedJournal.projections.some(({ completed }) => !completed)
+  ) {
+    return false;
+  }
   let cleared = false;
   mutateActiveTask(sid, projDir, (existing) => {
+    const persistedJournal = existing?.workLeaseLifecycleJournal
+      ? normalizeLifecycleJournal(existing.workLeaseLifecycleJournal)
+      : null;
+    const persistedAuthority = existing?.lease
+      ? normalizeWorkLeaseAuthority(
+          { lease: existing.lease, holder: existing.holder, binding: existing.binding },
+          { issueId: authorityIssue(existing) }
+        )
+      : null;
     if (
-      existing?.workLeaseLifecycleJournal?.operationId !== expectedOperationId ||
-      existing?.lease?.leaseId !== expectedLeaseId ||
-      existing?.lease?.fencingToken !== expectedFencingToken
+      !persistedJournal ||
+      JSON.stringify(persistedJournal) !== JSON.stringify(expectedJournal) ||
+      JSON.stringify(persistedAuthority) !== JSON.stringify(expectedJournal.authority)
     ) {
       return null;
     }

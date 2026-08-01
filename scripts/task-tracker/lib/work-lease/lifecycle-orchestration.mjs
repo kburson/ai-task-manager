@@ -1,6 +1,7 @@
 import {
   canonicalRequestDigest,
   canonicalRequestJson,
+  parseHttpLeaseResponse,
   validateReplayMutationOutcome,
   validateHandoffRequest,
   validateReleaseRequest,
@@ -250,6 +251,9 @@ export function checkpointLifecycleProjection(journal, projectionName, proof) {
   if (index === -1) {
     throw new TypeError('lifecycle journal projection is not persisted');
   }
+  if (journal.projections.slice(0, index).some(({ completed }) => !completed)) {
+    throw new Error('lifecycle journal prior projections must be complete');
+  }
   const projection = journal.projections[index];
   if (projection.completed) {
     if (JSON.stringify(projection.proof) !== JSON.stringify(durableProof)) {
@@ -264,6 +268,9 @@ export function checkpointLifecycleProjection(journal, projectionName, proof) {
 }
 
 export function attachLifecycleRequest(journal, operation, request) {
+  if (journal?.projections?.some(({ completed }) => !completed)) {
+    throw new Error('lifecycle journal projections must be complete before request attachment');
+  }
   const durableRequest = cloneDurableJson(request, '$.request');
   if (operation === 'renew') validateRenewRequest(durableRequest);
   else if (operation === 'release') validateReleaseRequest(durableRequest);
@@ -312,34 +319,31 @@ export function attachLifecycleReceipt(journal, receipt) {
     throw new Error('lifecycle journal request must be attached before receipt');
   }
   const durableReceipt = cloneDurableJson(receipt, '$.receipt');
-  const selector = replaySelector(journal.request);
-  validateReplayMutationOutcome(
-    {
-      selector,
-      outcome: 'committed',
-      statusCode: 200,
-      result: durableReceipt,
-    },
-    selector
-  );
+  const correlatedReceipt = parseHttpLeaseResponse({
+    operation: journal.request.operation,
+    status: 200,
+    payload: { result: durableReceipt },
+    request: JSON.parse(journal.request.canonicalRequest),
+  });
   if (journal.receipt) {
-    if (canonicalRequestJson(journal.receipt) !== canonicalRequestJson(durableReceipt)) {
+    if (canonicalRequestJson(journal.receipt) !== canonicalRequestJson(correlatedReceipt)) {
       throw new Error('lifecycle journal receipt cannot be overwritten');
     }
     return journal;
   }
-  return { ...journal, receipt: durableReceipt };
+  return { ...journal, receipt: correlatedReceipt };
 }
 
 export async function authenticateLifecycleMutationCommit({ journal, store } = {}) {
-  if (!journal?.request || !journal?.receipt || typeof store?.replayMutation !== 'function') {
+  const normalized = normalizeLifecycleJournal(journal);
+  if (!normalized.request || !normalized.receipt || typeof store?.replayMutation !== 'function') {
     throw new Error('lifecycle journal mutation replay authority is unavailable');
   }
-  const selector = replaySelector(journal.request);
+  const selector = replaySelector(normalized.request);
   const outcome = validateReplayMutationOutcome(await store.replayMutation(selector), selector);
   if (
     outcome.outcome !== 'committed' ||
-    canonicalRequestJson(outcome.result) !== canonicalRequestJson(journal.receipt)
+    canonicalRequestJson(outcome.result) !== canonicalRequestJson(normalized.receipt)
   ) {
     throw new Error('lifecycle journal mutation replay did not return the exact committed receipt');
   }
@@ -347,9 +351,7 @@ export async function authenticateLifecycleMutationCommit({ journal, store } = {
   mutationCommitProofs.set(
     proof,
     Object.freeze({
-      operationId: journal.operationId,
-      requestJson: canonicalRequestJson(journal.request),
-      receiptJson: canonicalRequestJson(journal.receipt),
+      journalJson: canonicalRequestJson(normalized),
     })
   );
   return proof;
@@ -360,11 +362,7 @@ export function assertLifecycleMutationCommitAuthority(proof, journal) {
   if (!actual) {
     throw new Error('proof is not a live in-memory mutation commit proof');
   }
-  if (
-    actual.operationId !== journal?.operationId ||
-    actual.requestJson !== canonicalRequestJson(journal?.request) ||
-    actual.receiptJson !== canonicalRequestJson(journal?.receipt)
-  ) {
+  if (actual.journalJson !== canonicalRequestJson(normalizeLifecycleJournal(journal))) {
     throw new Error('mutation commit proof does not match the lifecycle journal');
   }
   return proof;
@@ -380,6 +378,7 @@ export function completeLifecycleCleanup({ journal, commitAuthority, clear } = {
     throw new TypeError('lifecycle journal fenced clear is unavailable');
   }
   const cleared = clear({
+    journal: normalized,
     operationId: normalized.operationId,
     leaseId: normalized.authority.lease.leaseId,
     fencingToken: normalized.authority.lease.fencingToken,

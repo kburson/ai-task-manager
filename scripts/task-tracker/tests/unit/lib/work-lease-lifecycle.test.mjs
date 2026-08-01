@@ -2,125 +2,31 @@
 
 import assert from 'node:assert/strict';
 import { canonicalRequestDigest, canonicalRequestJson } from '@kburson/aitm-ledger';
-import { createHash } from 'node:crypto';
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import test from 'node:test';
 
+import {
+  authority,
+  committedReplayStore,
+  holder,
+  journalWithReceipt,
+  lifecycle,
+  makeJournal,
+  pauseRequest,
+  pausedReceipt,
+  readyJournal,
+} from '../../helpers/work-lease-lifecycle-fixtures.mjs';
 import { projectScratchDir } from '../../../lib/scratch-dir.mjs';
 import * as sessionState from '../../../session-state.mjs';
 import { saveState } from '../../../state.mjs';
-
-const lifecycle = await import('../../../lib/work-lease/lifecycle-orchestration.mjs').catch(
-  () => ({})
-);
-
-const displayPath = '/project/.worktrees/1054-lifecycle-journal-core';
-const holder = Object.freeze({
-  principalKind: 'worker',
-  provider: 'codex',
-  agentRunId: 'run-1054',
-  sessionId: 'session-1054',
-  hostId: 'host-1',
-  pid: 1054,
-  worktreeId: 'worktree-1054',
-  pathHash: createHash('sha256').update(displayPath).digest('hex'),
-  branch: 'feature/child/1054',
-});
-const binding = Object.freeze({
-  sessionId: holder.sessionId,
-  issueId: '1054',
-  worktreeId: holder.worktreeId,
-  displayPath,
-});
-const authority = Object.freeze({
-  lease: Object.freeze({
-    projectId: 'project-1',
-    leaseId: 'lease-1054',
-    fencingToken: '41',
-    worktreeId: holder.worktreeId,
-  }),
-  holder,
-  binding,
-});
-
-function makeJournal(overrides = {}) {
-  return lifecycle.createLifecycleJournal({
-    operationId: 'lifecycle:1054:pause:1',
-    action: 'pause',
-    issueId: '1054',
-    authority,
-    projections: [
-      { name: 'timing', input: { event: 'pause:other' } },
-      { name: 'session', input: { paused: true } },
-    ],
-    ...overrides,
-  });
-}
-
-function pauseRequest(overrides = {}) {
-  return {
-    projectId: authority.lease.projectId,
-    leaseId: authority.lease.leaseId,
-    fencingToken: authority.lease.fencingToken,
-    idempotencyKey: 'lifecycle:1054:pause:request:1',
-    requestedAt: '2026-08-01T02:00:00.000Z',
-    ttlMs: 86_400_000,
-    lifecycle: { expectedState: 'active', nextState: 'paused' },
-    holder,
-    binding,
-    ...overrides,
-  };
-}
-
-function pausedReceipt(overrides = {}) {
-  return {
-    projectId: authority.lease.projectId,
-    issueId: '1054',
-    mode: 'write',
-    leaseId: authority.lease.leaseId,
-    fencingToken: authority.lease.fencingToken,
-    state: 'paused',
-    holder,
-    acquiredAt: '2026-08-01T01:45:00.000Z',
-    heartbeatAt: '2026-08-01T02:00:00.000Z',
-    expiresAt: '2026-08-02T02:00:00.000Z',
-    audit: {},
-    ...overrides,
-  };
-}
 
 function sandbox() {
   return mkdtempSync(path.join(projectScratchDir('test'), 'tt-work-lease-lifecycle-'));
 }
 
-function journalWithReceipt() {
-  const request = pauseRequest();
-  const receipt = pausedReceipt();
-  const journal = lifecycle.attachLifecycleReceipt(
-    lifecycle.attachLifecycleRequest(makeJournal(), 'renew', request),
-    receipt
-  );
-  return { request, receipt, journal };
-}
-
-function committedReplayStore(receipt, observe = () => {}) {
-  return {
-    async replayMutation(selector) {
-      observe(selector);
-      return { selector, outcome: 'committed', statusCode: 200, result: receipt };
-    },
-  };
-}
-
-function clearJournal(sid, operationId, fencingToken, dir) {
-  return sessionState.clearWorkLeaseLifecycleJournal(
-    sid,
-    operationId,
-    authority.lease.leaseId,
-    fencingToken,
-    dir
-  );
+function clearJournal(sid, journal, dir) {
+  return sessionState.clearWorkLeaseLifecycleJournal(sid, journal, dir);
 }
 
 test('lifecycle journal starts before request attachment with stable authority and projections', () => {
@@ -149,6 +55,10 @@ test('lifecycle journal starts before request attachment with stable authority a
 test('projection checkpoint is idempotent only for the exact prior proof', () => {
   const journal = makeJournal();
   const proof = { applied: true, remoteVersion: '7' };
+  assert.throws(
+    () => lifecycle.checkpointLifecycleProjection(journal, 'session', proof),
+    /prior projections must be complete/
+  );
   const withCheckpoint = lifecycle.checkpointLifecycleProjection(journal, 'timing', proof);
   const repeated = lifecycle.checkpointLifecycleProjection(withCheckpoint, 'timing', proof);
 
@@ -172,18 +82,23 @@ test('projection checkpoint is idempotent only for the exact prior proof', () =>
 test('request attachment is immutable and correlated to the persisted old authority', () => {
   const journal = makeJournal();
   const request = pauseRequest();
-  const attached = lifecycle.attachLifecycleRequest(journal, 'renew', request);
+  assert.throws(
+    () => lifecycle.attachLifecycleRequest(journal, 'renew', request),
+    /projections must be complete before request attachment/
+  );
+  const ready = readyJournal();
+  const attached = lifecycle.attachLifecycleRequest(ready, 'renew', request);
   const repeated = lifecycle.attachLifecycleRequest(attached, 'renew', request);
 
   assert.deepEqual(repeated, attached);
-  assert.equal(Object.hasOwn(journal, 'request'), false);
+  assert.equal(Object.hasOwn(ready, 'request'), false);
   assert.deepEqual(attached.request, {
     operation: 'renew',
     idempotencyKey: request.idempotencyKey,
     canonicalRequest: canonicalRequestJson(request),
   });
   assert.throws(
-    () => lifecycle.attachLifecycleRequest(journal, 'renew', pauseRequest({ fencingToken: '42' })),
+    () => lifecycle.attachLifecycleRequest(ready, 'renew', pauseRequest({ fencingToken: '42' })),
     /request does not match persisted authority/
   );
   assert.throws(
@@ -205,12 +120,20 @@ test('receipt attachment requires a request and is immutable', () => {
     /request must be attached before receipt/
   );
 
-  const requested = lifecycle.attachLifecycleRequest(journal, 'renew', pauseRequest());
+  const requested = lifecycle.attachLifecycleRequest(readyJournal(), 'renew', pauseRequest());
   const attached = lifecycle.attachLifecycleReceipt(requested, receipt);
   const repeated = lifecycle.attachLifecycleReceipt(attached, receipt);
   assert.deepEqual(repeated, attached);
   assert.equal(Object.hasOwn(requested, 'receipt'), false);
   assert.deepEqual(attached.receipt, receipt);
+  assert.throws(
+    () =>
+      lifecycle.attachLifecycleReceipt(
+        requested,
+        pausedReceipt({ issueId: '9999', leaseId: 'other-lease', fencingToken: '999' })
+      ),
+    /does not match the request/
+  );
   assert.throws(
     () => lifecycle.attachLifecycleReceipt(attached, pausedReceipt({ audit: { changed: true } })),
     /receipt cannot be overwritten/
@@ -261,6 +184,10 @@ test('session journal updates and cleanup require the exact operation and old fe
     const sid = holder.sessionId;
     const journal = makeJournal();
     sessionState.setActiveTask(sid, { issue: '#1054', ...authority }, dir);
+    assert.throws(
+      () => sessionState.setWorkLeaseLifecycleJournal(sid, journalWithReceipt().journal, dir),
+      /initial journal must be request-free and incomplete/
+    );
     sessionState.setWorkLeaseLifecycleJournal(sid, journal, dir);
     assert.throws(
       () =>
@@ -272,7 +199,17 @@ test('session journal updates and cleanup require the exact operation and old fe
       /generic session write cannot create or replace lifecycle journal/
     );
     sessionState.setActiveTask(sid, { issue: '#1054', wordsAtStart: 2 }, dir);
-    assert.deepEqual(sessionState.getActiveTask(sid, dir).workLeaseLifecycleJournal, journal);
+    const preserved = sessionState.getActiveTask(sid, dir);
+    assert.deepEqual(preserved.workLeaseLifecycleJournal, journal);
+    assert.deepEqual(
+      { lease: preserved.lease, holder: preserved.holder, binding: preserved.binding },
+      authority
+    );
+    assert.throws(
+      () => sessionState.setActiveTask(sid, { issue: '#9999', wordsAtStart: 3 }, dir),
+      /cannot switch issue while lifecycle journal is active/
+    );
+    assert.deepEqual(sessionState.getActiveTask(sid, dir), preserved);
     assert.equal(
       sessionState.clearActiveTaskLease(
         sid,
@@ -308,9 +245,25 @@ test('session journal updates and cleanup require the exact operation and old fe
       withCheckpoint
     );
 
-    assert.equal(clearJournal(sid, 'wrong-operation', authority.lease.fencingToken, dir), false);
-    assert.equal(clearJournal(sid, journal.operationId, '40', dir), false);
-    assert.equal(clearJournal(sid, journal.operationId, authority.lease.fencingToken, dir), true);
+    const readyDetached = lifecycle.checkpointLifecycleProjection(withCheckpoint, 'session', {
+      applied: true,
+    });
+    const requestedDetached = lifecycle.attachLifecycleRequest(
+      readyDetached,
+      'renew',
+      pauseRequest()
+    );
+    const completedDetached = lifecycle.attachLifecycleReceipt(requestedDetached, pausedReceipt());
+    assert.equal(clearJournal(sid, completedDetached, dir), false);
+    assert.deepEqual(
+      sessionState.getActiveTask(sid, dir).workLeaseLifecycleJournal,
+      withCheckpoint
+    );
+    sessionState.updateWorkLeaseLifecycleJournal(sid, journal.operationId, readyDetached, dir);
+    sessionState.updateWorkLeaseLifecycleJournal(sid, journal.operationId, requestedDetached, dir);
+    sessionState.updateWorkLeaseLifecycleJournal(sid, journal.operationId, completedDetached, dir);
+    assert.equal(clearJournal(sid, { ...completedDetached, action: 'stop' }, dir), false);
+    assert.equal(clearJournal(sid, completedDetached, dir), true);
     const cleared = sessionState.getActiveTask(sid, dir);
     for (const key of ['workLeaseLifecycleJournal', 'lease', 'holder', 'binding']) {
       assert.equal(cleared[key], undefined);
@@ -334,27 +287,7 @@ test('session journal updates and cleanup require the exact operation and old fe
 });
 
 test('fenced cleanup invokes the session clear only under the live exact-replay proof', async () => {
-  const { receipt, journal: incompleteJournal } = journalWithReceipt();
-  const incompleteAuthority = await lifecycle.authenticateLifecycleMutationCommit({
-    journal: incompleteJournal,
-    store: committedReplayStore(receipt),
-  });
-  assert.throws(
-    () =>
-      lifecycle.completeLifecycleCleanup({
-        journal: incompleteJournal,
-        commitAuthority: incompleteAuthority,
-        clear() {
-          throw new Error('must not run');
-        },
-      }),
-    /projections must be complete/
-  );
-  const journal = lifecycle.checkpointLifecycleProjection(
-    lifecycle.checkpointLifecycleProjection(incompleteJournal, 'timing', { applied: true }),
-    'session',
-    { applied: true }
-  );
+  const { receipt, journal } = journalWithReceipt();
   const commitAuthority = await lifecycle.authenticateLifecycleMutationCommit({
     journal,
     store: committedReplayStore(receipt),
@@ -372,10 +305,22 @@ test('fenced cleanup invokes the session clear only under the live exact-replay 
     true
   );
   assert.deepEqual(clearedWith, {
+    journal,
     operationId: journal.operationId,
     leaseId: authority.lease.leaseId,
     fencingToken: authority.lease.fencingToken,
   });
+  assert.throws(
+    () =>
+      lifecycle.completeLifecycleCleanup({
+        journal: { ...journal, action: 'stop' },
+        commitAuthority,
+        clear() {
+          throw new Error('must not run');
+        },
+      }),
+    /proof does not match/
+  );
   assert.throws(
     () =>
       lifecycle.completeLifecycleCleanup({
