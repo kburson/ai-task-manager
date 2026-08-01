@@ -1,10 +1,10 @@
 // @story #1089
 // Explainable hybrid selection for fast Develop iterations.
 
-import { existsSync, readFileSync, readdirSync, realpathSync } from 'node:fs';
+import { existsSync, readFileSync, realpathSync } from 'node:fs';
 import path from 'node:path';
 
-import { discoverTestFiles } from './discover-test-files.mjs';
+import { discoverFiles, discoverTestFiles } from './discover-test-files.mjs';
 import { laneOf, LANES } from './test-lanes.mjs';
 import { findUnitTestMatches } from '../find-unit-tests.mjs';
 
@@ -83,22 +83,6 @@ function validateManifest(manifest) {
   });
 }
 
-function walkModules(projectDir) {
-  const modules = [];
-  const visit = (directory) => {
-    for (const entry of readdirSync(directory, { withFileTypes: true })) {
-      if (entry.isDirectory() && IGNORED_DIRECTORIES.has(entry.name)) continue;
-      const absolute = path.join(directory, entry.name);
-      if (entry.isDirectory()) visit(absolute);
-      if (entry.isFile() && (entry.name.endsWith('.mjs') || entry.name.endsWith('.js'))) {
-        modules.push(path.relative(projectDir, absolute).replaceAll(path.sep, '/'));
-      }
-    }
-  };
-  visit(projectDir);
-  return modules.sort();
-}
-
 function resolveStaticImport(projectDir, importer, specifier) {
   if (!specifier.startsWith('.')) return null;
   const importerDirectory = path.dirname(path.join(projectDir, importer));
@@ -114,7 +98,13 @@ function resolveStaticImport(projectDir, importer, specifier) {
 
 function buildReverseImportGraph(projectDir) {
   const reverse = new Map();
-  for (const importer of walkModules(projectDir)) {
+  const modules = discoverFiles({
+    projectRoot: projectDir,
+    root: projectDir,
+    excludes: [...IGNORED_DIRECTORIES],
+    match: /\.(?:m?js)$/,
+  });
+  for (const importer of modules) {
     const source = readFileSync(path.join(projectDir, importer), 'utf8');
     for (const match of source.matchAll(STATIC_IMPORT_RE)) {
       const imported = resolveStaticImport(projectDir, importer, match[1]);
