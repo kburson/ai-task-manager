@@ -46,6 +46,11 @@ try {
     path.join(sandbox, '.ai-task-manager', 'task-tracker-state.json'),
     JSON.stringify({ active: '#999', lastActive: '#999', entryStartTs: null, wordsAtEntryStart: 0 })
   );
+  // Stage-aware Test now finalizes Develop and fingerprints both the outer
+  // checkout and clean sandbox. Model the tracked lockfile that every real
+  // repository worktree contains so this fixture can still reach the command
+  // injection boundary it exists to exercise.
+  writeFileSync(path.join(sandbox, 'package-lock.json'), '{}\n');
   mkdirSync(path.join(sandbox, 'scripts'), { recursive: true });
 
   const pwnedMarker = path.join(sandbox, 'PWNED.txt');
@@ -68,7 +73,7 @@ try {
   writeFileSync(
     gitShim,
     `#!/usr/bin/env node
-import { mkdirSync, rmSync } from 'node:fs';
+import { copyFileSync, mkdirSync, rmSync } from 'node:fs';
 const argv = process.argv.slice(2);
 const joined = argv.join(' ');
 if (joined === 'rev-parse HEAD') {
@@ -78,7 +83,10 @@ if (joined === 'rev-parse HEAD') {
 if (argv[0] === 'worktree' && argv[1] === 'add') {
   // last positional that isn't HEAD/--detach is the path
   const wt = argv.find((a, i) => i >= 2 && a !== '--detach' && a !== 'HEAD');
-  if (wt) mkdirSync(wt, { recursive: true });
+  if (wt) {
+    mkdirSync(wt, { recursive: true });
+    copyFileSync(${JSON.stringify(path.join(sandbox, 'package-lock.json'))}, wt + '/package-lock.json');
+  }
   process.exit(0);
 }
 if (argv[0] === 'worktree' && argv[1] === 'remove') {
