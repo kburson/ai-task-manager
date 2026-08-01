@@ -38,7 +38,7 @@ function hasDuplicateObjectMembers(json) {
       if (character === '\\') {
         index += 1;
         const escape = json[index];
-        if ('"\\/bfnrt'.includes(escape)) index += 1;
+        if (['"', '\\', '/', 'b', 'f', 'n', 'r', 't'].includes(escape)) index += 1;
         else if (escape === 'u' && /^[0-9a-fA-F]{4}$/.test(json.slice(index + 1, index + 5))) {
           index += 5;
         } else fail();
