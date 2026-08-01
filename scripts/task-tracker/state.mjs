@@ -225,7 +225,7 @@ export function saveState(state, statePath) {
     // and an authority request may be awaiting crash reconciliation. Retain
     // those non-secret records without making the issue active again. Explicit
     // lease cleanup must use the matching-fence primitive.
-    if (existing?.lease || existing?.workLeaseIntent) {
+    if (existing?.lease || existing?.workLeaseIntent || existing?.workLeaseLifecycleJournal) {
       setActiveTask(
         sid,
         {

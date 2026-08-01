@@ -30,6 +30,10 @@ import {
   workLeaseIntentReconciled,
   workLeaseIntentsEqual,
 } from './lib/work-lease/context.mjs';
+import {
+  assertLifecycleJournalTransition,
+  normalizeLifecycleJournal,
+} from './lib/work-lease/lifecycle-orchestration.mjs';
 
 function readJson(p) {
   if (!existsSync(p)) return null;
@@ -62,6 +66,14 @@ function parseJsonForMutation(raw) {
       Array.isArray(parsed.workLeaseIntent))
   ) {
     throw new Error('active-task workLeaseIntent is malformed');
+  }
+  if (
+    Object.hasOwn(parsed, 'workLeaseLifecycleJournal') &&
+    (!parsed.workLeaseLifecycleJournal ||
+      typeof parsed.workLeaseLifecycleJournal !== 'object' ||
+      Array.isArray(parsed.workLeaseLifecycleJournal))
+  ) {
+    throw new Error('active-task workLeaseLifecycleJournal is malformed');
   }
   return parsed;
 }
@@ -200,6 +212,17 @@ export function setActiveTask(sid, record, projDir) {
     Object.assign(recordWithoutState, authority);
   }
   const existing = readJsonForMutation(activeTaskPath(sid, projDir));
+  if (Object.hasOwn(recordWithoutState, 'workLeaseLifecycleJournal')) {
+    const suppliedJournal = normalizeLifecycleJournal(recordWithoutState.workLeaseLifecycleJournal);
+    if (
+      !existing?.workLeaseLifecycleJournal ||
+      JSON.stringify(normalizeLifecycleJournal(existing.workLeaseLifecycleJournal)) !==
+        JSON.stringify(suppliedJournal)
+    ) {
+      throw new Error('generic session write cannot create or replace lifecycle journal');
+    }
+    recordWithoutState.workLeaseLifecycleJournal = suppliedJournal;
+  }
   const existingAuthorityIssue = canonicalIssue(authorityIssue(existing));
   const recordAuthorityIssue = canonicalIssue(authorityIssue(record));
   const sameAuthorityIssue =
@@ -240,6 +263,10 @@ export function setActiveTask(sid, record, projDir) {
   if (!('workLeaseIntent' in recordWithoutState) && existing?.workLeaseIntent) {
     stickyIntent.workLeaseIntent = existing.workLeaseIntent;
   }
+  const stickyLifecycleJournal = {};
+  if (!('workLeaseLifecycleJournal' in recordWithoutState) && existing?.workLeaseLifecycleJournal) {
+    stickyLifecycleJournal.workLeaseLifecycleJournal = existing.workLeaseLifecycleJournal;
+  }
   const payload = {
     issue: record.issue ?? null,
     entryStartTs: record.entryStartTs ?? null,
@@ -247,6 +274,7 @@ export function setActiveTask(sid, record, projDir) {
     boundAt: record.boundAt ?? new Date().toISOString(),
     ...stickyIssueState,
     ...stickyIntent,
+    ...stickyLifecycleJournal,
     ...recordWithoutState,
   };
   atomicWrite(activeTaskPath(sid, projDir), payload);
@@ -286,12 +314,80 @@ export function clearActiveTaskLease(sid, expectedLeaseId, expectedFencingToken,
   mutateActiveTask(sid, projDir, (existing) => {
     if (
       !existing?.lease ||
+      existing.workLeaseLifecycleJournal ||
       existing.lease.leaseId !== expectedLeaseId ||
       existing.lease.fencingToken !== expectedFencingToken
     ) {
       return null;
     }
     const next = { ...existing };
+    delete next.lease;
+    delete next.holder;
+    delete next.binding;
+    if (next.issue == null && !next.workLeaseIntent) delete next.leaseIssue;
+    cleared = true;
+    return next;
+  });
+  return cleared;
+}
+
+export function setWorkLeaseLifecycleJournal(sid, journalInput, projDir) {
+  const journal = normalizeLifecycleJournal(journalInput);
+  return mutateActiveTask(sid, projDir, (existing) => {
+    if (!existing?.lease) throw new Error('lifecycle journal requires persisted session authority');
+    const authority = normalizeWorkLeaseAuthority(
+      { lease: existing.lease, holder: existing.holder, binding: existing.binding },
+      { issueId: authorityIssue(existing) }
+    );
+    if (JSON.stringify(authority) !== JSON.stringify(journal.authority)) {
+      throw new Error('lifecycle journal authority does not match the current session authority');
+    }
+    if (existing.workLeaseLifecycleJournal) {
+      const current = normalizeLifecycleJournal(existing.workLeaseLifecycleJournal);
+      if (JSON.stringify(current) === JSON.stringify(journal)) return existing;
+      throw new Error('session has an unreconciled lifecycle journal');
+    }
+    return { ...existing, workLeaseLifecycleJournal: journal };
+  });
+}
+
+export function updateWorkLeaseLifecycleJournal(sid, expectedOperationId, journalInput, projDir) {
+  const journal = normalizeLifecycleJournal(journalInput);
+  return mutateActiveTask(sid, projDir, (existing) => {
+    const current = existing?.workLeaseLifecycleJournal;
+    if (
+      !current ||
+      current.operationId !== expectedOperationId ||
+      journal.operationId !== expectedOperationId
+    ) {
+      throw new Error('lifecycle journal operation identity does not match');
+    }
+    if (JSON.stringify(current) === JSON.stringify(journal)) return existing;
+    return {
+      ...existing,
+      workLeaseLifecycleJournal: assertLifecycleJournalTransition(current, journal),
+    };
+  });
+}
+
+export function clearWorkLeaseLifecycleJournal(
+  sid,
+  expectedOperationId,
+  expectedLeaseId,
+  expectedFencingToken,
+  projDir
+) {
+  let cleared = false;
+  mutateActiveTask(sid, projDir, (existing) => {
+    if (
+      existing?.workLeaseLifecycleJournal?.operationId !== expectedOperationId ||
+      existing?.lease?.leaseId !== expectedLeaseId ||
+      existing?.lease?.fencingToken !== expectedFencingToken
+    ) {
+      return null;
+    }
+    const next = { ...existing };
+    delete next.workLeaseLifecycleJournal;
     delete next.lease;
     delete next.holder;
     delete next.binding;
