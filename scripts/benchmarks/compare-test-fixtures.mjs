@@ -192,12 +192,17 @@ export function runBenchmark(options, deps = {}) {
   if (thrown) throw thrown;
   const summaries = {};
   for (const name of ['baseline', 'candidate']) {
+    const fileCount = (name === 'baseline' ? options.baselineFiles : options.candidateFiles).length;
+    const invocationCount = options.samples * 2;
     summaries[name] = {
       cold: summarizeDurations(durations[name].cold),
       warm: summarizeDurations(durations[name].warm),
       combined: summarizeDurations([...durations[name].cold, ...durations[name].warm]),
-      fileCount: (name === 'baseline' ? options.baselineFiles : options.candidateFiles).length,
-      processCount: options.samples * 2,
+      fileCount,
+      invocationCount,
+      // Node's test runner creates one worker process per input test file. This
+      // excludes child processes intentionally spawned by individual tests.
+      testFileWorkerProcessCount: fileCount * invocationCount,
     };
   }
   return {

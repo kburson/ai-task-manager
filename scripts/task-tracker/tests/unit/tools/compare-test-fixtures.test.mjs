@@ -107,6 +107,9 @@ test('runBenchmark owns explicit worktrees, alternates samples, and cleans both 
   );
   assert.deepEqual(removed.slice().sort(), added.map((entry) => entry.target).sort());
   assert.equal(measured.length, 8);
+  assert.equal(result.measurements.baseline.invocationCount, 4);
+  assert.equal(result.measurements.baseline.testFileWorkerProcessCount, 4);
+  assert.equal(result.measurements.candidate.testFileWorkerProcessCount, 4);
   assert.equal(result.comparison.combined.passesThreshold, true);
   assert.deepEqual(result.cleanup, { baseline: true, candidate: true, root: true });
 });
