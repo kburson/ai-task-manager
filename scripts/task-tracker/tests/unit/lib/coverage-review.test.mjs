@@ -16,10 +16,6 @@ import { join } from 'node:path';
 import { projectScratchDir } from '../../../lib/scratch-dir.mjs';
 import { buildPlanApprovalAuditComment } from '../../../lib/plan-approval-audit.mjs';
 import { verbReview, buildDeferredReviewRow } from '../../../verbs/review.mjs';
-import {
-  createVerificationReceipt,
-  upsertVerificationReceipt,
-} from '../../../lib/verification-receipt.mjs';
 
 function tmpState(state) {
   const dir = mkdtempSync(join(projectScratchDir('test'), 'aitm-622-'));
@@ -109,8 +105,6 @@ function makeCtx(opts = {}) {
     moveResults = {},
     subs = [],
     childState = 'review',
-    getReviewHeadSha,
-    buildVerificationFingerprint,
   } = opts;
   const calls = { post: [], move: [], guards: [], mutate: 0, logTime: 0 };
   let gi = 0;
@@ -152,8 +146,6 @@ function makeCtx(opts = {}) {
       calls.guards.push(gctx);
       return guardSeq[gi++] || { refusals: [] };
     },
-    ...(getReviewHeadSha ? { getReviewHeadSha } : {}),
-    ...(buildVerificationFingerprint ? { buildVerificationFingerprint } : {}),
   };
   return { ctx, calls };
 }
@@ -213,41 +205,6 @@ const CLEAN_BODY = [
   '## AITM Progress Markers',
   '<!-- aitm-dod-verified sha="deadbee" ts="2026-01-01T00:00:00Z" -->',
 ].join('\n');
-
-const RECEIPT_SHA = 'a'.repeat(40);
-const RECEIPT_FINGERPRINT = {
-  commitSha: RECEIPT_SHA,
-  environment: {
-    node: process.version,
-    platform: `${process.platform}-${process.arch}`,
-    lockfileHash: `sha256:${'a'.repeat(64)}`,
-    configHashes: { 'package.json': `sha256:${'b'.repeat(64)}` },
-    sandbox: { kind: 'worktree', identity: '/sandbox', clean: true },
-  },
-};
-
-function cleanBodyWithTestReceipt() {
-  let body = CLEAN_BODY.replace(/sha="deadbee"/, `sha="${RECEIPT_SHA}"`);
-  body += `\n<!-- aitm-test-started sha="${RECEIPT_SHA}" ts="2026-08-01T20:00:00.000Z" -->`;
-  return upsertVerificationReceipt(
-    body,
-    createVerificationReceipt({
-      issueNumber: 777,
-      stage: 'test',
-      fingerprint: RECEIPT_FINGERPRINT,
-      commands: ['lint-full', 'format-full', 'test-unit', 'test-integration', 'test-slow'].map(
-        (classification) => ({
-          classification,
-          command: 'npm',
-          args: ['run', classification],
-          exitCode: 0,
-          durationMs: 1,
-        })
-      ),
-      now: () => '2026-08-01T20:00:00.000Z',
-    })
-  );
-}
 
 test('buildDeferredReviewRow: null spec → null', () => {
   assert.equal(buildDeferredReviewRow(null, 't'), null);
@@ -353,28 +310,6 @@ test('HEAD drift from aitm-test-started → exit 4', async () => {
     ].join('\n');
     const { ctx } = makeCtx({ statePath, rawBody, headSha: 'bbbbbbbbcccc' });
     assert.equal(await runExit(ctx), 4);
-  } finally {
-    rmSync(dir, { recursive: true, force: true });
-  }
-});
-
-test('v1 receipt drift demotes to Develop and requires one new Test pass', async () => {
-  const { statePath, dir } = tmpState(baseState());
-  try {
-    const rawBody = cleanBodyWithTestReceipt();
-    const driftedFingerprint = structuredClone(RECEIPT_FINGERPRINT);
-    driftedFingerprint.environment.lockfileHash = `sha256:${'c'.repeat(64)}`;
-    const { ctx, calls } = makeCtx({
-      statePath,
-      gateBody: 'A clean body with no gate triggers\n',
-      rawBody,
-      scanBody: rawBody,
-      getReviewHeadSha: async () => RECEIPT_SHA,
-      buildVerificationFingerprint: async () => driftedFingerprint,
-    });
-    assert.equal(await runExit(ctx), 4);
-    assert.deepEqual(calls.move, ['develop']);
-    assert.match(calls.post.at(-1), /verification receipt invalid: lockfile-mismatch/);
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }

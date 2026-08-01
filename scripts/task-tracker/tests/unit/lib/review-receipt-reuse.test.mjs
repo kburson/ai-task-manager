@@ -5,6 +5,7 @@ import { test } from 'node:test';
 
 import {
   appendReviewProbeEvidence,
+  emitSandboxVerificationFailureTimeline,
   resolveReviewVerificationEvidence,
 } from '../../../verbs/review.mjs';
 import { testExitDodVerifiedGuard } from '../../../lib/test-exit-dod-verified-guard.mjs';
@@ -155,6 +156,30 @@ test('Review fails closed when a required complete lane is absent', async () => 
       ({ code, classification }) => code === 'command-missing' && classification === 'test-slow'
     )
   );
+});
+
+test('receipt refusal uses the audited Test-to-Develop rework path', async () => {
+  const moves = [];
+  const rows = [];
+  const reason =
+    'verification receipt invalid: lockfile-mismatch; Develop finalization and a new Test pass required';
+  await emitSandboxVerificationFailureTimeline({
+    target: '#1089',
+    ts: INSTANT,
+    delta: { activeSec: 2, idleSec: 0 },
+    wordMarker: 10,
+    reason,
+    deps: {
+      safePostTiming: async (_target, row) => rows.push(row),
+      buildRow: (row) => row,
+      runMoveState: async (...args) => moves.push(args),
+    },
+  });
+  assert.equal(rows[0].event, 'test:failed');
+  assert.match(rows[0].description, /lockfile-mismatch/);
+  assert.deepEqual(moves, [
+    ['#1089', 'develop', { extraArgs: ['--demote', '--demote-reason', reason] }],
+  ]);
 });
 
 test('Review fails closed when HEAD cannot be resolved for a v1 receipt', async () => {
