@@ -60,6 +60,15 @@ const TEST_RECEIPT_REQUIRED = Object.freeze([
   'test-integration',
   'test-slow',
 ]);
+const STANDARD_REVIEW_COMMANDS = new Set([
+  'npm run lint',
+  'npm run format:check',
+  'npm run test:unit',
+  'npm run test:integration',
+  'npm run test:slow',
+  'npm test',
+  'npm run test:all',
+]);
 const reviewPexec = promisify(execFile);
 
 function standardReviewCommandResults() {
@@ -202,6 +211,22 @@ export function parseReviewProbeCommands(rest = []) {
   return commands;
 }
 
+export function validateReviewProbeCommand(
+  command,
+  { projectDir, validateCommand = validateVerificationCommand } = {}
+) {
+  const validation = validateCommand(command, { projectDir });
+  if (!validation.ok) return validation;
+  const identity = validation.argv.join(' ');
+  if (STANDARD_REVIEW_COMMANDS.has(identity)) {
+    return {
+      ok: false,
+      reason: `Review probes must be targeted; '${identity}' is a standard stage-owned command`,
+    };
+  }
+  return validation;
+}
+
 async function defaultReviewProbeHeadSha({ projectDir }) {
   const { stdout } = await reviewPexec('git', ['rev-parse', 'HEAD'], { cwd: projectDir });
   return String(stdout || '').trim();
@@ -266,7 +291,7 @@ export async function runReviewProbes({
 } = {}) {
   const getHeadSha = deps.getHeadSha || defaultReviewProbeHeadSha;
   const buildFingerprint = deps.buildFingerprint || buildVerificationFingerprint;
-  const validateCommand = deps.validateCommand || validateVerificationCommand;
+  const validateCommand = deps.validateCommand || validateReviewProbeCommand;
   const executeCommand = deps.executeCommand || defaultExecuteReviewProbe;
   const mutateBody = deps.mutateBody || defaultReviewProbeMutateBody;
   const fetchBody = deps.fetchBody || defaultReviewProbeFetchBody;
@@ -286,16 +311,26 @@ export async function runReviewProbes({
 
   const initialSha = await getHeadSha({ projectDir });
   const initialFingerprint = await buildFingerprint({ projectDir, commitSha: initialSha });
+  const validations = requested.map((command) => ({
+    command,
+    validation: validateCommand(command, { projectDir }),
+  }));
+  const rejected = validations.find(({ validation }) => !validation.ok);
+  if (rejected) {
+    return {
+      status: 'rejected',
+      probes: [],
+      reasons: [
+        {
+          code: 'probe-command-rejected',
+          command: rejected.command,
+          reason: rejected.validation.reason,
+        },
+      ],
+    };
+  }
   const probes = [];
-  for (const command of requested) {
-    const validation = validateCommand(command, { projectDir });
-    if (!validation.ok) {
-      return {
-        status: 'rejected',
-        probes,
-        reasons: [{ code: 'probe-command-rejected', command, reason: validation.reason }],
-      };
-    }
+  for (const { validation } of validations) {
     const result = await executeCommand({ argv: validation.argv, projectDir });
     probes.push({
       command: validation.argv[0],

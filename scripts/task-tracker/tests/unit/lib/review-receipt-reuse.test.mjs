@@ -376,6 +376,53 @@ test('Review probe parser accepts repeatable quoted values and rejects a missing
   assert.throws(() => reviewVerb.parseReviewProbeCommands(['#1089', '--probe']), /requires/);
 });
 
+test('Review probe policy rejects every standard full command and allows a focused test', () => {
+  for (const command of [
+    'npm run lint',
+    'npm run format:check',
+    'npm run test:unit',
+    'npm run test:integration',
+    'npm run test:slow',
+    'npm test',
+    'npm run test:all',
+  ]) {
+    const result = reviewVerb.validateReviewProbeCommand(command, { projectDir: '/project' });
+    assert.equal(result.ok, false, command);
+    assert.match(result.reason, /targeted/, command);
+  }
+  assert.deepEqual(
+    reviewVerb.validateReviewProbeCommand('node --test focused.test.mjs', {
+      projectDir: '/project',
+    }),
+    { ok: true, argv: ['node', '--test', 'focused.test.mjs'] }
+  );
+});
+
+test('Review probe mode validates the complete request before executing any command', async () => {
+  let executions = 0;
+  const result = await reviewVerb.runReviewProbes({
+    body: bodyWith(testReceipt()),
+    issueNumber: 1089,
+    projectDir: '/project',
+    commands: ['node --test safe.test.mjs', 'npm run lint'],
+    deps: {
+      getHeadSha: async () => SHA,
+      buildFingerprint: () => fingerprint(),
+      validateCommand: (command) =>
+        command === 'npm run lint'
+          ? { ok: false, reason: 'standard command is not targeted' }
+          : { ok: true, argv: ['node', '--test', 'safe.test.mjs'] },
+      executeCommand: async () => {
+        executions += 1;
+        return { exitCode: 0, durationMs: 1 };
+      },
+    },
+  });
+  assert.equal(result.status, 'rejected');
+  assert.equal(executions, 0);
+  assert.deepEqual(result.probes, []);
+});
+
 test('Review probe mode rejects a non-allowlisted command before execution or persistence', async () => {
   let executions = 0;
   let writes = 0;
