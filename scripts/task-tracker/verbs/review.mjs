@@ -73,6 +73,7 @@ function markerMatchesSha(marker, sha) {
 
 export async function resolveReviewVerificationEvidence({
   body,
+  issueNumber,
   projectDir,
   getHeadSha,
   buildFingerprint = buildVerificationFingerprint,
@@ -122,6 +123,7 @@ export async function resolveReviewVerificationEvidence({
   }
   const validation = validateVerificationReceipt({
     receipt,
+    ...(issueNumber !== undefined ? { expectedIssue: Number(issueNumber) } : {}),
     expectedStage: 'test',
     fingerprint,
     required: TEST_RECEIPT_REQUIRED,
@@ -636,6 +638,7 @@ export async function verbReview(ctx) {
       });
     const reviewEvidence = await resolveReviewVerificationEvidence({
       body: rawBody,
+      issueNumber: Number(issueNum),
       projectDir,
       getHeadSha: getReviewHeadSha,
       buildFingerprint: ctx.buildVerificationFingerprint || buildVerificationFingerprint,

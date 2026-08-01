@@ -10,6 +10,16 @@ import { spawnSync } from 'node:child_process';
 import { canonicalRecordJson } from './github-records/canonical-json.mjs';
 
 export const VERIFICATION_RECEIPT_SCHEMA = 'aitm.verification-receipt/v1';
+export const VERIFICATION_COMMAND_IDENTITIES = Object.freeze({
+  'lint-full': Object.freeze({ command: 'npm', args: Object.freeze(['run', 'lint']) }),
+  'format-full': Object.freeze({ command: 'npm', args: Object.freeze(['run', 'format:check']) }),
+  'test-unit': Object.freeze({ command: 'npm', args: Object.freeze(['run', 'test:unit']) }),
+  'test-integration': Object.freeze({
+    command: 'npm',
+    args: Object.freeze(['run', 'test:integration']),
+  }),
+  'test-slow': Object.freeze({ command: 'npm', args: Object.freeze(['run', 'test:slow']) }),
+});
 
 const HASH_RE = /^sha256:[0-9a-f]{64}$/;
 const SHA_RE = /^[0-9a-f]{40}$/;
@@ -218,6 +228,7 @@ function reason(code, details = {}) {
 
 export function validateVerificationReceipt({
   receipt,
+  expectedIssue,
   expectedStage,
   fingerprint,
   required = [],
@@ -228,6 +239,11 @@ export function validateVerificationReceipt({
   }
   if (receipt.stage !== expectedStage)
     reasons.push(reason('stage-mismatch', { expectedStage, actualStage: receipt.stage }));
+  if (expectedIssue !== undefined && receipt.issue !== Number(expectedIssue)) {
+    reasons.push(
+      reason('issue-mismatch', { expectedIssue: Number(expectedIssue), actualIssue: receipt.issue })
+    );
+  }
   if (receipt.commitSha !== fingerprint?.commitSha) reasons.push(reason('sha-mismatch'));
   if (nodeMajor(receipt.environment.node) !== nodeMajor(fingerprint?.environment?.node)) {
     reasons.push(reason('node-major-mismatch'));
@@ -256,6 +272,20 @@ export function validateVerificationReceipt({
     const matches = grouped.get(command.classification) || [];
     matches.push(command);
     grouped.set(command.classification, matches);
+    const identity = VERIFICATION_COMMAND_IDENTITIES[command.classification];
+    if (
+      identity &&
+      (command.command !== identity.command ||
+        canonicalRecordJson(command.args) !== canonicalRecordJson(identity.args))
+    ) {
+      reasons.push(
+        reason('command-identity-mismatch', {
+          classification: command.classification,
+          expected: [identity.command, ...identity.args].join(' '),
+          actual: [command.command, ...command.args].join(' '),
+        })
+      );
+    }
   }
   const reusableCommands = [];
   for (const classification of [...new Set(required)]) {

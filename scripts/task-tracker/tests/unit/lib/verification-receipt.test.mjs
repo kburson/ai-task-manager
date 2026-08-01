@@ -142,6 +142,7 @@ describe('verification receipt validation refusals', () => {
     const { fingerprint, receipt } = fixtureReceipt();
     const result = validateVerificationReceipt({
       receipt,
+      expectedIssue: 1089,
       expectedStage: 'develop-final',
       fingerprint,
       required: ['lint-full', 'format-full'],
@@ -152,6 +153,37 @@ describe('verification receipt validation refusals', () => {
       result.reusableCommands.map(({ classification }) => classification),
       ['lint-full', 'format-full']
     );
+  });
+
+  test('refuses a receipt copied from another issue', () => {
+    const { fingerprint, receipt } = fixtureReceipt();
+    const result = validateVerificationReceipt({
+      receipt,
+      expectedIssue: 1090,
+      expectedStage: 'develop-final',
+      fingerprint,
+      required: ['lint-full', 'format-full'],
+    });
+    assert.equal(result.ok, false);
+    assert.ok(reasonCodes(result).includes('issue-mismatch'));
+  });
+
+  test('refuses a green command whose classification impersonates a canonical command', () => {
+    const { fingerprint, receipt } = fixtureReceipt();
+    const result = validateVerificationReceipt({
+      receipt: {
+        ...receipt,
+        commands: receipt.commands.map((command, index) =>
+          index === 0 ? { ...command, command: 'node', args: ['--version'] } : command
+        ),
+      },
+      expectedIssue: 1089,
+      expectedStage: 'develop-final',
+      fingerprint,
+      required: ['lint-full', 'format-full'],
+    });
+    assert.equal(result.ok, false);
+    assert.ok(reasonCodes(result).includes('command-identity-mismatch'));
   });
 
   const mutations = [
@@ -237,6 +269,7 @@ describe('verification receipt validation refusals', () => {
       const { fingerprint, receipt } = fixtureReceipt();
       const result = validateVerificationReceipt({
         receipt: mutate(receipt),
+        expectedIssue: 1089,
         expectedStage: 'develop-final',
         fingerprint,
         required: ['lint-full', 'format-full'],
@@ -254,6 +287,7 @@ describe('verification receipt validation refusals', () => {
         completedAt: 'not-an-instant',
         commands: [{ ...receipt.commands[0], durationMs: -1 }, receipt.commands[1]],
       },
+      expectedIssue: 1089,
       expectedStage: 'develop-final',
       fingerprint,
       required: ['lint-full', 'format-full'],

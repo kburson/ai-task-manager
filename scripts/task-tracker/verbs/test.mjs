@@ -465,6 +465,7 @@ export async function runVerbTest({
     const existingTestReceipt = parseVerificationReceipt(body, 'test');
     const existingValidation = validateVerificationReceipt({
       receipt: existingTestReceipt,
+      expectedIssue: Number(issueNum),
       expectedStage: 'test',
       fingerprint: currentFingerprint,
       required: ['lint-full', 'format-full', 'test-unit', 'test-integration', 'test-slow'],
@@ -492,6 +493,7 @@ export async function runVerbTest({
       const existingReceipt = parseVerificationReceipt(body, 'develop-final');
       const existingValidation = validateVerificationReceipt({
         receipt: existingReceipt,
+        expectedIssue: Number(issueNum),
         expectedStage: 'develop-final',
         fingerprint: currentFingerprint,
         required: ['lint-full', 'format-full'],
@@ -532,6 +534,7 @@ export async function runVerbTest({
     const readBack = parseVerificationReceipt(body, 'develop-final');
     const validation = validateVerificationReceipt({
       receipt: readBack,
+      expectedIssue: Number(issueNum),
       expectedStage: 'develop-final',
       fingerprint: finalization.fingerprint,
       required: ['lint-full', 'format-full'],
@@ -614,6 +617,7 @@ export async function runVerbTest({
         testFingerprint = await buildFingerprint({ projectDir: wtPath, commitSha: sha });
         const validation = validateVerificationReceipt({
           receipt: developEvidence.receipt,
+          expectedIssue: Number(issueNum),
           expectedStage: 'develop-final',
           fingerprint: testFingerprint,
           required: ['lint-full', 'format-full'],
@@ -741,6 +745,7 @@ export async function runVerbTest({
       const completedFingerprint = await buildFingerprint({ projectDir: wtPath, commitSha: sha });
       const completedValidation = validateVerificationReceipt({
         receipt: developEvidence.receipt,
+        expectedIssue: Number(issueNum),
         expectedStage: 'develop-final',
         fingerprint: completedFingerprint,
         required: ['lint-full', 'format-full'],
