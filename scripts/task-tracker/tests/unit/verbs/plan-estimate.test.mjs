@@ -41,8 +41,12 @@ test('parseArgs omits absent current keys and falls back to active issue', () =>
 });
 
 test('parseArgs selects v1 evidence or explicit legacy compatibility mode', () => {
-  const adaptive = parseArgs(['1091', '--evidence-file', '.tmp/plan/1091.json'], null);
+  const adaptive = parseArgs(
+    ['1091', '--evidence-file', '.tmp/plan/1091.json', '--adopt-legacy-baseline'],
+    null
+  );
   assert.equal(adaptive.evidenceFile, '.tmp/plan/1091.json');
+  assert.equal(adaptive.adoptLegacyBaseline, true);
   assert.equal(adaptive.compatibilityMode, false);
   const legacy = parseArgs(
     ['1091', '--compatibility-mode', '--planned-size', 'XL', '--planned-estimate', '40'],

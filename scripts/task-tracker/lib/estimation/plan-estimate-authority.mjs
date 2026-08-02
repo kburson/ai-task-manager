@@ -191,3 +191,51 @@ export async function applyPlanEstimateAuthority({
     forecastCommentNodeId: stored.commentNodeId,
   };
 }
+
+export async function adoptLegacyPlanForecast({ issueNumber, forecastEnvelope, deps = {} } = {}) {
+  if (
+    !Number.isInteger(issueNumber) ||
+    issueNumber <= 0 ||
+    forecastEnvelope?.recordType !== 'estimation-forecast' ||
+    forecastEnvelope.payload?.issue !== issueNumber
+  ) {
+    fail('legacy-adoption-input');
+  }
+  const plan = forecastEnvelope.payload.plan;
+  let state = await read(deps);
+  const appendix = appendixProjection(state.refineAppendix);
+  const active = state.forecasts.filter((forecast) => forecast.supersededBy == null);
+  if (
+    state.lifecycleState !== 'develop' ||
+    state.readyForecastRecordId !== null ||
+    active.length !== 0 ||
+    appendix?.plan?.size !== plan.size ||
+    appendix?.plan?.humanHours !== plan.humanHours ||
+    state.board?.size !== plan.size ||
+    state.board?.estimate !== plan.humanHours ||
+    state.bodyFields?.size !== plan.size ||
+    state.bodyFields?.estimate !== plan.humanHours
+  ) {
+    fail('legacy-adoption-projection');
+  }
+  state = await writeAndConfirm({
+    deps,
+    writer: 'writeForecast',
+    input: { issueNumber, envelope: forecastEnvelope },
+    confirms: (next) => desiredForecast(next, forecastEnvelope) !== null,
+    category: 'legacy-adoption-forecast',
+  });
+  const stored = desiredForecast(state, forecastEnvelope);
+  await writeAndConfirm({
+    deps,
+    writer: 'writeForecastReadyMarker',
+    input: { issueNumber, recordId: stored.recordId },
+    confirms: (next) => next.readyForecastRecordId === stored.recordId,
+    category: 'legacy-adoption-ready',
+  });
+  return {
+    status: 'converged',
+    forecastRecordId: stored.recordId,
+    forecastCommentNodeId: stored.commentNodeId,
+  };
+}

@@ -29,6 +29,7 @@ import { buildEstimationForecast } from './forecast-model.mjs';
 import { buildEstimationOutcome } from './outcome-builder.mjs';
 import { ensureEstimationOutcome } from './outcome-writer.mjs';
 import {
+  adoptLegacyPlanForecast,
   applyPlanEstimateAuthority,
   upsertForecastReadyMarker,
 } from './plan-estimate-authority.mjs';
@@ -235,7 +236,7 @@ export async function loadProjectEstimationCorpus({ cfg, io, graphql = io?.graph
   fail('corpus-pagination');
 }
 
-export function createAdaptivePlanRuntime({ cfg, deps = {} } = {}) {
+export function createAdaptivePlanRuntime({ cfg, deps = {}, adoptLegacyBaseline = false } = {}) {
   if (!cfg?.repo || !cfg?.projectId) fail('plan-config');
   if (!Number.isInteger(cfg.estimationRubricIssue) || cfg.estimationRubricIssue <= 0) {
     fail('rubric-issue-unconfigured');
@@ -415,9 +416,9 @@ export function createAdaptivePlanRuntime({ cfg, deps = {} } = {}) {
       });
     },
     applyAuthority: ({ issueNumber, refine, forecastEnvelope }) =>
-      applyPlanEstimateAuthority({
+      (adoptLegacyBaseline ? adoptLegacyPlanForecast : applyPlanEstimateAuthority)({
         issueNumber,
-        refine,
+        ...(adoptLegacyBaseline ? {} : { refine }),
         forecastEnvelope,
         deps: {
           readProjection: () => readProjection(issueNumber),

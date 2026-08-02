@@ -3,6 +3,7 @@ import { strict as assert } from 'node:assert';
 import test from 'node:test';
 
 import {
+  adoptLegacyPlanForecast,
   applyPlanEstimateAuthority,
   executeAdaptivePlanEstimate,
   readForecastReadyRecordId,
@@ -264,4 +265,68 @@ test('adaptive execution refreshes rubric, builds forecast, creates an envelope,
     calls.map(([name]) => name),
     ['build', 'envelope', 'authority']
   );
+});
+
+test('legacy baseline adoption freezes only an exact matching Develop projection', async () => {
+  const state = {
+    lifecycleState: 'develop',
+    refineAppendix: {
+      refine: forecast.refine,
+      plan: { size: forecast.plan.size, humanHours: forecast.plan.humanHours },
+    },
+    board: { size: forecast.plan.size, estimate: forecast.plan.humanHours },
+    bodyFields: { size: forecast.plan.size, estimate: forecast.plan.humanHours },
+    forecasts: [],
+    readyForecastRecordId: null,
+  };
+  const result = await adoptLegacyPlanForecast({
+    issueNumber: 1091,
+    forecastEnvelope,
+    deps: {
+      readProjection: async () => structuredClone(state),
+      writeForecast: async ({ envelope }) => {
+        state.forecasts.push({
+          recordId: envelope.recordId,
+          payloadHash: envelope.payloadHash,
+          commentNodeId: 'IC_adopted',
+          supersededBy: null,
+        });
+      },
+      writeForecastReadyMarker: async ({ recordId }) => {
+        state.readyForecastRecordId = recordId;
+      },
+    },
+  });
+  assert.equal(result.status, 'converged');
+  assert.equal(result.forecastCommentNodeId, 'IC_adopted');
+  assert.equal(state.readyForecastRecordId, forecastEnvelope.recordId);
+});
+
+test('legacy baseline adoption refuses mismatches, existing evidence, or non-Develop state', async () => {
+  const base = {
+    lifecycleState: 'develop',
+    refineAppendix: {
+      refine: forecast.refine,
+      plan: { size: forecast.plan.size, humanHours: forecast.plan.humanHours },
+    },
+    board: { size: forecast.plan.size, estimate: forecast.plan.humanHours },
+    bodyFields: { size: forecast.plan.size, estimate: forecast.plan.humanHours },
+    forecasts: [],
+    readyForecastRecordId: null,
+  };
+  for (const state of [
+    { ...base, lifecycleState: 'plan' },
+    { ...base, board: { ...base.board, estimate: 39 } },
+    { ...base, forecasts: [{ recordId: '01J00000000000000000000696', supersededBy: null }] },
+    { ...base, readyForecastRecordId: '01J00000000000000000000695' },
+  ]) {
+    await assert.rejects(
+      adoptLegacyPlanForecast({
+        issueNumber: 1091,
+        forecastEnvelope,
+        deps: { readProjection: async () => structuredClone(state) },
+      }),
+      /plan-estimate-authority:legacy-adoption/
+    );
+  }
 });

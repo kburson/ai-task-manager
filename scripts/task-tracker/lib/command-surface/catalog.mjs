@@ -148,7 +148,7 @@ export const VERB_CONTRACTS = Object.freeze({
   ),
   'plan-estimate': contract(
     [
-      'The target must be in Plan with a refine estimate and either v1 evidence or explicit legacy compatibility flags.',
+      'The target must be in Plan with a refine estimate and either v1 evidence or explicit legacy compatibility flags; one-time legacy adoption additionally accepts an exact-matching Develop baseline.',
     ],
     [
       'V1 converges board Size/Estimate, canonical fields, Refine history, and a read-back forecast; compatibility mode updates only the legacy appendix.',

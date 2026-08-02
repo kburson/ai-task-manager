@@ -179,6 +179,10 @@ export const VERB_REFERENCE = {
       '/task plan-estimate [#N] --evidence-file <path> | --compatibility-mode --planned-size <S> --planned-estimate <H>',
     flags: [
       { flag: '--evidence-file <path>', desc: 'aitm.plan-estimation-input/v1 JSON evidence' },
+      {
+        flag: '--adopt-legacy-baseline',
+        desc: 'one-time Develop recovery when existing board/body/history exactly match v1 Plan',
+      },
       { flag: '--compatibility-mode', desc: 'explicitly use the legacy appendix-only path' },
       { flag: '--planned-size <S>', desc: 'post-planning size' },
       { flag: '--planned-estimate <H>', desc: 'post-planning estimate (hours)' },
@@ -196,6 +200,7 @@ export const VERB_REFERENCE = {
     ],
     examples: [
       '/task plan-estimate 667 --evidence-file .tmp/plan/667-estimation.json',
+      '/task plan-estimate 667 --evidence-file .tmp/plan/667-estimation.json --adopt-legacy-baseline',
       '/task plan-estimate 667 --compatibility-mode --planned-size L --planned-estimate 6 --rationale "legacy issue"',
     ],
   },

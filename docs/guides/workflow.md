@@ -216,6 +216,14 @@ fails, leave the issue in Plan, repair the configured rubric issue or GitHub
 comment evidence, and replay `plan-estimate`; the authority writer is
 convergent. Do not delete prior rubric records or hand-edit payload hashes.
 
+An issue already in Develop when adaptive estimation is first installed may
+adopt its legacy Plan baseline once with `--adopt-legacy-baseline`. This recovery
+refuses unless the live board, canonical body fields, and historical Planned
+Estimate appendix all exactly match the newly generated human Plan, and unless
+no forecast/freeze evidence already exists. It publishes the missing immutable
+forecast and ready marker without rewriting the in-flight baseline; it is not a
+general way to bypass Plan or revise scope after Develop.
+
 Adaptive evidence adds no approval gate. `/task auto both` still suppresses the
 Plan and Review human gates without introducing a forecast prompt; human-gated
 configuration still stops at the existing `plan-approve` and `approve` points.

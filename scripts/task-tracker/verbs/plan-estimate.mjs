@@ -61,6 +61,7 @@ export function parseArgs(rest, activeIssue) {
   let rationale = null;
   let evidenceFile = null;
   let compatibilityMode = false;
+  let adoptLegacyBaseline = false;
   const positional = [];
   for (let i = 0; i < rest.length; i++) {
     const tok = rest[i];
@@ -86,17 +87,35 @@ export function parseArgs(rest, activeIssue) {
       case '--compatibility-mode':
         compatibilityMode = true;
         break;
+      case '--adopt-legacy-baseline':
+        adoptLegacyBaseline = true;
+        break;
       default:
         positional.push(tok);
     }
   }
   const target = resolveTargetIssue({ rest: positional, activeIssue });
-  return { target, planned, current, rationale, evidenceFile, compatibilityMode };
+  return {
+    target,
+    planned,
+    current,
+    rationale,
+    evidenceFile,
+    compatibilityMode,
+    adoptLegacyBaseline,
+  };
 }
 
-async function defaultRunAdaptivePlanEstimate({ issueNumber, evidenceFile, cfg, deps }) {
+async function defaultRunAdaptivePlanEstimate({
+  issueNumber,
+  evidenceFile,
+  adoptLegacyBaseline,
+  cfg,
+  deps,
+}) {
   const planInput = parsePlanEstimationInput(readFileSync(evidenceFile, 'utf8'));
-  const runtime = deps.adaptivePlanRuntime ?? createAdaptivePlanRuntime({ cfg, deps });
+  const runtime =
+    deps.adaptivePlanRuntime ?? createAdaptivePlanRuntime({ cfg, deps, adoptLegacyBaseline });
   return executeAdaptivePlanEstimate({ issueNumber, planInput, cfg, deps: runtime });
 }
 
@@ -131,6 +150,7 @@ export async function runPlanEstimate({
   rationale,
   evidenceFile,
   compatibilityMode = false,
+  adoptLegacyBaseline = false,
   cfg,
   deps = {},
 } = {}) {
@@ -142,7 +162,7 @@ export async function runPlanEstimate({
   }
   if (evidenceFile) {
     const adaptive = deps.runAdaptivePlanEstimate || defaultRunAdaptivePlanEstimate;
-    return adaptive({ issueNumber: target, evidenceFile, cfg, deps });
+    return adaptive({ issueNumber: target, evidenceFile, adoptLegacyBaseline, cfg, deps });
   }
   if (!compatibilityMode) {
     throw new Error('plan-estimate: legacy planned flags require explicit --compatibility-mode');
@@ -193,10 +213,15 @@ export async function verbPlanEstimate(ctx) {
   const { cfg, statePath, rest } = ctx;
   const s = loadState(statePath);
   const active = s.active || null;
-  const { target, planned, current, rationale, evidenceFile, compatibilityMode } = parseArgs(
-    rest,
-    active
-  );
+  const {
+    target,
+    planned,
+    current,
+    rationale,
+    evidenceFile,
+    compatibilityMode,
+    adoptLegacyBaseline,
+  } = parseArgs(rest, active);
   if (!target) {
     console.error(
       'Usage: /task plan-estimate [#N] --evidence-file <path> OR --compatibility-mode ' +
@@ -216,6 +241,7 @@ export async function verbPlanEstimate(ctx) {
       rationale,
       evidenceFile,
       compatibilityMode,
+      adoptLegacyBaseline,
       cfg,
     });
     switch (res.status) {
