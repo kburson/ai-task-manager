@@ -1,7 +1,6 @@
 // @story #1093
-import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { runHeal, main } from '../../../heal-timing-log.mjs';
+import { runHeal, parseArgs, main } from '../../../heal-timing-log.mjs';
 
 const HEADER = [
   '## ⏱ Timing Log',
@@ -35,7 +34,7 @@ function sink() {
   return { write: (chunk) => chunks.push(String(chunk)), text: () => chunks.join('') };
 }
 
-test('runHeal dry-run reports each removal class without writing', async () => {
+{
   const deps = fakeComment();
   const result = await runHeal({ issueNumber: 1093, repo: 'o/r', deps });
   assert.equal(result.status, 'dry-run');
@@ -44,9 +43,9 @@ test('runHeal dry-run reports each removal class without writing', async () => {
   assert.equal(result.redundantReviewPassBefore, 1);
   assert.equal(result.redundantReviewPassAfter, 0);
   assert.equal(deps.updates.length, 0);
-});
+}
 
-test('runHeal apply writes the healed body exactly once and reruns as a no-op', async () => {
+{
   const deps = fakeComment();
   const applied = await runHeal({ issueNumber: 1093, repo: 'o/r', apply: true, deps });
   assert.equal(applied.status, 'healed');
@@ -58,9 +57,9 @@ test('runHeal apply writes the healed body exactly once and reruns as a no-op', 
   const noOp = await runHeal({ issueNumber: 1093, repo: 'o/r', apply: true, deps: noOpDeps });
   assert.equal(noOp.status, 'already-canonical');
   assert.equal(noOpDeps.updates.length, 0);
-});
+}
 
-test('per-issue apply stays under the existing lock and reports separate counts', async () => {
+{
   const out = sink();
   const seen = { lockPath: null, run: null };
   await main(['1093', '--apply'], {
@@ -84,14 +83,15 @@ test('per-issue apply stays under the existing lock and reports separate counts'
       };
     },
     out,
+    exit: (code) => assert.equal(code, 0),
   });
   assert.match(seen.lockPath, /1093/);
   assert.equal(seen.run.apply, true);
   assert.match(out.text(), /stopResume=1 → 0/);
   assert.match(out.text(), /reviewPass=1 → 0/);
-});
+}
 
-test('scoped sweep reports aggregate counts without widening the reviewed scope', async () => {
+{
   const out = sink();
   const seen = [];
   await main(['--sweep', '--scope', '1089,1093'], {
@@ -112,9 +112,43 @@ test('scoped sweep reports aggregate counts without widening the reviewed scope'
       };
     },
     out,
+    exit: (code) => assert.equal(code, 0),
   });
   assert.deepEqual(seen, [1089, 1093]);
   assert.match(out.text(), /#1089\tdry-run\tretired=0 → 0 stopResume=5 → 0 reviewPass=3 → 0/);
   assert.match(out.text(), /stopResumeRows=5/);
   assert.match(out.text(), /reviewPassRows=3/);
-});
+}
+
+{
+  assert.equal(parseArgs(['--sweep', '--delay-ms', '600']).delayMs, 600);
+  assert.equal(parseArgs(['--sweep', '--delay-ms=250']).delayMs, 250);
+
+  const sleeps = [];
+  const seen = [];
+  await main(['--sweep', '--scope', '1089,1093', '--delay-ms', '250'], {
+    loadConfig: async () => ({ repo: 'o/r', projectId: 'P' }),
+    getProjectDir: () => '/project',
+    withLock: async (_lockPath, callback) => callback(),
+    sleep: async (ms) => sleeps.push(ms),
+    runHeal: async ({ issueNumber }) => {
+      seen.push(Number(issueNumber));
+      return {
+        status: 'already-canonical',
+        retiredBefore: 0,
+        retiredAfter: 0,
+        zeroStopResumeBefore: 0,
+        zeroStopResumeAfter: 0,
+        redundantReviewPassBefore: 0,
+        redundantReviewPassAfter: 0,
+        commentId: `C_${issueNumber}`,
+      };
+    },
+    out: sink(),
+    exit: (code) => assert.equal(code, 0),
+  });
+  assert.deepEqual(seen, [1089, 1093]);
+  assert.deepEqual(sleeps, [250]);
+}
+
+console.log('heal-timing-log-command.test.mjs: ok');

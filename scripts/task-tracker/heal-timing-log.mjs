@@ -110,6 +110,7 @@ export function parseArgs(argv) {
     scope: null,
     help: false,
     yes: false,
+    delayMs: 0,
   };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
@@ -120,6 +121,8 @@ export function parseArgs(argv) {
     else if (a === '--help' || a === '-h') out.help = true;
     else if (a === '--state') out.state = argv[++i];
     else if (a.startsWith('--state=')) out.state = a.slice('--state='.length);
+    else if (a === '--delay-ms') out.delayMs = Number(argv[++i]);
+    else if (a.startsWith('--delay-ms=')) out.delayMs = Number(a.slice('--delay-ms='.length));
     else if (a === '--scope')
       out.scope = argv[++i]
         .split(',')
@@ -140,8 +143,9 @@ export function printUsage(out = process.stdout) {
   out.write(
     'Usage:\n' +
       '  node scripts/task-tracker/heal-timing-log.mjs <issue#> [--apply | --check-only]\n' +
-      '  node scripts/task-tracker/heal-timing-log.mjs --sweep [--state open|closed|all] [--apply] [--scope N,N,...] [--yes]\n' +
+      '  node scripts/task-tracker/heal-timing-log.mjs --sweep [--state open|closed|all] [--apply] [--scope N,N,...] [--delay-ms N] [--yes]\n' +
       '  Default: dry-run (read-only). --apply writes. Sweep default --state all.\n' +
+      '  --delay-ms N  wait N milliseconds between issue reads (0-60000; default 0)\n' +
       '  --yes  skip the blast-radius confirmation prompt on a multi-issue --apply sweep\n'
   );
 }
@@ -222,13 +226,17 @@ async function runSweep(args, { cfg, repo, out, err, deps }) {
     err.write(`heal-timing-log: invalid --state ${args.state}\n`);
     return 2;
   }
+  if (!Number.isInteger(args.delayMs) || args.delayMs < 0 || args.delayMs > 60_000) {
+    err.write(`heal-timing-log: invalid --delay-ms ${args.delayMs}; expected 0-60000\n`);
+    return 2;
+  }
   const fetchFn = deps.fetchAllIssueNumbers || fetchAllIssueNumbers;
   const numbers =
     args.scope ?? (await fetchFn({ repo, state: args.state, projectId: cfg.projectId }));
 
   out.write(
     `heal-timing-log sweep: mode=${args.apply ? 'APPLY (--apply)' : 'dry-run'} ` +
-      `state=${args.state} issues=${numbers.length}\n`
+      `state=${args.state} issues=${numbers.length} delayMs=${args.delayMs}\n`
   );
 
   if (args.apply) {
@@ -247,7 +255,10 @@ async function runSweep(args, { cfg, repo, out, err, deps }) {
   let zeroStopResume = 0;
   let redundantReviewPass = 0;
   const failed = [];
-  for (const n of numbers) {
+  const sleep = deps.sleep || ((ms) => new Promise((resolve) => setTimeout(resolve, ms)));
+  for (let index = 0; index < numbers.length; index++) {
+    const n = numbers[index];
+    if (index > 0 && args.delayMs > 0) await sleep(args.delayMs);
     try {
       const res = await healUnderLock({ issueNumber: n, repo, apply: args.apply, deps });
       if (res.status === 'dry-run' || res.status === 'healed') {
@@ -284,7 +295,7 @@ export async function main(argv, deps = {}) {
   try {
     assertKnownArgv(argv, {
       flags: ['--sweep', '--apply', '--check-only', '--yes'],
-      options: ['--state', '--scope'],
+      options: ['--state', '--scope', '--delay-ms'],
       positionals: { max: 1 },
     });
   } catch (e) {
