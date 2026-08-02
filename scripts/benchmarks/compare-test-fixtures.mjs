@@ -7,6 +7,7 @@ import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 
 import { projectScratchDir } from '../task-tracker/lib/scratch-dir.mjs';
+import { emitSelfDoc } from '../lib/self-doc.mjs';
 
 const HELP = `compare-test-fixtures — compare a test cluster between two git refs
 
@@ -248,7 +249,7 @@ function main() {
     return;
   }
   if (options.help) {
-    console.log(HELP);
+    emitSelfDoc('compare-test-fixtures');
     return;
   }
   const result = runBenchmark(options);
