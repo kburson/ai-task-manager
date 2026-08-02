@@ -18,7 +18,7 @@ import { mutateIssueBody } from '../issue-body-mutate.mjs';
 import { upsertPlannedEstimate } from '../refine-estimate-comment.mjs';
 import { readTimingCommentBody, bodyOf } from '../../gh-timing-comment.mjs';
 import { readEstimationStageTiming } from '../timing-row-reader.mjs';
-import { parseVerificationReceipts } from '../verification-receipt.mjs';
+import { parseValidatedVerificationReceipts } from '../verification-receipt.mjs';
 import {
   listIssueCommentsSince,
   parsePreloadedIssueComments,
@@ -777,9 +777,20 @@ export function createAdaptivePlanRuntime({ cfg, deps = {}, adoptLegacyBaseline 
   };
 }
 
-export function verificationEvidence(body) {
+export function verificationEvidence(body, { expectedIssue, expectedFinalSha } = {}) {
   const groups = new Map();
-  for (const receipt of parseVerificationReceipts(body)) {
+  const receipts = parseValidatedVerificationReceipts(body, { expectedIssue });
+  if (
+    expectedFinalSha !== undefined &&
+    !receipts.some(
+      (receipt) =>
+        receipt.commitSha === expectedFinalSha &&
+        receipt.commands.some((command) => command.exitCode === 0)
+    )
+  ) {
+    throw new TypeError('verification-receipt: exact final SHA evidence is missing');
+  }
+  for (const receipt of receipts) {
     for (const command of receipt.commands ?? []) {
       if (!groups.has(command.classification)) groups.set(command.classification, []);
       groups.get(command.classification).push({
@@ -809,12 +820,17 @@ export function costEvidence(verification) {
   const drivers = [];
   let avoidableMs = 0;
   for (const command of verification) {
-    const seenShas = new Set();
+    const seenExecutions = new Set();
     let repeatedMs = 0;
     for (const execution of command.executions ?? []) {
       if (execution.reusedFrom !== null) continue;
-      if (seenShas.has(execution.commitSha)) repeatedMs += execution.durationMs;
-      else seenShas.add(execution.commitSha);
+      const identity = JSON.stringify([
+        execution.commitSha,
+        execution.command,
+        execution.args ?? [],
+      ]);
+      if (seenExecutions.has(identity)) repeatedMs += execution.durationMs;
+      else seenExecutions.add(identity);
     }
     if (repeatedMs === 0) continue;
     avoidableMs += repeatedMs;
@@ -831,6 +847,8 @@ export function costEvidence(verification) {
 }
 
 async function defaultDiffEvidence({ projectDir, trunk = 'origin/trunk' }) {
+  const { stdout: head } = await pexec('git', ['rev-parse', 'HEAD'], { cwd: projectDir });
+  const commitSha = head.trim();
   const { stdout } = await pexec('git', ['diff', '--name-only', `${trunk}...HEAD`], {
     cwd: projectDir,
   });
@@ -851,6 +869,7 @@ async function defaultDiffEvidence({ projectDir, trunk = 'origin/trunk' }) {
   // it from which source paths happened to change.
   lanes.push('sandbox');
   return {
+    commitSha,
     filesChanged: files.length,
     modules,
     lanes,
@@ -966,16 +985,20 @@ export function createEstimationOutcomeRuntime({ cfg, projectDir, deps = {} } = 
       });
       if (timingResult?.status === 'error') fail('timing');
       const timingBody = bodyOf(timingResult);
-      const verification = verificationEvidence(body);
+      const diff = await (deps.readDiffEvidence ?? defaultDiffEvidence)({
+        projectDir,
+        trunk: cfg.trunkRef ?? 'origin/trunk',
+      });
+      const verification = verificationEvidence(body, {
+        expectedIssue: issueNumber,
+        expectedFinalSha: diff.commitSha,
+      });
       const outcomePayload = buildEstimationOutcome({
         issue: issueNumber,
         forecast: outcomeForecast,
         timing: readEstimationStageTiming(timingBody.split('\n')),
         verification,
-        diff: await (deps.readDiffEvidence ?? defaultDiffEvidence)({
-          projectDir,
-          trunk: cfg.trunkRef ?? 'origin/trunk',
-        }),
+        diff,
         review: {
           fixCycles: timingBody.split('\n').filter((line) => /\|\s*review:failed\s*\|/i.test(line))
             .length,

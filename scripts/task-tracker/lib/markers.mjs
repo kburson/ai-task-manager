@@ -110,14 +110,25 @@ function maskFencedCodeBlocksPreservingOffsets(body) {
 // (`aitm-plan-approved: <iso>`) and the consolidated property grammar
 // (`aitm-plan-approved ts="<iso>"`). The legacy branch stays until #369's
 // corpus sweep reports zero residual legacy markers.
-export const PLAN_APPROVED_RE = /<!--\s*aitm-plan-approved(?::\s*[^>]*?|\s+ts="[^"]*")\s*-->/i;
+export const PLAN_APPROVED_RE =
+  /<!--\s*aitm-plan-approved(?::\s*[^>]*?|\s+ts="[^"]*"(?:\s+forecast-record-id="[0-7][0-9A-HJKMNP-TV-Z]{25}")?)\s*-->/i;
 
-export function buildPlanApprovedMarker(ts) {
-  return serializeMarker('plan-approved', { ts });
+export function buildPlanApprovedMarker(ts, { forecastRecordId = null } = {}) {
+  const properties = { ts };
+  if (forecastRecordId !== null) properties['forecast-record-id'] = forecastRecordId;
+  return serializeMarker('plan-approved', properties);
 }
 
 export function hasPlanApprovedMarker(body) {
   return PLAN_APPROVED_RE.test(stripFencedCodeBlocks(body));
+}
+
+export function readPlanApprovedForecastRecordId(body) {
+  return (
+    stripFencedCodeBlocks(body).match(
+      /<!--\s*aitm-plan-approved\s+ts="[^"]*"\s+forecast-record-id="([0-7][0-9A-HJKMNP-TV-Z]{25})"\s*-->/i
+    )?.[1] ?? null
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -176,8 +187,12 @@ export function insertReviewApprovedMarker(body, ts, opts = {}) {
   );
 }
 
-export function insertPlanApprovedMarker(body, ts) {
-  return insertMarkerBeforeFieldDb(body, buildPlanApprovedMarker(ts), hasPlanApprovedMarker);
+export function insertPlanApprovedMarker(body, ts, options) {
+  return insertMarkerBeforeFieldDb(
+    body,
+    buildPlanApprovedMarker(ts, options),
+    hasPlanApprovedMarker
+  );
 }
 
 // ---------------------------------------------------------------------------

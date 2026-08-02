@@ -79,11 +79,12 @@ function weightedRobustMean(values, fallback) {
 }
 
 function repeatedVerificationPotentialMs(command) {
-  const seenShas = new Set();
+  const seenExecutions = new Set();
   return command.executions.reduce((sum, execution) => {
     if (execution.reusedFrom !== null) return sum;
-    if (seenShas.has(execution.commitSha)) return sum + execution.durationMs;
-    seenShas.add(execution.commitSha);
+    const identity = JSON.stringify([execution.commitSha, execution.command, execution.args ?? []]);
+    if (seenExecutions.has(identity)) return sum + execution.durationMs;
+    seenExecutions.add(identity);
     return sum;
   }, 0);
 }

@@ -17,7 +17,11 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { runPlanApprove } from '../../../verbs/plan-approve.mjs';
-import { buildPlanApprovedMarker, hasPlanApprovedMarker } from '../../../lib/markers.mjs';
+import {
+  buildPlanApprovedMarker,
+  hasPlanApprovedMarker,
+  readPlanApprovedForecastRecordId,
+} from '../../../lib/markers.mjs';
 
 const __dir = path.dirname(fileURLToPath(import.meta.url)) + '/..';
 const root = path.resolve(__dir, '..', '../../..');
@@ -97,6 +101,17 @@ function makeDeps(overrides = {}) {
   assert.equal(r.ts, FIXED_TS);
   assert.equal(calls.writes.length, 1);
   assert.match(getBody(), /<!-- aitm-plan-approved ts="2026-05-16T00:00:00Z" -->/);
+}
+
+// Adaptive approval durably binds the frozen forecast record ID.
+{
+  const recordId = '01J00000000000000000000931';
+  const { deps, getBody } = makeDeps({
+    initialBody: `## Plan\n\n<!-- aitm-estimation-forecast-ready record-id="${recordId}" -->\n`,
+  });
+  await runPlanApprove({ issueNumber: 1091, cfg, deps });
+  assert.equal(readPlanApprovedForecastRecordId(getBody()), recordId);
+  assert.match(getBody(), new RegExp(`forecast-record-id="${recordId}"`));
 }
 
 // 4. second call is idempotent

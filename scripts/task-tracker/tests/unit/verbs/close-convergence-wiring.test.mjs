@@ -8,7 +8,10 @@ import {
   upsertUnauthorizedCloseRecovery,
 } from '../../../lib/closed-issue-convergence.mjs';
 import { closeBody, runClose } from './close-convergence-wiring-helpers.mjs';
-import { ensureCloseEstimationOutcome } from '../../../verbs/close.mjs';
+import {
+  ensureCloseEstimationOutcome,
+  resolveEstimationOutcomeProjectDir,
+} from '../../../verbs/close.mjs';
 
 test('close asks the outcome runtime about forecast-free epics and permits a legacy skip', async () => {
   const calls = [];
@@ -31,6 +34,33 @@ test('close asks the outcome runtime about forecast-free epics and permits a leg
     writer: { ensure: async () => ({ status: 'legacy-no-forecast' }) },
   });
   assert.equal(legacy.status, 'legacy-no-forecast');
+});
+
+test('close uses the frozen Plan forecast and refuses a drifted ready marker', async () => {
+  const frozen = '01J00000000000000000000941';
+  const drifted = '01J00000000000000000000942';
+  const body = [
+    `<!-- aitm-plan-approved ts="2026-08-02T14:00:00.000Z" forecast-record-id="${frozen}" -->`,
+    `<!-- aitm-estimation-forecast-ready record-id="${drifted}" -->`,
+  ].join('\n');
+  await assert.rejects(
+    ensureCloseEstimationOutcome({
+      issueNumber: 1091,
+      body,
+      writer: { ensure: async () => ({ status: 'written' }) },
+    }),
+    /forecast.*lineage/i
+  );
+});
+
+test('primary convergence resolves the issue worktree instead of inheriting the caller directory', () => {
+  const resolved = resolveEstimationOutcomeProjectDir({
+    issueNumber: 1091,
+    closeIssueNum: 1091,
+    projectDir: '/repo',
+    issueWorkspaceResolver: ({ issueRef }) => `/repo/.worktrees/${issueRef.slice(1)}`,
+  });
+  assert.equal(resolved, '/repo/.worktrees/1091');
 });
 
 test('dead issue returns without body or child reads', async () => {

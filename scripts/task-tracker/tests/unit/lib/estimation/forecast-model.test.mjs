@@ -47,10 +47,10 @@ test('forecast computes human work independently from AI coefficients and includ
     rubric: { recordId: rubricRecordId, payload: rubric },
     comparableOutcomes: [],
   });
-  assert.equal(forecast.plan.humanHours, 43.9);
+  assert.equal(forecast.plan.humanHours, 43.55);
   assert.equal(
     Number(forecast.wbs.reduce((sum, item) => sum + item.humanHours, 0).toFixed(4)),
-    43.9
+    43.55
   );
   assert.ok(forecast.ai.p50EngagedHours < forecast.plan.humanHours);
 
@@ -75,7 +75,7 @@ test('forecast computes human work independently from AI coefficients and includ
     rubric: { recordId: rubricRecordId, payload: learnedHuman },
     comparableOutcomes: [],
   });
-  assert.equal(calibrated.plan.humanHours, 24.4);
+  assert.equal(calibrated.plan.humanHours, 24.05);
   assert.notEqual(calibrated.plan.humanHours, forecast.plan.humanHours);
 
   const humanBreadthOnly = structuredClone(rubric);
@@ -90,6 +90,40 @@ test('forecast computes human work independently from AI coefficients and includ
   });
   assert.notEqual(separated.plan.humanHours, forecast.plan.humanHours);
   assert.equal(separated.ai.p50EngagedHours, forecast.ai.p50EngagedHours);
+});
+
+test('human estimate is invariant when identical repository breadth is split across WBS rows', () => {
+  const rubric = {
+    recordId: rubricRecordId,
+    payload: createBootstrapRubric({ generatedAt: '2026-08-02T13:00:00.000Z' }),
+  };
+  const item = (id, baseHumanHours) => ({
+    id,
+    description: 'Implement the same scoped capability',
+    baseHumanHours,
+    signals: { modules: ['same-module'], dependencies: ['same-dependency'] },
+    independentlyReviewable: true,
+  });
+  const input = (wbs) => ({
+    schema: 'aitm.plan-estimation-input/v1',
+    wbs,
+    testImpact: { lanes: ['unit'], isolation: 'test-sandbox', expectedMinutes: 0 },
+    risks: [],
+    comparableIssueIds: [],
+  });
+  const one = buildEstimationForecast({
+    issue: 1091,
+    refine: { size: 'M', humanHours: 8 },
+    planInput: input([item('one', 10)]),
+    rubric,
+  });
+  const two = buildEstimationForecast({
+    issue: 1091,
+    refine: { size: 'M', humanHours: 8 },
+    planInput: input([item('one', 5), item('two', 5)]),
+    rubric,
+  });
+  assert.equal(two.plan.humanHours, one.plan.humanHours);
 });
 
 test('forecast widens P80 from confidence and allocates P50 across exact lifecycle stages', () => {

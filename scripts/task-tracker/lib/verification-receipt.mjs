@@ -26,6 +26,9 @@ const SHA_RE = /^[0-9a-f]{40}$/;
 const ULID_RE = /^[0-7][0-9A-HJKMNP-TV-Z]{25}$/;
 const RECEIPT_MARKER_RE =
   /<!--\s*aitm-verification-receipt\s+stage="([^"]+)"\s+data="([A-Za-z0-9_-]+)"\s*-->/g;
+const RECEIPT_CLAIM_RE = /<!--\s*aitm-verification-receipt\b[^>]*-->/g;
+const RECEIPT_MARKER_EXACT_RE =
+  /^<!--\s*aitm-verification-receipt\s+stage="([^"]+)"\s+data="([A-Za-z0-9_-]+)"\s*-->$/;
 const CROCKFORD = '0123456789ABCDEFGHJKMNPQRSTVWXYZ';
 const DEFAULT_CONFIG_PATHS = [
   '.markdownlint-cli2.jsonc',
@@ -218,6 +221,42 @@ function malformedReceipt(receipt) {
   });
 }
 
+export function validateVerificationReceiptStructure({
+  receipt,
+  expectedIssue,
+  expectedStage,
+} = {}) {
+  const reasons = [];
+  if (malformedReceipt(receipt)) reasons.push(reason('receipt-malformed'));
+  if (reasons.length === 0 && expectedStage !== undefined && receipt.stage !== expectedStage) {
+    reasons.push(reason('stage-mismatch', { expectedStage, actualStage: receipt.stage }));
+  }
+  if (
+    reasons.length === 0 &&
+    expectedIssue !== undefined &&
+    receipt.issue !== Number(expectedIssue)
+  ) {
+    reasons.push(
+      reason('issue-mismatch', { expectedIssue: Number(expectedIssue), actualIssue: receipt.issue })
+    );
+  }
+  if (reasons.length === 0) {
+    for (const command of receipt.commands) {
+      const identity = VERIFICATION_COMMAND_IDENTITIES[command.classification];
+      if (
+        identity &&
+        (command.command !== identity.command ||
+          canonicalRecordJson(command.args) !== canonicalRecordJson(identity.args))
+      ) {
+        reasons.push(
+          reason('command-identity-mismatch', { classification: command.classification })
+        );
+      }
+    }
+  }
+  return { ok: reasons.length === 0, reasons, receipt };
+}
+
 function nodeMajor(version) {
   return String(version || '').match(/^v?(\d+)/)?.[1] ?? null;
 }
@@ -322,6 +361,34 @@ export function parseVerificationReceipts(body) {
     } catch {
       // Malformed markers are not evidence. Consumers validate the null result.
     }
+  }
+  return receipts;
+}
+
+export function parseValidatedVerificationReceipts(body, { expectedIssue } = {}) {
+  const receipts = [];
+  for (const claim of String(body || '').match(RECEIPT_CLAIM_RE) ?? []) {
+    const match = claim.match(RECEIPT_MARKER_EXACT_RE);
+    if (!match) throw new TypeError('verification-receipt: malformed claimed marker');
+    let receipt;
+    try {
+      receipt = JSON.parse(Buffer.from(match[2], 'base64url').toString('utf8'));
+    } catch {
+      throw new TypeError('verification-receipt: malformed claimed payload');
+    }
+    const validation = validateVerificationReceiptStructure({
+      receipt,
+      expectedIssue,
+      expectedStage: match[1],
+    });
+    if (!validation.ok) {
+      throw new TypeError(
+        `verification-receipt: invalid claimed evidence (${validation.reasons
+          .map(({ code }) => code)
+          .join(',')})`
+      );
+    }
+    receipts.push(receipt);
   }
   return receipts;
 }

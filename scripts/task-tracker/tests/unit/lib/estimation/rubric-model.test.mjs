@@ -251,6 +251,52 @@ test('avoidable repeated verification is excluded from learned human repository 
   assert.equal(rerunRubric.testLandscape.sandboxMinutes, 0);
 });
 
+test('distinct focused commands on the same SHA are not learned as repeated verification waste', () => {
+  const previous = createBootstrapRubric({ generatedAt: '2026-08-01T00:00:00.000Z' });
+  const sample = outcome({
+    actual: {
+      ...outcome().payload.actual,
+      commands: [
+        {
+          classification: 'test-focused',
+          durationMs: 120_000,
+          attempts: 2,
+          executions: [
+            {
+              receiptId: '01J00000000000000000000921',
+              stage: 'review',
+              commitSha: 'a'.repeat(40),
+              command: 'node',
+              args: ['--test', 'a.test.mjs'],
+              exitCode: 0,
+              durationMs: 60_000,
+              reusedFrom: null,
+            },
+            {
+              receiptId: '01J00000000000000000000922',
+              stage: 'review',
+              commitSha: 'a'.repeat(40),
+              command: 'node',
+              args: ['--test', 'b.test.mjs'],
+              exitCode: 0,
+              durationMs: 60_000,
+              reusedFrom: null,
+            },
+          ],
+        },
+      ],
+    },
+    costClassification: {
+      necessaryHours: 6,
+      avoidableProcessWasteHours: 1,
+      unclassifiedHours: 0,
+      drivers: [{ kind: 'unrelated-process-waste', hours: 1 }],
+    },
+  });
+  const updated = updateEstimationRubric({ previous, outcomes: [sample] });
+  assert.equal(updated.testLandscape.laneMinutes.focused, 2);
+});
+
 test('AI implementation learning uses Develop only and calibrates other lifecycle stages separately', () => {
   const previous = createBootstrapRubric({ generatedAt: '2026-08-01T00:00:00.000Z' });
   const baseline = outcome({

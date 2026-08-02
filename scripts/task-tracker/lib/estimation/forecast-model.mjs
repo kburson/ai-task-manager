@@ -69,18 +69,32 @@ export function buildEstimationForecast({
   );
   const learnedExecutionMinutes = learnedLaneMinutes + rubric.payload.testLandscape.sandboxMinutes;
   const repositoryHours = Math.max(input.testImpact.expectedMinutes, learnedExecutionMinutes) / 60;
-  const wbs = input.wbs.map((item) => ({
-    id: item.id,
-    description: item.description,
-    humanHours: round(
-      item.baseHumanHours *
-        humanCoefficients.implementationHour *
-        humanCoefficients.necessaryToPlanned +
-        item.signals.modules.length * humanCoefficients.moduleBreadthHour +
-        item.signals.dependencies.length * humanCoefficients.dependencyBreadthHour
-    ),
-    signals: [...new Set([...item.signals.modules, ...item.signals.dependencies])],
-  }));
+  const assignedModules = new Set();
+  const assignedDependencies = new Set();
+  const wbs = input.wbs.map((item) => {
+    const modules = item.signals.modules.filter((signal) => {
+      if (assignedModules.has(signal)) return false;
+      assignedModules.add(signal);
+      return true;
+    });
+    const dependencies = item.signals.dependencies.filter((signal) => {
+      if (assignedDependencies.has(signal)) return false;
+      assignedDependencies.add(signal);
+      return true;
+    });
+    return {
+      id: item.id,
+      description: item.description,
+      humanHours: round(
+        item.baseHumanHours *
+          humanCoefficients.implementationHour *
+          humanCoefficients.necessaryToPlanned +
+          modules.length * humanCoefficients.moduleBreadthHour +
+          dependencies.length * humanCoefficients.dependencyBreadthHour
+      ),
+      signals: [...new Set([...item.signals.modules, ...item.signals.dependencies])],
+    };
+  });
   if (repositoryHours > 0)
     wbs.push({
       id: 'repository-execution',

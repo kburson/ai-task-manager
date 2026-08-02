@@ -18,7 +18,7 @@ import { readLastKnownState } from '../gh-timing-comment.mjs';
 import { assertVerbHomeState } from '../lib/verb-home-state-guard.mjs';
 import { runDispose } from '../lib/close-disposition.mjs';
 import { writeTerminalDisposition } from '../lib/terminal-disposition.mjs';
-import { hasReviewApprovedMarker } from '../lib/markers.mjs';
+import { hasReviewApprovedMarker, readPlanApprovedForecastRecordId } from '../lib/markers.mjs';
 import { runGuards } from '../lib/guard-registry.mjs';
 import '../lib/guard-bootstrap.mjs';
 import { isFullAuto } from '../lib/human-reviewer-audit.mjs';
@@ -170,7 +170,16 @@ const ESTIMATION_FORECAST_READY_RE =
   /<!--\s*aitm-estimation-forecast-ready\s+record-id="([0-7][0-9A-HJKMNP-TV-Z]{25})"\s*-->/i;
 
 export async function ensureCloseEstimationOutcome({ issueNumber, body, writer } = {}) {
-  const forecastRecordId = String(body ?? '').match(ESTIMATION_FORECAST_READY_RE)?.[1] ?? null;
+  const readyForecastRecordId = String(body ?? '').match(ESTIMATION_FORECAST_READY_RE)?.[1] ?? null;
+  const frozenForecastRecordId = readPlanApprovedForecastRecordId(body);
+  if (
+    frozenForecastRecordId !== null &&
+    readyForecastRecordId !== null &&
+    frozenForecastRecordId !== readyForecastRecordId
+  ) {
+    throw new Error('forecast lineage diverged from the frozen Plan approval');
+  }
+  const forecastRecordId = frozenForecastRecordId ?? readyForecastRecordId;
   const ensure = typeof writer === 'function' ? writer : writer?.ensure;
   if (typeof ensure !== 'function') {
     if (forecastRecordId === null) return { status: 'legacy-no-forecast' };
@@ -182,6 +191,25 @@ export async function ensureCloseEstimationOutcome({ issueNumber, body, writer }
     throw new Error(`estimation outcome did not converge (status ${result?.status ?? 'missing'})`);
   }
   return result;
+}
+
+export function resolveEstimationOutcomeProjectDir({
+  issueNumber,
+  projectDir,
+  issueWorkspaceResolver,
+  requireDedicated = false,
+} = {}) {
+  const issueRef = `#${issueNumber}`;
+  const resolved = issueWorkspaceResolver({ issueRef, projectDir });
+  if (typeof resolved !== 'string' || resolved.length === 0) {
+    throw new Error(`issue workspace evidence is unavailable for ${issueRef}`);
+  }
+  if (requireDedicated && resolved === projectDir) {
+    throw new Error(
+      `dedicated worktree evidence is unavailable for ${issueRef}; refusing to record the parent diff as child evidence`
+    );
+  }
+  return resolved;
 }
 
 export async function verbClose(ctx) {
@@ -327,16 +355,12 @@ export async function verbClose(ctx) {
     ) {
       return null;
     }
-    const issueRef = `#${issueNumber}`;
-    const outcomeProjectDir =
-      String(issueNumber) === String(closeIssueNum)
-        ? projectDir
-        : issueWorkspaceResolver({ issueRef, projectDir });
-    if (requireDedicated && outcomeProjectDir === projectDir) {
-      throw new Error(
-        `dedicated worktree evidence is unavailable for ${issueRef}; refusing to record the parent diff as child evidence`
-      );
-    }
+    const outcomeProjectDir = resolveEstimationOutcomeProjectDir({
+      issueNumber,
+      projectDir,
+      issueWorkspaceResolver,
+      requireDedicated,
+    });
     return outcomeRuntimeFactory({ cfg, projectDir: outcomeProjectDir });
   };
   const estimationOutcomeWriter = outcomeWriterForIssue(closeIssueNum);

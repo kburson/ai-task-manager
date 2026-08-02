@@ -19,7 +19,9 @@ export function isExplicitFullAutoPlanApproval(env = process.env) {
 
 export function readPlanApprovedTimestamp(body) {
   const src = stripFencedCodeBlocks(body);
-  const property = src.match(/<!--\s*aitm-plan-approved\s+ts="([^"]+)"\s*-->/i);
+  const property = src.match(
+    /<!--\s*aitm-plan-approved\s+ts="([^"]+)"(?:\s+forecast-record-id="[0-7][0-9A-HJKMNP-TV-Z]{25}")?\s*-->/i
+  );
   if (property) return property[1];
   const legacy = src.match(/<!--\s*aitm-plan-approved:\s*([^>]*?)\s*-->/i);
   return legacy ? legacy[1].trim() : null;

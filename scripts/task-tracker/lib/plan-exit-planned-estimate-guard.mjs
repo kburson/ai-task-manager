@@ -13,6 +13,7 @@
 
 import { planPlannedEstimateGate } from './refine-estimate-comment.mjs';
 import { loadForecastProjection } from './estimation/runtime-adapter.mjs';
+import { readPlanApprovedForecastRecordId } from './markers.mjs';
 
 export const GUARD_ID = 'plan-exit-planned-estimate';
 const FORECAST_READY_RE =
@@ -66,6 +67,14 @@ export const planExitPlannedEstimateGuard = {
       };
     }
     const ready = String(ctx.body ?? '').match(FORECAST_READY_RE)?.[1] ?? null;
+    const frozen = readPlanApprovedForecastRecordId(ctx.body);
+    if (frozen !== null && frozen !== ready) {
+      return {
+        ok: false,
+        reason: 'plan-forecast-freeze-mismatch',
+        blockers: ['plan-forecast-freeze-mismatch'],
+      };
+    }
     const adaptiveConfigured =
       Number.isInteger(ctx.cfg.estimationRubricIssue) && ctx.cfg.estimationRubricIssue > 0;
     if (ready !== null || adaptiveConfigured) {

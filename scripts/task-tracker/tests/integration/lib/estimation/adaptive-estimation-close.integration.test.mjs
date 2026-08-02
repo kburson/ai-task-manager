@@ -10,15 +10,42 @@ import {
 
 const repository = 'kburson/ai-task-manager';
 
+const environment = {
+  node: 'v22.0.0',
+  platform: 'darwin-arm64',
+  lockfileHash: `sha256:${'1'.repeat(64)}`,
+  configHashes: {},
+  sandbox: { kind: 'worktree', identity: '/tmp/aitm-1091', clean: true },
+};
+
+function receipt({ receiptId, stage, commitSha, commands }) {
+  return {
+    schema: 'aitm.verification-receipt/v1',
+    receiptId,
+    issue: 1091,
+    stage,
+    commitSha,
+    startedAt: '2026-08-02T14:00:00.000Z',
+    completedAt: '2026-08-02T14:01:00.000Z',
+    environment,
+    commands: commands.map((command) => ({
+      command: 'npm',
+      args: ['run', 'test:unit'],
+      ...command,
+    })),
+    supersedes: null,
+  };
+}
+
 test('verification outcomes retain exact SHA and reuse lineage and only same-SHA reruns are waste', () => {
   const body = [
-    {
+    receipt({
       receiptId: '01J00000000000000000000901',
       stage: 'develop-final',
       commitSha: 'a'.repeat(40),
       commands: [{ classification: 'test-unit', durationMs: 60_000, exitCode: 0 }],
-    },
-    {
+    }),
+    receipt({
       receiptId: '01J00000000000000000000902',
       stage: 'test',
       commitSha: 'a'.repeat(40),
@@ -30,19 +57,19 @@ test('verification outcomes retain exact SHA and reuse lineage and only same-SHA
           reusedFrom: '01J00000000000000000000901',
         },
       ],
-    },
-    {
+    }),
+    receipt({
       receiptId: '01J00000000000000000000903',
       stage: 'review',
       commitSha: 'b'.repeat(40),
       commands: [{ classification: 'test-unit', durationMs: 90_000, exitCode: 0 }],
-    },
-    {
+    }),
+    receipt({
       receiptId: '01J00000000000000000000904',
       stage: 'review-probe',
       commitSha: 'b'.repeat(40),
       commands: [{ classification: 'test-unit', durationMs: 30_000, exitCode: 0 }],
-    },
+    }),
   ]
     .map(
       (receipt) =>
@@ -50,7 +77,7 @@ test('verification outcomes retain exact SHA and reuse lineage and only same-SHA
     )
     .join('\n');
 
-  const [command] = verificationEvidence(body);
+  const [command] = verificationEvidence(body, { expectedIssue: 1091 });
   assert.equal(command.attempts, 3);
   assert.equal(command.durationMs, 180_000);
   assert.deepEqual(
@@ -73,6 +100,48 @@ test('verification outcomes retain exact SHA and reuse lineage and only same-SHA
   assert.deepEqual(costEvidence([command]), {
     avoidableProcessWasteHours: 0.0083,
     drivers: [{ kind: 'repeated-test-unit-same-sha', hours: 0.0083 }],
+  });
+});
+
+test('verification outcomes reject malformed claimed receipts and preserve distinct command identities', () => {
+  const malformed = {
+    receiptId: '01J00000000000000000000911',
+    stage: 'test',
+    commitSha: 'a'.repeat(40),
+    commands: [],
+  };
+  const malformedBody = `<!-- aitm-verification-receipt stage="test" data="${Buffer.from(JSON.stringify(malformed)).toString('base64url')}" -->`;
+  assert.throws(
+    () => verificationEvidence(malformedBody, { expectedIssue: 1091 }),
+    /verification-receipt/
+  );
+
+  const valid = receipt({
+    receiptId: '01J00000000000000000000912',
+    stage: 'review',
+    commitSha: 'b'.repeat(40),
+    commands: [
+      {
+        classification: 'test-focused',
+        command: 'node',
+        args: ['--test', 'a.test.mjs'],
+        durationMs: 30_000,
+        exitCode: 0,
+      },
+      {
+        classification: 'test-focused',
+        command: 'node',
+        args: ['--test', 'b.test.mjs'],
+        durationMs: 40_000,
+        exitCode: 0,
+      },
+    ],
+  });
+  const body = `<!-- aitm-verification-receipt stage="review" data="${Buffer.from(JSON.stringify(valid)).toString('base64url')}" -->`;
+  const verification = verificationEvidence(body, { expectedIssue: 1091 });
+  assert.deepEqual(costEvidence(verification), {
+    avoidableProcessWasteHours: 0,
+    drivers: [],
   });
 });
 

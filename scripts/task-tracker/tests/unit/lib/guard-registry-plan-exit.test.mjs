@@ -98,6 +98,22 @@ const PLANNED_ESTIMATE_OK_DEPS = {
 
 const CFG = { repo: 'owner/name', projectId: 'PVT' };
 
+test('adaptive Plan exit refuses when ready forecast drifted after approval freeze', async () => {
+  const frozen = '01J00000000000000000000710';
+  const ready = '01J00000000000000000000711';
+  const result = await planExitPlannedEstimateGuard.run({
+    toState: 'develop',
+    cfg: CFG,
+    issueNumber: 1091,
+    body: [
+      `<!-- aitm-plan-approved ts="2026-08-02T14:00:00.000Z" forecast-record-id="${frozen}" -->`,
+      `<!-- aitm-estimation-forecast-ready record-id="${ready}" -->`,
+    ].join('\n'),
+    deps: PLANNED_ESTIMATE_OK_DEPS,
+  });
+  assert.deepEqual(result.blockers, ['plan-forecast-freeze-mismatch']);
+});
+
 test('v1 Plan projection requires one ready forecast matching board and body authority', async () => {
   const recordId = '01J00000000000000000000700';
   const forecast = {

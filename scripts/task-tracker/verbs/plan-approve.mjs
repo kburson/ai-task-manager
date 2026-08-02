@@ -34,6 +34,8 @@ import {
 // `:`-delimited form and the new `ts="..."` property grammar (#374) so the
 // idempotency check still fires after the writer flip.
 const PLAN_ENTRY_RE = /<!--\s*aitm-entered-plan(?:-\d+)?(?::|\s+ts=")/i;
+const FORECAST_READY_RE =
+  /<!--\s*aitm-estimation-forecast-ready\s+record-id="([0-7][0-9A-HJKMNP-TV-Z]{25})"\s*-->/i;
 
 const pexec = promisify(execFile);
 
@@ -86,6 +88,7 @@ export async function runPlanApprove({ issueNumber, cfg, projectDir, deps = {} }
   }
 
   const body = await fetchIssueBody({ issueNumber, repo: cfg.repo });
+  const forecastRecordId = body.match(FORECAST_READY_RE)?.[1] ?? null;
 
   // #236 — refuse plan→develop approval if the body's AC/VC checklists contain
   // compound CLI commands that the /task test sandbox will later reject.
@@ -139,7 +142,7 @@ export async function runPlanApprove({ issueNumber, cfg, projectDir, deps = {} }
         n = stampEntryMarker(n, 'plan', ts);
       }
       if (!hasPlanApprovedMarker(n)) {
-        n = insertPlanApprovedMarker(n, ts);
+        n = insertPlanApprovedMarker(n, ts, { forecastRecordId });
       }
       return wrapDeepDiveInDetails(n);
     },
