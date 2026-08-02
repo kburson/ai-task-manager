@@ -123,6 +123,20 @@ function isCanonicalWordMarker(cell) {
   return /^(?:\d+|\d{1,3}(?:,\d{3})+)$/.test(value);
 }
 
+function hasCanonicalZeroValue(row) {
+  if (
+    !isZeroDurationCell(row.cells[3]) ||
+    !isZeroDurationCell(row.cells[4]) ||
+    !isZeroWordDeltaCell(row.cells[5]) ||
+    !isZeroWordDeltaCell(row.cells[8]) ||
+    !isCanonicalWordMarker(row.wordMarker)
+  ) {
+    return false;
+  }
+  const marker = row.marker ? parseRowSecMarker(row.marker) : null;
+  return marker?.activeSec === 0 && marker?.idleSec === 0;
+}
+
 function strictTimingTimestampMs(value) {
   const match = String(value ?? '')
     .trim()
@@ -174,19 +188,7 @@ function isZeroValueStopResumePair(stopLine, resumedLine) {
   if (!Number.isFinite(startMs) || !Number.isFinite(endMs) || gapMs < 0 || gapMs >= 60_000) {
     return false;
   }
-  for (const row of [stop, resumed]) {
-    if (
-      !isZeroDurationCell(row.cells[3]) ||
-      !isZeroDurationCell(row.cells[4]) ||
-      !isZeroWordDeltaCell(row.cells[5]) ||
-      !isZeroWordDeltaCell(row.cells[8]) ||
-      !isCanonicalWordMarker(row.wordMarker)
-    ) {
-      return false;
-    }
-    const marker = row.marker ? parseRowSecMarker(row.marker) : null;
-    if (!marker || marker.activeSec !== 0 || marker.idleSec !== 0) return false;
-  }
+  for (const row of [stop, resumed]) if (!hasCanonicalZeroValue(row)) return false;
   return stop.wordMarker === resumed.wordMarker;
 }
 
@@ -205,6 +207,7 @@ function redundantReviewPassIndexes(lines) {
   const indexes = new Set();
   let inReview = false;
   let passSeen = false;
+  let retainedPassWordMarker = null;
   for (let index = 0; index < lines.length; index++) {
     const row = parseTimingRow(lines[index]);
     if (!row || !isTableTimingTimestamp(row.ts)) continue;
@@ -212,20 +215,34 @@ function redundantReviewPassIndexes(lines) {
     if (event === 'review:started') {
       inReview = true;
       passSeen = false;
+      retainedPassWordMarker = null;
       continue;
     }
     if (event === 'review:failed') {
-      if (inReview) passSeen = false;
+      if (inReview) {
+        passSeen = false;
+        retainedPassWordMarker = null;
+      }
       continue;
     }
     if (event === 'review:approved' || event.startsWith('demoted:')) {
       inReview = false;
       passSeen = false;
+      retainedPassWordMarker = null;
       continue;
     }
     if (event !== 'review:passed' || !inReview) continue;
-    if (passSeen) indexes.add(index);
-    else passSeen = true;
+    if (
+      passSeen &&
+      hasCanonicalZeroValue(row) &&
+      isCanonicalWordMarker(retainedPassWordMarker) &&
+      row.wordMarker === retainedPassWordMarker
+    ) {
+      indexes.add(index);
+      continue;
+    }
+    passSeen = true;
+    retainedPassWordMarker = row.wordMarker;
   }
   return indexes;
 }

@@ -450,6 +450,40 @@ test('review pass healing preserves the first outcome in each reset sequence', (
   assert.equal(healTimingLog(healed), healed, 'review-only heal is byte-identical on rerun');
 });
 
+test('review pass healing preserves repeated outcomes whose zero value is unproven', async (t) => {
+  const started = noiseRow({ ts: '2026-08-01 10:00:00 -05:00', event: 'review:started' });
+  const first = noiseRow({
+    ts: '2026-08-01 10:01:00 -05:00',
+    event: 'review:passed',
+    description: 'first pass',
+  });
+  const baseDuplicate = {
+    ts: '2026-08-01 10:02:00 -05:00',
+    event: 'review:passed',
+    description: 'repeated pass',
+  };
+  const cases = [
+    ['active value', noiseRow({ ...baseDuplicate, active: '0h 00m 01s', rowActive: 1 })],
+    ['idle value', noiseRow({ ...baseDuplicate, idle: '0h 00m 01s', rowIdle: 1 })],
+    ['word delta', noiseRow({ ...baseDuplicate, deltaWords: '1' })],
+    ['full word delta', noiseRow({ ...baseDuplicate, deltaWordsFull: '1' })],
+    ['changed word marker', noiseRow({ ...baseDuplicate, wordMarker: '101' })],
+    ['missing row-sec marker', noiseRow(baseDuplicate).replace(/\s*<!-- row-sec:[^>]+-->$/, '')],
+    [
+      'malformed row-sec marker',
+      noiseRow(baseDuplicate).replace('<!-- row-sec: a=0 i=0 -->', '<!-- row-sec: unknown -->'),
+    ],
+  ];
+
+  for (const [name, duplicate] of cases) {
+    await t.test(name, () => {
+      const body = noiseBody(started, first, duplicate);
+      assert.equal(countRedundantReviewPassRows(body), 0);
+      assert.equal(healTimingLog(body), body);
+    });
+  }
+});
+
 test('mixed valueless-noise healing is byte-identical on a second pass', () => {
   const body = noiseBody(
     noiseRow({ ts: '2026-08-01 10:00:00 -05:00', event: 'review:started' }),
