@@ -118,6 +118,11 @@ function isZeroWordDeltaCell(cell) {
   return Number(value.replace(/,/g, '')) === 0;
 }
 
+function isCanonicalWordMarker(cell) {
+  const value = String(cell ?? '').trim();
+  return /^(?:\d+|\d{1,3}(?:,\d{3})+)$/.test(value);
+}
+
 function strictTimingTimestampMs(value) {
   const match = String(value ?? '')
     .trim()
@@ -173,12 +178,14 @@ function isZeroValueStopResumePair(stopLine, resumedLine) {
     if (
       !isZeroDurationCell(row.cells[3]) ||
       !isZeroDurationCell(row.cells[4]) ||
-      !isZeroWordDeltaCell(row.cells[5])
+      !isZeroWordDeltaCell(row.cells[5]) ||
+      !isZeroWordDeltaCell(row.cells[8]) ||
+      !isCanonicalWordMarker(row.wordMarker)
     ) {
       return false;
     }
-    const marker = parseRowSecMarker(row.raw);
-    if (marker && (marker.activeSec !== 0 || marker.idleSec !== 0)) return false;
+    const marker = row.marker ? parseRowSecMarker(row.marker) : null;
+    if (!marker || marker.activeSec !== 0 || marker.idleSec !== 0) return false;
   }
   return stop.wordMarker === resumed.wordMarker;
 }

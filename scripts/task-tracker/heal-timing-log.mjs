@@ -279,7 +279,7 @@ async function runSweep(args, { cfg, repo, out, err, deps }) {
       `reviewPassRows=${redundantReviewPass} failed=${failed.length}\n`
   );
   if (!args.apply && touched > 0) out.write('(dry-run — re-run with --apply to write)\n');
-  return 0;
+  return failed.length === 0 ? 0 : 1;
 }
 
 // I/O + orchestration seams are injectable (`deps`) so `main` is exercisable

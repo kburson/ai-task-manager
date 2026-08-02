@@ -266,8 +266,10 @@ function noiseRow({
   description = event,
   rowActive = 0,
   rowIdle = 0,
+  deltaWordsFull,
 } = {}) {
-  return `| ${ts} | ${event} | ${active} | ${idle} | ${deltaWords} | ${wordMarker} | ${description} | <!-- row-sec: a=${rowActive} i=${rowIdle} -->`;
+  const fullCell = deltaWordsFull === undefined ? '' : ` ${deltaWordsFull} |`;
+  return `| ${ts} | ${event} | ${active} | ${idle} | ${deltaWords} | ${wordMarker} | ${description} |${fullCell} <!-- row-sec: a=${rowActive} i=${rowIdle} -->`;
 }
 
 function noiseBody(...rows) {
@@ -303,6 +305,14 @@ test('stop/resume healing preserves every conservative guard', async (t) => {
     ['row-sec idle carries value', baseStop, { ...baseResume, rowIdle: 1 }],
     ['word delta carries value', { ...baseStop, deltaWords: '1' }, baseResume],
     ['word delta is unknown', { ...baseStop, deltaWords: '—' }, baseResume],
+    ['full word delta carries value', { ...baseStop, deltaWordsFull: '1' }, baseResume],
+    ['full word delta is unknown', { ...baseStop, deltaWordsFull: '—' }, baseResume],
+    ['word marker is absent', { ...baseStop, wordMarker: '' }, { ...baseResume, wordMarker: '' }],
+    [
+      'word marker is invalid',
+      { ...baseStop, wordMarker: 'unknown' },
+      { ...baseResume, wordMarker: 'unknown' },
+    ],
     ['word marker changes', baseStop, { ...baseResume, wordMarker: '101' }],
     ['event spelling is non-canonical', { ...baseStop, event: 'Stop' }, baseResume],
     [
@@ -332,6 +342,21 @@ test('stop/resume healing preserves every conservative guard', async (t) => {
       noiseRow({ ts: '2026-08-01 10:00:03 -05:00', event: 'update' }),
       noiseRow(baseResume)
     );
+    assert.equal(countZeroValueStopResumePairs(body), 0);
+    assert.equal(healTimingLog(body), body);
+  });
+
+  await t.test('row-sec marker is absent', () => {
+    const withoutMarker = (row) => noiseRow(row).replace(/\s*<!-- row-sec:[^>]+-->$/, '');
+    const body = noiseBody(withoutMarker(baseStop), withoutMarker(baseResume));
+    assert.equal(countZeroValueStopResumePairs(body), 0);
+    assert.equal(healTimingLog(body), body);
+  });
+
+  await t.test('row-sec marker is malformed', () => {
+    const malformedMarker = (row) =>
+      noiseRow(row).replace('<!-- row-sec: a=0 i=0 -->', '<!-- row-sec: unknown -->');
+    const body = noiseBody(malformedMarker(baseStop), malformedMarker(baseResume));
     assert.equal(countZeroValueStopResumePairs(body), 0);
     assert.equal(healTimingLog(body), body);
   });

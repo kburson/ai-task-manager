@@ -151,4 +151,24 @@ function sink() {
   assert.deepEqual(sleeps, [250]);
 }
 
+{
+  const out = sink();
+  let exitCode = null;
+  await main(['--sweep', '--scope', '1093'], {
+    loadConfig: async () => ({ repo: 'o/r', projectId: 'P' }),
+    getProjectDir: () => '/project',
+    withLock: async (_lockPath, callback) => callback(),
+    runHeal: async () => {
+      throw new Error('simulated GitHub read failure');
+    },
+    out,
+    exit: (code) => {
+      exitCode = code;
+    },
+  });
+  assert.equal(exitCode, 1);
+  assert.match(out.text(), /failed=1/);
+  assert.match(out.text(), /simulated GitHub read failure/);
+}
+
 console.log('heal-timing-log-command.test.mjs: ok');
