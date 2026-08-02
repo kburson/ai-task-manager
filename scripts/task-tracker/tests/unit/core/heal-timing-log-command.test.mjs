@@ -151,6 +151,39 @@ function sink() {
   assert.deepEqual(sleeps, [250]);
 }
 
+for (const scope of [
+  '1093,bad',
+  'bad',
+  '',
+  '0',
+  '-1',
+  '1.5',
+  '1e3',
+  '+1',
+  ' 1',
+  '1,,2',
+  '#',
+  '9007199254740992',
+]) {
+  const err = sink();
+  let exitCode = null;
+  let ran = false;
+  await main(['--sweep', '--scope', scope], {
+    loadConfig: async () => ({ repo: 'o/r', projectId: 'P' }),
+    runHeal: async () => {
+      ran = true;
+    },
+    err,
+    out: sink(),
+    exit: (code) => {
+      exitCode = code;
+    },
+  });
+  assert.equal(exitCode, 2, `scope ${JSON.stringify(scope)} must fail closed`);
+  assert.equal(ran, false, `scope ${JSON.stringify(scope)} must not run a partial sweep`);
+  assert.match(err.text(), /invalid --scope/);
+}
+
 {
   const out = sink();
   let exitCode = null;

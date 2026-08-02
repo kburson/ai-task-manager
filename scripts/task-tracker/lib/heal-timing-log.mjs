@@ -204,7 +204,13 @@ function redundantReviewPassIndexes(lines) {
   let retainedPassWordMarker = null;
   for (let index = 0; index < lines.length; index++) {
     const row = parseTimingRow(lines[index]);
-    if (!row || !isTableTimingTimestamp(row.ts)) continue;
+    if (
+      !row ||
+      !isTableTimingTimestamp(row.ts) ||
+      !Number.isFinite(strictTimingTimestampMs(row.ts))
+    ) {
+      continue;
+    }
     const event = row.cells[2];
     if (event === 'review:started') {
       inReview = true;

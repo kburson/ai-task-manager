@@ -469,6 +469,7 @@ test('review pass healing preserves repeated outcomes whose zero value is unprov
     ['idle value', noiseRow({ ...baseDuplicate, idle: '0h 00m 01s', rowIdle: 1 })],
     ['non-canonical active zero', noiseRow({ ...baseDuplicate, active: '0' })],
     ['non-canonical idle zero', noiseRow({ ...baseDuplicate, idle: '0' })],
+    ['impossible timestamp', noiseRow({ ...baseDuplicate, ts: '2026-02-30 10:02:00 -05:00' })],
     ['word delta', noiseRow({ ...baseDuplicate, deltaWords: '1' })],
     ['full word delta', noiseRow({ ...baseDuplicate, deltaWordsFull: '1' })],
     ['changed word marker', noiseRow({ ...baseDuplicate, wordMarker: '101' })],

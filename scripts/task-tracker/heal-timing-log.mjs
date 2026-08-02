@@ -101,6 +101,16 @@ function formatRemovalCounts(result) {
   );
 }
 
+function parseScope(raw) {
+  return String(raw ?? '')
+    .split(',')
+    .map((token) => {
+      if (!/^#?[1-9]\d*$/.test(token)) return NaN;
+      const issueNumber = Number(token.replace(/^#/, ''));
+      return Number.isSafeInteger(issueNumber) ? issueNumber : NaN;
+    });
+}
+
 export function parseArgs(argv) {
   const out = {
     issue: null,
@@ -123,17 +133,8 @@ export function parseArgs(argv) {
     else if (a.startsWith('--state=')) out.state = a.slice('--state='.length);
     else if (a === '--delay-ms') out.delayMs = Number(argv[++i]);
     else if (a.startsWith('--delay-ms=')) out.delayMs = Number(a.slice('--delay-ms='.length));
-    else if (a === '--scope')
-      out.scope = argv[++i]
-        .split(',')
-        .map((s) => Number(s.replace(/^#/, '')))
-        .filter(Number.isFinite);
-    else if (a.startsWith('--scope='))
-      out.scope = a
-        .slice('--scope='.length)
-        .split(',')
-        .map((s) => Number(s.replace(/^#/, '')))
-        .filter(Number.isFinite);
+    else if (a === '--scope') out.scope = parseScope(argv[++i]);
+    else if (a.startsWith('--scope=')) out.scope = parseScope(a.slice('--scope='.length));
     else if (/^#?\d+$/.test(a)) out.issue = a.replace(/^#/, '');
   }
   return out;
@@ -228,6 +229,13 @@ async function runSweep(args, { cfg, repo, out, err, deps }) {
   }
   if (!Number.isInteger(args.delayMs) || args.delayMs < 0 || args.delayMs > 60_000) {
     err.write(`heal-timing-log: invalid --delay-ms ${args.delayMs}; expected 0-60000\n`);
+    return 2;
+  }
+  if (
+    args.scope !== null &&
+    (args.scope.length === 0 || args.scope.some((n) => !Number.isSafeInteger(n) || n <= 0))
+  ) {
+    err.write('heal-timing-log: invalid --scope; expected comma-separated positive integers\n');
     return 2;
   }
   const fetchFn = deps.fetchAllIssueNumbers || fetchAllIssueNumbers;
