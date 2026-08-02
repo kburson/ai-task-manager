@@ -489,6 +489,25 @@ test('review pass healing preserves repeated outcomes whose zero value is unprov
   }
 });
 
+test('malformed review boundaries break deletion eligibility until a valid restart', async (t) => {
+  for (const event of ['review:started', 'review:failed', 'review:approved', 'update']) {
+    await t.test(event, () => {
+      const body = noiseBody(
+        noiseRow({ ts: '2026-08-01 10:00:00 -05:00', event: 'review:started' }),
+        noiseRow({ ts: '2026-08-01 10:01:00 -05:00', event: 'review:passed' }),
+        noiseRow({ ts: '2026-02-30 10:02:00 -05:00', event }),
+        noiseRow({
+          ts: '2026-08-01 10:03:00 -05:00',
+          event: 'review:passed',
+          description: 'must remain',
+        })
+      );
+      assert.equal(countRedundantReviewPassRows(body), 0);
+      assert.equal(healTimingLog(body), body);
+    });
+  }
+});
+
 test('mixed valueless-noise healing is byte-identical on a second pass', () => {
   const body = noiseBody(
     noiseRow({ ts: '2026-08-01 10:00:00 -05:00', event: 'review:started' }),
