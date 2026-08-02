@@ -18,7 +18,13 @@ import { projectScratchDir } from '../../../lib/scratch-dir.mjs';
 // assertFieldsPersisted passes and shouldEmitReviewApprovedRow is true.
 const APPROVED_BODY =
   '## Done\n\n<!-- aitm-review-approved ts="2026-06-28T00:00:00Z" full-auto="yes" -->\n<!-- aitm-fields: {"engagedTime":3600,"size":"M","estimate":3} -->\n';
-const READY_BODY = `${APPROVED_BODY}\n<!-- aitm-estimation-forecast-ready record-id="01J00000000000000000000005" -->\n`;
+const FORECAST_ID = '01J00000000000000000000005';
+const READY_BODY = [
+  APPROVED_BODY,
+  `<!-- aitm-plan-approved ts="2026-06-28T00:00:00Z" forecast-record-id="${FORECAST_ID}" -->`,
+  `<!-- aitm-estimation-forecast-ready record-id="${FORECAST_ID}" -->`,
+  '',
+].join('\n');
 
 const baseState = (active = '#5') => ({
   active,
