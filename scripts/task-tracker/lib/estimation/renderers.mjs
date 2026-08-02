@@ -15,7 +15,14 @@ export function renderEstimationForecast(record) {
   const wbs = record.wbs
     .map((item) => `- ${item.id}: ${item.description} (${hours(item.humanHours)})`)
     .join('\n');
-  return `## Plan Estimation Forecast\n\nHuman Plan estimate: ${hours(record.plan.humanHours)} (${record.plan.size}); Refine delta: ${hours(record.plan.deltaHours)}.\n\nAI P50: ${hours(record.ai.p50EngagedHours)}; AI P80: ${hours(record.ai.p80EngagedHours)}. Stages: ${stages}.\n\nRubric: v${record.rubric.version}, cohort ${record.rubric.cohortSize}, confidence ${percent(record.rubric.confidence)}.\n\n${wbs}\n\nRecommendation: ${record.recommendation.action} — ${record.recommendation.reason}\n`;
+  const comparables =
+    record.comparableIssues.length === 0
+      ? 'Comparable outcomes: none validated.'
+      : `Comparable outcomes: ${record.comparableIssues.map((item) => `#${item.issue} (${item.outcomeRecordId}, weight ${item.weight})`).join('; ')}.`;
+  const testPlan = `Test plan: ${record.testPlan.impactedLanes.join(', ')} via ${record.testPlan.isolation}; expected ${record.testPlan.expectedMinutes} minutes.`;
+  const risks =
+    record.risks.length === 0 ? 'Risks: none recorded.' : `Risks: ${record.risks.join('; ')}.`;
+  return `## Plan Estimation Forecast\n\nHuman Plan estimate: ${hours(record.plan.humanHours)} (${record.plan.size}); Refine delta: ${hours(record.plan.deltaHours)}.\n\nAI P50: ${hours(record.ai.p50EngagedHours)}; AI P80: ${hours(record.ai.p80EngagedHours)}. Stages: ${stages}.\n\nRubric: v${record.rubric.version}, cohort ${record.rubric.cohortSize}, confidence ${percent(record.rubric.confidence)}.\n\n${wbs}\n\n${comparables}\n\n${testPlan}\n\n${risks}\n\nRecommendation: ${record.recommendation.action} — ${record.recommendation.reason}\n`;
 }
 
 export function renderEstimationOutcome(record) {

@@ -1,0 +1,32 @@
+{
+  "schema": "aitm.plan-estimation-input/v1",
+  "wbs": [
+    {
+      "id": "records",
+      "description": "Implement estimation record schemas and transport",
+      "baseHumanHours": 8,
+      "signals": {
+        "modules": ["estimation", "github-records"],
+        "dependencies": ["record-envelope", "github-comment-store"]
+      },
+      "independentlyReviewable": true
+    },
+    {
+      "id": "learning",
+      "description": "Implement rubric learning and lifecycle integration",
+      "baseHumanHours": 31,
+      "signals": {
+        "modules": ["estimation", "reports"],
+        "dependencies": ["timing", "verification", "close"]
+      },
+      "independentlyReviewable": true
+    }
+  ],
+  "testImpact": {
+    "lanes": ["unit", "integration", "slow"],
+    "isolation": "test-sandbox",
+    "expectedMinutes": 60
+  },
+  "risks": ["Partial multi-surface writes", "Epic double-counting"],
+  "comparableIssueIds": [1068]
+}

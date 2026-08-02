@@ -205,6 +205,9 @@ test('known estimation record types are validated and correlated by the canonica
 test('visible renderers expose evidence while presentation edits leave payload hashes unchanged', () => {
   assert.match(renderEstimationForecast(forecast), /AI P50.*22h/i);
   assert.match(renderEstimationForecast(forecast), /Rubric.*v1/i);
+  assert.match(renderEstimationForecast(forecast), /Comparable.*#1068/i);
+  assert.match(renderEstimationForecast(forecast), /unit, integration/i);
+  assert.match(renderEstimationForecast(forecast), /Partial multi-surface writes/i);
   assert.match(renderEstimationOutcome(outcome), /variance/i);
   assert.match(renderEstimationRubric(rubric), /P80 coverage/i);
 
