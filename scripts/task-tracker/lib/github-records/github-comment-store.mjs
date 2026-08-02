@@ -152,6 +152,7 @@ function parseComment(node, expectedId, repository, issue) {
         expectedRepository: repository,
         expectedIssue: issue,
       }),
+      body: node.body,
       updatedAt,
     });
   } catch {
@@ -174,13 +175,14 @@ function parseExpectedBody(body, repository, issue) {
 
 async function verifyWriteReadBack({
   commentNodeId,
+  expectedBody,
   expectedEnvelope,
   repository,
   issue,
   graphql,
 }) {
   const actual = await readBackComment({ commentNodeId, repository, issue, graphql });
-  if (!isDeepStrictEqual(actual.envelope, expectedEnvelope)) {
+  if (actual.body !== expectedBody || !isDeepStrictEqual(actual.envelope, expectedEnvelope)) {
     throw storeError('readback-mismatch');
   }
   return actual;
@@ -231,6 +233,7 @@ export async function createIssueComment(input = {}) {
   if (!isOpaqueId(response?.node_id)) throw storeError('write-response');
   return verifyWriteReadBack({
     commentNodeId: response.node_id,
+    expectedBody: body,
     expectedEnvelope,
     repository,
     issue,
@@ -259,7 +262,14 @@ export async function updateIssueComment(input = {}) {
   if (response?.data?.updateIssueComment?.issueComment?.id !== commentNodeId) {
     throw storeError('write-response');
   }
-  return verifyWriteReadBack({ commentNodeId, expectedEnvelope, repository, issue, graphql });
+  return verifyWriteReadBack({
+    commentNodeId,
+    expectedBody: body,
+    expectedEnvelope,
+    repository,
+    issue,
+    graphql,
+  });
 }
 
 export async function listIssueCommentsSince(input = {}) {

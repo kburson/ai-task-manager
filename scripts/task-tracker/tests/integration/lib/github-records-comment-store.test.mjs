@@ -154,3 +154,35 @@ test('a write rejects a canonical read-back that differs from the requested enve
     (error) => error.category === 'readback-mismatch'
   );
 });
+
+test('writes reject a read-back whose visible projection differs from the requested body', async () => {
+  const memory = createMemoryTransports();
+  const requested = recordBody('01J00000000000000000000015', 'requested');
+  const altered = requested.replace(/\nrequested\n$/, '\naltered\n');
+  const created = memory.store(altered);
+
+  await assert.rejects(
+    createIssueComment({
+      repository,
+      issue,
+      body: requested,
+      graphql: memory.graphql,
+      rest: { createIssueComment: async () => created },
+    }),
+    (error) => error.category === 'readback-mismatch'
+  );
+
+  await assert.rejects(
+    updateIssueComment({
+      repository,
+      issue,
+      commentNodeId: created.node_id,
+      body: requested,
+      graphql: async ({ query, variables }) =>
+        query.includes('mutation AitmUpdateIssueComment')
+          ? { data: { updateIssueComment: { issueComment: { id: variables.id } } } }
+          : memory.graphql({ query, variables }),
+    }),
+    (error) => error.category === 'readback-mismatch'
+  );
+});
