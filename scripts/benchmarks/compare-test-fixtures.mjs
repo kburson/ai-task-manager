@@ -190,7 +190,30 @@ export function runBenchmark(options, deps = {}) {
     rmSync(root, { recursive: true, force: true });
     cleanup.root = true;
   }
-  if (thrown) throw thrown;
+  const resultBase = {
+    schema: 1,
+    generatedAt: new Date().toISOString(),
+    environment: {
+      node: process.version,
+      platform: process.platform,
+      arch: process.arch,
+      cpus: os.cpus().length,
+      cpuModel: os.cpus()[0]?.model || null,
+    },
+    refs: { baseline: options.baselineRef, candidate: options.candidateRef },
+    files: { baseline: options.baselineFiles, candidate: options.candidateFiles },
+    samplesPerMode: options.samples,
+  };
+  if (thrown) {
+    return {
+      ...resultBase,
+      measurements: null,
+      comparison: null,
+      partialSamples: durations,
+      failures: [{ name: thrown.name || 'Error', message: thrown.message || String(thrown) }],
+      cleanup,
+    };
+  }
   const summaries = {};
   for (const name of ['baseline', 'candidate']) {
     const fileCount = (name === 'baseline' ? options.baselineFiles : options.candidateFiles).length;
@@ -207,18 +230,7 @@ export function runBenchmark(options, deps = {}) {
     };
   }
   return {
-    schema: 1,
-    generatedAt: new Date().toISOString(),
-    environment: {
-      node: process.version,
-      platform: process.platform,
-      arch: process.arch,
-      cpus: os.cpus().length,
-      cpuModel: os.cpus()[0]?.model || null,
-    },
-    refs: { baseline: options.baselineRef, candidate: options.candidateRef },
-    files: { baseline: options.baselineFiles, candidate: options.candidateFiles },
-    samplesPerMode: options.samples,
+    ...resultBase,
     measurements: summaries,
     comparison: {
       cold: compareTestClusterMeasurements({
@@ -258,7 +270,9 @@ function main() {
   writeFileSync(output, `${JSON.stringify(result, null, 2)}\n`);
   console.log(`benchmark written: ${output}`);
   console.log(JSON.stringify(result.comparison, null, 2));
-  if (!result.comparison.combined.passesThreshold) process.exitCode = 1;
+  if (result.failures.length > 0 || !result.comparison?.combined?.passesThreshold) {
+    process.exitCode = 1;
+  }
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) main();

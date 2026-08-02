@@ -1,8 +1,11 @@
 # Feature-Fixture Performance Evidence
 
-**Story:** #1090  
-**Pinned design base:** `dd9573a1c1d8c8f0527dd457dbe29869a5d020b6`  
-**Implementation baseline:** `0373cbd9fd1259d45fd0c38e65a86d73a6307fe7`  
+**Story:** #1090
+
+**Pinned design base:** `dd9573a1c1d8c8f0527dd457dbe29869a5d020b6`
+
+**Implementation baseline:** `0373cbd9fd1259d45fd0c38e65a86d73a6307fe7`
+
 **Environment:** Node v25.6.0, macOS arm64, Apple M1 Max, 10 logical CPUs
 
 The machine-readable samples are in

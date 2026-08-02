@@ -12,7 +12,7 @@
   "runs": [
     {
       "name": "runner-composition-1",
-      "candidateRef": "9c82cb12",
+      "candidateRef": "9c82cb12b05f0b960bc563dabe24ecf81a6a4f45",
       "disposition": "restored",
       "files": {
         "baseline": [
@@ -60,7 +60,7 @@
     },
     {
       "name": "runner-composition-2-lightweight-skeleton",
-      "candidateRef": "662af171",
+      "candidateRef": "662af1718b10d7a4001cbc5d89f430283757b57a",
       "disposition": "restored",
       "files": {
         "baseline": [
@@ -108,7 +108,7 @@
     },
     {
       "name": "chore-mode-retained",
-      "candidateRef": "30fa7fd0",
+      "candidateRef": "30fa7fd0befa03430cc056cbcc32a825b28e42cb",
       "disposition": "retained",
       "files": {
         "baseline": [
@@ -156,7 +156,7 @@
     "lane": "unit",
     "mode": "alternating sequential refs after a rejected simultaneous-load trial",
     "baselineRef": "0373cbd9fd1259d45fd0c38e65a86d73a6307fe7",
-    "candidateRef": "ef0d017f",
+    "candidateRef": "ef0d017f3aeccf61127f30ba1ab0d758d76b2364",
     "sampleCount": 3,
     "baseline": {
       "externalWallMs": [437790, 340340, 182140],

@@ -113,3 +113,32 @@ test('runBenchmark owns explicit worktrees, alternates samples, and cleans both 
   assert.equal(result.comparison.combined.passesThreshold, true);
   assert.deepEqual(result.cleanup, { baseline: true, candidate: true, root: true });
 });
+
+test('runBenchmark retains partial samples, failure detail, and cleanup in JSON shape', () => {
+  const removed = [];
+  const result = runBenchmark(
+    {
+      baselineRef: 'base',
+      candidateRef: 'head',
+      baselineFiles: ['old.test.mjs'],
+      candidateFiles: ['new.test.mjs'],
+      samples: 1,
+    },
+    {
+      projectDir: process.cwd(),
+      addWorktree: () => {},
+      removeWorktree: (_project, target) => removed.push(target),
+      measure: (_target, _files, sample) => {
+        if (sample.ref === 'candidate') throw new Error('candidate sample failed');
+        return 100;
+      },
+    }
+  );
+  assert.equal(result.failures.length, 1);
+  assert.match(result.failures[0].message, /candidate sample failed/);
+  assert.deepEqual(result.partialSamples.baseline, { cold: [100], warm: [100] });
+  assert.equal(result.measurements, null);
+  assert.equal(result.comparison, null);
+  assert.equal(removed.length, 2);
+  assert.deepEqual(result.cleanup, { baseline: true, candidate: true, root: true });
+});
