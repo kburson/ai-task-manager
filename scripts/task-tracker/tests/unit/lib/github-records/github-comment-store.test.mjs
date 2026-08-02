@@ -2,6 +2,7 @@
 // cspell:ignore Unrequested
 import { strict as assert } from 'node:assert';
 import test from 'node:test';
+import { inspect } from 'node:util';
 
 import {
   hashRecordPayload,
@@ -77,6 +78,23 @@ test('getCommentsByNodeIds retrieves opaque IDs in one nodes query', async () =>
   );
 });
 
+test('GitHub timestamps without fractional seconds are accepted and normalized', async () => {
+  const id = 'IC_kwDOGitHubTimestamp';
+  const githubNode = {
+    ...node(id, '01J00000000000000000000012'),
+    updatedAt: '2026-08-02T01:52:38Z',
+  };
+
+  const [comment] = await getCommentsByNodeIds({
+    ids: [id],
+    repository,
+    issue,
+    graphql: async () => ({ data: { nodes: [githubNode] } }),
+  });
+
+  assert.equal(comment.updatedAt, '2026-08-02T01:52:38.000Z');
+});
+
 test('GraphQL transport and partial responses fail with safe normalized categories', async () => {
   const secret = 'ghp_1234567890abcdefghijklmnop';
   const cases = [
@@ -98,6 +116,7 @@ test('GraphQL transport and partial responses fail with safe normalized categori
         assert.equal(error.name, 'GitHubCommentStoreError');
         assert.equal(error.category, category);
         assert.doesNotMatch(error.message, /ghp_/);
+        assert.doesNotMatch(inspect(error), /ghp_/);
         return true;
       }
     );
@@ -181,6 +200,33 @@ test('batched reads reject invalid inputs before invoking transport', async () =
   assert.equal(calls, 0);
 });
 
+test('updates use the opaque node ID through GraphQL before read-back', async () => {
+  const { updateIssueComment } = commentStore;
+  const id = 'IC_kwDOGraphqlUpdate';
+  const recordBody = body('01J00000000000000000000013');
+  const calls = [];
+  const graphql = async (request) => {
+    calls.push(request);
+    if (request.query.includes('mutation AitmUpdateIssueComment')) {
+      return { data: { updateIssueComment: { issueComment: { id } } } };
+    }
+    return { data: { nodes: [node(id, '01J00000000000000000000013')] } };
+  };
+
+  const updated = await updateIssueComment({
+    commentNodeId: id,
+    repository,
+    issue,
+    body: recordBody,
+    graphql,
+  });
+
+  assert.equal(updated.commentNodeId, id);
+  assert.equal(calls.length, 2);
+  assert.deepEqual(calls[0].variables, { id, body: recordBody });
+  assert.deepEqual(calls[1].variables, { ids: [id] });
+});
+
 test('writes fail closed before success and never expose transport payloads', async () => {
   const { createIssueComment, updateIssueComment } = commentStore;
   const secret = 'ghp_1234567890abcdefghijklmnop';
@@ -210,7 +256,14 @@ test('writes fail closed before success and never expose transport payloads', as
         updateIssueComment({
           ...base,
           commentNodeId: id,
-          rest: { updateIssueComment: async () => ({ node_id: 'IC_kwDOChanged' }) },
+          graphql: async ({ query }) =>
+            query.includes('mutation AitmUpdateIssueComment')
+              ? {
+                  data: {
+                    updateIssueComment: { issueComment: { id: 'IC_kwDOChanged' } },
+                  },
+                }
+              : base.graphql(),
         }),
       'write-response',
     ],
@@ -345,5 +398,43 @@ test('incremental listing applies an exclusive boundary and normalizes transport
       assert.doesNotMatch(error.message, /ghp_/);
       return true;
     }
+  );
+});
+
+test('incremental listing ignores ordinary issue comments', async () => {
+  const { listIssueCommentsSince } = commentStore;
+  const record = {
+    ...node('IC_kwDORecordAfterOrdinary', '01J00000000000000000000014'),
+    updatedAt: '2026-08-01T14:02:00Z',
+  };
+  const ordinary = {
+    ...node('IC_kwDOOrdinary', '01J00000000000000000000015'),
+    body: 'Human discussion without an AITM record marker.',
+    updatedAt: '2026-08-01T14:01:00Z',
+  };
+
+  const result = await listIssueCommentsSince({
+    since: '2026-08-01T14:00:00.000Z',
+    repository,
+    issue,
+    graphql: async () => ({
+      data: {
+        repository: {
+          issue: {
+            number: issue,
+            repository: { nameWithOwner: repository },
+            comments: {
+              nodes: [ordinary, record],
+              pageInfo: { hasNextPage: false, endCursor: null },
+            },
+          },
+        },
+      },
+    }),
+  });
+
+  assert.deepEqual(
+    result.map((comment) => comment.commentNodeId),
+    ['IC_kwDORecordAfterOrdinary']
   );
 });

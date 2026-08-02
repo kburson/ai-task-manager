@@ -40,17 +40,24 @@ const ISSUE_COMMENTS_QUERY = `
     }
   }
 `;
+const UPDATE_ISSUE_COMMENT_MUTATION = `
+  mutation AitmUpdateIssueComment($id: ID!, $body: String!) {
+    updateIssueComment(input: { id: $id, body: $body }) {
+      issueComment { id }
+    }
+  }
+`;
 
 export class GitHubCommentStoreError extends Error {
-  constructor(category, cause) {
-    super(`github-comment-store:${category}`, { cause });
+  constructor(category) {
+    super(`github-comment-store:${category}`);
     this.name = 'GitHubCommentStoreError';
     this.category = category;
   }
 }
 
-function storeError(category, cause) {
-  return new GitHubCommentStoreError(category, cause);
+function storeError(category) {
+  return new GitHubCommentStoreError(category);
 }
 
 function assertNoGraphqlErrors(response) {
@@ -83,6 +90,17 @@ function isCanonicalInstant(value) {
   return Number.isFinite(timestamp) && new Date(timestamp).toISOString() === value;
 }
 
+function normalizeGitHubInstant(value) {
+  if (
+    typeof value !== 'string' ||
+    !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z$/.test(value)
+  ) {
+    return null;
+  }
+  const timestamp = Date.parse(value);
+  return Number.isFinite(timestamp) ? new Date(timestamp).toISOString() : null;
+}
+
 function assertContext({ repository, issue, graphql }) {
   if (
     typeof repository !== 'string' ||
@@ -108,14 +126,24 @@ function assertReadInput({ ids, ...context }) {
   }
 }
 
-function parseComment(node, expectedId, repository, issue) {
+function validateCommentNode(node, expectedId, repository, issue) {
   if (node === null) throw storeError('missing-node');
   if (node?.__typename !== 'IssueComment') throw storeError('wrong-type');
-  if (node.id !== expectedId) throw storeError('node-mismatch');
+  if (!isOpaqueId(node.id) || node.id !== expectedId) throw storeError('node-mismatch');
   if (node.issue?.number !== issue || node.issue?.repository?.nameWithOwner !== repository) {
     throw storeError('correlation');
   }
-  if (!isCanonicalInstant(node.updatedAt)) throw storeError('response-shape');
+  const updatedAt = normalizeGitHubInstant(node.updatedAt);
+  if (updatedAt === null) throw storeError('response-shape');
+  return updatedAt;
+}
+
+function claimsAitmRecord(body) {
+  return typeof body === 'string' && /<!--\s*aitm-record(?=\s)/.test(body);
+}
+
+function parseComment(node, expectedId, repository, issue) {
+  const updatedAt = validateCommentNode(node, expectedId, repository, issue);
   try {
     return Object.freeze({
       ...parseAitmRecord({
@@ -124,10 +152,10 @@ function parseComment(node, expectedId, repository, issue) {
         expectedRepository: repository,
         expectedIssue: issue,
       }),
-      updatedAt: node.updatedAt,
+      updatedAt,
     });
-  } catch (cause) {
-    throw storeError('envelope', cause);
+  } catch {
+    throw storeError('envelope');
   }
 }
 
@@ -139,8 +167,8 @@ function parseExpectedBody(body, repository, issue) {
       expectedRepository: repository,
       expectedIssue: issue,
     }).envelope;
-  } catch (cause) {
-    throw storeError('envelope', cause);
+  } catch {
+    throw storeError('envelope');
   }
 }
 
@@ -167,8 +195,8 @@ export async function getCommentsByNodeIds(input = {}) {
       query: COMMENTS_BY_NODE_IDS_QUERY,
       variables: { ids: [...ids] },
     });
-  } catch (cause) {
-    throw storeError('transport', cause);
+  } catch {
+    throw storeError('transport');
   }
   assertNoGraphqlErrors(response);
   if (!Array.isArray(response?.data?.nodes)) throw storeError('partial-response');
@@ -197,8 +225,8 @@ export async function createIssueComment(input = {}) {
   let response;
   try {
     response = await rest.createIssueComment({ repository, issue, body });
-  } catch (cause) {
-    throw storeError('transport', cause);
+  } catch {
+    throw storeError('transport');
   }
   if (!isOpaqueId(response?.node_id)) throw storeError('write-response');
   return verifyWriteReadBack({
@@ -211,24 +239,23 @@ export async function createIssueComment(input = {}) {
 }
 
 export async function updateIssueComment(input = {}) {
-  const { commentNodeId, repository, issue, body, rest, graphql } = input;
+  const { commentNodeId, repository, issue, body, graphql } = input;
   assertContext(input);
-  if (
-    !isOpaqueId(commentNodeId) ||
-    typeof body !== 'string' ||
-    body.length === 0 ||
-    typeof rest?.updateIssueComment !== 'function'
-  ) {
+  if (!isOpaqueId(commentNodeId) || typeof body !== 'string' || body.length === 0) {
     throw storeError('input');
   }
   const expectedEnvelope = parseExpectedBody(body, repository, issue);
   let response;
   try {
-    response = await rest.updateIssueComment({ commentNodeId, repository, issue, body });
-  } catch (cause) {
-    throw storeError('transport', cause);
+    response = await graphql({
+      query: UPDATE_ISSUE_COMMENT_MUTATION,
+      variables: { id: commentNodeId, body },
+    });
+  } catch {
+    throw storeError('transport');
   }
-  if (!isOpaqueId(response?.node_id) || response.node_id !== commentNodeId) {
+  assertNoGraphqlErrors(response);
+  if (response?.data?.updateIssueComment?.issueComment?.id !== commentNodeId) {
     throw storeError('write-response');
   }
   return verifyWriteReadBack({ commentNodeId, expectedEnvelope, repository, issue, graphql });
@@ -250,8 +277,8 @@ export async function listIssueCommentsSince(input = {}) {
         query: ISSUE_COMMENTS_QUERY,
         variables: { owner, name, issue, after },
       });
-    } catch (cause) {
-      throw storeError('transport', cause);
+    } catch {
+      throw storeError('transport');
     }
     assertNoGraphqlErrors(response);
     const responseIssue = response?.data?.repository?.issue;
@@ -265,9 +292,11 @@ export async function listIssueCommentsSince(input = {}) {
     if (!Array.isArray(connection?.nodes)) throw storeError('partial-response');
     if (typeof connection.pageInfo?.hasNextPage !== 'boolean') throw storeError('pagination');
     for (const comment of connection.nodes) {
-      if (comment !== null && seenIds.has(comment?.id)) throw storeError('pagination');
+      validateCommentNode(comment, comment?.id, repository, issue);
+      if (seenIds.has(comment.id)) throw storeError('pagination');
+      seenIds.add(comment.id);
+      if (!claimsAitmRecord(comment.body)) continue;
       const parsed = parseComment(comment, comment?.id, repository, issue);
-      seenIds.add(parsed.commentNodeId);
       comments.push(parsed);
     }
     if (!connection.pageInfo.hasNextPage) break;

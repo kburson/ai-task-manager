@@ -63,9 +63,14 @@ function createMemoryTransports() {
   };
   const rest = {
     createIssueComment: async ({ body }) => store(body),
-    updateIssueComment: async ({ commentNodeId, body }) => store(body, commentNodeId),
   };
   const graphql = async ({ query, variables }) => {
+    if (query.includes('mutation AitmUpdateIssueComment')) {
+      store(variables.body, variables.id);
+      return {
+        data: { updateIssueComment: { issueComment: { id: variables.id } } },
+      };
+    }
     if (query.includes('nodes(ids:')) {
       nodeBatchSizes.push(variables.ids.length);
       return { data: { nodes: variables.ids.map((id) => node(comments.get(id))) } };
