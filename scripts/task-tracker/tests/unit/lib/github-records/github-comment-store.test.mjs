@@ -439,6 +439,75 @@ test('incremental listing rejects an empty page that claims a successor', async 
   assert.equal(calls, 1);
 });
 
+test('incremental listing rejects missing or non-string comment bodies', async () => {
+  const { listIssueCommentsSince } = commentStore;
+  for (const bodyValue of [undefined, null, 42]) {
+    const comment = node('IC_kwDOMalformedBody', '01J00000000000000000000018');
+    if (bodyValue === undefined) delete comment.body;
+    else comment.body = bodyValue;
+
+    await assert.rejects(
+      listIssueCommentsSince({
+        since: '2026-08-01T00:00:00.000Z',
+        repository,
+        issue,
+        graphql: async () => ({
+          data: {
+            repository: {
+              issue: {
+                number: issue,
+                repository: { nameWithOwner: repository },
+                comments: {
+                  nodes: [comment],
+                  pageInfo: { hasNextPage: false, endCursor: null },
+                },
+              },
+            },
+          },
+        }),
+      }),
+      (error) => error.category === 'response-shape'
+    );
+  }
+});
+
+test('incremental listing bounds fresh non-terminal pages', async () => {
+  const { listIssueCommentsSince } = commentStore;
+  let calls = 0;
+  await assert.rejects(
+    listIssueCommentsSince({
+      since: '2026-08-01T00:00:00.000Z',
+      repository,
+      issue,
+      graphql: async () => {
+        calls += 1;
+        if (calls > 1000) throw new Error('bounded test stop');
+        return {
+          data: {
+            repository: {
+              issue: {
+                number: issue,
+                repository: { nameWithOwner: repository },
+                comments: {
+                  nodes: [
+                    {
+                      ...node(`IC_kwDOFreshPage${calls}`, '01J00000000000000000000019'),
+                      body: 'Ordinary comment.',
+                    },
+                  ],
+                  pageInfo: { hasNextPage: true, endCursor: `fresh-${calls}` },
+                },
+              },
+            },
+          },
+        };
+      },
+    }),
+    (error) => error.category === 'pagination'
+  );
+  assert.equal(calls, 1000);
+});
+
 test('incremental listing applies an exclusive boundary and normalizes transport failure', async () => {
   const { listIssueCommentsSince } = commentStore;
   const since = '2026-08-01T14:01:00.000Z';

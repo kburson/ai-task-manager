@@ -47,6 +47,7 @@ const UPDATE_ISSUE_COMMENT_MUTATION = `
     }
   }
 `;
+const MAX_ISSUE_COMMENT_PAGES = 1000;
 
 export class GitHubCommentStoreError extends Error {
   constructor(category) {
@@ -133,6 +134,7 @@ function validateCommentNode(node, expectedId, repository, issue) {
   if (node.issue?.number !== issue || node.issue?.repository?.nameWithOwner !== repository) {
     throw storeError('correlation');
   }
+  if (typeof node.body !== 'string') throw storeError('response-shape');
   const updatedAt = normalizeGitHubInstant(node.updatedAt);
   if (updatedAt === null) throw storeError('response-shape');
   return updatedAt;
@@ -281,7 +283,10 @@ export async function listIssueCommentsSince(input = {}) {
   const seenIds = new Set();
   const seenCursors = new Set();
   let after = null;
+  let pageCount = 0;
   while (true) {
+    pageCount += 1;
+    if (pageCount > MAX_ISSUE_COMMENT_PAGES) throw storeError('pagination');
     let response;
     try {
       response = await graphql({
