@@ -34,7 +34,9 @@ for (const root of ROOTS) {
 if (violations.length === 0) {
   console.log(`audit-line-cap: all test files within ${HARD_LIMIT}-line code-LOC limit`);
   for (const { file, lines } of advisories) {
-    console.warn(`audit-line-cap: review ${lines}-line feature file above soft ${SOFT_LIMIT}: ${file}`);
+    console.warn(
+      `audit-line-cap: review ${lines}-line feature file above soft ${SOFT_LIMIT}: ${file}`
+    );
   }
   process.exit(0);
 } else {

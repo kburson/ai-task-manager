@@ -69,9 +69,7 @@ test('discoverTestFiles returns sorted, repo-relative POSIX paths', () => {
 
 test('feature-fixture tests remain discoverable while static fixture trees stay excluded', () => {
   const files = discoverTestFiles({ projectRoot: PROJECT_ROOT });
-  assert.ok(
-    files.includes('scripts/task-tracker/tests/unit/fixtures/feature-fixtures.test.mjs')
-  );
+  assert.ok(files.includes('scripts/task-tracker/tests/unit/fixtures/feature-fixtures.test.mjs'));
   assert.equal(
     files.some((file) => file.startsWith('scripts/task-tracker/tests/fixtures/')),
     false
