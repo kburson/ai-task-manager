@@ -99,11 +99,6 @@ export function updateEstimationRubric({
   }
   if (ordered.length === 0) return previous;
 
-  const humanRatios = ordered.map(({ payload }) =>
-    payload.humanPlanHours === 0
-      ? 1
-      : payload.costClassification.necessaryHours / payload.humanPlanHours
-  );
   const aiRatios = ordered.map(({ payload }) =>
     payload.humanPlanHours === 0 ? 1 : payload.actual.engagedHours / payload.humanPlanHours
   );
@@ -145,15 +140,13 @@ export function updateEstimationRubric({
       outcomeRecordId: recordId,
     })),
     human: {
-      coefficients: {
-        ...previous.human.coefficients,
-        necessaryToPlanned: weightedRobustMean(
-          humanRatios,
-          previous.human.coefficients.necessaryToPlanned
-        ),
-      },
-      sampleSize: ordered.length,
-      confidence,
+      // Completion outcomes measure agent execution. They are valid evidence
+      // for AI forecasts and workflow diagnostics, never for human-equivalent
+      // effort. Preserve separately sourced human coefficients until AITM has
+      // explicit human-estimation observations to update them.
+      coefficients: clone(previous.human.coefficients),
+      sampleSize: previous.human.sampleSize,
+      confidence: previous.human.confidence,
     },
     ai: {
       coefficients: {

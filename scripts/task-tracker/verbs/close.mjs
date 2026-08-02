@@ -1044,6 +1044,12 @@ export async function verbClose(ctx) {
     }
   }
 
+  const estimationOutcomeWriter =
+    ctx.estimationOutcomeWriter ??
+    (Number.isInteger(cfg.estimationRubricIssue) && cfg.estimationRubricIssue > 0
+      ? createEstimationOutcomeRuntime({ cfg, projectDir })
+      : null);
+
   if (!SKIP_NETWORK && closeIssueNum) {
     const subNums = await fetchSubIssues(closeIssueNum);
     if (subNums.length > 0) {
@@ -1083,6 +1089,40 @@ export async function verbClose(ctx) {
                 description: `${_PEcascade.done.enter.description} (cascade closed by epic)`,
               })
             );
+            // Cascaded children are independently estimated stories. Freeze
+            // their completion outcome after the close-time timing row and
+            // before any terminal board/disposition/issue mutation, exactly as
+            // the primary close path does.
+            let childBody;
+            try {
+              const { stdout } = await pexec(
+                'gh',
+                [
+                  'issue',
+                  'view',
+                  String(child.num),
+                  '-R',
+                  cfg.repo,
+                  '--json',
+                  'body',
+                  '--jq',
+                  '.body',
+                ],
+                { timeout: GH_API_TIMEOUT_MS }
+              );
+              childBody = String(stdout ?? '');
+              await ensureCloseEstimationOutcome({
+                issueNumber: child.num,
+                body: childBody,
+                writer: estimationOutcomeWriter,
+              });
+            } catch (err) {
+              console.error(
+                `  ⛔ Could not create completion outcome for #${child.num}: ${err.message}`
+              );
+              process.exitCode = 1;
+              return;
+            }
             // #385 — structured result; a genuine per-child board-move failure
             // is surfaced (with its real stderr) but does not abort the cascade.
             // The benign `done → done` no-op stays silent.
@@ -1222,11 +1262,6 @@ export async function verbClose(ctx) {
     }
   }
   try {
-    const estimationOutcomeWriter =
-      ctx.estimationOutcomeWriter ??
-      (Number.isInteger(cfg.estimationRubricIssue) && cfg.estimationRubricIssue > 0
-        ? createEstimationOutcomeRuntime({ cfg, projectDir })
-        : null);
     await ensureCloseEstimationOutcome({
       issueNumber: closeIssueNum,
       body: closeBody,

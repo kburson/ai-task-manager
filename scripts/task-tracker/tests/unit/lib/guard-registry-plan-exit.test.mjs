@@ -22,6 +22,12 @@ import {
 } from '../../../lib/plan-exit-planned-estimate-guard.mjs';
 import { STATES } from '../../../states/index.mjs';
 import { runGuards } from '../../../lib/guard-registry.mjs';
+import { buildEstimationForecast } from '../../../lib/estimation/forecast-model.mjs';
+import { createBootstrapRubric } from '../../../lib/estimation/rubric-model.mjs';
+import {
+  createAitmRecordEnvelope,
+  renderAitmRecord,
+} from '../../../lib/github-records/record-envelope.mjs';
 import '../../../lib/guard-bootstrap.mjs';
 
 // #336 — APPROVED_BODY now also carries deep-dive signals so the
@@ -94,10 +100,15 @@ const CFG = { repo: 'owner/name', projectId: 'PVT' };
 
 test('v1 Plan projection requires one ready forecast matching board and body authority', async () => {
   const recordId = '01J00000000000000000000700';
-  const forecast = { recordId, payload: { plan: { size: 'XL', humanHours: 40 } } };
+  const forecast = {
+    recordId,
+    supersededBy: null,
+    payload: { plan: { size: 'XL', humanHours: 40 } },
+  };
   assert.deepEqual(
     validateForecastProjection({
       forecast,
+      activeForecastRecordIds: [recordId],
       readyForecastRecordId: recordId,
       board: { size: 'XL', estimate: 40 },
       bodyFields: { size: 'XL', estimate: 40 },
@@ -107,20 +118,37 @@ test('v1 Plan projection requires one ready forecast matching board and body aut
   for (const projection of [
     {
       forecast: null,
+      activeForecastRecordIds: [recordId],
       readyForecastRecordId: recordId,
       board: { size: 'XL', estimate: 40 },
       bodyFields: { size: 'XL', estimate: 40 },
     },
     {
       forecast,
+      activeForecastRecordIds: [recordId],
       readyForecastRecordId: '01J00000000000000000000701',
       board: { size: 'XL', estimate: 40 },
       bodyFields: { size: 'XL', estimate: 40 },
     },
     {
       forecast,
+      activeForecastRecordIds: [recordId],
       readyForecastRecordId: recordId,
       board: { size: 'L', estimate: 20 },
+      bodyFields: { size: 'XL', estimate: 40 },
+    },
+    {
+      forecast: { ...forecast, supersededBy: '01J00000000000000000000701' },
+      activeForecastRecordIds: ['01J00000000000000000000701'],
+      readyForecastRecordId: recordId,
+      board: { size: 'XL', estimate: 40 },
+      bodyFields: { size: 'XL', estimate: 40 },
+    },
+    {
+      forecast,
+      activeForecastRecordIds: [recordId, '01J00000000000000000000701'],
+      readyForecastRecordId: recordId,
+      board: { size: 'XL', estimate: 40 },
       bodyFields: { size: 'XL', estimate: 40 },
     },
   ])
@@ -137,6 +165,7 @@ test('v1 Plan projection requires one ready forecast matching board and body aut
         listComments: PLANNED_ESTIMATE_OK_DEPS.plannedEstimate.listComments,
         forecastProjection: async () => ({
           forecast,
+          activeForecastRecordIds: [recordId],
           board: { size: 'XL', estimate: 40 },
           bodyFields: { size: 'XL', estimate: 40 },
         }),
@@ -147,8 +176,40 @@ test('v1 Plan projection requires one ready forecast matching board and body aut
   assert.equal(result.forecastRecordId, recordId);
 });
 
-test('v1 Plan projection uses the production paginated record loader when no reader is injected', async () => {
+test('v1 Plan projection uses production raw-comment pagination when no reader is injected', async () => {
   const recordId = '01J00000000000000000000702';
+  const rubricRecordId = '01J00000000000000000000703';
+  const rubric = createBootstrapRubric({ generatedAt: '2026-08-02T13:00:00.000Z' });
+  const payload = buildEstimationForecast({
+    issue: 1091,
+    refine: { size: 'XL', humanHours: 40 },
+    planInput: {
+      schema: 'aitm.plan-estimation-input/v1',
+      wbs: [
+        {
+          id: 'implementation',
+          description: 'Implement the planned change',
+          baseHumanHours: 39.15,
+          independentlyReviewable: true,
+          signals: { modules: ['estimation'], dependencies: ['github-records'] },
+        },
+      ],
+      testImpact: { lanes: ['unit'], isolation: 'test-sandbox', expectedMinutes: 0 },
+      risks: [],
+      comparableIssueIds: [],
+    },
+    rubric: { recordId: rubricRecordId, payload: rubric },
+  });
+  const envelope = createAitmRecordEnvelope({
+    recordType: 'estimation-forecast',
+    repository: 'owner/name',
+    issue: 1091,
+    payload,
+    actor: 'aitm/plan-estimate',
+    recordId,
+    grantId: '01J00000000000000000000704',
+    createdAt: '2026-08-02T14:00:00.000Z',
+  });
   const cfg = {
     ...CFG,
     sizeFieldId: 'SIZE_FIELD',
@@ -164,46 +225,63 @@ test('v1 Plan projection uses the production paginated record loader when no rea
     deps: {
       plannedEstimate: {
         listComments: PLANNED_ESTIMATE_OK_DEPS.plannedEstimate.listComments,
-        graphql: async () => ({
-          data: {
-            repository: {
-              issue: {
-                body: [
-                  `<!-- aitm-estimation-forecast-ready record-id="${recordId}" -->`,
-                  `<!-- aitm-fields: ${JSON.stringify({ schema: 1, values: { size: 'XL', estimate: 40 } })} -->`,
-                ].join('\n'),
-                comments: { nodes: [], pageInfo: { hasNextPage: true } },
-                projectItems: {
-                  nodes: [
-                    {
-                      id: 'ITEM',
-                      project: { id: cfg.projectId },
-                      fieldValues: {
-                        nodes: [
-                          { number: 40, field: { id: cfg.fieldEstimate } },
-                          { name: 'XL', field: { id: cfg.sizeFieldId } },
-                          { name: 'Plan', field: { id: cfg.kanbanFieldId } },
-                        ],
-                      },
+        graphql: async ({ query, variables }) => {
+          if (query.includes('AitmEstimationProjectionComments')) {
+            assert.equal(variables.after, 'CURSOR_1');
+            return {
+              data: {
+                repository: {
+                  issue: {
+                    number: 1091,
+                    repository: { nameWithOwner: 'owner/name' },
+                    comments: {
+                      nodes: [
+                        {
+                          __typename: 'IssueComment',
+                          id: 'COMMENT',
+                          body: renderAitmRecord({ envelope }),
+                          updatedAt: '2026-08-02T14:00:01Z',
+                          issue: { number: 1091, repository: { nameWithOwner: 'owner/name' } },
+                        },
+                      ],
+                      pageInfo: { hasNextPage: false, endCursor: null },
                     },
-                  ],
+                  },
+                },
+              },
+            };
+          }
+          return {
+            data: {
+              repository: {
+                issue: {
+                  body: [
+                    `<!-- aitm-estimation-forecast-ready record-id="${recordId}" -->`,
+                    `<!-- aitm-fields: ${JSON.stringify({ schema: 1, values: { size: 'XL', estimate: 40 } })} -->`,
+                  ].join('\n'),
+                  comments: {
+                    nodes: [],
+                    pageInfo: { hasNextPage: true, endCursor: 'CURSOR_1' },
+                  },
+                  projectItems: {
+                    nodes: [
+                      {
+                        id: 'ITEM',
+                        project: { id: cfg.projectId },
+                        fieldValues: {
+                          nodes: [
+                            { number: 40, field: { id: cfg.fieldEstimate } },
+                            { name: 'XL', field: { id: cfg.sizeFieldId } },
+                            { name: 'Plan', field: { id: cfg.kanbanFieldId } },
+                          ],
+                        },
+                      },
+                    ],
+                  },
                 },
               },
             },
-          },
-        }),
-        recordIo: {
-          listIssueRecords: async () => [
-            {
-              commentNodeId: 'COMMENT',
-              envelope: {
-                recordType: 'estimation-forecast',
-                recordId,
-                payloadHash: 'a'.repeat(64),
-                payload: { plan: { size: 'XL', humanHours: 40 } },
-              },
-            },
-          ],
+          };
         },
       },
     },

@@ -158,3 +158,39 @@ test('rubric payload and envelope predecessor links must describe one complete c
     /rubric-refresh:lineage/
   );
 });
+
+test('a historical rubric fork fails closed even when only one branch reaches the maximum version', async () => {
+  const root = createBootstrapRubric({ generatedAt: '2026-08-02T13:00:00.000Z' });
+  const branch = (recordId, generatedAt) => {
+    const payload = createBootstrapRubric({ generatedAt });
+    payload.version = 2;
+    payload.predecessorRecordId = rubricId;
+    return comment(payload, recordId, { predecessor: rubricId, supersedes: rubricId });
+  };
+  const leftId = '01J00000000000000000000410';
+  const left = branch(leftId, '2026-08-02T14:00:00.000Z');
+  const right = branch('01J00000000000000000000411', '2026-08-02T14:01:00.000Z');
+  const tipPayload = createBootstrapRubric({ generatedAt: '2026-08-02T15:00:00.000Z' });
+  tipPayload.version = 3;
+  tipPayload.predecessorRecordId = leftId;
+
+  await assert.rejects(
+    loadOrRefreshRubric({
+      cfg: { repo: 'o/r', estimationRubricIssue: 1091 },
+      through: '2026-08-02T16:00:00.000Z',
+      deps: {
+        listRubricRecords: async () => [
+          comment(root),
+          left,
+          right,
+          comment(tipPayload, '01J00000000000000000000412', {
+            predecessor: leftId,
+            supersedes: leftId,
+          }),
+        ],
+        listEligibleOutcomes: async () => [],
+      },
+    }),
+    /rubric-refresh:lineage/
+  );
+});

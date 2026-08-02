@@ -15,8 +15,6 @@ import { loadOrRefreshRubric } from '../../../../lib/estimation/rubric-refresh.m
 import {
   createAdaptivePlanRuntime,
   createEstimationOutcomeRuntime,
-  loadProjectEstimationCorpus,
-  refineEstimateFromProjection,
 } from '../../../../lib/estimation/runtime-adapter.mjs';
 import {
   createAitmRecordEnvelope,
@@ -36,83 +34,6 @@ const secondIssue = 1094;
 const RANDOM = (length) => Buffer.alloc(length, 0x35);
 let idClock = 1_722_604_800_000;
 const nextId = () => createRecordId({ nowMs: idClock++, randomBytesFn: RANDOM });
-
-test('process retry preserves the immutable Refine baseline after partial Plan writes', () => {
-  assert.deepEqual(
-    refineEstimateFromProjection({
-      refineAppendix: {
-        refine: { size: 'L', humanHours: 20 },
-        plan: { size: 'XL', humanHours: 40 },
-      },
-      board: { size: 'XL', estimate: 40 },
-    }),
-    { size: 'L', humanHours: 20 }
-  );
-});
-
-test('project corpus batches only unique Done candidates and excludes open outcomes', async () => {
-  const calls = [];
-  const recordCalls = [];
-  const graphql = async ({ query, variables }) => {
-    calls.push({ query, variables });
-    if (query.includes('AitmEstimationCorpus')) {
-      return {
-        data: {
-          node: {
-            items: {
-              nodes: [
-                {
-                  content: { id: 'ISSUE_DONE', number: 1 },
-                  fieldValues: { nodes: [{ name: 'Done', field: { id: 'STATUS' } }] },
-                },
-                {
-                  content: { id: 'ISSUE_OPEN', number: 2 },
-                  fieldValues: { nodes: [{ name: 'Develop', field: { id: 'STATUS' } }] },
-                },
-                {
-                  content: { id: 'ISSUE_DONE', number: 1 },
-                  fieldValues: { nodes: [{ name: 'Done', field: { id: 'STATUS' } }] },
-                },
-              ],
-              pageInfo: { hasNextPage: false, endCursor: null },
-            },
-          },
-        },
-      };
-    }
-    if (query.includes('AitmEstimationDoneRecords')) {
-      assert.deepEqual(variables.ids, ['ISSUE_DONE']);
-      return {
-        data: {
-          nodes: [
-            {
-              id: 'ISSUE_DONE',
-              number: 1,
-              comments: { nodes: [], pageInfo: { hasNextPage: true } },
-            },
-          ],
-        },
-      };
-    }
-    throw new Error('unexpected query');
-  };
-  const expected = { envelope: { recordType: 'estimation-outcome' } };
-  const records = await loadProjectEstimationCorpus({
-    cfg: { repo: repository, projectId: 'PROJECT', kanbanFieldId: 'STATUS' },
-    graphql,
-    io: {
-      graphql,
-      listIssueRecords: async ({ issue }) => {
-        recordCalls.push(issue);
-        return [expected];
-      },
-    },
-  });
-
-  assert.deepEqual(records, [expected]);
-  assert.deepEqual(recordCalls, [1]);
-  assert.equal(calls.length, 2);
-});
 
 function envelope({ recordType, issue, payload, predecessor = null, supersedes = null, actor }) {
   return createAitmRecordEnvelope({
@@ -375,8 +296,7 @@ test('completed outcome deterministically updates the next rubric and AI forecas
       },
     ],
   });
-  assert.equal(secondForecast.plan.humanHours, 5.85);
-  assert.notEqual(secondForecast.plan.humanHours, firstForecast.payload.plan.humanHours);
+  assert.equal(secondForecast.plan.humanHours, firstForecast.payload.plan.humanHours);
   assert.notEqual(secondForecast.ai.p50EngagedHours, firstForecast.payload.ai.p50EngagedHours);
   assert.equal(secondForecast.comparableIssues[0].outcomeRecordId, outcomeResult.recordId);
   assert.ok(transport.comments.size >= 4, 'every durable write completed a #1070 read-back');
@@ -677,4 +597,174 @@ test('production Plan runtime converges board, body, history, forecast, and read
     parsedRecords.filter((r) => r.envelope.recordType === 'estimation-forecast').length,
     1
   );
+});
+
+test('production Plan projection paginates raw comments so an older Refine baseline remains readable', async () => {
+  const cfg = {
+    repo: repository,
+    projectId: 'PVT_pagination',
+    estimationRubricIssue: rubricIssue,
+    kanbanFieldId: 'FIELD_status',
+    fieldIds: { size: 'FIELD_size', estimate: 'FIELD_estimate' },
+  };
+  const refineBody = [
+    '### 🛠 Refine estimate',
+    '',
+    '<!-- aitm-refined-estimate: 1091 -->',
+    '',
+    '### Planned Estimate',
+    '',
+    '| Field | Refine | Plan | Δ |',
+    '|---|---|---|---|',
+    '| Size | M | L | changed |',
+    '| Estimate (h) | 8 | 12 | +4 |',
+  ].join('\n');
+  const node = (id, body) => ({
+    __typename: 'IssueComment',
+    id,
+    databaseId: 1,
+    body,
+    updatedAt: '2026-08-02T15:00:00Z',
+    issue: { number: firstIssue, repository: { nameWithOwner: repository } },
+  });
+  const graphql = async ({ query, variables }) => {
+    if (query.includes('AitmEstimationProjectionComments')) {
+      assert.equal(variables.after, 'CURSOR_1');
+      return {
+        data: {
+          repository: {
+            issue: {
+              number: firstIssue,
+              repository: { nameWithOwner: repository },
+              comments: {
+                nodes: [node('IC_page_2', refineBody)],
+                pageInfo: { hasNextPage: false, endCursor: null },
+              },
+            },
+          },
+        },
+      };
+    }
+    if (query.includes('AitmEstimationProjection')) {
+      return {
+        data: {
+          repository: {
+            issue: {
+              body: '<!-- aitm-fields: {"schema":1,"values":{"size":"M","estimate":8}} -->',
+              comments: {
+                nodes: [node('IC_page_1', 'ordinary newer comment')],
+                pageInfo: { hasNextPage: true, endCursor: 'CURSOR_1' },
+              },
+              projectItems: {
+                nodes: [
+                  {
+                    id: 'ITEM_1091',
+                    project: { id: cfg.projectId },
+                    fieldValues: {
+                      nodes: [
+                        { name: 'Plan', field: { id: cfg.kanbanFieldId } },
+                        { name: 'M', field: { id: cfg.fieldIds.size } },
+                        { number: 8, field: { id: cfg.fieldIds.estimate } },
+                      ],
+                    },
+                  },
+                ],
+              },
+            },
+          },
+        },
+      };
+    }
+    throw new Error(`unexpected query: ${query}`);
+  };
+  const runtime = createAdaptivePlanRuntime({
+    cfg,
+    deps: {
+      graphql,
+      recordIo: { graphql, listIssueRecords: async () => [] },
+      loadProjectFieldDefs: () => [],
+    },
+  });
+
+  assert.deepEqual(await runtime.readRefineEstimate({ issueNumber: firstIssue }), {
+    size: 'M',
+    humanHours: 8,
+  });
+});
+
+test('a new Plan process reuses an equivalent active forecast left before the ready marker', async () => {
+  const cfg = {
+    repo: repository,
+    projectId: 'PVT_retry',
+    estimationRubricIssue: rubricIssue,
+    kanbanFieldId: 'FIELD_status',
+    fieldIds: { size: 'FIELD_size', estimate: 'FIELD_estimate' },
+  };
+  const rubric = createBootstrapRubric({ generatedAt: '2026-08-02T14:00:00.000Z' });
+  const forecastPayload = buildEstimationForecast({
+    issue: firstIssue,
+    refine: { size: 'M', humanHours: 8 },
+    planInput: planInput(),
+    rubric: { recordId: '01J00000000000000000000900', payload: rubric },
+    comparableOutcomes: [],
+  });
+  const existing = envelope({
+    recordType: 'estimation-forecast',
+    issue: firstIssue,
+    payload: forecastPayload,
+    actor: 'aitm/plan-estimate',
+  });
+  const comment = {
+    __typename: 'IssueComment',
+    id: 'IC_existing_forecast',
+    databaseId: 1,
+    body: renderAitmRecord({ envelope: existing }),
+    updatedAt: '2026-08-02T15:00:00Z',
+    issue: { number: firstIssue, repository: { nameWithOwner: repository } },
+  };
+  const graphql = async ({ query }) => {
+    assert.match(query, /AitmEstimationProjection/);
+    return {
+      data: {
+        repository: {
+          issue: {
+            body: '<!-- aitm-fields: {"schema":1,"values":{"size":"M","estimate":8}} -->',
+            comments: { nodes: [comment], pageInfo: { hasNextPage: false, endCursor: null } },
+            projectItems: {
+              nodes: [
+                {
+                  id: 'ITEM_1091',
+                  project: { id: cfg.projectId },
+                  fieldValues: {
+                    nodes: [
+                      { name: 'Plan', field: { id: cfg.kanbanFieldId } },
+                      { name: 'M', field: { id: cfg.fieldIds.size } },
+                      { number: 8, field: { id: cfg.fieldIds.estimate } },
+                    ],
+                  },
+                },
+              ],
+            },
+          },
+        },
+      },
+    };
+  };
+  const runtime = createAdaptivePlanRuntime({
+    cfg,
+    deps: {
+      graphql,
+      recordIo: { graphql, listIssueRecords: async () => [] },
+      loadProjectFieldDefs: () => [],
+    },
+  });
+
+  await runtime.readRefineEstimate({ issueNumber: firstIssue });
+  const resumed = runtime.createForecastEnvelope({
+    repository,
+    issue: firstIssue,
+    payload: forecastPayload,
+  });
+  assert.equal(resumed.recordId, existing.recordId);
+  assert.equal(resumed.payloadHash, existing.payloadHash);
 });

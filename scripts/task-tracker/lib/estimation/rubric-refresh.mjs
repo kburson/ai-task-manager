@@ -14,7 +14,14 @@ function sameCohort(rubric, outcomes) {
 }
 
 function validateLineage(records) {
-  const byId = new Map(records.map((record) => [record.envelope.recordId, record]));
+  const byId = new Map();
+  const successors = new Map();
+  const roots = [];
+  for (const record of records) {
+    const { envelope } = record;
+    if (byId.has(envelope.recordId)) fail('lineage');
+    byId.set(envelope.recordId, record);
+  }
   for (const record of records) {
     const { envelope } = record;
     const predecessor = envelope.payload.predecessorRecordId;
@@ -22,11 +29,26 @@ function validateLineage(records) {
       fail('lineage');
     if (envelope.payload.version === 1) {
       if (predecessor !== null) fail('lineage');
+      roots.push(record);
       continue;
     }
     const prior = byId.get(predecessor);
     if (!prior || prior.envelope.payload.version !== envelope.payload.version - 1) fail('lineage');
+    const children = successors.get(predecessor) ?? [];
+    children.push(record);
+    successors.set(predecessor, children);
   }
+  if (roots.length !== 1) fail('lineage');
+  if ([...successors.values()].some((children) => children.length !== 1)) fail('lineage');
+  const visited = new Set();
+  let cursor = roots[0];
+  while (cursor) {
+    const id = cursor.envelope.recordId;
+    if (visited.has(id)) fail('lineage');
+    visited.add(id);
+    cursor = successors.get(id)?.[0] ?? null;
+  }
+  if (visited.size !== records.length) fail('lineage');
 }
 
 function selectLatest(records) {
@@ -43,10 +65,10 @@ function selectLatest(records) {
         right.envelope.payload.version - left.envelope.payload.version ||
         right.envelope.payload.generatedAt.localeCompare(left.envelope.payload.generatedAt)
     );
-  validateLineage(valid);
   const maximumVersion = valid[0].envelope.payload.version;
   if (valid.filter((record) => record.envelope.payload.version === maximumVersion).length > 1)
     fail('conflicting-latest');
+  validateLineage(valid);
   return valid[0];
 }
 

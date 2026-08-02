@@ -375,6 +375,12 @@ test('--force: gate-eval throw swallowed → cascade + close pipeline → Closed
       getIssueBoardState: async (n) =>
         String(n).replace(/^#/, '') === '102' ? 'develop' : 'review',
       fetchSubIssues: async () => ['101', '102'],
+      estimationOutcomeWriter: {
+        ensure: async ({ issueNumber }) => {
+          calls.push(`outcome ${issueNumber}`);
+          return { status: 'written' };
+        },
+      },
       writeTerminalDisposition: async ({ issueNumber, disposition }) => {
         calls.push(`disposition ${issueNumber} ${disposition}`);
       },
@@ -400,20 +406,28 @@ test('--force: gate-eval throw swallowed → cascade + close pipeline → Closed
   });
   assert.match(r.stdout, /Closed #5/);
   const childDispositionIndex = calls.indexOf('disposition 101 Delivered');
+  const childOutcomeIndex = calls.indexOf('outcome 101');
   const childDoneIndex = calls.indexOf('move 101 done');
   const childCloseIndex = calls.findIndex((c) => /issue close 101/.test(c));
   const parentDispositionIndex = calls.indexOf('disposition 5 Delivered');
+  const parentOutcomeIndex = calls.indexOf('outcome 5');
   const parentDoneIndex = calls.indexOf('move 5 done');
   const parentCloseIndex = calls.findIndex((c) => /issue close 5/.test(c));
   assert.ok(childDispositionIndex >= 0, `expected child Delivered write; got ${calls}`);
   assert.ok(
-    childDispositionIndex > childDoneIndex && childCloseIndex > childDispositionIndex,
-    `expected child Done before Delivered write and close; got ${calls}`
+    childOutcomeIndex >= 0 &&
+      childDoneIndex > childOutcomeIndex &&
+      childDispositionIndex > childDoneIndex &&
+      childCloseIndex > childDispositionIndex,
+    `expected child outcome before Done, Delivered write, and close; got ${calls}`
   );
   assert.ok(parentDispositionIndex >= 0, `expected parent Delivered write; got ${calls}`);
   assert.ok(
-    parentDispositionIndex > parentDoneIndex && parentCloseIndex > parentDispositionIndex,
-    `expected parent Done before Delivered write and close; got ${calls}`
+    parentOutcomeIndex >= 0 &&
+      parentDoneIndex > parentOutcomeIndex &&
+      parentDispositionIndex > parentDoneIndex &&
+      parentCloseIndex > parentDispositionIndex,
+    `expected parent outcome before Done, Delivered write, and close; got ${calls}`
   );
   assert.equal(parentDoneOptions.length, 2, 'forced pre-move and final move must both run');
   assert.deepEqual(parentDoneOptions[0].extraArgs, ['--force']);
@@ -450,6 +464,52 @@ test('cascade: disposition failure leaves child and parent OPEN and active', asy
   assert.ok(!ghCalls.some((c) => /issue close (101|5)/.test(c)));
   assert.doesNotMatch(r.stdout, /✓ #101 closed/);
   assert.match(r.stderr, /Delivered option missing/);
+  resetExit();
+});
+
+test('cascade: outcome failure leaves child in Review and parent OPEN and active', async () => {
+  resetExit();
+  const calls = [];
+  const r = await run({
+    over: {
+      SKIP_NETWORK: false,
+      rest: ['#5', '--force'],
+      getIssueBoardState: async () => 'review',
+      fetchSubIssues: async () => ['101'],
+      estimationOutcomeWriter: {
+        ensure: async ({ issueNumber }) => {
+          calls.push(`outcome ${issueNumber}`);
+          if (String(issueNumber) === '101') throw new Error('child outcome unavailable');
+          return { status: 'written' };
+        },
+      },
+      runMoveState: async (issueNumber, state) => {
+        calls.push(`move ${issueNumber} ${state}`);
+        return { ok: true, benign: false };
+      },
+      writeTerminalDisposition: async ({ issueNumber, disposition }) => {
+        calls.push(`disposition ${issueNumber} ${disposition}`);
+      },
+      pexec: async (cmd, args) => {
+        const rendered = `${cmd} ${args.join(' ')}`;
+        calls.push(rendered);
+        if (cmd === 'gh' && rendered.includes('issue view') && rendered.includes('--jq')) {
+          return { stdout: APPROVED_BODY, stderr: '' };
+        }
+        if (cmd === 'gh' && rendered.includes('issue view')) {
+          return { stdout: JSON.stringify({ body: APPROVED_BODY }), stderr: '' };
+        }
+        return { stdout: '', stderr: '' };
+      },
+    },
+  });
+  assert.equal(exitOf(r), 1);
+  assert.equal(r.finalState.active, '#5');
+  assert.ok(calls.includes('outcome 101'));
+  assert.ok(!calls.includes('move 101 done'));
+  assert.ok(!calls.includes('disposition 101 Delivered'));
+  assert.ok(!calls.some((call) => /issue close (101|5)/.test(call)));
+  assert.match(r.stderr, /child outcome unavailable/);
   resetExit();
 });
 

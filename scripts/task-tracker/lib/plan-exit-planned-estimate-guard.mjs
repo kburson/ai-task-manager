@@ -20,11 +20,19 @@ const FORECAST_READY_RE =
 
 export function validateForecastProjection({
   forecast,
+  activeForecastRecordIds,
   readyForecastRecordId,
   board,
   bodyFields,
 } = {}) {
-  if (!forecast || forecast.recordId !== readyForecastRecordId) {
+  if (
+    !forecast ||
+    forecast.recordId !== readyForecastRecordId ||
+    forecast.supersededBy !== null ||
+    !Array.isArray(activeForecastRecordIds) ||
+    activeForecastRecordIds.length !== 1 ||
+    activeForecastRecordIds[0] !== readyForecastRecordId
+  ) {
     return { ok: false, blockers: ['plan-forecast-ready-mismatch'] };
   }
   const plan = forecast.payload?.plan;

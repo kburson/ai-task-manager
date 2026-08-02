@@ -24,7 +24,7 @@ import {
   listIssueCommentsSince,
   parsePreloadedIssueComments,
 } from '../github-records/github-comment-store.mjs';
-import { createAitmRecordEnvelope } from '../github-records/record-envelope.mjs';
+import { createAitmRecordEnvelope, hashRecordPayload } from '../github-records/record-envelope.mjs';
 import { buildEstimationForecast } from './forecast-model.mjs';
 import { buildEstimationOutcome } from './outcome-builder.mjs';
 import { ensureEstimationOutcome } from './outcome-writer.mjs';
@@ -76,7 +76,29 @@ const DONE_ISSUE_RECORDS_QUERY = `
             __typename id body updatedAt
             issue { number repository { nameWithOwner } }
           }
-          pageInfo { hasNextPage }
+          pageInfo { hasNextPage endCursor }
+        }
+      }
+    }
+  }
+`;
+const ISSUE_PROJECTION_COMMENTS_QUERY = `
+  query AitmEstimationProjectionComments(
+    $owner: String!
+    $name: String!
+    $issue: Int!
+    $after: String!
+  ) {
+    repository(owner: $owner, name: $name) {
+      issue(number: $issue) {
+        number
+        repository { nameWithOwner }
+        comments(first: 100, after: $after) {
+          nodes {
+            __typename id databaseId body updatedAt
+            issue { number repository { nameWithOwner } }
+          }
+          pageInfo { hasNextPage endCursor }
         }
       }
     }
@@ -192,9 +214,61 @@ function recordsForProjection(records) {
     recordId: record.envelope.recordId,
     payloadHash: record.envelope.payloadHash,
     payload: record.envelope.payload,
+    envelope: record.envelope,
     commentNodeId: record.commentNodeId,
     supersededBy: successorById.get(record.envelope.recordId) ?? null,
   }));
+}
+
+async function loadProjectionComments({ graphql, owner, name, issueNumber, connection }) {
+  if (!Array.isArray(connection?.nodes)) fail('projection-response');
+  if (typeof connection.pageInfo?.hasNextPage !== 'boolean') fail('projection-pagination');
+  const comments = [...connection.nodes];
+  const seenIds = new Set();
+  for (const comment of comments) {
+    if (typeof comment?.id !== 'string' || seenIds.has(comment.id)) fail('projection-pagination');
+    seenIds.add(comment.id);
+  }
+  const seenCursors = new Set();
+  let pageInfo = connection.pageInfo;
+  for (let page = 0; page < 1000 && pageInfo?.hasNextPage === true; page += 1) {
+    const after = pageInfo.endCursor;
+    if (typeof after !== 'string' || after === '' || seenCursors.has(after)) {
+      fail('projection-pagination');
+    }
+    seenCursors.add(after);
+    const response = await graphql({
+      query: ISSUE_PROJECTION_COMMENTS_QUERY,
+      variables: { owner, name, issue: issueNumber, after },
+    });
+    if (Array.isArray(response?.errors) && response.errors.length > 0) fail('projection-response');
+    const responseIssue = response?.data?.repository?.issue;
+    if (
+      responseIssue?.number !== issueNumber ||
+      responseIssue?.repository?.nameWithOwner !== `${owner}/${name}` ||
+      !Array.isArray(responseIssue.comments?.nodes)
+    ) {
+      fail('projection-response');
+    }
+    if (typeof responseIssue.comments.pageInfo?.hasNextPage !== 'boolean')
+      fail('projection-pagination');
+    if (responseIssue.comments.pageInfo.hasNextPage && responseIssue.comments.nodes.length === 0) {
+      fail('projection-pagination');
+    }
+    for (const comment of responseIssue.comments.nodes) {
+      if (typeof comment?.id !== 'string' || seenIds.has(comment.id)) fail('projection-pagination');
+      seenIds.add(comment.id);
+      comments.push(comment);
+    }
+    pageInfo = responseIssue.comments.pageInfo;
+  }
+  if (pageInfo?.hasNextPage === true) fail('projection-pagination');
+  return comments;
+}
+
+function forecastGenerationHash(payload) {
+  const { supersedesForecastRecordId: _supersedes, ...generation } = payload;
+  return hashRecordPayload(generation);
 }
 
 export function createGitHubEstimationRecordIo({ graphql = defaultGraphql, rest } = {}) {
@@ -241,14 +315,22 @@ export async function loadForecastProjection({ cfg, issueNumber, deps = {} } = {
   const byFieldId = new Map(
     (item.fieldValues?.nodes ?? []).map((node) => [node.field?.id, node.number ?? node.name])
   );
-  const records = issue.comments?.pageInfo?.hasNextPage
-    ? await io.listIssueRecords({ repository: cfg.repo, issue: issueNumber })
-    : parsePreloadedIssueComments({
-        nodes: issue.comments?.nodes ?? [],
-        repository: cfg.repo,
-        issue: issueNumber,
-      });
+  const comments = await loadProjectionComments({
+    graphql,
+    owner,
+    name,
+    issueNumber,
+    connection: issue.comments,
+  });
+  const records = parsePreloadedIssueComments({
+    nodes: comments,
+    repository: cfg.repo,
+    issue: issueNumber,
+  });
   const forecasts = recordsForProjection(records);
+  const activeForecastRecordIds = forecasts
+    .filter((record) => record.supersededBy === null)
+    .map((record) => record.recordId);
   const readyForecastRecordId =
     String(issue.body ?? '').match(
       /<!--\s*aitm-estimation-forecast-ready\s+record-id="([0-7][0-9A-HJKMNP-TV-Z]{25})"\s*-->/i
@@ -256,6 +338,7 @@ export async function loadForecastProjection({ cfg, issueNumber, deps = {} } = {
   const parsedFields = parseIssueFieldDb(issue.body);
   return {
     forecast: forecasts.find((record) => record.recordId === readyForecastRecordId) ?? null,
+    activeForecastRecordIds,
     board: {
       size: byFieldId.get(fieldIdFor(cfg, 'size')) ?? null,
       estimate: byFieldId.get(fieldIdFor(cfg, 'estimate')) ?? null,
@@ -353,6 +436,7 @@ export function createAdaptivePlanRuntime({ cfg, deps = {}, adoptLegacyBaseline 
   const { owner, name } = splitRepository(cfg.repo);
   let lastItemId = null;
   let supersededForecastRecordId = null;
+  let activeForecast = null;
   let corpusPromise = null;
   const corpus = () =>
     (corpusPromise ??= (deps.loadProjectEstimationCorpus ?? loadProjectEstimationCorpus)({
@@ -367,7 +451,7 @@ export function createAdaptivePlanRuntime({ cfg, deps = {}, adoptLegacyBaseline 
       variables: { owner, name, issue: issueNumber },
     });
     const issue = response?.data?.repository?.issue;
-    if (!issue || issue.comments?.pageInfo?.hasNextPage === true) fail('projection-response');
+    if (!issue) fail('projection-response');
     const item = issue.projectItems?.nodes?.find((node) => node.project?.id === cfg.projectId);
     if (!item) fail('project-item');
     lastItemId = item.id;
@@ -380,14 +464,21 @@ export function createAdaptivePlanRuntime({ cfg, deps = {}, adoptLegacyBaseline 
     };
     const status = byFieldId.get(fieldIdFor(cfg, 'status') || cfg.kanbanFieldId);
     const parsedFields = parseIssueFieldDb(issue.body);
+    const comments = await loadProjectionComments({
+      graphql,
+      owner,
+      name,
+      issueNumber,
+      connection: issue.comments,
+    });
     const records = parsePreloadedIssueComments({
-      nodes: issue.comments.nodes,
+      nodes: comments,
       repository: cfg.repo,
       issue: issueNumber,
     });
     return {
       lifecycleState: String(status ?? '').toLowerCase(),
-      refineAppendix: plannedAppendix(issue.comments.nodes, issueNumber),
+      refineAppendix: plannedAppendix(comments, issueNumber),
       board,
       bodyFields: {
         size: parsedFields.ok ? (parsedFields.values.size ?? null) : null,
@@ -437,8 +528,10 @@ export function createAdaptivePlanRuntime({ cfg, deps = {}, adoptLegacyBaseline 
   return {
     readRefineEstimate: async ({ issueNumber }) => {
       const projection = await readProjection(issueNumber);
-      supersededForecastRecordId =
-        projection.forecasts.find((forecast) => forecast.supersededBy == null)?.recordId ?? null;
+      const active = projection.forecasts.filter((forecast) => forecast.supersededBy == null);
+      if (active.length > 1) fail('forecast-lineage');
+      activeForecast = active[0] ?? null;
+      supersededForecastRecordId = activeForecast?.recordId ?? null;
       return refineEstimateFromProjection(projection);
     },
     loadRubric: async () => {
@@ -506,6 +599,12 @@ export function createAdaptivePlanRuntime({ cfg, deps = {}, adoptLegacyBaseline 
     },
     buildForecast: buildEstimationForecast,
     createForecastEnvelope: ({ repository, issue, payload }) => {
+      if (
+        activeForecast &&
+        forecastGenerationHash(activeForecast.payload) === forecastGenerationHash(payload)
+      ) {
+        return activeForecast.envelope;
+      }
       const versionedPayload = {
         ...payload,
         supersedesForecastRecordId: supersededForecastRecordId,

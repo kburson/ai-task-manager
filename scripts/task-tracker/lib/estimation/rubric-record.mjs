@@ -86,7 +86,7 @@ export function validateEstimationRubric(payload) {
     coefficients(payload[key].coefficients, `rubric-${key}-coefficients`);
     finite(payload[key].sampleSize, `rubric-${key}-sample`, { integer: true });
     finite(payload[key].confidence, `rubric-${key}-confidence`, { maximum: 1 });
-    if (payload[key].sampleSize !== payload.cohort.length) fail(`rubric-${key}-sample`);
+    if (payload[key].sampleSize > payload.cohort.length) fail(`rubric-${key}-sample`);
   }
   exact(payload.workflowDiagnostics, ['avoidableProcessWasteHours'], 'rubric-workflow');
   finite(payload.workflowDiagnostics.avoidableProcessWasteHours, 'rubric-workflow-hours');

@@ -63,7 +63,7 @@ test('bootstrap priors explicitly separate human, AI, test, review, and uncertai
   assert.equal(rubric.ai.confidence, 0.1);
 });
 
-test('one outcome updates AI coefficients and diagnostics without leaking avoidable waste into human coefficients', () => {
+test('agent outcomes update AI diagnostics without calibrating human effort from AI duration', () => {
   const previous = createBootstrapRubric({ generatedAt: '2026-08-02T13:00:00.000Z' });
   const updated = updateEstimationRubric({
     previous,
@@ -73,7 +73,9 @@ test('one outcome updates AI coefficients and diagnostics without leaking avoida
   assert.equal(updated.cohort[0].outcomeRecordId, outcomeId);
   assert.equal(updated.workflowDiagnostics.avoidableProcessWasteHours, 2);
   assert.ok(updated.ai.coefficients.engagedToHuman > previous.ai.coefficients.engagedToHuman);
-  assert.equal(updated.human.coefficients.necessaryToPlanned, 0.5);
+  assert.deepEqual(updated.human.coefficients, previous.human.coefficients);
+  assert.equal(updated.human.sampleSize, previous.human.sampleSize);
+  assert.equal(updated.human.confidence, previous.human.confidence);
 
   const wasteOnlyChanged = updateEstimationRubric({
     previous,
@@ -138,8 +140,8 @@ test('updates are recency bounded, weighted, and cap one outlier influence', () 
     generatedAt: '2026-08-03T00:00:00.000Z',
   });
   assert.equal(updated.cohort.length, 50);
-  assert.ok(updated.human.coefficients.necessaryToPlanned <= 2);
+  assert.deepEqual(updated.human.coefficients, previous.human.coefficients);
   assert.ok(updated.ai.coefficients.engagedToHuman <= 2);
-  assert.equal(updated.human.sampleSize, 50);
-  assert.ok(updated.human.confidence > 0.1 && updated.human.confidence < 1);
+  assert.equal(updated.human.sampleSize, 0);
+  assert.equal(updated.human.confidence, 0.1);
 });
