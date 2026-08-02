@@ -168,6 +168,36 @@ export async function appendPlannedEstimate({
   return { status: 'appended', commentId: comment.id };
 }
 
+export async function upsertPlannedEstimate({
+  cfg,
+  issueNumber,
+  refine,
+  plan,
+  rationale,
+  deps = {},
+} = {}) {
+  if (!cfg) throw new Error('upsertPlannedEstimate: cfg is required');
+  if (!issueNumber) throw new Error('upsertPlannedEstimate: issueNumber is required');
+  validateSizeEstimateArg('refine', 'upsertPlannedEstimate', refine);
+  validateSizeEstimateArg('plan', 'upsertPlannedEstimate', plan);
+  const patchComment = deps.patchComment || defaultPatchComment;
+  const comment = await findRefineEstimateComment({ cfg, issueNumber, deps });
+  if (!comment) return { status: 'no-refine-comment' };
+  const match = comment.body.match(PLANNED_HEADER_RE);
+  const head = match
+    ? comment.body.slice(0, match.index).replace(/\s+$/, '')
+    : comment.body.replace(/\s+$/, '');
+  const appendix = buildPlannedAppendix({
+    current: refine,
+    planned: plan,
+    rationale,
+  });
+  const nextBody = `${head}${appendix}\n`;
+  if (nextBody === comment.body) return { status: 'current', commentId: comment.id };
+  await patchComment({ cfg, commentId: comment.id, body: nextBody });
+  return { status: 'updated', commentId: comment.id };
+}
+
 // AC8 (#171) — re-populate an already-appended EMPTY Planned Estimate table.
 //
 // `appendPlannedEstimate` is terminal on `hasPlannedAppendix` (returns

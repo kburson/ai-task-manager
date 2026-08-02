@@ -12,6 +12,7 @@ import {
   repopulateEmptyPlannedAppendix,
   planPlannedEstimateGate,
   buildPlannedAppendix,
+  upsertPlannedEstimate,
   hasPlannedAppendix,
   hasEmptyPlannedAppendix,
   PLANNED_ESTIMATE_HEADER,
@@ -51,6 +52,32 @@ test('buildPlannedAppendix records non-zero delta with sign', () => {
   });
   assert.match(out, /\| Size \| M \| L \| M→L \|/);
   assert.match(out, /\| Estimate \(h\) \| 4 \| 8 \| \+4 \|/);
+});
+
+test('v1 upsert replaces the Plan projection while preserving immutable Refine values', async () => {
+  const original = `${baseComment(1091)}${buildPlannedAppendix({
+    current: { size: 'L', estimate: 20 },
+    planned: { size: 'L', estimate: 20 },
+    rationale: 'rough',
+  })}\n`;
+  let written = '';
+  const result = await upsertPlannedEstimate({
+    cfg,
+    issueNumber: 1091,
+    refine: { size: 'L', estimate: 20 },
+    plan: { size: 'XL', estimate: 40 },
+    rationale: 'detailed WBS',
+    deps: {
+      listComments: async () => [{ id: 'IC_1091', body: original }],
+      patchComment: async ({ body }) => {
+        written = body;
+      },
+    },
+  });
+  assert.equal(result.status, 'updated');
+  assert.match(written, /\| Size \| L \| XL \| L→XL \|/);
+  assert.match(written, /\| Estimate \(h\) \| 20 \| 40 \| \+20 \|/);
+  assert.doesNotMatch(written, /\| Size \| XL \| XL/);
 });
 
 test('buildPlannedAppendix uses placeholder rationale when blank', () => {

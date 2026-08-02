@@ -16,6 +16,10 @@ import assert from 'node:assert/strict';
 import { planApprovedGuard } from '../../../lib/plan-approved-guard.mjs';
 import { planEpicChildrenGuard } from '../../../lib/plan-epic-children-guard.mjs';
 import { planExitVcPresenceGuard } from '../../../lib/plan-exit-vc-presence-guard.mjs';
+import {
+  planExitPlannedEstimateGuard,
+  validateForecastProjection,
+} from '../../../lib/plan-exit-planned-estimate-guard.mjs';
 import { STATES } from '../../../states/index.mjs';
 import { runGuards } from '../../../lib/guard-registry.mjs';
 import '../../../lib/guard-bootstrap.mjs';
@@ -87,6 +91,61 @@ const PLANNED_ESTIMATE_OK_DEPS = {
 };
 
 const CFG = { repo: 'owner/name', projectId: 'PVT' };
+
+test('v1 Plan projection requires one ready forecast matching board and body authority', async () => {
+  const recordId = '01J00000000000000000000700';
+  const forecast = { recordId, payload: { plan: { size: 'XL', humanHours: 40 } } };
+  assert.deepEqual(
+    validateForecastProjection({
+      forecast,
+      readyForecastRecordId: recordId,
+      board: { size: 'XL', estimate: 40 },
+      bodyFields: { size: 'XL', estimate: 40 },
+    }),
+    { ok: true, forecastRecordId: recordId }
+  );
+  for (const projection of [
+    {
+      forecast: null,
+      readyForecastRecordId: recordId,
+      board: { size: 'XL', estimate: 40 },
+      bodyFields: { size: 'XL', estimate: 40 },
+    },
+    {
+      forecast,
+      readyForecastRecordId: '01J00000000000000000000701',
+      board: { size: 'XL', estimate: 40 },
+      bodyFields: { size: 'XL', estimate: 40 },
+    },
+    {
+      forecast,
+      readyForecastRecordId: recordId,
+      board: { size: 'L', estimate: 20 },
+      bodyFields: { size: 'XL', estimate: 40 },
+    },
+  ])
+    assert.equal(validateForecastProjection(projection).ok, false);
+
+  const body = `<!-- aitm-estimation-forecast-ready record-id="${recordId}" -->`;
+  const result = await planExitPlannedEstimateGuard.run({
+    toState: 'develop',
+    cfg: CFG,
+    issueNumber: 1091,
+    body,
+    deps: {
+      plannedEstimate: {
+        listComments: PLANNED_ESTIMATE_OK_DEPS.plannedEstimate.listComments,
+        forecastProjection: async () => ({
+          forecast,
+          board: { size: 'XL', estimate: 40 },
+          bodyFields: { size: 'XL', estimate: 40 },
+        }),
+      },
+    },
+  });
+  assert.equal(result.ok, true);
+  assert.equal(result.forecastRecordId, recordId);
+});
 
 // ── planApprovedGuard ────────────────────────────────────────────────────────
 

@@ -18,6 +18,8 @@
 // "at least one field" contract always holds. Comment-only: touches no board
 // field and no Status. Pure core: `runPlanEstimate({...})`; all I/O injectable.
 
+import { readFileSync } from 'node:fs';
+
 import {
   appendPlannedEstimate,
   repopulateEmptyPlannedAppendix,
@@ -25,6 +27,8 @@ import {
 import { projectValuesForIssue } from '../../gh/lib/github-projects.mjs';
 import { loadProjectFieldDefs } from '../project-fields.mjs';
 import { loadState } from '../state.mjs';
+import { parsePlanEstimationInput } from '../lib/estimation/plan-input.mjs';
+import { executeAdaptivePlanEstimate } from '../lib/estimation/plan-estimate-authority.mjs';
 
 // Resolve the target issue: explicit positional `#N` / `N` wins, else the bound
 // active issue. Returns a positive integer or null.
@@ -54,6 +58,8 @@ export function parseArgs(rest, activeIssue) {
   const planned = {};
   const current = {};
   let rationale = null;
+  let evidenceFile = null;
+  let compatibilityMode = false;
   const positional = [];
   for (let i = 0; i < rest.length; i++) {
     const tok = rest[i];
@@ -73,12 +79,23 @@ export function parseArgs(rest, activeIssue) {
       case '--rationale':
         rationale = rest[++i] ?? '';
         break;
+      case '--evidence-file':
+        evidenceFile = rest[++i] ?? '';
+        break;
+      case '--compatibility-mode':
+        compatibilityMode = true;
+        break;
       default:
         positional.push(tok);
     }
   }
   const target = resolveTargetIssue({ rest: positional, activeIssue });
-  return { target, planned, current, rationale };
+  return { target, planned, current, rationale, evidenceFile, compatibilityMode };
+}
+
+async function defaultRunAdaptivePlanEstimate({ issueNumber, evidenceFile, cfg, deps }) {
+  const planInput = parsePlanEstimationInput(readFileSync(evidenceFile, 'utf8'));
+  return executeAdaptivePlanEstimate({ issueNumber, planInput, cfg, deps });
 }
 
 // Read the live board Size/Estimate for the "Refine" column. Best-effort:
@@ -110,6 +127,8 @@ export async function runPlanEstimate({
   planned,
   current,
   rationale,
+  evidenceFile,
+  compatibilityMode = false,
   cfg,
   deps = {},
 } = {}) {
@@ -118,6 +137,13 @@ export async function runPlanEstimate({
   }
   if (!cfg || !cfg.repo) {
     throw new Error('plan-estimate: cfg.repo is required');
+  }
+  if (evidenceFile) {
+    const adaptive = deps.runAdaptivePlanEstimate || defaultRunAdaptivePlanEstimate;
+    return adaptive({ issueNumber: target, evidenceFile, cfg, deps });
+  }
+  if (!compatibilityMode) {
+    throw new Error('plan-estimate: legacy planned flags require explicit --compatibility-mode');
   }
   const hasPlanned = planned && (planned.size !== undefined || planned.estimate !== undefined);
   if (!hasPlanned) {
@@ -165,20 +191,31 @@ export async function verbPlanEstimate(ctx) {
   const { cfg, statePath, rest } = ctx;
   const s = loadState(statePath);
   const active = s.active || null;
-  const { target, planned, current, rationale } = parseArgs(rest, active);
+  const { target, planned, current, rationale, evidenceFile, compatibilityMode } = parseArgs(
+    rest,
+    active
+  );
   if (!target) {
     console.error(
-      'Usage: /task plan-estimate [#N] --planned-size <S> --planned-estimate <H> ' +
-        '[--current-size <S>] [--current-estimate <H>] [--rationale "<text>"]'
+      'Usage: /task plan-estimate [#N] --evidence-file <path> OR --compatibility-mode ' +
+        '--planned-size <S> --planned-estimate <H>'
     );
     process.exit(2);
   }
-  if (planned.size === undefined && planned.estimate === undefined) {
-    console.error('plan-estimate: at least one of --planned-size / --planned-estimate is required');
+  if (!evidenceFile && planned.size === undefined && planned.estimate === undefined) {
+    console.error('plan-estimate: --evidence-file or planned compatibility flags are required');
     process.exit(2);
   }
   try {
-    const res = await runPlanEstimate({ target, planned, current, rationale, cfg });
+    const res = await runPlanEstimate({
+      target,
+      planned,
+      current,
+      rationale,
+      evidenceFile,
+      compatibilityMode,
+      cfg,
+    });
     switch (res.status) {
       case 'appended':
         console.log(`[task-tracker] ✓ #${target} Planned Estimate appendix written`);
@@ -189,6 +226,11 @@ export async function verbPlanEstimate(ctx) {
       case 'duplicate':
         console.log(
           `[task-tracker] ✓ #${target} Planned Estimate appendix already present — no change`
+        );
+        break;
+      case 'converged':
+        console.log(
+          `[task-tracker] ✓ #${target} Plan estimate authority converged; forecast ${res.forecastRecordId}`
         );
         break;
       case 'no-refine-comment':

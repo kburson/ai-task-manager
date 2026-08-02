@@ -174,10 +174,12 @@ export const VERB_REFERENCE = {
   },
   'plan-estimate': {
     topic: 'board',
-    summary: 'Append the `### Planned Estimate` appendix the Plan→Develop gate requires.',
+    summary: 'Converge the detailed human Plan estimate and publish a separate AI forecast.',
     usage:
-      '/task plan-estimate [#N] --planned-size <S> --planned-estimate <H> [--rationale "<text>"]',
+      '/task plan-estimate [#N] --evidence-file <path> | --compatibility-mode --planned-size <S> --planned-estimate <H>',
     flags: [
+      { flag: '--evidence-file <path>', desc: 'aitm.plan-estimation-input/v1 JSON evidence' },
+      { flag: '--compatibility-mode', desc: 'explicitly use the legacy appendix-only path' },
       { flag: '--planned-size <S>', desc: 'post-planning size' },
       { flag: '--planned-estimate <H>', desc: 'post-planning estimate (hours)' },
       {
@@ -193,7 +195,8 @@ export const VERB_REFERENCE = {
       { flag: '--rationale "<text>"', desc: 'why the estimate changed (or held)' },
     ],
     examples: [
-      '/task plan-estimate 667 --planned-size L --planned-estimate 6 --rationale "held after deep dive"',
+      '/task plan-estimate 667 --evidence-file .tmp/plan/667-estimation.json',
+      '/task plan-estimate 667 --compatibility-mode --planned-size L --planned-estimate 6 --rationale "legacy issue"',
     ],
   },
   approve: {

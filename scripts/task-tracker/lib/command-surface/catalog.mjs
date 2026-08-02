@@ -148,10 +148,12 @@ export const VERB_CONTRACTS = Object.freeze({
   ),
   'plan-estimate': contract(
     [
-      'The target must have a refine-estimate comment and both planned size and estimate arguments.',
+      'The target must be in Plan with a refine estimate and either v1 evidence or explicit legacy compatibility flags.',
     ],
-    ['Appends or updates the Planned Estimate comparison and rationale.'],
-    ['Prints the previous and planned estimates and the updated comment reference.']
+    [
+      'V1 converges board Size/Estimate, canonical fields, Refine history, and a read-back forecast; compatibility mode updates only the legacy appendix.',
+    ],
+    ['Prints convergence evidence and the immutable forecast record ID.']
   ),
   approve: contract(
     ['The target must be in Review, pass preflight, and satisfy final-review approval policy.'],
