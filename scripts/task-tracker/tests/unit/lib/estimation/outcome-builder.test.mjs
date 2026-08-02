@@ -82,3 +82,17 @@ test('epic outcome records orchestration only and references child outcomes', ()
   assert.equal(outcome.aiForecast, null);
   assert.equal(outcome.variance, null);
 });
+
+test('unknown production cost remains unclassified instead of being labeled necessary', () => {
+  const outcome = buildEstimationOutcome({
+    issue: 1091,
+    forecast,
+    timing,
+    verification: [],
+    diff: { filesChanged: 1, modules: ['estimation'], lanes: ['sandbox'], dependencyBreadth: 1 },
+    review: { fixCycles: 0 },
+    cost: {},
+  });
+  assert.equal(outcome.costClassification.necessaryHours, 0);
+  assert.equal(outcome.costClassification.unclassifiedHours, 5);
+});

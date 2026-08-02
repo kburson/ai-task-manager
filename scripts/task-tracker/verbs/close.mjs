@@ -294,6 +294,56 @@ export async function verbClose(ctx) {
     projectConfig: rawProjectConfig(),
   });
   const configuredReviewAuthority = configuredReviewToDoneGate ? 'human-gate' : 'gate-bypassed';
+  const outcomeRuntimeFactory = ctx.createEstimationOutcomeWriter ?? createEstimationOutcomeRuntime;
+  const issueWorkspaceResolver = ctx.resolveIssueWorkspace ?? resolveWorkspaceForIssue;
+  const outcomeWriterForIssue = (issueNumber, { requireDedicated = false } = {}) => {
+    if (ctx.estimationOutcomeWriter) return ctx.estimationOutcomeWriter;
+    if (
+      typeof ctx.createEstimationOutcomeWriter !== 'function' &&
+      (!Number.isInteger(cfg.estimationRubricIssue) || cfg.estimationRubricIssue <= 0)
+    ) {
+      return null;
+    }
+    const issueRef = `#${issueNumber}`;
+    const outcomeProjectDir =
+      String(issueNumber) === String(closeIssueNum)
+        ? projectDir
+        : issueWorkspaceResolver({ issueRef, projectDir });
+    if (requireDedicated && outcomeProjectDir === projectDir) {
+      throw new Error(
+        `dedicated worktree evidence is unavailable for ${issueRef}; refusing to record the parent diff as child evidence`
+      );
+    }
+    return outcomeRuntimeFactory({ cfg, projectDir: outcomeProjectDir });
+  };
+  const estimationOutcomeWriter = outcomeWriterForIssue(closeIssueNum);
+
+  const ensureConvergenceOutcome = async ({ body, targetRef = closeTarget } = {}) => {
+    let outcomeBody = String(body ?? '');
+    try {
+      if (estimationOutcomeWriter && outcomeBody.length === 0) {
+        const { stdout } = await pexec(
+          'gh',
+          ['issue', 'view', closeIssueNum, '-R', cfg.repo, '--json', 'body'],
+          { timeout: GH_API_TIMEOUT_MS }
+        );
+        outcomeBody = JSON.parse(stdout).body ?? '';
+      }
+      await ensureCloseEstimationOutcome({
+        issueNumber: closeIssueNum,
+        body: outcomeBody,
+        writer: estimationOutcomeWriter,
+      });
+      return true;
+    } catch (err) {
+      console.error(
+        `[task-tracker] ⛔ Refusing to finalize ${targetRef}: ${err.message}. ` +
+          'Completion outcome evidence did not converge; local state remains active for retry.'
+      );
+      process.exitCode = 1;
+      return false;
+    }
+  };
 
   // #425 / #925 — converge the independent GitHub issue and project-board
   // signals. The additive close snapshot lets a CLOSED + not-Done issue be
@@ -457,6 +507,7 @@ export async function verbClose(ctx) {
       // Board reads Done but the issue is still OPEN — the Projects auto-close
       // workflow did not fire. Close the primary explicitly. On failure, surface
       // it and exit non-zero WITHOUT clearing local state so a re-run recovers.
+      if (!(await ensureConvergenceOutcome({ body: convergeBody }))) return;
       if (
         !(await writeDeliveredOrRefuse({
           issueNumber: closeIssueNum,
@@ -491,6 +542,12 @@ export async function verbClose(ctx) {
     }
 
     if (['dead', 'finalize', 'aberration', 'noop'].includes(decision.action)) {
+      if (
+        (decision.action === 'finalize' || decision.action === 'noop') &&
+        !(await ensureConvergenceOutcome({ body: convergeBody }))
+      ) {
+        return;
+      }
       const convergence = await runClosedIssueConvergence(
         {
           decision,
@@ -1044,12 +1101,6 @@ export async function verbClose(ctx) {
     }
   }
 
-  const estimationOutcomeWriter =
-    ctx.estimationOutcomeWriter ??
-    (Number.isInteger(cfg.estimationRubricIssue) && cfg.estimationRubricIssue > 0
-      ? createEstimationOutcomeRuntime({ cfg, projectDir })
-      : null);
-
   if (!SKIP_NETWORK && closeIssueNum) {
     const subNums = await fetchSubIssues(closeIssueNum);
     if (subNums.length > 0) {
@@ -1114,7 +1165,7 @@ export async function verbClose(ctx) {
               await ensureCloseEstimationOutcome({
                 issueNumber: child.num,
                 body: childBody,
-                writer: estimationOutcomeWriter,
+                writer: outcomeWriterForIssue(child.num, { requireDedicated: true }),
               });
             } catch (err) {
               console.error(

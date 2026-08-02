@@ -251,6 +251,7 @@ test('v1 Plan projection uses production raw-comment pagination when no reader i
               },
             };
           }
+          assert.match(query, /pageInfo\s*\{\s*hasNextPage\s+endCursor\s*\}/);
           return {
             data: {
               repository: {

@@ -18,6 +18,7 @@ import { projectScratchDir } from '../../../lib/scratch-dir.mjs';
 // assertFieldsPersisted passes and shouldEmitReviewApprovedRow is true.
 const APPROVED_BODY =
   '## Done\n\n<!-- aitm-review-approved ts="2026-06-28T00:00:00Z" full-auto="yes" -->\n<!-- aitm-fields: {"engagedTime":3600,"size":"M","estimate":3} -->\n';
+const READY_BODY = `${APPROVED_BODY}\n<!-- aitm-estimation-forecast-ready record-id="01J00000000000000000000005" -->\n`;
 
 const baseState = (active = '#5') => ({
   active,
@@ -176,23 +177,64 @@ test('convergence close-issue: board Done + issue OPEN → gh close', async () =
     over: {
       SKIP_NETWORK: false,
       getIssueBoardState: async () => 'done',
+      estimationOutcomeWriter: {
+        ensure: async () => {
+          calls.push('outcome 5');
+          return { status: 'written' };
+        },
+      },
       writeTerminalDisposition: async ({ issueNumber, disposition }) => {
         calls.push(`disposition ${issueNumber} ${disposition}`);
       },
-      pexec: async (cmd, args) => (
-        calls.push(`${cmd} ${args.join(' ')}`),
-        { stdout: '', stderr: '' }
-      ),
+      pexec: async (cmd, args) => {
+        calls.push(`${cmd} ${args.join(' ')}`);
+        if (cmd === 'gh' && args.join(' ').includes('issue view')) {
+          return { stdout: JSON.stringify({ body: READY_BODY }), stderr: '' };
+        }
+        return { stdout: '', stderr: '' };
+      },
     },
   });
   assert.match(r.stdout, /board was Done but the GitHub issue was still OPEN/);
   const dispositionIndex = calls.indexOf('disposition 5 Delivered');
+  const outcomeIndex = calls.indexOf('outcome 5');
   const closeIndex = calls.findIndex((c) => c.includes('issue close 5'));
   assert.ok(dispositionIndex >= 0, `expected Delivered write; got ${JSON.stringify(calls)}`);
   assert.ok(
-    closeIndex > dispositionIndex,
-    `expected write before close; got ${JSON.stringify(calls)}`
+    outcomeIndex >= 0 && dispositionIndex > outcomeIndex && closeIndex > dispositionIndex,
+    `expected outcome, Delivered write, then close; got ${JSON.stringify(calls)}`
   );
+});
+test('convergence close-issue: outcome failure leaves the issue OPEN and active', async () => {
+  resetExit();
+  const calls = [];
+  const r = await run({
+    over: {
+      SKIP_NETWORK: false,
+      getIssueBoardState: async () => 'done',
+      estimationOutcomeWriter: {
+        ensure: async () => {
+          calls.push('outcome 5');
+          throw new Error('outcome unavailable');
+        },
+      },
+      writeTerminalDisposition: async () => calls.push('disposition'),
+      pexec: async (cmd, args) => {
+        calls.push(`${cmd} ${args.join(' ')}`);
+        if (cmd === 'gh' && args.join(' ').includes('issue view')) {
+          return { stdout: JSON.stringify({ body: READY_BODY }), stderr: '' };
+        }
+        return { stdout: '', stderr: '' };
+      },
+    },
+  });
+  assert.equal(exitOf(r), 1);
+  assert.equal(r.finalState.active, '#5');
+  assert.ok(calls.includes('outcome 5'));
+  assert.ok(!calls.includes('disposition'));
+  assert.ok(!calls.some((call) => call.includes('issue close 5')));
+  assert.match(r.stderr, /outcome unavailable/);
+  resetExit();
 });
 test('convergence close-issue: disposition failure leaves issue OPEN and active', async () => {
   resetExit();
@@ -257,16 +299,30 @@ test('convergence noop + boardDrift: move fails + board not Done → exit 1', as
   resetExit();
 });
 test('convergence noop, no drift: issue CLOSED + board Done → already closed', async () => {
+  const calls = [];
   const r = await run({
     over: {
       SKIP_NETWORK: false,
       getIssueBoardState: async () => 'done',
       getIssueClosedState: async () => true,
+      estimationOutcomeWriter: {
+        ensure: async () => {
+          calls.push('outcome 5');
+          return { status: 'existing' };
+        },
+      },
+      pexec: async (cmd, args) => {
+        if (cmd === 'gh' && args.join(' ').includes('issue view')) {
+          return { stdout: JSON.stringify({ body: READY_BODY }), stderr: '' };
+        }
+        return { stdout: '', stderr: '' };
+      },
       writeTerminalDisposition: async () => {
         throw new Error('already-closed noop must not infer Delivered');
       },
     },
   });
+  assert.deepEqual(calls, ['outcome 5']);
   assert.match(r.stdout, /already fully closed/);
 });
 
@@ -511,6 +567,44 @@ test('cascade: outcome failure leaves child in Review and parent OPEN and active
   assert.ok(!calls.some((call) => /issue close (101|5)/.test(call)));
   assert.match(r.stderr, /child outcome unavailable/);
   resetExit();
+});
+
+test('cascade: each child outcome uses its own resolved worktree', async () => {
+  const calls = [];
+  const r = await run({
+    over: {
+      SKIP_NETWORK: false,
+      rest: ['#5', '--force'],
+      closeBody: READY_BODY,
+      getIssueBoardState: async () => 'review',
+      fetchSubIssues: async () => ['101'],
+      resolveIssueWorkspace: ({ issueRef }) => `/dedicated/${issueRef.replace('#', '')}`,
+      createEstimationOutcomeWriter: ({ projectDir }) => ({
+        ensure: async ({ issueNumber }) => {
+          calls.push(`outcome ${issueNumber} ${projectDir}`);
+          return { status: 'written' };
+        },
+      }),
+      runMoveState: async () => ({ ok: true, benign: false }),
+      runMoveStateDone: async () => ({ ok: true, benign: false }),
+      pexec: async (cmd, args) => {
+        const rendered = `${cmd} ${args.join(' ')}`;
+        if (cmd === 'gh' && rendered.includes('issue view') && rendered.includes('--jq')) {
+          return { stdout: READY_BODY, stderr: '' };
+        }
+        if (cmd === 'gh' && rendered.includes('issue view')) {
+          return { stdout: JSON.stringify({ body: READY_BODY }), stderr: '' };
+        }
+        return { stdout: '', stderr: '' };
+      },
+    },
+  });
+  assert.match(r.stdout, /Closed #5/);
+  assert.ok(calls.includes('outcome 101 /dedicated/101'), JSON.stringify(calls));
+  assert.ok(
+    calls.some((call) => /^outcome 5 /.test(call)),
+    JSON.stringify(calls)
+  );
 });
 
 // --- assertFieldsPersisted throw branches via the --force tail ---

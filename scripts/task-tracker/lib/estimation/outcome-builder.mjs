@@ -40,7 +40,11 @@ export function buildEstimationOutcome({
     attempts: command.attempts,
   }));
   const avoidableProcessWasteHours = cost.avoidableProcessWasteHours ?? 0;
-  const unclassifiedHours = cost.unclassifiedHours ?? 0;
+  // Necessary work requires affirmative classification. Any engaged time not
+  // explicitly identified as necessary or avoidable remains unknown, never
+  // silently promoted into the learning cohort as necessary implementation.
+  const unclassifiedHours =
+    cost.unclassifiedHours ?? round(engagedHours - avoidableProcessWasteHours);
   const necessaryHours = round(engagedHours - avoidableProcessWasteHours - unclassifiedHours);
   if (necessaryHours < 0) fail('cost-total');
   if (

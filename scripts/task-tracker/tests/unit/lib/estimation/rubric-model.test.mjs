@@ -145,3 +145,42 @@ test('updates are recency bounded, weighted, and cap one outlier influence', () 
   assert.equal(updated.human.sampleSize, 0);
   assert.equal(updated.human.confidence, 0.1);
 });
+
+test('lane and sandbox costs use their own observed sample counts', () => {
+  const previous = createBootstrapRubric({ generatedAt: '2026-08-01T00:00:00.000Z' });
+  const unit = outcome({
+    actual: {
+      ...outcome().payload.actual,
+      commands: [{ classification: 'test-unit', durationMs: 120_000, attempts: 1 }],
+    },
+    landscape: { ...outcome().payload.landscape, lanes: ['unit', 'sandbox'] },
+  });
+  const integration = outcome({
+    issue: 1092,
+    actual: {
+      ...outcome().payload.actual,
+      stages: { plan: 2, develop: 4, test: 2, review: 1 },
+      engagedHours: 9,
+      commands: [{ classification: 'test-integration', durationMs: 300_000, attempts: 1 }],
+    },
+    variance: { vsAiP50Hours: 4, vsAiP80Hours: 1 },
+    costClassification: {
+      necessaryHours: 5,
+      avoidableProcessWasteHours: 2,
+      unclassifiedHours: 2,
+      drivers: [],
+    },
+    landscape: { ...outcome().payload.landscape, lanes: ['integration'] },
+  });
+  integration.recordId = '01J00000000000000000000202';
+  integration.createdAt = '2026-08-02T15:00:00.000Z';
+
+  const updated = updateEstimationRubric({
+    previous,
+    outcomes: [unit, integration],
+    generatedAt: '2026-08-02T16:00:00.000Z',
+  });
+  assert.equal(updated.testLandscape.laneMinutes.unit, 2);
+  assert.equal(updated.testLandscape.laneMinutes.integration, 5);
+  assert.equal(updated.testLandscape.sandboxMinutes, 60);
+});

@@ -108,18 +108,25 @@ export function updateEstimationRubric({
   );
   const confidence = round(Math.min(0.9, 0.1 + (ordered.length / (ordered.length + 10)) * 0.8));
   const laneSamples = {};
-  let sandboxMinutes = 0;
+  const sandboxSamples = [];
   for (const { payload } of ordered) {
     for (const command of payload.actual.commands) {
+      if (!command.classification.startsWith('test-')) continue;
       const lane = command.classification.replace(/^test-/, '');
-      laneSamples[lane] = (laneSamples[lane] ?? 0) + command.durationMs / 60_000;
+      const samples = laneSamples[lane] ?? [];
+      samples.push(command.durationMs / 60_000);
+      laneSamples[lane] = samples;
     }
     if (payload.landscape.lanes.includes('sandbox'))
-      sandboxMinutes += payload.actual.stages.test * 60;
+      sandboxSamples.push(payload.actual.stages.test * 60);
   }
   const laneMinutes = { ...previous.testLandscape.laneMinutes };
-  for (const [lane, total] of Object.entries(laneSamples))
-    laneMinutes[lane] = round(total / ordered.length);
+  for (const [lane, samples] of Object.entries(laneSamples))
+    laneMinutes[lane] = round(samples.reduce((sum, value) => sum + value, 0) / samples.length);
+  const sandboxMinutes =
+    sandboxSamples.length === 0
+      ? previous.testLandscape.sandboxMinutes
+      : round(sandboxSamples.reduce((sum, value) => sum + value, 0) / sandboxSamples.length);
   const p50Mae =
     ordered.reduce((sum, { payload }) => sum + Math.abs(payload.variance.vsAiP50Hours), 0) /
     ordered.length;
@@ -157,7 +164,7 @@ export function updateEstimationRubric({
       confidence,
     },
     workflowDiagnostics: { avoidableProcessWasteHours: round(avoidable) },
-    testLandscape: { laneMinutes, sandboxMinutes: round(sandboxMinutes / ordered.length) },
+    testLandscape: { laneMinutes, sandboxMinutes },
     planning: clone(previous.planning ?? BOOTSTRAP_RUBRIC_PRIORS.planning),
     review: { reworkProbability: round(reworkProbability) },
     accuracy: {

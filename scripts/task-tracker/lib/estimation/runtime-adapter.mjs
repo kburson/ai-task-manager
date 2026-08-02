@@ -114,7 +114,7 @@ const ISSUE_PROJECTION_QUERY = `
             __typename id databaseId body updatedAt
             issue { number repository { nameWithOwner } }
           }
-          pageInfo { hasNextPage }
+          pageInfo { hasNextPage endCursor }
         }
         projectItems(first: 20) {
           nodes {
@@ -139,21 +139,19 @@ const ISSUE_PROJECTION_QUERY = `
   }
 `;
 const CHILD_OUTCOMES_QUERY = `
-  query AitmEstimationChildOutcomes($owner: String!, $name: String!, $issue: Int!) {
+  query AitmEstimationChildOutcomes(
+    $owner: String!
+    $name: String!
+    $issue: Int!
+    $after: String
+  ) {
     repository(owner: $owner, name: $name) {
       issue(number: $issue) {
-        subIssues(first: 100) {
-          nodes {
-            number
-            comments(first: 100) {
-              nodes {
-                __typename id body updatedAt
-                issue { number repository { nameWithOwner } }
-              }
-              pageInfo { hasNextPage }
-            }
-          }
-          pageInfo { hasNextPage }
+        number
+        repository { nameWithOwner }
+        subIssues(first: 100, after: $after) {
+          nodes { number }
+          pageInfo { hasNextPage endCursor }
         }
       }
     }
@@ -722,6 +720,10 @@ async function defaultDiffEvidence({ projectDir, trunk = 'origin/trunk' }) {
   ]
     .filter(([, pattern]) => files.some((file) => pattern.test(file)))
     .map(([lane]) => lane);
+  // Test is stage-owned and always executes in the repository's isolated
+  // sandbox. Keep that execution signal explicit rather than trying to infer
+  // it from which source paths happened to change.
+  lanes.push('sandbox');
   return {
     filesChanged: files.length,
     modules,
@@ -737,20 +739,52 @@ export function createEstimationOutcomeRuntime({ cfg, projectDir, deps = {} } = 
   const { owner, name } = splitRepository(cfg.repo);
 
   const childOutcomeRecordIds = async (issueNumber) => {
-    const response = await graphql({
-      query: CHILD_OUTCOMES_QUERY,
-      variables: { owner, name, issue: issueNumber },
-    });
-    const children = response?.data?.repository?.issue?.subIssues;
-    if (!children || children.pageInfo?.hasNextPage === true) fail('child-outcomes');
+    const childNumbers = [];
+    const seenChildren = new Set();
+    const seenCursors = new Set();
+    let after = null;
+    let complete = false;
+    for (let page = 0; page < 1000; page += 1) {
+      const response = await graphql({
+        query: CHILD_OUTCOMES_QUERY,
+        variables: { owner, name, issue: issueNumber, after },
+      });
+      if (Array.isArray(response?.errors) && response.errors.length > 0) fail('child-outcomes');
+      const responseIssue = response?.data?.repository?.issue;
+      if (
+        responseIssue?.number !== issueNumber ||
+        responseIssue?.repository?.nameWithOwner !== cfg.repo ||
+        !Array.isArray(responseIssue.subIssues?.nodes) ||
+        typeof responseIssue.subIssues.pageInfo?.hasNextPage !== 'boolean'
+      ) {
+        fail('child-outcomes');
+      }
+      for (const child of responseIssue.subIssues.nodes) {
+        if (
+          !Number.isInteger(child?.number) ||
+          child.number <= 0 ||
+          seenChildren.has(child.number)
+        ) {
+          fail('child-outcomes');
+        }
+        seenChildren.add(child.number);
+        childNumbers.push(child.number);
+      }
+      if (!responseIssue.subIssues.pageInfo.hasNextPage) {
+        complete = true;
+        break;
+      }
+      const cursor = responseIssue.subIssues.pageInfo.endCursor;
+      if (typeof cursor !== 'string' || cursor === '' || seenCursors.has(cursor)) {
+        fail('child-outcomes');
+      }
+      seenCursors.add(cursor);
+      after = cursor;
+    }
+    if (!complete) fail('child-outcomes');
     const ids = [];
-    for (const child of children.nodes ?? []) {
-      if (child.comments?.pageInfo?.hasNextPage === true) fail('child-outcomes');
-      const outcomes = parsePreloadedIssueComments({
-        nodes: child.comments?.nodes ?? [],
-        repository: cfg.repo,
-        issue: child.number,
-      })
+    for (const childNumber of childNumbers) {
+      const outcomes = (await io.listIssueRecords({ repository: cfg.repo, issue: childNumber }))
         .filter((record) => record.envelope.recordType === 'estimation-outcome')
         .toSorted((left, right) => right.envelope.createdAt.localeCompare(left.envelope.createdAt));
       if (outcomes.length === 0) fail('child-outcomes');
@@ -762,15 +796,25 @@ export function createEstimationOutcomeRuntime({ cfg, projectDir, deps = {} } = 
   return {
     async ensure({ issueNumber, forecastRecordId, body }) {
       const records = await io.listIssueRecords({ repository: cfg.repo, issue: issueNumber });
+      const children = await (deps.childOutcomeRecordIds ?? childOutcomeRecordIds)(issueNumber);
+      const isEpic = children.length > 0;
+      const forecasts = recordsForProjection(records);
+      const activeForecasts = forecasts.filter((record) => record.supersededBy === null);
+      if (!isEpic && forecasts.length === 0 && forecastRecordId === null) {
+        return { status: 'legacy-no-forecast' };
+      }
+      if (
+        !isEpic &&
+        (activeForecasts.length !== 1 || activeForecasts[0].recordId !== forecastRecordId)
+      ) {
+        fail('forecast-lineage');
+      }
       const forecastRecord = records.find(
         (record) =>
           record.envelope.recordType === 'estimation-forecast' &&
           record.envelope.recordId === forecastRecordId
       );
-      const children = await (deps.childOutcomeRecordIds ?? childOutcomeRecordIds)(issueNumber);
-      const isEpic = children.length > 0;
-      if (!isEpic && forecastRecordId !== null && !forecastRecord) fail('forecast');
-      if (!isEpic && !forecastRecord) return { status: 'legacy-no-forecast' };
+      if (!isEpic && !forecastRecord) fail('forecast');
       const outcomeForecast = isEpic ? null : forecastRecord.envelope;
       const timingResult = await (deps.readTimingCommentBody ?? readTimingCommentBody)({
         issueNumber,

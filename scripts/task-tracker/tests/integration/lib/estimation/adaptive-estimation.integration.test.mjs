@@ -399,6 +399,51 @@ test('default close runtime builds and read-backs the frozen forecast outcome be
   assert.equal(result.commentNodeId, 'IC_close_outcome');
   assert.equal(written[0].envelope.payload.forecastRecordId, forecastEnvelope.recordId);
   assert.equal(written[0].envelope.payload.actual.engagedHours, 1.9167);
+  assert.equal(written[0].envelope.payload.costClassification.necessaryHours, 0);
+  assert.equal(written[0].envelope.payload.costClassification.unclassifiedHours, 1.9167);
+});
+
+test('close rejects a ready forecast that a later active forecast superseded', async () => {
+  const rubricPayload = createBootstrapRubric({ generatedAt: '2026-08-02T14:00:00.000Z' });
+  const priorPayload = buildEstimationForecast({
+    issue: firstIssue,
+    refine: { size: 'M', humanHours: 8 },
+    planInput: planInput(),
+    rubric: { recordId: nextId(), payload: rubricPayload },
+    comparableOutcomes: [],
+  });
+  const prior = envelope({
+    recordType: 'estimation-forecast',
+    issue: firstIssue,
+    payload: priorPayload,
+    actor: 'aitm/plan-estimate',
+  });
+  const successor = envelope({
+    recordType: 'estimation-forecast',
+    issue: firstIssue,
+    payload: { ...priorPayload, supersedesForecastRecordId: prior.recordId },
+    predecessor: prior.recordId,
+    supersedes: prior.recordId,
+    actor: 'aitm/plan-estimate',
+  });
+  const runtime = createEstimationOutcomeRuntime({
+    cfg: { repo: repository },
+    projectDir: '/tmp/fake-adaptive-project',
+    deps: {
+      recordIo: {
+        listIssueRecords: async () => [
+          { commentNodeId: 'IC_prior', envelope: prior },
+          { commentNodeId: 'IC_successor', envelope: successor },
+        ],
+      },
+      childOutcomeRecordIds: async () => [],
+    },
+  });
+
+  await assert.rejects(
+    runtime.ensure({ issueNumber: firstIssue, forecastRecordId: prior.recordId, body: '' }),
+    /estimation-runtime:forecast-lineage/
+  );
 });
 
 test('default close runtime emits a child-referencing epic outcome without using a legacy parent forecast', async () => {
