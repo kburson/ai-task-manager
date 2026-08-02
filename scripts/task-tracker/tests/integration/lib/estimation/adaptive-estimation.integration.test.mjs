@@ -26,6 +26,7 @@ import { planApprovedGuard } from '../../../../lib/plan-approved-guard.mjs';
 import { reviewExitReviewApprovedGuard } from '../../../../lib/review-exit-review-approved-guard.mjs';
 import { resolveGate } from '../../../../lib/gate-resolve.mjs';
 import { applyChoice } from '../../../../lib/session-store.mjs';
+import { repeatedVerificationCommand } from '../../../fixtures/estimation-verification.mjs';
 
 const repository = 'kburson/ai-task-manager';
 const rubricIssue = 9000;
@@ -200,35 +201,7 @@ test('completed outcome deterministically updates the next rubric and AI forecas
     timing: {
       stagesMs: { plan: 900_000, develop: 9_000_000, test: 900_000, review: 900_000 },
     },
-    verification: [
-      {
-        classification: 'test-unit',
-        durationMs: 120_000,
-        attempts: 2,
-        executions: [
-          {
-            receiptId: '01J00000000000000000000820',
-            stage: 'develop-final',
-            commitSha: 'a'.repeat(40),
-            command: 'npm',
-            args: ['run', 'test:unit'],
-            exitCode: 0,
-            durationMs: 60_000,
-            reusedFrom: null,
-          },
-          {
-            receiptId: '01J00000000000000000000821',
-            stage: 'review',
-            commitSha: 'a'.repeat(40),
-            command: 'npm',
-            args: ['run', 'test:unit'],
-            exitCode: 0,
-            durationMs: 60_000,
-            reusedFrom: null,
-          },
-        ],
-      },
-    ],
+    verification: [repeatedVerificationCommand()],
     diff: {
       filesChanged: 8,
       modules: ['estimation'],
