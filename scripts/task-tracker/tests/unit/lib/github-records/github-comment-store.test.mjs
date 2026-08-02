@@ -299,3 +299,51 @@ test('incremental listing fails closed on broken pagination and partial pages', 
     (error) => error.category === 'input'
   );
 });
+
+test('incremental listing applies an exclusive boundary and normalizes transport failure', async () => {
+  const { listIssueCommentsSince } = commentStore;
+  const since = '2026-08-01T14:01:00.000Z';
+  const atBoundary = node('IC_kwDOBoundary', '01J00000000000000000000010');
+  const afterBoundary = {
+    ...node('IC_kwDOAfterBoundary', '01J00000000000000000000011'),
+    updatedAt: '2026-08-01T14:01:00.001Z',
+  };
+  const result = await listIssueCommentsSince({
+    since,
+    repository,
+    issue,
+    graphql: async () => ({
+      data: {
+        repository: {
+          issue: {
+            number: issue,
+            repository: { nameWithOwner: repository },
+            comments: {
+              nodes: [atBoundary, afterBoundary],
+              pageInfo: { hasNextPage: false, endCursor: null },
+            },
+          },
+        },
+      },
+    }),
+  });
+  assert.deepEqual(
+    result.map((comment) => comment.commentNodeId),
+    ['IC_kwDOAfterBoundary']
+  );
+
+  const secret = 'ghp_1234567890abcdefghijklmnop';
+  await assert.rejects(
+    listIssueCommentsSince({
+      since,
+      repository,
+      issue,
+      graphql: async () => Promise.reject(new Error(secret)),
+    }),
+    (error) => {
+      assert.equal(error.category, 'transport');
+      assert.doesNotMatch(error.message, /ghp_/);
+      return true;
+    }
+  );
+});
