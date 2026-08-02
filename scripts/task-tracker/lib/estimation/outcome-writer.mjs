@@ -3,16 +3,26 @@ function fail(category) {
 }
 
 export async function ensureEstimationOutcome({ issue, forecast, outcomePayload, deps = {} } = {}) {
-  if (!forecast) return { status: 'legacy-no-forecast' };
-  if (!Number.isInteger(issue) || issue <= 0 || forecast.payload?.issue !== issue) fail('input');
+  if (!forecast && outcomePayload?.kind !== 'epic-orchestration')
+    return { status: 'legacy-no-forecast' };
+  if (
+    !Number.isInteger(issue) ||
+    issue <= 0 ||
+    (forecast && forecast.payload?.issue !== issue) ||
+    outcomePayload?.issue !== issue
+  )
+    fail('input');
+  const forecastRecordId = forecast?.recordId ?? null;
+  const kind = forecast ? 'story' : 'epic-orchestration';
   if (typeof deps.listOutcomeRecords !== 'function') fail('dependencies');
-  const records = await deps.listOutcomeRecords({ issue, forecastRecordId: forecast.recordId });
+  const records = await deps.listOutcomeRecords({ issue, forecastRecordId });
   if (!Array.isArray(records)) fail('records');
   const matching = records.filter(
     (record) =>
       record?.envelope?.recordType === 'estimation-outcome' &&
       record.envelope.payload?.issue === issue &&
-      record.envelope.payload?.forecastRecordId === forecast.recordId
+      record.envelope.payload?.forecastRecordId === forecastRecordId &&
+      record.envelope.payload?.kind === kind
   );
   if (matching.length > 1) fail('duplicate');
   if (matching.length === 1) {
@@ -39,7 +49,8 @@ export async function ensureEstimationOutcome({ issue, forecast, outcomePayload,
   if (
     written?.envelope?.recordType !== 'estimation-outcome' ||
     written.envelope.payload?.issue !== issue ||
-    written.envelope.payload?.forecastRecordId !== forecast.recordId
+    written.envelope.payload?.forecastRecordId !== forecastRecordId ||
+    written.envelope.payload?.kind !== kind
   ) {
     fail('write-readback');
   }

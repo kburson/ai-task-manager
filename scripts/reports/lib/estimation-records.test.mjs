@@ -22,14 +22,19 @@ function parsed(recordType, recordId, issue, payload, createdAt = '2026-08-02T12
   };
 }
 
-function forecast(issue, { human = 6, refine = 5, p50 = 3.8, p80 = 5.6 } = {}) {
-  return parsed('estimation-forecast', RID.forecast, issue, {
+function forecast(
+  issue,
+  { human = 6, refine = 5, p50 = 3.8, p80 = 5.6, recordId = RID.forecast, supersedes = null } = {}
+) {
+  const record = parsed('estimation-forecast', recordId, issue, {
     issue,
     refine: { humanHours: refine },
     plan: { humanHours: human },
     ai: { p50EngagedHours: p50, p80EngagedHours: p80 },
     rubric: { version: 4, cohortSize: 12, confidence: 0.75 },
   });
+  record.envelope.supersedes = supersedes;
+  return record;
 }
 
 function outcome(
@@ -38,6 +43,7 @@ function outcome(
 ) {
   return parsed('estimation-outcome', RID.outcome, issue, {
     issue,
+    kind: 'story',
     forecastRecordId: RID.forecast,
     humanPlanHours: human,
     aiForecast: { p50EngagedHours: p50, p80EngagedHours: p80 },
@@ -137,6 +143,24 @@ test('missing forecast or outcome stays an evidence gap rather than becoming zer
   assert.deepEqual(row.evidenceGaps, ['missing-forecast', 'missing-outcome']);
 });
 
+test('story outcome must bind to the unique active forecast generation', () => {
+  const priorId = '01J00000000000000000000035';
+  const activeId = '01J00000000000000000000036';
+  const prior = forecast(1091, { recordId: priorId, human: 5 });
+  const active = forecast(1091, { recordId: activeId, supersedes: priorId, human: 8 });
+  const staleOutcome = outcome(1091);
+  staleOutcome.envelope.payload.forecastRecordId = priorId;
+  const row = buildEstimationReportModel({
+    items: [{ number: 1091 }],
+    recordsByIssue: new Map([[1091, [prior, active, staleOutcome]]]),
+  }).rowsByIssue.get(1091);
+
+  assert.equal(row.forecastRecordId, activeId);
+  assert.equal(row.outcomeRecordId, null);
+  assert.equal(row.actualEngagedHours, null);
+  assert.ok(row.evidenceGaps.includes('outcome-forecast-mismatch'));
+});
+
 test('epic rollup uses child Plan and engaged plus classified parent orchestration only', () => {
   const childAForecast = forecast(2001, { human: 5, p50: 2, p80: 3 });
   const childAOutcome = { ...outcome(2001, { human: 5, actual: 2 }), envelope: { ...outcome(2001, { human: 5, actual: 2 }).envelope, recordId: RID.childA } };
@@ -148,6 +172,8 @@ test('epic rollup uses child Plan and engaged plus classified parent orchestrati
     avoidable: 0.2,
     children: [RID.childA, RID.childB],
   });
+  parentOutcome.envelope.payload.kind = 'epic-orchestration';
+  parentOutcome.envelope.payload.forecastRecordId = null;
   const model = buildEstimationReportModel({
     items: [
       { number: 2000, parentNumber: null, estimate: 100 },
@@ -167,6 +193,31 @@ test('epic rollup uses child Plan and engaged plus classified parent orchestrati
   assert.equal(epic.acceleration, 2);
   assert.equal(epic.parentOrchestrationHours, 1);
   assert.equal(epic.avoidableWasteHours, 1);
+});
+
+test('epic rollup is unavailable rather than numeric when child evidence or references are partial', () => {
+  const childA = outcome(2001, { human: 5, actual: 2 });
+  childA.envelope.recordId = RID.childA;
+  const parentOutcome = outcome(2000, { actual: 1, children: [] });
+  parentOutcome.envelope.payload.kind = 'epic-orchestration';
+  parentOutcome.envelope.payload.forecastRecordId = null;
+  const epic = buildEstimationReportModel({
+    items: [
+      { number: 2000 },
+      { number: 2001, parentNumber: 2000 },
+      { number: 2002, parentNumber: 2000 },
+    ],
+    recordsByIssue: new Map([
+      [2000, [parentOutcome]],
+      [2001, [forecast(2001, { human: 5 }), childA]],
+      [2002, [forecast(2002, { human: 7 })]],
+    ]),
+  }).rowsByIssue.get(2000);
+
+  assert.equal(epic.humanPlanHours, null);
+  assert.equal(epic.actualEngagedHours, null);
+  assert.equal(epic.acceleration, null);
+  assert.ok(epic.evidenceGaps.includes('partial-epic-rollup'));
 });
 
 test('methodology publishes rubric version, cohort, confidence, and P80 coverage', () => {

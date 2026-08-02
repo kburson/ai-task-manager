@@ -152,12 +152,13 @@ const ESTIMATION_FORECAST_READY_RE =
 
 export async function ensureCloseEstimationOutcome({ issueNumber, body, writer } = {}) {
   const forecastRecordId = String(body ?? '').match(ESTIMATION_FORECAST_READY_RE)?.[1] ?? null;
-  if (forecastRecordId === null) return { status: 'legacy-no-forecast' };
   const ensure = typeof writer === 'function' ? writer : writer?.ensure;
   if (typeof ensure !== 'function') {
+    if (forecastRecordId === null) return { status: 'legacy-no-forecast' };
     throw new Error('estimation-outcome-writer capability is required for a v1 forecast');
   }
   const result = await ensure({ issueNumber: Number(issueNumber), forecastRecordId, body });
+  if (forecastRecordId === null && result?.status === 'legacy-no-forecast') return result;
   if (!['written', 'existing'].includes(result?.status)) {
     throw new Error(`estimation outcome did not converge (status ${result?.status ?? 'missing'})`);
   }
@@ -1065,18 +1066,6 @@ export async function verbClose(ctx) {
         const { PHASE_EVENTS: _PEcascade } = await import('../phase-events.mjs');
         for (const child of reviewChildren) {
           try {
-            // #1041 — a cascade closes real delivered children, so classify
-            // each child before its Done move or GitHub close. A missing field,
-            // project item, or option aborts the parent close too: continuing
-            // would strand an OPEN child beneath a CLOSED epic.
-            if (
-              !(await writeDeliveredOrRefuse({
-                issueNumber: child.num,
-                targetRef: `#${child.num}`,
-              }))
-            ) {
-              return;
-            }
             // Cascade close: per-child body not fetched here; activeSec=0 is
             // honest because no per-child timing context is loaded.
             await safePostTiming(
@@ -1117,6 +1106,18 @@ export async function verbClose(ctx) {
                   `or move the card to Done manually, then re-run the epic close.`
               );
               continue;
+            }
+            // #1041 — Delivered is terminal classification for cascaded
+            // children too. Write it only after the board move has succeeded,
+            // matching the primary close path and avoiding an OPEN child that
+            // is classified Delivered when its Done move fails.
+            if (
+              !(await writeDeliveredOrRefuse({
+                issueNumber: child.num,
+                targetRef: `#${child.num}`,
+              }))
+            ) {
+              return;
             }
             await pexec('gh', ['issue', 'close', String(child.num), '-R', cfg.repo], {
               timeout: GH_API_TIMEOUT_MS,
@@ -1180,23 +1181,50 @@ export async function verbClose(ctx) {
       `[task-tracker] queue: delivered ${flushResult.delivered}, discarded ${flushResult.discarded} for ${closeTarget}.`
     );
   }
-  // #1035 — classify delivery before any terminal board or GitHub close. The
-  // write is fail-closed: an upgraded installation must run init-repair rather
-  // than silently create unclassified delivered work.
-  if (!SKIP_NETWORK && closeIssueNum) {
-    if (
-      !(await writeDeliveredOrRefuse({
-        issueNumber: closeIssueNum,
-        targetRef: closeTarget,
-      }))
-    ) {
+  // #908 — complete the fallible Full-Auto merge preparation before writing
+  // immutable completion evidence. A retry after a merge refusal must not leave
+  // an outcome for work that never became eligible for Done.
+  if (isFullAuto() && !force && !SKIP_NETWORK && closeIssueNum) {
+    let closeBranch = '';
+    try {
+      const { stdout: br } = await pexec('git', ['rev-parse', '--abbrev-ref', 'HEAD'], {});
+      closeBranch = String(br || '').trim();
+    } catch {
+      // no branch resolvable — treated as no-PR (inert) below
+    }
+    const fam = await enableFullAutoMergeForClose({
+      cfg,
+      branch: closeBranch,
+      isFullAuto: isFullAuto(),
+      pexec,
+    });
+    if (fam.status === 'fail-closed') {
+      console.error(`[task-tracker] ⛔ Refusing to close ${closeTarget}: ${fam.message}`);
+      console.error(
+        `   Issue left OPEN — configure \`fullAutoMerge\` and re-run \`/task close ${closeTarget}\`.`
+      );
+      process.exitCode = 1;
       return;
+    }
+    if (fam.status === 'exec-failed') {
+      console.error(
+        `[task-tracker] ✗ Failed to enable auto-merge for ${closeTarget}: ${fam.message}\n` +
+          `Local state left intact — re-run \`/task close ${closeTarget}\` once resolved.`
+      );
+      process.exitCode = 1;
+      return;
+    }
+    if (fam.status === 'enabled') {
+      console.log(
+        `[task-tracker] ✓ Enabled GitHub auto-merge on PR #${fam.prNumber} for ${closeTarget} ` +
+          `(\`gh ${fam.argv.join(' ')}\`); GitHub merges once required checks pass.`
+      );
     }
   }
   try {
     const estimationOutcomeWriter =
       ctx.estimationOutcomeWriter ??
-      (ESTIMATION_FORECAST_READY_RE.test(closeBody)
+      (Number.isInteger(cfg.estimationRubricIssue) && cfg.estimationRubricIssue > 0
         ? createEstimationOutcomeRuntime({ cfg, projectDir })
         : null);
     await ensureCloseEstimationOutcome({
@@ -1251,53 +1279,6 @@ export async function verbClose(ctx) {
     }
   }
 
-  // #908 — Full-Auto PR merge step. Before the terminal Done/close sequence, on a
-  // Full-Auto PR-based close (an open PR exists for this branch), enable
-  // GitHub-native auto-merge so the drive does not stall at the human "Merge"
-  // click. `fullAutoMerge` is absent by default → `fail-closed`: the batch HALTS
-  // with an actionable message rather than a mid-drive classifier denial, and the
-  // issue is left OPEN. No open PR (branch-based / interactive close) → inert.
-  // Gated on `isFullAuto()` — an interactive close leaves the merge to the human,
-  // and the distinct guard keeps this block from shadowing the #654 pre-walk guard
-  // below (whose source-shape contract anchors on its exact `if (!force && …)`).
-  if (isFullAuto() && !force && !SKIP_NETWORK && closeIssueNum) {
-    let closeBranch = '';
-    try {
-      const { stdout: br } = await pexec('git', ['rev-parse', '--abbrev-ref', 'HEAD'], {});
-      closeBranch = String(br || '').trim();
-    } catch {
-      // no branch resolvable — treated as no-PR (inert) below
-    }
-    const fam = await enableFullAutoMergeForClose({
-      cfg,
-      branch: closeBranch,
-      isFullAuto: isFullAuto(),
-      pexec,
-    });
-    if (fam.status === 'fail-closed') {
-      console.error(`[task-tracker] ⛔ Refusing to close ${closeTarget}: ${fam.message}`);
-      console.error(
-        `   Issue left OPEN — configure \`fullAutoMerge\` and re-run \`/task close ${closeTarget}\`.`
-      );
-      process.exitCode = 1;
-      return;
-    }
-    if (fam.status === 'exec-failed') {
-      console.error(
-        `[task-tracker] ✗ Failed to enable auto-merge for ${closeTarget}: ${fam.message}\n` +
-          `Local state left intact — re-run \`/task close ${closeTarget}\` once resolved.`
-      );
-      process.exitCode = 1;
-      return;
-    }
-    if (fam.status === 'enabled') {
-      console.log(
-        `[task-tracker] ✓ Enabled GitHub auto-merge on PR #${fam.prNumber} for ${closeTarget} ` +
-          `(\`gh ${fam.argv.join(' ')}\`); GitHub merges once required checks pass.`
-      );
-    }
-  }
-
   // #654 — fail-closed close ordering on the NON-force path. The force path
   // (#505, above) already pre-walks the board to Done BEFORE `gh issue close`
   // so a refused terminal move can never strand the issue CLOSED-but-not-Done.
@@ -1334,6 +1315,20 @@ export async function verbClose(ctx) {
           `(e.g. record review approval with \`/task approve ${closeTarget}\`) and re-run \`/task close ${closeTarget}\`.`
       );
       process.exitCode = 1;
+      return;
+    }
+  }
+
+  // #1035 — Delivered is terminal classification, so write it only after the
+  // board has verifiably reached Done. This prevents a failed outcome or move
+  // from leaving an open issue classified as delivered.
+  if (!SKIP_NETWORK && closeIssueNum) {
+    if (
+      !(await writeDeliveredOrRefuse({
+        issueNumber: closeIssueNum,
+        targetRef: closeTarget,
+      }))
+    ) {
       return;
     }
   }

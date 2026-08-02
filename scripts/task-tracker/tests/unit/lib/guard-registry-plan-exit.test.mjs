@@ -147,6 +147,70 @@ test('v1 Plan projection requires one ready forecast matching board and body aut
   assert.equal(result.forecastRecordId, recordId);
 });
 
+test('v1 Plan projection uses the production paginated record loader when no reader is injected', async () => {
+  const recordId = '01J00000000000000000000702';
+  const cfg = {
+    ...CFG,
+    sizeFieldId: 'SIZE_FIELD',
+    fieldEstimate: 'ESTIMATE_FIELD',
+    kanbanFieldId: 'STATUS_FIELD',
+    fieldIds: { size: 'SIZE_FIELD', estimate: 'ESTIMATE_FIELD', status: 'STATUS_FIELD' },
+  };
+  const result = await planExitPlannedEstimateGuard.run({
+    toState: 'develop',
+    cfg,
+    issueNumber: 1091,
+    body: `<!-- aitm-estimation-forecast-ready record-id="${recordId}" -->`,
+    deps: {
+      plannedEstimate: {
+        listComments: PLANNED_ESTIMATE_OK_DEPS.plannedEstimate.listComments,
+        graphql: async () => ({
+          data: {
+            repository: {
+              issue: {
+                body: [
+                  `<!-- aitm-estimation-forecast-ready record-id="${recordId}" -->`,
+                  `<!-- aitm-fields: ${JSON.stringify({ schema: 1, values: { size: 'XL', estimate: 40 } })} -->`,
+                ].join('\n'),
+                comments: { nodes: [], pageInfo: { hasNextPage: true } },
+                projectItems: {
+                  nodes: [
+                    {
+                      id: 'ITEM',
+                      project: { id: cfg.projectId },
+                      fieldValues: {
+                        nodes: [
+                          { number: 40, field: { id: cfg.fieldEstimate } },
+                          { name: 'XL', field: { id: cfg.sizeFieldId } },
+                          { name: 'Plan', field: { id: cfg.kanbanFieldId } },
+                        ],
+                      },
+                    },
+                  ],
+                },
+              },
+            },
+          },
+        }),
+        recordIo: {
+          listIssueRecords: async () => [
+            {
+              commentNodeId: 'COMMENT',
+              envelope: {
+                recordType: 'estimation-forecast',
+                recordId,
+                payloadHash: 'a'.repeat(64),
+                payload: { plan: { size: 'XL', humanHours: 40 } },
+              },
+            },
+          ],
+        },
+      },
+    },
+  });
+  assert.deepEqual(result, { ok: true, forecastRecordId: recordId });
+});
+
 // ── planApprovedGuard ────────────────────────────────────────────────────────
 
 test('planApprovedGuard: body with marker → ok', async () => {

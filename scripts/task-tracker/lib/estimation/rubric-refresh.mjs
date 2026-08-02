@@ -13,6 +13,22 @@ function sameCohort(rubric, outcomes) {
   return current.length === incoming.length && current.every((id, index) => id === incoming[index]);
 }
 
+function validateLineage(records) {
+  const byId = new Map(records.map((record) => [record.envelope.recordId, record]));
+  for (const record of records) {
+    const { envelope } = record;
+    const predecessor = envelope.payload.predecessorRecordId;
+    if (envelope.predecessor !== predecessor || envelope.supersedes !== predecessor)
+      fail('lineage');
+    if (envelope.payload.version === 1) {
+      if (predecessor !== null) fail('lineage');
+      continue;
+    }
+    const prior = byId.get(predecessor);
+    if (!prior || prior.envelope.payload.version !== envelope.payload.version - 1) fail('lineage');
+  }
+}
+
 function selectLatest(records) {
   if (!Array.isArray(records)) fail('records');
   if (records.length === 0) return null;
@@ -27,14 +43,10 @@ function selectLatest(records) {
         right.envelope.payload.version - left.envelope.payload.version ||
         right.envelope.payload.generatedAt.localeCompare(left.envelope.payload.generatedAt)
     );
-  if (valid.length > 1) {
-    const [first, second] = valid;
-    if (
-      first.envelope.payload.version === second.envelope.payload.version &&
-      first.envelope.payload.generatedAt === second.envelope.payload.generatedAt
-    )
-      fail('conflicting-latest');
-  }
+  validateLineage(valid);
+  const maximumVersion = valid[0].envelope.payload.version;
+  if (valid.filter((record) => record.envelope.payload.version === maximumVersion).length > 1)
+    fail('conflicting-latest');
   return valid[0];
 }
 
@@ -92,6 +104,12 @@ export async function loadOrRefreshRubric({
   });
   if (written?.envelope?.recordType !== 'estimation-rubric') fail('write-readback');
   validateEstimationRubric(written.envelope.payload);
+  if (
+    written.envelope.predecessor !== (latest?.envelope.recordId ?? null) ||
+    written.envelope.supersedes !== (latest?.envelope.recordId ?? null) ||
+    written.envelope.payload.predecessorRecordId !== (latest?.envelope.recordId ?? null)
+  )
+    fail('write-readback');
   if (!sameCohort(written.envelope.payload, outcomes)) fail('write-readback');
   return {
     status: latest ? 'refreshed' : 'bootstrapped',

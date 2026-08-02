@@ -36,6 +36,7 @@ export function validateEstimationOutcome(payload, { expectedIssue } = {}) {
       'forecastRecordId',
       'humanPlanHours',
       'issue',
+      'kind',
       'landscape',
       'schema',
       'variance',
@@ -44,14 +45,26 @@ export function validateEstimationOutcome(payload, { expectedIssue } = {}) {
   );
   if (!Number.isInteger(payload.issue) || payload.issue <= 0) fail('outcome-issue');
   if (expectedIssue !== undefined && payload.issue !== expectedIssue) fail('issue-correlation');
-  if (typeof payload.forecastRecordId !== 'string' || !RECORD_ID_RE.test(payload.forecastRecordId))
-    fail('outcome-frozen-forecast');
-  finite(payload.humanPlanHours, 'outcome-human-hours');
-  exact(payload.aiForecast, ['p50EngagedHours', 'p80EngagedHours'], 'outcome-ai');
-  finite(payload.aiForecast.p50EngagedHours, 'outcome-ai-hours');
-  finite(payload.aiForecast.p80EngagedHours, 'outcome-ai-hours');
-  if (payload.aiForecast.p80EngagedHours < payload.aiForecast.p50EngagedHours)
-    fail('outcome-ai-order');
+  if (!new Set(['story', 'epic-orchestration']).has(payload.kind)) fail('outcome-kind');
+  if (payload.kind === 'story') {
+    if (
+      typeof payload.forecastRecordId !== 'string' ||
+      !RECORD_ID_RE.test(payload.forecastRecordId)
+    )
+      fail('outcome-frozen-forecast');
+    finite(payload.humanPlanHours, 'outcome-human-hours');
+    exact(payload.aiForecast, ['p50EngagedHours', 'p80EngagedHours'], 'outcome-ai');
+    finite(payload.aiForecast.p50EngagedHours, 'outcome-ai-hours');
+    finite(payload.aiForecast.p80EngagedHours, 'outcome-ai-hours');
+    if (payload.aiForecast.p80EngagedHours < payload.aiForecast.p50EngagedHours)
+      fail('outcome-ai-order');
+  } else if (
+    payload.forecastRecordId !== null ||
+    payload.humanPlanHours !== null ||
+    payload.aiForecast !== null
+  ) {
+    fail('outcome-epic-implementation');
+  }
 
   exact(
     payload.actual,
@@ -101,9 +114,11 @@ export function validateEstimationOutcome(payload, { expectedIssue } = {}) {
   ) {
     fail('outcome-child-records');
   }
-  exact(payload.variance, ['vsAiP50Hours', 'vsAiP80Hours'], 'outcome-variance');
-  for (const value of Object.values(payload.variance))
-    if (typeof value !== 'number' || !Number.isFinite(value)) fail('outcome-variance-hours');
+  if (payload.kind === 'story') {
+    exact(payload.variance, ['vsAiP50Hours', 'vsAiP80Hours'], 'outcome-variance');
+    for (const value of Object.values(payload.variance))
+      if (typeof value !== 'number' || !Number.isFinite(value)) fail('outcome-variance-hours');
+  } else if (payload.variance !== null) fail('outcome-epic-implementation');
 
   exact(
     payload.costClassification,

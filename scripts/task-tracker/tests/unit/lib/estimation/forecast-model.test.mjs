@@ -47,10 +47,10 @@ test('forecast computes human work independently from AI coefficients and includ
     rubric: { recordId: rubricRecordId, payload: rubric },
     comparableOutcomes: [],
   });
-  assert.equal(forecast.plan.humanHours, 40);
+  assert.equal(forecast.plan.humanHours, 43.9);
   assert.equal(
-    forecast.wbs.reduce((sum, item) => sum + item.humanHours, 0),
-    40
+    Number(forecast.wbs.reduce((sum, item) => sum + item.humanHours, 0).toFixed(4)),
+    43.9
   );
   assert.ok(forecast.ai.p50EngagedHours < forecast.plan.humanHours);
 
@@ -65,6 +65,18 @@ test('forecast computes human work independently from AI coefficients and includ
   });
   assert.equal(changed.plan.humanHours, forecast.plan.humanHours);
   assert.notEqual(changed.ai.p50EngagedHours, forecast.ai.p50EngagedHours);
+
+  const learnedHuman = structuredClone(rubric);
+  learnedHuman.human.coefficients.necessaryToPlanned = 0.5;
+  const calibrated = buildEstimationForecast({
+    issue: 1091,
+    refine: { size: 'XL', humanHours: 40 },
+    planInput,
+    rubric: { recordId: rubricRecordId, payload: learnedHuman },
+    comparableOutcomes: [],
+  });
+  assert.equal(calibrated.plan.humanHours, 24.4);
+  assert.notEqual(calibrated.plan.humanHours, forecast.plan.humanHours);
 });
 
 test('forecast widens P80 from confidence and allocates P50 across exact lifecycle stages', () => {
@@ -80,10 +92,52 @@ test('forecast widens P80 from confidence and allocates P50 across exact lifecyc
   });
   assert.ok(forecast.ai.p80EngagedHours > forecast.ai.p50EngagedHours);
   assert.equal(
-    Object.values(forecast.ai.stages).reduce((sum, value) => sum + value, 0),
+    Number(
+      Object.values(forecast.ai.stages)
+        .reduce((sum, value) => sum + value, 0)
+        .toFixed(4)
+    ),
     forecast.ai.p50EngagedHours
   );
   assert.equal(forecast.rubric.confidence, 0.1);
+});
+
+test('small forecasts account for repository execution once and never allocate a negative stage', () => {
+  const input = JSON.parse(fixture);
+  input.wbs = [
+    {
+      id: 'small',
+      description: 'Implement one isolated behavior',
+      baseHumanHours: 1,
+      signals: { modules: ['small'], dependencies: ['runtime'] },
+      independentlyReviewable: true,
+    },
+  ];
+  input.testImpact = {
+    lanes: ['slow'],
+    isolation: 'test-sandbox',
+    expectedMinutes: 30,
+  };
+  const forecast = buildEstimationForecast({
+    issue: 1091,
+    refine: { size: 'S', humanHours: 3 },
+    planInput: parsePlanEstimationInput(input),
+    rubric: {
+      recordId: rubricRecordId,
+      payload: createBootstrapRubric({ generatedAt: '2026-08-02T13:00:00.000Z' }),
+    },
+    comparableOutcomes: [],
+  });
+  assert.equal(forecast.plan.humanHours, 2.35);
+  assert.ok(Object.values(forecast.ai.stages).every((hours) => hours >= 0));
+  assert.equal(
+    Number(
+      Object.values(forecast.ai.stages)
+        .reduce((sum, hours) => sum + hours, 0)
+        .toFixed(4)
+    ),
+    forecast.ai.p50EngagedHours
+  );
 });
 
 test('comparable outcomes retain exact IDs and rank by module, dependency, lane, and diff similarity', () => {
@@ -140,4 +194,27 @@ test('recommendation splits non-reviewable or over-broad work and otherwise proc
   const broad = structuredClone(base);
   broad.wbs[0].signals.dependencies = Array.from({ length: 10 }, (_, index) => `dep-${index}`);
   assert.equal(build(broad).recommendation.action, 'split');
+
+  const uncertainRubric = createBootstrapRubric({ generatedAt: '2026-08-02T13:00:00.000Z' });
+  uncertainRubric.planning.refineFurtherVarianceRatio = 0.1;
+  uncertainRubric.planning.sizeEnvelopeHours.XL = 100;
+  const uncertain = buildEstimationForecast({
+    issue: 1091,
+    refine: { size: 'XL', humanHours: 40 },
+    planInput: parsePlanEstimationInput(base),
+    rubric: { recordId: rubricRecordId, payload: uncertainRubric },
+    comparableOutcomes: [],
+  });
+  assert.equal(uncertain.recommendation.action, 'refine-further');
+
+  const overEnvelopeRubric = createBootstrapRubric({ generatedAt: '2026-08-02T13:00:00.000Z' });
+  overEnvelopeRubric.planning.sizeEnvelopeHours.XL = 30;
+  const overEnvelope = buildEstimationForecast({
+    issue: 1091,
+    refine: { size: 'XL', humanHours: 40 },
+    planInput: parsePlanEstimationInput(base),
+    rubric: { recordId: rubricRecordId, payload: overEnvelopeRubric },
+    comparableOutcomes: [],
+  });
+  assert.equal(overEnvelope.recommendation.action, 'split');
 });

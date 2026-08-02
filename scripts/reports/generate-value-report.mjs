@@ -491,10 +491,10 @@ export function buildHtml(project, items, s, estimationModel = null) {
     .filter((item) => item.parentNumber == null || !items.some((other) => other.number === item.parentNumber))
     .map((item) => estimationModel?.rowsByIssue?.get(item.number))
     .filter(Boolean);
-  const sumKnown = key => topLevelEstimationRows.reduce(
-    (total, row) => total + (row[key] ?? 0),
-    0
-  );
+  const sumKnown = key =>
+    topLevelEstimationRows.length > 0 && topLevelEstimationRows.every((row) => row[key] != null)
+      ? topLevelEstimationRows.reduce((total, row) => total + row[key], 0)
+      : null;
   const tableHumanPlan = sumKnown('humanPlanHours');
   const tableAiP50 = sumKnown('aiP50Hours');
   const tableAiP80 = sumKnown('aiP80Hours');

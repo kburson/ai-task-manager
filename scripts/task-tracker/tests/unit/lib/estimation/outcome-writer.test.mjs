@@ -7,6 +7,7 @@ import { ensureEstimationOutcome } from '../../../../lib/estimation/outcome-writ
 const forecast = { recordId: '01J00000000000000000000900', payload: { issue: 1091 } };
 const payload = {
   schema: 'aitm.estimation-outcome/v1',
+  kind: 'story',
   issue: 1091,
   forecastRecordId: forecast.recordId,
 };
@@ -14,6 +15,29 @@ const payload = {
 test('no forecast is a legacy skip and epics remain eligible orchestration outcomes', async () => {
   const skipped = await ensureEstimationOutcome({ issue: 1091, forecast: null, deps: {} });
   assert.deepEqual(skipped, { status: 'legacy-no-forecast' });
+
+  const epicPayload = {
+    ...payload,
+    issue: 1067,
+    kind: 'epic-orchestration',
+    forecastRecordId: null,
+  };
+  const epic = await ensureEstimationOutcome({
+    issue: 1067,
+    forecast: null,
+    outcomePayload: epicPayload,
+    deps: {
+      listOutcomeRecords: async () => [],
+      createOutcomeEnvelope: () => ({
+        recordId: '01J00000000000000000000909',
+        recordType: 'estimation-outcome',
+        payload: epicPayload,
+      }),
+      writeOutcome: async ({ envelope }) => ({ commentNodeId: 'IC_epic', envelope }),
+    },
+  });
+  assert.equal(epic.status, 'written');
+  assert.equal(epic.commentNodeId, 'IC_epic');
 });
 
 test('writer appends and read-backs exactly one immutable outcome', async () => {

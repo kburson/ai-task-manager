@@ -36,21 +36,23 @@ function coefficients(value, category) {
 
 export function validateEstimationRubric(payload) {
   if (payload?.schema !== RUBRIC_SCHEMA) fail('rubric-schema');
+  const rootKeys = [
+    'accuracy',
+    'ai',
+    'cohort',
+    'generatedAt',
+    'human',
+    'predecessorRecordId',
+    'planning',
+    'review',
+    'schema',
+    'testLandscape',
+    'version',
+    'workflowDiagnostics',
+  ];
   exact(
     payload,
-    [
-      'accuracy',
-      'ai',
-      'cohort',
-      'generatedAt',
-      'human',
-      'predecessorRecordId',
-      'review',
-      'schema',
-      'testLandscape',
-      'version',
-      'workflowDiagnostics',
-    ],
+    payload.planning === undefined ? rootKeys.filter((key) => key !== 'planning') : rootKeys,
     'rubric-keys'
   );
   finite(payload.version, 'rubric-version', { integer: true, minimum: 1 });
@@ -91,6 +93,27 @@ export function validateEstimationRubric(payload) {
   exact(payload.testLandscape, ['laneMinutes', 'sandboxMinutes'], 'rubric-test');
   coefficients(payload.testLandscape.laneMinutes, 'rubric-lanes');
   finite(payload.testLandscape.sandboxMinutes, 'rubric-sandbox');
+  if (payload.planning !== undefined) {
+    exact(
+      payload.planning,
+      ['dependencyBreadthLimit', 'refineFurtherVarianceRatio', 'sizeEnvelopeHours'],
+      'rubric-planning'
+    );
+    finite(payload.planning.dependencyBreadthLimit, 'rubric-planning-dependencies', {
+      integer: true,
+      minimum: 1,
+    });
+    finite(payload.planning.refineFurtherVarianceRatio, 'rubric-planning-variance', {
+      maximum: 10,
+    });
+    exact(payload.planning.sizeEnvelopeHours, ['L', 'M', 'S', 'XL', 'XS'], 'rubric-size-envelope');
+    let priorMaximum = 0;
+    for (const size of ['XS', 'S', 'M', 'L', 'XL']) {
+      finite(payload.planning.sizeEnvelopeHours[size], 'rubric-size-envelope', { minimum: 0.01 });
+      if (payload.planning.sizeEnvelopeHours[size] <= priorMaximum) fail('rubric-size-envelope');
+      priorMaximum = payload.planning.sizeEnvelopeHours[size];
+    }
+  }
   exact(payload.review, ['reworkProbability'], 'rubric-review');
   finite(payload.review.reworkProbability, 'rubric-review-probability', { maximum: 1 });
   exact(payload.accuracy, ['aiP50', 'aiP80Coverage', 'refineToPlan'], 'rubric-accuracy');

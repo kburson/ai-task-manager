@@ -2,18 +2,17 @@ import { validateEstimationForecast } from './forecast-record.mjs';
 import { parsePlanEstimationInput } from './plan-input.mjs';
 import { validateEstimationRubric } from './rubric-record.mjs';
 
-const SIZE_ENVELOPES = Object.freeze([
-  ['XS', 1],
-  ['S', 3],
-  ['M', 8],
-  ['L', 20],
-  ['XL', Number.POSITIVE_INFINITY],
-]);
+const SIZE_ORDER = Object.freeze(['XS', 'S', 'M', 'L', 'XL']);
+const DEFAULT_PLANNING = Object.freeze({
+  dependencyBreadthLimit: 8,
+  refineFurtherVarianceRatio: 0.6,
+  sizeEnvelopeHours: Object.freeze({ XS: 1, S: 3, M: 8, L: 20, XL: 60 }),
+});
 function round(value, digits = 4) {
   return Number(value.toFixed(digits));
 }
-function sizeFor(hours) {
-  return SIZE_ENVELOPES.find(([, maximum]) => hours <= maximum)[0];
+function sizeFor(hours, envelopes) {
+  return SIZE_ORDER.find((size) => hours <= envelopes[size]) ?? 'XL';
 }
 function set(values) {
   return new Set(values);
@@ -56,13 +55,18 @@ export function buildEstimationForecast({
     throw new TypeError('estimation-forecast:input');
   const input = parsePlanEstimationInput(planInput);
   validateEstimationRubric(rubric.payload);
-  const baseHours = input.wbs.reduce((sum, item) => sum + item.baseHumanHours, 0);
+  const humanCoefficients = rubric.payload.human.coefficients;
+  const aiCoefficients = rubric.payload.ai.coefficients;
+  const planning = rubric.payload.planning ?? DEFAULT_PLANNING;
   const repositoryHours = input.testImpact.expectedMinutes / 60;
-  const humanHours = round(baseHours + repositoryHours);
   const wbs = input.wbs.map((item) => ({
     id: item.id,
     description: item.description,
-    humanHours: item.baseHumanHours,
+    humanHours: round(
+      item.baseHumanHours * humanCoefficients.necessaryToPlanned +
+        item.signals.modules.length * humanCoefficients.moduleBreadthHour +
+        item.signals.dependencies.length * humanCoefficients.dependencyBreadthHour
+    ),
     signals: [...new Set([...item.signals.modules, ...item.signals.dependencies])],
   }));
   if (repositoryHours > 0)
@@ -72,22 +76,30 @@ export function buildEstimationForecast({
       humanHours: round(repositoryHours),
       signals: input.testImpact.lanes.map((lane) => `test:${lane}`),
     });
+  const humanHours = round(wbs.reduce((sum, item) => sum + item.humanHours, 0));
+
+  const targetModules = [...new Set(input.wbs.flatMap((item) => item.signals.modules))];
+  const targetDependencies = [...new Set(input.wbs.flatMap((item) => item.signals.dependencies))];
+  const humanImplementationHours = round(humanHours - repositoryHours);
 
   const p50 = round(
-    humanHours * rubric.payload.ai.coefficients.engagedToHuman +
+    humanImplementationHours * aiCoefficients.engagedToHuman +
+      targetModules.length * aiCoefficients.moduleBreadthHour +
+      targetDependencies.length * aiCoefficients.dependencyBreadthHour +
       repositoryHours +
       rubric.payload.testLandscape.sandboxMinutes / 60
   );
   const widening =
     1 + (1 - rubric.payload.ai.confidence) * 0.5 + rubric.payload.review.reworkProbability * 0.25;
   const p80 = round(Math.max(p50, p50 * widening));
-  const stagePlan = round(p50 * 0.1);
-  const stageDevelop = round(p50 * 0.65);
-  const stageTest = round(Math.max(repositoryHours, p50 * 0.15));
-  const stageReview = round(p50 - stagePlan - stageDevelop - stageTest);
+  const stageTest = round(
+    Math.min(p50, repositoryHours + rubric.payload.testLandscape.sandboxMinutes / 60)
+  );
+  const nonExecution = Math.max(0, p50 - stageTest);
+  const stagePlan = round(nonExecution * 0.125);
+  const stageDevelop = round(nonExecution * 0.6875);
+  const stageReview = round(Math.max(0, p50 - stagePlan - stageDevelop - stageTest));
 
-  const targetModules = [...new Set(input.wbs.flatMap((item) => item.signals.modules))];
-  const targetDependencies = [...new Set(input.wbs.flatMap((item) => item.signals.dependencies))];
   const allowed = new Set(input.comparableIssueIds);
   const comparableIssues = comparableOutcomes
     .filter((entry) => allowed.size === 0 || allowed.has(entry.payload.issue))
@@ -109,11 +121,22 @@ export function buildEstimationForecast({
   const splitReasons = [];
   if (input.wbs.some((item) => !item.independentlyReviewable))
     splitReasons.push('one or more WBS items are not independently reviewable');
-  if (targetDependencies.length > 8)
-    splitReasons.push(`dependency breadth ${targetDependencies.length} exceeds 8`);
-  const recommendation =
-    splitReasons.length > 0
-      ? { action: 'split', reason: splitReasons.join('; ') }
+  if (targetDependencies.length > planning.dependencyBreadthLimit)
+    splitReasons.push(
+      `dependency breadth ${targetDependencies.length} exceeds ${planning.dependencyBreadthLimit}`
+    );
+  const planSize = sizeFor(humanHours, planning.sizeEnvelopeHours);
+  const sizeMaximum = planning.sizeEnvelopeHours[planSize];
+  if (p80 > sizeMaximum)
+    splitReasons.push(`AI P80 ${p80}h exceeds ${planSize} envelope ${sizeMaximum}h`);
+  const varianceRatio = p50 === 0 ? 0 : round((p80 - p50) / p50);
+  const recommendation = splitReasons.length
+    ? { action: 'split', reason: splitReasons.join('; ') }
+    : varianceRatio > planning.refineFurtherVarianceRatio
+      ? {
+          action: 'refine-further',
+          reason: `P80 spread ratio ${varianceRatio} exceeds ${planning.refineFurtherVarianceRatio}.`,
+        }
       : {
           action: 'proceed',
           reason:
@@ -126,7 +149,7 @@ export function buildEstimationForecast({
     lifecycleState: 'plan',
     refine: { size: refine.size, humanHours: refine.humanHours },
     plan: {
-      size: sizeFor(humanHours),
+      size: planSize,
       humanHours,
       deltaHours: round(humanHours - refine.humanHours),
       rationale: 'Detailed WBS plus unavoidable repository execution cost.',

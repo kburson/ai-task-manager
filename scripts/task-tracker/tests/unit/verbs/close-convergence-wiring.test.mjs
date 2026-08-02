@@ -8,6 +8,30 @@ import {
   upsertUnauthorizedCloseRecovery,
 } from '../../../lib/closed-issue-convergence.mjs';
 import { closeBody, runClose } from './close-convergence-wiring-helpers.mjs';
+import { ensureCloseEstimationOutcome } from '../../../verbs/close.mjs';
+
+test('close asks the outcome runtime about forecast-free epics and permits a legacy skip', async () => {
+  const calls = [];
+  const epic = await ensureCloseEstimationOutcome({
+    issueNumber: 1067,
+    body: 'epic body without a forecast marker',
+    writer: {
+      ensure: async (input) => {
+        calls.push(input);
+        return { status: 'written', recordId: '01J00000000000000000000999' };
+      },
+    },
+  });
+  assert.equal(epic.status, 'written');
+  assert.equal(calls[0].forecastRecordId, null);
+
+  const legacy = await ensureCloseEstimationOutcome({
+    issueNumber: 7,
+    body: 'legacy story',
+    writer: { ensure: async () => ({ status: 'legacy-no-forecast' }) },
+  });
+  assert.equal(legacy.status, 'legacy-no-forecast');
+});
 
 test('dead issue returns without body or child reads', async () => {
   const run = await runClose({
@@ -266,4 +290,18 @@ test('v1 estimation outcome is required before the terminal Done move', () => {
   const terminalMove = source.indexOf('if (!force && !SKIP_NETWORK && closeIssueNum) {', outcome);
   assert.ok(outcome > 0, 'close must invoke the estimation outcome writer');
   assert.ok(terminalMove > outcome, 'outcome must be durable before the non-force Done move');
+});
+
+test('fallible merge preparation precedes the outcome; Done precedes Delivered disposition', () => {
+  const source = readFileSync(new URL('../../../verbs/close.mjs', import.meta.url), 'utf8');
+  const merge = source.indexOf(
+    'enableFullAutoMergeForClose({',
+    source.indexOf('await emitReviewToDoneClosePair')
+  );
+  const outcome = source.indexOf('ensureCloseEstimationOutcome({', merge);
+  const terminalMove = source.indexOf('if (!force && !SKIP_NETWORK && closeIssueNum) {', outcome);
+  const delivered = source.indexOf('writeDeliveredOrRefuse({', terminalMove);
+  assert.ok(merge > 0 && outcome > merge, 'merge preparation must finish before outcome');
+  assert.ok(terminalMove > outcome, 'outcome must be durable before Done');
+  assert.ok(delivered > terminalMove, 'Delivered must be written only after Done');
 });

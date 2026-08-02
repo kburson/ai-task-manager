@@ -20,7 +20,10 @@ export function buildEstimationOutcome({
   kind = 'story',
   childOutcomeRecordIds = [],
 } = {}) {
-  if (!Number.isInteger(issue) || issue <= 0 || forecast?.payload?.issue !== issue) fail('input');
+  if (!Number.isInteger(issue) || issue <= 0) fail('input');
+  if (kind === 'story' && forecast?.payload?.issue !== issue) fail('input');
+  if (kind === 'epic-orchestration' && forecast !== null) fail('input');
+  if (!new Set(['story', 'epic-orchestration']).has(kind)) fail('input');
   if (!timing?.stagesMs || !diff || !review) fail('evidence');
   const stages = {};
   for (const stage of STAGES) {
@@ -45,16 +48,21 @@ export function buildEstimationOutcome({
     childOutcomeRecordIds.some((id) => !RECORD_ID_RE.test(id))
   )
     fail('children');
-  if (kind !== 'epic' && childOutcomeRecordIds.length > 0) fail('children');
+  if (kind === 'story' && childOutcomeRecordIds.length > 0) fail('children');
+  if (kind === 'epic-orchestration' && childOutcomeRecordIds.length === 0) fail('children');
   const payload = {
     schema: 'aitm.estimation-outcome/v1',
     issue,
-    forecastRecordId: forecast.recordId,
-    humanPlanHours: forecast.payload.plan.humanHours,
-    aiForecast: {
-      p50EngagedHours: forecast.payload.ai.p50EngagedHours,
-      p80EngagedHours: forecast.payload.ai.p80EngagedHours,
-    },
+    kind,
+    forecastRecordId: kind === 'story' ? forecast.recordId : null,
+    humanPlanHours: kind === 'story' ? forecast.payload.plan.humanHours : null,
+    aiForecast:
+      kind === 'story'
+        ? {
+            p50EngagedHours: forecast.payload.ai.p50EngagedHours,
+            p80EngagedHours: forecast.payload.ai.p80EngagedHours,
+          }
+        : null,
     actual: { engagedHours, stages, reviewFixCycles: review.fixCycles, commands },
     landscape: {
       filesChanged: diff.filesChanged,
@@ -63,10 +71,13 @@ export function buildEstimationOutcome({
       dependencyBreadth: diff.dependencyBreadth,
       childOutcomeRecordIds: [...childOutcomeRecordIds],
     },
-    variance: {
-      vsAiP50Hours: round(engagedHours - forecast.payload.ai.p50EngagedHours),
-      vsAiP80Hours: round(engagedHours - forecast.payload.ai.p80EngagedHours),
-    },
+    variance:
+      kind === 'story'
+        ? {
+            vsAiP50Hours: round(engagedHours - forecast.payload.ai.p50EngagedHours),
+            vsAiP80Hours: round(engagedHours - forecast.payload.ai.p80EngagedHours),
+          }
+        : null,
     costClassification: {
       necessaryHours,
       avoidableProcessWasteHours,

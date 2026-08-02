@@ -18,6 +18,11 @@ export const BOOTSTRAP_RUBRIC_PRIORS = Object.freeze({
     laneMinutes: Object.freeze({ unit: 2, integration: 5, slow: 12 }),
     sandboxMinutes: 1,
   }),
+  planning: Object.freeze({
+    dependencyBreadthLimit: 8,
+    refineFurtherVarianceRatio: 0.6,
+    sizeEnvelopeHours: Object.freeze({ XS: 1, S: 3, M: 8, L: 20, XL: 60 }),
+  }),
   review: Object.freeze({ reworkProbability: 0.2 }),
   uncertainty: Object.freeze({ confidence: 0.1, p80Widening: 1.45 }),
 });
@@ -51,6 +56,7 @@ export function createBootstrapRubric({ generatedAt = new Date().toISOString() }
     },
     workflowDiagnostics: { avoidableProcessWasteHours: 0 },
     testLandscape: clone(BOOTSTRAP_RUBRIC_PRIORS.testLandscape),
+    planning: clone(BOOTSTRAP_RUBRIC_PRIORS.planning),
     review: clone(BOOTSTRAP_RUBRIC_PRIORS.review),
     accuracy: { refineToPlan: { maeHours: 0 }, aiP50: { maeHours: 0 }, aiP80Coverage: 0 },
   };
@@ -159,6 +165,7 @@ export function updateEstimationRubric({
     },
     workflowDiagnostics: { avoidableProcessWasteHours: round(avoidable) },
     testLandscape: { laneMinutes, sandboxMinutes: round(sandboxMinutes / ordered.length) },
+    planning: clone(previous.planning ?? BOOTSTRAP_RUBRIC_PRIORS.planning),
     review: { reworkProbability: round(reworkProbability) },
     accuracy: {
       refineToPlan: { maeHours: previous.accuracy.refineToPlan.maeHours },

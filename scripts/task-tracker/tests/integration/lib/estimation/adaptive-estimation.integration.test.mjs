@@ -15,6 +15,8 @@ import { loadOrRefreshRubric } from '../../../../lib/estimation/rubric-refresh.m
 import {
   createAdaptivePlanRuntime,
   createEstimationOutcomeRuntime,
+  loadProjectEstimationCorpus,
+  refineEstimateFromProjection,
 } from '../../../../lib/estimation/runtime-adapter.mjs';
 import {
   createAitmRecordEnvelope,
@@ -34,6 +36,83 @@ const secondIssue = 1094;
 const RANDOM = (length) => Buffer.alloc(length, 0x35);
 let idClock = 1_722_604_800_000;
 const nextId = () => createRecordId({ nowMs: idClock++, randomBytesFn: RANDOM });
+
+test('process retry preserves the immutable Refine baseline after partial Plan writes', () => {
+  assert.deepEqual(
+    refineEstimateFromProjection({
+      refineAppendix: {
+        refine: { size: 'L', humanHours: 20 },
+        plan: { size: 'XL', humanHours: 40 },
+      },
+      board: { size: 'XL', estimate: 40 },
+    }),
+    { size: 'L', humanHours: 20 }
+  );
+});
+
+test('project corpus batches only unique Done candidates and excludes open outcomes', async () => {
+  const calls = [];
+  const recordCalls = [];
+  const graphql = async ({ query, variables }) => {
+    calls.push({ query, variables });
+    if (query.includes('AitmEstimationCorpus')) {
+      return {
+        data: {
+          node: {
+            items: {
+              nodes: [
+                {
+                  content: { id: 'ISSUE_DONE', number: 1 },
+                  fieldValues: { nodes: [{ name: 'Done', field: { id: 'STATUS' } }] },
+                },
+                {
+                  content: { id: 'ISSUE_OPEN', number: 2 },
+                  fieldValues: { nodes: [{ name: 'Develop', field: { id: 'STATUS' } }] },
+                },
+                {
+                  content: { id: 'ISSUE_DONE', number: 1 },
+                  fieldValues: { nodes: [{ name: 'Done', field: { id: 'STATUS' } }] },
+                },
+              ],
+              pageInfo: { hasNextPage: false, endCursor: null },
+            },
+          },
+        },
+      };
+    }
+    if (query.includes('AitmEstimationDoneRecords')) {
+      assert.deepEqual(variables.ids, ['ISSUE_DONE']);
+      return {
+        data: {
+          nodes: [
+            {
+              id: 'ISSUE_DONE',
+              number: 1,
+              comments: { nodes: [], pageInfo: { hasNextPage: true } },
+            },
+          ],
+        },
+      };
+    }
+    throw new Error('unexpected query');
+  };
+  const expected = { envelope: { recordType: 'estimation-outcome' } };
+  const records = await loadProjectEstimationCorpus({
+    cfg: { repo: repository, projectId: 'PROJECT', kanbanFieldId: 'STATUS' },
+    graphql,
+    io: {
+      graphql,
+      listIssueRecords: async ({ issue }) => {
+        recordCalls.push(issue);
+        return [expected];
+      },
+    },
+  });
+
+  assert.deepEqual(records, [expected]);
+  assert.deepEqual(recordCalls, [1]);
+  assert.equal(calls.length, 2);
+});
 
 function envelope({ recordType, issue, payload, predecessor = null, supersedes = null, actor }) {
   return createAitmRecordEnvelope({
@@ -190,8 +269,8 @@ test('completed outcome deterministically updates the next rubric and AI forecas
   const firstForecast = records.find(
     (record) => record.envelope.recordId === first.forecastRecordId
   ).envelope;
-  assert.equal(firstAuthority.state.board.estimate, 10);
-  assert.equal(firstAuthority.state.bodyFields.estimate, 10);
+  assert.equal(firstAuthority.state.board.estimate, 10.85);
+  assert.equal(firstAuthority.state.bodyFields.estimate, 10.85);
   assert.equal(firstAuthority.state.readyForecastRecordId, firstForecast.recordId);
 
   const outcomePayload = buildEstimationOutcome({
@@ -296,7 +375,8 @@ test('completed outcome deterministically updates the next rubric and AI forecas
       },
     ],
   });
-  assert.equal(secondForecast.plan.humanHours, firstForecast.payload.plan.humanHours);
+  assert.equal(secondForecast.plan.humanHours, 5.85);
+  assert.notEqual(secondForecast.plan.humanHours, firstForecast.payload.plan.humanHours);
   assert.notEqual(secondForecast.ai.p50EngagedHours, firstForecast.payload.ai.p50EngagedHours);
   assert.equal(secondForecast.comparableIssues[0].outcomeRecordId, outcomeResult.recordId);
   assert.ok(transport.comments.size >= 4, 'every durable write completed a #1070 read-back');
@@ -399,6 +479,66 @@ test('default close runtime builds and read-backs the frozen forecast outcome be
   assert.equal(result.commentNodeId, 'IC_close_outcome');
   assert.equal(written[0].envelope.payload.forecastRecordId, forecastEnvelope.recordId);
   assert.equal(written[0].envelope.payload.actual.engagedHours, 1.9167);
+});
+
+test('default close runtime emits a child-referencing epic outcome without using a legacy parent forecast', async () => {
+  const written = [];
+  const legacyParentForecastId = '01J00000000000000000000803';
+  const runtime = createEstimationOutcomeRuntime({
+    cfg: { repo: repository },
+    projectDir: '/tmp/fake-adaptive-project',
+    deps: {
+      recordIo: {
+        listIssueRecords: async () => [
+          {
+            commentNodeId: 'IC_legacy_parent_forecast',
+            envelope: {
+              recordType: 'estimation-forecast',
+              recordId: legacyParentForecastId,
+              payload: { issue: 1067 },
+            },
+          },
+        ],
+        write: async ({ envelope: outcomeEnvelope }) => {
+          const record = { commentNodeId: 'IC_epic_outcome', envelope: outcomeEnvelope };
+          written.push(record);
+          return record;
+        },
+      },
+      readTimingCommentBody: async () => ({
+        status: 'found',
+        body: [
+          '| 2026-08-02 10:00:00 -05:00 | plan:stopped | | | | | | <!-- row-sec: a=1800 i=0 -->',
+          '| 2026-08-02 10:30:00 -05:00 | develop:stopped | | | | | | <!-- row-sec: a=1800 i=0 -->',
+          '| 2026-08-02 11:00:00 -05:00 | test:stopped | | | | | | <!-- row-sec: a=300 i=0 -->',
+          '| 2026-08-02 11:05:00 -05:00 | review:stopped | | | | | | <!-- row-sec: a=300 i=0 -->',
+        ].join('\n'),
+      }),
+      readDiffEvidence: async () => ({
+        filesChanged: 0,
+        modules: ['epic-orchestration'],
+        lanes: [],
+        dependencyBreadth: 0,
+      }),
+      childOutcomeRecordIds: async () => [
+        '01J00000000000000000000801',
+        '01J00000000000000000000802',
+      ],
+    },
+  });
+
+  const result = await runtime.ensure({
+    issueNumber: 1067,
+    forecastRecordId: legacyParentForecastId,
+    body: 'epic body',
+  });
+  assert.equal(result.status, 'written');
+  assert.equal(written[0].envelope.payload.kind, 'epic-orchestration');
+  assert.equal(written[0].envelope.payload.forecastRecordId, null);
+  assert.deepEqual(written[0].envelope.payload.landscape.childOutcomeRecordIds, [
+    '01J00000000000000000000801',
+    '01J00000000000000000000802',
+  ]);
 });
 
 test('production Plan runtime converges board, body, history, forecast, and ready marker with fake GitHub', async () => {
@@ -525,9 +665,9 @@ test('production Plan runtime converges board, body, history, forecast, and read
   });
 
   assert.equal(result.status, 'converged');
-  assert.equal(board.estimate, 10);
-  assert.match(refineBody, /\| Estimate \(h\) \| 8 \| 10 \|/);
-  assert.match(issueBody, /"estimate":10/);
+  assert.equal(board.estimate, 10.85);
+  assert.match(refineBody, /\| Estimate \(h\) \| 8 \| 10\.85 \|/);
+  assert.match(issueBody, /"estimate":10\.85/);
   assert.match(issueBody, new RegExp(result.forecastRecordId));
   assert.equal(
     parsedRecords.filter((r) => r.envelope.recordType === 'estimation-rubric').length,

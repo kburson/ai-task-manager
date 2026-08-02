@@ -94,6 +94,7 @@ const forecast = {
 
 const outcome = {
   schema: 'aitm.estimation-outcome/v1',
+  kind: 'story',
   issue: 1091,
   forecastRecordId: ids.forecast,
   humanPlanHours: 40,
@@ -130,6 +131,11 @@ const rubric = {
   ai: { coefficients: { wbsHour: 0.6 }, sampleSize: 1, confidence: 0.2 },
   workflowDiagnostics: { avoidableProcessWasteHours: 0.5 },
   testLandscape: { laneMinutes: { unit: 3 }, sandboxMinutes: 1 },
+  planning: {
+    dependencyBreadthLimit: 8,
+    refineFurtherVarianceRatio: 0.6,
+    sizeEnvelopeHours: { XS: 1, S: 3, M: 8, L: 20, XL: 60 },
+  },
   review: { reworkProbability: 0.2 },
   accuracy: { refineToPlan: { maeHours: 0 }, aiP50: { maeHours: 1 }, aiP80Coverage: 1 },
 };
@@ -208,6 +214,12 @@ test('rubrics require unique outcome identities and coherent samples', () => {
     () => validateEstimationRubric({ ...rubric, human: { ...rubric.human, sampleSize: 2 } }),
     /estimation-record:/
   );
+});
+
+test('published v1 rubrics without planning thresholds remain readable for migration', () => {
+  const publishedV1 = structuredClone(rubric);
+  delete publishedV1.planning;
+  assert.equal(validateEstimationRubric(publishedV1), publishedV1);
 });
 
 test('known estimation record types are validated and correlated by the canonical envelope', () => {

@@ -1,10 +1,40 @@
 import { parsePreloadedIssueComments } from '../../task-tracker/lib/github-records/github-comment-store.mjs';
 import { formatAcceleration } from './board-fields.mjs';
 
-function latest(records, recordType) {
-  return records
-    .filter((record) => record?.envelope?.recordType === recordType)
-    .toSorted((left, right) => right.envelope.createdAt.localeCompare(left.envelope.createdAt))[0] ?? null;
+function activeForecast(records) {
+  const forecasts = records.filter(
+    (record) => record?.envelope?.recordType === 'estimation-forecast'
+  );
+  const superseded = new Set(
+    forecasts.map((record) => record.envelope.supersedes).filter((recordId) => recordId != null)
+  );
+  const active = forecasts.filter((record) => !superseded.has(record.envelope.recordId));
+  return active.length === 1 ? active[0] : null;
+}
+
+function matchingStoryOutcome(records, forecast) {
+  if (forecast === null) return null;
+  const matching = records.filter(
+    (record) =>
+      record?.envelope?.recordType === 'estimation-outcome' &&
+      record.envelope.payload.kind !== 'epic-orchestration' &&
+      record.envelope.payload.forecastRecordId === forecast.envelope.recordId
+  );
+  return matching.length === 1 ? matching[0] : null;
+}
+
+function latestEpicOutcome(records) {
+  return (
+    records
+      .filter(
+        (record) =>
+          record?.envelope?.recordType === 'estimation-outcome' &&
+          record.envelope.payload.kind === 'epic-orchestration'
+      )
+      .toSorted((left, right) =>
+        right.envelope.createdAt.localeCompare(left.envelope.createdAt)
+      )[0] ?? null
+  );
 }
 
 function accuracy(expected, actual) {
@@ -55,11 +85,23 @@ export function loadEstimationRecordsFromComments({
 }
 
 function storyRow(issue, records) {
-  const forecast = latest(records, 'estimation-forecast');
-  const outcome = latest(records, 'estimation-outcome');
+  const forecast = activeForecast(records);
+  const outcome = matchingStoryOutcome(records, forecast);
+  const storyOutcomes = records.filter(
+    (record) =>
+      record?.envelope?.recordType === 'estimation-outcome' &&
+      record.envelope.payload.kind !== 'epic-orchestration'
+  );
   const gaps = [];
-  if (forecast === null) gaps.push('missing-forecast');
-  if (outcome === null) gaps.push('missing-outcome');
+  if (forecast === null) {
+    gaps.push(
+      records.some((record) => record?.envelope?.recordType === 'estimation-forecast')
+        ? 'ambiguous-active-forecast'
+        : 'missing-forecast'
+    );
+  }
+  if (outcome === null)
+    gaps.push(storyOutcomes.length > 0 ? 'outcome-forecast-mismatch' : 'missing-outcome');
   const humanPlanHours = forecast?.envelope.payload.plan.humanHours ?? null;
   const refineHours = forecast?.envelope.payload.refine.humanHours ?? null;
   const aiP50Hours = forecast?.envelope.payload.ai.p50EngagedHours ?? null;
@@ -123,22 +165,26 @@ export function buildEstimationReportModel({ items, recordsByIssue } = {}) {
   for (const [parentNumber, childRows] of children) {
     const parent = rowsByIssue.get(parentNumber);
     const parentRecords = recordsByIssue.get(parentNumber) ?? [];
-    const parentOutcome = latest(parentRecords, 'estimation-outcome');
+    const parentOutcome = latestEpicOutcome(parentRecords);
     const referencedChildren = parentOutcome?.envelope.payload.landscape.childOutcomeRecordIds ?? [];
     const actualChildIds = childRows.map((row) => row.outcomeRecordId).filter(Boolean);
     const referencesMatch =
       referencedChildren.length === actualChildIds.length &&
       referencedChildren.every((recordId) => actualChildIds.includes(recordId));
     const parentOrchestrationHours = parentOutcome?.envelope.payload.actual.engagedHours ?? null;
-    const humanPlanHours = sumPresent(childRows, 'humanPlanHours');
-    const childActual = sumPresent(childRows, 'actualEngagedHours');
+    const complete =
+      parentOutcome !== null &&
+      referencesMatch &&
+      childRows.every((row) => row.evidenceGaps.length === 0);
+    const humanPlanHours = complete ? sumPresent(childRows, 'humanPlanHours') : null;
+    const childActual = complete ? sumPresent(childRows, 'actualEngagedHours') : null;
     const actualEngagedHours =
-      childActual != null && parentOrchestrationHours != null
+      complete && childActual != null && parentOrchestrationHours != null
         ? childActual + parentOrchestrationHours
         : null;
-    const aiP50Hours = sumPresent(childRows, 'aiP50Hours');
-    const aiP80Hours = sumPresent(childRows, 'aiP80Hours');
-    const childWaste = sumPresent(childRows, 'avoidableWasteHours');
+    const aiP50Hours = complete ? sumPresent(childRows, 'aiP50Hours') : null;
+    const aiP80Hours = complete ? sumPresent(childRows, 'aiP80Hours') : null;
+    const childWaste = complete ? sumPresent(childRows, 'avoidableWasteHours') : null;
     const parentWaste =
       parentOutcome?.envelope.payload.costClassification.avoidableProcessWasteHours ?? null;
     const acceleration =
@@ -166,6 +212,7 @@ export function buildEstimationReportModel({ items, recordsByIssue } = {}) {
         ...childRows.flatMap((row) => row.evidenceGaps.map((gap) => `child-${gap}`)),
         ...(parentOutcome === null ? ['missing-parent-outcome'] : []),
         ...(parentOutcome !== null && !referencesMatch ? ['parent-child-outcome-mismatch'] : []),
+        ...(!complete ? ['partial-epic-rollup'] : []),
       ],
     });
   }

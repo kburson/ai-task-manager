@@ -407,13 +407,13 @@ test('--force: gate-eval throw swallowed → cascade + close pipeline → Closed
   const parentCloseIndex = calls.findIndex((c) => /issue close 5/.test(c));
   assert.ok(childDispositionIndex >= 0, `expected child Delivered write; got ${calls}`);
   assert.ok(
-    childDoneIndex > childDispositionIndex && childCloseIndex > childDoneIndex,
-    `expected child write before Done and close; got ${calls}`
+    childDispositionIndex > childDoneIndex && childCloseIndex > childDispositionIndex,
+    `expected child Done before Delivered write and close; got ${calls}`
   );
   assert.ok(parentDispositionIndex >= 0, `expected parent Delivered write; got ${calls}`);
   assert.ok(
-    parentDoneIndex > parentDispositionIndex && parentCloseIndex > parentDoneIndex,
-    `expected parent write before Done and close; got ${calls}`
+    parentDispositionIndex > parentDoneIndex && parentCloseIndex > parentDispositionIndex,
+    `expected parent Done before Delivered write and close; got ${calls}`
   );
   assert.equal(parentDoneOptions.length, 2, 'forced pre-move and final move must both run');
   assert.deepEqual(parentDoneOptions[0].extraArgs, ['--force']);

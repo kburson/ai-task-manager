@@ -46,18 +46,37 @@ const PROJECT_RECORDS_QUERY = `
           nodes {
             content {
               ... on Issue {
+                id
                 number
-                comments(first: 100) {
-                  nodes {
-                    __typename id body updatedAt
-                    issue { number repository { nameWithOwner } }
-                  }
-                  pageInfo { hasNextPage }
+              }
+            }
+            fieldValues(first: 100) {
+              nodes {
+                ... on ProjectV2ItemFieldSingleSelectValue {
+                  name
+                  field { ... on ProjectV2FieldCommon { id } }
                 }
               }
             }
           }
           pageInfo { hasNextPage endCursor }
+        }
+      }
+    }
+  }
+`;
+const DONE_ISSUE_RECORDS_QUERY = `
+  query AitmEstimationDoneRecords($ids: [ID!]!) {
+    nodes(ids: $ids) {
+      ... on Issue {
+        id
+        number
+        comments(first: 100) {
+          nodes {
+            __typename id body updatedAt
+            issue { number repository { nameWithOwner } }
+          }
+          pageInfo { hasNextPage }
         }
       }
     }
@@ -172,6 +191,7 @@ function recordsForProjection(records) {
   return forecasts.map((record) => ({
     recordId: record.envelope.recordId,
     payloadHash: record.envelope.payloadHash,
+    payload: record.envelope.payload,
     commentNodeId: record.commentNodeId,
     supersededBy: successorById.get(record.envelope.recordId) ?? null,
   }));
@@ -202,11 +222,76 @@ export function createGitHubEstimationRecordIo({ graphql = defaultGraphql, rest 
   };
 }
 
+export async function loadForecastProjection({ cfg, issueNumber, deps = {} } = {}) {
+  if (!cfg?.repo || !cfg?.projectId || !Number.isInteger(issueNumber) || issueNumber <= 0) {
+    fail('projection-input');
+  }
+  const io = deps.recordIo ?? createGitHubEstimationRecordIo(deps);
+  const graphql = deps.graphql ?? io.graphql;
+  const { owner, name } = splitRepository(cfg.repo);
+  const response = await graphql({
+    query: ISSUE_PROJECTION_QUERY,
+    variables: { owner, name, issue: issueNumber },
+  });
+  if (Array.isArray(response?.errors) && response.errors.length > 0) fail('projection-response');
+  const issue = response?.data?.repository?.issue;
+  if (!issue) fail('projection-response');
+  const item = issue.projectItems?.nodes?.find((node) => node.project?.id === cfg.projectId);
+  if (!item) fail('project-item');
+  const byFieldId = new Map(
+    (item.fieldValues?.nodes ?? []).map((node) => [node.field?.id, node.number ?? node.name])
+  );
+  const records = issue.comments?.pageInfo?.hasNextPage
+    ? await io.listIssueRecords({ repository: cfg.repo, issue: issueNumber })
+    : parsePreloadedIssueComments({
+        nodes: issue.comments?.nodes ?? [],
+        repository: cfg.repo,
+        issue: issueNumber,
+      });
+  const forecasts = recordsForProjection(records);
+  const readyForecastRecordId =
+    String(issue.body ?? '').match(
+      /<!--\s*aitm-estimation-forecast-ready\s+record-id="([0-7][0-9A-HJKMNP-TV-Z]{25})"\s*-->/i
+    )?.[1] ?? null;
+  const parsedFields = parseIssueFieldDb(issue.body);
+  return {
+    forecast: forecasts.find((record) => record.recordId === readyForecastRecordId) ?? null,
+    board: {
+      size: byFieldId.get(fieldIdFor(cfg, 'size')) ?? null,
+      estimate: byFieldId.get(fieldIdFor(cfg, 'estimate')) ?? null,
+    },
+    bodyFields: {
+      size: parsedFields.ok ? (parsedFields.values.size ?? null) : null,
+      estimate: parsedFields.ok ? (parsedFields.values.estimate ?? null) : null,
+    },
+  };
+}
+
+export function refineEstimateFromProjection(projection) {
+  const source = projection?.refineAppendix?.refine ?? {
+    size: projection?.board?.size,
+    humanHours: projection?.board?.estimate,
+  };
+  if (
+    typeof source.size !== 'string' ||
+    source.size === '' ||
+    typeof source.humanHours !== 'number' ||
+    !Number.isFinite(source.humanHours) ||
+    source.humanHours < 0
+  ) {
+    fail('refine-estimate');
+  }
+  return { size: source.size, humanHours: source.humanHours };
+}
+
 export async function loadProjectEstimationCorpus({ cfg, io, graphql = io?.graphql } = {}) {
   if (!cfg?.projectId || !cfg?.repo || typeof graphql !== 'function') fail('corpus-input');
   const records = [];
+  const candidates = new Map();
+  const statusFieldId = fieldIdFor(cfg, 'status') || cfg.kanbanFieldId;
   let after = null;
   const cursors = new Set();
+  let projectComplete = false;
   for (let page = 0; page < 1000; page += 1) {
     const response = await graphql({
       query: PROJECT_RECORDS_QUERY,
@@ -217,7 +302,31 @@ export async function loadProjectEstimationCorpus({ cfg, io, graphql = io?.graph
     if (!Array.isArray(connection?.nodes)) fail('corpus-response');
     for (const item of connection.nodes) {
       const issue = item.content;
-      if (!Number.isInteger(issue?.number)) continue;
+      if (!Number.isInteger(issue?.number) || typeof issue.id !== 'string') continue;
+      const status = item.fieldValues?.nodes?.find(
+        (node) => node.field?.id === statusFieldId
+      )?.name;
+      if (String(status ?? '').toLowerCase() === 'done') candidates.set(issue.id, issue.number);
+    }
+    if (connection.pageInfo?.hasNextPage !== true) {
+      projectComplete = true;
+      break;
+    }
+    const cursor = connection.pageInfo.endCursor;
+    if (typeof cursor !== 'string' || cursor === '' || cursors.has(cursor))
+      fail('corpus-pagination');
+    cursors.add(cursor);
+    after = cursor;
+  }
+  if (!projectComplete) fail('corpus-pagination');
+  const ids = [...candidates.keys()];
+  for (let offset = 0; offset < ids.length; offset += 50) {
+    const chunk = ids.slice(offset, offset + 50);
+    const response = await graphql({ query: DONE_ISSUE_RECORDS_QUERY, variables: { ids: chunk } });
+    if (Array.isArray(response?.errors) && response.errors.length > 0) fail('corpus-response');
+    if (!Array.isArray(response?.data?.nodes)) fail('corpus-response');
+    for (const issue of response.data.nodes) {
+      if (!Number.isInteger(issue?.number) || !candidates.has(issue.id)) fail('corpus-response');
       const comments = issue.comments;
       if (!Array.isArray(comments?.nodes)) fail('corpus-response');
       const parsed = comments.pageInfo?.hasNextPage
@@ -229,14 +338,8 @@ export async function loadProjectEstimationCorpus({ cfg, io, graphql = io?.graph
           });
       records.push(...parsed);
     }
-    if (connection.pageInfo?.hasNextPage !== true) return records;
-    const cursor = connection.pageInfo.endCursor;
-    if (typeof cursor !== 'string' || cursor === '' || cursors.has(cursor))
-      fail('corpus-pagination');
-    cursors.add(cursor);
-    after = cursor;
   }
-  fail('corpus-pagination');
+  return records;
 }
 
 export function createAdaptivePlanRuntime({ cfg, deps = {}, adoptLegacyBaseline = false } = {}) {
@@ -334,40 +437,38 @@ export function createAdaptivePlanRuntime({ cfg, deps = {}, adoptLegacyBaseline 
   return {
     readRefineEstimate: async ({ issueNumber }) => {
       const projection = await readProjection(issueNumber);
-      if (!projection.board.size || typeof projection.board.estimate !== 'number') {
-        fail('refine-estimate');
-      }
       supersededForecastRecordId =
         projection.forecasts.find((forecast) => forecast.supersededBy == null)?.recordId ?? null;
-      return { size: projection.board.size, humanHours: projection.board.estimate };
+      return refineEstimateFromProjection(projection);
     },
     loadRubric: async () => {
       const allRecords = await corpus();
+      const corpusRubrics = allRecords.filter(
+        (record) =>
+          record.envelope.issue === cfg.estimationRubricIssue &&
+          record.envelope.recordType === 'estimation-rubric'
+      );
       const result = await loadOrRefreshRubric({
         cfg,
         deps: {
           listRubricRecords: async () => [
-            ...allRecords.filter(
-              (record) =>
-                record.envelope.issue === cfg.estimationRubricIssue &&
-                record.envelope.recordType === 'estimation-rubric'
-            ),
-            ...(
-              await io.listIssueRecords({
-                repository: cfg.repo,
-                issue: cfg.estimationRubricIssue,
-              })
-            ).filter(
-              (record) =>
-                record.envelope.recordType === 'estimation-rubric' &&
-                !allRecords.some(
-                  (existing) => existing.envelope.recordId === record.envelope.recordId
-                )
-            ),
+            ...corpusRubrics,
+            ...(corpusRubrics.length > 0
+              ? []
+              : (
+                  await io.listIssueRecords({
+                    repository: cfg.repo,
+                    issue: cfg.estimationRubricIssue,
+                  })
+                ).filter((record) => record.envelope.recordType === 'estimation-rubric')),
           ],
           listEligibleOutcomes: async () =>
             allRecords
-              .filter((record) => record.envelope.recordType === 'estimation-outcome')
+              .filter(
+                (record) =>
+                  record.envelope.recordType === 'estimation-outcome' &&
+                  record.envelope.payload.kind === 'story'
+              )
               .map((record) => ({
                 recordId: record.envelope.recordId,
                 createdAt: record.envelope.createdAt,
@@ -395,6 +496,7 @@ export function createAdaptivePlanRuntime({ cfg, deps = {}, adoptLegacyBaseline 
         .filter(
           (record) =>
             record.envelope.recordType === 'estimation-outcome' &&
+            record.envelope.payload.kind === 'story' &&
             (allowed.size === 0 || allowed.has(record.envelope.issue))
         )
         .map((record) => ({
@@ -566,7 +668,11 @@ export function createEstimationOutcomeRuntime({ cfg, projectDir, deps = {} } = 
           record.envelope.recordType === 'estimation-forecast' &&
           record.envelope.recordId === forecastRecordId
       );
-      if (!forecastRecord) fail('forecast');
+      const children = await (deps.childOutcomeRecordIds ?? childOutcomeRecordIds)(issueNumber);
+      const isEpic = children.length > 0;
+      if (!isEpic && forecastRecordId !== null && !forecastRecord) fail('forecast');
+      if (!isEpic && !forecastRecord) return { status: 'legacy-no-forecast' };
+      const outcomeForecast = isEpic ? null : forecastRecord.envelope;
       const timingResult = await (deps.readTimingCommentBody ?? readTimingCommentBody)({
         issueNumber,
         repo: cfg.repo,
@@ -574,10 +680,9 @@ export function createEstimationOutcomeRuntime({ cfg, projectDir, deps = {} } = 
       if (timingResult?.status === 'error') fail('timing');
       const timingBody = bodyOf(timingResult);
       const verification = verificationEvidence(body);
-      const children = await (deps.childOutcomeRecordIds ?? childOutcomeRecordIds)(issueNumber);
       const outcomePayload = buildEstimationOutcome({
         issue: issueNumber,
-        forecast: forecastRecord.envelope,
+        forecast: outcomeForecast,
         timing: readEstimationStageTiming(timingBody.split('\n')),
         verification,
         diff: await (deps.readDiffEvidence ?? defaultDiffEvidence)({
@@ -589,12 +694,12 @@ export function createEstimationOutcomeRuntime({ cfg, projectDir, deps = {} } = 
             .length,
         },
         cost: costEvidence(verification),
-        kind: children.length > 0 ? 'epic' : 'story',
+        kind: isEpic ? 'epic-orchestration' : 'story',
         childOutcomeRecordIds: children,
       });
       return ensureEstimationOutcome({
         issue: issueNumber,
-        forecast: forecastRecord.envelope,
+        forecast: outcomeForecast,
         outcomePayload,
         deps: {
           listOutcomeRecords: async () =>

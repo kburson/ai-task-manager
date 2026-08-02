@@ -12,6 +12,7 @@
 // ctx is missing cfg/issueNumber.
 
 import { planPlannedEstimateGate } from './refine-estimate-comment.mjs';
+import { loadForecastProjection } from './estimation/runtime-adapter.mjs';
 
 export const GUARD_ID = 'plan-exit-planned-estimate';
 const FORECAST_READY_RE =
@@ -58,16 +59,14 @@ export const planExitPlannedEstimateGuard = {
     }
     const ready = String(ctx.body ?? '').match(FORECAST_READY_RE)?.[1] ?? null;
     if (ready !== null) {
-      const loadProjection = ctx.deps?.plannedEstimate?.forecastProjection;
-      if (typeof loadProjection !== 'function') {
-        return {
-          ok: false,
-          reason: 'plan-forecast-projection-unavailable',
-          blockers: ['plan-forecast-projection-unavailable'],
-        };
-      }
+      const loadProjection =
+        ctx.deps?.plannedEstimate?.forecastProjection ?? loadForecastProjection;
       const projection = validateForecastProjection({
-        ...(await loadProjection({ cfg: ctx.cfg, issueNumber: ctx.issueNumber })),
+        ...(await loadProjection({
+          cfg: ctx.cfg,
+          issueNumber: ctx.issueNumber,
+          deps: ctx.deps?.plannedEstimate,
+        })),
         readyForecastRecordId: ready,
       });
       if (!projection.ok) {

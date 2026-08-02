@@ -12,6 +12,7 @@ const outcome = {
   createdAt: '2026-08-02T14:00:00.000Z',
   payload: {
     schema: 'aitm.estimation-outcome/v1',
+    kind: 'story',
     issue: 1091,
     forecastRecordId: '01J00000000000000000000402',
     humanPlanHours: 10,
@@ -47,6 +48,7 @@ function comment(payload, recordId = rubricId, overrides = {}) {
       recordType: 'estimation-rubric',
       createdAt: payload.generatedAt,
       predecessor: payload.predecessorRecordId,
+      supersedes: payload.predecessorRecordId,
       payload,
       ...overrides,
     },
@@ -117,7 +119,7 @@ test('the exact existing cohort is idempotent and creates no comment', async () 
 test('conflicting latest snapshots fail closed', async () => {
   const one = createBootstrapRubric({ generatedAt: '2026-08-02T13:00:00.000Z' });
   const two = {
-    ...createBootstrapRubric({ generatedAt: '2026-08-02T13:00:00.000Z' }),
+    ...createBootstrapRubric({ generatedAt: '2026-08-02T13:30:00.000Z' }),
     workflowDiagnostics: { avoidableProcessWasteHours: 1 },
   };
   await assert.rejects(
@@ -130,5 +132,29 @@ test('conflicting latest snapshots fail closed', async () => {
       },
     }),
     /rubric-refresh:conflicting-latest/
+  );
+});
+
+test('rubric payload and envelope predecessor links must describe one complete chain', async () => {
+  const previous = createBootstrapRubric({ generatedAt: '2026-08-02T13:00:00.000Z' });
+  const next = createBootstrapRubric({ generatedAt: '2026-08-02T14:00:00.000Z' });
+  next.version = 2;
+  next.predecessorRecordId = rubricId;
+  await assert.rejects(
+    loadOrRefreshRubric({
+      cfg: { repo: 'o/r', estimationRubricIssue: 1091 },
+      through: '2026-08-02T15:00:00.000Z',
+      deps: {
+        listRubricRecords: async () => [
+          comment(previous),
+          comment(next, '01J00000000000000000000405', {
+            predecessor: '01J00000000000000000000406',
+            supersedes: '01J00000000000000000000406',
+          }),
+        ],
+        listEligibleOutcomes: async () => [],
+      },
+    }),
+    /rubric-refresh:lineage/
   );
 });

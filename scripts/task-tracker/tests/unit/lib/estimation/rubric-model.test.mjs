@@ -17,6 +17,7 @@ function outcome(overrides = {}) {
     createdAt: '2026-08-02T14:00:00.000Z',
     payload: {
       schema: 'aitm.estimation-outcome/v1',
+      kind: 'story',
       issue: 1091,
       forecastRecordId: forecastId,
       humanPlanHours: 10,
@@ -51,6 +52,7 @@ test('bootstrap priors explicitly separate human, AI, test, review, and uncertai
   assert.deepEqual(Object.keys(BOOTSTRAP_RUBRIC_PRIORS).sort(), [
     'ai',
     'human',
+    'planning',
     'review',
     'testLandscape',
     'uncertainty',

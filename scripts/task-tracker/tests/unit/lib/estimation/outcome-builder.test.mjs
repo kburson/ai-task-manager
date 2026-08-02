@@ -31,6 +31,7 @@ test('completion outcome uses timing rows, exact verification, review, diff, and
     },
   });
   assert.equal(outcome.actual.engagedHours, 5);
+  assert.equal(outcome.kind, 'story');
   assert.equal(outcome.actual.stages.develop, 2);
   assert.equal(outcome.actual.commands[0].attempts, 2);
   assert.equal(outcome.costClassification.necessaryHours, 4.5);
@@ -62,12 +63,12 @@ test('malformed, negative, or zero timing fails closed for an eligible forecast'
 test('epic outcome records orchestration only and references child outcomes', () => {
   const outcome = buildEstimationOutcome({
     issue: 1067,
-    forecast: { ...forecast, payload: { ...forecast.payload, issue: 1067 } },
+    forecast: null,
     timing,
     verification: [],
     diff: { filesChanged: 0, modules: ['epic-orchestration'], lanes: [], dependencyBreadth: 0 },
     review: { fixCycles: 0 },
-    kind: 'epic',
+    kind: 'epic-orchestration',
     childOutcomeRecordIds: ['01J00000000000000000000801', '01J00000000000000000000802'],
   });
   assert.deepEqual(outcome.landscape.childOutcomeRecordIds, [
@@ -75,4 +76,9 @@ test('epic outcome records orchestration only and references child outcomes', ()
     '01J00000000000000000000802',
   ]);
   assert.deepEqual(outcome.landscape.modules, ['epic-orchestration']);
+  assert.equal(outcome.kind, 'epic-orchestration');
+  assert.equal(outcome.forecastRecordId, null);
+  assert.equal(outcome.humanPlanHours, null);
+  assert.equal(outcome.aiForecast, null);
+  assert.equal(outcome.variance, null);
 });
