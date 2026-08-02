@@ -146,6 +146,23 @@ async function emitReviewToDoneClosePair({
   }
 }
 
+const ESTIMATION_FORECAST_READY_RE =
+  /<!--\s*aitm-estimation-forecast-ready\s+record-id="([0-7][0-9A-HJKMNP-TV-Z]{25})"\s*-->/i;
+
+export async function ensureCloseEstimationOutcome({ issueNumber, body, writer } = {}) {
+  const forecastRecordId = String(body ?? '').match(ESTIMATION_FORECAST_READY_RE)?.[1] ?? null;
+  if (forecastRecordId === null) return { status: 'legacy-no-forecast' };
+  const ensure = typeof writer === 'function' ? writer : writer?.ensure;
+  if (typeof ensure !== 'function') {
+    throw new Error('estimation-outcome-writer capability is required for a v1 forecast');
+  }
+  const result = await ensure({ issueNumber: Number(issueNumber), forecastRecordId, body });
+  if (!['written', 'existing'].includes(result?.status)) {
+    throw new Error(`estimation outcome did not converge (status ${result?.status ?? 'missing'})`);
+  }
+  return result;
+}
+
 export async function verbClose(ctx) {
   const convergenceTailProfile = resolveTailProfile(
     ctx.convergenceTailProfile === undefined ? 'task-owner' : ctx.convergenceTailProfile
@@ -1174,6 +1191,20 @@ export async function verbClose(ctx) {
     ) {
       return;
     }
+  }
+  try {
+    await ensureCloseEstimationOutcome({
+      issueNumber: closeIssueNum,
+      body: closeBody,
+      writer: ctx.estimationOutcomeWriter,
+    });
+  } catch (err) {
+    console.error(
+      `[task-tracker] ⛔ Refusing to close ${closeTarget}: ${err.message}. ` +
+        'Issue left OPEN; repair outcome evidence and retry.'
+    );
+    process.exitCode = 1;
+    return;
   }
   // #505 — atomic forced close. A `--force` close deliberately bypasses the
   // close gate (above), but the *terminal board move* used to run only AFTER

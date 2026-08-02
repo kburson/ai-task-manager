@@ -1,0 +1,92 @@
+// @story #1091
+import { strict as assert } from 'node:assert';
+import test from 'node:test';
+
+import { ensureEstimationOutcome } from '../../../../lib/estimation/outcome-writer.mjs';
+
+const forecast = { recordId: '01J00000000000000000000900', payload: { issue: 1091 } };
+const payload = {
+  schema: 'aitm.estimation-outcome/v1',
+  issue: 1091,
+  forecastRecordId: forecast.recordId,
+};
+
+test('no forecast is a legacy skip and epics remain eligible orchestration outcomes', async () => {
+  const skipped = await ensureEstimationOutcome({ issue: 1091, forecast: null, deps: {} });
+  assert.deepEqual(skipped, { status: 'legacy-no-forecast' });
+});
+
+test('writer appends and read-backs exactly one immutable outcome', async () => {
+  const records = [];
+  const result = await ensureEstimationOutcome({
+    issue: 1091,
+    forecast,
+    outcomePayload: payload,
+    deps: {
+      listOutcomeRecords: async () => records,
+      createOutcomeEnvelope: () => ({
+        recordId: '01J00000000000000000000901',
+        recordType: 'estimation-outcome',
+        payload,
+      }),
+      writeOutcome: async ({ envelope }) => {
+        const record = { commentNodeId: 'IC_outcome', envelope };
+        records.push(record);
+        return record;
+      },
+    },
+  });
+  assert.equal(result.status, 'written');
+  assert.equal(result.commentNodeId, 'IC_outcome');
+  assert.equal(records.length, 1);
+});
+
+test('repeated close and partially written retries return the existing outcome', async () => {
+  let writes = 0;
+  const existing = {
+    commentNodeId: 'IC_existing',
+    envelope: { recordId: '01J00000000000000000000902', recordType: 'estimation-outcome', payload },
+  };
+  const result = await ensureEstimationOutcome({
+    issue: 1091,
+    forecast,
+    outcomePayload: payload,
+    deps: {
+      listOutcomeRecords: async () => [existing],
+      createOutcomeEnvelope: () => {
+        throw new Error('no envelope');
+      },
+      writeOutcome: async () => {
+        writes += 1;
+      },
+    },
+  });
+  assert.equal(result.status, 'existing');
+  assert.equal(result.commentNodeId, 'IC_existing');
+  assert.equal(writes, 0);
+});
+
+test('duplicate or conflicting outcome records fail closed', async () => {
+  const record = (id, forecastRecordId) => ({
+    commentNodeId: `IC_${id}`,
+    envelope: {
+      recordId: id,
+      recordType: 'estimation-outcome',
+      payload: { ...payload, forecastRecordId },
+    },
+  });
+  await assert.rejects(
+    ensureEstimationOutcome({
+      issue: 1091,
+      forecast,
+      outcomePayload: payload,
+      deps: {
+        listOutcomeRecords: async () => [
+          record('01J00000000000000000000903', forecast.recordId),
+          record('01J00000000000000000000904', forecast.recordId),
+        ],
+      },
+    }),
+    /estimation-outcome-writer:duplicate/
+  );
+});

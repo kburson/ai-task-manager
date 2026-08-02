@@ -80,7 +80,7 @@ export function validateEstimationOutcome(payload, { expectedIssue } = {}) {
 
   exact(
     payload.landscape,
-    ['dependencyBreadth', 'filesChanged', 'lanes', 'modules'],
+    ['childOutcomeRecordIds', 'dependencyBreadth', 'filesChanged', 'lanes', 'modules'],
     'outcome-landscape'
   );
   finite(payload.landscape.filesChanged, 'outcome-files', { integer: true });
@@ -91,6 +91,16 @@ export function validateEstimationOutcome(payload, { expectedIssue } = {}) {
       payload.landscape[key].some((entry) => typeof entry !== 'string' || entry.trim() === '')
     )
       fail(`outcome-${key}`);
+  if (
+    !Array.isArray(payload.landscape.childOutcomeRecordIds) ||
+    payload.landscape.childOutcomeRecordIds.some(
+      (recordId) => typeof recordId !== 'string' || !RECORD_ID_RE.test(recordId)
+    ) ||
+    new Set(payload.landscape.childOutcomeRecordIds).size !==
+      payload.landscape.childOutcomeRecordIds.length
+  ) {
+    fail('outcome-child-records');
+  }
   exact(payload.variance, ['vsAiP50Hours', 'vsAiP80Hours'], 'outcome-variance');
   for (const value of Object.values(payload.variance))
     if (typeof value !== 'number' || !Number.isFinite(value)) fail('outcome-variance-hours');

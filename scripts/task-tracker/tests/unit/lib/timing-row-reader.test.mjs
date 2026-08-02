@@ -11,6 +11,7 @@ import {
   replaceTimingRowCells,
   splitTimingRowMarker,
   timingTimestampToMs,
+  readEstimationStageTiming,
 } from '../../../lib/timing-row-reader.mjs';
 
 const CURRENT_ROW =
@@ -95,4 +96,17 @@ test('marker separation and cell replacement preserve untouched bytes', () => {
     replaceTimingRowCell(withSuffix, 2, ' resumed '),
     `${CURRENT_ROW.replace('| develop:started |', '| resumed |')}   `
   );
+});
+
+test('estimation stage timing sums authoritative row-sec active seconds by lifecycle stage', () => {
+  const rows = [
+    '| 2026-08-02 10:00:00 -05:00 | plan:stopped | | | | | | <!-- row-sec: a=1800 i=0 -->',
+    '| 2026-08-02 10:30:00 -05:00 | develop:stopped | | | | | | <!-- row-sec: a=3600 i=0 -->',
+    '| 2026-08-02 11:30:00 -05:00 | test:stopped | | | | | | <!-- row-sec: a=900 i=0 -->',
+    '| 2026-08-02 11:45:00 -05:00 | review:stopped | | | | | | <!-- row-sec: a=600 i=0 -->',
+  ];
+  assert.deepEqual(readEstimationStageTiming(rows), {
+    stagesMs: { plan: 1_800_000, develop: 3_600_000, test: 900_000, review: 600_000 },
+    engagedMs: 6_900_000,
+  });
 });

@@ -22,7 +22,13 @@ const outcome = {
       reviewFixCycles: 0,
       commands: [],
     },
-    landscape: { filesChanged: 2, modules: ['estimation'], lanes: ['unit'], dependencyBreadth: 1 },
+    landscape: {
+      filesChanged: 2,
+      modules: ['estimation'],
+      lanes: ['unit'],
+      dependencyBreadth: 1,
+      childOutcomeRecordIds: [],
+    },
     variance: { vsAiP50Hours: 0, vsAiP80Hours: -3 },
     costClassification: {
       necessaryHours: 5,

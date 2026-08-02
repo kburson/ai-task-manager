@@ -259,3 +259,11 @@ test('explicit close has no direct issue-body mutator import or fallback', () =>
   assert.doesNotMatch(source, /import\s+\{\s*mutateIssueBody\s*\}/);
   assert.doesNotMatch(source, /ctx\.issueBodyMutator\s*\?\?/);
 });
+
+test('v1 estimation outcome is required before the terminal Done move', () => {
+  const source = readFileSync(new URL('../../../verbs/close.mjs', import.meta.url), 'utf8');
+  const outcome = source.indexOf('ensureCloseEstimationOutcome({');
+  const terminalMove = source.indexOf('if (!force && !SKIP_NETWORK && closeIssueNum) {', outcome);
+  assert.ok(outcome > 0, 'close must invoke the estimation outcome writer');
+  assert.ok(terminalMove > outcome, 'outcome must be durable before the non-force Done move');
+});

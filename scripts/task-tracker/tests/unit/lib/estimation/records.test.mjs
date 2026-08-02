@@ -82,7 +82,13 @@ const outcome = {
     reviewFixCycles: 1,
     commands: [{ classification: 'test-unit', durationMs: 1000, attempts: 1 }],
   },
-  landscape: { filesChanged: 18, modules: ['estimation'], lanes: ['unit'], dependencyBreadth: 3 },
+  landscape: {
+    filesChanged: 18,
+    modules: ['estimation'],
+    lanes: ['unit'],
+    dependencyBreadth: 3,
+    childOutcomeRecordIds: [],
+  },
   variance: { vsAiP50Hours: 1, vsAiP80Hours: -8 },
   costClassification: {
     necessaryHours: 22,

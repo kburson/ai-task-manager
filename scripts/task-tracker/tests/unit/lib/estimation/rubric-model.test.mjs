@@ -32,6 +32,7 @@ function outcome(overrides = {}) {
         modules: ['estimation'],
         lanes: ['unit'],
         dependencyBreadth: 1,
+        childOutcomeRecordIds: [],
       },
       variance: { vsAiP50Hours: 2, vsAiP80Hours: -1 },
       costClassification: {
