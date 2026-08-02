@@ -222,9 +222,39 @@ test('updates use the opaque node ID through GraphQL before read-back', async ()
   });
 
   assert.equal(updated.commentNodeId, id);
-  assert.equal(calls.length, 2);
-  assert.deepEqual(calls[0].variables, { id, body: recordBody });
-  assert.deepEqual(calls[1].variables, { ids: [id] });
+  assert.equal(calls.length, 3);
+  assert.deepEqual(calls[0].variables, { ids: [id] });
+  assert.deepEqual(calls[1].variables, { id, body: recordBody });
+  assert.deepEqual(calls[2].variables, { ids: [id] });
+});
+
+test('updates reject a foreign comment node before invoking the mutation', async () => {
+  const { updateIssueComment } = commentStore;
+  const id = 'IC_kwDOForeignIssue';
+  const recordBody = body('01J00000000000000000000016');
+  let mutations = 0;
+  const graphql = async ({ query, variables }) => {
+    if (query.includes('mutation AitmUpdateIssueComment')) {
+      mutations += 1;
+      return { data: { updateIssueComment: { issueComment: { id } } } };
+    }
+    return {
+      data: {
+        nodes: [
+          {
+            ...node(variables.ids[0], '01J00000000000000000000016'),
+            issue: { number: 999, repository: { nameWithOwner: repository } },
+          },
+        ],
+      },
+    };
+  };
+
+  await assert.rejects(
+    updateIssueComment({ commentNodeId: id, repository, issue, body: recordBody, graphql }),
+    (error) => error.category === 'correlation'
+  );
+  assert.equal(mutations, 0);
 });
 
 test('writes fail closed before success and never expose transport payloads', async () => {

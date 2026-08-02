@@ -245,6 +245,7 @@ export async function updateIssueComment(input = {}) {
     throw storeError('input');
   }
   const expectedEnvelope = parseExpectedBody(body, repository, issue);
+  await readBackComment({ commentNodeId, repository, issue, graphql });
   let response;
   try {
     response = await graphql({
