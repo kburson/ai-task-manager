@@ -9,7 +9,6 @@ export const BOOTSTRAP_RUBRIC_PRIORS = Object.freeze({
     necessaryToPlanned: 1,
   }),
   ai: Object.freeze({
-    engagedToHuman: 0.6,
     implementationHour: 0.52,
     moduleBreadthHour: 0.2,
     dependencyBreadthHour: 0.25,
@@ -181,8 +180,13 @@ export function updateEstimationRubric({
     },
     ai: {
       coefficients: {
-        ...previous.ai.coefficients,
-        engagedToHuman: weightedRobustMean(aiRatios, previous.ai.coefficients.engagedToHuman),
+        ...Object.fromEntries(
+          Object.entries(previous.ai.coefficients).filter(([key]) => key !== 'engagedToHuman')
+        ),
+        implementationHour: weightedRobustMean(
+          aiRatios,
+          previous.ai.coefficients.implementationHour ?? previous.ai.coefficients.engagedToHuman
+        ),
       },
       sampleSize: ordered.length,
       confidence,

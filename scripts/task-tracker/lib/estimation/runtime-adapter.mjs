@@ -408,6 +408,7 @@ export async function loadProjectEstimationCorpus({ cfg, io, graphql = io?.graph
     if (Array.isArray(response?.errors) && response.errors.length > 0) fail('corpus-response');
     const connection = response?.data?.node?.items;
     if (!Array.isArray(connection?.nodes)) fail('corpus-response');
+    if (typeof connection.pageInfo?.hasNextPage !== 'boolean') fail('corpus-pagination');
     for (const item of connection.nodes) {
       const issue = item.content;
       if (!Number.isInteger(issue?.number) || typeof issue.id !== 'string') continue;
@@ -433,17 +434,32 @@ export async function loadProjectEstimationCorpus({ cfg, io, graphql = io?.graph
     const response = await graphql({ query: DONE_ISSUE_RECORDS_QUERY, variables: { ids: chunk } });
     if (Array.isArray(response?.errors) && response.errors.length > 0) fail('corpus-response');
     if (!Array.isArray(response?.data?.nodes)) fail('corpus-response');
+    if (response.data.nodes.length !== chunk.length) fail('corpus-response');
+    const requestedIds = new Set(chunk);
+    const returnedIds = new Set();
     for (const issue of response.data.nodes) {
-      if (!Number.isInteger(issue?.number) || !candidates.has(issue.id)) fail('corpus-response');
+      if (
+        !Number.isInteger(issue?.number) ||
+        !requestedIds.has(issue.id) ||
+        candidates.get(issue.id) !== issue.number ||
+        returnedIds.has(issue.id)
+      ) {
+        fail('corpus-response');
+      }
+      returnedIds.add(issue.id);
       const comments = issue.comments;
       if (!Array.isArray(comments?.nodes)) fail('corpus-response');
-      const parsed = comments.pageInfo?.hasNextPage
-        ? await io.listIssueRecords({ repository: cfg.repo, issue: issue.number })
+      if (typeof comments.pageInfo?.hasNextPage !== 'boolean') fail('corpus-pagination');
+      const parsed = comments.pageInfo.hasNextPage
+        ? typeof io?.listIssueRecords === 'function'
+          ? await io.listIssueRecords({ repository: cfg.repo, issue: issue.number })
+          : fail('corpus-pagination')
         : parsePreloadedIssueComments({
             nodes: comments.nodes,
             repository: cfg.repo,
             issue: issue.number,
           });
+      if (!Array.isArray(parsed)) fail('corpus-response');
       records.push(...parsed);
     }
   }

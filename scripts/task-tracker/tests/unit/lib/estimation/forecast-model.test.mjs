@@ -55,7 +55,7 @@ test('forecast computes human work independently from AI coefficients and includ
   assert.ok(forecast.ai.p50EngagedHours < forecast.plan.humanHours);
 
   const slowerAi = structuredClone(rubric);
-  slowerAi.ai.coefficients.engagedToHuman = 1.8;
+  slowerAi.ai.coefficients.implementationHour = 1.8;
   const changed = buildEstimationForecast({
     issue: 1091,
     refine: { size: 'XL', humanHours: 40 },
@@ -77,6 +77,19 @@ test('forecast computes human work independently from AI coefficients and includ
   });
   assert.equal(calibrated.plan.humanHours, 24.4);
   assert.notEqual(calibrated.plan.humanHours, forecast.plan.humanHours);
+
+  const humanBreadthOnly = structuredClone(rubric);
+  humanBreadthOnly.human.coefficients.moduleBreadthHour += 10;
+  humanBreadthOnly.human.coefficients.dependencyBreadthHour += 10;
+  const separated = buildEstimationForecast({
+    issue: 1091,
+    refine: { size: 'XL', humanHours: 40 },
+    planInput,
+    rubric: { recordId: rubricRecordId, payload: humanBreadthOnly },
+    comparableOutcomes: [],
+  });
+  assert.notEqual(separated.plan.humanHours, forecast.plan.humanHours);
+  assert.equal(separated.ai.p50EngagedHours, forecast.ai.p50EngagedHours);
 });
 
 test('forecast widens P80 from confidence and allocates P50 across exact lifecycle stages', () => {

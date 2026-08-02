@@ -327,6 +327,7 @@ export async function runClosedIssueConvergence(input = {}, deps = {}) {
         await runStep('moveToDone');
       }
       await runStep('emitClosePair');
+      await runStep('ensureOutcome');
       await runStep('reconcileLifecycle');
       await runStep('cleanup');
       return { action, status: 'completed', steps };

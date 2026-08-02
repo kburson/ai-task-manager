@@ -25,6 +25,7 @@ function actionDeps({ fail = null } = {}) {
     deps: {
       moveToDone: adapter('moveToDone'),
       emitClosePair: adapter('emitClosePair'),
+      ensureOutcome: adapter('ensureOutcome'),
       reconcileLifecycle: adapter('reconcileLifecycle'),
       cleanup: adapter('cleanup'),
       reopenIssue: adapter('reopenIssue'),
@@ -59,7 +60,13 @@ test('finalize runs the existing housekeeping order before cleanup', async () =>
     deps
   );
   assert.equal(result.status, 'completed');
-  assert.deepEqual(result.steps, ['moveToDone', 'emitClosePair', 'reconcileLifecycle', 'cleanup']);
+  assert.deepEqual(result.steps, [
+    'moveToDone',
+    'emitClosePair',
+    'ensureOutcome',
+    'reconcileLifecycle',
+    'cleanup',
+  ]);
   assert.deepEqual(calls, result.steps);
 });
 
@@ -70,7 +77,7 @@ test('noop reconciles close housekeeping without a redundant board move', async 
     deps
   );
   assert.equal(result.status, 'completed');
-  assert.deepEqual(calls, ['emitClosePair', 'reconcileLifecycle', 'cleanup']);
+  assert.deepEqual(calls, ['emitClosePair', 'ensureOutcome', 'reconcileLifecycle', 'cleanup']);
 });
 
 test('finalize fails visibly and does not clean up after a board-move failure', async () => {

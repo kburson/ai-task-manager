@@ -68,7 +68,9 @@ export function buildEstimationForecast({
     id: item.id,
     description: item.description,
     humanHours: round(
-      item.baseHumanHours * humanCoefficients.necessaryToPlanned +
+      item.baseHumanHours *
+        humanCoefficients.implementationHour *
+        humanCoefficients.necessaryToPlanned +
         item.signals.modules.length * humanCoefficients.moduleBreadthHour +
         item.signals.dependencies.length * humanCoefficients.dependencyBreadthHour
     ),
@@ -85,10 +87,13 @@ export function buildEstimationForecast({
 
   const targetModules = [...new Set(input.wbs.flatMap((item) => item.signals.modules))];
   const targetDependencies = [...new Set(input.wbs.flatMap((item) => item.signals.dependencies))];
-  const humanImplementationHours = round(humanHours - repositoryHours);
+  const aiImplementationHours = input.wbs.reduce(
+    (sum, item) => sum + item.baseHumanHours * aiCoefficients.implementationHour,
+    0
+  );
 
   const p50 = round(
-    humanImplementationHours * aiCoefficients.engagedToHuman +
+    aiImplementationHours +
       targetModules.length * aiCoefficients.moduleBreadthHour +
       targetDependencies.length * aiCoefficients.dependencyBreadthHour +
       repositoryHours

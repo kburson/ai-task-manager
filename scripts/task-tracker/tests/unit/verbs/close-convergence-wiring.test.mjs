@@ -305,3 +305,25 @@ test('fallible merge preparation precedes the outcome; Done precedes Delivered d
   assert.ok(terminalMove > outcome, 'outcome must be durable before Done');
   assert.ok(delivered > terminalMove, 'Delivered must be written only after Done');
 });
+
+test('convergence close synchronizes terminal timing before freezing its outcome', () => {
+  const source = readFileSync(new URL('../../../verbs/close.mjs', import.meta.url), 'utf8');
+  const closeIssue = source.indexOf("if (decision.action === 'close-issue') {");
+  const closeIssueEnd = source.indexOf(
+    "if (['dead', 'finalize', 'aberration', 'noop']",
+    closeIssue
+  );
+  const closeIssueBranch = source.slice(closeIssue, closeIssueEnd);
+  assert.ok(
+    closeIssueBranch.indexOf('emitReviewToDoneClosePair') <
+      closeIssueBranch.indexOf('ensureConvergenceOutcome'),
+    'board-Done convergence must emit the close pair before its outcome'
+  );
+
+  const convergence = source.indexOf('runClosedIssueConvergence(');
+  const convergenceCall = source.slice(
+    convergence,
+    source.indexOf('if (convergence.status', convergence)
+  );
+  assert.match(convergenceCall, /ensureOutcome:\s*async/);
+});

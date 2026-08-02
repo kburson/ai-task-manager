@@ -122,3 +122,51 @@ test('project corpus batches only unique Done candidates and excludes open outco
   assert.deepEqual(recordCalls, [1]);
   assert.equal(calls.length, 2);
 });
+
+test('project corpus fails closed on incomplete project, issue-batch, or comment pagination evidence', async () => {
+  const cfg = { repo: repository, projectId: 'PROJECT', kanbanFieldId: 'STATUS' };
+  const doneItem = {
+    content: { id: 'ISSUE_DONE', number: 1 },
+    fieldValues: { nodes: [{ name: 'Done', field: { id: 'STATUS' } }] },
+  };
+  const projectResponse = {
+    data: {
+      node: {
+        items: { nodes: [doneItem], pageInfo: { hasNextPage: false, endCursor: null } },
+      },
+    },
+  };
+
+  await assert.rejects(
+    loadProjectEstimationCorpus({
+      cfg,
+      io: {},
+      graphql: async () => ({ data: { node: { items: { nodes: [] } } } }),
+    }),
+    /estimation-runtime:corpus-pagination/
+  );
+  await assert.rejects(
+    loadProjectEstimationCorpus({
+      cfg,
+      io: {},
+      graphql: async ({ query }) =>
+        query.includes('AitmEstimationCorpus') ? projectResponse : { data: { nodes: [] } },
+    }),
+    /estimation-runtime:corpus-response/
+  );
+  await assert.rejects(
+    loadProjectEstimationCorpus({
+      cfg,
+      io: {},
+      graphql: async ({ query }) =>
+        query.includes('AitmEstimationCorpus')
+          ? projectResponse
+          : {
+              data: {
+                nodes: [{ id: 'ISSUE_DONE', number: 1, comments: { nodes: [] } }],
+              },
+            },
+    }),
+    /estimation-runtime:corpus-pagination/
+  );
+});

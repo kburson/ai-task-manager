@@ -507,6 +507,18 @@ export async function verbClose(ctx) {
       // Board reads Done but the issue is still OPEN — the Projects auto-close
       // workflow did not fire. Close the primary explicitly. On failure, surface
       // it and exit non-zero WITHOUT clearing local state so a re-run recovers.
+      await emitReviewToDoneClosePair({
+        closeTarget,
+        closeIssueNum,
+        cfg,
+        hasApprovalMarker: hasReviewApprovedMarker(convergeBody),
+        reviewGateBypassed: configuredFullAuto,
+        lastWordMarker: s.lastWordMarker,
+        ctx,
+        SKIP_NETWORK,
+        nowIso,
+        safePostTiming,
+      });
       if (!(await ensureConvergenceOutcome({ body: convergeBody }))) return;
       if (
         !(await writeDeliveredOrRefuse({
@@ -542,12 +554,6 @@ export async function verbClose(ctx) {
     }
 
     if (['dead', 'finalize', 'aberration', 'noop'].includes(decision.action)) {
-      if (
-        (decision.action === 'finalize' || decision.action === 'noop') &&
-        !(await ensureConvergenceOutcome({ body: convergeBody }))
-      ) {
-        return;
-      }
       const convergence = await runClosedIssueConvergence(
         {
           decision,
@@ -604,6 +610,10 @@ export async function verbClose(ctx) {
             });
             return { ok: true };
           },
+          ensureOutcome: async () =>
+            (await ensureConvergenceOutcome({ body: convergeBody }))
+              ? { ok: true }
+              : { ok: false, error: 'completion outcome evidence did not converge' },
           reconcileLifecycle: async () => {
             if (
               reconcileLifecycleBoxes === tickLifecycleOnClose &&

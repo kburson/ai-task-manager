@@ -72,7 +72,9 @@ test('agent outcomes update AI diagnostics without calibrating human effort from
   });
   assert.equal(updated.cohort[0].outcomeRecordId, outcomeId);
   assert.equal(updated.workflowDiagnostics.avoidableProcessWasteHours, 2);
-  assert.ok(updated.ai.coefficients.engagedToHuman > previous.ai.coefficients.engagedToHuman);
+  assert.ok(
+    updated.ai.coefficients.implementationHour > previous.ai.coefficients.implementationHour
+  );
   assert.deepEqual(updated.human.coefficients, previous.human.coefficients);
   assert.equal(updated.human.sampleSize, previous.human.sampleSize);
   assert.equal(updated.human.confidence, previous.human.confidence);
@@ -141,7 +143,7 @@ test('updates are recency bounded, weighted, and cap one outlier influence', () 
   });
   assert.equal(updated.cohort.length, 50);
   assert.deepEqual(updated.human.coefficients, previous.human.coefficients);
-  assert.ok(updated.ai.coefficients.engagedToHuman <= 2);
+  assert.ok(updated.ai.coefficients.implementationHour <= 2);
   assert.equal(updated.human.sampleSize, 0);
   assert.equal(updated.human.confidence, 0.1);
 });
