@@ -28,6 +28,8 @@ import {
   computePhaseCloseDelta,
   formatDurationSeconds,
   formatRowSecMarker,
+  parseDurationSeconds,
+  parseRowSecMarker,
 } from './timing-rows.mjs';
 import {
   isTableTimingTimestamp,
@@ -99,6 +101,138 @@ function parseWordsCell(cell) {
   return Number.isFinite(v) ? v : 0;
 }
 
+function isZeroDurationCell(cell) {
+  const value = String(cell ?? '').trim();
+  if (value === '' || value === '0') return true;
+  try {
+    return parseDurationSeconds(value) === 0;
+  } catch {
+    return false;
+  }
+}
+
+function isZeroWordDeltaCell(cell) {
+  const value = String(cell ?? '').trim();
+  if (value === '') return true;
+  if (!/^[+-]?\d{1,3}(?:,\d{3})*$/.test(value) && !/^[+-]?\d+$/.test(value)) return false;
+  return Number(value.replace(/,/g, '')) === 0;
+}
+
+function strictTimingTimestampMs(value) {
+  const match = String(value ?? '')
+    .trim()
+    .match(/^(\d{4})-(\d{2})-(\d{2})\s+(\d{2}):(\d{2})(?::(\d{2}))?\s+([+-])(\d{2}):(\d{2})$/);
+  if (!match) return NaN;
+  const [, yearRaw, monthRaw, dayRaw, hourRaw, minuteRaw, secondRaw, sign, ohRaw, omRaw] = match;
+  const year = Number(yearRaw);
+  const month = Number(monthRaw);
+  const day = Number(dayRaw);
+  const hour = Number(hourRaw);
+  const minute = Number(minuteRaw);
+  const second = Number(secondRaw ?? '0');
+  const offsetHour = Number(ohRaw);
+  const offsetMinute = Number(omRaw);
+  if (
+    month < 1 ||
+    month > 12 ||
+    day < 1 ||
+    day > new Date(Date.UTC(year, month, 0)).getUTCDate() ||
+    hour > 23 ||
+    minute > 59 ||
+    second > 59 ||
+    offsetHour > 23 ||
+    offsetMinute > 59
+  ) {
+    return NaN;
+  }
+  const localMs = Date.UTC(year, month - 1, day, hour, minute, second);
+  const offsetMs = (offsetHour * 60 + offsetMinute) * 60_000;
+  return localMs - (sign === '+' ? offsetMs : -offsetMs);
+}
+
+function isZeroValueStopResumePair(stopLine, resumedLine) {
+  const stop = parseTimingRow(stopLine);
+  const resumed = parseTimingRow(resumedLine);
+  if (
+    !stop ||
+    !resumed ||
+    !isTableTimingTimestamp(stop.ts) ||
+    !isTableTimingTimestamp(resumed.ts) ||
+    stop.cells[2] !== 'stop' ||
+    resumed.cells[2] !== 'resumed'
+  ) {
+    return false;
+  }
+  const startMs = strictTimingTimestampMs(stop.ts);
+  const endMs = strictTimingTimestampMs(resumed.ts);
+  const gapMs = endMs - startMs;
+  if (!Number.isFinite(startMs) || !Number.isFinite(endMs) || gapMs < 0 || gapMs >= 60_000) {
+    return false;
+  }
+  for (const row of [stop, resumed]) {
+    if (
+      !isZeroDurationCell(row.cells[3]) ||
+      !isZeroDurationCell(row.cells[4]) ||
+      !isZeroWordDeltaCell(row.cells[5])
+    ) {
+      return false;
+    }
+    const marker = parseRowSecMarker(row.raw);
+    if (marker && (marker.activeSec !== 0 || marker.idleSec !== 0)) return false;
+  }
+  return stop.wordMarker === resumed.wordMarker;
+}
+
+function zeroValueStopResumePairIndexes(lines) {
+  const indexes = new Set();
+  for (let index = 0; index + 1 < lines.length; index++) {
+    if (!isZeroValueStopResumePair(lines[index], lines[index + 1])) continue;
+    indexes.add(index);
+    indexes.add(index + 1);
+    index++;
+  }
+  return indexes;
+}
+
+function redundantReviewPassIndexes(lines) {
+  const indexes = new Set();
+  let inReview = false;
+  let passSeen = false;
+  for (let index = 0; index < lines.length; index++) {
+    const row = parseTimingRow(lines[index]);
+    if (!row || !isTableTimingTimestamp(row.ts)) continue;
+    const event = row.cells[2];
+    if (event === 'review:started') {
+      inReview = true;
+      passSeen = false;
+      continue;
+    }
+    if (event === 'review:failed') {
+      if (inReview) passSeen = false;
+      continue;
+    }
+    if (event === 'review:approved' || event.startsWith('demoted:')) {
+      inReview = false;
+      passSeen = false;
+      continue;
+    }
+    if (event !== 'review:passed' || !inReview) continue;
+    if (passSeen) indexes.add(index);
+    else passSeen = true;
+  }
+  return indexes;
+}
+
+export function countZeroValueStopResumePairs(body) {
+  if (!body || typeof body !== 'string') return 0;
+  return zeroValueStopResumePairIndexes(body.split('\n')).size / 2;
+}
+
+export function countRedundantReviewPassRows(body) {
+  if (!body || typeof body !== 'string') return 0;
+  return redundantReviewPassIndexes(body.split('\n')).size;
+}
+
 // True when `line` is a pre-f3a09cc bare-'develop' reject self-audit row: the
 // event cell is exactly 'develop' (not 'develop:started'/':completed', which
 // have their own distinct slugs) and the description starts with "review
@@ -136,7 +270,15 @@ function renderCompletedRow(line, { activeSec, idleSec, deltaWords }) {
 export function healTimingLog(body) {
   if (!body || typeof body !== 'string') return body;
 
-  const lines = body.split('\n');
+  const originalLines = body.split('\n');
+  const stopResumeIndexes = zeroValueStopResumePairIndexes(originalLines);
+  const withoutStopResume = originalLines.filter((_line, index) => !stopResumeIndexes.has(index));
+  const redundantPassIndexes = redundantReviewPassIndexes(withoutStopResume);
+  const lines = withoutStopResume.filter((_line, index) => !redundantPassIndexes.has(index));
+  const hasLegacyStripRows = originalLines.some((line) => {
+    const row = parseTimingRow(line);
+    return row && isTableTimingTimestamp(row.ts) && STRIP_SLUGS.has(row.event);
+  });
 
   // Pass 1 — walk in document order over the ORIGINAL lines, dropping strip
   // rows and accumulating their Δ Words into the next completion row (fold).
@@ -185,6 +327,18 @@ export function healTimingLog(body) {
 
     const existingWords = parseWordsCell(row.cells[5]);
     const foldedWords = existingWords + (foldByLineIdx.get(idx) || 0);
+
+    if (!hasLegacyStripRows) {
+      let bracketChanged = false;
+      if (stopResumeIndexes.size > 0) {
+        const before = computePhaseCloseDelta(body, state, row.ts);
+        bracketChanged =
+          before.matched &&
+          close.matched &&
+          (before.activeSec !== close.activeSec || before.idleSec !== close.idleSec);
+      }
+      if (!bracketChanged && foldedWords === existingWords) return line;
+    }
 
     // Fall back to the row's existing active/idle when no enter row matched
     // (anomalous/legacy log) so the heal never regresses a real span to 0.

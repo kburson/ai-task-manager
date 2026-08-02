@@ -29,7 +29,12 @@ import { withLock } from './locks.mjs';
 import { getProjectDir, timingLockPath as resolveTimingLockPath } from './paths.mjs';
 import { loadConfig } from './config.mjs';
 import { gql, splitRepo } from '../gh/lib/github-projects.mjs';
-import { healTimingLog, countRetiredRows } from './lib/heal-timing-log.mjs';
+import {
+  healTimingLog,
+  countRetiredRows,
+  countZeroValueStopResumePairs,
+  countRedundantReviewPassRows,
+} from './lib/heal-timing-log.mjs';
 import { assertKnownArgv, reportStrictArgvError } from './lib/argv-strict.mjs';
 import { confirmBlastRadius } from './lib/blast-radius-guard.mjs';
 import { wantsHelp, emitSelfDoc } from '../lib/self-doc.mjs';
@@ -49,21 +54,51 @@ export async function runHeal({ issueNumber, repo, apply = false, deps = {} } = 
 
   const comment = await findTimingComment(String(issueNumber), repo);
   if (!comment) {
-    return { status: 'no-comment', retiredBefore: 0, retiredAfter: 0, commentId: null };
+    return {
+      status: 'no-comment',
+      retiredBefore: 0,
+      retiredAfter: 0,
+      zeroStopResumeBefore: 0,
+      zeroStopResumeAfter: 0,
+      redundantReviewPassBefore: 0,
+      redundantReviewPassAfter: 0,
+      commentId: null,
+    };
   }
   const retiredBefore = countRetiredRows(comment.body);
+  const zeroStopResumeBefore = countZeroValueStopResumePairs(comment.body);
+  const redundantReviewPassBefore = countRedundantReviewPassRows(comment.body);
   const healed = healTimingLog(comment.body);
   const retiredAfter = countRetiredRows(healed);
+  const zeroStopResumeAfter = countZeroValueStopResumePairs(healed);
+  const redundantReviewPassAfter = countRedundantReviewPassRows(healed);
   const changed = healed !== comment.body;
+  const result = {
+    retiredBefore,
+    retiredAfter,
+    zeroStopResumeBefore,
+    zeroStopResumeAfter,
+    redundantReviewPassBefore,
+    redundantReviewPassAfter,
+    commentId: comment.id,
+  };
 
   if (!changed) {
-    return { status: 'already-canonical', retiredBefore, retiredAfter, commentId: comment.id };
+    return { status: 'already-canonical', ...result };
   }
   if (!apply) {
-    return { status: 'dry-run', retiredBefore, retiredAfter, commentId: comment.id };
+    return { status: 'dry-run', ...result };
   }
   await updateTimingComment(comment.id, repo, healed);
-  return { status: 'healed', retiredBefore, retiredAfter, commentId: comment.id };
+  return { status: 'healed', ...result };
+}
+
+function formatRemovalCounts(result) {
+  return (
+    `retired=${result.retiredBefore} → ${result.retiredAfter} ` +
+    `stopResume=${result.zeroStopResumeBefore} → ${result.zeroStopResumeAfter} ` +
+    `reviewPass=${result.redundantReviewPassBefore} → ${result.redundantReviewPassAfter}`
+  );
 }
 
 export function parseArgs(argv) {
@@ -171,8 +206,8 @@ async function runPerIssue(args, { repo, out, deps }) {
   const res = await healUnderLock({ issueNumber: args.issue, repo, apply: args.apply, deps });
   const verb = args.apply ? 'apply' : 'check-only';
   out.write(
-    `#${args.issue} [${verb}] ${res.status}: ${res.retiredBefore} retired row(s)` +
-      (res.status === 'no-comment' ? '' : ` → ${res.retiredAfter} after heal`) +
+    `#${args.issue} [${verb}] ${res.status}: ${formatRemovalCounts(res)}` +
+      (res.status === 'no-comment' ? ' (no timing comment)' : '') +
       '\n'
   );
   if (res.status === 'dry-run') out.write('(dry-run — re-run with --apply to write)\n');
@@ -209,6 +244,8 @@ async function runSweep(args, { cfg, repo, out, err, deps }) {
 
   let touched = 0;
   let retired = 0;
+  let zeroStopResume = 0;
+  let redundantReviewPass = 0;
   const failed = [];
   for (const n of numbers) {
     try {
@@ -216,7 +253,9 @@ async function runSweep(args, { cfg, repo, out, err, deps }) {
       if (res.status === 'dry-run' || res.status === 'healed') {
         touched++;
         retired += res.retiredBefore;
-        out.write(`#${n}\t${res.status}\tretired=${res.retiredBefore} → ${res.retiredAfter}\n`);
+        zeroStopResume += res.zeroStopResumeBefore;
+        redundantReviewPass += res.redundantReviewPassBefore;
+        out.write(`#${n}\t${res.status}\t${formatRemovalCounts(res)}\n`);
       }
     } catch (e) {
       failed.push({ issue: n, error: e.message });
@@ -225,7 +264,8 @@ async function runSweep(args, { cfg, repo, out, err, deps }) {
   }
   out.write(
     `Summary: issues=${numbers.length} ${args.apply ? 'healed' : 'to-heal'}=${touched} ` +
-      `retiredRows=${retired} failed=${failed.length}\n`
+      `retiredRows=${retired} stopResumeRows=${zeroStopResume} ` +
+      `reviewPassRows=${redundantReviewPass} failed=${failed.length}\n`
   );
   if (!args.apply && touched > 0) out.write('(dry-run — re-run with --apply to write)\n');
   return 0;
