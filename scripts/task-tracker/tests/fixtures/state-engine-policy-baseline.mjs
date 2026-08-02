@@ -330,7 +330,7 @@ export const TIMING_EVENT_BASELINE = Object.freeze({
     ]),
     timingEmitter(
       'scripts/task-tracker/verbs/close.mjs',
-      1175,
+      1176,
       'event-call',
       '_PEcascade.done.enter.event',
       ['issue:wrap']
