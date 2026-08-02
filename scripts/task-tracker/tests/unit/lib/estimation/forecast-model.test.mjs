@@ -109,21 +109,39 @@ test('human estimate is invariant when identical repository breadth is split acr
     wbs,
     testImpact: { lanes: ['unit'], isolation: 'test-sandbox', expectedMinutes: 0 },
     risks: [],
-    comparableIssueIds: [],
+    comparableIssueIds: [1068],
   });
+  const comparableOutcomes = [
+    {
+      recordId: '01J00000000000000000000501',
+      payload: {
+        issue: 1068,
+        landscape: {
+          modules: ['same-module'],
+          lanes: ['unit'],
+          dependencyBreadth: 1,
+          filesChanged: 5,
+        },
+      },
+    },
+  ];
   const one = buildEstimationForecast({
     issue: 1091,
     refine: { size: 'M', humanHours: 8 },
     planInput: input([item('one', 10)]),
     rubric,
+    comparableOutcomes,
   });
   const two = buildEstimationForecast({
     issue: 1091,
     refine: { size: 'M', humanHours: 8 },
     planInput: input([item('one', 5), item('two', 5)]),
     rubric,
+    comparableOutcomes,
   });
   assert.equal(two.plan.humanHours, one.plan.humanHours);
+  assert.equal(two.ai.p50EngagedHours, one.ai.p50EngagedHours);
+  assert.deepEqual(two.comparableIssues, one.comparableIssues);
 });
 
 test('forecast widens P80 from confidence and allocates P50 across exact lifecycle stages', () => {

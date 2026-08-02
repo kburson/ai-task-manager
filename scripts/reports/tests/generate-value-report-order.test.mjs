@@ -142,3 +142,38 @@ test('no content dropped: moved tables still emit their markup and rows', () => 
   assert.ok(engagementSection.includes('<table'), 'Backlog Engagement Timeline table markup missing');
   assert.ok(engagementSection.includes('#101'), 'Backlog Engagement row for #101 missing');
 });
+
+test('estimation footer renders validated zero waste as zero rather than missing evidence', () => {
+  const project = { title: 'Zero Waste' };
+  const items = [
+    {
+      number: 101,
+      title: 'Zero-waste issue',
+      url: 'https://example.test/101',
+      status: 'Done',
+      parentNumber: null,
+      timingBody: '',
+    },
+  ];
+  const row = {
+    humanPlanHours: 1,
+    aiP50Hours: 1,
+    aiP80Hours: 1.2,
+    actualEngagedHours: 1,
+    varianceVsAiP50Hours: 0,
+    refineAccuracy: 1,
+    aiP50Accuracy: 1,
+    avoidableWasteHours: 0,
+    acceleration: 1,
+    accelerationLabel: '1.00×',
+    evidenceGaps: [],
+  };
+  const html = buildHtml(
+    project,
+    items,
+    { totalEst: 1, totalEngaged: 60, totalSessionMin: 60, totalContextWords: 0, accel: 1 },
+    { rowsByIssue: new Map([[101, row]]), methodology: {} }
+  );
+  const footer = html.slice(html.indexOf('<tfoot>'), html.indexOf('</tfoot>'));
+  assert.match(footer, /<td class="num">0 (?:min|h)<\/td>/);
+});

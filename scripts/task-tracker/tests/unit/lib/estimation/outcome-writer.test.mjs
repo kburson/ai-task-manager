@@ -90,6 +90,26 @@ test('repeated close and partially written retries return the existing outcome',
   assert.equal(writes, 0);
 });
 
+test('repeated close refuses an existing outcome whose immutable payload differs', async () => {
+  const existing = {
+    commentNodeId: 'IC_existing',
+    envelope: {
+      recordId: '01J00000000000000000000902',
+      recordType: 'estimation-outcome',
+      payload: { ...payload, actual: { engagedHours: 99 } },
+    },
+  };
+  await assert.rejects(
+    ensureEstimationOutcome({
+      issue: 1091,
+      forecast,
+      outcomePayload: payload,
+      deps: { listOutcomeRecords: async () => [existing] },
+    }),
+    /estimation-outcome-writer:payload-mismatch/
+  );
+});
+
 test('duplicate or conflicting outcome records fail closed', async () => {
   const record = (id, forecastRecordId) => ({
     commentNodeId: `IC_${id}`,

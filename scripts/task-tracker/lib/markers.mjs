@@ -195,6 +195,15 @@ export function insertPlanApprovedMarker(body, ts, options) {
   );
 }
 
+export function upsertPlanApprovedMarker(body, ts, options) {
+  const source = String(body || '');
+  const masked = maskFencedCodeBlocksPreservingOffsets(source);
+  const match = PLAN_APPROVED_RE.exec(masked);
+  if (!match) return insertPlanApprovedMarker(source, ts, options);
+  const marker = buildPlanApprovedMarker(ts, options);
+  return `${source.slice(0, match.index)}${marker}${source.slice(match.index + match[0].length)}`;
+}
+
 // ---------------------------------------------------------------------------
 // full-auto-approved (#156 — Full-Auto audit marker on /task approve)
 //

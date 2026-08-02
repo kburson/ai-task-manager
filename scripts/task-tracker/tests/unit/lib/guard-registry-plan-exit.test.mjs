@@ -114,6 +114,21 @@ test('adaptive Plan exit refuses when ready forecast drifted after approval free
   assert.deepEqual(result.blockers, ['plan-forecast-freeze-mismatch']);
 });
 
+test('adaptive Plan exit refuses a ready forecast that was never frozen at approval', async () => {
+  const ready = '01J00000000000000000000711';
+  const result = await planExitPlannedEstimateGuard.run({
+    toState: 'develop',
+    cfg: { ...CFG, estimationRubricIssue: 1091 },
+    issueNumber: 1091,
+    body: [
+      '<!-- aitm-plan-approved ts="2026-08-02T14:00:00.000Z" -->',
+      `<!-- aitm-estimation-forecast-ready record-id="${ready}" -->`,
+    ].join('\n'),
+    deps: PLANNED_ESTIMATE_OK_DEPS,
+  });
+  assert.deepEqual(result.blockers, ['plan-forecast-freeze-missing']);
+});
+
 test('v1 Plan projection requires one ready forecast matching board and body authority', async () => {
   const recordId = '01J00000000000000000000700';
   const forecast = {
@@ -170,7 +185,10 @@ test('v1 Plan projection requires one ready forecast matching board and body aut
   ])
     assert.equal(validateForecastProjection(projection).ok, false);
 
-  const body = `<!-- aitm-estimation-forecast-ready record-id="${recordId}" -->`;
+  const body = [
+    `<!-- aitm-plan-approved ts="2026-08-02T14:00:00.000Z" forecast-record-id="${recordId}" -->`,
+    `<!-- aitm-estimation-forecast-ready record-id="${recordId}" -->`,
+  ].join('\n');
   const result = await planExitPlannedEstimateGuard.run({
     toState: 'develop',
     cfg: CFG,
@@ -215,9 +233,9 @@ test('configured adaptive Plan refuses marker-free exit even when the legacy app
     },
   });
 
-  assert.equal(projectionReads, 1);
+  assert.equal(projectionReads, 0);
   assert.equal(result.ok, false);
-  assert.deepEqual(result.blockers, ['plan-forecast-ready-mismatch']);
+  assert.deepEqual(result.blockers, ['plan-forecast-freeze-missing']);
 });
 
 test('v1 Plan projection uses production raw-comment pagination when no reader is injected', async () => {
@@ -266,7 +284,10 @@ test('v1 Plan projection uses production raw-comment pagination when no reader i
     toState: 'develop',
     cfg,
     issueNumber: 1091,
-    body: `<!-- aitm-estimation-forecast-ready record-id="${recordId}" -->`,
+    body: [
+      `<!-- aitm-plan-approved ts="2026-08-02T14:00:00.000Z" forecast-record-id="${recordId}" -->`,
+      `<!-- aitm-estimation-forecast-ready record-id="${recordId}" -->`,
+    ].join('\n'),
     deps: {
       plannedEstimate: {
         listComments: PLANNED_ESTIMATE_OK_DEPS.plannedEstimate.listComments,

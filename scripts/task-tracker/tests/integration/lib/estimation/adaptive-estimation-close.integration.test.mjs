@@ -99,7 +99,7 @@ test('verification outcomes retain exact SHA and reuse lineage and only same-SHA
   );
   assert.deepEqual(costEvidence([command]), {
     avoidableProcessWasteHours: 0.0083,
-    drivers: [{ kind: 'repeated-test-unit-same-sha', hours: 0.0083 }],
+    drivers: [{ kind: 'repeated-command-same-sha', hours: 0.0083 }],
   });
 });
 
@@ -142,6 +142,104 @@ test('verification outcomes reject malformed claimed receipts and preserve disti
   assert.deepEqual(costEvidence(verification), {
     avoidableProcessWasteHours: 0,
     drivers: [],
+  });
+});
+
+test('exact final SHA requires a complete canonical Test receipt and rejects an arbitrary green probe', () => {
+  const sha = 'b'.repeat(40);
+  const probe = receipt({
+    receiptId: '01J00000000000000000000913',
+    stage: 'review',
+    commitSha: sha,
+    commands: [
+      {
+        classification: 'review-probe',
+        command: 'node',
+        args: ['--test', 'one.test.mjs'],
+        durationMs: 1_000,
+        exitCode: 0,
+      },
+    ],
+  });
+  const marker = (value) =>
+    `<!-- aitm-verification-receipt stage="${value.stage}" data="${Buffer.from(JSON.stringify(value)).toString('base64url')}" -->`;
+  assert.throws(
+    () =>
+      verificationEvidence(marker(probe), {
+        expectedIssue: 1091,
+        expectedFinalSha: sha,
+        expectedFingerprint: { commitSha: sha, environment },
+      }),
+    /complete canonical Test receipt/i
+  );
+
+  const canonical = receipt({
+    receiptId: '01J00000000000000000000914',
+    stage: 'test',
+    commitSha: sha,
+    commands: [
+      ['lint-full', ['run', 'lint']],
+      ['format-full', ['run', 'format:check']],
+      ['test-unit', ['run', 'test:unit']],
+      ['test-integration', ['run', 'test:integration']],
+      ['test-slow', ['run', 'test:slow']],
+    ].map(([classification, args]) => ({
+      classification,
+      command: 'npm',
+      args,
+      durationMs: 1_000,
+      exitCode: 0,
+    })),
+  });
+  assert.doesNotThrow(() =>
+    verificationEvidence(marker(canonical), {
+      expectedIssue: 1091,
+      expectedFinalSha: sha,
+      expectedFingerprint: { commitSha: sha, environment },
+    })
+  );
+});
+
+test('same SHA command identity is waste even when display classifications differ', () => {
+  const sha = 'c'.repeat(40);
+  const body = [
+    receipt({
+      receiptId: '01J00000000000000000000915',
+      stage: 'develop-final',
+      commitSha: sha,
+      commands: [
+        {
+          classification: 'test-focused',
+          command: 'node',
+          args: ['--test', 'same.test.mjs'],
+          durationMs: 30_000,
+          exitCode: 0,
+        },
+      ],
+    }),
+    receipt({
+      receiptId: '01J00000000000000000000916',
+      stage: 'review',
+      commitSha: sha,
+      commands: [
+        {
+          classification: 'review-probe',
+          command: 'node',
+          args: ['--test', 'same.test.mjs'],
+          durationMs: 30_000,
+          exitCode: 0,
+        },
+      ],
+    }),
+  ]
+    .map(
+      (value) =>
+        `<!-- aitm-verification-receipt stage="${value.stage}" data="${Buffer.from(JSON.stringify(value)).toString('base64url')}" -->`
+    )
+    .join('\n');
+  assert.deepEqual(costEvidence(verificationEvidence(body, { expectedIssue: 1091 })), {
+    avoidableProcessWasteHours: 0.0083,
+    drivers: [{ kind: 'repeated-command-same-sha', hours: 0.0083 }],
   });
 });
 

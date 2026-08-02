@@ -53,6 +53,21 @@ test('close uses the frozen Plan forecast and refuses a drifted ready marker', a
   );
 });
 
+test('close refuses an adaptive ready forecast without frozen Plan lineage', async () => {
+  const ready = '01J00000000000000000000941';
+  await assert.rejects(
+    ensureCloseEstimationOutcome({
+      issueNumber: 1091,
+      body: [
+        '<!-- aitm-plan-approved ts="2026-08-02T14:00:00.000Z" -->',
+        `<!-- aitm-estimation-forecast-ready record-id="${ready}" -->`,
+      ].join('\n'),
+      writer: { ensure: async () => ({ status: 'written' }) },
+    }),
+    /frozen Plan forecast/i
+  );
+});
+
 test('primary convergence resolves the issue worktree instead of inheriting the caller directory', () => {
   const resolved = resolveEstimationOutcomeProjectDir({
     issueNumber: 1091,
@@ -61,6 +76,18 @@ test('primary convergence resolves the issue worktree instead of inheriting the 
     issueWorkspaceResolver: ({ issueRef }) => `/repo/.worktrees/${issueRef.slice(1)}`,
   });
   assert.equal(resolved, '/repo/.worktrees/1091');
+});
+
+test('primary convergence fails closed when issue worktree registration is unavailable', () => {
+  assert.throws(
+    () =>
+      resolveEstimationOutcomeProjectDir({
+        issueNumber: 1091,
+        projectDir: '/repo',
+        issueWorkspaceResolver: () => null,
+      }),
+    /workspace evidence is unavailable/i
+  );
 });
 
 test('dead issue returns without body or child reads', async () => {

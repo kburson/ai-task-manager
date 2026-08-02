@@ -18,7 +18,11 @@ import { mutateIssueBody } from '../issue-body-mutate.mjs';
 import { upsertPlannedEstimate } from '../refine-estimate-comment.mjs';
 import { readTimingCommentBody, bodyOf } from '../../gh-timing-comment.mjs';
 import { readEstimationStageTiming } from '../timing-row-reader.mjs';
-import { parseValidatedVerificationReceipts } from '../verification-receipt.mjs';
+import {
+  buildVerificationFingerprint,
+  parseValidatedVerificationReceipts,
+  validateVerificationReceipt,
+} from '../verification-receipt.mjs';
 import {
   listIssueCommentsSince,
   parsePreloadedIssueComments,
@@ -777,18 +781,41 @@ export function createAdaptivePlanRuntime({ cfg, deps = {}, adoptLegacyBaseline 
   };
 }
 
-export function verificationEvidence(body, { expectedIssue, expectedFinalSha } = {}) {
+const REQUIRED_TEST_COMMANDS = Object.freeze([
+  'lint-full',
+  'format-full',
+  'test-unit',
+  'test-integration',
+  'test-slow',
+]);
+
+export function verificationEvidence(
+  body,
+  { expectedIssue, expectedFinalSha, expectedFingerprint } = {}
+) {
   const groups = new Map();
   const receipts = parseValidatedVerificationReceipts(body, { expectedIssue });
-  if (
-    expectedFinalSha !== undefined &&
-    !receipts.some(
-      (receipt) =>
-        receipt.commitSha === expectedFinalSha &&
-        receipt.commands.some((command) => command.exitCode === 0)
-    )
-  ) {
-    throw new TypeError('verification-receipt: exact final SHA evidence is missing');
+  if (expectedFinalSha !== undefined) {
+    if (!expectedFingerprint || expectedFingerprint.commitSha !== expectedFinalSha) {
+      throw new TypeError('verification-receipt: final fingerprint is missing');
+    }
+    const testReceipts = receipts.filter(
+      (receipt) => receipt.stage === 'test' && receipt.commitSha === expectedFinalSha
+    );
+    if (
+      testReceipts.length !== 1 ||
+      !validateVerificationReceipt({
+        receipt: testReceipts[0],
+        expectedIssue,
+        expectedStage: 'test',
+        fingerprint: expectedFingerprint,
+        required: REQUIRED_TEST_COMMANDS,
+      }).ok
+    ) {
+      throw new TypeError(
+        'verification-receipt: complete canonical Test receipt for exact final SHA is missing'
+      );
+    }
   }
   for (const receipt of receipts) {
     for (const command of receipt.commands ?? []) {
@@ -817,11 +844,9 @@ export function verificationEvidence(body, { expectedIssue, expectedFinalSha } =
 }
 
 export function costEvidence(verification) {
-  const drivers = [];
+  const seenExecutions = new Set();
   let avoidableMs = 0;
   for (const command of verification) {
-    const seenExecutions = new Set();
-    let repeatedMs = 0;
     for (const execution of command.executions ?? []) {
       if (execution.reusedFrom !== null) continue;
       const identity = JSON.stringify([
@@ -829,20 +854,17 @@ export function costEvidence(verification) {
         execution.command,
         execution.args ?? [],
       ]);
-      if (seenExecutions.has(identity)) repeatedMs += execution.durationMs;
+      if (seenExecutions.has(identity)) avoidableMs += execution.durationMs;
       else seenExecutions.add(identity);
     }
-    if (repeatedMs === 0) continue;
-    avoidableMs += repeatedMs;
-    drivers.push({
-      kind: `repeated-${command.classification}-same-sha`,
-      hours: Number((repeatedMs / 3_600_000).toFixed(4)),
-    });
   }
   const avoidableProcessWasteHours = Number((avoidableMs / 3_600_000).toFixed(4));
   return {
     avoidableProcessWasteHours,
-    drivers,
+    drivers:
+      avoidableMs === 0
+        ? []
+        : [{ kind: 'repeated-command-same-sha', hours: avoidableProcessWasteHours }],
   };
 }
 
@@ -989,10 +1011,22 @@ export function createEstimationOutcomeRuntime({ cfg, projectDir, deps = {} } = 
         projectDir,
         trunk: cfg.trunkRef ?? 'origin/trunk',
       });
-      const verification = verificationEvidence(body, {
-        expectedIssue: issueNumber,
-        expectedFinalSha: diff.commitSha,
-      });
+      const expectedFingerprint = isEpic
+        ? undefined
+        : (deps.buildVerificationFingerprint ?? buildVerificationFingerprint)({
+            projectDir,
+            commitSha: diff.commitSha,
+          });
+      const verification = verificationEvidence(
+        body,
+        isEpic
+          ? { expectedIssue: issueNumber }
+          : {
+              expectedIssue: issueNumber,
+              expectedFinalSha: diff.commitSha,
+              expectedFingerprint,
+            }
+      );
       const outcomePayload = buildEstimationOutcome({
         issue: issueNumber,
         forecast: outcomeForecast,

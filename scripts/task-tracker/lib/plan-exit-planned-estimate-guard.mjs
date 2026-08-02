@@ -77,6 +77,13 @@ export const planExitPlannedEstimateGuard = {
     }
     const adaptiveConfigured =
       Number.isInteger(ctx.cfg.estimationRubricIssue) && ctx.cfg.estimationRubricIssue > 0;
+    if ((ready !== null || adaptiveConfigured) && frozen === null) {
+      return {
+        ok: false,
+        reason: 'plan-forecast-freeze-missing',
+        blockers: ['plan-forecast-freeze-missing'],
+      };
+    }
     if (ready !== null || adaptiveConfigured) {
       const loadProjection =
         ctx.deps?.plannedEstimate?.forecastProjection ?? loadForecastProjection;

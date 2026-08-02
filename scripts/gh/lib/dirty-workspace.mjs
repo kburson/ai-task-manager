@@ -61,21 +61,35 @@ export function shortAuditDescription({ lines, total }, { max = DEFAULT_AUDIT_LI
   return `dirty=${total}: ${shown.join('; ')}${tail}`;
 }
 
-// Workspace resolution: fleet entry wins, else fall back to provided projectDir.
-export function resolveWorkspaceForIssue({ issueRef, projectDir }) {
+export function resolveRegisteredWorkspaceForIssue(
+  { issueRef, projectDir },
+  {
+    findMain = findMainWorktreePath,
+    registryPath = fleetRegistryPath,
+    pathExists = existsSync,
+    readRegistry = readFileSync,
+  } = {}
+) {
   try {
-    const mainPath = findMainWorktreePath(projectDir);
-    const rPath = fleetRegistryPath(mainPath);
-    if (existsSync(rPath)) {
-      const data = JSON.parse(readFileSync(rPath, 'utf8'));
+    const mainPath = findMain(projectDir);
+    const rPath = registryPath(mainPath);
+    if (pathExists(rPath)) {
+      const data = JSON.parse(readRegistry(rPath, 'utf8'));
       const entry = data?.[issueRef];
-      if (entry?.worktreePath && existsSync(entry.worktreePath)) {
+      if (entry?.worktreePath && pathExists(entry.worktreePath)) {
         return resolvePath(entry.worktreePath);
       }
     }
   } catch {
     /* fall through */
   }
+  return null;
+}
+
+// Workspace resolution: fleet entry wins, else fall back to provided projectDir.
+export function resolveWorkspaceForIssue({ issueRef, projectDir }) {
+  const registered = resolveRegisteredWorkspaceForIssue({ issueRef, projectDir });
+  if (registered !== null) return registered;
   return resolvePath(projectDir);
 }
 

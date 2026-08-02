@@ -78,21 +78,31 @@ function weightedRobustMean(values, fallback) {
   return round(weighted / weights);
 }
 
-function repeatedVerificationPotentialMs(command) {
+function repeatedVerificationPotentialsMs(commands) {
   const seenExecutions = new Set();
-  return command.executions.reduce((sum, execution) => {
-    if (execution.reusedFrom !== null) return sum;
-    const identity = JSON.stringify([execution.commitSha, execution.command, execution.args ?? []]);
-    if (seenExecutions.has(identity)) return sum + execution.durationMs;
-    seenExecutions.add(identity);
-    return sum;
-  }, 0);
+  const potentials = new Map(commands.map((command) => [command, 0]));
+  for (const command of commands) {
+    for (const execution of command.executions) {
+      if (execution.reusedFrom !== null) continue;
+      const identity = JSON.stringify([
+        execution.commitSha,
+        execution.command,
+        execution.args ?? [],
+      ]);
+      if (seenExecutions.has(identity)) {
+        potentials.set(command, potentials.get(command) + execution.durationMs);
+      } else {
+        seenExecutions.add(identity);
+      }
+    }
+  }
+  return potentials;
 }
 
 function repeatedVerificationWasteHours(payload) {
-  const potentialMs = payload.actual.commands
-    .filter((command) => command.classification.startsWith('test-'))
-    .reduce((sum, command) => sum + repeatedVerificationPotentialMs(command), 0);
+  const potentialMs = [
+    ...repeatedVerificationPotentialsMs(payload.actual.commands).values(),
+  ].reduce((sum, value) => sum + value, 0);
   return Math.min(potentialMs / 3_600_000, payload.costClassification.avoidableProcessWasteHours);
 }
 
@@ -137,11 +147,12 @@ export function updateEstimationRubric({
   const sandboxSamples = [];
   const refineToPlanSamples = [];
   for (const { payload, forecastPayload } of ordered) {
+    const repeatPotentialByCommand = repeatedVerificationPotentialsMs(payload.actual.commands);
     const testCommands = payload.actual.commands.filter((command) =>
       command.classification.startsWith('test-')
     );
     const repeatPotentials = testCommands.map(
-      (command) => repeatedVerificationPotentialMs(command) / 60_000
+      (command) => repeatPotentialByCommand.get(command) / 60_000
     );
     const totalRepeatPotential = repeatPotentials.reduce((sum, value) => sum + value, 0);
     const classifiedWasteMinutes = repeatedVerificationWasteHours(payload) * 60;

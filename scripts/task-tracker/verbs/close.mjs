@@ -10,6 +10,7 @@ import {
   checkDirty,
   formatSummary,
   shortAuditDescription,
+  resolveRegisteredWorkspaceForIssue,
   resolveWorkspaceForIssue,
   CLEANUP_GUIDANCE,
 } from '../../gh/lib/dirty-workspace.mjs';
@@ -172,6 +173,9 @@ const ESTIMATION_FORECAST_READY_RE =
 export async function ensureCloseEstimationOutcome({ issueNumber, body, writer } = {}) {
   const readyForecastRecordId = String(body ?? '').match(ESTIMATION_FORECAST_READY_RE)?.[1] ?? null;
   const frozenForecastRecordId = readPlanApprovedForecastRecordId(body);
+  if (readyForecastRecordId !== null && frozenForecastRecordId === null) {
+    throw new Error('adaptive outcome requires a frozen Plan forecast');
+  }
   if (
     frozenForecastRecordId !== null &&
     readyForecastRecordId !== null &&
@@ -179,7 +183,7 @@ export async function ensureCloseEstimationOutcome({ issueNumber, body, writer }
   ) {
     throw new Error('forecast lineage diverged from the frozen Plan approval');
   }
-  const forecastRecordId = frozenForecastRecordId ?? readyForecastRecordId;
+  const forecastRecordId = frozenForecastRecordId;
   const ensure = typeof writer === 'function' ? writer : writer?.ensure;
   if (typeof ensure !== 'function') {
     if (forecastRecordId === null) return { status: 'legacy-no-forecast' };
@@ -346,7 +350,7 @@ export async function verbClose(ctx) {
   });
   const configuredReviewAuthority = configuredReviewToDoneGate ? 'human-gate' : 'gate-bypassed';
   const outcomeRuntimeFactory = ctx.createEstimationOutcomeWriter ?? createEstimationOutcomeRuntime;
-  const issueWorkspaceResolver = ctx.resolveIssueWorkspace ?? resolveWorkspaceForIssue;
+  const issueWorkspaceResolver = ctx.resolveIssueWorkspace ?? resolveRegisteredWorkspaceForIssue;
   const outcomeWriterForIssue = (issueNumber, { requireDedicated = false } = {}) => {
     if (ctx.estimationOutcomeWriter) return ctx.estimationOutcomeWriter;
     if (

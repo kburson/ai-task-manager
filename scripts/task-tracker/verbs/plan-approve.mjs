@@ -17,6 +17,8 @@ import { getProjectDir } from '../paths.mjs';
 import {
   hasPlanApprovedMarker,
   insertPlanApprovedMarker,
+  readPlanApprovedForecastRecordId,
+  upsertPlanApprovedMarker,
   wrapDeepDiveInDetails,
 } from '../lib/markers.mjs';
 import { stampEntryMarker } from '../lib/stage-entry-markers.mjs';
@@ -89,6 +91,14 @@ export async function runPlanApprove({ issueNumber, cfg, projectDir, deps = {} }
 
   const body = await fetchIssueBody({ issueNumber, repo: cfg.repo });
   const forecastRecordId = body.match(FORECAST_READY_RE)?.[1] ?? null;
+  const adaptiveConfigured =
+    Number.isInteger(cfg.estimationRubricIssue) && cfg.estimationRubricIssue > 0;
+  if (adaptiveConfigured && forecastRecordId === null) {
+    return {
+      status: 'forecast-missing',
+      message: `#${issueNumber} has no converged adaptive forecast to freeze at Plan approval.`,
+    };
+  }
 
   // #236 — refuse plan→develop approval if the body's AC/VC checklists contain
   // compound CLI commands that the /task test sandbox will later reject.
@@ -116,7 +126,11 @@ export async function runPlanApprove({ issueNumber, cfg, projectDir, deps = {} }
   // below would re-check the FRESH base anyway. The audit still runs here:
   // this is the repair path when the body write succeeded but the comment post
   // failed on a prior invocation.
-  if (hasApproval && hasPlanEntry) {
+  const frozenForecastRecordId = readPlanApprovedForecastRecordId(body);
+  const approvalComplete =
+    !adaptiveConfigured ||
+    (frozenForecastRecordId !== null && frozenForecastRecordId === forecastRecordId);
+  if (hasApproval && hasPlanEntry && approvalComplete) {
     await ensureAudit({
       issueNumber,
       repo: cfg.repo,
@@ -141,8 +155,14 @@ export async function runPlanApprove({ issueNumber, cfg, projectDir, deps = {} }
       if (!PLAN_ENTRY_RE.test(n)) {
         n = stampEntryMarker(n, 'plan', ts);
       }
-      if (!hasPlanApprovedMarker(n)) {
-        n = insertPlanApprovedMarker(n, ts, { forecastRecordId });
+      const freshForecastRecordId = n.match(FORECAST_READY_RE)?.[1] ?? null;
+      if (adaptiveConfigured && freshForecastRecordId === null) {
+        throw new Error('plan-approve: adaptive forecast marker disappeared before approval');
+      }
+      if (adaptiveConfigured) {
+        n = upsertPlanApprovedMarker(n, ts, { forecastRecordId: freshForecastRecordId });
+      } else if (!hasPlanApprovedMarker(n)) {
+        n = insertPlanApprovedMarker(n, ts);
       }
       return wrapDeepDiveInDetails(n);
     },
@@ -162,6 +182,9 @@ export async function runPlanApprove({ issueNumber, cfg, projectDir, deps = {} }
 
   if (hasApproval && !hasPlanEntry) {
     return { status: 're-stamped-entry', ts };
+  }
+  if (hasApproval && adaptiveConfigured && !approvalComplete) {
+    return { status: 'repaired-approval', ts };
   }
   return { status: 'approved', ts };
 }

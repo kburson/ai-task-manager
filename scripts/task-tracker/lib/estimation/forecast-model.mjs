@@ -146,7 +146,7 @@ export function buildEstimationForecast({
           targetModules,
           targetLanes: input.testImpact.lanes,
           dependencyBreadth: targetDependencies.length,
-          expectedFiles: input.wbs.length * 5,
+          expectedFiles: Math.max(1, targetModules.length * 5),
         },
         entry.payload.landscape
       ),

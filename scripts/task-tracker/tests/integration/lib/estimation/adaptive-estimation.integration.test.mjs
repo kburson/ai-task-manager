@@ -26,7 +26,10 @@ import { planApprovedGuard } from '../../../../lib/plan-approved-guard.mjs';
 import { reviewExitReviewApprovedGuard } from '../../../../lib/review-exit-review-approved-guard.mjs';
 import { resolveGate } from '../../../../lib/gate-resolve.mjs';
 import { applyChoice } from '../../../../lib/session-store.mjs';
-import { repeatedVerificationCommand } from '../../../fixtures/estimation-verification.mjs';
+import {
+  canonicalTestReceiptFixture,
+  repeatedVerificationCommand,
+} from '../../../fixtures/estimation-verification.mjs';
 
 const repository = 'kburson/ai-task-manager';
 const rubricIssue = 9000;
@@ -35,7 +38,6 @@ const secondIssue = 1094;
 const RANDOM = (length) => Buffer.alloc(length, 0x35);
 let idClock = 1_722_604_800_000;
 const nextId = () => createRecordId({ nowMs: idClock++, randomBytesFn: RANDOM });
-
 function envelope({ recordType, issue, payload, predecessor = null, supersedes = null, actor }) {
   return createAitmRecordEnvelope({
     recordType,
@@ -347,6 +349,7 @@ test('adaptive evidence adds no gate or prompt: Full-Auto bypass and human appro
 });
 
 test('default close runtime builds and read-backs the frozen forecast outcome before Done', async () => {
+  const verification = canonicalTestReceiptFixture({ issue: firstIssue });
   const rubricPayload = createBootstrapRubric({ generatedAt: '2026-08-02T14:00:00.000Z' });
   const rubricRecordId = nextId();
   const forecastPayload = buildEstimationForecast({
@@ -387,11 +390,13 @@ test('default close runtime builds and read-backs the frozen forecast outcome be
         ].join('\n'),
       }),
       readDiffEvidence: async () => ({
+        commitSha: verification.fingerprint.commitSha,
         filesChanged: 7,
         modules: ['estimation'],
         lanes: ['unit', 'integration'],
         dependencyBreadth: 2,
       }),
+      buildVerificationFingerprint: () => verification.fingerprint,
       childOutcomeRecordIds: async () => [],
     },
   });
@@ -399,7 +404,7 @@ test('default close runtime builds and read-backs the frozen forecast outcome be
   const result = await runtime.ensure({
     issueNumber: firstIssue,
     forecastRecordId: forecastEnvelope.recordId,
-    body: 'issue body with no verification receipt',
+    body: verification.body,
   });
   assert.equal(result.status, 'written');
   assert.equal(result.commentNodeId, 'IC_close_outcome');

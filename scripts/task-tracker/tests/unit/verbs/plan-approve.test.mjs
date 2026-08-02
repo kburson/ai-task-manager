@@ -109,9 +109,47 @@ function makeDeps(overrides = {}) {
   const { deps, getBody } = makeDeps({
     initialBody: `## Plan\n\n<!-- aitm-estimation-forecast-ready record-id="${recordId}" -->\n`,
   });
-  await runPlanApprove({ issueNumber: 1091, cfg, deps });
+  await runPlanApprove({
+    issueNumber: 1091,
+    cfg: { ...cfg, estimationRubricIssue: 1091 },
+    deps,
+  });
   assert.equal(readPlanApprovedForecastRecordId(getBody()), recordId);
   assert.match(getBody(), new RegExp(`forecast-record-id="${recordId}"`));
+}
+
+// Adaptive approval refuses until Plan has converged a ready forecast.
+{
+  const { deps, calls } = makeDeps();
+  const r = await runPlanApprove({
+    issueNumber: 1091,
+    cfg: { ...cfg, estimationRubricIssue: 1091 },
+    deps,
+  });
+  assert.equal(r.status, 'forecast-missing');
+  assert.equal(calls.writes.length, 0);
+}
+
+// Adaptive approval repairs an incomplete marker and freezes the ready ID from
+// the fresh mutation base, not the stale diagnostic read.
+{
+  const stale = '01J00000000000000000000932';
+  const fresh = '01J00000000000000000000933';
+  const { deps, getBody } = makeDeps({
+    initialBody: [
+      '<!-- aitm-entered-plan ts="2026-05-01T00:00:00Z" -->',
+      '<!-- aitm-plan-approved ts="2026-05-01T00:00:00Z" -->',
+      `<!-- aitm-estimation-forecast-ready record-id="${stale}" -->`,
+    ].join('\n'),
+    beforeMutate: (body) => body.replace(stale, fresh),
+  });
+  const r = await runPlanApprove({
+    issueNumber: 1091,
+    cfg: { ...cfg, estimationRubricIssue: 1091 },
+    deps,
+  });
+  assert.equal(r.status, 'repaired-approval');
+  assert.equal(readPlanApprovedForecastRecordId(getBody()), fresh);
 }
 
 // 4. second call is idempotent

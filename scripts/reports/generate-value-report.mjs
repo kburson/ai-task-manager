@@ -961,7 +961,7 @@ td a:hover{text-decoration:underline}
         <td class="num">${tableActual > 0 && tableAiP50 > 0 ? fmtSigned(tableActual - tableAiP50) : '—'}</td>
         <td class="num">—</td>
         <td class="num">${tableActual > 0 && tableAiP50 > 0 ? fmtPct(Math.max(0, 1 - Math.abs(tableAiP50 - tableActual) / tableActual)) : '—'}</td>
-        <td class="num">${tableWaste > 0 ? fmtEst(tableWaste) : '—'}</td>
+        <td class="num">${tableWaste != null ? fmtEst(tableWaste) : '—'}</td>
         <td class="num ${tableAccel != null && tableAccel < 1 ? 'over' : 'good'}">${tableAccel != null ? (tableAccel < 1 ? `${tableAccel.toFixed(2)}× (slower than Plan)` : `${tableAccel.toFixed(2)}×`) : '—'}</td>
         <td></td>
       </tr>

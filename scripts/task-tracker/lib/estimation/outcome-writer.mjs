@@ -1,3 +1,5 @@
+import { canonicalRecordJson } from '../github-records/canonical-json.mjs';
+
 function fail(category) {
   throw new Error(`estimation-outcome-writer:${category}`);
 }
@@ -26,6 +28,9 @@ export async function ensureEstimationOutcome({ issue, forecast, outcomePayload,
   );
   if (matching.length > 1) fail('duplicate');
   if (matching.length === 1) {
+    if (canonicalRecordJson(matching[0].envelope.payload) !== canonicalRecordJson(outcomePayload)) {
+      fail('payload-mismatch');
+    }
     return {
       status: 'existing',
       recordId: matching[0].envelope.recordId,
