@@ -49,6 +49,7 @@ export async function loadOrRefreshRubric({
     return {
       status: 'unconfigured',
       rubric: createBootstrapRubric({ generatedAt: through }),
+      recordId: null,
       commentNodeId: null,
     };
   if (
@@ -60,10 +61,21 @@ export async function loadOrRefreshRubric({
     await deps.listRubricRecords({ repository: cfg.repo, issue: rubricIssueNumber, through })
   );
   const previous = latest?.envelope.payload ?? createBootstrapRubric({ generatedAt: through });
-  const outcomes = await deps.listEligibleOutcomes({ through, cohort: previous.cohort });
-  if (!Array.isArray(outcomes)) fail('outcomes');
+  const discoveredOutcomes = await deps.listEligibleOutcomes({ through, cohort: previous.cohort });
+  if (!Array.isArray(discoveredOutcomes)) fail('outcomes');
+  const outcomes = [...discoveredOutcomes]
+    .sort(
+      (left, right) =>
+        left.createdAt.localeCompare(right.createdAt) || left.recordId.localeCompare(right.recordId)
+    )
+    .slice(-50);
   if (latest && sameCohort(previous, outcomes))
-    return { status: 'current', rubric: previous, commentNodeId: latest.commentNodeId };
+    return {
+      status: 'current',
+      rubric: previous,
+      recordId: latest.envelope.recordId,
+      commentNodeId: latest.commentNodeId,
+    };
   if (typeof deps.writeRubric !== 'function') fail('dependencies');
 
   const payload =
@@ -84,6 +96,7 @@ export async function loadOrRefreshRubric({
   return {
     status: latest ? 'refreshed' : 'bootstrapped',
     rubric: written.envelope.payload,
+    recordId: written.envelope.recordId,
     commentNodeId: written.commentNodeId,
   };
 }

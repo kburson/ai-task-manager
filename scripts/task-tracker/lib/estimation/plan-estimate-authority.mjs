@@ -64,10 +64,20 @@ function equal(left, right) {
   return JSON.stringify(left) === JSON.stringify(right);
 }
 
+function appendixProjection(value) {
+  if (!value?.refine || !value?.plan) return null;
+  return {
+    refine: { size: value.refine.size, humanHours: value.refine.humanHours },
+    plan: { size: value.plan.size, humanHours: value.plan.humanHours },
+  };
+}
+
 function desiredForecast(state, envelope) {
   const active = state.forecasts.filter((item) => item.supersededBy == null);
   const matches = active.filter((item) => item.payloadHash === envelope.payloadHash);
-  const conflicts = active.filter((item) => item.payloadHash !== envelope.payloadHash);
+  const conflicts = active.filter(
+    (item) => item.payloadHash !== envelope.payloadHash && item.recordId !== envelope.supersedes
+  );
   if (conflicts.length > 0) fail('conflicting-forecast');
   if (matches.length > 1) fail('duplicate-forecast');
   return matches[0] ?? null;
@@ -111,13 +121,13 @@ export async function applyPlanEstimateAuthority({
   }
   desiredForecast(state, forecastEnvelope);
 
-  const appendix = { refine, plan };
-  if (!equal(state.refineAppendix, appendix)) {
+  const appendix = appendixProjection({ refine, plan });
+  if (!equal(appendixProjection(state.refineAppendix), appendix)) {
     state = await writeAndConfirm({
       deps,
       writer: 'writeRefineAppendix',
       input: { issueNumber, refine, plan },
-      confirms: (next) => equal(next.refineAppendix, appendix),
+      confirms: (next) => equal(appendixProjection(next.refineAppendix), appendix),
       category: 'refine-appendix',
     });
   }

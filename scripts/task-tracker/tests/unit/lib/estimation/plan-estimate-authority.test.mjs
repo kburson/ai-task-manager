@@ -89,6 +89,9 @@ function harness({ failAfter } = {}) {
         maybeFail();
       },
       writeForecast: async ({ envelope }) => {
+        for (const prior of state.forecasts) {
+          if (prior.recordId === envelope.supersedes) prior.supersededBy = envelope.recordId;
+        }
         state.forecasts.push({
           recordId: envelope.recordId,
           payloadHash: envelope.payloadHash,
@@ -207,6 +210,29 @@ test('conflicting non-superseded forecasts fail closed', async () => {
     }),
     /plan-estimate-authority:conflicting-forecast/
   );
+});
+
+test('audited Plan re-entry may supersede exactly one prior active forecast', async () => {
+  const h = harness();
+  const priorRecordId = '01J00000000000000000000697';
+  h.state.forecasts.push({
+    recordId: priorRecordId,
+    payloadHash: 'sha256:' + 'b'.repeat(64),
+    commentNodeId: 'IC_prior',
+    supersededBy: null,
+  });
+  const replacement = { ...forecastEnvelope, supersedes: priorRecordId };
+
+  const result = await applyPlanEstimateAuthority({
+    issueNumber: 1091,
+    refine: forecast.refine,
+    forecastEnvelope: replacement,
+    deps: h.deps,
+  });
+
+  assert.equal(result.status, 'converged');
+  assert.equal(h.state.forecasts[0].supersededBy, forecastEnvelope.recordId);
+  assert.equal(h.state.readyForecastRecordId, forecastEnvelope.recordId);
 });
 
 test('adaptive execution refreshes rubric, builds forecast, creates an envelope, and converges authority', async () => {

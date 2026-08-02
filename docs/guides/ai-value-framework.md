@@ -100,10 +100,45 @@ Engaged Hours = (session_minutes / 60) + (context_words / reading_wpm / 60)
 ### Estimated Acceleration
 
 ```
-Estimated Acceleration = Estimate (hours) / Engaged Hours
+Estimated Acceleration = frozen Human Plan hours / actual agent Engaged Hours
 ```
 
-This is labeled **estimated** because estimates are best guesses at planning time, not ground truth. The acceleration ratio is directionally meaningful at the aggregate level.
+For adaptive-estimation issues, Human Plan and actual Engaged come from the
+validated forecast/outcome record pair. Legacy issues may still use the board
+Estimate and Engaged fields. A missing or malformed record is an evidence gap,
+not zero. Values below `1.0×` are labelled plainly as **slower than Plan**.
+This is labelled **estimated** because the human Plan is a forecast rather than
+ground truth; the ratio is directionally meaningful at the aggregate level.
+
+The AI forecast is reported beside, never substituted for, the human Plan:
+
+- AI P50/P80 accuracy compares actual agent engaged time with the frozen AI
+  percentiles.
+- Refine accuracy compares provisional Refine human hours with the detailed
+  Plan human hours.
+- Avoidable process waste is reported separately and updates AI/workflow
+  diagnostics. It must not teach future human estimates to expect redundant AI
+  reruns.
+
+### Epic adaptive rollups
+
+An epic's human Plan is the sum of its child human Plan estimates. Its actual is
+the sum of child actual engaged time plus the parent's explicitly classified
+orchestration outcome:
+
+```
+Epic acceleration = sum(child Human Plan)
+                  / (sum(child actual Engaged) + parent orchestration Engaged)
+```
+
+Never add the parent board Estimate to child estimates, and never treat parent
+engaged time as child implementation. Parent outcomes name the exact child
+outcome record IDs so report generation can fail closed on an incomplete or
+mismatched rollup.
+
+The retained #1068 comparison remains `3h / 3h29m10s = 0.86×` (29m10s slower,
+16.2% over). It is cohort evidence; it is not permission to rewrite the closed
+issue's estimate.
 
 ### Cost comparison
 

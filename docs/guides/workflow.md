@@ -165,6 +165,62 @@ A Test self-loop with a valid exact-SHA receipt runs no commands. Use `/task
 test #N --force` only for an intentional diagnostic rerun; the override is
 posted to the issue audit trail.
 
+### Adaptive Plan estimates and frozen AI forecasts
+
+Refine Size and Estimate are provisional. In Plan, create a detailed evidence
+packet using `aitm.plan-estimation-input/v1` and converge it with:
+
+```bash
+npx aitm config estimationRubricIssue 1091
+npx aitm plan-estimate 1091 --evidence-file .tmp/plan/1091-estimation.json
+```
+
+The configured rubric issue must be a governed issue dedicated to immutable
+`estimation-rubric` records. The evidence file contains independently reviewable
+WBS rows with base human hours, module/dependency signals, test lanes and
+isolation, expected unavoidable test minutes, risks, and optional comparable
+issue numbers. `plan-estimate` then refreshes the rubric, preserves the Refine
+values in the historical estimate comment, replaces board and `aitm-fields`
+Size/Estimate with the human Plan values, publishes a separate AI P50/P80
+forecast, and reads every surface back. Plan cannot exit if those projections
+diverge.
+
+The two forecasts have different meanings:
+
+- **Human Plan** is mid-level engineer effort, including normal implementation,
+  verification, review response, and unavoidable repository execution. It is
+  the only value written to the board Estimate field.
+- **AI P50/P80** predicts agent engaged time. P50 is the median forecast; P80 is
+  the more conservative planning bound. Stage allocations, rubric identity,
+  cohort, confidence, comparables, and limitations live in the immutable issue
+  comment, not the board Estimate.
+
+Both freeze at Plan → Develop through the
+`aitm-estimation-forecast-ready` record ID. Scope changes after that point use
+the existing audited replan/inflation path; never edit a frozen record. At
+close, AITM refuses Done until it can append and read back the matching outcome
+with stage timing, verification attempts, review cycles, diff landscape,
+variance, and necessary versus avoidable workflow cost.
+
+Operators can inspect the visible `Plan Estimation Forecast`, `Estimation
+Outcome`, and `Estimation Rubric` comments directly. The leading hidden
+`aitm-record` envelope is canonical truth; its record ID, payload hash,
+predecessor/supersedes links, repository, and issue correlation are validated by
+the #1070 comment store. Missing, malformed, truncated, conflicting, or
+uncorrelated evidence fails closed instead of becoming a zero.
+
+Bootstrap rubrics intentionally start with low confidence and wide P80 bounds.
+Each later Plan refreshes from completed outcome records, names the exact cohort,
+and publishes a superseding immutable rubric snapshot. If refresh or read-back
+fails, leave the issue in Plan, repair the configured rubric issue or GitHub
+comment evidence, and replay `plan-estimate`; the authority writer is
+convergent. Do not delete prior rubric records or hand-edit payload hashes.
+
+Adaptive evidence adds no approval gate. `/task auto both` still suppresses the
+Plan and Review human gates without introducing a forecast prompt; human-gated
+configuration still stops at the existing `plan-approve` and `approve` points.
+Critical work therefore retains the operator's chosen approval policy.
+
 ## Commit Attribution
 
 Attribution is **topology-agnostic and message-based**: a commit is attributed to

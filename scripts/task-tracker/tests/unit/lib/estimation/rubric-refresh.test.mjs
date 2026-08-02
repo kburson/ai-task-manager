@@ -85,6 +85,7 @@ test('new eligible outcomes create one superseding snapshot and read it back', a
     },
   });
   assert.equal(result.status, 'refreshed');
+  assert.equal(result.recordId, '01J00000000000000000000403');
   assert.equal(calls.length, 1);
   assert.equal(calls[0].predecessorRecordId, rubricId);
   assert.equal(result.rubric.cohort[0].outcomeRecordId, outcomeId);
@@ -109,6 +110,7 @@ test('the exact existing cohort is idempotent and creates no comment', async () 
     },
   });
   assert.equal(result.status, 'current');
+  assert.equal(result.recordId, rubricId);
   assert.equal(writes, 0);
 });
 

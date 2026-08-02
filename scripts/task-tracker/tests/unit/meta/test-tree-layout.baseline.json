@@ -1,5 +1,8 @@
 {
-  "_comment": "#868 pre-move per-lane basename census (frozen at the subsystem-nesting move). test-tree-layout.test.mjs asserts the live laneManifest() basename sets still equal these, proving the reorg dropped no file and preserved every file lane. Regenerate ONLY on a deliberate add/remove/relane, via .tmp/inspect/gen-layout-baseline.mjs.",
+  "_comment": "#868 pre-move per-lane basename census (frozen at the subsystem-nesting move). test-tree-layout.test.mjs asserts the live laneManifest() basename sets still equal these, proving the reorg dropped no file and preserved every file lane. Regenerate ONLY on a deliberate add/remove/relane, via .tmp/inspect/gen-layout-baseline.mjs. Post-migration additions are recorded separately and are not treated as git-mv samples.",
+  "postMigrationAdditions": {
+    "integration": ["adaptive-estimation.integration.test.mjs"]
+  },
   "counts": {
     "unit": 683,
     "integration": 7,

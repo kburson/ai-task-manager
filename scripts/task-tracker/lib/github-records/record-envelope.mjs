@@ -6,7 +6,7 @@
 // cspell:ignore refreshtoken secrettoken secretvalue tokenenv
 // cspell:ignore authorizationdecision inputtokencount outputtokencount
 
-import { createHash } from 'node:crypto';
+import { createHash, randomBytes } from 'node:crypto';
 
 import { canonicalRecordJson } from './canonical-json.mjs';
 import {
@@ -70,6 +70,7 @@ const GITHUB_TOKEN_RE = /\b(?:gh[pousr]_[A-Za-z0-9]{16,}|github_pat_[A-Za-z0-9_]
 const TOKEN_ENV_NAME_RE =
   /\b[A-Z][A-Z0-9]*(?:_[A-Z0-9]+)*_(?:ACCESS_TOKEN|API_KEY|AUTH_TOKEN|CLIENT_SECRET|PRIVATE_KEY|TOKEN|PASSWORD|CREDENTIALS)\b/i;
 const PRIVATE_KEY_RE = /-----BEGIN(?: [A-Z0-9]+)* PRIVATE KEY-----/i;
+const CROCKFORD32 = '0123456789ABCDEFGHJKMNPQRSTVWXYZ';
 
 function recordError(category) {
   return new TypeError(`record-envelope:${category}`);
@@ -211,6 +212,9 @@ function validateEnvelope(envelope) {
   assertNoCredentialValues(envelope);
   if (envelope.recordType === FORECAST_RECORD_TYPE) {
     validateEstimationForecast(envelope.payload, { expectedIssue: envelope.issue });
+    if (envelope.payload.supersedesForecastRecordId !== envelope.supersedes) {
+      throw recordError('supersedes-mismatch');
+    }
   } else if (envelope.recordType === OUTCOME_RECORD_TYPE) {
     validateEstimationOutcome(envelope.payload, { expectedIssue: envelope.issue });
   } else if (envelope.recordType === RUBRIC_RECORD_TYPE) {
@@ -252,6 +256,63 @@ function deepFreeze(value) {
 /** @param {unknown} payload */
 export function hashRecordPayload(payload) {
   return `sha256:${createHash('sha256').update(canonicalRecordJson(payload)).digest('hex')}`;
+}
+
+function encodeBase32(value, length) {
+  let remaining = value;
+  let encoded = '';
+  for (let index = 0; index < length; index += 1) {
+    encoded = CROCKFORD32[Number(remaining & 31n)] + encoded;
+    remaining >>= 5n;
+  }
+  if (remaining !== 0n) throw recordError('record-id');
+  return encoded;
+}
+
+export function createRecordId({ nowMs = Date.now(), randomBytesFn = randomBytes } = {}) {
+  if (
+    !Number.isSafeInteger(nowMs) ||
+    nowMs < 0 ||
+    nowMs > 0xffffffffffff ||
+    typeof randomBytesFn !== 'function'
+  ) {
+    throw recordError('record-id');
+  }
+  const entropy = randomBytesFn(10);
+  if (!Buffer.isBuffer(entropy) || entropy.length !== 10) throw recordError('record-id');
+  let random = 0n;
+  for (const byte of entropy) random = (random << 8n) | BigInt(byte);
+  return `${encodeBase32(BigInt(nowMs), 10)}${encodeBase32(random, 16)}`;
+}
+
+export function createAitmRecordEnvelope({
+  recordType,
+  repository,
+  issue,
+  payload,
+  actor,
+  epoch = 1,
+  predecessor = null,
+  supersedes = null,
+  createdAt = new Date().toISOString(),
+  recordId = createRecordId(),
+  grantId = createRecordId(),
+} = {}) {
+  const envelope = {
+    schema: RECORD_SCHEMA,
+    recordId,
+    recordType,
+    repository,
+    issue,
+    createdAt,
+    authority: { grantId, epoch, actor },
+    predecessor,
+    supersedes,
+    payloadHash: hashRecordPayload(payload),
+    payload,
+  };
+  validateEnvelope(envelope);
+  return deepFreeze(envelope);
 }
 
 /**

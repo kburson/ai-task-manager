@@ -29,6 +29,7 @@ import { loadProjectFieldDefs } from '../project-fields.mjs';
 import { loadState } from '../state.mjs';
 import { parsePlanEstimationInput } from '../lib/estimation/plan-input.mjs';
 import { executeAdaptivePlanEstimate } from '../lib/estimation/plan-estimate-authority.mjs';
+import { createAdaptivePlanRuntime } from '../lib/estimation/runtime-adapter.mjs';
 
 // Resolve the target issue: explicit positional `#N` / `N` wins, else the bound
 // active issue. Returns a positive integer or null.
@@ -95,7 +96,8 @@ export function parseArgs(rest, activeIssue) {
 
 async function defaultRunAdaptivePlanEstimate({ issueNumber, evidenceFile, cfg, deps }) {
   const planInput = parsePlanEstimationInput(readFileSync(evidenceFile, 'utf8'));
-  return executeAdaptivePlanEstimate({ issueNumber, planInput, cfg, deps });
+  const runtime = deps.adaptivePlanRuntime ?? createAdaptivePlanRuntime({ cfg, deps });
+  return executeAdaptivePlanEstimate({ issueNumber, planInput, cfg, deps: runtime });
 }
 
 // Read the live board Size/Estimate for the "Refine" column. Best-effort:

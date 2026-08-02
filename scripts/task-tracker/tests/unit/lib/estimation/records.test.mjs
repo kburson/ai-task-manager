@@ -21,6 +21,8 @@ import {
   writeEstimationRecord,
 } from '../../../../lib/estimation/renderers.mjs';
 import {
+  createAitmRecordEnvelope,
+  createRecordId,
   hashRecordPayload,
   parseAitmRecord,
   renderAitmRecord,
@@ -32,6 +34,26 @@ const ids = {
   rubric: '01J00000000000000000000102',
   grant: '01J00000000000000000000103',
 };
+
+test('record construction generates canonical ULIDs and validates the complete envelope', () => {
+  const randomBytesFn = (length) => Buffer.alloc(length, 0x2a);
+  const recordId = createRecordId({ nowMs: 1_722_604_800_000, randomBytesFn });
+  assert.match(recordId, /^[0-7][0-9A-HJKMNP-TV-Z]{25}$/);
+  const built = createAitmRecordEnvelope({
+    recordType: FORECAST_RECORD_TYPE,
+    repository: 'kburson/ai-task-manager',
+    issue: 1091,
+    payload: forecast,
+    actor: 'aitm/plan-estimate',
+    createdAt: '2026-08-02T13:00:00.000Z',
+    recordId,
+    grantId: createRecordId({ nowMs: 1_722_604_800_001, randomBytesFn }),
+  });
+
+  assert.equal(built.payloadHash, hashRecordPayload(forecast));
+  assert.equal(built.recordId, recordId);
+  assert.doesNotThrow(() => renderAitmRecord({ envelope: built }));
+});
 
 const forecast = {
   schema: 'aitm.estimation-forecast/v1',

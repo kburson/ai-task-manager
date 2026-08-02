@@ -46,6 +46,7 @@ import {
   upsertUnauthorizedCloseRecovery,
 } from '../lib/closed-issue-convergence.mjs';
 import { resolveTailProfile } from '../lib/move-state/tail-profiles.mjs';
+import { createEstimationOutcomeRuntime } from '../lib/estimation/runtime-adapter.mjs';
 
 // #705 — best-effort: a label-strip failure must never block or fail the
 // close itself, mirroring the deregisterTask cleanup calls below.
@@ -1193,10 +1194,15 @@ export async function verbClose(ctx) {
     }
   }
   try {
+    const estimationOutcomeWriter =
+      ctx.estimationOutcomeWriter ??
+      (ESTIMATION_FORECAST_READY_RE.test(closeBody)
+        ? createEstimationOutcomeRuntime({ cfg, projectDir })
+        : null);
     await ensureCloseEstimationOutcome({
       issueNumber: closeIssueNum,
       body: closeBody,
-      writer: ctx.estimationOutcomeWriter,
+      writer: estimationOutcomeWriter,
     });
   } catch (err) {
     console.error(

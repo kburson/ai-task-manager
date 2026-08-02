@@ -1,0 +1,540 @@
+// @story #1091
+import assert from 'node:assert/strict';
+import test from 'node:test';
+
+import { buildEstimationForecast } from '../../../../lib/estimation/forecast-model.mjs';
+import { buildEstimationOutcome } from '../../../../lib/estimation/outcome-builder.mjs';
+import { ensureEstimationOutcome } from '../../../../lib/estimation/outcome-writer.mjs';
+import {
+  applyPlanEstimateAuthority,
+  executeAdaptivePlanEstimate,
+} from '../../../../lib/estimation/plan-estimate-authority.mjs';
+import { writeEstimationRecord } from '../../../../lib/estimation/renderers.mjs';
+import { createBootstrapRubric } from '../../../../lib/estimation/rubric-model.mjs';
+import { loadOrRefreshRubric } from '../../../../lib/estimation/rubric-refresh.mjs';
+import {
+  createAdaptivePlanRuntime,
+  createEstimationOutcomeRuntime,
+} from '../../../../lib/estimation/runtime-adapter.mjs';
+import {
+  createAitmRecordEnvelope,
+  createRecordId,
+  renderAitmRecord,
+} from '../../../../lib/github-records/record-envelope.mjs';
+import { buildPlannedAppendix } from '../../../../lib/refine-estimate-comment.mjs';
+import { planApprovedGuard } from '../../../../lib/plan-approved-guard.mjs';
+import { reviewExitReviewApprovedGuard } from '../../../../lib/review-exit-review-approved-guard.mjs';
+import { resolveGate } from '../../../../lib/gate-resolve.mjs';
+import { applyChoice } from '../../../../lib/session-store.mjs';
+
+const repository = 'kburson/ai-task-manager';
+const rubricIssue = 9000;
+const firstIssue = 1091;
+const secondIssue = 1094;
+const RANDOM = (length) => Buffer.alloc(length, 0x35);
+let idClock = 1_722_604_800_000;
+const nextId = () => createRecordId({ nowMs: idClock++, randomBytesFn: RANDOM });
+
+function envelope({ recordType, issue, payload, predecessor = null, supersedes = null, actor }) {
+  return createAitmRecordEnvelope({
+    recordType,
+    repository,
+    issue,
+    payload,
+    predecessor,
+    supersedes,
+    actor,
+    createdAt: new Date(idClock).toISOString(),
+    recordId: nextId(),
+    grantId: nextId(),
+  });
+}
+
+function fake1070Transport() {
+  const comments = new Map();
+  let commentSequence = 0;
+  const rest = {
+    async createIssueComment({ repository: actualRepository, issue, body }) {
+      assert.equal(actualRepository, repository);
+      const id = `IC_adaptive_${++commentSequence}`;
+      comments.set(id, { id, issue, body });
+      return { node_id: id };
+    },
+  };
+  const graphql = async ({ variables }) => ({
+    data: {
+      nodes: variables.ids.map((id) => {
+        const comment = comments.get(id);
+        return {
+          __typename: 'IssueComment',
+          id,
+          body: comment.body,
+          updatedAt: '2026-08-02T15:00:00Z',
+          issue: { number: comment.issue, repository: { nameWithOwner: repository } },
+        };
+      }),
+    },
+  });
+  return { rest, graphql, comments };
+}
+
+function authorityHarness({ issue, transport, recordLog }) {
+  const state = {
+    lifecycleState: 'plan',
+    refineAppendix: null,
+    board: { size: 'M', estimate: 8 },
+    bodyFields: { size: 'M', estimate: 8 },
+    forecasts: [],
+    readyForecastRecordId: null,
+    frozenForecastRecordId: null,
+  };
+  return {
+    state,
+    deps: {
+      readProjection: async () => structuredClone(state),
+      writeRefineAppendix: async ({ refine, plan }) => {
+        state.refineAppendix = { refine, plan };
+      },
+      writeBoardEstimate: async ({ estimate }) => {
+        state.board.estimate = estimate;
+      },
+      writeBoardSize: async ({ size }) => {
+        state.board.size = size;
+      },
+      writeBodyFields: async ({ estimate, size }) => {
+        state.bodyFields = { estimate, size };
+      },
+      writeForecast: async ({ envelope: recordEnvelope }) => {
+        const written = await writeEstimationRecord({
+          envelope: recordEnvelope,
+          repository,
+          issue,
+          ...transport,
+        });
+        recordLog.push(written);
+        state.forecasts.push({
+          recordId: written.envelope.recordId,
+          payloadHash: written.envelope.payloadHash,
+          commentNodeId: written.commentNodeId,
+          supersededBy: null,
+        });
+      },
+      writeForecastReadyMarker: async ({ recordId }) => {
+        state.readyForecastRecordId = recordId;
+        state.frozenForecastRecordId = recordId;
+      },
+    },
+  };
+}
+
+function planInput() {
+  return {
+    schema: 'aitm.plan-estimation-input/v1',
+    wbs: [
+      {
+        id: 'implementation',
+        description: 'Implement the independently reviewable estimation change',
+        baseHumanHours: 10,
+        independentlyReviewable: true,
+        signals: { modules: ['estimation'], dependencies: ['github-records'] },
+      },
+    ],
+    testImpact: { lanes: ['unit'], isolation: 'test-sandbox', expectedMinutes: 0 },
+    risks: ['Bootstrap cohort is initially empty'],
+    comparableIssueIds: [firstIssue],
+  };
+}
+
+test('completed outcome deterministically updates the next rubric and AI forecast through #1070 read-backs', async () => {
+  const transport = fake1070Transport();
+  const records = [];
+  const bootstrapPayload = createBootstrapRubric({ generatedAt: '2026-08-02T14:00:00.000Z' });
+  const bootstrapEnvelope = envelope({
+    recordType: 'estimation-rubric',
+    issue: rubricIssue,
+    payload: bootstrapPayload,
+    actor: 'aitm/rubric-refresh',
+  });
+  const bootstrap = await writeEstimationRecord({
+    envelope: bootstrapEnvelope,
+    repository,
+    issue: rubricIssue,
+    ...transport,
+  });
+  records.push(bootstrap);
+
+  const firstAuthority = authorityHarness({ issue: firstIssue, transport, recordLog: records });
+  const first = await executeAdaptivePlanEstimate({
+    issueNumber: firstIssue,
+    planInput: planInput(),
+    cfg: { repo: repository, estimationRubricIssue: rubricIssue },
+    deps: {
+      readRefineEstimate: async () => ({ size: 'M', humanHours: 8 }),
+      loadRubric: async () => ({
+        recordId: bootstrapEnvelope.recordId,
+        payload: bootstrapPayload,
+      }),
+      listComparableOutcomes: async () => [],
+      buildForecast: buildEstimationForecast,
+      createForecastEnvelope: ({ issue, payload }) =>
+        envelope({
+          recordType: 'estimation-forecast',
+          issue,
+          payload,
+          actor: 'aitm/plan-estimate',
+        }),
+      applyAuthority: (input) =>
+        applyPlanEstimateAuthority({ ...input, deps: firstAuthority.deps }),
+    },
+  });
+  const firstForecast = records.find(
+    (record) => record.envelope.recordId === first.forecastRecordId
+  ).envelope;
+  assert.equal(firstAuthority.state.board.estimate, 10);
+  assert.equal(firstAuthority.state.bodyFields.estimate, 10);
+  assert.equal(firstAuthority.state.readyForecastRecordId, firstForecast.recordId);
+
+  const outcomePayload = buildEstimationOutcome({
+    issue: firstIssue,
+    forecast: firstForecast,
+    timing: {
+      stagesMs: { plan: 900_000, develop: 9_000_000, test: 900_000, review: 900_000 },
+    },
+    verification: [{ classification: 'test-unit', durationMs: 120_000, attempts: 2 }],
+    diff: {
+      filesChanged: 8,
+      modules: ['estimation'],
+      lanes: ['unit'],
+      dependencyBreadth: 1,
+    },
+    review: { fixCycles: 1 },
+    cost: {
+      avoidableProcessWasteHours: 0.5,
+      drivers: [{ kind: 'redundant-verification', hours: 0.5 }],
+    },
+  });
+  const outcomeResult = await ensureEstimationOutcome({
+    issue: firstIssue,
+    forecast: firstForecast,
+    outcomePayload,
+    deps: {
+      listOutcomeRecords: async () =>
+        records.filter((record) => record.envelope.recordType === 'estimation-outcome'),
+      createOutcomeEnvelope: ({ issue, payload }) =>
+        envelope({
+          recordType: 'estimation-outcome',
+          issue,
+          payload,
+          actor: 'aitm/close',
+        }),
+      writeOutcome: async ({ issue, envelope: recordEnvelope }) => {
+        const written = await writeEstimationRecord({
+          envelope: recordEnvelope,
+          repository,
+          issue,
+          ...transport,
+        });
+        records.push(written);
+        return written;
+      },
+    },
+  });
+  assert.equal(outcomeResult.status, 'written');
+  const outcomeRecord = records.find(
+    (record) => record.envelope.recordId === outcomeResult.recordId
+  );
+
+  const refreshed = await loadOrRefreshRubric({
+    cfg: { repo: repository, estimationRubricIssue: rubricIssue },
+    rubricIssueNumber: rubricIssue,
+    through: '2026-08-02T16:00:00.000Z',
+    deps: {
+      listRubricRecords: async () =>
+        records.filter((record) => record.envelope.recordType === 'estimation-rubric'),
+      listEligibleOutcomes: async () => [
+        {
+          recordId: outcomeRecord.envelope.recordId,
+          createdAt: outcomeRecord.envelope.createdAt,
+          payload: outcomeRecord.envelope.payload,
+        },
+      ],
+      writeRubric: async ({ issue, payload, predecessorRecordId }) => {
+        const recordEnvelope = envelope({
+          recordType: 'estimation-rubric',
+          issue,
+          payload,
+          predecessor: predecessorRecordId,
+          supersedes: predecessorRecordId,
+          actor: 'aitm/rubric-refresh',
+        });
+        const written = await writeEstimationRecord({
+          envelope: recordEnvelope,
+          repository,
+          issue,
+          ...transport,
+        });
+        records.push(written);
+        return written;
+      },
+    },
+  });
+  assert.equal(refreshed.rubric.cohort[0].outcomeRecordId, outcomeResult.recordId);
+  assert.equal(refreshed.rubric.workflowDiagnostics.avoidableProcessWasteHours, 0.5);
+
+  const secondForecast = buildEstimationForecast({
+    issue: secondIssue,
+    refine: { size: 'M', humanHours: 8 },
+    planInput: planInput(),
+    rubric: {
+      recordId: records.at(-1).envelope.recordId,
+      payload: refreshed.rubric,
+    },
+    comparableOutcomes: [
+      {
+        recordId: outcomeRecord.envelope.recordId,
+        payload: outcomeRecord.envelope.payload,
+      },
+    ],
+  });
+  assert.equal(secondForecast.plan.humanHours, firstForecast.payload.plan.humanHours);
+  assert.notEqual(secondForecast.ai.p50EngagedHours, firstForecast.payload.ai.p50EngagedHours);
+  assert.equal(secondForecast.comparableIssues[0].outcomeRecordId, outcomeResult.recordId);
+  assert.ok(transport.comments.size >= 4, 'every durable write completed a #1070 read-back');
+});
+
+test('adaptive evidence adds no gate or prompt: Full-Auto bypass and human approval stops are unchanged', async () => {
+  const initial = {
+    sessionId: 'adaptive-parity',
+    gates: { analysisToDevelopment: null, reviewToDone: null },
+    lastPromptedParent: null,
+  };
+  const fullAuto = applyChoice(initial, 'both');
+  const humanGated = applyChoice(initial, 'off');
+  assert.equal(resolveGate('analysisToDevelopment', { session: fullAuto }), false);
+  assert.equal(resolveGate('reviewToDone', { session: fullAuto }), false);
+  assert.equal(resolveGate('analysisToDevelopment', { session: humanGated }), true);
+  assert.equal(resolveGate('reviewToDone', { session: humanGated }), true);
+
+  const evidenceOnly =
+    'body\n<!-- aitm-estimation-forecast-ready record-id="01J00000000000000000000999" -->\n';
+  assert.equal((await planApprovedGuard.run({ body: evidenceOnly, toState: 'develop' })).ok, false);
+  assert.equal(
+    reviewExitReviewApprovedGuard.run({ body: evidenceOnly, toState: 'done' }).ok,
+    false
+  );
+  assert.equal(
+    (
+      await planApprovedGuard.run({
+        body: `${evidenceOnly}\n<!-- aitm-plan-approved ts="2026-08-02T16:00:00Z" -->`,
+        toState: 'develop',
+      })
+    ).ok,
+    true
+  );
+  assert.equal(
+    reviewExitReviewApprovedGuard.run({
+      body: `${evidenceOnly}\n<!-- aitm-review-approved ts="2026-08-02T16:00:00Z" -->`,
+      toState: 'done',
+    }).ok,
+    true
+  );
+});
+
+test('default close runtime builds and read-backs the frozen forecast outcome before Done', async () => {
+  const rubricPayload = createBootstrapRubric({ generatedAt: '2026-08-02T14:00:00.000Z' });
+  const rubricRecordId = nextId();
+  const forecastPayload = buildEstimationForecast({
+    issue: firstIssue,
+    refine: { size: 'M', humanHours: 8 },
+    planInput: planInput(),
+    rubric: { recordId: rubricRecordId, payload: rubricPayload },
+    comparableOutcomes: [],
+  });
+  const forecastEnvelope = envelope({
+    recordType: 'estimation-forecast',
+    issue: firstIssue,
+    payload: forecastPayload,
+    actor: 'aitm/plan-estimate',
+  });
+  const written = [];
+  const runtime = createEstimationOutcomeRuntime({
+    cfg: { repo: repository },
+    projectDir: '/tmp/fake-adaptive-project',
+    deps: {
+      recordIo: {
+        listIssueRecords: async () => [
+          { commentNodeId: 'IC_frozen_forecast', envelope: forecastEnvelope },
+        ],
+        write: async ({ envelope: outcomeEnvelope }) => {
+          const record = { commentNodeId: 'IC_close_outcome', envelope: outcomeEnvelope };
+          written.push(record);
+          return record;
+        },
+      },
+      readTimingCommentBody: async () => ({
+        status: 'found',
+        body: [
+          '| 2026-08-02 10:00:00 -05:00 | plan:stopped | | | | | | <!-- row-sec: a=1800 i=0 -->',
+          '| 2026-08-02 10:30:00 -05:00 | develop:stopped | | | | | | <!-- row-sec: a=3600 i=0 -->',
+          '| 2026-08-02 11:30:00 -05:00 | test:stopped | | | | | | <!-- row-sec: a=900 i=0 -->',
+          '| 2026-08-02 11:45:00 -05:00 | review:stopped | | | | | | <!-- row-sec: a=600 i=0 -->',
+        ].join('\n'),
+      }),
+      readDiffEvidence: async () => ({
+        filesChanged: 7,
+        modules: ['estimation'],
+        lanes: ['unit', 'integration'],
+        dependencyBreadth: 2,
+      }),
+      childOutcomeRecordIds: async () => [],
+    },
+  });
+
+  const result = await runtime.ensure({
+    issueNumber: firstIssue,
+    forecastRecordId: forecastEnvelope.recordId,
+    body: 'issue body with no verification receipt',
+  });
+  assert.equal(result.status, 'written');
+  assert.equal(result.commentNodeId, 'IC_close_outcome');
+  assert.equal(written[0].envelope.payload.forecastRecordId, forecastEnvelope.recordId);
+  assert.equal(written[0].envelope.payload.actual.engagedHours, 1.9167);
+});
+
+test('production Plan runtime converges board, body, history, forecast, and ready marker with fake GitHub', async () => {
+  const cfg = {
+    repo: repository,
+    projectId: 'PVT_adaptive',
+    estimationRubricIssue: rubricIssue,
+    kanbanFieldId: 'FIELD_status',
+    fieldIds: { size: 'FIELD_size', estimate: 'FIELD_estimate' },
+  };
+  const board = { size: 'M', estimate: 8 };
+  let issueBody =
+    '## Story\n\n<!-- aitm-fields: {"schema":1,"values":{"size":"M","estimate":8}} -->\n';
+  let refineBody =
+    '### 🛠 Refine estimate\n\n<!-- aitm-refined-estimate: 1091 -->\n\nProvisional values.\n';
+  const recordComments = [];
+  const parsedRecords = [];
+  const commentNode = (id, issue, body) => ({
+    __typename: 'IssueComment',
+    id,
+    databaseId: Number(id.replace(/\D/g, '')) || 1,
+    body,
+    updatedAt: '2026-08-02T15:00:00Z',
+    issue: { number: issue, repository: { nameWithOwner: repository } },
+  });
+  const graphql = async ({ query }) => {
+    if (query.includes('AitmEstimationCorpus')) {
+      return {
+        data: {
+          node: {
+            items: { nodes: [], pageInfo: { hasNextPage: false, endCursor: null } },
+          },
+        },
+      };
+    }
+    if (query.includes('AitmEstimationProjection')) {
+      return {
+        data: {
+          repository: {
+            issue: {
+              body: issueBody,
+              comments: {
+                nodes: [
+                  commentNode('IC_refine_1', firstIssue, refineBody),
+                  ...recordComments.filter((comment) => comment.issue.number === firstIssue),
+                ],
+                pageInfo: { hasNextPage: false },
+              },
+              projectItems: {
+                nodes: [
+                  {
+                    id: 'ITEM_1091',
+                    project: { id: cfg.projectId },
+                    fieldValues: {
+                      nodes: [
+                        { name: 'Plan', field: { id: cfg.kanbanFieldId } },
+                        { name: board.size, field: { id: cfg.fieldIds.size } },
+                        { number: board.estimate, field: { id: cfg.fieldIds.estimate } },
+                      ],
+                    },
+                  },
+                ],
+              },
+            },
+          },
+        },
+      };
+    }
+    throw new Error('unexpected GraphQL query');
+  };
+  const recordIo = {
+    graphql,
+    listIssueRecords: async ({ issue }) =>
+      parsedRecords.filter((record) => record.envelope.issue === issue),
+    write: async ({ envelope: recordEnvelope }) => {
+      const commentNodeId = `IC_record_${parsedRecords.length + 1}`;
+      const record = { commentNodeId, envelope: recordEnvelope };
+      parsedRecords.push(record);
+      recordComments.push(
+        commentNode(
+          commentNodeId,
+          recordEnvelope.issue,
+          renderAitmRecord({ envelope: recordEnvelope })
+        )
+      );
+      return record;
+    },
+  };
+  const runtime = createAdaptivePlanRuntime({
+    cfg,
+    deps: {
+      recordIo,
+      graphql,
+      loadProjectFieldDefs: () => [
+        { key: 'size', type: 'single_select' },
+        { key: 'estimate', type: 'number' },
+      ],
+      upsertPlannedEstimate: async ({ refine, plan, rationale }) => {
+        refineBody = `${refineBody.trimEnd()}${buildPlannedAppendix({
+          current: refine,
+          planned: plan,
+          rationale,
+        })}\n`;
+        return { status: 'updated' };
+      },
+      fieldOptionMap: async () => ({ FIELD_size: { XS: 'XS', S: 'S', M: 'M', L: 'L', XL: 'XL' } }),
+      writeProjectFieldValue: async ({ fieldId, value }) => {
+        if (fieldId === cfg.fieldIds.size) board.size = value.singleSelectOptionName;
+        if (fieldId === cfg.fieldIds.estimate) board.estimate = value.number;
+        return true;
+      },
+      mutateIssueBody: async ({ mutate }) => {
+        issueBody = mutate(issueBody);
+        return { status: 'ok', body: issueBody };
+      },
+    },
+  });
+
+  const result = await executeAdaptivePlanEstimate({
+    issueNumber: firstIssue,
+    planInput: planInput(),
+    cfg,
+    deps: runtime,
+  });
+
+  assert.equal(result.status, 'converged');
+  assert.equal(board.estimate, 10);
+  assert.match(refineBody, /\| Estimate \(h\) \| 8 \| 10 \|/);
+  assert.match(issueBody, /"estimate":10/);
+  assert.match(issueBody, new RegExp(result.forecastRecordId));
+  assert.equal(
+    parsedRecords.filter((r) => r.envelope.recordType === 'estimation-rubric').length,
+    1
+  );
+  assert.equal(
+    parsedRecords.filter((r) => r.envelope.recordType === 'estimation-forecast').length,
+    1
+  );
+});
