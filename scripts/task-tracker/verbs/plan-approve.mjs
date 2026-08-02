@@ -267,12 +267,20 @@ export async function verbPlanApprove(rest, cfg, deps = {}) {
         `✓ Re-stamped missing aitm-entered-plan marker for #${issueNumber} at ${result.ts} (approval already present). \`/task promote #${issueNumber}\` to move to Develop.\n`
       );
       return;
+    case 'repaired-approval':
+      process.stdout.write(
+        `✓ Repaired adaptive Plan approval lineage for #${issueNumber} at ${result.ts}; the existing approval now freezes its forecast record.\n`
+      );
+      return;
     case 'wrong-state':
       process.stderr.write(`⛔ ${result.message}\n`);
       process.exit(3);
     case 'forbidden-command':
       process.stderr.write(`⛔ ${result.message}\n`);
       process.exit(12);
+    case 'forecast-missing':
+      process.stderr.write(`⛔ ${result.message}\n`);
+      process.exit(13);
     default:
       process.stderr.write(`plan-approve: unknown result: ${result.status}\n`);
       process.exit(1);
