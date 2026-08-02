@@ -56,7 +56,11 @@ import { fileURLToPath } from 'node:url';
 import { loadConfig } from '../task-tracker/config.mjs';
 import { GH_API_TIMEOUT_MS, GIT_TIMEOUT_MS } from '../task-tracker/lib/process-timeouts.mjs';
 import { readSessionMinutes } from './lib/session-field.mjs';
-import { readEngagedMinutes, readDurationMinutes, readStartedAt, accelRatio } from './lib/board-fields.mjs';
+import { readEngagedMinutes, readDurationMinutes, readStartedAt } from './lib/board-fields.mjs';
+import {
+  buildEstimationReportModel,
+  loadEstimationRecordsFromComments,
+} from './lib/estimation-records.mjs';
 import { wantsHelp, emitSelfDoc, isDirectInvocation } from '../lib/self-doc.mjs';
 import { reportAttribution } from './lib/attribution-resolver.mjs';
 import { loadTrunkSignals } from './lib/trunk-signals.mjs';
@@ -171,7 +175,14 @@ async function fetchProject() {
                   createdAt closedAt
                   parent { number }
                   comments(first: 100) {
-                    nodes { body }
+                    nodes {
+                      __typename
+                      id
+                      body
+                      updatedAt
+                      issue { number repository { nameWithOwner } }
+                    }
+                    pageInfo { hasNextPage }
                   }
                 }
               }
@@ -258,6 +269,8 @@ function processItems(raw, attribution = null) {
         startedAt:    readStartedAt(f),
         role:         parseStartInfo(n.content.comments?.nodes).role,
         timingBody:   extractTimingBody(n.content.comments?.nodes),
+        comments:     n.content.comments?.nodes ?? [],
+        commentsComplete: n.content.comments?.pageInfo?.hasNextPage !== true,
         estimate:     f['Estimate']            ?? null,
         sessionMin:   readSessionMinutes(f),
         // #789 — Engaged/Review/Plan read straight from the board's Text-duration
@@ -282,7 +295,16 @@ function processItems(raw, attribution = null) {
       const attr = attribution ? reportAttribution(i, attribution) : null;
       if (attr?.dead) return false;
       // must have at least one data field (unless attribution vouches for it)
-      if (i.estimate == null && i.sessionMin == null && i.contextWords == null && !attr?.attributed) return false;
+      const hasEstimationEvidence = i.comments.some((comment) =>
+        /<!--\s*aitm-record/i.test(comment?.body ?? '')
+      );
+      if (
+        i.estimate == null &&
+        i.sessionMin == null &&
+        i.contextWords == null &&
+        !attr?.attributed &&
+        !hasEstimationEvidence
+      ) return false;
       // --state filter (GitHub issue state: open/closed)
       if (cfg.state === 'closed' && i.state !== 'CLOSED') return false;
       if (cfg.state === 'open'   && i.state !== 'OPEN')   return false;
@@ -372,7 +394,7 @@ const fmtMinLong = (h, dayHours = 8) => {
   return parts.length ? parts.join(' ') : '0 min';
 };
 
-export function buildHtml(project, items, s) {
+export function buildHtml(project, items, s, estimationModel = null) {
   const now        = new Date().toLocaleDateString('en-US', { dateStyle: 'long' });
   const filterParts = [];
   if (cfg.state !== 'all') filterParts.push(`State: ${cfg.state}`);
@@ -419,24 +441,29 @@ export function buildHtml(project, items, s) {
   const escAttr = s => s.replace(/"/g, '&quot;');
   const escHtml = s => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
   const fmtEst  = h => h == null ? '—' : h < 1 ? Math.round(h * 60) + ' min' : Number.isInteger(h) ? h + 'h' : h + 'h';
+  const fmtSigned = h => h == null ? '—' : `${h >= 0 ? '+' : ''}${Number(h.toFixed(2))}h`;
+  const fmtPct = value => value == null ? '—' : `${Math.round(value * 100)}%`;
 
   function renderRow(i, ru, cls) {
-    // #789 — Engaged and Accel come from the board `Engaged` field, not a
-    // session+reading computation. Accel = Estimate ÷ board-Engaged.
-    const engagedMin = ru.engagedMin;
-    const ratioNum   = accelRatio(ru.estimate, engagedMin);
-    const ratio      = ratioNum != null ? ratioNum.toFixed(1) : null;
-    const ratioClass = ratio == null ? '' : +ratio >= 1.5 ? 'good' : +ratio < 0.8 ? 'over' : 'warn';
+    const estimation = estimationModel?.rowsByIssue?.get(i.number) ?? null;
+    const ratioNum   = estimation?.acceleration ?? null;
+    const ratioClass = ratioNum == null ? '' : ratioNum >= 1.5 ? 'good' : ratioNum < 1 ? 'over' : 'warn';
     const prefix     = cls === 'child-row' ? '<span class="child-indent">↳</span> ' : cls === 'epic-row' ? '▶ ' : '';
+    const gap = estimation?.evidenceGaps?.length > 0
+      ? ` title="Evidence gaps: ${escAttr(estimation.evidenceGaps.join(', '))}"`
+      : '';
     return `<tr class="${cls}">
       <td><a href="${i.url}" target="_blank">#${i.number}</a></td>
       <td class="title-cell" title="${escAttr(i.title)}">${prefix}${escHtml(i.title)}</td>
-      <td class="num">${fmtEst(ru.estimate)}</td>
-      <td class="num">${ru.sessionMin != null ? fmtMin(ru.sessionMin / 60) : '—'}</td>
-      <td class="num">${engagedMin != null && engagedMin > 0 ? fmtMin(engagedMin / 60) : '—'}</td>
-      <td class="num">${ru.planMin != null ? fmtMin(ru.planMin / 60) : '—'}</td>
-      <td class="num">${ru.reviewMin != null ? fmtMin(ru.reviewMin / 60) : '—'}</td>
-      <td class="num ${ratioClass}">${ratio != null ? ratio + '×' : '—'}</td>
+      <td class="num"${gap}>${fmtEst(estimation?.humanPlanHours)}</td>
+      <td class="num">${fmtEst(estimation?.aiP50Hours)}</td>
+      <td class="num">${fmtEst(estimation?.aiP80Hours)}</td>
+      <td class="num">${fmtEst(estimation?.actualEngagedHours)}</td>
+      <td class="num">${fmtSigned(estimation?.varianceVsAiP50Hours)}</td>
+      <td class="num">${fmtPct(estimation?.refineAccuracy)}</td>
+      <td class="num">${fmtPct(estimation?.aiP50Accuracy)}</td>
+      <td class="num">${fmtEst(estimation?.avoidableWasteHours)}</td>
+      <td class="num ${ratioClass}">${estimation?.accelerationLabel ?? '—'}</td>
       <td class="${(i.status ?? '').toLowerCase() === 'done' ? 'closed' : 'open'}">${i.status ?? '—'}</td>
     </tr>`;
   }
@@ -460,15 +487,24 @@ export function buildHtml(project, items, s) {
 
   const totalEh = s.totalEngaged > 0 ? fmtMin(s.totalEngaged) : '—';
 
-  // #789 — Appendix A footer totals sum the board `Engaged`/`Plan`/`Review`
-  // fields across all issues (each counted once; epic rollups are display-only),
-  // and Accel = total Estimate ÷ total board-Engaged. Kept independent of the
-  // headline `summary()` math, which still uses session+chat-words reading time.
-  const sumMin = key => items.reduce((acc, i) => acc + (i[key] ?? 0), 0);
-  const tableEngagedMin = sumMin('engagedMin');
-  const tablePlanMin    = sumMin('planMin');
-  const tableReviewMin  = sumMin('reviewMin');
-  const tableAccel      = accelRatio(s.totalEst, tableEngagedMin);
+  const topLevelEstimationRows = items
+    .filter((item) => item.parentNumber == null || !items.some((other) => other.number === item.parentNumber))
+    .map((item) => estimationModel?.rowsByIssue?.get(item.number))
+    .filter(Boolean);
+  const sumKnown = key => topLevelEstimationRows.reduce(
+    (total, row) => total + (row[key] ?? 0),
+    0
+  );
+  const tableHumanPlan = sumKnown('humanPlanHours');
+  const tableAiP50 = sumKnown('aiP50Hours');
+  const tableAiP80 = sumKnown('aiP80Hours');
+  const tableActual = sumKnown('actualEngagedHours');
+  const tableWaste = sumKnown('avoidableWasteHours');
+  const tableAccel = tableHumanPlan > 0 && tableActual > 0 ? tableHumanPlan / tableActual : null;
+  const reportMethodology = estimationModel?.methodology ?? {};
+  const methodologyText = reportMethodology.rubricVersion == null
+    ? 'Rubric evidence unavailable; estimation metrics show evidence gaps rather than zeroes.'
+    : `Rubric v${reportMethodology.rubricVersion}; cohort ${reportMethodology.cohortSize}; confidence ${fmtPct(reportMethodology.confidence)}; P80 coverage ${fmtPct(reportMethodology.p80Coverage)}.`;
 
   // #788 — Daily Work Activity chart is rendered near the top of the report
   // (just above the Product Backlog appendix) rather than buried at the bottom
@@ -543,14 +579,11 @@ th{background:#f1f5f9;color:#475569;font-weight:600;text-align:left;padding:.4re
 td{padding:.35rem .625rem;border-bottom:1px solid #f1f5f9;vertical-align:middle}
 .issue-table{table-layout:fixed}
 .issue-table .col-num{width:4%}
-.issue-table .col-title{width:30%}
-.issue-table .col-est{width:6%}
-.issue-table .col-session{width:9%}
-.issue-table .col-engaged{width:9%}
-.issue-table .col-plan{width:8%}
-.issue-table .col-review{width:8%}
-.issue-table .col-accel{width:7%}
-.issue-table .col-status{width:11%}
+.issue-table .col-title{width:25%}
+.issue-table .col-est{width:7%}
+.issue-table .col-metric{width:7%}
+.issue-table .col-accel{width:12%}
+.issue-table .col-status{width:8%}
 .issue-table td.title-cell{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 tr:last-child td{border-bottom:none}
 tr:hover td{background:#f8fafc}
@@ -738,7 +771,7 @@ td a:hover{text-decoration:underline}
       <div class="esi"><div class="esi-label">Engineering Cost by US Region</div><div class="esi-desc">The same acceleration math applied to fully-burdened regional engineering rates. Translates efficiency gains into dollar figures meaningful to your organization's geography and hiring profile.</div></div>
       <div class="esi"><div class="esi-label">Timeline Analysis</div><div class="esi-desc">Calendar view of backlog entry, work start, and close date per issue. Pre-work lag surfaces scheduling friction; in-flight duration shows how long work occupied the team once started. Epic rows show the full orchestration window, including gaps between agent batches.</div></div>
     </div>
-    <div class="exec-method"><strong>Methodology:</strong> Estimates are mid-level engineer hours captured before execution and may not reflect actual human complexity — the comparison is only as accurate as the original scope. Engaged time is session minutes plus a fraction of reading time (overlap factor: ${cfg.readingOverlap}), since reading partially overlaps active AI work rather than adding in full. Acceleration is estimate ÷ engaged hours. Reading rate: ${cfg.readingWpm} wpm.</div>
+    <div class="exec-method"><strong>Adaptive estimation methodology:</strong> ${methodologyText} Human Plan is the frozen Plan-stage engineer-hours forecast; AI P50/P80 and actual engaged time come from validated immutable forecast/outcome records. Acceleration is Human Plan ÷ actual engaged hours, and values below 1× are explicitly slower than Plan. Missing or malformed records are evidence gaps, never zeroes.</div>
   </div>
 </div>
 
@@ -895,17 +928,21 @@ td a:hover{text-decoration:underline}
   <table class="issue-table">
     <colgroup>
       <col class="col-num"><col class="col-title"><col class="col-est">
-      <col class="col-session"><col class="col-engaged"><col class="col-plan">
-      <col class="col-review"><col class="col-accel"><col class="col-status">
+      <col class="col-metric"><col class="col-metric"><col class="col-metric">
+      <col class="col-metric"><col class="col-metric"><col class="col-metric">
+      <col class="col-metric"><col class="col-accel"><col class="col-status">
     </colgroup>
     <thead>
       <tr>
         <th>#</th><th>Title</th>
-        <th class="num">Est</th>
-        <th class="num">Session</th>
-        <th class="num">Engaged</th>
-        <th class="num">Plan</th>
-        <th class="num">Review</th>
+        <th class="num">Human Plan</th>
+        <th class="num">AI P50</th>
+        <th class="num">AI P80</th>
+        <th class="num">Actual</th>
+        <th class="num">Δ P50</th>
+        <th class="num">Refine Acc.</th>
+        <th class="num">AI Acc.</th>
+        <th class="num">Avoid. Waste</th>
         <th class="num">Accel.</th>
         <th>Status</th>
       </tr>
@@ -916,12 +953,15 @@ td a:hover{text-decoration:underline}
     <tfoot>
       <tr>
         <td colspan="2">Total (${items.length} issues · ${hierarchy.filter(r => r.children.length > 0).length} epics)</td>
-        <td class="num">${fmtEst(s.totalEst)}</td>
-        <td class="num">${s.totalSessionMin > 0 ? fmtMin(s.totalSessionMin / 60) : '—'}</td>
-        <td class="num">${tableEngagedMin > 0 ? fmtMin(tableEngagedMin / 60) : '—'}</td>
-        <td class="num">${tablePlanMin > 0 ? fmtMin(tablePlanMin / 60) : '—'}</td>
-        <td class="num">${tableReviewMin > 0 ? fmtMin(tableReviewMin / 60) : '—'}</td>
-        <td class="num good">${tableAccel != null ? tableAccel.toFixed(1) + '×' : '—'}</td>
+        <td class="num">${tableHumanPlan > 0 ? fmtEst(tableHumanPlan) : '—'}</td>
+        <td class="num">${tableAiP50 > 0 ? fmtEst(tableAiP50) : '—'}</td>
+        <td class="num">${tableAiP80 > 0 ? fmtEst(tableAiP80) : '—'}</td>
+        <td class="num">${tableActual > 0 ? fmtEst(tableActual) : '—'}</td>
+        <td class="num">${tableActual > 0 && tableAiP50 > 0 ? fmtSigned(tableActual - tableAiP50) : '—'}</td>
+        <td class="num">—</td>
+        <td class="num">${tableActual > 0 && tableAiP50 > 0 ? fmtPct(Math.max(0, 1 - Math.abs(tableAiP50 - tableActual) / tableActual)) : '—'}</td>
+        <td class="num">${tableWaste > 0 ? fmtEst(tableWaste) : '—'}</td>
+        <td class="num ${tableAccel != null && tableAccel < 1 ? 'over' : 'good'}">${tableAccel != null ? (tableAccel < 1 ? `${tableAccel.toFixed(2)}× (slower than Plan)` : `${tableAccel.toFixed(2)}×`) : '—'}</td>
         <td></td>
       </tr>
     </tfoot>
@@ -930,20 +970,18 @@ td a:hover{text-decoration:underline}
     <p class="tl-note">
       <strong>Column definitions.</strong>
       <em>#</em> — GitHub issue number, linked to the issue.
-      <em>Est</em> — Pre-execution estimate in mid-level engineer-hours, captured before work began; this is the basis for all acceleration calculations.
-      <em>Session</em> — Measured active AI session time logged by the task tracker (board <em>Session</em> field).
-      <em>Engaged</em> — Total human time investment, read directly from the board <em>Engaged</em> field (active session plus tracked plan/review overhead).
-      <em>Plan</em> / <em>Review</em> — Time logged in the Plan and Review stages, from the board's <em>Plan</em> and <em>Review</em> fields; a dash means the field is not set.
-      <em>Accel.</em> — Acceleration ratio: estimate ÷ board engaged hours. Values above 1.0× mean the work was delivered faster than the estimate implied.
-      <span style="color:#16a34a;font-weight:600">Green ≥ 1.5×</span> · <span style="color:#d97706;font-weight:600">Amber 0.8–1.5×</span> · <span style="color:#dc2626;font-weight:600">Red &lt; 0.8×</span>.
+      <em>Human Plan</em> — frozen Plan-stage engineer-hours from the validated forecast record.
+      <em>AI P50/P80</em> — learned engaged-time percentiles; <em>Actual</em> is measured engaged time from the immutable outcome.
+      <em>Δ P50</em> — actual minus AI P50. <em>Refine Acc.</em> and <em>AI Acc.</em> show normalized forecast accuracy.
+      <em>Avoid. Waste</em> is classified AI/workflow waste only. <em>Accel.</em> is Human Plan ÷ actual engaged time; below 1× is slower than Plan.
     </p>
     <p class="tl-note">
       <strong>Epics and sub-issues.</strong>
-      Epic rows (dark background, ▶ prefix) show rolled-up totals across all their sub-issues — estimate, session, engaged, plan, and review time are summed before the acceleration ratio is calculated. The epic-level ratio therefore reflects aggregate efficiency across the entire body of work, not just the orchestration session. Sub-issues are indented below their parent; their individual ratios capture per-task efficiency and will naturally vary. Do not add epic and sub-issue rows together — sub-issue values are already included in the epic total.
+      Epic rows (dark background, ▶ prefix) sum child Human Plan estimates and child actual engaged time, then add only the parent's classified orchestration outcome. The parent board Estimate is never added to child estimates, and parent engaged time is not treated as child implementation. Sub-issues are indented below their parent; do not add epic and sub-issue rows together.
     </p>
     <p class="tl-note">
       <strong>Missing values (—).</strong>
-      A dash means the field was not set on the GitHub project board for that issue. Issues without <em>Estimate</em> or a non-zero <em>Engaged</em> value cannot contribute to acceleration calculations and are omitted from the aggregate ratio. Issues without <em>Session</em>, <em>Plan</em>, or <em>Review</em> reflect work completed outside a task-tracked session or before the tool was in use — they are included in the table for completeness but their missing durations are treated as zero in cost totals.
+      A dash means validated forecast or outcome evidence is absent or malformed. Such values remain evidence gaps and never become zero; hover the Human Plan cell for the gap category.
     </p>
   </div>
 </div>
@@ -1097,8 +1135,33 @@ async function main() {
   }
 
   console.log(`${items.length} issues found.`);
+  const loadedEstimation = loadEstimationRecordsFromComments({
+    issues: raw
+      .filter((node) => node.content?.number)
+      .map((node) => ({
+        number: node.content.number,
+        comments: node.content.comments?.nodes ?? [],
+        commentsComplete: node.content.comments?.pageInfo?.hasNextPage !== true,
+      })),
+    repository: cfg.repo,
+  });
+  const estimationModel = buildEstimationReportModel({
+    items,
+    recordsByIssue: loadedEstimation.recordsByIssue,
+  });
+  for (const gap of loadedEstimation.evidenceGaps) {
+    const row = estimationModel.rowsByIssue.get(gap.issue);
+    if (row !== undefined && !row.evidenceGaps.includes(gap.reason)) {
+      row.evidenceGaps.push(gap.reason);
+    }
+  }
+  if (loadedEstimation.evidenceGaps.length > 0) {
+    console.warn(
+      `Adaptive estimation evidence gaps: ${loadedEstimation.evidenceGaps.length} malformed issue corpus entries.`,
+    );
+  }
   const s    = summary(items);
-  const html = buildHtml({ title }, items, s);
+  const html = buildHtml({ title }, items, s, estimationModel);
 
   const base    = cfg.output.replace(/\.(html?|pdf)$/i, '');
   mkdirSync(path.dirname(base), { recursive: true });

@@ -13,6 +13,7 @@ import {
   readDurationMinutes,
   readStartedAt,
   accelRatio,
+  formatAcceleration,
 } from './lib/board-fields.mjs';
 
 test('readEngagedMinutes parses the board Engaged duration string to minutes', () => {
@@ -57,6 +58,12 @@ test('accelRatio is null when Engaged is absent or zero', () => {
 
 test('accelRatio is null when Estimate is absent', () => {
   assert.equal(accelRatio(null, 120), null);
+});
+
+test('formatAcceleration labels below-one outcomes plainly', () => {
+  assert.equal(formatAcceleration(0.86), '0.86× (slower than Plan)');
+  assert.equal(formatAcceleration(1.5), '1.50×');
+  assert.equal(formatAcceleration(null), '—');
 });
 
 test('readStartedAt parses the board Started datetime to a Date', () => {

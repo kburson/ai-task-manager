@@ -78,6 +78,43 @@ test('getCommentsByNodeIds retrieves opaque IDs in one nodes query', async () =>
   );
 });
 
+test('parsePreloadedIssueComments validates cached GraphQL nodes without transport', () => {
+  const record = node('IC_kwDOPreloaded', '01J00000000000000000000022');
+  const ordinary = {
+    ...node('IC_kwDOOrdinaryPreloaded', '01J00000000000000000000023'),
+    body: 'Ordinary issue discussion.',
+  };
+
+  const result = commentStore.parsePreloadedIssueComments({
+    nodes: [ordinary, record],
+    repository,
+    issue,
+  });
+
+  assert.deepEqual(
+    result.map((comment) => comment.commentNodeId),
+    ['IC_kwDOPreloaded']
+  );
+  assert.equal(result[0].envelope.recordId, '01J00000000000000000000022');
+});
+
+test('parsePreloadedIssueComments fails closed on malformed cached AITM records', () => {
+  assert.throws(
+    () =>
+      commentStore.parsePreloadedIssueComments({
+        nodes: [
+          {
+            ...node('IC_kwDOMalformedPreloaded', '01J00000000000000000000024'),
+            body: '<!-- aitm-record malformed -->',
+          },
+        ],
+        repository,
+        issue,
+      }),
+    (error) => error.category === 'envelope'
+  );
+});
+
 test('GitHub timestamps without fractional seconds are accepted and normalized', async () => {
   const id = 'IC_kwDOGitHubTimestamp';
   const githubNode = {

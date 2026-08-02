@@ -176,6 +176,28 @@ function parseExpectedBody(body, repository, issue) {
   }
 }
 
+export function parsePreloadedIssueComments({ nodes, repository, issue } = {}) {
+  if (
+    !Array.isArray(nodes) ||
+    typeof repository !== 'string' ||
+    !/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(repository) ||
+    !Number.isInteger(issue) ||
+    issue <= 0
+  ) {
+    throw storeError('input');
+  }
+  const seen = new Set();
+  const records = [];
+  for (const node of nodes) {
+    validateCommentNode(node, node?.id, repository, issue);
+    if (seen.has(node.id)) throw storeError('node-mismatch');
+    seen.add(node.id);
+    if (!claimsAitmRecord(node.body)) continue;
+    records.push(parseComment(node, node.id, repository, issue));
+  }
+  return Object.freeze(records);
+}
+
 async function verifyWriteReadBack({
   commentNodeId,
   expectedBody,
