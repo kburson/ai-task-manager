@@ -151,5 +151,40 @@
       "failures": [],
       "cleanup": { "baseline": true, "candidate": true, "root": true }
     }
-  ]
+  ],
+  "fullLane": {
+    "lane": "unit",
+    "mode": "alternating sequential refs after a rejected simultaneous-load trial",
+    "baselineRef": "0373cbd9fd1259d45fd0c38e65a86d73a6307fe7",
+    "candidateRef": "ef0d017f",
+    "sampleCount": 3,
+    "baseline": {
+      "externalWallMs": [437790, 340340, 182140],
+      "medianMs": 340340,
+      "p80Ms": 437790,
+      "artifactSchema": 1,
+      "summedFileWallMs": [2330849.8, 1849399.5, 871081.4]
+    },
+    "candidate": {
+      "externalWallMs": [347540, 346510, 186650],
+      "actualRunnerMs": [347102.4, 346184.7, 186413.5],
+      "medianActualRunnerMs": 346184.7,
+      "p80ActualRunnerMs": 347102.4,
+      "artifactSchema": 2,
+      "poolMs": [192274.5, 210350.6, 97530.1],
+      "serialMs": [154827.9, 135834.1, 88883.4],
+      "summedFileWallMs": [1826768.4, 1964501.9, 900995]
+    },
+    "comparison": {
+      "medianImprovementPct": -1.72,
+      "p80ImprovementPct": 20.71,
+      "materialRegressionThresholdPct": 5,
+      "p80Improved": true,
+      "materialMedianRegression": false
+    },
+    "rejectedTrial": {
+      "reason": "simultaneous refs over-contended the 10-core host; sample 2 exceeded 12 minutes",
+      "acceptedAsP80Evidence": false
+    }
+  }
 }
