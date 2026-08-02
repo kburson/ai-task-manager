@@ -95,6 +95,30 @@ test('GitHub timestamps without fractional seconds are accepted and normalized',
   assert.equal(comment.updatedAt, '2026-08-02T01:52:38.000Z');
 });
 
+test('GitHub timestamps reject impossible dates and unsupported precision', async () => {
+  const id = 'IC_kwDOInvalidTimestamp';
+  for (const updatedAt of ['2026-02-30T12:00:00Z', '2026-08-01T14:01:00.0009Z']) {
+    await assert.rejects(
+      getCommentsByNodeIds({
+        ids: [id],
+        repository,
+        issue,
+        graphql: async () => ({
+          data: {
+            nodes: [
+              {
+                ...node(id, '01J00000000000000000000017'),
+                updatedAt,
+              },
+            ],
+          },
+        }),
+      }),
+      (error) => error.category === 'response-shape'
+    );
+  }
+});
+
 test('GraphQL transport and partial responses fail with safe normalized categories', async () => {
   const secret = 'ghp_1234567890abcdefghijklmnop';
   const cases = [
@@ -381,6 +405,38 @@ test('incremental listing fails closed on broken pagination and partial pages', 
     listIssueCommentsSince({ since: 'invalid', repository, issue, graphql: async () => null }),
     (error) => error.category === 'input'
   );
+});
+
+test('incremental listing rejects an empty page that claims a successor', async () => {
+  const { listIssueCommentsSince } = commentStore;
+  let calls = 0;
+  await assert.rejects(
+    listIssueCommentsSince({
+      since: '2026-08-01T00:00:00.000Z',
+      repository,
+      issue,
+      graphql: async () => {
+        calls += 1;
+        if (calls > 3) throw new Error('bounded test stop');
+        return {
+          data: {
+            repository: {
+              issue: {
+                number: issue,
+                repository: { nameWithOwner: repository },
+                comments: {
+                  nodes: [],
+                  pageInfo: { hasNextPage: true, endCursor: `fresh-${calls}` },
+                },
+              },
+            },
+          },
+        };
+      },
+    }),
+    (error) => error.category === 'pagination'
+  );
+  assert.equal(calls, 1);
 });
 
 test('incremental listing applies an exclusive boundary and normalizes transport failure', async () => {

@@ -91,14 +91,14 @@ function isCanonicalInstant(value) {
 }
 
 function normalizeGitHubInstant(value) {
-  if (
-    typeof value !== 'string' ||
-    !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z$/.test(value)
-  ) {
-    return null;
-  }
-  const timestamp = Date.parse(value);
-  return Number.isFinite(timestamp) ? new Date(timestamp).toISOString() : null;
+  if (typeof value !== 'string') return null;
+  const match = /^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2})(?:\.(\d{1,3}))?Z$/.exec(value);
+  if (match === null) return null;
+  const canonical = `${match[1]}.${(match[2] ?? '').padEnd(3, '0')}Z`;
+  const timestamp = Date.parse(canonical);
+  return Number.isFinite(timestamp) && new Date(timestamp).toISOString() === canonical
+    ? canonical
+    : null;
 }
 
 function assertContext({ repository, issue, graphql }) {
@@ -292,6 +292,9 @@ export async function listIssueCommentsSince(input = {}) {
     const connection = responseIssue.comments;
     if (!Array.isArray(connection?.nodes)) throw storeError('partial-response');
     if (typeof connection.pageInfo?.hasNextPage !== 'boolean') throw storeError('pagination');
+    if (connection.pageInfo.hasNextPage && connection.nodes.length === 0) {
+      throw storeError('pagination');
+    }
     for (const comment of connection.nodes) {
       validateCommentNode(comment, comment?.id, repository, issue);
       if (seenIds.has(comment.id)) throw storeError('pagination');
