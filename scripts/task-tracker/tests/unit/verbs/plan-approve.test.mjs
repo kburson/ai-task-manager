@@ -152,6 +152,30 @@ function makeDeps(overrides = {}) {
   assert.equal(readPlanApprovedForecastRecordId(getBody()), fresh);
 }
 
+// A legacy adaptive issue already in Develop can backfill the forecast ID onto
+// its existing approval without creating a new approval decision.
+{
+  const ready = '01J00000000000000000000934';
+  const originalTs = '2026-05-01T00:00:00Z';
+  const { deps, getBody } = makeDeps({
+    state: 'develop',
+    initialBody: [
+      '<!-- aitm-entered-plan ts="2026-05-01T00:00:00Z" -->',
+      `<!-- aitm-plan-approved ts="${originalTs}" -->`,
+      `<!-- aitm-estimation-forecast-ready record-id="${ready}" -->`,
+    ].join('\n'),
+  });
+  const r = await runPlanApprove({
+    issueNumber: 1091,
+    cfg: { ...cfg, estimationRubricIssue: 1091 },
+    deps,
+  });
+  assert.equal(r.status, 'repaired-approval');
+  assert.equal(r.ts, originalTs);
+  assert.equal(readPlanApprovedForecastRecordId(getBody()), ready);
+  assert.match(getBody(), new RegExp(`ts="${originalTs}"`));
+}
+
 // 4. second call is idempotent
 {
   const { deps, calls } = makeDeps();

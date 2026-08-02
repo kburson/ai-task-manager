@@ -80,9 +80,11 @@ export async function runPlanApprove({ issueNumber, cfg, projectDir, deps = {} }
     listComments: deps.listComments,
     postComment: deps.postComment,
   };
+  const adaptiveConfigured =
+    Number.isInteger(cfg.estimationRubricIssue) && cfg.estimationRubricIssue > 0;
 
   const state = await getBoardState({ issueNumber, projectDir });
-  if (state !== 'plan') {
+  if (state !== 'plan' && !adaptiveConfigured) {
     return {
       status: 'wrong-state',
       message: `#${issueNumber} is in '${state ?? 'unknown'}', expected 'plan' — plan-approve only applies to issues in Plan.`,
@@ -91,13 +93,50 @@ export async function runPlanApprove({ issueNumber, cfg, projectDir, deps = {} }
 
   const body = await fetchIssueBody({ issueNumber, repo: cfg.repo });
   const forecastRecordId = body.match(FORECAST_READY_RE)?.[1] ?? null;
-  const adaptiveConfigured =
-    Number.isInteger(cfg.estimationRubricIssue) && cfg.estimationRubricIssue > 0;
+  const hasApproval = hasPlanApprovedMarker(body);
+  const frozenForecastRecordId = readPlanApprovedForecastRecordId(body);
+  const lateRepair =
+    state !== 'plan' && hasApproval && frozenForecastRecordId === null && forecastRecordId !== null;
+  if (state !== 'plan' && !lateRepair) {
+    return {
+      status: 'wrong-state',
+      message: `#${issueNumber} is in '${state ?? 'unknown'}', expected 'plan' — plan-approve only applies to issues in Plan.`,
+    };
+  }
   if (adaptiveConfigured && forecastRecordId === null) {
     return {
       status: 'forecast-missing',
       message: `#${issueNumber} has no converged adaptive forecast to freeze at Plan approval.`,
     };
+  }
+
+  if (lateRepair) {
+    const approvalTs = readPlanApprovedTimestamp(body);
+    const writeResult = await mutateBody({
+      issueNumber,
+      repo: cfg.repo,
+      mutate: (base) => {
+        const freshReady = base.match(FORECAST_READY_RE)?.[1] ?? null;
+        const freshFrozen = readPlanApprovedForecastRecordId(base);
+        if (freshFrozen !== null) return base;
+        if (!hasPlanApprovedMarker(base) || freshReady === null) {
+          throw new Error('plan-approve: adaptive approval repair evidence disappeared');
+        }
+        return upsertPlanApprovedMarker(base, approvalTs, { forecastRecordId: freshReady });
+      },
+    });
+    const persistedBody =
+      typeof writeResult?.body === 'string'
+        ? writeResult.body
+        : await fetchIssueBody({ issueNumber, repo: cfg.repo });
+    await ensureAudit({
+      issueNumber,
+      repo: cfg.repo,
+      ts: readPlanApprovedTimestamp(persistedBody),
+      env,
+      ...auditDeps,
+    });
+    return { status: 'repaired-approval', ts: approvalTs };
   }
 
   // #236 — refuse plan→develop approval if the body's AC/VC checklists contain
@@ -119,14 +158,12 @@ export async function runPlanApprove({ issueNumber, cfg, projectDir, deps = {} }
     };
   }
 
-  const hasApproval = hasPlanApprovedMarker(body);
   const hasPlanEntry = PLAN_ENTRY_RE.test(body);
 
   // Both markers present — true no-op. (Diagnostic fast-path; the closure
   // below would re-check the FRESH base anyway. The audit still runs here:
   // this is the repair path when the body write succeeded but the comment post
   // failed on a prior invocation.
-  const frozenForecastRecordId = readPlanApprovedForecastRecordId(body);
   const approvalComplete =
     !adaptiveConfigured ||
     (frozenForecastRecordId !== null && frozenForecastRecordId === forecastRecordId);
