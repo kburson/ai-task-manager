@@ -144,8 +144,11 @@ async function defaultCreateIssueComment({ repository, issue, body }) {
 function plannedAppendix(nodes, issueNumber) {
   const marker = new RegExp(`<!--\\s*aitm-refined-estimate:\\s*${issueNumber}\\s*-->`);
   const body = nodes.find((node) => marker.test(node.body))?.body ?? '';
-  const size = body.match(/^\|\s*Size\s*\|\s*([^|]+)\|\s*([^|]+)\|/m);
-  const estimate = body.match(/^\|\s*Estimate \(h\)\s*\|\s*([^|]+)\|\s*([^|]+)\|/m);
+  const appendixStart = body.search(/^###\s+Planned Estimate\s*$/m);
+  if (appendixStart < 0) return null;
+  const appendix = body.slice(appendixStart);
+  const size = appendix.match(/^\|\s*Size\s*\|\s*([^|]+)\|\s*([^|]+)\|/m);
+  const estimate = appendix.match(/^\|\s*Estimate \(h\)\s*\|\s*([^|]+)\|\s*([^|]+)\|/m);
   if (!size || !estimate) return null;
   const refineHours = Number(estimate[1].trim());
   const planHours = Number(estimate[2].trim());

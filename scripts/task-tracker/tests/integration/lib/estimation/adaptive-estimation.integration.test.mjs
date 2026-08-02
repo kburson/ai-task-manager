@@ -413,7 +413,7 @@ test('production Plan runtime converges board, body, history, forecast, and read
   let issueBody =
     '## Story\n\n<!-- aitm-fields: {"schema":1,"values":{"size":"M","estimate":8}} -->\n';
   let refineBody =
-    '### 🛠 Refine estimate\n\n<!-- aitm-refined-estimate: 1091 -->\n\nProvisional values.\n';
+    '### 🛠 Refine estimate\n\n<!-- aitm-refined-estimate: 1091 -->\n\n| Field | Value | Rationale |\n|---|---|---|\n| Size | M | Provisional scope |\n| Estimate | 8h | Provisional scope |\n';
   const recordComments = [];
   const parsedRecords = [];
   const commentNode = (id, issue, body) => ({
