@@ -9,6 +9,12 @@
 import { createHash } from 'node:crypto';
 
 import { canonicalRecordJson } from './canonical-json.mjs';
+import {
+  FORECAST_RECORD_TYPE,
+  validateEstimationForecast,
+} from '../estimation/forecast-record.mjs';
+import { OUTCOME_RECORD_TYPE, validateEstimationOutcome } from '../estimation/outcome-record.mjs';
+import { RUBRIC_RECORD_TYPE, validateEstimationRubric } from '../estimation/rubric-record.mjs';
 
 const RECORD_SCHEMA = 'aitm.record/v1';
 const ROOT_KEYS = [
@@ -203,6 +209,13 @@ function validateEnvelope(envelope) {
   }
   assertNoSecretKeys(envelope.payload);
   assertNoCredentialValues(envelope);
+  if (envelope.recordType === FORECAST_RECORD_TYPE) {
+    validateEstimationForecast(envelope.payload, { expectedIssue: envelope.issue });
+  } else if (envelope.recordType === OUTCOME_RECORD_TYPE) {
+    validateEstimationOutcome(envelope.payload, { expectedIssue: envelope.issue });
+  } else if (envelope.recordType === RUBRIC_RECORD_TYPE) {
+    validateEstimationRubric(envelope.payload);
+  }
   if (envelope.payloadHash !== hashRecordPayload(envelope.payload)) {
     throw recordError('hash-mismatch');
   }

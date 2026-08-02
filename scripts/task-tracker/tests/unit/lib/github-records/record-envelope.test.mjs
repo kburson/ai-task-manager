@@ -209,6 +209,21 @@ test('schema dispatch and common field validation fail closed', () => {
     assert.throws(() => render(overrides), expectedError);
   }
 });
+
+test('known estimation record types fail closed when their payload schema is unknown', () => {
+  const estimationPayload = { schema: 'aitm.estimation-forecast/v2', issue: 1069 };
+  assert.throws(
+    () =>
+      renderAitmRecord({
+        envelope: envelope({
+          recordType: 'estimation-forecast',
+          payload: estimationPayload,
+          payloadHash: hashRecordPayload(estimationPayload),
+        }),
+      }),
+    /estimation-record:forecast-schema/
+  );
+});
 test('rendering rejects recursively nested secret-bearing keys and credential values', () => {
   const secretKeys = `
     github_token_backup my_refresh_token token_env_name database_credentials session_credentials client_secret_backup database_password authorizationHeader authorizationBackup sessionCookie
