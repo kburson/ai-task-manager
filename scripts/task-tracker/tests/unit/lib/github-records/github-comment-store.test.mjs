@@ -558,7 +558,13 @@ test('incremental listing applies an exclusive boundary and normalizes transport
 
 test('incremental listing rejects malformed AITM-like record openers', async () => {
   const { listIssueCommentsSince } = commentStore;
-  for (const bodyValue of ['<!-- aitm-record-->', '<!-- aitm-record{} -->', '<!-- aitm-record']) {
+  for (const bodyValue of [
+    '<!-- aitm-record-->',
+    '<!-- aitm-record{} -->',
+    '<!-- aitm-record',
+    '<!-- AITM-record -->',
+    '<!-- aitm-record_v1 -->',
+  ]) {
     await assert.rejects(
       listIssueCommentsSince({
         since: '2026-08-01T00:00:00.000Z',
