@@ -98,5 +98,5 @@ All discovered feature files remain below the 800-code-line hard cap:
 
 The layout meta-test recognizes the lane-owned `fixtures/` bucket, verifies feature
 owners remain in the unit lane, and continues to reject loose lane-root files, invalid
-subsystem placement, dropped/relaned baseline tests, partition divergence, and lost
+subsystem placement, dropped or lane-changed baseline tests, partition divergence, and lost
 git-move provenance. Production-file limits are unchanged.

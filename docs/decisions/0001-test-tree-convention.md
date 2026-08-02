@@ -141,7 +141,7 @@ share one feature owner and lifecycle. When it exceeds 800 code lines:
 
 Do not split simply to satisfy the cap if no cohesive sub-suite can be identified.
 Prefer splitting at natural seams: different feature owners, incompatible fixture
-lifecycles, concurrency-sensitive resources, or failure scopes that need independent
+life cycles, concurrency-sensitive resources, or failure scopes that need independent
 diagnosis. Assertion shape or a shared mock alone is not a semantic split trigger.
 
 #### Feature-oriented consolidation (amended by #1090)
