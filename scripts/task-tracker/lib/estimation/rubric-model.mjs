@@ -78,13 +78,20 @@ function weightedRobustMean(values, fallback) {
   return round(weighted / weights);
 }
 
+function repeatedVerificationPotentialMs(command) {
+  const seenShas = new Set();
+  return command.executions.reduce((sum, execution) => {
+    if (execution.reusedFrom !== null) return sum;
+    if (seenShas.has(execution.commitSha)) return sum + execution.durationMs;
+    seenShas.add(execution.commitSha);
+    return sum;
+  }, 0);
+}
+
 function repeatedVerificationWasteHours(payload) {
   const potentialMs = payload.actual.commands
-    .filter((command) => command.classification.startsWith('test-') && command.attempts > 1)
-    .reduce(
-      (sum, command) => sum + (command.durationMs * (command.attempts - 1)) / command.attempts,
-      0
-    );
+    .filter((command) => command.classification.startsWith('test-'))
+    .reduce((sum, command) => sum + repeatedVerificationPotentialMs(command), 0);
   return Math.min(potentialMs / 3_600_000, payload.costClassification.avoidableProcessWasteHours);
 }
 
@@ -132,10 +139,8 @@ export function updateEstimationRubric({
     const testCommands = payload.actual.commands.filter((command) =>
       command.classification.startsWith('test-')
     );
-    const repeatPotentials = testCommands.map((command) =>
-      command.attempts > 1
-        ? (command.durationMs * (command.attempts - 1)) / command.attempts / 60_000
-        : 0
+    const repeatPotentials = testCommands.map(
+      (command) => repeatedVerificationPotentialMs(command) / 60_000
     );
     const totalRepeatPotential = repeatPotentials.reduce((sum, value) => sum + value, 0);
     const classifiedWasteMinutes = repeatedVerificationWasteHours(payload) * 60;

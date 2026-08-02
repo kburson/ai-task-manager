@@ -581,6 +581,55 @@ test('cascade: outcome failure leaves child in Review and parent OPEN and active
   resetExit();
 });
 
+test('cascade: queued terminal timing leaves child in Review and retains evidence for retry', async () => {
+  resetExit();
+  const calls = [];
+  const r = await run({
+    over: {
+      SKIP_NETWORK: false,
+      rest: ['#5', '--force'],
+      getIssueBoardState: async () => 'review',
+      fetchSubIssues: async () => ['101'],
+      safePostTiming: async (target) => {
+        calls.push(`timing ${target}`);
+        return { ok: false, queued: true, err: 'network down' };
+      },
+      flushQueueFor: async (target) => {
+        calls.push(`flush ${target}`);
+        return { delivered: 0, pending: 1 };
+      },
+      estimationOutcomeWriter: {
+        ensure: async ({ issueNumber }) => {
+          calls.push(`outcome ${issueNumber}`);
+          return { status: 'written' };
+        },
+      },
+      runMoveState: async (issueNumber, state) => {
+        calls.push(`move ${issueNumber} ${state}`);
+        return { ok: true, benign: false };
+      },
+      pexec: async (cmd, args) => {
+        const rendered = `${cmd} ${args.join(' ')}`;
+        calls.push(rendered);
+        if (cmd === 'gh' && rendered.includes('issue view')) {
+          return rendered.includes('--jq')
+            ? { stdout: APPROVED_BODY, stderr: '' }
+            : { stdout: JSON.stringify({ body: APPROVED_BODY }), stderr: '' };
+        }
+        return { stdout: '', stderr: '' };
+      },
+    },
+  });
+  assert.equal(exitOf(r), 1);
+  assert.equal(r.finalState.active, '#5');
+  assert.ok(calls.includes('timing #101'));
+  assert.ok(!calls.includes('outcome 101'));
+  assert.ok(!calls.includes('move 101 done'));
+  assert.ok(!calls.some((call) => /issue close (101|5)/.test(call)));
+  assert.match(r.stderr, /terminal timing issue:wrap was not durably posted/);
+  resetExit();
+});
+
 test('cascade: each child outcome uses its own resolved worktree', async () => {
   const calls = [];
   const r = await run({

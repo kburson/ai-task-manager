@@ -1,5 +1,6 @@
 // @story #1091
 import { strict as assert } from 'node:assert';
+import { readFileSync } from 'node:fs';
 import test from 'node:test';
 
 import {
@@ -14,6 +15,7 @@ import {
   RUBRIC_RECORD_TYPE,
   validateEstimationRubric,
 } from '../../../../lib/estimation/rubric-record.mjs';
+import { createGitHubEstimationRecordIo } from '../../../../lib/estimation/runtime-adapter.mjs';
 import {
   renderEstimationForecast,
   renderEstimationOutcome,
@@ -34,6 +36,53 @@ const ids = {
   rubric: '01J00000000000000000000102',
   grant: '01J00000000000000000000103',
 };
+const commandExecution = {
+  receiptId: '01J00000000000000000000120',
+  stage: 'test',
+  commitSha: 'a'.repeat(40),
+  command: 'npm',
+  args: ['run', 'test:unit'],
+  exitCode: 0,
+  durationMs: 1000,
+  reusedFrom: null,
+};
+
+test('production estimation transport uses the #1070 store without direct REST comment code', () => {
+  const source = readFileSync(
+    new URL('../../../../lib/estimation/runtime-adapter.mjs', import.meta.url),
+    'utf8'
+  );
+  assert.doesNotMatch(source, /repos\/\$\{repository\}\/issues\/\$\{issue\}\/comments/);
+  assert.match(source, /mutation\s+AitmEstimationAddComment/);
+});
+
+test('production estimation transport resolves the issue node and writes through GraphQL', async () => {
+  const calls = [];
+  const io = createGitHubEstimationRecordIo({
+    graphql: async ({ query, variables }) => {
+      calls.push({ query, variables });
+      if (query.includes('AitmEstimationIssueNode')) {
+        return { data: { repository: { issue: { id: 'I_1091' } } } };
+      }
+      return { data: { addComment: { commentEdge: { node: { id: 'IC_record' } } } } };
+    },
+  });
+
+  const result = await io.rest.createIssueComment({
+    repository: 'kburson/ai-task-manager',
+    issue: 1091,
+    body: 'immutable record',
+  });
+
+  assert.deepEqual(result, { node_id: 'IC_record' });
+  assert.deepEqual(calls[0].variables, {
+    owner: 'kburson',
+    name: 'ai-task-manager',
+    issue: 1091,
+  });
+  assert.deepEqual(calls[1].variables, { subjectId: 'I_1091', body: 'immutable record' });
+  assert.match(calls[1].query, /mutation\s+AitmEstimationAddComment/);
+});
 
 test('record construction generates canonical ULIDs and validates the complete envelope', () => {
   const randomBytesFn = (length) => Buffer.alloc(length, 0x2a);
@@ -103,7 +152,14 @@ const outcome = {
     engagedHours: 23,
     stages: { plan: 2, develop: 16, test: 3, review: 2 },
     reviewFixCycles: 1,
-    commands: [{ classification: 'test-unit', durationMs: 1000, attempts: 1 }],
+    commands: [
+      {
+        classification: 'test-unit',
+        durationMs: 1000,
+        attempts: 1,
+        executions: [commandExecution],
+      },
+    ],
   },
   landscape: {
     filesChanged: 18,
@@ -197,7 +253,14 @@ test('outcomes require a frozen forecast and coherent non-negative actuals', () 
       ...outcome,
       actual: {
         ...outcome.actual,
-        commands: [{ classification: 'test', durationMs: 1.5, attempts: 1 }],
+        commands: [
+          {
+            classification: 'test',
+            durationMs: 1.5,
+            attempts: 1,
+            executions: [commandExecution],
+          },
+        ],
       },
     },
   ];

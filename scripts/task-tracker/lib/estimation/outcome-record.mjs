@@ -2,6 +2,7 @@ export const OUTCOME_RECORD_TYPE = 'estimation-outcome';
 export const OUTCOME_SCHEMA = 'aitm.estimation-outcome/v1';
 
 const RECORD_ID_RE = /^[0-7][0-9A-HJKMNP-TV-Z]{25}$/;
+const SHA_RE = /^[0-9a-f]{40}$/;
 function fail(category) {
   throw new TypeError(`estimation-record:${category}`);
 }
@@ -84,11 +85,51 @@ export function validateEstimationOutcome(payload, { expectedIssue } = {}) {
     fail('outcome-stage-total');
   if (!Array.isArray(payload.actual.commands)) fail('outcome-commands');
   for (const command of payload.actual.commands) {
-    exact(command, ['attempts', 'classification', 'durationMs'], 'outcome-command');
+    exact(command, ['attempts', 'classification', 'durationMs', 'executions'], 'outcome-command');
     if (typeof command.classification !== 'string' || command.classification.trim() === '')
       fail('outcome-command-classification');
     finite(command.durationMs, 'outcome-command-duration', { integer: true });
-    finite(command.attempts, 'outcome-command-attempts', { integer: true, minimum: 1 });
+    finite(command.attempts, 'outcome-command-attempts', { integer: true });
+    if (!Array.isArray(command.executions)) fail('outcome-command-executions');
+    let actualAttempts = 0;
+    let actualDurationMs = 0;
+    for (const execution of command.executions) {
+      exact(
+        execution,
+        [
+          'args',
+          'command',
+          'commitSha',
+          'durationMs',
+          'exitCode',
+          'receiptId',
+          'reusedFrom',
+          'stage',
+        ],
+        'outcome-command-execution'
+      );
+      if (!RECORD_ID_RE.test(execution.receiptId)) fail('outcome-command-receipt');
+      if (typeof execution.stage !== 'string' || execution.stage.trim() === '')
+        fail('outcome-command-stage');
+      if (!SHA_RE.test(execution.commitSha)) fail('outcome-command-sha');
+      if (typeof execution.command !== 'string' || execution.command.trim() === '')
+        fail('outcome-command-name');
+      if (
+        !Array.isArray(execution.args) ||
+        execution.args.some((argument) => typeof argument !== 'string')
+      )
+        fail('outcome-command-args');
+      finite(execution.exitCode, 'outcome-command-exit', { integer: true, minimum: -255 });
+      finite(execution.durationMs, 'outcome-command-execution-duration', { integer: true });
+      if (execution.reusedFrom !== null && !RECORD_ID_RE.test(execution.reusedFrom))
+        fail('outcome-command-reuse');
+      if (execution.reusedFrom === null) {
+        actualAttempts += 1;
+        actualDurationMs += execution.durationMs;
+      }
+    }
+    if (command.attempts !== actualAttempts || command.durationMs !== actualDurationMs)
+      fail('outcome-command-total');
   }
 
   exact(

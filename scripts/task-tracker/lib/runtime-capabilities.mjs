@@ -39,6 +39,7 @@ export const CAPABILITY_SURFACES = {
     'safePostTiming',
     'safeRecordSessionRef',
     'drainQueueIfAny',
+    'flushQueueFor',
     'flushAndForgetQueueFor',
     'flushActiveToGH',
   ],

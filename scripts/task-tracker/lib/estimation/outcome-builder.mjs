@@ -38,6 +38,7 @@ export function buildEstimationOutcome({
     classification: command.classification,
     durationMs: command.durationMs,
     attempts: command.attempts,
+    executions: structuredClone(command.executions ?? []),
   }));
   const avoidableProcessWasteHours = cost.avoidableProcessWasteHours ?? 0;
   // Necessary work requires affirmative classification. Any engaged time not

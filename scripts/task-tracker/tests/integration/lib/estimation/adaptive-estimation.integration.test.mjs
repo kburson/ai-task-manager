@@ -200,7 +200,35 @@ test('completed outcome deterministically updates the next rubric and AI forecas
     timing: {
       stagesMs: { plan: 900_000, develop: 9_000_000, test: 900_000, review: 900_000 },
     },
-    verification: [{ classification: 'test-unit', durationMs: 120_000, attempts: 2 }],
+    verification: [
+      {
+        classification: 'test-unit',
+        durationMs: 120_000,
+        attempts: 2,
+        executions: [
+          {
+            receiptId: '01J00000000000000000000820',
+            stage: 'develop-final',
+            commitSha: 'a'.repeat(40),
+            command: 'npm',
+            args: ['run', 'test:unit'],
+            exitCode: 0,
+            durationMs: 60_000,
+            reusedFrom: null,
+          },
+          {
+            receiptId: '01J00000000000000000000821',
+            stage: 'review',
+            commitSha: 'a'.repeat(40),
+            command: 'npm',
+            args: ['run', 'test:unit'],
+            exitCode: 0,
+            durationMs: 60_000,
+            reusedFrom: null,
+          },
+        ],
+      },
+    ],
     diff: {
       filesChanged: 8,
       modules: ['estimation'],

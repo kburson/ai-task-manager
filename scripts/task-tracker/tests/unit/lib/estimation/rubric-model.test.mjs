@@ -10,6 +10,30 @@ import {
 
 const forecastId = '01J00000000000000000000200';
 const outcomeId = '01J00000000000000000000201';
+let executionSequence = 600;
+
+function verificationCommand(
+  classification,
+  durations,
+  commitShas = durations.map(() => 'a'.repeat(40))
+) {
+  const executions = durations.map((durationMs, index) => ({
+    receiptId: `01J00000000000000000000${String(executionSequence++).padStart(3, '0')}`,
+    stage: index === 0 ? 'develop-final' : 'review',
+    commitSha: commitShas[index],
+    command: 'npm',
+    args: ['run', `test:${classification.replace(/^test-/, '')}`],
+    exitCode: 0,
+    durationMs,
+    reusedFrom: null,
+  }));
+  return {
+    classification,
+    durationMs: durations.reduce((sum, duration) => sum + duration, 0),
+    attempts: durations.length,
+    executions,
+  };
+}
 
 function outcome(overrides = {}) {
   return {
@@ -151,7 +175,7 @@ test('lane and sandbox costs use their own observed sample counts', () => {
   const unit = outcome({
     actual: {
       ...outcome().payload.actual,
-      commands: [{ classification: 'test-unit', durationMs: 120_000, attempts: 1 }],
+      commands: [verificationCommand('test-unit', [120_000])],
     },
     landscape: { ...outcome().payload.landscape, lanes: ['unit', 'sandbox'] },
   });
@@ -161,7 +185,7 @@ test('lane and sandbox costs use their own observed sample counts', () => {
       ...outcome().payload.actual,
       stages: { plan: 2, develop: 4, test: 2, review: 1 },
       engagedHours: 9,
-      commands: [{ classification: 'test-integration', durationMs: 300_000, attempts: 1 }],
+      commands: [verificationCommand('test-integration', [300_000])],
     },
     variance: { vsAiP50Hours: 4, vsAiP80Hours: 1 },
     costClassification: {
@@ -191,7 +215,7 @@ test('avoidable repeated verification is excluded from learned human repository 
     actual: {
       ...outcome().payload.actual,
       stages: { plan: 1, develop: 4, test: 1, review: 1 },
-      commands: [{ classification: 'test-unit', durationMs: 3_600_000, attempts: 1 }],
+      commands: [verificationCommand('test-unit', [3_600_000])],
     },
     costClassification: {
       necessaryHours: 7,
@@ -206,7 +230,7 @@ test('avoidable repeated verification is excluded from learned human repository 
       ...outcome().payload.actual,
       engagedHours: 8,
       stages: { plan: 1, develop: 4, test: 2, review: 1 },
-      commands: [{ classification: 'test-unit', durationMs: 7_200_000, attempts: 2 }],
+      commands: [verificationCommand('test-unit', [3_600_000, 3_600_000])],
     },
     variance: { vsAiP50Hours: 3, vsAiP80Hours: 0 },
     costClassification: {

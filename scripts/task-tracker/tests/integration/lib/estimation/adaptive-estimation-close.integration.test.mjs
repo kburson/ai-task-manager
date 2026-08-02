@@ -2,9 +2,79 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { createEstimationOutcomeRuntime } from '../../../../lib/estimation/runtime-adapter.mjs';
+import {
+  costEvidence,
+  createEstimationOutcomeRuntime,
+  verificationEvidence,
+} from '../../../../lib/estimation/runtime-adapter.mjs';
 
 const repository = 'kburson/ai-task-manager';
+
+test('verification outcomes retain exact SHA and reuse lineage and only same-SHA reruns are waste', () => {
+  const body = [
+    {
+      receiptId: '01J00000000000000000000901',
+      stage: 'develop-final',
+      commitSha: 'a'.repeat(40),
+      commands: [{ classification: 'test-unit', durationMs: 60_000, exitCode: 0 }],
+    },
+    {
+      receiptId: '01J00000000000000000000902',
+      stage: 'test',
+      commitSha: 'a'.repeat(40),
+      commands: [
+        {
+          classification: 'test-unit',
+          durationMs: 60_000,
+          exitCode: 0,
+          reusedFrom: '01J00000000000000000000901',
+        },
+      ],
+    },
+    {
+      receiptId: '01J00000000000000000000903',
+      stage: 'review',
+      commitSha: 'b'.repeat(40),
+      commands: [{ classification: 'test-unit', durationMs: 90_000, exitCode: 0 }],
+    },
+    {
+      receiptId: '01J00000000000000000000904',
+      stage: 'review-probe',
+      commitSha: 'b'.repeat(40),
+      commands: [{ classification: 'test-unit', durationMs: 30_000, exitCode: 0 }],
+    },
+  ]
+    .map(
+      (receipt) =>
+        `<!-- aitm-verification-receipt stage="${receipt.stage}" data="${Buffer.from(JSON.stringify(receipt)).toString('base64url')}" -->`
+    )
+    .join('\n');
+
+  const [command] = verificationEvidence(body);
+  assert.equal(command.attempts, 3);
+  assert.equal(command.durationMs, 180_000);
+  assert.deepEqual(
+    command.executions.map(({ stage, commitSha, reusedFrom }) => ({
+      stage,
+      commitSha,
+      reusedFrom,
+    })),
+    [
+      { stage: 'develop-final', commitSha: 'a'.repeat(40), reusedFrom: null },
+      {
+        stage: 'test',
+        commitSha: 'a'.repeat(40),
+        reusedFrom: '01J00000000000000000000901',
+      },
+      { stage: 'review', commitSha: 'b'.repeat(40), reusedFrom: null },
+      { stage: 'review-probe', commitSha: 'b'.repeat(40), reusedFrom: null },
+    ]
+  );
+  assert.deepEqual(costEvidence([command]), {
+    avoidableProcessWasteHours: 0.0083,
+    drivers: [{ kind: 'repeated-test-unit-same-sha', hours: 0.0083 }],
+  });
+});
 
 test('epic child outcome discovery paginates children and delegates full comment reads to the record store', async () => {
   const childIds = ['01J00000000000000000000811', '01J00000000000000000000812'];

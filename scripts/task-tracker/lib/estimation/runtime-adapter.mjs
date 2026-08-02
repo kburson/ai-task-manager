@@ -3,7 +3,6 @@ import { promisify } from 'node:util';
 
 import {
   fieldOptionMap,
-  gh,
   gql,
   projectItemForIssue,
   writeProjectFieldValue,
@@ -177,6 +176,20 @@ const CHILD_OUTCOMES_QUERY = `
     }
   }
 `;
+const ISSUE_NODE_QUERY = `
+  query AitmEstimationIssueNode($owner: String!, $name: String!, $issue: Int!) {
+    repository(owner: $owner, name: $name) {
+      issue(number: $issue) { id }
+    }
+  }
+`;
+const ADD_COMMENT_MUTATION = `
+  mutation AitmEstimationAddComment($subjectId: ID!, $body: String!) {
+    addComment(input: { subjectId: $subjectId, body: $body }) {
+      commentEdge { node { id } }
+    }
+  }
+`;
 
 function fail(category) {
   throw new Error(`estimation-runtime:${category}`);
@@ -192,12 +205,27 @@ function defaultGraphql({ query, variables }) {
   return gql(query, variables).then((data) => ({ data }));
 }
 
-async function defaultCreateIssueComment({ repository, issue, body }) {
-  const output = await gh(
-    ['api', `repos/${repository}/issues/${issue}/comments`, '--method', 'POST', '--input', '-'],
-    { input: JSON.stringify({ body }) }
-  );
-  return JSON.parse(output);
+function createGraphqlIssueComment(graphql) {
+  return async ({ repository, issue, body }) => {
+    const { owner, name } = splitRepository(repository);
+    const issueResponse = await graphql({
+      query: ISSUE_NODE_QUERY,
+      variables: { owner, name, issue },
+    });
+    if (Array.isArray(issueResponse?.errors) && issueResponse.errors.length > 0)
+      fail('comment-issue');
+    const subjectId = issueResponse?.data?.repository?.issue?.id;
+    if (typeof subjectId !== 'string' || subjectId === '') fail('comment-issue');
+    const mutationResponse = await graphql({
+      query: ADD_COMMENT_MUTATION,
+      variables: { subjectId, body },
+    });
+    if (Array.isArray(mutationResponse?.errors) && mutationResponse.errors.length > 0)
+      fail('comment-write');
+    const nodeId = mutationResponse?.data?.addComment?.commentEdge?.node?.id;
+    if (typeof nodeId !== 'string' || nodeId === '') fail('comment-write');
+    return { node_id: nodeId };
+  };
 }
 
 function plannedAppendix(nodes, issueNumber) {
@@ -317,7 +345,7 @@ function forecastGenerationHash(payload) {
 }
 
 export function createGitHubEstimationRecordIo({ graphql = defaultGraphql, rest } = {}) {
-  const resolvedRest = rest ?? { createIssueComment: defaultCreateIssueComment };
+  const resolvedRest = rest ?? { createIssueComment: createGraphqlIssueComment(graphql) };
   return {
     graphql,
     rest: resolvedRest,
@@ -749,44 +777,56 @@ export function createAdaptivePlanRuntime({ cfg, deps = {}, adoptLegacyBaseline 
   };
 }
 
-function verificationEvidence(body) {
+export function verificationEvidence(body) {
   const groups = new Map();
   for (const receipt of parseVerificationReceipts(body)) {
     for (const command of receipt.commands ?? []) {
       if (!groups.has(command.classification)) groups.set(command.classification, []);
-      groups.get(command.classification).push(command);
+      groups.get(command.classification).push({
+        receiptId: receipt.receiptId,
+        stage: receipt.stage,
+        commitSha: receipt.commitSha,
+        command: command.command,
+        args: command.args,
+        exitCode: command.exitCode,
+        durationMs: command.durationMs,
+        reusedFrom: command.reusedFrom ?? null,
+      });
     }
   }
-  return [...groups.entries()].map(([classification, commands]) => {
-    const executions = commands.filter((command) => command.reusedFrom === undefined);
-    const actual = executions.length > 0 ? executions : [commands[0]];
+  return [...groups.entries()].map(([classification, decisions]) => {
+    const executions = decisions.filter((decision) => decision.reusedFrom === null);
     return {
       classification,
-      durationMs: actual.reduce((sum, command) => sum + Number(command.durationMs ?? 0), 0),
-      attempts: actual.length,
+      durationMs: executions.reduce((sum, execution) => sum + Number(execution.durationMs ?? 0), 0),
+      attempts: executions.length,
+      executions: decisions,
     };
   });
 }
 
-function costEvidence(verification) {
-  const repeated = verification.filter((command) => command.attempts > 1);
-  const avoidableProcessWasteHours = Number(
-    repeated
-      .reduce(
-        (sum, command) =>
-          sum + (command.durationMs * (command.attempts - 1)) / command.attempts / 3_600_000,
-        0
-      )
-      .toFixed(4)
-  );
+export function costEvidence(verification) {
+  const drivers = [];
+  let avoidableMs = 0;
+  for (const command of verification) {
+    const seenShas = new Set();
+    let repeatedMs = 0;
+    for (const execution of command.executions ?? []) {
+      if (execution.reusedFrom !== null) continue;
+      if (seenShas.has(execution.commitSha)) repeatedMs += execution.durationMs;
+      else seenShas.add(execution.commitSha);
+    }
+    if (repeatedMs === 0) continue;
+    avoidableMs += repeatedMs;
+    drivers.push({
+      kind: `repeated-${command.classification}-same-sha`,
+      hours: Number((repeatedMs / 3_600_000).toFixed(4)),
+    });
+  }
+  const avoidableProcessWasteHours = Number((avoidableMs / 3_600_000).toFixed(4));
   return {
     avoidableProcessWasteHours,
-    drivers: repeated.map((command) => ({
-      kind: `repeated-${command.classification}`,
-      hours: Number(
-        ((command.durationMs * (command.attempts - 1)) / command.attempts / 3_600_000).toFixed(4)
-      ),
-    })),
+    drivers,
   };
 }
 

@@ -51,6 +51,11 @@ test('AC1: buildContext decomposes into named capability objects', () => {
       ctx.drainQueueIfAny,
       'grouped drainQueueIfAny === flat drainQueueIfAny'
     );
+    assert.equal(
+      ctx.timingRecorder.flushQueueFor,
+      ctx.flushQueueFor,
+      'grouped strict flushQueueFor === flat flushQueueFor'
+    );
     // issueBodyMutator is the one synthesized capability (a narrow wrapper).
     assert.equal(typeof ctx.issueBodyMutator.mutate, 'function');
   } finally {
@@ -78,6 +83,7 @@ test('AC2: assembleCapabilities groups flat members by reference', () => {
     safePostTiming: async () => ({ ok: true }),
     safeRecordSessionRef: async () => ({ ok: true }),
     drainQueueIfAny: async () => {},
+    flushQueueFor: async () => ({ delivered: 0, pending: 0 }),
     flushAndForgetQueueFor: async () => ({ delivered: 0, discarded: 0 }),
     flushActiveToGH: async () => ({}),
     runLogIssueTime: async () => {},

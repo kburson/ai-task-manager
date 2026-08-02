@@ -15,13 +15,40 @@ const forecast = {
 const timing = {
   stagesMs: { plan: 3_600_000, develop: 7_200_000, test: 3_600_000, review: 3_600_000 },
 };
+const verification = {
+  classification: 'test-unit',
+  durationMs: 1200,
+  attempts: 2,
+  executions: [
+    {
+      receiptId: '01J00000000000000000000810',
+      stage: 'develop-final',
+      commitSha: 'a'.repeat(40),
+      command: 'npm',
+      args: ['run', 'test:unit'],
+      exitCode: 0,
+      durationMs: 600,
+      reusedFrom: null,
+    },
+    {
+      receiptId: '01J00000000000000000000811',
+      stage: 'review',
+      commitSha: 'a'.repeat(40),
+      command: 'npm',
+      args: ['run', 'test:unit'],
+      exitCode: 0,
+      durationMs: 600,
+      reusedFrom: null,
+    },
+  ],
+};
 
 test('completion outcome uses timing rows, exact verification, review, diff, and cost evidence', () => {
   const outcome = buildEstimationOutcome({
     issue: 1091,
     forecast,
     timing,
-    verification: [{ classification: 'test-unit', durationMs: 1200, attempts: 2 }],
+    verification: [verification],
     diff: { filesChanged: 8, modules: ['estimation'], lanes: ['unit'], dependencyBreadth: 2 },
     review: { fixCycles: 1 },
     cost: {

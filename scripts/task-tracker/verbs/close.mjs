@@ -1168,8 +1168,9 @@ export async function verbClose(ctx) {
           try {
             // Cascade close: per-child body not fetched here; activeSec=0 is
             // honest because no per-child timing context is loaded.
-            await safePostTiming(
-              `#${child.num}`,
+            const childTarget = `#${child.num}`;
+            const terminalTiming = await safePostTiming(
+              childTarget,
               br({
                 ts: nowIso(),
                 event: _PEcascade.done.enter.event,
@@ -1183,6 +1184,28 @@ export async function verbClose(ctx) {
                 description: `${_PEcascade.done.enter.description} (cascade closed by epic)`,
               })
             );
+            if (
+              terminalTiming === false ||
+              terminalTiming?.ok === false ||
+              terminalTiming?.queued
+            ) {
+              console.error(
+                `  ⛔ Could not prepare #${child.num} for close: terminal timing issue:wrap was not durably posted`
+              );
+              process.exitCode = 1;
+              return;
+            }
+            let childFlush;
+            try {
+              childFlush = await flushCloseTimingOrThrow({
+                closeTarget: childTarget,
+                flushQueueFor,
+              });
+            } catch (err) {
+              console.error(`  ⛔ Could not prepare #${child.num} for close: ${err.message}`);
+              process.exitCode = 1;
+              return;
+            }
             // Cascaded children are independently estimated stories. Freeze
             // their completion outcome after the close-time timing row and
             // before any terminal board/disposition/issue mutation, exactly as
@@ -1261,11 +1284,9 @@ export async function verbClose(ctx) {
             } catch {
               /* best-effort: cleanup; failure is non-fatal */
             }
-            const childFlush = await flushAndForgetQueueFor(`#${child.num}`);
-            const childSuffix =
-              childFlush.delivered || childFlush.discarded
-                ? ` (queue: delivered ${childFlush.delivered}, discarded ${childFlush.discarded})`
-                : '';
+            const childSuffix = childFlush?.delivered
+              ? ` (queue: delivered ${childFlush.delivered})`
+              : '';
             console.log(`  ✓ #${child.num} closed${childSuffix}`);
           } catch (err) {
             console.warn(`  ⚠ Could not close #${child.num}: ${err.message}`);
