@@ -270,3 +270,8 @@ unbypassable
 monotonize
 chrono
 multistep
+comparables
+convergently
+CROCKFORD
+ABCDEFGHJKMNPQRSTVWXYZ
+HJKMNP
