@@ -106,6 +106,9 @@ export const DEFAULTS = {
   // (lib/release-detection.mjs). Off by default so TBD / GitFlow / release-branch
   // repos all attribute identically until a project explicitly opts in.
   releaseDetection: false,
+  // #1091 — governed GitHub issue that stores versioned estimation rubric
+  // snapshots. Zero explicitly means the adaptive rubric is not configured.
+  estimationRubricIssue: 0,
 };
 
 export const TYPES = {
@@ -158,6 +161,7 @@ export const TYPES = {
   pauseThresholdSeconds: 'integer',
   discussLabel: 'string',
   releaseDetection: 'boolean',
+  estimationRubricIssue: 'integer',
 };
 
 function defaultPaths() {
@@ -300,6 +304,9 @@ function coerce(key, raw) {
   }
   if (t === 'integer') {
     const n = Number(raw);
+    if (key === 'estimationRubricIssue' && (!Number.isInteger(n) || n < 0)) {
+      throw new Error(`value for ${key} must be zero or a positive integer, got: ${raw}`);
+    }
     if (!Number.isFinite(n) || !Number.isInteger(n)) {
       throw new Error(`value for ${key} must be an integer, got: ${raw}`);
     }
