@@ -28,7 +28,6 @@ import {
   computePhaseCloseDelta,
   formatDurationSeconds,
   formatRowSecMarker,
-  parseDurationSeconds,
   parseRowSecMarker,
 } from './timing-rows.mjs';
 import {
@@ -103,12 +102,7 @@ function parseWordsCell(cell) {
 
 function isZeroDurationCell(cell) {
   const value = String(cell ?? '').trim();
-  if (value === '' || value === '0') return true;
-  try {
-    return parseDurationSeconds(value) === 0;
-  } catch {
-    return false;
-  }
+  return value === '' || value === formatDurationSeconds(0);
 }
 
 function isZeroWordDeltaCell(cell) {

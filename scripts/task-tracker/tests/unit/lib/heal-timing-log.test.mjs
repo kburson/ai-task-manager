@@ -301,6 +301,8 @@ test('stop/resume healing preserves every conservative guard', async (t) => {
   const cases = [
     ['active cell carries value', { ...baseStop, active: '0h 00m 01s' }, baseResume],
     ['idle cell carries value', { ...baseStop, idle: '0h 00m 01s' }, baseResume],
+    ['active cell uses non-canonical zero', { ...baseStop, active: '0' }, baseResume],
+    ['idle cell uses non-canonical zero', { ...baseStop, idle: '0' }, baseResume],
     ['row-sec active carries value', { ...baseStop, rowActive: 1 }, baseResume],
     ['row-sec idle carries value', baseStop, { ...baseResume, rowIdle: 1 }],
     ['word delta carries value', { ...baseStop, deltaWords: '1' }, baseResume],
@@ -465,6 +467,8 @@ test('review pass healing preserves repeated outcomes whose zero value is unprov
   const cases = [
     ['active value', noiseRow({ ...baseDuplicate, active: '0h 00m 01s', rowActive: 1 })],
     ['idle value', noiseRow({ ...baseDuplicate, idle: '0h 00m 01s', rowIdle: 1 })],
+    ['non-canonical active zero', noiseRow({ ...baseDuplicate, active: '0' })],
+    ['non-canonical idle zero', noiseRow({ ...baseDuplicate, idle: '0' })],
     ['word delta', noiseRow({ ...baseDuplicate, deltaWords: '1' })],
     ['full word delta', noiseRow({ ...baseDuplicate, deltaWordsFull: '1' })],
     ['changed word marker', noiseRow({ ...baseDuplicate, wordMarker: '101' })],
