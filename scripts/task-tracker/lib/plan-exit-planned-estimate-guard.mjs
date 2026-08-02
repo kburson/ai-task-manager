@@ -66,7 +66,9 @@ export const planExitPlannedEstimateGuard = {
       };
     }
     const ready = String(ctx.body ?? '').match(FORECAST_READY_RE)?.[1] ?? null;
-    if (ready !== null) {
+    const adaptiveConfigured =
+      Number.isInteger(ctx.cfg.estimationRubricIssue) && ctx.cfg.estimationRubricIssue > 0;
+    if (ready !== null || adaptiveConfigured) {
       const loadProjection =
         ctx.deps?.plannedEstimate?.forecastProjection ?? loadForecastProjection;
       const projection = validateForecastProjection({

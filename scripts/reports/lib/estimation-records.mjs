@@ -84,6 +84,33 @@ export function loadEstimationRecordsFromComments({
   return { recordsByIssue, evidenceGaps };
 }
 
+export async function loadEstimationRecordsForReport({
+  issues,
+  repository,
+  parseComments = parsePreloadedIssueComments,
+  listIssueRecords,
+} = {}) {
+  if (!Array.isArray(issues) || typeof listIssueRecords !== 'function') {
+    throw new TypeError('estimation-report:input');
+  }
+  const complete = issues.filter((issue) => issue.commentsComplete !== false);
+  const loaded = loadEstimationRecordsFromComments({
+    issues: complete,
+    repository,
+    parseComments,
+  });
+  for (const issue of issues.filter((entry) => entry.commentsComplete === false)) {
+    try {
+      const records = await listIssueRecords({ repository, issue: issue.number });
+      if (!Array.isArray(records)) throw new TypeError('estimation-report:records');
+      loaded.recordsByIssue.set(issue.number, records);
+    } catch {
+      loaded.evidenceGaps.push({ issue: issue.number, reason: 'unreadable-record-evidence' });
+    }
+  }
+  return loaded;
+}
+
 function storyRow(issue, records) {
   const forecast = activeForecast(records);
   const outcome = matchingStoryOutcome(records, forecast);

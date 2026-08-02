@@ -182,5 +182,23 @@ test('lane and sandbox costs use their own observed sample counts', () => {
   });
   assert.equal(updated.testLandscape.laneMinutes.unit, 2);
   assert.equal(updated.testLandscape.laneMinutes.integration, 5);
-  assert.equal(updated.testLandscape.sandboxMinutes, 60);
+  assert.equal(updated.testLandscape.sandboxMinutes, 58);
+});
+
+test('Refine-to-Plan accuracy learns from the frozen forecast paired with each outcome', () => {
+  const previous = createBootstrapRubric({ generatedAt: '2026-08-01T00:00:00.000Z' });
+  const sample = outcome();
+  sample.forecastPayload = {
+    issue: 1091,
+    refine: { humanHours: 6 },
+    plan: { humanHours: 10 },
+  };
+
+  const updated = updateEstimationRubric({
+    previous,
+    outcomes: [sample],
+    generatedAt: '2026-08-02T16:00:00.000Z',
+  });
+
+  assert.equal(updated.accuracy.refineToPlan.maeHours, 4);
 });

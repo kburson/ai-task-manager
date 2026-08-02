@@ -250,6 +250,7 @@ test('visible renderers expose evidence while presentation edits leave payload h
   assert.match(renderEstimationForecast(forecast), /Partial multi-surface writes/i);
   assert.match(renderEstimationOutcome(outcome), /variance/i);
   assert.match(renderEstimationRubric(rubric), /P80 coverage/i);
+  assert.match(renderEstimationRubric(rubric), /Refine-to-Plan MAE/i);
 
   const first = envelope(FORECAST_RECORD_TYPE, ids.forecast, forecast);
   const a = renderAitmRecord({

@@ -34,7 +34,7 @@ export function renderEstimationOutcome(record) {
 
 export function renderEstimationRubric(record) {
   validateEstimationRubric(record);
-  return `## Estimation Rubric v${record.version}\n\nCohort: ${record.cohort.length}; confidence: ${percent(record.ai.confidence)}; P80 coverage: ${percent(record.accuracy.aiP80Coverage)}.\n\nAvoidable process waste remains an AI workflow diagnostic: ${hours(record.workflowDiagnostics.avoidableProcessWasteHours)}.\n`;
+  return `## Estimation Rubric v${record.version}\n\nCohort: ${record.cohort.length}; confidence: ${percent(record.ai.confidence)}; P80 coverage: ${percent(record.accuracy.aiP80Coverage)}.\n\nRefine-to-Plan MAE: ${hours(record.accuracy.refineToPlan.maeHours)}; AI P50 MAE: ${hours(record.accuracy.aiP50.maeHours)}.\n\nAvoidable process waste remains an AI workflow diagnostic: ${hours(record.workflowDiagnostics.avoidableProcessWasteHours)}.\n`;
 }
 
 function visibleMarkdown(envelope) {

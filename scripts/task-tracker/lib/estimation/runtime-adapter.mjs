@@ -218,6 +218,33 @@ function recordsForProjection(records) {
   }));
 }
 
+export function estimationOutcomeSamples(records) {
+  if (!Array.isArray(records)) fail('rubric-records');
+  const forecastsById = new Map(
+    records
+      .filter((record) => record.envelope.recordType === 'estimation-forecast')
+      .map((record) => [record.envelope.recordId, record.envelope])
+  );
+  return records
+    .filter(
+      (record) =>
+        record.envelope.recordType === 'estimation-outcome' &&
+        record.envelope.payload.kind === 'story'
+    )
+    .map((record) => {
+      const forecast = forecastsById.get(record.envelope.payload.forecastRecordId);
+      if (!forecast || forecast.issue !== record.envelope.issue) {
+        fail('rubric-outcome-forecast');
+      }
+      return {
+        recordId: record.envelope.recordId,
+        createdAt: record.envelope.createdAt,
+        payload: record.envelope.payload,
+        forecastPayload: forecast.payload,
+      };
+    });
+}
+
 async function loadProjectionComments({ graphql, owner, name, issueNumber, connection }) {
   if (!Array.isArray(connection?.nodes)) fail('projection-response');
   if (typeof connection.pageInfo?.hasNextPage !== 'boolean') fail('projection-pagination');
@@ -553,18 +580,7 @@ export function createAdaptivePlanRuntime({ cfg, deps = {}, adoptLegacyBaseline 
                   })
                 ).filter((record) => record.envelope.recordType === 'estimation-rubric')),
           ],
-          listEligibleOutcomes: async () =>
-            allRecords
-              .filter(
-                (record) =>
-                  record.envelope.recordType === 'estimation-outcome' &&
-                  record.envelope.payload.kind === 'story'
-              )
-              .map((record) => ({
-                recordId: record.envelope.recordId,
-                createdAt: record.envelope.createdAt,
-                payload: record.envelope.payload,
-              })),
+          listEligibleOutcomes: async () => estimationOutcomeSamples(allRecords),
           writeRubric: async ({ issue, payload, predecessorRecordId }) =>
             io.write({
               envelope: createAitmRecordEnvelope({

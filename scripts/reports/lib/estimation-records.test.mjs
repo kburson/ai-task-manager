@@ -3,6 +3,7 @@ import test from 'node:test';
 
 import {
   buildEstimationReportModel,
+  loadEstimationRecordsForReport,
   loadEstimationRecordsFromComments,
 } from './estimation-records.mjs';
 
@@ -102,6 +103,23 @@ test('a truncated cached comment connection is an evidence gap, not a partial co
 
   assert.equal(parsed, false);
   assert.deepEqual(records.evidenceGaps, [{ issue: 1091, reason: 'truncated-comment-corpus' }]);
+});
+
+test('report discovery pages a truncated issue through the canonical record store', async () => {
+  const expected = [forecast(1091), outcome(1091)];
+  const calls = [];
+  const loaded = await loadEstimationRecordsForReport({
+    issues: [{ number: 1091, comments: [], commentsComplete: false }],
+    repository: 'kburson/ai-task-manager',
+    listIssueRecords: async (input) => {
+      calls.push(input);
+      return expected;
+    },
+  });
+
+  assert.deepEqual(calls, [{ repository: 'kburson/ai-task-manager', issue: 1091 }]);
+  assert.strictEqual(loaded.recordsByIssue.get(1091), expected);
+  assert.deepEqual(loaded.evidenceGaps, []);
 });
 
 test('story metrics expose human Plan, AI P50/P80, actual, accuracy, variance, and waste', () => {

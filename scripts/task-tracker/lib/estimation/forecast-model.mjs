@@ -58,7 +58,12 @@ export function buildEstimationForecast({
   const humanCoefficients = rubric.payload.human.coefficients;
   const aiCoefficients = rubric.payload.ai.coefficients;
   const planning = rubric.payload.planning ?? DEFAULT_PLANNING;
-  const repositoryHours = input.testImpact.expectedMinutes / 60;
+  const learnedLaneMinutes = input.testImpact.lanes.reduce(
+    (sum, lane) => sum + (rubric.payload.testLandscape.laneMinutes[lane] ?? 0),
+    0
+  );
+  const learnedExecutionMinutes = learnedLaneMinutes + rubric.payload.testLandscape.sandboxMinutes;
+  const repositoryHours = Math.max(input.testImpact.expectedMinutes, learnedExecutionMinutes) / 60;
   const wbs = input.wbs.map((item) => ({
     id: item.id,
     description: item.description,
@@ -86,15 +91,12 @@ export function buildEstimationForecast({
     humanImplementationHours * aiCoefficients.engagedToHuman +
       targetModules.length * aiCoefficients.moduleBreadthHour +
       targetDependencies.length * aiCoefficients.dependencyBreadthHour +
-      repositoryHours +
-      rubric.payload.testLandscape.sandboxMinutes / 60
+      repositoryHours
   );
   const widening =
     1 + (1 - rubric.payload.ai.confidence) * 0.5 + rubric.payload.review.reworkProbability * 0.25;
   const p80 = round(Math.max(p50, p50 * widening));
-  const stageTest = round(
-    Math.min(p50, repositoryHours + rubric.payload.testLandscape.sandboxMinutes / 60)
-  );
+  const stageTest = round(Math.min(p50, repositoryHours));
   const nonExecution = Math.max(0, p50 - stageTest);
   const stagePlan = round(nonExecution * 0.125);
   const stageDevelop = round(nonExecution * 0.6875);

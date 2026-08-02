@@ -140,6 +140,40 @@ test('small forecasts account for repository execution once and never allocate a
   );
 });
 
+test('forecast uses learned lane plus sandbox cost as a non-overlapping execution floor', () => {
+  const input = JSON.parse(fixture);
+  input.wbs = [
+    {
+      id: 'learned-cost',
+      description: 'Implement one learned-cost change',
+      baseHumanHours: 1,
+      signals: { modules: ['estimation'], dependencies: ['runtime'] },
+      independentlyReviewable: true,
+    },
+  ];
+  input.testImpact = { lanes: ['unit'], isolation: 'test-sandbox', expectedMinutes: 5 };
+  const rubric = createBootstrapRubric({ generatedAt: '2026-08-02T13:00:00.000Z' });
+  rubric.testLandscape = { laneMinutes: { unit: 20 }, sandboxMinutes: 10 };
+
+  const learnedFloor = buildEstimationForecast({
+    issue: 1091,
+    refine: { size: 'S', humanHours: 3 },
+    planInput: input,
+    rubric: { recordId: rubricRecordId, payload: rubric },
+  });
+  assert.equal(learnedFloor.ai.stages.test, 0.5);
+  assert.equal(learnedFloor.plan.humanHours, 2.35);
+
+  input.testImpact.expectedMinutes = 40;
+  const explicitFloor = buildEstimationForecast({
+    issue: 1091,
+    refine: { size: 'S', humanHours: 3 },
+    planInput: input,
+    rubric: { recordId: rubricRecordId, payload: rubric },
+  });
+  assert.equal(explicitFloor.ai.stages.test, 0.6667);
+});
+
 test('comparable outcomes retain exact IDs and rank by module, dependency, lane, and diff similarity', () => {
   const makeOutcome = (recordId, issue, landscape) => ({ recordId, payload: { issue, landscape } });
   const close = makeOutcome('01J00000000000000000000501', 1068, {

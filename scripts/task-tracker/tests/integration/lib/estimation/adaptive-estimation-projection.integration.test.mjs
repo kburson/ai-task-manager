@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import {
+  estimationOutcomeSamples,
   loadProjectEstimationCorpus,
   refineEstimateFromProjection,
 } from '../../../../lib/estimation/runtime-adapter.mjs';
@@ -19,6 +20,42 @@ test('process retry preserves the immutable Refine baseline after partial Plan w
       board: { size: 'XL', estimate: 40 },
     }),
     { size: 'L', humanHours: 20 }
+  );
+});
+
+test('rubric corpus pairs each story outcome with its exact frozen forecast', () => {
+  const forecastPayload = {
+    issue: 1091,
+    refine: { humanHours: 8 },
+    plan: { humanHours: 10 },
+  };
+  const forecastRecordId = '01J00000000000000000000601';
+  const records = [
+    {
+      envelope: {
+        recordType: 'estimation-forecast',
+        recordId: forecastRecordId,
+        issue: 1091,
+        payload: forecastPayload,
+      },
+    },
+    {
+      envelope: {
+        recordType: 'estimation-outcome',
+        recordId: '01J00000000000000000000602',
+        createdAt: '2026-08-02T15:00:00.000Z',
+        issue: 1091,
+        payload: { kind: 'story', forecastRecordId },
+      },
+    },
+  ];
+
+  const [sample] = estimationOutcomeSamples(records);
+  assert.strictEqual(sample.forecastPayload, forecastPayload);
+  assert.equal(sample.payload.forecastRecordId, forecastRecordId);
+  assert.throws(
+    () => estimationOutcomeSamples(records.slice(1)),
+    /estimation-runtime:rubric-outcome-forecast/
   );
 });
 

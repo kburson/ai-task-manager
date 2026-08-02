@@ -176,6 +176,34 @@ test('v1 Plan projection requires one ready forecast matching board and body aut
   assert.equal(result.forecastRecordId, recordId);
 });
 
+test('configured adaptive Plan refuses marker-free exit even when the legacy appendix is valid', async () => {
+  let projectionReads = 0;
+  const result = await planExitPlannedEstimateGuard.run({
+    toState: 'develop',
+    cfg: { ...CFG, estimationRubricIssue: 1091 },
+    issueNumber: 1091,
+    body: 'body without a forecast-ready marker',
+    deps: {
+      plannedEstimate: {
+        listComments: PLANNED_ESTIMATE_OK_DEPS.plannedEstimate.listComments,
+        forecastProjection: async () => {
+          projectionReads += 1;
+          return {
+            forecast: null,
+            activeForecastRecordIds: [],
+            board: { size: 'L', estimate: 8 },
+            bodyFields: { size: 'L', estimate: 8 },
+          };
+        },
+      },
+    },
+  });
+
+  assert.equal(projectionReads, 1);
+  assert.equal(result.ok, false);
+  assert.deepEqual(result.blockers, ['plan-forecast-ready-mismatch']);
+});
+
 test('v1 Plan projection uses production raw-comment pagination when no reader is injected', async () => {
   const recordId = '01J00000000000000000000702';
   const rubricRecordId = '01J00000000000000000000703';
@@ -210,6 +238,7 @@ test('v1 Plan projection uses production raw-comment pagination when no reader i
     grantId: '01J00000000000000000000704',
     createdAt: '2026-08-02T14:00:00.000Z',
   });
+  const planHours = payload.plan.humanHours;
   const cfg = {
     ...CFG,
     sizeFieldId: 'SIZE_FIELD',
@@ -258,7 +287,7 @@ test('v1 Plan projection uses production raw-comment pagination when no reader i
                 issue: {
                   body: [
                     `<!-- aitm-estimation-forecast-ready record-id="${recordId}" -->`,
-                    `<!-- aitm-fields: ${JSON.stringify({ schema: 1, values: { size: 'XL', estimate: 40 } })} -->`,
+                    `<!-- aitm-fields: ${JSON.stringify({ schema: 1, values: { size: 'XL', estimate: planHours } })} -->`,
                   ].join('\n'),
                   comments: {
                     nodes: [],
@@ -271,7 +300,7 @@ test('v1 Plan projection uses production raw-comment pagination when no reader i
                         project: { id: cfg.projectId },
                         fieldValues: {
                           nodes: [
-                            { number: 40, field: { id: cfg.fieldEstimate } },
+                            { number: planHours, field: { id: cfg.fieldEstimate } },
                             { name: 'XL', field: { id: cfg.sizeFieldId } },
                             { name: 'Plan', field: { id: cfg.kanbanFieldId } },
                           ],

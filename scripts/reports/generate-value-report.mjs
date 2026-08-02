@@ -59,8 +59,9 @@ import { readSessionMinutes } from './lib/session-field.mjs';
 import { readEngagedMinutes, readDurationMinutes, readStartedAt } from './lib/board-fields.mjs';
 import {
   buildEstimationReportModel,
-  loadEstimationRecordsFromComments,
+  loadEstimationRecordsForReport,
 } from './lib/estimation-records.mjs';
+import { listIssueCommentsSince } from '../task-tracker/lib/github-records/github-comment-store.mjs';
 import { wantsHelp, emitSelfDoc, isDirectInvocation } from '../lib/self-doc.mjs';
 import { reportAttribution } from './lib/attribution-resolver.mjs';
 import { loadTrunkSignals } from './lib/trunk-signals.mjs';
@@ -144,11 +145,11 @@ function ghToken() {
   return _ghToken;
 }
 
-async function gql(query) {
+async function gql(query, variables = {}) {
   const r = await fetch('https://api.github.com/graphql', {
     method: 'POST',
     headers: { Authorization: `Bearer ${ghToken()}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ query }),
+    body: JSON.stringify({ query, variables }),
   });
   const j = await r.json();
   if (j.errors) throw new Error(j.errors.map(e => e.message).join('; '));
@@ -1135,7 +1136,7 @@ async function main() {
   }
 
   console.log(`${items.length} issues found.`);
-  const loadedEstimation = loadEstimationRecordsFromComments({
+  const loadedEstimation = await loadEstimationRecordsForReport({
     issues: raw
       .filter((node) => node.content?.number)
       .map((node) => ({
@@ -1144,6 +1145,13 @@ async function main() {
         commentsComplete: node.content.comments?.pageInfo?.hasNextPage !== true,
       })),
     repository: cfg.repo,
+    listIssueRecords: ({ repository, issue }) =>
+      listIssueCommentsSince({
+        since: '1970-01-01T00:00:00.000Z',
+        repository,
+        issue,
+        graphql: async ({ query, variables }) => ({ data: await gql(query, variables) }),
+      }),
   });
   const estimationModel = buildEstimationReportModel({
     items,
@@ -1157,7 +1165,7 @@ async function main() {
   }
   if (loadedEstimation.evidenceGaps.length > 0) {
     console.warn(
-      `Adaptive estimation evidence gaps: ${loadedEstimation.evidenceGaps.length} malformed issue corpus entries.`,
+      `Adaptive estimation evidence gaps: ${loadedEstimation.evidenceGaps.length} unavailable or malformed issue corpus entries.`,
     );
   }
   const s    = summary(items);

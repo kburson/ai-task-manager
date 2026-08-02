@@ -109,16 +109,34 @@ export function updateEstimationRubric({
   const confidence = round(Math.min(0.9, 0.1 + (ordered.length / (ordered.length + 10)) * 0.8));
   const laneSamples = {};
   const sandboxSamples = [];
-  for (const { payload } of ordered) {
+  const refineToPlanSamples = [];
+  for (const { payload, forecastPayload } of ordered) {
+    let observedTestMinutes = 0;
     for (const command of payload.actual.commands) {
       if (!command.classification.startsWith('test-')) continue;
       const lane = command.classification.replace(/^test-/, '');
+      const minutes = command.durationMs / 60_000;
+      observedTestMinutes += minutes;
       const samples = laneSamples[lane] ?? [];
-      samples.push(command.durationMs / 60_000);
+      samples.push(minutes);
       laneSamples[lane] = samples;
     }
-    if (payload.landscape.lanes.includes('sandbox'))
-      sandboxSamples.push(payload.actual.stages.test * 60);
+    if (payload.landscape.lanes.includes('sandbox')) {
+      sandboxSamples.push(Math.max(0, payload.actual.stages.test * 60 - observedTestMinutes));
+    }
+    if (forecastPayload !== undefined) {
+      if (
+        forecastPayload?.issue !== payload.issue ||
+        forecastPayload?.plan?.humanHours !== payload.humanPlanHours ||
+        typeof forecastPayload?.refine?.humanHours !== 'number' ||
+        !Number.isFinite(forecastPayload.refine.humanHours)
+      ) {
+        throw new TypeError('estimation-rubric:forecast-correlation');
+      }
+      refineToPlanSamples.push(
+        Math.abs(forecastPayload.plan.humanHours - forecastPayload.refine.humanHours)
+      );
+    }
   }
   const laneMinutes = { ...previous.testLandscape.laneMinutes };
   for (const [lane, samples] of Object.entries(laneSamples))
@@ -136,6 +154,12 @@ export function updateEstimationRubric({
     ).length / ordered.length;
   const reworkProbability =
     ordered.filter(({ payload }) => payload.actual.reviewFixCycles > 0).length / ordered.length;
+  const refineToPlanMae =
+    refineToPlanSamples.length === 0
+      ? previous.accuracy.refineToPlan.maeHours
+      : round(
+          refineToPlanSamples.reduce((sum, value) => sum + value, 0) / refineToPlanSamples.length
+        );
 
   const rubric = {
     schema: 'aitm.estimation-rubric/v1',
@@ -168,7 +192,7 @@ export function updateEstimationRubric({
     planning: clone(previous.planning ?? BOOTSTRAP_RUBRIC_PRIORS.planning),
     review: { reworkProbability: round(reworkProbability) },
     accuracy: {
-      refineToPlan: { maeHours: previous.accuracy.refineToPlan.maeHours },
+      refineToPlan: { maeHours: refineToPlanMae },
       aiP50: { maeHours: round(p50Mae) },
       aiP80Coverage: round(p80Coverage),
     },

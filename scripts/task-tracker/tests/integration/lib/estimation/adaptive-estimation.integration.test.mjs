@@ -190,8 +190,8 @@ test('completed outcome deterministically updates the next rubric and AI forecas
   const firstForecast = records.find(
     (record) => record.envelope.recordId === first.forecastRecordId
   ).envelope;
-  assert.equal(firstAuthority.state.board.estimate, 10.85);
-  assert.equal(firstAuthority.state.bodyFields.estimate, 10.85);
+  assert.equal(firstAuthority.state.board.estimate, 10.9);
+  assert.equal(firstAuthority.state.bodyFields.estimate, 10.9);
   assert.equal(firstAuthority.state.readyForecastRecordId, firstForecast.recordId);
 
   const outcomePayload = buildEstimationOutcome({
@@ -256,6 +256,7 @@ test('completed outcome deterministically updates the next rubric and AI forecas
           recordId: outcomeRecord.envelope.recordId,
           createdAt: outcomeRecord.envelope.createdAt,
           payload: outcomeRecord.envelope.payload,
+          forecastPayload: firstForecast.payload,
         },
       ],
       writeRubric: async ({ issue, payload, predecessorRecordId }) => {
@@ -280,6 +281,7 @@ test('completed outcome deterministically updates the next rubric and AI forecas
   });
   assert.equal(refreshed.rubric.cohort[0].outcomeRecordId, outcomeResult.recordId);
   assert.equal(refreshed.rubric.workflowDiagnostics.avoidableProcessWasteHours, 0.5);
+  assert.equal(refreshed.rubric.accuracy.refineToPlan.maeHours, 2.9);
 
   const secondForecast = buildEstimationForecast({
     issue: secondIssue,
@@ -630,9 +632,9 @@ test('production Plan runtime converges board, body, history, forecast, and read
   });
 
   assert.equal(result.status, 'converged');
-  assert.equal(board.estimate, 10.85);
-  assert.match(refineBody, /\| Estimate \(h\) \| 8 \| 10\.85 \|/);
-  assert.match(issueBody, /"estimate":10\.85/);
+  assert.equal(board.estimate, 10.9);
+  assert.match(refineBody, /\| Estimate \(h\) \| 8 \| 10\.9 \|/);
+  assert.match(issueBody, /"estimate":10\.9/);
   assert.match(issueBody, new RegExp(result.forecastRecordId));
   assert.equal(
     parsedRecords.filter((r) => r.envelope.recordType === 'estimation-rubric').length,
