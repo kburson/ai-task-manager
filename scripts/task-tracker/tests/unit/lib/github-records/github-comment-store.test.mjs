@@ -556,6 +556,39 @@ test('incremental listing applies an exclusive boundary and normalizes transport
   );
 });
 
+test('incremental listing rejects malformed AITM-like record openers', async () => {
+  const { listIssueCommentsSince } = commentStore;
+  for (const bodyValue of ['<!-- aitm-record-->', '<!-- aitm-record{} -->', '<!-- aitm-record']) {
+    await assert.rejects(
+      listIssueCommentsSince({
+        since: '2026-08-01T00:00:00.000Z',
+        repository,
+        issue,
+        graphql: async () => ({
+          data: {
+            repository: {
+              issue: {
+                number: issue,
+                repository: { nameWithOwner: repository },
+                comments: {
+                  nodes: [
+                    {
+                      ...node('IC_kwDOMalformedOpener', '01J00000000000000000000020'),
+                      body: bodyValue,
+                    },
+                  ],
+                  pageInfo: { hasNextPage: false, endCursor: null },
+                },
+              },
+            },
+          },
+        }),
+      }),
+      (error) => error.category === 'envelope'
+    );
+  }
+});
+
 test('incremental listing ignores ordinary issue comments', async () => {
   const { listIssueCommentsSince } = commentStore;
   const record = {

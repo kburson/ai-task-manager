@@ -141,7 +141,7 @@ function validateCommentNode(node, expectedId, repository, issue) {
 }
 
 function claimsAitmRecord(body) {
-  return typeof body === 'string' && /<!--\s*aitm-record(?=\s)/.test(body);
+  return typeof body === 'string' && /<!--\s*aitm-record\b/.test(body);
 }
 
 function parseComment(node, expectedId, repository, issue) {
