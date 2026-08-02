@@ -44,6 +44,7 @@ const PROJECT_RECORDS_QUERY = `
       ... on ProjectV2 {
         items(first: 100, after: $after) {
           nodes {
+            id
             content {
               ... on Issue {
                 id
@@ -57,6 +58,25 @@ const PROJECT_RECORDS_QUERY = `
                   field { ... on ProjectV2FieldCommon { id } }
                 }
               }
+              pageInfo { hasNextPage endCursor }
+            }
+          }
+          pageInfo { hasNextPage endCursor }
+        }
+      }
+    }
+  }
+`;
+const PROJECT_ITEM_FIELD_VALUES_QUERY = `
+  query AitmEstimationCorpusFieldValues($item: ID!, $after: String!) {
+    node(id: $item) {
+      ... on ProjectV2Item {
+        id
+        fieldValues(first: 100, after: $after) {
+          nodes {
+            ... on ProjectV2ItemFieldSingleSelectValue {
+              name
+              field { ... on ProjectV2FieldCommon { id } }
             }
           }
           pageInfo { hasNextPage endCursor }
@@ -412,9 +432,43 @@ export async function loadProjectEstimationCorpus({ cfg, io, graphql = io?.graph
     for (const item of connection.nodes) {
       const issue = item.content;
       if (!Number.isInteger(issue?.number) || typeof issue.id !== 'string') continue;
-      const status = item.fieldValues?.nodes?.find(
-        (node) => node.field?.id === statusFieldId
-      )?.name;
+      if (typeof item.id !== 'string' || !Array.isArray(item.fieldValues?.nodes))
+        fail('corpus-response');
+      if (typeof item.fieldValues.pageInfo?.hasNextPage !== 'boolean') fail('corpus-pagination');
+      const fieldValues = [...item.fieldValues.nodes];
+      let fieldsPageInfo = item.fieldValues.pageInfo;
+      let fieldsAfter = fieldsPageInfo.endCursor;
+      const fieldCursors = new Set();
+      for (let fieldPage = 0; fieldsPageInfo.hasNextPage && fieldPage < 1000; fieldPage++) {
+        if (
+          typeof fieldsAfter !== 'string' ||
+          fieldsAfter === '' ||
+          fieldCursors.has(fieldsAfter)
+        ) {
+          fail('corpus-pagination');
+        }
+        fieldCursors.add(fieldsAfter);
+        const fieldsResponse = await graphql({
+          query: PROJECT_ITEM_FIELD_VALUES_QUERY,
+          variables: { item: item.id, after: fieldsAfter },
+        });
+        if (Array.isArray(fieldsResponse?.errors) && fieldsResponse.errors.length > 0)
+          fail('corpus-response');
+        const fieldsNode = fieldsResponse?.data?.node;
+        const fieldsConnection = fieldsNode?.fieldValues;
+        if (
+          fieldsNode?.id !== item.id ||
+          !Array.isArray(fieldsConnection?.nodes) ||
+          typeof fieldsConnection.pageInfo?.hasNextPage !== 'boolean'
+        ) {
+          fail('corpus-pagination');
+        }
+        fieldValues.push(...fieldsConnection.nodes);
+        fieldsPageInfo = fieldsConnection.pageInfo;
+        fieldsAfter = fieldsPageInfo.endCursor;
+      }
+      if (fieldsPageInfo.hasNextPage) fail('corpus-pagination');
+      const status = fieldValues.find((node) => node.field?.id === statusFieldId)?.name;
       if (String(status ?? '').toLowerCase() === 'done') candidates.set(issue.id, issue.number);
     }
     if (connection.pageInfo?.hasNextPage !== true) {
@@ -816,22 +870,40 @@ export function createEstimationOutcomeRuntime({ cfg, projectDir, deps = {} } = 
     if (!complete) fail('child-outcomes');
     const ids = [];
     for (const childNumber of childNumbers) {
-      const outcomes = (await io.listIssueRecords({ repository: cfg.repo, issue: childNumber }))
+      const childRecords = await io.listIssueRecords({ repository: cfg.repo, issue: childNumber });
+      if (!Array.isArray(childRecords)) fail('child-outcomes');
+      const outcomes = childRecords
         .filter((record) => record.envelope.recordType === 'estimation-outcome')
         .toSorted((left, right) => right.envelope.createdAt.localeCompare(left.envelope.createdAt));
-      if (outcomes.length === 0) fail('child-outcomes');
+      if (outcomes.length === 0) {
+        // A child with no adaptive forecast belongs to the pre-rollout legacy
+        // cohort. It remains valid delivery history but cannot be referenced by
+        // a v1 outcome record. A forecasted child without an outcome is instead
+        // incomplete adaptive evidence and must fail closed.
+        if (childRecords.some((record) => record.envelope.recordType === 'estimation-forecast'))
+          fail('child-outcomes');
+        continue;
+      }
       ids.push(outcomes[0].envelope.recordId);
     }
-    return ids;
+    return { childCount: childNumbers.length, recordIds: ids };
   };
 
   return {
     async ensure({ issueNumber, forecastRecordId, body }) {
       const records = await io.listIssueRecords({ repository: cfg.repo, issue: issueNumber });
-      const children = await (deps.childOutcomeRecordIds ?? childOutcomeRecordIds)(issueNumber);
-      const isEpic = children.length > 0;
+      const discoveredChildren = await (deps.childOutcomeRecordIds ?? childOutcomeRecordIds)(
+        issueNumber
+      );
+      const children = Array.isArray(discoveredChildren)
+        ? discoveredChildren
+        : discoveredChildren.recordIds;
+      const isEpic = Array.isArray(discoveredChildren)
+        ? children.length > 0
+        : discoveredChildren.childCount > 0;
       const forecasts = recordsForProjection(records);
       const activeForecasts = forecasts.filter((record) => record.supersededBy === null);
+      if (isEpic && children.length === 0) return { status: 'legacy-no-forecast' };
       if (!isEpic && forecasts.length === 0 && forecastRecordId === null) {
         return { status: 'legacy-no-forecast' };
       }

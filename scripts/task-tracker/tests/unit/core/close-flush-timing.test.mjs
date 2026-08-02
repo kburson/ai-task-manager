@@ -46,14 +46,15 @@ assert.equal(
 );
 // #801 — the terminal pair emission is centralized in the
 // `emitReviewToDoneClosePair` helper, which posts the wrap (done.enter) row via
-// `safePostTiming(closeTarget, issueWrapRow)` exactly once (the helper is the
+// `postRequiredTiming(issueWrapRow, 'issue:wrap')` exactly once (the helper is the
 // single emission point; it is invoked from both the converge fast-path and the
 // full pipeline, but the post text appears once, in the helper body).
-const wrapPostCount = (src.match(/safePostTiming\(closeTarget,\s*issueWrapRow\)/g) || []).length;
+const wrapPostCount = (src.match(/postRequiredTiming\(issueWrapRow,\s*'issue:wrap'\)/g) || [])
+  .length;
 assert.equal(
   wrapPostCount,
   1,
-  `expected exactly 1 safePostTiming(closeTarget, issueWrapRow) call in verbClose, found ${wrapPostCount}`
+  `expected exactly 1 required issue:wrap timing post in verbClose, found ${wrapPostCount}`
 );
 
 const flushCount = (src.match(/await runLogIssueTime\(closeTarget\)/g) || []).length;

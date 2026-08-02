@@ -71,16 +71,28 @@ test('project corpus batches only unique Done candidates and excludes open outco
             items: {
               nodes: [
                 {
+                  id: 'ITEM_DONE',
                   content: { id: 'ISSUE_DONE', number: 1 },
-                  fieldValues: { nodes: [{ name: 'Done', field: { id: 'STATUS' } }] },
+                  fieldValues: {
+                    nodes: [{ name: 'Done', field: { id: 'STATUS' } }],
+                    pageInfo: { hasNextPage: false, endCursor: null },
+                  },
                 },
                 {
+                  id: 'ITEM_OPEN',
                   content: { id: 'ISSUE_OPEN', number: 2 },
-                  fieldValues: { nodes: [{ name: 'Develop', field: { id: 'STATUS' } }] },
+                  fieldValues: {
+                    nodes: [{ name: 'Develop', field: { id: 'STATUS' } }],
+                    pageInfo: { hasNextPage: false, endCursor: null },
+                  },
                 },
                 {
+                  id: 'ITEM_DONE',
                   content: { id: 'ISSUE_DONE', number: 1 },
-                  fieldValues: { nodes: [{ name: 'Done', field: { id: 'STATUS' } }] },
+                  fieldValues: {
+                    nodes: [{ name: 'Done', field: { id: 'STATUS' } }],
+                    pageInfo: { hasNextPage: false, endCursor: null },
+                  },
                 },
               ],
               pageInfo: { hasNextPage: false, endCursor: null },
@@ -126,8 +138,12 @@ test('project corpus batches only unique Done candidates and excludes open outco
 test('project corpus fails closed on incomplete project, issue-batch, or comment pagination evidence', async () => {
   const cfg = { repo: repository, projectId: 'PROJECT', kanbanFieldId: 'STATUS' };
   const doneItem = {
+    id: 'ITEM_DONE',
     content: { id: 'ISSUE_DONE', number: 1 },
-    fieldValues: { nodes: [{ name: 'Done', field: { id: 'STATUS' } }] },
+    fieldValues: {
+      nodes: [{ name: 'Done', field: { id: 'STATUS' } }],
+      pageInfo: { hasNextPage: false, endCursor: null },
+    },
   };
   const projectResponse = {
     data: {
@@ -166,6 +182,99 @@ test('project corpus fails closed on incomplete project, issue-batch, or comment
                 nodes: [{ id: 'ISSUE_DONE', number: 1, comments: { nodes: [] } }],
               },
             },
+    }),
+    /estimation-runtime:corpus-pagination/
+  );
+});
+
+test('project corpus follows nested field-value pagination before deciding Done eligibility', async () => {
+  const calls = [];
+  const graphql = async ({ query, variables }) => {
+    calls.push({ query, variables });
+    if (query.includes('AitmEstimationCorpusFieldValues')) {
+      assert.deepEqual(variables, { item: 'ITEM_DONE', after: 'FIELD_CURSOR' });
+      return {
+        data: {
+          node: {
+            id: 'ITEM_DONE',
+            fieldValues: {
+              nodes: [{ name: 'Done', field: { id: 'STATUS' } }],
+              pageInfo: { hasNextPage: false, endCursor: null },
+            },
+          },
+        },
+      };
+    }
+    if (query.includes('AitmEstimationCorpus')) {
+      return {
+        data: {
+          node: {
+            items: {
+              nodes: [
+                {
+                  id: 'ITEM_DONE',
+                  content: { id: 'ISSUE_DONE', number: 1 },
+                  fieldValues: {
+                    nodes: Array.from({ length: 100 }, (_, index) => ({
+                      name: `value-${index}`,
+                      field: { id: `FIELD_${index}` },
+                    })),
+                    pageInfo: { hasNextPage: true, endCursor: 'FIELD_CURSOR' },
+                  },
+                },
+              ],
+              pageInfo: { hasNextPage: false, endCursor: null },
+            },
+          },
+        },
+      };
+    }
+    if (query.includes('AitmEstimationDoneRecords')) {
+      return {
+        data: {
+          nodes: [
+            {
+              id: 'ISSUE_DONE',
+              number: 1,
+              comments: { nodes: [], pageInfo: { hasNextPage: false, endCursor: null } },
+            },
+          ],
+        },
+      };
+    }
+    throw new Error('unexpected query');
+  };
+
+  await loadProjectEstimationCorpus({
+    cfg: { repo: repository, projectId: 'PROJECT', kanbanFieldId: 'STATUS' },
+    graphql,
+    io: { graphql },
+  });
+
+  assert.equal(calls.length, 3);
+});
+
+test('project corpus fails closed when nested field-value pagination metadata is missing', async () => {
+  await assert.rejects(
+    loadProjectEstimationCorpus({
+      cfg: { repo: repository, projectId: 'PROJECT', kanbanFieldId: 'STATUS' },
+      io: {},
+      graphql: async () => ({
+        data: {
+          node: {
+            items: {
+              nodes: [
+                {
+                  id: 'ITEM_DONE',
+                  content: { id: 'ISSUE_DONE', number: 1 },
+                  fieldValues: { nodes: [{ name: 'Done', field: { id: 'STATUS' } }] },
+                },
+              ],
+              pageInfo: { hasNextPage: false, endCursor: null },
+            },
+          },
+        },
+      }),
     }),
     /estimation-runtime:corpus-pagination/
   );

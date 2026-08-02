@@ -10,7 +10,7 @@ import { strict as assert } from 'node:assert';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { projectScratchDir } from '../../../lib/scratch-dir.mjs';
 import path from 'node:path';
-import { enqueue, peek, drainAndDiscard } from '../../../queue.mjs';
+import { enqueue, peek, drainAndDiscard, drainMatching } from '../../../queue.mjs';
 
 function makeFlushAndForget(handler) {
   return async (queuePath, issueRef) => {
@@ -87,6 +87,23 @@ function makeFlushAndForget(handler) {
   const flush = makeFlushAndForget(async () => {});
   const r = await flush(p, '#197');
   assert.deepEqual(r, { delivered: 0, discarded: 0 });
+  assert.equal(peek(p).length, 1);
+  rmSync(t, { recursive: true });
+}
+
+// Scenario 5 — outcome-critical draining retains a failed terminal row.
+{
+  const t = mkdtempSync(path.join(projectScratchDir('test'), 'tt-cd-retain-'));
+  const p = path.join(t, 'queue.json');
+  enqueue({ kind: 'timing', issue: '#197', row: 'issue:wrap' }, p);
+  const result = await drainMatching(
+    async () => {
+      throw new Error('network down');
+    },
+    p,
+    (event) => event.issue === '#197'
+  );
+  assert.deepEqual(result, { delivered: 0, pending: 1 });
   assert.equal(peek(p).length, 1);
   rmSync(t, { recursive: true });
 }

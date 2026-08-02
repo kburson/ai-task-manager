@@ -100,6 +100,14 @@ async function emitReviewToDoneClosePair({
   nowIso,
   safePostTiming,
 }) {
+  const postRequiredTiming = async (row, event) => {
+    const result = await safePostTiming(closeTarget, row);
+    if (result?.ok === false || result?.queued === true) {
+      throw new Error(
+        `terminal timing ${event} was not durably posted${result?.err ? `: ${result.err}` : ''}`
+      );
+    }
+  };
   const { deriveStateMoveDelta } = await import('../lib/timing-rows.mjs');
   const ts = nowIso();
   // #692 — the prior timing ROWS live in the ⏱ comment, NOT the issue body, so
@@ -140,11 +148,22 @@ async function emitReviewToDoneClosePair({
     !pending.reviewApproved &&
     shouldEmitReviewApprovedRow({ hasApprovalMarker, reviewGateBypassed })
   ) {
-    await safePostTiming(closeTarget, reviewApprovedRow);
+    await postRequiredTiming(reviewApprovedRow, 'review:approved');
   }
   if (!pending.issueWrap) {
-    await safePostTiming(closeTarget, issueWrapRow);
+    await postRequiredTiming(issueWrapRow, 'issue:wrap');
   }
+}
+
+async function flushCloseTimingOrThrow({ closeTarget, flushQueueFor }) {
+  const result = await flushQueueFor(closeTarget);
+  if (result === false || result?.pending > 0 || result?.discarded > 0) {
+    throw new Error(
+      `terminal timing queue did not synchronize for ${closeTarget} ` +
+        `(pending ${result?.pending ?? 0}, discarded ${result?.discarded ?? 0})`
+    );
+  }
+  return result ?? { delivered: 0, pending: 0 };
 }
 
 const ESTIMATION_FORECAST_READY_RE =
@@ -183,6 +202,10 @@ export async function verbClose(ctx) {
     projectConfig;
   const { rest } = ctx;
   const { drainQueueIfAny, flushAndForgetQueueFor, safePostTiming } = timingRecorder;
+  const flushQueueFor =
+    timingRecorder.flushQueueFor ??
+    flushAndForgetQueueFor ??
+    (async () => ({ delivered: 0, pending: 0 }));
   const { runMoveState, runMoveStateDone, runLogIssueTime } = stateRunner;
   const {
     fetchSubIssueBoardSnapshot,
@@ -507,18 +530,27 @@ export async function verbClose(ctx) {
       // Board reads Done but the issue is still OPEN — the Projects auto-close
       // workflow did not fire. Close the primary explicitly. On failure, surface
       // it and exit non-zero WITHOUT clearing local state so a re-run recovers.
-      await emitReviewToDoneClosePair({
-        closeTarget,
-        closeIssueNum,
-        cfg,
-        hasApprovalMarker: hasReviewApprovedMarker(convergeBody),
-        reviewGateBypassed: configuredFullAuto,
-        lastWordMarker: s.lastWordMarker,
-        ctx,
-        SKIP_NETWORK,
-        nowIso,
-        safePostTiming,
-      });
+      try {
+        await emitReviewToDoneClosePair({
+          closeTarget,
+          closeIssueNum,
+          cfg,
+          hasApprovalMarker: hasReviewApprovedMarker(convergeBody),
+          reviewGateBypassed: configuredFullAuto,
+          lastWordMarker: s.lastWordMarker,
+          ctx,
+          SKIP_NETWORK,
+          nowIso,
+          safePostTiming,
+        });
+        await flushCloseTimingOrThrow({ closeTarget, flushQueueFor });
+      } catch (err) {
+        return failInspection(
+          'emitClosePair',
+          err,
+          `${closeTarget} terminal timing did not synchronize before outcome creation`
+        );
+      }
       if (!(await ensureConvergenceOutcome({ body: convergeBody }))) return;
       if (
         !(await writeDeliveredOrRefuse({
@@ -608,6 +640,7 @@ export async function verbClose(ctx) {
               nowIso,
               safePostTiming,
             });
+            await flushCloseTimingOrThrow({ closeTarget, flushQueueFor });
             return { ok: true };
           },
           ensureOutcome: async () =>
@@ -1256,18 +1289,27 @@ export async function verbClose(ctx) {
   // invoked by the converge/no-op fast-path). `review:approved` is gated on the
   // live approval marker in the fetched body, OR an explicitly-bypassed review
   // gate (`aitm-gate-bypassed` already logged); `issue:wrap` is unconditional.
-  await emitReviewToDoneClosePair({
-    closeTarget,
-    closeIssueNum,
-    cfg,
-    hasApprovalMarker: hasReviewApprovedMarker(closeBody),
-    reviewGateBypassed,
-    lastWordMarker: s.lastWordMarker,
-    ctx,
-    SKIP_NETWORK,
-    nowIso,
-    safePostTiming,
-  });
+  try {
+    await emitReviewToDoneClosePair({
+      closeTarget,
+      closeIssueNum,
+      cfg,
+      hasApprovalMarker: hasReviewApprovedMarker(closeBody),
+      reviewGateBypassed,
+      lastWordMarker: s.lastWordMarker,
+      ctx,
+      SKIP_NETWORK,
+      nowIso,
+      safePostTiming,
+    });
+  } catch (err) {
+    console.error(
+      `[task-tracker] ⛔ Refusing to close ${closeTarget}: ${err.message}. ` +
+        'Issue left OPEN; retry after timing evidence is reachable.'
+    );
+    process.exitCode = 1;
+    return;
+  }
   if (runLogIssueTime) await runLogIssueTime(closeTarget);
   // Post-close board/body agreement check (#180 defect 1 guard). After
   // runLogIssueTime, the `<!-- aitm-fields -->` body marker should have
@@ -1276,10 +1318,20 @@ export async function verbClose(ctx) {
   if (!SKIP_NETWORK && closeIssueNum) {
     await assertFieldsPersisted({ cfg, pexec, issueNum: closeIssueNum });
   }
-  const flushResult = await flushAndForgetQueueFor(closeTarget);
-  if (flushResult.delivered || flushResult.discarded) {
+  let flushResult;
+  try {
+    flushResult = await flushCloseTimingOrThrow({ closeTarget, flushQueueFor });
+  } catch (err) {
+    console.error(
+      `[task-tracker] ⛔ Refusing to close ${closeTarget}: ${err.message}. ` +
+        'Issue left OPEN; queued timing evidence was retained for retry.'
+    );
+    process.exitCode = 1;
+    return;
+  }
+  if (flushResult.delivered) {
     console.log(
-      `[task-tracker] queue: delivered ${flushResult.delivered}, discarded ${flushResult.discarded} for ${closeTarget}.`
+      `[task-tracker] queue: delivered ${flushResult.delivered}, pending 0 for ${closeTarget}.`
     );
   }
   // #908 — complete the fallible Full-Auto merge preparation before writing

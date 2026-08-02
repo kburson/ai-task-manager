@@ -250,8 +250,11 @@ test('AC4 source: close gates ONLY the review:approved row on the decision; issu
   // Inside the helper: the approved row is inside the shouldEmit guard; the wrap
   // row is posted after, gated only on pendingClosePairState (idempotency), NOT
   // on approval — it records the terminal close, not an approval claim.
-  const approvedPost = closeSrc.indexOf('safePostTiming(closeTarget, reviewApprovedRow)', guardIdx);
-  const wrapPost = closeSrc.indexOf('safePostTiming(closeTarget, issueWrapRow)', guardIdx);
+  const approvedPost = closeSrc.indexOf(
+    "postRequiredTiming(reviewApprovedRow, 'review:approved')",
+    guardIdx
+  );
+  const wrapPost = closeSrc.indexOf("postRequiredTiming(issueWrapRow, 'issue:wrap')", guardIdx);
   assert.ok(
     approvedPost > guardIdx && wrapPost > approvedPost,
     'the gated approved row sits inside the shouldEmit guard; the wrap row follows it, outside'

@@ -327,3 +327,25 @@ test('convergence close synchronizes terminal timing before freezing its outcome
   );
   assert.match(convergenceCall, /ensureOutcome:\s*async/);
 });
+
+test('convergence refuses completion when a terminal timing row is only queued', async () => {
+  const run = await runClose({ timingResult: { ok: false, queued: true, err: 'network down' } });
+
+  assert.equal(run.result?.status, 'failed');
+  assert.equal(run.result?.failedStep, 'emitClosePair');
+  assert.equal(run.calls.mutations, 0);
+  assert.equal(run.exitCode, 1);
+});
+
+test('board-Done open-issue convergence refuses GitHub close when terminal timing is queued', async () => {
+  const run = await runClose({
+    boardState: 'done',
+    closeSnapshot: { issueClosed: false, stateReason: null },
+    timingResult: { ok: false, queued: true, err: 'network down' },
+  });
+
+  assert.equal(run.result?.status, 'failed');
+  assert.equal(run.result?.failedStep, 'emitClosePair');
+  assert.equal(run.calls.issueCloses, 0);
+  assert.equal(run.exitCode, 1);
+});

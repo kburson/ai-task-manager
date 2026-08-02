@@ -346,6 +346,18 @@ test('happy tail: no approval marker → review:approved suppressed', async () =
   assert.match(r.stdout, /Closed #5/);
   assert.equal(rows.filter((row) => /review:approved/.test(row)).length, 0);
 });
+test('happy-tail candidate refuses close when terminal timing is only queued', async () => {
+  const r = await run({
+    over: {
+      closeBody: APPROVED_BODY,
+      safePostTiming: async () => ({ ok: false, queued: true, err: 'network down' }),
+    },
+  });
+  assert.doesNotMatch(r.stdout, /Closed #5/);
+  assert.match(r.stderr, /terminal timing .* was not durably posted/);
+  assert.equal(exitOf(r), 1);
+  resetExit();
+});
 test('final move non-benign failure + board not Done → exit 1', async () => {
   const r = await run({
     over: {

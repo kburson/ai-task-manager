@@ -8,6 +8,11 @@ const DEFAULT_PLANNING = Object.freeze({
   refineFurtherVarianceRatio: 0.6,
   sizeEnvelopeHours: Object.freeze({ XS: 1, S: 3, M: 8, L: 20, XL: 60 }),
 });
+const DEFAULT_AI_STAGE_COEFFICIENTS = Object.freeze({
+  planningHour: 0.05,
+  verificationHour: 0.1,
+  reviewHour: 0.08,
+});
 function round(value, digits = 4) {
   return Number(value.toFixed(digits));
 }
@@ -87,25 +92,34 @@ export function buildEstimationForecast({
 
   const targetModules = [...new Set(input.wbs.flatMap((item) => item.signals.modules))];
   const targetDependencies = [...new Set(input.wbs.flatMap((item) => item.signals.dependencies))];
+  const baseHumanHours = input.wbs.reduce((sum, item) => sum + item.baseHumanHours, 0);
   const aiImplementationHours = input.wbs.reduce(
     (sum, item) => sum + item.baseHumanHours * aiCoefficients.implementationHour,
     0
   );
 
-  const p50 = round(
+  const stagePlan = round(
+    baseHumanHours * (aiCoefficients.planningHour ?? DEFAULT_AI_STAGE_COEFFICIENTS.planningHour)
+  );
+  const stageDevelop = round(
     aiImplementationHours +
       targetModules.length * aiCoefficients.moduleBreadthHour +
-      targetDependencies.length * aiCoefficients.dependencyBreadthHour +
-      repositoryHours
+      targetDependencies.length * aiCoefficients.dependencyBreadthHour
   );
+  const stageTest = round(
+    Math.max(
+      repositoryHours,
+      baseHumanHours *
+        (aiCoefficients.verificationHour ?? DEFAULT_AI_STAGE_COEFFICIENTS.verificationHour)
+    )
+  );
+  const stageReview = round(
+    baseHumanHours * (aiCoefficients.reviewHour ?? DEFAULT_AI_STAGE_COEFFICIENTS.reviewHour)
+  );
+  const p50 = round(stagePlan + stageDevelop + stageTest + stageReview);
   const widening =
     1 + (1 - rubric.payload.ai.confidence) * 0.5 + rubric.payload.review.reworkProbability * 0.25;
   const p80 = round(Math.max(p50, p50 * widening));
-  const stageTest = round(Math.min(p50, repositoryHours));
-  const nonExecution = Math.max(0, p50 - stageTest);
-  const stagePlan = round(nonExecution * 0.125);
-  const stageDevelop = round(nonExecution * 0.6875);
-  const stageReview = round(Math.max(0, p50 - stagePlan - stageDevelop - stageTest));
 
   const allowed = new Set(input.comparableIssueIds);
   const comparableIssues = comparableOutcomes

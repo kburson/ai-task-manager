@@ -10,6 +10,9 @@ export const BOOTSTRAP_RUBRIC_PRIORS = Object.freeze({
   }),
   ai: Object.freeze({
     implementationHour: 0.52,
+    planningHour: 0.05,
+    verificationHour: 0.1,
+    reviewHour: 0.08,
     moduleBreadthHour: 0.2,
     dependencyBreadthHour: 0.25,
   }),
@@ -69,10 +72,20 @@ function weightedRobustMean(values, fallback) {
   let weights = 0;
   values.forEach((value, index) => {
     const weight = (index + 1) / values.length;
-    weighted += clamp(value, 0.5, 2) * weight;
+    weighted += clamp(value, 0, 2) * weight;
     weights += weight;
   });
   return round(weighted / weights);
+}
+
+function repeatedVerificationWasteHours(payload) {
+  const potentialMs = payload.actual.commands
+    .filter((command) => command.classification.startsWith('test-') && command.attempts > 1)
+    .reduce(
+      (sum, command) => sum + (command.durationMs * (command.attempts - 1)) / command.attempts,
+      0
+    );
+  return Math.min(potentialMs / 3_600_000, payload.costClassification.avoidableProcessWasteHours);
 }
 
 export function updateEstimationRubric({
@@ -98,9 +111,15 @@ export function updateEstimationRubric({
   }
   if (ordered.length === 0) return previous;
 
-  const aiRatios = ordered.map(({ payload }) =>
-    payload.humanPlanHours === 0 ? 1 : payload.actual.engagedHours / payload.humanPlanHours
-  );
+  const stageRatios = (stage, adjust = (value) => value) =>
+    ordered.map(({ payload }) =>
+      payload.humanPlanHours === 0
+        ? 0
+        : adjust(payload.actual.stages[stage], payload) / payload.humanPlanHours
+    );
+  const aiImplementationRatios = stageRatios('develop');
+  const aiPlanningRatios = stageRatios('plan');
+  const aiReviewRatios = stageRatios('review');
   const avoidable = ordered.reduce(
     (sum, { payload }) => sum + payload.costClassification.avoidableProcessWasteHours,
     0
@@ -110,12 +129,27 @@ export function updateEstimationRubric({
   const sandboxSamples = [];
   const refineToPlanSamples = [];
   for (const { payload, forecastPayload } of ordered) {
+    const testCommands = payload.actual.commands.filter((command) =>
+      command.classification.startsWith('test-')
+    );
+    const repeatPotentials = testCommands.map((command) =>
+      command.attempts > 1
+        ? (command.durationMs * (command.attempts - 1)) / command.attempts / 60_000
+        : 0
+    );
+    const totalRepeatPotential = repeatPotentials.reduce((sum, value) => sum + value, 0);
+    const classifiedWasteMinutes = repeatedVerificationWasteHours(payload) * 60;
     let observedTestMinutes = 0;
-    for (const command of payload.actual.commands) {
+    for (const [index, command] of testCommands.entries()) {
       if (!command.classification.startsWith('test-')) continue;
       const lane = command.classification.replace(/^test-/, '');
-      const minutes = command.durationMs / 60_000;
-      observedTestMinutes += minutes;
+      const rawMinutes = command.durationMs / 60_000;
+      observedTestMinutes += rawMinutes;
+      const avoidableMinutes =
+        totalRepeatPotential === 0
+          ? 0
+          : (classifiedWasteMinutes * repeatPotentials[index]) / totalRepeatPotential;
+      const minutes = Math.max(0, rawMinutes - avoidableMinutes);
       const samples = laneSamples[lane] ?? [];
       samples.push(minutes);
       laneSamples[lane] = samples;
@@ -184,8 +218,20 @@ export function updateEstimationRubric({
           Object.entries(previous.ai.coefficients).filter(([key]) => key !== 'engagedToHuman')
         ),
         implementationHour: weightedRobustMean(
-          aiRatios,
+          aiImplementationRatios,
           previous.ai.coefficients.implementationHour ?? previous.ai.coefficients.engagedToHuman
+        ),
+        planningHour: weightedRobustMean(
+          aiPlanningRatios,
+          previous.ai.coefficients.planningHour ?? BOOTSTRAP_RUBRIC_PRIORS.ai.planningHour
+        ),
+        verificationHour: weightedRobustMean(
+          stageRatios('test'),
+          previous.ai.coefficients.verificationHour ?? BOOTSTRAP_RUBRIC_PRIORS.ai.verificationHour
+        ),
+        reviewHour: weightedRobustMean(
+          aiReviewRatios,
+          previous.ai.coefficients.reviewHour ?? BOOTSTRAP_RUBRIC_PRIORS.ai.reviewHour
         ),
       },
       sampleSize: ordered.length,

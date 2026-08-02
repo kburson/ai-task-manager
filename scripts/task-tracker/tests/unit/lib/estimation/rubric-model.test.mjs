@@ -72,9 +72,7 @@ test('agent outcomes update AI diagnostics without calibrating human effort from
   });
   assert.equal(updated.cohort[0].outcomeRecordId, outcomeId);
   assert.equal(updated.workflowDiagnostics.avoidableProcessWasteHours, 2);
-  assert.ok(
-    updated.ai.coefficients.implementationHour > previous.ai.coefficients.implementationHour
-  );
+  assert.equal(updated.ai.coefficients.implementationHour, 0.4);
   assert.deepEqual(updated.human.coefficients, previous.human.coefficients);
   assert.equal(updated.human.sampleSize, previous.human.sampleSize);
   assert.equal(updated.human.confidence, previous.human.confidence);
@@ -185,6 +183,81 @@ test('lane and sandbox costs use their own observed sample counts', () => {
   assert.equal(updated.testLandscape.laneMinutes.unit, 2);
   assert.equal(updated.testLandscape.laneMinutes.integration, 5);
   assert.equal(updated.testLandscape.sandboxMinutes, 58);
+});
+
+test('avoidable repeated verification is excluded from learned human repository cost', () => {
+  const previous = createBootstrapRubric({ generatedAt: '2026-08-01T00:00:00.000Z' });
+  const clean = outcome({
+    actual: {
+      ...outcome().payload.actual,
+      stages: { plan: 1, develop: 4, test: 1, review: 1 },
+      commands: [{ classification: 'test-unit', durationMs: 3_600_000, attempts: 1 }],
+    },
+    costClassification: {
+      necessaryHours: 7,
+      avoidableProcessWasteHours: 0,
+      unclassifiedHours: 0,
+      drivers: [],
+    },
+    landscape: { ...outcome().payload.landscape, lanes: ['unit', 'sandbox'] },
+  });
+  const rerun = outcome({
+    actual: {
+      ...outcome().payload.actual,
+      engagedHours: 8,
+      stages: { plan: 1, develop: 4, test: 2, review: 1 },
+      commands: [{ classification: 'test-unit', durationMs: 7_200_000, attempts: 2 }],
+    },
+    variance: { vsAiP50Hours: 3, vsAiP80Hours: 0 },
+    costClassification: {
+      necessaryHours: 7,
+      avoidableProcessWasteHours: 1,
+      unclassifiedHours: 0,
+      drivers: [{ kind: 'redundant-verification', hours: 1 }],
+    },
+    landscape: { ...outcome().payload.landscape, lanes: ['unit', 'sandbox'] },
+  });
+
+  const cleanRubric = updateEstimationRubric({ previous, outcomes: [clean] });
+  const rerunRubric = updateEstimationRubric({ previous, outcomes: [rerun] });
+
+  assert.equal(cleanRubric.testLandscape.laneMinutes.unit, 60);
+  assert.equal(rerunRubric.testLandscape.laneMinutes.unit, 60);
+  assert.equal(cleanRubric.testLandscape.sandboxMinutes, 0);
+  assert.equal(rerunRubric.testLandscape.sandboxMinutes, 0);
+});
+
+test('AI implementation learning uses Develop only and calibrates other lifecycle stages separately', () => {
+  const previous = createBootstrapRubric({ generatedAt: '2026-08-01T00:00:00.000Z' });
+  const baseline = outcome({
+    actual: {
+      ...outcome().payload.actual,
+      engagedHours: 7,
+      stages: { plan: 1, develop: 4, test: 1, review: 1 },
+    },
+  });
+  const lifecycleOnlyChanged = outcome({
+    actual: {
+      ...outcome().payload.actual,
+      engagedHours: 10,
+      stages: { plan: 2, develop: 4, test: 2, review: 2 },
+    },
+    variance: { vsAiP50Hours: 5, vsAiP80Hours: 2 },
+    costClassification: {
+      necessaryHours: 8,
+      avoidableProcessWasteHours: 2,
+      unclassifiedHours: 0,
+      drivers: [{ kind: 'redundant-verification', hours: 2 }],
+    },
+  });
+
+  const first = updateEstimationRubric({ previous, outcomes: [baseline] });
+  const second = updateEstimationRubric({ previous, outcomes: [lifecycleOnlyChanged] });
+
+  assert.equal(first.ai.coefficients.implementationHour, second.ai.coefficients.implementationHour);
+  assert.notEqual(first.ai.coefficients.planningHour, second.ai.coefficients.planningHour);
+  assert.notEqual(first.ai.coefficients.verificationHour, second.ai.coefficients.verificationHour);
+  assert.notEqual(first.ai.coefficients.reviewHour, second.ai.coefficients.reviewHour);
 });
 
 test('Refine-to-Plan accuracy learns from the frozen forecast paired with each outcome', () => {

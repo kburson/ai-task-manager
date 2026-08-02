@@ -298,7 +298,10 @@ test('completed outcome deterministically updates the next rubric and AI forecas
       },
     ],
   });
-  assert.equal(secondForecast.plan.humanHours, firstForecast.payload.plan.humanHours);
+  assert.ok(
+    secondForecast.plan.humanHours <= firstForecast.payload.plan.humanHours,
+    'avoidable rerun waste must never inflate the next human Plan estimate'
+  );
   assert.notEqual(secondForecast.ai.p50EngagedHours, firstForecast.payload.ai.p50EngagedHours);
   assert.equal(secondForecast.comparableIssues[0].outcomeRecordId, outcomeResult.recordId);
   assert.ok(transport.comments.size >= 4, 'every durable write completed a #1070 read-back');

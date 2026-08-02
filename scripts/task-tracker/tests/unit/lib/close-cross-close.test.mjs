@@ -103,6 +103,8 @@ function buildMockCtx({ active, target, sideEffects }) {
 
 async function runCloseAndCaptureExit(ctx) {
   const realExit = process.exit;
+  const realExitCode = process.exitCode;
+  process.exitCode = 0;
   let exitCode = null;
   process.exit = (code) => {
     exitCode = code;
@@ -121,6 +123,7 @@ async function runCloseAndCaptureExit(ctx) {
     if (!/__test_exit_\d+__/.test(err.message)) caughtError = err;
   } finally {
     process.exit = realExit;
+    process.exitCode = realExitCode;
     console.log = realLog;
     console.error = realErr;
   }

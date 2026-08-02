@@ -48,6 +48,31 @@ export async function drain(handler, queuePath) {
   return failed.length === 0;
 }
 
+// Drain only matching items while retaining failed deliveries for a later
+// retry. Terminal evidence uses this stricter variant: an issue must not freeze
+// an immutable outcome while one of its timing rows is still only local.
+export async function drainMatching(handler, queuePath, predicate) {
+  const items = read(queuePath);
+  const kept = [];
+  let delivered = 0;
+  let pending = 0;
+  for (const item of items) {
+    if (!predicate(item)) {
+      kept.push(item);
+      continue;
+    }
+    try {
+      await handler(item);
+      delivered++;
+    } catch {
+      kept.push(item);
+      pending++;
+    }
+  }
+  write(kept, queuePath);
+  return { delivered, pending };
+}
+
 // Drain only items matching `predicate`, consuming them regardless of handler
 // outcome. Non-matching items are written back untouched. Used at end of
 // `/task close` to clear queue entries for the closing issue — once an issue
