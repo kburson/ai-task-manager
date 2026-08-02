@@ -439,6 +439,37 @@ test('incremental listing rejects an empty page that claims a successor', async 
   assert.equal(calls, 1);
 });
 
+test('incremental listing rejects pages larger than the requested page size', async () => {
+  const { listIssueCommentsSince } = commentStore;
+  const nodes = Array.from({ length: 101 }, (_, index) => ({
+    ...node(`IC_kwDOOversizedPage${index}`, '01J00000000000000000000021'),
+    body: 'Ordinary issue discussion.',
+  }));
+
+  await assert.rejects(
+    listIssueCommentsSince({
+      since: '2026-08-01T00:00:00.000Z',
+      repository,
+      issue,
+      graphql: async () => ({
+        data: {
+          repository: {
+            issue: {
+              number: issue,
+              repository: { nameWithOwner: repository },
+              comments: {
+                nodes,
+                pageInfo: { hasNextPage: false, endCursor: null },
+              },
+            },
+          },
+        },
+      }),
+    }),
+    (error) => error.category === 'pagination'
+  );
+});
+
 test('incremental listing rejects missing or non-string comment bodies', async () => {
   const { listIssueCommentsSince } = commentStore;
   for (const bodyValue of [undefined, null, 42]) {

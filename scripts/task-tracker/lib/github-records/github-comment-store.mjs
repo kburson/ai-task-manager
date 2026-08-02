@@ -18,13 +18,14 @@ const COMMENTS_BY_NODE_IDS_QUERY = `
     }
   }
 `;
+const ISSUE_COMMENT_PAGE_SIZE = 100;
 const ISSUE_COMMENTS_QUERY = `
   query AitmIssueComments($owner: String!, $name: String!, $issue: Int!, $after: String) {
     repository(owner: $owner, name: $name) {
       issue(number: $issue) {
         number
         repository { nameWithOwner }
-        comments(first: 100, after: $after) {
+        comments(first: ${ISSUE_COMMENT_PAGE_SIZE}, after: $after) {
           nodes {
             __typename
             ... on IssueComment {
@@ -306,6 +307,7 @@ export async function listIssueCommentsSince(input = {}) {
     }
     const connection = responseIssue.comments;
     if (!Array.isArray(connection?.nodes)) throw storeError('partial-response');
+    if (connection.nodes.length > ISSUE_COMMENT_PAGE_SIZE) throw storeError('pagination');
     if (typeof connection.pageInfo?.hasNextPage !== 'boolean') throw storeError('pagination');
     if (connection.pageInfo.hasNextPage && connection.nodes.length === 0) {
       throw storeError('pagination');
