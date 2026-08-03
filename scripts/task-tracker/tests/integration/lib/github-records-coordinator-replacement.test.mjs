@@ -377,3 +377,119 @@ test('a persisted nested delegation capsule must use its exact parent authority'
     );
   }
 });
+
+test('a persisted nested coordinator replacement pauses and resumes under its original parent authority', () => {
+  const parentGrant = grant({ grantId: 'grant-parent', coordinator, epoch: 1 });
+  const parent = capsule({
+    recordId: id(41),
+    recordType: 'coordinator-grant',
+    payload: parentGrant,
+    epoch: 1,
+    grantId: id(9001),
+    actor: coordinator.actor,
+  });
+  const childGrant = {
+    ...grant({
+      grantId: 'grant-child',
+      coordinator: replacementCoordinator,
+      epoch: 1,
+      issuer: coordinator,
+    }),
+    scope: { scopeRootIssue: 101, includedIssues: [], excludedIssues: [] },
+    parentGrantId: 'grant-parent',
+    operations: ['advance'],
+    branchBoundary: ['work/101'],
+    integrationBoundary: { sourceBranches: [], destinationBranches: [] },
+  };
+  const child = capsule({
+    recordId: id(42),
+    predecessor: id(41),
+    recordType: 'coordinator-grant',
+    payload: childGrant,
+    epoch: 1,
+    grantId: id(9001),
+    actor: coordinator.actor,
+  });
+  const childAuthority = resolve({
+    records: [parent, child],
+    coordinationProjection: {
+      schema: 'aitm.coordination-projection/v1',
+      grantId: 'grant-child',
+      epoch: 1,
+      adoptionState: 'adopted',
+    },
+  });
+  const successorGrant = {
+    ...childGrant,
+    grantId: 'grant-child-successor',
+    coordinator: { actor: 'gemini', platform: 'gemini', session: 'successor-session' },
+    epoch: 2,
+    issuer: replacementCoordinator,
+  };
+  const replacement = replaceCoordinator({
+    authority: childAuthority,
+    expectedGrantId: 'grant-child',
+    expectedEpoch: 1,
+    replacementGrant: successorGrant,
+  });
+  const revocation = capsule({
+    recordId: id(43),
+    predecessor: id(42),
+    recordType: 'coordinator-revocation',
+    payload: replacement.revocation,
+    epoch: 1,
+    grantId: id(9001),
+    actor: replacementCoordinator.actor,
+  });
+  const successor = capsule({
+    recordId: id(44),
+    predecessor: id(43),
+    recordType: 'coordinator-grant',
+    payload: successorGrant,
+    epoch: 1,
+    grantId: id(9001),
+    actor: replacementCoordinator.actor,
+  });
+  const records = [parent, child, revocation, successor];
+
+  assert.deepEqual(
+    resolve({ records, coordinationProjection: replacement.coordinationProjection }),
+    {
+      status: 'paused',
+      diagnostic: { reason: 'adoption-required' },
+    }
+  );
+  const adopted = resolve({
+    records,
+    coordinationProjection: { ...replacement.coordinationProjection, adoptionState: 'adopted' },
+  });
+  assert.equal(
+    authorizeCoordinatorOperation({
+      authority: adopted,
+      grantId: 'grant-child-successor',
+      epoch: 2,
+      coordinator: successorGrant.coordinator,
+      issue: 101,
+      operation: 'advance',
+      branch: 'work/101',
+    }).authorized,
+    true
+  );
+
+  const forgedSuccessor = capsule({
+    recordId: id(44),
+    predecessor: id(43),
+    recordType: 'coordinator-grant',
+    payload: successorGrant,
+    epoch: 1,
+    grantId: id(9002),
+    actor: replacementCoordinator.actor,
+  });
+  assert.deepEqual(
+    resolve({
+      records: [parent, child, revocation, forgedSuccessor],
+      coordinationProjection: replacement.coordinationProjection,
+    }),
+    { status: 'blocked', diagnostic: { reason: 'invalid-replacement' } }
+  );
+});
