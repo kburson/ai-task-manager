@@ -132,7 +132,7 @@ test('discovery is read-only and does not need an actor or write transport', asy
 });
 
 test('invalid directory issue IDs refuse before the first singleton mutation', async () => {
-  for (const issueNodeId of ['I'.repeat(257), 'I_kwDOpaque\ncontrol', 'I_kwDOpaque-->']) {
+  for (const issueNodeId of ['I'.repeat(257), 'I_kwDOpaque\ncontrol']) {
     const memory = memoryIssue();
     await assert.rejects(
       initializeIssueDirectory(input(memory, { issueNodeId })),
@@ -140,6 +140,20 @@ test('invalid directory issue IDs refuse before the first singleton mutation', a
     );
     assert.deepEqual(memory.state.writes, { comments: 0, body: 0 });
   }
+});
+
+test('an opaque issue ID containing a comment terminator round-trips through initialization and re-entry', async () => {
+  const issueNodeId = 'I_kwDOpaque-->';
+  const memory = memoryIssue();
+  await initializeIssueDirectory(input(memory, { issueNodeId }));
+
+  const directory = parseIssueDirectory({ issueBody: memory.state.body });
+  assert.equal(directory.issueNodeId, issueNodeId);
+  assert.equal([...memory.state.body.matchAll(/-->/g)].length, 1);
+  assert.deepEqual(memory.state.writes, { comments: 4, body: 1 });
+
+  await initializeIssueDirectory(input(memory, { issueNodeId }));
+  assert.deepEqual(memory.state.writes, { comments: 4, body: 1 });
 });
 
 test('every before and after comment/body write crash re-enters without blind duplicate creation', async () => {
