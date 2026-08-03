@@ -150,6 +150,29 @@ Run: \`node --test fenced-example.test.mjs\`
   assert.deepEqual(task.commands, []);
 });
 
+test('does not let a verification label authorize a later ordinary fence', () => {
+  const [task] = extractPlanTasks(`### Task 1: Fence ownership
+**Verification Commands:**
+\`\`\`sh
+node --test real.test.mjs
+\`\`\`
+
+\`\`\`markdown
+Run: \`node --test example-only.test.mjs\`
+\`\`\``);
+  assert.deepEqual(task.commands, ['node --test real.test.mjs']);
+});
+
+test('preserves verifier source order and accepts labeled tilde fences', () => {
+  const [task] = extractPlanTasks(`### Task 1: Ordered verifiers
+**Verification Commands:**
+~~~sh
+node --test first.test.mjs
+~~~
+Run: \`node --test second.test.mjs\``);
+  assert.deepEqual(task.commands, ['node --test first.test.mjs', 'node --test second.test.mjs']);
+});
+
 test('linked plan metadata prefers Implementation-plan and strips a commit suffix', () => {
   const body = `## Plan Metadata
 

@@ -19,9 +19,8 @@ export const DECOMPOSITION_THRESHOLDS = Object.freeze({
 
 const TASK_HEADING_RE = /^###\s+(Task|Milestone)\s+(\d+):\s*(.*?)\s*$/i;
 const SECTION_HEADING_RE = /^#{1,3}\s+/;
-const RUN_COMMAND_RE = /^\s*Run:\s*`([^`]+)`\s*$/gim;
-const VERIFICATION_BLOCK_RE =
-  /\*\*Verification Commands:\*\*\s*\n\s*```[^\n]*\n([\s\S]*?)\n\s*```/gi;
+const RUN_COMMAND_RE = /^\s*Run:\s*`([^`]+)`\s*$/i;
+const VERIFICATION_LABEL_RE = /^\s*\*\*Verification Commands:\*\*\s*$/i;
 const PLAN_METADATA_KEYS = ['Implementation-plan', 'Source-plan', 'Plan'];
 const WAIVER_HEADING = 'Decomposition Waiver';
 const WAIVER_FIELDS = [
@@ -45,12 +44,29 @@ function uniqueCommands(commands) {
 
 function commandsFromTaskBody(body) {
   const commands = [];
-  for (const match of String(body).matchAll(RUN_COMMAND_RE)) commands.push(match[1].trim());
-  for (const block of String(body).matchAll(VERIFICATION_BLOCK_RE)) {
-    for (const line of block[1].split('\n')) {
+  let fence = null;
+  for (const line of String(body).split('\n')) {
+    if (fence) {
+      const closingFence = /^\s*(`{3,}|~{3,})/.exec(line);
+      if (
+        closingFence &&
+        closingFence[1][0] === fence.character &&
+        closingFence[1].length >= fence.length
+      ) {
+        fence = null;
+        continue;
+      }
       const command = line.trim().replace(/^`|`$/g, '');
       if (command && !command.startsWith('#')) commands.push(command);
+      continue;
     }
+    const openingFence = /^\s*(`{3,}|~{3,})/.exec(line);
+    if (openingFence) {
+      fence = { character: openingFence[1][0], length: openingFence[1].length };
+      continue;
+    }
+    const run = RUN_COMMAND_RE.exec(line);
+    if (run) commands.push(run[1].trim());
   }
   return uniqueCommands(commands);
 }
@@ -132,16 +148,14 @@ function interruptsInlineBlock(line) {
   );
 }
 
-function previousNonBlankLine(lines) {
-  for (let index = lines.length - 1; index >= 0; index -= 1) {
-    if (lines[index].trim()) return lines[index];
-  }
-  return '';
-}
-
 function markdownViews(value) {
   const lines = String(value).split('\n');
-  const state = { inComment: false, fence: null, inlineTicks: 0 };
+  const state = {
+    inComment: false,
+    fence: null,
+    inlineTicks: 0,
+    verificationFenceEligible: false,
+  };
   const structuralLines = [];
   const commandLines = [];
   for (let lineIndex = 0; lineIndex < lines.length; lineIndex += 1) {
@@ -161,15 +175,16 @@ function markdownViews(value) {
     const openingFence = !state.inComment && /^\s*(`{3,}|~{3,})/.exec(visible);
     let verificationFence = false;
     if (inlineTicksAtStart === 0 && openingFence) {
-      verificationFence = /^\s*\*\*Verification Commands:\*\*\s*$/i.test(
-        previousNonBlankLine(structuralLines)
-      );
+      verificationFence = state.verificationFenceEligible;
       state.fence = {
         character: openingFence[1][0],
         length: openingFence[1].length,
         verification: verificationFence,
       };
       state.inlineTicks = 0;
+      state.verificationFenceEligible = false;
+    } else if (visible.trim()) {
+      state.verificationFenceEligible = VERIFICATION_LABEL_RE.test(structural);
     }
     structuralLines.push(openingFence && inlineTicksAtStart === 0 ? '' : structural);
     const insideMultilineSpan = inlineTicksAtStart !== 0 || state.inlineTicks !== 0;
