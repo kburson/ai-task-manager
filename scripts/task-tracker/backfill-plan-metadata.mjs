@@ -57,6 +57,15 @@ function insertFieldsBeforeTrailingBlank(lines, bounds, fields) {
   lines.splice(insertAt, 0, ...fields);
 }
 
+function commentPlaceholderEnd(lines, start, end, value) {
+  const source = String(value);
+  if (!source.includes('<!--') || source.includes('-->')) return start;
+  for (let i = start + 1; i < end; i += 1) {
+    if (lines[i].includes('-->')) return i;
+  }
+  return end - 1;
+}
+
 // Pure: normalize both metadata sections and relocate legacy provenance.
 //
 //   { status: 'skip' }                              no section, or already bold
@@ -91,9 +100,13 @@ export function buildPlanMetadataBackfill(body = '') {
     if (field && PROVENANCE_KEYS.has(key)) {
       const canonical = canonicalOriginKey(key);
       changed.push(canonical);
-      if (isSubstantiveMetadataValue(field.value) && !storyValues.has(canonical)) {
+      const substantive = isSubstantiveMetadataValue(field.value);
+      if (substantive && !storyValues.has(canonical)) {
         storyValues.set(canonical, field.value);
         movedFields.push(`- **${canonical}**: ${field.value}`);
+      }
+      if (!substantive) {
+        i = commentPlaceholderEnd(originalLines, i, originalPlanBounds.end, field.value);
       }
       continue;
     }
@@ -138,6 +151,7 @@ export function buildPlanMetadataBackfill(body = '') {
       const canonical = canonicalOriginKey(key);
       if (!isSubstantiveMetadataValue(field.value)) {
         if (!changed.includes(canonical)) changed.push(canonical);
+        i = commentPlaceholderEnd(outputLines, i, storyBounds.end, field.value);
         continue;
       }
       if (seen.has(canonical)) continue;

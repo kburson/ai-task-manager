@@ -135,6 +135,47 @@ describe('buildPlanMetadataBackfill Story Origin migration (#892)', () => {
     assert.equal(result.body.match(/\*\*parent\*\*:/g)?.length, 1);
   });
 
+  it('removes an entire multiline Story Origin placeholder when restoring a legacy value', () => {
+    const body = [
+      '## Story Origin',
+      '',
+      '- **kind**: code',
+      '- **parent**: <!--',
+      'TODO',
+      '-->',
+      '',
+      '## Plan Metadata',
+      '',
+      '- **parent**: #883',
+      '- **size**: S',
+    ].join('\n');
+
+    const result = buildPlanMetadataBackfill(body);
+
+    assert.equal(result.status, 'healed');
+    assert.match(result.body, /- \*\*parent\*\*: #883/);
+    assert.doesNotMatch(result.body, /TODO|-->/);
+    assert.equal(result.body.match(/\*\*parent\*\*:/g)?.length, 1);
+  });
+
+  it('removes an entire multiline legacy provenance placeholder from Plan Metadata', () => {
+    const body = [
+      '## Plan Metadata',
+      '',
+      '- **parent**: <!--',
+      'TODO',
+      '-->',
+      '- **size**: S',
+    ].join('\n');
+
+    const result = buildPlanMetadataBackfill(body);
+
+    assert.equal(result.status, 'healed');
+    assert.doesNotMatch(result.body, /TODO|-->|\*\*parent\*\*:/);
+    assert.match(result.body, /## Story Origin\n\n- \*\*kind\*\*: code/);
+    assert.match(result.body, /## Plan Metadata\n\n- \*\*size\*\*: S/);
+  });
+
   it('skips a clean split body byte-for-byte', () => {
     const body = [
       '## Story Origin',
