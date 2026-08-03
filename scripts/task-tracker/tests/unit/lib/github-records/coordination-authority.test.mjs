@@ -328,12 +328,73 @@ test('replaces only the exact active epoch, pauses authority, and resumes only a
     parentGrantId: null,
     issuer: coordinator,
   });
+  for (const invalid of [
+    { ...replacementGrant, epoch: 1 },
+    { ...replacementGrant, epoch: 3 },
+  ]) {
+    assert.throws(
+      () =>
+        replaceCoordinator({
+          authority,
+          expectedGrantId: 'grant-parent',
+          expectedEpoch: 1,
+          replacementGrant: invalid,
+        }),
+      /coordination-authority:replacement-epoch/
+    );
+  }
+  assert.throws(
+    () =>
+      replaceCoordinator({
+        authority,
+        expectedGrantId: 'grant-parent',
+        expectedEpoch: 1,
+        replacementGrant: { ...replacementGrant, parentGrantId: 'other-parent' },
+      }),
+    /coordination-authority:replacement/
+  );
+  assert.equal(authorize(authority).authorized, true);
   const replacement = replaceCoordinator({
     authority,
     expectedGrantId: 'grant-parent',
     expectedEpoch: 1,
     replacementGrant,
   });
+
+  assert.equal(authorize(authority).authorized, false);
+  assert.throws(
+    () =>
+      grantNestedEpic({
+        parentAuthority: authority,
+        issueHierarchy: hierarchy,
+        grant: grant({
+          grantId: 'old-epoch-child',
+          scopeRootIssue: 102,
+          includedIssues: [103],
+          excludedIssues: [],
+          coordinator: nestedCoordinator,
+          parentGrantId: 'grant-parent',
+          issuer: coordinator,
+          operations: ['advance'],
+          branchBoundary: ['epic/100/nested-102', 'work/103'],
+          integrationBoundary: {
+            sourceBranches: ['work/103'],
+            destinationBranches: ['epic/100/nested-102'],
+          },
+        }),
+      }),
+    /coordination-authority:nested-scope/
+  );
+  assert.throws(
+    () =>
+      replaceCoordinator({
+        authority,
+        expectedGrantId: 'grant-parent',
+        expectedEpoch: 1,
+        replacementGrant,
+      }),
+    /coordination-authority:stale-epoch/
+  );
 
   assert.deepEqual(replacement.revocation, {
     schema: 'aitm.coordinator-revocation/v1',
@@ -371,21 +432,6 @@ test('replaces only the exact active epoch, pauses authority, and resumes only a
     }).authorized,
     true
   );
-  for (const invalid of [
-    { ...replacementGrant, epoch: 1 },
-    { ...replacementGrant, epoch: 3 },
-  ]) {
-    assert.throws(
-      () =>
-        replaceCoordinator({
-          authority,
-          expectedGrantId: 'grant-parent',
-          expectedEpoch: 1,
-          replacementGrant: invalid,
-        }),
-      /coordination-authority:replacement-epoch/
-    );
-  }
   assert.throws(
     () =>
       replaceCoordinator({
@@ -396,15 +442,36 @@ test('replaces only the exact active epoch, pauses authority, and resumes only a
       }),
     /coordination-authority:stale-epoch/
   );
+});
+
+test('a valid revocation replay retires a previously resolved authority capability', () => {
+  const authority = resolve();
+  const revocation = {
+    schema: 'aitm.coordinator-revocation/v1',
+    grantId: 'grant-parent',
+    epoch: 1,
+    state: 'revoked',
+  };
+
+  assert.deepEqual(resolve({ revocations: [revocation] }), {
+    status: 'blocked',
+    diagnostic: { reason: 'revoked' },
+  });
+  assert.equal(authorize(authority).authorized, false);
   assert.throws(
     () =>
       replaceCoordinator({
         authority,
         expectedGrantId: 'grant-parent',
         expectedEpoch: 1,
-        replacementGrant: { ...replacementGrant, parentGrantId: 'other-parent' },
+        replacementGrant: grant({
+          grantId: 'revoked-replacement',
+          coordinator: nestedCoordinator,
+          epoch: 2,
+          issuer: coordinator,
+        }),
       }),
-    /coordination-authority:replacement/
+    /coordination-authority:stale-epoch/
   );
 });
 
