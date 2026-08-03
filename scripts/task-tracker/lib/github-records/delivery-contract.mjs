@@ -375,11 +375,13 @@ export function amendContract(input = {}) {
   const definitions = { acceptanceCriteria, verificationCommands, definitionOfDone };
   assertDefinitions(definitions);
   assertNoRetiredLogicalIds(contract, definitions);
+  const nextDefinitionHash = definitionHash(normalizedDefinitionDomain(definitions));
+  if (nextDefinitionHash === contract.definitionHash) throw contractError('no-op-amendment');
   const amended = {
     ...structuredClone(contract),
     revision: contract.revision + 1,
     contractEpoch: contract.contractEpoch + 1,
-    definitionHash: definitionHash(normalizedDefinitionDomain(definitions)),
+    definitionHash: nextDefinitionHash,
     projectionHash: '',
     acceptanceCriteria: structuredClone(acceptanceCriteria),
     verificationCommands: structuredClone(verificationCommands),
@@ -388,12 +390,6 @@ export function amendContract(input = {}) {
     acceptedRecordIds: [],
   };
   const rendered = renderContract({ contract: amended });
-  if (
-    amended.definitionHash === contract.definitionHash &&
-    rendered.projectionHash === contract.projectionHash
-  ) {
-    throw contractError('no-op-amendment');
-  }
   const snapshot = deepFreeze({ ...amended, projectionHash: rendered.projectionHash });
   const invalidation = deepFreeze({
     priorContractEpoch: contract.contractEpoch,
