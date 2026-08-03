@@ -261,6 +261,24 @@ export function hashRecordPayload(payload) {
   return `sha256:${createHash('sha256').update(canonicalRecordJson(payload)).digest('hex')}`;
 }
 
+/** Rejects non-durable or secret-bearing data before it becomes a record payload. */
+export function assertNoSecretRecordData(value, { safeKeyNames = [] } = {}) {
+  if (!Array.isArray(safeKeyNames) || !safeKeyNames.every((key) => typeof key === 'string')) {
+    throw recordError('secret');
+  }
+  canonicalRecordJson(value);
+  const safeKeys = new Set(safeKeyNames);
+  const assertNoSecretKeysWithSafeNames = (current) => {
+    if (current === null || typeof current !== 'object') return;
+    for (const key of Object.keys(current)) {
+      if (!safeKeys.has(key) && isSecretKey(key)) throw recordError('secret');
+      assertNoSecretKeysWithSafeNames(current[key]);
+    }
+  };
+  assertNoSecretKeysWithSafeNames(value);
+  assertNoCredentialValues(value);
+}
+
 function encodeBase32(value, length) {
   let remaining = value;
   let encoded = '';
