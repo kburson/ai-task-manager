@@ -23,6 +23,7 @@ const INTEGRATION_KEYS = ['destinationBranches', 'sourceBranches'];
 const PROJECTION_KEYS = ['adoptionState', 'epoch', 'grantId', 'schema'];
 const REVOCATION_KEYS = ['epoch', 'grantId', 'schema', 'state'];
 const REPLACEMENT_REVOCATION_KEYS = [...REVOCATION_KEYS, 'replacementGrantId'];
+const activeAuthorityResults = new WeakSet();
 
 function authorityError(category) {
   return new TypeError(`coordination-authority:${category}`);
@@ -274,11 +275,13 @@ function validateRevocation(revocation) {
 }
 
 function activeAuthority(validatedGrant) {
-  return deepFreeze({
+  const authority = deepFreeze({
     status: 'active',
     grant: frozenCopy(validatedGrant.grant),
     scopeIssueIds: Object.freeze([...validatedGrant.scope]),
   });
+  activeAuthorityResults.add(authority);
+  return authority;
 }
 
 function scopesOverlap(left, right) {
@@ -286,6 +289,10 @@ function scopesOverlap(left, right) {
     left.grant.operations.some((operation) => right.grant.operations.includes(operation)) &&
     left.scope.some((issue) => right.scope.includes(issue))
   );
+}
+
+function isStrictSubset(candidate, parent) {
+  return candidate.length < parent.length && candidate.every((value) => parent.includes(value));
 }
 
 function extractCapsules({ records, repository, issue }) {
@@ -389,7 +396,9 @@ export function authorizeCoordinatorOperation({
   branch,
   integration = null,
 } = {}) {
-  if (!isPlainDataObject(authority)) return authorization(false, 'authority');
+  if (!isPlainDataObject(authority) || !activeAuthorityResults.has(authority)) {
+    return authorization(false, 'authority');
+  }
   if (authority.status !== 'active') {
     const reason =
       isPlainDataObject(authority.diagnostic) && typeof authority.diagnostic.reason === 'string'
@@ -458,7 +467,11 @@ export function grantNestedEpic({
   activeGrants = [],
 } = {}) {
   const parents = buildHierarchy(issueHierarchy);
-  if (!isPlainDataObject(parentAuthority) || parentAuthority.status !== 'active') {
+  if (
+    !isPlainDataObject(parentAuthority) ||
+    parentAuthority.status !== 'active' ||
+    !activeAuthorityResults.has(parentAuthority)
+  ) {
     throw authorityError('nested-scope');
   }
   let candidate;
@@ -477,12 +490,11 @@ export function grantNestedEpic({
     ) ||
     candidate.grant.parentGrantId !== parent.grant.grantId ||
     !isDeepStrictEqual(candidate.grant.issuer, parent.grant.coordinator) ||
-    candidate.scope.some((issue) => !parent.scope.includes(issue)) ||
-    candidate.scope.length >= parent.scope.length ||
-    candidate.grant.operations.some((operation) => !parent.grant.operations.includes(operation)) ||
-    candidate.branches.some((branch) => !parent.branches.includes(branch)) ||
-    candidate.sourceBranches.some((branch) => !parent.sourceBranches.includes(branch)) ||
-    candidate.destinationBranches.some((branch) => !parent.destinationBranches.includes(branch))
+    !isStrictSubset(candidate.scope, parent.scope) ||
+    !isStrictSubset(candidate.grant.operations, parent.grant.operations) ||
+    !isStrictSubset(candidate.branches, parent.branches) ||
+    !isStrictSubset(candidate.sourceBranches, parent.sourceBranches) ||
+    !isStrictSubset(candidate.destinationBranches, parent.destinationBranches)
   ) {
     throw authorityError('nested-scope');
   }
@@ -509,7 +521,11 @@ export function replaceCoordinator({
   expectedEpoch,
   replacementGrant,
 } = {}) {
-  if (!isPlainDataObject(authority) || authority.status !== 'active')
+  if (
+    !isPlainDataObject(authority) ||
+    authority.status !== 'active' ||
+    !activeAuthorityResults.has(authority)
+  )
     throw authorityError('stale-epoch');
   const current = authority.grant;
   if (expectedGrantId !== current.grantId || expectedEpoch !== current.epoch) {
