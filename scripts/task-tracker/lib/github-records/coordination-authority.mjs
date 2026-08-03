@@ -24,6 +24,8 @@ const PROJECTION_KEYS = ['adoptionState', 'epoch', 'grantId', 'schema'];
 const REVOCATION_KEYS = ['epoch', 'grantId', 'schema', 'state'];
 const REPLACEMENT_REVOCATION_KEYS = [...REVOCATION_KEYS, 'replacementGrantId'];
 const activeAuthorityResults = new WeakSet();
+const invalidatedAuthorityResults = new WeakSet();
+const activeAuthorityResultsByEpoch = new Map();
 
 function authorityError(category) {
   return new TypeError(`coordination-authority:${category}`);
@@ -281,7 +283,27 @@ function activeAuthority(validatedGrant) {
     scopeIssueIds: Object.freeze([...validatedGrant.scope]),
   });
   activeAuthorityResults.add(authority);
+  const key = authorityEpochKey(authority.grant.grantId, authority.grant.epoch);
+  const authorities = activeAuthorityResultsByEpoch.get(key) ?? new Set();
+  authorities.add(authority);
+  activeAuthorityResultsByEpoch.set(key, authorities);
   return authority;
+}
+
+function authorityEpochKey(grantId, epoch) {
+  return `${grantId}:${epoch}`;
+}
+
+function isActiveAuthorityResult(authority) {
+  return activeAuthorityResults.has(authority) && !invalidatedAuthorityResults.has(authority);
+}
+
+function invalidateAuthorityEpoch(grantId, epoch) {
+  const key = authorityEpochKey(grantId, epoch);
+  for (const authority of activeAuthorityResultsByEpoch.get(key) ?? []) {
+    invalidatedAuthorityResults.add(authority);
+  }
+  activeAuthorityResultsByEpoch.delete(key);
 }
 
 function scopesOverlap(left, right) {
@@ -347,6 +369,9 @@ export function resolveCoordinatorAuthority({
     throw authorityError('input');
   const validatedGrants = durableGrants.map((grant) => validateGrant(grant, parents));
   const validatedRevocations = durableRevocations.map(validateRevocation);
+  for (const revocation of validatedRevocations) {
+    invalidateAuthorityEpoch(revocation.grantId, revocation.epoch);
+  }
   if (new Set(validatedGrants.map(({ grant }) => grant.grantId)).size !== validatedGrants.length) {
     return blocked('duplicate-grant');
   }
@@ -396,7 +421,7 @@ export function authorizeCoordinatorOperation({
   branch,
   integration = null,
 } = {}) {
-  if (!isPlainDataObject(authority) || !activeAuthorityResults.has(authority)) {
+  if (!isPlainDataObject(authority) || !isActiveAuthorityResult(authority)) {
     return authorization(false, 'authority');
   }
   if (authority.status !== 'active') {
@@ -470,7 +495,7 @@ export function grantNestedEpic({
   if (
     !isPlainDataObject(parentAuthority) ||
     parentAuthority.status !== 'active' ||
-    !activeAuthorityResults.has(parentAuthority)
+    !isActiveAuthorityResult(parentAuthority)
   ) {
     throw authorityError('nested-scope');
   }
@@ -524,7 +549,7 @@ export function replaceCoordinator({
   if (
     !isPlainDataObject(authority) ||
     authority.status !== 'active' ||
-    !activeAuthorityResults.has(authority)
+    !isActiveAuthorityResult(authority)
   )
     throw authorityError('stale-epoch');
   const current = authority.grant;
@@ -576,9 +601,11 @@ export function replaceCoordinator({
     epoch: replacement.grant.epoch,
     adoptionState: 'required',
   };
-  return deepFreeze({
+  const result = deepFreeze({
     revocation,
     replacementGrant: frozenCopy(replacement.grant),
     coordinationProjection,
   });
+  invalidateAuthorityEpoch(current.grantId, current.epoch);
+  return result;
 }
