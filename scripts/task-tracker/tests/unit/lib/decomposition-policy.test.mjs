@@ -1,7 +1,7 @@
 // @story #1052
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, mkdirSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, symlinkSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 import {
@@ -113,6 +113,19 @@ test('ignores fenced examples, zero-number tasks, and empty task titles', () => 
   assert.equal(classifyDecomposition({ size: 'M', estimateHours: 8, planText }).status, 'story-ok');
 });
 
+test('ignores task headings and commands hidden inside HTML comments', () => {
+  const tasks = extractPlanTasks(`<!--
+### Task 1: Hidden
+Run: \`node --test hidden.test.mjs\`
+-->
+### Task 2: Visible
+Run: \`node --test visible.test.mjs\``);
+  assert.deepEqual(
+    tasks.map(({ number, title, commands }) => ({ number, title, commands })),
+    [{ number: 2, title: 'Visible', commands: ['node --test visible.test.mjs'] }]
+  );
+});
+
 test('linked plan metadata prefers Implementation-plan and strips a commit suffix', () => {
   const body = `## Plan Metadata
 
@@ -132,6 +145,26 @@ test('linked plan metadata skips placeholder values', () => {
 - **Source-plan**: docs/source.md
 - **Plan**: docs/fallback.md`;
   assert.equal(linkedPlanPath(body), 'docs/source.md');
+});
+
+test('linked plan metadata ignores sections hidden inside HTML comments', () => {
+  const body = `<!--
+## Plan Metadata
+- **Implementation-plan**: docs/hidden.md
+-->
+## Plan Metadata
+- **Plan**: docs/visible.md`;
+  assert.equal(linkedPlanPath(body), 'docs/visible.md');
+});
+
+test('linked plan metadata ignores fenced examples', () => {
+  const body = `\`\`\`markdown
+## Plan Metadata
+- **Implementation-plan**: docs/example.md
+\`\`\`
+## Plan Metadata
+- **Plan**: docs/visible.md`;
+  assert.equal(linkedPlanPath(body), 'docs/visible.md');
 });
 
 test('resolvePlanPath contains paths to the repository and reports unavailable inputs', () => {
@@ -159,6 +192,17 @@ test('resolvePlanPath contains paths to the repository and reports unavailable i
     resolvePlanPath({ projectDir, body: '## Plan Metadata\n\n- **Plan**: docs/missing.md' })
       .diagnostic,
     /not a readable file/
+  );
+
+  const outside = join(projectDir, '..', 'outside-plan.md');
+  writeFileSync(outside, '# Outside\n', 'utf8');
+  symlinkSync(outside, join(projectDir, 'docs', 'outside-link.md'));
+  assert.match(
+    resolvePlanPath({
+      projectDir,
+      body: '## Plan Metadata\n\n- **Plan**: docs/outside-link.md',
+    }).diagnostic,
+    /outside repository root/
   );
 });
 
@@ -218,4 +262,16 @@ test('rejects duplicate decomposition waiver sections', () => {
   const duplicate = `${waiverBody()}\n\n${waiverBody()}`;
   assert.equal(parseDecompositionWaiver(duplicate).ok, false);
   assert.equal(parseDecompositionWaiver(duplicate).reason, 'duplicate sections');
+});
+
+test('rejects a complete waiver hidden inside an HTML comment', () => {
+  const hidden = `<!--\n${waiverBody()}\n-->`;
+  assert.equal(parseDecompositionWaiver(hidden).ok, false);
+  assert.equal(parseDecompositionWaiver(hidden).reason, 'missing');
+});
+
+test('rejects a complete waiver presented only as a fenced example', () => {
+  const fenced = `\`\`\`markdown\n${waiverBody()}\n\`\`\``;
+  assert.equal(parseDecompositionWaiver(fenced).ok, false);
+  assert.equal(parseDecompositionWaiver(fenced).reason, 'missing');
 });

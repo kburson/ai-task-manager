@@ -349,7 +349,10 @@ const routableContract = ({ output, exitCodes, examples, relatedCommands }) =>
 
 const ROUTABLE_CONTRACTS = Object.freeze({
   'create-issue': routableContract({
-    output: ['Prints the created issue URL, or the validated dry-run payload.'],
+    output: [
+      'Prints the created issue URL, or the validated dry-run payload.',
+      'After creation, stderr includes `AITM_CREATED_ISSUE=<N>` for partial-success recovery.',
+    ],
     exitCodes: [
       exitCode(0, 'issue created or dry-run validation passed'),
       exitCode(1, 'generic GitHub, tether, or internal failure'),

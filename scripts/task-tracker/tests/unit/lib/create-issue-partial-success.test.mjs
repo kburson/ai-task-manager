@@ -125,6 +125,7 @@ exit 1
     6,
     `expected exit 6 (partial-success), got ${result.status}\n${result.stderr}`
   );
+  assert.match(result.stderr, /^AITM_CREATED_ISSUE=457$/m);
   assert.match(result.stderr, /partial-success: #457/);
   assert.match(result.stderr, /tether\/update #457 before retrying/i);
   assert.equal(

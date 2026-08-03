@@ -1,11 +1,11 @@
 import { execFile } from 'node:child_process';
-import { mkdtempSync, readFileSync } from 'node:fs';
+import { mkdtempSync } from 'node:fs';
 import path from 'node:path';
 import { promisify } from 'node:util';
 
 import { gql, splitRepo } from '../../gh/lib/github-projects.mjs';
 import { evaluateIssueDecomposition } from '../lib/decomposition-plan-exit-guard.mjs';
-import { linkedPlanPath } from '../lib/decomposition-policy.mjs';
+import { classifyDecomposition, linkedPlanPath } from '../lib/decomposition-policy.mjs';
 import { metadataFieldValue } from '../lib/metadata-section.mjs';
 import { GH_API_TIMEOUT_MS } from '../lib/process-timeouts.mjs';
 import { projectScratchDir } from '../lib/scratch-dir.mjs';
@@ -15,6 +15,7 @@ const pexec = promisify(execFile);
 const DEFAULT_GOVERNING_SPEC =
   'docs/superpowers/specs/2026-08-03-nested-epic-decomposition-design.md';
 const ISSUE_URL_RE = /\/issues\/(\d+)\b/;
+const CREATED_ISSUE_TOKEN_RE = /^AITM_CREATED_ISSUE=(\d+)$/m;
 
 async function defaultFetchIssueBody({ issueNumber, repo }) {
   const { stdout } = await pexec(
@@ -31,6 +32,15 @@ async function defaultResolveHead({ projectDir }) {
     timeout: GH_API_TIMEOUT_MS,
   });
   return stdout.trim();
+}
+
+async function defaultReadPlanAtCommit({ projectDir, planCommit, planPath }) {
+  const { stdout } = await pexec('git', ['show', `${planCommit}:${planPath}`], {
+    cwd: projectDir,
+    timeout: GH_API_TIMEOUT_MS,
+    maxBuffer: 10 * 1024 * 1024,
+  });
+  return stdout;
 }
 
 async function defaultRunCreator(args, { projectDir }) {
@@ -53,6 +63,11 @@ async function defaultRunCreator(args, { projectDir }) {
 
 function parseCreatedIssueNumber(output) {
   const match = ISSUE_URL_RE.exec(String(output || ''));
+  return match ? Number(match[1]) : null;
+}
+
+function parseCreatedIssueToken(output) {
+  const match = CREATED_ISSUE_TOKEN_RE.exec(String(output || ''));
   return match ? Number(match[1]) : null;
 }
 
@@ -95,7 +110,7 @@ export async function runSplitPlan({
   const projectDir = deps.projectDir || process.cwd();
   const fetchIssueBody = deps.fetchIssueBody || defaultFetchIssueBody;
   const evaluate = deps.evaluateIssueDecomposition || evaluateIssueDecomposition;
-  const readFile = deps.readFile || readFileSync;
+  const readPlanAtCommit = deps.readPlanAtCommit || defaultReadPlanAtCommit;
   const fetchParentIssue = deps.fetchParentIssue || defaultFetchParentIssue;
   const resolveHead = deps.resolveHead || defaultResolveHead;
   const runCreator = deps.runCreator || defaultRunCreator;
@@ -107,9 +122,6 @@ export async function runSplitPlan({
     planOverride,
     deps: deps.decomposition || {},
   });
-  if (evaluated.classification.status === 'story-ok') {
-    throw new Error('split-plan: source issue is story-ok and does not require decomposition');
-  }
   if (!evaluated.planDiagnostic?.path) {
     throw new Error(`split-plan: ${evaluated.planDiagnostic?.diagnostic || 'plan is unavailable'}`);
   }
@@ -126,12 +138,25 @@ export async function runSplitPlan({
     throw new Error('split-plan: resolved parent must be null or a positive integer');
   }
   if (!String(planCommit || '').trim()) throw new Error('split-plan: HEAD commit is unavailable');
-  const planText = readFile(evaluated.planDiagnostic.path, 'utf8');
+  const normalizedPlanCommit = String(planCommit).trim();
+  const planText = await readPlanAtCommit({
+    projectDir,
+    planCommit: normalizedPlanCommit,
+    planPath,
+  });
+  const classification = classifyDecomposition({
+    size: evaluated.values?.size ?? null,
+    estimateHours: evaluated.values?.estimate ?? null,
+    planText,
+  });
+  if (classification.status === 'story-ok') {
+    throw new Error('split-plan: source issue is story-ok and does not require decomposition');
+  }
   const proposals = buildSplitProposals({
     sourceIssue,
     outerParent,
     planPath,
-    planCommit: String(planCommit).trim(),
+    planCommit: normalizedPlanCommit,
     governingSpec,
     planText,
   });
@@ -168,7 +193,7 @@ export async function runSplitPlan({
   for (const draft of drafts) {
     const result = await runCreator([...draft.creatorArgs], { projectDir });
     if (result.exitCode !== 0) {
-      const incompleteIssue = parseCreatedIssueNumber(`${result.stdout}\n${result.stderr}`);
+      const incompleteIssue = parseCreatedIssueToken(`${result.stdout}\n${result.stderr}`);
       if (incompleteIssue) {
         createdChildren.push({
           title: draft.proposal.title,

@@ -101,6 +101,14 @@ function extractIssueNumber(urlOrText) {
   return null;
 }
 
+export function formatCreatedIssueToken(issueNumber) {
+  const number = Number(issueNumber);
+  if (!Number.isInteger(number) || number <= 0) {
+    throw new Error('created issue number must be a positive integer');
+  }
+  return `AITM_CREATED_ISSUE=${number}`;
+}
+
 function validateArgs(args) {
   if (!args.title || args.title === true) die(`missing --title\n${usage()}`, 2);
   // #272 — --status is no longer accepted. All issues are created in Backlog
@@ -222,6 +230,8 @@ function ghCreate(args, assignee) {
     process.stderr.write(created.stderr);
     const partialNumber = extractIssueNumber(created.stdout);
     if (partialNumber) {
+      if (created.stderr && !created.stderr.endsWith('\n')) process.stderr.write('\n');
+      console.error(formatCreatedIssueToken(partialNumber));
       process.stderr.write(
         `partial-success: #${partialNumber} — issue was created but gh exited ${created.status}.\n` +
           `  Tether/update #${partialNumber} before retrying rather than creating a duplicate.\n`
@@ -232,6 +242,7 @@ function ghCreate(args, assignee) {
   }
   const issueNumber = extractIssueNumber(created.stdout);
   if (!issueNumber) die(`could not parse issue number from gh output: ${created.stdout.trim()}`, 1);
+  console.error(formatCreatedIssueToken(issueNumber));
   console.error(`✓ created issue #${issueNumber}`);
   return issueNumber;
 }

@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { buildShapeFlags } from './create-issue.mjs';
+import { buildShapeFlags, formatCreatedIssueToken } from './create-issue.mjs';
 
 // #687 — `buildShapeFlags` is the pure seam that assembles the argv forwarded to
 // `preflight-issue.mjs`. These tests pin the `--kind` forwarding contract without
@@ -26,6 +26,11 @@ test('buildShapeFlags omits --kind when kind is an empty string', () => {
 test('buildShapeFlags omits --kind when kind is a non-string', () => {
   const flags = buildShapeFlags({ shape: 'stub', title: 'x', kind: true });
   assert.equal(flags.includes('--kind'), false, 'non-string kind is ignored');
+});
+
+test('created-issue recovery token is stable and machine-readable', () => {
+  assert.equal(formatCreatedIssueToken(1102), 'AITM_CREATED_ISSUE=1102');
+  assert.throws(() => formatCreatedIssueToken(0), /positive integer/);
 });
 
 test('buildShapeFlags still forwards --shape and seed fields alongside --kind', () => {

@@ -104,6 +104,9 @@ If it already has a parent, generated metadata records that outer Parent epic
 and the source as the Nested epic. Otherwise the source is recorded as both.
 Task-specific acceptance criteria and verification commands remain on the
 generated children; the source owns relationship and roll-up evidence.
+Proposal text is read from the source plan at the pinned HEAD commit, not from
+uncommitted working-tree bytes. Plan paths must be repository-relative and may
+not escape the repository through traversal or symlinks.
 
 ### Visible decomposition waiver
 
@@ -124,6 +127,8 @@ Labels are case-insensitive, but every value must be substantive and stay on
 the same flat field line. The duration must be positive and use `h`, `hour`, or
 `hours`; `Approved-at` must parse as a date. Missing, duplicated, malformed, or
 nested fields invalidate the waiver. A hidden marker is not a waiver.
+Waivers and Plan Metadata shown only inside HTML comments or fenced examples
+are ignored; the required section must be visible root-level Markdown.
 
 ### Partial-success recovery
 
@@ -139,6 +144,11 @@ Already-created children are not deleted. Inspect them before retrying and
 resolve the failure first. A retry relies on the sanctioned creator's
 duplicate-child guard and requires explicit operator resolution; do not bypass
 that guard or recreate children directly.
+
+The sanctioned creator emits `AITM_CREATED_ISSUE=<N>` to stderr immediately
+after GitHub returns the new issue number. `split-plan` consumes only that
+machine token when a later tether or placeholder step fails, so recovery does
+not mistake unrelated issue references for a newly created child.
 
 ## When to flatten back
 

@@ -1,5 +1,5 @@
 // @story #1052
-import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
@@ -176,7 +176,7 @@ function orchestrationInput(overrides = {}) {
         classification: { status: 'must-split' },
         planDiagnostic: { path: '/repo/example.md', source: 'body' },
       }),
-      readFile: () => input().planText,
+      readPlanAtCommit: async () => input().planText,
       fetchParentIssue: async () => 1048,
       resolveHead: async () => 'abc1234',
       runCreator: async () => ({ exitCode: 0, stdout: 'rendered body', stderr: '' }),
@@ -206,6 +206,77 @@ test('dry-run preflights every child and performs no live create', async () => {
     assert.ok(result.proposals.every((proposal) => !proposal.creatorArgs.includes('--dry-run')));
   } finally {
     args.cleanup();
+  }
+});
+
+test('reads proposal text from the pinned HEAD commit rather than the working tree', async () => {
+  const reads = [];
+  const args = orchestrationInput();
+  args.deps.readPlanAtCommit = async (request) => {
+    reads.push(request);
+    return input().planText;
+  };
+  try {
+    await runSplitPlan(args);
+    assert.deepEqual(reads, [
+      {
+        projectDir: process.cwd(),
+        planCommit: 'abc1234',
+        planPath: PLAN_PATH,
+      },
+    ]);
+  } finally {
+    args.cleanup();
+  }
+});
+
+test('default plan reader ignores uncommitted working-tree plan changes', async () => {
+  const projectDir = mkdtempSync(path.join(process.cwd(), '.tmp', 'split-plan-git-test-'));
+  const scratchDir = path.join(projectDir, 'scratch');
+  const planFile = path.join(projectDir, PLAN_PATH);
+  mkdirSync(path.dirname(planFile), { recursive: true });
+  const committedPlan = [
+    '### Task 1: Committed classifier',
+    'Run: `node --test classifier.test.mjs`',
+    '### Task 2: Committed CLI',
+    'Run: `node --test cli.test.mjs`',
+  ].join('\n');
+  writeFileSync(planFile, committedPlan, 'utf8');
+  await pexec('git', ['init'], { cwd: projectDir });
+  await pexec('git', ['config', 'user.email', 'test@example.com'], { cwd: projectDir });
+  await pexec('git', ['config', 'user.name', 'Test'], { cwd: projectDir });
+  await pexec('git', ['add', PLAN_PATH], { cwd: projectDir });
+  await pexec('git', ['commit', '-m', 'plan'], { cwd: projectDir });
+  writeFileSync(
+    planFile,
+    '### Task 1: Uncommitted rewrite\nRun: `node --test wrong.test.mjs`',
+    'utf8'
+  );
+  try {
+    const result = await runSplitPlan({
+      issueNumber: 1052,
+      mode: 'dry-run',
+      cfg: { repo: 'owner/repo' },
+      deps: {
+        projectDir,
+        scratchDir,
+        fetchIssueBody: async () => `## Plan Metadata\n- **Plan**: ${PLAN_PATH}`,
+        evaluateIssueDecomposition: async () => ({
+          classification: { status: 'must-split' },
+          planDiagnostic: { path: planFile, source: 'metadata', diagnostic: null },
+          values: { size: 'XL', estimate: 24 },
+        }),
+        fetchParentIssue: async () => null,
+        runCreator: async () => ({ exitCode: 0, stdout: 'rendered', stderr: '' }),
+      },
+    });
+    assert.deepEqual(
+      result.proposals.map((proposal) => proposal.title),
+      ['Committed classifier', 'Committed CLI']
+    );
+    assert.doesNotMatch(result.proposals[0].scope, /Uncommitted rewrite/);
+  } finally {
+    rmSync(projectDir, { recursive: true, force: true });
   }
 });
 
@@ -310,7 +381,7 @@ test('confirm stops on partial live failure and retains created issue numbers', 
       return {
         exitCode: 6,
         stdout: '',
-        stderr: 'created but tether failed: https://github.com/owner/repo/issues/1102',
+        stderr: 'AITM_CREATED_ISSUE=1102\n✗ issue #1102 created but tether failed',
       };
     }
     return {

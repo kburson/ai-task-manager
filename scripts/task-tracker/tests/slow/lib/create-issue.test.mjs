@@ -237,6 +237,7 @@ test('tether failure: prints recovery command and exits non-zero', () => {
   );
 
   assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /^AITM_CREATED_ISSUE=9999$/m);
   assert.match(result.stderr, /created but tether failed/);
   assert.match(result.stderr, /rerun: node /);
   assert.match(result.stderr, /--issue 9999/);

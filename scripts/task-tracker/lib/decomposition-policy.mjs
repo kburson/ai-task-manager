@@ -1,4 +1,4 @@
-import { accessSync, constants, existsSync, statSync } from 'node:fs';
+import { accessSync, constants, existsSync, realpathSync, statSync } from 'node:fs';
 import path from 'node:path';
 
 import {
@@ -73,8 +73,20 @@ function fencedLineMask(lines) {
   return masked;
 }
 
+function stripHtmlComments(value) {
+  return String(value).replace(/<!--[\s\S]*?(?:-->|$)/g, (comment) =>
+    comment.replace(/[^\n]/g, ' ')
+  );
+}
+
+function visibleStructuralLines(value) {
+  const lines = stripHtmlComments(value).split('\n');
+  const fenced = fencedLineMask(lines);
+  return lines.map((line, index) => (fenced[index] ? '' : line));
+}
+
 export function extractPlanTasks(planText = '') {
-  const lines = String(planText).split('\n');
+  const lines = stripHtmlComments(planText).split('\n');
   const fenced = fencedLineMask(lines);
   const tasks = [];
   for (let index = 0; index < lines.length; index += 1) {
@@ -164,8 +176,9 @@ export function classifyDecomposition({ size = null, estimateHours = null, planT
 }
 
 export function linkedPlanPath(body = '') {
+  const visibleBody = visibleStructuralLines(body).join('\n');
   for (const key of PLAN_METADATA_KEYS) {
-    const value = metadataFieldValue(body, 'Plan Metadata', key);
+    const value = metadataFieldValue(visibleBody, 'Plan Metadata', key);
     if (value == null || !isSubstantiveMetadataValue(value)) continue;
     const candidate = value.replace(/\s+@\s+[0-9a-f]{7,40}\s*$/i, '').trim();
     if (isSubstantiveMetadataValue(candidate)) return candidate;
@@ -196,6 +209,16 @@ export function resolvePlanPath({ projectDir, body = '', overridePath = null } =
       return unavailable(source, `plan path is not a readable file: ${candidate}`);
     }
     accessSync(resolved, constants.R_OK);
+    const realRoot = realpathSync(root);
+    const realResolved = realpathSync(resolved);
+    const realRelative = path.relative(realRoot, realResolved);
+    if (
+      realRelative === '..' ||
+      realRelative.startsWith(`..${path.sep}`) ||
+      path.isAbsolute(realRelative)
+    ) {
+      return unavailable(source, `plan path resolves outside repository root: ${candidate}`);
+    }
   } catch {
     return unavailable(source, `plan path is not a readable file: ${candidate}`);
   }
@@ -228,11 +251,8 @@ function isValidIsoTimestamp(value) {
 }
 
 export function parseDecompositionWaiver(body = '') {
-  const lines = String(body).split('\n');
-  const fenced = fencedLineMask(lines);
-  const sectionCount = lines.filter(
-    (line, index) => !fenced[index] && /^##\s+Decomposition Waiver\s*$/i.test(line)
-  ).length;
+  const lines = visibleStructuralLines(body);
+  const sectionCount = lines.filter((line) => /^##\s+Decomposition Waiver\s*$/i.test(line)).length;
   if (sectionCount > 1) {
     return { ok: false, reason: 'duplicate sections', fields: {}, missing: WAIVER_FIELDS };
   }
