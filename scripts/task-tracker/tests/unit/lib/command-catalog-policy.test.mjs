@@ -43,6 +43,7 @@ test('Story Origin creation contract is consistent across help and sanctioned ru
     const command = commandByName(name);
     assert.match(command.usage, /--story-origin-file <p(?:ath)?>/);
     assert.match(command.usage, /\[--plan-metadata-file <p(?:ath)?>\]/);
+    assert.match(command.usage, /\[--verification-commands-file <p(?:ath)?>\]/);
   }
 
   for (const file of [
@@ -211,6 +212,7 @@ test('high-risk routed metadata enumerates parser arguments and special exits', 
     '--ac-file <path>',
     '--story-origin-file <path>',
     '--plan-metadata-file <path>',
+    '--verification-commands-file <path>',
     '--sub-issue-list-file <path>',
     '--idea-file <path>',
     '--label <name>',

@@ -9,7 +9,7 @@ import {
   decompositionPlanExitGuard,
   evaluateIssueDecomposition,
 } from '../../../lib/decomposition-plan-exit-guard.mjs';
-import { runDecomposeCheck } from '../../../verbs/decompose-check.mjs';
+import { parseDecomposeCheckArgs, runDecomposeCheck } from '../../../verbs/decompose-check.mjs';
 import { projectScratchDir } from '../../../lib/scratch-dir.mjs';
 
 function projectPlan(text) {
@@ -103,7 +103,7 @@ test('known board inputs still refuse when the linked plan is unavailable', asyn
   assert.match(result.reason, /not a readable file/);
 });
 
-test('Plan exit defers an absent plan link to the existing metadata guard', async () => {
+test('Plan exit still refuses known must-split board fields when the plan link is absent', async () => {
   let boardReads = 0;
   const result = await decompositionPlanExitGuard.run({
     issueNumber: 1052,
@@ -118,8 +118,10 @@ test('Plan exit defers an absent plan link to the existing metadata guard', asyn
       },
     },
   });
-  assert.deepEqual(result, { ok: true });
-  assert.equal(boardReads, 0);
+  assert.equal(result.ok, false);
+  assert.match(result.reason, /must-split/);
+  assert.match(result.reason, /no linked plan path/);
+  assert.equal(boardReads, 1);
 });
 
 test('registers the decomposition guard before the epic children guard', () => {
@@ -143,4 +145,8 @@ test('read-only command returns structured classification without mutation', asy
   assert.equal(result.classification.status, 'story-ok');
   assert.equal(result.issueNumber, 1052);
   assert.equal(result.exitCode, 0);
+});
+
+test('decompose-check rejects a missing --plan value instead of consuming another option', () => {
+  assert.throws(() => parseDecomposeCheckArgs(['1052', '--plan', '--json']), /requires a path/);
 });

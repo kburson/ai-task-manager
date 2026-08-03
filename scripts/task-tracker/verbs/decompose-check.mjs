@@ -47,7 +47,7 @@ export function formatDecomposeCheck(result) {
   return lines.join('\n');
 }
 
-function parseArgs(rest = []) {
+export function parseDecomposeCheckArgs(rest = []) {
   let issueNumber = null;
   let planOverride = null;
   let json = false;
@@ -55,8 +55,13 @@ function parseArgs(rest = []) {
     const token = String(rest[index]);
     const issue = token.match(/^#?(\d+)$/);
     if (issue && issueNumber == null) issueNumber = Number(issue[1]);
-    else if (token === '--plan') planOverride = rest[++index] || null;
-    else if (token === '--json') json = true;
+    else if (token === '--plan') {
+      const value = rest[index + 1];
+      if (!value || String(value).startsWith('--')) {
+        throw new Error('decompose-check: --plan requires a path');
+      }
+      planOverride = rest[++index];
+    } else if (token === '--json') json = true;
     else throw new Error(`decompose-check: unrecognized argument ${token}`);
   }
   return { issueNumber, planOverride, json };
@@ -65,7 +70,7 @@ function parseArgs(rest = []) {
 export async function verbDecomposeCheck(ctx) {
   let parsed;
   try {
-    parsed = parseArgs(ctx.rest);
+    parsed = parseDecomposeCheckArgs(ctx.rest);
   } catch (error) {
     process.stderr.write(`${error.message}\n`);
     process.exit(2);

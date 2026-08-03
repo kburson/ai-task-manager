@@ -55,20 +55,43 @@ function commandsFromTaskBody(body) {
   return uniqueCommands(commands);
 }
 
+function fencedLineMask(lines) {
+  const masked = Array(lines.length).fill(false);
+  let open = null;
+  for (let index = 0; index < lines.length; index += 1) {
+    const fence = /^\s*(`{3,}|~{3,})/.exec(lines[index]);
+    if (open) {
+      masked[index] = true;
+      if (fence && fence[1][0] === open.character && fence[1].length >= open.length) open = null;
+      continue;
+    }
+    if (fence) {
+      masked[index] = true;
+      open = { character: fence[1][0], length: fence[1].length };
+    }
+  }
+  return masked;
+}
+
 export function extractPlanTasks(planText = '') {
   const lines = String(planText).split('\n');
+  const fenced = fencedLineMask(lines);
   const tasks = [];
   for (let index = 0; index < lines.length; index += 1) {
+    if (fenced[index]) continue;
     const match = TASK_HEADING_RE.exec(lines[index]);
     if (!match) continue;
+    const number = Number(match[2]);
+    const title = match[3].trim();
+    if (!Number.isInteger(number) || number <= 0 || !title) continue;
     let end = index + 1;
-    while (end < lines.length && !SECTION_HEADING_RE.test(lines[end])) end += 1;
+    while (end < lines.length && (fenced[end] || !SECTION_HEADING_RE.test(lines[end]))) end += 1;
     const body = lines.slice(index + 1, end).join('\n');
     tasks.push({
-      number: Number(match[2]),
+      number,
       kind: match[1].toLowerCase(),
-      title: match[3].trim(),
-      heading: `### ${match[1][0].toUpperCase()}${match[1].slice(1).toLowerCase()} ${Number(match[2])}: ${match[3].trim()}`,
+      title,
+      heading: `### ${match[1][0].toUpperCase()}${match[1].slice(1).toLowerCase()} ${number}: ${title}`,
       body,
       commands: commandsFromTaskBody(body),
     });
@@ -143,8 +166,9 @@ export function classifyDecomposition({ size = null, estimateHours = null, planT
 export function linkedPlanPath(body = '') {
   for (const key of PLAN_METADATA_KEYS) {
     const value = metadataFieldValue(body, 'Plan Metadata', key);
-    if (!value) continue;
-    return value.replace(/\s+@\s+[0-9a-f]{7,40}\s*$/i, '').trim();
+    if (value == null || !isSubstantiveMetadataValue(value)) continue;
+    const candidate = value.replace(/\s+@\s+[0-9a-f]{7,40}\s*$/i, '').trim();
+    if (isSubstantiveMetadataValue(candidate)) return candidate;
   }
   return null;
 }
@@ -158,6 +182,9 @@ export function resolvePlanPath({ projectDir, body = '', overridePath = null } =
   const source = overridePath ? 'override' : 'metadata';
   const candidate = overridePath || linkedPlanPath(body);
   if (!candidate) return unavailable(source, 'no linked plan path');
+  if (path.isAbsolute(candidate)) {
+    return unavailable(source, `plan path must be repository-relative: ${candidate}`);
+  }
   const root = path.resolve(projectDir);
   const resolved = path.resolve(root, candidate);
   const relative = path.relative(root, resolved);
@@ -179,8 +206,36 @@ function canonicalWaiverKey(key) {
   return WAIVER_FIELDS.find((candidate) => candidate.toLowerCase() === key.toLowerCase()) || null;
 }
 
+function isValidIsoTimestamp(value) {
+  const match =
+    /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.\d{1,9})?(?:Z|([+-])(\d{2}):(\d{2}))$/.exec(
+      value
+    );
+  if (!match || !Number.isFinite(Date.parse(value))) return false;
+  const [, year, month, day, hour, minute, second, , offsetHour, offsetMinute] = match;
+  const date = new Date(Date.UTC(Number(year), Number(month) - 1, Number(day)));
+  const calendarDateMatches =
+    date.getUTCFullYear() === Number(year) &&
+    date.getUTCMonth() === Number(month) - 1 &&
+    date.getUTCDate() === Number(day);
+  return (
+    calendarDateMatches &&
+    Number(hour) <= 23 &&
+    Number(minute) <= 59 &&
+    Number(second) <= 59 &&
+    (offsetHour === undefined || (Number(offsetHour) <= 23 && Number(offsetMinute) <= 59))
+  );
+}
+
 export function parseDecompositionWaiver(body = '') {
   const lines = String(body).split('\n');
+  const fenced = fencedLineMask(lines);
+  const sectionCount = lines.filter(
+    (line, index) => !fenced[index] && /^##\s+Decomposition Waiver\s*$/i.test(line)
+  ).length;
+  if (sectionCount > 1) {
+    return { ok: false, reason: 'duplicate sections', fields: {}, missing: WAIVER_FIELDS };
+  }
   const bounds = sectionBounds(lines, WAIVER_HEADING);
   if (!bounds) return { ok: false, reason: 'missing', fields: {}, missing: WAIVER_FIELDS };
 
@@ -208,7 +263,8 @@ export function parseDecompositionWaiver(body = '') {
   if (!(duration > 0)) {
     return { ok: false, reason: 'invalid Expected-focused-duration', fields };
   }
-  if (!Number.isFinite(Date.parse(fields['Approved-at']))) {
+  const approvedAt = fields['Approved-at'];
+  if (!isValidIsoTimestamp(approvedAt)) {
     return { ok: false, reason: 'invalid Approved-at', fields };
   }
   return { ok: true, reason: null, fields, missing: [], duplicates: [] };

@@ -1,6 +1,8 @@
 // @story #1052
 import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import path from 'node:path';
+import { execFile } from 'node:child_process';
+import { promisify } from 'node:util';
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -10,10 +12,16 @@ import {
   validateSplitTasks,
   writeProposalFragments,
 } from '../../../lib/split-plan.mjs';
-import { runSplitPlan } from '../../../verbs/split-plan.mjs';
+import {
+  formatSplitPlanResult,
+  parseSplitPlanArgs,
+  runSplitPlan,
+} from '../../../verbs/split-plan.mjs';
+import { parseVerificationCommands } from '../../../lib/verification-commands.mjs';
 
 const PLAN_PATH = 'docs/superpowers/plans/example.md';
 const SPEC_PATH = 'docs/superpowers/specs/example-design.md';
+const pexec = promisify(execFile);
 
 function input(overrides = {}) {
   return {
@@ -104,7 +112,11 @@ test('writes canonical deterministic fragments for sanctioned creation', async (
     assert.equal(readFileSync(paths.ac, 'utf8'), `${proposal.acceptanceCriteria}\n`);
     assert.equal(readFileSync(paths.storyOrigin, 'utf8'), `${proposal.storyOrigin}\n`);
     assert.equal(readFileSync(paths.planMetadata, 'utf8'), `${proposal.planMetadata}\n`);
-    assert.deepEqual(paths.creatorArgs.slice(-8), [
+    assert.equal(
+      readFileSync(paths.verificationCommands, 'utf8'),
+      'node --test classifier.test.mjs\n'
+    );
+    assert.deepEqual(paths.creatorArgs.slice(-10), [
       '--scope-file',
       paths.scope,
       '--ac-file',
@@ -113,7 +125,34 @@ test('writes canonical deterministic fragments for sanctioned creation', async (
       paths.storyOrigin,
       '--plan-metadata-file',
       paths.planMetadata,
+      '--verification-commands-file',
+      paths.verificationCommands,
     ]);
+  } finally {
+    rmSync(scratchDir, { recursive: true, force: true });
+  }
+});
+
+test('sanctioned dry-run body preserves exact task verifiers behind AC citations', async () => {
+  const scratchDir = mkdtempSync(path.join(process.cwd(), '.tmp', 'split-plan-body-test-'));
+  try {
+    const [proposal] = buildSplitProposals(input());
+    const paths = await writeProposalFragments({ proposal, scratchDir });
+    const { stdout } = await pexec(
+      process.execPath,
+      [path.join(process.cwd(), 'bin/aitm.mjs'), ...paths.creatorArgs, '--dry-run'],
+      {
+        cwd: process.cwd(),
+        maxBuffer: 10 * 1024 * 1024,
+      }
+    );
+    assert.deepEqual(
+      parseVerificationCommands(stdout)
+        .slice(0, proposal.verificationCommands.length)
+        .map((item) => ({ id: item.id, command: item.command })),
+      [{ id: 1, command: 'node --test classifier.test.mjs' }]
+    );
+    assert.match(stdout, /aitm-verified vc-list="vc:1"/);
   } finally {
     rmSync(scratchDir, { recursive: true, force: true });
   }
@@ -170,6 +209,26 @@ test('dry-run preflights every child and performs no live create', async () => {
   }
 });
 
+test('human dry-run output exposes complete proposals and future creator argv', async () => {
+  const args = orchestrationInput();
+  try {
+    const output = formatSplitPlanResult(await runSplitPlan(args));
+    assert.match(output, /## Child 1: Classifier/);
+    assert.match(output, /### Scope[\s\S]*Build only the classification policy/);
+    assert.match(output, /### Acceptance Criteria[\s\S]*vc-list="vc:1"/);
+    assert.match(output, /### Verification Commands\n- node --test classifier\.test\.mjs/);
+    assert.match(output, /### Story Origin[\s\S]*discovered-during/);
+    assert.match(output, /### Plan Metadata[\s\S]*Source-plan-commit/);
+    assert.match(output, /Creator argv: "npx" "aitm" "create-issue"/);
+  } finally {
+    args.cleanup();
+  }
+});
+
+test('rejects a missing --plan value instead of consuming the next option', () => {
+  assert.throws(() => parseSplitPlanArgs(['1052', '--plan', '--json']), /requires a path/);
+});
+
 test('confirm validates all drafts before the first live creation', async () => {
   const phases = [];
   const args = orchestrationInput({ mode: 'confirm' });
@@ -193,6 +252,52 @@ test('confirm validates all drafts before the first live creation', async () => 
   }
 });
 
+test('confirm performs no live creation when any draft preflight fails', async () => {
+  const phases = [];
+  const args = orchestrationInput({ mode: 'confirm' });
+  args.deps.runCreator = async (creatorArgs) => {
+    const title = creatorArgs[creatorArgs.indexOf('--title') + 1];
+    phases.push(`${creatorArgs.includes('--dry-run') ? 'dry' : 'live'}:${title}`);
+    return title === 'CLI'
+      ? { exitCode: 1, stdout: '', stderr: 'invalid draft' }
+      : { exitCode: 0, stdout: 'rendered', stderr: '' };
+  };
+  try {
+    await assert.rejects(() => runSplitPlan(args), /preflight failed for CLI/);
+    assert.deepEqual(phases, ['dry:Classifier', 'dry:CLI']);
+  } finally {
+    args.cleanup();
+  }
+});
+
+test('refuses unresolved parent provenance before any creator call', async () => {
+  const calls = [];
+  const args = orchestrationInput();
+  args.deps.fetchParentIssue = async () => {
+    throw new Error('parent lookup unavailable');
+  };
+  args.deps.runCreator = async (creatorArgs) => {
+    calls.push(creatorArgs);
+    return { exitCode: 0, stdout: 'unexpected', stderr: '' };
+  };
+  try {
+    await assert.rejects(() => runSplitPlan(args), /parent lookup unavailable/);
+    assert.deepEqual(calls, []);
+  } finally {
+    args.cleanup();
+  }
+});
+
+test('refuses malformed resolved parent provenance', async () => {
+  const args = orchestrationInput();
+  args.deps.fetchParentIssue = async () => 0;
+  try {
+    await assert.rejects(() => runSplitPlan(args), /resolved parent must be null or a positive/);
+  } finally {
+    args.cleanup();
+  }
+});
+
 test('confirm stops on partial live failure and retains created issue numbers', async () => {
   const live = [];
   const args = orchestrationInput({ mode: 'confirm' });
@@ -201,7 +306,13 @@ test('confirm stops on partial live failure and retains created issue numbers', 
     if (creatorArgs.includes('--dry-run')) return { exitCode: 0, stdout: 'rendered', stderr: '' };
     const title = creatorArgs[creatorArgs.indexOf('--title') + 1];
     live.push(title);
-    if (title === 'CLI') return { exitCode: 6, stdout: '', stderr: 'tether failed' };
+    if (title === 'CLI') {
+      return {
+        exitCode: 6,
+        stdout: '',
+        stderr: 'created but tether failed: https://github.com/owner/repo/issues/1102',
+      };
+    }
     return {
       exitCode: 0,
       stdout: 'https://github.com/owner/repo/issues/1101',
@@ -212,7 +323,10 @@ test('confirm stops on partial live failure and retains created issue numbers', 
     const result = await runSplitPlan(args);
     assert.equal(result.status, 'partial-success');
     assert.deepEqual(live, ['Classifier', 'CLI']);
-    assert.deepEqual(result.createdChildren, [{ title: 'Classifier', issueNumber: 1101 }]);
+    assert.deepEqual(result.createdChildren, [
+      { title: 'Classifier', issueNumber: 1101 },
+      { title: 'CLI', issueNumber: 1102, incomplete: true },
+    ]);
     assert.equal(result.failed.taskNumber, 2);
     assert.equal(result.failed.title, 'CLI');
     assert.equal(result.failed.exitCode, 6);

@@ -89,6 +89,30 @@ test('matches task keywords case-insensitively and retains duplicate numbers for
   );
 });
 
+test('ignores fenced examples, zero-number tasks, and empty task titles', () => {
+  const planText = [
+    '```markdown',
+    '### Task 1: Example only',
+    'Run: `node --test example.test.mjs`',
+    '```',
+    '~~~text',
+    '### Milestone 2: Another example',
+    '~~~',
+    '### Task 0: Invalid zero',
+    'Run: `node --test zero.test.mjs`',
+    '### Task 3:',
+    'Run: `node --test empty.test.mjs`',
+    '### Task 4: Real task',
+    'Run: `node --test real.test.mjs`',
+  ].join('\n');
+  const tasks = extractPlanTasks(planText);
+  assert.deepEqual(
+    tasks.map((task) => [task.number, task.title]),
+    [[4, 'Real task']]
+  );
+  assert.equal(classifyDecomposition({ size: 'M', estimateHours: 8, planText }).status, 'story-ok');
+});
+
 test('linked plan metadata prefers Implementation-plan and strips a commit suffix', () => {
   const body = `## Plan Metadata
 
@@ -99,6 +123,15 @@ test('linked plan metadata prefers Implementation-plan and strips a commit suffi
 ## Scope
 text`;
   assert.equal(linkedPlanPath(body), 'docs/first.md');
+});
+
+test('linked plan metadata skips placeholder values', () => {
+  const body = `## Plan Metadata
+
+- **Implementation-plan**: <!-- TBD -->
+- **Source-plan**: docs/source.md
+- **Plan**: docs/fallback.md`;
+  assert.equal(linkedPlanPath(body), 'docs/source.md');
 });
 
 test('resolvePlanPath contains paths to the repository and reports unavailable inputs', () => {
@@ -116,6 +149,11 @@ test('resolvePlanPath contains paths to the repository and reports unavailable i
   assert.match(
     resolvePlanPath({ projectDir, body: '', overridePath: '../outside.md' }).diagnostic,
     /outside repository root/
+  );
+  assert.match(
+    resolvePlanPath({ projectDir, body: '', overridePath: join(projectDir, 'docs', 'plan.md') })
+      .diagnostic,
+    /must be repository-relative/
   );
   assert.match(
     resolvePlanPath({ projectDir, body: '## Plan Metadata\n\n- **Plan**: docs/missing.md' })
@@ -166,4 +204,18 @@ test('rejects missing, duplicated, and malformed decomposition waiver fields', (
     parseDecompositionWaiver(waiverBody({ 'Approved-at': 'not-a-date' })).reason,
     /invalid Approved-at/
   );
+  assert.match(
+    parseDecompositionWaiver(waiverBody({ 'Approved-at': 'August 3, 2026' })).reason,
+    /invalid Approved-at/
+  );
+  assert.match(
+    parseDecompositionWaiver(waiverBody({ 'Approved-at': '2026-02-30T12:00:00Z' })).reason,
+    /invalid Approved-at/
+  );
+});
+
+test('rejects duplicate decomposition waiver sections', () => {
+  const duplicate = `${waiverBody()}\n\n${waiverBody()}`;
+  assert.equal(parseDecompositionWaiver(duplicate).ok, false);
+  assert.equal(parseDecompositionWaiver(duplicate).reason, 'duplicate sections');
 });

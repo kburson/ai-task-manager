@@ -44,7 +44,7 @@ const ROUTABLE_SELF_DOC = {
     audience:
       'AI/operator creating a new issue. Prefer `aitm preflight-issue` to stamp the body first.',
     usage:
-      'aitm create-issue --title <t> (--body-file <path> | --shape epic|sub-issue|solo --scope-file <p> --ac-file <p> --story-origin-file <p> [--plan-metadata-file <p>] [--sub-issue-list-file <p>] | --shape stub [--idea-file <p>]) [--label <l> ...] [--priority p0|p1|p2] [--size XS|S|M|L|XL] [--estimate <hours>] [--rank <n>] [--start-time <iso>] [--kind <kind>] [--parent <N>] [--assignee <a>] [--allow-duplicate-child] [--dry-run] [--no-tether] [--no-placeholder-substitution] [--internal]',
+      'aitm create-issue --title <t> (--body-file <path> | --shape epic|sub-issue|solo --scope-file <p> --ac-file <p> --story-origin-file <p> [--plan-metadata-file <p>] [--verification-commands-file <p>] [--sub-issue-list-file <p>] | --shape stub [--idea-file <p>]) [--label <l> ...] [--priority p0|p1|p2] [--size XS|S|M|L|XL] [--estimate <hours>] [--rank <n>] [--start-time <iso>] [--kind <kind>] [--parent <N>] [--assignee <a>] [--allow-duplicate-child] [--dry-run] [--no-tether] [--no-placeholder-substitution] [--internal]',
   },
   'preflight-issue': {
     group: 'GitHub',
@@ -52,7 +52,7 @@ const ROUTABLE_SELF_DOC = {
     synopsis: 'Stamp the DoD + Pickup-Directive tail onto a draft issue body before creation.',
     audience: 'AI/operator preparing an issue body. Output feeds `aitm create-issue --body-file`.',
     usage:
-      'aitm preflight-issue [--check-only|--check-integrity <N>] [--shape epic|sub-issue|solo|stub] [--scope-file <p>] [--ac-file <p>] [--story-origin-file <p>] [--plan-metadata-file <p>] [--parent <N>] [--sub-issue-list-file <p>] [--idea-file <p>] [--priority <P>] [--size <S>] [--estimate <hours>] [--rank <n>] [--start-time <iso>] [--kind <kind>] [--changed-paths-file <p>]',
+      'aitm preflight-issue [--check-only|--check-integrity <N>] [--shape epic|sub-issue|solo|stub] [--scope-file <p>] [--ac-file <p>] [--story-origin-file <p>] [--plan-metadata-file <p>] [--verification-commands-file <p>] [--parent <N>] [--sub-issue-list-file <p>] [--idea-file <p>] [--priority <P>] [--size <S>] [--estimate <hours>] [--rank <n>] [--start-time <iso>] [--kind <kind>] [--changed-paths-file <p>]',
   },
   'set-priority': {
     group: 'GitHub',
@@ -196,6 +196,10 @@ const ROUTABLE_ARGUMENTS = Object.freeze({
     argument('--ac-file <path>', 'Acceptance Criteria required for non-stub shape assembly.'),
     argument('--story-origin-file <path>', 'Story Origin required for non-stub assembly.'),
     argument('--plan-metadata-file <path>', 'Optional early Plan Metadata for shaped assembly.'),
+    argument(
+      '--verification-commands-file <path>',
+      'Optional exact verification commands for shaped assembly.'
+    ),
     argument('--sub-issue-list-file <path>', 'Optional epic sub-issue list section.'),
     argument('--idea-file <path>', 'Optional initial Scope content for a stub.'),
     argument('--label <name>', 'Repeatable issue label.'),
@@ -223,6 +227,10 @@ const ROUTABLE_ARGUMENTS = Object.freeze({
     argument(
       '--plan-metadata-file <path>',
       'Optional Plan Metadata source for full-body rendering.'
+    ),
+    argument(
+      '--verification-commands-file <path>',
+      'Optional exact verification commands for full-body rendering.'
     ),
     argument('--parent <N>', 'Parent issue substituted into a sub-issue body.'),
     argument('--sub-issue-list-file <path>', 'Epic sub-issue list section source.'),

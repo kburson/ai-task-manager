@@ -3,6 +3,7 @@ import { mkdtempSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { promisify } from 'node:util';
 
+import { gql, splitRepo } from '../../gh/lib/github-projects.mjs';
 import { evaluateIssueDecomposition } from '../lib/decomposition-plan-exit-guard.mjs';
 import { linkedPlanPath } from '../lib/decomposition-policy.mjs';
 import { metadataFieldValue } from '../lib/metadata-section.mjs';
@@ -50,9 +51,25 @@ async function defaultRunCreator(args, { projectDir }) {
   }
 }
 
-function parseCreatedIssueNumber(stdout) {
-  const match = ISSUE_URL_RE.exec(String(stdout || ''));
+function parseCreatedIssueNumber(output) {
+  const match = ISSUE_URL_RE.exec(String(output || ''));
   return match ? Number(match[1]) : null;
+}
+
+async function defaultFetchParentIssue({ issueNumber, cfg }) {
+  const { owner, repoName } = splitRepo(cfg.repo);
+  const data = await gql(
+    `query($owner: String!, $repo: String!, $issue: Int!) {
+      repository(owner: $owner, name: $repo) {
+        issue(number: $issue) { number parent { number } }
+      }
+    }`,
+    { owner, repo: repoName, issue: Number(issueNumber) },
+    { timeout: GH_API_TIMEOUT_MS }
+  );
+  const issue = data?.repository?.issue;
+  if (!issue) throw new Error(`split-plan: source issue #${issueNumber} was not found`);
+  return issue.parent?.number ?? null;
 }
 
 function assertMode(mode) {
@@ -79,7 +96,7 @@ export async function runSplitPlan({
   const fetchIssueBody = deps.fetchIssueBody || defaultFetchIssueBody;
   const evaluate = deps.evaluateIssueDecomposition || evaluateIssueDecomposition;
   const readFile = deps.readFile || readFileSync;
-  const fetchParentIssue = deps.fetchParentIssue || (async () => null);
+  const fetchParentIssue = deps.fetchParentIssue || defaultFetchParentIssue;
   const resolveHead = deps.resolveHead || defaultResolveHead;
   const runCreator = deps.runCreator || defaultRunCreator;
   const body = await fetchIssueBody({ issueNumber: sourceIssue, repo: cfg.repo });
@@ -102,9 +119,12 @@ export async function runSplitPlan({
   const governingSpec =
     metadataFieldValue(body, 'Plan Metadata', 'Governing-spec') || DEFAULT_GOVERNING_SPEC;
   const [outerParent, planCommit] = await Promise.all([
-    fetchParentIssue(sourceIssue),
+    fetchParentIssue({ issueNumber: sourceIssue, cfg }),
     resolveHead({ projectDir }),
   ]);
+  if (outerParent !== null && (!Number.isInteger(outerParent) || outerParent <= 0)) {
+    throw new Error('split-plan: resolved parent must be null or a positive integer');
+  }
   if (!String(planCommit || '').trim()) throw new Error('split-plan: HEAD commit is unavailable');
   const planText = readFile(evaluated.planDiagnostic.path, 'utf8');
   const proposals = buildSplitProposals({
@@ -148,6 +168,14 @@ export async function runSplitPlan({
   for (const draft of drafts) {
     const result = await runCreator([...draft.creatorArgs], { projectDir });
     if (result.exitCode !== 0) {
+      const incompleteIssue = parseCreatedIssueNumber(`${result.stdout}\n${result.stderr}`);
+      if (incompleteIssue) {
+        createdChildren.push({
+          title: draft.proposal.title,
+          issueNumber: incompleteIssue,
+          incomplete: true,
+        });
+      }
       return {
         status: 'partial-success',
         issueNumber: sourceIssue,
@@ -192,7 +220,7 @@ export async function runSplitPlan({
   };
 }
 
-function parseArgs(rest = []) {
+export function parseSplitPlanArgs(rest = []) {
   let issueNumber = null;
   let mode = null;
   let planOverride = null;
@@ -205,16 +233,48 @@ function parseArgs(rest = []) {
       const nextMode = token.slice(2);
       if (mode) throw new Error('exactly one of --dry-run and --confirm is required');
       mode = nextMode;
-    } else if (token === '--plan') planOverride = rest[++index] || null;
-    else if (token === '--json') json = true;
+    } else if (token === '--plan') {
+      const value = rest[index + 1];
+      if (!value || String(value).startsWith('--')) throw new Error('--plan requires a path');
+      planOverride = rest[++index];
+    } else if (token === '--json') json = true;
     else throw new Error(`unrecognized argument ${token}`);
   }
   return { issueNumber, mode, planOverride, json };
 }
 
-function formatResult(result) {
+function formatProposal(proposal, index) {
+  return [
+    `## Child ${index + 1}: ${proposal.title}`,
+    '',
+    '### Scope',
+    proposal.scope,
+    '',
+    '### Acceptance Criteria',
+    proposal.acceptanceCriteria,
+    '',
+    '### Verification Commands',
+    ...proposal.verificationCommands.map((command) => `- ${command}`),
+    '',
+    '### Story Origin',
+    proposal.storyOrigin,
+    '',
+    '### Plan Metadata',
+    proposal.planMetadata,
+    '',
+    `Creator argv: ${['npx', 'aitm', ...proposal.creatorArgs].map((token) => JSON.stringify(token)).join(' ')}`,
+  ].join('\n');
+}
+
+export function formatSplitPlanResult(result) {
   if (result.status === 'dry-run') {
-    return `split-plan: ${result.proposals.length} child proposal(s) preflighted for #${result.issueNumber}`;
+    return [
+      `split-plan: ${result.proposals.length} child proposal(s) preflighted for #${result.issueNumber}`,
+      '',
+      ...result.proposals.flatMap((proposal, index) => [formatProposal(proposal, index), '']),
+    ]
+      .join('\n')
+      .trimEnd();
   }
   if (result.status === 'created') {
     return `split-plan: created ${result.createdChildren.map((child) => `#${child.issueNumber}`).join(', ')}`;
@@ -225,19 +285,25 @@ function formatResult(result) {
 export async function verbSplitPlan(ctx) {
   let parsed;
   try {
-    parsed = parseArgs(ctx.rest);
+    parsed = parseSplitPlanArgs(ctx.rest);
     if (!parsed.issueNumber || !parsed.mode) throw new Error('issue and mode are required');
+  } catch (error) {
+    process.stderr.write(`split-plan: ${error.message}\n`);
+    process.exitCode = 2;
+    return;
+  }
+  try {
     const result = await runSplitPlan({
       issueNumber: parsed.issueNumber,
       mode: parsed.mode,
       planOverride: parsed.planOverride,
       cfg: ctx.cfg,
-      deps: { ...(ctx.deps || {}), fetchParentIssue: ctx.fetchParentIssue },
+      deps: ctx.deps || {},
     });
-    console.log(parsed.json ? JSON.stringify(result, null, 2) : formatResult(result));
+    console.log(parsed.json ? JSON.stringify(result, null, 2) : formatSplitPlanResult(result));
     if (result.status === 'partial-success') process.exitCode = 6;
   } catch (error) {
     process.stderr.write(`split-plan: ${error.message}\n`);
-    process.exitCode = 2;
+    process.exitCode = 1;
   }
 }

@@ -24,6 +24,7 @@
 //   node preflight-issue.mjs --shape <shape> \
 //        --scope-file <p> --ac-file <p> --story-origin-file <p> \
 //        [--plan-metadata-file <p>] \
+//        [--verification-commands-file <p>] \
 //        [--parent <N>] [--sub-issue-list-file <p>]
 
 import { existsSync, readFileSync } from 'node:fs';
@@ -36,7 +37,7 @@ import { LIFECYCLE_LABELS, lifecycleSatisfaction } from './lib/lifecycle-dod.mjs
 import { hasFullAutoApproved } from './lib/markers.mjs';
 import { lintChecklistCommands, formatViolations } from './lib/checklist-command-lint.mjs';
 import { auditEvidenceMarkers } from './lib/evidence-markers.mjs';
-import { renderVcSection, spliceVcSection, nextVcId } from './lib/vc-emit.mjs';
+import { appendVcCommands, renderVcSection, spliceVcSection, nextVcId } from './lib/vc-emit.mjs';
 import { normalizePlanMetadataValue } from './lib/plan-metadata.mjs';
 import {
   hasStoryOriginFields,
@@ -421,7 +422,25 @@ function emitShape(args, dodPath, root) {
   const template = loadTemplate(root, shape);
   const skeleton = stripHeaderComment(template);
   const body = fillTemplate(skeleton, fills).replace(/\s+$/, '') + '\n\n';
-  const assembled = body + dodBlock(dodPath, kind, changedPaths);
+  const baseAssembled = body + dodBlock(dodPath, kind, changedPaths);
+  let assembled = baseAssembled;
+  if (typeof args['verification-commands-file'] === 'string') {
+    const commands = readFileOrDie(
+      args['verification-commands-file'],
+      '--verification-commands-file'
+    )
+      .split('\n')
+      .map((line) => line.trim())
+      .filter(Boolean);
+    if (commands.length === 0) die('--verification-commands-file must contain commands');
+    const vcSection = renderVcSection(commands, 1);
+    const anchor = '## Definition of Done';
+    const idx = assembled.indexOf(anchor);
+    assembled =
+      idx === -1
+        ? spliceVcSection(assembled, vcSection, '')
+        : spliceVcSection(assembled.slice(0, idx), vcSection, assembled.slice(idx));
+  }
   warnMissingLifecycleLabels(assembled);
   const lint = lintChecklistCommands(assembled);
   if (!lint.ok) {
@@ -446,15 +465,19 @@ function emitShape(args, dodPath, root) {
   if (seedCmds.length) {
     // #772 — stamp stable ids (from 1 on a fresh body) and splice with one
     // blank line above AND below the `## Verification Commands` header.
-    const vcSection = renderVcSection(seedCmds, nextVcId(finalBody));
-    // #480 — VC sits BETWEEN `## Acceptance Criteria` and `## Definition of Done`
-    // (canonical order), so anchor on the DoD heading rather than Pickup.
-    const anchor = '## Definition of Done';
-    const idx = finalBody.indexOf(anchor);
-    finalBody =
-      idx === -1
-        ? spliceVcSection(finalBody, vcSection, '')
-        : spliceVcSection(finalBody.slice(0, idx), vcSection, finalBody.slice(idx));
+    if (/^## Verification Commands\s*$/m.test(finalBody)) {
+      finalBody = appendVcCommands(finalBody, seedCmds);
+    } else {
+      const vcSection = renderVcSection(seedCmds, nextVcId(finalBody));
+      // #480 — VC sits BETWEEN `## Acceptance Criteria` and `## Definition of Done`
+      // (canonical order), so anchor on the DoD heading rather than Pickup.
+      const anchor = '## Definition of Done';
+      const idx = finalBody.indexOf(anchor);
+      finalBody =
+        idx === -1
+          ? spliceVcSection(finalBody, vcSection, '')
+          : spliceVcSection(finalBody.slice(0, idx), vcSection, finalBody.slice(idx));
+    }
   }
   // #494, #500, #923, #865 — `--kind <audit|research|spike|epic|docs-only>`
   // stamps the issue-kind marker at creation. The no-commit kinds route onto the

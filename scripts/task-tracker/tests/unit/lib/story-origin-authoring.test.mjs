@@ -250,4 +250,15 @@ describe('create-issue shaped flag forwarding (#892)', () => {
     assert.ok(flags.includes('--story-origin-file'));
     assert.ok(flags.includes('--plan-metadata-file'));
   });
+
+  it('forwards optional exact verification commands', () => {
+    const flags = buildShapeFlags({
+      shape: 'solo',
+      'scope-file': 'scope.md',
+      'ac-file': 'ac.md',
+      'story-origin-file': 'origin.md',
+      'verification-commands-file': 'verification.txt',
+    });
+    assert.deepEqual(flags.slice(-2), ['--verification-commands-file', 'verification.txt']);
+  });
 });

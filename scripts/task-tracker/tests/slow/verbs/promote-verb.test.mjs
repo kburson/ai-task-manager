@@ -73,6 +73,11 @@ function makeDeps({
       epicChildren: {
         fetchSiblings: async () => [],
       },
+      decomposition: {
+        projectDir: process.cwd(),
+        loadProjectFieldDefs: () => [],
+        projectValuesForIssue: async () => ({ size: 'XS', estimate: 4 }),
+      },
       codeCompleteGate: async () => ({ ok: true, blockers: [], shas: [] }),
       commitTrailHeadGate: async () => ({ ok: true, headSha: 'deadbeef', trailShas: ['deadbeef'] }),
     },

@@ -41,7 +41,7 @@ const PLACEHOLDER_RE = /<this-issue-#>|<parent-epic-#>/;
 const VALID_SHAPES = new Set(['epic', 'sub-issue', 'solo', 'stub']);
 
 function usage() {
-  return `Usage: create-issue.mjs --title <t> (--body-file <path> | --shape epic|sub-issue|solo --scope-file <p> --ac-file <p> --story-origin-file <p> [--plan-metadata-file <p>] [--sub-issue-list-file <p>] | --shape stub [--idea-file <p>]) [--label <l> ...] [--priority p0|p1|p2] [--size XS|S|M|L|XL] [--estimate <hours>] [--rank <n>] [--parent <N>] [--assignee <a>] [--allow-duplicate-child] [--dry-run] [--no-tether] [--no-placeholder-substitution] [--internal]`;
+  return `Usage: create-issue.mjs --title <t> (--body-file <path> | --shape epic|sub-issue|solo --scope-file <p> --ac-file <p> --story-origin-file <p> [--plan-metadata-file <p>] [--verification-commands-file <p>] [--sub-issue-list-file <p>] | --shape stub [--idea-file <p>]) [--label <l> ...] [--priority p0|p1|p2] [--size XS|S|M|L|XL] [--estimate <hours>] [--rank <n>] [--parent <N>] [--assignee <a>] [--allow-duplicate-child] [--dry-run] [--no-tether] [--no-placeholder-substitution] [--internal]`;
 }
 
 function parseArgs(argv) {
@@ -157,6 +157,9 @@ export function buildShapeFlags(args) {
     );
     if (typeof args['plan-metadata-file'] === 'string') {
       flags.push('--plan-metadata-file', args['plan-metadata-file']);
+    }
+    if (typeof args['verification-commands-file'] === 'string') {
+      flags.push('--verification-commands-file', args['verification-commands-file']);
     }
   }
   if (typeof args.parent === 'string') flags.push('--parent', args.parent);

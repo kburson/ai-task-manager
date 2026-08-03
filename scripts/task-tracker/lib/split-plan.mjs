@@ -125,12 +125,18 @@ export async function writeProposalFragments({
     ac: path.join(taskDir, 'acs.md'),
     storyOrigin: path.join(taskDir, 'story-origin.md'),
     planMetadata: path.join(taskDir, 'plan-meta.md'),
+    verificationCommands: path.join(taskDir, 'verification-commands.txt'),
   };
   await Promise.all([
     writeFile(paths.scope, withFinalNewline(proposal.scope), 'utf8'),
     writeFile(paths.ac, withFinalNewline(proposal.acceptanceCriteria), 'utf8'),
     writeFile(paths.storyOrigin, withFinalNewline(proposal.storyOrigin), 'utf8'),
     writeFile(paths.planMetadata, withFinalNewline(proposal.planMetadata), 'utf8'),
+    writeFile(
+      paths.verificationCommands,
+      withFinalNewline(proposal.verificationCommands.join('\n')),
+      'utf8'
+    ),
   ]);
   return {
     ...paths,
@@ -144,6 +150,8 @@ export async function writeProposalFragments({
       paths.storyOrigin,
       '--plan-metadata-file',
       paths.planMetadata,
+      '--verification-commands-file',
+      paths.verificationCommands,
     ],
   };
 }
