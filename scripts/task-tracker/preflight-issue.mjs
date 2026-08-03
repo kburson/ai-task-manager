@@ -38,7 +38,11 @@ import { lintChecklistCommands, formatViolations } from './lib/checklist-command
 import { auditEvidenceMarkers } from './lib/evidence-markers.mjs';
 import { renderVcSection, spliceVcSection, nextVcId } from './lib/vc-emit.mjs';
 import { normalizePlanMetadataValue } from './lib/plan-metadata.mjs';
-import { normalizeStoryOriginValue, upsertStoryOriginField } from './lib/story-origin.mjs';
+import {
+  hasStoryOriginFields,
+  normalizeStoryOriginValue,
+  upsertStoryOriginField,
+} from './lib/story-origin.mjs';
 import { formatIssueFieldDb } from './issue-field-db.mjs';
 import { serializeMarker } from './lib/marker-grammar.mjs';
 import { setIssueKindMarker, normalizeKind, DEFAULT_KIND } from './lib/issue-kind.mjs';
@@ -347,6 +351,12 @@ function emitShape(args, dodPath, root) {
           ? readFileOrDie(args['plan-metadata-file'], '--plan-metadata-file').trim()
           : '',
     };
+    const normalizedOrigin = normalizeStoryOriginValue(rawFills.story_origin);
+    if (!hasStoryOriginFields(`## Story Origin\n\n${normalizedOrigin}\n`)) {
+      die(
+        '--story-origin-file must contain at least one non-empty flat Story Origin metadata field'
+      );
+    }
   }
   let fills = normalizeFills(rawFills);
   if (shape === 'sub-issue') {

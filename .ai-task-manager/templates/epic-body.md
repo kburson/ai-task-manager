@@ -4,6 +4,7 @@ EPIC issue body template.
 Canonical heading order (the parity test enforces this):
   ## User Story
   ## Scope
+  ## Story Origin
   ## Plan Metadata
   ## Pickup Directive             (static; sits under Plan Metadata, #700)
   ## Acceptance Criteria          (must use `- [ ]` checkboxes)
@@ -15,7 +16,8 @@ Placeholders (substituted by preflight-issue.mjs --shape epic):
 {{title}} Epic title (verbatim, no "EPIC:" prefix)
 {{scope}} Epic Scope text from the spec (verbatim)
 {{acceptance_criteria}} AC checkboxes, one per line, `- [ ] <text>`
-{{plan_metadata}} Plan Metadata block (Size, Estimate, Priority, Sequence)
+{{story_origin}} Story Origin block (kind, provenance, relationships, size guess)
+{{plan_metadata}} Optional Plan Metadata block (Size, Estimate, Wave, Dependencies)
 {{sub_issue_list}} Optional — sub-issue summary table; pass empty to omit
 
 Stub policy — DO NOT include implementation plan, task breakdown, code snippets,
@@ -32,6 +34,10 @@ So that [why they want to accomplish that thing]
 ## Scope
 
 {{scope}}
+
+## Story Origin
+
+{{story_origin}}
 
 ## Plan Metadata
 

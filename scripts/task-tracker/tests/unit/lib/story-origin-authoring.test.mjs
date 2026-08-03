@@ -113,6 +113,29 @@ describe('preflight Story Origin authoring (#892)', () => {
     }
   });
 
+  it('rejects empty and prose-only Story Origin fragments', async () => {
+    const fx = fixture();
+    try {
+      for (const value of ['', 'origin will be decided later\n']) {
+        writeFileSync(fx.origin, value, 'utf8');
+        const result = await preflight([
+          '--shape',
+          'solo',
+          '--scope-file',
+          fx.scope,
+          '--ac-file',
+          fx.ac,
+          '--story-origin-file',
+          fx.origin,
+        ]);
+        assert.equal(result.code, 2, result.stderr);
+        assert.match(result.stderr, /Story Origin.*metadata field/i);
+      }
+    } finally {
+      rmSync(fx.dir, { recursive: true, force: true });
+    }
+  });
+
   it('renders a populated stub origin and an empty plan section', async () => {
     const result = await preflight(['--shape', 'stub']);
     assert.equal(result.code, 0, result.stderr);

@@ -25,6 +25,8 @@
 // Functional/Lifecycle subsections. When the DoD heading is present we also
 // require both subheaders, so an empty/stub DoD is reported as malformed.
 
+import { hasStoryOriginFields } from '../../task-tracker/lib/story-origin.mjs';
+
 const SCOPE_REGEX = /^##\s+(Scope|Problem)\s*$/m;
 const STORY_ORIGIN_REGEX = /^##\s+Story Origin\s*$/m;
 const PLAN_METADATA_REGEX = /^##\s+Plan Metadata\s*$/m;
@@ -66,6 +68,18 @@ export function verifyIssueBody(body) {
 
   for (const check of SECTION_CHECKS) {
     if (!check.regex.test(body)) missing.push(check.name);
+  }
+
+  if (STORY_ORIGIN_REGEX.test(body) && !hasStoryOriginFields(body)) {
+    missing.push('## Story Origin must contain at least one non-empty flat metadata field');
+  }
+
+  if (
+    SCOPE_REGEX.test(body) &&
+    STORY_ORIGIN_REGEX.test(body) &&
+    body.search(SCOPE_REGEX) > body.search(STORY_ORIGIN_REGEX)
+  ) {
+    missing.push('## Scope (or ## Problem) must precede ## Story Origin');
   }
 
   if (

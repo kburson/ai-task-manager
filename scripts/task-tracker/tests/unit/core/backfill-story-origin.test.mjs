@@ -119,4 +119,38 @@ describe('buildPlanMetadataBackfill Story Origin migration (#892)', () => {
     assert.equal(once.status, 'healed');
     assert.deepEqual(buildPlanMetadataBackfill(once.body), { status: 'skip' });
   });
+
+  it('preserves values from legacy colon-inside-bold provenance labels', () => {
+    const body = [
+      '## Plan Metadata',
+      '',
+      '- **Kind:** code',
+      '- **Parent:** #883',
+      '- **Size:** S',
+    ].join('\n');
+    const result = buildPlanMetadataBackfill(body);
+
+    assert.equal(result.status, 'healed');
+    assert.match(result.body, /- \*\*kind\*\*: code/);
+    assert.match(result.body, /- \*\*parent\*\*: #883/);
+    assert.doesNotMatch(result.body, /\*\* code|\*\* #883/);
+  });
+
+  it('inserts a populated Story Origin when legacy Plan Metadata has no provenance', () => {
+    const body = [
+      '## Scope',
+      '',
+      'Legacy planned issue.',
+      '',
+      '## Plan Metadata',
+      '',
+      '- **Size:** S',
+      '- **Estimate:** 2',
+    ].join('\n');
+    const result = buildPlanMetadataBackfill(body);
+
+    assert.equal(result.status, 'healed');
+    assert.match(result.body, /## Story Origin\n\n- \*\*kind\*\*: code\n\n## Plan Metadata/);
+    assert.match(result.body, /- \*\*Size:\*\* S/);
+  });
 });

@@ -38,6 +38,24 @@ test('every catalog record satisfies the normalized public help schema', () => {
   }
 });
 
+test('Story Origin creation contract is consistent across help and sanctioned rules (#892)', () => {
+  for (const name of ['create-issue', 'preflight-issue']) {
+    const command = commandByName(name);
+    assert.match(command.usage, /--story-origin-file <p(?:ath)?>/);
+    assert.match(command.usage, /\[--plan-metadata-file <p(?:ath)?>\]/);
+  }
+
+  for (const file of [
+    'skill/shared/rules/create-issue.md',
+    'skill/shared/rules/plan-mode-backlog.md',
+  ]) {
+    const body = readFileSync(file, 'utf8');
+    assert.match(body, /story-origin\.md/);
+    assert.match(body, /--story-origin-file \.\/\.tmp\/plan\/story-origin\.md/);
+    assert.match(body, /Plan Metadata.*optional/i);
+  }
+});
+
 test('normalization never fabricates required command semantics', () => {
   const normalized = normalizeHelpRecord({ examples: ['example'] });
   const errors = validateHelpRecord(normalized);

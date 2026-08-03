@@ -4,9 +4,7 @@
 // line grammar. Callers supply the exact H2 heading; every operation stops at
 // the next heading of any depth so one section can never consume the other.
 
-const LABEL_RE = /^(- )?(\*\*[\w][\w-]*\*\*:|[\w][\w-]*:)/;
-const UNBOLD_LABEL_RE = /^(?:- )?([\w][\w-]*):\s*(.*)$/;
-const BOLD_LABEL_RE = /^(?:- )?\*\*([\w][\w-]*)\*\*:\s*(.*)$/;
+const FIELD_RE = /^(?:- )?(?:\*\*([\w][\w-]*)(?:\*\*:|:\*\*)|([\w][\w-]*):)\s*(.*)$/;
 const ANY_HEADING_RE = /^#{1,6}\s+/;
 const KEY_RE = /^[\w][\w-]*$/;
 
@@ -19,9 +17,17 @@ function headingRe(heading) {
 }
 
 export function normalizeMetadataLine(line) {
-  return String(line).replace(LABEL_RE, (match, bullet, label) =>
-    label.startsWith('**') ? match : `${bullet ?? ''}**${label.slice(0, -1)}**:`
-  );
+  const source = String(line);
+  const field = parseMetadataField(source);
+  if (!field || field.bold) return source;
+  const bullet = source.startsWith('- ') ? '- ' : '';
+  return `${bullet}**${field.key}**: ${field.value}`;
+}
+
+export function parseMetadataField(line) {
+  const match = FIELD_RE.exec(String(line));
+  if (!match) return null;
+  return { key: match[1] ?? match[2], value: match[3], bold: match[1] != null };
 }
 
 export function normalizeMetadataValue(value) {
@@ -60,10 +66,9 @@ export function findUnboldMetadataLabels(body, heading) {
   if (!bounds) return [];
   const out = [];
   for (let i = bounds.start; i < bounds.end; i += 1) {
-    if (BOLD_LABEL_RE.test(lines[i])) continue;
-    const match = UNBOLD_LABEL_RE.exec(lines[i]);
-    if (!match) continue;
-    out.push({ line: lines[i], label: match[1] });
+    const field = parseMetadataField(lines[i]);
+    if (!field || field.bold) continue;
+    out.push({ line: lines[i], label: field.key });
   }
   return out;
 }
@@ -73,8 +78,8 @@ export function hasMetadataFields(body, heading) {
   const bounds = sectionBounds(lines, heading);
   if (!bounds) return false;
   for (let i = bounds.start; i < bounds.end; i += 1) {
-    const match = BOLD_LABEL_RE.exec(lines[i]) || UNBOLD_LABEL_RE.exec(lines[i]);
-    if (match && match[2].trim()) return true;
+    const field = parseMetadataField(lines[i]);
+    if (field && field.value.trim()) return true;
   }
   return false;
 }
@@ -93,10 +98,12 @@ export function upsertMetadataField(body, heading, key, value) {
   const bounds = sectionBounds(lines, heading);
   if (!bounds) throw new Error(`metadata section missing: ## ${heading}`);
 
-  const fieldRe = new RegExp(`^(?:- )?(?:\\*\\*)?${escapeRegExp(field)}(?:\\*\\*)?:`, 'i');
   const rendered = `- **${field}**: ${renderedValue}`;
   const existing = lines.findIndex(
-    (line, index) => index >= bounds.start && index < bounds.end && fieldRe.test(line)
+    (line, index) =>
+      index >= bounds.start &&
+      index < bounds.end &&
+      parseMetadataField(line)?.key.toLowerCase() === field.toLowerCase()
   );
   if (existing !== -1) {
     if (lines[existing] === rendered) return String(body);

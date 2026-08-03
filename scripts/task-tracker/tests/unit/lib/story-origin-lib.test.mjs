@@ -70,6 +70,14 @@ describe('Story Origin section bounds (#892)', () => {
     assert.equal(hasStoryOriginFields('## Story Origin\n\n<!-- marker -->\nplain prose\n'), false);
     assert.equal(hasStoryOriginFields('## Story Origin\n\n- **kind**: code\n'), true);
   });
+
+  it('accepts the legacy sanctioned colon-inside-bold field spelling', () => {
+    assert.equal(hasStoryOriginFields('## Story Origin\n\n- **Kind:** code\n'), true);
+    assert.equal(
+      normalizeStoryOriginValue('- **Kind:** code\n- **Parent:** #883'),
+      '- **Kind:** code\n- **Parent:** #883'
+    );
+  });
 });
 
 describe('Story Origin value normalization and amendment (#892)', () => {

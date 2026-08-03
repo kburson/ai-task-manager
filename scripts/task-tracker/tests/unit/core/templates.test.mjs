@@ -19,6 +19,14 @@ const runtimePickupDirectivePath = path.join(
 const runtimePickupDirective = existsSync(runtimePickupDirectivePath)
   ? readFileSync(runtimePickupDirectivePath, 'utf8')
   : null;
+
+for (const name of ['epic-body.md', 'solo-issue-body.md', 'sub-issue-body.md']) {
+  assert.equal(
+    readFileSync(path.join(root, '.ai-task-manager', 'templates', name), 'utf8'),
+    readFileSync(path.join(root, 'templates', name), 'utf8'),
+    `.ai-task-manager/templates/${name} must mirror templates/${name}`
+  );
+}
 const codexAdapter = readFileSync(
   path.join(root, 'skill', 'adapters', 'codex', 'SKILL.md'),
   'utf8'

@@ -13,11 +13,13 @@ aitm-skill-loaded:rules/create-issue:1.0.0
 
 `scripts/gh/create-issue.mjs --shape stub|epic|sub-issue|solo` is the only sanctioned path. **Never call `gh issue create` directly.** The wrapper renders the body from `templates/<shape>-body.md` (override: `.ai-task-manager/<shape>-body.md`) via `preflight-issue.mjs --shape`, then runs `gh issue create`, tethers to the project Board, and substitutes `<this-issue-#>` / `<parent-epic-#>` placeholders atomically.
 
-Required content fragments (default `./.tmp/plan/`): `scope.md`, `acs.md` (must contain `- [ ]` checkboxes), `plan-meta.md`. For sub-issues, also pass `--parent <EPIC_N>`.
+Required content fragments (default `./.tmp/plan/`): `scope.md`, `acs.md` (must contain `- [ ]` checkboxes), and `story-origin.md` with create-time provenance. Plan Metadata in `plan-meta.md` is optional until planning produces substantive output. For sub-issues, also pass `--parent <EPIC_N>`.
+
+Every non-stub shaped call passes `--scope-file ./.tmp/plan/scope.md`, `--ac-file ./.tmp/plan/acs.md`, and `--story-origin-file ./.tmp/plan/story-origin.md`; append `--plan-metadata-file ./.tmp/plan/plan-meta.md` only when planning output already exists.
 
 ## Stub shape — capturing a raw idea at Backlog (#426)
 
-For fast idea-capture, use `--shape stub`: it requires **only** `--title` and takes an optional `--idea-file <path>` whose free text seeds the Scope section. It does **not** require `scope.md` / `acs.md` / `plan-meta.md` — those sections are placeholders the Refine stage fills. Reach for `stub` when capturing a raw idea where the acceptance criteria, scope decomposition, and plan-metadata block do not yet exist and should not be invented; use `solo` when you already have all three worked out and want to chain straight into `promote`.
+For fast idea-capture, use `--shape stub`: it requires **only** `--title` and takes an optional `--idea-file <path>` whose free text seeds the Scope section. It does **not** require `scope.md`, `acs.md`, `story-origin.md`, or `plan-meta.md`: Scope and AC remain Refine placeholders, Story Origin is synthesized with the resolved kind, and Plan Metadata remains empty until Plan. Reach for `stub` when capturing a raw idea whose acceptance criteria and scope decomposition do not yet exist; use `solo` when those creation-time inputs are known.
 
 **Do not volunteer `Size` or `Estimate` at Backlog creation.** Those are Refine-exit gate fields, not creation-time fields — offering them on a stub (or any freshly-filed Backlog idea) invites premature, low-confidence sizing. Set them at Refine, where the Refine→Plan gate enforces them.
 

@@ -21,6 +21,7 @@ import { STORY_ORIGIN_HEADING, STORY_ORIGIN_PROVENANCE_KEYS } from './lib/story-
 import {
   normalizeMetadataLine,
   normalizeMetadataSection,
+  parseMetadataField,
   sectionBounds,
 } from './lib/metadata-section.mjs';
 import { mutateIssueBody } from './lib/issue-body-mutate.mjs';
@@ -35,14 +36,7 @@ if (import.meta.url === `file://${process.argv[1]}` && wantsHelp(process.argv.sl
 
 const pexec = promisify(execFile);
 
-const METADATA_FIELD_RE = /^(?:- )?(?:\*\*)?([\w][\w-]*)(?:\*\*)?:\s*(.*)$/;
 const PROVENANCE_KEYS = new Set(STORY_ORIGIN_PROVENANCE_KEYS);
-
-function parseMetadataField(line) {
-  const match = METADATA_FIELD_RE.exec(line);
-  if (!match) return null;
-  return { key: match[1].toLowerCase(), value: match[2] };
-}
 
 function canonicalOriginKey(key) {
   return key === 'size-note' ? 'size-guess' : key;
@@ -69,8 +63,9 @@ export function buildPlanMetadataBackfill(body = '') {
   if (originalStoryBounds) {
     for (let i = originalStoryBounds.start; i < originalStoryBounds.end; i += 1) {
       const field = parseMetadataField(originalLines[i]);
-      if (!field || !PROVENANCE_KEYS.has(field.key)) continue;
-      const canonical = canonicalOriginKey(field.key);
+      const key = field?.key.toLowerCase();
+      if (!field || !PROVENANCE_KEYS.has(key)) continue;
+      const canonical = canonicalOriginKey(key);
       if (!storyValues.has(canonical)) storyValues.set(canonical, field.value);
     }
   }
@@ -81,8 +76,9 @@ export function buildPlanMetadataBackfill(body = '') {
   for (let i = originalPlanBounds.start; i < originalPlanBounds.end; i += 1) {
     const line = originalLines[i];
     const field = parseMetadataField(line);
-    if (field && PROVENANCE_KEYS.has(field.key)) {
-      const canonical = canonicalOriginKey(field.key);
+    const key = field?.key.toLowerCase();
+    if (field && PROVENANCE_KEYS.has(key)) {
+      const canonical = canonicalOriginKey(key);
       changed.push(canonical);
       if (!storyValues.has(canonical)) {
         storyValues.set(canonical, field.value);
@@ -91,8 +87,14 @@ export function buildPlanMetadataBackfill(body = '') {
       continue;
     }
     const normalized = normalizeMetadataLine(line);
-    if (normalized !== line && field) changed.push(field.key);
+    if (normalized !== line && field) changed.push(key);
     planContent.push(normalized);
+  }
+
+  if (!storyValues.has('kind')) {
+    storyValues.set('kind', 'code');
+    movedFields.unshift('- **kind**: code');
+    if (!changed.includes('kind')) changed.unshift('kind');
   }
 
   const lines = [
@@ -116,11 +118,12 @@ export function buildPlanMetadataBackfill(body = '') {
     for (let i = storyBounds.start; i < storyBounds.end; i += 1) {
       const line = outputLines[i];
       const field = parseMetadataField(line);
-      if (!field || !PROVENANCE_KEYS.has(field.key)) {
+      const key = field?.key.toLowerCase();
+      if (!field || !PROVENANCE_KEYS.has(key)) {
         storyContent.push(normalizeMetadataLine(line));
         continue;
       }
-      const canonical = canonicalOriginKey(field.key);
+      const canonical = canonicalOriginKey(key);
       if (seen.has(canonical)) continue;
       seen.add(canonical);
       const normalized = `- **${canonical}**: ${field.value}`;

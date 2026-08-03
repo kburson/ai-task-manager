@@ -82,6 +82,15 @@ test('verifyIssueBody: missing Story Origin', () => {
   assert.ok(res.missing.includes('## Story Origin'));
 });
 
+test('verifyIssueBody: empty or prose-only Story Origin is malformed', () => {
+  for (const replacement of ['', 'origin will be decided later']) {
+    const body = CANONICAL_BODY.replace('**kind:** code', replacement);
+    const res = verifyIssueBody(body);
+    assert.equal(res.ok, false);
+    assert.ok(res.missing.some((item) => /Story Origin.*metadata field/i.test(item)));
+  }
+});
+
 test('verifyIssueBody: missing Plan Metadata', () => {
   const body = CANONICAL_BODY.replace('## Plan Metadata', '## Planning');
   const res = verifyIssueBody(body);
@@ -97,6 +106,16 @@ test('verifyIssueBody: Story Origin must precede Plan Metadata', () => {
   const res = verifyIssueBody(body);
   assert.equal(res.ok, false);
   assert.ok(res.missing.includes('## Story Origin must precede ## Plan Metadata'));
+});
+
+test('verifyIssueBody: Scope must precede Story Origin', () => {
+  const body = CANONICAL_BODY.replace(
+    ['## Scope', '', 'Some scope text.', '', '## Story Origin', '', '**kind:** code'].join('\n'),
+    ['## Story Origin', '', '**kind:** code', '', '## Scope', '', 'Some scope text.'].join('\n')
+  );
+  const res = verifyIssueBody(body);
+  assert.equal(res.ok, false);
+  assert.ok(res.missing.includes('## Scope (or ## Problem) must precede ## Story Origin'));
 });
 
 test('verifyIssueBody: DoD present but missing ### Functional subheader', () => {
