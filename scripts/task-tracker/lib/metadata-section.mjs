@@ -7,7 +7,7 @@
 const FIELD_RE = /^(?:- )?(?:\*\*([\w][\w-]*)(?:\*\*:|:\*\*)|([\w][\w-]*):)\s*(.*)$/;
 const ANY_HEADING_RE = /^#{1,6}\s+/;
 const KEY_RE = /^[\w][\w-]*$/;
-const HTML_COMMENT_RE = /<!--[\s\S]*?-->/g;
+const HTML_COMMENT_RE = /<!--[\s\S]*?(?:-->|$)/g;
 
 function escapeRegExp(value) {
   return String(value).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -33,6 +33,18 @@ export function parseMetadataField(line) {
 
 export function isSubstantiveMetadataValue(value) {
   return String(value).replace(HTML_COMMENT_RE, '').trim().length > 0;
+}
+
+export function substantiveMetadataFields(body, heading) {
+  const lines = String(body).split('\n');
+  const bounds = sectionBounds(lines, heading);
+  if (!bounds) return [];
+  const visibleLines = lines
+    .slice(bounds.start, bounds.end)
+    .join('\n')
+    .replace(HTML_COMMENT_RE, '')
+    .split('\n');
+  return visibleLines.map(parseMetadataField).filter((field) => field?.value.trim());
 }
 
 export function normalizeMetadataValue(value) {
@@ -91,14 +103,7 @@ export function findUnboldMetadataLabels(body, heading) {
 }
 
 export function hasMetadataFields(body, heading) {
-  const lines = String(body).split('\n');
-  const bounds = sectionBounds(lines, heading);
-  if (!bounds) return false;
-  for (let i = bounds.start; i < bounds.end; i += 1) {
-    const field = parseMetadataField(lines[i]);
-    if (field && isSubstantiveMetadataValue(field.value)) return true;
-  }
-  return false;
+  return substantiveMetadataFields(body, heading).length > 0;
 }
 
 export function metadataFieldValue(body, heading, key) {

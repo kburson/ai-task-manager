@@ -27,6 +27,7 @@ describe('planExitPlanMetadataGuard (#892)', () => {
   it('refuses comment-only and prose-only content', () => {
     assert.equal(run('## Plan Metadata\n\n<!-- planning later -->\n').ok, false);
     assert.equal(run('## Plan Metadata\n\n- **size**: <!-- TODO -->\n').ok, false);
+    assert.equal(run('## Plan Metadata\n\n- **size**: <!--\nTODO\n-->\n').ok, false);
     assert.equal(run('## Plan Metadata\n\nPlanning discussion is complete.\n').ok, false);
   });
 
