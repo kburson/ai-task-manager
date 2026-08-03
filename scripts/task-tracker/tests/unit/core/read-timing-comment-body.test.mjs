@@ -23,6 +23,23 @@ test('readTimingCommentBody: hit → status "found" with body', async () => {
   assert.match(bodyOf(res), /Timing Log/);
 });
 
+test('readTimingCommentBody: normalizes numeric issue IDs before the production reader', async () => {
+  let receivedIssueNumber;
+  const res = await readTimingCommentBody({
+    issueNumber: 1091,
+    repo: 'o/r',
+    deps: {
+      findTimingComment: async (issueNumber) => {
+        receivedIssueNumber = issueNumber;
+        return { id: 1, body: '⏱ Timing Log' };
+      },
+    },
+  });
+
+  assert.equal(res.status, 'found');
+  assert.equal(receivedIssueNumber, '1091');
+});
+
 test('readTimingCommentBody: missing comment → status "absent", body ""', async () => {
   const res = await readTimingCommentBody({
     issueNumber: 1,

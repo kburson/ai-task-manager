@@ -518,7 +518,11 @@ export async function readTimingCommentBody({
 } = {}) {
   const find = deps.findTimingComment || findTimingComment;
   try {
-    const existing = await find(issueNumber, repo, { timeoutMs });
+    // Lifecycle verbs carry issue numbers as integers, while the GitHub reader
+    // accepts issue references and strips an optional `#` with String methods.
+    // Normalize at this boundary so close-time outcome capture uses the same
+    // production path as string-based timing callers.
+    const existing = await find(String(issueNumber), repo, { timeoutMs });
     if (existing == null) return { status: 'absent', body: '', error: null };
     return { status: 'found', body: existing.body ?? '', error: null };
   } catch (error) {
