@@ -294,3 +294,86 @@ test('a replacement capsule must retain the exact prior authority grant identifi
     { status: 'blocked', diagnostic: { reason: 'invalid-replacement' } }
   );
 });
+
+test('a persisted nested delegation capsule must use its exact parent authority', () => {
+  const parentGrant = grant({ grantId: 'grant-parent', coordinator, epoch: 1 });
+  const parent = capsule({
+    recordId: id(31),
+    recordType: 'coordinator-grant',
+    payload: parentGrant,
+    epoch: 1,
+    grantId: id(9001),
+    actor: coordinator.actor,
+  });
+  const childGrant = {
+    ...grant({
+      grantId: 'grant-child',
+      coordinator: replacementCoordinator,
+      epoch: 1,
+      issuer: coordinator,
+    }),
+    scope: { scopeRootIssue: 101, includedIssues: [], excludedIssues: [] },
+    parentGrantId: 'grant-parent',
+    operations: ['advance'],
+    branchBoundary: ['work/101'],
+    integrationBoundary: { sourceBranches: [], destinationBranches: [] },
+  };
+  const validChild = capsule({
+    recordId: id(32),
+    predecessor: id(31),
+    recordType: 'coordinator-grant',
+    payload: childGrant,
+    epoch: 1,
+    grantId: id(9001),
+    actor: coordinator.actor,
+  });
+  const active = resolve({
+    records: [parent, validChild],
+    coordinationProjection: {
+      schema: 'aitm.coordination-projection/v1',
+      grantId: 'grant-child',
+      epoch: 1,
+      adoptionState: 'adopted',
+    },
+  });
+  assert.equal(
+    authorizeCoordinatorOperation({
+      authority: active,
+      grantId: 'grant-child',
+      epoch: 1,
+      coordinator: replacementCoordinator,
+      issue: 101,
+      operation: 'advance',
+      branch: 'work/101',
+    }).authorized,
+    true
+  );
+
+  for (const [actor, epoch, grantId] of [
+    ['attacker', 1, id(9001)],
+    [coordinator.actor, 2, id(9001)],
+    [coordinator.actor, 1, id(9002)],
+  ]) {
+    const forgedChild = capsule({
+      recordId: id(32),
+      predecessor: id(31),
+      recordType: 'coordinator-grant',
+      payload: childGrant,
+      epoch,
+      grantId,
+      actor,
+    });
+    assert.deepEqual(
+      resolve({
+        records: [parent, forgedChild],
+        coordinationProjection: {
+          schema: 'aitm.coordination-projection/v1',
+          grantId: 'grant-child',
+          epoch: 1,
+          adoptionState: 'adopted',
+        },
+      }),
+      { status: 'blocked', diagnostic: { reason: 'invalid-delegation' } }
+    );
+  }
+});
