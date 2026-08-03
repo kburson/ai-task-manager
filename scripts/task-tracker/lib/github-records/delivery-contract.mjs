@@ -163,7 +163,9 @@ function assertNoRetiredLogicalIds(previousDefinitions, definitions) {
   );
   for (const kind of DEFINITION_KINDS) {
     for (const { logicalId } of previousDefinitions[kind]) {
-      if (!currentIds.has(logicalId)) throw contractError('retired-logical-id');
+      if (definitions[kind].some((item) => item.logicalId === logicalId)) continue;
+      if (currentIds.has(logicalId)) throw contractError('logical-id-kind');
+      throw contractError('retired-logical-id');
     }
   }
 }
@@ -334,15 +336,18 @@ export function sealContract({ contract, authorityEpoch, coordinatorGrantId } = 
   });
 }
 
-function retainedLifecycleProjection(contract, definitions) {
+function resetLifecycleProjection() {
+  return Object.fromEntries(DEFINITION_KINDS.map((kind) => [kind, {}]));
+}
+
+function resetLifecycleChecks(contract) {
   return Object.fromEntries(
     DEFINITION_KINDS.map((kind) => [
       kind,
-      Object.fromEntries(
-        Object.entries(contract.lifecycleProjection[kind]).filter(([logicalId]) =>
-          definitions[kind].some((item) => item.logicalId === logicalId)
-        )
-      ),
+      Object.entries(contract.lifecycleProjection[kind])
+        .filter(([, checked]) => checked)
+        .map(([logicalId]) => logicalId)
+        .sort(),
     ])
   );
 }
@@ -379,7 +384,8 @@ export function amendContract(input = {}) {
     acceptanceCriteria: structuredClone(acceptanceCriteria),
     verificationCommands: structuredClone(verificationCommands),
     definitionOfDone: structuredClone(definitionOfDone),
-    lifecycleProjection: retainedLifecycleProjection(contract, definitions),
+    lifecycleProjection: resetLifecycleProjection(),
+    acceptedRecordIds: [],
   };
   const rendered = renderContract({ contract: amended });
   if (
@@ -392,6 +398,8 @@ export function amendContract(input = {}) {
   const invalidation = deepFreeze({
     priorContractEpoch: contract.contractEpoch,
     invalidatedEvidenceKinds: ['test', 'review', 'approval'],
+    removedAcceptedRecordIds: structuredClone(contract.acceptedRecordIds),
+    resetLifecycleChecks: resetLifecycleChecks(contract),
   });
   return deepFreeze({
     contract: snapshot,

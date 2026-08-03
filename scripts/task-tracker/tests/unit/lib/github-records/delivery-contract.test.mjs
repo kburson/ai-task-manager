@@ -177,6 +177,12 @@ test('amendContract advances the epoch and explicitly invalidates earlier lifecy
   assert.deepEqual(amended.invalidation, {
     priorContractEpoch: 1,
     invalidatedEvidenceKinds: ['test', 'review', 'approval'],
+    removedAcceptedRecordIds: [],
+    resetLifecycleChecks: {
+      acceptanceCriteria: [],
+      verificationCommands: [],
+      definitionOfDone: [],
+    },
   });
   assert.deepEqual(amended.capsule, {
     recordType: 'contract-amended',
@@ -208,6 +214,104 @@ test('amendContract advances the epoch and explicitly invalidates earlier lifecy
       }),
     /delivery-contract:no-op-amendment/
   );
+});
+
+test('draft revisions and amendments reject logical IDs that migrate between definition kinds', () => {
+  const draft = createDraftContract({
+    recordId,
+    authorityEpoch: 1,
+    coordinatorGrantId,
+    acceptanceCriteria: [{ logicalId: 'ac-login', text: 'Users can sign in.' }],
+    verificationCommands: [{ logicalId: 'vc-unit', command: 'npm test' }],
+    definitionOfDone: [{ logicalId: 'dod-review', text: 'Review is complete.' }],
+  });
+  const migratedDefinitions = {
+    acceptanceCriteria: [{ logicalId: 'ac-fresh', text: 'Fresh acceptance criterion.' }],
+    verificationCommands: [
+      { logicalId: 'ac-login', command: 'npm test' },
+      { logicalId: 'vc-unit', command: 'npm run test:slow' },
+    ],
+    definitionOfDone: draft.definitionOfDone,
+  };
+
+  assert.throws(
+    () => createDraftContract({ previousContract: draft, ...migratedDefinitions }),
+    /delivery-contract:logical-id-kind/
+  );
+
+  const sealed = sealContract({ contract: draft, authorityEpoch: 1, coordinatorGrantId });
+  assert.throws(
+    () =>
+      amendContract({
+        contract: sealed.contract,
+        expectedContractEpoch: 1,
+        authorityEpoch: 1,
+        coordinatorGrantId,
+        ...migratedDefinitions,
+      }),
+    /delivery-contract:logical-id-kind/
+  );
+});
+
+test('amendments clear prior accepted evidence and checked lifecycle projection', () => {
+  const acceptedRecordIds = ['01J00000000000000000000002'];
+  const lifecycleProjection = {
+    acceptanceCriteria: { 'ac-login': true },
+    verificationCommands: { 'vc-unit': true },
+    definitionOfDone: { 'dod-review': true },
+  };
+  const draft = createDraftContract({
+    recordId,
+    authorityEpoch: 1,
+    coordinatorGrantId,
+    acceptanceCriteria: [{ logicalId: 'ac-login', text: 'Users can sign in.' }],
+    verificationCommands: [{ logicalId: 'vc-unit', command: 'npm test' }],
+    definitionOfDone: [{ logicalId: 'dod-review', text: 'Review is complete.' }],
+    lifecycleProjection,
+    acceptedRecordIds,
+  });
+  const sealed = sealContract({ contract: draft, authorityEpoch: 1, coordinatorGrantId });
+  const amendment = {
+    contract: sealed.contract,
+    expectedContractEpoch: 1,
+    authorityEpoch: 1,
+    coordinatorGrantId,
+    acceptanceCriteria: [{ logicalId: 'ac-login', text: 'Members can sign in.' }],
+    verificationCommands: sealed.contract.verificationCommands,
+    definitionOfDone: sealed.contract.definitionOfDone,
+  };
+
+  const amended = amendContract(amendment);
+
+  assert.deepEqual(amended.contract.acceptedRecordIds, []);
+  assert.deepEqual(amended.contract.lifecycleProjection, {
+    acceptanceCriteria: {},
+    verificationCommands: {},
+    definitionOfDone: {},
+  });
+  assert.deepEqual(amended.invalidation, {
+    priorContractEpoch: 1,
+    invalidatedEvidenceKinds: ['test', 'review', 'approval'],
+    removedAcceptedRecordIds: acceptedRecordIds,
+    resetLifecycleChecks: {
+      acceptanceCriteria: ['ac-login'],
+      verificationCommands: ['vc-unit'],
+      definitionOfDone: ['dod-review'],
+    },
+  });
+  assert.equal(
+    validateContractProjection({
+      contract: amended.contract,
+      markdown: renderDeliveryContract({ contract: amended.contract }).markdown,
+    }),
+    true
+  );
+  assert.deepEqual(acceptedRecordIds, ['01J00000000000000000000002']);
+  assert.deepEqual(lifecycleProjection, {
+    acceptanceCriteria: { 'ac-login': true },
+    verificationCommands: { 'vc-unit': true },
+    definitionOfDone: { 'dod-review': true },
+  });
 });
 
 test('drafts normalize mutable projections without changing definition identity', () => {
