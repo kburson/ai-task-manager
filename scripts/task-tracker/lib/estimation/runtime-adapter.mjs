@@ -567,12 +567,13 @@ export function createAdaptivePlanRuntime({ cfg, deps = {}, adoptLegacyBaseline 
   let supersededForecastRecordId = null;
   let activeForecast = null;
   let corpusPromise = null;
-  const corpus = () =>
-    (corpusPromise ??= (deps.loadProjectEstimationCorpus ?? loadProjectEstimationCorpus)({
+  const loadCorpusFresh = () =>
+    (deps.loadProjectEstimationCorpus ?? loadProjectEstimationCorpus)({
       cfg,
       io,
       graphql,
-    }));
+    });
+  const corpus = () => (corpusPromise ??= loadCorpusFresh());
 
   const readProjection = async (issueNumber) => {
     const response = await graphql({
@@ -664,27 +665,26 @@ export function createAdaptivePlanRuntime({ cfg, deps = {}, adoptLegacyBaseline 
       return refineEstimateFromProjection(projection);
     },
     loadRubric: async () => {
-      const allRecords = await corpus();
-      const corpusRubrics = allRecords.filter(
-        (record) =>
-          record.envelope.issue === cfg.estimationRubricIssue &&
-          record.envelope.recordType === 'estimation-rubric'
-      );
       const result = await loadOrRefreshRubric({
         cfg,
         deps: {
-          listRubricRecords: async () => [
-            ...corpusRubrics,
-            ...(corpusRubrics.length > 0
-              ? []
-              : (
-                  await io.listIssueRecords({
-                    repository: cfg.repo,
-                    issue: cfg.estimationRubricIssue,
-                  })
-                ).filter((record) => record.envelope.recordType === 'estimation-rubric')),
-          ],
-          listEligibleOutcomes: async () => estimationOutcomeSamples(allRecords),
+          // Both reads execute only after loadOrRefreshRubric acquires the
+          // authority claim. Never decide from corpusPromise: another process
+          // may have appended while this runtime waited for the lock.
+          listRubricRecords: async () =>
+            (
+              await io.listIssueRecords({
+                repository: cfg.repo,
+                issue: cfg.estimationRubricIssue,
+              })
+            ).filter((record) => record.envelope.recordType === 'estimation-rubric'),
+          listEligibleOutcomes: async () => {
+            const freshRecords = await loadCorpusFresh();
+            // Reuse this just-read projection for the non-authoritative
+            // comparable lookup that follows in the same Plan execution.
+            corpusPromise = Promise.resolve(freshRecords);
+            return estimationOutcomeSamples(freshRecords);
+          },
           writeRubric: async ({ issue, payload, predecessorRecordId }) =>
             io.write({
               envelope: createAitmRecordEnvelope({
@@ -1050,8 +1050,12 @@ export function createEstimationOutcomeRuntime({ cfg, projectDir, deps = {} } = 
         forecast: outcomeForecast,
         outcomePayload,
         deps: {
+          // Re-read after the claim is held. `records` above is preparation
+          // evidence for building the payload, not safe creation authority.
           listOutcomeRecords: async () =>
-            records.filter((record) => record.envelope.recordType === 'estimation-outcome'),
+            (await io.listIssueRecords({ repository: cfg.repo, issue: issueNumber })).filter(
+              (record) => record.envelope.recordType === 'estimation-outcome'
+            ),
           createOutcomeEnvelope: ({ issue, payload }) =>
             createAitmRecordEnvelope({
               recordType: 'estimation-outcome',

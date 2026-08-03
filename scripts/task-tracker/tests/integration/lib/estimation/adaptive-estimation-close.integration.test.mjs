@@ -312,7 +312,7 @@ test('epic child outcome discovery paginates children and delegates full comment
   const result = await runtime.ensure({ issueNumber: 1067, forecastRecordId: null, body: '' });
   assert.equal(result.status, 'written');
   assert.equal(graphqlCalls.length, 2);
-  assert.deepEqual(recordCalls, [1067, 101, 102]);
+  assert.deepEqual(recordCalls, [1067, 101, 102, 1067]);
 });
 
 test('mixed legacy/adaptive epics reference adaptive child outcomes and ignore forecast-free legacy children', async () => {

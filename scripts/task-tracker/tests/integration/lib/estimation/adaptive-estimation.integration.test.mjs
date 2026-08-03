@@ -366,14 +366,25 @@ test('default close runtime builds and read-backs the frozen forecast outcome be
     actor: 'aitm/plan-estimate',
   });
   const written = [];
+  let insideOutcomeClaim = false;
+  const outcomeReadLocations = [];
   const runtime = createEstimationOutcomeRuntime({
     cfg: { repo: repository },
     projectDir: '/tmp/fake-adaptive-project',
     deps: {
       recordIo: {
-        listIssueRecords: async () => [
-          { commentNodeId: 'IC_frozen_forecast', envelope: forecastEnvelope },
-        ],
+        withLogicalRecordClaim: async (_claim, fn) => {
+          insideOutcomeClaim = true;
+          try {
+            return await fn();
+          } finally {
+            insideOutcomeClaim = false;
+          }
+        },
+        listIssueRecords: async () => {
+          outcomeReadLocations.push(insideOutcomeClaim);
+          return [{ commentNodeId: 'IC_frozen_forecast', envelope: forecastEnvelope }, ...written];
+        },
         write: async ({ envelope: outcomeEnvelope }) => {
           const record = { commentNodeId: 'IC_close_outcome', envelope: outcomeEnvelope };
           written.push(record);
@@ -412,6 +423,7 @@ test('default close runtime builds and read-backs the frozen forecast outcome be
   assert.equal(written[0].envelope.payload.actual.engagedHours, 1.9167);
   assert.equal(written[0].envelope.payload.costClassification.necessaryHours, 0);
   assert.equal(written[0].envelope.payload.costClassification.unclassifiedHours, 1.9167);
+  assert.deepEqual(outcomeReadLocations, [false, true]);
 });
 
 test('close rejects a ready forecast that a later active forecast superseded', async () => {
@@ -532,6 +544,9 @@ test('production Plan runtime converges board, body, history, forecast, and read
     '### 🛠 Refine estimate\n\n<!-- aitm-refined-estimate: 1091 -->\n\n| Field | Value | Rationale |\n|---|---|---|\n| Size | M | Provisional scope |\n| Estimate | 8h | Provisional scope |\n';
   const recordComments = [];
   const parsedRecords = [];
+  let insideRecordClaim = false;
+  const rubricReadLocations = [];
+  const corpusReadLocations = [];
   const commentNode = (id, issue, body) => ({
     __typename: 'IssueComment',
     id,
@@ -542,6 +557,7 @@ test('production Plan runtime converges board, body, history, forecast, and read
   });
   const graphql = async ({ query }) => {
     if (query.includes('AitmEstimationCorpus')) {
+      corpusReadLocations.push(insideRecordClaim);
       return {
         data: {
           node: {
@@ -587,8 +603,18 @@ test('production Plan runtime converges board, body, history, forecast, and read
   };
   const recordIo = {
     graphql,
-    listIssueRecords: async ({ issue }) =>
-      parsedRecords.filter((record) => record.envelope.issue === issue),
+    withLogicalRecordClaim: async (_claim, fn) => {
+      insideRecordClaim = true;
+      try {
+        return await fn();
+      } finally {
+        insideRecordClaim = false;
+      }
+    },
+    listIssueRecords: async ({ issue }) => {
+      if (issue === rubricIssue) rubricReadLocations.push(insideRecordClaim);
+      return parsedRecords.filter((record) => record.envelope.issue === issue);
+    },
     write: async ({ envelope: recordEnvelope }) => {
       const commentNodeId = `IC_record_${parsedRecords.length + 1}`;
       const record = { commentNodeId, envelope: recordEnvelope };
@@ -653,6 +679,8 @@ test('production Plan runtime converges board, body, history, forecast, and read
     parsedRecords.filter((r) => r.envelope.recordType === 'estimation-forecast').length,
     1
   );
+  assert.deepEqual(corpusReadLocations, [true]);
+  assert.deepEqual(rubricReadLocations, [true]);
 });
 
 test('production Plan projection paginates raw comments so an older Refine baseline remains readable', async () => {
