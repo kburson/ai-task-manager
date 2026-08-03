@@ -57,6 +57,13 @@ function makeCtx({ body = '', epicChildren = [] } = {}) {
     cfg: CFG,
     deps: {
       epicChildren: { fetchSiblings: async () => epicChildren },
+      // #1052 — the newly registered decomposition guard must receive the
+      // same offline board values through both parity paths.
+      decomposition: {
+        projectDir: process.cwd(),
+        loadProjectFieldDefs: () => [],
+        projectValuesForIssue: async () => ({ size: 'XS', estimate: 4 }),
+      },
       plannedEstimate: {
         listComments: async ({ issueNumber }) => [
           {
