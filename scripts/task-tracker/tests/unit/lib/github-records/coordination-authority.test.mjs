@@ -603,6 +603,102 @@ test('replacement edges require complete old and new durable history with contin
   );
 });
 
+test('blocks forked replacement histories even when the competing successor is expired', () => {
+  const original = grant();
+  const successorA = grant({
+    grantId: 'grant-successor-a',
+    coordinator: nestedCoordinator,
+    epoch: 2,
+    issuer: coordinator,
+  });
+  const successorB = grant({
+    grantId: 'grant-successor-b',
+    coordinator: { actor: 'gemini', platform: 'gemini', session: 'session-successor-b' },
+    epoch: 2,
+    issuer: coordinator,
+    expiresAt: '2026-08-03T20:01:00.000Z',
+  });
+  const revocation = (replacementGrantId) => ({
+    schema: 'aitm.coordinator-revocation/v1',
+    grantId: 'grant-parent',
+    epoch: 1,
+    state: 'replaced',
+    replacementGrantId,
+  });
+  const first = revocation('grant-successor-a');
+  const second = revocation('grant-successor-b');
+
+  for (const [grants, revocations] of [
+    [
+      [original, successorA, successorB],
+      [first, second],
+    ],
+    [
+      [successorB, original, successorA],
+      [second, first],
+    ],
+  ]) {
+    assert.deepEqual(
+      resolve({
+        grants,
+        revocations,
+        coordinationProjection: projection({ grantId: 'grant-successor-a', epoch: 2 }),
+      }),
+      { status: 'blocked', diagnostic: { reason: 'invalid-replacement' } }
+    );
+  }
+});
+
+test('fails closed when a nested replacement lineage exceeds the deterministic depth bound', () => {
+  const parent = grant();
+  const initialChild = grant({
+    grantId: 'grant-child-1',
+    scopeRootIssue: 102,
+    includedIssues: [103],
+    excludedIssues: [],
+    coordinator: nestedCoordinator,
+    parentGrantId: 'grant-parent',
+    issuer: coordinator,
+    operations: ['advance'],
+    branchBoundary: ['epic/100/nested-102', 'work/103'],
+    integrationBoundary: {
+      sourceBranches: ['work/103'],
+      destinationBranches: ['epic/100/nested-102'],
+    },
+  });
+  const grants = [parent, initialChild],
+    revocations = [];
+  let predecessor = initialChild;
+  for (let epoch = 2; epoch <= 130; epoch += 1) {
+    const successor = {
+      ...predecessor,
+      grantId: `grant-child-${epoch}`,
+      coordinator: { actor: `coordinator-${epoch}`, platform: 'test', session: `session-${epoch}` },
+      epoch,
+      issuer: predecessor.coordinator,
+    };
+    grants.push(successor);
+    revocations.push({
+      schema: 'aitm.coordinator-revocation/v1',
+      grantId: predecessor.grantId,
+      epoch: predecessor.epoch,
+      state: 'replaced',
+      replacementGrantId: successor.grantId,
+    });
+    predecessor = successor;
+  }
+
+  const target = projection({ grantId: predecessor.grantId, epoch: predecessor.epoch });
+  assert.deepEqual(
+    resolve({
+      grants,
+      revocations,
+      coordinationProjection: target,
+    }),
+    { status: 'blocked', diagnostic: { reason: 'delegation-depth' } }
+  );
+});
+
 test('each completed resolution retires the prior authority generation for that epoch', () => {
   const beforeExpired = resolve();
   assert.deepEqual(resolve({ grants: [grant({ expiresAt: '2026-08-03T20:01:00.000Z' })] }), {

@@ -23,6 +23,7 @@ const INTEGRATION_KEYS = ['destinationBranches', 'sourceBranches'];
 const PROJECTION_KEYS = ['adoptionState', 'epoch', 'grantId', 'schema'];
 const REVOCATION_KEYS = ['epoch', 'grantId', 'schema', 'state'];
 const REPLACEMENT_REVOCATION_KEYS = [...REVOCATION_KEYS, 'replacementGrantId'];
+const MAX_DELEGATION_REPLACEMENT_DEPTH = 128;
 const authorityMetadata = new WeakMap();
 const authorityGenerations = new Map();
 
@@ -376,12 +377,21 @@ function validInitialDelegationEdge(parent, child, parents) {
 }
 
 function validDelegationEdge(parent, child, parents, predecessorsBySuccessorId) {
-  const predecessor = predecessorsBySuccessorId.get(child.grant.grantId);
-  if (predecessor === undefined) return validInitialDelegationEdge(parent, child, parents);
-  return (
-    child.grant.parentGrantId === parent.grant.grantId &&
-    validDelegationEdge(parent, predecessor, parents, predecessorsBySuccessorId)
-  );
+  const visitedGrantIds = new Set();
+  let current = child;
+  let depth = 0;
+  while (true) {
+    if (visitedGrantIds.has(current.grant.grantId)) return 'delegation-cycle';
+    visitedGrantIds.add(current.grant.grantId);
+    const predecessor = predecessorsBySuccessorId.get(current.grant.grantId);
+    if (predecessor === undefined) {
+      return validInitialDelegationEdge(parent, current, parents) ? null : 'invalid-delegation';
+    }
+    if (current.grant.parentGrantId !== parent.grant.grantId) return 'invalid-delegation';
+    depth += 1;
+    if (depth > MAX_DELEGATION_REPLACEMENT_DEPTH) return 'delegation-depth';
+    current = predecessor;
+  }
 }
 
 function buildDelegationGraph(validatedGrants, validatedRevocations, parents) {
@@ -391,7 +401,7 @@ function buildDelegationGraph(validatedGrants, validatedRevocations, parents) {
     if (revocation.state !== 'replaced') continue;
     const predecessor = grantsById.get(revocation.grantId);
     if (predecessor === undefined || predecessorsBySuccessorId.has(revocation.replacementGrantId)) {
-      return undefined;
+      return { reason: 'invalid-delegation' };
     }
     predecessorsBySuccessorId.set(revocation.replacementGrantId, predecessor);
   }
@@ -399,12 +409,9 @@ function buildDelegationGraph(validatedGrants, validatedRevocations, parents) {
     const parentGrantId = child.grant.parentGrantId;
     if (parentGrantId === null) continue;
     const parent = grantsById.get(parentGrantId);
-    if (
-      parent === undefined ||
-      !validDelegationEdge(parent, child, parents, predecessorsBySuccessorId)
-    ) {
-      return undefined;
-    }
+    if (parent === undefined) return { reason: 'invalid-delegation' };
+    const reason = validDelegationEdge(parent, child, parents, predecessorsBySuccessorId);
+    if (reason !== null) return { reason };
   }
   return { grantsById };
 }
@@ -461,8 +468,28 @@ function validReplacementEdge(oldGrant, replacementGrant, revocationEntry) {
   );
 }
 
+function replacementPredecessorKey(revocation) {
+  return JSON.stringify([revocation.grantId, revocation.epoch]);
+}
+
+function hasReplacementCycle(successorByPredecessorId) {
+  for (const start of successorByPredecessorId.keys()) {
+    const seen = new Set();
+    let current = start;
+    while (successorByPredecessorId.has(current)) {
+      if (seen.has(current)) return true;
+      seen.add(current);
+      current = successorByPredecessorId.get(current);
+    }
+  }
+  return false;
+}
+
 function hasValidReplacementHistory(validatedGrants, validatedRevocations) {
   const grantsById = new Map(validatedGrants.map((entry) => [entry.grant.grantId, entry]));
+  const successorByPredecessorId = new Map();
+  const replacementPredecessors = new Set();
+  const replacementSuccessors = new Set();
   for (const entry of validatedRevocations) {
     const revocation = entry.revocation;
     if (revocation.state !== 'replaced') continue;
@@ -471,12 +498,17 @@ function hasValidReplacementHistory(validatedGrants, validatedRevocations) {
     if (
       oldGrant === undefined ||
       replacementGrant === undefined ||
+      replacementPredecessors.has(replacementPredecessorKey(revocation)) ||
+      replacementSuccessors.has(revocation.replacementGrantId) ||
       !validReplacementEdge(oldGrant, replacementGrant, entry)
     ) {
       return false;
     }
+    replacementPredecessors.add(replacementPredecessorKey(revocation));
+    replacementSuccessors.add(revocation.replacementGrantId);
+    successorByPredecessorId.set(revocation.grantId, revocation.replacementGrantId);
   }
-  return true;
+  return !hasReplacementCycle(successorByPredecessorId);
 }
 
 function extractCapsules({ records, repository, issue }) {
@@ -546,7 +578,7 @@ export function resolveCoordinatorAuthority({
     return resolutionBlocked(validatedGrants, 'invalid-replacement');
   }
   const delegation = buildDelegationGraph(validatedGrants, validatedRevocations, parents);
-  if (delegation === undefined) return resolutionBlocked(validatedGrants, 'invalid-delegation');
+  if (delegation.reason !== undefined) return resolutionBlocked(validatedGrants, delegation.reason);
   const projectionGrant = validatedGrants.find(
     ({ grant }) => grant.grantId === coordinationProjection.grantId
   );
