@@ -94,6 +94,40 @@ test('new eligible outcomes create one superseding snapshot and read it back', a
   assert.equal(result.commentNodeId, 'IC_01J00000000000000000000403');
 });
 
+test('concurrent refreshes claim one cohort transition and create one successor', async () => {
+  const previous = createBootstrapRubric({ generatedAt: '2026-08-02T13:00:00.000Z' });
+  const records = [comment(previous)];
+  let writes = 0;
+  const deps = {
+    listRubricRecords: async () => [...records],
+    listEligibleOutcomes: async () => [outcome],
+    writeRubric: async ({ payload, predecessorRecordId }) => {
+      writes += 1;
+      await new Promise((resolve) => setTimeout(resolve, 10));
+      const record = comment(payload, '01J00000000000000000000413', {
+        predecessor: predecessorRecordId,
+      });
+      records.push(record);
+      return record;
+    },
+  };
+
+  const results = await Promise.all(
+    [1, 2].map(() =>
+      loadOrRefreshRubric({
+        cfg: { repo: 'o/r', estimationRubricIssue: 1091 },
+        through: '2026-08-02T15:00:00.000Z',
+        deps,
+      })
+    )
+  );
+
+  assert.equal(writes, 1);
+  assert.equal(records.length, 2);
+  assert.deepEqual(results.map((result) => result.status).sort(), ['current', 'refreshed']);
+  assert.equal(results[0].recordId, results[1].recordId);
+});
+
 test('the exact existing cohort is idempotent and creates no comment', async () => {
   const current = createBootstrapRubric({ generatedAt: '2026-08-02T13:00:00.000Z' });
   current.cohort = [{ issue: 1091, outcomeRecordId: outcomeId }];

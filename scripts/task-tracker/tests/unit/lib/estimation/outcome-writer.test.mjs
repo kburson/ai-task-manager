@@ -65,6 +65,37 @@ test('writer appends and read-backs exactly one immutable outcome', async () => 
   assert.equal(records.length, 1);
 });
 
+test('concurrent closes share one logical outcome claim and append exactly once', async () => {
+  const records = [];
+  let writes = 0;
+  const deps = {
+    listOutcomeRecords: async () => [...records],
+    createOutcomeEnvelope: () => ({
+      recordId: '01J00000000000000000000910',
+      recordType: 'estimation-outcome',
+      payload,
+    }),
+    writeOutcome: async ({ envelope }) => {
+      writes += 1;
+      await new Promise((resolve) => setTimeout(resolve, 10));
+      const record = { commentNodeId: 'IC_concurrent_outcome', envelope };
+      records.push(record);
+      return record;
+    },
+  };
+
+  const results = await Promise.all(
+    [1, 2].map(() =>
+      ensureEstimationOutcome({ issue: 1091, forecast, outcomePayload: payload, deps })
+    )
+  );
+
+  assert.equal(writes, 1);
+  assert.equal(records.length, 1);
+  assert.deepEqual(results.map((result) => result.status).sort(), ['existing', 'written']);
+  assert.equal(results[0].recordId, results[1].recordId);
+});
+
 test('repeated close and partially written retries return the existing outcome', async () => {
   let writes = 0;
   const existing = {

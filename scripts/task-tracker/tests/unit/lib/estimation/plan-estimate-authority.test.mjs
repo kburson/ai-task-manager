@@ -125,6 +125,32 @@ test('Plan authority converges Refine history, board Estimate/Size, body fields,
   assert.equal(result.forecastCommentNodeId, 'IC_forecast');
 });
 
+test('concurrent Plan convergence claims the forecast generation and appends it once', async () => {
+  const h = harness();
+  let forecastWrites = 0;
+  const writeForecast = h.deps.writeForecast;
+  h.deps.writeForecast = async (input) => {
+    forecastWrites += 1;
+    await new Promise((resolve) => setTimeout(resolve, 10));
+    return writeForecast(input);
+  };
+
+  const results = await Promise.all(
+    [1, 2].map(() =>
+      applyPlanEstimateAuthority({
+        issueNumber: 1091,
+        refine: forecast.refine,
+        forecastEnvelope,
+        deps: h.deps,
+      })
+    )
+  );
+
+  assert.equal(forecastWrites, 1);
+  assert.equal(h.state.forecasts.length, 1);
+  assert.equal(results[0].forecastRecordId, results[1].forecastRecordId);
+});
+
 test('every interrupted seam replays convergently without duplicating the forecast', async () => {
   for (let failAfter = 1; failAfter <= 6; failAfter += 1) {
     const h = harness({ failAfter });

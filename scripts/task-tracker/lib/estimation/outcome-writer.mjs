@@ -1,10 +1,11 @@
 import { canonicalRecordJson } from '../github-records/canonical-json.mjs';
+import { runLogicalRecordClaim } from './record-claim.mjs';
 
 function fail(category) {
   throw new Error(`estimation-outcome-writer:${category}`);
 }
 
-export async function ensureEstimationOutcome({ issue, forecast, outcomePayload, deps = {} } = {}) {
+async function ensureEstimationOutcomeUnlocked({ issue, forecast, outcomePayload, deps }) {
   if (!forecast && outcomePayload?.kind !== 'epic-orchestration')
     return { status: 'legacy-no-forecast' };
   if (
@@ -64,4 +65,17 @@ export async function ensureEstimationOutcome({ issue, forecast, outcomePayload,
     recordId: written.envelope.recordId,
     commentNodeId: written.commentNodeId,
   };
+}
+
+export async function ensureEstimationOutcome({ issue, forecast, outcomePayload, deps = {} } = {}) {
+  if (!forecast && outcomePayload?.kind !== 'epic-orchestration') {
+    return { status: 'legacy-no-forecast' };
+  }
+  const forecastRecordId = forecast?.recordId ?? null;
+  const kind = forecast ? 'story' : 'epic-orchestration';
+  return runLogicalRecordClaim(
+    deps,
+    { key: `outcome:${issue}:${kind}:${forecastRecordId ?? 'none'}`, issue },
+    () => ensureEstimationOutcomeUnlocked({ issue, forecast, outcomePayload, deps })
+  );
 }

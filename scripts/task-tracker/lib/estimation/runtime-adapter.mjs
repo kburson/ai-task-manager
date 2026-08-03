@@ -23,6 +23,7 @@ import {
   parseValidatedVerificationReceipts,
   validateVerificationReceipt,
 } from '../verification-receipt.mjs';
+import { withCrossProcessRecordClaim } from './record-claim.mjs';
 import {
   listIssueCommentsSince,
   parsePreloadedIssueComments,
@@ -353,6 +354,7 @@ export function createGitHubEstimationRecordIo({ graphql = defaultGraphql, rest 
   return {
     graphql,
     rest: resolvedRest,
+    withLogicalRecordClaim: ({ key, issue }, fn) => withCrossProcessRecordClaim({ key, issue }, fn),
     async listIssueRecords({ repository, issue }) {
       return listIssueCommentsSince({
         since: SINCE_EPOCH,
@@ -695,6 +697,7 @@ export function createAdaptivePlanRuntime({ cfg, deps = {}, adoptLegacyBaseline 
                 supersedes: predecessorRecordId,
               }),
             }),
+          withLogicalRecordClaim: io.withLogicalRecordClaim,
         },
       });
       return { recordId: result.recordId, payload: result.rubric };
@@ -769,6 +772,7 @@ export function createAdaptivePlanRuntime({ cfg, deps = {}, adoptLegacyBaseline 
               },
             }),
           writeForecast: ({ envelope }) => io.write({ envelope }),
+          withLogicalRecordClaim: io.withLogicalRecordClaim,
           writeForecastReadyMarker: ({ recordId }) =>
             (deps.mutateIssueBody ?? mutateIssueBody)({
               issueNumber,
@@ -1057,6 +1061,7 @@ export function createEstimationOutcomeRuntime({ cfg, projectDir, deps = {} } = 
               actor: 'aitm/close',
             }),
           writeOutcome: ({ envelope }) => io.write({ envelope }),
+          withLogicalRecordClaim: io.withLogicalRecordClaim,
         },
       });
     },

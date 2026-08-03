@@ -1,5 +1,6 @@
 import { createBootstrapRubric, updateEstimationRubric } from './rubric-model.mjs';
 import { validateEstimationRubric } from './rubric-record.mjs';
+import { runLogicalRecordClaim } from './record-claim.mjs';
 
 function fail(category) {
   throw new Error(`rubric-refresh:${category}`);
@@ -72,12 +73,7 @@ function selectLatest(records) {
   return valid[0];
 }
 
-export async function loadOrRefreshRubric({
-  cfg,
-  rubricIssueNumber = cfg?.estimationRubricIssue,
-  through = new Date().toISOString(),
-  deps = {},
-} = {}) {
+async function loadOrRefreshRubricUnlocked({ cfg, rubricIssueNumber, through, deps }) {
   if (!cfg?.repo || !Number.isInteger(rubricIssueNumber) || rubricIssueNumber < 0) fail('input');
   if (rubricIssueNumber === 0)
     return {
@@ -139,4 +135,21 @@ export async function loadOrRefreshRubric({
     recordId: written.envelope.recordId,
     commentNodeId: written.commentNodeId,
   };
+}
+
+export async function loadOrRefreshRubric({
+  cfg,
+  rubricIssueNumber = cfg?.estimationRubricIssue,
+  through = new Date().toISOString(),
+  deps = {},
+} = {}) {
+  if (!cfg?.repo || !Number.isInteger(rubricIssueNumber) || rubricIssueNumber < 0) fail('input');
+  if (rubricIssueNumber === 0) {
+    return loadOrRefreshRubricUnlocked({ cfg, rubricIssueNumber, through, deps });
+  }
+  return runLogicalRecordClaim(
+    deps,
+    { key: `rubric:${cfg.repo}:${rubricIssueNumber}`, issue: rubricIssueNumber },
+    () => loadOrRefreshRubricUnlocked({ cfg, rubricIssueNumber, through, deps })
+  );
 }

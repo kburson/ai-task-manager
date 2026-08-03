@@ -1,3 +1,5 @@
+import { runLogicalRecordClaim } from './record-claim.mjs';
+
 function fail(category) {
   throw new Error(`plan-estimate-authority:${category}`);
 }
@@ -98,7 +100,7 @@ async function writeAndConfirm({ deps, writer, input, confirms, category }) {
   return state;
 }
 
-export async function applyPlanEstimateAuthority({
+async function applyPlanEstimateAuthorityUnlocked({
   issueNumber,
   refine,
   forecastEnvelope,
@@ -192,7 +194,23 @@ export async function applyPlanEstimateAuthority({
   };
 }
 
-export async function adoptLegacyPlanForecast({ issueNumber, forecastEnvelope, deps = {} } = {}) {
+export async function applyPlanEstimateAuthority({
+  issueNumber,
+  refine,
+  forecastEnvelope,
+  deps = {},
+} = {}) {
+  return runLogicalRecordClaim(
+    deps,
+    {
+      key: `forecast:${issueNumber}:${forecastEnvelope?.payloadHash ?? forecastEnvelope?.recordId ?? 'invalid'}`,
+      issue: issueNumber,
+    },
+    () => applyPlanEstimateAuthorityUnlocked({ issueNumber, refine, forecastEnvelope, deps })
+  );
+}
+
+async function adoptLegacyPlanForecastUnlocked({ issueNumber, forecastEnvelope, deps }) {
   if (
     !Number.isInteger(issueNumber) ||
     issueNumber <= 0 ||
@@ -238,4 +256,15 @@ export async function adoptLegacyPlanForecast({ issueNumber, forecastEnvelope, d
     forecastRecordId: stored.recordId,
     forecastCommentNodeId: stored.commentNodeId,
   };
+}
+
+export async function adoptLegacyPlanForecast({ issueNumber, forecastEnvelope, deps = {} } = {}) {
+  return runLogicalRecordClaim(
+    deps,
+    {
+      key: `forecast:${issueNumber}:${forecastEnvelope?.payloadHash ?? forecastEnvelope?.recordId ?? 'invalid'}`,
+      issue: issueNumber,
+    },
+    () => adoptLegacyPlanForecastUnlocked({ issueNumber, forecastEnvelope, deps })
+  );
 }
