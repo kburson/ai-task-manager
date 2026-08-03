@@ -105,7 +105,6 @@ function assertInput({ repository, issue, issueNodeId, actor }, { needsActor = f
     !Number.isInteger(issue) ||
     issue <= 0 ||
     !isOpaqueId(issueNodeId) ||
-    issueNodeId.includes('--') ||
     (needsActor && !isOpaqueId(actor))
   ) {
     throw initializerError('input');
