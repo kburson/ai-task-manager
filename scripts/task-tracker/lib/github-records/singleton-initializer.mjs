@@ -338,6 +338,13 @@ export async function repairIssueDirectory({
     });
   }
   if (found.missing.length > 0) throw initializerError('missing');
+  const prePublication = await confirmPrePublicationSingletons({
+    repository,
+    issue,
+    issueNodeId,
+    deps: resolvedDeps,
+    intendedSingletons: found.singletons,
+  });
   const directory = createIssueDirectory({
     issueNodeId,
     singletons: Object.fromEntries(
@@ -347,7 +354,7 @@ export async function repairIssueDirectory({
   await writeAndReadBackDirectory({
     repository,
     issue,
-    expectedBody: issueBody,
+    expectedBody: prePublication.issueBody,
     directory,
     deps: resolvedDeps,
     crashAt,
