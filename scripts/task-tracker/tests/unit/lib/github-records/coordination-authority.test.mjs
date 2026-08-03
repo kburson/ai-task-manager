@@ -408,7 +408,7 @@ test('replaces only the exact active epoch, pauses authority, and resumes only a
     projection({ grantId: 'grant-replacement', epoch: 2, adoptionState: 'required' })
   );
   const paused = resolve({
-    grants: [replacementGrant],
+    grants: [grant(), replacementGrant],
     revocations: [replacement.revocation],
     coordinationProjection: replacement.coordinationProjection,
   });
@@ -416,7 +416,7 @@ test('replaces only the exact active epoch, pauses authority, and resumes only a
   assert.equal(authorize(paused).authorized, false);
 
   const adopted = resolve({
-    grants: [replacementGrant],
+    grants: [grant(), replacementGrant],
     revocations: [replacement.revocation],
     coordinationProjection: projection({ grantId: 'grant-replacement', epoch: 2 }),
   });
@@ -442,6 +442,80 @@ test('replaces only the exact active epoch, pauses authority, and resumes only a
       }),
     /coordination-authority:stale-epoch/
   );
+});
+
+test('replacement edges require complete old and new durable history with continuous authority', () => {
+  const original = grant();
+  const replacement = grant({
+    grantId: 'grant-replacement',
+    coordinator: nestedCoordinator,
+    epoch: 2,
+    issuer: coordinator,
+  });
+  const revocation = {
+    schema: 'aitm.coordinator-revocation/v1',
+    grantId: 'grant-parent',
+    epoch: 1,
+    state: 'replaced',
+    replacementGrantId: 'grant-replacement',
+  };
+
+  for (const invalid of [
+    { ...replacement, epoch: 7 },
+    { ...replacement, issuer: nestedCoordinator },
+    { ...replacement, parentGrantId: 'other-parent' },
+  ]) {
+    assert.deepEqual(
+      resolve({
+        grants: [original, invalid],
+        revocations: [revocation],
+        coordinationProjection: projection({
+          grantId: 'grant-replacement',
+          epoch: invalid.epoch,
+          adoptionState: 'required',
+        }),
+      }),
+      { status: 'blocked', diagnostic: { reason: 'invalid-replacement' } }
+    );
+  }
+  assert.deepEqual(
+    resolve({
+      grants: [replacement],
+      revocations: [revocation],
+      coordinationProjection: projection({
+        grantId: 'grant-replacement',
+        epoch: 2,
+        adoptionState: 'required',
+      }),
+    }),
+    { status: 'blocked', diagnostic: { reason: 'invalid-replacement' } }
+  );
+});
+
+test('each completed resolution retires the prior authority generation for that epoch', () => {
+  const beforeExpired = resolve();
+  assert.deepEqual(resolve({ grants: [grant({ expiresAt: '2026-08-03T20:01:00.000Z' })] }), {
+    status: 'blocked',
+    diagnostic: { reason: 'expired' },
+  });
+  assert.equal(authorize(beforeExpired).authorized, false);
+
+  const beforeOverlap = resolve();
+  assert.deepEqual(
+    resolve({
+      grants: [
+        grant(),
+        grant({ grantId: 'grant-overlap', includedIssues: [101], excludedIssues: [] }),
+      ],
+    }),
+    { status: 'blocked', diagnostic: { reason: 'overlapping-grants' } }
+  );
+  assert.equal(authorize(beforeOverlap).authorized, false);
+
+  const beforeRefresh = resolve();
+  const refreshed = resolve();
+  assert.equal(authorize(beforeRefresh).authorized, false);
+  assert.equal(authorize(refreshed).authorized, true);
 });
 
 test('a valid revocation replay retires a previously resolved authority capability', () => {
