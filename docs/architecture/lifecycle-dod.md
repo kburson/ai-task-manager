@@ -9,8 +9,12 @@ two exact subsections:
 - `### Housekeeping (verified at Close)` contains Close-owned finalization.
 
 These checkboxes are **side effects of verb execution**, not user-verified work.
-Functional DoD items are verified at Test; Lifecycle and Housekeeping items are
-ticked only by the verb whose run produced the side effect.
+Functional DoD items are backed by stage-owned evidence: Develop finalization
+records exact-SHA lint/format evidence, Develop-exit gates require committed
+changes and verified Acceptance Criteria, Test reuses valid earlier receipts
+while running sandbox-owned test commands, and later stages validate those
+receipts instead of rerunning standard checks. Lifecycle and Housekeeping items
+are ticked only by the verb whose run produced the side effect.
 
 ## Canonical labels
 

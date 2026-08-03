@@ -142,6 +142,14 @@ does not alter or masquerade as the Test receipt. Marker-only issues without a
 v1 receipt retain the bounded legacy path; the presence of a malformed v1
 marker can never fall back to it.
 
+The `Functional (verified at Test)` DoD subsection is the visible checklist for
+this cumulative evidence, not a claim that every command executes inside the
+Test sandbox. Lint and format are verified during Develop finalization and
+carried forward by receipt. Commit and Acceptance Criteria gates are satisfied
+before the transition is allowed to leave Develop. Test owns the fresh isolated
+worktree, dependency install, full test lanes, and read-back of the combined
+receipt that Review later validates.
+
 Run a focused probe only after the issue is already in Review:
 
 ```bash

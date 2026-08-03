@@ -194,8 +194,10 @@ export const VERB_CONTRACTS = Object.freeze({
   ),
   test: contract(
     ['The target must be in Develop and declare runnable Verification Commands.'],
-    ['Runs verification in an isolated worktree and moves the issue to Test only on success.'],
-    ['Streams sandbox verification and prints the resulting state or failure diagnostics.']
+    [
+      'Finalizes Develop lint/format evidence, reuses that exact-SHA receipt, then runs Test-owned verification in an isolated worktree and moves the issue to Test only on success.',
+    ],
+    ['Streams finalization, sandbox verification, and resulting state or failure diagnostics.']
   ),
   reconcile: contract(
     [

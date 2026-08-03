@@ -271,7 +271,7 @@ export const VERB_REFERENCE = {
   test: {
     topic: 'board',
     summary:
-      'Develop→Test sandbox verification — runs the Verification Commands in an isolated worktree.',
+      'Develop→Test verification — finalizes Develop lint/format evidence, then runs Test-owned commands in an isolated worktree.',
     usage: '/task test #N',
     exitCodes: [
       { code: 1, meaning: 'missing target or test setup/runtime failure' },
@@ -680,7 +680,7 @@ export const GATE_EVIDENCE_MODEL = [
   },
   {
     heading: 'Functional DoD',
-    body: 'The Functional DoD items (tests / lint / commits) are stamped by `/task dod-stamp <key>` from a real verifier run. The derived keys `acs` and `checkboxes` are auto-stamped by `/task close` from the body itself.',
+    body: 'Functional DoD checkboxes are backed by stage-owned evidence. Develop finalization records exact-SHA lint/format evidence, Test reuses that receipt while running sandbox-owned test commands, and derived keys `acs` and `checkboxes` are auto-stamped from the body itself.',
   },
   {
     heading: 'Full-Auto audit path',
