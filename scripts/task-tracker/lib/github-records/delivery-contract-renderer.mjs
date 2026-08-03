@@ -45,7 +45,7 @@ export function renderDeliveryContract({ contract } = {}) {
   return Object.freeze({ markdown, projectionHash: projectionHash(markdown) });
 }
 
-export function validateContractProjection({ contract, markdown } = {}) {
+export function validateRenderedContractProjection({ contract, markdown } = {}) {
   const rendered = renderDeliveryContract({ contract });
   if (rendered.markdown !== markdown || rendered.projectionHash !== contract.projectionHash) {
     throw new TypeError('delivery-contract:projection-mismatch');
