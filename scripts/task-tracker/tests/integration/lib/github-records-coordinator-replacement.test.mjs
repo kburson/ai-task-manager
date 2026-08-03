@@ -119,9 +119,9 @@ test('accepted capsule history closes old authority and pauses replacement until
     predecessor: id(2),
     recordType: 'coordinator-grant',
     payload: replacementGrant,
-    epoch: 2,
-    grantId: id(9002),
-    actor: replacementCoordinator.actor,
+    epoch: 1,
+    grantId: id(9001),
+    actor: coordinator.actor,
   });
   const paused = resolve({
     records: [replacementRecord, original, revocation],
@@ -174,5 +174,64 @@ test('accepted capsule history closes old authority and pauses replacement until
       branch: 'work/101',
     }).authorized,
     false
+  );
+});
+
+test('a replacement capsule must retain old coordinator provenance and its exact prior epoch', () => {
+  const originalGrant = grant({ grantId: 'grant-original', coordinator, epoch: 1 });
+  const original = capsule({
+    recordId: id(11),
+    recordType: 'coordinator-grant',
+    payload: originalGrant,
+    epoch: 1,
+    grantId: id(9001),
+    actor: coordinator.actor,
+  });
+  const initial = resolve({
+    records: [original],
+    coordinationProjection: {
+      schema: 'aitm.coordination-projection/v1',
+      grantId: 'grant-original',
+      epoch: 1,
+      adoptionState: 'adopted',
+    },
+  });
+  const replacementGrant = grant({
+    grantId: 'grant-replacement',
+    coordinator: replacementCoordinator,
+    epoch: 2,
+    issuer: coordinator,
+  });
+  const replacement = replaceCoordinator({
+    authority: initial,
+    expectedGrantId: 'grant-original',
+    expectedEpoch: 1,
+    replacementGrant,
+  });
+  const revocation = capsule({
+    recordId: id(12),
+    predecessor: id(11),
+    recordType: 'coordinator-revocation',
+    payload: replacement.revocation,
+    epoch: 1,
+    grantId: id(9001),
+    actor: coordinator.actor,
+  });
+  const forgedReplacement = capsule({
+    recordId: id(13),
+    predecessor: id(12),
+    recordType: 'coordinator-grant',
+    payload: replacementGrant,
+    epoch: 7,
+    grantId: id(9002),
+    actor: replacementCoordinator.actor,
+  });
+
+  assert.deepEqual(
+    resolve({
+      records: [original, revocation, forgedReplacement],
+      coordinationProjection: replacement.coordinationProjection,
+    }),
+    { status: 'blocked', diagnostic: { reason: 'invalid-replacement' } }
   );
 });

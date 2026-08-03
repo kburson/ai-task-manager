@@ -23,9 +23,8 @@ const INTEGRATION_KEYS = ['destinationBranches', 'sourceBranches'];
 const PROJECTION_KEYS = ['adoptionState', 'epoch', 'grantId', 'schema'];
 const REVOCATION_KEYS = ['epoch', 'grantId', 'schema', 'state'];
 const REPLACEMENT_REVOCATION_KEYS = [...REVOCATION_KEYS, 'replacementGrantId'];
-const activeAuthorityResults = new WeakSet();
-const invalidatedAuthorityResults = new WeakSet();
-const activeAuthorityResultsByEpoch = new Map();
+const authorityMetadata = new WeakMap();
+const authorityGenerations = new Map();
 
 function authorityError(category) {
   return new TypeError(`coordination-authority:${category}`);
@@ -276,34 +275,67 @@ function validateRevocation(revocation) {
   return revocation;
 }
 
-function activeAuthority(validatedGrant) {
+function authorityEpochKey(grantId, epoch) {
+  return `${grantId}:${epoch}`;
+}
+
+function advanceAuthorityGeneration(grantId, epoch) {
+  const key = authorityEpochKey(grantId, epoch);
+  const generation = (authorityGenerations.get(key) ?? 0) + 1;
+  authorityGenerations.set(key, generation);
+  return generation;
+}
+
+function advanceAuthorityGenerations(validatedGrants) {
+  return new Map(
+    validatedGrants.map(({ grant }) => [
+      authorityEpochKey(grant.grantId, grant.epoch),
+      advanceAuthorityGeneration(grant.grantId, grant.epoch),
+    ])
+  );
+}
+
+function activeAuthority(validatedGrant, generation) {
   const authority = deepFreeze({
     status: 'active',
     grant: frozenCopy(validatedGrant.grant),
     scopeIssueIds: Object.freeze([...validatedGrant.scope]),
   });
-  activeAuthorityResults.add(authority);
-  const key = authorityEpochKey(authority.grant.grantId, authority.grant.epoch);
-  const authorities = activeAuthorityResultsByEpoch.get(key) ?? new Set();
-  authorities.add(authority);
-  activeAuthorityResultsByEpoch.set(key, authorities);
+  authorityMetadata.set(authority, {
+    key: authorityEpochKey(authority.grant.grantId, authority.grant.epoch),
+    generation,
+  });
   return authority;
 }
 
-function authorityEpochKey(grantId, epoch) {
-  return `${grantId}:${epoch}`;
+function mintActiveAuthority(validatedGrant) {
+  return activeAuthority(
+    validatedGrant,
+    advanceAuthorityGeneration(validatedGrant.grant.grantId, validatedGrant.grant.epoch)
+  );
 }
 
 function isActiveAuthorityResult(authority) {
-  return activeAuthorityResults.has(authority) && !invalidatedAuthorityResults.has(authority);
+  const metadata = authorityMetadata.get(authority);
+  return metadata !== undefined && authorityGenerations.get(metadata.key) === metadata.generation;
 }
 
-function invalidateAuthorityEpoch(grantId, epoch) {
-  const key = authorityEpochKey(grantId, epoch);
-  for (const authority of activeAuthorityResultsByEpoch.get(key) ?? []) {
-    invalidatedAuthorityResults.add(authority);
-  }
-  activeAuthorityResultsByEpoch.delete(key);
+function resolutionBlocked(validatedGrants, reason) {
+  advanceAuthorityGenerations(validatedGrants);
+  return blocked(reason);
+}
+
+function resolutionPaused(validatedGrants) {
+  advanceAuthorityGenerations(validatedGrants);
+  return paused();
+}
+
+function resolutionActive(validatedGrants, validatedGrant) {
+  const generations = advanceAuthorityGenerations(validatedGrants);
+  return activeAuthority(
+    validatedGrant,
+    generations.get(authorityEpochKey(validatedGrant.grant.grantId, validatedGrant.grant.epoch))
+  );
 }
 
 function scopesOverlap(left, right) {
@@ -317,6 +349,55 @@ function isStrictSubset(candidate, parent) {
   return candidate.length < parent.length && candidate.every((value) => parent.includes(value));
 }
 
+function isSubset(candidate, parent) {
+  return candidate.every((value) => parent.includes(value));
+}
+
+function hasEnvelopeAuthority(entry, coordinator, epoch) {
+  if (entry.envelope === null) return true;
+  return (
+    entry.envelope.authority.actor === coordinator.actor && entry.envelope.authority.epoch === epoch
+  );
+}
+
+function validReplacementEdge(oldGrant, replacementGrant, revocationEntry) {
+  const revocation = revocationEntry.revocation;
+  const old = oldGrant.grant;
+  const replacement = replacementGrant.grant;
+  return (
+    old.epoch === revocation.epoch &&
+    replacement.epoch === old.epoch + 1 &&
+    isDeepStrictEqual(replacement.issuer, old.coordinator) &&
+    replacement.parentGrantId === old.parentGrantId &&
+    isSubset(replacementGrant.scope, oldGrant.scope) &&
+    isSubset(replacement.operations, old.operations) &&
+    isSubset(replacementGrant.branches, oldGrant.branches) &&
+    isSubset(replacementGrant.sourceBranches, oldGrant.sourceBranches) &&
+    isSubset(replacementGrant.destinationBranches, oldGrant.destinationBranches) &&
+    hasEnvelopeAuthority(oldGrant, old.coordinator, old.epoch) &&
+    hasEnvelopeAuthority(revocationEntry, old.coordinator, old.epoch) &&
+    hasEnvelopeAuthority(replacementGrant, old.coordinator, old.epoch)
+  );
+}
+
+function hasValidReplacementHistory(validatedGrants, validatedRevocations) {
+  const grantsById = new Map(validatedGrants.map((entry) => [entry.grant.grantId, entry]));
+  for (const entry of validatedRevocations) {
+    const revocation = entry.revocation;
+    if (revocation.state !== 'replaced') continue;
+    const oldGrant = grantsById.get(revocation.grantId);
+    const replacementGrant = grantsById.get(revocation.replacementGrantId);
+    if (
+      oldGrant === undefined ||
+      replacementGrant === undefined ||
+      !validReplacementEdge(oldGrant, replacementGrant, entry)
+    ) {
+      return false;
+    }
+  }
+  return true;
+}
+
 function extractCapsules({ records, repository, issue }) {
   const resolved = resolveSupersession({ records, repository, issue });
   const grants = [];
@@ -324,11 +405,10 @@ function extractCapsules({ records, repository, issue }) {
   for (const record of resolved.effectiveRecords) {
     const { envelope } = record;
     if (envelope.recordType === 'coordinator-grant') {
-      if (envelope.payload?.epoch !== envelope.authority.epoch) throw authorityError('capsule');
-      grants.push(envelope.payload);
+      grants.push({ grant: envelope.payload, envelope });
     }
     if (envelope.recordType === 'coordinator-revocation') {
-      revocations.push(envelope.payload);
+      revocations.push({ revocation: envelope.payload, envelope });
     }
   }
   return { grants, revocations };
@@ -348,8 +428,8 @@ export function resolveCoordinatorAuthority({
   const parents = buildHierarchy(issueHierarchy);
   validateProjection(coordinationProjection);
   if (!isInstant(now)) throw authorityError('now');
-  let durableGrants = grants;
-  let durableRevocations = revocations;
+  let durableGrants;
+  let durableRevocations;
   if (records !== undefined) {
     if (grants !== undefined || revocations !== undefined) throw authorityError('input');
     try {
@@ -364,36 +444,50 @@ export function resolveCoordinatorAuthority({
       }
       throw error;
     }
+  } else {
+    durableGrants = grants?.map((grant) => ({ grant, envelope: null }));
+    durableRevocations = revocations?.map((revocation) => ({ revocation, envelope: null }));
   }
   if (!Array.isArray(durableGrants) || !Array.isArray(durableRevocations))
     throw authorityError('input');
-  const validatedGrants = durableGrants.map((grant) => validateGrant(grant, parents));
-  const validatedRevocations = durableRevocations.map(validateRevocation);
-  for (const revocation of validatedRevocations) {
-    invalidateAuthorityEpoch(revocation.grantId, revocation.epoch);
-  }
+  const validatedGrants = durableGrants.map(({ grant, envelope }) => ({
+    ...validateGrant(grant, parents),
+    envelope,
+  }));
+  const validatedRevocations = durableRevocations.map(({ revocation, envelope }) => ({
+    revocation: validateRevocation(revocation),
+    envelope,
+  }));
   if (new Set(validatedGrants.map(({ grant }) => grant.grantId)).size !== validatedGrants.length) {
-    return blocked('duplicate-grant');
+    return resolutionBlocked(validatedGrants, 'duplicate-grant');
+  }
+  if (!hasValidReplacementHistory(validatedGrants, validatedRevocations)) {
+    return resolutionBlocked(validatedGrants, 'invalid-replacement');
   }
   const projectionGrant = validatedGrants.find(
     ({ grant }) => grant.grantId === coordinationProjection.grantId
   );
-  if (projectionGrant === undefined) return blocked('projection-mismatch');
-  if (projectionGrant.grant.epoch !== coordinationProjection.epoch) return blocked('stale-epoch');
-  const revocation = validatedRevocations.find(
+  if (projectionGrant === undefined)
+    return resolutionBlocked(validatedGrants, 'projection-mismatch');
+  if (projectionGrant.grant.epoch !== coordinationProjection.epoch)
+    return resolutionBlocked(validatedGrants, 'stale-epoch');
+  const revocationEntry = validatedRevocations.find(
     (candidate) =>
-      candidate.grantId === projectionGrant.grant.grantId &&
-      candidate.epoch === projectionGrant.grant.epoch
+      candidate.revocation.grantId === projectionGrant.grant.grantId &&
+      candidate.revocation.epoch === projectionGrant.grant.epoch
   );
-  if (revocation !== undefined)
-    return blocked(revocation.state === 'revoked' ? 'revoked' : 'stale-epoch');
+  if (revocationEntry !== undefined)
+    return resolutionBlocked(
+      validatedGrants,
+      revocationEntry.revocation.state === 'revoked' ? 'revoked' : 'stale-epoch'
+    );
   if (projectionGrant.grant.expiresAt !== null && projectionGrant.grant.expiresAt <= now) {
-    return blocked('expired');
+    return resolutionBlocked(validatedGrants, 'expired');
   }
   const active = validatedGrants.filter(
     (candidate) =>
       !validatedRevocations.some(
-        (revocation) =>
+        ({ revocation }) =>
           revocation.grantId === candidate.grant.grantId &&
           revocation.epoch === candidate.grant.epoch
       ) &&
@@ -404,10 +498,10 @@ export function resolveCoordinatorAuthority({
       (candidate) => candidate !== projectionGrant && scopesOverlap(candidate, projectionGrant)
     )
   ) {
-    return blocked('overlapping-grants');
+    return resolutionBlocked(validatedGrants, 'overlapping-grants');
   }
-  if (coordinationProjection.adoptionState === 'required') return paused();
-  return activeAuthority(projectionGrant);
+  if (coordinationProjection.adoptionState === 'required') return resolutionPaused(validatedGrants);
+  return resolutionActive(validatedGrants, projectionGrant);
 }
 
 /** Authorize one bounded coordinator operation from an already resolved authority. */
@@ -531,7 +625,7 @@ export function grantNestedEpic({
   ) {
     throw authorityError('nested-scope');
   }
-  const authority = activeAuthority(candidate);
+  const authority = mintActiveAuthority(candidate);
   return deepFreeze({
     grant: frozenCopy(candidate.grant),
     scopeIssueIds: Object.freeze([...candidate.scope]),
@@ -606,6 +700,6 @@ export function replaceCoordinator({
     replacementGrant: frozenCopy(replacement.grant),
     coordinationProjection,
   });
-  invalidateAuthorityEpoch(current.grantId, current.epoch);
+  advanceAuthorityGeneration(current.grantId, current.epoch);
   return result;
 }
