@@ -209,6 +209,25 @@ async function discover({ repository, issue, issueNodeId, deps, issueBody }) {
   });
 }
 
+async function confirmPrePublicationSingletons({
+  repository,
+  issue,
+  issueNodeId,
+  deps,
+  intendedSingletons,
+}) {
+  const issueBody = await readLiveBody({ repository, issue, deps });
+  const discovered = await discover({ repository, issue, issueNodeId, deps, issueBody });
+  if (discovered.directory !== null) throw initializerError('directory-race');
+  if (discovered.missing.length > 0) throw initializerError('missing');
+  for (const kind of SINGLETON_KINDS) {
+    if (discovered.singletons[kind].commentNodeId !== intendedSingletons[kind].commentNodeId) {
+      throw initializerError('ambiguous');
+    }
+  }
+  return { issueBody, discovered };
+}
+
 export async function discoverIssueSingletons({
   repository,
   issue,
@@ -277,10 +296,17 @@ export async function initializeIssueDirectory({
       SINGLETON_KINDS.map((kind) => [kind, singletons[kind].commentNodeId])
     ),
   });
+  const prePublication = await confirmPrePublicationSingletons({
+    repository,
+    issue,
+    issueNodeId,
+    deps: resolvedDeps,
+    intendedSingletons: singletons,
+  });
   await writeAndReadBackDirectory({
     repository,
     issue,
-    expectedBody: issueBody,
+    expectedBody: prePublication.issueBody,
     directory,
     deps: resolvedDeps,
     crashAt,
