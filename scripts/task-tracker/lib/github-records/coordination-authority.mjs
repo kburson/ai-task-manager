@@ -472,20 +472,27 @@ function replacementPredecessorKey(revocation) {
   return JSON.stringify([revocation.grantId, revocation.epoch]);
 }
 
-function hasReplacementCycle(successorByPredecessorId) {
+function hasReplacementCycle(successorByPredecessorId, onVisit) {
+  const colors = new Map();
   for (const start of successorByPredecessorId.keys()) {
-    const seen = new Set();
+    if (colors.get(start) === 'black') continue;
+    const path = [];
     let current = start;
-    while (successorByPredecessorId.has(current)) {
-      if (seen.has(current)) return true;
-      seen.add(current);
+    while (current !== undefined) {
+      const color = colors.get(current);
+      if (color === 'gray') return true;
+      if (color === 'black') break;
+      colors.set(current, 'gray');
+      path.push(current);
+      onVisit();
       current = successorByPredecessorId.get(current);
     }
+    for (const grantId of path) colors.set(grantId, 'black');
   }
   return false;
 }
 
-function hasValidReplacementHistory(validatedGrants, validatedRevocations) {
+function hasValidReplacementHistory(validatedGrants, validatedRevocations, onVisit = () => {}) {
   const grantsById = new Map(validatedGrants.map((entry) => [entry.grant.grantId, entry]));
   const successorByPredecessorId = new Map();
   const replacementPredecessors = new Set();
@@ -508,7 +515,7 @@ function hasValidReplacementHistory(validatedGrants, validatedRevocations) {
     replacementSuccessors.add(revocation.replacementGrantId);
     successorByPredecessorId.set(revocation.grantId, revocation.replacementGrantId);
   }
-  return !hasReplacementCycle(successorByPredecessorId);
+  return !hasReplacementCycle(successorByPredecessorId, onVisit);
 }
 
 function extractCapsules({ records, repository, issue }) {
@@ -537,6 +544,7 @@ export function resolveCoordinatorAuthority({
   issue,
   coordinationProjection,
   now = new Date().toISOString(),
+  onReplacementHistoryVisit,
 } = {}) {
   const parents = buildHierarchy(issueHierarchy);
   validateProjection(coordinationProjection);
@@ -574,7 +582,15 @@ export function resolveCoordinatorAuthority({
   if (new Set(validatedGrants.map(({ grant }) => grant.grantId)).size !== validatedGrants.length) {
     return resolutionBlocked(validatedGrants, 'duplicate-grant');
   }
-  if (!hasValidReplacementHistory(validatedGrants, validatedRevocations)) {
+  const onReplacementHistoryVisitSafe =
+    typeof onReplacementHistoryVisit === 'function' ? onReplacementHistoryVisit : () => {};
+  if (
+    !hasValidReplacementHistory(
+      validatedGrants,
+      validatedRevocations,
+      onReplacementHistoryVisitSafe
+    )
+  ) {
     return resolutionBlocked(validatedGrants, 'invalid-replacement');
   }
   const delegation = buildDelegationGraph(validatedGrants, validatedRevocations, parents);

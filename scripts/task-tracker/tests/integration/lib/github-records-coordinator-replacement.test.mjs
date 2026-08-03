@@ -63,14 +63,23 @@ function capsule({ recordId, predecessor = null, recordType, payload, epoch, gra
   });
 }
 
-function resolve({ records, coordinationProjection }) {
+function resolve({
+  records,
+  grants,
+  revocations,
+  coordinationProjection,
+  onReplacementHistoryVisit,
+}) {
   return resolveCoordinatorAuthority({
     issueHierarchy: hierarchy,
     records,
+    grants,
+    revocations,
     repository,
     issue,
     coordinationProjection,
     now: '2026-08-03T20:05:00.000Z',
+    onReplacementHistoryVisit,
   });
 }
 
@@ -492,4 +501,61 @@ test('a persisted nested coordinator replacement pauses and resumes under its or
     }),
     { status: 'blocked', diagnostic: { reason: 'invalid-replacement' } }
   );
+});
+
+test('walks a 10k replacement history linearly before rejecting overlong nested delegation', () => {
+  const parentGrant = grant({ grantId: 'grant-parent', coordinator, epoch: 1 });
+  const initialChild = {
+    ...grant({
+      grantId: 'grant-child-1',
+      coordinator: replacementCoordinator,
+      epoch: 1,
+      issuer: coordinator,
+    }),
+    scope: { scopeRootIssue: 101, includedIssues: [], excludedIssues: [] },
+    parentGrantId: 'grant-parent',
+    operations: ['advance'],
+    branchBoundary: ['work/101'],
+    integrationBoundary: { sourceBranches: [], destinationBranches: [] },
+  };
+  const grants = [parentGrant, initialChild];
+  const revocations = [];
+  let predecessor = initialChild;
+  for (let epoch = 2; epoch <= 10001; epoch += 1) {
+    const successor = {
+      ...predecessor,
+      grantId: `grant-child-${epoch}`,
+      epoch,
+      issuer: predecessor.coordinator,
+    };
+    grants.push(successor);
+    revocations.push({
+      schema: 'aitm.coordinator-revocation/v1',
+      grantId: predecessor.grantId,
+      epoch: predecessor.epoch,
+      state: 'replaced',
+      replacementGrantId: successor.grantId,
+    });
+    predecessor = successor;
+  }
+  let visits = 0;
+
+  assert.deepEqual(
+    resolve({
+      grants,
+      revocations,
+      coordinationProjection: {
+        schema: 'aitm.coordination-projection/v1',
+        grantId: predecessor.grantId,
+        epoch: predecessor.epoch,
+        adoptionState: 'adopted',
+      },
+      onReplacementHistoryVisit: () => {
+        visits += 1;
+      },
+    }),
+    { status: 'blocked', diagnostic: { reason: 'delegation-depth' } }
+  );
+  assert.ok(visits > 0);
+  assert.ok(visits <= grants.length + revocations.length);
 });
