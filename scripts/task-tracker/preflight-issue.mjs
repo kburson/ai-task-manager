@@ -365,6 +365,14 @@ function emitShape(args, dodPath, root) {
         '--story-origin-file must contain at least one non-empty flat Story Origin metadata field'
       );
     }
+    const planFragment = stripLeadingHeading(
+      rawFills.plan_metadata,
+      SECTION_HEADINGS.plan_metadata
+    );
+    if (/^#{1,6}\s+/m.test(planFragment)) {
+      die('--plan-metadata-file must be a flat metadata fragment without headings');
+    }
+    rawFills.plan_metadata = planFragment;
   }
   let fills = normalizeFills(rawFills);
   if (shape === 'sub-issue') {

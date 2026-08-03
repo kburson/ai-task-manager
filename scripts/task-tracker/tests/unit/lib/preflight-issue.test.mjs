@@ -195,6 +195,58 @@ describe('preflight-issue --shape Story Origin flat-section validation (#892)', 
   });
 });
 
+describe('preflight-issue --shape Plan Metadata flat-section validation (#892)', () => {
+  it('rejects a Plan Metadata fragment containing an embedded heading', async () => {
+    const fx = makeFixture('- [ ] Works\n');
+    writeFileSync(fx.meta, '- size: S\n\n## Acceptance Criteria\n\n- [ ] injected\n', 'utf8');
+
+    try {
+      const result = await runPreflight([
+        '--shape',
+        'solo',
+        '--scope-file',
+        fx.scope,
+        '--ac-file',
+        fx.ac,
+        '--story-origin-file',
+        fx.origin,
+        '--plan-metadata-file',
+        fx.meta,
+      ]);
+
+      assert.equal(result.code, 2);
+      assert.match(result.stderr, /--plan-metadata-file must be a flat metadata fragment/);
+    } finally {
+      rmSync(fx.dir, { recursive: true, force: true });
+    }
+  });
+
+  it('accepts one compatible leading Plan Metadata heading', async () => {
+    const fx = makeFixture('- [ ] Works\n');
+    writeFileSync(fx.meta, '## Plan Metadata\n\n- size: S\n', 'utf8');
+
+    try {
+      const result = await runPreflight([
+        '--shape',
+        'solo',
+        '--scope-file',
+        fx.scope,
+        '--ac-file',
+        fx.ac,
+        '--story-origin-file',
+        fx.origin,
+        '--plan-metadata-file',
+        fx.meta,
+      ]);
+
+      assert.equal(result.code, 0, `stderr: ${result.stderr}`);
+      assert.equal(result.stdout.match(/^## Plan Metadata$/gm)?.length, 1);
+    } finally {
+      rmSync(fx.dir, { recursive: true, force: true });
+    }
+  });
+});
+
 describe('preflight-issue --shape stub (#426)', () => {
   it('renders without scope/ac/plan-metadata files, using placeholders', async () => {
     const r = await runPreflight(['--shape', 'stub']);

@@ -61,6 +61,7 @@ const REFUSAL_ID_TO_STATUS = {
   'refine-exit-wip-budget': 'wip-budget-refused',
   'plan-exit-planned-estimate': 'planned-estimate-refused',
   'plan-exit-deep-dive': 'deep-dive-refused',
+  'plan-exit-plan-metadata': 'plan-metadata-refused',
   // #386 — plan→develop refuses a body with no `## Verification Commands`
   // section (>= 1 parseable entry); the gate-first `test` verb would otherwise
   // dead-end at "nothing to verify".
@@ -699,6 +700,7 @@ export async function verbPromote(rest, cfg, deps = {}) {
     case 'refine-stub-placeholder-refused':
     case 'planned-estimate-refused':
     case 'deep-dive-refused':
+    case 'plan-metadata-refused':
     case 'wip-budget-refused':
     case 'commit-trail-stale':
     case 'blocked-refused':
