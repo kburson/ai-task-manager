@@ -114,6 +114,29 @@ test('ignores fenced examples, zero-number tasks, and empty task titles', () => 
   assert.equal(classifyDecomposition({ size: 'M', estimateHours: 8, planText }).status, 'story-ok');
 });
 
+test('requires CommonMark closing-fence syntax before exposing structures', () => {
+  const planText = [
+    '```markdown',
+    '```not-a-closing-fence',
+    waiverBody(),
+    '### Task 9: Hidden',
+    'Run: `node --test hidden.test.mjs`',
+    '## Plan Metadata',
+    '- **Governing-spec**: docs/hidden.md',
+    '```',
+  ].join('\n');
+  assert.equal(parseDecompositionWaiver(planText).reason, 'missing');
+  assert.deepEqual(extractPlanTasks(planText), []);
+  assert.equal(visibleMetadataFieldValue(planText, 'Plan Metadata', 'Governing-spec'), null);
+});
+
+test('does not treat a four-space-indented backtick run as a fence opener', () => {
+  const planText = ['    ```markdown', taskPlan(4, 4)].join('\n');
+  const classification = classifyDecomposition({ size: 'M', estimateHours: 8, planText });
+  assert.equal(classification.taskCount, 4);
+  assert.equal(classification.status, 'must-split');
+});
+
 test('ignores task headings and commands hidden inside HTML comments', () => {
   const tasks = extractPlanTasks(`<!--
 ### Task 1: Hidden

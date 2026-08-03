@@ -42,17 +42,23 @@ function uniqueCommands(commands) {
   });
 }
 
+function openingFenceFor(line) {
+  const match = /^ {0,3}(`{3,}|~{3,})(.*)$/.exec(line);
+  if (!match || (match[1][0] === '`' && match[2].includes('`'))) return null;
+  return { character: match[1][0], length: match[1].length };
+}
+
+function isClosingFence(line, fence) {
+  const match = /^ {0,3}(`{3,}|~{3,})[ \t]*$/.exec(line);
+  return Boolean(match && match[1][0] === fence.character && match[1].length >= fence.length);
+}
+
 function commandsFromTaskBody(body) {
   const commands = [];
   let fence = null;
   for (const line of String(body).split('\n')) {
     if (fence) {
-      const closingFence = /^\s*(`{3,}|~{3,})/.exec(line);
-      if (
-        closingFence &&
-        closingFence[1][0] === fence.character &&
-        closingFence[1].length >= fence.length
-      ) {
+      if (isClosingFence(line, fence)) {
         fence = null;
         continue;
       }
@@ -60,9 +66,9 @@ function commandsFromTaskBody(body) {
       if (command && !command.startsWith('#')) commands.push(command);
       continue;
     }
-    const openingFence = /^\s*(`{3,}|~{3,})/.exec(line);
+    const openingFence = openingFenceFor(line);
     if (openingFence) {
-      fence = { character: openingFence[1][0], length: openingFence[1].length };
+      fence = openingFence;
       continue;
     }
     const run = RUN_COMMAND_RE.exec(line);
@@ -160,10 +166,9 @@ function markdownViews(value) {
   const commandLines = [];
   for (let lineIndex = 0; lineIndex < lines.length; lineIndex += 1) {
     const line = lines[lineIndex];
-    const fence = /^\s*(`{3,}|~{3,})/.exec(line);
     if (state.fence) {
       const verificationFence = state.fence.verification;
-      if (fence && fence[1][0] === state.fence.character && fence[1].length >= state.fence.length) {
+      if (isClosingFence(line, state.fence)) {
         state.fence = null;
       }
       structuralLines.push('');
@@ -172,13 +177,12 @@ function markdownViews(value) {
     }
     const inlineTicksAtStart = state.inlineTicks;
     const { visible, structural } = stripLineMarkdown(line, lines, lineIndex, state);
-    const openingFence = !state.inComment && /^\s*(`{3,}|~{3,})/.exec(visible);
+    const openingFence = !state.inComment && openingFenceFor(visible);
     let verificationFence = false;
     if (inlineTicksAtStart === 0 && openingFence) {
       verificationFence = state.verificationFenceEligible;
       state.fence = {
-        character: openingFence[1][0],
-        length: openingFence[1].length,
+        ...openingFence,
         verification: verificationFence,
       };
       state.inlineTicks = 0;
