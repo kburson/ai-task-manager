@@ -398,6 +398,21 @@ export const VERB_CONTRACTS = Object.freeze({
     ['Persists, clears, resumes, or reads the source-edit gate override.'],
     ['Prints chore-mode state, reason, and suspension status.']
   ),
+  'decompose-check': contract(
+    ['The target issue and its board planning fields must be readable.'],
+    ['Reads the issue, linked plan, and decomposition policy without mutating any state.'],
+    ['Prints the atomicity classification, signals, plan diagnostic, and waiver status.']
+  ),
+  'split-plan': contract(
+    [
+      'The target must require decomposition and have a readable numbered plan with executable verifiers.',
+      'Exactly one of --dry-run and --confirm is required.',
+    ],
+    [
+      'Preflights every generated child through sanctioned create-issue; --confirm creates children only after every preflight passes.',
+    ],
+    ['Prints deterministic proposals, created issue numbers, or partial-success recovery data.']
+  ),
   help: contract(
     ['No active issue, repository initialization, network access, or writable state is required.'],
     ['Reads the canonical command catalog without changing project or session state.'],
@@ -421,6 +436,8 @@ export const VERB_RELATED_COMMANDS = Object.freeze({
   plan: Object.freeze(['plan-estimate', 'plan-approve', 'promote']),
   'plan-approve': Object.freeze(['plan-estimate', 'promote']),
   'plan-estimate': Object.freeze(['plan-approve', 'promote']),
+  'decompose-check': Object.freeze(['split-plan', 'plan', 'promote']),
+  'split-plan': Object.freeze(['decompose-check', 'create-issue']),
   approve: Object.freeze(['review', 'reject', 'close']),
   review: Object.freeze(['approve', 'reject', 'close']),
   reject: Object.freeze(['review', 'demote']),
@@ -487,6 +504,12 @@ export const VERB_POSITIONAL_ARGUMENTS = Object.freeze({
   ]),
   'plan-estimate': Object.freeze([
     positional('[#N]', 'Optional issue number; defaults to the active task.'),
+  ]),
+  'decompose-check': Object.freeze([
+    positional('<issue>', 'Issue number whose linked plan is classified.'),
+  ]),
+  'split-plan': Object.freeze([
+    positional('<issue>', 'Issue number whose linked plan supplies child sections.'),
   ]),
   approve: Object.freeze([positional('#N', 'Required issue number whose review is approved.')]),
   review: Object.freeze([positional('#N', 'Issue number to move through the review gate.')]),

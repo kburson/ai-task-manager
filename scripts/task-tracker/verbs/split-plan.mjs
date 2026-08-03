@@ -1,0 +1,237 @@
+import { execFile } from 'node:child_process';
+import { mkdtempSync, readFileSync } from 'node:fs';
+import path from 'node:path';
+import { promisify } from 'node:util';
+
+import { evaluateIssueDecomposition } from '../lib/decomposition-plan-exit-guard.mjs';
+import { linkedPlanPath } from '../lib/decomposition-policy.mjs';
+import { metadataFieldValue } from '../lib/metadata-section.mjs';
+import { GH_API_TIMEOUT_MS } from '../lib/process-timeouts.mjs';
+import { projectScratchDir } from '../lib/scratch-dir.mjs';
+import { buildSplitProposals, writeProposalFragments } from '../lib/split-plan.mjs';
+
+const pexec = promisify(execFile);
+const DEFAULT_GOVERNING_SPEC =
+  'docs/superpowers/specs/2026-08-03-nested-epic-decomposition-design.md';
+const ISSUE_URL_RE = /\/issues\/(\d+)\b/;
+
+async function defaultFetchIssueBody({ issueNumber, repo }) {
+  const { stdout } = await pexec(
+    'gh',
+    ['issue', 'view', String(issueNumber), '-R', repo, '--json', 'body', '--jq', '.body'],
+    { timeout: GH_API_TIMEOUT_MS }
+  );
+  return stdout || '';
+}
+
+async function defaultResolveHead({ projectDir }) {
+  const { stdout } = await pexec('git', ['rev-parse', 'HEAD'], {
+    cwd: projectDir,
+    timeout: GH_API_TIMEOUT_MS,
+  });
+  return stdout.trim();
+}
+
+async function defaultRunCreator(args, { projectDir }) {
+  const orchestrator = path.join(projectDir, 'bin', 'aitm.mjs');
+  try {
+    const { stdout, stderr } = await pexec(process.execPath, [orchestrator, ...args], {
+      cwd: projectDir,
+      timeout: GH_API_TIMEOUT_MS * 3,
+      maxBuffer: 10 * 1024 * 1024,
+    });
+    return { exitCode: 0, stdout: stdout || '', stderr: stderr || '' };
+  } catch (error) {
+    return {
+      exitCode: typeof error.code === 'number' ? error.code : 1,
+      stdout: String(error.stdout || ''),
+      stderr: String(error.stderr || error.message || ''),
+    };
+  }
+}
+
+function parseCreatedIssueNumber(stdout) {
+  const match = ISSUE_URL_RE.exec(String(stdout || ''));
+  return match ? Number(match[1]) : null;
+}
+
+function assertMode(mode) {
+  if (mode !== 'dry-run' && mode !== 'confirm') {
+    throw new Error('split-plan: exactly one of --dry-run and --confirm is required');
+  }
+}
+
+export async function runSplitPlan({
+  issueNumber,
+  mode,
+  planOverride = null,
+  cfg,
+  deps = {},
+} = {}) {
+  const sourceIssue = Number(issueNumber);
+  if (!Number.isInteger(sourceIssue) || sourceIssue <= 0) {
+    throw new Error('split-plan: issueNumber must be a positive integer');
+  }
+  assertMode(mode);
+  if (!cfg?.repo) throw new Error('split-plan: cfg.repo is required');
+
+  const projectDir = deps.projectDir || process.cwd();
+  const fetchIssueBody = deps.fetchIssueBody || defaultFetchIssueBody;
+  const evaluate = deps.evaluateIssueDecomposition || evaluateIssueDecomposition;
+  const readFile = deps.readFile || readFileSync;
+  const fetchParentIssue = deps.fetchParentIssue || (async () => null);
+  const resolveHead = deps.resolveHead || defaultResolveHead;
+  const runCreator = deps.runCreator || defaultRunCreator;
+  const body = await fetchIssueBody({ issueNumber: sourceIssue, repo: cfg.repo });
+  const evaluated = await evaluate({
+    issueNumber: sourceIssue,
+    cfg,
+    body,
+    planOverride,
+    deps: deps.decomposition || {},
+  });
+  if (evaluated.classification.status === 'story-ok') {
+    throw new Error('split-plan: source issue is story-ok and does not require decomposition');
+  }
+  if (!evaluated.planDiagnostic?.path) {
+    throw new Error(`split-plan: ${evaluated.planDiagnostic?.diagnostic || 'plan is unavailable'}`);
+  }
+
+  const planPath = planOverride || linkedPlanPath(body);
+  if (!planPath) throw new Error('split-plan: source plan provenance is unavailable');
+  const governingSpec =
+    metadataFieldValue(body, 'Plan Metadata', 'Governing-spec') || DEFAULT_GOVERNING_SPEC;
+  const [outerParent, planCommit] = await Promise.all([
+    fetchParentIssue(sourceIssue),
+    resolveHead({ projectDir }),
+  ]);
+  if (!String(planCommit || '').trim()) throw new Error('split-plan: HEAD commit is unavailable');
+  const planText = readFile(evaluated.planDiagnostic.path, 'utf8');
+  const proposals = buildSplitProposals({
+    sourceIssue,
+    outerParent,
+    planPath,
+    planCommit: String(planCommit).trim(),
+    governingSpec,
+    planText,
+  });
+  const scratchDir =
+    deps.scratchDir ||
+    mkdtempSync(path.join(projectScratchDir('plan', projectDir), `split-${sourceIssue}-`));
+  const drafts = [];
+  for (const proposal of proposals) {
+    const fragments = await writeProposalFragments({ proposal, scratchDir });
+    drafts.push({ proposal, fragments, creatorArgs: fragments.creatorArgs });
+  }
+
+  const preflight = [];
+  for (const draft of drafts) {
+    const result = await runCreator([...draft.creatorArgs, '--dry-run'], { projectDir });
+    preflight.push(result);
+    if (result.exitCode !== 0) {
+      throw new Error(
+        `split-plan: preflight failed for ${draft.proposal.title} (exit ${result.exitCode}): ${result.stderr}`
+      );
+    }
+  }
+  const publicProposals = drafts.map((draft, index) => ({
+    ...draft.proposal,
+    creatorArgs: [...draft.creatorArgs],
+    fragments: draft.fragments,
+    renderedBody: preflight[index].stdout,
+  }));
+  if (mode === 'dry-run') {
+    return { status: 'dry-run', issueNumber: sourceIssue, proposals: publicProposals };
+  }
+
+  const createdChildren = [];
+  for (const draft of drafts) {
+    const result = await runCreator([...draft.creatorArgs], { projectDir });
+    if (result.exitCode !== 0) {
+      return {
+        status: 'partial-success',
+        issueNumber: sourceIssue,
+        proposals: publicProposals,
+        createdChildren,
+        failed: {
+          title: draft.proposal.title,
+          exitCode: result.exitCode,
+          stdout: result.stdout,
+          stderr: result.stderr,
+        },
+      };
+    }
+    const createdIssue = parseCreatedIssueNumber(result.stdout);
+    if (!createdIssue) {
+      return {
+        status: 'partial-success',
+        issueNumber: sourceIssue,
+        proposals: publicProposals,
+        createdChildren,
+        failed: {
+          title: draft.proposal.title,
+          exitCode: 1,
+          stdout: result.stdout,
+          stderr: 'creator succeeded without an /issues/<N> URL',
+        },
+      };
+    }
+    createdChildren.push({ title: draft.proposal.title, issueNumber: createdIssue });
+  }
+  return {
+    status: 'created',
+    issueNumber: sourceIssue,
+    proposals: publicProposals,
+    createdChildren,
+  };
+}
+
+function parseArgs(rest = []) {
+  let issueNumber = null;
+  let mode = null;
+  let planOverride = null;
+  let json = false;
+  for (let index = 0; index < rest.length; index += 1) {
+    const token = String(rest[index]);
+    const issue = token.match(/^#?(\d+)$/);
+    if (issue && issueNumber == null) issueNumber = Number(issue[1]);
+    else if (token === '--dry-run' || token === '--confirm') {
+      const nextMode = token.slice(2);
+      if (mode) throw new Error('exactly one of --dry-run and --confirm is required');
+      mode = nextMode;
+    } else if (token === '--plan') planOverride = rest[++index] || null;
+    else if (token === '--json') json = true;
+    else throw new Error(`unrecognized argument ${token}`);
+  }
+  return { issueNumber, mode, planOverride, json };
+}
+
+function formatResult(result) {
+  if (result.status === 'dry-run') {
+    return `split-plan: ${result.proposals.length} child proposal(s) preflighted for #${result.issueNumber}`;
+  }
+  if (result.status === 'created') {
+    return `split-plan: created ${result.createdChildren.map((child) => `#${child.issueNumber}`).join(', ')}`;
+  }
+  return `split-plan: partial success after ${result.createdChildren.length} child(ren); ${result.failed.title} failed (exit ${result.failed.exitCode})`;
+}
+
+export async function verbSplitPlan(ctx) {
+  let parsed;
+  try {
+    parsed = parseArgs(ctx.rest);
+    if (!parsed.issueNumber || !parsed.mode) throw new Error('issue and mode are required');
+    const result = await runSplitPlan({
+      issueNumber: parsed.issueNumber,
+      mode: parsed.mode,
+      planOverride: parsed.planOverride,
+      cfg: ctx.cfg,
+      deps: { ...(ctx.deps || {}), fetchParentIssue: ctx.fetchParentIssue },
+    });
+    console.log(parsed.json ? JSON.stringify(result, null, 2) : formatResult(result));
+    if (result.status === 'partial-success') process.exitCode = 6;
+  } catch (error) {
+    process.stderr.write(`split-plan: ${error.message}\n`);
+    process.exitCode = 2;
+  }
+}

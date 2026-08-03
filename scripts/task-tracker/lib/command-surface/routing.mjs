@@ -128,6 +128,14 @@ export const ROUTE_IDENTITIES = Object.freeze(
       verb: 'plan-estimate',
       dispatch: 'verbs/plan-estimate.mjs',
     },
+    {
+      verb: 'decompose-check',
+      dispatch: 'verbs/decompose-check.mjs',
+    },
+    {
+      verb: 'split-plan',
+      dispatch: 'verbs/split-plan.mjs',
+    },
 
     // --- Gates & evidence ----------------------------------------------------
     {

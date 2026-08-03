@@ -204,6 +204,30 @@ export const VERB_REFERENCE = {
       '/task plan-estimate 667 --compatibility-mode --planned-size L --planned-estimate 6 --rationale "legacy issue"',
     ],
   },
+  'decompose-check': {
+    topic: 'board',
+    summary: 'Classify whether a planned issue is atomic or requires decomposition.',
+    usage: '/task decompose-check <issue> [--plan <path>] [--json]',
+    flags: [
+      { flag: '--plan <path>', desc: 'override the plan linked from Plan Metadata' },
+      { flag: '--json', desc: 'emit the structured classification result' },
+    ],
+    exitCodes: [{ code: 3, meaning: 'the issue must split and has no valid waiver' }],
+    examples: ['/task decompose-check 1052 --json'],
+  },
+  'split-plan': {
+    topic: 'discovery',
+    summary: 'Draft or create sanctioned child issues from numbered plan sections.',
+    usage: '/task split-plan <issue> (--dry-run|--confirm) [--plan <path>] [--json]',
+    flags: [
+      { flag: '--dry-run', desc: 'preflight every child without creating issues' },
+      { flag: '--confirm', desc: 'preflight all children, then create them in plan order' },
+      { flag: '--plan <path>', desc: 'override the plan linked from Plan Metadata' },
+      { flag: '--json', desc: 'emit the structured proposal or creation result' },
+    ],
+    exitCodes: [{ code: 6, meaning: 'partial success; at least one child was created' }],
+    examples: ['/task split-plan 1052 --dry-run', '/task split-plan 1052 --confirm'],
+  },
   approve: {
     topic: 'board',
     summary:

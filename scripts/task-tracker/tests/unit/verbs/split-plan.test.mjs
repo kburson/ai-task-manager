@@ -9,6 +9,7 @@ import {
   validateSplitTasks,
   writeProposalFragments,
 } from '../../../lib/split-plan.mjs';
+import { runSplitPlan } from '../../../verbs/split-plan.mjs';
 
 const PLAN_PATH = 'docs/superpowers/plans/example.md';
 const SPEC_PATH = 'docs/superpowers/specs/example-design.md';
@@ -114,5 +115,106 @@ test('writes canonical deterministic fragments for sanctioned creation', async (
     ]);
   } finally {
     rmSync(scratchDir, { recursive: true, force: true });
+  }
+});
+
+function orchestrationInput(overrides = {}) {
+  const scratchDir = mkdtempSync(path.join(process.cwd(), '.tmp', 'split-plan-run-test-'));
+  return {
+    issueNumber: 1052,
+    mode: 'dry-run',
+    cfg: { repo: 'owner/repo' },
+    deps: {
+      scratchDir,
+      fetchIssueBody: async () =>
+        [
+          '## Plan Metadata',
+          `- **Implementation-plan**: ${PLAN_PATH}`,
+          `- **Governing-spec**: ${SPEC_PATH}`,
+        ].join('\n'),
+      evaluateIssueDecomposition: async () => ({
+        classification: { status: 'must-split' },
+        planDiagnostic: { path: '/repo/example.md', source: 'body' },
+      }),
+      readFile: () => input().planText,
+      fetchParentIssue: async () => 1048,
+      resolveHead: async () => 'abc1234',
+      runCreator: async () => ({ exitCode: 0, stdout: 'rendered body', stderr: '' }),
+    },
+    ...overrides,
+    cleanup: () => rmSync(scratchDir, { recursive: true, force: true }),
+  };
+}
+
+test('dry-run preflights every child and performs no live create', async () => {
+  const calls = [];
+  const args = orchestrationInput();
+  args.deps.runCreator = async (creatorArgs) => {
+    calls.push(creatorArgs);
+    return { exitCode: 0, stdout: 'rendered body', stderr: '' };
+  };
+  try {
+    const result = await runSplitPlan(args);
+    assert.equal(result.status, 'dry-run');
+    assert.equal(calls.length, 2);
+    assert.ok(calls.every((creatorArgs) => creatorArgs.includes('--dry-run')));
+    assert.ok(
+      calls.every(
+        (creatorArgs) => creatorArgs.includes('--shape') && creatorArgs.includes('sub-issue')
+      )
+    );
+    assert.ok(result.proposals.every((proposal) => !proposal.creatorArgs.includes('--dry-run')));
+  } finally {
+    args.cleanup();
+  }
+});
+
+test('confirm validates all drafts before the first live creation', async () => {
+  const phases = [];
+  const args = orchestrationInput({ mode: 'confirm' });
+  args.deps.runCreator = async (creatorArgs) => {
+    const dry = creatorArgs.includes('--dry-run');
+    const title = creatorArgs[creatorArgs.indexOf('--title') + 1];
+    phases.push(`${dry ? 'dry' : 'live'}:${title}`);
+    return {
+      exitCode: 0,
+      stdout: dry ? 'rendered' : `https://github.com/owner/repo/issues/${phases.length + 100}`,
+      stderr: '',
+    };
+  };
+  try {
+    const result = await runSplitPlan(args);
+    assert.equal(result.status, 'created');
+    assert.deepEqual(phases, ['dry:Classifier', 'dry:CLI', 'live:Classifier', 'live:CLI']);
+    assert.equal(result.createdChildren.length, 2);
+  } finally {
+    args.cleanup();
+  }
+});
+
+test('confirm stops on partial live failure and retains created issue numbers', async () => {
+  const live = [];
+  const args = orchestrationInput({ mode: 'confirm' });
+  args.deps.readFile = () => `${input().planText}\n### Task 3: Docs\nRun: \`npm run docs:test\``;
+  args.deps.runCreator = async (creatorArgs) => {
+    if (creatorArgs.includes('--dry-run')) return { exitCode: 0, stdout: 'rendered', stderr: '' };
+    const title = creatorArgs[creatorArgs.indexOf('--title') + 1];
+    live.push(title);
+    if (title === 'CLI') return { exitCode: 6, stdout: '', stderr: 'tether failed' };
+    return {
+      exitCode: 0,
+      stdout: 'https://github.com/owner/repo/issues/1101',
+      stderr: '',
+    };
+  };
+  try {
+    const result = await runSplitPlan(args);
+    assert.equal(result.status, 'partial-success');
+    assert.deepEqual(live, ['Classifier', 'CLI']);
+    assert.deepEqual(result.createdChildren, [{ title: 'Classifier', issueNumber: 1101 }]);
+    assert.equal(result.failed.title, 'CLI');
+    assert.equal(result.failed.exitCode, 6);
+  } finally {
+    args.cleanup();
   }
 });

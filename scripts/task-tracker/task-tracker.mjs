@@ -431,6 +431,16 @@ if (_isMain)
           await verbPlanEstimate(ctx);
           break;
         }
+        case 'decompose-check': {
+          const { verbDecomposeCheck } = await import('./verbs/decompose-check.mjs');
+          await verbDecomposeCheck(ctx);
+          break;
+        }
+        case 'split-plan': {
+          const { verbSplitPlan } = await import('./verbs/split-plan.mjs');
+          await verbSplitPlan(ctx);
+          break;
+        }
         case 'block': {
           const { verbBlock } = await import('./verbs/block.mjs');
           await verbBlock(ctx);
