@@ -109,6 +109,7 @@ function stripLineMarkdown(line, lines, lineIndex, state) {
 function hasClosingBacktickRun(lines, lineIndex, start, expectedLength) {
   for (let currentLine = lineIndex; currentLine < lines.length; currentLine += 1) {
     const line = lines[currentLine];
+    if (currentLine > lineIndex && interruptsInlineBlock(line)) return false;
     let index = currentLine === lineIndex ? start : 0;
     while (index < line.length) {
       if (line[index] !== '`') {
@@ -124,33 +125,65 @@ function hasClosingBacktickRun(lines, lineIndex, start, expectedLength) {
   return false;
 }
 
+function interruptsInlineBlock(line) {
+  return (
+    /^\s*$/.test(line) ||
+    /^ {0,3}(?:#{1,6}(?:[ \t]+|$)|>|`{3,}|~{3,}|<!--|(?:[*+-]|\d{1,9}[.)])(?:[ \t]+|$))/.test(line)
+  );
+}
+
+function previousNonBlankLine(lines) {
+  for (let index = lines.length - 1; index >= 0; index -= 1) {
+    if (lines[index].trim()) return lines[index];
+  }
+  return '';
+}
+
 function markdownViews(value) {
   const lines = String(value).split('\n');
   const state = { inComment: false, fence: null, inlineTicks: 0 };
-  const visibleLines = [];
   const structuralLines = [];
+  const commandLines = [];
   for (let lineIndex = 0; lineIndex < lines.length; lineIndex += 1) {
     const line = lines[lineIndex];
     const fence = /^\s*(`{3,}|~{3,})/.exec(line);
     if (state.fence) {
+      const verificationFence = state.fence.verification;
       if (fence && fence[1][0] === state.fence.character && fence[1].length >= state.fence.length) {
         state.fence = null;
       }
-      visibleLines.push(line);
       structuralLines.push('');
+      commandLines.push(verificationFence ? line : '');
       continue;
     }
     const inlineTicksAtStart = state.inlineTicks;
     const { visible, structural } = stripLineMarkdown(line, lines, lineIndex, state);
     const openingFence = !state.inComment && /^\s*(`{3,}|~{3,})/.exec(visible);
+    let verificationFence = false;
     if (inlineTicksAtStart === 0 && openingFence) {
-      state.fence = { character: openingFence[1][0], length: openingFence[1].length };
+      verificationFence = /^\s*\*\*Verification Commands:\*\*\s*$/i.test(
+        previousNonBlankLine(structuralLines)
+      );
+      state.fence = {
+        character: openingFence[1][0],
+        length: openingFence[1].length,
+        verification: verificationFence,
+      };
       state.inlineTicks = 0;
     }
-    visibleLines.push(visible);
     structuralLines.push(openingFence && inlineTicksAtStart === 0 ? '' : structural);
+    const insideMultilineSpan = inlineTicksAtStart !== 0 || state.inlineTicks !== 0;
+    commandLines.push(
+      openingFence && inlineTicksAtStart === 0
+        ? verificationFence
+          ? visible
+          : ''
+        : insideMultilineSpan
+          ? ''
+          : visible
+    );
   }
-  return { visibleLines, structuralLines };
+  return { structuralLines, commandLines };
 }
 
 function visibleStructuralLines(value) {
@@ -159,7 +192,7 @@ function visibleStructuralLines(value) {
 
 export function extractPlanTasks(planText = '') {
   const originalLines = String(planText).split('\n');
-  const { visibleLines, structuralLines } = markdownViews(planText);
+  const { commandLines, structuralLines } = markdownViews(planText);
   const tasks = [];
   for (let index = 0; index < structuralLines.length; index += 1) {
     const match = TASK_HEADING_RE.exec(structuralLines[index]);
@@ -170,7 +203,7 @@ export function extractPlanTasks(planText = '') {
     let end = index + 1;
     while (end < structuralLines.length && !SECTION_HEADING_RE.test(structuralLines[end])) end += 1;
     const body = originalLines.slice(index + 1, end).join('\n');
-    const commandBody = visibleLines.slice(index + 1, end).join('\n');
+    const commandBody = commandLines.slice(index + 1, end).join('\n');
     tasks.push({
       number,
       kind: match[1].toLowerCase(),

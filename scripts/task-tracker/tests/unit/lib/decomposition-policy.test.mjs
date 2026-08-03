@@ -139,6 +139,17 @@ Run: \`node --test visible.test.mjs --grep '<!-- literal -->'\``);
   assert.deepEqual(task.commands, ["node --test visible.test.mjs --grep '<!-- literal -->'"]);
 });
 
+test('ignores verifier examples inside multiline code spans and ordinary fences', () => {
+  const [task] = extractPlanTasks(`### Task 1: Examples are not verifiers
+\`\`
+Run: \`node --test inline-example.test.mjs\`
+\`\`
+\`\`\`markdown
+Run: \`node --test fenced-example.test.mjs\`
+\`\`\``);
+  assert.deepEqual(task.commands, []);
+});
+
 test('linked plan metadata prefers Implementation-plan and strips a commit suffix', () => {
   const body = `## Plan Metadata
 
@@ -324,23 +335,37 @@ test('escaped and unmatched backticks do not expose hidden structures', () => {
   }
 });
 
-test('matched multiline code spans do not expose hidden structures', () => {
+test('multiline code spans stop at Markdown block boundaries', () => {
   for (const delimiter of ['`', '``']) {
-    const hiddenWaiver = [delimiter, waiverBody(), delimiter].join('\n');
-    assert.equal(parseDecompositionWaiver(hiddenWaiver).reason, 'missing');
+    const visibleWaiver = [`Introduction ${delimiter}unmatched`, '', waiverBody()].join('\n');
+    assert.equal(parseDecompositionWaiver(visibleWaiver).ok, true);
 
-    const hiddenTask = [delimiter, '### Task 9: Hidden', delimiter].join('\n');
-    assert.deepEqual(extractPlanTasks(hiddenTask), []);
+    const visibleTask = [`Introduction ${delimiter}unmatched`, '', taskPlan(4, 4)].join('\n');
+    const classification = classifyDecomposition({
+      size: 'M',
+      estimateHours: 8,
+      planText: visibleTask,
+    });
+    assert.equal(classification.taskCount, 4);
+    assert.equal(classification.status, 'must-split');
 
-    const hiddenMetadata = [
-      delimiter,
+    const visibleMetadata = [
+      `Introduction ${delimiter}unmatched`,
+      '',
       '## Plan Metadata',
-      '- **Governing-spec**: docs/hidden.md',
-      delimiter,
+      '- **Governing-spec**: docs/visible.md',
     ].join('\n');
     assert.equal(
-      visibleMetadataFieldValue(hiddenMetadata, 'Plan Metadata', 'Governing-spec'),
-      null
+      visibleMetadataFieldValue(visibleMetadata, 'Plan Metadata', 'Governing-spec'),
+      'docs/visible.md'
     );
   }
+});
+
+test('multiline code spans remain active across soft line breaks', () => {
+  const [task] = extractPlanTasks(`### Task 1: Visible
+Paragraph with \`literal text
+and <!-- comment-looking text --> inside the span\`
+Run: \`node --test visible.test.mjs\``);
+  assert.deepEqual(task.commands, ['node --test visible.test.mjs']);
 });
