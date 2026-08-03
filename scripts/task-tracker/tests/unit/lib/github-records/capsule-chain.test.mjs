@@ -220,7 +220,7 @@ test('supersession rejects missing, self, duplicate-active, incompatible, and cy
   for (const [records, error] of [
     [[original, missing], /capsule-chain:missing-supersedes/],
     [[self], /capsule-chain:self-supersedes/],
-    [[original, first, second], /capsule-chain:multiple-superseders/],
+    [[original, first, second], /capsule-chain:multiple-superseding-records/],
     [[original, incompatible], /capsule-chain:incompatible-supersession/],
     [[original, cycleFirst, cycleSecond], /capsule-chain:supersession-cycle/],
   ]) {

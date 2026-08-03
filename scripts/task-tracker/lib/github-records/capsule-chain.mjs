@@ -137,7 +137,7 @@ function structuralRecordOrder(byId, successors) {
 }
 
 function validateSupersession(byId) {
-  const superseders = new Map();
+  const supersedingRecordIdsByTarget = new Map();
   for (const record of byId.values()) {
     const { recordId, supersedes } = record.envelope;
     if (supersedes === null) continue;
@@ -147,10 +147,10 @@ function validateSupersession(byId) {
     if (target.envelope.recordType !== record.envelope.recordType) {
       throw chainError('incompatible-supersession');
     }
-    const entries = superseders.get(supersedes) ?? [];
+    const entries = supersedingRecordIdsByTarget.get(supersedes) ?? [];
     entries.push(recordId);
-    if (entries.length > 1) throw chainError('multiple-superseders');
-    superseders.set(supersedes, entries);
+    if (entries.length > 1) throw chainError('multiple-superseding-records');
+    supersedingRecordIdsByTarget.set(supersedes, entries);
   }
   const visiting = new Set();
   const visited = new Set();
@@ -174,15 +174,15 @@ function validateSupersession(byId) {
     }
     if (ancestor === null) throw chainError('invalid-supersession-target');
   }
-  return superseders;
+  return supersedingRecordIdsByTarget;
 }
 
 function validated({ records, repository, issue }) {
   assertContext({ repository, issue });
   const byId = buildIndex(records, { repository, issue });
   const successors = validatePredecessors(byId);
-  const superseders = validateSupersession(byId);
-  return { byId, successors, superseders };
+  const supersedingRecordIdsByTarget = validateSupersession(byId);
+  return { byId, successors, supersedingRecordIdsByTarget };
 }
 
 export function validateCapsuleChain({ records, repository, issue } = {}) {
