@@ -119,6 +119,10 @@ function definitionHash(definitions) {
   return `sha256:${createHash('sha256').update(canonicalRecordJson(definitions)).digest('hex')}`;
 }
 
+function orderedDefinitionJson({ acceptanceCriteria, verificationCommands, definitionOfDone }) {
+  return canonicalRecordJson({ acceptanceCriteria, verificationCommands, definitionOfDone });
+}
+
 function normalizedDefinitionDomain({
   acceptanceCriteria,
   verificationCommands,
@@ -375,8 +379,10 @@ export function amendContract(input = {}) {
   const definitions = { acceptanceCriteria, verificationCommands, definitionOfDone };
   assertDefinitions(definitions);
   assertNoRetiredLogicalIds(contract, definitions);
+  if (orderedDefinitionJson(definitions) === orderedDefinitionJson(contract)) {
+    throw contractError('no-op-amendment');
+  }
   const nextDefinitionHash = definitionHash(normalizedDefinitionDomain(definitions));
-  if (nextDefinitionHash === contract.definitionHash) throw contractError('no-op-amendment');
   const amended = {
     ...structuredClone(contract),
     revision: contract.revision + 1,

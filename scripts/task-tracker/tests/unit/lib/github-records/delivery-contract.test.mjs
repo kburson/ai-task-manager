@@ -349,6 +349,65 @@ test('an unchanged amendment cannot erase accepted evidence through a reset-only
   });
 });
 
+test('reordered post-seal definitions amend visible projection without changing semantic definition identity', () => {
+  const acceptanceCriteria = [
+    { logicalId: 'ac-alpha', text: 'Alpha is accepted.' },
+    { logicalId: 'ac-beta', text: 'Beta is accepted.' },
+  ];
+  const verificationCommands = [
+    { logicalId: 'vc-fast', command: 'npm test' },
+    { logicalId: 'vc-slow', command: 'npm run test:slow' },
+  ];
+  const definitionOfDone = [
+    { logicalId: 'dod-review', text: 'Review is complete.' },
+    { logicalId: 'dod-merge', text: 'Merge is complete.' },
+  ];
+  const sealed = sealContract({
+    contract: createDraftContract({
+      recordId,
+      authorityEpoch: 1,
+      coordinatorGrantId,
+      acceptanceCriteria,
+      verificationCommands,
+      definitionOfDone,
+      lifecycleProjection: {
+        acceptanceCriteria: { 'ac-alpha': true },
+        verificationCommands: { 'vc-fast': true },
+        definitionOfDone: { 'dod-review': true },
+      },
+      acceptedRecordIds: ['01J00000000000000000000002'],
+    }),
+    authorityEpoch: 1,
+    coordinatorGrantId,
+  });
+
+  const amended = amendContract({
+    contract: sealed.contract,
+    expectedContractEpoch: 1,
+    authorityEpoch: 1,
+    coordinatorGrantId,
+    acceptanceCriteria: [...acceptanceCriteria].reverse(),
+    verificationCommands: [...verificationCommands].reverse(),
+    definitionOfDone: [...definitionOfDone].reverse(),
+  });
+
+  assert.equal(amended.contract.contractEpoch, 2);
+  assert.equal(amended.contract.definitionHash, sealed.contract.definitionHash);
+  assert.notEqual(amended.contract.projectionHash, sealed.contract.projectionHash);
+  assert.deepEqual(amended.contract.acceptedRecordIds, []);
+  assert.deepEqual(amended.contract.lifecycleProjection, {
+    acceptanceCriteria: {},
+    verificationCommands: {},
+    definitionOfDone: {},
+  });
+  assert.deepEqual(amended.invalidation.removedAcceptedRecordIds, ['01J00000000000000000000002']);
+  assert.deepEqual(amended.invalidation.resetLifecycleChecks, {
+    acceptanceCriteria: ['ac-alpha'],
+    verificationCommands: ['vc-fast'],
+    definitionOfDone: ['dod-review'],
+  });
+});
+
 test('drafts normalize mutable projections without changing definition identity', () => {
   const input = {
     recordId,
