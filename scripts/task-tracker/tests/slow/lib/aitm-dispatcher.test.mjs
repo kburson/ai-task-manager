@@ -30,6 +30,10 @@ function runNode(file, args, opts = {}) {
   return spawnSync(process.execPath, [file, ...args], {
     encoding: 'utf8',
     cwd: ROOT,
+    // AC2 deliberately exercises a missing-target usage exit. Keep the child
+    // offline so a live outer-session binding cannot run assignee/drift
+    // preflight first and replace that deterministic exit with a network gate.
+    env: { ...process.env, TT_SKIP_NETWORK: '1' },
     ...opts,
   });
 }
