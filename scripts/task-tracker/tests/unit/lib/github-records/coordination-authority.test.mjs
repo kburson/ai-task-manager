@@ -1,0 +1,436 @@
+// @story #1075
+import { strict as assert } from 'node:assert';
+import test from 'node:test';
+
+import {
+  authorizeCoordinatorOperation,
+  grantNestedEpic,
+  replaceCoordinator,
+  resolveCoordinatorAuthority,
+} from '../../../../lib/github-records/coordination-authority.mjs';
+import { createAitmRecordEnvelope } from '../../../../lib/github-records/record-envelope.mjs';
+
+const coordinator = Object.freeze({ actor: 'codex', platform: 'codex', session: 'session-parent' });
+const nestedCoordinator = Object.freeze({
+  actor: 'claude',
+  platform: 'claude',
+  session: 'session-nested',
+});
+
+const hierarchy = Object.freeze([
+  Object.freeze({ issue: 100, parentIssue: null }),
+  Object.freeze({ issue: 101, parentIssue: 100 }),
+  Object.freeze({ issue: 102, parentIssue: 100 }),
+  Object.freeze({ issue: 103, parentIssue: 102 }),
+  Object.freeze({ issue: 104, parentIssue: 100 }),
+  Object.freeze({ issue: 200, parentIssue: null }),
+]);
+
+function recordId(number) {
+  return `01J0000000000000000000${String(number).padStart(4, '0')}`;
+}
+
+function grant({
+  grantId = 'grant-parent',
+  scopeRootIssue = 100,
+  includedIssues = [101, 102, 103, 104],
+  excludedIssues = [104],
+  coordinator: grantCoordinator = coordinator,
+  parentGrantId = null,
+  issuer = null,
+  epoch = 1,
+  operations = ['advance', 'integrate'],
+  branchBoundary = ['epic/100', 'epic/100/nested-102', 'work/101', 'work/103'],
+  integrationBoundary = {
+    sourceBranches: ['work/101', 'work/103'],
+    destinationBranches: ['epic/100', 'epic/100/nested-102'],
+  },
+  activatedAt = '2026-08-03T20:00:00.000Z',
+  expiresAt = null,
+} = {}) {
+  return {
+    schema: 'aitm.coordinator-grant/v1',
+    grantId,
+    scope: { scopeRootIssue, includedIssues, excludedIssues },
+    coordinator: grantCoordinator,
+    parentGrantId,
+    issuer,
+    epoch,
+    operations,
+    branchBoundary,
+    integrationBoundary,
+    activatedAt,
+    expiresAt,
+  };
+}
+
+function projection({ grantId = 'grant-parent', epoch = 1, adoptionState = 'adopted' } = {}) {
+  return { schema: 'aitm.coordination-projection/v1', grantId, epoch, adoptionState };
+}
+
+function resolve({
+  grants = [grant()],
+  revocations = [],
+  coordinationProjection = projection(),
+  now,
+} = {}) {
+  return resolveCoordinatorAuthority({
+    issueHierarchy: hierarchy,
+    grants,
+    revocations,
+    coordinationProjection,
+    now: now ?? '2026-08-03T20:05:00.000Z',
+  });
+}
+
+function authorize(authority, overrides = {}) {
+  return authorizeCoordinatorOperation({
+    authority,
+    grantId: 'grant-parent',
+    epoch: 1,
+    coordinator,
+    issue: 101,
+    operation: 'advance',
+    branch: 'work/101',
+    ...overrides,
+  });
+}
+
+test('resolves only explicit epic and standalone issue scopes, with exclusions winning', () => {
+  const epic = resolve();
+  const standalone = resolve({
+    grants: [
+      grant({
+        grantId: 'grant-standalone',
+        scopeRootIssue: 200,
+        includedIssues: [],
+        excludedIssues: [],
+        branchBoundary: ['issue/200'],
+        integrationBoundary: { sourceBranches: [], destinationBranches: [] },
+      }),
+    ],
+    coordinationProjection: projection({ grantId: 'grant-standalone' }),
+  });
+
+  assert.deepEqual(epic.scopeIssueIds, [100, 101, 102, 103]);
+  assert.deepEqual(standalone.scopeIssueIds, [200]);
+  assert.equal(authorize(epic).authorized, true);
+  for (const issue of [104, 200]) {
+    assert.deepEqual(authorize(epic, { issue }), { authorized: false, reason: 'scope' });
+  }
+  assert.equal(
+    authorizeCoordinatorOperation({
+      authority: standalone,
+      grantId: 'grant-standalone',
+      epoch: 1,
+      coordinator,
+      issue: 200,
+      operation: 'advance',
+      branch: 'issue/200',
+    }).authorized,
+    true
+  );
+});
+
+test('blocks a forked coordinator capsule chain without selecting a grant by input order', () => {
+  const root = createAitmRecordEnvelope({
+    recordId: recordId(1),
+    recordType: 'coordinator-grant',
+    repository: 'kburson/ai-task-manager',
+    issue: 100,
+    payload: grant(),
+    actor: coordinator.actor,
+    epoch: 1,
+    grantId: recordId(9001),
+    createdAt: '2026-08-03T20:00:00.000Z',
+  });
+  const sibling = (number) =>
+    createAitmRecordEnvelope({
+      recordId: recordId(number),
+      recordType: 'coordinator-grant',
+      repository: 'kburson/ai-task-manager',
+      issue: 100,
+      payload: grant({ grantId: `grant-${number}` }),
+      actor: coordinator.actor,
+      epoch: 1,
+      grantId: recordId(9001),
+      predecessor: recordId(1),
+      createdAt: '2026-08-03T20:00:00.000Z',
+    });
+  const first = Object.freeze({ commentNodeId: 'IC_kwDOForkRoot', envelope: root });
+  const second = Object.freeze({ commentNodeId: 'IC_kwDOForkFirst', envelope: sibling(2) });
+  const third = Object.freeze({ commentNodeId: 'IC_kwDOForkSecond', envelope: sibling(3) });
+
+  for (const records of [
+    [first, second, third],
+    [third, second, first],
+  ]) {
+    assert.deepEqual(
+      resolveCoordinatorAuthority({
+        issueHierarchy: hierarchy,
+        records,
+        repository: 'kburson/ai-task-manager',
+        issue: 100,
+        coordinationProjection: projection(),
+        now: '2026-08-03T20:05:00.000Z',
+      }),
+      { status: 'blocked', diagnostic: { reason: 'forked-capsule-history' } }
+    );
+  }
+});
+
+test('authorizes operations only when exact identity, scope, operation, and normalized bounds agree', () => {
+  const authority = resolve();
+  const allowedIntegration = authorize(authority, {
+    operation: 'integrate',
+    issue: 103,
+    branch: 'epic/100/nested-102',
+    integration: { sourceBranch: 'work/103', destinationBranch: 'epic/100/nested-102' },
+  });
+  assert.equal(allowedIntegration.authorized, true);
+
+  for (const overrides of [
+    { grantId: 'other-grant' },
+    { epoch: 2 },
+    { coordinator: nestedCoordinator },
+    { operation: 'review' },
+    { branch: 'work/101/escape' },
+    {
+      operation: 'integrate',
+      integration: { sourceBranch: 'work/103/escape', destinationBranch: 'epic/100' },
+    },
+    {
+      operation: 'integrate',
+      integration: { sourceBranch: 'work/103', destinationBranch: 'epic/100/escape' },
+    },
+  ]) {
+    assert.equal(authorize(authority, overrides).authorized, false);
+  }
+});
+
+test('delegates a nested epic only as a strict subset of the active parent grant', () => {
+  const parent = resolve();
+  const child = grant({
+    grantId: 'grant-nested',
+    scopeRootIssue: 102,
+    includedIssues: [103],
+    excludedIssues: [],
+    coordinator: nestedCoordinator,
+    parentGrantId: 'grant-parent',
+    issuer: coordinator,
+    operations: ['advance'],
+    branchBoundary: ['epic/100/nested-102', 'work/103'],
+    integrationBoundary: {
+      sourceBranches: ['work/103'],
+      destinationBranches: ['epic/100/nested-102'],
+    },
+  });
+  const delegated = grantNestedEpic({
+    parentAuthority: parent,
+    issueHierarchy: hierarchy,
+    grant: child,
+  });
+
+  assert.deepEqual(delegated.scopeIssueIds, [102, 103]);
+  assert.equal(Object.isFrozen(delegated.grant), true);
+  assert.equal(
+    authorizeCoordinatorOperation({
+      authority: delegated.authority,
+      grantId: 'grant-nested',
+      epoch: 1,
+      coordinator: nestedCoordinator,
+      issue: 103,
+      operation: 'advance',
+      branch: 'work/103',
+    }).authorized,
+    true
+  );
+  for (const issue of [100, 101]) {
+    assert.equal(
+      authorizeCoordinatorOperation({
+        authority: delegated.authority,
+        grantId: 'grant-nested',
+        epoch: 1,
+        coordinator: nestedCoordinator,
+        issue,
+        operation: 'advance',
+        branch: 'work/103',
+      }).authorized,
+      false
+    );
+  }
+  for (const invalid of [
+    grant({ ...child, scopeRootIssue: 100, includedIssues: [101] }),
+    grant({ ...child, scopeRootIssue: 102, includedIssues: [103, 104] }),
+    grant({
+      ...child,
+      scopeRootIssue: 102,
+      includedIssues: [103],
+      operations: ['advance', 'review'],
+    }),
+    grant({ ...child, scopeRootIssue: 102, includedIssues: [103], branchBoundary: ['work/101'] }),
+  ]) {
+    assert.throws(
+      () => grantNestedEpic({ parentAuthority: parent, issueHierarchy: hierarchy, grant: invalid }),
+      /coordination-authority:nested-scope/
+    );
+  }
+});
+
+test('blocks ambiguous, stale, revoked, expired, and projection-mismatched grant authority deterministically', () => {
+  const overlap = grant({ grantId: 'grant-overlap', includedIssues: [101], excludedIssues: [] });
+  const revoked = {
+    schema: 'aitm.coordinator-revocation/v1',
+    grantId: 'grant-parent',
+    epoch: 1,
+    state: 'revoked',
+  };
+  const expired = grant({ expiresAt: '2026-08-03T20:01:00.000Z' });
+  const cases = [
+    [{ grants: [grant(), overlap] }, { grants: [overlap, grant()] }, 'overlapping-grants'],
+    [{ coordinationProjection: projection({ epoch: 2 }) }, undefined, 'stale-epoch'],
+    [{ revocations: [revoked] }, undefined, 'revoked'],
+    [{ grants: [expired] }, undefined, 'expired'],
+    [
+      { coordinationProjection: projection({ grantId: 'other-grant' }) },
+      undefined,
+      'projection-mismatch',
+    ],
+  ];
+
+  for (const [first, second, reason] of cases) {
+    assert.deepEqual(resolve(first), { status: 'blocked', diagnostic: { reason } });
+    if (second !== undefined)
+      assert.deepEqual(resolve(second), { status: 'blocked', diagnostic: { reason } });
+  }
+});
+
+test('replaces only the exact active epoch, pauses authority, and resumes only after explicit adoption', () => {
+  const authority = resolve();
+  const replacementGrant = grant({
+    grantId: 'grant-replacement',
+    coordinator: nestedCoordinator,
+    epoch: 2,
+    parentGrantId: null,
+    issuer: coordinator,
+  });
+  const replacement = replaceCoordinator({
+    authority,
+    expectedGrantId: 'grant-parent',
+    expectedEpoch: 1,
+    replacementGrant,
+  });
+
+  assert.deepEqual(replacement.revocation, {
+    schema: 'aitm.coordinator-revocation/v1',
+    grantId: 'grant-parent',
+    epoch: 1,
+    state: 'replaced',
+    replacementGrantId: 'grant-replacement',
+  });
+  assert.deepEqual(
+    replacement.coordinationProjection,
+    projection({ grantId: 'grant-replacement', epoch: 2, adoptionState: 'required' })
+  );
+  const paused = resolve({
+    grants: [replacementGrant],
+    revocations: [replacement.revocation],
+    coordinationProjection: replacement.coordinationProjection,
+  });
+  assert.deepEqual(paused, { status: 'paused', diagnostic: { reason: 'adoption-required' } });
+  assert.equal(authorize(paused).authorized, false);
+
+  const adopted = resolve({
+    grants: [replacementGrant],
+    revocations: [replacement.revocation],
+    coordinationProjection: projection({ grantId: 'grant-replacement', epoch: 2 }),
+  });
+  assert.equal(
+    authorizeCoordinatorOperation({
+      authority: adopted,
+      grantId: 'grant-replacement',
+      epoch: 2,
+      coordinator: nestedCoordinator,
+      issue: 101,
+      operation: 'advance',
+      branch: 'work/101',
+    }).authorized,
+    true
+  );
+  for (const invalid of [
+    { ...replacementGrant, epoch: 1 },
+    { ...replacementGrant, epoch: 3 },
+  ]) {
+    assert.throws(
+      () =>
+        replaceCoordinator({
+          authority,
+          expectedGrantId: 'grant-parent',
+          expectedEpoch: 1,
+          replacementGrant: invalid,
+        }),
+      /coordination-authority:replacement-epoch/
+    );
+  }
+  assert.throws(
+    () =>
+      replaceCoordinator({
+        authority,
+        expectedGrantId: 'grant-parent',
+        expectedEpoch: 2,
+        replacementGrant,
+      }),
+    /coordination-authority:stale-epoch/
+  );
+  assert.throws(
+    () =>
+      replaceCoordinator({
+        authority,
+        expectedGrantId: 'grant-parent',
+        expectedEpoch: 1,
+        replacementGrant: { ...replacementGrant, parentGrantId: 'other-parent' },
+      }),
+    /coordination-authority:replacement/
+  );
+});
+
+test('rejects opaque data and preserves caller inputs and immutable outputs', () => {
+  const input = { grants: [grant()], revocations: [], coordinationProjection: projection() };
+  const before = structuredClone(input);
+  const result = resolve(input);
+
+  assert.deepEqual(input, before);
+  assert.equal(Object.isFrozen(result), true);
+  assert.equal(Object.isFrozen(result.scopeIssueIds), true);
+  assert.throws(() => resolve({ grants: [new Map()] }), /coordination-authority:grant/);
+  assert.throws(
+    () =>
+      resolve({
+        grants: [
+          grant({
+            integrationBoundary: { sourceBranches: ['work/101'], destinationBranches: 7 },
+          }),
+        ],
+      }),
+    /coordination-authority:grant/
+  );
+  assert.throws(
+    () => resolve({ grants: [grant({ activatedAt: '2026-99-03T20:00:00.000Z' })] }),
+    /coordination-authority:grant/
+  );
+  assert.deepEqual(
+    authorizeCoordinatorOperation({
+      authority: { status: 'active', grant: null, scopeIssueIds: [] },
+      grantId: 'grant-parent',
+      epoch: 1,
+      coordinator,
+      issue: 101,
+      operation: 'advance',
+      branch: 'work/101',
+    }),
+    { authorized: false, reason: 'authority' }
+  );
+  const accessorGrant = grant();
+  Object.defineProperty(accessorGrant, 'epoch', { enumerable: true, get: () => 1 });
+  assert.throws(() => resolve({ grants: [accessorGrant] }), /coordination-authority:grant/);
+});
