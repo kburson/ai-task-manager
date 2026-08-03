@@ -25,6 +25,7 @@ import {
   sectionBounds,
 } from './lib/metadata-section.mjs';
 import { mutateIssueBody } from './lib/issue-body-mutate.mjs';
+import { parseIssueKind } from './lib/issue-kind.mjs';
 import { assertKnownArgv, reportStrictArgvError } from './lib/argv-strict.mjs';
 import { confirmBlastRadius } from './lib/blast-radius-guard.mjs';
 import { wantsHelp, emitSelfDoc } from '../lib/self-doc.mjs';
@@ -92,8 +93,9 @@ export function buildPlanMetadataBackfill(body = '') {
   }
 
   if (!storyValues.has('kind')) {
-    storyValues.set('kind', 'code');
-    movedFields.unshift('- **kind**: code');
+    const kind = parseIssueKind(src);
+    storyValues.set('kind', kind);
+    movedFields.unshift(`- **kind**: ${kind}`);
     if (!changed.includes('kind')) changed.unshift('kind');
   }
 
@@ -145,6 +147,23 @@ export function buildPlanMetadataBackfill(body = '') {
       ...movedFields,
       ''
     );
+  }
+
+  // A partially migrated body may already have Story Origin after, or
+  // separated from, Plan Metadata. Converge the whole section to the canonical
+  // adjacent position. Once canonical, this block is byte-for-byte inert.
+  storyBounds = sectionBounds(outputLines, STORY_ORIGIN_HEADING);
+  let planBounds = sectionBounds(outputLines, PLAN_METADATA_HEADING);
+  if (
+    storyBounds &&
+    planBounds &&
+    (storyBounds.heading > planBounds.heading || storyBounds.end !== planBounds.heading)
+  ) {
+    const storySection = outputLines.slice(storyBounds.heading, storyBounds.end);
+    outputLines.splice(storyBounds.heading, storyBounds.end - storyBounds.heading);
+    if (storySection.at(-1)?.trim() !== '') storySection.push('');
+    planBounds = sectionBounds(outputLines, PLAN_METADATA_HEADING);
+    outputLines.splice(planBounds.heading, 0, ...storySection);
   }
 
   let output = outputLines.join('\n');

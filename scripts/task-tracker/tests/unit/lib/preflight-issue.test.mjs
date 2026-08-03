@@ -99,6 +99,54 @@ describe('preflight-issue --shape lint wiring', () => {
   });
 });
 
+describe('preflight-issue --shape Story Origin flat-section validation (#892)', () => {
+  it('rejects a Story Origin fragment containing an embedded heading', async () => {
+    const fx = makeFixture('- [ ] Works\n');
+    writeFileSync(
+      fx.origin,
+      '- kind: code\n\n## Injected Section\n\nUnexpected content.\n',
+      'utf8'
+    );
+
+    const r = await runPreflight([
+      '--shape',
+      'solo',
+      '--scope-file',
+      fx.scope,
+      '--ac-file',
+      fx.ac,
+      '--story-origin-file',
+      fx.origin,
+      '--plan-metadata-file',
+      fx.meta,
+    ]);
+
+    assert.equal(r.code, 2);
+    assert.match(r.stderr, /must be a flat metadata fragment without headings/);
+  });
+
+  it('still accepts a single leading Story Origin heading for compatibility', async () => {
+    const fx = makeFixture('- [ ] Works\n');
+    writeFileSync(fx.origin, '## Story Origin\n\n- kind: code\n', 'utf8');
+
+    const r = await runPreflight([
+      '--shape',
+      'solo',
+      '--scope-file',
+      fx.scope,
+      '--ac-file',
+      fx.ac,
+      '--story-origin-file',
+      fx.origin,
+      '--plan-metadata-file',
+      fx.meta,
+    ]);
+
+    assert.equal(r.code, 0, `stderr: ${r.stderr}`);
+    assert.equal(r.stdout.match(/^## Story Origin$/gm)?.length, 1);
+  });
+});
+
 describe('preflight-issue --shape stub (#426)', () => {
   it('renders without scope/ac/plan-metadata files, using placeholders', async () => {
     const r = await runPreflight(['--shape', 'stub']);

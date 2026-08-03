@@ -153,4 +153,55 @@ describe('buildPlanMetadataBackfill Story Origin migration (#892)', () => {
     assert.match(result.body, /## Story Origin\n\n- \*\*kind\*\*: code\n\n## Plan Metadata/);
     assert.match(result.body, /- \*\*Size:\*\* S/);
   });
+
+  it('derives a missing Story Origin kind from the authoritative issue-kind marker', () => {
+    const body = [
+      '## Scope',
+      '',
+      'Investigate the behavior.',
+      '',
+      '## Plan Metadata',
+      '',
+      '- **size**: S',
+      '',
+      '## AITM Progress Markers',
+      '',
+      '<!-- aitm-issue-kind kind="research" -->',
+    ].join('\n');
+
+    const result = buildPlanMetadataBackfill(body);
+
+    assert.equal(result.status, 'healed');
+    assert.match(result.body, /## Story Origin\n\n- \*\*kind\*\*: research\n\n## Plan Metadata/);
+    assert.doesNotMatch(result.body, /\*\*kind\*\*: code/);
+  });
+
+  it('relocates an existing Story Origin immediately before Plan Metadata', () => {
+    const body = [
+      '## Scope',
+      '',
+      'Partially migrated issue.',
+      '',
+      '## Plan Metadata',
+      '',
+      '- **size**: S',
+      '',
+      '## Acceptance Criteria',
+      '',
+      '- [ ] The migration converges.',
+      '',
+      '## Story Origin',
+      '',
+      '- **kind**: spike',
+    ].join('\n');
+
+    const once = buildPlanMetadataBackfill(body);
+
+    assert.equal(once.status, 'healed');
+    assert.match(
+      once.body,
+      /## Scope[\s\S]*## Story Origin\n\n- \*\*kind\*\*: spike\n\n## Plan Metadata\n\n- \*\*size\*\*: S\n\n## Acceptance Criteria/
+    );
+    assert.deepEqual(buildPlanMetadataBackfill(once.body), { status: 'skip' });
+  });
 });

@@ -351,7 +351,14 @@ function emitShape(args, dodPath, root) {
           ? readFileOrDie(args['plan-metadata-file'], '--plan-metadata-file').trim()
           : '',
     };
-    const normalizedOrigin = normalizeStoryOriginValue(rawFills.story_origin);
+    const originFragment = stripLeadingHeading(
+      rawFills.story_origin,
+      SECTION_HEADINGS.story_origin
+    );
+    if (/^#{1,6}\s+/m.test(originFragment)) {
+      die('--story-origin-file must be a flat metadata fragment without headings');
+    }
+    const normalizedOrigin = normalizeStoryOriginValue(originFragment);
     if (!hasStoryOriginFields(`## Story Origin\n\n${normalizedOrigin}\n`)) {
       die(
         '--story-origin-file must contain at least one non-empty flat Story Origin metadata field'
