@@ -16,60 +16,86 @@
 | **Current** | **07** | **[Evidence Beats Trust](07-evidence-beats-trust.md)**                                     | Evidence gates and auditability               |
 |             | 08     | [The Adapter Future](08-adapter-future.md)                                                 | Backlog and agent platform adapters           |
 
-## Draft Thesis
+I do not want to trust an AI agent. I want the agent to leave enough evidence that trust is no longer the main control.
 
-Agentic AI delivery should not ask teams to trust the agent. It should give teams evidence strong enough that trust becomes a byproduct.
+That distinction matters more than it sounds. Trust is a feeling one party has about another. Evidence is a property of the work itself: inspectable, reproducible, and independent of how confident the agent's output sounds. Agentic delivery should be built around the second thing, not the first.
 
-## Core Argument
+## The Trust Gap Is Not Abstract
 
-The trust gap is not abstract. Stack Overflow's 2025 survey found that more developers distrust AI output accuracy than trust it. METR found that experienced developers believed AI made them faster even when measured task time increased. OWASP and NIST both point toward the need for controls, risk management, and careful handling of AI behavior.
+The public data on this is unusually direct. Stack Overflow's 2025 developer survey found that more developers distrust AI output accuracy than trust it — a striking result given how widely AI coding tools have already been adopted. METR's randomized study of experienced open-source developers found something even sharper: developers believed AI tooling made them faster, while measured task completion time actually increased by 19%. The gap between felt productivity and measured productivity is exactly the kind of thing evidence is supposed to catch and trust alone cannot.
 
-The lesson is direct: confidence without evidence is dangerous.
+OWASP's guidance on large language model applications and agentic AI, and NIST's AI Risk Management Framework, both converge on the same prescription from the security and governance side: agentic systems need controls, risk management, and disciplined handling of AI behavior, not reassurance about model quality.
 
-Agentic delivery needs observable proof:
+The lesson across all of it is direct. Confidence without evidence is dangerous, whether the confidence belongs to the model or to the human reviewing its output.
+
+## What Evidence Actually Has To Answer
+
+Agentic delivery needs observable proof, not narrative. At minimum, a governed workflow should be able to answer:
 
 - What issue was the agent working on?
-- What state was the issue in?
-- What acceptance criteria were checked?
-- What tests ran?
-- What failed?
-- What changed after failure?
-- What human decision was made?
-- How much agent time and human review burden did the task consume?
+- What state was the issue in when work started?
+- Which acceptance criteria were checked, and how?
+- What tests ran, and what was the result?
+- What failed, and what changed after the failure?
+- What human decision was made, and when?
+- How much agent time and human review burden did the task actually consume?
 
-Without that evidence, AI work becomes a chain of persuasive narratives.
+Without answers to those questions, AI-assisted work becomes a chain of persuasive narratives — plausible summaries of what happened, standing in for what can actually be verified. That is precisely the failure mode the rest of this series has been building toward since the vibe coding hangover in article one: fast output that nobody can cheaply confirm is correct.
 
-Traditional SDLC ceremonies often degrade into status theater when evidence is weak. Agentic AI raises the cost of that weakness. If implementation agents are producing work quickly, the TPO/TPM needs objective signals to decide whether work is really ready, blocked, defective, or done.
+Traditional SDLC ceremonies already degrade into status theater when the evidence behind them is weak — a standup where "done" means "I said it's done." Agentic AI raises the cost of that weakness sharply. If implementation agents are producing work at a pace no human team could match, the Technical Product Owner needs objective signals to decide whether a given piece of work is really ready, blocked, defective, or complete — because there is no longer time to eyeball every line before deciding.
 
-## AITM Perspective
+## Evidence Gates Across The State Machine
 
-AI Task Manager treats evidence as a first-class product of the workflow.
+The strongest version of this idea is not evidence collected after the fact. It is evidence required as a condition of movement — a gate that a state transition cannot pass without.
 
-Examples:
+```mermaid
+flowchart LR
+    Refine --> Plan
+    Plan -->|Deep dive evidence| Develop
+    Develop -->|Code complete evidence| Test
+    Test -->|Verification passed| Review
+    Review -->|Human approval| Done
+    Test -->|Failure evidence| Develop
+    Review -->|Changes requested| Develop
+```
 
-- Timing logs show starts, pauses, updates, and closes.
-- Context-word counters estimate human review burden.
-- Gate checks prevent premature movement between workflow states.
-- Pickup directives make tasks restartable after context resets.
-- Post-compaction boot rules reload authoritative process files when compressed context can no longer be trusted.
-- Deep-dive sections force the agent to inspect current repo state before implementation.
-- Review gates require acceptance criteria and verification evidence before completion.
+Each arrow in that diagram is a claim that has to be backed by something concrete before it is allowed to fire. Plan cannot advance to Develop without a deep-dive analysis against the current codebase. Develop cannot advance to Test without evidence that the code is actually complete against its acceptance criteria. Test cannot advance to Review without verification passing, and can send work back to Develop on failure evidence just as easily as it can send it forward. Review requires a human approval, not merely an agent's assertion that the work is good. The graph does not describe optimism. It describes proof.
 
-The goal is not bureaucracy. The goal is survivable autonomy.
+## The AITM Pattern
 
-Evidence is what lets the TPO/TPM supervise at a higher level without reading every generated line in real time. It turns agent output into inspectable delivery state.
+In this series, **AITM** means `@kburson/ai-task-manager`: an AI skill and npm package that currently supports GitHub-backed workflows with Claude Code and Codex.
+
+AITM treats evidence as a first-class product of the workflow, not an afterthought bolted onto reporting:
+
+- Timing logs record starts, pauses, updates, and closes as durable comment history on the issue itself.
+- Context-word counters approximate the human review burden a given task actually consumed.
+- Gate checks block premature movement between workflow states rather than trusting a status label.
+- Pickup directives make an interrupted task restartable from durable state, not from memory.
+- Post-compaction boot rules reload authoritative process files once compressed context can no longer be trusted as a source of truth.
+- Deep-dive sections force the agent to inspect the current repository state before writing implementation code.
+- Review gates require acceptance-criteria evidence and verification output before a task can be marked complete.
+
+None of this is bureaucracy for its own sake. The goal is survivable autonomy: enough structural proof that an agent fleet can move fast without the team losing the ability to tell what actually happened.
+
+Evidence is also what lets the TPO/TPM supervise at a higher altitude without reading every generated line in real time. It converts agent output from a claim into inspectable delivery state — something a human can audit in minutes instead of re-litigating from scratch.
 
 ## Better Executive Language
+
+It is tempting to oversell this as a trust story. Resist it.
 
 Avoid saying:
 
 > This creates more trust than human teams.
 
-Say:
+Say instead:
 
 > This creates more inspectable evidence than many human workflows currently capture.
 
-That is both more defensible and more persuasive.
+The second version is both more defensible and, in practice, more persuasive to an audience that already distrusts confident AI output — which, per Stack Overflow's own numbers, is most of them.
+
+## Practical Takeaway
+
+Before scaling up agent-assisted delivery, inventory what evidence your current workflow actually produces at each state transition. If "the agent said it's done" is the strongest artifact behind a Done column, that is the gap to close first — before adding more agents, not after.
 
 ## Series Link
 
