@@ -112,6 +112,9 @@ export async function loadEstimationRecordsForReport({
 }
 
 function storyRow(issue, records) {
+  const adaptiveClaim = records.some((record) =>
+    ['estimation-forecast', 'estimation-outcome'].includes(record?.envelope?.recordType)
+  );
   const forecast = activeForecast(records);
   const outcome = matchingStoryOutcome(records, forecast);
   const storyOutcomes = records.filter(
@@ -140,6 +143,7 @@ function storyRow(issue, records) {
       : null;
   return {
     issue,
+    adaptiveClaim,
     forecastRecordId: forecast?.envelope.recordId ?? null,
     outcomeRecordId: outcome?.envelope.recordId ?? null,
     humanPlanHours,

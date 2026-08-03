@@ -177,3 +177,89 @@ test('estimation footer renders validated zero waste as zero rather than missing
   const footer = html.slice(html.indexOf('<tfoot>'), html.indexOf('</tfoot>'));
   assert.match(footer, /<td class="num">0 (?:min|h)<\/td>/);
 });
+
+test('executive metrics use adaptive Human Plan and actuals instead of legacy board/session totals', () => {
+  const items = [
+    {
+      number: 1091,
+      title: 'Adaptive issue',
+      url: 'https://example.test/1091',
+      status: 'Done',
+      estimate: 100,
+      engagedMin: 6_000,
+      parentNumber: null,
+      timingBody: '',
+    },
+  ];
+  const row = {
+    adaptiveClaim: true,
+    humanPlanHours: 8,
+    aiP50Hours: 3,
+    aiP80Hours: 5,
+    actualEngagedHours: 4,
+    varianceVsAiP50Hours: 1,
+    refineAccuracy: 1,
+    aiP50Accuracy: 0.75,
+    avoidableWasteHours: 0,
+    acceleration: 2,
+    accelerationLabel: '2.00×',
+    evidenceGaps: [],
+  };
+  const html = buildHtml(
+    { title: 'Adaptive totals' },
+    items,
+    { totalEst: 100, totalEngaged: 100, totalSessionMin: 6_000, totalContextWords: 0 },
+    { rowsByIssue: new Map([[1091, row]]), methodology: {} }
+  );
+
+  const accelerator = html.slice(
+    html.indexOf('<h2>Agentic AI Accelerator</h2>'),
+    html.indexOf('<h3 class="tl-heading">Daily Work Activity</h3>')
+  );
+  assert.match(accelerator, />8h @/);
+  assert.match(accelerator, /<div class="ac-num">2×<\/div>/);
+  assert.doesNotMatch(accelerator, />100h @/);
+});
+
+test('legacy rows fall back to board Estimate and Engaged only without an adaptive claim', () => {
+  const item = {
+    number: 101,
+    title: 'Legacy issue',
+    url: 'https://example.test/101',
+    status: 'Done',
+    estimate: 4,
+    engagedMin: 120,
+    parentNumber: null,
+    timingBody: '',
+  };
+  const legacyRow = {
+    adaptiveClaim: false,
+    humanPlanHours: null,
+    actualEngagedHours: null,
+    evidenceGaps: ['missing-forecast', 'missing-outcome'],
+  };
+  const html = buildHtml(
+    { title: 'Legacy fallback' },
+    [item],
+    { totalEst: 4, totalEngaged: 2, totalSessionMin: 120, totalContextWords: 0 },
+    { rowsByIssue: new Map([[101, legacyRow]]), methodology: {} }
+  );
+  const backlog = html.slice(html.indexOf('Appendix A — Product Backlog'), html.indexOf('Appendix B'));
+
+  assert.match(backlog, /<td class="num">4h<\/td>/);
+  assert.match(backlog, /<td class="num">2h<\/td>/);
+  assert.match(backlog, />2\.00×<\/td>/);
+
+  legacyRow.evidenceGaps.push('malformed-record-evidence');
+  const malformed = buildHtml(
+    { title: 'Malformed adaptive evidence' },
+    [item],
+    { totalEst: 4, totalEngaged: 2, totalSessionMin: 120, totalContextWords: 0 },
+    { rowsByIssue: new Map([[101, legacyRow]]), methodology: {} }
+  );
+  const malformedBacklog = malformed.slice(
+    malformed.indexOf('Appendix A — Product Backlog'),
+    malformed.indexOf('Appendix B')
+  );
+  assert.doesNotMatch(malformedBacklog, /<td class="num">4h<\/td>/);
+});

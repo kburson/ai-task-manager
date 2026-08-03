@@ -127,6 +127,7 @@ test('story metrics expose human Plan, AI P50/P80, actual, accuracy, variance, a
   const model = buildEstimationReportModel({ items: [{ number: 1091 }], recordsByIssue });
   const row = model.rowsByIssue.get(1091);
 
+  assert.equal(row.adaptiveClaim, true);
   assert.equal(row.humanPlanHours, 6);
   assert.equal(row.aiP50Hours, 3.8);
   assert.equal(row.aiP80Hours, 5.6);
@@ -155,6 +156,7 @@ test('missing forecast or outcome stays an evidence gap rather than becoming zer
     recordsByIssue: new Map(),
   }).rowsByIssue.get(1091);
 
+  assert.equal(row.adaptiveClaim, false);
   assert.equal(row.humanPlanHours, null);
   assert.equal(row.actualEngagedHours, null);
   assert.equal(row.acceleration, null);
