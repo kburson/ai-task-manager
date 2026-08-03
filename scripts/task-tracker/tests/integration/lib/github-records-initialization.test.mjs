@@ -342,3 +342,35 @@ test('a failed duplicate compensation returns a fail-closed body-compensation er
   );
   assert.equal(memory.state.writes.body, 1);
 });
+
+test('compensation body-write crash hooks preserve a fail-closed recoverable state', async () => {
+  for (const phase of ['before-compensation-body', 'after-compensation-body']) {
+    const memory = memoryIssue();
+    const writeIssueBody = memory.deps.writeIssueBody;
+    const competing = singletonRecord({
+      kind: 'timing',
+      commentNodeId: `IC_kwDOpaqueCompensationCrash${phase}`,
+    });
+    memory.deps.writeIssueBody = async (args) => {
+      await writeIssueBody(args);
+      if (memory.state.writes.body === 1) memory.state.records.push(competing);
+    };
+
+    await assert.rejects(
+      initializeIssueDirectory(
+        input(memory, {
+          crashAt: ({ phase: observed }) => {
+            if (observed === phase) throw new Error('injected compensation stop');
+          },
+        })
+      ),
+      /injected compensation stop/
+    );
+    await assert.rejects(discoverIssueSingletons(input(memory)), /singleton-initializer:ambiguous/);
+    assert.equal(memory.state.writes.body, phase === 'before-compensation-body' ? 1 : 2);
+    assert.equal(
+      parseIssueDirectory({ issueBody: memory.state.body }) === null,
+      phase === 'after-compensation-body'
+    );
+  }
+});
