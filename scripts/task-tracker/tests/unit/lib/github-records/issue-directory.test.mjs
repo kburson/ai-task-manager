@@ -52,6 +52,18 @@ test('singleton logical identities are deterministic and independent of node IDs
   assert.notEqual(singletonLogicalIdentity({ repository, issue, kind: 'coordination' }), identity);
 });
 
+test('directory rendering preserves opaque IDs while escaping HTML-comment terminators', () => {
+  const directory = createIssueDirectory({
+    issueNodeId: 'I_kwDOpaque-->',
+    singletons: { ...singletons, timing: 'IC_kwDOpaque--timing' },
+  });
+  const rendered = renderIssueDirectory(directory);
+
+  assert.equal([...rendered.matchAll(/-->/g)].length, 1, 'only the closing marker may terminate');
+  assert.match(rendered, /\\u002d/);
+  assert.deepEqual(parseIssueDirectory({ issueBody: `stable body\n${rendered}` }), directory);
+});
+
 test('directory parsing fails closed for unknown versions, duplicate markers, duplicate IDs, and incomplete mappings', () => {
   const directory = createIssueDirectory({ issueNodeId, singletons });
   const rendered = renderIssueDirectory(directory);

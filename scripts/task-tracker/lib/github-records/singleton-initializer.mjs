@@ -31,7 +31,16 @@ function isRepository(value) {
 }
 
 function isOpaqueId(value) {
-  return typeof value === 'string' && value.length > 0 && value === value.trim();
+  return (
+    typeof value === 'string' &&
+    value.length > 0 &&
+    value.length <= 256 &&
+    value === value.trim() &&
+    ![...value].some((character) => {
+      const code = character.charCodeAt(0);
+      return code <= 0x1f || code === 0x7f;
+    })
+  );
 }
 
 function hasExactlyKeys(value, expectedKeys) {
@@ -96,10 +105,20 @@ function assertInput({ repository, issue, issueNodeId, actor }, { needsActor = f
     !Number.isInteger(issue) ||
     issue <= 0 ||
     !isOpaqueId(issueNodeId) ||
+    issueNodeId.includes('--') ||
     (needsActor && !isOpaqueId(actor))
   ) {
     throw initializerError('input');
   }
+}
+
+function assertDirectoryInput(issueNodeId) {
+  createIssueDirectory({
+    issueNodeId,
+    singletons: Object.fromEntries(
+      SINGLETON_KINDS.map((kind) => [kind, `pending-directory-${kind}`])
+    ),
+  });
 }
 
 function singletonPayload({ repository, issue, kind }) {
@@ -156,6 +175,7 @@ async function writeAndReadBackDirectory({
   issue,
   expectedBody,
   directory,
+  intendedSingletons,
   deps,
   crashAt,
 }) {
@@ -163,14 +183,41 @@ async function writeAndReadBackDirectory({
   await emitCrash(crashAt, 'before-body');
   await deps.writeIssueBody({ repository, issue, expectedBody, body });
   await emitCrash(crashAt, 'after-body');
-  const readBack = await readLiveBody({ repository, issue, deps });
-  if (
-    readBack !== body ||
-    !isDeepStrictEqual(parseIssueDirectory({ issueBody: readBack }), directory)
-  ) {
-    throw initializerError('body-readback');
+  try {
+    const readBack = await readLiveBody({ repository, issue, deps });
+    if (
+      readBack !== body ||
+      !isDeepStrictEqual(parseIssueDirectory({ issueBody: readBack }), directory)
+    ) {
+      throw initializerError('body-readback');
+    }
+    const discovered = await discover({
+      repository,
+      issue,
+      issueNodeId: directory.issueNodeId,
+      deps,
+      issueBody: readBack,
+    });
+    for (const kind of SINGLETON_KINDS) {
+      if (discovered.singletons[kind].commentNodeId !== intendedSingletons[kind].commentNodeId) {
+        throw initializerError('ambiguous');
+      }
+    }
+    return readBack;
+  } catch (error) {
+    try {
+      const current = await readLiveBody({ repository, issue, deps });
+      if (current !== body) throw initializerError('body-compensation');
+      await deps.writeIssueBody({ repository, issue, expectedBody: body, body: expectedBody });
+      const restored = await readLiveBody({ repository, issue, deps });
+      if (restored !== expectedBody || parseIssueDirectory({ issueBody: restored }) !== null) {
+        throw initializerError('body-compensation');
+      }
+    } catch {
+      throw initializerError('body-compensation');
+    }
+    throw error;
   }
-  return readBack;
 }
 
 async function discover({ repository, issue, issueNodeId, deps, issueBody }) {
@@ -251,6 +298,7 @@ export async function initializeIssueDirectory({
   crashAt,
 } = {}) {
   assertInput({ repository, issue, issueNodeId, actor }, { needsActor: true });
+  assertDirectoryInput(issueNodeId);
   const clock = resolveClock(now);
   const resolvedDeps = resolveDependencies(deps, {
     needsCommentWrite: true,
@@ -308,6 +356,7 @@ export async function initializeIssueDirectory({
     issue,
     expectedBody: prePublication.issueBody,
     directory,
+    intendedSingletons: singletons,
     deps: resolvedDeps,
     crashAt,
   });
@@ -327,6 +376,7 @@ export async function repairIssueDirectory({
   crashAt,
 } = {}) {
   assertInput({ repository, issue, issueNodeId, actor });
+  assertDirectoryInput(issueNodeId);
   const resolvedDeps = resolveDependencies(deps, { needsBodyWrite: true });
   const issueBody = await readLiveBody({ repository, issue, deps: resolvedDeps });
   const found = await discover({ repository, issue, issueNodeId, deps: resolvedDeps, issueBody });
@@ -356,6 +406,7 @@ export async function repairIssueDirectory({
     issue,
     expectedBody: prePublication.issueBody,
     directory,
+    intendedSingletons: found.singletons,
     deps: resolvedDeps,
     crashAt,
   });
