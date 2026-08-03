@@ -248,3 +248,25 @@ test('explicit repair writes a missing directory only from one complete unambigu
   await repairIssueDirectory(input(memory));
   assert.equal(memory.state.writes.body, 1);
 });
+
+test('repair refuses a duplicate injected after discovery before publishing a directory', async () => {
+  const records = kinds.map((kind, index) =>
+    singletonRecord({ kind, commentNodeId: `IC_kwDOpaqueRepairRace${index}` })
+  );
+  const memory = memoryIssue({ records });
+  const listRecords = memory.deps.listIssueComments;
+  const competing = singletonRecord({
+    kind: 'timing',
+    commentNodeId: 'IC_kwDOpaqueRepairRaceCompeting',
+  });
+  let scans = 0;
+  memory.deps.listIssueComments = async (context) => {
+    const snapshot = await listRecords(context);
+    scans += 1;
+    if (scans === 1) queueMicrotask(() => memory.state.records.push(competing));
+    return snapshot;
+  };
+
+  await assert.rejects(repairIssueDirectory(input(memory)), /singleton-initializer:ambiguous/);
+  assert.equal(memory.state.writes.body, 0);
+});
