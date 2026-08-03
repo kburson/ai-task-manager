@@ -315,6 +315,15 @@ export function createAitmRecordEnvelope({
   return deepFreeze(envelope);
 }
 
+function canonicalCommentRecordJson(envelope) {
+  const recordJson = canonicalRecordJson(envelope);
+  if (recordJson.includes('-->')) throw recordError('unsafe-comment');
+  // HTML comments cannot safely carry a raw double hyphen. JSON's Unicode
+  // escape is value-preserving, so command flags such as `--test` can remain
+  // exact in the parsed envelope without changing canonical payload hashes.
+  return recordJson.replaceAll('--', '-\\u002d');
+}
+
 /**
  * @param {{ envelope: object, visibleMarkdown?: string }} input
  * @returns {string}
@@ -324,8 +333,7 @@ export function renderAitmRecord({ envelope, visibleMarkdown = '' } = {}) {
   if ([...visibleMarkdown.matchAll(MARKER_RE)].length > 0) throw recordError('unsafe-comment');
   validateEnvelope(envelope);
   assertNoCredentialValues(visibleMarkdown);
-  const recordJson = canonicalRecordJson(envelope);
-  if (recordJson.includes('--')) throw recordError('unsafe-comment');
+  const recordJson = canonicalCommentRecordJson(envelope);
   assertBounded(recordJson, MAX_RECORD_JSON_BYTES, 'too-large');
   const body = `<!-- aitm-record\n${recordJson}\n-->\n${visibleMarkdown}`;
   assertBounded(body, MAX_COMMENT_BODY_BYTES, 'too-large');
@@ -349,7 +357,7 @@ export function parseAitmRecord({ commentNodeId, body, expectedRepository, expec
   } catch {
     throw recordError('malformed');
   }
-  if (canonicalRecordJson(envelope) !== recordJson) throw recordError('noncanonical');
+  if (canonicalCommentRecordJson(envelope) !== recordJson) throw recordError('noncanonical');
   validateEnvelope(envelope);
   assertNoCredentialValues(visibleMarkdown);
   if (envelope.repository !== expectedRepository) throw recordError('repository-mismatch');

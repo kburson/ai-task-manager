@@ -1,4 +1,4 @@
-// @story #1069
+// @story #1069 #1091
 // cspell:ignore aaaaation aaaaaaaaability abcdefghically accesstoken apikey authorizationbackup authorizationdecisionpersonalpatbackup authorizationheader authorizationtoken authconfig authtoken authtokenbackup backupauthconfig backupcredentials backuppat backuppatdata bearercredential clientpassword clientsecret cookiebackup customauthmaterial databaseauth databaseauthbackup databasecredentials databasepasswd databasepassword databasepatvalue credentialsbackup ghp githubtoken gitlabtoken gitlabtokenbackup idtoken idtokenbackup myauthbackup mypat mypatbackup noncanonical npmtoken npmtokenbackup passwordbackup passwordment passwordpassword passwordpolicymypatbackup personalpat personalpatbackup qwertyization qwertyuiopa qwertyuiopasdfgh qwertyware randomtoken randomware redactedredacted refreshtoken secretization secretsecretsecret secrettion secretword sessionauth sessionauthconfig sessionauthdata sessioncookie sessioncookiebackup sessioncookies sessioncookievalue sessionpatconfig sessiontoken sessiontokenbackup tokencountdatabaseauthbackup tokenenv tokenvalue zxcvbnmasd zxcvbnment zzzzability
 import { strict as assert } from 'node:assert';
 import test from 'node:test';
@@ -151,6 +151,16 @@ test('a v1 envelope renders and parses as a deeply frozen correlated record', ()
   assert.ok(Object.isFrozen(parsed.envelope.payload));
   assert.ok(Object.isFrozen(parsed.envelope.payload.tags));
 });
+test('record comment transport round-trips benign double-hyphen command arguments', () => {
+  const commandPayload = { ...payload, command: { executable: 'node', args: ['--test'] } };
+  const body = render({
+    payload: commandPayload,
+    payloadHash: hashRecordPayload(commandPayload),
+  });
+
+  assert.match(body, /-\\u002dtest/);
+  assert.deepEqual(parse(body).envelope.payload, commandPayload);
+});
 test('ordinary visible Markdown changes cannot alter structured authority', () => {
   const first = parse(render({}, 'First presentation.\n'));
   const second = parse(render({}, 'Completely different presentation.\n- [x] Cosmetic\n'));
@@ -188,7 +198,8 @@ test('root and authority objects require their exact v1 key sets', () => {
   ]) {
     const secretEnvelope = envelope({ authority: { ...validEnvelope.authority, actor } });
     assert.throws(() => render({ authority: secretEnvelope.authority }), /record-envelope:secret/);
-    const rawBody = `<!-- aitm-record\n${canonicalRecordJson(secretEnvelope)}\n-->`;
+    const transportJson = canonicalRecordJson(secretEnvelope).replaceAll('--', '-\\u002d');
+    const rawBody = `<!-- aitm-record\n${transportJson}\n-->`;
     assert.throws(() => parse(rawBody), /record-envelope:secret/);
   }
 });
@@ -359,6 +370,15 @@ test('marker syntax is bounded and exactly one complete record is required', () 
   const unsafePayload = { note: 'closes --> the marker' };
   assert.throws(
     () => render({ payload: unsafePayload, payloadHash: hashRecordPayload(unsafePayload) }),
+    /record-envelope:unsafe-comment/
+  );
+  const unsafeEnvelope = envelope({
+    payload: unsafePayload,
+    payloadHash: hashRecordPayload(unsafePayload),
+  });
+  const escapedUnsafeJson = canonicalRecordJson(unsafeEnvelope).replaceAll('--', '-\\u002d');
+  assert.throws(
+    () => parse(`<!-- aitm-record\n${escapedUnsafeJson}\n-->`),
     /record-envelope:unsafe-comment/
   );
   assert.throws(
