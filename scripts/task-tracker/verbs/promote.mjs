@@ -66,6 +66,7 @@ const REFUSAL_ID_TO_STATUS = {
   // section (>= 1 parseable entry); the gate-first `test` verb would otherwise
   // dead-end at "nothing to verify".
   'plan-exit-vc-presence': 'vc-presence-refused',
+  'plan-exit-decomposition': 'decomposition-refused',
   'plan-exit-epic-children-refine-or-beyond': 'epic-children-refused',
   // `plan-exit-plan-approved` intentionally omitted: historical verb didn't
   // enforce this marker; the central `move-state.mjs` subprocess does. Adding

@@ -20,6 +20,7 @@ import { planExitPlannedEstimateGuard } from '../lib/plan-exit-planned-estimate-
 import { planExitDeepDiveGuard } from '../lib/plan-exit-deep-dive-guard.mjs';
 import { planExitPlanMetadataGuard } from '../lib/plan-exit-plan-metadata-guard.mjs';
 import { planExitVcPresenceGuard } from '../lib/plan-exit-vc-presence-guard.mjs';
+import { decompositionPlanExitGuard } from '../lib/decomposition-plan-exit-guard.mjs';
 import { contiguityEntryGuard } from '../lib/contiguity-entry-guard.mjs';
 import { childCannotLeadEpicExitGuard } from '../lib/child-cannot-lead-epic-exit-guard.mjs';
 
@@ -33,6 +34,7 @@ export default Object.freeze({
     planExitDeepDiveGuard,
     planExitPlanMetadataGuard,
     planExitVcPresenceGuard,
+    decompositionPlanExitGuard,
     planEpicChildrenGuard,
     childCannotLeadEpicExitGuard,
   ]),
