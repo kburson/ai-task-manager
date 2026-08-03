@@ -156,6 +156,38 @@ test('every before and after comment/body write crash re-enters without blind du
   }
 });
 
+test('concurrent initializers refuse duplicate singleton candidates before either publishes a directory', async () => {
+  const memory = memoryIssue();
+  const listRecords = memory.deps.listIssueComments;
+  let initialScans = 0;
+  let releaseInitialScans;
+  const initialScansReady = new Promise((resolve) => {
+    releaseInitialScans = resolve;
+  });
+  memory.deps.listIssueComments = async (context) => {
+    if (initialScans < 2) {
+      initialScans += 1;
+      const snapshot = await listRecords(context);
+      if (initialScans === 2) releaseInitialScans();
+      await initialScansReady;
+      return snapshot;
+    }
+    return listRecords(context);
+  };
+
+  const results = await Promise.allSettled([
+    initializeIssueDirectory(input(memory)),
+    initializeIssueDirectory(input(memory)),
+  ]);
+
+  assert.equal(memory.state.records.length, 8);
+  assert.equal(memory.state.writes.body, 0);
+  assert.ok(results.every((result) => result.status === 'rejected'));
+  for (const result of results) {
+    assert.match(result.reason.message, /singleton-initializer:ambiguous/);
+  }
+});
+
 test('discovery and repair refuse malformed, foreign, missing, or duplicate singleton candidates', async () => {
   const valid = singletonRecord({ kind: 'timing', commentNodeId: 'IC_kwDOpaqueTiming' });
   const foreign = {
