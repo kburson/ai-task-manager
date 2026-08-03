@@ -1,6 +1,6 @@
 # Adaptive Rubric Lane Normalization Implementation Plan
 
-> Issue: #1094  
+> Issue: #1094
 > Base: `a2b9ae8236e55119e1776ba2f8b7c80b0c13a6fd`
 
 ## Goal
