@@ -21,6 +21,9 @@ export const LIFECYCLE_LABELS = {
   'timing-flushed': 'Timing data flushed to issue',
 };
 
+export const REVIEW_OWNED_LIFECYCLE_KEYS = new Set(['agent-review-passed', 'passed-final-review']);
+export const HOUSEKEEPING_KEYS = new Set(['story-closed', 'timing-flushed']);
+
 // Back-compat label aliases (#809). Bodies authored before the two-checkbox
 // split carried a single `Passed final human review` line for the
 // `passed-final-review` key. The parser and ticker accept the old label so
@@ -95,9 +98,12 @@ export function lifecycleSatisfaction(body, { fullAutoApproved = false } = {}) {
 }
 
 // #1036 — "Lifecycle" is common prose-heading vocabulary in deep dives.
-// Match the owned DoD subsection exactly so a preceding heading such as
-// "Lifecycle and operational boundaries" cannot shadow it.
-const LIFECYCLE_HEADING_RE = /^#{3,4}\s+Lifecycle\s+\(auto-ticked at Review\/Close\)\s*$/im;
+// Match owned DoD subsections exactly so descriptive headings cannot shadow
+// them. #982 splits the canonical Review and Close ownership while retaining
+// the combined heading as a legacy fallback.
+const CANONICAL_LIFECYCLE_HEADING_RE = /^#{3,4}\s+Lifecycle\s+\(verified at Review\)\s*$/im;
+const HOUSEKEEPING_HEADING_RE = /^#{3,4}\s+Housekeeping\s+\(verified at Close\)\s*$/im;
+const LEGACY_LIFECYCLE_HEADING_RE = /^#{3,4}\s+Lifecycle\s+\(auto-ticked at Review\/Close\)\s*$/im;
 const FUNCTIONAL_HEADING_RE = /^#{3,4}\s+Functional\b[^\n]*$/im;
 // Section ends at the next heading of equal-or-shallower depth, the field-DB
 // block, or end-of-body — whichever comes first.
@@ -121,7 +127,13 @@ function locateBy(headingRe, body) {
 }
 
 export function locateLifecycleSection(body) {
-  return locateBy(LIFECYCLE_HEADING_RE, body);
+  return (
+    locateBy(CANONICAL_LIFECYCLE_HEADING_RE, body) ?? locateBy(LEGACY_LIFECYCLE_HEADING_RE, body)
+  );
+}
+
+export function locateHousekeepingSection(body) {
+  return locateBy(HOUSEKEEPING_HEADING_RE, body);
 }
 
 export function locateFunctionalSection(body) {
@@ -140,9 +152,7 @@ export function parseFunctionalItems(body) {
   return items;
 }
 
-export function parseLifecycleItems(body) {
-  const loc = locateLifecycleSection(body);
-  if (!loc) return [];
+function parseOwnedItems(loc) {
   const items = [];
   const re = /^- \[([ x])\]\s+(.+)$/gm;
   let m;
@@ -158,6 +168,20 @@ export function parseLifecycleItems(body) {
     items.push({ key, label, checked });
   }
   return items;
+}
+
+export function parseLifecycleItems(body) {
+  const canonical = [
+    locateBy(CANONICAL_LIFECYCLE_HEADING_RE, body),
+    locateHousekeepingSection(body),
+  ].filter(Boolean);
+  if (canonical.length > 0) {
+    return canonical
+      .sort((left, right) => left.start - right.start)
+      .flatMap((loc) => parseOwnedItems(loc));
+  }
+  const legacy = locateBy(LEGACY_LIFECYCLE_HEADING_RE, body);
+  return legacy ? parseOwnedItems(legacy) : [];
 }
 
 // Inspect the structural state of a lifecycle item without mutating the body.

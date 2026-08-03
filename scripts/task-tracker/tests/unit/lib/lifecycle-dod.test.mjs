@@ -15,6 +15,7 @@ import {
   lifecycleItemState,
   LIFECYCLE_LABELS,
   LIFECYCLE_LABEL_SET,
+  locateHousekeepingSection,
   locateLifecycleSection,
 } from '../../../lib/lifecycle-dod.mjs';
 
@@ -32,6 +33,51 @@ const TEMPLATE = [
   '',
   '## Pickup Directive',
 ].join('\n');
+
+const CANONICAL_TEMPLATE = [
+  '## Definition of Done',
+  '',
+  '### Functional (verified at Test)',
+  '',
+  '- [ ] Acceptance criteria met',
+  '',
+  '### Lifecycle (verified at Review)',
+  '',
+  '- [ ] Agent Review Passed',
+  '- [ ] Final Review Passed',
+  '',
+  '### Housekeeping (verified at Close)',
+  '',
+  '- [ ] Story closed and moved to Done',
+  '- [ ] Timing data flushed to issue',
+].join('\n');
+
+// @story #982
+test('#982 canonical sections expose all owned keys in document order', () => {
+  assert.deepEqual(
+    parseLifecycleItems(CANONICAL_TEMPLATE).map(({ key }) => key),
+    ['agent-review-passed', 'passed-final-review', 'story-closed', 'timing-flushed']
+  );
+  assert.match(locateLifecycleSection(CANONICAL_TEMPLATE).section, /Agent Review Passed/);
+  assert.doesNotMatch(locateLifecycleSection(CANONICAL_TEMPLATE).section, /Story closed/);
+  assert.match(locateHousekeepingSection(CANONICAL_TEMPLATE).section, /Story closed/);
+});
+
+test('#982 canonical locators ignore descriptive lifecycle and housekeeping headings', () => {
+  const body = [
+    '## Deep-Dive Analysis',
+    '### Lifecycle and operational boundaries',
+    'Review prose.',
+    '### Housekeeping notes',
+    'Close prose.',
+    CANONICAL_TEMPLATE,
+  ].join('\n\n');
+
+  assert.match(locateLifecycleSection(body).section, /Agent Review Passed/);
+  assert.doesNotMatch(locateLifecycleSection(body).section, /Review prose/);
+  assert.match(locateHousekeepingSection(body).section, /Story closed/);
+  assert.doesNotMatch(locateHousekeepingSection(body).section, /Close prose/);
+});
 
 test('parseLifecycleItems: returns three keys in order', () => {
   const items = parseLifecycleItems(TEMPLATE);
