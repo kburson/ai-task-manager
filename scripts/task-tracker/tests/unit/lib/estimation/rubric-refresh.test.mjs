@@ -94,6 +94,47 @@ test('new eligible outcomes create one superseding snapshot and read it back', a
   assert.equal(result.commentNodeId, 'IC_01J00000000000000000000403');
 });
 
+// @story #1094
+test('refresh validates a corpus outcome containing targeted verification classifications', async () => {
+  const previous = createBootstrapRubric({ generatedAt: '2026-08-02T13:00:00.000Z' });
+  const targeted = structuredClone(outcome);
+  targeted.payload.actual.commands = [
+    {
+      classification: 'test-targeted-7',
+      durationMs: 60_000,
+      attempts: 1,
+      executions: [
+        {
+          receiptId: '01J00000000000000000000420',
+          stage: 'test',
+          commitSha: 'a'.repeat(40),
+          command: 'node',
+          args: ['--test', 'focused.test.mjs'],
+          exitCode: 0,
+          durationMs: 60_000,
+          reusedFrom: null,
+        },
+      ],
+    },
+  ];
+
+  const result = await loadOrRefreshRubric({
+    cfg: { repo: 'o/r', estimationRubricIssue: 1091 },
+    through: '2026-08-02T15:00:00.000Z',
+    deps: {
+      listRubricRecords: async () => [comment(previous)],
+      listEligibleOutcomes: async () => [targeted],
+      writeRubric: async ({ payload, predecessorRecordId }) =>
+        comment(payload, '01J00000000000000000000421', {
+          predecessor: predecessorRecordId,
+        }),
+    },
+  });
+
+  assert.equal(result.status, 'refreshed');
+  assert.equal(result.rubric.testLandscape.laneMinutes.focused, 1);
+});
+
 test('concurrent refreshes claim one cohort transition and create one successor', async () => {
   const previous = createBootstrapRubric({ generatedAt: '2026-08-02T13:00:00.000Z' });
   const records = [comment(previous)];
