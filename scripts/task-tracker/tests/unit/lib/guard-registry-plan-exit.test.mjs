@@ -77,6 +77,13 @@ const BARE_BODY = '## Scope\n\nno marker here\n';
 // STATES.plan.exitGuards). Returns a refine-estimate comment whose
 // `### Planned Estimate` appendix satisfies the gate.
 const PLANNED_ESTIMATE_OK_DEPS = {
+  // #1052 — keep registry integration tests offline while the decomposition
+  // guard reads its own project Size/Estimate inputs.
+  decomposition: {
+    projectDir: process.cwd(),
+    loadProjectFieldDefs: () => [],
+    projectValuesForIssue: async () => ({ size: 'XS', estimate: 4 }),
+  },
   plannedEstimate: {
     listComments: async ({ issueNumber }) => [
       {
