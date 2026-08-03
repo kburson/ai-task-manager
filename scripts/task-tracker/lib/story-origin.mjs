@@ -3,6 +3,7 @@
 import {
   findUnboldMetadataLabels,
   hasMetadataFields,
+  metadataFieldValue,
   normalizeMetadataSection,
   normalizeMetadataValue,
   upsertMetadataField,
@@ -33,6 +34,10 @@ export function findUnboldStoryOriginLabels(body) {
 
 export function hasStoryOriginFields(body) {
   return hasMetadataFields(body, STORY_ORIGIN_HEADING);
+}
+
+export function storyOriginFieldValue(body, key) {
+  return metadataFieldValue(body, STORY_ORIGIN_HEADING, key);
 }
 
 export function upsertStoryOriginField(body, key, value) {

@@ -150,6 +150,51 @@ describe('preflight Story Origin authoring (#892)', () => {
     assert.equal(sectionBody(result.stdout, 'Story Origin'), '- **kind**: research');
   });
 
+  it('derives a non-stub render kind from Story Origin', async () => {
+    const fx = fixture();
+    try {
+      writeFileSync(fx.origin, '- kind: research\n', 'utf8');
+      const result = await preflight([
+        '--shape',
+        'solo',
+        '--scope-file',
+        fx.scope,
+        '--ac-file',
+        fx.ac,
+        '--story-origin-file',
+        fx.origin,
+      ]);
+      assert.equal(result.code, 0, result.stderr);
+      assert.match(result.stdout, /<!-- aitm-issue-kind kind="research" -->/);
+      assert.doesNotMatch(result.stdout, /All automated tests pass/);
+    } finally {
+      rmSync(fx.dir, { recursive: true, force: true });
+    }
+  });
+
+  it('rejects an explicit kind that conflicts with Story Origin', async () => {
+    const fx = fixture();
+    try {
+      writeFileSync(fx.origin, '- kind: research\n', 'utf8');
+      const result = await preflight([
+        '--shape',
+        'solo',
+        '--scope-file',
+        fx.scope,
+        '--ac-file',
+        fx.ac,
+        '--story-origin-file',
+        fx.origin,
+        '--kind',
+        'code',
+      ]);
+      assert.equal(result.code, 2, result.stderr);
+      assert.match(result.stderr, /kind.*conflict/i);
+    } finally {
+      rmSync(fx.dir, { recursive: true, force: true });
+    }
+  });
+
   it('records a sub-issue parent inside Story Origin', async () => {
     const fx = fixture();
     try {

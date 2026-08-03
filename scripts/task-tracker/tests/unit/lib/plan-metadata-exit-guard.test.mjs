@@ -26,7 +26,14 @@ describe('planExitPlanMetadataGuard (#892)', () => {
 
   it('refuses comment-only and prose-only content', () => {
     assert.equal(run('## Plan Metadata\n\n<!-- planning later -->\n').ok, false);
+    assert.equal(run('## Plan Metadata\n\n- **size**: <!-- TODO -->\n').ok, false);
     assert.equal(run('## Plan Metadata\n\nPlanning discussion is complete.\n').ok, false);
+  });
+
+  it('refuses nested headings even when a preceding field is substantive', () => {
+    const result = run('## Plan Metadata\n\n- **size**: M\n### Delivery\n- **estimate**: 8\n');
+    assert.equal(result.ok, false);
+    assert.match(result.reason, /flat/);
   });
 
   it('accepts a substantive flat planning field', () => {

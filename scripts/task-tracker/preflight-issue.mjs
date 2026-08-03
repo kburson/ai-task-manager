@@ -41,6 +41,7 @@ import { normalizePlanMetadataValue } from './lib/plan-metadata.mjs';
 import {
   hasStoryOriginFields,
   normalizeStoryOriginValue,
+  storyOriginFieldValue,
   upsertStoryOriginField,
 } from './lib/story-origin.mjs';
 import { formatIssueFieldDb } from './issue-field-db.mjs';
@@ -323,7 +324,8 @@ function emitShape(args, dodPath, root) {
     die('--parent <N> required with --shape sub-issue');
   }
 
-  const kind = resolveRenderKind(args);
+  let kind = resolveRenderKind(args);
+  let stampKindMarker = typeof args.kind === 'string';
   let rawFills;
   if (shape === 'stub') {
     // #426 — stub: no section files required. An optional --idea-file seeds
@@ -360,10 +362,27 @@ function emitShape(args, dodPath, root) {
       die('--story-origin-file must be a flat metadata fragment without headings');
     }
     const normalizedOrigin = normalizeStoryOriginValue(originFragment);
-    if (!hasStoryOriginFields(`## Story Origin\n\n${normalizedOrigin}\n`)) {
+    const wrappedOrigin = `## Story Origin\n\n${normalizedOrigin}\n`;
+    if (!hasStoryOriginFields(wrappedOrigin)) {
       die(
         '--story-origin-file must contain at least one non-empty flat Story Origin metadata field'
       );
+    }
+    const declaredKind = storyOriginFieldValue(wrappedOrigin, 'kind');
+    if (declaredKind !== null) {
+      let normalizedDeclaredKind;
+      try {
+        normalizedDeclaredKind = normalizeKind(declaredKind);
+      } catch (err) {
+        die(`Story Origin kind is invalid: ${err.message}`);
+      }
+      if (typeof args.kind === 'string' && normalizedDeclaredKind !== kind) {
+        die(
+          `--kind ${kind} conflicts with Story Origin kind ${normalizedDeclaredKind}; use one value`
+        );
+      }
+      kind = normalizedDeclaredKind;
+      stampKindMarker = true;
     }
     const planFragment = stripLeadingHeading(
       rawFills.plan_metadata,
@@ -445,7 +464,7 @@ function emitShape(args, dodPath, root) {
   // diff-decides; default-deny keeps the suite otherwise). `code` (the default)
   // leaves the body unmarked. The kind was already resolved above (#681) for DoD
   // filtering; reuse it.
-  if (typeof args.kind === 'string') {
+  if (stampKindMarker) {
     finalBody = setIssueKindMarker(finalBody, kind);
   }
   const bodyVerification = verifyIssueBody(finalBody);

@@ -68,6 +68,7 @@ describe('Story Origin section bounds (#892)', () => {
 
   it('requires a flat metadata field rather than comments or prose', () => {
     assert.equal(hasStoryOriginFields('## Story Origin\n\n<!-- marker -->\nplain prose\n'), false);
+    assert.equal(hasStoryOriginFields('## Story Origin\n\n- **kind**: <!-- TODO -->\n'), false);
     assert.equal(hasStoryOriginFields('## Story Origin\n\n- **kind**: code\n'), true);
   });
 

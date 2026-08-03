@@ -7,6 +7,7 @@
 const FIELD_RE = /^(?:- )?(?:\*\*([\w][\w-]*)(?:\*\*:|:\*\*)|([\w][\w-]*):)\s*(.*)$/;
 const ANY_HEADING_RE = /^#{1,6}\s+/;
 const KEY_RE = /^[\w][\w-]*$/;
+const HTML_COMMENT_RE = /<!--[\s\S]*?-->/g;
 
 function escapeRegExp(value) {
   return String(value).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -28,6 +29,10 @@ export function parseMetadataField(line) {
   const match = FIELD_RE.exec(String(line));
   if (!match) return null;
   return { key: match[1] ?? match[2], value: match[3], bold: match[1] != null };
+}
+
+export function isSubstantiveMetadataValue(value) {
+  return String(value).replace(HTML_COMMENT_RE, '').trim().length > 0;
 }
 
 export function normalizeMetadataValue(value) {
@@ -91,9 +96,21 @@ export function hasMetadataFields(body, heading) {
   if (!bounds) return false;
   for (let i = bounds.start; i < bounds.end; i += 1) {
     const field = parseMetadataField(lines[i]);
-    if (field && field.value.trim()) return true;
+    if (field && isSubstantiveMetadataValue(field.value)) return true;
   }
   return false;
+}
+
+export function metadataFieldValue(body, heading, key) {
+  const lines = String(body).split('\n');
+  const bounds = sectionBounds(lines, heading);
+  if (!bounds) return null;
+  const wanted = String(key).toLowerCase();
+  for (let i = bounds.start; i < bounds.end; i += 1) {
+    const field = parseMetadataField(lines[i]);
+    if (field?.key.toLowerCase() === wanted) return field.value.trim();
+  }
+  return null;
 }
 
 export function upsertMetadataField(body, heading, key, value) {
@@ -102,7 +119,7 @@ export function upsertMetadataField(body, heading, key, value) {
     throw new TypeError(`metadata key must match ${KEY_RE} (got ${JSON.stringify(field)})`);
   }
   const renderedValue = String(value).trim();
-  if (!renderedValue) {
+  if (!isSubstantiveMetadataValue(renderedValue)) {
     throw new TypeError(`metadata value for ${field} must be non-empty`);
   }
 
