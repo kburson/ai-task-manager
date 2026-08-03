@@ -125,6 +125,29 @@ test('appendCapsule rejects a duplicate candidate ID before writing', async () =
   assert.equal(memory.state.writes, 0);
 });
 
+test('appendCapsule rejects a split existing root history before writing', async () => {
+  const firstRoot = candidate({ recordId: id(1) });
+  const secondRoot = candidate({ recordId: id(2) });
+  const memory = memoryStore({
+    records: [
+      { commentNodeId: 'IC_kwDOFirstRoot', envelope: firstRoot.envelope },
+      { commentNodeId: 'IC_kwDOSecondRoot', envelope: secondRoot.envelope },
+    ],
+  });
+
+  await assert.rejects(
+    appendCapsule({
+      repository,
+      issue,
+      expectedHeadRecordId: id(2),
+      candidate: candidate({ recordId: id(3), predecessor: id(2) }),
+      deps: memory.deps,
+    }),
+    /capsule-chain:multiple-roots/
+  );
+  assert.equal(memory.state.writes, 0);
+});
+
 test('a newer second successor remains a blocked fork and never becomes the selected authority', () => {
   const root = candidate({ recordId: id(1) }).envelope;
   const earlier = candidate({ recordId: id(2), predecessor: id(1) }).envelope;

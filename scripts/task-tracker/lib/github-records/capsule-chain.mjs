@@ -79,9 +79,13 @@ function buildIndex(records, context) {
 
 function validatePredecessors(byId) {
   const successors = new Map();
+  const roots = [];
   for (const record of byId.values()) {
     const { predecessor, recordId } = record.envelope;
-    if (predecessor === null) continue;
+    if (predecessor === null) {
+      roots.push(recordId);
+      continue;
+    }
     if (predecessor === recordId) throw chainError('self-link');
     if (!byId.has(predecessor)) throw chainError('missing-predecessor');
     const entries = successors.get(predecessor) ?? [];
@@ -100,6 +104,7 @@ function validatePredecessors(byId) {
     visited.add(recordId);
   };
   for (const recordId of byId.keys()) visit(recordId);
+  if (byId.size > 0 && roots.length !== 1) throw chainError('multiple-roots');
   return successors;
 }
 
