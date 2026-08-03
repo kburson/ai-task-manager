@@ -92,7 +92,11 @@ export function parseIssueDirectory({ issueBody } = {}) {
 
 export function renderIssueDirectory(directory) {
   const normalized = normalizeDirectory(directory);
-  return `<!-- aitm-directory\n${canonicalRecordJson(normalized)}\n-->`;
+  // A directory is embedded in an HTML comment. Escaping each double hyphen in
+  // canonical JSON is value-preserving after JSON parsing and leaves the one
+  // closing delimiter as the only literal comment terminator.
+  const encoded = canonicalRecordJson(normalized).replaceAll('--', '-\\u002d');
+  return `<!-- aitm-directory\n${encoded}\n-->`;
 }
 
 export function singletonLogicalIdentity({ repository, issue, kind } = {}) {

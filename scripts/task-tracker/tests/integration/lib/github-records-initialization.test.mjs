@@ -131,6 +131,17 @@ test('discovery is read-only and does not need an actor or write transport', asy
   assert.deepEqual(memory.state.writes, { comments: 0, body: 0 });
 });
 
+test('invalid directory issue IDs refuse before the first singleton mutation', async () => {
+  for (const issueNodeId of ['I'.repeat(257), 'I_kwDOpaque\ncontrol', 'I_kwDOpaque-->']) {
+    const memory = memoryIssue();
+    await assert.rejects(
+      initializeIssueDirectory(input(memory, { issueNodeId })),
+      /singleton-initializer:input/
+    );
+    assert.deepEqual(memory.state.writes, { comments: 0, body: 0 });
+  }
+});
+
 test('every before and after comment/body write crash re-enters without blind duplicate creation', async () => {
   const boundaries = [
     ...kinds.flatMap((kind) => [`before-comment:${kind}`, `after-comment:${kind}`]),
@@ -186,6 +197,24 @@ test('concurrent initializers refuse duplicate singleton candidates before eithe
   for (const result of results) {
     assert.match(result.reason.message, /singleton-initializer:ambiguous/);
   }
+});
+
+test('initializer compensates a duplicate injected after final scan before body publication', async () => {
+  const memory = memoryIssue();
+  const writeIssueBody = memory.deps.writeIssueBody;
+  const competing = singletonRecord({
+    kind: 'timing',
+    commentNodeId: 'IC_kwDOpaqueInitializerLateRace',
+  });
+  memory.deps.writeIssueBody = async (args) => {
+    await writeIssueBody(args);
+    if (memory.state.writes.body === 1) memory.state.records.push(competing);
+  };
+
+  await assert.rejects(initializeIssueDirectory(input(memory)), /singleton-initializer:ambiguous/);
+  assert.equal(memory.state.writes.comments, 4);
+  assert.equal(memory.state.writes.body, 2);
+  assert.equal(parseIssueDirectory({ issueBody: memory.state.body }), null);
 });
 
 test('discovery and repair refuse malformed, foreign, missing, or duplicate singleton candidates', async () => {
@@ -269,4 +298,47 @@ test('repair refuses a duplicate injected after discovery before publishing a di
 
   await assert.rejects(repairIssueDirectory(input(memory)), /singleton-initializer:ambiguous/);
   assert.equal(memory.state.writes.body, 0);
+});
+
+test('repair compensates a duplicate injected after final scan before body publication', async () => {
+  const records = kinds.map((kind, index) =>
+    singletonRecord({ kind, commentNodeId: `IC_kwDOpaqueRepairLateRace${index}` })
+  );
+  const memory = memoryIssue({ records });
+  const writeIssueBody = memory.deps.writeIssueBody;
+  const competing = singletonRecord({
+    kind: 'timing',
+    commentNodeId: 'IC_kwDOpaqueRepairLateRaceCompeting',
+  });
+  memory.deps.writeIssueBody = async (args) => {
+    await writeIssueBody(args);
+    if (memory.state.writes.body === 1) memory.state.records.push(competing);
+  };
+
+  await assert.rejects(repairIssueDirectory(input(memory)), /singleton-initializer:ambiguous/);
+  assert.equal(memory.state.writes.comments, 0);
+  assert.equal(memory.state.writes.body, 2);
+  assert.equal(parseIssueDirectory({ issueBody: memory.state.body }), null);
+});
+
+test('a failed duplicate compensation returns a fail-closed body-compensation error', async () => {
+  const memory = memoryIssue();
+  const writeIssueBody = memory.deps.writeIssueBody;
+  const competing = singletonRecord({
+    kind: 'timing',
+    commentNodeId: 'IC_kwDOpaqueCompensationFailure',
+  });
+  let writes = 0;
+  memory.deps.writeIssueBody = async (args) => {
+    writes += 1;
+    if (writes === 2) throw new Error('compensation transport failure');
+    await writeIssueBody(args);
+    memory.state.records.push(competing);
+  };
+
+  await assert.rejects(
+    initializeIssueDirectory(input(memory)),
+    /singleton-initializer:body-compensation/
+  );
+  assert.equal(memory.state.writes.body, 1);
 });
