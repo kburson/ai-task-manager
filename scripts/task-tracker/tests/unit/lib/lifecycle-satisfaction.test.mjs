@@ -26,6 +26,18 @@ function bodyWith(lines = []) {
   ].join('\n');
 }
 
+function canonicalBody({ review = [], housekeeping = [] } = {}) {
+  return [
+    '## Definition of Done',
+    '### Functional (verified at Test)',
+    '- [x] Some user-verified item',
+    '### Lifecycle (verified at Review)',
+    ...review,
+    '### Housekeeping (verified at Close)',
+    ...housekeeping,
+  ].join('\n');
+}
+
 const ALL_LIFECYCLE_LINES = Object.values(LIFECYCLE_LABELS).map((l) => `- [ ] ${l}`);
 
 test('lifecycleSatisfaction: all absent when labels absent', () => {
@@ -101,6 +113,28 @@ test('assertLifecycleSatisfied: only close-owned keys missing → pass', () => {
   // Full results still expose the unticked close-owned keys for integrity reporting.
   const missingInResults = gate.results.filter((r) => r.status === 'missing').map((r) => r.key);
   assert.deepEqual(missingInResults.sort(), ['story-closed', 'timing-flushed']);
+});
+
+// @story #982
+test('#982 canonical satisfaction reads review and housekeeping as one logical set', () => {
+  const body = canonicalBody({
+    review: [
+      `- [x] ${LIFECYCLE_LABELS['agent-review-passed']}`,
+      `- [x] ${LIFECYCLE_LABELS['passed-final-review']}`,
+    ],
+    housekeeping: [
+      `- [ ] ${LIFECYCLE_LABELS['story-closed']}`,
+      `- [ ] ${LIFECYCLE_LABELS['timing-flushed']}`,
+    ],
+  });
+
+  const gate = assertLifecycleSatisfied({ body });
+  assert.equal(gate.block, false);
+  assert.equal(gate.missing.length, 0);
+  assert.deepEqual(
+    gate.results.filter(({ status }) => status === 'missing').map(({ key }) => key),
+    ['story-closed', 'timing-flushed']
+  );
 });
 
 test('assertLifecycleSatisfied: required + all ticked → pass', () => {

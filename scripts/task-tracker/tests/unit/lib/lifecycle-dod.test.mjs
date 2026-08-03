@@ -79,6 +79,46 @@ test('#982 canonical locators ignore descriptive lifecycle and housekeeping head
   assert.doesNotMatch(locateHousekeepingSection(body).section, /Close prose/);
 });
 
+test('#982 ticks each key only in its owning canonical section', () => {
+  const reviewed = tickLifecycleItem(CANONICAL_TEMPLATE, 'agent-review-passed');
+  assert.match(reviewed, /### Lifecycle[\s\S]*- \[x\] Agent Review Passed/);
+  assert.match(reviewed, /### Housekeeping[\s\S]*- \[ \] Story closed/);
+
+  const closed = tickLifecycleItem(reviewed, 'story-closed');
+  assert.match(closed, /### Housekeeping[\s\S]*- \[x\] Story closed and moved to Done/);
+  assert.equal(lifecycleItemState({ body: closed, key: 'story-closed' }).alreadyTicked, true);
+  assert.match(untickLifecycleItem(closed, 'story-closed'), /- \[ \] Story closed/);
+});
+
+test('#982 pre-tick detection scans Lifecycle and Housekeeping', () => {
+  const body = tickLifecycleItem(
+    tickLifecycleItem(CANONICAL_TEMPLATE, 'agent-review-passed'),
+    'timing-flushed'
+  );
+  const result = detectLifecyclePretick(body);
+  assert.deepEqual(
+    result.regressions.map(({ key }) => key),
+    ['agent-review-passed', 'timing-flushed']
+  );
+  assert.equal(result.body, CANONICAL_TEMPLATE);
+});
+
+test('#982 canonical sections take precedence over a duplicate legacy section', () => {
+  const body = [
+    '### Lifecycle (auto-ticked at Review/Close)',
+    '- [ ] Agent Review Passed',
+    '- [ ] Story closed and moved to Done',
+    '',
+    CANONICAL_TEMPLATE,
+  ].join('\n');
+
+  assert.equal(parseLifecycleItems(body).length, 4);
+  const ticked = tickLifecycleItem(body, 'story-closed');
+  const legacy = ticked.slice(0, ticked.indexOf('## Definition of Done'));
+  assert.match(legacy, /- \[ \] Story closed and moved to Done/);
+  assert.match(ticked.slice(ticked.indexOf('## Definition of Done')), /- \[x\] Story closed/);
+});
+
 test('parseLifecycleItems: returns three keys in order', () => {
   const items = parseLifecycleItems(TEMPLATE);
   assert.equal(items.length, 3);

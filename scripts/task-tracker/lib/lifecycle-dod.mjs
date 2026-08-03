@@ -136,6 +136,15 @@ export function locateHousekeepingSection(body) {
   return locateBy(HOUSEKEEPING_HEADING_RE, body);
 }
 
+function locateSectionForKey(body, key) {
+  const lifecycle = locateBy(CANONICAL_LIFECYCLE_HEADING_RE, body);
+  const housekeeping = locateHousekeepingSection(body);
+  if (lifecycle || housekeeping) {
+    return HOUSEKEEPING_KEYS.has(key) ? housekeeping : lifecycle;
+  }
+  return locateBy(LEGACY_LIFECYCLE_HEADING_RE, body);
+}
+
 export function locateFunctionalSection(body) {
   return locateBy(FUNCTIONAL_HEADING_RE, body);
 }
@@ -200,7 +209,7 @@ export function lifecycleItemState({ body, key } = {}) {
   if (!(key in LIFECYCLE_LABELS)) {
     throw new Error(`lifecycleItemState: unknown lifecycle key "${key}"`);
   }
-  const loc = locateLifecycleSection(body);
+  const loc = locateSectionForKey(body, key);
   if (!loc) return { sectionPresent: false, labelFound: false, alreadyTicked: false };
   const items = parseLifecycleItems(body);
   const match = items.find((it) => it.key === key);
@@ -223,7 +232,7 @@ function _toggleLifecycleItem(body, key, tick) {
   if (!(key in LIFECYCLE_LABELS)) {
     throw new Error(`${tick ? 'tick' : 'untick'}LifecycleItem: unknown lifecycle key "${key}"`);
   }
-  const loc = locateLifecycleSection(body);
+  const loc = locateSectionForKey(body, key);
   if (!loc) return String(body || '');
   const fromChar = tick ? ' ' : 'x';
   const toChar = tick ? 'x' : ' ';
