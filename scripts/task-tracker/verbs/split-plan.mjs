@@ -154,11 +154,14 @@ export async function runSplitPlan({
         proposals: publicProposals,
         createdChildren,
         failed: {
+          taskNumber: draft.proposal.task.number,
           title: draft.proposal.title,
           exitCode: result.exitCode,
           stdout: result.stdout,
           stderr: result.stderr,
         },
+        recovery:
+          'Inspect the created children before retrying; do not delete them. Resolve any duplicate-child refusal explicitly.',
       };
     }
     const createdIssue = parseCreatedIssueNumber(result.stdout);
@@ -169,11 +172,14 @@ export async function runSplitPlan({
         proposals: publicProposals,
         createdChildren,
         failed: {
+          taskNumber: draft.proposal.task.number,
           title: draft.proposal.title,
           exitCode: 1,
           stdout: result.stdout,
           stderr: 'creator succeeded without an /issues/<N> URL',
         },
+        recovery:
+          'Inspect the created children before retrying; do not delete them. Resolve any duplicate-child refusal explicitly.',
       };
     }
     createdChildren.push({ title: draft.proposal.title, issueNumber: createdIssue });
@@ -213,7 +219,7 @@ function formatResult(result) {
   if (result.status === 'created') {
     return `split-plan: created ${result.createdChildren.map((child) => `#${child.issueNumber}`).join(', ')}`;
   }
-  return `split-plan: partial success after ${result.createdChildren.length} child(ren); ${result.failed.title} failed (exit ${result.failed.exitCode})`;
+  return `split-plan: partial success after ${result.createdChildren.length} child(ren); task ${result.failed.taskNumber} (${result.failed.title}) failed (exit ${result.failed.exitCode}). ${result.recovery}`;
 }
 
 export async function verbSplitPlan(ctx) {

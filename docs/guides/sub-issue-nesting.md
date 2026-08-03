@@ -73,6 +73,73 @@ The session that created `#340` under `#259` exercised this end-to-end; see
 shape (detach-then-attach is required because `addSubIssue` rejects a child
 that already has a parent).
 
+## Executable decomposition review
+
+Run `npx aitm decompose-check 1052` during Plan. `story-ok` proceeds normally,
+`needs-decomposition-review` records a warning, and `must-split` blocks Develop
+until children exist or a complete visible waiver is present.
+
+The classifier asks for decomposition review when any of these signals exists:
+
+- Size is XL;
+- Estimate is at least 16 hours;
+- the linked plan has at least three exact numbered `### Task N:` or
+  `### Milestone N:` sections; or
+- at least two numbered sections contain executable verifier groups.
+
+It returns `must-split` when the Estimate is at least 24 hours, the plan has at
+least four numbered sections, or Size is XL and at least two numbered sections
+have executable verifiers. `must-split` takes precedence over review-only
+signals.
+
+Preview child bodies with `npx aitm split-plan 1052 --dry-run`. After inspecting
+the complete proposal, create children with
+`npx aitm split-plan 1052 --confirm`. Confirm delegates every child to
+`npx aitm create-issue --shape sub-issue`; it never calls GitHub issue creation
+directly. Every draft must pass the sanctioned creator's dry-run before the
+first live child is created.
+
+The source issue becomes the coordination epic through its child relationships.
+If it already has a parent, generated metadata records that outer Parent epic
+and the source as the Nested epic. Otherwise the source is recorded as both.
+Task-specific acceptance criteria and verification commands remain on the
+generated children; the source owns relationship and roll-up evidence.
+
+### Visible decomposition waiver
+
+A waiver is a root-level section with exactly this minimum schema:
+
+```markdown
+## Decomposition Waiver
+
+- **Rationale**: <why one story is safer>
+- **Expected-focused-duration**: <positive hours, e.g. 12h>
+- **Milestone-checkpoint-plan**: <reviewable checkpoint sequence>
+- **Why-no-nested-children**: <why child issues add more risk than clarity>
+- **Approved-by**: <reviewer identity>
+- **Approved-at**: <ISO-8601 timestamp>
+```
+
+Labels are case-insensitive, but every value must be substantive and stay on
+the same flat field line. The duration must be positive and use `h`, `hour`, or
+`hours`; `Approved-at` must parse as a date. Missing, duplicated, malformed, or
+nested fields invalidate the waiver. A hidden marker is not a waiver.
+
+### Partial-success recovery
+
+If child N fails after earlier children were created, confirm stops. The error
+contains:
+
+- created child numbers and titles;
+- the failed task number and title;
+- the creator exit code and stderr summary; and
+- instructions to inspect existing children before retrying.
+
+Already-created children are not deleted. Inspect them before retrying and
+resolve the failure first. A retry relies on the sanctioned creator's
+duplicate-child guard and requires explicit operator resolution; do not bypass
+that guard or recreate children directly.
+
 ## When to flatten back
 
 If a sub-epic's children all close together and the planning surface stops

@@ -1,3 +1,4 @@
+// @story #1052
 import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import path from 'node:path';
 
@@ -212,8 +213,10 @@ test('confirm stops on partial live failure and retains created issue numbers', 
     assert.equal(result.status, 'partial-success');
     assert.deepEqual(live, ['Classifier', 'CLI']);
     assert.deepEqual(result.createdChildren, [{ title: 'Classifier', issueNumber: 1101 }]);
+    assert.equal(result.failed.taskNumber, 2);
     assert.equal(result.failed.title, 'CLI');
     assert.equal(result.failed.exitCode, 6);
+    assert.match(result.recovery, /Inspect the created children before retrying/);
   } finally {
     args.cleanup();
   }

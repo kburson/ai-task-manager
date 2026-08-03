@@ -121,6 +121,8 @@ pexec
 pipefail
 pkg
 prebody
+preflighted
+preflights
 prefs
 pretick
 Pretick

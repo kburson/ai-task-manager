@@ -1,7 +1,7 @@
 # Nested-Epic Decomposition Design
 
-**Issue:** #1052  
-**Status:** Approved under explicit Full-Auto authority  
+**Issue:** #1052
+**Status:** Approved under explicit Full-Auto authority
 **Date:** 2026-08-03
 
 ## Problem

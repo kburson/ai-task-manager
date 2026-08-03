@@ -1,7 +1,7 @@
+// @story #1052
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdtempSync, mkdirSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 import {
@@ -11,6 +11,7 @@ import {
   parseDecompositionWaiver,
   resolvePlanPath,
 } from '../../../lib/decomposition-policy.mjs';
+import { projectScratchDir } from '../../../lib/scratch-dir.mjs';
 
 function taskPlan(taskCount, verifiedCount) {
   return Array.from({ length: taskCount }, (_, index) => {
@@ -101,7 +102,7 @@ text`;
 });
 
 test('resolvePlanPath contains paths to the repository and reports unavailable inputs', () => {
-  const projectDir = mkdtempSync(join(tmpdir(), 'aitm-decomposition-policy-'));
+  const projectDir = mkdtempSync(join(projectScratchDir('test'), 'aitm-decomposition-policy-'));
   mkdirSync(join(projectDir, 'docs'), { recursive: true });
   writeFileSync(join(projectDir, 'docs', 'plan.md'), '# Plan\n', 'utf8');
 

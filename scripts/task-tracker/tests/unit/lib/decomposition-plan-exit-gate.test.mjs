@@ -1,7 +1,7 @@
+// @story #1052
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdtempSync, mkdirSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 import planState from '../../../states/plan.mjs';
@@ -10,9 +10,10 @@ import {
   evaluateIssueDecomposition,
 } from '../../../lib/decomposition-plan-exit-guard.mjs';
 import { runDecomposeCheck } from '../../../verbs/decompose-check.mjs';
+import { projectScratchDir } from '../../../lib/scratch-dir.mjs';
 
 function projectPlan(text) {
-  const projectDir = mkdtempSync(join(tmpdir(), 'aitm-decomposition-gate-'));
+  const projectDir = mkdtempSync(join(projectScratchDir('test'), 'aitm-decomposition-gate-'));
   mkdirSync(join(projectDir, 'docs'), { recursive: true });
   const planPath = join(projectDir, 'docs', 'plan.md');
   writeFileSync(planPath, text, 'utf8');
