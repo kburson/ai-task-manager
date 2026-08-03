@@ -13,6 +13,7 @@
 // all-marker AITM Progress Markers section) counts as non-empty.
 
 import { registry } from '../registry.mjs';
+import { hasNestedMetadataHeading } from '../../metadata-section.mjs';
 
 // One row per required section, in canonical body order. `label` is the
 // human name used in failures[]; `match` tests a heading's text (the part
@@ -99,6 +100,12 @@ export function validate({ body } = {}) {
     }
     if (!/\S/.test(hit.content)) {
       failures.push(`section '${row.label}' is present but empty`);
+    }
+  }
+
+  for (const heading of ['Story Origin', 'Plan Metadata']) {
+    if (hasNestedMetadataHeading(body, heading)) {
+      failures.push(`section '${heading}' must be flat and contain no nested headings`);
     }
   }
 

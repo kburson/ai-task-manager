@@ -33,6 +33,17 @@ test('passes a well-formed body with all ten sections in order', () => {
   assert.deepEqual(res.failures, []);
 });
 
+test('fails when Story Origin or Plan Metadata contains a nested heading', () => {
+  for (const [needle, replacement, section] of [
+    ['- **kind**: code', '- **kind**: code\n### Relationships\n- **parent**: #1', 'Story Origin'],
+    ['- **Size:** S', '- **Size:** S\n#### Delivery\n- **wave**: 1', 'Plan Metadata'],
+  ]) {
+    const res = validate({ body: WELL_FORMED.replace(needle, replacement) });
+    assert.equal(res.pass, false, section);
+    assert.ok(res.failures.some((failure) => failure.includes(`${section}' must be flat`)));
+  }
+});
+
 test('an all-HTML-comment section counts as non-empty', () => {
   // The AITM Progress Markers section is only markers — must still pass.
   const res = validate({ body: WELL_FORMED });

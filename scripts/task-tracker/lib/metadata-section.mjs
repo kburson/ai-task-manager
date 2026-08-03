@@ -44,6 +44,18 @@ export function sectionBounds(lines, heading) {
   return { heading: headingIdx, start: headingIdx + 1, end };
 }
 
+export function hasNestedMetadataHeading(body, heading) {
+  const lines = String(body).split('\n');
+  const target = headingRe(heading);
+  const start = lines.findIndex((line) => target.test(line));
+  if (start === -1) return false;
+  for (let i = start + 1; i < lines.length; i += 1) {
+    if (/^##\s+/.test(lines[i])) return false;
+    if (ANY_HEADING_RE.test(lines[i])) return true;
+  }
+  return false;
+}
+
 export function normalizeMetadataSection(body, heading) {
   const source = String(body);
   const lines = source.split('\n');

@@ -105,6 +105,16 @@ test('verifyIssueBody: metadata sections reject nested headings', () => {
   }
 });
 
+test('verifyIssueBody: flatness check accepts heading whitespace and CRLF grammar', () => {
+  const body = CANONICAL_BODY.replace(
+    '## Story Origin\n\n**kind:** code',
+    '## Story Origin   \r\n\r\n**kind:** code\r\n### Relationships\r\n- **related**: #883'
+  );
+  const res = verifyIssueBody(body);
+  assert.equal(res.ok, false);
+  assert.ok(res.missing.some((item) => item.includes('Story Origin must be flat')));
+});
+
 test('verifyIssueBody: missing Plan Metadata', () => {
   const body = CANONICAL_BODY.replace('## Plan Metadata', '## Planning');
   const res = verifyIssueBody(body);
