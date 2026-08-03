@@ -354,7 +354,7 @@ function isSubset(candidate, parent) {
   return candidate.every((value) => parent.includes(value));
 }
 
-function validDelegationEdge(parent, child, parents) {
+function validInitialDelegationEdge(parent, child, parents) {
   const parentAuthorityGrantId = parent.envelope?.authority.grantId;
   return (
     child.grant.epoch === parent.grant.epoch &&
@@ -375,13 +375,36 @@ function validDelegationEdge(parent, child, parents) {
   );
 }
 
-function buildDelegationGraph(validatedGrants, parents) {
+function validDelegationEdge(parent, child, parents, predecessorsBySuccessorId) {
+  const predecessor = predecessorsBySuccessorId.get(child.grant.grantId);
+  if (predecessor === undefined) return validInitialDelegationEdge(parent, child, parents);
+  return (
+    child.grant.parentGrantId === parent.grant.grantId &&
+    validDelegationEdge(parent, predecessor, parents, predecessorsBySuccessorId)
+  );
+}
+
+function buildDelegationGraph(validatedGrants, validatedRevocations, parents) {
   const grantsById = new Map(validatedGrants.map((entry) => [entry.grant.grantId, entry]));
+  const predecessorsBySuccessorId = new Map();
+  for (const { revocation } of validatedRevocations) {
+    if (revocation.state !== 'replaced') continue;
+    const predecessor = grantsById.get(revocation.grantId);
+    if (predecessor === undefined || predecessorsBySuccessorId.has(revocation.replacementGrantId)) {
+      return undefined;
+    }
+    predecessorsBySuccessorId.set(revocation.replacementGrantId, predecessor);
+  }
   for (const child of validatedGrants) {
     const parentGrantId = child.grant.parentGrantId;
     if (parentGrantId === null) continue;
     const parent = grantsById.get(parentGrantId);
-    if (parent === undefined || !validDelegationEdge(parent, child, parents)) return undefined;
+    if (
+      parent === undefined ||
+      !validDelegationEdge(parent, child, parents, predecessorsBySuccessorId)
+    ) {
+      return undefined;
+    }
   }
   return { grantsById };
 }
@@ -413,11 +436,15 @@ function hasEnvelopeAuthority(entry, coordinator, epoch, grantId = undefined) {
   );
 }
 
+function transitionAuthorityGrantId(grantEntry) {
+  return grantEntry.envelope?.authority.grantId;
+}
+
 function validReplacementEdge(oldGrant, replacementGrant, revocationEntry) {
   const revocation = revocationEntry.revocation;
   const old = oldGrant.grant;
   const replacement = replacementGrant.grant;
-  const priorAuthorityGrantId = oldGrant.envelope?.authority.grantId;
+  const priorAuthorityGrantId = transitionAuthorityGrantId(oldGrant);
   return (
     old.epoch === revocation.epoch &&
     replacement.epoch === old.epoch + 1 &&
@@ -428,7 +455,7 @@ function validReplacementEdge(oldGrant, replacementGrant, revocationEntry) {
     isSubset(replacementGrant.branches, oldGrant.branches) &&
     isSubset(replacementGrant.sourceBranches, oldGrant.sourceBranches) &&
     isSubset(replacementGrant.destinationBranches, oldGrant.destinationBranches) &&
-    hasEnvelopeAuthority(oldGrant, old.coordinator, old.epoch) &&
+    (old.parentGrantId !== null || hasEnvelopeAuthority(oldGrant, old.coordinator, old.epoch)) &&
     hasEnvelopeAuthority(revocationEntry, old.coordinator, old.epoch, priorAuthorityGrantId) &&
     hasEnvelopeAuthority(replacementGrant, old.coordinator, old.epoch, priorAuthorityGrantId)
   );
@@ -518,7 +545,7 @@ export function resolveCoordinatorAuthority({
   if (!hasValidReplacementHistory(validatedGrants, validatedRevocations)) {
     return resolutionBlocked(validatedGrants, 'invalid-replacement');
   }
-  const delegation = buildDelegationGraph(validatedGrants, parents);
+  const delegation = buildDelegationGraph(validatedGrants, validatedRevocations, parents);
   if (delegation === undefined) return resolutionBlocked(validatedGrants, 'invalid-delegation');
   const projectionGrant = validatedGrants.find(
     ({ grant }) => grant.grantId === coordinationProjection.grantId
