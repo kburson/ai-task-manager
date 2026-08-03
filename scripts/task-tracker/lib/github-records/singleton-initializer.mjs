@@ -205,9 +205,15 @@ async function writeAndReadBackDirectory({
     }
     return readBack;
   } catch (error) {
+    let current;
     try {
-      const current = await readLiveBody({ repository, issue, deps });
+      current = await readLiveBody({ repository, issue, deps });
       if (current !== body) throw initializerError('body-compensation');
+    } catch {
+      throw initializerError('body-compensation');
+    }
+    await emitCrash(crashAt, 'before-compensation-body');
+    try {
       await deps.writeIssueBody({ repository, issue, expectedBody: body, body: expectedBody });
       const restored = await readLiveBody({ repository, issue, deps });
       if (restored !== expectedBody || parseIssueDirectory({ issueBody: restored }) !== null) {
@@ -216,6 +222,7 @@ async function writeAndReadBackDirectory({
     } catch {
       throw initializerError('body-compensation');
     }
+    await emitCrash(crashAt, 'after-compensation-body');
     throw error;
   }
 }
