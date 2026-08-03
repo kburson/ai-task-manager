@@ -235,3 +235,62 @@ test('a replacement capsule must retain old coordinator provenance and its exact
     { status: 'blocked', diagnostic: { reason: 'invalid-replacement' } }
   );
 });
+
+test('a replacement capsule must retain the exact prior authority grant identifier', () => {
+  const originalGrant = grant({ grantId: 'grant-original', coordinator, epoch: 1 });
+  const original = capsule({
+    recordId: id(21),
+    recordType: 'coordinator-grant',
+    payload: originalGrant,
+    epoch: 1,
+    grantId: id(9001),
+    actor: coordinator.actor,
+  });
+  const initial = resolve({
+    records: [original],
+    coordinationProjection: {
+      schema: 'aitm.coordination-projection/v1',
+      grantId: 'grant-original',
+      epoch: 1,
+      adoptionState: 'adopted',
+    },
+  });
+  const replacementGrant = grant({
+    grantId: 'grant-replacement',
+    coordinator: replacementCoordinator,
+    epoch: 2,
+    issuer: coordinator,
+  });
+  const replacement = replaceCoordinator({
+    authority: initial,
+    expectedGrantId: 'grant-original',
+    expectedEpoch: 1,
+    replacementGrant,
+  });
+  const revocation = capsule({
+    recordId: id(22),
+    predecessor: id(21),
+    recordType: 'coordinator-revocation',
+    payload: replacement.revocation,
+    epoch: 1,
+    grantId: id(9001),
+    actor: coordinator.actor,
+  });
+  const forgedReplacement = capsule({
+    recordId: id(23),
+    predecessor: id(22),
+    recordType: 'coordinator-grant',
+    payload: replacementGrant,
+    epoch: 1,
+    grantId: id(9002),
+    actor: coordinator.actor,
+  });
+
+  assert.deepEqual(
+    resolve({
+      records: [original, revocation, forgedReplacement],
+      coordinationProjection: replacement.coordinationProjection,
+    }),
+    { status: 'blocked', diagnostic: { reason: 'invalid-replacement' } }
+  );
+});

@@ -295,11 +295,11 @@ function advanceAuthorityGenerations(validatedGrants) {
   );
 }
 
-function activeAuthority(validatedGrant, generation) {
+function activeAuthority(validatedGrant, generation, effectiveScope = validatedGrant.scope) {
   const authority = deepFreeze({
     status: 'active',
     grant: frozenCopy(validatedGrant.grant),
-    scopeIssueIds: Object.freeze([...validatedGrant.scope]),
+    scopeIssueIds: Object.freeze([...effectiveScope]),
   });
   authorityMetadata.set(authority, {
     key: authorityEpochKey(authority.grant.grantId, authority.grant.epoch),
@@ -330,11 +330,12 @@ function resolutionPaused(validatedGrants) {
   return paused();
 }
 
-function resolutionActive(validatedGrants, validatedGrant) {
+function resolutionActive(validatedGrants, validatedGrant, effectiveScope = validatedGrant.scope) {
   const generations = advanceAuthorityGenerations(validatedGrants);
   return activeAuthority(
     validatedGrant,
-    generations.get(authorityEpochKey(validatedGrant.grant.grantId, validatedGrant.grant.epoch))
+    generations.get(authorityEpochKey(validatedGrant.grant.grantId, validatedGrant.grant.epoch)),
+    effectiveScope
   );
 }
 
@@ -353,10 +354,55 @@ function isSubset(candidate, parent) {
   return candidate.every((value) => parent.includes(value));
 }
 
-function hasEnvelopeAuthority(entry, coordinator, epoch) {
+function validDelegationEdge(parent, child, parents) {
+  return (
+    child.grant.epoch === parent.grant.epoch &&
+    child.grant.parentGrantId === parent.grant.grantId &&
+    isDeepStrictEqual(child.grant.issuer, parent.grant.coordinator) &&
+    isDescendant(child.grant.scope.scopeRootIssue, parent.grant.scope.scopeRootIssue, parents) &&
+    isStrictSubset(child.scope, parent.scope) &&
+    isStrictSubset(child.grant.operations, parent.grant.operations) &&
+    isStrictSubset(child.branches, parent.branches) &&
+    isStrictSubset(child.sourceBranches, parent.sourceBranches) &&
+    isStrictSubset(child.destinationBranches, parent.destinationBranches)
+  );
+}
+
+function buildDelegationGraph(validatedGrants, parents) {
+  const grantsById = new Map(validatedGrants.map((entry) => [entry.grant.grantId, entry]));
+  for (const child of validatedGrants) {
+    const parentGrantId = child.grant.parentGrantId;
+    if (parentGrantId === null) continue;
+    const parent = grantsById.get(parentGrantId);
+    if (parent === undefined || !validDelegationEdge(parent, child, parents)) return undefined;
+  }
+  return { grantsById };
+}
+
+function isDelegationAncestor(ancestor, descendant, grantsById) {
+  let current = descendant;
+  while (current.grant.parentGrantId !== null) {
+    const parent = grantsById.get(current.grant.parentGrantId);
+    if (parent === undefined) return false;
+    if (parent === ancestor) return true;
+    current = parent;
+  }
+  return false;
+}
+
+function effectiveScope(entry, activeChildrenByParentId) {
+  const delegated = new Set(
+    (activeChildrenByParentId.get(entry.grant.grantId) ?? []).flatMap((child) => child.scope)
+  );
+  return entry.scope.filter((issue) => !delegated.has(issue));
+}
+
+function hasEnvelopeAuthority(entry, coordinator, epoch, grantId = undefined) {
   if (entry.envelope === null) return true;
   return (
-    entry.envelope.authority.actor === coordinator.actor && entry.envelope.authority.epoch === epoch
+    entry.envelope.authority.actor === coordinator.actor &&
+    entry.envelope.authority.epoch === epoch &&
+    (grantId === undefined || entry.envelope.authority.grantId === grantId)
   );
 }
 
@@ -364,6 +410,7 @@ function validReplacementEdge(oldGrant, replacementGrant, revocationEntry) {
   const revocation = revocationEntry.revocation;
   const old = oldGrant.grant;
   const replacement = replacementGrant.grant;
+  const priorAuthorityGrantId = oldGrant.envelope?.authority.grantId;
   return (
     old.epoch === revocation.epoch &&
     replacement.epoch === old.epoch + 1 &&
@@ -375,8 +422,8 @@ function validReplacementEdge(oldGrant, replacementGrant, revocationEntry) {
     isSubset(replacementGrant.sourceBranches, oldGrant.sourceBranches) &&
     isSubset(replacementGrant.destinationBranches, oldGrant.destinationBranches) &&
     hasEnvelopeAuthority(oldGrant, old.coordinator, old.epoch) &&
-    hasEnvelopeAuthority(revocationEntry, old.coordinator, old.epoch) &&
-    hasEnvelopeAuthority(replacementGrant, old.coordinator, old.epoch)
+    hasEnvelopeAuthority(revocationEntry, old.coordinator, old.epoch, priorAuthorityGrantId) &&
+    hasEnvelopeAuthority(replacementGrant, old.coordinator, old.epoch, priorAuthorityGrantId)
   );
 }
 
@@ -464,6 +511,8 @@ export function resolveCoordinatorAuthority({
   if (!hasValidReplacementHistory(validatedGrants, validatedRevocations)) {
     return resolutionBlocked(validatedGrants, 'invalid-replacement');
   }
+  const delegation = buildDelegationGraph(validatedGrants, parents);
+  if (delegation === undefined) return resolutionBlocked(validatedGrants, 'invalid-delegation');
   const projectionGrant = validatedGrants.find(
     ({ grant }) => grant.grantId === coordinationProjection.grantId
   );
@@ -493,15 +542,39 @@ export function resolveCoordinatorAuthority({
       ) &&
       (candidate.grant.expiresAt === null || candidate.grant.expiresAt > now)
   );
+  const activeGrantIds = new Set(active.map(({ grant }) => grant.grantId));
   if (
     active.some(
-      (candidate) => candidate !== projectionGrant && scopesOverlap(candidate, projectionGrant)
+      (candidate) =>
+        candidate.grant.parentGrantId !== null && !activeGrantIds.has(candidate.grant.parentGrantId)
+    )
+  ) {
+    return resolutionBlocked(validatedGrants, 'invalid-delegation');
+  }
+  const activeChildrenByParentId = new Map();
+  for (const candidate of active) {
+    if (candidate.grant.parentGrantId === null) continue;
+    const children = activeChildrenByParentId.get(candidate.grant.parentGrantId) ?? [];
+    children.push(candidate);
+    activeChildrenByParentId.set(candidate.grant.parentGrantId, children);
+  }
+  if (
+    active.some(
+      (candidate) =>
+        candidate !== projectionGrant &&
+        scopesOverlap(candidate, projectionGrant) &&
+        !isDelegationAncestor(candidate, projectionGrant, delegation.grantsById) &&
+        !isDelegationAncestor(projectionGrant, candidate, delegation.grantsById)
     )
   ) {
     return resolutionBlocked(validatedGrants, 'overlapping-grants');
   }
   if (coordinationProjection.adoptionState === 'required') return resolutionPaused(validatedGrants);
-  return resolutionActive(validatedGrants, projectionGrant);
+  return resolutionActive(
+    validatedGrants,
+    projectionGrant,
+    effectiveScope(projectionGrant, activeChildrenByParentId)
+  );
 }
 
 /** Authorize one bounded coordinator operation from an already resolved authority. */
