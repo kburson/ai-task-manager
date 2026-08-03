@@ -297,6 +297,34 @@ test('distinct focused commands on the same SHA are not learned as repeated veri
   assert.equal(updated.testLandscape.laneMinutes.focused, 2);
 });
 
+// @story #1094
+test('targeted ordinals aggregate as focused and compound classifications become stable lanes', () => {
+  const previous = createBootstrapRubric({ generatedAt: '2026-08-01T00:00:00.000Z' });
+  const sample = outcome({
+    actual: {
+      ...outcome().payload.actual,
+      commands: [
+        verificationCommand('test-targeted-7', [60_000]),
+        verificationCommand('test-targeted-8', [180_000]),
+        verificationCommand('test-fast-legacy', [240_000]),
+      ],
+    },
+    costClassification: {
+      necessaryHours: 7,
+      avoidableProcessWasteHours: 0,
+      unclassifiedHours: 0,
+      drivers: [],
+    },
+  });
+
+  const updated = updateEstimationRubric({ previous, outcomes: [sample] });
+
+  assert.equal(updated.testLandscape.laneMinutes.focused, 2);
+  assert.equal(updated.testLandscape.laneMinutes.fastLegacy, 4);
+  assert.equal(updated.testLandscape.laneMinutes['targeted-7'], undefined);
+  assert.equal(updated.testLandscape.laneMinutes['targeted-8'], undefined);
+});
+
 test('AI implementation learning uses Develop only and calibrates other lifecycle stages separately', () => {
   const previous = createBootstrapRubric({ generatedAt: '2026-08-01T00:00:00.000Z' });
   const baseline = outcome({

@@ -39,6 +39,13 @@ function round(value, digits = 4) {
   return Number(value.toFixed(digits));
 }
 
+function rubricLaneForClassification(classification) {
+  const suffix = classification.replace(/^test-/, '');
+  if (/^targeted-\d+$/.test(suffix)) return 'focused';
+  if (!/^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$/.test(suffix)) return suffix;
+  return suffix.replace(/-([a-z0-9])/g, (_, character) => character.toUpperCase());
+}
+
 export function createBootstrapRubric({ generatedAt = new Date().toISOString() } = {}) {
   const rubric = {
     schema: 'aitm.estimation-rubric/v1',
@@ -159,7 +166,7 @@ export function updateEstimationRubric({
     let observedTestMinutes = 0;
     for (const [index, command] of testCommands.entries()) {
       if (!command.classification.startsWith('test-')) continue;
-      const lane = command.classification.replace(/^test-/, '');
+      const lane = rubricLaneForClassification(command.classification);
       const rawMinutes = command.durationMs / 60_000;
       observedTestMinutes += rawMinutes;
       const avoidableMinutes =
