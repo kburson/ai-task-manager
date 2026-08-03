@@ -317,7 +317,7 @@ test('fully legacy epic totals sum children without adding parent board values',
   assert.match(backlog, /#2000[\s\S]*?<td class="num">10h<\/td>/);
 });
 
-test('production filtering preserves a fieldless legacy child as a fail-closed epic gap', () => {
+test('production filtering preserves a legacy child without fields as a fail-closed epic gap', () => {
   const rawIssue = ({ number, parentNumber = null, fields = [], comments = [] }) => ({
     content: {
       number,
