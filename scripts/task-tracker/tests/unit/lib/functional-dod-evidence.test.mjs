@@ -29,9 +29,13 @@ function bodyWithKeys() {
     '- [ ] Acceptance criteria met <!-- dod:functional:acs -->',
     '- [ ] Issue body checkboxes ticked <!-- dod:functional:checkboxes -->',
     '',
-    '#### Lifecycle (auto-ticked at Review/Close)',
+    '### Lifecycle (verified at Review)',
     '',
-    '- [ ] Passed final human review',
+    '- [ ] Agent Review Passed',
+    '- [ ] Final Review Passed',
+    '',
+    '### Housekeeping (verified at Close)',
+    '',
     '- [ ] Story closed and moved to Done',
     '- [ ] Timing data flushed to issue',
     '',
@@ -257,7 +261,8 @@ assert.throws(
     .replace('- [ ] Lint and format checks pass', '- [x] Lint and format checks pass')
     .replace('- [ ] All changes committed', '- [x] All changes committed');
   const status = deriveCheckboxesStatus(body, { lifecyclePresent: true });
-  // Tally = AC(2) + Functional stampable(3) = 5; derived two and lifecycle three excluded.
+  // Tally = AC(2) + Functional stampable(3) = 5; derived two and all four
+  // Lifecycle/Housekeeping items excluded.
   assert.equal(status.total, 5);
   assert.equal(status.ticked, 5);
   assert.equal(status.allTicked, true);

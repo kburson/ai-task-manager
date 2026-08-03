@@ -16,7 +16,11 @@
 // line without an `aitm-dod-evidence:KEY` marker refuses to flip. Batches are
 // atomic — if any line in the batch fails the gate, the whole batch refuses.
 
-import { locateFunctionalSection, locateLifecycleSection } from './lifecycle-dod.mjs';
+import {
+  locateFunctionalSection,
+  locateHousekeepingSection,
+  locateLifecycleSection,
+} from './lifecycle-dod.mjs';
 import { unescapeValue } from './marker-grammar.mjs';
 import {
   parseProofMarker,
@@ -280,9 +284,9 @@ export function deriveAcsStatus(body) {
 // are excluded so the count is meaningful at the moment close() stamps the
 // derived keys.
 //
-// Lifecycle boxes are excluded when `lifecyclePresent` is true — they are owned
-// by approve/close and would either pre-tick (regression) or remain unticked at
-// the moment of derivation.
+// Lifecycle and Housekeeping boxes are excluded when `lifecyclePresent` is
+// true — they are owned by Review/Close and would either pre-tick (regression)
+// or remain unticked at the moment of derivation.
 export function deriveCheckboxesStatus(body, { lifecyclePresent = false } = {}) {
   const src = String(body || '');
   const lines = src.split('\n');
@@ -305,14 +309,16 @@ export function deriveCheckboxesStatus(body, { lifecyclePresent = false } = {}) 
   }
 
   if (lifecyclePresent) {
-    // #1036 — resolve the lifecycle DoD through the canonical locator. A
-    // duplicate broad `Lifecycle…` regex here used to select descriptive
-    // deep-dive headings even after the shared locator found the correct
-    // section.
-    const lifecycle = locateLifecycleSection(src);
-    if (lifecycle) {
-      const startIdx = lifecycle.before.length;
-      const endIdx = lifecycle.before.length + lifecycle.section.length;
+    // Resolve both canonical phase-owned sections. `locateLifecycleSection`
+    // retains the legacy combined fallback, while Housekeeping is canonical
+    // only. Shared exact locators prevent descriptive deep-dive headings from
+    // entering the derived checkbox tally.
+    const ownedSections = [locateLifecycleSection(src), locateHousekeepingSection(src)].filter(
+      Boolean
+    );
+    for (const section of ownedSections) {
+      const startIdx = section.before.length;
+      const endIdx = section.before.length + section.section.length;
       const startLine = src.slice(0, startIdx).split('\n').length - 1;
       const endLine = src.slice(0, endIdx).split('\n').length;
       for (let i = startLine; i < endLine; i += 1) skip.add(i);

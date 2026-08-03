@@ -244,7 +244,8 @@ A few keys gate state transitions. The defaults are safe; flip them off only wit
 Controls the hard Review→Done lifecycle-checkbox gate (#179). With the default
 `true`, `/task close` (and the underlying state-mover) refuses to advance to
 Done unless each item under the `#### Lifecycle (auto-ticked at Review/Close)`
-DoD subsection is satisfied by ONE of:
+legacy subsection—or its canonical `### Lifecycle (verified at Review)` and
+`### Housekeeping (verified at Close)` replacements—is satisfied by ONE of:
 
 1. Visible checkbox ticked (`- [x] <label>`),
 2. Corresponding audit marker present (`<!-- aitm-full-auto-approved: ... -->`

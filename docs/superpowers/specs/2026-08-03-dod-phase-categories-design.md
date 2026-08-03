@@ -1,7 +1,7 @@
 # Definition of Done Phase Categories Design
 
-**Issue:** #982  
-**Status:** Approved under explicit Full-Auto authority  
+**Issue:** #982
+**Status:** Approved under explicit Full-Auto authority
 **Date:** 2026-08-03
 
 ## Problem

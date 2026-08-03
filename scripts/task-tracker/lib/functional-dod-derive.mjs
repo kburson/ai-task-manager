@@ -21,7 +21,7 @@
 // If the box is already ticked, no re-tick. Safe to call multiple times.
 
 import { mutateIssueBody } from './issue-body-mutate.mjs';
-import { locateLifecycleSection } from './lifecycle-dod.mjs';
+import { locateHousekeepingSection, locateLifecycleSection } from './lifecycle-dod.mjs';
 import {
   parseFunctionalDodKeys,
   stampEvidenceMarker,
@@ -95,7 +95,9 @@ export async function deriveAndStampFunctionalDod({
 
       // 2. checkboxes — must run AFTER acs so the acs tick is counted.
       if (cbItem) {
-        const lifecyclePresent = Boolean(locateLifecycleSection(next));
+        const lifecyclePresent = Boolean(
+          locateLifecycleSection(next) || locateHousekeepingSection(next)
+        );
         const cb = deriveCheckboxesStatus(next, { lifecyclePresent });
         if (cb.allTicked && !cbItem.evidenceMarker) {
           next = stampEvidenceMarker(next, 'checkboxes', {
