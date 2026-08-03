@@ -10,6 +10,7 @@ import {
   linkedPlanPath,
   parseDecompositionWaiver,
   resolvePlanPath,
+  visibleMetadataFieldValue,
 } from '../../../lib/decomposition-policy.mjs';
 import { projectScratchDir } from '../../../lib/scratch-dir.mjs';
 
@@ -295,4 +296,30 @@ test('rejects a complete waiver presented only as a fenced example', () => {
   const fenced = `\`\`\`markdown\n${waiverBody()}\n\`\`\``;
   assert.equal(parseDecompositionWaiver(fenced).ok, false);
   assert.equal(parseDecompositionWaiver(fenced).reason, 'missing');
+});
+
+test('escaped and unmatched backticks do not expose hidden structures', () => {
+  for (const prefix of ['\\`', '`']) {
+    const hiddenWaiver = [prefix + '<!--', waiverBody(), '-->'].join('\n');
+    assert.equal(parseDecompositionWaiver(hiddenWaiver).reason, 'missing');
+
+    const hiddenTask = [
+      prefix + '<!--',
+      '### Task 9: Hidden',
+      'Run: `node --test hidden.test.mjs`',
+      '-->',
+    ].join('\n');
+    assert.deepEqual(extractPlanTasks(hiddenTask), []);
+
+    const hiddenMetadata = [
+      prefix + '<!--',
+      '## Plan Metadata',
+      '- **Governing-spec**: docs/hidden.md',
+      '-->',
+    ].join('\n');
+    assert.equal(
+      visibleMetadataFieldValue(hiddenMetadata, 'Plan Metadata', 'Governing-spec'),
+      null
+    );
+  }
 });

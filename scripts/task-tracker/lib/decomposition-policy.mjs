@@ -89,7 +89,18 @@ function stripLineHtmlComments(line, state) {
     const ticks = /^`+/.exec(line.slice(index));
     if (ticks) {
       const length = ticks[0].length;
-      inlineTicks = inlineTicks === 0 ? length : length >= inlineTicks ? 0 : inlineTicks;
+      let backslashes = 0;
+      for (let cursor = index - 1; cursor >= 0 && line[cursor] === '\\'; cursor -= 1) {
+        backslashes += 1;
+      }
+      const escaped = backslashes % 2 === 1;
+      if (inlineTicks === 0) {
+        if (!escaped && hasClosingBacktickRun(line, index + length, length)) {
+          inlineTicks = length;
+        }
+      } else if (length === inlineTicks) {
+        inlineTicks = 0;
+      }
       output += ticks[0];
       index += length;
       continue;
@@ -104,6 +115,21 @@ function stripLineHtmlComments(line, state) {
     index += 1;
   }
   return output;
+}
+
+function hasClosingBacktickRun(line, start, expectedLength) {
+  let index = start;
+  while (index < line.length) {
+    if (line[index] !== '`') {
+      index += 1;
+      continue;
+    }
+    let end = index + 1;
+    while (end < line.length && line[end] === '`') end += 1;
+    if (end - index === expectedLength) return true;
+    index = end;
+  }
+  return false;
 }
 
 function visibleContentLines(value) {
