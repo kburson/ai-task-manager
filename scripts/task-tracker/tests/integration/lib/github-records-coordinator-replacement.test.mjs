@@ -503,7 +503,7 @@ test('a persisted nested coordinator replacement pauses and resumes under its or
   );
 });
 
-test('walks a 10k replacement history linearly before rejecting overlong nested delegation', () => {
+test('bounds a 10k replacement history before rejecting overlong nested delegation', () => {
   const parentGrant = grant({ grantId: 'grant-parent', coordinator, epoch: 1 });
   const initialChild = {
     ...grant({
@@ -538,7 +538,7 @@ test('walks a 10k replacement history linearly before rejecting overlong nested 
     });
     predecessor = successor;
   }
-  let visits = 0;
+  const startedAt = performance.now();
 
   assert.deepEqual(
     resolve({
@@ -550,12 +550,81 @@ test('walks a 10k replacement history linearly before rejecting overlong nested 
         epoch: predecessor.epoch,
         adoptionState: 'adopted',
       },
-      onReplacementHistoryVisit: () => {
-        visits += 1;
-      },
     }),
     { status: 'blocked', diagnostic: { reason: 'delegation-depth' } }
   );
-  assert.ok(visits > 0);
-  assert.ok(visits <= grants.length + revocations.length);
+  assert.ok(performance.now() - startedAt < 3000);
+});
+
+test('ignores unknown resolver callbacks so validation cannot be raced', () => {
+  const original = grant({ grantId: 'grant-original', coordinator, epoch: 1 });
+  const successor = {
+    ...grant({
+      grantId: 'grant-successor',
+      coordinator: replacementCoordinator,
+      epoch: 2,
+      issuer: coordinator,
+    }),
+    operations: ['advance'],
+    branchBoundary: ['work/101'],
+    integrationBoundary: { sourceBranches: [], destinationBranches: [] },
+  };
+  const expectedSuccessor = structuredClone(successor);
+  let callbackCalls = 0;
+  const authority = resolve({
+    grants: [original, successor],
+    revocations: [
+      {
+        schema: 'aitm.coordinator-revocation/v1',
+        grantId: 'grant-original',
+        epoch: 1,
+        state: 'replaced',
+        replacementGrantId: 'grant-successor',
+      },
+    ],
+    coordinationProjection: {
+      schema: 'aitm.coordination-projection/v1',
+      grantId: 'grant-successor',
+      epoch: 2,
+      adoptionState: 'adopted',
+    },
+    onReplacementHistoryVisit: () => {
+      callbackCalls += 1;
+      successor.coordinator = { actor: 'attacker', platform: 'attacker', session: 'attacker' };
+      successor.operations.push('integrate');
+      successor.branchBoundary.push('epic/100');
+      successor.integrationBoundary = {
+        sourceBranches: ['work/101'],
+        destinationBranches: ['epic/100'],
+      };
+    },
+  });
+
+  assert.equal(callbackCalls, 0);
+  assert.deepEqual(successor, expectedSuccessor);
+  assert.equal(
+    authorizeCoordinatorOperation({
+      authority,
+      grantId: 'grant-successor',
+      epoch: 2,
+      coordinator: replacementCoordinator,
+      issue: 101,
+      operation: 'advance',
+      branch: 'work/101',
+    }).authorized,
+    true
+  );
+  assert.equal(
+    authorizeCoordinatorOperation({
+      authority,
+      grantId: 'grant-successor',
+      epoch: 2,
+      coordinator: { actor: 'attacker', platform: 'attacker', session: 'attacker' },
+      issue: 101,
+      operation: 'integrate',
+      branch: 'epic/100',
+      integration: { sourceBranch: 'work/101', destinationBranch: 'epic/100' },
+    }).authorized,
+    false
+  );
 });

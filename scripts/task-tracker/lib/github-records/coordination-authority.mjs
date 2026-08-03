@@ -472,7 +472,7 @@ function replacementPredecessorKey(revocation) {
   return JSON.stringify([revocation.grantId, revocation.epoch]);
 }
 
-function hasReplacementCycle(successorByPredecessorId, onVisit) {
+function hasReplacementCycle(successorByPredecessorId) {
   const colors = new Map();
   for (const start of successorByPredecessorId.keys()) {
     if (colors.get(start) === 'black') continue;
@@ -484,7 +484,6 @@ function hasReplacementCycle(successorByPredecessorId, onVisit) {
       if (color === 'black') break;
       colors.set(current, 'gray');
       path.push(current);
-      onVisit();
       current = successorByPredecessorId.get(current);
     }
     for (const grantId of path) colors.set(grantId, 'black');
@@ -492,7 +491,7 @@ function hasReplacementCycle(successorByPredecessorId, onVisit) {
   return false;
 }
 
-function hasValidReplacementHistory(validatedGrants, validatedRevocations, onVisit = () => {}) {
+function hasValidReplacementHistory(validatedGrants, validatedRevocations) {
   const grantsById = new Map(validatedGrants.map((entry) => [entry.grant.grantId, entry]));
   const successorByPredecessorId = new Map();
   const replacementPredecessors = new Set();
@@ -515,7 +514,7 @@ function hasValidReplacementHistory(validatedGrants, validatedRevocations, onVis
     replacementSuccessors.add(revocation.replacementGrantId);
     successorByPredecessorId.set(revocation.grantId, revocation.replacementGrantId);
   }
-  return !hasReplacementCycle(successorByPredecessorId, onVisit);
+  return !hasReplacementCycle(successorByPredecessorId);
 }
 
 function extractCapsules({ records, repository, issue }) {
@@ -544,7 +543,6 @@ export function resolveCoordinatorAuthority({
   issue,
   coordinationProjection,
   now = new Date().toISOString(),
-  onReplacementHistoryVisit,
 } = {}) {
   const parents = buildHierarchy(issueHierarchy);
   validateProjection(coordinationProjection);
@@ -582,15 +580,7 @@ export function resolveCoordinatorAuthority({
   if (new Set(validatedGrants.map(({ grant }) => grant.grantId)).size !== validatedGrants.length) {
     return resolutionBlocked(validatedGrants, 'duplicate-grant');
   }
-  const onReplacementHistoryVisitSafe =
-    typeof onReplacementHistoryVisit === 'function' ? onReplacementHistoryVisit : () => {};
-  if (
-    !hasValidReplacementHistory(
-      validatedGrants,
-      validatedRevocations,
-      onReplacementHistoryVisitSafe
-    )
-  ) {
+  if (!hasValidReplacementHistory(validatedGrants, validatedRevocations)) {
     return resolutionBlocked(validatedGrants, 'invalid-replacement');
   }
   const delegation = buildDelegationGraph(validatedGrants, validatedRevocations, parents);
