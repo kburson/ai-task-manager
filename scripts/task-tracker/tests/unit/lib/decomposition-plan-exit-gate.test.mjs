@@ -103,6 +103,25 @@ test('known board inputs still refuse when the linked plan is unavailable', asyn
   assert.match(result.reason, /not a readable file/);
 });
 
+test('Plan exit defers an absent plan link to the existing metadata guard', async () => {
+  let boardReads = 0;
+  const result = await decompositionPlanExitGuard.run({
+    issueNumber: 1052,
+    cfg: { repo: 'owner/repo', projectId: 'project' },
+    body: '## just a legacy body',
+    deps: {
+      decomposition: {
+        projectValuesForIssue: async () => {
+          boardReads += 1;
+          return { size: 'XL', estimate: 24 };
+        },
+      },
+    },
+  });
+  assert.deepEqual(result, { ok: true });
+  assert.equal(boardReads, 0);
+});
+
 test('registers the decomposition guard before the epic children guard', () => {
   const ids = planState.exitGuards.map((guard) => guard.id);
   assert.ok(ids.includes('plan-exit-decomposition'));

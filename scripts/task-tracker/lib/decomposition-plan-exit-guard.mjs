@@ -5,6 +5,7 @@ import { getProjectDir } from '../paths.mjs';
 import { loadProjectFieldDefs } from '../project-fields.mjs';
 import {
   classifyDecomposition,
+  linkedPlanPath,
   parseDecompositionWaiver,
   resolvePlanPath,
 } from './decomposition-policy.mjs';
@@ -74,6 +75,11 @@ export const decompositionPlanExitGuard = {
   async run(ctx) {
     if (ctx?.toState && ctx.toState !== 'develop') return { ok: true };
     if (!ctx?.cfg || !ctx?.issueNumber) return { ok: true };
+    // The existing Plan Metadata guard owns an absent link. Deferring here
+    // avoids inventing decomposition results from board fields when there is
+    // no plan text to classify, while a present-but-unreadable link still uses
+    // known Size/Estimate signals and can refuse.
+    if (!linkedPlanPath(ctx.body || '')) return { ok: true };
     const result = await evaluateIssueDecomposition({
       issueNumber: Number(ctx.issueNumber),
       cfg: ctx.cfg,
