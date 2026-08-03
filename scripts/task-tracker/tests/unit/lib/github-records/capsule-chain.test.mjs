@@ -183,6 +183,22 @@ test('supersession resolution blocks a predecessor fork instead of producing eff
   );
 });
 
+test('supersession rejects a future predecessor-chain descendant regardless of input order', () => {
+  const root = capsule({ recordId: id(1) });
+  const second = capsule({ recordId: id(2), predecessor: id(1), supersedes: id(3) });
+  const third = capsule({ recordId: id(3), predecessor: id(2) });
+
+  for (const records of [
+    [root, second, third],
+    [third, second, root],
+  ]) {
+    assert.throws(
+      () => resolveSupersession({ records, repository, issue }),
+      /capsule-chain:invalid-supersession-target/
+    );
+  }
+});
+
 test('supersession rejects missing, self, duplicate-active, incompatible, and cyclic targets', () => {
   const original = capsule({ recordId: id(1) });
   const missing = capsule({ recordId: id(2), predecessor: id(1), supersedes: id(88) });

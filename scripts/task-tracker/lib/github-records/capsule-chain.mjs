@@ -164,6 +164,16 @@ function validateSupersession(byId) {
     visited.add(recordId);
   };
   for (const recordId of byId.keys()) visit(recordId);
+  for (const record of byId.values()) {
+    const { predecessor, supersedes } = record.envelope;
+    if (supersedes === null) continue;
+    let ancestor = predecessor;
+    while (ancestor !== null) {
+      if (ancestor === supersedes) break;
+      ancestor = byId.get(ancestor).envelope.predecessor;
+    }
+    if (ancestor === null) throw chainError('invalid-supersession-target');
+  }
   return superseders;
 }
 
