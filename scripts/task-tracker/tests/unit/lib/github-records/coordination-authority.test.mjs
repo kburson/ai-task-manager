@@ -370,6 +370,38 @@ test('resolves persisted nested delegation as a partitioned parent-child authori
   );
 });
 
+test('cannot mint a competing child from a parent whose scope is already partitioned', () => {
+  const parentGrant = grant();
+  const existingChild = grant({
+    grantId: 'grant-existing-child',
+    scopeRootIssue: 102,
+    includedIssues: [103],
+    excludedIssues: [],
+    coordinator: nestedCoordinator,
+    parentGrantId: 'grant-parent',
+    issuer: coordinator,
+    operations: ['advance'],
+    branchBoundary: ['epic/100/nested-102', 'work/103'],
+    integrationBoundary: {
+      sourceBranches: ['work/103'],
+      destinationBranches: ['epic/100/nested-102'],
+    },
+  });
+  const partitionedParent = resolve({ grants: [parentGrant, existingChild] });
+  const competingChild = { ...existingChild, grantId: 'grant-competing-child' };
+
+  assert.deepEqual(partitionedParent.scopeIssueIds, [100, 101]);
+  assert.throws(
+    () =>
+      grantNestedEpic({
+        parentAuthority: partitionedParent,
+        issueHierarchy: hierarchy,
+        grant: competingChild,
+      }),
+    /coordination-authority:nested-scope/
+  );
+});
+
 test('blocks ambiguous, stale, revoked, expired, and projection-mismatched grant authority deterministically', () => {
   const overlap = grant({ grantId: 'grant-overlap', includedIssues: [101], excludedIssues: [] });
   const revoked = {

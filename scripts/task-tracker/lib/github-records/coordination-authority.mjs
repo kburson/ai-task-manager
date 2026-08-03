@@ -355,10 +355,17 @@ function isSubset(candidate, parent) {
 }
 
 function validDelegationEdge(parent, child, parents) {
+  const parentAuthorityGrantId = parent.envelope?.authority.grantId;
   return (
     child.grant.epoch === parent.grant.epoch &&
     child.grant.parentGrantId === parent.grant.grantId &&
     isDeepStrictEqual(child.grant.issuer, parent.grant.coordinator) &&
+    hasEnvelopeAuthority(
+      child,
+      parent.grant.coordinator,
+      parent.grant.epoch,
+      parentAuthorityGrantId
+    ) &&
     isDescendant(child.grant.scope.scopeRootIssue, parent.grant.scope.scopeRootIssue, parents) &&
     isStrictSubset(child.scope, parent.scope) &&
     isStrictSubset(child.grant.operations, parent.grant.operations) &&
@@ -682,7 +689,7 @@ export function grantNestedEpic({
     ) ||
     candidate.grant.parentGrantId !== parent.grant.grantId ||
     !isDeepStrictEqual(candidate.grant.issuer, parent.grant.coordinator) ||
-    !isStrictSubset(candidate.scope, parent.scope) ||
+    !isStrictSubset(candidate.scope, parentAuthority.scopeIssueIds) ||
     !isStrictSubset(candidate.grant.operations, parent.grant.operations) ||
     !isStrictSubset(candidate.branches, parent.branches) ||
     !isStrictSubset(candidate.sourceBranches, parent.sourceBranches) ||
