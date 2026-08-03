@@ -314,6 +314,41 @@ test('amendments clear prior accepted evidence and checked lifecycle projection'
   });
 });
 
+test('an unchanged amendment cannot erase accepted evidence through a reset-only projection change', () => {
+  const draft = createDraftContract({
+    recordId,
+    authorityEpoch: 1,
+    coordinatorGrantId,
+    acceptanceCriteria: [{ logicalId: 'ac-login', text: 'Users can sign in.' }],
+    verificationCommands: [{ logicalId: 'vc-unit', command: 'npm test' }],
+    definitionOfDone: [{ logicalId: 'dod-review', text: 'Review is complete.' }],
+    lifecycleProjection: {
+      acceptanceCriteria: { 'ac-login': true },
+      verificationCommands: { 'vc-unit': true },
+      definitionOfDone: { 'dod-review': true },
+    },
+    acceptedRecordIds: ['01J00000000000000000000002'],
+  });
+  const sealed = sealContract({ contract: draft, authorityEpoch: 1, coordinatorGrantId });
+  const amendment = {
+    contract: sealed.contract,
+    expectedContractEpoch: 1,
+    authorityEpoch: 1,
+    coordinatorGrantId,
+    acceptanceCriteria: sealed.contract.acceptanceCriteria,
+    verificationCommands: sealed.contract.verificationCommands,
+    definitionOfDone: sealed.contract.definitionOfDone,
+  };
+
+  assert.throws(() => amendContract(amendment), /delivery-contract:no-op-amendment/);
+  assert.deepEqual(sealed.contract.acceptedRecordIds, ['01J00000000000000000000002']);
+  assert.deepEqual(sealed.contract.lifecycleProjection, {
+    acceptanceCriteria: { 'ac-login': true },
+    verificationCommands: { 'vc-unit': true },
+    definitionOfDone: { 'dod-review': true },
+  });
+});
+
 test('drafts normalize mutable projections without changing definition identity', () => {
   const input = {
     recordId,
