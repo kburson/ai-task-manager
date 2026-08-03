@@ -4,6 +4,7 @@ import test from 'node:test';
 
 import {
   createDraftContract,
+  amendContract,
   sealContract,
   renderDeliveryContract,
   validateContractProjection,
@@ -108,7 +109,11 @@ test('draft edits retain stable IDs, increment revision, and keep mutable eviden
   assert.equal(revised.contractEpoch, first.contractEpoch);
   assert.equal(revised.acceptanceCriteria[0].logicalId, 'ac-login');
   assert.notEqual(revised.definitionHash, first.definitionHash);
-  assert.deepEqual(revised.lifecycleProjection, { acceptanceCriteria: { 'ac-login': true } });
+  assert.deepEqual(revised.lifecycleProjection, {
+    acceptanceCriteria: { 'ac-login': true },
+    verificationCommands: {},
+    definitionOfDone: {},
+  });
   assert.deepEqual(revised.acceptedRecordIds, ['01J00000000000000000000002']);
   assert.match(
     renderDeliveryContract({ contract: revised }).markdown,
@@ -138,4 +143,242 @@ test('draft edits retain stable IDs, increment revision, and keep mutable eviden
       }),
     /delivery-contract:projection-mismatch/
   );
+});
+
+test('amendContract advances the epoch and explicitly invalidates earlier lifecycle proof', () => {
+  const sealed = sealContract({
+    contract: createDraftContract({
+      recordId,
+      authorityEpoch: 1,
+      coordinatorGrantId,
+      acceptanceCriteria: [{ logicalId: 'ac-login', text: 'Users can sign in.' }],
+      verificationCommands: [{ logicalId: 'vc-unit', command: 'npm test' }],
+      definitionOfDone: [{ logicalId: 'dod-review', text: 'Review is complete.' }],
+    }),
+    authorityEpoch: 1,
+    coordinatorGrantId,
+  });
+
+  const amended = amendContract({
+    contract: sealed.contract,
+    expectedContractEpoch: 1,
+    authorityEpoch: 1,
+    coordinatorGrantId,
+    acceptanceCriteria: [{ logicalId: 'ac-login', text: 'Members can sign in.' }],
+    verificationCommands: [{ logicalId: 'vc-unit', command: 'npm test' }],
+    definitionOfDone: [{ logicalId: 'dod-review', text: 'Review is complete.' }],
+  });
+
+  assert.equal(amended.contract.status, 'sealed');
+  assert.equal(amended.contract.revision, 2);
+  assert.equal(amended.contract.contractEpoch, 2);
+  assert.equal(amended.contract.acceptanceCriteria[0].logicalId, 'ac-login');
+  assert.notEqual(amended.contract.definitionHash, sealed.contract.definitionHash);
+  assert.deepEqual(amended.invalidation, {
+    priorContractEpoch: 1,
+    invalidatedEvidenceKinds: ['test', 'review', 'approval'],
+  });
+  assert.deepEqual(amended.capsule, {
+    recordType: 'contract-amended',
+    payload: amended.contract,
+  });
+  assert.throws(
+    () =>
+      amendContract({
+        contract: sealed.contract,
+        expectedContractEpoch: 2,
+        authorityEpoch: 1,
+        coordinatorGrantId,
+        acceptanceCriteria: amended.contract.acceptanceCriteria,
+        verificationCommands: amended.contract.verificationCommands,
+        definitionOfDone: amended.contract.definitionOfDone,
+      }),
+    /delivery-contract:stale-epoch/
+  );
+  assert.throws(
+    () =>
+      amendContract({
+        contract: sealed.contract,
+        expectedContractEpoch: 1,
+        authorityEpoch: 1,
+        coordinatorGrantId,
+        acceptanceCriteria: sealed.contract.acceptanceCriteria,
+        verificationCommands: sealed.contract.verificationCommands,
+        definitionOfDone: sealed.contract.definitionOfDone,
+      }),
+    /delivery-contract:no-op-amendment/
+  );
+});
+
+test('drafts normalize mutable projections without changing definition identity', () => {
+  const input = {
+    recordId,
+    authorityEpoch: 1,
+    coordinatorGrantId,
+    acceptanceCriteria: [
+      { logicalId: 'ac-alpha', text: 'Alpha is accepted.' },
+      { logicalId: 'ac-beta', text: 'Beta is accepted.' },
+    ],
+    verificationCommands: [{ logicalId: 'vc-unit', command: 'npm test' }],
+    definitionOfDone: [{ logicalId: 'dod-review', text: 'Review is complete.' }],
+    lifecycleProjection: { acceptanceCriteria: { 'ac-alpha': true } },
+    acceptedRecordIds: ['01J00000000000000000000004', '01J00000000000000000000002'],
+  };
+  const first = createDraftContract(input);
+  const reordered = createDraftContract({
+    previousContract: first,
+    acceptanceCriteria: [...input.acceptanceCriteria].reverse(),
+    verificationCommands: input.verificationCommands,
+    definitionOfDone: input.definitionOfDone,
+    lifecycleProjection: input.lifecycleProjection,
+    acceptedRecordIds: input.acceptedRecordIds,
+  });
+
+  assert.equal(reordered.definitionHash, first.definitionHash);
+  assert.notEqual(reordered.projectionHash, first.projectionHash);
+  assert.deepEqual(first.acceptedRecordIds, [
+    '01J00000000000000000000002',
+    '01J00000000000000000000004',
+  ]);
+  assert.deepEqual(first.lifecycleProjection, {
+    acceptanceCriteria: { 'ac-alpha': true },
+    verificationCommands: {},
+    definitionOfDone: {},
+  });
+  input.acceptanceCriteria[0].text = 'Mutated by caller.';
+  input.acceptedRecordIds.push('01J00000000000000000000005');
+  assert.equal(first.acceptanceCriteria[0].text, 'Alpha is accepted.');
+  assert.equal(first.acceptedRecordIds.length, 2);
+  assert.equal(Object.isFrozen(first.acceptanceCriteria[0]), true);
+});
+
+test('draft revisions and amendments refuse to retire a logical ID', () => {
+  const draft = createDraftContract({
+    recordId,
+    authorityEpoch: 1,
+    coordinatorGrantId,
+    acceptanceCriteria: [
+      { logicalId: 'ac-alpha', text: 'Alpha is accepted.' },
+      { logicalId: 'ac-beta', text: 'Beta is accepted.' },
+    ],
+    verificationCommands: [{ logicalId: 'vc-unit', command: 'npm test' }],
+    definitionOfDone: [{ logicalId: 'dod-review', text: 'Review is complete.' }],
+  });
+
+  assert.throws(
+    () =>
+      createDraftContract({
+        previousContract: draft,
+        acceptanceCriteria: [{ logicalId: 'ac-alpha', text: 'Alpha is accepted.' }],
+        verificationCommands: draft.verificationCommands,
+        definitionOfDone: draft.definitionOfDone,
+      }),
+    /delivery-contract:retired-logical-id/
+  );
+
+  const sealed = sealContract({ contract: draft, authorityEpoch: 1, coordinatorGrantId });
+  assert.throws(
+    () =>
+      amendContract({
+        contract: sealed.contract,
+        expectedContractEpoch: 1,
+        authorityEpoch: 1,
+        coordinatorGrantId,
+        acceptanceCriteria: [{ logicalId: 'ac-alpha', text: 'Alpha is accepted.' }],
+        verificationCommands: sealed.contract.verificationCommands,
+        definitionOfDone: sealed.contract.definitionOfDone,
+      }),
+    /delivery-contract:retired-logical-id/
+  );
+});
+
+test('contract lifecycle rejects malformed authority, definitions, payloads, and projections', () => {
+  const valid = createDraftContract({
+    recordId,
+    authorityEpoch: 1,
+    coordinatorGrantId,
+    acceptanceCriteria: [{ logicalId: 'ac-login', text: 'Users can sign in.' }],
+    verificationCommands: [{ logicalId: 'vc-unit', command: 'npm test' }],
+    definitionOfDone: [{ logicalId: 'dod-review', text: 'Review is complete.' }],
+  });
+  const cases = [
+    [
+      {
+        ...valid,
+        schema: 'aitm.delivery-contract/v2',
+      },
+      /delivery-contract:unsupported-schema/,
+    ],
+    [
+      {
+        ...valid,
+        unexpected: true,
+      },
+      /delivery-contract:keys/,
+    ],
+    [
+      {
+        ...valid,
+        definitionHash: 'sha256:not-a-hash',
+      },
+      /delivery-contract:definition-hash/,
+    ],
+  ];
+  for (const [previousContract, error] of cases) {
+    assert.throws(
+      () =>
+        createDraftContract({
+          previousContract,
+          acceptanceCriteria: valid.acceptanceCriteria,
+          verificationCommands: valid.verificationCommands,
+          definitionOfDone: valid.definitionOfDone,
+        }),
+      error
+    );
+  }
+  for (const definitions of [
+    {
+      acceptanceCriteria: [
+        { logicalId: 'ac-login', text: 'First.' },
+        { logicalId: 'ac-login', text: 'Duplicate.' },
+      ],
+      verificationCommands: valid.verificationCommands,
+      definitionOfDone: valid.definitionOfDone,
+    },
+    {
+      acceptanceCriteria: valid.acceptanceCriteria,
+      verificationCommands: [{ logicalId: 'ac-login', command: 'npm test' }],
+      definitionOfDone: valid.definitionOfDone,
+    },
+  ]) {
+    assert.throws(
+      () =>
+        createDraftContract({ recordId, authorityEpoch: 1, coordinatorGrantId, ...definitions }),
+      /delivery-contract:duplicate-logical-id/
+    );
+  }
+  assert.throws(
+    () =>
+      createDraftContract({
+        recordId,
+        authorityEpoch: 1,
+        coordinatorGrantId,
+        acceptanceCriteria: [{ logicalId: 'ac-login', text: 'Authorization: Bearer abcdefghijk' }],
+        verificationCommands: valid.verificationCommands,
+        definitionOfDone: valid.definitionOfDone,
+      }),
+    /delivery-contract:durable-data/
+  );
+  const rendered = renderDeliveryContract({ contract: valid }).markdown;
+  for (const tampered of [
+    rendered.replace('## Delivery Contract', '## Edited Contract'),
+    rendered.replace('npm test', 'npm run test:slow'),
+    rendered.replace('[ac-login]', '[ac-edited]'),
+    rendered.replace('Users can sign in.', 'A human edit.'),
+  ]) {
+    assert.throws(
+      () => validateContractProjection({ contract: valid, markdown: tampered }),
+      /delivery-contract:projection-mismatch/
+    );
+  }
 });
