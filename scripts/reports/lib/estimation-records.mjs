@@ -1,6 +1,8 @@
 import { parsePreloadedIssueComments } from '../../task-tracker/lib/github-records/github-comment-store.mjs';
 import { formatAcceleration } from './board-fields.mjs';
 
+const LEGACY_RECORD_GAPS = new Set(['missing-forecast', 'missing-outcome']);
+
 function activeForecast(records) {
   const forecasts = records.filter(
     (record) => record?.envelope?.recordType === 'estimation-forecast'
@@ -23,18 +25,16 @@ function matchingStoryOutcome(records, forecast) {
   return matching.length === 1 ? matching[0] : null;
 }
 
-function latestEpicOutcome(records) {
-  return (
-    records
-      .filter(
-        (record) =>
-          record?.envelope?.recordType === 'estimation-outcome' &&
-          record.envelope.payload.kind === 'epic-orchestration'
-      )
-      .toSorted((left, right) =>
-        right.envelope.createdAt.localeCompare(left.envelope.createdAt)
-      )[0] ?? null
+function epicOutcomeState(records) {
+  const outcomes = records.filter(
+    (record) =>
+      record?.envelope?.recordType === 'estimation-outcome' &&
+      record.envelope.payload.kind === 'epic-orchestration'
   );
+  return {
+    outcome: outcomes.length === 1 ? outcomes[0] : null,
+    ambiguous: outcomes.length > 1,
+  };
 }
 
 function accuracy(expected, actual) {
@@ -111,7 +111,7 @@ export async function loadEstimationRecordsForReport({
   return loaded;
 }
 
-function storyRow(issue, records) {
+function storyRow(issue, records, externalGaps = []) {
   const adaptiveClaim = records.some((record) =>
     ['estimation-forecast', 'estimation-outcome'].includes(record?.envelope?.recordType)
   );
@@ -159,7 +159,41 @@ function storyRow(issue, records) {
     acceleration,
     accelerationLabel: formatAcceleration(acceleration),
     parentOrchestrationHours: 0,
-    evidenceGaps: gaps,
+    evidenceGaps: [...new Set([...gaps, ...externalGaps])],
+  };
+}
+
+function mayUseLegacyBoard(row) {
+  return (
+    row.adaptiveClaim === false &&
+    row.evidenceGaps.every((gap) => LEGACY_RECORD_GAPS.has(gap))
+  );
+}
+
+function childEvidenceRow(item, row) {
+  if (!mayUseLegacyBoard(row)) return row;
+  const humanPlanHours = item.estimate ?? null;
+  const actualEngagedHours = item.engagedMin == null ? null : item.engagedMin / 60;
+  return {
+    ...row,
+    evidenceSource: 'legacy-board',
+    humanPlanHours,
+    aiP50Hours: null,
+    aiP80Hours: null,
+    actualEngagedHours,
+    varianceVsAiP50Hours: null,
+    varianceVsAiP80Hours: null,
+    refineAccuracy: null,
+    aiP50Accuracy: null,
+    avoidableWasteHours: null,
+    acceleration:
+      humanPlanHours != null && actualEngagedHours != null && actualEngagedHours > 0
+        ? humanPlanHours / actualEngagedHours
+        : null,
+    evidenceGaps: [
+      ...(humanPlanHours == null ? ['missing-legacy-estimate'] : []),
+      ...(actualEngagedHours == null ? ['missing-legacy-engaged'] : []),
+    ],
   };
 }
 
@@ -180,32 +214,54 @@ function methodology(recordsByIssue) {
   };
 }
 
-export function buildEstimationReportModel({ items, recordsByIssue } = {}) {
+export function buildEstimationReportModel({ items, recordsByIssue, evidenceGaps = [] } = {}) {
   if (!Array.isArray(items) || !(recordsByIssue instanceof Map)) {
     throw new TypeError('estimation-report:input');
   }
+  const gapsByIssue = new Map();
+  for (const gap of evidenceGaps) {
+    if (!Number.isInteger(gap?.issue) || typeof gap.reason !== 'string') {
+      throw new TypeError('estimation-report:evidence-gap');
+    }
+    if (!gapsByIssue.has(gap.issue)) gapsByIssue.set(gap.issue, []);
+    gapsByIssue.get(gap.issue).push(gap.reason);
+  }
   const rowsByIssue = new Map(
-    items.map((item) => [item.number, storyRow(item.number, recordsByIssue.get(item.number) ?? [])])
+    items.map((item) => [
+      item.number,
+      storyRow(item.number, recordsByIssue.get(item.number) ?? [], gapsByIssue.get(item.number)),
+    ])
   );
   const children = new Map();
   for (const item of items) {
     if (item.parentNumber == null || !rowsByIssue.has(item.parentNumber)) continue;
     if (!children.has(item.parentNumber)) children.set(item.parentNumber, []);
-    children.get(item.parentNumber).push(rowsByIssue.get(item.number));
+    children.get(item.parentNumber).push(item);
   }
-  for (const [parentNumber, childRows] of children) {
+  for (const [parentNumber, childItems] of children) {
     const parent = rowsByIssue.get(parentNumber);
+    const childRows = childItems.map((item) => childEvidenceRow(item, rowsByIssue.get(item.number)));
     const parentRecords = recordsByIssue.get(parentNumber) ?? [];
-    const parentOutcome = latestEpicOutcome(parentRecords);
+    const { outcome: parentOutcome, ambiguous: ambiguousParentOutcome } =
+      epicOutcomeState(parentRecords);
     const referencedChildren = parentOutcome?.envelope.payload.landscape.childOutcomeRecordIds ?? [];
     const actualChildIds = childRows.map((row) => row.outcomeRecordId).filter(Boolean);
     const referencesMatch =
       referencedChildren.length === actualChildIds.length &&
       referencedChildren.every((recordId) => actualChildIds.includes(recordId));
-    const parentOrchestrationHours = parentOutcome?.envelope.payload.actual.engagedHours ?? null;
+    const parentBlockingGaps = parent.evidenceGaps.filter((gap) => !LEGACY_RECORD_GAPS.has(gap));
+    const legacyOnlyEpic =
+      parentOutcome === null &&
+      !ambiguousParentOutcome &&
+      mayUseLegacyBoard(parent) &&
+      childRows.every((row) => row.adaptiveClaim === false);
+    const parentOrchestrationHours = parentOutcome?.envelope.payload.actual.engagedHours ??
+      (legacyOnlyEpic ? 0 : null);
     const complete =
-      parentOutcome !== null &&
+      !ambiguousParentOutcome &&
+      (parentOutcome !== null || legacyOnlyEpic) &&
       referencesMatch &&
+      parentBlockingGaps.length === 0 &&
       childRows.every((row) => row.evidenceGaps.length === 0);
     const humanPlanHours = complete ? sumPresent(childRows, 'humanPlanHours') : null;
     const childActual = complete ? sumPresent(childRows, 'actualEngagedHours') : null;
@@ -224,6 +280,7 @@ export function buildEstimationReportModel({ items, recordsByIssue } = {}) {
         : null;
     rowsByIssue.set(parentNumber, {
       ...parent,
+      evidenceSource: legacyOnlyEpic ? 'legacy-board' : parent.evidenceSource,
       humanPlanHours,
       aiP50Hours,
       aiP80Hours,
@@ -240,8 +297,12 @@ export function buildEstimationReportModel({ items, recordsByIssue } = {}) {
       accelerationLabel: formatAcceleration(acceleration),
       parentOrchestrationHours,
       evidenceGaps: [
+        ...parentBlockingGaps,
         ...childRows.flatMap((row) => row.evidenceGaps.map((gap) => `child-${gap}`)),
-        ...(parentOutcome === null ? ['missing-parent-outcome'] : []),
+        ...(ambiguousParentOutcome ? ['ambiguous-parent-outcome'] : []),
+        ...(parentOutcome === null && !legacyOnlyEpic && !ambiguousParentOutcome
+          ? ['missing-parent-outcome']
+          : []),
         ...(parentOutcome !== null && !referencesMatch ? ['parent-child-outcome-mismatch'] : []),
         ...(!complete ? ['partial-epic-rollup'] : []),
       ],

@@ -215,6 +215,103 @@ test('epic rollup uses child Plan and engaged plus classified parent orchestrati
   assert.equal(epic.avoidableWasteHours, 1);
 });
 
+test('mixed epic rollup combines adaptive children with legacy board children only', () => {
+  const adaptiveForecast = forecast(2001, { human: 5, p50: 2, p80: 3 });
+  const adaptiveOutcome = outcome(2001, { human: 5, actual: 2 });
+  adaptiveOutcome.envelope.recordId = RID.childA;
+  const parentOutcome = outcome(2000, {
+    actual: 1,
+    avoidable: 0.2,
+    children: [RID.childA],
+  });
+  parentOutcome.envelope.payload.kind = 'epic-orchestration';
+  parentOutcome.envelope.payload.forecastRecordId = null;
+
+  const epic = buildEstimationReportModel({
+    items: [
+      { number: 2000, parentNumber: null, estimate: 100, engagedMin: 6_000 },
+      { number: 2001, parentNumber: 2000, estimate: 50, engagedMin: 3_000 },
+      { number: 2002, parentNumber: 2000, estimate: 7, engagedMin: 180 },
+    ],
+    recordsByIssue: new Map([
+      [2000, [parentOutcome]],
+      [2001, [adaptiveForecast, adaptiveOutcome]],
+    ]),
+  }).rowsByIssue.get(2000);
+
+  assert.equal(epic.humanPlanHours, 12);
+  assert.equal(epic.actualEngagedHours, 6);
+  assert.equal(epic.acceleration, 2);
+  assert.equal(epic.parentOrchestrationHours, 1);
+  assert.deepEqual(epic.evidenceGaps, []);
+});
+
+test('fully legacy epic rollup sums children and ignores parent board values', () => {
+  const epic = buildEstimationReportModel({
+    items: [
+      { number: 2000, parentNumber: null, estimate: 100, engagedMin: 6_000 },
+      { number: 2001, parentNumber: 2000, estimate: 4, engagedMin: 120 },
+      { number: 2002, parentNumber: 2000, estimate: 6, engagedMin: 180 },
+    ],
+    recordsByIssue: new Map(),
+  }).rowsByIssue.get(2000);
+
+  assert.equal(epic.evidenceSource, 'legacy-board');
+  assert.equal(epic.humanPlanHours, 10);
+  assert.equal(epic.actualEngagedHours, 5);
+  assert.equal(epic.acceleration, 2);
+  assert.equal(epic.parentOrchestrationHours, 0);
+  assert.deepEqual(epic.evidenceGaps, []);
+});
+
+test('malformed child corpus cannot masquerade as legacy board evidence in an epic', () => {
+  const parentOutcome = outcome(2000, { actual: 1, children: [] });
+  parentOutcome.envelope.payload.kind = 'epic-orchestration';
+  parentOutcome.envelope.payload.forecastRecordId = null;
+  const epic = buildEstimationReportModel({
+    items: [
+      { number: 2000, parentNumber: null },
+      { number: 2001, parentNumber: 2000, estimate: 7, engagedMin: 180 },
+    ],
+    recordsByIssue: new Map([[2000, [parentOutcome]]]),
+    evidenceGaps: [{ issue: 2001, reason: 'malformed-record-evidence' }],
+  }).rowsByIssue.get(2000);
+
+  assert.equal(epic.humanPlanHours, null);
+  assert.equal(epic.actualEngagedHours, null);
+  assert.ok(epic.evidenceGaps.includes('child-malformed-record-evidence'));
+  assert.ok(epic.evidenceGaps.includes('partial-epic-rollup'));
+});
+
+test('duplicate epic outcomes are ambiguous evidence rather than latest-wins', () => {
+  const childForecast = forecast(2001, { human: 5, p50: 2, p80: 3 });
+  const childOutcome = outcome(2001, { human: 5, actual: 2 });
+  childOutcome.envelope.recordId = RID.childA;
+  const firstParent = outcome(2000, { actual: 1, children: [RID.childA] });
+  firstParent.envelope.payload.kind = 'epic-orchestration';
+  firstParent.envelope.payload.forecastRecordId = null;
+  const secondParent = structuredClone(firstParent);
+  secondParent.envelope.recordId = RID.childB;
+  secondParent.envelope.createdAt = '2026-08-02T13:00:00.000Z';
+  secondParent.envelope.payload.actual.engagedHours = 9;
+
+  const epic = buildEstimationReportModel({
+    items: [
+      { number: 2000, parentNumber: null },
+      { number: 2001, parentNumber: 2000 },
+    ],
+    recordsByIssue: new Map([
+      [2000, [firstParent, secondParent]],
+      [2001, [childForecast, childOutcome]],
+    ]),
+  }).rowsByIssue.get(2000);
+
+  assert.equal(epic.humanPlanHours, null);
+  assert.equal(epic.actualEngagedHours, null);
+  assert.ok(epic.evidenceGaps.includes('ambiguous-parent-outcome'));
+  assert.ok(epic.evidenceGaps.includes('partial-epic-rollup'));
+});
+
 test('epic rollup is unavailable rather than numeric when child evidence or references are partial', () => {
   const childA = outcome(2001, { human: 5, actual: 2 });
   childA.envelope.recordId = RID.childA;

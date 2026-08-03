@@ -347,6 +347,13 @@ function rollupVal(own, children, key) {
   return vals.length > 0 ? vals.reduce((s, v) => s + v, 0) : null;
 }
 
+function rollupChildren(children, key) {
+  const vals = children.map(c => c[key]);
+  return vals.length > 0 && vals.every(v => v != null)
+    ? vals.reduce((s, v) => s + v, 0)
+    : null;
+}
+
 function engagedHours(sessionMin, contextWords) {
   const sessionH  = (sessionMin   ?? 0) / 60;
   const readingH  = (contextWords ?? 0) / cfg.readingWpm / 60;
@@ -428,6 +435,7 @@ export function buildHtml(project, items, s, estimationModel = null) {
     const adaptiveClaim = adaptive?.adaptiveClaim ?? hasAdaptiveValues;
     const mayUseLegacy =
       !adaptiveClaim && gaps.every((gap) => legacyOnlyGaps.has(gap));
+    if (adaptive?.evidenceSource === 'legacy-board' && gaps.length === 0) return adaptive;
     if (adaptive !== null && !mayUseLegacy) return adaptive;
     const humanPlanHours = legacyProjection.estimate ?? null;
     const actualEngagedHours =
@@ -458,8 +466,8 @@ export function buildHtml(project, items, s, estimationModel = null) {
   for (const { item, children } of hierarchy) {
     const legacyProjection = children.length
       ? {
-          estimate: rollupVal(item.estimate, children, 'estimate'),
-          engagedMin: rollupVal(item.engagedMin, children, 'engagedMin'),
+          estimate: rollupChildren(children, 'estimate'),
+          engagedMin: rollupChildren(children, 'engagedMin'),
         }
       : item;
     displayRowsByIssue.set(item.number, displayRow(item, legacyProjection));
@@ -1217,13 +1225,8 @@ async function main() {
   const estimationModel = buildEstimationReportModel({
     items,
     recordsByIssue: loadedEstimation.recordsByIssue,
+    evidenceGaps: loadedEstimation.evidenceGaps,
   });
-  for (const gap of loadedEstimation.evidenceGaps) {
-    const row = estimationModel.rowsByIssue.get(gap.issue);
-    if (row !== undefined && !row.evidenceGaps.includes(gap.reason)) {
-      row.evidenceGaps.push(gap.reason);
-    }
-  }
   if (loadedEstimation.evidenceGaps.length > 0) {
     console.warn(
       `Adaptive estimation evidence gaps: ${loadedEstimation.evidenceGaps.length} unavailable or malformed issue corpus entries.`,

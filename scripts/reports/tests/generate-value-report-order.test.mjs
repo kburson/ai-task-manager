@@ -15,6 +15,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { buildHtml } from '../generate-value-report.mjs';
+import { buildEstimationReportModel } from '../lib/estimation-records.mjs';
 
 // A ⏱ Timing Log with two same-day rows an hour apart. bucketRowsByDay windows
 // consecutive row pairs; the second row carries 3600 active seconds, so the day
@@ -262,4 +263,56 @@ test('legacy rows fall back to board Estimate and Engaged only without an adapti
     malformed.indexOf('Appendix B')
   );
   assert.doesNotMatch(malformedBacklog, /<td class="num">4h<\/td>/);
+});
+
+test('fully legacy epic totals sum children without adding parent board values', () => {
+  const items = [
+    {
+      number: 2000,
+      title: 'Legacy epic',
+      url: 'https://example.test/2000',
+      status: 'Done',
+      estimate: 100,
+      engagedMin: 6_000,
+      parentNumber: null,
+      timingBody: '',
+    },
+    {
+      number: 2001,
+      title: 'Legacy child A',
+      url: 'https://example.test/2001',
+      status: 'Done',
+      estimate: 4,
+      engagedMin: 120,
+      parentNumber: 2000,
+      timingBody: '',
+    },
+    {
+      number: 2002,
+      title: 'Legacy child B',
+      url: 'https://example.test/2002',
+      status: 'Done',
+      estimate: 6,
+      engagedMin: 180,
+      parentNumber: 2000,
+      timingBody: '',
+    },
+  ];
+  const estimationModel = buildEstimationReportModel({ items, recordsByIssue: new Map() });
+  const html = buildHtml(
+    { title: 'Legacy epic totals' },
+    items,
+    { totalEst: 110, totalEngaged: 105, totalSessionMin: 6_300, totalContextWords: 0 },
+    estimationModel
+  );
+  const accelerator = html.slice(
+    html.indexOf('<h2>Agentic AI Accelerator</h2>'),
+    html.indexOf('<h3 class="tl-heading">Daily Work Activity</h3>')
+  );
+  const backlog = html.slice(html.indexOf('Appendix A — Product Backlog'), html.indexOf('Appendix B'));
+
+  assert.match(accelerator, />10h @/);
+  assert.match(accelerator, /<div class="ac-num">2×<\/div>/);
+  assert.doesNotMatch(accelerator, />110h @/);
+  assert.match(backlog, /#2000[\s\S]*?<td class="num">10h<\/td>/);
 });
