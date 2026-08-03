@@ -34,6 +34,13 @@ describe('planExitPlanMetadataGuard (#892)', () => {
     assert.deepEqual(run('## Plan Metadata\n\n- estimate: 8\n'), { ok: true });
   });
 
+  it('refuses provenance-only fields that belong in Story Origin', () => {
+    for (const field of ['kind', 'parent', 'related', 'blocks', 'discovered-during']) {
+      const result = run(`## Plan Metadata\n\n- **${field}**: value\n`);
+      assert.equal(result.ok, false, field);
+    }
+  });
+
   it('does not cross into the adjacent Pickup Directive section', () => {
     const body = [
       '## Plan Metadata',

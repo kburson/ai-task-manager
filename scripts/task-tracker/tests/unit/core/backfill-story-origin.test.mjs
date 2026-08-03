@@ -90,6 +90,30 @@ describe('buildPlanMetadataBackfill Story Origin migration (#892)', () => {
     );
   });
 
+  it('replaces empty Story Origin placeholders with populated legacy values', () => {
+    const body = [
+      '## Story Origin',
+      '',
+      '- **kind**: code',
+      '- **parent**:',
+      '',
+      '## Plan Metadata',
+      '',
+      '- **parent**: #883',
+      '- **size**: S',
+    ].join('\n');
+
+    const result = buildPlanMetadataBackfill(body);
+
+    assert.equal(result.status, 'healed');
+    assert.match(result.body, /- \*\*parent\*\*: #883/);
+    assert.equal(result.body.match(/\*\*parent\*\*:/g)?.length, 1);
+    assert.doesNotMatch(
+      result.body.slice(result.body.indexOf('## Plan Metadata')),
+      /\*\*parent\*\*:/
+    );
+  });
+
   it('skips a clean split body byte-for-byte', () => {
     const body = [
       '## Story Origin',

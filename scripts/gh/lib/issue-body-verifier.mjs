@@ -53,6 +53,17 @@ const SECTION_CHECKS = [
 
 const PICKUP_FOLLOW_LINE = '> Follow: `.ai-task-manager/templates/pickup-directive.md`';
 
+function metadataSectionHasNestedHeading(body, heading) {
+  const lines = String(body).split('\n');
+  const start = lines.findIndex((line) => line === `## ${heading}`);
+  if (start === -1) return false;
+  for (let i = start + 1; i < lines.length; i += 1) {
+    if (/^##\s+/.test(lines[i])) return false;
+    if (/^#{1,6}\s+/.test(lines[i])) return true;
+  }
+  return false;
+}
+
 export function verifyIssueBody(body) {
   const missing = [];
   if (typeof body !== 'string' || body.length === 0) {
@@ -72,6 +83,11 @@ export function verifyIssueBody(body) {
 
   if (STORY_ORIGIN_REGEX.test(body) && !hasStoryOriginFields(body)) {
     missing.push('## Story Origin must contain at least one non-empty flat metadata field');
+  }
+  for (const heading of ['Story Origin', 'Plan Metadata']) {
+    if (metadataSectionHasNestedHeading(body, heading)) {
+      missing.push(`## ${heading} must be flat and contain no nested headings`);
+    }
   }
 
   if (

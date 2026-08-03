@@ -91,6 +91,20 @@ test('verifyIssueBody: empty or prose-only Story Origin is malformed', () => {
   }
 });
 
+test('verifyIssueBody: metadata sections reject nested headings', () => {
+  for (const [needle, replacement, section] of [
+    ['**kind:** code', '**kind:** code\n### Relationships\n- **related**: #883', 'Story Origin'],
+    ['**Size:** S', '**Size:** S\n#### Delivery\n- **estimate**: 2', 'Plan Metadata'],
+  ]) {
+    const res = verifyIssueBody(CANONICAL_BODY.replace(needle, replacement));
+    assert.equal(res.ok, false, section);
+    assert.ok(
+      res.missing.some((item) => item.includes(`${section} must be flat`)),
+      section
+    );
+  }
+});
+
 test('verifyIssueBody: missing Plan Metadata', () => {
   const body = CANONICAL_BODY.replace('## Plan Metadata', '## Planning');
   const res = verifyIssueBody(body);

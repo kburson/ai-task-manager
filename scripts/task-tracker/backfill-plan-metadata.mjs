@@ -74,7 +74,9 @@ export function buildPlanMetadataBackfill(body = '') {
       const key = field?.key.toLowerCase();
       if (!field || !PROVENANCE_KEYS.has(key)) continue;
       const canonical = canonicalOriginKey(key);
-      if (!storyValues.has(canonical)) storyValues.set(canonical, field.value);
+      if (field.value.trim() && !storyValues.has(canonical)) {
+        storyValues.set(canonical, field.value);
+      }
     }
   }
 
@@ -88,7 +90,7 @@ export function buildPlanMetadataBackfill(body = '') {
     if (field && PROVENANCE_KEYS.has(key)) {
       const canonical = canonicalOriginKey(key);
       changed.push(canonical);
-      if (!storyValues.has(canonical)) {
+      if (field.value.trim() && !storyValues.has(canonical)) {
         storyValues.set(canonical, field.value);
         movedFields.push(`- **${canonical}**: ${field.value}`);
       }
@@ -133,6 +135,10 @@ export function buildPlanMetadataBackfill(body = '') {
         continue;
       }
       const canonical = canonicalOriginKey(key);
+      if (!field.value.trim()) {
+        if (!changed.includes(canonical)) changed.push(canonical);
+        continue;
+      }
       if (seen.has(canonical)) continue;
       seen.add(canonical);
       const normalized = `- **${canonical}**: ${field.value}`;
