@@ -94,6 +94,14 @@ describe('preflight-issue --shape lint wiring', () => {
       // #419 — the preflight-emitted Functional DoD tail carries the
       // consolidated declaration form; #468 retired the legacy reader.
       assert.match(r.stdout, /aitm-verified cmd=/);
+      const lifecycle = r.stdout.indexOf('### Lifecycle (verified at Review)');
+      const agentReview = r.stdout.indexOf('- [ ] Agent Review Passed');
+      const finalReview = r.stdout.indexOf('- [ ] Final Review Passed');
+      const housekeeping = r.stdout.indexOf('### Housekeeping (verified at Close)');
+      const storyClosed = r.stdout.indexOf('- [ ] Story closed and moved to Done');
+      const timingFlushed = r.stdout.indexOf('- [ ] Timing data flushed to issue');
+      assert.ok(lifecycle < agentReview && agentReview < finalReview && finalReview < housekeeping);
+      assert.ok(housekeeping < storyClosed && storyClosed < timingFlushed);
     } finally {
       rmSync(fx.dir, { recursive: true, force: true });
     }

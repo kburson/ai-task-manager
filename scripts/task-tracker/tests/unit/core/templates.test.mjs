@@ -57,14 +57,30 @@ for (const fragment of [
   'aitm-verified cmd="`npm run lint` `npm run format:check`"',
   '- [ ] Acceptance criteria met',
   '- [ ] Issue body checkboxes ticked',
-  '### Lifecycle (auto-ticked at Review/Close)',
+  '### Lifecycle (verified at Review)',
   '- [ ] Agent Review Passed',
   '- [ ] Final Review Passed',
+  '### Housekeeping (verified at Close)',
   '- [ ] Story closed and moved to Done',
   '- [ ] Timing data flushed to issue',
 ]) {
   assert.ok(body.includes(fragment), `template includes ${fragment}`);
 }
+
+// @story #982
+const phaseHeadings = [
+  '### Functional (verified at Test)',
+  '### Lifecycle (verified at Review)',
+  '### Housekeeping (verified at Close)',
+];
+for (const heading of phaseHeadings) {
+  assert.equal(body.match(new RegExp(heading.replace(/[()]/g, '\\$&'), 'g'))?.length, 1);
+}
+assert.deepEqual(
+  phaseHeadings.map((heading) => body.indexOf(heading)),
+  [...phaseHeadings.map((heading) => body.indexOf(heading))].sort((a, b) => a - b)
+);
+assert.doesNotMatch(body, /Lifecycle \(auto-ticked at Review\/Close\)/);
 
 assert.ok(
   !body.includes('Tests pass; new coverage committed'),
