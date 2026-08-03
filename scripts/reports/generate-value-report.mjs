@@ -255,7 +255,7 @@ function parseStartInfo(comments) {
 // When supplied, the include-filter consumes the three-signal resolver (#782):
 // an issue that the resolver marks `attributed` is admitted even if it carries
 // no board data field, and an issue the resolver marks `dead` is dropped.
-function processItems(raw, attribution = null) {
+export function processItems(raw, attribution = null) {
   return raw
     .filter(n => n.content?.number)
     .map(n => {
@@ -307,7 +307,9 @@ function processItems(raw, attribution = null) {
       if (
         i.estimate == null &&
         i.sessionMin == null &&
+        i.engagedMin == null &&
         i.contextWords == null &&
+        i.parentNumber == null &&
         !attr?.attributed &&
         !hasEstimationEvidence
       ) return false;

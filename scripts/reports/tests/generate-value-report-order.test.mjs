@@ -14,7 +14,7 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { buildHtml } from '../generate-value-report.mjs';
+import { buildHtml, processItems } from '../generate-value-report.mjs';
 import { buildEstimationReportModel } from '../lib/estimation-records.mjs';
 
 // A ⏱ Timing Log with two same-day rows an hour apart. bucketRowsByDay windows
@@ -315,4 +315,104 @@ test('fully legacy epic totals sum children without adding parent board values',
   assert.match(accelerator, /<div class="ac-num">2×<\/div>/);
   assert.doesNotMatch(accelerator, />110h @/);
   assert.match(backlog, /#2000[\s\S]*?<td class="num">10h<\/td>/);
+});
+
+test('production filtering preserves a fieldless legacy child as a fail-closed epic gap', () => {
+  const rawIssue = ({ number, parentNumber = null, fields = [], comments = [] }) => ({
+    content: {
+      number,
+      title: `Issue ${number}`,
+      state: 'CLOSED',
+      stateReason: 'COMPLETED',
+      url: `https://example.test/${number}`,
+      body: '',
+      createdAt: '2026-08-01T00:00:00.000Z',
+      closedAt: '2026-08-02T00:00:00.000Z',
+      parent: parentNumber == null ? null : { number: parentNumber },
+      comments: { nodes: comments, pageInfo: { hasNextPage: false } },
+    },
+    fieldValues: { nodes: fields },
+  });
+  const textField = (name, text) => ({ text, field: { name } });
+  const status = { name: 'Done', field: { name: 'Status' } };
+  const adaptiveMarker = { body: '<!-- aitm-record type="estimation-forecast" -->' };
+  const items = processItems([
+    rawIssue({
+      number: 2000,
+      fields: [status, textField('Session', '00d 01h 00m 00s')],
+    }),
+    rawIssue({
+      number: 2001,
+      parentNumber: 2000,
+      fields: [status],
+      comments: [adaptiveMarker],
+    }),
+    rawIssue({ number: 2002, parentNumber: 2000, fields: [status] }),
+  ]);
+  const forecastId = '01J00000000000000000001001';
+  const childOutcomeId = '01J00000000000000000001002';
+  const forecast = {
+    envelope: {
+      recordType: 'estimation-forecast',
+      recordId: forecastId,
+      payload: {
+        plan: { humanHours: 5 },
+        refine: { humanHours: 5 },
+        ai: { p50EngagedHours: 2, p80EngagedHours: 3 },
+      },
+    },
+  };
+  const childOutcome = {
+    envelope: {
+      recordType: 'estimation-outcome',
+      recordId: childOutcomeId,
+      payload: {
+        kind: 'story',
+        forecastRecordId: forecastId,
+        actual: { engagedHours: 2 },
+        variance: { vsAiP50Hours: 0, vsAiP80Hours: -1 },
+        costClassification: { avoidableProcessWasteHours: 0 },
+      },
+    },
+  };
+  const parentOutcome = {
+    envelope: {
+      recordType: 'estimation-outcome',
+      recordId: '01J00000000000000000001003',
+      payload: {
+        kind: 'epic-orchestration',
+        forecastRecordId: null,
+        actual: { engagedHours: 1 },
+        variance: null,
+        costClassification: { avoidableProcessWasteHours: 0 },
+        landscape: { childOutcomeRecordIds: [childOutcomeId] },
+      },
+    },
+  };
+  const model = buildEstimationReportModel({
+    items,
+    recordsByIssue: new Map([
+      [2000, [parentOutcome]],
+      [2001, [forecast, childOutcome]],
+    ]),
+  });
+  const epic = model.rowsByIssue.get(2000);
+  const html = buildHtml(
+    { title: 'Filtered mixed epic' },
+    items,
+    { totalSessionMin: 60, totalContextWords: 0, humanEngaged: 1, humanSessionMin: 60 },
+    model
+  );
+  const accelerator = html.slice(
+    html.indexOf('<h2>Agentic AI Accelerator</h2>'),
+    html.indexOf('<h3 class="tl-heading">Daily Work Activity</h3>')
+  );
+
+  assert.deepEqual(items.map((item) => item.number), [2000, 2001, 2002]);
+  assert.equal(epic.humanPlanHours, null);
+  assert.equal(epic.actualEngagedHours, null);
+  assert.ok(epic.evidenceGaps.includes('child-missing-legacy-estimate'));
+  assert.ok(epic.evidenceGaps.includes('child-missing-legacy-engaged'));
+  assert.doesNotMatch(accelerator, />5h @/);
+  assert.match(accelerator, /No complete adaptive outcome or legacy board Engaged evidence/);
 });
