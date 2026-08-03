@@ -354,6 +354,7 @@ describe('preflight-issue --kind docs-only render (#865 diff-decides / #923)', (
 
   it('default-deny: docs-only with NO --changed-paths-file KEEPS the tests DoD item', async () => {
     const fx = makeFixture('- [ ] Some AC.\n');
+    writeFileSync(fx.origin, '- kind: docs-only\n', 'utf8');
     try {
       const r = await runPreflight([
         '--shape',
@@ -387,6 +388,7 @@ describe('preflight-issue --kind docs-only render (#865 diff-decides / #923)', (
 
   it('docs-only + provably documentation-only diff DROPS the tests item + its VC seeds', async () => {
     const fx = makeFixture('- [ ] Some AC.\n');
+    writeFileSync(fx.origin, '- kind: docs-only\n', 'utf8');
     const cp = writeChangedPaths(fx.dir, ['docs/guides/workflow.md', 'README.md']);
     try {
       const r = await runPreflight([
@@ -439,6 +441,7 @@ describe('preflight-issue --kind docs-only render (#865 diff-decides / #923)', (
 
   it('docs-only + a diff that touches code KEEPS the tests item (default-deny)', async () => {
     const fx = makeFixture('- [ ] Some AC.\n');
+    writeFileSync(fx.origin, '- kind: docs-only\n', 'utf8');
     const cp = writeChangedPaths(fx.dir, [
       'docs/guides/workflow.md',
       'scripts/task-tracker/lib/foo.mjs',
