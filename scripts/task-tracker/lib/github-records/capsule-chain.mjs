@@ -121,6 +121,21 @@ function forkDiagnostics(successors) {
     .sort((left, right) => left.predecessorRecordId.localeCompare(right.predecessorRecordId));
 }
 
+function structuralRecordOrder(byId, successors) {
+  if (byId.size === 0) return [];
+  const root = [...byId.values()].find((record) => record.envelope.predecessor === null);
+  const ordered = [];
+  let current = root;
+  while (current !== undefined) {
+    ordered.push(current);
+    const next = successors.get(current.envelope.recordId) ?? [];
+    if (next.length === 0) break;
+    if (next.length > 1) throw chainError('fork');
+    current = byId.get(next[0]);
+  }
+  return ordered;
+}
+
 function validateSupersession(byId) {
   const superseders = new Map();
   for (const record of byId.values()) {
@@ -174,7 +189,8 @@ export function detectRecordFork({ records, repository, issue } = {}) {
 }
 
 export function resolveSupersession({ records, repository, issue } = {}) {
-  const { byId } = validated({ records, repository, issue });
+  const { byId, successors } = validated({ records, repository, issue });
+  if (forkDiagnostics(successors).length > 0) throw chainError('fork');
   const supersededRecordIds = new Set();
   for (const record of byId.values()) {
     if (record.envelope.supersedes !== null) supersededRecordIds.add(record.envelope.supersedes);
@@ -182,7 +198,9 @@ export function resolveSupersession({ records, repository, issue } = {}) {
   return Object.freeze({
     records: Object.freeze([...records]),
     effectiveRecords: Object.freeze(
-      records.filter((record) => !supersededRecordIds.has(record.envelope.recordId))
+      structuralRecordOrder(byId, successors).filter(
+        (record) => !supersededRecordIds.has(record.envelope.recordId)
+      )
     ),
     supersededRecordIds: Object.freeze([...supersededRecordIds].sort()),
   });
