@@ -91,6 +91,18 @@ test('chain validation rejects unknown types, correlation mismatches, duplicate 
   }
 });
 
+test('non-empty chains require one root for validation and supersession resolution', () => {
+  const firstRoot = capsule({ recordId: id(1) });
+  const secondRoot = capsule({ recordId: id(2) });
+  for (const operation of [validateCapsuleChain, resolveSupersession]) {
+    assert.throws(
+      () => operation({ records: [firstRoot, secondRoot], repository, issue }),
+      /capsule-chain:multiple-roots/
+    );
+  }
+  assert.deepEqual(validateCapsuleChain({ records: [], repository, issue }).records, []);
+});
+
 test('fork detection returns a blocked diagnostic without selecting the newer successor', () => {
   const root = capsule({ recordId: id(1) });
   const earlier = capsule({
@@ -131,7 +143,7 @@ test('supersession preserves immutable history and computes effective records', 
 
 test('supersession rejects missing, self, duplicate-active, incompatible, and cyclic targets', () => {
   const original = capsule({ recordId: id(1) });
-  const missing = capsule({ recordId: id(2), supersedes: id(88) });
+  const missing = capsule({ recordId: id(2), predecessor: id(1), supersedes: id(88) });
   const self = {
     ...capsule({ recordId: id(3) }),
     envelope: { ...capsule({ recordId: id(3) }).envelope, supersedes: id(3) },
@@ -144,15 +156,15 @@ test('supersession rejects missing, self, duplicate-active, incompatible, and cy
     supersedes: id(1),
     recordType: 'review-result',
   });
-  const cycleFirst = capsule({ recordId: id(7), supersedes: id(8) });
-  const cycleSecond = capsule({ recordId: id(8), supersedes: id(7) });
+  const cycleFirst = capsule({ recordId: id(7), predecessor: id(1), supersedes: id(8) });
+  const cycleSecond = capsule({ recordId: id(8), predecessor: id(7), supersedes: id(7) });
 
   for (const [records, error] of [
     [[original, missing], /capsule-chain:missing-supersedes/],
     [[self], /capsule-chain:self-supersedes/],
     [[original, first, second], /capsule-chain:multiple-superseders/],
     [[original, incompatible], /capsule-chain:incompatible-supersession/],
-    [[cycleFirst, cycleSecond], /capsule-chain:supersession-cycle/],
+    [[original, cycleFirst, cycleSecond], /capsule-chain:supersession-cycle/],
   ]) {
     assert.throws(() => resolveSupersession({ records, repository, issue }), error);
   }
