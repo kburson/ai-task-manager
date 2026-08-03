@@ -38,9 +38,16 @@ if (import.meta.url === `file://${process.argv[1]}` && wantsHelp(process.argv.sl
 const pexec = promisify(execFile);
 
 const PROVENANCE_KEYS = new Set(STORY_ORIGIN_PROVENANCE_KEYS);
+const LEGACY_PARENT_EPIC_RE = /^(?:-\s+)?\*\*Parent epic(?::\*\*|\*\*:)\s*(.*)$/i;
 
 function canonicalOriginKey(key) {
   return key === 'size-note' ? 'size-guess' : key;
+}
+
+function parseLegacyParentEpicField(line) {
+  const match = LEGACY_PARENT_EPIC_RE.exec(String(line));
+  if (!match) return null;
+  return { key: 'parent', value: match[1], bold: true };
 }
 
 function insertFieldsBeforeTrailingBlank(lines, bounds, fields) {
@@ -76,7 +83,7 @@ export function buildPlanMetadataBackfill(body = '') {
   const planContent = [];
   for (let i = originalPlanBounds.start; i < originalPlanBounds.end; i += 1) {
     const line = originalLines[i];
-    const field = parseMetadataField(line);
+    const field = parseMetadataField(line) ?? parseLegacyParentEpicField(line);
     const key = field?.key.toLowerCase();
     if (field && PROVENANCE_KEYS.has(key)) {
       const canonical = canonicalOriginKey(key);

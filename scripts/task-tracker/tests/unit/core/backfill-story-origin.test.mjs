@@ -204,4 +204,32 @@ describe('buildPlanMetadataBackfill Story Origin migration (#892)', () => {
     );
     assert.deepEqual(buildPlanMetadataBackfill(once.body), { status: 'skip' });
   });
+
+  it('migrates the legacy canonical Parent epic relationship as parent', () => {
+    const body = [
+      '## Scope',
+      '',
+      'Legacy sub-issue.',
+      '',
+      '## Plan Metadata',
+      '',
+      '- **size**: S',
+      '',
+      '**Parent epic:** #883',
+      '',
+      '## Acceptance Criteria',
+      '',
+      '- [ ] Parent provenance survives.',
+    ].join('\n');
+
+    const once = buildPlanMetadataBackfill(body);
+
+    assert.equal(once.status, 'healed');
+    assert.match(
+      once.body,
+      /## Story Origin\n\n- \*\*kind\*\*: code\n- \*\*parent\*\*: #883\n\n## Plan Metadata/
+    );
+    assert.doesNotMatch(once.body, /Parent epic/);
+    assert.deepEqual(buildPlanMetadataBackfill(once.body), { status: 'skip' });
+  });
 });

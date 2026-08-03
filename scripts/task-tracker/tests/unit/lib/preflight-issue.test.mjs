@@ -11,7 +11,7 @@ import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
-import { mkdtempSync, writeFileSync, rmSync } from 'node:fs';
+import { copyFileSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync, rmSync } from 'node:fs';
 import { projectScratchDir } from '../../../lib/scratch-dir.mjs';
 import { normalizePlanMetadata } from '../../../preflight-issue.mjs';
 import path from 'node:path';
@@ -21,6 +21,7 @@ import { auditEvidenceMarkers } from '../../../lib/evidence-markers.mjs';
 const pexec = promisify(execFile);
 const HERE = path.dirname(fileURLToPath(import.meta.url)) + '/..';
 const SCRIPT = path.resolve(HERE, '..', '..', 'preflight-issue.mjs');
+const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../../../..');
 
 function makeFixture(acBody) {
   const dir = mkdtempSync(path.join(projectScratchDir('test'), 'aitm-preflight-test-'));
@@ -35,9 +36,9 @@ function makeFixture(acBody) {
   return { dir, ac, scope, origin, meta };
 }
 
-async function runPreflight(args) {
+async function runPreflight(args, options = {}) {
   try {
-    const { stdout, stderr } = await pexec('node', [SCRIPT, ...args]);
+    const { stdout, stderr } = await pexec('node', [SCRIPT, ...args], options);
     return { code: 0, stdout, stderr };
   } catch (err) {
     return { code: err.code ?? 1, stdout: err.stdout ?? '', stderr: err.stderr ?? '' };
@@ -144,6 +145,53 @@ describe('preflight-issue --shape Story Origin flat-section validation (#892)', 
 
     assert.equal(r.code, 0, `stderr: ${r.stderr}`);
     assert.equal(r.stdout.match(/^## Story Origin$/gm)?.length, 1);
+  });
+
+  it('rejects a stale project template override that drops Story Origin', async () => {
+    const fx = makeFixture('- [ ] Works\n');
+    try {
+      const templatesDir = path.join(fx.dir, '.ai-task-manager', 'templates');
+      mkdirSync(templatesDir, { recursive: true });
+      await pexec('git', ['init', '--quiet'], { cwd: fx.dir });
+      copyFileSync(
+        path.join(REPO_ROOT, '.ai-task-manager', 'templates', 'pickup-directive.md'),
+        path.join(templatesDir, 'pickup-directive.md')
+      );
+      copyFileSync(
+        path.join(REPO_ROOT, '.ai-task-manager', 'templates', 'definition-of-done.md'),
+        path.join(templatesDir, 'definition-of-done.md')
+      );
+      const staleOverride = readFileSync(
+        path.join(REPO_ROOT, 'templates', 'solo-issue-body.md'),
+        'utf8'
+      ).replace(/\n## Story Origin\n\n\{\{story_origin\}\}\n/, '');
+      writeFileSync(
+        path.join(fx.dir, '.ai-task-manager', 'solo-issue-body.md'),
+        staleOverride,
+        'utf8'
+      );
+
+      const r = await runPreflight(
+        [
+          '--shape',
+          'solo',
+          '--scope-file',
+          fx.scope,
+          '--ac-file',
+          fx.ac,
+          '--story-origin-file',
+          fx.origin,
+          '--plan-metadata-file',
+          fx.meta,
+        ],
+        { cwd: fx.dir }
+      );
+
+      assert.equal(r.code, 2);
+      assert.match(r.stderr, /rendered solo body failed canonical verification:.*Story Origin/);
+    } finally {
+      rmSync(fx.dir, { recursive: true, force: true });
+    }
   });
 });
 

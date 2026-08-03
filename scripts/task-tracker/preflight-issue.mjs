@@ -48,6 +48,7 @@ import { serializeMarker } from './lib/marker-grammar.mjs';
 import { setIssueKindMarker, normalizeKind, DEFAULT_KIND } from './lib/issue-kind.mjs';
 import { filterDodForKindAndDiff } from './lib/dod-kind-filter.mjs';
 import { wantsHelp, emitSelfDoc } from '../lib/self-doc.mjs';
+import { verifyIssueBody } from '../gh/lib/issue-body-verifier.mjs';
 
 const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
 const PACKAGE_TEMPLATES_DIR = path.resolve(SCRIPT_DIR, '..', '..', 'templates');
@@ -438,6 +439,12 @@ function emitShape(args, dodPath, root) {
   // filtering; reuse it.
   if (typeof args.kind === 'string') {
     finalBody = setIssueKindMarker(finalBody, kind);
+  }
+  const bodyVerification = verifyIssueBody(finalBody);
+  if (!bodyVerification.ok) {
+    die(
+      `rendered ${shape} body failed canonical verification: ${bodyVerification.missing.join('; ')}`
+    );
   }
   process.stdout.write(finalBody);
   // #298 AC3 — emit `aitm-fields` trailer block from seed values forwarded
