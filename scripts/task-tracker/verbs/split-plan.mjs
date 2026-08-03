@@ -5,8 +5,11 @@ import { promisify } from 'node:util';
 
 import { gql, splitRepo } from '../../gh/lib/github-projects.mjs';
 import { evaluateIssueDecomposition } from '../lib/decomposition-plan-exit-guard.mjs';
-import { classifyDecomposition, linkedPlanPath } from '../lib/decomposition-policy.mjs';
-import { metadataFieldValue } from '../lib/metadata-section.mjs';
+import {
+  classifyDecomposition,
+  linkedPlanPath,
+  visibleMetadataFieldValue,
+} from '../lib/decomposition-policy.mjs';
 import { GH_API_TIMEOUT_MS } from '../lib/process-timeouts.mjs';
 import { projectScratchDir } from '../lib/scratch-dir.mjs';
 import { buildSplitProposals, writeProposalFragments } from '../lib/split-plan.mjs';
@@ -129,7 +132,7 @@ export async function runSplitPlan({
   const planPath = planOverride || linkedPlanPath(body);
   if (!planPath) throw new Error('split-plan: source plan provenance is unavailable');
   const governingSpec =
-    metadataFieldValue(body, 'Plan Metadata', 'Governing-spec') || DEFAULT_GOVERNING_SPEC;
+    visibleMetadataFieldValue(body, 'Plan Metadata', 'Governing-spec') || DEFAULT_GOVERNING_SPEC;
   const [outerParent, planCommit] = await Promise.all([
     fetchParentIssue({ issueNumber: sourceIssue, cfg }),
     resolveHead({ projectDir }),

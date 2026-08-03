@@ -296,6 +296,29 @@ test('human dry-run output exposes complete proposals and future creator argv', 
   }
 });
 
+test('hidden and placeholder Governing-spec metadata fall back to the sanctioned default', async () => {
+  for (const governingField of [
+    '<!-- - **Governing-spec**: docs/hidden.md -->',
+    '- **Governing-spec**: <!-- TBD -->',
+  ]) {
+    const args = orchestrationInput();
+    args.deps.fetchIssueBody = async () =>
+      ['## Plan Metadata', `- **Implementation-plan**: ${PLAN_PATH}`, governingField].join('\n');
+    try {
+      const result = await runSplitPlan(args);
+      assert.ok(
+        result.proposals.every((proposal) =>
+          proposal.planMetadata.includes(
+            '**Governing-spec**: docs/superpowers/specs/2026-08-03-nested-epic-decomposition-design.md'
+          )
+        )
+      );
+    } finally {
+      args.cleanup();
+    }
+  }
+});
+
 test('rejects a missing --plan value instead of consuming the next option', () => {
   assert.throws(() => parseSplitPlanArgs(['1052', '--plan', '--json']), /requires a path/);
 });

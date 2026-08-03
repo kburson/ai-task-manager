@@ -1,4 +1,4 @@
-import { accessSync, constants, existsSync, realpathSync, statSync } from 'node:fs';
+import { accessSync, constants, existsSync, lstatSync, realpathSync, statSync } from 'node:fs';
 import path from 'node:path';
 
 import {
@@ -73,20 +73,68 @@ function fencedLineMask(lines) {
   return masked;
 }
 
-function stripHtmlComments(value) {
-  return String(value).replace(/<!--[\s\S]*?(?:-->|$)/g, (comment) =>
-    comment.replace(/[^\n]/g, ' ')
-  );
+function stripLineHtmlComments(line, state) {
+  let output = '';
+  let index = 0;
+  let inlineTicks = 0;
+  while (index < line.length) {
+    if (state.inComment) {
+      const end = line.indexOf('-->', index);
+      const stop = end === -1 ? line.length : end + 3;
+      output += ' '.repeat(stop - index);
+      index = stop;
+      if (end !== -1) state.inComment = false;
+      continue;
+    }
+    const ticks = /^`+/.exec(line.slice(index));
+    if (ticks) {
+      const length = ticks[0].length;
+      inlineTicks = inlineTicks === 0 ? length : length >= inlineTicks ? 0 : inlineTicks;
+      output += ticks[0];
+      index += length;
+      continue;
+    }
+    if (inlineTicks === 0 && line.startsWith('<!--', index)) {
+      state.inComment = true;
+      output += '    ';
+      index += 4;
+      continue;
+    }
+    output += line[index];
+    index += 1;
+  }
+  return output;
+}
+
+function visibleContentLines(value) {
+  const lines = String(value).split('\n');
+  const state = { inComment: false, fence: null };
+  return lines.map((line) => {
+    const fence = /^\s*(`{3,}|~{3,})/.exec(line);
+    if (state.fence) {
+      if (fence && fence[1][0] === state.fence.character && fence[1].length >= state.fence.length) {
+        state.fence = null;
+      }
+      return line;
+    }
+    const visible = stripLineHtmlComments(line, state);
+    const openingFence = !state.inComment && /^\s*(`{3,}|~{3,})/.exec(visible);
+    if (openingFence) {
+      state.fence = { character: openingFence[1][0], length: openingFence[1].length };
+    }
+    return visible;
+  });
 }
 
 function visibleStructuralLines(value) {
-  const lines = stripHtmlComments(value).split('\n');
+  const lines = visibleContentLines(value);
   const fenced = fencedLineMask(lines);
   return lines.map((line, index) => (fenced[index] ? '' : line));
 }
 
 export function extractPlanTasks(planText = '') {
-  const lines = stripHtmlComments(planText).split('\n');
+  const originalLines = String(planText).split('\n');
+  const lines = visibleContentLines(planText);
   const fenced = fencedLineMask(lines);
   const tasks = [];
   for (let index = 0; index < lines.length; index += 1) {
@@ -98,14 +146,15 @@ export function extractPlanTasks(planText = '') {
     if (!Number.isInteger(number) || number <= 0 || !title) continue;
     let end = index + 1;
     while (end < lines.length && (fenced[end] || !SECTION_HEADING_RE.test(lines[end]))) end += 1;
-    const body = lines.slice(index + 1, end).join('\n');
+    const body = originalLines.slice(index + 1, end).join('\n');
+    const commandBody = lines.slice(index + 1, end).join('\n');
     tasks.push({
       number,
       kind: match[1].toLowerCase(),
       title,
       heading: `### ${match[1][0].toUpperCase()}${match[1].slice(1).toLowerCase()} ${number}: ${title}`,
       body,
-      commands: commandsFromTaskBody(body),
+      commands: commandsFromTaskBody(commandBody),
     });
   }
   return tasks;
@@ -176,14 +225,18 @@ export function classifyDecomposition({ size = null, estimateHours = null, planT
 }
 
 export function linkedPlanPath(body = '') {
-  const visibleBody = visibleStructuralLines(body).join('\n');
   for (const key of PLAN_METADATA_KEYS) {
-    const value = metadataFieldValue(visibleBody, 'Plan Metadata', key);
-    if (value == null || !isSubstantiveMetadataValue(value)) continue;
+    const value = visibleMetadataFieldValue(body, 'Plan Metadata', key);
+    if (value == null) continue;
     const candidate = value.replace(/\s+@\s+[0-9a-f]{7,40}\s*$/i, '').trim();
     if (isSubstantiveMetadataValue(candidate)) return candidate;
   }
   return null;
+}
+
+export function visibleMetadataFieldValue(body, heading, key) {
+  const value = metadataFieldValue(visibleStructuralLines(body).join('\n'), heading, key);
+  return value != null && isSubstantiveMetadataValue(value) ? value.trim() : null;
 }
 
 function unavailable(source, diagnostic) {
@@ -207,6 +260,9 @@ export function resolvePlanPath({ projectDir, body = '', overridePath = null } =
   try {
     if (!existsSync(resolved) || !statSync(resolved).isFile()) {
       return unavailable(source, `plan path is not a readable file: ${candidate}`);
+    }
+    if (lstatSync(resolved).isSymbolicLink()) {
+      return unavailable(source, `plan path must not be a symbolic link: ${candidate}`);
     }
     accessSync(resolved, constants.R_OK);
     const realRoot = realpathSync(root);

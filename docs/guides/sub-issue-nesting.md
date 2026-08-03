@@ -106,7 +106,7 @@ Task-specific acceptance criteria and verification commands remain on the
 generated children; the source owns relationship and roll-up evidence.
 Proposal text is read from the source plan at the pinned HEAD commit, not from
 uncommitted working-tree bytes. Plan paths must be repository-relative and may
-not escape the repository through traversal or symlinks.
+not escape the repository through traversal; symbolic plan paths are rejected.
 
 ### Visible decomposition waiver
 

@@ -126,6 +126,18 @@ Run: \`node --test visible.test.mjs\``);
   );
 });
 
+test('preserves pinned task body bytes while hiding comments from command extraction', () => {
+  const [task] = extractPlanTasks(`### Task 1: Preserve source
+\`\`\`markdown
+<!-- aitm-visible-example -->
+\`\`\`
+<!-- Run: \`node --test hidden.test.mjs\` -->
+Run: \`node --test visible.test.mjs --grep '<!-- literal -->'\``);
+  assert.match(task.body, /<!-- aitm-visible-example -->/);
+  assert.match(task.body, /hidden\.test\.mjs/);
+  assert.deepEqual(task.commands, ["node --test visible.test.mjs --grep '<!-- literal -->'"]);
+});
+
 test('linked plan metadata prefers Implementation-plan and strips a commit suffix', () => {
   const body = `## Plan Metadata
 
@@ -202,7 +214,16 @@ test('resolvePlanPath contains paths to the repository and reports unavailable i
       projectDir,
       body: '## Plan Metadata\n\n- **Plan**: docs/outside-link.md',
     }).diagnostic,
-    /outside repository root/
+    /must not be a symbolic link/
+  );
+
+  symlinkSync('plan.md', join(projectDir, 'docs', 'inside-link.md'));
+  assert.match(
+    resolvePlanPath({
+      projectDir,
+      body: '## Plan Metadata\n\n- **Plan**: docs/inside-link.md',
+    }).diagnostic,
+    /must not be a symbolic link/
   );
 });
 
