@@ -141,6 +141,48 @@ test('supersession preserves immutable history and computes effective records', 
   assert.deepEqual(result.supersededRecordIds, [id(1)]);
 });
 
+test('supersession resolution orders effective records by validated predecessor structure', () => {
+  const first = capsule({ recordId: id(1) });
+  const second = capsule({ recordId: id(2), predecessor: id(1) });
+  const third = capsule({ recordId: id(3), predecessor: id(2) });
+  const ordered = resolveSupersession({
+    records: [first, second, third],
+    repository,
+    issue,
+  });
+  const reversed = resolveSupersession({
+    records: [third, second, first],
+    repository,
+    issue,
+  });
+
+  assert.deepEqual(
+    ordered.effectiveRecords.map((record) => record.envelope.recordId),
+    [id(1), id(2), id(3)]
+  );
+  assert.deepEqual(
+    reversed.effectiveRecords.map((record) => record.envelope.recordId),
+    [id(1), id(2), id(3)]
+  );
+  assert.deepEqual(reversed.records, [third, second, first]);
+});
+
+test('supersession resolution blocks a predecessor fork instead of producing effective authority', () => {
+  const root = capsule({ recordId: id(1) });
+  const firstSuccessor = capsule({ recordId: id(2), predecessor: id(1) });
+  const secondSuccessor = capsule({ recordId: id(3), predecessor: id(1) });
+
+  assert.throws(
+    () =>
+      resolveSupersession({
+        records: [root, firstSuccessor, secondSuccessor],
+        repository,
+        issue,
+      }),
+    /capsule-chain:fork/
+  );
+});
+
 test('supersession rejects missing, self, duplicate-active, incompatible, and cyclic targets', () => {
   const original = capsule({ recordId: id(1) });
   const missing = capsule({ recordId: id(2), predecessor: id(1), supersedes: id(88) });
