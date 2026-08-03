@@ -291,6 +291,85 @@ test('delegates a nested epic only as a strict subset of the active parent grant
   }
 });
 
+test('resolves persisted nested delegation as a partitioned parent-child authority graph', () => {
+  const parentGrant = grant();
+  const childGrant = grant({
+    grantId: 'grant-nested-persisted',
+    scopeRootIssue: 102,
+    includedIssues: [103],
+    excludedIssues: [],
+    coordinator: nestedCoordinator,
+    parentGrantId: 'grant-parent',
+    issuer: coordinator,
+    operations: ['advance'],
+    branchBoundary: ['epic/100/nested-102', 'work/103'],
+    integrationBoundary: {
+      sourceBranches: ['work/103'],
+      destinationBranches: ['epic/100/nested-102'],
+    },
+  });
+  const childAuthority = resolve({
+    grants: [parentGrant, childGrant],
+    coordinationProjection: projection({ grantId: childGrant.grantId }),
+  });
+
+  assert.deepEqual(childAuthority.scopeIssueIds, [102, 103]);
+  assert.equal(
+    authorizeCoordinatorOperation({
+      authority: childAuthority,
+      grantId: childGrant.grantId,
+      epoch: 1,
+      coordinator: nestedCoordinator,
+      issue: 103,
+      operation: 'advance',
+      branch: 'work/103',
+    }).authorized,
+    true
+  );
+  assert.equal(
+    authorizeCoordinatorOperation({
+      authority: childAuthority,
+      grantId: childGrant.grantId,
+      epoch: 1,
+      coordinator: nestedCoordinator,
+      issue: 103,
+      operation: 'advance',
+      branch: 'work/101',
+    }).authorized,
+    false
+  );
+
+  const parentAuthority = resolve({
+    grants: [parentGrant, childGrant],
+    coordinationProjection: projection(),
+  });
+  assert.deepEqual(parentAuthority.scopeIssueIds, [100, 101]);
+  assert.equal(authorize(parentAuthority).authorized, true);
+  assert.equal(authorize(parentAuthority, { issue: 103, branch: 'work/103' }).authorized, false);
+
+  const malformed = { ...childGrant, branchBoundary: [...parentGrant.branchBoundary] };
+  assert.deepEqual(
+    resolve({
+      grants: [parentGrant, malformed],
+      coordinationProjection: projection({ grantId: malformed.grantId }),
+    }),
+    { status: 'blocked', diagnostic: { reason: 'invalid-delegation' } }
+  );
+
+  const competingChild = {
+    ...childGrant,
+    grantId: 'grant-nested-competing',
+    coordinator: { actor: 'gemini', platform: 'gemini', session: 'session-competing' },
+  };
+  assert.deepEqual(
+    resolve({
+      grants: [parentGrant, childGrant, competingChild],
+      coordinationProjection: projection({ grantId: childGrant.grantId }),
+    }),
+    { status: 'blocked', diagnostic: { reason: 'overlapping-grants' } }
+  );
+});
+
 test('blocks ambiguous, stale, revoked, expired, and projection-mismatched grant authority deterministically', () => {
   const overlap = grant({ grantId: 'grant-overlap', includedIssues: [101], excludedIssues: [] });
   const revoked = {
