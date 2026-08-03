@@ -323,3 +323,24 @@ test('escaped and unmatched backticks do not expose hidden structures', () => {
     );
   }
 });
+
+test('matched multiline code spans do not expose hidden structures', () => {
+  for (const delimiter of ['`', '``']) {
+    const hiddenWaiver = [delimiter, waiverBody(), delimiter].join('\n');
+    assert.equal(parseDecompositionWaiver(hiddenWaiver).reason, 'missing');
+
+    const hiddenTask = [delimiter, '### Task 9: Hidden', delimiter].join('\n');
+    assert.deepEqual(extractPlanTasks(hiddenTask), []);
+
+    const hiddenMetadata = [
+      delimiter,
+      '## Plan Metadata',
+      '- **Governing-spec**: docs/hidden.md',
+      delimiter,
+    ].join('\n');
+    assert.equal(
+      visibleMetadataFieldValue(hiddenMetadata, 'Plan Metadata', 'Governing-spec'),
+      null
+    );
+  }
+});

@@ -55,33 +55,16 @@ function commandsFromTaskBody(body) {
   return uniqueCommands(commands);
 }
 
-function fencedLineMask(lines) {
-  const masked = Array(lines.length).fill(false);
-  let open = null;
-  for (let index = 0; index < lines.length; index += 1) {
-    const fence = /^\s*(`{3,}|~{3,})/.exec(lines[index]);
-    if (open) {
-      masked[index] = true;
-      if (fence && fence[1][0] === open.character && fence[1].length >= open.length) open = null;
-      continue;
-    }
-    if (fence) {
-      masked[index] = true;
-      open = { character: fence[1][0], length: fence[1].length };
-    }
-  }
-  return masked;
-}
-
-function stripLineHtmlComments(line, state) {
-  let output = '';
+function stripLineMarkdown(line, lines, lineIndex, state) {
+  let visible = '';
+  let structural = '';
   let index = 0;
-  let inlineTicks = 0;
   while (index < line.length) {
     if (state.inComment) {
       const end = line.indexOf('-->', index);
       const stop = end === -1 ? line.length : end + 3;
-      output += ' '.repeat(stop - index);
+      visible += ' '.repeat(stop - index);
+      structural += ' '.repeat(stop - index);
       index = stop;
       if (end !== -1) state.inComment = false;
       continue;
@@ -94,86 +77,100 @@ function stripLineHtmlComments(line, state) {
         backslashes += 1;
       }
       const escaped = backslashes % 2 === 1;
-      if (inlineTicks === 0) {
-        if (!escaped && hasClosingBacktickRun(line, index + length, length)) {
-          inlineTicks = length;
+      if (state.inlineTicks === 0) {
+        if (!escaped && hasClosingBacktickRun(lines, lineIndex, index + length, length)) {
+          state.inlineTicks = length;
+          structural += ' '.repeat(length);
+        } else {
+          structural += ticks[0];
         }
-      } else if (length === inlineTicks) {
-        inlineTicks = 0;
+      } else {
+        structural += ' '.repeat(length);
+        if (length === state.inlineTicks) state.inlineTicks = 0;
       }
-      output += ticks[0];
+      visible += ticks[0];
       index += length;
       continue;
     }
-    if (inlineTicks === 0 && line.startsWith('<!--', index)) {
+    if (state.inlineTicks === 0 && line.startsWith('<!--', index)) {
       state.inComment = true;
-      output += '    ';
+      visible += '    ';
+      structural += '    ';
       index += 4;
       continue;
     }
-    output += line[index];
+    visible += line[index];
+    structural += state.inlineTicks === 0 ? line[index] : ' ';
     index += 1;
   }
-  return output;
+  return { visible, structural };
 }
 
-function hasClosingBacktickRun(line, start, expectedLength) {
-  let index = start;
-  while (index < line.length) {
-    if (line[index] !== '`') {
-      index += 1;
-      continue;
+function hasClosingBacktickRun(lines, lineIndex, start, expectedLength) {
+  for (let currentLine = lineIndex; currentLine < lines.length; currentLine += 1) {
+    const line = lines[currentLine];
+    let index = currentLine === lineIndex ? start : 0;
+    while (index < line.length) {
+      if (line[index] !== '`') {
+        index += 1;
+        continue;
+      }
+      let end = index + 1;
+      while (end < line.length && line[end] === '`') end += 1;
+      if (end - index === expectedLength) return true;
+      index = end;
     }
-    let end = index + 1;
-    while (end < line.length && line[end] === '`') end += 1;
-    if (end - index === expectedLength) return true;
-    index = end;
   }
   return false;
 }
 
-function visibleContentLines(value) {
+function markdownViews(value) {
   const lines = String(value).split('\n');
-  const state = { inComment: false, fence: null };
-  return lines.map((line) => {
+  const state = { inComment: false, fence: null, inlineTicks: 0 };
+  const visibleLines = [];
+  const structuralLines = [];
+  for (let lineIndex = 0; lineIndex < lines.length; lineIndex += 1) {
+    const line = lines[lineIndex];
     const fence = /^\s*(`{3,}|~{3,})/.exec(line);
     if (state.fence) {
       if (fence && fence[1][0] === state.fence.character && fence[1].length >= state.fence.length) {
         state.fence = null;
       }
-      return line;
+      visibleLines.push(line);
+      structuralLines.push('');
+      continue;
     }
-    const visible = stripLineHtmlComments(line, state);
+    const inlineTicksAtStart = state.inlineTicks;
+    const { visible, structural } = stripLineMarkdown(line, lines, lineIndex, state);
     const openingFence = !state.inComment && /^\s*(`{3,}|~{3,})/.exec(visible);
-    if (openingFence) {
+    if (inlineTicksAtStart === 0 && openingFence) {
       state.fence = { character: openingFence[1][0], length: openingFence[1].length };
+      state.inlineTicks = 0;
     }
-    return visible;
-  });
+    visibleLines.push(visible);
+    structuralLines.push(openingFence && inlineTicksAtStart === 0 ? '' : structural);
+  }
+  return { visibleLines, structuralLines };
 }
 
 function visibleStructuralLines(value) {
-  const lines = visibleContentLines(value);
-  const fenced = fencedLineMask(lines);
-  return lines.map((line, index) => (fenced[index] ? '' : line));
+  return markdownViews(value).structuralLines;
 }
 
 export function extractPlanTasks(planText = '') {
   const originalLines = String(planText).split('\n');
-  const lines = visibleContentLines(planText);
-  const fenced = fencedLineMask(lines);
+  const { visibleLines, structuralLines } = markdownViews(planText);
   const tasks = [];
-  for (let index = 0; index < lines.length; index += 1) {
-    if (fenced[index]) continue;
-    const match = TASK_HEADING_RE.exec(lines[index]);
+  for (let index = 0; index < structuralLines.length; index += 1) {
+    const match = TASK_HEADING_RE.exec(structuralLines[index]);
     if (!match) continue;
     const number = Number(match[2]);
     const title = match[3].trim();
     if (!Number.isInteger(number) || number <= 0 || !title) continue;
     let end = index + 1;
-    while (end < lines.length && (fenced[end] || !SECTION_HEADING_RE.test(lines[end]))) end += 1;
+    while (end < structuralLines.length && !SECTION_HEADING_RE.test(structuralLines[end])) end += 1;
     const body = originalLines.slice(index + 1, end).join('\n');
-    const commandBody = lines.slice(index + 1, end).join('\n');
+    const commandBody = visibleLines.slice(index + 1, end).join('\n');
     tasks.push({
       number,
       kind: match[1].toLowerCase(),
