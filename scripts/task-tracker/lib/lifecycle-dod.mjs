@@ -3,14 +3,14 @@ import { hasVerifiedDeclaration, hasExecutionProof } from './proof-marker.mjs';
 
 // Lifecycle DoD parser and ticker (#138).
 //
-// The Functional vs Lifecycle DoD split (#139 will template this) defines a
-// `#### Lifecycle (auto-ticked at Review/Close)` subsection under
-// `## ... Definition of Done` whose checkbox items are NOT user-verified —
-// they are side effects of the close verb itself. This module:
+// The phase-owned DoD split defines canonical Lifecycle (Review) and
+// Housekeeping (Close) subsections under `## ... Definition of Done`. Their
+// checkbox items are NOT user-verified — they are side effects of the owning
+// verb. This module:
 //
-//   1. Locates the Lifecycle subsection by heading.
+//   1. Locates canonical phase subsections with a legacy combined fallback.
 //   2. Maps canonical keys → human-readable labels.
-//   3. Provides idempotent `[ ] → [x]` ticking by key.
+//   3. Provides idempotent `[ ] → [x]` ticking routed by key ownership.
 //   4. Exposes the set of label strings so `uncheckedPreCloseCheckboxes`
 //      can exclude them from its blockers list.
 

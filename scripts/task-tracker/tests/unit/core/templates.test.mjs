@@ -46,11 +46,10 @@ const preflightBlock = execFileSync(
   { cwd: root, encoding: 'utf8' }
 );
 
-// DoD template uses Functional/Lifecycle split (#139). Verification commands
+// DoD template uses Functional/Lifecycle/Housekeeping phase categories. Verification commands
 // now live in the consolidated `aitm-verified cmd="..."` declarations on each
 // Functional item (#419) rather than as standalone DoD lines.
-// #480 — DoD is now a 2-hash top-level section with 3-hash Functional/Lifecycle
-// children (was a 3-hash section with 4-hash children).
+// #480 — DoD is a 2-hash top-level section with 3-hash phase children.
 for (const fragment of [
   '### Functional (verified at Test)',
   'aitm-verified cmd="`npm test` `npm run test:slow`"',

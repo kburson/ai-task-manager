@@ -202,8 +202,10 @@ function makeDeps(overrides = {}) {
     'The bug is that `<!-- aitm-full-auto-footnote:start -->` is mentioned',
     'in this prose (code span), which used to fool the presence check.',
     '',
-    '#### Lifecycle (auto-ticked at Review/Close)',
+    '### Lifecycle (verified at Review)',
     '- [ ] Passed final human review',
+    '',
+    '### Housekeeping (verified at Close)',
     '- [ ] Story closed and moved to Done',
     '- [ ] Timing data flushed to issue',
     '',
@@ -227,7 +229,7 @@ function makeDeps(overrides = {}) {
   // Lifecycle item ticked.
   assert.match(out, /- \[x\] Passed final human review/);
   // Footnote anchored after Lifecycle subsection.
-  const lifeIdx = out.indexOf('#### Lifecycle');
+  const lifeIdx = out.indexOf('### Lifecycle');
   const endIdx = out.indexOf('<!-- aitm-full-auto-footnote:end -->');
   assert.ok(endIdx > lifeIdx, 'footnote block anchors after Lifecycle subsection');
 }
@@ -245,8 +247,10 @@ function makeDeps(overrides = {}) {
       '## Acceptance Criteria',
       '- [x] x',
       '',
-      '#### Lifecycle (auto-ticked at Review/Close)',
+      '### Lifecycle (verified at Review)',
       '- [ ] Passed final human review',
+      '',
+      '### Housekeeping (verified at Close)',
       '- [ ] Story closed and moved to Done',
       '- [ ] Timing data flushed to issue',
       '',
@@ -296,7 +300,7 @@ function makeDeps(overrides = {}) {
       '## Acceptance Criteria',
       '- [x] x',
       '',
-      '#### Lifecycle (auto-ticked at Review/Close)',
+      '### Lifecycle (verified at Review)',
       '- [ ] Passed final human review',
       '',
     ].join('\n') + AGENT_REVIEW_PASSED;

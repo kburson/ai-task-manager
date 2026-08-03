@@ -2,27 +2,46 @@
 
 # Lifecycle DoD
 
-The `#### Lifecycle (auto-ticked at Review/Close)` subsection of the issue body
-contains checkboxes that are **side effects of verb execution**, not
-user-verified work. Functional DoD items get verified at Test; Lifecycle items
-get auto-ticked by the verb whose run produced the side effect.
+Canonical issue bodies separate verb-owned Definition-of-Done side effects into
+two exact subsections:
+
+- `### Lifecycle (verified at Review)` contains Review-owned evidence.
+- `### Housekeeping (verified at Close)` contains Close-owned finalization.
+
+These checkboxes are **side effects of verb execution**, not user-verified work.
+Functional DoD items are verified at Test; Lifecycle and Housekeeping items are
+ticked only by the verb whose run produced the side effect.
 
 ## Canonical labels
 
 Defined by `LIFECYCLE_LABELS` in `scripts/task-tracker/lib/lifecycle-dod.mjs`:
 
-| Key                   | Label                            | Ticked by                                |
-| --------------------- | -------------------------------- | ---------------------------------------- |
-| `passed-final-review` | `Passed final human review`      | `verbs/approve.mjs` (human or Full-Auto) |
-| `story-closed`        | `Story closed and moved to Done` | `verbs/close.mjs`                        |
-| `timing-flushed`      | `Timing data flushed to issue`   | timing-comment flush at close            |
+| Key                   | Category     | Label                            | Ticked by                                |
+| --------------------- | ------------ | -------------------------------- | ---------------------------------------- |
+| `agent-review-passed` | Lifecycle    | `Agent Review Passed`            | Agent Review gate                        |
+| `passed-final-review` | Lifecycle    | `Final Review Passed`            | `verbs/approve.mjs` (human or Full-Auto) |
+| `story-closed`        | Housekeeping | `Story closed and moved to Done` | `verbs/close.mjs`                        |
+| `timing-flushed`      | Housekeeping | `Timing data flushed to issue`   | close timing flush                       |
+
+The historical `Passed final human review` label remains an accepted alias for
+`passed-final-review`; it is not emitted by canonical templates.
+
+## Compatibility and section precedence
+
+Existing bodies with
+`### Lifecycle (auto-ticked at Review/Close)` remain readable and mutable. The
+combined section is a legacy fallback, not canonical output. When a body carries
+either new canonical section, canonical sections take precedence and the parser
+does not merge items from a duplicate legacy section. Reads aggregate Lifecycle
+and Housekeeping in document order; mutations route each key to its owning
+canonical section.
 
 ## The tick contract
 
 `tickLifecycleItem(body, key)` is idempotent and returns the body unchanged
 when the box is already `[x]`. It **also** returns the body unchanged when:
 
-- the `#### Lifecycle` heading is absent (legacy DoD), or
+- the key's owning canonical section (or legacy combined section) is absent, or
 - the heading exists but the label is missing (customized DoD).
 
 These three cases are structurally distinct but produce the same return value.
@@ -49,7 +68,7 @@ test backed by `lifecycleItemState`.
 
 ## Opt-out marker
 
-A user with a customized DoD that intentionally drops a Lifecycle checkbox can
+A user with a customized DoD that intentionally drops a verb-owned checkbox can
 stamp `<!-- aitm-lifecycle-optout: <key> -->` in the body to acknowledge the
 gate skip. `parseLifecycleOptouts(body)` returns the set of opted-out keys;
 `approve.mjs` suppresses the warning when the relevant key is opted out.
@@ -58,7 +77,7 @@ gate skip. `parseLifecycleOptouts(body)` returns the set of opted-out keys;
 
 A previous memory rule
 (`feedback_full_auto_tick_review_box.md`) required operators to manually flip
-`- [ ] Passed final human review` to `- [x]` before running `/task close` under
+`- [ ] Final Review Passed` to `- [x]` before running `/task close` under
 Full-Auto. That rule predates `approve.mjs:231`, which already calls
 `tickLifecycleItem(updated, 'passed-final-review')` inside its authoritative
 body-write closure.

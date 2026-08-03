@@ -126,9 +126,11 @@ const LIFECYCLE_BLOCK = (a = ' ', b = ' ', c = ' ') =>
   [
     '## Definition of Done',
     '',
-    '### Lifecycle (auto-ticked at Review/Close)',
+    '### Lifecycle (verified at Review)',
     '',
     `- [${a}] Passed final human review`,
+    '',
+    '### Housekeeping (verified at Close)',
     `- [${b}] Story closed and moved to Done`,
     `- [${c}] Timing data flushed to issue`,
     '',
@@ -160,9 +162,11 @@ test('reconcile does not fabricate an absent lifecycle box (#753 AC3)', async ()
   const partial = [
     '## Definition of Done',
     '',
-    '### Lifecycle (auto-ticked at Review/Close)',
+    '### Lifecycle (verified at Review)',
     '',
     '- [ ] Passed final human review',
+    '',
+    '### Housekeeping (verified at Close)',
     '- [ ] Story closed and moved to Done',
     '',
   ].join('\n');

@@ -16,7 +16,7 @@ function makeDeps({ tty, env = {}, drivers = [], comments = [], fields = {} } = 
   const posted = [];
   const written = [];
   let body =
-    '## Definition of Done\n\n#### Lifecycle (auto-ticked at Review/Close)\n- [ ] Passed final human review\n- [ ] Story closed and moved to Done\n- [ ] Timing data flushed to issue\n' +
+    '## Definition of Done\n\n### Lifecycle (verified at Review)\n- [ ] Passed final human review\n\n### Housekeeping (verified at Close)\n- [ ] Story closed and moved to Done\n- [ ] Timing data flushed to issue\n' +
     AGENT_REVIEW_PASSED;
   return {
     posted,

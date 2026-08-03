@@ -576,6 +576,17 @@ A shape decides creation ceremony; a **kind** decides which Definition-of-Done i
 
 **The `docs-only` kind: "the kind declares, the diff decides" (#865).** A `docs-only` issue is a documentation task — prose under a `docs/` directory or `*.md` / `*.markdown` files. It would be dishonest to run the functional test suite against a pure prose edit, but a static `exclude="docs-only"` on the `tests` DoD item would be unsafe: unlike `spike`/`research`, a `docs-only` issue carries commits and could quietly edit `scripts/**` and launder its way out of the suite by label alone. So the relief is **conditional on the actual diff**: the `docs-only` kind _declares_ the intent to skip tests, but the Test-stage classification of the real `trunk...HEAD` changed-path set _decides_. The functional `tests` item (and its derived `npm test` + `npm run test:slow` verification commands) is dropped only when the diff is **provably documentation-only** — every changed path is a doc path. The rule is **default-deny**: an empty diff is not proven docs-only, and any unrecognized or non-doc path counts as functional, so the item is kept. `preflight-issue.mjs` reads the changed-path list via `--changed-paths-file <p>` when rendering a `--kind docs-only` issue; absent that flag the suite is always kept. Lint and format DoD items carry no kind annotation and are required for `docs-only` exactly as for `code`. Because mislabelling can never subtract from what the diff proves, the kind is a convenience, not a bypass.
 
+### Definition of Done phase ownership
+
+Canonical issue bodies render three exact Definition-of-Done categories.
+`Functional (verified at Test)` contains sandbox-proven work. `Lifecycle
+(verified at Review)` contains `Agent Review Passed` and `Final Review Passed`.
+`Housekeeping (verified at Close)` contains `Story closed and moved to Done` and
+`Timing data flushed to issue`. Review and Close mutate only their owned
+categories. The historical combined `Lifecycle (auto-ticked at Review/Close)`
+heading remains a supported read and mutation fallback for existing issues, but
+new templates never emit it.
+
 This diff-decides relief lives at the **DoD/VC layer** only. The Agent Review "New Automated Tests" gate still keys off the body-level `expectsAutomatedTests(body)` classifier (a `docs-only` body is testless there), which reads no diff — making that gate diff-aware is the focused follow-up **#940**.
 
 ---
