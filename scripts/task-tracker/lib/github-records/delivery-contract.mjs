@@ -4,7 +4,7 @@ import { canonicalRecordJson } from './canonical-json.mjs';
 import { assertNoSecretRecordData } from './record-envelope.mjs';
 import {
   renderDeliveryContract as renderContract,
-  validateContractProjection,
+  validateRenderedContractProjection,
 } from './delivery-contract-renderer.mjs';
 
 const CONTRACT_SCHEMA = 'aitm.delivery-contract/v1';
@@ -59,6 +59,17 @@ function hasExactlyKeys(value, expectedKeys) {
   return (
     keys.length === expectedKeys.length && keys.every((key, index) => key === expectedKeys[index])
   );
+}
+
+function isPlainDataObject(value) {
+  if (value === null || typeof value !== 'object' || Array.isArray(value)) return false;
+  const prototype = Object.getPrototypeOf(value);
+  if (prototype !== Object.prototype && prototype !== null) return false;
+  return Reflect.ownKeys(value).every((key) => {
+    if (typeof key !== 'string') return false;
+    const descriptor = Object.getOwnPropertyDescriptor(value, key);
+    return descriptor?.enumerable === true && Object.hasOwn(descriptor, 'value');
+  });
 }
 
 function deepFreeze(value) {
@@ -168,7 +179,7 @@ function definitionIds(definitions) {
 
 function normalizeLifecycleProjection(value, definitions) {
   if (value === undefined) value = {};
-  if (value === null || typeof value !== 'object' || Array.isArray(value)) {
+  if (!isPlainDataObject(value)) {
     throw contractError('lifecycle-projection');
   }
   if (!Object.keys(value).every((key) => DEFINITION_KINDS.includes(key))) {
@@ -178,7 +189,7 @@ function normalizeLifecycleProjection(value, definitions) {
   return Object.fromEntries(
     DEFINITION_KINDS.map((kind) => {
       const states = value[kind] ?? {};
-      if (states === null || typeof states !== 'object' || Array.isArray(states)) {
+      if (!isPlainDataObject(states)) {
         throw contractError('lifecycle-projection');
       }
       for (const [logicalId, checked] of Object.entries(states)) {
@@ -295,7 +306,10 @@ export function renderDeliveryContract(input) {
   return renderContract(input);
 }
 
-export { validateContractProjection };
+export function validateContractProjection({ contract, markdown } = {}) {
+  validateContract(contract);
+  return validateRenderedContractProjection({ contract, markdown });
+}
 
 export function sealContract({ contract, authorityEpoch, coordinatorGrantId } = {}) {
   validateContract(contract);

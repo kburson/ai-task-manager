@@ -292,6 +292,76 @@ test('draft revisions and amendments refuse to retire a logical ID', () => {
   );
 });
 
+test('drafts reject non-plain lifecycle projection containers and accessor-backed states', () => {
+  const base = {
+    recordId,
+    authorityEpoch: 1,
+    coordinatorGrantId,
+    acceptanceCriteria: [{ logicalId: 'ac-login', text: 'Users can sign in.' }],
+    verificationCommands: [{ logicalId: 'vc-unit', command: 'npm test' }],
+    definitionOfDone: [{ logicalId: 'dod-review', text: 'Review is complete.' }],
+  };
+  const accessorProjection = {};
+  Object.defineProperty(accessorProjection, 'acceptanceCriteria', {
+    enumerable: true,
+    get: () => ({ 'ac-login': true }),
+  });
+  const accessorState = {};
+  Object.defineProperty(accessorState, 'ac-login', {
+    enumerable: true,
+    get: () => true,
+  });
+  class Projection {}
+  class State {}
+
+  for (const lifecycleProjection of [
+    new Map([['acceptanceCriteria', { 'ac-login': true }]]),
+    new Projection(),
+    accessorProjection,
+    { acceptanceCriteria: new Map([['ac-login', true]]) },
+    { acceptanceCriteria: new State() },
+    { acceptanceCriteria: accessorState },
+  ]) {
+    assert.throws(
+      () => createDraftContract({ ...base, lifecycleProjection }),
+      /delivery-contract:lifecycle-projection/
+    );
+  }
+
+  const nullPrototypeProjection = Object.create(null);
+  const nullPrototypeState = Object.create(null);
+  nullPrototypeState['ac-login'] = true;
+  nullPrototypeProjection.acceptanceCriteria = nullPrototypeState;
+  const normalized = createDraftContract({ ...base, lifecycleProjection: nullPrototypeProjection });
+  assert.equal(normalized.lifecycleProjection.acceptanceCriteria['ac-login'], true);
+});
+
+test('public projection validation validates contract authority before comparing rendered bytes', () => {
+  const valid = createDraftContract({
+    recordId,
+    authorityEpoch: 1,
+    coordinatorGrantId,
+    acceptanceCriteria: [{ logicalId: 'ac-login', text: 'Users can sign in.' }],
+    verificationCommands: [{ logicalId: 'vc-unit', command: 'npm test' }],
+    definitionOfDone: [{ logicalId: 'dod-review', text: 'Review is complete.' }],
+  });
+  const unknownKey = { ...structuredClone(valid), unexpected: true };
+  unknownKey.projectionHash = renderDeliveryContract({ contract: unknownKey }).projectionHash;
+  const forgedDefinition = structuredClone(valid);
+  forgedDefinition.acceptanceCriteria[0].text = 'Forged definition.';
+  forgedDefinition.projectionHash = renderDeliveryContract({
+    contract: forgedDefinition,
+  }).projectionHash;
+
+  for (const [contract, expectedError] of [
+    [unknownKey, /delivery-contract:keys/],
+    [forgedDefinition, /delivery-contract:definition-hash/],
+  ]) {
+    const markdown = renderDeliveryContract({ contract }).markdown;
+    assert.throws(() => validateContractProjection({ contract, markdown }), expectedError);
+  }
+});
+
 test('contract lifecycle rejects malformed authority, definitions, payloads, and projections', () => {
   const valid = createDraftContract({
     recordId,
