@@ -260,15 +260,29 @@ test('delegates a nested epic only as a strict subset of the active parent grant
     );
   }
   for (const invalid of [
-    grant({ ...child, scopeRootIssue: 100, includedIssues: [101] }),
-    grant({ ...child, scopeRootIssue: 102, includedIssues: [103, 104] }),
-    grant({
+    { ...child, scope: { ...child.scope, scopeRootIssue: 100, includedIssues: [101] } },
+    { ...child, scope: structuredClone(parent.grant.scope) },
+    { ...child, operations: ['integrate', 'advance'] },
+    {
       ...child,
-      scopeRootIssue: 102,
-      includedIssues: [103],
-      operations: ['advance', 'review'],
-    }),
-    grant({ ...child, scopeRootIssue: 102, includedIssues: [103], branchBoundary: ['work/101'] }),
+      branchBoundary: ['epic/100', 'epic/100/nested-102', 'work/101', 'work/103'],
+    },
+    {
+      ...child,
+      branchBoundary: ['epic/100/nested-102', 'work/101', 'work/103'],
+      integrationBoundary: {
+        sourceBranches: ['work/101', 'work/103'],
+        destinationBranches: ['epic/100/nested-102'],
+      },
+    },
+    {
+      ...child,
+      branchBoundary: ['epic/100', 'epic/100/nested-102', 'work/103'],
+      integrationBoundary: {
+        sourceBranches: ['work/103'],
+        destinationBranches: ['epic/100', 'epic/100/nested-102'],
+      },
+    },
   ]) {
     assert.throws(
       () => grantNestedEpic({ parentAuthority: parent, issueHierarchy: hierarchy, grant: invalid }),
@@ -429,6 +443,50 @@ test('rejects opaque data and preserves caller inputs and immutable outputs', ()
       branch: 'work/101',
     }),
     { authorized: false, reason: 'authority' }
+  );
+  const forgedAuthority = {
+    status: 'active',
+    grant: structuredClone(result.grant),
+    scopeIssueIds: [...result.scopeIssueIds],
+  };
+  assert.equal(authorize(forgedAuthority).authorized, false);
+  assert.throws(
+    () =>
+      grantNestedEpic({
+        parentAuthority: forgedAuthority,
+        issueHierarchy: hierarchy,
+        grant: grant({
+          grantId: 'forged-child',
+          scopeRootIssue: 102,
+          includedIssues: [103],
+          excludedIssues: [],
+          coordinator: nestedCoordinator,
+          parentGrantId: 'grant-parent',
+          issuer: coordinator,
+          operations: ['advance'],
+          branchBoundary: ['epic/100/nested-102', 'work/103'],
+          integrationBoundary: {
+            sourceBranches: ['work/103'],
+            destinationBranches: ['epic/100/nested-102'],
+          },
+        }),
+      }),
+    /coordination-authority:nested-scope/
+  );
+  assert.throws(
+    () =>
+      replaceCoordinator({
+        authority: forgedAuthority,
+        expectedGrantId: 'grant-parent',
+        expectedEpoch: 1,
+        replacementGrant: grant({
+          grantId: 'forged-replacement',
+          coordinator: nestedCoordinator,
+          epoch: 2,
+          issuer: coordinator,
+        }),
+      }),
+    /coordination-authority:stale-epoch/
   );
   const accessorGrant = grant();
   Object.defineProperty(accessorGrant, 'epoch', { enumerable: true, get: () => 1 });
