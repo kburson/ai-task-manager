@@ -339,16 +339,36 @@ export function adoptOutstandingSubmissions(input = {}) {
   const assignmentsById = new Map();
   const submissionRecords = [];
   const dispositionRecords = [];
-  for (const [index, record] of resolved.effectiveRecords.entries()) {
-    recordPositions.set(record.envelope.recordId, index);
+  const successors = new Map();
+  const recordsById = new Map();
+  let rootRecordId = null;
+  for (const record of resolved.records) {
+    recordsById.set(record.envelope.recordId, record);
+    if (record.envelope.predecessor === null) rootRecordId = record.envelope.recordId;
+    else successors.set(record.envelope.predecessor, record.envelope.recordId);
+  }
+  let structuralRecordId = rootRecordId;
+  while (structuralRecordId !== null && structuralRecordId !== undefined) {
+    recordPositions.set(structuralRecordId, recordPositions.size);
+    structuralRecordId = successors.get(structuralRecordId);
+  }
+  const effectiveRecordIds = new Set(
+    resolved.effectiveRecords.map(({ envelope }) => envelope.recordId)
+  );
+  for (const record of resolved.effectiveRecords) {
     if (record.envelope.recordType === 'work-assignment') {
       assignmentsById.set(record.envelope.recordId, record);
     } else if (isWorkAssignmentSubmissionType(record.envelope.recordType)) {
       submissionRecords.push(record);
-    } else if (record.envelope.recordType === 'record-disposition') {
-      dispositionRecords.push(record);
     }
   }
+  for (const record of recordsById.values()) {
+    if (record.envelope.recordType === 'record-disposition') dispositionRecords.push(record);
+  }
+  dispositionRecords.sort(
+    (left, right) =>
+      recordPositions.get(left.envelope.recordId) - recordPositions.get(right.envelope.recordId)
+  );
   const revocationPosition = recordPositions.get(authorization.replacementRevocationRecordId);
   const replacementPosition = recordPositions.get(authorization.replacementGrantRecordId);
   if (
@@ -442,14 +462,37 @@ export function adoptOutstandingSubmissions(input = {}) {
 
   const historicalDecisions = new Map();
   const replacementDecisions = new Map();
+  const terminalDispositionRecordIds = new Set();
   for (const candidate of dispositionRecords) {
     const target = evaluations.get(candidate.envelope.payload?.submissionRecordId);
     const dispositionPosition = recordPositions.get(candidate.envelope.recordId);
+    const supersedesTerminal = terminalDispositionRecordIds.has(candidate.envelope.supersedes);
     if (target === undefined) {
-      if (dispositionPosition > replacementPosition) return blocked('unknown-disposition');
+      if (supersedesTerminal) return blocked('duplicate-disposition');
+      if (
+        effectiveRecordIds.has(candidate.envelope.recordId) &&
+        dispositionPosition > replacementPosition
+      ) {
+        return blocked('unknown-disposition');
+      }
       continue;
     }
-    const dispositionRecord = validateDispositionRecord(candidate);
+    if (
+      supersedesTerminal ||
+      historicalDecisions.has(candidate.envelope.payload.submissionRecordId) ||
+      replacementDecisions.has(candidate.envelope.payload.submissionRecordId)
+    ) {
+      return blocked('duplicate-disposition');
+    }
+    let dispositionRecord;
+    try {
+      dispositionRecord = validateDispositionRecord(candidate);
+    } catch {
+      if (effectiveRecordIds.has(candidate.envelope.recordId)) {
+        return blocked('disposition-provenance');
+      }
+      continue;
+    }
     const payload = dispositionRecord.envelope.payload;
     if (
       payload.issue !== target.assignment.envelope.payload.issue ||
@@ -457,6 +500,7 @@ export function adoptOutstandingSubmissions(input = {}) {
       payload.assignmentCommentNodeId !== target.assignment.commentNodeId ||
       payload.submissionCommentNodeId !== target.submission.commentNodeId
     ) {
+      if (!effectiveRecordIds.has(candidate.envelope.recordId)) continue;
       return blocked('disposition-provenance');
     }
     const submissionPosition = recordPositions.get(target.submission.envelope.recordId);
@@ -468,8 +512,14 @@ export function adoptOutstandingSubmissions(input = {}) {
         dispositionPosition > candidate.grantPosition &&
         dispositionPosition < candidate.revocationPosition
     );
-    if (dispositionAuthority === undefined) return blocked('disposition-order');
-    if (!dispositionAuthority.canDisposeSubmissions) return blocked('disposition-authority');
+    if (dispositionAuthority === undefined) {
+      if (!effectiveRecordIds.has(candidate.envelope.recordId)) continue;
+      return blocked('disposition-order');
+    }
+    if (!dispositionAuthority.canDisposeSubmissions) {
+      if (!effectiveRecordIds.has(candidate.envelope.recordId)) continue;
+      return blocked('disposition-authority');
+    }
     const expectedGrantId = dispositionAuthority.grantId;
     const expectedEpoch = dispositionAuthority.epoch;
     const expectedCoordinator = dispositionAuthority.coordinator;
@@ -483,14 +533,17 @@ export function adoptOutstandingSubmissions(input = {}) {
       dispositionRecord.envelope.authority.epoch !== expectedEpoch ||
       dispositionRecord.envelope.authority.actor !== expectedCoordinator.actor
     ) {
+      if (!effectiveRecordIds.has(candidate.envelope.recordId)) continue;
       return blocked('disposition-authority');
     }
     if (payload.decision === 'accepted' && target.evaluation.status !== 'matched') {
+      if (!effectiveRecordIds.has(candidate.envelope.recordId)) continue;
       return blocked('invalid-acceptance');
     }
     const decisions =
       dispositionAuthority.revocationRecordId === null ? replacementDecisions : historicalDecisions;
     if (decisions.has(payload.submissionRecordId)) return blocked('duplicate-disposition');
+    terminalDispositionRecordIds.add(candidate.envelope.recordId);
     decisions.set(payload.submissionRecordId, payload.decision);
   }
   for (const submissionRecordId of evaluations.keys()) {
