@@ -305,6 +305,7 @@ function activeAuthority(validatedGrant, generation, effectiveScope = validatedG
   authorityMetadata.set(authority, {
     key: authorityEpochKey(authority.grant.grantId, authority.grant.epoch),
     generation,
+    adoptionOnly: false,
   });
   return authority;
 }
@@ -326,9 +327,19 @@ function resolutionBlocked(validatedGrants, reason) {
   return blocked(reason);
 }
 
-function resolutionPaused(validatedGrants) {
-  advanceAuthorityGenerations(validatedGrants);
-  return paused();
+function resolutionPaused(validatedGrants, validatedGrant, effectiveScope = validatedGrant.scope) {
+  const generations = advanceAuthorityGenerations(validatedGrants);
+  const authority = paused();
+  authorityMetadata.set(authority, {
+    key: authorityEpochKey(validatedGrant.grant.grantId, validatedGrant.grant.epoch),
+    generation: generations.get(
+      authorityEpochKey(validatedGrant.grant.grantId, validatedGrant.grant.epoch)
+    ),
+    adoptionOnly: true,
+    grant: frozenCopy(validatedGrant.grant),
+    scopeIssueIds: Object.freeze([...effectiveScope]),
+  });
+  return authority;
 }
 
 function resolutionActive(validatedGrants, validatedGrant, effectiveScope = validatedGrant.scope) {
@@ -641,7 +652,13 @@ export function resolveCoordinatorAuthority({
   ) {
     return resolutionBlocked(validatedGrants, 'overlapping-grants');
   }
-  if (coordinationProjection.adoptionState === 'required') return resolutionPaused(validatedGrants);
+  if (coordinationProjection.adoptionState === 'required') {
+    return resolutionPaused(
+      validatedGrants,
+      projectionGrant,
+      effectiveScope(projectionGrant, activeChildrenByParentId)
+    );
+  }
   return resolutionActive(
     validatedGrants,
     projectionGrant,
@@ -721,6 +738,48 @@ export function authorizeCoordinatorOperation({
     return authorization(false, 'integration');
   }
   return authorization(true);
+}
+
+/** Authorize only replacement disposition/adoption while normal authority remains paused. */
+export function authorizeCoordinatorAdoption({ authority, issue, operation, branch } = {}) {
+  const metadata = authorityMetadata.get(authority);
+  if (
+    !isPlainDataObject(authority) ||
+    !metadata?.adoptionOnly ||
+    authorityGenerations.get(metadata.key) !== metadata.generation ||
+    !hasExactlyKeys(authority, ['diagnostic', 'status']) ||
+    authority.status !== 'paused' ||
+    !hasExactlyKeys(authority.diagnostic, ['reason']) ||
+    authority.diagnostic.reason !== 'adoption-required'
+  ) {
+    return authorization(false, 'authority');
+  }
+  if (
+    !['dispose-submission', 'adopt-submissions'].includes(operation) ||
+    !metadata.grant.operations.includes(operation)
+  ) {
+    return authorization(false, 'operation');
+  }
+  if (operation === 'dispose-submission' || issue !== undefined || branch !== undefined) {
+    if (!metadata.scopeIssueIds.includes(issue)) return authorization(false, 'scope');
+    let normalizedBranch;
+    try {
+      normalizedBranch = normalizeBranch(branch);
+    } catch {
+      return authorization(false, 'branch');
+    }
+    if (!metadata.grant.branchBoundary.map(normalizeBranch).includes(normalizedBranch)) {
+      return authorization(false, 'branch');
+    }
+  }
+  return deepFreeze({
+    authorized: true,
+    grantId: metadata.grant.grantId,
+    epoch: metadata.grant.epoch,
+    coordinator: frozenCopy(metadata.grant.coordinator),
+    scopeIssueIds: Object.freeze([...metadata.scopeIssueIds]),
+    branchBoundary: Object.freeze(metadata.grant.branchBoundary.map(normalizeBranch)),
+  });
 }
 
 /** Produce a narrower, capsule-ready nested coordinator grant without persistence. */

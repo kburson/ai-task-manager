@@ -3,6 +3,7 @@ import { strict as assert } from 'node:assert';
 import test from 'node:test';
 
 import {
+  authorizeCoordinatorAdoption as authorizeAdoption,
   authorizeCoordinatorOperation,
   grantNestedEpic,
   replaceCoordinator,
@@ -524,7 +525,7 @@ test('replaces only the exact active epoch, pauses authority, and resumes only a
     coordinationProjection: replacement.coordinationProjection,
   });
   assert.deepEqual(paused, { status: 'paused', diagnostic: { reason: 'adoption-required' } });
-  assert.equal(authorize(paused).authorized, false);
+  assert.equal(authorizeAdoption({ authority: paused, operation: 'advance' }).authorized, false);
 
   const adopted = resolve({
     grants: [grant(), replacementGrant],
