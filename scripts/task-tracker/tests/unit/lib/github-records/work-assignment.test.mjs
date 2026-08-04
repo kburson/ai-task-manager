@@ -65,22 +65,13 @@ function grant({
   };
 }
 
-function activeAuthority(overrides = {}) {
-  const authorityGrant = grant(overrides);
-  const grantRecord = record({
-    recordId: id(1),
-    recordType: 'coordinator-grant',
-    payload: authorityGrant,
-    actor: authorityGrant.coordinator.actor,
-    epoch: authorityGrant.epoch,
-    grantId: id(8000),
-  });
+function resolveActiveRecords(authorityGrant, records) {
   return resolveCoordinatorAuthority({
     issueHierarchy: [
       { issue: 1067, parentIssue: null },
       { issue, parentIssue: 1067 },
     ],
-    records: [grantRecord],
+    records,
     repository,
     issue,
     coordinationProjection: {
@@ -91,6 +82,27 @@ function activeAuthority(overrides = {}) {
     },
     now: '2026-08-03T20:05:00.000Z',
   });
+}
+
+function activeFixture(overrides = {}) {
+  const authorityGrant = grant(overrides);
+  const grantRecord = record({
+    recordId: id(1),
+    recordType: 'coordinator-grant',
+    payload: authorityGrant,
+    actor: authorityGrant.coordinator.actor,
+    epoch: authorityGrant.epoch,
+    grantId: id(8000),
+  });
+  return {
+    authority: resolveActiveRecords(authorityGrant, [grantRecord]),
+    authorityGrant,
+    grantRecord,
+  };
+}
+
+function activeAuthority(overrides = {}) {
+  return activeFixture(overrides).authority;
 }
 
 function assignmentInput(authority = activeAuthority(), overrides = {}) {
@@ -137,13 +149,14 @@ function record({
 }
 
 function handoff({ recordType = 'execution-result', submissionOverrides = {} } = {}) {
-  const authority = activeAuthority();
-  const assignmentCandidate = createWorkAssignment(assignmentInput(authority));
+  const fixture = activeFixture();
+  const assignmentCandidate = createWorkAssignment(assignmentInput(fixture.authority));
   const assignment = record({
     recordId: id(10),
     recordType: assignmentCandidate.recordType,
     payload: assignmentCandidate.payload,
     actor: coordinator.actor,
+    predecessor: fixture.grantRecord.envelope.recordId,
   });
   const submissionPayload = {
     schema: 'aitm.worker-submission/v1',
@@ -166,6 +179,11 @@ function handoff({ recordType = 'execution-result', submissionOverrides = {} } =
     actor: worker.actor,
     predecessor: assignment.envelope.recordId,
   });
+  const authority = resolveActiveRecords(fixture.authorityGrant, [
+    fixture.grantRecord,
+    assignment,
+    submission,
+  ]);
   return { authority, assignment, submission };
 }
 
@@ -490,7 +508,7 @@ test('blocks foreign provenance, worker substitution, unsupported types, and sta
   forged.envelope.authority = { ...forged.envelope.authority, actor: coordinator.actor };
   assert.deepEqual(evaluateAssignment({ ...valid, submission: forged }), {
     status: 'blocked',
-    diagnostic: { reason: 'submission-provenance' },
+    diagnostic: { reason: 'authority' },
   });
   const foreignRepository = {
     ...valid.submission,
@@ -498,11 +516,11 @@ test('blocks foreign provenance, worker substitution, unsupported types, and sta
   };
   assert.deepEqual(evaluateAssignment({ ...valid, submission: foreignRepository }), {
     status: 'blocked',
-    diagnostic: { reason: 'submission-provenance' },
+    diagnostic: { reason: 'authority' },
   });
 });
 
-test('throws categorized errors for malformed durable assignment or submission data', () => {
+test('blocks nonmember submissions before validating their durable payloads', () => {
   const valid = handoff();
   assert.throws(
     () => evaluateAssignment({ ...valid, assignment: new Map() }),
@@ -519,10 +537,10 @@ test('throws categorized errors for malformed durable assignment or submission d
     payload: unknownPayload,
     actor: worker.actor,
   });
-  assert.throws(
-    () => evaluateAssignment({ ...valid, submission: unknown }),
-    /work-assignment:submission/
-  );
+  assert.deepEqual(evaluateAssignment({ ...valid, submission: unknown }), {
+    status: 'blocked',
+    diagnostic: { reason: 'authority' },
+  });
 
   const nonCanonicalBranch = record({
     recordId: id(14),
@@ -530,10 +548,10 @@ test('throws categorized errors for malformed durable assignment or submission d
     payload: { ...valid.submission.envelope.payload, branch: `refs/heads/${branch}` },
     actor: worker.actor,
   });
-  assert.throws(
-    () => evaluateAssignment({ ...valid, submission: nonCanonicalBranch }),
-    /work-assignment:submission/
-  );
+  assert.deepEqual(evaluateAssignment({ ...valid, submission: nonCanonicalBranch }), {
+    status: 'blocked',
+    diagnostic: { reason: 'authority' },
+  });
 
   const secretPayload = {
     ...valid.submission.envelope.payload,

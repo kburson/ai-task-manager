@@ -75,7 +75,33 @@ function resolve(records, projection) {
   });
 }
 
-function zeroOutstandingHistory() {
+function orphanSubmissionSpec(recordId = id(42)) {
+  return {
+    recordId,
+    recordType: 'execution-result',
+    payload: {
+      schema: 'aitm.worker-submission/v1',
+      status: 'submitted',
+      assignmentRecordId: id(70),
+      issue,
+      branch,
+      files: ['scripts/task-tracker/lib/github-records/work-assignment.mjs'],
+      subsystem: 'github-records',
+      dependency: {
+        baselineSha: 'c2ae3db785468fb496f2be1f54aca144e636b172',
+        recordIds: [],
+      },
+      verification: { contractEpoch: 1, verifierIds: ['vc-6'] },
+      worker,
+      result: { summary: 'unrelated submission' },
+    },
+    actor: worker.actor,
+    epoch: 1,
+    grantId: id(9001),
+  };
+}
+
+function zeroOutstandingHistory({ preBoundaryOrphanSubmission = false } = {}) {
   const originalGrant = grant();
   const root = record({
     recordId: id(1),
@@ -103,6 +129,9 @@ function zeroOutstandingHistory() {
     expectedEpoch: 1,
     replacementGrant,
   });
+  const orphanSubmission = preBoundaryOrphanSubmission
+    ? record(orphanSubmissionSpec(), root.envelope.recordId)
+    : null;
   const revocation = record(
     {
       recordId: id(40),
@@ -112,7 +141,7 @@ function zeroOutstandingHistory() {
       epoch: 1,
       grantId: id(8000),
     },
-    root.envelope.recordId
+    (orphanSubmission ?? root).envelope.recordId
   );
   const replacementRecord = record(
     {
@@ -125,7 +154,16 @@ function zeroOutstandingHistory() {
     },
     revocation.envelope.recordId
   );
-  return { records: [root, revocation, replacementRecord], replacement, replacementRecord };
+  return {
+    records: [
+      root,
+      ...(orphanSubmission === null ? [] : [orphanSubmission]),
+      revocation,
+      replacementRecord,
+    ],
+    replacement,
+    replacementRecord,
+  };
 }
 
 function adopt(authority, records, expectedHeadRecordId) {
@@ -135,7 +173,7 @@ function adopt(authority, records, expectedHeadRecordId) {
   });
 }
 
-test('a lifecycle capsule appended after the paused head blocks adoption', () => {
+test('a lifecycle capsule appended after the paused head blocks adoption before publication', () => {
   const current = zeroOutstandingHistory();
   const lifecycle = record(
     {
@@ -150,12 +188,12 @@ test('a lifecycle capsule appended after the paused head blocks adoption', () =>
   );
   const records = [...current.records, lifecycle];
   for (const inputRecords of [records, [...records].reverse()]) {
-    assert.deepEqual(
+    assert.equal(
       resolve(inputRecords, {
         ...current.replacement.coordinationProjection,
         adoptionState: 'adopted',
-      }),
-      { status: 'paused', diagnostic: { reason: 'adoption-required' } }
+      }).status,
+      'active'
     );
     const paused = resolve(inputRecords, current.replacement.coordinationProjection);
     assert.deepEqual(adopt(paused, inputRecords, lifecycle.envelope.recordId), {
@@ -165,35 +203,9 @@ test('a lifecycle capsule appended after the paused head blocks adoption', () =>
   }
 });
 
-test('an unrelated orphan submission is ignored consistently by replay and adoption', () => {
-  const current = zeroOutstandingHistory();
-  const orphanSubmission = record(
-    {
-      recordId: id(42),
-      recordType: 'execution-result',
-      payload: {
-        schema: 'aitm.worker-submission/v1',
-        status: 'submitted',
-        assignmentRecordId: id(70),
-        issue,
-        branch,
-        files: ['scripts/task-tracker/lib/github-records/work-assignment.mjs'],
-        subsystem: 'github-records',
-        dependency: {
-          baselineSha: 'c2ae3db785468fb496f2be1f54aca144e636b172',
-          recordIds: [],
-        },
-        verification: { contractEpoch: 1, verifierIds: ['vc-6'] },
-        worker,
-        result: { summary: 'unrelated submission' },
-      },
-      actor: worker.actor,
-      epoch: 1,
-      grantId: id(9001),
-    },
-    current.replacementRecord.envelope.recordId
-  );
-  const records = [...current.records, orphanSubmission];
+test('a pre-boundary orphan submission is ignored by replay and adoption', () => {
+  const current = zeroOutstandingHistory({ preBoundaryOrphanSubmission: true });
+  const records = current.records;
   for (const inputRecords of [records, [...records].reverse()]) {
     assert.equal(
       resolve(inputRecords, {
@@ -203,7 +215,7 @@ test('an unrelated orphan submission is ignored consistently by replay and adopt
       'active'
     );
     const paused = resolve(inputRecords, current.replacement.coordinationProjection);
-    assert.deepEqual(adopt(paused, inputRecords, orphanSubmission.envelope.recordId), {
+    assert.deepEqual(adopt(paused, inputRecords, current.replacementRecord.envelope.recordId), {
       status: 'ready-to-adopt',
       coordinationProjection: {
         ...current.replacement.coordinationProjection,
@@ -212,5 +224,54 @@ test('an unrelated orphan submission is ignored consistently by replay and adopt
       acceptedSubmissionRecordIds: [],
       rejectedSubmissionRecordIds: [],
     });
+  }
+});
+
+test('post-boundary orphan submissions and dispositions block adoption before publication', () => {
+  for (const kind of ['submission', 'disposition']) {
+    const current = zeroOutstandingHistory();
+    const extension =
+      kind === 'submission'
+        ? record(orphanSubmissionSpec(), current.replacementRecord.envelope.recordId)
+        : record(
+            {
+              recordId: id(42),
+              recordType: 'record-disposition',
+              payload: {
+                schema: 'aitm.record-disposition/v1',
+                decision: 'rejected',
+                issue,
+                assignmentRecordId: id(70),
+                assignmentCommentNodeId: 'IC_unknown_assignment',
+                submissionRecordId: id(71),
+                submissionCommentNodeId: 'IC_unknown_submission',
+                grantId: id(9002),
+                epoch: 2,
+                decidedBy: replacementCoordinator,
+                reason: 'unknown post-boundary target',
+              },
+              actor: replacementCoordinator.actor,
+              epoch: 2,
+              grantId: id(9002),
+            },
+            current.replacementRecord.envelope.recordId
+          );
+    const records = [...current.records, extension];
+    for (const inputRecords of [records, [...records].reverse()]) {
+      assert.equal(
+        resolve(inputRecords, {
+          ...current.replacement.coordinationProjection,
+          adoptionState: 'adopted',
+        }).status,
+        'active',
+        kind
+      );
+      const paused = resolve(inputRecords, current.replacement.coordinationProjection);
+      assert.equal(
+        adopt(paused, inputRecords, extension.envelope.recordId).status,
+        'blocked',
+        kind
+      );
+    }
   }
 });

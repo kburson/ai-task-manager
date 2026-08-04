@@ -96,7 +96,7 @@ function validateAdoptionSnapshot(snapshot) {
 
 function activeAuthorization(
   authority,
-  { coordinator, issue, operation, branch, repository, grantId, epoch }
+  { coordinator, issue, operation, branch, repository, grantId, epoch, assignment, submission }
 ) {
   const grant = authority?.grant;
   if (!isPlainDataObject(grant)) return { authorized: false, reason: 'authority' };
@@ -110,6 +110,8 @@ function activeAuthorization(
       operation,
       branch,
       repository,
+      assignment,
+      submission,
     }),
     grantId: grant.grantId,
     epoch: grant.epoch,
@@ -364,13 +366,14 @@ export function adoptOutstandingSubmissions(input = {}) {
   const evaluations = new Map();
   for (const submission of submissionRecords) {
     const assignment = eligibleAssignments.get(submission.envelope.payload?.assignmentRecordId);
-    if (assignment === undefined) continue;
+    const submissionPosition = recordPositions.get(submission.envelope.recordId);
+    if (assignment === undefined) {
+      if (submissionPosition > replacementPosition) return blocked('assignment-order');
+      continue;
+    }
     validateCorrelatedRecord(submission, 'submission');
     validateSubmissionPayload(submission.envelope.payload);
-    if (
-      recordPositions.get(assignment.envelope.recordId) >=
-      recordPositions.get(submission.envelope.recordId)
-    ) {
+    if (recordPositions.get(assignment.envelope.recordId) >= submissionPosition) {
       return blocked('submission-order');
     }
     const evaluation = evaluateSubmissionBounds(assignment, submission);
@@ -382,7 +385,11 @@ export function adoptOutstandingSubmissions(input = {}) {
   const replacementDecisions = new Map();
   for (const candidate of dispositionRecords) {
     const target = evaluations.get(candidate.envelope.payload?.submissionRecordId);
-    if (target === undefined) continue;
+    const dispositionPosition = recordPositions.get(candidate.envelope.recordId);
+    if (target === undefined) {
+      if (dispositionPosition > replacementPosition) return blocked('unknown-disposition');
+      continue;
+    }
     const dispositionRecord = validateDispositionRecord(candidate);
     const payload = dispositionRecord.envelope.payload;
     if (
@@ -393,7 +400,6 @@ export function adoptOutstandingSubmissions(input = {}) {
     ) {
       return blocked('disposition-provenance');
     }
-    const dispositionPosition = recordPositions.get(dispositionRecord.envelope.recordId);
     const submissionPosition = recordPositions.get(target.submission.envelope.recordId);
     if (dispositionPosition <= submissionPosition) return blocked('disposition-order');
     const historical = dispositionPosition < revocationPosition;
