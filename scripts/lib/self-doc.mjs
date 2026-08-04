@@ -44,7 +44,7 @@ const ROUTABLE_SELF_DOC = {
     audience:
       'AI/operator creating a new issue. Prefer `aitm preflight-issue` to stamp the body first.',
     usage:
-      'aitm create-issue --title <t> (--body-file <path> | --shape epic|sub-issue|solo --scope-file <p> --ac-file <p> --story-origin-file <p> [--plan-metadata-file <p>] [--verification-commands-file <p>] [--sub-issue-list-file <p>] | --shape stub [--idea-file <p>]) [--label <l> ...] [--priority p0|p1|p2] [--size XS|S|M|L|XL] [--estimate <hours>] [--rank <n>] [--start-time <iso>] [--kind <kind>] [--parent <N>] [--assignee <a>] [--allow-duplicate-child] [--dry-run] [--no-tether] [--no-placeholder-substitution] [--internal]',
+      'aitm create-issue --title <t> (--body-file <path> | --shape epic|sub-issue|solo|defect --scope-file <p> --ac-file <p> --story-origin-file <p> [--plan-metadata-file <p>] [--verification-commands-file <p>] [--reproduction-file <p>] [--root-cause-file <p>] [--fix-direction-file <p>] [--out-of-scope-file <p>] [--sub-issue-list-file <p>] | --shape stub [--idea-file <p>]) [--label <l> ...] [--priority p0|p1|p2] [--size XS|S|M|L|XL] [--estimate <hours>] [--rank <n>] [--start-time <iso>] [--kind <kind>] [--parent <N>] [--assignee <a>] [--allow-duplicate-child] [--dry-run] [--no-tether] [--no-placeholder-substitution] [--internal]',
   },
   'preflight-issue': {
     group: 'GitHub',
@@ -52,7 +52,7 @@ const ROUTABLE_SELF_DOC = {
     synopsis: 'Stamp the DoD + Pickup-Directive tail onto a draft issue body before creation.',
     audience: 'AI/operator preparing an issue body. Output feeds `aitm create-issue --body-file`.',
     usage:
-      'aitm preflight-issue [--check-only|--check-integrity <N>] [--shape epic|sub-issue|solo|stub] [--scope-file <p>] [--ac-file <p>] [--story-origin-file <p>] [--plan-metadata-file <p>] [--verification-commands-file <p>] [--parent <N>] [--sub-issue-list-file <p>] [--idea-file <p>] [--priority <P>] [--size <S>] [--estimate <hours>] [--rank <n>] [--start-time <iso>] [--kind <kind>] [--changed-paths-file <p>]',
+      'aitm preflight-issue [--check-only|--check-integrity <N>] [--shape epic|sub-issue|solo|defect|stub] [--scope-file <p>] [--ac-file <p>] [--story-origin-file <p>] [--plan-metadata-file <p>] [--verification-commands-file <p>] [--reproduction-file <p>] [--root-cause-file <p>] [--fix-direction-file <p>] [--out-of-scope-file <p>] [--parent <N>] [--sub-issue-list-file <p>] [--idea-file <p>] [--priority <P>] [--size <S>] [--estimate <hours>] [--rank <n>] [--start-time <iso>] [--kind <kind>] [--changed-paths-file <p>]',
   },
   'set-priority': {
     group: 'GitHub',
@@ -191,7 +191,7 @@ const ROUTABLE_ARGUMENTS = Object.freeze({
   'create-issue': [
     argument('--title <text>', 'Issue title.'),
     argument('--body-file <path>', 'Use an already assembled canonical issue body.'),
-    argument('--shape epic|sub-issue|solo|stub', 'Assemble a sanctioned issue shape.'),
+    argument('--shape epic|sub-issue|solo|defect|stub', 'Assemble a sanctioned issue shape.'),
     argument('--scope-file <path>', 'Scope section required for non-stub shape assembly.'),
     argument('--ac-file <path>', 'Acceptance Criteria required for non-stub shape assembly.'),
     argument('--story-origin-file <path>', 'Story Origin required for non-stub assembly.'),
@@ -200,6 +200,10 @@ const ROUTABLE_ARGUMENTS = Object.freeze({
       '--verification-commands-file <path>',
       'Optional exact verification commands for shaped assembly.'
     ),
+    argument('--reproduction-file <path>', 'Optional defect reproduction section.'),
+    argument('--root-cause-file <path>', 'Optional defect root-cause section.'),
+    argument('--fix-direction-file <path>', 'Optional defect fix-direction section.'),
+    argument('--out-of-scope-file <path>', 'Optional defect out-of-scope section.'),
     argument('--sub-issue-list-file <path>', 'Optional epic sub-issue list section.'),
     argument('--idea-file <path>', 'Optional initial Scope content for a stub.'),
     argument('--label <name>', 'Repeatable issue label.'),
@@ -220,7 +224,7 @@ const ROUTABLE_ARGUMENTS = Object.freeze({
   'preflight-issue': [
     argument('--check-only', 'Verify required templates without rendering a body.'),
     argument('--check-integrity <N>', 'Audit one issue body against close-gate integrity checks.'),
-    argument('--shape epic|sub-issue|solo|stub', 'Optional full-body template shape.'),
+    argument('--shape epic|sub-issue|solo|defect|stub', 'Optional full-body template shape.'),
     argument('--scope-file <path>', 'Scope section source for full-body rendering.'),
     argument('--ac-file <path>', 'Acceptance Criteria source for full-body rendering.'),
     argument('--story-origin-file <path>', 'Story Origin source for full-body rendering.'),
@@ -232,6 +236,10 @@ const ROUTABLE_ARGUMENTS = Object.freeze({
       '--verification-commands-file <path>',
       'Optional exact verification commands for full-body rendering.'
     ),
+    argument('--reproduction-file <path>', 'Optional defect reproduction section source.'),
+    argument('--root-cause-file <path>', 'Optional defect root-cause section source.'),
+    argument('--fix-direction-file <path>', 'Optional defect fix-direction section source.'),
+    argument('--out-of-scope-file <path>', 'Optional defect out-of-scope section source.'),
     argument('--parent <N>', 'Parent issue substituted into a sub-issue body.'),
     argument('--sub-issue-list-file <path>', 'Epic sub-issue list section source.'),
     argument('--idea-file <path>', 'Optional stub idea source.'),

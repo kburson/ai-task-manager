@@ -122,6 +122,27 @@ test('defect dry-run renders a real User Story, diagnostic sections, and governe
   assert.match(rendered, /aitm-body-version version="1"/);
 });
 
+test('creator and preflight public help advertise the defect shape', () => {
+  for (const script of [
+    'scripts/gh/create-issue.mjs',
+    'scripts/task-tracker/preflight-issue.mjs',
+  ]) {
+    const help = execFileSync(process.execPath, [script, '--help'], {
+      cwd: ROOT,
+      encoding: 'utf8',
+    });
+    assert.match(help, /--shape[^\n]*defect/, script);
+    for (const flag of [
+      '--reproduction-file',
+      '--root-cause-file',
+      '--fix-direction-file',
+      '--out-of-scope-file',
+    ]) {
+      assert.match(help, new RegExp(flag), `${script}: ${flag}`);
+    }
+  }
+});
+
 test('generated bug form and label workflow use the canonical prefix authority', () => {
   assert.match(BUG_TEMPLATE, /title: "🐞 \[BUG\] "/);
   const workflow = readFileSync(path.join(ROOT, '.github/workflows/label-beta-report.yml'), 'utf8');
