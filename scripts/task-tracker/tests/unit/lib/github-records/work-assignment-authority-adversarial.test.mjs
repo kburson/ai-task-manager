@@ -469,6 +469,13 @@ test('an adopted projection cannot bypass incomplete durable replacement replay'
 
 test('malformed historical linkage permits repair but never counts as completion', () => {
   const current = replacementHistory({ malformedHistorical: true });
+  assert.deepEqual(
+    resolveRecords([...current.records].reverse(), {
+      ...current.replacement.coordinationProjection,
+      adoptionState: 'adopted',
+    }),
+    { status: 'paused', diagnostic: { reason: 'adoption-required' } }
+  );
   const paused = resolveRecords([...current.records].reverse(), {
     ...current.replacement.coordinationProjection,
     adoptionState: 'required',
@@ -517,9 +524,15 @@ test('malformed historical linkage permits repair but never counts as completion
     },
   });
   assert.deepEqual(adopted.acceptedSubmissionRecordIds, [current.submission.envelope.recordId]);
+  const resumed = resolveRecords([...records].reverse(), {
+    ...current.replacement.coordinationProjection,
+    adoptionState: 'adopted',
+  });
+  assert.equal(resumed.status, 'active');
+  assert.equal(resumed.grant.grantId, id(9002));
 });
 
-test('replacement projection never grants authority without immutable adoption proof', () => {
+test('record-backed zero-outstanding replacement resumes only with adopted projection', () => {
   const current = zeroOutstandingHistory();
   const required = resolveRecords(current.records, {
     ...current.replacement.coordinationProjection,
@@ -533,7 +546,106 @@ test('replacement projection never grants authority without immutable adoption p
     status: 'paused',
     diagnostic: { reason: 'adoption-required' },
   });
-  assert.deepEqual(assertedAdopted, required);
+  assert.equal(assertedAdopted.status, 'active');
+  assert.equal(assertedAdopted.grant.grantId, id(9002));
+});
+
+test('duplicate effective dispositions keep an adopted projection paused', () => {
+  const current = replacementHistory();
+  const paused = resolveRecords(current.records, current.replacement.coordinationProjection);
+  const disposition = acceptSubmission({
+    authority: paused,
+    assignment: current.assignment,
+    submission: current.submission,
+  });
+  const first = record(
+    {
+      recordId: id(42),
+      recordType: disposition.recordType,
+      payload: disposition.payload,
+      actor: replacementCoordinator.actor,
+      epoch: 2,
+      grantId: id(9002),
+    },
+    current.replacementRecord.envelope.recordId
+  );
+  const duplicate = record(
+    {
+      recordId: id(43),
+      recordType: disposition.recordType,
+      payload: disposition.payload,
+      actor: replacementCoordinator.actor,
+      epoch: 2,
+      grantId: id(9002),
+    },
+    first.envelope.recordId
+  );
+  assert.deepEqual(
+    resolveRecords([...current.records, first, duplicate].reverse(), {
+      ...current.replacement.coordinationProjection,
+      adoptionState: 'adopted',
+    }),
+    { status: 'paused', diagnostic: { reason: 'adoption-required' } }
+  );
+});
+
+test('raw Task 7 adopted replacement resumes without minting Task 8 context', () => {
+  const originalGrant = grant();
+  const initial = resolveCoordinatorAuthority({
+    issueHierarchy: [{ issue, parentIssue: null }],
+    grants: [originalGrant],
+    revocations: [],
+    coordinationProjection: {
+      schema: 'aitm.coordination-projection/v1',
+      grantId: originalGrant.grantId,
+      epoch: originalGrant.epoch,
+      adoptionState: 'adopted',
+    },
+    now: '2026-08-03T20:06:00.000Z',
+  });
+  const replacementGrant = grant({
+    grantId: id(9002),
+    epoch: 2,
+    grantCoordinator: replacementCoordinator,
+    issuer: coordinator,
+  });
+  const replacement = replaceCoordinator({
+    authority: initial,
+    expectedGrantId: originalGrant.grantId,
+    expectedEpoch: originalGrant.epoch,
+    replacementGrant,
+  });
+  const adopted = resolveCoordinatorAuthority({
+    issueHierarchy: [{ issue, parentIssue: null }],
+    grants: [originalGrant, replacementGrant],
+    revocations: [replacement.revocation],
+    coordinationProjection: {
+      ...replacement.coordinationProjection,
+      adoptionState: 'adopted',
+    },
+    now: '2026-08-03T20:06:00.000Z',
+  });
+  assert.equal(
+    authorizeCoordinatorOperation({
+      authority: adopted,
+      grantId: replacementGrant.grantId,
+      epoch: replacementGrant.epoch,
+      coordinator: replacementCoordinator,
+      issue,
+      operation: 'assign-work',
+      branch,
+    }).authorized,
+    true
+  );
+  assert.throws(
+    () =>
+      createWorkAssignment(
+        assignmentInput(adopted, {
+          coordinator: replacementCoordinator,
+        })
+      ),
+    /work-assignment:authority/
+  );
 });
 
 test('replacement replay uses the exact full Task 8 assignment and submission validators', () => {
@@ -607,6 +719,14 @@ test('replacement replay uses the exact full Task 8 assignment and submission va
         assert.throws(resolve, /capsule-chain:record/, variant.name);
         continue;
       }
+      assert.deepEqual(
+        resolveRecords(records, {
+          ...current.replacement.coordinationProjection,
+          adoptionState: 'adopted',
+        }),
+        { status: 'paused', diagnostic: { reason: 'adoption-required' } },
+        variant.name
+      );
       const authorization = authorizeCoordinatorAdoption({
         authority: resolve(),
         issue,
@@ -650,4 +770,50 @@ test('unrelated orphan dispositions do not poison zero-outstanding adoption', ()
       rejectedSubmissionRecordIds: [],
     });
   }
+});
+
+test('later revocation of replacement blocks adoption from an extended snapshot', () => {
+  const current = zeroOutstandingHistory();
+  const laterRevocation = record(
+    {
+      recordId: id(42),
+      recordType: 'coordinator-revocation',
+      payload: {
+        schema: 'aitm.coordinator-revocation/v1',
+        grantId: id(9002),
+        epoch: 2,
+        state: 'revoked',
+      },
+      actor: replacementCoordinator.actor,
+      epoch: 2,
+      grantId: id(9002),
+    },
+    current.replacementRecord.envelope.recordId
+  );
+  const records = [...current.records, laterRevocation];
+  for (const snapshotRecords of [records, [...records].reverse()]) {
+    const pausedForSnapshot = resolveRecords(
+      current.records,
+      current.replacement.coordinationProjection
+    );
+    assert.deepEqual(
+      adoptOutstandingSubmissions({
+        authority: pausedForSnapshot,
+        snapshot: {
+          repository,
+          issue,
+          expectedHeadRecordId: laterRevocation.envelope.recordId,
+          records: snapshotRecords,
+        },
+      }),
+      { status: 'blocked', diagnostic: { reason: 'authority' } }
+    );
+  }
+  assert.deepEqual(
+    resolveRecords([...records].reverse(), {
+      ...current.replacement.coordinationProjection,
+      adoptionState: 'adopted',
+    }),
+    { status: 'blocked', diagnostic: { reason: 'revoked' } }
+  );
 });
