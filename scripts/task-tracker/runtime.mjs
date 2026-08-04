@@ -278,6 +278,7 @@ export function buildContext(rawArgv = process.argv.slice(2)) {
     minutesBetween,
     CLOSE_OWNED_CHECKBOXES,
     uncheckedPreCloseCheckboxes,
+    readTimingCommentBody,
   };
 
   ctx.safePostTiming = async (issue, row) => {
