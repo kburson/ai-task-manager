@@ -268,6 +268,17 @@ function scenario(sequence) {
       epoch: 2,
       grantId: id(9002),
     },
+    malformedReplacementDisposition: {
+      recordId: id(34),
+      recordType: 'record-disposition',
+      payload: {
+        ...dispositionPayload({ assignmentRecordId: id(10), submissionRecordId: id(20) }),
+        assignmentRecordId: id(12),
+      },
+      actor: replacementCoordinator.actor,
+      epoch: 2,
+      grantId: id(9002),
+    },
     revocation: {
       recordId: id(40),
       recordType: 'coordinator-revocation',
@@ -632,5 +643,151 @@ test('binds active Task 8 work to the durable repository and issue privately', (
   assert.throws(
     () => createWorkAssignment({ ...assignmentInput, authority: unbound, repository }),
     /work-assignment:authority/
+  );
+});
+
+test('binds active evaluation and disposition to the assignment grant and epoch', () => {
+  const currentGrant = grant({ grantId: id(9002), epoch: 2, grantCoordinator: coordinator });
+  const root = record(
+    {
+      recordId: id(1),
+      recordType: 'coordinator-grant',
+      payload: currentGrant,
+      actor: coordinator.actor,
+      epoch: 2,
+      grantId: id(8000),
+    },
+    null
+  );
+  const active = resolveCoordinatorAuthority({
+    issueHierarchy: [{ issue, parentIssue: null }],
+    records: [root],
+    repository,
+    issue,
+    coordinationProjection: {
+      schema: 'aitm.coordination-projection/v1',
+      grantId: currentGrant.grantId,
+      epoch: currentGrant.epoch,
+      adoptionState: 'adopted',
+    },
+    now: '2026-08-03T20:06:00.000Z',
+  });
+  const currentAssignment = createWorkAssignment({
+    authority: active,
+    repository,
+    coordinator,
+    issue,
+    branch,
+    files: ['scripts/task-tracker/lib/github-records/work-assignment.mjs'],
+    subsystem: 'github-records',
+    dependency: {
+      baselineSha: 'c2ae3db785468fb496f2be1f54aca144e636b172',
+      recordIds: [root.envelope.recordId],
+    },
+    verification: { contractEpoch: 1, verifierIds: ['vc-6'] },
+    worker,
+  });
+  assert.equal(currentAssignment.payload.grantId, id(9002));
+  assert.equal(currentAssignment.payload.epoch, 2);
+
+  for (const stale of [
+    { label: 'stale epoch', grantId: id(9001), epoch: 1, number: 10 },
+    { label: 'wrong grant', grantId: id(9010), epoch: 2, number: 11 },
+  ]) {
+    const assignment = record(
+      {
+        recordId: id(stale.number),
+        recordType: currentAssignment.recordType,
+        payload: { ...currentAssignment.payload, grantId: stale.grantId, epoch: stale.epoch },
+        actor: coordinator.actor,
+        epoch: stale.epoch,
+        grantId: stale.grantId,
+      },
+      root.envelope.recordId
+    );
+    const submission = record(
+      {
+        recordId: id(stale.number + 20),
+        recordType: 'execution-result',
+        payload: submissionPayload(assignment.envelope.recordId, stale.label),
+        actor: worker.actor,
+        epoch: stale.epoch,
+        grantId: stale.grantId,
+      },
+      assignment.envelope.recordId
+    );
+    const target = { authority: active, assignment, submission };
+    assert.deepEqual(evaluateAssignment(target), {
+      status: 'blocked',
+      diagnostic: { reason: 'authority' },
+    });
+    assert.throws(() => acceptSubmission(target), /work-assignment:authority/);
+    assert.throws(
+      () => rejectSubmission({ ...target, reason: stale.label }),
+      /work-assignment:authority/
+    );
+  }
+});
+
+test('does not let a malformed replacement claim poison lawful disposition repair', () => {
+  const current = scenario([
+    'root',
+    'assignment',
+    'submission',
+    'revocation',
+    'replacementGrant',
+    'malformedReplacementDisposition',
+  ]);
+  const target = {
+    authority: current.paused,
+    assignment: current.byName.get('assignment'),
+    submission: current.byName.get('submission'),
+  };
+  const correction = acceptSubmission(target);
+  assert.equal(correction.payload.decision, 'accepted');
+  assert.equal(current.adopt().status, 'blocked');
+
+  const malformed = current.byName.get('malformedReplacementDisposition');
+  const corrected = record(
+    {
+      recordId: id(35),
+      recordType: correction.recordType,
+      payload: correction.payload,
+      actor: replacementCoordinator.actor,
+      epoch: 2,
+      grantId: id(9002),
+      supersedes: malformed.envelope.recordId,
+    },
+    malformed.envelope.recordId
+  );
+  const records = [...current.records, corrected];
+  const restarted = resolveCoordinatorAuthority({
+    issueHierarchy: [{ issue, parentIssue: null }],
+    records: [...records].reverse(),
+    repository,
+    issue,
+    coordinationProjection: {
+      schema: 'aitm.coordination-projection/v1',
+      grantId: id(9002),
+      epoch: 2,
+      adoptionState: 'required',
+    },
+    now: '2026-08-03T20:06:00.000Z',
+  });
+  assert.throws(
+    () => acceptSubmission({ ...target, authority: restarted }),
+    /work-assignment:authority/
+  );
+  assert.deepEqual(
+    adoptOutstandingSubmissions({
+      authority: restarted,
+      snapshot: {
+        repository,
+        issue,
+        expectedHeadRecordId: corrected.envelope.recordId,
+        records,
+      },
+    }).acceptedSubmissionRecordIds,
+    [id(20)]
   );
 });
