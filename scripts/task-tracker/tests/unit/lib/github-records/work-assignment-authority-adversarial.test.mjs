@@ -301,28 +301,6 @@ function zeroOutstandingHistory({ orphanDisposition = false } = {}) {
     expectedEpoch: 1,
     replacementGrant,
   });
-  const revocation = record(
-    {
-      recordId: id(40),
-      recordType: 'coordinator-revocation',
-      payload: replacement.revocation,
-      actor: coordinator.actor,
-      epoch: 1,
-      grantId: id(8000),
-    },
-    root.envelope.recordId
-  );
-  const replacementRecord = record(
-    {
-      recordId: id(41),
-      recordType: 'coordinator-grant',
-      payload: replacementGrant,
-      actor: coordinator.actor,
-      epoch: 1,
-      grantId: id(8000),
-    },
-    revocation.envelope.recordId
-  );
   const orphan = orphanDisposition
     ? record(
         {
@@ -341,15 +319,37 @@ function zeroOutstandingHistory({ orphanDisposition = false } = {}) {
             decidedBy: replacementCoordinator,
             reason: 'orphan target is unrelated to this replacement',
           },
-          actor: replacementCoordinator.actor,
-          epoch: replacementGrant.epoch,
-          grantId: replacementGrant.grantId,
+          actor: coordinator.actor,
+          epoch: 1,
+          grantId: originalGrant.grantId,
         },
-        replacementRecord.envelope.recordId
+        root.envelope.recordId
       )
     : null;
+  const revocation = record(
+    {
+      recordId: id(40),
+      recordType: 'coordinator-revocation',
+      payload: replacement.revocation,
+      actor: coordinator.actor,
+      epoch: 1,
+      grantId: id(8000),
+    },
+    (orphan ?? root).envelope.recordId
+  );
+  const replacementRecord = record(
+    {
+      recordId: id(41),
+      recordType: 'coordinator-grant',
+      payload: replacementGrant,
+      actor: coordinator.actor,
+      epoch: 1,
+      grantId: id(8000),
+    },
+    revocation.envelope.recordId
+  );
   return {
-    records: [root, revocation, replacementRecord, ...(orphan === null ? [] : [orphan])],
+    records: [root, ...(orphan === null ? [] : [orphan]), revocation, replacementRecord],
     replacement,
     replacementRecord,
   };
@@ -451,30 +451,28 @@ test('raw grant context assertions never mint repository-bound Task 8 authority'
   );
 });
 
-test('an adopted projection cannot bypass incomplete durable replacement replay', () => {
+test('an adopted projection resumes under Task 7 without replaying Task 8 adoption', () => {
   const current = replacementHistory();
   const bypass = resolveRecords([...current.records].reverse(), {
     ...current.replacement.coordinationProjection,
     adoptionState: 'adopted',
   });
-  assert.deepEqual(bypass, {
-    status: 'paused',
-    diagnostic: { reason: 'adoption-required' },
-  });
-  assert.throws(
-    () => createWorkAssignment(assignmentInput(bypass, { coordinator: replacementCoordinator })),
-    /work-assignment:authority/
+  assert.equal(bypass.status, 'active');
+  assert.equal(
+    createWorkAssignment(assignmentInput(bypass, { coordinator: replacementCoordinator })).payload
+      .grantId,
+    id(9002)
   );
 });
 
 test('malformed historical linkage permits repair but never counts as completion', () => {
   const current = replacementHistory({ malformedHistorical: true });
-  assert.deepEqual(
+  assert.equal(
     resolveRecords([...current.records].reverse(), {
       ...current.replacement.coordinationProjection,
       adoptionState: 'adopted',
-    }),
-    { status: 'paused', diagnostic: { reason: 'adoption-required' } }
+    }).status,
+    'active'
   );
   const paused = resolveRecords([...current.records].reverse(), {
     ...current.replacement.coordinationProjection,
@@ -550,7 +548,7 @@ test('record-backed zero-outstanding replacement resumes only with adopted proje
   assert.equal(assertedAdopted.grant.grantId, id(9002));
 });
 
-test('duplicate effective dispositions keep an adopted projection paused', () => {
+test('published adoption does not replay duplicate effective dispositions', () => {
   const current = replacementHistory();
   const paused = resolveRecords(current.records, current.replacement.coordinationProjection);
   const disposition = acceptSubmission({
@@ -580,12 +578,12 @@ test('duplicate effective dispositions keep an adopted projection paused', () =>
     },
     first.envelope.recordId
   );
-  assert.deepEqual(
+  assert.equal(
     resolveRecords([...current.records, first, duplicate].reverse(), {
       ...current.replacement.coordinationProjection,
       adoptionState: 'adopted',
-    }),
-    { status: 'paused', diagnostic: { reason: 'adoption-required' } }
+    }).status,
+    'active'
   );
 });
 
@@ -719,12 +717,12 @@ test('replacement replay uses the exact full Task 8 assignment and submission va
         assert.throws(resolve, /capsule-chain:record/, variant.name);
         continue;
       }
-      assert.deepEqual(
+      assert.equal(
         resolveRecords(records, {
           ...current.replacement.coordinationProjection,
           adoptionState: 'adopted',
-        }),
-        { status: 'paused', diagnostic: { reason: 'adoption-required' } },
+        }).status,
+        'active',
         variant.name
       );
       const authorization = authorizeCoordinatorAdoption({

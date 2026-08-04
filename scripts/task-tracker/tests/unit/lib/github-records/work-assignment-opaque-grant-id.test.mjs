@@ -74,7 +74,7 @@ function submissionPayload(assignment) {
   };
 }
 
-test('record-backed Task 7 opaque grant IDs create, evaluate, and accept Task 8 work', () => {
+test('record-backed opaque grant IDs require effective assignment-before-submission order', () => {
   const grant = {
     schema: 'aitm.coordinator-grant/v1',
     grantId: 'grant-original',
@@ -131,10 +131,77 @@ test('record-backed Task 7 opaque grant IDs create, evaluate, and accept Task 8 
     },
     assignment.envelope.recordId
   );
-  assert.equal(evaluateAssignment({ authority, assignment, submission }).status, 'matched');
+  const handoffAuthority = resolveCoordinatorAuthority({
+    issueHierarchy: [{ issue, parentIssue: null }],
+    records: [root, assignment, submission],
+    repository,
+    issue,
+    coordinationProjection: {
+      schema: 'aitm.coordination-projection/v1',
+      grantId: grant.grantId,
+      epoch: 1,
+      adoptionState: 'adopted',
+    },
+    now: '2026-08-03T20:06:00.000Z',
+  });
   assert.equal(
-    acceptSubmission({ authority, assignment, submission }).payload.grantId,
+    evaluateAssignment({ authority: handoffAuthority, assignment, submission }).status,
+    'matched'
+  );
+  assert.equal(
+    acceptSubmission({ authority: handoffAuthority, assignment, submission }).payload.grantId,
     'grant-original'
+  );
+
+  const reversedAssignment = record(
+    {
+      recordId: id(11),
+      recordType: candidate.recordType,
+      payload: candidate.payload,
+      actor: coordinator.actor,
+      grantId: grant.grantId,
+    },
+    id(21)
+  );
+  const reversedSubmission = record(
+    {
+      recordId: id(21),
+      recordType: 'execution-result',
+      payload: submissionPayload(reversedAssignment),
+      actor: worker.actor,
+      grantId: grant.grantId,
+    },
+    root.envelope.recordId
+  );
+  const reversedAuthority = resolveCoordinatorAuthority({
+    issueHierarchy: [{ issue, parentIssue: null }],
+    records: [root, reversedAssignment, reversedSubmission],
+    repository,
+    issue,
+    coordinationProjection: {
+      schema: 'aitm.coordination-projection/v1',
+      grantId: grant.grantId,
+      epoch: 1,
+      adoptionState: 'adopted',
+    },
+    now: '2026-08-03T20:06:00.000Z',
+  });
+  assert.equal(
+    evaluateAssignment({
+      authority: reversedAuthority,
+      assignment: reversedAssignment,
+      submission: reversedSubmission,
+    }).status,
+    'blocked'
+  );
+  assert.throws(
+    () =>
+      acceptSubmission({
+        authority: reversedAuthority,
+        assignment: reversedAssignment,
+        submission: reversedSubmission,
+      }),
+    /work-assignment:authority/
   );
 });
 

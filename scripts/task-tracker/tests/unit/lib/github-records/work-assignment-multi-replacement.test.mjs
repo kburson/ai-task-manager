@@ -186,8 +186,14 @@ function threeEpochHistory({ epoch2Outstanding }) {
     },
     assignment1.envelope.recordId
   );
+  const dispositionAuthority = resolve([parent, child, assignment1, submission1], {
+    schema: 'aitm.coordination-projection/v1',
+    grantId: grant1.grantId,
+    epoch: 1,
+    adoptionState: 'adopted',
+  });
   const disposition1Candidate = acceptSubmission({
-    authority: active1,
+    authority: dispositionAuthority,
     assignment: assignment1,
     submission: submission1,
   });
@@ -209,7 +215,7 @@ function threeEpochHistory({ epoch2Outstanding }) {
     issuer: coordinator1,
   });
   const replacement1 = replaceCoordinator({
-    authority: active1,
+    authority: dispositionAuthority,
     expectedGrantId: grant1.grantId,
     expectedEpoch: 1,
     replacementGrant: grant2,
@@ -348,16 +354,16 @@ test('older completed generations do not poison zero-outstanding epoch-3 adoptio
   }
 });
 
-test('epoch-3 adoption requires only immediate epoch-2 outstanding work', () => {
+test('epoch-3 adoption requires only immediate epoch-2 outstanding work before publication', () => {
   for (const reverse of [false, true]) {
     const current = threeEpochHistory({ epoch2Outstanding: true });
     const records = reverse ? [...current.records].reverse() : current.records;
-    assert.deepEqual(
+    assert.equal(
       resolve(records, {
         ...current.replacement2.coordinationProjection,
         adoptionState: 'adopted',
-      }),
-      { status: 'paused', diagnostic: { reason: 'adoption-required' } }
+      }).status,
+      'active'
     );
     const paused = resolve(records, current.replacement2.coordinationProjection);
     const candidate = acceptSubmission({

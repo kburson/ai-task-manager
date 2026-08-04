@@ -731,8 +731,7 @@ export function resolveCoordinatorAuthority({
   ) {
     throw authorityError('context');
   }
-  const durableContext =
-    records !== undefined && hasDurableContext ? deepFreeze({ repository, issue }) : null;
+  let durableContext = null;
   let durableGrants;
   let durableRevocations;
   let durableResolution;
@@ -746,6 +745,16 @@ export function resolveCoordinatorAuthority({
         resolved: durableResolution,
         headRecord: durableHeadRecord,
       } = extractCapsules({ records, repository, issue }));
+      durableContext = Object.freeze({
+        repository,
+        issue,
+        effectiveRecordsById: new Map(
+          durableResolution.effectiveRecords.map((record, position) => [
+            record.envelope.recordId,
+            Object.freeze({ position, record: frozenCopy(record) }),
+          ])
+        ),
+      });
     } catch (error) {
       if (error instanceof TypeError && error.message === 'capsule-chain:fork') {
         return blocked('forked-capsule-history');
@@ -835,9 +844,7 @@ export function resolveCoordinatorAuthority({
       revocation.state === 'replaced' &&
       revocation.replacementGrantId === projectionGrant.grant.grantId
   );
-  const recordBackedReplacement =
-    durableResolution !== undefined && replacementRevocation !== undefined;
-  if (coordinationProjection.adoptionState === 'required' || recordBackedReplacement) {
+  if (coordinationProjection.adoptionState === 'required') {
     const predecessorGrant = validatedGrants.find(
       ({ grant }) =>
         grant.grantId === replacementRevocation?.revocation.grantId &&
@@ -859,13 +866,11 @@ export function resolveCoordinatorAuthority({
     const effectiveSubmissionsById = new Map();
     const historicallyDisposedSubmissionIds = new Set();
     const replacementDisposedSubmissionIds = new Set();
-    const historicalDispositionCounts = new Map();
-    const replacementDispositionCounts = new Map();
-    const invalidReplacementExtension =
+    let invalidReplacementExtension =
       durableResolution !== undefined &&
       hasInvalidAdoptionExtension(durableResolution.effectiveRecords, replacementGrantRecordId);
+    const validReplacementDispositionRecordIds = new Set();
     let invalidRelevantWorkRecord = false;
-    let invalidRelevantDisposition = false;
     if (orderedBoundary) {
       for (const [index, record] of durableResolution.effectiveRecords.entries()) {
         if (record.envelope.recordType === 'work-assignment' && index < revocationPosition) {
@@ -963,18 +968,19 @@ export function resolveCoordinatorAuthority({
         });
         if (historicalClaim) {
           historicallyDisposedSubmissionIds.add(payload.submissionRecordId);
-          historicalDispositionCounts.set(
-            payload.submissionRecordId,
-            (historicalDispositionCounts.get(payload.submissionRecordId) ?? 0) + 1
-          );
         } else if (replacementClaim) {
           replacementDisposedSubmissionIds.add(payload.submissionRecordId);
-          replacementDispositionCounts.set(
-            payload.submissionRecordId,
-            (replacementDispositionCounts.get(payload.submissionRecordId) ?? 0) + 1
-          );
-        } else {
-          invalidRelevantDisposition = true;
+          validReplacementDispositionRecordIds.add(record.envelope.recordId);
+        }
+      }
+      for (const record of durableResolution.effectiveRecords.slice(replacementPosition + 1)) {
+        if (
+          (isWorkAssignmentSubmissionType(record.envelope.recordType) &&
+            !effectiveSubmissionsById.has(record.envelope.recordId)) ||
+          (record.envelope.recordType === 'record-disposition' &&
+            !validReplacementDispositionRecordIds.has(record.envelope.recordId))
+        ) {
+          invalidReplacementExtension = true;
         }
       }
     }
@@ -1000,44 +1006,6 @@ export function resolveCoordinatorAuthority({
             invalidRelevantWorkRecord,
             invalidReplacementExtension,
           };
-    let durableAdoptionComplete =
-      adoptionContext !== null &&
-      !invalidReplacementExtension &&
-      !invalidRelevantWorkRecord &&
-      !invalidRelevantDisposition;
-    if (durableAdoptionComplete) {
-      for (const [submissionRecordId, submission] of effectiveSubmissionsById) {
-        const assignment = eligibleAssignmentsById.get(
-          submission.record.envelope.payload.assignmentRecordId
-        );
-        const target = validAdoptionTarget({
-          assignment,
-          submission,
-          predecessorGrant,
-          repository,
-          issue,
-        });
-        const dispositionCount =
-          (historicalDispositionCounts.get(submissionRecordId) ?? 0) +
-          (replacementDispositionCounts.get(submissionRecordId) ?? 0);
-        if (target === null || dispositionCount !== 1) {
-          durableAdoptionComplete = false;
-          break;
-        }
-      }
-    }
-    if (
-      coordinationProjection.adoptionState === 'adopted' &&
-      recordBackedReplacement &&
-      durableAdoptionComplete
-    ) {
-      return resolutionActive(
-        validatedGrants,
-        projectionGrant,
-        effectiveScope(projectionGrant, activeChildrenByParentId),
-        durableContext
-      );
-    }
     return resolutionPaused(
       validatedGrants,
       projectionGrant,
@@ -1064,6 +1032,8 @@ export function authorizeCoordinatorOperation({
   branch,
   integration = null,
   repository,
+  assignment,
+  submission,
 } = {}) {
   if (!isPlainDataObject(authority) || !isActiveAuthorityResult(authority)) {
     return authorization(false, 'authority');
@@ -1108,6 +1078,23 @@ export function authorizeCoordinatorOperation({
     return authorization(false, 'repository');
   }
   if (!grant.operations.includes(operation)) return authorization(false, 'operation');
+  if (operation === 'dispose-submission') {
+    const durableAssignment = metadata?.durableContext?.effectiveRecordsById?.get(
+      assignment?.envelope?.recordId
+    );
+    const durableSubmission = metadata?.durableContext?.effectiveRecordsById?.get(
+      submission?.envelope?.recordId
+    );
+    if (
+      durableAssignment === undefined ||
+      durableSubmission === undefined ||
+      !isDeepStrictEqual(durableAssignment.record, assignment) ||
+      !isDeepStrictEqual(durableSubmission.record, submission) ||
+      durableAssignment.position >= durableSubmission.position
+    ) {
+      return authorization(false, 'record');
+    }
+  }
   let normalizedBranch;
   try {
     normalizedBranch = normalizeBranch(branch);

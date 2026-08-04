@@ -137,7 +137,17 @@ function runFlow({ coordinatorPlatform, workerPlatform, replacementPlatform, off
     epoch: 1,
     grantId: originalGrant.grantId,
   });
-  const beforeDisposition = evaluateAssignment({ assignment, submission, authority: active });
+  const activeWithWork = resolve([root, assignment, submission], {
+    schema: 'aitm.coordination-projection/v1',
+    grantId: originalGrant.grantId,
+    epoch: 1,
+    adoptionState: 'adopted',
+  });
+  const beforeDisposition = evaluateAssignment({
+    assignment,
+    submission,
+    authority: activeWithWork,
+  });
   assert.equal(beforeDisposition.status, 'matched');
   assert.equal(Object.hasOwn(beforeDisposition, 'accepted'), false);
 
@@ -148,13 +158,13 @@ function runFlow({ coordinatorPlatform, workerPlatform, replacementPlatform, off
     issuer: coordinator,
   });
   const replacement = replaceCoordinator({
-    authority: active,
+    authority: activeWithWork,
     expectedGrantId: originalGrant.grantId,
     expectedEpoch: 1,
     replacementGrant,
   });
   assert.throws(
-    () => acceptSubmission({ assignment, submission, authority: active }),
+    () => acceptSubmission({ assignment, submission, authority: activeWithWork }),
     /work-assignment:authority/
   );
   const revocation = capsule({

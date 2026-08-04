@@ -212,8 +212,8 @@ test('a predecessor without assign-work cannot create a replay adoption obligati
       resolve(records, {
         ...current.replacement.coordinationProjection,
         adoptionState: 'adopted',
-      }),
-      { status: 'paused', diagnostic: { reason: 'adoption-required' } }
+      }).status,
+      'active'
     );
     const paused = resolve(records, current.replacement.coordinationProjection);
     assert.equal(
