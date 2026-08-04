@@ -272,7 +272,7 @@ function replacementHandoff({ decision = 'accepted', fillerCount = 0 } = {}) {
     revocationRecord,
     replacementGrantRecord,
   ];
-  const pausedAuthority = resolveCoordinatorAuthority({
+  const dispositionAuthority = resolveCoordinatorAuthority({
     issueHierarchy: [
       { issue: 1067, parentIssue: null },
       { issue, parentIssue: 1067 },
@@ -285,11 +285,11 @@ function replacementHandoff({ decision = 'accepted', fillerCount = 0 } = {}) {
   });
   const dispositionCandidate =
     decision === 'accepted'
-      ? acceptSubmission({ assignment, submission, authority: pausedAuthority })
+      ? acceptSubmission({ assignment, submission, authority: dispositionAuthority })
       : rejectSubmission({
           assignment,
           submission,
-          authority: pausedAuthority,
+          authority: dispositionAuthority,
           reason: 'replacement rejected bounded result',
         });
   const disposition = record({
@@ -300,6 +300,18 @@ function replacementHandoff({ decision = 'accepted', fillerCount = 0 } = {}) {
     epoch: 5,
     grantId: id(9002),
     predecessor: replacementGrantRecord.envelope.recordId,
+  });
+  const records = [...persistedRecords, disposition];
+  const pausedAuthority = resolveCoordinatorAuthority({
+    issueHierarchy: [
+      { issue: 1067, parentIssue: null },
+      { issue, parentIssue: 1067 },
+    ],
+    records,
+    repository,
+    issue,
+    coordinationProjection: replacement.coordinationProjection,
+    now: '2026-08-03T20:05:00.000Z',
   });
   return {
     pausedAuthority,
@@ -313,7 +325,7 @@ function replacementHandoff({ decision = 'accepted', fillerCount = 0 } = {}) {
     revocationRecord,
     replacementGrantRecord,
     persistedRecords,
-    records: [...persistedRecords, disposition],
+    records,
   };
 }
 
@@ -646,18 +658,17 @@ test('adopts through documented arrays or the compatible exhaustive snapshot', (
       }),
     /work-assignment:input/
   );
-  assert.throws(
-    () =>
-      adoptOutstandingSubmissions({
-        authority: current.pausedAuthority,
-        snapshot: {
-          repository,
-          issue,
-          expectedHeadRecordId: id(24),
-          records: [],
-        },
-      }),
-    /work-assignment:input/
+  assert.deepEqual(
+    adoptOutstandingSubmissions({
+      authority: current.pausedAuthority,
+      snapshot: {
+        repository,
+        issue,
+        expectedHeadRecordId: id(24),
+        records: [],
+      },
+    }),
+    { status: 'blocked', diagnostic: { reason: 'authority' } }
   );
 });
 
@@ -738,20 +749,19 @@ test('binds replacement disposition to the exact durable predecessor authority',
   );
 });
 
-test('rejects omitted tails and delegates malformed topology to capsule-chain validation', () => {
+test('rejects omitted tails and any mutation of the captured topology', () => {
   const missing = replacementHandoff();
   assert.deepEqual(adoptOutstandingSubmissions(adoptionInput(missing, missing.persistedRecords)), {
     status: 'blocked',
-    diagnostic: { reason: 'stale-head' },
+    diagnostic: { reason: 'authority' },
   });
 
   const duplicate = replacementHandoff();
-  assert.throws(
-    () =>
-      adoptOutstandingSubmissions(
-        adoptionInput(duplicate, [...duplicate.records, duplicate.disposition])
-      ),
-    /capsule-chain:duplicate-record-id/
+  assert.deepEqual(
+    adoptOutstandingSubmissions(
+      adoptionInput(duplicate, [...duplicate.records, duplicate.disposition])
+    ),
+    { status: 'blocked', diagnostic: { reason: 'authority' } }
   );
 
   const absent = replacementHandoff();
@@ -760,10 +770,10 @@ test('rejects omitted tails and delegates malformed topology to capsule-chain va
       ? { ...candidate, envelope: { ...candidate.envelope, predecessor: id(99) } }
       : candidate
   );
-  assert.throws(
-    () => adoptOutstandingSubmissions(adoptionInput(absent, missingPredecessor)),
-    /capsule-chain:missing-predecessor/
-  );
+  assert.deepEqual(adoptOutstandingSubmissions(adoptionInput(absent, missingPredecessor)), {
+    status: 'blocked',
+    diagnostic: { reason: 'authority' },
+  });
 
   const cyclic = replacementHandoff();
   const cycle = cyclic.records.map((candidate) =>
@@ -771,10 +781,10 @@ test('rejects omitted tails and delegates malformed topology to capsule-chain va
       ? { ...candidate, envelope: { ...candidate.envelope, predecessor: id(24) } }
       : candidate
   );
-  assert.throws(
-    () => adoptOutstandingSubmissions(adoptionInput(cyclic, cycle)),
-    /capsule-chain:predecessor-cycle/
-  );
+  assert.deepEqual(adoptOutstandingSubmissions(adoptionInput(cyclic, cycle)), {
+    status: 'blocked',
+    diagnostic: { reason: 'authority' },
+  });
 
   const forked = replacementHandoff();
   const fork = forked.records.map((candidate) =>
@@ -784,7 +794,7 @@ test('rejects omitted tails and delegates malformed topology to capsule-chain va
   );
   assert.deepEqual(adoptOutstandingSubmissions(adoptionInput(forked, fork)), {
     status: 'blocked',
-    diagnostic: { reason: 'forked-history' },
+    diagnostic: { reason: 'authority' },
   });
 
   const multipleRoots = replacementHandoff();
@@ -793,25 +803,24 @@ test('rejects omitted tails and delegates malformed topology to capsule-chain va
       ? { ...candidate, envelope: { ...candidate.envelope, predecessor: null } }
       : candidate
   );
-  assert.throws(
-    () => adoptOutstandingSubmissions(adoptionInput(multipleRoots, root)),
-    /capsule-chain:multiple-roots/
-  );
+  assert.deepEqual(adoptOutstandingSubmissions(adoptionInput(multipleRoots, root)), {
+    status: 'blocked',
+    diagnostic: { reason: 'authority' },
+  });
 });
 
 test('bounds capsule count and processes a 300-record permutation deterministically', () => {
   const stress = replacementHandoff({ fillerCount: 300 });
   const result = adoptOutstandingSubmissions(adoptionInput(stress, [...stress.records].reverse()));
   assert.deepEqual(result.acceptedSubmissionRecordIds, [id(21)]);
-  assert.throws(
-    () =>
-      adoptOutstandingSubmissions(
-        adoptionInput(
-          stress,
-          Array.from({ length: 2049 }, () => stress.originalGrantRecord)
-        )
-      ),
-    /work-assignment:input/
+  assert.deepEqual(
+    adoptOutstandingSubmissions(
+      adoptionInput(
+        stress,
+        Array.from({ length: 2049 }, () => stress.originalGrantRecord)
+      )
+    ),
+    { status: 'blocked', diagnostic: { reason: 'authority' } }
   );
   const tooDeep = replacementHandoff({ fillerCount: 1020 });
   assert.throws(() => adoptOutstandingSubmissions(adoptionInput(tooDeep)), /work-assignment:input/);

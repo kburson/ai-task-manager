@@ -567,6 +567,118 @@ function extractCapsules({ records, repository, issue }) {
   return { grants, revocations, resolved, headRecord: headRecord ?? null };
 }
 
+function structuralPositions(records) {
+  const successorByPredecessorId = new Map();
+  const root = records.find(({ envelope }) => envelope.predecessor === null);
+  for (const { envelope } of records) {
+    if (envelope.predecessor !== null) {
+      successorByPredecessorId.set(envelope.predecessor, envelope.recordId);
+    }
+  }
+  const positions = new Map();
+  let recordId = root?.envelope.recordId;
+  while (recordId !== undefined) {
+    positions.set(recordId, positions.size);
+    recordId = successorByPredecessorId.get(recordId);
+  }
+  return positions.size === records.length ? positions : null;
+}
+
+function buildEffectiveAuthorityWindows(validatedGrants, validatedRevocations, resolved) {
+  const positions = structuralPositions(resolved.records);
+  if (positions === null) return null;
+  const durableGrants = validatedGrants.filter(({ envelope }) => envelope !== null);
+  const durableRevocations = validatedRevocations.filter(({ envelope }) => envelope !== null);
+  const revocationByGrantEpoch = new Map(
+    durableRevocations.map((entry) => [
+      authorityEpochKey(entry.revocation.grantId, entry.revocation.epoch),
+      entry,
+    ])
+  );
+  const childrenByParentId = new Map();
+  for (const child of durableGrants) {
+    if (child.grant.parentGrantId === null) continue;
+    const children = childrenByParentId.get(child.grant.parentGrantId) ?? [];
+    children.push(child);
+    childrenByParentId.set(child.grant.parentGrantId, children);
+  }
+  const windows = [];
+  for (const entry of durableGrants) {
+    const startRecordId = entry.envelope.recordId;
+    const startPosition = positions.get(startRecordId);
+    const ownRevocation = revocationByGrantEpoch.get(
+      authorityEpochKey(entry.grant.grantId, entry.grant.epoch)
+    );
+    const endRecordId = ownRevocation?.envelope.recordId ?? null;
+    const endPosition =
+      endRecordId === null ? Number.POSITIVE_INFINITY : positions.get(endRecordId);
+    if (startPosition === undefined || endPosition === undefined || startPosition >= endPosition) {
+      return null;
+    }
+    const events = [];
+    for (const child of childrenByParentId.get(entry.grant.grantId) ?? []) {
+      const childStartPosition = positions.get(child.envelope.recordId);
+      const childRevocation = revocationByGrantEpoch.get(
+        authorityEpochKey(child.grant.grantId, child.grant.epoch)
+      );
+      const childEndRecordId = childRevocation?.envelope.recordId ?? null;
+      const childEndPosition =
+        childEndRecordId === null ? Number.POSITIVE_INFINITY : positions.get(childEndRecordId);
+      if (
+        childStartPosition === undefined ||
+        childEndPosition === undefined ||
+        childStartPosition <= startPosition ||
+        childStartPosition >= endPosition ||
+        childEndPosition <= childStartPosition
+      ) {
+        continue;
+      }
+      events.push({
+        position: childStartPosition,
+        recordId: child.envelope.recordId,
+        child,
+        add: true,
+      });
+      if (childEndPosition < endPosition) {
+        events.push({
+          position: childEndPosition,
+          recordId: childEndRecordId,
+          child,
+          add: false,
+        });
+      }
+    }
+    events.sort((left, right) => left.position - right.position);
+    const activeChildren = new Set();
+    let segmentStartRecordId = startRecordId;
+    const emit = (segmentEndRecordId) => {
+      const delegatedIssues = new Set([...activeChildren].flatMap((child) => child.scope));
+      const effectiveScopeIssueIds = entry.scope.filter(
+        (candidateIssue) => !delegatedIssues.has(candidateIssue)
+      );
+      if (effectiveScopeIssueIds.length > 0) {
+        windows.push({
+          grantId: entry.grant.grantId,
+          epoch: entry.grant.epoch,
+          startRecordId: segmentStartRecordId,
+          endRecordId: segmentEndRecordId,
+          scopeIssueIds: effectiveScopeIssueIds,
+          branchBoundary: [...entry.branches],
+          operations: [...entry.grant.operations],
+        });
+      }
+    };
+    for (const event of events) {
+      emit(event.recordId);
+      if (event.add) activeChildren.add(event.child);
+      else activeChildren.delete(event.child);
+      segmentStartRecordId = event.recordId;
+    }
+    emit(endRecordId);
+  }
+  return windows;
+}
+
 /** Resolve a durable coordinator authority set without selecting ambiguous authority. */
 export function resolveCoordinatorAuthority({
   issueHierarchy,
@@ -679,6 +791,13 @@ export function resolveCoordinatorAuthority({
     return resolutionBlocked(validatedGrants, 'overlapping-grants');
   }
   const projectionScope = effectiveScope(projectionGrant, activeChildrenByParentId);
+  const effectiveAuthorityWindows =
+    durableResolution === null
+      ? null
+      : buildEffectiveAuthorityWindows(validatedGrants, validatedRevocations, durableResolution);
+  if (durableResolution !== null && effectiveAuthorityWindows === null) {
+    return resolutionBlocked(validatedGrants, 'invalid-delegation');
+  }
   const capabilityContext =
     durableResolution === null || durableHeadRecord === null
       ? null
@@ -687,6 +806,7 @@ export function resolveCoordinatorAuthority({
           issue,
           capturedHeadRecordId: durableHeadRecord.envelope.recordId,
           capturedRecords: durableResolution.records.map(frozenCopy),
+          effectiveAuthorityWindows,
           grants: validatedGrants
             .filter(({ envelope }) => envelope !== null)
             .map(({ grant, scope, branches, envelope }) => ({
@@ -841,6 +961,7 @@ export function authorizeCoordinatorAdoption({
     issue: context.issue,
     capturedHeadRecordId: context.capturedHeadRecordId,
     capturedRecords: context.capturedRecords.map(frozenCopy),
+    effectiveAuthorityWindows: context.effectiveAuthorityWindows.map(frozenCopy),
     grants: context.grants.map(frozenCopy),
     revocations: context.revocations.map(frozenCopy),
   });
