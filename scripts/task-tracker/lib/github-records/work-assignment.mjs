@@ -682,6 +682,7 @@ function replayWorkRecords(authorization, resolved, { adoption, allowRepair = fa
       continue;
     }
     const payload = disposition.envelope.payload;
+    const assignmentPayload = target.assignment.record.envelope.payload;
     if (
       payload.issue !== target.assignment.record.envelope.payload.issue ||
       payload.assignmentRecordId !== target.assignment.record.envelope.recordId ||
@@ -703,6 +704,8 @@ function replayWorkRecords(authorization, resolved, { adoption, allowRepair = fa
     if (
       authority === undefined ||
       !authority.grant.operations.includes('dispose-submission') ||
+      !authority.scopeIssueIds.includes(assignmentPayload.issue) ||
+      !authority.branchBoundary.includes(normalizeBranch(assignmentPayload.branch)) ||
       candidatePosition <= target.position ||
       !isDeepStrictEqual(payload.decidedBy, authority.grant.coordinator) ||
       disposition.envelope.repository !== target.assignment.record.envelope.repository ||
