@@ -188,6 +188,27 @@ test('compatibility Plan normalizes a board-derived Refine projection', async ()
   assert.deepEqual(appended.current, { size: 'M', estimate: 3.5 });
 });
 
+test('compatibility Plan treats a null current projection as board-derived', async () => {
+  let appended;
+  await runPlanEstimate({
+    target: 1098,
+    compatibilityMode: true,
+    planned: { estimate: 4 },
+    current: null,
+    cfg: CFG,
+    deps: {
+      appendPlannedEstimate: async (input) => {
+        appended = input;
+        return { status: 'appended', commentId: 1098 };
+      },
+      projectValuesForIssue: async () => ({ size: 'M', estimate: 3.13 }),
+      loadProjectFieldDefs: () => [],
+    },
+  });
+
+  assert.deepEqual(appended.current, { size: 'M', estimate: 3.5 });
+});
+
 // ---------------------------------------------------------------------------
 // runPlanEstimate — board-sourced current
 // ---------------------------------------------------------------------------

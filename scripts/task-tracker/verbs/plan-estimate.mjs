@@ -139,9 +139,12 @@ async function readBoardCurrent({ cfg, issueNumber, deps }) {
 }
 
 function normalizeEstimateProjection(value = {}) {
+  const projection = value ?? {};
   return {
-    ...value,
-    ...(typeof value.estimate === 'number' ? { estimate: ceilEstimateHours(value.estimate) } : {}),
+    ...projection,
+    ...(typeof projection.estimate === 'number'
+      ? { estimate: ceilEstimateHours(projection.estimate) }
+      : {}),
   };
 }
 
