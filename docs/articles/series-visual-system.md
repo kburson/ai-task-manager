@@ -71,7 +71,7 @@ Shows portable architecture across backlog systems and agent hosts. Use for arti
 
 ## Header Image Guidance
 
-Header images are optional. If used, they should support the article theme without replacing the diagram.
+Updated: all nine articles now ship with a header banner (`assets/article-headers/article-0N-header.png`), so this is no longer an optional embellishment — it is the series' delivered visual identity, generated from the briefs in [assets/image-prompts](assets/image-prompts/). The banners share a consistent illustrated style: dark navy/charcoal base, electric-blue and amber accent lighting, a human operator at a control desk with branching code/data paths flowing out to a fleet of translucent, stylized agent silhouettes. It should support the article theme without replacing the in-body diagram.
 
 Good header concepts:
 
@@ -84,12 +84,13 @@ Good header concepts:
 
 Avoid:
 
-- humanoid robots typing,
+- literal/mechanical robots (chassis, joints, screens-for-faces),
 - glowing brains,
-- generic circuit boards,
+- generic circuit boards as the main subject,
 - random code rain,
-- dramatic dark war rooms,
 - vendor logos unless the article specifically discusses adapters.
+
+Revised from the original list: the delivered banners do use dramatic dark, moody lighting and translucent humanoid silhouettes to represent the agent fleet, and that reads as intentional and on-theme rather than a "war room" cliche as long as the figures stay abstract/translucent rather than literal robots. The original "avoid humanoid figures / dark war rooms" guidance undersold what actually worked well; it is superseded by the two bullets above.
 
 ## Reusable Mermaid Files
 
