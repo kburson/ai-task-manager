@@ -24,6 +24,12 @@ const PROJECTION_KEYS = ['adoptionState', 'epoch', 'grantId', 'schema'];
 const REVOCATION_KEYS = ['epoch', 'grantId', 'schema', 'state'];
 const REPLACEMENT_REVOCATION_KEYS = [...REVOCATION_KEYS, 'replacementGrantId'];
 const MAX_DELEGATION_REPLACEMENT_DEPTH = 128;
+const ADOPTION_SUBMISSION_TYPES = new Set([
+  'execution-result',
+  'verification-evidence',
+  'review-result',
+  'handoff',
+]);
 const authorityMetadata = new WeakMap();
 const authorityGenerations = new Map();
 
@@ -555,7 +561,7 @@ function extractCapsules({ records, repository, issue }) {
   const headRecord = resolved.records.find(
     ({ envelope }) => !predecessorIds.has(envelope.recordId)
   );
-  return { grants, revocations, resolved, headRecordId: headRecord?.envelope.recordId ?? null };
+  return { grants, revocations, resolved, headRecord: headRecord ?? null };
 }
 
 /** Resolve a durable coordinator authority set without selecting ambiguous authority. */
@@ -575,7 +581,7 @@ export function resolveCoordinatorAuthority({
   let durableGrants;
   let durableRevocations;
   let durableResolution;
-  let durableHeadRecordId;
+  let durableHeadRecord;
   if (records !== undefined) {
     if (grants !== undefined || revocations !== undefined) throw authorityError('input');
     try {
@@ -583,7 +589,7 @@ export function resolveCoordinatorAuthority({
         grants: durableGrants,
         revocations: durableRevocations,
         resolved: durableResolution,
-        headRecordId: durableHeadRecordId,
+        headRecord: durableHeadRecord,
       } = extractCapsules({ records, repository, issue }));
     } catch (error) {
       if (error instanceof TypeError && error.message === 'capsule-chain:fork') {
@@ -680,8 +686,67 @@ export function resolveCoordinatorAuthority({
         grant.grantId === replacementRevocation?.revocation.grantId &&
         grant.epoch === replacementRevocation?.revocation.epoch
     );
+    const replacementRevocationRecordId = replacementRevocation?.envelope?.recordId;
+    const replacementGrantRecordId = projectionGrant.envelope?.recordId;
+    const effectiveRecordPositions = new Map(
+      durableResolution?.effectiveRecords.map((record, index) => [record.envelope.recordId, index])
+    );
+    const revocationPosition = effectiveRecordPositions.get(replacementRevocationRecordId);
+    const replacementPosition = effectiveRecordPositions.get(replacementGrantRecordId);
+    const orderedBoundary =
+      revocationPosition !== undefined &&
+      replacementPosition !== undefined &&
+      revocationPosition < replacementPosition;
+    const eligibleAssignmentsById = new Map();
+    const effectiveSubmissionsById = new Map();
+    const historicallyDisposedSubmissionIds = new Set();
+    if (orderedBoundary) {
+      for (const [index, record] of durableResolution.effectiveRecords.entries()) {
+        if (record.envelope.recordType === 'work-assignment' && index < revocationPosition) {
+          eligibleAssignmentsById.set(record.envelope.recordId, {
+            position: index,
+            record: frozenCopy(record),
+          });
+        }
+        if (ADOPTION_SUBMISSION_TYPES.has(record.envelope.recordType)) {
+          effectiveSubmissionsById.set(record.envelope.recordId, {
+            position: index,
+            record: frozenCopy(record),
+          });
+        }
+      }
+      for (const [index, record] of durableResolution.effectiveRecords.entries()) {
+        if (record.envelope.recordType !== 'record-disposition' || index >= revocationPosition) {
+          continue;
+        }
+        const payload = record.envelope.payload;
+        const assignment = eligibleAssignmentsById.get(payload?.assignmentRecordId);
+        const submission = effectiveSubmissionsById.get(payload?.submissionRecordId);
+        if (
+          assignment !== undefined &&
+          submission !== undefined &&
+          assignment.position < submission.position &&
+          submission.position < index &&
+          payload?.schema === 'aitm.record-disposition/v1' &&
+          (payload.decision === 'accepted' || payload.decision === 'rejected') &&
+          payload.assignmentCommentNodeId === assignment.record.commentNodeId &&
+          payload.submissionCommentNodeId === submission.record.commentNodeId &&
+          payload.grantId === predecessorGrant?.grant.grantId &&
+          payload.epoch === predecessorGrant?.grant.epoch &&
+          isDeepStrictEqual(payload.decidedBy, predecessorGrant?.grant.coordinator) &&
+          record.envelope.authority.grantId === predecessorGrant?.grant.grantId &&
+          record.envelope.authority.epoch === predecessorGrant?.grant.epoch &&
+          record.envelope.authority.actor === predecessorGrant?.grant.coordinator.actor
+        ) {
+          historicallyDisposedSubmissionIds.add(payload.submissionRecordId);
+        }
+      }
+    }
     const adoptionContext =
-      durableResolution === undefined || predecessorGrant === undefined
+      durableResolution === undefined ||
+      predecessorGrant === undefined ||
+      durableHeadRecord === null ||
+      !orderedBoundary
         ? null
         : {
             repository,
@@ -689,13 +754,12 @@ export function resolveCoordinatorAuthority({
             predecessorGrant: frozenCopy(predecessorGrant.grant),
             predecessorScopeIssueIds: Object.freeze([...predecessorGrant.scope]),
             predecessorBranches: Object.freeze([...predecessorGrant.branches]),
-            pausedHeadRecordId: durableHeadRecordId,
-            recordsById: new Map(
-              durableResolution.records.map((record) => [
-                record.envelope.recordId,
-                frozenCopy(record),
-              ])
-            ),
+            pausedHeadRecord: frozenCopy(durableHeadRecord),
+            replacementRevocationRecordId,
+            replacementGrantRecordId,
+            eligibleAssignmentsById,
+            effectiveSubmissionsById,
+            historicallyDisposedSubmissionIds,
           };
     return resolutionPaused(
       validatedGrants,
@@ -845,19 +909,24 @@ export function authorizeCoordinatorAdoption({
     ) {
       return authorization(false, 'branch');
     }
-    for (const record of [assignment, submission]) {
-      const durable = context.recordsById.get(record?.envelope?.recordId);
-      if (durable === undefined || !isDeepStrictEqual(durable, record)) {
-        return authorization(false, 'record');
-      }
+    const durableAssignment = context.eligibleAssignmentsById.get(assignment?.envelope?.recordId);
+    const durableSubmission = context.effectiveSubmissionsById.get(submission?.envelope?.recordId);
+    if (
+      durableAssignment === undefined ||
+      durableSubmission === undefined ||
+      context.historicallyDisposedSubmissionIds.has(submission?.envelope?.recordId) ||
+      !isDeepStrictEqual(durableAssignment.record, assignment) ||
+      !isDeepStrictEqual(durableSubmission.record, submission) ||
+      durableSubmission.position <= durableAssignment.position
+    ) {
+      return authorization(false, 'record');
     }
   } else {
     if (!Array.isArray(records)) return authorization(false, 'record');
     const suppliedById = new Map(records.map((record) => [record?.envelope?.recordId, record]));
-    for (const [recordId, durable] of context.recordsById) {
-      if (!isDeepStrictEqual(suppliedById.get(recordId), durable)) {
-        return authorization(false, 'record');
-      }
+    const pausedHeadRecordId = context.pausedHeadRecord.envelope.recordId;
+    if (!isDeepStrictEqual(suppliedById.get(pausedHeadRecordId), context.pausedHeadRecord)) {
+      return authorization(false, 'record');
     }
   }
   return deepFreeze({
@@ -867,7 +936,12 @@ export function authorizeCoordinatorAdoption({
     coordinator: frozenCopy(metadata.grant.coordinator),
     scopeIssueIds: Object.freeze([...metadata.scopeIssueIds]),
     branchBoundary: Object.freeze(metadata.grant.branchBoundary.map(normalizeBranch)),
-    pausedHeadRecordId: context.pausedHeadRecordId,
+    pausedHeadRecordId: context.pausedHeadRecord.envelope.recordId,
+    replacementRevocationRecordId: context.replacementRevocationRecordId,
+    replacementGrantRecordId: context.replacementGrantRecordId,
+    predecessorGrantId: context.predecessorGrant.grantId,
+    predecessorEpoch: context.predecessorGrant.epoch,
+    predecessorCoordinator: frozenCopy(context.predecessorGrant.coordinator),
   });
 }
 
