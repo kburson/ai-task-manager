@@ -150,16 +150,18 @@ test('accepted capsule history closes old authority and pauses replacement until
   assert.equal(
     authorizeCoordinatorAdoption({
       authority: paused,
-      issue: 101,
-      operation: 'dispose-submission',
-      branch: 'work/101',
+      repository,
+      issue,
+      operation: 'adopt-submissions',
+      records: [replacementRecord, original, revocation],
     }).authorized,
     true
   );
   assert.equal(
     authorizeCoordinatorAdoption({
       authority: paused,
-      issue: 101,
+      repository,
+      issue,
       operation: 'advance',
       branch: 'work/101',
     }).authorized,

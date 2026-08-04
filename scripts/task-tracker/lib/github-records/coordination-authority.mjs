@@ -327,7 +327,12 @@ function resolutionBlocked(validatedGrants, reason) {
   return blocked(reason);
 }
 
-function resolutionPaused(validatedGrants, validatedGrant, effectiveScope = validatedGrant.scope) {
+function resolutionPaused(
+  validatedGrants,
+  validatedGrant,
+  effectiveScope = validatedGrant.scope,
+  adoptionContext = null
+) {
   const generations = advanceAuthorityGenerations(validatedGrants);
   const authority = paused();
   authorityMetadata.set(authority, {
@@ -338,6 +343,7 @@ function resolutionPaused(validatedGrants, validatedGrant, effectiveScope = vali
     adoptionOnly: true,
     grant: frozenCopy(validatedGrant.grant),
     scopeIssueIds: Object.freeze([...effectiveScope]),
+    adoptionContext,
   });
   return authority;
 }
@@ -541,7 +547,15 @@ function extractCapsules({ records, repository, issue }) {
       revocations.push({ revocation: envelope.payload, envelope });
     }
   }
-  return { grants, revocations };
+  const predecessorIds = new Set(
+    resolved.records
+      .map(({ envelope }) => envelope.predecessor)
+      .filter((recordId) => recordId !== null)
+  );
+  const headRecord = resolved.records.find(
+    ({ envelope }) => !predecessorIds.has(envelope.recordId)
+  );
+  return { grants, revocations, resolved, headRecordId: headRecord?.envelope.recordId ?? null };
 }
 
 /** Resolve a durable coordinator authority set without selecting ambiguous authority. */
@@ -560,14 +574,17 @@ export function resolveCoordinatorAuthority({
   if (!isInstant(now)) throw authorityError('now');
   let durableGrants;
   let durableRevocations;
+  let durableResolution;
+  let durableHeadRecordId;
   if (records !== undefined) {
     if (grants !== undefined || revocations !== undefined) throw authorityError('input');
     try {
-      ({ grants: durableGrants, revocations: durableRevocations } = extractCapsules({
-        records,
-        repository,
-        issue,
-      }));
+      ({
+        grants: durableGrants,
+        revocations: durableRevocations,
+        resolved: durableResolution,
+        headRecordId: durableHeadRecordId,
+      } = extractCapsules({ records, repository, issue }));
     } catch (error) {
       if (error instanceof TypeError && error.message === 'capsule-chain:fork') {
         return blocked('forked-capsule-history');
@@ -653,10 +670,38 @@ export function resolveCoordinatorAuthority({
     return resolutionBlocked(validatedGrants, 'overlapping-grants');
   }
   if (coordinationProjection.adoptionState === 'required') {
+    const replacementRevocation = validatedRevocations.find(
+      ({ revocation }) =>
+        revocation.state === 'replaced' &&
+        revocation.replacementGrantId === projectionGrant.grant.grantId
+    );
+    const predecessorGrant = validatedGrants.find(
+      ({ grant }) =>
+        grant.grantId === replacementRevocation?.revocation.grantId &&
+        grant.epoch === replacementRevocation?.revocation.epoch
+    );
+    const adoptionContext =
+      durableResolution === undefined || predecessorGrant === undefined
+        ? null
+        : {
+            repository,
+            issue,
+            predecessorGrant: frozenCopy(predecessorGrant.grant),
+            predecessorScopeIssueIds: Object.freeze([...predecessorGrant.scope]),
+            predecessorBranches: Object.freeze([...predecessorGrant.branches]),
+            pausedHeadRecordId: durableHeadRecordId,
+            recordsById: new Map(
+              durableResolution.records.map((record) => [
+                record.envelope.recordId,
+                frozenCopy(record),
+              ])
+            ),
+          };
     return resolutionPaused(
       validatedGrants,
       projectionGrant,
-      effectiveScope(projectionGrant, activeChildrenByParentId)
+      effectiveScope(projectionGrant, activeChildrenByParentId),
+      adoptionContext
     );
   }
   return resolutionActive(
@@ -741,7 +786,19 @@ export function authorizeCoordinatorOperation({
 }
 
 /** Authorize only replacement disposition/adoption while normal authority remains paused. */
-export function authorizeCoordinatorAdoption({ authority, issue, operation, branch } = {}) {
+export function authorizeCoordinatorAdoption({
+  authority,
+  issue,
+  operation,
+  branch,
+  repository,
+  grantId,
+  epoch,
+  coordinator,
+  assignment,
+  submission,
+  records,
+} = {}) {
   const metadata = authorityMetadata.get(authority);
   if (
     !isPlainDataObject(authority) ||
@@ -750,7 +807,8 @@ export function authorizeCoordinatorAdoption({ authority, issue, operation, bran
     !hasExactlyKeys(authority, ['diagnostic', 'status']) ||
     authority.status !== 'paused' ||
     !hasExactlyKeys(authority.diagnostic, ['reason']) ||
-    authority.diagnostic.reason !== 'adoption-required'
+    authority.diagnostic.reason !== 'adoption-required' ||
+    metadata.adoptionContext === null
   ) {
     return authorization(false, 'authority');
   }
@@ -760,16 +818,46 @@ export function authorizeCoordinatorAdoption({ authority, issue, operation, bran
   ) {
     return authorization(false, 'operation');
   }
-  if (operation === 'dispose-submission' || issue !== undefined || branch !== undefined) {
-    if (!metadata.scopeIssueIds.includes(issue)) return authorization(false, 'scope');
+  const context = metadata.adoptionContext;
+  if (repository !== context.repository) return authorization(false, 'repository');
+  if (issue !== context.issue || !metadata.scopeIssueIds.includes(issue)) {
+    return authorization(false, 'scope');
+  }
+  if (operation === 'dispose-submission') {
+    const predecessor = context.predecessorGrant;
+    if (
+      grantId !== predecessor.grantId ||
+      epoch !== predecessor.epoch ||
+      !isDeepStrictEqual(coordinator, predecessor.coordinator) ||
+      !context.predecessorScopeIssueIds.includes(issue)
+    ) {
+      return authorization(false, 'identity');
+    }
     let normalizedBranch;
     try {
       normalizedBranch = normalizeBranch(branch);
     } catch {
       return authorization(false, 'branch');
     }
-    if (!metadata.grant.branchBoundary.map(normalizeBranch).includes(normalizedBranch)) {
+    if (
+      !metadata.grant.branchBoundary.map(normalizeBranch).includes(normalizedBranch) ||
+      !context.predecessorBranches.includes(normalizedBranch)
+    ) {
       return authorization(false, 'branch');
+    }
+    for (const record of [assignment, submission]) {
+      const durable = context.recordsById.get(record?.envelope?.recordId);
+      if (durable === undefined || !isDeepStrictEqual(durable, record)) {
+        return authorization(false, 'record');
+      }
+    }
+  } else {
+    if (!Array.isArray(records)) return authorization(false, 'record');
+    const suppliedById = new Map(records.map((record) => [record?.envelope?.recordId, record]));
+    for (const [recordId, durable] of context.recordsById) {
+      if (!isDeepStrictEqual(suppliedById.get(recordId), durable)) {
+        return authorization(false, 'record');
+      }
     }
   }
   return deepFreeze({
@@ -779,6 +867,7 @@ export function authorizeCoordinatorAdoption({ authority, issue, operation, bran
     coordinator: frozenCopy(metadata.grant.coordinator),
     scopeIssueIds: Object.freeze([...metadata.scopeIssueIds]),
     branchBoundary: Object.freeze(metadata.grant.branchBoundary.map(normalizeBranch)),
+    pausedHeadRecordId: context.pausedHeadRecordId,
   });
 }
 

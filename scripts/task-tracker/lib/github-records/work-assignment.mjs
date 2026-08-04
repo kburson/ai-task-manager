@@ -4,6 +4,7 @@ import {
   authorizeCoordinatorAdoption,
   authorizeCoordinatorOperation,
 } from './coordination-authority.mjs';
+import { resolveSupersession, validateCapsuleChain } from './capsule-chain.mjs';
 import { assertNoSecretRecordData, renderAitmRecord } from './record-envelope.mjs';
 
 const ASSIGNMENT_INPUT_KEYS = [
@@ -34,6 +35,7 @@ const DEPENDENCY_KEYS = ['baselineSha', 'recordIds'];
 const VERIFICATION_KEYS = ['contractEpoch', 'verifierIds'];
 const IDENTITY_KEYS = ['actor', 'platform', 'session'];
 const RECORD_KEYS = ['commentNodeId', 'envelope'];
+const SNAPSHOT_KEYS = ['expectedHeadRecordId', 'issue', 'records', 'repository'];
 const SUBMISSION_KEYS = [
   'assignmentRecordId',
   'branch',
@@ -70,6 +72,8 @@ const ULID_RE = /^[0-7][0-9A-HJKMNP-TV-Z]{25}$/;
 const SHA_RE = /^(?:[0-9a-f]{40}|[0-9a-f]{64})$/;
 const SUBSYSTEM_RE = /^[A-Za-z0-9](?:[A-Za-z0-9._-]{0,127})$/;
 const MAX_RESULT_BYTES = 256 * 1024;
+const MAX_CAPSULE_RECORDS = 2048;
+const MAX_CAPSULE_DEPTH = 1024;
 
 function assignmentError(category) {
   return new TypeError(`work-assignment:${category}`);
@@ -143,7 +147,7 @@ function validateFiles(files, category) {
       !isOpaqueId(file) ||
       file.length > 1024 ||
       file.startsWith('/') ||
-      /^[A-Za-z]:\//.test(file) ||
+      /^[A-Za-z]:/.test(file) ||
       file.includes('\\') ||
       file.split('/').some((segment) => segment === '' || segment === '.' || segment === '..')
     ) {
@@ -341,6 +345,43 @@ function validateDispositionRecord(record) {
   return record;
 }
 
+function validateAdoptionSnapshot(snapshot) {
+  if (
+    !hasExactlyKeys(snapshot, SNAPSHOT_KEYS) ||
+    !Number.isInteger(snapshot.issue) ||
+    snapshot.issue <= 0 ||
+    !isRecordId(snapshot.expectedHeadRecordId) ||
+    !Array.isArray(snapshot.records) ||
+    snapshot.records.length === 0 ||
+    snapshot.records.length > MAX_CAPSULE_RECORDS
+  ) {
+    throw assignmentError('input');
+  }
+  const validated = validateCapsuleChain(snapshot);
+  if (validated.forks.length > 0) return blocked('forked-history');
+  const resolved = resolveSupersession(snapshot);
+  const successorByPredecessorId = new Map();
+  let rootRecordId = null;
+  for (const { envelope } of resolved.records) {
+    if (envelope.predecessor === null) {
+      rootRecordId = envelope.recordId;
+    } else {
+      successorByPredecessorId.set(envelope.predecessor, envelope.recordId);
+    }
+  }
+  let headRecordId = rootRecordId;
+  let depth = 0;
+  while (headRecordId !== null) {
+    depth += 1;
+    if (depth > MAX_CAPSULE_DEPTH) throw assignmentError('input');
+    const successor = successorByPredecessorId.get(headRecordId);
+    if (successor === undefined) break;
+    headRecordId = successor;
+  }
+  if (headRecordId !== snapshot.expectedHeadRecordId) return blocked('stale-head');
+  return { resolved };
+}
+
 function activeAuthorization(authority, { coordinator, issue, operation, branch }) {
   const grant = authority?.grant;
   if (!isPlainDataObject(grant)) return { authorized: false, reason: 'authority' };
@@ -420,6 +461,11 @@ export function evaluateAssignment(input = {}) {
     issue: assignmentPayload.issue,
     operation: 'dispose-submission',
     branch: assignmentPayload.branch,
+    repository: assignment.envelope.repository,
+    grantId: assignmentPayload.grantId,
+    epoch: assignmentPayload.epoch,
+    assignment,
+    submission,
   });
   if (!authorization.authorized) return blocked('authority');
   if (
@@ -475,6 +521,11 @@ function disposition(input, { decision, reason }) {
     issue: assignmentPayload.issue,
     operation: 'dispose-submission',
     branch: assignmentPayload.branch,
+    repository: assignment.envelope.repository,
+    grantId: assignmentPayload.grantId,
+    epoch: assignmentPayload.epoch,
+    assignment,
+    submission: input.submission,
   });
   if (!authorization.authorized) throw assignmentError('authority');
   const payload = {
@@ -513,46 +564,42 @@ export function rejectSubmission(input = {}) {
 }
 
 export function adoptOutstandingSubmissions(input = {}) {
-  if (!hasExactlyKeys(input, ['assignments', 'authority', 'dispositions', 'submissions'])) {
+  if (!hasExactlyKeys(input, ['authority', 'snapshot'])) {
     throw assignmentError('input');
   }
-  const { assignments, authority, dispositions, submissions } = input;
-  if (![assignments, submissions, dispositions].every(Array.isArray)) {
-    throw assignmentError('input');
-  }
+  const { authority, snapshot } = input;
+  const validatedSnapshot = validateAdoptionSnapshot(snapshot);
+  if (validatedSnapshot.status === 'blocked') return validatedSnapshot;
+  const { resolved } = validatedSnapshot;
   const authorization = authorizeCoordinatorAdoption({
     authority,
+    issue: snapshot.issue,
+    repository: snapshot.repository,
     operation: 'adopt-submissions',
+    records: resolved.records,
   });
   if (!authorization.authorized) return blocked('authority');
 
-  const assignmentRecords = assignments.map(validateAssignmentRecord);
-  const submissionRecords = submissions.map((record) => {
-    validateCorrelatedRecord(record, 'submission');
-    if (!SUBMISSION_TYPES.has(record.envelope.recordType)) throw assignmentError('submission');
-    validateSubmissionPayload(record.envelope.payload);
-    return record;
-  });
-  const dispositionRecords = dispositions.map(validateDispositionRecord);
-  const allRecords = [...assignmentRecords, ...submissionRecords, ...dispositionRecords];
-  const recordIds = allRecords.map((record) => record.envelope.recordId);
-  if (new Set(recordIds).size !== recordIds.length) return blocked('duplicate-record');
-  const successorCounts = new Map();
-  let roots = 0;
-  for (const record of allRecords) {
-    const { predecessor, supersedes } = record.envelope;
-    if (predecessor === null) {
-      roots += 1;
-    } else {
-      successorCounts.set(predecessor, (successorCounts.get(predecessor) ?? 0) + 1);
-    }
-    if (supersedes !== null && recordIds.includes(supersedes)) {
-      return blocked('superseded-history');
+  const assignmentRecords = [];
+  const submissionRecords = [];
+  const dispositionRecords = [];
+  for (const record of resolved.effectiveRecords) {
+    if (record.envelope.recordType === 'work-assignment') {
+      assignmentRecords.push(validateAssignmentRecord(record));
+    } else if (SUBMISSION_TYPES.has(record.envelope.recordType)) {
+      validateCorrelatedRecord(record, 'submission');
+      validateSubmissionPayload(record.envelope.payload);
+      submissionRecords.push(record);
+    } else if (record.envelope.recordType === 'record-disposition') {
+      dispositionRecords.push(validateDispositionRecord(record));
     }
   }
-  if (roots > 1) return blocked('multiple-roots');
-  if ([...successorCounts.values()].some((count) => count > 1)) {
-    return blocked('forked-history');
+  if (
+    assignmentRecords.length === 0 ||
+    submissionRecords.length === 0 ||
+    dispositionRecords.length === 0
+  ) {
+    return blocked('incomplete-snapshot');
   }
 
   const assignmentsById = new Map(
@@ -603,11 +650,15 @@ export function adoptOutstandingSubmissions(input = {}) {
     if (!decisions.has(submissionRecordId)) return blocked('missing-disposition');
   }
 
-  const selected = (decision) =>
-    [...decisions]
-      .filter(([, candidate]) => candidate === decision)
-      .map(([submissionRecordId]) => submissionRecordId)
-      .sort();
+  const acceptedSubmissionRecordIds = [];
+  const rejectedSubmissionRecordIds = [];
+  for (const [submissionRecordId, decision] of decisions) {
+    (decision === 'accepted' ? acceptedSubmissionRecordIds : rejectedSubmissionRecordIds).push(
+      submissionRecordId
+    );
+  }
+  acceptedSubmissionRecordIds.sort();
+  rejectedSubmissionRecordIds.sort();
   return deepFreeze({
     status: 'ready-to-adopt',
     coordinationProjection: {
@@ -616,7 +667,7 @@ export function adoptOutstandingSubmissions(input = {}) {
       epoch: authorization.epoch,
       adoptionState: 'adopted',
     },
-    acceptedSubmissionRecordIds: selected('accepted'),
-    rejectedSubmissionRecordIds: selected('rejected'),
+    acceptedSubmissionRecordIds,
+    rejectedSubmissionRecordIds,
   });
 }
