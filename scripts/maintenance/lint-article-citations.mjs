@@ -165,5 +165,5 @@ if (invokedDirectly) {
     );
     process.exit(1);
   }
-  console.log(`lint:article-citations — ${countArticles()} article bibliograph(ies) clean`);
+  console.log(`lint:article-citations — ${countArticles()} article bibliographies clean`);
 }
