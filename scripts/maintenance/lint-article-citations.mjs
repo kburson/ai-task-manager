@@ -111,6 +111,35 @@ export function lintArticleCitations(root = REPO_ROOT) {
   return offenders;
 }
 
+// The absolute form every repo-internal citation must take. Exported so the
+// companion test can resolve each live citation back to a repo path and prove the
+// target actually exists rather than just checking the URL's shape.
+export const BLOB_PREFIX = 'https://github.com/kburson/ai-task-manager/blob/trunk/';
+
+// Collect every repo-internal citation in the corpus as a repo-relative path.
+// Returns `{ rel, lineNo, url, target }` per citation.
+export function collectRepoCitations(root = REPO_ROOT) {
+  const dir = path.join(root, ARTICLES_DIR);
+  let entries;
+  try {
+    entries = readdirSync(dir);
+  } catch {
+    return [];
+  }
+  const found = [];
+  for (const name of entries.filter((n) => ARTICLE_FILE_RE.test(n)).sort()) {
+    const rel = path.posix.join(ARTICLES_DIR, name);
+    const doc = readFileSync(path.join(dir, name), 'utf8');
+    for (const { lineNo, text } of extractBibliographyLines(doc)) {
+      for (const url of text.match(/https:\/\/\S+/g) || []) {
+        if (!url.startsWith(BLOB_PREFIX)) continue;
+        found.push({ rel, lineNo, url, target: url.slice(BLOB_PREFIX.length) });
+      }
+    }
+  }
+  return found;
+}
+
 // Count the numbered articles scanned, for the clean-run summary line.
 export function countArticles(root = REPO_ROOT) {
   try {

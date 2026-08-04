@@ -6,7 +6,8 @@
 
 import { strict as assert } from 'node:assert';
 import { test } from 'node:test';
-import { mkdirSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
 import path from 'node:path';
 
 import { mkdtempProjectIsolated } from '../../../lib/scratch-dir.mjs';
@@ -14,6 +15,7 @@ import {
   lintArticleCitations,
   lintBibliography,
   extractBibliographyLines,
+  collectRepoCitations,
   countArticles,
   ARTICLES_DIR,
   REPO_ROOT,
@@ -122,4 +124,28 @@ test('a missing articles directory is reported rather than passing silently', ()
 
 test('the live corpus is clean', () => {
   assert.deepEqual(lintArticleCitations(REPO_ROOT), []);
+});
+
+// AC2 — shape alone is not enough: a typo'd path lints clean. Resolve every live
+// citation back to a repo path and prove the file is present and git-tracked.
+test('every live citation resolves to a tracked repo file', () => {
+  const citations = collectRepoCitations(REPO_ROOT);
+  assert.ok(citations.length >= 22, `expected the full corpus, saw ${citations.length}`);
+
+  const tracked = new Set(
+    execFileSync('git', ['ls-files', '--', 'docs'], { cwd: REPO_ROOT, encoding: 'utf8' })
+      .split('\n')
+      .filter(Boolean)
+  );
+
+  for (const { rel, lineNo, target } of citations) {
+    assert.ok(
+      existsSync(path.join(REPO_ROOT, target)),
+      `${rel}:${lineNo}: citation target ${target} does not exist`
+    );
+    assert.ok(
+      tracked.has(target),
+      `${rel}:${lineNo}: citation target ${target} is not git-tracked`
+    );
+  }
 });
