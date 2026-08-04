@@ -588,6 +588,7 @@ function validPredecessorAssignment({ assignment, predecessorGrant, repository, 
   }
   const assignmentPayload = assignmentRecord.envelope.payload;
   return (
+    predecessorGrant.grant.operations.includes('assign-work') &&
     assignmentPayload.issue === issue &&
     assignmentPayload.grantId === predecessorGrant.grant.grantId &&
     assignmentPayload.epoch === predecessorGrant.grant.epoch &&
@@ -690,6 +691,22 @@ function validAdoptionDisposition({
     record.envelope.authority.grantId === dispositionGrant.grantId &&
     record.envelope.authority.epoch === dispositionGrant.epoch &&
     record.envelope.authority.actor === dispositionGrant.coordinator.actor
+  );
+}
+
+function hasInvalidAdoptionExtension(effectiveRecords, replacementGrantRecordId) {
+  const replacementPosition = effectiveRecords.findIndex(
+    ({ envelope }) => envelope.recordId === replacementGrantRecordId
+  );
+  return (
+    replacementPosition < 0 ||
+    effectiveRecords
+      .slice(replacementPosition + 1)
+      .some(
+        ({ envelope }) =>
+          !isWorkAssignmentSubmissionType(envelope.recordType) &&
+          envelope.recordType !== 'record-disposition'
+      )
   );
 }
 
@@ -844,6 +861,9 @@ export function resolveCoordinatorAuthority({
     const replacementDisposedSubmissionIds = new Set();
     const historicalDispositionCounts = new Map();
     const replacementDispositionCounts = new Map();
+    const invalidReplacementExtension =
+      durableResolution !== undefined &&
+      hasInvalidAdoptionExtension(durableResolution.effectiveRecords, replacementGrantRecordId);
     let invalidRelevantWorkRecord = false;
     let invalidRelevantDisposition = false;
     if (orderedBoundary) {
@@ -977,9 +997,14 @@ export function resolveCoordinatorAuthority({
             effectiveSubmissionsById,
             historicallyDisposedSubmissionIds,
             replacementDisposedSubmissionIds,
+            invalidRelevantWorkRecord,
+            invalidReplacementExtension,
           };
     let durableAdoptionComplete =
-      adoptionContext !== null && !invalidRelevantWorkRecord && !invalidRelevantDisposition;
+      adoptionContext !== null &&
+      !invalidReplacementExtension &&
+      !invalidRelevantWorkRecord &&
+      !invalidRelevantDisposition;
     if (durableAdoptionComplete) {
       for (const [submissionRecordId, submission] of effectiveSubmissionsById) {
         const assignment = eligibleAssignmentsById.get(
@@ -1188,6 +1213,9 @@ export function authorizeCoordinatorAdoption({
     }
   } else {
     if (!Array.isArray(records)) return authorization(false, 'record');
+    if (context.invalidRelevantWorkRecord || context.invalidReplacementExtension) {
+      return authorization(false, 'authority');
+    }
     const suppliedById = new Map(records.map((record) => [record?.envelope?.recordId, record]));
     const pausedHeadRecordId = context.pausedHeadRecord.envelope.recordId;
     if (!isDeepStrictEqual(suppliedById.get(pausedHeadRecordId), context.pausedHeadRecord)) {
@@ -1199,27 +1227,12 @@ export function authorizeCoordinatorAdoption({
     } catch {
       return authorization(false, 'record');
     }
-    const replacementPosition = resolvedSnapshot.effectiveRecords.findIndex(
-      ({ envelope }) => envelope.recordId === context.replacementGrantRecordId
-    );
-    const successorByPredecessorId = new Map(
-      resolvedSnapshot.records
-        .filter(({ envelope }) => envelope.predecessor !== null)
-        .map((record) => [record.envelope.predecessor, record])
-    );
-    let extension = successorByPredecessorId.get(pausedHeadRecordId);
-    let invalidExtension = false;
-    while (extension !== undefined) {
-      if (
-        !isWorkAssignmentSubmissionType(extension.envelope.recordType) &&
-        extension.envelope.recordType !== 'record-disposition'
-      ) {
-        invalidExtension = true;
-        break;
-      }
-      extension = successorByPredecessorId.get(extension.envelope.recordId);
-    }
-    if (replacementPosition < 0 || invalidExtension) {
+    if (
+      hasInvalidAdoptionExtension(
+        resolvedSnapshot.effectiveRecords,
+        context.replacementGrantRecordId
+      )
+    ) {
       return authorization(false, 'authority');
     }
   }
@@ -1236,6 +1249,7 @@ export function authorizeCoordinatorAdoption({
     predecessorGrantId: context.predecessorGrant.grantId,
     predecessorEpoch: context.predecessorGrant.epoch,
     predecessorCoordinator: frozenCopy(context.predecessorGrant.coordinator),
+    predecessorCanAssignWork: context.predecessorGrant.operations.includes('assign-work'),
   });
 }
 

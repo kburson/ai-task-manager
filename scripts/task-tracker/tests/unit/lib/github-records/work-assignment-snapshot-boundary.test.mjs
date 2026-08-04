@@ -150,7 +150,14 @@ test('a lifecycle capsule appended after the paused head blocks adoption', () =>
   );
   const records = [...current.records, lifecycle];
   for (const inputRecords of [records, [...records].reverse()]) {
-    const paused = resolve(current.records, current.replacement.coordinationProjection);
+    assert.deepEqual(
+      resolve(inputRecords, {
+        ...current.replacement.coordinationProjection,
+        adoptionState: 'adopted',
+      }),
+      { status: 'paused', diagnostic: { reason: 'adoption-required' } }
+    );
+    const paused = resolve(inputRecords, current.replacement.coordinationProjection);
     assert.deepEqual(adopt(paused, inputRecords, lifecycle.envelope.recordId), {
       status: 'blocked',
       diagnostic: { reason: 'authority' },

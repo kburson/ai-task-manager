@@ -349,6 +349,7 @@ export function adoptOutstandingSubmissions(input = {}) {
     ) {
       continue;
     }
+    if (!authorization.predecessorCanAssignWork) return blocked('assignment-authority');
     validateAssignmentRecord(assignment);
     if (
       isDeepStrictEqual(payload.coordinator, authorization.predecessorCoordinator) &&
