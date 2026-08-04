@@ -68,7 +68,7 @@ function record(
   });
 }
 
-function assignmentSpec(recordId = id(10), payload = {}) {
+function assignmentSpec(recordId = id(10), payload = {}, supersedes = null) {
   return {
     recordId,
     recordType: 'work-assignment',
@@ -92,6 +92,7 @@ function assignmentSpec(recordId = id(10), payload = {}) {
     actor: coordinator.actor,
     epoch: 1,
     grantId: id(9001),
+    supersedes,
   };
 }
 
@@ -123,6 +124,7 @@ function dispositionSpec({
   assignmentRecordId = id(10),
   submissionRecordId = id(20),
   replacement = true,
+  supersedes = null,
 } = {}) {
   const dispositionCoordinator = replacement ? replacementCoordinator : coordinator;
   return {
@@ -144,6 +146,7 @@ function dispositionSpec({
     actor: dispositionCoordinator.actor,
     epoch: replacement ? 2 : 1,
     grantId: replacement ? id(9002) : id(9001),
+    supersedes,
   };
 }
 
@@ -489,3 +492,67 @@ test('effective same-type supersession repairs a malformed gap submission', () =
     rejectedSubmissionRecordIds: [],
   });
 });
+
+test('an effective submission referencing a structurally known stale assignment blocks adoption', () => {
+  const current = gapHistory({
+    beforeRevocation: [assignmentSpec(), submissionSpec(), assignmentSpec(id(11), {}, id(10))],
+  });
+  assertGapResult(current, {
+    status: 'blocked',
+    diagnostic: { reason: 'authority' },
+  });
+});
+
+test('same-type submission repair can follow the effective superseding assignment', () => {
+  const current = gapHistory({
+    beforeRevocation: [
+      assignmentSpec(),
+      submissionSpec(),
+      assignmentSpec(id(11), {}, id(10)),
+      submissionSpec({ recordId: id(21), assignmentRecordId: id(11), supersedes: id(20) }),
+    ],
+    afterReplacement: [dispositionSpec({ assignmentRecordId: id(11), submissionRecordId: id(21) })],
+  });
+  assertGapResult(current, {
+    status: 'ready-to-adopt',
+    coordinationProjection: {
+      ...current.replacement.coordinationProjection,
+      adoptionState: 'adopted',
+    },
+    acceptedSubmissionRecordIds: [id(21)],
+    rejectedSubmissionRecordIds: [],
+  });
+});
+
+for (const crossTargetSupersession of [false, true]) {
+  test(`a disposition for a superseding submission must ${
+    crossTargetSupersession ? 'not supersede' : 'be independent of'
+  } the prior target disposition`, () => {
+    const current = gapHistory({
+      beforeRevocation: [
+        assignmentSpec(),
+        submissionSpec(),
+        dispositionSpec({ replacement: false }),
+        submissionSpec({ recordId: id(21), supersedes: id(20) }),
+        dispositionSpec({
+          recordId: id(31),
+          submissionRecordId: id(21),
+          replacement: false,
+          supersedes: crossTargetSupersession ? id(30) : null,
+        }),
+      ],
+    });
+    const expected = crossTargetSupersession
+      ? { status: 'blocked', diagnostic: { reason: 'authority' } }
+      : {
+          status: 'ready-to-adopt',
+          coordinationProjection: {
+            ...current.replacement.coordinationProjection,
+            adoptionState: 'adopted',
+          },
+          acceptedSubmissionRecordIds: [],
+          rejectedSubmissionRecordIds: [],
+        };
+    assertGapResult(current, expected);
+  });
+}
