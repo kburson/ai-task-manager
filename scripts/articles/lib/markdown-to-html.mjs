@@ -31,9 +31,11 @@ function isAbsoluteUrl(url) {
  * sentinel tokens before the emphasis passes run, so emphasis regexes can never
  * chew through a URL or a code span's contents.
  *
- * Relative links (`06-context-durability.md`, `../introduction/...`) render as
- * plain text: they do not resolve on LinkedIn, and an article's real URL does
- * not exist until it is published.
+ * Relative links (`06-context-durability.md`) render as plain text: they do not
+ * resolve on LinkedIn, and an article's real URL does not exist until it is
+ * published. These are cross-article references in body prose only. Citations
+ * in `## Bibliography` are absolute by rule (#1101, enforced by
+ * `npm run lint:article-citations`), so they reach the reader as real anchors.
  */
 export function renderInline(text) {
   const tokens = [];

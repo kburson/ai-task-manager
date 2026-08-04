@@ -130,7 +130,9 @@ Keep the `## Bibliography` section as-is. LinkedIn renders bullet lists and hype
 
 Every citation in the section must be an absolute URL. A repo-internal citation is written as `https://github.com/kburson/ai-task-manager/blob/trunk/docs/<path>`, never as a relative path like `../introduction/core-workflow.md`. A relative path resolves against the repo checkout, which the published article is not — on LinkedIn it renders as literal text that leads a reader nowhere. `blob/trunk` rather than a commit-pinned permalink is deliberate: these citations point at living design and process docs, and a reader following one wants today's version, not a snapshot.
 
-`npm run lint:article-citations` enforces this. It scans the `## Bibliography` section of every `NN-*.md` article and fails, naming file and line, when a citation is not an absolute `http(s)` URL. Body prose is out of scope — articles link to each other by relative filename on purpose, and those become real LinkedIn URLs during the backfill pass below.
+`npm run lint:article-citations` enforces this. It scans the `## Bibliography` section of every `NN-*.md` article and fails, naming file and line, when a citation is not an absolute `http(s)` URL. Body prose is out of scope — articles link to each other by relative filename on purpose, and those become real LinkedIn URLs during the backfill pass described under Cross-Linking And Publish Order above.
+
+The publisher needs no special handling for any of this: `renderInline` emits an `<a href>` for every absolute URL it meets, so a bibliography that passes the lint reaches the reader as live links, and only body cross-references fall through to plain text.
 
 ## Per-Article Publish Checklist
 
@@ -140,7 +142,7 @@ Run `npm run publish:articles` once, then for each of the 9 articles, in series 
 2. Paste into LinkedIn's article editor. Stripping, heading levels, emphasis, lists, blockquotes, the roadmap bullet list, and hyperlinks all survive the paste.
 3. Upload `article-0N-header.png` as the article's **cover image**.
 4. At each `INSERT IMAGE HERE: <filename>` placeholder, upload the named PNG as a block image and delete the placeholder line. Eyeball the rendered diagram while you are there — nothing has visually QA'd it.
-5. Fix cross-article links per the publish-order procedure above. The publisher renders relative links as plain text on purpose: the target URL does not exist until that article is live.
+5. Fix cross-article links per the publish-order procedure above. The publisher renders relative cross-article references as plain text on purpose: the target URL does not exist until that article is live. Bibliography citations need no such fix — they are absolute by rule and already hyperlinked.
 6. Publish, then post `companion-post.txt` as the feed announcement, replacing `<PASTE THE PUBLISHED ARTICLE URL HERE>` with the URL LinkedIn just assigned.
 7. Go back through every previously published article and backfill the new article's link into their roadmap lists and any forward references that were waiting on it.
 
