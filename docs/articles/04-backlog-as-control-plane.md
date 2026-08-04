@@ -2,29 +2,18 @@
 
 <!-- markdownlint-disable MD034 -->
 
-## Series Roadmap
-
-| Status      | #      | Article                                                                                    | Role In Series                                |
-| ----------- | ------ | ------------------------------------------------------------------------------------------ | --------------------------------------------- |
-|             | 00     | [The Rise Of Technical Product Operations](00-technical-product-operations.md)             | Industry thesis: Technical Product Operations |
-|             | 01     | [The Vibe Coding Hangover](01-vibe-coding-hangover.md)                                     | Failure mode: vibe slop and review debt       |
-|             | 02     | [Spec-Driven Development Is Necessary But Not Sufficient](02-spec-driven-is-not-enough.md) | Why specs need execution governance           |
-|             | 03     | [The Rise Of The Technical Product Owner](03-technical-product-owner.md)                   | Human operator: TPO/TPM as delivery architect |
-| **Current** | **04** | **[The Backlog Becomes The Control Plane](04-backlog-as-control-plane.md)**                | Backlog as executable control surface         |
-|             | 05     | [The Just-In-Time Planner](05-just-in-time-planner.md)                                     | Progressive decomposition and deep dives      |
-|             | 06     | [Context Durability Is A Feature](06-context-durability.md)                                | JIT loading and post-compaction recovery      |
-|             | 07     | [Evidence Beats Trust](07-evidence-beats-trust.md)                                         | Evidence gates and auditability               |
-|             | 08     | [The Adapter Future](08-adapter-future.md)                                                 | Backlog and agent platform adapters           |
+![The Backlog Becomes The Control Plane](assets/article-headers/article-04-header.png)
+_Part 5 of a series of articles on succeeding with Agentic AI Delivery_
 
 If an AI agent can implement an issue, then the issue is no longer paperwork. It is runtime input.
 
-That single fact changes what a backlog is for. A ticket used to be a reminder: a compressed note that a human would expand with judgment, memory, and a hallway conversation before writing any code. An implementation agent does not have a hallway conversation. It has the issue, and whatever the issue says is the boundary of what it knows to do.
+That single fact changed what a backlog had to be for me. A ticket used to be a reminder: a compressed note that a human would expand with judgment, memory, and a hallway conversation before writing any code. An implementation agent does not have a hallway conversation. It has the issue, and whatever the issue says is the boundary of what it knows to do.
 
 ## Why Ambiguity Survives Human Teams But Not Agent Fleets
 
-Human teams can sometimes tolerate a vague ticket because humans ask questions, carry organizational memory, and infer intent from context that never made it into the ticket text. That tolerance is a feature of working with other humans, not a property of good backlog hygiene. It quietly depends on shared context that AI agents do not have.
+Human teams can sometimes tolerate a vague ticket because humans ask questions, carry organizational memory, and infer intent from context that never made it into the ticket text. I have come to see that tolerance as a feature of working with other humans, not a property of good backlog hygiene. It quietly depends on shared context that AI agents do not have.
 
-Implementation agents need sharper boundaries, because they will act on what is written rather than push back on what is missing. That turns every backlog item into a contract that has to answer, explicitly:
+Implementation agents need sharper boundaries from me, because they will act on what is written rather than push back on what is missing. That turns every backlog item into a contract that has to answer, explicitly:
 
 - What outcome is requested?
 - What context is relevant?
@@ -37,7 +26,7 @@ Implementation agents need sharper boundaries, because they will act on what is 
 
 ## From Planning Artifact To Control Plane
 
-Once backlog items carry that information, the board stops being a status report and starts being executable. Agents can pull work, move it through states, produce evidence, pause for a human decision, and report progress without pushing everything into transient chat context that disappears when the session ends.
+Once backlog items carry that information, I have watched the board stop being a status report and start being executable. Agents can pull work, move it through states, produce evidence, pause for a human decision, and report progress without pushing everything into transient chat context that disappears when the session ends.
 
 ```mermaid
 flowchart LR
@@ -49,13 +38,31 @@ flowchart LR
     Item --> History["Decision history"]
 ```
 
-The control plane also decides how much detail is allowed to exist at a given moment. Early epics should preserve intent, scope, priority, and dependency order without pretending to know every implementation detail before earlier work has changed the codebase underneath them. As an item rises in stack rank, the backlog decomposes another layer. Only the atomic product backlog item receives the full, current-code deep dive — the plan that is actually safe to build from.
+The control plane also decides how much detail I let exist at a given moment. Early epics should preserve intent, scope, priority, and dependency order without pretending to know every implementation detail before earlier work has changed the codebase underneath them. As an item rises in stack rank, the backlog decomposes another layer. Only the atomic product backlog item receives the full, current-code deep dive — the plan that is actually safe to build from.
 
-This is also why backlog hygiene becomes a harder requirement under agentic delivery, not a softer one. A human developer who receives an overly broad ticket can usually tell it is too broad and push back before doing damage. An agent, left unconstrained, may simply attempt the work as written. The backlog has to carry more of that operating discipline up front, because there is no guarantee anyone will catch the gap before code gets generated.
+This is also why I have found backlog hygiene becoming a harder requirement under agentic delivery, not a softer one. A human developer who receives an overly broad ticket can usually tell it is too broad and push back before doing damage. An agent, left unconstrained, may simply attempt the work as written. The backlog has to carry more of that operating discipline up front, because there is no guarantee anyone will catch the gap before code gets generated.
+
+## The Adapter Implication
+
+Treating the backlog as a control plane only matters to me if the pattern can travel. The durable architecture underneath it is adapter-based:
+
+- backlog adapters for GitHub, Jira, GitLab, and Bitbucket,
+- agent adapters for Claude Code, Codex, Copilot, Rovo Dev, and whatever comes next,
+- evidence adapters for test logs, CI checks, pull requests, review comments, and deployment status.
+
+AITM already points in this direction, in the way I built it, by keeping task-workflow behavior separate from GitHub-specific integration concerns. That separation is what makes the control-plane idea a pattern rather than a product feature tied to one vendor's issue tracker.
+
+## Practical Takeaway
+
+Before adding another AI coding tool to the stack, I would audit the backlog it will read from. Does every item in flight carry intent, scope, dependencies, gates, verification expectations, and a place to record decisions? If the answer is no, an agent fleet will not fix that gap, in my experience. It will execute directly against it, at whatever speed the model allows.
+
+## Series Link
+
+This article explains the backlog as the control surface I rely on. The next article, [The Just-In-Time Planner](05-just-in-time-planner.md), explains how that surface decomposes large intent into atomic work at the right time.
 
 ## The AITM Pattern
 
-In this series, **AITM** means `@kburson/ai-task-manager`: an AI skill and npm package that currently supports GitHub-backed workflows with Claude Code and Codex.
+I introduced AITM — `@kburson/ai-task-manager` — in the [opening article](00-technical-product-operations.md#aitm-and-the-backlog-manager-pattern): the skill I built after hitting the exact wall described above one too many times. This is the piece that treats the backlog as an actual control plane.
 
 AITM uses GitHub Projects as its current control plane, largely because GitHub is where a large share of open-source and enterprise engineering work already happens. The same pattern extends to other systems wherever their APIs expose enough issue, field, workflow, and comment control.
 
@@ -71,27 +78,23 @@ AITM's control-plane capabilities today include:
 - verification markers,
 - review and close gates.
 
-The point is not GitHub specifically. The point is that agentic work needs a persistent system of record that lives outside the chat window, survives context resets, and can be audited after the fact.
+The point for me was never GitHub specifically. The point is that agentic work needs a persistent system of record that lives outside the chat window, survives context resets, and can be audited after the fact.
 
-That system of record is also what lets the TPO/TPM operate at the right altitude. They are not micromanaging every code edit. They are managing the contracts, gates, sequence, and exceptions that keep a fleet of implementation agents from quietly drifting away from product and architectural intent.
+That system of record is also what lets me operate at the right altitude. I am not micromanaging every code edit. I am managing the contracts, gates, sequence, and exceptions that keep a fleet of implementation agents from quietly drifting away from product and architectural intent.
 
-## The Adapter Implication
+## Series Roadmap
 
-Treating the backlog as a control plane only matters if the pattern can travel. The durable architecture underneath it is adapter-based:
-
-- backlog adapters for GitHub, Jira, GitLab, and Bitbucket,
-- agent adapters for Claude Code, Codex, Copilot, Rovo Dev, and whatever comes next,
-- evidence adapters for test logs, CI checks, pull requests, review comments, and deployment status.
-
-AITM already points in this direction by keeping task-workflow behavior separate from GitHub-specific integration concerns. That separation is what makes the control-plane idea a pattern rather than a product feature tied to one vendor's issue tracker.
-
-## Practical Takeaway
-
-Before adding another AI coding tool to the stack, audit the backlog it will read from. Does every item in flight carry intent, scope, dependencies, gates, verification expectations, and a place to record decisions? If the answer is no, an agent fleet will not fix that gap. It will execute directly against it, at whatever speed the model allows.
-
-## Series Link
-
-This article explains the backlog as the control surface. The next article, [The Just-In-Time Planner](05-just-in-time-planner.md), explains how that surface decomposes large intent into atomic work at the right time.
+| Status      | #      | Article                                                                                    | Role In Series                                |
+| ----------- | ------ | ------------------------------------------------------------------------------------------ | --------------------------------------------- |
+|             | 00     | [The Rise Of Technical Product Operations](00-technical-product-operations.md)             | Industry thesis: Technical Product Operations |
+|             | 01     | [The Vibe Coding Hangover](01-vibe-coding-hangover.md)                                     | Failure mode: vibe slop and review debt       |
+|             | 02     | [Spec-Driven Development Is Necessary But Not Sufficient](02-spec-driven-is-not-enough.md) | Why specs need execution governance           |
+|             | 03     | [The Rise Of The Technical Product Owner](03-technical-product-owner.md)                   | Human operator: TPO/TPM as delivery architect |
+| **Current** | **04** | **[The Backlog Becomes The Control Plane](04-backlog-as-control-plane.md)**                | Backlog as executable control surface         |
+|             | 05     | [The Just-In-Time Planner](05-just-in-time-planner.md)                                     | Progressive decomposition and deep dives      |
+|             | 06     | [Context Durability Is A Feature](06-context-durability.md)                                | JIT loading and post-compaction recovery      |
+|             | 07     | [Evidence Beats Trust](07-evidence-beats-trust.md)                                         | Evidence gates and auditability               |
+|             | 08     | [The Adapter Future](08-adapter-future.md)                                                 | Backlog and agent platform adapters           |
 
 ## LinkedIn Article Shape
 
