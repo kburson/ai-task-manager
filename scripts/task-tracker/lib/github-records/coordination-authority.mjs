@@ -628,6 +628,13 @@ function structuralRecordPositions(records) {
   return positions;
 }
 
+function structuralRecordEntries(records) {
+  const positions = structuralRecordPositions(records);
+  return records
+    .map((record) => ({ position: positions.get(record.envelope.recordId), record }))
+    .sort((left, right) => left.position - right.position);
+}
+
 function hasPredecessorEnvelopeAuthority({
   record,
   predecessorGrant,
@@ -716,7 +723,7 @@ function canDisposeSubmission(grant) {
 }
 
 function hasValidActiveDisposition({
-  effectiveRecordsById,
+  recordsById,
   assignment,
   submission,
   grant,
@@ -729,7 +736,7 @@ function hasValidActiveDisposition({
     scope: scopeIssueIds,
     branches: grant.branchBoundary.map(normalizeBranch),
   };
-  for (const { position, record } of effectiveRecordsById.values()) {
+  for (const { position, record } of recordsById.values()) {
     if (
       record.envelope.recordType === 'record-disposition' &&
       validAdoptionDisposition({
@@ -863,14 +870,27 @@ export function resolveCoordinatorAuthority({
         resolved: durableResolution,
         headRecord: durableHeadRecord,
       } = extractCapsules({ records, repository, issue }));
+      const durableRecordEntries = structuralRecordEntries(durableResolution.records);
+      const durableRecordPositions = new Map(
+        durableRecordEntries.map(({ position, record }) => [record.envelope.recordId, position])
+      );
       durableContext = Object.freeze({
         repository,
         issue,
-        effectiveRecordsById: new Map(
-          durableResolution.effectiveRecords.map((record, position) => [
+        recordsById: new Map(
+          durableRecordEntries.map(({ position, record }) => [
             record.envelope.recordId,
             Object.freeze({ position, record: frozenCopy(record) }),
           ])
+        ),
+        effectiveRecordsById: new Map(
+          durableResolution.effectiveRecords.map((record) => {
+            const position = durableRecordPositions.get(record.envelope.recordId);
+            return [
+              record.envelope.recordId,
+              Object.freeze({ position, record: frozenCopy(record) }),
+            ];
+          })
         ),
       });
     } catch (error) {
@@ -965,9 +985,7 @@ export function resolveCoordinatorAuthority({
   if (coordinationProjection.adoptionState === 'required') {
     const replacementRevocationRecordId = replacementRevocation?.envelope?.recordId;
     const replacementGrantRecordId = projectionGrant.envelope?.recordId;
-    const effectiveRecordPositions = new Map(
-      durableResolution?.effectiveRecords.map((record, index) => [record.envelope.recordId, index])
-    );
+    const effectiveRecordPositions = structuralRecordPositions(durableResolution?.records ?? []);
     const lineage = replacementLineage(validatedGrants, validatedRevocations, projectionGrant);
     const lineageAuthorities = lineage?.map(({ grantEntry, revocationEntry }) => ({
       grant: frozenCopy(grantEntry.grant),
@@ -1013,7 +1031,8 @@ export function resolveCoordinatorAuthority({
     const validReplacementDispositionRecordIds = new Set();
     let invalidRelevantWorkRecord = false;
     if (orderedLineage) {
-      for (const [index, record] of durableResolution.effectiveRecords.entries()) {
+      for (const record of durableResolution.effectiveRecords) {
+        const index = effectiveRecordPositions.get(record.envelope.recordId);
         if (record.envelope.recordType === 'work-assignment') {
           const authoringGrant = ancestorAuthorities.find((candidate) =>
             hasPredecessorEnvelopeAuthority({
@@ -1089,12 +1108,27 @@ export function resolveCoordinatorAuthority({
           }
         }
       }
-      for (const [index, record] of durableResolution.effectiveRecords.entries()) {
+      const terminalDispositionRecordIds = new Set();
+      for (const { position: index, record } of structuralRecordEntries(
+        durableResolution.records
+      )) {
         if (record.envelope.recordType !== 'record-disposition') continue;
         const payload = record.envelope.payload;
         const assignment = eligibleAssignmentsById.get(payload?.assignmentRecordId);
         const submission = effectiveSubmissionsById.get(payload?.submissionRecordId);
-        if (submission === undefined) continue;
+        const supersedesTerminal = terminalDispositionRecordIds.has(record.envelope.supersedes);
+        if (submission === undefined) {
+          if (supersedesTerminal) invalidRelevantWorkRecord = true;
+          continue;
+        }
+        if (
+          supersedesTerminal ||
+          historicallyDisposedSubmissionIds.has(payload.submissionRecordId) ||
+          replacementDisposedSubmissionIds.has(payload.submissionRecordId)
+        ) {
+          invalidRelevantWorkRecord = true;
+          continue;
+        }
         const authoringGrant = assignmentAuthoringGrantsById.get(payload.assignmentRecordId);
         const dispositionAuthority = lineageAuthorities.find((candidate) =>
           validAdoptionDisposition({
@@ -1112,12 +1146,7 @@ export function resolveCoordinatorAuthority({
         );
         if (dispositionAuthority !== undefined) {
           const currentDisposition = dispositionAuthority === replacementAuthority;
-          if (
-            historicallyDisposedSubmissionIds.has(payload.submissionRecordId) ||
-            replacementDisposedSubmissionIds.has(payload.submissionRecordId)
-          ) {
-            invalidRelevantWorkRecord = true;
-          }
+          terminalDispositionRecordIds.add(record.envelope.recordId);
           (currentDisposition
             ? replacementDisposedSubmissionIds
             : historicallyDisposedSubmissionIds
@@ -1127,7 +1156,8 @@ export function resolveCoordinatorAuthority({
           }
         }
       }
-      for (const [index, record] of durableResolution.effectiveRecords.entries()) {
+      for (const record of durableResolution.effectiveRecords) {
+        const index = effectiveRecordPositions.get(record.envelope.recordId);
         if (index <= revocationPosition || index === replacementPosition) continue;
         if (
           (isWorkAssignmentSubmissionType(record.envelope.recordType) &&
@@ -1261,7 +1291,7 @@ export function authorizeCoordinatorOperation({
       durableGrant.position >= durableAssignment.position ||
       durableAssignment.position >= durableSubmission.position ||
       hasValidActiveDisposition({
-        effectiveRecordsById: durableContext.effectiveRecordsById,
+        recordsById: durableContext.recordsById,
         assignment: durableAssignment,
         submission: durableSubmission,
         grant,

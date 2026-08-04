@@ -13,6 +13,7 @@ import {
   adoptOutstandingSubmissions,
   createWorkAssignment,
   evaluateAssignment,
+  rejectSubmission,
 } from '../../../../lib/github-records/work-assignment.mjs';
 
 const repository = 'kburson/ai-task-manager';
@@ -57,7 +58,10 @@ function grant({
   };
 }
 
-function record({ recordId, recordType, payload, actor, epoch, grantId }, predecessor = null) {
+function record(
+  { recordId, recordType, payload, actor, epoch, grantId, supersedes = null },
+  predecessor = null
+) {
   return Object.freeze({
     commentNodeId: `IC_kwDOMulti${recordId.slice(-4)}`,
     envelope: createAitmRecordEnvelope({
@@ -70,6 +74,7 @@ function record({ recordId, recordType, payload, actor, epoch, grantId }, predec
       epoch,
       grantId,
       predecessor,
+      supersedes,
       createdAt: '2026-08-03T20:05:00.000Z',
     }),
   });
@@ -124,6 +129,7 @@ function threeEpochHistory({
   epoch2Outstanding,
   epoch1Completed = true,
   lateEpoch1Submission = false,
+  epoch1SupersessionDecision = null,
 }) {
   const parentGrant = grant({
     grantId: id(7000),
@@ -218,6 +224,29 @@ function threeEpochHistory({
       submission1.envelope.recordId
     );
     epoch1Records.push(disposition1);
+    if (epoch1SupersessionDecision !== null) {
+      const supersedingDisposition = record(
+        {
+          recordId: id(31),
+          recordType: disposition1.envelope.recordType,
+          payload: {
+            ...disposition1.envelope.payload,
+            ...(epoch1SupersessionDecision === 'malformed'
+              ? { assignmentCommentNodeId: 'IC_kwDOMalformedAssignment' }
+              : {
+                  decision: epoch1SupersessionDecision,
+                  reason: epoch1SupersessionDecision === 'accepted' ? null : 'conflicting decision',
+                }),
+          },
+          actor: coordinator1.actor,
+          epoch: 1,
+          grantId: grant1.grantId,
+          supersedes: disposition1.envelope.recordId,
+        },
+        disposition1.envelope.recordId
+      );
+      epoch1Records.push(supersedingDisposition);
+    }
     epoch1Authority = resolve(epoch1Records, {
       schema: 'aitm.coordination-projection/v1',
       grantId: grant1.grantId,
@@ -612,6 +641,146 @@ test('epoch-3 adoption exhaustively disposes mixed ancestor and immediate work',
       adoptEpoch3(current, paused, reverse ? [...completed].reverse() : completed)
         .acceptedSubmissionRecordIds,
       [current.submission1.envelope.recordId, current.submission2.envelope.recordId].sort()
+    );
+  }
+});
+
+for (const decision of ['accepted', 'rejected', 'malformed']) {
+  test(`a valid historical disposition is terminal against ${decision} supersession`, () => {
+    for (const reverse of [false, true]) {
+      const current = threeEpochHistory({
+        epoch2Outstanding: false,
+        epoch1SupersessionDecision: decision,
+      });
+      const records = reverse ? [...current.records].reverse() : current.records;
+      const paused = resolve(records, current.replacement2.coordinationProjection);
+      assert.equal(adoptEpoch3(current, paused, records).status, 'blocked');
+    }
+  });
+}
+
+function supersededReplacementHistory(kind) {
+  const current = threeEpochHistory({
+    epoch2Outstanding: false,
+    epoch1Completed: false,
+    lateEpoch1Submission: true,
+  });
+  const paused = resolve(current.records, current.replacement2.coordinationProjection);
+  const target = {
+    authority: paused,
+    assignment: current.assignment1,
+    submission: current.submission1,
+  };
+  const accepted = acceptSubmission(target);
+  const second =
+    kind === 'rejected'
+      ? rejectSubmission({ ...target, reason: 'conflicting decision' })
+      : {
+          ...accepted,
+          payload:
+            kind === 'malformed'
+              ? { ...accepted.payload, assignmentCommentNodeId: 'IC_kwDOMalformedAssignment' }
+              : accepted.payload,
+        };
+  const firstRecord = record(
+    {
+      recordId: id(52),
+      recordType: accepted.recordType,
+      payload: accepted.payload,
+      actor: coordinator3.actor,
+      epoch: 3,
+      grantId: current.grant3.grantId,
+    },
+    current.grant3Record.envelope.recordId
+  );
+  const secondRecord = record(
+    {
+      recordId: id(53),
+      recordType: second.recordType,
+      payload: second.payload,
+      actor: coordinator3.actor,
+      epoch: 3,
+      grantId: current.grant3.grantId,
+      supersedes: firstRecord.envelope.recordId,
+    },
+    firstRecord.envelope.recordId
+  );
+  return { current, paused, records: [...current.records, firstRecord, secondRecord] };
+}
+
+for (const kind of ['accepted', 'rejected', 'malformed']) {
+  test(`a valid replacement disposition is terminal against ${kind} supersession`, () => {
+    for (const reverse of [false, true]) {
+      const { current, paused, records } = supersededReplacementHistory(kind);
+      const supplied = reverse ? [...records].reverse() : records;
+      assert.equal(adoptEpoch3(current, paused, supplied).status, 'blocked');
+      const restarted = resolve(supplied, current.replacement2.coordinationProjection);
+      assert.throws(
+        () =>
+          acceptSubmission({
+            authority: restarted,
+            assignment: current.assignment1,
+            submission: current.submission1,
+          }),
+        /work-assignment:authority/
+      );
+    }
+  });
+}
+
+test('the active restart fence retains a superseded valid disposition', () => {
+  for (const reverse of [false, true]) {
+    const current = threeEpochHistory({ epoch2Outstanding: false, epoch1Completed: false });
+    const projection = {
+      schema: 'aitm.coordination-projection/v1',
+      grantId: current.child.envelope.payload.grantId,
+      epoch: 1,
+      adoptionState: 'adopted',
+    };
+    const initialRecords = [
+      current.parent,
+      current.child,
+      current.assignment1,
+      current.submission1,
+    ];
+    const active = resolve(initialRecords, projection);
+    const candidate = acceptSubmission({
+      authority: active,
+      assignment: current.assignment1,
+      submission: current.submission1,
+    });
+    const valid = record(
+      {
+        recordId: id(60),
+        recordType: candidate.recordType,
+        payload: candidate.payload,
+        actor: coordinator1.actor,
+        epoch: 1,
+        grantId: current.child.envelope.payload.grantId,
+      },
+      current.submission1.envelope.recordId
+    );
+    const malformed = record(
+      {
+        recordId: id(61),
+        recordType: candidate.recordType,
+        payload: { ...candidate.payload, assignmentCommentNodeId: 'IC_kwDOMalformedAssignment' },
+        actor: coordinator1.actor,
+        epoch: 1,
+        grantId: current.child.envelope.payload.grantId,
+        supersedes: valid.envelope.recordId,
+      },
+      valid.envelope.recordId
+    );
+    const records = [...initialRecords, valid, malformed];
+    const restarted = resolve(reverse ? [...records].reverse() : records, projection);
+    assert.equal(
+      evaluateAssignment({
+        authority: restarted,
+        assignment: current.assignment1,
+        submission: current.submission1,
+      }).status,
+      'blocked'
     );
   }
 });
