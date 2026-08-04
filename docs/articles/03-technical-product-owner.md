@@ -241,8 +241,8 @@ Close:
 - Kiro Docs. "Feature Specs." https://kiro.dev/docs/specs/feature-specs/
 - GitHub Blog. "Assigning and completing issues with coding agent in GitHub Copilot." https://github.blog/ai-and-ml/github-copilot/assigning-and-completing-issues-with-coding-agent-in-github-copilot/
 - Sayagh, Mohammed. "What Makes a GitHub Issue Ready for Copilot?" https://arxiv.org/abs/2512.21426
-- AI Task Manager. "Agentic Development Process." ../introduction/agentic-development-process.md
-- AI Task Manager. "Core Workflow." ../introduction/core-workflow.md
-- AI Task Manager. "Measurement and ROI." ../introduction/measurement-and-roi.md
+- AI Task Manager. "Agentic Development Process." https://github.com/kburson/ai-task-manager/blob/trunk/docs/introduction/agentic-development-process.md
+- AI Task Manager. "Core Workflow." https://github.com/kburson/ai-task-manager/blob/trunk/docs/introduction/core-workflow.md
+- AI Task Manager. "Measurement and ROI." https://github.com/kburson/ai-task-manager/blob/trunk/docs/introduction/measurement-and-roi.md
 - Atlassian. "What is backlog refinement?" https://www.atlassian.com/agile/scrum/backlog-refinement
 - Scaled Agile. "Enterprise Backlog Structure and Management." https://framework.scaledagile.com/enterprise-backlog-structure-and-management

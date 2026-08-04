@@ -247,6 +247,6 @@ Close:
 - METR. "Measuring the Impact of Early-2025 AI on Experienced Open-Source Developer Productivity." https://metr.org/blog/2025-07-10-early-2025-ai-experienced-os-dev-study/
 - Stack Overflow. "2025 Developer Survey: AI." https://survey.stackoverflow.co/2025/ai
 - The Wall Street Journal. "The AI Superstars Who Say a 'Vibe Slop' Crisis Is Coming." https://www.wsj.com/tech/ai/vibe-coding-slop-ai-tools-e6a99394
-- AI Task Manager. "Agentic Development Process." ../introduction/agentic-development-process.md
-- AI Task Manager. "Core Workflow." ../introduction/core-workflow.md
-- AI Task Manager. "Measurement and ROI." ../introduction/measurement-and-roi.md
+- AI Task Manager. "Agentic Development Process." https://github.com/kburson/ai-task-manager/blob/trunk/docs/introduction/agentic-development-process.md
+- AI Task Manager. "Core Workflow." https://github.com/kburson/ai-task-manager/blob/trunk/docs/introduction/core-workflow.md
+- AI Task Manager. "Measurement and ROI." https://github.com/kburson/ai-task-manager/blob/trunk/docs/introduction/measurement-and-roi.md

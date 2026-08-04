@@ -153,9 +153,9 @@ Close:
 
 ## Bibliography
 
-- AI Task Manager. "How AI Task Manager Keeps Agent Context Small and Rules Fresh." ../introduction/context-management-skill-architecture.md
-- AI Task Manager. "Cutting Context Bloat With the Just-In-Time Skill Loader." ../jit-loader-results.md
-- AI Task Manager. "Design." ../DESIGN.md
-- AI Task Manager. "Worker Context Contract." ../guides/worker-context-contract.md
-- AI Task Manager. "Agentic Development Process." ../introduction/agentic-development-process.md
-- AI Task Manager. "Core Workflow." ../introduction/core-workflow.md
+- AI Task Manager. "How AI Task Manager Keeps Agent Context Small and Rules Fresh." https://github.com/kburson/ai-task-manager/blob/trunk/docs/introduction/context-management-skill-architecture.md
+- AI Task Manager. "Cutting Context Bloat With the Just-In-Time Skill Loader." https://github.com/kburson/ai-task-manager/blob/trunk/docs/jit-loader-results.md
+- AI Task Manager. "Design." https://github.com/kburson/ai-task-manager/blob/trunk/docs/DESIGN.md
+- AI Task Manager. "Worker Context Contract." https://github.com/kburson/ai-task-manager/blob/trunk/docs/guides/worker-context-contract.md
+- AI Task Manager. "Agentic Development Process." https://github.com/kburson/ai-task-manager/blob/trunk/docs/introduction/agentic-development-process.md
+- AI Task Manager. "Core Workflow." https://github.com/kburson/ai-task-manager/blob/trunk/docs/introduction/core-workflow.md

@@ -165,10 +165,10 @@ Close:
 
 ## Bibliography
 
-- AI Task Manager. "Agentic Development Process." ../introduction/agentic-development-process.md
-- AI Task Manager. "Core Workflow." ../introduction/core-workflow.md
-- AI Task Manager. "State Slug Migration History." ../migration-history.md
-- AI Task Manager. "Blocking-defect isolation dance - design." ../superpowers/specs/2026-07-11-blocking-defect-isolation-design.md
+- AI Task Manager. "Agentic Development Process." https://github.com/kburson/ai-task-manager/blob/trunk/docs/introduction/agentic-development-process.md
+- AI Task Manager. "Core Workflow." https://github.com/kburson/ai-task-manager/blob/trunk/docs/introduction/core-workflow.md
+- AI Task Manager. "State Slug Migration History." https://github.com/kburson/ai-task-manager/blob/trunk/docs/migration-history.md
+- AI Task Manager. "Blocking-defect isolation dance - design." https://github.com/kburson/ai-task-manager/blob/trunk/docs/superpowers/specs/2026-07-11-blocking-defect-isolation-design.md
 - Project Management Institute. "Applying work breakdown structure to the project lifecycle." https://www.pmi.org/learning/library/applying-work-breakdown-structure-project-lifecycle-6979
 - Atlassian. "What is backlog refinement?" https://www.atlassian.com/agile/scrum/backlog-refinement
 - Scaled Agile. "Enterprise Backlog Structure and Management." https://framework.scaledagile.com/enterprise-backlog-structure-and-management

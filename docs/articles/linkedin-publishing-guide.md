@@ -91,6 +91,10 @@ Each article already has a generated banner at `docs/articles/assets/article-hea
 
 Keep the `## Bibliography` section as-is. LinkedIn renders bullet lists and hyperlinks natively, so citation links work without conversion. Leave the heading as a plain `## Bibliography` or `## Sources` line.
 
+Every citation in the section must be an absolute URL. A repo-internal citation is written as `https://github.com/kburson/ai-task-manager/blob/trunk/docs/<path>`, never as a relative path like `../introduction/core-workflow.md`. A relative path resolves against the repo checkout, which the published article is not — on LinkedIn it renders as literal text that leads a reader nowhere. `blob/trunk` rather than a commit-pinned permalink is deliberate: these citations point at living design and process docs, and a reader following one wants today's version, not a snapshot.
+
+`npm run lint:article-citations` enforces this. It scans the `## Bibliography` section of every `NN-*.md` article and fails, naming file and line, when a citation is not an absolute `http(s)` URL. Body prose is out of scope — articles link to each other by relative filename on purpose, and those become real LinkedIn URLs during the backfill pass below.
+
 ## Per-Article Publish Checklist
 
 For each of the 9 articles, in series order:
