@@ -11,6 +11,8 @@ import {
   acceptSubmission,
   adoptOutstandingSubmissions,
   createWorkAssignment,
+  evaluateAssignment,
+  rejectSubmission,
 } from '../../../../lib/github-records/work-assignment.mjs';
 
 const repository = 'kburson/ai-task-manager';
@@ -45,7 +47,10 @@ function grant({ grantId, epoch, grantCoordinator, issuer = null, operations }) 
   };
 }
 
-function record({ recordId, recordType, payload, actor, epoch, grantId }, predecessor = null) {
+function record(
+  { recordId, recordType, payload, actor, epoch, grantId, supersedes = null },
+  predecessor = null
+) {
   return Object.freeze({
     commentNodeId: `IC_kwDOCapability${recordId.slice(-4)}`,
     envelope: createAitmRecordEnvelope({
@@ -58,6 +63,7 @@ function record({ recordId, recordType, payload, actor, epoch, grantId }, predec
       epoch,
       grantId,
       predecessor,
+      supersedes,
       createdAt: '2026-08-03T20:05:00.000Z',
     }),
   });
@@ -244,6 +250,8 @@ function history({
   return {
     assignment,
     paused,
+    persisted,
+    records,
     replacementDisposition,
     replacementRecord,
     result: adoptOutstandingSubmissions({
@@ -407,3 +415,309 @@ test('documented adoption arrays handle zero outstanding work without supplied h
   assert.deepEqual(result.acceptedSubmissionRecordIds, []);
   assert.deepEqual(result.rejectedSubmissionRecordIds, []);
 });
+
+function activeHistory(operations, reverse) {
+  const activeGrant = grant({
+    grantId: id(9101),
+    epoch: 3,
+    grantCoordinator: coordinator,
+    operations,
+  });
+  const root = record({
+    recordId: id(101),
+    recordType: 'coordinator-grant',
+    payload: activeGrant,
+    actor: coordinator.actor,
+    epoch: 3,
+    grantId: id(8100),
+  });
+  const initial = resolve([root], {
+    schema: 'aitm.coordination-projection/v1',
+    grantId: activeGrant.grantId,
+    epoch: 3,
+    adoptionState: 'adopted',
+  });
+  const assignmentPayload = {
+    schema: 'aitm.work-assignment/v1',
+    issue,
+    branch,
+    files: ['scripts/task-tracker/lib/github-records/work-assignment.mjs'],
+    subsystem: 'github-records',
+    dependency: { baselineSha: 'c2ae3db785468fb496f2be1f54aca144e636b172', recordIds: [] },
+    verification: { contractEpoch: 1, verifierIds: ['vc-6'] },
+    worker,
+    coordinator,
+    grantId: activeGrant.grantId,
+    epoch: activeGrant.epoch,
+  };
+  const assignmentInput = {
+    authority: initial,
+    coordinator,
+    issue,
+    branch,
+    files: [...assignmentPayload.files],
+    subsystem: assignmentPayload.subsystem,
+    dependency: structuredClone(assignmentPayload.dependency),
+    verification: structuredClone(assignmentPayload.verification),
+    worker,
+  };
+  if (operations.includes('assign-work'))
+    assert.doesNotThrow(() => createWorkAssignment(assignmentInput));
+  else assert.throws(() => createWorkAssignment(assignmentInput), /work-assignment:authority/);
+  const assignment = record(
+    {
+      recordId: id(110),
+      recordType: 'work-assignment',
+      payload: assignmentPayload,
+      actor: coordinator.actor,
+      epoch: 3,
+      grantId: activeGrant.grantId,
+    },
+    root.envelope.recordId
+  );
+  const submission = record(
+    {
+      recordId: id(120),
+      recordType: 'execution-result',
+      payload: {
+        schema: 'aitm.worker-submission/v1',
+        status: 'submitted',
+        assignmentRecordId: assignment.envelope.recordId,
+        issue,
+        branch,
+        files: [...assignmentPayload.files],
+        subsystem: assignmentPayload.subsystem,
+        dependency: structuredClone(assignmentPayload.dependency),
+        verification: structuredClone(assignmentPayload.verification),
+        worker,
+        result: { summary: 'active result' },
+      },
+      actor: worker.actor,
+      epoch: 3,
+      grantId: activeGrant.grantId,
+    },
+    assignment.envelope.recordId
+  );
+  const records = [root, assignment, submission];
+  return {
+    activeGrant,
+    assignment,
+    submission,
+    records,
+    authority: resolve(reverse ? [...records].reverse() : records, {
+      schema: 'aitm.coordination-projection/v1',
+      grantId: activeGrant.grantId,
+      epoch: 3,
+      adoptionState: 'adopted',
+    }),
+  };
+}
+
+for (const scenario of [
+  { name: 'assign only', operations: ['assign-work'], ready: false },
+  { name: 'dispose only', operations: ['dispose-submission'], ready: false },
+  { name: 'assign and dispose', operations: ['assign-work', 'dispose-submission'], ready: true },
+]) {
+  for (const reverse of [false, true]) {
+    test(`active ${scenario.name} is capability-safe with ${
+      reverse ? 'reversed' : 'ordered'
+    } records`, () => {
+      const current = activeHistory(scenario.operations, reverse);
+      const target = {
+        authority: current.authority,
+        assignment: current.assignment,
+        submission: current.submission,
+      };
+      assert.equal(evaluateAssignment(target).status, scenario.ready ? 'matched' : 'blocked');
+      if (scenario.ready) {
+        assert.equal(acceptSubmission(target).payload.decision, 'accepted');
+        assert.equal(
+          rejectSubmission({ ...target, reason: 'bounded rejection' }).payload.decision,
+          'rejected'
+        );
+      } else {
+        assert.throws(() => acceptSubmission(target), /work-assignment:authority/);
+        assert.throws(
+          () => rejectSubmission({ ...target, reason: 'missing operation' }),
+          /work-assignment:authority/
+        );
+      }
+    });
+  }
+}
+
+test('snapshot overload authenticates every captured record before append-only extension', () => {
+  const current = history({
+    replacementOperations: ['dispose-submission', 'adopt-submissions'],
+    reverse: false,
+  });
+  const adoptSnapshot = (records, expectedHeadRecordId) =>
+    adoptOutstandingSubmissions({
+      authority: current.paused,
+      snapshot: { repository, issue, expectedHeadRecordId, records },
+    });
+  for (const records of [current.persisted, [...current.persisted].reverse()]) {
+    assert.deepEqual(adoptSnapshot(records, current.replacementRecord.envelope.recordId), {
+      status: 'blocked',
+      diagnostic: { reason: 'missing-disposition' },
+    });
+  }
+
+  const rewrittenPayload = {
+    ...current.submission.envelope.payload,
+    assignmentRecordId: id(999),
+  };
+  const rewrittenSubmission = record(
+    {
+      recordId: current.submission.envelope.recordId,
+      recordType: current.submission.envelope.recordType,
+      payload: rewrittenPayload,
+      actor: worker.actor,
+      epoch: 1,
+      grantId: id(9001),
+    },
+    current.assignment.envelope.recordId
+  );
+  const rewritten = current.persisted.map((candidate) =>
+    candidate.envelope.recordId === rewrittenSubmission.envelope.recordId
+      ? rewrittenSubmission
+      : candidate
+  );
+  for (const records of [rewritten, [...rewritten].reverse()]) {
+    assert.deepEqual(adoptSnapshot(records, current.replacementRecord.envelope.recordId), {
+      status: 'blocked',
+      diagnostic: { reason: 'authority' },
+    });
+  }
+
+  for (const records of [current.records, [...current.records].reverse()]) {
+    assert.deepEqual(
+      adoptSnapshot(records, current.replacementDisposition.envelope.recordId),
+      current.result
+    );
+  }
+  const missingCapturedAssignment = current.records.filter(
+    (candidate) => candidate.envelope.recordId !== current.assignment.envelope.recordId
+  );
+  assert.throws(
+    () =>
+      adoptSnapshot(missingCapturedAssignment, current.replacementDisposition.envelope.recordId),
+    /capsule-chain/
+  );
+});
+
+for (const reverse of [false, true]) {
+  test(`active restart enforces exact-once disposition with ${
+    reverse ? 'reversed' : 'ordered'
+  } records`, () => {
+    const current = activeHistory(['assign-work', 'dispose-submission'], reverse);
+    const target = {
+      authority: current.authority,
+      assignment: current.assignment,
+      submission: current.submission,
+    };
+    const candidate = acceptSubmission(target);
+    const disposition = record(
+      {
+        recordId: id(130),
+        recordType: candidate.recordType,
+        payload: candidate.payload,
+        actor: coordinator.actor,
+        epoch: 3,
+        grantId: current.activeGrant.grantId,
+      },
+      current.submission.envelope.recordId
+    );
+    const persisted = [...current.records, disposition];
+    const restarted = resolve(reverse ? [...persisted].reverse() : persisted, {
+      schema: 'aitm.coordination-projection/v1',
+      grantId: current.activeGrant.grantId,
+      epoch: 3,
+      adoptionState: 'adopted',
+    });
+    const restartedTarget = { ...target, authority: restarted };
+    assert.equal(evaluateAssignment(restartedTarget).status, 'blocked');
+    assert.throws(() => acceptSubmission(restartedTarget), /work-assignment:authority/);
+    assert.throws(
+      () => rejectSubmission({ ...restartedTarget, reason: 'conflicting restart' }),
+      /work-assignment:authority/
+    );
+
+    const duplicate = record(
+      {
+        recordId: id(131),
+        recordType: candidate.recordType,
+        payload: candidate.payload,
+        actor: coordinator.actor,
+        epoch: 3,
+        grantId: current.activeGrant.grantId,
+      },
+      disposition.envelope.recordId
+    );
+    const duplicatedRecords = [...persisted, duplicate];
+    const duplicated = resolve(reverse ? [...duplicatedRecords].reverse() : duplicatedRecords, {
+      schema: 'aitm.coordination-projection/v1',
+      grantId: current.activeGrant.grantId,
+      epoch: 3,
+      adoptionState: 'adopted',
+    });
+    assert.equal(evaluateAssignment({ ...target, authority: duplicated }).status, 'blocked');
+  });
+}
+
+for (const reverse of [false, true]) {
+  test(`active malformed disposition remains repairable with ${
+    reverse ? 'reversed' : 'ordered'
+  } records`, () => {
+    const current = activeHistory(['assign-work', 'dispose-submission'], reverse);
+    const target = {
+      authority: current.authority,
+      assignment: current.assignment,
+      submission: current.submission,
+    };
+    const validCandidate = acceptSubmission(target);
+    const malformedPayload = {
+      ...validCandidate.payload,
+      assignmentCommentNodeId: 'IC_kwDOMalformedAssignment',
+    };
+    const malformed = record(
+      {
+        recordId: id(130),
+        recordType: validCandidate.recordType,
+        payload: malformedPayload,
+        actor: coordinator.actor,
+        epoch: 3,
+        grantId: current.activeGrant.grantId,
+      },
+      current.submission.envelope.recordId
+    );
+    const malformedRecords = [...current.records, malformed];
+    const repairable = resolve(reverse ? [...malformedRecords].reverse() : malformedRecords, {
+      schema: 'aitm.coordination-projection/v1',
+      grantId: current.activeGrant.grantId,
+      epoch: 3,
+      adoptionState: 'adopted',
+    });
+    const correctionCandidate = acceptSubmission({ ...target, authority: repairable });
+    const correction = record(
+      {
+        recordId: id(132),
+        recordType: correctionCandidate.recordType,
+        payload: correctionCandidate.payload,
+        actor: coordinator.actor,
+        epoch: 3,
+        grantId: current.activeGrant.grantId,
+        supersedes: malformed.envelope.recordId,
+      },
+      malformed.envelope.recordId
+    );
+    const correctedRecords = [...malformedRecords, correction];
+    const corrected = resolve(reverse ? [...correctedRecords].reverse() : correctedRecords, {
+      schema: 'aitm.coordination-projection/v1',
+      grantId: current.activeGrant.grantId,
+      epoch: 3,
+      adoptionState: 'adopted',
+    });
+    assert.equal(evaluateAssignment({ ...target, authority: corrected }).status, 'blocked');
+  });
+}

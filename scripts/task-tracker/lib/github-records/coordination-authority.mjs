@@ -579,6 +579,23 @@ function extractCapsules({ records, repository, issue }) {
   return { grants, revocations, resolved, headRecord: headRecord ?? null };
 }
 
+function structuralRecordPositions(records) {
+  const successors = new Map();
+  const root = records.find(({ envelope }) => envelope.predecessor === null);
+  for (const { envelope } of records) {
+    if (envelope.predecessor !== null) {
+      successors.set(envelope.predecessor, envelope.recordId);
+    }
+  }
+  const positions = new Map();
+  let recordId = root?.envelope.recordId;
+  while (recordId !== undefined) {
+    positions.set(recordId, positions.size);
+    recordId = successors.get(recordId);
+  }
+  return positions;
+}
+
 function validPredecessorAssignment({ assignment, predecessorGrant, repository, issue }) {
   if (assignment === undefined || predecessorGrant === undefined) return false;
   const assignmentRecord = assignment.record;
@@ -645,6 +662,41 @@ function validAdoptionTarget({ assignment, submission, predecessorGrant, reposit
 
 function canDisposeSubmission(grant) {
   return grant?.operations?.includes('dispose-submission') === true;
+}
+
+function hasValidActiveDisposition({
+  effectiveRecordsById,
+  assignment,
+  submission,
+  grant,
+  scopeIssueIds,
+  repository,
+  issue,
+}) {
+  const activeGrant = {
+    grant,
+    scope: scopeIssueIds,
+    branches: grant.branchBoundary.map(normalizeBranch),
+  };
+  for (const { position, record } of effectiveRecordsById.values()) {
+    if (
+      record.envelope.recordType === 'record-disposition' &&
+      validAdoptionDisposition({
+        record,
+        position,
+        assignment,
+        submission,
+        predecessorGrant: activeGrant,
+        dispositionGrant: grant,
+        repository,
+        issue,
+        afterPosition: submission.position,
+      })
+    ) {
+      return true;
+    }
+  }
+  return false;
 }
 
 function validAdoptionDisposition({
@@ -1097,9 +1149,19 @@ export function authorizeCoordinatorOperation({
     if (
       durableAssignment === undefined ||
       durableSubmission === undefined ||
+      !grant.operations.includes('assign-work') ||
       !isDeepStrictEqual(durableAssignment.record, assignment) ||
       !isDeepStrictEqual(durableSubmission.record, submission) ||
-      durableAssignment.position >= durableSubmission.position
+      durableAssignment.position >= durableSubmission.position ||
+      hasValidActiveDisposition({
+        effectiveRecordsById: durableContext.effectiveRecordsById,
+        assignment: durableAssignment,
+        submission: durableSubmission,
+        grant,
+        scopeIssueIds,
+        repository: durableContext.repository,
+        issue,
+      })
     ) {
       return authorization(false, 'record');
     }
@@ -1283,6 +1345,13 @@ export function authorizeCoordinatorAdoption({
     const suppliedById = new Map(
       authorizationRecords.map((record) => [record?.envelope?.recordId, record])
     );
+    if (
+      context.capturedRecords.some(
+        (record) => !isDeepStrictEqual(suppliedById.get(record.envelope.recordId), record)
+      )
+    ) {
+      return authorization(false, 'record');
+    }
     const pausedHeadRecordId = context.pausedHeadRecord.envelope.recordId;
     if (!isDeepStrictEqual(suppliedById.get(pausedHeadRecordId), context.pausedHeadRecord)) {
       return authorization(false, 'record');
@@ -1295,6 +1364,24 @@ export function authorizeCoordinatorAdoption({
         issue: context.issue,
       });
     } catch {
+      return authorization(false, 'record');
+    }
+    const capturedRecordIds = new Set(
+      context.capturedRecords.map((record) => record.envelope.recordId)
+    );
+    const structuralPositions = structuralRecordPositions(resolvedSnapshot.records);
+    const pausedHeadPosition = structuralPositions.get(pausedHeadRecordId);
+    if (
+      structuralPositions.size !== resolvedSnapshot.records.length ||
+      pausedHeadPosition === undefined ||
+      resolvedSnapshot.records.some((record) => {
+        const position = structuralPositions.get(record.envelope.recordId);
+        return (
+          position === undefined ||
+          (!capturedRecordIds.has(record.envelope.recordId) && position <= pausedHeadPosition)
+        );
+      })
+    ) {
       return authorization(false, 'record');
     }
     if (
