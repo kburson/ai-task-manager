@@ -202,9 +202,21 @@ function runFlow({ coordinatorPlatform, workerPlatform, replacementPlatform, off
     [...completeRecords].reverse(),
     [submission, replacementRecord, root, disposition, assignment, revocation],
   ];
-  const adoptions = permutations.map((records) =>
+  assert.deepEqual(
     adoptOutstandingSubmissions({
       authority: paused,
+      snapshot: {
+        repository,
+        issue,
+        expectedHeadRecordId: disposition.envelope.recordId,
+        records: completeRecords,
+      },
+    }),
+    { status: 'blocked', diagnostic: { reason: 'authority' } }
+  );
+  const adoptions = permutations.map((records) =>
+    adoptOutstandingSubmissions({
+      authority: resolve(records, replacement.coordinationProjection),
       snapshot: {
         repository,
         issue,
@@ -234,18 +246,17 @@ function runFlow({ coordinatorPlatform, workerPlatform, replacementPlatform, off
   );
   const mixedRepository = [...completeRecords];
   mixedRepository[1] = foreignRepository[1];
-  assert.throws(
-    () =>
-      adoptOutstandingSubmissions({
-        authority: paused,
-        snapshot: {
-          repository,
-          issue,
-          expectedHeadRecordId: disposition.envelope.recordId,
-          records: mixedRepository,
-        },
-      }),
-    /capsule-chain:identity/
+  assert.deepEqual(
+    adoptOutstandingSubmissions({
+      authority: resolve(completeRecords, replacement.coordinationProjection),
+      snapshot: {
+        repository,
+        issue,
+        expectedHeadRecordId: disposition.envelope.recordId,
+        records: mixedRepository,
+      },
+    }),
+    { status: 'blocked', diagnostic: { reason: 'authority' } }
   );
   assert.deepEqual(adoption.acceptedSubmissionRecordIds, [submission.envelope.recordId]);
   assert.equal(disposition.envelope.payload.assignmentCommentNodeId, assignment.commentNodeId);

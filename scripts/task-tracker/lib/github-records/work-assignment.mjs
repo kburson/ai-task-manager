@@ -694,24 +694,30 @@ function replayWorkRecords(authorization, resolved, { adoption, allowRepair = fa
       }
       continue;
     }
-    const authority = lineage.find(
+    const authorityGrant = authorization.grants.find(
       (candidateAuthority) =>
         payload.grantId === candidateAuthority.grant.grantId &&
-        payload.epoch === candidateAuthority.grant.epoch &&
-        candidatePosition > candidateAuthority.grantPosition &&
-        candidatePosition < candidateAuthority.revocationPosition
+        payload.epoch === candidateAuthority.grant.epoch
+    );
+    const authorityWindow = authorization.effectiveAuthorityWindows.find(
+      (window) =>
+        window.grantId === payload.grantId &&
+        window.epoch === payload.epoch &&
+        candidatePosition > positions.get(window.startRecordId) &&
+        (window.endRecordId === null || candidatePosition < positions.get(window.endRecordId))
     );
     if (
-      authority === undefined ||
-      !authority.grant.operations.includes('dispose-submission') ||
-      !authority.scopeIssueIds.includes(assignmentPayload.issue) ||
-      !authority.branchBoundary.includes(normalizeBranch(assignmentPayload.branch)) ||
+      authorityGrant === undefined ||
+      authorityWindow === undefined ||
+      !authorityWindow.operations.includes('dispose-submission') ||
+      !authorityWindow.scopeIssueIds.includes(assignmentPayload.issue) ||
+      !authorityWindow.branchBoundary.includes(normalizeBranch(assignmentPayload.branch)) ||
       candidatePosition <= target.position ||
-      !isDeepStrictEqual(payload.decidedBy, authority.grant.coordinator) ||
+      !isDeepStrictEqual(payload.decidedBy, authorityGrant.grant.coordinator) ||
       disposition.envelope.repository !== target.assignment.record.envelope.repository ||
-      disposition.envelope.authority.grantId !== authority.grant.grantId ||
-      disposition.envelope.authority.epoch !== authority.grant.epoch ||
-      disposition.envelope.authority.actor !== authority.grant.coordinator.actor ||
+      disposition.envelope.authority.grantId !== authorityGrant.grant.grantId ||
+      disposition.envelope.authority.epoch !== authorityGrant.grant.epoch ||
+      disposition.envelope.authority.actor !== authorityGrant.grant.coordinator.actor ||
       (payload.decision === 'accepted' && target.evaluation.status !== 'matched')
     ) {
       if (!allowRepair && effectiveIds.has(candidate.envelope.recordId)) {
@@ -719,7 +725,11 @@ function replayWorkRecords(authorization, resolved, { adoption, allowRepair = fa
       }
       continue;
     }
-    const decisions = authority === currentAuthority ? currentDecisions : historicalDecisions;
+    const decisions =
+      authorityGrant.grant.grantId === currentAuthority.grant.grantId &&
+      authorityGrant.grant.epoch === currentAuthority.grant.epoch
+        ? currentDecisions
+        : historicalDecisions;
     decisions.set(payload.submissionRecordId, {
       decision: payload.decision,
       recordId: candidate.envelope.recordId,
@@ -975,49 +985,78 @@ export function adoptOutstandingSubmissions(input = {}) {
       : {}),
   });
   if (!authorization.authorized) return blocked('authority');
+  let capturedResolution;
+  try {
+    capturedResolution = resolveSupersession({
+      records: authorization.capturedRecords,
+      repository: authorization.repository,
+      issue: authorization.issue,
+    });
+  } catch {
+    return blocked('authority');
+  }
   if (snapshotInput) {
     snapshot = input.snapshot;
+    if (
+      !Array.isArray(snapshot.records) ||
+      snapshot.repository !== authorization.repository ||
+      snapshot.issue !== authorization.issue ||
+      snapshot.expectedHeadRecordId !== authorization.capturedHeadRecordId ||
+      snapshot.records.length !== authorization.capturedRecords.length
+    ) {
+      return blocked('authority');
+    }
+    const suppliedById = new Map();
+    for (const record of snapshot.records) {
+      const recordId = record?.envelope?.recordId;
+      if (suppliedById.has(recordId)) return blocked('authority');
+      suppliedById.set(recordId, record);
+    }
+    if (
+      authorization.capturedRecords.some(
+        (record) => !isDeepStrictEqual(suppliedById.get(record.envelope.recordId), record)
+      )
+    ) {
+      return blocked('authority');
+    }
   } else {
     const { assignments, submissions, dispositions } = input;
     if (![assignments, submissions, dispositions].every(Array.isArray)) {
       throw assignmentError('input');
     }
-    const recordsById = new Map(
-      authorization.capturedRecords.map((record) => [record.envelope.recordId, record])
-    );
-    const suppliedGroups = [
-      [assignments, (record) => record?.envelope?.recordType === 'work-assignment'],
-      [submissions, (record) => isWorkAssignmentSubmissionType(record?.envelope?.recordType)],
-      [dispositions, (record) => record?.envelope?.recordType === 'record-disposition'],
+    const expectedGroups = [
+      capturedResolution.effectiveRecords.filter(
+        ({ envelope }) => envelope.recordType === 'work-assignment'
+      ),
+      capturedResolution.effectiveRecords.filter(({ envelope }) =>
+        isWorkAssignmentSubmissionType(envelope.recordType)
+      ),
+      capturedResolution.effectiveRecords.filter(
+        ({ envelope }) => envelope.recordType === 'record-disposition'
+      ),
     ];
-    for (const [group, expectedType] of suppliedGroups) {
+    const suppliedGroups = [assignments, submissions, dispositions];
+    for (let index = 0; index < suppliedGroups.length; index += 1) {
+      const group = suppliedGroups[index];
       if (group.length > MAX_CAPSULE_RECORDS) throw assignmentError('input');
+      const expectedById = new Map(
+        expectedGroups[index].map((record) => [record.envelope.recordId, record])
+      );
+      if (group.length !== expectedById.size) return blocked('authority');
+      const suppliedIds = new Set();
       for (const record of group) {
-        if (!expectedType(record)) return blocked('authority');
-        const existing = recordsById.get(record.envelope.recordId);
-        if (existing !== undefined && !isDeepStrictEqual(existing, record)) {
+        const recordId = record?.envelope?.recordId;
+        if (suppliedIds.has(recordId) || !isDeepStrictEqual(expectedById.get(recordId), record)) {
           return blocked('authority');
         }
-        recordsById.set(record.envelope.recordId, record);
+        suppliedIds.add(recordId);
       }
     }
-    const records = [...recordsById.values()];
-    let resolvedArrays;
-    try {
-      resolvedArrays = resolveSupersession({
-        records,
-        repository: authorization.repository,
-        issue: authorization.issue,
-      });
-    } catch {
-      return blocked('authority');
-    }
-    const index = structuralIndex(resolvedArrays.records);
     snapshot = {
       repository: authorization.repository,
       issue: authorization.issue,
-      expectedHeadRecordId: index.ordered.at(-1)?.envelope.recordId,
-      records,
+      expectedHeadRecordId: authorization.capturedHeadRecordId,
+      records: authorization.capturedRecords,
     };
   }
   const validatedSnapshot = validateAdoptionSnapshot(snapshot);
@@ -1026,23 +1065,14 @@ export function adoptOutstandingSubmissions(input = {}) {
   const suppliedIndex = structuralIndex(resolved.records);
   const suppliedById = suppliedIndex.byId;
   if (
+    suppliedById.size !== authorization.capturedRecords.length ||
     authorization.capturedRecords.some(
       (record) => !isDeepStrictEqual(suppliedById.get(record.envelope.recordId), record)
     )
   ) {
     return blocked('authority');
   }
-  const capturedIds = new Set(
-    authorization.capturedRecords.map(({ envelope }) => envelope.recordId)
-  );
-  const capturedHeadPosition = suppliedIndex.positions.get(authorization.capturedHeadRecordId);
-  if (
-    capturedHeadPosition === undefined ||
-    suppliedIndex.ordered.some(
-      (record, position) =>
-        !capturedIds.has(record.envelope.recordId) && position <= capturedHeadPosition
-    )
-  ) {
+  if (suppliedIndex.positions.get(authorization.capturedHeadRecordId) === undefined) {
     return blocked('authority');
   }
   const replay = replayWorkRecords(authorization, resolved, { adoption: true });

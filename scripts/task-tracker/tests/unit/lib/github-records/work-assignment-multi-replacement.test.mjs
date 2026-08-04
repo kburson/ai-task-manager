@@ -395,7 +395,7 @@ test('older completed generations do not poison zero-outstanding epoch-3 adoptio
       adoptionState: 'adopted',
     });
     assert.equal(adopted.status, 'active');
-    const paused = resolve(records, current.replacement2.coordinationProjection);
+    let paused = resolve(records, current.replacement2.coordinationProjection);
     assert.deepEqual(
       adoptOutstandingSubmissions({
         authority: paused,
@@ -422,7 +422,7 @@ test('epoch-3 adoption requires only immediate epoch-2 outstanding work before p
       }).status,
       'active'
     );
-    const paused = resolve(records, current.replacement2.coordinationProjection);
+    let paused = resolve(records, current.replacement2.coordinationProjection);
     const candidate = acceptSubmission({
       authority: paused,
       assignment: current.assignment2,
@@ -440,9 +440,13 @@ test('epoch-3 adoption requires only immediate epoch-2 outstanding work before p
       current.grant3Record.envelope.recordId
     );
     const completedRecords = [...current.records, disposition];
+    const freshPaused = resolve(
+      reverse ? [...completedRecords].reverse() : completedRecords,
+      current.replacement2.coordinationProjection
+    );
     assert.deepEqual(
       adoptOutstandingSubmissions({
-        authority: paused,
+        authority: freshPaused,
         snapshot: {
           repository,
           issue,
@@ -462,13 +466,14 @@ test('epoch-3 adoption requires only immediate epoch-2 outstanding work before p
   }
 });
 
-function adoptEpoch3(current, paused, records = current.records) {
+function adoptEpoch3(current, _paused, records = current.records) {
   const predecessorIds = new Set(
     records.map(({ envelope }) => envelope.predecessor).filter((recordId) => recordId !== null)
   );
   const head = records.find(({ envelope }) => !predecessorIds.has(envelope.recordId));
+  const authority = resolve(records, current.replacement2.coordinationProjection);
   return adoptOutstandingSubmissions({
-    authority: paused,
+    authority,
     snapshot: {
       repository,
       issue,
@@ -543,11 +548,12 @@ test('epoch-3 adoption carries a late epoch-1 submission until disposition', () 
       lateEpoch1Submission: true,
     });
     const records = reverse ? [...current.records].reverse() : current.records;
-    const paused = resolve(records, current.replacement2.coordinationProjection);
+    let paused = resolve(records, current.replacement2.coordinationProjection);
     assert.deepEqual(adoptEpoch3(current, paused, records), {
       status: 'blocked',
       diagnostic: { reason: 'missing-disposition' },
     });
+    paused = resolve(records, current.replacement2.coordinationProjection);
     const candidate = acceptSubmission({
       authority: paused,
       assignment: current.assignment1,
@@ -640,6 +646,19 @@ test('epoch-3 adoption exhaustively disposes mixed ancestor and immediate work',
     assert.deepEqual(
       adoptEpoch3(current, paused, reverse ? [...completed].reverse() : completed)
         .acceptedSubmissionRecordIds,
+      [current.submission1.envelope.recordId, current.submission2.envelope.recordId].sort()
+    );
+    const freshPaused = resolve(
+      reverse ? [...completed].reverse() : completed,
+      current.replacement2.coordinationProjection
+    );
+    assert.deepEqual(
+      adoptOutstandingSubmissions({
+        authority: freshPaused,
+        assignments: [current.assignment2, current.assignment1],
+        submissions: [current.submission2, current.submission1],
+        dispositions: [immediateDisposition, ancestorDisposition],
+      }).acceptedSubmissionRecordIds,
       [current.submission1.envelope.recordId, current.submission2.envelope.recordId].sort()
     );
   }

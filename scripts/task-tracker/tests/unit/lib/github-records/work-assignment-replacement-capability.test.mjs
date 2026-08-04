@@ -220,13 +220,13 @@ function history({
     revocation,
     replacementRecord,
   ];
-  const paused = resolve(reverse ? [...persisted].reverse() : persisted, {
+  const dispositionAuthority = resolve(reverse ? [...persisted].reverse() : persisted, {
     ...replacement.coordinationProjection,
     adoptionState: 'required',
   });
   let replacementDisposition = null;
   if (!historical) {
-    const target = { authority: paused, assignment, submission };
+    const target = { authority: dispositionAuthority, assignment, submission };
     const canDispose = replacementOperations.includes('dispose-submission');
     if (canDispose) assert.equal(acceptSubmission(target).payload.decision, 'accepted');
     else assert.throws(() => acceptSubmission(target), /work-assignment:authority/);
@@ -247,8 +247,13 @@ function history({
     ...(replacementDisposition === null ? [] : [replacementDisposition]),
   ];
   const headRecord = replacementDisposition ?? replacementRecord;
+  const paused = resolve(reverse ? [...records].reverse() : records, {
+    ...replacement.coordinationProjection,
+    adoptionState: 'required',
+  });
   return {
     assignment,
+    historicalDisposition,
     paused,
     persisted,
     projection: { ...replacement.coordinationProjection, adoptionState: 'required' },
@@ -406,23 +411,23 @@ test('documented adoption arrays derive and preserve the complete private snapsh
   const adopt = (overrides = {}) =>
     adoptOutstandingSubmissions({
       authority: current.paused,
-      assignments: [],
-      submissions: [],
+      assignments: [current.assignment],
+      submissions: [current.submission],
       dispositions: [current.replacementDisposition],
       ...overrides,
     });
   assert.deepEqual(adopt(), current.result);
-  assert.deepEqual(
-    adopt({
-      assignments: [current.assignment, current.assignment],
-      submissions: [current.submission, current.submission],
-      dispositions: [current.replacementDisposition, current.replacementDisposition],
-    }),
-    current.result
-  );
+  assert.deepEqual(adopt({ assignments: [] }), {
+    status: 'blocked',
+    diagnostic: { reason: 'authority' },
+  });
+  assert.deepEqual(adopt({ assignments: [current.assignment, current.assignment] }), {
+    status: 'blocked',
+    diagnostic: { reason: 'authority' },
+  });
   assert.deepEqual(adopt({ dispositions: [] }), {
     status: 'blocked',
-    diagnostic: { reason: 'missing-disposition' },
+    diagnostic: { reason: 'authority' },
   });
 
   const conflictingAssignment = structuredClone(current.assignment);
@@ -477,9 +482,9 @@ test('documented adoption arrays handle zero outstanding work without supplied h
   });
   const result = adoptOutstandingSubmissions({
     authority: current.paused,
-    assignments: [],
-    submissions: [],
-    dispositions: [],
+    assignments: [current.assignment],
+    submissions: [current.submission],
+    dispositions: [current.historicalDisposition],
   });
   assert.equal(result.status, 'ready-to-adopt');
   assert.deepEqual(result.acceptedSubmissionRecordIds, []);
@@ -616,7 +621,7 @@ for (const scenario of [
   }
 }
 
-test('snapshot overload authenticates every captured record before append-only extension', () => {
+test('snapshot overload authenticates the exact current captured record set', () => {
   const current = history({
     replacementOperations: ['dispose-submission', 'adopt-submissions'],
     reverse: false,
@@ -629,7 +634,7 @@ test('snapshot overload authenticates every captured record before append-only e
   for (const records of [current.persisted, [...current.persisted].reverse()]) {
     assert.deepEqual(adoptSnapshot(records, current.replacementRecord.envelope.recordId), {
       status: 'blocked',
-      diagnostic: { reason: 'missing-disposition' },
+      diagnostic: { reason: 'authority' },
     });
   }
 
@@ -669,10 +674,9 @@ test('snapshot overload authenticates every captured record before append-only e
   const missingCapturedAssignment = current.records.filter(
     (candidate) => candidate.envelope.recordId !== current.assignment.envelope.recordId
   );
-  assert.throws(
-    () =>
-      adoptSnapshot(missingCapturedAssignment, current.replacementDisposition.envelope.recordId),
-    /capsule-chain/
+  assert.deepEqual(
+    adoptSnapshot(missingCapturedAssignment, current.replacementDisposition.envelope.recordId),
+    { status: 'blocked', diagnostic: { reason: 'authority' } }
   );
 });
 
