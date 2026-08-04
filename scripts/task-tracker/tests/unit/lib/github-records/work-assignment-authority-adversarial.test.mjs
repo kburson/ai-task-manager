@@ -3,7 +3,6 @@ import { strict as assert } from 'node:assert';
 import test from 'node:test';
 
 import {
-  authorizeCoordinatorAdoption,
   authorizeCoordinatorOperation,
   replaceCoordinator,
   resolveCoordinatorAuthority,
@@ -203,14 +202,14 @@ function replacementHistory({
             schema: 'aitm.record-disposition/v1',
             decision: 'accepted',
             issue,
-            assignmentRecordId: assignmentB.envelope.recordId,
-            assignmentCommentNodeId: assignmentB.commentNodeId,
+            assignmentRecordId: assignment.envelope.recordId,
+            assignmentCommentNodeId: assignment.commentNodeId,
             submissionRecordId: submission.envelope.recordId,
             submissionCommentNodeId: submission.commentNodeId,
             grantId: originalGrant.grantId,
             epoch: 1,
             decidedBy: coordinator,
-            reason: null,
+            reason: 'accepted dispositions cannot have a reason',
           },
           actor: coordinator.actor,
           epoch: 1,
@@ -461,7 +460,7 @@ test('an adopted projection resumes under Task 7 without replaying Task 8 adopti
   );
 });
 
-test('malformed historical linkage permits repair but never counts as completion', () => {
+test('a malformed historical disposition permits repair but never counts as completion', () => {
   const current = replacementHistory({ malformedHistorical: true });
   assert.equal(
     resolveRecords([...current.records].reverse(), {
@@ -721,19 +720,16 @@ test('replacement replay uses the exact full Task 8 assignment and submission va
         'active',
         variant.name
       );
-      const authorization = authorizeCoordinatorAdoption({
-        authority: resolve(),
-        issue,
-        operation: 'dispose-submission',
-        branch,
-        repository,
-        grantId: id(9001),
-        epoch: 1,
-        coordinator,
-        assignment: current.assignment,
-        submission: current.submission,
-      });
-      assert.equal(authorization.authorized, false, variant.name);
+      assert.throws(
+        () =>
+          acceptSubmission({
+            authority: resolve(),
+            assignment: current.assignment,
+            submission: current.submission,
+          }),
+        /work-assignment:/,
+        variant.name
+      );
     }
   }
 });

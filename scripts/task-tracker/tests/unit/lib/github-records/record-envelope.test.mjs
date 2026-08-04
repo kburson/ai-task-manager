@@ -314,11 +314,12 @@ test('parsing rejects secret signatures introduced into visible Markdown', () =>
     /record-envelope:secret/
   );
 });
-test('record references require ULIDs while authority grant IDs are bounded opaque values', () => {
+test('record references require canonical uppercase ULIDs and cannot self-link', () => {
   const invalidCases = [
     [{ recordId: 'short' }, /record-envelope:record-id/],
     [{ recordId: '01j00000000000000000000000' }, /record-envelope:record-id/],
     [{ recordId: '81J00000000000000000000000' }, /record-envelope:record-id/],
+    [{ authority: { ...validEnvelope.authority, grantId: 'short' } }, /authority-grant-id/],
     [{ predecessor: 'short' }, /record-envelope:predecessor/],
     [{ supersedes: 'short' }, /record-envelope:supersedes/],
     [{ predecessor: validEnvelope.recordId }, /record-envelope:self-link/],
@@ -332,9 +333,6 @@ test('record references require ULIDs while authority grant IDs are bounded opaq
   for (const [overrides, expectedError] of invalidCases) {
     assert.throws(() => render(overrides), expectedError);
   }
-  assert.doesNotThrow(() =>
-    render({ authority: { ...validEnvelope.authority, grantId: 'short' } })
-  );
   assert.doesNotThrow(() => render({ predecessor: null, supersedes: null }));
 });
 test('canonical JSON rejects excessive nesting with a categorized error', () => {

@@ -294,7 +294,7 @@ function scenario(sequence) {
       recordType: 'record-disposition',
       payload: {
         ...dispositionPayload({ assignmentRecordId: id(10), submissionRecordId: id(20) }),
-        assignmentRecordId: id(12),
+        reason: 'accepted dispositions cannot have a reason',
       },
       actor: replacementCoordinator.actor,
       epoch: 2,
