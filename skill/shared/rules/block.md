@@ -1,16 +1,27 @@
-<!-- aitm-skill-version: 1.0.0 -->
+<!-- aitm-skill-version: 1.1.0 -->
 
 # rules/block.md
 
 Tier-2 rule file. Loaded JIT on `/task block`, `/task unblock`, or any time a defect is spawned mid-task that must be resolved before the current issue can proceed. On first read, emit a single line in your reply:
 
 ```
-aitm-skill-loaded:rules/block:1.0.0
+aitm-skill-loaded:rules/block:1.1.0
 ```
 
 If the sentinel is already present in context, do not re-read.
 
 ## Why this exists
+
+## Full-Auto defect discovery
+
+Full-Auto does not leave a newly discovered local defect untracked. Before applying the parent blocker protocol, create the defect through the sanctioned shape and capture its issue number:
+
+```bash
+npx aitm create-issue --shape defect <required-and-optional-fragment-flags>
+npx aitm block <A> --by <B>
+```
+
+Bind to `#B`, drive it deepest-first to Done, and only then resume `#A`. The creation must succeed before the parent can name `#B` as its blocker.
 
 When work on issue `#A` discovers a defect that must be fixed before `#A` can proceed and you file a new issue `#B` for that defect, `#A` must be annotated as blocked **in three places** so the board, the body, and the search labels all agree:
 

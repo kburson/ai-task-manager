@@ -330,7 +330,7 @@ export function evaluateGhApiCreate({ command }) {
   const reason =
     `Direct issue creation via \`gh api\` (${via}) is forbidden.\n` +
     `  This bypasses the create-issue.mjs wrapper (project tether, assignee/priority gates, template enforcement) exactly as a raw \`gh issue create\` would.\n` +
-    `  Use \`scripts/gh/create-issue.mjs --shape <epic|sub-issue|solo>\` instead.`;
+    `  Use \`scripts/gh/create-issue.mjs --shape <stub|epic|sub-issue|solo|defect>\` instead.`;
   return {
     block: true,
     reason: appendDefectHint(

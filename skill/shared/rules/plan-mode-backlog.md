@@ -47,7 +47,7 @@ See [`docs/label-setup.md`](../../../docs/label-setup.md) — master plan label,
 
 Every created epic, sub-issue, and solo task must be tethered via `project-tether.mjs` after creation. Do not trust raw `addProjectV2ItemById` output — GitHub can return issue-side metadata while the Project board has no visible item.
 
-`create-issue.mjs --shape <epic|sub-issue|solo>` runs the tether atomically. Use it.
+`create-issue.mjs --shape <stub|epic|sub-issue|solo|defect>` runs the tether atomically. Use it. Plan-mode generation still uses the epic, sub-issue, and solo shapes; local bug-story intake uses `defect`.
 
 ### Backlog vs Todo (Ready) at tether time
 

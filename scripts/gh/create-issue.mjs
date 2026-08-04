@@ -38,10 +38,10 @@ const TETHER_SCRIPT =
 const PREFLIGHT_SCRIPT = path.resolve(SCRIPT_DIR, '..', 'task-tracker', 'preflight-issue.mjs');
 const ISSUE_URL_RE = /\/issues\/(\d+)/;
 const PLACEHOLDER_RE = /<this-issue-#>|<parent-epic-#>/;
-const VALID_SHAPES = new Set(['epic', 'sub-issue', 'solo', 'stub']);
+const VALID_SHAPES = new Set(['epic', 'sub-issue', 'solo', 'defect', 'stub']);
 
 function usage() {
-  return `Usage: create-issue.mjs --title <t> (--body-file <path> | --shape epic|sub-issue|solo --scope-file <p> --ac-file <p> --story-origin-file <p> [--plan-metadata-file <p>] [--verification-commands-file <p>] [--sub-issue-list-file <p>] | --shape stub [--idea-file <p>]) [--label <l> ...] [--priority p0|p1|p2] [--size XS|S|M|L|XL] [--estimate <hours>] [--rank <n>] [--parent <N>] [--assignee <a>] [--allow-duplicate-child] [--dry-run] [--no-tether] [--no-placeholder-substitution] [--internal]`;
+  return `Usage: create-issue.mjs --title <t> (--body-file <path> | --shape epic|sub-issue|solo|defect --scope-file <p> --ac-file <p> --story-origin-file <p> [--plan-metadata-file <p>] [--verification-commands-file <p>] [--reproduction-file <p>] [--root-cause-file <p>] [--fix-direction-file <p>] [--out-of-scope-file <p>] [--sub-issue-list-file <p>] | --shape stub [--idea-file <p>]) [--label <l> ...] [--priority p0|p1|p2] [--size XS|S|M|L|XL] [--estimate <hours>] [--rank <n>] [--parent <N>] [--assignee <a>] [--allow-duplicate-child] [--dry-run] [--no-tether] [--no-placeholder-substitution] [--internal]`;
 }
 
 function parseArgs(argv) {
@@ -126,7 +126,7 @@ function validateArgs(args) {
   if (hasBody && hasShape) die(`--body-file and --shape are mutually exclusive`, 2);
   if (hasShape) {
     if (!VALID_SHAPES.has(args.shape)) {
-      die(`--shape must be one of: epic, sub-issue, solo, stub (got: ${args.shape})`, 2);
+      die(`--shape must be one of: epic, sub-issue, solo, defect, stub (got: ${args.shape})`, 2);
     }
     // #426 — the stub shape is a lightweight idea-capture path: only --title is
     // required (an optional --idea-file seeds Scope). Scope / AC are placeholders
@@ -169,6 +169,17 @@ export function buildShapeFlags(args) {
     if (typeof args['verification-commands-file'] === 'string') {
       flags.push('--verification-commands-file', args['verification-commands-file']);
     }
+    if (args.shape === 'defect') {
+      flags.push('--title', args.title);
+      for (const key of [
+        'reproduction-file',
+        'root-cause-file',
+        'fix-direction-file',
+        'out-of-scope-file',
+      ]) {
+        if (typeof args[key] === 'string') flags.push(`--${key}`, args[key]);
+      }
+    }
   }
   if (typeof args.parent === 'string') flags.push('--parent', args.parent);
   if (typeof args['sub-issue-list-file'] === 'string') {
@@ -209,6 +220,14 @@ function readBody(file) {
 // Exported as the seam unit tests exercise without spawning `gh`.
 export function buildIssueTitle(args) {
   return ensureKindPrefix(args.title, args.label);
+}
+
+export function applyShapeDefaults(args) {
+  const labels = Array.isArray(args?.label) ? [...args.label] : [];
+  if (args?.shape === 'defect' && !labels.some((label) => String(label).toLowerCase() === 'bug')) {
+    labels.push('bug');
+  }
+  return { ...args, label: labels };
 }
 
 function ghCreate(args, assignee) {
@@ -320,7 +339,7 @@ async function main() {
     emitSelfDoc('create-issue');
     process.exit(0);
   }
-  const args = parseArgs(process.argv.slice(2));
+  const args = applyShapeDefaults(parseArgs(process.argv.slice(2)));
   validateArgs(args);
 
   const cfg = loadConfig();

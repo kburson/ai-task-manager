@@ -51,10 +51,11 @@ import { setIssueKindMarker, normalizeKind, DEFAULT_KIND } from './lib/issue-kin
 import { filterDodForKindAndDiff } from './lib/dod-kind-filter.mjs';
 import { wantsHelp, emitSelfDoc } from '../lib/self-doc.mjs';
 import { verifyIssueBody } from '../gh/lib/issue-body-verifier.mjs';
+import { stripKnownPrefix } from '../gh/lib/kind-prefix.mjs';
 
 const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
 const PACKAGE_TEMPLATES_DIR = path.resolve(SCRIPT_DIR, '..', '..', 'templates');
-const VALID_SHAPES = ['epic', 'sub-issue', 'solo', 'stub'];
+const VALID_SHAPES = ['epic', 'sub-issue', 'solo', 'defect', 'stub'];
 
 // #426/#892 — placeholder fills for the lightweight `stub` shape. Scope and AC
 // deliberately fail Refine gates until expanded. Story Origin is real
@@ -154,7 +155,29 @@ const SECTION_HEADINGS = {
   story_origin: '## Story Origin',
   acceptance_criteria: '## Acceptance Criteria',
   plan_metadata: '## Plan Metadata',
+  reproduction: '## Reproduction',
+  root_cause: '## Root Cause',
+  fix_direction: '## Fix Direction',
+  out_of_scope: '## Out of Scope',
 };
+
+const DEFECT_DEFAULTS = Object.freeze({
+  reproduction:
+    'Reproduce the confirmed behavior described in Scope and capture it with a failing automated test before implementing the fix.',
+  root_cause:
+    'Confirm the code-level cause during the mandatory deep dive before editing production source.',
+  fix_direction:
+    'Implement the smallest regression-protected correction that satisfies the Acceptance Criteria while preserving unrelated behavior.',
+  out_of_scope:
+    'Unrelated refactors and historical data rewrites are excluded unless the Scope explicitly includes them.',
+});
+
+function optionalDefectFragment(args, key) {
+  const flag = `${key.replaceAll('_', '-')}-file`;
+  return typeof args[flag] === 'string'
+    ? readFileOrDie(args[flag], `--${flag}`).trim()
+    : DEFECT_DEFAULTS[key];
+}
 
 export function stripLeadingHeading(value, heading) {
   const esc = heading.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -324,6 +347,9 @@ function emitShape(args, dodPath, root) {
   if (shape === 'sub-issue' && typeof args.parent !== 'string') {
     die('--parent <N> required with --shape sub-issue');
   }
+  if (shape === 'defect' && (typeof args.title !== 'string' || !args.title.trim())) {
+    die('--title required with --shape defect');
+  }
 
   let kind = resolveRenderKind(args);
   let stampKindMarker = typeof args.kind === 'string';
@@ -355,6 +381,16 @@ function emitShape(args, dodPath, root) {
           ? readFileOrDie(args['plan-metadata-file'], '--plan-metadata-file').trim()
           : '',
     };
+    if (shape === 'defect') {
+      rawFills = {
+        ...rawFills,
+        defect_summary: stripKnownPrefix(args.title).trim(),
+        reproduction: optionalDefectFragment(args, 'reproduction'),
+        root_cause: optionalDefectFragment(args, 'root_cause'),
+        fix_direction: optionalDefectFragment(args, 'fix_direction'),
+        out_of_scope: optionalDefectFragment(args, 'out_of_scope'),
+      };
+    }
     const originFragment = stripLeadingHeading(
       rawFills.story_origin,
       SECTION_HEADINGS.story_origin

@@ -564,16 +564,19 @@ Documenting this token gives a future Develop→Test enforcement gate a stable c
 
 Tenets 1 and 2 are a tension held on purpose: act by default, but stop at the edge of your authority. Tenet 3 is absolute and overrides both — there is no version of "staying automatic" that justifies a fabricated marker.
 
-### Creation shapes: stub vs solo (and epic / sub-issue)
+### Creation shapes: stub, solo, defect, epic, and sub-issue
 
 `scripts/gh/create-issue.mjs --shape <shape>` picks how much ceremony is required at creation. Every shape lands in Backlog with the standard Definition-of-Done + Pickup-Directive + Verification-Commands tail; they differ only in what the author must supply up front.
 
 - **`stub`** — the fast idea-capture path (#426). Requires only `--title`; takes an optional `--idea-file <path>` whose free text seeds the Scope section. Scope and Acceptance Criteria remain Refine placeholders; Story Origin records the resolved kind immediately, and Plan Metadata stays empty until planning. **Do not** set Size or Estimate on a stub — those are planning fields, not creation-time provenance.
 - **`solo`** — full ceremony up front. Requires `--scope-file`, `--ac-file`, and `--story-origin-file`; `--plan-metadata-file` is optional when planning output is already known.
+- **`defect`** — governed local bug-story intake. Invoke `npx aitm create-issue --shape defect` with the same required Scope, Acceptance Criteria, and Story Origin fragments as `solo`; diagnostic reproduction, root-cause, fix-direction, and out-of-scope fragments are optional. The wrapper adds the `bug` label and canonical `🐞 [BUG]` prefix idempotently. A GitHub web form submission carrying the `bug` label is normalized through this same renderer when its body is not already canonical.
 - **`epic`** — a parent/XL story; same Story Origin requirement as solo.
 - **`sub-issue`** — a child story; same Story Origin requirement plus `--parent <N>`, recorded inside Story Origin.
 
 A stub deliberately fails the Refine→Plan gate until Refine supplies substantive ACs. Plan Metadata becomes mandatory at Plan→Develop, the first point where planning output must exist.
+
+`/task report` files an upstream external-product report; it does not create a local defect story. Use the `defect` shape for work tracked in the current repository.
 
 ### Issue kinds (`/task kind <N> <kind>`)
 
@@ -616,12 +619,13 @@ the defect's commits off the story's ancestry.
 **Ascend deepest-first.** Blockers form a ladder (`#A` blocked by `#B` blocked by
 `#C`), discovered top-down but completed bottom-up. For each rung, ascending:
 
-1. On its trunk-rooted worktree, fix the rung.
-2. Test it in isolation.
-3. Merge it to trunk.
-4. Close it.
-5. Rebase the next rung up's worktree onto the now-updated trunk.
-6. Repeat until the original story is finished, merged, and closed.
+1. If the rung is newly discovered, create it first with `npx aitm create-issue --shape defect`, then annotate its parent with `npx aitm block <parent> --by <defect>`.
+2. On its trunk-rooted worktree, fix the rung.
+3. Test it in isolation.
+4. Merge it to trunk.
+5. Close it.
+6. Rebase the next rung up's worktree onto the now-updated trunk.
+7. Repeat until the original story is finished, merged, and closed.
 
 Because each rung reaches trunk before the rung above rebases onto trunk, the
 upper rung always sits cleanly on top — no entanglement, no cherry-picks.

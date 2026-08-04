@@ -217,7 +217,7 @@ async function evaluate(input) {
   if (/\bgh\s+issue\s+create\b/.test(scanned)) {
     block(
       'Direct `gh issue create` is forbidden.\n' +
-        '  Use `scripts/gh/create-issue.mjs --shape <epic|sub-issue|solo>` — it enforces project tether, assignee/priority gates, and template structure.'
+        '  Use `scripts/gh/create-issue.mjs --shape <stub|epic|sub-issue|solo|defect>` — it enforces project tether, assignee/priority gates, and template structure.'
     );
   }
 

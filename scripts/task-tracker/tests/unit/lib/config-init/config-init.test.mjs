@@ -154,7 +154,7 @@ test('writeConfig loads → merges → writes and returns the merged object', ()
 test('issue templates carry the AITM title prefixes and labels', () => {
   assert.ok(TASK_TEMPLATE.includes('title: "[Task] "'));
   assert.ok(TASK_TEMPLATE.includes('labels: []'));
-  assert.ok(BUG_TEMPLATE.includes('title: "🐞 "'));
+  assert.ok(BUG_TEMPLATE.includes('title: "🐞 [BUG] "'));
   assert.ok(BUG_TEMPLATE.includes('labels: ["bug"]'));
   // Both forms keep the Acceptance Criteria field the workflow depends on.
   assert.ok(TASK_TEMPLATE.includes('id: acceptance-criteria'));

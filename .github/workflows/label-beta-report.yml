@@ -1,22 +1,15 @@
-# Labels beta defect/feature reports and reconciles the title emoji prefix.
+# Labels beta defect/feature reports and reconciles the canonical title prefix.
 #
 # Why this exists: CLI-filed reports (`/task report`) bypass the web issue-form
 # picker, and a non-collaborator submitter cannot self-apply labels. So the
 # beta label must be derived server-side from the durable body marker
-# (`aitm-beta-defect` / `aitm-beta-feature`, set by `buildBody`). Title prefixes
-# are now bare emoji (🐞 / ✨) and are intentionally NOT a beta signal: 🐞 marks
-# every bug, internal or external, so it cannot distinguish a `beta-defect` from
-# an ordinary `bug`. Only the marker can.
+# (`aitm-beta-defect` / `aitm-beta-feature`, set by `buildBody`). A title prefix
+# is intentionally NOT a beta signal: the ladybug covers both local bugs and
+# external defects, so only the marker can establish beta-report provenance.
 #
-# Emoji reconciliation: the 🐞 / ✨ title prefix is the visual signal derived
-# from labels. This Action keeps the title in sync when a maintainer adds or
-# removes a label in the web UI:
-#   - `bug` OR `beta-defect` label (or `aitm-beta-defect` marker) ⇒ 🐞 prefix
-#   - `beta-feature` label (or `aitm-beta-feature` marker)        ⇒ ✨ prefix
-#   - none of the above                                            ⇒ no prefix
-# On `unlabeled` (e.g. `bug` removed) the 🐞 is stripped ONLY when no other bug
-# signal remains. The Action never writes the `aitm-beta-defect` marker — a
-# manual `bug` add stays an internal bug and never masquerades as external.
+# Canonical reconciliation uses the shared KIND_PREFIXES authority. This Action
+# keeps the title in sync when a maintainer adds or removes a kind label and
+# never writes an external beta marker from an internal `bug` label.
 #
 # SETUP (one-time, manual): the `beta-defect` and `beta-feature` labels must
 # exist in this repo before this workflow can apply them. `addLabels` does NOT
@@ -48,12 +41,15 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
-      - name: Apply beta label from body marker and reconcile the emoji prefix
+      - name: Normalize defect intake, apply beta labels, and reconcile title
         uses: actions/github-script@v7
         with:
           script: |
-            const { reconcileBetaReportTitle, LADYBUG, SPARKLE } = await import(
+            const { reconcileIssueTitle } = await import(
               `${process.env.GITHUB_WORKSPACE}/scripts/task-tracker/lib/beta-report-title-reconcile.mjs`
+            );
+            const { normalizeWebDefectIssue } = await import(
+              `${process.env.GITHUB_WORKSPACE}/scripts/task-tracker/lib/defect-web-intake.mjs`
             );
             const issue = context.payload.issue;
             const title = issue.title || '';
@@ -88,31 +84,26 @@ jobs:
               core.info('No beta-report marker in body; nothing to label.');
             }
 
-            // --- Step 2: reconcile the title emoji prefix against the labels. ---
+            // --- Step 2: reconcile the canonical title prefix against labels. ---
             // Re-read labels: the addLabels call above may have just changed them.
-            const labels = labelNames().concat(want ? [want.label] : []);
-            const hasBug = labels.includes('bug');
-            const hasBetaDefect = labels.includes('beta-defect');
-            const hasBetaFeature = labels.includes('beta-feature');
-            const defectMarker = body.includes('aitm-beta-defect');
-            const featureMarker = body.includes('aitm-beta-feature');
+            const effectiveLabels = [...new Set(labelNames().concat(want ? [want.label] : []))];
+            const desired = reconcileIssueTitle(title, effectiveLabels);
+            const normalized = await normalizeWebDefectIssue({
+              issue: { ...issue, labels: effectiveLabels },
+              projectDir: process.env.GITHUB_WORKSPACE,
+            });
 
-            // 🐞 covers every bug signal (internal `bug`, external beta-defect).
-            const wantLadybug = hasBug || hasBetaDefect || defectMarker;
-            const wantSparkle = hasBetaFeature || featureMarker;
-            // Defect wins a degenerate bug+feature tie.
-            const wantEmoji = wantLadybug ? LADYBUG : wantSparkle ? SPARKLE : '';
-
-            const desired = reconcileBetaReportTitle(title, wantEmoji);
-
-            if (desired === title) {
-              core.info('Title emoji already in sync; nothing to reconcile.');
+            const changes = {};
+            if (desired !== title) changes.title = desired;
+            if (normalized.status === 'normalized') changes.body = normalized.body;
+            if (Object.keys(changes).length === 0) {
+              core.info('Title and defect body already in sync; nothing to reconcile.');
               return;
             }
             await github.rest.issues.update({
               owner: context.repo.owner,
               repo: context.repo.repo,
               issue_number: issue.number,
-              title: desired,
+              ...changes,
             });
-            core.info(`Reconciled title of #${issue.number} to "${desired}".`);
+            core.info(`Reconciled defect intake for #${issue.number}.`);

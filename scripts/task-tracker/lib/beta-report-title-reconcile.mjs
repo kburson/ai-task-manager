@@ -1,4 +1,4 @@
-// #670 — beta-report title emoji reconciliation: pure core.
+// #670/#1096 — issue-title reconciliation: pure core.
 //
 // Extracted from label-beta-report.yml's inline Step 2 so the
 // prefix-stripping logic is unit-testable. Strips both the current emoji
@@ -7,8 +7,20 @@
 // wanted emoji, so a legacy-prefixed title converges to the current format
 // instead of accumulating a stacked prefix.
 
+import { ensureKindPrefix, KIND_PREFIXES, stripKnownPrefix } from '../../gh/lib/kind-prefix.mjs';
+
 export const LADYBUG = '🐞';
 export const SPARKLE = '✨';
+
+const KIND_LABELS = new Set(Object.keys(KIND_PREFIXES));
+
+export function reconcileIssueTitle(title, labels = []) {
+  const normalized = Array.isArray(labels)
+    ? labels.map((label) => String(label).toLowerCase())
+    : [];
+  if (!normalized.some((label) => KIND_LABELS.has(label))) return stripKnownPrefix(title);
+  return ensureKindPrefix(title, normalized);
+}
 
 const LEGACY_DEFECT_RE = /^\[BETA-DEFECT\]\s*/;
 const LEGACY_FEATURE_RE = /^\[BETA-FEATURE\]\s*/;
