@@ -219,11 +219,57 @@ test('explicit non-terminal stop retains its existing flush and unbind behavior'
   assert.equal(flushCalls.length, 1);
   assert.equal(loadState(statePath).active, null);
   assert.equal(loadState(statePath).lastActive, '#1077');
+
+  const unreadableStatePath = path.join(
+    sandbox,
+    '.tmp',
+    'aitm',
+    'state',
+    'unreadable-timing-state.json'
+  );
+  saveState(
+    {
+      ...EMPTY_STATE,
+      active: '#1077',
+      lastActive: '#1077',
+      entryStartTs: new Date().toISOString(),
+      lastWordMarker: 250,
+    },
+    unreadableStatePath
+  );
+  const unreadableFlushCalls = [];
+  await captureLog(() =>
+    verbStop({
+      cfg: { repo: 'owner/repo' },
+      statePath: unreadableStatePath,
+      projectDir: sandbox,
+      rest: ['explicit operator stop'],
+      drainQueueIfAny: async () => {},
+      readTimingCommentBody: async () => ({
+        status: 'error',
+        body: '',
+        error: new Error('timing comment unavailable'),
+      }),
+      flushActiveToGH: async (...args) => {
+        unreadableFlushCalls.push(args);
+        return { deltaMin: 1, deltaWallMin: 1, deltaWords: 5 };
+      },
+    })
+  );
+
+  assert.equal(unreadableFlushCalls.length, 1, 'an unreadable durable log is not terminal proof');
+  assert.equal(loadState(unreadableStatePath).active, null);
 });
 
 test('Stop hook remains a non-writer', () => {
-  const source = readFileSync(new URL('../../../hooks/on-stop.mjs', import.meta.url), 'utf8');
-  assert.doesNotMatch(source, /postTimingEvent|appendRow|safePostTiming|flushActiveToGH/);
+  for (const file of ['on-stop.mjs', 'stop-audit-pause-resume.mjs']) {
+    const source = readFileSync(new URL(`../../../hooks/${file}`, import.meta.url), 'utf8');
+    assert.doesNotMatch(
+      source,
+      /postTimingEvent|appendRow|safePostTiming|flushActiveToGH/,
+      `${file} must remain read-only`
+    );
+  }
 });
 
 after(() => {
