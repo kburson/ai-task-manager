@@ -16,8 +16,10 @@ import {
   timingCommentHasRows,
   assertPairedReengagement,
   detectUnmarkedDepartureGap,
+  SUSPICIOUS_GAP_SEC,
   shouldSuppressActiveBindEvent,
 } from '../lib/bind-event.mjs';
+import { collectResumeActivityEvidence as defaultCollectResumeActivityEvidence } from '../lib/resume-activity-evidence.mjs';
 import {
   isPickupDirectiveEligible,
   formatPickupDirectiveDeferredBanner,
@@ -272,13 +274,14 @@ export async function verbResume(ctx) {
   let hasTimingHistory = false;
   let tcBody = '';
   let readStatus = null;
+  let tcResult = null;
   if (cfg?.repo) {
     // #568 — findTimingComment does `issueNumber.replace('#','')`, so it needs a
     // STRING. Passing a Number made `.replace` throw, so every #N-path read
     // returned `status:'error'` → fail-closed to `resumed` → the fresh-bind
     // downgrade never fired (the orphan-`resumed` half of the #480 bug this fix
     // exists to kill). Pass the bare issue string.
-    const tcResult = await readTimingCommentBody({
+    tcResult = await readTimingCommentBody({
       issueNumber: String(normalizedTarget).replace(/^#/, ''),
       repo: cfg.repo,
     });
@@ -317,7 +320,32 @@ export async function verbResume(ctx) {
   // reclassifies as idle — `buildBackdatedDepartureRow` can only ever emit a
   // zero-delta marker row, never fabricate active time.
   if (cfg?.repo && !isStart && readStatus !== 'error') {
-    const gap = detectUnmarkedDepartureGap(tcBody, ts);
+    let gap = detectUnmarkedDepartureGap(tcBody, ts);
+    if (gap) {
+      const collectResumeActivityEvidence =
+        ctx.collectResumeActivityEvidence ?? defaultCollectResumeActivityEvidence;
+      let activityEvidence;
+      try {
+        activityEvidence = await collectResumeActivityEvidence({
+          issueNumber: Number(String(normalizedTarget).replace(/^#/, '')),
+          projectDir,
+          comments: tcResult?.comments ?? [],
+        });
+      } catch {
+        activityEvidence = { status: 'unknown', timestamps: [] };
+      }
+
+      if (activityEvidence?.status === 'found') {
+        gap = detectUnmarkedDepartureGap(tcBody, ts, SUSPICIOUS_GAP_SEC, {
+          activityTimestamps: activityEvidence.timestamps,
+        });
+      } else if (activityEvidence?.status !== 'none') {
+        process.stderr.write(
+          `[resume] ${normalizedTarget}: same-issue activity evidence unavailable; refusing to synthesize idle time\n`
+        );
+        gap = null;
+      }
+    }
     if (gap) {
       const departureRow = gh.buildBackdatedDepartureRow({
         ts: gap.syntheticTs,

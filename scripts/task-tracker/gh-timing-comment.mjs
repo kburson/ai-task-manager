@@ -438,7 +438,7 @@ export async function findTimingComment(issueNumber, repo, { timeoutMs } = {}) {
   const out = await ghExec(['issue', 'view', num, '-R', repo, '--json', 'comments'], { timeoutMs });
   const { comments } = JSON.parse(out);
   const hit = comments.find((c) => c.body.includes(TIMING_HEADING));
-  return hit ? { id: hit.id, url: hit.url, body: hit.body } : null;
+  return hit ? { id: hit.id, url: hit.url, body: hit.body, comments } : null;
 }
 
 async function createTimingComment(issueNumber, repo, body, { timeoutMs } = {}) {
@@ -523,10 +523,15 @@ export async function readTimingCommentBody({
     // Normalize at this boundary so close-time outcome capture uses the same
     // production path as string-based timing callers.
     const existing = await find(String(issueNumber), repo, { timeoutMs });
-    if (existing == null) return { status: 'absent', body: '', error: null };
-    return { status: 'found', body: existing.body ?? '', error: null };
+    if (existing == null) return { status: 'absent', body: '', error: null, comments: [] };
+    return {
+      status: 'found',
+      body: existing.body ?? '',
+      error: null,
+      comments: Array.isArray(existing.comments) ? existing.comments : [],
+    };
   } catch (error) {
-    return { status: 'error', body: '', error };
+    return { status: 'error', body: '', error, comments: [] };
   }
 }
 

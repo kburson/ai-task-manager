@@ -152,6 +152,36 @@ test('detectUnmarkedDepartureGap: long gap with no departure row → detected', 
   assert.equal(gap.syntheticTs, new Date(Date.parse('2026-07-24T04:17:41+00:00')).toISOString());
 });
 
+test('detectUnmarkedDepartureGap: same-issue activity inside the gap suppresses idle synthesis', () => {
+  const started = '2026-08-03 19:29:13 -05:00';
+  const nowTs = '2026-08-04 06:43:29 -05:00';
+  const body = logAt(rowAt(started, 'develop:started'));
+
+  assert.equal(
+    detectUnmarkedDepartureGap(body, nowTs, SUSPICIOUS_GAP_SEC, {
+      activityTimestamps: ['2026-08-04T06:35:57-05:00'],
+    }),
+    null
+  );
+});
+
+test('detectUnmarkedDepartureGap: boundary, outside, and malformed activity do not suppress recovery', () => {
+  const started = '2026-08-03 19:29:13 -05:00';
+  const nowTs = '2026-08-04 06:43:29 -05:00';
+  const body = logAt(rowAt(started, 'develop:started'));
+
+  assert.ok(
+    detectUnmarkedDepartureGap(body, nowTs, SUSPICIOUS_GAP_SEC, {
+      activityTimestamps: [
+        started,
+        '2026-08-03T18:00:00-05:00',
+        '2026-08-04T06:43:30-05:00',
+        'not-a-date',
+      ],
+    })
+  );
+});
+
 test('detectUnmarkedDepartureGap: gap below threshold → null', () => {
   const started = '2026-07-24 04:17:40 +00:00';
   const nowTs = '2026-07-24 05:17:40 +00:00'; // 1h later
