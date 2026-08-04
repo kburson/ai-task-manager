@@ -1,4 +1,5 @@
 // @story #1077
+// cspell:ignore redisposition
 import { strict as assert } from 'node:assert';
 import test from 'node:test';
 
@@ -11,6 +12,8 @@ import {
   acceptSubmission,
   adoptOutstandingSubmissions,
   createWorkAssignment,
+  evaluateAssignment,
+  rejectSubmission,
 } from '../../../../lib/github-records/work-assignment.mjs';
 
 const repository = 'kburson/ai-task-manager';
@@ -145,6 +148,7 @@ function scenario(sequence) {
   });
   const assignmentCandidate = createWorkAssignment({
     authority: active,
+    repository,
     coordinator,
     issue,
     branch,
@@ -326,14 +330,7 @@ test('rejects an old-epoch assignment durably appended after the replacement bou
 });
 
 test('accepts a post-replacement submission for a pre-boundary assignment', () => {
-  const current = scenario([
-    'root',
-    'assignment',
-    'revocation',
-    'replacementGrant',
-    'submission',
-    'replacementDisposition',
-  ]);
+  const current = scenario(['root', 'assignment', 'revocation', 'replacementGrant', 'submission']);
   assert.equal(
     acceptSubmission({
       authority: current.paused,
@@ -342,7 +339,15 @@ test('accepts a post-replacement submission for a pre-boundary assignment', () =
     }).payload.decision,
     'accepted'
   );
-  assert.deepEqual(current.adopt().acceptedSubmissionRecordIds, [id(20)]);
+  const completed = scenario([
+    'root',
+    'assignment',
+    'revocation',
+    'replacementGrant',
+    'submission',
+    'replacementDisposition',
+  ]);
+  assert.deepEqual(completed.adopt().acceptedSubmissionRecordIds, [id(20)]);
 });
 
 test('keeps a predecessor disposition historical and requires only outstanding work', () => {
@@ -431,6 +436,201 @@ test('uses only effective superseding assignments and submissions across permuta
         assignment: current.byName.get('assignment'),
         submission: current.byName.get('submission'),
       }),
+    /work-assignment:authority/
+  );
+});
+
+test('refuses same and conflicting replacement redisposition after paused re-resolution', () => {
+  const current = scenario([
+    'root',
+    'assignment',
+    'submission',
+    'revocation',
+    'replacementGrant',
+    'replacementDisposition',
+  ]);
+  const restarted = resolveCoordinatorAuthority({
+    issueHierarchy: [{ issue, parentIssue: null }],
+    records: [...current.records].reverse(),
+    repository,
+    issue,
+    coordinationProjection: {
+      schema: 'aitm.coordination-projection/v1',
+      grantId: id(9002),
+      epoch: 2,
+      adoptionState: 'required',
+    },
+    now: '2026-08-03T20:06:00.000Z',
+  });
+  const target = {
+    authority: restarted,
+    assignment: current.byName.get('assignment'),
+    submission: current.byName.get('submission'),
+  };
+  assert.throws(() => acceptSubmission(target), /work-assignment:authority/);
+  assert.throws(
+    () => rejectSubmission({ ...target, reason: 'conflicting replacement decision' }),
+    /work-assignment:authority/
+  );
+  assert.deepEqual(
+    adoptOutstandingSubmissions({
+      authority: restarted,
+      snapshot: {
+        repository,
+        issue,
+        expectedHeadRecordId: current.records.at(-1).envelope.recordId,
+        records: current.records,
+      },
+    }).acceptedSubmissionRecordIds,
+    [id(20)]
+  );
+});
+
+test('binds active Task 8 work to the durable repository and issue privately', () => {
+  const originalGrant = grant({ grantId: id(9001), epoch: 1, grantCoordinator: coordinator });
+  const root = record(
+    {
+      recordId: id(1),
+      recordType: 'coordinator-grant',
+      payload: originalGrant,
+      actor: coordinator.actor,
+      epoch: 1,
+      grantId: id(8000),
+    },
+    null
+  );
+  const active = resolveCoordinatorAuthority({
+    issueHierarchy: [{ issue, parentIssue: null }],
+    records: [root],
+    repository,
+    issue,
+    coordinationProjection: {
+      schema: 'aitm.coordination-projection/v1',
+      grantId: originalGrant.grantId,
+      epoch: 1,
+      adoptionState: 'adopted',
+    },
+    now: '2026-08-03T20:06:00.000Z',
+  });
+  const assignmentInput = {
+    authority: active,
+    repository: 'foreign/ai-task-manager',
+    coordinator,
+    issue,
+    branch,
+    files: ['scripts/task-tracker/lib/github-records/work-assignment.mjs'],
+    subsystem: 'github-records',
+    dependency: {
+      baselineSha: 'c2ae3db785468fb496f2be1f54aca144e636b172',
+      recordIds: [root.envelope.recordId],
+    },
+    verification: { contractEpoch: 1, verifierIds: ['vc-6'] },
+    worker,
+  };
+  assert.throws(() => createWorkAssignment(assignmentInput), /work-assignment:authority/);
+
+  const ownerCandidate = createWorkAssignment({ ...assignmentInput, repository });
+  const assignment = record(
+    {
+      recordId: id(10),
+      recordType: ownerCandidate.recordType,
+      payload: ownerCandidate.payload,
+      actor: coordinator.actor,
+      epoch: 1,
+      grantId: id(9001),
+    },
+    root.envelope.recordId
+  );
+  const submission = record(
+    {
+      recordId: id(20),
+      recordType: 'execution-result',
+      payload: submissionPayload(id(10), 'foreign relocation'),
+      actor: worker.actor,
+      epoch: 1,
+      grantId: id(9001),
+    },
+    assignment.envelope.recordId
+  );
+  const foreignAssignment = structuredClone(assignment);
+  foreignAssignment.envelope.repository = 'foreign/ai-task-manager';
+  const foreignSubmission = structuredClone(submission);
+  foreignSubmission.envelope.repository = 'foreign/ai-task-manager';
+  const relocated = {
+    authority: active,
+    assignment: foreignAssignment,
+    submission: foreignSubmission,
+  };
+  assert.deepEqual(evaluateAssignment(relocated), {
+    status: 'blocked',
+    diagnostic: { reason: 'authority' },
+  });
+  assert.throws(() => acceptSubmission(relocated), /work-assignment:authority/);
+  assert.throws(
+    () => rejectSubmission({ ...relocated, reason: 'foreign repository' }),
+    /work-assignment:authority/
+  );
+
+  const otherIssue = 1078;
+  const scopedGrant = {
+    ...grant({ grantId: id(9010), epoch: 1, grantCoordinator: coordinator }),
+    scope: { scopeRootIssue: issue, includedIssues: [otherIssue], excludedIssues: [] },
+  };
+  const scopedRoot = record(
+    {
+      recordId: id(2),
+      recordType: 'coordinator-grant',
+      payload: scopedGrant,
+      actor: coordinator.actor,
+      epoch: 1,
+      grantId: id(8000),
+    },
+    null
+  );
+  const issueBound = resolveCoordinatorAuthority({
+    issueHierarchy: [
+      { issue, parentIssue: null },
+      { issue: otherIssue, parentIssue: issue },
+    ],
+    records: [scopedRoot],
+    repository,
+    issue,
+    coordinationProjection: {
+      schema: 'aitm.coordination-projection/v1',
+      grantId: scopedGrant.grantId,
+      epoch: 1,
+      adoptionState: 'adopted',
+    },
+    now: '2026-08-03T20:06:00.000Z',
+  });
+  assert.throws(
+    () =>
+      createWorkAssignment({
+        ...assignmentInput,
+        authority: issueBound,
+        repository,
+        issue: otherIssue,
+      }),
+    /work-assignment:authority/
+  );
+
+  const unbound = resolveCoordinatorAuthority({
+    issueHierarchy: [
+      { issue, parentIssue: null },
+      { issue: otherIssue, parentIssue: issue },
+    ],
+    grants: [scopedGrant],
+    revocations: [],
+    coordinationProjection: {
+      schema: 'aitm.coordination-projection/v1',
+      grantId: scopedGrant.grantId,
+      epoch: 1,
+      adoptionState: 'adopted',
+    },
+    now: '2026-08-03T20:06:00.000Z',
+  });
+  assert.throws(
+    () => createWorkAssignment({ ...assignmentInput, authority: unbound, repository }),
     /work-assignment:authority/
   );
 });

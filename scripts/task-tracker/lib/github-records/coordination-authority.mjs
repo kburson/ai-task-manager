@@ -24,6 +24,7 @@ const PROJECTION_KEYS = ['adoptionState', 'epoch', 'grantId', 'schema'];
 const REVOCATION_KEYS = ['epoch', 'grantId', 'schema', 'state'];
 const REPLACEMENT_REVOCATION_KEYS = [...REVOCATION_KEYS, 'replacementGrantId'];
 const MAX_DELEGATION_REPLACEMENT_DEPTH = 128;
+const REPOSITORY_RE = /^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/;
 const ADOPTION_SUBMISSION_TYPES = new Set([
   'execution-result',
   'verification-evidence',
@@ -302,7 +303,12 @@ function advanceAuthorityGenerations(validatedGrants) {
   );
 }
 
-function activeAuthority(validatedGrant, generation, effectiveScope = validatedGrant.scope) {
+function activeAuthority(
+  validatedGrant,
+  generation,
+  effectiveScope = validatedGrant.scope,
+  durableContext = null
+) {
   const authority = deepFreeze({
     status: 'active',
     grant: frozenCopy(validatedGrant.grant),
@@ -312,6 +318,7 @@ function activeAuthority(validatedGrant, generation, effectiveScope = validatedG
     key: authorityEpochKey(authority.grant.grantId, authority.grant.epoch),
     generation,
     adoptionOnly: false,
+    durableContext,
   });
   return authority;
 }
@@ -354,12 +361,18 @@ function resolutionPaused(
   return authority;
 }
 
-function resolutionActive(validatedGrants, validatedGrant, effectiveScope = validatedGrant.scope) {
+function resolutionActive(
+  validatedGrants,
+  validatedGrant,
+  effectiveScope = validatedGrant.scope,
+  durableContext = null
+) {
   const generations = advanceAuthorityGenerations(validatedGrants);
   return activeAuthority(
     validatedGrant,
     generations.get(authorityEpochKey(validatedGrant.grant.grantId, validatedGrant.grant.epoch)),
-    effectiveScope
+    effectiveScope,
+    durableContext
   );
 }
 
@@ -578,6 +591,14 @@ export function resolveCoordinatorAuthority({
   const parents = buildHierarchy(issueHierarchy);
   validateProjection(coordinationProjection);
   if (!isInstant(now)) throw authorityError('now');
+  const hasDurableContext = repository !== undefined || issue !== undefined;
+  if (
+    hasDurableContext &&
+    (typeof repository !== 'string' || !REPOSITORY_RE.test(repository) || !isIssue(issue))
+  ) {
+    throw authorityError('context');
+  }
+  const durableContext = hasDurableContext ? deepFreeze({ repository, issue }) : null;
   let durableGrants;
   let durableRevocations;
   let durableResolution;
@@ -700,6 +721,7 @@ export function resolveCoordinatorAuthority({
     const eligibleAssignmentsById = new Map();
     const effectiveSubmissionsById = new Map();
     const historicallyDisposedSubmissionIds = new Set();
+    const replacementDisposedSubmissionIds = new Set();
     if (orderedBoundary) {
       for (const [index, record] of durableResolution.effectiveRecords.entries()) {
         if (record.envelope.recordType === 'work-assignment' && index < revocationPosition) {
@@ -716,12 +738,22 @@ export function resolveCoordinatorAuthority({
         }
       }
       for (const [index, record] of durableResolution.effectiveRecords.entries()) {
-        if (record.envelope.recordType !== 'record-disposition' || index >= revocationPosition) {
-          continue;
-        }
+        if (record.envelope.recordType !== 'record-disposition') continue;
         const payload = record.envelope.payload;
         const assignment = eligibleAssignmentsById.get(payload?.assignmentRecordId);
         const submission = effectiveSubmissionsById.get(payload?.submissionRecordId);
+        const replacementClaim =
+          payload?.schema === 'aitm.record-disposition/v1' &&
+          payload.grantId === projectionGrant.grant.grantId &&
+          payload.epoch === projectionGrant.grant.epoch &&
+          isDeepStrictEqual(payload.decidedBy, projectionGrant.grant.coordinator) &&
+          record.envelope.authority.grantId === projectionGrant.grant.grantId &&
+          record.envelope.authority.epoch === projectionGrant.grant.epoch &&
+          record.envelope.authority.actor === projectionGrant.grant.coordinator.actor;
+        if (replacementClaim && submission !== undefined) {
+          replacementDisposedSubmissionIds.add(payload.submissionRecordId);
+        }
+        if (index >= revocationPosition) continue;
         if (
           assignment !== undefined &&
           submission !== undefined &&
@@ -760,6 +792,7 @@ export function resolveCoordinatorAuthority({
             eligibleAssignmentsById,
             effectiveSubmissionsById,
             historicallyDisposedSubmissionIds,
+            replacementDisposedSubmissionIds,
           };
     return resolutionPaused(
       validatedGrants,
@@ -771,7 +804,8 @@ export function resolveCoordinatorAuthority({
   return resolutionActive(
     validatedGrants,
     projectionGrant,
-    effectiveScope(projectionGrant, activeChildrenByParentId)
+    effectiveScope(projectionGrant, activeChildrenByParentId),
+    durableContext
   );
 }
 
@@ -785,6 +819,7 @@ export function authorizeCoordinatorOperation({
   operation,
   branch,
   integration = null,
+  repository,
 } = {}) {
   if (!isPlainDataObject(authority) || !isActiveAuthorityResult(authority)) {
     return authorization(false, 'authority');
@@ -797,6 +832,7 @@ export function authorizeCoordinatorOperation({
     return authorization(false, reason);
   }
   const { grant, scopeIssueIds } = authority;
+  const metadata = authorityMetadata.get(authority);
   if (
     !hasExactlyKeys(authority, ['grant', 'scopeIssueIds', 'status']) ||
     !isPlainDataObject(grant) ||
@@ -818,6 +854,15 @@ export function authorizeCoordinatorOperation({
     return authorization(false, 'identity');
   }
   if (!scopeIssueIds.includes(issue)) return authorization(false, 'scope');
+  if (
+    repository !== undefined &&
+    (metadata?.durableContext === null ||
+      metadata?.durableContext === undefined ||
+      repository !== metadata.durableContext.repository ||
+      issue !== metadata.durableContext.issue)
+  ) {
+    return authorization(false, 'repository');
+  }
   if (!grant.operations.includes(operation)) return authorization(false, 'operation');
   let normalizedBranch;
   try {
@@ -915,6 +960,7 @@ export function authorizeCoordinatorAdoption({
       durableAssignment === undefined ||
       durableSubmission === undefined ||
       context.historicallyDisposedSubmissionIds.has(submission?.envelope?.recordId) ||
+      context.replacementDisposedSubmissionIds.has(submission?.envelope?.recordId) ||
       !isDeepStrictEqual(durableAssignment.record, assignment) ||
       !isDeepStrictEqual(durableSubmission.record, submission) ||
       durableSubmission.position <= durableAssignment.position

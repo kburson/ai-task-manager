@@ -14,6 +14,7 @@ const ASSIGNMENT_INPUT_KEYS = [
   'dependency',
   'files',
   'issue',
+  'repository',
   'subsystem',
   'verification',
   'worker',
@@ -71,12 +72,20 @@ const SUBMISSION_TYPES = new Set([
 const ULID_RE = /^[0-7][0-9A-HJKMNP-TV-Z]{25}$/;
 const SHA_RE = /^(?:[0-9a-f]{40}|[0-9a-f]{64})$/;
 const SUBSYSTEM_RE = /^[A-Za-z0-9](?:[A-Za-z0-9._-]{0,127})$/;
+const REPOSITORY_RE = /^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/;
 const MAX_RESULT_BYTES = 256 * 1024;
 const MAX_CAPSULE_RECORDS = 2048;
 const MAX_CAPSULE_DEPTH = 1024;
 
 function assignmentError(category) {
   return new TypeError(`work-assignment:${category}`);
+}
+
+function validateRepository(repository) {
+  if (typeof repository !== 'string' || !REPOSITORY_RE.test(repository)) {
+    throw assignmentError('assignment');
+  }
+  return repository;
 }
 
 function isPlainDataObject(value) {
@@ -382,7 +391,7 @@ function validateAdoptionSnapshot(snapshot) {
   return { resolved };
 }
 
-function activeAuthorization(authority, { coordinator, issue, operation, branch }) {
+function activeAuthorization(authority, { coordinator, issue, operation, branch, repository }) {
   const grant = authority?.grant;
   if (!isPlainDataObject(grant)) return { authorized: false, reason: 'authority' };
   return {
@@ -394,6 +403,7 @@ function activeAuthorization(authority, { coordinator, issue, operation, branch 
       issue,
       operation,
       branch,
+      repository,
     }),
     grantId: grant.grantId,
     epoch: grant.epoch,
@@ -408,11 +418,21 @@ function coordinatorAuthorization(authority, target) {
 
 export function createWorkAssignment(input = {}) {
   if (!hasExactlyKeys(input, ASSIGNMENT_INPUT_KEYS)) throw assignmentError('assignment');
-  const { authority, coordinator, issue, files, subsystem, dependency, verification, worker } =
-    input;
+  const {
+    authority,
+    coordinator,
+    issue,
+    repository,
+    files,
+    subsystem,
+    dependency,
+    verification,
+    worker,
+  } = input;
   validateIdentity(coordinator, 'assignment');
   validateIdentity(worker, 'assignment');
   if (!Number.isInteger(issue) || issue <= 0) throw assignmentError('assignment');
+  validateRepository(repository);
   const branch = normalizeBranch(input.branch);
   validateFiles(files, 'assignment');
   validateSubsystem(subsystem, 'assignment');
@@ -424,6 +444,7 @@ export function createWorkAssignment(input = {}) {
     issue,
     operation: 'assign-work',
     branch,
+    repository,
   });
   if (!authorization.authorized || !isDeepStrictEqual(authorization.coordinator, coordinator)) {
     throw assignmentError('authority');
