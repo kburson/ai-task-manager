@@ -6,6 +6,10 @@ import test from 'node:test';
 import { fileURLToPath } from 'node:url';
 
 import { buildEstimationForecast } from '../../../../lib/estimation/forecast-model.mjs';
+import {
+  ceilEstimateHours,
+  isHalfHourEstimate,
+} from '../../../../lib/estimation/estimate-granularity.mjs';
 import { parsePlanEstimationInput } from '../../../../lib/estimation/plan-input.mjs';
 import { createBootstrapRubric } from '../../../../lib/estimation/rubric-model.mjs';
 
@@ -15,6 +19,27 @@ const fixture = readFileSync(
   'utf8'
 );
 const rubricRecordId = '01J00000000000000000000500';
+
+test('story estimates ceil to the next half hour without moving downward', () => {
+  for (const [raw, expected] of [
+    [3, 3],
+    [3.13, 3.5],
+    [3.3333, 3.5],
+    [3.5, 3.5],
+    [3.633, 4],
+  ]) {
+    const actual = ceilEstimateHours(raw);
+    assert.equal(actual, expected);
+    assert.ok(actual >= raw);
+    assert.equal(isHalfHourEstimate(actual), true);
+  }
+
+  assert.equal(ceilEstimateHours(3.5 + Number.EPSILON), 3.5);
+  assert.equal(ceilEstimateHours(0), 0);
+  for (const invalid of [-0.1, Number.NaN, Number.POSITIVE_INFINITY, '3']) {
+    assert.throws(() => ceilEstimateHours(invalid), /estimate-hours:/);
+  }
+});
 
 test('plan input v1 parses exact WBS, repository, test, risk, and comparable signals', () => {
   const input = parsePlanEstimationInput(fixture);
@@ -47,10 +72,10 @@ test('forecast computes human work independently from AI coefficients and includ
     rubric: { recordId: rubricRecordId, payload: rubric },
     comparableOutcomes: [],
   });
-  assert.equal(forecast.plan.humanHours, 43.55);
+  assert.equal(forecast.plan.humanHours, 44);
   assert.equal(
-    Number(forecast.wbs.reduce((sum, item) => sum + item.humanHours, 0).toFixed(4)),
-    43.55
+    forecast.wbs.reduce((sum, item) => sum + item.humanHours, 0),
+    44
   );
   assert.ok(forecast.ai.p50EngagedHours < forecast.plan.humanHours);
 
@@ -75,7 +100,7 @@ test('forecast computes human work independently from AI coefficients and includ
     rubric: { recordId: rubricRecordId, payload: learnedHuman },
     comparableOutcomes: [],
   });
-  assert.equal(calibrated.plan.humanHours, 24.05);
+  assert.equal(calibrated.plan.humanHours, 24.5);
   assert.notEqual(calibrated.plan.humanHours, forecast.plan.humanHours);
 
   const humanBreadthOnly = structuredClone(rubric);
@@ -167,6 +192,47 @@ test('forecast widens P80 from confidence and allocates P50 across exact lifecyc
   assert.equal(forecast.rubric.confidence, 0.1);
 });
 
+test('forecast publishes only reconciled whole or half-hour estimates', () => {
+  const forecast = buildEstimationForecast({
+    issue: 1091,
+    refine: { size: 'XL', humanHours: 40 },
+    planInput: parsePlanEstimationInput(fixture),
+    rubric: {
+      recordId: rubricRecordId,
+      payload: createBootstrapRubric({ generatedAt: '2026-08-02T13:00:00.000Z' }),
+    },
+    comparableOutcomes: [],
+  });
+
+  assert.deepEqual(
+    forecast.wbs.map((item) => item.humanHours),
+    [10, 33, 1]
+  );
+  assert.deepEqual(forecast.ai.stages, { plan: 2, develop: 22.5, test: 4, review: 3.5 });
+  assert.equal(forecast.plan.humanHours, 44);
+  assert.equal(forecast.ai.p50EngagedHours, 32);
+  assert.equal(forecast.ai.p80EngagedHours, 47);
+
+  const published = [
+    forecast.refine.humanHours,
+    forecast.plan.humanHours,
+    forecast.ai.p50EngagedHours,
+    forecast.ai.p80EngagedHours,
+    ...forecast.wbs.map((item) => item.humanHours),
+    ...Object.values(forecast.ai.stages),
+  ];
+  assert.ok(published.every(isHalfHourEstimate));
+  assert.equal(
+    forecast.wbs.reduce((sum, item) => sum + item.humanHours, 0),
+    forecast.plan.humanHours
+  );
+  assert.equal(
+    Object.values(forecast.ai.stages).reduce((sum, hours) => sum + hours, 0),
+    forecast.ai.p50EngagedHours
+  );
+  assert.ok(forecast.ai.p80EngagedHours >= forecast.ai.p50EngagedHours);
+});
+
 test('small forecasts account for repository execution once and never allocate a negative stage', () => {
   const input = JSON.parse(fixture);
   input.wbs = [
@@ -193,7 +259,7 @@ test('small forecasts account for repository execution once and never allocate a
     },
     comparableOutcomes: [],
   });
-  assert.equal(forecast.plan.humanHours, 2.35);
+  assert.equal(forecast.plan.humanHours, 2.5);
   assert.ok(Object.values(forecast.ai.stages).every((hours) => hours >= 0));
   assert.equal(
     Number(
@@ -227,7 +293,7 @@ test('forecast uses learned lane plus sandbox cost as a non-overlapping executio
     rubric: { recordId: rubricRecordId, payload: rubric },
   });
   assert.equal(learnedFloor.ai.stages.test, 0.5);
-  assert.equal(learnedFloor.plan.humanHours, 2.35);
+  assert.equal(learnedFloor.plan.humanHours, 2.5);
 
   input.testImpact.expectedMinutes = 40;
   const explicitFloor = buildEstimationForecast({
@@ -236,7 +302,7 @@ test('forecast uses learned lane plus sandbox cost as a non-overlapping executio
     planInput: input,
     rubric: { recordId: rubricRecordId, payload: rubric },
   });
-  assert.equal(explicitFloor.ai.stages.test, 0.6667);
+  assert.equal(explicitFloor.ai.stages.test, 1);
 });
 
 test('comparable outcomes retain exact IDs and rank by module, dependency, lane, and diff similarity', () => {

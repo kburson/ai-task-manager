@@ -1,4 +1,5 @@
 import { validateEstimationForecast } from './forecast-record.mjs';
+import { ceilEstimateHours } from './estimate-granularity.mjs';
 import { parsePlanEstimationInput } from './plan-input.mjs';
 import { validateEstimationRubric } from './rubric-record.mjs';
 
@@ -71,7 +72,7 @@ export function buildEstimationForecast({
   const repositoryHours = Math.max(input.testImpact.expectedMinutes, learnedExecutionMinutes) / 60;
   const assignedModules = new Set();
   const assignedDependencies = new Set();
-  const wbs = input.wbs.map((item) => {
+  const rawWbs = input.wbs.map((item) => {
     const modules = item.signals.modules.filter((signal) => {
       if (assignedModules.has(signal)) return false;
       assignedModules.add(signal);
@@ -85,24 +86,28 @@ export function buildEstimationForecast({
     return {
       id: item.id,
       description: item.description,
-      humanHours: round(
+      humanHours:
         item.baseHumanHours *
           humanCoefficients.implementationHour *
           humanCoefficients.necessaryToPlanned +
-          modules.length * humanCoefficients.moduleBreadthHour +
-          dependencies.length * humanCoefficients.dependencyBreadthHour
-      ),
+        modules.length * humanCoefficients.moduleBreadthHour +
+        dependencies.length * humanCoefficients.dependencyBreadthHour,
       signals: [...new Set([...item.signals.modules, ...item.signals.dependencies])],
     };
   });
   if (repositoryHours > 0)
-    wbs.push({
+    rawWbs.push({
       id: 'repository-execution',
       description: 'Run unavoidable isolated repository verification',
-      humanHours: round(repositoryHours),
+      humanHours: repositoryHours,
       signals: input.testImpact.lanes.map((lane) => `test:${lane}`),
     });
-  const humanHours = round(wbs.reduce((sum, item) => sum + item.humanHours, 0));
+  const wbs = rawWbs.map((item) => ({
+    ...item,
+    humanHours: ceilEstimateHours(item.humanHours),
+  }));
+  const humanHours = wbs.reduce((sum, item) => sum + item.humanHours, 0);
+  const refineHours = ceilEstimateHours(refine.humanHours);
 
   const targetModules = [...new Set(input.wbs.flatMap((item) => item.signals.modules))];
   const targetDependencies = [...new Set(input.wbs.flatMap((item) => item.signals.dependencies))];
@@ -112,28 +117,33 @@ export function buildEstimationForecast({
     0
   );
 
-  const stagePlan = round(
-    baseHumanHours * (aiCoefficients.planningHour ?? DEFAULT_AI_STAGE_COEFFICIENTS.planningHour)
-  );
-  const stageDevelop = round(
+  const rawStagePlan =
+    baseHumanHours * (aiCoefficients.planningHour ?? DEFAULT_AI_STAGE_COEFFICIENTS.planningHour);
+  const rawStageDevelop =
     aiImplementationHours +
-      targetModules.length * aiCoefficients.moduleBreadthHour +
-      targetDependencies.length * aiCoefficients.dependencyBreadthHour
+    targetModules.length * aiCoefficients.moduleBreadthHour +
+    targetDependencies.length * aiCoefficients.dependencyBreadthHour;
+  const rawStageTest = Math.max(
+    repositoryHours,
+    baseHumanHours *
+      (aiCoefficients.verificationHour ?? DEFAULT_AI_STAGE_COEFFICIENTS.verificationHour)
   );
-  const stageTest = round(
-    Math.max(
-      repositoryHours,
-      baseHumanHours *
-        (aiCoefficients.verificationHour ?? DEFAULT_AI_STAGE_COEFFICIENTS.verificationHour)
-    )
+  const rawStageReview =
+    baseHumanHours * (aiCoefficients.reviewHour ?? DEFAULT_AI_STAGE_COEFFICIENTS.reviewHour);
+  const rawStages = {
+    plan: rawStagePlan,
+    develop: rawStageDevelop,
+    test: rawStageTest,
+    review: rawStageReview,
+  };
+  const stages = Object.fromEntries(
+    Object.entries(rawStages).map(([stage, hours]) => [stage, ceilEstimateHours(hours)])
   );
-  const stageReview = round(
-    baseHumanHours * (aiCoefficients.reviewHour ?? DEFAULT_AI_STAGE_COEFFICIENTS.reviewHour)
-  );
-  const p50 = round(stagePlan + stageDevelop + stageTest + stageReview);
+  const p50 = Object.values(stages).reduce((sum, hours) => sum + hours, 0);
+  const rawP50 = Object.values(rawStages).reduce((sum, hours) => sum + hours, 0);
   const widening =
     1 + (1 - rubric.payload.ai.confidence) * 0.5 + rubric.payload.review.reworkProbability * 0.25;
-  const p80 = round(Math.max(p50, p50 * widening));
+  const p80 = ceilEstimateHours(Math.max(p50, rawP50 * widening));
 
   const allowed = new Set(input.comparableIssueIds);
   const comparableIssues = comparableOutcomes
@@ -182,17 +192,17 @@ export function buildEstimationForecast({
     schema: 'aitm.estimation-forecast/v1',
     issue,
     lifecycleState: 'plan',
-    refine: { size: refine.size, humanHours: refine.humanHours },
+    refine: { size: refine.size, humanHours: refineHours },
     plan: {
       size: planSize,
       humanHours,
-      deltaHours: round(humanHours - refine.humanHours),
+      deltaHours: humanHours - refineHours,
       rationale: 'Detailed WBS plus unavoidable repository execution cost.',
     },
     ai: {
       p50EngagedHours: p50,
       p80EngagedHours: p80,
-      stages: { plan: stagePlan, develop: stageDevelop, test: stageTest, review: stageReview },
+      stages,
     },
     wbs,
     comparableIssues,
