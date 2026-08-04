@@ -71,8 +71,14 @@ test('package-boundary: no test files are packed', () => {
 
 test('package-boundary: excluded directories do not reappear', () => {
   const files = packedFiles();
+  // `scripts/articles/` (#1099) is this repo's own article-series publisher. It
+  // reads `docs/articles/`, which does not ship, so it is dead weight in an
+  // installed package.
   const forbidden = files.filter(
-    (p) => /^docs\/archive\//.test(p) || /^scripts\/maintenance\//.test(p)
+    (p) =>
+      /^docs\/archive\//.test(p) ||
+      /^scripts\/maintenance\//.test(p) ||
+      /^scripts\/articles\//.test(p)
   );
   assert.deepEqual(
     forbidden,
