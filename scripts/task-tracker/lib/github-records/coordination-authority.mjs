@@ -370,11 +370,18 @@ function resolutionActive(
   durableContext = null
 ) {
   const generations = advanceAuthorityGenerations(validatedGrants);
+  const boundDurableContext =
+    durableContext === null || validatedGrant.envelope === null
+      ? durableContext
+      : Object.freeze({
+          ...durableContext,
+          activeGrantRecordId: validatedGrant.envelope.recordId,
+        });
   return activeAuthority(
     validatedGrant,
     generations.get(authorityEpochKey(validatedGrant.grant.grantId, validatedGrant.grant.epoch)),
     effectiveScope,
-    durableContext
+    boundDurableContext
   );
 }
 
@@ -553,6 +560,31 @@ function hasValidReplacementHistory(validatedGrants, validatedRevocations) {
     successorByPredecessorId.set(revocation.grantId, revocation.replacementGrantId);
   }
   return !hasReplacementCycle(successorByPredecessorId);
+}
+
+function replacementLineage(validatedGrants, validatedRevocations, projectionGrant) {
+  const grantsById = new Map(validatedGrants.map((entry) => [entry.grant.grantId, entry]));
+  const grants = [projectionGrant];
+  const revocations = [];
+  let current = projectionGrant;
+  while (true) {
+    const incoming = validatedRevocations.find(
+      ({ revocation }) =>
+        revocation.state === 'replaced' && revocation.replacementGrantId === current.grant.grantId
+    );
+    if (incoming === undefined) break;
+    const predecessor = grantsById.get(incoming.revocation.grantId);
+    if (predecessor === undefined || predecessor.grant.epoch !== incoming.revocation.epoch) {
+      return null;
+    }
+    grants.unshift(predecessor);
+    revocations.unshift(incoming);
+    current = predecessor;
+  }
+  return grants.map((grantEntry, index) => ({
+    grantEntry,
+    revocationEntry: revocations[index] ?? null,
+  }));
 }
 
 function extractCapsules({ records, repository, issue }) {
@@ -771,19 +803,28 @@ function validAdoptionDisposition({
   );
 }
 
-function hasInvalidAdoptionExtension(effectiveRecords, replacementGrantRecordId) {
+function hasInvalidAdoptionExtension(
+  effectiveRecords,
+  replacementRevocationRecordId,
+  replacementGrantRecordId
+) {
+  const revocationPosition = effectiveRecords.findIndex(
+    ({ envelope }) => envelope.recordId === replacementRevocationRecordId
+  );
   const replacementPosition = effectiveRecords.findIndex(
     ({ envelope }) => envelope.recordId === replacementGrantRecordId
   );
   return (
-    replacementPosition < 0 ||
-    effectiveRecords
-      .slice(replacementPosition + 1)
-      .some(
-        ({ envelope }) =>
-          !isWorkAssignmentSubmissionType(envelope.recordType) &&
-          envelope.recordType !== 'record-disposition'
-      )
+    revocationPosition < 0 ||
+    replacementPosition <= revocationPosition ||
+    effectiveRecords.slice(revocationPosition + 1).some(({ envelope }, offset) => {
+      const position = revocationPosition + offset + 1;
+      if (position === replacementPosition) {
+        return envelope.recordId !== replacementGrantRecordId;
+      }
+      if (isWorkAssignmentSubmissionType(envelope.recordType)) return false;
+      return position < replacementPosition || envelope.recordType !== 'record-disposition';
+    })
   );
 }
 
@@ -922,64 +963,96 @@ export function resolveCoordinatorAuthority({
       revocation.replacementGrantId === projectionGrant.grant.grantId
   );
   if (coordinationProjection.adoptionState === 'required') {
-    const predecessorGrant = validatedGrants.find(
-      ({ grant }) =>
-        grant.grantId === replacementRevocation?.revocation.grantId &&
-        grant.epoch === replacementRevocation?.revocation.epoch
-    );
     const replacementRevocationRecordId = replacementRevocation?.envelope?.recordId;
     const replacementGrantRecordId = projectionGrant.envelope?.recordId;
     const effectiveRecordPositions = new Map(
       durableResolution?.effectiveRecords.map((record, index) => [record.envelope.recordId, index])
     );
-    const revocationPosition = effectiveRecordPositions.get(replacementRevocationRecordId);
-    const replacementPosition = effectiveRecordPositions.get(replacementGrantRecordId);
-    const orderedBoundary =
-      revocationPosition !== undefined &&
-      replacementPosition !== undefined &&
-      revocationPosition < replacementPosition;
+    const lineage = replacementLineage(validatedGrants, validatedRevocations, projectionGrant);
+    const lineageAuthorities = lineage?.map(({ grantEntry, revocationEntry }) => ({
+      grant: frozenCopy(grantEntry.grant),
+      scope: Object.freeze([...grantEntry.scope]),
+      branches: Object.freeze([...grantEntry.branches]),
+      grantRecordId: grantEntry.envelope?.recordId,
+      revocationRecordId: revocationEntry?.envelope?.recordId ?? null,
+      grantPosition: effectiveRecordPositions.get(grantEntry.envelope?.recordId),
+      revocationPosition: effectiveRecordPositions.get(revocationEntry?.envelope?.recordId),
+    }));
+    const orderedLineage =
+      lineageAuthorities !== undefined &&
+      lineageAuthorities.length >= 2 &&
+      lineageAuthorities.every((authority, index) => {
+        if (authority.grantPosition === undefined) return false;
+        const successor = lineageAuthorities[index + 1];
+        if (successor === undefined) return authority.revocationRecordId === null;
+        return (
+          authority.revocationPosition !== undefined &&
+          authority.grantPosition < authority.revocationPosition &&
+          authority.revocationPosition < successor.grantPosition
+        );
+      });
+    const predecessorGrant = lineageAuthorities?.at(-2);
+    const replacementAuthority = lineageAuthorities?.at(-1);
+    const revocationPosition = predecessorGrant?.revocationPosition;
+    const replacementPosition = replacementAuthority?.grantPosition;
+    const ancestorAuthorities = lineageAuthorities?.slice(0, -1) ?? [];
     const eligibleAssignmentsById = new Map();
-    const preBoundaryAssignmentRecordIds = new Set();
+    const assignmentAuthoringGrantsById = new Map();
+    const claimedAssignmentRecordIds = new Set();
+    const invalidAssignmentRecordIds = new Set();
     const effectiveSubmissionsById = new Map();
     const historicallyDisposedSubmissionIds = new Set();
     const replacementDisposedSubmissionIds = new Set();
     let invalidReplacementExtension =
       durableResolution !== undefined &&
-      hasInvalidAdoptionExtension(durableResolution.effectiveRecords, replacementGrantRecordId);
+      hasInvalidAdoptionExtension(
+        durableResolution.effectiveRecords,
+        replacementRevocationRecordId,
+        replacementGrantRecordId
+      );
     const validReplacementDispositionRecordIds = new Set();
     let invalidRelevantWorkRecord = false;
-    if (orderedBoundary) {
+    if (orderedLineage) {
       for (const [index, record] of durableResolution.effectiveRecords.entries()) {
-        if (
-          record.envelope.recordType === 'work-assignment' &&
-          index < revocationPosition &&
-          hasPredecessorEnvelopeAuthority({
-            record,
-            predecessorGrant,
-            repository,
-            issue,
-            requireCoordinator: true,
-          })
-        ) {
-          preBoundaryAssignmentRecordIds.add(record.envelope.recordId);
-          const assignment = {
-            position: index,
-            record: frozenCopy(record),
-          };
+        if (record.envelope.recordType === 'work-assignment') {
+          const authoringGrant = ancestorAuthorities.find((candidate) =>
+            hasPredecessorEnvelopeAuthority({
+              record,
+              predecessorGrant: candidate,
+              repository,
+              issue,
+              requireCoordinator: true,
+            })
+          );
+          if (authoringGrant === undefined) continue;
+          claimedAssignmentRecordIds.add(record.envelope.recordId);
+          const assignment = { position: index, record: frozenCopy(record) };
           if (
+            authoringGrant.grantPosition < index &&
+            index < authoringGrant.revocationPosition &&
             validPredecessorAssignment({
               assignment,
-              predecessorGrant,
+              predecessorGrant: authoringGrant,
               repository,
               issue,
             })
           ) {
             eligibleAssignmentsById.set(record.envelope.recordId, assignment);
+            assignmentAuthoringGrantsById.set(record.envelope.recordId, authoringGrant);
           } else {
-            invalidRelevantWorkRecord = true;
+            invalidAssignmentRecordIds.add(record.envelope.recordId);
           }
+          continue;
         }
         if (isWorkAssignmentSubmissionType(record.envelope.recordType)) {
+          const submissionGrant = ancestorAuthorities.find((candidate) =>
+            hasPredecessorEnvelopeAuthority({
+              record,
+              predecessorGrant: candidate,
+              repository,
+              issue,
+            })
+          );
           let validSubmission = false;
           try {
             validateWorkAssignmentCorrelatedRecord(record, 'submission');
@@ -988,39 +1061,32 @@ export function resolveCoordinatorAuthority({
           } catch {
             validSubmission = false;
           }
-          if (validSubmission) {
-            effectiveSubmissionsById.set(record.envelope.recordId, {
-              position: index,
-              record: frozenCopy(record),
-            });
-          } else if (
-            hasPredecessorEnvelopeAuthority({
-              record,
-              predecessorGrant,
+          if (!validSubmission) {
+            if (submissionGrant !== undefined) invalidRelevantWorkRecord = true;
+            continue;
+          }
+          const submission = { position: index, record: frozenCopy(record) };
+          const assignmentRecordId = record.envelope.payload.assignmentRecordId;
+          const assignment = eligibleAssignmentsById.get(assignmentRecordId);
+          const authoringGrant = assignmentAuthoringGrantsById.get(assignmentRecordId);
+          if (
+            assignment !== undefined &&
+            validAdoptionTarget({
+              assignment,
+              submission,
+              predecessorGrant: authoringGrant,
               repository,
               issue,
-            })
+            }) !== null
+          ) {
+            effectiveSubmissionsById.set(record.envelope.recordId, submission);
+          } else if (
+            claimedAssignmentRecordIds.has(assignmentRecordId) ||
+            invalidAssignmentRecordIds.has(assignmentRecordId) ||
+            (submissionGrant !== undefined && index > submissionGrant.revocationPosition)
           ) {
             invalidRelevantWorkRecord = true;
           }
-        }
-      }
-      for (const [recordId, submission] of effectiveSubmissionsById) {
-        const assignment = eligibleAssignmentsById.get(
-          submission.record.envelope.payload.assignmentRecordId
-        );
-        if (
-          validAdoptionTarget({ assignment, submission, predecessorGrant, repository, issue }) ===
-          null
-        ) {
-          if (
-            preBoundaryAssignmentRecordIds.has(
-              submission.record.envelope.payload?.assignmentRecordId
-            )
-          ) {
-            invalidRelevantWorkRecord = true;
-          }
-          effectiveSubmissionsById.delete(recordId);
         }
       }
       for (const [index, record] of durableResolution.effectiveRecords.entries()) {
@@ -1029,42 +1095,46 @@ export function resolveCoordinatorAuthority({
         const assignment = eligibleAssignmentsById.get(payload?.assignmentRecordId);
         const submission = effectiveSubmissionsById.get(payload?.submissionRecordId);
         if (submission === undefined) continue;
-        const historicalClaim = validAdoptionDisposition({
-          record,
-          position: index,
-          assignment,
-          submission,
-          predecessorGrant,
-          dispositionGrant: predecessorGrant?.grant,
-          repository,
-          issue,
-          afterPosition: submission?.position ?? Number.POSITIVE_INFINITY,
-          beforePosition: revocationPosition,
-        });
-        const replacementClaim = validAdoptionDisposition({
-          record,
-          position: index,
-          assignment,
-          submission,
-          predecessorGrant,
-          dispositionGrant: projectionGrant.grant,
-          repository,
-          issue,
-          afterPosition: replacementPosition,
-        });
-        if (historicalClaim) {
-          historicallyDisposedSubmissionIds.add(payload.submissionRecordId);
-        } else if (replacementClaim) {
-          replacementDisposedSubmissionIds.add(payload.submissionRecordId);
-          validReplacementDispositionRecordIds.add(record.envelope.recordId);
+        const authoringGrant = assignmentAuthoringGrantsById.get(payload.assignmentRecordId);
+        const dispositionAuthority = lineageAuthorities.find((candidate) =>
+          validAdoptionDisposition({
+            record,
+            position: index,
+            assignment,
+            submission,
+            predecessorGrant: authoringGrant,
+            dispositionGrant: candidate.grant,
+            repository,
+            issue,
+            afterPosition: Math.max(submission.position, candidate.grantPosition),
+            beforePosition: candidate.revocationPosition ?? Number.POSITIVE_INFINITY,
+          })
+        );
+        if (dispositionAuthority !== undefined) {
+          const currentDisposition = dispositionAuthority === replacementAuthority;
+          if (
+            historicallyDisposedSubmissionIds.has(payload.submissionRecordId) ||
+            replacementDisposedSubmissionIds.has(payload.submissionRecordId)
+          ) {
+            invalidRelevantWorkRecord = true;
+          }
+          (currentDisposition
+            ? replacementDisposedSubmissionIds
+            : historicallyDisposedSubmissionIds
+          ).add(payload.submissionRecordId);
+          if (currentDisposition) {
+            validReplacementDispositionRecordIds.add(record.envelope.recordId);
+          }
         }
       }
-      for (const record of durableResolution.effectiveRecords.slice(replacementPosition + 1)) {
+      for (const [index, record] of durableResolution.effectiveRecords.entries()) {
+        if (index <= revocationPosition || index === replacementPosition) continue;
         if (
           (isWorkAssignmentSubmissionType(record.envelope.recordType) &&
             !effectiveSubmissionsById.has(record.envelope.recordId)) ||
           (record.envelope.recordType === 'record-disposition' &&
-            !validReplacementDispositionRecordIds.has(record.envelope.recordId))
+            (index < replacementPosition ||
+              !validReplacementDispositionRecordIds.has(record.envelope.recordId)))
         ) {
           invalidReplacementExtension = true;
         }
@@ -1074,7 +1144,7 @@ export function resolveCoordinatorAuthority({
       durableResolution === undefined ||
       predecessorGrant === undefined ||
       durableHeadRecord === null ||
-      !orderedBoundary
+      !orderedLineage
         ? null
         : {
             repository,
@@ -1082,10 +1152,12 @@ export function resolveCoordinatorAuthority({
             predecessorGrant: frozenCopy(predecessorGrant.grant),
             predecessorScopeIssueIds: Object.freeze([...predecessorGrant.scope]),
             predecessorBranches: Object.freeze([...predecessorGrant.branches]),
+            lineageAuthorities: Object.freeze(lineageAuthorities.map(frozenCopy)),
             pausedHeadRecord: frozenCopy(durableHeadRecord),
             replacementRevocationRecordId,
             replacementGrantRecordId,
             eligibleAssignmentsById,
+            assignmentAuthoringGrantsById,
             effectiveSubmissionsById,
             historicallyDisposedSubmissionIds,
             replacementDisposedSubmissionIds,
@@ -1168,6 +1240,9 @@ export function authorizeCoordinatorOperation({
   }
   if (!grant.operations.includes(operation)) return authorization(false, 'operation');
   if (operation === 'dispose-submission') {
+    const durableGrant = metadata?.durableContext?.effectiveRecordsById?.get(
+      durableContext?.activeGrantRecordId
+    );
     const durableAssignment = metadata?.durableContext?.effectiveRecordsById?.get(
       assignment?.envelope?.recordId
     );
@@ -1175,11 +1250,15 @@ export function authorizeCoordinatorOperation({
       submission?.envelope?.recordId
     );
     if (
+      durableGrant === undefined ||
       durableAssignment === undefined ||
       durableSubmission === undefined ||
+      durableGrant.record.envelope.recordType !== 'coordinator-grant' ||
+      !isDeepStrictEqual(durableGrant.record.envelope.payload, grant) ||
       !grant.operations.includes('assign-work') ||
       !isDeepStrictEqual(durableAssignment.record, assignment) ||
       !isDeepStrictEqual(durableSubmission.record, submission) ||
+      durableGrant.position >= durableAssignment.position ||
       durableAssignment.position >= durableSubmission.position ||
       hasValidActiveDisposition({
         effectiveRecordsById: durableContext.effectiveRecordsById,
@@ -1275,12 +1354,16 @@ export function authorizeCoordinatorAdoption({
   }
   let preparedSnapshot = null;
   if (operation === 'dispose-submission') {
-    const predecessor = context.predecessorGrant;
+    const assignmentRecordId = assignment?.envelope?.recordId;
+    const authoringGrant = context.assignmentAuthoringGrantsById.get(assignmentRecordId);
+    const durableAssignment = context.eligibleAssignmentsById.get(assignmentRecordId);
+    const durableSubmission = context.effectiveSubmissionsById.get(submission?.envelope?.recordId);
     if (
-      grantId !== predecessor.grantId ||
-      epoch !== predecessor.epoch ||
-      !isDeepStrictEqual(coordinator, predecessor.coordinator) ||
-      !context.predecessorScopeIssueIds.includes(issue)
+      authoringGrant === undefined ||
+      grantId !== authoringGrant.grant.grantId ||
+      epoch !== authoringGrant.grant.epoch ||
+      !isDeepStrictEqual(coordinator, authoringGrant.grant.coordinator) ||
+      !authoringGrant.scope.includes(issue)
     ) {
       return authorization(false, 'identity');
     }
@@ -1292,12 +1375,10 @@ export function authorizeCoordinatorAdoption({
     }
     if (
       !metadata.grant.branchBoundary.map(normalizeBranch).includes(normalizedBranch) ||
-      !context.predecessorBranches.includes(normalizedBranch)
+      !authoringGrant.branches.includes(normalizedBranch)
     ) {
       return authorization(false, 'branch');
     }
-    const durableAssignment = context.eligibleAssignmentsById.get(assignment?.envelope?.recordId);
-    const durableSubmission = context.effectiveSubmissionsById.get(submission?.envelope?.recordId);
     if (
       durableAssignment === undefined ||
       durableSubmission === undefined ||
@@ -1415,6 +1496,7 @@ export function authorizeCoordinatorAdoption({
     if (
       hasInvalidAdoptionExtension(
         resolvedSnapshot.effectiveRecords,
+        context.replacementRevocationRecordId,
         context.replacementGrantRecordId
       )
     ) {
@@ -1437,6 +1519,22 @@ export function authorizeCoordinatorAdoption({
     predecessorCanAssignWork: context.predecessorGrant.operations.includes('assign-work'),
     predecessorCanDisposeSubmissions: canDisposeSubmission(context.predecessorGrant),
     replacementCanDisposeSubmissions: canDisposeSubmission(metadata.grant),
+    lineageAuthorities: Object.freeze(
+      context.lineageAuthorities.map(
+        ({ grant, scope, branches, grantRecordId, revocationRecordId }) =>
+          deepFreeze({
+            grantId: grant.grantId,
+            epoch: grant.epoch,
+            coordinator: frozenCopy(grant.coordinator),
+            scopeIssueIds: Object.freeze([...scope]),
+            branchBoundary: Object.freeze([...branches]),
+            canAssignWork: grant.operations.includes('assign-work'),
+            canDisposeSubmissions: canDisposeSubmission(grant),
+            grantRecordId,
+            revocationRecordId,
+          })
+      )
+    ),
     ...(preparedSnapshot === null ? {} : { preparedSnapshot: deepFreeze(preparedSnapshot) }),
   });
 }

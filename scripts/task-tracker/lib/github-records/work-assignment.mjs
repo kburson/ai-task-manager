@@ -361,21 +361,48 @@ export function adoptOutstandingSubmissions(input = {}) {
 
   const allowedBranches = new Set(authorization.branchBoundary);
   const allowedIssues = new Set(authorization.scopeIssueIds);
+  const lineageAuthorities = authorization.lineageAuthorities.map((candidate) => ({
+    ...candidate,
+    grantPosition: recordPositions.get(candidate.grantRecordId),
+    revocationPosition:
+      candidate.revocationRecordId === null
+        ? Number.POSITIVE_INFINITY
+        : recordPositions.get(candidate.revocationRecordId),
+  }));
+  if (
+    lineageAuthorities.some(
+      ({ grantPosition, revocationPosition }) =>
+        grantPosition === undefined || revocationPosition === undefined
+    )
+  ) {
+    return blocked('replacement-boundary');
+  }
   const eligibleAssignments = new Map();
   for (const [recordId, assignment] of assignmentsById) {
     const payload = assignment.envelope.payload;
     const position = recordPositions.get(recordId);
-    if (position >= revocationPosition) continue;
+    const authoringAuthority = lineageAuthorities.find(
+      (candidate) =>
+        candidate.revocationRecordId !== null &&
+        payload?.grantId === candidate.grantId &&
+        payload?.epoch === candidate.epoch &&
+        assignment.envelope.authority.grantId === candidate.grantId &&
+        assignment.envelope.authority.epoch === candidate.epoch &&
+        assignment.envelope.authority.actor === candidate.coordinator.actor
+    );
+    if (authoringAuthority === undefined) continue;
     if (
-      payload?.grantId !== authorization.predecessorGrantId ||
-      payload?.epoch !== authorization.predecessorEpoch
+      !authoringAuthority.canAssignWork ||
+      position <= authoringAuthority.grantPosition ||
+      position >= authoringAuthority.revocationPosition
     ) {
-      continue;
+      return blocked('assignment-authority');
     }
-    if (!authorization.predecessorCanAssignWork) return blocked('assignment-authority');
     validateAssignmentRecord(assignment);
     if (
-      isDeepStrictEqual(payload.coordinator, authorization.predecessorCoordinator) &&
+      isDeepStrictEqual(payload.coordinator, authoringAuthority.coordinator) &&
+      authoringAuthority.scopeIssueIds.includes(payload.issue) &&
+      authoringAuthority.branchBoundary.includes(payload.branch) &&
       allowedIssues.has(payload.issue) &&
       allowedBranches.has(payload.branch)
     ) {
@@ -389,7 +416,18 @@ export function adoptOutstandingSubmissions(input = {}) {
     const assignment = eligibleAssignments.get(submission.envelope.payload?.assignmentRecordId);
     const submissionPosition = recordPositions.get(submission.envelope.recordId);
     if (assignment === undefined) {
-      if (submissionPosition > replacementPosition) return blocked('assignment-order');
+      const submissionAuthority = lineageAuthorities.find(
+        (candidate) =>
+          submission.envelope.authority.grantId === candidate.grantId &&
+          submission.envelope.authority.epoch === candidate.epoch
+      );
+      if (
+        submissionPosition > replacementPosition ||
+        (submissionAuthority?.revocationRecordId !== null &&
+          submissionPosition > submissionAuthority.revocationPosition)
+      ) {
+        return blocked('assignment-order');
+      }
       continue;
     }
     validateCorrelatedRecord(submission, 'submission');
@@ -423,18 +461,18 @@ export function adoptOutstandingSubmissions(input = {}) {
     }
     const submissionPosition = recordPositions.get(target.submission.envelope.recordId);
     if (dispositionPosition <= submissionPosition) return blocked('disposition-order');
-    const historical = dispositionPosition < revocationPosition;
-    const replacement = dispositionPosition > replacementPosition;
-    if (!historical && !replacement) return blocked('disposition-order');
-    const canDispose = historical
-      ? authorization.predecessorCanDisposeSubmissions
-      : authorization.replacementCanDisposeSubmissions;
-    if (!canDispose) return blocked('disposition-authority');
-    const expectedGrantId = historical ? authorization.predecessorGrantId : authorization.grantId;
-    const expectedEpoch = historical ? authorization.predecessorEpoch : authorization.epoch;
-    const expectedCoordinator = historical
-      ? authorization.predecessorCoordinator
-      : authorization.coordinator;
+    const dispositionAuthority = lineageAuthorities.find(
+      (candidate) =>
+        payload.grantId === candidate.grantId &&
+        payload.epoch === candidate.epoch &&
+        dispositionPosition > candidate.grantPosition &&
+        dispositionPosition < candidate.revocationPosition
+    );
+    if (dispositionAuthority === undefined) return blocked('disposition-order');
+    if (!dispositionAuthority.canDisposeSubmissions) return blocked('disposition-authority');
+    const expectedGrantId = dispositionAuthority.grantId;
+    const expectedEpoch = dispositionAuthority.epoch;
+    const expectedCoordinator = dispositionAuthority.coordinator;
     if (
       payload.grantId !== expectedGrantId ||
       payload.epoch !== expectedEpoch ||
@@ -450,7 +488,8 @@ export function adoptOutstandingSubmissions(input = {}) {
     if (payload.decision === 'accepted' && target.evaluation.status !== 'matched') {
       return blocked('invalid-acceptance');
     }
-    const decisions = historical ? historicalDecisions : replacementDecisions;
+    const decisions =
+      dispositionAuthority.revocationRecordId === null ? replacementDecisions : historicalDecisions;
     if (decisions.has(payload.submissionRecordId)) return blocked('duplicate-disposition');
     decisions.set(payload.submissionRecordId, payload.decision);
   }

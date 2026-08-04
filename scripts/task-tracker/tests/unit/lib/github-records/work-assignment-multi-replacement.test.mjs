@@ -3,6 +3,7 @@ import { strict as assert } from 'node:assert';
 import test from 'node:test';
 
 import {
+  authorizeCoordinatorAdoption,
   replaceCoordinator,
   resolveCoordinatorAuthority,
 } from '../../../../lib/github-records/coordination-authority.mjs';
@@ -11,6 +12,7 @@ import {
   acceptSubmission,
   adoptOutstandingSubmissions,
   createWorkAssignment,
+  evaluateAssignment,
 } from '../../../../lib/github-records/work-assignment.mjs';
 
 const repository = 'kburson/ai-task-manager';
@@ -118,7 +120,11 @@ function submissionPayload(assignment) {
   };
 }
 
-function threeEpochHistory({ epoch2Outstanding }) {
+function threeEpochHistory({
+  epoch2Outstanding,
+  epoch1Completed = true,
+  lateEpoch1Submission = false,
+}) {
   const parentGrant = grant({
     grantId: id(7000),
     epoch: 1,
@@ -185,28 +191,40 @@ function threeEpochHistory({ epoch2Outstanding }) {
     },
     assignment1.envelope.recordId
   );
-  const dispositionAuthority = resolve([parent, child, assignment1, submission1], {
+  let epoch1Records = [parent, child, assignment1];
+  if (epoch1Completed) epoch1Records.push(submission1);
+  let epoch1Authority = resolve(epoch1Records, {
     schema: 'aitm.coordination-projection/v1',
     grantId: grant1.grantId,
     epoch: 1,
     adoptionState: 'adopted',
   });
-  const disposition1Candidate = acceptSubmission({
-    authority: dispositionAuthority,
-    assignment: assignment1,
-    submission: submission1,
-  });
-  const disposition1 = record(
-    {
-      recordId: id(30),
-      recordType: disposition1Candidate.recordType,
-      payload: disposition1Candidate.payload,
-      actor: coordinator1.actor,
-      epoch: 1,
+  let disposition1 = null;
+  if (epoch1Completed) {
+    const disposition1Candidate = acceptSubmission({
+      authority: epoch1Authority,
+      assignment: assignment1,
+      submission: submission1,
+    });
+    disposition1 = record(
+      {
+        recordId: id(30),
+        recordType: disposition1Candidate.recordType,
+        payload: disposition1Candidate.payload,
+        actor: coordinator1.actor,
+        epoch: 1,
+        grantId: grant1.grantId,
+      },
+      submission1.envelope.recordId
+    );
+    epoch1Records.push(disposition1);
+    epoch1Authority = resolve(epoch1Records, {
+      schema: 'aitm.coordination-projection/v1',
       grantId: grant1.grantId,
-    },
-    submission1.envelope.recordId
-  );
+      epoch: 1,
+      adoptionState: 'adopted',
+    });
+  }
   const grant2 = grant({
     grantId: id(9002),
     epoch: 2,
@@ -214,7 +232,7 @@ function threeEpochHistory({ epoch2Outstanding }) {
     issuer: coordinator1,
   });
   const replacement1 = replaceCoordinator({
-    authority: dispositionAuthority,
+    authority: epoch1Authority,
     expectedGrantId: grant1.grantId,
     expectedEpoch: 1,
     replacementGrant: grant2,
@@ -228,7 +246,7 @@ function threeEpochHistory({ epoch2Outstanding }) {
       epoch: 1,
       grantId: id(8000),
     },
-    disposition1.envelope.recordId
+    epoch1Records.at(-1).envelope.recordId
   );
   const grant2Record = record(
     {
@@ -241,15 +259,7 @@ function threeEpochHistory({ epoch2Outstanding }) {
     },
     revocation1.envelope.recordId
   );
-  const firstRecords = [
-    parent,
-    child,
-    assignment1,
-    submission1,
-    disposition1,
-    revocation1,
-    grant2Record,
-  ];
+  const firstRecords = [...epoch1Records, revocation1, grant2Record];
   const active2 = resolve(firstRecords, {
     ...replacement1.coordinationProjection,
     adoptionState: 'adopted',
@@ -257,6 +267,21 @@ function threeEpochHistory({ epoch2Outstanding }) {
   let assignment2 = null;
   let submission2 = null;
   const workRecords = [];
+  let lateSubmission1 = null;
+  if (lateEpoch1Submission) {
+    lateSubmission1 = record(
+      {
+        recordId: submission1.envelope.recordId,
+        recordType: submission1.envelope.recordType,
+        payload: submission1.envelope.payload,
+        actor: worker.actor,
+        epoch: 1,
+        grantId: grant1.grantId,
+      },
+      grant2Record.envelope.recordId
+    );
+    workRecords.push(lateSubmission1);
+  }
   if (epoch2Outstanding) {
     const assignment2Candidate = assignmentCandidate(active2, coordinator2);
     assignment2 = record(
@@ -268,7 +293,7 @@ function threeEpochHistory({ epoch2Outstanding }) {
         epoch: 2,
         grantId: grant2.grantId,
       },
-      grant2Record.envelope.recordId
+      (workRecords.at(-1) ?? grant2Record).envelope.recordId
     );
     submission2 = record(
       {
@@ -319,11 +344,15 @@ function threeEpochHistory({ epoch2Outstanding }) {
     revocation2.envelope.recordId
   );
   return {
+    assignment1,
     assignment2,
+    child,
     grant3,
     grant3Record,
+    parent,
     records: [...firstRecords, ...workRecords, revocation2, grant3Record],
     replacement2,
+    submission1: lateSubmission1 ?? submission1,
     submission2,
   };
 }
@@ -400,6 +429,189 @@ test('epoch-3 adoption requires only immediate epoch-2 outstanding work before p
         adoptionState: 'adopted',
       }).status,
       'active'
+    );
+  }
+});
+
+function adoptEpoch3(current, paused, records = current.records) {
+  const predecessorIds = new Set(
+    records.map(({ envelope }) => envelope.predecessor).filter((recordId) => recordId !== null)
+  );
+  const head = records.find(({ envelope }) => !predecessorIds.has(envelope.recordId));
+  return adoptOutstandingSubmissions({
+    authority: paused,
+    snapshot: {
+      repository,
+      issue,
+      expectedHeadRecordId: head.envelope.recordId,
+      records,
+    },
+  });
+}
+
+test('active Task 8 rejects assignments authored before their exact grant record', () => {
+  const current = threeEpochHistory({ epoch2Outstanding: false });
+  const grant1 = current.child.envelope.payload;
+  for (const reverse of [false, true]) {
+    for (const futureGrant of [false, true]) {
+      const assignment = record(
+        {
+          recordId: current.assignment1.envelope.recordId,
+          recordType: current.assignment1.envelope.recordType,
+          payload: current.assignment1.envelope.payload,
+          actor: coordinator1.actor,
+          epoch: 1,
+          grantId: grant1.grantId,
+        },
+        (futureGrant ? current.parent : current.child).envelope.recordId
+      );
+      const submission = record(
+        {
+          recordId: current.submission1.envelope.recordId,
+          recordType: current.submission1.envelope.recordType,
+          payload: current.submission1.envelope.payload,
+          actor: worker.actor,
+          epoch: 1,
+          grantId: grant1.grantId,
+        },
+        assignment.envelope.recordId
+      );
+      const child = futureGrant
+        ? record(
+            {
+              recordId: current.child.envelope.recordId,
+              recordType: current.child.envelope.recordType,
+              payload: grant1,
+              actor: parentCoordinator.actor,
+              epoch: 1,
+              grantId: id(8000),
+            },
+            submission.envelope.recordId
+          )
+        : current.child;
+      const records = futureGrant
+        ? [current.parent, assignment, submission, child]
+        : [current.parent, child, assignment, submission];
+      const authority = resolve(reverse ? [...records].reverse() : records, {
+        schema: 'aitm.coordination-projection/v1',
+        grantId: grant1.grantId,
+        epoch: 1,
+        adoptionState: 'adopted',
+      });
+      const target = { authority, assignment, submission };
+      assert.equal(evaluateAssignment(target).status, futureGrant ? 'blocked' : 'matched');
+      if (futureGrant) assert.throws(() => acceptSubmission(target), /work-assignment:authority/);
+      else assert.equal(acceptSubmission(target).payload.decision, 'accepted');
+    }
+  }
+});
+
+test('epoch-3 adoption carries a late epoch-1 submission until disposition', () => {
+  for (const reverse of [false, true]) {
+    const current = threeEpochHistory({
+      epoch2Outstanding: false,
+      epoch1Completed: false,
+      lateEpoch1Submission: true,
+    });
+    const records = reverse ? [...current.records].reverse() : current.records;
+    const paused = resolve(records, current.replacement2.coordinationProjection);
+    assert.deepEqual(adoptEpoch3(current, paused, records), {
+      status: 'blocked',
+      diagnostic: { reason: 'missing-disposition' },
+    });
+    const candidate = acceptSubmission({
+      authority: paused,
+      assignment: current.assignment1,
+      submission: current.submission1,
+    });
+    const disposition = record(
+      {
+        recordId: id(52),
+        recordType: candidate.recordType,
+        payload: candidate.payload,
+        actor: coordinator3.actor,
+        epoch: 3,
+        grantId: current.grant3.grantId,
+      },
+      current.grant3Record.envelope.recordId
+    );
+    const completed = [...current.records, disposition];
+    assert.deepEqual(
+      adoptEpoch3(current, paused, reverse ? [...completed].reverse() : completed)
+        .acceptedSubmissionRecordIds,
+      [current.submission1.envelope.recordId]
+    );
+  }
+});
+
+test('an older assignment without a submission creates no later obligation', () => {
+  const current = threeEpochHistory({ epoch2Outstanding: false, epoch1Completed: false });
+  for (const records of [current.records, [...current.records].reverse()]) {
+    const paused = resolve(records, current.replacement2.coordinationProjection);
+    assert.deepEqual(adoptEpoch3(current, paused, records).acceptedSubmissionRecordIds, []);
+  }
+});
+
+test('epoch-3 adoption exhaustively disposes mixed ancestor and immediate work', () => {
+  for (const reverse of [false, true]) {
+    const current = threeEpochHistory({
+      epoch2Outstanding: true,
+      epoch1Completed: false,
+      lateEpoch1Submission: true,
+    });
+    const records = reverse ? [...current.records].reverse() : current.records;
+    const paused = resolve(records, current.replacement2.coordinationProjection);
+    assert.deepEqual(paused, { status: 'paused', diagnostic: { reason: 'adoption-required' } });
+    const ancestorAuthorization = authorizeCoordinatorAdoption({
+      authority: paused,
+      issue,
+      operation: 'dispose-submission',
+      branch,
+      repository,
+      grantId: id(9001),
+      epoch: 1,
+      coordinator: coordinator1,
+      assignment: current.assignment1,
+      submission: current.submission1,
+    });
+    assert.equal(ancestorAuthorization.authorized, true, ancestorAuthorization.reason);
+    const ancestorCandidate = acceptSubmission({
+      authority: paused,
+      assignment: current.assignment1,
+      submission: current.submission1,
+    });
+    const immediateCandidate = acceptSubmission({
+      authority: paused,
+      assignment: current.assignment2,
+      submission: current.submission2,
+    });
+    const ancestorDisposition = record(
+      {
+        recordId: id(52),
+        recordType: ancestorCandidate.recordType,
+        payload: ancestorCandidate.payload,
+        actor: coordinator3.actor,
+        epoch: 3,
+        grantId: current.grant3.grantId,
+      },
+      current.grant3Record.envelope.recordId
+    );
+    const immediateDisposition = record(
+      {
+        recordId: id(53),
+        recordType: immediateCandidate.recordType,
+        payload: immediateCandidate.payload,
+        actor: coordinator3.actor,
+        epoch: 3,
+        grantId: current.grant3.grantId,
+      },
+      ancestorDisposition.envelope.recordId
+    );
+    const completed = [...current.records, ancestorDisposition, immediateDisposition];
+    assert.deepEqual(
+      adoptEpoch3(current, paused, reverse ? [...completed].reverse() : completed)
+        .acceptedSubmissionRecordIds,
+      [current.submission1.envelope.recordId, current.submission2.envelope.recordId].sort()
     );
   }
 });
