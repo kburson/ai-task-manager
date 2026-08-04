@@ -218,7 +218,8 @@ for (const value of [
   offGridWbs,
   offGridStage,
   { ...forecast, ai: { ...forecast.ai, p80EngagedHours: 31.25 } },
-]) assert.throws(() => validateEstimationForecast(value), /forecast-.*grid/);
+])
+  assert.throws(() => validateEstimationForecast(value), /forecast-.*grid/);
 ```
 
 - [ ] **Step 2: Run records tests and confirm RED**
@@ -353,9 +354,7 @@ Add a helper that preserves absent values and normalizes numeric estimates:
 function normalizeEstimateProjection(value = {}) {
   return {
     ...value,
-    ...(typeof value.estimate === 'number'
-      ? { estimate: ceilEstimateHours(value.estimate) }
-      : {}),
+    ...(typeof value.estimate === 'number' ? { estimate: ceilEstimateHours(value.estimate) } : {}),
   };
 }
 ```
@@ -438,9 +437,11 @@ assert.equal(board.estimate, 11);
 assert.match(refineBody, /\| Estimate \(h\) \| 8 \| 11 \|/);
 assert.match(issueBody, /"estimate":11/);
 assert.ok(recordComments.some((comment) => /Human Plan estimate: 11h/.test(comment.body)));
-assert.ok(parsedRecords
-  .filter((record) => record.envelope.recordType === 'estimation-forecast')
-  .every((record) => isHalfHourEstimate(record.envelope.payload.plan.humanHours)));
+assert.ok(
+  parsedRecords
+    .filter((record) => record.envelope.recordType === 'estimation-forecast')
+    .every((record) => isHalfHourEstimate(record.envelope.payload.plan.humanHours))
+);
 ```
 
 - [ ] **Step 2: Run the issue-specific focused verifiers**
