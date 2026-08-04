@@ -251,6 +251,7 @@ function history({
     assignment,
     paused,
     persisted,
+    projection: { ...replacement.coordinationProjection, adoptionState: 'required' },
     records,
     replacementDisposition,
     replacementRecord,
@@ -265,6 +266,75 @@ function history({
     }),
     submission,
   };
+}
+
+function withoutKey(value, key) {
+  const copy = structuredClone(value);
+  delete copy[key];
+  return copy;
+}
+
+const malformedPredecessorClaims = [
+  {
+    name: 'assignment missing grantId',
+    target: 'assignment',
+    payload: (value) => withoutKey(value, 'grantId'),
+  },
+  {
+    name: 'assignment with invalid epoch type',
+    target: 'assignment',
+    payload: (value) => ({ ...value, epoch: '1' }),
+  },
+  {
+    name: 'submission missing assignmentRecordId',
+    target: 'submission',
+    payload: (value) => withoutKey(value, 'assignmentRecordId'),
+  },
+  {
+    name: 'submission with invalid assignmentRecordId type',
+    target: 'submission',
+    payload: (value) => ({ ...value, assignmentRecordId: 10 }),
+  },
+];
+
+for (const claim of malformedPredecessorClaims) {
+  for (const reverse of [false, true]) {
+    test(`${claim.name} blocks adoption with ${reverse ? 'reversed' : 'ordered'} records`, () => {
+      const current = history({
+        replacementOperations: ['dispose-submission', 'adopt-submissions'],
+        reverse: false,
+      });
+      const original = current[claim.target];
+      const malformed = record(
+        {
+          recordId: original.envelope.recordId,
+          recordType: original.envelope.recordType,
+          payload: claim.payload(original.envelope.payload),
+          actor: original.envelope.authority.actor,
+          epoch: original.envelope.authority.epoch,
+          grantId: original.envelope.authority.grantId,
+        },
+        original.envelope.predecessor
+      );
+      const records = current.persisted.map((candidate) =>
+        candidate.envelope.recordId === malformed.envelope.recordId ? malformed : candidate
+      );
+      const ordered = reverse ? [...records].reverse() : records;
+      const pausedAuthority = resolve(ordered, current.projection);
+      assert.deepEqual(
+        adoptOutstandingSubmissions({
+          authority: pausedAuthority,
+          snapshot: {
+            repository,
+            issue,
+            expectedHeadRecordId: current.replacementRecord.envelope.recordId,
+            records: ordered,
+          },
+        }),
+        { status: 'blocked', diagnostic: { reason: 'authority' } }
+      );
+    });
+  }
 }
 
 const scenarios = [

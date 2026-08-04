@@ -596,6 +596,25 @@ function structuralRecordPositions(records) {
   return positions;
 }
 
+function hasPredecessorEnvelopeAuthority({
+  record,
+  predecessorGrant,
+  repository,
+  issue,
+  requireCoordinator = false,
+}) {
+  return (
+    predecessorGrant !== undefined &&
+    predecessorGrant.scope.includes(issue) &&
+    record.envelope.repository === repository &&
+    record.envelope.issue === issue &&
+    record.envelope.authority.grantId === predecessorGrant.grant.grantId &&
+    record.envelope.authority.epoch === predecessorGrant.grant.epoch &&
+    (!requireCoordinator ||
+      record.envelope.authority.actor === predecessorGrant.grant.coordinator.actor)
+  );
+}
+
 function validPredecessorAssignment({ assignment, predecessorGrant, repository, issue }) {
   if (assignment === undefined || predecessorGrant === undefined) return false;
   const assignmentRecord = assignment.record;
@@ -931,13 +950,17 @@ export function resolveCoordinatorAuthority({
     let invalidRelevantWorkRecord = false;
     if (orderedBoundary) {
       for (const [index, record] of durableResolution.effectiveRecords.entries()) {
-        if (record.envelope.recordType === 'work-assignment' && index < revocationPosition) {
-          if (
-            record.envelope.payload?.grantId !== predecessorGrant?.grant.grantId ||
-            record.envelope.payload?.epoch !== predecessorGrant?.grant.epoch
-          ) {
-            continue;
-          }
+        if (
+          record.envelope.recordType === 'work-assignment' &&
+          index < revocationPosition &&
+          hasPredecessorEnvelopeAuthority({
+            record,
+            predecessorGrant,
+            repository,
+            issue,
+            requireCoordinator: true,
+          })
+        ) {
           preBoundaryAssignmentRecordIds.add(record.envelope.recordId);
           const assignment = {
             position: index,
@@ -971,7 +994,12 @@ export function resolveCoordinatorAuthority({
               record: frozenCopy(record),
             });
           } else if (
-            preBoundaryAssignmentRecordIds.has(record.envelope.payload?.assignmentRecordId)
+            hasPredecessorEnvelopeAuthority({
+              record,
+              predecessorGrant,
+              repository,
+              issue,
+            })
           ) {
             invalidRelevantWorkRecord = true;
           }
