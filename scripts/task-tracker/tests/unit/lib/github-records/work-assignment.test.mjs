@@ -19,6 +19,7 @@ import {
 } from '../../../../lib/github-records/work-assignment.mjs';
 
 const issue = 1077;
+const repository = 'kburson/ai-task-manager';
 const branch = 'feature/child/1077';
 const baselineSha = 'c2ae3db785468fb496f2be1f54aca144e636b172';
 const coordinator = Object.freeze({
@@ -73,6 +74,8 @@ function activeAuthority(overrides = {}) {
     ],
     grants: [authorityGrant],
     revocations: [],
+    repository,
+    issue,
     coordinationProjection: {
       schema: 'aitm.coordination-projection/v1',
       grantId: authorityGrant.grantId,
@@ -88,6 +91,7 @@ function assignmentInput(authority = activeAuthority(), overrides = {}) {
     authority,
     coordinator,
     issue,
+    repository,
     branch,
     files: ['scripts/task-tracker/lib/github-records/work-assignment.mjs'],
     subsystem: 'github-records',
@@ -113,7 +117,7 @@ function record({
     envelope: createAitmRecordEnvelope({
       recordId,
       recordType,
-      repository: 'kburson/ai-task-manager',
+      repository,
       issue,
       payload,
       actor,
@@ -250,7 +254,7 @@ function replacementHandoff({ decision = 'accepted', fillerCount = 0 } = {}) {
       { issue, parentIssue: 1067 },
     ],
     records: persistedRecords,
-    repository: 'kburson/ai-task-manager',
+    repository,
     issue,
     coordinationProjection: replacement.coordinationProjection,
     now: '2026-08-03T20:05:00.000Z',
@@ -371,6 +375,7 @@ test('fails closed on fabricated, stale, or unauthorized assignment authority', 
 test('rejects malformed assignment bounds, aliases, duplicates, and unknown data', () => {
   const invalidOverrides = [
     { issue: 0 },
+    { repository: 'kburson' },
     { files: [], subsystem: null },
     { files: ['/absolute/path'] },
     { files: ['C:/absolute/path'] },
@@ -612,7 +617,7 @@ test('adopts only an exhaustive durable capsule snapshot with deterministic prov
       adoptOutstandingSubmissions({
         authority: current.pausedAuthority,
         snapshot: {
-          repository: 'kburson/ai-task-manager',
+          repository,
           issue,
           expectedHeadRecordId: id(24),
           records: [],

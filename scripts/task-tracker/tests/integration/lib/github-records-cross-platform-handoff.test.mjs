@@ -94,6 +94,7 @@ function runFlow({ coordinatorPlatform, workerPlatform, replacementPlatform, off
   });
   const assignmentCandidate = createWorkAssignment({
     authority: active,
+    repository,
     coordinator,
     issue,
     branch,
