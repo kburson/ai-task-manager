@@ -244,6 +244,38 @@ test('forecast rejects invalid sizes, WBS identity/totals, stage totals, and P80
     assert.throws(() => validateEstimationForecast(value), /estimation-record:/);
 });
 
+test('forecast rejects arbitrary fractions on every published estimate surface', () => {
+  const offGridPlan = structuredClone(forecast);
+  offGridPlan.plan.humanHours = 40.25;
+  offGridPlan.plan.deltaHours = 0.25;
+  offGridPlan.wbs[1].humanHours = 32.25;
+
+  const offGridWbs = structuredClone(forecast);
+  offGridWbs.wbs[0].humanHours = 8.25;
+  offGridWbs.wbs[1].humanHours = 31.75;
+
+  const offGridStage = structuredClone(forecast);
+  offGridStage.ai.stages.plan = 2.25;
+  offGridStage.ai.stages.develop = 12.75;
+
+  const offGridRefine = structuredClone(forecast);
+  offGridRefine.refine.humanHours = 40.25;
+  offGridRefine.plan.deltaHours = -0.25;
+
+  const cases = [
+    [offGridRefine, /forecast-hours-grid/],
+    [offGridPlan, /forecast-hours-grid/],
+    [offGridWbs, /forecast-wbs-hours-grid/],
+    [offGridStage, /forecast-stage-hours-grid/],
+    [{ ...forecast, ai: { ...forecast.ai, p50EngagedHours: 20.25 } }, /forecast-ai-hours-grid/],
+    [{ ...forecast, ai: { ...forecast.ai, p80EngagedHours: 30.25 } }, /forecast-ai-hours-grid/],
+  ];
+
+  for (const [value, expected] of cases) {
+    assert.throws(() => validateEstimationForecast(value), expected);
+  }
+});
+
 test('outcomes require a frozen forecast and coherent non-negative actuals', () => {
   const cases = [
     { ...outcome, forecastRecordId: null },

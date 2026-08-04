@@ -125,6 +125,42 @@ test('Plan authority converges Refine history, board Estimate/Size, body fields,
   assert.equal(result.forecastCommentNodeId, 'IC_forecast');
 });
 
+test('Plan authority rejects an off-grid forecast before its first write', async () => {
+  const h = harness();
+  const payload = structuredClone(forecast);
+  payload.plan.humanHours = 40.25;
+  payload.plan.deltaHours = 20.25;
+  payload.wbs[0].humanHours = 40.25;
+  const invalidEnvelope = {
+    ...forecastEnvelope,
+    payload,
+    payloadHash: hashRecordPayload(payload),
+  };
+
+  await assert.rejects(
+    applyPlanEstimateAuthority({
+      issueNumber: 1091,
+      refine: forecast.refine,
+      forecastEnvelope: invalidEnvelope,
+      deps: h.deps,
+    }),
+    /estimation-record:forecast-hours-grid/
+  );
+  assert.equal(h.writes(), 0);
+});
+
+test('Plan authority publishes the normalized forecast Refine baseline', async () => {
+  const h = harness();
+  await applyPlanEstimateAuthority({
+    issueNumber: 1091,
+    refine: { size: 'L', humanHours: 20.25 },
+    forecastEnvelope,
+    deps: h.deps,
+  });
+
+  assert.deepEqual(h.state.refineAppendix.refine, forecast.refine);
+});
+
 test('concurrent Plan convergence claims the forecast generation and appends it once', async () => {
   const h = harness();
   let forecastWrites = 0;

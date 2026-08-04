@@ -1,4 +1,5 @@
 import { runLogicalRecordClaim } from './record-claim.mjs';
+import { validateEstimationForecast } from './forecast-record.mjs';
 
 function fail(category) {
   throw new Error(`plan-estimate-authority:${category}`);
@@ -115,7 +116,9 @@ async function applyPlanEstimateAuthorityUnlocked({
   ) {
     fail('input');
   }
+  validateEstimationForecast(forecastEnvelope.payload, { expectedIssue: issueNumber });
   const plan = forecastEnvelope.payload.plan;
+  const publishedRefine = forecastEnvelope.payload.refine;
   let state = await read(deps);
   if (state.lifecycleState !== 'plan') fail('not-in-plan');
   if (state.frozenForecastRecordId && state.frozenForecastRecordId !== forecastEnvelope.recordId) {
@@ -123,12 +126,12 @@ async function applyPlanEstimateAuthorityUnlocked({
   }
   desiredForecast(state, forecastEnvelope);
 
-  const appendix = appendixProjection({ refine, plan });
+  const appendix = appendixProjection({ refine: publishedRefine, plan });
   if (!equal(appendixProjection(state.refineAppendix), appendix)) {
     state = await writeAndConfirm({
       deps,
       writer: 'writeRefineAppendix',
-      input: { issueNumber, refine, plan },
+      input: { issueNumber, refine: publishedRefine, plan },
       confirms: (next) => equal(appendixProjection(next.refineAppendix), appendix),
       category: 'refine-appendix',
     });
@@ -219,6 +222,7 @@ async function adoptLegacyPlanForecastUnlocked({ issueNumber, forecastEnvelope, 
   ) {
     fail('legacy-adoption-input');
   }
+  validateEstimationForecast(forecastEnvelope.payload, { expectedIssue: issueNumber });
   const plan = forecastEnvelope.payload.plan;
   let state = await read(deps);
   const appendix = appendixProjection(state.refineAppendix);
