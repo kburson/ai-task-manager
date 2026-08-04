@@ -459,33 +459,47 @@ function replacementLineage(authorization, positions) {
   return lineage;
 }
 
-function assignmentAuthority(record, lineage, position, { includeCurrent }) {
-  const payload = record.envelope.payload;
-  const authority = lineage.find(
-    (candidate) =>
-      (includeCurrent || candidate.revocationRecordId !== null) &&
-      payload?.grantId === candidate.grant.grantId &&
-      payload?.epoch === candidate.grant.epoch &&
-      record.envelope.authority.grantId === candidate.grant.grantId &&
-      record.envelope.authority.epoch === candidate.grant.epoch &&
-      record.envelope.authority.actor === candidate.grant.coordinator.actor
+function effectiveGrantAtPosition(
+  authorization,
+  positions,
+  { grantId, epoch, position, operation, issue, branch }
+) {
+  const authority = authorization.grants.find(
+    (candidate) => candidate.grant.grantId === grantId && candidate.grant.epoch === epoch
   );
-  if (
-    authority === undefined ||
-    !authority.grant.operations.includes('assign-work') ||
-    position <= authority.grantPosition ||
-    position >= authority.revocationPosition
-  ) {
-    return null;
-  }
+  const window = authorization.effectiveAuthorityWindows.find(
+    (candidate) =>
+      candidate.grantId === grantId &&
+      candidate.epoch === epoch &&
+      position > positions.get(candidate.startRecordId) &&
+      (candidate.endRecordId === null || position < positions.get(candidate.endRecordId)) &&
+      candidate.operations.includes(operation) &&
+      candidate.scopeIssueIds.includes(issue) &&
+      candidate.branchBoundary.includes(normalizeBranch(branch))
+  );
+  return authority === undefined || window === undefined ? null : authority;
+}
+
+function assignmentAuthority(record, authorization, positions, position) {
+  const payload = record.envelope.payload;
   try {
     validateAssignmentRecord(record);
   } catch {
     return null;
   }
-  return isDeepStrictEqual(payload.coordinator, authority.grant.coordinator) &&
-    authority.scopeIssueIds.includes(payload.issue) &&
-    authority.branchBoundary.includes(payload.branch)
+  const authority = effectiveGrantAtPosition(authorization, positions, {
+    grantId: payload.grantId,
+    epoch: payload.epoch,
+    position,
+    operation: 'assign-work',
+    issue: payload.issue,
+    branch: payload.branch,
+  });
+  return authority !== null &&
+    record.envelope.authority.grantId === authority.grant.grantId &&
+    record.envelope.authority.epoch === authority.grant.epoch &&
+    record.envelope.authority.actor === authority.grant.coordinator.actor &&
+    isDeepStrictEqual(payload.coordinator, authority.grant.coordinator)
     ? authority
     : null;
 }
@@ -542,11 +556,9 @@ function replayWorkRecords(authorization, resolved, { adoption, allowRepair = fa
     structurallyKnownAssignmentIds.add(record.envelope.recordId);
     const authority = assignmentAuthority(
       record,
-      lineage,
-      positions.get(record.envelope.recordId),
-      {
-        includeCurrent: !adoption,
-      }
+      authorization,
+      positions,
+      positions.get(record.envelope.recordId)
     );
     if (authority !== null) {
       const entry = { authority, position: positions.get(record.envelope.recordId), record };
@@ -555,7 +567,7 @@ function replayWorkRecords(authorization, resolved, { adoption, allowRepair = fa
         effectiveAssignments.set(record.envelope.recordId, entry);
     } else if (effectiveIds.has(record.envelope.recordId)) {
       if (adoption) return blocked('authority');
-      const envelopeAuthority = lineage.some(
+      const envelopeAuthority = authorization.grants.some(
         (candidate) =>
           record.envelope.authority.grantId === candidate.grant.grantId &&
           record.envelope.authority.epoch === candidate.grant.epoch
@@ -694,24 +706,16 @@ function replayWorkRecords(authorization, resolved, { adoption, allowRepair = fa
       }
       continue;
     }
-    const authorityGrant = authorization.grants.find(
-      (candidateAuthority) =>
-        payload.grantId === candidateAuthority.grant.grantId &&
-        payload.epoch === candidateAuthority.grant.epoch
-    );
-    const authorityWindow = authorization.effectiveAuthorityWindows.find(
-      (window) =>
-        window.grantId === payload.grantId &&
-        window.epoch === payload.epoch &&
-        candidatePosition > positions.get(window.startRecordId) &&
-        (window.endRecordId === null || candidatePosition < positions.get(window.endRecordId))
-    );
+    const authorityGrant = effectiveGrantAtPosition(authorization, positions, {
+      grantId: payload.grantId,
+      epoch: payload.epoch,
+      position: candidatePosition,
+      operation: 'dispose-submission',
+      issue: assignmentPayload.issue,
+      branch: assignmentPayload.branch,
+    });
     if (
-      authorityGrant === undefined ||
-      authorityWindow === undefined ||
-      !authorityWindow.operations.includes('dispose-submission') ||
-      !authorityWindow.scopeIssueIds.includes(assignmentPayload.issue) ||
-      !authorityWindow.branchBoundary.includes(normalizeBranch(assignmentPayload.branch)) ||
+      authorityGrant === null ||
       candidatePosition <= target.position ||
       !isDeepStrictEqual(payload.decidedBy, authorityGrant.grant.coordinator) ||
       disposition.envelope.repository !== target.assignment.record.envelope.repository ||
