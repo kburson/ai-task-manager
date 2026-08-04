@@ -54,6 +54,15 @@ test('buildPlannedAppendix records non-zero delta with sign', () => {
   assert.match(out, /\| Estimate \(h\) \| 4 \| 8 \| \+4 \|/);
 });
 
+test('buildPlannedAppendix normalizes Refine and Plan estimates before calculating delta', () => {
+  const out = buildPlannedAppendix({
+    planned: { size: 'M', estimate: 3.633 },
+    current: { size: 'M', estimate: 3.13 },
+    rationale: 'compatibility projection',
+  });
+  assert.match(out, /\| Estimate \(h\) \| 3\.5 \| 4 \| \+0\.5 \|/);
+});
+
 test('v1 upsert replaces the Plan projection while preserving immutable Refine values', async () => {
   const original = `${baseComment(1091)}${buildPlannedAppendix({
     current: { size: 'L', estimate: 20 },

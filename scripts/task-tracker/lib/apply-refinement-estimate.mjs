@@ -18,6 +18,7 @@ import { projectValuesForIssue } from '../../gh/lib/github-projects.mjs';
 import { loadProjectFieldDefs } from '../project-fields.mjs';
 import { GH_API_TIMEOUT_MS } from './process-timeouts.mjs';
 import { mutateIssueBody } from './issue-body-mutate.mjs';
+import { ceilEstimateHours } from './estimation/estimate-granularity.mjs';
 
 const pexec = promisify(execFile);
 
@@ -61,6 +62,7 @@ export function buildRefinementCommentBody({ issueNumber, size, estimate, priori
   // canonical shape. Legacy markers without that field have it synthesized by
   // `parseRationaleMarker`, so this read is uniform.
   const reasonText = rationale.rationale;
+  const publishedEstimate = ceilEstimateHours(Number(estimate));
   return [
     `<!-- aitm-refined-estimate: ${issueNumber} -->`,
     REFINEMENT_HEADER,
@@ -70,7 +72,7 @@ export function buildRefinementCommentBody({ issueNumber, size, estimate, priori
     '| Field | Value | Rationale |',
     '|---|---|---|',
     `| Size | ${size} | ${reasonText} |`,
-    `| Estimate | ${estimate}h | ${reasonText} |`,
+    `| Estimate | ${publishedEstimate}h | ${reasonText} |`,
     `| Priority | ${priority} | ${reasonText} |`,
     '',
     'Provisional — Plan will re-evaluate and post a `### 🔁 Plan re-estimate` comment if the bucket shifts.',

@@ -1,6 +1,7 @@
 import { gql, splitRepo } from './github-projects.mjs';
 import { ensureParentEpicTitle } from './epic-retitle.mjs';
 import { stateConfigKey, stateIds } from '../../task-tracker/lib/lifecycle-policy/index.mjs';
+import { ceilEstimateHours } from '../../task-tracker/lib/estimation/estimate-granularity.mjs';
 
 const DEFAULT_MAX_ATTEMPTS = 5;
 const DEFAULT_RETRY_DELAY_MS = 1500;
@@ -227,7 +228,7 @@ async function writeFields({ cfg, itemId, status, priority, size, estimate, rank
       cfg,
       itemId,
       fieldId: cfg.fieldEstimate || cfg.fieldIds?.estimate,
-      value: { number: Number(estimate) },
+      value: { number: ceilEstimateHours(Number(estimate)) },
       runGql,
     });
   }

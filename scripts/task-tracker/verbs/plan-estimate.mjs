@@ -30,6 +30,7 @@ import { loadState } from '../state.mjs';
 import { parsePlanEstimationInput } from '../lib/estimation/plan-input.mjs';
 import { executeAdaptivePlanEstimate } from '../lib/estimation/plan-estimate-authority.mjs';
 import { createAdaptivePlanRuntime } from '../lib/estimation/runtime-adapter.mjs';
+import { ceilEstimateHours } from '../lib/estimation/estimate-granularity.mjs';
 
 // Resolve the target issue: explicit positional `#N` / `N` wins, else the bound
 // active issue. Returns a positive integer or null.
@@ -137,6 +138,13 @@ async function readBoardCurrent({ cfg, issueNumber, deps }) {
   }
 }
 
+function normalizeEstimateProjection(value = {}) {
+  return {
+    ...value,
+    ...(typeof value.estimate === 'number' ? { estimate: ceilEstimateHours(value.estimate) } : {}),
+  };
+}
+
 /**
  * Core runner. Bootstraps (or heals) the `### Planned Estimate` appendix on the
  * refine-estimate comment.
@@ -175,21 +183,24 @@ export async function runPlanEstimate({
   }
   const append = deps.appendPlannedEstimate || appendPlannedEstimate;
   const repopulate = deps.repopulateEmptyPlannedAppendix || repopulateEmptyPlannedAppendix;
+  const effectivePlanned = normalizeEstimateProjection(planned);
 
   // Source the "current" (Refine) column: explicit flags win; else read the
   // board; else mirror the planned column so the "at least one field" contract
   // always holds.
-  let effectiveCurrent = current;
+  let effectiveCurrent = normalizeEstimateProjection(current);
   if (!current || (current.size === undefined && current.estimate === undefined)) {
     const board = await readBoardCurrent({ cfg, issueNumber: target, deps });
     effectiveCurrent =
-      board.size !== undefined || board.estimate !== undefined ? board : { ...planned };
+      board.size !== undefined || board.estimate !== undefined
+        ? normalizeEstimateProjection(board)
+        : { ...effectivePlanned };
   }
 
   const res = await append({
     cfg,
     issueNumber: target,
-    planned,
+    planned: effectivePlanned,
     current: effectiveCurrent,
     rationale,
   });
@@ -200,7 +211,7 @@ export async function runPlanEstimate({
     const healed = await repopulate({
       cfg,
       issueNumber: target,
-      planned,
+      planned: effectivePlanned,
       current: effectiveCurrent,
       rationale,
     });

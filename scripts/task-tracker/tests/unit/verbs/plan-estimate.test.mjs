@@ -143,6 +143,51 @@ test('runPlanEstimate appends with explicit current (no board read)', async () =
   assert.deepEqual(calls[0].planned, { size: 'S', estimate: 3 });
 });
 
+test('compatibility Plan normalizes explicit Refine and Plan projections', async () => {
+  let appended;
+  await runPlanEstimate({
+    target: 1098,
+    compatibilityMode: true,
+    planned: { size: 'M', estimate: 3.633 },
+    current: { size: 'M', estimate: 3.13 },
+    rationale: 'legacy compatibility',
+    cfg: CFG,
+    deps: {
+      appendPlannedEstimate: async (input) => {
+        appended = input;
+        return { status: 'appended', commentId: 1098 };
+      },
+      projectValuesForIssue: async () => {
+        throw new Error('board should not be read when current is explicit');
+      },
+    },
+  });
+
+  assert.deepEqual(appended.current, { size: 'M', estimate: 3.5 });
+  assert.deepEqual(appended.planned, { size: 'M', estimate: 4 });
+});
+
+test('compatibility Plan normalizes a board-derived Refine projection', async () => {
+  let appended;
+  await runPlanEstimate({
+    target: 1098,
+    compatibilityMode: true,
+    planned: { estimate: 4 },
+    current: {},
+    cfg: CFG,
+    deps: {
+      appendPlannedEstimate: async (input) => {
+        appended = input;
+        return { status: 'appended', commentId: 1098 };
+      },
+      projectValuesForIssue: async () => ({ size: 'M', estimate: 3.13 }),
+      loadProjectFieldDefs: () => [],
+    },
+  });
+
+  assert.deepEqual(appended.current, { size: 'M', estimate: 3.5 });
+});
+
 // ---------------------------------------------------------------------------
 // runPlanEstimate — board-sourced current
 // ---------------------------------------------------------------------------

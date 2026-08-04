@@ -27,6 +27,7 @@ import {
 } from '../issue-field-db.mjs';
 import { GH_API_TIMEOUT_MS } from '../lib/process-timeouts.mjs';
 import { mutateIssueBody } from '../lib/issue-body-mutate.mjs';
+import { ceilEstimateHours } from '../lib/estimation/estimate-granularity.mjs';
 
 const pexec = promisify(execFile);
 
@@ -82,7 +83,7 @@ export function validateArgs({ size, estimate, reason, items }) {
 }
 
 function parseEstimateHours(estimate) {
-  return parseFloat(String(estimate).replace(/h$/i, ''));
+  return ceilEstimateHours(parseFloat(String(estimate).replace(/h$/i, '')));
 }
 
 function parseItem(raw) {

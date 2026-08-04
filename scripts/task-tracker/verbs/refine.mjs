@@ -32,6 +32,7 @@ import { readLastKnownState } from '../gh-timing-comment.mjs';
 import { assertBoundToIssue } from '../lib/bind-context.mjs';
 import { STUB_AC_PLACEHOLDER } from '../lib/refine-exit-stub-placeholder-guard.mjs';
 import { actionPolicyFor } from '../lib/lifecycle-policy/index.mjs';
+import { ceilEstimateHours } from '../lib/estimation/estimate-granularity.mjs';
 
 const pexec = promisify(execFile);
 
@@ -212,7 +213,7 @@ export async function runRefine({ args, cfg, deps = {} } = {}) {
   assertBound(args?.issueNumber);
 
   const { issueNumber, size, estimate, priority, reason, rank, labels } = args;
-  const estimateNum = parseFloat(String(estimate).replace(/h$/i, ''));
+  const estimateNum = ceilEstimateHours(parseFloat(String(estimate).replace(/h$/i, '')));
   const priorityNorm = String(priority).toLowerCase();
   const rankNum = rank == null || rank === '' ? null : Number(rank);
   const labelList = parseLabelsArg(labels) || [];

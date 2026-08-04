@@ -165,6 +165,33 @@ function makeDeps({ comments = [], issueBody = ISSUE_BODY } = {}) {
 // Test 2: Missing refine-estimate comment → no-refine-comment
 // ---------------------------------------------------------------------------
 {
+  const { deps, patched, boardWrites, bodyWrites } = makeDeps({
+    comments: [{ id: 1098, body: REFINE_BODY }],
+  });
+
+  await runInflateEstimate(
+    {
+      issueNumber: 42,
+      size: 'M',
+      estimate: '3.633',
+      reason: 'Quantize discovered scope.',
+      items: ['Compatibility audit (~1h)'],
+    },
+    BASE_CFG,
+    deps
+  );
+
+  assert.match(patched[0].body, /\| Estimate \| 2h \| 4h \| \+2h \|/);
+  const estimateWrite = boardWrites.find((write) => write.fieldId === 'F_EST');
+  assert.equal(estimateWrite.value.number, 4);
+  assert.match(bodyWrites[0], /"estimate":4/);
+  console.log('PASS: estimate inflation converges comment, board, and body on the ceiling');
+}
+
+// ---------------------------------------------------------------------------
+// Test 2: Missing refine-estimate comment → no-refine-comment
+// ---------------------------------------------------------------------------
+{
   const { deps } = makeDeps({
     comments: [{ id: 5, body: '## Some other comment\n\nHello.' }],
   });
