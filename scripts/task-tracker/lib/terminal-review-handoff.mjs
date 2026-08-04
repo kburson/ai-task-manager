@@ -25,6 +25,8 @@ export function isTerminalReviewHandoffOpen(body) {
 
 export function shouldSuppressTerminalSessionEvent(body, event) {
   if (!isTerminalReviewHandoffOpen(body)) return false;
-  const normalized = String(event ?? '').trim().toLowerCase();
+  const normalized = String(event ?? '')
+    .trim()
+    .toLowerCase();
   return normalized === 'stop' || normalized === 'resumed' || normalized.startsWith('resume:');
 }
