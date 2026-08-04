@@ -186,17 +186,62 @@ function runFlow({ coordinatorPlatform, workerPlatform, replacementPlatform, off
     epoch: 2,
     grantId: replacementGrant.grantId,
   });
-  const adoption = adoptOutstandingSubmissions({
-    authority: paused,
-    assignments: [assignment],
-    submissions: [submission],
-    dispositions: [disposition],
-  });
+  const completeRecords = [...persisted, disposition];
+  const permutations = [
+    completeRecords,
+    [...completeRecords].reverse(),
+    [submission, replacementRecord, root, disposition, assignment, revocation],
+  ];
+  const adoptions = permutations.map((records) =>
+    adoptOutstandingSubmissions({
+      authority: paused,
+      snapshot: {
+        repository,
+        issue,
+        expectedHeadRecordId: disposition.envelope.recordId,
+        records,
+      },
+    })
+  );
+  const [adoption] = adoptions;
+  assert.deepEqual(adoptions[1], adoption);
+  assert.deepEqual(adoptions[2], adoption);
+  const foreignRepository = completeRecords.map((record) => ({
+    ...record,
+    envelope: { ...record.envelope, repository: 'foreign/repository' },
+  }));
+  assert.deepEqual(
+    adoptOutstandingSubmissions({
+      authority: paused,
+      snapshot: {
+        repository: 'foreign/repository',
+        issue,
+        expectedHeadRecordId: disposition.envelope.recordId,
+        records: foreignRepository,
+      },
+    }),
+    { status: 'blocked', diagnostic: { reason: 'authority' } }
+  );
+  const mixedRepository = [...completeRecords];
+  mixedRepository[1] = foreignRepository[1];
+  assert.throws(
+    () =>
+      adoptOutstandingSubmissions({
+        authority: paused,
+        snapshot: {
+          repository,
+          issue,
+          expectedHeadRecordId: disposition.envelope.recordId,
+          records: mixedRepository,
+        },
+      }),
+    /capsule-chain:identity/
+  );
   assert.deepEqual(adoption.acceptedSubmissionRecordIds, [submission.envelope.recordId]);
   assert.equal(disposition.envelope.payload.assignmentCommentNodeId, assignment.commentNodeId);
   assert.equal(disposition.envelope.payload.submissionCommentNodeId, submission.commentNodeId);
   const chain = resolveSupersession({
-    records: [...persisted, disposition].reverse(),
+    records: [...completeRecords].reverse(),
     repository,
     issue,
   });

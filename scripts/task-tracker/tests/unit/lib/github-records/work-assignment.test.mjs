@@ -158,15 +158,36 @@ function handoff({ recordType = 'execution-result', submissionOverrides = {} } =
   return { authority, assignment, submission };
 }
 
-function replacementHandoff({ decision = 'accepted' } = {}) {
+function replacementHandoff({ decision = 'accepted', fillerCount = 0 } = {}) {
   const originalGrant = grant();
   const authority = activeAuthority();
+  const originalGrantRecord = record({
+    recordId: id(19),
+    recordType: 'coordinator-grant',
+    payload: originalGrant,
+    actor: coordinator.actor,
+    grantId: id(8000),
+  });
+  const fillerRecords = [];
+  let assignmentPredecessor = originalGrantRecord.envelope.recordId;
+  for (let index = 0; index < fillerCount; index += 1) {
+    const filler = record({
+      recordId: id(100 + index),
+      recordType: 'contract-sealed',
+      payload: { schema: 'aitm.test-filler/v1', sequence: index },
+      actor: coordinator.actor,
+      predecessor: assignmentPredecessor,
+    });
+    fillerRecords.push(filler);
+    assignmentPredecessor = filler.envelope.recordId;
+  }
   const assignmentCandidate = createWorkAssignment(assignmentInput(authority));
   const assignment = record({
     recordId: id(20),
     recordType: 'work-assignment',
     payload: assignmentCandidate.payload,
     actor: coordinator.actor,
+    predecessor: assignmentPredecessor,
   });
   const submission = record({
     recordId: id(21),
@@ -199,13 +220,38 @@ function replacementHandoff({ decision = 'accepted' } = {}) {
     expectedEpoch: 4,
     replacementGrant,
   });
+  const revocationRecord = record({
+    recordId: id(22),
+    recordType: 'coordinator-revocation',
+    payload: replacement.revocation,
+    actor: coordinator.actor,
+    grantId: id(8000),
+    predecessor: submission.envelope.recordId,
+  });
+  const replacementGrantRecord = record({
+    recordId: id(23),
+    recordType: 'coordinator-grant',
+    payload: replacementGrant,
+    actor: coordinator.actor,
+    grantId: id(8000),
+    predecessor: revocationRecord.envelope.recordId,
+  });
+  const persistedRecords = [
+    originalGrantRecord,
+    ...fillerRecords,
+    assignment,
+    submission,
+    revocationRecord,
+    replacementGrantRecord,
+  ];
   const pausedAuthority = resolveCoordinatorAuthority({
     issueHierarchy: [
       { issue: 1067, parentIssue: null },
       { issue, parentIssue: 1067 },
     ],
-    grants: [originalGrant, replacementGrant],
-    revocations: [replacement.revocation],
+    records: persistedRecords,
+    repository: 'kburson/ai-task-manager',
+    issue,
     coordinationProjection: replacement.coordinationProjection,
     now: '2026-08-03T20:05:00.000Z',
   });
@@ -219,13 +265,13 @@ function replacementHandoff({ decision = 'accepted' } = {}) {
           reason: 'replacement rejected bounded result',
         });
   const disposition = record({
-    recordId: id(22),
+    recordId: id(24),
     recordType: 'record-disposition',
     payload: dispositionCandidate.payload,
     actor: replacementCoordinator.actor,
     epoch: 5,
     grantId: id(9002),
-    predecessor: submission.envelope.recordId,
+    predecessor: replacementGrantRecord.envelope.recordId,
   });
   return {
     pausedAuthority,
@@ -235,6 +281,23 @@ function replacementHandoff({ decision = 'accepted' } = {}) {
     replacement,
     originalGrant,
     replacementGrant,
+    originalGrantRecord,
+    revocationRecord,
+    replacementGrantRecord,
+    persistedRecords,
+    records: [...persistedRecords, disposition],
+  };
+}
+
+function adoptionInput(current, records = current.records, expectedHeadRecordId = id(24)) {
+  return {
+    authority: current.pausedAuthority,
+    snapshot: {
+      repository: 'kburson/ai-task-manager',
+      issue,
+      expectedHeadRecordId,
+      records,
+    },
   };
 }
 
@@ -311,6 +374,7 @@ test('rejects malformed assignment bounds, aliases, duplicates, and unknown data
     { files: [], subsystem: null },
     { files: ['/absolute/path'] },
     { files: ['C:/absolute/path'] },
+    { files: ['C:outside'] },
     { files: ['scripts/../escape.mjs'] },
     { files: ['scripts\\alias.mjs'] },
     { files: ['same.mjs', 'same.mjs'] },
@@ -522,118 +586,196 @@ test('requires a safe rejection reason and current exact disposition authority',
   );
 });
 
-test('adopts zero or exhaustively decided submissions with deterministic provenance', () => {
-  const empty = replacementHandoff();
-  assert.deepEqual(
-    adoptOutstandingSubmissions({
-      authority: empty.pausedAuthority,
-      assignments: [],
-      submissions: [],
-      dispositions: [],
-    }),
-    {
-      status: 'ready-to-adopt',
-      coordinationProjection: {
-        schema: 'aitm.coordination-projection/v1',
-        grantId: id(9002),
-        epoch: 5,
-        adoptionState: 'adopted',
-      },
-      acceptedSubmissionRecordIds: [],
-      rejectedSubmissionRecordIds: [],
-    }
-  );
-
+test('adopts only an exhaustive durable capsule snapshot with deterministic provenance', () => {
   for (const decision of ['accepted', 'rejected']) {
     const current = replacementHandoff({ decision });
-    const result = adoptOutstandingSubmissions({
-      authority: current.pausedAuthority,
-      assignments: [current.assignment],
-      submissions: [current.submission],
-      dispositions: [current.disposition],
-    });
+    const result = adoptOutstandingSubmissions(adoptionInput(current));
     assert.equal(result.status, 'ready-to-adopt');
     assert.deepEqual(result.acceptedSubmissionRecordIds, decision === 'accepted' ? [id(21)] : []);
     assert.deepEqual(result.rejectedSubmissionRecordIds, decision === 'rejected' ? [id(21)] : []);
     assert.equal(Object.isFrozen(result.coordinationProjection), true);
   }
+
+  const current = replacementHandoff();
+  assert.throws(
+    () =>
+      adoptOutstandingSubmissions({
+        authority: current.pausedAuthority,
+        assignments: [current.assignment],
+        submissions: [current.submission],
+        dispositions: [current.disposition],
+      }),
+    /work-assignment:input/
+  );
+  assert.throws(
+    () =>
+      adoptOutstandingSubmissions({
+        authority: current.pausedAuthority,
+        snapshot: {
+          repository: 'kburson/ai-task-manager',
+          issue,
+          expectedHeadRecordId: id(24),
+          records: [],
+        },
+      }),
+    /work-assignment:input/
+  );
 });
 
-test('blocks partial, duplicate, unknown, and wrong-authority disposition coverage', () => {
-  const missing = replacementHandoff();
-  assert.deepEqual(
-    adoptOutstandingSubmissions({
-      authority: missing.pausedAuthority,
-      assignments: [missing.assignment],
-      submissions: [missing.submission],
-      dispositions: [],
-    }),
-    { status: 'blocked', diagnostic: { reason: 'missing-disposition' } }
+test('binds replacement disposition to the exact durable predecessor authority', () => {
+  const current = replacementHandoff();
+  const foreignCoordinator = {
+    actor: 'claude/unrelated-coordinator',
+    platform: 'claude',
+    session: 'unrelated-coordinator',
+  };
+  const foreignAuthority = activeAuthority({
+    grantId: id(9010),
+    epoch: 9,
+    grantCoordinator: foreignCoordinator,
+  });
+  const candidate = createWorkAssignment(
+    assignmentInput(foreignAuthority, { coordinator: foreignCoordinator })
   );
+  const assignment = record({
+    recordId: id(30),
+    recordType: candidate.recordType,
+    payload: candidate.payload,
+    actor: foreignCoordinator.actor,
+    epoch: 9,
+    grantId: id(9010),
+  });
+  const submission = record({
+    recordId: id(31),
+    recordType: 'execution-result',
+    payload: {
+      schema: 'aitm.worker-submission/v1',
+      status: 'submitted',
+      assignmentRecordId: assignment.envelope.recordId,
+      issue,
+      branch,
+      files: [...assignment.envelope.payload.files],
+      subsystem: assignment.envelope.payload.subsystem,
+      dependency: structuredClone(assignment.envelope.payload.dependency),
+      verification: structuredClone(assignment.envelope.payload.verification),
+      worker: structuredClone(worker),
+      result: { summary: 'fabricated old assignment' },
+    },
+    actor: worker.actor,
+    epoch: 9,
+    grantId: id(9010),
+    predecessor: assignment.envelope.recordId,
+  });
+  assert.throws(
+    () => acceptSubmission({ assignment, submission, authority: current.pausedAuthority }),
+    /work-assignment:authority/
+  );
+
+  const fabricated = record({
+    recordId: id(32),
+    recordType: 'work-assignment',
+    payload: current.assignment.envelope.payload,
+    actor: coordinator.actor,
+    predecessor: current.originalGrantRecord.envelope.recordId,
+  });
+  const fabricatedSubmission = record({
+    recordId: id(33),
+    recordType: 'execution-result',
+    payload: {
+      ...current.submission.envelope.payload,
+      assignmentRecordId: fabricated.envelope.recordId,
+    },
+    actor: worker.actor,
+    predecessor: fabricated.envelope.recordId,
+  });
+  assert.throws(
+    () =>
+      acceptSubmission({
+        assignment: fabricated,
+        submission: fabricatedSubmission,
+        authority: current.pausedAuthority,
+      }),
+    /work-assignment:authority/
+  );
+});
+
+test('rejects omitted tails and delegates malformed topology to capsule-chain validation', () => {
+  const missing = replacementHandoff();
+  assert.deepEqual(adoptOutstandingSubmissions(adoptionInput(missing, missing.persistedRecords)), {
+    status: 'blocked',
+    diagnostic: { reason: 'stale-head' },
+  });
 
   const duplicate = replacementHandoff();
-  assert.equal(
-    adoptOutstandingSubmissions({
-      authority: duplicate.pausedAuthority,
-      assignments: [duplicate.assignment],
-      submissions: [duplicate.submission],
-      dispositions: [duplicate.disposition, duplicate.disposition],
-    }).status,
-    'blocked'
+  assert.throws(
+    () =>
+      adoptOutstandingSubmissions(
+        adoptionInput(duplicate, [...duplicate.records, duplicate.disposition])
+      ),
+    /capsule-chain:duplicate-record-id/
   );
 
-  const foreign = replacementHandoff();
-  const foreignPayload = { ...foreign.disposition.envelope.payload, submissionRecordId: id(99) };
-  const foreignDisposition = record({
-    recordId: id(23),
-    recordType: 'record-disposition',
-    payload: foreignPayload,
-    actor: replacementCoordinator.actor,
-    epoch: 5,
-    grantId: id(9002),
+  const absent = replacementHandoff();
+  const missingPredecessor = absent.records.map((candidate) =>
+    candidate === absent.submission
+      ? { ...candidate, envelope: { ...candidate.envelope, predecessor: id(99) } }
+      : candidate
+  );
+  assert.throws(
+    () => adoptOutstandingSubmissions(adoptionInput(absent, missingPredecessor)),
+    /capsule-chain:missing-predecessor/
+  );
+
+  const cyclic = replacementHandoff();
+  const cycle = cyclic.records.map((candidate) =>
+    candidate === cyclic.originalGrantRecord
+      ? { ...candidate, envelope: { ...candidate.envelope, predecessor: id(24) } }
+      : candidate
+  );
+  assert.throws(
+    () => adoptOutstandingSubmissions(adoptionInput(cyclic, cycle)),
+    /capsule-chain:predecessor-cycle/
+  );
+
+  const forked = replacementHandoff();
+  const fork = forked.records.map((candidate) =>
+    candidate === forked.disposition
+      ? { ...candidate, envelope: { ...candidate.envelope, predecessor: id(21) } }
+      : candidate
+  );
+  assert.deepEqual(adoptOutstandingSubmissions(adoptionInput(forked, fork)), {
+    status: 'blocked',
+    diagnostic: { reason: 'forked-history' },
   });
-  assert.equal(
-    adoptOutstandingSubmissions({
-      authority: foreign.pausedAuthority,
-      assignments: [foreign.assignment],
-      submissions: [foreign.submission],
-      dispositions: [foreignDisposition],
-    }).status,
-    'blocked'
-  );
-
-  const oldEpoch = replacementHandoff();
-  const wrongEnvelope = {
-    ...oldEpoch.disposition,
-    envelope: {
-      ...oldEpoch.disposition.envelope,
-      authority: { ...oldEpoch.disposition.envelope.authority, epoch: 4 },
-    },
-  };
-  assert.equal(
-    adoptOutstandingSubmissions({
-      authority: oldEpoch.pausedAuthority,
-      assignments: [oldEpoch.assignment],
-      submissions: [oldEpoch.submission],
-      dispositions: [wrongEnvelope],
-    }).status,
-    'blocked'
-  );
 
   const multipleRoots = replacementHandoff();
-  const rootSubmission = {
-    ...multipleRoots.submission,
-    envelope: { ...multipleRoots.submission.envelope, predecessor: null },
-  };
-  assert.deepEqual(
-    adoptOutstandingSubmissions({
-      authority: multipleRoots.pausedAuthority,
-      assignments: [multipleRoots.assignment],
-      submissions: [rootSubmission],
-      dispositions: [multipleRoots.disposition],
-    }),
-    { status: 'blocked', diagnostic: { reason: 'multiple-roots' } }
+  const root = multipleRoots.records.map((candidate) =>
+    candidate === multipleRoots.submission
+      ? { ...candidate, envelope: { ...candidate.envelope, predecessor: null } }
+      : candidate
   );
+  assert.throws(
+    () => adoptOutstandingSubmissions(adoptionInput(multipleRoots, root)),
+    /capsule-chain:multiple-roots/
+  );
+});
+
+test('bounds capsule count and processes a 300-record permutation deterministically', () => {
+  const stress = replacementHandoff({ fillerCount: 300 });
+  const result = adoptOutstandingSubmissions(adoptionInput(stress, [...stress.records].reverse()));
+  assert.deepEqual(result.acceptedSubmissionRecordIds, [id(21)]);
+  assert.throws(
+    () =>
+      adoptOutstandingSubmissions(
+        adoptionInput(
+          stress,
+          Array.from({ length: 2049 }, () => stress.originalGrantRecord)
+        )
+      ),
+    /work-assignment:input/
+  );
+  const tooDeep = replacementHandoff({ fillerCount: 1020 });
+  assert.throws(() => adoptOutstandingSubmissions(adoptionInput(tooDeep)), /work-assignment:input/);
 });
 
 test('retires adoption after any later authority resolution', () => {
@@ -651,13 +793,8 @@ test('retires adoption after any later authority resolution', () => {
     },
     now: '2026-08-03T20:05:00.000Z',
   });
-  assert.deepEqual(
-    adoptOutstandingSubmissions({
-      authority: current.pausedAuthority,
-      assignments: [current.assignment],
-      submissions: [current.submission],
-      dispositions: [current.disposition],
-    }),
-    { status: 'blocked', diagnostic: { reason: 'authority' } }
-  );
+  assert.deepEqual(adoptOutstandingSubmissions(adoptionInput(current)), {
+    status: 'blocked',
+    diagnostic: { reason: 'authority' },
+  });
 });
