@@ -67,13 +67,20 @@ function grant({
 
 function activeAuthority(overrides = {}) {
   const authorityGrant = grant(overrides);
+  const grantRecord = record({
+    recordId: id(1),
+    recordType: 'coordinator-grant',
+    payload: authorityGrant,
+    actor: authorityGrant.coordinator.actor,
+    epoch: authorityGrant.epoch,
+    grantId: id(8000),
+  });
   return resolveCoordinatorAuthority({
     issueHierarchy: [
       { issue: 1067, parentIssue: null },
       { issue, parentIssue: 1067 },
     ],
-    grants: [authorityGrant],
-    revocations: [],
+    records: [grantRecord],
     repository,
     issue,
     coordinationProjection: {
