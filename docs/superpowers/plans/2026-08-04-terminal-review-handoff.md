@@ -240,4 +240,3 @@ git commit -m "docs(timing): record terminal handoff design [#1097]"
 
 Run `npx aitm test 1097`, inspect the sandbox receipt, run the exact-SHA review,
 resolve any findings test-first, and only then advance through Review and Done.
-

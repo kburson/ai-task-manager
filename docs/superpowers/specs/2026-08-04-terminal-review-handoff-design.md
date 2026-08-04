@@ -129,7 +129,7 @@ The focused verifier
 
 - the exact #1077 `review:passed → stop → resumed → stop` input shape;
 - the canonical `review:passed → review:approved → issue:wrap` result;
-- no duplicated word delta and nondecreasing markers;
+- no duplicated word delta and monotonic markers;
 - stop-verb preservation of an open terminal binding;
 - fallthrough on an unreadable or non-terminal timing log;
 - marker carry-forward without changing other cells; and
@@ -145,4 +145,3 @@ Classification is conservative: a durable unmatched `review:passed` is
 required. Read failures never masquerade as terminal proof. The append boundary
 is the defense-in-depth authority for stale writers, and all suppression is
 limited to session-management rows inside the terminal seal.
-
