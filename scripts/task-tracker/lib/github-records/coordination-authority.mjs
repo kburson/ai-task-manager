@@ -23,6 +23,19 @@ const INTEGRATION_KEYS = ['destinationBranches', 'sourceBranches'];
 const PROJECTION_KEYS = ['adoptionState', 'epoch', 'grantId', 'schema'];
 const REVOCATION_KEYS = ['epoch', 'grantId', 'schema', 'state'];
 const REPLACEMENT_REVOCATION_KEYS = [...REVOCATION_KEYS, 'replacementGrantId'];
+const DISPOSITION_KEYS = [
+  'assignmentCommentNodeId',
+  'assignmentRecordId',
+  'decidedBy',
+  'decision',
+  'epoch',
+  'grantId',
+  'issue',
+  'reason',
+  'schema',
+  'submissionCommentNodeId',
+  'submissionRecordId',
+];
 const MAX_DELEGATION_REPLACEMENT_DEPTH = 128;
 const REPOSITORY_RE = /^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/;
 const ADOPTION_SUBMISSION_TYPES = new Set([
@@ -742,15 +755,78 @@ export function resolveCoordinatorAuthority({
         const payload = record.envelope.payload;
         const assignment = eligibleAssignmentsById.get(payload?.assignmentRecordId);
         const submission = effectiveSubmissionsById.get(payload?.submissionRecordId);
+        const assignmentPayload = assignment?.record.envelope.payload;
+        const submissionPayload = submission?.record.envelope.payload;
+        const acceptedBoundsMatch =
+          payload?.decision !== 'accepted' ||
+          (submissionPayload?.branch === assignmentPayload?.branch &&
+            isDeepStrictEqual(submissionPayload?.files, assignmentPayload?.files) &&
+            submissionPayload?.subsystem === assignmentPayload?.subsystem &&
+            isDeepStrictEqual(submissionPayload?.dependency, assignmentPayload?.dependency) &&
+            isDeepStrictEqual(submissionPayload?.verification, assignmentPayload?.verification));
+        let validReason = false;
+        try {
+          assertNoSecretRecordData(payload?.reason);
+          validReason =
+            (payload?.decision === 'accepted' && payload.reason === null) ||
+            (payload?.decision === 'rejected' &&
+              isOpaqueId(payload.reason) &&
+              ![...payload.reason].some((character) => {
+                const code = character.charCodeAt(0);
+                return code <= 0x1f || code === 0x7f;
+              }));
+        } catch {
+          validReason = false;
+        }
         const replacementClaim =
-          payload?.schema === 'aitm.record-disposition/v1' &&
+          assignment !== undefined &&
+          submission !== undefined &&
+          assignment.position < revocationPosition &&
+          assignment.position < submission.position &&
+          replacementPosition < index &&
+          submission.position < index &&
+          assignmentPayload?.schema === 'aitm.work-assignment/v1' &&
+          assignmentPayload.issue === issue &&
+          assignmentPayload.grantId === predecessorGrant?.grant.grantId &&
+          assignmentPayload.epoch === predecessorGrant?.grant.epoch &&
+          isDeepStrictEqual(assignmentPayload.coordinator, predecessorGrant?.grant.coordinator) &&
+          predecessorGrant?.scope.includes(assignmentPayload.issue) &&
+          predecessorGrant?.branches.includes(assignmentPayload.branch) &&
+          assignment.record.envelope.repository === repository &&
+          assignment.record.envelope.issue === issue &&
+          assignment.record.envelope.authority.actor ===
+            predecessorGrant?.grant.coordinator.actor &&
+          assignment.record.envelope.authority.grantId === predecessorGrant?.grant.grantId &&
+          assignment.record.envelope.authority.epoch === predecessorGrant?.grant.epoch &&
+          submissionPayload?.schema === 'aitm.worker-submission/v1' &&
+          submissionPayload.status === 'submitted' &&
+          submissionPayload.assignmentRecordId === assignment.record.envelope.recordId &&
+          submissionPayload.issue === assignmentPayload.issue &&
+          isDeepStrictEqual(submissionPayload.worker, assignmentPayload.worker) &&
+          submission.record.envelope.repository === repository &&
+          submission.record.envelope.issue === issue &&
+          submission.record.envelope.authority.actor === assignmentPayload.worker.actor &&
+          submission.record.envelope.authority.grantId === assignmentPayload.grantId &&
+          submission.record.envelope.authority.epoch === assignmentPayload.epoch &&
+          hasExactlyKeys(payload, DISPOSITION_KEYS) &&
+          payload.schema === 'aitm.record-disposition/v1' &&
+          (payload.decision === 'accepted' || payload.decision === 'rejected') &&
+          acceptedBoundsMatch &&
+          validReason &&
+          payload.issue === issue &&
+          payload.assignmentRecordId === assignment.record.envelope.recordId &&
+          payload.assignmentCommentNodeId === assignment.record.commentNodeId &&
+          payload.submissionRecordId === submission.record.envelope.recordId &&
+          payload.submissionCommentNodeId === submission.record.commentNodeId &&
           payload.grantId === projectionGrant.grant.grantId &&
           payload.epoch === projectionGrant.grant.epoch &&
           isDeepStrictEqual(payload.decidedBy, projectionGrant.grant.coordinator) &&
+          record.envelope.repository === repository &&
+          record.envelope.issue === issue &&
           record.envelope.authority.grantId === projectionGrant.grant.grantId &&
           record.envelope.authority.epoch === projectionGrant.grant.epoch &&
           record.envelope.authority.actor === projectionGrant.grant.coordinator.actor;
-        if (replacementClaim && submission !== undefined) {
+        if (replacementClaim) {
           replacementDisposedSubmissionIds.add(payload.submissionRecordId);
         }
         if (index >= revocationPosition) continue;

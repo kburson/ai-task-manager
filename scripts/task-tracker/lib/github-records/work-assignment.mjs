@@ -391,14 +391,17 @@ function validateAdoptionSnapshot(snapshot) {
   return { resolved };
 }
 
-function activeAuthorization(authority, { coordinator, issue, operation, branch, repository }) {
+function activeAuthorization(
+  authority,
+  { coordinator, issue, operation, branch, repository, grantId, epoch }
+) {
   const grant = authority?.grant;
   if (!isPlainDataObject(grant)) return { authorized: false, reason: 'authority' };
   return {
     ...authorizeCoordinatorOperation({
       authority,
-      grantId: grant.grantId,
-      epoch: grant.epoch,
+      grantId: grantId ?? grant.grantId,
+      epoch: epoch ?? grant.epoch,
       coordinator,
       issue,
       operation,
