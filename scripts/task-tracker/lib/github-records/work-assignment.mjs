@@ -319,11 +319,8 @@ export function adoptOutstandingSubmissions(input = {}) {
   for (const [index, record] of resolved.effectiveRecords.entries()) {
     recordPositions.set(record.envelope.recordId, index);
     if (record.envelope.recordType === 'work-assignment') {
-      validateAssignmentRecord(record);
       assignmentsById.set(record.envelope.recordId, record);
     } else if (isWorkAssignmentSubmissionType(record.envelope.recordType)) {
-      validateCorrelatedRecord(record, 'submission');
-      validateSubmissionPayload(record.envelope.payload);
       submissionRecords.push(record);
     } else if (record.envelope.recordType === 'record-disposition') {
       dispositionRecords.push(record);
@@ -345,21 +342,30 @@ export function adoptOutstandingSubmissions(input = {}) {
   for (const [recordId, assignment] of assignmentsById) {
     const payload = assignment.envelope.payload;
     const position = recordPositions.get(recordId);
+    if (position >= revocationPosition) continue;
     if (
-      position < revocationPosition &&
-      payload.grantId === authorization.predecessorGrantId &&
-      payload.epoch === authorization.predecessorEpoch &&
+      payload?.grantId !== authorization.predecessorGrantId ||
+      payload?.epoch !== authorization.predecessorEpoch
+    ) {
+      continue;
+    }
+    validateAssignmentRecord(assignment);
+    if (
       isDeepStrictEqual(payload.coordinator, authorization.predecessorCoordinator) &&
       allowedIssues.has(payload.issue) &&
       allowedBranches.has(payload.branch)
     ) {
       eligibleAssignments.set(recordId, assignment);
+    } else {
+      return blocked('assignment-authority');
     }
   }
   const evaluations = new Map();
   for (const submission of submissionRecords) {
-    const assignment = eligibleAssignments.get(submission.envelope.payload.assignmentRecordId);
-    if (assignment === undefined) return blocked('assignment-order');
+    const assignment = eligibleAssignments.get(submission.envelope.payload?.assignmentRecordId);
+    if (assignment === undefined) continue;
+    validateCorrelatedRecord(submission, 'submission');
+    validateSubmissionPayload(submission.envelope.payload);
     if (
       recordPositions.get(assignment.envelope.recordId) >=
       recordPositions.get(submission.envelope.recordId)

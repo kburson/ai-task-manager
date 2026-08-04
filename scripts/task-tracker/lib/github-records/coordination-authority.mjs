@@ -849,6 +849,12 @@ export function resolveCoordinatorAuthority({
     if (orderedBoundary) {
       for (const [index, record] of durableResolution.effectiveRecords.entries()) {
         if (record.envelope.recordType === 'work-assignment' && index < revocationPosition) {
+          if (
+            record.envelope.payload?.grantId !== predecessorGrant?.grant.grantId ||
+            record.envelope.payload?.epoch !== predecessorGrant?.grant.epoch
+          ) {
+            continue;
+          }
           preBoundaryAssignmentRecordIds.add(record.envelope.recordId);
           const assignment = {
             position: index,
@@ -1187,23 +1193,33 @@ export function authorizeCoordinatorAdoption({
     if (!isDeepStrictEqual(suppliedById.get(pausedHeadRecordId), context.pausedHeadRecord)) {
       return authorization(false, 'record');
     }
-    let effectiveRecords;
+    let resolvedSnapshot;
     try {
-      ({ effectiveRecords } = resolveSupersession({ records, repository, issue }));
+      resolvedSnapshot = resolveSupersession({ records, repository, issue });
     } catch {
       return authorization(false, 'record');
     }
-    const replacementPosition = effectiveRecords.findIndex(
+    const replacementPosition = resolvedSnapshot.effectiveRecords.findIndex(
       ({ envelope }) => envelope.recordId === context.replacementGrantRecordId
     );
-    if (
-      replacementPosition < 0 ||
-      effectiveRecords
-        .slice(replacementPosition + 1)
-        .some(({ envelope }) =>
-          ['coordinator-grant', 'coordinator-revocation'].includes(envelope.recordType)
-        )
-    ) {
+    const successorByPredecessorId = new Map(
+      resolvedSnapshot.records
+        .filter(({ envelope }) => envelope.predecessor !== null)
+        .map((record) => [record.envelope.predecessor, record])
+    );
+    let extension = successorByPredecessorId.get(pausedHeadRecordId);
+    let invalidExtension = false;
+    while (extension !== undefined) {
+      if (
+        !isWorkAssignmentSubmissionType(extension.envelope.recordType) &&
+        extension.envelope.recordType !== 'record-disposition'
+      ) {
+        invalidExtension = true;
+        break;
+      }
+      extension = successorByPredecessorId.get(extension.envelope.recordId);
+    }
+    if (replacementPosition < 0 || invalidExtension) {
       return authorization(false, 'authority');
     }
   }

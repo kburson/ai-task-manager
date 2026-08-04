@@ -192,7 +192,7 @@ export function validateWorkAssignmentPayload(payload, category = 'assignment') 
     payload.schema !== 'aitm.work-assignment/v1' ||
     !Number.isInteger(payload.issue) ||
     payload.issue <= 0 ||
-    !isWorkAssignmentRecordId(payload.grantId) ||
+    !isWorkAssignmentOpaqueId(payload.grantId) ||
     !Number.isInteger(payload.epoch) ||
     payload.epoch <= 0
   ) {
@@ -314,7 +314,7 @@ export function validateWorkAssignmentDispositionPayload(payload) {
     !isWorkAssignmentOpaqueId(payload.assignmentCommentNodeId) ||
     !isWorkAssignmentRecordId(payload.submissionRecordId) ||
     !isWorkAssignmentOpaqueId(payload.submissionCommentNodeId) ||
-    !isWorkAssignmentRecordId(payload.grantId) ||
+    !isWorkAssignmentOpaqueId(payload.grantId) ||
     !Number.isInteger(payload.epoch) ||
     payload.epoch <= 0
   ) {

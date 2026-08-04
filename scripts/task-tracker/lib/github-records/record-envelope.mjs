@@ -172,7 +172,7 @@ function assertLink(value, category) {
 
 function validateAuthority(authority) {
   if (!hasExactlyKeys(authority, AUTHORITY_KEYS)) throw recordError('authority-keys');
-  if (!isRecordId(authority.grantId)) throw recordError('authority-grant-id');
+  if (!isOpaqueId(authority.grantId)) throw recordError('authority-grant-id');
   if (!Number.isInteger(authority.epoch) || authority.epoch <= 0) {
     throw recordError('authority-epoch');
   }

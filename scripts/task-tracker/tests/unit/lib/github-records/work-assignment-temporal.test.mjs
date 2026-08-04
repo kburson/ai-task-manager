@@ -319,7 +319,7 @@ function scenario(sequence) {
   return { adopt, byName, paused, records };
 }
 
-test('rejects an old-epoch assignment durably appended after the replacement boundary', () => {
+test('ignores an ineligible old-epoch assignment appended after the replacement boundary', () => {
   const current = scenario([
     'root',
     'revocation',
@@ -337,7 +337,7 @@ test('rejects an old-epoch assignment durably appended after the replacement bou
       }),
     /work-assignment:authority/
   );
-  assert.equal(current.adopt().status, 'blocked');
+  assert.deepEqual(current.adopt().acceptedSubmissionRecordIds, []);
 });
 
 test('accepts a post-replacement submission for a pre-boundary assignment', () => {
