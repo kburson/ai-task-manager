@@ -103,6 +103,12 @@ function submissionPayload(assignmentRecordId, summary) {
   };
 }
 
+function withoutKey(value, key) {
+  const copy = structuredClone(value);
+  delete copy[key];
+  return copy;
+}
+
 function dispositionPayload({ assignmentRecordId, submissionRecordId, replacement = true }) {
   const decisionCoordinator = replacement ? replacementCoordinator : coordinator;
   return {
@@ -189,6 +195,14 @@ function scenario(sequence) {
       epoch: 1,
       grantId: id(9001),
     },
+    malformedAssignment: {
+      recordId: id(10),
+      recordType: 'work-assignment',
+      payload: withoutKey(assignmentCandidate.payload, 'grantId'),
+      actor: coordinator.actor,
+      epoch: 1,
+      grantId: id(9001),
+    },
     assignmentCorrection: {
       recordId: id(11),
       recordType: 'work-assignment',
@@ -210,6 +224,14 @@ function scenario(sequence) {
       recordId: id(20),
       recordType: 'execution-result',
       payload: submissionPayload(id(10), 'original result'),
+      actor: worker.actor,
+      epoch: 1,
+      grantId: id(9001),
+    },
+    malformedSubmission: {
+      recordId: id(20),
+      recordType: 'execution-result',
+      payload: withoutKey(submissionPayload(id(10), 'malformed result'), 'assignmentRecordId'),
       actor: worker.actor,
       epoch: 1,
       grantId: id(9001),
@@ -448,6 +470,21 @@ test('uses only effective superseding assignments and submissions across permuta
       }),
     /work-assignment:authority/
   );
+});
+
+test('effective same-type supersession repairs malformed predecessor claims', () => {
+  const current = scenario([
+    'root',
+    'malformedAssignment',
+    'assignmentCorrection',
+    'malformedSubmission',
+    'correctedSubmission',
+    'revocation',
+    'replacementGrant',
+    'correctedDisposition',
+  ]);
+  assert.deepEqual(current.adopt().acceptedSubmissionRecordIds, [id(21)]);
+  assert.deepEqual(current.adopt([...current.records].reverse()), current.adopt());
 });
 
 test('refuses same and conflicting replacement redisposition after paused re-resolution', () => {
