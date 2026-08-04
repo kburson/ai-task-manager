@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import { buildEstimationForecast } from '../../../../lib/estimation/forecast-model.mjs';
+import { isHalfHourEstimate } from '../../../../lib/estimation/estimate-granularity.mjs';
 import { buildEstimationOutcome } from '../../../../lib/estimation/outcome-builder.mjs';
 import { ensureEstimationOutcome } from '../../../../lib/estimation/outcome-writer.mjs';
 import {
@@ -144,6 +145,27 @@ function planInput() {
   };
 }
 
+function assertPublishedForecastOnHalfHourGrid(forecast) {
+  const published = [
+    forecast.refine.humanHours,
+    forecast.plan.humanHours,
+    forecast.ai.p50EngagedHours,
+    forecast.ai.p80EngagedHours,
+    ...forecast.wbs.map((item) => item.humanHours),
+    ...Object.values(forecast.ai.stages),
+  ];
+  assert.ok(published.every(isHalfHourEstimate));
+  assert.equal(
+    forecast.wbs.reduce((sum, item) => sum + item.humanHours, 0),
+    forecast.plan.humanHours
+  );
+  assert.equal(
+    Object.values(forecast.ai.stages).reduce((sum, hours) => sum + hours, 0),
+    forecast.ai.p50EngagedHours
+  );
+  assert.ok(forecast.ai.p80EngagedHours >= forecast.ai.p50EngagedHours);
+}
+
 test('completed outcome deterministically updates the next rubric and AI forecast through #1070 read-backs', async () => {
   const transport = fake1070Transport();
   const records = [];
@@ -189,8 +211,9 @@ test('completed outcome deterministically updates the next rubric and AI forecas
   const firstForecast = records.find(
     (record) => record.envelope.recordId === first.forecastRecordId
   ).envelope;
-  assert.equal(firstAuthority.state.board.estimate, 10.9);
-  assert.equal(firstAuthority.state.bodyFields.estimate, 10.9);
+  assertPublishedForecastOnHalfHourGrid(firstForecast.payload);
+  assert.equal(firstAuthority.state.board.estimate, 11.5);
+  assert.equal(firstAuthority.state.bodyFields.estimate, 11.5);
   assert.equal(firstAuthority.state.readyForecastRecordId, firstForecast.recordId);
 
   const outcomePayload = buildEstimationOutcome({
@@ -280,7 +303,7 @@ test('completed outcome deterministically updates the next rubric and AI forecas
   });
   assert.equal(refreshed.rubric.cohort[0].outcomeRecordId, outcomeResult.recordId);
   assert.equal(refreshed.rubric.workflowDiagnostics.avoidableProcessWasteHours, 0.5);
-  assert.equal(refreshed.rubric.accuracy.refineToPlan.maeHours, 2.9);
+  assert.equal(refreshed.rubric.accuracy.refineToPlan.maeHours, 3.5);
 
   const secondForecast = buildEstimationForecast({
     issue: secondIssue,
@@ -625,10 +648,14 @@ test('production Plan runtime converges board, body, history, forecast, and read
   });
 
   assert.equal(result.status, 'converged');
-  assert.equal(board.estimate, 10.9);
-  assert.match(refineBody, /\| Estimate \(h\) \| 8 \| 10\.9 \|/);
-  assert.match(issueBody, /"estimate":10\.9/);
+  assert.equal(board.estimate, 11.5);
+  assert.match(refineBody, /\| Estimate \(h\) \| 8 \| 11\.5 \|/);
+  assert.match(issueBody, /"estimate":11\.5/);
   assert.match(issueBody, new RegExp(result.forecastRecordId));
+  const forecastRecord = parsedRecords.find(
+    (record) => record.envelope.recordType === 'estimation-forecast'
+  );
+  assertPublishedForecastOnHalfHourGrid(forecastRecord.envelope.payload);
   assert.equal(
     parsedRecords.filter((r) => r.envelope.recordType === 'estimation-rubric').length,
     1
