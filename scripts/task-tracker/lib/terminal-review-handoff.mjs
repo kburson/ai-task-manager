@@ -1,13 +1,5 @@
 import { parseTimingRow } from './timing-row-reader.mjs';
-
-const TERMINAL_REVIEW_CLOSERS = new Set([
-  'review:started',
-  'review:failed',
-  'review:approved',
-  'issue:wrap',
-  'issue:closed',
-  'demoted:develop',
-]);
+import { closesTerminalReviewHandoff } from './timing-events/index.mjs';
 
 export function isTerminalReviewHandoffOpen(body) {
   let open = false;
@@ -16,7 +8,7 @@ export function isTerminalReviewHandoffOpen(body) {
     if (!event) continue;
     if (event === 'review:passed') {
       open = true;
-    } else if (TERMINAL_REVIEW_CLOSERS.has(event)) {
+    } else if (closesTerminalReviewHandoff(event)) {
       open = false;
     }
   }

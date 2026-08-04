@@ -85,3 +85,7 @@ export function isRetiredTimingEvent(event) {
 export function isEmittableTimingEvent(event) {
   return describeTimingEvent(event)?.emittable === true;
 }
+
+export function closesTerminalReviewHandoff(event) {
+  return describeTimingEvent(event)?.terminalReviewHandoffCloser === true;
+}

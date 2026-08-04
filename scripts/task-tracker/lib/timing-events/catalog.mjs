@@ -19,6 +19,7 @@ function descriptor({
   canonicalPhase = false,
   role = null,
   interruptionKind = null,
+  terminalReviewHandoffCloser = false,
 }) {
   return Object.freeze({
     event,
@@ -35,8 +36,17 @@ function descriptor({
     canonicalPhase,
     role,
     interruptionKind,
+    terminalReviewHandoffCloser,
   });
 }
+
+const TERMINAL_REVIEW_HANDOFF_CLOSERS = new Set([
+  'review:started',
+  'review:failed',
+  'review:approved',
+  'issue:wrap',
+  'issue:closed',
+]);
 
 const LIFECYCLE = [
   ['backlog:created', 'backlog', 'backlog', 'enter', 'task created in Backlog'],
@@ -62,6 +72,7 @@ const LIFECYCLE = [
     phase,
     description,
     canonicalPhase: true,
+    terminalReviewHandoffCloser: TERMINAL_REVIEW_HANDOFF_CLOSERS.has(event),
   })
 );
 
@@ -107,6 +118,7 @@ const AUDIT = [
     emittable: event !== 'demoted',
     legacy: event === 'demoted',
     canonicalPhase: CANONICAL_AUDIT_PHASES.has(event),
+    terminalReviewHandoffCloser: TERMINAL_REVIEW_HANDOFF_CLOSERS.has(event),
   })
 );
 

@@ -152,7 +152,7 @@ const TIMING_DEFINITIONS = Object.freeze(
   TIMING_EXACT.slice(0, 14).map((event, index) =>
     Object.freeze({
       file: 'scripts/task-tracker/lib/timing-events/catalog.mjs',
-      line: [42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55][index],
+      line: [52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 65][index],
       expression: `'${event}'`,
       event,
     })
@@ -184,14 +184,14 @@ export const TIMING_EVENT_BASELINE = Object.freeze({
     timingEmitter('scripts/gh/ensure-wave-parent.mjs', 329, 'event-call', "'start'", ['start']),
     timingEmitter(
       'scripts/task-tracker/gh-timing-comment.mjs',
-      247,
+      248,
       'phase-call',
       "{ state: 'review', phase: 'complete' }",
       ['review:approved']
     ),
     timingEmitter(
       'scripts/task-tracker/gh-timing-comment.mjs',
-      255,
+      256,
       'phase-call',
       "{ state: 'done', phase: 'enter' }",
       ['issue:wrap']
@@ -395,7 +395,7 @@ export const TIMING_EVENT_BASELINE = Object.freeze({
     timingEmitter('scripts/task-tracker/verbs/review.mjs', 1254, 'event-call', "'gate-refused'", [
       'gate-refused',
     ]),
-    timingEmitter('scripts/task-tracker/verbs/stop.mjs', 13, 'flush-call', "'stop'", ['stop']),
+    timingEmitter('scripts/task-tracker/verbs/stop.mjs', 46, 'flush-call', "'stop'", ['stop']),
     timingEmitter('scripts/task-tracker/verbs/switch.mjs', 92, 'flush-call', 'eventSlug', [
       'switch-out:#1007',
     ]),
