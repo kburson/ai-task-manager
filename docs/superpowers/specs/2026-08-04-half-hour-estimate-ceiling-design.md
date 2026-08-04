@@ -116,7 +116,8 @@ four-decimal analytical values because they are not hour estimates.
 
 ## Record and Authority Enforcement
 
-`validateEstimationForecast` requires whole/half-integral values for:
+New forecasts use `aitm.estimation-forecast/v2`.
+`validateEstimationForecast` requires whole/half-integral values for every v2:
 
 - Refine human hours;
 - Plan human hours;
@@ -129,6 +130,12 @@ The validator retains its existing exact-shape, WBS-total, stage-total,
 Plan-delta, and P80-order checks. `deltaHours` is derived from two normalized
 estimates and can be negative, so it is checked for arithmetic consistency
 rather than the non-negative estimate domain.
+
+Published `aitm.estimation-forecast/v1` records retain their original
+finite/non-negative numeric contract when read or rendered. This preserves
+historical evidence whose fractional values predate the half-hour grid. Record
+creation and Plan authority require v2, so compatibility reads cannot publish
+new off-grid forecasts or project them back into authoritative issue fields.
 
 `applyPlanEstimateAuthority` validates the complete envelope payload before the
 first projection write. This protects direct test/injection and compatibility

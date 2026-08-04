@@ -4,7 +4,9 @@ import { readFileSync } from 'node:fs';
 import test from 'node:test';
 
 import {
+  FORECAST_SCHEMA,
   FORECAST_RECORD_TYPE,
+  LEGACY_FORECAST_SCHEMA,
   validateEstimationForecast,
 } from '../../../../lib/estimation/forecast-record.mjs';
 import {
@@ -105,7 +107,7 @@ test('record construction generates canonical ULIDs and validates the complete e
 });
 
 const forecast = {
-  schema: 'aitm.estimation-forecast/v1',
+  schema: FORECAST_SCHEMA,
   issue: 1091,
   lifecycleState: 'plan',
   refine: { size: 'XL', humanHours: 40 },
@@ -213,7 +215,7 @@ function envelope(recordType, recordId, payload, overrides = {}) {
   };
 }
 
-test('forecast, outcome, and rubric payloads validate their exact v1 schemas', () => {
+test('current forecast, outcome, and rubric payloads validate their exact schemas', () => {
   assert.equal(validateEstimationForecast(forecast, { expectedIssue: 1091 }), forecast);
   assert.equal(validateEstimationOutcome(outcome, { expectedIssue: 1091 }), outcome);
   assert.equal(validateEstimationRubric(rubric), rubric);
@@ -228,6 +230,42 @@ test('forecast, outcome, and rubric payloads validate their exact v1 schemas', (
     [validateEstimationRubric, { ...rubric, version: -1 }],
   ])
     assert.throws(() => validator(value), /estimation-record:/);
+});
+
+test('published v1 forecasts with fractional hours remain readable but cannot be newly created', () => {
+  const legacy = structuredClone(forecast);
+  legacy.schema = LEGACY_FORECAST_SCHEMA;
+  legacy.refine.humanHours = 20.15;
+  legacy.plan.deltaHours = 19.85;
+
+  assert.equal(validateEstimationForecast(legacy), legacy);
+  assert.throws(
+    () =>
+      createAitmRecordEnvelope({
+        recordType: FORECAST_RECORD_TYPE,
+        repository: 'kburson/ai-task-manager',
+        issue: 1091,
+        payload: legacy,
+        actor: 'aitm/plan-estimate',
+        createdAt: '2026-08-02T13:00:00.000Z',
+        recordId: ids.forecast,
+        grantId: ids.grant,
+      }),
+    /estimation-record:forecast-schema/
+  );
+
+  const legacyEnvelope = envelope(FORECAST_RECORD_TYPE, ids.forecast, legacy);
+  const body = renderAitmRecord({
+    envelope: legacyEnvelope,
+    visibleMarkdown: renderEstimationForecast(legacy),
+  });
+  const parsed = parseAitmRecord({
+    commentNodeId: 'IC_kwDO1091LegacyForecast',
+    body,
+    expectedRepository: 'kburson/ai-task-manager',
+    expectedIssue: 1091,
+  });
+  assert.equal(parsed.envelope.payload.refine.humanHours, 20.15);
 });
 
 test('forecast rejects invalid sizes, WBS identity/totals, stage totals, and P80 ordering', () => {

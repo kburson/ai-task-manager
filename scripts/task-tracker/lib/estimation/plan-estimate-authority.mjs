@@ -116,7 +116,10 @@ async function applyPlanEstimateAuthorityUnlocked({
   ) {
     fail('input');
   }
-  validateEstimationForecast(forecastEnvelope.payload, { expectedIssue: issueNumber });
+  validateEstimationForecast(forecastEnvelope.payload, {
+    expectedIssue: issueNumber,
+    requireCurrentSchema: true,
+  });
   const plan = forecastEnvelope.payload.plan;
   const publishedRefine = forecastEnvelope.payload.refine;
   let state = await read(deps);
@@ -222,7 +225,10 @@ async function adoptLegacyPlanForecastUnlocked({ issueNumber, forecastEnvelope, 
   ) {
     fail('legacy-adoption-input');
   }
-  validateEstimationForecast(forecastEnvelope.payload, { expectedIssue: issueNumber });
+  validateEstimationForecast(forecastEnvelope.payload, {
+    expectedIssue: issueNumber,
+    requireCurrentSchema: true,
+  });
   const plan = forecastEnvelope.payload.plan;
   let state = await read(deps);
   const appendix = appendixProjection(state.refineAppendix);

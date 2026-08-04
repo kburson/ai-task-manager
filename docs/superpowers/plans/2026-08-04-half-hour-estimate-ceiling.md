@@ -189,14 +189,18 @@ git commit -m "fix(estimation): ceil published forecasts [#1098]"
 
 - Modify: `scripts/task-tracker/lib/estimation/forecast-record.mjs`
 - Modify: `scripts/task-tracker/lib/estimation/plan-estimate-authority.mjs`
+- Modify: `scripts/task-tracker/lib/github-records/record-envelope.mjs`
 - Modify: `scripts/task-tracker/tests/unit/lib/estimation/records.test.mjs`
 - Modify: `scripts/task-tracker/tests/unit/lib/estimation/plan-estimate-authority.test.mjs`
+- Modify: `scripts/task-tracker/tests/unit/lib/github-records/record-envelope.test.mjs`
 
 **Interfaces:**
 
-- Consumes: an `aitm.estimation-forecast/v1` payload or forecast envelope.
-- Produces: schema validation that rejects off-grid estimate surfaces and Plan
-  authority that performs no writer call for an invalid envelope.
+- Consumes: a current `aitm.estimation-forecast/v2` payload for creation and
+  authority writes, or a historical v1/v2 forecast envelope for reads.
+- Produces: v2 schema validation that rejects off-grid estimate surfaces, v1
+  read compatibility, and Plan authority that performs no writer call for an
+  invalid or legacy envelope.
 
 - [ ] **Step 1: Add record rejection cases**
 
@@ -231,11 +235,13 @@ Expected: at least one off-grid payload is accepted by the current validator.
 
 - [ ] **Step 3: Enforce the shared predicate in forecast validation**
 
-Import `isHalfHourEstimate`. Add `estimateHours(value, category)` that first
+Define v1 as the legacy read schema and v2 as the current write schema. Import
+`isHalfHourEstimate`. Add `estimateHours(value, category)` that first
 calls the existing finite/non-negative `hours` validation, then fails
 `${category}-grid` when the predicate is false. Use it for Refine and Plan human
-hours, P50/P80, every stage, and every WBS item. Retain ordinary `hours` for
-test-plan minutes and keep delta as a signed derived value.
+hours, P50/P80, every stage, and every WBS item in v2. Retain ordinary `hours`
+for those surfaces when reading v1, use it for test-plan minutes in both
+versions, and keep delta as a signed derived value.
 
 - [ ] **Step 4: Add the zero-write authority test**
 
@@ -267,7 +273,10 @@ validateEstimationForecast(forecastEnvelope.payload, { expectedIssue: issueNumbe
 ```
 
 immediately after structural input validation in both normal Plan convergence
-and legacy forecast adoption, before `read(deps)` or any writer.
+and legacy forecast adoption, before `read(deps)` or any writer. Require the
+current schema in those authority paths and during envelope creation. Leave
+record parsing and rendering backward-compatible so frozen v1 comments remain
+readable during close-time outcome collection.
 
 - [ ] **Step 6: Run record/authority tests and commit**
 

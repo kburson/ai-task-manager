@@ -9,10 +9,14 @@ import {
   readForecastReadyRecordId,
   upsertForecastReadyMarker,
 } from '../../../../lib/estimation/plan-estimate-authority.mjs';
+import {
+  FORECAST_SCHEMA,
+  LEGACY_FORECAST_SCHEMA,
+} from '../../../../lib/estimation/forecast-record.mjs';
 import { hashRecordPayload } from '../../../../lib/github-records/record-envelope.mjs';
 
 const forecast = {
-  schema: 'aitm.estimation-forecast/v1',
+  schema: FORECAST_SCHEMA,
   issue: 1091,
   lifecycleState: 'plan',
   refine: { size: 'L', humanHours: 20 },
@@ -145,6 +149,27 @@ test('Plan authority rejects an off-grid forecast before its first write', async
       deps: h.deps,
     }),
     /estimation-record:forecast-hours-grid/
+  );
+  assert.equal(h.writes(), 0);
+});
+
+test('Plan authority rejects a legacy v1 forecast before its first write', async () => {
+  const h = harness();
+  const payload = { ...forecast, schema: LEGACY_FORECAST_SCHEMA };
+  const legacyEnvelope = {
+    ...forecastEnvelope,
+    payload,
+    payloadHash: hashRecordPayload(payload),
+  };
+
+  await assert.rejects(
+    applyPlanEstimateAuthority({
+      issueNumber: 1091,
+      refine: forecast.refine,
+      forecastEnvelope: legacyEnvelope,
+      deps: h.deps,
+    }),
+    /estimation-record:forecast-schema/
   );
   assert.equal(h.writes(), 0);
 });

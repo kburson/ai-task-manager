@@ -1,4 +1,4 @@
-import { validateEstimationForecast } from './forecast-record.mjs';
+import { FORECAST_SCHEMA, validateEstimationForecast } from './forecast-record.mjs';
 import { ceilEstimateHours } from './estimate-granularity.mjs';
 import { parsePlanEstimationInput } from './plan-input.mjs';
 import { validateEstimationRubric } from './rubric-record.mjs';
@@ -189,7 +189,7 @@ export function buildEstimationForecast({
         };
 
   const forecast = {
-    schema: 'aitm.estimation-forecast/v1',
+    schema: FORECAST_SCHEMA,
     issue,
     lifecycleState: 'plan',
     refine: { size: refine.size, humanHours: refineHours },

@@ -222,7 +222,7 @@ test('schema dispatch and common field validation fail closed', () => {
 });
 
 test('known estimation record types fail closed when their payload schema is unknown', () => {
-  const estimationPayload = { schema: 'aitm.estimation-forecast/v2', issue: 1069 };
+  const estimationPayload = { schema: 'aitm.estimation-forecast/v3', issue: 1069 };
   assert.throws(
     () =>
       renderAitmRecord({

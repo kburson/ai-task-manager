@@ -1,7 +1,9 @@
 import { isHalfHourEstimate } from './estimate-granularity.mjs';
 
 export const FORECAST_RECORD_TYPE = 'estimation-forecast';
-export const FORECAST_SCHEMA = 'aitm.estimation-forecast/v1';
+export const LEGACY_FORECAST_SCHEMA = 'aitm.estimation-forecast/v1';
+export const FORECAST_SCHEMA = 'aitm.estimation-forecast/v2';
+const FORECAST_SCHEMAS = new Set([LEGACY_FORECAST_SCHEMA, FORECAST_SCHEMA]);
 
 const ROOT_KEYS = [
   'ai',
@@ -57,8 +59,13 @@ function closeEnough(left, right) {
   return Math.abs(left - right) < 1e-9;
 }
 
-export function validateEstimationForecast(payload, { expectedIssue } = {}) {
-  if (payload?.schema !== FORECAST_SCHEMA) fail('forecast-schema');
+export function validateEstimationForecast(
+  payload,
+  { expectedIssue, requireCurrentSchema = false } = {}
+) {
+  if (!FORECAST_SCHEMAS.has(payload?.schema)) fail('forecast-schema');
+  if (requireCurrentSchema && payload.schema !== FORECAST_SCHEMA) fail('forecast-schema');
+  const validatePublishedHours = payload.schema === FORECAST_SCHEMA ? estimateHours : hours;
   exact(payload, ROOT_KEYS, 'forecast-keys');
   if (!Number.isInteger(payload.issue) || payload.issue <= 0) fail('forecast-issue');
   if (expectedIssue !== undefined && payload.issue !== expectedIssue) fail('issue-correlation');
@@ -68,8 +75,8 @@ export function validateEstimationForecast(payload, { expectedIssue } = {}) {
   exact(payload.plan, ['deltaHours', 'humanHours', 'rationale', 'size'], 'forecast-plan');
   if (!SIZE_VALUES.has(payload.refine.size) || !SIZE_VALUES.has(payload.plan.size))
     fail('forecast-size');
-  estimateHours(payload.refine.humanHours, 'forecast-hours');
-  estimateHours(payload.plan.humanHours, 'forecast-hours');
+  validatePublishedHours(payload.refine.humanHours, 'forecast-hours');
+  validatePublishedHours(payload.plan.humanHours, 'forecast-hours');
   if (typeof payload.plan.deltaHours !== 'number' || !Number.isFinite(payload.plan.deltaHours))
     fail('forecast-delta');
   if (!closeEnough(payload.plan.humanHours - payload.refine.humanHours, payload.plan.deltaHours))
@@ -77,12 +84,12 @@ export function validateEstimationForecast(payload, { expectedIssue } = {}) {
   text(payload.plan.rationale, 'forecast-rationale');
 
   exact(payload.ai, ['p50EngagedHours', 'p80EngagedHours', 'stages'], 'forecast-ai');
-  estimateHours(payload.ai.p50EngagedHours, 'forecast-ai-hours');
-  estimateHours(payload.ai.p80EngagedHours, 'forecast-ai-hours');
+  validatePublishedHours(payload.ai.p50EngagedHours, 'forecast-ai-hours');
+  validatePublishedHours(payload.ai.p80EngagedHours, 'forecast-ai-hours');
   if (payload.ai.p80EngagedHours < payload.ai.p50EngagedHours) fail('forecast-ai-order');
   exact(payload.ai.stages, ['develop', 'plan', 'review', 'test'], 'forecast-stages');
   for (const value of Object.values(payload.ai.stages))
-    estimateHours(value, 'forecast-stage-hours');
+    validatePublishedHours(value, 'forecast-stage-hours');
   if (
     !closeEnough(
       Object.values(payload.ai.stages).reduce((sum, value) => sum + value, 0),
@@ -99,7 +106,7 @@ export function validateEstimationForecast(payload, { expectedIssue } = {}) {
     if (!/^[a-z0-9][a-z0-9-]*$/.test(item.id) || wbsIds.has(item.id)) fail('forecast-wbs-id');
     wbsIds.add(item.id);
     text(item.description, 'forecast-wbs-description');
-    estimateHours(item.humanHours, 'forecast-wbs-hours');
+    validatePublishedHours(item.humanHours, 'forecast-wbs-hours');
     stringArray(item.signals, 'forecast-wbs-signals');
   }
   if (

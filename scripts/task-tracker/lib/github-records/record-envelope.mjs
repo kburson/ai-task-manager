@@ -179,7 +179,7 @@ function validateAuthority(authority) {
   if (!isOpaqueId(authority.actor)) throw recordError('authority-actor');
 }
 
-function validateEnvelope(envelope) {
+function validateEnvelope(envelope, { requireCurrentForecast = false } = {}) {
   canonicalRecordJson(envelope);
   if (envelope === null || typeof envelope !== 'object' || Array.isArray(envelope)) {
     throw recordError('keys');
@@ -211,7 +211,10 @@ function validateEnvelope(envelope) {
   assertNoSecretKeys(envelope.payload);
   assertNoCredentialValues(envelope);
   if (envelope.recordType === FORECAST_RECORD_TYPE) {
-    validateEstimationForecast(envelope.payload, { expectedIssue: envelope.issue });
+    validateEstimationForecast(envelope.payload, {
+      expectedIssue: envelope.issue,
+      requireCurrentSchema: requireCurrentForecast,
+    });
     if (envelope.payload.supersedesForecastRecordId !== envelope.supersedes) {
       throw recordError('supersedes-mismatch');
     }
@@ -311,7 +314,7 @@ export function createAitmRecordEnvelope({
     payloadHash: hashRecordPayload(payload),
     payload,
   };
-  validateEnvelope(envelope);
+  validateEnvelope(envelope, { requireCurrentForecast: true });
   return deepFreeze(envelope);
 }
 
