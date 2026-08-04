@@ -14,6 +14,7 @@ import {
 } from './lib/timing-row-reader.mjs';
 import { formatDurationSeconds, lastRowTsFromBody, _tsToMs } from './lib/timing-rows.mjs';
 import { classifyEvent, lastOpenInterruption, timingCommentHasRows } from './lib/bind-event.mjs';
+import { shouldSuppressTerminalSessionEvent } from './lib/terminal-review-handoff.mjs';
 import {
   EVENT_CLASS,
   classifyTimingEvent,
@@ -353,6 +354,32 @@ function rewriteTsCell(row, nextTs) {
   return replaceTimingRowCell(row, 1, ` ${nextTs} `);
 }
 
+function numericWordMarker(value) {
+  const normalized = String(value ?? '')
+    .replace(/,/g, '')
+    .trim();
+  if (!normalized) return null;
+  const marker = Number(normalized);
+  return Number.isFinite(marker) && marker >= 0 ? marker : null;
+}
+
+function lastDurableWordMarker(body) {
+  let marker = null;
+  for (const line of String(body ?? '').split('\n')) {
+    const candidate = numericWordMarker(parseTimingRow(line)?.wordMarker);
+    if (candidate !== null) marker = candidate;
+  }
+  return marker;
+}
+
+function carryForwardWordMarker(body, row) {
+  const durable = lastDurableWordMarker(body);
+  if (durable === null) return row;
+  const incoming = numericWordMarker(parseTimingRow(String(row))?.wordMarker);
+  if (incoming !== null && incoming >= durable) return row;
+  return replaceTimingRowCell(row, 6, ` ${durable.toLocaleString('en-US')} `);
+}
+
 // #568 keystone — the structural duplicate-`start` guard. A `start` row may only
 // land on a log that has no data rows yet (the genuine first-ever bind). Over a
 // non-empty log:
@@ -373,6 +400,12 @@ function appendRow(body, row) {
       );
     }
   }
+
+  if (shouldSuppressTerminalSessionEvent(body, rowEventSlug(effectiveRow))) {
+    return body;
+  }
+
+  effectiveRow = carryForwardWordMarker(body, effectiveRow);
 
   // #972 — redundant-departure guard. A second departure event (`switch-out:*`
   // / `pause:*` / `idle`) landing while a prior departure is still open (no
