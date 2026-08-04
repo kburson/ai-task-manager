@@ -43,7 +43,8 @@
     "lint:line-cap": "node scripts/task-tracker/tests/audit-line-cap.mjs",
     "lint:test-reach": "node scripts/maintenance/lint-test-coverage-reach.mjs",
     "lint:doc-anchors": "node scripts/maintenance/lint-doc-anchors.mjs",
-    "lint": "npm run lint:js && npm run lint:md && npm run lint:spell && npm run lint:tmp && npm run lint:fleet-sandbox && npm run lint:story-tags && npm run lint:line-cap && npm run lint:test-reach && npm run lint:doc-anchors",
+    "lint:article-citations": "node scripts/maintenance/lint-article-citations.mjs",
+    "lint": "npm run lint:js && npm run lint:md && npm run lint:spell && npm run lint:tmp && npm run lint:fleet-sandbox && npm run lint:story-tags && npm run lint:line-cap && npm run lint:test-reach && npm run lint:doc-anchors && npm run lint:article-citations",
     "quality": "npm run format:check && npm run lint && npm test"
   },
   "files": [

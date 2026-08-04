@@ -122,7 +122,7 @@ Close:
 - GitLab Docs. "Issues API." https://docs.gitlab.com/api/issues/
 - GitLab Docs. "Project issue boards API." https://docs.gitlab.com/api/boards/
 - Atlassian Developer. "Bitbucket Cloud REST API." https://developer.atlassian.com/cloud/bitbucket/rest/
-- AI Task Manager. "State Machine." ../architecture/state-machine.md
-- AI Task Manager. "Agentic Development Process." ../introduction/agentic-development-process.md
-- AI Task Manager. "Core Workflow." ../introduction/core-workflow.md
-- AI Task Manager. "State Slug Migration History." ../migration-history.md
+- AI Task Manager. "State Machine." https://github.com/kburson/ai-task-manager/blob/trunk/docs/architecture/state-machine.md
+- AI Task Manager. "Agentic Development Process." https://github.com/kburson/ai-task-manager/blob/trunk/docs/introduction/agentic-development-process.md
+- AI Task Manager. "Core Workflow." https://github.com/kburson/ai-task-manager/blob/trunk/docs/introduction/core-workflow.md
+- AI Task Manager. "State Slug Migration History." https://github.com/kburson/ai-task-manager/blob/trunk/docs/migration-history.md

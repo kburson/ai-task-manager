@@ -129,5 +129,5 @@ Close:
 - OWASP. "Agentic AI - Threats and Mitigations." https://genai.owasp.org/resource/agentic-ai-threats-and-mitigations/
 - NIST. "AI Risk Management Framework." https://www.nist.gov/itl/ai-risk-management-framework
 - NIST. "Artificial Intelligence Risk Management Framework: Generative Artificial Intelligence Profile." https://nvlpubs.nist.gov/nistpubs/ai/NIST.AI.600-1.pdf
-- AI Task Manager. "Measurement and ROI." ../introduction/measurement-and-roi.md
-- AI Task Manager. "How AI Task Manager Keeps Agent Context Small and Rules Fresh." ../introduction/context-management-skill-architecture.md
+- AI Task Manager. "Measurement and ROI." https://github.com/kburson/ai-task-manager/blob/trunk/docs/introduction/measurement-and-roi.md
+- AI Task Manager. "How AI Task Manager Keeps Agent Context Small and Rules Fresh." https://github.com/kburson/ai-task-manager/blob/trunk/docs/introduction/context-management-skill-architecture.md
