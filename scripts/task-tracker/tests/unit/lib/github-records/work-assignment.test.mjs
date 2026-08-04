@@ -110,7 +110,6 @@ function assignmentInput(authority = activeAuthority(), overrides = {}) {
     authority,
     coordinator,
     issue,
-    repository,
     branch,
     files: ['scripts/task-tracker/lib/github-records/work-assignment.mjs'],
     subsystem: 'github-records',
@@ -367,6 +366,7 @@ test('creates an exact frozen assignment without mutating caller data', () => {
   assert.equal(Object.isFrozen(result), true);
   assert.equal(Object.isFrozen(result.payload.worker), true);
   assert.equal(Object.isFrozen(result.payload.files), true);
+  assert.throws(() => createWorkAssignment({ ...input, repository }), /work-assignment:assignment/);
 });
 
 test('normalizes the Task 7 branch convention but never accepts a branch prefix escape', () => {
@@ -616,7 +616,7 @@ test('requires a safe rejection reason and current exact disposition authority',
   );
 });
 
-test('adopts only an exhaustive durable capsule snapshot with deterministic provenance', () => {
+test('adopts through documented arrays or the compatible exhaustive snapshot', () => {
   for (const decision of ['accepted', 'rejected']) {
     const current = replacementHandoff({ decision });
     const result = adoptOutstandingSubmissions(adoptionInput(current));
@@ -627,13 +627,22 @@ test('adopts only an exhaustive durable capsule snapshot with deterministic prov
   }
 
   const current = replacementHandoff();
+  assert.deepEqual(
+    adoptOutstandingSubmissions({
+      authority: current.pausedAuthority,
+      assignments: [current.assignment],
+      submissions: [current.submission],
+      dispositions: [current.disposition],
+    }),
+    adoptOutstandingSubmissions(adoptionInput(current))
+  );
   assert.throws(
     () =>
       adoptOutstandingSubmissions({
         authority: current.pausedAuthority,
-        assignments: [current.assignment],
-        submissions: [current.submission],
-        dispositions: [current.disposition],
+        assignments: null,
+        submissions: [],
+        dispositions: [],
       }),
     /work-assignment:input/
   );

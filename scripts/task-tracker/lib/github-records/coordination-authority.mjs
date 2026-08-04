@@ -31,6 +31,7 @@ const PROJECTION_KEYS = ['adoptionState', 'epoch', 'grantId', 'schema'];
 const REVOCATION_KEYS = ['epoch', 'grantId', 'schema', 'state'];
 const REPLACEMENT_REVOCATION_KEYS = [...REVOCATION_KEYS, 'replacementGrantId'];
 const MAX_DELEGATION_REPLACEMENT_DEPTH = 128;
+const MAX_ADOPTION_RECORDS = 2048;
 const REPOSITORY_RE = /^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/;
 const authorityMetadata = new WeakMap();
 const authorityGenerations = new Map();
@@ -642,6 +643,10 @@ function validAdoptionTarget({ assignment, submission, predecessorGrant, reposit
   };
 }
 
+function canDisposeSubmission(grant) {
+  return grant?.operations?.includes('dispose-submission') === true;
+}
+
 function validAdoptionDisposition({
   record,
   position,
@@ -664,6 +669,7 @@ function validAdoptionDisposition({
   if (
     target === null ||
     dispositionGrant === undefined ||
+    !canDisposeSubmission(dispositionGrant) ||
     position <= afterPosition ||
     position >= beforePosition ||
     submission.position >= position
@@ -1003,6 +1009,7 @@ export function resolveCoordinatorAuthority({
             effectiveSubmissionsById,
             historicallyDisposedSubmissionIds,
             replacementDisposedSubmissionIds,
+            capturedRecords: Object.freeze(durableResolution.records.map(frozenCopy)),
             invalidRelevantWorkRecord,
             invalidReplacementExtension,
           };
@@ -1034,6 +1041,7 @@ export function authorizeCoordinatorOperation({
   repository,
   assignment,
   submission,
+  requireDurableContext = false,
 } = {}) {
   if (!isPlainDataObject(authority) || !isActiveAuthorityResult(authority)) {
     return authorization(false, 'authority');
@@ -1068,12 +1076,13 @@ export function authorizeCoordinatorOperation({
     return authorization(false, 'identity');
   }
   if (!scopeIssueIds.includes(issue)) return authorization(false, 'scope');
+  const durableContext = metadata?.durableContext;
   if (
-    repository !== undefined &&
-    (metadata?.durableContext === null ||
-      metadata?.durableContext === undefined ||
-      repository !== metadata.durableContext.repository ||
-      issue !== metadata.durableContext.issue)
+    (requireDurableContext || repository !== undefined) &&
+    (durableContext === null ||
+      durableContext === undefined ||
+      issue !== durableContext.issue ||
+      (repository !== undefined && repository !== durableContext.repository))
   ) {
     return authorization(false, 'repository');
   }
@@ -1138,6 +1147,9 @@ export function authorizeCoordinatorAdoption({
   assignment,
   submission,
   records,
+  assignments,
+  submissions,
+  dispositions,
 } = {}) {
   const metadata = authorityMetadata.get(authority);
   if (
@@ -1159,10 +1171,19 @@ export function authorizeCoordinatorAdoption({
     return authorization(false, 'operation');
   }
   const context = metadata.adoptionContext;
-  if (repository !== context.repository) return authorization(false, 'repository');
-  if (issue !== context.issue || !metadata.scopeIssueIds.includes(issue)) {
+  const usesArrayInput =
+    operation === 'adopt-submissions' &&
+    (assignments !== undefined || submissions !== undefined || dispositions !== undefined);
+  if (!usesArrayInput && repository !== context.repository) {
+    return authorization(false, 'repository');
+  }
+  if (
+    (!usesArrayInput && issue !== context.issue) ||
+    !metadata.scopeIssueIds.includes(context.issue)
+  ) {
     return authorization(false, 'scope');
   }
+  let preparedSnapshot = null;
   if (operation === 'dispose-submission') {
     const predecessor = context.predecessorGrant;
     if (
@@ -1199,18 +1220,80 @@ export function authorizeCoordinatorAdoption({
       return authorization(false, 'record');
     }
   } else {
-    if (!Array.isArray(records)) return authorization(false, 'record');
+    const hasArrayInput = usesArrayInput;
+    let authorizationRecords = records;
+    if (hasArrayInput) {
+      if (
+        records !== undefined ||
+        !Array.isArray(assignments) ||
+        !Array.isArray(submissions) ||
+        !Array.isArray(dispositions)
+      ) {
+        return authorization(false, 'record');
+      }
+      const suppliedGroups = [
+        [assignments, (record) => record?.envelope?.recordType === 'work-assignment'],
+        [submissions, (record) => isWorkAssignmentSubmissionType(record?.envelope?.recordType)],
+        [dispositions, (record) => record?.envelope?.recordType === 'record-disposition'],
+      ];
+      if (suppliedGroups.some(([group]) => group.length > MAX_ADOPTION_RECORDS)) {
+        return authorization(false, 'record');
+      }
+      const recordsById = new Map(
+        context.capturedRecords.map((record) => [record.envelope.recordId, record])
+      );
+      for (const [group, isExpectedType] of suppliedGroups) {
+        for (const record of group) {
+          if (!isExpectedType(record)) return authorization(false, 'record');
+          const recordId = record.envelope.recordId;
+          const existing = recordsById.get(recordId);
+          if (existing !== undefined && !isDeepStrictEqual(existing, record)) {
+            return authorization(false, 'record');
+          }
+          recordsById.set(recordId, frozenCopy(record));
+        }
+      }
+      authorizationRecords = [...recordsById.values()];
+      if (authorizationRecords.length > MAX_ADOPTION_RECORDS) {
+        return authorization(false, 'record');
+      }
+      try {
+        const capsules = extractCapsules({
+          records: authorizationRecords,
+          repository: context.repository,
+          issue: context.issue,
+        });
+        if (capsules.headRecord === null) return authorization(false, 'record');
+        authorizationRecords = capsules.resolved.records;
+        preparedSnapshot = {
+          repository: context.repository,
+          issue: context.issue,
+          expectedHeadRecordId: capsules.headRecord.envelope.recordId,
+          records: authorizationRecords.map(frozenCopy),
+        };
+      } catch {
+        return authorization(false, 'record');
+      }
+    } else if (!Array.isArray(authorizationRecords)) {
+      return authorization(false, 'record');
+    }
     if (context.invalidRelevantWorkRecord || context.invalidReplacementExtension) {
       return authorization(false, 'authority');
     }
-    const suppliedById = new Map(records.map((record) => [record?.envelope?.recordId, record]));
+    const suppliedById = new Map(
+      authorizationRecords.map((record) => [record?.envelope?.recordId, record])
+    );
     const pausedHeadRecordId = context.pausedHeadRecord.envelope.recordId;
     if (!isDeepStrictEqual(suppliedById.get(pausedHeadRecordId), context.pausedHeadRecord)) {
       return authorization(false, 'record');
     }
     let resolvedSnapshot;
     try {
-      resolvedSnapshot = resolveSupersession({ records, repository, issue });
+      resolvedSnapshot = resolveSupersession({
+        records: authorizationRecords,
+        repository: context.repository,
+        issue: context.issue,
+      });
     } catch {
       return authorization(false, 'record');
     }
@@ -1237,6 +1320,9 @@ export function authorizeCoordinatorAdoption({
     predecessorEpoch: context.predecessorGrant.epoch,
     predecessorCoordinator: frozenCopy(context.predecessorGrant.coordinator),
     predecessorCanAssignWork: context.predecessorGrant.operations.includes('assign-work'),
+    predecessorCanDisposeSubmissions: canDisposeSubmission(context.predecessorGrant),
+    replacementCanDisposeSubmissions: canDisposeSubmission(metadata.grant),
+    ...(preparedSnapshot === null ? {} : { preparedSnapshot: deepFreeze(preparedSnapshot) }),
   });
 }
 

@@ -90,7 +90,6 @@ function record(spec, predecessor = null) {
 function assignmentInput(authority, overrides = {}) {
   return {
     authority,
-    repository,
     coordinator,
     issue,
     branch,
@@ -396,10 +395,7 @@ test('raw grant context assertions never mint repository-bound Task 8 authority'
     now: '2026-08-03T20:06:00.000Z',
   });
   assert.throws(
-    () =>
-      createWorkAssignment(
-        assignmentInput(raw, { repository: 'foreign/repository', issue: otherIssue })
-      ),
+    () => createWorkAssignment(assignmentInput(raw, { issue: otherIssue })),
     /work-assignment:authority/
   );
 

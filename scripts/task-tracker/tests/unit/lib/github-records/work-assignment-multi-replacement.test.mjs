@@ -90,7 +90,6 @@ function resolve(records, projection) {
 function assignmentCandidate(authority, coordinator) {
   return createWorkAssignment({
     authority,
-    repository,
     coordinator,
     issue,
     branch,

@@ -20,7 +20,6 @@ import {
   validateWorkAssignmentPayload as validateAssignmentPayload,
   validateWorkAssignmentReason as validateReason,
   validateWorkAssignmentRecord as validateAssignmentRecord,
-  validateWorkAssignmentRepository as validateRepository,
   validateWorkAssignmentSubmissionPayload as validateSubmissionPayload,
   validateWorkAssignmentSubsystem as validateSubsystem,
   validateWorkAssignmentVerification as validateVerification,
@@ -34,12 +33,12 @@ const ASSIGNMENT_INPUT_KEYS = [
   'dependency',
   'files',
   'issue',
-  'repository',
   'subsystem',
   'verification',
   'worker',
 ];
 const SNAPSHOT_KEYS = ['expectedHeadRecordId', 'issue', 'records', 'repository'];
+const ADOPTION_ARRAY_INPUT_KEYS = ['assignments', 'authority', 'dispositions', 'submissions'];
 const MAX_CAPSULE_RECORDS = 2048;
 const MAX_CAPSULE_DEPTH = 1024;
 
@@ -96,7 +95,18 @@ function validateAdoptionSnapshot(snapshot) {
 
 function activeAuthorization(
   authority,
-  { coordinator, issue, operation, branch, repository, grantId, epoch, assignment, submission }
+  {
+    coordinator,
+    issue,
+    operation,
+    branch,
+    repository,
+    grantId,
+    epoch,
+    assignment,
+    submission,
+    requireDurableContext = false,
+  }
 ) {
   const grant = authority?.grant;
   if (!isPlainDataObject(grant)) return { authorized: false, reason: 'authority' };
@@ -112,6 +122,7 @@ function activeAuthorization(
       repository,
       assignment,
       submission,
+      requireDurableContext,
     }),
     grantId: grant.grantId,
     epoch: grant.epoch,
@@ -126,21 +137,11 @@ function coordinatorAuthorization(authority, target) {
 
 export function createWorkAssignment(input = {}) {
   if (!hasExactlyKeys(input, ASSIGNMENT_INPUT_KEYS)) throw assignmentError('assignment');
-  const {
-    authority,
-    coordinator,
-    issue,
-    repository,
-    files,
-    subsystem,
-    dependency,
-    verification,
-    worker,
-  } = input;
+  const { authority, coordinator, issue, files, subsystem, dependency, verification, worker } =
+    input;
   validateIdentity(coordinator, 'assignment');
   validateIdentity(worker, 'assignment');
   if (!Number.isInteger(issue) || issue <= 0) throw assignmentError('assignment');
-  validateRepository(repository);
   const branch = normalizeBranch(input.branch);
   validateFiles(files, 'assignment');
   validateSubsystem(subsystem, 'assignment');
@@ -152,7 +153,7 @@ export function createWorkAssignment(input = {}) {
     issue,
     operation: 'assign-work',
     branch,
-    repository,
+    requireDurableContext: true,
   });
   if (!authorization.authorized || !isDeepStrictEqual(authorization.coordinator, coordinator)) {
     throw assignmentError('authority');
@@ -298,21 +299,41 @@ export function rejectSubmission(input = {}) {
 }
 
 export function adoptOutstandingSubmissions(input = {}) {
-  if (!hasExactlyKeys(input, ['authority', 'snapshot'])) {
-    throw assignmentError('input');
+  const snapshotInput = hasExactlyKeys(input, ['authority', 'snapshot']);
+  const arrayInput = hasExactlyKeys(input, ADOPTION_ARRAY_INPUT_KEYS);
+  if (!snapshotInput && !arrayInput) throw assignmentError('input');
+  const { authority } = input;
+  let snapshot;
+  let authorization;
+  if (snapshotInput) {
+    snapshot = input.snapshot;
+    const validatedSnapshot = validateAdoptionSnapshot(snapshot);
+    if (validatedSnapshot.status === 'blocked') return validatedSnapshot;
+    authorization = authorizeCoordinatorAdoption({
+      authority,
+      issue: snapshot.issue,
+      repository: snapshot.repository,
+      operation: 'adopt-submissions',
+      records: validatedSnapshot.resolved.records,
+    });
+  } else {
+    const { assignments, submissions, dispositions } = input;
+    if (![assignments, submissions, dispositions].every(Array.isArray)) {
+      throw assignmentError('input');
+    }
+    authorization = authorizeCoordinatorAdoption({
+      authority,
+      operation: 'adopt-submissions',
+      assignments,
+      submissions,
+      dispositions,
+    });
+    if (authorization.authorized) snapshot = authorization.preparedSnapshot;
   }
-  const { authority, snapshot } = input;
+  if (!authorization.authorized) return blocked('authority');
   const validatedSnapshot = validateAdoptionSnapshot(snapshot);
   if (validatedSnapshot.status === 'blocked') return validatedSnapshot;
   const { resolved } = validatedSnapshot;
-  const authorization = authorizeCoordinatorAdoption({
-    authority,
-    issue: snapshot.issue,
-    repository: snapshot.repository,
-    operation: 'adopt-submissions',
-    records: resolved.records,
-  });
-  if (!authorization.authorized) return blocked('authority');
 
   const recordPositions = new Map();
   const assignmentsById = new Map();
@@ -405,6 +426,10 @@ export function adoptOutstandingSubmissions(input = {}) {
     const historical = dispositionPosition < revocationPosition;
     const replacement = dispositionPosition > replacementPosition;
     if (!historical && !replacement) return blocked('disposition-order');
+    const canDispose = historical
+      ? authorization.predecessorCanDisposeSubmissions
+      : authorization.replacementCanDisposeSubmissions;
+    if (!canDispose) return blocked('disposition-authority');
     const expectedGrantId = historical ? authorization.predecessorGrantId : authorization.grantId;
     const expectedEpoch = historical ? authorization.predecessorEpoch : authorization.epoch;
     const expectedCoordinator = historical
