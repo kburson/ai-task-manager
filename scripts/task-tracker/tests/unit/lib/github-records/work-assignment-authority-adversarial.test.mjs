@@ -3,6 +3,7 @@ import { strict as assert } from 'node:assert';
 import test from 'node:test';
 
 import {
+  authorizeCoordinatorAdoption,
   authorizeCoordinatorOperation,
   replaceCoordinator,
   resolveCoordinatorAuthority,
@@ -67,7 +68,9 @@ function record(spec, predecessor = null) {
   const recordRepository = spec.repository ?? repository;
   const recordIssue = spec.issue ?? issue;
   return Object.freeze({
-    commentNodeId: `IC_kwDOAuthority${spec.recordId.slice(-4)}`,
+    commentNodeId: Object.hasOwn(spec, 'commentNodeId')
+      ? spec.commentNodeId
+      : `IC_kwDOAuthority${spec.recordId.slice(-4)}`,
     envelope: createAitmRecordEnvelope({
       recordId: spec.recordId,
       recordType: spec.recordType,
@@ -134,7 +137,13 @@ function resolveRecords(records, projection, options = {}) {
   });
 }
 
-function replacementHistory({ malformedHistorical = false } = {}) {
+function replacementHistory({
+  malformedHistorical = false,
+  mutateAssignment = (payload) => payload,
+  mutateSubmission = (payload) => payload,
+  assignmentCommentNodeId,
+  submissionCommentNodeId,
+} = {}) {
   const originalGrant = grant();
   const root = record({
     recordId: id(1),
@@ -151,39 +160,41 @@ function replacementHistory({ malformedHistorical = false } = {}) {
     adoptionState: 'adopted',
   });
   const candidate = createWorkAssignment(assignmentInput(active));
-  const assignment = record(
-    {
-      recordId: id(10),
-      recordType: candidate.recordType,
-      payload: candidate.payload,
-      actor: coordinator.actor,
-      epoch: 1,
-      grantId: originalGrant.grantId,
-    },
-    root.envelope.recordId
-  );
+  const assignmentSpec = {
+    recordId: id(10),
+    recordType: candidate.recordType,
+    payload: mutateAssignment(structuredClone(candidate.payload)),
+    actor: coordinator.actor,
+    epoch: 1,
+    grantId: originalGrant.grantId,
+  };
+  if (assignmentCommentNodeId !== undefined) {
+    assignmentSpec.commentNodeId = assignmentCommentNodeId;
+  }
+  const assignment = record(assignmentSpec, root.envelope.recordId);
   const assignmentB = record(
     {
       recordId: id(12),
       recordType: candidate.recordType,
-      payload: candidate.payload,
+      payload: assignment.envelope.payload,
       actor: coordinator.actor,
       epoch: 1,
       grantId: originalGrant.grantId,
     },
     assignment.envelope.recordId
   );
-  const submission = record(
-    {
-      recordId: id(20),
-      recordType: 'execution-result',
-      payload: submissionPayload(assignment),
-      actor: worker.actor,
-      epoch: 1,
-      grantId: originalGrant.grantId,
-    },
-    assignmentB.envelope.recordId
-  );
+  const submissionSpec = {
+    recordId: id(20),
+    recordType: 'execution-result',
+    payload: mutateSubmission(submissionPayload(assignment)),
+    actor: worker.actor,
+    epoch: 1,
+    grantId: originalGrant.grantId,
+  };
+  if (submissionCommentNodeId !== undefined) {
+    submissionSpec.commentNodeId = submissionCommentNodeId;
+  }
+  const submission = record(submissionSpec, assignmentB.envelope.recordId);
   const malformed = malformedHistorical
     ? record(
         {
@@ -259,6 +270,88 @@ function replacementHistory({ malformedHistorical = false } = {}) {
     replacement,
     replacementRecord,
     submission,
+  };
+}
+
+function zeroOutstandingHistory({ orphanDisposition = false } = {}) {
+  const originalGrant = grant();
+  const root = record({
+    recordId: id(1),
+    recordType: 'coordinator-grant',
+    payload: originalGrant,
+    actor: coordinator.actor,
+    epoch: 1,
+    grantId: id(8000),
+  });
+  const active = resolveRecords([root], {
+    schema: 'aitm.coordination-projection/v1',
+    grantId: originalGrant.grantId,
+    epoch: 1,
+    adoptionState: 'adopted',
+  });
+  const replacementGrant = grant({
+    grantId: id(9002),
+    epoch: 2,
+    grantCoordinator: replacementCoordinator,
+    issuer: coordinator,
+  });
+  const replacement = replaceCoordinator({
+    authority: active,
+    expectedGrantId: originalGrant.grantId,
+    expectedEpoch: 1,
+    replacementGrant,
+  });
+  const revocation = record(
+    {
+      recordId: id(40),
+      recordType: 'coordinator-revocation',
+      payload: replacement.revocation,
+      actor: coordinator.actor,
+      epoch: 1,
+      grantId: id(8000),
+    },
+    root.envelope.recordId
+  );
+  const replacementRecord = record(
+    {
+      recordId: id(41),
+      recordType: 'coordinator-grant',
+      payload: replacementGrant,
+      actor: coordinator.actor,
+      epoch: 1,
+      grantId: id(8000),
+    },
+    revocation.envelope.recordId
+  );
+  const orphan = orphanDisposition
+    ? record(
+        {
+          recordId: id(42),
+          recordType: 'record-disposition',
+          payload: {
+            schema: 'aitm.record-disposition/v1',
+            decision: 'rejected',
+            issue,
+            assignmentRecordId: id(70),
+            assignmentCommentNodeId: '',
+            submissionRecordId: id(71),
+            submissionCommentNodeId: '',
+            grantId: replacementGrant.grantId,
+            epoch: replacementGrant.epoch,
+            decidedBy: replacementCoordinator,
+            reason: 'orphan target is unrelated to this replacement',
+          },
+          actor: replacementCoordinator.actor,
+          epoch: replacementGrant.epoch,
+          grantId: replacementGrant.grantId,
+        },
+        replacementRecord.envelope.recordId
+      )
+    : null;
+  return {
+    records: [root, revocation, replacementRecord, ...(orphan === null ? [] : [orphan])],
+    replacement,
+    replacementRecord,
   };
 }
 
@@ -424,4 +517,137 @@ test('malformed historical linkage permits repair but never counts as completion
     },
   });
   assert.deepEqual(adopted.acceptedSubmissionRecordIds, [current.submission.envelope.recordId]);
+});
+
+test('replacement projection never grants authority without immutable adoption proof', () => {
+  const current = zeroOutstandingHistory();
+  const required = resolveRecords(current.records, {
+    ...current.replacement.coordinationProjection,
+    adoptionState: 'required',
+  });
+  const assertedAdopted = resolveRecords([...current.records].reverse(), {
+    ...current.replacement.coordinationProjection,
+    adoptionState: 'adopted',
+  });
+  assert.deepEqual(required, {
+    status: 'paused',
+    diagnostic: { reason: 'adoption-required' },
+  });
+  assert.deepEqual(assertedAdopted, required);
+});
+
+test('replacement replay uses the exact full Task 8 assignment and submission validators', () => {
+  const variants = [
+    {
+      name: 'repository traversal file',
+      mutateAssignment(payload) {
+        payload.files = ['../outside'];
+        return payload;
+      },
+    },
+    {
+      name: 'invalid baseline SHA',
+      mutateAssignment(payload) {
+        payload.dependency.baselineSha = 'not-a-sha';
+        return payload;
+      },
+    },
+    {
+      name: 'non-positive contract epoch',
+      mutateAssignment(payload) {
+        payload.verification.contractEpoch = 0;
+        return payload;
+      },
+    },
+    {
+      name: 'empty verifier set',
+      mutateAssignment(payload) {
+        payload.verification.verifierIds = [];
+        return payload;
+      },
+    },
+    {
+      name: 'invalid subsystem',
+      mutateAssignment(payload) {
+        payload.subsystem = 'github/records';
+        return payload;
+      },
+    },
+    {
+      name: 'invalid worker identity',
+      mutateAssignment(payload) {
+        payload.worker.session = '';
+        return payload;
+      },
+    },
+    {
+      name: 'oversized submission result',
+      chainRejected: true,
+      mutateSubmission(payload) {
+        payload.result = { summary: 'x'.repeat(256 * 1024 + 1) };
+        return payload;
+      },
+    },
+    {
+      name: 'empty correlated comment IDs',
+      assignmentCommentNodeId: '',
+      submissionCommentNodeId: '',
+    },
+  ];
+
+  for (const variant of variants) {
+    const current = replacementHistory(variant);
+    for (const records of [current.records, [...current.records].reverse()]) {
+      const resolve = () =>
+        resolveRecords(records, {
+          ...current.replacement.coordinationProjection,
+          adoptionState: 'required',
+        });
+      if (variant.chainRejected) {
+        assert.throws(resolve, /capsule-chain:record/, variant.name);
+        continue;
+      }
+      const authorization = authorizeCoordinatorAdoption({
+        authority: resolve(),
+        issue,
+        operation: 'dispose-submission',
+        branch,
+        repository,
+        grantId: id(9001),
+        epoch: 1,
+        coordinator,
+        assignment: current.assignment,
+        submission: current.submission,
+      });
+      assert.equal(authorization.authorized, false, variant.name);
+    }
+  }
+});
+
+test('unrelated orphan dispositions do not poison zero-outstanding adoption', () => {
+  const current = zeroOutstandingHistory({ orphanDisposition: true });
+  for (const records of [current.records, [...current.records].reverse()]) {
+    const paused = resolveRecords(records, {
+      ...current.replacement.coordinationProjection,
+      adoptionState: 'required',
+    });
+    const adopted = adoptOutstandingSubmissions({
+      authority: paused,
+      snapshot: {
+        repository,
+        issue,
+        expectedHeadRecordId: current.records.at(-1).envelope.recordId,
+        records,
+      },
+    });
+    assert.deepEqual(adopted, {
+      status: 'ready-to-adopt',
+      coordinationProjection: {
+        ...current.replacement.coordinationProjection,
+        adoptionState: 'adopted',
+      },
+      acceptedSubmissionRecordIds: [],
+      rejectedSubmissionRecordIds: [],
+    });
+  }
 });

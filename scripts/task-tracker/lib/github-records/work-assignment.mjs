@@ -5,7 +5,27 @@ import {
   authorizeCoordinatorOperation,
 } from './coordination-authority.mjs';
 import { resolveSupersession, validateCapsuleChain } from './capsule-chain.mjs';
-import { assertNoSecretRecordData, renderAitmRecord } from './record-envelope.mjs';
+import {
+  hasExactlyWorkAssignmentKeys as hasExactlyKeys,
+  isWorkAssignmentPlainObject as isPlainDataObject,
+  isWorkAssignmentRecordId as isRecordId,
+  isWorkAssignmentSubmissionType,
+  normalizeWorkAssignmentBranch as normalizeBranch,
+  validateWorkAssignmentCorrelatedRecord as validateCorrelatedRecord,
+  validateWorkAssignmentDependency as validateDependency,
+  validateWorkAssignmentDispositionPayload as validateDispositionPayload,
+  validateWorkAssignmentDispositionRecord as validateDispositionRecord,
+  validateWorkAssignmentFiles as validateFiles,
+  validateWorkAssignmentIdentity as validateIdentity,
+  validateWorkAssignmentPayload as validateAssignmentPayload,
+  validateWorkAssignmentReason as validateReason,
+  validateWorkAssignmentRecord as validateAssignmentRecord,
+  validateWorkAssignmentRepository as validateRepository,
+  validateWorkAssignmentSubmissionPayload as validateSubmissionPayload,
+  validateWorkAssignmentSubsystem as validateSubsystem,
+  validateWorkAssignmentVerification as validateVerification,
+  workAssignmentError as assignmentError,
+} from './work-assignment-validation.mjs';
 
 const ASSIGNMENT_INPUT_KEYS = [
   'authority',
@@ -19,109 +39,9 @@ const ASSIGNMENT_INPUT_KEYS = [
   'verification',
   'worker',
 ];
-const ASSIGNMENT_KEYS = [
-  'branch',
-  'coordinator',
-  'dependency',
-  'epoch',
-  'files',
-  'grantId',
-  'issue',
-  'schema',
-  'subsystem',
-  'verification',
-  'worker',
-];
-const DEPENDENCY_KEYS = ['baselineSha', 'recordIds'];
-const VERIFICATION_KEYS = ['contractEpoch', 'verifierIds'];
-const IDENTITY_KEYS = ['actor', 'platform', 'session'];
-const RECORD_KEYS = ['commentNodeId', 'envelope'];
 const SNAPSHOT_KEYS = ['expectedHeadRecordId', 'issue', 'records', 'repository'];
-const SUBMISSION_KEYS = [
-  'assignmentRecordId',
-  'branch',
-  'dependency',
-  'files',
-  'issue',
-  'result',
-  'schema',
-  'status',
-  'subsystem',
-  'verification',
-  'worker',
-];
-const DISPOSITION_KEYS = [
-  'assignmentCommentNodeId',
-  'assignmentRecordId',
-  'decidedBy',
-  'decision',
-  'epoch',
-  'grantId',
-  'issue',
-  'reason',
-  'schema',
-  'submissionCommentNodeId',
-  'submissionRecordId',
-];
-const SUBMISSION_TYPES = new Set([
-  'execution-result',
-  'verification-evidence',
-  'review-result',
-  'handoff',
-]);
-const ULID_RE = /^[0-7][0-9A-HJKMNP-TV-Z]{25}$/;
-const SHA_RE = /^(?:[0-9a-f]{40}|[0-9a-f]{64})$/;
-const SUBSYSTEM_RE = /^[A-Za-z0-9](?:[A-Za-z0-9._-]{0,127})$/;
-const REPOSITORY_RE = /^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/;
-const MAX_RESULT_BYTES = 256 * 1024;
 const MAX_CAPSULE_RECORDS = 2048;
 const MAX_CAPSULE_DEPTH = 1024;
-
-function assignmentError(category) {
-  return new TypeError(`work-assignment:${category}`);
-}
-
-function validateRepository(repository) {
-  if (typeof repository !== 'string' || !REPOSITORY_RE.test(repository)) {
-    throw assignmentError('assignment');
-  }
-  return repository;
-}
-
-function isPlainDataObject(value) {
-  if (value === null || typeof value !== 'object' || Array.isArray(value)) return false;
-  const prototype = Object.getPrototypeOf(value);
-  if (prototype !== Object.prototype && prototype !== null) return false;
-  return Reflect.ownKeys(value).every((key) => {
-    if (typeof key !== 'string') return false;
-    const descriptor = Object.getOwnPropertyDescriptor(value, key);
-    return descriptor?.enumerable === true && Object.hasOwn(descriptor, 'value');
-  });
-}
-
-function hasExactlyKeys(value, keys) {
-  if (!isPlainDataObject(value)) return false;
-  const actual = Object.keys(value).sort();
-  const expected = [...keys].sort();
-  return actual.length === expected.length && actual.every((key, index) => key === expected[index]);
-}
-
-function isOpaqueId(value) {
-  return (
-    typeof value === 'string' &&
-    value.length > 0 &&
-    value.length <= 256 &&
-    value === value.trim() &&
-    ![...value].some((character) => {
-      const code = character.charCodeAt(0);
-      return code <= 0x1f || code === 0x7f;
-    })
-  );
-}
-
-function isRecordId(value) {
-  return typeof value === 'string' && ULID_RE.test(value);
-}
 
 function deepFreeze(value) {
   if (value === null || typeof value !== 'object' || Object.isFrozen(value)) return value;
@@ -133,225 +53,8 @@ function frozenCopy(value) {
   return deepFreeze(structuredClone(value));
 }
 
-function normalizeBranch(value, category = 'assignment') {
-  if (!isOpaqueId(value)) throw assignmentError(category);
-  const branch = value.startsWith('refs/heads/') ? value.slice('refs/heads/'.length) : value;
-  if (!branch || branch.startsWith('/') || branch.endsWith('/') || branch.includes('//')) {
-    throw assignmentError(category);
-  }
-  return branch;
-}
-
-function validateIdentity(value, category) {
-  if (!hasExactlyKeys(value, IDENTITY_KEYS) || !Object.values(value).every(isOpaqueId)) {
-    throw assignmentError(category);
-  }
-  return value;
-}
-
-function validateFiles(files, category) {
-  if (!Array.isArray(files) || files.length > 256) throw assignmentError(category);
-  for (const file of files) {
-    if (
-      !isOpaqueId(file) ||
-      file.length > 1024 ||
-      file.startsWith('/') ||
-      /^[A-Za-z]:/.test(file) ||
-      file.includes('\\') ||
-      file.split('/').some((segment) => segment === '' || segment === '.' || segment === '..')
-    ) {
-      throw assignmentError(category);
-    }
-  }
-  if (new Set(files).size !== files.length) throw assignmentError(category);
-  return files;
-}
-
-function validateSubsystem(subsystem, category) {
-  if (subsystem !== null && (typeof subsystem !== 'string' || !SUBSYSTEM_RE.test(subsystem))) {
-    throw assignmentError(category);
-  }
-  return subsystem;
-}
-
-function validateDependency(dependency, category) {
-  if (
-    !hasExactlyKeys(dependency, DEPENDENCY_KEYS) ||
-    typeof dependency.baselineSha !== 'string' ||
-    !SHA_RE.test(dependency.baselineSha) ||
-    !Array.isArray(dependency.recordIds) ||
-    dependency.recordIds.length > 256 ||
-    dependency.recordIds.some((recordId) => !isRecordId(recordId)) ||
-    new Set(dependency.recordIds).size !== dependency.recordIds.length
-  ) {
-    throw assignmentError(category);
-  }
-  return dependency;
-}
-
-function validateVerification(verification, category) {
-  if (
-    !hasExactlyKeys(verification, VERIFICATION_KEYS) ||
-    !Number.isInteger(verification.contractEpoch) ||
-    verification.contractEpoch <= 0 ||
-    !Array.isArray(verification.verifierIds) ||
-    verification.verifierIds.length === 0 ||
-    verification.verifierIds.length > 256 ||
-    verification.verifierIds.some((verifierId) => !isOpaqueId(verifierId)) ||
-    new Set(verification.verifierIds).size !== verification.verifierIds.length
-  ) {
-    throw assignmentError(category);
-  }
-  return verification;
-}
-
-function validateAssignmentPayload(payload, category = 'assignment') {
-  try {
-    assertNoSecretRecordData(payload);
-  } catch {
-    throw assignmentError(category);
-  }
-  if (
-    !hasExactlyKeys(payload, ASSIGNMENT_KEYS) ||
-    payload.schema !== 'aitm.work-assignment/v1' ||
-    !Number.isInteger(payload.issue) ||
-    payload.issue <= 0 ||
-    !isRecordId(payload.grantId) ||
-    !Number.isInteger(payload.epoch) ||
-    payload.epoch <= 0
-  ) {
-    throw assignmentError(category);
-  }
-  const normalizedBranch = normalizeBranch(payload.branch, category);
-  if (normalizedBranch !== payload.branch) throw assignmentError(category);
-  validateFiles(payload.files, category);
-  validateSubsystem(payload.subsystem, category);
-  if (payload.files.length === 0 && payload.subsystem === null) throw assignmentError(category);
-  validateDependency(payload.dependency, category);
-  validateVerification(payload.verification, category);
-  validateIdentity(payload.worker, category);
-  validateIdentity(payload.coordinator, category);
-  return payload;
-}
-
-function validateCorrelatedRecord(record, category) {
-  if (!hasExactlyKeys(record, RECORD_KEYS) || !isOpaqueId(record.commentNodeId)) {
-    throw assignmentError(category);
-  }
-  try {
-    renderAitmRecord({ envelope: record.envelope, visibleMarkdown: '' });
-  } catch {
-    throw assignmentError(category);
-  }
-  return record;
-}
-
-function validateAssignmentRecord(record) {
-  validateCorrelatedRecord(record, 'assignment');
-  if (record.envelope.recordType !== 'work-assignment') throw assignmentError('assignment');
-  const payload = validateAssignmentPayload(record.envelope.payload);
-  if (
-    record.envelope.issue !== payload.issue ||
-    record.envelope.authority.actor !== payload.coordinator.actor ||
-    record.envelope.authority.grantId !== payload.grantId ||
-    record.envelope.authority.epoch !== payload.epoch
-  ) {
-    throw assignmentError('assignment');
-  }
-  return record;
-}
-
-function validateResult(result) {
-  try {
-    assertNoSecretRecordData(result);
-    if (Buffer.byteLength(JSON.stringify(result), 'utf8') > MAX_RESULT_BYTES) {
-      throw assignmentError('submission');
-    }
-  } catch {
-    throw assignmentError('submission');
-  }
-  return result;
-}
-
-function validateSubmissionPayload(payload) {
-  try {
-    assertNoSecretRecordData(payload);
-  } catch {
-    throw assignmentError('submission');
-  }
-  if (
-    !hasExactlyKeys(payload, SUBMISSION_KEYS) ||
-    payload.schema !== 'aitm.worker-submission/v1' ||
-    payload.status !== 'submitted' ||
-    !isRecordId(payload.assignmentRecordId) ||
-    !Number.isInteger(payload.issue) ||
-    payload.issue <= 0
-  ) {
-    throw assignmentError('submission');
-  }
-  const normalizedBranch = normalizeBranch(payload.branch, 'submission');
-  if (normalizedBranch !== payload.branch) throw assignmentError('submission');
-  validateFiles(payload.files, 'submission');
-  validateSubsystem(payload.subsystem, 'submission');
-  if (payload.files.length === 0 && payload.subsystem === null) throw assignmentError('submission');
-  validateDependency(payload.dependency, 'submission');
-  validateVerification(payload.verification, 'submission');
-  validateIdentity(payload.worker, 'submission');
-  validateResult(payload.result);
-  return payload;
-}
-
 function blocked(reason) {
   return deepFreeze({ status: 'blocked', diagnostic: { reason } });
-}
-
-function validateReason(reason) {
-  if (!isOpaqueId(reason) || reason.length > 2048) throw assignmentError('reason');
-  try {
-    assertNoSecretRecordData(reason);
-  } catch {
-    throw assignmentError('reason');
-  }
-  return reason;
-}
-
-function validateDispositionPayload(payload) {
-  try {
-    assertNoSecretRecordData(payload);
-  } catch {
-    throw assignmentError('disposition');
-  }
-  if (
-    !hasExactlyKeys(payload, DISPOSITION_KEYS) ||
-    payload.schema !== 'aitm.record-disposition/v1' ||
-    !['accepted', 'rejected'].includes(payload.decision) ||
-    !Number.isInteger(payload.issue) ||
-    payload.issue <= 0 ||
-    !isRecordId(payload.assignmentRecordId) ||
-    !isOpaqueId(payload.assignmentCommentNodeId) ||
-    !isRecordId(payload.submissionRecordId) ||
-    !isOpaqueId(payload.submissionCommentNodeId) ||
-    !isRecordId(payload.grantId) ||
-    !Number.isInteger(payload.epoch) ||
-    payload.epoch <= 0
-  ) {
-    throw assignmentError('disposition');
-  }
-  validateIdentity(payload.decidedBy, 'disposition');
-  if (payload.decision === 'accepted' && payload.reason !== null) {
-    throw assignmentError('disposition');
-  }
-  if (payload.decision === 'rejected') validateReason(payload.reason);
-  return payload;
-}
-
-function validateDispositionRecord(record) {
-  validateCorrelatedRecord(record, 'disposition');
-  if (record.envelope.recordType !== 'record-disposition') {
-    throw assignmentError('disposition');
-  }
-  validateDispositionPayload(record.envelope.payload);
-  return record;
 }
 
 function validateAdoptionSnapshot(snapshot) {
@@ -470,7 +173,7 @@ export function createWorkAssignment(input = {}) {
 }
 
 function evaluateSubmissionBounds(assignment, submission) {
-  if (!SUBMISSION_TYPES.has(submission.envelope.recordType)) {
+  if (!isWorkAssignmentSubmissionType(submission.envelope.recordType)) {
     return blocked('unsupported-submission-type');
   }
   const assignmentPayload = assignment.envelope.payload;
@@ -618,12 +321,12 @@ export function adoptOutstandingSubmissions(input = {}) {
     if (record.envelope.recordType === 'work-assignment') {
       validateAssignmentRecord(record);
       assignmentsById.set(record.envelope.recordId, record);
-    } else if (SUBMISSION_TYPES.has(record.envelope.recordType)) {
+    } else if (isWorkAssignmentSubmissionType(record.envelope.recordType)) {
       validateCorrelatedRecord(record, 'submission');
       validateSubmissionPayload(record.envelope.payload);
       submissionRecords.push(record);
     } else if (record.envelope.recordType === 'record-disposition') {
-      dispositionRecords.push(validateDispositionRecord(record));
+      dispositionRecords.push(record);
     }
   }
   const revocationPosition = recordPositions.get(authorization.replacementRevocationRecordId);
@@ -670,10 +373,11 @@ export function adoptOutstandingSubmissions(input = {}) {
 
   const historicalDecisions = new Map();
   const replacementDecisions = new Map();
-  for (const dispositionRecord of dispositionRecords) {
+  for (const candidate of dispositionRecords) {
+    const target = evaluations.get(candidate.envelope.payload?.submissionRecordId);
+    if (target === undefined) continue;
+    const dispositionRecord = validateDispositionRecord(candidate);
     const payload = dispositionRecord.envelope.payload;
-    const target = evaluations.get(payload.submissionRecordId);
-    if (target === undefined) return blocked('unknown-disposition');
     if (
       payload.issue !== target.assignment.envelope.payload.issue ||
       payload.assignmentRecordId !== target.assignment.envelope.recordId ||

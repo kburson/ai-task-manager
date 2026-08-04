@@ -2,6 +2,13 @@ import { isDeepStrictEqual } from 'node:util';
 
 import { resolveSupersession } from './capsule-chain.mjs';
 import { assertNoSecretRecordData } from './record-envelope.mjs';
+import {
+  isWorkAssignmentSubmissionType,
+  validateWorkAssignmentCorrelatedRecord,
+  validateWorkAssignmentDispositionRecord,
+  validateWorkAssignmentRecord,
+  validateWorkAssignmentSubmissionPayload,
+} from './work-assignment-validation.mjs';
 
 const GRANT_KEYS = [
   'activatedAt',
@@ -23,53 +30,8 @@ const INTEGRATION_KEYS = ['destinationBranches', 'sourceBranches'];
 const PROJECTION_KEYS = ['adoptionState', 'epoch', 'grantId', 'schema'];
 const REVOCATION_KEYS = ['epoch', 'grantId', 'schema', 'state'];
 const REPLACEMENT_REVOCATION_KEYS = [...REVOCATION_KEYS, 'replacementGrantId'];
-const DISPOSITION_KEYS = [
-  'assignmentCommentNodeId',
-  'assignmentRecordId',
-  'decidedBy',
-  'decision',
-  'epoch',
-  'grantId',
-  'issue',
-  'reason',
-  'schema',
-  'submissionCommentNodeId',
-  'submissionRecordId',
-];
-const WORK_ASSIGNMENT_KEYS = [
-  'branch',
-  'coordinator',
-  'dependency',
-  'epoch',
-  'files',
-  'grantId',
-  'issue',
-  'schema',
-  'subsystem',
-  'verification',
-  'worker',
-];
-const WORKER_SUBMISSION_KEYS = [
-  'assignmentRecordId',
-  'branch',
-  'dependency',
-  'files',
-  'issue',
-  'result',
-  'schema',
-  'status',
-  'subsystem',
-  'verification',
-  'worker',
-];
 const MAX_DELEGATION_REPLACEMENT_DEPTH = 128;
 const REPOSITORY_RE = /^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/;
-const ADOPTION_SUBMISSION_TYPES = new Set([
-  'execution-result',
-  'verification-evidence',
-  'review-result',
-  'handoff',
-]);
 const authorityMetadata = new WeakMap();
 const authorityGenerations = new Map();
 
@@ -616,18 +578,28 @@ function extractCapsules({ records, repository, issue }) {
   return { grants, revocations, resolved, headRecord: headRecord ?? null };
 }
 
-function validDispositionReason(payload) {
+function validPredecessorAssignment({ assignment, predecessorGrant, repository, issue }) {
+  if (assignment === undefined || predecessorGrant === undefined) return false;
+  const assignmentRecord = assignment.record;
   try {
-    assertNoSecretRecordData(payload?.reason);
+    validateWorkAssignmentRecord(assignmentRecord);
   } catch {
     return false;
   }
-  if (payload?.decision === 'accepted') return payload.reason === null;
-  if (payload?.decision !== 'rejected' || !isOpaqueId(payload.reason)) return false;
-  return ![...payload.reason].some((character) => {
-    const code = character.charCodeAt(0);
-    return code <= 0x1f || code === 0x7f;
-  });
+  const assignmentPayload = assignmentRecord.envelope.payload;
+  return (
+    assignmentPayload.issue === issue &&
+    assignmentPayload.grantId === predecessorGrant.grant.grantId &&
+    assignmentPayload.epoch === predecessorGrant.grant.epoch &&
+    isDeepStrictEqual(assignmentPayload.coordinator, predecessorGrant.grant.coordinator) &&
+    predecessorGrant.scope.includes(issue) &&
+    predecessorGrant.branches.includes(assignmentPayload.branch) &&
+    assignmentRecord.envelope.repository === repository &&
+    assignmentRecord.envelope.issue === issue &&
+    assignmentRecord.envelope.authority.actor === predecessorGrant.grant.coordinator.actor &&
+    assignmentRecord.envelope.authority.grantId === predecessorGrant.grant.grantId &&
+    assignmentRecord.envelope.authority.epoch === predecessorGrant.grant.epoch
+  );
 }
 
 function validAdoptionTarget({ assignment, submission, predecessorGrant, repository, issue }) {
@@ -637,26 +609,17 @@ function validAdoptionTarget({ assignment, submission, predecessorGrant, reposit
   const assignmentRecord = assignment.record;
   const submissionRecord = submission.record;
   const assignmentPayload = assignmentRecord.envelope.payload;
-  const submissionPayload = submissionRecord.envelope.payload;
+  let submissionPayload;
+  try {
+    validateWorkAssignmentCorrelatedRecord(submissionRecord, 'submission');
+    if (!isWorkAssignmentSubmissionType(submissionRecord.envelope.recordType)) return null;
+    submissionPayload = validateWorkAssignmentSubmissionPayload(submissionRecord.envelope.payload);
+  } catch {
+    return null;
+  }
   if (
     assignment.position >= submission.position ||
-    !hasExactlyKeys(assignmentPayload, WORK_ASSIGNMENT_KEYS) ||
-    assignmentPayload.schema !== 'aitm.work-assignment/v1' ||
-    assignmentPayload.issue !== issue ||
-    assignmentPayload.grantId !== predecessorGrant.grant.grantId ||
-    assignmentPayload.epoch !== predecessorGrant.grant.epoch ||
-    !isDeepStrictEqual(assignmentPayload.coordinator, predecessorGrant.grant.coordinator) ||
-    !hasExactlyKeys(assignmentPayload.worker, IDENTITY_KEYS) ||
-    !predecessorGrant.scope.includes(issue) ||
-    !predecessorGrant.branches.includes(assignmentPayload.branch) ||
-    assignmentRecord.envelope.repository !== repository ||
-    assignmentRecord.envelope.issue !== issue ||
-    assignmentRecord.envelope.authority.actor !== predecessorGrant.grant.coordinator.actor ||
-    assignmentRecord.envelope.authority.grantId !== predecessorGrant.grant.grantId ||
-    assignmentRecord.envelope.authority.epoch !== predecessorGrant.grant.epoch ||
-    !hasExactlyKeys(submissionPayload, WORKER_SUBMISSION_KEYS) ||
-    submissionPayload.schema !== 'aitm.worker-submission/v1' ||
-    submissionPayload.status !== 'submitted' ||
+    !validPredecessorAssignment({ assignment, predecessorGrant, repository, issue }) ||
     submissionPayload.assignmentRecordId !== assignmentRecord.envelope.recordId ||
     submissionPayload.issue !== issue ||
     !isDeepStrictEqual(submissionPayload.worker, assignmentPayload.worker) ||
@@ -706,12 +669,13 @@ function validAdoptionDisposition({
   ) {
     return false;
   }
+  try {
+    validateWorkAssignmentDispositionRecord(record);
+  } catch {
+    return false;
+  }
   const payload = record.envelope.payload;
   return (
-    hasExactlyKeys(payload, DISPOSITION_KEYS) &&
-    payload.schema === 'aitm.record-disposition/v1' &&
-    (payload.decision === 'accepted' || payload.decision === 'rejected') &&
-    validDispositionReason(payload) &&
     (payload.decision !== 'accepted' || target.matched) &&
     payload.issue === issue &&
     payload.assignmentRecordId === assignment.record.envelope.recordId &&
@@ -854,9 +818,8 @@ export function resolveCoordinatorAuthority({
       revocation.state === 'replaced' &&
       revocation.replacementGrantId === projectionGrant.grant.grantId
   );
-  const recordBackedReplacement =
-    durableResolution !== undefined && replacementRevocation !== undefined;
-  if (coordinationProjection.adoptionState === 'required' || recordBackedReplacement) {
+  const replacementRequiresProof = replacementRevocation !== undefined;
+  if (coordinationProjection.adoptionState === 'required' || replacementRequiresProof) {
     const predecessorGrant = validatedGrants.find(
       ({ grant }) =>
         grant.grantId === replacementRevocation?.revocation.grantId &&
@@ -877,22 +840,50 @@ export function resolveCoordinatorAuthority({
     const effectiveSubmissionsById = new Map();
     const historicallyDisposedSubmissionIds = new Set();
     const replacementDisposedSubmissionIds = new Set();
-    const historicalDispositionCounts = new Map();
-    const replacementDispositionCounts = new Map();
-    let invalidEffectiveDisposition = false;
     if (orderedBoundary) {
       for (const [index, record] of durableResolution.effectiveRecords.entries()) {
         if (record.envelope.recordType === 'work-assignment' && index < revocationPosition) {
-          eligibleAssignmentsById.set(record.envelope.recordId, {
+          const assignment = {
             position: index,
             record: frozenCopy(record),
-          });
+          };
+          if (
+            validPredecessorAssignment({
+              assignment,
+              predecessorGrant,
+              repository,
+              issue,
+            })
+          ) {
+            eligibleAssignmentsById.set(record.envelope.recordId, assignment);
+          }
         }
-        if (ADOPTION_SUBMISSION_TYPES.has(record.envelope.recordType)) {
-          effectiveSubmissionsById.set(record.envelope.recordId, {
-            position: index,
-            record: frozenCopy(record),
-          });
+        if (isWorkAssignmentSubmissionType(record.envelope.recordType)) {
+          let validSubmission = false;
+          try {
+            validateWorkAssignmentCorrelatedRecord(record, 'submission');
+            validateWorkAssignmentSubmissionPayload(record.envelope.payload);
+            validSubmission = true;
+          } catch {
+            validSubmission = false;
+          }
+          if (validSubmission) {
+            effectiveSubmissionsById.set(record.envelope.recordId, {
+              position: index,
+              record: frozenCopy(record),
+            });
+          }
+        }
+      }
+      for (const [recordId, submission] of effectiveSubmissionsById) {
+        const assignment = eligibleAssignmentsById.get(
+          submission.record.envelope.payload.assignmentRecordId
+        );
+        if (
+          validAdoptionTarget({ assignment, submission, predecessorGrant, repository, issue }) ===
+          null
+        ) {
+          effectiveSubmissionsById.delete(recordId);
         }
       }
       for (const [index, record] of durableResolution.effectiveRecords.entries()) {
@@ -900,6 +891,7 @@ export function resolveCoordinatorAuthority({
         const payload = record.envelope.payload;
         const assignment = eligibleAssignmentsById.get(payload?.assignmentRecordId);
         const submission = effectiveSubmissionsById.get(payload?.submissionRecordId);
+        if (submission === undefined) continue;
         const historicalClaim = validAdoptionDisposition({
           record,
           position: index,
@@ -925,18 +917,8 @@ export function resolveCoordinatorAuthority({
         });
         if (historicalClaim) {
           historicallyDisposedSubmissionIds.add(payload.submissionRecordId);
-          historicalDispositionCounts.set(
-            payload.submissionRecordId,
-            (historicalDispositionCounts.get(payload.submissionRecordId) ?? 0) + 1
-          );
         } else if (replacementClaim) {
           replacementDisposedSubmissionIds.add(payload.submissionRecordId);
-          replacementDispositionCounts.set(
-            payload.submissionRecordId,
-            (replacementDispositionCounts.get(payload.submissionRecordId) ?? 0) + 1
-          );
-        } else {
-          invalidEffectiveDisposition = true;
         }
       }
     }
@@ -960,37 +942,12 @@ export function resolveCoordinatorAuthority({
             historicallyDisposedSubmissionIds,
             replacementDisposedSubmissionIds,
           };
-    let durableAdoptionComplete = adoptionContext !== null && !invalidEffectiveDisposition;
-    if (durableAdoptionComplete) {
-      for (const submission of effectiveSubmissionsById.values()) {
-        const assignment = eligibleAssignmentsById.get(
-          submission.record.envelope.payload?.assignmentRecordId
-        );
-        if (
-          validAdoptionTarget({
-            assignment,
-            submission,
-            predecessorGrant,
-            repository,
-            issue,
-          }) === null ||
-          (historicalDispositionCounts.get(submission.record.envelope.recordId) ?? 0) +
-            (replacementDispositionCounts.get(submission.record.envelope.recordId) ?? 0) !==
-            1
-        ) {
-          durableAdoptionComplete = false;
-          break;
-        }
-      }
-    }
-    if (coordinationProjection.adoptionState === 'required' || !durableAdoptionComplete) {
-      return resolutionPaused(
-        validatedGrants,
-        projectionGrant,
-        effectiveScope(projectionGrant, activeChildrenByParentId),
-        adoptionContext
-      );
-    }
+    return resolutionPaused(
+      validatedGrants,
+      projectionGrant,
+      effectiveScope(projectionGrant, activeChildrenByParentId),
+      adoptionContext
+    );
   }
   return resolutionActive(
     validatedGrants,

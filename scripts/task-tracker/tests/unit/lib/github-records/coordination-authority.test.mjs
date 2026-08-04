@@ -431,7 +431,7 @@ test('blocks ambiguous, stale, revoked, expired, and projection-mismatched grant
   }
 });
 
-test('replaces only the exact active epoch, pauses authority, and resumes only after explicit adoption', () => {
+test('replaces only the exact active epoch and projection never resumes authority', () => {
   const authority = resolve();
   const replacementGrant = grant({
     grantId: 'grant-replacement',
@@ -542,7 +542,7 @@ test('replaces only the exact active epoch, pauses authority, and resumes only a
       operation: 'advance',
       branch: 'work/101',
     }).authorized,
-    true
+    false
   );
   assert.throws(
     () =>

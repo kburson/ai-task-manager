@@ -90,7 +90,7 @@ function resolve({
   });
 }
 
-test('accepted capsule history closes old authority and pauses replacement until explicit adoption', () => {
+test('accepted capsule history closes old authority and projection cannot resume replacement', () => {
   const operations = ['advance', 'integrate', 'dispose-submission', 'adopt-submissions'];
   const originalGrant = grant({ grantId: 'grant-original', coordinator, epoch: 1, operations });
   const original = capsule({
@@ -188,6 +188,7 @@ test('accepted capsule history closes old authority and pauses replacement until
       adoptionState: 'adopted',
     },
   });
+  assert.deepEqual(adopted, { status: 'paused', diagnostic: { reason: 'adoption-required' } });
   assert.equal(
     authorizeCoordinatorOperation({
       authority: adopted,
@@ -199,7 +200,7 @@ test('accepted capsule history closes old authority and pauses replacement until
       branch: 'epic/100',
       integration: { sourceBranch: 'work/101', destinationBranch: 'epic/100' },
     }).authorized,
-    true
+    false
   );
   assert.equal(
     authorizeCoordinatorOperation({
@@ -416,7 +417,7 @@ test('a persisted nested delegation capsule must use its exact parent authority'
   }
 });
 
-test('a persisted nested coordinator replacement pauses and resumes under its original parent authority', () => {
+test('a persisted nested coordinator replacement remains paused without durable adoption proof', () => {
   const parentGrant = grant({ grantId: 'grant-parent', coordinator, epoch: 1 });
   const parent = capsule({
     recordId: id(41),
@@ -501,6 +502,7 @@ test('a persisted nested coordinator replacement pauses and resumes under its or
     records,
     coordinationProjection: { ...replacement.coordinationProjection, adoptionState: 'adopted' },
   });
+  assert.deepEqual(adopted, { status: 'paused', diagnostic: { reason: 'adoption-required' } });
   assert.equal(
     authorizeCoordinatorOperation({
       authority: adopted,
@@ -511,7 +513,7 @@ test('a persisted nested coordinator replacement pauses and resumes under its or
       operation: 'advance',
       branch: 'work/101',
     }).authorized,
-    true
+    false
   );
 
   const forgedSuccessor = capsule({
@@ -631,6 +633,7 @@ test('ignores unknown resolver callbacks so validation cannot be raced', () => {
 
   assert.equal(callbackCalls, 0);
   assert.deepEqual(successor, expectedSuccessor);
+  assert.deepEqual(authority, { status: 'paused', diagnostic: { reason: 'adoption-required' } });
   assert.equal(
     authorizeCoordinatorOperation({
       authority,
@@ -641,7 +644,7 @@ test('ignores unknown resolver callbacks so validation cannot be raced', () => {
       operation: 'advance',
       branch: 'work/101',
     }).authorized,
-    true
+    false
   );
   assert.equal(
     authorizeCoordinatorOperation({
