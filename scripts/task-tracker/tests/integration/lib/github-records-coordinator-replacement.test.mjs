@@ -3,6 +3,7 @@ import { strict as assert } from 'node:assert';
 import test from 'node:test';
 
 import {
+  authorizeCoordinatorAdoption,
   authorizeCoordinatorOperation,
   replaceCoordinator,
   resolveCoordinatorAuthority,
@@ -27,7 +28,13 @@ function id(number) {
   return `01J0000000000000000000${String(number).padStart(4, '0')}`;
 }
 
-function grant({ grantId, coordinator: grantCoordinator, epoch, issuer = null } = {}) {
+function grant({
+  grantId,
+  coordinator: grantCoordinator,
+  epoch,
+  issuer = null,
+  operations = ['advance', 'integrate'],
+} = {}) {
   return {
     schema: 'aitm.coordinator-grant/v1',
     grantId,
@@ -36,7 +43,7 @@ function grant({ grantId, coordinator: grantCoordinator, epoch, issuer = null } 
     parentGrantId: null,
     issuer,
     epoch,
-    operations: ['advance', 'integrate'],
+    operations,
     branchBoundary: ['epic/100', 'work/101'],
     integrationBoundary: { sourceBranches: ['work/101'], destinationBranches: ['epic/100'] },
     activatedAt: '2026-08-03T20:00:00.000Z',
@@ -84,7 +91,8 @@ function resolve({
 }
 
 test('accepted capsule history closes old authority and pauses replacement until explicit adoption', () => {
-  const originalGrant = grant({ grantId: 'grant-original', coordinator, epoch: 1 });
+  const operations = ['advance', 'integrate', 'dispose-submission', 'adopt-submissions'];
+  const originalGrant = grant({ grantId: 'grant-original', coordinator, epoch: 1, operations });
   const original = capsule({
     recordId: id(1),
     recordType: 'coordinator-grant',
@@ -107,6 +115,7 @@ test('accepted capsule history closes old authority and pauses replacement until
     coordinator: replacementCoordinator,
     epoch: 2,
     issuer: coordinator,
+    operations,
   });
   const replacement = replaceCoordinator({
     authority: initial,
@@ -138,6 +147,24 @@ test('accepted capsule history closes old authority and pauses replacement until
   });
 
   assert.deepEqual(paused, { status: 'paused', diagnostic: { reason: 'adoption-required' } });
+  assert.equal(
+    authorizeCoordinatorAdoption({
+      authority: paused,
+      issue: 101,
+      operation: 'dispose-submission',
+      branch: 'work/101',
+    }).authorized,
+    true
+  );
+  assert.equal(
+    authorizeCoordinatorAdoption({
+      authority: paused,
+      issue: 101,
+      operation: 'advance',
+      branch: 'work/101',
+    }).authorized,
+    false
+  );
   assert.equal(
     authorizeCoordinatorOperation({
       authority: paused,
