@@ -429,14 +429,14 @@ git commit -m "fix(estimation): normalize story estimate writers [#1098]"
 
 - [ ] **Step 1: Update the adaptive integration expectation and add grid assertions**
 
-The current one-WBS bootstrap path publishes `10.9`; under the new contract it
-publishes `11`. Assert:
+The current bootstrap path publishes `10.9`; under the new contract its independently
+ceiled WBS rows reconcile to `11.5`. Assert:
 
 ```js
-assert.equal(board.estimate, 11);
-assert.match(refineBody, /\| Estimate \(h\) \| 8 \| 11 \|/);
-assert.match(issueBody, /"estimate":11/);
-assert.ok(recordComments.some((comment) => /Human Plan estimate: 11h/.test(comment.body)));
+assert.equal(board.estimate, 11.5);
+assert.match(refineBody, /\| Estimate \(h\) \| 8 \| 11\.5 \|/);
+assert.match(issueBody, /"estimate":11\.5/);
+assert.ok(recordComments.some((comment) => /Human Plan estimate: 11\.5h/.test(comment.body)));
 assert.ok(
   parsedRecords
     .filter((record) => record.envelope.recordType === 'estimation-forecast')
