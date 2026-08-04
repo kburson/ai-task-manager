@@ -36,6 +36,32 @@ const DISPOSITION_KEYS = [
   'submissionCommentNodeId',
   'submissionRecordId',
 ];
+const WORK_ASSIGNMENT_KEYS = [
+  'branch',
+  'coordinator',
+  'dependency',
+  'epoch',
+  'files',
+  'grantId',
+  'issue',
+  'schema',
+  'subsystem',
+  'verification',
+  'worker',
+];
+const WORKER_SUBMISSION_KEYS = [
+  'assignmentRecordId',
+  'branch',
+  'dependency',
+  'files',
+  'issue',
+  'result',
+  'schema',
+  'status',
+  'subsystem',
+  'verification',
+  'worker',
+];
 const MAX_DELEGATION_REPLACEMENT_DEPTH = 128;
 const REPOSITORY_RE = /^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/;
 const ADOPTION_SUBMISSION_TYPES = new Set([
@@ -590,6 +616,119 @@ function extractCapsules({ records, repository, issue }) {
   return { grants, revocations, resolved, headRecord: headRecord ?? null };
 }
 
+function validDispositionReason(payload) {
+  try {
+    assertNoSecretRecordData(payload?.reason);
+  } catch {
+    return false;
+  }
+  if (payload?.decision === 'accepted') return payload.reason === null;
+  if (payload?.decision !== 'rejected' || !isOpaqueId(payload.reason)) return false;
+  return ![...payload.reason].some((character) => {
+    const code = character.charCodeAt(0);
+    return code <= 0x1f || code === 0x7f;
+  });
+}
+
+function validAdoptionTarget({ assignment, submission, predecessorGrant, repository, issue }) {
+  if (assignment === undefined || submission === undefined || predecessorGrant === undefined) {
+    return null;
+  }
+  const assignmentRecord = assignment.record;
+  const submissionRecord = submission.record;
+  const assignmentPayload = assignmentRecord.envelope.payload;
+  const submissionPayload = submissionRecord.envelope.payload;
+  if (
+    assignment.position >= submission.position ||
+    !hasExactlyKeys(assignmentPayload, WORK_ASSIGNMENT_KEYS) ||
+    assignmentPayload.schema !== 'aitm.work-assignment/v1' ||
+    assignmentPayload.issue !== issue ||
+    assignmentPayload.grantId !== predecessorGrant.grant.grantId ||
+    assignmentPayload.epoch !== predecessorGrant.grant.epoch ||
+    !isDeepStrictEqual(assignmentPayload.coordinator, predecessorGrant.grant.coordinator) ||
+    !hasExactlyKeys(assignmentPayload.worker, IDENTITY_KEYS) ||
+    !predecessorGrant.scope.includes(issue) ||
+    !predecessorGrant.branches.includes(assignmentPayload.branch) ||
+    assignmentRecord.envelope.repository !== repository ||
+    assignmentRecord.envelope.issue !== issue ||
+    assignmentRecord.envelope.authority.actor !== predecessorGrant.grant.coordinator.actor ||
+    assignmentRecord.envelope.authority.grantId !== predecessorGrant.grant.grantId ||
+    assignmentRecord.envelope.authority.epoch !== predecessorGrant.grant.epoch ||
+    !hasExactlyKeys(submissionPayload, WORKER_SUBMISSION_KEYS) ||
+    submissionPayload.schema !== 'aitm.worker-submission/v1' ||
+    submissionPayload.status !== 'submitted' ||
+    submissionPayload.assignmentRecordId !== assignmentRecord.envelope.recordId ||
+    submissionPayload.issue !== issue ||
+    !isDeepStrictEqual(submissionPayload.worker, assignmentPayload.worker) ||
+    submissionRecord.envelope.repository !== repository ||
+    submissionRecord.envelope.issue !== issue ||
+    submissionRecord.envelope.authority.actor !== assignmentPayload.worker.actor ||
+    submissionRecord.envelope.authority.grantId !== assignmentPayload.grantId ||
+    submissionRecord.envelope.authority.epoch !== assignmentPayload.epoch
+  ) {
+    return null;
+  }
+  return {
+    matched:
+      submissionPayload.branch === assignmentPayload.branch &&
+      isDeepStrictEqual(submissionPayload.files, assignmentPayload.files) &&
+      submissionPayload.subsystem === assignmentPayload.subsystem &&
+      isDeepStrictEqual(submissionPayload.dependency, assignmentPayload.dependency) &&
+      isDeepStrictEqual(submissionPayload.verification, assignmentPayload.verification),
+  };
+}
+
+function validAdoptionDisposition({
+  record,
+  position,
+  assignment,
+  submission,
+  predecessorGrant,
+  dispositionGrant,
+  repository,
+  issue,
+  afterPosition,
+  beforePosition = Number.POSITIVE_INFINITY,
+}) {
+  const target = validAdoptionTarget({
+    assignment,
+    submission,
+    predecessorGrant,
+    repository,
+    issue,
+  });
+  if (
+    target === null ||
+    dispositionGrant === undefined ||
+    position <= afterPosition ||
+    position >= beforePosition ||
+    submission.position >= position
+  ) {
+    return false;
+  }
+  const payload = record.envelope.payload;
+  return (
+    hasExactlyKeys(payload, DISPOSITION_KEYS) &&
+    payload.schema === 'aitm.record-disposition/v1' &&
+    (payload.decision === 'accepted' || payload.decision === 'rejected') &&
+    validDispositionReason(payload) &&
+    (payload.decision !== 'accepted' || target.matched) &&
+    payload.issue === issue &&
+    payload.assignmentRecordId === assignment.record.envelope.recordId &&
+    payload.assignmentCommentNodeId === assignment.record.commentNodeId &&
+    payload.submissionRecordId === submission.record.envelope.recordId &&
+    payload.submissionCommentNodeId === submission.record.commentNodeId &&
+    payload.grantId === dispositionGrant.grantId &&
+    payload.epoch === dispositionGrant.epoch &&
+    isDeepStrictEqual(payload.decidedBy, dispositionGrant.coordinator) &&
+    record.envelope.repository === repository &&
+    record.envelope.issue === issue &&
+    record.envelope.authority.grantId === dispositionGrant.grantId &&
+    record.envelope.authority.epoch === dispositionGrant.epoch &&
+    record.envelope.authority.actor === dispositionGrant.coordinator.actor
+  );
+}
+
 /** Resolve a durable coordinator authority set without selecting ambiguous authority. */
 export function resolveCoordinatorAuthority({
   issueHierarchy,
@@ -611,7 +750,8 @@ export function resolveCoordinatorAuthority({
   ) {
     throw authorityError('context');
   }
-  const durableContext = hasDurableContext ? deepFreeze({ repository, issue }) : null;
+  const durableContext =
+    records !== undefined && hasDurableContext ? deepFreeze({ repository, issue }) : null;
   let durableGrants;
   let durableRevocations;
   let durableResolution;
@@ -709,12 +849,14 @@ export function resolveCoordinatorAuthority({
   ) {
     return resolutionBlocked(validatedGrants, 'overlapping-grants');
   }
-  if (coordinationProjection.adoptionState === 'required') {
-    const replacementRevocation = validatedRevocations.find(
-      ({ revocation }) =>
-        revocation.state === 'replaced' &&
-        revocation.replacementGrantId === projectionGrant.grant.grantId
-    );
+  const replacementRevocation = validatedRevocations.find(
+    ({ revocation }) =>
+      revocation.state === 'replaced' &&
+      revocation.replacementGrantId === projectionGrant.grant.grantId
+  );
+  const recordBackedReplacement =
+    durableResolution !== undefined && replacementRevocation !== undefined;
+  if (coordinationProjection.adoptionState === 'required' || recordBackedReplacement) {
     const predecessorGrant = validatedGrants.find(
       ({ grant }) =>
         grant.grantId === replacementRevocation?.revocation.grantId &&
@@ -735,6 +877,9 @@ export function resolveCoordinatorAuthority({
     const effectiveSubmissionsById = new Map();
     const historicallyDisposedSubmissionIds = new Set();
     const replacementDisposedSubmissionIds = new Set();
+    const historicalDispositionCounts = new Map();
+    const replacementDispositionCounts = new Map();
+    let invalidEffectiveDisposition = false;
     if (orderedBoundary) {
       for (const [index, record] of durableResolution.effectiveRecords.entries()) {
         if (record.envelope.recordType === 'work-assignment' && index < revocationPosition) {
@@ -755,98 +900,43 @@ export function resolveCoordinatorAuthority({
         const payload = record.envelope.payload;
         const assignment = eligibleAssignmentsById.get(payload?.assignmentRecordId);
         const submission = effectiveSubmissionsById.get(payload?.submissionRecordId);
-        const assignmentPayload = assignment?.record.envelope.payload;
-        const submissionPayload = submission?.record.envelope.payload;
-        const acceptedBoundsMatch =
-          payload?.decision !== 'accepted' ||
-          (submissionPayload?.branch === assignmentPayload?.branch &&
-            isDeepStrictEqual(submissionPayload?.files, assignmentPayload?.files) &&
-            submissionPayload?.subsystem === assignmentPayload?.subsystem &&
-            isDeepStrictEqual(submissionPayload?.dependency, assignmentPayload?.dependency) &&
-            isDeepStrictEqual(submissionPayload?.verification, assignmentPayload?.verification));
-        let validReason = false;
-        try {
-          assertNoSecretRecordData(payload?.reason);
-          validReason =
-            (payload?.decision === 'accepted' && payload.reason === null) ||
-            (payload?.decision === 'rejected' &&
-              isOpaqueId(payload.reason) &&
-              ![...payload.reason].some((character) => {
-                const code = character.charCodeAt(0);
-                return code <= 0x1f || code === 0x7f;
-              }));
-        } catch {
-          validReason = false;
-        }
-        const replacementClaim =
-          assignment !== undefined &&
-          submission !== undefined &&
-          assignment.position < revocationPosition &&
-          assignment.position < submission.position &&
-          replacementPosition < index &&
-          submission.position < index &&
-          assignmentPayload?.schema === 'aitm.work-assignment/v1' &&
-          assignmentPayload.issue === issue &&
-          assignmentPayload.grantId === predecessorGrant?.grant.grantId &&
-          assignmentPayload.epoch === predecessorGrant?.grant.epoch &&
-          isDeepStrictEqual(assignmentPayload.coordinator, predecessorGrant?.grant.coordinator) &&
-          predecessorGrant?.scope.includes(assignmentPayload.issue) &&
-          predecessorGrant?.branches.includes(assignmentPayload.branch) &&
-          assignment.record.envelope.repository === repository &&
-          assignment.record.envelope.issue === issue &&
-          assignment.record.envelope.authority.actor ===
-            predecessorGrant?.grant.coordinator.actor &&
-          assignment.record.envelope.authority.grantId === predecessorGrant?.grant.grantId &&
-          assignment.record.envelope.authority.epoch === predecessorGrant?.grant.epoch &&
-          submissionPayload?.schema === 'aitm.worker-submission/v1' &&
-          submissionPayload.status === 'submitted' &&
-          submissionPayload.assignmentRecordId === assignment.record.envelope.recordId &&
-          submissionPayload.issue === assignmentPayload.issue &&
-          isDeepStrictEqual(submissionPayload.worker, assignmentPayload.worker) &&
-          submission.record.envelope.repository === repository &&
-          submission.record.envelope.issue === issue &&
-          submission.record.envelope.authority.actor === assignmentPayload.worker.actor &&
-          submission.record.envelope.authority.grantId === assignmentPayload.grantId &&
-          submission.record.envelope.authority.epoch === assignmentPayload.epoch &&
-          hasExactlyKeys(payload, DISPOSITION_KEYS) &&
-          payload.schema === 'aitm.record-disposition/v1' &&
-          (payload.decision === 'accepted' || payload.decision === 'rejected') &&
-          acceptedBoundsMatch &&
-          validReason &&
-          payload.issue === issue &&
-          payload.assignmentRecordId === assignment.record.envelope.recordId &&
-          payload.assignmentCommentNodeId === assignment.record.commentNodeId &&
-          payload.submissionRecordId === submission.record.envelope.recordId &&
-          payload.submissionCommentNodeId === submission.record.commentNodeId &&
-          payload.grantId === projectionGrant.grant.grantId &&
-          payload.epoch === projectionGrant.grant.epoch &&
-          isDeepStrictEqual(payload.decidedBy, projectionGrant.grant.coordinator) &&
-          record.envelope.repository === repository &&
-          record.envelope.issue === issue &&
-          record.envelope.authority.grantId === projectionGrant.grant.grantId &&
-          record.envelope.authority.epoch === projectionGrant.grant.epoch &&
-          record.envelope.authority.actor === projectionGrant.grant.coordinator.actor;
-        if (replacementClaim) {
-          replacementDisposedSubmissionIds.add(payload.submissionRecordId);
-        }
-        if (index >= revocationPosition) continue;
-        if (
-          assignment !== undefined &&
-          submission !== undefined &&
-          assignment.position < submission.position &&
-          submission.position < index &&
-          payload?.schema === 'aitm.record-disposition/v1' &&
-          (payload.decision === 'accepted' || payload.decision === 'rejected') &&
-          payload.assignmentCommentNodeId === assignment.record.commentNodeId &&
-          payload.submissionCommentNodeId === submission.record.commentNodeId &&
-          payload.grantId === predecessorGrant?.grant.grantId &&
-          payload.epoch === predecessorGrant?.grant.epoch &&
-          isDeepStrictEqual(payload.decidedBy, predecessorGrant?.grant.coordinator) &&
-          record.envelope.authority.grantId === predecessorGrant?.grant.grantId &&
-          record.envelope.authority.epoch === predecessorGrant?.grant.epoch &&
-          record.envelope.authority.actor === predecessorGrant?.grant.coordinator.actor
-        ) {
+        const historicalClaim = validAdoptionDisposition({
+          record,
+          position: index,
+          assignment,
+          submission,
+          predecessorGrant,
+          dispositionGrant: predecessorGrant?.grant,
+          repository,
+          issue,
+          afterPosition: submission?.position ?? Number.POSITIVE_INFINITY,
+          beforePosition: revocationPosition,
+        });
+        const replacementClaim = validAdoptionDisposition({
+          record,
+          position: index,
+          assignment,
+          submission,
+          predecessorGrant,
+          dispositionGrant: projectionGrant.grant,
+          repository,
+          issue,
+          afterPosition: replacementPosition,
+        });
+        if (historicalClaim) {
           historicallyDisposedSubmissionIds.add(payload.submissionRecordId);
+          historicalDispositionCounts.set(
+            payload.submissionRecordId,
+            (historicalDispositionCounts.get(payload.submissionRecordId) ?? 0) + 1
+          );
+        } else if (replacementClaim) {
+          replacementDisposedSubmissionIds.add(payload.submissionRecordId);
+          replacementDispositionCounts.set(
+            payload.submissionRecordId,
+            (replacementDispositionCounts.get(payload.submissionRecordId) ?? 0) + 1
+          );
+        } else {
+          invalidEffectiveDisposition = true;
         }
       }
     }
@@ -870,12 +960,37 @@ export function resolveCoordinatorAuthority({
             historicallyDisposedSubmissionIds,
             replacementDisposedSubmissionIds,
           };
-    return resolutionPaused(
-      validatedGrants,
-      projectionGrant,
-      effectiveScope(projectionGrant, activeChildrenByParentId),
-      adoptionContext
-    );
+    let durableAdoptionComplete = adoptionContext !== null && !invalidEffectiveDisposition;
+    if (durableAdoptionComplete) {
+      for (const submission of effectiveSubmissionsById.values()) {
+        const assignment = eligibleAssignmentsById.get(
+          submission.record.envelope.payload?.assignmentRecordId
+        );
+        if (
+          validAdoptionTarget({
+            assignment,
+            submission,
+            predecessorGrant,
+            repository,
+            issue,
+          }) === null ||
+          (historicalDispositionCounts.get(submission.record.envelope.recordId) ?? 0) +
+            (replacementDispositionCounts.get(submission.record.envelope.recordId) ?? 0) !==
+            1
+        ) {
+          durableAdoptionComplete = false;
+          break;
+        }
+      }
+    }
+    if (coordinationProjection.adoptionState === 'required' || !durableAdoptionComplete) {
+      return resolutionPaused(
+        validatedGrants,
+        projectionGrant,
+        effectiveScope(projectionGrant, activeChildrenByParentId),
+        adoptionContext
+      );
+    }
   }
   return resolutionActive(
     validatedGrants,
