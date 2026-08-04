@@ -3,7 +3,6 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import { buildEstimationForecast } from '../../../../lib/estimation/forecast-model.mjs';
-import { isHalfHourEstimate } from '../../../../lib/estimation/estimate-granularity.mjs';
 import { buildEstimationOutcome } from '../../../../lib/estimation/outcome-builder.mjs';
 import { ensureEstimationOutcome } from '../../../../lib/estimation/outcome-writer.mjs';
 import {
@@ -27,6 +26,7 @@ import {
   canonicalTestReceiptFixture,
   repeatedVerificationCommand,
 } from '../../../fixtures/estimation-verification.mjs';
+import { assertPublishedForecastOnHalfHourGrid } from '../../../fixtures/estimation-grid.mjs';
 
 const repository = 'kburson/ai-task-manager';
 const rubricIssue = 9000;
@@ -143,27 +143,6 @@ function planInput() {
     risks: ['Bootstrap cohort is initially empty'],
     comparableIssueIds: [firstIssue],
   };
-}
-
-function assertPublishedForecastOnHalfHourGrid(forecast) {
-  const published = [
-    forecast.refine.humanHours,
-    forecast.plan.humanHours,
-    forecast.ai.p50EngagedHours,
-    forecast.ai.p80EngagedHours,
-    ...forecast.wbs.map((item) => item.humanHours),
-    ...Object.values(forecast.ai.stages),
-  ];
-  assert.ok(published.every(isHalfHourEstimate));
-  assert.equal(
-    forecast.wbs.reduce((sum, item) => sum + item.humanHours, 0),
-    forecast.plan.humanHours
-  );
-  assert.equal(
-    Object.values(forecast.ai.stages).reduce((sum, hours) => sum + hours, 0),
-    forecast.ai.p50EngagedHours
-  );
-  assert.ok(forecast.ai.p80EngagedHours >= forecast.ai.p50EngagedHours);
 }
 
 test('completed outcome deterministically updates the next rubric and AI forecast through #1070 read-backs', async () => {
