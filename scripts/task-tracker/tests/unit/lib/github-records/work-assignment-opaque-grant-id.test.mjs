@@ -45,7 +45,6 @@ function record({ recordId, recordType, payload, actor, grantId }, predecessor =
 function assignmentInput(authority) {
   return {
     authority,
-    repository,
     coordinator,
     issue,
     branch,

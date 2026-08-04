@@ -148,7 +148,6 @@ function scenario(sequence) {
   });
   const assignmentCandidate = createWorkAssignment({
     authority: active,
-    repository,
     coordinator,
     issue,
     branch,
@@ -525,7 +524,6 @@ test('binds active Task 8 work to the durable repository and issue privately', (
   });
   const assignmentInput = {
     authority: active,
-    repository: 'foreign/ai-task-manager',
     coordinator,
     issue,
     branch,
@@ -538,9 +536,7 @@ test('binds active Task 8 work to the durable repository and issue privately', (
     verification: { contractEpoch: 1, verifierIds: ['vc-6'] },
     worker,
   };
-  assert.throws(() => createWorkAssignment(assignmentInput), /work-assignment:authority/);
-
-  const ownerCandidate = createWorkAssignment({ ...assignmentInput, repository });
+  const ownerCandidate = createWorkAssignment(assignmentInput);
   const assignment = record(
     {
       recordId: id(10),
@@ -619,7 +615,6 @@ test('binds active Task 8 work to the durable repository and issue privately', (
       createWorkAssignment({
         ...assignmentInput,
         authority: issueBound,
-        repository,
         issue: otherIssue,
       }),
     /work-assignment:authority/
@@ -641,7 +636,7 @@ test('binds active Task 8 work to the durable repository and issue privately', (
     now: '2026-08-03T20:06:00.000Z',
   });
   assert.throws(
-    () => createWorkAssignment({ ...assignmentInput, authority: unbound, repository }),
+    () => createWorkAssignment({ ...assignmentInput, authority: unbound }),
     /work-assignment:authority/
   );
 });
@@ -674,7 +669,6 @@ test('binds active evaluation and disposition to the assignment grant and epoch'
   });
   const currentAssignment = createWorkAssignment({
     authority: active,
-    repository,
     coordinator,
     issue,
     branch,
