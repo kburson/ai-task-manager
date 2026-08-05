@@ -111,11 +111,25 @@ function maskFencedCodeBlocksPreservingOffsets(body) {
 // (`aitm-plan-approved ts="<iso>"`). The legacy branch stays until #369's
 // corpus sweep reports zero residual legacy markers.
 export const PLAN_APPROVED_RE =
-  /<!--\s*aitm-plan-approved(?::\s*[^>]*?|\s+ts="[^"]*"(?:\s+forecast-record-id="[0-7][0-9A-HJKMNP-TV-Z]{25}")?)\s*-->/i;
+  /<!--\s*aitm-plan-approved(?::\s*[^>]*?|\s+ts="[^"]*"[^>]*?)\s*-->/i;
 
-export function buildPlanApprovedMarker(ts, { forecastRecordId = null } = {}) {
+export const PLAN_APPROVAL_MODES = Object.freeze({
+  HUMAN: 'human',
+  FULL_AUTO: 'full-auto',
+  UNKNOWN: 'unknown',
+});
+
+export function buildPlanApprovedMarker(ts, { forecastRecordId = null, mode = null } = {}) {
   const properties = { ts };
   if (forecastRecordId !== null) properties['forecast-record-id'] = forecastRecordId;
+  if (mode !== null) {
+    if (mode !== PLAN_APPROVAL_MODES.HUMAN && mode !== PLAN_APPROVAL_MODES.FULL_AUTO) {
+      throw new TypeError(
+        `buildPlanApprovedMarker: unsupported approval mode ${JSON.stringify(mode)}`
+      );
+    }
+    properties.mode = mode;
+  }
   return serializeMarker('plan-approved', properties);
 }
 
@@ -123,12 +137,41 @@ export function hasPlanApprovedMarker(body) {
   return PLAN_APPROVED_RE.test(stripFencedCodeBlocks(body));
 }
 
+// Decode a plan-approved marker without fabricating provenance for historical
+// shapes. Legacy colon markers and property markers written before #1109 have
+// no `mode`, so both remain valid approvals but report `unknown`.
+export function parsePlanApprovedMarker(body) {
+  const match = stripFencedCodeBlocks(body).match(PLAN_APPROVED_RE)?.[0];
+  if (!match) return null;
+
+  const legacy = match.match(/<!--\s*aitm-plan-approved:\s*([^>]*?)\s*-->/i);
+  if (legacy) {
+    return {
+      ts: legacy[1].trim(),
+      forecastRecordId: null,
+      mode: PLAN_APPROVAL_MODES.UNKNOWN,
+    };
+  }
+
+  const parsed = parseMarker(match);
+  if (!parsed || parsed.name !== 'plan-approved') return null;
+  const props = parsed.props || {};
+  const mode =
+    props.mode === PLAN_APPROVAL_MODES.HUMAN || props.mode === PLAN_APPROVAL_MODES.FULL_AUTO
+      ? props.mode
+      : PLAN_APPROVAL_MODES.UNKNOWN;
+  const forecastRecordId = /^[0-7][0-9A-HJKMNP-TV-Z]{25}$/.test(props['forecast-record-id'] || '')
+    ? props['forecast-record-id']
+    : null;
+  return { ts: props.ts || '', forecastRecordId, mode };
+}
+
+export function readPlanApprovedMode(body) {
+  return parsePlanApprovedMarker(body)?.mode ?? PLAN_APPROVAL_MODES.UNKNOWN;
+}
+
 export function readPlanApprovedForecastRecordId(body) {
-  return (
-    stripFencedCodeBlocks(body).match(
-      /<!--\s*aitm-plan-approved\s+ts="[^"]*"\s+forecast-record-id="([0-7][0-9A-HJKMNP-TV-Z]{25})"\s*-->/i
-    )?.[1] ?? null
-  );
+  return parsePlanApprovedMarker(body)?.forecastRecordId ?? null;
 }
 
 // ---------------------------------------------------------------------------

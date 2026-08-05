@@ -1,8 +1,9 @@
-// `plan-approve` verb — Plan -> Develop human gate.
+// `plan-approve` verb — Plan -> Develop approval gate.
 //
-// Records human plan approval on an issue by appending a hidden marker to
-// the issue body. `move-state.mjs` reads the marker; without it (and with
-// `gatePlanToDevelop=true`), promote from plan to develop refuses.
+// Records plan approval and its human/Full-Auto provenance on an issue by
+// appending a hidden marker to the issue body. `move-state.mjs` reads the
+// marker; without it (and with `gatePlanToDevelop=true`), promote from plan to
+// develop refuses.
 //
 // Idempotent: re-invocation with the marker already present is a no-op.
 // Refuses if the issue is not in `plan` state.
@@ -18,6 +19,7 @@ import {
   hasPlanApprovedMarker,
   insertPlanApprovedMarker,
   readPlanApprovedForecastRecordId,
+  readPlanApprovedMode,
   upsertPlanApprovedMarker,
   wrapDeepDiveInDetails,
 } from '../lib/markers.mjs';
@@ -26,6 +28,7 @@ import { lintChecklistCommands } from '../lib/checklist-command-lint.mjs';
 import { mutateIssueBody } from '../lib/issue-body-mutate.mjs';
 import {
   ensureFullAutoPlanApprovalAudit,
+  isExplicitFullAutoPlanApproval,
   readPlanApprovedTimestamp,
 } from '../lib/plan-approval-audit.mjs';
 
@@ -76,6 +79,7 @@ export async function runPlanApprove({ issueNumber, cfg, projectDir, deps = {} }
   const nowIso = deps.nowIso || (() => new Date().toISOString().replace(/\.\d+Z$/, 'Z'));
   const ensureAudit = deps.ensureFullAutoPlanApprovalAudit || ensureFullAutoPlanApprovalAudit;
   const env = deps.env ?? process.env;
+  const requestedMode = isExplicitFullAutoPlanApproval(env) ? 'full-auto' : 'human';
   const auditDeps = {
     listComments: deps.listComments,
     postComment: deps.postComment,
@@ -122,21 +126,31 @@ export async function runPlanApprove({ issueNumber, cfg, projectDir, deps = {} }
         if (!hasPlanApprovedMarker(base) || freshReady === null) {
           throw new Error('plan-approve: adaptive approval repair evidence disappeared');
         }
-        return upsertPlanApprovedMarker(base, approvalTs, { forecastRecordId: freshReady });
+        const existingMode = readPlanApprovedMode(base);
+        return upsertPlanApprovedMarker(base, approvalTs, {
+          forecastRecordId: freshReady,
+          mode: existingMode === 'unknown' ? null : existingMode,
+        });
       },
     });
     const persistedBody =
       typeof writeResult?.body === 'string'
         ? writeResult.body
         : await fetchIssueBody({ issueNumber, repo: cfg.repo });
-    await ensureAudit({
+    const audit = await ensureAudit({
       issueNumber,
       repo: cfg.repo,
       ts: readPlanApprovedTimestamp(persistedBody),
+      mode: readPlanApprovedMode(persistedBody),
       env,
       ...auditDeps,
     });
-    return { status: 'repaired-approval', ts: approvalTs };
+    return {
+      status: 'repaired-approval',
+      ts: approvalTs,
+      mode: readPlanApprovedMode(persistedBody),
+      audit,
+    };
   }
 
   // #236 — refuse plan→develop approval if the body's AC/VC checklists contain
@@ -168,14 +182,19 @@ export async function runPlanApprove({ issueNumber, cfg, projectDir, deps = {} }
     !adaptiveConfigured ||
     (frozenForecastRecordId !== null && frozenForecastRecordId === forecastRecordId);
   if (hasApproval && hasPlanEntry && approvalComplete) {
-    await ensureAudit({
+    const audit = await ensureAudit({
       issueNumber,
       repo: cfg.repo,
       ts: readPlanApprovedTimestamp(body),
+      mode: readPlanApprovedMode(body),
       env,
       ...auditDeps,
     });
-    return { status: 'already-approved' };
+    return {
+      status: 'already-approved',
+      mode: readPlanApprovedMode(body),
+      audit,
+    };
   }
 
   const ts = nowIso();
@@ -197,9 +216,18 @@ export async function runPlanApprove({ issueNumber, cfg, projectDir, deps = {} }
         throw new Error('plan-approve: adaptive forecast marker disappeared before approval');
       }
       if (adaptiveConfigured) {
-        n = upsertPlanApprovedMarker(n, ts, { forecastRecordId: freshForecastRecordId });
+        const freshHasApproval = hasPlanApprovedMarker(n);
+        const existingMode = readPlanApprovedMode(n);
+        n = upsertPlanApprovedMarker(n, ts, {
+          forecastRecordId: freshForecastRecordId,
+          mode: freshHasApproval
+            ? existingMode === 'unknown'
+              ? null
+              : existingMode
+            : requestedMode,
+        });
       } else if (!hasPlanApprovedMarker(n)) {
-        n = insertPlanApprovedMarker(n, ts);
+        n = insertPlanApprovedMarker(n, ts, { mode: requestedMode });
       }
       return wrapDeepDiveInDetails(n);
     },
@@ -209,21 +237,47 @@ export async function runPlanApprove({ issueNumber, cfg, projectDir, deps = {} }
       ? writeResult.body
       : await fetchIssueBody({ issueNumber, repo: cfg.repo });
 
-  await ensureAudit({
+  const audit = await ensureAudit({
     issueNumber,
     repo: cfg.repo,
     ts: readPlanApprovedTimestamp(persistedBody),
+    mode: readPlanApprovedMode(persistedBody),
     env,
     ...auditDeps,
   });
 
   if (hasApproval && !hasPlanEntry) {
-    return { status: 're-stamped-entry', ts };
+    return { status: 're-stamped-entry', ts, mode: readPlanApprovedMode(persistedBody), audit };
   }
   if (hasApproval && adaptiveConfigured && !approvalComplete) {
-    return { status: 'repaired-approval', ts };
+    return { status: 'repaired-approval', ts, mode: readPlanApprovedMode(persistedBody), audit };
   }
-  return { status: 'approved', ts };
+  return { status: 'approved', ts, mode: readPlanApprovedMode(persistedBody), audit };
+}
+
+function auditDisposition(audit) {
+  if (audit?.mode === 'human') return 'not-applicable';
+  if (audit?.auditPosted) return 'posted';
+  if (audit?.alreadyPresent) return 'already-present';
+  return 'not-posted';
+}
+
+export function formatPlanApproveOutcome(issueNumber, result) {
+  const provenance = result?.mode || 'unknown';
+  const audit = auditDisposition(result?.audit);
+  const detail = `provenance=${provenance}; Full-Auto audit=${audit}`;
+  switch (result?.status) {
+    case 'approved':
+      return `✓ Plan approved for #${issueNumber} at ${result.ts} (${detail}). \`/task promote #${issueNumber}\` to move to Develop.`;
+    case 'already-approved':
+      return `#${issueNumber} already has a plan-approval marker — no change (${detail}).`;
+    case 're-stamped-entry':
+      return `✓ Re-stamped missing aitm-entered-plan marker for #${issueNumber} at ${result.ts} (approval already present; ${detail}). \`/task promote #${issueNumber}\` to move to Develop.`;
+    case 'repaired-approval':
+      return `✓ Repaired adaptive Plan approval lineage for #${issueNumber} at ${result.ts}; the existing approval now freezes its forecast record (${detail}).`;
+    default:
+      return null;
+  }
 }
 
 function parseArgs(rest) {
@@ -255,22 +309,10 @@ export async function verbPlanApprove(rest, cfg, deps = {}) {
   }
   switch (result.status) {
     case 'approved':
-      process.stdout.write(
-        `✓ Plan approved for #${issueNumber} at ${result.ts}. \`/task promote #${issueNumber}\` to move to Develop.\n`
-      );
-      return;
     case 'already-approved':
-      process.stdout.write(`#${issueNumber} already has a plan-approval marker — no change.\n`);
-      return;
     case 're-stamped-entry':
-      process.stdout.write(
-        `✓ Re-stamped missing aitm-entered-plan marker for #${issueNumber} at ${result.ts} (approval already present). \`/task promote #${issueNumber}\` to move to Develop.\n`
-      );
-      return;
     case 'repaired-approval':
-      process.stdout.write(
-        `✓ Repaired adaptive Plan approval lineage for #${issueNumber} at ${result.ts}; the existing approval now freezes its forecast record.\n`
-      );
+      process.stdout.write(`${formatPlanApproveOutcome(issueNumber, result)}\n`);
       return;
     case 'wrong-state':
       process.stderr.write(`⛔ ${result.message}\n`);

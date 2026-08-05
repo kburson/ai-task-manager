@@ -167,7 +167,7 @@ export const VERB_REFERENCE = {
   'plan-approve': {
     topic: 'board',
     summary:
-      'Record human plan approval (stamps the `aitm-plan-approved` marker Plan→Develop needs).',
+      'Record plan approval with durable human or Full-Auto provenance (stamps the `aitm-plan-approved` marker Plan→Develop needs).',
     usage: '/task plan-approve #N',
     exitCodes: [{ code: 3, meaning: 'issue is not in Plan' }],
     examples: ['/task plan-approve 667'],

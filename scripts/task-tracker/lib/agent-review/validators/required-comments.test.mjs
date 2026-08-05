@@ -3,6 +3,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { validate, REQUIRED_COMMENTS } from './required-comments.mjs';
 import { buildPlanApprovalAuditComment } from '../../plan-approval-audit.mjs';
+import { buildPlanApprovedMarker } from '../../markers.mjs';
 
 // One satisfying comment body per required row. Signals mirror the live
 // #810 comment stream.
@@ -21,6 +22,57 @@ const SAMPLES = {
 // Build a `comments` array (raw gh shape) covering every label except `omit`.
 function commentsExcept(omit) {
   return REQUIRED_COMMENTS.filter((r) => r.label !== omit).map((r) => ({ body: SAMPLES[r.label] }));
+}
+
+const fullAutoAuditRow = REQUIRED_COMMENTS.find(
+  (row) => row.label === 'Full-Auto plan-approval audit'
+);
+
+test('#1109 approval provenance conditions the Full-Auto audit row, default-deny', () => {
+  assert.equal(
+    fullAutoAuditRow.requiredFor(
+      buildPlanApprovedMarker('2026-05-16T00:00:00Z', { mode: 'human' })
+    ),
+    false
+  );
+  assert.equal(
+    fullAutoAuditRow.requiredFor(
+      buildPlanApprovedMarker('2026-05-16T00:00:00Z', { mode: 'full-auto' })
+    ),
+    true
+  );
+  assert.equal(fullAutoAuditRow.requiredFor(buildPlanApprovedMarker('2026-05-16T00:00:00Z')), true);
+  assert.equal(fullAutoAuditRow.requiredFor('no readable approval marker'), true);
+});
+
+test('#1109 human-approved plan passes without a false Full-Auto audit comment', () => {
+  const res = validate({
+    comments: commentsExcept('Full-Auto plan-approval audit'),
+    issueNumber: 1109,
+    body: buildPlanApprovedMarker('2026-05-16T00:00:00Z', { mode: 'human' }),
+    changedPaths: ['scripts/task-tracker/verbs/plan-approve.mjs'],
+  });
+  assert.equal(res.pass, true, JSON.stringify(res.failures));
+  assert.deepEqual(res.failures, []);
+});
+
+for (const [label, body] of [
+  ['full-auto', buildPlanApprovedMarker('2026-05-16T00:00:00Z', { mode: 'full-auto' })],
+  ['unknown', buildPlanApprovedMarker('2026-05-16T00:00:00Z')],
+]) {
+  test(`#1109 ${label} plan still requires the canonical Full-Auto audit`, () => {
+    const res = validate({
+      comments: commentsExcept('Full-Auto plan-approval audit'),
+      issueNumber: 1109,
+      body,
+      changedPaths: ['scripts/task-tracker/verbs/plan-approve.mjs'],
+    });
+    assert.equal(res.pass, false);
+    assert.ok(
+      res.failures.some((failure) => /Full-Auto plan-approval audit.*missing/i.test(failure)),
+      JSON.stringify(res.failures)
+    );
+  });
 }
 
 test('passes when all five required comments are present', () => {

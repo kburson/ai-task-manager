@@ -16,11 +16,16 @@ import { strict as assert } from 'node:assert';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { runPlanApprove } from '../../../verbs/plan-approve.mjs';
+import {
+  formatPlanApproveOutcome,
+  runPlanApprove,
+  verbPlanApprove,
+} from '../../../verbs/plan-approve.mjs';
 import {
   buildPlanApprovedMarker,
   hasPlanApprovedMarker,
   readPlanApprovedForecastRecordId,
+  readPlanApprovedMode,
 } from '../../../lib/markers.mjs';
 
 const __dir = path.dirname(fileURLToPath(import.meta.url)) + '/..';
@@ -74,6 +79,21 @@ function makeDeps(overrides = {}) {
   };
 }
 
+async function captureVerbStdout(issueNumber, deps) {
+  const write = process.stdout.write;
+  const chunks = [];
+  process.stdout.write = (chunk) => {
+    chunks.push(String(chunk));
+    return true;
+  };
+  try {
+    await verbPlanApprove([String(issueNumber)], cfg, deps);
+  } finally {
+    process.stdout.write = write;
+  }
+  return chunks.join('');
+}
+
 // 1. wrong-state when in review (plan-approve cannot approve Review)
 {
   const { deps, calls } = makeDeps({ state: 'review' });
@@ -99,8 +119,14 @@ function makeDeps(overrides = {}) {
   const r = await runPlanApprove({ issueNumber: 122, cfg, deps });
   assert.equal(r.status, 'approved');
   assert.equal(r.ts, FIXED_TS);
+  assert.equal(r.mode, 'human');
+  assert.deepEqual(r.audit, {
+    mode: 'human',
+    auditPosted: false,
+    alreadyPresent: false,
+  });
   assert.equal(calls.writes.length, 1);
-  assert.match(getBody(), /<!-- aitm-plan-approved ts="2026-05-16T00:00:00Z" -->/);
+  assert.match(getBody(), /<!-- aitm-plan-approved ts="2026-05-16T00:00:00Z" mode="human" -->/);
 }
 
 // Adaptive approval durably binds the frozen forecast record ID.
@@ -115,6 +141,7 @@ function makeDeps(overrides = {}) {
     deps,
   });
   assert.equal(readPlanApprovedForecastRecordId(getBody()), recordId);
+  assert.equal(readPlanApprovedMode(getBody()), 'human');
   assert.match(getBody(), new RegExp(`forecast-record-id="${recordId}"`));
 }
 
@@ -150,6 +177,7 @@ function makeDeps(overrides = {}) {
   });
   assert.equal(r.status, 'repaired-approval');
   assert.equal(readPlanApprovedForecastRecordId(getBody()), fresh);
+  assert.equal(readPlanApprovedMode(getBody()), 'unknown');
 }
 
 // A legacy adaptive issue already in Develop can backfill the forecast ID onto
@@ -173,6 +201,7 @@ function makeDeps(overrides = {}) {
   assert.equal(r.status, 'repaired-approval');
   assert.equal(r.ts, originalTs);
   assert.equal(readPlanApprovedForecastRecordId(getBody()), ready);
+  assert.equal(readPlanApprovedMode(getBody()), 'unknown');
   assert.match(getBody(), new RegExp(`ts="${originalTs}"`));
 }
 
@@ -209,7 +238,7 @@ function makeDeps(overrides = {}) {
   const { deps, getBody } = makeDeps({ initialBody: bodyNoFields });
   await runPlanApprove({ issueNumber: 122, cfg, deps });
   const result = getBody();
-  assert.match(result, /<!-- aitm-plan-approved ts="2026-05-16T00:00:00Z" -->/);
+  assert.match(result, /<!-- aitm-plan-approved ts="2026-05-16T00:00:00Z" mode="human" -->/);
 }
 
 // 7. pure helpers
@@ -220,6 +249,60 @@ function makeDeps(overrides = {}) {
   assert.equal(hasPlanApprovedMarker('no marker here'), false);
   assert.equal(hasPlanApprovedMarker(''), false);
   assert.equal(hasPlanApprovedMarker(null), false);
+}
+
+// #1109: provenance-bearing markers distinguish both live modes while old
+// property/colon markers remain readable and default to unknown.
+{
+  assert.equal(
+    buildPlanApprovedMarker(FIXED_TS, { mode: 'human' }),
+    `<!-- aitm-plan-approved ts="${FIXED_TS}" mode="human" -->`
+  );
+  assert.equal(
+    buildPlanApprovedMarker(FIXED_TS, { mode: 'full-auto' }),
+    `<!-- aitm-plan-approved ts="${FIXED_TS}" mode="full-auto" -->`
+  );
+  assert.equal(readPlanApprovedMode(buildPlanApprovedMarker(FIXED_TS, { mode: 'human' })), 'human');
+  assert.equal(
+    readPlanApprovedMode(buildPlanApprovedMarker(FIXED_TS, { mode: 'full-auto' })),
+    'full-auto'
+  );
+  assert.equal(readPlanApprovedMode(buildPlanApprovedMarker(FIXED_TS)), 'unknown');
+  assert.equal(readPlanApprovedMode(`<!-- aitm-plan-approved: ${FIXED_TS} -->`), 'unknown');
+}
+
+// #1109 AC3: every successful output names durable provenance and audit
+// disposition, including the human branch that previously printed no clue.
+{
+  assert.match(
+    formatPlanApproveOutcome(122, {
+      status: 'approved',
+      ts: FIXED_TS,
+      mode: 'human',
+      audit: { mode: 'human', auditPosted: false, alreadyPresent: false },
+    }),
+    /provenance=human; Full-Auto audit=not-applicable/
+  );
+  assert.match(
+    formatPlanApproveOutcome(122, {
+      status: 'approved',
+      ts: FIXED_TS,
+      mode: 'full-auto',
+      audit: { mode: 'full-auto', auditPosted: true, alreadyPresent: false },
+    }),
+    /provenance=full-auto; Full-Auto audit=posted/
+  );
+
+  const human = makeDeps({ env: {} });
+  assert.match(
+    await captureVerbStdout(122, human.deps),
+    /provenance=human; Full-Auto audit=not-applicable/
+  );
+  const fullAuto = makeDeps({ env: { TT_FULL_AUTO: '1' } });
+  assert.match(
+    await captureVerbStdout(1021, fullAuto.deps),
+    /provenance=full-auto; Full-Auto audit=posted/
+  );
 }
 
 // 8. verb module documents /task plan-approve #N
@@ -270,7 +353,7 @@ function makeDeps(overrides = {}) {
   assert.equal(r.status, 'approved');
   const out = getBody();
   assert.match(out, /<!-- aitm-entered-plan ts="2026-05-16T00:00:00Z" -->/);
-  assert.match(out, /<!-- aitm-plan-approved ts="2026-05-16T00:00:00Z" -->/);
+  assert.match(out, /<!-- aitm-plan-approved ts="2026-05-16T00:00:00Z" mode="human" -->/);
 }
 
 // 12. visit-suffix safe: if aitm-entered-plan-2 exists (legitimate re-entry)
@@ -296,6 +379,8 @@ function makeDeps(overrides = {}) {
   const { deps, calls } = makeDeps({ env: { TT_FULL_AUTO: '1' } });
   const r = await runPlanApprove({ issueNumber: 1021, cfg, deps });
   assert.equal(r.status, 'approved');
+  assert.equal(r.mode, 'full-auto');
+  assert.equal(r.audit.auditPosted, true);
   assert.equal(calls.comments.length, 1);
   assert.match(calls.comments[0], /^### Full-Auto Plan-Approval Audit — #1021/m);
   assert.match(calls.comments[0], new RegExp(FIXED_TS));
@@ -320,6 +405,23 @@ function makeDeps(overrides = {}) {
   assert.equal(calls.writes.length, 1);
   assert.equal(calls.comments.length, 1);
   assert.equal(calls.commentReads, 2);
+}
+
+// #1109: durable human provenance wins over a later Full-Auto environment;
+// an idempotent run must not post an audit that falsely denies human review.
+{
+  const initialBody =
+    '## Scope\n\n<!-- aitm-entered-plan ts="2026-05-01T00:00:00Z" -->\n\n' +
+    '<!-- aitm-plan-approved ts="2026-05-01T00:00:00Z" mode="human" -->\n';
+  const { deps, calls } = makeDeps({
+    initialBody,
+    env: { TT_FULL_AUTO: '1' },
+  });
+  const r = await runPlanApprove({ issueNumber: 1109, cfg, deps });
+  assert.equal(r.status, 'already-approved');
+  assert.equal(r.mode, 'human');
+  assert.equal(r.audit.mode, 'human');
+  assert.equal(calls.comments.length, 0);
 }
 
 // #1021: a prior marker with no audit is a repairable partial success, not an
