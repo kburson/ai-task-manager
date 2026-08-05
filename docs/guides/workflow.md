@@ -123,6 +123,22 @@ compatibility, or manifest rule), and any lane escalation. Package/lockfile,
 runner, lane-classifier, global-helper, or impact-manifest changes deliberately
 fail closed to the lanes declared by the manifest.
 
+Synchronize the branch with its resolved parent before Develop finalization and
+`/task test #N`. For a trunk-parent issue, fetch `origin/trunk` and rebase or
+merge it into the feature branch first; for an epic child, synchronize with the
+current epic head through the owned merge-back flow. Resolve conflicts and
+commit any resulting edits before Test so the exact-SHA receipt covers the tree
+that will be reviewed and published. When the resolved parent is already an
+ancestor, synchronization should not manufacture an empty commit.
+
+After Test, any operation that moves HEAD—including a merge, rebase, amend, or
+empty commit—makes the exact-SHA receipt stale.
+That HEAD move requires a new `/task test #N` pass before Review. The re-Test is
+not redundant when the synchronized parent changed the tree: the earlier receipt
+did not observe those changes, even when they are outside the issue's own files.
+Sync again after Test only when the parent actually advanced or another
+integration requirement makes the HEAD move unavoidable.
+
 `/task test #N` owns finalization. While the issue is still in Develop it checks
 that the tree is clean and committed, runs full lint and format once, persists
 and reads back an `aitm.verification-receipt/v1` for the complete 40-hex SHA,
