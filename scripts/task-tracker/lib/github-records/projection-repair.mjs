@@ -35,7 +35,7 @@ function validateProjectionSnapshot(snapshot, intent) {
     !hasExactlyKeys(snapshot, PROJECTION_KEYS) ||
     snapshot.commentNodeId !== intent.singletonCommentNodeId ||
     snapshot.kind !== intent.kind ||
-    !Number.isInteger(snapshot.revision) ||
+    !Number.isSafeInteger(snapshot.revision) ||
     snapshot.revision <= 0 ||
     typeof snapshot.body !== 'string' ||
     snapshot.body.length === 0 ||

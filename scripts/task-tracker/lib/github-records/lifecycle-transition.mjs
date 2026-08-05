@@ -84,8 +84,9 @@ function validateProjection(projection) {
     !hasExactlyKeys(projection, PROJECTION_KEYS) ||
     !SINGLETON_KINDS.includes(projection.kind) ||
     !isOpaqueId(projection.singletonCommentNodeId) ||
-    !Number.isInteger(projection.expectedRevision) ||
+    !Number.isSafeInteger(projection.expectedRevision) ||
     projection.expectedRevision <= 0 ||
+    !Number.isSafeInteger(projection.nextRevision) ||
     projection.nextRevision !== projection.expectedRevision + 1 ||
     !HASH_RE.test(projection.expectedBodyHash) ||
     !HASH_RE.test(projection.nextBodyHash) ||
@@ -115,9 +116,9 @@ function validatePayload(payload, expectedIssue) {
     payload.fromState === payload.toState ||
     !isOpaqueId(payload.branch) ||
     !RECORD_ID_RE.test(payload.grantId) ||
-    !Number.isInteger(payload.grantEpoch) ||
+    !Number.isSafeInteger(payload.grantEpoch) ||
     payload.grantEpoch <= 0 ||
-    !Number.isInteger(payload.contractEpoch) ||
+    !Number.isSafeInteger(payload.contractEpoch) ||
     payload.contractEpoch <= 0 ||
     !Array.isArray(payload.projections) ||
     payload.projections.length === 0 ||
