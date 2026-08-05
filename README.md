@@ -100,7 +100,7 @@ The tool has three distinct capability layers:
 
 ## How Work Moves Through the Board
 
-Every Kanban state is the same shape: an **entry gate** (checks that must pass to land here), an **action** (something the system stamps automatically the instant you do), and an **exit gate** (checks that must pass to leave). That makes every state a standalone place to enter, park in, or leave — never an implicit side effect of some other state.
+Every Kanban state is the same shape: an **entry gate** (checks that must pass to land here) and an **exit gate** (checks that must pass to leave). That makes every state a standalone place to enter, park in, or leave — never an implicit side effect of some other state.
 
 ```mermaid
 flowchart LR
@@ -121,18 +121,22 @@ flowchart LR
 
 Solid arrows are `/task promote`. Dashed arrows are `/task demote` (or `/task park <reason>` for the early states) — a state is never a one-way door.
 
-| State       | Entry gate                                          | Action on entry                          | Exit gate                                                                                  |
-| ----------- | ---------------------------------------------------- | ----------------------------------------- | -------------------------------------------------------------------------------------------- |
-| **Backlog** | Board position is contiguous                        | —                                          | (none codified — an unresolved `{discuss}` brainstorming trigger blocks the first promote)   |
-| **On Deck** | Contiguous                                           | —                                          | Not blocked · Refine fields present · parent/child state consistent · epic-child can't lead |
-| **Refine**  | Contiguous                                           | —                                          | Refine marked complete · not a stub · not blocked · Plan-entry fields present · WIP budget · parent/child consistent · user-story rule (hard) |
-| **Plan**    | Contiguous                                           | —                                          | Not blocked · **plan approved (human gate)** · estimate set · deep dive present · Plan Metadata present · Verification Commands present · decomposition check · epic children ready |
-| **Develop** | Contiguous                                           | —                                          | Not blocked · code complete · sandbox/verify proof exists · commit trail has HEAD · every epic child at Review-or-later |
-| **Test**    | Contiguous · body gates                              | —                                          | Not blocked · Definition of Done verified · pre-close completeness check                    |
-| **Review**  | Contiguous · body gates                              | —                                          | Not blocked · **review approved (human gate)** · every epic child at Done · close gates      |
-| **Done**    | Body gates                                           | Stamp `story-closed` + `timing-flushed`   | none — terminal                                                                              |
+| State       | Entry gate                                                                                                       | Exit gate                                                                                  |
+| ----------- | ------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Backlog** | Marker-trail contiguity (see below)                                                                                | Not blocked · no unresolved `{discuss}` brainstorming trigger                                                                                 |
+| **On Deck** | Marker-trail contiguity (this stage's own marker is optional — pre-#433 issues never recorded it)                  | Not blocked · Refine-entry fields present · parent/child state consistent · epic-child can't lead                                             |
+| **Refine**  | Marker-trail contiguity                                                                                            | Refine marked complete · not a stub · not blocked · Plan-entry fields present · WIP budget · parent/child consistent · user-story rule (hard) |
+| **Plan**    | Marker-trail contiguity                                                                                            | Not blocked · **plan approved (human gate)** · estimate set · deep dive present · Plan Metadata present · Verification Commands present · decomposition check · epic children ready |
+| **Develop** | Marker-trail contiguity                                                                                            | Not blocked · code complete · sandbox/verify proof exists · commit trail has HEAD · every epic child at Review-or-later                       |
+| **Test**    | Marker-trail contiguity · deep-dive placement/completeness · dependency map present                                | Not blocked · Definition of Done verified · pre-close completeness check                                                                     |
+| **Review**  | Marker-trail contiguity · deep-dive placement/completeness · dependency map · all Verification Commands checked    | Not blocked · **review approved (human gate)** · every epic child at Done · close gates                                                       |
+| **Done**    | Same body gates as Review · no stray unchecked boxes anywhere · lifecycle labels (`agent-review-passed`, `passed-final-review`) satisfied | none — terminal                                                                                                                 |
 
-The two bold rows are the human gates by default: **Plan → Develop** (don't let an agent start writing code before a human accepts the plan) and **Review → Done** (don't let an agent close its own work). Everything else is machine-checked. Full guard/action source: [`scripts/task-tracker/states/`](scripts/task-tracker/states/), architecture writeup at [`docs/architecture/state-machine.md`](docs/architecture/state-machine.md).
+**Marker-trail contiguity** means every prior canonical stage must already carry an `aitm-entered-<stage>` HTML-comment marker on the issue body — the guard names the exact missing stage and refuses the move if one is gone (`contiguity-hole`); backward moves skip this check entirely. **Deep-dive placement/completeness** and **dependency map** are body-shape checks: the Deep-Dive Analysis section must sit between the Pickup Directive and the fields-block marker and clear a size-bucketed character floor once marked complete; the Dependency Map section must exist with real content once its checkbox is ticked. Source: [`scripts/task-tracker/lib/contiguity-entry-guard.mjs`](scripts/task-tracker/lib/contiguity-entry-guard.mjs), [`stage-entry-markers.mjs`](scripts/task-tracker/lib/stage-entry-markers.mjs), [`body-gates.mjs`](scripts/task-tracker/lib/body-gates.mjs).
+
+The bold cell is the human gate on by default: **Plan → Develop** (don't let an agent start writing code before a human accepts the plan). Review → Done is likewise a human gate (`approve` + close gates, see below). Everything else is machine-checked. Full guard source: [`scripts/task-tracker/states/`](scripts/task-tracker/states/), architecture writeup at [`docs/architecture/state-machine.md`](docs/architecture/state-machine.md).
+
+There's no per-state "action on entry" hook — every state's `onEnter` list is intentionally empty (`states/index.mjs` documents this: "deep work... is performed by `/task <verb>` sessions, not the state object"). What actually fires on a transition is a fixed sequence in the mover itself (`move-state-core.mjs`), the same for every target state: stamp the `aitm-entered-<stage>` marker, then write the board's Status field. Anything state-specific beyond that — posting the pickup directive, appending a timing-log row, ticking the `story-closed`/`timing-flushed` lifecycle boxes on close — is driven by the `/task <verb>` command itself (`review`, `close`, etc.), not by the state it lands in.
 
 ## How Agents Actually Drive This
 
