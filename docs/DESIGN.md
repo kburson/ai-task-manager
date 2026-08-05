@@ -336,14 +336,14 @@ Precedence: project-local > user-global > hardcoded defaults.
 
 **Internal keys** (managed by `npx ai-task-manager init` — do not set manually):
 
-| Key                                                                                                                                                                                                                                                                                                         | Purpose                                      |
-| ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------- |
-| `projectId`                                                                                                                                                                                                                                                                                                 | GH Projects V2 project node ID               |
-| `kanbanFieldId`                                                                                                                                                                                                                                                                                             | Kanban single-select field ID                |
-| `kanbanOptionBacklog` / `kanbanOptionRefine` / `kanbanOptionReadyForPlan` / `kanbanOptionPlan` / `kanbanOptionDevelop` / `kanbanOptionTest` / `kanbanOptionReview` / `kanbanOptionDone` (canonical config keys, one per state slug; legacy `kanbanOptionAssigned` remains read-compatible during migration) | Kanban option IDs                            |
-| `sequenceFieldId`                                                                                                                                                                                                                                                                                           | Numeric Sequence field ID (fan-out ordering) |
-| `priorityFieldId`                                                                                                                                                                                                                                                                                           | Priority single-select field ID              |
-| `priorityOptionP0` / `P1` / `P2`                                                                                                                                                                                                                                                                            | Priority option IDs                          |
+| Key                                                                                                                                                                                                                                                                                                                                       | Purpose                                  |
+| ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------- |
+| `projectId`                                                                                                                                                                                                                                                                                                                               | GH Projects V2 project node ID           |
+| `kanbanFieldId`                                                                                                                                                                                                                                                                                                                           | Kanban single-select field ID            |
+| `kanbanOptionBacklog` / `kanbanOptionRefine` / `kanbanOptionReadyForPlan` / `kanbanOptionPlan` / `kanbanOptionDevelop` / `kanbanOptionTest` / `kanbanOptionReview` / `kanbanOptionDone` (canonical config keys; legacy `kanbanOptionAssigned` and `kanbanOptionOnDeck` remain read-compatible during migration) | Kanban option IDs                        |
+| `rankFieldId` (legacy config fallback: `sequenceFieldId`)                                                                                                                                                                                                                                                                                | Numeric Rank field ID (fan-out ordering) |
+| `priorityFieldId`                                                                                                                                                                                                                                                                                                                         | Priority single-select field ID          |
+| `priorityOptionP0` / `P1` / `P2` / `P3`                                                                                                                                                                                                                                                                                                   | Priority option IDs                      |
 
 ## State File
 
@@ -484,7 +484,7 @@ The skill is delivered as a just-in-time loader to minimize context burden. Thre
 
 Both Claude and Codex adapters point at the same router; Tier-2 rule files are tool-agnostic. Tool-specific divergence (e.g. how the agent surfaces a `PROMPT_REQUIRED:` line) stays in the adapter `SKILL.md`.
 
-After `/clear` or `/compact`, sentinels are wiped from context and the router reloads on the next `/task` call; only the Tier-2 rule files needed by the next verb reload — unrelated rules stay unloaded. Budget targets (asserted by `scripts/task-tracker/tests/measure-context.test.mjs`): idle ≤1,500 tokens, invoked ≤8,000 tokens, active ≤12,000 tokens. Measurement tool: `scripts/task-tracker/measure-context.mjs [--idle | --invoked | --active [N] | --all]`.
+After `/clear` or `/compact`, sentinels are wiped from context and the router reloads on the next `/task` call; only the Tier-2 rule files needed by the next verb reload — unrelated rules stay unloaded. Budget targets (asserted by `scripts/task-tracker/tests/unit/core/measure-context.test.mjs`): idle ≤1,500 tokens, invoked ≤8,000 tokens, active ≤12,000 tokens. Measurement tool: `scripts/task-tracker/measure-context.mjs [--idle | --invoked | --active [N] | --all]`.
 
 ## File Layout
 
@@ -570,10 +570,13 @@ scripts/gh/
 └── ...
 
 scripts/reports/
-├── tally-chat-words.mjs           # KEPT — refactored to import from scripts/task-tracker/word-counter.mjs
 ├── generate-value-report.mjs      # (existing, unchanged)
 └── value-report-config.json       # (existing, unchanged)
 ```
+
+> This tree reflects the original v1 design. `scripts/reports/tally-chat-words.mjs`
+> (the "thin wrapper" described below) has since been deleted entirely — its logic
+> now lives solely in `scripts/task-tracker/word-counter.mjs`.
 
 ## Migration from Current Setup
 
@@ -613,10 +616,14 @@ Migration steps (executed during implementation):
 
 ## Testing Strategy
 
-No formal test framework in this repo — follow project conventions:
+This section reflects the original v1 plan (no formal test framework, a manual
+smoke-test checklist). Both have since been superseded: the repo now runs
+`node --test` across `scripts/task-tracker/tests/unit/` (fast + slow lanes) and
+`tests/task-tracker/integration/`, with `c8` coverage (see
+[`guides/test-authoring.md`](./guides/test-authoring.md) for current
+conventions). `docs/task-tracker-smoke-test.md` was never created — its
+coverage is now the automated test tree instead.
 
-- **Unit-ish:** small `.mjs` scripts under `scripts/task-tracker/tests/` invoked via `node <file>` that exercise state/config/queue modules with temp files.
-- **Integration:** a manual smoke-test checklist in `docs/task-tracker-smoke-test.md` covering all 10 command patterns + the 3 hooks.
 - **Hook dry-run:** hook-handler dry-run mode that prints what it would do without touching GH.
 
 ## Backlog Orchestration

@@ -44,22 +44,35 @@ npx ai-task-manager install
 # 3. Connect to your GitHub Project board (interactive)
 npx ai-task-manager init
 
-# 4. Commit the generated config
-git add .ai-task-manager/task-tracker.json .github/ISSUE_TEMPLATE/
+# 4. Commit the generated config — install/init outputs are project-portable,
+#    so ephemeral clones (cloud workstations, fresh worktrees) inherit them
+git add .ai-task-manager/ .github/ISSUE_TEMPLATE/ .claude/settings.json .claude/commands/task.md .claude/skills/task/SKILL.md .codex/hooks.json .agents/ AGENTS.md CLAUDE.md
 git commit -m "chore: add ai-task-manager"
 ```
 
-### use skill commands in ai chat
+### The Public API You Actually Need
 
-#### in Claude Code use the `/task` command word:
+Once install and configure are done, this is the whole day-to-day surface — five commands:
 
 ```
-/task              → show active task, elapsed time, word count
-/task [start] #42  → start or switch to issue #42, bind the active session, display the brief
-/task promote      → promote the active task to the next kanban state
+/task brainstorm
+/task new
+/task [start|resume] [#N]
+/task pause
+/task promote|demote
 ```
 
-That's it. Everything else is optional depth.
+| Command                 | What it does                                                                 |
+| ------------------------ | ------------------------------------------------------------------------------ |
+| `/task brainstorm`       | Open an untracked planning bucket for spec/design work before any issue exists |
+| `/task new`              | Turn a spec (or a one-line idea) into a tracked issue — or a whole backlog     |
+| `/task [start\|resume] #N` | Bind the session to issue `#N` and show its brief — start it fresh or pick a paused one back up |
+| `/task pause`            | Flush timing and step away — run this before `/clear` or ending a session      |
+| `/task promote\|demote`   | Move the active issue one state forward, or send it back a state for rework    |
+
+Bare `/task` (no arguments) always works too — it shows whatever is active right now: issue, elapsed time, word count.
+
+That's it. Everything else below — `review`, `close`, `approve`, `ensureChecked`, `commit-trace`, `dod-stamp`, and the rest — is real and documented, but it's **the agent's** vocabulary for driving an issue through the state machine, not something you need to memorize. See [How Agents Actually Drive This](#how-agents-actually-drive-this).
 
 #### In Codex, ask naturally:
 
@@ -82,6 +95,52 @@ The tool has three distinct capability layers:
 1. **Session tracking** — bind Claude Code or Codex to a GitHub issue, auto-log time and context words, manage Kanban state hands-free
 2. **Backlog orchestration** — generate a complete GitHub Projects backlog from a spec document, with epics, sub-issues, labels, sizing, stack ranking, and pickup directives
 3. **ROI reporting** — produce a financial report comparing estimated effort against measured engaged hours, with fully-burdened cost tables by US region and role
+
+---
+
+## How Work Moves Through the Board
+
+Every Kanban state is the same shape: an **entry gate** (checks that must pass to land here), an **action** (something the system stamps automatically the instant you do), and an **exit gate** (checks that must pass to leave). That makes every state a standalone place to enter, park in, or leave — never an implicit side effect of some other state.
+
+```mermaid
+flowchart LR
+    Backlog -->|promote| OnDeck["On Deck"]
+    OnDeck -->|promote| Refine
+    Refine -->|promote| Plan
+    Plan -->|promote, human gate| Develop
+    Develop -->|promote| Test
+    Test -->|promote, verified| Review
+    Review -->|promote, human gate| Done
+    OnDeck -.->|demote/park| Backlog
+    Refine -.->|demote/park| Backlog
+    Plan -.->|demote/park| Backlog
+    Test -.->|demote| Develop
+    Review -.->|demote| Develop
+    Review -.->|demote| Test
+```
+
+Solid arrows are `/task promote`. Dashed arrows are `/task demote` (or `/task park <reason>` for the early states) — a state is never a one-way door.
+
+| State       | Entry gate                                          | Action on entry                          | Exit gate                                                                                  |
+| ----------- | ---------------------------------------------------- | ----------------------------------------- | -------------------------------------------------------------------------------------------- |
+| **Backlog** | Board position is contiguous                        | —                                          | (none codified — an unresolved `{discuss}` brainstorming trigger blocks the first promote)   |
+| **On Deck** | Contiguous                                           | —                                          | Not blocked · Refine fields present · parent/child state consistent · epic-child can't lead |
+| **Refine**  | Contiguous                                           | —                                          | Refine marked complete · not a stub · not blocked · Plan-entry fields present · WIP budget · parent/child consistent · user-story rule (hard) |
+| **Plan**    | Contiguous                                           | —                                          | Not blocked · **plan approved (human gate)** · estimate set · deep dive present · Plan Metadata present · Verification Commands present · decomposition check · epic children ready |
+| **Develop** | Contiguous                                           | —                                          | Not blocked · code complete · sandbox/verify proof exists · commit trail has HEAD · every epic child at Review-or-later |
+| **Test**    | Contiguous · body gates                              | —                                          | Not blocked · Definition of Done verified · pre-close completeness check                    |
+| **Review**  | Contiguous · body gates                              | —                                          | Not blocked · **review approved (human gate)** · every epic child at Done · close gates      |
+| **Done**    | Body gates                                           | Stamp `story-closed` + `timing-flushed`   | none — terminal                                                                              |
+
+The two bold rows are the human gates by default: **Plan → Develop** (don't let an agent start writing code before a human accepts the plan) and **Review → Done** (don't let an agent close its own work). Everything else is machine-checked. Full guard/action source: [`scripts/task-tracker/states/`](scripts/task-tracker/states/), architecture writeup at [`docs/architecture/state-machine.md`](docs/architecture/state-machine.md).
+
+## How Agents Actually Drive This
+
+Most `/task` verbs are not meant for you to type. They're the vocabulary the AI agent uses to move an issue through the state machine correctly — deep-diving, ticking acceptance criteria, stamping evidence, running the verification gate, moving the Kanban card — while you stay on the five-command surface above. They're fully exposed for direct human use (nothing is hidden or privileged), but the expectation is that the agent handles the backlog mechanics:
+
+- The agent binds the session (`/task start #N`), does the deep dive, writes code, and runs `verify-develop.mjs` before every commit.
+- The agent flushes progress (`/task update`), stamps acceptance-criteria and Definition-of-Done evidence, and reports `CODE_COMPLETE` when done — it does not close its own work or skip ahead to Review/Done on its own initiative.
+- You step in at the human gates: approve the plan, review the diff, approve the close. Everything in between is the agent driving.
 
 ---
 
@@ -144,12 +203,14 @@ The fundamental unit is a _task session_: Claude is working on one GitHub issue 
 
 ### Commands
 
+Beyond the five daily-driver commands in the quickstart above, this is the fuller surface — mostly what the agent calls on your behalf as it drives an issue, exposed here for direct use, debugging, or scripting:
+
 | Command                           | Action                                                                                               |
 | --------------------------------- | ---------------------------------------------------------------------------------------------------- |
 | `/task`                           | Show active task, elapsed minutes, context words since last marker                                   |
 | `/task #N`                        | Switch to issue #N — bind the active session and display the brief                                   |
 | `/task new [title]`               | Create a new issue and start tracking it                                                             |
-| `/task plan`                      | Open an untracked planning bucket before an issue exists                                             |
+| `/task brainstorm`                | Open an untracked planning bucket before an issue exists                                             |
 | `/task resume`                    | Resume the last paused task (no body reload)                                                         |
 | `/task resume #N`                 | Switch back to a paused task and display its body                                                    |
 | `/task pause`                     | Flush timing, keep last-active. Run before `/clear` or closing an agent session                      |
@@ -159,6 +220,9 @@ The fundamental unit is a _task session_: Claude is working on one GitHub issue 
 | `/task migrate`                   | Select/configure a project, import repo issues, heal field DBs, and sync project fields              |
 | `/task ensureChecked "<label>"`   | Ensure a checkbox is ticked in the active issue body — idempotent, never unticks (exact label match) |
 | `/task ensureUnchecked "<label>"` | Ensure a checkbox is unticked — idempotent, never ticks (exact label match)                          |
+| `/task promote`                   | Promote the active task to the next kanban state (pre-flights cheap exit-gates first)                |
+| `/task demote`                    | Send the active task back a state for rework (Test/Review → Develop)                                 |
+| `/task park <reason>`             | Send a Refine/Plan/On Deck issue back to Backlog without clearing sizing                              |
 | `/task fleet`                     | Show all active tasks across parallel agent worktrees                                                |
 | `/task config`                    | List all config values with sources                                                                  |
 | `/task config <key> <value>`      | Set a config value project-locally                                                                   |
@@ -184,9 +248,9 @@ Hooks flush timing on every `/compact` and session start, so long sessions are n
 
 When you switch tasks or close an issue, the skill updates your board automatically:
 
-- **Kanban state** → moves the card through the 8-state workflow (Backlog → Assigned → Refine → Plan → Develop → Test → Review → Done)
+- **Kanban state** → moves the card through the 8-state workflow (Backlog → Refine → Ready for Planning → Plan → Develop → Test → Review → Done)
 - **Engaged Time / Session Time** → measured minutes used by reports and board filters
-- **Sequence** → the issue's position in the fan-out order
+- **Rank** → the issue's numeric wave-ordering position (see [Rank and Dependencies](#rank-and-dependencies) below)
 - **Start date / End date** → set automatically when work moves into active development or Done
 
 All board IDs are stored in `.ai-task-manager/task-tracker.json` and set once by `init`. You never manage IDs manually.
@@ -220,7 +284,7 @@ The orchestration mode is where the tool shifts from tracker to co-pilot.
 Start a planning session before any issues exist:
 
 ```
-/task plan
+/task brainstorm
 ```
 
 This opens an untracked bucket for time spent thinking, speccing, and designing. When you're ready to execute:
@@ -231,7 +295,7 @@ This opens an untracked bucket for time spent thinking, speccing, and designing.
 
 If you're in plan mode and have a spec in context, the skill prompts:
 
-> "I see a spec in context — use it to build out the full backlog? I'll create all epics and sub-issues, set sizing/priority/sequence, and inject pickup directives across the entire plan — no stopping between issues."
+> "I see a spec in context — use it to build out the full backlog? I'll create all epics and sub-issues, set sizing/priority/rank, and inject pickup directives across the entire plan — no stopping between issues."
 
 Reply **yes** and the orchestration runs end-to-end. Reply **no** to create a single issue instead.
 
@@ -244,43 +308,28 @@ Given a spec document (markdown, loaded into context), the orchestrator creates 
 3. **Sub-issues** — each linked to its parent epic via GitHub's sub-issue relationship
 4. **Solo tasks** — standalone issues with no parent
 5. **Project tethering** — every issue is verified from the Project V2 side before orchestration continues; issue-side `projectItems` metadata alone is not trusted
-6. **Project fields** — Size, Estimate, Priority, and Sequence set on every issue via GitHub Projects V2 API
+6. **Project fields** — Size, Estimate, Priority, and Rank set on every issue via GitHub Projects V2 API
 7. **Kanban state** — every issue lands in Backlog, ready to work
 
 All of this runs automatically. You watch the progress stream and review the summary table at the end.
 
-### Sequencing and Dependencies
+### Rank and Dependencies
 
-Every issue in the spec should include a `**Sequence:** N` field. Issues with the same number can run in parallel; higher-sequence issues wait for all lower-sequence issues to close first.
+Every issue in the spec should include a `**Rank:** N` field. Sub-issues sharing a Rank form a **wave** — they can be dispatched in parallel — while a sub-issue at Rank N+1 waits for every Rank-N sibling to reach Done before it can start. The `wave-admission` gate enforces this when an issue enters Plan; solo issues with no parent epic bypass it entirely.
 
 ```markdown
 #### E1-S1 — Implement email/password registration
 
-**Priority:** P0 | **Size:** M | **Estimate:** 4h | **Sequence:** 1
+**Priority:** P0 | **Size:** M | **Estimate:** 4h | **Rank:** 1
 
 #### E1-S2 — Add Google OAuth integration
 
-**Priority:** P0 | **Size:** M | **Estimate:** 3h | **Sequence:** 2 | **Depends on:** E1-S1 (JWT infrastructure)
+**Priority:** P0 | **Size:** M | **Estimate:** 3h | **Rank:** 2 | **Depends on:** E1-S1 (JWT infrastructure)
 ```
 
-The Sequence value is written to a numeric field on the GitHub Projects board, making fan-out order machine-readable. During epic pickup, the agent validates these values against actual code dependencies and posts a confirmed dependency map before fanning out.
+During epic pickup, the agent validates these values against actual code dependencies and posts a confirmed dependency map before fanning out. Once an epic is in progress, all parallel work happens within that epic's sub-issues — no cross-epic fan-out until the active epic closes.
 
-**Sequencing rule:** Once an epic is in progress, all parallel work happens within that epic's sub-issues. No cross-epic fan-out until the active epic closes.
-
-### Spec Format
-
-Include a sequencing key and epic execution order at the top of your spec:
-
-```markdown
-**Sequencing key:** Same Sequence = parallel. Higher Sequence = blocked until all lower close.
-**Epic execution order:** Epic 1 (Auth) → Epic 2 (Billing) → Epic 3 (Dashboard)
-
-### S1 — Set up CI pipeline
-
-**Priority:** P1 | **Size:** S | **Estimate:** 2h | **Sequence:** 1 | **Model:** sonnet
-```
-
-The `**Model:**` hint tells orchestration which model to use when fanning out that issue to a sub-agent.
+Full wave-admission mechanics, discovered-sub-issue handling, and same-wave-newcomer semantics: [docs/guides/workflow.md § Rank-as-wave-id](docs/guides/workflow.md#rank-as-wave-id).
 
 ### Conversational Backlog Management
 
@@ -292,7 +341,7 @@ Ask naturally:
 "What's the status of the auth epic?"
 "Create a new issue for the rate-limiting bug we just found — P1, S estimate."
 "Move issue #34 to Review."
-"Link #42 as a sub-issue of #38 and set sequence 2."
+"Link #42 as a sub-issue of #38 and set rank 2."
 "Show me all open P0 issues with no estimate."
 "Close the current task and log time."
 ```
@@ -307,18 +356,32 @@ The agent translates these into the right combination of `gh issue`, `gh project
 
 The Pickup Directive makes every issue self-contained. Any agent, on any machine, after any context reset, can pick up an issue cold and know exactly what to do.
 
+> **This is a project-editable template, not fixed behavior.** Both the Pickup Directive and the Definition of Done live at `.ai-task-manager/templates/` after install — see [Customizing](#customizing) below.
+
 ### What Gets Injected
 
-Every issue created from a master plan gets this block appended:
+Every issue created from a master plan gets a Definition of Done with three sections — **Functional** (checked at Test: tests pass, lint/format clean, commits present, acceptance criteria met, issue checkboxes ticked), **Lifecycle** (checked at Review: `Agent Review Passed`, `Final Review Passed`), and **Housekeeping** (checked at Close: `Story closed and moved to Done`, `Timing data flushed to issue`) — plus a Pickup Directive block:
 
 ```markdown
 ### Definition of Done
+
+#### Functional
 
 - [ ] `npm test`
 - [ ] `npm run lint`
 - [ ] `npm run format:check`
 - [ ] Acceptance criteria met
 - [ ] Issue body checkboxes ticked
+
+#### Lifecycle
+
+- [ ] Agent Review Passed
+- [ ] Final Review Passed
+
+#### Housekeeping
+
+- [ ] Story closed and moved to Done
+- [ ] Timing data flushed to issue
 
 ## Pickup Directive — MANDATORY, DO NOT SKIP
 
@@ -342,7 +405,7 @@ No env override exists. The GitHub UI (drag a card to Done, delete an issue) is 
 
 ### The Deep Dive Checkpoint
 
-On first pickup, the agent runs a just-in-time analysis against the current repo state and appends it to the issue body. The deep dive must include:
+On first pickup, the agent runs a just-in-time analysis against the current repo state and appends it as a `## Deep-Dive Analysis (YYYY-MM-DD)` section — placed after the Pickup Directive's `- [ ] Deep dive complete` line and before the hidden fields block, never as a trailing appendix. The deep dive must include:
 
 - Files to edit (full repo-relative paths)
 - Step-by-step implementation plan
@@ -360,7 +423,8 @@ On first pickup, the agent runs a just-in-time analysis against the current repo
   Do not add words like `PASS`; a checked box means the exact command was run successfully and output was read.
 
 - Identified risks beyond the original scope
-- **Dependency map** — always required:
+- **Sibling sub-issues to spawn**, if the deep dive uncovers scope that belongs in its own issue rather than this one
+- **Dependency map** — always required, even if the answer is "none":
 
   ```
   ## Dependency Map
@@ -368,23 +432,25 @@ On first pickup, the agent runs a just-in-time analysis against the current repo
   Blocks: #19 (OAuth flow), #21 (MFA enrollment)
   ```
 
+The deep dive is narrative — it must never nest `Acceptance Criteria`, `Verification Commands`, or `Definition of Done` headings inside it. Those three names are read only at the document root by their respective gates; nesting them inside the appendix hides real checkboxes from the gates that need them, or fools a gate into treating narrative prose as satisfied criteria. A guard refuses issue-body writes that would introduce this.
+
 Once the deep dive checkbox is checked, every subsequent pickup — after `/clear`, machine switches, or agent handoffs — skips straight to implementation.
 
-### Epic Fan-Out with Dependency Validation
+### Rank-Ordered Fan-Out
 
 When an epic is picked up, before fanning out sub-agents:
 
-1. All sub-issue Sequence fields are validated against actual code dependencies found in the deep dive
-2. Any incorrect Sequence values are updated on the project board
+1. All sub-issue Rank fields are validated against actual code dependencies found in the deep dive
+2. Any incorrect Rank values are updated on the project board
 3. A confirmed dependency map is posted as a comment on the epic
-4. Sequence-1 sub-issues are fanned out immediately; each subsequent wave unblocks when the previous closes
+4. Rank-1 sub-issues are fanned out immediately; each subsequent wave unblocks when the previous closes
 
 ### Customizing
 
-Two files are installed to `.ai-task-manager/` and can be edited per project:
+Both files below are project-editable — the whole point of the Pickup Directive and DoD is that they encode **your** project's workflow, not a fixed one. They're installed to `.ai-task-manager/templates/` and can be edited freely:
 
 | File                    | Purpose                                                                     |
-| ----------------------- | --------------------------------------------------------------------------- |
+| ----------------------- | ----------------------------------------------------------------------------- |
 | `pickup-directive.md`   | Agent instructions — deep dive steps, implementation pattern, fan-out rules |
 | `definition-of-done.md` | DoD checklist inlined into every new issue body at creation                 |
 
@@ -452,64 +518,21 @@ npx github-project-report
 
 # Closed issues only, Q1 date range
 npx github-project-report --html --state closed --from 2026-01-01 --to 2026-03-31
-
-# Specific issues
-npx github-project-report --html --issues 10,11,12
-
-# Override region and seniority for cost table
-npx github-project-report --html --region sf_bay --role senior
 ```
 
 ### What the Report Shows
 
-The report answers: **what did it actually cost to ship this, versus what would it have cost without AI?**
-
-It reads two fields from your board — `Estimate` (pre-work hours) and `Session Time` (measured minutes) — plus chat words supplied via the `--chat-words` flag, and builds a multi-section, print-optimized PDF or HTML document:
-
-**Page 1 — Executive Summary**
-A branded header (title, generated date, region, project/repo/filters) followed by a plain-English summary of the report's structure and methodology — designed as a clean cover page for stakeholder distribution.
-
-**Page 2 — Agentic AI Accelerator + Comparison Rows**
-
-- Side-by-side cost view: Human Engineering Cost vs. AI-Assisted Cost with acceleration multiples (cost efficiency and calendar speed)
-- Six comparison rows: Budget Baseline · Solo Senior Engineer · Enterprise Team · AI-Assisted Actual · Agentic AI Accelerator (human leverage only) · AI Leverage summary
-
-**Pages 3+ — Supporting Detail**
-
-- **Product Backlog** — per-issue table with estimate, session time, context words, engaged hours, and acceleration ratio; epics roll up their sub-issues; column definitions and interpretation notes follow the table
-- **Engineering Cost by US Region** — the same acceleration math at every regional rate, with savings vs. estimate
-- **Timeline Analysis** — calendar view of created → started → closed per issue; pre-work lag and in-flight duration; detailed methodology notes on epic vs. sub-issue timing and parallel fan-out leverage
+The report answers: **what did it actually cost to ship this, versus what would it have cost without AI?** It reads `Estimate` (pre-work hours) and `Session Time` (measured minutes) from the board, plus chat words, and builds a print-optimized PDF or HTML document: an executive summary cover page, a cost-comparison page (Human Engineering Cost vs. AI-Assisted Cost, with acceleration multiples across six baselines), and supporting detail pages — a per-issue backlog table, cost-by-US-region table, and a created→started→closed timeline analysis.
 
 **Key metrics:**
 
 - **Engaged Hours** = session minutes + human review time (visible chat words ÷ WPM × overlap factor)
 - **Acceleration ratio** = Estimate ÷ Engaged Hours
 - **Human Leverage** = Estimate ÷ human-only engagement time (orchestrator + solo sessions, agent time excluded)
-- **Three cost baselines**: budget mid-level · solo senior (60% efficiency) · enterprise team (50% + 30% coordination overhead)
-
-The report is print-optimized: high-contrast colors on dark banners, reduced ink usage on background fills, and page numbers in the lower-right corner. Output is landscape Letter PDF (or HTML with `--html`).
 
 This makes AI productivity legible to stakeholders. Not "we used AI" — but "we delivered 82 estimated hours in 11 engaged hours at `$800` instead of `$14,000`."
 
-### All Flags
-
-| Flag                             | Description                                                 |
-| -------------------------------- | ----------------------------------------------------------- |
-| `--html`                         | Emit HTML only, skip PDF (no puppeteer required)            |
-| `--state closed\|open\|all`      | Filter by issue state (default: `all`)                      |
-| `--from YYYY-MM-DD`              | Only issues closed on or after this date                    |
-| `--to YYYY-MM-DD`                | Only issues closed on or before this date                   |
-| `--issues 10,11,12`              | Limit to specific issue numbers                             |
-| `--role mid\|senior\|staff`      | Engineer level for cost table (default: `mid`)              |
-| `--solo-role mid\|senior\|staff` | Role for solo-engineer baseline (default: `senior`)         |
-| `--region <id>`                  | Region ID from `regional-rates.json` (default: `national`)  |
-| `--reading-wpm N`                | Override reading WPM for context-word time (default: `180`) |
-| `--chat-words N`                 | Add extra context words not yet logged to any issue         |
-| `--title "..."`                  | Custom report heading                                       |
-| `--output ./path/report`         | Output base path without extension                          |
-| `--project-id PVT_...`           | Override GitHub Projects V2 node ID                         |
-
-See [docs/guides/ai-value-framework.md](docs/guides/ai-value-framework.md) for the full ROI methodology.
+Run `npx github-project-report --help` for the full flag reference (date/issue filters, region and role overrides, output path, report title, and more). Full ROI methodology: [docs/guides/ai-value-framework.md](docs/guides/ai-value-framework.md).
 
 ---
 
@@ -545,18 +568,7 @@ Or set individual values:
 | `pickupDirective`      | `true`  | Inject Pickup Directive block into new issues               |
 | `hookNetworkTimeoutMs` | `2000`  | GitHub API timeout from hooks                               |
 
-### Internal Settings (set by `init`)
-
-| Key               | Description                                                                     |
-| ----------------- | ------------------------------------------------------------------------------- |
-| `projectId`       | GitHub Projects V2 node ID                                                      |
-| `kanbanFieldId`   | Status field ID                                                                 |
-| `kanbanOption*`   | Kanban state option IDs (Backlog/Assigned/Refine/Plan/Develop/Test/Review/Done) |
-| `sizeFieldId`     | Size field ID                                                                   |
-| `sequenceFieldId` | Sequence field ID (numeric)                                                     |
-| `priorityFieldId` | Priority field ID                                                               |
-| `priorityOption*` | Priority option IDs (P0/P1/P2)                                                  |
-| `fieldEstimate`   | Estimate field ID                                                               |
+Internal, `init`-managed settings (board/field IDs) are not meant for manual editing — full list in [docs/DESIGN.md](docs/DESIGN.md).
 
 ---
 
@@ -565,11 +577,11 @@ Or set individual values:
 `install` adds auto-allow rules to `.claude/settings.json` so orchestration runs hands-free. During backlog creation, every shell command executes without a prompt:
 
 | Rule                             | What it covers                                |
-| -------------------------------- | --------------------------------------------- |
+| --------------------------------- | ------------------------------------------------ |
 | `Bash(gh issue create*)`         | Issue creation                                |
 | `Bash(gh api graphql*)`          | Project field mutations, sub-issue linking    |
 | `Bash(gh label create*)`         | Label setup                                   |
-| `Bash(gh project item-edit*)`    | Size, Sequence, Estimate, Priority fields     |
+| `Bash(gh project item-edit*)`    | Size, Estimate, Priority fields                |
 | `Bash(cat > ./.tmp/gh/*)`        | Issue body temp files (project-local scratch) |
 | `Bash(node */task-tracker.mjs*)` | All `/task` verbs                             |
 | `Bash(*/move-state.mjs*)`        | Kanban state transitions                      |
@@ -589,7 +601,7 @@ To review each invocation manually, remove the rules from `.claude/settings.json
 Default to `/compact`. It summarizes your session, keeps hooks active, and costs ~25× fewer tokens than a cold reload.
 
 |             | `/compact`                     | `/clear`                     |
-| ----------- | ------------------------------ | ---------------------------- |
+| ----------- | ------------------------------- | ------------------------------- |
 | Token cost  | ~2k (summary)                  | ~50k (full reload)           |
 | Hooks       | Fires PreCompact + PostCompact | Bypasses all hooks           |
 | Timing data | Flushed automatically          | Lost if not manually paused  |
@@ -608,18 +620,26 @@ The state file (`.ai-task-manager/task-tracker-state.json`) is workspace-scoped.
 
 **Rule:** only run `/task` commands from one session at a time. Treat any second session as read-only.
 
+> **In progress:** [#1048](https://github.com/kburson/ai-task-manager/issues/1048) is delivering exclusive, GitHub-native work leases so two agents (e.g. Claude Code and Codex, or two worktrees) can no longer silently corrupt each other's baseline. Once it lands, binding an issue that's already leased elsewhere will fail closed with a clear conflict instead of quietly desyncing Delta Words — GitHub issue comments become the durable authority instead of the local per-workspace state file.
+
 ---
 
 ## Helper Scripts
 
+Every routed script and `/task` verb self-documents — pass `help`, `?`, `--help`, or `-h` and it prints its own purpose and syntax, so an agent (or you) can [re]discover usage without leaving the terminal. For the full grouped command list:
+
+```bash
+npx aitm help
+```
+
 | Script                                                        | Description                                                                                                                                                                                                       |
-| ------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| --------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `scripts/gh/project-tether.mjs --issue <N> ...`               | Add an issue to the configured Project V2, verify it through `ProjectV2.items`, repair issue-side phantom project items when possible, set project fields, and optionally link a parent epic with `--parent <N>`. |
 | `scripts/gh/move-state.mjs <issue#> <state> [--item-id <id>]` | Move issue to Kanban state (backlog/assigned/refine/plan/develop/test/review/done). Pass `--item-id` to skip the GraphQL lookup when you already have the project item ID.                                        |
 | `scripts/gh/set-priority.mjs <issue#> <priority> [--cascade]` | Set P0/P1/P2 priority. `--cascade` applies to all sub-issues too.                                                                                                                                                 |
 | `scripts/gh/set-rank.mjs <issue#> <n>`                        | Set the project Rank number field (wave ordering) on one issue. Warns and exits 0 when no rank field is configured.                                                                                               |
 
-Both scripts read all IDs from `.ai-task-manager/task-tracker.json`. No manual ID management.
+All scripts read board/field IDs from `.ai-task-manager/task-tracker.json`. No manual ID management.
 
 ---
 
@@ -635,15 +655,18 @@ Both scripts read all IDs from `.ai-task-manager/task-tracker.json`. No manual I
 
 **Backlog creation stalls on a permission prompt** — Check that your `.claude/settings.json` includes the `gh api graphql*` and `gh issue create*` allow rules. See [Permissions](#permissions) above.
 
+**Not sure what a command does** — Run it with `help`/`--help`/`-h`/`?`, or `npx aitm help` for the full list. See [Helper Scripts](#helper-scripts) above.
+
 ---
 
 ## Design and References
 
 | Document                                                                                                | Contents                                                                                         |
-| ------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
+| ----------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
 | [docs/README.md](docs/README.md)                                                                        | Documentation table of contents and archive map                                                  |
 | [Introduction guide](https://github.com/kburson/ai-task-manager/blob/trunk/docs/introduction/README.md) | Current onboarding guide and quickstart path (hosted on the project, not shipped in the package) |
 | [docs/DESIGN.md](docs/DESIGN.md)                                                                        | Full design spec — data model, state file format, timing comment structure, hook behavior        |
+| [docs/architecture/state-machine.md](docs/architecture/state-machine.md)                                | The state-object model behind [How Work Moves Through the Board](#how-work-moves-through-the-board) — guard/action containers, registry, migration roadmap |
 | [docs/guides/workflow.md](docs/guides/workflow.md)                                                      | GitHub Issues, Kanban, estimates, and cleanup — full workflow rules                              |
 | [docs/guides/ai-value-framework.md](docs/guides/ai-value-framework.md)                                  | ROI methodology — how Engaged Hours, acceleration, and cost tables are calculated                |
 | [docs/guides/settings-guide.md](docs/guides/settings-guide.md)                                          | Recommended Claude Code settings for this tool                                                   |

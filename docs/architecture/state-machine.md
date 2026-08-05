@@ -4,8 +4,8 @@ Status: **active** (post-#292, parent epic #259).
 
 ## Why this exists
 
-For most of the project's life, the seven kanban states (`backlog`, `refine`,
-`plan`, `develop`, `test`, `review`, `done`) lived only as string constants
+For most of the project's life, the kanban states (`backlog`, `on-deck`,
+`refine`, `plan`, `develop`, `test`, `review`, `done`) lived only as string constants
 threaded through `state-machine.mjs`'s transition matrix and the per-verb
 files. Guards (the "may this transition happen?" predicates) sat in two
 parallel places:
@@ -32,7 +32,7 @@ object:
 }
 ```
 
-`scripts/task-tracker/states/index.mjs` re-exports the seven containers as
+`scripts/task-tracker/states/index.mjs` re-exports the eight containers as
 `STATES`, plus the two direction tables:
 
 - `FORWARD_CHAIN` — `state → next-state`. Mirrors `state-machine.mjs`'s

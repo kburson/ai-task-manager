@@ -24,10 +24,10 @@ audit record.
 
 | #   | File                                                                                               | Label matched                                                                         | Purpose                                           | Behavior on miss                                                    |
 | --- | -------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------- | ------------------------------------------------- | ------------------------------------------------------------------- |
-| 1   | [verbs/approve.mjs](../../scripts/task-tracker/verbs/approve.mjs)                                  | `Passed final human review`                                                           | Tick lifecycle item on approve                    | Stderr WARN + timing-log `lifecycle-warn` row (#179)                |
+| 1   | [verbs/approve.mjs](../../scripts/task-tracker/verbs/approve.mjs)                                  | `Final Review Passed`                                                           | Tick lifecycle item on approve                    | Stderr WARN + timing-log `lifecycle-warn` row (#179)                |
 | 2   | [verbs/close.mjs](../../scripts/task-tracker/verbs/close.mjs) `tickLifecycleOnClose`               | `Story closed and moved to Done`, `Timing data flushed to issue`                      | Tick lifecycle items on close                     | Best-effort no-op; hard-blocked upstream by close-gate (#179)       |
 | 3   | [close-gate.mjs](../../scripts/task-tracker/close-gate.mjs) `uncheckedPreCloseCheckboxes`          | All `- [ ]` checkboxes not in `CLOSE_OWNED_CHECKBOXES` or `LIFECYCLE_LABEL_SET`       | Block close on unchecked items                    | Counted as blocker (existing behavior)                              |
-| 4   | [close-gate.mjs](../../scripts/task-tracker/close-gate.mjs) `assertLifecycleSatisfied` (#179)      | The three lifecycle labels in `LIFECYCLE_LABELS`                                      | Hard Review→Done gate                             | Block (default) or WARN (when `lifecycleCheckboxesRequired: false`) |
+| 4   | [close-gate.mjs](../../scripts/task-tracker/close-gate.mjs) `assertLifecycleSatisfied` (#179)      | The four lifecycle labels in `LIFECYCLE_LABELS`                                       | Hard Review→Done gate                             | Block (default) or WARN (when `lifecycleCheckboxesRequired: false`) |
 | 5   | [gh/move-state.mjs](../../scripts/gh/move-state.mjs)                                               | Same as #3 + #4                                                                       | Parallel enforcement at the chokepoint script     | Same as close.mjs                                                   |
 | 6   | [lib/body-gates.mjs](../../scripts/task-tracker/lib/body-gates.mjs) `verification-commands` (#195) | All `- [ ]` under `Verification Commands` heading **excluding** `LIFECYCLE_LABEL_SET` | Block test→review on unchecked verification items | Counted as blocker; lifecycle labels filtered (owned by close-gate) |
 
@@ -36,13 +36,19 @@ The authoritative key→label map lives at
 
 ```js
 export const LIFECYCLE_LABELS = {
-  'passed-final-review': 'Passed final human review',
+  'agent-review-passed': 'Agent Review Passed',
+  'passed-final-review': 'Final Review Passed',
   'story-closed': 'Story closed and moved to Done',
   'timing-flushed': 'Timing data flushed to issue',
 };
+
+export const REVIEW_OWNED_LIFECYCLE_KEYS = new Set(['agent-review-passed', 'passed-final-review']);
+export const HOUSEKEEPING_KEYS = new Set(['story-closed', 'timing-flushed']);
 ```
 
-Verbs MUST consume this map, not redefine labels.
+Verbs MUST consume this map, not redefine labels. `agent-review-passed` was added
+by the two-checkbox split so Review carries a distinct agent-attested checkbox
+alongside the human `passed-final-review` sign-off.
 
 ## Policy (Q1 resolution): hybrid contract
 
@@ -63,7 +69,12 @@ are tracked in `CLOSE_OWNED_LIFECYCLE_KEYS` at `close-gate.mjs` and excluded
 from the gate's `missing` blocker list. The full per-key status remains in
 `results`, so `preflight-issue.mjs --check-integrity` still reports them.
 
-Net effect: only `passed-final-review` is enforced pre-close.
+Net effect: both `agent-review-passed` and `passed-final-review` are enforced
+pre-close. A body authored before the two-checkbox split, where
+`agent-review-passed` never existed, is tolerated — `close-gate.mjs`'s
+`ABSENT_TOLERANT_LIFECYCLE_KEYS` skips the key when it is wholly **absent** from
+the body. A body that has the line but leaves it unticked still blocks; absence
+and an unticked box are treated differently on purpose.
 
 **Body-gate `verification-commands` scope excludes lifecycle labels.** The
 `### Verification Commands` heading is typically `###`, and its sibling
@@ -125,8 +136,8 @@ operator boundary and recovery procedure.
 ## Verification
 
 - Unit: `npm test -- lifecycle-satisfaction close-gates gh-edit-guard preflight-issue`
-- Integration: create a throwaway issue with the DoD's `Passed final human review`
+- Integration: create a throwaway issue with the DoD's `Final Review Passed`
   line removed; confirm preflight emits a WARN line; confirm close-gate blocks;
   add the opt-out marker and confirm close-gate passes.
 - Audit-comment path: an issue with `<!-- aitm-full-auto-approved: ... -->` and
-  unticked `Passed final human review` passes the gate (audited status).
+  unticked `Final Review Passed` passes the gate (audited status).

@@ -42,7 +42,7 @@ Install AI Task Manager in your project:
 ```bash
 npx ai-task-manager install
 npx ai-task-manager init
-git add .ai-task-manager/ .github/ISSUE_TEMPLATE/ .claude/ .agents/
+git add .ai-task-manager/ .github/ISSUE_TEMPLATE/ .claude/settings.json .claude/commands/task.md .claude/skills/task/SKILL.md .codex/hooks.json .agents/ AGENTS.md CLAUDE.md
 git commit -m "chore: add ai-task-manager"
 ```
 

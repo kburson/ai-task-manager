@@ -769,7 +769,7 @@ Override: set `TASK_TRACKER_SKIP_REEVAL=1` to skip the analyze-stage hook. The b
 
 Then update the board fields and the `aitm-fields` block in the issue body to match.
 
-> Future automation: `/task inflate-estimate <N> --size <S|M|L> --estimate <Nh>` will find the marker, prompt for per-item rationale, append this section, and update board fields atomically. Until that verb exists, follow the manual steps above.
+`/task inflate-estimate <N> --size <S|M|L> --estimate <Nh>` (`scripts/task-tracker/verbs/inflate-estimate.mjs`) automates the steps above: it finds the `aitm-refined-estimate` marker, appends the dated section with per-item rationale, and atomically updates the Size + Estimate board fields and the `aitm-fields` body block. Each invocation appends a new dated block; re-runs do not overwrite prior inflations.
 
 **Review delta.** When `/task close <N>` advances an issue to Done, the harness posts a read-only retrospective comment recording Estimate vs. Actual:
 
@@ -925,7 +925,7 @@ When the user says **"cleanup"**, execute in order:
 `scripts/task-tracker/heal-backlog.mjs` walks every issue in the project board and performs three jobs in one pass:
 
 1. **Encoding normalization** — strips legacy fenced `<!-- ai-task-manager:fields:start/end -->` blocks and emits a single `<!-- aitm-fields: ... -->` HTML comment; converts visible "Plan approved by human" checkboxes into `<!-- aitm-plan-approved: <ts> -->` markers. Vestigial AC bullets (`- [x] approved by Human`, `- [x] Deep dive complete`) are stripped only when the corresponding hidden marker is present — this preserves history on issues that predate the marker model.
-2. **Timing reconciliation** — parses the `⏱ Timing Log` comment, recomputes `engagedTime` / `sessionTime` / `reviewTime` / `startTime` from the rollup, rewrites the fields-DB if they disagree, and posts a `### 🛠 Backlog heal` comment with a deltas table. Static fields (`priority`, `size`, `estimate`, `sequence`) are never touched.
+2. **Timing reconciliation** — parses the `⏱ Timing Log` comment, recomputes `engagedTime` / `sessionTime` / `reviewTime` / `startTime` from the rollup, rewrites the fields-DB if they disagree, and posts a `### 🛠 Backlog heal` comment with a deltas table. Static fields (`priority`, `size`, `estimate`, `rank`) are never touched.
 3. **Schema validation** — fetches the project's GraphQL field schema and diffs against the canonical set; reports missing / extra fields, type mismatches, and option drift (including Status column options). Exit code 3 on drift.
 
 ### Usage
@@ -1081,7 +1081,7 @@ FS-walking runner under `scripts/maintenance/` (or `scripts/task-tracker/tests/`
 `lint:test-reach`.
 
 `npm run lint:test-reach` (`scripts/maintenance/lint-test-coverage-reach.mjs`,
-detector in `scripts/task-tracker/lib/lint-test-coverage-reach.mjs`, issue #866)
+detector in `scripts/maintenance/lint-test-coverage-reach-detector.mjs`, issue #866)
 **rejects a `*.test.mjs` file that exercises no code in this repo.** The standard
 it enforces: every test must exercise a module under `scripts/`. A test that
 references no repo source module — no import of, and no spawned/resolved path to,

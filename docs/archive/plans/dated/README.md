@@ -1,4 +1,11 @@
-# Plans
+# Plans (retired)
+
+> **Retired.** This was the canonical dated-plans location before the convention
+> moved to [`docs/superpowers/plans/`](../../../superpowers/plans/) (Superpowers
+> spec-to-plan authoring) and, separately, [`docs/plans/`](../../../plans/)
+> (the `/task discover`/`new` tracked plan-and-draft store). The two files below
+> are kept as historical record; the conventions described past this point are
+> superseded — do not follow them for new plans.
 
 Canonical home for design specs and implementation plans referenced by GitHub issues.
 

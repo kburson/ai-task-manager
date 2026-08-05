@@ -224,14 +224,15 @@ scenarios. On the current Codex adapter, the measured values are:
 | Scenario               | Budget | Measured | Headroom |
 | ---------------------- | -----: | -------: | -------: |
 | idle                   |  1,500 |      237 |    1,263 |
-| invoked                |  8,000 |    3,719 |    4,281 |
-| bind                   | 12,000 |    9,552 |    2,448 |
-| bind + review + close  | 13,000 |   12,149 |      851 |
-| parallel orchestration | 13,000 |   12,668 |      332 |
+| invoked                |  8,000 |    3,431 |    4,569 |
+| bind                   | 12,000 |    7,624 |    4,376 |
+| bind + review + close  | 17,000 |   11,237 |    5,763 |
+| parallel orchestration | 17,500 |   10,800 |    6,700 |
 
 Those numbers show both sides of the design. The JIT loader dramatically cuts
-the cold-start burden, but advanced scenarios are still close enough to budget
-that regression tests matter.
+the cold-start burden, and budgets have since been widened as new rule files
+were added — regression tests still matter to keep headroom from silently
+eroding as scenarios grow.
 
 Relevant tests include:
 

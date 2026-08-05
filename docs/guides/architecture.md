@@ -69,7 +69,8 @@ Grouped by responsibility. This is the substantive surface — the layer that su
 | ---------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
 | [`scripts/gh/move-state.mjs`](../../scripts/gh/move-state.mjs)                           | **The only writer of the GitHub Projects `Status` field.** Every verb that changes state delegates to this one. |
 | [`scripts/task-tracker/state.mjs`](../../scripts/task-tracker/state.mjs)                 | Local tracker state read/write                                                                                  |
-| [`scripts/task-tracker/state-machine.mjs`](../../scripts/task-tracker/state-machine.mjs) | Legal-transition table — rejects illegal moves before any side effect runs                                      |
+| [`scripts/task-tracker/lib/guard-registry.mjs`](../../scripts/task-tracker/lib/guard-registry.mjs) | Legal-transition guard registry — rejects illegal moves before any side effect runs                              |
+| [`scripts/task-tracker/states/`](../../scripts/task-tracker/states/) | Eight state containers (`backlog`, `on-deck`, `refine`, `plan`, `develop`, `test`, `review`, `done`), each declaring its own entry/exit guards |
 
 ### Gates / verbs
 
@@ -174,14 +175,14 @@ The pattern is **script-backed + routed**, evolving toward **hook-enforced**. Th
 
 Dogfooding note: the repo's own development uses a `node_modules/ai-task-manager` symlink so the model can exercise scripts as they're built. A behavioral rule in memory keeps the model invoking via `scripts/`, not the symlink — this applies only to this repo's dogfooding workflow and is not present in deployed installations.
 
-### Still open
+### Now closed (was "still open")
 
-| Open leak                                           | Why it still leaks                                                                                                                                                                                                                                                                               |
-| --------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Bind-mismatch only enforced by `close.mjs`          | [`close.mjs:46-49`](../../scripts/task-tracker/verbs/close.mjs) cross-checks `target` against `state.active`; other targeted verbs (`approve`, `refine`, `plan-approve`, `review`, `reject`, `demote`, `promote`, `pause`, `resume`, `update`) trust `state.active` without verifying the target |
-| Manual GH-UI Status changes leave local state stale | Only `start.mjs` / `switch.mjs` reconcile local `state.state` via `fetchLiveKanbanState`; state-mutating verbs read live for preconditions but do not write the truth back to local state                                                                                                        |
+Both leaks below were addressed by a shared verb-preflight helper — [`scripts/task-tracker/lib/verb-preflight.mjs`](../../scripts/task-tracker/lib/verb-preflight.mjs) (#208, refactored in #218) — wired centrally into verb dispatch in [`task-tracker.mjs`](../../scripts/task-tracker/task-tracker.mjs), not per-verb:
 
-Both will be addressed by a shared verb-preflight helper — see [#208](https://github.com/kburson/ai-task-manager/issues/208).
+| Was-leak                                            | Now enforced by                                                                                                                                                          |
+| ---------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Bind-mismatch only enforced by `close.mjs`          | `runPreflight` in `verb-preflight.mjs` cross-checks `target` against `state.active` for every dispatched verb, not just `close`                                                                                                                                                                   |
+| Manual GH-UI Status changes leave local state stale | `runPreflight` compares the issue body's `aitm-last-known-state` marker against live board state on every verb entry and prompts to reconcile on drift (kind: `human-move`)                                                                                                                       |
 
 ## When to choose this pattern
 
@@ -195,8 +196,6 @@ Both will be addressed by a shared verb-preflight helper — see [#208](https://
 
 ## Future direction
 
-The concrete next step is closing the two remaining open leaks with a shared verb-preflight helper that performs both bind-mismatch and live-state reconciliation at every state-mutating verb's entry. Tracked in [#208](https://github.com/kburson/ai-task-manager/issues/208).
-
-Beyond that, the broader trajectory is continuing to promote the surviving behavioral routing into harness hooks where the leverage is high — the script layer stays canonical so the workflow remains portable across harnesses, with hooks as the Claude-Code-specific belt to go with the cross-harness suspenders.
+The broader trajectory is continuing to promote the surviving behavioral routing into harness hooks where the leverage is high — the script layer stays canonical so the workflow remains portable across harnesses, with hooks as the Claude-Code-specific belt to go with the cross-harness suspenders.
 
 See [`guides/settings-guide.md`](./settings-guide.md) for the existing recommended hook setup and [`docs/DESIGN.md`](../DESIGN.md) §"Hook Behavior" for the events already in play.

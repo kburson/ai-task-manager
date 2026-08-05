@@ -76,7 +76,7 @@ flowchart LR
 | Review             | Work is ready for human approval                                              |
 | Done               | Human-approved work is closed                                                 |
 
-Use `/task promote`, `/task demote`, and `/task reconcile` for state transitions when you need explicit workflow movement. Use `/task review` and `/task close` for the review and completion paths because those commands also flush timing, write project fields, and enforce gates.
+`/task promote` is the general-purpose forward mover — it works from any state, including Test and Review, and internally runs the same verification gates and delegates to `/task review` or `/task close` when those stages need their extra side effects (flushing timing, writing project fields, redirecting back to Review if Agent Review evidence is missing or stale). Calling `/task review`/`/task close` directly still works and is what the Daily Loop above shows, but `/task promote` is the safer default when you just want "move this issue forward one step" without deciding which named verb applies. `/task demote` and `/task reconcile` round out state movement: `demote` steps back to Develop for code rework, and `reconcile` resolves board/local drift.
 
 ## Human Gates
 
@@ -166,6 +166,7 @@ This keeps the ledger honest. Human-away time should not inflate active engineer
 | `/task pause [reason]`           | Flush timing and pause active work                    |
 | `/task update [message]`         | Flush timing and continue                             |
 | `/task ensureChecked "label"`    | Ensure an exact checkbox label is ticked (idempotent) |
+| `/task promote [#N]`             | Move the issue forward one state, delegating to `review`/`close` where needed |
 | `/task review #N`                | Move ready work through verification into Review      |
 | `/task approve #N`               | Record explicit human approval                        |
 | `/task reject #N --reason "..."` | Reject review work back to Develop                    |
