@@ -98,7 +98,7 @@ export function stripFencedCodeBlocks(body) {
   return transformFencedCodeBlocks(body, () => '');
 }
 
-function maskFencedCodeBlocksPreservingOffsets(body) {
+export function maskFencedCodeBlocksPreservingOffsets(body) {
   return transformFencedCodeBlocks(body, (block) => block.replace(/[^\r\n]/g, ' '));
 }
 

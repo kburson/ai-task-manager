@@ -38,6 +38,7 @@
 
 import { registry } from '../registry.mjs';
 import { findReviewFailureBlockSpan } from '../../review-failure-block.mjs';
+import { maskFencedCodeBlocksPreservingOffsets } from '../../markers.mjs';
 
 // A line that is EXACTLY one `<!-- aitm-<name> … -->` comment (ignoring
 // surrounding whitespace). `name` is captured so we can classify hoist vs.
@@ -83,9 +84,10 @@ function hoistRank(name) {
 
 export function validate({ body } = {}) {
   const src = typeof body === 'string' ? body : '';
+  const maskedSrc = maskFencedCodeBlocksPreservingOffsets(src);
 
   // Normalization needs the anchor heading to gather non-hoist markers under.
-  if (!ANCHOR_HEADING_RE.test(src)) {
+  if (!ANCHOR_HEADING_RE.test(maskedSrc)) {
     return {
       pass: false,
       failures: ["normalization impossible: '## AITM Progress Markers' anchor heading absent"],
@@ -93,25 +95,39 @@ export function validate({ body } = {}) {
   }
 
   const lines = src.split('\n');
+  const maskedLines = maskedSrc.split('\n');
+  const anchorSourceIdx = maskedLines.findIndex((line) => ANCHOR_HEADING_RE.test(line));
   const hoist = []; // { name, text }
   const gather = []; // { text }
-  const kept = []; // non-marker lines, in place
+  const kept = []; // { text, sourceIndex } — non-marker lines, in place
 
   for (let i = 0; i < lines.length; i += 1) {
     const line = lines[i];
+    const maskedLine = maskedLines[i] ?? '';
+    // #1111 — shared fence masking preserves every newline/offset while
+    // replacing fenced content with spaces. Classification must consult the
+    // masked line, but rebuilding always keeps the original bytes. Checking
+    // this before review-failure span detection prevents a fenced example
+    // start marker from making the rest of the live body opaque.
+    if (maskedLine !== line) {
+      kept.push({ text: line, sourceIndex: i });
+      continue;
+    }
     const reviewFailureSpan = findReviewFailureBlockSpan(lines, {
       fromIndex: i,
       requireStartAt: true,
       includeUnterminated: true,
     });
     if (reviewFailureSpan) {
-      for (let j = i; j <= reviewFailureSpan.end; j += 1) kept.push(lines[j]);
+      for (let j = i; j <= reviewFailureSpan.end; j += 1) {
+        kept.push({ text: lines[j], sourceIndex: j });
+      }
       i = reviewFailureSpan.end;
       continue;
     }
-    const m = STANDALONE_MARKER_RE.exec(line);
+    const m = STANDALONE_MARKER_RE.exec(maskedLine);
     if (!m) {
-      kept.push(line);
+      kept.push({ text: line, sourceIndex: i });
       continue;
     }
     const name = m[1].toLowerCase();
@@ -127,11 +143,11 @@ export function validate({ body } = {}) {
   // Re-emit the gather markers under the anchor heading. Walk `kept` and, at
   // the anchor heading line, drop in the gathered markers (blank-line
   // separated) before continuing with the rest of the kept content.
-  const anchorIdx = kept.findIndex((l) => ANCHOR_HEADING_RE.test(l));
+  const anchorIdx = kept.findIndex((entry) => entry.sourceIndex === anchorSourceIdx);
   const rebuilt = [];
   const preamble = hoist.map((h) => h.text);
   for (let i = 0; i < kept.length; i += 1) {
-    rebuilt.push(kept[i]);
+    rebuilt.push(kept[i].text);
     if (i === anchorIdx) {
       for (const g of gather) {
         rebuilt.push('');
