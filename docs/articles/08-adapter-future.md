@@ -60,13 +60,13 @@ flowchart TB
     Core["AITM workflow core\nstates, gates, evidence, timing"] --> BacklogAdapters["Backlog adapters"]
     Core --> AgentAdapters["Agent adapters"]
     BacklogAdapters --> GitHub["GitHub"]
+    BacklogAdapters --> Jira["Jira"]
     BacklogAdapters --> GitLab["GitLab"]
     BacklogAdapters --> Bitbucket["Bitbucket"]
-    BacklogAdapters --> Jira["Jira"]
     AgentAdapters --> Claude["Claude Code"]
     AgentAdapters --> Codex["Codex"]
     AgentAdapters --> Copilot["Copilot"]
-    AgentAdapters --> Rovo["..."]
+    AgentAdapters --> Rovo["Rovo Dev"]
 ```
 
 A workflow core that owns states, gates, evidence, and timing; a backlog adapter for each product-management system a team actually uses; an agent adapter for each AI coding host a team actually runs; a context-management layer that loads detailed rules only when needed and reloads authoritative rules after compaction, as I described in [article six](06-context-durability.md); and a reporting layer that measures delivery cost, context burden, and acceleration honestly rather than as marketing.
