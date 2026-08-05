@@ -8,6 +8,38 @@ How to take the nine finished articles in this folder from Markdown source to ni
 
 LinkedIn's long-form Article editor is a rich-text editor, not a Markdown renderer. It accepts headings, bold/italic, bullet and numbered lists, block images, and hyperlinks. It does **not** render Markdown syntax as text, HTML comments, Mermaid code fences, or Markdown tables. Publishing straight from these `.md` files would leave literal `#`/`|`/` ``` ` characters and unrendered diagram code in the published post. This guide is the conversion procedure that avoids that.
 
+## Start Here: The Publisher Script
+
+Everything this guide describes as a manual conversion is automated by `scripts/articles/publish-articles.mjs`:
+
+```bash
+npm run publish:articles
+```
+
+That reads `docs/articles/` (never writes there) and produces one self-contained folder per article under `.tmp/published/`:
+
+```text
+.tmp/published/
+  _diagrams/                       every assets/diagrams/*.mmd, rendered to PNG
+  diagram-drift-report.txt         in-body fences that no longer match their .mmd source
+  05-just-in-time-planner/
+    article.html                   open in a browser, select all, copy, paste into LinkedIn
+    companion-post.txt             the feed announcement, plain text
+    article-05-header.png          upload as the cover image
+    05-just-in-time-planner-diagram-1.png
+```
+
+Useful flags:
+
+- `-- --article 05` publishes one article (also accepts the full slug). Skips the shared `_diagrams/` library render.
+- `-- --skip-diagrams` does every text transform but renders no images — fast, for checking prose.
+- `-- --out <dir>` writes somewhere other than `.tmp/published`.
+- `-- --help` prints the same summary.
+
+The script fails loudly rather than shipping a half-converted body: an unterminated fence, a non-Mermaid fence, a Markdown table reaching the HTML renderer, a `Series Roadmap` without exactly one `Current` row, or a malformed `LinkedIn Article Shape` section all abort the run.
+
+The sections below document the conversion rules the script implements. Read them when an article needs a judgment call the script deliberately leaves to a human — cross-linking, and visual QA of a rendered diagram.
+
 ## What To Strip From Every Article Before Publishing
 
 Each article file carries some sections and markup that exist for repo maintenance or drafting purposes, not for the published prose. Remove these before copying content into LinkedIn:
@@ -33,17 +65,22 @@ This is also the answer to "why does every article have this section": it exists
 
 ## Converting Mermaid Diagrams To Images
 
-Every article embeds one or two Mermaid diagrams as fenced ` ```mermaid ` code blocks. LinkedIn's editor cannot render Mermaid, so each diagram needs to become a rendered image before publishing. The `.mmd` source files already exist under `docs/articles/assets/diagrams/`, but none are rendered to images yet — that rendering step has to happen as part of the publish pass for each article.
-
-Render with the Mermaid CLI (no install needed, runs via `npx`):
+Every article embeds one or two Mermaid diagrams as fenced ` ```mermaid ` code blocks. LinkedIn's editor cannot render Mermaid, so each diagram becomes a rendered image before publishing. The publisher does this for you, with `@mermaid-js/mermaid-cli` as a devDependency:
 
 ```bash
-npx @mermaid-js/mermaid-cli -i docs/articles/assets/diagrams/00-syntax-inversion.mmd \
-  -o docs/articles/assets/diagrams/00-syntax-inversion.png \
-  -b transparent -s 3
+mmdc -i <source.mmd> -o <out.png> -b transparent -s 3
 ```
 
-Repeat per `.mmd` file (18 total, two per article except where an article shares one). Use `-b transparent` so the rendered PNG matches LinkedIn's white article background without a colored box around it, and `-s 3` for a resolution that stays sharp at LinkedIn's article width. In the published article, replace each ` ```mermaid ` code block with the corresponding rendered PNG inserted as a block image, keeping the same in-article position.
+`-b transparent` keeps the PNG from carrying a colored box across LinkedIn's white article background; `-s 3` stays sharp at LinkedIn article width.
+
+Two renders happen per run, and the distinction matters:
+
+- **In-body fences** are rendered from the article body itself into that article's folder as `<slug>-diagram-N.png`, numbered in document order. The body is what readers see, so the body is what gets rendered.
+- **The `.mmd` library** under `docs/articles/assets/diagrams/` is rendered separately into `_diagrams/`, under each source's own name.
+
+Where an in-body fence has no exact match in the library, the two copies have diverged; the run reports it in `diagram-drift-report.txt` but publishes anyway. Fix the drift in the source article, not in the output.
+
+In the published article, each fence's position is marked with a visible `INSERT IMAGE HERE: <filename>` placeholder — upload that file as a block image at that point.
 
 ## Handling The `## Series Roadmap` Table
 
@@ -93,24 +130,24 @@ Keep the `## Bibliography` section as-is. LinkedIn renders bullet lists and hype
 
 Every citation in the section must be an absolute URL. A repo-internal citation is written as `https://github.com/kburson/ai-task-manager/blob/trunk/docs/<path>`, never as a relative path like `../introduction/core-workflow.md`. A relative path resolves against the repo checkout, which the published article is not — on LinkedIn it renders as literal text that leads a reader nowhere. `blob/trunk` rather than a commit-pinned permalink is deliberate: these citations point at living design and process docs, and a reader following one wants today's version, not a snapshot.
 
-`npm run lint:article-citations` enforces this. It scans the `## Bibliography` section of every `NN-*.md` article and fails, naming file and line, when a citation is not an absolute `http(s)` URL. Body prose is out of scope — articles link to each other by relative filename on purpose, and those become real LinkedIn URLs during the backfill pass below.
+`npm run lint:article-citations` enforces this. It scans the `## Bibliography` section of every `NN-*.md` article and fails, naming file and line, when a citation is not an absolute `http(s)` URL. Body prose is out of scope — articles link to each other by relative filename on purpose, and those become real LinkedIn URLs during the backfill pass described under Cross-Linking And Publish Order above.
+
+The publisher needs no special handling for any of this: `renderInline` emits an `<a href>` for every absolute URL it meets, so a bibliography that passes the lint reaches the reader as live links, and only body cross-references fall through to plain text.
 
 ## Per-Article Publish Checklist
 
-For each of the 9 articles, in series order:
+Run `npm run publish:articles` once, then for each of the 9 articles, in series order:
 
-1. Render that article's Mermaid diagram(s) to PNG (see command above) if not already rendered.
-2. Copy the article body into LinkedIn's editor, in order: title, then everything from the opening line through the `## Bibliography` section.
-3. Delete the top `<!-- markdownlint-disable MD034 -->` comment and the inline banner image line.
-4. Delete the `## LinkedIn Article Shape` section entirely; save its content for the companion feed post instead.
-5. Replace each Mermaid code fence with its rendered PNG, inserted as a block image at the same point in the body.
-6. Replace the `## Series Roadmap` table with the plain bullet list, bolding the current article.
-7. Fix cross-article links per the publish-order procedure above (leave forward references to unpublished articles as plain text for now).
-8. Upload the banner PNG as the cover image.
-9. Publish, then post the companion feed announcement built from the `LinkedIn Article Shape` content, linking to the new article.
-10. Go back through every previously published article and backfill the new article's link into their roadmap lists and any forward references that were waiting on it.
+1. Open that article's `article.html` in a browser. Select all, copy.
+2. Paste into LinkedIn's article editor. Stripping, heading levels, emphasis, lists, blockquotes, the roadmap bullet list, and hyperlinks all survive the paste.
+3. Upload `article-0N-header.png` as the article's **cover image**.
+4. At each `INSERT IMAGE HERE: <filename>` placeholder, upload the named PNG as a block image and delete the placeholder line. Eyeball the rendered diagram while you are there — nothing has visually QA'd it.
+5. Fix cross-article links per the publish-order procedure above. The publisher renders relative cross-article references as plain text on purpose: the target URL does not exist until that article is live. Bibliography citations need no such fix — they are absolute by rule and already hyperlinked.
+6. Publish, then post `companion-post.txt` as the feed announcement, replacing `<PASTE THE PUBLISHED ARTICLE URL HERE>` with the URL LinkedIn just assigned.
+7. Go back through every previously published article and backfill the new article's link into their roadmap lists and any forward references that were waiting on it.
 
 ## Open Items Not Covered By This Guide
 
-- Mermaid rendering (step 1 above) has not been run yet for any of the 18 diagram source files — this guide documents the command, but the actual PNG generation and visual QA of each rendered diagram is a separate pass to do at publish time, per article.
+- Visual QA of each rendered diagram is still a human step (checklist step 4). The publisher proves a valid PNG came out; it cannot tell you the layout reads well at LinkedIn's article width.
+- Cross-linking (checklist step 5) stays manual by necessity — see the publish-order constraint above.
 - This guide assumes publishing through LinkedIn's own web editor by hand. If publish volume ever justifies it, LinkedIn does not currently offer content APIs for authoring long-form Articles, so this remains a manual process for now.

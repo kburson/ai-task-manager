@@ -62,6 +62,7 @@ desyncing
 desyncs
 dflt
 dfull
+disjointness
 Dockerfiles
 dogfood
 Dogfood
@@ -104,6 +105,7 @@ kpburson
 laned
 Liskov
 lstat
+menlo
 metacharacter
 metacharacters
 metachars
@@ -114,6 +116,7 @@ misordering
 mkdirs
 mkdtemp
 mktemp
+mmdc
 modelcontextprotocol
 monotonize
 mortems
