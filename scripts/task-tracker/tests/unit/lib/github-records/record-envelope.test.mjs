@@ -1,9 +1,15 @@
-// @story #1069 #1091
+// @story #1069 #1091 #1120
 // cspell:ignore aaaaation aaaaaaaaability abcdefghically accesstoken apikey authorizationbackup authorizationdecisionpersonalpatbackup authorizationheader authorizationtoken authconfig authtoken authtokenbackup backupauthconfig backupcredentials backuppat backuppatdata bearercredential clientpassword clientsecret cookiebackup customauthmaterial databaseauth databaseauthbackup databasecredentials databasepasswd databasepassword databasepatvalue credentialsbackup ghp githubtoken gitlabtoken gitlabtokenbackup idtoken idtokenbackup myauthbackup mypat mypatbackup noncanonical npmtoken npmtokenbackup passwordbackup passwordment passwordpassword passwordpolicymypatbackup personalpat personalpatbackup qwertyization qwertyuiopa qwertyuiopasdfgh qwertyware randomtoken randomware redactedredacted refreshtoken secretization secretsecretsecret secrettion secretword sessionauth sessionauthconfig sessionauthdata sessioncookie sessioncookiebackup sessioncookies sessioncookievalue sessionpatconfig sessiontoken sessiontokenbackup tokencountdatabaseauthbackup tokenenv tokenvalue zxcvbnmasd zxcvbnment zzzzability
 import { strict as assert } from 'node:assert';
 import test from 'node:test';
 import { canonicalRecordJson } from '../../../../lib/github-records/canonical-json.mjs';
 import {
+  createDraftContract,
+  renderDeliveryContract,
+  validateContractProjection,
+} from '../../../../lib/github-records/delivery-contract.mjs';
+import {
+  createAitmRecordEnvelope,
   hashRecordPayload,
   parseAitmRecord,
   renderAitmRecord,
@@ -90,6 +96,16 @@ function parse(body, overrides = {}) {
     ...overrides,
   });
 }
+function deliveryContractFixture() {
+  return createDraftContract({
+    recordId: '01J00000000000000000001120',
+    authorityEpoch: 1,
+    coordinatorGrantId: '01J00000000000000000001121',
+    acceptanceCriteria: [{ logicalId: 'ac-envelope', text: 'The envelope is valid.' }],
+    verificationCommands: [{ logicalId: 'vc-envelope', command: 'npm test' }],
+    definitionOfDone: [{ logicalId: 'dod-envelope', text: 'Secret guards remain active.' }],
+  });
+}
 test('canonical durable JSON sorts nested object keys and preserves array order', () => {
   assert.equal(
     canonicalRecordJson(payload),
@@ -150,6 +166,105 @@ test('a v1 envelope renders and parses as a deeply frozen correlated record', ()
   assert.ok(Object.isFrozen(parsed.envelope.authority));
   assert.ok(Object.isFrozen(parsed.envelope.payload));
   assert.ok(Object.isFrozen(parsed.envelope.payload.tags));
+});
+test('a Delivery Contract singleton round-trips through the common record envelope', () => {
+  const recordId = '01J00000000000000000001120';
+  const grantId = '01J00000000000000000001121';
+  const contract = deliveryContractFixture();
+  const visibleMarkdown = renderDeliveryContract({ contract }).markdown;
+  const contractEnvelope = createAitmRecordEnvelope({
+    recordType: 'singleton-projection',
+    repository: 'kburson/ai-task-manager',
+    issue: 1120,
+    payload: contract,
+    actor: 'codex/session-1120',
+    epoch: 1,
+    recordId,
+    grantId,
+    createdAt: '2026-08-05T00:00:00.000Z',
+  });
+
+  const body = renderAitmRecord({ envelope: contractEnvelope, visibleMarkdown });
+  const parsed = parseAitmRecord({
+    commentNodeId: 'IC_kwDODelivery1120',
+    body,
+    expectedRepository: 'kburson/ai-task-manager',
+    expectedIssue: 1120,
+  });
+
+  assert.deepEqual(parsed.envelope.payload, contract);
+  assert.equal(validateContractProjection({ contract, markdown: visibleMarkdown }), true);
+});
+test('Delivery Contract semantic keys never exempt malformed or unrelated payloads', () => {
+  const contract = deliveryContractFixture();
+  const common = {
+    repository: 'kburson/ai-task-manager',
+    issue: 1120,
+    actor: 'codex/session-1120',
+    epoch: 1,
+    recordId: contract.recordId,
+    grantId: contract.coordinatorGrantId,
+    createdAt: '2026-08-05T00:00:00.000Z',
+  };
+
+  assert.throws(
+    () =>
+      createAitmRecordEnvelope({
+        ...common,
+        recordType: 'singleton-projection',
+        payload: { ...contract, authToken: 'redacted' },
+      }),
+    /record-envelope:secret/
+  );
+  assert.throws(
+    () =>
+      createAitmRecordEnvelope({
+        ...common,
+        recordType: 'verification-evidence',
+        payload: contract,
+      }),
+    /record-envelope:secret/
+  );
+  assert.throws(
+    () =>
+      createAitmRecordEnvelope({
+        ...common,
+        recordType: 'singleton-projection',
+        payload: {
+          ...contract,
+          acceptanceCriteria: [
+            { ...contract.acceptanceCriteria[0], text: 'Authorization: Bearer redacted' },
+          ],
+        },
+      }),
+    /record-envelope:secret/
+  );
+});
+test('Delivery Contract singleton authority must correlate with the outer envelope', () => {
+  const contract = deliveryContractFixture();
+  const common = {
+    recordType: 'singleton-projection',
+    repository: 'kburson/ai-task-manager',
+    issue: 1120,
+    payload: contract,
+    actor: 'codex/session-1120',
+    epoch: contract.authorityEpoch,
+    recordId: contract.recordId,
+    grantId: contract.coordinatorGrantId,
+    createdAt: '2026-08-05T00:00:00.000Z',
+  };
+  const mismatches = [
+    { recordId: '01J00000000000000000001122' },
+    { epoch: contract.authorityEpoch + 1 },
+    { grantId: '01J00000000000000000001123' },
+  ];
+
+  for (const mismatch of mismatches) {
+    assert.throws(
+      () => createAitmRecordEnvelope({ ...common, ...mismatch }),
+      /record-envelope:delivery-contract-authority/
+    );
+  }
 });
 test('record comment transport round-trips benign double-hyphen command arguments', () => {
   const commandPayload = { ...payload, command: { executable: 'node', args: ['--test'] } };

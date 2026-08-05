@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto';
 
 import { canonicalRecordJson } from './canonical-json.mjs';
-import { assertNoSecretRecordData } from './record-envelope.mjs';
+import { assertNoSecretRecordData } from './record-secret-policy.mjs';
 import {
   renderDeliveryContract as renderContract,
   validateRenderedContractProjection,
@@ -310,6 +310,11 @@ export function createDraftContract(input = {}) {
 
 export function renderDeliveryContract(input) {
   return renderContract(input);
+}
+
+export function validateDeliveryContract(contract) {
+  validateContract(contract);
+  return true;
 }
 
 export function validateContractProjection({ contract, markdown } = {}) {
