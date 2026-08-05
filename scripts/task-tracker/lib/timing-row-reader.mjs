@@ -41,6 +41,22 @@ export function timingTimestampToMs(value) {
   return Number.isFinite(parsed) ? parsed : NaN;
 }
 
+// #1104 — extract the UTC offset a row timestamp already carries, in minutes
+// east of UTC (`-05:00` → `-300`, `Z` → `0`). Returns null when the value
+// carries no offset, so a caller can fall back rather than invent one. Both
+// spellings this module already accepts parse: the table form
+// (`2026-07-24 04:20:00 -05:00`) and the ISO form (`2026-07-24T09:20:00Z`).
+export function timingTimestampOffsetMin(value) {
+  if (typeof value !== 'string') return null;
+  const timestamp = value.trim();
+  if (/(?:Z|z)$/.test(timestamp)) return 0;
+  const match = timestamp.match(/([+-])(\d{2}):?(\d{2})$/);
+  if (!match) return null;
+  const [, sign, hours, minutes] = match;
+  const magnitude = Number(hours) * 60 + Number(minutes);
+  return sign === '-' ? -magnitude : magnitude;
+}
+
 export function splitTimingRowMarker(line) {
   const source = String(line ?? '');
   const match = source.match(TRAILING_ROW_SEC_RE);
