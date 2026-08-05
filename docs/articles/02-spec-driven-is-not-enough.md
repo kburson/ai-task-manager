@@ -44,6 +44,7 @@ flowchart TB
     Backlog --> Agents["Implementation agents\nbounded execution"]
     Agents --> Evidence["Evidence\nwhat was proven"]
     Evidence --> Review["Human review\nfit and finish"]
+    Review --> Spec
 ```
 
 A team that stops at the spec has documented its intent well and left execution to chance. What I have found is that a team that adds story-level gates and evidence closes the loop: intent flows down into bounded work, and proof flows back up into review.
