@@ -77,6 +77,7 @@ test('the transition capsule is appended and read back before ordered singleton 
 test('every append and projection mutation boundary replays to one authority and exact projections', async () => {
   const phases = [
     'before-capsule',
+    'after-capsule',
     'after-capsule-readback',
     'before-projection:evidence-projection',
     'after-projection:evidence-projection',
