@@ -63,6 +63,15 @@ test('strict payload validation rejects unknown fields, unstable identities, sec
     transitionPayload({ projections: [] }),
     transitionPayload({
       projections: [
+        {
+          ...projectionIntent({ kind: 'timing', number: 1 }),
+          expectedRevision: Number.MAX_SAFE_INTEGER + 1,
+          nextRevision: Number.MAX_SAFE_INTEGER + 1,
+        },
+      ],
+    }),
+    transitionPayload({
+      projections: [
         projectionIntent({ kind: 'timing', number: 1 }),
         projectionIntent({ kind: 'timing', number: 2 }),
       ],
