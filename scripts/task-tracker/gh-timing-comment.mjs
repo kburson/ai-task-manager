@@ -20,6 +20,8 @@ import {
   classifyTimingEvent,
   isEmittableTimingEvent,
 } from './lib/timing-events/index.mjs';
+import { GH_TIMING_COMMENT_TIMEOUT_MS } from './lib/process-timeouts.mjs';
+export { GH_TIMING_COMMENT_TIMEOUT_MS };
 const pexec = promisify(execFile);
 
 // #568 — raised by `appendRow` when a second `start` row is attempted over a
@@ -485,7 +487,7 @@ function appendRow(body, row) {
 
 // ---- GH shell-out helpers ----
 
-async function ghExec(args, { timeoutMs = 2000 } = {}) {
+async function ghExec(args, { timeoutMs = GH_TIMING_COMMENT_TIMEOUT_MS } = {}) {
   const { stdout } = await pexec('gh', args, { timeout: timeoutMs });
   return stdout;
 }
@@ -533,7 +535,7 @@ export async function postTimingEvent({
   issueNumber,
   repo,
   row,
-  timeoutMs = 2000,
+  timeoutMs = GH_TIMING_COMMENT_TIMEOUT_MS,
   retries = 2,
   lock = true,
   projDir,
@@ -570,7 +572,7 @@ export async function postTimingEvent({
 export async function readTimingCommentBody({
   issueNumber,
   repo,
-  timeoutMs = 2000,
+  timeoutMs = GH_TIMING_COMMENT_TIMEOUT_MS,
   deps = {},
 } = {}) {
   const find = deps.findTimingComment || findTimingComment;

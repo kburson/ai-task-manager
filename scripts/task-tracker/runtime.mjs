@@ -12,7 +12,8 @@ import { loadConfig } from './config.mjs';
 import { selfCheckFieldConfig } from './lib/field-config-warn.mjs';
 import { postTimingEvent, buildRow, readTimingCommentBody, bodyOf } from './gh-timing-comment.mjs';
 import { lastRowTsFromBody, lastRowFromBody } from './lib/timing-rows.mjs';
-import { isDepartureEvent } from './lib/timing-events/index.mjs';
+import { parseTimingRow } from './lib/timing-row-reader.mjs';
+import { isDepartureEvent, isReengagementEvent } from './lib/timing-events/index.mjs';
 import { PHASE_EVENTS, resolvePhaseEvent } from './phase-events.mjs';
 
 // Re-exported so downstream verbs (promote/demote/review/new/close/switch —
@@ -45,6 +46,7 @@ import { GH_API_TIMEOUT_MS } from './lib/process-timeouts.mjs';
 import { assembleCapabilities } from './lib/runtime-capabilities.mjs';
 import { normalizeIssueCloseSnapshot } from './lib/closed-issue-convergence.mjs';
 import { normalizeSubIssueBoardSnapshot } from './lib/sub-issue-board-snapshot.mjs';
+import { postTimingSafely } from './lib/timing-post-outcome.mjs';
 
 const pexec = promisify(execFile);
 
@@ -282,19 +284,17 @@ export function buildContext(rawArgv = process.argv.slice(2)) {
   };
 
   ctx.safePostTiming = async (issue, row) => {
-    if (SKIP_NETWORK) return { ok: true, skipped: true };
-    try {
-      await postTimingEvent({
-        issueNumber: issue,
-        repo: cfg.repo,
+    return postTimingSafely(
+      {
+        issue,
         row,
+        repo: cfg.repo,
         timeoutMs: cfg.hookNetworkTimeoutMs,
-      });
-      return { ok: true };
-    } catch (err) {
-      enqueue({ kind: 'timing', issue, row }, queuePath);
-      return { ok: false, queued: true, err: err.message };
-    }
+        queuePath,
+        skipNetwork: SKIP_NETWORK,
+      },
+      { postTimingEvent, enqueue }
+    );
   };
 
   // #476 — append-only session-ref recorder. Routed through `mutateIssueBody`
@@ -371,7 +371,7 @@ export function buildContext(rawArgv = process.argv.slice(2)) {
   };
 
   ctx.flushAndForgetQueueFor = async (issueRef) => {
-    if (SKIP_NETWORK) return { delivered: 0, discarded: 0 };
+    if (SKIP_NETWORK) return { delivered: 0, discarded: 0, retained: 0 };
     const ref = String(issueRef).replace(/^#/, '');
     return drainAndDiscard(
       async (evt) => {
@@ -385,7 +385,12 @@ export function buildContext(rawArgv = process.argv.slice(2)) {
         }
       },
       queuePath,
-      (evt) => String(evt.issue).replace(/^#/, '') === ref
+      (evt) => String(evt.issue).replace(/^#/, '') === ref,
+      (evt) => {
+        if (evt.kind !== 'timing') return false;
+        const event = parseTimingRow(String(evt.row))?.event;
+        return isDepartureEvent(event) || isReengagementEvent(event);
+      }
     );
   };
 
@@ -502,9 +507,12 @@ export function buildContext(rawArgv = process.argv.slice(2)) {
         wordMarker,
         description: effectiveDescription,
       });
-      if (!opts.computeOnly) await ctx.safePostTiming(state.active, row);
+      const post = opts.computeOnly
+        ? { ok: true, skipped: true, computeOnly: true }
+        : await ctx.safePostTiming(state.active, row);
       return {
         row,
+        post,
         ts,
         deltaMin: 0,
         idleMin: 0,
@@ -582,6 +590,7 @@ export function buildContext(rawArgv = process.argv.slice(2)) {
     // rows, and every row is timestamped when written, carrying elapsed work in
     // its duration cells, not in timestamp deltas. The reengagement thus sits
     // immediately before the departure at the same instant, closing the idle.
+    let postReengage;
     if (
       !opts.computeOnly &&
       activeSec > 0 &&
@@ -599,7 +608,7 @@ export function buildContext(rawArgv = process.argv.slice(2)) {
         wordMarker,
         description: 'resumed',
       });
-      await ctx.safePostTiming(state.active, reengageRow);
+      postReengage = await ctx.safePostTiming(state.active, reengageRow);
     }
     // #720 — build through `buildRow` with second precision (not `buildFlushRow`,
     // which minute-quantizes via `toSec = round(min)*60`). Pause/flush rows now
@@ -619,9 +628,13 @@ export function buildContext(rawArgv = process.argv.slice(2)) {
       wordMarker,
       description: effectiveDescription,
     });
-    if (!opts.computeOnly) await ctx.safePostTiming(state.active, row);
+    const post = opts.computeOnly
+      ? { ok: true, skipped: true, computeOnly: true }
+      : await ctx.safePostTiming(state.active, row);
     return {
       row,
+      post,
+      postReengage,
       ts,
       deltaMin: activeMin,
       idleMin,

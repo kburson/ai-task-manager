@@ -5,6 +5,7 @@ import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
 import { getProjectDir, TMP_RUNTIME_REL, SHARED_DIR, LEGACY_CLAUDE_DIR } from './paths.mjs';
+import { GH_TIMING_COMMENT_TIMEOUT_MS } from './lib/process-timeouts.mjs';
 
 export const DEFAULTS = {
   wpm: 180,
@@ -59,7 +60,7 @@ export const DEFAULTS = {
   assignee: '@me',
   defaultLabels: [],
   autoEndOnSwitch: true,
-  hookNetworkTimeoutMs: 2000,
+  hookNetworkTimeoutMs: GH_TIMING_COMMENT_TIMEOUT_MS,
   // #573: machine-local state/queue live under `.tmp/aitm/state/`, not SHARED_DIR.
   queuePath: TMP_RUNTIME_REL.queue,
   statePath: TMP_RUNTIME_REL.state,

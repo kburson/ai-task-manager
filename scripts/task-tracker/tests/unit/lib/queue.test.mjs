@@ -80,7 +80,7 @@ rmSync(atomicTmp, { recursive: true });
     p,
     (evt) => String(evt.issue).replace(/^#/, '') === '197'
   );
-  assert.deepEqual(r, { delivered: 2, discarded: 0 });
+  assert.deepEqual(r, { delivered: 2, discarded: 0, retained: 0 });
   assert.deepEqual(delivered.sort(), ['A', 'C']);
   const left = peek(p);
   assert.equal(left.length, 1);
@@ -102,7 +102,7 @@ rmSync(atomicTmp, { recursive: true });
     p,
     (evt) => String(evt.issue).replace(/^#/, '') === '197'
   );
-  assert.deepEqual(r, { delivered: 0, discarded: 2 });
+  assert.deepEqual(r, { delivered: 0, discarded: 2, retained: 0 });
   const left = peek(p);
   assert.equal(left.length, 1);
   assert.equal(left[0].row, 'C');
@@ -124,7 +124,7 @@ rmSync(atomicTmp, { recursive: true });
     p,
     (evt) => String(evt.issue).replace(/^#/, '') === '197'
   );
-  assert.deepEqual(r, { delivered: 2, discarded: 1 });
+  assert.deepEqual(r, { delivered: 2, discarded: 1, retained: 0 });
   const left = peek(p);
   assert.equal(left.length, 1);
   assert.equal(left[0].row, 'C');

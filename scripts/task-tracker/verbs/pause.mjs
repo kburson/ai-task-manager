@@ -1,6 +1,7 @@
 import { loadState, saveState } from '../state.mjs';
 import { setTaskStatus } from '../fleet-registry.mjs';
 import { canonicalPauseReason, isOtherReason } from '../lib/canonical-pause-reason.mjs';
+import { timingPostWarningSuffix } from '../lib/timing-post-outcome.mjs';
 
 export async function verbPause(ctx) {
   const { statePath, projectDir, rest, drainQueueIfAny, flushActiveToGH } = ctx;
@@ -25,7 +26,7 @@ export async function verbPause(ctx) {
   // #832 (D4) — pause is an interruption: bank the span's words onto the durable
   // marker but render this pause row's Δ Words cell as 0, so the words attribute
   // to the phase's `<phase>:completed` row rather than to this interruption.
-  const { deltaMin, deltaWallMin, deltaWords, ts } = await flushActiveToGH(
+  const { deltaMin, deltaWallMin, deltaWords, ts, post } = await flushActiveToGH(
     s,
     pauseEvent,
     pauseDesc,
@@ -57,6 +58,6 @@ export async function verbPause(ctx) {
     /* best-effort: failure must not abort the primary operation */
   }
   console.log(
-    `Paused ${s.active}: +${deltaMin} active min${wallNote}, +${deltaWords} words. Use "/task resume" to resume.`
+    `Paused ${s.active}: +${deltaMin} active min${wallNote}, +${deltaWords} words${timingPostWarningSuffix(post)}. Use "/task resume" to resume.`
   );
 }

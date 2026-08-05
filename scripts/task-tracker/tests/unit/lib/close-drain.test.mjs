@@ -35,7 +35,7 @@ function makeFlushAndForget(handler) {
     posted.push(evt.row);
   });
   const r = await flush(p, '#197');
-  assert.deepEqual(r, { delivered: 2, discarded: 0 });
+  assert.deepEqual(r, { delivered: 2, discarded: 0, retained: 0 });
   assert.deepEqual(posted.sort(), ['done-enter', 'review-flush']);
   const left = peek(p);
   assert.equal(left.length, 1);
@@ -54,7 +54,7 @@ function makeFlushAndForget(handler) {
     throw new Error('net down');
   });
   const r = await flush(p, 197);
-  assert.deepEqual(r, { delivered: 0, discarded: 3 });
+  assert.deepEqual(r, { delivered: 0, discarded: 3, retained: 0 });
   assert.deepEqual(peek(p), []);
   rmSync(t, { recursive: true });
 }
@@ -74,7 +74,7 @@ function makeFlushAndForget(handler) {
     if (n === 1) throw new Error('flake');
   });
   const r = await flush(p, '#197');
-  assert.deepEqual(r, { delivered: 1, discarded: 1 });
+  assert.deepEqual(r, { delivered: 1, discarded: 1, retained: 0 });
   assert.deepEqual(peek(p), []);
   rmSync(t, { recursive: true });
 }
@@ -86,7 +86,7 @@ function makeFlushAndForget(handler) {
   enqueue({ kind: 'timing', issue: '#39', row: 'x' }, p);
   const flush = makeFlushAndForget(async () => {});
   const r = await flush(p, '#197');
-  assert.deepEqual(r, { delivered: 0, discarded: 0 });
+  assert.deepEqual(r, { delivered: 0, discarded: 0, retained: 0 });
   assert.equal(peek(p).length, 1);
   rmSync(t, { recursive: true });
 }

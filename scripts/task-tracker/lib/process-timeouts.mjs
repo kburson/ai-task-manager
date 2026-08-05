@@ -48,6 +48,10 @@
 // headroom for that CPU-contention case while still catching a genuinely
 // hung real `gh` call well within human-noticeable range.
 export const GH_API_TIMEOUT_MS = 30000;
+// #1107 — timing comments fetch every issue comment before appending a row.
+// Mature issues can exceed the old 2 s ceiling on a healthy network; 10 s gives
+// roughly 5x headroom while still bounding an operator-visible hook stall.
+export const GH_TIMING_COMMENT_TIMEOUT_MS = 10000;
 // 120s — #752. `runMoveState` used to bound the ENTIRE move-state child with
 // GH_API_TIMEOUT_MS (sized for ONE `gh` call). On a terminal review→done move
 // the best-effort post-commit tail (audit comment + body edit + unpark + event

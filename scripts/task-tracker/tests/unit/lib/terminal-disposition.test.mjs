@@ -139,6 +139,29 @@ test('close-as retains the board item and writes matching terminal values', asyn
   assert.ok(!('deleteProjectV2Item' in deps));
 });
 
+test('close-as reports sequence-significant timing rows retained for retry', async () => {
+  const warnings = [];
+  await runDispose({
+    issueNumber: 1035,
+    reason: 'not-planned',
+    repo: cfg.repo,
+    projectId: cfg.projectId,
+    cfg,
+    deps: {
+      flushTiming: async () => ({ delivered: 0, discarded: 1, retained: 2 }),
+      warn: (message) => warnings.push(message),
+      mutateIssueBody: async () => {},
+      writeDisposition: async () => {},
+      moveToDone: async () => {},
+      pexec: async () => {},
+      postComment: async () => {},
+    },
+  });
+  assert.deepEqual(warnings, [
+    'retained 2 sequence-significant timing row(s) for #1035; retry queue remains non-empty',
+  ]);
+});
+
 test('supersede writes Replaced before its marker, Done bypass, and close', async () => {
   const events = [];
   const result = await runSupersede({

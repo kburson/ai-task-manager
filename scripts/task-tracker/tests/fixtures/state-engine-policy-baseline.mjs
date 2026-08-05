@@ -184,14 +184,14 @@ export const TIMING_EVENT_BASELINE = Object.freeze({
     timingEmitter('scripts/gh/ensure-wave-parent.mjs', 329, 'event-call', "'start'", ['start']),
     timingEmitter(
       'scripts/task-tracker/gh-timing-comment.mjs',
-      272,
+      274,
       'phase-call',
       "{ state: 'review', phase: 'complete' }",
       ['review:approved']
     ),
     timingEmitter(
       'scripts/task-tracker/gh-timing-comment.mjs',
-      280,
+      282,
       'phase-call',
       "{ state: 'done', phase: 'enter' }",
       ['issue:wrap']
@@ -360,7 +360,7 @@ export const TIMING_EVENT_BASELINE = Object.freeze({
       ['discovery: idle-reconciled']
     ),
     timingEmitter('scripts/task-tracker/verbs/new.mjs', 286, 'event-call', "'start'", ['start']),
-    timingEmitter('scripts/task-tracker/verbs/pause.mjs', 30, 'flush-call', 'pauseEvent', [
+    timingEmitter('scripts/task-tracker/verbs/pause.mjs', 31, 'flush-call', 'pauseEvent', [
       'pause:other',
     ]),
     timingEmitter('scripts/task-tracker/verbs/reject.mjs', 70, 'event-call', "'rejected:develop'", [
@@ -395,7 +395,7 @@ export const TIMING_EVENT_BASELINE = Object.freeze({
     timingEmitter('scripts/task-tracker/verbs/review.mjs', 1254, 'event-call', "'gate-refused'", [
       'gate-refused',
     ]),
-    timingEmitter('scripts/task-tracker/verbs/stop.mjs', 46, 'flush-call', "'stop'", ['stop']),
+    timingEmitter('scripts/task-tracker/verbs/stop.mjs', 47, 'flush-call', "'stop'", ['stop']),
     timingEmitter('scripts/task-tracker/verbs/switch.mjs', 92, 'flush-call', 'eventSlug', [
       'switch-out:#1007',
     ]),

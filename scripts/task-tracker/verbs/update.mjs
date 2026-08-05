@@ -6,6 +6,7 @@ import {
   saveMarker,
   countWords,
 } from '../word-counter.mjs';
+import { timingPostWarningSuffix } from '../lib/timing-post-outcome.mjs';
 
 export async function verbUpdate(ctx) {
   const { statePath, rest, drainQueueIfAny, flushActiveToGH } = ctx;
@@ -16,11 +17,8 @@ export async function verbUpdate(ctx) {
     return;
   }
   const description = rest.join(' ').trim() || 'checkpoint';
-  const { deltaMin, idleMin, deltaWallMin, deltaWords, wordMarker, ts } = await flushActiveToGH(
-    s,
-    'update',
-    description
-  );
+  const { deltaMin, idleMin, deltaWallMin, deltaWords, wordMarker, ts, post } =
+    await flushActiveToGH(s, 'update', description);
   const totalActiveMinutes = (s.totalActiveMinutes || 0) + deltaMin;
   const sid = currentSessionId();
   let wordsAtStart = wordMarker;
@@ -40,7 +38,7 @@ export async function verbUpdate(ctx) {
   );
   const wallNote = deltaWallMin !== deltaMin ? ` (wall ${deltaWallMin})` : '';
   console.log(
-    `Update ${s.active}: +${deltaMin} active min, +${idleMin} idle min${wallNote}, +${deltaWords} words. ` +
+    `Update ${s.active}: +${deltaMin} active min, +${idleMin} idle min${wallNote}, +${deltaWords} words${timingPostWarningSuffix(post)}. ` +
       `Total: ${totalActiveMinutes} active min, ${wordMarker.toLocaleString('en-US')} words.`
   );
 }

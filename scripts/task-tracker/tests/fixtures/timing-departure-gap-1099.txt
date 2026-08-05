@@ -1,0 +1,8 @@
+⏱ Timing Log
+
+| Timestamp | Event | Active | Idle | Δ Words | Word Marker | Description |
+|---|---|---|---|---|---|---|
+| 2026-08-04 21:32:10 -05:00 | issue:wrap |  |  |  | 10,900 | prior durable row | <!-- row-sec: a=0 i=0 -->
+| 2026-08-04 21:35:24 -05:00 | resume:question |  | 2m 14s |  | 10,900 | question answered | <!-- row-sec: a=0 i=134 -->
+| 2026-08-04 21:40:00 -05:00 | pause:question | 4m 36s |  |  | 11,100 | pause for question | <!-- row-sec: a=276 i=0 -->
+| 2026-08-04 21:45:00 -05:00 | resume:question |  | 5m 00s |  | 11,100 | question answered | <!-- row-sec: a=0 i=300 -->

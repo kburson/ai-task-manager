@@ -1091,6 +1091,29 @@ const DIRECT_SELF_DOC = Object.freeze({
     output: ['Reports row transformations and per-issue results.'],
     relatedCommands: ['backfill-timing-logs', 'log-issue-time'],
   }),
+  'heal-timing-departure': directDoc('heal-timing-departure', {
+    group: 'Maintenance',
+    path: 'scripts/task-tracker/heal-timing-departure.mjs',
+    classification: 'live-maintenance-or-migration',
+    synopsis: 'Repair one missing Timing Log departure before an unpaired reengagement.',
+    usage:
+      'heal-timing-departure <issue#> [--apply|--check-only] [--row-index N] [--event pause:<reason>] [--description TEXT] [--yes]',
+    arguments: [
+      argument('<issue#>', 'Issue whose Timing Log is inspected.'),
+      argument(APPLY_FLAG, 'Write the selected missing departure repair.'),
+      argument('--check-only', 'Audit and render the repair without writing.'),
+      argument('--row-index N', 'Select a zero-based Timing Log data-row index when ambiguous.'),
+      argument('--event pause:<reason>', 'Departure event to insert; pause:other is the default.'),
+      argument('--description TEXT', 'Description recorded on the repaired departure row.'),
+      argument('--yes', 'Skip confirmation for apply.'),
+    ],
+    preconditions: ['Configured repository and timing-comment access are required.'],
+    effects: [
+      'Dry-run by default; --apply inserts one zero-duration departure under the timing lock.',
+    ],
+    output: ['Reports unpaired reengagement counts before and after the repair.'],
+    relatedCommands: ['heal-timing-log', 'heal-timing-starts'],
+  }),
   'heal-timing-starts-sweep': directDoc('heal-timing-starts-sweep', {
     group: 'Maintenance',
     path: 'scripts/task-tracker/heal-timing-starts-sweep.mjs',
