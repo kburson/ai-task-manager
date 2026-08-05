@@ -49,14 +49,31 @@ const TABLE_HEADER = [
   '|---|---|---|---|---|---|---|---|',
 ].join('\n');
 
-export function fmtTs(iso) {
-  const d = new Date(iso);
+// #1104 — `offsetMin` (minutes east of UTC) renders the wall-clock at an
+// explicitly chosen offset instead of the emitting machine's local zone. It is
+// strictly opt-in: omit it and the local-zone path below runs byte-for-byte as
+// before, so `buildRow`/`buildFlushRow` and every live timing row are untouched.
+// Display-only either way — the recorded instant is identical, and rollup
+// arithmetic reads the trailing `row-sec` marker, not this cell.
+export function fmtTs(iso, { offsetMin } = {}) {
   const pad = (n) => String(n).padStart(2, '0');
-  const offsetMin = -d.getTimezoneOffset();
-  const sign = offsetMin >= 0 ? '+' : '-';
-  const abs = Math.abs(offsetMin);
+  const base = new Date(iso);
+  // Strictly `number`: `null` (what `timingTimestampOffsetMin` returns for a
+  // timestamp carrying no offset) must fall through to the local-zone default,
+  // and `Number(null)` is a finite 0, so a coercing check would silently render
+  // those rows at +00:00 instead.
+  const explicit = typeof offsetMin === 'number' && Number.isFinite(offsetMin);
+  const effectiveOffsetMin = explicit ? offsetMin : -base.getTimezoneOffset();
+  const sign = effectiveOffsetMin >= 0 ? '+' : '-';
+  const abs = Math.abs(effectiveOffsetMin);
   const offset = `${sign}${pad(Math.floor(abs / 60))}:${pad(abs % 60)}`;
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())} ${offset}`;
+  if (!explicit) {
+    return `${base.getFullYear()}-${pad(base.getMonth() + 1)}-${pad(base.getDate())} ${pad(base.getHours())}:${pad(base.getMinutes())}:${pad(base.getSeconds())} ${offset}`;
+  }
+  // Shift the epoch by the requested offset and read the UTC field getters, so
+  // the rendered wall-clock is the one an observer at that offset would see.
+  const d = new Date(base.getTime() + offsetMin * 60_000);
+  return `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())} ${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())}:${pad(d.getUTCSeconds())} ${offset}`;
 }
 
 export function firstStartTimestamp(commentBody) {
@@ -181,7 +198,14 @@ export function buildRow({
 // closes. Used by `verbResume` (via `lib/bind-event.mjs`'s
 // `detectUnmarkedDepartureGap`) to insert a synthetic `pause:<reason>` row
 // before writing `resumed` over a gap with no departure row.
-export function buildBackdatedDepartureRow({ ts, event, description = '', wordMarker }) {
+//
+// #1104 — `offsetMin` (minutes east of UTC) chooses the offset the timestamp
+// cell renders at. The synthetic row sits one second after the row it follows
+// and is read continuously with it, so the caller supplies the offset of THAT
+// neighboring row (`verbResume` parses it off `gap.lastRowTs`); rendering in
+// the emitting machine's zone instead would show a reader an offset jump that
+// is not real. Omitted, the local-zone default is unchanged.
+export function buildBackdatedDepartureRow({ ts, event, description = '', wordMarker, offsetMin }) {
   const tsMs = tsToMs(ts);
   if (!Number.isFinite(tsMs)) {
     throw new Error(`buildBackdatedDepartureRow: non-parseable ts: ${String(ts)}`);
@@ -190,7 +214,7 @@ export function buildBackdatedDepartureRow({ ts, event, description = '', wordMa
     throw new Error(`refusing non-emittable departure Timing Log event: ${String(event)}`);
   }
   const wm = wordMarker == null ? null : Number(String(wordMarker).replace(/,/g, ''));
-  return `| ${fmtTs(ts)} | ${event} |  |  |  | ${fmtNum(Number.isFinite(wm) ? wm : null)} | ${description} | <!-- row-sec: a=0 i=0 -->`;
+  return `| ${fmtTs(ts, { offsetMin })} | ${event} |  |  |  | ${fmtNum(Number.isFinite(wm) ? wm : null)} | ${description} | <!-- row-sec: a=0 i=0 -->`;
 }
 
 // #484 — shared flush-path row builder. `flushActiveToGH` (the path behind every

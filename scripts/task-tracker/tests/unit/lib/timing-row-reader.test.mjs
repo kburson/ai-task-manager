@@ -11,6 +11,7 @@ import {
   replaceTimingRowCells,
   splitTimingRowMarker,
   timingTimestampToMs,
+  timingTimestampOffsetMin,
   readEstimationStageTiming,
 } from '../../../lib/timing-row-reader.mjs';
 
@@ -109,4 +110,29 @@ test('estimation stage timing sums authoritative row-sec active seconds by lifec
     stagesMs: { plan: 1_800_000, develop: 3_600_000, test: 900_000, review: 600_000 },
     engagedMs: 6_900_000,
   });
+});
+
+// #1104 — the offset a row timestamp already carries, so a synthetic row can be
+// rendered at its neighbor's offset instead of the emitting machine's zone.
+test('timingTimestampOffsetMin reads the offset a row timestamp carries', () => {
+  assert.equal(timingTimestampOffsetMin('2026-07-24 04:20:00 -05:00'), -300);
+  assert.equal(timingTimestampOffsetMin('2026-07-24 14:50:00 +05:30'), 330);
+  assert.equal(timingTimestampOffsetMin('2026-07-24 09:20:00 +00:00'), 0);
+  assert.equal(timingTimestampOffsetMin('  2026-07-24 04:20 -05:00  '), -300);
+  assert.equal(timingTimestampOffsetMin('2026-07-24T09:20:00Z'), 0);
+  assert.equal(timingTimestampOffsetMin('2026-07-24T04:20:00-0500'), -300);
+});
+
+test('timingTimestampOffsetMin returns null when there is no offset to inherit', () => {
+  // A bare local datetime carries no offset — the caller must fall back rather
+  // than invent one. The date's own `-24` must not be mistaken for an offset.
+  assert.equal(timingTimestampOffsetMin('2026-07-24 04:20:00'), null);
+  assert.equal(timingTimestampOffsetMin('2026-07-24 04:20'), null);
+  assert.equal(timingTimestampOffsetMin('2026-07-24T04:20:00'), null);
+  assert.equal(timingTimestampOffsetMin('2026-07-24'), null);
+  assert.equal(timingTimestampOffsetMin(''), null);
+  assert.equal(timingTimestampOffsetMin(null), null);
+  assert.equal(timingTimestampOffsetMin(undefined), null);
+  assert.equal(timingTimestampOffsetMin(1_753_000_000_000), null);
+  assert.equal(timingTimestampOffsetMin(new Date(0)), null);
 });

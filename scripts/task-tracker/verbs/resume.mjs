@@ -19,6 +19,7 @@ import {
   SUSPICIOUS_GAP_SEC,
   shouldSuppressActiveBindEvent,
 } from '../lib/bind-event.mjs';
+import { timingTimestampOffsetMin } from '../lib/timing-row-reader.mjs';
 import { collectResumeActivityEvidence as defaultCollectResumeActivityEvidence } from '../lib/resume-activity-evidence.mjs';
 import {
   isPickupDirectiveEligible,
@@ -352,6 +353,12 @@ export async function verbResume(ctx) {
         event: 'pause:auto-detected-gap',
         wordMarker: gap.wordMarker,
         description: `resume after a ${Math.round(gap.gapSec / 3600)}h gap with no departure row — synthetic departure inserted per #981 so the gap reclassifies as idle`,
+        // #1104 — `gap.syntheticTs` is a UTC-normalized instant, so it carries no
+        // offset worth preserving. This row lands one second after `gap.lastRowTs`
+        // and is read alongside it, so it renders at THAT row's offset; otherwise
+        // a heal run from another machine inserts an apparent time jump that never
+        // happened. No offset on the neighbor → null → local-zone fallback.
+        offsetMin: timingTimestampOffsetMin(gap.lastRowTs),
       });
       await safePostTiming(normalizedTarget, departureRow);
     }

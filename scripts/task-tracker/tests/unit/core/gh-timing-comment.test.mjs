@@ -1,12 +1,7 @@
 #!/usr/bin/env node
 // @story #309
 import { strict as assert } from 'node:assert';
-import {
-  buildRow,
-  buildBackdatedDepartureRow,
-  readLastKnownState,
-  writeLastKnownState,
-} from '../../../gh-timing-comment.mjs';
+import { buildRow, readLastKnownState, writeLastKnownState } from '../../../gh-timing-comment.mjs';
 import {
   appendRow,
   buildInitialComment,
@@ -348,38 +343,8 @@ assert.throws(() => writeLastKnownState('body', null), /non-empty string/);
 // gh-timing-comment-full-column.test.mjs (split out to stay under the
 // 400-line per-file cap).
 
-// ---- #981 — buildBackdatedDepartureRow: exempt from the retroactive-ts guard,
-// but only ever a zero-delta marker row ---------------------------------
-
-// Test 27: a backdated ts (days ago) does NOT throw — the whole point of the
-// exemption — and renders the byte-identical zero-delta shape buildRow itself
-// produces for activeMin/idleMin/deltaWords all 0.
-const historicalTs = '2026-07-24 04:20:00 -05:00';
-const histRow = buildBackdatedDepartureRow({
-  ts: historicalTs,
-  event: 'pause:auto-detected-gap',
-  wordMarker: 0,
-  description: 'synthetic departure',
-});
-assert.equal(
-  histRow,
-  '| 2026-07-24 04:20:00 -05:00 | pause:auto-detected-gap |  |  |  | 0 | synthetic departure | <!-- row-sec: a=0 i=0 -->'
-);
-
-// Test 28: no activeSec/idleSec/deltaWords parameter exists on the signature —
-// extra keys are silently ignored, never escalate the zero-delta claim.
-const histRowIgnoresExtras = buildBackdatedDepartureRow({
-  ts: historicalTs,
-  event: 'pause:x',
-  wordMarker: 5,
-  description: 'd',
-  activeSec: 99999,
-  idleSec: 99999,
-  deltaWords: 99999,
-});
-assert.ok(histRowIgnoresExtras.includes('<!-- row-sec: a=0 i=0 -->'));
-
-// Test 29: a non-parseable ts throws rather than silently building a bad row.
-assert.throws(() => buildBackdatedDepartureRow({ ts: 'not-a-timestamp', event: 'pause:x' }));
+// #981/#1104 — the buildBackdatedDepartureRow tests (27-29, plus the offset
+// cases) live in gh-timing-comment-backdated-row.test.mjs (split out to stay
+// under the 400-line per-file cap).
 
 console.log('gh-timing-comment.test.mjs: all passed');
