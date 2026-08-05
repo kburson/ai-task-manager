@@ -322,16 +322,36 @@ async function appendAuthorized({
     createdAt,
   });
   await emitCrash(crashAt, 'before-capsule');
-  const appended = await appendCapsule({
-    repository,
-    issue,
-    expectedHeadRecordId: data.expectedHeadRecordId,
-    candidate: {
-      envelope,
-      visibleMarkdown: `AITM lifecycle transition: ${data.payload.fromState} → ${data.payload.toState}.\n`,
+  let appendCrash = null;
+  const appendDeps = {
+    ...deps,
+    async createIssueComment(input) {
+      const created = await deps.createIssueComment(input);
+      try {
+        await emitCrash(crashAt, 'after-capsule');
+      } catch (error) {
+        appendCrash = error;
+        throw error;
+      }
+      return created;
     },
-    deps,
-  });
+  };
+  let appended;
+  try {
+    appended = await appendCapsule({
+      repository,
+      issue,
+      expectedHeadRecordId: data.expectedHeadRecordId,
+      candidate: {
+        envelope,
+        visibleMarkdown: `AITM lifecycle transition: ${data.payload.fromState} → ${data.payload.toState}.\n`,
+      },
+      deps: appendDeps,
+    });
+  } catch (error) {
+    if (appendCrash !== null) throw appendCrash;
+    throw error;
+  }
   await emitCrash(crashAt, 'after-capsule-readback');
   const repairAuthority = createCapability({ ...data, transitionRecord: appended.record });
   return Object.freeze({
