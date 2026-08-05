@@ -47,7 +47,15 @@ function repoRoot() {
 // 600 restores comfortable headroom while staying far below the 797 pre-tightening
 // surface — a re-shipped test suite still blows straight past it. (#910 also
 // dropped `docs/introduction/` from the package, so the live surface fell too.)
-const ENTRY_CEILING = 600;
+//
+// #1113 raised this from 600 to 625 for the approved #1067 GitHub-native
+// authority sequence. Measured surfaces were 599 on trunk, 606 after Tasks 1-8,
+// and 608 with Task 9. The remaining plan names five packed runtime modules and
+// three packed documentation artifacts, projecting 616 entries; 625 leaves nine
+// entries of bounded contingency while remaining 172 below the 797-entry
+// pre-tightening surface. Exclusions and required-entry assertions remain the
+// controlling guardrails.
+const ENTRY_CEILING = 625;
 
 function packedFiles() {
   const out = execFileSync('npm', ['pack', '--dry-run', '--json'], {
