@@ -1,4 +1,4 @@
-// @story #1069 #1091 #1120
+// @story #1069 #1091 #1120 #1124
 // cspell:ignore aaaaation aaaaaaaaability abcdefghically accesstoken apikey authorizationbackup authorizationdecisionpersonalpatbackup authorizationheader authorizationtoken authconfig authtoken authtokenbackup backupauthconfig backupcredentials backuppat backuppatdata bearercredential clientpassword clientsecret cookiebackup customauthmaterial databaseauth databaseauthbackup databasecredentials databasepasswd databasepassword databasepatvalue credentialsbackup ghp githubtoken gitlabtoken gitlabtokenbackup idtoken idtokenbackup myauthbackup mypat mypatbackup noncanonical npmtoken npmtokenbackup passwordbackup passwordment passwordpassword passwordpolicymypatbackup personalpat personalpatbackup qwertyization qwertyuiopa qwertyuiopasdfgh qwertyware randomtoken randomware redactedredacted refreshtoken secretization secretsecretsecret secrettion secretword sessionauth sessionauthconfig sessionauthdata sessioncookie sessioncookiebackup sessioncookies sessioncookievalue sessionpatconfig sessiontoken sessiontokenbackup tokencountdatabaseauthbackup tokenenv tokenvalue zxcvbnmasd zxcvbnment zzzzability
 import { strict as assert } from 'node:assert';
 import test from 'node:test';
@@ -482,20 +482,15 @@ test('marker syntax is bounded and exactly one complete record is required', () 
   ]) {
     assert.throws(() => parse(body), /record-envelope:(missing|malformed|duplicate|too-large)/);
   }
-  const unsafePayload = { note: 'closes --> the marker' };
-  assert.throws(
-    () => render({ payload: unsafePayload, payloadHash: hashRecordPayload(unsafePayload) }),
-    /record-envelope:unsafe-comment/
-  );
-  const unsafeEnvelope = envelope({
-    payload: unsafePayload,
-    payloadHash: hashRecordPayload(unsafePayload),
+  const terminatorPayload = { note: 'closes --> the marker' };
+  const terminatorBody = render({
+    payload: terminatorPayload,
+    payloadHash: hashRecordPayload(terminatorPayload),
   });
-  const escapedUnsafeJson = canonicalRecordJson(unsafeEnvelope).replaceAll('--', '-\\u002d');
-  assert.throws(
-    () => parse(`<!-- aitm-record\n${escapedUnsafeJson}\n-->`),
-    /record-envelope:unsafe-comment/
-  );
+  const embeddedJson = terminatorBody.match(/^<!-- aitm-record\n([\s\S]*?)\n-->\n/)?.[1];
+  assert.ok(embeddedJson);
+  assert.equal(embeddedJson.includes('-->'), false);
+  assert.deepEqual(parse(terminatorBody).envelope.payload, terminatorPayload);
   assert.throws(
     () => render({}, 'Visible text must not inject <!-- aitm-record\n{}\n-->'),
     /record-envelope:unsafe-comment/
