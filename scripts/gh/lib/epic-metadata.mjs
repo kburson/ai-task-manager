@@ -7,8 +7,13 @@ import { promisify } from 'node:util';
 import { EPIC_PREFIX, ensureEpicPrefix } from './kind-prefix.mjs';
 import { mutateIssueBody as defaultMutateIssueBody } from '../../task-tracker/lib/issue-body-mutate.mjs';
 import { reconcileDodForKind } from '../../task-tracker/lib/dod-kind-filter.mjs';
+import {
+  auditEvidenceMarkers,
+  parseEvidenceChecklist,
+} from '../../task-tracker/lib/evidence-markers.mjs';
 import { setIssueKindMarker, parseIssueKind } from '../../task-tracker/lib/issue-kind.mjs';
 import { locateFunctionalSection } from '../../task-tracker/lib/lifecycle-dod.mjs';
+import { appendVcCommands } from '../../task-tracker/lib/vc-emit.mjs';
 import { dodPath } from '../../task-tracker/paths.mjs';
 
 const pexec = promisify(execFile);
@@ -48,8 +53,19 @@ export function reconcileEpicBody(body, templateDodText) {
   const functional = locateFunctionalSection(marked);
   if (!functional) return marked;
   const reconciled = reconcileDodForKind(functional.section, templateDodText, 'epic');
-  if (reconciled === functional.section) return marked;
-  return functional.before + reconciled + functional.after;
+  const kindReconciled =
+    reconciled === functional.section ? marked : functional.before + reconciled + functional.after;
+  const functionalCommands = new Set(
+    parseEvidenceChecklist(kindReconciled).functionalDodItems.flatMap(
+      ({ evidenceCommands }) => evidenceCommands
+    )
+  );
+  const missingFunctionalCommands = auditEvidenceMarkers(
+    kindReconciled
+  ).missingVerificationCommands.filter((command) => functionalCommands.has(command));
+  return missingFunctionalCommands.length
+    ? appendVcCommands(kindReconciled, missingFunctionalCommands)
+    : kindReconciled;
 }
 
 async function readIssue({ issueNumber, repo, run = pexec }) {

@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// @story #597
+// @story #597 #1135
 // Coverage tests for scripts/task-tracker/verbs/kind.mjs.
 //
 // `verbKind` resolves a target issue + kind from `rest` (two-arg explicit form,
@@ -15,10 +15,14 @@
 import { strict as assert } from 'node:assert';
 import { test, before, after } from 'node:test';
 import path from 'node:path';
-import { mkdtempSync, mkdirSync, writeFileSync, rmSync, chmodSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, readFileSync, writeFileSync, rmSync, chmodSync } from 'node:fs';
 
 import { verbKind } from '../../../verbs/kind.mjs';
+import { reconcileEpicBody } from '../../../../gh/lib/epic-metadata.mjs';
 import { projectScratchDir } from '../../../lib/scratch-dir.mjs';
+import { dodPath } from '../../../paths.mjs';
+import { parseVerificationCommands } from '../../../lib/verification-commands.mjs';
+import { runReviewPreflight } from '../../../lib/review-preflight.mjs';
 
 let tmpRoot;
 let fakeBin;
@@ -104,6 +108,36 @@ async function runVerb(ctx) {
 }
 
 const baseCtx = (over) => ({ cfg: { repo: 'o/r' }, ...over });
+const withoutBodyVersion = (body) =>
+  String(body).replace(/<!-- aitm-body-version version="\d+" -->/g, '');
+
+const CODE_BODY = [
+  '## Acceptance Criteria',
+  '',
+  '- [ ] Converted body remains reviewable <!-- aitm-verified vc-list="vc:1" -->',
+  '',
+  '## Verification Commands',
+  '',
+  '- [ ] `node --test existing.test.mjs` <!-- id=1 -->',
+  '- [ ] `npm test` <!-- id=2 -->',
+  '- [ ] `npm run test:slow` <!-- id=3 -->',
+  '- [ ] `npm run lint` <!-- id=4 -->',
+  '- [ ] `npm run format:check` <!-- id=5 -->',
+  '- [ ] `git log --oneline -1` <!-- id=6 -->',
+  '',
+  '## Definition of Done',
+  '',
+  '### Functional (verified at Test)',
+  '',
+  '- [ ] All automated tests pass <!-- aitm-verified cmd="`npm test` `npm run test:slow`" --> <!-- dod:functional:tests --> <!-- dod:kinds exclude="spike,research" -->',
+  '- [ ] Lint and format checks pass <!-- aitm-verified cmd="`npm run lint` `npm run format:check`" --> <!-- dod:functional:lint -->',
+  '- [ ] All changes committed; commit messages follow project convention <!-- aitm-verified cmd="`git log --oneline -1`" --> <!-- dod:functional:commits --> <!-- dod:kinds exclude="epic" -->',
+  '- [ ] Acceptance criteria met <!-- dod:functional:acs -->',
+  '- [ ] Issue body checkboxes ticked <!-- dod:functional:checkboxes -->',
+  '',
+  '## AITM Progress Markers',
+  '',
+].join('\n');
 
 test('no args → usage error, exit 1', async () => {
   const r = await runVerb(baseCtx({ rest: [], pexec: makePexec() }));
@@ -164,6 +198,39 @@ test('epic kind delegates all carriers to the shared metadata reconciler', async
   assert.equal(calls[0].issueNumber, 42);
   assert.equal(calls[0].repo, 'o/r');
   assert.equal(calls[0].forceEpic, true);
+});
+
+test('epic body reconciliation appends the introduced DoD verifier with the next stable id', () => {
+  const converted = reconcileEpicBody(CODE_BODY, readFileSync(dodPath(), 'utf8'));
+  const epicTrail = parseVerificationCommands(converted).filter(
+    ({ command }) => command === 'node scripts/task-tracker/verify-epic-trail.mjs'
+  );
+  assert.equal(epicTrail.length, 1);
+  assert.equal(epicTrail[0].id, 7);
+  assert.match(converted, /aitm-issue-kind kind="epic"/);
+  assert.match(converted, /dod:functional:commits[^\n]*include="epic"/);
+});
+
+test('repeating epic body reconciliation is content-idempotent and Review preflight accepts it', async () => {
+  const template = readFileSync(dodPath(), 'utf8');
+  const once = reconcileEpicBody(CODE_BODY, template);
+  const twice = reconcileEpicBody(once, template);
+  assert.equal(withoutBodyVersion(twice), withoutBodyVersion(once));
+
+  const preflight = await runReviewPreflight({
+    issueNumber: 1135,
+    repo: 'o/r',
+    projectDir: '/repo',
+    cfg: { repo: 'o/r' },
+    deps: {
+      gitStatus: async () => '',
+      gitHeadSha: async () => 'abcdef1234567890',
+      getIssueBody: async () => twice,
+      fetchEpicChildren: async () => [],
+      epicCommits: async () => [],
+    },
+  });
+  assert.equal(preflight.ok, true, preflight.reasons.join('\n'));
 });
 
 console.log('coverage-kind.test.mjs: defined');
