@@ -1,6 +1,7 @@
 // @story #226 #1089
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import test from 'node:test';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 
@@ -352,7 +353,7 @@ const reviewSource = readFileSync(reviewVerbPath, 'utf8');
 // `vc-list` citations. Governed Test can preserve both a raw `cmd` attribute and
 // the canonical `vc-list` on the same sandbox-stamped marker; `vc-list` must win
 // even when the raw command contains no backtick spans.
-{
+test('#1131 Review gives vc-list precedence on dual-attribute sandbox markers', async () => {
   assert.match(
     reviewSource,
     /import\s+\{\s*parseVerificationCommands\s*\}\s+from\s+['"]\.\.\/lib\/verification-commands\.mjs['"]/,
@@ -414,6 +415,6 @@ const reviewSource = readFileSync(reviewVerbPath, 'utf8');
   }
   assert.deepEqual(failures, [], 'a vc-list-cited stamped AC produces no failure');
   console.log('PASS: #1131 dual-attribute vc-list AC survives the review evidence loop');
-}
+});
 
 console.log('\nAll review-verb evidence-command tests passed.');
