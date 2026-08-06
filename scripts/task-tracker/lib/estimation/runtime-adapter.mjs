@@ -19,7 +19,6 @@ import { upsertPlannedEstimate } from '../refine-estimate-comment.mjs';
 import { readTimingCommentBody, bodyOf } from '../../gh-timing-comment.mjs';
 import { readEstimationStageTiming } from '../timing-row-reader.mjs';
 import {
-  buildVerificationFingerprint,
   parseValidatedVerificationReceipts,
   validateVerificationReceipt,
 } from '../verification-receipt.mjs';
@@ -31,6 +30,7 @@ import {
 import { createAitmRecordEnvelope, hashRecordPayload } from '../github-records/record-envelope.mjs';
 import { buildEstimationForecast } from './forecast-model.mjs';
 import { buildEstimationOutcome } from './outcome-builder.mjs';
+import { activeEstimationOutcomes } from './outcome-chain.mjs';
 import { ensureEstimationOutcome } from './outcome-writer.mjs';
 import {
   adoptLegacyPlanForecast,
@@ -278,12 +278,8 @@ export function estimationOutcomeSamples(records) {
       .filter((record) => record.envelope.recordType === 'estimation-forecast')
       .map((record) => [record.envelope.recordId, record.envelope])
   );
-  return records
-    .filter(
-      (record) =>
-        record.envelope.recordType === 'estimation-outcome' &&
-        record.envelope.payload.kind === 'story'
-    )
+  return activeEstimationOutcomes(records)
+    .filter((record) => record.envelope.payload.kind === 'story')
     .map((record) => {
       const forecast = forecastsById.get(record.envelope.payload.forecastRecordId);
       if (!forecast || forecast.issue !== record.envelope.issue) {
@@ -800,19 +796,21 @@ export function verificationEvidence(
   const groups = new Map();
   const receipts = parseValidatedVerificationReceipts(body, { expectedIssue });
   if (expectedFinalSha !== undefined) {
-    if (!expectedFingerprint || expectedFingerprint.commitSha !== expectedFinalSha) {
-      throw new TypeError('verification-receipt: final fingerprint is missing');
-    }
     const testReceipts = receipts.filter(
       (receipt) => receipt.stage === 'test' && receipt.commitSha === expectedFinalSha
     );
+    const fingerprint = expectedFingerprint ?? {
+      commitSha: expectedFinalSha,
+      environment: structuredClone(testReceipts[0]?.environment),
+    };
     if (
       testReceipts.length !== 1 ||
+      fingerprint.commitSha !== expectedFinalSha ||
       !validateVerificationReceipt({
         receipt: testReceipts[0],
         expectedIssue,
         expectedStage: 'test',
-        fingerprint: expectedFingerprint,
+        fingerprint,
         required: REQUIRED_TEST_COMMANDS,
       }).ok
     ) {
@@ -903,6 +901,60 @@ async function defaultDiffEvidence({ projectDir, trunk = 'origin/trunk' }) {
   };
 }
 
+export async function issueAttributedDiffEvidence({ projectDir, issueNumber } = {}) {
+  if (!projectDir || !Number.isInteger(issueNumber) || issueNumber <= 0) {
+    fail('issue-diff-input');
+  }
+  const token = `[#${issueNumber}]`;
+  const { stdout: log } = await pexec(
+    'git',
+    ['log', '--format=%H%x09%s', '--fixed-strings', `--grep=${token}`, 'HEAD'],
+    { cwd: projectDir }
+  );
+  const commits = log
+    .split('\n')
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .map((line) => {
+      const tab = line.indexOf('\t');
+      return { sha: line.slice(0, tab), subject: line.slice(tab + 1) };
+    })
+    .filter(({ sha, subject }) => /^[0-9a-f]{40}$/i.test(sha) && subject.includes(token));
+  if (commits.length === 0) fail('issue-diff-commit');
+
+  const files = new Set();
+  for (const { sha } of commits) {
+    const { stdout } = await pexec(
+      'git',
+      ['diff-tree', '--root', '--no-commit-id', '--name-only', '-r', sha],
+      { cwd: projectDir }
+    );
+    for (const file of stdout
+      .split('\n')
+      .map((entry) => entry.trim())
+      .filter(Boolean)) {
+      files.add(file);
+    }
+  }
+  const paths = [...files].sort();
+  const modules = [...new Set(paths.map((file) => file.split('/').slice(0, 2).join('/')))].sort();
+  const lanes = [
+    ['unit', /(?:^|\/)unit(?:\/|$)|\.unit\./],
+    ['integration', /(?:^|\/)integration(?:\/|$)|\.integration\./],
+    ['slow', /(?:^|\/)slow(?:\/|$)|\.slow\./],
+  ]
+    .filter(([, pattern]) => paths.some((file) => pattern.test(file)))
+    .map(([lane]) => lane);
+  lanes.push('sandbox');
+  return {
+    commitSha: commits[0].sha,
+    filesChanged: paths.length,
+    modules,
+    lanes,
+    dependencyBreadth: new Set(paths.map((file) => file.split('/')[0])).size,
+  };
+}
+
 export function createEstimationOutcomeRuntime({ cfg, projectDir, deps = {} } = {}) {
   if (!cfg?.repo || !projectDir) fail('outcome-config');
   const io = deps.recordIo ?? createGitHubEstimationRecordIo(deps);
@@ -957,9 +1009,9 @@ export function createEstimationOutcomeRuntime({ cfg, projectDir, deps = {} } = 
     for (const childNumber of childNumbers) {
       const childRecords = await io.listIssueRecords({ repository: cfg.repo, issue: childNumber });
       if (!Array.isArray(childRecords)) fail('child-outcomes');
-      const outcomes = childRecords
-        .filter((record) => record.envelope.recordType === 'estimation-outcome')
-        .toSorted((left, right) => right.envelope.createdAt.localeCompare(left.envelope.createdAt));
+      const outcomes = activeEstimationOutcomes(childRecords).toSorted((left, right) =>
+        right.envelope.createdAt.localeCompare(left.envelope.createdAt)
+      );
       if (outcomes.length === 0) {
         // A child with no adaptive forecast belongs to the pre-rollout legacy
         // cohort. It remains valid delivery history but cannot be referenced by
@@ -1011,16 +1063,13 @@ export function createEstimationOutcomeRuntime({ cfg, projectDir, deps = {} } = 
       });
       if (timingResult?.status === 'error') fail('timing');
       const timingBody = bodyOf(timingResult);
-      const diff = await (deps.readDiffEvidence ?? defaultDiffEvidence)({
+      const diff = await (
+        deps.readDiffEvidence ?? (isEpic ? defaultDiffEvidence : issueAttributedDiffEvidence)
+      )({
         projectDir,
         trunk: cfg.trunkRef ?? 'origin/trunk',
+        issueNumber,
       });
-      const expectedFingerprint = isEpic
-        ? undefined
-        : (deps.buildVerificationFingerprint ?? buildVerificationFingerprint)({
-            projectDir,
-            commitSha: diff.commitSha,
-          });
       const verification = verificationEvidence(
         body,
         isEpic
@@ -1028,7 +1077,6 @@ export function createEstimationOutcomeRuntime({ cfg, projectDir, deps = {} } = 
           : {
               expectedIssue: issueNumber,
               expectedFinalSha: diff.commitSha,
-              expectedFingerprint,
             }
       );
       const outcomePayload = buildEstimationOutcome({

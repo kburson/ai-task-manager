@@ -108,6 +108,7 @@ export function readEstimationStageTiming(lines = []) {
   for (const line of lines) {
     const row = parseTimingRow(line);
     if (!row) continue;
+    if (row.event === 'issue:wrap') break;
     const stage = Object.keys(seconds).find((candidate) => row.event.startsWith(candidate));
     if (!stage) continue;
     const active = row.marker.match(/row-sec:\s*a=(-?\d+)/)?.[1];
