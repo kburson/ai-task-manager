@@ -1,4 +1,4 @@
-import { parseAcceptanceCriteria } from '../code-complete-gate.mjs';
+import { parseAcceptanceCriteria } from '../acceptance-criteria.mjs';
 import { parseVerificationCommands } from '../verification-commands.mjs';
 import { validateContractProjection } from './delivery-contract.mjs';
 import { getCommentsByNodeIds } from './github-comment-store.mjs';
@@ -62,6 +62,7 @@ function legacyContract(issueBody) {
   const acceptanceCriteria = (parseAcceptanceCriteria(issueBody) ?? []).map((item, index) => ({
     logicalId: `ac-${index + 1}`,
     text: cleanText(item.label),
+    declaration: item.label,
     checked: item.checked,
   }));
   const verificationCommands = parseVerificationCommands(issueBody).map((item, index) => ({
@@ -113,9 +114,10 @@ function validateRecord(record, { repository, issue, commentNodeId }) {
 function githubContract(contract) {
   const checked = (kind, logicalId) => contract.lifecycleProjection[kind][logicalId] === true;
   return deepFreeze({
-    acceptanceCriteria: contract.acceptanceCriteria.map(({ logicalId, text }) => ({
+    acceptanceCriteria: contract.acceptanceCriteria.map(({ logicalId, text: declaration }) => ({
       logicalId,
-      text,
+      text: cleanText(declaration),
+      declaration,
       checked: checked('acceptanceCriteria', logicalId),
     })),
     verificationCommands: contract.verificationCommands.map(({ logicalId, command }) => ({

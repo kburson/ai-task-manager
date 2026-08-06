@@ -1,7 +1,8 @@
-// @story #1081
+// @story #1081 #1121
 import { strict as assert } from 'node:assert';
 import test from 'node:test';
 
+import { parseAcceptanceCriteria } from '../../../../lib/code-complete-gate.mjs';
 import {
   createDraftContract,
   renderDeliveryContract,
@@ -61,7 +62,12 @@ function deliveryContract(overrides = {}) {
     recordId: contractRecordId,
     authorityEpoch: 1,
     coordinatorGrantId,
-    acceptanceCriteria: [{ logicalId: 'ac-1', text: 'Users can sign in.' }],
+    acceptanceCriteria: [
+      {
+        logicalId: 'ac-1',
+        text: 'Users can sign in. <!-- aitm-verified vc-list="vc:1" -->',
+      },
+    ],
     verificationCommands: [{ logicalId: 'vc-1', command: 'npm test' }],
     definitionOfDone: [{ logicalId: 'dod-tests', text: 'Automated tests pass' }],
     lifecycleProjection: {
@@ -113,6 +119,29 @@ test('equivalent legacy and directory contracts produce the same immutable core 
   assert.equal(Object.isFrozen(legacy), true);
   assert.equal(Object.isFrozen(legacy.contract), true);
   assert.equal(Object.isFrozen(legacy.contract.acceptanceCriteria), true);
+});
+
+test('normalized ACs preserve evidence declarations and the historic parser export', async () => {
+  const declaration = 'Users can sign in. <!-- aitm-verified vc-list="vc:1" -->';
+  const legacy = await resolveContractSource({ repository, issue, issueBody: legacyBody });
+  const github = await resolveContractSource({
+    repository,
+    issue,
+    issueBody: directoryBody(),
+    readContractRecord: async () =>
+      contractRecord({
+        contract: deliveryContract({
+          acceptanceCriteria: [{ logicalId: 'ac-1', text: declaration }],
+        }),
+      }),
+  });
+
+  assert.equal(parseAcceptanceCriteria(legacyBody)?.[0]?.label, declaration);
+  assert.equal(legacy.contract.acceptanceCriteria[0].declaration, declaration);
+  assert.equal(github.contract.acceptanceCriteria[0].declaration, declaration);
+  assert.equal(legacy.contract.acceptanceCriteria[0].text, 'Users can sign in.');
+  assert.equal(github.contract.acceptanceCriteria[0].text, 'Users can sign in.');
+  assert.equal(Object.isFrozen(github.contract.acceptanceCriteria[0]), true);
 });
 
 test('directory authority failures never fall back to a valid legacy body', async () => {
@@ -257,7 +286,12 @@ test('legacy compatibility IDs and ordering are deterministic', async () => {
 
   assert.deepEqual(first, second);
   assert.deepEqual(first.contract.acceptanceCriteria, [
-    { logicalId: 'ac-1', text: 'Users can sign in.', checked: true },
+    {
+      logicalId: 'ac-1',
+      text: 'Users can sign in.',
+      declaration: 'Users can sign in. <!-- aitm-verified vc-list="vc:1" -->',
+      checked: true,
+    },
   ]);
   assert.deepEqual(first.contract.verificationCommands, [
     { logicalId: 'vc-1', command: 'npm test', checked: true },
