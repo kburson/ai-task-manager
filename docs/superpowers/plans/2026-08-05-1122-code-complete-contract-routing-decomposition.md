@@ -47,7 +47,7 @@ Add an injected GitHub-record contract whose AC state contradicts the embedded l
 
 Run: `node --test scripts/task-tracker/tests/unit/lib/github-records/contract-source.test.mjs scripts/task-tracker/tests/unit/lib/code-complete-gate.test.mjs`
 
-Expected: FAIL because `gateCodeComplete` ignores the injected resolver and reparses the embedded legacy body.
+Expected: FAIL because `gateCodeComplete` ignores the injected resolver and parses the embedded legacy body again.
 
 - [ ] **Step 3: Implement the one-shot resolver adapter**
 
