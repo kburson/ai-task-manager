@@ -16,11 +16,11 @@
 //                           trunk) when the immediate parent branch is already
 //                           gone (rebased away / deleted after merge-back).
 //   * epic                — asserts its DERIVED child-trail (#883) on the
-//                           epic's OWN branch: every child's `[#N]` commit must
-//                           be reachable from the epic HEAD. Reconciles with the
-//                           #877 review→done all-children-done gate, which owns
-//                           the orthogonal "are the children in state Done?"
-//                           invariant.
+//                           epic's own branch while it survives, then on the
+//                           nearest surviving ancestor after merge-back removes
+//                           it. Reconciles with the #877 review→done
+//                           all-children-done gate, which owns the orthogonal
+//                           "are the children in state Done?" invariant.
 //
 // Trunk-only (no-epic) repositories see NO regression: `resolveEpicLineage`
 // returns `parentBranch === trunk` for a standalone story, so the leaf check
@@ -214,12 +214,22 @@ export async function lineageDoneGate({ cfg, issueNumber, projectDir, deps = {} 
   const id = String(issueNumber).replace(/^#/, '');
 
   if (lineage.role === 'epic') {
+    let epicHead = lineage.branch;
+    if (!branchExists(epicHead)) {
+      try {
+        epicHead = resolveDoneTargetBranch({
+          issueNumber,
+          deps: { graph, branchExists, trunk },
+        });
+      } catch (err) {
+        return { ok: false, blocker: `close-lineage-target-unresolved: ${err.message}` };
+      }
+    }
     return epicDerivedTrailGate({
       epicNumber: Number(id),
-      epicHead: lineage.branch,
+      epicHead,
       projectDir,
       graph,
-      branchExists,
       epicTrailLog: deps.epicTrailLog,
     });
   }
@@ -252,26 +262,10 @@ export async function lineageDoneGate({ cfg, issueNumber, projectDir, deps = {} 
 }
 
 // Epic done check — the derived child-trail (#883) must be reachable on the
-// epic's OWN branch. Delegates the reachability arithmetic to
+// selected delivery target. Delegates the reachability arithmetic to
 // `groupCommitsByChild`; refuses naming every child with no reachable commit.
-async function epicDerivedTrailGate({
-  epicNumber,
-  epicHead,
-  projectDir,
-  graph,
-  branchExists,
-  epicTrailLog,
-}) {
+async function epicDerivedTrailGate({ epicNumber, epicHead, projectDir, graph, epicTrailLog }) {
   const trailLog = epicTrailLog || ((args) => defaultEpicTrailLog(args));
-
-  // The epic branch must exist to assert a trail on it.
-  if (!branchExists(epicHead)) {
-    return {
-      ok: false,
-      blocker: `close-epic-branch-missing: epic branch ${epicHead} does not exist — cannot assert derived child-trail`,
-      epicHead,
-    };
-  }
 
   const { children = [] } = graph(epicNumber) || {};
   const childList = children.map((c) => (typeof c === 'object' ? c : { number: Number(c) }));
