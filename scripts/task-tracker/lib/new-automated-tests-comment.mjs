@@ -14,6 +14,7 @@
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { findCommitTrailComment, parseCommitShas } from './code-complete-gate.mjs';
+import { attributingCommits as defaultAttributingCommits } from './commit-attribution.mjs';
 
 const pexec = promisify(execFile);
 
@@ -144,13 +145,24 @@ export async function postNewAutomatedTestsComment({ cfg, issueNumber, cwd, deps
   const trail = findCommitTrailComment(comments);
   if (!trail) return { status: 'no-commits' };
 
-  const shas = parseCommitShas(trail.body);
-  if (shas.length === 0) return { status: 'no-commits' };
+  const trailShas = parseCommitShas(trail.body);
+  if (trailShas.length === 0) return { status: 'no-commits' };
 
   if (comments.some((c) => String(c.body || '').startsWith(NEW_TESTS_HEADING))) {
     return { status: 'duplicate' };
   }
 
+  const attributingCommits = deps.attributingCommits || defaultAttributingCommits;
+  let attributedShas = [];
+  try {
+    attributedShas = (await attributingCommits(issueNumber, { cwd, refs: ['HEAD'] }))
+      .map((commit) => commit?.sha)
+      .filter(Boolean);
+  } catch {
+    // Best-effort report hook: retain the historical trace-only behavior if
+    // issue attribution cannot be resolved after a successful Test move.
+  }
+  const shas = [...new Set([...attributedShas, ...trailShas])];
   const entries = await collectTestDiffEntries({ shas, cwd, deps });
   if (entries.length === 0) return { status: 'no-tests' };
 
