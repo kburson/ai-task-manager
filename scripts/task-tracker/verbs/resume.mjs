@@ -187,6 +187,11 @@ export async function verbResume(ctx) {
     return;
   }
   if (ownIssue === normalizedTarget) {
+    try {
+      registerTask(projectDir, normalizedTarget, projectDir, currentBranch(projectDir));
+    } catch {
+      /* best-effort: keep the fleet registry warm; never block a no-op */
+    }
     console.log(`already active: ${normalizedTarget}`);
     return;
   }
