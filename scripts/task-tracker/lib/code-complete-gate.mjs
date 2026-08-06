@@ -15,7 +15,8 @@
 
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
-import { resolveVerifiedBy, stripProofMarkers } from './proof-marker.mjs';
+import { parseAcceptanceCriteria } from './acceptance-criteria.mjs';
+import { stripProofMarkers } from './proof-marker.mjs';
 import { unescapeValue } from './marker-grammar.mjs';
 import {
   isNoCommitKind,
@@ -29,9 +30,6 @@ import { attributingCommits as defaultAttributingCommits } from './commit-attrib
 
 const pexec = promisify(execFile);
 
-const AC_HEADING_RE = /^##\s+Acceptance Criteria\s*$/im;
-const NEXT_HEADING_RE = /^##\s+/m;
-const CHECKBOX_RE = /^- \[([ x])\] (.+)$/gm;
 // Dual-grammar (#381): new quoted-attribute form preferred, legacy colon CSV
 // tolerated until the #369 corpus sweep. `COMMITS_MARKER_RE` is the union used
 // for presence detection.
@@ -40,22 +38,7 @@ const COMMITS_MARKER_NEW_RE = /<!--\s*aitm-commits\s+shas="((?:[^"]|&quot;)*)"\s
 const COMMITS_MARKER_RE = /<!--\s*aitm-commits(?::\s*[^-]*?|\s+shas="(?:[^"]|&quot;)*")\s*-->/;
 const TRAIL_HEADING_RE = /^###\s+🔗\s+Commits\s*$/m;
 
-export function parseAcceptanceCriteria(body) {
-  const src = String(body || '');
-  const m = src.match(AC_HEADING_RE);
-  if (!m) return null;
-  const after = src.slice(m.index + m[0].length);
-  const nextMatch = after.match(NEXT_HEADING_RE);
-  const section = nextMatch ? after.slice(0, nextMatch.index) : after;
-  const items = [];
-  for (const cm of section.matchAll(CHECKBOX_RE)) {
-    const checked = cm[1] === 'x';
-    const label = cm[2];
-    const verifiedBy = resolveVerifiedBy(label);
-    items.push({ label, checked, verifiedBy: verifiedBy ? verifiedBy.trim() : null });
-  }
-  return items;
-}
+export { parseAcceptanceCriteria };
 
 export function parseCommitShas(commentBody) {
   const src = String(commentBody || '');
