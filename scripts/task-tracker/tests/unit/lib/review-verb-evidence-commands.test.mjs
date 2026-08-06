@@ -348,11 +348,10 @@ const reviewSource = readFileSync(reviewVerbPath, 'utf8');
   );
 }
 
-// #774: review.mjs's inline AC parser must resolve the canonical by-id
-// `vc-list` citation (the form #773's Refine-exit guardrail mandates), not just
-// the legacy backtick-embedded `cmd`. Before #774 a vc-list-only marker yielded
-// `evidenceCommands = []`, so the evidenceCheckboxes loop un-ticked the checked
-// AC as "missing automated evidence" and bounced the issue back to develop.
+// #774/#1131: Review must use the shared declaration resolver for canonical
+// `vc-list` citations. Governed Test can preserve both a raw `cmd` attribute and
+// the canonical `vc-list` on the same sandbox-stamped marker; `vc-list` must win
+// even when the raw command contains no backtick spans.
 {
   assert.match(
     reviewSource,
@@ -361,23 +360,28 @@ const reviewSource = readFileSync(reviewVerbPath, 'utf8');
   );
   assert.match(
     reviewSource,
-    /resolveVcRefCommands\(props\['vc-list'\],\s*vcItems\)/,
-    "review.mjs resolves props['vc-list'] against the parsed VC list"
+    /import\s+\{[^}]*extractVerifiedCommands[^}]*\}\s+from\s+['"]\.\.\/lib\/proof-marker\.mjs['"]/,
+    'review.mjs imports the shared declaration resolver'
   );
-  console.log('PASS: review.mjs resolves vc-list citations in its inline AC parser (source pin)');
+  assert.match(
+    reviewSource,
+    /extractVerifiedCommands\(label,\s*vcItems\)/,
+    'review.mjs resolves AC declarations through the shared helper'
+  );
+  console.log('PASS: review.mjs delegates AC declaration resolution to the shared helper');
 
   // Behavioral: replicate the verb's parse → seed → consume path for a
   // vc-list-cited, stamped (exit=0), checked AC and confirm it is NOT flagged.
   const { parseVerificationCommands } = await import('../../../lib/verification-commands.mjs');
-  const { resolveVcRefCommands } = await import('../../../lib/vc-ref.mjs');
-  const { parseProofMarker, hasExecutionProof } = await import('../../../lib/proof-marker.mjs');
+  const { extractVerifiedCommands, parseProofMarker, hasExecutionProof } =
+    await import('../../../lib/proof-marker.mjs');
 
   const label =
-    'Heal works <!-- aitm-verified exit="0" sha="abc1234" ts="2026-07-10T00:00:00.000Z" key="deadbeef" vc-list="vc:1" -->';
+    'Heal works <!-- aitm-verified cmd="node --test tests/stale-inline.test.mjs" exit="0" sha="abc1234" ts="2026-07-10T00:00:00.000Z" evidence="sandbox exit 0" key="deadbeef" vc-list="vc:6" -->';
   const body = [
     '## Verification Commands',
     '',
-    '- [ ] `node --test tests/heal.test.mjs` <!-- id=1 -->',
+    '- [ ] `node --test tests/heal.test.mjs` <!-- id=6 -->',
     '',
     '## Acceptance Criteria',
     '',
@@ -389,13 +393,13 @@ const reviewSource = readFileSync(reviewVerbPath, 'utf8');
   let evidenceCommands = [];
   let proofPassed = false;
   const props = parseProofMarker(label);
-  if (props && typeof props.cmd === 'string') {
-    evidenceCommands = [...props.cmd.matchAll(/`([^`]+)`/g)].map((c) => c[1]);
-  } else if (props && typeof props['vc-list'] === 'string') {
-    evidenceCommands = resolveVcRefCommands(props['vc-list'], vcItems) || [];
+  try {
+    evidenceCommands = extractVerifiedCommands(label, vcItems);
+  } catch {
+    evidenceCommands = [];
   }
   if (props && hasExecutionProof(label)) proofPassed = String(props.exit) === '0';
-  assert.deepEqual(evidenceCommands, ['node --test tests/heal.test.mjs'], 'vc:1 resolves by id');
+  assert.deepEqual(evidenceCommands, ['node --test tests/heal.test.mjs'], 'vc:6 resolves by id');
   assert.equal(proofPassed, true, 'exit=0 marker counts as passing sandbox proof');
 
   const commandResults = new Map();
@@ -409,7 +413,7 @@ const reviewSource = readFileSync(reviewVerbPath, 'utf8');
       failures.push(`${label} (unknown evidence command)`);
   }
   assert.deepEqual(failures, [], 'a vc-list-cited stamped AC produces no failure');
-  console.log('PASS: #774 vc-list-cited AC survives the review evidence loop');
+  console.log('PASS: #1131 dual-attribute vc-list AC survives the review evidence loop');
 }
 
 console.log('\nAll review-verb evidence-command tests passed.');
