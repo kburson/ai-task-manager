@@ -25,8 +25,10 @@ import { loadState } from '../state.mjs';
 import { mutateIssueBody } from '../lib/issue-body-mutate.mjs';
 import { setIssueKindMarker, normalizeKind, VALID_KINDS } from '../lib/issue-kind.mjs';
 import { reconcileDodForKind } from '../lib/dod-kind-filter.mjs';
+import { auditEvidenceMarkers, parseEvidenceChecklist } from '../lib/evidence-markers.mjs';
 import { locateFunctionalSection } from '../lib/lifecycle-dod.mjs';
 import { dodPath } from '../paths.mjs';
+import { appendVcCommands } from '../lib/vc-emit.mjs';
 
 export async function verbKind(ctx) {
   const { cfg, statePath, rest, pexec } = ctx;
@@ -75,8 +77,19 @@ export async function verbKind(ctx) {
       if (!loc) return marked;
       const templateDodText = readFileSync(dodPath(), 'utf8');
       const reconciled = reconcileDodForKind(loc.section, templateDodText, kind);
-      if (reconciled === loc.section) return marked;
-      return loc.before + reconciled + loc.after;
+      const kindReconciled =
+        reconciled === loc.section ? marked : loc.before + reconciled + loc.after;
+      const functionalCommands = new Set(
+        parseEvidenceChecklist(kindReconciled).functionalDodItems.flatMap(
+          ({ evidenceCommands }) => evidenceCommands
+        )
+      );
+      const missingFunctionalCommands = auditEvidenceMarkers(
+        kindReconciled
+      ).missingVerificationCommands.filter((command) => functionalCommands.has(command));
+      return missingFunctionalCommands.length
+        ? appendVcCommands(kindReconciled, missingFunctionalCommands)
+        : kindReconciled;
     },
   });
 

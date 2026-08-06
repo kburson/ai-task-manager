@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// @story #597
+// @story #597 #1135
 // Coverage tests for scripts/task-tracker/verbs/kind.mjs.
 //
 // `verbKind` resolves a target issue + kind from `rest` (two-arg explicit form,
@@ -15,10 +15,12 @@
 import { strict as assert } from 'node:assert';
 import { test, before, after } from 'node:test';
 import path from 'node:path';
-import { mkdtempSync, mkdirSync, writeFileSync, rmSync, chmodSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, readFileSync, writeFileSync, rmSync, chmodSync } from 'node:fs';
 
 import { verbKind } from '../../../verbs/kind.mjs';
 import { projectScratchDir } from '../../../lib/scratch-dir.mjs';
+import { parseVerificationCommands } from '../../../lib/verification-commands.mjs';
+import { runReviewPreflight } from '../../../lib/review-preflight.mjs';
 
 let tmpRoot;
 let fakeBin;
@@ -77,6 +79,17 @@ function makePexec(body) {
   };
 }
 
+function makePexecFromFile(storeFile) {
+  return async (bin, args = []) => {
+    if (bin === 'gh') return { stdout: readFileSync(storeFile, 'utf8'), stderr: '' };
+    if (bin === 'git') {
+      if (args.includes('status')) return { stdout: '', stderr: '' };
+      return { stdout: 'abc1234\n', stderr: '' };
+    }
+    return { stdout: '', stderr: '' };
+  };
+}
+
 class ExitError extends Error {
   constructor(code) {
     super(`process.exit(${code})`);
@@ -104,6 +117,36 @@ async function runVerb(ctx) {
 }
 
 const baseCtx = (over) => ({ cfg: { repo: 'o/r' }, ...over });
+const withoutBodyVersion = (body) =>
+  String(body).replace(/<!-- aitm-body-version version="\d+" -->/g, '');
+
+const CODE_BODY = [
+  '## Acceptance Criteria',
+  '',
+  '- [ ] Converted body remains reviewable <!-- aitm-verified vc-list="vc:1" -->',
+  '',
+  '## Verification Commands',
+  '',
+  '- [ ] `node --test existing.test.mjs` <!-- id=1 -->',
+  '- [ ] `npm test` <!-- id=2 -->',
+  '- [ ] `npm run test:slow` <!-- id=3 -->',
+  '- [ ] `npm run lint` <!-- id=4 -->',
+  '- [ ] `npm run format:check` <!-- id=5 -->',
+  '- [ ] `git log --oneline -1` <!-- id=6 -->',
+  '',
+  '## Definition of Done',
+  '',
+  '### Functional (verified at Test)',
+  '',
+  '- [ ] All automated tests pass <!-- aitm-verified cmd="`npm test` `npm run test:slow`" --> <!-- dod:functional:tests --> <!-- dod:kinds exclude="spike,research" -->',
+  '- [ ] Lint and format checks pass <!-- aitm-verified cmd="`npm run lint` `npm run format:check`" --> <!-- dod:functional:lint -->',
+  '- [ ] All changes committed; commit messages follow project convention <!-- aitm-verified cmd="`git log --oneline -1`" --> <!-- dod:functional:commits --> <!-- dod:kinds exclude="epic" -->',
+  '- [ ] Acceptance criteria met <!-- dod:functional:acs -->',
+  '- [ ] Issue body checkboxes ticked <!-- dod:functional:checkboxes -->',
+  '',
+  '## AITM Progress Markers',
+  '',
+].join('\n');
 
 test('no args → usage error, exit 1', async () => {
   const r = await runVerb(baseCtx({ rest: [], pexec: makePexec() }));
@@ -145,6 +188,54 @@ test('happy path: one-arg active-bind form + code kind → clears marker', async
     baseCtx({ statePath: stateFile('#99'), rest: ['code'], pexec: makePexec(body) })
   );
   assert.equal(r.exitCode, null);
+});
+
+test('code → epic appends the introduced DoD verifier with the next stable id', async () => {
+  const storeFile = path.join(tmpRoot, 'body-epic-vc.md');
+  writeFileSync(storeFile, CODE_BODY);
+  process.env.AITM_FAKE_BODY_FILE = storeFile;
+
+  const r = await runVerb(
+    baseCtx({ rest: ['#1135', 'epic'], pexec: makePexecFromFile(storeFile) })
+  );
+  assert.equal(r.exitCode, null);
+
+  const converted = readFileSync(storeFile, 'utf8');
+  const epicTrail = parseVerificationCommands(converted).filter(
+    ({ command }) => command === 'node scripts/task-tracker/verify-epic-trail.mjs'
+  );
+  assert.equal(epicTrail.length, 1);
+  assert.equal(epicTrail[0].id, 7);
+  assert.match(converted, /aitm-issue-kind kind="epic"/);
+  assert.match(converted, /dod:functional:commits[^\n]*include="epic"/);
+});
+
+test('repeating epic conversion is content-idempotent and Review preflight accepts the body', async () => {
+  const storeFile = path.join(tmpRoot, 'body-epic-idempotent.md');
+  writeFileSync(storeFile, CODE_BODY);
+  process.env.AITM_FAKE_BODY_FILE = storeFile;
+  const ctx = baseCtx({ rest: ['#1135', 'epic'], pexec: makePexecFromFile(storeFile) });
+
+  assert.equal((await runVerb(ctx)).exitCode, null);
+  const once = readFileSync(storeFile, 'utf8');
+  assert.equal((await runVerb(ctx)).exitCode, null);
+  const twice = readFileSync(storeFile, 'utf8');
+  assert.equal(withoutBodyVersion(twice), withoutBodyVersion(once));
+
+  const preflight = await runReviewPreflight({
+    issueNumber: 1135,
+    repo: 'o/r',
+    projectDir: '/repo',
+    cfg: { repo: 'o/r' },
+    deps: {
+      gitStatus: async () => '',
+      gitHeadSha: async () => 'abcdef1234567890',
+      getIssueBody: async () => twice,
+      fetchEpicChildren: async () => [],
+      epicCommits: async () => [],
+    },
+  });
+  assert.equal(preflight.ok, true, preflight.reasons.join('\n'));
 });
 
 console.log('coverage-kind.test.mjs: defined');
