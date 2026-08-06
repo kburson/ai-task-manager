@@ -661,12 +661,13 @@ export async function verbReview(ctx) {
     });
     if (!preflight.ok) {
       process.stderr.write('\n');
-      process.stderr.write(`⛔ Refusing to move ${target} to Test:\n`);
+      process.stderr.write(`⛔ Refusing to move ${target} to Review:\n`);
       for (const reason of preflight.reasons) {
         process.stderr.write(`   BLOCKED: ${reason}\n`);
       }
-      process.stderr.write('\nRun `/task commit-trace ');
-      process.stderr.write(`${target}` + '` after committing, then retry `/task review`.\n\n');
+      process.stderr.write(
+        `\nResolve the blockers above, then retry \`/task review ${target}\`.\n\n`
+      );
       process.exit(4);
     }
   }
@@ -739,14 +740,14 @@ export async function verbReview(ctx) {
             deltaWords: 0,
             // #475 AC1 — carried-forward durable marker (gate-refused, no active session)
             wordMarker: s.lastWordMarker ?? 0,
-            description: `→ test: ${result.refusedRules.map((r) => r.rule).join(', ')}`,
+            description: `→ review: ${result.refusedRules.map((r) => r.rule).join(', ')}`,
           });
           await postTimingEvent({ issueNumber: issueNum, repo: cfg.repo, row, timeoutMs: 3000 });
         } catch {
           /* best-effort: failure must not abort the primary operation */
         }
         process.stderr.write('\n');
-        process.stderr.write(`⛔ Refusing to move ${target} to Test:\n`);
+        process.stderr.write(`⛔ Refusing to move ${target} to Review:\n`);
         for (const r of result.refusedRules)
           process.stderr.write(`   BLOCKED: ${r.rule}: ${r.reason}\n`);
         process.stderr.write(
