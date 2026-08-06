@@ -15,10 +15,13 @@ import {
 import { runGuards } from '../lib/guard-registry.mjs';
 import '../lib/guard-bootstrap.mjs';
 import { STANDARD_DOD_COMMANDS } from '../lib/evidence-markers.mjs';
-import { parseProofMarker, hasExecutionProof } from '../lib/proof-marker.mjs';
-import { unescapeValue } from '../lib/proof-marker.mjs';
+import {
+  parseProofMarker,
+  hasExecutionProof,
+  extractVerifiedCommands,
+  unescapeValue,
+} from '../lib/proof-marker.mjs';
 import { parseVerificationCommands } from '../lib/verification-commands.mjs';
-import { resolveVcRefCommands } from '../lib/vc-ref.mjs';
 import { stripMarkers } from '../lib/ac-evidence.mjs';
 import {
   postTimingEvent,
@@ -865,9 +868,10 @@ export async function verbReview(ctx) {
       // (parseVerificationCommands / parseEvidenceChecklist); review.mjs kept
       // its own un-migrated copy with the anchored `$` that this fixes.
       const cmdMatch = canRunCommand ? label.match(/^`([^`]+)`/) : null;
-      // #396/#468 — consolidated declaration is the sole path. When this is a
-      // prose-evidence checkbox, read the declared command(s) from the
-      // `aitm-verified cmd="..."` form.
+      // #396/#468/#1131 — consolidated declaration is the sole path. Resolve
+      // prose-evidence commands through the shared helper so canonical
+      // `vc-list` citations take precedence when a sandbox-stamped marker also
+      // retains a raw `cmd` attribute.
       // #481 — `cmd` is the persistent declaration component, read regardless of
       // run-props. The consolidated single-marker form carries declaration AND
       // run-props (`exit`/`sha`/`ts`) in one comment; `ac-stamp`/`dod-stamp`
@@ -880,18 +884,10 @@ export async function verbReview(ctx) {
       let proofPassed = false;
       if (!cmdMatch) {
         const props = parseProofMarker(label);
-        if (props && typeof props.cmd === 'string') {
-          evidenceCommands = [...props.cmd.matchAll(/`([^`]+)`/g)].map((cmd) => cmd[1]);
-        } else if (props && typeof props['vc-list'] === 'string') {
-          // #774 — the canonical by-id citation the Refine-exit guardrail (#773)
-          // mandates lives in `vc-list`; resolve it against the VC section so a
-          // vc-list-authored AC is not falsely un-ticked as "missing automated
-          // evidence" here (this was review.mjs's own un-migrated inline parser).
-          try {
-            evidenceCommands = resolveVcRefCommands(props['vc-list'], vcItems) || [];
-          } catch {
-            evidenceCommands = [];
-          }
+        try {
+          evidenceCommands = extractVerifiedCommands(label, vcItems);
+        } catch {
+          evidenceCommands = [];
         }
         if (props && hasExecutionProof(label)) {
           proofPassed = String(props.exit) === '0';
