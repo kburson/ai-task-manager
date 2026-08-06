@@ -83,6 +83,83 @@ test('gateCodeComplete: combined single-marker AC passes the verification gate (
   assert.deepEqual(r.blockers, []);
 });
 
+test('gateCodeComplete: resolves record authority exactly once instead of trusting legacy AC state', async () => {
+  let resolutionCalls = 0;
+  const r = await gateCodeComplete({
+    cfg,
+    issueNumber: 1125,
+    body: PASSING_BODY,
+    deps: {
+      resolveContractSource: async (input) => {
+        resolutionCalls += 1;
+        assert.deepEqual(input, {
+          repository: cfg.repo,
+          issue: 1125,
+          issueBody: PASSING_BODY,
+          graphql: undefined,
+          readContractRecord: undefined,
+        });
+        return {
+          sourceKind: 'github-records/v1',
+          contract: {
+            acceptanceCriteria: [
+              {
+                logicalId: 'ac-record-authority',
+                text: 'Record authority wins.',
+                declaration:
+                  'Record authority wins. <!-- aitm-verified cmd="`node --test record-authority.test.mjs`" -->',
+                checked: false,
+              },
+            ],
+          },
+          authority: { contractRecordId: 'record-1125' },
+        };
+      },
+      listComments: async () => [
+        { body: '### 🔗 Commits\n<!-- aitm-commits: record-authority -->' },
+      ],
+      filesForSha: async () => [],
+      dirtyFiles: async () => new Set(),
+    },
+  });
+
+  assert.equal(resolutionCalls, 1);
+  assert.equal(r.ok, false);
+  assert.ok(
+    r.blockers.some((blocker) =>
+      blocker.startsWith('code-complete-ac-unticked: Record authority wins.')
+    ),
+    JSON.stringify(r.blockers)
+  );
+});
+
+test('gateCodeComplete: resolver refusal fails closed without legacy AC fallback', async () => {
+  let resolutionCalls = 0;
+  const r = await gateCodeComplete({
+    cfg,
+    issueNumber: 1125,
+    body: PASSING_BODY,
+    deps: {
+      resolveContractSource: async () => {
+        resolutionCalls += 1;
+        throw new Error('contract-source:unavailable');
+      },
+      listComments: async () => [
+        { body: '### 🔗 Commits\n<!-- aitm-commits: record-authority -->' },
+      ],
+      filesForSha: async () => [],
+      dirtyFiles: async () => new Set(),
+    },
+  });
+
+  assert.equal(resolutionCalls, 1);
+  assert.equal(r.ok, false);
+  assert.ok(
+    r.blockers.includes('code-complete-contract-source-failed: contract-source:unavailable'),
+    JSON.stringify(r.blockers)
+  );
+});
+
 test('parseCommitShas: extracts comma-separated SHAs', () => {
   const body = '### 🔗 Commits\n<!-- aitm-commits: abc123, def456,ghi789 -->';
   assert.deepEqual(parseCommitShas(body), ['abc123', 'def456', 'ghi789']);

@@ -16,7 +16,8 @@
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { parseAcceptanceCriteria } from './acceptance-criteria.mjs';
-import { stripProofMarkers } from './proof-marker.mjs';
+import { resolveContractSource } from './github-records/contract-source.mjs';
+import { resolveVerifiedBy, stripProofMarkers } from './proof-marker.mjs';
 import { unescapeValue } from './marker-grammar.mjs';
 import {
   isNoCommitKind,
@@ -258,12 +259,33 @@ export async function gateCodeComplete({ cfg, issueNumber, body, deps = {} } = {
   // below only diverges when `audit` is true.
   const audit = isNoCommitKind(body);
 
-  const acs = parseAcceptanceCriteria(body);
-  if (acs === null) {
+  const resolve = deps.resolveContractSource || resolveContractSource;
+  let acs = null;
+  try {
+    const contractSource = await resolve({
+      repository: cfg.repo,
+      issue: Number(issueNumber),
+      issueBody: body,
+      graphql: deps.graphql,
+      readContractRecord: deps.readContractRecord,
+    });
+    acs = contractSource.contract.acceptanceCriteria.map(({ declaration, checked }) => {
+      const verifiedBy = resolveVerifiedBy(declaration);
+      return {
+        label: declaration,
+        checked,
+        verifiedBy: verifiedBy ? verifiedBy.trim() : null,
+      };
+    });
+  } catch (error) {
+    blockers.push(`code-complete-contract-source-failed: ${error.message}`);
+  }
+
+  if (acs !== null && acs.length === 0) {
     blockers.push(
       'code-complete-no-ac-section: `## Acceptance Criteria` section not found in body'
     );
-  } else {
+  } else if (acs !== null) {
     for (const ac of acs) {
       const shortLabel = stripProofMarkers(ac.label);
       if (!ac.checked) {
