@@ -259,10 +259,9 @@ export function createAitmRecordEnvelope({
 
 function canonicalCommentRecordJson(envelope) {
   const recordJson = canonicalRecordJson(envelope);
-  if (recordJson.includes('-->')) throw recordError('unsafe-comment');
   // HTML comments cannot safely carry a raw double hyphen. JSON's Unicode
-  // escape is value-preserving, so command flags such as `--test` can remain
-  // exact in the parsed envelope without changing canonical payload hashes.
+  // escape is value-preserving, so command flags such as `--test` and complete
+  // marker strings can remain exact after parsing without changing hashes.
   return recordJson.replaceAll('--', '-\\u002d');
 }
 
