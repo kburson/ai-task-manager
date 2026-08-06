@@ -15,8 +15,10 @@ import { mergeBack } from './merge-back.mjs';
 const __dir = path.dirname(fileURLToPath(import.meta.url));
 
 const GRAPH = {
-  905: { parent: null, children: [910] }, // root epic (parent = trunk)
+  905: { parent: null, children: [910, 920] }, // root epic (parent = trunk)
   910: { parent: 905, children: [] }, // child of 905
+  920: { parent: 905, children: [921] }, // nested epic under 905
+  921: { parent: 920, children: [] }, // child of nested epic 920
 };
 const graph = (n) => GRAPH[n] ?? { parent: null, children: [] };
 
@@ -62,6 +64,36 @@ test('clean fast-forward path: sync-skip, rebase child, test, ff, cleanup', () =
   assert.ok(kinds.includes('merge --ff-only feature/child/910'));
   assert.ok(kinds.includes('worktree remove /wt/910'));
   assert.ok(kinds.some((k) => k.startsWith('branch -d feature/child/910')));
+});
+
+test('nested epic follows the same recursive merge-back path into its immediate epic parent', () => {
+  const git = makeGit();
+  let tested;
+  const r = mergeBack({
+    child: 920,
+    path: '/wt/920',
+    deps: {
+      graph,
+      git,
+      runTests: (args) => {
+        tested = args;
+        return true;
+      },
+    },
+  });
+
+  assert.deepEqual(r, {
+    merged: true,
+    epic: 'feature/epic/905',
+    child: 'feature/epic/920',
+  });
+  assert.deepEqual(tested, { path: '/wt/920', branch: 'feature/epic/920' });
+
+  const kinds = git.calls.map((c) => c.join(' '));
+  assert.ok(kinds.includes('rebase feature/epic/905 feature/epic/920'));
+  assert.ok(kinds.includes('merge --ff-only feature/epic/920'));
+  assert.ok(kinds.includes('worktree remove /wt/920'));
+  assert.ok(kinds.includes('branch -d feature/epic/920'));
 });
 
 test('grandparent advanced: epic is rebased onto trunk before the child merge', () => {

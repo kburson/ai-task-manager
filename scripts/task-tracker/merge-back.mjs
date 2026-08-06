@@ -50,13 +50,19 @@ export function mergeBack({ child, path, deps } = {}) {
   const wtGit = deps.worktreeGit || deps.git;
 
   const childLineage = resolveEpicLineage(child, { deps });
-  if (childLineage.role !== 'child' || !childLineage.epicBranch) {
+  const trunk = deps.trunk || 'trunk';
+  const epicBranch =
+    childLineage.role === 'child'
+      ? childLineage.epicBranch
+      : childLineage.role === 'epic' && childLineage.parentBranch !== trunk
+        ? childLineage.parentBranch
+        : null;
+  if (!epicBranch) {
     throw new Error(
-      `merge-back: #${child} is not a child of an epic (resolved role=${childLineage.role})`
+      `merge-back: #${child} is not a child or nested epic of an epic (resolved role=${childLineage.role})`
     );
   }
   const childBranch = childLineage.branch;
-  const epicBranch = childLineage.epicBranch;
 
   // Resolve the epic's own parent (the child's grandparent) to know what the epic
   // should sync onto: trunk for a root epic, the outer epic for a nested one.
@@ -146,7 +152,7 @@ async function main(argv) {
     }
     return true;
   };
-  const { epic } = mergeBack({
+  const { epic, child: childBranch } = mergeBack({
     child,
     path: wtPath,
     deps: {
@@ -157,7 +163,7 @@ async function main(argv) {
       runTests,
     },
   });
-  process.stdout.write(`merged feature/child/${child} into ${epic}\n`);
+  process.stdout.write(`merged ${childBranch} into ${epic}\n`);
 }
 
 const isMain = import.meta.url === `file://${process.argv[1]}`;
