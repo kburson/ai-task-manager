@@ -1,5 +1,6 @@
 import { canonicalRecordJson } from '../github-records/canonical-json.mjs';
 import { runLogicalRecordClaim } from './record-claim.mjs';
+import { activeEstimationOutcomes } from './outcome-chain.mjs';
 
 function fail(category) {
   throw new Error(`estimation-outcome-writer:${category}`);
@@ -27,15 +28,21 @@ async function ensureEstimationOutcomeUnlocked({ issue, forecast, outcomePayload
       record.envelope.payload?.forecastRecordId === forecastRecordId &&
       record.envelope.payload?.kind === kind
   );
-  if (matching.length > 1) fail('duplicate');
-  if (matching.length === 1) {
-    if (canonicalRecordJson(matching[0].envelope.payload) !== canonicalRecordJson(outcomePayload)) {
+  let active;
+  try {
+    active = activeEstimationOutcomes(matching);
+  } catch {
+    fail('duplicate');
+  }
+  if (active.length > 1 || (matching.length > 0 && active.length === 0)) fail('duplicate');
+  if (active.length === 1) {
+    if (canonicalRecordJson(active[0].envelope.payload) !== canonicalRecordJson(outcomePayload)) {
       fail('payload-mismatch');
     }
     return {
       status: 'existing',
-      recordId: matching[0].envelope.recordId,
-      commentNodeId: matching[0].commentNodeId,
+      recordId: active[0].envelope.recordId,
+      commentNodeId: active[0].commentNodeId,
     };
   }
   if (
