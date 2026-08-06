@@ -16,7 +16,7 @@
 
 ## Global Constraints
 
-- A GitHub issue directory makes its Delivery Contract authoritative; every directory, reader, record, contract, and projection failure must refuse without reparsing the embedded legacy body.
+- A GitHub issue directory makes its Delivery Contract authoritative; every directory, reader, record, contract, and projection failure must refuse without parsing the embedded legacy body again.
 - Preserve `parseAcceptanceCriteria(body)` and `validateBody(body, options)` public call contracts for existing consumers and fixtures.
 - Keep Definition-of-Done and evidence-reader integration in #1119; do not change write-side lifecycle verbs in these tasks.
 - Retain raw evidence declarations needed by `aitm-verified-by`, `aitm-non-demonstrable`, and sanctioned waiver checks while also exposing normalized display text.
@@ -109,7 +109,7 @@ Add legacy-body and directory-backed cases with equivalent checked, unchecked, v
 
 Run: `node --test scripts/task-tracker/tests/unit/lib/github-records/contract-source.test.mjs scripts/task-tracker/tests/unit/lib/code-complete-gate.test.mjs`
 
-Expected: FAIL because `gateCodeComplete` still reparses the body and never resolves directory authority.
+Expected: FAIL because `gateCodeComplete` still parses the body again and never resolves directory authority.
 
 - [ ] **Step 3: Route only AC decisions through the resolver**
 
