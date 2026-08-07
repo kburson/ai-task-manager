@@ -301,7 +301,7 @@ export const TIMING_EVENT_BASELINE = Object.freeze({
       "'lifecycle-warn'",
       ['lifecycle-warn']
     ),
-    timingEmitter('scripts/task-tracker/verbs/approve.mjs', 329, 'event-call', "'lifecycle-warn'", [
+    timingEmitter('scripts/task-tracker/verbs/approve.mjs', 351, 'event-call', "'lifecycle-warn'", [
       'lifecycle-warn',
     ]),
     timingEmitter(

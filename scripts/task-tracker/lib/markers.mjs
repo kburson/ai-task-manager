@@ -202,6 +202,17 @@ export function hasReviewApprovedMarker(body) {
   return REVIEW_APPROVED_RE.test(stripFencedCodeBlocks(body));
 }
 
+export function removeReviewApprovedMarker(body) {
+  const src = String(body || '');
+  const masked = maskFencedCodeBlocksPreservingOffsets(src);
+  const match = REVIEW_APPROVED_RE.exec(masked);
+  if (!match) return src;
+  return `${src.slice(0, match.index)}${src.slice(match.index + match[0].length)}`.replace(
+    /\n{3,}/g,
+    '\n\n'
+  );
+}
+
 // Matches a consolidated review-approved marker that carries the full-auto prop.
 const REVIEW_APPROVED_FULL_AUTO_RE =
   /<!--\s*aitm-review-approved\s+[^>]*\bfull-auto="(?:yes|true)"[^>]*-->/i;

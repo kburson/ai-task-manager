@@ -16,6 +16,7 @@ import { projectScratchDir } from '../../../lib/scratch-dir.mjs';
 
 const REVIEW_STARTED = '2026-08-06T05:56:41Z';
 const APPROVED = '2026-08-06T05:58:36Z';
+const STALE_APPROVED = '2026-08-06T05:57:10Z';
 const CLOSE_PAUSE = '2026-08-06T12:50:17Z';
 const CLOSED = '2026-08-06T12:50:44Z';
 const APPROVAL_MARKER = `<!-- aitm-review-approved ts="${APPROVED}" -->`;
@@ -238,7 +239,7 @@ test('runApprove reconciles timing after first approval and on an already-approv
       cfg: { repo: 'o/r' },
       projectDir,
       deps: approveDeps({
-        initialBody: `${baseBody}\n${APPROVAL_MARKER}\n`,
+        initialBody: `${baseBody.replace('- [ ] Final Review Passed', '- [x] Final Review Passed')}\n${APPROVAL_MARKER}\n`,
         reconciliations: retryCalls,
       }),
     });
@@ -248,6 +249,53 @@ test('runApprove reconciles timing after first approval and on an already-approv
     assert.equal(retryCalls.length, 1);
     assert.equal(firstCalls[0].issueBody.includes('aitm-review-approved'), true);
     assert.equal(retryCalls[0].issueBody.includes(APPROVAL_MARKER), true);
+  } finally {
+    rmSync(projectDir, { recursive: true, force: true });
+  }
+});
+
+// @story #1161
+test('runApprove refreshes stale Full-Auto approval carriers after lifecycle invalidation', async () => {
+  const projectDir = mkdtempSync(`${projectScratchDir('test')}/aitm-1161-`);
+  const staleMarker = `<!-- aitm-review-approved ts="${STALE_APPROVED}" full-auto="yes" signals="env=1" -->`;
+  const staleFootnote = [
+    '<!-- aitm-full-auto-footnote:start -->',
+    '> Full-Auto mode enabled.',
+    `> Approval was stamped at ${STALE_APPROVED}.`,
+    '<!-- aitm-full-auto-footnote:end -->',
+  ].join('\n');
+  const body = [
+    '## Definition of Done',
+    '',
+    '### Lifecycle (verified at Review)',
+    '',
+    '- [ ] Final Review Passed',
+    AGENT_REVIEW_PASSED,
+    '',
+    staleFootnote,
+    '',
+    staleMarker,
+    '',
+  ].join('\n');
+  const reconciliations = [];
+  try {
+    const result = await runApprove({
+      issueNumber: 1161,
+      cfg: { repo: 'o/r' },
+      projectDir,
+      deps: approveDeps({ initialBody: body, reconciliations }),
+    });
+
+    assert.equal(result.status, 'approved');
+    assert.equal(reconciliations.length, 1);
+    const refreshed = reconciliations[0].issueBody;
+    assert.match(refreshed, /- \[x\] Final Review Passed/);
+    assert.match(
+      refreshed,
+      new RegExp(`<!-- aitm-review-approved ts="${APPROVED}" full-auto="yes" signals="env=1" -->`)
+    );
+    assert.doesNotMatch(refreshed, new RegExp(STALE_APPROVED));
+    assert.equal((refreshed.match(/aitm-review-approved/g) || []).length, 2);
   } finally {
     rmSync(projectDir, { recursive: true, force: true });
   }

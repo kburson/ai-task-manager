@@ -19,8 +19,10 @@ import { durableWordMarker } from '../state.mjs';
 import {
   buildReviewApprovedMarker,
   hasReviewApprovedMarker,
+  removeReviewApprovedMarker,
   insertReviewApprovedMarker,
   insertFullAutoFootnote,
+  removeFullAutoFootnote,
 } from '../lib/markers.mjs';
 import {
   tickLifecycleItem,
@@ -204,7 +206,13 @@ export async function runApprove({ issueNumber, cfg, projectDir, deps = {}, huma
     { issue: issueNumber, verb: 'approve', projDir: projectDir || getProjectDir() },
     async () => {
       const body = await fetchIssueBody({ issueNumber, repo: cfg.repo });
-      if (hasApprovalMarker(body)) {
+      const approvalState = lifecycleItemState({
+        body,
+        key: 'passed-final-review',
+      });
+      const staleApprovalCarriers =
+        hasApprovalMarker(body) && approvalState.labelFound && !approvalState.alreadyTicked;
+      if (hasApprovalMarker(body) && !staleApprovalCarriers) {
         await reconcileTiming({
           issueNumber,
           repo: cfg.repo,
@@ -277,13 +285,24 @@ export async function runApprove({ issueNumber, cfg, projectDir, deps = {}, huma
       // gate (hasApprovalMarker / state check / drivers derivation); the
       // actual write transform reads its own base.
       const stamp = (base) => {
-        if (hasApprovalMarker(base)) return base;
+        const freshApprovalState = lifecycleItemState({
+          body: base,
+          key: 'passed-final-review',
+        });
+        const freshCarriersAreStale =
+          hasApprovalMarker(base) &&
+          freshApprovalState.labelFound &&
+          !freshApprovalState.alreadyTicked;
+        if (hasApprovalMarker(base) && !freshCarriersAreStale) return base;
+        const approvalBase = freshCarriersAreStale
+          ? removeFullAutoFootnote(removeReviewApprovedMarker(base))
+          : base;
         // #480 — single consolidated marker: the full-auto audit props ride on
         // `aitm-review-approved` itself, replacing the separate hidden
         // `aitm-full-auto-approved` marker. The visible footnote stays as a
         // human-readable audit signal.
         let updated = insertApprovalMarker(
-          base,
+          approvalBase,
           ts,
           auto.fired ? { fullAuto: true, signals: auto.signals } : {}
         );
@@ -296,8 +315,11 @@ export async function runApprove({ issueNumber, cfg, projectDir, deps = {}, huma
       // legacy-DoD warning. This duplicates the early transform but is
       // observability rather than correctness — the closure above is the
       // authoritative write.
+      const diagnosticBase = staleApprovalCarriers
+        ? removeFullAutoFootnote(removeReviewApprovedMarker(body))
+        : body;
       let updated = insertApprovalMarker(
-        body,
+        diagnosticBase,
         ts,
         auto.fired ? { fullAuto: true, signals: auto.signals } : {}
       );

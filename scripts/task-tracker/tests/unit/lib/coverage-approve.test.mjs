@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// @story #618
+// @story #618 #1161
 // Coverage for verbs/approve.mjs (Review→Done human gate). Drives runApprove
 // through its dep seam to hit every result branch offline — arg guards,
 // assertBound, wrong-state, already-approved, the full-auto footnote+auto-notes
@@ -157,7 +157,7 @@ test('runApprove: wrong-state when not in review', async () => {
 });
 
 test('runApprove: already-approved when marker present', async () => {
-  const marked = `${REVIEW_BODY}\n<!-- aitm-review-approved ts="${FIXED_TS}" -->\n`;
+  const marked = `${REVIEW_BODY.replace('- [ ] Passed final human review', '- [x] Passed final human review')}\n<!-- aitm-review-approved ts="${FIXED_TS}" -->\n`;
   const { r, calls } = await run({ initialBody: marked });
   assert.equal(r.status, 'already-approved');
   assert.equal(calls.writes.length, 0);
@@ -398,7 +398,7 @@ test('verbApprove: approved → stdout, no exit', async () => {
 test('verbApprove: already-approved → stdout, no exit', async () => {
   delete process.env.TT_SKIP_NETWORK;
   const n = nextIssue();
-  const marked = `${REVIEW_BODY}\n<!-- aitm-review-approved ts="${FIXED_TS}" -->\n`;
+  const marked = `${REVIEW_BODY.replace('- [ ] Passed final human review', '- [x] Passed final human review')}\n<!-- aitm-review-approved ts="${FIXED_TS}" -->\n`;
   const r = await runVerb([String(n)], { ...okVerbDeps, fetchIssueBody: async () => marked });
   assert.equal(r.exitCode, null);
   assert.match(r.stdout, /already has a review-approval marker/);
