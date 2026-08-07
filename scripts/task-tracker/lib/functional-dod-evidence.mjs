@@ -29,7 +29,11 @@ import {
   upsertProofMarker,
 } from './proof-marker.mjs';
 import { parseVerificationCommands } from './verification-commands.mjs';
-import { auditEvidenceMarkers, insertVerificationCommands } from './evidence-markers.mjs';
+import {
+  auditEvidenceMarkers,
+  insertVerificationCommands,
+  projectEvidenceChecklist,
+} from './evidence-markers.mjs';
 
 export const KEY_CLASSIFICATION = Object.freeze({
   tests: 'stampable',
@@ -133,6 +137,51 @@ function parseFunctionalEvidence(text, key) {
     }
   }
   return parseEvidence(src);
+}
+
+function deepFreeze(value) {
+  if (value === null || typeof value !== 'object' || Object.isFrozen(value)) return value;
+  for (const child of Object.values(value)) deepFreeze(child);
+  return Object.freeze(value);
+}
+
+export function projectFunctionalDodEvidence(contractSource) {
+  const evidence = projectEvidenceChecklist(contractSource);
+  const items = evidence.functionalDodItems.map((item) => {
+    const candidate = /^dod-([a-z0-9-]+)$/.exec(item.logicalId)?.[1] ?? null;
+    const key = candidate && candidate in KEY_CLASSIFICATION ? candidate : null;
+    return {
+      logicalId: item.logicalId,
+      key,
+      checked: item.checked,
+      label: item.label,
+      declaration: item.declaration,
+      evidenceCommands: [...item.evidenceCommands],
+      evidenceMarker: parseFunctionalEvidence(item.declaration, candidate ?? item.logicalId),
+      classification: key === null ? null : KEY_CLASSIFICATION[key],
+    };
+  });
+  return deepFreeze({
+    sourceKind: evidence.sourceKind,
+    items,
+    acceptedRecordIds: [...evidence.acceptedRecordIds],
+    authority: evidence.authority,
+  });
+}
+
+export async function resolveFunctionalDodEvidence({
+  repository,
+  issue,
+  issueBody,
+  graphql,
+  readContractRecord,
+  deps = {},
+} = {}) {
+  const resolve =
+    deps.resolveContractSource ||
+    (await import('./github-records/contract-source.mjs')).resolveContractSource;
+  const source = await resolve({ repository, issue, issueBody, graphql, readContractRecord });
+  return projectFunctionalDodEvidence(source);
 }
 
 // Parse every `dod:functional:KEY`-keyed checkbox in the Functional subsection.

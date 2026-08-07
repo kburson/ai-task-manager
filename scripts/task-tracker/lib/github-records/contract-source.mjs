@@ -44,6 +44,7 @@ function legacyDodItems(issueBody) {
     const checkbox = /^- \[([ x])\]\s+(.+)$/.exec(lines[index]);
     if (!checkbox) continue;
     const key = /<!--\s*dod:functional:([a-z0-9-]+)\s*-->/i.exec(checkbox[2])?.[1];
+    const declaration = checkbox[2];
     const baseId = key ? `dod-${key.toLowerCase()}` : `dod-${items.length + 1}`;
     let logicalId = baseId;
     let suffix = 2;
@@ -51,7 +52,8 @@ function legacyDodItems(issueBody) {
     used.add(logicalId);
     items.push({
       logicalId,
-      text: cleanText(checkbox[2]),
+      text: cleanText(declaration),
+      declaration,
       checked: checkbox[1] === 'x',
     });
   }
@@ -125,9 +127,10 @@ function githubContract(contract) {
       command,
       checked: checked('verificationCommands', logicalId),
     })),
-    definitionOfDone: contract.definitionOfDone.map(({ logicalId, text }) => ({
+    definitionOfDone: contract.definitionOfDone.map(({ logicalId, text: declaration }) => ({
       logicalId,
-      text,
+      text: cleanText(declaration),
+      declaration,
       checked: checked('definitionOfDone', logicalId),
     })),
     acceptedRecordIds: [...contract.acceptedRecordIds],
