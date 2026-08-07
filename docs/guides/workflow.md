@@ -16,7 +16,7 @@ Stage names are nouns describing a process; the corresponding activity is a verb
 | Ready for Planning                 | Planning readiness | —             | R4P                         | Durable parking queue for stories with a current refinement snapshot. Rank and dependencies determine JIT pull order; ownership remains orthogonal. |
 | Plan                               | Planning           | plan          | —                           | Team performs a deep-dive on the story to determine a plan of action: enhanced ACs, refined estimate.                                               |
 | Develop                            | Development        | develop       | In Progress                 | Code changes are made and committed against the story, including test automation.                                                                   |
-| Test                               | Testing            | verify        | Verify, QA                  | Committed source is run against all ACs and test automation in a sandboxed environment.                                                             |
+| Test                               | Testing            | test          | Verify, QA                  | Committed source is run against all ACs and test automation in a sandboxed environment.                                                             |
 | Review                             | Review             | review        | Ready for Acceptance        | Story waits for product owner to review functionality in a live demo and confirm all ACs (functional + non-functional) are met.                     |
 | Done                               | Done               | —             | Complete, Ready for Release | All ACs and Definition of Done are satisfied.                                                                                                       |
 
@@ -35,7 +35,7 @@ These rules tell you which spelling to use when introducing new code, markers, o
 | Comment marker (action taken)   | Past-tense verb                                 | `aitm-refined-estimate`                             |
 | Module constant (process)       | Noun                                            | `REFINEMENT_HEADER`                                 |
 | Function name (action)          | Verb                                            | `applyRefinementEstimate`, `planRefinementEstimate` |
-| CLI verb (`/task ...`)          | Verb                                            | `/task refine`, `/task discover`, `/task verify`    |
+| CLI verb (`/task ...`)          | Verb                                            | `/task refine`, `/task discover`, `/task test`      |
 
 Backward-compat read paths accept the legacy `aitm-groom-*` forms; write paths emit only the new forms.
 
@@ -47,7 +47,7 @@ Backward-compat read paths accept the legacy `aitm-groom-*` forms; write paths e
 | `/task discover`   | (pre-backlog ideation) | Opens an untracked discovery bucket for backlog item generation / pre-issue ideation; promote to an issue with `/task new <title>`. **Distinct from Sprint-Planning** — that is `/task plan`. |
 | `/task plan #N`    | Plan (Sprint-Planning) | Promotes Ready for Planning → Plan for JIT deep-dive, child breakdown, and estimate refresh. Refuses on any other state. **Not for backlog item generation** — use `/task discover` for that. |
 | `/task develop #N` | Develop                | (Reserved; currently use `/task promote` from Plan after `/task plan-approve`.)                                                                                                               |
-| `/task verify #N`  | Test                   | Runs sandboxed verification of all ACs and test automation; stamps `aitm-dod-verified` marker. (To be built per epic #107.)                                                                   |
+| `/task test #N`    | Test                   | Finalizes Develop lint/format evidence, then runs Test-owned verification commands in an isolated worktree; stamps `aitm-dod-verified` marker on success.                                     |
 | `/task review #N`  | Review                 | Promotes Test → Review after verification passes; in Review, `--probe "command"` records focused evidence without rerunning standard commands.                                                |
 | `/task approve #N` | (gate stamp)           | Stamps the human-approval marker for the current gate (plan→develop or review→done).                                                                                                          |
 | `/task close #N`   | Done                   | Closes the issue and moves Review → Done.                                                                                                                                                     |
