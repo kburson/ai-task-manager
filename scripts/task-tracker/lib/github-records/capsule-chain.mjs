@@ -19,6 +19,10 @@ const CAPSULE_TYPES = new Set([
   'repair-result',
 ]);
 
+export function isCapsuleRecordType(value) {
+  return typeof value === 'string' && CAPSULE_TYPES.has(value);
+}
+
 function chainError(category) {
   return new TypeError(`capsule-chain:${category}`);
 }

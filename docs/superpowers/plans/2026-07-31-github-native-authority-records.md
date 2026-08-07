@@ -312,26 +312,83 @@ GitHub comment store.
 
 ### Task 11: Test, Review, Approval, and Close Gate Migration
 
+Task 11 is delivered as three sequential, independently reviewed stories so the
+record interpretation boundary does not share a commit with four lifecycle
+policies. The tracked order is `#1083` → `#1143` → `#1144`. Task 12 starts only
+after `#1144` is integrated.
+
+#### Task 11.1: Accepted lifecycle evidence source (#1083)
+
+**Files:**
+
+- Create: `scripts/task-tracker/lib/github-records/lifecycle-gate-source.mjs`
+- Modify: `scripts/task-tracker/lib/github-records/capsule-chain.mjs`
+- Create: `scripts/task-tracker/tests/unit/lib/github-records/lifecycle-gate-source.test.mjs`
+
+**Interfaces:**
+
+- Produces: `resolveLifecycleGateEvidence({ repository, issue, issueBody,
+expectedSha, graphql, readContractRecord, deps })` and the pure
+  `projectLifecycleGateEvidence(...)` seam.
+- Returns one deeply frozen shape for both source kinds: `sourceKind`,
+  `expectedSha`, `evidence`, `acceptedRecordIds`, and `authority`. The legacy
+  lane has empty accepted-record collections and `authority: null`; consumer
+  stories continue to apply the existing body policy in that lane.
+- Directory evidence uses exact `aitm.lifecycle-evidence/v1` payloads with
+  `evidenceKind`, `result`, `contractEpoch`, `commitSha`, and `provenance`.
+  Supported tuples are Test/passed/agent, Review/passed/agent, and
+  Approval/approved/human-or-Full-Auto. The record type, contract epoch, exact
+  SHA, coordinator grant, and authority epoch must all agree.
+- Accepted record IDs that are missing, superseded, malformed, stale, or
+  unavailable fail closed. Non-capsule records are excluded before capsule-chain
+  validation.
+
+- [ ] Characterize equivalent immutable output shapes for legacy and directory
+      sources.
+- [ ] Validate accepted exact-SHA evidence and explicit approval provenance.
+- [ ] Reject stale epochs, stale authority, superseded records, and unavailable
+      record storage.
+- [ ] Obtain two exact-SHA reviews before integration.
+
+#### Task 11.2: Test and Review consumers (#1143)
+
 **Files:**
 
 - Modify: `scripts/task-tracker/verbs/test.mjs`
 - Modify: `scripts/task-tracker/verbs/review.mjs`
-- Modify: `scripts/task-tracker/verbs/approve.mjs`
-- Modify: `scripts/task-tracker/verbs/close.mjs`
 - Modify: `scripts/task-tracker/lib/review-preflight.mjs`
-- Modify: `scripts/task-tracker/lib/close-gates.mjs`
-- Create: `scripts/task-tracker/tests/integration/verbs/github-record-lifecycle-gates.test.mjs`
+- Create: `scripts/task-tracker/tests/integration/verbs/github-record-test-review-gates.test.mjs`
 
 **Interfaces:**
 
-- Consumes: normalized contract, accepted evidence, active authority, and
-  lifecycle-transition records.
+- Consumes: the #1083 lifecycle evidence source at the current HEAD.
+- Preserves the legacy marker/receipt lane without allowing directory bodies or
+  visible checkboxes to satisfy directory-governed gates.
 
-- [ ] Add paired legacy/comment tests for Test, Review, approval, demotion, and
-      close gates.
-- [ ] Require exact contract epoch and verified SHA in accepted evidence.
-- [ ] Preserve human versus Full-Auto approval provenance.
-- [ ] Prove stale visible checkboxes and old-epoch approval cannot satisfy gates.
+- [ ] Add paired legacy/directory Test and Review cases.
+- [ ] Require current-contract, exact-SHA, accepted evidence under active
+      coordinator authority.
+- [ ] Prove stale checkbox, epoch, SHA, and authority inputs fail closed.
+- [ ] Obtain two exact-SHA reviews before integration.
+
+#### Task 11.3: Approval and close consumers (#1144)
+
+**Files:**
+
+- Modify: `scripts/task-tracker/verbs/approve.mjs`
+- Modify: `scripts/task-tracker/verbs/close.mjs`
+- Modify: `scripts/task-tracker/lib/close-gate.mjs`
+- Create: `scripts/task-tracker/tests/integration/verbs/github-record-approval-close-gates.test.mjs`
+
+**Interfaces:**
+
+- Consumes: the #1083 source after #1143 establishes Test/Review evidence.
+- Keeps human and Full-Auto approval provenance explicit and non-interchangeable.
+
+- [ ] Add paired legacy/directory approval and close cases.
+- [ ] Reject old Review proof, old-epoch approval, manual checkboxes, wrong-SHA
+      evidence, and stale authority.
+- [ ] Preserve the Full-Auto audit footnote and human approval override semantics.
 - [ ] Obtain two exact-SHA reviews before integration.
 
 ### Task 12: Checklist, Evidence, and Contract Projection Writes
