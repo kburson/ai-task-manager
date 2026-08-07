@@ -550,7 +550,7 @@ async function ghExec(args, { timeoutMs = GH_TIMING_COMMENT_TIMEOUT_MS } = {}) {
 }
 
 export async function findTimingComment(issueNumber, repo, { timeoutMs } = {}) {
-  const num = issueNumber.replace('#', '');
+  const num = String(issueNumber).replace('#', '');
   const out = await ghExec(['issue', 'view', num, '-R', repo, '--json', 'comments'], { timeoutMs });
   const { comments } = JSON.parse(out);
   const hit = comments.find((c) => c.body.includes(TIMING_HEADING));
@@ -558,7 +558,7 @@ export async function findTimingComment(issueNumber, repo, { timeoutMs } = {}) {
 }
 
 async function createTimingComment(issueNumber, repo, body, { timeoutMs } = {}) {
-  const num = issueNumber.replace('#', '');
+  const num = String(issueNumber).replace('#', '');
   const out = await ghExec(['issue', 'comment', num, '-R', repo, '--body', body], { timeoutMs });
   return out.trim(); // URL of new comment
 }
