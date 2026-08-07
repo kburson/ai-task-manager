@@ -118,6 +118,8 @@ flowchart LR
 3. [Agentic Development Process](./agentic-development-process.md) shows how specs become backlogs, how epics fan out to workers, and how Pickup Directives make issues restartable.
 4. [Measurement and ROI](./measurement-and-roi.md) explains time tracking, context-word accounting, estimates, actuals, and the value report.
 5. [Adoption Guide](./adoption-guide.md) gives a pragmatic rollout path for solo developers, small teams, and organizations.
+6. [Solving the Bus Number Problem](./bus-factor-executive-brief.md) is a non-technical executive brief on how AI Task Manager makes the loss of a key engineer a survivable event.
+7. [Context Management and Skill Architecture](./context-management-skill-architecture.md) explains how the installed skill keeps agent context small and workflow rules fresh via tiered, just-in-time loading.
 
 ## Positioning
 
