@@ -51,9 +51,10 @@ export function ceilingMsForLane(lane, env = process.env) {
  * @param {string} args.lane            - the run-lane that executed
  * @param {number} args.elapsedMs       - measured wall time of the section
  * @param {Record<string,string|undefined>} [args.env]
+ * @param {string} [args.section]          - optional named phase for diagnostics
  * @returns {{breached: boolean, exempt: boolean, ceilingMs: number|null, elapsedMs: number, message?: string}}
  */
-export function evaluateCeiling({ lane, elapsedMs, env = process.env }) {
+export function evaluateCeiling({ lane, elapsedMs, env = process.env, section }) {
   const ceilingMs = ceilingMsForLane(lane, env);
   if (ceilingMs === null) {
     return { breached: false, exempt: true, ceilingMs: null, elapsedMs };
@@ -61,10 +62,60 @@ export function evaluateCeiling({ lane, elapsedMs, env = process.env }) {
   const breached = elapsedMs > ceilingMs;
   const result = { breached, exempt: false, ceilingMs, elapsedMs };
   if (breached) {
+    const subject = section ? `lane '${lane}' section '${section}'` : `lane '${lane}'`;
     result.message =
-      `run-tests: lane '${lane}' ran ${(elapsedMs / 1000).toFixed(1)}s, over the ` +
+      `run-tests: ${subject} ran ${(elapsedMs / 1000).toFixed(1)}s, over the ` +
       `${(ceilingMs / 1000).toFixed(0)}s section ceiling (fail-closed). Split the ` +
       `section (see #945) — do not relax the ceiling.`;
   }
   return result;
+}
+
+/**
+ * Evaluate each non-empty execution phase against the lane's unchanged ceiling.
+ * The aggregate duration remains observational and never becomes an additional
+ * fail-closed boundary.
+ *
+ * @param {object} args
+ * @param {string} args.lane
+ * @param {{name:string,elapsedMs:number,count:number}[]} args.sections
+ * @param {Record<string,string|undefined>} [args.env]
+ */
+export function evaluateSections({ lane, sections, env = process.env }) {
+  if (!Array.isArray(sections)) throw new TypeError('sections must be an array');
+  const nonEmpty = sections.filter((entry) => Number(entry?.count) > 0);
+  const verdicts = nonEmpty.map((entry) => {
+    const name = String(entry?.name || '').trim();
+    const elapsedMs = Number(entry?.elapsedMs);
+    const count = Number(entry?.count);
+    if (!name) throw new TypeError('section name is required');
+    if (!Number.isFinite(elapsedMs) || elapsedMs < 0) {
+      throw new TypeError(`section '${name}' elapsedMs must be a non-negative number`);
+    }
+    return {
+      name,
+      count,
+      ...evaluateCeiling({ lane, elapsedMs, env, section: name }),
+    };
+  });
+  return {
+    lane,
+    sections: verdicts,
+    totalElapsedMs: verdicts.reduce((sum, entry) => sum + entry.elapsedMs, 0),
+    breached: verdicts.some((entry) => entry.breached),
+  };
+}
+
+/** Render the bounded phase timings while keeping the aggregate observational. */
+export function formatSectionSummary(result) {
+  const details = result.sections.map((entry) => {
+    const budget = entry.exempt ? 'exempt' : `${(entry.ceilingMs / 1000).toFixed(0)}s`;
+    return (
+      `${entry.name}=${(entry.elapsedMs / 1000).toFixed(1)}s/${budget} ` + `(${entry.count} files)`
+    );
+  });
+  return (
+    `run-tests: lane '${result.lane}' bounded sections: ${details.join('; ')}; ` +
+    `aggregate=${(result.totalElapsedMs / 1000).toFixed(1)}s`
+  );
 }
