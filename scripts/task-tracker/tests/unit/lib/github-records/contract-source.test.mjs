@@ -3,6 +3,7 @@ import { strict as assert } from 'node:assert';
 import test from 'node:test';
 
 import { parseAcceptanceCriteria } from '../../../../lib/code-complete-gate.mjs';
+import { validateBodyWithContractSource } from '../../../../lib/body-gates.mjs';
 import {
   createDraftContract,
   renderDeliveryContract,
@@ -299,4 +300,93 @@ test('legacy compatibility IDs and ordering are deterministic', async () => {
   assert.deepEqual(first.contract.definitionOfDone, [
     { logicalId: 'dod-tests', text: 'Automated tests pass', checked: true },
   ]);
+});
+
+test('body-gate adapter makes equivalent legacy and directory VC decisions', async () => {
+  const uncheckedLegacyBody = legacyBody.replace('- [x] `npm test`', '- [ ] `npm test`');
+  const checkedLegacy = await validateBodyWithContractSource({
+    repository,
+    issue,
+    issueBody: legacyBody,
+  });
+  const checkedDirectory = await validateBodyWithContractSource({
+    repository,
+    issue,
+    issueBody: directoryBody(),
+    readContractRecord: async () => contractRecord(),
+  });
+  const uncheckedLegacy = await validateBodyWithContractSource({
+    repository,
+    issue,
+    issueBody: uncheckedLegacyBody,
+  });
+  const uncheckedDirectory = await validateBodyWithContractSource({
+    repository,
+    issue,
+    issueBody: directoryBody(),
+    readContractRecord: async () =>
+      contractRecord({
+        contract: deliveryContract({
+          lifecycleProjection: {
+            acceptanceCriteria: { 'ac-1': true },
+            verificationCommands: { 'vc-1': false },
+            definitionOfDone: { 'dod-tests': true },
+          },
+        }),
+      }),
+  });
+
+  assert.deepEqual(checkedLegacy, { ok: true });
+  assert.deepEqual(checkedDirectory, checkedLegacy);
+  assert.equal(uncheckedLegacy.ok, false);
+  assert.equal(uncheckedDirectory.ok, false);
+  assert.deepEqual(
+    uncheckedDirectory.refusedRules.map(({ rule }) => rule),
+    uncheckedLegacy.refusedRules.map(({ rule }) => rule)
+  );
+});
+
+test('body-gate adapter resolves once and refuses directory failures without body fallback', async () => {
+  let resolveCalls = 0;
+  const unavailable = await validateBodyWithContractSource({
+    repository,
+    issue,
+    issueBody: directoryBody(),
+    deps: {
+      resolveContractSource: async () => {
+        resolveCalls += 1;
+        throw new Error('contract-source:unavailable');
+      },
+    },
+  });
+
+  assert.equal(resolveCalls, 1);
+  assert.deepEqual(unavailable, {
+    ok: false,
+    refusedRules: [
+      {
+        rule: 'verification-commands',
+        reason: 'contract-source-failed: contract-source:unavailable',
+      },
+    ],
+  });
+
+  const projectionMismatch = await validateBodyWithContractSource({
+    repository,
+    issue,
+    issueBody: directoryBody(),
+    readContractRecord: async () => ({
+      ...contractRecord(),
+      body: contractRecord().body.replaceAll('Users can sign in.', 'Projection drift.'),
+    }),
+  });
+  assert.deepEqual(projectionMismatch, {
+    ok: false,
+    refusedRules: [
+      {
+        rule: 'verification-commands',
+        reason: 'contract-source-failed: contract-source:projection',
+      },
+    ],
+  });
 });
