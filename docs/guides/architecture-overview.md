@@ -7,6 +7,12 @@
 > dev/test/support material**. It is a hub that points at the load-bearing code,
 > not a restatement of it.
 
+For the narrative rationale — why this package takes the script-backed-skill
+approach and where it sits on the spectrum of Claude-skill architectures — see
+[architecture.md](architecture.md). That doc covers the same command-dispatch
+and state-machine ground as §2–3 below at a higher level; this file is the
+terse, code-pointing version.
+
 ## 1. Skill loading — the three-tier model
 
 The skill is delivered to a Claude session in tiers, loaded lazily so a session
