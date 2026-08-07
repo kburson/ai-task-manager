@@ -905,6 +905,8 @@ export async function issueAttributedDiffEvidence({ projectDir, issueNumber } = 
   if (!projectDir || !Number.isInteger(issueNumber) || issueNumber <= 0) {
     fail('issue-diff-input');
   }
+  const { stdout: head } = await pexec('git', ['rev-parse', 'HEAD'], { cwd: projectDir });
+  const verificationSha = head.trim();
   const token = `[#${issueNumber}]`;
   const { stdout: log } = await pexec(
     'git',
@@ -948,6 +950,7 @@ export async function issueAttributedDiffEvidence({ projectDir, issueNumber } = 
   lanes.push('sandbox');
   return {
     commitSha: commits[0].sha,
+    verificationSha,
     filesChanged: paths.length,
     modules,
     lanes,
@@ -1076,7 +1079,7 @@ export function createEstimationOutcomeRuntime({ cfg, projectDir, deps = {} } = 
           ? { expectedIssue: issueNumber }
           : {
               expectedIssue: issueNumber,
-              expectedFinalSha: diff.commitSha,
+              expectedFinalSha: diff.verificationSha ?? diff.commitSha,
             }
       );
       const outcomePayload = buildEstimationOutcome({

@@ -1,4 +1,5 @@
 // @story #1091
+// @story #1160
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
@@ -361,7 +362,8 @@ test('default close runtime builds and read-backs the frozen forecast outcome be
         ].join('\n'),
       }),
       readDiffEvidence: async () => ({
-        commitSha: verification.fingerprint.commitSha,
+        commitSha: 'd'.repeat(40),
+        verificationSha: verification.fingerprint.commitSha,
         filesChanged: 7,
         modules: ['estimation'],
         lanes: ['unit', 'integration'],

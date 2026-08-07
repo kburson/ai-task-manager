@@ -1,4 +1,5 @@
 // @story #1129
+// @story #1160
 
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
@@ -49,7 +50,7 @@ test('issue-attributed diff excludes epic, similarly numbered, and later sibling
     'two\n',
     '[#1129] second change'
   );
-  commitFile(repo, 'docs/later.md', 'later\n', '[#1130] later sibling');
+  const verificationSha = commitFile(repo, 'docs/later.md', 'later\n', '[#1130] later sibling');
 
   const evidence = await outcomeRuntime.issueAttributedDiffEvidence({
     projectDir: repo,
@@ -58,6 +59,7 @@ test('issue-attributed diff excludes epic, similarly numbered, and later sibling
 
   assert.deepEqual(evidence, {
     commitSha: finalIssueSha,
+    verificationSha,
     filesChanged: 2,
     modules: ['scripts/task-tracker'],
     lanes: ['unit', 'sandbox'],
