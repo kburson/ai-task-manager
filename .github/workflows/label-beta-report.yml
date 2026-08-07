@@ -48,6 +48,9 @@ jobs:
             const { reconcileIssueTitle } = await import(
               `${process.env.GITHUB_WORKSPACE}/scripts/task-tracker/lib/beta-report-title-reconcile.mjs`
             );
+            const { planEpicMetadata } = await import(
+              `${process.env.GITHUB_WORKSPACE}/scripts/gh/lib/epic-metadata.mjs`
+            );
             const { normalizeWebDefectIssue } = await import(
               `${process.env.GITHUB_WORKSPACE}/scripts/task-tracker/lib/defect-web-intake.mjs`
             );
@@ -84,10 +87,27 @@ jobs:
               core.info('No beta-report marker in body; nothing to label.');
             }
 
-            // --- Step 2: reconcile the canonical title prefix against labels. ---
-            // Re-read labels: the addLabels call above may have just changed them.
-            const effectiveLabels = [...new Set(labelNames().concat(want ? [want.label] : []))];
-            const desired = reconcileIssueTitle(title, effectiveLabels);
+            // --- Step 2: converge Epic label/title metadata, then other kind prefixes. ---
+            const forceEpic = body.includes('aitm-issue-kind kind="epic"');
+            const epicPlan = planEpicMetadata({ title, labels: labelNames(), body, forceEpic });
+            if (epicPlan.labelsToAdd.length > 0) {
+              await github.rest.issues.addLabels({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issue.number,
+                labels: epicPlan.labelsToAdd,
+              });
+              core.info(`Restored Epic label on #${issue.number}.`);
+            }
+            // Re-read labels: either addLabels call above may have changed them.
+            const effectiveLabels = [
+              ...new Set(
+                labelNames().concat(want ? [want.label] : []).concat(epicPlan.labelsToAdd)
+              ),
+            ];
+            const desired = epicPlan.isEpic
+              ? planEpicMetadata({ title, labels: effectiveLabels, body, forceEpic }).desiredTitle
+              : reconcileIssueTitle(title, effectiveLabels);
             const normalized = await normalizeWebDefectIssue({
               issue: { ...issue, labels: effectiveLabels },
               projectDir: process.env.GITHUB_WORKSPACE,

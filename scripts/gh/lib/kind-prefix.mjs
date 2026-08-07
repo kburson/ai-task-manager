@@ -13,19 +13,21 @@
 
 export const BUG_EMOJI = '🐞';
 
+// Epic-ness is dynamic (an issue becomes an epic when it gains its first child),
+// but the durable `epic` label is also a canonical title-prefix signal (#1130).
+// It leads the map so an Epic prefix wins when an issue retains a secondary
+// kind label such as `bug`.
+export const EPIC_PREFIX = '🧑‍🧒‍🧒 [Epic] ';
+
 // Label → title prefix. Order of keys is the precedence used when an issue
 // carries more than one kind label (first match wins).
 export const KIND_PREFIXES = {
+  epic: EPIC_PREFIX,
   bug: '🐞 [BUG] ',
   'beta-defect': '🐞 [Defect] ',
   'beta-feature': '🙏 [Feature Request] ',
   idea: '🤓 [Idea] ',
 };
-
-// Epic-ness is dynamic (an issue becomes an epic when it gains its first child),
-// so this prefix is applied on first sub-issue link, not from a label. Replaces
-// the legacy `EPIC: ` text convention.
-export const EPIC_PREFIX = '🧑‍🧒‍🧒 [Epic] ';
 
 // Legacy prefixes we strip so a migrating title never carries two markers: the
 // pre-#545 bare bug emoji (`🐞 `) and the `EPIC: ` text convention.
@@ -34,7 +36,7 @@ const LEGACY_PREFIXES = [`${BUG_EMOJI} `, 'EPIC: '];
 // Every prefix we recognize for stripping, longest-first so a longer prefix is
 // matched before a shorter one that is its own substring (e.g. `🐞 [BUG] `
 // before the legacy bare `🐞 `).
-const KNOWN_PREFIXES = [...Object.values(KIND_PREFIXES), EPIC_PREFIX, ...LEGACY_PREFIXES].sort(
+const KNOWN_PREFIXES = [...new Set([...Object.values(KIND_PREFIXES), ...LEGACY_PREFIXES])].sort(
   (a, b) => b.length - a.length
 );
 

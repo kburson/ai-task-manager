@@ -137,7 +137,14 @@ async function addIssueToProject({ cfg, issueId, runGql }) {
   return data.addProjectV2ItemById.item.id;
 }
 
-async function linkSubIssue({ parentId, childId, runGql }) {
+async function linkSubIssue({
+  parentId,
+  parentIssueNumber,
+  childId,
+  repo,
+  runGql,
+  reconcileEpicMetadata,
+}) {
   await runGql(
     `
     mutation($parent: ID!, $child: ID!) {
@@ -148,8 +155,14 @@ async function linkSubIssue({ parentId, childId, runGql }) {
     }`,
     { parent: parentId, child: childId }
   );
-  // #545 — the parent now has a child: stamp the epic title prefix (idempotent).
-  await ensureParentEpicTitle({ parentId, runGql });
+  // #545/#1130 — the parent now has a child: converge all Epic metadata.
+  await ensureParentEpicTitle({
+    parentId,
+    issueNumber: parentIssueNumber,
+    repo,
+    runGql,
+    reconcileEpicMetadata,
+  });
 }
 
 async function writeField({ cfg, itemId, fieldId, value, runGql }) {
@@ -311,6 +324,7 @@ export async function tetherIssueToProject({
   maxAttempts = DEFAULT_MAX_ATTEMPTS,
   retryDelayMs = DEFAULT_RETRY_DELAY_MS,
   runGql = defaultRunGql,
+  reconcileEpicMetadata,
   sleep: sleepFn = sleep,
 } = {}) {
   if (!cfg?.repo) throw new Error('repo not configured');
@@ -351,7 +365,14 @@ export async function tetherIssueToProject({
       });
       if (parentIssueNumber) {
         const parent = await fetchIssue({ cfg, issueNumber: parentIssueNumber, runGql });
-        await linkSubIssue({ parentId: parent.issue.id, childId: issue.id, runGql });
+        await linkSubIssue({
+          parentId: parent.issue.id,
+          parentIssueNumber,
+          childId: issue.id,
+          repo: cfg.repo,
+          runGql,
+          reconcileEpicMetadata,
+        });
       }
       return {
         issueId: issue.id,
@@ -378,7 +399,14 @@ export async function tetherIssueToProject({
       });
       if (parentIssueNumber) {
         const parent = await fetchIssue({ cfg, issueNumber: parentIssueNumber, runGql });
-        await linkSubIssue({ parentId: parent.issue.id, childId: issue.id, runGql });
+        await linkSubIssue({
+          parentId: parent.issue.id,
+          parentIssueNumber,
+          childId: issue.id,
+          repo: cfg.repo,
+          runGql,
+          reconcileEpicMetadata,
+        });
       }
       return {
         issueId: issue.id,

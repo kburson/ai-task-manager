@@ -303,11 +303,16 @@ async function testRetryExhaustionMentionsProjectSideVerification() {
 
 async function testParentLinksAfterProjectVerification() {
   const { runGql, calls } = makeRunner({ projectItemOnAttempt: 1 });
+  const reconciliations = [];
   await tetherIssueToProject({
     cfg,
     issueNumber: 16,
     parentIssueNumber: 99,
     runGql,
+    reconcileEpicMetadata: async (input) => {
+      reconciliations.push(input);
+      return { status: 'reconciled' };
+    },
     sleep: async () => {},
   });
 
@@ -317,6 +322,10 @@ async function testParentLinksAfterProjectVerification() {
   const subIssueIndex = calls.findIndex((c) => c.query.includes('addSubIssue'));
   const projectVerifyIndex = calls.findIndex((c) => c.query.includes('... on ProjectV2'));
   assert.ok(subIssueIndex > projectVerifyIndex);
+  assert.deepEqual(
+    reconciliations.map(({ issueNumber, repo, forceEpic }) => ({ issueNumber, repo, forceEpic })),
+    [{ issueNumber: 99, repo: cfg.repo, forceEpic: true }]
+  );
 }
 
 async function testLooseLeafDoesNotLinkParent() {

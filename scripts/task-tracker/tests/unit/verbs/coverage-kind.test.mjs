@@ -147,4 +147,23 @@ test('happy path: one-arg active-bind form + code kind → clears marker', async
   assert.equal(r.exitCode, null);
 });
 
+test('epic kind delegates all carriers to the shared metadata reconciler', async () => {
+  const calls = [];
+  const r = await runVerb(
+    baseCtx({
+      rest: ['#42', 'epic'],
+      pexec: makePexec('# Issue 42\n'),
+      reconcileEpicMetadata: async (input) => {
+        calls.push(input);
+        return { status: 'reconciled' };
+      },
+    })
+  );
+  assert.equal(r.exitCode, null);
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0].issueNumber, 42);
+  assert.equal(calls[0].repo, 'o/r');
+  assert.equal(calls[0].forceEpic, true);
+});
+
 console.log('coverage-kind.test.mjs: defined');

@@ -318,9 +318,14 @@ async function main() {
     }
   }
 
-  // #545 — the parent now has children: stamp the epic title prefix (idempotent).
+  // #545/#1130 — the parent now has children: converge all Epic metadata.
   if (result.solos.length > 0) {
-    await ensureParentEpicTitle({ parentId, runGql: gql });
+    await ensureParentEpicTitle({
+      parentId,
+      issueNumber: parentNumber,
+      repo: cfg.repo,
+      runGql: gql,
+    });
   }
 
   if (process.env.TT_SKIP_NETWORK !== '1') {

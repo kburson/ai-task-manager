@@ -98,6 +98,14 @@ describe('#497 auto-label Action', () => {
     assert.match(script, /issues\.update/);
   });
 
+  it('repairs Epic label and title metadata from the durable issue-kind marker', () => {
+    assert.match(script, /epic-metadata\.mjs/);
+    assert.match(script, /planEpicMetadata/);
+    assert.match(script, /forceEpic/);
+    assert.match(script, /labelsToAdd/);
+    assert.match(script, /aitm-issue-kind/);
+  });
+
   it('passes the live effective labels to the pure reconciler — AC3', () => {
     assert.match(script, /reconcileIssueTitle\(title, effectiveLabels\)/);
     assert.doesNotMatch(script, /wantEmoji/);

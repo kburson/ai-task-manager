@@ -9,6 +9,11 @@ import {
 } from '../../../lib/beta-report-title-reconcile.mjs';
 
 test('label-driven reconciliation uses every canonical kind prefix', () => {
+  assert.equal(reconcileIssueTitle('Program delivery', ['epic']), '🧑‍🧒‍🧒 [Epic] Program delivery');
+  assert.equal(
+    reconcileIssueTitle('🐞 [BUG] Program delivery', ['bug', 'epic']),
+    '🧑‍🧒‍🧒 [Epic] Program delivery'
+  );
   assert.equal(reconcileIssueTitle('Crash on save', ['bug']), '🐞 [BUG] Crash on save');
   assert.equal(reconcileIssueTitle('Crash on save', ['beta-defect']), '🐞 [Defect] Crash on save');
   assert.equal(
