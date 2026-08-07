@@ -551,7 +551,7 @@ scripts/task-tracker/
 ├── states/                        # 9 files — one per kanban state plus the index:
 │   ├── index.mjs                  #   STATES map, FORWARD_CHAIN, Guard/Action contract docs
 │   ├── backlog.mjs
-│   ├── assigned.mjs
+│   ├── ready-for-plan.mjs
 │   ├── refine.mjs
 │   ├── plan.mjs
 │   ├── develop.mjs                #   worked example in State Machine section above
@@ -570,13 +570,17 @@ scripts/gh/
 └── ...
 
 scripts/reports/
-├── generate-value-report.mjs      # (existing, unchanged)
-└── value-report-config.json       # (existing, unchanged)
+├── generate-value-report.mjs      # Value/ROI report generator
+├── heal-backlog-attribution.mjs   # Maintenance: repair `[#N]` attribution across the backlog
+├── value-report-config.json       # Report configuration
+├── lib/                           # Report helpers
+└── tests/                         # Report test suites
 ```
 
-> This tree reflects the original v1 design. `scripts/reports/tally-chat-words.mjs`
-> (the "thin wrapper" described below) has since been deleted entirely — its logic
-> now lives solely in `scripts/task-tracker/word-counter.mjs`.
+> The v1 design routed word counting through a thin
+> `scripts/reports/tally-chat-words.mjs` wrapper. That file has since been deleted
+> entirely — its logic now lives solely in
+> `scripts/task-tracker/word-counter.mjs`.
 
 ## Migration from Current Setup
 
