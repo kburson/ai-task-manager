@@ -48,7 +48,7 @@ import {
 } from './run-tests-report.mjs';
 import { TEST_NO_RETRY_ENV } from './gh/lib/with-retry.mjs';
 import { RUN_LANES, SKIP, laneFiles, discoveryDivergence } from './run-tests-lanes.mjs';
-import { evaluateCeiling } from './run-tests-ceiling.mjs';
+import { evaluateSections, formatSectionSummary } from './run-tests-ceiling.mjs';
 import { wantsHelp, emitSelfDoc } from './lib/self-doc.mjs';
 import {
   parseInProcessDurationMs,
@@ -179,8 +179,9 @@ const poolEligible = (e) => laneOf(e.label) === 'unit' && isParallelSafe(e.full)
 const unitEntries = runnable.filter(poolEligible);
 const serialEntries = runnable.filter((e) => !poolEligible(e));
 
-// #864 — wall-clock the whole section (pool + serial) so the ceiling guard below
-// measures real elapsed execution, not per-file time.
+// The aggregate remains useful observational timing, while #1157 evaluates the
+// already-distinct pool and serial execution phases as independently bounded
+// sections below.
 const sectionStart = process.hrtime.bigint();
 
 const poolStart = process.hrtime.bigint();
@@ -312,12 +313,23 @@ if (leaked.length) {
   process.exit(1);
 }
 
-// #864 — fail-closed section ceiling. Even a fully green section is failed if its
-// wall time breaches the 10-minute budget, so a section can never silently regrow
-// past it. `all` (the internal coverage/divergence union) is exempt.
-const ceiling = evaluateCeiling({ lane, elapsedMs: sectionElapsedMs });
-if (ceiling.breached) {
-  console.error(`\n${ceiling.message}`);
+// #864/#1157 — fail closed per non-empty execution section. The pooled and
+// serial phases are already separate scheduling boundaries and now receive the
+// unchanged 10-minute budget independently; their aggregate remains timing
+// evidence, not a third ceiling. Single-phase lanes retain one verdict, and
+// `all` (the internal coverage/divergence union) remains exempt.
+const sectionCeilings = evaluateSections({
+  lane,
+  sections: [
+    { name: 'pooled', count: unitEntries.length, elapsedMs: poolElapsedMs },
+    { name: 'serial', count: serialEntries.length, elapsedMs: serialElapsedMs },
+  ],
+});
+console.log(`\n${formatSectionSummary(sectionCeilings)}`);
+if (sectionCeilings.breached) {
+  for (const section of sectionCeilings.sections.filter((entry) => entry.breached)) {
+    console.error(`\n${section.message}`);
+  }
   process.exit(1);
 }
 
