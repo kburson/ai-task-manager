@@ -48,6 +48,7 @@ import {
 } from '../lib/closed-issue-convergence.mjs';
 import { resolveTailProfile } from '../lib/move-state/tail-profiles.mjs';
 import { createEstimationOutcomeRuntime } from '../lib/estimation/runtime-adapter.mjs';
+import { reconcileReviewApprovedTiming } from '../lib/review-approval-timing.mjs';
 
 // #705 — best-effort: a label-strip failure must never block or fail the
 // close itself, mirroring the deregisterTask cleanup calls below.
@@ -94,6 +95,7 @@ async function emitReviewToDoneClosePair({
   closeIssueNum,
   cfg,
   hasApprovalMarker,
+  issueBody,
   reviewGateBypassed,
   lastWordMarker,
   ctx,
@@ -116,20 +118,33 @@ async function emitReviewToDoneClosePair({
   // retry-idempotency guard below. Gated on `!SKIP_NETWORK`; tests inject
   // `ctx.readTimingCommentBody` to exercise both paths offline.
   let timingBody = '';
+  let timingRead = { status: 'absent', body: '', error: null };
   const { readTimingCommentBody, bodyOf } = await import('../gh-timing-comment.mjs');
   const readTiming = ctx.readTimingCommentBody || (SKIP_NETWORK ? null : readTimingCommentBody);
   if (readTiming && closeIssueNum) {
     try {
-      timingBody = bodyOf(
-        await readTiming({
-          issueNumber: closeIssueNum,
-          repo: cfg.repo,
-          timeoutMs: GH_API_TIMEOUT_MS,
-        })
-      );
+      timingRead = await readTiming({
+        issueNumber: closeIssueNum,
+        repo: cfg.repo,
+        timeoutMs: GH_API_TIMEOUT_MS,
+      });
+      timingBody = bodyOf(timingRead);
     } catch (err) {
       process.stderr.write(`⚠ timing-comment read for close pair failed: ${err.message}\n`);
     }
+  }
+  let approvalReconciled = false;
+  if (hasApprovalMarker && readTiming) {
+    const reconcile = ctx.reconcileReviewApprovedTiming || reconcileReviewApprovedTiming;
+    await reconcile({
+      issueNumber: closeIssueNum,
+      repo: cfg.repo,
+      issueBody,
+      wordMarker: lastWordMarker ?? 0,
+      readTimingCommentBody: async () => timingRead,
+      postTimingEvent: async ({ row }) => postRequiredTiming(row, 'review:approved'),
+    });
+    approvalReconciled = true;
   }
   const delta = deriveStateMoveDelta(timingBody, ts);
   // #540 — emit in canonical order (`review:approved → issue:wrap`), both sharing
@@ -147,6 +162,7 @@ async function emitReviewToDoneClosePair({
   const pending = pendingClosePairState(timingBody);
   if (
     !pending.reviewApproved &&
+    !approvalReconciled &&
     shouldEmitReviewApprovedRow({ hasApprovalMarker, reviewGateBypassed })
   ) {
     await postRequiredTiming(reviewApprovedRow, 'review:approved');
@@ -564,6 +580,7 @@ export async function verbClose(ctx) {
           closeIssueNum,
           cfg,
           hasApprovalMarker: hasReviewApprovedMarker(convergeBody),
+          issueBody: convergeBody,
           reviewGateBypassed: configuredFullAuto,
           lastWordMarker: s.lastWordMarker,
           ctx,
@@ -661,6 +678,7 @@ export async function verbClose(ctx) {
               closeIssueNum,
               cfg,
               hasApprovalMarker: hasReviewApprovedMarker(convergeBody),
+              issueBody: convergeBody,
               reviewGateBypassed: fullAuto,
               lastWordMarker: s.lastWordMarker,
               ctx,
@@ -1344,6 +1362,7 @@ export async function verbClose(ctx) {
       closeIssueNum,
       cfg,
       hasApprovalMarker: hasReviewApprovedMarker(closeBody),
+      issueBody: closeBody,
       reviewGateBypassed,
       lastWordMarker: s.lastWordMarker,
       ctx,

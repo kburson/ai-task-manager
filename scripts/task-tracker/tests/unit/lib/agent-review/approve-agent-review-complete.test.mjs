@@ -112,6 +112,10 @@ function approveWith(body, extra = {}) {
           deriveDrivers: () => [],
           detectFullAuto: () => ({ fired: true, signals: 'test' }),
           nowIso: () => '2026-07-18T02:00:00Z',
+          reconcileReviewApprovedTiming: async () => ({
+            status: 'posted',
+            ts: '2026-07-18T02:00:00Z',
+          }),
           ...extra,
         },
       }),

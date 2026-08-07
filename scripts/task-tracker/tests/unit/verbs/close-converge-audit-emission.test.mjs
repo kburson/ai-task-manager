@@ -98,11 +98,19 @@ async function runConverge({ issueBody, timingBody }) {
 
 const hasReviewApproved = (rows) => rows.some((r) => /\| review:approved \|/.test(r));
 const hasIssueWrap = (rows) => rows.some((r) => /\| issue:wrap \|/.test(r));
+const reviewStartedTiming = [
+  '## ⏱ Timing Log',
+  '',
+  '| Timestamp | Event | Active | Idle | Δ Words | Word Marker | Description | Δ Words (full) |',
+  '| --- | --- | --- | --- | --- | --- | --- | --- |',
+  '| 2026-07-12 23:58:00 +00:00 | review:started |  |  |  | 0 | waiting in review | <!-- row-sec: a=0 i=0 -->',
+  '',
+].join('\n');
 
 test('Case A — converge with approved body emits BOTH review:approved and issue:wrap (#801 AC1)', async () => {
   const posted = await runConverge({
     issueBody: `## Some issue\n\n${APPROVAL_MARKER}\n`,
-    timingBody: '',
+    timingBody: reviewStartedTiming,
   });
   assert.ok(hasReviewApproved(posted), 'review:approved row is posted on the converge path');
   assert.ok(hasIssueWrap(posted), 'issue:wrap row is posted on the converge path');

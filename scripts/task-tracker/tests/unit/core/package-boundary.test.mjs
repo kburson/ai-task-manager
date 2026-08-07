@@ -47,7 +47,11 @@ function repoRoot() {
 // 600 restores comfortable headroom while staying far below the 797 pre-tightening
 // surface — a re-shipped test suite still blows straight past it. (#910 also
 // dropped `docs/introduction/` from the package, so the live surface fell too.)
-const ENTRY_CEILING = 600;
+//
+// #1133 adds one focused runtime reconciliation module. The packed surface is
+// now 601 entries, so 625 restores bounded development headroom while remaining
+// far below the 797-entry pre-tightening surface.
+const ENTRY_CEILING = 625;
 
 function packedFiles() {
   const out = execFileSync('npm', ['pack', '--dry-run', '--json'], {

@@ -71,6 +71,7 @@ function makeDeps(overrides = {}) {
       },
       fetchComments: async () => [],
       fetchProjectValues: async () => ({}),
+      reconcileReviewApprovedTiming: async () => ({ status: 'posted', ts: FIXED_TS }),
       ...overrides.deps,
     },
     getBody: () => body,

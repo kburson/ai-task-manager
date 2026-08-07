@@ -76,6 +76,10 @@ function makeCtx(statePath, dir, over = {}) {
     // versionedWriteBody), which stalls the full-suite run. The exported helper
     // itself is covered directly below via its deps.mutateIssueBody seam.
     tickLifecycleOnClose: async () => ({ ok: true }),
+    // Keep this broad close-coverage harness on its injected timing boundary.
+    // The real approval reconciler is covered by approve-timing-boundary and
+    // requires a populated Review timing log that these legacy fixtures omit.
+    reconcileReviewApprovedTiming: async () => ({ status: 'present' }),
     ...over,
   };
 }

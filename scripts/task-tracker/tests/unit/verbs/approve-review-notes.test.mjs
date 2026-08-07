@@ -49,6 +49,10 @@ function makeDeps({ tty, env = {}, drivers = [], comments = [], fields = {} } = 
     fetchProjectValues: async () => fields,
     promptDrivers: async () => drivers,
     deriveDrivers: () => ['auto driver A', 'auto driver B'],
+    reconcileReviewApprovedTiming: async () => ({
+      status: 'posted',
+      ts: '2026-05-17T00:00:00Z',
+    }),
   };
 }
 

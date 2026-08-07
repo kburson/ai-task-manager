@@ -72,6 +72,7 @@ function makeDeps(overrides = {}) {
       },
       fetchComments: async () => [],
       fetchProjectValues: async () => ({}),
+      reconcileReviewApprovedTiming: async () => ({ status: 'posted', ts: FIXED_TS }),
       ...overrides.deps,
     },
     getBody: () => body,
@@ -277,6 +278,7 @@ function makeDeps(overrides = {}) {
       postComment: async () => {},
       fetchComments: async () => [],
       fetchProjectValues: async () => ({}),
+      reconcileReviewApprovedTiming: async () => ({ status: 'posted', ts: FIXED_TS }),
     },
   });
   assert.equal(r.status, 'approved');
@@ -325,6 +327,7 @@ function makeDeps(overrides = {}) {
       postComment: async () => {},
       fetchComments: async () => [],
       fetchProjectValues: async () => ({}),
+      reconcileReviewApprovedTiming: async () => ({ status: 'posted', ts: FIXED_TS }),
     },
   });
   assert.equal(r.status, 'approved');

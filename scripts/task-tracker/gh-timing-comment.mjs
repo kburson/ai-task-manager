@@ -7,6 +7,7 @@ import { resolvePhaseEvent } from './phase-events.mjs';
 import { withLock } from './locks.mjs';
 import { getProjectDir, timingLockPath as resolveTimingLockPath } from './paths.mjs';
 import { serializeMarker, unescapeValue } from './lib/marker-grammar.mjs';
+import { hasReviewApprovedMarker, parseReviewApprovedMarker } from './lib/markers.mjs';
 import {
   isTableTimingTimestamp,
   parseTimingRow,
@@ -219,6 +220,31 @@ export function buildBackdatedDepartureRow({ ts, event, description = '', wordMa
   return `| ${fmtTs(ts, { offsetMin })} | ${event} |  |  |  | ${fmtNum(Number.isFinite(wm) ? wm : null)} | ${description} | <!-- row-sec: a=0 i=0 -->`;
 }
 
+// #1133 — the Review approval marker is a durable authority record, so a
+// missing Timing Log projection may be repaired from its immutable timestamp.
+// This is deliberately a separate, capability-narrow constructor rather than
+// an escape hatch on buildRow: callers cannot provide an arbitrary timestamp or
+// event, and the generic 60-second freshness invariant remains unconditional.
+export function buildMarkerAuthorizedReviewApprovedRow({
+  issueBody,
+  activeSec,
+  idleSec,
+  wordMarker,
+}) {
+  if (!hasReviewApprovedMarker(issueBody)) {
+    throw new Error('review approval timing requires an authoritative approval marker');
+  }
+  const approval = parseReviewApprovedMarker(issueBody);
+  const tsMs = tsToMs(approval?.ts);
+  if (!Number.isFinite(tsMs)) {
+    throw new Error('review approval timing marker has a non-parseable timestamp');
+  }
+  const aSec = Number.isFinite(Number(activeSec)) ? Math.max(0, Math.floor(Number(activeSec))) : 0;
+  const iSec = Number.isFinite(Number(idleSec)) ? Math.max(0, Math.floor(Number(idleSec))) : 0;
+  const marker = Number(String(wordMarker ?? '').replace(/,/g, ''));
+  return `| ${fmtTs(approval.ts)} | review:approved | ${aSec === 0 ? '' : formatDurationSeconds(aSec)} | ${iSec === 0 ? '' : formatDurationSeconds(iSec)} |  | ${fmtNum(Number.isFinite(marker) ? marker : null)} | story approved | <!-- row-sec: a=${aSec} i=${iSec} -->`;
+}
+
 // #484 — shared flush-path row builder. `flushActiveToGH` (the path behind every
 // timing-emitting verb, `pause` included) previously passed minute scalars to
 // `buildRow`, so its rows rendered the bare-integer Active/Idle form while the
@@ -416,6 +442,25 @@ function carryForwardWordMarker(body, row) {
 // upstream read/resolve state.
 function appendRow(body, row) {
   let effectiveRow = row;
+  const incomingEvent = rowEventSlug(effectiveRow);
+  if (incomingEvent === 'review:approved') {
+    const incomingApprovalMs = _tsToMs(rowTs(effectiveRow));
+    let seenAfterLastClose = false;
+    for (const line of String(body ?? '').split('\n')) {
+      const parsed = parseTimingRow(line);
+      const event = parsed?.event;
+      if (
+        event === 'review:approved' &&
+        Number.isFinite(incomingApprovalMs) &&
+        _tsToMs(parsed.ts) === incomingApprovalMs
+      ) {
+        return body;
+      }
+      if (event === 'issue:closed') seenAfterLastClose = false;
+      else if (event === 'review:approved') seenAfterLastClose = true;
+    }
+    if (seenAfterLastClose) return body;
+  }
   if (rowEventSlug(row) === 'start' && timingCommentHasRows(body)) {
     if (lastOpenInterruption(body)) {
       effectiveRow = rewriteEventCell(row, 'resumed');
@@ -430,8 +475,6 @@ function appendRow(body, row) {
   if (shouldSuppressTerminalSessionEvent(body, rowEventSlug(effectiveRow))) {
     return body;
   }
-
-  effectiveRow = carryForwardWordMarker(body, effectiveRow);
 
   // #972 — redundant-departure guard. A second departure event (`switch-out:*`
   // / `pause:*` / `idle`) landing while a prior departure is still open (no
@@ -454,13 +497,16 @@ function appendRow(body, row) {
   // live in-order row (ts >= tail) is a no-op — and the credited seconds carried
   // in the trailing `row-sec` marker are left untouched.
   const tailTs = lastRowTsFromBody(body);
+  let insertByTimestamp = false;
   if (tailTs) {
     const rowMs = _tsToMs(rowTs(effectiveRow));
     const tailMs = _tsToMs(tailTs);
     if (Number.isFinite(rowMs) && Number.isFinite(tailMs) && rowMs < tailMs) {
-      effectiveRow = rewriteTsCell(effectiveRow, tailTs);
+      if (incomingEvent === 'review:approved') insertByTimestamp = true;
+      else effectiveRow = rewriteTsCell(effectiveRow, tailTs);
     }
   }
+  if (!insertByTimestamp) effectiveRow = carryForwardWordMarker(body, effectiveRow);
 
   const lines = body.split('\n');
   let lastTableIdx = -1;
@@ -481,7 +527,18 @@ function appendRow(body, row) {
       }
     }
   }
-  lines.splice(lastTableIdx + 1, 0, effectiveRow);
+  if (insertByTimestamp) {
+    const incomingMs = _tsToMs(rowTs(effectiveRow));
+    const laterIdx = lines.findIndex((line) => {
+      const parsed = parseTimingRow(line);
+      if (!parsed || !isTableTimingTimestamp(parsed.ts)) return false;
+      const candidateMs = _tsToMs(parsed.ts);
+      return Number.isFinite(candidateMs) && candidateMs > incomingMs;
+    });
+    lines.splice(laterIdx === -1 ? lastTableIdx + 1 : laterIdx, 0, effectiveRow);
+  } else {
+    lines.splice(lastTableIdx + 1, 0, effectiveRow);
+  }
   return lines.join('\n').replace(/\n+$/, '') + '\n';
 }
 

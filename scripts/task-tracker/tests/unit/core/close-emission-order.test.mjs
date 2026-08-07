@@ -312,7 +312,7 @@ test('#692 AC3 — review:approved active duration derives from the timing comme
     projectDir: dir,
     rest: ['#999'],
     SKIP_NETWORK: true,
-    closeBody: '## Done\n\n<!-- aitm-review-approved ts="2026-06-28T00:00:00Z" -->\n',
+    closeBody: `## Done\n\n<!-- aitm-review-approved ts="${new Date(closeMs).toISOString()}" -->\n`,
     readTimingCommentBody: async () => ({ status: 'ok', body: priorTimingBody }),
     pexec: async () => ({ stdout: '{}', stderr: '' }),
     drainQueueIfAny: async () => {},

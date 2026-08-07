@@ -210,10 +210,13 @@ const REVIEW_APPROVED_FULL_AUTO_RE =
 // or null when absent. Uses the generic marker parser so prop order is
 // irrelevant.
 export function parseReviewApprovedMarker(body) {
-  const m = String(body || '').match(REVIEW_APPROVED_RE);
+  const m = stripFencedCodeBlocks(body).match(REVIEW_APPROVED_RE);
   if (!m) return null;
   const parsed = parseMarker(m[0]);
-  if (!parsed) return { ts: '', fullAuto: false, signals: '' };
+  if (!parsed) {
+    const legacyTs = m[0].match(/aitm-review-approved\s*:\s*([^>]*?)\s*-->/i)?.[1]?.trim();
+    return { ts: legacyTs || '', fullAuto: false, signals: '' };
+  }
   const props = parsed.props || {};
   return {
     ts: props.ts || '',

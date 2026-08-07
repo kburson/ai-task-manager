@@ -59,6 +59,7 @@ function makeCtx(statePath, dir, over = {}) {
     // live `gh` (pexec injection does not intercept versionedWriteBody), which
     // stalls the full-suite run. This test asserts only label-strip behavior.
     tickLifecycleOnClose: async () => ({ ok: true }),
+    reconcileReviewApprovedTiming: async () => ({ status: 'present' }),
     ...over,
   };
 }

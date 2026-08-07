@@ -39,6 +39,7 @@ import {
   isAgentReviewComplete,
   agentReviewIncompleteReason,
 } from '../lib/agent-review/review-gate.mjs';
+import { reconcileReviewApprovedTiming } from '../lib/review-approval-timing.mjs';
 
 const pexec = promisify(execFile);
 
@@ -189,6 +190,7 @@ export async function runApprove({ issueNumber, cfg, projectDir, deps = {}, huma
   const fetchProjectValues = deps.fetchProjectValues || defaultProjectValues;
   const promptDrivers = deps.promptDrivers || defaultPromptDrivers;
   const derive = deps.deriveDrivers || deriveDrivers;
+  const reconcileTiming = deps.reconcileReviewApprovedTiming || reconcileReviewApprovedTiming;
 
   const state = await getBoardState({ issueNumber, projectDir });
   if (state !== 'review') {
@@ -203,6 +205,12 @@ export async function runApprove({ issueNumber, cfg, projectDir, deps = {}, huma
     async () => {
       const body = await fetchIssueBody({ issueNumber, repo: cfg.repo });
       if (hasApprovalMarker(body)) {
+        await reconcileTiming({
+          issueNumber,
+          repo: cfg.repo,
+          issueBody: body,
+          wordMarker: durableWordMarker(projectDir || getProjectDir()),
+        });
         return { status: 'already-approved' };
       }
       // #881 — the human approval is the Review → Done EXIT condition, offered
@@ -357,6 +365,12 @@ export async function runApprove({ issueNumber, cfg, projectDir, deps = {}, huma
         predicate: hasReviewApprovedMarker,
         marker: 'aitm-review-approved',
         issueNumber,
+      });
+      await reconcileTiming({
+        issueNumber,
+        repo: cfg.repo,
+        issueBody: writeResult.body,
+        wordMarker: durableWordMarker(projectDir || getProjectDir()),
       });
       return {
         status: 'approved',

@@ -97,6 +97,7 @@ function makeDeps(overrides = {}) {
       fetchProjectValues: async () => ({}),
       promptDrivers: async () => overrides.drivers ?? [],
       deriveDrivers: overrides.deriveDrivers ?? (() => overrides.autoDrivers ?? []),
+      reconcileReviewApprovedTiming: async () => ({ status: 'posted', ts: FIXED_TS }),
       ...overrides.deps,
     },
     getBody: () => body,
@@ -236,6 +237,7 @@ test('runApprove: default fetch/comment/project helpers run offline', async () =
         const body = mutate(REVIEW_BODY);
         return { status: 'ok', body };
       },
+      reconcileReviewApprovedTiming: async () => ({ status: 'posted', ts: FIXED_TS }),
     },
   });
   assert.equal(r.status, 'approved');
@@ -254,6 +256,7 @@ test('runApprove: default promptDrivers resolves [] off a TTY', async () => {
       getBoardState: async () => 'review',
       detectFullAuto: () => ({ fired: false, signals: '' }),
       mutateIssueBody: async ({ mutate }) => ({ status: 'ok', body: mutate(REVIEW_BODY) }),
+      reconcileReviewApprovedTiming: async () => ({ status: 'posted', ts: FIXED_TS }),
     },
   });
   assert.equal(r.status, 'approved');
@@ -334,6 +337,7 @@ const okVerbDeps = {
   fetchComments: async () => [],
   fetchProjectValues: async () => ({}),
   promptDrivers: async () => [],
+  reconcileReviewApprovedTiming: async () => ({ status: 'posted', ts: FIXED_TS }),
 };
 
 test('verbApprove: no issue number → usage, exit 1', async () => {
