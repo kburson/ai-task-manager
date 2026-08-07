@@ -34,6 +34,7 @@ import {
   countRetiredRows,
   countZeroValueStopResumePairs,
   countRedundantReviewPassRows,
+  countPostTerminalRows,
 } from './lib/heal-timing-log.mjs';
 import { assertKnownArgv, reportStrictArgvError } from './lib/argv-strict.mjs';
 import { confirmBlastRadius } from './lib/blast-radius-guard.mjs';
@@ -62,16 +63,20 @@ export async function runHeal({ issueNumber, repo, apply = false, deps = {} } = 
       zeroStopResumeAfter: 0,
       redundantReviewPassBefore: 0,
       redundantReviewPassAfter: 0,
+      postTerminalBefore: 0,
+      postTerminalAfter: 0,
       commentId: null,
     };
   }
   const retiredBefore = countRetiredRows(comment.body);
   const zeroStopResumeBefore = countZeroValueStopResumePairs(comment.body);
   const redundantReviewPassBefore = countRedundantReviewPassRows(comment.body);
+  const postTerminalBefore = countPostTerminalRows(comment.body);
   const healed = healTimingLog(comment.body);
   const retiredAfter = countRetiredRows(healed);
   const zeroStopResumeAfter = countZeroValueStopResumePairs(healed);
   const redundantReviewPassAfter = countRedundantReviewPassRows(healed);
+  const postTerminalAfter = countPostTerminalRows(healed);
   const changed = healed !== comment.body;
   const result = {
     retiredBefore,
@@ -80,6 +85,8 @@ export async function runHeal({ issueNumber, repo, apply = false, deps = {} } = 
     zeroStopResumeAfter,
     redundantReviewPassBefore,
     redundantReviewPassAfter,
+    postTerminalBefore,
+    postTerminalAfter,
     commentId: comment.id,
   };
 
@@ -97,7 +104,8 @@ function formatRemovalCounts(result) {
   return (
     `retired=${result.retiredBefore} → ${result.retiredAfter} ` +
     `stopResume=${result.zeroStopResumeBefore} → ${result.zeroStopResumeAfter} ` +
-    `reviewPass=${result.redundantReviewPassBefore} → ${result.redundantReviewPassAfter}`
+    `reviewPass=${result.redundantReviewPassBefore} → ${result.redundantReviewPassAfter} ` +
+    `postTerminal=${result.postTerminalBefore} → ${result.postTerminalAfter}`
   );
 }
 
@@ -262,6 +270,7 @@ async function runSweep(args, { cfg, repo, out, err, deps }) {
   let retired = 0;
   let zeroStopResume = 0;
   let redundantReviewPass = 0;
+  let postTerminal = 0;
   const failed = [];
   const sleep = deps.sleep || ((ms) => new Promise((resolve) => setTimeout(resolve, ms)));
   for (let index = 0; index < numbers.length; index++) {
@@ -274,6 +283,7 @@ async function runSweep(args, { cfg, repo, out, err, deps }) {
         retired += res.retiredBefore;
         zeroStopResume += res.zeroStopResumeBefore;
         redundantReviewPass += res.redundantReviewPassBefore;
+        postTerminal += res.postTerminalBefore;
         out.write(`#${n}\t${res.status}\t${formatRemovalCounts(res)}\n`);
       }
     } catch (e) {
@@ -284,7 +294,8 @@ async function runSweep(args, { cfg, repo, out, err, deps }) {
   out.write(
     `Summary: issues=${numbers.length} ${args.apply ? 'healed' : 'to-heal'}=${touched} ` +
       `retiredRows=${retired} stopResumeRows=${zeroStopResume} ` +
-      `reviewPassRows=${redundantReviewPass} failed=${failed.length}\n`
+      `reviewPassRows=${redundantReviewPass} postTerminalRows=${postTerminal} ` +
+      `failed=${failed.length}\n`
   );
   if (!args.apply && touched > 0) out.write('(dry-run — re-run with --apply to write)\n');
   return failed.length === 0 ? 0 : 1;

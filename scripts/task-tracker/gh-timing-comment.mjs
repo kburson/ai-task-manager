@@ -15,7 +15,7 @@ import {
 } from './lib/timing-row-reader.mjs';
 import { formatDurationSeconds, lastRowTsFromBody, _tsToMs } from './lib/timing-rows.mjs';
 import { classifyEvent, lastOpenInterruption, timingCommentHasRows } from './lib/bind-event.mjs';
-import { shouldSuppressTerminalSessionEvent } from './lib/terminal-review-handoff.mjs';
+import { shouldSuppressTimingAppend } from './lib/terminal-review-handoff.mjs';
 import {
   EVENT_CLASS,
   classifyTimingEvent,
@@ -441,6 +441,10 @@ function carryForwardWordMarker(body, row) {
 // This makes a duplicate `start` impossible by construction, independent of any
 // upstream read/resolve state.
 function appendRow(body, row) {
+  if (shouldSuppressTimingAppend(body, rowEventSlug(row))) {
+    return body;
+  }
+
   let effectiveRow = row;
   const incomingEvent = rowEventSlug(effectiveRow);
   if (incomingEvent === 'review:approved') {
@@ -470,10 +474,6 @@ function appendRow(body, row) {
           'rows with no open interruption to pair against (duplicate-start is forbidden)'
       );
     }
-  }
-
-  if (shouldSuppressTerminalSessionEvent(body, rowEventSlug(effectiveRow))) {
-    return body;
   }
 
   // #972 — redundant-departure guard. A second departure event (`switch-out:*`

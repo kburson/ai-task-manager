@@ -148,6 +148,67 @@ test('locked append reduces the #1077 handoff to canonical terminal rows', () =>
   );
 });
 
+// @story #1134
+test('locked append treats the first issue:closed row as an irreversible terminal seal', () => {
+  const events = [
+    'review:approved',
+    'issue:wrap',
+    'issue:closed',
+    'resumed',
+    'review:approved',
+    'issue:wrap',
+    'issue:closed',
+    'switch-out:#1129',
+  ];
+  const baseTs = Date.now();
+  let body = buildInitialComment();
+  for (const [index, event] of events.entries()) {
+    body = appendRow(
+      body,
+      buildRow({
+        ts: new Date(baseTs + index).toISOString(),
+        event,
+        activeSec: 0,
+        idleSec: 0,
+        deltaWords: 0,
+        wordMarker: 103183,
+        description: event,
+      })
+    );
+  }
+
+  const actual = body
+    .split('\n')
+    .map(parseTimingRow)
+    .filter((row) => row?.event && row.event !== 'event')
+    .map((row) => row.event);
+
+  assert.deepEqual(actual, ['review:approved', 'issue:wrap', 'issue:closed']);
+});
+
+test('prose and malformed rows mentioning issue:closed do not create a terminal seal', () => {
+  const malformed = '| not-a-timestamp | issue:closed |  |  |  | 1 | malformed |';
+  const body = appendRow(
+    `${buildInitialComment()}\nNarrative: issue:closed is discussed here.\n${malformed}\n`,
+    buildRow({
+      ts: new Date().toISOString(),
+      event: 'start',
+      activeSec: 0,
+      idleSec: 0,
+      deltaWords: 0,
+      wordMarker: 1,
+      description: 'task started',
+    })
+  );
+
+  assert.ok(
+    body
+      .split('\n')
+      .map(parseTimingRow)
+      .some((row) => row?.event === 'start')
+  );
+});
+
 test('locked append carries the durable Word Marker without changing other cells', () => {
   const ts = Date.now();
   const start = buildRow({

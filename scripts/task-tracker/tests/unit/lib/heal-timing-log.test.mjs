@@ -15,6 +15,7 @@ import {
   countRetiredRows,
   countZeroValueStopResumePairs,
   countRedundantReviewPassRows,
+  countPostTerminalRows,
 } from '../../../lib/heal-timing-log.mjs';
 
 const HEADER =
@@ -279,6 +280,67 @@ function noiseBody(...rows) {
 function eventRows(body, event) {
   return rowsOf(body).filter((line) => line.split('|')[2].trim() === event);
 }
+
+// @story #1134
+test('post-terminal healing reproduces #1127 and preserves the authoritative prefix', () => {
+  const prefix = [
+    '## ⏱ Timing Log',
+    '',
+    HEADER,
+    SEP,
+    noiseRow({ ts: '2026-08-01 10:00:00 -05:00', event: 'start', wordMarker: '103000' }),
+    noiseRow({
+      ts: '2026-08-01 10:10:00 -05:00',
+      event: 'review:approved',
+      wordMarker: '103183',
+    }),
+    noiseRow({
+      ts: '2026-08-01 10:10:01 -05:00',
+      event: 'issue:wrap',
+      wordMarker: '103183',
+    }),
+    noiseRow({
+      ts: '2026-08-01 10:10:02 -05:00',
+      event: 'issue:closed',
+      wordMarker: '103183',
+    }),
+  ].join('\n');
+  const malformed = 'Malformed timing artifact mentioning issue:closed is preserved.';
+  const prose = 'Operator note after the historical timing table.';
+  const body = [
+    prefix,
+    malformed,
+    noiseRow({ ts: '2026-08-01 10:11:00 -05:00', event: 'resumed', wordMarker: '103183' }),
+    noiseRow({
+      ts: '2026-08-01 10:12:00 -05:00',
+      event: 'review:approved',
+      wordMarker: '103183',
+    }),
+    noiseRow({
+      ts: '2026-08-01 10:12:01 -05:00',
+      event: 'issue:wrap',
+      wordMarker: '103183',
+    }),
+    noiseRow({
+      ts: '2026-08-01 10:12:02 -05:00',
+      event: 'issue:closed',
+      wordMarker: '103183',
+    }),
+    noiseRow({
+      ts: '2026-08-01 10:13:00 -05:00',
+      event: 'switch-out:#1129',
+      wordMarker: '103183',
+    }),
+    prose,
+    '',
+  ].join('\n');
+
+  assert.equal(countPostTerminalRows(body), 5);
+  const healed = healTimingLog(body);
+  assert.equal(countPostTerminalRows(healed), 0);
+  assert.equal(healed, [prefix, malformed, prose, ''].join('\n'));
+  assert.equal(healTimingLog(healed), healed, 'the second pass is byte-identical');
+});
 
 test('zero-value adjacent stop/resume pairs heal at the 0-second and 59-second boundaries', () => {
   const body = noiseBody(

@@ -1,4 +1,5 @@
 // @story #1093
+// @story #1134
 import assert from 'node:assert/strict';
 import { runHeal, parseArgs, main } from '../../../heal-timing-log.mjs';
 
@@ -14,7 +15,10 @@ const NOISY = [
   ...HEADER,
   row('2026-08-01 10:00:00 -05:00', 'review:started'),
   row('2026-08-01 10:01:00 -05:00', 'review:passed', 'first pass'),
-  row('2026-08-01 10:02:00 -05:00', 'review:passed', 'duplicate pass'),
+  row('2026-08-01 10:01:10 -05:00', 'review:passed', 'duplicate pass'),
+  row('2026-08-01 10:01:30 -05:00', 'review:approved'),
+  row('2026-08-01 10:01:31 -05:00', 'issue:wrap'),
+  row('2026-08-01 10:01:32 -05:00', 'issue:closed'),
   row('2026-08-01 10:03:00 -05:00', 'stop'),
   row('2026-08-01 10:03:05 -05:00', 'resumed'),
   '',
@@ -42,7 +46,20 @@ function sink() {
   assert.equal(result.zeroStopResumeAfter, 0);
   assert.equal(result.redundantReviewPassBefore, 1);
   assert.equal(result.redundantReviewPassAfter, 0);
+  assert.equal(result.postTerminalBefore, 2);
+  assert.equal(result.postTerminalAfter, 0);
   assert.equal(deps.updates.length, 0);
+}
+
+{
+  const result = await runHeal({
+    issueNumber: 1093,
+    repo: 'o/r',
+    deps: { findTimingComment: async () => null },
+  });
+  assert.equal(result.status, 'no-comment');
+  assert.equal(result.postTerminalBefore, 0);
+  assert.equal(result.postTerminalAfter, 0);
 }
 
 {
@@ -79,6 +96,8 @@ function sink() {
         zeroStopResumeAfter: 0,
         redundantReviewPassBefore: 1,
         redundantReviewPassAfter: 0,
+        postTerminalBefore: 2,
+        postTerminalAfter: 0,
         commentId: 'C_1093',
       };
     },
@@ -89,6 +108,7 @@ function sink() {
   assert.equal(seen.run.apply, true);
   assert.match(out.text(), /stopResume=1 → 0/);
   assert.match(out.text(), /reviewPass=1 → 0/);
+  assert.match(out.text(), /postTerminal=2 → 0/);
 }
 
 {
@@ -108,6 +128,8 @@ function sink() {
         zeroStopResumeAfter: 0,
         redundantReviewPassBefore: Number(issueNumber) === 1089 ? 3 : 0,
         redundantReviewPassAfter: 0,
+        postTerminalBefore: Number(issueNumber) === 1089 ? 4 : 0,
+        postTerminalAfter: 0,
         commentId: `C_${issueNumber}`,
       };
     },
@@ -115,9 +137,13 @@ function sink() {
     exit: (code) => assert.equal(code, 0),
   });
   assert.deepEqual(seen, [1089, 1093]);
-  assert.match(out.text(), /#1089\tdry-run\tretired=0 → 0 stopResume=5 → 0 reviewPass=3 → 0/);
+  assert.match(
+    out.text(),
+    /#1089\tdry-run\tretired=0 → 0 stopResume=5 → 0 reviewPass=3 → 0 postTerminal=4 → 0/
+  );
   assert.match(out.text(), /stopResumeRows=5/);
   assert.match(out.text(), /reviewPassRows=3/);
+  assert.match(out.text(), /postTerminalRows=4/);
 }
 
 {
@@ -141,6 +167,8 @@ function sink() {
         zeroStopResumeAfter: 0,
         redundantReviewPassBefore: 0,
         redundantReviewPassAfter: 0,
+        postTerminalBefore: 0,
+        postTerminalAfter: 0,
         commentId: `C_${issueNumber}`,
       };
     },

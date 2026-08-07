@@ -1,14 +1,15 @@
 // EPIC #823 timing model v2 (C4) — historical timing-log heal.
 //
 // A pure, idempotent, re-runnable transform that upgrades a v1 ⏱ Timing Log to
-// the v2 grammar. Three operations, in order:
+// the v2 grammar. Four operations, in order:
 //
-//   1. STRIP every retired `idle` and `active-work` row.
-//   2. RECOMPUTE each `<phase>:completed` row's active/idle from its phase span
+//   1. SEAL at the first `issue:closed` row and remove every later timing row.
+//   2. STRIP every retired `idle` and `active-work` row.
+//   3. RECOMPUTE each `<phase>:completed` row's active/idle from its phase span
 //      minus the pause/switch-out→resume brackets inside it — via the SAME
 //      `computePhaseCloseDelta` calculator the C2 writer uses. Idle is never a
 //      stored row; it is exactly the bracket delta.
-//   3. FOLD the stripped rows' `Δ Words` into the enclosing `:completed` row's
+//   4. FOLD the stripped rows' `Δ Words` into the enclosing `:completed` row's
 //      `Δ Words` (lossless), so no word-count signal is lost with the row.
 //
 // The transform is a pure STRING surgery on the raw markdown. It deliberately
@@ -17,8 +18,9 @@
 // historical heal by definition violates. Completed rows are re-rendered by
 // targeted cell replacement — only the Active, Idle, Δ Words cells and the
 // trailing `<!-- row-sec -->` marker change; the timestamp, event, word-marker,
-// and description cells are preserved byte-for-byte. Non-completed rows
-// (`:started`, `pause`, `switch-out`, `resumed`) pass through verbatim.
+// and description cells are preserved byte-for-byte. Pre-terminal rows
+// (`:started`, `pause`, `switch-out`, `resumed`) pass through verbatim unless an
+// older, independently-scoped heal rule applies to them.
 //
 // Idempotence: a healed log has no strip rows (fold is 0) and its completed
 // rows already equal the recompute, so re-running is byte-identical. Healing a
@@ -247,6 +249,21 @@ function redundantReviewPassIndexes(lines) {
   return indexes;
 }
 
+function postTerminalRowIndexes(lines) {
+  const indexes = new Set();
+  let sealed = false;
+  for (let index = 0; index < lines.length; index++) {
+    const row = parseTimingRow(lines[index]);
+    if (!row || !isTableTimingTimestamp(row.ts)) continue;
+    if (sealed) {
+      indexes.add(index);
+    } else if (row.event === 'issue:closed') {
+      sealed = true;
+    }
+  }
+  return indexes;
+}
+
 export function countZeroValueStopResumePairs(body) {
   if (!body || typeof body !== 'string') return 0;
   return zeroValueStopResumePairIndexes(body.split('\n')).size / 2;
@@ -255,6 +272,11 @@ export function countZeroValueStopResumePairs(body) {
 export function countRedundantReviewPassRows(body) {
   if (!body || typeof body !== 'string') return 0;
   return redundantReviewPassIndexes(body.split('\n')).size;
+}
+
+export function countPostTerminalRows(body) {
+  if (!body || typeof body !== 'string') return 0;
+  return postTerminalRowIndexes(body.split('\n')).size;
 }
 
 // True when `line` is a pre-f3a09cc bare-'develop' reject self-audit row: the
@@ -295,11 +317,18 @@ export function healTimingLog(body) {
   if (!body || typeof body !== 'string') return body;
 
   const originalLines = body.split('\n');
-  const stopResumeIndexes = zeroValueStopResumePairIndexes(originalLines);
-  const withoutStopResume = originalLines.filter((_line, index) => !stopResumeIndexes.has(index));
+  const postTerminalIndexes = postTerminalRowIndexes(originalLines);
+  const terminalCleanLines = originalLines.filter(
+    (_line, index) => !postTerminalIndexes.has(index)
+  );
+  const terminalCleanBody = terminalCleanLines.join('\n');
+  const stopResumeIndexes = zeroValueStopResumePairIndexes(terminalCleanLines);
+  const withoutStopResume = terminalCleanLines.filter(
+    (_line, index) => !stopResumeIndexes.has(index)
+  );
   const redundantPassIndexes = redundantReviewPassIndexes(withoutStopResume);
   const lines = withoutStopResume.filter((_line, index) => !redundantPassIndexes.has(index));
-  const hasLegacyStripRows = originalLines.some((line) => {
+  const hasLegacyStripRows = terminalCleanLines.some((line) => {
     const row = parseTimingRow(line);
     return row && isTableTimingTimestamp(row.ts) && STRIP_SLUGS.has(row.event);
   });
@@ -355,7 +384,7 @@ export function healTimingLog(body) {
     if (!hasLegacyStripRows) {
       let bracketChanged = false;
       if (stopResumeIndexes.size > 0) {
-        const before = computePhaseCloseDelta(body, state, row.ts);
+        const before = computePhaseCloseDelta(terminalCleanBody, state, row.ts);
         bracketChanged =
           before.matched &&
           close.matched &&
