@@ -13,6 +13,25 @@
 // headroom over any real test file's output.
 export const RUN_TESTS_MAX_BUFFER = 64 * 1024 * 1024;
 
+// #1156 — distinguish a test-sandbox fleet leak from a legitimate task that a
+// different agent registers while this runner is active. New entries remain
+// fail-closed unless their recorded path exactly matches a Git worktree that is
+// currently registered to this repository.
+export function findFleetLeaks({
+  keysBefore = new Set(),
+  fleetAfter = {},
+  registeredWorktreePaths = new Set(),
+} = {}) {
+  const before = keysBefore instanceof Set ? keysBefore : new Set();
+  const fleet = fleetAfter && typeof fleetAfter === 'object' ? fleetAfter : {};
+  const registered = registeredWorktreePaths instanceof Set ? registeredWorktreePaths : new Set();
+  return Object.keys(fleet).filter((key) => {
+    if (before.has(key)) return false;
+    const worktreePath = fleet[key]?.worktreePath;
+    return typeof worktreePath !== 'string' || !registered.has(worktreePath);
+  });
+}
+
 // #746 — format the AC2 (#442) fleet-registry leak failure. The bare reporter
 // printed only the leaked KEYS (e.g. `#99`), which names the injected issue but
 // not the sandbox that escaped — useless for finding the culprit test, and the
