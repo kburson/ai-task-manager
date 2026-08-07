@@ -310,4 +310,28 @@ function deepDiveSection(lines = 25) {
   assert.match(dd.reason, /minimum 2000/);
 }
 
+// 16. verification-commands: a supplied normalized contract is authoritative
+// even when the embedded legacy body reports every command checked.
+{
+  const body = ['## Verification Commands', '', '- [x] `npm test`'].join('\n');
+  const contractSource = {
+    contract: {
+      verificationCommands: [
+        { logicalId: 'vc-tests', command: 'npm test', checked: false },
+        { logicalId: 'vc-lint', command: 'npm run lint', checked: true },
+      ],
+    },
+  };
+  const r = validateBody(body, { gates: DEFAULT_GATES, contractSource });
+  assert.deepEqual(r, {
+    ok: false,
+    refusedRules: [
+      {
+        rule: 'verification-commands',
+        reason: '1 unchecked item(s) under heading: npm test',
+      },
+    ],
+  });
+}
+
 console.log('body-gates.test.mjs: all passed');
