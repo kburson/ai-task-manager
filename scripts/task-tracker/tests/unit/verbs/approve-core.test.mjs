@@ -1,4 +1,5 @@
 // @story #310
+// @parallel-unsafe (shares the real repository issue lock for fixture issue 58)
 // Unit tests for scripts/task-tracker/verbs/approve.mjs.
 //
 // Covers:
