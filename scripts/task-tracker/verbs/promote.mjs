@@ -702,6 +702,7 @@ export async function verbPromote(rest, cfg, deps = {}) {
     case 'planned-estimate-refused':
     case 'deep-dive-refused':
     case 'plan-metadata-refused':
+    case 'decomposition-refused':
     case 'wip-budget-refused':
     case 'commit-trail-stale':
     case 'blocked-refused':

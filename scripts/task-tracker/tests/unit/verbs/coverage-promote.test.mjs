@@ -374,6 +374,19 @@ test('verbPromote: refused gate → exit 4 with BLOCKED lines', async () => {
   assert.equal(r.exitCode, 4);
   assert.match(r.stderr, /BLOCKED/);
 });
+test('verbPromote: decomposition refusal renders blockers and exits 4', async () => {
+  const { deps } = makeDeps({ body: bodyWithState('plan'), live: 'plan' });
+  plannedEstimateOk(deps, 1134);
+  deps.decomposition.projectValuesForIssue = async () => ({ size: 'XL', estimate: 24 });
+
+  const r = await runVerb(['1134'], deps);
+
+  assert.equal(r.exitCode, 4);
+  assert.match(r.stderr, /Refusing to promote #1134 to develop/);
+  assert.match(r.stderr, /BLOCKED:.*Decomposition Waiver/s);
+  assert.doesNotMatch(r.stderr, /unknown result status/);
+  assert.doesNotMatch(r.stdout, /promoted:/);
+});
 test('verbPromote: drift-refused → exit 4', async () => {
   const { deps } = makeDeps({ body: bodyWithState('plan'), live: 'develop' });
   const r = await runVerb(['107'], deps);
