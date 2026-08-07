@@ -27,6 +27,7 @@
 // there is no hardcoded directory list here. A divergence guard fails the run if
 // the selection ever omits an on-disk `*.test.mjs`, so a green run provably ran
 // every committed test file (the 624-vs-652 false green cannot recur).
+import { execFileSync } from 'node:child_process';
 import { writeFileSync, mkdirSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -39,7 +40,12 @@ import {
   fleetRegistryPath,
   readFleet,
 } from './task-tracker/fleet-registry.mjs';
-import { describeSpawnResult, formatFleetLeak, RUN_TESTS_MAX_BUFFER } from './run-tests-report.mjs';
+import {
+  describeSpawnResult,
+  findFleetLeaks,
+  formatFleetLeak,
+  RUN_TESTS_MAX_BUFFER,
+} from './run-tests-report.mjs';
 import { TEST_NO_RETRY_ENV } from './gh/lib/with-retry.mjs';
 import { RUN_LANES, SKIP, laneFiles, discoveryDivergence } from './run-tests-lanes.mjs';
 import { evaluateCeiling } from './run-tests-ceiling.mjs';
@@ -121,6 +127,22 @@ function liveRegistryKeySet() {
   }
 }
 const registryKeysBefore = liveRegistryKeySet();
+
+function registeredWorktreePaths() {
+  try {
+    const output = execFileSync('git', ['-C', repoRoot, 'worktree', 'list', '--porcelain', '-z'], {
+      encoding: 'utf8',
+    });
+    return new Set(
+      output
+        .split('\0')
+        .filter((field) => field.startsWith('worktree '))
+        .map((field) => field.slice('worktree '.length))
+    );
+  } catch {
+    return new Set();
+  }
+}
 
 let failed = 0;
 const failures = [];
@@ -271,19 +293,21 @@ if (failed > 0) {
   process.exit(1);
 }
 
-const registryKeysAfter = liveRegistryKeySet();
-const leaked = [...registryKeysAfter].filter((k) => !registryKeysBefore.has(k));
+let liveFleet = {};
+try {
+  liveFleet = readFleet(fleetRegistryPath(findMainWorktreePath(repoRoot))) || {};
+} catch {
+  liveFleet = {};
+}
+const leaked = findFleetLeaks({
+  keysBefore: registryKeysBefore,
+  fleetAfter: liveFleet,
+  registeredWorktreePaths: registeredWorktreePaths(),
+});
 if (leaked.length) {
   // #746 — dump each leaked entry's full record (worktreePath / sessionId /
   // kind / branch), not just the key, so the CI log names the exact escaping
-  // sandbox. Re-read the live fleet OBJECT (the key-set snapshot above discards
-  // the values) to source those fields.
-  let liveFleet = {};
-  try {
-    liveFleet = readFleet(fleetRegistryPath(findMainWorktreePath(repoRoot))) || {};
-  } catch {
-    liveFleet = {};
-  }
+  // sandbox.
   console.error(formatFleetLeak(leaked, liveFleet));
   process.exit(1);
 }
