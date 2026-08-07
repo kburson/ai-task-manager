@@ -1,8 +1,8 @@
 # Task Tracker Skill — Design
 
 **Date:** 2026-04-24
-**Updated:** 2026-04-28
-**Status:** Released
+**Updated:** 2026-08-07
+**Status:** Living — rewritten to describe the current ~50-verb dispatch surface and the 8-state kanban workflow (state machine + guard-registry). The v1 spec this superseded is preserved verbatim in git history.
 
 ## Problem
 
@@ -14,29 +14,108 @@ A project-local AI agent skill that binds the active work session to a specific 
 
 ## Vocabulary
 
-```
-/task                   Print active task, elapsed, words since last marker
-/task #N                Work on existing issue #N
-/task new [title]       Create a new issue and start working on it
-/task plan              Open an untracked planning bucket (no issue yet)
-/task resume            Resume the last paused task (no body reload)
-/task resume #N         Switch back to a paused task and display its body
-/task pause             Soft-stop — flushes timing, keeps task as "last active"
-/task update [message]  Checkpoint — flush timing, reset counters, keep task active
-/task close             Hard-stop — flush, update board fields, move to Done
-/task log #N            Re-compute and write Engaged, Session, Review, and Plan to GitHub Projects
-/task ensureChecked "<label>"    Ensure a checkbox is ticked (idempotent, never unticks; exact label match)
-/task ensureUnchecked "<label>"  Ensure a checkbox is unticked (idempotent, never ticks; exact label match)
-/task fleet             Show all active tasks across parallel agent worktrees
-/task config            List all config values with sources
-/task config <key> <value>   Set a config value (project-local)
-/task config init       Interactive interview — review and set all config values
-/task help              Print command reference
-```
+The `/task` skill and the underlying `scripts/task-tracker/task-tracker.mjs` CLI
+share one dispatch surface — every verb below works as `/task <verb>` (Claude
+Code / Codex skill), `node scripts/task-tracker/task-tracker.mjs <verb>`, or
+`npx aitm <verb>` (installed alias). This has grown from the ~16-command v1
+list to ~50 verb groups as the state machine, evidence model, and discovery
+workflow were added. `scripts/task-tracker/verbs/help-data.mjs` (`VERB_REFERENCE`)
+is the canonical, self-documenting source — `/task help` prints the topic
+index and `/task help <verb>` prints a verb's full reference, including exit
+codes and related verbs. The table below mirrors `VERB_REFERENCE`, grouped by
+its own `topic` field so a new reader can scan by concern instead of an
+alphabetical wall.
 
-`start` and `end` are accepted as aliases for `resume` and `close`.
+`start` and `end` are accepted as aliases for `resume` and `close`; `next` is
+an alias for `promote`; `stop`/`switch` are aliases folded into the lifecycle
+group below.
+
+### Lifecycle verbs (`topic: lifecycle`) — timing and session binding
+
+| Verb          | Purpose                                                                    |
+| ------------- | -------------------------------------------------------------------------- |
+| `status`      | Show the active task, elapsed time, and words since the last marker.       |
+| `#N`          | Start or switch the timer to issue #N (binds it as the active task).       |
+| `start`       | Bind to issue #N and start the timer (same path as `/task #N`).            |
+| `pause`       | Flush timing and pause the active task; sets the paused flag.              |
+| `resume`      | Resume the last paused task, or return to a specific paused/stopped issue. |
+| `stop`        | End the current session and unbind the active task.                        |
+| `update`      | Checkpoint — flush timing, reset counters, keep the task active.           |
+| `words-count` | Print the word count for the current session (agent bookkeeping).          |
+
+### Board verbs (`topic: board`) — state-machine transitions and board metadata
+
+| Verb                | Purpose                                                                                                                                                                  |
+| ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `promote` / `next`  | Advance one forward state (Backlog→On Deck→Refine→Plan→Develop→Test→Review→Done).                                                                                        |
+| `demote`            | Return one state backward (from Test or Review back to Develop).                                                                                                         |
+| `park`              | Return a Refine or Plan issue to Backlog (premise falsified, deprioritized); keeps Priority/Size/Estimate.                                                               |
+| `refine`            | Atomic Backlog→Refine: set Priority+Size+Estimate, write the rationale marker, enter Refine.                                                                             |
+| `plan`              | Refine→Plan (Sprint-Planning entry); distinct from `discover`'s backlog-item generation. Refuses on any other current state.                                             |
+| `plan-approve`      | Record plan approval with durable human or Full-Auto provenance (stamps the `aitm-plan-approved` marker Plan→Develop needs).                                             |
+| `plan-estimate`     | Converge the detailed human Plan estimate and publish a separate AI forecast.                                                                                            |
+| `decompose-check`   | Classify whether a planned issue is atomic or requires decomposition.                                                                                                    |
+| `approve`           | Record final review approval (Review→Done gate). In Full-Auto, pair with an audit comment.                                                                               |
+| `review`            | Move an issue through Test to Review, flush timing, and pause.                                                                                                           |
+| `reject`            | Reject an issue under review (returns it for rework). Reason required.                                                                                                   |
+| `test`              | Develop→Test verification — finalizes Develop lint/format evidence, then runs Test-owned commands in an isolated worktree.                                               |
+| `reconcile`         | Drift recovery — align recorded state with the live board or restore the saga-verified sentinel.                                                                         |
+| `board`             | Read the live Project-board `Status` for an issue (resolved via the bound `projectId` — never a guessed project number).                                                 |
+| `epic-reconcile`    | Record that an epic's Acceptance Criteria were reconciled against what its children delivered (stamps the epic-only marker `gateCodeComplete` requires to exit Develop). |
+| `pull-next`         | JIT child-pull: promote the next refine-state child of an epic (by rank) into Plan.                                                                                      |
+| `close`             | Close the active or specified task (runs the pre-close gate).                                                                                                            |
+| `inflate-estimate`  | Adjust Size/Estimate mid-flight and record the change on the board + comment.                                                                                            |
+| `kind`              | Set the issue kind, or clear its marker by selecting the default code lane.                                                                                              |
+| `block` / `unblock` | Mark #N blocked by one or more other issues (label + board field + body marker) / clear a block.                                                                         |
+| `supersede`         | Mark a dead issue as superseded by another and close it out.                                                                                                             |
+| `auto`              | Toggle Full-Auto gate overrides for the session (disable plan→dev and/or review→done human gates).                                                                       |
+
+### Evidence & DoD verbs (`topic: evidence`) — proof that gates a checkbox
+
+| Verb               | Purpose                                                                                             |
+| ------------------ | --------------------------------------------------------------------------------------------------- |
+| `ac-stamp`         | Run an AC's declared verifier and stamp its `aitm-ac-evidence` marker (refuses on non-zero exit).   |
+| `dod-stamp`        | Run a Functional DoD item's verifier and stamp its `aitm-dod-evidence` marker.                      |
+| `check`            | Deprecated alias of `ensureChecked` (no longer toggles) — tick a checkbox if its proof gate passes. |
+| `ensureChecked`    | Ensure a checkbox is ticked (idempotent; never unticks). Refuses stampable items without evidence.  |
+| `ensureUnchecked`  | Ensure a checkbox is unticked (idempotent; never ticks).                                            |
+| `evidence-markers` | Audit or backfill AC evidence markers against the Verification Commands.                            |
+| `commit-trace`     | Create or update the canonical commit-trace comment from HEAD.                                      |
+| `mirror-deep-dive` | Mirror a deep-dive analysis from an existing comment into the issue body.                           |
+
+### Discovery & backlog verbs (`topic: discovery`) — pre-issue and issue-authoring
+
+| Verb         | Purpose                                                                                                                                 |
+| ------------ | --------------------------------------------------------------------------------------------------------------------------------------- |
+| `new`        | Create a new issue (via the sanctioned create-issue script) and start tracking it.                                                      |
+| `discover`   | Open an untracked discovery bucket for pre-issue ideation / backlog item generation (distinct from `/task plan` Sprint-Planning entry). |
+| `save-plan`  | Save a discovery plan markdown to `docs/plans/` and stamp its path into the active bucket.                                              |
+| `save-draft` | Autosave the in-progress discovery brainstorm to a tracked draft (safe to repeat).                                                      |
+| `cancel`     | Discard the active discovery bucket (no timing recorded).                                                                               |
+| `report`     | File a defect/feature report (optionally pre-filled from a machine-readable defect hint).                                               |
+| `user-story` | Write the Connextra 3-line User Story onto an issue.                                                                                    |
+| `split-plan` | Draft or create sanctioned child issues from numbered plan sections.                                                                    |
+
+### Meta verbs (`topic: meta`) — configuration and cross-cutting tools
+
+| Verb         | Purpose                                                                         |
+| ------------ | ------------------------------------------------------------------------------- |
+| `config`     | List config values, set one, or run the interactive interview.                  |
+| `migrate`    | Migrate repo issues into the selected/configured project.                       |
+| `fleet`      | Show active tasks across worktrees, or prune stale fleet registrations.         |
+| `log`        | Re-compute and write Engaged/Session/Review/Plan for an issue.                  |
+| `chore-mode` | Toggle chore-mode so unrelated edits are allowed past the source-edit gate.     |
+| `help`       | Show the top-level help, or a full per-verb reference with `/task help <verb>`. |
 
 ## Semantics
+
+The lifecycle verbs below (session binding, timing) are detailed here because
+they're the highest-traffic surface. Board, evidence, and discovery verb
+behavior is documented at the verb's own `VERB_REFERENCE` entry (`/task help
+<verb>`) and, for the state-machine transitions specifically, in the
+[State Machine](#state-machine) section below — duplicating ~40 verbs' worth
+of behavior in prose here would drift out of sync with the code faster than
+either canonical source.
 
 ### `/task #N`
 
@@ -113,6 +192,124 @@ A project-local AI agent skill that binds the active work session to a specific 
   - Array keys (like `defaultLabels`) accept comma-separated strings.
   - Known GH field IDs validated with a lightweight `gh api graphql` existence check.
 - Unknown keys rejected with the list of valid keys.
+
+## State Machine
+
+Every tracked issue lives in exactly one of eight kanban states, and every
+transition between them is gated. This section covers the state-object model,
+the guard-registry that enforces it, and the `onEnter` action slot — none of
+which existed in the v1 spec above.
+
+### The eight states
+
+```
+Backlog → On Deck → Refine → Plan → Develop → Test → Review → Done
+```
+
+| State     | Board column | What happens here                                                                                                                                                                                            |
+| --------- | ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `backlog` | Backlog      | Collection of prioritized backlog items (user stories, tasks).                                                                                                                                               |
+| `on-deck` | On Deck      | Inert, gateless tranche waiting room. `backlog → on-deck` carries no entry gate; the Priority gate lives on `on-deck → refine`. Every item passes through On Deck — there is no `backlog → refine` shortcut. |
+| `refine`  | Refine       | Backlog item is shaped to be ready for planning: acceptance criteria, estimate, size, priority, labels.                                                                                                      |
+| `plan`    | Plan         | Deep-dive on the story to determine a plan of action: enhanced ACs, refined estimate, plan approval.                                                                                                         |
+| `develop` | Develop      | Code changes are made and committed against the story, including test automation.                                                                                                                            |
+| `test`    | Test         | Committed source is run against all ACs and test automation in a sandboxed/isolated worktree.                                                                                                                |
+| `review`  | Review       | Story waits for review of functionality; ACs (functional + non-functional) are confirmed met.                                                                                                                |
+| `done`    | Done         | All ACs and Definition of Done are satisfied. Terminal — no exit guards.                                                                                                                                     |
+
+`promote` walks this chain forward one state at a time; `demote` walks Test or
+Review back to Develop. `refine`, `park`, `plan`, `plan-approve`, `pull-next`,
+and `reconcile` are the other verbs that move or realign an issue's state (see
+the Board-verb table above).
+
+### The state-object contract
+
+Each state is a frozen module under `scripts/task-tracker/states/*.mjs`
+exporting `{ name, entryGuards, exitGuards, onEnter }`:
+
+```js
+// Guard = { id, run(ctx) -> { ok: true } | { ok: false, reason } | Promise<…> }
+//   Refuses a transition by returning { ok: false, reason }. May be sync or
+//   async (shells out to git/gh). A guard that throws is treated as a refusal
+//   whose reason is the stringified error — one buggy guard can't crash the
+//   pipeline. Guards do NOT mutate state on success; the only sanctioned
+//   side effect is stashing a value on `ctx` for a later guard to read.
+
+// Action = { id, run(ctx) -> void | Promise<void> }
+//   Fires AFTER a successful Status write into the target state. Short,
+//   idempotent setup hooks only (stamp an entry timestamp, post a pickup
+//   directive, write a timing-log row). Actions never refuse a transition —
+//   a failure is logged and the transition stands. Re-firing on a later
+//   re-entry into the same state must be safe.
+```
+
+`scripts/task-tracker/states/index.mjs` re-exports every state as a `STATES`
+map keyed by name, plus a `FORWARD_CHAIN` projection (derived from
+`lib/lifecycle-policy/`) that `promote` walks. Backward movement is queried
+directly from the lifecycle policy package rather than a second hardcoded
+chain.
+
+`onEnter` is explicitly **not** for the deep work of a state — refining the
+issue body, writing code, running tests, reviewing changes all happen inside
+`/task <verb>` sessions that inhabit the state. The verb commands are
+inhabitants of states, not parts of the state object. Most `onEnter` lists are
+empty; `develop`'s, for example, is `Object.freeze([])` even though its exit
+list is not — a state can have real exit-guard teeth with no onEnter work at
+all:
+
+```js
+// scripts/task-tracker/states/develop.mjs
+export default Object.freeze({
+  name: 'develop',
+  entryGuards: Object.freeze([contiguityEntryGuard]),
+  exitGuards: Object.freeze([
+    blockedByGuard,
+    developExitCodeCompleteGuard,
+    developExitSandboxProofGuard,
+    developExitCommitTrailHeadGuard,
+    developExitEpicChildrenDoneGuard,
+    childCannotLeadEpicExitGuard,
+  ]),
+  onEnter: Object.freeze([]),
+});
+```
+
+### The guard-registry runtime
+
+Guards are declared per-state (above) but dispatched through a flat runtime
+registry, not read directly off the state objects at call time:
+
+```
+states/*.mjs                 state-bootstrap.mjs              guard-registry.mjs
+(per-state declarations)  →  (registerGuard for each)     →  GUARDS[state].{exit,entry}
+                                                                      │
+                                                                      ▼
+move-state.mjs / promote.mjs / close.mjs / review.mjs  ──calls──►  runGuards(from, to, ctx)
+                                                                      │
+                                              iterate GUARDS[from].exit, then GUARDS[to].entry
+                                                                      │
+                                                          aggregate refusals → allow / block
+```
+
+- **`lib/guard-registry.mjs`** holds the flat `GUARDS` map. `registerGuard(state,
+kind, guard)` is idempotent on `guard.id`. `runGuards(from, to, ctx)` is
+  async: it iterates `GUARDS[from].exit` then `GUARDS[to].entry`, awaiting
+  each `guard.run(ctx)` and aggregating every refusal (no short-circuit) so a
+  single blocked transition reports every reason at once. The module ships
+  with an empty registry on import — nothing self-registers.
+- **`lib/state-bootstrap.mjs`**'s `bootstrapGuards()` walks `STATES` once and
+  feeds the registry from each state's declared `exitGuards`/`entryGuards`.
+  Idempotent, so re-importing is safe.
+- **Call sites** — `scripts/gh/move-state.mjs` (the single state-mutator; every
+  Status write passes through `runGuards`), `verbs/promote.mjs`,
+  `verbs/close.mjs`, and `verbs/review.mjs`. There is no transition path that
+  skips the registry.
+
+A transition `from → to` runs two ordered slot lists: `GUARDS[from].exit`
+("may this issue leave `from`?") and `GUARDS[to].entry` ("may this issue enter
+`to`?"). Both lists always run; refusals from either are merged into one
+result. `done` has no exit guards — it's terminal. Full registration
+procedure and the guard inventory: `docs/guides/guard-architecture.md`.
 
 ## Config Schema
 
@@ -290,6 +487,13 @@ After `/clear` or `/compact`, sentinels are wiped from context and the router re
 
 ## File Layout
 
+The tree below is current as of this rewrite (file counts are direct
+`find`/`ls` counts, not estimates). `scripts/task-tracker/` has grown from a
+flat 7-file module into a directory-per-concern layout: a `verbs/` package
+holding every `/task <verb>` implementation, a `lib/` package holding shared
+logic organized into 8 sub-packages, and a `states/` package holding the
+state-machine objects described above.
+
 ```
 .ai-task-manager/
 ├── task-tracker.json              # Project-local config
@@ -306,13 +510,63 @@ After `/clear` or `/compact`, sentinels are wiped from context and the router re
 └── settings.json                  # Hook registrations and permissions
 
 scripts/task-tracker/
-├── task-tracker.mjs               # Main CLI entry — handles /task verbs
-├── gh-timing-comment.mjs          # GH API: locate/create/append/edit timing comment
-├── fleet-registry.mjs             # Fleet registry read/write for multi-agent worktrees
-├── state.mjs                      # Load/save state file with validation
-├── config.mjs                     # Load/merge config with precedence
-├── queue.mjs                      # Queue drain logic for offline events
-└── word-counter.mjs               # Reuses tally-chat-words.mjs logic (refactored into module)
+├── task-tracker.mjs               # Main CLI entry — dispatches to verbs/
+├── verify-develop.mjs             # Develop-phase lint+targeted-test gate
+├── bash-guard.mjs                 # PreToolUse hook: gh-edit / body-write refusals
+├── ...                            # 68 top-level .mjs files total (config, state,
+│                                   # fleet-registry, gh-timing-comment, word-counter,
+│                                   # queue, and every other single-file concern that
+│                                   # hasn't grown large enough to earn its own package)
+│
+├── verbs/                         # 55 files — one (or a few) per /task <verb>:
+│   ├── promote.mjs                #   promote.mjs, demote.mjs, refine.mjs, plan.mjs,
+│   ├── demote.mjs                 #   review.mjs, close.mjs, ac-stamp.mjs, dod-stamp.mjs,
+│   ├── close.mjs                  #   commit-trace.mjs, plan-estimate.mjs, help-data.mjs
+│   ├── review.mjs                 #   (VERB_REFERENCE — canonical verb metadata), ...
+│   ├── ac-stamp.mjs
+│   ├── dod-stamp.mjs
+│   ├── commit-trace.mjs
+│   ├── help-data.mjs
+│   └── ...                        #   (55 files total)
+│
+├── lib/                           # 271 files across 8 sub-packages:
+│   ├── agent-review/              #   Agent Review Gate: audit-comment matching, tick guards
+│   ├── command-surface/           #   shared CLI parsing/dispatch helpers
+│   ├── config-init/               #   config scaffolding for `/task config` / init flows
+│   ├── estimation/                #   plan-estimate schema + WBS/risk evidence handling
+│   ├── github-records/            #   gh API read/write wrappers (issues, projects, comments)
+│   ├── lifecycle-policy/          #   FORWARD_CHAIN / backward-move policy consumed by states/
+│   ├── move-state/                #   single state-mutator internals (see move-state.mjs)
+│   ├── timing-events/             #   timing-log row construction and queue draining
+│   ├── issue-body-mutate.mjs      #   mutateIssueBody() — sole sanctioned body-write transaction
+│   ├── body-invariants.mjs        #   findLostMarkers() — MarkerLossError guard
+│   ├── vc-emit.mjs                #   appendVcCommands() — Verification Commands section writer
+│   ├── plan-metadata.mjs          #   upsertPlanMetadataField()
+│   ├── deep-dive.mjs              #   ensureDeepDive() — canonical deep-dive authoring helper
+│   ├── guard-registry.mjs         #   registerGuard() / runGuards() — flat GUARDS map
+│   ├── state-bootstrap.mjs        #   bootstrapGuards() — feeds guard-registry from states/
+│   └── ...                        #   (271 files total, most outside the 8 named sub-packages)
+│
+├── states/                        # 9 files — one per kanban state plus the index:
+│   ├── index.mjs                  #   STATES map, FORWARD_CHAIN, Guard/Action contract docs
+│   ├── backlog.mjs
+│   ├── on-deck.mjs
+│   ├── refine.mjs
+│   ├── plan.mjs
+│   ├── develop.mjs                #   worked example in State Machine section above
+│   ├── test.mjs
+│   ├── review.mjs
+│   └── done.mjs                   #   terminal — no exitGuards
+│
+├── hooks/                         # PreToolUse/PostToolUse hook implementations
+├── tests/                         # node --test suites (unit + integration lanes)
+└── tools/                         # standalone maintenance/inspection scripts
+
+scripts/gh/
+├── move-state.mjs                 # THE single state-mutator; every Status write goes through it
+├── set-rank.mjs                   # Sets the Rank project-board field
+├── set-priority.mjs               # Sets Priority [--cascade]
+└── ...
 
 scripts/reports/
 ├── tally-chat-words.mjs           # KEPT — refactored to import from scripts/task-tracker/word-counter.mjs
