@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// @story #460 #833
+// @story #460 #833 #1140
 // Self-bind no-op — issue #833 (supersedes the #460 self-bind-resume behavior).
 //
 // #460 originally made a re-bind to the already-active issue (/task #N while on
@@ -20,10 +20,12 @@
 //      self-bind branch was removed once the guard made it unreachable.
 import { strict as assert } from 'node:assert';
 import { execFileSync } from 'node:child_process';
-import { readFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import test from 'node:test';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { buildRow } from '../../../gh-timing-comment.mjs';
+import { mkdtempProjectIsolated } from '../../../lib/scratch-dir.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url)) + '/..';
 const repoRoot = path.resolve(here, '..', '../../..');
@@ -97,5 +99,57 @@ assert.equal(
   '',
   'switch.mjs must no longer branch on isSelfBind — the no-op guard replaces it (#833)'
 );
+
+// ---- 5. Same-issue resume repairs missing fleet evidence (#1140) -----------
+test('same-issue resume restores fleet evidence without timing writes', async () => {
+  const tmp = mkdtempProjectIsolated('tt-self-bind-fleet-repair-');
+  const oldProjectDir = process.env.AI_TASK_MANAGER_PROJECT_DIR;
+  const oldTranscriptDir = process.env.AI_TASK_MANAGER_TRANSCRIPT_DIR;
+  const oldSessionId = process.env.AI_TASK_MANAGER_SESSION_ID;
+  process.env.AI_TASK_MANAGER_PROJECT_DIR = tmp;
+  process.env.AI_TASK_MANAGER_TRANSCRIPT_DIR = path.join(tmp, 'transcripts');
+  process.env.AI_TASK_MANAGER_SESSION_ID = 'self-bind-fleet-repair-1140';
+  mkdirSync(process.env.AI_TASK_MANAGER_TRANSCRIPT_DIR, { recursive: true });
+
+  try {
+    const { verbResume } = await import('../../../verbs/resume.mjs');
+    const { setActiveTask } = await import('../../../session-state.mjs');
+    setActiveTask(process.env.AI_TASK_MANAGER_SESSION_ID, { issue: '#1140' }, tmp);
+    const statePath = path.join(tmp, 'state.json');
+    writeFileSync(statePath, JSON.stringify({ active: '#1140', lastActive: '#1140' }), 'utf8');
+
+    const registrations = [];
+    let drained = 0;
+    let timingPosts = 0;
+    await verbResume({
+      rest: ['1140'],
+      cfg: {},
+      statePath,
+      projectDir: tmp,
+      role: 'solo',
+      drainQueueIfAny: async () => drained++,
+      safePostTiming: async () => timingPosts++,
+      nowIso: () => '2026-08-07T07:00:00Z',
+      registerTask: (...args) => registrations.push(args),
+      currentBranch: () => 'feature/1140-resume-fleet-repair',
+    });
+
+    assert.deepEqual(
+      registrations,
+      [[tmp, '#1140', tmp, 'feature/1140-resume-fleet-repair']],
+      'same-issue resume must restore the invoking worktree fleet entry'
+    );
+    assert.equal(drained, 0, 'same-issue repair must return before queue/timing work');
+    assert.equal(timingPosts, 0, 'same-issue repair must not post a re-engagement row');
+  } finally {
+    rmSync(tmp, { recursive: true, force: true });
+    if (oldProjectDir === undefined) delete process.env.AI_TASK_MANAGER_PROJECT_DIR;
+    else process.env.AI_TASK_MANAGER_PROJECT_DIR = oldProjectDir;
+    if (oldTranscriptDir === undefined) delete process.env.AI_TASK_MANAGER_TRANSCRIPT_DIR;
+    else process.env.AI_TASK_MANAGER_TRANSCRIPT_DIR = oldTranscriptDir;
+    if (oldSessionId === undefined) delete process.env.AI_TASK_MANAGER_SESSION_ID;
+    else process.env.AI_TASK_MANAGER_SESSION_ID = oldSessionId;
+  }
+});
 
 console.log('self-bind-resume.test.mjs: ok');

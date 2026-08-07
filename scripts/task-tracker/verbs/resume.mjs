@@ -187,6 +187,13 @@ export async function verbResume(ctx) {
     return;
   }
   if (ownIssue === normalizedTarget) {
+    try {
+      const register = ctx.registerTask ?? registerTask;
+      const branch = (ctx.currentBranch ?? currentBranch)(projectDir);
+      register(projectDir, normalizedTarget, projectDir, branch);
+    } catch {
+      /* best-effort: failure must not turn the timing-safe no-op into an error */
+    }
     console.log(`already active: ${normalizedTarget}`);
     return;
   }
