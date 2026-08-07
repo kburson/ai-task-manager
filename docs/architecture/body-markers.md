@@ -6,10 +6,39 @@ parseable from the raw body string. The state machine reads them; gates write
 them; humans rarely interact with them directly.
 
 This page catalogues the **Deep-Dive Analysis** marker pair introduced by
-issues `#297` / `#300` / `#294`. For the body-version + write-contract markers
-(`aitm-body-version`, `aitm-fields`) see [`body-writes.md`](./body-writes.md).
-For the state-transition entry markers (`aitm-entered-*`) see
-[`state-machine.md`](./state-machine.md).
+issues `#297` / `#300` / `#294`, and the full invariant marker-family list
+enforced by `lib/body-invariants.mjs`. For the body-version + write-contract
+markers (`aitm-body-version`, `aitm-fields`) see
+[`body-writes.md`](./body-writes.md). For the state-transition entry markers
+(`aitm-entered-<stage>`) see [`state-machine.md`](./state-machine.md#entry-markers).
+
+## Marker-family catalogue
+
+The set below is the authoritative list of hidden markers
+`lib/body-invariants.mjs` (`INVARIANT_MARKER_PATTERNS`) protects from being
+silently dropped by a `mutateIssueBody` write — the same list is mirrored in
+`lib/gh-edit-guard.mjs` to backstop external `gh issue edit` invocations.
+`kind` matches the vocabulary used by `findLostMarkers`: `single` (0-or-1
+occurrence), `multi` (one occurrence per stage, used only by
+`aitm-entered-<stage>`), or `count` (append-only; occurrence count must never
+decrease).
+
+| Marker                     | Kind   | Purpose                                                                                                                                                      |
+| -------------------------- | ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `aitm-fields`              | single | Structured JSON blob of board fields (priority, size, estimate, timing, etc).                                                                                |
+| `aitm-body-version`        | single | Optimistic-concurrency token for `versionedWriteBody`; see [`body-writes.md`](./body-writes.md).                                                             |
+| `aitm-stage-rollup`        | single | Per-stage cumulative time-in-state JSON, updated on every transition.                                                                                        |
+| `aitm-refine-complete`     | single | Timestamp of Refine-stage completion (Backlog/On-Deck → Refine exit gate input).                                                                             |
+| `aitm-plan-approved`       | single | Timestamp of the human/full-auto Plan approval; gates Plan → Develop.                                                                                        |
+| `aitm-epic-ac-reconciled`  | single | Timestamp an epic's AC list was reconciled against its children's delivered scope (#887).                                                                    |
+| `aitm-unauthorized-close`  | single | Flags an issue closed outside the sanctioned `close` verb, for convergence recovery.                                                                         |
+| `aitm-deep-dive-posted`    | single | See [Deep-Dive Marker Pair](#deep-dive-marker-pair) below.                                                                                                   |
+| `aitm-deep-dive-complete`  | single | See [Deep-Dive Marker Pair](#deep-dive-marker-pair) below.                                                                                                   |
+| `aitm-last-known-state`    | single | The board `state` this session/mutator last confirmed for the issue; read by `bound-state.mjs` and diffed for drift by `gh-edit-guard.mjs`.                  |
+| `aitm-last-known-state-ts` | single | Timestamp companion to `aitm-last-known-state` (legacy colon grammar keeps this as a separate marker; the new property grammar folds both into one comment). |
+| `aitm-entered-<stage>`     | multi  | Stage-entry audit trail, one per stage visited. See [`state-machine.md` → Entry markers](./state-machine.md#entry-markers).                                  |
+| `aitm-session-ref`         | count  | Append-only provider-session chain. See "Session-Reference Chain" further down this page.                                                                    |
+| `aitm-ac-struck`           | count  | Append-only record of an epic AC withdrawn from a child's delivered scope (#888).                                                                            |
 
 ## Deep-Dive Marker Pair
 
@@ -173,8 +202,8 @@ be traced back to the conversation that produced it.
 
 - [`body-writes.md`](./body-writes.md) — `mutateIssueBody` contract,
   `aitm-body-version`, stale-input refusals.
-- [`state-machine.md`](./state-machine.md) — entry markers per state, audit
-  trail.
+- [`state-machine.md`](./state-machine.md#entry-markers) — entry markers per
+  state, audit trail.
 - `scripts/task-tracker/lib/deep-dive-gate.mjs` — the three-signal gate.
 - `scripts/task-tracker/lib/deep-dive.mjs` — the `ensureDeepDive` writer and
   `readDeepDiveSignals` reader.

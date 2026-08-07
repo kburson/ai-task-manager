@@ -93,10 +93,13 @@ The state-objects are the new source of truth; the registry is the runtime
 dispatch layer. Adding a guard means adding it to the state's `exitGuards`
 or `entryGuards` list — never registering directly against the registry.
 
-## Migration roadmap
+## Guard migration status
 
-Future sub-issues will migrate the remaining inline guard checks into the
-appropriate state container:
+All five guard-migration sub-issues below are shipped (closed): the
+per-state `exitGuards`/`entryGuards` arrays in
+`scripts/task-tracker/states/<state>.mjs` are the live dispatch path for
+every forward transition — not a future plan. Each state module's own
+header comment names which former inline call site each guard replaced.
 
 | Issue | Scope                                            |
 | ----- | ------------------------------------------------ |
@@ -105,3 +108,35 @@ appropriate state container:
 | #267  | test→review preflight → `test.exitGuards`        |
 | #279  | review→done close-gates → `review.exitGuards`    |
 | #271  | strip `promote.mjs` / `demote.mjs` inline checks |
+
+`onEnter` is the one piece of the container shape still stubbed: every
+state's `onEnter: Object.freeze([])` today. The per-transition side effects
+that will eventually live there (entry-timestamp stamping, pickup-directive
+posting, timing-log row writes) currently still run as hardcoded steps
+inside `scripts/task-tracker/lib/move-state/*` rather than as per-state
+Actions. Migrating them is tracked by #1117 (open).
+
+## Entry markers
+
+On every successful transition, `stampEntryMarkers`
+(`scripts/task-tracker/lib/move-state/github-mutation.mjs`, delegating to
+`stampEntryMarker` in `scripts/task-tracker/lib/stage-entry-markers.mjs`)
+stamps an `<!-- aitm-entered-<stage>: <iso-ts> -->` marker into the issue
+body as a tamper-evident, append-only audit trail of every stage the issue
+has visited. First-stamp wins per stage; a stage re-entered on a later
+visit is recorded with a `-N` suffix (e.g. `aitm-entered-develop-2`).
+
+Ordering, per `move-state-core.mjs`: **Status field write → entry-marker
+stamp → onEnter dispatch** (the last step is currently a no-op — see above).
+
+- **Reader/writer:** `scripts/task-tracker/lib/stage-entry-markers.mjs`
+  (`stampEntryMarker`, `parseEntryMarkers`, `getStageVisitCount`,
+  `verifyChainIntegrity`).
+- **Consumers.** `lib/contiguity-entry-guard.mjs` refuses a transition that
+  would skip a required stage (missing `aitm-entered-<stage>` in the
+  expected prefix); `lib/close-gates.mjs` refuses a close whose chain has a
+  `chain-hole-at-<stage>` for the same reason.
+- **Invariant.** Registered in `lib/body-invariants.mjs` as the
+  `aitm-entered-<stage>` multi-marker (`kind: 'multi'`): every stage present
+  in a body before a `mutateIssueBody` write must still be present after, or
+  the call throws `MarkerLossError`.
