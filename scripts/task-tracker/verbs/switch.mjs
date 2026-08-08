@@ -17,6 +17,7 @@ import {
   timingCommentHasRows,
   assertPairedReengagement,
 } from '../lib/bind-event.mjs';
+import { resolveWorktreeBinding } from '../lib/worktree-binding.mjs';
 
 export async function verbSwitch(ctx, target) {
   const {
@@ -35,6 +36,8 @@ export async function verbSwitch(ctx, target) {
     console.error(`invalid issue ref: ${target}`);
     process.exit(1);
   }
+  const resolveBinding = ctx.resolveWorktreeBinding ?? resolveWorktreeBinding;
+  const binding = resolveBinding({ projectDir, now: nowIso });
   await drainQueueIfAny();
   const s = loadState(statePath);
   // #833 — self-bind no-op. Rebinding to the already-active, never-paused issue
@@ -48,6 +51,7 @@ export async function verbSwitch(ctx, target) {
   // `s.active === null` (pause.mjs clears it), never satisfies this guard, and
   // still emits its single closing `resumed` via the incoming-bind path.
   if (s.active === target && !s.paused) {
+    saveState({ ...s, ...binding }, statePath);
     try {
       registerTask(projectDir, target, projectDir, currentBranch(projectDir));
     } catch {
@@ -120,6 +124,7 @@ export async function verbSwitch(ctx, target) {
     // #475 AC1 — carry the durable session-global marker across the switch
     // (…EMPTY_STATE would otherwise reset it to 0).
     lastWordMarker: advanceWordMarker(s.lastWordMarker, wordsAtStart),
+    ...binding,
   };
   saveState(newState, statePath);
   // #218: state hydration removed — the issue body's `aitm-last-known-state`
