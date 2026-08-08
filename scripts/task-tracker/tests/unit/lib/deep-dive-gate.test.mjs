@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// @story #296
+// @story #296 #1184
 // #297 — unit tests for the Plan→Develop Deep-Dive Analysis gate.
 // #300 — migrated from the deprecated `- [x] Deep dive complete` checkbox
 //        signal to the hidden `aitm-deep-dive-complete` marker.
@@ -201,6 +201,28 @@ function fullBody({ posted = POSTED, complete = COMPLETE, section = SECTION_H2, 
   // (d) Pickup Directive heading present, no <details> in body → gate passes
   const rD = planDeepDiveGate({ body: fullBody() });
   assert.equal(rD.ok, true, `(d) heading present, no <details>: ${JSON.stringify(rD)}`);
+
+  // #1184 — inline-code tag examples are prose, not container boundaries.
+  // The old unanchored regex consumed the real root Pickup heading between
+  // these two examples and produced a false missing-directive refusal.
+  const bodyE = fullBody()
+    .replace('do the thing', 'do the thing; document the `<details>` opening-tag example')
+    .replace(
+      PADDED_DETAILS,
+      `${PADDED_DETAILS}\nDocument the matching \`</details>\` closing-tag example.`
+    );
+  const rE = planDeepDiveGate({ body: bodyE });
+  assert.equal(rE.ok, true, `(e) inline tag examples must not hide Pickup: ${JSON.stringify(rE)}`);
+
+  // An actual unclosed line-level container remains fail-closed: all following
+  // content, including Pickup, is treated as enclosed.
+  const bodyF = fullBody().replace('do the thing\n', 'do the thing\n<details>\n');
+  const rF = planDeepDiveGate({ body: bodyF });
+  assert.equal(rF.ok, false, '(f) unclosed real details container should hide Pickup');
+  assert.ok(
+    rF.blockers.some((b) => b.startsWith('plan-develop-pickup-directive-missing')),
+    `(f) expected pickup-directive-missing blocker: ${JSON.stringify(rF.blockers)}`
+  );
 }
 
 console.log('deep-dive-gate.test.mjs: all passed');

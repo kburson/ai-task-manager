@@ -15,6 +15,7 @@
 import { projectValuesForIssue, splitRepo, gql } from '../../gh/lib/github-projects.mjs';
 import { loadProjectFieldDefs } from '../project-fields.mjs';
 import { lintChecklistCommands } from './checklist-command-lint.mjs';
+import { maskDetailsBlocks } from './details-blocks.mjs';
 import {
   findAcsWithoutVerifierOrInvalidTag,
   findAcsWithLegacyVerificationForm,
@@ -105,7 +106,7 @@ export async function gateRefineToPlan({ cfg, issueNumber, deps = {} } = {}) {
   try {
     const body = await fetchBody({ cfg, issueNumber });
 
-    const strippedForPickup = body.replace(/<details[\s\S]*?<\/details>/gi, '');
+    const strippedForPickup = maskDetailsBlocks(body);
     if (!/^##\s+Pickup Directive\s+—\s+MANDATORY,\s+DO NOT SKIP\s*$/m.test(strippedForPickup)) {
       blockers.push(
         'refine-exit-pickup-directive-missing: body must contain a top-level `## Pickup Directive — MANDATORY, DO NOT SKIP` heading (not inside a `<details>` block) before promoting to Plan'
