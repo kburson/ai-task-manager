@@ -101,6 +101,7 @@ function runCreate(ctx, extraArgs) {
       cwd: ctx.temp,
       env: {
         ...process.env,
+        AI_TASK_MANAGER_PROJECT_DIR: ctx.temp,
         PATH: `${ctx.binDir}:${process.env.PATH}`,
         CREATE_ISSUE_TETHER_SCRIPT: ctx.tetherStub,
       },

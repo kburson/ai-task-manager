@@ -165,6 +165,7 @@ function orchestrationInput(overrides = {}) {
     mode: 'dry-run',
     cfg: { repo: 'owner/repo' },
     deps: {
+      projectDir: process.cwd(),
       scratchDir,
       fetchIssueBody: async () =>
         [

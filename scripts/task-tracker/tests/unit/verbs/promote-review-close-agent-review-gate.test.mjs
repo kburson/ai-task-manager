@@ -25,6 +25,7 @@ const cfg = { repo: 'owner/name' };
 
 function baseDeps(overrides = {}) {
   return {
+    projectDir: process.cwd(),
     assertBound: () => {},
     getLiveState: async () => 'review', // matches recorded → no drift
     runMoveState: async () => 0,

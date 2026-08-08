@@ -24,6 +24,7 @@
 
 import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
+import { resolveProjectDir } from './project-dir.mjs';
 
 // The direct-node PreToolUse guards that share this resolution contract.
 // bash-guard/agent-guard/activity-guard are the #792-enumerated set;
@@ -52,9 +53,10 @@ export function guardEntrypointCandidates(name) {
 // repo-relative fallback chain. Returns the first candidate whose absolute path
 // (against `cwd`) exists, or `null` when neither resolves (the fail-closed
 // signal). `exists` is injectable for tests.
-export function resolveGuardEntrypoint(name, { cwd = process.cwd(), exists = existsSync } = {}) {
+export function resolveGuardEntrypoint(name, { cwd, exists = existsSync } = {}) {
+  const projectDir = cwd ?? resolveProjectDir();
   for (const candidate of guardEntrypointCandidates(name)) {
-    const abs = resolve(cwd, candidate);
+    const abs = resolve(projectDir, candidate);
     if (exists(abs)) return abs;
   }
   return null;

@@ -10,7 +10,6 @@ import {
   checkDirty,
   formatSummary,
   shortAuditDescription,
-  resolveRegisteredWorkspaceForIssue,
   resolveWorkspaceForIssue,
   CLEANUP_GUIDANCE,
 } from '../../gh/lib/dirty-workspace.mjs';
@@ -31,6 +30,7 @@ import {
 import { tickLifecycleItem } from '../lib/lifecycle-dod.mjs';
 import { assertLifecycleSatisfied } from '../close-gate.mjs';
 import { deriveAndStampFunctionalDod } from '../lib/functional-dod-derive.mjs';
+import { resolveProjectDir } from '../lib/project-dir.mjs';
 import { parseIssueFieldDb } from '../issue-field-db.mjs';
 import { closeLabelRemoveArgs } from '../lib/close-labels.mjs';
 import {
@@ -366,7 +366,10 @@ export async function verbClose(ctx) {
   });
   const configuredReviewAuthority = configuredReviewToDoneGate ? 'human-gate' : 'gate-bypassed';
   const outcomeRuntimeFactory = ctx.createEstimationOutcomeWriter ?? createEstimationOutcomeRuntime;
-  const issueWorkspaceResolver = ctx.resolveIssueWorkspace ?? resolveRegisteredWorkspaceForIssue;
+  const issueWorkspaceResolver =
+    ctx.resolveIssueWorkspace ??
+    (({ issueRef, projectDir: invokingDir }) =>
+      resolveProjectDir({ issue: issueRef, deps: { invokingDir } }));
   const outcomeWriterForIssue = (issueNumber, { requireDedicated = false } = {}) => {
     if (ctx.estimationOutcomeWriter) return ctx.estimationOutcomeWriter;
     if (

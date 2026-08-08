@@ -3,6 +3,7 @@
 // Tests inject `deps.assertBound = () => {}` to opt out.
 
 import { readBoundState } from './bound-state.mjs';
+import { resolveProjectDir } from './project-dir.mjs';
 
 export class BindMissingError extends Error {
   constructor(msg) {
@@ -18,8 +19,12 @@ export class BindMismatchError extends Error {
   }
 }
 
-export function assertBoundToIssue(issueNumber, { projectDir = process.cwd() } = {}) {
-  const { activeIssue } = readBoundState(projectDir);
+export function assertBoundToIssue(
+  issueNumber,
+  { projectDir, resolveDir = resolveProjectDir } = {}
+) {
+  const resolvedDir = resolveDir({ issue: issueNumber, deps: { projectDir } });
+  const { activeIssue } = readBoundState(resolvedDir);
   const target = `#${String(issueNumber).replace(/^#/, '')}`;
   if (!activeIssue) {
     throw new BindMissingError(

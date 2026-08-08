@@ -30,6 +30,7 @@ const blockedBody = writeLastKnownState(`## Scope\n\nNeed direction here\n\n${TO
 
 function baseDeps() {
   return {
+    projectDir: process.cwd(),
     assertBound: () => {},
     getLiveState: async () => 'backlog', // matches recorded → no drift
     runMoveState: async () => 0, // success on the happy path

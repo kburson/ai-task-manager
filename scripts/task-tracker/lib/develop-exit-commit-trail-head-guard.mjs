@@ -15,6 +15,7 @@
 
 import { gateCommitTrailContainsHead } from './code-complete-gate.mjs';
 import { isNoCommitKind } from './issue-kind.mjs';
+import { resolveProjectDir } from './project-dir.mjs';
 
 export const GUARD_ID = 'develop-exit-commit-trail-head';
 
@@ -28,7 +29,11 @@ export const developExitCommitTrailHeadGuard = {
     // marker checked by `gateCodeComplete`), so a HEAD-in-trail requirement is
     // inapplicable. Skip when no-commit-kind.
     if (isNoCommitKind(ctx.body)) return { ok: true };
-    const projectDir = ctx.projectDir || process.env.TASK_TRACKER_PROJECT_DIR || process.cwd();
+    const resolveDir = ctx.deps?.resolveProjectDir || resolveProjectDir;
+    const projectDir = resolveDir({
+      issue: ctx.issueNumber,
+      deps: { ...ctx.deps, projectDir: ctx.projectDir },
+    });
     const gateFn = ctx.deps?.commitTrailHeadGate || gateCommitTrailContainsHead;
     const result = await gateFn({
       cfg: ctx.cfg,
