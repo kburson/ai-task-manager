@@ -14,34 +14,10 @@ import { join } from 'node:path';
 
 import { verbClose } from '../../../verbs/close.mjs';
 import { closeLabelRemoveArgs } from '../../../lib/close-labels.mjs';
-import {
-  serializeAgentReviewProof,
-  serializeReviewApproval,
-} from '../../../lib/review-authority.mjs';
 import { projectScratchDir } from '../../../lib/scratch-dir.mjs';
 
-const REVIEW_EPOCH = 'review:1:2026-06-28T00:00:00Z';
-const VERIFIED_SHA = 'abc1234';
-const APPROVED_BODY = [
-  '## Done',
-  `<!-- aitm-dod-verified sha="${VERIFIED_SHA}" ts="2026-06-27T23:59:00Z" -->`,
-  '<!-- aitm-entered-review ts="2026-06-28T00:00:00Z" -->',
-  serializeAgentReviewProof({
-    epoch: REVIEW_EPOCH,
-    sha: VERIFIED_SHA,
-    ts: '2026-06-28T00:01:00Z',
-    validators: 'fixture',
-    result: 'pass',
-  }),
-  serializeReviewApproval({
-    epoch: REVIEW_EPOCH,
-    proofSha: VERIFIED_SHA,
-    ts: '2026-06-28T00:02:00Z',
-    provenance: 'human',
-  }),
-  '<!-- aitm-fields: {"engagedTime":3600,"size":"M","estimate":3} -->',
-  '',
-].join('\n');
+const APPROVED_BODY =
+  '## Done\n\n<!-- aitm-review-approved ts="2026-06-28T00:00:00Z" full-auto="yes" -->\n<!-- aitm-fields: {"engagedTime":3600,"size":"M","estimate":3} -->\n';
 
 const baseState = (active = '#5') => ({
   active,
@@ -73,7 +49,6 @@ function makeCtx(statePath, dir, over = {}) {
     runMoveState: async () => ({ ok: true, benign: false }),
     runMoveStateDone: async () => ({ ok: true, benign: false }),
     writeTerminalDisposition: async () => ({ disposition: 'Delivered' }),
-    applyReviewDelta: async () => ({ status: 'applied' }),
     runLogIssueTime: async () => {},
     fetchSubIssues: async () => [],
     getIssueBoardState: async () => 'review',
@@ -84,9 +59,7 @@ function makeCtx(statePath, dir, over = {}) {
     // live `gh` (pexec injection does not intercept versionedWriteBody), which
     // stalls the full-suite run. This test asserts only label-strip behavior.
     tickLifecycleOnClose: async () => ({ ok: true }),
-    withIssueLock: async (_options, callback) => callback(),
-    withGovernedEffect: async (_options, callback) =>
-      callback({ leaseContext: {}, reverify: async () => {} }),
+    reconcileReviewApprovedTiming: async () => ({ status: 'present' }),
     ...over,
   };
 }
@@ -143,7 +116,6 @@ test('convergence close-issue path strips ToDo/BLOCKED labels after gh close', a
   await run({
     over: {
       SKIP_NETWORK: false,
-      closeBody: APPROVED_BODY,
       getIssueBoardState: async () => 'done',
       pexec: async (cmd, args) => (
         calls.push(`${cmd} ${args.join(' ')}`),
@@ -211,23 +183,6 @@ test('label-strip failure is best-effort and does not fail the close', async () 
   });
   assert.match(r.stdout, /Closed #5/);
   assert.match(r.stderr, /failed to strip ToDo\/BLOCKED labels/);
-});
-
-test('label-strip governed authority failure aborts close unchanged', async () => {
-  const stale = Object.assign(new Error('stale close fence'), { code: 'fence-stale' });
-  const r = await run({
-    over: {
-      SKIP_NETWORK: false,
-      closeBody: APPROVED_BODY,
-      getIssueBoardState: async () => 'done',
-      pexec: async (_cmd, args) => {
-        if (args[0] === 'issue' && args[1] === 'edit') throw stale;
-        return { stdout: '', stderr: '' };
-      },
-    },
-  });
-  assert.equal(r.thrown, stale);
-  assert.doesNotMatch(r.stderr, /failed to strip/);
 });
 
 console.log('close-strip-labels.test.mjs: ok');

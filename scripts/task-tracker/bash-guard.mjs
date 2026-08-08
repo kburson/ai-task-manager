@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // INTERNAL — DO NOT INVOKE DIRECTLY, and not exposed through `aitm`.
-// Plumbing: invoked by the Claude Code and Codex hook runners, never by a human
-// or the AI. See bin/aitm-registry.mjs (INTERNAL map) for the rationale.
+// Plumbing: invoked only by the Claude Code hook runner, never by a human or
+// the AI. See bin/aitm-registry.mjs (INTERNAL map) for the rationale.
 //
 // PreToolUse hook — enforces read/write path scoping on Bash commands.
 //
@@ -15,9 +15,7 @@
 // ~/.claude/ writes: always blocked (read-only for the task manager).
 //
 // Detects write targets via output redirections (>/>>), tee, and common
-// write-oriented commands. After pure policy checks, only positively proven
-// reads/tests/builds bypass source authority; ambiguous executable segments
-// fail closed to the governed source-write operation.
+// write-oriented commands. Everything else is treated as a read.
 //
 // `/tmp` contract (issue #199): system `/tmp` and `/private/tmp` are out of
 // scope for both reads and writes. The canonical scratch directory is
@@ -43,26 +41,32 @@
 import { readFileSync } from 'node:fs';
 import { execSync } from 'node:child_process';
 import { homedir } from 'node:os';
-import { isAbsolute, join, relative, resolve } from 'node:path';
+import { join } from 'node:path';
 
-class BashPolicyBlock extends Error {
-  constructor(reason, code) {
-    super(reason);
-    this.reason = reason;
-    this.code = code;
-  }
+// --- Phase 1: parse stdin -------------------------------------------------
+// A malformed payload is not a guard failure — preserve the intentional
+// pass-through (exit 0, no block). This stays OUTSIDE the fail-closed try below
+// so a bad harness payload can never be mistaken for an internal guard error.
+let input;
+try {
+  input = JSON.parse(readFileSync(0, 'utf8'));
+} catch {
+  process.exit(0); // malformed payload — don't block
 }
 
-function allow(reason) {
-  return { decision: 'allow', reason };
+// --- Phase 2: evaluate, failing CLOSED on any internal error --------------
+try {
+  await evaluate(input);
+  process.exit(0); // all checks passed
+} catch (err) {
+  failClosed(err);
 }
 
-// Normal policy block — a command violated a rule. Throwing a private signal
-// keeps the large policy evaluator short-circuiting without terminating an
-// importing test process; main translates it back to the historical exit-0
-// JSON decision.
-function block(reason, code) {
-  throw new BashPolicyBlock(reason, code);
+// Normal policy block — a command violated a rule. Exit 0 with the decision
+// (Claude Code reads the block from the stdout JSON, not the exit code).
+function block(reason) {
+  process.stdout.write(JSON.stringify({ decision: 'block', reason }));
+  process.exit(0);
 }
 
 // Fail closed — the guard could not complete evaluation. Emit a block decision
@@ -75,26 +79,10 @@ function failClosed(err) {
     detail +
     '\n  Fix the guard before re-running; do not bypass it.';
   process.stdout.write(JSON.stringify({ decision: 'block', reason }));
-  process.exitCode = 1;
+  process.exit(1);
 }
 
-export async function runBashGuard(input, deps = {}) {
-  try {
-    await evaluate(input, deps);
-    return allow('bash-policy-and-authority-allowed');
-  } catch (error) {
-    if (error instanceof BashPolicyBlock) {
-      return {
-        decision: 'block',
-        reason: error.reason,
-        ...(error.code ? { code: error.code } : {}),
-      };
-    }
-    throw error;
-  }
-}
-
-async function evaluate(input, deps = {}) {
+async function evaluate(input) {
   // #751 AC3 — test-only fault-injection seam. Lets the regression test force
   // the guard's internal evaluation to throw, so the fail-closed path can be
   // exercised deterministically from a subprocess. Never set in production.
@@ -108,30 +96,25 @@ async function evaluate(input, deps = {}) {
     await import('./lib/gh-edit-guard.mjs');
   const { evaluateGhProject } = await import('./lib/gh-project-guard.mjs');
   const { evaluateAitmPath } = await import('./lib/aitm-path-guard.mjs');
-  const { classifyBash } = await import('./activity-policy.mjs');
-  const { analyzeBashEffects, detectGhIssueCommands } =
-    await import('./lib/bash-effect-classifier.mjs');
   const { GIT_TIMEOUT_MS } = await import('./lib/process-timeouts.mjs');
   const { configPath } = await import('./paths.mjs');
 
   const command = input?.tool_input?.command ?? '';
-  if (!command) return;
+  if (!command) process.exit(0);
 
   // Resolve project root; fall back to cwd when not in a git repo.
-  let projectRoot = deps.projectRoot;
-  if (!projectRoot) {
-    try {
-      projectRoot = execSync('git rev-parse --show-toplevel', {
-        encoding: 'utf8',
-        stdio: ['ignore', 'pipe', 'ignore'],
-        timeout: GIT_TIMEOUT_MS,
-      }).trim();
-    } catch {
-      projectRoot = process.cwd();
-    }
+  let projectRoot;
+  try {
+    projectRoot = execSync('git rev-parse --show-toplevel', {
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'ignore'],
+      timeout: GIT_TIMEOUT_MS,
+    }).trim();
+  } catch {
+    projectRoot = process.cwd();
   }
 
-  const homeDir = deps.homeDir || homedir();
+  const homeDir = homedir();
   const claudeDir = join(homeDir, '.claude');
 
   // Unconditionally dangerous patterns — block regardless of path.
@@ -234,7 +217,7 @@ async function evaluate(input, deps = {}) {
   if (/\bgh\s+issue\s+create\b/.test(scanned)) {
     block(
       'Direct `gh issue create` is forbidden.\n' +
-        '  Use `scripts/gh/create-issue.mjs --shape <epic|sub-issue|solo>` — it enforces project tether, assignee/priority gates, and template structure.'
+        '  Use `scripts/gh/create-issue.mjs --shape <stub|epic|sub-issue|solo|defect>` — it enforces project tether, assignee/priority gates, and template structure.'
     );
   }
 
@@ -272,12 +255,6 @@ async function evaluate(input, deps = {}) {
         '  Use `/task close` — it validates the DoD, flushes timing, and moves the issue to Done atomically.'
     );
   }
-  if (detectGhIssueCommands(command).some(({ verb }) => verb === 'reopen')) {
-    block(
-      'Direct `gh issue reopen` is forbidden.\n' +
-        '  Use `/task reconcile` so issue state, board state, and session binding remain aligned.'
-    );
-  }
 
   // #487 — refuse direct `node node_modules/ai-task-manager/scripts/...`
   // invocations of commands the `aitm` orchestrator already exposes, steering to
@@ -300,19 +277,9 @@ async function evaluate(input, deps = {}) {
   const teeRe = /\btee\s+(?:-a\s+)?(\/[a-zA-Z0-9._~/-]+)/g;
   for (const [, p] of scanned.matchAll(teeRe)) writePaths.add(p);
 
-  // Legacy absolute-path extraction remains as a defensive overlap. The
-  // command-position-aware extractor below covers quoted, relative, wrapped,
-  // and multi-operand forms.
+  // touch, mkdir, rmdir, rm — first absolute path argument is the target
   const writeCommandRe = /\b(?:touch|mkdir|rmdir|rm)\s+(?:-[^\s]+\s+)*(\/[a-zA-Z0-9._~/-]+)/g;
   for (const [, p] of scanned.matchAll(writeCommandRe)) writePaths.add(p);
-  const effectAnalysis = analyzeBashEffects(command, {
-    projectRoot,
-    classifyActivity: classifyBash,
-    readCommitMessageFile:
-      deps.readCommitMessageFile ||
-      ((file) => readFileSync(isAbsolute(file) ? file : resolve(projectRoot, file), 'utf8')),
-  });
-  for (const target of effectAnalysis.writeTargets) writePaths.add(target);
 
   // --- Extract all absolute paths ---
   // Lookbehind ensures we match only boundary-anchored paths, not mid-segment slashes
@@ -322,12 +289,7 @@ async function evaluate(input, deps = {}) {
 
   // --- Validate write targets ---
   for (const p of writePaths) {
-    if (p === '-') continue;
-    const resolvedTarget = isAbsolute(p) ? resolve(p) : resolve(projectRoot, p);
-    const projectRelative = relative(resolve(projectRoot), resolvedTarget);
-    const insideProject =
-      projectRelative === '' || (!projectRelative.startsWith('..') && !isAbsolute(projectRelative));
-    if (!insideProject || p === '~' || p.startsWith('~/')) {
+    if (!WRITE_ALLOWED.some((prefix) => p.startsWith(prefix))) {
       block(
         `Write operation to path outside allowed scope: ${p}\n  (writes permitted only inside the project root; use \`./.tmp/\` for scratch — \`./.tmp/gh/\` for issue bodies, \`./.tmp/plan/\` for create-issue fragments; system \`/tmp\` and \`/private/tmp\` are not allowed)`
       );
@@ -373,17 +335,23 @@ async function evaluate(input, deps = {}) {
   // time. Unlike the fail-closed verb preflight, fetch failures PASS here so an
   // offline `gh` never wedges every commit. Token-less/chore commits carry no
   // `[#N]` and pass — the visible escape hatch.
-  await checkCommitAssigneeLock({ effectAnalysis, projectRoot });
+  await checkCommitAssigneeLock({ command, scanned, projectRoot });
 
-  // All pure policy checks passed. Only now may the guard initialize durable
-  // authority for shell source writes or a session-attributed commit.
-  await authorizeAcceptedCommand({ effectAnalysis, projectRoot, deps });
+  // All checks passed — evaluate() returns and the caller exits 0.
 
   // #769 — commit-time assignee-lock check. Nested so it shares `block()` and
   // the resolved `projectRoot`/`configPath`. Any block() short-circuits with
   // exit 0; every fetch/parse failure is swallowed so commits are never wedged.
-  async function checkCommitAssigneeLock({ effectAnalysis: effects, projectRoot: root }) {
-    if (effects.commits.length === 0) return;
+  async function checkCommitAssigneeLock({
+    command: rawCommand,
+    scanned: scannedCommand,
+    projectRoot: root,
+  }) {
+    // Detect a genuine `git commit` action on the quote-stripped command so a
+    // commit *message* that mentions "git commit" does not self-trigger.
+    const GIT_COMMIT_RE = /\bgit\s+(?:-\S+\s+|--[\w-]+(?:=\S+)?\s+)*commit\b/;
+    const commitSegments = scannedCommand.split(/&&|\|\||[;&|\n]|\$\(/);
+    if (!commitSegments.some((seg) => GIT_COMMIT_RE.test(seg))) return;
 
     // Offline escape — consistent with the verb preflight's TT_SKIP_NETWORK gate.
     if (process.env.TT_SKIP_NETWORK === '1') return;
@@ -392,8 +360,10 @@ async function evaluate(input, deps = {}) {
     if (!cfg) return; // no config / unresolved repo — don't wedge commits
     if ((cfg.preferences?.gateAssigneeMatch ?? true) === false) return;
 
-    const { checkAssigneeMatch } = await import('./lib/assignee-guard.mjs');
-    const refs = [...new Set(effects.commits.flatMap((commit) => commit.refs).map(Number))];
+    const { parseCommitIssueRefs, checkAssigneeMatch } = await import('./lib/assignee-guard.mjs');
+    // `[#N]` tokens live inside the quoted commit message, so parse the RAW
+    // command (scanned blanks quoted regions).
+    const refs = parseCommitIssueRefs(rawCommand);
     if (refs.length === 0) return; // token-less / chore — escape hatch
 
     const cache = {};
@@ -443,138 +413,4 @@ async function evaluate(input, deps = {}) {
     }
     return null;
   }
-}
-
-function canonicalIssue(value) {
-  const match = String(value ?? '').match(/^#?([1-9]\d*)$/);
-  return match?.[1] ?? null;
-}
-
-async function authorizeAcceptedCommand({ effectAnalysis, projectRoot, deps }) {
-  const { commits, sourceTargets, requiresSource } = effectAnalysis;
-  if (commits.length === 0 && !requiresSource) return;
-  if (commits.some((commit) => commit.messageSourceUnresolved)) {
-    block(
-      `[task-tracker] Refusing git commit: the effective commit message cannot be resolved before execution.\n` +
-        `  Use an inline -m/--message or a readable message file so issue attribution can be verified.`,
-      'bash-commit-message-unresolved'
-    );
-  }
-
-  const [{ isChoreModeActive }, { readBoundState }] = await Promise.all([
-    import('./lib/chore-mode.mjs'),
-    import('./lib/bound-state.mjs'),
-  ]);
-  const choreActive = (deps.isChoreModeActive || isChoreModeActive)(projectRoot);
-  if (choreActive) return;
-
-  const { activeIssue } = (deps.readBoundState || readBoundState)(projectRoot);
-  const boundIssue = canonicalIssue(activeIssue);
-  const operations = [];
-
-  if (commits.length > 0) {
-    const refs = [...new Set(commits.flatMap((commit) => commit.refs).map(String))];
-    if (!boundIssue) {
-      if (refs.length === 0) {
-        if (!requiresSource) return;
-      } else {
-        block(
-          `[task-tracker] Refusing issue-attributed git commit: ${refs.map((id) => `#${id}`).join(', ')} has no active session binding.\n` +
-            `  Bind the intended issue before committing so its exclusive work lease can be verified.`,
-          'bash-commit-no-bound-issue'
-        );
-      }
-    }
-    if (boundIssue) {
-      const mismatches = refs.filter((id) => id !== boundIssue);
-      if (mismatches.length > 0) {
-        block(
-          `[task-tracker] Refusing git commit: message target ${mismatches.map((id) => `#${id}`).join(', ')} differs from active binding #${boundIssue}.\n` +
-            `  A commit may only attribute the issue whose session lease is currently bound.`,
-          'bash-commit-binding-mismatch'
-        );
-      }
-      operations.push('issue-attributed-commit');
-    }
-  }
-
-  if (requiresSource) {
-    if (!boundIssue) {
-      const targets =
-        sourceTargets.length > 0 ? sourceTargets.join(', ') : 'unclassified shell segment';
-      block(
-        `[task-tracker] Refusing shell source mutation: no active issue is bound.\n` +
-          `  Targets: ${targets}`,
-        'bash-source-no-bound-issue'
-      );
-    }
-    operations.push('source-write');
-  }
-
-  let withGovernedEffect = deps.withGovernedEffect;
-  if (!withGovernedEffect) {
-    const { createRuntimeGovernedEffectAdapter } =
-      await import('./lib/work-lease/governed-effect.mjs');
-    const config =
-      deps.config ||
-      (() => {
-        const configFile = join(projectRoot, '.ai-task-manager', 'task-tracker.json');
-        return JSON.parse(readFileSync(configFile, 'utf8'));
-      })();
-    withGovernedEffect = createRuntimeGovernedEffectAdapter({
-      projectDir: projectRoot,
-      config,
-    });
-  }
-
-  for (const operation of [...new Set(operations)]) {
-    try {
-      await withGovernedEffect(
-        {
-          issueId: boundIssue,
-          operation,
-          heartbeat: true,
-        },
-        async () => {
-          await deps.onAuthorizedCommand?.({ operation, issueId: boundIssue });
-        }
-      );
-    } catch (error) {
-      const authorityCode =
-        typeof error?.code === 'string' && error.code.trim() ? error.code.trim() : 'unknown';
-      const detail = error?.message ? `: ${error.message}` : '';
-      const prefix = operation === 'source-write' ? 'source' : 'commit';
-      block(
-        `[task-tracker] Bash command refused: ${operation} authority ${authorityCode}${detail}\n` +
-          `  The shell command did not receive permission to run.`,
-        `bash-${prefix}-authority-refused`
-      );
-    }
-  }
-}
-
-async function main() {
-  let input;
-  try {
-    input = JSON.parse(readFileSync(0, 'utf8'));
-  } catch {
-    return;
-  }
-
-  try {
-    const result = await runBashGuard(input);
-    if (result.decision === 'block') {
-      process.stdout.write(JSON.stringify({ decision: 'block', reason: result.reason }));
-    }
-  } catch (error) {
-    failClosed(error);
-  }
-}
-
-export const runGuardBootstrap = main;
-
-const isMain =
-  import.meta.url === `file://${process.argv[1]}` || process.argv[1]?.endsWith('bash-guard.mjs');
-if (isMain) {
-  runGuardBootstrap();
 }

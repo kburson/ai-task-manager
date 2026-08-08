@@ -2,6 +2,7 @@
   "repo": "kburson/ai-task-manager",
   "trunkRef": "origin/trunk",
   "projectId": "PVT_kwHOABCEY84BXill",
+  "estimationRubricIssue": 1091,
   "kanbanFieldId": "PVTSSF_lAHOABCEY84BXillzhSuw0o",
   "kanbanOptionBacklog": "1f366e8c",
   "kanbanOptionOnDeck": "f627e155",
@@ -44,6 +45,5 @@
   "gateAnalysisToDevelopment": true,
   "gateReviewToDone": true,
   "gatePlanRefineWip": false,
-  "fieldDisposition": "PVTSSF_lAHOABCEY84BXillzhZHqZA",
-  "ledgerProjectId": "3ad65206-3a8a-49ab-bf34-26a40c441e26"
+  "fieldDisposition": "PVTSSF_lAHOABCEY84BXillzhZHqZA"
 }

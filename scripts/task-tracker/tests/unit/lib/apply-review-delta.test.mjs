@@ -161,24 +161,4 @@ function buildDeps({
   assert.ok(!/Plan time/.test(c), 'Plan time row absent when planTime missing');
 }
 
-// Governed close authority is never best-effort: a stale fence must escape
-// unchanged so the close verb stops before its next terminal effect.
-{
-  const stale = Object.assign(new Error('stale close fence'), { code: 'fence-stale' });
-  await assert.rejects(
-    applyReviewDelta({
-      cfg: CFG,
-      issueNumber: 999,
-      body: FIXTURE_BODY,
-      deps: {
-        ...buildDeps().deps,
-        postComment: async () => {
-          throw stale;
-        },
-      },
-    }),
-    (error) => error === stale
-  );
-}
-
 console.log('apply-review-delta.test.mjs: all passed');

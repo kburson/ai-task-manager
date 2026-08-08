@@ -5,11 +5,7 @@
 // against the timeout-selection surface — no process is spawned.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import {
-  defaultSpawnVerb,
-  spawnVerbTimeout,
-  MOVE_STATE_DELEGATE_TIMEOUT_MS,
-} from '../../../verbs/promote.mjs';
+import { spawnVerbTimeout, MOVE_STATE_DELEGATE_TIMEOUT_MS } from '../../../verbs/promote.mjs';
 // #858 — this used to carry a local `900_000` mirror of `SANDBOX_TIMEOUT_MS`
 // because the real constant was private to `verbs/test.mjs`. It now lives in
 // process-timeouts.mjs, so import it: a hand-copied cap goes stale the moment
@@ -46,44 +42,4 @@ test('AC3: the move-state delegate timeout is unchanged (GH_API_TIMEOUT_MS * 2)'
 
 test('quick delegates (close) keep the short budget', () => {
   assert.equal(spawnVerbTimeout('close'), GH_API_TIMEOUT_MS * 4);
-});
-
-test('owned promote delegate receives only authoritative lease environment', async () => {
-  let spawnOptions;
-  const spawnImpl = (_command, _args, options) => {
-    spawnOptions = options;
-    return {
-      on(event, callback) {
-        if (event === 'exit') queueMicrotask(() => callback(0));
-      },
-    };
-  };
-  const code = await defaultSpawnVerb(
-    {
-      verb: 'close',
-      issueNumber: 1049,
-      cfg: { workLease: { tokenEnv: 'REMOTE_LEASE_BEARER' } },
-      leaseContext: {
-        projectId: 'project-1',
-        leaseId: 'lease-authoritative',
-        fencingToken: '42',
-        worktreeId: 'wt-1',
-      },
-      baseEnv: {
-        KEEP_ME: 'yes',
-        REMOTE_LEASE_BEARER: 'secret',
-        AITM_LEASE_ID: 'stale',
-        AITM_FENCING_TOKEN: '7',
-        AITM_LEASE_HOLDER: 'untrusted',
-      },
-    },
-    { spawn: spawnImpl }
-  );
-
-  assert.equal(code, 0);
-  assert.deepEqual(spawnOptions.env, {
-    KEEP_ME: 'yes',
-    AITM_LEASE_ID: 'lease-authoritative',
-    AITM_FENCING_TOKEN: '42',
-  });
 });

@@ -89,25 +89,26 @@ describe('#497 auto-label Action', () => {
     assert.match(script, /body\.includes\(r\.marker\)/);
   });
 
-  it('reconciles the 🐞 / ✨ title prefix from the labels present', () => {
-    // #670 moved the LADYBUG/SPARKLE glyph constants into
-    // beta-report-title-reconcile.mjs (covered by its own unit tests); this
-    // script imports and wires them rather than declaring them inline.
-    assert.match(script, /LADYBUG, SPARKLE/);
+  it('reconciles the canonical title prefix from effective labels', () => {
+    // #1096 routes all label-derived prefixes through KIND_PREFIXES via the
+    // pure reconciler rather than maintaining a separate emoji vocabulary.
+    assert.match(script, /reconcileIssueTitle/);
     assert.match(script, /beta-report-title-reconcile\.mjs/);
-    // bug, beta-defect → ladybug; beta-feature → sparkle.
-    assert.match(script, /wantLadybug/);
-    assert.match(script, /wantSparkle/);
+    assert.match(script, /effectiveLabels/);
     assert.match(script, /issues\.update/);
   });
 
-  it('strips the 🐞 only when no bug signal remains on unlabeled — AC3', () => {
-    // wantEmoji collapses to '' when no bug/feature signal is present, which
-    // drops the leading emoji from the reconciled title. #670 moved the
-    // slice/strip logic into the pure, separately-unit-tested
-    // beta-report-title-reconcile.mjs module; this script now just calls it.
-    assert.match(script, /wantLadybug \? LADYBUG : wantSparkle \? SPARKLE : ''/);
-    assert.match(script, /reconcileBetaReportTitle\(title, wantEmoji\)/);
+  it('repairs Epic label and title metadata from the durable issue-kind marker', () => {
+    assert.match(script, /epic-metadata\.mjs/);
+    assert.match(script, /planEpicMetadata/);
+    assert.match(script, /forceEpic/);
+    assert.match(script, /labelsToAdd/);
+    assert.match(script, /aitm-issue-kind/);
+  });
+
+  it('passes the live effective labels to the pure reconciler — AC3', () => {
+    assert.match(script, /reconcileIssueTitle\(title, effectiveLabels\)/);
+    assert.doesNotMatch(script, /wantEmoji/);
   });
 
   it('no-ops when there is nothing to label or reconcile — AC3', () => {

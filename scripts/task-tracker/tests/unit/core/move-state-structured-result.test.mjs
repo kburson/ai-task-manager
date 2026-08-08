@@ -192,9 +192,7 @@ assert.match(
   /const moveResult = await runMoveStateDone\(/,
   'close.mjs must capture the structured runMoveStateDone result'
 );
-// Genuine failure short-circuits the success path with a structured refusal;
-// the outer close finalizer maps its exitCode instead of mutating process state
-// inside the convergence transaction.
+// Genuine failure short-circuits the success path with a non-zero exit.
 assert.match(
   closeSrc,
   /!moveResult\.ok && !moveResult\.benign/,
@@ -202,8 +200,8 @@ assert.match(
 );
 assert.match(
   closeSrc,
-  /return moveResult;/,
-  'close.mjs must surface the genuine structured move failure'
+  /process\.exitCode = 1;/,
+  'close.mjs must signal a non-zero outcome on genuine failure'
 );
 // The "Closed" success line must come AFTER the failure branch (i.e. it is no
 // longer reached unconditionally).
@@ -218,9 +216,25 @@ assert.ok(
   'the genuine-failure branch must guard the "Closed" success line'
 );
 
-// A parent lease cannot authorize a review child's Delivered/timing/board/GitHub
-// effects. Task 6 will add explicit handoff; until then parent close refuses.
-assert.match(closeSrc, /child issue\(s\) require their own work lease/);
-assert.doesNotMatch(closeSrc, /runMoveState\(child\.num, 'done'/);
+// Cascade child move is also captured and surfaced (but does not abort).
+assert.match(
+  closeSrc,
+  /const childMove = await runMoveState\(child\.num, 'done'/,
+  'cascade child move must capture the structured result'
+);
+// #512 — the genuine-failure check moved into the `decideCascadeChildClose`
+// helper, which gates the child `gh issue close` (fail-closed: a non-benign
+// move failure must NOT close the child, avoiding split-brain). The cascade
+// still surfaces the failure and continues to the next child.
+assert.match(
+  closeSrc,
+  /decideCascadeChildClose\(\{ childMove \}\)/,
+  'cascade must route the child move result through decideCascadeChildClose'
+);
+assert.match(
+  closeSrc,
+  /!childCloseDecision\.shouldClose/,
+  'cascade must surface and skip a child whose move genuinely failed'
+);
 
 console.log('move-state-structured-result.test.mjs: all passed');

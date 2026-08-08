@@ -5,6 +5,7 @@ import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
 import { getProjectDir, TMP_RUNTIME_REL, SHARED_DIR, LEGACY_CLAUDE_DIR } from './paths.mjs';
+import { GH_TIMING_COMMENT_TIMEOUT_MS } from './lib/process-timeouts.mjs';
 
 export const DEFAULTS = {
   wpm: 180,
@@ -17,14 +18,6 @@ export const DEFAULTS = {
   trunkRef: '',
   // GitHub Projects V2 node ID (set by init script)
   projectId: '',
-  // Durable lease/ledger identity. Deliberately distinct from GitHub Projects.
-  ledgerProjectId: '',
-  workLease: {
-    authority: 'local',
-    endpoint: '',
-    projectId: '',
-    tokenEnv: 'AITM_LEASE_AUTH_TOKEN',
-  },
   // Kanban board field + state option IDs (set by init script).
   // The `kanbanOption*` key suffixes predate the 2026-05 column rename
   // (Groom→Refine, Analyze→Plan, Development→Develop, Validate→Test) and
@@ -67,7 +60,7 @@ export const DEFAULTS = {
   assignee: '@me',
   defaultLabels: [],
   autoEndOnSwitch: true,
-  hookNetworkTimeoutMs: 2000,
+  hookNetworkTimeoutMs: GH_TIMING_COMMENT_TIMEOUT_MS,
   // #573: machine-local state/queue live under `.tmp/aitm/state/`, not SHARED_DIR.
   queuePath: TMP_RUNTIME_REL.queue,
   statePath: TMP_RUNTIME_REL.state,
@@ -114,14 +107,15 @@ export const DEFAULTS = {
   // (lib/release-detection.mjs). Off by default so TBD / GitFlow / release-branch
   // repos all attribute identically until a project explicitly opts in.
   releaseDetection: false,
+  // #1091 — governed GitHub issue that stores versioned estimation rubric
+  // snapshots. Zero explicitly means the adaptive rubric is not configured.
+  estimationRubricIssue: 0,
 };
 
 export const TYPES = {
   wpm: 'number',
   repo: 'string',
   projectId: 'string',
-  ledgerProjectId: 'string',
-  workLease: 'object',
   kanbanFieldId: 'string',
   kanbanOptionBacklog: 'string',
   kanbanOptionOnDeck: 'string',
@@ -168,6 +162,7 @@ export const TYPES = {
   pauseThresholdSeconds: 'integer',
   discussLabel: 'string',
   releaseDetection: 'boolean',
+  estimationRubricIssue: 'integer',
 };
 
 function defaultPaths() {
@@ -310,6 +305,9 @@ function coerce(key, raw) {
   }
   if (t === 'integer') {
     const n = Number(raw);
+    if (key === 'estimationRubricIssue' && (!Number.isInteger(n) || n < 0)) {
+      throw new Error(`value for ${key} must be zero or a positive integer, got: ${raw}`);
+    }
     if (!Number.isFinite(n) || !Number.isInteger(n)) {
       throw new Error(`value for ${key} must be an integer, got: ${raw}`);
     }

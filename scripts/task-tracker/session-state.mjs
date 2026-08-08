@@ -11,25 +11,6 @@
 import { existsSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { activeTaskPath, sessionDir } from './paths.mjs';
-import {
-  assertIntentTransition,
-  attachIntentCompensation,
-  attachIntentCompensationReceipt,
-  attachIntentForwardPhase,
-  attachIntentReceipt,
-  checkpointIntentCompensationProjection,
-  checkpointIntentProjection,
-  createPriorSessionSnapshot,
-  createWorkLeaseIntent,
-  normalizePriorSessionSnapshot,
-  normalizeLeaseContext,
-  normalizeWorkLeaseAuthority,
-  setIntentProjectionInput,
-  validateWorkLeaseCompensation,
-  workLeaseCompensationReconciled,
-  workLeaseIntentReconciled,
-  workLeaseIntentsEqual,
-} from './lib/work-lease/context.mjs';
 
 function readJson(p) {
   if (!existsSync(p)) return null;
@@ -42,79 +23,11 @@ function readJson(p) {
   }
 }
 
-function parseJsonForMutation(raw) {
-  if (!raw.trim()) {
-    throw new Error('active-task state is empty');
-  }
-  let parsed;
-  try {
-    parsed = JSON.parse(raw);
-  } catch {
-    throw new Error('active-task state is not valid JSON');
-  }
-  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
-    throw new Error('active-task state must be an object');
-  }
-  if (
-    Object.hasOwn(parsed, 'workLeaseIntent') &&
-    (!parsed.workLeaseIntent ||
-      typeof parsed.workLeaseIntent !== 'object' ||
-      Array.isArray(parsed.workLeaseIntent))
-  ) {
-    throw new Error('active-task workLeaseIntent is malformed');
-  }
-  return parsed;
-}
-
-function readJsonForMutation(p) {
-  if (!existsSync(p)) return null;
-  return parseJsonForMutation(readFileSync(p, 'utf8'));
-}
-
-function readActiveTaskWithSnapshot(p) {
-  if (!existsSync(p)) {
-    return {
-      existing: null,
-      snapshot: createPriorSessionSnapshot({ present: false, bytes: null }),
-    };
-  }
-  const bytes = Buffer.from(readFileSync(p));
-  return {
-    existing: parseJsonForMutation(bytes.toString('utf8')),
-    snapshot: createPriorSessionSnapshot({ present: true, bytes }),
-  };
-}
-
 function atomicWrite(p, payload) {
   mkdirSync(path.dirname(p), { recursive: true });
   const tmp = `${p}.tmp.${process.pid}.${Date.now()}`;
   writeFileSync(tmp, JSON.stringify(payload, null, 2) + '\n', 'utf8');
   renameSync(tmp, p);
-}
-
-function atomicWriteBytes(p, bytes) {
-  mkdirSync(path.dirname(p), { recursive: true });
-  const tmp = `${p}.tmp.${process.pid}.${Date.now()}`;
-  writeFileSync(tmp, bytes);
-  renameSync(tmp, p);
-}
-
-function authorityIssue(record) {
-  return record?.issue ?? record?.leaseIssue ?? null;
-}
-
-function canonicalIssue(value) {
-  const match = String(value ?? '').match(/^#?([1-9]\d*)$/);
-  return match?.[1] ?? null;
-}
-
-function mutateActiveTask(sid, projDir, mutate) {
-  const p = activeTaskPath(sid, projDir);
-  const existing = readJsonForMutation(p);
-  const next = mutate(existing);
-  if (next == null) return existing;
-  atomicWrite(p, next);
-  return next;
 }
 
 // Returns the active-task record for `sid` or null when none is bound.
@@ -123,49 +36,6 @@ function mutateActiveTask(sid, projDir, mutate) {
 export function getActiveTask(sid, projDir) {
   const p = activeTaskPath(sid, projDir);
   return readJson(p);
-}
-
-// Capture the active-task file before a write-ahead acquire intent is persisted.
-// The raw bytes, including whitespace and final-newline choice, are retained so
-// a deterministic loser can restore the exact pre-attempt state. setWorkLeaseIntent
-// converts this process-local form into the durable digest-checked intent form.
-export function captureActiveTaskSnapshot(sid, projDir) {
-  const p = activeTaskPath(sid, projDir);
-  if (!existsSync(p)) return Object.freeze({ present: false, bytes: null });
-  return Object.freeze({ present: true, bytes: Buffer.from(readFileSync(p)) });
-}
-
-// Restore only while the file still contains the acquire intent created by this
-// attempt. The conditional guard prevents a delayed loser from overwriting a
-// newer session write. Exact prior absence is restored by removing the file.
-export function restoreActiveTaskSnapshot(sid, snapshot, expectedIdempotencyKey, projDir) {
-  if (typeof expectedIdempotencyKey !== 'string' || expectedIdempotencyKey.trim() === '') {
-    throw new Error('restoreActiveTaskSnapshot: invalid snapshot or idempotency key');
-  }
-  const persistedSnapshot = Object.hasOwn(snapshot ?? {}, 'bytes')
-    ? createPriorSessionSnapshot(snapshot)
-    : normalizePriorSessionSnapshot(snapshot);
-  const normalizedSnapshot = {
-    present: persistedSnapshot.present,
-    bytes: persistedSnapshot.present ? Buffer.from(persistedSnapshot.bytesBase64, 'base64') : null,
-  };
-  const p = activeTaskPath(sid, projDir);
-  const current = readJsonForMutation(p);
-  if (
-    current?.workLeaseIntent?.idempotencyKey !== expectedIdempotencyKey ||
-    current.workLeaseIntent.priorSessionSnapshot?.digest !== persistedSnapshot.digest
-  ) {
-    return false;
-  }
-  if (!normalizedSnapshot.present) {
-    if (existsSync(p)) rmSync(p);
-    return true;
-  }
-  if (!Buffer.isBuffer(normalizedSnapshot.bytes)) {
-    throw new Error('restoreActiveTaskSnapshot: present snapshot must contain raw bytes');
-  }
-  atomicWriteBytes(p, normalizedSnapshot.bytes);
-  return true;
 }
 
 // Persists the active-task record for `sid`. Stamps `boundAt` to the current
@@ -182,71 +52,23 @@ export function setActiveTask(sid, record, projDir) {
   }
   const { state: _droppedState, ...recordWithoutState } = record;
   void _droppedState;
-  const suppliedAuthorityKeys = ['lease', 'holder', 'binding'].filter((key) =>
-    Object.hasOwn(recordWithoutState, key)
-  );
-  if (suppliedAuthorityKeys.length > 0) {
-    if (suppliedAuthorityKeys.length !== 3) {
-      throw new TypeError('work-lease authority must contain exactly lease, holder, and binding');
+  // Preserve the derived `kanbanState` cache (#218 follow-up) across saves
+  // that don't carry it. Only setSessionKanbanState / explicit refreshers
+  // should mutate this field; the generic state writer (state.mjs#saveState)
+  // doesn't know about it and would otherwise blow it away on every bind.
+  let stickyKanban = {};
+  if (!('kanbanState' in recordWithoutState) && record.issue != null) {
+    const existing = readJson(activeTaskPath(sid, projDir));
+    if (existing && existing.issue === record.issue && existing.kanbanState) {
+      stickyKanban = { kanbanState: existing.kanbanState };
     }
-    const authority = normalizeWorkLeaseAuthority(
-      {
-        lease: recordWithoutState.lease,
-        holder: recordWithoutState.holder,
-        binding: recordWithoutState.binding,
-      },
-      { issueId: authorityIssue(recordWithoutState) }
-    );
-    Object.assign(recordWithoutState, authority);
-  }
-  const existing = readJsonForMutation(activeTaskPath(sid, projDir));
-  const existingAuthorityIssue = canonicalIssue(authorityIssue(existing));
-  const recordAuthorityIssue = canonicalIssue(authorityIssue(record));
-  const sameAuthorityIssue =
-    existingAuthorityIssue != null && existingAuthorityIssue === recordAuthorityIssue;
-  // `kanbanState` and fenced authority are issue-scoped sticky fields. Generic
-  // timing/session saves preserve them only while they still describe the same
-  // issue. A different issue starts without either projection.
-  const stickyIssueState = {};
-  if (sameAuthorityIssue && !('kanbanState' in recordWithoutState) && existing.kanbanState) {
-    stickyIssueState.kanbanState = existing.kanbanState;
-  }
-  if (
-    sameAuthorityIssue &&
-    !('lease' in recordWithoutState) &&
-    !('holder' in recordWithoutState) &&
-    !('binding' in recordWithoutState) &&
-    existing.lease
-  ) {
-    if (existing.holder === undefined && existing.binding === undefined) {
-      // Read-only compatibility for a pre-6B1 session. Governed use must
-      // backfill this lease from authoritative project observation before it
-      // can construct any request.
-      stickyIssueState.lease = normalizeLeaseContext(existing.lease);
-    } else {
-      Object.assign(
-        stickyIssueState,
-        normalizeWorkLeaseAuthority(
-          { lease: existing.lease, holder: existing.holder, binding: existing.binding },
-          { issueId: authorityIssue(existing) }
-        )
-      );
-    }
-  }
-  // An incomplete intent is a crash-recovery record, not granted authority.
-  // Keep it through generic projections (including an issue switch) until the
-  // reconciler positively clears it.
-  const stickyIntent = {};
-  if (!('workLeaseIntent' in recordWithoutState) && existing?.workLeaseIntent) {
-    stickyIntent.workLeaseIntent = existing.workLeaseIntent;
   }
   const payload = {
     issue: record.issue ?? null,
     entryStartTs: record.entryStartTs ?? null,
     wordsAtStart: record.wordsAtStart ?? 0,
     boundAt: record.boundAt ?? new Date().toISOString(),
-    ...stickyIssueState,
-    ...stickyIntent,
+    ...stickyKanban,
     ...recordWithoutState,
   };
   atomicWrite(activeTaskPath(sid, projDir), payload);
@@ -277,318 +99,6 @@ export function clearActiveTask(sid, projDir) {
   } catch {
     /* tolerate race with another writer */
   }
-}
-
-// Removes granted authority only when the caller still holds the exact lease and fence.
-// A delayed cleanup from an older holder is therefore an idempotent no-op.
-export function clearActiveTaskLease(sid, expectedLeaseId, expectedFencingToken, projDir) {
-  let cleared = false;
-  mutateActiveTask(sid, projDir, (existing) => {
-    if (
-      !existing?.lease ||
-      existing.lease.leaseId !== expectedLeaseId ||
-      existing.lease.fencingToken !== expectedFencingToken
-    ) {
-      return null;
-    }
-    const next = { ...existing };
-    delete next.lease;
-    delete next.holder;
-    delete next.binding;
-    if (next.issue == null && !next.workLeaseIntent) delete next.leaseIssue;
-    cleared = true;
-    return next;
-  });
-  return cleared;
-}
-
-// Persists the exact canonical acquire/switch request before authority mutation.
-// The helper validates all content before touching the session record.
-export function setWorkLeaseIntent(sid, input, projDir) {
-  const p = activeTaskPath(sid, projDir);
-  const { existing: existingBeforeMutation, snapshot: capturedSnapshot } =
-    readActiveTaskWithSnapshot(p);
-  const suppliedSnapshot = input?.priorSessionSnapshot;
-  const priorSessionSnapshot = suppliedSnapshot
-    ? Object.hasOwn(suppliedSnapshot, 'bytes')
-      ? createPriorSessionSnapshot(suppliedSnapshot)
-      : suppliedSnapshot
-    : (existingBeforeMutation?.workLeaseIntent?.priorSessionSnapshot ?? capturedSnapshot);
-  const intent = createWorkLeaseIntent({ ...input, priorSessionSnapshot });
-  const request = JSON.parse(intent.canonicalRequest);
-  const base = existingBeforeMutation ?? {
-    issue: null,
-    entryStartTs: null,
-    wordsAtStart: 0,
-    boundAt: new Date().toISOString(),
-  };
-  if (base.workLeaseIntent) {
-    if (workLeaseIntentsEqual(base.workLeaseIntent, intent)) return base;
-    throw new Error('session has an unreconciled work-lease intent');
-  }
-  const currentIssue = authorityIssue(base);
-  const intentIssue = intent.operation === 'resume' ? intent.issueId : request.issueId;
-  if (
-    (intent.operation === 'resume' && currentIssue == null) ||
-    (currentIssue != null && canonicalIssue(currentIssue) !== intentIssue)
-  ) {
-    throw new Error('work-lease intent issue does not match the current session authority');
-  }
-  if (intent.operation === 'resume') {
-    let lease;
-    try {
-      lease = normalizeLeaseContext(base.lease);
-    } catch {
-      throw new Error('resume intent requires the current session authority lease');
-    }
-    if (
-      lease.projectId !== request.projectId ||
-      lease.leaseId !== request.leaseId ||
-      lease.fencingToken !== request.fencingToken
-    ) {
-      throw new Error('resume intent request does not match the current session authority lease');
-    }
-  }
-  if (intent.operation === 'switchLease') {
-    let lease;
-    try {
-      lease = normalizeLeaseContext(base.lease);
-    } catch {
-      throw new Error('switch intent requires the current session source lease');
-    }
-    if (
-      lease.projectId !== request.projectId ||
-      lease.leaseId !== request.leaseId ||
-      lease.fencingToken !== request.fencingToken
-    ) {
-      throw new Error('switch intent request does not match the current session source lease');
-    }
-    if (lease.worktreeId !== request.target.holder.worktreeId) {
-      throw new Error('switch intent target holder does not match the source worktree');
-    }
-  }
-  const next = {
-    ...base,
-    ...(currentIssue == null ? { leaseIssue: `#${intentIssue}` } : {}),
-    workLeaseIntent: intent,
-  };
-  atomicWrite(p, next);
-  return next;
-}
-
-export function attachWorkLeaseIntentReceipt(sid, receipt, projDir) {
-  return mutateActiveTask(sid, projDir, (existing) => {
-    if (!existing?.workLeaseIntent) {
-      throw new Error('work-lease intent is not persisted');
-    }
-    return {
-      ...existing,
-      workLeaseIntent: attachIntentReceipt(existing.workLeaseIntent, receipt),
-    };
-  });
-}
-
-export function commitWorkLeaseForwardPhase(sid, forwardPhase, projDir) {
-  return mutateActiveTask(sid, projDir, (existing) => {
-    if (!existing?.workLeaseIntent) {
-      throw new Error('work-lease intent is not persisted');
-    }
-    return {
-      ...existing,
-      workLeaseIntent: attachIntentForwardPhase(existing.workLeaseIntent, forwardPhase),
-    };
-  });
-}
-
-export function setWorkLeaseCompensation(sid, compensation, projDir) {
-  return mutateActiveTask(sid, projDir, (existing) => {
-    if (!existing?.workLeaseIntent) {
-      throw new Error('work-lease intent is not persisted');
-    }
-    return {
-      ...existing,
-      workLeaseIntent: attachIntentCompensation(existing.workLeaseIntent, compensation),
-    };
-  });
-}
-
-export function attachWorkLeaseCompensationReceipt(sid, receipt, projDir) {
-  return mutateActiveTask(sid, projDir, (existing) => {
-    if (!existing?.workLeaseIntent?.compensation) {
-      throw new Error('work-lease compensation is not persisted');
-    }
-    return {
-      ...existing,
-      workLeaseIntent: attachIntentCompensationReceipt(existing.workLeaseIntent, receipt),
-    };
-  });
-}
-
-export function checkpointWorkLeaseCompensationProjection(
-  sid,
-  projection,
-  reconciliationProof,
-  expectedTransitionId,
-  completedAt,
-  projDir
-) {
-  return mutateActiveTask(sid, projDir, (existing) => {
-    if (!existing?.workLeaseIntent?.compensation) {
-      throw new Error('work-lease compensation is not persisted');
-    }
-    return {
-      ...existing,
-      workLeaseIntent: checkpointIntentCompensationProjection(
-        existing.workLeaseIntent,
-        projection,
-        reconciliationProof,
-        expectedTransitionId,
-        completedAt
-      ),
-    };
-  });
-}
-
-export function restoreCompensatedActiveTask(
-  sid,
-  compensatedLease,
-  expectedTransitionId,
-  expectedProjectionId,
-  projDir
-) {
-  const p = activeTaskPath(sid, projDir);
-  const existing = readJsonForMutation(p);
-  const intent = existing?.workLeaseIntent;
-  const compensationRequest = validateWorkLeaseCompensation(intent, {
-    requireAllProjections: true,
-  });
-  const compensation = intent.compensation;
-  if (
-    compensation.transitionId !== expectedTransitionId ||
-    compensation.projections.session?.projectionId !== expectedProjectionId
-  ) {
-    throw new Error('work-lease compensation session projection identity does not match');
-  }
-  const lease = normalizeLeaseContext(compensatedLease);
-  const receiptLease = compensation.receipt?.lease;
-  if (
-    lease.projectId !== receiptLease?.projectId ||
-    lease.leaseId !== receiptLease?.leaseId ||
-    lease.fencingToken !== receiptLease?.fencingToken ||
-    lease.worktreeId !== compensationRequest.target.holder.worktreeId
-  ) {
-    throw new Error('work-lease compensation session lease does not match receipt');
-  }
-  const snapshot = normalizePriorSessionSnapshot(intent.priorSessionSnapshot);
-  if (!snapshot.present) {
-    throw new Error('work-lease compensation source snapshot is missing');
-  }
-  let prior;
-  try {
-    prior = parseJsonForMutation(Buffer.from(snapshot.bytesBase64, 'base64').toString('utf8'));
-  } catch {
-    throw new Error('work-lease compensation source snapshot is malformed');
-  }
-  if (canonicalIssue(authorityIssue(prior)) !== compensationRequest.target.issueId) {
-    throw new Error('work-lease compensation source snapshot issue does not match');
-  }
-  let priorLease;
-  try {
-    priorLease = normalizeLeaseContext(prior.lease);
-  } catch {
-    throw new Error('work-lease compensation source snapshot lease is malformed');
-  }
-  const next = {
-    ...prior,
-    lease,
-    workLeaseIntent: intent,
-  };
-  atomicWrite(p, next);
-  const readback = readJsonForMutation(p);
-  const priorNonAuthority = { ...prior };
-  const readbackNonAuthority = { ...readback };
-  delete priorNonAuthority.lease;
-  delete priorNonAuthority.workLeaseIntent;
-  delete readbackNonAuthority.lease;
-  delete readbackNonAuthority.workLeaseIntent;
-  if (
-    canonicalIssue(authorityIssue(readback)) !== compensationRequest.target.issueId ||
-    JSON.stringify(readbackNonAuthority) !== JSON.stringify(priorNonAuthority) ||
-    JSON.stringify(readback.lease) !== JSON.stringify(lease) ||
-    readback.workLeaseIntent?.compensation?.transitionId !== expectedTransitionId ||
-    readback.lease.leaseId === priorLease.leaseId ||
-    readback.lease.fencingToken === priorLease.fencingToken
-  ) {
-    throw new Error('work-lease compensation session readback does not match');
-  }
-  return readback;
-}
-
-export function setWorkLeaseProjectionInput(sid, projection, input, expectedTransitionId, projDir) {
-  return mutateActiveTask(sid, projDir, (existing) => {
-    if (!existing?.workLeaseIntent) {
-      throw new Error('work-lease intent is not persisted');
-    }
-    return {
-      ...existing,
-      workLeaseIntent: setIntentProjectionInput(
-        existing.workLeaseIntent,
-        projection,
-        input,
-        expectedTransitionId
-      ),
-    };
-  });
-}
-
-export function checkpointWorkLeaseProjection(
-  sid,
-  projection,
-  reconciliationProof,
-  expectedTransitionId,
-  completedAt,
-  projDir
-) {
-  return mutateActiveTask(sid, projDir, (existing) => {
-    if (!existing?.workLeaseIntent) {
-      throw new Error('work-lease intent is not persisted');
-    }
-    return {
-      ...existing,
-      workLeaseIntent: checkpointIntentProjection(
-        existing.workLeaseIntent,
-        projection,
-        reconciliationProof,
-        expectedTransitionId,
-        completedAt
-      ),
-    };
-  });
-}
-
-export function clearWorkLeaseIntent(sid, expectedTransitionId, projDir) {
-  let cleared = false;
-  mutateActiveTask(sid, projDir, (existing) => {
-    const intent = existing?.workLeaseIntent;
-    if (!intent) return null;
-    const compensated = workLeaseCompensationReconciled(intent);
-    if (!compensated && !workLeaseIntentReconciled(intent)) return null;
-    try {
-      if (compensated) {
-        if (intent.compensation.transitionId !== expectedTransitionId) return null;
-      } else {
-        assertIntentTransition(intent, expectedTransitionId);
-      }
-    } catch {
-      return null;
-    }
-    const next = { ...existing };
-    delete next.workLeaseIntent;
-    if (next.issue == null && !next.lease) delete next.leaseIssue;
-    cleared = true;
-    return next;
-  });
-  return cleared;
 }
 
 // Re-export the path helpers so callers that already import session-state

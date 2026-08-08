@@ -11,7 +11,6 @@
 // reports zero residual legacy markers.
 
 import { serializeMarker, unescapeValue } from './marker-grammar.mjs';
-import { detectCommitCommands } from './bash-effect-classifier.mjs';
 
 export const TRAIL_HEADING = '### 🔗 Commits';
 
@@ -214,10 +213,30 @@ export function updateMarker(body, sha) {
 
 // --- Command-string detection ---
 
+// Strip heredoc bodies so a `git commit` token inside heredoc content
+// doesn't trigger a false positive.
+function stripHeredocs(cmd) {
+  return cmd.replace(/<<-?\s*'?([A-Za-z_][A-Za-z0-9_]*)'?[\s\S]*?\n\1\s*(?:\n|$)/g, ' ');
+}
+
 // Returns { isCommit, isAmend } based on a bash command string.
-// Shared with the PreToolUse authority classifier so wrapped/global/process-
-// substitution commits cannot pass execution governance and then disappear
-// from the PostToolUse trail.
+// Heuristic: split on `;` `&&` `||` `|`, then per-segment match
+// `^\s*(VAR=val\s+)*git[\s\-]…\bcommit\b` — i.e., `git ... commit` with
+// optional env-var prefix and optional `-c k=v` flags.
 export function detectGitCommit(cmd) {
-  return detectCommitCommands(cmd);
+  if (!cmd || typeof cmd !== 'string') return { isCommit: false, isAmend: false };
+  const stripped = stripHeredocs(cmd);
+  const segments = stripped.split(/&&|\|\||;|\|/);
+  for (const seg of segments) {
+    const trimmed = seg.trim();
+    if (!trimmed) continue;
+    // Allow leading env-var assignments and `cd path && ...` already handled by split.
+    const m = trimmed.match(
+      /^(?:[A-Za-z_][A-Za-z0-9_]*=\S+\s+)*git\b(?:\s+-[cC]\s+\S+)*\s+(?:[a-z\-]+\s+)*commit\b/
+    );
+    if (!m) continue;
+    const isAmend = /\s--amend\b/.test(trimmed);
+    return { isCommit: true, isAmend };
+  }
+  return { isCommit: false, isAmend: false };
 }

@@ -26,13 +26,28 @@ import { randomBytes } from 'node:crypto';
 import { loadState, saveState, pauseTimingKeepBinding } from '../state.mjs';
 import { projectTmpDir } from '../paths.mjs';
 import { validateVerificationCommand } from '../lib/verification-allowlist.mjs';
-import { parseVerificationCommands } from '../lib/verification-commands.mjs';
-import { migrateTestsLaneSplit } from '../lib/tests-lane-split.mjs';
 import {
-  clearDodVerifiedMarker,
+  COMPLETE_TEST_LANES,
+  parseVerificationCommands,
+  partitionVerificationCommands,
+} from '../lib/verification-commands.mjs';
+import { migrateTestsLaneSplit } from '../lib/tests-lane-split.mjs';
+import { parseIssueKind } from '../lib/issue-kind.mjs';
+import { docsKindDropsTests } from '../lib/dod-kind-filter.mjs';
+import { computeReviewChangedPaths } from '../lib/review-changed-paths.mjs';
+import {
   insertDodVerifiedMarker,
   insertTestStartedMarker,
+  parseVerificationReceipt,
+  upsertVerificationReceipt,
 } from '../lib/markers.mjs';
+import {
+  buildVerificationFingerprint,
+  createVerificationReceipt,
+  hasVerificationReceiptMarker,
+  validateVerificationReceipt,
+} from '../lib/verification-receipt.mjs';
+import { runDevelopVerification } from '../verify-develop.mjs';
 import { autoTickVerified } from '../lib/auto-tick-verified.mjs';
 import { STAGES, parseEntryMarkers, stampEntryMarker } from '../lib/stage-entry-markers.mjs';
 import { mutateIssueBody } from '../lib/issue-body-mutate.mjs';
@@ -42,6 +57,12 @@ import { describeSandboxFailure } from '../lib/sandbox-exit-render.mjs';
 import { readLastKnownState } from '../gh-timing-comment.mjs';
 import { assertVerbHomeState } from '../lib/verb-home-state-guard.mjs';
 import { postNewAutomatedTestsComment } from '../lib/new-automated-tests-comment.mjs';
+import { locateAuthoritySource } from '../lib/github-records/authority-locator.mjs';
+import {
+  hasAcceptedTestEvidence,
+  resolveLifecycleGateEvidence,
+} from '../lib/github-records/lifecycle-gate-source.mjs';
+import { gql } from '../../gh/lib/github-projects.mjs';
 
 const pexec = promisify(execFile);
 
@@ -59,6 +80,14 @@ const pexec = promisify(execFile);
 const POLICY_SHAPE_REJECTION_RE = /^bin '[^']+' rejects (?:(?:flag|subcommand) )?'/;
 function isPolicyShapeRejection(reason) {
   return typeof reason === 'string' && POLICY_SHAPE_REJECTION_RE.test(reason);
+}
+
+function defaultLifecycleGraphql({ query, variables }) {
+  return gql(query, variables).then((data) => ({ data }));
+}
+
+function lifecycleEvidenceReason(error) {
+  return { code: String(error?.message || 'lifecycle-gate-source:unknown') };
 }
 
 const NPM_CI_TIMEOUT_MS = 600_000; // 10 min worst-case fresh install
@@ -133,9 +162,8 @@ async function defaultGetHeadSha({ projectDir }) {
   return stdout.trim();
 }
 
-async function defaultCreateWorktree({ projectDir, path: wtPath, sha }) {
-  if (!sha) throw new Error('defaultCreateWorktree: sha is required');
-  await pexec('git', ['worktree', 'add', '--detach', wtPath, sha], {
+async function defaultCreateWorktree({ projectDir, path: wtPath }) {
+  await pexec('git', ['worktree', 'add', '--detach', wtPath, 'HEAD'], {
     cwd: projectDir,
     timeout: 60_000,
   });
@@ -177,6 +205,7 @@ async function defaultNpmCi({ path: wtPath }) {
 async function defaultExecInSandbox({ argv, path: wtPath, projectDir }) {
   const timeoutMs = sandboxTimeoutMs();
   const startedAt = Date.now();
+  const startedInstant = new Date().toISOString();
   try {
     const { stdout, stderr } = await pexec(argv[0], argv.slice(1), {
       cwd: wtPath,
@@ -185,7 +214,14 @@ async function defaultExecInSandbox({ argv, path: wtPath, projectDir }) {
       // @story #541 — strip leaked lock state, then set the project dir.
       env: buildSandboxEnv(process.env, { AI_TASK_MANAGER_PROJECT_DIR: projectDir }),
     });
-    return { exit: 0, stdout: String(stdout || ''), stderr: String(stderr || '') };
+    return {
+      exit: 0,
+      stdout: String(stdout || ''),
+      stderr: String(stderr || ''),
+      startedAt: startedInstant,
+      completedAt: new Date().toISOString(),
+      durationMs: Date.now() - startedAt,
+    };
   } catch (err) {
     // #856 — a timeout/signal kill leaves `err.code === null`, so the bare
     // `?? 1` fallback used to render it as `exit 1`, hiding the real cause.
@@ -197,8 +233,15 @@ async function defaultExecInSandbox({ argv, path: wtPath, projectDir }) {
       stdout: String(err.stdout || ''),
       stderr: String(err.stderr || err.message || ''),
       ...(cause ? { cause } : {}),
+      startedAt: startedInstant,
+      completedAt: new Date().toISOString(),
+      durationMs: Date.now() - startedAt,
     };
   }
+}
+
+function defaultRunDevelopFinalization({ projectDir, issueNumber }) {
+  return runDevelopVerification({ projectDir, mode: 'final', issueNumber });
 }
 
 async function defaultFetchBody({ cfg, issueNum }) {
@@ -230,7 +273,7 @@ async function defaultPostComment({ cfg, issueNum, body }) {
   });
 }
 
-function buildResultTable(results, { sha, status, autoTicked = 0 }) {
+function buildResultTable(results, { sha, status, autoTicked = 0, laneSkip = null }) {
   const rows = results.map((r) => {
     const mark = r.passed ? '✓' : r.rejected ? '⚠' : '✗';
     // #856 — a killed command carries an honest `cause` (e.g. a timeout naming
@@ -243,7 +286,12 @@ function buildResultTable(results, { sha, status, autoTicked = 0 }) {
     status === 'green' && autoTicked > 0
       ? `\n\n_Auto-ticked ${autoTicked} command-backed checkbox${autoTicked === 1 ? '' : 'es'} from passing evidence (#255)._`
       : '';
-  const table = ['| | Command | Result |', '|---|---|---|', ...rows].join('\n') + ticked;
+  // #1158 — an omitted lane has no row, so say plainly which lanes were skipped
+  // and on what evidence. Silence would read as "the table is the whole run".
+  const skipped = laneSkip
+    ? `\n\n_Complete test lanes skipped (${laneSkip.lanes.join(', ')}): kind \`${laneSkip.kind}\` and a provably documentation-only diff of ${laneSkip.changedPaths.length} file${laneSkip.changedPaths.length === 1 ? '' : 's'} (#1158)._`
+    : '';
+  const table = ['| | Command | Result |', '|---|---|---|', ...rows].join('\n') + ticked + skipped;
   const tails = results
     .filter((r) => !r.passed)
     .map(
@@ -286,7 +334,6 @@ async function runSetupWithRetry({
   attempts,
   projectDir,
   wtPath,
-  sha,
   createWorktree,
   npmCi,
   removeWorktree,
@@ -296,9 +343,7 @@ async function runSetupWithRetry({
   let lastErr = null;
   for (let attempt = 1; attempt <= attempts; attempt++) {
     try {
-      await runSetupStep('git worktree add', () =>
-        createWorktree({ projectDir, path: wtPath, sha })
-      );
+      await runSetupStep('git worktree add', () => createWorktree({ projectDir, path: wtPath }));
       onCreated();
       await runSetupStep('npm ci', () => npmCi({ path: wtPath }));
       return { attempts: attempt };
@@ -364,6 +409,16 @@ export async function runVerbTest({
   const removeWorktree = deps.removeWorktree || defaultRemoveWorktree;
   const npmCi = deps.npmCi || defaultNpmCi;
   const execInSandbox = deps.execInSandbox || defaultExecInSandbox;
+  const runDevelopFinalization = deps.runDevelopFinalization;
+  const buildFingerprint = deps.buildFingerprint || buildVerificationFingerprint;
+  const getSandboxHeadSha = deps.getSandboxHeadSha || defaultGetHeadSha;
+  // #1158 — the sandbox's own `trunk...HEAD` changed-path set. Shares the
+  // #940 Review-layer helper so both gates decide "is this diff docs-only?"
+  // from the same computation; it is best-effort and returns [] on any
+  // failure, which is default-deny downstream.
+  const computeChangedPaths =
+    deps.computeChangedPaths ||
+    (({ projectDir: dir }) => computeReviewChangedPaths({ cfg, projectDir: dir, deps: { pexec } }));
   const moveState = deps.moveState;
   const logIssueTime = deps.logIssueTime;
   const postNewTests = deps.postNewAutomatedTestsComment;
@@ -373,11 +428,87 @@ export async function runVerbTest({
   // `develop` (first entry) or `test` (in-place re-verify self-loop). A stale
   // bind or a hand-run `/task test` from the wrong stage must not burn a
   // worktree + npm ci for nothing.
+  const currentState = readLastKnownState(body).state;
   assertVerbHomeState({
     verb: 'test',
-    currentState: readLastKnownState(body).state,
+    currentState,
     issueNumber: issueNum,
   });
+  const sha = await getHeadSha({ projectDir });
+  let authoritySource;
+  try {
+    authoritySource = locateAuthoritySource({ issueBody: body });
+  } catch (error) {
+    return {
+      status: 'directory-evidence-invalid',
+      sha,
+      reasons: [lifecycleEvidenceReason(error)],
+    };
+  }
+  if (authoritySource.kind === 'github-records/v1') {
+    const resolveLifecycleEvidence = deps.resolveLifecycleEvidence || resolveLifecycleGateEvidence;
+    let lifecycleEvidence;
+    try {
+      lifecycleEvidence = await resolveLifecycleEvidence({
+        repository: cfg.repo,
+        issue: Number(issueNum),
+        issueBody: body,
+        expectedSha: sha,
+        graphql: deps.graphql || defaultLifecycleGraphql,
+        readContractRecord: deps.readContractRecord,
+        deps: deps.listIssueRecords ? { listIssueRecords: deps.listIssueRecords } : undefined,
+      });
+    } catch (error) {
+      return {
+        status: 'directory-evidence-invalid',
+        sha,
+        reasons: [lifecycleEvidenceReason(error)],
+      };
+    }
+    if (!hasAcceptedTestEvidence(lifecycleEvidence)) {
+      return {
+        status: 'directory-evidence-invalid',
+        sha,
+        sourceKind: lifecycleEvidence.sourceKind,
+        lifecycleEvidence,
+        reasons: [{ code: 'directory-test-evidence-missing' }],
+      };
+    }
+    if (currentState === 'test') {
+      return {
+        status: 'directory-evidence-accepted',
+        sha,
+        sourceKind: lifecycleEvidence.sourceKind,
+        lifecycleEvidence,
+      };
+    }
+    const moveResult = moveState
+      ? await moveState({ issueNumber: issueNum, target: 'test', lifecycleEvidence })
+      : undefined;
+    const moveFailed = moveResult && moveResult.ok === false && moveResult.benign !== true;
+    if (moveFailed) {
+      return {
+        status: 'move-failed',
+        sha,
+        results: [],
+        target: 'test',
+        move: moveResult,
+        sourceKind: lifecycleEvidence.sourceKind,
+        lifecycleEvidence,
+      };
+    }
+    if (logIssueTime) await logIssueTime(issueNum);
+    return {
+      status: 'passed',
+      sha,
+      results: [],
+      receipt: null,
+      target: 'test',
+      move: moveResult,
+      sourceKind: lifecycleEvidence.sourceKind,
+      lifecycleEvidence,
+    };
+  }
   const pretick = detectLifecyclePretick(body);
   if (pretick.regressions.length > 0) {
     body = pretick.body;
@@ -434,7 +565,111 @@ export async function runVerbTest({
     };
   }
 
-  const sha = await getHeadSha({ projectDir });
+  if (runDevelopFinalization && currentState === 'test') {
+    const currentFingerprint = await buildFingerprint({ projectDir, commitSha: sha });
+    const existingTestReceipt = parseVerificationReceipt(body, 'test');
+    const existingValidation = validateVerificationReceipt({
+      receipt: existingTestReceipt,
+      expectedIssue: Number(issueNum),
+      expectedStage: 'test',
+      fingerprint: currentFingerprint,
+      required: ['lint-full', 'format-full', 'test-unit', 'test-integration', 'test-slow'],
+    });
+    if (existingValidation.ok && deps.forceRerun !== true) {
+      return {
+        status: 'already-verified',
+        sha,
+        receipt: existingTestReceipt,
+        reasons: [],
+      };
+    }
+    if (existingValidation.ok && deps.forceRerun === true) {
+      await postComment({
+        cfg,
+        issueNum,
+        body: `⚠ Audited Test re-run override: valid exact-SHA receipt ${existingTestReceipt.receiptId} was bypassed with --force.`,
+      });
+    }
+  }
+  let developEvidence = null;
+  let developReuseRefusal = [];
+  if (runDevelopFinalization && currentState === 'develop' && deps.forceRerun !== true) {
+    try {
+      const currentFingerprint = await buildFingerprint({ projectDir, commitSha: sha });
+      const existingReceipt = parseVerificationReceipt(body, 'develop-final');
+      const markerPresent = hasVerificationReceiptMarker(body, 'develop-final');
+      const existingValidation = validateVerificationReceipt({
+        receipt: existingReceipt,
+        expectedIssue: Number(issueNum),
+        expectedStage: 'develop-final',
+        fingerprint: currentFingerprint,
+        required: ['lint-full', 'format-full'],
+      });
+      if (existingValidation.ok) {
+        developEvidence = {
+          receipt: existingReceipt,
+          fingerprint: currentFingerprint,
+          validation: existingValidation,
+        };
+      } else {
+        developReuseRefusal = markerPresent
+          ? existingValidation.reasons
+          : [{ code: 'receipt-missing' }];
+      }
+    } catch (error) {
+      developReuseRefusal = [
+        { code: 'fingerprint-unresolvable', message: String(error?.message || error) },
+      ];
+    }
+  }
+  if (runDevelopFinalization && !developEvidence) {
+    if (developReuseRefusal.length > 0) {
+      const codes = developReuseRefusal.map(({ code }) => code).join(', ');
+      await postComment({
+        cfg,
+        issueNum,
+        body: `⚠ Develop-final receipt reuse refused before Test: ${codes}. Running one new Develop finalization.`,
+      });
+    }
+    const finalization = await runDevelopFinalization({
+      projectDir,
+      issueNumber: Number(issueNum),
+    });
+    if (!finalization?.ok || !finalization.receipt || !finalization.fingerprint) {
+      const codes = (finalization?.reasons || []).map(({ code }) => code).join(', ') || 'unknown';
+      await postComment({
+        cfg,
+        issueNum,
+        body: `⛔ Develop finalization refused before Test: ${codes}. The issue remains in Develop.`,
+      });
+      return { status: 'develop-final-invalid', sha, reasons: finalization?.reasons || [] };
+    }
+    await mutateBody({
+      cfg,
+      issueNum,
+      evidenceStamp: true,
+      mutate: (base) => upsertVerificationReceipt(base, finalization.receipt),
+    });
+    body = await fetchBody({ cfg, issueNum });
+    const readBack = parseVerificationReceipt(body, 'develop-final');
+    const validation = validateVerificationReceipt({
+      receipt: readBack,
+      expectedIssue: Number(issueNum),
+      expectedStage: 'develop-final',
+      fingerprint: finalization.fingerprint,
+      required: ['lint-full', 'format-full'],
+    });
+    if (!validation.ok) {
+      const codes = validation.reasons.map(({ code }) => code).join(', ');
+      await postComment({
+        cfg,
+        issueNum,
+        body: `⛔ Develop finalization receipt read-back refused: ${codes}. The issue remains in Develop.`,
+      });
+      return { status: 'develop-final-invalid', sha, reasons: validation.reasons };
+    }
+    developEvidence = { receipt: readBack, fingerprint: finalization.fingerprint, validation };
+  }
   // #563 — per-run-unique path. With a unique token the reclaim below can only
   // ever match THIS run's own leftover, never a concurrent peer's live worktree.
   const wtPath = sandboxWorktreePath({ projectDir, issueNum, sha });
@@ -451,6 +686,17 @@ export async function runVerbTest({
   const results = [];
   let cleanupNeeded = false;
   let setupDiag = null; // #254 — tagged diagnostics from the last failed setup attempt
+  let testFingerprint = null;
+  let evidenceRefusal = null;
+  let partition = null;
+  // #1158 — set only when the complete-lane floor was PROVEN droppable for this
+  // run; carries the evidence that made the drop legal so the receipt can say
+  // "these lanes were skipped, and here is why" rather than staying silent.
+  let laneSkip = null;
+  // #1158 — fail-loud blocker: the lanes were skipped while the VC list still
+  // declares a legacy aggregate (`npm test` / `npm run test:all`) whose verdict
+  // is derived from those very lanes. Refuse instead of deriving from nothing.
+  let laneSkipRefusal = null;
   try {
     // #154 — Stamp `aitm-test-started: <sha>:<ts>` BEFORE the sandbox runs so
     // verbReview's preflight can compare outer HEAD at review-time against the
@@ -458,13 +704,13 @@ export async function runVerbTest({
     // entry SHA always reflects the current verification window.
     {
       const entryTs = now();
-      const stampedEntry = insertTestStartedMarker(clearDodVerifiedMarker(body), sha, entryTs);
+      const stampedEntry = insertTestStartedMarker(body, sha, entryTs);
       if (stampedEntry !== body) {
         body = stampedEntry;
         await mutateBody({
           cfg,
           issueNum,
-          mutate: (base) => insertTestStartedMarker(clearDodVerifiedMarker(base), sha, entryTs),
+          mutate: (base) => insertTestStartedMarker(base, sha, entryTs),
         });
       }
     }
@@ -479,7 +725,6 @@ export async function runVerbTest({
       attempts: SETUP_MAX_ATTEMPTS,
       projectDir,
       wtPath,
-      sha,
       createWorktree,
       npmCi,
       removeWorktree,
@@ -491,7 +736,135 @@ export async function runVerbTest({
       },
     });
 
-    for (const vc of vcs) {
+    let commandsToRun = vcs;
+    if (developEvidence) {
+      const sandboxSha = await getSandboxHeadSha({ projectDir: wtPath });
+      if (sandboxSha !== sha) {
+        evidenceRefusal = [{ code: 'sha-mismatch', expected: sha, actual: sandboxSha }];
+      } else {
+        testFingerprint = await buildFingerprint({ projectDir: wtPath, commitSha: sha });
+        const validation = validateVerificationReceipt({
+          receipt: developEvidence.receipt,
+          expectedIssue: Number(issueNum),
+          expectedStage: 'develop-final',
+          fingerprint: testFingerprint,
+          required: ['lint-full', 'format-full'],
+        });
+        if (!validation.ok) evidenceRefusal = validation.reasons;
+      }
+
+      if (!evidenceRefusal) {
+        // #1158 — "the kind declares, the diff decides". The complete-lane floor
+        // is dropped ONLY when the issue is marked `docs-only` AND the sandbox's
+        // own `trunk...HEAD` diff is provably documentation-only. This is the
+        // same `docsKindDropsTests` rule the DoD layer (#865) and the Review NAT
+        // gate (#940) already use, so all three layers relax together or not at
+        // all. `computeChangedPaths` yields [] on any failure and
+        // `diffIsDocsOnly` treats an empty set as NOT proven, so an unresolvable
+        // diff keeps every lane running — exactly like a code-touching one.
+        const kind = parseIssueKind(body);
+        const changedPaths = await computeChangedPaths({ projectDir: wtPath });
+        const dropLanes = docsKindDropsTests(kind, changedPaths);
+        if (dropLanes) {
+          laneSkip = {
+            reason: 'docs-only-diff',
+            kind,
+            lanes: COMPLETE_TEST_LANES.map(({ classification }) => classification),
+            changedPaths,
+          };
+        }
+        partition = partitionVerificationCommands({
+          commands: vcs,
+          reusableClassifications: developEvidence.validation.reusableCommands.map(
+            ({ classification }) => classification
+          ),
+          includeCompleteLanes: !dropLanes,
+        });
+        // #1158 — a legacy aggregate's verdict is DERIVED from the complete
+        // lanes' results (see the compatibility block below). With the lanes
+        // skipped there is nothing to derive from, and the derivation would
+        // quietly report the aggregate as failed. Refuse the run instead: the
+        // operator either drops the aggregate from the VC list or lets the lanes
+        // run. The board is not moved and no verdict is invented.
+        if (laneSkip && partition.compatibility.length > 0) {
+          laneSkipRefusal = {
+            code: 'lane-skip-vs-legacy-aggregate',
+            declared: partition.compatibility.map(({ command }) => command),
+            lanes: laneSkip.lanes,
+          };
+        }
+      }
+
+      if (!evidenceRefusal && !laneSkipRefusal) {
+        for (const reused of partition.reused) {
+          const source = developEvidence.receipt.commands.find(
+            ({ classification }) => classification === reused.classification
+          );
+          results.push({
+            command: reused.command,
+            classification: reused.classification,
+            passed: true,
+            exit: 0,
+            stdout: '',
+            stderr: '',
+            durationMs: source.durationMs,
+            startedAt: source.startedAt,
+            completedAt: source.completedAt,
+            reusedFrom: developEvidence.receipt.receiptId,
+            receiptCommand: { ...source, reusedFrom: developEvidence.receipt.receiptId },
+          });
+        }
+        for (const lane of partition.completeLanes) {
+          const argv = lane.command.split(' ');
+          const r = await execInSandbox({ argv, path: wtPath, projectDir });
+          results.push({
+            command: lane.command,
+            classification: lane.classification,
+            passed: r.exit === 0,
+            exit: r.exit,
+            cause: r.cause,
+            stdout: r.stdout,
+            stderr: r.stderr,
+            durationMs: r.durationMs ?? 0,
+            startedAt: r.startedAt,
+            completedAt: r.completedAt,
+            receiptCommand: {
+              classification: lane.classification,
+              command: argv[0],
+              args: argv.slice(1),
+              exitCode: r.exit,
+              durationMs: r.durationMs ?? 0,
+              ...(r.startedAt ? { startedAt: r.startedAt } : {}),
+              ...(r.completedAt ? { completedAt: r.completedAt } : {}),
+            },
+          });
+        }
+        const byClassification = new Map(results.map((result) => [result.classification, result]));
+        for (const legacy of partition.compatibility) {
+          const required =
+            legacy.classification === 'test-all-legacy'
+              ? ['test-unit', 'test-integration', 'test-slow']
+              : ['test-unit', 'test-integration'];
+          const passed = required.every(
+            (classification) => byClassification.get(classification)?.passed
+          );
+          results.push({
+            command: legacy.command,
+            classification: legacy.classification,
+            passed,
+            exit: passed ? 0 : 1,
+            stdout: '',
+            stderr: '',
+            durationMs: 0,
+          });
+        }
+        commandsToRun = partition.targeted;
+      } else {
+        commandsToRun = [];
+      }
+    }
+
+    for (const vc of commandsToRun) {
       const validation = validateVerificationCommand(vc.command, { projectDir: wtPath });
       if (!validation.ok) {
         results.push({
@@ -507,12 +880,42 @@ export async function runVerbTest({
       const r = await execInSandbox({ argv: validation.argv, path: wtPath, projectDir });
       results.push({
         command: vc.command,
+        classification: developEvidence ? `test-targeted-${results.length + 1}` : undefined,
         passed: r.exit === 0,
         exit: r.exit,
         cause: r.cause,
         stdout: r.stdout,
         stderr: r.stderr,
+        durationMs: r.durationMs ?? 0,
+        startedAt: r.startedAt,
+        completedAt: r.completedAt,
+        ...(developEvidence
+          ? {
+              receiptCommand: {
+                classification: `test-targeted-${results.length + 1}`,
+                command: validation.argv[0],
+                args: validation.argv.slice(1),
+                exitCode: r.exit,
+                durationMs: r.durationMs ?? 0,
+                ...(r.startedAt ? { startedAt: r.startedAt } : {}),
+                ...(r.completedAt ? { completedAt: r.completedAt } : {}),
+              },
+            }
+          : {}),
       });
+    }
+
+    if (developEvidence && !evidenceRefusal && !laneSkipRefusal) {
+      const completedFingerprint = await buildFingerprint({ projectDir: wtPath, commitSha: sha });
+      const completedValidation = validateVerificationReceipt({
+        receipt: developEvidence.receipt,
+        expectedIssue: Number(issueNum),
+        expectedStage: 'develop-final',
+        fingerprint: completedFingerprint,
+        required: ['lint-full', 'format-full'],
+      });
+      if (!completedValidation.ok) evidenceRefusal = completedValidation.reasons;
+      testFingerprint = completedFingerprint;
     }
   } catch (err) {
     // #270 — sandbox-setup or sandbox-run threw. The board is still on
@@ -552,6 +955,36 @@ export async function runVerbTest({
     }
   }
 
+  if (evidenceRefusal) {
+    const codes = evidenceRefusal.map(({ code }) => code).join(', ');
+    await postComment({
+      cfg,
+      issueNum,
+      body: `⛔ Develop receipt is invalid in the Test sandbox: ${codes}. Return to Develop and finalize again.`,
+    });
+    return { status: 'develop-evidence-invalid', sha, reasons: evidenceRefusal, wtPath };
+  }
+
+  // #1158 — lanes were legally skipped but the VC list still declares an
+  // aggregate that can only be derived FROM those lanes. Refuse loudly; the
+  // board is untouched (gate-first flow never moved it) and no verdict is
+  // manufactured for a command that did not run.
+  if (laneSkipRefusal) {
+    await postComment({
+      cfg,
+      issueNum,
+      body: [
+        `⛔ Test refused: ${laneSkipRefusal.code}.`,
+        '',
+        `This issue's diff is provably documentation-only, so the complete test lanes (${laneSkipRefusal.lanes.join(', ')}) were skipped.`,
+        `But \`## Verification Commands\` still declares ${laneSkipRefusal.declared.map((c) => `\`${c}\``).join(', ')}, whose pass/fail is derived from those lanes.`,
+        '',
+        'Deriving a verdict from lanes that never ran would be fabricated evidence. Either remove the aggregate command from the VC list, or drop the `docs-only` kind so the lanes run.',
+      ].join('\n'),
+    });
+    return { status: 'lane-skip-refused', sha, reasons: [laneSkipRefusal], laneSkip, wtPath };
+  }
+
   // #973 — a `rejected` result whose reason is a policy-shape mismatch (see
   // `isPolicyShapeRejection` above) must not gate promotion the same way a
   // genuine nonzero-exit `failed` result does. A metachar/injection-vector
@@ -565,6 +998,24 @@ export async function runVerbTest({
 
   if (allGreen) {
     const ts = now();
+    const baseReceipt = developEvidence
+      ? createVerificationReceipt({
+          issueNumber: Number(issueNum),
+          stage: 'test',
+          fingerprint: testFingerprint,
+          commands: results
+            .filter(({ receiptCommand }) => receiptCommand)
+            .map(({ receiptCommand }) => receiptCommand),
+          now,
+        })
+      : null;
+    // #1158 — a lane that did not run contributes NO command entry, so the
+    // receipt never claims a pass it did not earn. Absence alone, though, is
+    // ambiguous: it reads the same as a run that simply never reached the lane.
+    // `laneSkip` is the positive record that disambiguates it — which lanes were
+    // omitted, and on what evidence. Its absence means the lanes were declared
+    // and ran; its presence means they were deliberately skipped.
+    const testReceipt = baseReceipt && laneSkip ? { ...baseReceipt, laneSkip } : baseReceipt;
     // #270 — Gate-first: stamp `aitm-dod-verified` (and a defensive
     // `test`-entry marker for stub moveStates that skip stamping) BEFORE
     // `moveState('test')`. The develop-exit-sandbox-proof guard inside
@@ -572,6 +1023,7 @@ export async function runVerbTest({
     // transition. verbTest advances develop→test only; Test→Review is a
     // separate forward verb (`/task review`).
     let stamped = insertDodVerifiedMarker(body, sha, ts);
+    if (testReceipt) stamped = upsertVerificationReceipt(stamped, testReceipt);
     const markers = parseEntryMarkers(stamped);
     const latest = markers
       .slice()
@@ -599,6 +1051,7 @@ export async function runVerbTest({
         evidenceStamp: true,
         mutate: (base) => {
           let next = insertDodVerifiedMarker(base, sha, ts);
+          if (testReceipt) next = upsertVerificationReceipt(next, testReceipt);
           const ms = parseEntryMarkers(next);
           const latestM = ms
             .slice()
@@ -641,11 +1094,21 @@ export async function runVerbTest({
         sha,
         status: 'green',
         autoTicked: autoTick.tickedVc.length + autoTick.tickedFunctional.length,
+        laneSkip,
       }),
     });
     if (logIssueTime) await logIssueTime(issueNum);
     if (moveFailed) {
-      return { status: 'move-failed', sha, ts, results, wtPath, target: 'test', move: moveResult };
+      return {
+        status: 'move-failed',
+        sha,
+        ts,
+        results,
+        receipt: testReceipt,
+        wtPath,
+        target: 'test',
+        move: moveResult,
+      };
     }
     // #444 — a benign move result with target 'test' can only be a test→test
     // self-loop: the issue was already in `test` and the sandbox just re-ran the
@@ -664,20 +1127,30 @@ export async function runVerbTest({
         sha,
         ts,
         results,
+        receipt: testReceipt,
         wtPath,
         target: 'test',
         move: moveResult,
         newTestsPost,
       };
     }
-    return { status: 'passed', sha, ts, results, wtPath, target: 'test', newTestsPost };
+    return {
+      status: 'passed',
+      sha,
+      ts,
+      results,
+      receipt: testReceipt,
+      wtPath,
+      target: 'test',
+      newTestsPost,
+    };
   }
 
   // #270 — Red path. Gate-first means the board never moved; nothing to undo.
   await postComment({
     cfg,
     issueNum,
-    body: buildResultTable(results, { sha, status: 'red' }),
+    body: buildResultTable(results, { sha, status: 'red', laneSkip }),
   });
   return { status: 'failed', sha, results, wtPath };
 }
@@ -702,8 +1175,8 @@ export async function verbTest(ctx) {
   }
   const issueNumber = String(target).replace(/^#/, '');
 
-  const moveState = async ({ issueNumber: n, target: t }) =>
-    runMoveState(`#${n}`, t, { silent: true });
+  const moveState = async ({ issueNumber: n, target: t, lifecycleEvidence }) =>
+    runMoveState(`#${n}`, t, { silent: true, lifecycleEvidence });
   const logIssueTime = async (n) => {
     await runLogIssueTime(`#${n}`);
   };
@@ -714,7 +1187,13 @@ export async function verbTest(ctx) {
       cfg,
       issueNumber,
       projectDir,
-      deps: { moveState, logIssueTime, postNewAutomatedTestsComment },
+      deps: {
+        moveState,
+        logIssueTime,
+        postNewAutomatedTestsComment,
+        runDevelopFinalization: defaultRunDevelopFinalization,
+        forceRerun: rest.includes('--force'),
+      },
     });
   } catch (err) {
     console.error(`/task test: ${err.message}`);
@@ -753,6 +1232,18 @@ export async function verbTest(ctx) {
       saveState(pauseTimingKeepBinding(s, `#${issueNumber}`), statePath);
       return;
     }
+    case 'already-verified':
+      console.log(
+        `✓ #${issueNumber} already has a valid exact-SHA Test receipt (${result.receipt.receiptId}); standard commands were not rerun.`
+      );
+      saveState(pauseTimingKeepBinding(s, `#${issueNumber}`), statePath);
+      return;
+    case 'directory-evidence-accepted':
+      console.log(
+        `✓ #${issueNumber} already has accepted current-contract exact-SHA Test evidence; body receipts were not consulted.`
+      );
+      saveState(pauseTimingKeepBinding(s, `#${issueNumber}`), statePath);
+      return;
     case 'move-failed': {
       // #406 — sandbox passed but the board move was refused. Do NOT print the
       // success banner; surface the move-state child's real refusal reason and
@@ -774,6 +1265,14 @@ export async function verbTest(ctx) {
       console.error(`✗ #${issueNumber} verification failed in sandbox (${fails} command(s)).`);
       process.exit(3);
     }
+    case 'develop-final-invalid':
+    case 'develop-evidence-invalid':
+    case 'directory-evidence-invalid':
+      console.error(
+        `✗ #${issueNumber} verification evidence refused: ${result.reasons.map(({ code }) => code).join(', ')}`
+      );
+      process.exit(3);
+      break;
     default:
       console.error(`/task test: unknown result status: ${result.status}`);
       process.exit(1);

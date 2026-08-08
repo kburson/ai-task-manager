@@ -37,6 +37,7 @@ import { mutateIssueBody } from '../lib/issue-body-mutate.mjs';
 import { invalidateEvidence } from '../lib/evidence-invalidation.mjs';
 import { assertBoundToIssue } from '../lib/bind-context.mjs';
 import { runMoveStateHost } from '../../gh/move-state.mjs';
+import { writeDirectoryContractOperation } from '../lib/github-records/contract-write.mjs';
 
 const pexec = promisify(execFile);
 
@@ -124,13 +125,7 @@ export function defaultRunMoveState(
 // Pure core.
 // ---------------------------------------------------------------------------
 
-export async function runDemote({
-  issueNumber,
-  cfg,
-  rework,
-  deps = {},
-  now = () => new Date().toISOString(),
-} = {}) {
+export async function runDemote({ issueNumber, cfg, rework, deps = {} } = {}) {
   if (!issueNumber) throw new Error('demote: issueNumber is required');
   if (!cfg) throw new Error('demote: cfg is required');
   const assertBound = deps.assertBound ?? assertBoundToIssue;
@@ -230,6 +225,25 @@ export async function runDemote({
     };
   }
 
+  const directoryWrite = await writeDirectoryContractOperation({
+    repository: cfg.repo,
+    issue: Number(issueNumber),
+    issueBody: initialBody,
+    action: 'invalidate',
+    pexec,
+    deps: deps.contractWrite,
+  });
+  if (directoryWrite.status === 'directory-written') {
+    return {
+      status: 'demoted',
+      from: recorded,
+      to: DEMOTE_TARGET,
+      bootstrapped,
+      invalidated: ['test', 'review', 'approval'],
+      authoritySource: 'github-records/v1',
+    };
+  }
+
   // #295 — post-move stamp via mutateIssueBody closure; the helper re-fetches
   // the FRESH base inside the closure, so a concurrent writer between move
   // and stamp is preserved.
@@ -242,17 +256,13 @@ export async function runDemote({
   // closure may run more than once on a version-conflict retry, but
   // `invalidateEvidence` is idempotent so the last-observed list is correct.
   let invalidated = [];
-  const reviewInvalidatedAt = now();
   await writeIssueBodyWithRetry({
     issueNumber,
     repo: cfg.repo,
     target: DEMOTE_TARGET,
     mutate: (base) => {
       const withState = writeLastKnownState(base, DEMOTE_TARGET);
-      const stripped = invalidateEvidence(withState, {
-        reviewInvalidatedAt,
-        reviewInvalidationReason: 'demoted',
-      });
+      const stripped = invalidateEvidence(withState);
       invalidated = stripped.invalidated;
       return stripped.body;
     },

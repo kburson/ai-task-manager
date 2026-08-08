@@ -148,7 +148,12 @@ export const SUSPICIOUS_GAP_SEC = 8 * 60 * 60;
 // `syntheticTs` (one second after the last row) is where the caller should
 // insert a synthetic departure row (see `buildBackdatedDepartureRow` in
 // `gh-timing-comment.mjs`) before writing the re-engagement row.
-export function detectUnmarkedDepartureGap(body, nowTs, gapSec = SUSPICIOUS_GAP_SEC) {
+export function detectUnmarkedDepartureGap(
+  body,
+  nowTs,
+  gapSec = SUSPICIOUS_GAP_SEC,
+  { activityTimestamps = [] } = {}
+) {
   if (!body) return null;
   if (lastOpenInterruption(body)) return null;
   const last = lastDataRow(body);
@@ -159,6 +164,15 @@ export function detectUnmarkedDepartureGap(body, nowTs, gapSec = SUSPICIOUS_GAP_
   if (!Number.isFinite(lastMs) || !Number.isFinite(nowMs)) return null;
   const elapsedSec = (nowMs - lastMs) / 1000;
   if (elapsedSec <= gapSec) return null;
+  if (
+    Array.isArray(activityTimestamps) &&
+    activityTimestamps.some((activityTs) => {
+      const activityMs = timingTimestampToMs(activityTs);
+      return Number.isFinite(activityMs) && activityMs > lastMs && activityMs <= nowMs;
+    })
+  ) {
+    return null;
+  }
   return {
     lastRowTs: last.ts,
     lastRowEvent: last.event,

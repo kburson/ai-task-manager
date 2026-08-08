@@ -89,7 +89,16 @@ export function paretoFileCount(records, fraction) {
 
 // Build the timing report model from a record array. Pure data-in/data-out; the
 // human string is produced separately by `formatTimingReport`.
-export function buildTimingReport(records, { topN = 20, slowThresholdMs = 2000 } = {}) {
+export function buildTimingReport(
+  records,
+  {
+    topN = 20,
+    slowThresholdMs = 2000,
+    runnerElapsedMs = null,
+    poolElapsedMs = null,
+    serialElapsedMs = null,
+  } = {}
+) {
   const list = (Array.isArray(records) ? records : []).slice();
   const count = list.length;
   const totalWallMs = list.reduce((s, r) => s + (Number(r.wallMs) || 0), 0);
@@ -114,6 +123,11 @@ export function buildTimingReport(records, { topN = 20, slowThresholdMs = 2000 }
     spawnOverheadMs: round(spawnOverheadMs),
     // Fraction of wall time that is process-spawn / IO rather than assertions.
     spawnOverheadShare: totalWallMs > 0 ? round((spawnOverheadMs / totalWallMs) * 100, 1) : 0,
+    elapsed: {
+      runnerMs: Number.isFinite(runnerElapsedMs) ? round(runnerElapsedMs) : null,
+      poolMs: Number.isFinite(poolElapsedMs) ? round(poolElapsedMs) : null,
+      serialMs: Number.isFinite(serialElapsedMs) ? round(serialElapsedMs) : null,
+    },
     medianWallMs: round(median(list.map((r) => r.wallMs))),
     medianInProcMs: round(median(inProcVals)),
     inProcMeasured: inProcVals.length,
@@ -175,21 +189,62 @@ export function serializeArtifact(records, meta = {}) {
   const report = buildTimingReport(list, {
     topN: meta.topN ?? 20,
     slowThresholdMs: meta.slowThresholdMs ?? 2000,
+    runnerElapsedMs: meta.runnerElapsedMs,
+    poolElapsedMs: meta.poolElapsedMs,
+    serialElapsedMs: meta.serialElapsedMs,
   });
   return {
-    schema: 1,
+    schema: 2,
     generatedAt: meta.generatedAt || null,
     lane: meta.lane || null,
     count: list.length,
-    totals: {
-      wallMs: report.totalWallMs,
-      inProcMs: report.totalInProcMs,
-      spawnOverheadMs: report.spawnOverheadMs,
+    elapsed: report.elapsed,
+    sums: {
+      fileWallMs: report.totalWallMs,
+      inProcessMs: report.totalInProcMs,
+      estimatedSpawnIoMs: report.spawnOverheadMs,
     },
     pareto: report.pareto,
     slowBucket: report.slowBucket,
     files,
   };
+}
+
+// Normalize both historical schema 1 and current schema 2 artifacts for
+// comparison. Schema 1's `totals.wallMs` was a sum of per-file wall durations,
+// not actual runner elapsed; leave elapsed fields null rather than fabricating
+// a serial run time from parallel data.
+export function normalizeTimingArtifact(artifact) {
+  const value = artifact && typeof artifact === 'object' ? artifact : {};
+  if (value.schema === 2) {
+    return {
+      ...value,
+      sourceSchema: 2,
+      elapsed: {
+        runnerMs: Number.isFinite(value.elapsed?.runnerMs) ? value.elapsed.runnerMs : null,
+        poolMs: Number.isFinite(value.elapsed?.poolMs) ? value.elapsed.poolMs : null,
+        serialMs: Number.isFinite(value.elapsed?.serialMs) ? value.elapsed.serialMs : null,
+      },
+      sums: {
+        fileWallMs: Number(value.sums?.fileWallMs) || 0,
+        inProcessMs: Number(value.sums?.inProcessMs) || 0,
+        estimatedSpawnIoMs: Number(value.sums?.estimatedSpawnIoMs) || 0,
+      },
+    };
+  }
+  if (value.schema === 1) {
+    return {
+      ...value,
+      sourceSchema: 1,
+      elapsed: { runnerMs: null, poolMs: null, serialMs: null },
+      sums: {
+        fileWallMs: Number(value.totals?.wallMs) || 0,
+        inProcessMs: Number(value.totals?.inProcMs) || 0,
+        estimatedSpawnIoMs: Number(value.totals?.spawnOverheadMs) || 0,
+      },
+    };
+  }
+  throw new Error(`unsupported test timing artifact schema: ${String(value.schema)}`);
 }
 
 // Render the report model as a readable block. The runner prints this only
@@ -198,10 +253,19 @@ export function formatTimingReport(report) {
   if (!report || report.count === 0) return 'timing: no files measured.';
   const lines = [];
   lines.push('── Test timing report ──');
+  if (report.elapsed?.runnerMs !== null) {
+    lines.push(
+      `actual elapsed=${formatDuration(report.elapsed.runnerMs)}  pool=${formatDuration(
+        report.elapsed.poolMs
+      )}  serial=${formatDuration(report.elapsed.serialMs)}`
+    );
+  }
   lines.push(
-    `files=${report.count}  wall=${formatDuration(report.totalWallMs)}  in-process=${formatDuration(
+    `files=${report.count}  summed file wall=${formatDuration(
+      report.totalWallMs
+    )}  summed in-process=${formatDuration(
       report.totalInProcMs
-    )}  spawn/IO=${formatDuration(report.spawnOverheadMs)} (${report.spawnOverheadShare}%)`
+    )}  estimated spawn/IO=${formatDuration(report.spawnOverheadMs)} (${report.spawnOverheadShare}%)`
   );
   lines.push(
     `median wall=${formatDuration(report.medianWallMs)}  median in-process=${formatDuration(

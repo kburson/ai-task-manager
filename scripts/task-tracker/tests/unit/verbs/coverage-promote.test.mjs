@@ -53,6 +53,11 @@ function makeDeps({
       runMoveState: async ({ issueNumber, target }) =>
         calls.moves.push({ issueNumber, target }) && moveCode,
       epicChildren: { fetchSiblings: async () => [] },
+      decomposition: {
+        projectDir: process.cwd(),
+        loadProjectFieldDefs: () => [],
+        projectValuesForIssue: async () => ({ size: 'XS', estimate: 4 }),
+      },
       codeCompleteGate: async () => ({ ok: true, blockers: [], shas: [] }),
       commitTrailHeadGate: async () => ({ ok: true, headSha: 'deadbeef', trailShas: ['deadbeef'] }),
     },
@@ -71,7 +76,7 @@ const DD_PROSE = Array.from(
     `line ${i + 1}: substantive analysis paragraph describing the change, subsystem, risk surface, and verification approach.`
 ).join('\n');
 const DD_FIELDS = `<!-- aitm-fields: ${JSON.stringify({ schema: 1, values: { size: 'XS' } })} -->`;
-const DEEP_DIVE_SIGNALS = `\n## Pickup Directive — MANDATORY, DO NOT SKIP\n\n- [x] Deep dive complete\n\n<!-- aitm-deep-dive-posted: 2026-06-04 -->\n## Deep-Dive Analysis (2026-06-04)\n${DD_PROSE}\n<!-- aitm-deep-dive-complete: 2026-06-04T23:00:00Z -->\n## Verification Commands\n\n- [ ] \`npm run test:all\`\n${DD_FIELDS}\n`;
+const DEEP_DIVE_SIGNALS = `\n## Plan Metadata\n\n- **size**: XS\n\n## Pickup Directive — MANDATORY, DO NOT SKIP\n\n- [x] Deep dive complete\n\n<!-- aitm-deep-dive-posted: 2026-06-04 -->\n## Deep-Dive Analysis (2026-06-04)\n${DD_PROSE}\n<!-- aitm-deep-dive-complete: 2026-06-04T23:00:00Z -->\n## Verification Commands\n\n- [ ] \`npm run test:all\`\n${DD_FIELDS}\n`;
 const USER_STORY_SECTION =
   '## User Story\n\nAs a developer\nI want to test the promote verb\nSo that the gate suite stays green\n';
 const REFINE_COMPLETE_MARKER = '<!-- aitm-refine-complete: 2026-06-03T00:00:00Z -->';
@@ -368,6 +373,19 @@ test('verbPromote: refused gate → exit 4 with BLOCKED lines', async () => {
   const r = await runVerb(['1031'], deps);
   assert.equal(r.exitCode, 4);
   assert.match(r.stderr, /BLOCKED/);
+});
+test('verbPromote: decomposition refusal renders blockers and exits 4', async () => {
+  const { deps } = makeDeps({ body: bodyWithState('plan'), live: 'plan' });
+  plannedEstimateOk(deps, 1134);
+  deps.decomposition.projectValuesForIssue = async () => ({ size: 'XL', estimate: 24 });
+
+  const r = await runVerb(['1134'], deps);
+
+  assert.equal(r.exitCode, 4);
+  assert.match(r.stderr, /Refusing to promote #1134 to develop/);
+  assert.match(r.stderr, /BLOCKED:.*Decomposition Waiver/s);
+  assert.doesNotMatch(r.stderr, /unknown result status/);
+  assert.doesNotMatch(r.stdout, /promoted:/);
 });
 test('verbPromote: drift-refused → exit 4', async () => {
   const { deps } = makeDeps({ body: bodyWithState('plan'), live: 'develop' });

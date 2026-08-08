@@ -8,6 +8,87 @@ import {
   upsertUnauthorizedCloseRecovery,
 } from '../../../lib/closed-issue-convergence.mjs';
 import { closeBody, runClose } from './close-convergence-wiring-helpers.mjs';
+import {
+  ensureCloseEstimationOutcome,
+  resolveEstimationOutcomeProjectDir,
+} from '../../../verbs/close.mjs';
+
+test('close asks the outcome runtime about forecast-free epics and permits a legacy skip', async () => {
+  const calls = [];
+  const epic = await ensureCloseEstimationOutcome({
+    issueNumber: 1067,
+    body: 'epic body without a forecast marker',
+    writer: {
+      ensure: async (input) => {
+        calls.push(input);
+        return { status: 'written', recordId: '01J00000000000000000000999' };
+      },
+    },
+  });
+  assert.equal(epic.status, 'written');
+  assert.equal(calls[0].forecastRecordId, null);
+
+  const legacy = await ensureCloseEstimationOutcome({
+    issueNumber: 7,
+    body: 'legacy story',
+    writer: { ensure: async () => ({ status: 'legacy-no-forecast' }) },
+  });
+  assert.equal(legacy.status, 'legacy-no-forecast');
+});
+
+test('close uses the frozen Plan forecast and refuses a drifted ready marker', async () => {
+  const frozen = '01J00000000000000000000941';
+  const drifted = '01J00000000000000000000942';
+  const body = [
+    `<!-- aitm-plan-approved ts="2026-08-02T14:00:00.000Z" forecast-record-id="${frozen}" -->`,
+    `<!-- aitm-estimation-forecast-ready record-id="${drifted}" -->`,
+  ].join('\n');
+  await assert.rejects(
+    ensureCloseEstimationOutcome({
+      issueNumber: 1091,
+      body,
+      writer: { ensure: async () => ({ status: 'written' }) },
+    }),
+    /forecast.*lineage/i
+  );
+});
+
+test('close refuses an adaptive ready forecast without frozen Plan lineage', async () => {
+  const ready = '01J00000000000000000000941';
+  await assert.rejects(
+    ensureCloseEstimationOutcome({
+      issueNumber: 1091,
+      body: [
+        '<!-- aitm-plan-approved ts="2026-08-02T14:00:00.000Z" -->',
+        `<!-- aitm-estimation-forecast-ready record-id="${ready}" -->`,
+      ].join('\n'),
+      writer: { ensure: async () => ({ status: 'written' }) },
+    }),
+    /frozen Plan forecast/i
+  );
+});
+
+test('primary convergence resolves the issue worktree instead of inheriting the caller directory', () => {
+  const resolved = resolveEstimationOutcomeProjectDir({
+    issueNumber: 1091,
+    closeIssueNum: 1091,
+    projectDir: '/repo',
+    issueWorkspaceResolver: ({ issueRef }) => `/repo/.worktrees/${issueRef.slice(1)}`,
+  });
+  assert.equal(resolved, '/repo/.worktrees/1091');
+});
+
+test('primary convergence fails closed when issue worktree registration is unavailable', () => {
+  assert.throws(
+    () =>
+      resolveEstimationOutcomeProjectDir({
+        issueNumber: 1091,
+        projectDir: '/repo',
+        issueWorkspaceResolver: () => null,
+      }),
+    /workspace evidence is unavailable/i
+  );
+});
 
 test('dead issue returns without body or child reads', async () => {
   const run = await runClose({
@@ -31,7 +112,7 @@ test('completed issue already at Done tolerates a failed best-effort body read',
 
   assert.equal(run.result?.action, 'noop');
   assert.equal(run.result?.status, 'completed');
-  assert.equal(run.calls.bodyReads, 2);
+  assert.equal(run.calls.bodyReads, 1);
   assert.equal(run.calls.childSnapshots, 0);
   assert.equal(run.exitCode, 0);
 });
@@ -55,7 +136,7 @@ test('pending recovery on a completed issue already at Done resumes before noop'
   assert.equal(run.result?.status, 'recovered');
   assert.equal(run.result?.durablePhase, 'complete');
   assert.equal(readUnauthorizedCloseRecovery(run.body)?.tx, 'tx-closed-done-resume');
-  assert.equal(run.calls.bodyReads, 2);
+  assert.equal(run.calls.bodyReads, 1);
   assert.equal(run.calls.childSnapshots, 0);
   assert.equal(run.exitCode, 0);
 });
@@ -91,7 +172,7 @@ test('pending recovery on an open issue resumes from its serialized phase', asyn
   assert.equal(run.result?.status, 'recovered');
   assert.equal(run.result?.durablePhase, 'complete');
   assert.equal(readUnauthorizedCloseRecovery(run.body)?.phase, 'complete');
-  assert.equal(run.calls.bodyReads, 2);
+  assert.equal(run.calls.bodyReads, 1);
   assert.deepEqual(run.calls.movesToReview, []);
   assert.equal(run.calls.timingRows.length, 1);
   assert.match(run.calls.timingRows[0], /tx=tx-open-resume/);
@@ -116,7 +197,7 @@ test('pending recovery outranks close-issue for an open issue already at Done', 
   assert.equal(run.result?.action, 'aberration');
   assert.equal(run.result?.status, 'recovered');
   assert.equal(readUnauthorizedCloseRecovery(run.body)?.phase, 'complete');
-  assert.equal(run.calls.bodyReads, 2);
+  assert.equal(run.calls.bodyReads, 1);
   assert.equal(run.calls.issueCloses, 0);
   assert.equal(run.exitCode, 0);
 });
@@ -161,7 +242,7 @@ test('pending recovery on a still-closed issue preserves its durable transaction
   assert.equal(run.result?.status, 'recovered');
   assert.equal(run.result?.durablePhase, 'complete');
   assert.equal(readUnauthorizedCloseRecovery(run.body)?.tx, 'tx-closed-resume');
-  assert.equal(run.calls.bodyReads, 2);
+  assert.equal(run.calls.bodyReads, 1);
   assert.equal(run.calls.childSnapshots, 0);
   assert.equal(run.exitCode, 0);
 });
@@ -258,4 +339,70 @@ test('explicit close has no direct issue-body mutator import or fallback', () =>
   const source = readFileSync(new URL('../../../verbs/close.mjs', import.meta.url), 'utf8');
   assert.doesNotMatch(source, /import\s+\{\s*mutateIssueBody\s*\}/);
   assert.doesNotMatch(source, /ctx\.issueBodyMutator\s*\?\?/);
+});
+
+test('v1 estimation outcome is required before the terminal Done move', () => {
+  const source = readFileSync(new URL('../../../verbs/close.mjs', import.meta.url), 'utf8');
+  const outcome = source.indexOf('ensureCloseEstimationOutcome({');
+  const terminalMove = source.indexOf('if (!force && !SKIP_NETWORK && closeIssueNum) {', outcome);
+  assert.ok(outcome > 0, 'close must invoke the estimation outcome writer');
+  assert.ok(terminalMove > outcome, 'outcome must be durable before the non-force Done move');
+});
+
+test('fallible merge preparation precedes the outcome; Done precedes Delivered disposition', () => {
+  const source = readFileSync(new URL('../../../verbs/close.mjs', import.meta.url), 'utf8');
+  const merge = source.indexOf(
+    'enableFullAutoMergeForClose({',
+    source.indexOf('await emitReviewToDoneClosePair')
+  );
+  const outcome = source.indexOf('ensureCloseEstimationOutcome({', merge);
+  const terminalMove = source.indexOf('if (!force && !SKIP_NETWORK && closeIssueNum) {', outcome);
+  const delivered = source.indexOf('writeDeliveredOrRefuse({', terminalMove);
+  assert.ok(merge > 0 && outcome > merge, 'merge preparation must finish before outcome');
+  assert.ok(terminalMove > outcome, 'outcome must be durable before Done');
+  assert.ok(delivered > terminalMove, 'Delivered must be written only after Done');
+});
+
+test('convergence close synchronizes terminal timing before freezing its outcome', () => {
+  const source = readFileSync(new URL('../../../verbs/close.mjs', import.meta.url), 'utf8');
+  const closeIssue = source.indexOf("if (decision.action === 'close-issue') {");
+  const closeIssueEnd = source.indexOf(
+    "if (['dead', 'finalize', 'aberration', 'noop']",
+    closeIssue
+  );
+  const closeIssueBranch = source.slice(closeIssue, closeIssueEnd);
+  assert.ok(
+    closeIssueBranch.indexOf('emitReviewToDoneClosePair') <
+      closeIssueBranch.indexOf('ensureConvergenceOutcome'),
+    'board-Done convergence must emit the close pair before its outcome'
+  );
+
+  const convergence = source.indexOf('runClosedIssueConvergence(');
+  const convergenceCall = source.slice(
+    convergence,
+    source.indexOf('if (convergence.status', convergence)
+  );
+  assert.match(convergenceCall, /ensureOutcome:\s*async/);
+});
+
+test('convergence refuses completion when a terminal timing row is only queued', async () => {
+  const run = await runClose({ timingResult: { ok: false, queued: true, err: 'network down' } });
+
+  assert.equal(run.result?.status, 'failed');
+  assert.equal(run.result?.failedStep, 'emitClosePair');
+  assert.equal(run.calls.mutations, 0);
+  assert.equal(run.exitCode, 1);
+});
+
+test('board-Done open-issue convergence refuses GitHub close when terminal timing is queued', async () => {
+  const run = await runClose({
+    boardState: 'done',
+    closeSnapshot: { issueClosed: false, stateReason: null },
+    timingResult: { ok: false, queued: true, err: 'network down' },
+  });
+
+  assert.equal(run.result?.status, 'failed');
+  assert.equal(run.result?.failedStep, 'emitClosePair');
+  assert.equal(run.calls.issueCloses, 0);
+  assert.equal(run.exitCode, 1);
 });

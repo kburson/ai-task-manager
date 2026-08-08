@@ -58,9 +58,6 @@ async function runOfflineOrdinaryClose({ gateReviewToDone, reviewer }) {
       uncheckedPreCloseCheckboxes: () => [],
       tickLifecycleOnClose: async () => ({ ok: true }),
       nowIso: () => new Date().toISOString(),
-      withIssueLock: async (_options, callback) => callback(),
-      withGovernedEffect: async (_options, callback) =>
-        callback({ leaseContext: {}, reverify: async () => {} }),
     });
     return moves;
   } finally {

@@ -113,16 +113,6 @@ try {
   );
   assert.match(twice, /\/task plan #N/, 'bootstrap map names the dedicated Refine → Plan verb');
   assert.match(twice, /\/task test #N/, 'bootstrap map names the Develop → Test verb');
-  assert.match(
-    twice,
-    /\/task approve #N --human/,
-    'bootstrap records human approval with explicit provenance'
-  );
-  assert.match(
-    twice,
-    /current Review authority/,
-    'bootstrap does not reduce Review-to-Done authority to marker presence'
-  );
   assert.match(twice, /\/task promote #N/, 'bootstrap map keeps one-step generic promotion');
 
   const staleManaged = [

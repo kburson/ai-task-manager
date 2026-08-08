@@ -20,60 +20,6 @@ import {
   buildOrphanRecoveryRowSpecs,
 } from '../../../hook-handler.mjs';
 import { SUSPICIOUS_GAP_SEC } from '../../../lib/bind-event.mjs';
-import * as hookHandler from '../../../hook-handler.mjs';
-
-test('hook handler exposes one whole-unit governed issue effect boundary', () => {
-  assert.equal(typeof hookHandler.runGovernedHookIssueEffect, 'function');
-});
-
-test('whole-unit hook boundary refuses stale authority before any issue effect', async () => {
-  const effects = [];
-  const stale = Object.assign(new Error('lease fence is stale'), { code: 'fence-stale' });
-
-  await assert.rejects(
-    hookHandler.runGovernedHookIssueEffect(
-      {
-        issue: '#1049',
-        withGovernedEffect: async (options, callback) => {
-          effects.push(options);
-          throw stale;
-        },
-      },
-      async () => {
-        effects.push('callback');
-      }
-    ),
-    (error) => error === stale
-  );
-
-  assert.deepEqual(effects, [
-    {
-      issueId: '1049',
-      operation: 'evidence-mutation',
-      heartbeat: true,
-    },
-  ]);
-});
-
-test('offline hook boundary preserves zero-network behavior without authority lookup', async () => {
-  const effects = [];
-  const result = await hookHandler.runGovernedHookIssueEffect(
-    {
-      issue: '1049',
-      skipNetwork: true,
-      withGovernedEffect: async () => {
-        effects.push('authority');
-      },
-    },
-    async (authority) => {
-      effects.push(authority);
-      return 'offline';
-    }
-  );
-
-  assert.equal(result, 'offline');
-  assert.deepEqual(effects, [null]);
-});
 
 test('isPausedTask: returns true when entry status is "paused"', () => {
   const fleet = { '#167': { status: 'paused' } };

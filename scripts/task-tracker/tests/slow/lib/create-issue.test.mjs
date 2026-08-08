@@ -20,6 +20,11 @@ const script = join(repoRoot, 'scripts/gh/create-issue.mjs');
 // Use this in tests that exercise create-issue end-to-end with --body-file.
 const CANONICAL_TAIL = [
   '',
+  '## Story Origin',
+  '- **kind**: code',
+  '',
+  '## Plan Metadata',
+  '',
   '## Acceptance Criteria',
   '- [ ] something',
   '',
@@ -232,6 +237,7 @@ test('tether failure: prints recovery command and exits non-zero', () => {
   );
 
   assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /^AITM_CREATED_ISSUE=9999$/m);
   assert.match(result.stderr, /created but tether failed/);
   assert.match(result.stderr, /rerun: node /);
   assert.match(result.stderr, /--issue 9999/);
@@ -321,6 +327,8 @@ exit 1
       join(ctx.temp, 'scope.md'),
       '--ac-file',
       join(ctx.temp, 'ac.md'),
+      '--story-origin-file',
+      join(ctx.temp, 'origin.md'),
       '--plan-metadata-file',
       join(ctx.temp, 'plan.md'),
       '--parent',
@@ -375,6 +383,8 @@ exit 1
       join(ctx.temp, 'missing-scope.md'),
       '--ac-file',
       join(ctx.temp, 'missing-ac.md'),
+      '--story-origin-file',
+      join(ctx.temp, 'missing-origin.md'),
       '--plan-metadata-file',
       join(ctx.temp, 'missing-plan.md'),
       '--parent',

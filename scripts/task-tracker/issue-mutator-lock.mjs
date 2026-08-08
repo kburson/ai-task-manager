@@ -178,13 +178,9 @@ export async function withIssueLock(opts, fn) {
       `pid-${process.pid}`,
     timeoutMs = ISSUE_LOCK_DEFAULT_RETRY_MS,
     retries = ISSUE_LOCK_DEFAULT_RETRIES,
-    authorize,
   } = opts || {};
   if (!issue) throw new Error('withIssueLock: issue is required');
   if (!projDir) throw new Error('withIssueLock: projDir is required');
-  if (authorize !== undefined && typeof authorize !== 'function') {
-    throw new Error('withIssueLock: authorize must be a function');
-  }
   const lockPath = issueLockPath(issue, projDir);
   mkdirSync(path.dirname(lockPath), { recursive: true });
 
@@ -229,9 +225,7 @@ export async function withIssueLock(opts, fn) {
   const priorEnv = process.env[ISSUE_LOCK_HELD_ENV];
   process.env[ISSUE_LOCK_HELD_ENV] = '1';
   try {
-    // The authority proof is deliberately created only after advisory-lock
-    // acquisition. A fence can become stale while this command waits.
-    return authorize ? await authorize(fn) : await fn();
+    return await fn();
   } finally {
     if (priorEnv === undefined) delete process.env[ISSUE_LOCK_HELD_ENV];
     else process.env[ISSUE_LOCK_HELD_ENV] = priorEnv;

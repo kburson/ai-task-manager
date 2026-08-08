@@ -164,16 +164,7 @@ async function runVerb(ctx) {
   }
 }
 
-const baseCtx = (over) => ({
-  cfg: { repo: 'o/r' },
-  projectDir: tmpRoot,
-  withGovernedEffect: async (options, callback) => {
-    assert.equal(options.issueId, '777');
-    assert.equal(options.operation, 'issue-body-mutation');
-    return callback({ reverify: async () => {} });
-  },
-  ...over,
-});
+const baseCtx = (over) => ({ cfg: { repo: 'o/r' }, projectDir: tmpRoot, ...over });
 const readStore = () => readFileSync(storeFile, 'utf8');
 function resetStore() {
   writeFileSync(storeFile, fixtureBody());

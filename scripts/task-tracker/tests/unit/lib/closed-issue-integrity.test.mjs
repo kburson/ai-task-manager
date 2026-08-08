@@ -7,36 +7,9 @@ import {
   deriveClosedIssueIntegrity,
   normalizeIssueCloseSnapshot,
 } from '../../../lib/closed-issue-convergence.mjs';
-import {
-  serializeAgentReviewProof,
-  serializeReviewApproval,
-} from '../../../lib/review-authority.mjs';
-
-const REVIEW_EPOCH = 'review:1:2026-07-29T10:00:00Z';
-
-function currentReviewAuthority() {
-  return [
-    '<!-- aitm-dod-verified sha="abc1234" ts="2026-07-29T09:59:00Z" -->',
-    '<!-- aitm-entered-review ts="2026-07-29T10:00:00Z" -->',
-    serializeAgentReviewProof({
-      epoch: REVIEW_EPOCH,
-      sha: 'abc1234',
-      ts: '2026-07-29T10:01:00Z',
-      validators: 'unit',
-      result: 'pass',
-    }),
-    serializeReviewApproval({
-      epoch: REVIEW_EPOCH,
-      proofSha: 'abc1234',
-      ts: '2026-07-29T10:02:00Z',
-      provenance: 'human',
-    }),
-  ];
-}
 
 function body({ criterion = '[x]', tests = '[x]', agentReview = '[x]', finalReview = '[x]' } = {}) {
   return [
-    ...currentReviewAuthority(),
     '## Acceptance Criteria',
     '',
     `- ${criterion} The delivered behavior is verified`,

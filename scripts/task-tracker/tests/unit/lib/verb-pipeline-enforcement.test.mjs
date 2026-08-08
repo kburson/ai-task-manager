@@ -78,7 +78,8 @@ async function runExpectFail(args, env) {
 // 1. AITM_VERB_CONTEXT=promote permits the move (no AITM_INTERNAL needed).
 {
   const sandbox = makeSandbox();
-  await run(['123', 'refine'], cleanEnv(sandbox, { AITM_VERB_CONTEXT: 'promote' }));
+  const r = await run(['123', 'refine'], cleanEnv(sandbox, { AITM_VERB_CONTEXT: 'promote' }));
+  assert.match(r.stdout, /moved to: refine/, 'AITM_VERB_CONTEXT must permit the move');
   rmSync(sandbox, { recursive: true });
 }
 
@@ -110,7 +111,8 @@ async function runExpectFail(args, env) {
 // 4. --out-of-band <reason> permits the move under TT_SKIP_NETWORK.
 {
   const sandbox = makeSandbox();
-  await run(['123', 'refine', '--out-of-band', 'fixing-drift'], cleanEnv(sandbox));
+  const r = await run(['123', 'refine', '--out-of-band', 'fixing-drift'], cleanEnv(sandbox));
+  assert.match(r.stdout, /moved to: refine/, '--out-of-band must permit the move');
   rmSync(sandbox, { recursive: true });
 }
 
@@ -127,6 +129,7 @@ async function runExpectFail(args, env) {
 {
   const sandbox = makeSandbox({ directMoveStateAllowed: true });
   const r = await run(['123', 'refine'], cleanEnv(sandbox));
+  assert.match(r.stdout, /moved to: refine/, 'directMoveStateAllowed=true must permit the move');
   assert.match(
     String(r.stderr || ''),
     /directMoveStateAllowed=true/,

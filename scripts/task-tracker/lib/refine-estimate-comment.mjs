@@ -12,6 +12,7 @@ import { promisify } from 'node:util';
 
 import { gh, splitRepo } from '../../gh/lib/github-projects.mjs';
 import { GH_API_TIMEOUT_MS } from './process-timeouts.mjs';
+import { ceilEstimateHours } from './estimation/estimate-granularity.mjs';
 
 const pexec = promisify(execFile);
 
@@ -58,15 +59,29 @@ function formatDeltaEstimate(currentEst, plannedEst) {
 export function buildPlannedAppendix({ planned = {}, current = {}, rationale = '' } = {}) {
   validateSizeEstimateArg('planned', 'buildPlannedAppendix', planned);
   validateSizeEstimateArg('current', 'buildPlannedAppendix', current);
-  const beforeSize = current.size ?? '—';
-  const beforeEst = current.estimate ?? '—';
-  const afterSize = planned.size ?? '—';
-  const afterEst = planned.estimate ?? '—';
+  const normalizedCurrent = {
+    ...current,
+    ...(typeof current.estimate === 'number'
+      ? { estimate: ceilEstimateHours(current.estimate) }
+      : {}),
+  };
+  const normalizedPlanned = {
+    ...planned,
+    ...(typeof planned.estimate === 'number'
+      ? { estimate: ceilEstimateHours(planned.estimate) }
+      : {}),
+  };
+  const beforeSize = normalizedCurrent.size ?? '—';
+  const beforeEst = normalizedCurrent.estimate ?? '—';
+  const afterSize = normalizedPlanned.size ?? '—';
+  const afterEst = normalizedPlanned.estimate ?? '—';
   const deltaSize =
-    current.size && planned.size && current.size !== planned.size
+    normalizedCurrent.size &&
+    normalizedPlanned.size &&
+    normalizedCurrent.size !== normalizedPlanned.size
       ? `${beforeSize}→${afterSize}`
       : '0';
-  const deltaEst = formatDeltaEstimate(current.estimate, planned.estimate);
+  const deltaEst = formatDeltaEstimate(normalizedCurrent.estimate, normalizedPlanned.estimate);
   const rationaleLine =
     rationale && rationale.trim() ? rationale.trim() : '_no rationale supplied_';
   return [
@@ -166,6 +181,36 @@ export async function appendPlannedEstimate({
     return { status: 'patch-failed', error: err.message, commentId: comment.id };
   }
   return { status: 'appended', commentId: comment.id };
+}
+
+export async function upsertPlannedEstimate({
+  cfg,
+  issueNumber,
+  refine,
+  plan,
+  rationale,
+  deps = {},
+} = {}) {
+  if (!cfg) throw new Error('upsertPlannedEstimate: cfg is required');
+  if (!issueNumber) throw new Error('upsertPlannedEstimate: issueNumber is required');
+  validateSizeEstimateArg('refine', 'upsertPlannedEstimate', refine);
+  validateSizeEstimateArg('plan', 'upsertPlannedEstimate', plan);
+  const patchComment = deps.patchComment || defaultPatchComment;
+  const comment = await findRefineEstimateComment({ cfg, issueNumber, deps });
+  if (!comment) return { status: 'no-refine-comment' };
+  const match = comment.body.match(PLANNED_HEADER_RE);
+  const head = match
+    ? comment.body.slice(0, match.index).replace(/\s+$/, '')
+    : comment.body.replace(/\s+$/, '');
+  const appendix = buildPlannedAppendix({
+    current: refine,
+    planned: plan,
+    rationale,
+  });
+  const nextBody = `${head}${appendix}\n`;
+  if (nextBody === comment.body) return { status: 'current', commentId: comment.id };
+  await patchComment({ cfg, commentId: comment.id, body: nextBody });
+  return { status: 'updated', commentId: comment.id };
 }
 
 // AC8 (#171) — re-populate an already-appended EMPTY Planned Estimate table.

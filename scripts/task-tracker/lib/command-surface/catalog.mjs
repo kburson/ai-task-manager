@@ -148,10 +148,12 @@ export const VERB_CONTRACTS = Object.freeze({
   ),
   'plan-estimate': contract(
     [
-      'The target must have a refine-estimate comment and both planned size and estimate arguments.',
+      'The target must be in Plan with a refine estimate and either v1 evidence or explicit legacy compatibility flags; one-time legacy adoption additionally accepts an exact-matching Develop baseline.',
     ],
-    ['Appends or updates the Planned Estimate comparison and rationale.'],
-    ['Prints the previous and planned estimates and the updated comment reference.']
+    [
+      'V1 converges board Size/Estimate, canonical fields, Refine history, and a read-back forecast; compatibility mode updates only the legacy appendix.',
+    ],
+    ['Prints convergence evidence and the immutable forecast record ID.']
   ),
   approve: contract(
     ['The target must be in Review, pass preflight, and satisfy final-review approval policy.'],
@@ -169,11 +171,15 @@ export const VERB_CONTRACTS = Object.freeze({
   review: contract(
     [
       'The target must be in Test or Review, pass preflight, and have reviewable verification evidence.',
+      'The --probe mode requires the target to already be in Review and the quoted command to pass the verification allowlist.',
     ],
     [
       'Flushes timing, evaluates the review gate, moves Test to Review when needed, and pauses the session.',
+      'With --probe, executes only focused commands at the clean exact SHA and persists a separate Review receipt without rerunning the Review gate.',
     ],
-    ['Prints review findings, state movement, timing totals, and any approval prompt.'],
+    [
+      'Prints review findings, state movement, timing totals, approval prompts, or focused-probe receipt diagnostics.',
+    ],
     [
       exit(3, 'review evidence or board data could not be fetched'),
       MOVE_REFUSAL,
@@ -188,8 +194,10 @@ export const VERB_CONTRACTS = Object.freeze({
   ),
   test: contract(
     ['The target must be in Develop and declare runnable Verification Commands.'],
-    ['Runs verification in an isolated worktree and moves the issue to Test only on success.'],
-    ['Streams sandbox verification and prints the resulting state or failure diagnostics.']
+    [
+      'Finalizes Develop lint/format evidence, reuses that exact-SHA receipt, then runs Test-owned verification in an isolated worktree and moves the issue to Test only on success.',
+    ],
+    ['Streams finalization, sandbox verification, and resulting state or failure diagnostics.']
   ),
   reconcile: contract(
     [
@@ -214,9 +222,13 @@ export const VERB_CONTRACTS = Object.freeze({
     ['Prints the canonical live board state.']
   ),
   'epic-reconcile': contract(
-    ['The target must be a valid epic whose child delivery can be inspected.'],
-    ['Records the epic acceptance-criteria reconciliation marker.'],
-    ['Prints the epic, inspected child set, and marker result.']
+    [
+      'The target must be a valid epic whose child delivery can be inspected; a supplied deliverable comment must belong to that issue in the configured repository.',
+    ],
+    [
+      'Refreshes the epic acceptance-criteria reconciliation marker and optionally records the validated no-commit deliverable in the same versioned body write.',
+    ],
+    ['Prints the epic, optional deliverable URL, inspected child set, and marker result.']
   ),
   'pull-next': contract(
     ['The epic must exist and have an eligible ranked child currently in Refine.'],
@@ -312,15 +324,24 @@ export const VERB_CONTRACTS = Object.freeze({
     ['Prints per-criterion evidence status and mutation totals.'],
     [exit(3, 'evidence audit found invalid or incomplete marker state')]
   ),
+  'adopt-github-records': contract(
+    ['The issue must exist; mutation modes additionally require current coordinator authority.'],
+    ['Audits legacy parity by default, or explicitly adopts, rolls back, or repairs one issue.'],
+    ['Prints the parity hash and the resulting adoption or repair status.']
+  ),
   'commit-trace': contract(
     ['The target issue must exist and the current Git HEAD must be readable.'],
     ['Creates or updates the canonical commit-trace issue comment from HEAD history.'],
     ['Prints the traced commits and comment reference.']
   ),
   'mirror-deep-dive': contract(
-    ['A valid source comment and target issue are required.'],
-    ['Copies the source deep-dive block into the canonical issue-body section.'],
-    ['Prints the source comment and updated issue reference.']
+    [
+      'A target issue and exactly one mode are required: a valid source comment, or one unambiguous existing block for placement repair.',
+    ],
+    [
+      'Copies source prose into the canonical section, or relocates the existing block byte-for-byte through the versioned body writer.',
+    ],
+    ['Prints the source comment or placement-repair result and updated issue reference.']
   ),
   new: contract(
     [
@@ -392,6 +413,21 @@ export const VERB_CONTRACTS = Object.freeze({
     ['Persists, clears, resumes, or reads the source-edit gate override.'],
     ['Prints chore-mode state, reason, and suspension status.']
   ),
+  'decompose-check': contract(
+    ['The target issue and its board planning fields must be readable.'],
+    ['Reads the issue, linked plan, and decomposition policy without mutating any state.'],
+    ['Prints the atomicity classification, signals, plan diagnostic, and waiver status.']
+  ),
+  'split-plan': contract(
+    [
+      'The target must require decomposition and have a readable numbered plan with executable verifiers.',
+      'Exactly one of --dry-run and --confirm is required.',
+    ],
+    [
+      'Preflights every generated child through sanctioned create-issue; --confirm creates children only after every preflight passes.',
+    ],
+    ['Prints deterministic proposals, created issue numbers, or partial-success recovery data.']
+  ),
   help: contract(
     ['No active issue, repository initialization, network access, or writable state is required.'],
     ['Reads the canonical command catalog without changing project or session state.'],
@@ -415,6 +451,8 @@ export const VERB_RELATED_COMMANDS = Object.freeze({
   plan: Object.freeze(['plan-estimate', 'plan-approve', 'promote']),
   'plan-approve': Object.freeze(['plan-estimate', 'promote']),
   'plan-estimate': Object.freeze(['plan-approve', 'promote']),
+  'decompose-check': Object.freeze(['split-plan', 'plan', 'promote']),
+  'split-plan': Object.freeze(['decompose-check', 'create-issue']),
   approve: Object.freeze(['review', 'reject', 'close']),
   review: Object.freeze(['approve', 'reject', 'close']),
   reject: Object.freeze(['review', 'demote']),
@@ -436,6 +474,7 @@ export const VERB_RELATED_COMMANDS = Object.freeze({
   ensureChecked: Object.freeze(['ac-stamp', 'dod-stamp', 'ensureUnchecked']),
   ensureUnchecked: Object.freeze(['ensureChecked', 'reject']),
   'evidence-markers': Object.freeze(['ac-stamp', 'ensureChecked']),
+  'adopt-github-records': Object.freeze(['evidence-markers', 'reconcile']),
   'commit-trace': Object.freeze(['close', 'status']),
   'mirror-deep-dive': Object.freeze(['plan', 'save-plan']),
   new: Object.freeze(['discover', 'refine', '#N']),
@@ -481,6 +520,12 @@ export const VERB_POSITIONAL_ARGUMENTS = Object.freeze({
   ]),
   'plan-estimate': Object.freeze([
     positional('[#N]', 'Optional issue number; defaults to the active task.'),
+  ]),
+  'decompose-check': Object.freeze([
+    positional('<issue>', 'Issue number whose linked plan is classified.'),
+  ]),
+  'split-plan': Object.freeze([
+    positional('<issue>', 'Issue number whose linked plan supplies child sections.'),
   ]),
   approve: Object.freeze([positional('#N', 'Required issue number whose review is approved.')]),
   review: Object.freeze([positional('#N', 'Issue number to move through the review gate.')]),
@@ -535,6 +580,9 @@ export const VERB_POSITIONAL_ARGUMENTS = Object.freeze({
   'evidence-markers': Object.freeze([
     positional('<audit|backfill>', 'Evidence-marker operation.'),
     positional('#N', 'Issue number to audit or backfill.'),
+  ]),
+  'adopt-github-records': Object.freeze([
+    positional('<N>', 'Issue number to audit, adopt, roll back, or repair.'),
   ]),
   'commit-trace': Object.freeze([
     positional('[#N]', 'Optional issue number; defaults to the active task.'),
@@ -655,6 +703,17 @@ const supplementalVerbRecords = Object.entries(VERB_REFERENCE)
       group: reference.topic,
     });
   });
+
+// #1089 — `verify-develop` is a two-mode authority boundary. Refuse catalog
+// construction if its canonical standalone metadata ever collapses iteration
+// and exact-SHA finalization back into an ambiguous single command.
+const verifyDevelopDoc = SELF_DOC['verify-develop'];
+if (
+  !verifyDevelopDoc?.usage.includes('--mode iteration|final') ||
+  !verifyDevelopDoc?.arguments.some(({ name }) => name === '--issue <N>')
+) {
+  throw new Error('command catalog: verify-develop must expose iteration/final and --issue <N>');
+}
 
 const selfDocRecords = Object.entries(SELF_DOC).map(([name, doc]) => {
   const classified = entrypointByCommand.get(name) || entrypointByPath.get(doc.path);

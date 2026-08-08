@@ -315,7 +315,6 @@ test('runHook tolerates signal fetch failure (falls through to decide)', async (
 
 test('runHook allowlists .tmp without needing a bound issue or signals', async () => {
   let touched = false;
-  let governed = false;
   const r = await runHook(
     { tool_name: 'Write', tool_input: { file_path: '.tmp/inspect/probe.mjs' } },
     {
@@ -328,100 +327,12 @@ test('runHook allowlists .tmp without needing a bound issue or signals', async (
       resolveIssueSignals: async () => {
         throw new Error('should not be called');
       },
-      withGovernedEffect: async () => {
-        governed = true;
-        throw new Error('should not be called');
-      },
     }
   );
   assert.equal(r.decision, 'allow');
   assert.equal(r.reason, 'allowlisted-path');
   // loadBoundIssue is still called (cheap); resolveIssueSignals is NOT.
   assert.equal(touched, true);
-  assert.equal(governed, false, 'scratch writes must not open authority');
-});
-
-test('#1049: pure state refusal does not open source-write authority', async () => {
-  let governed = false;
-  const r = await runHook(
-    { tool_name: 'Edit', tool_input: { file_path: 'src/foo.mjs' } },
-    {
-      projectDir: PROJECT_DIR,
-      isChoreModeActive: () => false,
-      loadBoundIssue: () => '#1049',
-      resolveIssueSignals: async () => ({
-        state: 'plan',
-        hasPostedMarker: true,
-        hasCompleteMarker: true,
-        source: 'fetch',
-      }),
-      withGovernedEffect: async () => {
-        governed = true;
-      },
-    }
-  );
-  assert.equal(r.decision, 'block');
-  assert.equal(r.code, 'source-edit-state-gate');
-  assert.equal(governed, false);
-});
-
-test('#1049: source gate evaluates every apply_patch target under one authority check', async () => {
-  const payload = {
-    tool_name: 'apply_patch',
-    tool_input: {
-      patch: [
-        '*** Begin Patch',
-        '*** Update File: src/foo.mjs',
-        '@@',
-        '-old',
-        '+new',
-        '*** Update File: docs/foo.md',
-        '@@',
-        '-old',
-        '+new',
-        '*** End Patch',
-      ].join('\n'),
-    },
-  };
-  const baseDeps = {
-    projectDir: PROJECT_DIR,
-    isChoreModeActive: () => false,
-    loadBoundIssue: () => '#1049',
-    loadPolicy: () => ({}),
-    classifyEdit: (target) => (target.endsWith('.md') ? 'WRITE_DOCS' : 'WRITE_CODE'),
-  };
-  let governed = 0;
-  const allowed = await runHook(payload, {
-    ...baseDeps,
-    resolveIssueSignals: async () => ({
-      state: 'develop',
-      hasPostedMarker: true,
-      hasCompleteMarker: true,
-    }),
-    withGovernedEffect: async (_options, callback) => {
-      governed += 1;
-      return callback();
-    },
-  });
-  assert.equal(allowed.decision, 'allow');
-  assert.equal(governed, 1);
-
-  governed = 0;
-  const refused = await runHook(payload, {
-    ...baseDeps,
-    resolveIssueSignals: async () => ({
-      state: 'review',
-      hasPostedMarker: true,
-      hasCompleteMarker: true,
-    }),
-    withGovernedEffect: async () => {
-      governed += 1;
-    },
-  });
-  assert.equal(refused.decision, 'block');
-  assert.equal(refused.code, 'source-edit-post-develop-lock');
-  assert.match(refused.reason, /WRITE_CODE/);
-  assert.equal(governed, 0);
 });
 
 // ── #658 regression: deep-dive marker grammar detection ────────────────────

@@ -67,9 +67,6 @@ async function runConverge({ boardState, reconcileSpy }) {
       getIssueClosedState: async () => true,
     },
     tickLifecycleOnClose: reconcileSpy,
-    withIssueLock: async (_options, callback) => callback(),
-    withGovernedEffect: async (_options, callback) =>
-      callback({ leaseContext: {}, reverify: async () => {} }),
   };
   const prevSkip = process.env.TT_SKIP_DIRTY_CHECK;
   process.env.TT_SKIP_DIRTY_CHECK = '1';
@@ -129,9 +126,11 @@ const LIFECYCLE_BLOCK = (a = ' ', b = ' ', c = ' ') =>
   [
     '## Definition of Done',
     '',
-    '### Lifecycle (auto-ticked at Review/Close)',
+    '### Lifecycle (verified at Review)',
     '',
     `- [${a}] Passed final human review`,
+    '',
+    '### Housekeeping (verified at Close)',
     `- [${b}] Story closed and moved to Done`,
     `- [${c}] Timing data flushed to issue`,
     '',
@@ -163,9 +162,11 @@ test('reconcile does not fabricate an absent lifecycle box (#753 AC3)', async ()
   const partial = [
     '## Definition of Done',
     '',
-    '### Lifecycle (auto-ticked at Review/Close)',
+    '### Lifecycle (verified at Review)',
     '',
     '- [ ] Passed final human review',
+    '',
+    '### Housekeeping (verified at Close)',
     '- [ ] Story closed and moved to Done',
     '',
   ].join('\n');

@@ -31,12 +31,10 @@ import { normalizeStateId } from './lifecycle-policy/index.mjs';
 import { gql, splitRepo } from '../../gh/lib/github-projects.mjs';
 import { readLastKnownState } from '../gh-timing-comment.mjs';
 import { saveState } from '../state.mjs';
-import { reviewRemediationHint } from './review-remediation-hint.mjs';
 import { GH_API_TIMEOUT_MS } from './process-timeouts.mjs';
 import {
   checkAssigneeMatch,
   claimAssignee,
-  readOnlyBindEligibility,
   formatAssigneeRefusal,
   formatAssigneePromptLine,
   formatAssigneeUnverifiable,
@@ -60,7 +58,7 @@ function normalizeIssueNumber(target) {
   return m ? m[1] : null;
 }
 
-async function defaultFetchIssueBody({ issueNumber, repo, gqlFn = gql }) {
+async function defaultFetchLastKnownState({ issueNumber, repo, gqlFn = gql }) {
   const { owner, repoName } = splitRepo(repo);
   try {
     const data = await gqlFn(
@@ -71,15 +69,11 @@ async function defaultFetchIssueBody({ issueNumber, repo, gqlFn = gql }) {
       }`,
       { owner, repo: repoName, issue: Number(issueNumber) }
     );
-    return data?.repository?.issue?.body ?? '';
+    const body = data?.repository?.issue?.body ?? '';
+    return readLastKnownState(body).state;
   } catch {
     return null;
   }
-}
-
-async function defaultFetchLastKnownState(input) {
-  const body = await defaultFetchIssueBody(input);
-  return body === null ? null : readLastKnownState(body).state;
 }
 
 // Best-effort actor lookup via the issue timeline. Projects v2 does NOT
@@ -109,83 +103,38 @@ async function defaultFetchLastStatusActor({ issueNumber, repo, exec = pexec }) 
 }
 
 // Pure core. Caller provides loaded state + deps; we return a verdict.
-async function runPreflightCore({
-  stateBefore,
-  target,
-  cfg,
-  deps = {},
-  readOnlyBind = false,
-  allowIssueSwitch = false,
-} = {}) {
+export async function runPreflight({ stateBefore, target, cfg, deps = {} } = {}) {
   if (!stateBefore) throw new Error('runPreflight: stateBefore is required');
 
   const targetIssue = normalizeIssueNumber(target);
   const activeIssue = normalizeIssueNumber(stateBefore.active);
-  const incomingSwitch =
-    readOnlyBind &&
-    allowIssueSwitch === true &&
-    targetIssue &&
-    activeIssue &&
-    targetIssue !== activeIssue;
-  const switchContext = incomingSwitch ? { sourceIssue: activeIssue } : {};
 
-  if (targetIssue && activeIssue && targetIssue !== activeIssue && !incomingSwitch) {
+  if (targetIssue && activeIssue && targetIssue !== activeIssue) {
     return {
       ok: false,
       code: EXIT_BIND_MISMATCH,
       kind: 'bind-mismatch',
       active: stateBefore.active,
       target,
-      ...(readOnlyBind
-        ? {
-            claimRequired: false,
-            sourceIssue: activeIssue,
-            issueNumber: targetIssue,
-          }
-        : {}),
     };
   }
 
   const issueForReconcile = targetIssue || activeIssue;
-  if (!issueForReconcile) {
-    return {
-      ok: true,
-      stateAfter: stateBefore,
-      changed: false,
-      ...(readOnlyBind ? { claimRequired: false } : {}),
-    };
-  }
-  let bindEligibility = readOnlyBind
-    ? {
-        claimRequired: false,
-        issueNumber: issueForReconcile,
-        ...switchContext,
-      }
-    : {};
+  if (!issueForReconcile) return { ok: true, stateAfter: stateBefore, changed: false };
 
   if (process.env.TT_SKIP_NETWORK === '1') {
-    return {
-      ok: true,
-      stateAfter: stateBefore,
-      changed: false,
-      skippedNetwork: true,
-      ...bindEligibility,
-    };
+    return { ok: true, stateAfter: stateBefore, changed: false, skippedNetwork: true };
   }
-  if (!cfg) {
-    return { ok: true, stateAfter: stateBefore, changed: false, ...bindEligibility };
-  }
+  if (!cfg) return { ok: true, stateAfter: stateBefore, changed: false };
 
   // #219: assignee guard runs before drift check. Preference-gated; default on.
   const gateAssignee = cfg.preferences?.gateAssigneeMatch ?? true;
   if (gateAssignee) {
     let assigneeVerdict;
     try {
-      const assigneeCheck = readOnlyBind ? readOnlyBindEligibility : checkAssigneeMatch;
-      assigneeVerdict = await assigneeCheck({
+      assigneeVerdict = await checkAssigneeMatch({
         issueNumber: issueForReconcile,
         cfg,
-        ...(readOnlyBind ? { fullAuto: (deps.env || process.env).TT_FULL_AUTO === '1' } : {}),
         deps: {
           fetchAssignees: deps.fetchAssignees,
           fetchCurrentUser: deps.fetchCurrentUser,
@@ -208,17 +157,6 @@ async function runPreflightCore({
         assignees: assigneeVerdict.assignees,
         error: assigneeVerdict.error,
         issueNumber: issueForReconcile,
-        ...(readOnlyBind ? { claimRequired: false, ...switchContext } : {}),
-      };
-    }
-    if (readOnlyBind) {
-      bindEligibility = {
-        claimRequired: assigneeVerdict.claimRequired,
-        assigneeKind: assigneeVerdict.kind,
-        issueNumber: issueForReconcile,
-        currentUser: assigneeVerdict.currentUser,
-        assignees: assigneeVerdict.assignees,
-        ...switchContext,
       };
     }
   }
@@ -231,7 +169,6 @@ async function runPreflightCore({
   const fetchLive = deps.fetchLive || fetchLiveKanbanState;
   const fetchMarker =
     deps.fetchLastKnownState || ((a) => defaultFetchLastKnownState({ ...a, gqlFn }));
-  const fetchIssueBody = deps.fetchIssueBody || ((a) => defaultFetchIssueBody({ ...a, gqlFn }));
   const fetchActor =
     deps.fetchLastStatusActor || ((a) => defaultFetchLastStatusActor({ ...a, exec: execFn }));
 
@@ -248,44 +185,22 @@ async function runPreflightCore({
   // #436 — normalize through the single slug helper (collapses interior
   // whitespace) so a multi-word board name compares equal to the kebab marker.
   live = normalizeStateId(live) || '';
-  if (!live) {
-    return { ok: true, stateAfter: stateBefore, changed: false, ...bindEligibility };
-  }
-  if (readOnlyBind) {
-    bindEligibility = { ...bindEligibility, kanbanState: live };
-  }
+  if (!live) return { ok: true, stateAfter: stateBefore, changed: false };
 
   // #218: the issue body marker is the single local source of truth. Fetch
   // it unconditionally and compare to live; the loaded `stateBefore.state`
   // (if any legacy cache still carries it) is ignored.
   let marker = null;
-  let bindBody = null;
   try {
-    if (readOnlyBind && (deps.fetchIssueBody || !deps.fetchLastKnownState)) {
-      bindBody = await fetchIssueBody({ issueNumber: issueForReconcile, repo: cfg.repo });
-      marker = bindBody === null ? null : readLastKnownState(bindBody).state;
-    } else {
-      marker = await fetchMarker({ issueNumber: issueForReconcile, repo: cfg.repo });
-    }
+    marker = await fetchMarker({ issueNumber: issueForReconcile, repo: cfg.repo });
   } catch {
     marker = null;
-    bindBody = null;
   }
   marker = marker ? normalizeStateId(marker) : null;
-  if (readOnlyBind && bindBody !== null) {
-    bindEligibility = {
-      ...bindEligibility,
-      reviewRemediationHint: reviewRemediationHint({
-        state: live,
-        body: bindBody,
-        issueNumber: issueForReconcile,
-      }),
-    };
-  }
 
   // Marker absent (freshly created, never moved) or matches live: no drift.
   if (!marker || marker === live) {
-    return { ok: true, stateAfter: stateBefore, changed: false, ...bindEligibility };
+    return { ok: true, stateAfter: stateBefore, changed: false };
   }
 
   let actor = null;
@@ -304,91 +219,7 @@ async function runPreflightCore({
     marker,
     actor,
     issueNumber: issueForReconcile,
-    ...(readOnlyBind ? { claimRequired: false, ...switchContext } : {}),
   };
-}
-
-export function runPreflight(options) {
-  return runPreflightCore({
-    ...options,
-    readOnlyBind: false,
-    allowIssueSwitch: false,
-  });
-}
-
-// Opt-in bind precursor for the lease coordinator. It performs only remote
-// reads and returns a structured deferred-claim requirement; it never writes
-// session state, assigns an issue, posts comments, or exits the process.
-// `allowIssueSwitch:true` is honored only on this read-only path: it preserves
-// the source binding while checks evaluate the incoming target. Legacy
-// runPreflight callers always retain bind-mismatch behavior.
-export function runReadOnlyBindPreflight(options) {
-  return runPreflightCore({ ...options, readOnlyBind: true });
-}
-
-// Present a read-only governed-bind refusal without re-running preflight or
-// replacing its structured verdict with a generic exception. The injected I/O
-// seams keep production exit semantics exact and make the presentation path
-// testable without terminating the test runner.
-export function refuseReadOnlyBindPreflight({
-  verdict,
-  verb = 'resume',
-  stdout = process.stdout,
-  stderr = process.stderr,
-  exit = process.exit,
-} = {}) {
-  if (!verdict || verdict.ok !== false) {
-    throw new TypeError('refused read-only bind verdict is required');
-  }
-  if (verdict.kind === 'bind-mismatch') {
-    stdout.write(`PROMPT_REQUIRED: bind-mismatch ${verdict.active}:${verdict.target}\n`);
-    stderr.write(
-      `⛔ Refusing /task ${verb}: target ${verdict.target} differs from active binding ${verdict.active}. Run \`/task ${verdict.target}\` to rebind, then retry.\n`
-    );
-  } else if (verdict.kind === 'assignee-mismatch') {
-    if (verdict.assigneeKind === 'unverifiable') {
-      stdout.write(`PROMPT_REQUIRED: assignee-unverifiable #${verdict.issueNumber}\n`);
-      stderr.write(
-        formatAssigneeUnverifiable({
-          verb,
-          issueNumber: verdict.issueNumber,
-          error: verdict.error,
-        }) + '\n'
-      );
-    } else {
-      const assigneeVerdict = {
-        kind: verdict.assigneeKind,
-        currentUser: verdict.currentUser,
-        assignees: verdict.assignees ?? [],
-      };
-      stdout.write(
-        formatAssigneePromptLine({
-          issueNumber: verdict.issueNumber,
-          verdict: assigneeVerdict,
-        }) + '\n'
-      );
-      stderr.write(
-        formatAssigneeRefusal({
-          verb,
-          issueNumber: verdict.issueNumber,
-          verdict: assigneeVerdict,
-        }) + '\n'
-      );
-    }
-  } else if (verdict.kind === 'human-move') {
-    const issue = `#${verdict.issueNumber}`;
-    const markerNote = verdict.marker ? `marker says "${verdict.marker}"` : `marker is unset`;
-    const actorNote = verdict.actor?.login ? ` (last status actor: @${verdict.actor.login})` : '';
-    stdout.write(`PROMPT_REQUIRED: human-move ${issue} ${verdict.local}:${verdict.live}\n`);
-    stderr.write(
-      `⛔ Refusing /task ${verb}: board for ${issue} is "${verdict.live}", local cache says "${verdict.local}", ${markerNote}${actorNote}. The board diverges from the marker — likely causes: a hand-edit through the GitHub UI, or a dropped/failed board-field write during an earlier move that left the board behind the marker. Run \`/task reconcile accept-live ${issue}\` if the board is correct, or fix the board then retry.\n`
-    );
-  } else {
-    stderr.write(`preflightVerb: unknown verdict ${verdict.kind}\n`);
-    exit(1);
-    return;
-  }
-  exit(verdict.code);
 }
 
 // Verb-facing wrapper. Reads stateBefore, runs preflight, writes back state

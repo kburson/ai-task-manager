@@ -171,44 +171,6 @@ test('legacy path: both attempts throw AND audit-post throws → auditPosted:fal
   assert.match(lines[0], /FAILED after 2 attempts/);
 });
 
-test('state-recording retries and audit catches preserve governed authority failures', async () => {
-  const staleWrite = Object.assign(new Error('stale write fence'), { code: 'fence-stale' });
-  await assert.rejects(
-    () =>
-      writeIssueBodyWithRetry({
-        issueNumber: 12,
-        repo: 'o/r',
-        target: 'review',
-        body: 'next',
-        bodyBefore: 'prev',
-        writeIssueBody: async () => {
-          throw staleWrite;
-        },
-      }),
-    (error) => error === staleWrite
-  );
-
-  const staleAudit = Object.assign(new Error('stale audit fence'), { code: 'fence-stale' });
-  await assert.rejects(
-    () =>
-      writeIssueBodyWithRetry({
-        issueNumber: 13,
-        repo: 'o/r',
-        target: 'review',
-        body: 'next',
-        bodyBefore: 'prev',
-        writeIssueBody: async () => {
-          throw new Error('ordinary write failure');
-        },
-        postComment: async () => {
-          throw staleAudit;
-        },
-        warn: () => {},
-      }),
-    (error) => error === staleAudit
-  );
-});
-
 test('findRecordingFailureFromComments: non-array input returns null', () => {
   assert.equal(findRecordingFailureFromComments(null), null);
   assert.equal(findRecordingFailureFromComments(undefined), null);

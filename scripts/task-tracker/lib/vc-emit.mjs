@@ -1,9 +1,10 @@
 // #772 — stable-id emission, blank-line hygiene, and tombstone-aware id
 // allocation for the `## Verification Commands` (VC) section.
 //
-// The epic's citation scheme (`vc-list="vc:1, vc:3"`) resolves BY ID, not by
-// ordinal position, so an entry's id must be assigned exactly once and NEVER
-// reused — even after the entry is deleted, and even when it was the LAST entry
+// The epic's citation scheme (`vc-list="vc:1 vc:3"`) uses whitespace-delimited tokens.
+// It resolves BY ID, not by ordinal position, so an entry's id must be assigned
+// exactly once and NEVER reused — even after the entry is deleted, and even when
+// it was the LAST entry
 // in the list (a naive `max(live-ids) + 1` would hand the freed id straight to
 // the next append). We enforce that with a deletion TOMBSTONE: deleting a VC
 // entry leaves a hidden `<!-- aitm-vc-tombstone id=N ... -->` note in the

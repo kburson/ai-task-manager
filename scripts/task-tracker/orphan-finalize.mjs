@@ -74,37 +74,6 @@ function consumeMarker({ sid, projDir }) {
   return null;
 }
 
-// Governed bind cleanup is strict: its caller checkpoints this local effect,
-// so success must mean the marker is positively absent. Unlike the historical
-// best-effort helper, foreign ownership, malformed content, deletion failure,
-// and failed absence read-back all throw and remain safe to replay.
-export async function consumePendingPauseForBind({
-  sid,
-  projDir = getProjectDir(),
-  deps = {},
-} = {}) {
-  if (!sid) throw new Error('consumePendingPauseForBind: sid is required');
-  const markerPath = pendingPausePath(sid, projDir);
-  const markerExists = deps.markerExists || existsSync;
-  const read = deps.readMarker || readMarker;
-  const remove = deps.deleteMarker || ((p) => rmSync(p));
-  if (!markerExists(markerPath)) return { reconciled: true, status: 'absent' };
-  const marker = read(markerPath);
-  if (!marker || typeof marker !== 'object') {
-    throw new Error('pending-pause marker is malformed');
-  }
-  if (marker.sessionId && marker.sessionId !== sid) {
-    throw new Error(
-      `refusing to consume pending-pause marker from foreign session ${marker.sessionId}`
-    );
-  }
-  remove(markerPath);
-  if (markerExists(markerPath)) {
-    throw new Error('pending-pause marker is still present after deletion');
-  }
-  return { reconciled: true, status: 'absent' };
-}
-
 // Natural / orphan / stale-session finalize. v2: no row is posted; the stale
 // marker is simply cleaned up. Retained for caller compatibility.
 export async function finalizeOrphanPause({ sid, reason, projDir = getProjectDir() } = {}) {

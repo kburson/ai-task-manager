@@ -277,16 +277,22 @@ assert.deepEqual(
   're-evaluation of a sealed log is a stable no-op signal'
 );
 
-// #817 — mid-flow (non-terminal `issue:closed`) semantics are unchanged: a fresh
-// in-flight close attempt whose after-window still lacks a half reports that half
-// pending so the caller emits it.
-const inFlightBody = buildLog([
+// #1134 — the first valid `issue:closed` is irreversible even when malformed
+// activity already follows it. The production #1127 suffix must not reopen the
+// close-pair writer and permit a duplicate approval/wrap pair.
+const malformedTerminalBody = buildLog([
   { ts: '2026-05-09 10:00 -07:00', event: 'start', active: 5, wm: 100 },
+  { ts: '2026-05-09 10:09 -07:00', event: 'review:approved', active: 0, wm: 210 },
+  { ts: '2026-05-09 10:10 -07:00', event: 'issue:wrap', active: 0, wm: 210 },
   { ts: '2026-05-09 10:11 -07:00', event: 'issue:closed', active: 1, wm: 210 },
+  { ts: '2026-05-09 10:12 -07:00', event: 'resumed', active: 0, wm: 220 },
   { ts: '2026-05-09 10:20 -07:00', event: 'review:approved', active: 0, wm: 220 },
+  { ts: '2026-05-09 10:21 -07:00', event: 'switch-out:#1129', active: 0, wm: 220 },
 ]);
-const inFlight = pendingClosePairState(inFlightBody);
-assert.equal(inFlight.reviewApproved, true, 'in-flight window: review:approved already emitted');
-assert.equal(inFlight.issueWrap, false, 'in-flight window: issue:wrap still pending');
+assert.deepEqual(
+  pendingClosePairState(malformedTerminalBody),
+  { reviewApproved: true, issueWrap: true },
+  'a malformed post-terminal tail cannot reopen close-pair emission'
+);
 
 console.log('timing-rollup.test.mjs: all passed');

@@ -26,6 +26,18 @@ function bodyWith(lines = []) {
   ].join('\n');
 }
 
+function canonicalBody({ review = [], housekeeping = [] } = {}) {
+  return [
+    '## Definition of Done',
+    '### Functional (verified at Test)',
+    '- [x] Some user-verified item',
+    '### Lifecycle (verified at Review)',
+    ...review,
+    '### Housekeeping (verified at Close)',
+    ...housekeeping,
+  ].join('\n');
+}
+
 const ALL_LIFECYCLE_LINES = Object.values(LIFECYCLE_LABELS).map((l) => `- [ ] ${l}`);
 
 test('lifecycleSatisfaction: all absent when labels absent', () => {
@@ -103,6 +115,28 @@ test('assertLifecycleSatisfied: only close-owned keys missing → pass', () => {
   assert.deepEqual(missingInResults.sort(), ['story-closed', 'timing-flushed']);
 });
 
+// @story #982
+test('#982 canonical satisfaction reads review and housekeeping as one logical set', () => {
+  const body = canonicalBody({
+    review: [
+      `- [x] ${LIFECYCLE_LABELS['agent-review-passed']}`,
+      `- [x] ${LIFECYCLE_LABELS['passed-final-review']}`,
+    ],
+    housekeeping: [
+      `- [ ] ${LIFECYCLE_LABELS['story-closed']}`,
+      `- [ ] ${LIFECYCLE_LABELS['timing-flushed']}`,
+    ],
+  });
+
+  const gate = assertLifecycleSatisfied({ body });
+  assert.equal(gate.block, false);
+  assert.equal(gate.missing.length, 0);
+  assert.deepEqual(
+    gate.results.filter(({ status }) => status === 'missing').map(({ key }) => key),
+    ['story-closed', 'timing-flushed']
+  );
+});
+
 test('assertLifecycleSatisfied: required + all ticked → pass', () => {
   const lines = Object.values(LIFECYCLE_LABELS).map((l) => `- [x] ${l}`);
   const gate = assertLifecycleSatisfied({ body: bodyWith(lines) });
@@ -134,13 +168,8 @@ test('assertLifecycleSatisfied: audit marker satisfies passed-final-review only'
   const lines = ALL_LIFECYCLE_LINES.map((l) =>
     l.includes(LIFECYCLE_LABELS['agent-review-passed']) ? l.replace('[ ]', '[x]') : l
   );
-  const body = [
-    bodyWith(lines),
-    '<!-- aitm-dod-verified sha="abc1234" ts="2026-05-19T00:00:00Z" -->',
-    '<!-- aitm-entered-review ts="2026-05-19T00:00:01Z" -->',
-    '<!-- aitm-agent-review-proof schema="1" epoch="review:1:2026-05-19T00:00:01Z" sha="abc1234" ts="2026-05-19T00:00:02Z" validators="unit" result="pass" -->',
-    '<!-- aitm-review-approved schema="1" epoch="review:1:2026-05-19T00:00:01Z" proof-sha="abc1234" ts="2026-05-19T00:00:03Z" provenance="full-auto" signals="test" -->',
-  ].join('\n');
+  const body =
+    bodyWith(lines) + '\n<!-- aitm-full-auto-approved: 2026-05-19T00:00:00Z signals=test -->';
   const gate = assertLifecycleSatisfied({ body });
   // passed-final-review is audited; agent-review-passed is ticked; close-owned
   // keys are filtered → no block.

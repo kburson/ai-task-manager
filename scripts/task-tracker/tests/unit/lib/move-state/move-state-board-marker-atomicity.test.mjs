@@ -91,21 +91,6 @@ test('AC1: a failed board write rolls the marker back to the prior stage and sta
   assert.ok(!ctx.calls.includes('tail'), 'tail must not run');
 });
 
-test('AC1: a governed-authority failure during rollback is never downgraded to best-effort', async () => {
-  const error = Object.assign(new Error('stale rollback fence'), { code: 'fence-stale' });
-  const ctx = baseCtx({
-    _stampEntryMarkers: async () => ({ priorState: 'develop' }),
-    _runStatusWrite: async () => ({ itemId: 'IT_1', exit: 4 }),
-    _rollbackRecordedState: async () => {
-      throw error;
-    },
-  });
-  await assert.rejects(
-    () => moveState(ctx),
-    (thrown) => thrown === error
-  );
-});
-
 test('AC3: rollback restores aitm-last-known-state to priorState (real code)', async () => {
   // Seed a body whose marker points at the TARGET (as stampEntryMarkers left it
   // just before the board write failed), using the real marker writer.

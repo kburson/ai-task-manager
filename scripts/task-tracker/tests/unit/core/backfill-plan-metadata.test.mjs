@@ -27,6 +27,10 @@ describe('buildPlanMetadataBackfill (#488)', () => {
 
   it('skips a body whose section is already fully bold', () => {
     const bold = [
+      '## Story Origin',
+      '',
+      '- **kind**: code',
+      '',
       '## Plan Metadata',
       '',
       '- **domain**: tooling',
@@ -39,7 +43,8 @@ describe('buildPlanMetadataBackfill (#488)', () => {
   it('heals an unbold section and reports the changed labels', () => {
     const res = buildPlanMetadataBackfill(UNBOLD);
     assert.equal(res.status, 'healed');
-    assert.deepEqual(res.changed, ['domain', 'root-cause']);
+    assert.deepEqual(res.changed, ['kind', 'domain', 'root-cause']);
+    assert.match(res.body, /## Story Origin\n\n- \*\*kind\*\*: code/);
     assert.match(res.body, /- \*\*domain\*\*: tooling/);
     assert.match(res.body, /- \*\*root-cause\*\*: regex/);
     // Already-bold label and the next section heading are preserved.

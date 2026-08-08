@@ -5,11 +5,7 @@ import { mkdtempSync, rmSync, readFileSync, mkdirSync, writeFileSync } from 'nod
 import { projectScratchDir } from '../../../lib/scratch-dir.mjs';
 import path from 'node:path';
 import { patchSettingsJson } from '../../../../../bin/cli.mjs';
-import {
-  guardBootstrapCommand,
-  hookBootstrapCommand,
-  legacyGuardBootstrapCommand,
-} from '../../../lib/guard-entrypoint.mjs';
+import { guardBootstrapCommand, hookBootstrapCommand } from '../../../lib/guard-entrypoint.mjs';
 
 const tmp = mkdtempSync(path.join(projectScratchDir('test'), 'tt-install-hooks-'));
 const settingsPath = path.join(tmp, '.claude', 'settings.json');
@@ -90,37 +86,6 @@ const gateEntriesAfter = (s2.hooks.PreToolUse || []).filter(
   (h) => h.matcher === 'Edit|Write|NotebookEdit' && hasCommand([h], SOURCE_EDIT_GATE_CMD)
 );
 assert.equal(gateEntriesAfter.length, 1, 'source-edit-gate is idempotent across re-installs');
-
-// #1049 — migrate the import-only #792 bootstrap. It neither shell-escaped its
-// candidate array nor invoked import-side-effect-free guards.
-const LEGACY_SOURCE_EDIT_GATE_CMD = legacyGuardBootstrapCommand('source-edit-gate');
-writeFileSync(
-  settingsPath,
-  JSON.stringify({
-    hooks: {
-      PreToolUse: [
-        {
-          matcher: 'Edit|Write|NotebookEdit',
-          hooks: [{ type: 'command', command: LEGACY_SOURCE_EDIT_GATE_CMD }],
-        },
-      ],
-    },
-  })
-);
-patchSettingsJson(settingsPath);
-s2 = JSON.parse(readFileSync(settingsPath, 'utf8'));
-assert.equal(
-  hasCommand(s2.hooks.PreToolUse, LEGACY_SOURCE_EDIT_GATE_CMD),
-  false,
-  'import-only source guard bootstrap removed'
-);
-assert.equal(
-  (s2.hooks.PreToolUse || []).filter(
-    (h) => h.matcher === 'Edit|Write|NotebookEdit' && hasCommand([h], SOURCE_EDIT_GATE_CMD)
-  ).length,
-  1,
-  'callable source guard bootstrap registered once after migration'
-);
 
 // #240 — installer must register the AskUserQuestion pause/resume hooks under
 // PreToolUse / PostToolUse (matcher 'AskUserQuestion'), idempotently.

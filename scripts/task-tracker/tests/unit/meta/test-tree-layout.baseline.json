@@ -1,8 +1,11 @@
 {
-  "_comment": "#868 pre-move per-lane basename census (frozen at the subsystem-nesting move). test-tree-layout.test.mjs asserts the live laneManifest() basename sets still equal these, proving the reorg dropped no file and preserved every file lane. Regenerate ONLY on a deliberate add/remove/relane, via .tmp/inspect/gen-layout-baseline.mjs.",
+  "_comment": "#868 pre-move per-lane basename census (frozen at the subsystem-nesting move). test-tree-layout.test.mjs asserts the live laneManifest() basename sets still equal these, proving the reorg dropped no file and preserved every file lane. Regenerate ONLY on a deliberate add/remove/relane, via .tmp/inspect/gen-layout-baseline.mjs. Post-migration additions are recorded separately and are not treated as git-mv samples.",
+  "postMigrationAdditions": {
+    "integration": ["adaptive-estimation.integration.test.mjs"]
+  },
   "counts": {
-    "unit": 678,
-    "integration": 6,
+    "unit": 683,
+    "integration": 7,
     "slow": 47
   },
   "lanes": {
@@ -87,9 +90,7 @@
       "child-cannot-lead-epic-gate.test.mjs",
       "child-cannot-lead-epic-migration.test.mjs",
       "child-process-api.test.mjs",
-      "chore-mode-commit-gate.test.mjs",
-      "chore-mode-scope.test.mjs",
-      "chore-mode-state.test.mjs",
+      "chore-mode-contract.test.mjs",
       "chore-mode-verb.test.mjs",
       "ci-745-trunk-ref.test.mjs",
       "ci-actions-node-pins.test.mjs",
@@ -534,6 +535,7 @@
       "review-notes.test.mjs",
       "review-preflight-epic-aware.test.mjs",
       "review-preflight.test.mjs",
+      "review-receipt-reuse.test.mjs",
       "review-proven-box.test.mjs",
       "review-sandbox-demote-slug.test.mjs",
       "review-state-action.test.mjs",
@@ -612,12 +614,14 @@
       "sync-zero-values.test.mjs",
       "templates.test.mjs",
       "test-407-binding-survives.test.mjs",
+      "test-impact-selector.test.mjs",
       "test-parallel-safety.test.mjs",
       "test-rejected-vc-not-scored-as-failed.test.mjs",
       "test-sha-drift-gate.test.mjs",
       "test-tree-layout.test.mjs",
       "test-verb-injection.test.mjs",
       "test-verb-lane-split-migration.test.mjs",
+      "test-verb-receipt-reuse.test.mjs",
       "test-verb-result.test.mjs",
       "test-verb-retry.test.mjs",
       "test-verb-sandbox-worktree-path.test.mjs",
@@ -666,6 +670,8 @@
       "verb-start-resume-stop.test.mjs",
       "verb-test-sandbox-env.test.mjs",
       "verification-allowlist.test.mjs",
+      "verification-receipt.test.mjs",
+      "verification-stage-ownership.test.mjs",
       "verifier-cache.test.mjs",
       "verifier-provenance-sentinel.test.mjs",
       "verify-move-invariants.test.mjs",
@@ -690,6 +696,7 @@
       "assignee-guard.integration.test.mjs",
       "create-issue-gate-compliance.test.mjs",
       "seven-state-flow.test.mjs",
+      "stage-aware-verification.integration.test.mjs",
       "tracked-templates.test.mjs",
       "two-sessions-different-issues.test.mjs",
       "two-sessions-same-issue.test.mjs"

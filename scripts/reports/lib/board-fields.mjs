@@ -57,3 +57,9 @@ export function accelRatio(estimate, engagedMin) {
   if (engagedMin == null || engagedMin <= 0) return null;
   return estimate / (engagedMin / 60);
 }
+
+export function formatAcceleration(ratio) {
+  if (ratio == null || typeof ratio !== 'number' || !Number.isFinite(ratio)) return '—';
+  const value = `${ratio.toFixed(2)}×`;
+  return ratio < 1 ? `${value} (slower than Plan)` : value;
+}

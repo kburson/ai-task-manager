@@ -1,4 +1,4 @@
-// @story #310
+// @story #310 #1089
 // Unit tests for scripts/task-tracker/verbs/test.mjs — the sandboxed /task test
 // runner (#137). All I/O is stubbed; no real worktree, npm, or gh.
 
@@ -9,7 +9,6 @@ import { mkdtempSync, rmSync } from 'node:fs';
 import { projectScratchDir } from '../../../lib/scratch-dir.mjs';
 
 import { runVerbTest, buildPassedMessage, buildReverifiedMessage } from '../../../verbs/test.mjs';
-import { validatePersistedTestEvidence } from '../../../verbs/review.mjs';
 import { parseVerificationCommands } from '../../../lib/verification-commands.mjs';
 import { hasDodVerifiedMarker, parseDodVerifiedMarker } from '../../../lib/markers.mjs';
 
@@ -232,41 +231,6 @@ test('verbTest #270: red path posts failure comment, does NOT move board, does N
       [],
       'gate-first: moveState must not be called when sandbox is red'
     );
-  });
-});
-
-test('#1050 green-to-red same-SHA reverify revokes prior DoD authority before Review', async () => {
-  await withTmpDir(async (projectDir) => {
-    const { deps } = makeDeps({
-      execResults: {
-        'node scripts/run-tests.mjs': { exit: 1, stdout: '', stderr: 'regression\n' },
-      },
-    });
-    let body = [
-      bodyWithVc(['node scripts/run-tests.mjs']),
-      '<!-- aitm-test-started sha="abc1234deadbeef" ts="2026-07-29T10:00:00Z" -->',
-      '<!-- aitm-dod-verified sha="abc1234deadbeef" ts="2026-07-29T10:01:00Z" -->',
-    ].join('\n');
-    deps.fetchBody = async () => body;
-    deps.mutateBody = async ({ mutate }) => {
-      body = mutate(body);
-      return { status: 'ok', body };
-    };
-
-    const result = await runVerbTest({
-      cfg,
-      issueNumber: 1050,
-      projectDir,
-      deps,
-      now: () => '2026-07-29T11:00:00Z',
-    });
-
-    assert.equal(result.status, 'failed');
-    assert.equal(hasDodVerifiedMarker(body), false, 'the prior green exit marker is revoked');
-    assert.deepEqual(validatePersistedTestEvidence(body), {
-      ok: false,
-      reason: 'test-evidence-missing',
-    });
   });
 });
 

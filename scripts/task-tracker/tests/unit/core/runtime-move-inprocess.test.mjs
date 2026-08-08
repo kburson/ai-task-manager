@@ -6,23 +6,18 @@
 // host's stdout/stderr so the exit-5 self-loop benign classification keeps exact
 // parity with the pre-migration subprocess, and returns the same structured
 // `{ ok, status, benign, stdout, stderr }` result close.mjs consumes.
-import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
 import { runMoveStateInProcess } from '../../../runtime.mjs';
-import {
-  governedOperationForLifecycleVerb,
-  resolveGovernedLifecycleOperation,
-} from '../../../../gh/move-state.mjs';
 
 // A spy host mirroring runMoveStateHost's contract: RETURNS a numeric code and
 // writes any readout/refusal text to process.stderr (which the migrated helper
 // tee-captures). Never spawns a child.
 function makeHost({ code = 0, stderr = '', stdout = '' } = {}) {
   const calls = [];
-  const host = async (options) => {
-    calls.push(options);
+  const host = async ({ argv, env }) => {
+    calls.push({ argv, env });
     if (stdout) process.stdout.write(stdout);
     if (stderr) process.stderr.write(stderr);
     return code;
@@ -38,7 +33,6 @@ test('runMoveStateInProcess drives the in-process host with the right argv/env (
   assert.deepEqual(argv.slice(1), ['move-state.mjs', '123', 'develop']);
   assert.equal(env.AITM_INTERNAL, '1');
   assert.equal(env.AITM_VERB_CONTEXT, 'runtime');
-  assert.equal(calls[0].governedOperation, 'lifecycle-mutation');
   // #882 added `noop` to the structured result: false on an ordinary move.
   assert.deepEqual(res, {
     ok: true,
@@ -48,52 +42,6 @@ test('runMoveStateInProcess drives the in-process host with the right argv/env (
     stdout: '✓ moved\n',
     stderr: '',
   });
-});
-
-test('lifecycle host uses exact specialized operations instead of verb aliases', async () => {
-  assert.equal(governedOperationForLifecycleVerb('approve'), 'approval-mutation');
-  assert.equal(governedOperationForLifecycleVerb('plan-approve'), 'approval-mutation');
-  assert.equal(governedOperationForLifecycleVerb('review'), 'review-mutation');
-  assert.equal(governedOperationForLifecycleVerb('close'), 'close');
-  assert.equal(governedOperationForLifecycleVerb('end'), 'close');
-  assert.equal(governedOperationForLifecycleVerb('dispatch'), 'branch-worktree-orchestration');
-  assert.equal(governedOperationForLifecycleVerb('out-of-band'), 'lifecycle-mutation');
-  assert.equal(governedOperationForLifecycleVerb('promote'), 'lifecycle-mutation');
-
-  for (const [verbContext, operation] of [
-    ['approve', 'approval-mutation'],
-    ['review', 'review-mutation'],
-    ['close', 'close'],
-  ]) {
-    const { host, calls } = makeHost();
-    const withGovernedEffect = async () => {};
-    await runMoveStateInProcess(
-      1049,
-      'review',
-      { silent: true, verbContext, withGovernedEffect },
-      { host }
-    );
-    assert.equal(calls[0].env.AITM_VERB_CONTEXT, verbContext);
-    assert.equal(calls[0].governedOperation, operation);
-    assert.equal(calls[0].withGovernedEffect, withGovernedEffect);
-  }
-});
-
-test('lifecycle host refuses an explicit operation that does not match the verb', () => {
-  assert.throws(
-    () => resolveGovernedLifecycleOperation('review', 'lifecycle-mutation'),
-    /governed operation lifecycle-mutation does not match review/
-  );
-  assert.equal(resolveGovernedLifecycleOperation('close', 'close'), 'close');
-});
-
-test('runtime move adapter preserves a per-invocation governed continuation', () => {
-  const source = readFileSync(new URL('../../../runtime.mjs', import.meta.url), 'utf8');
-  assert.match(
-    source,
-    /withGovernedEffect:\s*opts\.withGovernedEffect\s*\?\?\s*ctx\.withGovernedEffect/,
-    'review must be able to pass its scoped continuation without replacing ctx globally'
-  );
 });
 
 test('runMoveStateInProcess folds extraArgs (--force) into the synthetic argv', async () => {

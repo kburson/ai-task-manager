@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// @story #618
+// @story #618 #1161
 // Coverage for verbs/approve.mjs (Review→Done human gate). Drives runApprove
 // through its dep seam to hit every result branch offline — arg guards,
 // assertBound, wrong-state, already-approved, the full-auto footnote+auto-notes
@@ -22,7 +22,7 @@ import { IssueLockError } from '../../../issue-mutator-lock.mjs';
 // action) passed. Every fixture body below is suffixed with it; tests that care
 // about the refusal path live in approve-agent-review-complete.test.mjs.
 const AGENT_REVIEW_PASSED =
-  '\n<!-- aitm-entered-review ts="2026-07-29T10:00:00Z" -->\n<!-- aitm-dod-verified sha="abc1234" ts="2026-07-29T10:00:00Z" -->\n<!-- aitm-agent-review-proof schema="1" epoch="review:1:2026-07-29T10:00:00Z" sha="abc1234" ts="2026-07-29T10:01:00Z" validators="unit" result="pass" -->\n- [ ] Agent Review Passed <!-- aitm-verified gate="agent-review" ts="2026-05-10T00:00:00Z" sha="sandbox" validators="body-sections" result="pass" -->\n';
+  '\n- [ ] Agent Review Passed <!-- aitm-verified gate="agent-review" ts="2026-05-10T00:00:00Z" sha="sandbox" validators="body-sections" result="pass" -->\n';
 
 const cfg = { repo: 'o/r' };
 const FIXED_TS = '2026-06-29T00:00:00Z';
@@ -41,7 +41,7 @@ writeFileSync(
     '#!/usr/bin/env node',
     'const a = process.argv.slice(2);',
     'if (a.includes("graphql")) {',
-    '  const body = "## AC\\n- [x] x\\n\\n#### Lifecycle (auto-ticked at Review/Close)\\n- [ ] Passed final human review\\n- [ ] Agent Review Passed <!-- aitm-verified gate=\\"agent-review\\" ts=\\"2026-07-29T10:01:00Z\\" sha=\\"sandbox\\" validators=\\"unit\\" result=\\"pass\\" -->\\n<!-- aitm-entered-review ts=\\"2026-07-29T10:00:00Z\\" -->\\n<!-- aitm-dod-verified sha=\\"abc1234\\" ts=\\"2026-07-29T10:00:00Z\\" -->\\n<!-- aitm-agent-review-proof schema=\\"1\\" epoch=\\"review:1:2026-07-29T10:00:00Z\\" sha=\\"abc1234\\" ts=\\"2026-07-29T10:01:00Z\\" validators=\\"unit\\" result=\\"pass\\" -->\\n";',
+    '  const body = "## AC\\n- [x] x\\n\\n#### Lifecycle (auto-ticked at Review/Close)\\n- [ ] Passed final human review\\n- [ ] Agent Review Passed <!-- aitm-verified gate=\\"agent-review\\" ts=\\"2026-06-29T00:00:00Z\\" sha=\\"sandbox\\" validators=\\"body-sections\\" result=\\"pass\\" -->\\n";',
     '  process.stdout.write(JSON.stringify({ data: { repository: { issue: { body } } } }));',
     '} else if (a.includes("view")) {',
     '  process.stdout.write(JSON.stringify({ comments: [] }));',
@@ -70,8 +70,6 @@ const REVIEW_BODY =
 // Body with no Lifecycle section → tickLifecycleItem is a no-op → warn branch.
 const NO_LIFECYCLE_BODY = '## AC\n- [x] x\n' + AGENT_REVIEW_PASSED;
 
-const allowGovernedEffect = async (_options, callback) => callback({ reverify: async () => {} });
-
 function makeDeps(overrides = {}) {
   const calls = { writes: [], comments: [], stamps: [] };
   let body = overrides.initialBody ?? REVIEW_BODY;
@@ -99,7 +97,7 @@ function makeDeps(overrides = {}) {
       fetchProjectValues: async () => ({}),
       promptDrivers: async () => overrides.drivers ?? [],
       deriveDrivers: overrides.deriveDrivers ?? (() => overrides.autoDrivers ?? []),
-      withGovernedEffect: allowGovernedEffect,
+      reconcileReviewApprovedTiming: async () => ({ status: 'posted', ts: FIXED_TS }),
       ...overrides.deps,
     },
     getBody: () => body,
@@ -159,71 +157,10 @@ test('runApprove: wrong-state when not in review', async () => {
 });
 
 test('runApprove: already-approved when marker present', async () => {
-  const marked = `${REVIEW_BODY}\n<!-- aitm-review-approved schema="1" epoch="review:1:2026-07-29T10:00:00Z" proof-sha="abc1234" ts="${FIXED_TS}" provenance="human" -->\n`;
+  const marked = `${REVIEW_BODY.replace('- [ ] Passed final human review', '- [x] Passed final human review')}\n<!-- aitm-review-approved ts="${FIXED_TS}" -->\n`;
   const { r, calls } = await run({ initialBody: marked });
   assert.equal(r.status, 'already-approved');
   assert.equal(calls.writes.length, 0);
-});
-
-test('runApprove: stale approval without a current passing proof is invalidated, not a no-op', async () => {
-  const epochOne = 'review:1:2026-07-29T10:00:00Z';
-  const stale = [
-    '<!-- aitm-entered-review ts="2026-07-29T10:00:00Z" -->',
-    `<!-- aitm-agent-review-proof schema="1" epoch="${epochOne}" sha="abc1234" ts="2026-07-29T10:01:00Z" validators="unit" result="pass" -->`,
-    `<!-- aitm-review-approved schema="1" epoch="${epochOne}" proof-sha="abc1234" ts="2026-07-29T10:02:00Z" provenance="human" -->`,
-    '<!-- aitm-entered-review-2 ts="2026-07-29T11:00:00Z" -->',
-    '#### Lifecycle (auto-ticked at Review/Close)',
-    '- [x] Passed final human review',
-  ].join('\n');
-  const { r, calls, getBody } = await run({ initialBody: stale });
-
-  assert.equal(r.status, 'agent-review-incomplete');
-  assert.equal(calls.writes.length, 1);
-  assert.match(getBody(), /aitm-review-approval-history/);
-  assert.match(getBody(), /aitm-review-invalidated/);
-  assert.doesNotMatch(getBody(), /<!-- aitm-review-approved /);
-  assert.match(getBody(), /- \[ \] Passed final human review/);
-});
-
-test('runApprove: stale legacy approval records invalidation for the re-entered Review epoch', async () => {
-  const staleLegacy = [
-    '<!-- aitm-review-approved ts="2026-07-29T10:02:00Z" -->',
-    '<!-- aitm-entered-review ts="2026-07-29T10:00:00Z" -->',
-    '<!-- aitm-entered-review-2 ts="2026-07-29T11:00:00Z" -->',
-    '#### Lifecycle (auto-ticked at Review/Close)',
-    '- [x] Passed final human review',
-  ].join('\n');
-  const { r, getBody } = await run({ initialBody: staleLegacy });
-
-  assert.equal(r.status, 'agent-review-incomplete');
-  assert.match(getBody(), /aitm-review-approval-history[^>]*legacy="yes"/);
-  assert.match(getBody(), /aitm-review-invalidated[^>]*epoch="review:2:2026-07-29T11:00:00Z"/);
-});
-
-test('runApprove: single-epoch legacy approval is archived before current-proof approval', async () => {
-  const epoch = 'review:1:2026-07-29T10:00:00Z';
-  const legacy = [
-    '<!-- aitm-entered-review ts="2026-07-29T10:00:00Z" -->',
-    '<!-- aitm-dod-verified sha="abc1234" ts="2026-07-29T10:00:00Z" -->',
-    `<!-- aitm-agent-review-proof schema="1" epoch="${epoch}" sha="abc1234" ts="2026-07-29T10:01:00Z" validators="unit" result="pass" -->`,
-    '- [ ] Agent Review Passed <!-- aitm-verified gate="agent-review" ts="2026-07-29T10:01:00Z" sha="sandbox" validators="unit" result="pass" -->',
-    '<!-- aitm-review-approved ts="2026-07-29T10:02:00Z" -->',
-    '<!-- aitm-full-auto-footnote:start -->',
-    '> stale Full-Auto footnote',
-    '<!-- aitm-full-auto-footnote:end -->',
-    '#### Lifecycle (auto-ticked at Review/Close)',
-    '- [x] Passed final human review',
-  ].join('\n');
-  const { r, getBody } = await run({ initialBody: legacy });
-
-  assert.equal(r.status, 'approved');
-  assert.match(getBody(), /aitm-review-approval-history[^>]*legacy="yes"/);
-  assert.match(getBody(), /aitm-review-invalidated[^>]*epoch="review:1:2026-07-29T10:00:00Z"/);
-  assert.match(
-    getBody(),
-    /aitm-review-approved schema="1" epoch="review:1:2026-07-29T10:00:00Z" proof-sha="abc1234"[^>]*provenance="human"/
-  );
-  assert.doesNotMatch(getBody(), /aitm-full-auto-footnote:start/);
 });
 
 // --- runApprove: human path, drivers > 0 ---
@@ -233,10 +170,7 @@ test('runApprove: human path with drivers posts Review Notes', async () => {
   assert.equal(r.fullAuto, false);
   assert.equal(r.notesSource, 'human');
   assert.equal(calls.comments.length, 1);
-  assert.match(
-    getBody(),
-    /<!-- aitm-review-approved schema="1" epoch="review:1:2026-07-29T10:00:00Z" proof-sha="abc1234" ts="2026-06-29T00:00:00Z" provenance="human" -->/
-  );
+  assert.match(getBody(), /<!-- aitm-review-approved ts="2026-06-29T00:00:00Z" -->/);
   assert.match(getBody(), /- \[x\] Passed final human review/);
 });
 
@@ -303,7 +237,7 @@ test('runApprove: default fetch/comment/project helpers run offline', async () =
         const body = mutate(REVIEW_BODY);
         return { status: 'ok', body };
       },
-      withGovernedEffect: allowGovernedEffect,
+      reconcileReviewApprovedTiming: async () => ({ status: 'posted', ts: FIXED_TS }),
     },
   });
   assert.equal(r.status, 'approved');
@@ -322,7 +256,7 @@ test('runApprove: default promptDrivers resolves [] off a TTY', async () => {
       getBoardState: async () => 'review',
       detectFullAuto: () => ({ fired: false, signals: '' }),
       mutateIssueBody: async ({ mutate }) => ({ status: 'ok', body: mutate(REVIEW_BODY) }),
-      withGovernedEffect: allowGovernedEffect,
+      reconcileReviewApprovedTiming: async () => ({ status: 'posted', ts: FIXED_TS }),
     },
   });
   assert.equal(r.status, 'approved');
@@ -403,7 +337,7 @@ const okVerbDeps = {
   fetchComments: async () => [],
   fetchProjectValues: async () => ({}),
   promptDrivers: async () => [],
-  withGovernedEffect: allowGovernedEffect,
+  reconcileReviewApprovedTiming: async () => ({ status: 'posted', ts: FIXED_TS }),
 };
 
 test('verbApprove: no issue number → usage, exit 1', async () => {
@@ -464,7 +398,7 @@ test('verbApprove: approved → stdout, no exit', async () => {
 test('verbApprove: already-approved → stdout, no exit', async () => {
   delete process.env.TT_SKIP_NETWORK;
   const n = nextIssue();
-  const marked = `${REVIEW_BODY}\n<!-- aitm-review-approved schema="1" epoch="review:1:2026-07-29T10:00:00Z" proof-sha="abc1234" ts="${FIXED_TS}" provenance="human" -->\n`;
+  const marked = `${REVIEW_BODY.replace('- [ ] Passed final human review', '- [x] Passed final human review')}\n<!-- aitm-review-approved ts="${FIXED_TS}" -->\n`;
   const r = await runVerb([String(n)], { ...okVerbDeps, fetchIssueBody: async () => marked });
   assert.equal(r.exitCode, null);
   assert.match(r.stdout, /already has a review-approval marker/);

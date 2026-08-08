@@ -1,4 +1,4 @@
-// @story #448
+// @story #448 #1089
 import assert from 'node:assert/strict';
 import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs';
 import { describe, it, after } from 'node:test';
@@ -6,7 +6,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { projectScratchDir } from '../../../lib/scratch-dir.mjs';
 
-import { unitTestPath, findUnitTests } from '../../../find-unit-tests.mjs';
+import { unitTestPath, findUnitTests, findUnitTestMatches } from '../../../find-unit-tests.mjs';
 
 const UNIT_TEST_PREFIX = 'scripts/task-tracker/tests/unit';
 
@@ -65,6 +65,18 @@ writeFileSync(path.join(tmp, `${UNIT_TEST_PREFIX}/verify-develop.test.mjs`), '')
 after(() => rmSync(tmp, { recursive: true, force: true }));
 
 describe('findUnitTests', () => {
+  it('exposes source-to-test matches for explainable selector composition', () => {
+    const matches = findUnitTestMatches(['scripts/task-tracker/lib/body-invariants.mjs'], {
+      projectRoot: tmp,
+    });
+    assert.deepEqual(matches, [
+      {
+        source: 'scripts/task-tracker/lib/body-invariants.mjs',
+        test: `${UNIT_TEST_PREFIX}/body-invariants.test.mjs`,
+      },
+    ]);
+  });
+
   it('returns repo-root-relative paths for source files whose unit test exists', () => {
     const result = findUnitTests(['scripts/task-tracker/lib/body-invariants.mjs'], {
       projectRoot: tmp,

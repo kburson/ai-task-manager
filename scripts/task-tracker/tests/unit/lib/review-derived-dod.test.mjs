@@ -96,19 +96,7 @@ test('#315 — review derived-DoD auto-stamp pass unblocks the gate', async () =
     repo: 'owner/repo',
     sha: 'cafe123',
     ts: '2026-06-05T01:00:00Z',
-    operation: 'review-mutation',
-    deps: {
-      fetchBody,
-      pushBody,
-      withGovernedEffect: async (options, callback) => {
-        assert.deepEqual(options, {
-          issueId: '315',
-          operation: 'review-mutation',
-          heartbeat: true,
-        });
-        return callback({ reverify: async () => {} });
-      },
-    },
+    deps: { fetchBody, pushBody },
   });
   assert.equal(result.status, 'ok', 'mutateIssueBody status=ok');
 

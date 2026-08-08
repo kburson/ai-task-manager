@@ -38,6 +38,25 @@ test('every catalog record satisfies the normalized public help schema', () => {
   }
 });
 
+test('Story Origin creation contract is consistent across help and sanctioned rules (#892)', () => {
+  for (const name of ['create-issue', 'preflight-issue']) {
+    const command = commandByName(name);
+    assert.match(command.usage, /--story-origin-file <p(?:ath)?>/);
+    assert.match(command.usage, /\[--plan-metadata-file <p(?:ath)?>\]/);
+    assert.match(command.usage, /\[--verification-commands-file <p(?:ath)?>\]/);
+  }
+
+  for (const file of [
+    'skill/shared/rules/create-issue.md',
+    'skill/shared/rules/plan-mode-backlog.md',
+  ]) {
+    const body = readFileSync(file, 'utf8');
+    assert.match(body, /story-origin\.md/);
+    assert.match(body, /--story-origin-file \.\/\.tmp\/plan\/story-origin\.md/);
+    assert.match(body, /Plan Metadata.*optional/i);
+  }
+});
+
 test('normalization never fabricates required command semantics', () => {
   const normalized = normalizeHelpRecord({ examples: ['example'] });
   const errors = validateHelpRecord(normalized);
@@ -188,10 +207,16 @@ test('high-risk routed metadata enumerates parser arguments and special exits', 
   for (const flag of [
     '--title <text>',
     '--body-file <path>',
-    '--shape epic|sub-issue|solo|stub',
+    '--shape epic|sub-issue|solo|defect|stub',
     '--scope-file <path>',
     '--ac-file <path>',
+    '--story-origin-file <path>',
     '--plan-metadata-file <path>',
+    '--verification-commands-file <path>',
+    '--reproduction-file <path>',
+    '--root-cause-file <path>',
+    '--fix-direction-file <path>',
+    '--out-of-scope-file <path>',
     '--sub-issue-list-file <path>',
     '--idea-file <path>',
     '--label <name>',

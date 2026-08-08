@@ -42,59 +42,6 @@ test('recordSessionRefOnChange is a no-op when sid+jsonlPath unchanged (AC2)', (
   assert.equal(body, seeded);
 });
 
-test('a governed sub-operation is persisted and read back even when sid and path are unchanged', () => {
-  const initial = recordSessionRefOnChange('', E1).body;
-  const governed = recordSessionRefOnChange(initial, {
-    ...E1,
-    ts: '2026-06-21T00:05:00Z',
-    operationId: 'switchLease:tx:github:source-session-ref',
-  });
-  assert.equal(governed.appended, true);
-  assert.deepEqual(mostRecentSessionRef(governed.body), {
-    sid: E1.sid,
-    jsonlPath: E1.jsonlPath,
-    ts: '2026-06-21T00:05:00Z',
-    operationId: 'switchLease:tx:github:source-session-ref',
-  });
-});
-
-test('a governed sub-operation reconciles from history without displacing a newer owner', () => {
-  const operationId = 'switchLease:tx:github:source-session-ref';
-  const governed = recordSessionRefOnChange('', { ...E1, operationId }).body;
-  const interposed = appendSessionRef(governed, E2);
-
-  const replay = recordSessionRefOnChange(interposed, { ...E1, operationId });
-
-  assert.equal(replay.appended, false);
-  assert.equal(replay.body, interposed);
-  assert.deepEqual(mostRecentSessionRef(replay.body), E2);
-});
-
-test('a governed sub-operation fails closed on a mismatched historical receipt', () => {
-  const operationId = 'switchLease:tx:github:source-session-ref';
-  const mismatch = appendSessionRef('', {
-    ...E1,
-    jsonlPath: '/t/attacker.jsonl',
-    operationId,
-  });
-
-  assert.throws(
-    () => recordSessionRefOnChange(mismatch, { ...E1, operationId }),
-    /session reference operation receipt does not match/
-  );
-});
-
-test('a governed sub-operation fails closed on duplicate receipts', () => {
-  const operationId = 'switchLease:tx:github:source-session-ref';
-  const first = appendSessionRef('', { ...E1, operationId });
-  const duplicate = appendSessionRef(first, { ...E1, operationId });
-
-  assert.throws(
-    () => recordSessionRefOnChange(duplicate, { ...E1, operationId }),
-    /session reference operation receipt is duplicated/
-  );
-});
-
 test('recordSessionRefOnChange appends on sid change, preserving prior (AC3)', () => {
   const seeded = appendSessionRef('## Body\n', E1);
   const { body, appended } = recordSessionRefOnChange(seeded, E2);

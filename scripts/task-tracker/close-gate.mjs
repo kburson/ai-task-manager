@@ -8,8 +8,12 @@
 // paths in sync.
 
 import { LIFECYCLE_LABEL_SET, lifecycleSatisfaction } from './lib/lifecycle-dod.mjs';
+import { hasFullAutoApproved } from './lib/markers.mjs';
 import { isAcWaived } from './lib/issue-kind.mjs';
-import { derivePersistedReviewAuthority } from './lib/review-authority.mjs';
+import {
+  hasAcceptedApprovalEvidence,
+  hasAcceptedReviewEvidence,
+} from './lib/github-records/lifecycle-gate-source.mjs';
 
 export const CLOSE_OWNED_CHECKBOXES = new Set([
   'Issue moved to Done',
@@ -72,12 +76,25 @@ export const ABSENT_TOLERANT_LIFECYCLE_KEYS = new Set(['agent-review-passed']);
 // Because a present-but-unticked `agent-review-passed` is `missing` (which
 // blocks) while `passed-final-review` cannot be ticked before it, the agent
 // gate is enforced as the prerequisite the final sign-off sits on.
-export function assertLifecycleSatisfied({ body, required = true } = {}) {
+export function assertLifecycleSatisfied({ body, required = true, lifecycleEvidence } = {}) {
   const src = String(body || '');
-  const reviewAuthority = derivePersistedReviewAuthority(src);
-  const fullAutoApproved =
-    reviewAuthority.status === 'current' && reviewAuthority.approval?.provenance === 'full-auto';
-  const results = lifecycleSatisfaction(src, { fullAutoApproved, reviewAuthority });
+  const fullAutoApproved = hasFullAutoApproved(src);
+  let results = lifecycleSatisfaction(src, { fullAutoApproved });
+  if (lifecycleEvidence?.sourceKind === 'github-records/v1') {
+    const reviewAccepted = hasAcceptedReviewEvidence(lifecycleEvidence);
+    const approvalAccepted =
+      hasAcceptedApprovalEvidence(lifecycleEvidence, { provenance: 'human' }) ||
+      hasAcceptedApprovalEvidence(lifecycleEvidence, { provenance: 'full-auto' });
+    results = results.map((entry) => {
+      if (entry.key === 'agent-review-passed') {
+        return { ...entry, status: reviewAccepted ? 'recorded' : 'missing' };
+      }
+      if (entry.key === 'passed-final-review') {
+        return { ...entry, status: approvalAccepted ? 'recorded' : 'missing' };
+      }
+      return entry;
+    });
+  }
   const missing = results.filter((r) => {
     if (CLOSE_OWNED_LIFECYCLE_KEYS.has(r.key)) return false;
     if (r.status === 'missing') return true;

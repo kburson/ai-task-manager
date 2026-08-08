@@ -7,6 +7,7 @@
 // validateBody(body, { gates }) → { ok: true } | { ok: false, refusedRules: [{ rule, reason }] }
 
 import { LIFECYCLE_LABEL_SET } from './lifecycle-dod.mjs';
+import { resolveContractSource } from './github-records/contract-source.mjs';
 import { parseIssueFieldDb } from '../issue-field-db.mjs';
 
 // #325 — size-bucketed floors for the `deep-dive-complete` rule. Calibrated
@@ -117,21 +118,27 @@ function evaluateSectionRule(body, lines, rule) {
   return null;
 }
 
-function evaluateAllCheckedRule(lines, rule) {
-  const headingIdx = findHeadingIndex(lines, rule.heading);
-  if (headingIdx === -1) return null; // vacuous pass
-  const end = nextSectionEnd(lines, headingIdx);
+function evaluateAllCheckedRule(lines, rule, normalizedItems = null) {
   const unchecked = [];
-  for (let i = headingIdx + 1; i < end; i++) {
-    const m = lines[i].match(/^- \[([ x])\]\s+(.+)$/);
-    if (m && m[1] === ' ') {
-      const label = m[2].trim();
-      // Lifecycle labels under `#### Lifecycle` (a `####` sibling of Verification
-      // Commands' `###` heading) fall inside this scope because `nextSectionEnd`
-      // stops only at `##`. They are owned by close — enforced by
-      // `assertLifecycleSatisfied` in close-gate.mjs — not by the user, so skip.
-      if (LIFECYCLE_LABEL_SET.has(label)) continue;
-      unchecked.push(label);
+  if (normalizedItems !== null) {
+    for (const item of normalizedItems) {
+      if (!item.checked) unchecked.push(item.command);
+    }
+  } else {
+    const headingIdx = findHeadingIndex(lines, rule.heading);
+    if (headingIdx === -1) return null; // vacuous pass
+    const end = nextSectionEnd(lines, headingIdx);
+    for (let i = headingIdx + 1; i < end; i++) {
+      const m = lines[i].match(/^- \[([ x])\]\s+(.+)$/);
+      if (m && m[1] === ' ') {
+        const label = m[2].trim();
+        // Lifecycle labels under `#### Lifecycle` (a `####` sibling of Verification
+        // Commands' `###` heading) fall inside this scope because `nextSectionEnd`
+        // stops only at `##`. They are owned by close — enforced by
+        // `assertLifecycleSatisfied` in close-gate.mjs — not by the user, so skip.
+        if (LIFECYCLE_LABEL_SET.has(label)) continue;
+        unchecked.push(label);
+      }
     }
   }
   if (unchecked.length > 0) {
@@ -349,16 +356,57 @@ export async function checkCascadeGrooming({
   return refusals;
 }
 
-export function validateBody(body, { gates = DEFAULT_GATES } = {}) {
-  if (typeof body !== 'string' || body.length === 0) return { ok: true };
-  const lines = body.split('\n');
+export function validateBody(body, { gates = DEFAULT_GATES, contractSource = null } = {}) {
+  if ((typeof body !== 'string' || body.length === 0) && contractSource === null) {
+    return { ok: true };
+  }
+  const sourceBody = typeof body === 'string' ? body : '';
+  const lines = sourceBody.split('\n');
+  const verificationCommands = contractSource?.contract?.verificationCommands ?? null;
   const refused = [];
   for (const rule of gates) {
     let r = null;
-    if (rule.kind === SECTION_RULE) r = evaluateSectionRule(body, lines, rule);
-    else if (rule.kind === ALL_CHECKED_RULE) r = evaluateAllCheckedRule(lines, rule);
-    else if (rule.kind === PLACEMENT_RULE) r = evaluatePlacementRule(body, lines, rule);
+    if (rule.kind === SECTION_RULE) r = evaluateSectionRule(sourceBody, lines, rule);
+    else if (rule.kind === ALL_CHECKED_RULE) {
+      r = evaluateAllCheckedRule(
+        lines,
+        rule,
+        rule.name === 'verification-commands' ? verificationCommands : null
+      );
+    } else if (rule.kind === PLACEMENT_RULE) r = evaluatePlacementRule(sourceBody, lines, rule);
     if (r) refused.push(r);
   }
   return refused.length === 0 ? { ok: true } : { ok: false, refusedRules: refused };
+}
+
+export async function validateBodyWithContractSource({
+  repository,
+  issue,
+  issueBody,
+  graphql,
+  readContractRecord,
+  gates = DEFAULT_GATES,
+  deps = {},
+} = {}) {
+  const resolve = deps.resolveContractSource || resolveContractSource;
+  try {
+    const contractSource = await resolve({
+      repository,
+      issue,
+      issueBody,
+      graphql,
+      readContractRecord,
+    });
+    return validateBody(issueBody, { gates, contractSource });
+  } catch (error) {
+    return {
+      ok: false,
+      refusedRules: [
+        {
+          rule: 'verification-commands',
+          reason: `contract-source-failed: ${error.message}`,
+        },
+      ],
+    };
+  }
 }

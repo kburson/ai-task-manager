@@ -4,7 +4,8 @@ SUB-ISSUE body template (child of an epic).
 Canonical heading order (the parity test enforces this):
   ## User Story
   ## Scope
-  ## Plan Metadata                (must include `**Parent epic:** #<EPIC_N>`)
+  ## Story Origin                 (includes `**parent**: #<EPIC_N>`)
+  ## Plan Metadata
   ## Pickup Directive             (static; sits under Plan Metadata, #700)
   ## Acceptance Criteria          (must use `- [ ]` checkboxes)
   ## Definition of Done           (2-hash; appended by preflight tail, #480)
@@ -14,8 +15,8 @@ Placeholders (substituted by preflight-issue.mjs --shape sub-issue):
 {{title}} Sub-issue title (verbatim)
 {{scope}} Sub-issue Scope text from the spec (verbatim)
 {{acceptance_criteria}} AC checkboxes, one per line, `- [ ] <text>`
-{{plan_metadata}} Plan Metadata block (Size, Estimate, Priority, Sequence, Parent)
-{{parent_epic}} Parent epic reference, e.g. `#42` — required for sub-issues
+{{story_origin}} Story Origin block (kind, provenance, relationships, size guess, parent)
+{{plan_metadata}} Optional Plan Metadata block (Size, Estimate, Wave, Dependencies)
 
 Stub policy — DO NOT include implementation plan, task breakdown, code snippets,
 file maps, or step-by-step instructions. The deep-dive happens at pickup time
@@ -32,11 +33,13 @@ So that [why they want to accomplish that thing]
 
 {{scope}}
 
+## Story Origin
+
+{{story_origin}}
+
 ## Plan Metadata
 
 {{plan_metadata}}
-
-**Parent epic:** {{parent_epic}}
 
 ## Pickup Directive — MANDATORY, DO NOT SKIP
 

@@ -58,8 +58,7 @@ No seeding step. `.ai-task-manager/` config + templates (`task-tracker.json`, `t
 ```bash
 npx aitm ensure-wave-parent \
   --children <N1>,<N2>,<N3> \
-  --purpose "<one-line summary>" \
-  --anchor <PARENT_OR_CONTROLLER_N>
+  --purpose "<one-line summary>"
 ```
 
 Classification:
@@ -88,10 +87,10 @@ Sub-issues about to be picked up by an agent MUST be moved to `In Progress` **by
 For each sub-issue about to be dispatched:
 
 ```bash
-npx aitm dispatch-prep <SUB_N> --anchor <PARENT_OR_CONTROLLER_N> --description "agent dispatch (sequence <S>)"
+npx aitm dispatch-prep <SUB_N> --description "agent dispatch (sequence <S>)"
 ```
 
-`dispatch-prep.mjs` verifies the explicit parent/controller lease, runs `move-state.mjs <N> in-progress`, and posts a `start` row to ⏱ Timing Log. All happen before the agent boots. The not-yet-owned child never authorizes its own creation.
+`dispatch-prep.mjs` runs `move-state.mjs <N> in-progress`, posts a `start` row to ⏱ Timing Log. Both happen before the agent boots. The agent's own bootstrap will call them again as idempotent confirmations.
 
 ## Orchestrator post-dispatch verification (≤60s after dispatch)
 

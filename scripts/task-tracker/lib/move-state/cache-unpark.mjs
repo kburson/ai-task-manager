@@ -20,11 +20,10 @@
 
 import { loadState, saveState } from '../../state.mjs';
 import { getProjectDir, statePath as resolveStatePath } from '../../paths.mjs';
-import { LOCAL_FAST_TIMEOUT_MS } from '../process-timeouts.mjs';
+import { GH_API_TIMEOUT_MS, LOCAL_FAST_TIMEOUT_MS } from '../process-timeouts.mjs';
 import { STAGES } from '../stage-entry-markers.mjs';
 import { existsSync } from 'node:fs';
 import path from 'node:path';
-import { isGovernedAuthorityError } from '../work-lease/governed-effect.mjs';
 
 // Testable seam (#629): the helpers below resolve their gh-backed / session
 // collaborator modules through `ctx.deps`. Production assembles `ctx` without a
@@ -50,7 +49,6 @@ export async function dispatchOnEnterActions(ctx) {
     if (target) {
       for (const action of target.onEnter) {
         try {
-          await ctx.reverifyGovernedEffect?.();
           await action.run({
             issueNumber: Number(issueArg),
             repo: cfg.repo,
@@ -59,7 +57,6 @@ export async function dispatchOnEnterActions(ctx) {
             cfg,
           });
         } catch (err) {
-          if (isGovernedAuthorityError(err)) throw err;
           process.stderr.write(
             `[move-state] #${issueArg}: onEnter action "${action.id}" failed: ${err.message}\n`
           );
@@ -67,7 +64,6 @@ export async function dispatchOnEnterActions(ctx) {
       }
     }
   } catch (err) {
-    if (isGovernedAuthorityError(err)) throw err;
     process.stderr.write(`[move-state] #${issueArg}: onEnter dispatch failed: ${err.message}\n`);
   }
 }
@@ -90,12 +86,10 @@ export async function refreshKanbanStateCache(ctx) {
     if (sid) {
       const active = getActiveTask(sid, getProjectDir());
       if (active && active.issue === `#${issueArg}`) {
-        await ctx.reverifyGovernedEffect?.();
         setSessionKanbanState(sid, stateArg, getProjectDir());
       }
     }
   } catch (err) {
-    if (isGovernedAuthorityError(err)) throw err;
     process.stderr.write(
       `[move-state] #${issueArg}: kanbanState cache refresh failed: ${err.message}\n`
     );
@@ -110,24 +104,9 @@ export async function unparkDoneDependents(ctx) {
   const { issueArg, stateArg, cfg, SKIP_NETWORK } = ctx;
   if (!(stateArg === 'done' && !SKIP_NETWORK && process.env.AITM_CASCADE !== '1')) return;
   const deps = ctx.deps || {};
-  // A parent move lease is never authority for a dependent child. Callers that
-  // already carry governed authority must provide an explicit child-authority
-  // adapter; otherwise this best-effort tail fails closed with zero mutation.
-  if (ctx.withGovernedEffect && typeof deps.childWithGovernedEffect !== 'function') {
-    process.stderr.write(
-      `[unpark] #${issueArg}: skipped dependent mutation — exact child authority unavailable\n`
-    );
-    return;
-  }
   try {
     const { unparkDependents } = await importOr(deps.unparkMod, '../unpark-dependents.mjs');
-    const released = await unparkDependents({
-      doneIssueNumber: Number(issueArg),
-      cfg,
-      ...(deps.childWithGovernedEffect
-        ? { deps: { withGovernedEffect: deps.childWithGovernedEffect } }
-        : {}),
-    });
+    const released = await unparkDependents({ doneIssueNumber: Number(issueArg), cfg });
     const cleared = released.filter((r) => r.cleared);
     const errored = released.filter((r) => r.error);
     if (cleared.length) {
@@ -138,7 +117,6 @@ export async function unparkDoneDependents(ctx) {
       process.stderr.write(`[unpark] #${issueArg}: ${r.issue ?? '?'} failed: ${r.error}\n`);
     }
   } catch (err) {
-    if (isGovernedAuthorityError(err)) throw err;
     // surface, do not block — board move is committed
     process.stderr.write(`[unpark] #${issueArg}: enforcement failed: ${err.message}\n`);
   }
@@ -150,50 +128,46 @@ export async function unparkDoneDependents(ctx) {
 // flows and sub-agent fan-outs run with `s.active === null`; gating on
 // active here left the cache permanently stale and the next verb's preflight
 // flagged it as a human-move (#210).
-export async function syncTrackerState(ctx) {
+export function syncTrackerState(ctx) {
   const { stateArg } = ctx;
   try {
-    const deps = ctx.deps || {};
     const projectDir = getProjectDir();
     const sp = resolveStatePath(projectDir);
     const s = loadState(sp);
     s.state = stateArg;
-    deps.beforeTrackerSave?.();
-    await ctx.reverifyGovernedEffect?.();
-    const saveTrackerState = deps.saveState || saveState;
-    saveTrackerState(s, sp);
-  } catch (err) {
-    if (isGovernedAuthorityError(err)) throw err;
+    saveState(s, sp);
+  } catch {
     /* best-effort */
   }
 }
 
 // Update event fields (awaited — failure is a visible warning, not a silent drop)
 export async function syncEventFields(ctx) {
-  const { issueArg, stateArg, itemId, SKIP_NETWORK } = ctx;
+  const { issueArg, stateArg, itemId, SKIP_NETWORK, pexec, __dir } = ctx;
   if (SKIP_NETWORK) return;
-  const args = [issueArg, stateArg];
-  if (itemId) args.push('--item-id', itemId);
-  try {
-    const updateEventFields =
-      ctx.deps?.updateEventFields || (await import('../../../gh/update-event-fields.mjs')).main;
-    const code = await updateEventFields(args, {
-      operation: ctx.governedOperation,
-      withGovernedEffect: ctx.withGovernedEffect,
-    });
-    if (code !== 0) throw Object.assign(new Error(`event-field update exited ${code}`), { code });
-  } catch (e) {
-    if (isGovernedAuthorityError(e)) throw e;
-    const msg = e.stderr?.trim() || e.message?.split('\n')[0] || 'unknown error';
-    process.stderr.write(
-      `warning: Start Time field sync failed: ${msg}\n` +
-        `  To repair: node scripts/gh/update-event-fields.mjs ${issueArg} ${stateArg} --item-id ${itemId}\n`
-    );
+  const repoRoot = getProjectDir();
+  const eventScriptCandidates = [
+    path.resolve(repoRoot, 'node_modules/ai-task-manager/scripts/gh/update-event-fields.mjs'),
+    path.resolve(__dir, 'update-event-fields.mjs'),
+  ];
+  const eventScript = eventScriptCandidates.find((s) => existsSync(s));
+  if (eventScript) {
+    const args = [eventScript, issueArg, stateArg];
+    if (itemId) args.push('--item-id', itemId);
+    try {
+      await pexec(process.execPath, args, { timeout: GH_API_TIMEOUT_MS * 2 });
+    } catch (e) {
+      const msg = e.stderr?.trim() || e.message?.split('\n')[0] || 'unknown error';
+      process.stderr.write(
+        `warning: Start Time field sync failed: ${msg}\n` +
+          `  To repair: node scripts/gh/update-event-fields.mjs ${issueArg} ${stateArg} --item-id ${itemId}\n`
+      );
+    }
   }
 }
 
 // End task tracking when moving to done (unless during cascade close)
-export async function endTaskTracking(ctx) {
+export function endTaskTracking(ctx) {
   const { stateArg, SKIP_NETWORK, pexec, __dir } = ctx;
   if (!(stateArg === 'done' && process.env.AITM_CASCADE !== '1' && !SKIP_NETWORK)) return;
   const repoRoot = getProjectDir();
@@ -202,16 +176,7 @@ export async function endTaskTracking(ctx) {
     path.resolve(__dir, '../task-tracker/task-tracker.mjs'),
   ];
   const ttScript = ttScriptCandidates.find((s) => existsSync(s));
-  // This is part of the governed tail: fence immediately before spawning and
-  // await completion so the authority scope cannot unwind while the child is
-  // still mutating local task state.
-  if (ttScript) {
-    await ctx.reverifyGovernedEffect?.();
-    try {
-      await pexec(process.execPath, [ttScript, 'end'], { timeout: LOCAL_FAST_TIMEOUT_MS });
-    } catch (error) {
-      if (isGovernedAuthorityError(error)) throw error;
-      /* best-effort local cleanup */
-    }
-  }
+  // Fire-and-forget local task-tracker end. Local-fast budget; ignore failures.
+  if (ttScript)
+    pexec(process.execPath, [ttScript, 'end'], { timeout: LOCAL_FAST_TIMEOUT_MS }).catch(() => {});
 }

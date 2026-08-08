@@ -6,48 +6,10 @@ import { mkdirSync, mkdtempSync, readFileSync, writeFileSync, rmSync } from 'nod
 import { join } from 'node:path';
 
 import { projectScratchDir } from '../../../lib/scratch-dir.mjs';
-import {
-  serializeAgentReviewProof,
-  serializeReviewApproval,
-  serializeReviewInvalidation,
-} from '../../../lib/review-authority.mjs';
 import { tickLifecycleOnClose, verbClose } from '../../../verbs/close.mjs';
 
-const REVIEW_EPOCH = 'review:1:2026-07-29T10:00:00Z';
-
-function reviewAuthority(authority) {
-  if (authority === 'missing') return [];
+export function closeBody({ agentReview = 'x', finalReview = 'x' } = {}) {
   return [
-    '<!-- aitm-dod-verified sha="abc1234" ts="2026-07-29T09:59:00Z" -->',
-    '<!-- aitm-entered-review ts="2026-07-29T10:00:00Z" -->',
-    serializeAgentReviewProof({
-      epoch: REVIEW_EPOCH,
-      sha: 'abc1234',
-      ts: '2026-07-29T10:01:00Z',
-      validators: 'unit',
-      result: 'pass',
-    }),
-    serializeReviewApproval({
-      epoch: REVIEW_EPOCH,
-      proofSha: 'abc1234',
-      ts: '2026-07-29T10:02:00Z',
-      provenance: 'human',
-    }),
-    ...(authority === 'stale'
-      ? [
-          serializeReviewInvalidation({
-            epoch: REVIEW_EPOCH,
-            ts: '2026-07-29T10:03:00Z',
-            reason: 'demoted',
-          }),
-        ]
-      : []),
-  ];
-}
-
-export function closeBody({ agentReview = 'x', finalReview = 'x', authority = 'current' } = {}) {
-  return [
-    ...reviewAuthority(authority),
     '## Acceptance Criteria',
     '',
     '- [x] Delivered behavior is verified',
@@ -57,10 +19,13 @@ export function closeBody({ agentReview = 'x', finalReview = 'x', authority = 'c
     '- [x] All automated tests pass',
     '- [x] Lint and format checks pass',
     '',
-    '### Lifecycle (auto-ticked at Review/Close)',
+    '### Lifecycle (verified at Review)',
     '',
     `- [${agentReview}] Agent Review Passed`,
     `- [${finalReview}] Final Review Passed`,
+    '',
+    '### Housekeeping (verified at Close)',
+    '',
     '- [ ] Story closed and moved to Done',
     '- [ ] Timing data flushed to issue',
     '',
@@ -181,30 +146,28 @@ export async function runClose({
     },
   };
   const issueBodyMutator = {
-    mutate: async ({ mutate, operation, withGovernedEffect }) => {
+    mutate: async ({ mutate }) => {
       calls.mutations += 1;
-      return withGovernedEffect({ issueId: '925', operation, heartbeat: true }, async () => {
-        const nextBody = mutate(liveBody);
-        const result =
-          typeof mutationResult === 'function'
-            ? mutationResult({ currentBody: liveBody, nextBody })
-            : mutationResult === undefined
-              ? { status: 'ok', body: nextBody }
-              : mutationResult;
-        if (typeof result?.body === 'string') liveBody = result.body;
-        else if (mutationResult === undefined) liveBody = nextBody;
-        return result;
-      });
+      const nextBody = mutate(liveBody);
+      const result =
+        typeof mutationResult === 'function'
+          ? mutationResult({ currentBody: liveBody, nextBody })
+          : mutationResult === undefined
+            ? { status: 'ok', body: nextBody }
+            : mutationResult;
+      if (typeof result?.body === 'string') liveBody = result.body;
+      else if (mutationResult === undefined) liveBody = nextBody;
+      return result;
     },
   };
   const previousDirty = process.env.TT_SKIP_DIRTY_CHECK;
   const previousProjectDir = process.env.AI_TASK_MANAGER_PROJECT_DIR;
   const previousExitCode = process.exitCode;
+  process.env.AI_TASK_MANAGER_PROJECT_DIR = dir;
   if (gateReviewToDone !== undefined) {
     const configDir = join(dir, '.ai-task-manager');
     mkdirSync(configDir, { recursive: true });
     writeFileSync(join(configDir, 'task-tracker.json'), JSON.stringify({ gateReviewToDone }));
-    process.env.AI_TASK_MANAGER_PROJECT_DIR = dir;
   }
   process.env.TT_SKIP_DIRTY_CHECK = '1';
   process.exitCode = 0;
@@ -246,9 +209,6 @@ export async function runClose({
         };
       },
       writeTerminalDisposition: async () => ({ status: 'ok' }),
-      withIssueLock: async (_options, callback) => callback(),
-      withGovernedEffect: async (_options, callback) =>
-        callback({ leaseContext: {}, reverify: async () => {} }),
     });
     return {
       result,

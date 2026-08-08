@@ -8,6 +8,7 @@ import {
   findCommitTrailComment,
   gateCodeComplete,
 } from '../../../lib/code-complete-gate.mjs';
+import { resolveContractSource } from '../../../lib/github-records/contract-source.mjs';
 
 const cfg = { repo: 'o/r' };
 
@@ -81,6 +82,190 @@ test('gateCodeComplete: combined single-marker AC passes the verification gate (
   });
   assert.equal(r.ok, true);
   assert.deepEqual(r.blockers, []);
+});
+
+test('gateCodeComplete: resolves record authority exactly once instead of trusting legacy AC state', async () => {
+  let resolutionCalls = 0;
+  const r = await gateCodeComplete({
+    cfg,
+    issueNumber: 1125,
+    body: PASSING_BODY,
+    deps: {
+      resolveContractSource: async (input) => {
+        resolutionCalls += 1;
+        assert.deepEqual(input, {
+          repository: cfg.repo,
+          issue: 1125,
+          issueBody: PASSING_BODY,
+          graphql: undefined,
+          readContractRecord: undefined,
+        });
+        return {
+          sourceKind: 'github-records/v1',
+          contract: {
+            acceptanceCriteria: [
+              {
+                logicalId: 'ac-record-authority',
+                text: 'Record authority wins.',
+                declaration:
+                  'Record authority wins. <!-- aitm-verified cmd="`node --test record-authority.test.mjs`" -->',
+                checked: false,
+              },
+            ],
+          },
+          authority: { contractRecordId: 'record-1125' },
+        };
+      },
+      listComments: async () => [
+        { body: '### 🔗 Commits\n<!-- aitm-commits: record-authority -->' },
+      ],
+      filesForSha: async () => [],
+      dirtyFiles: async () => new Set(),
+    },
+  });
+
+  assert.equal(resolutionCalls, 1);
+  assert.equal(r.ok, false);
+  assert.ok(
+    r.blockers.some((blocker) =>
+      blocker.startsWith('code-complete-ac-unticked: Record authority wins.')
+    ),
+    JSON.stringify(r.blockers)
+  );
+});
+
+test('gateCodeComplete: resolver refusal fails closed without legacy AC fallback', async () => {
+  let resolutionCalls = 0;
+  const r = await gateCodeComplete({
+    cfg,
+    issueNumber: 1125,
+    body: PASSING_BODY,
+    deps: {
+      resolveContractSource: async () => {
+        resolutionCalls += 1;
+        throw new Error('contract-source:unavailable');
+      },
+      listComments: async () => [
+        { body: '### 🔗 Commits\n<!-- aitm-commits: record-authority -->' },
+      ],
+      filesForSha: async () => [],
+      dirtyFiles: async () => new Set(),
+    },
+  });
+
+  assert.equal(resolutionCalls, 1);
+  assert.equal(r.ok, false);
+  assert.ok(
+    r.blockers.includes('code-complete-contract-source-failed: contract-source:unavailable'),
+    JSON.stringify(r.blockers)
+  );
+});
+
+test('gateCodeComplete: legacy and record contracts share the same AC policy matrix', async () => {
+  const cases = [
+    {
+      name: 'checked verified',
+      declaration: 'Checked verified AC <!-- aitm-verified cmd="`npm test`" -->',
+      checked: true,
+      audit: false,
+      expectedAcBlockers: [],
+    },
+    {
+      name: 'unchecked verified',
+      declaration: 'Unchecked verified AC <!-- aitm-verified cmd="`npm test`" -->',
+      checked: false,
+      audit: false,
+      expectedAcBlockers: ['code-complete-ac-unticked: Unchecked verified AC'],
+    },
+    {
+      name: 'checked unverified',
+      declaration: 'Checked unverified AC',
+      checked: true,
+      audit: false,
+      expectedAcBlockers: ['code-complete-ac-unverified: Checked unverified AC'],
+    },
+    {
+      name: 'checked non-demonstrable',
+      declaration: 'Non-demonstrable AC <!-- aitm-non-demonstrable -->',
+      checked: true,
+      audit: false,
+      expectedAcBlockers: [],
+    },
+    {
+      name: 'checked audit-waived',
+      declaration: 'Audit-waived AC <!-- aitm-ac-waived by="audit" -->',
+      checked: true,
+      audit: true,
+      expectedAcBlockers: [],
+    },
+  ];
+
+  for (const scenario of cases) {
+    const body = [
+      '## Acceptance Criteria',
+      '',
+      `- [${scenario.checked ? 'x' : ' '}] ${scenario.declaration}`,
+      '',
+      '## AITM Progress Markers',
+      '',
+      ...(scenario.audit
+        ? ['<!-- aitm-issue-kind kind="audit" -->', '<!-- aitm-deliverable-posted -->']
+        : []),
+      '',
+    ].join('\n');
+    const blockersBySource = new Map();
+
+    for (const sourceKind of ['legacy-body/v1', 'github-records/v1']) {
+      let resolutionCalls = 0;
+      const r = await gateCodeComplete({
+        cfg,
+        issueNumber: 1126,
+        body,
+        deps: {
+          resolveContractSource: async (input) => {
+            resolutionCalls += 1;
+            if (sourceKind === 'legacy-body/v1') return resolveContractSource(input);
+            return {
+              sourceKind,
+              contract: {
+                acceptanceCriteria: [
+                  {
+                    logicalId: `ac-${scenario.name.replaceAll(' ', '-')}`,
+                    text: scenario.declaration.replace(/<!--.*?-->/g, '').trim(),
+                    declaration: scenario.declaration,
+                    checked: scenario.checked,
+                  },
+                ],
+              },
+              authority: { contractRecordId: `record-${scenario.name.replaceAll(' ', '-')}` },
+            };
+          },
+          listComments: async () => [
+            { body: '### 🔗 Commits\n<!-- aitm-commits: policy-parity -->' },
+          ],
+          filesForSha: async () => [],
+          dirtyFiles: async () => new Set(),
+        },
+      });
+
+      assert.equal(resolutionCalls, 1, `${scenario.name}: ${sourceKind}`);
+      blockersBySource.set(
+        sourceKind,
+        r.blockers.filter((blocker) => blocker.startsWith('code-complete-ac-'))
+      );
+    }
+
+    assert.deepEqual(
+      blockersBySource.get('legacy-body/v1'),
+      scenario.expectedAcBlockers,
+      `${scenario.name}: legacy policy`
+    );
+    assert.deepEqual(
+      blockersBySource.get('github-records/v1'),
+      scenario.expectedAcBlockers,
+      `${scenario.name}: record policy`
+    );
+  }
 });
 
 test('parseCommitShas: extracts comma-separated SHAs', () => {

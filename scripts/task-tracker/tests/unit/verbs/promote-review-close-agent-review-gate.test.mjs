@@ -84,10 +84,7 @@ test('runPromote redirects to /task review when no Agent Review evidence has eve
 test('runPromote still delegates review → close when Agent Review genuinely passed (unchanged)', async () => {
   const passedBody = writeLastKnownState(
     '## Scope\n\nbody\n\n' +
-      '<!-- aitm-entered-review ts="2026-07-26T00:00:00Z" -->\n' +
-      '<!-- aitm-dod-verified sha="abcdef1234567" ts="2026-07-26T00:00:00Z" -->\n' +
-      '- [x] Agent Review Passed <!-- aitm-verified ts="2026-07-26T00:01:00Z" gate="agent-review" sha="abcdef1234567" result="pass" -->\n' +
-      '<!-- aitm-agent-review-proof schema="1" epoch="review:1:2026-07-26T00:00:00Z" sha="abcdef1234567" ts="2026-07-26T00:01:00Z" validators="required-comments" result="pass" -->\n' +
+      '- [x] Agent Review Passed <!-- aitm-verified ts="2026-07-26T00:00:00Z" gate="agent-review" result="pass" -->\n' +
       '- [ ] Final Review Passed\n',
     'review'
   );

@@ -22,7 +22,9 @@
 //   node preflight-issue.mjs                    # tail block only
 //   node preflight-issue.mjs --check-only       # verify templates, no stdout
 //   node preflight-issue.mjs --shape <shape> \
-//        --scope-file <p> --ac-file <p> --plan-metadata-file <p> \
+//        --scope-file <p> --ac-file <p> --story-origin-file <p> \
+//        [--plan-metadata-file <p>] \
+//        [--verification-commands-file <p>] \
 //        [--parent <N>] [--sub-issue-list-file <p>]
 
 import { existsSync, readFileSync } from 'node:fs';
@@ -32,26 +34,34 @@ import path from 'node:path';
 import { existingRuntimePath, RUNTIME_REL, SHARED_DIR } from './paths.mjs';
 import { GIT_TIMEOUT_MS, GH_API_TIMEOUT_MS } from './lib/process-timeouts.mjs';
 import { LIFECYCLE_LABELS, lifecycleSatisfaction } from './lib/lifecycle-dod.mjs';
+import { hasFullAutoApproved } from './lib/markers.mjs';
 import { lintChecklistCommands, formatViolations } from './lib/checklist-command-lint.mjs';
 import { auditEvidenceMarkers } from './lib/evidence-markers.mjs';
-import { renderVcSection, spliceVcSection, nextVcId } from './lib/vc-emit.mjs';
+import { appendVcCommands, renderVcSection, spliceVcSection, nextVcId } from './lib/vc-emit.mjs';
 import { normalizePlanMetadataValue } from './lib/plan-metadata.mjs';
+import {
+  hasStoryOriginFields,
+  normalizeStoryOriginValue,
+  storyOriginFieldValue,
+  upsertStoryOriginField,
+} from './lib/story-origin.mjs';
 import { formatIssueFieldDb } from './issue-field-db.mjs';
 import { serializeMarker } from './lib/marker-grammar.mjs';
 import { setIssueKindMarker, normalizeKind, DEFAULT_KIND } from './lib/issue-kind.mjs';
 import { filterDodForKindAndDiff } from './lib/dod-kind-filter.mjs';
 import { wantsHelp, emitSelfDoc } from '../lib/self-doc.mjs';
+import { verifyIssueBody } from '../gh/lib/issue-body-verifier.mjs';
+import { stripKnownPrefix } from '../gh/lib/kind-prefix.mjs';
 
 const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
 const PACKAGE_TEMPLATES_DIR = path.resolve(SCRIPT_DIR, '..', '..', 'templates');
-const VALID_SHAPES = ['epic', 'sub-issue', 'solo', 'stub'];
+const VALID_SHAPES = ['epic', 'sub-issue', 'solo', 'defect', 'stub'];
 
-// #426 — placeholder fills for the lightweight `stub` shape. These deliberately
-// fail the Refine→Plan gate (no substantive ACs, no Plan Metadata) until the
-// Refine stage replaces them; a stub is fast idea-capture, not a planned story.
+// #426/#892 — placeholder fills for the lightweight `stub` shape. Scope and AC
+// deliberately fail Refine gates until expanded. Story Origin is real
+// create-time data; Plan Metadata is intentionally empty until planning.
 const STUB_SCOPE_PLACEHOLDER = '_Stub — describe the work at Refine._';
 const STUB_AC_PLACEHOLDER = '- [ ] _TBD — define acceptance criteria at Refine._';
-const STUB_PLAN_METADATA_PLACEHOLDER = '_TBD — set Size, Estimate, Priority, and Rank at Refine._';
 
 function repoRoot() {
   try {
@@ -142,9 +152,32 @@ function fillTemplate(template, fills) {
 // already start with `- [` (checkbox) are left alone. One pass.
 const SECTION_HEADINGS = {
   scope: '## Scope',
+  story_origin: '## Story Origin',
   acceptance_criteria: '## Acceptance Criteria',
   plan_metadata: '## Plan Metadata',
+  reproduction: '## Reproduction',
+  root_cause: '## Root Cause',
+  fix_direction: '## Fix Direction',
+  out_of_scope: '## Out of Scope',
 };
+
+const DEFECT_DEFAULTS = Object.freeze({
+  reproduction:
+    'Reproduce the confirmed behavior described in Scope and capture it with a failing automated test before implementing the fix.',
+  root_cause:
+    'Confirm the code-level cause during the mandatory deep dive before editing production source.',
+  fix_direction:
+    'Implement the smallest regression-protected correction that satisfies the Acceptance Criteria while preserving unrelated behavior.',
+  out_of_scope:
+    'Unrelated refactors and historical data rewrites are excluded unless the Scope explicitly includes them.',
+});
+
+function optionalDefectFragment(args, key) {
+  const flag = `${key.replaceAll('_', '-')}-file`;
+  return typeof args[flag] === 'string'
+    ? readFileOrDie(args[flag], `--${flag}`).trim()
+    : DEFECT_DEFAULTS[key];
+}
 
 export function stripLeadingHeading(value, heading) {
   const esc = heading.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -174,6 +207,10 @@ export function normalizePlanMetadata(value) {
   return normalizePlanMetadataValue(value);
 }
 
+export function normalizeStoryOrigin(value) {
+  return normalizeStoryOriginValue(value);
+}
+
 export function normalizeFills(fills) {
   const out = { ...fills };
   for (const [key, heading] of Object.entries(SECTION_HEADINGS)) {
@@ -183,6 +220,9 @@ export function normalizeFills(fills) {
   }
   if (typeof out.acceptance_criteria === 'string') {
     out.acceptance_criteria = normalizeAcceptanceCriteria(out.acceptance_criteria);
+  }
+  if (typeof out.story_origin === 'string') {
+    out.story_origin = normalizeStoryOrigin(out.story_origin);
   }
   if (typeof out.plan_metadata === 'string') {
     out.plan_metadata = normalizePlanMetadata(out.plan_metadata);
@@ -307,7 +347,12 @@ function emitShape(args, dodPath, root) {
   if (shape === 'sub-issue' && typeof args.parent !== 'string') {
     die('--parent <N> required with --shape sub-issue');
   }
+  if (shape === 'defect' && (typeof args.title !== 'string' || !args.title.trim())) {
+    die('--title required with --shape defect');
+  }
 
+  let kind = resolveRenderKind(args);
+  let stampKindMarker = typeof args.kind === 'string';
   let rawFills;
   if (shape === 'stub') {
     // #426 — stub: no section files required. An optional --idea-file seeds
@@ -318,22 +363,82 @@ function emitShape(args, dodPath, root) {
         : '';
     rawFills = {
       scope: idea || STUB_SCOPE_PLACEHOLDER,
+      story_origin: `- kind: ${kind}`,
       acceptance_criteria: STUB_AC_PLACEHOLDER,
-      plan_metadata: STUB_PLAN_METADATA_PLACEHOLDER,
+      plan_metadata: '',
     };
   } else {
-    const required = ['scope-file', 'ac-file', 'plan-metadata-file'];
+    const required = ['scope-file', 'ac-file', 'story-origin-file'];
     for (const flag of required) {
       if (typeof args[flag] !== 'string') die(`--${flag} required with --shape`);
     }
     rawFills = {
       scope: readFileOrDie(args['scope-file'], '--scope-file').trim(),
+      story_origin: readFileOrDie(args['story-origin-file'], '--story-origin-file').trim(),
       acceptance_criteria: readFileOrDie(args['ac-file'], '--ac-file').trim(),
-      plan_metadata: readFileOrDie(args['plan-metadata-file'], '--plan-metadata-file').trim(),
+      plan_metadata:
+        typeof args['plan-metadata-file'] === 'string'
+          ? readFileOrDie(args['plan-metadata-file'], '--plan-metadata-file').trim()
+          : '',
+    };
+    if (shape === 'defect') {
+      rawFills = {
+        ...rawFills,
+        defect_summary: stripKnownPrefix(args.title).trim(),
+        reproduction: optionalDefectFragment(args, 'reproduction'),
+        root_cause: optionalDefectFragment(args, 'root_cause'),
+        fix_direction: optionalDefectFragment(args, 'fix_direction'),
+        out_of_scope: optionalDefectFragment(args, 'out_of_scope'),
+      };
+    }
+    const originFragment = stripLeadingHeading(
+      rawFills.story_origin,
+      SECTION_HEADINGS.story_origin
+    );
+    if (/^#{1,6}\s+/m.test(originFragment)) {
+      die('--story-origin-file must be a flat metadata fragment without headings');
+    }
+    const normalizedOrigin = normalizeStoryOriginValue(originFragment);
+    const wrappedOrigin = `## Story Origin\n\n${normalizedOrigin}\n`;
+    if (!hasStoryOriginFields(wrappedOrigin)) {
+      die(
+        '--story-origin-file must contain at least one non-empty flat Story Origin metadata field'
+      );
+    }
+    const declaredKind = storyOriginFieldValue(wrappedOrigin, 'kind');
+    if (declaredKind !== null) {
+      let normalizedDeclaredKind;
+      try {
+        normalizedDeclaredKind = normalizeKind(declaredKind);
+      } catch (err) {
+        die(`Story Origin kind is invalid: ${err.message}`);
+      }
+      if (typeof args.kind === 'string' && normalizedDeclaredKind !== kind) {
+        die(
+          `--kind ${kind} conflicts with Story Origin kind ${normalizedDeclaredKind}; use one value`
+        );
+      }
+      kind = normalizedDeclaredKind;
+      stampKindMarker = true;
+    }
+    const planFragment = stripLeadingHeading(
+      rawFills.plan_metadata,
+      SECTION_HEADINGS.plan_metadata
+    );
+    if (/^#{1,6}\s+/m.test(planFragment)) {
+      die('--plan-metadata-file must be a flat metadata fragment without headings');
+    }
+    rawFills.plan_metadata = planFragment;
+  }
+  let fills = normalizeFills(rawFills);
+  if (shape === 'sub-issue') {
+    const wrapped = `## Story Origin\n\n${fills.story_origin}\n`;
+    const withParent = upsertStoryOriginField(wrapped, 'parent', `#${args.parent}`);
+    fills = {
+      ...fills,
+      story_origin: withParent.replace(/^## Story Origin\s*\n+/, '').trim(),
     };
   }
-  const fills = normalizeFills(rawFills);
-  if (shape === 'sub-issue') fills.parent_epic = `#${args.parent}`;
   if (shape === 'epic') {
     fills.sub_issue_list =
       typeof args['sub-issue-list-file'] === 'string'
@@ -344,7 +449,6 @@ function emitShape(args, dodPath, root) {
   // #681 — resolve kind BEFORE the DoD tail is injected so the Functional items
   // are filtered for the issue's kind and the derived Verification Commands seed
   // is computed over the surviving items.
-  const kind = resolveRenderKind(args);
   // #865 — for a `docs-only` render, a supplied `--changed-paths-file` decides
   // whether the functional `tests` item (and its derived `test:all` VC seed) is
   // dropped: only a provably documentation-only diff drops it (default-deny).
@@ -354,7 +458,25 @@ function emitShape(args, dodPath, root) {
   const template = loadTemplate(root, shape);
   const skeleton = stripHeaderComment(template);
   const body = fillTemplate(skeleton, fills).replace(/\s+$/, '') + '\n\n';
-  const assembled = body + dodBlock(dodPath, kind, changedPaths);
+  const baseAssembled = body + dodBlock(dodPath, kind, changedPaths);
+  let assembled = baseAssembled;
+  if (typeof args['verification-commands-file'] === 'string') {
+    const commands = readFileOrDie(
+      args['verification-commands-file'],
+      '--verification-commands-file'
+    )
+      .split('\n')
+      .map((line) => line.trim())
+      .filter(Boolean);
+    if (commands.length === 0) die('--verification-commands-file must contain commands');
+    const vcSection = renderVcSection(commands, 1);
+    const anchor = '## Definition of Done';
+    const idx = assembled.indexOf(anchor);
+    assembled =
+      idx === -1
+        ? spliceVcSection(assembled, vcSection, '')
+        : spliceVcSection(assembled.slice(0, idx), vcSection, assembled.slice(idx));
+  }
   warnMissingLifecycleLabels(assembled);
   const lint = lintChecklistCommands(assembled);
   if (!lint.ok) {
@@ -379,15 +501,19 @@ function emitShape(args, dodPath, root) {
   if (seedCmds.length) {
     // #772 — stamp stable ids (from 1 on a fresh body) and splice with one
     // blank line above AND below the `## Verification Commands` header.
-    const vcSection = renderVcSection(seedCmds, nextVcId(finalBody));
-    // #480 — VC sits BETWEEN `## Acceptance Criteria` and `## Definition of Done`
-    // (canonical order), so anchor on the DoD heading rather than Pickup.
-    const anchor = '## Definition of Done';
-    const idx = finalBody.indexOf(anchor);
-    finalBody =
-      idx === -1
-        ? spliceVcSection(finalBody, vcSection, '')
-        : spliceVcSection(finalBody.slice(0, idx), vcSection, finalBody.slice(idx));
+    if (/^## Verification Commands\s*$/m.test(finalBody)) {
+      finalBody = appendVcCommands(finalBody, seedCmds);
+    } else {
+      const vcSection = renderVcSection(seedCmds, nextVcId(finalBody));
+      // #480 — VC sits BETWEEN `## Acceptance Criteria` and `## Definition of Done`
+      // (canonical order), so anchor on the DoD heading rather than Pickup.
+      const anchor = '## Definition of Done';
+      const idx = finalBody.indexOf(anchor);
+      finalBody =
+        idx === -1
+          ? spliceVcSection(finalBody, vcSection, '')
+          : spliceVcSection(finalBody.slice(0, idx), vcSection, finalBody.slice(idx));
+    }
   }
   // #494, #500, #923, #865 — `--kind <audit|research|spike|epic|docs-only>`
   // stamps the issue-kind marker at creation. The no-commit kinds route onto the
@@ -397,8 +523,14 @@ function emitShape(args, dodPath, root) {
   // diff-decides; default-deny keeps the suite otherwise). `code` (the default)
   // leaves the body unmarked. The kind was already resolved above (#681) for DoD
   // filtering; reuse it.
-  if (typeof args.kind === 'string') {
+  if (stampKindMarker) {
     finalBody = setIssueKindMarker(finalBody, kind);
+  }
+  const bodyVerification = verifyIssueBody(finalBody);
+  if (!bodyVerification.ok) {
+    die(
+      `rendered ${shape} body failed canonical verification: ${bodyVerification.missing.join('; ')}`
+    );
   }
   process.stdout.write(finalBody);
   // #298 AC3 — emit `aitm-fields` trailer block from seed values forwarded
@@ -449,7 +581,8 @@ async function checkIntegrity(issueNumber) {
     die(`gh issue view #${num} failed: ${err.message}`);
     return;
   }
-  const results = lifecycleSatisfaction(String(body));
+  const fullAutoApproved = hasFullAutoApproved(String(body));
+  const results = lifecycleSatisfaction(String(body), { fullAutoApproved });
   process.stderr.write(`[task-tracker] integrity check for #${num}:\n`);
   for (const r of results) {
     process.stderr.write(`   - ${r.key} (${r.label}): ${r.status}\n`);

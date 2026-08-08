@@ -35,7 +35,6 @@ function setupSandbox() {
         kanbanOptionReview: 'OPT_r',
         kanbanOptionDone: 'OPT_done',
         assignee: '@me',
-        preferences: { gateAssigneeMatch: false },
       },
       null,
       2
@@ -63,12 +62,6 @@ process.exit(0);
 `
   );
   chmodSync(shim, 0o755);
-  const ghShim = path.join(binDir, 'gh');
-  writeFileSync(
-    ghShim,
-    '#!/usr/bin/env node\nprocess.stderr.write("fixture remote unavailable\\n"); process.exit(1);\n'
-  );
-  chmodSync(ghShim, 0o755);
   return binDir;
 }
 
@@ -78,10 +71,9 @@ async function runNode(script, args, { sandbox, binDir, env = {}, expectExit = 0
     env: {
       ...process.env,
       AITM_INTERNAL: '1',
-      AITM_TEST_GOVERNED_EFFECT: '1',
       PATH: `${binDir}:${process.env.PATH}`,
       AI_TASK_MANAGER_PROJECT_DIR: sandbox,
-      TT_SKIP_NETWORK: '',
+      TT_SKIP_NETWORK: '1',
       ...env,
     },
     timeout: 15000,
@@ -121,11 +113,7 @@ try {
     const sandbox = setupSandbox();
     cleanup(sandbox);
     const binDir = makeGitShim(sandbox, '');
-    const r = await runNode(MOVE, ['100', 'review', '--force'], {
-      sandbox,
-      binDir,
-      expectExit: 1,
-    });
+    const r = await runNode(MOVE, ['100', 'review'], { sandbox, binDir });
     assert.doesNotMatch(r.stderr, /Workspace is dirty/);
   }
 
@@ -134,11 +122,7 @@ try {
     const sandbox = setupSandbox();
     cleanup(sandbox);
     const binDir = makeGitShim(sandbox, ' M scripts/a.mjs\n?? tmp/x.md\n');
-    const r = await runNode(MOVE, ['100', 'review', '--force'], {
-      sandbox,
-      binDir,
-      expectExit: 1,
-    });
+    const r = await runNode(MOVE, ['100', 'review'], { sandbox, binDir });
     assert.match(r.stderr, /Workspace is dirty \(2 path/);
     assert.match(r.stderr, /scripts\/a\.mjs/);
     assert.match(r.stderr, /tmp\/x\.md/);
@@ -167,11 +151,7 @@ try {
     cleanup(sandbox);
     const binDir = makeGitShim(sandbox, ' M src/x.ts\n M src/y.ts\n');
     await setActive(sandbox, 201);
-    const r = await runNode(TT, ['close', '#201', '--answer', 'no'], {
-      sandbox,
-      binDir,
-      expectExit: 3,
-    });
+    const r = await runNode(TT, ['close', '#201', '--answer', 'no'], { sandbox, binDir });
     assert.match(r.stderr, /Closing #201 with dirty workspace \(2 path/);
   }
 
@@ -227,11 +207,7 @@ try {
     cleanup(sandbox);
     const porcelain = Array.from({ length: 15 }, (_, i) => ` M file${i}.ts`).join('\n') + '\n';
     const binDir = makeGitShim(sandbox, porcelain);
-    const r = await runNode(MOVE, ['205', 'review', '--force'], {
-      sandbox,
-      binDir,
-      expectExit: 1,
-    });
+    const r = await runNode(MOVE, ['205', 'review'], { sandbox, binDir });
     assert.match(r.stderr, /Workspace is dirty \(15 path/);
     assert.match(r.stderr, /\+5 more.*total 15/);
   }
@@ -280,11 +256,7 @@ process.exit(0);
         },
       })
     );
-    const r = await runNode(MOVE, ['206', 'review', '--force'], {
-      sandbox,
-      binDir,
-      expectExit: 1,
-    });
+    const r = await runNode(MOVE, ['206', 'review'], { sandbox, binDir });
     assert.match(r.stderr, /Workspace is dirty \(1 path/);
     assert.match(r.stderr, /alt-only\.ts/);
   }
@@ -294,11 +266,10 @@ process.exit(0);
     const sandbox = setupSandbox();
     cleanup(sandbox);
     const binDir = makeGitShim(sandbox, ' M src/x.ts\n');
-    const r = await runNode(MOVE, ['207', 'review', '--force'], {
+    const r = await runNode(MOVE, ['207', 'review'], {
       sandbox,
       binDir,
       env: { TT_SKIP_DIRTY_CHECK: '1' },
-      expectExit: 1,
     });
     assert.doesNotMatch(r.stderr, /Workspace is dirty/);
   }

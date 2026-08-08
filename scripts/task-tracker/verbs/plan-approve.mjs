@@ -1,8 +1,9 @@
-// `plan-approve` verb — Plan -> Develop human gate.
+// `plan-approve` verb — Plan -> Develop approval gate.
 //
-// Records human plan approval on an issue by appending a hidden marker to
-// the issue body. `move-state.mjs` reads the marker; without it (and with
-// `gatePlanToDevelop=true`), promote from plan to develop refuses.
+// Records plan approval and its human/Full-Auto provenance on an issue by
+// appending a hidden marker to the issue body. `move-state.mjs` reads the
+// marker; without it (and with `gatePlanToDevelop=true`), promote from plan to
+// develop refuses.
 //
 // Idempotent: re-invocation with the marker already present is a no-op.
 // Refuses if the issue is not in `plan` state.
@@ -17,19 +18,20 @@ import { getProjectDir } from '../paths.mjs';
 import {
   hasPlanApprovedMarker,
   insertPlanApprovedMarker,
+  readPlanApprovedForecastRecordId,
+  readPlanApprovedMode,
+  upsertPlanApprovedMarker,
   wrapDeepDiveInDetails,
 } from '../lib/markers.mjs';
 import { stampEntryMarker } from '../lib/stage-entry-markers.mjs';
 import { lintChecklistCommands } from '../lib/checklist-command-lint.mjs';
 import { mutateIssueBody } from '../lib/issue-body-mutate.mjs';
-import { GH_API_TIMEOUT_MS } from '../lib/process-timeouts.mjs';
-import { withIssueLock, IssueLockError } from '../issue-mutator-lock.mjs';
-import { createRuntimeGovernedEffectAdapter } from '../lib/work-lease/governed-effect.mjs';
-import { withVerbMutationScope } from '../lib/work-lease/verb-mutation-scope.mjs';
 import {
   ensureFullAutoPlanApprovalAudit,
+  isExplicitFullAutoPlanApproval,
   readPlanApprovedTimestamp,
 } from '../lib/plan-approval-audit.mjs';
+import { writeDirectoryContractOperation } from '../lib/github-records/contract-write.mjs';
 
 // Visit-suffix-aware check for any aitm-entered-plan marker (bare or -N).
 // We only backfill the original visit when NO plan entry marker exists at
@@ -38,6 +40,8 @@ import {
 // `:`-delimited form and the new `ts="..."` property grammar (#374) so the
 // idempotency check still fires after the writer flip.
 const PLAN_ENTRY_RE = /<!--\s*aitm-entered-plan(?:-\d+)?(?::|\s+ts=")/i;
+const FORECAST_READY_RE =
+  /<!--\s*aitm-estimation-forecast-ready\s+record-id="([0-7][0-9A-HJKMNP-TV-Z]{25})"\s*-->/i;
 
 const pexec = promisify(execFile);
 
@@ -57,46 +61,13 @@ async function defaultFetchIssueBody({ issueNumber, repo }) {
 
 // #295 — body writes go through `mutateIssueBody({ mutate })`; the closure
 // runs on the FRESH base each push attempt.
-async function defaultMutateIssueBody({
-  issueNumber,
-  repo,
-  mutate,
-  operation,
-  withGovernedEffect,
-}) {
-  return mutateIssueBody({
-    issueNumber,
-    repo,
-    mutate,
-    operation,
-    deps: { pexec, withGovernedEffect },
-  });
+async function defaultMutateIssueBody({ issueNumber, repo, mutate }) {
+  return mutateIssueBody({ issueNumber, repo, mutate, deps: { pexec } });
 }
 
 async function defaultGetBoardState({ issueNumber, projectDir: _projectDir }) {
   const mod = await import('../task-tracker.mjs');
   return mod.getIssueBoardState(String(issueNumber).replace(/^#/, ''));
-}
-
-async function defaultPostComment({ issueNumber, repo, body }) {
-  await pexec('gh', ['issue', 'comment', String(issueNumber), '-R', repo, '--body', body], {
-    timeout: GH_API_TIMEOUT_MS,
-  });
-}
-
-async function planApprovalAuditNeedsWrite({ ensureAudit, issueNumber, repo, ts, env, auditDeps }) {
-  let writeRequested = false;
-  await ensureAudit({
-    issueNumber,
-    repo,
-    ts,
-    env,
-    ...auditDeps,
-    postComment: async () => {
-      writeRequested = true;
-    },
-  });
-  return writeRequested;
 }
 
 export async function runPlanApprove({ issueNumber, cfg, projectDir, deps = {} } = {}) {
@@ -108,19 +79,17 @@ export async function runPlanApprove({ issueNumber, cfg, projectDir, deps = {} }
   const getBoardState = deps.getBoardState || defaultGetBoardState;
   const nowIso = deps.nowIso || (() => new Date().toISOString().replace(/\.\d+Z$/, 'Z'));
   const ensureAudit = deps.ensureFullAutoPlanApprovalAudit || ensureFullAutoPlanApprovalAudit;
-  const postAuditComment = deps.postComment || defaultPostComment;
   const env = deps.env ?? process.env;
+  const requestedMode = isExplicitFullAutoPlanApproval(env) ? 'full-auto' : 'human';
   const auditDeps = {
     listComments: deps.listComments,
+    postComment: deps.postComment,
   };
-  const stableProjectDir = projectDir || getProjectDir();
-  const lockIssue = deps.withIssueLock || withIssueLock;
-  const govern =
-    deps.withGovernedEffect ||
-    createRuntimeGovernedEffectAdapter({ projectDir: stableProjectDir, config: cfg });
+  const adaptiveConfigured =
+    Number.isInteger(cfg.estimationRubricIssue) && cfg.estimationRubricIssue > 0;
 
   const state = await getBoardState({ issueNumber, projectDir });
-  if (state !== 'plan') {
+  if (state !== 'plan' && !adaptiveConfigured) {
     return {
       status: 'wrong-state',
       message: `#${issueNumber} is in '${state ?? 'unknown'}', expected 'plan' — plan-approve only applies to issues in Plan.`,
@@ -128,6 +97,62 @@ export async function runPlanApprove({ issueNumber, cfg, projectDir, deps = {} }
   }
 
   const body = await fetchIssueBody({ issueNumber, repo: cfg.repo });
+  const forecastRecordId = body.match(FORECAST_READY_RE)?.[1] ?? null;
+  const hasApproval = hasPlanApprovedMarker(body);
+  const frozenForecastRecordId = readPlanApprovedForecastRecordId(body);
+  const lateRepair =
+    state !== 'plan' && hasApproval && frozenForecastRecordId === null && forecastRecordId !== null;
+  if (state !== 'plan' && !lateRepair) {
+    return {
+      status: 'wrong-state',
+      message: `#${issueNumber} is in '${state ?? 'unknown'}', expected 'plan' — plan-approve only applies to issues in Plan.`,
+    };
+  }
+  if (adaptiveConfigured && forecastRecordId === null) {
+    return {
+      status: 'forecast-missing',
+      message: `#${issueNumber} has no converged adaptive forecast to freeze at Plan approval.`,
+    };
+  }
+
+  if (lateRepair) {
+    const approvalTs = readPlanApprovedTimestamp(body);
+    const writeResult = await mutateBody({
+      issueNumber,
+      repo: cfg.repo,
+      mutate: (base) => {
+        const freshReady = base.match(FORECAST_READY_RE)?.[1] ?? null;
+        const freshFrozen = readPlanApprovedForecastRecordId(base);
+        if (freshFrozen !== null) return base;
+        if (!hasPlanApprovedMarker(base) || freshReady === null) {
+          throw new Error('plan-approve: adaptive approval repair evidence disappeared');
+        }
+        const existingMode = readPlanApprovedMode(base);
+        return upsertPlanApprovedMarker(base, approvalTs, {
+          forecastRecordId: freshReady,
+          mode: existingMode === 'unknown' ? null : existingMode,
+        });
+      },
+    });
+    const persistedBody =
+      typeof writeResult?.body === 'string'
+        ? writeResult.body
+        : await fetchIssueBody({ issueNumber, repo: cfg.repo });
+    const audit = await ensureAudit({
+      issueNumber,
+      repo: cfg.repo,
+      ts: readPlanApprovedTimestamp(persistedBody),
+      mode: readPlanApprovedMode(persistedBody),
+      env,
+      ...auditDeps,
+    });
+    return {
+      status: 'repaired-approval',
+      ts: approvalTs,
+      mode: readPlanApprovedMode(persistedBody),
+      audit,
+    };
+  }
 
   // #236 — refuse plan→develop approval if the body's AC/VC checklists contain
   // compound CLI commands that the /task test sandbox will later reject.
@@ -148,118 +173,135 @@ export async function runPlanApprove({ issueNumber, cfg, projectDir, deps = {} }
     };
   }
 
-  const hasApproval = hasPlanApprovedMarker(body);
+  const directoryWrite = await writeDirectoryContractOperation({
+    repository: cfg.repo,
+    issue: Number(issueNumber),
+    issueBody: body,
+    action: 'seal',
+    pexec,
+    deps: deps.contractWrite,
+  });
+  if (directoryWrite.status === 'directory-written') {
+    const ts = nowIso();
+    const audit = await ensureAudit({
+      issueNumber,
+      repo: cfg.repo,
+      ts,
+      mode: requestedMode,
+      env,
+      ...auditDeps,
+    });
+    return { status: 'directory-approved', ts, mode: requestedMode, audit };
+  }
+
   const hasPlanEntry = PLAN_ENTRY_RE.test(body);
 
   // Both markers present — true no-op. (Diagnostic fast-path; the closure
   // below would re-check the FRESH base anyway. The audit still runs here:
   // this is the repair path when the body write succeeded but the comment post
   // failed on a prior invocation.
-  if (hasApproval && hasPlanEntry) {
-    const auditNeedsWrite = await planApprovalAuditNeedsWrite({
-      ensureAudit,
+  const approvalComplete =
+    !adaptiveConfigured ||
+    (frozenForecastRecordId !== null && frozenForecastRecordId === forecastRecordId);
+  if (hasApproval && hasPlanEntry && approvalComplete) {
+    const audit = await ensureAudit({
       issueNumber,
       repo: cfg.repo,
       ts: readPlanApprovedTimestamp(body),
+      mode: readPlanApprovedMode(body),
       env,
-      auditDeps,
+      ...auditDeps,
     });
-    if (!auditNeedsWrite) return { status: 'already-approved' };
+    return {
+      status: 'already-approved',
+      mode: readPlanApprovedMode(body),
+      audit,
+    };
   }
 
-  return lockIssue(
-    { issue: issueNumber, verb: 'plan-approve', projDir: stableProjectDir },
-    async () => {
-      const freshBody = await fetchIssueBody({ issueNumber, repo: cfg.repo });
-      const freshLintErrors = lintChecklistCommands(freshBody).violations.filter(
-        (violation) => violation.severity === 'error'
-      );
-      if (freshLintErrors.length > 0) {
-        return {
-          status: 'forbidden-command',
-          message:
-            `#${issueNumber} body contains forbidden compound commands in checklists — refusing to approve.\n` +
-            freshLintErrors
-              .map(
-                (violation) =>
-                  `  plan-exit-forbidden-command: ${violation.section}:${violation.lineIndex + 1}: \`${violation.command}\` — forbidden ${violation.rule}`
-              )
-              .join('\n'),
-          violations: freshLintErrors,
-        };
+  const ts = nowIso();
+  // #295 — closure re-derives the next body from the FRESH base on every
+  // push attempt. The diagnostic flags above set the return shape; the
+  // closure independently checks markers so a concurrent writer that
+  // landed approval / entry between our pre-fetch and the push is
+  // honored (returns base unchanged → no-op).
+  const writeResult = await mutateBody({
+    issueNumber,
+    repo: cfg.repo,
+    mutate: (base) => {
+      let n = base;
+      if (!PLAN_ENTRY_RE.test(n)) {
+        n = stampEntryMarker(n, 'plan', ts);
       }
-
-      const freshHasApproval = hasPlanApprovedMarker(freshBody);
-      const freshHasPlanEntry = PLAN_ENTRY_RE.test(freshBody);
-      if (freshHasApproval && freshHasPlanEntry) {
-        const auditNeedsWrite = await planApprovalAuditNeedsWrite({
-          ensureAudit,
-          issueNumber,
-          repo: cfg.repo,
-          ts: readPlanApprovedTimestamp(freshBody),
-          env,
-          auditDeps,
+      const freshForecastRecordId = n.match(FORECAST_READY_RE)?.[1] ?? null;
+      if (adaptiveConfigured && freshForecastRecordId === null) {
+        throw new Error('plan-approve: adaptive forecast marker disappeared before approval');
+      }
+      if (adaptiveConfigured) {
+        const freshHasApproval = hasPlanApprovedMarker(n);
+        const existingMode = readPlanApprovedMode(n);
+        n = upsertPlanApprovedMarker(n, ts, {
+          forecastRecordId: freshForecastRecordId,
+          mode: freshHasApproval
+            ? existingMode === 'unknown'
+              ? null
+              : existingMode
+            : requestedMode,
         });
-        if (!auditNeedsWrite) return { status: 'already-approved' };
+      } else if (!hasPlanApprovedMarker(n)) {
+        n = insertPlanApprovedMarker(n, ts, { mode: requestedMode });
       }
+      return wrapDeepDiveInDetails(n);
+    },
+  });
+  const persistedBody =
+    typeof writeResult?.body === 'string'
+      ? writeResult.body
+      : await fetchIssueBody({ issueNumber, repo: cfg.repo });
 
-      return withVerbMutationScope(
-        {
-          issueId: issueNumber,
-          operation: 'approval-mutation',
-          withGovernedEffect: govern,
-          heartbeat: true,
-        },
-        async (scope) => {
-          const ts = nowIso();
-          let persistedBody = freshBody;
-          if (!freshHasApproval || !freshHasPlanEntry) {
-            // #295 — closure re-derives the next body from the FRESH base on
-            // every push attempt. A concurrent marker remains authoritative.
-            const writeResult = await scope.effect(() =>
-              mutateBody({
-                issueNumber,
-                repo: cfg.repo,
-                mutate: (base) => {
-                  let next = base;
-                  if (!PLAN_ENTRY_RE.test(next)) {
-                    next = stampEntryMarker(next, 'plan', ts);
-                  }
-                  if (!hasPlanApprovedMarker(next)) {
-                    next = insertPlanApprovedMarker(next, ts);
-                  }
-                  return wrapDeepDiveInDetails(next);
-                },
-                operation: 'approval-mutation',
-                withGovernedEffect: scope.continue,
-              })
-            );
-            persistedBody =
-              typeof writeResult?.body === 'string'
-                ? writeResult.body
-                : await scope.effect(() => fetchIssueBody({ issueNumber, repo: cfg.repo }));
-          }
+  const audit = await ensureAudit({
+    issueNumber,
+    repo: cfg.repo,
+    ts: readPlanApprovedTimestamp(persistedBody),
+    mode: readPlanApprovedMode(persistedBody),
+    env,
+    ...auditDeps,
+  });
 
-          await ensureAudit({
-            issueNumber,
-            repo: cfg.repo,
-            ts: readPlanApprovedTimestamp(persistedBody),
-            env,
-            ...auditDeps,
-            postComment: (options) => scope.effect(() => postAuditComment(options)),
-          });
+  if (hasApproval && !hasPlanEntry) {
+    return { status: 're-stamped-entry', ts, mode: readPlanApprovedMode(persistedBody), audit };
+  }
+  if (hasApproval && adaptiveConfigured && !approvalComplete) {
+    return { status: 'repaired-approval', ts, mode: readPlanApprovedMode(persistedBody), audit };
+  }
+  return { status: 'approved', ts, mode: readPlanApprovedMode(persistedBody), audit };
+}
 
-          if (freshHasApproval && freshHasPlanEntry) {
-            return { status: 'already-approved' };
-          }
-          if (freshHasApproval && !freshHasPlanEntry) {
-            return { status: 're-stamped-entry', ts };
-          }
-          return { status: 'approved', ts };
-        }
-      );
-    }
-  );
+function auditDisposition(audit) {
+  if (audit?.mode === 'human') return 'not-applicable';
+  if (audit?.auditPosted) return 'posted';
+  if (audit?.alreadyPresent) return 'already-present';
+  return 'not-posted';
+}
+
+export function formatPlanApproveOutcome(issueNumber, result) {
+  const provenance = result?.mode || 'unknown';
+  const audit = auditDisposition(result?.audit);
+  const detail = `provenance=${provenance}; Full-Auto audit=${audit}`;
+  switch (result?.status) {
+    case 'directory-approved':
+      return `✓ Plan approved for #${issueNumber} at ${result.ts} via sealed Delivery Contract (${detail}). \`/task promote #${issueNumber}\` to move to Develop.`;
+    case 'approved':
+      return `✓ Plan approved for #${issueNumber} at ${result.ts} (${detail}). \`/task promote #${issueNumber}\` to move to Develop.`;
+    case 'already-approved':
+      return `#${issueNumber} already has a plan-approval marker — no change (${detail}).`;
+    case 're-stamped-entry':
+      return `✓ Re-stamped missing aitm-entered-plan marker for #${issueNumber} at ${result.ts} (approval already present; ${detail}). \`/task promote #${issueNumber}\` to move to Develop.`;
+    case 'repaired-approval':
+      return `✓ Repaired adaptive Plan approval lineage for #${issueNumber} at ${result.ts}; the existing approval now freezes its forecast record (${detail}).`;
+    default:
+      return null;
+  }
 }
 
 function parseArgs(rest) {
@@ -286,26 +328,16 @@ export async function verbPlanApprove(rest, cfg, deps = {}) {
   try {
     result = await runPlanApprove({ issueNumber, cfg, projectDir, deps });
   } catch (err) {
-    if (err instanceof IssueLockError) {
-      process.stderr.write(`⛔ ${err.message}\n`);
-      process.exit(7);
-    }
     process.stderr.write(`plan-approve: ${err.message}\n`);
     process.exit(1);
   }
   switch (result.status) {
+    case 'directory-approved':
     case 'approved':
-      process.stdout.write(
-        `✓ Plan approved for #${issueNumber} at ${result.ts}. \`/task promote #${issueNumber}\` to move to Develop.\n`
-      );
-      return;
     case 'already-approved':
-      process.stdout.write(`#${issueNumber} already has a plan-approval marker — no change.\n`);
-      return;
     case 're-stamped-entry':
-      process.stdout.write(
-        `✓ Re-stamped missing aitm-entered-plan marker for #${issueNumber} at ${result.ts} (approval already present). \`/task promote #${issueNumber}\` to move to Develop.\n`
-      );
+    case 'repaired-approval':
+      process.stdout.write(`${formatPlanApproveOutcome(issueNumber, result)}\n`);
       return;
     case 'wrong-state':
       process.stderr.write(`⛔ ${result.message}\n`);
@@ -313,6 +345,9 @@ export async function verbPlanApprove(rest, cfg, deps = {}) {
     case 'forbidden-command':
       process.stderr.write(`⛔ ${result.message}\n`);
       process.exit(12);
+    case 'forecast-missing':
+      process.stderr.write(`⛔ ${result.message}\n`);
+      process.exit(13);
     default:
       process.stderr.write(`plan-approve: unknown result: ${result.status}\n`);
       process.exit(1);

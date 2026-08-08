@@ -1,4 +1,4 @@
-// @story #447 #448 #529 #855
+// @story #447 #448 #529 #855 #1089
 /**
  * Unit tests for verify-develop.mjs logic.
  *
@@ -19,7 +19,14 @@ import { mkdtempSync, rmSync, writeFileSync, mkdirSync } from 'node:fs';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { dirname, resolve, join } from 'node:path';
-import { buildLintFormatSteps, isMainModule, collectTestFiles } from '../../../verify-develop.mjs';
+import {
+  buildFinalSteps,
+  buildIterationSteps,
+  collectChangedPaths,
+  collectTestFiles,
+  isMainModule,
+  runDevelopVerification,
+} from '../../../verify-develop.mjs';
 import { projectScratchDir } from '../../../lib/scratch-dir.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url)) + '/..';
@@ -259,18 +266,31 @@ describe('collectTestFiles (#855 — untracked test files must not be skipped)',
   });
 });
 
-describe('diff-filter semantics (documentation assertions)', () => {
-  it('ACMR excludes deletions — deleted files do not appear in run list', () => {
-    // Simulate: git diff --diff-filter=ACMR returns no deleted files
-    // A deleted file would have status D; ACMR = Added|Copied|Modified|Renamed
-    const diffOutput =
-      'tests/integration/new-feature.test.mjs\ntests/integration/edited.test.mjs\n';
-    const files = parseTestFiles(diffOutput);
-    // Confirm: the list only contains added/modified files, never a deleted path
-    assert.ok(files.every((f) => !f.includes('deleted')));
-    assert.equal(files.length, 2);
+describe('collectChangedPaths (#1089 — deleted and renamed paths stay visible)', () => {
+  it('includes a deleted tracked source path', () => {
+    const dir = initRepo();
+    try {
+      commitFile(dir, 'lib/deleted.mjs', 'export const value = 1;\n');
+      rmSync(join(dir, 'lib/deleted.mjs'));
+      assert.deepEqual(collectChangedPaths({ cwd: dir }), ['lib/deleted.mjs']);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
   });
 
+  it('includes both the old and new sides of a tracked rename', () => {
+    const dir = initRepo();
+    try {
+      commitFile(dir, 'lib/old-name.mjs', 'export const value = 1;\n');
+      git(['mv', 'lib/old-name.mjs', 'lib/new-name.mjs'], dir);
+      assert.deepEqual(collectChangedPaths({ cwd: dir }), ['lib/new-name.mjs', 'lib/old-name.mjs']);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+});
+
+describe('empty-change semantics', () => {
   it('empty diff produces no-op — exit early without running node --test', () => {
     const files = parseTestFiles('');
     assert.equal(files.length, 0);
@@ -301,7 +321,7 @@ describe('main-module guard (#867 — import has no side effects)', () => {
         '--input-type=module',
         '-e',
         `import * as m from ${JSON.stringify(MODULE_URL)};` +
-          `console.log('IMPORT_OK', typeof m.buildLintFormatSteps);`,
+          `console.log('IMPORT_OK', typeof m.runDevelopVerification);`,
       ],
       { encoding: 'utf8', cwd: REPO_ROOT, timeout: 10000 }
     );
@@ -318,27 +338,167 @@ describe('main-module guard (#867 — import has no side effects)', () => {
   });
 });
 
-describe('buildLintFormatSteps (#529 — full lint in Develop)', () => {
-  const steps = buildLintFormatSteps();
-  const labels = steps.map((s) => s.label);
-
-  it('runs autofix steps before the full lint suite', () => {
-    // Order matters: lint:js --fix and format must land first so the tree is
-    // in its committed shape before the full suite verifies it.
-    assert.deepEqual(labels, ['npm run lint:js -- --fix', 'npm run format', 'npm run lint']);
+describe('stage-aware command plans (#1089)', () => {
+  it('iteration scopes autofix and format to changed paths', () => {
+    const steps = buildIterationSteps(['src/a.mjs', 'docs/a.md']);
+    assert.deepEqual(
+      steps.map(({ command, args }) => [command, ...args]),
+      [
+        ['npx', 'eslint', '--fix', 'src/a.mjs'],
+        ['npx', 'prettier', '--write', 'docs/a.md', 'src/a.mjs'],
+      ]
+    );
   });
 
-  it('includes a full `npm run lint` step (not just lint:js)', () => {
-    const full = steps.find((s) => s.args.join(' ') === 'run lint');
-    assert.ok(full, 'expected a step invoking `npm run lint`');
-    assert.equal(full.cmd, 'npm');
+  it('iteration never plans full lint or complete test lanes', () => {
+    const serialized = JSON.stringify(buildIterationSteps(['src/a.mjs']));
+    assert.doesNotMatch(serialized, /npm run lint/);
+    assert.doesNotMatch(serialized, /test:(?:unit|integration|slow)/);
   });
 
-  it('places the full lint AFTER both autofix steps', () => {
-    const fixIdx = labels.indexOf('npm run lint:js -- --fix');
-    const fmtIdx = labels.indexOf('npm run format');
-    const lintIdx = labels.indexOf('npm run lint');
-    assert.ok(fixIdx < lintIdx && fmtIdx < lintIdx);
+  it('finalization owns full lint and format-check exactly once', () => {
+    assert.deepEqual(
+      buildFinalSteps().map(({ classification, command, args }) => ({
+        classification,
+        command,
+        args,
+      })),
+      [
+        { classification: 'lint-full', command: 'npm', args: ['run', 'lint'] },
+        { classification: 'format-full', command: 'npm', args: ['run', 'format:check'] },
+      ]
+    );
+  });
+});
+
+describe('runDevelopVerification (#1089)', () => {
+  const fingerprint = {
+    commitSha: 'a'.repeat(40),
+    environment: {
+      node: process.version,
+      platform: `${process.platform}-${process.arch}`,
+      lockfileHash: `sha256:${'a'.repeat(64)}`,
+      configHashes: {},
+      sandbox: { kind: 'worktree', identity: '/repo', clean: true },
+    },
+  };
+
+  function baseDeps(overrides = {}) {
+    const calls = [];
+    return {
+      calls,
+      deps: {
+        collectChangedPaths: () => ['src/a.mjs'],
+        selectAffectedTests: () => ({
+          tests: ['tests/a.test.mjs'],
+          lanes: [],
+          reasons: [],
+          escalated: false,
+        }),
+        runCommand: (step) => {
+          calls.push(step);
+          return { exitCode: 0, durationMs: 10 };
+        },
+        getHeadSha: () => fingerprint.commitSha,
+        isClean: () => true,
+        buildFingerprint: () => fingerprint,
+        pathExists: () => true,
+        now: () => '2026-08-01T18:00:00.000Z',
+        ...overrides,
+      },
+    };
+  }
+
+  it('iteration runs scoped checks plus selected tests without any complete lane', () => {
+    const { calls, deps } = baseDeps();
+    const result = runDevelopVerification({ projectDir: '/repo', mode: 'iteration', deps });
+    assert.equal(result.ok, true);
+    assert.equal(result.mode, 'iteration');
+    assert.deepEqual(result.selection.tests, ['tests/a.test.mjs']);
+    assert.deepEqual(
+      calls.map(({ command, args }) => [command, ...args]),
+      [
+        ['npx', 'eslint', '--fix', 'src/a.mjs'],
+        ['npx', 'prettier', '--write', 'src/a.mjs'],
+        ['node', '--test', 'tests/a.test.mjs'],
+      ]
+    );
+    assert.doesNotMatch(JSON.stringify(calls), /test:(?:unit|integration|slow)/);
+  });
+
+  it('iteration excludes deleted and rename-old paths from fixers but keeps impact inputs', () => {
+    let selectedChangedPaths;
+    const { calls, deps } = baseDeps({
+      collectChangedPaths: () => ['lib/deleted.mjs', 'lib/new-name.mjs', 'lib/old-name.mjs'],
+      pathExists: (file) => file === 'lib/new-name.mjs',
+      selectAffectedTests: ({ changedPaths }) => {
+        selectedChangedPaths = changedPaths;
+        return { tests: ['tests/affected.test.mjs'], lanes: [], reasons: [], escalated: false };
+      },
+    });
+    const result = runDevelopVerification({ projectDir: '/repo', mode: 'iteration', deps });
+    assert.equal(result.ok, true);
+    assert.deepEqual(selectedChangedPaths, [
+      'lib/deleted.mjs',
+      'lib/new-name.mjs',
+      'lib/old-name.mjs',
+    ]);
+    assert.deepEqual(
+      calls.map(({ command, args }) => [command, ...args]),
+      [
+        ['npx', 'eslint', '--fix', 'lib/new-name.mjs'],
+        ['npx', 'prettier', '--write', 'lib/new-name.mjs'],
+        ['node', '--test', 'tests/affected.test.mjs'],
+      ]
+    );
+  });
+
+  it('finalization requires clean committed state and returns a receipt', () => {
+    const { calls, deps } = baseDeps();
+    const result = runDevelopVerification({
+      projectDir: '/repo',
+      mode: 'final',
+      issueNumber: 1089,
+      deps,
+    });
+    assert.equal(result.ok, true);
+    assert.equal(result.receipt.stage, 'develop-final');
+    assert.equal(result.receipt.commitSha, fingerprint.commitSha);
+    assert.deepEqual(
+      result.receipt.commands.map(({ classification }) => classification),
+      ['lint-full', 'format-full']
+    );
+    assert.deepEqual(
+      calls.map(({ classification }) => classification),
+      ['lint-full', 'format-full']
+    );
+  });
+
+  it('finalization refuses a dirty starting tree before spawning commands', () => {
+    const { calls, deps } = baseDeps({ isClean: () => false });
+    const result = runDevelopVerification({
+      projectDir: '/repo',
+      mode: 'final',
+      issueNumber: 1089,
+      deps,
+    });
+    assert.equal(result.ok, false);
+    assert.equal(result.reasons[0].code, 'final-tree-dirty');
+    assert.deepEqual(calls, []);
+  });
+
+  it('finalization refuses when a command changes tracked files', () => {
+    let cleanChecks = 0;
+    const { deps } = baseDeps({ isClean: () => cleanChecks++ === 0 });
+    const result = runDevelopVerification({
+      projectDir: '/repo',
+      mode: 'final',
+      issueNumber: 1089,
+      deps,
+    });
+    assert.equal(result.ok, false);
+    assert.equal(result.reasons.at(-1).code, 'final-tree-mutated');
+    assert.match(result.reasons.at(-1).message, /inspect, commit, and retry/);
   });
 });
 
@@ -366,10 +526,10 @@ describe('full lint covers spell/markdown gates (#529 multiset regression)', () 
     assert.match(pkg.scripts['lint:spell'], /cspell/);
   });
 
-  it('verify-develop runs the same full `npm run lint` that includes lint:spell', () => {
+  it('Develop finalization runs the same full `npm run lint` that includes lint:spell', () => {
     // Closes the multiset escape: a misspelling in a changed .mjs source file
     // is caught by cspell (lint:spell) during Develop, not deferred to Test.
-    const runsFullLint = buildLintFormatSteps().some((s) => s.args.join(' ') === 'run lint');
+    const runsFullLint = buildFinalSteps().some((s) => s.args.join(' ') === 'run lint');
     assert.ok(runsFullLint);
     assert.match(lintScript, /\blint:spell\b/);
   });

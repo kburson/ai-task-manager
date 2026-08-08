@@ -23,14 +23,6 @@ import { getProjectDir, projectTmpDir } from '../../paths.mjs';
 import { GH_API_TIMEOUT_MS } from '../process-timeouts.mjs';
 import { writeFileSync, unlinkSync } from 'node:fs';
 import path from 'node:path';
-import { isGovernedAuthorityError } from '../work-lease/governed-effect.mjs';
-
-function governedTimingOptions(ctx) {
-  return {
-    operation: ctx.governedOperation,
-    withGovernedEffect: ctx.withGovernedEffect,
-  };
-}
 
 // Testable seam (#628): the timeline emitters below resolve their gh-backed
 // helper modules through `ctx.deps`. Production assembles `ctx` without a
@@ -82,7 +74,6 @@ export async function emitPhasePairRows(ctx) {
     // its words stranded in the per-sid cursor and the completed row reads 0.
     // Injectable for tests (`ctx.deps.bankTail`); best-effort in production.
     const bankTail = (ctx.deps && ctx.deps.bankTail) || bankTranscriptTail;
-    await ctx.reverifyGovernedEffect?.();
     bankTail(getProjectDir());
 
     // #475 AC1 — every phase-pair row carries the carried-forward durable
@@ -113,13 +104,7 @@ export async function emitPhasePairRows(ctx) {
         wordMarker: _phaseMarker,
         description,
       });
-      await postTimingEvent({
-        issueNumber: issueArg,
-        repo: cfg.repo,
-        row,
-        timeoutMs: 3000,
-        ...governedTimingOptions(ctx),
-      });
+      await postTimingEvent({ issueNumber: issueArg, repo: cfg.repo, row, timeoutMs: 3000 });
     } else if (prev && PHASE_EVENTS[prev]?.complete && stateArg !== 'done') {
       // #540 — the move to `done` is the ONE transition where the
       // `<prev>:complete` row is NOT emitted here. `prev` is always `review`
@@ -157,13 +142,7 @@ export async function emitPhasePairRows(ctx) {
         deltaWords,
         wordMarker: _phaseMarker,
       });
-      await postTimingEvent({
-        issueNumber: issueArg,
-        repo: cfg.repo,
-        row,
-        timeoutMs: 3000,
-        ...governedTimingOptions(ctx),
-      });
+      await postTimingEvent({ issueNumber: issueArg, repo: cfg.repo, row, timeoutMs: 3000 });
     }
 
     // Second row: entry into the new state. Share the same `ts` so the
@@ -187,13 +166,7 @@ export async function emitPhasePairRows(ctx) {
         deltaWords: 0,
         wordMarker: _phaseMarker,
       });
-      await postTimingEvent({
-        issueNumber: issueArg,
-        repo: cfg.repo,
-        row,
-        timeoutMs: 3000,
-        ...governedTimingOptions(ctx),
-      });
+      await postTimingEvent({ issueNumber: issueArg, repo: cfg.repo, row, timeoutMs: 3000 });
     } else if (PHASE_EVENTS[stateArg]?.enter) {
       // `<next>:enter` derives from PHASE_EVENTS; honest 0/0 because the
       // paired emission shares ts with the completion row above — no
@@ -206,16 +179,9 @@ export async function emitPhasePairRows(ctx) {
         deltaWords: 0,
         wordMarker: _phaseMarker,
       });
-      await postTimingEvent({
-        issueNumber: issueArg,
-        repo: cfg.repo,
-        row,
-        timeoutMs: 3000,
-        ...governedTimingOptions(ctx),
-      });
+      await postTimingEvent({ issueNumber: issueArg, repo: cfg.repo, row, timeoutMs: 3000 });
     }
   } catch (err) {
-    if (isGovernedAuthorityError(err)) throw err;
     process.stderr.write(`[move-state] #${issueArg}: phase-pair emission failed: ${err.message}\n`);
   }
 }
@@ -243,34 +209,17 @@ export async function emitFullAutoReviewAudit(ctx) {
       projectTmpDir(getProjectDir()),
       `aitm-human-reviewer-${issueArg}-${Date.now()}.md`
     );
-    const listComments = async ({ repo, issueNumber }) => {
-      await ctx.reverifyGovernedEffect?.();
-      if (deps.listComments) return deps.listComments({ repo, issueNumber });
-      const { stdout } = await pexec(
-        'gh',
-        ['issue', 'view', String(issueNumber), '-R', repo, '--json', 'comments'],
-        { timeout: GH_API_TIMEOUT_MS }
-      );
-      const parsed = JSON.parse(stdout || '{}');
-      return Array.isArray(parsed.comments) ? parsed.comments : [];
-    };
-    const postComment = async ({ repo, issueNumber, body }) => {
-      await ctx.reverifyGovernedEffect?.();
-      if (deps.postComment) return deps.postComment({ repo, issueNumber, body });
-      return ctx.gh(['issue', 'comment', String(issueNumber), '-R', repo, '--body', body]);
-    };
     const result = await enforceFullAutoAudit({
       issueNumber: issueArg,
       repo: cfg.repo,
       body: currentBody,
       env: process.env,
       reviewAuthority,
-      postComment,
-      listComments,
+      postComment: deps.postComment,
+      listComments: deps.listComments,
       writeIssueBody: async ({ body }) => {
         writeFileSync(tmpForMarker, body, 'utf8');
         try {
-          await ctx.reverifyGovernedEffect?.();
           await ctx.gh(['issue', 'edit', issueArg, '-R', cfg.repo, '--body-file', tmpForMarker]);
         } finally {
           try {
@@ -297,7 +246,6 @@ export async function emitFullAutoReviewAudit(ctx) {
       );
     }
   } catch (err) {
-    if (isGovernedAuthorityError(err)) throw err;
     // surface, do not block — board move is committed
     process.stderr.write(
       `[human-reviewer-audit] #${issueArg}: enforcement failed: ${err.message}\n`
@@ -315,10 +263,8 @@ export async function emitOutOfBandAudit(ctx) {
   const auditMarker = `<!-- aitm-out-of-band-move: ${fromLabel}→${stateArg}:${outOfBandReason}:${ts} -->`;
   const auditBody = `⚠ **Out-of-band move-state** ${fromLabel} → ${stateArg} at ${ts}.\nReason: ${outOfBandReason}\n\n${auditMarker}`;
   try {
-    await ctx.reverifyGovernedEffect?.();
     await gh(['issue', 'comment', issueArg, '-R', cfg.repo, '--body', auditBody]);
-  } catch (error) {
-    if (isGovernedAuthorityError(error)) throw error;
+  } catch {
     /* best-effort */
   }
   try {
@@ -346,15 +292,8 @@ export async function emitOutOfBandAudit(ctx) {
       wordMarker: durableWordMarker(getProjectDir()),
       description: `${fromLabel}→${stateArg}: ${outOfBandReason}`,
     });
-    await postTimingEvent({
-      issueNumber: issueArg,
-      repo: cfg.repo,
-      row,
-      timeoutMs: 3000,
-      ...governedTimingOptions(ctx),
-    });
-  } catch (error) {
-    if (isGovernedAuthorityError(error)) throw error;
+    await postTimingEvent({ issueNumber: issueArg, repo: cfg.repo, row, timeoutMs: 3000 });
+  } catch {
     /* best-effort */
   }
 }

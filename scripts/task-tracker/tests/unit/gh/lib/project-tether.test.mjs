@@ -153,6 +153,31 @@ async function testMissingItemIsAddedAndVerifiedFromProjectSide() {
   assert.equal(calls.filter((c) => c.query.includes('addProjectV2ItemById')).length, 1);
 }
 
+async function testEstimateWritesCeilWithoutChangingOtherNumberFields() {
+  const { runGql, calls } = makeRunner({ projectItemOnAttempt: 1 });
+  await tetherIssueToProject({
+    cfg,
+    issueNumber: 21,
+    estimate: 3.633,
+    rank: 2.25,
+    runGql,
+    sleep: async () => {},
+  });
+
+  const estimateCall = calls.find(
+    (call) =>
+      call.query.includes('updateProjectV2ItemFieldValue') &&
+      call.variables.field === 'ESTIMATE_FIELD'
+  );
+  const rankCall = calls.find(
+    (call) =>
+      call.query.includes('updateProjectV2ItemFieldValue') &&
+      call.variables.field === 'SEQUENCE_FIELD'
+  );
+  assert.equal(estimateCall.variables.val, 4);
+  assert.equal(rankCall.variables.val, 2.25);
+}
+
 // #349 — the reverse lookup `repository.issue(N).projectItems` is authoritative.
 // An item it returns is NEVER a phantom: it is reused in place (fields written
 // to its id), never deleted, and the forward `ProjectV2.items` scan is not even
@@ -278,11 +303,16 @@ async function testRetryExhaustionMentionsProjectSideVerification() {
 
 async function testParentLinksAfterProjectVerification() {
   const { runGql, calls } = makeRunner({ projectItemOnAttempt: 1 });
+  const reconciliations = [];
   await tetherIssueToProject({
     cfg,
     issueNumber: 16,
     parentIssueNumber: 99,
     runGql,
+    reconcileEpicMetadata: async (input) => {
+      reconciliations.push(input);
+      return { status: 'reconciled' };
+    },
     sleep: async () => {},
   });
 
@@ -292,6 +322,10 @@ async function testParentLinksAfterProjectVerification() {
   const subIssueIndex = calls.findIndex((c) => c.query.includes('addSubIssue'));
   const projectVerifyIndex = calls.findIndex((c) => c.query.includes('... on ProjectV2'));
   assert.ok(subIssueIndex > projectVerifyIndex);
+  assert.deepEqual(
+    reconciliations.map(({ issueNumber, repo, forceEpic }) => ({ issueNumber, repo, forceEpic })),
+    [{ issueNumber: 99, repo: cfg.repo, forceEpic: true }]
+  );
 }
 
 async function testLooseLeafDoesNotLinkParent() {
@@ -385,6 +419,7 @@ function testBacklogMoveWarning() {
 
 await testExistingProjectSideItemIsReused();
 await testMissingItemIsAddedAndVerifiedFromProjectSide();
+await testEstimateWritesCeilWithoutChangingOtherNumberFields();
 await testProjectSideItemIsAuthoritativeAndReused();
 await testEventualConsistencyResolvesViaReverseLookup();
 await testRetryExhaustionMentionsProjectSideVerification();

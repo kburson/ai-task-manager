@@ -57,6 +57,13 @@ function makeCtx({ body = '', epicChildren = [] } = {}) {
     cfg: CFG,
     deps: {
       epicChildren: { fetchSiblings: async () => epicChildren },
+      // #1052 — the newly registered decomposition guard must receive the
+      // same offline board values through both parity paths.
+      decomposition: {
+        projectDir: process.cwd(),
+        loadProjectFieldDefs: () => [],
+        projectValuesForIssue: async () => ({ size: 'XS', estimate: 4 }),
+      },
       plannedEstimate: {
         listComments: async ({ issueNumber }) => [
           {
@@ -93,6 +100,13 @@ const APPROVED_BODY = [
   '<!-- aitm-entered-refine: 2026-06-07T05:30:00Z -->',
   '<!-- aitm-entered-plan: 2026-06-07T05:45:00Z -->',
   '<!-- aitm-plan-approved: 2026-06-07T06:00:00Z -->',
+  '',
+  '## Story Origin',
+  '- **kind**: code',
+  '',
+  '## Plan Metadata',
+  '- **size**: XS',
+  '- **estimate**: 2',
   '',
   '## Pickup Directive — MANDATORY, DO NOT SKIP',
   '> Follow: `.ai-task-manager/templates/pickup-directive.md`',

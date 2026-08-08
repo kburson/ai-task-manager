@@ -1,9 +1,9 @@
 #!/usr/bin/env node
 // INTERNAL — DO NOT INVOKE DIRECTLY, and not exposed through `aitm`.
-// Plumbing: invoked by the Claude Code and Codex hook runners, never by a human
-// or the AI. See bin/aitm-registry.mjs (INTERNAL map) for the rationale.
+// Plumbing: invoked only by the Claude Code hook runner, never by a human or
+// the AI. See bin/aitm-registry.mjs (INTERNAL map) for the rationale.
 //
-// #327 — PreToolUse source-edit gate for Edit / Write / NotebookEdit / apply_patch.
+// #327 — PreToolUse source-edit gate for Edit / Write / NotebookEdit.
 //
 // Reads the bound issue from `.ai-task-manager/task-tracker-state.json`,
 // fetches (or cache-reads) the issue's board state + deep-dive markers,
@@ -31,8 +31,6 @@ import { isChoreModeActive } from './lib/chore-mode.mjs';
 import { readDeepDiveSignals } from './lib/deep-dive.mjs';
 import { SCRATCH_REL_PREFIX, statePath as resolveStatePath } from './paths.mjs';
 import { classifyEdit, isAllowed, loadPolicy, DEFAULT_POLICY } from './activity-policy.mjs';
-import { resolveSourceToolTargets, SOURCE_EDIT_TOOLS } from './lib/source-tool-targets.mjs';
-import { createRuntimeGovernedEffectAdapter } from './lib/work-lease/governed-effect.mjs';
 
 const pexec = promisify(execFile);
 
@@ -52,6 +50,8 @@ const POST_DEVELOP_STATES = new Set(['test', 'review', 'done']);
 
 const DEEP_DIVE_POSTED_MARKER = 'aitm-deep-dive-posted';
 const DEEP_DIVE_COMPLETE_MARKER = 'aitm-deep-dive-complete';
+
+const GATED_TOOLS = new Set(['Edit', 'Write', 'NotebookEdit']);
 
 // Normalises a `file_path` from the tool payload into a project-relative
 // path. Absolute paths are made relative to `projectDir` when possible;
@@ -82,9 +82,8 @@ export function decideSourceEdit({
   hasPostedMarker,
   hasCompleteMarker,
   policy = DEFAULT_POLICY,
-  activityClass: suppliedActivityClass,
 }) {
-  if (!SOURCE_EDIT_TOOLS.has(toolName)) {
+  if (!GATED_TOOLS.has(toolName)) {
     return { decision: 'allow', reason: 'tool-not-gated' };
   }
 
@@ -141,7 +140,7 @@ export function decideSourceEdit({
   // lock is class-aware rather than a blanket freeze. Fail-closed: `unknown`
   // already sits in PRE_DEVELOP_STATES above, so an unresolvable state refuses.
   if (POST_DEVELOP_STATES.has(state)) {
-    const activityClass = suppliedActivityClass || classifyEdit(relPath, policy);
+    const activityClass = classifyEdit(relPath, policy);
     if (!isAllowed(state, activityClass)) {
       return {
         decision: 'block',
@@ -152,11 +151,13 @@ export function decideSourceEdit({
           `  Tool: ${toolName} (activity class: ${activityClass})\n` +
           `  A '${state}'-state ${activityClass} edit is exactly the out-of-band patch the gate forbids.\n` +
           `  Sanctioned remediation loop:\n` +
-          `    demote → fix → verify-develop → re-promote\n` +
+          `    demote → fix → iteration → commit → finalization → re-Test\n` +
           `    /task demote                 — return the issue to 'develop'\n` +
           `    <make the edit + fix>        — now permitted in 'develop'\n` +
-          `    node scripts/task-tracker/verify-develop.mjs\n` +
-          `    /task promote                — advance back through the states\n` +
+          `    node scripts/task-tracker/verify-develop.mjs --mode iteration\n` +
+          `    <commit the clean fix>        — finalization binds evidence to the new SHA\n` +
+          `    node scripts/task-tracker/verify-develop.mjs --mode final --issue <N>\n` +
+          `    /task test <N>                — produce one new Test pass before Review\n` +
           `  Escape hatch:\n` +
           `    chore-mode on "<reason>"     — bypass gate; commits must be \`chore: \``,
       };
@@ -304,8 +305,8 @@ export async function fetchIssueSignals(boundIssue, projectDir, deps = {}) {
 }
 
 // Resolves (state, markers) using the cache when warm; falls back to gh.
-export async function resolveIssueSignals(boundIssue, projectDir, deps = {}, options = {}) {
-  const cached = (deps.readCache || readCache)(projectDir, boundIssue);
+export async function resolveIssueSignals(boundIssue, projectDir, deps = {}) {
+  const cached = readCache(projectDir, boundIssue);
   if (cached) {
     return {
       state: cached.state,
@@ -314,10 +315,8 @@ export async function resolveIssueSignals(boundIssue, projectDir, deps = {}, opt
       source: 'cache',
     };
   }
-  const fresh = await (deps.fetchIssueSignals || fetchIssueSignals)(boundIssue, projectDir, deps);
-  if (options.persistCache !== false) {
-    (deps.writeCache || writeCache)(projectDir, { issue: boundIssue, ...fresh });
-  }
+  const fresh = await fetchIssueSignals(boundIssue, projectDir, deps);
+  writeCache(projectDir, { issue: boundIssue, ...fresh });
   return { ...fresh, source: 'fetch' };
 }
 
@@ -345,128 +344,46 @@ function findProjectDir(startDir) {
 
 export async function runHook(payload, deps = {}) {
   const toolName = payload?.tool_name;
-  if (!SOURCE_EDIT_TOOLS.has(toolName)) {
-    return { decision: 'allow', reason: 'tool-not-gated' };
-  }
+  if (!GATED_TOOLS.has(toolName)) return { decision: 'allow', reason: 'tool-not-gated' };
 
   const projectDir =
     'projectDir' in deps ? deps.projectDir : findProjectDir(payload?.cwd || process.cwd());
   if (!projectDir) return { decision: 'allow', reason: 'no-project-dir' };
 
-  const targetResolution = resolveSourceToolTargets(toolName, payload?.tool_input);
-  const filePaths = targetResolution.targets.length > 0 ? targetResolution.targets : [''];
+  const filePath =
+    payload?.tool_input?.file_path ||
+    payload?.tool_input?.notebook_path ||
+    payload?.tool_input?.path ||
+    '';
 
   const choreModeActive = (deps.isChoreModeActive || isChoreModeActive)(projectDir);
   const boundIssue = (deps.loadBoundIssue || loadBoundIssue)(projectDir);
 
-  // Resolve unconditional bypasses and the no-binding refusal before any
-  // remote read, cache write, or work-lease authority initialization.
-  const preliminary = filePaths.map((filePath) =>
-    decideSourceEdit({
-      toolName,
-      filePath,
-      projectDir,
-      boundIssue,
-      choreModeActive,
-      issueState: 'unknown',
-      hasPostedMarker: false,
-      hasCompleteMarker: false,
-    })
-  );
-  if (preliminary.every((decision) => decision.reason === 'chore-mode-bypass')) {
-    return preliminary[0];
-  }
-  if (preliminary.every((decision) => decision.reason === 'allowlisted-path')) {
-    return preliminary[0];
-  }
-  const noBinding = preliminary.find((decision) => decision.code === 'source-edit-no-bound-issue');
-  if (noBinding) return noBinding;
-
   let signals = { state: 'unknown', hasPostedMarker: false, hasCompleteMarker: false };
-  try {
-    signals = await (deps.resolveIssueSignals || resolveIssueSignals)(
-      boundIssue,
-      projectDir,
-      deps,
-      { persistCache: false }
-    );
-  } catch {
-    // Fetch failures fall through to the pure decide() which will refuse
-    // pre-develop states by default.
-  }
-
-  let policyDecisions;
-  try {
-    const policy = (deps.loadPolicy || loadPolicy)(projectDir);
-    policyDecisions = filePaths.map((filePath) => {
-      const relPath = normalizePath(filePath, projectDir);
-      const activityClass =
-        toolName === 'apply_patch' && !targetResolution.exact
-          ? 'WRITE_CODE'
-          : (deps.classifyEdit || classifyEdit)(relPath, policy);
-      return decideSourceEdit({
-        toolName,
-        filePath,
-        projectDir,
+  if (!choreModeActive && boundIssue) {
+    try {
+      signals = await (deps.resolveIssueSignals || resolveIssueSignals)(
         boundIssue,
-        choreModeActive,
-        issueState: signals.state,
-        hasPostedMarker: signals.hasPostedMarker,
-        hasCompleteMarker: signals.hasCompleteMarker,
-        policy,
-        activityClass,
-      });
-    });
-  } catch (error) {
-    return sourceEditFailure(error, 'source-edit-policy-failure');
+        projectDir,
+        deps
+      );
+    } catch {
+      // Fetch failures fall through to the pure decide() which will refuse
+      // pre-develop states by default.
+    }
   }
-  const policyRefusal = policyDecisions.find((decision) => decision.decision === 'block');
-  if (policyRefusal) return policyRefusal;
-  const policyDecision = policyDecisions[0];
 
-  try {
-    const withGovernedEffect = deps.withGovernedEffect
-      ? deps.withGovernedEffect
-      : createRuntimeGovernedEffectAdapter({
-          projectDir,
-          config: deps.config || JSON.parse(readFileSync(configPath(projectDir), 'utf8')),
-        });
-    return await withGovernedEffect(
-      {
-        issueId: boundIssue.replace(/^#/, ''),
-        operation: 'source-write',
-        heartbeat: true,
-      },
-      async () => {
-        // A cold fetch is intentionally not durable until the current fence is
-        // verified. A loser must leave even volatile cache bytes untouched.
-        if (signals.source === 'fetch') {
-          (deps.writeCache || writeCache)(projectDir, {
-            issue: boundIssue,
-            state: signals.state,
-            hasPostedMarker: signals.hasPostedMarker,
-            hasCompleteMarker: signals.hasCompleteMarker,
-          });
-        }
-        return policyDecision;
-      }
-    );
-  } catch (error) {
-    return sourceEditFailure(error, 'source-edit-authority-refused');
-  }
-}
-
-function sourceEditFailure(error, code) {
-  const authorityCode =
-    typeof error?.code === 'string' && error.code.trim() ? error.code.trim() : 'unknown';
-  const detail = error?.message ? `: ${error.message}` : '';
-  return {
-    decision: 'block',
-    code,
-    reason:
-      `[task-tracker] Source-edit refused: work-lease authority ${authorityCode}${detail}\n` +
-      `  No source write or source-edit cache mutation was authorized.`,
-  };
+  return decideSourceEdit({
+    toolName,
+    filePath,
+    projectDir,
+    boundIssue,
+    choreModeActive,
+    issueState: signals.state,
+    hasPostedMarker: signals.hasPostedMarker,
+    hasCompleteMarker: signals.hasCompleteMarker,
+    policy: (deps.loadPolicy || loadPolicy)(projectDir),
+  });
 }
 
 async function main() {
@@ -481,7 +398,8 @@ async function main() {
   try {
     result = await runHook(payload);
   } catch (err) {
-    result = sourceEditFailure(err, 'source-edit-gate-failure');
+    process.stderr.write(`[source-edit-gate] ${err.message}\n`);
+    process.exit(0);
   }
   if (result.decision === 'block') {
     process.stdout.write(JSON.stringify({ decision: 'block', reason: result.reason }));
@@ -489,21 +407,12 @@ async function main() {
   process.exit(0);
 }
 
-// Explicit installed-bootstrap seam. Dynamic import must remain side-effect
-// free for unit tests; guardBootstrapCommand invokes this callable exactly once.
-export const runGuardBootstrap = main;
-
 const isMain =
   import.meta.url === `file://${process.argv[1]}` ||
   process.argv[1]?.endsWith('source-edit-gate.mjs');
 if (isMain) {
-  runGuardBootstrap().catch((err) => {
-    process.stdout.write(
-      JSON.stringify({
-        decision: 'block',
-        reason: sourceEditFailure(err, 'source-edit-gate-failure').reason,
-      })
-    );
+  main().catch((err) => {
+    process.stderr.write(`[source-edit-gate] ${err.message}\n`);
     process.exit(0);
   });
 }

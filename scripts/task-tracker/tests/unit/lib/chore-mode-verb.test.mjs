@@ -12,10 +12,14 @@
 //   - buildLiveFleetRefusal shape
 
 import { strict as assert } from 'node:assert';
-import { test } from 'node:test';
-import { rmSync, writeFileSync, mkdirSync, readFileSync } from 'node:fs';
+import { after, before, beforeEach, test } from 'node:test';
+import { mkdtempSync, rmSync, writeFileSync, mkdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
-import { mkdtempProjectIsolated } from '../../../lib/scratch-dir.mjs';
+import {
+  createChoreModeFixture,
+  destroyChoreModeFixture,
+  resetChoreModeFixture,
+} from '../../fixtures/chore-mode/chore-mode-fixture.mjs';
 import {
   choreModeOn,
   choreModeOff,
@@ -25,6 +29,20 @@ import {
   formatStatus,
 } from '../../../verbs/chore-mode.mjs';
 import { readChoreMode } from '../../../lib/chore-mode.mjs';
+
+let featureFixture;
+
+before(() => {
+  featureFixture = createChoreModeFixture({ repository: { command: 'chore-mode' } });
+});
+beforeEach(() => resetChoreModeFixture(featureFixture));
+after(() => destroyChoreModeFixture(featureFixture));
+
+function createCaseRoot(prefix) {
+  const parent = path.join(featureFixture.root, '.tmp', 'cases');
+  mkdirSync(parent, { recursive: true });
+  return mkdtempSync(path.join(parent, prefix));
+}
 
 function statePath(root) {
   // #573: the global ledger lives under `.tmp/aitm/state/`.
@@ -94,7 +112,7 @@ test('formatStatus renders all fields', () => {
 });
 
 test('chore-mode on writes active=true with reason and previousIssue', async () => {
-  const root = mkdtempProjectIsolated('chore-on-');
+  const root = createCaseRoot('chore-on-');
   try {
     writeState(root, { active: '#999', lastActive: '#999', entryStartTs: null });
     const out = buf();
@@ -128,7 +146,7 @@ test('chore-mode on writes active=true with reason and previousIssue', async () 
 });
 
 test('chore-mode on refuses when fleet has live worktree-scoped agent', async () => {
-  const root = mkdtempProjectIsolated('chore-on-refuse-');
+  const root = createCaseRoot('chore-on-refuse-');
   try {
     writeState(root, { active: null, lastActive: null });
     const out = buf();
@@ -157,7 +175,7 @@ test('chore-mode on refuses when fleet has live worktree-scoped agent', async ()
 });
 
 test('chore-mode on is idempotent when already on', async () => {
-  const root = mkdtempProjectIsolated('chore-on-idem-');
+  const root = createCaseRoot('chore-on-idem-');
   try {
     writeState(root, {
       active: null,
@@ -190,7 +208,7 @@ test('chore-mode on is idempotent when already on', async () => {
 });
 
 test('chore-mode off clears active without --resume', async () => {
-  const root = mkdtempProjectIsolated('chore-off-');
+  const root = createCaseRoot('chore-off-');
   try {
     writeState(root, {
       active: null,
@@ -227,7 +245,7 @@ test('chore-mode off clears active without --resume', async () => {
 });
 
 test('chore-mode off --resume invokes verbStart with previous issue context', async () => {
-  const root = mkdtempProjectIsolated('chore-off-resume-');
+  const root = createCaseRoot('chore-off-resume-');
   try {
     writeState(root, {
       active: null,
@@ -263,7 +281,7 @@ test('chore-mode off --resume invokes verbStart with previous issue context', as
 });
 
 test('chore-mode off is idempotent when already off', async () => {
-  const root = mkdtempProjectIsolated('chore-off-idem-');
+  const root = createCaseRoot('chore-off-idem-');
   try {
     writeState(root, { active: null, lastActive: null });
     const out = buf();
@@ -281,7 +299,7 @@ test('chore-mode off is idempotent when already off', async () => {
 });
 
 test('chore-mode status reports off + defaults on fresh state', () => {
-  const root = mkdtempProjectIsolated('chore-status-');
+  const root = createCaseRoot('chore-status-');
   try {
     const out = buf();
     const ctx = { statePath: statePath(root), projectDir: root, rest: ['status'] };

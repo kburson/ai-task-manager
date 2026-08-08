@@ -18,7 +18,6 @@ import path from 'node:path';
 import { mkdtempSync, mkdirSync, writeFileSync, rmSync, chmodSync } from 'node:fs';
 
 import { verbCheck } from '../../../verbs/check.mjs';
-import { withTestGovernedEffect } from '../../helpers/governed-effect.mjs';
 import { projectScratchDir } from '../../../lib/scratch-dir.mjs';
 import { statePath as resolveStatePath } from '../../../paths.mjs';
 
@@ -146,7 +145,6 @@ async function runVerb(ctx) {
 const baseCtx = (over) => ({
   cfg: { repo: 'o/r' },
   projectDir: tmpRoot,
-  withGovernedEffect: withTestGovernedEffect,
   ...over,
 });
 

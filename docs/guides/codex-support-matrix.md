@@ -36,10 +36,8 @@ Current generated bootstrap state chain:
 The generated map names both generic and dedicated verbs: `/task promote #N`
 for one-step advancement, `/task refine #N ...` for Refine field entry,
 `/task plan #N` for Refine → Plan, `/task plan-approve #N` for the Plan gate,
-`/task test #N` for Develop → Test, `/task approve #N --human` for an actual
-human Review approval, and `/task close #N` for Review → Done. Approval is
-current only when it binds the latest Review epoch's passing proof to the
-persisted Test SHA with no later invalidation.
+`/task test #N` for Develop → Test, `/task approve #N` for human Review
+approval, and `/task close #N` for Review → Done.
 
 ## Enforcement Parity
 

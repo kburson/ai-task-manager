@@ -8,7 +8,10 @@ import {
   applyRationaleMarker,
   runRefine,
 } from '../../../verbs/refine.mjs';
-import { parseRationaleMarker } from '../../../lib/apply-refinement-estimate.mjs';
+import {
+  parseRationaleMarker,
+  buildRefinementCommentBody,
+} from '../../../lib/apply-refinement-estimate.mjs';
 
 // ---------------------------------------------------------------------------
 // parseArgs
@@ -260,6 +263,50 @@ import { parseRationaleMarker } from '../../../lib/apply-refinement-estimate.mjs
   assert.deepEqual(calls.promote, ['133']);
 
   console.log('PASS: runRefine happy path — tether + body marker + promote');
+}
+
+// ---------------------------------------------------------------------------
+// runRefine — tether failure surfaces (does not call promote)
+// ---------------------------------------------------------------------------
+{
+  const calls = { tether: null, body: null };
+  const result = await runRefine({
+    args: {
+      issueNumber: 1098,
+      size: 'S',
+      estimate: '3.13',
+      priority: 'p1',
+      reason: 'half-hour scheduling increment',
+    },
+    cfg: { repo: 'owner/repo', projectId: 'PVT_FAKE' },
+    deps: {
+      assertBound: () => {},
+      tetherIssueToProject: async (opts) => {
+        calls.tether = opts;
+      },
+      fetchBody: async () => '## Scope\n\nNormalize it.\n',
+      mutateBody: async ({ mutate }) => {
+        calls.body = mutate('## Scope\n\nNormalize it.\n');
+        return { status: 'ok' };
+      },
+      verbPromote: async () => {},
+    },
+  });
+
+  assert.equal(result.estimate, 3.5);
+  assert.equal(calls.tether.estimate, 3.5);
+  assert.match(calls.body, /"estimate":"3\.5"/);
+  assert.match(calls.body, /"estimate":3\.5/);
+
+  const comment = buildRefinementCommentBody({
+    issueNumber: 1098,
+    size: 'S',
+    estimate: 3.13,
+    priority: 'P1',
+    rationale: { rationale: 'half-hour scheduling increment' },
+  });
+  assert.match(comment, /\| Estimate \| 3\.5h \|/);
+  console.log('PASS: Refine converges off-grid input on the half-hour ceiling');
 }
 
 // ---------------------------------------------------------------------------

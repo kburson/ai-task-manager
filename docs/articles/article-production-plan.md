@@ -106,14 +106,16 @@ Use generated or sourced images sparingly for:
 - metaphorical opener images,
 - social preview cards.
 
-Visual tone:
+Visual tone (updated to match the delivered banner set):
 
-- restrained,
-- technical,
-- clean,
-- high contrast,
-- no stock-photo cliches,
-- no decorative gradients as the main asset.
+- illustrated editorial style, not photographic,
+- dark navy/charcoal base with electric-blue and amber accent lighting,
+- cinematic, high-contrast, single dramatic light source,
+- recurring control-desk + streaming-code-river motif: a human operator at a workstation with branching data/code paths flowing outward to a fleet of translucent, stylized agent silhouettes,
+- no stock-photo cliches, no vendor logos, no literal glowing brains,
+- diagrams (Mermaid) stay restrained and technical as originally planned — the tone shift above applies to the header/banner illustrations only, not the in-body diagrams.
+
+This replaces the original "restrained, technical, clean, no decorative gradients" direction, which described a minimal-diagram-only visual system. The series shipped with full illustrated cinematic banners instead (one per article, `assets/article-headers/article-0N-header.png`), alongside the first-person conversational voice adopted for the prose. See [series-visual-system.md](series-visual-system.md) for the fuller visual language writeup, which has the same update.
 
 ## Diagram Inventory
 

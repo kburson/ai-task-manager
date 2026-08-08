@@ -1,17 +1,16 @@
 // cspell:ignore optout optouts Optouts
 import { hasVerifiedDeclaration, hasExecutionProof } from './proof-marker.mjs';
-import { derivePersistedReviewAuthority } from './review-authority.mjs';
 
 // Lifecycle DoD parser and ticker (#138).
 //
-// The Functional vs Lifecycle DoD split (#139 will template this) defines a
-// `#### Lifecycle (auto-ticked at Review/Close)` subsection under
-// `## ... Definition of Done` whose checkbox items are NOT user-verified —
-// they are side effects of the close verb itself. This module:
+// The phase-owned DoD split defines canonical Lifecycle (Review) and
+// Housekeeping (Close) subsections under `## ... Definition of Done`. Their
+// checkbox items are NOT user-verified — they are side effects of the owning
+// verb. This module:
 //
-//   1. Locates the Lifecycle subsection by heading.
+//   1. Locates canonical phase subsections with a legacy combined fallback.
 //   2. Maps canonical keys → human-readable labels.
-//   3. Provides idempotent `[ ] → [x]` ticking by key.
+//   3. Provides idempotent `[ ] → [x]` ticking routed by key ownership.
 //   4. Exposes the set of label strings so `uncheckedPreCloseCheckboxes`
 //      can exclude them from its blockers list.
 
@@ -21,6 +20,9 @@ export const LIFECYCLE_LABELS = {
   'story-closed': 'Story closed and moved to Done',
   'timing-flushed': 'Timing data flushed to issue',
 };
+
+export const REVIEW_OWNED_LIFECYCLE_KEYS = new Set(['agent-review-passed', 'passed-final-review']);
+export const HOUSEKEEPING_KEYS = new Set(['story-closed', 'timing-flushed']);
 
 // Back-compat label aliases (#809). Bodies authored before the two-checkbox
 // split carried a single `Passed final human review` line for the
@@ -76,10 +78,7 @@ export function parseLifecycleOptouts(body) {
 //   'missing' — line present but unticked; close-gate must block when required
 //
 // Returns one entry per LIFECYCLE_LABELS key (stable order).
-export function lifecycleSatisfaction(
-  body,
-  { fullAutoApproved = false, reviewAuthority = derivePersistedReviewAuthority(body) } = {}
-) {
+export function lifecycleSatisfaction(body, { fullAutoApproved = false } = {}) {
   const items = parseLifecycleItems(body);
   const byKey = new Map(items.filter((it) => it.key).map((it) => [it.key, it]));
   const optouts = parseLifecycleOptouts(body);
@@ -88,16 +87,7 @@ export function lifecycleSatisfaction(
     const label = LIFECYCLE_LABELS[key];
     const it = byKey.get(key);
     let status;
-    const currentFullAuto =
-      key === 'passed-final-review' &&
-      reviewAuthority?.status === 'current' &&
-      reviewAuthority.approval?.provenance === 'full-auto';
-    const staleAuthority =
-      key === 'passed-final-review' &&
-      ['stale', 'malformed', 'ambiguous'].includes(reviewAuthority?.status);
-    if (currentFullAuto) status = 'audited';
-    else if (staleAuthority) status = optouts.has(key) ? 'optout' : 'missing';
-    else if (it && it.checked) status = 'ticked';
+    if (it && it.checked) status = 'ticked';
     else if (key === 'passed-final-review' && fullAutoApproved) status = 'audited';
     else if (optouts.has(key)) status = 'optout';
     else if (!it) status = 'absent';
@@ -108,9 +98,12 @@ export function lifecycleSatisfaction(
 }
 
 // #1036 — "Lifecycle" is common prose-heading vocabulary in deep dives.
-// Match the owned DoD subsection exactly so a preceding heading such as
-// "Lifecycle and operational boundaries" cannot shadow it.
-const LIFECYCLE_HEADING_RE = /^#{3,4}\s+Lifecycle\s+\(auto-ticked at Review\/Close\)\s*$/im;
+// Match owned DoD subsections exactly so descriptive headings cannot shadow
+// them. #982 splits the canonical Review and Close ownership while retaining
+// the combined heading as a legacy fallback.
+const CANONICAL_LIFECYCLE_HEADING_RE = /^#{3,4}\s+Lifecycle\s+\(verified at Review\)\s*$/im;
+const HOUSEKEEPING_HEADING_RE = /^#{3,4}\s+Housekeeping\s+\(verified at Close\)\s*$/im;
+const LEGACY_LIFECYCLE_HEADING_RE = /^#{3,4}\s+Lifecycle\s+\(auto-ticked at Review\/Close\)\s*$/im;
 const FUNCTIONAL_HEADING_RE = /^#{3,4}\s+Functional\b[^\n]*$/im;
 // Section ends at the next heading of equal-or-shallower depth, the field-DB
 // block, or end-of-body — whichever comes first.
@@ -134,7 +127,22 @@ function locateBy(headingRe, body) {
 }
 
 export function locateLifecycleSection(body) {
-  return locateBy(LIFECYCLE_HEADING_RE, body);
+  return (
+    locateBy(CANONICAL_LIFECYCLE_HEADING_RE, body) ?? locateBy(LEGACY_LIFECYCLE_HEADING_RE, body)
+  );
+}
+
+export function locateHousekeepingSection(body) {
+  return locateBy(HOUSEKEEPING_HEADING_RE, body);
+}
+
+function locateSectionForKey(body, key) {
+  const lifecycle = locateBy(CANONICAL_LIFECYCLE_HEADING_RE, body);
+  const housekeeping = locateHousekeepingSection(body);
+  if (lifecycle || housekeeping) {
+    return HOUSEKEEPING_KEYS.has(key) ? housekeeping : lifecycle;
+  }
+  return locateBy(LEGACY_LIFECYCLE_HEADING_RE, body);
 }
 
 export function locateFunctionalSection(body) {
@@ -153,9 +161,7 @@ export function parseFunctionalItems(body) {
   return items;
 }
 
-export function parseLifecycleItems(body) {
-  const loc = locateLifecycleSection(body);
-  if (!loc) return [];
+function parseOwnedItems(loc) {
   const items = [];
   const re = /^- \[([ x])\]\s+(.+)$/gm;
   let m;
@@ -171,6 +177,20 @@ export function parseLifecycleItems(body) {
     items.push({ key, label, checked });
   }
   return items;
+}
+
+export function parseLifecycleItems(body) {
+  const canonical = [
+    locateBy(CANONICAL_LIFECYCLE_HEADING_RE, body),
+    locateHousekeepingSection(body),
+  ].filter(Boolean);
+  if (canonical.length > 0) {
+    return canonical
+      .sort((left, right) => left.start - right.start)
+      .flatMap((loc) => parseOwnedItems(loc));
+  }
+  const legacy = locateBy(LEGACY_LIFECYCLE_HEADING_RE, body);
+  return legacy ? parseOwnedItems(legacy) : [];
 }
 
 // Inspect the structural state of a lifecycle item without mutating the body.
@@ -189,7 +209,7 @@ export function lifecycleItemState({ body, key } = {}) {
   if (!(key in LIFECYCLE_LABELS)) {
     throw new Error(`lifecycleItemState: unknown lifecycle key "${key}"`);
   }
-  const loc = locateLifecycleSection(body);
+  const loc = locateSectionForKey(body, key);
   if (!loc) return { sectionPresent: false, labelFound: false, alreadyTicked: false };
   const items = parseLifecycleItems(body);
   const match = items.find((it) => it.key === key);
@@ -212,7 +232,7 @@ function _toggleLifecycleItem(body, key, tick) {
   if (!(key in LIFECYCLE_LABELS)) {
     throw new Error(`${tick ? 'tick' : 'untick'}LifecycleItem: unknown lifecycle key "${key}"`);
   }
-  const loc = locateLifecycleSection(body);
+  const loc = locateSectionForKey(body, key);
   if (!loc) return String(body || '');
   const fromChar = tick ? ' ' : 'x';
   const toChar = tick ? 'x' : ' ';
@@ -240,7 +260,6 @@ function _toggleLifecycleItem(body, key, tick) {
 // test to catch pre-ticks done by agents before the responsible verb fired.
 // Returns { body, regressions: [{ key, label }] }.
 export function detectLifecyclePretick(body) {
-  const authority = derivePersistedReviewAuthority(body);
   const items = parseLifecycleItems(body);
   const regressions = [];
   let next = String(body || '');
@@ -250,7 +269,7 @@ export function detectLifecyclePretick(body) {
       next = untickLifecycleItem(next, it.key);
     }
   }
-  return { body: next, regressions, authority };
+  return { body: next, regressions };
 }
 
 // #231 — Detect any Functional DoD items that carry an `aitm-verified cmd="..."`

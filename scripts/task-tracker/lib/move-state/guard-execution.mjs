@@ -25,7 +25,6 @@ import '../guard-bootstrap.mjs';
 import { decideBodyFetchFailure } from '../body-fetch-gate.mjs';
 import { parseIssueFieldDb } from '../../issue-field-db.mjs';
 import { durableWordMarker } from '../../state.mjs';
-import { isGovernedAuthorityError } from '../work-lease/governed-effect.mjs';
 import { getProjectDir } from '../../paths.mjs';
 import { detectLinkedWorktree, makeCloseTrunkRefResolver } from '../full-auto-merge-execute.mjs';
 import { refreshPreRefineContiguity } from './contiguity-refresh.mjs';
@@ -61,6 +60,7 @@ export async function runGuardExecution(ctx) {
     formatSummary,
     resolveWorkspaceForIssue,
     backlogMoveWarning,
+    lifecycleEvidence,
   } = ctx;
 
   // Gate 1: dirty-workspace warning on move to review. Non-blocking — move still proceeds.
@@ -153,6 +153,7 @@ export async function runGuardExecution(ctx) {
       fetchBlockerState,
       cfg,
       deps,
+      lifecycleEvidence,
     });
 
     // #1017 — a just-created issue can briefly return a stale body snapshot
@@ -222,16 +223,8 @@ export async function runGuardExecution(ctx) {
             wordMarker: durableWordMarker(getProjectDir()),
             description: `→ ${stateArg}: ${ruleNames.join(', ')}`,
           });
-          await postTimingEvent({
-            issueNumber: issueArg,
-            repo: cfg.repo,
-            row,
-            timeoutMs: 3000,
-            operation: ctx.governedOperation,
-            withGovernedEffect: ctx.withGovernedEffect,
-          });
-        } catch (error) {
-          if (isGovernedAuthorityError(error)) throw error;
+          await postTimingEvent({ issueNumber: issueArg, repo: cfg.repo, row, timeoutMs: 3000 });
+        } catch {
           /* fire-and-forget */
         }
       }
@@ -287,11 +280,8 @@ export async function runGuardExecution(ctx) {
             wordMarker: durableWordMarker(getProjectDir()),
             description: `WARN: lifecycle-incomplete (lifecycleCheckboxesRequired=false): ${missLabels}`,
           }),
-          operation: ctx.governedOperation,
-          withGovernedEffect: ctx.withGovernedEffect,
         });
-      } catch (error) {
-        if (isGovernedAuthorityError(error)) throw error;
+      } catch {
         /* fire-and-forget */
       }
     }

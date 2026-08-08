@@ -47,9 +47,7 @@ import { emitSelfDoc, wantsHelp } from '../scripts/lib/self-doc.mjs';
 import {
   GUARD_NAMES,
   guardBootstrapCommand,
-  legacyGuardBootstrapCommand,
   hookBootstrapCommand,
-  legacyHookBootstrapCommand,
 } from '../scripts/task-tracker/lib/guard-entrypoint.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -175,7 +173,7 @@ const MEMORY_INDEX_HOOK_CMD = hookBootstrapCommand('scripts/task-tracker/hooks/m
 const SEED_CHECK_HOOK_CMD = hookBootstrapCommand('scripts/task-tracker/ensure-worktree-seeded.mjs');
 // Bare-path forms shipped before #869 — stripped and re-registered as shims so
 // re-running the installer migrates old settings idempotently (mirrors #792).
-const LEGACY_BARE_HOOK_COMMANDS = [
+const LEGACY_HOOK_COMMANDS = [
   'node node_modules/ai-task-manager/scripts/task-tracker/hook-handler.mjs',
   'node node_modules/ai-task-manager/scripts/task-tracker/commit-trail-handler.mjs',
   'node node_modules/ai-task-manager/scripts/task-tracker/hooks/on-stop.mjs',
@@ -185,18 +183,6 @@ const LEGACY_BARE_HOOK_COMMANDS = [
   'node node_modules/ai-task-manager/scripts/task-tracker/hooks/stop-audit-pause-resume.mjs',
   'node node_modules/ai-task-manager/scripts/task-tracker/hooks/memory-index.mjs',
 ];
-const LEGACY_UNSAFE_HOOK_COMMANDS = [
-  legacyHookBootstrapCommand('scripts/task-tracker/ensure-worktree-seeded.mjs'),
-  legacyHookBootstrapCommand('scripts/task-tracker/hook-handler.mjs'),
-  legacyHookBootstrapCommand('scripts/task-tracker/commit-trail-handler.mjs'),
-  legacyHookBootstrapCommand('scripts/task-tracker/hooks/on-stop.mjs'),
-  legacyHookBootstrapCommand('scripts/task-tracker/hooks/on-user-prompt.mjs'),
-  legacyHookBootstrapCommand('scripts/task-tracker/hooks/on-ask.mjs', 'pause'),
-  legacyHookBootstrapCommand('scripts/task-tracker/hooks/on-ask.mjs', 'resume'),
-  legacyHookBootstrapCommand('scripts/task-tracker/hooks/stop-audit-pause-resume.mjs'),
-  legacyHookBootstrapCommand('scripts/task-tracker/hooks/memory-index.mjs'),
-];
-const LEGACY_HOOK_COMMANDS = [...LEGACY_BARE_HOOK_COMMANDS, ...LEGACY_UNSAFE_HOOK_COMMANDS];
 const LEGACY_TIMING_HOOK_COMMANDS = [
   '.claude/hooks/task-tracker.sh',
   'node node_modules/ai-task-manager/hooks/hook-handler.mjs',
@@ -207,10 +193,9 @@ const LEGACY_COMMIT_TRAIL_HOOK_COMMANDS = ['.claude/hooks/commit-trail.sh'];
 // runs). `patchSettingsJson` removes them and re-registers the `node -e`
 // existence-pick form (`guardBootstrapCommand`) so re-running the installer
 // migrates old settings idempotently instead of leaving both entries.
-const LEGACY_GUARD_HOOK_COMMANDS = GUARD_NAMES.flatMap((name) => [
-  `node node_modules/ai-task-manager/scripts/task-tracker/${name}.mjs`,
-  legacyGuardBootstrapCommand(name),
-]);
+const LEGACY_GUARD_HOOK_COMMANDS = GUARD_NAMES.map(
+  (name) => `node node_modules/ai-task-manager/scripts/task-tracker/${name}.mjs`
+);
 
 function hookEntryHasCommand(entry, command) {
   return (
@@ -448,21 +433,9 @@ export function patchCodexHooksJson(hooksPath, { memoryIndexHook = false } = {})
 
   if (!config.hooks) config.hooks = {};
 
-  // Remove both pre-shim bare hooks and the shell-unsafe inline serialization
-  // shipped before #1049. Re-registration below installs exactly one safe form.
-  for (const event of Object.keys(config.hooks)) {
-    if (Array.isArray(config.hooks[event])) {
-      config.hooks[event] = removeHookCommands(config.hooks[event], LEGACY_HOOK_COMMANDS);
-    }
-  }
-
   function add(event, matcher, command, extra = {}) {
     if (!Array.isArray(config.hooks[event])) config.hooks[event] = [];
-    const normalizedMatcher = matcher ?? null;
-    const already = config.hooks[event].some(
-      (entry) =>
-        (entry?.matcher ?? null) === normalizedMatcher && hookEntryHasCommand(entry, command)
-    );
+    const already = config.hooks[event].some((entry) => hookEntryHasCommand(entry, command));
     if (already) return;
     const entry = {
       ...extra,
@@ -529,14 +502,12 @@ function patchGitignore(targetDir) {
     '.claude/settings.local.json',
     '.claude/scheduled_tasks.lock',
     '.tmp/',
-    '/.db/',
   ];
   const COMMENT = '# ai-task-manager — local edit backups (do not commit)';
   let content = existsSync(gitignorePath) ? readFileSync(gitignorePath, 'utf8') : '';
   let changed = false;
   for (const entry of entries) {
-    const lines = content.split(/\r?\n/);
-    if (!lines.includes(entry)) {
+    if (!content.includes(entry)) {
       if (!changed && !content.includes(COMMENT)) {
         content += (content.endsWith('\n') || content === '' ? '' : '\n') + '\n' + COMMENT + '\n';
       }

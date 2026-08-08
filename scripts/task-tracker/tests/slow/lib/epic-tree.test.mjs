@@ -42,16 +42,6 @@ const GRAPH = {
   920: { parent: 905, children: [] },
 };
 const graph = (n) => GRAPH[n] ?? { parent: null, children: [] };
-const withGovernedEffect = async (_options, callback) =>
-  callback({
-    leaseContext: {
-      projectId: 'PVT_test',
-      leaseId: 'lease-epic-tree',
-      fencingToken: '1',
-      worktreeId: 'wt-epic-tree',
-    },
-    reverify: async () => {},
-  });
 
 // Commit a file on the child's worktree so merge-back has something to fast-forward.
 function commitInWorktree(wtPath, file, body) {
@@ -65,35 +55,28 @@ function siblingPath(repo, suffix) {
   return path.join(path.dirname(repo), `${path.basename(repo)}-${suffix}`);
 }
 
-test('end-to-end: cut epic, cut two children, merge both back linearly', async () => {
+test('end-to-end: cut epic, cut two children, merge both back linearly', () => {
   const repo = mkdtempProjectIsolated('epic-tree-happy-', 'test');
   const git = gitFor(repo);
-  const deps = { graph, git, trunk: 'trunk', withGovernedEffect };
+  const deps = { graph, git, trunk: 'trunk' };
 
   // Epic forks from trunk; at fork the epic head equals trunk.
-  const { branch: epic, base } = await cutEpicBranch({ issue: 905, deps });
+  const { branch: epic, base } = cutEpicBranch({ issue: 905, deps });
   assert.equal(epic, 'feature/epic/905');
   assert.equal(base, 'trunk');
   assert.equal(git(['rev-parse', 'feature/epic/905']), git(['rev-parse', 'trunk']));
 
   // Child 910: cut from the epic head, add a commit, merge back.
   const wt910 = siblingPath(repo, 'wt910');
-  const cut910 = await cutChildWorktree({ issue: 910, path: wt910, deps });
+  const cut910 = cutChildWorktree({ issue: 910, path: wt910, deps });
   assert.equal(cut910.branch, 'feature/child/910');
   assert.equal(cut910.base, 'feature/epic/905');
   commitInWorktree(wt910, 'a910.txt', 'from 910\n');
 
-  const r910 = await mergeBack({
+  const r910 = mergeBack({
     child: 910,
     path: wt910,
-    deps: {
-      graph,
-      git,
-      worktreeGit: gitFor(wt910),
-      runTests: () => true,
-      trunk: 'trunk',
-      withGovernedEffect,
-    },
+    deps: { graph, git, worktreeGit: gitFor(wt910), runTests: () => true, trunk: 'trunk' },
   });
   assert.equal(r910.merged, true);
   // Epic absorbed the child commit; the child branch and worktree are gone.
@@ -104,19 +87,12 @@ test('end-to-end: cut epic, cut two children, merge both back linearly', async (
 
   // Child 911: same, on top of the now-advanced epic.
   const wt911 = siblingPath(repo, 'wt911');
-  await cutChildWorktree({ issue: 911, path: wt911, deps });
+  cutChildWorktree({ issue: 911, path: wt911, deps });
   commitInWorktree(wt911, 'b911.txt', 'from 911\n');
-  await mergeBack({
+  mergeBack({
     child: 911,
     path: wt911,
-    deps: {
-      graph,
-      git,
-      worktreeGit: gitFor(wt911),
-      runTests: () => true,
-      trunk: 'trunk',
-      withGovernedEffect,
-    },
+    deps: { graph, git, worktreeGit: gitFor(wt911), runTests: () => true, trunk: 'trunk' },
   });
   assert.ok(git(['show', 'feature/epic/905:b911.txt']).includes('from 911'));
 
@@ -127,29 +103,22 @@ test('end-to-end: cut epic, cut two children, merge both back linearly', async (
   assert.ok(log.includes('a910.txt') && log.includes('b911.txt'));
 });
 
-test('end-to-end: merge-back refuses when the child tests fail (no merge, no cleanup)', async () => {
+test('end-to-end: merge-back refuses when the child tests fail (no merge, no cleanup)', () => {
   const repo = mkdtempProjectIsolated('epic-tree-test-fail-', 'test');
   const git = gitFor(repo);
-  const deps = { graph, git, trunk: 'trunk', withGovernedEffect };
-  await cutEpicBranch({ issue: 905, deps });
+  const deps = { graph, git, trunk: 'trunk' };
+  cutEpicBranch({ issue: 905, deps });
   const wt = siblingPath(repo, 'wt910');
-  await cutChildWorktree({ issue: 910, path: wt, deps });
+  cutChildWorktree({ issue: 910, path: wt, deps });
   commitInWorktree(wt, 'a910.txt', 'from 910\n');
 
   const epicHeadBefore = git(['rev-parse', 'feature/epic/905']);
-  await assert.rejects(
+  assert.throws(
     () =>
       mergeBack({
         child: 910,
         path: wt,
-        deps: {
-          graph,
-          git,
-          worktreeGit: gitFor(wt),
-          runTests: () => false,
-          trunk: 'trunk',
-          withGovernedEffect,
-        },
+        deps: { graph, git, worktreeGit: gitFor(wt), runTests: () => false, trunk: 'trunk' },
       }),
     /test/i
   );
@@ -158,32 +127,25 @@ test('end-to-end: merge-back refuses when the child tests fail (no merge, no cle
   assert.ok(existsSync(wt), 'worktree preserved on refusal');
 });
 
-test('end-to-end guard: correct child passes, #859 wrong-base child is refused', async () => {
+test('end-to-end guard: correct child passes, #859 wrong-base child is refused', () => {
   const repo = mkdtempProjectIsolated('epic-tree-guard-', 'test');
   const git = gitFor(repo);
-  const deps = { graph, git, trunk: 'trunk', withGovernedEffect };
-  await cutEpicBranch({ issue: 905, deps });
+  const deps = { graph, git, trunk: 'trunk' };
+  cutEpicBranch({ issue: 905, deps });
 
   // Advance the epic with a real child so its head diverges from trunk.
   const wt910 = siblingPath(repo, 'wt910');
-  await cutChildWorktree({ issue: 910, path: wt910, deps });
+  cutChildWorktree({ issue: 910, path: wt910, deps });
   commitInWorktree(wt910, 'a910.txt', 'from 910\n');
-  await mergeBack({
+  mergeBack({
     child: 910,
     path: wt910,
-    deps: {
-      graph,
-      git,
-      worktreeGit: gitFor(wt910),
-      runTests: () => true,
-      trunk: 'trunk',
-      withGovernedEffect,
-    },
+    deps: { graph, git, worktreeGit: gitFor(wt910), runTests: () => true, trunk: 'trunk' },
   });
 
   // A CORRECT child cut from the (advanced) epic head passes the invariant.
   const wt911 = siblingPath(repo, 'wt911');
-  await cutChildWorktree({ issue: 911, path: wt911, deps });
+  cutChildWorktree({ issue: 911, path: wt911, deps });
   const okEval = computeEvaluation('feature/child/911', { graph, git });
   assert.equal(okEval.pass, true);
 

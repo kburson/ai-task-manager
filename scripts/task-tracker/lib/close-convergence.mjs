@@ -15,9 +15,6 @@
 //   boardState  — board Status slug ('done' | other | null/unknown)
 //   issueClosed — GitHub issue state (true=CLOSED | false=OPEN | null=unknown)
 //   recoveryPhase — durable unauthorized-close phase, when present
-//   body — current issue body, required by runtime callers for an open issue
-//   reviewGateBypassed — explicit policy bypass; only this bypass may skip
-//                        current Review authority during convergence
 //
 //   → { action: 'aberration', resume: true } pending durable recovery; resume it
 //   → { action: 'noop',        boardDrift }  issue verifiably CLOSED; boardDrift
@@ -36,8 +33,6 @@
 // rows. There was no sanctioned way to replay the full atomic close from Done.
 // `repair` (set by `/task close --repair <N>`) forces `proceed` BEFORE the
 // noop/close-issue branches so the full pipeline runs regardless of board/issue
-
-import { derivePersistedReviewAuthority } from './review-authority.mjs';
 // state. The pipeline is safe to replay: `gh issue close` no-ops on an
 // already-closed issue and `runMoveStateDone` Done→Done is swallowed as benign
 // (#385). When `repair` is falsy the noop/close-issue branches are unchanged.
@@ -49,8 +44,6 @@ export function decideCloseConvergence(input = {}) {
     nonLifecycleBoxesAllTicked,
     recoveryPhase,
     repair,
-    body,
-    reviewGateBypassed = false,
   } = input;
   if (repair) return { action: 'proceed', repair: true };
   if (['intent', 'reopened', 'review', 'timing'].includes(recoveryPhase)) {
@@ -73,13 +66,7 @@ export function decideCloseConvergence(input = {}) {
     if (boardDone) return { action: 'noop', boardDrift: false };
     return nonLifecycleBoxesAllTicked ? { action: 'finalize' } : { action: 'aberration' };
   }
-  if (issueClosed === false && boardDone) {
-    if (typeof body === 'string' && !reviewGateBypassed) {
-      const authority = derivePersistedReviewAuthority(body);
-      if (authority.status !== 'current') return { action: 'authority-refused', authority };
-    }
-    return { action: 'close-issue' };
-  }
+  if (issueClosed === false && boardDone) return { action: 'close-issue' };
   return { action: 'proceed' };
 }
 
@@ -174,14 +161,13 @@ export async function resolveBoardStateForClose({
 // carries its own `aitm-gate-bypassed` audit row, so the bypass is already on
 // record). When the gate is active and the marker is absent, suppress the row.
 //
-//   body               — live issue body; authority is derived from it.
+//   hasApprovalMarker  — `hasReviewApprovedMarker(closeBody)` on the live body.
 //   reviewGateBypassed — the review→done gate was disabled (session/project).
 //
 // Pure + exported so the suppress-vs-emit decision is testable without the
 // network-heavy close transaction.
-
-export function shouldEmitReviewApprovedRow({ body, reviewGateBypassed } = {}) {
-  return Boolean(reviewGateBypassed) || derivePersistedReviewAuthority(body).status === 'current';
+export function shouldEmitReviewApprovedRow({ hasApprovalMarker, reviewGateBypassed } = {}) {
+  return Boolean(hasApprovalMarker) || Boolean(reviewGateBypassed);
 }
 
 // Gate-evaluation failure decision (#510).

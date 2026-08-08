@@ -98,7 +98,6 @@ function buildCtx({ statePath, rest, sideEffects }) {
       sideEffects.push(`writeTerminalDisposition:${disposition}`);
       return { disposition };
     },
-    applyReviewDelta: async () => ({ status: 'applied' }),
     runLogIssueTime: async () => {
       sideEffects.push('runLogIssueTime');
     },
@@ -113,9 +112,6 @@ function buildCtx({ statePath, rest, sideEffects }) {
     // The converge-path reconcile behavior is owned by
     // close-reconcile-lifecycle.test.mjs; here it is a pure no-op.
     tickLifecycleOnClose: async () => ({ ok: true }),
-    withIssueLock: async (_options, callback) => callback(),
-    withGovernedEffect: async (_options, callback) =>
-      callback({ leaseContext: {}, reverify: async () => {} }),
   };
 }
 
@@ -210,12 +206,12 @@ test('#708 AC2: same state WITH --repair → bypasses noop and replays the full 
   );
   assert.ok(
     sideEffects.includes('writeTerminalDisposition:Delivered'),
-    'repair must replay the Delivered classification before the terminal board move'
+    'repair must replay the Delivered classification after the terminal board move'
   );
   assert.ok(
-    sideEffects.indexOf('writeTerminalDisposition:Delivered') <
+    sideEffects.indexOf('writeTerminalDisposition:Delivered') >
       sideEffects.indexOf('runMoveStateDone'),
-    'repair must write Delivered before moving the board to Done'
+    'repair must move the board to Done before writing Delivered'
   );
   assert.match(r.stdout, /Closed #708/, 'the full close must reach its terminal line');
 });

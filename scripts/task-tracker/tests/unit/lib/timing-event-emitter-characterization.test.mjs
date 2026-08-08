@@ -3,6 +3,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync, readdirSync } from 'node:fs';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 import { PHASE_EVENTS } from '../../../phase-events.mjs';
 import {
@@ -16,10 +17,7 @@ import {
 import { validate as validateTimingLog } from '../../../lib/agent-review/validators/timing-log-sequence.mjs';
 import { TIMING_EVENT_BASELINE } from '../../fixtures/state-engine-policy-baseline.mjs';
 
-// Use the invoked checkout, not a realpath-canonicalized import location. The
-// repository self-link can otherwise redirect this scanner to the main checkout
-// while the characterized baseline is loaded from the current worktree.
-const ROOT = process.cwd();
+const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../../../..');
 const phaseSlugs = Object.values(PHASE_EVENTS).flatMap((state) =>
   Object.values(state).map(({ event }) => event)
 );

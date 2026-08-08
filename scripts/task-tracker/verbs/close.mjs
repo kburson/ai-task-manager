@@ -1,4 +1,6 @@
 import { randomUUID } from 'node:crypto';
+import { execFile } from 'node:child_process';
+import { promisify } from 'node:util';
 
 import { loadState, saveState, clearActive } from '../state.mjs';
 import { deregisterTask } from '../fleet-registry.mjs';
@@ -10,14 +12,16 @@ import {
   checkDirty,
   formatSummary,
   shortAuditDescription,
+  resolveRegisteredWorkspaceForIssue,
   resolveWorkspaceForIssue,
   CLEANUP_GUIDANCE,
 } from '../../gh/lib/dirty-workspace.mjs';
 import { GH_API_TIMEOUT_MS } from '../lib/process-timeouts.mjs';
 import { readLastKnownState } from '../gh-timing-comment.mjs';
 import { assertVerbHomeState } from '../lib/verb-home-state-guard.mjs';
-import { parseDisposition, runDispose } from '../lib/close-disposition.mjs';
-import { writeTerminalDisposition, writeTerminalStatusDone } from '../lib/terminal-disposition.mjs';
+import { runDispose } from '../lib/close-disposition.mjs';
+import { writeTerminalDisposition } from '../lib/terminal-disposition.mjs';
+import { hasReviewApprovedMarker, readPlanApprovedForecastRecordId } from '../lib/markers.mjs';
 import { runGuards } from '../lib/guard-registry.mjs';
 import '../lib/guard-bootstrap.mjs';
 import { isFullAuto } from '../lib/human-reviewer-audit.mjs';
@@ -25,15 +29,10 @@ import {
   detectLinkedWorktree,
   makeCloseTrunkRefResolver,
   enableFullAutoMergeForClose,
-  resolveOpenPrNumber,
 } from '../lib/full-auto-merge-execute.mjs';
-import { planFullAutoMerge } from '../lib/full-auto-merge.mjs';
 import { tickLifecycleItem } from '../lib/lifecycle-dod.mjs';
 import { assertLifecycleSatisfied } from '../close-gate.mjs';
-import {
-  deriveAndStampFunctionalDod,
-  previewFunctionalDod,
-} from '../lib/functional-dod-derive.mjs';
+import { deriveAndStampFunctionalDod } from '../lib/functional-dod-derive.mjs';
 import { parseIssueFieldDb } from '../issue-field-db.mjs';
 import { closeLabelRemoveArgs } from '../lib/close-labels.mjs';
 import {
@@ -50,9 +49,55 @@ import {
   upsertUnauthorizedCloseRecovery,
 } from '../lib/closed-issue-convergence.mjs';
 import { resolveTailProfile } from '../lib/move-state/tail-profiles.mjs';
-import { withIssueLock } from '../issue-mutator-lock.mjs';
-import { withVerbMutationScope } from '../lib/work-lease/verb-mutation-scope.mjs';
-import { isGovernedAuthorityError } from '../lib/work-lease/governed-effect.mjs';
+import { createEstimationOutcomeRuntime } from '../lib/estimation/runtime-adapter.mjs';
+import { reconcileReviewApprovedTiming } from '../lib/review-approval-timing.mjs';
+import { locateAuthoritySource } from '../lib/github-records/authority-locator.mjs';
+import {
+  hasAcceptedApprovalEvidence,
+  hasAcceptedReviewEvidence,
+  resolveLifecycleGateEvidence,
+} from '../lib/github-records/lifecycle-gate-source.mjs';
+import { gql } from '../../gh/lib/github-projects.mjs';
+
+const closePexec = promisify(execFile);
+
+function defaultLifecycleGraphql({ query, variables }) {
+  return gql(query, variables).then((data) => ({ data }));
+}
+
+async function defaultCloseHeadSha({ projectDir }) {
+  const { stdout } = await closePexec('git', ['rev-parse', 'HEAD'], { cwd: projectDir });
+  return String(stdout || '').trim();
+}
+
+export async function resolveCloseLifecycleEvidence({
+  body,
+  issueNumber,
+  repository,
+  projectDir,
+  deps = {},
+} = {}) {
+  const source = (deps.locateAuthoritySource || locateAuthoritySource)({ issueBody: body });
+  if (source.kind !== 'github-records/v1') return null;
+  const expectedSha = await (deps.getHeadSha || defaultCloseHeadSha)({ projectDir });
+  const lifecycleEvidence = await (deps.resolveLifecycleEvidence || resolveLifecycleGateEvidence)({
+    repository,
+    issue: Number(issueNumber),
+    issueBody: body,
+    expectedSha,
+    graphql: deps.graphql || defaultLifecycleGraphql,
+    readContractRecord: deps.readContractRecord,
+    deps: deps.listIssueRecords ? { listIssueRecords: deps.listIssueRecords } : undefined,
+  });
+  if (!hasAcceptedReviewEvidence(lifecycleEvidence)) {
+    throw new Error('directory-review-evidence-missing');
+  }
+  const approvalAccepted =
+    hasAcceptedApprovalEvidence(lifecycleEvidence, { provenance: 'human' }) ||
+    hasAcceptedApprovalEvidence(lifecycleEvidence, { provenance: 'full-auto' });
+  if (!approvalAccepted) throw new Error('directory-approval-evidence-missing');
+  return lifecycleEvidence;
+}
 
 // #705 — best-effort: a label-strip failure must never block or fail the
 // close itself, mirroring the deregisterTask cleanup calls below.
@@ -62,7 +107,6 @@ async function stripCloseLabels({ pexec, cfg, issueNum }) {
       timeout: GH_API_TIMEOUT_MS,
     });
   } catch (err) {
-    if (isGovernedAuthorityError(err)) throw err;
     console.error(
       `[task-tracker] warn: failed to strip ToDo/BLOCKED labels on #${issueNum}: ${err.message}`
     );
@@ -99,16 +143,23 @@ async function emitReviewToDoneClosePair({
   closeTarget,
   closeIssueNum,
   cfg,
-  body,
+  hasApprovalMarker,
+  issueBody,
   reviewGateBypassed,
   lastWordMarker,
   ctx,
   SKIP_NETWORK,
   nowIso,
   safePostTiming,
-  operation = 'close',
-  withGovernedEffect,
 }) {
+  const postRequiredTiming = async (row, event) => {
+    const result = await safePostTiming(closeTarget, row);
+    if (result?.ok === false || result?.queued === true) {
+      throw new Error(
+        `terminal timing ${event} was not durably posted${result?.err ? `: ${result.err}` : ''}`
+      );
+    }
+  };
   const { deriveStateMoveDelta } = await import('../lib/timing-rows.mjs');
   const ts = nowIso();
   // #692 — the prior timing ROWS live in the ⏱ comment, NOT the issue body, so
@@ -116,21 +167,33 @@ async function emitReviewToDoneClosePair({
   // retry-idempotency guard below. Gated on `!SKIP_NETWORK`; tests inject
   // `ctx.readTimingCommentBody` to exercise both paths offline.
   let timingBody = '';
+  let timingRead = { status: 'absent', body: '', error: null };
   const { readTimingCommentBody, bodyOf } = await import('../gh-timing-comment.mjs');
   const readTiming = ctx.readTimingCommentBody || (SKIP_NETWORK ? null : readTimingCommentBody);
   if (readTiming && closeIssueNum) {
     try {
-      timingBody = bodyOf(
-        await readTiming({
-          issueNumber: closeIssueNum,
-          repo: cfg.repo,
-          timeoutMs: GH_API_TIMEOUT_MS,
-        })
-      );
+      timingRead = await readTiming({
+        issueNumber: closeIssueNum,
+        repo: cfg.repo,
+        timeoutMs: GH_API_TIMEOUT_MS,
+      });
+      timingBody = bodyOf(timingRead);
     } catch (err) {
-      if (isGovernedAuthorityError(err)) throw err;
       process.stderr.write(`⚠ timing-comment read for close pair failed: ${err.message}\n`);
     }
+  }
+  let approvalReconciled = false;
+  if (hasApprovalMarker && readTiming) {
+    const reconcile = ctx.reconcileReviewApprovedTiming || reconcileReviewApprovedTiming;
+    await reconcile({
+      issueNumber: closeIssueNum,
+      repo: cfg.repo,
+      issueBody,
+      wordMarker: lastWordMarker ?? 0,
+      readTimingCommentBody: async () => timingRead,
+      postTimingEvent: async ({ row }) => postRequiredTiming(row, 'review:approved'),
+    });
+    approvalReconciled = true;
   }
   const delta = deriveStateMoveDelta(timingBody, ts);
   // #540 — emit in canonical order (`review:approved → issue:wrap`), both sharing
@@ -146,160 +209,82 @@ async function emitReviewToDoneClosePair({
   });
   const { pendingClosePairState } = await import('../timing-rollup.mjs');
   const pending = pendingClosePairState(timingBody);
-  if (!pending.reviewApproved && shouldEmitReviewApprovedRow({ body, reviewGateBypassed })) {
-    await safePostTiming(closeTarget, reviewApprovedRow, { operation, withGovernedEffect });
+  if (
+    !pending.reviewApproved &&
+    !approvalReconciled &&
+    shouldEmitReviewApprovedRow({ hasApprovalMarker, reviewGateBypassed })
+  ) {
+    await postRequiredTiming(reviewApprovedRow, 'review:approved');
   }
   if (!pending.issueWrap) {
-    await safePostTiming(closeTarget, issueWrapRow, { operation, withGovernedEffect });
+    await postRequiredTiming(issueWrapRow, 'issue:wrap');
   }
 }
 
-function closeOutcome({ status, exitCode, result } = {}) {
-  return {
-    status: status || (exitCode ? 'refused' : 'completed'),
-    ...(exitCode == null ? {} : { exitCode }),
-    ...(result === undefined ? {} : { result }),
-  };
+async function flushCloseTimingOrThrow({ closeTarget, flushQueueFor }) {
+  const result = await flushQueueFor(closeTarget);
+  if (result === false || result?.pending > 0 || result?.discarded > 0) {
+    throw new Error(
+      `terminal timing queue did not synchronize for ${closeTarget} ` +
+        `(pending ${result?.pending ?? 0}, discarded ${result?.discarded ?? 0})`
+    );
+  }
+  return result ?? { delivered: 0, pending: 0 };
 }
 
-function canonicalIssueRef(value) {
-  const ref = String(value ?? '');
-  return /^#[1-9]\d*$/.test(ref) ? ref : null;
+const ESTIMATION_FORECAST_READY_RE =
+  /<!--\s*aitm-estimation-forecast-ready\s+record-id="([0-7][0-9A-HJKMNP-TV-Z]{25})"\s*-->/i;
+
+export async function ensureCloseEstimationOutcome({ issueNumber, body, writer } = {}) {
+  const readyForecastRecordId = String(body ?? '').match(ESTIMATION_FORECAST_READY_RE)?.[1] ?? null;
+  const frozenForecastRecordId = readPlanApprovedForecastRecordId(body);
+  if (readyForecastRecordId !== null && frozenForecastRecordId === null) {
+    throw new Error('adaptive outcome requires a frozen Plan forecast');
+  }
+  if (
+    frozenForecastRecordId !== null &&
+    readyForecastRecordId !== null &&
+    frozenForecastRecordId !== readyForecastRecordId
+  ) {
+    throw new Error('forecast lineage diverged from the frozen Plan approval');
+  }
+  const forecastRecordId = frozenForecastRecordId;
+  const ensure = typeof writer === 'function' ? writer : writer?.ensure;
+  if (typeof ensure !== 'function') {
+    if (forecastRecordId === null) return { status: 'legacy-no-forecast' };
+    throw new Error('estimation-outcome-writer capability is required for a v1 forecast');
+  }
+  const result = await ensure({ issueNumber: Number(issueNumber), forecastRecordId, body });
+  if (forecastRecordId === null && result?.status === 'legacy-no-forecast') return result;
+  if (!['written', 'existing'].includes(result?.status)) {
+    throw new Error(`estimation outcome did not converge (status ${result?.status ?? 'missing'})`);
+  }
+  return result;
 }
 
-export async function prepareClose(ctx) {
-  const projectConfig = ctx.projectConfig ?? ctx;
-  const { statePath } = projectConfig;
-  const rest = ctx.rest ?? projectConfig.rest ?? [];
-  const convergenceTailProfile = resolveTailProfile(
-    ctx.convergenceTailProfile === undefined ? 'task-owner' : ctx.convergenceTailProfile
-  ).name;
-  const initialState = loadState(statePath);
-  const malformedTarget = rest.find(
-    (arg) => String(arg).startsWith('#') && canonicalIssueRef(arg) == null
-  );
-  if (malformedTarget !== undefined) {
-    return {
-      outcome: closeOutcome({ status: 'invalid-target', exitCode: 1 }),
-      message: `close requires a canonical positive issue target, got ${JSON.stringify(
-        malformedTarget
-      )}`,
-    };
+export function resolveEstimationOutcomeProjectDir({
+  issueNumber,
+  projectDir,
+  issueWorkspaceResolver,
+  requireDedicated = false,
+} = {}) {
+  const issueRef = `#${issueNumber}`;
+  const resolved = issueWorkspaceResolver({ issueRef, projectDir });
+  if (typeof resolved !== 'string' || resolved.length === 0) {
+    throw new Error(`issue workspace evidence is unavailable for ${issueRef}`);
   }
-  const target = rest.find((arg) => canonicalIssueRef(arg) != null);
-  const closeTarget = target || initialState.active || '';
-
-  if (!closeTarget) {
-    return {
-      outcome: closeOutcome({ status: 'no-target' }),
-      message: 'no active task',
-    };
+  if (requireDedicated && resolved === projectDir) {
+    throw new Error(
+      `dedicated worktree evidence is unavailable for ${issueRef}; refusing to record the parent diff as child evidence`
+    );
   }
-  if (closeTarget === 'discover') {
-    return { kind: 'discover', closeTarget, initialState };
-  }
-
-  const canonicalCloseTarget = canonicalIssueRef(closeTarget);
-  if (!canonicalCloseTarget) {
-    return {
-      outcome: closeOutcome({ status: 'invalid-target', exitCode: 1 }),
-      message: `close requires a canonical positive issue target, got ${JSON.stringify(
-        closeTarget
-      )}`,
-    };
-  }
-  const closeIssueNum = canonicalCloseTarget.slice(1);
-
-  const asIdx = rest.indexOf('--as');
-  let disposition = null;
-  if (asIdx !== -1) {
-    const ofIdx = rest.indexOf('--of');
-    try {
-      disposition = parseDisposition({
-        reason: rest[asIdx + 1],
-        of: ofIdx !== -1 ? rest[ofIdx + 1] : '',
-      });
-    } catch (error) {
-      return {
-        outcome: closeOutcome({ status: 'invalid-disposition', exitCode: 1 }),
-        message: error.message,
-      };
-    }
-  }
-
-  const plan = {
-    kind: disposition ? 'disposition' : 'numeric',
-    closeTarget,
-    closeIssueNum,
-    explicitTarget: target || null,
-    initialState,
-    disposition,
-    convergenceTailProfile,
-  };
-  const preflight = await executeClosePlan(ctx, { ...plan, dryRun: true }, null);
-  if (preflight?.status !== 'mutation-ready') {
-    return { ...plan, outcome: preflight || closeOutcome({ status: 'cancelled' }) };
-  }
-  return plan;
-}
-
-export function finalizeCloseOutcome(outcome, { message } = {}) {
-  if (message) {
-    if (outcome?.exitCode) console.error(message);
-    else console.log(message);
-  }
-  if (outcome?.exitCode != null) process.exitCode = outcome.exitCode;
-  return outcome?.result ?? outcome;
+  return resolved;
 }
 
 export async function verbClose(ctx) {
-  const projectConfig = ctx.projectConfig ?? ctx;
-  const timingRecorder = ctx.timingRecorder ?? ctx;
-  const { statePath, projectDir } = projectConfig;
-  const plan = await prepareClose(ctx);
-  if (plan.outcome) return finalizeCloseOutcome(plan.outcome, { message: plan.message });
-  if (plan.kind === 'discover') {
-    console.log('Discarded discovery bucket.');
-    saveState({ ...plan.initialState, active: null, discoverBucket: null }, statePath);
-    return closeOutcome({ status: 'discover-cleared' });
-  }
-
-  // Queue replay owns its own durable transition-receipt authority. It begins
-  // only after the pure close classification above has accepted a numeric lane.
-  const drainResult = await timingRecorder.drainQueueIfAny();
-  if (Number(drainResult?.authorityRefused || 0) > 0) {
-    return finalizeCloseOutcome(closeOutcome({ status: 'queue-authority-refused', exitCode: 1 }), {
-      message: `Refusing to close ${plan.closeTarget}: queued timing authority was refused.`,
-    });
-  }
-
-  const lockIssue = ctx.withIssueLock || withIssueLock;
-  const govern = ctx.workLeaseGuard?.withGovernedEffect || ctx.withGovernedEffect;
-  let outcome;
-  try {
-    outcome = await lockIssue(
-      { issue: plan.closeIssueNum, verb: 'close', projDir: projectDir },
-      () =>
-        withVerbMutationScope(
-          {
-            issueId: plan.closeIssueNum,
-            operation: 'close',
-            withGovernedEffect: govern,
-            heartbeat: true,
-          },
-          (scope) => executeClosePlan(ctx, plan, scope)
-        )
-    );
-  } catch (error) {
-    if (isGovernedAuthorityError(error)) throw error;
-    throw error;
-  }
-  return finalizeCloseOutcome(outcome);
-}
-
-export async function executeClosePlan(ctx, preparedPlan, scope) {
-  const dryRun = preparedPlan.dryRun === true;
-  const convergenceTailProfile = preparedPlan.convergenceTailProfile;
+  const convergenceTailProfile = resolveTailProfile(
+    ctx.convergenceTailProfile === undefined ? 'task-owner' : ctx.convergenceTailProfile
+  ).name;
   // #561 — verbClose reads its collaborators from the grouped capability
   // objects assembled by buildContext (the narrow dependency interface) rather
   // than from a flat 18-member destructure. Each `?? ctx` fallback keeps the
@@ -313,7 +298,11 @@ export async function executeClosePlan(ctx, preparedPlan, scope) {
   const { cfg, statePath, projectDir, SKIP_NETWORK, pexec, uncheckedPreCloseCheckboxes, nowIso } =
     projectConfig;
   const { rest } = ctx;
-  const { flushAndForgetQueueFor, safePostTiming } = timingRecorder;
+  const { drainQueueIfAny, flushAndForgetQueueFor, safePostTiming } = timingRecorder;
+  const flushQueueFor =
+    timingRecorder.flushQueueFor ??
+    flushAndForgetQueueFor ??
+    (async () => ({ delivered: 0, pending: 0 }));
   const { runMoveState, runMoveStateDone, runLogIssueTime } = stateRunner;
   const {
     fetchSubIssueBoardSnapshot,
@@ -330,17 +319,14 @@ export async function executeClosePlan(ctx, preparedPlan, scope) {
         cfg,
         issueNumber,
         disposition: 'Delivered',
-        deps: {
-          reverify: () => scope.effect(() => undefined),
-        },
       });
       return true;
     } catch (err) {
-      if (isGovernedAuthorityError(err)) throw err;
       console.error(
         `[task-tracker] ⛔ Refusing to close ${targetRef}: ${err.message}\n` +
           `   Issue left OPEN — run \`node scripts/gh/init-repair.mjs\` and retry.`
       );
+      process.exitCode = 1;
       return false;
     }
   };
@@ -349,33 +335,13 @@ export async function executeClosePlan(ctx, preparedPlan, scope) {
   // observe it and the two call sites can never drift apart. Falls back to the
   // module helper when the ctx does not inject one (production).
   const reconcileLifecycleBoxes = ctx.tickLifecycleOnClose || tickLifecycleOnClose;
-  // The authority root is live before any local or remote close mutation.
-  // Reload state inside the lock/root so explicit-target binding cannot race a
-  // concurrent close and the first subsequent effect is based on fresh state.
-  const initialState = dryRun
-    ? loadState(statePath)
-    : await scope.effect(() => loadState(statePath));
-  const target = preparedPlan.explicitTarget;
+  await drainQueueIfAny();
+  const initialState = loadState(statePath);
+  const target = rest.find((a) => /^#\d+$/.test(a));
   let s = initialState;
 
-  const closeTarget = preparedPlan.closeTarget;
-  const closeIssueNum = preparedPlan.closeIssueNum;
-  if (!dryRun) {
-    const preparedActiveRaw = preparedPlan.initialState?.active ?? null;
-    const refreshedActiveRaw = initialState.active ?? null;
-    const stablePreparedBinding =
-      canonicalIssueRef(preparedActiveRaw) === closeTarget &&
-      canonicalIssueRef(refreshedActiveRaw) === closeTarget;
-    const stableUnboundAdoption = Boolean(target) && !preparedActiveRaw && !refreshedActiveRaw;
-    if (!stablePreparedBinding && !stableUnboundAdoption) {
-      console.error(
-        `[task-tracker] ⛔ Refusing to close ${closeTarget}: active binding changed from ` +
-          `${preparedActiveRaw || 'none'} to ${refreshedActiveRaw || 'none'} ` +
-          'while queued timing was drained.'
-      );
-      return closeOutcome({ status: 'binding-changed', exitCode: 7 });
-    }
-  }
+  const closeTarget = target || s.active || '';
+  const closeIssueNum = closeTarget.replace(/^#/, '');
   // #708 — `--repair` forces the full atomic close pipeline even when the board
   // is already Done / the issue already CLOSED (e.g. a PR closing-reference
   // auto-closed it out-of-band), so the timing flush, lifecycle-box ticking, and
@@ -391,7 +357,11 @@ export async function executeClosePlan(ctx, preparedPlan, scope) {
       entryStartTs: nowIso(),
       wordsAtEntryStart: 0,
     };
-    if (!dryRun) await scope.effect(() => saveState(s, statePath));
+    saveState(s, statePath);
+  }
+  if (!closeTarget) {
+    console.log('no active task');
+    return;
   }
 
   // #761 — disposition close-lane. `close --as duplicate --of <M>` /
@@ -401,8 +371,7 @@ export async function executeClosePlan(ctx, preparedPlan, scope) {
   // and return here, before any shared gate state below is read.
   const asIdx = rest.indexOf('--as');
   if (asIdx !== -1) {
-    if (dryRun) return closeOutcome({ status: 'mutation-ready' });
-    const disposition = preparedPlan.disposition?.key || rest[asIdx + 1];
+    const disposition = rest[asIdx + 1];
     const ofIdx = rest.indexOf('--of');
     const ofRef = ofIdx !== -1 ? rest[ofIdx + 1] : '';
     const result = await runDispose({
@@ -413,64 +382,31 @@ export async function executeClosePlan(ctx, preparedPlan, scope) {
       projectId: cfg.projectId,
       cfg,
       deps: {
-        mutateIssueBody:
-          typeof mutateBody === 'function'
-            ? (options) =>
-                mutateBody({
-                  ...options,
-                  operation: 'close',
-                  withGovernedEffect: scope.continue,
-                })
-            : undefined,
-        writeDisposition: (options) =>
-          dispositionWriter({
-            ...options,
-            deps: { reverify: () => scope.effect(() => undefined) },
-          }),
-        moveToDone: (options) =>
-          writeTerminalStatusDone({
-            ...options,
-            deps: { reverify: () => scope.effect(() => undefined) },
-          }),
-        pexec: (bin, argv) => scope.effect(() => pexec(bin, argv, { timeout: GH_API_TIMEOUT_MS })),
+        mutateIssueBody: mutateBody,
+        pexec: (bin, argv) => pexec(bin, argv, { timeout: GH_API_TIMEOUT_MS }),
         postComment: ({ issueNumber, repo, body }) =>
-          scope.effect(() =>
-            pexec('gh', ['issue', 'comment', String(issueNumber), '-R', repo, '--body', body], {
-              timeout: GH_API_TIMEOUT_MS,
-            })
-          ),
+          pexec('gh', ['issue', 'comment', String(issueNumber), '-R', repo, '--body', body], {
+            timeout: GH_API_TIMEOUT_MS,
+          }),
         flushTiming: (n) =>
-          flushAndForgetQueueFor
-            ? flushAndForgetQueueFor(`#${n}`, {
-                operation: 'close',
-                withGovernedEffect: scope.continue,
-              })
-            : Promise.resolve(),
+          flushAndForgetQueueFor ? flushAndForgetQueueFor(`#${n}`) : Promise.resolve(),
         now: nowIso,
         warn: (msg) => console.error(`[task-tracker] warn: ${msg}`),
       },
     });
-    if (result.status === 'queue-authority-refused') {
-      console.error(
-        `[task-tracker] ⛔ Refusing to close ${closeTarget} as ${result.reason}: ` +
-          'queued timing authority was refused; retained the queued row for retry.'
-      );
-      return closeOutcome({ status: result.status, exitCode: result.exitCode });
-    }
     // Clear local active-task state so a subsequent bind is clean.
     try {
-      await scope.effect(() => clearActive(statePath));
-    } catch (error) {
-      if (isGovernedAuthorityError(error)) throw error;
+      clearActive(statePath);
+    } catch {
       /* best-effort; a residual active pointer is harmless */
     }
-    await scope.effect(() => deregisterTask(projectDir, closeTarget));
+    deregisterTask(projectDir, closeTarget);
     console.log(
       `Closed ${closeTarget} as ${result.reason}` +
         (result.of ? ` (duplicate of ${result.of})` : '') +
         ` — retained in Done, stateReason=${result.stateReason}.`
     );
-    return closeOutcome({ status: 'closed-as', result });
+    return;
   }
 
   const configuredReviewToDoneGate = resolveGate('reviewToDone', {
@@ -478,6 +414,52 @@ export async function executeClosePlan(ctx, preparedPlan, scope) {
     projectConfig: rawProjectConfig(),
   });
   const configuredReviewAuthority = configuredReviewToDoneGate ? 'human-gate' : 'gate-bypassed';
+  const outcomeRuntimeFactory = ctx.createEstimationOutcomeWriter ?? createEstimationOutcomeRuntime;
+  const issueWorkspaceResolver = ctx.resolveIssueWorkspace ?? resolveRegisteredWorkspaceForIssue;
+  const outcomeWriterForIssue = (issueNumber, { requireDedicated = false } = {}) => {
+    if (ctx.estimationOutcomeWriter) return ctx.estimationOutcomeWriter;
+    if (
+      typeof ctx.createEstimationOutcomeWriter !== 'function' &&
+      (!Number.isInteger(cfg.estimationRubricIssue) || cfg.estimationRubricIssue <= 0)
+    ) {
+      return null;
+    }
+    const outcomeProjectDir = resolveEstimationOutcomeProjectDir({
+      issueNumber,
+      projectDir,
+      issueWorkspaceResolver,
+      requireDedicated,
+    });
+    return outcomeRuntimeFactory({ cfg, projectDir: outcomeProjectDir });
+  };
+  const estimationOutcomeWriter = outcomeWriterForIssue(closeIssueNum);
+
+  const ensureConvergenceOutcome = async ({ body, targetRef = closeTarget } = {}) => {
+    let outcomeBody = String(body ?? '');
+    try {
+      if (estimationOutcomeWriter && outcomeBody.length === 0) {
+        const { stdout } = await pexec(
+          'gh',
+          ['issue', 'view', closeIssueNum, '-R', cfg.repo, '--json', 'body'],
+          { timeout: GH_API_TIMEOUT_MS }
+        );
+        outcomeBody = JSON.parse(stdout).body ?? '';
+      }
+      await ensureCloseEstimationOutcome({
+        issueNumber: closeIssueNum,
+        body: outcomeBody,
+        writer: estimationOutcomeWriter,
+      });
+      return true;
+    } catch (err) {
+      console.error(
+        `[task-tracker] ⛔ Refusing to finalize ${targetRef}: ${err.message}. ` +
+          'Completion outcome evidence did not converge; local state remains active for retry.'
+      );
+      process.exitCode = 1;
+      return false;
+    }
+  };
 
   // #425 / #925 — converge the independent GitHub issue and project-board
   // signals. The additive close snapshot lets a CLOSED + not-Done issue be
@@ -517,42 +499,22 @@ export async function executeClosePlan(ctx, preparedPlan, scope) {
       return JSON.parse(stdout).body ?? '';
     };
     const failInspection = (failedStep, error, message) => {
-      if (isGovernedAuthorityError(error)) throw error;
       const detail = error?.message || String(error);
       console.error(`${message}: ${detail}\nNo convergence mutation was attempted; retry later.`);
+      process.exitCode = 1;
       return {
         action: 'inspect',
         status: 'failed',
-        exitCode: 1,
         failedStep,
         error: detail,
       };
     };
 
     let decision;
-    if (repair) {
+    if (repair || !hasExpandedCloseSnapshot) {
       // Explicit repair is the highest authority and runs the existing full
-      // pipeline without integrity inspection.
-      decision = decideCloseConvergence(decisionInput);
-    } else if (!hasExpandedCloseSnapshot) {
-      // Legacy close snapshots still need current authority before a Done-board
-      // convergence can close an open issue. Read the body rather than
-      // preserving the old two-signal shortcut.
-      if (closeSnapshot.issueClosed === false) {
-        try {
-          convergeBody = ctx.closeBody || (await readConvergenceBody());
-        } catch (error) {
-          return failInspection(
-            'readIssueBody',
-            error,
-            `${closeTarget} is open but its body could not be read for convergence authority`
-          );
-        }
-        Object.assign(decisionInput, {
-          body: convergeBody,
-          reviewGateBypassed: configuredFullAuto,
-        });
-      }
+      // pipeline without integrity inspection. Legacy callers retain their
+      // pre-#925 two-signal decision contract.
       decision = decideCloseConvergence(decisionInput);
     } else if (closeSnapshot.issueClosed === true) {
       Object.assign(decisionInput, {
@@ -575,8 +537,7 @@ export async function executeClosePlan(ctx, preparedPlan, scope) {
           Object.assign(decisionInput, {
             recoveryPhase: inspectedRecovery?.phase ?? null,
           });
-        } catch (error) {
-          if (isGovernedAuthorityError(error)) throw error;
+        } catch {
           // Best-effort by design: closed + completed + Done remains noop when
           // its body is temporarily unreadable.
         }
@@ -652,83 +613,70 @@ export async function executeClosePlan(ctx, preparedPlan, scope) {
       recovery = inspectedRecovery?.phase === 'complete' ? null : inspectedRecovery;
       Object.assign(decisionInput, {
         recoveryPhase: inspectedRecovery?.phase ?? null,
-        body: convergeBody,
-        reviewGateBypassed: configuredFullAuto,
       });
       decision = decideCloseConvergence(decisionInput);
     } else {
       decision = decideCloseConvergence(decisionInput);
     }
 
-    if (dryRun) {
-      if (decision.action === 'authority-refused') {
-        process.stderr.write(
-          `${closeTarget} cannot converge Done → closed: current Review authority is ${decision.authority?.status || 'missing'}. ` +
-            'Re-run Test and Review, then record a current approval before closing.\n'
-        );
-        return closeOutcome({ status: 'authority-refused', exitCode: 3 });
-      }
-      if (decision.action === 'dead') {
-        console.log(
-          `${closeTarget} is closed for ${closeSnapshot.stateReason || 'an unknown non-delivery reason'} — left issue and board untouched.`
-        );
-        return { action: 'dead', ...closeOutcome({ status: 'untouched' }) };
-      }
-      if (['close-issue', 'finalize', 'aberration', 'noop'].includes(decision.action)) {
-        return closeOutcome({ status: 'mutation-ready' });
-      }
-    }
-
     if (decision.action === 'close-issue') {
       // Board reads Done but the issue is still OPEN — the Projects auto-close
       // workflow did not fire. Close the primary explicitly. On failure, surface
       // it and exit non-zero WITHOUT clearing local state so a re-run recovers.
+      try {
+        await emitReviewToDoneClosePair({
+          closeTarget,
+          closeIssueNum,
+          cfg,
+          hasApprovalMarker: hasReviewApprovedMarker(convergeBody),
+          issueBody: convergeBody,
+          reviewGateBypassed: configuredFullAuto,
+          lastWordMarker: s.lastWordMarker,
+          ctx,
+          SKIP_NETWORK,
+          nowIso,
+          safePostTiming,
+        });
+        await flushCloseTimingOrThrow({ closeTarget, flushQueueFor });
+      } catch (err) {
+        return failInspection(
+          'emitClosePair',
+          err,
+          `${closeTarget} terminal timing did not synchronize before outcome creation`
+        );
+      }
+      if (!(await ensureConvergenceOutcome({ body: convergeBody }))) return;
       if (
         !(await writeDeliveredOrRefuse({
           issueNumber: closeIssueNum,
           targetRef: closeTarget,
         }))
       ) {
-        return closeOutcome({ status: 'disposition-write-refused', exitCode: 1 });
+        return;
       }
       try {
-        await scope.effect(() =>
-          pexec('gh', ['issue', 'close', closeIssueNum, '-R', cfg.repo], {
-            timeout: GH_API_TIMEOUT_MS,
-          })
-        );
+        await pexec('gh', ['issue', 'close', closeIssueNum, '-R', cfg.repo], {
+          timeout: GH_API_TIMEOUT_MS,
+        });
       } catch (err) {
-        if (isGovernedAuthorityError(err)) throw err;
         console.error(
           `Failed to close ${closeTarget} on GitHub (board is Done but the issue was still OPEN): ${err.message}\n` +
             `Local state left intact — re-run \`/task close ${closeTarget}\` once GitHub is reachable.`
         );
-        return closeOutcome({ status: 'github-close-failed', exitCode: 1 });
+        process.exitCode = 1;
+        return;
       }
-      await stripCloseLabels({
-        pexec: (bin, argv, options) => scope.effect(() => pexec(bin, argv, options)),
-        cfg,
-        issueNum: closeIssueNum,
-      });
-      await scope.effect(() => clearActive(statePath));
+      await stripCloseLabels({ pexec, cfg, issueNum: closeIssueNum });
+      clearActive(statePath);
       try {
-        await scope.effect(() => deregisterTask(projectDir, closeTarget));
-      } catch (error) {
-        if (isGovernedAuthorityError(error)) throw error;
+        deregisterTask(projectDir, closeTarget);
+      } catch {
         /* best-effort: cleanup; failure is non-fatal */
       }
       console.log(
         `${closeTarget} board was Done but the GitHub issue was still OPEN — closed it now; local state and fleet cleaned up.`
       );
-      return closeOutcome({ status: 'close-issue-completed' });
-    }
-
-    if (decision.action === 'authority-refused') {
-      process.stderr.write(
-        `${closeTarget} cannot converge Done → closed: current Review authority is ${decision.authority?.status || 'missing'}. ` +
-          'Re-run Test and Review, then record a current approval before closing.\n'
-      );
-      return closeOutcome({ status: 'authority-refused', exitCode: 3 });
+      return;
     }
 
     if (['dead', 'finalize', 'aberration', 'noop'].includes(decision.action)) {
@@ -750,8 +698,6 @@ export async function executeClosePlan(ctx, preparedPlan, scope) {
               silent: true,
               tailProfile: convergenceTailProfile,
               reviewAuthority: configuredReviewAuthority,
-              operation: 'close',
-              withGovernedEffect: scope.continue,
             });
             if (!moveResult.ok && !moveResult.benign) {
               const postBoardState = await getIssueBoardState(closeTarget);
@@ -771,7 +717,6 @@ export async function executeClosePlan(ctx, preparedPlan, scope) {
                 );
                 convergeBody = JSON.parse(stdout).body ?? convergeBody;
               } catch (err) {
-                if (isGovernedAuthorityError(err)) throw err;
                 process.stderr.write(
                   `⚠ body read for converge close pair failed: ${err.message}\n`
                 );
@@ -781,18 +726,22 @@ export async function executeClosePlan(ctx, preparedPlan, scope) {
               closeTarget,
               closeIssueNum,
               cfg,
-              body: convergeBody,
+              hasApprovalMarker: hasReviewApprovedMarker(convergeBody),
+              issueBody: convergeBody,
               reviewGateBypassed: fullAuto,
               lastWordMarker: s.lastWordMarker,
               ctx,
               SKIP_NETWORK,
               nowIso,
               safePostTiming,
-              operation: 'close',
-              withGovernedEffect: scope.continue,
             });
+            await flushCloseTimingOrThrow({ closeTarget, flushQueueFor });
             return { ok: true };
           },
+          ensureOutcome: async () =>
+            (await ensureConvergenceOutcome({ body: convergeBody }))
+              ? { ok: true }
+              : { ok: false, error: 'completion outcome evidence did not converge' },
           reconcileLifecycle: async () => {
             if (
               reconcileLifecycleBoxes === tickLifecycleOnClose &&
@@ -806,31 +755,22 @@ export async function executeClosePlan(ctx, preparedPlan, scope) {
               cfg,
               issueNum: closeIssueNum,
               pexec,
-              deps: {
-                mutateIssueBody: issueBodyMutator?.mutate,
-                operation: 'close',
-                withGovernedEffect: scope.continue,
-              },
+              deps: { mutateIssueBody: issueBodyMutator?.mutate },
             });
           },
           cleanup: async () => {
-            if (!ctx.preserveActiveOnConvergence) {
-              await scope.effect(() => clearActive(statePath));
-            }
+            if (!ctx.preserveActiveOnConvergence) clearActive(statePath);
             try {
-              await scope.effect(() => deregisterTask(projectDir, closeTarget));
-            } catch (error) {
-              if (isGovernedAuthorityError(error)) throw error;
+              deregisterTask(projectDir, closeTarget);
+            } catch {
               /* best-effort: cleanup; failure is non-fatal */
             }
             return { ok: true };
           },
           reopenIssue: async () => {
-            await scope.effect(() =>
-              pexec('gh', ['issue', 'reopen', closeIssueNum, '-R', cfg.repo], {
-                timeout: GH_API_TIMEOUT_MS,
-              })
-            );
+            await pexec('gh', ['issue', 'reopen', closeIssueNum, '-R', cfg.repo], {
+              timeout: GH_API_TIMEOUT_MS,
+            });
             return { ok: true };
           },
           moveToReview: async () => {
@@ -840,8 +780,6 @@ export async function executeClosePlan(ctx, preparedPlan, scope) {
               silent: true,
               extraArgs,
               tailProfile: convergenceTailProfile,
-              operation: 'close',
-              withGovernedEffect: scope.continue,
             });
           },
           postTimingAudit: async ({ recovery: activeRecovery }) => {
@@ -862,8 +800,7 @@ export async function executeClosePlan(ctx, preparedPlan, scope) {
                   `tx=${activeRecovery.tx}; ` +
                   `stateReason=${activeRecovery.stateReason || 'unknown'}; ` +
                   `unticked=${activeRecovery.unticked.join(', ') || 'unknown'}`,
-              }),
-              { operation: 'close', withGovernedEffect: scope.continue }
+              })
             );
           },
           createTransactionId: () => randomUUID(),
@@ -894,8 +831,6 @@ export async function executeClosePlan(ctx, preparedPlan, scope) {
                   ...activeRecovery,
                   phase,
                 }),
-              operation: 'close',
-              withGovernedEffect: scope.continue,
             });
             const mutationSucceeded =
               mutation &&
@@ -939,7 +874,8 @@ export async function executeClosePlan(ctx, preparedPlan, scope) {
               `${convergence.error}. Local task state was retained for retry.`
           );
         }
-        return { ...convergence, exitCode: 1 };
+        process.exitCode = 1;
+        return convergence;
       }
       if (convergence.status === 'untouched') {
         console.log(
@@ -964,8 +900,8 @@ export async function executeClosePlan(ctx, preparedPlan, scope) {
 
   if (closeTarget === 'discover') {
     console.log('Discarded discovery bucket.');
-    await scope.effect(() => saveState({ ...s, active: null, discoverBucket: null }, statePath));
-    return closeOutcome({ status: 'discover-cleared' });
+    saveState({ ...s, active: null, discoverBucket: null }, statePath);
+    return;
   }
 
   let dirtyAuditRow = null;
@@ -973,6 +909,7 @@ export async function executeClosePlan(ctx, preparedPlan, scope) {
   // `!SKIP_NETWORK` block would otherwise fetch, so the review:approved emission
   // gate (which predicates on the approval marker) is exercisable in-process.
   let closeBody = ctx.closeBody ?? '';
+  let closeLifecycleEvidence = null;
   // #655 — hoisted out of the `!SKIP_NETWORK` gate-evaluation block (where
   // `_resolvedReviewGate` is scoped) so the later `review:approved` timing-row
   // emission can predicate on it. True iff the review→done gate was explicitly
@@ -996,7 +933,7 @@ export async function executeClosePlan(ctx, preparedPlan, scope) {
           console.error('   yes    — refuse close, show cleanup flow (recommended)');
           console.error('   no     — close with `closed-with-dirty-tree` audit row');
           console.error('   cancel — abort, leave in Review');
-          return closeOutcome({ status: 'dirty-answer-required', exitCode: 5 });
+          process.exit(5);
         } else {
           console.error(`⚠ Workspace is dirty (${dirty.total} path(s)) for ${closeTarget}:`);
           console.error(formatSummary(dirty));
@@ -1008,7 +945,7 @@ export async function executeClosePlan(ctx, preparedPlan, scope) {
           // was the lone anomaly that let `promote` report a false `✓ promoted`.
           // The PROMPT_REQUIRED stdout line is emitted first, so the interactive
           // skill loop still surfaces the prompt and re-invokes with --answer.
-          return closeOutcome({ status: 'dirty-answer-required', exitCode: 5 });
+          process.exit(5);
         }
       } else if (answerArg === 'yes') {
         console.error(
@@ -1017,12 +954,12 @@ export async function executeClosePlan(ctx, preparedPlan, scope) {
         console.error(formatSummary(dirty));
         console.error('');
         console.error(CLEANUP_GUIDANCE);
-        return closeOutcome({ status: 'dirty-refused', exitCode: 6 });
+        process.exit(6);
       } else if (answerArg === 'cancel') {
         console.log(
           `Cancelled close of ${closeTarget}; left in Review (workspace dirty: ${dirty.total} path(s)).`
         );
-        return closeOutcome({ status: 'cancelled' });
+        return;
       } else if (answerArg === 'no') {
         console.warn(
           `[task-tracker] Closing ${closeTarget} with dirty workspace (${dirty.total} path(s)) — appending audit row.`
@@ -1043,7 +980,7 @@ export async function executeClosePlan(ctx, preparedPlan, scope) {
         });
       } else {
         console.error(`Invalid --answer "${answerArg}". Expected yes|no|cancel.`);
-        return closeOutcome({ status: 'invalid-dirty-answer', exitCode: 1 });
+        process.exit(1);
       }
     }
   }
@@ -1089,28 +1026,16 @@ export async function executeClosePlan(ctx, preparedPlan, scope) {
         // survives in the issue body.
         const { appendAuditMarker } = await import('../lib/markers.mjs');
         const _ts2 = nowIso();
-        if (dryRun) {
-          body = appendAuditMarker(body, {
-            kind: 'gate-bypassed',
-            ts: _ts2,
-            detail: 'gateReviewToDone=false (session/project override) — bypassing human review',
-          });
-          closeBody = body;
-        } else {
-          await mutateBody({
-            issueNumber: closeIssueNum,
-            repo: cfg.repo,
-            mutate: (base) =>
-              appendAuditMarker(base, {
-                kind: 'gate-bypassed',
-                ts: _ts2,
-                detail:
-                  'gateReviewToDone=false (session/project override) — bypassing human review',
-              }),
-            operation: 'close',
-            withGovernedEffect: scope.continue,
-          });
-        }
+        await mutateBody({
+          issueNumber: closeIssueNum,
+          repo: cfg.repo,
+          mutate: (base) =>
+            appendAuditMarker(base, {
+              kind: 'gate-bypassed',
+              ts: _ts2,
+              detail: 'gateReviewToDone=false (session/project override) — bypassing human review',
+            }),
+        });
       }
 
       // #303 / #315 — Derived Functional DoD keys (`acs`, `checkboxes`) are
@@ -1124,45 +1049,48 @@ export async function executeClosePlan(ctx, preparedPlan, scope) {
         try {
           const { stdout: shaOut } = await pexec('git', ['rev-parse', '--short', 'HEAD'], {});
           derivedHeadSha = String(shaOut || '').trim() || 'unknown';
-        } catch (error) {
-          if (isGovernedAuthorityError(error)) throw error;
+        } catch {
           // best-effort — sha=unknown is acceptable in the evidence marker
         }
-        if (dryRun) {
-          body = previewFunctionalDod({
-            body,
-            sha: derivedHeadSha,
-            ts: nowIso(),
-          });
+        const mutated = await deriveAndStampFunctionalDod({
+          issueNumber: closeIssueNum,
+          repo: cfg.repo,
+          sha: derivedHeadSha,
+          ts: nowIso(),
+          deps: { pexec },
+        });
+        // Re-fetch body so the rest of the close gate sees the post-derivation
+        // state. Skipped on no-op.
+        if (mutated?.status === 'ok') {
+          const { stdout: refetched } = await pexec(
+            'gh',
+            ['issue', 'view', closeIssueNum, '-R', cfg.repo, '--json', 'body', '--jq', '.body'],
+            { timeout: GH_API_TIMEOUT_MS }
+          );
+          body = String(refetched || body);
           closeBody = body;
-        } else {
-          const mutated = await deriveAndStampFunctionalDod({
-            issueNumber: closeIssueNum,
-            repo: cfg.repo,
-            sha: derivedHeadSha,
-            ts: nowIso(),
-            deps: { pexec, withGovernedEffect: scope.continue },
-            operation: 'close',
-          });
-          // Re-fetch body so the rest of the close gate sees the post-derivation
-          // state. Skipped on no-op.
-          if (mutated?.status === 'ok') {
-            const { stdout: refetched } = await pexec(
-              'gh',
-              ['issue', 'view', closeIssueNum, '-R', cfg.repo, '--json', 'body', '--jq', '.body'],
-              { timeout: GH_API_TIMEOUT_MS }
-            );
-            body = String(refetched || body);
-            closeBody = body;
-          }
         }
       } catch (err) {
-        if (isGovernedAuthorityError(err)) throw err;
         // Derivation is best-effort. If it fails, the existing
         // uncheckedPreCloseCheckboxes / lifecycle gate will surface the issue
         // through the normal blocker path. Log and continue.
         console.warn(`[task-tracker] Functional DoD derivation skipped: ${err.message}`);
       }
+
+      closeLifecycleEvidence = await resolveCloseLifecycleEvidence({
+        body,
+        issueNumber: closeIssueNum,
+        repository: cfg.repo,
+        projectDir,
+        deps: {
+          locateAuthoritySource: ctx.locateAuthoritySource,
+          getHeadSha: ctx.getHeadSha,
+          resolveLifecycleEvidence: ctx.resolveLifecycleEvidence,
+          graphql: ctx.graphql,
+          readContractRecord: ctx.readContractRecord,
+          listIssueRecords: ctx.listIssueRecords,
+        },
+      });
 
       const unchecked = uncheckedPreCloseCheckboxes(body);
       const reasons = [];
@@ -1176,10 +1104,14 @@ export async function executeClosePlan(ctx, preparedPlan, scope) {
       // each lifecycle key is ticked, audited (Full-Auto), or per-key opt-out marker
       // present. When toggled off, downgrade to a WARN timing-log row.
       const lifecycleRequired = cfg.lifecycleCheckboxesRequired !== false;
-      const lifecycleGate = assertLifecycleSatisfied({ body, required: lifecycleRequired });
+      const lifecycleGate = assertLifecycleSatisfied({
+        body,
+        required: lifecycleRequired,
+        lifecycleEvidence: closeLifecycleEvidence,
+      });
       if (lifecycleGate.block) {
         reasons.push(lifecycleGate.reason);
-      } else if (!dryRun && !lifecycleRequired && lifecycleGate.missing.length > 0) {
+      } else if (!lifecycleRequired && lifecycleGate.missing.length > 0) {
         try {
           const { buildRow: gbrL } = await import('../gh-timing-comment.mjs');
           const { deriveStateMoveDelta: _dsmL } = await import('../lib/timing-rows.mjs');
@@ -1197,11 +1129,9 @@ export async function executeClosePlan(ctx, preparedPlan, scope) {
               // #475 AC1 — carried-forward durable marker (lifecycle WARN bypass, no active session work)
               wordMarker: s.lastWordMarker ?? 0,
               description: `WARN: lifecycle-incomplete (lifecycleCheckboxesRequired=false): ${missLabels}`,
-            }),
-            { operation: 'close', withGovernedEffect: scope.continue }
+            })
           );
-        } catch (error) {
-          if (isGovernedAuthorityError(error)) throw error;
+        } catch {
           // best-effort
         }
       }
@@ -1224,6 +1154,7 @@ export async function executeClosePlan(ctx, preparedPlan, scope) {
           fromState: 'review',
           toState: 'done',
           body,
+          lifecycleEvidence: closeLifecycleEvidence,
           cfg,
           projectDir,
           deps: { closeGates: { resolveTrunkRef: makeCloseTrunkRefResolver({ inWorktree }) } },
@@ -1244,14 +1175,14 @@ export async function executeClosePlan(ctx, preparedPlan, scope) {
             console.error(
               `Run \`/task approve ${closeTarget}\` (human) or set \`gateReviewToDone false\` in config.`
             );
-            return closeOutcome({ status: 'human-answer-refused', exitCode: 8 });
+            process.exit(8);
           }
           console.error(`⛔ Refusing to close ${closeTarget} — no human review approval recorded.`);
           console.log(`PROMPT_REQUIRED: review-approval ${closeTarget}`);
           console.error(
             `Run \`/task approve ${closeTarget}\` (human) or set \`gateReviewToDone false\` in config.`
           );
-          return closeOutcome({ status: 'review-approval-required', exitCode: 7 });
+          process.exit(7);
         }
 
         const closeGatesRefusal = refusals.find((r) => r.id === 'review-exit-close-gates');
@@ -1262,7 +1193,7 @@ export async function executeClosePlan(ctx, preparedPlan, scope) {
             : [closeGatesRefusal.reason]
           ).forEach((b) => console.error(`   • ${b}`));
           console.error('');
-          return closeOutcome({ status: 'close-gates-refused', exitCode: 3 });
+          process.exit(3);
         }
 
         const otherRefusals = refusals.filter(
@@ -1272,7 +1203,7 @@ export async function executeClosePlan(ctx, preparedPlan, scope) {
           console.error(`[task-tracker] ⛔ Refusing to close ${closeTarget}:`);
           otherRefusals.forEach((r) => console.error(`   • ${r.reason}`));
           console.error('');
-          return closeOutcome({ status: 'guard-refused', exitCode: 3 });
+          process.exit(3);
         }
 
         const closeGatesWarn = (guardResult.warns || []).find(
@@ -1289,19 +1220,14 @@ export async function executeClosePlan(ctx, preparedPlan, scope) {
           console.error(`[task-tracker] ⚠ --force — bypassing close gate for ${closeTarget}`);
           reasons.forEach((r) => console.error(`   • ${r}`));
           unchecked.forEach((u) => console.error(`   ${u}`));
-          if (!dryRun) {
-            try {
-              const ts = new Date().toISOString().replace(/\.\d+Z$/, 'Z');
-              const note = `⚠ **Close gate bypassed** via \`--force\` at ${ts}. Unverified: ${reasons.join(', ')}.`;
-              await scope.effect(() =>
-                pexec('gh', ['issue', 'comment', closeIssueNum, '-R', cfg.repo, '--body', note], {
-                  timeout: GH_API_TIMEOUT_MS,
-                })
-              );
-            } catch (error) {
-              if (isGovernedAuthorityError(error)) throw error;
-              /* best-effort: GitHub/telemetry side effect; core flow proceeds */
-            }
+          try {
+            const ts = new Date().toISOString().replace(/\.\d+Z$/, 'Z');
+            const note = `⚠ **Close gate bypassed** via \`--force\` at ${ts}. Unverified: ${reasons.join(', ')}.`;
+            await pexec('gh', ['issue', 'comment', closeIssueNum, '-R', cfg.repo, '--body', note], {
+              timeout: GH_API_TIMEOUT_MS,
+            });
+          } catch {
+            /* best-effort: GitHub/telemetry side effect; core flow proceeds */
           }
         } else {
           console.error(`[task-tracker] ⛔ Refusing to close ${closeTarget}:`);
@@ -1312,11 +1238,10 @@ export async function executeClosePlan(ctx, preparedPlan, scope) {
           console.error(
             'Verify each item, check its box (`/task ensureChecked "<label>"`), then retry.'
           );
-          return closeOutcome({ status: 'close-gate-refused', exitCode: 3 });
+          process.exit(3);
         }
       }
     } catch (err) {
-      if (isGovernedAuthorityError(err)) throw err;
       // #510 — fail CLOSED. The entire review→done close-gate evaluation ran
       // inside this try; a transient body-fetch blip, JSON.parse error, or a
       // guard exception must NOT silently skip the gates and fall through to the
@@ -1327,7 +1252,7 @@ export async function executeClosePlan(ctx, preparedPlan, scope) {
       if (decision.failClosed) {
         console.error(`[task-tracker] ⛔ Refusing to close ${closeTarget}:`);
         console.error(`   • ${decision.message}`);
-        return closeOutcome({ status: 'gate-evaluation-refused', exitCode: decision.exitCode });
+        process.exit(decision.exitCode);
       }
       console.warn(
         `[task-tracker] ⚠ --force — close-gate evaluation failed but bypassing: ${err.message}`
@@ -1348,92 +1273,185 @@ export async function executeClosePlan(ctx, preparedPlan, scope) {
         );
         notReady.forEach((c) => console.error(`   #${c.num}: ${c.state ?? 'unknown'}`));
         console.error('All sub-issues must reach Review before the epic can close.');
-        return closeOutcome({ status: 'epic-children-not-ready', exitCode: 3 });
+        process.exit(3);
       }
       const reviewChildren = childStates.filter((c) => c.state === 'review');
       if (reviewChildren.length > 0) {
-        console.error(
-          `[task-tracker] ⛔ Cannot close epic #${closeIssueNum} — ${reviewChildren.length} child issue(s) require their own work lease:`
-        );
-        reviewChildren.forEach((child) => console.error(`   #${child.num}: review`));
-        console.error(
-          'Close each child in its own governed session before retrying the parent close.'
-        );
-        return closeOutcome({ status: 'child-lease-required', exitCode: 3 });
+        console.log(`[task-tracker] Cascade closing ${reviewChildren.length} child issue(s)...`);
+        const { buildRow: br } = await import('../gh-timing-comment.mjs');
+        const { PHASE_EVENTS: _PEcascade } = await import('../phase-events.mjs');
+        for (const child of reviewChildren) {
+          try {
+            // Cascade close: per-child body not fetched here; activeSec=0 is
+            // honest because no per-child timing context is loaded.
+            const childTarget = `#${child.num}`;
+            const terminalTiming = await safePostTiming(
+              childTarget,
+              br({
+                ts: nowIso(),
+                event: _PEcascade.done.enter.event,
+                activeSec: 0,
+                idleSec: 0,
+                deltaWords: 0,
+                // #475 AC1 — stamp the epic session's durable marker (the session
+                // performing the cascade); the per-log monotonic-max in
+                // rollupTotals protects each child's own running total.
+                wordMarker: s.lastWordMarker ?? 0,
+                description: `${_PEcascade.done.enter.description} (cascade closed by epic)`,
+              })
+            );
+            if (
+              terminalTiming === false ||
+              terminalTiming?.ok === false ||
+              terminalTiming?.queued
+            ) {
+              console.error(
+                `  ⛔ Could not prepare #${child.num} for close: terminal timing issue:wrap was not durably posted`
+              );
+              process.exitCode = 1;
+              return;
+            }
+            let childFlush;
+            try {
+              childFlush = await flushCloseTimingOrThrow({
+                closeTarget: childTarget,
+                flushQueueFor,
+              });
+            } catch (err) {
+              console.error(`  ⛔ Could not prepare #${child.num} for close: ${err.message}`);
+              process.exitCode = 1;
+              return;
+            }
+            // Cascaded children are independently estimated stories. Freeze
+            // their completion outcome after the close-time timing row and
+            // before any terminal board/disposition/issue mutation, exactly as
+            // the primary close path does.
+            let childBody;
+            try {
+              const { stdout } = await pexec(
+                'gh',
+                [
+                  'issue',
+                  'view',
+                  String(child.num),
+                  '-R',
+                  cfg.repo,
+                  '--json',
+                  'body',
+                  '--jq',
+                  '.body',
+                ],
+                { timeout: GH_API_TIMEOUT_MS }
+              );
+              childBody = String(stdout ?? '');
+              await ensureCloseEstimationOutcome({
+                issueNumber: child.num,
+                body: childBody,
+                writer: outcomeWriterForIssue(child.num, { requireDedicated: true }),
+              });
+            } catch (err) {
+              console.error(
+                `  ⛔ Could not create completion outcome for #${child.num}: ${err.message}`
+              );
+              process.exitCode = 1;
+              return;
+            }
+            // #385 — structured result; a genuine per-child board-move failure
+            // is surfaced (with its real stderr) but does not abort the cascade.
+            // The benign `done → done` no-op stays silent.
+            const childMove = await runMoveState(child.num, 'done', {
+              env: { AITM_CASCADE: '1' },
+              silent: true,
+            });
+            // #512 — fail CLOSED: a genuine non-benign board-move failure must NOT
+            // be followed by `gh issue close`, or the child is left CLOSED while
+            // its board card is not Done (split-brain). The benign done→done no-op
+            // still closes. One stuck child must not abort the cascade, so skip it
+            // and continue with actionable recovery guidance.
+            const { decideCascadeChildClose } = await import('../lib/cascade-child-close.mjs');
+            const childCloseDecision = decideCascadeChildClose({ childMove });
+            if (!childCloseDecision.shouldClose) {
+              console.warn(
+                `  ⚠ #${child.num} NOT closed — board move to "done" failed: ${childCloseDecision.detail}`
+              );
+              console.warn(
+                `     Recovery: re-run \`/task close ${child.num}\` once the board is reachable, ` +
+                  `or move the card to Done manually, then re-run the epic close.`
+              );
+              continue;
+            }
+            // #1041 — Delivered is terminal classification for cascaded
+            // children too. Write it only after the board move has succeeded,
+            // matching the primary close path and avoiding an OPEN child that
+            // is classified Delivered when its Done move fails.
+            if (
+              !(await writeDeliveredOrRefuse({
+                issueNumber: child.num,
+                targetRef: `#${child.num}`,
+              }))
+            ) {
+              return;
+            }
+            await pexec('gh', ['issue', 'close', String(child.num), '-R', cfg.repo], {
+              timeout: GH_API_TIMEOUT_MS,
+            });
+            try {
+              deregisterTask(projectDir, `#${child.num}`);
+            } catch {
+              /* best-effort: cleanup; failure is non-fatal */
+            }
+            const childSuffix = childFlush?.delivered
+              ? ` (queue: delivered ${childFlush.delivered})`
+              : '';
+            console.log(`  ✓ #${child.num} closed${childSuffix}`);
+          } catch (err) {
+            console.warn(`  ⚠ Could not close #${child.num}: ${err.message}`);
+          }
+        }
       }
     }
   }
-  // A mutation-free Full-Auto classifier runs before queue replay and lease
-  // acquisition. The same branch/PR/config inputs are re-read under authority
-  // by the executor below immediately before its remote mutation.
-  if (dryRun && isFullAuto() && !force && !SKIP_NETWORK && closeIssueNum) {
-    let closeBranch = '';
-    try {
-      const { stdout: br } = await pexec('git', ['rev-parse', '--abbrev-ref', 'HEAD'], {});
-      closeBranch = String(br || '').trim();
-    } catch (error) {
-      if (isGovernedAuthorityError(error)) throw error;
-      // No branch is the existing inert/no-PR path.
-    }
-    const prNumber = await resolveOpenPrNumber({ branch: closeBranch, cfg, pexec });
-    if (prNumber != null) {
-      const mergePlan = planFullAutoMerge({ prNumber, cfg });
-      if (!mergePlan.ok) {
-        console.error(`[task-tracker] ⛔ Refusing to close ${closeTarget}: ${mergePlan.message}`);
-        console.error(
-          `   Issue left OPEN — configure \`fullAutoMerge\` and re-run \`/task close ${closeTarget}\`.`
-        );
-        return closeOutcome({ status: 'full-auto-merge-refused', exitCode: 1 });
-      }
-    }
-  }
-  if (dryRun) return closeOutcome({ status: 'mutation-ready' });
-
   if (!SKIP_NETWORK && closeIssueNum) {
     try {
-      const applyReviewDelta =
-        ctx.applyReviewDelta || (await import('../lib/apply-review-delta.mjs')).applyReviewDelta;
-      await applyReviewDelta({
-        cfg,
-        issueNumber: closeIssueNum,
-        body: closeBody,
-        deps: { operation: 'close', withGovernedEffect: scope.continue },
-      });
+      const { applyReviewDelta } = await import('../lib/apply-review-delta.mjs');
+      await applyReviewDelta({ cfg, issueNumber: closeIssueNum, body: closeBody });
     } catch (err) {
-      if (isGovernedAuthorityError(err)) throw err;
       process.stderr.write(`⚠ review-delta hook failed: ${err.message}\n`);
     }
   }
   if (dirtyAuditRow) {
-    await safePostTiming(closeTarget, dirtyAuditRow, {
-      operation: 'close',
-      withGovernedEffect: scope.continue,
-    });
+    await safePostTiming(closeTarget, dirtyAuditRow);
   }
   // #801 — emit the review→done close pair through the shared helper (also
   // invoked by the converge/no-op fast-path). `review:approved` is gated on the
   // live approval marker in the fetched body, OR an explicitly-bypassed review
   // gate (`aitm-gate-bypassed` already logged); `issue:wrap` is unconditional.
-  await emitReviewToDoneClosePair({
-    closeTarget,
-    closeIssueNum,
-    cfg,
-    body: closeBody,
-    reviewGateBypassed,
-    lastWordMarker: s.lastWordMarker,
-    ctx,
-    SKIP_NETWORK,
-    nowIso,
-    safePostTiming,
-    operation: 'close',
-    withGovernedEffect: scope.continue,
-  });
-  if (runLogIssueTime) {
-    await runLogIssueTime(closeTarget, {
-      operation: 'close',
-      withGovernedEffect: scope.continue,
+  try {
+    await emitReviewToDoneClosePair({
+      closeTarget,
+      closeIssueNum,
+      cfg,
+      hasApprovalMarker:
+        hasReviewApprovedMarker(closeBody) ||
+        hasAcceptedApprovalEvidence(closeLifecycleEvidence, { provenance: 'human' }) ||
+        hasAcceptedApprovalEvidence(closeLifecycleEvidence, { provenance: 'full-auto' }),
+      issueBody: closeBody,
+      reviewGateBypassed,
+      lastWordMarker: s.lastWordMarker,
+      ctx,
+      SKIP_NETWORK,
+      nowIso,
+      safePostTiming,
     });
+  } catch (err) {
+    console.error(
+      `[task-tracker] ⛔ Refusing to close ${closeTarget}: ${err.message}. ` +
+        'Issue left OPEN; retry after timing evidence is reachable.'
+    );
+    process.exitCode = 1;
+    return;
   }
+  if (runLogIssueTime) await runLogIssueTime(closeTarget);
   // Post-close board/body agreement check (#180 defect 1 guard). After
   // runLogIssueTime, the `<!-- aitm-fields -->` body marker should have
   // non-null engagedTime. If it's still null, board fields almost certainly
@@ -1441,30 +1459,75 @@ export async function executeClosePlan(ctx, preparedPlan, scope) {
   if (!SKIP_NETWORK && closeIssueNum) {
     await assertFieldsPersisted({ cfg, pexec, issueNum: closeIssueNum });
   }
-  const flushResult = await flushAndForgetQueueFor(closeTarget, {
-    operation: 'close',
-    withGovernedEffect: scope.continue,
-  });
-  if (Number(flushResult?.authorityRefused || 0) > 0) {
-    return closeOutcome({ status: 'queue-authority-refused', exitCode: 1 });
+  let flushResult;
+  try {
+    flushResult = await flushCloseTimingOrThrow({ closeTarget, flushQueueFor });
+  } catch (err) {
+    console.error(
+      `[task-tracker] ⛔ Refusing to close ${closeTarget}: ${err.message}. ` +
+        'Issue left OPEN; queued timing evidence was retained for retry.'
+    );
+    process.exitCode = 1;
+    return;
   }
-  if (flushResult.delivered || flushResult.discarded) {
+  if (flushResult.delivered) {
     console.log(
-      `[task-tracker] queue: delivered ${flushResult.delivered}, discarded ${flushResult.discarded} for ${closeTarget}.`
+      `[task-tracker] queue: delivered ${flushResult.delivered}, pending 0 for ${closeTarget}.`
     );
   }
-  // #1035 — classify delivery before any terminal board or GitHub close. The
-  // write is fail-closed: an upgraded installation must run init-repair rather
-  // than silently create unclassified delivered work.
-  if (!SKIP_NETWORK && closeIssueNum) {
-    if (
-      !(await writeDeliveredOrRefuse({
-        issueNumber: closeIssueNum,
-        targetRef: closeTarget,
-      }))
-    ) {
-      return closeOutcome({ status: 'disposition-write-refused', exitCode: 1 });
+  // #908 — complete the fallible Full-Auto merge preparation before writing
+  // immutable completion evidence. A retry after a merge refusal must not leave
+  // an outcome for work that never became eligible for Done.
+  if (isFullAuto() && !force && !SKIP_NETWORK && closeIssueNum) {
+    let closeBranch = '';
+    try {
+      const { stdout: br } = await pexec('git', ['rev-parse', '--abbrev-ref', 'HEAD'], {});
+      closeBranch = String(br || '').trim();
+    } catch {
+      // no branch resolvable — treated as no-PR (inert) below
     }
+    const fam = await enableFullAutoMergeForClose({
+      cfg,
+      branch: closeBranch,
+      isFullAuto: isFullAuto(),
+      pexec,
+    });
+    if (fam.status === 'fail-closed') {
+      console.error(`[task-tracker] ⛔ Refusing to close ${closeTarget}: ${fam.message}`);
+      console.error(
+        `   Issue left OPEN — configure \`fullAutoMerge\` and re-run \`/task close ${closeTarget}\`.`
+      );
+      process.exitCode = 1;
+      return;
+    }
+    if (fam.status === 'exec-failed') {
+      console.error(
+        `[task-tracker] ✗ Failed to enable auto-merge for ${closeTarget}: ${fam.message}\n` +
+          `Local state left intact — re-run \`/task close ${closeTarget}\` once resolved.`
+      );
+      process.exitCode = 1;
+      return;
+    }
+    if (fam.status === 'enabled') {
+      console.log(
+        `[task-tracker] ✓ Enabled GitHub auto-merge on PR #${fam.prNumber} for ${closeTarget} ` +
+          `(\`gh ${fam.argv.join(' ')}\`); GitHub merges once required checks pass.`
+      );
+    }
+  }
+  try {
+    await ensureCloseEstimationOutcome({
+      issueNumber: closeIssueNum,
+      body: closeBody,
+      writer: estimationOutcomeWriter,
+    });
+  } catch (err) {
+    console.error(
+      `[task-tracker] ⛔ Refusing to close ${closeTarget}: ${err.message}. ` +
+        'Issue left OPEN; repair outcome evidence and retry.'
+    );
+    process.exitCode = 1;
+    return;
   }
   // #505 — atomic forced close. A `--force` close deliberately bypasses the
   // close gate (above), but the *terminal board move* used to run only AFTER
@@ -1484,8 +1547,6 @@ export async function executeClosePlan(ctx, preparedPlan, scope) {
       silent: true,
       extraArgs: ['--force'],
       reviewAuthority: configuredReviewAuthority,
-      operation: 'close',
-      withGovernedEffect: scope.continue,
     });
     // Same swallow-vs-surface rule as the post-close move (#435): re-read the
     // board and only refuse when the move genuinely failed AND the board is not
@@ -1502,56 +1563,8 @@ export async function executeClosePlan(ctx, preparedPlan, scope) {
         `[task-tracker] ⛔ Refusing to close ${closeTarget}: forced board move to "done" failed (${detail}). ` +
           `Issue left OPEN to avoid a closed-but-not-Done split-brain — fix the board move and re-run \`/task close ${closeTarget} --force\`.`
       );
-      return closeOutcome({ status: 'forced-board-move-failed', exitCode: 1 });
-    }
-  }
-
-  // #908 — Full-Auto PR merge step. Before the terminal Done/close sequence, on a
-  // Full-Auto PR-based close (an open PR exists for this branch), enable
-  // GitHub-native auto-merge so the drive does not stall at the human "Merge"
-  // click. `fullAutoMerge` is absent by default → `fail-closed`: the batch HALTS
-  // with an actionable message rather than a mid-drive classifier denial, and the
-  // issue is left OPEN. No open PR (branch-based / interactive close) → inert.
-  // Gated on `isFullAuto()` — an interactive close leaves the merge to the human,
-  // and the distinct guard keeps this block from shadowing the #654 pre-walk guard
-  // below (whose source-shape contract anchors on its exact `if (!force && …)`).
-  if (isFullAuto() && !force && !SKIP_NETWORK && closeIssueNum) {
-    let closeBranch = '';
-    try {
-      const { stdout: br } = await pexec('git', ['rev-parse', '--abbrev-ref', 'HEAD'], {});
-      closeBranch = String(br || '').trim();
-    } catch (error) {
-      if (isGovernedAuthorityError(error)) throw error;
-      // no branch resolvable — treated as no-PR (inert) below
-    }
-    const fam = await enableFullAutoMergeForClose({
-      cfg,
-      branch: closeBranch,
-      isFullAuto: isFullAuto(),
-      pexec,
-      issueNumber: closeIssueNum,
-      operation: 'close',
-      withGovernedEffect: scope.continue,
-    });
-    if (fam.status === 'fail-closed') {
-      console.error(`[task-tracker] ⛔ Refusing to close ${closeTarget}: ${fam.message}`);
-      console.error(
-        `   Issue left OPEN — configure \`fullAutoMerge\` and re-run \`/task close ${closeTarget}\`.`
-      );
-      return closeOutcome({ status: 'full-auto-merge-refused', exitCode: 1 });
-    }
-    if (fam.status === 'exec-failed') {
-      console.error(
-        `[task-tracker] ✗ Failed to enable auto-merge for ${closeTarget}: ${fam.message}\n` +
-          `Local state left intact — re-run \`/task close ${closeTarget}\` once resolved.`
-      );
-      return closeOutcome({ status: 'full-auto-merge-failed', exitCode: 1 });
-    }
-    if (fam.status === 'enabled') {
-      console.log(
-        `[task-tracker] ✓ Enabled GitHub auto-merge on PR #${fam.prNumber} for ${closeTarget} ` +
-          `(\`gh ${fam.argv.join(' ')}\`); GitHub merges once required checks pass.`
-      );
+      process.exitCode = 1;
+      return;
     }
   }
 
@@ -1577,8 +1590,6 @@ export async function executeClosePlan(ctx, preparedPlan, scope) {
     const preMove = await runMoveStateDone(s.active, {
       silent: true,
       reviewAuthority: configuredReviewAuthority,
-      operation: 'close',
-      withGovernedEffect: scope.continue,
     });
     const preBoardState =
       preMove && !preMove.ok && !preMove.benign
@@ -1592,7 +1603,22 @@ export async function executeClosePlan(ctx, preparedPlan, scope) {
           `Issue left OPEN to avoid a closed-but-not-Done split-brain — fix the board move ` +
           `(e.g. record review approval with \`/task approve ${closeTarget}\`) and re-run \`/task close ${closeTarget}\`.`
       );
-      return closeOutcome({ status: 'board-move-failed', exitCode: 1 });
+      process.exitCode = 1;
+      return;
+    }
+  }
+
+  // #1035 — Delivered is terminal classification, so write it only after the
+  // board has verifiably reached Done. This prevents a failed outcome or move
+  // from leaving an open issue classified as delivered.
+  if (!SKIP_NETWORK && closeIssueNum) {
+    if (
+      !(await writeDeliveredOrRefuse({
+        issueNumber: closeIssueNum,
+        targetRef: closeTarget,
+      }))
+    ) {
+      return;
     }
   }
 
@@ -1606,24 +1632,24 @@ export async function executeClosePlan(ctx, preparedPlan, scope) {
   // close` is idempotent — closing an already-closed issue is a no-op.
   if (!SKIP_NETWORK && closeIssueNum) {
     try {
-      await scope.effect(() =>
-        pexec('gh', ['issue', 'close', closeIssueNum, '-R', cfg.repo], {
-          timeout: GH_API_TIMEOUT_MS,
-        })
-      );
+      await pexec('gh', ['issue', 'close', closeIssueNum, '-R', cfg.repo], {
+        timeout: GH_API_TIMEOUT_MS,
+      });
     } catch (err) {
-      if (isGovernedAuthorityError(err)) throw err;
       console.error(
         `[task-tracker] ✗ Failed to close ${closeTarget} on GitHub: ${err.message}\n` +
           `Local state left intact — re-run \`/task close ${closeTarget}\` once GitHub is reachable.`
       );
-      return closeOutcome({ status: 'github-close-failed', exitCode: 1 });
+      process.exitCode = 1;
+      return;
     }
-    await stripCloseLabels({
-      pexec: (bin, argv, options) => scope.effect(() => pexec(bin, argv, options)),
-      cfg,
-      issueNum: closeIssueNum,
-    });
+    await stripCloseLabels({ pexec, cfg, issueNum: closeIssueNum });
+  }
+  clearActive(statePath);
+  try {
+    deregisterTask(projectDir, s.active);
+  } catch {
+    /* best-effort: cleanup; failure is non-fatal */
   }
   // #385 — branch on the structured result. A genuine board-move failure must
   // NOT be reported as a clean "Closed": the issue was just closed on GitHub
@@ -1634,18 +1660,11 @@ export async function executeClosePlan(ctx, preparedPlan, scope) {
   const moveResult = await runMoveStateDone(s.active, {
     silent: true,
     reviewAuthority: configuredReviewAuthority,
-    operation: 'close',
-    withGovernedEffect: scope.continue,
   });
   const lifecycleTickResult = await reconcileLifecycleBoxes({
     cfg,
     issueNum: closeIssueNum,
     pexec,
-    deps: {
-      mutateIssueBody: issueBodyMutator?.mutate,
-      operation: 'close',
-      withGovernedEffect: scope.continue,
-    },
   });
   if (moveResult && !moveResult.ok && !moveResult.benign) {
     // #435 — the move reported a non-benign failure, but a race can leave the
@@ -1661,17 +1680,9 @@ export async function executeClosePlan(ctx, preparedPlan, scope) {
       console.error(
         `[task-tracker] ✗ #${s.active.replace(/^#/, '')} closed on GitHub but the board move to "done" failed: ${detail}`
       );
-      return closeOutcome({ status: 'post-close-board-move-failed', exitCode: 1 });
+      process.exitCode = 1;
+      return;
     }
-  }
-  // Task 6 owns lease release. Closing only clears the active task projection,
-  // after every terminal remote effect, while saveState preserves lease context.
-  await scope.effect(() => clearActive(statePath));
-  try {
-    await scope.effect(() => deregisterTask(projectDir, s.active));
-  } catch (error) {
-    if (isGovernedAuthorityError(error)) throw error;
-    /* best-effort: cleanup; failure is non-fatal */
   }
   // #672 — a lifecycle-tick failure that exhausts its retries previously
   // only surfaced on stderr, easy to miss among the surrounding console.log
@@ -1685,7 +1696,6 @@ export async function executeClosePlan(ctx, preparedPlan, scope) {
   } else {
     console.log(`Closed ${s.active}.`);
   }
-  return closeOutcome({ status: 'completed' });
 }
 
 // Caller-side assertion that runLogIssueTime actually persisted fields to
@@ -1708,7 +1718,6 @@ async function assertFieldsPersisted({ cfg, pexec, issueNum }) {
     );
     body = String(stdout || '');
   } catch (err) {
-    if (isGovernedAuthorityError(err)) throw err;
     throw new Error(
       `assertFieldsPersisted: could not re-read body for #${issueNum}: ${err.message}. ` +
         `Retry when GitHub is reachable.`
@@ -1785,16 +1794,10 @@ export async function tickLifecycleOnClose({ cfg, issueNum, pexec, deps = {} }) 
         // approve.mjs and bypass the gate scoped to this single call site only;
         // every other mutateIssueBody call in this file keeps the gate enforced.
         allowUnverifiedTicks: true,
-        operation: deps.operation || 'close',
-        withGovernedEffect: deps.withGovernedEffect,
-        deps: {
-          pexec,
-          ...(deps.withGovernedEffect ? { withGovernedEffect: deps.withGovernedEffect } : {}),
-        },
+        deps: { pexec },
       });
       return { ok: true };
     } catch (err) {
-      if (isGovernedAuthorityError(err)) throw err;
       lastErr = err;
       const isGuardError = LIFECYCLE_TICK_GUARD_ERRORS.has(err.name);
       if (isGuardError || attempt === LIFECYCLE_TICK_MAX_ATTEMPTS) break;

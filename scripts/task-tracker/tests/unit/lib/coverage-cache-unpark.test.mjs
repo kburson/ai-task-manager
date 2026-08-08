@@ -23,9 +23,11 @@
 import { strict as assert } from 'node:assert';
 import { test } from 'node:test';
 
+import { existsSync } from 'node:fs';
 import path from 'node:path';
 
 import { mkdtempProjectIsolated } from '../../../lib/scratch-dir.mjs';
+import { statePath } from '../../../paths.mjs';
 import {
   dispatchOnEnterActions,
   refreshKanbanStateCache,
@@ -35,10 +37,11 @@ import {
   endTaskTracking,
 } from '../../../lib/move-state/cache-unpark.mjs';
 
-// `endTaskTracking` resolves its subprocess script relative to `__dir`, which
-// production wires to `scripts/gh` (the directory of `move-state.mjs`) — not
-// the process cwd. Mirror that here so the injected-pexec test finds the real
-// script instead of silently no-op'ing.
+// `syncEventFields`/`endTaskTracking` resolve their subprocess scripts
+// relative to `__dir`, which production wires to `scripts/gh` (the directory
+// of `move-state.mjs`, see `scripts/gh/move-state.mjs:60`) — not the process
+// cwd. Mirror that here so the injected-pexec dispatch tests actually find
+// the real scripts instead of silently no-op'ing.
 const GH_DIR = path.resolve(process.cwd(), 'scripts/gh');
 
 // A `pexec`-shaped fake: records every call; optionally throws.
@@ -121,29 +124,6 @@ test('dispatchOnEnterActions: outer catch absorbs an import/lookup failure', asy
   assert.ok(true); // no throw = outer catch handled it
 });
 
-test('dispatchOnEnterActions: governed authority errors are rethrown', async () => {
-  const error = Object.assign(new Error('stale onEnter fence'), { code: 'fence-stale' });
-  await assert.rejects(
-    () =>
-      dispatchOnEnterActions({
-        issueArg: '10',
-        stateArg: 'develop',
-        SKIP_NETWORK: false,
-        cfg: { repo: 'o/r' },
-        deps: {
-          states: {
-            STATES: {
-              develop: {
-                onEnter: [{ id: 'stale', run: async () => Promise.reject(error) }],
-              },
-            },
-          },
-        },
-      }),
-    (thrown) => thrown === error
-  );
-});
-
 // --- refreshKanbanStateCache ------------------------------------------------
 
 test('refreshKanbanStateCache: non-stage stateArg short-circuits', async () => {
@@ -165,24 +145,18 @@ test('refreshKanbanStateCache: non-stage stateArg short-circuits', async () => {
 
 test('refreshKanbanStateCache: refreshes cache for the matching active task', async () => {
   const set = [];
-  const events = [];
   await refreshKanbanStateCache({
     issueArg: '10',
     stateArg: 'develop',
-    reverifyGovernedEffect: async () => events.push('reverify'),
     deps: {
       wordCounter: { currentSessionId: () => 'sid1' },
       sessionState: {
         getActiveTask: () => ({ issue: '#10' }),
-        setSessionKanbanState: (sid, st) => {
-          events.push('set');
-          set.push([sid, st]);
-        },
+        setSessionKanbanState: (sid, st) => set.push([sid, st]),
       },
     },
   });
   assert.deepEqual(set, [['sid1', 'develop']]);
-  assert.deepEqual(events, ['reverify', 'set']);
 });
 
 test('refreshKanbanStateCache: no session id → skip, and mismatched active → skip', async () => {
@@ -301,37 +275,9 @@ test('unparkDoneDependents: enforcement catch absorbs a throw', async () => {
   }
 });
 
-test('unparkDoneDependents: parent authority cannot authorize child mutation', async () => {
-  const savedCascade = process.env.AITM_CASCADE;
-  delete process.env.AITM_CASCADE;
-  let called = false;
-  try {
-    await unparkDoneDependents({
-      issueArg: '10',
-      stateArg: 'done',
-      SKIP_NETWORK: false,
-      cfg: { repo: 'o/r' },
-      withGovernedEffect: async () => {
-        throw new Error('parent continuation must never be called for a child');
-      },
-      deps: {
-        unparkMod: {
-          unparkDependents: async () => {
-            called = true;
-            return [];
-          },
-        },
-      },
-    });
-    assert.equal(called, false, 'unpark fails closed without exact child authority');
-  } finally {
-    if (savedCascade !== undefined) process.env.AITM_CASCADE = savedCascade;
-  }
-});
-
 // --- syncTrackerState -------------------------------------------------------
 
-test('syncTrackerState: reverify is adjacent to the actual tracker save', async () => {
+test('syncTrackerState: syncs the tracker ledger for the new state', () => {
   const sandbox = mkdtempProjectIsolated('cache-unpark-');
   const savedProjectDir = process.env.AI_TASK_MANAGER_PROJECT_DIR;
   process.env.AI_TASK_MANAGER_PROJECT_DIR = sandbox;
@@ -339,17 +285,8 @@ test('syncTrackerState: reverify is adjacent to the actual tracker save', async 
     // #218 strips `state` from the on-disk ledger (issue body is source of
     // truth), so the observable effect is that the load→save round-trip runs
     // and materializes the ledger file in the isolated project dir.
-    const events = [];
-    await syncTrackerState({
-      stateArg: 'test',
-      reverifyGovernedEffect: async () => events.push('reverify'),
-      deps: {
-        beforeTrackerSave: () => events.push('before-save'),
-        saveState: () => events.push('save'),
-      },
-    });
-    assert.deepEqual(events, ['before-save', 'reverify', 'save']);
-    assert.deepEqual(events.slice(-2), ['reverify', 'save']);
+    syncTrackerState({ stateArg: 'test' });
+    assert.ok(existsSync(statePath(sandbox)), 'tracker ledger was written');
   } finally {
     if (savedProjectDir !== undefined) process.env.AI_TASK_MANAGER_PROJECT_DIR = savedProjectDir;
     else delete process.env.AI_TASK_MANAGER_PROJECT_DIR;
@@ -371,16 +308,8 @@ test('syncEventFields: SKIP_NETWORK short-circuits', async () => {
   assert.equal(calls.length, 0);
 });
 
-test('syncEventFields: invokes update-event-fields in-process with the exact continuation', async () => {
+test('syncEventFields: dispatches the update-event-fields subprocess via ctx.pexec', async () => {
   const { pexec, calls } = makePexec();
-  const updates = [];
-  const authorityEvents = [];
-  const continuation = async (options, callback) => {
-    authorityEvents.push(`continue:${options.issueId}:${options.operation}`);
-    return callback({
-      reverify: async () => authorityEvents.push('reverify'),
-    });
-  };
   await syncEventFields({
     issueArg: '10',
     stateArg: 'develop',
@@ -388,47 +317,20 @@ test('syncEventFields: invokes update-event-fields in-process with the exact con
     SKIP_NETWORK: false,
     pexec,
     __dir: GH_DIR,
-    governedOperation: 'review-mutation',
-    withGovernedEffect: continuation,
-    deps: {
-      updateEventFields: async (args, options) => {
-        updates.push({ args, options });
-        return options.withGovernedEffect(
-          {
-            issueId: args[0],
-            operation: options.operation,
-            heartbeat: true,
-          },
-          async (authority) => {
-            await authority.reverify();
-            authorityEvents.push('write');
-            return 0;
-          }
-        );
-      },
-    },
   });
-  assert.equal(calls.length, 0, 'no ungoverned subprocess is spawned');
-  assert.deepEqual(updates[0].args, ['10', 'develop', '--item-id', 'IT-1']);
-  assert.equal(updates[0].options.operation, 'review-mutation');
-  assert.equal(updates[0].options.withGovernedEffect, continuation);
-  assert.deepEqual(authorityEvents, ['continue:10:review-mutation', 'reverify', 'write']);
+  assert.equal(calls.length, 1);
+  assert.ok(calls[0].args.includes('--item-id'));
+  assert.ok(calls[0].args.includes('IT-1'));
 });
 
-test('syncEventFields: an ordinary in-process update failure surfaces a warning, no rethrow', async () => {
-  const { pexec } = makePexec();
+test('syncEventFields: a throwing pexec surfaces a warning, no rethrow', async () => {
+  const { pexec } = makePexec({ throws: true });
   await syncEventFields({
     issueArg: '10',
     stateArg: 'develop',
-    itemId: 'IT',
     SKIP_NETWORK: false,
     pexec,
     __dir: GH_DIR,
-    deps: {
-      updateEventFields: async () => {
-        throw new Error('sync failed');
-      },
-    },
   });
   assert.ok(true); // warning written, best-effort
 });
@@ -441,41 +343,14 @@ test('endTaskTracking: non-done move short-circuits', () => {
   assert.equal(calls.length, 0);
 });
 
-test('endTaskTracking: awaits the governed local task-tracker end', async () => {
+test('endTaskTracking: fires the local task-tracker end on the move to done', () => {
   const savedCascade = process.env.AITM_CASCADE;
   delete process.env.AITM_CASCADE;
   try {
-    const calls = [];
-    const events = [];
-    let finish;
-    const child = new Promise((resolve) => {
-      finish = resolve;
-    });
-    const pexec = async (cmd, args, opts) => {
-      calls.push({ cmd, args, opts });
-      events.push('spawn');
-      await child;
-      events.push('child-done');
-    };
-    let settled = false;
-    const pending = endTaskTracking({
-      stateArg: 'done',
-      SKIP_NETWORK: false,
-      pexec,
-      __dir: GH_DIR,
-      reverifyGovernedEffect: async () => events.push('reverify'),
-    }).then(() => {
-      settled = true;
-      events.push('returned');
-    });
-    await Promise.resolve();
+    const { pexec, calls } = makePexec();
+    endTaskTracking({ stateArg: 'done', SKIP_NETWORK: false, pexec, __dir: GH_DIR });
     assert.equal(calls.length, 1);
     assert.deepEqual(calls[0].args.slice(-1), ['end']);
-    assert.equal(settled, false, 'tail must remain pending while the child is running');
-    assert.deepEqual(events.slice(0, 2), ['reverify', 'spawn']);
-    finish();
-    await pending;
-    assert.deepEqual(events, ['reverify', 'spawn', 'child-done', 'returned']);
   } finally {
     if (savedCascade !== undefined) process.env.AITM_CASCADE = savedCascade;
   }

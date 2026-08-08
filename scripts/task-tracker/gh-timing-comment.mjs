@@ -6,30 +6,23 @@ import { promisify } from 'node:util';
 import { resolvePhaseEvent } from './phase-events.mjs';
 import { withLock } from './locks.mjs';
 import { getProjectDir, timingLockPath as resolveTimingLockPath } from './paths.mjs';
-import { parseMarker, serializeMarker, unescapeValue } from './lib/marker-grammar.mjs';
+import { serializeMarker, unescapeValue } from './lib/marker-grammar.mjs';
+import { hasReviewApprovedMarker, parseReviewApprovedMarker } from './lib/markers.mjs';
 import {
   isTableTimingTimestamp,
   parseTimingRow,
   replaceTimingRowCell,
-  splitTimingRowMarker,
 } from './lib/timing-row-reader.mjs';
 import { formatDurationSeconds, lastRowTsFromBody, _tsToMs } from './lib/timing-rows.mjs';
 import { classifyEvent, lastOpenInterruption, timingCommentHasRows } from './lib/bind-event.mjs';
+import { shouldSuppressTimingAppend } from './lib/terminal-review-handoff.mjs';
 import {
   EVENT_CLASS,
   classifyTimingEvent,
   isEmittableTimingEvent,
 } from './lib/timing-events/index.mjs';
-import { loadConfig } from './config.mjs';
-import {
-  createRuntimeGovernedEffectAdapter,
-  isGovernedAuthorityError,
-} from './lib/work-lease/governed-effect.mjs';
-import {
-  assertTransitionProjectionAuthority,
-  assertTransitionTimingQueueAliasAuthority,
-  assertTransitionTimingQueueAliasCollisionGroupAuthority,
-} from './lib/work-lease/transition-projection-authority.mjs';
+import { GH_TIMING_COMMENT_TIMEOUT_MS } from './lib/process-timeouts.mjs';
+export { GH_TIMING_COMMENT_TIMEOUT_MS };
 const pexec = promisify(execFile);
 
 // #568 — raised by `appendRow` when a second `start` row is attempted over a
@@ -45,7 +38,6 @@ export class DuplicateStartError extends Error {
 }
 
 const TIMING_HEADING = '⏱ Timing Log';
-const TIMING_PROJECTION_NAME = 'timing';
 
 // #475 AC3 — column legend. Documents that a `0` in the Δ Words column on a
 // lifecycle/audit row is CORRECT, not a defect: Δ Words is the per-segment word
@@ -59,21 +51,32 @@ const TABLE_HEADER = [
   '| Timestamp | Event | Active | Idle | Δ Words | Word Marker | Description | Δ Words (full) |',
   '|---|---|---|---|---|---|---|---|',
 ].join('\n');
-const [TABLE_HEADER_ROW] = TABLE_HEADER.split('\n');
-const TIMING_TABLE_COLUMN_COUNT_BY_HEADER = new Map([
-  [TABLE_HEADER_ROW, 8],
-  ['| Timestamp | Event | Active | Idle | Δ Words | Word Marker | Description |', 7],
-  ['| Timestamp | Event | Active | Idle | ΔWords | Word Marker | Description |', 7],
-]);
 
-export function fmtTs(iso) {
-  const d = new Date(iso);
+// #1104 — `offsetMin` (minutes east of UTC) renders the wall-clock at an
+// explicitly chosen offset instead of the emitting machine's local zone. It is
+// strictly opt-in: omit it and the local-zone path below runs byte-for-byte as
+// before, so `buildRow`/`buildFlushRow` and every live timing row are untouched.
+// Display-only either way — the recorded instant is identical, and rollup
+// arithmetic reads the trailing `row-sec` marker, not this cell.
+export function fmtTs(iso, { offsetMin } = {}) {
   const pad = (n) => String(n).padStart(2, '0');
-  const offsetMin = -d.getTimezoneOffset();
-  const sign = offsetMin >= 0 ? '+' : '-';
-  const abs = Math.abs(offsetMin);
+  const base = new Date(iso);
+  // Strictly `number`: `null` (what `timingTimestampOffsetMin` returns for a
+  // timestamp carrying no offset) must fall through to the local-zone default,
+  // and `Number(null)` is a finite 0, so a coercing check would silently render
+  // those rows at +00:00 instead.
+  const explicit = typeof offsetMin === 'number' && Number.isFinite(offsetMin);
+  const effectiveOffsetMin = explicit ? offsetMin : -base.getTimezoneOffset();
+  const sign = effectiveOffsetMin >= 0 ? '+' : '-';
+  const abs = Math.abs(effectiveOffsetMin);
   const offset = `${sign}${pad(Math.floor(abs / 60))}:${pad(abs % 60)}`;
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())} ${offset}`;
+  if (!explicit) {
+    return `${base.getFullYear()}-${pad(base.getMonth() + 1)}-${pad(base.getDate())} ${pad(base.getHours())}:${pad(base.getMinutes())}:${pad(base.getSeconds())} ${offset}`;
+  }
+  // Shift the epoch by the requested offset and read the UTC field getters, so
+  // the rendered wall-clock is the one an observer at that offset would see.
+  const d = new Date(base.getTime() + offsetMin * 60_000);
+  return `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())} ${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())}:${pad(d.getUTCSeconds())} ${offset}`;
 }
 
 export function firstStartTimestamp(commentBody) {
@@ -198,7 +201,14 @@ export function buildRow({
 // closes. Used by `verbResume` (via `lib/bind-event.mjs`'s
 // `detectUnmarkedDepartureGap`) to insert a synthetic `pause:<reason>` row
 // before writing `resumed` over a gap with no departure row.
-export function buildBackdatedDepartureRow({ ts, event, description = '', wordMarker }) {
+//
+// #1104 — `offsetMin` (minutes east of UTC) chooses the offset the timestamp
+// cell renders at. The synthetic row sits one second after the row it follows
+// and is read continuously with it, so the caller supplies the offset of THAT
+// neighboring row (`verbResume` parses it off `gap.lastRowTs`); rendering in
+// the emitting machine's zone instead would show a reader an offset jump that
+// is not real. Omitted, the local-zone default is unchanged.
+export function buildBackdatedDepartureRow({ ts, event, description = '', wordMarker, offsetMin }) {
   const tsMs = tsToMs(ts);
   if (!Number.isFinite(tsMs)) {
     throw new Error(`buildBackdatedDepartureRow: non-parseable ts: ${String(ts)}`);
@@ -207,7 +217,32 @@ export function buildBackdatedDepartureRow({ ts, event, description = '', wordMa
     throw new Error(`refusing non-emittable departure Timing Log event: ${String(event)}`);
   }
   const wm = wordMarker == null ? null : Number(String(wordMarker).replace(/,/g, ''));
-  return `| ${fmtTs(ts)} | ${event} |  |  |  | ${fmtNum(Number.isFinite(wm) ? wm : null)} | ${description} | <!-- row-sec: a=0 i=0 -->`;
+  return `| ${fmtTs(ts, { offsetMin })} | ${event} |  |  |  | ${fmtNum(Number.isFinite(wm) ? wm : null)} | ${description} | <!-- row-sec: a=0 i=0 -->`;
+}
+
+// #1133 — the Review approval marker is a durable authority record, so a
+// missing Timing Log projection may be repaired from its immutable timestamp.
+// This is deliberately a separate, capability-narrow constructor rather than
+// an escape hatch on buildRow: callers cannot provide an arbitrary timestamp or
+// event, and the generic 60-second freshness invariant remains unconditional.
+export function buildMarkerAuthorizedReviewApprovedRow({
+  issueBody,
+  activeSec,
+  idleSec,
+  wordMarker,
+}) {
+  if (!hasReviewApprovedMarker(issueBody)) {
+    throw new Error('review approval timing requires an authoritative approval marker');
+  }
+  const approval = parseReviewApprovedMarker(issueBody);
+  const tsMs = tsToMs(approval?.ts);
+  if (!Number.isFinite(tsMs)) {
+    throw new Error('review approval timing marker has a non-parseable timestamp');
+  }
+  const aSec = Number.isFinite(Number(activeSec)) ? Math.max(0, Math.floor(Number(activeSec))) : 0;
+  const iSec = Number.isFinite(Number(idleSec)) ? Math.max(0, Math.floor(Number(idleSec))) : 0;
+  const marker = Number(String(wordMarker ?? '').replace(/,/g, ''));
+  return `| ${fmtTs(approval.ts)} | review:approved | ${aSec === 0 ? '' : formatDurationSeconds(aSec)} | ${iSec === 0 ? '' : formatDurationSeconds(iSec)} |  | ${fmtNum(Number.isFinite(marker) ? marker : null)} | story approved | <!-- row-sec: a=${aSec} i=${iSec} -->`;
 }
 
 // #484 — shared flush-path row builder. `flushActiveToGH` (the path behind every
@@ -365,173 +400,36 @@ function rowTs(row) {
   return parseTimingRow(String(row))?.ts ?? '';
 }
 
-function requiredProjectionString(value, label) {
-  if (typeof value !== 'string' || value.trim() === '') {
-    throw new TypeError(`${label} must be a non-empty string`);
-  }
-  return value;
-}
-
-function normalizeTimingProjection(projectionId, subOperationId) {
-  if (projectionId === undefined && subOperationId === undefined) return null;
-  return {
-    projectionId: requiredProjectionString(projectionId, 'timing projectionId'),
-    subOperationId: requiredProjectionString(subOperationId, 'timing subOperationId'),
-  };
-}
-
-export function timingProjectionMarker({ projectionId, subOperationId } = {}) {
-  const projection = normalizeTimingProjection(projectionId, subOperationId);
-  if (!projection) {
-    throw new TypeError('timing projection identity is required');
-  }
-  // Identities can contain provider/session text. Encode the UTF-8 bytes into
-  // the HTML-comment-safe base64url alphabet so a caller cannot inject quotes,
-  // newlines, or a `-->` terminator into the durable marker.
-  return serializeMarker('work-lease-projection', {
-    'projection-id-b64': Buffer.from(projection.projectionId, 'utf8').toString('base64url'),
-    'sub-operation-id-b64': Buffer.from(projection.subOperationId, 'utf8').toString('base64url'),
-  });
-}
-
-function rowWithProjectionMarker(row, projection) {
-  if (!projection) return row;
-  const source = String(row).replace(/\s+$/, '');
-  const parsedRow = parseTimingRow(source);
-  if (
-    source.includes('\n') ||
-    source.includes('\r') ||
-    !source.startsWith('|') ||
-    !parsedRow ||
-    !isTableTimingTimestamp(parsedRow.ts)
-  ) {
-    throw new TypeError('projected timing row must be a canonical unindented timing data row');
-  }
-  const { core, marker } = splitTimingRowMarker(source);
-  if (!marker) {
-    throw new TypeError('projected timing row must include a trailing row-sec marker');
-  }
-  if (!core.trimEnd().endsWith('|')) {
-    throw new TypeError('projected timing row must end its table cells before the row-sec marker');
-  }
-  const receipt = timingProjectionMarker(projection);
-  return `${core} ${receipt}${marker}`;
-}
-
-function decodeProjectionIdentity(value) {
-  if (typeof value !== 'string' || !/^[A-Za-z0-9_-]+$/.test(value)) return null;
-  const decoded = Buffer.from(value, 'base64url').toString('utf8');
-  if (!decoded || Buffer.from(decoded, 'utf8').toString('base64url') !== value) return null;
-  return decoded;
-}
-
-function projectionReceiptFromTimingRow(line, rowIndex) {
-  const parsedRow = parseTimingRow(line);
-  if (!parsedRow || !isTableTimingTimestamp(parsedRow.ts)) return null;
-  const { core, marker: rowSecMarker } = splitTimingRowMarker(line);
-  if (!rowSecMarker) return null;
-  const lastPipe = core.lastIndexOf('|');
-  if (lastPipe < 0) return null;
-  const receiptText = core.slice(lastPipe + 1).trim();
-  const receipt = parseMarker(receiptText);
-  if (!receipt || receipt.name !== 'work-lease-projection') return null;
-  const keys = Object.keys(receipt.props).sort();
-  if (keys.join(',') !== 'projection-id-b64,sub-operation-id-b64') return null;
-  const projectionId = decodeProjectionIdentity(receipt.props['projection-id-b64']);
-  const subOperationId = decodeProjectionIdentity(receipt.props['sub-operation-id-b64']);
-  if (!projectionId || !subOperationId) return null;
-  if (timingProjectionMarker({ projectionId, subOperationId }) !== receiptText) return null;
-  return { projectionId, subOperationId, rowIndex };
-}
-
-function isCanonicalTableSeparator(line, columnCount) {
-  if (typeof line !== 'string' || !line.startsWith('|')) return false;
-  const separatorCell = String.raw`\s*:?-{3,}:?\s*\|`;
-  return new RegExp(`^\\|(?:${separatorCell}){${columnCount}}$`).test(line);
-}
-
-function locateCanonicalTimingTableRegion(body) {
-  const lines = String(body ?? '').split('\n');
-  let fence = null;
-  let sawTimingHeading = false;
-  let tableRowStart = -1;
-  for (const [lineIndex, line] of lines.entries()) {
-    const openingFence = line.match(/^\s{0,3}(`{3,}|~{3,})/);
-    if (!fence && openingFence) {
-      const delimiter = openingFence[1];
-      fence = { char: delimiter[0], length: delimiter.length };
-      continue;
-    }
-    if (fence) {
-      const closingFence = line.match(/^\s{0,3}(`{3,}|~{3,})\s*$/);
-      if (
-        closingFence &&
-        closingFence[1][0] === fence.char &&
-        closingFence[1].length >= fence.length
-      ) {
-        fence = null;
-      }
-      continue;
-    }
-    if (/^(?:#{1,6}\s+)?⏱ Timing Log\s*$/.test(line)) {
-      sawTimingHeading = true;
-      continue;
-    }
-    const columnCount = TIMING_TABLE_COLUMN_COUNT_BY_HEADER.get(line);
-    if (
-      sawTimingHeading &&
-      columnCount &&
-      isCanonicalTableSeparator(lines[lineIndex + 1], columnCount)
-    ) {
-      tableRowStart = lineIndex + 2;
-      break;
-    }
-  }
-  if (tableRowStart < 0) return null;
-
-  let tableRowEnd = tableRowStart;
-  while (tableRowEnd < lines.length) {
-    const line = lines[tableRowEnd];
-    if (!line.startsWith('|')) break;
-    const parsedRow = parseTimingRow(line);
-    if (!parsedRow || !isTableTimingTimestamp(parsedRow.ts)) break;
-    tableRowEnd += 1;
-  }
-  return { lines, tableRowStart, tableRowEnd };
-}
-
-export function hasCanonicalTimingTable(body) {
-  return locateCanonicalTimingTableRegion(body) !== null;
-}
-
-// Only a structurally valid Timing Log data row can prove a projection. A
-// receipt quoted in prose, a Markdown code fence, a Description cell, after the
-// row-sec marker, or beside another receipt is deliberately ignored.
-export function parseTimingProjectionReceipts(body) {
-  const region = locateCanonicalTimingTableRegion(body);
-  if (!region) return [];
-
-  const receipts = [];
-  for (let lineIndex = region.tableRowStart; lineIndex < region.tableRowEnd; lineIndex += 1) {
-    const line = region.lines[lineIndex];
-    const receipt = projectionReceiptFromTimingRow(line, lineIndex);
-    if (receipt) receipts.push(receipt);
-  }
-  return receipts;
-}
-
-function matchingTimingProjectionReceipts(body, projection) {
-  return parseTimingProjectionReceipts(body).filter(
-    (receipt) =>
-      receipt.projectionId === projection.projectionId &&
-      receipt.subOperationId === projection.subOperationId
-  );
-}
-
 // #821 — rewrite ONLY the Timestamp cell (the 1st pipe-delimited field),
 // preserving every other cell and the trailing marker byte-for-byte.
 function rewriteTsCell(row, nextTs) {
   return replaceTimingRowCell(row, 1, ` ${nextTs} `);
+}
+
+function numericWordMarker(value) {
+  const normalized = String(value ?? '')
+    .replace(/,/g, '')
+    .trim();
+  if (!normalized) return null;
+  const marker = Number(normalized);
+  return Number.isFinite(marker) && marker >= 0 ? marker : null;
+}
+
+function lastDurableWordMarker(body) {
+  let marker = null;
+  for (const line of String(body ?? '').split('\n')) {
+    const candidate = numericWordMarker(parseTimingRow(line)?.wordMarker);
+    if (candidate !== null) marker = candidate;
+  }
+  return marker;
+}
+
+function carryForwardWordMarker(body, row) {
+  const durable = lastDurableWordMarker(body);
+  if (durable === null) return row;
+  const incoming = numericWordMarker(parseTimingRow(String(row))?.wordMarker);
+  if (incoming !== null && incoming >= durable) return row;
+  return replaceTimingRowCell(row, 6, ` ${durable.toLocaleString('en-US')} `);
 }
 
 // #568 keystone — the structural duplicate-`start` guard. A `start` row may only
@@ -542,28 +440,31 @@ function rewriteTsCell(row, nextTs) {
 //   • no open interruption → loud refusal via DuplicateStartError (AC3).
 // This makes a duplicate `start` impossible by construction, independent of any
 // upstream read/resolve state.
-function appendRow(body, row, { projection } = {}) {
-  const canonicalRegion = locateCanonicalTimingTableRegion(body);
-
-  // #1049 — an exact projection receipt is stronger than event-shape policy.
-  // Check it before duplicate-start and redundant-departure handling so a retry
-  // after remote success is a byte-preserving no-op for every event kind.
-  if (projection) {
-    if (!canonicalRegion) {
-      throw new Error(
-        'projected timing append requires a supported canonical Timing Log table region'
-      );
-    }
-    const matches = matchingTimingProjectionReceipts(body, projection);
-    if (matches.length === 1) return body;
-    if (matches.length > 1) {
-      throw new Error(
-        `duplicate timing projection receipt: ${projection.projectionId} ${projection.subOperationId}`
-      );
-    }
+function appendRow(body, row) {
+  if (shouldSuppressTimingAppend(body, rowEventSlug(row))) {
+    return body;
   }
 
   let effectiveRow = row;
+  const incomingEvent = rowEventSlug(effectiveRow);
+  if (incomingEvent === 'review:approved') {
+    const incomingApprovalMs = _tsToMs(rowTs(effectiveRow));
+    let seenAfterLastClose = false;
+    for (const line of String(body ?? '').split('\n')) {
+      const parsed = parseTimingRow(line);
+      const event = parsed?.event;
+      if (
+        event === 'review:approved' &&
+        Number.isFinite(incomingApprovalMs) &&
+        _tsToMs(parsed.ts) === incomingApprovalMs
+      ) {
+        return body;
+      }
+      if (event === 'issue:closed') seenAfterLastClose = false;
+      else if (event === 'review:approved') seenAfterLastClose = true;
+    }
+    if (seenAfterLastClose) return body;
+  }
   if (rowEventSlug(row) === 'start' && timingCommentHasRows(body)) {
     if (lastOpenInterruption(body)) {
       effectiveRow = rewriteEventCell(row, 'resumed');
@@ -596,131 +497,73 @@ function appendRow(body, row, { projection } = {}) {
   // live in-order row (ts >= tail) is a no-op — and the credited seconds carried
   // in the trailing `row-sec` marker are left untouched.
   const tailTs = lastRowTsFromBody(body);
+  let insertByTimestamp = false;
   if (tailTs) {
     const rowMs = _tsToMs(rowTs(effectiveRow));
     const tailMs = _tsToMs(tailTs);
     if (Number.isFinite(rowMs) && Number.isFinite(tailMs) && rowMs < tailMs) {
-      effectiveRow = rewriteTsCell(effectiveRow, tailTs);
+      if (incomingEvent === 'review:approved') insertByTimestamp = true;
+      else effectiveRow = rewriteTsCell(effectiveRow, tailTs);
     }
   }
+  if (!insertByTimestamp) effectiveRow = carryForwardWordMarker(body, effectiveRow);
 
-  const lines = canonicalRegion?.lines ?? body.split('\n');
+  const lines = body.split('\n');
   let lastTableIdx = -1;
-  if (canonicalRegion) {
-    lastTableIdx = canonicalRegion.tableRowEnd - 1;
-  } else {
-    // Legacy comments without the canonical Timing Log header retain the
-    // legacy global-table fallback rather than changing their append
-    // placement as part of projection receipt hardening.
+  for (let i = 0; i < lines.length; i++) {
+    if (
+      lines[i].startsWith('| ') &&
+      !lines[i].startsWith('| Timestamp') &&
+      !lines[i].startsWith('|---')
+    ) {
+      lastTableIdx = i;
+    }
+  }
+  if (lastTableIdx === -1) {
     for (let i = 0; i < lines.length; i++) {
-      if (
-        lines[i].startsWith('| ') &&
-        !lines[i].startsWith('| Timestamp') &&
-        !lines[i].startsWith('|---')
-      ) {
+      if (lines[i].startsWith('|---')) {
         lastTableIdx = i;
-      }
-    }
-    if (lastTableIdx === -1) {
-      for (let i = 0; i < lines.length; i++) {
-        if (lines[i].startsWith('|---')) {
-          lastTableIdx = i;
-          break;
-        }
+        break;
       }
     }
   }
-  lines.splice(lastTableIdx + 1, 0, effectiveRow);
+  if (insertByTimestamp) {
+    const incomingMs = _tsToMs(rowTs(effectiveRow));
+    const laterIdx = lines.findIndex((line) => {
+      const parsed = parseTimingRow(line);
+      if (!parsed || !isTableTimingTimestamp(parsed.ts)) return false;
+      const candidateMs = _tsToMs(parsed.ts);
+      return Number.isFinite(candidateMs) && candidateMs > incomingMs;
+    });
+    lines.splice(laterIdx === -1 ? lastTableIdx + 1 : laterIdx, 0, effectiveRow);
+  } else {
+    lines.splice(lastTableIdx + 1, 0, effectiveRow);
+  }
   return lines.join('\n').replace(/\n+$/, '') + '\n';
-}
-
-function appendedProjectionEffect(body, durableRow, projection) {
-  const updatedBody = appendRow(body, durableRow, { projection });
-  const region = locateCanonicalTimingTableRegion(updatedBody);
-  const matches = matchingTimingProjectionReceipts(updatedBody, projection);
-  if (!region || matches.length !== 1) {
-    throw new Error(
-      `timing projection did not produce one exact receipt: ${projection.projectionId} ${projection.subOperationId}`
-    );
-  }
-  return {
-    body: updatedBody,
-    row: region.lines[matches[0].rowIndex],
-  };
-}
-
-// Resolve one requested row against the exact durable receipt embedded in the
-// canonical Timing Log. Existing receipts are replayed through the row policy
-// using only their preceding rows, so timestamp/event normalization is
-// validated rather than trusted from an editable sibling marker.
-export function reconcileTimingProjectionRowEffect(
-  body,
-  { projectionId, subOperationId, row } = {}
-) {
-  const projection = normalizeTimingProjection(projectionId, subOperationId);
-  if (typeof row !== 'string' || row === '') {
-    throw new TypeError('timing projection row must be a non-empty string');
-  }
-  const sourceBody = String(body ?? '');
-  const durableRow = rowWithProjectionMarker(row, projection);
-  const region = locateCanonicalTimingTableRegion(sourceBody);
-  const matches = matchingTimingProjectionReceipts(sourceBody, projection);
-  if (matches.length > 1) {
-    throw new Error(
-      `duplicate timing projection receipt: ${projection.projectionId} ${projection.subOperationId}`
-    );
-  }
-  if (matches.length === 0) {
-    const effect = appendedProjectionEffect(sourceBody, durableRow, projection);
-    return { status: 'missing', ...effect };
-  }
-  if (!region) {
-    throw new Error('timing projection receipt is outside a canonical Timing Log table');
-  }
-  const receipt = matches[0];
-  const prefixBody = `${region.lines.slice(0, receipt.rowIndex).join('\n')}\n`;
-  const expected = appendedProjectionEffect(prefixBody, durableRow, projection);
-  const actualRow = region.lines[receipt.rowIndex];
-  if (actualRow !== expected.row) {
-    throw new Error(
-      `timing projection receipt row does not match: ${projection.projectionId} ${projection.subOperationId}`
-    );
-  }
-  return { status: 'present', body: sourceBody, row: actualRow };
 }
 
 // ---- GH shell-out helpers ----
 
-async function ghExec(args, { timeoutMs = 2000, env } = {}) {
-  const { stdout } = await pexec('gh', args, { timeout: timeoutMs, env });
+async function ghExec(args, { timeoutMs = GH_TIMING_COMMENT_TIMEOUT_MS } = {}) {
+  const { stdout } = await pexec('gh', args, { timeout: timeoutMs });
   return stdout;
 }
 
-export function normalizeTimingIssueNumber(issueNumber) {
-  return String(issueNumber ?? '').replace(/^#/, '');
-}
-
-export async function findTimingComment(issueNumber, repo, { timeoutMs, env } = {}) {
-  const num = normalizeTimingIssueNumber(issueNumber);
-  const out = await ghExec(['issue', 'view', num, '-R', repo, '--json', 'comments'], {
-    timeoutMs,
-    env,
-  });
+export async function findTimingComment(issueNumber, repo, { timeoutMs } = {}) {
+  const num = String(issueNumber).replace('#', '');
+  const out = await ghExec(['issue', 'view', num, '-R', repo, '--json', 'comments'], { timeoutMs });
   const { comments } = JSON.parse(out);
   const hit = comments.find((c) => c.body.includes(TIMING_HEADING));
-  return hit ? { id: hit.id, url: hit.url, body: hit.body } : null;
+  return hit ? { id: hit.id, url: hit.url, body: hit.body, comments } : null;
 }
 
-async function createTimingComment(issueNumber, repo, body, { timeoutMs, env } = {}) {
-  const num = normalizeTimingIssueNumber(issueNumber);
-  const out = await ghExec(['issue', 'comment', num, '-R', repo, '--body', body], {
-    timeoutMs,
-    env,
-  });
+async function createTimingComment(issueNumber, repo, body, { timeoutMs } = {}) {
+  const num = String(issueNumber).replace('#', '');
+  const out = await ghExec(['issue', 'comment', num, '-R', repo, '--body', body], { timeoutMs });
   return out.trim(); // URL of new comment
 }
 
-export async function updateTimingComment(commentId, repo, body, { timeoutMs, env } = {}) {
+export async function updateTimingComment(commentId, repo, body, { timeoutMs } = {}) {
   // gh doesn't have edit-comment by id for issues directly;
   // use GraphQL mutation.
   const mutation = `
@@ -729,7 +572,7 @@ export async function updateTimingComment(commentId, repo, body, { timeoutMs, en
     }`;
   await ghExec(
     ['api', 'graphql', '-f', `query=${mutation}`, '-f', `id=${commentId}`, '-f', `body=${body}`],
-    { timeoutMs, env }
+    { timeoutMs }
   );
 }
 
@@ -749,501 +592,26 @@ export async function postTimingEvent({
   issueNumber,
   repo,
   row,
-  projectionId,
-  subOperationId,
-  timeoutMs = 2000,
-  env,
+  timeoutMs = GH_TIMING_COMMENT_TIMEOUT_MS,
   retries = 2,
   lock = true,
   projDir,
-  withGovernedEffect,
-  operation = 'evidence-mutation',
-  deps = {},
 } = {}) {
-  const projection = normalizeTimingProjection(projectionId, subOperationId);
-  const durableRow = rowWithProjectionMarker(row, projection);
-  const stableProjectDir = projDir || getProjectDir();
-  const govern =
-    withGovernedEffect ??
-    createRuntimeGovernedEffectAdapter({
-      projectDir: stableProjectDir,
-      config: deps.config || loadConfig(),
-    });
-  const find = deps.findTimingComment || findTimingComment;
-  const create = deps.createTimingComment || createTimingComment;
-  const update = deps.updateTimingComment || updateTimingComment;
-  const work = async () =>
-    govern(
-      {
-        issueId: normalizeTimingIssueNumber(issueNumber),
-        operation,
-        heartbeat: true,
-      },
-      async (authority) => {
-        const existing = await find(issueNumber, repo, { timeoutMs, env });
-        if (existing) {
-          if (projection) {
-            const effect = reconcileTimingProjectionRowEffect(existing.body, {
-              ...projection,
-              row,
-            });
-            if (effect.status === 'present') {
-              return {
-                status: 'already-reconciled',
-                projectionId: projection.projectionId,
-                subOperationId: projection.subOperationId,
-              };
-            }
-            await authority.reverify();
-            await update(existing.id, repo, effect.body, { timeoutMs, env });
-          } else {
-            const updated = appendRow(existing.body, durableRow, { projection });
-            await authority.reverify();
-            await update(existing.id, repo, updated, { timeoutMs, env });
-          }
-        } else {
-          const initial = projection
-            ? reconcileTimingProjectionRowEffect(buildInitialComment(), {
-                ...projection,
-                row,
-              }).body
-            : appendRow(buildInitialComment(), durableRow, { projection });
-          await authority.reverify();
-          await create(issueNumber, repo, initial, { timeoutMs, env });
-        }
-        if (!projection) return undefined;
-        return {
-          status: 'posted',
-          projectionId: projection.projectionId,
-          subOperationId: projection.subOperationId,
-        };
-      }
-    );
+  const work = async () => {
+    const existing = await findTimingComment(issueNumber, repo, { timeoutMs });
+    if (existing) {
+      const updated = appendRow(existing.body, row);
+      await updateTimingComment(existing.id, repo, updated, { timeoutMs });
+    } else {
+      const initial = appendRow(buildInitialComment(), row);
+      await createTimingComment(issueNumber, repo, initial, { timeoutMs });
+    }
+  };
   if (!lock) {
     return work();
   }
-  const lockPath = timingLockPath(issueNumber, stableProjectDir);
-  return withLock(lockPath, work, {
-    timeoutMs: Math.max(timeoutMs * 3, 5_000),
-    retries,
-    shouldRetry: (error) => !isGovernedAuthorityError(error),
-  });
-}
-
-export async function postTransitionTimingProjection({
-  authority,
-  transitionId,
-  projectionName,
-  projectionId,
-  subOperationId,
-  issueNumber,
-  ...options
-} = {}) {
-  const expected = {
-    transitionId,
-    projectionName,
-    projectionId,
-    subOperationId,
-    issueId: normalizeTimingIssueNumber(issueNumber),
-    operation: 'evidence-mutation',
-  };
-  assertTransitionProjectionAuthority(authority, expected);
-  const verifyProjection = async () => assertTransitionProjectionAuthority(authority, expected);
-  return postTimingEvent({
-    ...options,
-    issueNumber,
-    projectionId,
-    subOperationId,
-    withGovernedEffect: async (governedOptions, callback) => {
-      if (
-        governedOptions.issueId !== expected.issueId ||
-        governedOptions.operation !== expected.operation
-      ) {
-        throw new TypeError('transition timing authority route does not match');
-      }
-      await verifyProjection();
-      return callback({ reverify: verifyProjection });
-    },
-  });
-}
-
-function inspectTimingQueueAliasReceipts(
-  body,
-  { journalProjectionId, journalSubOperationId, projectionId, subOperationId, row } = {}
-) {
-  try {
-    const receipts = parseTimingProjectionReceipts(body);
-    const journalReceipts = receipts.filter(
-      (receipt) =>
-        receipt.projectionId === journalProjectionId &&
-        receipt.subOperationId === journalSubOperationId
-    );
-    const canonicalReceipts = receipts.filter(
-      (receipt) =>
-        receipt.projectionId === projectionId && receipt.subOperationId === subOperationId
-    );
-    if (journalReceipts.length > 1 || canonicalReceipts.length > 1) {
-      throw new Error('one receipt family is duplicated');
-    }
-    if (journalReceipts.length === 1 && canonicalReceipts.length === 1) {
-      throw new Error('both journal and canonical receipts are present');
-    }
-    if (journalReceipts.length === 1) {
-      reconcileTimingProjectionRowEffect(body, {
-        projectionId: journalProjectionId,
-        subOperationId: journalSubOperationId,
-        row,
-      });
-      return {
-        status: 'adopted',
-        adoptedProjectionId: journalProjectionId,
-        adoptedSubOperationId: journalSubOperationId,
-        body,
-      };
-    }
-    if (canonicalReceipts.length === 1) {
-      reconcileTimingProjectionRowEffect(body, {
-        projectionId,
-        subOperationId,
-        row,
-      });
-      return {
-        status: 'adopted',
-        adoptedProjectionId: projectionId,
-        adoptedSubOperationId: subOperationId,
-        body,
-      };
-    }
-    const canonical = reconcileTimingProjectionRowEffect(body, {
-      projectionId,
-      subOperationId,
-      row,
-    });
-    return {
-      status: 'missing',
-      adoptedProjectionId: projectionId,
-      adoptedSubOperationId: subOperationId,
-      body: canonical.body,
-    };
-  } catch (error) {
-    throw new Error(`timing queue alias reconciliation refused: ${error.message}`);
-  }
-}
-
-function timingQueueAliasExpected({
-  transitionId,
-  journalProjectionId,
-  journalSubOperationId,
-  projectionId,
-  subOperationId,
-  issueNumber,
-  row,
-} = {}) {
-  return {
-    transitionId,
-    journalProjectionId,
-    journalSubOperationId,
-    deliveryProjectionId: projectionId,
-    deliverySubOperationId: subOperationId,
-    issueId: normalizeTimingIssueNumber(issueNumber),
-    operation: 'evidence-mutation',
-    row,
-  };
-}
-
-export async function postTransitionTimingQueueAliasProjection({
-  aliasAuthority,
-  transitionId,
-  projectionName,
-  journalProjectionId,
-  journalSubOperationId,
-  projectionId,
-  subOperationId,
-  issueNumber,
-  repo,
-  row,
-  timeoutMs = 2000,
-  retries = 2,
-  lock = true,
-  projDir,
-  deps = {},
-} = {}) {
-  if (projectionName !== 'timing') {
-    throw new TypeError('timing queue alias projectionName must be timing');
-  }
-  const expected = timingQueueAliasExpected({
-    transitionId,
-    journalProjectionId,
-    journalSubOperationId,
-    projectionId,
-    subOperationId,
-    issueNumber,
-    row,
-  });
-  const verifyAlias = async () =>
-    assertTransitionTimingQueueAliasAuthority(aliasAuthority, expected);
-  await verifyAlias();
-  const find = deps.findTimingComment || findTimingComment;
-  const create = deps.createTimingComment || createTimingComment;
-  const update = deps.updateTimingComment || updateTimingComment;
-  const work = async () => {
-    await verifyAlias();
-    const existing = await find(issueNumber, repo, { timeoutMs });
-    const state = inspectTimingQueueAliasReceipts(existing?.body ?? buildInitialComment(), {
-      journalProjectionId,
-      journalSubOperationId,
-      projectionId,
-      subOperationId,
-      row,
-    });
-    if (state.status === 'adopted') return state;
-    await verifyAlias();
-    if (existing) await update(existing.id, repo, state.body, { timeoutMs });
-    else await create(issueNumber, repo, state.body, { timeoutMs });
-    return { ...state, status: 'posted' };
-  };
-  if (!lock) return work();
-  return withLock(timingLockPath(issueNumber, projDir || getProjectDir()), work, {
-    timeoutMs: Math.max(timeoutMs * 3, 5_000),
-    retries,
-  });
-}
-
-export async function readTransitionTimingQueueAliasProjection({
-  aliasAuthority,
-  transitionId,
-  projectionName,
-  journalProjectionId,
-  journalSubOperationId,
-  projectionId,
-  subOperationId,
-  issueNumber,
-  repo,
-  row,
-  timeoutMs = 2000,
-  lock = true,
-  projDir,
-  deps = {},
-} = {}) {
-  if (projectionName !== 'timing') {
-    throw new TypeError('timing queue alias projectionName must be timing');
-  }
-  const expected = timingQueueAliasExpected({
-    transitionId,
-    journalProjectionId,
-    journalSubOperationId,
-    projectionId,
-    subOperationId,
-    issueNumber,
-    row,
-  });
-  const verifyAlias = async () =>
-    assertTransitionTimingQueueAliasAuthority(aliasAuthority, expected);
-  await verifyAlias();
-  const read = deps.readTimingCommentBody || readTimingCommentBody;
-  const work = async () => {
-    await verifyAlias();
-    const result = await read({ issueNumber, repo, timeoutMs, deps });
-    if (result?.status === 'error') {
-      throw new Error('timing queue alias read-back is unavailable');
-    }
-    if (result?.status === 'absent') {
-      return {
-        reconciled: false,
-        projectionName: TIMING_PROJECTION_NAME,
-        projectionId: journalProjectionId,
-      };
-    }
-    const state = inspectTimingQueueAliasReceipts(bodyOf(result), {
-      journalProjectionId,
-      journalSubOperationId,
-      projectionId,
-      subOperationId,
-      row,
-    });
-    return {
-      reconciled: state.status === 'adopted',
-      projectionName: TIMING_PROJECTION_NAME,
-      projectionId: journalProjectionId,
-      ...(state.status === 'adopted'
-        ? {
-            adoptedProjectionId: state.adoptedProjectionId,
-            adoptedSubOperationId: state.adoptedSubOperationId,
-          }
-        : {}),
-    };
-  };
-  if (!lock) return work();
-  return withLock(timingLockPath(issueNumber, projDir || getProjectDir()), work, {
-    timeoutMs: Math.max(timeoutMs * 3, 5_000),
-  });
-}
-
-function inspectTimingQueueAliasCollisionGroupReceipts(
-  body,
-  { members, projectionId, subOperationId, row } = {}
-) {
-  try {
-    const receipts = parseTimingProjectionReceipts(body);
-    const canonicalReceipts = receipts.filter(
-      (receipt) =>
-        receipt.projectionId === projectionId && receipt.subOperationId === subOperationId
-    );
-    const legacyReceipts = members.map((member) =>
-      receipts.filter(
-        (receipt) =>
-          receipt.projectionId === member.journalProjectionId &&
-          receipt.subOperationId === member.journalSubOperationId
-      )
-    );
-    if (canonicalReceipts.length > 1 || legacyReceipts.some((matches) => matches.length > 1)) {
-      throw new Error('one collision receipt family is duplicated');
-    }
-    if (canonicalReceipts.length === 1) {
-      if (legacyReceipts.some((matches) => matches.length !== 0)) {
-        throw new Error('canonical and legacy collision receipts are mixed');
-      }
-      reconcileTimingProjectionRowEffect(body, { projectionId, subOperationId, row });
-      return {
-        status: 'adopted',
-        receiptMode: 'canonical',
-        projectionId,
-        subOperationId,
-        body,
-      };
-    }
-    const legacyReceiptCount = legacyReceipts.filter((matches) => matches.length === 1).length;
-    if (legacyReceiptCount === members.length) {
-      for (const member of members) {
-        reconcileTimingProjectionRowEffect(body, {
-          projectionId: member.journalProjectionId,
-          subOperationId: member.journalSubOperationId,
-          row,
-        });
-      }
-      return {
-        status: 'adopted',
-        receiptMode: 'legacy',
-        projectionId,
-        subOperationId,
-        body,
-      };
-    }
-    if (legacyReceiptCount !== 0) {
-      throw new Error('legacy collision receipt set is incomplete');
-    }
-    const canonical = reconcileTimingProjectionRowEffect(body, {
-      projectionId,
-      subOperationId,
-      row,
-    });
-    return {
-      status: 'missing',
-      receiptMode: 'canonical',
-      projectionId,
-      subOperationId,
-      body: canonical.body,
-    };
-  } catch (error) {
-    throw new Error(`timing queue alias collision reconciliation refused: ${error.message}`);
-  }
-}
-
-function timingQueueAliasCollisionExpected({
-  transitionId,
-  members,
-  issueNumber,
-  row,
-  projectionId,
-  subOperationId,
-} = {}) {
-  return {
-    transitionId,
-    members,
-    issueId: normalizeTimingIssueNumber(issueNumber),
-    row,
-    deliveryProjectionId: projectionId,
-    deliverySubOperationId: subOperationId,
-  };
-}
-
-export async function reconcileTransitionTimingQueueAliasCollisionGroupProjection({
-  collisionAuthority,
-  transitionId,
-  projectionName,
-  members,
-  projectionId,
-  subOperationId,
-  issueNumber,
-  repo,
-  row,
-  timeoutMs = 2000,
-  retries = 2,
-  lock = true,
-  projDir,
-  deps = {},
-} = {}) {
-  if (projectionName !== 'timing') {
-    throw new TypeError('timing queue alias collision projectionName must be timing');
-  }
-  const expected = timingQueueAliasCollisionExpected({
-    transitionId,
-    members,
-    issueNumber,
-    row,
-    projectionId,
-    subOperationId,
-  });
-  const verifyCollision = async () =>
-    assertTransitionTimingQueueAliasCollisionGroupAuthority(collisionAuthority, expected);
-  await verifyCollision();
-  const find = deps.findTimingComment || findTimingComment;
-  const create = deps.createTimingComment || createTimingComment;
-  const update = deps.updateTimingComment || updateTimingComment;
-  const read = deps.readTimingCommentBody || readTimingCommentBody;
-  const work = async () => {
-    await verifyCollision();
-    const existing = await find(issueNumber, repo, { timeoutMs });
-    const state = inspectTimingQueueAliasCollisionGroupReceipts(
-      existing?.body ?? buildInitialComment(),
-      { members, projectionId, subOperationId, row }
-    );
-    if (state.status === 'missing') {
-      await verifyCollision();
-      if (existing) await update(existing.id, repo, state.body, { timeoutMs });
-      else await create(issueNumber, repo, state.body, { timeoutMs });
-    }
-    await verifyCollision();
-    const result = await read({ issueNumber, repo, timeoutMs, deps });
-    if (result?.status === 'error') {
-      throw new Error('timing queue alias collision read-back is unavailable');
-    }
-    if (result?.status === 'absent') {
-      return {
-        reconciled: false,
-        projectionName: TIMING_PROJECTION_NAME,
-        projectionId,
-      };
-    }
-    const readBack = inspectTimingQueueAliasCollisionGroupReceipts(bodyOf(result), {
-      members,
-      projectionId,
-      subOperationId,
-      row,
-    });
-    return {
-      reconciled: readBack.status === 'adopted',
-      projectionName: TIMING_PROJECTION_NAME,
-      projectionId,
-      receiptMode: readBack.receiptMode,
-      memberCount: members.length,
-    };
-  };
-  if (!lock) return work();
-  return withLock(timingLockPath(issueNumber, projDir || getProjectDir()), work, {
-    timeoutMs: Math.max(timeoutMs * 3, 5_000),
-    retries,
-  });
+  const lockPath = timingLockPath(issueNumber, projDir || getProjectDir());
+  return withLock(lockPath, work, { timeoutMs: Math.max(timeoutMs * 3, 5_000), retries });
 }
 
 // Fetch the timing-comment body (where rows actually live). State-move
@@ -1261,16 +629,25 @@ export async function reconcileTransitionTimingQueueAliasCollisionGroupProjectio
 export async function readTimingCommentBody({
   issueNumber,
   repo,
-  timeoutMs = 2000,
+  timeoutMs = GH_TIMING_COMMENT_TIMEOUT_MS,
   deps = {},
 } = {}) {
   const find = deps.findTimingComment || findTimingComment;
   try {
-    const existing = await find(issueNumber, repo, { timeoutMs });
-    if (existing == null) return { status: 'absent', body: '', error: null };
-    return { status: 'found', body: existing.body ?? '', error: null };
+    // Lifecycle verbs carry issue numbers as integers, while the GitHub reader
+    // accepts issue references and strips an optional `#` with String methods.
+    // Normalize at this boundary so close-time outcome capture uses the same
+    // production path as string-based timing callers.
+    const existing = await find(String(issueNumber), repo, { timeoutMs });
+    if (existing == null) return { status: 'absent', body: '', error: null, comments: [] };
+    return {
+      status: 'found',
+      body: existing.body ?? '',
+      error: null,
+      comments: Array.isArray(existing.comments) ? existing.comments : [],
+    };
   } catch (error) {
-    return { status: 'error', body: '', error };
+    return { status: 'error', body: '', error, comments: [] };
   }
 }
 
@@ -1283,116 +660,28 @@ export function bodyOf(result) {
   return result.body ?? '';
 }
 
-export async function readTimingProjection({
-  issueNumber,
-  repo,
-  projectionId,
-  subOperationIds,
-  expectedRows,
-  timeoutMs = 2000,
-  deps = {},
-} = {}) {
-  const stableProjectionId = requiredProjectionString(projectionId, 'timing projectionId');
-  if (!Array.isArray(subOperationIds) || subOperationIds.length === 0) {
-    throw new TypeError('timing subOperationIds must be a non-empty array');
-  }
-  const stableSubOperationIds = subOperationIds.map((id) =>
-    requiredProjectionString(id, 'timing subOperationId')
-  );
-  if (new Set(stableSubOperationIds).size !== stableSubOperationIds.length) {
-    throw new TypeError('timing subOperationIds must be unique');
-  }
+// #1085 — directory-governed timing uses the same human table as the legacy
+// timing comment. The existing body is retained byte-for-byte as the prefix;
+// only a deterministic normalized summary is appended for projection readers.
+// This function is render-only and cannot grant lifecycle or timing authority.
+export function renderTimingSingletonMarkdown({ timingBody, timingProjection } = {}) {
   if (
-    expectedRows !== undefined &&
-    (!expectedRows ||
-      typeof expectedRows !== 'object' ||
-      Array.isArray(expectedRows) ||
-      stableSubOperationIds.some(
-        (subOperationId) =>
-          typeof expectedRows[subOperationId] !== 'string' || expectedRows[subOperationId] === ''
-      ))
+    typeof timingBody !== 'string' ||
+    timingBody.length === 0 ||
+    timingProjection?.schema !== 'aitm.timing-projection/v1' ||
+    !Number.isSafeInteger(timingProjection?.revision) ||
+    timingProjection.revision <= 0
   ) {
-    throw new TypeError('timing expectedRows must map every sub-operation to its exact row');
+    throw new TypeError('timing-singleton-projection:input');
   }
-  const read = deps.readTimingCommentBody || readTimingCommentBody;
-  const result = await read({ issueNumber, repo, timeoutMs, deps });
-  const body = bodyOf(result);
-  const receipts = parseTimingProjectionReceipts(body);
-  const matchesBySubOperation = new Map(
-    stableSubOperationIds.map((subOperationId) => [
-      subOperationId,
-      receipts.filter(
-        (receipt) =>
-          receipt.projectionId === stableProjectionId && receipt.subOperationId === subOperationId
-      ),
-    ])
+  const body = timingBody.endsWith('\n') ? timingBody : `${timingBody}\n`;
+  return (
+    `${body}\n### Normalized timing projection\n\n` +
+    `- Total active: ${formatDurationSeconds(timingProjection.totals.totalActiveSec)}\n` +
+    `- Total idle: ${formatDurationSeconds(timingProjection.totals.totalIdleSec)}\n` +
+    `- Engaged: ${formatDurationSeconds(timingProjection.totals.engagedSec)}\n` +
+    `- Plan: ${timingProjection.totals.planMin} min\n`
   );
-  const missingSubOperationIds = stableSubOperationIds.filter(
-    (subOperationId) => matchesBySubOperation.get(subOperationId).length === 0
-  );
-  if (missingSubOperationIds.length > 0) {
-    return {
-      reconciled: false,
-      projectionName: TIMING_PROJECTION_NAME,
-      projectionId: stableProjectionId,
-      missingSubOperationIds,
-    };
-  }
-  const duplicateSubOperationIds = stableSubOperationIds.filter(
-    (subOperationId) => matchesBySubOperation.get(subOperationId).length > 1
-  );
-  if (duplicateSubOperationIds.length > 0) {
-    return {
-      reconciled: false,
-      projectionName: TIMING_PROJECTION_NAME,
-      projectionId: stableProjectionId,
-      missingSubOperationIds: [],
-      duplicateSubOperationIds,
-    };
-  }
-  if (expectedRows !== undefined) {
-    const mismatchedSubOperationIds = stableSubOperationIds.filter((subOperationId) => {
-      try {
-        return (
-          reconcileTimingProjectionRowEffect(body, {
-            projectionId: stableProjectionId,
-            subOperationId,
-            row: expectedRows[subOperationId],
-          }).status !== 'present'
-        );
-      } catch {
-        return true;
-      }
-    });
-    if (mismatchedSubOperationIds.length > 0) {
-      return {
-        reconciled: false,
-        projectionName: TIMING_PROJECTION_NAME,
-        projectionId: stableProjectionId,
-        missingSubOperationIds: [],
-        mismatchedSubOperationIds,
-      };
-    }
-  }
-  let priorRowIndex = -1;
-  for (const subOperationId of stableSubOperationIds) {
-    const rowIndex = matchesBySubOperation.get(subOperationId)[0].rowIndex;
-    if (rowIndex <= priorRowIndex) {
-      return {
-        reconciled: false,
-        projectionName: TIMING_PROJECTION_NAME,
-        projectionId: stableProjectionId,
-        missingSubOperationIds: [],
-        outOfOrder: true,
-      };
-    }
-    priorRowIndex = rowIndex;
-  }
-  return {
-    reconciled: true,
-    projectionName: TIMING_PROJECTION_NAME,
-    projectionId: stableProjectionId,
-  };
 }
 
 // Internal symbols — exported under a dedicated namespace strictly so the

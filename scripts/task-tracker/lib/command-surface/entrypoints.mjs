@@ -50,8 +50,9 @@ export const EXECUTABLE_ENTRYPOINTS = Object.freeze([
   ...internalRows(
     'package-lifecycle-cli',
     [
-      'scripts/release/publish-ledger-if-needed.mjs',
+      'scripts/benchmarks/compare-test-fixtures.mjs',
       'scripts/run-tests.mjs',
+      'scripts/dev-env/verify-local-worktree.mjs',
       'scripts/sync-templates.mjs',
       'scripts/task-tracker/ensure-self-link.mjs',
     ],
@@ -78,6 +79,7 @@ export const EXECUTABLE_ENTRYPOINTS = Object.freeze([
       'scripts/task-tracker/heal-functional-dod.mjs',
       'scripts/task-tracker/heal-lifecycle-dod.mjs',
       'scripts/task-tracker/heal-refine-entry-marker.mjs',
+      'scripts/task-tracker/heal-timing-departure.mjs',
       'scripts/task-tracker/heal-timing-log.mjs',
       'scripts/task-tracker/heal-timing-starts-sweep.mjs',
       'scripts/task-tracker/heal-timing-starts.mjs',

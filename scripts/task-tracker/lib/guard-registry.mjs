@@ -60,7 +60,7 @@
 //            |                                       | child-cannot-lead-epic, user-story-block
 //   plan     | contiguity                            | blocked-by, plan-approved, plan-epic-children,
 //            |                                       | plan-exit-planned-estimate, plan-exit-deep-dive,
-//            |                                       | child-cannot-lead-epic
+//            |                                       | plan-exit-plan-metadata, child-cannot-lead-epic
 //   develop  | contiguity                            | blocked-by, develop-exit-code-complete,
 //            |                                       | develop-exit-sandbox-proof,
 //            |                                       | develop-exit-commit-trail-head,

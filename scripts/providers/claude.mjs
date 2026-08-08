@@ -11,6 +11,7 @@ export const claudeAdapter = {
   stateDir: '.tmp/aitm/app/claude',
   transcriptLocator: '.claude/projects',
   transcriptLayout: 'flat',
+  transcriptSchema: 'claude-message-v1',
   sessionIdEnvKeys: ['CLAUDE_CODE_SESSION_ID', 'CLAUDE_SESSION_ID'],
   detectionEnvKeys: ['CLAUDE_CODE_SESSION_ID', 'CLAUDE_SESSION_ID'],
   hookCapability: true,

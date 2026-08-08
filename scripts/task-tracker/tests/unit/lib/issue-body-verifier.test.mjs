@@ -18,13 +18,18 @@ const repoRoot = new URL('../../../../..', import.meta.url).pathname;
 const createIssueScript = join(repoRoot, 'scripts/gh/create-issue.mjs');
 const preflightScript = join(repoRoot, 'scripts/task-tracker/preflight-issue.mjs');
 
-// #480 — canonical structure: Plan Metadata precedes Acceptance Criteria,
+// #480/#892 — canonical structure: Story Origin precedes Plan Metadata, which
+// precedes Acceptance Criteria,
 // Definition of Done is a 2-hash top-level sibling with 3-hash
 // Functional/Lifecycle children.
 const CANONICAL_BODY = [
   '## Scope',
   '',
   'Some scope text.',
+  '',
+  '## Story Origin',
+  '',
+  '**kind:** code',
   '',
   '## Plan Metadata',
   '',
@@ -68,6 +73,73 @@ test('verifyIssueBody: ## Problem accepted in place of ## Scope', () => {
   const body = CANONICAL_BODY.replace('## Scope', '## Problem');
   const res = verifyIssueBody(body);
   assert.equal(res.ok, true, `unexpected missing: ${JSON.stringify(res.missing)}`);
+});
+
+test('verifyIssueBody: missing Story Origin', () => {
+  const body = CANONICAL_BODY.replace('## Story Origin', '## Origin');
+  const res = verifyIssueBody(body);
+  assert.equal(res.ok, false);
+  assert.ok(res.missing.includes('## Story Origin'));
+});
+
+test('verifyIssueBody: empty or prose-only Story Origin is malformed', () => {
+  for (const replacement of ['', 'origin will be decided later']) {
+    const body = CANONICAL_BODY.replace('**kind:** code', replacement);
+    const res = verifyIssueBody(body);
+    assert.equal(res.ok, false);
+    assert.ok(res.missing.some((item) => /Story Origin.*metadata field/i.test(item)));
+  }
+});
+
+test('verifyIssueBody: metadata sections reject nested headings', () => {
+  for (const [needle, replacement, section] of [
+    ['**kind:** code', '**kind:** code\n### Relationships\n- **related**: #883', 'Story Origin'],
+    ['**Size:** S', '**Size:** S\n#### Delivery\n- **estimate**: 2', 'Plan Metadata'],
+  ]) {
+    const res = verifyIssueBody(CANONICAL_BODY.replace(needle, replacement));
+    assert.equal(res.ok, false, section);
+    assert.ok(
+      res.missing.some((item) => item.includes(`${section} must be flat`)),
+      section
+    );
+  }
+});
+
+test('verifyIssueBody: flatness check accepts heading whitespace and CRLF grammar', () => {
+  const body = CANONICAL_BODY.replace(
+    '## Story Origin\n\n**kind:** code',
+    '## Story Origin   \r\n\r\n**kind:** code\r\n### Relationships\r\n- **related**: #883'
+  );
+  const res = verifyIssueBody(body);
+  assert.equal(res.ok, false);
+  assert.ok(res.missing.some((item) => item.includes('Story Origin must be flat')));
+});
+
+test('verifyIssueBody: missing Plan Metadata', () => {
+  const body = CANONICAL_BODY.replace('## Plan Metadata', '## Planning');
+  const res = verifyIssueBody(body);
+  assert.equal(res.ok, false);
+  assert.ok(res.missing.includes('## Plan Metadata'));
+});
+
+test('verifyIssueBody: Story Origin must precede Plan Metadata', () => {
+  const body = CANONICAL_BODY.replace(
+    ['## Story Origin', '', '**kind:** code', '', '## Plan Metadata', '', '**Size:** S'].join('\n'),
+    ['## Plan Metadata', '', '**Size:** S', '', '## Story Origin', '', '**kind:** code'].join('\n')
+  );
+  const res = verifyIssueBody(body);
+  assert.equal(res.ok, false);
+  assert.ok(res.missing.includes('## Story Origin must precede ## Plan Metadata'));
+});
+
+test('verifyIssueBody: Scope must precede Story Origin', () => {
+  const body = CANONICAL_BODY.replace(
+    ['## Scope', '', 'Some scope text.', '', '## Story Origin', '', '**kind:** code'].join('\n'),
+    ['## Story Origin', '', '**kind:** code', '', '## Scope', '', 'Some scope text.'].join('\n')
+  );
+  const res = verifyIssueBody(body);
+  assert.equal(res.ok, false);
+  assert.ok(res.missing.includes('## Scope (or ## Problem) must precede ## Story Origin'));
 });
 
 test('verifyIssueBody: DoD present but missing ### Functional subheader', () => {
@@ -143,9 +215,11 @@ test('round-trip: preflight --shape sub-issue output passes verifyIssueBody', ()
   const tmp = mkdtempSync(join(projectScratchDir('test'), 'aitm-rt-'));
   const scopeFile = join(tmp, 'scope.md');
   const acFile = join(tmp, 'ac.md');
+  const originFile = join(tmp, 'origin.md');
   const pmFile = join(tmp, 'pm.md');
   writeFileSync(scopeFile, 'Scope text here.\n');
   writeFileSync(acFile, '- [ ] Something works\n');
+  writeFileSync(originFile, '- **kind**: code\n');
   writeFileSync(
     pmFile,
     '**Size:** S\n**Estimate:** 2h\n**Priority:** P1\n**Rank:** 1\n**Parent:** #1\n'
@@ -161,6 +235,8 @@ test('round-trip: preflight --shape sub-issue output passes verifyIssueBody', ()
       scopeFile,
       '--ac-file',
       acFile,
+      '--story-origin-file',
+      originFile,
       '--plan-metadata-file',
       pmFile,
       '--parent',

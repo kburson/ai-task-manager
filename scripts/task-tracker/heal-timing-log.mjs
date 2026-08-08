@@ -29,7 +29,13 @@ import { withLock } from './locks.mjs';
 import { getProjectDir, timingLockPath as resolveTimingLockPath } from './paths.mjs';
 import { loadConfig } from './config.mjs';
 import { gql, splitRepo } from '../gh/lib/github-projects.mjs';
-import { healTimingLog, countRetiredRows } from './lib/heal-timing-log.mjs';
+import {
+  healTimingLog,
+  countRetiredRows,
+  countZeroValueStopResumePairs,
+  countRedundantReviewPassRows,
+  countPostTerminalRows,
+} from './lib/heal-timing-log.mjs';
 import { assertKnownArgv, reportStrictArgvError } from './lib/argv-strict.mjs';
 import { confirmBlastRadius } from './lib/blast-radius-guard.mjs';
 import { wantsHelp, emitSelfDoc } from '../lib/self-doc.mjs';
@@ -49,21 +55,68 @@ export async function runHeal({ issueNumber, repo, apply = false, deps = {} } = 
 
   const comment = await findTimingComment(String(issueNumber), repo);
   if (!comment) {
-    return { status: 'no-comment', retiredBefore: 0, retiredAfter: 0, commentId: null };
+    return {
+      status: 'no-comment',
+      retiredBefore: 0,
+      retiredAfter: 0,
+      zeroStopResumeBefore: 0,
+      zeroStopResumeAfter: 0,
+      redundantReviewPassBefore: 0,
+      redundantReviewPassAfter: 0,
+      postTerminalBefore: 0,
+      postTerminalAfter: 0,
+      commentId: null,
+    };
   }
   const retiredBefore = countRetiredRows(comment.body);
+  const zeroStopResumeBefore = countZeroValueStopResumePairs(comment.body);
+  const redundantReviewPassBefore = countRedundantReviewPassRows(comment.body);
+  const postTerminalBefore = countPostTerminalRows(comment.body);
   const healed = healTimingLog(comment.body);
   const retiredAfter = countRetiredRows(healed);
+  const zeroStopResumeAfter = countZeroValueStopResumePairs(healed);
+  const redundantReviewPassAfter = countRedundantReviewPassRows(healed);
+  const postTerminalAfter = countPostTerminalRows(healed);
   const changed = healed !== comment.body;
+  const result = {
+    retiredBefore,
+    retiredAfter,
+    zeroStopResumeBefore,
+    zeroStopResumeAfter,
+    redundantReviewPassBefore,
+    redundantReviewPassAfter,
+    postTerminalBefore,
+    postTerminalAfter,
+    commentId: comment.id,
+  };
 
   if (!changed) {
-    return { status: 'already-canonical', retiredBefore, retiredAfter, commentId: comment.id };
+    return { status: 'already-canonical', ...result };
   }
   if (!apply) {
-    return { status: 'dry-run', retiredBefore, retiredAfter, commentId: comment.id };
+    return { status: 'dry-run', ...result };
   }
   await updateTimingComment(comment.id, repo, healed);
-  return { status: 'healed', retiredBefore, retiredAfter, commentId: comment.id };
+  return { status: 'healed', ...result };
+}
+
+function formatRemovalCounts(result) {
+  return (
+    `retired=${result.retiredBefore} → ${result.retiredAfter} ` +
+    `stopResume=${result.zeroStopResumeBefore} → ${result.zeroStopResumeAfter} ` +
+    `reviewPass=${result.redundantReviewPassBefore} → ${result.redundantReviewPassAfter} ` +
+    `postTerminal=${result.postTerminalBefore} → ${result.postTerminalAfter}`
+  );
+}
+
+function parseScope(raw) {
+  return String(raw ?? '')
+    .split(',')
+    .map((token) => {
+      if (!/^#?[1-9]\d*$/.test(token)) return NaN;
+      const issueNumber = Number(token.replace(/^#/, ''));
+      return Number.isSafeInteger(issueNumber) ? issueNumber : NaN;
+    });
 }
 
 export function parseArgs(argv) {
@@ -75,6 +128,7 @@ export function parseArgs(argv) {
     scope: null,
     help: false,
     yes: false,
+    delayMs: 0,
   };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
@@ -85,17 +139,10 @@ export function parseArgs(argv) {
     else if (a === '--help' || a === '-h') out.help = true;
     else if (a === '--state') out.state = argv[++i];
     else if (a.startsWith('--state=')) out.state = a.slice('--state='.length);
-    else if (a === '--scope')
-      out.scope = argv[++i]
-        .split(',')
-        .map((s) => Number(s.replace(/^#/, '')))
-        .filter(Number.isFinite);
-    else if (a.startsWith('--scope='))
-      out.scope = a
-        .slice('--scope='.length)
-        .split(',')
-        .map((s) => Number(s.replace(/^#/, '')))
-        .filter(Number.isFinite);
+    else if (a === '--delay-ms') out.delayMs = Number(argv[++i]);
+    else if (a.startsWith('--delay-ms=')) out.delayMs = Number(a.slice('--delay-ms='.length));
+    else if (a === '--scope') out.scope = parseScope(argv[++i]);
+    else if (a.startsWith('--scope=')) out.scope = parseScope(a.slice('--scope='.length));
     else if (/^#?\d+$/.test(a)) out.issue = a.replace(/^#/, '');
   }
   return out;
@@ -105,8 +152,9 @@ export function printUsage(out = process.stdout) {
   out.write(
     'Usage:\n' +
       '  node scripts/task-tracker/heal-timing-log.mjs <issue#> [--apply | --check-only]\n' +
-      '  node scripts/task-tracker/heal-timing-log.mjs --sweep [--state open|closed|all] [--apply] [--scope N,N,...] [--yes]\n' +
+      '  node scripts/task-tracker/heal-timing-log.mjs --sweep [--state open|closed|all] [--apply] [--scope N,N,...] [--delay-ms N] [--yes]\n' +
       '  Default: dry-run (read-only). --apply writes. Sweep default --state all.\n' +
+      '  --delay-ms N  wait N milliseconds between issue reads (0-60000; default 0)\n' +
       '  --yes  skip the blast-radius confirmation prompt on a multi-issue --apply sweep\n'
   );
 }
@@ -171,8 +219,8 @@ async function runPerIssue(args, { repo, out, deps }) {
   const res = await healUnderLock({ issueNumber: args.issue, repo, apply: args.apply, deps });
   const verb = args.apply ? 'apply' : 'check-only';
   out.write(
-    `#${args.issue} [${verb}] ${res.status}: ${res.retiredBefore} retired row(s)` +
-      (res.status === 'no-comment' ? '' : ` → ${res.retiredAfter} after heal`) +
+    `#${args.issue} [${verb}] ${res.status}: ${formatRemovalCounts(res)}` +
+      (res.status === 'no-comment' ? ' (no timing comment)' : '') +
       '\n'
   );
   if (res.status === 'dry-run') out.write('(dry-run — re-run with --apply to write)\n');
@@ -187,13 +235,24 @@ async function runSweep(args, { cfg, repo, out, err, deps }) {
     err.write(`heal-timing-log: invalid --state ${args.state}\n`);
     return 2;
   }
+  if (!Number.isInteger(args.delayMs) || args.delayMs < 0 || args.delayMs > 60_000) {
+    err.write(`heal-timing-log: invalid --delay-ms ${args.delayMs}; expected 0-60000\n`);
+    return 2;
+  }
+  if (
+    args.scope !== null &&
+    (args.scope.length === 0 || args.scope.some((n) => !Number.isSafeInteger(n) || n <= 0))
+  ) {
+    err.write('heal-timing-log: invalid --scope; expected comma-separated positive integers\n');
+    return 2;
+  }
   const fetchFn = deps.fetchAllIssueNumbers || fetchAllIssueNumbers;
   const numbers =
     args.scope ?? (await fetchFn({ repo, state: args.state, projectId: cfg.projectId }));
 
   out.write(
     `heal-timing-log sweep: mode=${args.apply ? 'APPLY (--apply)' : 'dry-run'} ` +
-      `state=${args.state} issues=${numbers.length}\n`
+      `state=${args.state} issues=${numbers.length} delayMs=${args.delayMs}\n`
   );
 
   if (args.apply) {
@@ -209,14 +268,23 @@ async function runSweep(args, { cfg, repo, out, err, deps }) {
 
   let touched = 0;
   let retired = 0;
+  let zeroStopResume = 0;
+  let redundantReviewPass = 0;
+  let postTerminal = 0;
   const failed = [];
-  for (const n of numbers) {
+  const sleep = deps.sleep || ((ms) => new Promise((resolve) => setTimeout(resolve, ms)));
+  for (let index = 0; index < numbers.length; index++) {
+    const n = numbers[index];
+    if (index > 0 && args.delayMs > 0) await sleep(args.delayMs);
     try {
       const res = await healUnderLock({ issueNumber: n, repo, apply: args.apply, deps });
       if (res.status === 'dry-run' || res.status === 'healed') {
         touched++;
         retired += res.retiredBefore;
-        out.write(`#${n}\t${res.status}\tretired=${res.retiredBefore} → ${res.retiredAfter}\n`);
+        zeroStopResume += res.zeroStopResumeBefore;
+        redundantReviewPass += res.redundantReviewPassBefore;
+        postTerminal += res.postTerminalBefore;
+        out.write(`#${n}\t${res.status}\t${formatRemovalCounts(res)}\n`);
       }
     } catch (e) {
       failed.push({ issue: n, error: e.message });
@@ -225,10 +293,12 @@ async function runSweep(args, { cfg, repo, out, err, deps }) {
   }
   out.write(
     `Summary: issues=${numbers.length} ${args.apply ? 'healed' : 'to-heal'}=${touched} ` +
-      `retiredRows=${retired} failed=${failed.length}\n`
+      `retiredRows=${retired} stopResumeRows=${zeroStopResume} ` +
+      `reviewPassRows=${redundantReviewPass} postTerminalRows=${postTerminal} ` +
+      `failed=${failed.length}\n`
   );
   if (!args.apply && touched > 0) out.write('(dry-run — re-run with --apply to write)\n');
-  return 0;
+  return failed.length === 0 ? 0 : 1;
 }
 
 // I/O + orchestration seams are injectable (`deps`) so `main` is exercisable
@@ -244,7 +314,7 @@ export async function main(argv, deps = {}) {
   try {
     assertKnownArgv(argv, {
       flags: ['--sweep', '--apply', '--check-only', '--yes'],
-      options: ['--state', '--scope'],
+      options: ['--state', '--scope', '--delay-ms'],
       positionals: { max: 1 },
     });
   } catch (e) {

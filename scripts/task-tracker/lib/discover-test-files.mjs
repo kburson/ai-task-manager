@@ -29,6 +29,14 @@ const TEST_FILE_RE = /\.test\.mjs$/;
 // file such as `fixtures-helpers.mjs` is never misclassified.
 export const DEFAULT_EXCLUDES = Object.freeze(['node_modules', 'fixtures', '__fixtures__']);
 
+function isExcludedDirectory(rel, name, excludeSet) {
+  if (!excludeSet.has(name)) return false;
+  if (name === 'fixtures' && /(?:^|\/)tests\/(?:unit|integration|slow)\/fixtures$/.test(rel)) {
+    return false;
+  }
+  return true;
+}
+
 function walk(absDir, relDir, excludeSet, match, out) {
   let entries;
   try {
@@ -39,7 +47,7 @@ function walk(absDir, relDir, excludeSet, match, out) {
   for (const entry of entries) {
     const rel = relDir ? `${relDir}/${entry.name}` : entry.name;
     if (entry.isDirectory()) {
-      if (excludeSet.has(entry.name)) continue; // segment-level exclude
+      if (isExcludedDirectory(rel, entry.name, excludeSet)) continue;
       walk(path.join(absDir, entry.name), rel, excludeSet, match, out);
     } else if (entry.isFile() && match.test(entry.name)) {
       out.push(rel);

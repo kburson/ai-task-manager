@@ -21,6 +21,10 @@ import {
   stampEvidenceAndReconcile,
 } from '../lib/functional-dod-evidence.mjs';
 import { assertVerifierStateAllowed } from '../lib/verifier-state-gate.mjs';
+import {
+  readDirectoryContract,
+  writeDirectoryContractOperation,
+} from '../lib/github-records/contract-write.mjs';
 
 export async function verbDodStamp(ctx) {
   const { cfg, statePath, rest, pexec, projectDir } = ctx;
@@ -53,8 +57,23 @@ export async function verbDodStamp(ctx) {
     ['issue', 'view', issueNum, '-R', cfg.repo, '--json', 'body', '--jq', '.body'],
     { timeout: GH_API_TIMEOUT_MS }
   );
-  const items = parseFunctionalDodKeys(body);
-  const target = items.find((it) => it.key === key);
+  const directory = await readDirectoryContract({
+    repository: cfg.repo,
+    issue: Number(issueNum),
+    issueBody: body,
+    readContractRecord: ctx.deps?.contractWrite?.readContractRecord,
+  });
+  const items = directory ? [] : parseFunctionalDodKeys(body);
+  const contractTarget = directory?.contract.definitionOfDone.find(
+    (entry) => entry.logicalId === `dod-${key}` || entry.logicalId === key
+  );
+  const target = directory
+    ? contractTarget && {
+        ...contractTarget,
+        key,
+        evidenceCommands: directory.contract.verificationCommands.map((entry) => entry.command),
+      }
+    : items.find((it) => it.key === key);
   if (!target) {
     console.error(
       `[task-tracker] dod-stamp: no \`dod:functional:${key}\` line found in #${issueNum} body.`
@@ -130,15 +149,28 @@ export async function verbDodStamp(ctx) {
   // check can never strand against each other.
   const executedCommands = ran.map((r) => r.cmd).filter(Boolean);
 
+  if (directory) {
+    await writeDirectoryContractOperation({
+      repository: cfg.repo,
+      issue: Number(issueNum),
+      issueBody: body,
+      action: 'record-evidence',
+      kind: 'definitionOfDone',
+      logicalId: target.logicalId,
+      evidence: { commands: executedCommands, result: 'passed', sha, ts },
+      pexec,
+      deps: ctx.deps?.contractWrite,
+    });
+    console.log(
+      `[task-tracker] ✓ dod-stamp ${key} on ${s.active}: accepted Delivery Contract evidence (sha=${sha}).`
+    );
+    return;
+  }
+
   await mutateIssueBody({
     issueNumber: issueNum,
     repo: cfg.repo,
-    deps: {
-      ...ctx.deps,
-      pexec,
-      projectDir,
-      withGovernedEffect: ctx.withGovernedEffect ?? ctx.deps?.withGovernedEffect,
-    },
+    deps: { pexec },
     // #522 — sanctioned stamper: evidence derived from the real verifier run
     // executed above; bypass the proof-introduction guard for this minting site.
     evidenceStamp: true,

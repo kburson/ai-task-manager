@@ -19,6 +19,14 @@ const runtimePickupDirectivePath = path.join(
 const runtimePickupDirective = existsSync(runtimePickupDirectivePath)
   ? readFileSync(runtimePickupDirectivePath, 'utf8')
   : null;
+
+for (const name of ['epic-body.md', 'solo-issue-body.md', 'sub-issue-body.md']) {
+  assert.equal(
+    readFileSync(path.join(root, '.ai-task-manager', 'templates', name), 'utf8'),
+    readFileSync(path.join(root, 'templates', name), 'utf8'),
+    `.ai-task-manager/templates/${name} must mirror templates/${name}`
+  );
+}
 const codexAdapter = readFileSync(
   path.join(root, 'skill', 'adapters', 'codex', 'SKILL.md'),
   'utf8'
@@ -38,25 +46,40 @@ const preflightBlock = execFileSync(
   { cwd: root, encoding: 'utf8' }
 );
 
-// DoD template uses Functional/Lifecycle split (#139). Verification commands
+// DoD template uses Functional/Lifecycle/Housekeeping phase categories. Verification commands
 // now live in the consolidated `aitm-verified cmd="..."` declarations on each
 // Functional item (#419) rather than as standalone DoD lines.
-// #480 — DoD is now a 2-hash top-level section with 3-hash Functional/Lifecycle
-// children (was a 3-hash section with 4-hash children).
+// #480 — DoD is a 2-hash top-level section with 3-hash phase children.
 for (const fragment of [
   '### Functional (verified at Test)',
   'aitm-verified cmd="`npm test` `npm run test:slow`"',
   'aitm-verified cmd="`npm run lint` `npm run format:check`"',
   '- [ ] Acceptance criteria met',
   '- [ ] Issue body checkboxes ticked',
-  '### Lifecycle (auto-ticked at Review/Close)',
+  '### Lifecycle (verified at Review)',
   '- [ ] Agent Review Passed',
   '- [ ] Final Review Passed',
+  '### Housekeeping (verified at Close)',
   '- [ ] Story closed and moved to Done',
   '- [ ] Timing data flushed to issue',
 ]) {
   assert.ok(body.includes(fragment), `template includes ${fragment}`);
 }
+
+// @story #982
+const phaseHeadings = [
+  '### Functional (verified at Test)',
+  '### Lifecycle (verified at Review)',
+  '### Housekeeping (verified at Close)',
+];
+for (const heading of phaseHeadings) {
+  assert.equal(body.match(new RegExp(heading.replace(/[()]/g, '\\$&'), 'g'))?.length, 1);
+}
+assert.deepEqual(
+  phaseHeadings.map((heading) => body.indexOf(heading)),
+  [...phaseHeadings.map((heading) => body.indexOf(heading))].sort((a, b) => a - b)
+);
+assert.doesNotMatch(body, /Lifecycle \(auto-ticked at Review\/Close\)/);
 
 assert.ok(
   !body.includes('Tests pass; new coverage committed'),

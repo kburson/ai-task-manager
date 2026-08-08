@@ -40,6 +40,51 @@ test('parseArgs omits absent current keys and falls back to active issue', () =>
   assert.deepEqual(current, {});
 });
 
+test('parseArgs selects v1 evidence or explicit legacy compatibility mode', () => {
+  const adaptive = parseArgs(
+    ['1091', '--evidence-file', '.tmp/plan/1091.json', '--adopt-legacy-baseline'],
+    null
+  );
+  assert.equal(adaptive.evidenceFile, '.tmp/plan/1091.json');
+  assert.equal(adaptive.adoptLegacyBaseline, true);
+  assert.equal(adaptive.compatibilityMode, false);
+  const legacy = parseArgs(
+    ['1091', '--compatibility-mode', '--planned-size', 'XL', '--planned-estimate', '40'],
+    null
+  );
+  assert.equal(legacy.compatibilityMode, true);
+});
+
+test('runPlanEstimate delegates evidence-file execution to adaptive authority', async () => {
+  const calls = [];
+  const result = await runPlanEstimate({
+    target: 1091,
+    evidenceFile: '.tmp/plan/1091.json',
+    cfg: CFG,
+    deps: {
+      runAdaptivePlanEstimate: async (input) => {
+        calls.push(input);
+        return { status: 'converged', forecastRecordId: '01J00000000000000000000601' };
+      },
+    },
+  });
+  assert.equal(result.status, 'converged');
+  assert.equal(calls[0].issueNumber, 1091);
+  assert.equal(calls[0].evidenceFile, '.tmp/plan/1091.json');
+});
+
+test('legacy planned flags require explicit compatibility mode', async () => {
+  await assert.rejects(
+    runPlanEstimate({
+      target: 663,
+      planned: { size: 'S', estimate: 3 },
+      current: { size: 'S', estimate: 3 },
+      cfg: CFG,
+    }),
+    /--compatibility-mode/
+  );
+});
+
 test('resolveTargetIssue prefers explicit positional over active', () => {
   assert.equal(resolveTargetIssue({ rest: ['#7'], activeIssue: '99' }), 7);
   assert.equal(resolveTargetIssue({ rest: [], activeIssue: '99' }), 99);
@@ -65,7 +110,7 @@ test('runPlanEstimate rejects missing cfg.repo', async () => {
 
 test('runPlanEstimate rejects empty planned column', async () => {
   await assert.rejects(
-    () => runPlanEstimate({ target: 663, planned: {}, cfg: CFG }),
+    () => runPlanEstimate({ target: 663, planned: {}, compatibilityMode: true, cfg: CFG }),
     /at least one of --planned/
   );
 });
@@ -77,6 +122,7 @@ test('runPlanEstimate appends with explicit current (no board read)', async () =
   const calls = [];
   const res = await runPlanEstimate({
     target: 663,
+    compatibilityMode: true,
     planned: { size: 'S', estimate: 3 },
     current: { size: 'M', estimate: 6 },
     rationale: 'r',
@@ -97,6 +143,72 @@ test('runPlanEstimate appends with explicit current (no board read)', async () =
   assert.deepEqual(calls[0].planned, { size: 'S', estimate: 3 });
 });
 
+test('compatibility Plan normalizes explicit Refine and Plan projections', async () => {
+  let appended;
+  await runPlanEstimate({
+    target: 1098,
+    compatibilityMode: true,
+    planned: { size: 'M', estimate: 3.633 },
+    current: { size: 'M', estimate: 3.13 },
+    rationale: 'legacy compatibility',
+    cfg: CFG,
+    deps: {
+      appendPlannedEstimate: async (input) => {
+        appended = input;
+        return { status: 'appended', commentId: 1098 };
+      },
+      projectValuesForIssue: async () => {
+        throw new Error('board should not be read when current is explicit');
+      },
+    },
+  });
+
+  assert.deepEqual(appended.current, { size: 'M', estimate: 3.5 });
+  assert.deepEqual(appended.planned, { size: 'M', estimate: 4 });
+});
+
+test('compatibility Plan normalizes a board-derived Refine projection', async () => {
+  let appended;
+  await runPlanEstimate({
+    target: 1098,
+    compatibilityMode: true,
+    planned: { estimate: 4 },
+    current: {},
+    cfg: CFG,
+    deps: {
+      appendPlannedEstimate: async (input) => {
+        appended = input;
+        return { status: 'appended', commentId: 1098 };
+      },
+      projectValuesForIssue: async () => ({ size: 'M', estimate: 3.13 }),
+      loadProjectFieldDefs: () => [],
+    },
+  });
+
+  assert.deepEqual(appended.current, { size: 'M', estimate: 3.5 });
+});
+
+test('compatibility Plan treats a null current projection as board-derived', async () => {
+  let appended;
+  await runPlanEstimate({
+    target: 1098,
+    compatibilityMode: true,
+    planned: { estimate: 4 },
+    current: null,
+    cfg: CFG,
+    deps: {
+      appendPlannedEstimate: async (input) => {
+        appended = input;
+        return { status: 'appended', commentId: 1098 };
+      },
+      projectValuesForIssue: async () => ({ size: 'M', estimate: 3.13 }),
+      loadProjectFieldDefs: () => [],
+    },
+  });
+
+  assert.deepEqual(appended.current, { size: 'M', estimate: 3.5 });
+});
+
 // ---------------------------------------------------------------------------
 // runPlanEstimate — board-sourced current
 // ---------------------------------------------------------------------------
@@ -104,6 +216,7 @@ test('runPlanEstimate sources current from the board when --current-* omitted', 
   let appended;
   const res = await runPlanEstimate({
     target: 663,
+    compatibilityMode: true,
     planned: { size: 'S', estimate: 3 },
     current: {},
     cfg: CFG,
@@ -127,6 +240,7 @@ test('runPlanEstimate mirrors planned when board read is empty', async () => {
   let appended;
   await runPlanEstimate({
     target: 663,
+    compatibilityMode: true,
     planned: { size: 'S', estimate: 3 },
     current: {},
     cfg: CFG,
@@ -146,6 +260,7 @@ test('runPlanEstimate mirrors planned when board read throws', async () => {
   let appended;
   await runPlanEstimate({
     target: 663,
+    compatibilityMode: true,
     planned: { estimate: 3 },
     current: {},
     cfg: CFG,
@@ -167,6 +282,7 @@ test('runPlanEstimate skips board read when projectId is absent', async () => {
   let appended;
   await runPlanEstimate({
     target: 663,
+    compatibilityMode: true,
     planned: { size: 'S' },
     current: {},
     cfg: { repo: 'o/r' },
@@ -190,6 +306,7 @@ test('runPlanEstimate heals an empty appendix via repopulate on duplicate', asyn
   let repopulated;
   const res = await runPlanEstimate({
     target: 663,
+    compatibilityMode: true,
     planned: { size: 'S', estimate: 3 },
     current: { size: 'S', estimate: 3 },
     cfg: CFG,
@@ -209,6 +326,7 @@ test('runPlanEstimate heals an empty appendix via repopulate on duplicate', asyn
 test('runPlanEstimate surfaces no-refine-comment from append', async () => {
   const res = await runPlanEstimate({
     target: 663,
+    compatibilityMode: true,
     planned: { size: 'S' },
     current: { size: 'S' },
     cfg: CFG,
@@ -228,4 +346,7 @@ test('plan-estimate is registered in the command catalog', () => {
   const entry = routeIdentityForCommand('plan-estimate');
   assert.ok(entry, 'plan-estimate must resolve in routing identities');
   assert.equal(entry.dispatch, 'verbs/plan-estimate.mjs');
+  const flags = commandByName('plan-estimate').arguments.map((option) => option.name);
+  assert.ok(flags.includes('--evidence-file <path>'));
+  assert.ok(flags.includes('--compatibility-mode'));
 });

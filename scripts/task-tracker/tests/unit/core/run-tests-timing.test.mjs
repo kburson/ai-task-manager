@@ -12,6 +12,7 @@ import {
   buildTimingReport,
   auditSlowBucket,
   serializeArtifact,
+  normalizeTimingArtifact,
   formatTimingReport,
 } from '../../../../run-tests-timing.mjs';
 
@@ -148,18 +149,45 @@ test('auditSlowBucket classifies against the ≥2000ms rule', () => {
 });
 
 test('serializeArtifact keys files by path and carries totals + slow bucket', () => {
-  const art = serializeArtifact(sample(), { lane: 'all', generatedAt: '2026-07-19T00:00:00Z' });
-  assert.equal(art.schema, 1);
+  const art = serializeArtifact(sample(), {
+    lane: 'all',
+    generatedAt: '2026-07-19T00:00:00Z',
+    runnerElapsedMs: 4100,
+    poolElapsedMs: 2100,
+    serialElapsedMs: 2000,
+  });
+  assert.equal(art.schema, 2);
   assert.equal(art.lane, 'all');
   assert.equal(art.generatedAt, '2026-07-19T00:00:00Z');
   assert.equal(art.count, 5);
-  assert.equal(art.totals.wallMs, 6000);
+  assert.equal(art.elapsed.runnerMs, 4100);
+  assert.equal(art.elapsed.poolMs, 2100);
+  assert.equal(art.elapsed.serialMs, 2000);
+  assert.equal(art.sums.fileWallMs, 6000);
+  assert.equal(art.sums.inProcessMs, 5440);
+  assert.equal(art.sums.estimatedSpawnIoMs, 560);
   assert.ok(art.files['scripts/x/slow/c.test.mjs']);
   assert.equal(art.files['scripts/x/slow/c.test.mjs'].wallMs, 3000);
   assert.equal(art.files['scripts/x/e.test.mjs'].inProcMs, null);
   assert.equal(art.slowBucket.slowBucketFiles, 2);
   // artifact must survive a JSON round trip (it is written to disk as JSON)
   assert.deepEqual(JSON.parse(JSON.stringify(art)), art);
+});
+
+test('normalizeTimingArtifact preserves schema 1 wall as a sum, never actual elapsed', () => {
+  const normalized = normalizeTimingArtifact({
+    schema: 1,
+    lane: 'unit',
+    totals: { wallMs: 9000, inProcMs: 7000, spawnOverheadMs: 2000 },
+    files: {},
+  });
+  assert.equal(normalized.sourceSchema, 1);
+  assert.equal(normalized.elapsed.runnerMs, null);
+  assert.equal(normalized.elapsed.poolMs, null);
+  assert.equal(normalized.elapsed.serialMs, null);
+  assert.equal(normalized.sums.fileWallMs, 9000);
+  assert.equal(normalized.sums.inProcessMs, 7000);
+  assert.equal(normalized.sums.estimatedSpawnIoMs, 2000);
 });
 
 test('formatTimingReport renders a non-empty block and handles empty input', () => {

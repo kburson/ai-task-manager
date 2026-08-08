@@ -22,9 +22,6 @@ import {
   defaultFetchOpenChildren,
   DUPLICATE_CHILD_EXIT_CODE,
 } from './lib/duplicate-child-guard.mjs';
-import { tetherIssueToProject } from './lib/project-tether.mjs';
-import { gql } from './lib/github-projects.mjs';
-import { mutateIssueBody } from '../task-tracker/lib/issue-body-mutate.mjs';
 
 // Exit codes (documented contract):
 //   1 — generic failure (gh error, tether failure, internal error)
@@ -41,10 +38,10 @@ const TETHER_SCRIPT =
 const PREFLIGHT_SCRIPT = path.resolve(SCRIPT_DIR, '..', 'task-tracker', 'preflight-issue.mjs');
 const ISSUE_URL_RE = /\/issues\/(\d+)/;
 const PLACEHOLDER_RE = /<this-issue-#>|<parent-epic-#>/;
-const VALID_SHAPES = new Set(['epic', 'sub-issue', 'solo', 'stub']);
+const VALID_SHAPES = new Set(['epic', 'sub-issue', 'solo', 'defect', 'stub']);
 
 function usage() {
-  return `Usage: create-issue.mjs --title <t> (--body-file <path> | --shape epic|sub-issue|solo --scope-file <p> --ac-file <p> --plan-metadata-file <p> [--sub-issue-list-file <p>] | --shape stub [--idea-file <p>]) [--label <l> ...] [--priority p0|p1|p2] [--size XS|S|M|L|XL] [--estimate <hours>] [--rank <n>] [--parent <N>] [--assignee <a>] [--allow-duplicate-child] [--dry-run] [--no-tether] [--no-placeholder-substitution] [--internal]`;
+  return `Usage: create-issue.mjs --title <t> (--body-file <path> | --shape epic|sub-issue|solo|defect --scope-file <p> --ac-file <p> --story-origin-file <p> [--plan-metadata-file <p>] [--verification-commands-file <p>] [--reproduction-file <p>] [--root-cause-file <p>] [--fix-direction-file <p>] [--out-of-scope-file <p>] [--sub-issue-list-file <p>] | --shape stub [--idea-file <p>]) [--label <l> ...] [--priority p0|p1|p2] [--size XS|S|M|L|XL] [--estimate <hours>] [--rank <n>] [--parent <N>] [--assignee <a>] [--allow-duplicate-child] [--dry-run] [--no-tether] [--no-placeholder-substitution] [--internal]`;
 }
 
 function parseArgs(argv) {
@@ -104,6 +101,14 @@ function extractIssueNumber(urlOrText) {
   return null;
 }
 
+export function formatCreatedIssueToken(issueNumber) {
+  const number = Number(issueNumber);
+  if (!Number.isInteger(number) || number <= 0) {
+    throw new Error('created issue number must be a positive integer');
+  }
+  return `AITM_CREATED_ISSUE=${number}`;
+}
+
 function validateArgs(args) {
   if (!args.title || args.title === true) die(`missing --title\n${usage()}`, 2);
   // #272 — --status is no longer accepted. All issues are created in Backlog
@@ -121,14 +126,14 @@ function validateArgs(args) {
   if (hasBody && hasShape) die(`--body-file and --shape are mutually exclusive`, 2);
   if (hasShape) {
     if (!VALID_SHAPES.has(args.shape)) {
-      die(`--shape must be one of: epic, sub-issue, solo, stub (got: ${args.shape})`, 2);
+      die(`--shape must be one of: epic, sub-issue, solo, defect, stub (got: ${args.shape})`, 2);
     }
     // #426 — the stub shape is a lightweight idea-capture path: only --title is
-    // required (an optional --idea-file seeds Scope). Scope / AC / Plan Metadata
-    // are placeholders the Refine stage fills, so the three section files are NOT
-    // required at creation. The Refine→Plan gate still enforces them later.
+    // required (an optional --idea-file seeds Scope). Scope / AC are placeholders
+    // the Refine stage fills; Story Origin is synthesized and Plan Metadata stays
+    // empty until planning, so section files are not required for a stub.
     if (args.shape !== 'stub') {
-      for (const flag of ['scope-file', 'ac-file', 'plan-metadata-file']) {
+      for (const flag of ['scope-file', 'ac-file', 'story-origin-file']) {
         if (typeof args[flag] !== 'string') die(`--${flag} required with --shape`, 2);
       }
     }
@@ -145,7 +150,8 @@ function validateArgs(args) {
 export function buildShapeFlags(args) {
   const flags = ['--shape', args.shape];
   // #426 — stub forwards only an optional --idea-file (no section files);
-  // every other shape forwards the three required section files.
+  // every other shape forwards Scope, AC, and required create-time Story Origin.
+  // Plan Metadata is optional until the Plan stage.
   if (args.shape === 'stub') {
     if (typeof args['idea-file'] === 'string') flags.push('--idea-file', args['idea-file']);
   } else {
@@ -154,9 +160,26 @@ export function buildShapeFlags(args) {
       args['scope-file'],
       '--ac-file',
       args['ac-file'],
-      '--plan-metadata-file',
-      args['plan-metadata-file']
+      '--story-origin-file',
+      args['story-origin-file']
     );
+    if (typeof args['plan-metadata-file'] === 'string') {
+      flags.push('--plan-metadata-file', args['plan-metadata-file']);
+    }
+    if (typeof args['verification-commands-file'] === 'string') {
+      flags.push('--verification-commands-file', args['verification-commands-file']);
+    }
+    if (args.shape === 'defect') {
+      flags.push('--title', args.title);
+      for (const key of [
+        'reproduction-file',
+        'root-cause-file',
+        'fix-direction-file',
+        'out-of-scope-file',
+      ]) {
+        if (typeof args[key] === 'string') flags.push(`--${key}`, args[key]);
+      }
+    }
   }
   if (typeof args.parent === 'string') flags.push('--parent', args.parent);
   if (typeof args['sub-issue-list-file'] === 'string') {
@@ -199,7 +222,15 @@ export function buildIssueTitle(args) {
   return ensureKindPrefix(args.title, args.label);
 }
 
-function ghCreateOutcome(args, assignee, options = {}) {
+export function applyShapeDefaults(args) {
+  const labels = Array.isArray(args?.label) ? [...args.label] : [];
+  if (args?.shape === 'defect' && !labels.some((label) => String(label).toLowerCase() === 'bug')) {
+    labels.push('bug');
+  }
+  return { ...args, label: labels };
+}
+
+function ghCreate(args, assignee) {
   const ghArgs = [
     'issue',
     'create',
@@ -213,21 +244,13 @@ function ghCreateOutcome(args, assignee, options = {}) {
   // with no assignee rather than defaulting one on.
   if (typeof assignee === 'string' && assignee) ghArgs.push('--assignee', assignee);
   for (const lbl of args.label) ghArgs.push('--label', lbl);
-  const runCommand = options.runCommand || run;
-  const created = runCommand('gh', ghArgs, {
-    timeout: GH_API_TIMEOUT_MS,
-    env: options.env,
-  });
-  const issueNumber = extractIssueNumber(created.stdout);
-  return { ...created, issueNumber };
-}
-
-function ghCreate(args, assignee, options = {}) {
-  const created = ghCreateOutcome(args, assignee, options);
+  const created = run('gh', ghArgs, { timeout: GH_API_TIMEOUT_MS });
   if (created.status !== 0) {
     process.stderr.write(created.stderr);
     const partialNumber = extractIssueNumber(created.stdout);
     if (partialNumber) {
+      if (created.stderr && !created.stderr.endsWith('\n')) process.stderr.write('\n');
+      console.error(formatCreatedIssueToken(partialNumber));
       process.stderr.write(
         `partial-success: #${partialNumber} — issue was created but gh exited ${created.status}.\n` +
           `  Tether/update #${partialNumber} before retrying rather than creating a duplicate.\n`
@@ -236,54 +259,11 @@ function ghCreate(args, assignee, options = {}) {
     }
     die(`gh issue create failed (exit ${created.status})`, created.status || 1);
   }
-  const issueNumber = created.issueNumber;
+  const issueNumber = extractIssueNumber(created.stdout);
   if (!issueNumber) die(`could not parse issue number from gh output: ${created.stdout.trim()}`, 1);
+  console.error(formatCreatedIssueToken(issueNumber));
   console.error(`✓ created issue #${issueNumber}`);
   return issueNumber;
-}
-
-function throwForGovernedCreateOutcome(created) {
-  const issueNumber = created.issueNumber || extractIssueNumber(created.stdout);
-  if (created.status !== 0) {
-    const error = new Error(
-      issueNumber
-        ? `partial-success: #${issueNumber} — issue was created but gh exited ${created.status}`
-        : `gh issue create failed (exit ${created.status}): ${created.stderr || 'unknown error'}`
-    );
-    error.exitCode = issueNumber ? 6 : created.status || 1;
-    error.partialIssueNumber = issueNumber || undefined;
-    throw error;
-  }
-  if (!issueNumber) {
-    const error = new Error(
-      `could not parse issue number from gh output: ${String(created.stdout || '').trim()}`
-    );
-    error.exitCode = 1;
-    throw error;
-  }
-  return issueNumber;
-}
-
-function ownedBodyDeps(env) {
-  if (!env) return {};
-  return {
-    fetchBody: async (repo, issueNumber) => {
-      const out = execFileSync(
-        'gh',
-        ['issue', 'view', String(issueNumber), '-R', repo, '--json', 'body'],
-        { encoding: 'utf8', timeout: GH_API_TIMEOUT_MS, env }
-      );
-      return JSON.parse(out).body;
-    },
-    pushBody: async (repo, issueNumber, body) => {
-      execFileSync('gh', ['issue', 'edit', String(issueNumber), '-R', repo, '--body-file', '-'], {
-        encoding: 'utf8',
-        timeout: GH_API_TIMEOUT_MS,
-        env,
-        input: body,
-      });
-    },
-  };
 }
 
 function buildTetherArgs(issueNumber, args, priority) {
@@ -348,190 +328,6 @@ export function resolveAssignee(args) {
   return typeof args.assignee === 'string' && args.assignee ? args.assignee : null;
 }
 
-/**
- * In-process issue creation used by controller-owned orchestration.
- *
- * The existing controller remains the authority for every transitive write:
- * issue creation, project tether/status fields, and the new issue's lifecycle
- * body markers. The newly-created issue is an output, never a substitute lease
- * holder.
- */
-export async function createGovernedInternalIssue({
-  title,
-  bodyContent,
-  cfg,
-  priority,
-  rank,
-  finalStatus = 'develop',
-  withGovernedEffect,
-  authorityIssueId,
-  env,
-  beforeRemoteCreate,
-  deps = {},
-  reconcile = true,
-} = {}) {
-  if (!title) throw new Error('createGovernedInternalIssue: title is required');
-  if (typeof bodyContent !== 'string') {
-    throw new Error('createGovernedInternalIssue: bodyContent is required');
-  }
-  if (!cfg?.repo || !cfg?.projectId) {
-    throw new Error('createGovernedInternalIssue: repo and projectId are required');
-  }
-  if (typeof withGovernedEffect !== 'function' || !authorityIssueId) {
-    throw new Error(
-      'createGovernedInternalIssue: controller withGovernedEffect and authorityIssueId are required'
-    );
-  }
-
-  const controllerId = String(authorityIssueId).replace(/^#/, '');
-  const governController = (operation, callback) =>
-    withGovernedEffect(
-      {
-        issueId: controllerId,
-        operation,
-        heartbeat: true,
-      },
-      callback
-    );
-  const createIssue = deps.createIssue;
-  const createOutcome = deps.createOutcome || ghCreateOutcome;
-  const stampedBody = stampEntryMarker(bodyContent, 'backlog', new Date().toISOString());
-  let tmpDir;
-
-  try {
-    let bodyFilePath;
-    if (typeof createIssue !== 'function') {
-      tmpDir = mkdtempSync(path.join(projectScratchDir('test'), 'aitm-create-issue-'));
-      bodyFilePath = path.join(tmpDir, 'body.md');
-      writeFileSync(bodyFilePath, stampedBody, 'utf8');
-    }
-    const invokeRemoteCreate = async () => {
-      if (typeof createIssue === 'function') {
-        return createIssue({ title, bodyContent: stampedBody, cfg, env });
-      }
-      return throwForGovernedCreateOutcome(
-        createOutcome(
-          {
-            title,
-            label: [],
-            'body-file': bodyFilePath,
-          },
-          null,
-          { env }
-        )
-      );
-    };
-
-    let issueNumber;
-    await governController('evidence-mutation', async () => {
-      if (typeof beforeRemoteCreate === 'function') {
-        const recoveredIssueNumber = await beforeRemoteCreate();
-        if (recoveredIssueNumber != null) {
-          issueNumber = recoveredIssueNumber;
-          return;
-        }
-      }
-      issueNumber = await invokeRemoteCreate();
-    });
-    if (!issueNumber) {
-      throw new Error('createGovernedInternalIssue: create did not return an issue number');
-    }
-
-    if (reconcile) {
-      await reconcileGovernedInternalIssue({
-        issueNumber,
-        cfg,
-        priority,
-        rank,
-        finalStatus,
-        withGovernedEffect,
-        authorityIssueId: controllerId,
-        env,
-        deps,
-      });
-    }
-    return issueNumber;
-  } finally {
-    if (tmpDir) {
-      try {
-        rmSync(tmpDir, { recursive: true, force: true });
-      } catch {
-        // best-effort cleanup
-      }
-    }
-  }
-}
-
-export async function reconcileGovernedInternalIssue({
-  issueNumber,
-  cfg,
-  priority,
-  rank,
-  finalStatus = 'develop',
-  withGovernedEffect,
-  authorityIssueId,
-  env,
-  deps = {},
-} = {}) {
-  if (!issueNumber || !cfg?.repo || !cfg?.projectId) {
-    throw new Error(
-      'reconcileGovernedInternalIssue: issueNumber, repo, and projectId are required'
-    );
-  }
-  if (typeof withGovernedEffect !== 'function' || !authorityIssueId) {
-    throw new Error(
-      'reconcileGovernedInternalIssue: controller withGovernedEffect and authorityIssueId are required'
-    );
-  }
-  const controllerId = String(authorityIssueId).replace(/^#/, '');
-  const tetherIssue = deps.tetherIssueToProject || tetherIssueToProject;
-  const mutateBody = deps.mutateIssueBody || mutateIssueBody;
-  const tetherOptions = {
-    cfg,
-    issueNumber,
-    priority,
-    rank: rank === undefined ? undefined : Number(rank),
-    withGovernedEffect,
-    authorityIssueId: controllerId,
-    ...(deps.tether || {}),
-    runGql: (query, variables, options = {}) =>
-      (deps.tether?.runGql || gql)(query, variables, { ...options, env }),
-  };
-  await tetherIssue({ ...tetherOptions, status: 'backlog' });
-  if (finalStatus && finalStatus !== 'backlog') {
-    await tetherIssue({ ...tetherOptions, status: finalStatus });
-  }
-
-  if (finalStatus === 'develop') {
-    const baseMs = Date.now();
-    const controllerBodyAuthority = (_requested, callback) =>
-      withGovernedEffect(
-        {
-          issueId: controllerId,
-          operation: 'evidence-mutation',
-          heartbeat: true,
-        },
-        callback
-      );
-    await mutateBody({
-      issueNumber,
-      repo: cfg.repo,
-      operation: 'evidence-mutation',
-      mutate: (base) => {
-        let next = stampEntryMarker(base, 'refine', new Date(baseMs).toISOString());
-        next = stampEntryMarker(next, 'plan', new Date(baseMs + 1).toISOString());
-        return stampEntryMarker(next, 'develop', new Date(baseMs + 2).toISOString());
-      },
-      deps: {
-        ...ownedBodyDeps(env),
-        ...(deps.body || {}),
-        withGovernedEffect: controllerBodyAuthority,
-      },
-    });
-  }
-  return { issueNumber, status: finalStatus };
-}
-
 function enforcePriorityGate(_args) {
   // #272 — The priority gate fired only when `--status refine` was passed.
   // With `--status` removed, every issue creates at Backlog where the gate
@@ -543,7 +339,7 @@ async function main() {
     emitSelfDoc('create-issue');
     process.exit(0);
   }
-  const args = parseArgs(process.argv.slice(2));
+  const args = applyShapeDefaults(parseArgs(process.argv.slice(2)));
   validateArgs(args);
 
   const cfg = loadConfig();
@@ -691,7 +487,8 @@ async function main() {
   } else {
     bodyContent = readBody(bodyFilePath);
     // Canonical issue-body verification. The `--body-file` shortcut bypasses
-    // the fragment path (`--shape` + scope/ac/plan-metadata), so we re-run the
+    // the fragment path (`--shape` + scope/AC/Story Origin/optional planning), so
+    // we re-run the
     // structural check here. Internal/testing callers may opt out with BOTH
     // `--internal` AND env `AITM_CREATE_ISSUE_INTERNAL=1` set.
     const internalFlag = args.internal === true;

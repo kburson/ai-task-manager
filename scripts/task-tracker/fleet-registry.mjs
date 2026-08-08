@@ -7,10 +7,9 @@ import {
   rmdirSync,
   statSync,
 } from 'node:fs';
-import { execFileSync } from 'node:child_process';
 import path from 'node:path';
+import { execFileSync } from 'node:child_process';
 import { legacyPathFor, fleetPath } from './paths.mjs';
-import { resolveMainWorktreePath } from './lib/main-worktree-path.mjs';
 import { GIT_TIMEOUT_MS } from './lib/process-timeouts.mjs';
 
 const LOCK_STALE_MS = 30_000;
@@ -57,10 +56,21 @@ export function withLock(registryPath, fn) {
 }
 
 export function findMainWorktreePath(projectDir) {
-  return resolveMainWorktreePath(projectDir, { allowFallback: true });
+  try {
+    const out = execFileSync('git', ['worktree', 'list', '--porcelain'], {
+      cwd: projectDir,
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'ignore'],
+      timeout: GIT_TIMEOUT_MS,
+    });
+    const firstBlock = out.split(/\n\n/)[0];
+    const match = firstBlock.match(/^worktree (.+)$/m);
+    if (match) return match[1].trim();
+  } catch {
+    /* best-effort: failure must not abort the primary operation */
+  }
+  return projectDir;
 }
-
-export { resolveMainWorktreePath };
 
 export function fleetRegistryPath(mainWorktreePath) {
   return fleetPath(mainWorktreePath);
@@ -171,6 +181,29 @@ export function readFleet(registryPath, opts) {
   return kept;
 }
 
+// #1085 — fleet data is an explicitly observational local view. Consumers may
+// render it for diagnostics, but this tagged snapshot cannot satisfy an
+// authority, assignment, lifecycle, evidence, or integration gate.
+export function fleetObservation(fleet = {}) {
+  const entries = Object.entries(fleet || {})
+    .sort(([left], [right]) => left.localeCompare(right))
+    .map(([ref, entry]) =>
+      Object.freeze({
+        ref,
+        branch: typeof entry?.branch === 'string' ? entry.branch : null,
+        kind: effectiveKind(entry),
+        startedAt: typeof entry?.startedAt === 'string' ? entry.startedAt : null,
+        status: typeof entry?.status === 'string' ? entry.status : null,
+        worktreePath: typeof entry?.worktreePath === 'string' ? entry.worktreePath : null,
+      })
+    );
+  return Object.freeze({
+    schema: 'aitm.fleet-observation/v1',
+    authoritative: false,
+    entries: Object.freeze(entries),
+  });
+}
+
 // #441 — operator-facing prune. Shares isStaleEntry with the guard-time reap so
 // `fleet prune` and lazy auto-reap never diverge. dryRun computes without
 // writing; otherwise evicts under lock and returns the plan either way.
@@ -220,189 +253,6 @@ export function registerTask(projectDir, issueRef, worktreePath, branch, kind) {
     };
     writeFleet(rPath, fleet);
   });
-}
-
-export function registerTaskProjection(projectDir, input, projectionId) {
-  if (!input || typeof input !== 'object' || Array.isArray(input)) {
-    throw new TypeError('fleet projection input must be an object');
-  }
-  for (const field of ['issue', 'worktreePath', 'branch', 'startedAt', 'status']) {
-    if (typeof input[field] !== 'string' || input[field].trim() === '') {
-      throw new TypeError(`fleet projection ${field} is required`);
-    }
-  }
-  if (typeof projectionId !== 'string' || projectionId.trim() === '') {
-    throw new TypeError('fleet projectionId is required');
-  }
-  if (!/^#[1-9]\d*$/.test(input.issue) || input.status !== 'active') {
-    throw new TypeError('fleet projection requires a canonical active issue binding');
-  }
-  const binding = input.binding;
-  const bindingFields = [
-    'principalKind',
-    'provider',
-    'agentRunId',
-    'sessionId',
-    'hostId',
-    'worktreeId',
-    'pathHash',
-    'branch',
-    'displayPath',
-  ];
-  if (
-    !binding ||
-    typeof binding !== 'object' ||
-    Array.isArray(binding) ||
-    bindingFields.some(
-      (field) => typeof binding[field] !== 'string' || binding[field].trim() === ''
-    ) ||
-    !Number.isSafeInteger(binding.pid) ||
-    binding.pid <= 0 ||
-    binding.principalKind !== 'worker' ||
-    binding.branch !== input.branch ||
-    binding.displayPath !== input.worktreePath
-  ) {
-    throw new TypeError('fleet projection binding identity is malformed');
-  }
-  const mainPath = findMainWorktreePath(projectDir);
-  const registryPath = fleetRegistryPath(mainPath);
-  const kind = input.kind ?? (input.worktreePath === mainPath ? 'main' : 'worktree');
-  if (!['main', 'worktree'].includes(kind)) {
-    throw new TypeError('fleet projection kind is invalid');
-  }
-  const projected = {
-    worktreePath: input.worktreePath,
-    branch: input.branch,
-    kind,
-    startedAt: input.startedAt,
-    status: input.status,
-    binding: JSON.parse(JSON.stringify(binding)),
-    projectionId,
-  };
-  withLock(registryPath, () => {
-    const fleet = readFleet(registryPath);
-    const existing = fleet[input.issue];
-    if (existing && JSON.stringify(existing) === JSON.stringify(projected)) return;
-    fleet[input.issue] = projected;
-    writeFleet(registryPath, fleet);
-  });
-  const receipt = readFleet(registryPath)[input.issue];
-  if (JSON.stringify(receipt) !== JSON.stringify(projected)) {
-    throw new Error('fleet projection read-back does not match');
-  }
-  return receipt;
-}
-
-// Atomically replace one issue projection with another for a fenced
-// cross-issue switch. The source/target pair is mutated under one fleet lock,
-// and neither side may overwrite a projection owned by a different worktree.
-// Compensation uses the same helper in reverse while installing the newly
-// fenced source lease returned by the compensating authority transition.
-export function switchTaskProjection(projectDir, input, lease, projectionId, phase = 'forward') {
-  if (!input || typeof input !== 'object' || Array.isArray(input)) {
-    throw new TypeError('fleet switch projection input must be an object');
-  }
-  if (!['forward', 'compensation'].includes(phase)) {
-    throw new TypeError('fleet switch projection phase is invalid');
-  }
-  if (
-    !/^#[1-9]\d*$/.test(input.sourceIssue) ||
-    !/^#[1-9]\d*$/.test(input.targetIssue) ||
-    input.sourceIssue === input.targetIssue
-  ) {
-    throw new TypeError('fleet switch projection requires distinct canonical issues');
-  }
-  if (typeof projectionId !== 'string' || projectionId.trim() === '') {
-    throw new TypeError('fleet switch projectionId is required');
-  }
-  const projectedInput = phase === 'forward' ? input.target : input.source;
-  if (!projectedInput || typeof projectedInput !== 'object' || Array.isArray(projectedInput)) {
-    throw new TypeError('fleet switch projected binding is malformed');
-  }
-  const destinationIssue = phase === 'forward' ? input.targetIssue : input.sourceIssue;
-  const departureIssue = phase === 'forward' ? input.sourceIssue : input.targetIssue;
-  if (projectedInput.issue !== destinationIssue) {
-    throw new TypeError('fleet switch projected issue does not match phase');
-  }
-  for (const field of ['worktreePath', 'branch', 'startedAt', 'status']) {
-    if (typeof projectedInput[field] !== 'string' || projectedInput[field].trim() === '') {
-      throw new TypeError(`fleet switch projection ${field} is required`);
-    }
-  }
-  if (projectedInput.status !== 'active') {
-    throw new TypeError('fleet switch projection requires an active binding');
-  }
-  const binding = projectedInput.binding;
-  if (
-    !binding ||
-    typeof binding !== 'object' ||
-    Array.isArray(binding) ||
-    binding.displayPath !== projectedInput.worktreePath ||
-    binding.branch !== projectedInput.branch ||
-    !Number.isSafeInteger(binding.pid) ||
-    binding.pid <= 0
-  ) {
-    throw new TypeError('fleet switch projection binding identity is malformed');
-  }
-  if (
-    !lease ||
-    typeof lease !== 'object' ||
-    Array.isArray(lease) ||
-    !['projectId', 'leaseId', 'fencingToken', 'worktreeId'].every(
-      (field) => typeof lease[field] === 'string' && lease[field].trim() !== ''
-    ) ||
-    lease.worktreeId !== binding.worktreeId
-  ) {
-    throw new TypeError('fleet switch projection lease is malformed');
-  }
-  const mainPath = findMainWorktreePath(projectDir);
-  const registryPath = fleetRegistryPath(mainPath);
-  const kind =
-    projectedInput.kind ?? (projectedInput.worktreePath === mainPath ? 'main' : 'worktree');
-  if (!['main', 'worktree'].includes(kind)) {
-    throw new TypeError('fleet switch projection kind is invalid');
-  }
-  const projected = {
-    worktreePath: projectedInput.worktreePath,
-    branch: projectedInput.branch,
-    kind,
-    startedAt: projectedInput.startedAt,
-    status: projectedInput.status,
-    binding: JSON.parse(JSON.stringify(binding)),
-    lease: JSON.parse(JSON.stringify(lease)),
-    projectionId,
-  };
-  const sameOwner = (entry) =>
-    !entry ||
-    (entry.worktreePath === projectedInput.worktreePath &&
-      entry.branch === projectedInput.branch &&
-      (entry.binding?.worktreeId ?? binding.worktreeId) === binding.worktreeId);
-  withLock(registryPath, () => {
-    const fleet = readFleet(registryPath);
-    const departure = fleet[departureIssue];
-    const destination = fleet[destinationIssue];
-    if (!sameOwner(departure) || !sameOwner(destination)) {
-      throw new Error('fleet switch projection refuses foreign binding drift');
-    }
-    if (
-      destination &&
-      JSON.stringify(destination) === JSON.stringify(projected) &&
-      departure === undefined
-    ) {
-      return;
-    }
-    delete fleet[departureIssue];
-    fleet[destinationIssue] = projected;
-    writeFleet(registryPath, fleet);
-  });
-  const readback = readFleet(registryPath);
-  if (
-    readback[departureIssue] !== undefined ||
-    JSON.stringify(readback[destinationIssue]) !== JSON.stringify(projected)
-  ) {
-    throw new Error('fleet switch projection read-back does not match');
-  }
-  return projected;
 }
 
 export function deregisterTask(projectDir, issueRef) {

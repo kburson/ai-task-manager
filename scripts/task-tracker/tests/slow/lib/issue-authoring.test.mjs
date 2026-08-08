@@ -31,6 +31,7 @@ function fixtureDir() {
   );
   writeFileSync(join(dir, 'scope.md'), 'A short scope paragraph.\n');
   writeFileSync(join(dir, 'acs.md'), '- [ ] First criterion\n- [ ] Second criterion\n');
+  writeFileSync(join(dir, 'origin.md'), '- **kind**: code\n- **size-guess**: S\n');
   writeFileSync(
     join(dir, 'meta.md'),
     '**Size:** S\n**Estimate:** 2h\n**Priority:** P2\n**Rank:** 1\n'
@@ -49,6 +50,8 @@ function runDryRun(shape, extraArgs = [], cwd) {
     join(cwd, 'scope.md'),
     '--ac-file',
     join(cwd, 'acs.md'),
+    '--story-origin-file',
+    join(cwd, 'origin.md'),
     '--plan-metadata-file',
     join(cwd, 'meta.md'),
     '--dry-run',
@@ -60,12 +63,14 @@ function runDryRun(shape, extraArgs = [], cwd) {
 }
 
 // Canonical heading order. Indices in stdout MUST be strictly increasing.
-// #480 — `## Plan Metadata` now precedes `## Acceptance Criteria`, and
+// #892 — `## Story Origin` now precedes `## Plan Metadata`, which precedes
+// `## Acceptance Criteria`, and
 // Definition of Done is a 2-hash top-level section (was 3-hash).
 // #700 — `## Pickup Directive` moved from the bottom tail to directly under
 // `## Plan Metadata`, ahead of `## Acceptance Criteria`.
 const CANONICAL_MARKERS = [
   /^## Scope\b/m,
+  /^## Story Origin\b/m,
   /^## Plan Metadata\b/m,
   /^## Pickup Directive\b/m,
   /^## Acceptance Criteria\b/m,
@@ -94,7 +99,8 @@ test('sub-issue shape: canonical structure + parent line', () => {
   const dir = fixtureDir();
   const body = runDryRun('sub-issue', ['--parent', '42'], dir);
   assertCanonicalOrder(body, 'sub-issue');
-  assert.match(body, /\*\*Parent epic:\*\* #42/);
+  assert.match(body, /- \*\*parent\*\*: #42/);
+  assert.doesNotMatch(body, /\*\*Parent epic:\*\*/);
 });
 
 test('epic shape: canonical structure', () => {
@@ -120,6 +126,8 @@ test('#272: --status flag is rejected on shape-based creation', () => {
       join(dir, 'scope.md'),
       '--ac-file',
       join(dir, 'acs.md'),
+      '--story-origin-file',
+      join(dir, 'origin.md'),
       '--plan-metadata-file',
       join(dir, 'meta.md'),
       '--status',
@@ -134,8 +142,8 @@ test('#272: --status flag is rejected on shape-based creation', () => {
 
 test('stub shape: canonical structure without scope/ac/plan-metadata files', () => {
   // #426 — the stub shape is the lightweight idea-capture path: only a title
-  // (and an optional --idea-file) are supplied. It must NOT require the three
-  // section files, yet must still render the canonical heading skeleton plus
+  // (and an optional --idea-file) are supplied. It must not require section
+  // files, yet must still render the canonical heading skeleton plus
   // the DoD / Pickup / Verification-Commands tail so it can be refined later.
   const dir = fixtureDir();
   const args = [script, '--title', 'parity stub', '--shape', 'stub', '--dry-run'];
@@ -145,10 +153,11 @@ test('stub shape: canonical structure without scope/ac/plan-metadata files', () 
   assertCanonicalOrder(body, 'stub');
   assert.match(body, /^## Verification Commands\s*$/m);
   assert.doesNotMatch(body, /\*\*Parent epic:\*\*/);
-  // Placeholders the Refine stage fills in.
+  // Scope/AC placeholders remain; Story Origin is real and Plan Metadata empty.
   assert.match(body, /Stub — describe the work at Refine\./);
   assert.match(body, /TBD — define acceptance criteria at Refine\./);
-  assert.match(body, /TBD — set Size, Estimate, Priority, and Rank at Refine\./);
+  assert.match(body, /## Story Origin\n\n- \*\*kind\*\*: code/);
+  assert.doesNotMatch(body, /TBD — set Size, Estimate, Priority, and Rank at Refine\./);
 });
 
 test('stub shape: --idea-file seeds the Scope section', () => {
@@ -184,6 +193,8 @@ test('sub-issue shape requires --parent', () => {
       join(dir, 'scope.md'),
       '--ac-file',
       join(dir, 'acs.md'),
+      '--story-origin-file',
+      join(dir, 'origin.md'),
       '--plan-metadata-file',
       join(dir, 'meta.md'),
       '--dry-run',

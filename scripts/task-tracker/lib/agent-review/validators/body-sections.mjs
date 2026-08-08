@@ -1,6 +1,6 @@
 // Agent Review Gate — V1 body-sections validator (#810).
 //
-// Verifies that an issue body carries the nine canonical sections, in canonical
+// Verifies that an issue body carries the ten canonical sections, in canonical
 // order, each non-empty. It is a pure `validate`-family member: it never mutates
 // the body and returns `{ pass, failures }` where each failure names the
 // offending section by its human label.
@@ -13,6 +13,7 @@
 // all-marker AITM Progress Markers section) counts as non-empty.
 
 import { registry } from '../registry.mjs';
+import { hasNestedMetadataHeading } from '../../metadata-section.mjs';
 
 // One row per required section, in canonical body order. `label` is the
 // human name used in failures[]; `match` tests a heading's text (the part
@@ -20,6 +21,7 @@ import { registry } from '../registry.mjs';
 export const CANONICAL_SECTIONS = [
   { label: 'Story narrative', match: (h) => /^user story\b/i.test(h) },
   { label: 'Scope', match: (h) => /^scope\b/i.test(h) },
+  { label: 'Story Origin', match: (h) => /^story origin\b/i.test(h) },
   { label: 'Plan Metadata', match: (h) => /^plan metadata\b/i.test(h) },
   { label: 'Pickup Directive', match: (h) => /^pickup directive\b/i.test(h) },
   { label: 'Deep Dive', match: (h) => /^deep[-\s]dive\b/i.test(h) },
@@ -101,6 +103,12 @@ export function validate({ body } = {}) {
     }
   }
 
+  for (const heading of ['Story Origin', 'Plan Metadata']) {
+    if (hasNestedMetadataHeading(body, heading)) {
+      failures.push(`section '${heading}' must be flat and contain no nested headings`);
+    }
+  }
+
   // Order check — only across sections that are actually present. The document
   // offsets of the present sections must be strictly increasing in canonical
   // order; report the first inversion.
@@ -119,7 +127,7 @@ export function validate({ body } = {}) {
 
 export const bodySectionsValidator = {
   id: 'body-sections',
-  describe: () => 'V1: nine canonical body sections present, ordered, and non-empty',
+  describe: () => 'V1: ten canonical body sections present, ordered, and non-empty',
   validate,
 };
 

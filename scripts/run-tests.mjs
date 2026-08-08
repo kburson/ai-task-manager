@@ -27,6 +27,7 @@
 // there is no hardcoded directory list here. A divergence guard fails the run if
 // the selection ever omits an on-disk `*.test.mjs`, so a green run provably ran
 // every committed test file (the 624-vs-652 false green cannot recur).
+import { execFileSync } from 'node:child_process';
 import { writeFileSync, mkdirSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -39,17 +40,15 @@ import {
   fleetRegistryPath,
   readFleet,
 } from './task-tracker/fleet-registry.mjs';
-import { describeSpawnResult, formatFleetLeak, RUN_TESTS_MAX_BUFFER } from './run-tests-report.mjs';
-import { TEST_NO_RETRY_ENV } from './gh/lib/with-retry.mjs';
 import {
-  RUN_LANES,
-  SKIP,
-  laneFiles,
-  discoveryDivergence,
-  parseShard,
-  selectShardFiles,
-} from './run-tests-lanes.mjs';
-import { evaluateCeiling } from './run-tests-ceiling.mjs';
+  describeSpawnResult,
+  findFleetLeaks,
+  formatFleetLeak,
+  RUN_TESTS_MAX_BUFFER,
+} from './run-tests-report.mjs';
+import { TEST_NO_RETRY_ENV } from './gh/lib/with-retry.mjs';
+import { RUN_LANES, SKIP, laneFiles, discoveryDivergence } from './run-tests-lanes.mjs';
+import { evaluateSections, formatSectionSummary } from './run-tests-ceiling.mjs';
 import { wantsHelp, emitSelfDoc } from './lib/self-doc.mjs';
 import {
   parseInProcessDurationMs,
@@ -70,7 +69,6 @@ const repoRoot = path.resolve(__dir, '..');
 // ---- arg parsing ---------------------------------------------------------
 const VALID_LANES = new Set(RUN_LANES);
 let lane = 'fast';
-let shard = null;
 // #861 — opt-in slow-test report. The per-file timing dataset and JSON artifact
 // are ALWAYS produced; this flag (or AITM_TEST_TIMING=1) only controls whether
 // the human-readable top-N/Pareto/slow-bucket report is printed at the end.
@@ -83,20 +81,6 @@ for (let i = 2; i < process.argv.length; i++) {
     lane = a.slice('--lane='.length);
   } else if (a === '--timing-report') {
     timingReport = true;
-  } else if (a === '--shard') {
-    try {
-      shard = parseShard(process.argv[++i]);
-    } catch (error) {
-      console.error(error.message);
-      process.exit(2);
-    }
-  } else if (a.startsWith('--shard=')) {
-    try {
-      shard = parseShard(a.slice('--shard='.length));
-    } catch (error) {
-      console.error(error.message);
-      process.exit(2);
-    }
   } else {
     console.error(`run-tests: unknown argument: ${a}`);
     process.exit(2);
@@ -121,13 +105,9 @@ if (missing.length || extra.length) {
 }
 
 // Canonical selection: repo-relative paths → { label, full } run entries.
-const files = selectShardFiles(laneFiles(lane), shard).map((rel) => ({
-  label: rel,
-  full: path.join(repoRoot, rel),
-}));
+const files = laneFiles(lane).map((rel) => ({ label: rel, full: path.join(repoRoot, rel) }));
 
-const shardLabel = shard ? ` shard=${shard.index}/${shard.total}` : '';
-console.log(`▶ lane=${lane}${shardLabel} (${files.length} files)\n`);
+console.log(`▶ lane=${lane} (${files.length} files)\n`);
 
 // AC2 (#442) — authoritative runtime guard against test-sandbox registry leaks.
 // A test that creates a non-git sandbox and then reaches `registerTask` will
@@ -147,6 +127,22 @@ function liveRegistryKeySet() {
   }
 }
 const registryKeysBefore = liveRegistryKeySet();
+
+function registeredWorktreePaths() {
+  try {
+    const output = execFileSync('git', ['-C', repoRoot, 'worktree', 'list', '--porcelain', '-z'], {
+      encoding: 'utf8',
+    });
+    return new Set(
+      output
+        .split('\0')
+        .filter((field) => field.startsWith('worktree '))
+        .map((field) => field.slice('worktree '.length))
+    );
+  } catch {
+    return new Set();
+  }
+}
 
 let failed = 0;
 const failures = [];
@@ -183,21 +179,26 @@ const poolEligible = (e) => laneOf(e.label) === 'unit' && isParallelSafe(e.full)
 const unitEntries = runnable.filter(poolEligible);
 const serialEntries = runnable.filter((e) => !poolEligible(e));
 
-// #864 — wall-clock the whole section (pool + serial) so the ceiling guard below
-// measures real elapsed execution, not per-file time.
+// The aggregate remains useful observational timing, while #1157 evaluates the
+// already-distinct pool and serial execution phases as independently bounded
+// sections below.
 const sectionStart = process.hrtime.bigint();
 
+const poolStart = process.hrtime.bigint();
 const { results: unitResults, peakConcurrency } = await runPool({
   entries: unitEntries,
   concurrency: CONCURRENCY,
   runOne: runEntry,
 });
+const poolElapsedMs = Number(process.hrtime.bigint() - poolStart) / 1e6;
 
 // Integration + slow: one child at a time, semantics unchanged from the old loop.
+const serialStart = process.hrtime.bigint();
 const serialResults = [];
 for (const entry of serialEntries) {
   serialResults.push(await runEntry(entry));
 }
+const serialElapsedMs = Number(process.hrtime.bigint() - serialStart) / 1e6;
 
 const sectionElapsedMs = Number(process.hrtime.bigint() - sectionStart) / 1e6;
 
@@ -259,6 +260,9 @@ function writeTimingArtifact() {
     const artifact = serializeArtifact(timingRecords, {
       lane,
       generatedAt: new Date().toISOString(),
+      runnerElapsedMs: sectionElapsedMs,
+      poolElapsedMs,
+      serialElapsedMs,
     });
     mkdirSync(path.dirname(TIMING_ARTIFACT_PATH), { recursive: true });
     writeFileSync(TIMING_ARTIFACT_PATH, `${JSON.stringify(artifact, null, 2)}\n`);
@@ -269,7 +273,15 @@ function writeTimingArtifact() {
 writeTimingArtifact();
 
 if (timingReport) {
-  console.log(`\n${formatTimingReport(buildTimingReport(timingRecords))}`);
+  console.log(
+    `\n${formatTimingReport(
+      buildTimingReport(timingRecords, {
+        runnerElapsedMs: sectionElapsedMs,
+        poolElapsedMs,
+        serialElapsedMs,
+      })
+    )}`
+  );
 }
 
 if (failed > 0) {
@@ -282,29 +294,42 @@ if (failed > 0) {
   process.exit(1);
 }
 
-const registryKeysAfter = liveRegistryKeySet();
-const leaked = [...registryKeysAfter].filter((k) => !registryKeysBefore.has(k));
+let liveFleet = {};
+try {
+  liveFleet = readFleet(fleetRegistryPath(findMainWorktreePath(repoRoot))) || {};
+} catch {
+  liveFleet = {};
+}
+const leaked = findFleetLeaks({
+  keysBefore: registryKeysBefore,
+  fleetAfter: liveFleet,
+  registeredWorktreePaths: registeredWorktreePaths(),
+});
 if (leaked.length) {
   // #746 — dump each leaked entry's full record (worktreePath / sessionId /
   // kind / branch), not just the key, so the CI log names the exact escaping
-  // sandbox. Re-read the live fleet OBJECT (the key-set snapshot above discards
-  // the values) to source those fields.
-  let liveFleet = {};
-  try {
-    liveFleet = readFleet(fleetRegistryPath(findMainWorktreePath(repoRoot))) || {};
-  } catch {
-    liveFleet = {};
-  }
+  // sandbox.
   console.error(formatFleetLeak(leaked, liveFleet));
   process.exit(1);
 }
 
-// #864 — fail-closed section ceiling. Even a fully green section is failed if its
-// wall time breaches the 10-minute budget, so a section can never silently regrow
-// past it. `all` (the internal coverage/divergence union) is exempt.
-const ceiling = evaluateCeiling({ lane, elapsedMs: sectionElapsedMs });
-if (ceiling.breached) {
-  console.error(`\n${ceiling.message}`);
+// #864/#1157 — fail closed per non-empty execution section. The pooled and
+// serial phases are already separate scheduling boundaries and now receive the
+// unchanged 10-minute budget independently; their aggregate remains timing
+// evidence, not a third ceiling. Single-phase lanes retain one verdict, and
+// `all` (the internal coverage/divergence union) remains exempt.
+const sectionCeilings = evaluateSections({
+  lane,
+  sections: [
+    { name: 'pooled', count: unitEntries.length, elapsedMs: poolElapsedMs },
+    { name: 'serial', count: serialEntries.length, elapsedMs: serialElapsedMs },
+  ],
+});
+console.log(`\n${formatSectionSummary(sectionCeilings)}`);
+if (sectionCeilings.breached) {
+  for (const section of sectionCeilings.sections.filter((entry) => entry.breached)) {
+    console.error(`\n${section.message}`);
+  }
   process.exit(1);
 }
 

@@ -117,6 +117,7 @@ test('postNewAutomatedTestsComment: posts a dedicated comment when entries are f
     issueNumber: 674,
     deps: {
       listComments: async () => [{ body: '### 🔗 Commits\n<!-- aitm-commits shas="sha1" -->' }],
+      attributingCommits: async () => [],
       showShaTestDiff: async () => "+++ b/foo.test.mjs\n+test('case one', () => {});",
       createComment: async ({ body }) => created.push(body),
     },
@@ -127,24 +128,61 @@ test('postNewAutomatedTestsComment: posts a dedicated comment when entries are f
   assert.ok(!created[0].includes('CODE_COMPLETE'));
 });
 
-test('postNewAutomatedTestsComment: controller continuation reverifies immediately before create', async () => {
-  const events = [];
+test('postNewAutomatedTestsComment: finds tests added by a non-tip attributed commit', async () => {
+  const created = [];
+  const inspected = [];
   const result = await postNewAutomatedTestsComment({
     cfg: { repo: 'kburson/ai-task-manager' },
-    issueNumber: 674,
+    issueNumber: 1132,
+    cwd: '/repo',
     deps: {
-      listComments: async () => [{ body: '### 🔗 Commits\n<!-- aitm-commits shas="sha1" -->' }],
-      showShaTestDiff: async () => "+++ b/foo.test.mjs\n+test('case one', () => {});",
-      withGovernedEffect: async (options, callback) => {
-        events.push(`scope:${options.issueId}:${options.operation}`);
-        events.push('reverify');
-        return callback({ reverify: async () => {} });
+      listComments: async () => [{ body: '### 🔗 Commits\n<!-- aitm-commits shas="tip-sha" -->' }],
+      attributingCommits: async (issueNumber, options) => {
+        assert.equal(issueNumber, 1132);
+        assert.equal(options.cwd, '/repo');
+        assert.deepEqual(options.refs, ['HEAD']);
+        return [
+          { sha: 'non-tip-sha', subject: '[#1132] test: add regression' },
+          { sha: 'tip-sha', subject: '[#1132] fix: finish reporter' },
+        ];
       },
-      createComment: async () => events.push('comment'),
+      showShaTestDiff: async (sha) => {
+        inspected.push(sha);
+        if (sha === 'non-tip-sha') {
+          return "+++ b/reporter.test.mjs\n+test('finds the non-tip regression', () => {});";
+        }
+        return '';
+      },
+      createComment: async ({ body }) => created.push(body),
     },
   });
   assert.equal(result.status, 'posted');
-  assert.deepEqual(events, ['scope:674:evidence-mutation', 'reverify', 'comment']);
+  assert.deepEqual(inspected, ['non-tip-sha', 'tip-sha']);
+  assert.equal(created.length, 1);
+  assert.match(created[0], /finds the non-tip regression/);
+});
+
+test('postNewAutomatedTestsComment: falls back to trace SHAs when attribution fails', async () => {
+  const created = [];
+  const result = await postNewAutomatedTestsComment({
+    cfg: { repo: 'kburson/ai-task-manager' },
+    issueNumber: 1132,
+    deps: {
+      listComments: async () => [
+        { body: '### 🔗 Commits\n<!-- aitm-commits shas="trace-sha" -->' },
+      ],
+      attributingCommits: async () => {
+        throw new Error('git history unavailable');
+      },
+      showShaTestDiff: async (sha) => {
+        assert.equal(sha, 'trace-sha');
+        return "+++ b/reporter.test.mjs\n+test('uses trace fallback', () => {});";
+      },
+      createComment: async ({ body }) => created.push(body),
+    },
+  });
+  assert.equal(result.status, 'posted');
+  assert.match(created[0], /uses trace fallback/);
 });
 
 test('postNewAutomatedTestsComment: no test files changed means no comment posted', async () => {
@@ -154,6 +192,7 @@ test('postNewAutomatedTestsComment: no test files changed means no comment poste
     issueNumber: 674,
     deps: {
       listComments: async () => [{ body: '### 🔗 Commits\n<!-- aitm-commits shas="sha1" -->' }],
+      attributingCommits: async () => [],
       showShaTestDiff: async () => '+++ b/foo.mjs\n+const x = 1;',
       createComment: async () => {
         createCalled = true;

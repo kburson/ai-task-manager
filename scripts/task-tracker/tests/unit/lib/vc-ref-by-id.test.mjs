@@ -3,14 +3,39 @@
 // reordering or deleting OTHER entries never re-points a citation, and a
 // citation to a deleted id never silently resolves to a reused slot.
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import test from 'node:test';
 
 import { parseVerificationCommands } from '../../../lib/verification-commands.mjs';
-import { resolveVcRefCommands, resolveCitedOrLiteralCommands } from '../../../lib/vc-ref.mjs';
+import {
+  parseVcRefIndexes,
+  resolveCitedOrLiteralCommands,
+  resolveVcListStrict,
+  resolveVcRefCommands,
+} from '../../../lib/vc-ref.mjs';
 import { renderVcSection, deleteVcById, appendVcCommands } from '../../../lib/vc-emit.mjs';
 
 const vcOf = (commands, startId = 1) =>
   parseVerificationCommands(renderVcSection(commands, startId));
+
+// ---- #1112: canonical multi-reference grammar -----------------------------
+
+test('multi-VC citations are documented and parsed as whitespace-delimited tokens', () => {
+  const emitterSource = readFileSync(new URL('../../../lib/vc-emit.mjs', import.meta.url), 'utf8');
+  assert.match(
+    emitterSource,
+    /citation scheme \(`vc-list="vc:1 vc:3"`\) uses whitespace-delimited tokens/
+  );
+  assert.doesNotMatch(emitterSource, /vc-list="vc:1, vc:3"/);
+
+  const vc = vcOf(['alpha', 'beta', 'gamma']);
+  assert.deepEqual(resolveVcListStrict('vc:1 vc:3', vc), ['alpha', 'gamma']);
+  assert.equal(parseVcRefIndexes('vc:1, vc:3'), null);
+  assert.throws(
+    () => resolveVcListStrict('vc:1, vc:3', vc),
+    /verified AC cites no resolvable verification command/
+  );
+});
 
 // ---- AC3: resolve by id, independent of position ---------------------------
 

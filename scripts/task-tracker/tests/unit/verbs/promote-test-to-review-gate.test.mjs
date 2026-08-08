@@ -62,7 +62,6 @@ function makeDeps({ body, live, liveAfter, spawnCode = 0, moveCode = 0 } = {}) {
       assertBound: () => {},
       fetchIssueBody: async () => ({ body }),
       mutateIssueBody: async () => ({ status: 'no-op', attempts: 1 }),
-      deriveAndRescan: async ({ scanBody }) => ({ scanBody }),
       getLiveState: async () => {
         liveCalls += 1;
         if (liveCalls === 1) return live;

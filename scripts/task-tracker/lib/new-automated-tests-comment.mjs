@@ -14,6 +14,7 @@
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { findCommitTrailComment, parseCommitShas } from './code-complete-gate.mjs';
+import { attributingCommits as defaultAttributingCommits } from './commit-attribution.mjs';
 
 const pexec = promisify(execFile);
 
@@ -60,18 +61,17 @@ export function parseTestEntriesFromDiff(diffText) {
   return entries;
 }
 
-async function defaultShowShaTestDiff(sha, { cwd, exec = pexec, env } = {}) {
-  const { stdout } = await exec('git', ['show', sha, '--', '*.test.mjs'], {
+async function defaultShowShaTestDiff(sha, { cwd } = {}) {
+  const { stdout } = await pexec('git', ['show', sha, '--', '*.test.mjs'], {
     cwd,
-    env,
     timeout: 15000,
     maxBuffer: 10 * 1024 * 1024,
   });
   return stdout;
 }
 
-async function defaultListComments({ cfg, issueNumber, exec = pexec, env }) {
-  const { stdout } = await exec(
+async function defaultListComments({ cfg, issueNumber }) {
+  const { stdout } = await pexec(
     'gh',
     [
       'issue',
@@ -84,15 +84,14 @@ async function defaultListComments({ cfg, issueNumber, exec = pexec, env }) {
       '--jq',
       '.comments',
     ],
-    { timeout: 15000, env }
+    { timeout: 15000 }
   );
   return JSON.parse(stdout || '[]');
 }
 
-async function defaultCreateComment({ cfg, issueNumber, body, exec = pexec, env }) {
-  await exec('gh', ['issue', 'comment', String(issueNumber), '-R', cfg.repo, '--body', body], {
+async function defaultCreateComment({ cfg, issueNumber, body }) {
+  await pexec('gh', ['issue', 'comment', String(issueNumber), '-R', cfg.repo, '--body', body], {
     timeout: 15000,
-    env,
   });
 }
 
@@ -103,7 +102,7 @@ export async function collectTestDiffEntries({ shas, cwd, deps = {} } = {}) {
   for (const sha of shas || []) {
     let diffText = '';
     try {
-      diffText = await showShaTestDiff(sha, { cwd, exec: deps.pexec, env: deps.env });
+      diffText = await showShaTestDiff(sha, { cwd });
     } catch {
       continue; // best-effort: a missing/unreachable SHA just contributes nothing
     }
@@ -142,33 +141,32 @@ export async function postNewAutomatedTestsComment({ cfg, issueNumber, cwd, deps
   const listComments = deps.listComments || defaultListComments;
   const createComment = deps.createComment || defaultCreateComment;
 
-  const comments = await listComments({ cfg, issueNumber, exec: deps.pexec, env: deps.env });
+  const comments = await listComments({ cfg, issueNumber });
   const trail = findCommitTrailComment(comments);
   if (!trail) return { status: 'no-commits' };
 
-  const shas = parseCommitShas(trail.body);
-  if (shas.length === 0) return { status: 'no-commits' };
+  const trailShas = parseCommitShas(trail.body);
+  if (trailShas.length === 0) return { status: 'no-commits' };
 
   if (comments.some((c) => String(c.body || '').startsWith(NEW_TESTS_HEADING))) {
     return { status: 'duplicate' };
   }
 
+  const attributingCommits = deps.attributingCommits || defaultAttributingCommits;
+  let attributedShas = [];
+  try {
+    attributedShas = (await attributingCommits(issueNumber, { cwd, refs: ['HEAD'] }))
+      .map((commit) => commit?.sha)
+      .filter(Boolean);
+  } catch {
+    // Best-effort report hook: retain the historical trace-only behavior if
+    // issue attribution cannot be resolved after a successful Test move.
+  }
+  const shas = [...new Set([...attributedShas, ...trailShas])];
   const entries = await collectTestDiffEntries({ shas, cwd, deps });
   if (entries.length === 0) return { status: 'no-tests' };
 
   const body = buildNewAutomatedTestsComment(entries);
-  const create = () => createComment({ cfg, issueNumber, body, exec: deps.pexec, env: deps.env });
-  if (typeof deps.withGovernedEffect === 'function') {
-    await deps.withGovernedEffect(
-      {
-        issueId: String(issueNumber),
-        operation: 'evidence-mutation',
-        heartbeat: true,
-      },
-      create
-    );
-  } else {
-    await create();
-  }
+  await createComment({ cfg, issueNumber, body });
   return { status: 'posted', entries };
 }

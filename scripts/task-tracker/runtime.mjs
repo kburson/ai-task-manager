@@ -6,67 +6,47 @@
 // issue #10 so each lifecycle verb can live in its own file under verbs/.
 
 import path from 'node:path';
-import os from 'node:os';
 import { execFile, execFileSync } from 'node:child_process';
 import { promisify } from 'node:util';
 import { loadConfig } from './config.mjs';
 import { selfCheckFieldConfig } from './lib/field-config-warn.mjs';
-import {
-  postTimingEvent,
-  buildRow,
-  readTimingCommentBody,
-  readTimingProjection,
-  bodyOf,
-} from './gh-timing-comment.mjs';
+import { postTimingEvent, buildRow, readTimingCommentBody, bodyOf } from './gh-timing-comment.mjs';
 import { lastRowTsFromBody, lastRowFromBody } from './lib/timing-rows.mjs';
-import { isDepartureEvent } from './lib/timing-events/index.mjs';
+import { parseTimingRow } from './lib/timing-row-reader.mjs';
+import { isDepartureEvent, isReengagementEvent } from './lib/timing-events/index.mjs';
 import { PHASE_EVENTS, resolvePhaseEvent } from './phase-events.mjs';
-import { parseIssueFieldDb } from './issue-field-db.mjs';
-import { loadProjectFieldDefs } from './project-fields.mjs';
 
 // Re-exported so downstream verbs (promote/demote/review/new/close/switch —
 // sub-issues #128, #129 of epic #126) can pull the canonical table without
 // importing the sibling module directly.
 export { PHASE_EVENTS };
-import { enqueue, drain, drainAndDiscard } from './queue.mjs';
+import { enqueue, drain, drainAndDiscard, drainMatching } from './queue.mjs';
 import {
   currentSessionId,
-  aiAppName,
   jsonlPath,
   markerPathFor,
   loadMarker,
   saveMarker,
   countWords,
+  aiAppName,
 } from './word-counter.mjs';
 import {
   collectEventTimestamps,
   computeActiveAndIdleSeconds,
   resolveFlushStartMs,
 } from './active-time.mjs';
-import {
-  mostRecentSessionRef,
-  recordSessionRefOnChange,
-  sessionRefForOperation,
-} from './lib/session-ref.mjs';
-import { mutateIssueBody, mutateTransitionProjectionIssueBody } from './lib/issue-body-mutate.mjs';
+import { recordSessionRefOnChange } from './lib/session-ref.mjs';
+import { mutateIssueBody } from './lib/issue-body-mutate.mjs';
 import { advanceWordMarker } from './state.mjs';
 import { findMainWorktreePath, currentBranch } from './fleet-registry.mjs';
-import { gql, projectValuesForIssue, splitRepo } from '../gh/lib/github-projects.mjs';
-import { governedOperationForLifecycleVerb, runMoveStateHost } from '../gh/move-state.mjs';
+import { gql, splitRepo } from '../gh/lib/github-projects.mjs';
+import { runMoveStateHost } from '../gh/move-state.mjs';
 import { getProjectDir } from './paths.mjs';
 import { GH_API_TIMEOUT_MS } from './lib/process-timeouts.mjs';
 import { assembleCapabilities } from './lib/runtime-capabilities.mjs';
-import { verifyGovernedEffect } from './lib/work-lease/guard.mjs';
-import { createWorkLeaseProvider } from './lib/work-lease/provider.mjs';
-import {
-  createGovernedEffectAdapter,
-  isGovernedAuthorityError,
-} from './lib/work-lease/governed-effect.mjs';
 import { normalizeIssueCloseSnapshot } from './lib/closed-issue-convergence.mjs';
 import { normalizeSubIssueBoardSnapshot } from './lib/sub-issue-board-snapshot.mjs';
-import { reconcileIssueTimeProjection } from './lib/work-lease/issue-time-projection.mjs';
-import { assertTransitionProjectionAuthority } from './lib/work-lease/transition-projection-authority.mjs';
-import { deliverTimingQueueProjection } from './lib/timing-queue-projection.mjs';
+import { postTimingSafely } from './lib/timing-post-outcome.mjs';
 
 const pexec = promisify(execFile);
 
@@ -76,31 +56,6 @@ export function nowIso() {
 
 export function minutesBetween(aIso, bIso) {
   return Math.round((new Date(bIso) - new Date(aIso)) / 60000);
-}
-
-export async function drainRuntimeTimingQueue({
-  queuePath,
-  handler,
-  skipNetwork = false,
-  drainQueue = drain,
-} = {}) {
-  if (skipNetwork) return { delivered: 0, retained: 0, authorityRefused: 0 };
-  return drainQueue(handler, queuePath, { structuredResult: true });
-}
-
-export function createLazyWorkLeaseStore(factory) {
-  if (typeof factory !== 'function') {
-    throw new TypeError('work-lease provider factory must be a function');
-  }
-  let initialized = false;
-  let store;
-  return () => {
-    if (!initialized) {
-      store = factory();
-      initialized = true;
-    }
-    return store;
-  };
 }
 
 // #385 / #444 / #882 — classify a non-zero `move-state.mjs` outcome as benign or
@@ -173,9 +128,7 @@ export async function runMoveStateInProcess(
     skipNetwork = false,
     tailProfile = 'task-owner',
     reviewAuthority = null,
-    verbContext = 'runtime',
-    governedOperation,
-    withGovernedEffect,
+    lifecycleEvidence = null,
   } = {},
   {
     host = runMoveStateHost,
@@ -195,7 +148,7 @@ export async function runMoveStateInProcess(
     ...process.env,
     ...(envOverride || {}),
     AITM_INTERNAL: '1',
-    AITM_VERB_CONTEXT: verbContext,
+    AITM_VERB_CONTEXT: 'runtime',
   };
 
   let outBuf = '';
@@ -216,14 +169,7 @@ export async function runMoveStateInProcess(
   stderr.write = capture(errParts);
   let code;
   try {
-    code = await host({
-      argv,
-      env: mergedEnv,
-      tailProfile,
-      reviewAuthority,
-      governedOperation: governedOperation ?? governedOperationForLifecycleVerb(verbContext),
-      withGovernedEffect,
-    });
+    code = await host({ argv, env: mergedEnv, tailProfile, reviewAuthority, lifecycleEvidence });
   } finally {
     stdout.write = realOut;
     stderr.write = realErr;
@@ -266,19 +212,6 @@ export function handleMigrateResult(result, { stderr = process.stderr, exit = pr
   if (result.error) stderr.write(`[task-tracker] migrate spawn error: ${result.error.message}\n`);
   if (result.signal) stderr.write(`[task-tracker] migrate killed by signal: ${result.signal}\n`);
   exit(result.status || 1);
-}
-
-export async function postRuntimeQueuedTimingEvent(
-  event,
-  { repo, timeoutMs, post = postTimingEvent, read = readTimingProjection, withGovernedEffect } = {}
-) {
-  return deliverTimingQueueProjection(event, {
-    repo,
-    timeoutMs,
-    post,
-    read,
-    withGovernedEffect,
-  });
 }
 
 // Legacy per-event description fallbacks. Used only when a caller does not
@@ -348,114 +281,40 @@ export function buildContext(rawArgv = process.argv.slice(2)) {
     minutesBetween,
     CLOSE_OWNED_CHECKBOXES,
     uncheckedPreCloseCheckboxes,
-    verifyGovernedEffect,
+    readTimingCommentBody,
   };
-  // Opening the local authority may initialize SQLite and project identity.
-  // Keep it behind a memoized accessor so status/help and all other read-only
-  // commands build the runtime without opening any work-lease authority.
-  ctx.getWorkLeaseStore = createLazyWorkLeaseStore(() =>
-    createWorkLeaseProvider({ config: cfg, projectDir })
-  );
-  ctx.getWorkLeaseIdentity = () => {
-    const sessionId = currentSessionId();
-    return Object.freeze({
-      principalKind: 'worker',
-      hostId: os.hostname(),
-      provider: aiAppName(),
-      agentRunId: sessionId,
-      sessionId,
-      pid: process.pid,
-      branch: currentBranch(projectDir),
-    });
-  };
-  ctx.withGovernedEffect = createGovernedEffectAdapter({
-    projectDir,
-    getStore: ctx.getWorkLeaseStore,
-    getIdentity: ctx.getWorkLeaseIdentity,
-  });
 
-  ctx.safePostTiming = async (
-    issue,
-    row,
-    { operation = 'evidence-mutation', withGovernedEffect } = {}
-  ) => {
-    if (SKIP_NETWORK) return { ok: true, skipped: true };
-    try {
-      await postTimingEvent({
-        issueNumber: issue,
-        repo: cfg.repo,
+  ctx.safePostTiming = async (issue, row) => {
+    return postTimingSafely(
+      {
+        issue,
         row,
+        repo: cfg.repo,
         timeoutMs: cfg.hookNetworkTimeoutMs,
-        operation,
-        withGovernedEffect: withGovernedEffect ?? ctx.withGovernedEffect,
-      });
-      return { ok: true };
-    } catch (err) {
-      if (isGovernedAuthorityError(err)) throw err;
-      enqueue({ kind: 'timing', issue, row }, queuePath);
-      return { ok: false, queued: true, err: err.message };
-    }
+        queuePath,
+        skipNetwork: SKIP_NETWORK,
+      },
+      { postTimingEvent, enqueue }
+    );
   };
 
   // #476 — append-only session-ref recorder. Routed through `mutateIssueBody`
   // so the diff/version guards apply; the mutate only ever ADDS a marker, so it
   // cannot trip `MarkerLossError`. Failures are swallowed: a session-ref write
   // problem must never break the timing flush (parity with `safePostTiming`).
-  ctx.safeRecordSessionRef = async (issue, { sid, jsonlPath: jp, ts, operationId }) => {
+  ctx.safeRecordSessionRef = async (issue, { sid, jsonlPath: jp, ts }) => {
     if (SKIP_NETWORK) return { ok: true, skipped: true };
     try {
       const res = await mutateIssueBody({
         issueNumber: String(issue).replace(/^#/, ''),
         repo: cfg.repo,
-        mutate: (base) =>
-          recordSessionRefOnChange(base, { sid, jsonlPath: jp, ts, operationId }).body,
-        operation: 'evidence-mutation',
-        deps: { pexec, withGovernedEffect: ctx.withGovernedEffect },
+        mutate: (base) => recordSessionRefOnChange(base, { sid, jsonlPath: jp, ts }).body,
+        deps: { pexec },
       });
-      const recent = mostRecentSessionRef(res?.body);
-      const receipt = operationId ? sessionRefForOperation(res?.body, operationId) : recent;
-      if (
-        receipt?.sid !== sid ||
-        receipt?.jsonlPath !== jp ||
-        (operationId && (receipt?.ts !== ts || receipt.operationId !== operationId))
-      ) {
-        throw new Error('session reference remote read-back does not match');
-      }
-      return { ok: true, status: res?.status, recent, receipt };
+      return { ok: true, status: res?.status };
     } catch (err) {
-      if (isGovernedAuthorityError(err)) throw err;
       return { ok: false, err: err.message };
     }
-  };
-
-  ctx.safeRecordTransitionSessionRef = async (
-    issue,
-    { sid, jsonlPath: jp, ts, operationId, authority, transitionId, projectionId }
-  ) => {
-    if (SKIP_NETWORK) return { ok: true, skipped: true };
-    const res = await mutateTransitionProjectionIssueBody({
-      authority,
-      transitionId,
-      projectionName: 'github',
-      projectionId,
-      subOperationId: operationId,
-      issueNumber: String(issue).replace(/^#/, ''),
-      repo: cfg.repo,
-      mutate: (base) =>
-        recordSessionRefOnChange(base, { sid, jsonlPath: jp, ts, operationId }).body,
-      deps: { pexec },
-    });
-    const recent = mostRecentSessionRef(res?.body);
-    const receipt = sessionRefForOperation(res?.body, operationId);
-    if (
-      receipt?.sid !== sid ||
-      receipt?.jsonlPath !== jp ||
-      receipt?.ts !== ts ||
-      receipt?.operationId !== operationId
-    ) {
-      throw new Error('transition session reference remote read-back does not match');
-    }
-    return { ok: true, status: res?.status, recent, receipt };
   };
 
   // #720 — read the timestamp (ms) of the most recent existing timing-log row,
@@ -499,28 +358,56 @@ export function buildContext(rawArgv = process.argv.slice(2)) {
   };
 
   ctx.drainQueueIfAny = async () => {
-    return drainRuntimeTimingQueue({
-      queuePath,
-      skipNetwork: SKIP_NETWORK,
-      handler: (evt) =>
-        postRuntimeQueuedTimingEvent(evt, {
+    if (SKIP_NETWORK) return;
+    await drain(async (evt) => {
+      if (evt.kind === 'timing') {
+        await postTimingEvent({
+          issueNumber: evt.issue,
           repo: cfg.repo,
+          row: evt.row,
           timeoutMs: cfg.hookNetworkTimeoutMs,
-          withGovernedEffect: ctx.withGovernedEffect,
-        }),
-    });
+        });
+      }
+    }, queuePath);
   };
 
   ctx.flushAndForgetQueueFor = async (issueRef) => {
-    if (SKIP_NETWORK) return { delivered: 0, discarded: 0 };
+    if (SKIP_NETWORK) return { delivered: 0, discarded: 0, retained: 0 };
     const ref = String(issueRef).replace(/^#/, '');
     return drainAndDiscard(
       async (evt) => {
-        await postRuntimeQueuedTimingEvent(evt, {
-          repo: cfg.repo,
-          timeoutMs: cfg.hookNetworkTimeoutMs,
-          withGovernedEffect: ctx.withGovernedEffect,
-        });
+        if (evt.kind === 'timing') {
+          await postTimingEvent({
+            issueNumber: evt.issue,
+            repo: cfg.repo,
+            row: evt.row,
+            timeoutMs: cfg.hookNetworkTimeoutMs,
+          });
+        }
+      },
+      queuePath,
+      (evt) => String(evt.issue).replace(/^#/, '') === ref,
+      (evt) => {
+        if (evt.kind !== 'timing') return false;
+        const event = parseTimingRow(String(evt.row))?.event;
+        return isDepartureEvent(event) || isReengagementEvent(event);
+      }
+    );
+  };
+
+  ctx.flushQueueFor = async (issueRef) => {
+    if (SKIP_NETWORK) return { delivered: 0, pending: 0 };
+    const ref = String(issueRef).replace(/^#/, '');
+    return drainMatching(
+      async (evt) => {
+        if (evt.kind === 'timing') {
+          await postTimingEvent({
+            issueNumber: evt.issue,
+            repo: cfg.repo,
+            row: evt.row,
+            timeoutMs: cfg.hookNetworkTimeoutMs,
+          });
+        }
       },
       queuePath,
       (evt) => String(evt.issue).replace(/^#/, '') === ref
@@ -541,7 +428,7 @@ export function buildContext(rawArgv = process.argv.slice(2)) {
       resolved?.description ??
       LEGACY_DESCRIPTION_FALLBACKS[effectiveEvent] ??
       effectiveEvent;
-    const ts = opts.ts ?? nowIso();
+    const ts = nowIso();
     const sid = currentSessionId();
     let deltaWords = 0;
     // #795 — full-expansion per-row delta (stay-abreast + full tool inputs +
@@ -557,7 +444,8 @@ export function buildContext(rawArgv = process.argv.slice(2)) {
     let markerLineToPersist = null;
     if (sid) {
       const marker = loadMarker(markerPathFor(sid));
-      const counted = countWords(jsonlPath(sid), marker.line);
+      const transcriptPath = jsonlPath(sid);
+      const counted = countWords(transcriptPath, marker.line, { provider: aiAppName(), sid });
       deltaWords = counted.count;
       deltaWordsFull = counted.fullExpansion ?? counted.count;
       priorWordsFull = marker.wordsFull ?? marker.words ?? 0;
@@ -620,9 +508,12 @@ export function buildContext(rawArgv = process.argv.slice(2)) {
         wordMarker,
         description: effectiveDescription,
       });
-      if (!opts.computeOnly) await ctx.safePostTiming(state.active, row);
+      const post = opts.computeOnly
+        ? { ok: true, skipped: true, computeOnly: true }
+        : await ctx.safePostTiming(state.active, row);
       return {
         row,
+        post,
         ts,
         deltaMin: 0,
         idleMin: 0,
@@ -637,17 +528,13 @@ export function buildContext(rawArgv = process.argv.slice(2)) {
     // advance `entryStartTs`, so a flush (e.g. `pause`) after intervening
     // move-state rows previously re-counted wall time those rows already logged.
     // `resolveFlushStartMs` picks the later mark; when there is no readable prior
-    // row (SKIP_NETWORK/unreadable body → null), it falls back to
-    // `entryStartTs`, preserving the pre-fix window exactly. A compute-only
-    // caller may supply a read-only precomputed tail so durable planning keeps
-    // the same anchor without performing effects inside the flush helper.
+    // row (computeOnly/SKIP_NETWORK/unreadable body → null), it falls back to
+    // `entryStartTs`, preserving the pre-fix window exactly.
     const entryStartMs = new Date(state.entryStartTs).getTime();
     // #822 — read the whole tail row (ts + Event slug) in one fetch. The ts
     // still anchors the Active-duration window (#720); the Event slug lets the
     // Fault Z guard below detect an unclosed finalize/orphan `idle` tail.
-    const lastRow = opts.computeOnly
-      ? (opts.precomputedLastRow ?? null)
-      : await ctx.safeReadLastRow(state.active);
+    const lastRow = opts.computeOnly ? null : await ctx.safeReadLastRow(state.active);
     const lastRowMs =
       lastRow?.ts && Number.isFinite(Date.parse(lastRow.ts)) ? Date.parse(lastRow.ts) : null;
     const startMs = resolveFlushStartMs(entryStartMs, lastRowMs);
@@ -704,8 +591,9 @@ export function buildContext(rawArgv = process.argv.slice(2)) {
     // rows, and every row is timestamped when written, carrying elapsed work in
     // its duration cells, not in timestamp deltas. The reengagement thus sits
     // immediately before the departure at the same instant, closing the idle.
-    const precedingRows = [];
+    let postReengage;
     if (
+      !opts.computeOnly &&
       activeSec > 0 &&
       isDepartureEvent(effectiveEvent) &&
       lastRow &&
@@ -721,8 +609,7 @@ export function buildContext(rawArgv = process.argv.slice(2)) {
         wordMarker,
         description: 'resumed',
       });
-      if (opts.computeOnly) precedingRows.push(reengageRow);
-      else await ctx.safePostTiming(state.active, reengageRow);
+      postReengage = await ctx.safePostTiming(state.active, reengageRow);
     }
     // #720 — build through `buildRow` with second precision (not `buildFlushRow`,
     // which minute-quantizes via `toSec = round(min)*60`). Pause/flush rows now
@@ -742,9 +629,13 @@ export function buildContext(rawArgv = process.argv.slice(2)) {
       wordMarker,
       description: effectiveDescription,
     });
-    if (!opts.computeOnly) await ctx.safePostTiming(state.active, row);
+    const post = opts.computeOnly
+      ? { ok: true, skipped: true, computeOnly: true }
+      : await ctx.safePostTiming(state.active, row);
     return {
       row,
+      post,
+      postReengage,
       ts,
       deltaMin: activeMin,
       idleMin,
@@ -752,63 +643,18 @@ export function buildContext(rawArgv = process.argv.slice(2)) {
       deltaWords,
       wordMarker,
       lastWordMarker: wordMarker,
-      precedingRows,
     };
   };
 
-  ctx.runLogIssueTime = async (
-    issue,
-    { subOperationId, expected, operation = 'evidence-mutation', withGovernedEffect } = {}
-  ) => {
-    if (SKIP_NETWORK) return { skipped: true };
+  ctx.runLogIssueTime = async (issue) => {
+    if (SKIP_NETWORK) return;
     const scriptPath = new URL('../gh/log-issue-time.mjs', import.meta.url).pathname;
     try {
-      const issueNumber = String(issue).replace(/^#/, '');
-      const runMutation = async () => {
-        if (withGovernedEffect) {
-          const { main: runIssueTime } = await import('../gh/log-issue-time.mjs');
-          const code = await runIssueTime([issueNumber], {
-            operation,
-            withGovernedEffect,
-          });
-          if (code !== 0) throw new Error(`log-issue-time exited ${code}`);
-        } else {
-          const { stdout } = await pexec(process.execPath, [scriptPath, issue], {
-            timeout: GH_API_TIMEOUT_MS,
-          });
-          if (stdout.trim()) console.log(stdout.trim());
-        }
-      };
-      const readState = async () => {
-        const { stdout: issueJson } = await pexec(
-          'gh',
-          ['issue', 'view', issueNumber, '--repo', cfg.repo, '--json', 'body'],
-          { timeout: GH_API_TIMEOUT_MS }
-        );
-        const body = JSON.parse(issueJson).body;
-        if (typeof body !== 'string') {
-          throw new Error('issue body read-back is malformed');
-        }
-        const fields = parseIssueFieldDb(body);
-        const projectFields = await projectValuesForIssue({
-          cfg,
-          fieldDefs: loadProjectFieldDefs(projectDir),
-          issueNumber,
-        });
-        return { body, bodyFields: fields?.values ?? {}, projectFields };
-      };
-      if (subOperationId) {
-        const proof = await reconcileIssueTimeProjection({
-          expected,
-          readState,
-          mutate: runMutation,
-        });
-        return { ...proof, subOperationId };
-      }
-      await runMutation();
-      return await readState();
+      const { stdout } = await pexec(process.execPath, [scriptPath, issue], {
+        timeout: GH_API_TIMEOUT_MS,
+      });
+      if (stdout.trim()) console.log(stdout.trim());
     } catch (err) {
-      if (isGovernedAuthorityError(err)) throw err;
       // Fail-loud: silent swallow here is the root cause of #180 (board fields
       // never written, body cache stays null, close completes anyway). No env
       // override exists. For a genuine GitHub outage, re-run when service is
@@ -818,57 +664,6 @@ export function buildContext(rawArgv = process.argv.slice(2)) {
           `Retry when GitHub is reachable.`
       );
     }
-  };
-
-  ctx.runTransitionLogIssueTime = async (
-    issue,
-    { authority, transitionId, projectionId, subOperationId, expected } = {}
-  ) => {
-    if (SKIP_NETWORK) return { skipped: true };
-    const issueNumber = String(issue).replace(/^#/, '');
-    const exact = {
-      transitionId,
-      projectionName: 'github',
-      projectionId,
-      subOperationId,
-      issueId: issueNumber,
-      operation: 'evidence-mutation',
-    };
-    const verifyProjection = async () => assertTransitionProjectionAuthority(authority, exact);
-    const readState = async () => {
-      const { stdout: issueJson } = await pexec(
-        'gh',
-        ['issue', 'view', issueNumber, '--repo', cfg.repo, '--json', 'body'],
-        { timeout: GH_API_TIMEOUT_MS }
-      );
-      const body = JSON.parse(issueJson).body;
-      if (typeof body !== 'string') throw new Error('issue body read-back is malformed');
-      const fields = parseIssueFieldDb(body);
-      const projectFields = await projectValuesForIssue({
-        cfg,
-        fieldDefs: loadProjectFieldDefs(projectDir),
-        issueNumber,
-      });
-      return { body, bodyFields: fields?.values ?? {}, projectFields };
-    };
-    const mutate = async () => {
-      const { main: runIssueTime } = await import('../gh/log-issue-time.mjs');
-      const code = await runIssueTime([issueNumber], {
-        withGovernedEffect: async (options, callback) => {
-          if (
-            String(options?.issueId) !== issueNumber ||
-            options?.operation !== 'evidence-mutation'
-          ) {
-            throw new TypeError('transition issue-time authority route does not match');
-          }
-          await verifyProjection();
-          return callback({ reverify: verifyProjection });
-        },
-      });
-      if (code !== 0) throw new Error(`transition issue-time mutation exited ${code}`);
-    };
-    const proof = await reconcileIssueTimeProjection({ expected, readState, mutate });
-    return { ...proof, subOperationId };
   };
 
   ctx.runMigrate = async (args) => {
@@ -909,12 +704,7 @@ export function buildContext(rawArgv = process.argv.slice(2)) {
   // flag forwarding) lives in the exported `runMoveStateInProcess`; here we only
   // bind the SKIP_NETWORK short-circuit for offline/test runs.
   ctx.runMoveState = (issue, state, opts = {}) =>
-    runMoveStateInProcess(issue, state, {
-      ...opts,
-      skipNetwork: SKIP_NETWORK,
-      verbContext: verb,
-      withGovernedEffect: opts.withGovernedEffect ?? ctx.withGovernedEffect,
-    });
+    runMoveStateInProcess(issue, state, { ...opts, skipNetwork: SKIP_NETWORK });
 
   ctx.runMoveStateDone = (issue, opts) => ctx.runMoveState(issue, 'done', opts);
 

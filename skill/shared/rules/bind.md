@@ -82,7 +82,7 @@ If `.ai-task-manager/task-tracker-state.json` is missing but `.claude/task-track
 ## Issue lifecycle reminders
 
 - **Never call `move-state.mjs done` directly.** Use `/task close` (which the router stub already forbids cross-cuttingly).
-- **Never call `gh issue create` directly.** Use `scripts/gh/create-issue.mjs --shape <epic|sub-issue|solo>`.
+- **Never call `gh issue create` directly.** Use `scripts/gh/create-issue.mjs --shape <stub|epic|sub-issue|solo|defect>`.
 - **Never call `move-state.mjs <state>` to skip stages.** Always use `/task promote` or `/task next` to advance one step at a time.
 
 ## Session recovery

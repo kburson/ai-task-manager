@@ -2,37 +2,26 @@
 
 <!-- markdownlint-disable MD034 -->
 
-## Series Roadmap
-
-| Status      | #      | Article                                                                                    | Role In Series                                |
-| ----------- | ------ | ------------------------------------------------------------------------------------------ | --------------------------------------------- |
-|             | 00     | [The Rise Of Technical Product Operations](00-technical-product-operations.md)             | Industry thesis: Technical Product Operations |
-|             | 01     | [The Vibe Coding Hangover](01-vibe-coding-hangover.md)                                     | Failure mode: vibe slop and review debt       |
-|             | 02     | [Spec-Driven Development Is Necessary But Not Sufficient](02-spec-driven-is-not-enough.md) | Why specs need execution governance           |
-| **Current** | **03** | **[The Rise Of The Technical Product Owner](03-technical-product-owner.md)**               | Human operator: TPO/TPM as delivery architect |
-|             | 04     | [The Backlog Becomes The Control Plane](04-backlog-as-control-plane.md)                    | Backlog as executable control surface         |
-|             | 05     | [The Just-In-Time Planner](05-just-in-time-planner.md)                                     | Progressive decomposition and deep dives      |
-|             | 06     | [Context Durability Is A Feature](06-context-durability.md)                                | JIT loading and post-compaction recovery      |
-|             | 07     | [Evidence Beats Trust](07-evidence-beats-trust.md)                                         | Evidence gates and auditability               |
-|             | 08     | [The Adapter Future](08-adapter-future.md)                                                 | Backlog and agent platform adapters           |
+![The Rise Of The Technical Product Owner](assets/article-headers/article-03-header.png)
+_Part 4 of a series of articles on succeeding with Agentic AI Delivery_
 
 The product owner of the AI era will not win by writing bigger prompts.
 
 They will win by writing better work.
 
-That is the uncomfortable shift. When implementation agents can produce code from issues, the quality of the backlog stops being an administrative concern. It becomes a delivery constraint. A vague story does not merely slow a human team down. It gives an agent fleet room to make plausible but divergent assumptions at machine speed.
+That is the uncomfortable shift I had to make. When implementation agents can produce code from issues, the quality of the backlog stops being an administrative concern. It becomes a delivery constraint. A vague story does not merely slow a human team down. It gives an agent fleet room to make plausible but divergent assumptions at machine speed.
 
-Agentic AI does not eliminate product ownership. It raises the technical bar for product ownership.
+I do not think agentic AI eliminates product ownership. What I have found is that it raises the technical bar for product ownership.
 
-The emerging role is the **Technical Product Owner** or **Technical Product Manager**: a product-facing delivery architect who can turn product intent into agent-executable backlog items, sequence the work, manage pivots, and verify evidence without pretending to be the person writing every line of code.
+The emerging role, as I have come to define it, is the **Technical Product Owner** or **Technical Product Manager**: a product-facing delivery architect who can turn product intent into agent-executable backlog items, sequence the work, manage pivots, and verify evidence without pretending to be the person writing every line of code.
 
 ## Backlog Quality Becomes Delivery Quality
 
-Traditional product ownership already involves priorities, acceptance criteria, backlog quality, stakeholder alignment, and delivery sequencing. Agentic AI changes the stakes because the backlog becomes executable.
+Traditional product ownership already involves priorities, acceptance criteria, backlog quality, stakeholder alignment, and delivery sequencing. What changed the stakes for me is that agentic AI makes the backlog executable.
 
 If an implementation agent can pick up an issue and write code, then the issue is no longer a reminder. It is runtime input.
 
-That means every ambiguity in the backlog has a cost:
+That means every ambiguity in the backlog has a cost I end up paying:
 
 - unclear scope becomes extra generated code,
 - vague acceptance criteria become shallow tests,
@@ -41,7 +30,7 @@ That means every ambiguity in the backlog has a cost:
 - incomplete verification instructions become misplaced confidence,
 - untracked pivots become lost decision history.
 
-The TPO/TPM role shifts from maintaining a list of requests to operating a delivery system.
+I have watched the TPO/TPM role shift from maintaining a list of requests to operating a delivery system.
 
 ```mermaid
 flowchart TB
@@ -57,11 +46,11 @@ flowchart TB
     Evidence --> TPO
 ```
 
-The TPO/TPM is not controlling every line of code. They are controlling the structure that determines whether generated code can be accepted safely.
+The TPO/TPM is not controlling every line of code. In my experience, they are controlling the structure that determines whether generated code can be accepted safely.
 
 ## The New Responsibility Set
 
-The technical product role becomes responsible for turning intent into bounded work.
+The technical product role, as I have lived it, becomes responsible for turning intent into bounded work.
 
 That includes:
 
@@ -74,19 +63,19 @@ That includes:
 - reading evidence instead of accepting status claims,
 - managing agent throughput without losing product intent.
 
-This is not ordinary project administration. It is Technical Product Operations applied to a backlog.
+I do not treat this as ordinary project administration. It is Technical Product Operations applied to a backlog.
 
-The agents become implementation agents in this operating model. They manage syntax, local code structure, framework mechanics, test execution, and narrow task delivery inside bounded assignments. The TPO/TPM works above that layer, combining product vision, architectural literacy, dependency awareness, and delivery governance.
+In this operating model, the agents become implementation agents. They manage syntax, local code structure, framework mechanics, test execution, and narrow task delivery inside bounded assignments. I work above that layer, combining product vision, architectural literacy, dependency awareness, and delivery governance.
 
-This is also a meaningful role shift for engineers. As agents become better at producing idiomatic code across languages and frameworks, human value moves toward product correctness, architecture, interface design, decomposition, risk control, and review. The engineer does not disappear. The engineer moves up the abstraction stack.
+This is also a meaningful role shift for engineers, in what I have observed. As agents become better at producing idiomatic code across languages and frameworks, human value moves toward product correctness, architecture, interface design, decomposition, risk control, and review. The engineer does not disappear. The engineer moves up the abstraction stack.
 
 ## What The Technical Product Owner Is Not
 
-The Technical Product Owner is not replacing engineering leadership.
+The Technical Product Owner is not replacing engineering leadership. I want to be clear about that.
 
-Engineering leaders still own architecture standards, maintainability expectations, security posture, code review standards, production readiness, and technical quality bars. The TPO/TPM should not unilaterally decide that a generated implementation is architecturally acceptable because the feature appears to work.
+Engineering leaders still own architecture standards, maintainability expectations, security posture, code review standards, production readiness, and technical quality bars. I do not get to unilaterally decide that a generated implementation is architecturally acceptable just because the feature appears to work.
 
-The boundary is collaborative:
+The boundary I try to hold is collaborative:
 
 - Engineering defines guardrails.
 - Product defines intent and priority.
@@ -104,19 +93,19 @@ flowchart LR
     Evidence --> HumanOwns
 ```
 
-This split matters because it avoids two bad extremes.
+This split matters because it avoids two bad extremes I have seen play out.
 
 The first bad extreme is treating product managers as prompt typists who throw requests over the wall to AI. That creates vibe slop.
 
 The second bad extreme is forcing senior engineers to micromanage every generated line in real time. That destroys the leverage the agents were supposed to provide.
 
-The healthier model is a governed division of labor: humans own intent, architecture, sequence, risk, and acceptance; implementation agents own local construction inside bounded tasks.
+The healthier model, the one I try to run, is a governed division of labor: humans own intent, architecture, sequence, risk, and acceptance; implementation agents own local construction inside bounded tasks.
 
 ## Before, During, And After Agent Work
 
-A TPO/TPM operating an agent fleet has responsibilities before, during, and after implementation.
+Operating an agent fleet, I have found myself with responsibilities before, during, and after implementation.
 
-Before work starts, they shape the backlog:
+Before work starts, I shape the backlog:
 
 - Does the item express a clear product outcome?
 - Is it small enough for bounded execution?
@@ -125,7 +114,7 @@ Before work starts, they shape the backlog:
 - Does the item need architectural review before development?
 - Is this the right item to do next?
 
-During work, they manage flow:
+During work, I manage flow:
 
 - Is the agent blocked on a real product or technical decision?
 - Did the task discover a defect or refactor that should become separate work?
@@ -133,7 +122,7 @@ During work, they manage flow:
 - Are parallel agents stepping on shared files or interfaces?
 - Should the current task pause, switch out, or demote?
 
-After work, they review evidence:
+After work, I review evidence:
 
 - Which acceptance criteria were satisfied?
 - Which tests or checks were run?
@@ -142,15 +131,15 @@ After work, they review evidence:
 - What risks remain?
 - Is the result acceptable, rejected, or ready for engineering review?
 
-The role is not to rubber-stamp agent output. The role is to operate the acceptance system.
+My role is not to rubber-stamp agent output. My role is to operate the acceptance system.
 
 ## What This Means For Product And Project Managers
 
-This role will be uncomfortable for teams that treat product work as mostly status, prioritization, and stakeholder communication.
+I think this role will be uncomfortable for teams that treat product work as mostly status, prioritization, and stakeholder communication.
 
 Agentic delivery requires a more technical product posture.
 
-The TPO/TPM does not need to be the best programmer on the team. But they do need to understand:
+I do not need to be the best programmer on the team. But I do need to understand:
 
 - how systems are decomposed,
 - how dependencies create delivery risk,
@@ -159,17 +148,44 @@ The TPO/TPM does not need to be the best programmer on the team. But they do nee
 - how review burden becomes real cost,
 - how evidence differs from explanation.
 
-The product person who can do that becomes much more valuable in an agentic environment.
+The product person who can do that becomes much more valuable in an agentic environment, in my experience.
 
 They can keep the system product-led without letting it become process-blind. They can help engineering leaders scale review discipline. They can decide when an agent should continue, stop, pivot, or split discovered work into a new item.
 
+## Adoption Checklist
+
+For a product or project leader preparing for agentic AI-assisted development, the first maturity step, in my experience, is not "write better prompts."
+
+Start with the backlog:
+
+- Are stories thin enough for bounded implementation?
+- Do acceptance criteria describe observable outcomes?
+- Are dependency relationships explicit?
+- Is there a clear path for discovered defects or refactors?
+- Is there an evidence requirement before review?
+- Can the task be resumed after context loss?
+- Does the board state reflect actual delivery state?
+- Does a human approve completion?
+
+If the answer is no, I can tell you the agent fleet will amplify the gap.
+
+## Practical Takeaway
+
+The Technical Product Owner is the person who keeps agentic delivery product-led without letting it become process-blind. That is the job I have taken on.
+
+That requires a different kind of product discipline. I have to understand enough architecture to shape safe work, enough delivery mechanics to sequence it, enough verification discipline to read evidence, and enough product judgment to decide whether the result fits.
+
+This is not less product management. It is more technical product ownership because the backlog has become executable.
+
+## Series Link
+
+This article defines the human operator I became. The next article, [The Backlog Becomes The Control Plane](04-backlog-as-control-plane.md), explains the artifact that operator uses to govern the fleet.
+
 ## AITM And The Role In Practice
 
-In this series, **AITM** means `@kburson/ai-task-manager`: an AI skill and npm package that currently supports GitHub-backed task workflows with Claude Code and Codex.
+I introduced AITM — `@kburson/ai-task-manager` — in the [opening article](00-technical-product-operations.md#aitm-and-the-backlog-manager-pattern): the skill I built after hitting the exact wall described above one too many times. AITM is my concrete exploration of this Technical Product Operations role.
 
-AITM is a concrete exploration of this Technical Product Operations role.
-
-It gives the TPO/TPM a way to:
+It gives me a way to:
 
 - convert specs into epics and child stories,
 - sequence work into dependency waves,
@@ -183,36 +199,21 @@ It gives the TPO/TPM a way to:
 
 That makes the backlog an operational interface between product, engineering, and AI execution.
 
-The point is not that every organization must use GitHub Projects forever. The point is that the backlog needs to become durable enough, structured enough, and evidence-aware enough to manage agentic work.
+I do not think every organization must use GitHub Projects forever. What I do think is that the backlog needs to become durable enough, structured enough, and evidence-aware enough to manage agentic work. Besides, I will eventually add adapters for GitLab and Bitbucket repositories, as well as other AI hosts like Grok, Cursor or whatever comes next.
 
-## Adoption Checklist
+## Series Roadmap
 
-For a product or project leader preparing for agentic AI-assisted development, the first maturity step is not "write better prompts."
-
-Start with the backlog:
-
-- Are stories thin enough for bounded implementation?
-- Do acceptance criteria describe observable outcomes?
-- Are dependency relationships explicit?
-- Is there a clear path for discovered defects or refactors?
-- Is there an evidence requirement before review?
-- Can the task be resumed after context loss?
-- Does the board state reflect actual delivery state?
-- Does a human approve completion?
-
-If the answer is no, the agent fleet will amplify the gap.
-
-## Practical Takeaway
-
-The Technical Product Owner is the person who keeps agentic delivery product-led without letting it become process-blind.
-
-That requires a different kind of product discipline. The TPO/TPM must understand enough architecture to shape safe work, enough delivery mechanics to sequence it, enough verification discipline to read evidence, and enough product judgment to decide whether the result fits.
-
-This is not less product management. It is more technical product ownership because the backlog has become executable.
-
-## Series Link
-
-This article defines the human operator. The next article, [The Backlog Becomes The Control Plane](04-backlog-as-control-plane.md), explains the artifact that operator uses to govern the fleet.
+| Status      | #      | Article                                                                                    | Role In Series                                |
+| ----------- | ------ | ------------------------------------------------------------------------------------------ | --------------------------------------------- |
+|             | 00     | [The Rise Of Technical Product Operations](00-technical-product-operations.md)             | Industry thesis: Technical Product Operations |
+|             | 01     | [The Vibe Coding Hangover](01-vibe-coding-hangover.md)                                     | Failure mode: vibe slop and review debt       |
+|             | 02     | [Spec-Driven Development Is Necessary But Not Sufficient](02-spec-driven-is-not-enough.md) | Why specs need execution governance           |
+| **Current** | **03** | **[The Rise Of The Technical Product Owner](03-technical-product-owner.md)**               | Human operator: TPO/TPM as delivery architect |
+|             | 04     | [The Backlog Becomes The Control Plane](04-backlog-as-control-plane.md)                    | Backlog as executable control surface         |
+|             | 05     | [The Just-In-Time Planner](05-just-in-time-planner.md)                                     | Progressive decomposition and deep dives      |
+|             | 06     | [Context Durability Is A Feature](06-context-durability.md)                                | JIT loading and post-compaction recovery      |
+|             | 07     | [Evidence Beats Trust](07-evidence-beats-trust.md)                                         | Evidence gates and auditability               |
+|             | 08     | [The Adapter Future](08-adapter-future.md)                                                 | Backlog and agent platform adapters           |
 
 ## LinkedIn Article Shape
 
@@ -240,8 +241,8 @@ Close:
 - Kiro Docs. "Feature Specs." https://kiro.dev/docs/specs/feature-specs/
 - GitHub Blog. "Assigning and completing issues with coding agent in GitHub Copilot." https://github.blog/ai-and-ml/github-copilot/assigning-and-completing-issues-with-coding-agent-in-github-copilot/
 - Sayagh, Mohammed. "What Makes a GitHub Issue Ready for Copilot?" https://arxiv.org/abs/2512.21426
-- AI Task Manager. "Agentic Development Process." ../introduction/agentic-development-process.md
-- AI Task Manager. "Core Workflow." ../introduction/core-workflow.md
-- AI Task Manager. "Measurement and ROI." ../introduction/measurement-and-roi.md
+- AI Task Manager. "Agentic Development Process." https://github.com/kburson/ai-task-manager/blob/trunk/docs/introduction/agentic-development-process.md
+- AI Task Manager. "Core Workflow." https://github.com/kburson/ai-task-manager/blob/trunk/docs/introduction/core-workflow.md
+- AI Task Manager. "Measurement and ROI." https://github.com/kburson/ai-task-manager/blob/trunk/docs/introduction/measurement-and-roi.md
 - Atlassian. "What is backlog refinement?" https://www.atlassian.com/agile/scrum/backlog-refinement
 - Scaled Agile. "Enterprise Backlog Structure and Management." https://framework.scaledagile.com/enterprise-backlog-structure-and-management

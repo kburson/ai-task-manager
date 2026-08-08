@@ -18,6 +18,8 @@
 // "at least one field" contract always holds. Comment-only: touches no board
 // field and no Status. Pure core: `runPlanEstimate({...})`; all I/O injectable.
 
+import { readFileSync } from 'node:fs';
+
 import {
   appendPlannedEstimate,
   repopulateEmptyPlannedAppendix,
@@ -25,6 +27,10 @@ import {
 import { projectValuesForIssue } from '../../gh/lib/github-projects.mjs';
 import { loadProjectFieldDefs } from '../project-fields.mjs';
 import { loadState } from '../state.mjs';
+import { parsePlanEstimationInput } from '../lib/estimation/plan-input.mjs';
+import { executeAdaptivePlanEstimate } from '../lib/estimation/plan-estimate-authority.mjs';
+import { createAdaptivePlanRuntime } from '../lib/estimation/runtime-adapter.mjs';
+import { ceilEstimateHours } from '../lib/estimation/estimate-granularity.mjs';
 
 // Resolve the target issue: explicit positional `#N` / `N` wins, else the bound
 // active issue. Returns a positive integer or null.
@@ -54,6 +60,9 @@ export function parseArgs(rest, activeIssue) {
   const planned = {};
   const current = {};
   let rationale = null;
+  let evidenceFile = null;
+  let compatibilityMode = false;
+  let adoptLegacyBaseline = false;
   const positional = [];
   for (let i = 0; i < rest.length; i++) {
     const tok = rest[i];
@@ -73,12 +82,42 @@ export function parseArgs(rest, activeIssue) {
       case '--rationale':
         rationale = rest[++i] ?? '';
         break;
+      case '--evidence-file':
+        evidenceFile = rest[++i] ?? '';
+        break;
+      case '--compatibility-mode':
+        compatibilityMode = true;
+        break;
+      case '--adopt-legacy-baseline':
+        adoptLegacyBaseline = true;
+        break;
       default:
         positional.push(tok);
     }
   }
   const target = resolveTargetIssue({ rest: positional, activeIssue });
-  return { target, planned, current, rationale };
+  return {
+    target,
+    planned,
+    current,
+    rationale,
+    evidenceFile,
+    compatibilityMode,
+    adoptLegacyBaseline,
+  };
+}
+
+async function defaultRunAdaptivePlanEstimate({
+  issueNumber,
+  evidenceFile,
+  adoptLegacyBaseline,
+  cfg,
+  deps,
+}) {
+  const planInput = parsePlanEstimationInput(readFileSync(evidenceFile, 'utf8'));
+  const runtime =
+    deps.adaptivePlanRuntime ?? createAdaptivePlanRuntime({ cfg, deps, adoptLegacyBaseline });
+  return executeAdaptivePlanEstimate({ issueNumber, planInput, cfg, deps: runtime });
 }
 
 // Read the live board Size/Estimate for the "Refine" column. Best-effort:
@@ -99,6 +138,16 @@ async function readBoardCurrent({ cfg, issueNumber, deps }) {
   }
 }
 
+function normalizeEstimateProjection(value = {}) {
+  const projection = value ?? {};
+  return {
+    ...projection,
+    ...(typeof projection.estimate === 'number'
+      ? { estimate: ceilEstimateHours(projection.estimate) }
+      : {}),
+  };
+}
+
 /**
  * Core runner. Bootstraps (or heals) the `### Planned Estimate` appendix on the
  * refine-estimate comment.
@@ -110,6 +159,9 @@ export async function runPlanEstimate({
   planned,
   current,
   rationale,
+  evidenceFile,
+  compatibilityMode = false,
+  adoptLegacyBaseline = false,
   cfg,
   deps = {},
 } = {}) {
@@ -119,6 +171,13 @@ export async function runPlanEstimate({
   if (!cfg || !cfg.repo) {
     throw new Error('plan-estimate: cfg.repo is required');
   }
+  if (evidenceFile) {
+    const adaptive = deps.runAdaptivePlanEstimate || defaultRunAdaptivePlanEstimate;
+    return adaptive({ issueNumber: target, evidenceFile, adoptLegacyBaseline, cfg, deps });
+  }
+  if (!compatibilityMode) {
+    throw new Error('plan-estimate: legacy planned flags require explicit --compatibility-mode');
+  }
   const hasPlanned = planned && (planned.size !== undefined || planned.estimate !== undefined);
   if (!hasPlanned) {
     throw new Error(
@@ -127,21 +186,24 @@ export async function runPlanEstimate({
   }
   const append = deps.appendPlannedEstimate || appendPlannedEstimate;
   const repopulate = deps.repopulateEmptyPlannedAppendix || repopulateEmptyPlannedAppendix;
+  const effectivePlanned = normalizeEstimateProjection(planned);
 
   // Source the "current" (Refine) column: explicit flags win; else read the
   // board; else mirror the planned column so the "at least one field" contract
   // always holds.
-  let effectiveCurrent = current;
+  let effectiveCurrent = normalizeEstimateProjection(current);
   if (!current || (current.size === undefined && current.estimate === undefined)) {
     const board = await readBoardCurrent({ cfg, issueNumber: target, deps });
     effectiveCurrent =
-      board.size !== undefined || board.estimate !== undefined ? board : { ...planned };
+      board.size !== undefined || board.estimate !== undefined
+        ? normalizeEstimateProjection(board)
+        : { ...effectivePlanned };
   }
 
   const res = await append({
     cfg,
     issueNumber: target,
-    planned,
+    planned: effectivePlanned,
     current: effectiveCurrent,
     rationale,
   });
@@ -152,7 +214,7 @@ export async function runPlanEstimate({
     const healed = await repopulate({
       cfg,
       issueNumber: target,
-      planned,
+      planned: effectivePlanned,
       current: effectiveCurrent,
       rationale,
     });
@@ -165,20 +227,37 @@ export async function verbPlanEstimate(ctx) {
   const { cfg, statePath, rest } = ctx;
   const s = loadState(statePath);
   const active = s.active || null;
-  const { target, planned, current, rationale } = parseArgs(rest, active);
+  const {
+    target,
+    planned,
+    current,
+    rationale,
+    evidenceFile,
+    compatibilityMode,
+    adoptLegacyBaseline,
+  } = parseArgs(rest, active);
   if (!target) {
     console.error(
-      'Usage: /task plan-estimate [#N] --planned-size <S> --planned-estimate <H> ' +
-        '[--current-size <S>] [--current-estimate <H>] [--rationale "<text>"]'
+      'Usage: /task plan-estimate [#N] --evidence-file <path> OR --compatibility-mode ' +
+        '--planned-size <S> --planned-estimate <H>'
     );
     process.exit(2);
   }
-  if (planned.size === undefined && planned.estimate === undefined) {
-    console.error('plan-estimate: at least one of --planned-size / --planned-estimate is required');
+  if (!evidenceFile && planned.size === undefined && planned.estimate === undefined) {
+    console.error('plan-estimate: --evidence-file or planned compatibility flags are required');
     process.exit(2);
   }
   try {
-    const res = await runPlanEstimate({ target, planned, current, rationale, cfg });
+    const res = await runPlanEstimate({
+      target,
+      planned,
+      current,
+      rationale,
+      evidenceFile,
+      compatibilityMode,
+      adoptLegacyBaseline,
+      cfg,
+    });
     switch (res.status) {
       case 'appended':
         console.log(`[task-tracker] ✓ #${target} Planned Estimate appendix written`);
@@ -189,6 +268,11 @@ export async function verbPlanEstimate(ctx) {
       case 'duplicate':
         console.log(
           `[task-tracker] ✓ #${target} Planned Estimate appendix already present — no change`
+        );
+        break;
+      case 'converged':
+        console.log(
+          `[task-tracker] ✓ #${target} Plan estimate authority converged; forecast ${res.forecastRecordId}`
         );
         break;
       case 'no-refine-comment':

@@ -13,8 +13,6 @@
 //   8. Legacy-encoded body is normalized to new encoding.
 
 import { strict as assert } from 'node:assert';
-import { mkdtempSync, rmSync } from 'node:fs';
-import path from 'node:path';
 import {
   runApprove,
   buildMarker,
@@ -22,35 +20,22 @@ import {
   insertApprovalMarker,
   detectFullAuto,
 } from '../../../verbs/approve.mjs';
-import { projectScratchDir } from '../../../lib/scratch-dir.mjs';
-
-const isolatedProjectDir = mkdtempSync(
-  path.join(projectScratchDir('test'), 'approve-full-auto-unified-')
-);
-process.env.AI_TASK_MANAGER_PROJECT_DIR = isolatedProjectDir;
-process.once('exit', () => rmSync(isolatedProjectDir, { recursive: true, force: true }));
 
 // #881 — approve requires evidence that the Agent Review Gate (the Review state's
 // action) passed. Every fixture body below is suffixed with it; tests that care
 // about the refusal path live in approve-agent-review-complete.test.mjs.
 const AGENT_REVIEW_PASSED =
-  '\n<!-- aitm-entered-review ts="2026-07-29T10:00:00Z" -->\n<!-- aitm-dod-verified sha="abc1234" ts="2026-07-29T10:00:00Z" -->\n<!-- aitm-agent-review-proof schema="1" epoch="review:1:2026-07-29T10:00:00Z" sha="abc1234" ts="2026-07-29T10:01:00Z" validators="unit" result="pass" -->\n- [ ] Agent Review Passed <!-- aitm-verified gate="agent-review" ts="2026-05-10T00:00:00Z" sha="sandbox" validators="body-sections" result="pass" -->\n';
+  '\n- [ ] Agent Review Passed <!-- aitm-verified gate="agent-review" ts="2026-05-10T00:00:00Z" sha="sandbox" validators="body-sections" result="pass" -->\n';
 
 const cfg = { repo: 'o/r' };
 const FIXED_TS = '2026-05-10T00:00:00Z';
-
-const allowGovernedEffect = async (_options, callback) => callback({ reverify: async () => {} });
 
 function makeDeps(overrides = {}) {
   const calls = { writes: [], bodies: [], stateLookups: 0, comments: [] };
   const initialBody =
     overrides.initialBody ??
     '## Acceptance Criteria\n\n- [x] all\n\n<!-- ai-task-manager:fields:start -->\n```json\n{"schema":1,"values":{"size":"S"}}\n```\n<!-- ai-task-manager:fields:end -->\n';
-  let body =
-    initialBody +
-    (initialBody.includes('aitm-entered-review')
-      ? '\n- [ ] Agent Review Passed <!-- aitm-verified gate="agent-review" ts="2026-05-10T00:00:00Z" sha="sandbox" validators="body-sections" result="pass" -->\n'
-      : AGENT_REVIEW_PASSED);
+  let body = initialBody + AGENT_REVIEW_PASSED;
   return {
     calls,
     deps: {
@@ -87,7 +72,7 @@ function makeDeps(overrides = {}) {
       },
       fetchComments: async () => [],
       fetchProjectValues: async () => ({}),
-      withGovernedEffect: allowGovernedEffect,
+      reconcileReviewApprovedTiming: async () => ({ status: 'posted', ts: FIXED_TS }),
       ...overrides.deps,
     },
     getBody: () => body,
@@ -116,10 +101,7 @@ function makeDeps(overrides = {}) {
     assert.equal(r.status, 'approved');
     assert.equal(r.fullAuto, true);
     // #480 AC6 — full-auto folded into the single aitm-review-approved marker.
-    assert.match(
-      getBody(),
-      /<!-- aitm-review-approved schema="1" epoch="review:1:2026-07-29T10:00:00Z"[^>]*provenance="full-auto"/
-    );
+    assert.match(getBody(), /<!-- aitm-review-approved ts="[^"]*" full-auto="yes"/);
     assert.doesNotMatch(getBody(), /aitm-full-auto-approved/);
     assert.match(getBody(), /<!-- aitm-full-auto-footnote:start -->/);
     assert.match(getBody(), /reviewer-unset=1/);
@@ -168,9 +150,11 @@ function makeDeps(overrides = {}) {
   const dir = mkdtempSync(path.join(projectScratchDir('test'), 'preflight-test-'));
   const scopeFile = path.join(dir, 'scope.md');
   const acFile = path.join(dir, 'ac.md');
+  const originFile = path.join(dir, 'origin.md');
   const planFile = path.join(dir, 'plan.md');
   writeFileSync(scopeFile, 'Scope text.\n');
   writeFileSync(acFile, '- [ ] one\n');
+  writeFileSync(originFile, '- **kind**: code\n');
   writeFileSync(planFile, '- **Size:** S\n- **Estimate:** 1h\n- **Priority:** P2\n- **Rank:** —\n');
   const rendered = execFileSync(
     'node',
@@ -182,6 +166,8 @@ function makeDeps(overrides = {}) {
       scopeFile,
       '--ac-file',
       acFile,
+      '--story-origin-file',
+      originFile,
       '--plan-metadata-file',
       planFile,
     ],
@@ -217,8 +203,10 @@ function makeDeps(overrides = {}) {
     'The bug is that `<!-- aitm-full-auto-footnote:start -->` is mentioned',
     'in this prose (code span), which used to fool the presence check.',
     '',
-    '#### Lifecycle (auto-ticked at Review/Close)',
+    '### Lifecycle (verified at Review)',
     '- [ ] Passed final human review',
+    '',
+    '### Housekeeping (verified at Close)',
     '- [ ] Story closed and moved to Done',
     '- [ ] Timing data flushed to issue',
     '',
@@ -242,7 +230,7 @@ function makeDeps(overrides = {}) {
   // Lifecycle item ticked.
   assert.match(out, /- \[x\] Passed final human review/);
   // Footnote anchored after Lifecycle subsection.
-  const lifeIdx = out.indexOf('#### Lifecycle');
+  const lifeIdx = out.indexOf('### Lifecycle');
   const endIdx = out.indexOf('<!-- aitm-full-auto-footnote:end -->');
   assert.ok(endIdx > lifeIdx, 'footnote block anchors after Lifecycle subsection');
 }
@@ -260,8 +248,10 @@ function makeDeps(overrides = {}) {
       '## Acceptance Criteria',
       '- [x] x',
       '',
-      '#### Lifecycle (auto-ticked at Review/Close)',
+      '### Lifecycle (verified at Review)',
       '- [ ] Passed final human review',
+      '',
+      '### Housekeeping (verified at Close)',
       '- [ ] Story closed and moved to Done',
       '- [ ] Timing data flushed to issue',
       '',
@@ -288,7 +278,7 @@ function makeDeps(overrides = {}) {
       postComment: async () => {},
       fetchComments: async () => [],
       fetchProjectValues: async () => ({}),
-      withGovernedEffect: allowGovernedEffect,
+      reconcileReviewApprovedTiming: async () => ({ status: 'posted', ts: FIXED_TS }),
     },
   });
   assert.equal(r.status, 'approved');
@@ -312,7 +302,7 @@ function makeDeps(overrides = {}) {
       '## Acceptance Criteria',
       '- [x] x',
       '',
-      '#### Lifecycle (auto-ticked at Review/Close)',
+      '### Lifecycle (verified at Review)',
       '- [ ] Passed final human review',
       '',
     ].join('\n') + AGENT_REVIEW_PASSED;
@@ -337,7 +327,7 @@ function makeDeps(overrides = {}) {
       postComment: async () => {},
       fetchComments: async () => [],
       fetchProjectValues: async () => ({}),
-      withGovernedEffect: allowGovernedEffect,
+      reconcileReviewApprovedTiming: async () => ({ status: 'posted', ts: FIXED_TS }),
     },
   });
   assert.equal(r.status, 'approved');
@@ -349,159 +339,3 @@ function makeDeps(overrides = {}) {
 }
 
 console.log('approve.test.mjs: all passed');
-
-// #1050 / #979 — a fresh `--human` approval supersedes stale Full-Auto
-// authority, removes its footnote, and records human provenance regardless of
-// the stale lifecycle check mark.
-{
-  const epochOne = 'review:1:2026-07-29T10:00:00Z';
-  const epochTwo = 'review:2:2026-07-29T11:00:00Z';
-  const staleFullAuto = [
-    '<!-- aitm-entered-review ts="2026-07-29T10:00:00Z" -->',
-    `<!-- aitm-agent-review-proof schema="1" epoch="${epochOne}" sha="abc1234" ts="2026-07-29T10:01:00Z" validators="unit" result="pass" -->`,
-    `<!-- aitm-review-approved schema="1" epoch="${epochOne}" proof-sha="abc1234" ts="2026-07-29T10:02:00Z" provenance="full-auto" signals="old-signal" -->`,
-    '<!-- aitm-full-auto-footnote:start -->',
-    '> ⚙️ **Full-Auto mode enabled: human review skipped.**',
-    '<!-- aitm-full-auto-footnote:end -->',
-    '<!-- aitm-entered-review-2 ts="2026-07-29T11:00:00Z" -->',
-    '<!-- aitm-dod-verified sha="def5678" ts="2026-07-29T11:00:00Z" -->',
-    `<!-- aitm-agent-review-proof schema="1" epoch="${epochTwo}" sha="def5678" ts="2026-07-29T11:01:00Z" validators="unit" result="pass" -->`,
-    '#### Lifecycle (auto-ticked at Review/Close)',
-    '- [x] Passed final human review',
-  ].join('\n');
-  const { deps, getBody } = makeDeps({
-    initialBody: staleFullAuto,
-    deps: { detectFullAuto: () => ({ fired: true, signals: 'must-not-survive' }) },
-  });
-  const r = await runApprove({ issueNumber: 58, cfg, deps, human: true });
-
-  assert.equal(r.status, 'approved');
-  assert.equal(r.fullAuto, false);
-  assert.match(getBody(), /aitm-review-approval-history[^>]*provenance="full-auto"/);
-  assert.match(
-    getBody(),
-    /aitm-review-approved[^>]*epoch="review:2:2026-07-29T11:00:00Z"[^>]*provenance="human"/
-  );
-  assert.doesNotMatch(getBody(), /aitm-full-auto-footnote:start/);
-}
-
-// #1050 — an explicit human approval is higher-fidelity provenance even when
-// the existing Full-Auto approval is otherwise current for the same epoch and
-// proof. Preserve the machine approval as history and replace its authority;
-// do not let the idempotent fast path discard the human signal.
-{
-  const epoch = 'review:1:2026-07-29T10:00:00Z';
-  const currentFullAuto = [
-    '<!-- aitm-entered-review ts="2026-07-29T10:00:00Z" -->',
-    '<!-- aitm-dod-verified sha="abc1234" ts="2026-07-29T10:00:00Z" -->',
-    `<!-- aitm-agent-review-proof schema="1" epoch="${epoch}" sha="abc1234" ts="2026-07-29T10:01:00Z" validators="unit" result="pass" -->`,
-    `<!-- aitm-review-approved schema="1" epoch="${epoch}" proof-sha="abc1234" ts="2026-07-29T10:02:00Z" provenance="full-auto" signals="old-signal" -->`,
-    '<!-- aitm-full-auto-footnote:start -->',
-    '> ⚙️ **Full-Auto mode enabled: human review skipped.**',
-    '<!-- aitm-full-auto-footnote:end -->',
-    '#### Lifecycle (auto-ticked at Review/Close)',
-    '- [x] Passed final human review',
-  ].join('\n');
-  const { deps, getBody } = makeDeps({
-    initialBody: currentFullAuto,
-    deps: { detectFullAuto: () => ({ fired: true, signals: 'must-not-survive' }) },
-  });
-
-  const r = await runApprove({ issueNumber: 58, cfg, deps, human: true });
-
-  assert.equal(r.status, 'approved');
-  assert.equal(r.fullAuto, false);
-  assert.match(getBody(), /aitm-review-approval-history[^>]*provenance="full-auto"/);
-  assert.match(
-    getBody(),
-    /aitm-review-approved[^>]*epoch="review:1:2026-07-29T10:00:00Z"[^>]*provenance="human"/
-  );
-  assert.doesNotMatch(getBody(), /aitm-full-auto-footnote:start/);
-}
-
-// #1050 — the pre-consolidation marker pair is one Full-Auto approval. When it
-// becomes stale, archive the truthful provenance/signals together and retire
-// the standalone companion instead of rewriting history as human.
-{
-  const epochTwo = 'review:2:2026-07-29T11:00:00Z';
-  const staleLegacyFullAuto = [
-    '<!-- aitm-entered-review ts="2026-07-29T10:00:00Z" -->',
-    '<!-- aitm-review-approved ts="2026-07-29T10:02:00Z" -->',
-    '<!-- aitm-full-auto-approved: 2026-07-29T10:02:00Z:old-signal -->',
-    '<!-- aitm-full-auto-footnote:start -->',
-    '> ⚙️ **Full-Auto mode enabled: human review skipped.**',
-    '<!-- aitm-full-auto-footnote:end -->',
-    '<!-- aitm-entered-review-2 ts="2026-07-29T11:00:00Z" -->',
-    '<!-- aitm-dod-verified sha="def5678" ts="2026-07-29T11:00:00Z" -->',
-    `<!-- aitm-agent-review-proof schema="1" epoch="${epochTwo}" sha="def5678" ts="2026-07-29T11:01:00Z" validators="unit" result="pass" -->`,
-    '#### Lifecycle (auto-ticked at Review/Close)',
-    '- [x] Passed final human review',
-  ].join('\n');
-  const { deps, getBody } = makeDeps({
-    initialBody: staleLegacyFullAuto,
-    deps: { detectFullAuto: () => ({ fired: true, signals: 'must-not-survive' }) },
-  });
-
-  const r = await runApprove({ issueNumber: 58, cfg, deps, human: true });
-
-  assert.equal(r.status, 'approved');
-  assert.match(
-    getBody(),
-    /aitm-review-approval-history[^>]*provenance="full-auto"[^>]*signals="old-signal"/
-  );
-  assert.doesNotMatch(getBody(), /<!-- aitm-full-auto-approved/);
-  assert.match(
-    getBody(),
-    /aitm-review-approved[^>]*epoch="review:2:2026-07-29T11:00:00Z"[^>]*provenance="human"/
-  );
-}
-
-// #1050 — do not erase or misattribute an unpaired legacy Full-Auto marker.
-// It remains historical evidence while the independently human legacy approval
-// is archived and the current epoch receives explicit human authority.
-{
-  const epochTwo = 'review:2:2026-07-29T11:00:00Z';
-  const unmatched = [
-    '<!-- aitm-entered-review ts="2026-07-29T10:00:00Z" -->',
-    '<!-- aitm-review-approved ts="2026-07-29T10:02:00Z" -->',
-    '<!-- aitm-full-auto-approved: 2026-07-29T10:03:00Z:orphan-signal -->',
-    '<!-- aitm-entered-review-2 ts="2026-07-29T11:00:00Z" -->',
-    '<!-- aitm-dod-verified sha="def5678" ts="2026-07-29T11:00:00Z" -->',
-    `<!-- aitm-agent-review-proof schema="1" epoch="${epochTwo}" sha="def5678" ts="2026-07-29T11:01:00Z" validators="unit" result="pass" -->`,
-    '#### Lifecycle (auto-ticked at Review/Close)',
-    '- [x] Passed final human review',
-  ].join('\n');
-  const { deps, getBody } = makeDeps({ initialBody: unmatched });
-
-  const r = await runApprove({ issueNumber: 58, cfg, deps, human: true });
-
-  assert.equal(r.status, 'approved');
-  assert.match(getBody(), /aitm-review-approval-history[^>]*provenance="human"/);
-  assert.match(getBody(), /<!-- aitm-full-auto-approved: 2026-07-29T10:03:00Z:orphan-signal -->/);
-}
-
-// #1050 — duplicate same-timestamp companions are ambiguous, not two reasons
-// to rewrite the legacy approval as human. Preserve the evidence and refuse
-// the replacement until an operator repairs the historical ambiguity.
-{
-  const epochTwo = 'review:2:2026-07-29T11:00:00Z';
-  const ambiguous = [
-    '<!-- aitm-entered-review ts="2026-07-29T10:00:00Z" -->',
-    '<!-- aitm-review-approved ts="2026-07-29T10:02:00Z" -->',
-    '<!-- aitm-full-auto-approved: 2026-07-29T10:02:00Z:first-signal -->',
-    '<!-- aitm-full-auto-approved: 2026-07-29T10:02:00Z:second-signal -->',
-    '<!-- aitm-entered-review-2 ts="2026-07-29T11:00:00Z" -->',
-    '<!-- aitm-dod-verified sha="def5678" ts="2026-07-29T11:00:00Z" -->',
-    `<!-- aitm-agent-review-proof schema="1" epoch="${epochTwo}" sha="def5678" ts="2026-07-29T11:01:00Z" validators="unit" result="pass" -->`,
-    '#### Lifecycle (auto-ticked at Review/Close)',
-    '- [x] Passed final human review',
-  ].join('\n');
-  const { deps, calls, getBody } = makeDeps({ initialBody: ambiguous });
-
-  const r = await runApprove({ issueNumber: 58, cfg, deps, human: true });
-
-  assert.equal(r.status, 'agent-review-incomplete');
-  assert.equal(calls.writes.length, 0);
-  assert.equal((getBody().match(/aitm-full-auto-approved/g) || []).length, 2);
-  assert.match(getBody(), /<!-- aitm-review-approved ts="2026-07-29T10:02:00Z" -->/);
-}

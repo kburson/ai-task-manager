@@ -19,18 +19,14 @@ import { durableWordMarker } from '../state.mjs';
 import {
   buildReviewApprovedMarker,
   hasReviewApprovedMarker,
+  removeReviewApprovedMarker,
   insertReviewApprovedMarker,
   insertFullAutoFootnote,
   removeFullAutoFootnote,
-  FULL_AUTO_APPROVED_RE,
-  REVIEW_APPROVED_RE,
-  parseFullAutoApprovedMarker,
-  parseDodVerifiedMarker,
-  stripFencedCodeBlocks,
+  removeLegacyFullAutoFootnote,
 } from '../lib/markers.mjs';
 import {
   tickLifecycleItem,
-  untickLifecycleItem,
   parseLifecycleOptouts,
   lifecycleItemState,
 } from '../lib/lifecycle-dod.mjs';
@@ -40,31 +36,34 @@ import { deriveDrivers } from '../lib/derive-drivers.mjs';
 import { isFullAuto } from '../lib/human-reviewer-audit.mjs';
 import { withIssueLock, IssueLockError } from '../issue-mutator-lock.mjs';
 import { mutateIssueBody } from '../lib/issue-body-mutate.mjs';
-import {
-  createRuntimeGovernedEffectAdapter,
-  isGovernedAuthorityError,
-} from '../lib/work-lease/governed-effect.mjs';
-import { withVerbMutationScope } from '../lib/work-lease/verb-mutation-scope.mjs';
 import { assertMarkerPersisted } from '../lib/stamp-verify.mjs';
 import { assertBoundToIssue } from '../lib/bind-context.mjs';
 import {
-  agentReviewIncompleteReason,
   isAgentReviewComplete,
+  agentReviewIncompleteReason,
 } from '../lib/agent-review/review-gate.mjs';
+import { reconcileReviewApprovedTiming } from '../lib/review-approval-timing.mjs';
+import { locateAuthoritySource } from '../lib/github-records/authority-locator.mjs';
 import {
-  deriveReviewAuthority,
-  parseReviewAuthority,
-  sameGitObjectId,
-  serializeReviewInvalidation,
-} from '../lib/review-authority.mjs';
-import { serializeMarker } from '../lib/marker-grammar.mjs';
+  hasAcceptedApprovalEvidence,
+  hasAcceptedReviewEvidence,
+  resolveLifecycleGateEvidence,
+} from '../lib/github-records/lifecycle-gate-source.mjs';
 
 const pexec = promisify(execFile);
 
-// Approval binds the exact current proof to the versioned body used for the
-// write. A retry could otherwise rebase a prepared approval onto a body whose
-// proof changed during the conflict, so this proof-bearing write fails closed.
-export const APPROVAL_STAMP_MAX_RETRIES = 1;
+function defaultLifecycleGraphql({ query, variables }) {
+  return gql(query, variables).then((data) => ({ data }));
+}
+
+async function defaultGetHeadSha({ projectDir }) {
+  const { stdout } = await pexec('git', ['rev-parse', 'HEAD'], { cwd: projectDir });
+  return String(stdout || '').trim();
+}
+
+function removeStaleApprovalCarriers(body) {
+  return removeLegacyFullAutoFootnote(removeFullAutoFootnote(removeReviewApprovedMarker(body)));
+}
 
 // Re-exports for back-compat with existing tests/callers that imported the
 // helpers from this module before the centralization in lib/markers.mjs.
@@ -88,23 +87,13 @@ async function defaultFetchIssueBody({ issueNumber, repo }) {
 
 // #295 — closure-form body write; mutate is reapplied against the FRESH base
 // on every push attempt, preserving concurrent writes.
-async function defaultMutateIssueBody({
-  issueNumber,
-  repo,
-  mutate,
-  allowUnverifiedTicks,
-  maxRetries,
-  operation,
-  withGovernedEffect,
-}) {
+async function defaultMutateIssueBody({ issueNumber, repo, mutate, allowUnverifiedTicks }) {
   return mutateIssueBody({
     issueNumber,
     repo,
     mutate,
-    deps: { pexec, withGovernedEffect },
+    deps: { pexec },
     allowUnverifiedTicks,
-    maxRetries,
-    operation,
   });
 }
 
@@ -207,170 +196,6 @@ export function detectFullAuto({ env = process.env, tty = process.stdin?.isTTY }
   return { fired: true, signals: parts.join(',') };
 }
 
-function deriveAuthorityForBody(body) {
-  // The Test/DoD evidence is the authority source for a versioned proof. The
-  // legacy fallback only lets the reducer classify a legacy marker as stale;
-  // callers still require an epoch-bound matching proof before no-op or stamp.
-  const verifiedSha = parseDodVerifiedMarker(stripFencedCodeBlocks(body))?.sha || 'legacy';
-  return { ...deriveReviewAuthority(body, { verifiedSha }), verifiedSha };
-}
-
-function hasCurrentPassingProof(authority) {
-  return Boolean(
-    authority.epoch &&
-    authority.proof?.epoch === authority.epoch &&
-    authority.proof.result === 'pass' &&
-    authority.proof.sha &&
-    sameGitObjectId(authority.proof.sha, authority.verifiedSha) &&
-    !authority.reasons.includes('verified-sha-mismatch')
-  );
-}
-
-function hasCompleteCurrentPassingReview(body, authority) {
-  return hasCurrentPassingProof(authority) && isAgentReviewComplete(body);
-}
-
-function shouldArchiveApproval(authority) {
-  return Boolean(
-    authority.approval && (authority.status !== 'current' || authority.approval.legacy)
-  );
-}
-
-function shouldReplaceWithHumanApproval(authority, human) {
-  return Boolean(
-    human && authority.status === 'current' && authority.approval?.provenance === 'full-auto'
-  );
-}
-
-function approvalSatisfiesRequest(body, authority, human) {
-  return Boolean(
-    authority.status === 'current' &&
-    hasCompleteCurrentPassingReview(body, authority) &&
-    !shouldReplaceWithHumanApproval(authority, human)
-  );
-}
-
-function incompleteReviewResult(issueNumber, body) {
-  const reason = agentReviewIncompleteReason(body) || 'review-incomplete';
-  return {
-    status: 'agent-review-incomplete',
-    reason,
-    message:
-      reason === 'review-failed'
-        ? `#${issueNumber} carries an \`aitm-review-failed\` marker — the Agent Review Gate objected and its objections are unresolved. Fix them in place, then re-run \`/task review #${issueNumber}\` before approving.`
-        : `#${issueNumber} has no passing Agent Review evidence — the Review state's action has not completed. Run \`/task review #${issueNumber}\` first; the human approval is the exit condition, not the action.`,
-  };
-}
-
-function requiresApprovalRepair(authority, human) {
-  return shouldArchiveApproval(authority) || shouldReplaceWithHumanApproval(authority, human);
-}
-
-function serializeApprovalHistory(approval, ts) {
-  const props = {
-    schema: '1',
-    ts: approval.ts,
-    provenance: approval.provenance,
-    'archived-at': ts,
-  };
-  if (approval.legacy) props.legacy = 'yes';
-  else {
-    props.epoch = approval.epoch;
-    props['proof-sha'] = approval.proofSha;
-  }
-  if (approval.provenance === 'full-auto') props.signals = approval.signals;
-  return serializeMarker('review-approval-history', props);
-}
-
-function replaceUnfencedApprovalMarkers(body, approvals, ts) {
-  const lines = String(body || '').split(/(\n)/);
-  let fence = null;
-  let approvalIndex = 0;
-  const markerRe = new RegExp(REVIEW_APPROVED_RE.source, 'gi');
-  return lines
-    .map((line) => {
-      const opener = line.match(/^ {0,3}(`{3,}|~{3,})/);
-      if (!fence && opener) {
-        fence = { char: opener[1][0], length: opener[1].length };
-        return line;
-      }
-      if (fence) {
-        const closer = line.match(/^ {0,3}(`+|~+)[ \t]*$/);
-        if (closer && closer[1][0] === fence.char && closer[1].length >= fence.length) fence = null;
-        return line;
-      }
-      return line.replace(markerRe, () => {
-        const approval = approvals[approvalIndex++];
-        return approval ? serializeApprovalHistory(approval, ts) : '';
-      });
-    })
-    .join('');
-}
-
-function removeUnfencedFullAutoApprovalMarkers(body, foldedTimestamps) {
-  const lines = String(body || '').split(/(\n)/);
-  let fence = null;
-  const markerRe = new RegExp(FULL_AUTO_APPROVED_RE.source, 'gi');
-  return lines
-    .map((line) => {
-      const opener = line.match(/^ {0,3}(`{3,}|~{3,})/);
-      if (!fence && opener) {
-        fence = { char: opener[1][0], length: opener[1].length };
-        return line;
-      }
-      if (fence) {
-        const closer = line.match(/^ {0,3}(`+|~+)[ \t]*$/);
-        if (closer && closer[1][0] === fence.char && closer[1].length >= fence.length) fence = null;
-        return line;
-      }
-      return line.replace(markerRe, (raw) => {
-        const parsed = parseFullAutoApprovedMarker(raw);
-        return parsed && foldedTimestamps.has(parsed.ts) ? '' : raw;
-      });
-    })
-    .join('');
-}
-
-function archiveStaleApprovals(body, ts) {
-  const parsed = parseReviewAuthority(body);
-  const legacyApprovals = parsed.approvals.filter((approval) => approval.legacy);
-  if (legacyApprovals.length > 1) return body;
-
-  const foldedTimestamps = new Set();
-  const approvals = parsed.approvals.map((approval) => {
-    if (!approval.legacy) return approval;
-    const companions = parsed.legacyFullAutoApprovals.filter((item) => item.ts === approval.ts);
-    if (companions.length > 1) return null;
-    if (companions.length === 0) return approval;
-    foldedTimestamps.add(approval.ts);
-    return {
-      ...approval,
-      provenance: 'full-auto',
-      signals: companions[0].signals,
-    };
-  });
-  if (approvals.some((approval) => approval === null)) return body;
-  if (approvals.length === 0) return body;
-  let updated = replaceUnfencedApprovalMarkers(body, approvals, ts);
-  updated = removeUnfencedFullAutoApprovalMarkers(updated, foldedTimestamps);
-  updated = removeFullAutoFootnote(updated);
-  updated = untickLifecycleItem(updated, 'passed-final-review');
-  const invalidatedEpochs = new Set(
-    approvals.filter((approval) => approval.epoch).map((a) => a.epoch)
-  );
-  const latestEpoch = [...parsed.epochs].sort((a, b) => a.visit - b.visit).at(-1)?.epoch;
-  if (approvals.some((approval) => approval.legacy) && latestEpoch)
-    invalidatedEpochs.add(latestEpoch);
-  for (const epoch of invalidatedEpochs) {
-    updated = `${updated.replace(/\s*$/, '')}\n${serializeReviewInvalidation({
-      epoch,
-      ts,
-      reason: 'approval-refreshed',
-    })}\n`;
-  }
-  return updated;
-}
-
 export async function runApprove({ issueNumber, cfg, projectDir, deps = {}, human = false } = {}) {
   if (!issueNumber) throw new Error('approve: issueNumber is required');
   if (!cfg) throw new Error('approve: cfg is required');
@@ -387,11 +212,7 @@ export async function runApprove({ issueNumber, cfg, projectDir, deps = {}, huma
   const fetchProjectValues = deps.fetchProjectValues || defaultProjectValues;
   const promptDrivers = deps.promptDrivers || defaultPromptDrivers;
   const derive = deps.deriveDrivers || deriveDrivers;
-  const lockIssue = deps.withIssueLock || withIssueLock;
-  const stableProjectDir = projectDir || getProjectDir();
-  const govern =
-    deps.withGovernedEffect ||
-    createRuntimeGovernedEffectAdapter({ projectDir: stableProjectDir, config: cfg });
+  const reconcileTiming = deps.reconcileReviewApprovedTiming || reconcileReviewApprovedTiming;
 
   const state = await getBoardState({ issueNumber, projectDir });
   if (state !== 'review') {
@@ -401,286 +222,238 @@ export async function runApprove({ issueNumber, cfg, projectDir, deps = {}, huma
     };
   }
 
-  const initialBody = await fetchIssueBody({ issueNumber, repo: cfg.repo });
-  const initialAuthority = deriveAuthorityForBody(initialBody);
-  if (approvalSatisfiesRequest(initialBody, initialAuthority, human)) {
-    return { status: 'already-approved' };
-  }
-  if (
-    !requiresApprovalRepair(initialAuthority, human) &&
-    !hasCompleteCurrentPassingReview(initialBody, initialAuthority)
-  ) {
-    return incompleteReviewResult(issueNumber, initialBody);
-  }
-
-  return lockIssue({ issue: issueNumber, verb: 'approve', projDir: stableProjectDir }, async () => {
-    let body = await fetchIssueBody({ issueNumber, repo: cfg.repo });
-    let authority = deriveAuthorityForBody(body);
-    if (approvalSatisfiesRequest(body, authority, human)) {
-      return { status: 'already-approved' };
-    }
-    if (
-      !requiresApprovalRepair(authority, human) &&
-      !hasCompleteCurrentPassingReview(body, authority)
-    ) {
-      return incompleteReviewResult(issueNumber, body);
-    }
-    return withVerbMutationScope(
-      {
-        issueId: issueNumber,
-        operation: 'approval-mutation',
-        withGovernedEffect: govern,
-        heartbeat: true,
-      },
-      async (scope) => {
-        // A stale approval must be retained as auditable history and explicitly
-        // invalidated before we consider a replacement. This prevents a stale
-        // lifecycle tick or Full-Auto footnote from being mistaken for current
-        // human authority while the current Review still lacks a passing proof.
-        if (requiresApprovalRepair(authority, human)) {
-          const archiveResult = await scope.effect(() =>
-            mutateBody({
-              issueNumber,
-              repo: cfg.repo,
-              mutate: (base) => {
-                const freshAuthority = deriveAuthorityForBody(base);
-                return shouldArchiveApproval(freshAuthority) ||
-                  shouldReplaceWithHumanApproval(freshAuthority, human)
-                  ? archiveStaleApprovals(base, nowIso())
-                  : base;
-              },
-              allowUnverifiedTicks: true,
-              maxRetries: APPROVAL_STAMP_MAX_RETRIES,
-              operation: 'approval-mutation',
-              withGovernedEffect: scope.continue,
-            })
-          );
-          body = archiveResult.body;
-          authority = deriveAuthorityForBody(body);
-          if (approvalSatisfiesRequest(body, authority, human)) {
-            return { status: 'already-approved' };
-          }
-        }
-        // #881 — the human approval is the Review → Done EXIT condition, offered
-        // only once the Review state's ACTION (the Agent Review Gate) has completed
-        // with `result="pass"`. Refuse while it is incomplete or failing, so a human
-        // is never asked to sign off on a story the agent has not signed off on
-        // (observed on #878, where the gate ran only after the human was asked).
-        if (!hasCompleteCurrentPassingReview(body, authority)) {
-          return incompleteReviewResult(issueNumber, body);
-        }
-        const ts = nowIso();
-        // #979 — env-only Full-Auto detection misclassifies a genuinely
-        // human-approved review whenever `TASK_TRACKER_HUMAN_REVIEWER` is
-        // unset. Two independent signals prove a human already reviewed this
-        // issue regardless of env/tty/CI state: the "Passed final human
-        // review" lifecycle box was already ticked (GitHub-UI approval before
-        // approve ran), or the caller passed `--human` (chat-relayed approval
-        // that never touched the UI). Either short-circuits `detect()` so the
-        // marker/footnote stay non-full-auto.
-        const preTickedByHuman =
-          authority.status !== 'stale' &&
-          lifecycleItemState({
-            body,
-            key: 'passed-final-review',
-          }).alreadyTicked;
-        const humanOverride = preTickedByHuman || Boolean(human);
-        const auto = humanOverride ? { fired: false, signals: '' } : detect();
-
-        // D1 — post `### 📝 Review Notes` comment BEFORE the approval marker so the
-        // delta-comment in `close` can consume it. Human mode prompts stdin; full-
-        // auto mode derives from observable signals. Either may yield zero drivers;
-        // that's fine — the renderer omits the Drivers section when empty.
-        let drivers = [];
-        let notesSource = null;
+  return withIssueLock(
+    { issue: issueNumber, verb: 'approve', projDir: projectDir || getProjectDir() },
+    async () => {
+      const body = await fetchIssueBody({ issueNumber, repo: cfg.repo });
+      const preTickedByHuman = lifecycleItemState({
+        body,
+        key: 'passed-final-review',
+      }).alreadyTicked;
+      const humanOverride = preTickedByHuman || Boolean(human);
+      const auto = humanOverride ? { fired: false, signals: '' } : detect();
+      const authoritySource = (deps.locateAuthoritySource || locateAuthoritySource)({
+        issueBody: body,
+      });
+      if (authoritySource.kind === 'github-records/v1') {
+        let lifecycleEvidence;
         try {
-          if (auto.fired) {
-            const [comments, fields] = await Promise.all([
-              fetchComments({ issueNumber, repo: cfg.repo }),
-              fetchProjectValues({ cfg, issueNumber }),
-            ]);
-            drivers = derive({ body, comments, fields });
-            notesSource = 'auto';
-          } else {
-            drivers = await promptDrivers();
-            notesSource = 'human';
-          }
-          if (drivers.length > 0 || notesSource === 'auto') {
-            const noteBody = buildReviewNotesComment(drivers, { source: notesSource });
-            await scope.effect(() => postComment({ issueNumber, repo: cfg.repo, body: noteBody }));
-          }
-        } catch (err) {
-          if (isGovernedAuthorityError(err)) throw err;
-          process.stderr.write(`⚠ approve: review-notes post failed: ${err.message}\n`);
+          const expectedSha = await (deps.getHeadSha || defaultGetHeadSha)({ projectDir });
+          lifecycleEvidence = await (deps.resolveLifecycleEvidence || resolveLifecycleGateEvidence)(
+            {
+              repository: cfg.repo,
+              issue: Number(issueNumber),
+              issueBody: body,
+              expectedSha,
+              graphql: deps.graphql || defaultLifecycleGraphql,
+              readContractRecord: deps.readContractRecord,
+              deps: deps.listIssueRecords ? { listIssueRecords: deps.listIssueRecords } : undefined,
+            }
+          );
+        } catch (error) {
+          return {
+            status: 'directory-evidence-invalid',
+            reasons: [{ code: String(error?.message || 'lifecycle-gate-source:unknown') }],
+          };
         }
-
-        // #295 — re-derive everything inside the closure on the FRESH base so
-        // a concurrent writer landing between our pre-fetch (`body`) and the
-        // push is preserved. The pre-fetched `body` is only used above for the
-        // gate (hasApprovalMarker / state check / drivers derivation); the
-        // actual write transform reads its own base.
-        let preparedCanStamp = false;
-        let preparedAlreadyApproved = false;
-        const stamp = (base) => {
-          const freshAuthority = deriveAuthorityForBody(base);
-          if (approvalSatisfiesRequest(base, freshAuthority, human)) {
-            preparedAlreadyApproved = true;
-            return base;
-          }
-          preparedCanStamp = hasCompleteCurrentPassingReview(base, freshAuthority);
-          if (!preparedCanStamp) return base;
-          // #480 — single consolidated marker: the full-auto audit props ride on
-          // `aitm-review-approved` itself, replacing the separate hidden
-          // `aitm-full-auto-approved` marker. The visible footnote stays as a
-          // human-readable audit signal.
-          let updated = base;
-          if (
-            shouldArchiveApproval(freshAuthority) ||
-            shouldReplaceWithHumanApproval(freshAuthority, human)
-          ) {
-            updated = archiveStaleApprovals(updated, ts);
-          }
-          updated = freshAuthority.epoch
-            ? insertApprovalMarker(updated, ts, {
-                epoch: freshAuthority.epoch,
-                proofSha: freshAuthority.proof.sha,
-                provenance: auto.fired ? 'full-auto' : 'human',
-                signals: auto.fired ? auto.signals : '',
-              })
-            : updated;
-          if (auto.fired) {
-            updated = insertFullAutoFootnote(updated, { ts, signals: auto.signals });
-          }
-          return tickLifecycleItem(updated, 'passed-final-review');
+        const provenance = auto.fired ? 'full-auto' : 'human';
+        const reasons = [];
+        if (!hasAcceptedReviewEvidence(lifecycleEvidence)) {
+          reasons.push({ code: 'directory-review-evidence-missing' });
+        }
+        if (!hasAcceptedApprovalEvidence(lifecycleEvidence, { provenance })) {
+          reasons.push({ code: `directory-${provenance}-approval-missing` });
+        }
+        if (reasons.length > 0) return { status: 'directory-evidence-invalid', reasons };
+        return { status: 'directory-approved', provenance, lifecycleEvidence };
+      }
+      const approvalState = lifecycleItemState({
+        body,
+        key: 'passed-final-review',
+      });
+      const staleApprovalCarriers =
+        hasApprovalMarker(body) && approvalState.labelFound && !approvalState.alreadyTicked;
+      if (hasApprovalMarker(body) && !staleApprovalCarriers) {
+        await reconcileTiming({
+          issueNumber,
+          repo: cfg.repo,
+          issueBody: body,
+          wordMarker: durableWordMarker(projectDir || getProjectDir()),
+        });
+        return { status: 'already-approved' };
+      }
+      // #881 — the human approval is the Review → Done EXIT condition, offered
+      // only once the Review state's ACTION (the Agent Review Gate) has completed
+      // with `result="pass"`. Refuse while it is incomplete or failing, so a human
+      // is never asked to sign off on a story the agent has not signed off on
+      // (observed on #878, where the gate ran only after the human was asked).
+      if (!isAgentReviewComplete(body)) {
+        const reason = agentReviewIncompleteReason(body);
+        return {
+          status: 'agent-review-incomplete',
+          reason,
+          message:
+            reason === 'review-failed'
+              ? `#${issueNumber} carries an \`aitm-review-failed\` marker — the Agent Review Gate objected and its objections are unresolved. Fix them in place, then re-run \`/task review #${issueNumber}\` before approving.`
+              : `#${issueNumber} has no passing Agent Review evidence — the Review state's action has not completed. Run \`/task review #${issueNumber}\` first; the human approval is the exit condition, not the action.`,
         };
-        // Diagnostic-only: compute against the pre-fetched body to surface the
-        // legacy-DoD warning. This duplicates the early transform but is
-        // observability rather than correctness — the closure above is the
-        // authoritative write.
-        let updated = body;
-        if (shouldArchiveApproval(authority)) updated = archiveStaleApprovals(updated, ts);
-        if (hasCompleteCurrentPassingReview(body, authority)) {
-          updated = insertApprovalMarker(updated, ts, {
-            epoch: authority.epoch,
-            proofSha: authority.proof.sha,
-            provenance: auto.fired ? 'full-auto' : 'human',
-            signals: auto.fired ? auto.signals : '',
-          });
+      }
+      const ts = nowIso();
+      // #979 — env-only Full-Auto detection misclassifies a genuinely
+      // human-approved review whenever `TASK_TRACKER_HUMAN_REVIEWER` is
+      // unset. Two independent signals prove a human already reviewed this
+      // issue regardless of env/tty/CI state: the "Passed final human
+      // review" lifecycle box was already ticked (GitHub-UI approval before
+      // approve ran), or the caller passed `--human` (chat-relayed approval
+      // that never touched the UI). Either short-circuits `detect()` so the
+      // marker/footnote stay non-full-auto.
+      // D1 — post `### 📝 Review Notes` comment BEFORE the approval marker so the
+      // delta-comment in `close` can consume it. Human mode prompts stdin; full-
+      // auto mode derives from observable signals. Either may yield zero drivers;
+      // that's fine — the renderer omits the Drivers section when empty.
+      let drivers = [];
+      let notesSource = null;
+      try {
+        if (auto.fired) {
+          const [comments, fields] = await Promise.all([
+            fetchComments({ issueNumber, repo: cfg.repo }),
+            fetchProjectValues({ cfg, issueNumber }),
+          ]);
+          drivers = derive({ body, comments, fields });
+          notesSource = 'auto';
+        } else {
+          drivers = await promptDrivers();
+          notesSource = 'human';
         }
+        if (drivers.length > 0 || notesSource === 'auto') {
+          const noteBody = buildReviewNotesComment(drivers, { source: notesSource });
+          await postComment({ issueNumber, repo: cfg.repo, body: noteBody });
+        }
+      } catch (err) {
+        process.stderr.write(`⚠ approve: review-notes post failed: ${err.message}\n`);
+      }
+
+      // #295 — re-derive everything inside the closure on the FRESH base so
+      // a concurrent writer landing between our pre-fetch (`body`) and the
+      // push is preserved. The pre-fetched `body` is only used above for the
+      // gate (hasApprovalMarker / state check / drivers derivation); the
+      // actual write transform reads its own base.
+      const stamp = (base) => {
+        const freshApprovalState = lifecycleItemState({
+          body: base,
+          key: 'passed-final-review',
+        });
+        const freshCarriersAreStale =
+          hasApprovalMarker(base) &&
+          freshApprovalState.labelFound &&
+          !freshApprovalState.alreadyTicked;
+        if (hasApprovalMarker(base) && !freshCarriersAreStale) return base;
+        const approvalBase = freshCarriersAreStale ? removeStaleApprovalCarriers(base) : base;
+        // #480 — single consolidated marker: the full-auto audit props ride on
+        // `aitm-review-approved` itself, replacing the separate hidden
+        // `aitm-full-auto-approved` marker. The visible footnote stays as a
+        // human-readable audit signal.
+        let updated = insertApprovalMarker(
+          approvalBase,
+          ts,
+          auto.fired ? { fullAuto: true, signals: auto.signals } : {}
+        );
         if (auto.fired) {
           updated = insertFullAutoFootnote(updated, { ts, signals: auto.signals });
         }
-        const beforeTick = updated;
-        updated = tickLifecycleItem(updated, 'passed-final-review');
-        // #302 — distinguish "label genuinely missing" (warn) from "box already
-        // ticked" (silent happy path). Both produce a no-op write, but only the
-        // former is a signal the operator's DoD has diverged from the template.
-        const state = lifecycleItemState({ body: beforeTick, key: 'passed-final-review' });
-        const optouts = parseLifecycleOptouts(beforeTick);
-        if (!state.labelFound && !optouts.has('passed-final-review')) {
-          process.stderr.write(
-            `approve: lifecycle-tick-noop: 'passed-final-review' label not matched — body may use legacy heading or customized DoD\n`
-          );
-          try {
-            const { buildRow: _br, postTimingEvent: _pe } =
-              await import('../gh-timing-comment.mjs');
-            const { deriveStateMoveDelta: _dsm } = await import('../lib/timing-rows.mjs');
-            const _ts = new Date().toISOString();
-            const _d = _dsm(beforeTick, _ts);
-            await _pe({
-              issueNumber,
-              repo: cfg.repo,
-              timeoutMs: 3000,
-              row: _br({
-                ts: _ts,
-                event: 'lifecycle-warn',
-                activeSec: _d.activeSec,
-                idleSec: _d.idleSec,
-                deltaWords: 0,
-                // #475 AC1 — carried-forward durable marker (lifecycle-noop warning, no active session work)
-                wordMarker: durableWordMarker(getProjectDir()),
-                description: `WARN: lifecycle-tick-noop 'passed-final-review' — customized DoD or legacy heading; stamp <!-- aitm-lifecycle-optout: passed-final-review --> to acknowledge.`,
-              }),
-              operation: 'approval-mutation',
-              withGovernedEffect: scope.continue,
-            });
-          } catch (err) {
-            if (isGovernedAuthorityError(err)) throw err;
-            /* fire-and-forget */
-          }
-        }
-        // #363 — `stamp` ticks the "Passed final human review" lifecycle box.
-        // The truth-bearing proof for that tick is the audit comment (posted
-        // above as Review Notes) plus the `aitm-full-auto-approved` body marker
-        // (Full-Auto) or the `aitm-review-approved` marker (human reviewer) —
-        // not an inline `aitm-verified-at` HTML comment on the lifecycle row.
-        // #362's checkbox-proof gate is designed to catch agent pre-ticks of
-        // AC / Functional DoD boxes, not verb-driven lifecycle ticks. Stamping
-        // an inline proof marker here would also break lifecycle-dod.mjs's
-        // exact-label match. Bypass the gate scoped to this single call site.
-        const writeResult = await scope.effect(() =>
-          mutateBody({
+        return tickLifecycleItem(updated, 'passed-final-review');
+      };
+      // Diagnostic-only: compute against the pre-fetched body to surface the
+      // legacy-DoD warning. This duplicates the early transform but is
+      // observability rather than correctness — the closure above is the
+      // authoritative write.
+      const diagnosticBase = staleApprovalCarriers ? removeStaleApprovalCarriers(body) : body;
+      let updated = insertApprovalMarker(
+        diagnosticBase,
+        ts,
+        auto.fired ? { fullAuto: true, signals: auto.signals } : {}
+      );
+      if (auto.fired) {
+        updated = insertFullAutoFootnote(updated, { ts, signals: auto.signals });
+      }
+      const beforeTick = updated;
+      updated = tickLifecycleItem(updated, 'passed-final-review');
+      // #302 — distinguish "label genuinely missing" (warn) from "box already
+      // ticked" (silent happy path). Both produce a no-op write, but only the
+      // former is a signal the operator's DoD has diverged from the template.
+      const state = lifecycleItemState({ body: beforeTick, key: 'passed-final-review' });
+      const optouts = parseLifecycleOptouts(beforeTick);
+      if (!state.labelFound && !optouts.has('passed-final-review')) {
+        process.stderr.write(
+          `approve: lifecycle-tick-noop: 'passed-final-review' label not matched — body may use legacy heading or customized DoD\n`
+        );
+        try {
+          const { buildRow: _br, postTimingEvent: _pe } = await import('../gh-timing-comment.mjs');
+          const { deriveStateMoveDelta: _dsm } = await import('../lib/timing-rows.mjs');
+          const _ts = new Date().toISOString();
+          const _d = _dsm(beforeTick, _ts);
+          await _pe({
             issueNumber,
             repo: cfg.repo,
-            mutate: stamp,
-            allowUnverifiedTicks: true,
-            maxRetries: APPROVAL_STAMP_MAX_RETRIES,
-            operation: 'approval-mutation',
-            withGovernedEffect: scope.continue,
-          })
-        );
-        // #655 — read-back verification. The write call not throwing is NOT proof
-        // the `aitm-review-approved` marker persisted (the #652 silent-success
-        // failure). Inspect the verified live body the write path already fetched
-        // and refuse to report `approved` unless the marker is actually present.
-        // No extra GitHub round-trip: `writeResult.body` is the post-write verify
-        // fetch (ok path) or the top-of-loop fetch (no-op / idempotent path).
-        const persistedAuthority = deriveAuthorityForBody(writeResult.body);
-        const persistedCurrent =
-          persistedAuthority.status === 'current' &&
-          hasCompleteCurrentPassingReview(writeResult.body, persistedAuthority);
-        if (preparedAlreadyApproved) {
-          if (!persistedCurrent) {
-            throw new Error(
-              `approve: current review authority did not persist for #${issueNumber}`
-            );
-          }
-          return { status: 'already-approved' };
+            timeoutMs: 3000,
+            row: _br({
+              ts: _ts,
+              event: 'lifecycle-warn',
+              activeSec: _d.activeSec,
+              idleSec: _d.idleSec,
+              deltaWords: 0,
+              // #475 AC1 — carried-forward durable marker (lifecycle-noop warning, no active session work)
+              wordMarker: durableWordMarker(getProjectDir()),
+              description: `WARN: lifecycle-tick-noop 'passed-final-review' — customized DoD or legacy heading; stamp <!-- aitm-lifecycle-optout: passed-final-review --> to acknowledge.`,
+            }),
+          });
+        } catch {
+          /* fire-and-forget */
         }
-        if (!preparedCanStamp) {
-          const reason = agentReviewIncompleteReason(writeResult.body);
-          return {
-            status: 'agent-review-incomplete',
-            reason,
-            message: `#${issueNumber} has no current passing Agent Review evidence — run \`/task review #${issueNumber}\` before approving.`,
-          };
-        }
-        assertMarkerPersisted({
-          result: writeResult,
-          predicate: (persistedBody) => {
-            const currentAuthority = deriveAuthorityForBody(persistedBody);
-            return (
-              currentAuthority.status === 'current' &&
-              hasCompleteCurrentPassingReview(persistedBody, currentAuthority)
-            );
-          },
-          marker: 'current aitm-review-approved',
-          issueNumber,
-        });
-        if (!persistedCurrent) {
-          throw new Error(`approve: current review authority did not persist for #${issueNumber}`);
-        }
-        return {
-          status: 'approved',
-          ts,
-          fullAuto: auto.fired,
-          signals: auto.signals,
-          drivers,
-          notesSource,
-        };
       }
-    );
-  });
+      // #363 — `stamp` ticks the "Passed final human review" lifecycle box.
+      // The truth-bearing proof for that tick is the audit comment (posted
+      // above as Review Notes) plus the `aitm-full-auto-approved` body marker
+      // (Full-Auto) or the `aitm-review-approved` marker (human reviewer) —
+      // not an inline `aitm-verified-at` HTML comment on the lifecycle row.
+      // #362's checkbox-proof gate is designed to catch agent pre-ticks of
+      // AC / Functional DoD boxes, not verb-driven lifecycle ticks. Stamping
+      // an inline proof marker here would also break lifecycle-dod.mjs's
+      // exact-label match. Bypass the gate scoped to this single call site.
+      const writeResult = await mutateBody({
+        issueNumber,
+        repo: cfg.repo,
+        mutate: stamp,
+        allowUnverifiedTicks: true,
+      });
+      // #655 — read-back verification. The write call not throwing is NOT proof
+      // the `aitm-review-approved` marker persisted (the #652 silent-success
+      // failure). Inspect the verified live body the write path already fetched
+      // and refuse to report `approved` unless the marker is actually present.
+      // No extra GitHub round-trip: `writeResult.body` is the post-write verify
+      // fetch (ok path) or the top-of-loop fetch (no-op / idempotent path).
+      assertMarkerPersisted({
+        result: writeResult,
+        predicate: hasReviewApprovedMarker,
+        marker: 'aitm-review-approved',
+        issueNumber,
+      });
+      await reconcileTiming({
+        issueNumber,
+        repo: cfg.repo,
+        issueBody: writeResult.body,
+        wordMarker: durableWordMarker(projectDir || getProjectDir()),
+      });
+      return {
+        status: 'approved',
+        ts,
+        fullAuto: auto.fired,
+        signals: auto.signals,
+        drivers,
+        notesSource,
+      };
+    }
+  );
 }
 
 export function parseArgs(rest) {
@@ -719,6 +492,18 @@ export async function verbApprove(rest, cfg, deps = {}) {
     process.exit(1);
   }
   switch (result.status) {
+    case 'directory-approved':
+      process.stdout.write(
+        `#${issueNumber} has accepted ${result.provenance} approval evidence for the current commit. \`/task close #${issueNumber}\` may now proceed.\n`
+      );
+      return;
+    case 'directory-evidence-invalid':
+      process.stderr.write(
+        `⛔ #${issueNumber} directory approval evidence is invalid: ${result.reasons
+          .map((reason) => reason.code)
+          .join(', ')}\n`
+      );
+      process.exit(6);
     case 'approved':
       process.stdout.write(
         `✓ Review approved for #${issueNumber} at ${result.ts}. \`/task close #${issueNumber}\` may now proceed.\n`

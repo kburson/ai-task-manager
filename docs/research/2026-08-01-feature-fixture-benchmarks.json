@@ -1,0 +1,190 @@
+{
+  "schema": 1,
+  "environment": {
+    "node": "v25.6.0",
+    "platform": "darwin",
+    "arch": "arm64",
+    "cpus": 10,
+    "cpuModel": "Apple M1 Max"
+  },
+  "baselineRef": "0373cbd9fd1259d45fd0c38e65a86d73a6307fe7",
+  "samplesPerMode": 5,
+  "runs": [
+    {
+      "name": "runner-composition-1",
+      "candidateRef": "9c82cb12b05f0b960bc563dabe24ecf81a6a4f45",
+      "disposition": "restored",
+      "files": {
+        "baseline": [
+          "scripts/task-tracker/tests/unit/core/run-tests-discovery.test.mjs",
+          "scripts/task-tracker/tests/unit/core/run-tests-lanes.test.mjs",
+          "scripts/task-tracker/tests/unit/core/run-tests-pool.test.mjs",
+          "scripts/task-tracker/tests/unit/core/run-tests-kill-report.test.mjs",
+          "scripts/task-tracker/tests/unit/core/run-tests-timing.test.mjs",
+          "scripts/task-tracker/tests/unit/core/run-tests-ceiling.test.mjs"
+        ],
+        "candidate": [
+          "scripts/task-tracker/tests/unit/core/run-tests-discovery-lanes.test.mjs",
+          "scripts/task-tracker/tests/unit/core/run-tests-process-pool.test.mjs",
+          "scripts/task-tracker/tests/unit/core/run-tests-timing-policy.test.mjs"
+        ]
+      },
+      "measurements": {
+        "baseline": {
+          "coldMs": [1279.06, 1289.73, 1339.04, 1320.43, 1303.34],
+          "warmMs": [1334.78, 1291.28, 1293.7, 1332.69, 1312.2],
+          "medianMs": 1307.77,
+          "p80Ms": 1332.69,
+          "fileCount": 6,
+          "invocationCount": 10,
+          "testFileWorkerProcessCount": 60
+        },
+        "candidate": {
+          "coldMs": [1320.73, 1295.53, 1346.28, 1326.17, 1339.07],
+          "warmMs": [1297.93, 1323.1, 1325.64, 1366.6, 1380.45],
+          "medianMs": 1325.905,
+          "p80Ms": 1346.28,
+          "fileCount": 3,
+          "invocationCount": 10,
+          "testFileWorkerProcessCount": 30
+        }
+      },
+      "comparison": {
+        "thresholdPct": 25,
+        "medianImprovementPct": -1.39,
+        "p80ImprovementPct": -1.02,
+        "passesThreshold": false
+      },
+      "failures": [],
+      "cleanup": { "baseline": true, "candidate": true, "root": true }
+    },
+    {
+      "name": "runner-composition-2-lightweight-skeleton",
+      "candidateRef": "662af1718b10d7a4001cbc5d89f430283757b57a",
+      "disposition": "restored",
+      "files": {
+        "baseline": [
+          "scripts/task-tracker/tests/unit/core/run-tests-discovery.test.mjs",
+          "scripts/task-tracker/tests/unit/core/run-tests-lanes.test.mjs",
+          "scripts/task-tracker/tests/unit/core/run-tests-pool.test.mjs",
+          "scripts/task-tracker/tests/unit/core/run-tests-kill-report.test.mjs",
+          "scripts/task-tracker/tests/unit/core/run-tests-timing.test.mjs",
+          "scripts/task-tracker/tests/unit/core/run-tests-ceiling.test.mjs"
+        ],
+        "candidate": [
+          "scripts/task-tracker/tests/unit/core/run-tests-discovery-lanes.test.mjs",
+          "scripts/task-tracker/tests/unit/core/run-tests-process-pool.test.mjs",
+          "scripts/task-tracker/tests/unit/core/run-tests-timing-policy.test.mjs"
+        ]
+      },
+      "measurements": {
+        "baseline": {
+          "coldMs": [1377.95, 1306.79, 1283.96, 1272.95, 1337.87],
+          "warmMs": [1479.53, 1311.45, 1328.46, 1310.92, 1331.48],
+          "medianMs": 1319.955,
+          "p80Ms": 1337.87,
+          "fileCount": 6,
+          "invocationCount": 10,
+          "testFileWorkerProcessCount": 60
+        },
+        "candidate": {
+          "coldMs": [1265.75, 1261, 1263.19, 1303.62, 1288.51],
+          "warmMs": [1289.43, 1265.83, 1272.32, 1296.63, 1318.23],
+          "medianMs": 1280.415,
+          "p80Ms": 1296.63,
+          "fileCount": 3,
+          "invocationCount": 10,
+          "testFileWorkerProcessCount": 30
+        }
+      },
+      "comparison": {
+        "thresholdPct": 25,
+        "medianImprovementPct": 3,
+        "p80ImprovementPct": 3.08,
+        "passesThreshold": false
+      },
+      "failures": [],
+      "cleanup": { "baseline": true, "candidate": true, "root": true }
+    },
+    {
+      "name": "chore-mode-retained",
+      "candidateRef": "30fa7fd0befa03430cc056cbcc32a825b28e42cb",
+      "disposition": "retained",
+      "files": {
+        "baseline": [
+          "scripts/task-tracker/tests/unit/lib/chore-mode-scope.test.mjs",
+          "scripts/task-tracker/tests/unit/lib/chore-mode-state.test.mjs",
+          "scripts/task-tracker/tests/unit/core/chore-mode-commit-gate.test.mjs",
+          "scripts/task-tracker/tests/unit/lib/chore-mode-verb.test.mjs"
+        ],
+        "candidate": [
+          "scripts/task-tracker/tests/unit/lib/chore-mode-contract.test.mjs",
+          "scripts/task-tracker/tests/unit/lib/chore-mode-verb.test.mjs"
+        ]
+      },
+      "measurements": {
+        "baseline": {
+          "coldMs": [411.36, 411.41, 456.33, 416.66, 448.85],
+          "warmMs": [415.53, 477.57, 419.25, 584.12, 409.93],
+          "medianMs": 417.955,
+          "p80Ms": 456.33,
+          "fileCount": 4,
+          "invocationCount": 10,
+          "testFileWorkerProcessCount": 40
+        },
+        "candidate": {
+          "coldMs": [602.59, 197.3, 195.01, 178.41, 171.34],
+          "warmMs": [174.1, 166.18, 312.01, 190.77, 347.33],
+          "medianMs": 192.89,
+          "p80Ms": 312.01,
+          "fileCount": 2,
+          "invocationCount": 10,
+          "testFileWorkerProcessCount": 20
+        }
+      },
+      "comparison": {
+        "thresholdPct": 25,
+        "medianImprovementPct": 53.85,
+        "p80ImprovementPct": 31.63,
+        "passesThreshold": true
+      },
+      "failures": [],
+      "cleanup": { "baseline": true, "candidate": true, "root": true }
+    }
+  ],
+  "fullLane": {
+    "lane": "unit",
+    "mode": "alternating sequential refs after a rejected simultaneous-load trial",
+    "baselineRef": "0373cbd9fd1259d45fd0c38e65a86d73a6307fe7",
+    "candidateRef": "ef0d017f3aeccf61127f30ba1ab0d758d76b2364",
+    "sampleCount": 3,
+    "baseline": {
+      "externalWallMs": [437790, 340340, 182140],
+      "medianMs": 340340,
+      "p80Ms": 437790,
+      "artifactSchema": 1,
+      "summedFileWallMs": [2330849.8, 1849399.5, 871081.4]
+    },
+    "candidate": {
+      "externalWallMs": [347540, 346510, 186650],
+      "actualRunnerMs": [347102.4, 346184.7, 186413.5],
+      "medianActualRunnerMs": 346184.7,
+      "p80ActualRunnerMs": 347102.4,
+      "artifactSchema": 2,
+      "poolMs": [192274.5, 210350.6, 97530.1],
+      "serialMs": [154827.9, 135834.1, 88883.4],
+      "summedFileWallMs": [1826768.4, 1964501.9, 900995]
+    },
+    "comparison": {
+      "medianImprovementPct": -1.72,
+      "p80ImprovementPct": 20.71,
+      "materialRegressionThresholdPct": 5,
+      "p80Improved": true,
+      "materialMedianRegression": false
+    },
+    "rejectedTrial": {
+      "reason": "simultaneous refs over-contended the 10-core host; sample 2 exceeded 12 minutes",
+      "acceptedAsP80Evidence": false
+    }
+  }
+}

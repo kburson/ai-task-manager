@@ -8,7 +8,7 @@
 // brainstorm BEFORE any deep-dive/refine step, to call finalizeDiscussion on
 // resolution, and documenting the 💬/✅ chat-delimiter convention.
 //
-// The banner emit lives in the governed bind orchestration, and
+// The banner emit lives in verbSwitch (side-effecting, gh/state-backed), and
 // the bind directive lives in authored docs; both are asserted here against the
 // shipped sources so AC1 has a real automated check rather than a manual one.
 
@@ -20,25 +20,25 @@ import { fileURLToPath } from 'node:url';
 const __dirname = path.dirname(fileURLToPath(import.meta.url)) + '/..';
 const repoRoot = path.resolve(__dirname, '..', '..', '..', '..');
 
-// (a) governed bind wiring: #486 — bind reconciles (converge body + sync label) via
+// (a) switch.mjs wiring: #486 — bind reconciles (converge body + sync label) via
 // reconcileDiscuss, then gates the banner on the returned `pending` state. #495 —
 // the banner text is produced by the shared `formatDiscussStartBanner` formatter
 // (no inline string), so assert the CALL sits inside the `if (pending)` guard.
 const switchSrc = readFileSync(
-  path.join(repoRoot, 'scripts/task-tracker/lib/work-lease/bind-orchestration.mjs'),
+  path.join(repoRoot, 'scripts/task-tracker/verbs/switch.mjs'),
   'utf8'
 );
 assert.ok(
   /reconcileDiscuss/.test(switchSrc),
-  'governed bind orchestration must reconcile discuss state via reconcileDiscuss'
+  'switch.mjs must reconcile discuss state at bind via reconcileDiscuss'
 );
 assert.ok(
   /formatDiscussStartBanner\(target\)/.test(switchSrc),
-  'governed bind orchestration must emit the shared formatDiscussStartBanner(target)'
+  'switch.mjs must emit the start banner via the shared formatDiscussStartBanner(target)'
 );
 assert.ok(
   !/DISCUSS REQUESTED/.test(switchSrc),
-  'governed bind orchestration must not carry the old plain `DISCUSS REQUESTED` text'
+  'switch.mjs must no longer carry the old plain `DISCUSS REQUESTED` text'
 );
 const gateIdx = switchSrc.indexOf('if (pending)');
 const callIdx = switchSrc.indexOf('formatDiscussStartBanner(target)');

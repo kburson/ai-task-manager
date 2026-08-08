@@ -4,6 +4,7 @@ SOLO issue body template (standalone work item, no epic parent).
 Canonical heading order (the parity test enforces this):
   ## User Story
   ## Scope
+  ## Story Origin
   ## Plan Metadata
   ## Pickup Directive             (static; sits under Plan Metadata, #700)
   ## Acceptance Criteria          (must use `- [ ]` checkboxes)
@@ -14,7 +15,8 @@ Placeholders (substituted by preflight-issue.mjs --shape solo):
 {{title}} Issue title (verbatim)
 {{scope}} Scope text from the spec (verbatim)
 {{acceptance_criteria}} AC checkboxes, one per line, `- [ ] <text>`
-{{plan_metadata}} Plan Metadata block (Size, Estimate, Priority, Sequence)
+{{story_origin}} Story Origin block (kind, provenance, relationships, size guess)
+{{plan_metadata}} Optional Plan Metadata block (Size, Estimate, Wave, Dependencies)
 
 Stub policy — DO NOT include implementation plan, task breakdown, code snippets,
 file maps, or step-by-step instructions. The deep-dive happens at pickup time
@@ -30,6 +32,10 @@ So that [why they want to accomplish that thing]
 ## Scope
 
 {{scope}}
+
+## Story Origin
+
+{{story_origin}}
 
 ## Plan Metadata
 

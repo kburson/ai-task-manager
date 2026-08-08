@@ -25,20 +25,9 @@ import { runApprove } from '../../../../verbs/approve.mjs';
 // real scratch dir rather than a path that cannot be created.
 const PROJECT_DIR = mkdtempSync(path.join(projectScratchDir('test'), 'aitm-approve-881-'));
 
-const REVIEW_EPOCH = 'review:1:2026-07-18T00:00:00.000Z';
-const VERIFIED_SHA = 'abc1234deadbeef';
-const UNTICKED = [
-  '<!-- aitm-entered-review ts="2026-07-18T00:00:00.000Z" -->',
-  `<!-- aitm-dod-verified sha="${VERIFIED_SHA}" ts="2026-07-18T00:00:00.000Z" -->`,
-  '## Definition of Done',
-  '',
-  '- [ ] Agent Review Passed',
-  '',
-].join('\n');
+const UNTICKED = ['## Definition of Done', '', '- [ ] Agent Review Passed', ''].join('\n');
 
 const PASSED = stampAgentReviewPassed(UNTICKED, {
-  epoch: REVIEW_EPOCH,
-  verifiedSha: VERIFIED_SHA,
   ts: '2026-07-18T00:00:00.000Z',
   validators: ['body-sections', 'required-comments'],
 });
@@ -53,20 +42,6 @@ test('a body with no agent-review evidence is incomplete', () => {
 test('a passing gate stamp completes the state action', () => {
   assert.equal(isAgentReviewComplete(PASSED), true);
   assert.equal(agentReviewIncompleteReason(PASSED), null);
-});
-
-test('a Review entry without persisted Test evidence cannot emit passing Agent Review authority', () => {
-  const missingTestEvidence = UNTICKED.replace(/^<!-- aitm-dod-verified.*-->\n/m, '');
-  const stamped = stampAgentReviewPassed(missingTestEvidence, {
-    epoch: REVIEW_EPOCH,
-    ts: '2026-07-18T00:00:00.000Z',
-    validators: ['body-sections'],
-  });
-
-  assert.doesNotMatch(stamped, /gate="agent-review"[^>]*result="pass"/);
-  assert.doesNotMatch(stamped, /aitm-agent-review-proof/);
-  assert.equal(isAgentReviewComplete(stamped), false);
-  assert.equal(agentReviewIncompleteReason(stamped), 'not-run');
 });
 
 test('a hand-ticked box with no run evidence is NOT complete', () => {
@@ -108,7 +83,7 @@ test('empty and non-string bodies are incomplete, not crashes', () => {
 // ── the verb ────────────────────────────────────────────────────────────────
 
 function approveWith(body, extra = {}) {
-  const calls = { mutated: 0, commented: 0, locks: 0, authority: 0 };
+  const calls = { mutated: 0, commented: 0 };
   let current = body;
   return {
     calls,
@@ -137,14 +112,10 @@ function approveWith(body, extra = {}) {
           deriveDrivers: () => [],
           detectFullAuto: () => ({ fired: true, signals: 'test' }),
           nowIso: () => '2026-07-18T02:00:00Z',
-          withIssueLock: async (_options, callback) => {
-            calls.locks += 1;
-            return callback();
-          },
-          withGovernedEffect: async (_options, callback) => {
-            calls.authority += 1;
-            return callback({ reverify: async () => {} });
-          },
+          reconcileReviewApprovedTiming: async () => ({
+            status: 'posted',
+            ts: '2026-07-18T02:00:00Z',
+          }),
           ...extra,
         },
       }),
@@ -159,8 +130,6 @@ test('approve refuses when the gate has not run, and writes nothing', async () =
   assert.match(res.message, /Run `\/task review #881` first/);
   assert.equal(calls.mutated, 0, 'no approval marker may be stamped');
   assert.equal(calls.commented, 0, 'no Review Notes may be posted');
-  assert.equal(calls.locks, 0, 'pure incomplete refusal must not acquire the issue lock');
-  assert.equal(calls.authority, 0, 'pure incomplete refusal must not open lease authority');
 });
 
 test('approve refuses while an objection is unresolved', async () => {
@@ -173,8 +142,6 @@ test('approve refuses while an objection is unresolved', async () => {
   assert.equal(res.reason, 'review-failed');
   assert.match(res.message, /aitm-review-failed/);
   assert.equal(calls.mutated, 0);
-  assert.equal(calls.locks, 0, 'failed review refusal must not acquire the issue lock');
-  assert.equal(calls.authority, 0, 'failed review refusal must not open lease authority');
 });
 
 test('approve proceeds once the state action has passed', async () => {

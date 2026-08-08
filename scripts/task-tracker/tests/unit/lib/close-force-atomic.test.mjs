@@ -108,9 +108,9 @@ test('AC3: the forced board move runs BEFORE the primary gh issue close', () => 
   );
 });
 
-test('AC3: a failed forced move returns an exitCode 1 outcome without closing', () => {
-  // The refusal must return a non-zero structured outcome before the primary
-  // `gh issue close` runs, so authority can unwind before CLI finalization.
+test('AC3: a failed forced move refuses (exitCode 1 + return) without closing', () => {
+  // The refusal must set a non-zero exit and return out of verbClose before the
+  // primary `gh issue close` runs, so the issue is never closed-but-not-Done.
   const block = CLOSE_SRC.slice(
     CLOSE_SRC.indexOf('if (force && !SKIP_NETWORK && closeIssueNum) {'),
     CLOSE_SRC.indexOf('#425 — explicitly close the primary issue')
@@ -119,11 +119,8 @@ test('AC3: a failed forced move returns an exitCode 1 outcome without closing', 
     /decideBoardMoveFailure\(/.test(block),
     'force block must reuse decideBoardMoveFailure'
   );
-  assert.match(
-    block,
-    /return closeOutcome\(\{\s*status:\s*'forced-board-move-failed',\s*exitCode:\s*1\s*\}\)/s,
-    'force block must return an exitCode 1 outcome and skip gh issue close'
-  );
+  assert.ok(/process\.exitCode = 1;/.test(block), 'force block must set exitCode 1 on refusal');
+  assert.ok(/return;/.test(block), 'force block must return (skip gh issue close) on refusal');
 });
 
 console.log('close-force-atomic.test.mjs — all assertions passed');

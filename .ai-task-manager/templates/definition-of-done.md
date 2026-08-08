@@ -7,6 +7,9 @@ its marker; run `/task dod-stamp <key>` to produce one. The two derived keys
 (`acs`, `checkboxes`) are auto-stamped by `/task close` from the body itself.
 See `skill/shared/rules/functional-dod.md` for the full contract.
 
+Lifecycle items are verified during Review. Housekeeping items are finalized
+during Close; their separate headings make the owning workflow phase explicit.
+
 Kind-aware items (#681): append a `dod:kinds` HTML-comment annotation to scope
 an item to a set of issue kinds. `exclude="spike,research"` renders the item for
 every kind EXCEPT those listed; `include="code"` renders it only for the listed
@@ -35,9 +38,12 @@ declares, the diff decides."
 - [ ] Acceptance criteria met (including additions from deep dive) <!-- dod:functional:acs -->
 - [ ] Issue body checkboxes ticked <!-- dod:functional:checkboxes -->
 
-### Lifecycle (auto-ticked at Review/Close)
+### Lifecycle (verified at Review)
 
 - [ ] Agent Review Passed
 - [ ] Final Review Passed
+
+### Housekeeping (verified at Close)
+
 - [ ] Story closed and moved to Done
 - [ ] Timing data flushed to issue

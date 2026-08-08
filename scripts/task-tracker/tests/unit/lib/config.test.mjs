@@ -153,29 +153,21 @@ assert.equal(
   'configured trunkRef must survive loadConfig (not be dropped by the allow-list)'
 );
 
-// Test 19 (#1049): ledger identity and provider config remain distinct from GitHub projectId.
-writeFileSync(
-  projectPath,
-  JSON.stringify({
-    projectId: 'PVT_GITHUB',
-    ledgerProjectId: 'ledger-uuid',
-    workLease: {
-      authority: 'remote',
-      endpoint: 'https://ledger.example.test',
-      projectId: 'ledger-uuid',
-      tokenEnv: 'AITM_TEST_TOKEN',
-    },
-  })
-);
+// Test 19 (#1091): governed estimation rubric issue survives load and rejects negatives/fractions
+assert.equal(DEFAULTS.estimationRubricIssue, 0, 'estimation rubric is unconfigured by default');
+setConfigValue('estimationRubricIssue', '1091', { projectPath, userPath });
 cfg = loadConfig({ projectPath, userPath });
-assert.equal(cfg.projectId, 'PVT_GITHUB');
-assert.equal(cfg.ledgerProjectId, 'ledger-uuid');
-assert.deepEqual(cfg.workLease, {
-  authority: 'remote',
-  endpoint: 'https://ledger.example.test',
-  projectId: 'ledger-uuid',
-  tokenEnv: 'AITM_TEST_TOKEN',
-});
+assert.equal(cfg.estimationRubricIssue, 1091);
+setConfigValue('estimationRubricIssue', '0', { projectPath, userPath });
+assert.equal(loadConfig({ projectPath, userPath }).estimationRubricIssue, 0);
+assert.throws(
+  () => setConfigValue('estimationRubricIssue', '-1', { projectPath, userPath }),
+  /zero or a positive integer/i
+);
+assert.throws(
+  () => setConfigValue('estimationRubricIssue', '1.5', { projectPath, userPath }),
+  /zero or a positive integer/i
+);
 
 rmSync(tmp, { recursive: true });
 console.log('config.test.mjs: all passed');

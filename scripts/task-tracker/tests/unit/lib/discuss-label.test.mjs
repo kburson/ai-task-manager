@@ -7,7 +7,6 @@ import {
   syncDiscussLabel,
   reconcileDiscuss,
 } from '../../../lib/discuss-label.mjs';
-import { governedEffectDeps } from '../../helpers/governed-effect.mjs';
 import { hasDiscussMarker, hasDiscussRequest } from '../../../lib/discuss-marker.mjs';
 
 // --- getDiscussLabel ---------------------------------------------------------
@@ -168,13 +167,7 @@ test('reconcileDiscuss: token-bearing body → marker added, token stripped, lab
     issueNumber: 486,
     repo: 'o/r',
     cfg: { discussLabel: 'Discuss' },
-    deps: {
-      ...governedEffectDeps,
-      fetchBody: io.fetchBody,
-      pushBody: io.pushBody,
-      pexec,
-      ts: 'T',
-    },
+    deps: { fetchBody: io.fetchBody, pushBody: io.pushBody, pexec, ts: 'T' },
   });
   assert.equal(res.pending, true);
   assert.ok(hasDiscussRequest(io.state.body), 'request marker stamped');
@@ -194,13 +187,7 @@ test('reconcileDiscuss: already-discussed body → unchanged, label removed', as
     issueNumber: 486,
     repo: 'o/r',
     cfg: { discussLabel: 'Discuss' },
-    deps: {
-      ...governedEffectDeps,
-      fetchBody: io.fetchBody,
-      pushBody: io.pushBody,
-      pexec,
-      ts: 'T',
-    },
+    deps: { fetchBody: io.fetchBody, pushBody: io.pushBody, pexec, ts: 'T' },
   });
   assert.equal(res.pending, false);
   assert.equal(labelCalls[0][5], '--remove-label', 'label removed when not pending');

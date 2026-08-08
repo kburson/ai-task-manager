@@ -11,8 +11,9 @@ export const codexAdapter = {
   stateDir: '.tmp/aitm/app/codex',
   transcriptLocator: '.codex/sessions',
   transcriptLayout: 'date-bucketed',
-  sessionIdEnvKeys: ['CODEX_SESSION_ID'],
-  detectionEnvKeys: ['CODEX_SESSION_ID', 'CODEX_HOME'],
+  transcriptSchema: 'codex-rollout-v1',
+  sessionIdEnvKeys: ['CODEX_THREAD_ID', 'CODEX_SESSION_ID'],
+  detectionEnvKeys: ['CODEX_THREAD_ID', 'CODEX_SESSION_ID', 'CODEX_HOME'],
   hookCapability: true,
   skillAdapterPath: 'skill/adapters/codex/SKILL.md',
 };

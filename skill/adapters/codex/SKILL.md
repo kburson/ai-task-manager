@@ -52,7 +52,7 @@ restate their prose here. Each rule file carries an `<!-- aitm-rule-id: … -->`
 anchor so a reviewer can name the single authoritative source:
 
 - **Creating issues** (`issue-create`) → `rules/create-issue.md`.
-  The shape menu (`stub|epic|sub-issue|solo`), the required `./.tmp/plan/`
+  The shape menu (`stub|epic|sub-issue|solo|defect`), the required `./.tmp/plan/`
   fragments, the deterministic refusal contracts, binding each Acceptance
   Criterion to an `aitm-verified cmd="…"` marker under `### Verification Commands`, and
   the never-promote-untracked-work rule all live there. Loads JIT on `/task new`.

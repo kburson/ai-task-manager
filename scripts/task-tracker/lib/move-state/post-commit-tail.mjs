@@ -33,7 +33,6 @@ import {
   endTaskTracking,
 } from './cache-unpark.mjs';
 import { selectTailSteps } from './tail-profiles.mjs';
-import { isGovernedAuthorityError } from '../work-lease/governed-effect.mjs';
 
 // The canonical post-commit tail, in the exact order the pre-#714 mutation
 // block invoked it. Each entry is `{ name, scope, fn }` where `fn(ctx)` is the
@@ -72,10 +71,8 @@ export async function runPostCommitTail(ctx, steps = DEFAULT_TAIL_STEPS) {
       // Support both async and sync step fns (syncTrackerState / endTaskTracking
       // are synchronous in the original block). `await` on a non-promise is a
       // no-op, so a single path handles both.
-      await ctx.reverifyGovernedEffect?.();
       await step.fn(ctx);
     } catch (err) {
-      if (isGovernedAuthorityError(err)) throw err;
       failures.push({ name: step.name, error: err });
       // #716 — a STRUCTURED diagnostic (step name + child exit code, benign
       // audit lines filtered out, explicit no-detail fallback) rather than an

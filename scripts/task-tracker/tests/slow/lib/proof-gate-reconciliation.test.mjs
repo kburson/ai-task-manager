@@ -32,7 +32,7 @@ import { fileURLToPath } from 'node:url';
 
 const pexec = promisify(execFile);
 const __dir = path.dirname(fileURLToPath(import.meta.url)) + '/..';
-const CLI = path.resolve(__dir, '..', 'helpers', 'task-tracker-cli.mjs');
+const CLI = path.resolve(__dir, '..', '..', 'task-tracker.mjs');
 
 const AC_LABEL_VISIBLE = 'reconciled gate ticks a stamped verifier line';
 const AC_LINE_VERIFY = '<!-- aitm-verified cmd="`npm test`" -->';

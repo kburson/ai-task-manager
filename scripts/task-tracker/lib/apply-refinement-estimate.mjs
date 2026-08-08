@@ -18,7 +18,7 @@ import { projectValuesForIssue } from '../../gh/lib/github-projects.mjs';
 import { loadProjectFieldDefs } from '../project-fields.mjs';
 import { GH_API_TIMEOUT_MS } from './process-timeouts.mjs';
 import { mutateIssueBody } from './issue-body-mutate.mjs';
-import { isGovernedAuthorityError } from './work-lease/governed-effect.mjs';
+import { ceilEstimateHours } from './estimation/estimate-granularity.mjs';
 
 const pexec = promisify(execFile);
 
@@ -62,6 +62,7 @@ export function buildRefinementCommentBody({ issueNumber, size, estimate, priori
   // canonical shape. Legacy markers without that field have it synthesized by
   // `parseRationaleMarker`, so this read is uniform.
   const reasonText = rationale.rationale;
+  const publishedEstimate = ceilEstimateHours(Number(estimate));
   return [
     `<!-- aitm-refined-estimate: ${issueNumber} -->`,
     REFINEMENT_HEADER,
@@ -71,22 +72,21 @@ export function buildRefinementCommentBody({ issueNumber, size, estimate, priori
     '| Field | Value | Rationale |',
     '|---|---|---|',
     `| Size | ${size} | ${reasonText} |`,
-    `| Estimate | ${estimate}h | ${reasonText} |`,
+    `| Estimate | ${publishedEstimate}h | ${reasonText} |`,
     `| Priority | ${priority} | ${reasonText} |`,
     '',
     'Provisional — Plan will re-evaluate and post a `### 🔁 Plan re-estimate` comment if the bucket shifts.',
   ].join('\n');
 }
 
-async function defaultPostComment({ issueNumber, repo, body, exec = pexec, env }) {
-  await exec('gh', ['issue', 'comment', String(issueNumber), '-R', repo, '--body', body], {
+async function defaultPostComment({ issueNumber, repo, body }) {
+  await pexec('gh', ['issue', 'comment', String(issueNumber), '-R', repo, '--body', body], {
     timeout: GH_API_TIMEOUT_MS,
-    env,
   });
 }
 
-async function defaultListCommentBodies({ issueNumber, repo, exec = pexec, env }) {
-  const { stdout } = await exec(
+async function defaultListCommentBodies({ issueNumber, repo }) {
+  const { stdout } = await pexec(
     'gh',
     [
       'issue',
@@ -99,18 +99,13 @@ async function defaultListCommentBodies({ issueNumber, repo, exec = pexec, env }
       '--jq',
       '.comments[].body',
     ],
-    { timeout: GH_API_TIMEOUT_MS, env }
+    { timeout: GH_API_TIMEOUT_MS }
   );
   return String(stdout || '').split('\n');
 }
 
-async function defaultMutateIssueBody({ issueNumber, repo, mutate, withGovernedEffect, env }) {
-  await mutateIssueBody({
-    issueNumber,
-    repo,
-    mutate,
-    deps: { env, withGovernedEffect },
-  });
+async function defaultMutateIssueBody({ issueNumber, repo, mutate }) {
+  await mutateIssueBody({ issueNumber, repo, mutate, deps: { pexec } });
 }
 
 // On Deck → Refine gate (#133, relocated from Backlog → Refine in #433):
@@ -243,25 +238,9 @@ export async function applyRefinementEstimate({ cfg, issueNumber, plan, deps = {
   const postComment = deps.postComment || defaultPostComment;
   const listCommentBodies = deps.listCommentBodies || defaultListCommentBodies;
   const mutateBody = deps.mutateIssueBody || defaultMutateIssueBody;
-  const governWrite = (callback) =>
-    typeof deps.withGovernedEffect === 'function'
-      ? deps.withGovernedEffect(
-          {
-            issueId: String(issueNumber),
-            operation: 'evidence-mutation',
-            heartbeat: true,
-          },
-          callback
-        )
-      : callback();
 
   try {
-    const bodies = await listCommentBodies({
-      issueNumber,
-      repo: cfg.repo,
-      exec: deps.pexec,
-      env: deps.env,
-    });
+    const bodies = await listCommentBodies({ issueNumber, repo: cfg.repo });
     const hit = bodies.some((b) => {
       const m = String(b).match(COMMENT_MARKER_RE);
       return m && Number(m[1]) === Number(issueNumber);
@@ -269,24 +248,14 @@ export async function applyRefinementEstimate({ cfg, issueNumber, plan, deps = {
     if (hit) {
       return { status: 'duplicate' };
     }
-  } catch (error) {
-    if (isGovernedAuthorityError(error)) throw error;
+  } catch {
     // Fall through — if we can't list, attempt the post; duplicate risk is
     // limited because re-runs are rare and the marker is human-recoverable.
   }
 
   try {
-    await governWrite(() =>
-      postComment({
-        issueNumber,
-        repo: cfg.repo,
-        body: plan.commentBody,
-        exec: deps.pexec,
-        env: deps.env,
-      })
-    );
+    await postComment({ issueNumber, repo: cfg.repo, body: plan.commentBody });
   } catch (err) {
-    if (isGovernedAuthorityError(err)) throw err;
     return { status: 'post-failed', error: err.message };
   }
 
@@ -297,17 +266,12 @@ export async function applyRefinementEstimate({ cfg, issueNumber, plan, deps = {
   // preserves it. Idempotent: if the rationale marker isn't present, the
   // mutate returns base unchanged and mutateIssueBody no-ops.
   try {
-    await governWrite(() =>
-      mutateBody({
-        issueNumber,
-        repo: cfg.repo,
-        mutate: (base) => stripRationaleMarker(base),
-        withGovernedEffect: deps.withGovernedEffect,
-        env: deps.env,
-      })
-    );
-  } catch (error) {
-    if (isGovernedAuthorityError(error)) throw error;
+    await mutateBody({
+      issueNumber,
+      repo: cfg.repo,
+      mutate: (base) => stripRationaleMarker(base),
+    });
+  } catch {
     // Best-effort — comment is already on the issue.
   }
 

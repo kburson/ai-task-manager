@@ -13,6 +13,7 @@ import {
   buildEpicDerivedTrail,
   epicTrailLogArgs,
   groupCommitsByChild,
+  parseEpicTrailIssueIds,
   parseEpicTrailLog,
 } from '../../../lib/epic-derived-commit-trail.mjs';
 import { TRAIL_HEADING, hasCanonicalCommitTrace, parseMarker } from '../../../lib/commit-trail.mjs';
@@ -74,6 +75,54 @@ test('parseEpicTrailLog reads the separated log format and skips blank lines', (
     },
     { sha: 'bbbbbb2222222222', subject: '[#885] fix: b', author: 'kb', ts: '2026-07-19T11:00:00Z' },
   ]);
+});
+
+// #1177 — historical #1067 children used the retired trailing token convention.
+test('epic trail reads canonical leading attribution and exact historical trailing attribution', () => {
+  assert.deepEqual(parseEpicTrailIssueIds('[#1177] fix(epic): canonical subject'), [1177]);
+  assert.deepEqual(
+    parseEpicTrailIssueIds('feat(github-records): add authority locator [#1068]'),
+    [1068]
+  );
+});
+
+test('canonical leading attribution wins over a trailing token', () => {
+  assert.deepEqual(
+    parseEpicTrailIssueIds('[#1177] fix(epic): do not adopt trailing identity [#1068]'),
+    [1177]
+  );
+});
+
+test('epic compatibility ignores incidental, malformed, and non-terminal references', () => {
+  assert.deepEqual(parseEpicTrailIssueIds('fix(epic): mention [#1068] in prose'), []);
+  assert.deepEqual(parseEpicTrailIssueIds('fix(epic): malformed [#abc]'), []);
+  assert.deepEqual(parseEpicTrailIssueIds('fix(epic): malformed [#1068'), []);
+  assert.deepEqual(parseEpicTrailIssueIds('fix(epic): doubled [#1068] [#1069]'), []);
+});
+
+test('groups #1067 historical trailing subjects without widening reachability', () => {
+  const groups = groupCommitsByChild({
+    children: [
+      { number: 1068, title: 'Authority locator' },
+      { number: 1088, title: 'Final integration' },
+    ],
+    commits: [
+      {
+        sha: 'legacy1068',
+        subject: 'feat(github-records): add authority locator [#1068]',
+        author: 'kb',
+        ts: '2026-08-01T06:51:32Z',
+      },
+    ],
+  });
+
+  assert.deepEqual(
+    groups.map((group) => [group.number, group.commits.map((commit) => commit.sha)]),
+    [
+      [1068, ['legacy1068']],
+      [1088, []],
+    ]
+  );
 });
 
 // AC 1 — every child's commits appear, grouped under that child.

@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// @story #460 #833
+// @story #460 #833 #1140
 // Self-bind no-op — issue #833 (supersedes the #460 self-bind-resume behavior).
 //
 // #460 originally made a re-bind to the already-active issue (/task #N while on
@@ -14,21 +14,23 @@
 //      legitimate resume-after-pause path (which is NOT a self-bind).
 //   2. `buildRow` with event `switch-out` + a DIFFERENT target still references
 //      the target ref (cross-issue switch is unaffected).
-//   3. governed bind orchestration contains the #833 self-bind no-op guard with
-//      an early `return` before any timing emission.
-//   4. governed bind orchestration no longer conditions emission on `isSelfBind` — the dead
+//   3. switch.mjs contains the #833 self-bind no-op guard (`s.active === target`
+//      && not paused) with an early `return` before any timing emission.
+//   4. switch.mjs no longer conditions emission on `isSelfBind` — the dead
 //      self-bind branch was removed once the guard made it unreachable.
 import { strict as assert } from 'node:assert';
 import { execFileSync } from 'node:child_process';
-import { readFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import test from 'node:test';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { buildRow } from '../../../gh-timing-comment.mjs';
+import { mkdtempProjectIsolated } from '../../../lib/scratch-dir.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url)) + '/..';
 const repoRoot = path.resolve(here, '..', '../../..');
 const switchSrc = readFileSync(
-  path.join(repoRoot, 'scripts/task-tracker/lib/work-lease/bind-orchestration.mjs'),
+  path.join(repoRoot, 'scripts/task-tracker/verbs/switch.mjs'),
   'utf8'
 );
 
@@ -64,23 +66,19 @@ assert.match(
 );
 assert.match(crossRow, /switch-out → task #999/, 'cross-issue row must reference the target');
 
-// ---- 3. governed bind carries the #833 self-bind no-op guard ----------------
+// ---- 3. switch.mjs carries the #833 self-bind no-op guard -------------------
 // The guard short-circuits a re-bind to the already-active, never-paused issue
 // with an early `return` before any flush/bind emission.
 assert.match(
   switchSrc,
-  /const selfHeldLease =[\s\S]{0,160}state\.active === target[\s\S]{0,100}!session\?\.workLeaseIntent/,
-  'governed bind must identify a held, active, intent-free self-bind (#833)'
+  /s\.active === target && !s\.paused/,
+  'switch.mjs must guard self-bind with `s.active === target && !s.paused` (#833)'
 );
 // The guard body must return early (no-op) — locate a `return;` after the guard.
-const guardIdx = switchSrc.indexOf('const selfHeldLease =');
+const guardIdx = switchSrc.indexOf('s.active === target && !s.paused');
 assert.ok(guardIdx > 0, 'self-bind guard condition must be present');
-const afterGuard = switchSrc.slice(guardIdx, guardIdx + 1400);
-assert.match(
-  afterGuard,
-  /console\.log\(`already active:[\s\S]{0,80}\breturn;/,
-  'self-bind no-op guard must return early (#833)'
-);
+const afterGuard = switchSrc.slice(guardIdx, guardIdx + 400);
+assert.match(afterGuard, /\breturn;/, 'self-bind no-op guard must return early (#833)');
 
 // ---- 4. The dead `isSelfBind` conditional was removed ----------------------
 // Once the guard makes self-bind unreachable in the switch-out branch, the old
@@ -89,7 +87,7 @@ let selfBindHits = '';
 try {
   selfBindHits = execFileSync(
     'grep',
-    ['-n', 'isSelfBind', 'scripts/task-tracker/lib/work-lease/bind-orchestration.mjs'],
+    ['-n', 'isSelfBind', 'scripts/task-tracker/verbs/switch.mjs'],
     { cwd: repoRoot, encoding: 'utf8' }
   ).trim();
 } catch (err) {
@@ -99,7 +97,59 @@ try {
 assert.equal(
   selfBindHits,
   '',
-  'governed bind must no longer branch on isSelfBind — the no-op guard replaces it (#833)'
+  'switch.mjs must no longer branch on isSelfBind — the no-op guard replaces it (#833)'
 );
+
+// ---- 5. Same-issue resume repairs missing fleet evidence (#1140) -----------
+test('same-issue resume restores fleet evidence without timing writes', async () => {
+  const tmp = mkdtempProjectIsolated('tt-self-bind-fleet-repair-');
+  const oldProjectDir = process.env.AI_TASK_MANAGER_PROJECT_DIR;
+  const oldTranscriptDir = process.env.AI_TASK_MANAGER_TRANSCRIPT_DIR;
+  const oldSessionId = process.env.AI_TASK_MANAGER_SESSION_ID;
+  process.env.AI_TASK_MANAGER_PROJECT_DIR = tmp;
+  process.env.AI_TASK_MANAGER_TRANSCRIPT_DIR = path.join(tmp, 'transcripts');
+  process.env.AI_TASK_MANAGER_SESSION_ID = 'self-bind-fleet-repair-1140';
+  mkdirSync(process.env.AI_TASK_MANAGER_TRANSCRIPT_DIR, { recursive: true });
+
+  try {
+    const { verbResume } = await import('../../../verbs/resume.mjs');
+    const { setActiveTask } = await import('../../../session-state.mjs');
+    setActiveTask(process.env.AI_TASK_MANAGER_SESSION_ID, { issue: '#1140' }, tmp);
+    const statePath = path.join(tmp, 'state.json');
+    writeFileSync(statePath, JSON.stringify({ active: '#1140', lastActive: '#1140' }), 'utf8');
+
+    const registrations = [];
+    let drained = 0;
+    let timingPosts = 0;
+    await verbResume({
+      rest: ['1140'],
+      cfg: {},
+      statePath,
+      projectDir: tmp,
+      role: 'solo',
+      drainQueueIfAny: async () => drained++,
+      safePostTiming: async () => timingPosts++,
+      nowIso: () => '2026-08-07T07:00:00Z',
+      registerTask: (...args) => registrations.push(args),
+      currentBranch: () => 'feature/1140-resume-fleet-repair',
+    });
+
+    assert.deepEqual(
+      registrations,
+      [[tmp, '#1140', tmp, 'feature/1140-resume-fleet-repair']],
+      'same-issue resume must restore the invoking worktree fleet entry'
+    );
+    assert.equal(drained, 0, 'same-issue repair must return before queue/timing work');
+    assert.equal(timingPosts, 0, 'same-issue repair must not post a re-engagement row');
+  } finally {
+    rmSync(tmp, { recursive: true, force: true });
+    if (oldProjectDir === undefined) delete process.env.AI_TASK_MANAGER_PROJECT_DIR;
+    else process.env.AI_TASK_MANAGER_PROJECT_DIR = oldProjectDir;
+    if (oldTranscriptDir === undefined) delete process.env.AI_TASK_MANAGER_TRANSCRIPT_DIR;
+    else process.env.AI_TASK_MANAGER_TRANSCRIPT_DIR = oldTranscriptDir;
+    if (oldSessionId === undefined) delete process.env.AI_TASK_MANAGER_SESSION_ID;
+    else process.env.AI_TASK_MANAGER_SESSION_ID = oldSessionId;
+  }
+});
 
 console.log('self-bind-resume.test.mjs: ok');

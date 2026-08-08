@@ -24,6 +24,27 @@ import { serializeMarker } from './marker-grammar.mjs';
 // sha, an author name, an ISO timestamp, or a commit subject line.
 const FIELD_SEP = '\x1f';
 
+// #1177 — read compatibility for delivered history created before the
+// canonical leading-token convention was enforced. This grammar is deliberately
+// local to epic derivation: writers and general attribution readers remain
+// leading-only. A canonical leading run always wins; otherwise exactly one
+// terminal token may provide the historical identity.
+const HISTORICAL_TRAILING_ISSUE_RE = /\s\[#(\d+)\]\s*$/;
+const ANY_ISSUE_TOKEN_RE = /\[#\d+\]/;
+
+export function parseEpicTrailIssueIds(subject) {
+  const source = String(subject ?? '');
+  const canonical = parseIssueIds(source);
+  if (canonical.length > 0) return canonical;
+
+  const historical = HISTORICAL_TRAILING_ISSUE_RE.exec(source);
+  if (!historical) return [];
+  if (ANY_ISSUE_TOKEN_RE.test(source.slice(0, historical.index))) return [];
+
+  const issue = Number(historical[1]);
+  return Number.isInteger(issue) && issue > 0 ? [issue] : [];
+}
+
 // The log invocation the caller must use. Scoped to the epic HEAD ref — NOT
 // `--all` — because the trail records what is reachable from the thing being
 // closed. `defaultHasAttributingCommit`'s `--all` search answers a different
@@ -103,7 +124,7 @@ export function groupCommitsByChild({ children = [], commits = [] } = {}) {
     groups.set(n, { number: n, title: childTitle(child), commits: [] });
   }
   for (const commit of commits) {
-    for (const id of parseIssueIds(commit.subject)) {
+    for (const id of parseEpicTrailIssueIds(commit.subject)) {
       const group = groups.get(Number(id));
       if (group) group.commits.push(commit);
     }

@@ -120,6 +120,7 @@ export async function runDispose({
     postComment,
     flushTiming,
     now = () => new Date().toISOString(),
+    warn = () => {},
   } = deps;
 
   const { key, stateReason, of: ofRef } = parseDisposition({ reason, of });
@@ -127,19 +128,14 @@ export async function runDispose({
   const terminalCfg = cfg || { repo, projectId };
 
   // 1. Flush + stop timing before the body is closed out.
-  const flushResult =
-    typeof flushTiming === 'function' ? await flushTiming(issueNumber) : undefined;
-  if (Number(flushResult?.authorityRefused || 0) > 0) {
-    return {
-      status: 'queue-authority-refused',
-      exitCode: 1,
-      issueNumber,
-      reason: key,
-      of: ofRef,
-      stateReason,
-      retained: true,
-      flushResult,
-    };
+  if (typeof flushTiming === 'function') {
+    const flushResult = await flushTiming(issueNumber);
+    if (flushResult?.retained > 0) {
+      warn(
+        `retained ${flushResult.retained} sequence-significant timing row(s) for #${issueNumber}; ` +
+          'retry queue remains non-empty'
+      );
+    }
   }
 
   // 2. Stamp the audit marker on the body.

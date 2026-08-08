@@ -12,7 +12,7 @@
 // The fix classifies the edit with the shared activity matrix (`classifyEdit` +
 // `isAllowed`) for post-develop states and refuses any edit whose activity class
 // is not permitted by `STATE_MATRIX[state]`, naming the sanctioned
-// `demote → fix → verify-develop → re-promote` remediation loop. Docs edits that
+// `demote → fix → iteration → commit → finalization → re-Test` loop. Docs edits that
 // the matrix permits (e.g. WRITE_DOCS in `review`) still pass. Fail-closed:
 // `unknown`/unresolvable state stays in `PRE_DEVELOP_STATES` and is refused.
 //
@@ -48,8 +48,8 @@ test('#805: WRITE_CODE edit in test state is refused with remediation-loop messa
   assert.equal(r.code, 'source-edit-post-develop-lock');
   assert.match(
     r.reason,
-    /demote .* fix .* verify-develop .* re-promote/,
-    'refusal must name the demote → fix → verify-develop → re-promote loop'
+    /demote → fix → iteration → commit → finalization → re-Test/,
+    'refusal must name the stage-aware remediation and required re-Test loop'
   );
 });
 

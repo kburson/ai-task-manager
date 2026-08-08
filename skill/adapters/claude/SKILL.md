@@ -34,15 +34,14 @@ Run from the project root, or set `AI_TASK_MANAGER_PROJECT_DIR` first.
 
 ## Creating issues
 
-Make issues only through `scripts/gh/create-issue.mjs --shape stub|epic|sub-issue|solo` — never `gh issue create`. The shape menu, required `./.tmp/plan/` fragments, the deterministic refusal contracts (`assignee-required`, `priority-required-at-groom`), binding each Acceptance Criterion to an `aitm-verified cmd="…"` marker listed under `### Verification Commands`, and the never-promote-a-"suggested task"-chip rule all live in `rules/create-issue.md` (loads JIT on `/task new`).
+Make issues only through `scripts/gh/create-issue.mjs --shape stub|epic|sub-issue|solo|defect` — never `gh issue create`. The shape menu, required `./.tmp/plan/` fragments, the deterministic refusal contracts (`assignee-required`, `priority-required-at-groom`), binding each Acceptance Criterion to an `aitm-verified cmd="…"` marker listed under `### Verification Commands`, and the never-promote-a-"suggested task"-chip rule all live in `rules/create-issue.md` (loads JIT on `/task new`).
 
 ## Review & approve details
 
 Field units (board `Estimate` in hours, timing fields in minutes — normalize
 before any comparison), the Full-Auto approve footnote (`TT_FULL_AUTO=1` stamps a
-visible "no human reviewed" blockquote plus consolidated
-`aitm-review-approved` Full-Auto provenance), and the Review-Notes → Drivers
-comment flow all live in
+visible "no human reviewed" blockquote plus the hidden `aitm-full-auto-approved`
+marker), and the Review-Notes → Drivers comment flow all live in
 `rules/review.md` (rule-id `review`, loads JIT on `/task review`).
 
 ## Rank rules

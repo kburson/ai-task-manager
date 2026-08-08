@@ -94,7 +94,7 @@ body:
 
 export const BUG_TEMPLATE = `name: Bug
 description: Manual bug entry compatible with AI Task Manager
-title: "🐞 "
+title: "🐞 [BUG] "
 labels: ["bug"]
 body:
   - type: markdown

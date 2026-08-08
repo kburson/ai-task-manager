@@ -9,7 +9,10 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { rmSync, mkdirSync, writeFileSync } from 'node:fs';
+import path from 'node:path';
+
+import { mkdtempProjectIsolated } from '../lib/scratch-dir.mjs';
 import {
   reviewNeedsAgentReview,
   formatReviewRemediationHint,
@@ -73,19 +76,76 @@ test('reviewRemediationHint returns null when the hint does not apply', () => {
   );
 });
 
-// --- governed integration seam ---------------------------------------------
+// --- integration: verbResume prints the attached hint -----------------------
 
-const bindSource = readFileSync(
-  new URL('../lib/work-lease/bind-orchestration.mjs', import.meta.url),
-  'utf8'
-);
+const tmp = mkdtempProjectIsolated('tt-bind-hint-');
+process.env.AI_TASK_MANAGER_PROJECT_DIR = tmp;
+process.env.AI_TASK_MANAGER_TRANSCRIPT_DIR = path.join(tmp, 'transcripts');
+mkdirSync(process.env.AI_TASK_MANAGER_TRANSCRIPT_DIR, { recursive: true });
 
-test('governed bind persists the review-remediation hint in its session projection', () => {
-  assert.match(bindSource, /reviewRemediationHint = eligibility\.reviewRemediationHint \?\? null/);
-  assert.match(bindSource, /result\.projectionInputs\?\.session\?\.reviewRemediationHint/);
+const { verbResume } = await import('./resume.mjs');
+
+let stateSeq = 0;
+function writeState(obj) {
+  const p = path.join(tmp, `state-${stateSeq++}.json`);
+  writeFileSync(p, JSON.stringify(obj), 'utf8');
+  return p;
+}
+
+// Capture console.log for the duration of one call.
+async function captureResume(ctx) {
+  const orig = console.log;
+  const out = [];
+  console.log = (...a) => out.push(a.join(' '));
+  try {
+    await verbResume(ctx);
+  } finally {
+    console.log = orig;
+  }
+  return out.join('\n');
+}
+
+function makeCtx({ rest, seedKanban, statePath }) {
+  return {
+    rest,
+    cfg: { repo: 'owner/repo' },
+    statePath,
+    projectDir: tmp,
+    role: 'agent',
+    drainQueueIfAny: async () => {},
+    safePostTiming: async () => {},
+    nowIso: () => new Date().toISOString(),
+    readTimingCommentBody: async () => ({ status: 'ok', body: '' }),
+    seedKanban,
+  };
+}
+
+test('verbResume prints the review-remediation hint when the seed attaches one', async () => {
+  process.env.AI_TASK_MANAGER_SESSION_ID = 'bind-hint-present';
+  const hint = formatReviewRemediationHint(935, REVIEW_NOT_RUN_BODY);
+  const statePath = writeState({ active: null, lastActive: null });
+  const out = await captureResume(
+    makeCtx({
+      rest: ['#935'],
+      statePath,
+      seedKanban: async () => ({ kanbanState: 'review', reviewRemediationHint: hint }),
+    })
+  );
+  assert.match(out, /\/task review #935/, 'hint reaches stdout');
+  assert.match(out, /Do NOT demote/);
 });
 
-test('governed bind prints no review-remediation hint when the persisted value is absent', () => {
-  assert.match(bindSource, /if \(reviewHint\) console\.log\(reviewHint\)/);
-  assert.doesNotMatch(bindSource, /seedSessionKanbanFromBody|verbResumeLegacy/);
+test('verbResume stays silent when the seed attaches no hint', async () => {
+  process.env.AI_TASK_MANAGER_SESSION_ID = 'bind-hint-absent';
+  const statePath = writeState({ active: null, lastActive: null });
+  const out = await captureResume(
+    makeCtx({
+      rest: ['#936'],
+      statePath,
+      seedKanban: async () => ({ kanbanState: 'review', reviewRemediationHint: null }),
+    })
+  );
+  assert.equal(/Do NOT demote/.test(out), false, 'no hint printed when none is attached');
 });
+
+test.after(() => rmSync(tmp, { recursive: true, force: true }));

@@ -18,7 +18,6 @@
 // All I/O is injected via `deps` so the path is unit-testable offline.
 
 import { GH_API_TIMEOUT_MS } from './process-timeouts.mjs';
-import { isGovernedAuthorityError } from './work-lease/governed-effect.mjs';
 
 // Re-fetch the live issue body. Throws on failure (caught by the caller).
 async function fetchLiveBody({ pexec, issueNumber, repo }) {
@@ -53,8 +52,6 @@ export async function deriveAndRescan({ issueNumber, repo, scanBody, deps = {} }
   }
   const nowIso = deps.nowIso || (() => new Date().toISOString());
   const log = deps.log || ((msg) => console.error(msg));
-  const operation = deps.operation || 'issue-body-mutation';
-  const withGovernedEffect = deps.withGovernedEffect;
 
   const errors = [];
   let derived = null;
@@ -78,14 +75,9 @@ export async function deriveAndRescan({ issueNumber, repo, scanBody, deps = {} }
       repo,
       sha: derivedHeadSha,
       ts: nowIso(),
-      operation,
-      deps: {
-        pexec,
-        ...(withGovernedEffect ? { withGovernedEffect } : {}),
-      },
+      deps: { pexec },
     });
   } catch (derErr) {
-    if (isGovernedAuthorityError(derErr)) throw derErr;
     const message = derErr?.message ?? String(derErr);
     errors.push({ phase: 'derive', message });
     log(
@@ -99,7 +91,6 @@ export async function deriveAndRescan({ issueNumber, repo, scanBody, deps = {} }
   try {
     resultBody = await fetchLiveBody({ pexec, issueNumber, repo });
   } catch (refErr) {
-    if (isGovernedAuthorityError(refErr)) throw refErr;
     const message = refErr?.message ?? String(refErr);
     errors.push({ phase: 'refresh', message });
     log(`[review] derive-rescan: live-body refresh failed; scanning pre-derive body: ${message}`);

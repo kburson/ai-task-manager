@@ -16,38 +16,141 @@
 // decaying into a generic "I looked at this" stamp and losing its epic-only
 // meaning.
 
+import { execFile } from 'node:child_process';
+import { promisify } from 'node:util';
+
 import { loadState } from '../state.mjs';
 import { mutateIssueBody } from '../lib/issue-body-mutate.mjs';
-import { setEpicAcReconciled, parseIssueKind } from '../lib/issue-kind.mjs';
+import { setDeliverablePosted, setEpicAcReconciled, parseIssueKind } from '../lib/issue-kind.mjs';
 import { fetchEpicChildren } from '../lib/epic-children-gate.mjs';
 import { bijectionReport, formatBijectionReport } from '../lib/epic-ac-child-bijection.mjs';
+import { parseFromCommentArg } from '../lib/deep-dive.mjs';
+import { GH_API_TIMEOUT_MS } from '../lib/process-timeouts.mjs';
 
-export async function verbEpicReconcile(ctx) {
-  const { cfg, statePath, rest, pexec } = ctx;
-  const args = (rest || []).map((a) => String(a).trim()).filter(Boolean);
+const pexecDefault = promisify(execFile);
 
-  let target;
-  if (args.length >= 1) {
-    target = args[0].replace(/^#/, '');
-  } else {
-    const s = loadState(statePath);
-    if (!s.active || s.active === 'discover') {
-      console.error(
-        '[task-tracker] epic-reconcile: no active task — pass an issue number: /task epic-reconcile <N>'
-      );
-      process.exit(1);
+function epicReconcileError(category) {
+  return new TypeError(`epic-reconcile:${category}`);
+}
+
+export function parseEpicReconcileArgs(argv = [], state = {}) {
+  const args = (argv || []).map((arg) => String(arg).trim()).filter(Boolean);
+  let target = null;
+  let deliverableComment = null;
+
+  for (let index = 0; index < args.length; index += 1) {
+    const arg = args[index];
+    if (/^#?\d+$/.test(arg)) {
+      if (target !== null) throw epicReconcileError('target');
+      target = arg.replace(/^#/, '');
+      continue;
     }
-    target = String(s.active).replace(/^#/, '');
+    if (arg === '--deliverable-comment') {
+      const value = args[index + 1];
+      if (value === undefined || value.startsWith('--')) {
+        throw epicReconcileError('deliverable-comment');
+      }
+      if (deliverableComment !== null) throw epicReconcileError('deliverable-comment');
+      deliverableComment = value;
+      index += 1;
+      continue;
+    }
+    if (arg.startsWith('--deliverable-comment=')) {
+      const value = arg.slice('--deliverable-comment='.length);
+      if (!value || deliverableComment !== null) {
+        throw epicReconcileError('deliverable-comment');
+      }
+      deliverableComment = value;
+      continue;
+    }
+    throw epicReconcileError('unknown');
   }
 
-  if (!/^\d+$/.test(target)) {
-    console.error(`[task-tracker] epic-reconcile: invalid issue number "${target}"`);
-    process.exit(1);
+  if (target === null) {
+    const active = String(state?.active || '').replace(/^#/, '');
+    if (!active || active === 'discover') throw epicReconcileError('target');
+    target = active;
+  }
+  if (!/^\d+$/.test(target)) throw epicReconcileError('target');
+  return deliverableComment === null ? { target } : { target, deliverableComment };
+}
+
+export function validateEpicDeliverableComment({
+  repository,
+  issueNumber,
+  commentId,
+  comment,
+} = {}) {
+  const body = typeof comment?.body === 'string' ? comment.body : '';
+  if (body.trim() === '') throw new TypeError('epic-deliverable-comment:empty');
+  const url = typeof comment?.html_url === 'string' ? comment.html_url : '';
+  const match = /^https:\/\/github\.com\/([^/]+)\/([^/]+)\/issues\/(\d+)#issuecomment-(\d+)$/.exec(
+    url
+  );
+  if (!match) throw new TypeError('epic-deliverable-comment:url');
+
+  const [owner, name] = String(repository || '').split('/');
+  if (
+    !owner ||
+    !name ||
+    match[1].toLowerCase() !== owner.toLowerCase() ||
+    match[2].toLowerCase() !== name.toLowerCase()
+  ) {
+    throw new TypeError('epic-deliverable-comment:repository');
+  }
+  if (Number(match[3]) !== Number(issueNumber)) {
+    throw new TypeError('epic-deliverable-comment:issue');
+  }
+  if (commentId !== undefined && match[4] !== String(commentId)) {
+    throw new TypeError('epic-deliverable-comment:id');
+  }
+  return { body, url };
+}
+
+async function defaultFetchDeliverableComment({ repository, commentId, pexec }) {
+  const [owner, name] = String(repository || '').split('/');
+  if (!owner || !name) throw epicReconcileError('repository');
+  const run = pexec || pexecDefault;
+  const { stdout } = await run(
+    'gh',
+    ['api', `repos/${owner}/${name}/issues/comments/${commentId}`, '--jq', '{body,html_url}'],
+    { timeout: GH_API_TIMEOUT_MS }
+  );
+  try {
+    return JSON.parse(stdout || '{}');
+  } catch {
+    throw new TypeError('epic-deliverable-comment:json');
+  }
+}
+
+export async function verbEpicReconcile(ctx) {
+  const { cfg, statePath, rest, pexec, deps = {} } = ctx;
+  let state = {};
+  if (statePath) state = loadState(statePath);
+  const { target, deliverableComment } = parseEpicReconcileArgs(rest, state);
+  const stamp = typeof deps.now === 'function' ? deps.now() : new Date().toISOString();
+
+  let deliverable = null;
+  if (deliverableComment !== undefined) {
+    const commentId = parseFromCommentArg(deliverableComment);
+    const fetchDeliverableComment = deps.fetchDeliverableComment || defaultFetchDeliverableComment;
+    const comment = await fetchDeliverableComment({
+      repository: cfg.repo,
+      commentId,
+      pexec,
+    });
+    deliverable = validateEpicDeliverableComment({
+      repository: cfg.repo,
+      issueNumber: Number(target),
+      commentId,
+      comment,
+    });
   }
 
   let refused = null;
   let reconciledBody = null;
-  await mutateIssueBody({
+  const mutateIssueBodyFn = deps.mutateIssueBody || mutateIssueBody;
+  await mutateIssueBodyFn({
     issueNumber: target,
     repo: cfg.repo,
     deps: { pexec },
@@ -61,7 +164,12 @@ export async function verbEpicReconcile(ctx) {
         refused = kind;
         return base;
       }
-      return setEpicAcReconciled(base);
+      let next = setEpicAcReconciled(base, stamp);
+      if (deliverable) {
+        next = setDeliverablePosted(next, { url: deliverable.url, ts: stamp });
+      }
+      reconciledBody = next;
+      return next;
     },
   });
 
@@ -75,6 +183,9 @@ export async function verbEpicReconcile(ctx) {
   console.log(
     `[task-tracker] ✓ #${target} AC-reconciled: epic goals re-read against delivered children.`
   );
+  if (deliverable) {
+    console.log(`[task-tracker] ✓ #${target} deliverable recorded: ${deliverable.url}`);
+  }
 
   // #889 — the bijection report prints HERE, at the one moment it is actionable.
   // #887 made develop-exit depend on the operator asserting they re-read the
@@ -84,7 +195,8 @@ export async function verbEpicReconcile(ctx) {
   // failure is swallowed for the same reason: an advisory that can break the
   // stamp it advises would be a gate wearing a report's clothes.
   try {
-    const children = await fetchEpicChildren({
+    const fetchEpicChildrenFn = deps.fetchEpicChildren || fetchEpicChildren;
+    const children = await fetchEpicChildrenFn({
       cfg,
       parentEpicNumber: target,
       deps: { pexec },

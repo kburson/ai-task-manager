@@ -94,11 +94,7 @@ async function runExpectFail(args, env) {
 {
   const sandbox = makeSandbox();
   const r = await run(['123', 'refine'], cleanEnv(sandbox, { AITM_INTERNAL: '1' }));
-  assert.equal(
-    r.stdout,
-    '',
-    'offline authority probe succeeds without claiming a board mutation occurred'
-  );
+  assert.match(r.stdout, /moved to: refine/, 'chokepoint-driven call should succeed');
   rmSync(sandbox, { recursive: true });
 }
 
@@ -125,7 +121,7 @@ async function runExpectFail(args, env) {
     ['123', 'plan', '--from', 'refine'],
     cleanEnv(sandbox, { AITM_INTERNAL: '1' })
   );
-  assert.equal(r.stdout, '', 'offline forward probe must not claim a board mutation');
+  assert.match(r.stdout, /moved to: plan/, 'forward refine->plan should succeed');
   rmSync(sandbox, { recursive: true });
 }
 
@@ -136,7 +132,7 @@ async function runExpectFail(args, env) {
     ['123', 'develop', '--from', 'test'],
     cleanEnv(sandbox, { AITM_INTERNAL: '1' })
   );
-  assert.equal(r.stdout, '', 'offline rework probe must not claim a board mutation');
+  assert.match(r.stdout, /moved to: develop/, 'test->develop rework should succeed');
   rmSync(sandbox, { recursive: true });
 }
 
@@ -151,7 +147,7 @@ async function runExpectFail(args, env) {
     ['123', 'test', '--from', 'review'],
     cleanEnv(sandbox, { AITM_INTERNAL: '1' })
   );
-  assert.equal(r.stdout, '', 'offline drift probe must not claim a board mutation');
+  assert.match(r.stdout, /moved to: test/, 'review->test drift re-verify should succeed');
   rmSync(sandbox, { recursive: true });
 }
 

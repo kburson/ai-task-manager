@@ -21,53 +21,13 @@
 // If the box is already ticked, no re-tick. Safe to call multiple times.
 
 import { mutateIssueBody } from './issue-body-mutate.mjs';
-import { locateLifecycleSection } from './lifecycle-dod.mjs';
+import { locateHousekeepingSection, locateLifecycleSection } from './lifecycle-dod.mjs';
 import {
   parseFunctionalDodKeys,
   stampEvidenceMarker,
   deriveAcsStatus,
   deriveCheckboxesStatus,
 } from './functional-dod-evidence.mjs';
-
-export function previewFunctionalDod({ body, sha = 'unknown', ts } = {}) {
-  const stampTs = ts || new Date().toISOString();
-  const items = parseFunctionalDodKeys(body);
-  const acsItem = items.find((it) => it.key === 'acs');
-  const cbItem = items.find((it) => it.key === 'checkboxes');
-  let next = body;
-
-  if (acsItem) {
-    const ac = deriveAcsStatus(next);
-    if (ac.allTicked && !acsItem.evidenceMarker) {
-      next = stampEvidenceMarker(next, 'acs', {
-        cmd: 'derive:all-acceptance-criteria-ticked',
-        sha,
-        ts: stampTs,
-        exit: 0,
-      });
-    }
-    if (ac.allTicked && !acsItem.checked) {
-      next = next.replace(/^(- \[) (\]\s+Acceptance criteria met\b)/m, '$1x$2');
-    }
-  }
-
-  if (cbItem) {
-    const lifecyclePresent = Boolean(locateLifecycleSection(next));
-    const cb = deriveCheckboxesStatus(next, { lifecyclePresent });
-    if (cb.allTicked && !cbItem.evidenceMarker) {
-      next = stampEvidenceMarker(next, 'checkboxes', {
-        cmd: 'derive:all-non-self-non-lifecycle-checkboxes-ticked',
-        sha,
-        ts: stampTs,
-        exit: 0,
-      });
-    }
-    if (cb.allTicked && !cbItem.checked) {
-      next = next.replace(/^(- \[) (\]\s+Issue body checkboxes ticked\b)/m, '$1x$2');
-    }
-  }
-  return next;
-}
 
 /**
  * Derive and stamp the two auto-derived Functional DoD keys on an issue body.
@@ -85,8 +45,6 @@ export function previewFunctionalDod({ body, sha = 'unknown', ts } = {}) {
  *                                          Defaults to `new Date().toISOString()`.
  * @param {object} [args.deps]            — Injected dependencies (pexec, etc.)
  *                                          forwarded to `mutateIssueBody`.
- * @param {string} [args.operation]        — Exact governed operation inherited
- *                                          from an outer verb mutation scope.
  * @returns {Promise<{status:'ok'|'noop',attempts:number,version:number}|null>}
  *          The `mutateIssueBody` result. `null` only if the helper itself
  *          early-returns (currently it does not).
@@ -97,7 +55,6 @@ export async function deriveAndStampFunctionalDod({
   sha = 'unknown',
   ts,
   deps = {},
-  operation = 'issue-body-mutation',
 } = {}) {
   if (issueNumber == null) {
     throw new Error('deriveAndStampFunctionalDod: issueNumber is required');
@@ -110,11 +67,52 @@ export async function deriveAndStampFunctionalDod({
     issueNumber,
     repo,
     deps,
-    operation,
     // #522 — sanctioned close-pipeline auto-stamp: the derived `acs`/`checkboxes`
     // evidence is computed from the body's own ticked state at close time, so the
     // proof-introduction guard is bypassed for this minting site.
     evidenceStamp: true,
-    mutate: (base) => previewFunctionalDod({ body: base, sha, ts: stampTs }),
+    mutate: (base) => {
+      const items = parseFunctionalDodKeys(base);
+      const acsItem = items.find((it) => it.key === 'acs');
+      const cbItem = items.find((it) => it.key === 'checkboxes');
+      let next = base;
+
+      // 1. acs
+      if (acsItem) {
+        const ac = deriveAcsStatus(next);
+        if (ac.allTicked && !acsItem.evidenceMarker) {
+          next = stampEvidenceMarker(next, 'acs', {
+            cmd: 'derive:all-acceptance-criteria-ticked',
+            sha,
+            ts: stampTs,
+            exit: 0,
+          });
+        }
+        if (ac.allTicked && !acsItem.checked) {
+          next = next.replace(/^(- \[) (\]\s+Acceptance criteria met\b)/m, '$1x$2');
+        }
+      }
+
+      // 2. checkboxes — must run AFTER acs so the acs tick is counted.
+      if (cbItem) {
+        const lifecyclePresent = Boolean(
+          locateLifecycleSection(next) || locateHousekeepingSection(next)
+        );
+        const cb = deriveCheckboxesStatus(next, { lifecyclePresent });
+        if (cb.allTicked && !cbItem.evidenceMarker) {
+          next = stampEvidenceMarker(next, 'checkboxes', {
+            cmd: 'derive:all-non-self-non-lifecycle-checkboxes-ticked',
+            sha,
+            ts: stampTs,
+            exit: 0,
+          });
+        }
+        if (cb.allTicked && !cbItem.checked) {
+          next = next.replace(/^(- \[) (\]\s+Issue body checkboxes ticked\b)/m, '$1x$2');
+        }
+      }
+
+      return next;
+    },
   });
 }

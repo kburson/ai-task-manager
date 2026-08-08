@@ -76,7 +76,7 @@ Move completed work into review:
 After human approval, close it:
 
 ```text
-/task approve #42 --human
+/task approve #42
 /task close #42
 ```
 
@@ -150,7 +150,7 @@ It is intentionally heavier than a simple prompt template. The benefit comes fro
 | `/task new [title]`                | Create a new issue and start tracking it; the installed skill can orchestrate backlog creation before invoking this command while in plan mode |
 | `/task update [message]`           | Flush timing and leave the task active                                                                                                         |
 | `/task review #N`                  | Run the review gate, flush actuals, and move ready work to Review                                                                              |
-| `/task approve #N --human`         | Record actual human approval for the current Review epoch and verified proof                                                                   |
+| `/task approve #N`                 | Record explicit human approval                                                                                                                 |
 | `/task close #N`                   | Close approved work and move it to Done                                                                                                        |
 | `/task fleet`                      | Show active tracked work across parallel sessions                                                                                              |
 | `npx github-project-report --html` | Generate an ROI/value report                                                                                                                   |

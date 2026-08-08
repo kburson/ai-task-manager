@@ -4,6 +4,7 @@ import { promisify } from 'node:util';
 import { auditEvidenceMarkers, buildEvidenceBackfill } from '../lib/evidence-markers.mjs';
 import { GH_API_TIMEOUT_MS } from '../lib/process-timeouts.mjs';
 import { mutateIssueBody } from '../lib/issue-body-mutate.mjs';
+import { readDirectoryContract } from '../lib/github-records/contract-write.mjs';
 
 const pexec = promisify(execFile);
 
@@ -35,6 +36,25 @@ export async function runEvidenceMarkers({
   const fetchIssueBody = deps.fetchIssueBody || defaultFetchIssueBody;
   const mutateBody = deps.mutateIssueBody || defaultMutateIssueBody;
   const body = await fetchIssueBody({ issueNumber, repo: cfg.repo });
+  const directory = await readDirectoryContract({
+    repository: cfg.repo,
+    issue: Number(issueNumber),
+    issueBody: body,
+    readContractRecord: deps.contractWrite?.readContractRecord,
+  });
+
+  if (directory) {
+    return {
+      status: mode === 'audit' || dryRun ? 'clean' : 'directory-managed',
+      audit: {
+        ok: true,
+        missingEvidence: [],
+        missingVerificationCommands: [],
+        staleVerificationCommands: [],
+      },
+      contract: directory.contract,
+    };
+  }
 
   if (mode === 'audit') {
     const audit = auditEvidenceMarkers(body);

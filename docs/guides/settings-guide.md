@@ -244,27 +244,14 @@ A few keys gate state transitions. The defaults are safe; flip them off only wit
 Controls the hard Review→Done lifecycle-checkbox gate (#179). With the default
 `true`, `/task close` (and the underlying state-mover) refuses to advance to
 Done unless each item under the `#### Lifecycle (auto-ticked at Review/Close)`
-DoD subsection is satisfied by ONE of:
+legacy subsection—or its canonical `### Lifecycle (verified at Review)` and
+`### Housekeeping (verified at Close)` replacements—is satisfied by ONE of:
 
 1. Visible checkbox ticked (`- [x] <label>`),
-2. Current Full-Auto Review authority (the consolidated
-   `aitm-review-approved` marker has `provenance="full-auto"` and matches the
-   latest epoch, passing proof, and persisted Test SHA), or
+2. Corresponding audit marker present (`<!-- aitm-full-auto-approved: ... -->`
+   satisfies `passed-final-review`), or
 3. Explicit per-key opt-out marker:
    `<!-- aitm-lifecycle-optout: <key> -->`.
-
-Lifecycle satisfaction does not independently authorize close. With
-`gateReviewToDone=true`, Review → Done additionally requires a persisted
-`aitm-dod-verified` Test SHA, a current-epoch passing Agent Review proof for
-that SHA, a matching truthful human or Full-Auto `aitm-review-approved` marker,
-and no later invalidation. Demotion, demotion-shaped reconciliation, and Agent
-Review failure invalidate that authority. Re-run Test, Review, and approval;
-do not repair by ticking `Final Review Passed`.
-
-For approval given in chat, run `/task approve #N --human`. Authorized
-Full-Auto runs use `/task approve #N`, which records Full-Auto provenance and
-signals on the consolidated marker. The retired standalone
-`aitm-full-auto-approved` marker is not current authority.
 
 Set to `false` to downgrade the block to a `lifecycle-warn` row in the timing
 log — useful for migrations or experimental workflows. See
@@ -352,10 +339,40 @@ registers them in `.claude/settings.json`; Codex registers them in
   inter-turn gap, and (above `pauseThresholdSeconds`) appends one `idle` row to
   the bound issue's `⏱ Timing Log` comment. The marker is then deleted.
 
-Both hooks key on `CLAUDE_SESSION_ID`, `AI_TASK_MANAGER_SESSION_ID`,
-`CODEX_SESSION_ID`, or Codex's hook stdin `session_id` field. They tolerate
+Both hooks key on `AI_TASK_MANAGER_SESSION_ID`, Claude's session keys,
+`CODEX_THREAD_ID`, the legacy `CODEX_SESSION_ID`, or Codex's hook stdin
+`session_id` field. They tolerate
 missing env / missing active task / write failures — a misbehaving hook must
 never break the user's session.
+
+### Codex Desktop Word Markers
+
+Codex Desktop exposes its active conversation as `CODEX_THREAD_ID`. AITM uses
+that key before the legacy `CODEX_SESSION_ID`, then resolves the native rollout
+whose path ends in the same ID:
+
+```text
+~/.codex/sessions/YYYY/MM/DD/rollout-<timestamp>-<thread-id>.jsonl
+```
+
+Word Markers count authoritative `response_item` records only. User
+`input_text` and assistant `output_text` contribute visible prose;
+`custom_tool_call` / `function_call` contribute compact tool chips and expanded
+inputs; their matching output records contribute only to full expansion.
+Developer/system messages, reasoning, `event_msg` mirrors, and injected
+`<recommended_plugins>`, `# AGENTS.md instructions`, or
+`<environment_context>` blocks are excluded from every tier. Claude's native
+message records retain their existing counts.
+
+If Codex measurement is unavailable, AITM leaves the numeric delta at zero and
+emits one deduplicated diagnostic for the exact cause:
+
+- `codex-session-unresolved`: no usable Desktop thread/session identity.
+- `codex-transcript-unresolved`: identity exists but no matching rollout is on disk.
+- `codex-schema-unrecognized`: the rollout exists but has no supported authoritative records.
+
+New lifecycle events use this behavior immediately. AITM does not rewrite or
+backfill historical timing rows.
 
 ## Per-session state layout
 

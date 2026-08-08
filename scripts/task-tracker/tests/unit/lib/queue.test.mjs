@@ -44,18 +44,17 @@ assert.deepEqual(deliveredAfterFailure, ['C', 'E']);
 rmSync(tmp, { recursive: true });
 
 // Test 5: if write to tmp throws, the original queue file is preserved.
-// Force the unique temp write to fail by creating its exact path as a directory
-// immediately before writeFileSync — EISDIR. Without atomic write, the original
-// queue would be clobbered; with atomic write, rename never runs and it survives.
+// Force writeFileSync(queue.json.tmp, …) to fail by pre-creating queue.json.tmp
+// as a directory — EISDIR. Without atomic write, the original queue would be
+// clobbered; with atomic write, the rename never runs and the original survives.
 const atomicTmp = mkdtempSync(path.join(projectScratchDir('test'), 'tt-q-atomic-'));
 const aPath = path.join(atomicTmp, 'queue.json');
 writeFileSync(aPath, JSON.stringify([{ row: 'PRESERVE_ME' }], null, 2) + '\n', 'utf8');
+mkdirSync(aPath + '.tmp'); // blocks writeFileSync to the tmp path
 
 let threw = false;
 try {
-  enqueue({ row: 'SHOULD_NOT_LAND' }, aPath, {
-    beforeTempWrite: (tmpPath) => mkdirSync(tmpPath),
-  });
+  enqueue({ row: 'SHOULD_NOT_LAND' }, aPath);
 } catch {
   threw = true;
 }
@@ -81,7 +80,7 @@ rmSync(atomicTmp, { recursive: true });
     p,
     (evt) => String(evt.issue).replace(/^#/, '') === '197'
   );
-  assert.deepEqual(r, { delivered: 2, discarded: 0 });
+  assert.deepEqual(r, { delivered: 2, discarded: 0, retained: 0 });
   assert.deepEqual(delivered.sort(), ['A', 'C']);
   const left = peek(p);
   assert.equal(left.length, 1);
@@ -103,7 +102,7 @@ rmSync(atomicTmp, { recursive: true });
     p,
     (evt) => String(evt.issue).replace(/^#/, '') === '197'
   );
-  assert.deepEqual(r, { delivered: 0, discarded: 2 });
+  assert.deepEqual(r, { delivered: 0, discarded: 2, retained: 0 });
   const left = peek(p);
   assert.equal(left.length, 1);
   assert.equal(left[0].row, 'C');
@@ -125,7 +124,7 @@ rmSync(atomicTmp, { recursive: true });
     p,
     (evt) => String(evt.issue).replace(/^#/, '') === '197'
   );
-  assert.deepEqual(r, { delivered: 2, discarded: 1 });
+  assert.deepEqual(r, { delivered: 2, discarded: 1, retained: 0 });
   const left = peek(p);
   assert.equal(left.length, 1);
   assert.equal(left[0].row, 'C');

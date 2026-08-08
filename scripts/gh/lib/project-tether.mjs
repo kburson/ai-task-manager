@@ -1,7 +1,7 @@
 import { gql, splitRepo } from './github-projects.mjs';
 import { ensureParentEpicTitle } from './epic-retitle.mjs';
 import { stateConfigKey, stateIds } from '../../task-tracker/lib/lifecycle-policy/index.mjs';
-import { isGovernedAuthorityError } from '../../task-tracker/lib/work-lease/governed-effect.mjs';
+import { ceilEstimateHours } from '../../task-tracker/lib/estimation/estimate-granularity.mjs';
 
 const DEFAULT_MAX_ATTEMPTS = 5;
 const DEFAULT_RETRY_DELAY_MS = 1500;
@@ -64,44 +64,19 @@ async function fetchIssue({ cfg, issueNumber, runGql }) {
   return { repositoryId: repository.id, issue: repository.issue };
 }
 
-async function runGovernedMutation(
-  { withGovernedEffect, authorityIssueId, operation = 'evidence-mutation' },
-  callback
-) {
-  if (typeof withGovernedEffect !== 'function') return callback();
-  if (!authorityIssueId) throw new Error('project-tether: authorityIssueId is required');
-  return withGovernedEffect(
-    {
-      issueId: String(authorityIssueId).replace(/^#/, ''),
-      operation,
-      heartbeat: true,
-    },
-    callback
-  );
-}
-
-async function ensureProjectLinked({
-  cfg,
-  repositoryId,
-  runGql,
-  withGovernedEffect,
-  authorityIssueId,
-}) {
+async function ensureProjectLinked({ cfg, repositoryId, runGql }) {
   if (!cfg.projectId || !repositoryId) return;
   try {
-    await runGovernedMutation({ withGovernedEffect, authorityIssueId }, () =>
-      runGql(
-        `
-          mutation($project: ID!, $repo: ID!) {
-            linkProjectV2ToRepository(input: { projectId: $project, repositoryId: $repo }) {
-              repository { nameWithOwner }
-            }
-          }`,
-        { project: cfg.projectId, repo: repositoryId }
-      )
+    await runGql(
+      `
+      mutation($project: ID!, $repo: ID!) {
+        linkProjectV2ToRepository(input: { projectId: $project, repositoryId: $repo }) {
+          repository { nameWithOwner }
+        }
+      }`,
+      { project: cfg.projectId, repo: repositoryId }
     );
-  } catch (error) {
-    if (isGovernedAuthorityError(error)) throw error;
+  } catch {
     // GitHub errors when the project is already linked or linkage is unavailable
     // for the token; project item verification below is the authoritative gate.
   }
@@ -149,98 +124,73 @@ async function projectItemForIssue({ cfg, issueNumber, runGql }) {
   return { project: projectInfo, item: null };
 }
 
-async function addIssueToProject({ cfg, issueId, runGql, withGovernedEffect, authorityIssueId }) {
-  const data = await runGovernedMutation({ withGovernedEffect, authorityIssueId }, () =>
-    runGql(
-      `
-        mutation($project: ID!, $content: ID!) {
-          addProjectV2ItemById(input: { projectId: $project, contentId: $content }) {
-            item { id }
-          }
-        }`,
-      { project: cfg.projectId, content: issueId }
-    )
+async function addIssueToProject({ cfg, issueId, runGql }) {
+  const data = await runGql(
+    `
+    mutation($project: ID!, $content: ID!) {
+      addProjectV2ItemById(input: { projectId: $project, contentId: $content }) {
+        item { id }
+      }
+    }`,
+    { project: cfg.projectId, content: issueId }
   );
   return data.addProjectV2ItemById.item.id;
 }
 
-async function linkSubIssue({ parentId, childId, runGql, withGovernedEffect, authorityIssueId }) {
-  await runGovernedMutation({ withGovernedEffect, authorityIssueId }, () =>
-    runGql(
-      `
-        mutation($parent: ID!, $child: ID!) {
-          addSubIssue(input: { issueId: $parent, subIssueId: $child }) {
-            issue { id }
-            subIssue { id }
-          }
-        }`,
-      { parent: parentId, child: childId }
-    )
+async function linkSubIssue({
+  parentId,
+  parentIssueNumber,
+  childId,
+  repo,
+  runGql,
+  reconcileEpicMetadata,
+}) {
+  await runGql(
+    `
+    mutation($parent: ID!, $child: ID!) {
+      addSubIssue(input: { issueId: $parent, subIssueId: $child }) {
+        issue { id }
+        subIssue { id }
+      }
+    }`,
+    { parent: parentId, child: childId }
   );
-  // #545 — the parent now has a child: stamp the epic title prefix (idempotent).
+  // #545/#1130 — the parent now has a child: converge all Epic metadata.
   await ensureParentEpicTitle({
     parentId,
+    issueNumber: parentIssueNumber,
+    repo,
     runGql,
-    withGovernedEffect,
-    authorityIssueId,
+    reconcileEpicMetadata,
   });
 }
 
-async function writeField({
-  cfg,
-  itemId,
-  fieldId,
-  value,
-  runGql,
-  withGovernedEffect,
-  authorityIssueId,
-}) {
+async function writeField({ cfg, itemId, fieldId, value, runGql }) {
   if (!fieldId) return;
   if (value?.singleSelectOptionId) {
-    await runGovernedMutation({ withGovernedEffect, authorityIssueId }, () =>
-      runGql(
-        `
-          mutation($project: ID!, $item: ID!, $field: ID!, $option: String!) {
-            updateProjectV2ItemFieldValue(input: { projectId: $project, itemId: $item, fieldId: $field, value: { singleSelectOptionId: $option } }) {
-              projectV2Item { id }
-            }
-          }`,
-        {
-          project: cfg.projectId,
-          item: itemId,
-          field: fieldId,
-          option: value.singleSelectOptionId,
+    await runGql(
+      `
+      mutation($project: ID!, $item: ID!, $field: ID!, $option: String!) {
+        updateProjectV2ItemFieldValue(input: { projectId: $project, itemId: $item, fieldId: $field, value: { singleSelectOptionId: $option } }) {
+          projectV2Item { id }
         }
-      )
+      }`,
+      { project: cfg.projectId, item: itemId, field: fieldId, option: value.singleSelectOptionId }
     );
   } else if (value?.number !== undefined) {
-    await runGovernedMutation({ withGovernedEffect, authorityIssueId }, () =>
-      runGql(
-        `
-          mutation($project: ID!, $item: ID!, $field: ID!, $val: Float!) {
-            updateProjectV2ItemFieldValue(input: { projectId: $project, itemId: $item, fieldId: $field, value: { number: $val } }) {
-              projectV2Item { id }
-            }
-          }`,
-        { project: cfg.projectId, item: itemId, field: fieldId, val: value.number }
-      )
+    await runGql(
+      `
+      mutation($project: ID!, $item: ID!, $field: ID!, $val: Float!) {
+        updateProjectV2ItemFieldValue(input: { projectId: $project, itemId: $item, fieldId: $field, value: { number: $val } }) {
+          projectV2Item { id }
+        }
+      }`,
+      { project: cfg.projectId, item: itemId, field: fieldId, val: value.number }
     );
   }
 }
 
-async function writeFields({
-  cfg,
-  itemId,
-  status,
-  priority,
-  size,
-  estimate,
-  rank,
-  runGql,
-  withGovernedEffect,
-  authorityIssueId,
-}) {
-  const mutationAuthority = { withGovernedEffect, authorityIssueId };
+async function writeFields({ cfg, itemId, status, priority, size, estimate, rank, runGql }) {
   const statusKey = STATUS_CONFIG_KEYS[String(status || '').toLowerCase()];
   if (statusKey) {
     await writeField({
@@ -249,7 +199,6 @@ async function writeFields({
       fieldId: cfg.kanbanFieldId,
       value: { singleSelectOptionId: cfg[statusKey] },
       runGql,
-      ...mutationAuthority,
     });
   }
 
@@ -261,7 +210,6 @@ async function writeFields({
       fieldId: cfg.priorityFieldId,
       value: { singleSelectOptionId: cfg[priorityKey] },
       runGql,
-      ...mutationAuthority,
     });
   }
 
@@ -285,7 +233,6 @@ async function writeFields({
       fieldId: cfg.sizeFieldId,
       value: { singleSelectOptionId: sizeOptionId },
       runGql,
-      ...mutationAuthority,
     });
   }
 
@@ -294,9 +241,8 @@ async function writeFields({
       cfg,
       itemId,
       fieldId: cfg.fieldEstimate || cfg.fieldIds?.estimate,
-      value: { number: Number(estimate) },
+      value: { number: ceilEstimateHours(Number(estimate)) },
       runGql,
-      ...mutationAuthority,
     });
   }
 
@@ -322,7 +268,6 @@ async function writeFields({
         fieldId: rankFieldId,
         value: { number: Number(rank) },
         runGql,
-        ...mutationAuthority,
       });
     }
   }
@@ -379,9 +324,8 @@ export async function tetherIssueToProject({
   maxAttempts = DEFAULT_MAX_ATTEMPTS,
   retryDelayMs = DEFAULT_RETRY_DELAY_MS,
   runGql = defaultRunGql,
+  reconcileEpicMetadata,
   sleep: sleepFn = sleep,
-  withGovernedEffect,
-  authorityIssueId,
 } = {}) {
   if (!cfg?.repo) throw new Error('repo not configured');
   if (!cfg.projectId) throw new Error('projectId not configured');
@@ -390,11 +334,7 @@ export async function tetherIssueToProject({
   const initial = await fetchIssue({ cfg, issueNumber, runGql });
   const repositoryId = initial.repositoryId;
   let issue = initial.issue;
-  const mutationAuthority = {
-    withGovernedEffect,
-    authorityIssueId: authorityIssueId ?? issueNumber,
-  };
-  await ensureProjectLinked({ cfg, repositoryId, runGql, ...mutationAuthority });
+  await ensureProjectLinked({ cfg, repositoryId, runGql });
 
   let lastProject = null;
   let added = false;
@@ -422,15 +362,16 @@ export async function tetherIssueToProject({
         estimate,
         rank,
         runGql,
-        ...mutationAuthority,
       });
       if (parentIssueNumber) {
         const parent = await fetchIssue({ cfg, issueNumber: parentIssueNumber, runGql });
         await linkSubIssue({
           parentId: parent.issue.id,
+          parentIssueNumber,
           childId: issue.id,
+          repo: cfg.repo,
           runGql,
-          ...mutationAuthority,
+          reconcileEpicMetadata,
         });
       }
       return {
@@ -455,15 +396,16 @@ export async function tetherIssueToProject({
         estimate,
         rank,
         runGql,
-        ...mutationAuthority,
       });
       if (parentIssueNumber) {
         const parent = await fetchIssue({ cfg, issueNumber: parentIssueNumber, runGql });
         await linkSubIssue({
           parentId: parent.issue.id,
+          parentIssueNumber,
           childId: issue.id,
+          repo: cfg.repo,
           runGql,
-          ...mutationAuthority,
+          reconcileEpicMetadata,
         });
       }
       return {
@@ -478,7 +420,7 @@ export async function tetherIssueToProject({
     // retry. The next attempt re-fetches the issue node and the authoritative
     // reverse lookup should then surface the newly-added item.
     if (!added) {
-      await addIssueToProject({ cfg, issueId: issue.id, runGql, ...mutationAuthority });
+      await addIssueToProject({ cfg, issueId: issue.id, runGql });
       added = true;
     }
     if (attempt < maxAttempts) await sleepFn(retryDelayMs);

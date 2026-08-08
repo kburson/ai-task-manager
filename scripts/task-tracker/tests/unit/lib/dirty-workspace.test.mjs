@@ -12,6 +12,7 @@ import {
   shortAuditDescription,
   DEFAULT_TRUNCATE_LINES,
   DEFAULT_AUDIT_LINES,
+  resolveRegisteredWorkspaceForIssue,
 } from '../../../../gh/lib/dirty-workspace.mjs';
 
 const tmp = mkdtempSync(join(projectScratchDir('test'), 'aitm-dirty-'));
@@ -117,6 +118,34 @@ try {
   {
     assert.equal(DEFAULT_TRUNCATE_LINES, 10);
     assert.equal(DEFAULT_AUDIT_LINES, 5);
+  }
+
+  // 13. strict outcome provenance never falls back to the caller directory.
+  {
+    assert.equal(
+      resolveRegisteredWorkspaceForIssue(
+        { issueRef: '#1091', projectDir: tmp },
+        {
+          findMain: () => '/repo',
+          registryPath: () => '/repo/fleet.json',
+          pathExists: () => false,
+        }
+      ),
+      null
+    );
+    assert.equal(
+      resolveRegisteredWorkspaceForIssue(
+        { issueRef: '#1091', projectDir: tmp },
+        {
+          findMain: () => '/repo',
+          registryPath: () => '/repo/fleet.json',
+          pathExists: () => true,
+          readRegistry: () =>
+            JSON.stringify({ '#1091': { worktreePath: '/repo/.worktrees/1091' } }),
+        }
+      ),
+      '/repo/.worktrees/1091'
+    );
   }
 
   console.log('dirty-workspace: ok');

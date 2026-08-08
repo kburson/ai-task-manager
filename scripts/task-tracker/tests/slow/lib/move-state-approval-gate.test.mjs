@@ -30,6 +30,10 @@ const SCRIPT = path.resolve(__dir, '../helpers/move-state-cli.mjs');
 // structural gate. Tests that need to isolate one gate can omit the other.
 function deepDiveAdequate() {
   const lines = [
+    '## Plan Metadata',
+    '- **size**: S',
+    '- **estimate**: 2',
+    '',
     '## Pickup Directive — MANDATORY, DO NOT SKIP',
     '- [x] Deep dive complete',
     '',
@@ -213,7 +217,6 @@ async function runMove(sandbox, binDir, args, extraEnv = {}) {
     env: {
       ...process.env,
       AITM_INTERNAL: '1',
-      AITM_TEST_GOVERNED_EFFECT: '1',
       AI_TASK_MANAGER_PROJECT_DIR: sandbox,
       PATH: `${binDir}:${process.env.PATH}`,
       ...extraEnv,

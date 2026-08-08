@@ -20,7 +20,7 @@ import { fileURLToPath } from 'node:url';
 
 const pexec = promisify(execFile);
 const __dir = path.dirname(fileURLToPath(import.meta.url)) + '/..';
-const CLI = path.resolve(__dir, '..', 'helpers', 'task-tracker-cli.mjs');
+const CLI = path.resolve(__dir, '..', '..', 'task-tracker.mjs');
 
 const OPT_REVIEW = 'OPT_review';
 const OPT_DEV = 'OPT_dev';
@@ -128,19 +128,9 @@ const BODY_NO_MARKER = [
   '## Pickup Directive',
   '- [x] Deep dive complete',
   '',
-  '<!-- aitm-entered-review ts="2026-05-10T00:00:00Z" -->',
-  '',
 ].join('\n');
 
-const REVIEW_SHA = 'abcdef1234567890abcdef1234567890abcdef12';
-const REVIEW_EPOCH = 'review:1:2026-05-10T00:00:00Z';
-const BODY_WITH_MARKER = [
-  BODY_NO_MARKER,
-  `<!-- aitm-dod-verified sha="${REVIEW_SHA}" ts="2026-05-10T00:01:00Z" -->`,
-  `<!-- aitm-agent-review-proof schema="1" epoch="${REVIEW_EPOCH}" sha="${REVIEW_SHA}" ts="2026-05-10T00:02:00Z" validators="unit" result="pass" -->`,
-  `<!-- aitm-review-approved schema="1" epoch="${REVIEW_EPOCH}" proof-sha="${REVIEW_SHA}" ts="2026-05-10T00:03:00Z" provenance="human" -->`,
-  '',
-].join('\n');
+const BODY_WITH_MARKER = BODY_NO_MARKER + '\n<!-- aitm-review-approved: 2026-05-10T00:00:00Z -->\n';
 
 function writeState(sandbox, issueNum) {
   writeFileSync(
@@ -203,7 +193,7 @@ function writeState(sandbox, issueNum) {
       bodyOnView: BODY_NO_MARKER,
       stateOptionId: OPT_REVIEW,
     });
-    const r = await run(sandbox, binDir, ['close', '#203', '--force']);
+    const r = await run(sandbox, binDir, ['close', '#203']);
     // Close may fail later for other reasons, but it must NOT exit 7 or 8.
     assert.notEqual(r.code, 7, `should bypass review-approval gate; stderr:\n${r.stderr}`);
     assert.notEqual(r.code, 8, `should bypass review-approval gate; stderr:\n${r.stderr}`);
@@ -216,8 +206,7 @@ function writeState(sandbox, issueNum) {
     const bypassEvidence = /aitm-gate-bypassed/.test(calls) && /gateReviewToDone=false/.test(calls);
     assert.ok(
       bypassEvidence,
-      `expected aitm-gate-bypassed audit marker in an issue-edit body payload; ` +
-        `code=${r.code}; stdout:\n${r.stdout}\nstderr:\n${r.stderr}\ncalls:\n${calls}`
+      `expected aitm-gate-bypassed audit marker in an issue-edit body payload; calls:\n${calls}`
     );
     console.log('test 3 passed: gateReviewToDone=false bypasses gate + writes audit marker');
   } finally {

@@ -7,6 +7,7 @@ import { parseFunctionalDodKeys, KEY_CLASSIFICATION } from '../lib/functional-do
 import { findEvidenceAc, findAcSectionCheckbox, stripMarkers } from '../lib/ac-evidence.mjs';
 import { NON_DEMONSTRABLE_TAG_RE } from '../lib/body-invariants.mjs';
 import { escapeValue } from '../lib/marker-grammar.mjs';
+import { writeDirectoryContractOperation } from '../lib/github-records/contract-write.mjs';
 
 // Toggle a single checklist line whose VISIBLE label matches `label`.
 //
@@ -251,19 +252,13 @@ export function appendUnverifiedTickAudit(body, { label, ts }) {
 //     `--allow-unverified-ticks` honest hatch).
 // Un-ticking is never a claim of proof, so `ensureUnchecked` runs no gate.
 async function runEnsure(ctx, desired) {
-  const { cfg, statePath, projectDir, rest, pexec, withGovernedEffect } = ctx;
+  const { cfg, statePath, projectDir, rest, pexec } = ctx;
   const checking = desired === 'checked';
   // #295 — body writes go through mutateIssueBody({mutate}); closure runs on
   // FRESH base each push attempt. #567 — threads the optional
   // `allowUnverifiedTicks` bypass for the non-demonstrable-AC hatch.
   const mutateBody = ({ issueNumber, repo, mutate, allowUnverifiedTicks = false }) =>
-    mutateIssueBody({
-      issueNumber,
-      repo,
-      mutate,
-      deps: { pexec, projectDir, withGovernedEffect },
-      allowUnverifiedTicks,
-    });
+    mutateIssueBody({ issueNumber, repo, mutate, deps: { pexec }, allowUnverifiedTicks });
   const s = loadState(statePath);
   if (!s.active || s.active === 'discover') {
     console.error('no active task');
@@ -313,6 +308,22 @@ async function runEnsure(ctx, desired) {
   );
   const body = stdout;
 
+  const directoryWrite = await writeDirectoryContractOperation({
+    repository: cfg.repo,
+    issue: Number(issueNum),
+    issueBody: body,
+    action: 'set-check',
+    label,
+    checked: checking,
+    pexec,
+    deps: ctx.deps?.contractWrite,
+  });
+  if (directoryWrite.status === 'directory-written') {
+    const action = checking ? 'Checked' : 'Unchecked';
+    console.log(`[task-tracker] ✓ ${action} "${label}" on ${s.active} via Delivery Contract`);
+    return;
+  }
+
   // Special-label routes are checked-only outcomes (they stamp markers, not
   // checkboxes); ensureUnchecked treats these labels as ordinary checkbox text.
   if (checking && /^deep[- ]?dive complete$/i.test(label)) {
@@ -332,7 +343,6 @@ async function runEnsure(ctx, desired) {
       repo: cfg.repo,
       complete: true,
       ts,
-      deps: { pexec, projectDir, withGovernedEffect },
     });
     if (res.status === 'no-op') {
       console.log(`[task-tracker] ✓ Already marked deep-dive-complete on ${s.active}`);
@@ -354,7 +364,6 @@ async function runEnsure(ctx, desired) {
       issueNumber: issueNum,
       repo: cfg.repo,
       mutate: (base) => markDiscussed(base, { ts }),
-      deps: { pexec, projectDir, withGovernedEffect },
     });
     // #486 — the completed discussion is no longer pending, so remove the
     // visible "Discuss" label to keep it a pure mirror of the marker state.
@@ -505,17 +514,11 @@ async function runEnsureBatch({
   labels,
   allowUnverifiedTicks = false,
 }) {
-  const { cfg, projectDir, pexec, withGovernedEffect } = ctx;
+  const { cfg, projectDir, pexec } = ctx;
   const checking = desired === 'checked';
   const auvAllowed = checking && allowUnverifiedTicks;
   const mutateBody = ({ issueNumber, repo, mutate, allowUnverifiedTicks: auv = false }) =>
-    mutateIssueBody({
-      issueNumber,
-      repo,
-      mutate,
-      deps: { pexec, projectDir, withGovernedEffect },
-      allowUnverifiedTicks: auv,
-    });
+    mutateIssueBody({ issueNumber, repo, mutate, deps: { pexec }, allowUnverifiedTicks: auv });
   // The deep-dive-complete special label is a checked-only marker route; under
   // ensureUnchecked it is treated as an ordinary (likely not-found) checkbox.
   const isDeepDive = (l) => checking && /^deep[- ]?dive complete$/i.test(l.trim());
@@ -530,6 +533,29 @@ async function runEnsureBatch({
       ['issue', 'view', issueNum, '-R', cfg.repo, '--json', 'body', '--jq', '.body'],
       { timeout: GH_API_TIMEOUT_MS }
     );
+    let directoryCount = 0;
+    for (const label of checklistLabels) {
+      const result = await writeDirectoryContractOperation({
+        repository: cfg.repo,
+        issue: Number(issueNum),
+        issueBody: stdout,
+        action: 'set-check',
+        label,
+        checked: checking,
+        pexec,
+        deps: ctx.deps?.contractWrite,
+      });
+      if (result.status === 'directory-written') directoryCount += 1;
+    }
+    if (directoryCount > 0) {
+      if (directoryCount !== checklistLabels.length) {
+        throw new Error('check: mixed legacy/directory batch routing');
+      }
+      console.log(
+        `[task-tracker] ✓ ${checking ? 'Checked' : 'Unchecked'} ${directoryCount} item(s) on ${active} via Delivery Contract`
+      );
+      return;
+    }
     // #303 / #567 — per-label eligibility gate (checked-only; un-ticking is not
     // a proof claim so ensureUnchecked runs no gate). Batch is atomic: if ANY
     // label fails, refuse the entire batch. The gate only applies to labels
@@ -644,7 +670,6 @@ async function runEnsureBatch({
       repo: cfg.repo,
       complete: true,
       ts,
-      deps: { pexec, projectDir, withGovernedEffect },
     });
     if (res.status === 'no-op') {
       console.log(`[task-tracker] ✓ Already marked deep-dive-complete on ${active}`);

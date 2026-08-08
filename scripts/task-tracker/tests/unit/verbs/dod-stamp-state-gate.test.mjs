@@ -19,7 +19,6 @@ import { mkdtempSync, mkdirSync, writeFileSync, rmSync, chmodSync } from 'node:f
 
 import { verbDodStamp } from '../../../verbs/dod-stamp.mjs';
 import { verbAcStamp } from '../../../verbs/ac-stamp.mjs';
-import { withTestGovernedEffect } from '../../helpers/governed-effect.mjs';
 import { projectScratchDir } from '../../../lib/scratch-dir.mjs';
 
 const RESTRICTED_CMD = 'npm run test:all';
@@ -134,12 +133,8 @@ async function runVerb(fn, ctx) {
 const baseCtx = (over) => ({
   cfg: { repo: 'o/r' },
   projectDir: tmpRoot,
+  deps: { now: () => '2026-07-05T00:00:00.000Z' },
   ...over,
-  deps: {
-    now: () => '2026-07-05T00:00:00.000Z',
-    withGovernedEffect: withTestGovernedEffect,
-    ...over.deps,
-  },
 });
 
 test('dod-stamp tests: refuses in develop, verifier never runs', async () => {

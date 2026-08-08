@@ -6,7 +6,7 @@ import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 
 import { GH_API_TIMEOUT_MS } from './process-timeouts.mjs';
-import { stripFencedCodeBlocks } from './markers.mjs';
+import { parsePlanApprovedMarker } from './markers.mjs';
 
 const pexec = promisify(execFile);
 
@@ -18,11 +18,7 @@ export function isExplicitFullAutoPlanApproval(env = process.env) {
 }
 
 export function readPlanApprovedTimestamp(body) {
-  const src = stripFencedCodeBlocks(body);
-  const property = src.match(/<!--\s*aitm-plan-approved\s+ts="([^"]+)"\s*-->/i);
-  if (property) return property[1];
-  const legacy = src.match(/<!--\s*aitm-plan-approved:\s*([^>]*?)\s*-->/i);
-  return legacy ? legacy[1].trim() : null;
+  return parsePlanApprovedMarker(body)?.ts || null;
 }
 
 export function buildPlanApprovalAuditComment({ issueNumber, ts } = {}) {
@@ -83,14 +79,29 @@ export async function ensureFullAutoPlanApprovalAudit({
   issueNumber,
   repo,
   ts,
+  mode = null,
   env = process.env,
   listComments = defaultListComments,
   postComment = defaultPostComment,
 } = {}) {
   if (!issueNumber) throw new Error('ensureFullAutoPlanApprovalAudit: issueNumber is required');
   if (!repo) throw new Error('ensureFullAutoPlanApprovalAudit: repo is required');
-  if (!isExplicitFullAutoPlanApproval(env)) {
+  // Durable provenance wins over the current process environment. A known
+  // human approval must never acquire a false Full-Auto attestation merely
+  // because an idempotent repair is run from a Full-Auto session. A known
+  // Full-Auto marker can repair its missing audit even when the current env is
+  // interactive. Historical `unknown` markers retain the prior env-directed
+  // repair behavior so they remain default-deny but recoverable.
+  if (mode === 'human') {
     return { mode: 'human', auditPosted: false, alreadyPresent: false };
+  }
+  const fullAuto = mode === 'full-auto' || isExplicitFullAutoPlanApproval(env);
+  if (!fullAuto) {
+    return {
+      mode: mode === 'unknown' ? 'unknown' : 'human',
+      auditPosted: false,
+      alreadyPresent: false,
+    };
   }
   if (!ts) {
     throw new Error(

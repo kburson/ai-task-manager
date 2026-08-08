@@ -17,8 +17,6 @@ assert.match(body, /Backlog → On Deck → Refine → Plan → Develop → Test
 assert.match(body, /State Transition Verb Map \(8-state model\)/);
 assert.match(body, /\/task plan #N/);
 assert.match(body, /\/task test #N/);
-assert.match(body, /\/task approve #N --human/);
-assert.match(body, /latest Review epoch's passing proof/);
 assert.match(body, /Hook Capability/);
 assert.match(body, /`hookCapability: true`/);
 assert.match(body, /`UserPromptSubmit` adds timestamp context/);

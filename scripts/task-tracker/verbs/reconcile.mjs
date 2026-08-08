@@ -426,31 +426,23 @@ export async function runReconcile({
     // board move must finish the evidence invalidation that normal demote
     // performs. Keep this deliberately demotion-shaped: accept-live remains
     // non-destructive for forward and unrelated external drift.
-    let stripped = [];
+    const invalidation =
+      live === 'develop' && DEMOTION_RECOVERY_SOURCES.has(recorded)
+        ? invalidateEvidence(body)
+        : { body, invalidated: [] };
+    const stamped = writeLastKnownState(invalidation.body, live);
+    // Visit-aware schema (#181): preserve forward markers as history.
+    // stampEntryMarker increments the visit suffix; the chain-integrity gate
+    // validates the resulting sequence against LEGAL_TRANSITIONS.
+    const stripped = invalidation.invalidated;
+    const withEntry = stampEntryMarker(stamped, live, nowTs);
     await writeIssueBodyWithRetry({
       issueNumber,
       repo: cfg.repo,
+      body: withEntry,
+      bodyBefore: body,
       target: live,
-      // #1050 — accept-live formerly passed a pre-baked snapshot through the
-      // legacy write path. Derive both the demotion invalidation and state
-      // markers from the fresh mutation base so a concurrent body update is
-      // retained on every versioned retry.
-      mutate: (base) => {
-        const invalidation =
-          live === 'develop' && DEMOTION_RECOVERY_SOURCES.has(recorded)
-            ? invalidateEvidence(base, {
-                reviewInvalidatedAt: nowTs,
-                reviewInvalidationReason: 'demoted',
-              })
-            : { body: base, invalidated: [] };
-        stripped = invalidation.invalidated;
-        const stamped = writeLastKnownState(invalidation.body, live);
-        // Visit-aware schema (#181): preserve forward markers as history.
-        // stampEntryMarker increments the visit suffix; the chain-integrity
-        // gate validates the resulting sequence against LEGAL_TRANSITIONS.
-        return stampEntryMarker(stamped, live, nowTs);
-      },
-      deps: { mutateIssueBody: mutateBody },
+      writeIssueBody: ({ body: b }) => writeIssueBody({ issueNumber, repo: cfg.repo, body: b }),
     });
     persistTrackerState({ issueNumber, state: live });
     try {

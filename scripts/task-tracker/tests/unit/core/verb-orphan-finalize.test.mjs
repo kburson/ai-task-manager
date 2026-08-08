@@ -4,8 +4,8 @@ import { strict as assert } from 'node:assert';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 
-// #215 AC4 / #1049 — the governed bind session projection must strictly
-// consume the owned pending pause before writing the new binding.
+// #215 AC4 — `verbs/start.mjs` and `verbs/resume.mjs` must call
+// `finalizeOrphanPause({reason: 'orphan-finalize'})` before binding/resuming.
 //
 // This test is a static AST-style guard: it checks that each verb file
 // imports `finalizeOrphanPause` from `../orphan-finalize.mjs` AND awaits
@@ -14,7 +14,6 @@ import path from 'node:path';
 // orphan-finalize.test.mjs.
 
 const root = path.resolve('scripts/task-tracker/verbs');
-const governedRoot = path.resolve('scripts/task-tracker/lib/work-lease');
 
 function read(p) {
   return readFileSync(p, 'utf8');
@@ -22,7 +21,6 @@ function read(p) {
 
 const startSrc = read(path.join(root, 'start.mjs'));
 const resumeSrc = read(path.join(root, 'resume.mjs'));
-const orchestrationSrc = read(path.join(governedRoot, 'bind-orchestration.mjs'));
 
 // start.mjs — now a thin redirect to verbResume; orphan-finalize is handled there
 {
@@ -38,25 +36,25 @@ const orchestrationSrc = read(path.join(governedRoot, 'bind-orchestration.mjs'))
   );
 }
 
-// resume.mjs is now a thin governed export.
+// resume.mjs
 {
   assert.match(
     resumeSrc,
-    /from\s*['"]\.\.\/lib\/work-lease\/bind-orchestration\.mjs['"]/,
-    'resume.mjs exports the governed bind orchestration'
+    /import\s*\{[^}]*finalizeOrphanPause[^}]*\}\s*from\s*['"]\.\.\/orphan-finalize\.mjs['"]/,
+    'resume.mjs imports finalizeOrphanPause from ../orphan-finalize.mjs'
   );
   assert.match(
-    orchestrationSrc,
-    /import\s*\{[^}]*consumePendingPauseForBind[^}]*\}\s*from\s*['"]\.\.\/\.\.\/orphan-finalize\.mjs['"]/,
-    'governed orchestration imports strict pending-pause consumption'
+    resumeSrc,
+    /finalizeOrphanPause\([\s\S]*?reason:\s*['"]orphan-finalize['"]/,
+    'resume.mjs calls finalizeOrphanPause with reason: orphan-finalize'
   );
-  const consumeIdx = orchestrationSrc.search(/consumePendingPauseForBind\(/);
-  const saveActiveIdx = orchestrationSrc.search(/saveState\(input\.state/);
-  assert.ok(consumeIdx > 0);
+  const finalizeIdx = resumeSrc.search(/finalizeOrphanPause\(/);
+  const saveActiveIdx = resumeSrc.search(/saveState\([\s\S]*?active:\s*normalizedTarget/);
+  assert.ok(finalizeIdx > 0);
   assert.ok(saveActiveIdx > 0);
   assert.ok(
-    consumeIdx < saveActiveIdx,
-    'pending-pause consumption must run BEFORE saveState binds the target'
+    finalizeIdx < saveActiveIdx,
+    'finalizeOrphanPause must run BEFORE the saveState that binds target'
   );
 }
 

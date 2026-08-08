@@ -207,21 +207,6 @@ test('upsertProgressMarker rejects an empty or non-string kind', () => {
   );
 });
 
-test('closed convergence rethrows governed authority errors without translation', async () => {
-  const stale = Object.assign(new Error('stale close fence'), { code: 'fence-stale' });
-  await assert.rejects(
-    runClosedIssueConvergence(
-      { decision: { action: 'finalize' } },
-      {
-        moveToDone: async () => {
-          throw stale;
-        },
-      }
-    ),
-    (error) => error === stale
-  );
-});
-
 function recoveryService({ failOnce = null, queuedTiming = false } = {}) {
   const state = {
     body: '## Body\n',

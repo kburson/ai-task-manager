@@ -39,6 +39,7 @@ export const CAPABILITY_SURFACES = {
     'safePostTiming',
     'safeRecordSessionRef',
     'drainQueueIfAny',
+    'flushQueueFor',
     'flushAndForgetQueueFor',
     'flushActiveToGH',
   ],
@@ -54,7 +55,6 @@ export const CAPABILITY_SURFACES = {
     'getIssueClosedState',
   ],
   issueBodyMutator: ['mutate'],
-  workLeaseGuard: ['withGovernedEffect'],
 };
 
 // Pluck the listed keys off the flat ctx into a fresh object. Functions are
@@ -76,24 +76,8 @@ export function assembleCapabilities(ctx) {
   const timingRecorder = pick(ctx, CAPABILITY_SURFACES.timingRecorder);
   const stateRunner = pick(ctx, CAPABILITY_SURFACES.stateRunner);
   const githubClient = pick(ctx, CAPABILITY_SURFACES.githubClient);
-  const workLeaseGuard = pick(ctx, CAPABILITY_SURFACES.workLeaseGuard);
   const issueBodyMutator = {
-    mutate: ({ withGovernedEffect, ...args }) =>
-      mutateIssueBody({
-        deps: {
-          pexec: ctx.pexec,
-          projectDir: ctx.projectDir,
-          withGovernedEffect: withGovernedEffect ?? ctx.withGovernedEffect,
-        },
-        ...args,
-      }),
+    mutate: (args) => mutateIssueBody({ deps: { pexec: ctx.pexec }, ...args }),
   };
-  return {
-    projectConfig,
-    timingRecorder,
-    stateRunner,
-    githubClient,
-    issueBodyMutator,
-    workLeaseGuard,
-  };
+  return { projectConfig, timingRecorder, stateRunner, githubClient, issueBodyMutator };
 }

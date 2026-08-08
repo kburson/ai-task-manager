@@ -113,9 +113,9 @@ node scripts/task-tracker/task-tracker.mjs promote 294 develop --reason "..."
 
 ## Session-Reference Chain (`aitm-session-ref`) — #476
 
-An **append-only** chain of markers records which Claude Code session(s) worked
-the story and where each session's JSONL transcript lives, so any timing-log row
-can be traced back to the conversation that produced it.
+An **append-only** chain of markers records which provider session(s) worked the
+story and where each session's JSONL transcript lives, so any timing-log row can
+be traced back to the conversation that produced it.
 
 ```
 <!-- aitm-session-ref sid="<session-id>" jsonl="<absolute path>" ts="<iso>" -->
@@ -148,14 +148,26 @@ can be traced back to the conversation that produced it.
   `if (claude)`/`if (codex)` branching exists in the recording path.
   - **Claude** (`transcriptLayout: 'flat'`): `~/.claude/projects/<projectKey>/<sid>.jsonl`.
     Deterministic without the file — recorded even before the transcript exists.
-  - **Codex** (`transcriptLayout: 'date-bucketed'`): transcripts live at
+  - **Codex** (`transcriptLayout: 'date-bucketed'`): `CODEX_THREAD_ID` is the
+    authoritative Desktop identity and precedes legacy `CODEX_SESSION_ID`.
+    Transcripts live at
     `~/.codex/sessions/YYYY/MM/DD/rollout-<ts>-<sid>.jsonl` (sid is the trailing
-    UUID; `payload.cwd` in line 1 records the project). The resolver searches
-    the date buckets for the file whose basename ends `-<sid>.jsonl`.
+    thread ID; `payload.cwd` in line 1 records the project). The resolver
+    searches the date buckets for the file whose basename ends `-<sid>.jsonl`.
   - **Degradation.** When a date-bucketed provider's transcript cannot be
-    resolved (sid known from `CODEX_SESSION_ID` but no rollout file yet on disk,
-    or remote/iOS), `jsonlPath` returns `''` and a **sid-only** entry is written
-    (`jsonl=""`) — never a placeholder or deterministic-but-wrong path.
+    resolved (sid known but no rollout file yet on disk, or remote/iOS),
+    `jsonlPath` returns `''` and a **sid-only** entry is written (`jsonl=""`) —
+    never a placeholder or deterministic-but-wrong path. The word measurement
+    separately reports `codex-session-unresolved`,
+    `codex-transcript-unresolved`, or `codex-schema-unrecognized`; it never
+    fabricates a successful zero measurement.
+- **Codex Word Marker source (`#1092`).** Only authoritative Codex
+  `response_item` records feed the three word tiers. Visible user/assistant
+  message text and compact tool-call chips feed stay-abreast; expanded tool
+  inputs and outputs feed full expansion. Developer/system messages, reasoning,
+  `event_msg` mirrors, and Desktop context injections are excluded. These rules
+  apply prospectively; historical Timing Log rows and prior session-reference
+  markers are not rewritten.
 
 ## Related
 

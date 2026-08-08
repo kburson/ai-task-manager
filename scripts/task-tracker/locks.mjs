@@ -79,11 +79,7 @@ function release(lockPath) {
   }
 }
 
-export async function withLock(
-  lockPath,
-  fn,
-  { timeoutMs = DEFAULT_TIMEOUT_MS, retries = 0, shouldRetry = () => true } = {}
-) {
+export async function withLock(lockPath, fn, { timeoutMs = DEFAULT_TIMEOUT_MS, retries = 0 } = {}) {
   await acquire(lockPath, timeoutMs);
   try {
     let attempt = 0;
@@ -93,7 +89,6 @@ export async function withLock(
         return await fn();
       } catch (err) {
         lastErr = err;
-        if (!shouldRetry(err)) throw err;
         attempt += 1;
         if (attempt > retries) throw err;
       }

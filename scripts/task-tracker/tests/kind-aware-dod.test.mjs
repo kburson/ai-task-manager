@@ -38,10 +38,11 @@ const RUNTIME_DOD = path.join(REPO_ROOT, '.ai-task-manager', 'templates', 'defin
 const PACKAGED_DOD = path.join(REPO_ROOT, 'templates', 'definition-of-done.md');
 const CONTRACT_DOC = path.join(REPO_ROOT, 'skill', 'shared', 'rules', 'functional-dod.md');
 
-function makeFixture() {
+function makeFixture(kind = 'code') {
   const dir = mkdtempSync(path.join(projectScratchDir('test'), 'kind-aware-dod-'));
   const scope = path.join(dir, 'scope.md');
   const ac = path.join(dir, 'ac.md');
+  const origin = path.join(dir, 'origin.md');
   const meta = path.join(dir, 'meta.md');
   writeFileSync(scope, 'Scope.\n', 'utf8');
   writeFileSync(
@@ -49,8 +50,9 @@ function makeFixture() {
     '- [ ] Something happens. <!-- aitm-verified cmd="`node --test x.mjs`" -->\n',
     'utf8'
   );
+  writeFileSync(origin, `- **kind**: ${kind}\n`, 'utf8');
   writeFileSync(meta, '- **Size**: M\n', 'utf8');
-  return { dir, scope, ac, meta };
+  return { dir, scope, ac, origin, meta };
 }
 
 async function runPreflight(args) {
@@ -72,6 +74,8 @@ function subIssueArgs(fx, extra = []) {
     fx.scope,
     '--ac-file',
     fx.ac,
+    '--story-origin-file',
+    fx.origin,
     '--plan-metadata-file',
     fx.meta,
     ...extra,
@@ -178,7 +182,7 @@ describe('AC2/AC7: preflight filters DoD + derived VC by kind', () => {
 
   for (const kind of ['spike', 'research']) {
     it(`${kind} omits the tests item AND drops its derived test commands`, async () => {
-      const fx = makeFixture();
+      const fx = makeFixture(kind);
       try {
         const r = await runPreflight(subIssueArgs(fx, ['--kind', kind]));
         assert.equal(r.code, 0, r.stderr);
@@ -256,6 +260,8 @@ describe('AC6: code-kind back-compat', () => {
           fx.scope,
           '--ac-file',
           fx.ac,
+          '--story-origin-file',
+          fx.origin,
           '--plan-metadata-file',
           fx.meta,
         ];

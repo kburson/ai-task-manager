@@ -10,7 +10,13 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { healTimingLog, countRetiredRows } from '../../../lib/heal-timing-log.mjs';
+import {
+  healTimingLog,
+  countRetiredRows,
+  countZeroValueStopResumePairs,
+  countRedundantReviewPassRows,
+  countPostTerminalRows,
+} from '../../../lib/heal-timing-log.mjs';
 
 const HEADER =
   '| Timestamp | Event | Active | Idle | Δ Words | Word Marker | Description | Δ Words (full) |';
@@ -247,4 +253,331 @@ test('bare-reject-develop requalify is idempotent', () => {
 test('non-string input is returned unchanged', () => {
   assert.equal(healTimingLog(null), null);
   assert.equal(healTimingLog(undefined), undefined);
+});
+
+// ---- #1093 — conservative valueless timing-noise healing ------------------
+
+function noiseRow({
+  ts,
+  event,
+  active = '',
+  idle = '',
+  deltaWords = '',
+  wordMarker = '100',
+  description = event,
+  rowActive = 0,
+  rowIdle = 0,
+  deltaWordsFull,
+} = {}) {
+  const fullCell = deltaWordsFull === undefined ? '' : ` ${deltaWordsFull} |`;
+  return `| ${ts} | ${event} | ${active} | ${idle} | ${deltaWords} | ${wordMarker} | ${description} |${fullCell} <!-- row-sec: a=${rowActive} i=${rowIdle} -->`;
+}
+
+function noiseBody(...rows) {
+  return ['## ⏱ Timing Log', '', HEADER, SEP, ...rows, ''].join('\n');
+}
+
+function eventRows(body, event) {
+  return rowsOf(body).filter((line) => line.split('|')[2].trim() === event);
+}
+
+// @story #1134
+test('post-terminal healing reproduces #1127 and preserves the authoritative prefix', () => {
+  const prefix = [
+    '## ⏱ Timing Log',
+    '',
+    HEADER,
+    SEP,
+    noiseRow({ ts: '2026-08-01 10:00:00 -05:00', event: 'start', wordMarker: '103000' }),
+    noiseRow({
+      ts: '2026-08-01 10:10:00 -05:00',
+      event: 'review:approved',
+      wordMarker: '103183',
+    }),
+    noiseRow({
+      ts: '2026-08-01 10:10:01 -05:00',
+      event: 'issue:wrap',
+      wordMarker: '103183',
+    }),
+    noiseRow({
+      ts: '2026-08-01 10:10:02 -05:00',
+      event: 'issue:closed',
+      wordMarker: '103183',
+    }),
+  ].join('\n');
+  const malformed = 'Malformed timing artifact mentioning issue:closed is preserved.';
+  const prose = 'Operator note after the historical timing table.';
+  const body = [
+    prefix,
+    malformed,
+    noiseRow({ ts: '2026-08-01 10:11:00 -05:00', event: 'resumed', wordMarker: '103183' }),
+    noiseRow({
+      ts: '2026-08-01 10:12:00 -05:00',
+      event: 'review:approved',
+      wordMarker: '103183',
+    }),
+    noiseRow({
+      ts: '2026-08-01 10:12:01 -05:00',
+      event: 'issue:wrap',
+      wordMarker: '103183',
+    }),
+    noiseRow({
+      ts: '2026-08-01 10:12:02 -05:00',
+      event: 'issue:closed',
+      wordMarker: '103183',
+    }),
+    noiseRow({
+      ts: '2026-08-01 10:13:00 -05:00',
+      event: 'switch-out:#1129',
+      wordMarker: '103183',
+    }),
+    prose,
+    '',
+  ].join('\n');
+
+  assert.equal(countPostTerminalRows(body), 5);
+  const healed = healTimingLog(body);
+  assert.equal(countPostTerminalRows(healed), 0);
+  assert.equal(healed, [prefix, malformed, prose, ''].join('\n'));
+  assert.equal(healTimingLog(healed), healed, 'the second pass is byte-identical');
+});
+
+test('zero-value adjacent stop/resume pairs heal at the 0-second and 59-second boundaries', () => {
+  const body = noiseBody(
+    noiseRow({ ts: '2026-08-01 10:00:00 -05:00', event: 'stop' }),
+    noiseRow({ ts: '2026-08-01 10:00:00 -05:00', event: 'resumed' }),
+    noiseRow({ ts: '2026-08-01 11:00:00 -05:00', event: 'stop' }),
+    noiseRow({ ts: '2026-08-01 11:00:59 -05:00', event: 'resumed' })
+  );
+
+  assert.equal(countZeroValueStopResumePairs(body), 2);
+  const healed = healTimingLog(body);
+  assert.equal(eventRows(healed, 'stop').length, 0);
+  assert.equal(eventRows(healed, 'resumed').length, 0);
+  assert.equal(countZeroValueStopResumePairs(healed), 0);
+});
+
+test('stop/resume healing preserves every conservative guard', async (t) => {
+  const baseStop = { ts: '2026-08-01 10:00:00 -05:00', event: 'stop' };
+  const baseResume = { ts: '2026-08-01 10:00:05 -05:00', event: 'resumed' };
+  const cases = [
+    ['active cell carries value', { ...baseStop, active: '0h 00m 01s' }, baseResume],
+    ['idle cell carries value', { ...baseStop, idle: '0h 00m 01s' }, baseResume],
+    ['active cell uses non-canonical zero', { ...baseStop, active: '0' }, baseResume],
+    ['idle cell uses non-canonical zero', { ...baseStop, idle: '0' }, baseResume],
+    ['row-sec active carries value', { ...baseStop, rowActive: 1 }, baseResume],
+    ['row-sec idle carries value', baseStop, { ...baseResume, rowIdle: 1 }],
+    ['word delta carries value', { ...baseStop, deltaWords: '1' }, baseResume],
+    ['word delta is unknown', { ...baseStop, deltaWords: '—' }, baseResume],
+    ['full word delta carries value', { ...baseStop, deltaWordsFull: '1' }, baseResume],
+    ['full word delta is unknown', { ...baseStop, deltaWordsFull: '—' }, baseResume],
+    ['word marker is absent', { ...baseStop, wordMarker: '' }, { ...baseResume, wordMarker: '' }],
+    [
+      'word marker is invalid',
+      { ...baseStop, wordMarker: 'unknown' },
+      { ...baseResume, wordMarker: 'unknown' },
+    ],
+    ['word marker changes', baseStop, { ...baseResume, wordMarker: '101' }],
+    ['event spelling is non-canonical', { ...baseStop, event: 'Stop' }, baseResume],
+    [
+      'timestamp is invalid',
+      { ...baseStop, ts: '2026-02-30 10:00:00 -05:00' },
+      { ...baseResume, ts: '2026-02-30 10:00:05 -05:00' },
+    ],
+    [
+      'timestamps are reversed',
+      { ...baseStop, ts: '2026-08-01 10:00:05 -05:00' },
+      { ...baseResume, ts: '2026-08-01 10:00:00 -05:00' },
+    ],
+    ['gap is 60 seconds', baseStop, { ...baseResume, ts: '2026-08-01 10:01:00 -05:00' }],
+  ];
+
+  for (const [name, stop, resumed] of cases) {
+    await t.test(name, () => {
+      const body = noiseBody(noiseRow(stop), noiseRow(resumed));
+      assert.equal(countZeroValueStopResumePairs(body), 0);
+      assert.equal(healTimingLog(body), body);
+    });
+  }
+
+  await t.test('rows are not adjacent', () => {
+    const body = noiseBody(
+      noiseRow(baseStop),
+      noiseRow({ ts: '2026-08-01 10:00:03 -05:00', event: 'update' }),
+      noiseRow(baseResume)
+    );
+    assert.equal(countZeroValueStopResumePairs(body), 0);
+    assert.equal(healTimingLog(body), body);
+  });
+
+  await t.test('row-sec marker is absent', () => {
+    const withoutMarker = (row) => noiseRow(row).replace(/\s*<!-- row-sec:[^>]+-->$/, '');
+    const body = noiseBody(withoutMarker(baseStop), withoutMarker(baseResume));
+    assert.equal(countZeroValueStopResumePairs(body), 0);
+    assert.equal(healTimingLog(body), body);
+  });
+
+  await t.test('row-sec marker is malformed', () => {
+    const malformedMarker = (row) =>
+      noiseRow(row).replace('<!-- row-sec: a=0 i=0 -->', '<!-- row-sec: unknown -->');
+    const body = noiseBody(malformedMarker(baseStop), malformedMarker(baseResume));
+    assert.equal(countZeroValueStopResumePairs(body), 0);
+    assert.equal(healTimingLog(body), body);
+  });
+});
+
+test('removed stop/resume brackets feed the existing phase-duration recomputation', () => {
+  const body = noiseBody(
+    noiseRow({ ts: '2026-08-01 10:00:00 -05:00', event: 'develop:started' }),
+    noiseRow({ ts: '2026-08-01 10:05:00 -05:00', event: 'stop' }),
+    noiseRow({ ts: '2026-08-01 10:05:05 -05:00', event: 'resumed' }),
+    noiseRow({
+      ts: '2026-08-01 10:10:00 -05:00',
+      event: 'develop:completed',
+      active: '0h 09m 55s',
+      idle: '0h 00m 05s',
+      rowActive: 595,
+      rowIdle: 5,
+    })
+  );
+
+  const healed = healTimingLog(body);
+  const completed = findRow(healed, 'develop:completed');
+  assert.equal(eventRows(healed, 'stop').length, 0);
+  assert.equal(eventRows(healed, 'resumed').length, 0);
+  assert.match(completed, /\|\s*0h 10m 00s\s*\|\s*\|/);
+  assert.match(completed, /<!--\s*row-sec: a=600 i=0\s*-->$/);
+});
+
+test('review pass healing preserves the first outcome in each reset sequence', () => {
+  const approved = noiseRow({
+    ts: '2026-08-01 10:11:00 -05:00',
+    event: 'review:approved',
+    active: '0h 00m 10s',
+    rowActive: 10,
+  });
+  const body = noiseBody(
+    noiseRow({ ts: '2026-08-01 10:00:00 -05:00', event: 'review:started' }),
+    noiseRow({ ts: '2026-08-01 10:01:00 -05:00', event: 'review:passed', description: 'pass one' }),
+    noiseRow({
+      ts: '2026-08-01 10:02:00 -05:00',
+      event: 'review:passed',
+      description: 'duplicate one',
+    }),
+    noiseRow({ ts: '2026-08-01 10:03:00 -05:00', event: 'review:failed' }),
+    noiseRow({
+      ts: '2026-08-01 10:04:00 -05:00',
+      event: 'review:passed',
+      description: 'pass after failure',
+    }),
+    noiseRow({
+      ts: '2026-08-01 10:05:00 -05:00',
+      event: 'review:passed',
+      description: 'duplicate two',
+    }),
+    noiseRow({ ts: '2026-08-01 10:06:00 -05:00', event: 'demoted:develop' }),
+    noiseRow({
+      ts: '2026-08-01 10:07:00 -05:00',
+      event: 'review:passed',
+      description: 'outside visit',
+    }),
+    noiseRow({ ts: '2026-08-01 10:08:00 -05:00', event: 'review:started' }),
+    noiseRow({
+      ts: '2026-08-01 10:09:00 -05:00',
+      event: 'review:passed',
+      description: 'new visit pass',
+    }),
+    noiseRow({
+      ts: '2026-08-01 10:10:00 -05:00',
+      event: 'review:passed',
+      description: 'duplicate three',
+    }),
+    approved,
+    noiseRow({
+      ts: '2026-08-01 10:12:00 -05:00',
+      event: 'review:passed',
+      description: 'after approval',
+    })
+  );
+
+  assert.equal(countRedundantReviewPassRows(body), 3);
+  const healed = healTimingLog(body);
+  assert.equal(countRedundantReviewPassRows(healed), 0);
+  assert.deepEqual(
+    eventRows(healed, 'review:passed').map((line) => line.split('|')[7].trim()),
+    ['pass one', 'pass after failure', 'outside visit', 'new visit pass', 'after approval']
+  );
+  assert.match(healed, /\| review:failed \|/);
+  assert.match(healed, /\| demoted:develop \|/);
+  assert.match(healed, /\| review:approved \|/);
+  assert.ok(healed.includes(approved), 'zero-value duplicate passes do not alter phase totals');
+  assert.equal(healTimingLog(healed), healed, 'review-only heal is byte-identical on rerun');
+});
+
+test('review pass healing preserves repeated outcomes whose zero value is unproven', async (t) => {
+  const started = noiseRow({ ts: '2026-08-01 10:00:00 -05:00', event: 'review:started' });
+  const first = noiseRow({
+    ts: '2026-08-01 10:01:00 -05:00',
+    event: 'review:passed',
+    description: 'first pass',
+  });
+  const baseDuplicate = {
+    ts: '2026-08-01 10:02:00 -05:00',
+    event: 'review:passed',
+    description: 'repeated pass',
+  };
+  const cases = [
+    ['active value', noiseRow({ ...baseDuplicate, active: '0h 00m 01s', rowActive: 1 })],
+    ['idle value', noiseRow({ ...baseDuplicate, idle: '0h 00m 01s', rowIdle: 1 })],
+    ['non-canonical active zero', noiseRow({ ...baseDuplicate, active: '0' })],
+    ['non-canonical idle zero', noiseRow({ ...baseDuplicate, idle: '0' })],
+    ['impossible timestamp', noiseRow({ ...baseDuplicate, ts: '2026-02-30 10:02:00 -05:00' })],
+    ['word delta', noiseRow({ ...baseDuplicate, deltaWords: '1' })],
+    ['full word delta', noiseRow({ ...baseDuplicate, deltaWordsFull: '1' })],
+    ['changed word marker', noiseRow({ ...baseDuplicate, wordMarker: '101' })],
+    ['missing row-sec marker', noiseRow(baseDuplicate).replace(/\s*<!-- row-sec:[^>]+-->$/, '')],
+    [
+      'malformed row-sec marker',
+      noiseRow(baseDuplicate).replace('<!-- row-sec: a=0 i=0 -->', '<!-- row-sec: unknown -->'),
+    ],
+  ];
+
+  for (const [name, duplicate] of cases) {
+    await t.test(name, () => {
+      const body = noiseBody(started, first, duplicate);
+      assert.equal(countRedundantReviewPassRows(body), 0);
+      assert.equal(healTimingLog(body), body);
+    });
+  }
+});
+
+test('malformed review boundaries break deletion eligibility until a valid restart', async (t) => {
+  for (const event of ['review:started', 'review:failed', 'review:approved', 'update']) {
+    await t.test(event, () => {
+      const body = noiseBody(
+        noiseRow({ ts: '2026-08-01 10:00:00 -05:00', event: 'review:started' }),
+        noiseRow({ ts: '2026-08-01 10:01:00 -05:00', event: 'review:passed' }),
+        noiseRow({ ts: '2026-02-30 10:02:00 -05:00', event }),
+        noiseRow({
+          ts: '2026-08-01 10:03:00 -05:00',
+          event: 'review:passed',
+          description: 'must remain',
+        })
+      );
+      assert.equal(countRedundantReviewPassRows(body), 0);
+      assert.equal(healTimingLog(body), body);
+    });
+  }
+});
+
+test('mixed valueless-noise healing is byte-identical on a second pass', () => {
+  const body = noiseBody(
+    noiseRow({ ts: '2026-08-01 10:00:00 -05:00', event: 'review:started' }),
+    noiseRow({ ts: '2026-08-01 10:01:00 -05:00', event: 'review:passed' }),
+    noiseRow({ ts: '2026-08-01 10:02:00 -05:00', event: 'review:passed' }),
+    noiseRow({ ts: '2026-08-01 10:03:00 -05:00', event: 'stop' }),
+    noiseRow({ ts: '2026-08-01 10:03:05 -05:00', event: 'resumed' })
+  );
+  const once = healTimingLog(body);
+  assert.equal(healTimingLog(once), once);
 });

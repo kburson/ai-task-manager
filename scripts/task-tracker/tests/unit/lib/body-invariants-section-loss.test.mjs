@@ -163,7 +163,6 @@ function makeFakeDeps(initialBody) {
   const pushes = [];
   return {
     deps: {
-      withGovernedEffect: async (_options, callback) => callback({ reverify: async () => {} }),
       fetchBody: async () => remote,
       pushBody: async (_repo, _issue, body) => {
         remote = body;

@@ -69,21 +69,14 @@ test('source: gate-eval catch routes through decideGateEvalFailure', () => {
   );
 });
 
-test('source: non-force gate-eval failure returns a structured refusal before mutation', () => {
-  // The executor must return a refusal outcome. The outer verb applies CLI
-  // exit state only after the lease scope and issue lock unwind.
+test('source: non-force gate-eval failure exits before mutation', () => {
+  // Locate the gate-eval catch and assert it exits (process.exit) on failClosed
+  // rather than falling through to the terminal close.
   const idx = closeSrc.indexOf('decideGateEvalFailure(');
   assert.ok(idx >= 0);
   const after = closeSrc.slice(idx, idx + 600);
   assert.ok(
-    /failClosed/.test(after) &&
-      /return closeOutcome\(\{\s*status:\s*'gate-evaluation-refused',\s*exitCode:\s*decision\.exitCode\s*\}\)/s.test(
-        after
-      ),
-    'failClosed branch must return a structured refusal before any close mutation'
+    /failClosed/.test(after) && /process\.exit\(/.test(after),
+    'failClosed branch must process.exit before any close mutation'
   );
-  const finalizeIdx = closeSrc.indexOf('export function finalizeCloseOutcome');
-  const executeIdx = closeSrc.indexOf('export async function executeClosePlan');
-  assert.ok(finalizeIdx >= 0 && finalizeIdx < executeIdx);
-  assert.doesNotMatch(closeSrc.slice(executeIdx), /process\.exit\(/);
 });

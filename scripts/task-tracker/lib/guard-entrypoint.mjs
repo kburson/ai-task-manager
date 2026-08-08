@@ -63,30 +63,12 @@ export function resolveGuardEntrypoint(name, { cwd = process.cwd(), exists = exi
 // Build the `node -e "…"` hook command string embedding the fallback pick.
 // The inline program: resolves each candidate against process.cwd(), imports
 // the first existing one in-process (so it inherits stdin fd 0 and propagates
-// the guard's own process.exit code), invokes an explicit `runGuardBootstrap`
-// export when the module supplies one, and — if NEITHER exists — writes a
-// distinct stderr diagnostic and exits 2 (fail closed + loud, AC2). Legacy
-// guards still execute at module top level and exit during import, so the
-// optional callable does not double-run them.
+// the guard's own process.exit code), and — if NEITHER exists — writes a
+// distinct stderr diagnostic and exits 2 (fail closed + loud, AC2). Only
+// single-quoted JS strings are used so the outer double-quoted `-e` argument
+// needs no inner-quote escaping (JSON serialization in settings.json handles
+// the surrounding double quotes).
 export function guardBootstrapCommand(name) {
-  const candidates = JSON.stringify(guardEntrypointCandidates(name));
-  const program =
-    `const {existsSync}=require('fs');` +
-    `const {resolve}=require('path');` +
-    `const {pathToFileURL}=require('url');` +
-    `const c=${candidates};` +
-    `const p=c.map(x=>resolve(process.cwd(),x)).find(existsSync);` +
-    `if(!p){process.stderr.write('aitm ${name}: guard entrypoint unresolved ` +
-    `(node_modules + repo-relative both absent) — failing closed\\n');process.exit(2);}` +
-    `import(pathToFileURL(p).href).then(m=>` +
-    `typeof m.runGuardBootstrap==='function'?m.runGuardBootstrap():undefined);`;
-  return `node -e ${JSON.stringify(program)}`;
-}
-
-// Exact #792 command form retained only so installers can remove it during
-// migration. It imported a guard but had neither safe shell serialization nor
-// an explicit callable for import-side-effect-free guards.
-export function legacyGuardBootstrapCommand(name) {
   const candidates = JSON.stringify(guardEntrypointCandidates(name));
   const program =
     `const {existsSync}=require('fs');` +
@@ -116,11 +98,11 @@ export function entrypointCandidates(repoRelPath) {
 // [argv0, resolvedPath, ...extraArgs] — this makes the module's isMain check
 // pass and its argv reads resolve. Hooks are non-security: on no-resolution we
 // fail OPEN (exit 0 + stderr diagnostic), never closed.
-function hookBootstrapProgram(repoRelPath, extraArgs) {
+export function hookBootstrapCommand(repoRelPath, ...extraArgs) {
   const candidates = JSON.stringify(entrypointCandidates(repoRelPath));
   const argvTail = extraArgs.map((a) => JSON.stringify(String(a))).join(',');
   const label = repoRelPath.split('/').pop();
-  return (
+  const program =
     `const {existsSync}=require('fs');` +
     `const {resolve}=require('path');` +
     `const {pathToFileURL}=require('url');` +
@@ -129,16 +111,6 @@ function hookBootstrapProgram(repoRelPath, extraArgs) {
     `if(!p){process.stderr.write('aitm ${label}: hook entrypoint unresolved ` +
     `(node_modules + repo-relative both absent) — skipping\\n');process.exit(0);}` +
     `process.argv=[process.argv[0],p${argvTail ? ',' + argvTail : ''}];` +
-    `import(pathToFileURL(p).href);`
-  );
-}
-
-export function hookBootstrapCommand(repoRelPath, ...extraArgs) {
-  return `node -e ${JSON.stringify(hookBootstrapProgram(repoRelPath, extraArgs))}`;
-}
-
-// Unsafe shell serialization shipped before #1049. Retained only so both
-// installers can remove the exact broken command during idempotent migration.
-export function legacyHookBootstrapCommand(repoRelPath, ...extraArgs) {
-  return `node -e "${hookBootstrapProgram(repoRelPath, extraArgs)}"`;
+    `import(pathToFileURL(p).href);`;
+  return `node -e "${program}"`;
 }

@@ -1,16 +1,18 @@
-<!-- aitm-skill-version: 1.0.0 -->
+<!-- aitm-skill-version: 1.1.0 -->
 
 # rules/report-on-block.md
 
 Tier-2 rule file. Loaded JIT whenever a skill script blocks you — a PreToolUse Bash hook returns `{decision:"block"}`, or a `node scripts/task-tracker/...` command exits non-zero and prints an error to stderr. On first read, emit a single line in your reply:
 
 ```
-aitm-skill-loaded:rules/report-on-block:1.0.0
+aitm-skill-loaded:rules/report-on-block:1.1.0
 ```
 
 ## Purpose
 
-This repo ships a `report` verb (#496) that lets a downstream beta user file a defect or feature UPSTREAM to the public `kburson/ai-task-manager` repo. This rule closes the loop: when one of the skill's own guards or scripts blocks you, surface the option to report it, so a genuine false-block becomes a one-step upstream defect instead of silent friction.
+This repo ships a `report` verb (#496) that lets a downstream beta user file a defect or feature to an upstream external-product repository, normally public `kburson/ai-task-manager`. This rule closes the loop: when one of the skill's own guards or scripts blocks you, surface the option to report it, so a genuine false-block becomes a one-step upstream defect instead of silent friction.
+
+`/task report` is only for that upstream external-product channel. A defect in the current repository is a local defect story: create it through `scripts/gh/create-issue.mjs --shape defect`, then use the blocking workflow when it prevents the active story from proceeding.
 
 ## Directive 1 — structured hint (preferred)
 

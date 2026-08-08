@@ -16,19 +16,13 @@
 // Pure module: classifiers do no I/O. `loadPolicy` reads the filesystem once
 // per call and falls back to defaults on missing/invalid file.
 //
-// Bash command-target extraction is shared with the PreToolUse/PostToolUse
-// effect classifier so activity classification and lease governance cannot
-// diverge on shell grammar.
+// Bash command-target extraction (redirect / `tee` / heredoc / `touch|mkdir|rm`)
+// duplicates `bash-guard.mjs` lines 80-105. Epic W2 (#67) will lift those
+// helpers into a shared module and re-import here; the patterns are inlined
+// verbatim until then.
 
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
-import {
-  detectCommitCommands,
-  detectGhIssueCommands,
-  extractWriteTargets,
-} from './lib/bash-effect-classifier.mjs';
-
-export { extractWriteTargets };
 
 // ---------------------------------------------------------------------------
 // Defaults
@@ -228,12 +222,65 @@ function startsWithCommand(command, pattern) {
   return next === '' || /\s|;|&|\|/.test(next);
 }
 
+// Extract write targets from a bash command line. Mirrors `bash-guard.mjs`
+// patterns (`redirectRe`, `teeRe`, `writeCommandRe`) but accepts relative
+// paths as well as absolute. Returns an array of target path strings.
+// Replace any single- or double-quoted substring with same-length spaces so
+// downstream regexes don't match shell metacharacters that appear inside
+// quoted arguments (e.g. `<pkg-version>` in a `/task check` label string,
+// which would otherwise look like a redirect). Preserves byte offsets and
+// keeps the rest of the command structure intact.
+function stripQuotedRegions(command) {
+  let out = '';
+  let i = 0;
+  while (i < command.length) {
+    const c = command[i];
+    if (c === "'" || c === '"') {
+      const quote = c;
+      out += ' ';
+      i += 1;
+      while (i < command.length && command[i] !== quote) {
+        out += ' ';
+        i += 1;
+      }
+      if (i < command.length) {
+        out += ' ';
+        i += 1;
+      }
+    } else {
+      out += c;
+      i += 1;
+    }
+  }
+  return out;
+}
+
+function extractWriteTargets(command) {
+  const targets = new Set();
+  const scanned = stripQuotedRegions(command);
+
+  // Redirections: `> path` or `>> path` (not `>&`, not `2>`).
+  const redirectRe = /(?<![0-9&])>>?\s*([^\s;|&<>]+)/g;
+  for (const [, p] of scanned.matchAll(redirectRe)) targets.add(p);
+
+  // `tee [-a] path`
+  const teeRe = /\btee\s+(?:-a\s+)?([^\s;|&<>]+)/g;
+  for (const [, p] of scanned.matchAll(teeRe)) targets.add(p);
+
+  // `touch|mkdir|rmdir|rm` — first non-flag argument is the target. Supports
+  // multiple flags before the path (e.g., `mkdir -p`).
+  const writeCommandRe = /\b(?:touch|mkdir|rmdir|rm)\s+((?:-[^\s]+\s+)*)([^\s;|&<>]+)/g;
+  for (const m of scanned.matchAll(writeCommandRe)) targets.add(m[2]);
+
+  return [...targets];
+}
+
 export function classifyBash(command, policy = DEFAULT_POLICY) {
   if (typeof command !== 'string' || !command) return 'READ_*';
   const cmd = command.replace(/^\s+/, '');
 
-  if (detectCommitCommands(cmd).isCommit) return 'COMMIT_CODE';
-  if (detectGhIssueCommands(cmd).length > 0) return 'WRITE_ISSUE';
+  // `git commit ...`
+  if (/^git\s+commit\b/.test(cmd)) return 'COMMIT_CODE';
 
   // Test runners — longest-first so `npm run test` wins over `npm`.
   const testRunners = [...(policy.testRunners || [])].sort((a, b) => b.length - a.length);
@@ -250,18 +297,11 @@ export function classifyBash(command, policy = DEFAULT_POLICY) {
   // Write targets (redirect / tee / touch / mkdir / rm).
   const targets = extractWriteTargets(cmd);
   if (targets.length > 0) {
-    // Project-local scratch writes are intentionally outside issue authority
-    // and must remain usable in every workflow state. This is target-role aware:
-    // mixed commands still classify from their non-scratch destination(s).
-    if (targets.every((target) => target === '.tmp' || target.startsWith('.tmp/'))) {
-      return 'READ_*';
-    }
     // Classify the most-specific target — if any matches code or docs, return that.
     // Iterate by precedence: WRITE_ISSUE > WRITE_DOCS > WRITE_CODE > WRITE_OTHER.
     let best = 'WRITE_OTHER';
     for (const t of targets) {
-      let cls = classifyEdit(t, policy);
-      if (cls === 'WRITE_OTHER') cls = classifyEdit(`${t.replace(/\/$/, '')}/.aitm-target`, policy);
+      const cls = classifyEdit(t, policy);
       if (cls === 'WRITE_ISSUE') return 'WRITE_ISSUE';
       if (cls === 'WRITE_DOCS') best = 'WRITE_DOCS';
       else if (cls === 'WRITE_CODE' && best !== 'WRITE_DOCS') best = 'WRITE_CODE';

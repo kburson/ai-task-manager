@@ -17,7 +17,6 @@
 
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
-import { WorkLeaseError } from '@kburson/aitm-ledger';
 import { gql, splitRepo } from '../../gh/lib/github-projects.mjs';
 import { GH_API_TIMEOUT_MS } from './process-timeouts.mjs';
 import { ISSUE_ID_GLOBAL_RE } from './commit-attribution-format.mjs';
@@ -67,16 +66,6 @@ async function defaultPostComment({ issueNumber, repo, body }) {
 
 export { defaultPostComment };
 
-async function defaultListComments({ issueNumber, repo }) {
-  const { stdout } = await pexec(
-    'gh',
-    ['issue', 'view', String(issueNumber), '-R', repo, '--json', 'comments'],
-    { timeout: GH_API_TIMEOUT_MS }
-  );
-  const parsed = JSON.parse(stdout || '{}');
-  return Array.isArray(parsed.comments) ? parsed.comments : [];
-}
-
 export async function checkAssigneeMatch({ issueNumber, cfg, deps = {} } = {}) {
   if (!issueNumber) throw new Error('checkAssigneeMatch: issueNumber is required');
   if (!cfg) throw new Error('checkAssigneeMatch: cfg is required');
@@ -102,37 +91,6 @@ export async function checkAssigneeMatch({ issueNumber, cfg, deps = {} } = {}) {
     return { ok: false, kind: 'assigned-to-other', currentUser, assignees };
   }
   return { ok: true, currentUser, assignees };
-}
-
-// Read-only bind eligibility. Full-Auto may proceed to acquire a work lease
-// for an unassigned issue, but assignment remains a deferred projection:
-// callers must run claimAssignee only after authority acquisition succeeds.
-// This function performs fetches only and never invokes mutation dependencies.
-export async function readOnlyBindEligibility({
-  issueNumber,
-  cfg,
-  fullAuto = false,
-  deps = {},
-} = {}) {
-  const verdict = await checkAssigneeMatch({ issueNumber, cfg, deps });
-  if (verdict.ok) {
-    return {
-      ...verdict,
-      kind: 'assigned-to-current',
-      claimRequired: false,
-    };
-  }
-  if (verdict.kind === 'unassigned' && fullAuto) {
-    return {
-      ...verdict,
-      ok: true,
-      claimRequired: true,
-    };
-  }
-  return {
-    ...verdict,
-    claimRequired: false,
-  };
 }
 
 export function formatAssigneeRefusal({ verb, issueNumber, verdict }) {
@@ -179,17 +137,7 @@ export function formatAssigneeUnverifiable({ verb, issueNumber, error }) {
 // #769 — audit trail written to the issue when Full-Auto auto-claims an
 // unassigned issue. Mirrors the existing `aitm-full-auto-*` audit discipline so
 // the machine-driven assignment is visible and greppable.
-export function claimAuditProjectionMarker(projectionId) {
-  if (typeof projectionId !== 'string' || projectionId.trim() === '') {
-    throw new TypeError('claim audit projectionId is required');
-  }
-  return `<!-- aitm-full-auto-assignee-claim-projection id-b64="${Buffer.from(
-    projectionId,
-    'utf8'
-  ).toString('base64url')}" -->`;
-}
-
-export function formatClaimAuditComment({ verb, issueNumber, currentUser, projectionId }) {
+export function formatClaimAuditComment({ verb, issueNumber, currentUser }) {
   const who = currentUser ? `@${currentUser}` : 'the authenticated `gh` user';
   return [
     '### 🤖 Full-Auto assignee claim',
@@ -202,41 +150,7 @@ export function formatClaimAuditComment({ verb, issueNumber, currentUser, projec
     'GitHub UI.',
     '',
     '<!-- aitm-full-auto-assignee-claim -->',
-    ...(projectionId ? [claimAuditProjectionMarker(projectionId)] : []),
   ].join('\n');
-}
-
-export async function reconcileClaimAuditProjection({
-  issueNumber,
-  repo,
-  projectionId,
-  body,
-  listComments = defaultListComments,
-  postComment = defaultPostComment,
-} = {}) {
-  if (!issueNumber || !repo) {
-    throw new TypeError('claim audit projection issue and repo are required');
-  }
-  const marker = claimAuditProjectionMarker(projectionId);
-  if (typeof body !== 'string' || !body.includes(marker)) {
-    throw new TypeError('claim audit projection body does not match its identity');
-  }
-  const matching = (comments) =>
-    comments.filter((comment) => String(comment?.body ?? '').includes(marker));
-  let comments = await listComments({ issueNumber, repo });
-  let matches = matching(comments);
-  if (matches.length > 1) {
-    throw new Error('duplicate claim audit projection receipts');
-  }
-  if (matches.length === 0) {
-    await postComment({ issueNumber, repo, body });
-    comments = await listComments({ issueNumber, repo });
-    matches = matching(comments);
-  }
-  if (matches.length !== 1 || matches[0].body !== body) {
-    throw new Error('claim audit projection remote read-back does not match');
-  }
-  return { reconciled: true, projectionId };
 }
 
 // #769 — the single chokepoint for the "only permitted AI assignment"
@@ -257,95 +171,6 @@ export async function claimAssignee({ issueNumber, cfg, deps = {} } = {}) {
   }
   await addAssignee({ issueNumber, repo: cfg.repo });
   return { ok: true, claimed: true, assignees };
-}
-
-// Task 5A bind claim reconciler. The caller persists `input` and `projectionId`
-// before authority acquisition; this helper never accepts a replacement
-// eligibility decision at replay time. A prior response-lost mutation is
-// resolved by the same positive @me read-back as a fresh mutation.
-export async function reconcilePreparedAssigneeClaim({
-  input,
-  projectionId,
-  liveEligibility,
-  deps = {},
-} = {}) {
-  if (
-    !input ||
-    typeof input !== 'object' ||
-    !String(input.issueNumber || '').match(/^[1-9]\d*$/) ||
-    typeof input.repo !== 'string' ||
-    !input.repo ||
-    typeof input.claimRequired !== 'boolean' ||
-    typeof input.currentUser !== 'string' ||
-    !input.currentUser ||
-    !Array.isArray(input.preparedAssignees) ||
-    typeof input.preparedKind !== 'string' ||
-    typeof projectionId !== 'string' ||
-    !projectionId
-  ) {
-    throw new TypeError('prepared assignment intent is malformed');
-  }
-  const fetchAssignees = deps.fetchAssignees || defaultFetchAssignees;
-  const addAssignee = deps.addAssignee || defaultAddAssignee;
-  const currentUser = input.currentUser.toLowerCase();
-  const fetch = async () =>
-    ((await fetchAssignees({ issueNumber: input.issueNumber, repo: input.repo })) || []).map((a) =>
-      String(a).toLowerCase()
-    );
-
-  let assignees = Array.isArray(liveEligibility?.assignees)
-    ? liveEligibility.assignees.map((assignee) => String(assignee).toLowerCase())
-    : await fetch();
-  if (assignees.length === 1 && assignees[0] === currentUser) {
-    return {
-      reconciled: true,
-      projectionName: 'github-claim',
-      projectionId,
-      assignmentResult: 'assigned-to-current',
-      currentUser,
-      assignees,
-    };
-  }
-  if (assignees.length > 0) {
-    throw new WorkLeaseError(
-      'authority-forbidden',
-      `foreign assignee prevents prepared assignment intent: ${assignees.join(',')}`
-    );
-  }
-  if (!input.claimRequired) {
-    throw new WorkLeaseError(
-      'authority-forbidden',
-      'live assignee state no longer matches prepared assignment intent'
-    );
-  }
-
-  try {
-    await addAssignee({ issueNumber: input.issueNumber, repo: input.repo });
-  } catch {
-    // A mutation error may be a response-lost success. The authoritative
-    // follow-up read below distinguishes success from failure.
-  }
-  assignees = await fetch();
-  if (assignees.length !== 1 || assignees[0] !== currentUser) {
-    if (assignees.length > 0) {
-      throw new WorkLeaseError(
-        'authority-forbidden',
-        `foreign assignee prevents prepared assignment intent: ${assignees.join(',')}`
-      );
-    }
-    throw new WorkLeaseError(
-      'authority-forbidden',
-      'assignee mutation did not reconcile prepared assignment intent'
-    );
-  }
-  return {
-    reconciled: true,
-    projectionName: 'github-claim',
-    projectionId,
-    assignmentResult: 'assigned-to-current',
-    currentUser,
-    assignees,
-  };
 }
 
 // #769 — extract the issue ids a commit command attributes to, via its leading

@@ -103,28 +103,6 @@ test('terminal Done helper writes the configured Status option without option di
   assert.deepEqual(h.writes[0].optionMap, { F_STATUS: { Done: 'O_DONE' } });
 });
 
-test('terminal field helpers reverify immediately before each project write', async () => {
-  const events = [];
-  const deps = {
-    ...writerHarness().deps,
-    reverify: async () => events.push('reverify'),
-    writeProjectFieldValue: async ({ fieldId }) => {
-      events.push(`write:${fieldId}`);
-      return true;
-    },
-  };
-
-  await writeTerminalDisposition({
-    cfg,
-    issueNumber: 1035,
-    disposition: 'Delivered',
-    deps,
-  });
-  await writeTerminalStatusDone({ cfg, issueNumber: 1035, deps });
-
-  assert.deepEqual(events, ['reverify', 'write:F_DISPOSITION', 'reverify', 'write:F_STATUS']);
-});
-
 test('close-as retains the board item and writes matching terminal values', async () => {
   const events = [];
   const deps = {
@@ -161,30 +139,27 @@ test('close-as retains the board item and writes matching terminal values', asyn
   assert.ok(!('deleteProjectV2Item' in deps));
 });
 
-test('close-as authority-refused timing flush retains the row and precedes every mutation', async () => {
-  const events = [];
-  const result = await runDispose({
+test('close-as reports sequence-significant timing rows retained for retry', async () => {
+  const warnings = [];
+  await runDispose({
     issueNumber: 1035,
     reason: 'not-planned',
     repo: cfg.repo,
     projectId: cfg.projectId,
     cfg,
     deps: {
-      flushTiming: async () => {
-        events.push('flush');
-        return { delivered: 0, discarded: 0, authorityRefused: 1 };
-      },
-      mutateIssueBody: async () => events.push('marker'),
-      writeDisposition: async () => events.push('disposition'),
-      moveToDone: async () => events.push('done'),
-      pexec: async () => events.push('close'),
-      postComment: async () => events.push('comment'),
+      flushTiming: async () => ({ delivered: 0, discarded: 1, retained: 2 }),
+      warn: (message) => warnings.push(message),
+      mutateIssueBody: async () => {},
+      writeDisposition: async () => {},
+      moveToDone: async () => {},
+      pexec: async () => {},
+      postComment: async () => {},
     },
   });
-
-  assert.equal(result.status, 'queue-authority-refused');
-  assert.equal(result.exitCode, 1);
-  assert.deepEqual(events, ['flush']);
+  assert.deepEqual(warnings, [
+    'retained 2 sequence-significant timing row(s) for #1035; retry queue remains non-empty',
+  ]);
 });
 
 test('supersede writes Replaced before its marker, Done bypass, and close', async () => {

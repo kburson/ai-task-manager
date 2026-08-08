@@ -201,18 +201,63 @@ test('lineageDoneGate: epic refuses naming children whose commit is not on the e
   assert.deepEqual(r.unreachable, [914]);
 });
 
-test('lineageDoneGate: epic refuses when its own branch is missing', async () => {
+test('lineageDoneGate: nested epic uses its surviving parent when its own branch is missing', async () => {
+  const seenHeads = [];
+  const r = await lineageDoneGate({
+    cfg: { repo: 'o/r' },
+    issueNumber: 860,
+    projectDir: '/x',
+    deps: {
+      graph,
+      branchExists: (branch) => branch === 'feature/epic/859',
+      listComments: listWithTrail,
+      epicTrailLog: async ({ epicHead }) => {
+        seenHeads.push(epicHead);
+        return 'h1\x1f[#872] feat\x1fme\x1f2026-01-01';
+      },
+    },
+  });
+  assert.equal(r.ok, true, r.blocker);
+  assert.equal(r.epicHead, 'feature/epic/859');
+  assert.deepEqual(seenHeads, ['feature/epic/859']);
+});
+
+test('lineageDoneGate: nested epic fallback still refuses an incomplete child trail', async () => {
+  const r = await lineageDoneGate({
+    cfg: { repo: 'o/r' },
+    issueNumber: 860,
+    projectDir: '/x',
+    deps: {
+      graph,
+      branchExists: (branch) => branch === 'feature/epic/859',
+      listComments: listWithTrail,
+      epicTrailLog: async () => '',
+    },
+  });
+  assert.equal(r.ok, false);
+  assert.match(r.blocker, /close-epic-child-trail-incomplete/);
+  assert.equal(r.epicHead, 'feature/epic/859');
+  assert.deepEqual(r.unreachable, [872]);
+});
+
+test('lineageDoneGate: root epic falls back to the configured trunk when its branch is gone', async () => {
+  const seenHeads = [];
   const r = await lineageDoneGate({
     cfg: { repo: 'o/r' },
     issueNumber: 912,
     projectDir: '/x',
     deps: {
       graph,
+      trunk: 'origin/trunk',
       branchExists: () => false,
       listComments: listWithTrail,
-      epicTrailLog: epicTrailAllChildren,
+      epicTrailLog: async ({ epicHead }) => {
+        seenHeads.push(epicHead);
+        return epicTrailAllChildren();
+      },
     },
   });
-  assert.equal(r.ok, false);
-  assert.match(r.blocker, /close-epic-branch-missing/);
+  assert.equal(r.ok, true, r.blocker);
+  assert.equal(r.epicHead, 'origin/trunk');
+  assert.deepEqual(seenHeads, ['origin/trunk']);
 });

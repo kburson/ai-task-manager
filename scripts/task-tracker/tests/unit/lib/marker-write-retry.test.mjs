@@ -14,7 +14,6 @@ import assert from 'node:assert/strict';
 
 import { writeIssueBodyWithRetry } from '../../../lib/state-recording.mjs';
 import { BODY_VERSION_MARKER_RE, stampBodyVersion } from '../../../lib/body-version.mjs';
-import { governedEffectDeps } from '../../helpers/governed-effect.mjs';
 
 function makeWarn() {
   const lines = [];
@@ -56,7 +55,7 @@ test('identity mutate is a noop — no push, no version bump (post-#697 contract
     repo,
     target: 'plan',
     mutate: (base) => base,
-    deps: { ...governedEffectDeps, fetchBody: remote.fetchBody, pushBody: remote.pushBody },
+    deps: { fetchBody: remote.fetchBody, pushBody: remote.pushBody },
   });
   assert.equal(r.status, 'noop');
   assert.equal(remote.calls.pushes, 0);
@@ -75,7 +74,7 @@ test('succeeds on first attempt — 1 push, no warn, no audit', async () => {
       comments++;
     },
     warn,
-    deps: { ...governedEffectDeps, fetchBody: remote.fetchBody, pushBody: remote.pushBody },
+    deps: { fetchBody: remote.fetchBody, pushBody: remote.pushBody },
   });
   assert.equal(r.status, 'ok');
   assert.equal(r.attempts, 1);
@@ -107,7 +106,7 @@ test('succeeds on retry — 2 pushes + stderr warn, no audit comment', async () 
       comments++;
     },
     warn,
-    deps: { ...governedEffectDeps, fetchBody: remote.fetchBody, pushBody: remote.pushBody },
+    deps: { fetchBody: remote.fetchBody, pushBody: remote.pushBody },
   });
   assert.equal(r.status, 'ok');
   assert.equal(r.attempts, 2);
@@ -141,7 +140,7 @@ test('fails — stderr + audit comment posted', async () => {
       assert.match(body, /plan/);
     },
     warn,
-    deps: { ...governedEffectDeps, fetchBody: remote.fetchBody, pushBody: remote.pushBody },
+    deps: { fetchBody: remote.fetchBody, pushBody: remote.pushBody },
   });
   assert.equal(r.status, 'failed');
   assert.equal(comments, 1);
@@ -171,7 +170,7 @@ test('audit-post failure does not throw — auditPosted=false', async () => {
       throw new Error('also-down');
     },
     warn,
-    deps: { ...governedEffectDeps, fetchBody: remote.fetchBody, pushBody: remote.pushBody },
+    deps: { fetchBody: remote.fetchBody, pushBody: remote.pushBody },
   });
   assert.equal(r.status, 'failed');
   assert.equal(r.auditPosted, false);

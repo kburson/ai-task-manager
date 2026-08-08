@@ -16,26 +16,22 @@ import { defaultRunMoveState } from '../../../../gh/dispatch-prep.mjs';
 
 test('dispatch-prep.defaultRunMoveState calls the in-process host with the develop argv/env (no spawn)', async () => {
   const calls = [];
-  const host = async (options) => {
-    calls.push(options);
+  const host = async ({ argv, env }) => {
+    calls.push({ argv, env });
     return 0;
   };
-  const withGovernedEffect = async () => {};
-  const code = await defaultRunMoveState({ issue: 42, anchor: 7, withGovernedEffect }, { host });
+  const code = await defaultRunMoveState({ issue: 42 }, { host });
   assert.equal(code, 0);
   assert.equal(calls.length, 1, 'host called exactly once');
   const { argv, env } = calls[0];
   assert.deepEqual(argv.slice(1), ['move-state.mjs', '42', 'develop']);
   assert.equal(env.AITM_INTERNAL, '1');
   assert.equal(env.AITM_VERB_CONTEXT, 'dispatch');
-  assert.equal(calls[0].governedIssueId, '7');
-  assert.equal(calls[0].governedOperation, 'branch-worktree-orchestration');
-  assert.equal(calls[0].withGovernedEffect, withGovernedEffect);
 });
 
 test('dispatch-prep.defaultRunMoveState relays the host exit code verbatim', async () => {
   const host = async () => 3;
-  const code = await defaultRunMoveState({ issue: 9, anchor: 7 }, { host });
+  const code = await defaultRunMoveState({ issue: 9 }, { host });
   assert.equal(code, 3, 'a non-zero host code must surface so dispatch reports the flip failure');
 });
 
@@ -52,17 +48,4 @@ test('dispatch-prep.mjs no longer spawns a move-state child', () => {
     /runMoveStateHost/.test(src),
     'dispatch-prep.mjs must import and default to the in-process runMoveStateHost seam'
   );
-});
-
-test('operator-facing dispatch contracts require the controlling anchor', () => {
-  const selfDoc = readFileSync(
-    fileURLToPath(new URL('../../../../lib/self-doc.mjs', import.meta.url)),
-    'utf8'
-  );
-  const parallelRule = readFileSync(
-    fileURLToPath(new URL('../../../../../skill/shared/rules/parallel.md', import.meta.url)),
-    'utf8'
-  );
-  assert.match(selfDoc, /dispatch-prep <issue#> --anchor <parent-or-controller#>/);
-  assert.match(parallelRule, /dispatch-prep <SUB_N> --anchor <PARENT_OR_CONTROLLER_N>/);
 });

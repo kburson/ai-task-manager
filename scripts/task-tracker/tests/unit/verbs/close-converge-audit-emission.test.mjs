@@ -19,15 +19,7 @@ import { verbClose } from '../../../verbs/close.mjs';
 import { buildReviewToDoneClosePair } from '../../../gh-timing-comment.mjs';
 import { projectScratchDir } from '../../../lib/scratch-dir.mjs';
 
-const REVIEW_TS = '2026-07-13T00:00:00Z';
-const REVIEW_EPOCH = `review:1:${REVIEW_TS}`;
-const REVIEW_SHA = 'abc1234';
-const CURRENT_APPROVAL_AUTHORITY = [
-  `<!-- aitm-dod-verified sha="${REVIEW_SHA}" ts="2026-07-13T00:00:00Z" -->`,
-  `<!-- aitm-entered-review ts="${REVIEW_TS}" -->`,
-  `<!-- aitm-agent-review-proof schema="1" epoch="${REVIEW_EPOCH}" sha="${REVIEW_SHA}" ts="2026-07-13T00:00:01Z" validators="unit" result="pass" -->`,
-  `<!-- aitm-review-approved schema="1" epoch="${REVIEW_EPOCH}" proof-sha="${REVIEW_SHA}" ts="2026-07-13T00:00:02Z" provenance="human" -->`,
-].join('\n');
+const APPROVAL_MARKER = '<!-- aitm-review-approved ts="2026-07-13T00:00:00Z" -->';
 
 const baseState = (active = '#5') => ({
   active,
@@ -88,9 +80,6 @@ async function runConverge({ issueBody, timingBody }) {
     },
     readTimingCommentBody: async () => ({ status: 'found', body: timingBody, error: null }),
     tickLifecycleOnClose: async () => ({ ok: true }),
-    withIssueLock: async (_options, callback) => callback(),
-    withGovernedEffect: async (_options, callback) =>
-      callback({ leaseContext: {}, reverify: async () => {} }),
   };
   const prevSkip = process.env.TT_SKIP_DIRTY_CHECK;
   process.env.TT_SKIP_DIRTY_CHECK = '1';
@@ -109,11 +98,19 @@ async function runConverge({ issueBody, timingBody }) {
 
 const hasReviewApproved = (rows) => rows.some((r) => /\| review:approved \|/.test(r));
 const hasIssueWrap = (rows) => rows.some((r) => /\| issue:wrap \|/.test(r));
+const reviewStartedTiming = [
+  '## ⏱ Timing Log',
+  '',
+  '| Timestamp | Event | Active | Idle | Δ Words | Word Marker | Description | Δ Words (full) |',
+  '| --- | --- | --- | --- | --- | --- | --- | --- |',
+  '| 2026-07-12 23:58:00 +00:00 | review:started |  |  |  | 0 | waiting in review | <!-- row-sec: a=0 i=0 -->',
+  '',
+].join('\n');
 
 test('Case A — converge with approved body emits BOTH review:approved and issue:wrap (#801 AC1)', async () => {
   const posted = await runConverge({
-    issueBody: `## Some issue\n\n${CURRENT_APPROVAL_AUTHORITY}\n`,
-    timingBody: '',
+    issueBody: `## Some issue\n\n${APPROVAL_MARKER}\n`,
+    timingBody: reviewStartedTiming,
   });
   assert.ok(hasReviewApproved(posted), 'review:approved row is posted on the converge path');
   assert.ok(hasIssueWrap(posted), 'issue:wrap row is posted on the converge path');
@@ -154,7 +151,7 @@ test('Case C — converge is idempotent when the pair already exists (#801 AC3)'
     '',
   ].join('\n');
   const posted = await runConverge({
-    issueBody: `## Some issue\n\n${CURRENT_APPROVAL_AUTHORITY}\n`,
+    issueBody: `## Some issue\n\n${APPROVAL_MARKER}\n`,
     timingBody: priorTiming,
   });
   assert.ok(!hasReviewApproved(posted), 'review:approved is NOT re-emitted when already present');

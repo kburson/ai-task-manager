@@ -1,7 +1,7 @@
 # Task Tracker Skill — Design
 
 **Date:** 2026-04-24
-**Updated:** 2026-07-30
+**Updated:** 2026-04-28
 **Status:** Released
 
 ## Problem
@@ -95,41 +95,6 @@ A project-local AI agent skill that binds the active work session to a specific 
 
 - Prints active task (or plan bucket or none), elapsed minutes since entry start, words since last marker.
 - Also prints `lastActive` if nothing is currently active.
-
-### Review-epoch authority
-
-Review completion is an epoch-bound authority decision, not the presence of a
-historical checkbox or marker. Each structural entry into **Review** creates
-one stable epoch identity, `review:<visit>:<entered-review-ts>`. The visit and
-timestamp come from persisted Review-entry history; retries while already in
-Review reuse that identity and the current clock never creates an epoch.
-
-The persisted Test/DoD verification marker (`aitm-dod-verified`) is the sole
-revision authority for Review. A passing Agent Review proof records its epoch,
-that verified SHA, timestamp, validators, and result. An approval records the
-same epoch and proof SHA plus its provenance. The authority reducer reads all
-historical markers but exposes one current projection. It is current only when
-the latest epoch has a passing proof for the persisted Test/DoD SHA, a matching
-approval, and no later invalidation. Missing, stale, malformed, or ambiguous
-evidence fails closed at lifecycle, Final Review, audit, and close gates.
-
-`/task approve #N --human` records human provenance only after an actual human
-approval. It can replace stale Full-Auto approval authority once the current
-epoch has a matching passing proof. Full-Auto provenance records the signals
-detected for that invocation, including an unset `TASK_TRACKER_HUMAN_REVIEWER`
-alongside explicit Full-Auto, non-TTY, or CI signals. A pre-ticked genuine
-approval or `--human` suppresses that detection. A same-epoch approval for the
-same proof is idempotent.
-
-Demotion and demotion-shaped reconciliation append the same invalidation event
-to the current authority. An active Agent Review failure also invalidates the
-projection. These events and earlier Review re-entry remain in the issue body
-for audit, but they cannot authorize a later close. Re-run Test to persist the
-revision that was actually verified, re-run Review to obtain a passing proof
-for the current epoch, then obtain an authentic approval (use `--human` only
-when one was given). Do not repair this state by ticking `Final Review Passed`,
-editing hidden markers, or reusing an old approval: those paths are
-intentionally fail-closed.
 
 ### `/task fleet`
 

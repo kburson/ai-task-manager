@@ -42,14 +42,11 @@ Move to review:
 Approve and close after human review:
 
 ```text
-/task approve #42 --human
+/task approve #42
 /task close #42
 ```
 
-Closing is intentionally a human-approved step. Passing tests and checked
-boxes mean the issue is ready for review, not automatically done. Human
-approval given in chat or a terminal is recorded with `--human`; close also
-requires current Test-SHA and Agent Review proof for the latest Review epoch.
+Closing is intentionally a human-approved step. Passing tests and checked boxes mean the issue is ready for review, not automatically done.
 
 ## Workflow States
 
@@ -88,12 +85,10 @@ Two transitions can require explicit human approval:
 | Plan -> Develop | Human approval required | Prevents implementation before the deep-dive plan is accepted |
 | Review -> Done  | Human approval required | Prevents agents from closing their own work                   |
 
-The approval command writes a hidden marker that binds truthful provenance to
-the current Review epoch and verified proof. Historical marker presence alone
-does not satisfy the gate.
+The approval command writes hidden markers into the issue body. Those markers are the audit trail that the gate was satisfied.
 
 ```text
-/task approve #42 --human
+/task approve #42
 ```
 
 For controlled automation batches, teams can use session-scoped auto mode rather than changing project defaults:
@@ -170,7 +165,7 @@ This keeps the ledger honest. Human-away time should not inflate active engineer
 | `/task update [message]`         | Flush timing and continue                             |
 | `/task ensureChecked "label"`    | Ensure an exact checkbox label is ticked (idempotent) |
 | `/task review #N`                | Move ready work through verification into Review      |
-| `/task approve #N --human`       | Record actual human approval for current Review proof |
+| `/task approve #N`               | Record explicit human approval                        |
 | `/task reject #N --reason "..."` | Reject review work back to Develop                    |
 | `/task close #N`                 | Close human-approved work                             |
 | `/task fleet`                    | Show active work across parallel worktrees            |

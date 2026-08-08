@@ -148,7 +148,7 @@ The review command flushes timing, runs gates, and moves the issue toward Review
 The human or orchestrator can then approve, reject, or request changes:
 
 ```text
-/task approve #42 --human
+/task approve #42
 /task close #42
 ```
 

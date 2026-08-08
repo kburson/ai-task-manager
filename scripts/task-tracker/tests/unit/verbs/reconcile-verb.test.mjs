@@ -7,44 +7,27 @@ import { test } from 'node:test';
 
 import { runReconcile } from '../../../verbs/reconcile.mjs';
 import { normalizeStateId } from '../../../lib/lifecycle-policy/index.mjs';
-import {
-  serializeAgentReviewProof,
-  serializeReviewApproval,
-} from '../../../lib/review-authority.mjs';
 
 const cfg = { repo: 'o/r', projectId: 'PROJ_1' };
 
 function makeDeps({ body = '', live = null, moveCode = 0 } = {}) {
   const calls = { writes: [], markers: [], moves: [], persists: [] };
-  let remote = body;
   return {
     calls,
     deps: {
-      fetchIssueBody: async () => ({ body: remote }),
+      fetchIssueBody: async () => ({ body }),
       writeIssueBody: async ({ body: b }) => {
         calls.writes.push(b);
-        remote = b;
       },
       getLiveState: async () => live,
       runMoveState: async ({ issueNumber, target }) => {
         calls.moves.push({ issueNumber, target });
         return moveCode;
       },
-      // #516 — drift events are now body audit markers, not timing rows. The
-      // state recording and audit writes both use fresh mutation closures.
+      // #516 — drift events are now body audit markers, not timing rows. Capture
+      // the appended marker text produced by the `mutate` callback.
       mutateIssueBody: async ({ mutate }) => {
-        const before = remote;
-        const next = mutate(before);
-        remote = next;
-        if (
-          /aitm-(?:reconciled|reverted)/.test(next) &&
-          !/aitm-(?:reconciled|reverted)/.test(before)
-        ) {
-          calls.markers.push(next);
-        } else {
-          calls.writes.push(next);
-        }
-        return { status: 'ok', body: next };
+        calls.markers.push(mutate(''));
       },
       persistTrackerState: ({ issueNumber, state }) => {
         calls.persists.push({ issueNumber, state });
@@ -89,125 +72,6 @@ test('reconcile accept-live: drifted issue writes new state + reconciled audit m
   assert.match(calls.markers[0], /plan.*develop/);
   assert.equal(calls.moves.length, 0);
   assert.deepEqual(calls.persists, [{ issueNumber: 300, state: 'develop' }]);
-});
-
-test('#1050 demotion-shaped reconcile appends the same canonical authority invalidation as demote', async () => {
-  const epoch = 'review:1:2026-07-29T10:00:00Z';
-  const body = [
-    bodyWithState('review'),
-    '<!-- aitm-dod-verified sha="abc1234" ts="2026-07-29T09:59:00Z" -->',
-    '<!-- aitm-entered-review ts="2026-07-29T10:00:00Z" -->',
-    serializeAgentReviewProof({
-      epoch,
-      sha: 'abc1234',
-      ts: '2026-07-29T10:01:00Z',
-      validators: 'unit',
-      result: 'pass',
-    }),
-    serializeReviewApproval({
-      epoch,
-      proofSha: 'abc1234',
-      ts: '2026-07-29T10:02:00Z',
-      provenance: 'human',
-    }),
-  ].join('\n');
-  const { deps, calls } = makeDeps({ body, live: 'develop' });
-
-  await runReconcile({
-    issueNumber: 1050,
-    mode: 'accept-live',
-    cfg,
-    deps,
-    now: () => '2026-07-29T10:03:00Z',
-  });
-
-  assert.match(
-    calls.writes[0],
-    /<!-- aitm-review-invalidated schema="1" epoch="review:1:2026-07-29T10:00:00Z" ts="2026-07-29T10:03:00Z" reason="demoted" -->/
-  );
-});
-
-test('#1050 demotion-shaped reconcile derives its invalidation from a fresh body and preserves concurrent text', async () => {
-  const epoch = 'review:1:2026-07-29T10:00:00Z';
-  const body = [
-    bodyWithState('review'),
-    '<!-- aitm-dod-verified sha="abc1234" ts="2026-07-29T09:59:00Z" -->',
-    '<!-- aitm-entered-review ts="2026-07-29T10:00:00Z" -->',
-    serializeAgentReviewProof({
-      epoch,
-      sha: 'abc1234',
-      ts: '2026-07-29T10:01:00Z',
-      validators: 'unit',
-      result: 'pass',
-    }),
-    serializeReviewApproval({
-      epoch,
-      proofSha: 'abc1234',
-      ts: '2026-07-29T10:02:00Z',
-      provenance: 'human',
-    }),
-  ].join('\n');
-  let persisted = body;
-  let mutations = 0;
-  const deps = {
-    fetchIssueBody: async () => ({ body }),
-    writeIssueBody: async ({ body: next }) => {
-      persisted = next;
-    },
-    getLiveState: async () => 'develop',
-    mutateIssueBody: async ({ mutate }) => {
-      mutations += 1;
-      if (mutations === 1) persisted = `${body}\n<!-- concurrent-edit -->`;
-      persisted = mutate(persisted);
-      return { status: 'ok', body: persisted };
-    },
-    persistTrackerState: () => {},
-  };
-
-  await runReconcile({
-    issueNumber: 1050,
-    mode: 'accept-live',
-    cfg,
-    deps,
-    now: () => '2026-07-29T10:03:00Z',
-  });
-
-  assert.match(persisted, /<!-- concurrent-edit -->/);
-  assert.match(persisted, /aitm-last-known-state state="develop"/);
-  assert.equal((persisted.match(/aitm-review-invalidated/g) || []).length, 1);
-});
-
-test('#1050 unrelated forward reconcile preserves current review authority', async () => {
-  const epoch = 'review:1:2026-07-29T10:00:00Z';
-  const body = [
-    bodyWithState('test'),
-    '<!-- aitm-dod-verified sha="abc1234" ts="2026-07-29T09:59:00Z" -->',
-    '<!-- aitm-entered-review ts="2026-07-29T10:00:00Z" -->',
-    serializeAgentReviewProof({
-      epoch,
-      sha: 'abc1234',
-      ts: '2026-07-29T10:01:00Z',
-      validators: 'unit',
-      result: 'pass',
-    }),
-    serializeReviewApproval({
-      epoch,
-      proofSha: 'abc1234',
-      ts: '2026-07-29T10:02:00Z',
-      provenance: 'human',
-    }),
-  ].join('\n');
-  const { deps, calls } = makeDeps({ body, live: 'review' });
-
-  await runReconcile({
-    issueNumber: 1050,
-    mode: 'accept-live',
-    cfg,
-    deps,
-    now: () => '2026-07-29T10:03:00Z',
-  });
-
-  assert.doesNotMatch(calls.writes[0], /aitm-review-invalidated/);
 });
 
 for (const recorded of ['test', 'review']) {

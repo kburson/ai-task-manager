@@ -140,44 +140,6 @@ test('stampStartTime: writeField rejects → error', async () => {
   assert.match(res.message, /write failed: write boom/);
 });
 
-test('stampStartTime: outer continuation reverifies immediately before the field write', async () => {
-  const events = [];
-  const res = await stampStartTime({
-    cfg: cfgWithField,
-    issueNumber: 7,
-    now: () => new Date('2026-07-08T09:05:00Z'),
-    deps: {
-      resolveItem: async () => itemWith([]),
-      withGovernedEffect: async (options, callback) => {
-        events.push(`scope:${options.issueId}:${options.operation}`);
-        events.push('reverify');
-        return callback({});
-      },
-      writeProjectFieldValue: async () => events.push('write'),
-    },
-  });
-  assert.equal(res.status, 'stamped');
-  assert.deepEqual(events, ['scope:7:evidence-mutation', 'reverify', 'write']);
-});
-
-test('stampStartTime: governed write refusal is never downgraded to best-effort error', async () => {
-  const error = Object.assign(new Error('stale before field write'), { code: 'fence-stale' });
-  await assert.rejects(
-    stampStartTime({
-      cfg: cfgWithField,
-      issueNumber: 7,
-      deps: {
-        resolveItem: async () => itemWith([]),
-        withGovernedEffect: async () => {
-          throw error;
-        },
-        writeProjectFieldValue: async () => assert.fail('stale fence reached write callback'),
-      },
-    }),
-    (actual) => actual === error
-  );
-});
-
 test('defaultResolveItem: returns the node matching cfg.projectId', async () => {
   const item = await defaultResolveItem({
     cfg: { repo: 'o/r', projectId: 'PVT_target' },

@@ -40,30 +40,6 @@ export const RUN_LANES = Object.freeze(['unit', 'integration', 'fast', 'slow', '
  */
 export const SKIP = new Map([]);
 
-export function parseShard(value) {
-  const match = String(value ?? '').match(/^([1-9]\d*)\/([1-9]\d*)$/);
-  if (!match) {
-    throw new TypeError('run-tests: --shard must be INDEX/TOTAL with 1 <= INDEX <= TOTAL');
-  }
-  const index = Number(match[1]);
-  const total = Number(match[2]);
-  if (!Number.isSafeInteger(index) || !Number.isSafeInteger(total) || index > total) {
-    throw new TypeError('run-tests: --shard must be INDEX/TOTAL with 1 <= INDEX <= TOTAL');
-  }
-  return { index, total };
-}
-
-export function selectShardFiles(files, shard) {
-  if (!shard) return [...files];
-  const selected = files.filter((_, offset) => offset % shard.total === shard.index - 1);
-  if (files.length > 0 && selected.length === 0) {
-    throw new TypeError(
-      `run-tests: --shard ${shard.index}/${shard.total} selects no files from a non-empty lane`
-    );
-  }
-  return selected;
-}
-
 /**
  * The sorted repo-relative test paths for a run-lane, sourced entirely from the
  * canonical lane manifest.

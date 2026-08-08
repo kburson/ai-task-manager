@@ -12,8 +12,6 @@ import { mutateIssueBody } from '../../../lib/issue-body-mutate.mjs';
 import { BodyWriteRefusalError } from '../../../lib/versioned-issue-write.mjs';
 import { parseBodyVersion, stampBodyVersion } from '../../../lib/body-version.mjs';
 
-const allowGovernedEffect = async (_options, callback) => callback({ reverify: async () => {} });
-
 function makeServer(initialBody) {
   let body = initialBody;
   return {
@@ -65,11 +63,7 @@ test('round trip: mutate sees fresh remote base, push stamps N+1', async () => {
       seenBase = base;
       return base.replace('hello', 'hello world');
     },
-    deps: {
-      fetchBody: srv.fetchBody,
-      pushBody: srv.pushBody,
-      withGovernedEffect: allowGovernedEffect,
-    },
+    deps: { fetchBody: srv.fetchBody, pushBody: srv.pushBody },
   });
   assert.equal(r.status, 'ok');
   assert.equal(r.version, 4);
@@ -112,11 +106,7 @@ test('race-loss: mutate is re-invoked against the new remote base on retry', asy
       mutateCalls++;
       return b.replace('A', 'A-ours');
     },
-    deps: {
-      fetchBody: srv.fetchBody,
-      pushBody: wrappedPush,
-      withGovernedEffect: allowGovernedEffect,
-    },
+    deps: { fetchBody: srv.fetchBody, pushBody: wrappedPush },
   });
   assert.equal(r.status, 'ok');
   assert.equal(mutateCalls, 1, 'mutate is invoked once; retry uses rebase');
@@ -137,11 +127,7 @@ test('mutate throw: original error propagates without wrapping', async () => {
         mutate: () => {
           throw sentinel;
         },
-        deps: {
-          fetchBody: srv.fetchBody,
-          pushBody: srv.pushBody,
-          withGovernedEffect: allowGovernedEffect,
-        },
+        deps: { fetchBody: srv.fetchBody, pushBody: srv.pushBody },
       }),
     (err) => err === sentinel
   );
@@ -161,11 +147,7 @@ test('mutateIssueBody refuses a snapshot pattern via the underlying stale-input 
         issueNumber: 292,
         repo: 'o/r',
         mutate: () => stash,
-        deps: {
-          fetchBody: srv.fetchBody,
-          pushBody: srv.pushBody,
-          withGovernedEffect: allowGovernedEffect,
-        },
+        deps: { fetchBody: srv.fetchBody, pushBody: srv.pushBody },
       }),
     (err) => {
       assert.ok(err instanceof BodyWriteRefusalError);

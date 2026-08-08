@@ -44,5 +44,4 @@ coverage/
 .claude/settings.local.json
 .claude/scheduled_tasks.lock
 
-/.db/
 .worktrees/

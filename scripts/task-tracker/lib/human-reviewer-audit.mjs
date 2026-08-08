@@ -22,8 +22,7 @@ import { promisify } from 'node:util';
 import { GH_API_TIMEOUT_MS } from './process-timeouts.mjs';
 import { writeIssueBodyWithRetry } from './state-recording.mjs';
 import { serializeMarker } from './marker-grammar.mjs';
-import { derivePersistedReviewAuthority } from './review-authority.mjs';
-import { isGovernedAuthorityError } from './work-lease/governed-effect.mjs';
+import { hasReviewApprovedMarker, parseReviewApprovedMarker } from './markers.mjs';
 
 const pexec = promisify(execFile);
 
@@ -74,8 +73,9 @@ export function resolveReviewAuthority(reviewAuthority = null) {
 // be unset in this later process. The body already carries the ground
 // truth — check it before falling back to the env-only signal.
 export function hasGenuineReviewApprovedMarker(body) {
-  const authority = derivePersistedReviewAuthority(body);
-  return authority.status === 'current' && authority.approval?.provenance === 'human';
+  if (!hasReviewApprovedMarker(body)) return false;
+  const parsed = parseReviewApprovedMarker(body);
+  return parsed !== null && parsed.fullAuto === false;
 }
 
 export function buildHumanReviewerMarker(handle, ts) {
@@ -86,17 +86,12 @@ export function buildAuditCommentBody({ ts, reviewScope, reviewAuthority = null,
   const stamp = ts || new Date().toISOString();
   const scope = reviewScope || 'commits, tests, lint/format';
   const explicitBypass = reviewAuthority === 'gate-bypassed' && reason === 'explicit-gate-bypass';
-  const persistedFullAuto = reason === 'persisted-full-auto-authority';
-  const headline = persistedFullAuto
-    ? '> ⚠ auto-approved under Full-Auto — persisted Full-Auto review authority'
-    : explicitBypass
-      ? '> ⚠ auto-approved under Full-Auto — review gate explicitly bypassed'
-      : '> ⚠ auto-approved under Full-Auto — no human reviewer';
-  const decision = persistedFullAuto
-    ? `The review→done gate at ${stamp} used the issue's current persisted Full-Auto review authority. Environment reviewer metadata and call-site hints did not replace that durable provenance.`
-    : explicitBypass
-      ? `The review→done gate at ${stamp} was explicitly bypassed by close authority. This audit records that bypass; \`${HUMAN_REVIEWER_ENV}\` metadata did not determine the outcome.`
-      : `The review→done gate at ${stamp} was passed without a \`${HUMAN_REVIEWER_ENV}\` signal. The assistant ticked "Passed final human review" itself.`;
+  const headline = explicitBypass
+    ? '> ⚠ auto-approved under Full-Auto — review gate explicitly bypassed'
+    : '> ⚠ auto-approved under Full-Auto — no human reviewer';
+  const decision = explicitBypass
+    ? `The review→done gate at ${stamp} was explicitly bypassed by close authority. This audit records that bypass; \`${HUMAN_REVIEWER_ENV}\` metadata did not determine the outcome.`
+    : `The review→done gate at ${stamp} was passed without a \`${HUMAN_REVIEWER_ENV}\` signal. The assistant ticked "Passed final human review" itself.`;
   return [
     headline,
     '',
@@ -152,28 +147,20 @@ export async function enforceFullAutoAudit({
   if (!repo) throw new Error('enforceFullAutoAudit: repo is required');
   reviewAuthority = resolveReviewAuthority(reviewAuthority);
   const ts = now();
-  const persistedAuthority = body != null ? derivePersistedReviewAuthority(body) : null;
-  const persistedMode =
-    persistedAuthority?.status === 'current'
-      ? persistedAuthority.approval?.provenance === 'full-auto'
-        ? 'full-auto'
-        : 'human-reviewer'
-      : null;
+  const genuineReviewMarker = body != null && hasGenuineReviewApprovedMarker(body);
   const explicitMode =
     reviewAuthority === 'gate-bypassed'
       ? 'full-auto'
       : reviewAuthority === 'human-gate'
         ? 'human-reviewer'
         : null;
-  const fullAuto =
-    (persistedMode || explicitMode || (isFullAuto(env) ? 'full-auto' : 'human-reviewer')) ===
-    'full-auto';
+  const fullAuto = genuineReviewMarker
+    ? false
+    : explicitMode
+      ? explicitMode === 'full-auto'
+      : isFullAuto(env);
   const fullAutoReason =
-    persistedMode === 'full-auto'
-      ? 'persisted-full-auto-authority'
-      : reviewAuthority === 'gate-bypassed'
-        ? 'explicit-gate-bypass'
-        : 'legacy-environment-fallback';
+    reviewAuthority === 'gate-bypassed' ? 'explicit-gate-bypass' : 'legacy-environment-fallback';
   const handle = getHumanReviewer(env) || (reviewAuthority === 'human-gate' ? 'review-gate' : null);
   const list = listComments || defaultListComments;
   const post = postComment || defaultPostComment;
@@ -209,8 +196,7 @@ export async function enforceFullAutoAudit({
   try {
     const comments = await list({ repo, issueNumber });
     alreadyPresent = hasAuditCommentAlready(comments);
-  } catch (error) {
-    if (isGovernedAuthorityError(error)) throw error;
+  } catch {
     // best-effort — if we cannot list, assume not present and post (duplicate
     // is preferable to silent omission)
   }
@@ -227,7 +213,6 @@ export async function enforceFullAutoAudit({
     await post({ repo, issueNumber, body: auditBody });
     return { mode: 'full-auto', auditPosted: true, alreadyPresent: false };
   } catch (err) {
-    if (isGovernedAuthorityError(err)) throw err;
     warn(`[human-reviewer-audit] issue #${issueNumber}: audit-comment post FAILED: ${err.message}`);
     return { mode: 'full-auto', auditPosted: false, alreadyPresent: false, error: err.message };
   }

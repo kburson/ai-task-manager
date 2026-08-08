@@ -97,6 +97,20 @@ export const VERB_REFERENCE = {
     usage: '/task words-count',
     examples: ['/task words-count'],
   },
+  'adopt-github-records': {
+    topic: 'meta',
+    summary: 'Audit or adopt one legacy issue into GitHub-native authority records.',
+    usage: '/task adopt-github-records <N> [--apply|--rollback|--repair]',
+    flags: [
+      { flag: '--apply', desc: 'perform adoption after exact parity audit' },
+      { flag: '--rollback', desc: 'remove the directory only before divergent authority exists' },
+      { flag: '--repair', desc: 'repair only from complete validated singleton records' },
+      { flag: '--grant-id <id>', desc: 'current coordinator grant ID required by --apply' },
+      { flag: '--authority-epoch <n>', desc: 'current coordinator epoch required by --apply' },
+      { flag: '--actor <id>', desc: 'coordinator actor identity required by --apply' },
+    ],
+    examples: ['/task adopt-github-records 1086', '/task adopt-github-records 1086 --apply'],
+  },
 
   // ── board / state machine ─────────────────────────────────────────────────
   promote: {
@@ -167,17 +181,23 @@ export const VERB_REFERENCE = {
   'plan-approve': {
     topic: 'board',
     summary:
-      'Record human plan approval (stamps the `aitm-plan-approved` marker Plan→Develop needs).',
+      'Record plan approval with durable human or Full-Auto provenance (stamps the `aitm-plan-approved` marker Plan→Develop needs).',
     usage: '/task plan-approve #N',
     exitCodes: [{ code: 3, meaning: 'issue is not in Plan' }],
     examples: ['/task plan-approve 667'],
   },
   'plan-estimate': {
     topic: 'board',
-    summary: 'Append the `### Planned Estimate` appendix the Plan→Develop gate requires.',
+    summary: 'Converge the detailed human Plan estimate and publish a separate AI forecast.',
     usage:
-      '/task plan-estimate [#N] --planned-size <S> --planned-estimate <H> [--rationale "<text>"]',
+      '/task plan-estimate [#N] --evidence-file <path> | --compatibility-mode --planned-size <S> --planned-estimate <H>',
     flags: [
+      { flag: '--evidence-file <path>', desc: 'aitm.plan-estimation-input/v1 JSON evidence' },
+      {
+        flag: '--adopt-legacy-baseline',
+        desc: 'one-time Develop recovery when existing board/body/history exactly match v1 Plan',
+      },
+      { flag: '--compatibility-mode', desc: 'explicitly use the legacy appendix-only path' },
       { flag: '--planned-size <S>', desc: 'post-planning size' },
       { flag: '--planned-estimate <H>', desc: 'post-planning estimate (hours)' },
       {
@@ -193,8 +213,34 @@ export const VERB_REFERENCE = {
       { flag: '--rationale "<text>"', desc: 'why the estimate changed (or held)' },
     ],
     examples: [
-      '/task plan-estimate 667 --planned-size L --planned-estimate 6 --rationale "held after deep dive"',
+      '/task plan-estimate 667 --evidence-file .tmp/plan/667-estimation.json',
+      '/task plan-estimate 667 --evidence-file .tmp/plan/667-estimation.json --adopt-legacy-baseline',
+      '/task plan-estimate 667 --compatibility-mode --planned-size L --planned-estimate 6 --rationale "legacy issue"',
     ],
+  },
+  'decompose-check': {
+    topic: 'board',
+    summary: 'Classify whether a planned issue is atomic or requires decomposition.',
+    usage: '/task decompose-check <issue> [--plan <path>] [--json]',
+    flags: [
+      { flag: '--plan <path>', desc: 'override the plan linked from Plan Metadata' },
+      { flag: '--json', desc: 'emit the structured classification result' },
+    ],
+    exitCodes: [{ code: 3, meaning: 'the issue must split and has no valid waiver' }],
+    examples: ['/task decompose-check 1052 --json'],
+  },
+  'split-plan': {
+    topic: 'discovery',
+    summary: 'Draft or create sanctioned child issues from numbered plan sections.',
+    usage: '/task split-plan <issue> (--dry-run|--confirm) [--plan <path>] [--json]',
+    flags: [
+      { flag: '--dry-run', desc: 'preflight every child without creating issues' },
+      { flag: '--confirm', desc: 'preflight all children, then create them in plan order' },
+      { flag: '--plan <path>', desc: 'override the plan linked from Plan Metadata' },
+      { flag: '--json', desc: 'emit the structured proposal or creation result' },
+    ],
+    exitCodes: [{ code: 6, meaning: 'partial success; at least one child was created' }],
+    examples: ['/task split-plan 1052 --dry-run', '/task split-plan 1052 --confirm'],
   },
   approve: {
     topic: 'board',
@@ -212,13 +258,21 @@ export const VERB_REFERENCE = {
   review: {
     topic: 'board',
     summary: 'Move an issue through Test to Review, flush timing, and pause.',
-    usage: '/task review #N [--duration-minutes N --words N]',
+    usage: '/task review #N [--duration-minutes N --words N] [--probe "command"]',
     flags: [
       { flag: '--duration-minutes <N>', desc: 'agent-reported active minutes (skips JSONL read)' },
       { flag: '--words <N>', desc: 'agent-reported word delta' },
+      {
+        flag: '--probe "<command>"',
+        desc: 'in Review, run one repeatable allowlisted focused probe and record separate evidence',
+      },
     ],
     exitCodes: [GATE_REFUSAL],
-    examples: ['/task review 667', '/task review 667 --duration-minutes 45 --words 1200'],
+    examples: [
+      '/task review 667',
+      '/task review 667 --duration-minutes 45 --words 1200',
+      '/task review 667 --probe "node --test path/to/focused.test.mjs"',
+    ],
   },
   reject: {
     topic: 'board',
@@ -231,7 +285,7 @@ export const VERB_REFERENCE = {
   test: {
     topic: 'board',
     summary:
-      'Develop→Test sandbox verification — runs the Verification Commands in an isolated worktree.',
+      'Develop→Test verification — finalizes Develop lint/format evidence, then runs Test-owned commands in an isolated worktree.',
     usage: '/task test #N',
     exitCodes: [
       { code: 1, meaning: 'missing target or test setup/runtime failure' },
@@ -265,10 +319,22 @@ export const VERB_REFERENCE = {
   'epic-reconcile': {
     topic: 'board',
     summary:
-      "Record that an epic's Acceptance Criteria were reconciled against what its children delivered (stamps the epic-only marker `gateCodeComplete` requires to exit develop).",
-    usage: '/task epic-reconcile [<N>]',
-    exitCodes: [{ code: 1, meaning: 'no active/valid issue number, or the target is not an epic' }],
-    examples: ['/task epic-reconcile', '/task epic-reconcile 883'],
+      "Record that an epic's Acceptance Criteria were reconciled against what its children delivered and optionally attach its existing deliverable comment.",
+    usage: '/task epic-reconcile [<N>] [--deliverable-comment <id|url>]',
+    flags: [
+      {
+        flag: '--deliverable-comment <id|url>',
+        desc: 'validate and record an existing comment on this epic as its no-commit deliverable',
+      },
+    ],
+    exitCodes: [
+      {
+        code: 1,
+        meaning:
+          'no active/valid issue number, target is not an epic, or deliverable provenance is invalid',
+      },
+    ],
+    examples: ['/task epic-reconcile', '/task epic-reconcile 883 --deliverable-comment 4866618296'],
   },
   'pull-next': {
     topic: 'board',
@@ -449,12 +515,20 @@ export const VERB_REFERENCE = {
   },
   'mirror-deep-dive': {
     topic: 'evidence',
-    summary: 'Mirror a deep-dive analysis from an existing comment into the issue body.',
-    usage: '/task mirror-deep-dive --from-comment <id|url> [#N]',
+    summary:
+      'Mirror a deep-dive analysis from an existing comment or repair one legacy block placement.',
+    usage: '/task mirror-deep-dive (--from-comment <id|url> | --repair-placement) [#N]',
     flags: [
       { flag: '--from-comment <id|url>', desc: 'source comment (id, URL, or #issuecomment-<id>)' },
+      {
+        flag: '--repair-placement',
+        desc: 'relocate one existing block after Pickup without fetching a comment',
+      },
     ],
-    examples: ['/task mirror-deep-dive --from-comment 4866618296 667'],
+    examples: [
+      '/task mirror-deep-dive --from-comment 4866618296 667',
+      '/task mirror-deep-dive --repair-placement 667',
+    ],
   },
 
   // ── creation & discovery ──────────────────────────────────────────────────
@@ -640,7 +714,7 @@ export const GATE_EVIDENCE_MODEL = [
   },
   {
     heading: 'Functional DoD',
-    body: 'The Functional DoD items (tests / lint / commits) are stamped by `/task dod-stamp <key>` from a real verifier run. The derived keys `acs` and `checkboxes` are auto-stamped by `/task close` from the body itself.',
+    body: 'Functional DoD checkboxes are backed by stage-owned evidence. Develop finalization records exact-SHA lint/format evidence, Test reuses that receipt while running sandbox-owned test commands, and derived keys `acs` and `checkboxes` are auto-stamped from the body itself.',
   },
   {
     heading: 'Full-Auto audit path',

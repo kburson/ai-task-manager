@@ -95,3 +95,13 @@ test('#1014 transitive subprocess guard tests are excluded from the parallel poo
     assert.equal(isParallelSafe(fullPath), false, `${file} must run serially`);
   }
 });
+
+// @story #1139
+test('#1139 approval fixtures that share issue 58 are excluded from the parallel pool', () => {
+  const files = ['../verbs/approve-core.test.mjs', '../verbs/approve-full-auto-detect.test.mjs'];
+
+  for (const file of files) {
+    const fullPath = fileURLToPath(new URL(file, import.meta.url));
+    assert.equal(isParallelSafe(fullPath), false, `${file} must run serially`);
+  }
+});

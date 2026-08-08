@@ -1,6 +1,5 @@
 #!/usr/bin/env node
 // @story #82
-// cspell:ignore nohup
 // Unit tests for commit-trail lib helpers.
 
 import { strict as assert } from 'node:assert';
@@ -64,26 +63,6 @@ import { defaultIsReachable } from '../../../commit-trail-handler.mjs';
 {
   const r = detectGitCommit('GIT_AUTHOR_NAME=foo git commit -m x');
   assert.equal(r.isCommit, true);
-}
-
-// Shared PreToolUse/PostToolUse wrapper and process-substitution grammar
-{
-  for (const command of [
-    'env -u FOO git commit -m x',
-    'env sh -lc "git commit -m x"',
-    'exec git commit -m x',
-    'time git commit -m x',
-    'nice -n 5 git commit -m x',
-    'nice -5 git commit -m x',
-    'nohup git commit -m x',
-    '{ git commit -m x; }',
-    '! git commit -m x',
-    'if true; then git commit -m x; fi',
-    'cat <(git commit -m x)',
-    'git --git-dir=.git commit -m x',
-  ]) {
-    assert.equal(detectGitCommit(command).isCommit, true, command);
-  }
 }
 
 // Empty / non-string

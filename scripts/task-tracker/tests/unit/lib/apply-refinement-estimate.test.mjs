@@ -292,43 +292,4 @@ assert.equal(REFINEMENT_HEADER, '### 🛠 Refine estimate');
   assert.equal(posts.length, 0);
 }
 
-// --- applyRefinementEstimate: controller continuation fences each write ----
-
-{
-  const events = [];
-  const planResult = await planRefinementEstimate({
-    cfg: CFG,
-    issueNumber: 95,
-    body: bodyWithMarker(NEW_RATIONALE_BLOCK),
-    deps: depsWithBoard(),
-  });
-  const result = await applyRefinementEstimate({
-    cfg: CFG,
-    issueNumber: 95,
-    plan: planResult.plan,
-    deps: {
-      listCommentBodies: async () => [],
-      withGovernedEffect: async (options, callback) => {
-        events.push(`scope:${options.issueId}:${options.operation}`);
-        events.push('reverify');
-        return callback({ reverify: async () => events.push('nested-reverify') });
-      },
-      postComment: async () => events.push('comment'),
-      mutateIssueBody: async ({ mutate }) => {
-        mutate(bodyWithMarker(NEW_RATIONALE_BLOCK));
-        events.push('body');
-      },
-    },
-  });
-  assert.equal(result.status, 'posted');
-  assert.deepEqual(events, [
-    'scope:95:evidence-mutation',
-    'reverify',
-    'comment',
-    'scope:95:evidence-mutation',
-    'reverify',
-    'body',
-  ]);
-}
-
 console.log('apply-refinement-estimate: all checks passed');

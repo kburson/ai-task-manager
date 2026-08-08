@@ -25,8 +25,6 @@
 import { execFile, execFileSync } from 'node:child_process';
 import { promisify } from 'node:util';
 
-import { isGovernedAuthorityError } from './work-lease/governed-effect.mjs';
-
 const pexecFile = promisify(execFile);
 
 // Branch names probed, in order, when `cfg.trunkRef` is not set.
@@ -71,8 +69,7 @@ export async function resolveTrunkRef({ cfg, projectDir, deps = {} } = {}) {
     try {
       await git(['rev-parse', '--verify', '--quiet', `refs/remotes/${remoteRef}`]);
       return remoteRef;
-    } catch (error) {
-      if (isGovernedAuthorityError(error)) throw error;
+    } catch {
       // try next branch / fall through to the local probe
     }
   }
@@ -83,8 +80,7 @@ export async function resolveTrunkRef({ cfg, projectDir, deps = {} } = {}) {
     try {
       await git(['rev-parse', '--verify', '--quiet', `refs/heads/${branch}`]);
       return branch;
-    } catch (error) {
-      if (isGovernedAuthorityError(error)) throw error;
+    } catch {
       // try next
     }
   }
@@ -115,8 +111,7 @@ export function resolveTrunkRefSync({ cfg, projectDir, deps = {} } = {}) {
     try {
       git(['rev-parse', '--verify', '--quiet', `refs/remotes/${remoteRef}`]);
       return remoteRef;
-    } catch (error) {
-      if (isGovernedAuthorityError(error)) throw error;
+    } catch {
       // try next branch / fall through to the local probe
     }
   }
@@ -125,8 +120,7 @@ export function resolveTrunkRefSync({ cfg, projectDir, deps = {} } = {}) {
     try {
       git(['rev-parse', '--verify', '--quiet', `refs/heads/${branch}`]);
       return branch;
-    } catch (error) {
-      if (isGovernedAuthorityError(error)) throw error;
+    } catch {
       // try next
     }
   }
@@ -141,7 +135,6 @@ export function resolveTrunkRefSync({ cfg, projectDir, deps = {} } = {}) {
 // object for logging; callers do not branch on it for correctness.
 export async function fetchTrunk({ cfg, projectDir, deps = {} } = {}) {
   const git = deps.git || defaultGit(projectDir);
-  const runAttempt = deps.runAttempt || ((callback) => callback());
   const remote = remoteName(cfg);
 
   // If cfg pins an explicit non-remote ref (e.g. a bare local branch), there is
@@ -156,10 +149,9 @@ export async function fetchTrunk({ cfg, projectDir, deps = {} } = {}) {
 
   for (const branch of branches) {
     try {
-      await runAttempt(() => git(['fetch', remote, branch]));
+      await git(['fetch', remote, branch]);
       return { fetched: true, remote, branch };
-    } catch (error) {
-      if (isGovernedAuthorityError(error)) throw error;
+    } catch {
       // try the next candidate; offline / no-remote / no-such-branch is fine
     }
   }

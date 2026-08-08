@@ -1,6 +1,7 @@
-// @story #226
+// @story #226 #1089
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import test from 'node:test';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 
@@ -12,15 +13,22 @@ const reviewVerbPath = path.resolve(__dirname, '..', '..', 'verbs', 'review.mjs'
 const reviewSource = readFileSync(reviewVerbPath, 'utf8');
 
 // ---------------------------------------------------------------------------
-// #226: STANDARD_DOD_COMMANDS contract — the three canonical evidence commands
+// #226: STANDARD_DOD_COMMANDS contract — the canonical evidence commands
 // must be exported and contain the expected entries. The review verb's seed
 // relies on this set; any change here is a contract change requiring review.
 // ---------------------------------------------------------------------------
 {
   assert.ok(STANDARD_DOD_COMMANDS instanceof Set, 'STANDARD_DOD_COMMANDS is a Set');
   assert.ok(STANDARD_DOD_COMMANDS.has('npm test'), 'includes npm test');
+  assert.ok(STANDARD_DOD_COMMANDS.has('npm run test:slow'), 'includes npm run test:slow');
+  assert.ok(STANDARD_DOD_COMMANDS.has('npm run test:all'), 'includes legacy npm run test:all');
   assert.ok(STANDARD_DOD_COMMANDS.has('npm run lint'), 'includes npm run lint');
   assert.ok(STANDARD_DOD_COMMANDS.has('npm run format:check'), 'includes npm run format:check');
+  assert.equal(
+    STANDARD_DOD_COMMANDS.size,
+    5,
+    'pre-#1089 Review trust is limited to five standard commands'
+  );
   console.log('PASS: STANDARD_DOD_COMMANDS contract pinned');
 }
 
@@ -39,25 +47,36 @@ const reviewSource = readFileSync(reviewVerbPath, 'utf8');
 }
 
 // ---------------------------------------------------------------------------
-// #226: review.mjs seeds commandResults with STANDARD_DOD_COMMANDS under the
-// sandbox-verified authority. The seed must happen AFTER the sandbox-verified
-// refusal block (which exits when the marker is absent) and BEFORE the
-// evidenceCheckboxes consumer loop. Source-level pin to detect regressions.
+// #1089: Review resolves exact-SHA receipt evidence before the consumer loop.
+// The resolver owns the bounded legacy STANDARD_DOD_COMMANDS seed as well as
+// v1 validation, so the verb must not restore an unconditional trust loop.
 // ---------------------------------------------------------------------------
 {
   const sandboxRefusalIdx = reviewSource.indexOf('missing `aitm-dod-verified` marker');
-  const seedIdx = reviewSource.indexOf('for (const cmd of STANDARD_DOD_COMMANDS)');
-  const normalizeIdx = reviewSource.lastIndexOf('normalizeReviewVerificationCheckboxes({');
+  const resolverIdx = reviewSource.indexOf(
+    'const reviewEvidence = await resolveReviewVerificationEvidence'
+  );
+  const resultIdx = reviewSource.indexOf(
+    'const commandResults = reviewEvidence.commandResults',
+    resolverIdx
+  );
+  const evidenceLoopIdx = reviewSource.indexOf('evidenceCommands.filter');
 
   assert.ok(sandboxRefusalIdx > 0, 'sandbox-verified refusal block exists');
-  assert.ok(seedIdx > 0, 'STANDARD_DOD_COMMANDS seed loop exists');
-  assert.ok(normalizeIdx > 0, 'fresh-base checkbox normalization call exists');
+  assert.ok(resolverIdx > 0, 'receipt resolver call exists');
+  assert.ok(resultIdx > resolverIdx, 'consumer map comes from validated evidence');
+  assert.ok(evidenceLoopIdx > 0, 'evidenceCommands consumer loop exists');
   assert.ok(
-    seedIdx > sandboxRefusalIdx,
-    'seed runs after sandbox-verified refusal (only under sandbox authority)'
+    resolverIdx > sandboxRefusalIdx,
+    'receipt validation runs after the marker-presence guard'
   );
-  assert.ok(seedIdx < normalizeIdx, 'seed runs before fresh-base checkbox normalization');
-  console.log('PASS: review.mjs seeds STANDARD_DOD_COMMANDS in the correct position');
+  assert.ok(resultIdx < evidenceLoopIdx, 'validated results seed before evidence consumption');
+  assert.doesNotMatch(
+    reviewSource,
+    /for \(const cmd of STANDARD_DOD_COMMANDS\)[\s\S]*commandResults\.set\(cmd, true\)/,
+    'Review has no unconditional STANDARD_DOD_COMMANDS trust loop'
+  );
+  console.log('PASS: review.mjs validates receipt evidence before command consumption');
 }
 
 // ---------------------------------------------------------------------------
@@ -157,8 +176,8 @@ const reviewSource = readFileSync(reviewVerbPath, 'utf8');
   // The move result is captured into a named binding, not discarded.
   assert.match(
     reviewSource,
-    /const\s+reviewMove\s*=\s*await\s+scopedRunMoveState\(target,\s*'review',\s*\{\s*silent:\s*true\s*\}\)/,
-    'review.mjs captures the scoped runMoveState result into `reviewMove`'
+    /const\s+reviewMove\s*=\s*await\s+runMoveState\(target,\s*'review',\s*\{\s*silent:\s*true,\s*lifecycleEvidence:\s*reviewEvidence\.lifecycleEvidence,?\s*\}\)/,
+    'review.mjs captures the runMoveState result into `reviewMove`'
   );
 
   // A genuine refusal (ok:false, not the benign done→done self-loop) gates the
@@ -169,16 +188,15 @@ const reviewSource = readFileSync(reviewVerbPath, 'utf8');
     'review.mjs gates on `ok === false && benign !== true`'
   );
 
-  // The refusal must return a structured outcome before the success banner is
-  // reachable, so the authority heartbeat and issue lock unwind first.
+  // The refusal must process.exit before the success banner is reachable.
   const gateIdx = reviewSource.indexOf('reviewMove.ok === false');
-  const exitIdx = reviewSource.indexOf('return { exitCode: reviewMove.status', gateIdx);
+  const exitIdx = reviewSource.indexOf('process.exit(reviewMove.status', gateIdx);
   const bannerIdx = reviewSource.indexOf('moved to Review — all verification passed', gateIdx);
   assert.ok(gateIdx > 0, 'refusal gate exists');
   assert.ok(exitIdx > gateIdx, 'gate exits non-zero on refusal');
   assert.ok(
     bannerIdx > exitIdx,
-    'success banner sits after the refusal outcome (unreachable on refusal)'
+    'success banner sits after the refusal exit (unreachable on refusal)'
   );
   console.log('PASS: review.mjs gates the success banner on the runMoveState result (#406)');
 
@@ -227,9 +245,9 @@ const reviewSource = readFileSync(reviewVerbPath, 'utf8');
 
   // The only runMoveState calls left target 'develop' (epic branch) and the
   // authoritative 'review' move — never 'test'.
-  const moveTargets = [
-    ...reviewSource.matchAll(/(?:scopedRunMoveState|runMoveState)\(\s*target,\s*'([a-z]+)'/g),
-  ].map((m) => m[1]);
+  const moveTargets = [...reviewSource.matchAll(/runMoveState\(\s*target,\s*'([a-z]+)'/g)].map(
+    (m) => m[1]
+  );
   assert.deepEqual(
     [...new Set(moveTargets)].sort(),
     ['develop', 'review'],
@@ -331,12 +349,11 @@ const reviewSource = readFileSync(reviewVerbPath, 'utf8');
   );
 }
 
-// #774: review.mjs's inline AC parser must resolve the canonical by-id
-// `vc-list` citation (the form #773's Refine-exit guardrail mandates), not just
-// the legacy backtick-embedded `cmd`. Before #774 a vc-list-only marker yielded
-// `evidenceCommands = []`, so the evidenceCheckboxes loop un-ticked the checked
-// AC as "missing automated evidence" and bounced the issue back to develop.
-{
+// #774/#1131: Review must use the shared declaration resolver for canonical
+// `vc-list` citations. Governed Test can preserve both a raw `cmd` attribute and
+// the canonical `vc-list` on the same sandbox-stamped marker; `vc-list` must win
+// even when the raw command contains no backtick spans.
+test('#1131 Review gives vc-list precedence on dual-attribute sandbox markers', async () => {
   assert.match(
     reviewSource,
     /import\s+\{\s*parseVerificationCommands\s*\}\s+from\s+['"]\.\.\/lib\/verification-commands\.mjs['"]/,
@@ -344,23 +361,28 @@ const reviewSource = readFileSync(reviewVerbPath, 'utf8');
   );
   assert.match(
     reviewSource,
-    /resolveVcRefCommands\(props\['vc-list'\],\s*vcItems\)/,
-    "review.mjs resolves props['vc-list'] against the parsed VC list"
+    /import\s+\{[^}]*extractVerifiedCommands[^}]*\}\s+from\s+['"]\.\.\/lib\/proof-marker\.mjs['"]/,
+    'review.mjs imports the shared declaration resolver'
   );
-  console.log('PASS: review.mjs resolves vc-list citations in its inline AC parser (source pin)');
+  assert.match(
+    reviewSource,
+    /extractVerifiedCommands\(label,\s*vcItems\)/,
+    'review.mjs resolves AC declarations through the shared helper'
+  );
+  console.log('PASS: review.mjs delegates AC declaration resolution to the shared helper');
 
   // Behavioral: replicate the verb's parse → seed → consume path for a
   // vc-list-cited, stamped (exit=0), checked AC and confirm it is NOT flagged.
   const { parseVerificationCommands } = await import('../../../lib/verification-commands.mjs');
-  const { resolveVcRefCommands } = await import('../../../lib/vc-ref.mjs');
-  const { parseProofMarker, hasExecutionProof } = await import('../../../lib/proof-marker.mjs');
+  const { extractVerifiedCommands, parseProofMarker, hasExecutionProof } =
+    await import('../../../lib/proof-marker.mjs');
 
   const label =
-    'Heal works <!-- aitm-verified exit="0" sha="abc1234" ts="2026-07-10T00:00:00.000Z" key="deadbeef" vc-list="vc:1" -->';
+    'Heal works <!-- aitm-verified cmd="node --test tests/stale-inline.test.mjs" exit="0" sha="abc1234" ts="2026-07-10T00:00:00.000Z" evidence="sandbox exit 0" key="deadbeef" vc-list="vc:6" -->';
   const body = [
     '## Verification Commands',
     '',
-    '- [ ] `node --test tests/heal.test.mjs` <!-- id=1 -->',
+    '- [ ] `node --test tests/heal.test.mjs` <!-- id=6 -->',
     '',
     '## Acceptance Criteria',
     '',
@@ -372,13 +394,13 @@ const reviewSource = readFileSync(reviewVerbPath, 'utf8');
   let evidenceCommands = [];
   let proofPassed = false;
   const props = parseProofMarker(label);
-  if (props && typeof props.cmd === 'string') {
-    evidenceCommands = [...props.cmd.matchAll(/`([^`]+)`/g)].map((c) => c[1]);
-  } else if (props && typeof props['vc-list'] === 'string') {
-    evidenceCommands = resolveVcRefCommands(props['vc-list'], vcItems) || [];
+  try {
+    evidenceCommands = extractVerifiedCommands(label, vcItems);
+  } catch {
+    evidenceCommands = [];
   }
   if (props && hasExecutionProof(label)) proofPassed = String(props.exit) === '0';
-  assert.deepEqual(evidenceCommands, ['node --test tests/heal.test.mjs'], 'vc:1 resolves by id');
+  assert.deepEqual(evidenceCommands, ['node --test tests/heal.test.mjs'], 'vc:6 resolves by id');
   assert.equal(proofPassed, true, 'exit=0 marker counts as passing sandbox proof');
 
   const commandResults = new Map();
@@ -392,7 +414,7 @@ const reviewSource = readFileSync(reviewVerbPath, 'utf8');
       failures.push(`${label} (unknown evidence command)`);
   }
   assert.deepEqual(failures, [], 'a vc-list-cited stamped AC produces no failure');
-  console.log('PASS: #774 vc-list-cited AC survives the review evidence loop');
-}
+  console.log('PASS: #1131 dual-attribute vc-list AC survives the review evidence loop');
+});
 
 console.log('\nAll review-verb evidence-command tests passed.');

@@ -37,31 +37,15 @@ test('packed consumer can select and execute effect-scoped move tails', () => {
     }
 
     const tgz = join(packDir, packReport[0].filename);
-    const ledgerPackReport = JSON.parse(
-      execFileSync(
-        'npm',
-        ['pack', '--json', '--workspace', '@kburson/aitm-ledger', '--pack-destination', packDir],
-        {
-          cwd: ROOT,
-          encoding: 'utf8',
-          env: { ...process.env, npm_config_loglevel: 'silent' },
-        }
-      )
-    );
-    const ledgerTgz = join(packDir, ledgerPackReport[0].filename);
     writeFileSync(
       join(consumerDir, 'package.json'),
       JSON.stringify({ name: 'tail-profile-consumer', private: true, type: 'module' })
     );
-    execFileSync(
-      'npm',
-      ['install', '--ignore-scripts', '--no-audit', '--no-fund', ledgerTgz, tgz],
-      {
-        cwd: consumerDir,
-        encoding: 'utf8',
-        env: { ...process.env, npm_config_loglevel: 'silent' },
-      }
-    );
+    execFileSync('npm', ['install', '--ignore-scripts', '--no-audit', '--no-fund', tgz], {
+      cwd: consumerDir,
+      encoding: 'utf8',
+      env: { ...process.env, npm_config_loglevel: 'silent' },
+    });
 
     const installedRoot = join(consumerDir, 'node_modules', '@kburson', 'ai-task-manager');
     for (const required of [

@@ -15,7 +15,6 @@
 // status.
 
 import { planFullAutoMerge, resolveCloseTrunkRef } from './full-auto-merge.mjs';
-import { isGovernedAuthorityError } from './work-lease/governed-effect.mjs';
 
 // A linked worktree's git-dir is `…/.git/worktrees/<name>`; the main worktree's
 // is a plain `.git`. That path segment is the reliable signal (a remote-tracking
@@ -27,8 +26,7 @@ export async function detectLinkedWorktree({ pexec, cwd } = {}) {
   try {
     const { stdout } = await pexec('git', ['rev-parse', '--git-dir'], { cwd });
     return /[/\\]worktrees[/\\]/.test(String(stdout || '').trim());
-  } catch (error) {
-    if (isGovernedAuthorityError(error)) throw error;
+  } catch {
     return false;
   }
 }
@@ -55,8 +53,7 @@ export async function resolveOpenPrNumber({ branch, cfg = {}, pexec } = {}) {
     const list = JSON.parse(String(stdout || '[]'));
     const n = Array.isArray(list) && list.length ? Number(list[0].number) : null;
     return Number.isInteger(n) && n > 0 ? n : null;
-  } catch (error) {
-    if (isGovernedAuthorityError(error)) throw error;
+  } catch {
     return null;
   }
 }
@@ -74,15 +71,7 @@ export async function resolveOpenPrNumber({ branch, cfg = {}, pexec } = {}) {
 //   { status: 'enabled', prNumber, argv } auto-merge enabled via the permitted `--auto`
 //                                         command (GitHub merges once checks pass)
 //   { status: 'exec-failed', prNumber, argv, message }  the `gh` enable call errored
-export async function enableFullAutoMergeForClose({
-  cfg = {},
-  branch,
-  isFullAuto,
-  pexec,
-  issueNumber,
-  operation = 'close',
-  withGovernedEffect,
-} = {}) {
+export async function enableFullAutoMergeForClose({ cfg = {}, branch, isFullAuto, pexec } = {}) {
   if (!isFullAuto) return { status: 'skipped-not-full-auto' };
 
   const prNumber = await resolveOpenPrNumber({ branch, cfg, pexec });
@@ -100,16 +89,9 @@ export async function enableFullAutoMergeForClose({
   const argv = [...plan.argv];
   if (cfg.repo) argv.push('-R', cfg.repo);
   try {
-    if (typeof withGovernedEffect === 'function') {
-      await withGovernedEffect({ issueId: String(issueNumber), operation, heartbeat: true }, () =>
-        pexec('gh', argv, {})
-      );
-    } else {
-      await pexec('gh', argv, {});
-    }
+    await pexec('gh', argv, {});
     return { status: 'enabled', prNumber, argv: plan.argv };
   } catch (err) {
-    if (isGovernedAuthorityError(err)) throw err;
     return {
       status: 'exec-failed',
       prNumber,

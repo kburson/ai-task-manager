@@ -1,15 +1,67 @@
-// @story #531
+// @story #531 #1156
 // #531 AC2 — the test runner never surfaces a bare `(exit null)` and never
 // buffer-kills a passing file. A signal-killed child reports its signal +
 // elapsed ms; an errored child reports its `error.code`; the per-file
 // maxBuffer is raised well above the 1 MB default.
+import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   describeSpawnResult,
+  findFleetLeaks,
   formatFleetLeak,
   RUN_TESTS_MAX_BUFFER,
 } from '../../../../run-tests-report.mjs';
+
+test('findFleetLeaks ignores a concurrently added registered Git worktree', () => {
+  const fleet = {
+    '#1083': { worktreePath: '/repo/.worktrees/1083' },
+    '#1145': { worktreePath: '/repo/.claude/worktrees/task-1145' },
+  };
+
+  assert.deepEqual(
+    findFleetLeaks({
+      keysBefore: new Set(['#1083']),
+      fleetAfter: fleet,
+      registeredWorktreePaths: new Set([
+        '/repo',
+        '/repo/.worktrees/1083',
+        '/repo/.claude/worktrees/task-1145',
+      ]),
+    }),
+    []
+  );
+});
+
+test('findFleetLeaks retains new missing, malformed, and unregistered sandbox entries', () => {
+  const fleet = {
+    '#1083': { worktreePath: '/repo/.worktrees/1083' },
+    '#201': { worktreePath: '/repo/.tmp/test/non-git-sandbox' },
+    '#202': { branch: 'missing-worktree-path' },
+    '#203': null,
+  };
+
+  assert.deepEqual(
+    findFleetLeaks({
+      keysBefore: new Set(['#1083']),
+      fleetAfter: fleet,
+      registeredWorktreePaths: new Set(['/repo', '/repo/.worktrees/1083']),
+    }),
+    ['#201', '#202', '#203']
+  );
+  assert.match(formatFleetLeak(['#201'], fleet), /non-git-sandbox/);
+});
+
+test('the runner applies registered-worktree classification before leak reporting', () => {
+  const runner = readFileSync(new URL('../../../../run-tests.mjs', import.meta.url), 'utf8');
+  assert.match(runner, /git', \['-C', repoRoot, 'worktree', 'list', '--porcelain', '-z'\]/);
+  assert.match(runner, /const leaked = findFleetLeaks\(\{/);
+  assert.match(runner, /registeredWorktreePaths: registeredWorktreePaths\(\)/);
+  assert.ok(
+    runner.indexOf('const leaked = findFleetLeaks') <
+      runner.indexOf('console.error(formatFleetLeak')
+  );
+});
 
 test('clean exit reports ok', () => {
   assert.equal(describeSpawnResult({ status: 0 }), 'ok');

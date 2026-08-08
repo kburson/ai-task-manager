@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// @story #598
+// @story #598 #1183
 // Coverage tests for scripts/task-tracker/verbs/mirror-deep-dive.mjs.
 //
 // `verbMirrorDeepDive` parses `--from-comment` (space and = forms) and an
@@ -18,7 +18,6 @@ import path from 'node:path';
 import { mkdtempSync, mkdirSync, writeFileSync, rmSync, chmodSync } from 'node:fs';
 
 import { verbMirrorDeepDive } from '../../../verbs/mirror-deep-dive.mjs';
-import { withTestGovernedEffect } from '../../helpers/governed-effect.mjs';
 import { projectScratchDir } from '../../../lib/scratch-dir.mjs';
 
 let tmpRoot;
@@ -103,6 +102,32 @@ test('missing --from-comment → exit 2', async () => {
   assert.equal(r.exitCode, 2);
 });
 
+test('--repair-placement needs no source comment and uses the active target', async () => {
+  const calls = [];
+  const r = await runVerb({
+    cfg: { repo: 'o/r' },
+    rest: ['--repair-placement'],
+    statePath: stateFile('#1183'),
+    deps: {
+      repairDeepDivePlacement: async (input) => {
+        calls.push(input);
+        return { status: 'repaired' };
+      },
+    },
+  });
+  assert.equal(r.threw, null);
+  assert.equal(r.exitCode, null);
+  assert.deepEqual(calls, [{ issueNumber: 1183, repo: 'o/r' }]);
+});
+
+test('repair and source-comment modes are mutually exclusive', async () => {
+  const r = await runVerb({
+    cfg: { repo: 'o/r' },
+    rest: ['--repair-placement', '--from-comment', '777', '1183'],
+  });
+  assert.equal(r.exitCode, 2);
+});
+
 test('no target and no active binding → exit 2', async () => {
   const r = await runVerb({
     cfg: { repo: 'o/r' },
@@ -134,11 +159,7 @@ test('happy path: mirrors comment prose into the issue body, prints result', asy
   const storeFile = path.join(tmpRoot, 'body-42.md');
   writeFileSync(storeFile, '# Issue 42\n\nOriginal body, no deep dive yet.\n');
   process.env.AITM_FAKE_BODY_FILE = storeFile;
-  const r = await runVerb({
-    cfg: { repo: 'o/r' },
-    rest: ['--from-comment=777', '42'],
-    withGovernedEffect: withTestGovernedEffect,
-  });
+  const r = await runVerb({ cfg: { repo: 'o/r' }, rest: ['--from-comment=777', '42'] });
   assert.equal(r.threw, null);
   assert.equal(r.exitCode, null);
 });

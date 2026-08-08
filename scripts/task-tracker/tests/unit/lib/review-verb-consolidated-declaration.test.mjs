@@ -4,7 +4,11 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 
-import { parseProofMarker, hasExecutionProof } from '../../../lib/proof-marker.mjs';
+import {
+  extractVerifiedCommands,
+  parseProofMarker,
+  hasExecutionProof,
+} from '../../../lib/proof-marker.mjs';
 import { parseEvidenceChecklist } from '../../../lib/evidence-markers.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url)) + '/..';
@@ -31,8 +35,8 @@ const reviewSource = readFileSync(reviewVerbPath, 'utf8');
 {
   assert.match(
     reviewSource,
-    /import\s+\{\s*parseProofMarker,\s*hasExecutionProof\s*\}\s+from\s+['"]\.\.\/lib\/proof-marker\.mjs['"]/,
-    'review.mjs imports parseProofMarker + hasExecutionProof from lib/proof-marker.mjs'
+    /import\s+\{[^}]*parseProofMarker[^}]*hasExecutionProof[^}]*extractVerifiedCommands[^}]*\}\s+from\s+['"]\.\.\/lib\/proof-marker\.mjs['"]/,
+    'review.mjs imports proof parsing, execution proof, and shared declaration resolution'
   );
   assert.doesNotMatch(
     reviewSource,
@@ -52,18 +56,15 @@ const reviewSource = readFileSync(reviewVerbPath, 'utf8');
   console.log('PASS: review.mjs single-marker extraction + proofPassed present (source pin)');
 }
 
-// Behavioral replication of review.mjs's exact AC command-extraction. Kept
-// byte-faithful to the verb so this test fails if the verb's extraction drifts.
+// Behavioral replication of review.mjs's shared AC command-extraction path.
 function extractAcCommands(label) {
   const cmdMatch = label.match(/^`([^`]+)`/); // canRunCommand=false for AC prose
-  let evidenceCommands = [];
-  if (!cmdMatch) {
-    const props = parseProofMarker(label);
-    if (props && typeof props.cmd === 'string') {
-      evidenceCommands = [...props.cmd.matchAll(/`([^`]+)`/g)].map((cmd) => cmd[1]);
-    }
+  if (cmdMatch) return [];
+  try {
+    return extractVerifiedCommands(label);
+  } catch {
+    return [];
   }
-  return evidenceCommands;
 }
 // Replication of the verb's proofPassed derivation (single-marker run-props).
 function proofPassedFor(label) {

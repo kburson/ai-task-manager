@@ -56,7 +56,17 @@ import { fileURLToPath } from 'node:url';
 import { loadConfig } from '../task-tracker/config.mjs';
 import { GH_API_TIMEOUT_MS, GIT_TIMEOUT_MS } from '../task-tracker/lib/process-timeouts.mjs';
 import { readSessionMinutes } from './lib/session-field.mjs';
-import { readEngagedMinutes, readDurationMinutes, readStartedAt, accelRatio } from './lib/board-fields.mjs';
+import {
+  formatAcceleration,
+  readEngagedMinutes,
+  readDurationMinutes,
+  readStartedAt,
+} from './lib/board-fields.mjs';
+import {
+  buildEstimationReportModel,
+  loadEstimationRecordsForReport,
+} from './lib/estimation-records.mjs';
+import { listIssueCommentsSince } from '../task-tracker/lib/github-records/github-comment-store.mjs';
 import { wantsHelp, emitSelfDoc, isDirectInvocation } from '../lib/self-doc.mjs';
 import { reportAttribution } from './lib/attribution-resolver.mjs';
 import { loadTrunkSignals } from './lib/trunk-signals.mjs';
@@ -140,11 +150,11 @@ function ghToken() {
   return _ghToken;
 }
 
-async function gql(query) {
+async function gql(query, variables = {}) {
   const r = await fetch('https://api.github.com/graphql', {
     method: 'POST',
     headers: { Authorization: `Bearer ${ghToken()}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ query }),
+    body: JSON.stringify({ query, variables }),
   });
   const j = await r.json();
   if (j.errors) throw new Error(j.errors.map(e => e.message).join('; '));
@@ -171,7 +181,14 @@ async function fetchProject() {
                   createdAt closedAt
                   parent { number }
                   comments(first: 100) {
-                    nodes { body }
+                    nodes {
+                      __typename
+                      id
+                      body
+                      updatedAt
+                      issue { number repository { nameWithOwner } }
+                    }
+                    pageInfo { hasNextPage }
                   }
                 }
               }
@@ -238,7 +255,7 @@ function parseStartInfo(comments) {
 // When supplied, the include-filter consumes the three-signal resolver (#782):
 // an issue that the resolver marks `attributed` is admitted even if it carries
 // no board data field, and an issue the resolver marks `dead` is dropped.
-function processItems(raw, attribution = null) {
+export function processItems(raw, attribution = null) {
   return raw
     .filter(n => n.content?.number)
     .map(n => {
@@ -258,6 +275,8 @@ function processItems(raw, attribution = null) {
         startedAt:    readStartedAt(f),
         role:         parseStartInfo(n.content.comments?.nodes).role,
         timingBody:   extractTimingBody(n.content.comments?.nodes),
+        comments:     n.content.comments?.nodes ?? [],
+        commentsComplete: n.content.comments?.pageInfo?.hasNextPage !== true,
         estimate:     f['Estimate']            ?? null,
         sessionMin:   readSessionMinutes(f),
         // #789 — Engaged/Review/Plan read straight from the board's Text-duration
@@ -282,7 +301,18 @@ function processItems(raw, attribution = null) {
       const attr = attribution ? reportAttribution(i, attribution) : null;
       if (attr?.dead) return false;
       // must have at least one data field (unless attribution vouches for it)
-      if (i.estimate == null && i.sessionMin == null && i.contextWords == null && !attr?.attributed) return false;
+      const hasEstimationEvidence = i.comments.some((comment) =>
+        /<!--\s*aitm-record/i.test(comment?.body ?? '')
+      );
+      if (
+        i.estimate == null &&
+        i.sessionMin == null &&
+        i.engagedMin == null &&
+        i.contextWords == null &&
+        i.parentNumber == null &&
+        !attr?.attributed &&
+        !hasEstimationEvidence
+      ) return false;
       // --state filter (GitHub issue state: open/closed)
       if (cfg.state === 'closed' && i.state !== 'CLOSED') return false;
       if (cfg.state === 'open'   && i.state !== 'OPEN')   return false;
@@ -317,6 +347,13 @@ function buildHierarchy(items) {
 function rollupVal(own, children, key) {
   const vals = [own, ...children.map(c => c[key])].filter(v => v != null);
   return vals.length > 0 ? vals.reduce((s, v) => s + v, 0) : null;
+}
+
+function rollupChildren(children, key) {
+  const vals = children.map(c => c[key]);
+  return vals.length > 0 && vals.every(v => v != null)
+    ? vals.reduce((s, v) => s + v, 0)
+    : null;
 }
 
 function engagedHours(sessionMin, contextWords) {
@@ -372,7 +409,7 @@ const fmtMinLong = (h, dayHours = 8) => {
   return parts.length ? parts.join(' ') : '0 min';
 };
 
-export function buildHtml(project, items, s) {
+export function buildHtml(project, items, s, estimationModel = null) {
   const now        = new Date().toLocaleDateString('en-US', { dateStyle: 'long' });
   const filterParts = [];
   if (cfg.state !== 'all') filterParts.push(`State: ${cfg.state}`);
@@ -387,30 +424,96 @@ export function buildHtml(project, items, s) {
   const natSr      = reg[cfg.soloRole] ?? reg.senior;
   const focusPerWeek = cfg.focusHours * 5;
 
-  const baselineCost   = s.totalEst * natMid;
-  const soloHours      = s.totalEst * cfg.seniorFactor;
-  const soloCost       = soloHours * natSr;
-  const enterpriseCost = (s.totalEst / 0.50) * natSr * 1.30;
+  const hierarchy = buildHierarchy(items);
+  const displayRowsByIssue = new Map();
+  const legacyOnlyGaps = new Set(['missing-forecast', 'missing-outcome']);
+  const displayRow = (item, legacyProjection = item) => {
+    const adaptive = estimationModel?.rowsByIssue?.get(item.number) ?? null;
+    const gaps = adaptive?.evidenceGaps ?? [];
+    const hasAdaptiveValues =
+      adaptive?.humanPlanHours != null ||
+      adaptive?.aiP50Hours != null ||
+      adaptive?.actualEngagedHours != null;
+    const adaptiveClaim = adaptive?.adaptiveClaim ?? hasAdaptiveValues;
+    const mayUseLegacy =
+      !adaptiveClaim && gaps.every((gap) => legacyOnlyGaps.has(gap));
+    if (adaptive?.evidenceSource === 'legacy-board' && gaps.length === 0) return adaptive;
+    if (adaptive !== null && !mayUseLegacy) return adaptive;
+    const humanPlanHours = legacyProjection.estimate ?? null;
+    const actualEngagedHours =
+      legacyProjection.engagedMin == null ? null : legacyProjection.engagedMin / 60;
+    const acceleration =
+      humanPlanHours != null && actualEngagedHours != null && actualEngagedHours > 0
+        ? humanPlanHours / actualEngagedHours
+        : null;
+    return {
+      adaptiveClaim: false,
+      evidenceSource: 'legacy-board',
+      humanPlanHours,
+      aiP50Hours: null,
+      aiP80Hours: null,
+      actualEngagedHours,
+      varianceVsAiP50Hours: null,
+      refineAccuracy: null,
+      aiP50Accuracy: null,
+      avoidableWasteHours: null,
+      acceleration,
+      accelerationLabel: formatAcceleration(acceleration),
+      evidenceGaps: [
+        ...(humanPlanHours == null ? ['missing-legacy-estimate'] : []),
+        ...(actualEngagedHours == null ? ['missing-legacy-engaged'] : []),
+      ],
+    };
+  };
+  for (const { item, children } of hierarchy) {
+    const legacyProjection = children.length
+      ? {
+          estimate: rollupChildren(children, 'estimate'),
+          engagedMin: rollupChildren(children, 'engagedMin'),
+        }
+      : item;
+    displayRowsByIssue.set(item.number, displayRow(item, legacyProjection));
+    for (const child of children) displayRowsByIssue.set(child.number, displayRow(child));
+  }
+  const topLevelRows = hierarchy.map(({ item }) => displayRowsByIssue.get(item.number));
+  const sumKnown = (key) =>
+    topLevelRows.length > 0 && topLevelRows.every((row) => row?.[key] != null)
+      ? topLevelRows.reduce((total, row) => total + row[key], 0)
+      : null;
+  const totalEst = sumKnown('humanPlanHours');
+  const totalEngaged = sumKnown('actualEngagedHours');
+  const reportAcceleration =
+    totalEst > 0 && totalEngaged > 0 ? totalEst / totalEngaged : null;
+  const withEstimation = [...displayRowsByIssue.values()].filter(
+    (row) => row.humanPlanHours != null
+  ).length;
+
+  const baselineCost   = totalEst == null ? null : totalEst * natMid;
+  const soloHours      = totalEst == null ? null : totalEst * cfg.seniorFactor;
+  const soloCost       = soloHours == null ? null : soloHours * natSr;
+  const enterpriseCost = totalEst == null ? null : (totalEst / 0.50) * natSr * 1.30;
 
   const fmtDuration = w => w <= 0 ? '—' : Math.ceil(w) + ' wks';
-  const estDuration  = fmtDuration(s.totalEst / focusPerWeek);
-  const humanWeeks   = s.totalEst / focusPerWeek;
-  const aiWeeks      = s.totalEngaged / 30;
-  const calAccel     = s.totalEngaged > 0 && aiWeeks > 0 ? Math.round(humanWeeks / aiWeeks) : null;
-  const entHours     = s.totalEst / 0.50;
+  const estDuration  = totalEst == null ? '—' : fmtDuration(totalEst / focusPerWeek);
+  const humanWeeks   = totalEst == null ? null : totalEst / focusPerWeek;
+  const aiWeeks      = totalEngaged == null ? null : totalEngaged / 30;
+  const calAccel     = humanWeeks > 0 && aiWeeks > 0 ? Math.round(humanWeeks / aiWeeks) : null;
+  const entHours     = totalEst == null ? null : totalEst / 0.50;
+  const humanLeverage =
+    totalEst > 0 && s.humanEngaged > 0 ? totalEst / s.humanEngaged : null;
 
   const readingH    = s.totalContextWords / cfg.readingWpm / 60;
   const readingCost = readingH * natMid;
 
   const costRows = RATES.regions.map(r => {
     const rate    = r[cfg.role] ?? r.mid;
-    const cEst    = s.totalEst * rate;
-    const cEng    = s.totalEngaged > 0 ? s.totalEngaged * rate : null;
-    const savings = cEng != null ? cEst - cEng : null;
+    const cEst    = totalEst == null ? null : totalEst * rate;
+    const cEng    = totalEngaged > 0 ? totalEngaged * rate : null;
+    const savings = cEst != null && cEng != null ? cEst - cEng : null;
     return `<tr>
       <td>${r.label}</td>
       <td class="num">${$(rate)}/hr</td>
-      <td class="num">${$(cEst)}</td>
+      <td class="num">${cEst == null ? '—' : $(cEst)}</td>
       <td class="num">${cEng != null ? $(cEng) : '—'}</td>
       <td class="num ${savings == null ? '' : savings > 0 ? 'good' : savings < 0 ? 'over' : ''}">${savings != null ? $(savings) : '—'}</td>
     </tr>`;
@@ -419,29 +522,33 @@ export function buildHtml(project, items, s) {
   const escAttr = s => s.replace(/"/g, '&quot;');
   const escHtml = s => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
   const fmtEst  = h => h == null ? '—' : h < 1 ? Math.round(h * 60) + ' min' : Number.isInteger(h) ? h + 'h' : h + 'h';
+  const fmtSigned = h => h == null ? '—' : `${h >= 0 ? '+' : ''}${Number(h.toFixed(2))}h`;
+  const fmtPct = value => value == null ? '—' : `${Math.round(value * 100)}%`;
 
   function renderRow(i, ru, cls) {
-    // #789 — Engaged and Accel come from the board `Engaged` field, not a
-    // session+reading computation. Accel = Estimate ÷ board-Engaged.
-    const engagedMin = ru.engagedMin;
-    const ratioNum   = accelRatio(ru.estimate, engagedMin);
-    const ratio      = ratioNum != null ? ratioNum.toFixed(1) : null;
-    const ratioClass = ratio == null ? '' : +ratio >= 1.5 ? 'good' : +ratio < 0.8 ? 'over' : 'warn';
+    const estimation = displayRowsByIssue.get(i.number) ?? null;
+    const ratioNum   = estimation?.acceleration ?? null;
+    const ratioClass = ratioNum == null ? '' : ratioNum >= 1.5 ? 'good' : ratioNum < 1 ? 'over' : 'warn';
     const prefix     = cls === 'child-row' ? '<span class="child-indent">↳</span> ' : cls === 'epic-row' ? '▶ ' : '';
+    const gap = estimation?.evidenceGaps?.length > 0
+      ? ` title="Evidence gaps: ${escAttr(estimation.evidenceGaps.join(', '))}"`
+      : '';
     return `<tr class="${cls}">
       <td><a href="${i.url}" target="_blank">#${i.number}</a></td>
       <td class="title-cell" title="${escAttr(i.title)}">${prefix}${escHtml(i.title)}</td>
-      <td class="num">${fmtEst(ru.estimate)}</td>
-      <td class="num">${ru.sessionMin != null ? fmtMin(ru.sessionMin / 60) : '—'}</td>
-      <td class="num">${engagedMin != null && engagedMin > 0 ? fmtMin(engagedMin / 60) : '—'}</td>
-      <td class="num">${ru.planMin != null ? fmtMin(ru.planMin / 60) : '—'}</td>
-      <td class="num">${ru.reviewMin != null ? fmtMin(ru.reviewMin / 60) : '—'}</td>
-      <td class="num ${ratioClass}">${ratio != null ? ratio + '×' : '—'}</td>
+      <td class="num"${gap}>${fmtEst(estimation?.humanPlanHours)}</td>
+      <td class="num">${fmtEst(estimation?.aiP50Hours)}</td>
+      <td class="num">${fmtEst(estimation?.aiP80Hours)}</td>
+      <td class="num">${fmtEst(estimation?.actualEngagedHours)}</td>
+      <td class="num">${fmtSigned(estimation?.varianceVsAiP50Hours)}</td>
+      <td class="num">${fmtPct(estimation?.refineAccuracy)}</td>
+      <td class="num">${fmtPct(estimation?.aiP50Accuracy)}</td>
+      <td class="num">${fmtEst(estimation?.avoidableWasteHours)}</td>
+      <td class="num ${ratioClass}">${estimation?.accelerationLabel ?? '—'}</td>
       <td class="${(i.status ?? '').toLowerCase() === 'done' ? 'closed' : 'open'}">${i.status ?? '—'}</td>
     </tr>`;
   }
 
-  const hierarchy = buildHierarchy(items);
   const issueRows = hierarchy.map(({ item: i, children }) => {
     const isEpic = children.length > 0;
     const ru = isEpic
@@ -458,17 +565,18 @@ export function buildHtml(project, items, s) {
     return epicRow + (isEpic ? '\n' + kidRows : '');
   }).join('\n');
 
-  const totalEh = s.totalEngaged > 0 ? fmtMin(s.totalEngaged) : '—';
+  const totalEh = totalEngaged > 0 ? fmtMin(totalEngaged) : '—';
 
-  // #789 — Appendix A footer totals sum the board `Engaged`/`Plan`/`Review`
-  // fields across all issues (each counted once; epic rollups are display-only),
-  // and Accel = total Estimate ÷ total board-Engaged. Kept independent of the
-  // headline `summary()` math, which still uses session+chat-words reading time.
-  const sumMin = key => items.reduce((acc, i) => acc + (i[key] ?? 0), 0);
-  const tableEngagedMin = sumMin('engagedMin');
-  const tablePlanMin    = sumMin('planMin');
-  const tableReviewMin  = sumMin('reviewMin');
-  const tableAccel      = accelRatio(s.totalEst, tableEngagedMin);
+  const tableHumanPlan = sumKnown('humanPlanHours');
+  const tableAiP50 = sumKnown('aiP50Hours');
+  const tableAiP80 = sumKnown('aiP80Hours');
+  const tableActual = sumKnown('actualEngagedHours');
+  const tableWaste = sumKnown('avoidableWasteHours');
+  const tableAccel = tableHumanPlan > 0 && tableActual > 0 ? tableHumanPlan / tableActual : null;
+  const reportMethodology = estimationModel?.methodology ?? {};
+  const methodologyText = reportMethodology.rubricVersion == null
+    ? 'Rubric evidence unavailable; estimation metrics show evidence gaps rather than zeroes.'
+    : `Rubric v${reportMethodology.rubricVersion}; cohort ${reportMethodology.cohortSize}; confidence ${fmtPct(reportMethodology.confidence)}; P80 coverage ${fmtPct(reportMethodology.p80Coverage)}.`;
 
   // #788 — Daily Work Activity chart is rendered near the top of the report
   // (just above the Product Backlog appendix) rather than buried at the bottom
@@ -543,14 +651,11 @@ th{background:#f1f5f9;color:#475569;font-weight:600;text-align:left;padding:.4re
 td{padding:.35rem .625rem;border-bottom:1px solid #f1f5f9;vertical-align:middle}
 .issue-table{table-layout:fixed}
 .issue-table .col-num{width:4%}
-.issue-table .col-title{width:30%}
-.issue-table .col-est{width:6%}
-.issue-table .col-session{width:9%}
-.issue-table .col-engaged{width:9%}
-.issue-table .col-plan{width:8%}
-.issue-table .col-review{width:8%}
-.issue-table .col-accel{width:7%}
-.issue-table .col-status{width:11%}
+.issue-table .col-title{width:25%}
+.issue-table .col-est{width:7%}
+.issue-table .col-metric{width:7%}
+.issue-table .col-accel{width:12%}
+.issue-table .col-status{width:8%}
 .issue-table td.title-cell{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 tr:last-child td{border-bottom:none}
 tr:hover td{background:#f8fafc}
@@ -731,14 +836,14 @@ td a:hover{text-decoration:underline}
 <div class="exec-summary">
   <div class="exec-summary-header">Executive Summary</div>
   <div class="exec-summary-body">
-    <p>This report measures the engineering value delivered through AI-assisted development by comparing pre-execution time estimates — scoped in GitHub issues before work began — against measured engaged time: active AI session minutes plus estimated human reading time. The result is a concrete, auditable acceleration multiple that translates directly into cost and calendar savings relative to equivalent human engineering spend.</p>
+    <p>This report measures engineering value by comparing frozen Human Plan estimates with actual engaged time from validated adaptive outcomes, using board Estimate and Engaged only for issues without an adaptive-record claim. The result is a concrete, auditable acceleration multiple that translates directly into cost and calendar savings relative to equivalent human engineering spend.</p>
     <div class="exec-sections">
       <div class="esi"><div class="esi-label">Agentic AI Accelerator</div><div class="esi-desc">Side-by-side cost comparison: what this scope would have cost with a human-only team (baseline mid-level, solo senior, enterprise) versus actual AI-assisted spend. Acceleration multiples reflect cost efficiency; calendar columns reflect delivery speed.</div></div>
-      <div class="esi"><div class="esi-label">Product Backlog</div><div class="esi-desc">Per-issue detail — estimate, session time, context words, derived engaged time, and acceleration ratio. Use this to spot outliers: high ratios indicate well-scoped work in familiar domains; low ratios point to underestimated scope or novel problem areas.</div></div>
+      <div class="esi"><div class="esi-label">Product Backlog</div><div class="esi-desc">Per-issue detail — Human Plan, AI P50/P80, outcome actual, evidence source, and acceleration ratio. Use this to spot outliers: high ratios indicate well-scoped work in familiar domains; low ratios point to underestimated scope or novel problem areas.</div></div>
       <div class="esi"><div class="esi-label">Engineering Cost by US Region</div><div class="esi-desc">The same acceleration math applied to fully-burdened regional engineering rates. Translates efficiency gains into dollar figures meaningful to your organization's geography and hiring profile.</div></div>
       <div class="esi"><div class="esi-label">Timeline Analysis</div><div class="esi-desc">Calendar view of backlog entry, work start, and close date per issue. Pre-work lag surfaces scheduling friction; in-flight duration shows how long work occupied the team once started. Epic rows show the full orchestration window, including gaps between agent batches.</div></div>
     </div>
-    <div class="exec-method"><strong>Methodology:</strong> Estimates are mid-level engineer hours captured before execution and may not reflect actual human complexity — the comparison is only as accurate as the original scope. Engaged time is session minutes plus a fraction of reading time (overlap factor: ${cfg.readingOverlap}), since reading partially overlaps active AI work rather than adding in full. Acceleration is estimate ÷ engaged hours. Reading rate: ${cfg.readingWpm} wpm.</div>
+    <div class="exec-method"><strong>Adaptive estimation methodology:</strong> ${methodologyText} Human Plan is the frozen Plan-stage engineer-hours forecast; AI P50/P80 and actual engaged time come from validated immutable forecast/outcome records. Acceleration is Human Plan ÷ actual engaged hours, and values below 1× are explicitly slower than Plan. Missing or malformed records are evidence gaps, never zeroes.</div>
   </div>
 </div>
 
@@ -749,15 +854,15 @@ td a:hover{text-decoration:underline}
       <div class="col human">
         <h3>Human Engineering Cost (estimated)</h3>
         <div class="crow">
-          <span class="cl-wrap"><span class="cl">Budget baseline — 1 ${cfg.role} engineer</span><span class="cl-sub">${n(s.totalEst)}h @ ${$(natMid)}/hr · ${reg.label}</span></span>
-          <span class="cv">${$(baselineCost)}</span>
+          <span class="cl-wrap"><span class="cl">Budget baseline — 1 ${cfg.role} engineer</span><span class="cl-sub">${totalEst == null ? '—' : `${n(totalEst)}h`} @ ${$(natMid)}/hr · ${reg.label}</span></span>
+          <span class="cv">${baselineCost == null ? '—' : $(baselineCost)}</span>
         </div>
         <div class="crow" style="margin-top:.625rem"><span class="cl">Calendar duration (1 engineer)</span><span class="cv">${estDuration}</span></div>
       </div>
       <div class="col accel">
         <h3>Acceleration</h3>
-        ${s.totalEngaged > 0 ? `
-        <div class="crow"><div class="ac-num">${Math.round(baselineCost / (s.totalEngaged * natMid))}×</div></div>
+        ${reportAcceleration != null ? `
+        <div class="crow"><div class="ac-num">${Number(reportAcceleration.toFixed(2))}×</div></div>
         <div class="crow" style="margin-top:.625rem"><div class="ac-num">${calAccel != null ? calAccel + '×' : '—'}</div></div>
         ` : '<div class="crow" style="justify-content:center;color:#94a3b8">—</div>'}
       </div>
@@ -765,20 +870,20 @@ td a:hover{text-decoration:underline}
         <h3>AI-Assisted Cost (measured)</h3>
         <div class="crow">
           <span class="cl-wrap"><span class="cl">Budget baseline</span><span class="cl-sub">engaged ${totalEh} @ ${$(natMid)}/hr ${cfg.role}</span></span>
-          <span class="cv">${s.totalEngaged > 0 ? $(s.totalEngaged * natMid) : '—'}</span>
+          <span class="cv">${totalEngaged > 0 ? $(totalEngaged * natMid) : '—'}</span>
         </div>
-        <div class="crow" style="margin-top:.625rem"><span class="cl">Calendar duration (agentic dev)</span><span class="cv">${s.totalEngaged > 0 ? (aiWeeks < 1 ? Math.ceil(s.totalEngaged / 6) + ' days' : Math.ceil(aiWeeks) + ' wks') : '—'}</span></div>
+        <div class="crow" style="margin-top:.625rem"><span class="cl">Calendar duration (agentic dev)</span><span class="cv">${totalEngaged > 0 ? (aiWeeks < 1 ? Math.ceil(totalEngaged / 6) + ' days' : Math.ceil(aiWeeks) + ' wks') : '—'}</span></div>
       </div>
     </div>
-    ${s.totalEngaged > 0 ? `
+    ${totalEngaged > 0 ? `
     <div style="margin-top:.875rem;padding:.5rem .75rem;background:#f8fafc;border-radius:.375rem;border:1px solid #e2e8f0;font-size:.75rem;color:#64748b;line-height:1.6">
       <strong style="color:#475569">Measurement basis:</strong>
-      ${totalEh} engaged
-      (${readingH > 0 ? fmtMin(readingH) + ' reading' : '—'} &nbsp;·&nbsp; ${s.totalSessionMin > 0 ? fmtMin(s.totalSessionMin / 60) + ' active session' : '—'})
+      ${totalEh} actual engaged from validated adaptive outcomes or legacy board Engaged
+      (${s.totalSessionMin > 0 ? fmtMin(s.totalSessionMin / 60) + ' active-session observation' : '—'})
       &nbsp;·&nbsp;
       <strong style="color:#475569">Rate:</strong> ${$(natMid)}/hr ${cfg.role}-level · ${reg.label}
     </div>
-    ` : `<div class="vr vr-na" style="margin-top:1.25rem;padding:1rem;text-align:center"><div class="vr-lbl">No engaged time data yet — set Session Time fields on issues to calculate.</div></div>`}
+    ` : `<div class="vr vr-na" style="margin-top:1.25rem;padding:1rem;text-align:center"><div class="vr-lbl">No complete adaptive outcome or legacy board Engaged evidence is available.</div></div>`}
   </div>
 </div>
 
@@ -788,41 +893,41 @@ td a:hover{text-decoration:underline}
   <div class="crow-group baseline">
     <div class="crow-label">Budget Baseline <span>Single ${cfg.role}-level engineer · ${reg.label} rate · estimates expressed in ${cfg.role}-level hours</span></div>
     <div class="crow-cards">
-      <div class="card"><div class="lbl">Estimated Hours</div><div class="val">${n(s.totalEst)}h</div><div class="sub">${s.withEst} issues scoped</div></div>
-      <div class="card"><div class="lbl">Working Days</div><div class="val">${wd(s.totalEst)}</div><div class="sub">8 hrs/day</div></div>
+      <div class="card"><div class="lbl">Estimated Hours</div><div class="val">${totalEst == null ? '—' : `${n(totalEst)}h`}</div><div class="sub">${withEstimation} issues scoped</div></div>
+      <div class="card"><div class="lbl">Working Days</div><div class="val">${totalEst == null ? '—' : wd(totalEst)}</div><div class="sub">8 hrs/day</div></div>
       <div class="card"><div class="lbl">Calendar Weeks</div><div class="val sm">${estDuration}</div><div class="sub">${cfg.focusHours} focused hrs/day · ${focusPerWeek} hrs/wk</div></div>
-      <div class="card"><div class="lbl">Estimated Cost</div><div class="val sm">${$(baselineCost)}</div><div class="sub">@ ${$(natMid)}/hr ${cfg.role}-level · ${reg.label}</div></div>
+      <div class="card"><div class="lbl">Estimated Cost</div><div class="val sm">${baselineCost == null ? '—' : $(baselineCost)}</div><div class="sub">@ ${$(natMid)}/hr ${cfg.role}-level · ${reg.label}</div></div>
     </div>
   </div>
 
   <div class="crow-group solo">
     <div class="crow-label">Solo ${cfg.soloRole.charAt(0).toUpperCase() + cfg.soloRole.slice(1)} Engineer <span>${Math.round(cfg.seniorFactor * 100)}% efficiency factor applied to ${cfg.role}-level estimate · ${reg.label} rate</span></div>
     <div class="crow-cards">
-      <div class="card"><div class="lbl">Adjusted Hours</div><div class="val">${n(soloHours)}h</div><div class="sub">${n(s.totalEst)}h × ${cfg.seniorFactor} efficiency factor</div></div>
-      <div class="card"><div class="lbl">Working Days</div><div class="val">${wd(soloHours)}</div><div class="sub">8 hrs/day</div></div>
-      <div class="card"><div class="lbl">Calendar Weeks</div><div class="val sm">${fmtDuration(soloHours / focusPerWeek)}</div><div class="sub">${cfg.focusHours} focused hrs/day · ${focusPerWeek} hrs/wk</div></div>
-      <div class="card"><div class="lbl">Cost</div><div class="val sm">${$(soloCost)}</div><div class="sub">@ ${$(natSr)}/hr ${cfg.soloRole} · ${reg.label}</div></div>
+      <div class="card"><div class="lbl">Adjusted Hours</div><div class="val">${soloHours == null ? '—' : `${n(soloHours)}h`}</div><div class="sub">${totalEst == null ? '—' : `${n(totalEst)}h`} × ${cfg.seniorFactor} efficiency factor</div></div>
+      <div class="card"><div class="lbl">Working Days</div><div class="val">${soloHours == null ? '—' : wd(soloHours)}</div><div class="sub">8 hrs/day</div></div>
+      <div class="card"><div class="lbl">Calendar Weeks</div><div class="val sm">${soloHours == null ? '—' : fmtDuration(soloHours / focusPerWeek)}</div><div class="sub">${cfg.focusHours} focused hrs/day · ${focusPerWeek} hrs/wk</div></div>
+      <div class="card"><div class="lbl">Cost</div><div class="val sm">${soloCost == null ? '—' : $(soloCost)}</div><div class="sub">@ ${$(natSr)}/hr ${cfg.soloRole} · ${reg.label}</div></div>
     </div>
   </div>
 
   <div class="crow-group enterprise">
     <div class="crow-label">Enterprise Team <span>Large team — same delivery timeline (Brook's Law), paying for coordination overhead + efficiency losses</span></div>
     <div class="crow-cards">
-      <div class="card"><div class="lbl">Billed Hours</div><div class="val">${n(entHours)}h</div><div class="sub">50% efficiency → 2× hours paid</div></div>
-      <div class="card"><div class="lbl">Working Days</div><div class="val">${wd(entHours)}</div><div class="sub">billed, not delivered</div></div>
+      <div class="card"><div class="lbl">Billed Hours</div><div class="val">${entHours == null ? '—' : `${n(entHours)}h`}</div><div class="sub">50% efficiency → 2× hours paid</div></div>
+      <div class="card"><div class="lbl">Working Days</div><div class="val">${entHours == null ? '—' : wd(entHours)}</div><div class="sub">billed, not delivered</div></div>
       <div class="card"><div class="lbl">Calendar Weeks</div><div class="val sm">${estDuration}</div><div class="sub">more people ≠ faster</div></div>
-      <div class="card"><div class="lbl">Cost</div><div class="val sm over">${$(enterpriseCost)}</div><div class="sub">+ 30% coordination overhead</div></div>
+      <div class="card"><div class="lbl">Cost</div><div class="val sm over">${enterpriseCost == null ? '—' : $(enterpriseCost)}</div><div class="sub">+ 30% coordination overhead</div></div>
     </div>
   </div>
 
   <div class="crow-group ai">
-    <div class="crow-label">AI-Assisted Actual <span>Measured: session time + human reading time. Acceleration vs. pre-execution estimate.</span></div>
+    <div class="crow-label">AI-Assisted Actual <span>Validated outcome actuals, with board Engaged only for legacy issues. Acceleration vs. Human Plan.</span></div>
     <div class="crow-cards ai5">
       <div class="card"><div class="lbl">Session Time</div><div class="val accent">${s.totalSessionMin > 0 ? fmtMin(s.totalSessionMin / 60) : '—'}</div><div class="sub">${s.totalSessionMin > 0 ? s.totalSessionMin + ' min measured' : s.withSession + ' issues logged'}</div></div>
       <div class="card"><div class="lbl">Context Length</div><div class="val">${s.totalContextWords > 0 ? s.totalContextWords.toLocaleString() : '—'}</div><div class="sub">reader-visible chat words (excludes injections)</div></div>
       <div class="card"><div class="lbl">Human Reading Time</div><div class="val">${readingH > 0 ? fmtMin(readingH) : '—'}</div><div class="sub">${s.totalContextWords.toLocaleString()} words @ ${cfg.readingWpm} wpm · ${$(readingCost)} @ ${$(natMid)}/hr</div></div>
-      <div class="card"><div class="lbl">Total Engaged</div><div class="val">${totalEh}</div><div class="sub">session + reading time</div></div>
-      <div class="card"><div class="lbl">AI Acceleration</div><div class="val${s.accel == null ? '' : ' good'}">${s.accel == null ? '—' : s.accel + '×'}</div><div class="sub">estimate ÷ total agent session time</div></div>
+      <div class="card"><div class="lbl">Total Engaged</div><div class="val">${totalEh}</div><div class="sub">adaptive outcomes + legacy board fallback</div></div>
+      <div class="card"><div class="lbl">AI Acceleration</div><div class="val${reportAcceleration == null ? '' : ' good'}">${formatAcceleration(reportAcceleration)}</div><div class="sub">Human Plan ÷ actual engaged time</div></div>
     </div>
   </div>
 
@@ -831,16 +936,16 @@ td a:hover{text-decoration:underline}
     <div class="crow-cards">
       <div class="card"><div class="lbl">Human Session Time</div><div class="val accent">${s.humanSessionMin > 0 ? fmtMin(s.humanSessionMin / 60) : '—'}</div><div class="sub">orchestrator + solo sessions · agent time excluded</div></div>
       <div class="card"><div class="lbl">Human Engaged</div><div class="val">${s.humanEngaged > 0 ? fmtMin(s.humanEngaged) : '—'}</div><div class="sub">human session + reading time</div></div>
-      <div class="card"><div class="lbl">Human Leverage</div><div class="val${s.humanLeverage == null ? '' : ' good'}">${s.humanLeverage == null ? '—' : s.humanLeverage + '×'}</div><div class="sub">estimate ÷ human engagement time</div></div>
+      <div class="card"><div class="lbl">Human Leverage</div><div class="val${humanLeverage == null ? '' : ' good'}">${humanLeverage == null ? '—' : humanLeverage.toFixed(1) + '×'}</div><div class="sub">Human Plan ÷ human engagement time</div></div>
     </div>
   </div>
 
   <div class="crow-group value">
     <div class="crow-label">AI Leverage <span>Cost and calendar efficiency vs. equivalent human engineering spend</span></div>
     <div class="crow-cards">
-      <div class="card vr-card"><div class="lbl">vs Budget Baseline</div><div class="val good">${s.totalEngaged > 0 ? Math.round(baselineCost / (s.totalEngaged * natMid)) + '×' : '—'}</div><div class="sub">${$(baselineCost)} scoped ÷ ${$(s.totalEngaged * natMid)} engaged cost</div></div>
-      <div class="card vr-card"><div class="lbl">vs Solo ${cfg.soloRole.charAt(0).toUpperCase() + cfg.soloRole.slice(1)} Engineer</div><div class="val good">${s.totalEngaged > 0 ? Math.round(soloCost / (s.totalEngaged * natSr)) + '×' : '—'}</div><div class="sub">${$(soloCost)} solo ÷ ${$(s.totalEngaged * natSr)} engaged cost</div></div>
-      <div class="card vr-card"><div class="lbl">vs Enterprise Team</div><div class="val good">${s.totalEngaged > 0 ? Math.round(enterpriseCost / (s.totalEngaged * natSr)) + '×' : '—'}</div><div class="sub">${$(enterpriseCost)} enterprise ÷ ${$(s.totalEngaged * natSr)} engaged cost</div></div>
+      <div class="card vr-card"><div class="lbl">vs Budget Baseline</div><div class="val good">${reportAcceleration == null ? '—' : `${Number(reportAcceleration.toFixed(2))}×`}</div><div class="sub">${baselineCost == null ? '—' : $(baselineCost)} scoped ÷ ${totalEngaged > 0 ? $(totalEngaged * natMid) : '—'} engaged cost</div></div>
+      <div class="card vr-card"><div class="lbl">vs Solo ${cfg.soloRole.charAt(0).toUpperCase() + cfg.soloRole.slice(1)} Engineer</div><div class="val good">${soloCost != null && totalEngaged > 0 ? Math.round(soloCost / (totalEngaged * natSr)) + '×' : '—'}</div><div class="sub">${soloCost == null ? '—' : $(soloCost)} solo ÷ ${totalEngaged > 0 ? $(totalEngaged * natSr) : '—'} engaged cost</div></div>
+      <div class="card vr-card"><div class="lbl">vs Enterprise Team</div><div class="val good">${enterpriseCost != null && totalEngaged > 0 ? Math.round(enterpriseCost / (totalEngaged * natSr)) + '×' : '—'}</div><div class="sub">${enterpriseCost == null ? '—' : $(enterpriseCost)} enterprise ÷ ${totalEngaged > 0 ? $(totalEngaged * natSr) : '—'} engaged cost</div></div>
     </div>
   </div>
 
@@ -856,15 +961,15 @@ td a:hover{text-decoration:underline}
     <div class="tg">
       <div class="tc">
         <h3>Estimated Effort</h3>
-        <div class="ts"><div class="tn">${fmtMinLong(s.totalEst, cfg.focusHours)}</div><div class="tl">total estimated effort (mid-level baseline · 1 day = ${cfg.focusHours} focused hrs)</div></div>
+        <div class="ts"><div class="tn">${totalEst == null ? '—' : fmtMinLong(totalEst, cfg.focusHours)}</div><div class="tl">total Human Plan effort (adaptive records with legacy-board fallback · 1 day = ${cfg.focusHours} focused hrs)</div></div>
         <div class="ts"><div class="tn">${estDuration}</div><div class="tl">calendar weeks @ ${cfg.focusHours} focused hrs/day, ${focusPerWeek} hrs/wk</div></div>
-        <div class="ts"><div class="tn">${wd(s.totalEst)} days</div><div class="tl">raw working days (8 hrs/day, no overhead)</div></div>
+        <div class="ts"><div class="tn">${totalEst == null ? '—' : `${wd(totalEst)} days`}</div><div class="tl">raw working days (8 hrs/day, no overhead)</div></div>
       </div>
       <div class="tc">
         <h3>Measured / Engaged</h3>
         <div class="ts"><div class="tn">${s.totalSessionMin > 0 ? fmtMinLong(s.totalSessionMin / 60, cfg.focusHours) : '—'}</div><div class="tl">active session time (measured · 1 day = ${cfg.focusHours} focused hrs)</div></div>
         <div class="ts"><div class="tn">${s.totalContextWords > 0 ? s.totalContextWords.toLocaleString() + ' words' : '—'}</div><div class="tl">context length (measured) · ${readingH > 0 ? fmtMin(readingH) + ' reading' : '—'}</div></div>
-        <div class="ts"><div class="tn">${totalEh}</div><div class="tl">total engaged time (session + reading)</div></div>
+        <div class="ts"><div class="tn">${totalEh}</div><div class="tl">actual engaged time from adaptive outcomes or legacy board evidence</div></div>
       </div>
     </div>
   </div>
@@ -873,13 +978,13 @@ td a:hover{text-decoration:underline}
 <div class="sec">
   <h2>Engineering Cost by US Region</h2>
   <div class="sec-body">
-    <p class="note">All rates fully-burdened (salary + benefits + equity + tooling + management overhead). Role: <strong>${cfg.role}</strong>. Adjust with <code>--role senior</code>. "Engaged hours" cost uses total session + reading time as the comparable AI time investment.</p>
+    <p class="note">All rates fully-burdened (salary + benefits + equity + tooling + management overhead). Role: <strong>${cfg.role}</strong>. Adjust with <code>--role senior</code>. Engaged-hours cost uses validated outcome actuals, with board Engaged only for issues that have no adaptive-record claim.</p>
     <table>
       <thead>
         <tr>
           <th>Region</th>
           <th class="num">Rate (${cfg.role})</th>
-          <th class="num">Cost @ Est Hours (${n(s.totalEst)}h)</th>
+          <th class="num">Cost @ Human Plan (${totalEst == null ? '—' : `${n(totalEst)}h`})</th>
           <th class="num">Cost @ Engaged Hours (${totalEh})</th>
           <th class="num">Savings vs Estimate</th>
         </tr>
@@ -895,17 +1000,21 @@ td a:hover{text-decoration:underline}
   <table class="issue-table">
     <colgroup>
       <col class="col-num"><col class="col-title"><col class="col-est">
-      <col class="col-session"><col class="col-engaged"><col class="col-plan">
-      <col class="col-review"><col class="col-accel"><col class="col-status">
+      <col class="col-metric"><col class="col-metric"><col class="col-metric">
+      <col class="col-metric"><col class="col-metric"><col class="col-metric">
+      <col class="col-metric"><col class="col-accel"><col class="col-status">
     </colgroup>
     <thead>
       <tr>
         <th>#</th><th>Title</th>
-        <th class="num">Est</th>
-        <th class="num">Session</th>
-        <th class="num">Engaged</th>
-        <th class="num">Plan</th>
-        <th class="num">Review</th>
+        <th class="num">Human Plan</th>
+        <th class="num">AI P50</th>
+        <th class="num">AI P80</th>
+        <th class="num">Actual</th>
+        <th class="num">Δ P50</th>
+        <th class="num">Refine Acc.</th>
+        <th class="num">AI Acc.</th>
+        <th class="num">Avoid. Waste</th>
         <th class="num">Accel.</th>
         <th>Status</th>
       </tr>
@@ -916,12 +1025,15 @@ td a:hover{text-decoration:underline}
     <tfoot>
       <tr>
         <td colspan="2">Total (${items.length} issues · ${hierarchy.filter(r => r.children.length > 0).length} epics)</td>
-        <td class="num">${fmtEst(s.totalEst)}</td>
-        <td class="num">${s.totalSessionMin > 0 ? fmtMin(s.totalSessionMin / 60) : '—'}</td>
-        <td class="num">${tableEngagedMin > 0 ? fmtMin(tableEngagedMin / 60) : '—'}</td>
-        <td class="num">${tablePlanMin > 0 ? fmtMin(tablePlanMin / 60) : '—'}</td>
-        <td class="num">${tableReviewMin > 0 ? fmtMin(tableReviewMin / 60) : '—'}</td>
-        <td class="num good">${tableAccel != null ? tableAccel.toFixed(1) + '×' : '—'}</td>
+        <td class="num">${tableHumanPlan > 0 ? fmtEst(tableHumanPlan) : '—'}</td>
+        <td class="num">${tableAiP50 > 0 ? fmtEst(tableAiP50) : '—'}</td>
+        <td class="num">${tableAiP80 > 0 ? fmtEst(tableAiP80) : '—'}</td>
+        <td class="num">${tableActual > 0 ? fmtEst(tableActual) : '—'}</td>
+        <td class="num">${tableActual > 0 && tableAiP50 > 0 ? fmtSigned(tableActual - tableAiP50) : '—'}</td>
+        <td class="num">—</td>
+        <td class="num">${tableActual > 0 && tableAiP50 > 0 ? fmtPct(Math.max(0, 1 - Math.abs(tableAiP50 - tableActual) / tableActual)) : '—'}</td>
+        <td class="num">${tableWaste != null ? fmtEst(tableWaste) : '—'}</td>
+        <td class="num ${tableAccel != null && tableAccel < 1 ? 'over' : 'good'}">${tableAccel != null ? (tableAccel < 1 ? `${tableAccel.toFixed(2)}× (slower than Plan)` : `${tableAccel.toFixed(2)}×`) : '—'}</td>
         <td></td>
       </tr>
     </tfoot>
@@ -930,20 +1042,18 @@ td a:hover{text-decoration:underline}
     <p class="tl-note">
       <strong>Column definitions.</strong>
       <em>#</em> — GitHub issue number, linked to the issue.
-      <em>Est</em> — Pre-execution estimate in mid-level engineer-hours, captured before work began; this is the basis for all acceleration calculations.
-      <em>Session</em> — Measured active AI session time logged by the task tracker (board <em>Session</em> field).
-      <em>Engaged</em> — Total human time investment, read directly from the board <em>Engaged</em> field (active session plus tracked plan/review overhead).
-      <em>Plan</em> / <em>Review</em> — Time logged in the Plan and Review stages, from the board's <em>Plan</em> and <em>Review</em> fields; a dash means the field is not set.
-      <em>Accel.</em> — Acceleration ratio: estimate ÷ board engaged hours. Values above 1.0× mean the work was delivered faster than the estimate implied.
-      <span style="color:#16a34a;font-weight:600">Green ≥ 1.5×</span> · <span style="color:#d97706;font-weight:600">Amber 0.8–1.5×</span> · <span style="color:#dc2626;font-weight:600">Red &lt; 0.8×</span>.
+      <em>Human Plan</em> — frozen Plan-stage engineer-hours from the validated forecast record, or board Estimate only for a legacy issue with no adaptive claim.
+      <em>AI P50/P80</em> — learned engaged-time percentiles; <em>Actual</em> is measured engaged time from the immutable outcome, or board Engaged for that same legacy-only fallback.
+      <em>Δ P50</em> — actual minus AI P50. <em>Refine Acc.</em> and <em>AI Acc.</em> show normalized forecast accuracy.
+      <em>Avoid. Waste</em> is classified AI/workflow waste only. <em>Accel.</em> is Human Plan ÷ actual engaged time; below 1× is slower than Plan.
     </p>
     <p class="tl-note">
       <strong>Epics and sub-issues.</strong>
-      Epic rows (dark background, ▶ prefix) show rolled-up totals across all their sub-issues — estimate, session, engaged, plan, and review time are summed before the acceleration ratio is calculated. The epic-level ratio therefore reflects aggregate efficiency across the entire body of work, not just the orchestration session. Sub-issues are indented below their parent; their individual ratios capture per-task efficiency and will naturally vary. Do not add epic and sub-issue rows together — sub-issue values are already included in the epic total.
+      Epic rows (dark background, ▶ prefix) sum child Human Plan estimates and child actual engaged time, then add only the parent's classified orchestration outcome. The parent board Estimate is never added to child estimates, and parent engaged time is not treated as child implementation. Sub-issues are indented below their parent; do not add epic and sub-issue rows together.
     </p>
     <p class="tl-note">
       <strong>Missing values (—).</strong>
-      A dash means the field was not set on the GitHub project board for that issue. Issues without <em>Estimate</em> or a non-zero <em>Engaged</em> value cannot contribute to acceleration calculations and are omitted from the aggregate ratio. Issues without <em>Session</em>, <em>Plan</em>, or <em>Review</em> reflect work completed outside a task-tracked session or before the tool was in use — they are included in the table for completeness but their missing durations are treated as zero in cost totals.
+      A dash means adaptive evidence is incomplete or malformed, or that a legacy issue lacks its board fallback. Such values remain evidence gaps and never become zero; hover the Human Plan cell for the gap category.
     </p>
   </div>
 </div>
@@ -1097,8 +1207,35 @@ async function main() {
   }
 
   console.log(`${items.length} issues found.`);
+  const loadedEstimation = await loadEstimationRecordsForReport({
+    issues: raw
+      .filter((node) => node.content?.number)
+      .map((node) => ({
+        number: node.content.number,
+        comments: node.content.comments?.nodes ?? [],
+        commentsComplete: node.content.comments?.pageInfo?.hasNextPage !== true,
+      })),
+    repository: cfg.repo,
+    listIssueRecords: ({ repository, issue }) =>
+      listIssueCommentsSince({
+        since: '1970-01-01T00:00:00.000Z',
+        repository,
+        issue,
+        graphql: async ({ query, variables }) => ({ data: await gql(query, variables) }),
+      }),
+  });
+  const estimationModel = buildEstimationReportModel({
+    items,
+    recordsByIssue: loadedEstimation.recordsByIssue,
+    evidenceGaps: loadedEstimation.evidenceGaps,
+  });
+  if (loadedEstimation.evidenceGaps.length > 0) {
+    console.warn(
+      `Adaptive estimation evidence gaps: ${loadedEstimation.evidenceGaps.length} unavailable or malformed issue corpus entries.`,
+    );
+  }
   const s    = summary(items);
-  const html = buildHtml({ title }, items, s);
+  const html = buildHtml({ title }, items, s, estimationModel);
 
   const base    = cfg.output.replace(/\.(html?|pdf)$/i, '');
   mkdirSync(path.dirname(base), { recursive: true });

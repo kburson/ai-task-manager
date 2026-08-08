@@ -27,9 +27,10 @@ import { setIssueKindMarker, normalizeKind, VALID_KINDS } from '../lib/issue-kin
 import { reconcileDodForKind } from '../lib/dod-kind-filter.mjs';
 import { locateFunctionalSection } from '../lib/lifecycle-dod.mjs';
 import { dodPath } from '../paths.mjs';
+import { reconcileEpicMetadata as defaultReconcileEpicMetadata } from '../../gh/lib/epic-metadata.mjs';
 
 export async function verbKind(ctx) {
-  const { cfg, statePath, rest, pexec, projectDir, withGovernedEffect } = ctx;
+  const { cfg, statePath, rest, pexec } = ctx;
   const args = (rest || []).map((a) => String(a).trim()).filter(Boolean);
 
   let target;
@@ -65,15 +66,22 @@ export async function verbKind(ctx) {
     process.exit(1);
   }
 
+  if (kind === 'epic') {
+    const reconcileEpicMetadata = ctx.reconcileEpicMetadata || defaultReconcileEpicMetadata;
+    await reconcileEpicMetadata({
+      issueNumber: Number(target),
+      repo: cfg.repo,
+      forceEpic: true,
+      deps: { pexec },
+    });
+    console.log(`[task-tracker] ✓ kind on #${target}: set to "epic".`);
+    return;
+  }
+
   await mutateIssueBody({
     issueNumber: target,
     repo: cfg.repo,
-    deps: {
-      ...ctx.deps,
-      pexec,
-      projectDir,
-      withGovernedEffect: withGovernedEffect ?? ctx.deps?.withGovernedEffect,
-    },
+    deps: { pexec },
     mutate: (base) => {
       const marked = setIssueKindMarker(base, kind);
       const loc = locateFunctionalSection(marked);

@@ -10,6 +10,15 @@ import { parseIssueFieldDb, stripIssueFieldDb, formatIssueFieldDb } from '../iss
 import { mutateIssueBody } from './issue-body-mutate.mjs';
 import { serializeMarker, unescapeValue, parseMarker } from './marker-grammar.mjs';
 
+// Versioned verification evidence lives in its own contract module. Re-export
+// the issue-body helpers here so all authoritative marker writes remain
+// discoverable through the central marker registry.
+export {
+  parseVerificationReceipt,
+  parseVerificationReceipts,
+  upsertVerificationReceipt,
+} from './verification-receipt.mjs';
+
 // ---------------------------------------------------------------------------
 // Phantom-marker hardening (#333)
 //
@@ -93,37 +102,6 @@ export function maskFencedCodeBlocksPreservingOffsets(body) {
   return transformFencedCodeBlocks(body, (block) => block.replace(/[^\r\n]/g, ' '));
 }
 
-function replaceUnfencedMatches(body, pattern, replacement) {
-  const src = String(body || '');
-  const masked = maskFencedCodeBlocksPreservingOffsets(src);
-  const flags = pattern.flags.includes('g') ? pattern.flags : `${pattern.flags}g`;
-  const matches = [...masked.matchAll(new RegExp(pattern.source, flags))];
-  if (matches.length === 0) return src;
-
-  let cursor = 0;
-  let result = '';
-  for (const match of matches) {
-    result += src.slice(cursor, match.index);
-    const original = src.slice(match.index, match.index + match[0].length);
-    result += typeof replacement === 'function' ? replacement(original) : replacement;
-    cursor = match.index + match[0].length;
-  }
-  return result + src.slice(cursor);
-}
-
-export function collapseBlankRunsOutsideFencedCodeBlocks(body) {
-  const { src, ranges } = fencedCodeBlockRanges(body);
-  if (ranges.length === 0) return src.replace(/\n{3,}/g, '\n\n');
-  let cursor = 0;
-  let result = '';
-  for (const range of ranges) {
-    result += src.slice(cursor, range.start).replace(/\n{3,}/g, '\n\n');
-    result += src.slice(range.start, range.end);
-    cursor = range.end;
-  }
-  return result + src.slice(cursor).replace(/\n{3,}/g, '\n\n');
-}
-
 // ---------------------------------------------------------------------------
 // plan-approved (plan → develop human gate)
 // ---------------------------------------------------------------------------
@@ -132,14 +110,68 @@ export function collapseBlankRunsOutsideFencedCodeBlocks(body) {
 // (`aitm-plan-approved: <iso>`) and the consolidated property grammar
 // (`aitm-plan-approved ts="<iso>"`). The legacy branch stays until #369's
 // corpus sweep reports zero residual legacy markers.
-export const PLAN_APPROVED_RE = /<!--\s*aitm-plan-approved(?::\s*[^>]*?|\s+ts="[^"]*")\s*-->/i;
+export const PLAN_APPROVED_RE =
+  /<!--\s*aitm-plan-approved(?::\s*[^>]*?|\s+ts="[^"]*"[^>]*?)\s*-->/i;
 
-export function buildPlanApprovedMarker(ts) {
-  return serializeMarker('plan-approved', { ts });
+export const PLAN_APPROVAL_MODES = Object.freeze({
+  HUMAN: 'human',
+  FULL_AUTO: 'full-auto',
+  UNKNOWN: 'unknown',
+});
+
+export function buildPlanApprovedMarker(ts, { forecastRecordId = null, mode = null } = {}) {
+  const properties = { ts };
+  if (forecastRecordId !== null) properties['forecast-record-id'] = forecastRecordId;
+  if (mode !== null) {
+    if (mode !== PLAN_APPROVAL_MODES.HUMAN && mode !== PLAN_APPROVAL_MODES.FULL_AUTO) {
+      throw new TypeError(
+        `buildPlanApprovedMarker: unsupported approval mode ${JSON.stringify(mode)}`
+      );
+    }
+    properties.mode = mode;
+  }
+  return serializeMarker('plan-approved', properties);
 }
 
 export function hasPlanApprovedMarker(body) {
   return PLAN_APPROVED_RE.test(stripFencedCodeBlocks(body));
+}
+
+// Decode a plan-approved marker without fabricating provenance for historical
+// shapes. Legacy colon markers and property markers written before #1109 have
+// no `mode`, so both remain valid approvals but report `unknown`.
+export function parsePlanApprovedMarker(body) {
+  const match = stripFencedCodeBlocks(body).match(PLAN_APPROVED_RE)?.[0];
+  if (!match) return null;
+
+  const legacy = match.match(/<!--\s*aitm-plan-approved:\s*([^>]*?)\s*-->/i);
+  if (legacy) {
+    return {
+      ts: legacy[1].trim(),
+      forecastRecordId: null,
+      mode: PLAN_APPROVAL_MODES.UNKNOWN,
+    };
+  }
+
+  const parsed = parseMarker(match);
+  if (!parsed || parsed.name !== 'plan-approved') return null;
+  const props = parsed.props || {};
+  const mode =
+    props.mode === PLAN_APPROVAL_MODES.HUMAN || props.mode === PLAN_APPROVAL_MODES.FULL_AUTO
+      ? props.mode
+      : PLAN_APPROVAL_MODES.UNKNOWN;
+  const forecastRecordId = /^[0-7][0-9A-HJKMNP-TV-Z]{25}$/.test(props['forecast-record-id'] || '')
+    ? props['forecast-record-id']
+    : null;
+  return { ts: props.ts || '', forecastRecordId, mode };
+}
+
+export function readPlanApprovedMode(body) {
+  return parsePlanApprovedMarker(body)?.mode ?? PLAN_APPROVAL_MODES.UNKNOWN;
+}
+
+export function readPlanApprovedForecastRecordId(body) {
+  return parsePlanApprovedMarker(body)?.forecastRecordId ?? null;
 }
 
 // ---------------------------------------------------------------------------
@@ -150,28 +182,14 @@ export function hasPlanApprovedMarker(body) {
 // Widened again (#480) so the new property form tolerates trailing attributes
 // (`full-auto="yes" signals="…"`) consolidated onto the same marker.
 export const REVIEW_APPROVED_RE =
-  /<!--\s*aitm-review-approved(?::\s*[^>]*?|\s+(?=[^>]*\bts=")[^>]*?)\s*-->/i;
+  /<!--\s*aitm-review-approved(?::\s*[^>]*?|\s+ts="[^"]*"[^>]*?)\s*-->/i;
 
 // #480 — the consolidated review-approved marker now optionally carries the
 // full-auto approval audit props. `full-auto="yes" signals="<env=…>"` collapse
 // what used to be a separate `aitm-full-auto-approved` marker + visible footnote
 // into a single marker. Pass `{ fullAuto: true, signals }` from the approve verb
 // when no human reviewed the work.
-export function buildReviewApprovedMarker(
-  ts,
-  { fullAuto = false, signals = '', epoch = '', proofSha = '', provenance = '' } = {}
-) {
-  if (epoch || proofSha || provenance) {
-    const props = {
-      schema: '1',
-      epoch,
-      'proof-sha': proofSha,
-      ts,
-      provenance: provenance || (fullAuto ? 'full-auto' : 'human'),
-    };
-    if (props.provenance === 'full-auto') props.signals = signals || '';
-    return serializeMarker('review-approved', props);
-  }
+export function buildReviewApprovedMarker(ts, { fullAuto = false, signals = '' } = {}) {
   const props = { ts };
   if (fullAuto) {
     props['full-auto'] = 'yes';
@@ -184,28 +202,36 @@ export function hasReviewApprovedMarker(body) {
   return REVIEW_APPROVED_RE.test(stripFencedCodeBlocks(body));
 }
 
+export function removeReviewApprovedMarker(body) {
+  const src = String(body || '');
+  const masked = maskFencedCodeBlocksPreservingOffsets(src);
+  const match = REVIEW_APPROVED_RE.exec(masked);
+  if (!match) return src;
+  return `${src.slice(0, match.index)}${src.slice(match.index + match[0].length)}`.replace(
+    /\n{3,}/g,
+    '\n\n'
+  );
+}
+
 // Matches a consolidated review-approved marker that carries the full-auto prop.
 const REVIEW_APPROVED_FULL_AUTO_RE =
-  /<!--\s*aitm-review-approved\s+[^>]*(?:\bfull-auto="(?:yes|true)"|\bprovenance="full-auto")[^>]*-->/i;
+  /<!--\s*aitm-review-approved\s+[^>]*\bfull-auto="(?:yes|true)"[^>]*-->/i;
 
 // Decode a consolidated review-approved marker to `{ ts, fullAuto, signals }`,
 // or null when absent. Uses the generic marker parser so prop order is
 // irrelevant.
 export function parseReviewApprovedMarker(body) {
-  const m = String(body || '').match(REVIEW_APPROVED_RE);
+  const m = stripFencedCodeBlocks(body).match(REVIEW_APPROVED_RE);
   if (!m) return null;
   const parsed = parseMarker(m[0]);
-  if (!parsed) return { ts: '', fullAuto: false, signals: '' };
+  if (!parsed) {
+    const legacyTs = m[0].match(/aitm-review-approved\s*:\s*([^>]*?)\s*-->/i)?.[1]?.trim();
+    return { ts: legacyTs || '', fullAuto: false, signals: '' };
+  }
   const props = parsed.props || {};
   return {
     ts: props.ts || '',
-    epoch: props.epoch || '',
-    proofSha: props['proof-sha'] || '',
-    provenance: props.provenance || '',
-    fullAuto:
-      props['full-auto'] === 'yes' ||
-      props['full-auto'] === 'true' ||
-      props.provenance === 'full-auto',
+    fullAuto: props['full-auto'] === 'yes' || props['full-auto'] === 'true',
     signals: props.signals || '',
   };
 }
@@ -218,8 +244,21 @@ export function insertReviewApprovedMarker(body, ts, opts = {}) {
   );
 }
 
-export function insertPlanApprovedMarker(body, ts) {
-  return insertMarkerBeforeFieldDb(body, buildPlanApprovedMarker(ts), hasPlanApprovedMarker);
+export function insertPlanApprovedMarker(body, ts, options) {
+  return insertMarkerBeforeFieldDb(
+    body,
+    buildPlanApprovedMarker(ts, options),
+    hasPlanApprovedMarker
+  );
+}
+
+export function upsertPlanApprovedMarker(body, ts, options) {
+  const source = String(body || '');
+  const masked = maskFencedCodeBlocksPreservingOffsets(source);
+  const match = PLAN_APPROVED_RE.exec(masked);
+  if (!match) return insertPlanApprovedMarker(source, ts, options);
+  const marker = buildPlanApprovedMarker(ts, options);
+  return `${source.slice(0, match.index)}${marker}${source.slice(match.index + match[0].length)}`;
 }
 
 // ---------------------------------------------------------------------------
@@ -323,6 +362,8 @@ const FULL_AUTO_FOOTNOTE_BLOCK_RE = new RegExp(
   `^${escapeRegExp(FULL_AUTO_FOOTNOTE_START)}[ \\t]*$[\\s\\S]*?^${escapeRegExp(FULL_AUTO_FOOTNOTE_END)}[ \\t]*$\\n?`,
   'gm'
 );
+const LEGACY_FULL_AUTO_FOOTNOTE_RE =
+  /^> ⚙️ \*\*Full-Auto mode enabled: human review skipped\.\*\*[ \t]*\r?\n> Approval was stamped by an autonomous agent \(`[^`\r\n]*`\) at \d{4}-\d{2}-\d{2}T[\d:.]+(?:Z|[+-]\d{2}:\d{2})\.[ \t]*\r?\n> Hidden marker: `aitm-review-approved full-auto="yes"`\.[ \t]*$\r?\n?/gm;
 
 function escapeRegExp(s) {
   return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -348,7 +389,7 @@ export function hasFullAutoFootnote(body) {
   // `insertFullAutoFootnote` down the "replace existing" branch, which then
   // no-ops because the regex below can't match a single delimiter in prose.
   FULL_AUTO_FOOTNOTE_BLOCK_RE.lastIndex = 0;
-  return FULL_AUTO_FOOTNOTE_BLOCK_RE.test(stripFencedCodeBlocks(body));
+  return FULL_AUTO_FOOTNOTE_BLOCK_RE.test(body);
 }
 
 /**
@@ -363,33 +404,30 @@ export function insertFullAutoFootnote(body, { ts, signals } = {}) {
   const src = typeof body === 'string' ? body : '';
   const block = buildFullAutoFootnoteBlock({ ts, signals });
   if (hasFullAutoFootnote(src)) {
-    return collapseBlankRunsOutsideFencedCodeBlocks(
-      replaceUnfencedMatches(src, FULL_AUTO_FOOTNOTE_BLOCK_RE, `${block}\n`)
-    );
+    return src.replace(FULL_AUTO_FOOTNOTE_BLOCK_RE, `${block}\n`).replace(/\n{3,}/g, '\n\n');
   }
 
   const lines = src.split('\n');
-  const scanLines = maskFencedCodeBlocksPreservingOffsets(src).split('\n');
 
   // Anchor 1 — Lifecycle subsection. Find `#### Lifecycle` heading; insert
   // after the last checklist line under it.
-  const lifeIdx = scanLines.findIndex((l) => /^#{3,4}\s+Lifecycle\b/i.test(l));
+  const lifeIdx = lines.findIndex((l) => /^#{3,4}\s+Lifecycle\b/i.test(l));
   if (lifeIdx !== -1) {
     let last = lifeIdx;
-    for (let i = lifeIdx + 1; i < scanLines.length; i++) {
-      if (/^#{1,4}\s/.test(scanLines[i])) break;
-      if (/^\s*[-*]\s+\[[ xX]\]/.test(scanLines[i])) last = i;
+    for (let i = lifeIdx + 1; i < lines.length; i++) {
+      if (/^#{1,4}\s/.test(lines[i])) break;
+      if (/^\s*[-*]\s+\[[ xX]\]/.test(lines[i])) last = i;
     }
     lines.splice(last + 1, 0, '', block);
     return lines.join('\n');
   }
 
   // Anchor 2 — Definition of Done section.
-  const dodIdx = scanLines.findIndex((l) => /^#{2,3}\s+Definition of Done\b/i.test(l));
+  const dodIdx = lines.findIndex((l) => /^#{2,3}\s+Definition of Done\b/i.test(l));
   if (dodIdx !== -1) {
     let endIdx = lines.length;
-    for (let i = dodIdx + 1; i < scanLines.length; i++) {
-      if (/^#{1,4}\s/.test(scanLines[i])) {
+    for (let i = dodIdx + 1; i < lines.length; i++) {
+      if (/^#{1,4}\s/.test(lines[i])) {
         endIdx = i;
         break;
       }
@@ -405,9 +443,26 @@ export function insertFullAutoFootnote(body, { ts, signals } = {}) {
 
 export function removeFullAutoFootnote(body) {
   if (!hasFullAutoFootnote(body)) return body;
-  return collapseBlankRunsOutsideFencedCodeBlocks(
-    replaceUnfencedMatches(body, FULL_AUTO_FOOTNOTE_BLOCK_RE, '')
-  );
+  return String(body)
+    .replace(FULL_AUTO_FOOTNOTE_BLOCK_RE, '')
+    .replace(/\n{3,}/g, '\n\n');
+}
+
+export function removeLegacyFullAutoFootnote(body) {
+  const src = String(body || '');
+  let masked = maskFencedCodeBlocksPreservingOffsets(src);
+  FULL_AUTO_FOOTNOTE_BLOCK_RE.lastIndex = 0;
+  masked = masked.replace(FULL_AUTO_FOOTNOTE_BLOCK_RE, (block) => block.replace(/[^\r\n]/g, ' '));
+  LEGACY_FULL_AUTO_FOOTNOTE_RE.lastIndex = 0;
+  const matches = [...masked.matchAll(LEGACY_FULL_AUTO_FOOTNOTE_RE)];
+  if (matches.length === 0) return src;
+
+  let next = src;
+  for (let i = matches.length - 1; i >= 0; i -= 1) {
+    const match = matches[i];
+    next = `${next.slice(0, match.index)}${next.slice(match.index + match[0].length)}`;
+  }
+  return next.replace(/\n{3,}/g, '\n\n');
 }
 
 // ---------------------------------------------------------------------------
@@ -456,11 +511,11 @@ export function buildDodVerifiedMarker(sha, ts) {
 }
 
 export function hasDodVerifiedMarker(body) {
-  return DOD_VERIFIED_RE.test(stripFencedCodeBlocks(body));
+  return DOD_VERIFIED_RE.test(String(body || ''));
 }
 
 export function parseDodVerifiedMarker(body) {
-  const s = stripFencedCodeBlocks(body);
+  const s = String(body || '');
   const legacy = s.match(DOD_VERIFIED_LEGACY_RE);
   if (legacy) return { sha: legacy[1], ts: legacy[2] };
   const neu = s.match(DOD_VERIFIED_NEW_RE);
@@ -468,17 +523,13 @@ export function parseDodVerifiedMarker(body) {
   return null;
 }
 
-export function clearDodVerifiedMarker(body) {
-  return collapseBlankRunsOutsideFencedCodeBlocks(
-    replaceUnfencedMatches(body, DOD_VERIFIED_RE, '')
-  );
-}
-
 export function insertDodVerifiedMarker(body, sha, ts) {
   // Replace any existing marker so re-running /task test refreshes the SHA.
   // Without this, a stale marker survives forever and Test→Review re-runs
   // can't pick up a moved HEAD.
-  const stripped = clearDodVerifiedMarker(body);
+  const stripped = String(body || '')
+    .replace(DOD_VERIFIED_RE, '')
+    .replace(/\n{3,}/g, '\n\n');
   return insertMarkerBeforeFieldDb(stripped, buildDodVerifiedMarker(sha, ts), hasDodVerifiedMarker);
 }
 
@@ -509,11 +560,11 @@ export function buildTestStartedMarker(sha, ts) {
 }
 
 export function hasTestStartedMarker(body) {
-  return TEST_STARTED_RE.test(stripFencedCodeBlocks(body));
+  return TEST_STARTED_RE.test(String(body || ''));
 }
 
 export function parseTestStartedMarker(body) {
-  const s = stripFencedCodeBlocks(body);
+  const s = String(body || '');
   const legacy = s.match(TEST_STARTED_LEGACY_RE);
   if (legacy) return { sha: legacy[1], ts: legacy[2] };
   const neu = s.match(TEST_STARTED_NEW_RE);
@@ -525,9 +576,9 @@ export function insertTestStartedMarker(body, sha, ts) {
   // Replace any existing marker so re-running /task test refreshes the SHA.
   // Without this, a stale entry-SHA survives forever and a re-test against
   // a newer HEAD would always look "drifted" at Review preflight.
-  const stripped = collapseBlankRunsOutsideFencedCodeBlocks(
-    replaceUnfencedMatches(body, TEST_STARTED_RE, '')
-  );
+  const stripped = String(body || '')
+    .replace(TEST_STARTED_RE, '')
+    .replace(/\n{3,}/g, '\n\n');
   return insertMarkerBeforeFieldDb(stripped, buildTestStartedMarker(sha, ts), hasTestStartedMarker);
 }
 

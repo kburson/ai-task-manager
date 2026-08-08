@@ -89,18 +89,15 @@ test('source: surfaced pre-walk failure refuses and returns before `gh issue clo
   const guardIdx = closeSrc.indexOf(PRE_WALK_GUARD);
   // #752 widened the pre-walk block (the board re-read now goes through the
   // lag-tolerant resolveBoardStateForClose), so the window must reach past the
-  // longer assignment to still contain the trailing structured refusal return.
+  // longer assignment to still contain the trailing `process.exitCode`/`return`.
   const block = closeSrc.slice(guardIdx, guardIdx + 1100);
   assert.ok(
     /decideBoardMoveFailure\(/.test(block),
     'pre-walk must route its decision through decideBoardMoveFailure'
   );
   assert.ok(
-    /\.surface\)/.test(block) &&
-      /return closeOutcome\(\{\s*status:\s*'board-move-failed',\s*exitCode:\s*1\s*\}\)/s.test(
-        block
-      ),
-    'a surfaced failure must return a non-zero outcome BEFORE the close (issue left OPEN)'
+    /\.surface\)/.test(block) && /process\.exitCode = 1;/.test(block) && /\breturn;/.test(block),
+    'a surfaced failure must set a non-zero exit and return BEFORE the close (issue left OPEN)'
   );
 });
 
@@ -117,7 +114,7 @@ test('source: pre-walk delegates the gate decision to move-state (review-approva
   const guardIdx = closeSrc.indexOf(PRE_WALK_GUARD);
   const block = closeSrc.slice(guardIdx, guardIdx + 1100);
   assert.ok(
-    /runMoveStateDone\(s\.active,\s*\{[\s\S]*?silent:\s*true,[\s\S]*?reviewAuthority:\s*configuredReviewAuthority,[\s\S]*?operation:\s*'close',[\s\S]*?withGovernedEffect:\s*scope\.continue,[\s\S]*?\}\)/s.test(
+    /runMoveStateDone\(s\.active,\s*\{\s*silent:\s*true,\s*reviewAuthority:\s*configuredReviewAuthority,\s*\}\)/s.test(
       block
     ),
     'pre-walk must invoke the terminal move-state walk (not a `--force` bypass) so the ' +

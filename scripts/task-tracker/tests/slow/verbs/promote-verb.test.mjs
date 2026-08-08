@@ -73,6 +73,11 @@ function makeDeps({
       epicChildren: {
         fetchSiblings: async () => [],
       },
+      decomposition: {
+        projectDir: process.cwd(),
+        loadProjectFieldDefs: () => [],
+        projectValuesForIssue: async () => ({ size: 'XS', estimate: 4 }),
+      },
       codeCompleteGate: async () => ({ ok: true, blockers: [], shas: [] }),
       commitTrailHeadGate: async () => ({ ok: true, headSha: 'deadbeef', trailShas: ['deadbeef'] }),
     },
@@ -83,6 +88,10 @@ function makeDeps({
 // reach the children/bootstrap gates need the signals in the body so the
 // new gate passes and the deeper gate under test runs.
 const DEEP_DIVE_SIGNALS = [
+  '',
+  '## Plan Metadata',
+  '',
+  '- **size**: XS',
   '',
   '## Pickup Directive — MANDATORY, DO NOT SKIP',
   '',
@@ -267,6 +276,25 @@ test('promote: plan→develop is a direct move-state call when planned-estimate 
   assert.equal(r.via, 'direct');
   assert.equal(calls.spawns.length, 0);
   assert.deepEqual(calls.moves, [{ issueNumber: 101, target: 'develop' }]);
+});
+
+test('promote: plan→develop surfaces an empty Plan Metadata refusal before move-state', async () => {
+  const body = bodyWithState('plan').replace('- **size**: XS', 'Planning discussion only.');
+  const { deps, calls } = makeDeps({ body, live: 'plan' });
+  deps.plannedEstimate = {
+    listComments: async () => [
+      {
+        id: 'IC_1',
+        body: '<!-- aitm-refined-estimate: 892 -->\n### Planned Estimate\n',
+      },
+    ],
+  };
+
+  const result = await runPromote({ issueNumber: 892, cfg, deps });
+
+  assert.equal(result.status, 'plan-metadata-refused');
+  assert.ok(result.blockers.some((blocker) => /plan-develop-plan-metadata-empty/.test(blocker)));
+  assert.equal(calls.moves.length, 0);
 });
 
 test('promote: plan→develop refused when refine-estimate comment is missing (#134)', async () => {

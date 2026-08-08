@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// @story #90
+// @story #90 #1089
 // Unit tests for scripts/task-tracker/lib/markers.mjs — the hidden-marker
 // helpers used by approve / check verbs and body-gates.
 //
@@ -24,9 +24,72 @@ import {
   hasDeepDiveEvidence,
   backfillDeepDiveCompleteMarker,
   stripFencedCodeBlocks,
+  parseVerificationReceipt,
+  upsertVerificationReceipt,
 } from '../../../lib/markers.mjs';
 
 const TS = '2026-05-11T12:00:00Z';
+
+function verificationReceipt(stage, receiptId, supersedes = null) {
+  return {
+    schema: 'aitm.verification-receipt/v1',
+    receiptId,
+    issue: 1089,
+    stage,
+    commitSha: 'a'.repeat(40),
+    startedAt: '2026-08-01T18:00:00.000Z',
+    completedAt: '2026-08-01T18:00:01.000Z',
+    environment: {
+      node: process.version,
+      platform: `${process.platform}-${process.arch}`,
+      lockfileHash: `sha256:${'a'.repeat(64)}`,
+      configHashes: { 'package.json': `sha256:${'b'.repeat(64)}` },
+      sandbox: { kind: 'worktree', identity: '/tmp/receipt', clean: true },
+    },
+    commands: [
+      {
+        classification: 'lint-full',
+        command: 'npm',
+        args: ['run', 'lint'],
+        exitCode: 0,
+        durationMs: 1000,
+      },
+    ],
+    supersedes,
+  };
+}
+
+// ── #1089 verification receipts: one current marker per stage ───────────────
+{
+  const first = verificationReceipt('develop-final', '01J00000000000000000000000');
+  const testReceipt = verificationReceipt('test', '01J00000000000000000000001');
+  const replacement = verificationReceipt('develop-final', '01J00000000000000000000002');
+  const visible = '## Evidence\n\nKeep this visible text exactly.\n';
+
+  const withDevelop = upsertVerificationReceipt(visible, first);
+  const withBoth = upsertVerificationReceipt(withDevelop, testReceipt);
+  const replaced = upsertVerificationReceipt(withBoth, replacement);
+
+  assert.equal(
+    parseVerificationReceipt(replaced, 'develop-final').receiptId,
+    replacement.receiptId
+  );
+  assert.equal(
+    parseVerificationReceipt(replaced, 'develop-final').supersedes,
+    first.receiptId,
+    'same-stage replacement links to the prior immutable receipt'
+  );
+  assert.equal(parseVerificationReceipt(replaced, 'test').receiptId, testReceipt.receiptId);
+  assert.equal((replaced.match(/aitm-verification-receipt/g) || []).length, 2);
+  assert.ok(replaced.includes(visible.trim()), 'visible body text is preserved');
+
+  const unrelated = replaced.replace('Keep this visible text exactly.', 'Unrelated prose edit.');
+  assert.deepEqual(
+    parseVerificationReceipt(unrelated, 'test'),
+    parseVerificationReceipt(replaced, 'test'),
+    'unrelated issue-body edits do not alter receipt payloads'
+  );
+}
 
 // ── plan-approved: build + has ────────────────────────────────────────────────
 {
@@ -269,72 +332,6 @@ const TS = '2026-05-11T12:00:00Z';
   assert.deepEqual(parseTestStartedMarker(fromLegacy), { sha: 'fed9999', ts: TS });
   assert.ok(!/aitm-test-started:/.test(fromLegacy), 'legacy colon form stripped on re-stamp');
   assert.equal((fromLegacy.match(/aitm-test-started /g) || []).length, 1);
-}
-
-// ── #1050: Test authority writers ignore fenced examples ───────────────────
-{
-  const {
-    insertDodVerifiedMarker,
-    insertTestStartedMarker,
-    parseDodVerifiedMarker,
-    parseTestStartedMarker,
-  } = await import('../../../lib/markers.mjs');
-  const fenced = [
-    '```md',
-    '<!-- aitm-test-started sha="dec0de1" ts="2026-07-29T09:00:00Z" -->',
-    '',
-    '',
-    '<!-- aitm-dod-verified sha="dec0de1" ts="2026-07-29T09:01:00Z" -->',
-    '```',
-  ].join('\n');
-  const body = [
-    fenced,
-    '<!-- aitm-test-started sha="aaa1111" ts="2026-07-29T10:00:00Z" -->',
-    '<!-- aitm-dod-verified sha="aaa1111" ts="2026-07-29T10:01:00Z" -->',
-  ].join('\n');
-
-  const started = insertTestStartedMarker(body, 'bbb2222', '2026-07-29T11:00:00Z');
-  const refreshed = insertDodVerifiedMarker(started, 'bbb2222', '2026-07-29T11:01:00Z');
-
-  assert.ok(refreshed.includes(fenced), 'fenced examples remain byte-for-byte');
-  assert.deepEqual(parseTestStartedMarker(refreshed), {
-    sha: 'bbb2222',
-    ts: '2026-07-29T11:00:00Z',
-  });
-  assert.deepEqual(parseDodVerifiedMarker(refreshed), {
-    sha: 'bbb2222',
-    ts: '2026-07-29T11:01:00Z',
-  });
-  assert.equal((refreshed.match(/aitm-test-started/g) || []).length, 2);
-  assert.equal((refreshed.match(/aitm-dod-verified/g) || []).length, 2);
-}
-
-// ── #1050: visible Full-Auto context must be live, not fenced ──────────────
-{
-  const { hasFullAutoFootnote, insertFullAutoFootnote } = await import('../../../lib/markers.mjs');
-  const fenced = [
-    '```md',
-    '<!-- aitm-full-auto-footnote:start -->',
-    '> example only',
-    '<!-- aitm-full-auto-footnote:end -->',
-    '```',
-  ].join('\n');
-  const body = `${fenced}
-
-#### Lifecycle (auto-ticked at Review/Close)
-
-- [x] Passed final human review`;
-
-  assert.equal(hasFullAutoFootnote(body), false);
-  const stamped = insertFullAutoFootnote(body, {
-    ts: '2026-07-29T12:00:00Z',
-    signals: 'env=1',
-  });
-
-  assert.ok(stamped.includes(fenced), 'the fenced example is not rewritten');
-  assert.equal(hasFullAutoFootnote(stamped), true);
-  assert.equal((stamped.match(/aitm-full-auto-footnote:start/g) || []).length, 2);
-  assert.match(stamped, /Full-Auto mode enabled: human review skipped/);
 }
 
 // ── #333: phantom-marker hardening — fenced code blocks are stripped before

@@ -11,7 +11,7 @@ import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
-import { mkdtempSync, writeFileSync, rmSync } from 'node:fs';
+import { copyFileSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync, rmSync } from 'node:fs';
 import { projectScratchDir } from '../../../lib/scratch-dir.mjs';
 import { normalizePlanMetadata } from '../../../preflight-issue.mjs';
 import path from 'node:path';
@@ -21,21 +21,24 @@ import { auditEvidenceMarkers } from '../../../lib/evidence-markers.mjs';
 const pexec = promisify(execFile);
 const HERE = path.dirname(fileURLToPath(import.meta.url)) + '/..';
 const SCRIPT = path.resolve(HERE, '..', '..', 'preflight-issue.mjs');
+const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../../../..');
 
 function makeFixture(acBody) {
   const dir = mkdtempSync(path.join(projectScratchDir('test'), 'aitm-preflight-test-'));
   const ac = path.join(dir, 'ac.md');
   const scope = path.join(dir, 'scope.md');
+  const origin = path.join(dir, 'origin.md');
   const meta = path.join(dir, 'meta.md');
   writeFileSync(ac, acBody, 'utf8');
   writeFileSync(scope, 'Scope.\n', 'utf8');
+  writeFileSync(origin, '- kind: code\n', 'utf8');
   writeFileSync(meta, 'Metadata.\n', 'utf8');
-  return { dir, ac, scope, meta };
+  return { dir, ac, scope, origin, meta };
 }
 
-async function runPreflight(args) {
+async function runPreflight(args, options = {}) {
   try {
-    const { stdout, stderr } = await pexec('node', [SCRIPT, ...args]);
+    const { stdout, stderr } = await pexec('node', [SCRIPT, ...args], options);
     return { code: 0, stdout, stderr };
   } catch (err) {
     return { code: err.code ?? 1, stdout: err.stdout ?? '', stderr: err.stderr ?? '' };
@@ -56,6 +59,8 @@ describe('preflight-issue --shape lint wiring', () => {
         fx.scope,
         '--ac-file',
         fx.ac,
+        '--story-origin-file',
+        fx.origin,
         '--plan-metadata-file',
         fx.meta,
       ]);
@@ -80,6 +85,8 @@ describe('preflight-issue --shape lint wiring', () => {
         fx.scope,
         '--ac-file',
         fx.ac,
+        '--story-origin-file',
+        fx.origin,
         '--plan-metadata-file',
         fx.meta,
       ]);
@@ -87,6 +94,161 @@ describe('preflight-issue --shape lint wiring', () => {
       // #419 — the preflight-emitted Functional DoD tail carries the
       // consolidated declaration form; #468 retired the legacy reader.
       assert.match(r.stdout, /aitm-verified cmd=/);
+      const lifecycle = r.stdout.indexOf('### Lifecycle (verified at Review)');
+      const agentReview = r.stdout.indexOf('- [ ] Agent Review Passed');
+      const finalReview = r.stdout.indexOf('- [ ] Final Review Passed');
+      const housekeeping = r.stdout.indexOf('### Housekeeping (verified at Close)');
+      const storyClosed = r.stdout.indexOf('- [ ] Story closed and moved to Done');
+      const timingFlushed = r.stdout.indexOf('- [ ] Timing data flushed to issue');
+      assert.ok(lifecycle < agentReview && agentReview < finalReview && finalReview < housekeeping);
+      assert.ok(housekeeping < storyClosed && storyClosed < timingFlushed);
+    } finally {
+      rmSync(fx.dir, { recursive: true, force: true });
+    }
+  });
+});
+
+describe('preflight-issue --shape Story Origin flat-section validation (#892)', () => {
+  it('rejects a Story Origin fragment containing an embedded heading', async () => {
+    const fx = makeFixture('- [ ] Works\n');
+    writeFileSync(
+      fx.origin,
+      '- kind: code\n\n## Injected Section\n\nUnexpected content.\n',
+      'utf8'
+    );
+
+    const r = await runPreflight([
+      '--shape',
+      'solo',
+      '--scope-file',
+      fx.scope,
+      '--ac-file',
+      fx.ac,
+      '--story-origin-file',
+      fx.origin,
+      '--plan-metadata-file',
+      fx.meta,
+    ]);
+
+    assert.equal(r.code, 2);
+    assert.match(r.stderr, /must be a flat metadata fragment without headings/);
+  });
+
+  it('still accepts a single leading Story Origin heading for compatibility', async () => {
+    const fx = makeFixture('- [ ] Works\n');
+    writeFileSync(fx.origin, '## Story Origin\n\n- kind: code\n', 'utf8');
+
+    const r = await runPreflight([
+      '--shape',
+      'solo',
+      '--scope-file',
+      fx.scope,
+      '--ac-file',
+      fx.ac,
+      '--story-origin-file',
+      fx.origin,
+      '--plan-metadata-file',
+      fx.meta,
+    ]);
+
+    assert.equal(r.code, 0, `stderr: ${r.stderr}`);
+    assert.equal(r.stdout.match(/^## Story Origin$/gm)?.length, 1);
+  });
+
+  it('rejects a stale project template override that drops Story Origin', async () => {
+    const fx = makeFixture('- [ ] Works\n');
+    try {
+      const templatesDir = path.join(fx.dir, '.ai-task-manager', 'templates');
+      mkdirSync(templatesDir, { recursive: true });
+      await pexec('git', ['init', '--quiet'], { cwd: fx.dir });
+      copyFileSync(
+        path.join(REPO_ROOT, '.ai-task-manager', 'templates', 'pickup-directive.md'),
+        path.join(templatesDir, 'pickup-directive.md')
+      );
+      copyFileSync(
+        path.join(REPO_ROOT, '.ai-task-manager', 'templates', 'definition-of-done.md'),
+        path.join(templatesDir, 'definition-of-done.md')
+      );
+      const staleOverride = readFileSync(
+        path.join(REPO_ROOT, 'templates', 'solo-issue-body.md'),
+        'utf8'
+      ).replace(/\n## Story Origin\n\n\{\{story_origin\}\}\n/, '');
+      writeFileSync(
+        path.join(fx.dir, '.ai-task-manager', 'solo-issue-body.md'),
+        staleOverride,
+        'utf8'
+      );
+
+      const r = await runPreflight(
+        [
+          '--shape',
+          'solo',
+          '--scope-file',
+          fx.scope,
+          '--ac-file',
+          fx.ac,
+          '--story-origin-file',
+          fx.origin,
+          '--plan-metadata-file',
+          fx.meta,
+        ],
+        { cwd: fx.dir }
+      );
+
+      assert.equal(r.code, 2);
+      assert.match(r.stderr, /rendered solo body failed canonical verification:.*Story Origin/);
+    } finally {
+      rmSync(fx.dir, { recursive: true, force: true });
+    }
+  });
+});
+
+describe('preflight-issue --shape Plan Metadata flat-section validation (#892)', () => {
+  it('rejects a Plan Metadata fragment containing an embedded heading', async () => {
+    const fx = makeFixture('- [ ] Works\n');
+    writeFileSync(fx.meta, '- size: S\n\n## Acceptance Criteria\n\n- [ ] injected\n', 'utf8');
+
+    try {
+      const result = await runPreflight([
+        '--shape',
+        'solo',
+        '--scope-file',
+        fx.scope,
+        '--ac-file',
+        fx.ac,
+        '--story-origin-file',
+        fx.origin,
+        '--plan-metadata-file',
+        fx.meta,
+      ]);
+
+      assert.equal(result.code, 2);
+      assert.match(result.stderr, /--plan-metadata-file must be a flat metadata fragment/);
+    } finally {
+      rmSync(fx.dir, { recursive: true, force: true });
+    }
+  });
+
+  it('accepts one compatible leading Plan Metadata heading', async () => {
+    const fx = makeFixture('- [ ] Works\n');
+    writeFileSync(fx.meta, '## Plan Metadata\n\n- size: S\n', 'utf8');
+
+    try {
+      const result = await runPreflight([
+        '--shape',
+        'solo',
+        '--scope-file',
+        fx.scope,
+        '--ac-file',
+        fx.ac,
+        '--story-origin-file',
+        fx.origin,
+        '--plan-metadata-file',
+        fx.meta,
+      ]);
+
+      assert.equal(result.code, 0, `stderr: ${result.stderr}`);
+      assert.equal(result.stdout.match(/^## Plan Metadata$/gm)?.length, 1);
     } finally {
       rmSync(fx.dir, { recursive: true, force: true });
     }
@@ -98,11 +260,12 @@ describe('preflight-issue --shape stub (#426)', () => {
     const r = await runPreflight(['--shape', 'stub']);
     assert.equal(r.code, 0, `stderr: ${r.stderr}`);
     assert.match(r.stdout, /^## Scope\b/m);
+    assert.match(r.stdout, /^## Story Origin\b/m);
     assert.match(r.stdout, /^## Acceptance Criteria\b/m);
     assert.match(r.stdout, /^## Plan Metadata\b/m);
     assert.match(r.stdout, /Stub — describe the work at Refine\./);
     assert.match(r.stdout, /TBD — define acceptance criteria at Refine\./);
-    assert.match(r.stdout, /TBD — set Size, Estimate, Priority, and Rank at Refine\./);
+    assert.doesNotMatch(r.stdout, /TBD — set Size, Estimate, Priority, and Rank at Refine\./);
     // Tail still appended.
     assert.match(r.stdout, /^## Definition of Done\b/m);
     assert.match(r.stdout, /^## Pickup Directive\b/m);
@@ -135,6 +298,8 @@ describe('preflight-issue --shape Verification Commands seeding (#410)', () => {
         fx.scope,
         '--ac-file',
         fx.ac,
+        '--story-origin-file',
+        fx.origin,
         '--plan-metadata-file',
         fx.meta,
       ]);
@@ -197,6 +362,7 @@ describe('preflight-issue --kind docs-only render (#865 diff-decides / #923)', (
 
   it('default-deny: docs-only with NO --changed-paths-file KEEPS the tests DoD item', async () => {
     const fx = makeFixture('- [ ] Some AC.\n');
+    writeFileSync(fx.origin, '- kind: docs-only\n', 'utf8');
     try {
       const r = await runPreflight([
         '--shape',
@@ -207,6 +373,8 @@ describe('preflight-issue --kind docs-only render (#865 diff-decides / #923)', (
         fx.scope,
         '--ac-file',
         fx.ac,
+        '--story-origin-file',
+        fx.origin,
         '--plan-metadata-file',
         fx.meta,
       ]);
@@ -228,6 +396,7 @@ describe('preflight-issue --kind docs-only render (#865 diff-decides / #923)', (
 
   it('docs-only + provably documentation-only diff DROPS the tests item + its VC seeds', async () => {
     const fx = makeFixture('- [ ] Some AC.\n');
+    writeFileSync(fx.origin, '- kind: docs-only\n', 'utf8');
     const cp = writeChangedPaths(fx.dir, ['docs/guides/workflow.md', 'README.md']);
     try {
       const r = await runPreflight([
@@ -241,6 +410,8 @@ describe('preflight-issue --kind docs-only render (#865 diff-decides / #923)', (
         fx.scope,
         '--ac-file',
         fx.ac,
+        '--story-origin-file',
+        fx.origin,
         '--plan-metadata-file',
         fx.meta,
       ]);
@@ -278,6 +449,7 @@ describe('preflight-issue --kind docs-only render (#865 diff-decides / #923)', (
 
   it('docs-only + a diff that touches code KEEPS the tests item (default-deny)', async () => {
     const fx = makeFixture('- [ ] Some AC.\n');
+    writeFileSync(fx.origin, '- kind: docs-only\n', 'utf8');
     const cp = writeChangedPaths(fx.dir, [
       'docs/guides/workflow.md',
       'scripts/task-tracker/lib/foo.mjs',
@@ -294,6 +466,8 @@ describe('preflight-issue --kind docs-only render (#865 diff-decides / #923)', (
         fx.scope,
         '--ac-file',
         fx.ac,
+        '--story-origin-file',
+        fx.origin,
         '--plan-metadata-file',
         fx.meta,
       ]);

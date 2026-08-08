@@ -20,6 +20,7 @@ function result(event, name, kind, eventClass, extra = {}) {
     canonicalPhase: kind === 'audit',
     role: null,
     interruptionKind: null,
+    terminalReviewHandoffCloser: false,
     ...extra,
   });
 }
@@ -29,6 +30,7 @@ export function describeParameterizedTimingEvent(event) {
   if (match && STATES.has(match[1])) {
     return result(event, 'demoted-target', 'audit', EVENT_CLASS.PHASE, {
       target: match[1],
+      terminalReviewHandoffCloser: match[1] === 'develop',
     });
   }
 

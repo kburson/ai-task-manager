@@ -73,8 +73,8 @@ async function defaultIssueExists({ issueNumber, repo }) {
   }
 }
 
-async function defaultMutateBody({ issueNumber, repo, mutate, deps = {} }) {
-  return mutateIssueBody({ issueNumber, repo, mutate, deps: { ...deps, pexec } });
+async function defaultMutateBody({ issueNumber, repo, mutate }) {
+  return mutateIssueBody({ issueNumber, repo, mutate, deps: { pexec } });
 }
 
 async function defaultPostComment({ issueNumber, repo, body }) {
@@ -155,10 +155,6 @@ export async function runSupersede({ deadIssue, byIssue, cfg, deps = {} } = {}) 
     issueNumber: deadIssue,
     repo: cfg.repo,
     mutate: (base) => addSupersededBy(base, { ref: byIssue, ts }),
-    deps: {
-      projectDir: deps.projectDir,
-      withGovernedEffect: deps.withGovernedEffect,
-    },
   });
 
   // AC3/AC5 — direct move to Done via the bypass; done-path unparkDependents

@@ -7,7 +7,6 @@ import { promisify } from 'node:util';
 
 import { parseIssueFieldDb, stripIssueFieldDb, formatIssueFieldDb } from '../issue-field-db.mjs';
 import { GH_API_TIMEOUT_MS } from './process-timeouts.mjs';
-import { isGovernedAuthorityError } from './work-lease/governed-effect.mjs';
 import { serializeMarker, unescapeValue } from './marker-grammar.mjs';
 import { PROGRESS_MARKERS_HEADING } from './markers.mjs';
 import { stateIds, isEntryHistoryEdge } from './lifecycle-policy/index.mjs';
@@ -134,21 +133,6 @@ export function parseEntryMarkers(body) {
     out.push({ stage, visit, ts });
   }
   return out;
-}
-
-// Canonical structural source for a stage's current visit. Consumers that need
-// identity must read this entry history rather than infer an entry from a
-// timing row or their current wall clock.
-export function latestStageEntry(body, stage) {
-  if (!KNOWN_STAGES.has(stage)) {
-    throw new Error(`latestStageEntry: unknown stage "${stage}"`);
-  }
-  let latest = null;
-  for (const entry of parseEntryMarkers(body)) {
-    if (entry.stage !== stage) continue;
-    if (!latest || entry.visit > latest.visit) latest = entry;
-  }
-  return latest;
 }
 
 // First-visit-only view as a `{stage: ts}` map. For callers that only need
@@ -427,7 +411,6 @@ export async function postReentryAuditComment({
       return { mode: 'already-present' };
     }
   } catch (err) {
-    if (isGovernedAuthorityError(err)) throw err;
     // best-effort — if list fails, fall through and post (a duplicate is
     // preferable to a silently omitted audit row, mirroring the
     // full-auto-approval policy).
@@ -441,7 +424,6 @@ export async function postReentryAuditComment({
     await post({ repo, issueNumber, body });
     return { mode: 'posted' };
   } catch (err) {
-    if (isGovernedAuthorityError(err)) throw err;
     warn(
       `[reentry-audit] issue #${issueNumber}: comment post FAILED for ${stage}-${v}: ${err.message}`
     );

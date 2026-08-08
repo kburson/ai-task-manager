@@ -19,24 +19,6 @@ import {
 } from '../../../lib/human-reviewer-audit.mjs';
 import { buildReviewApprovedMarker } from '../../../lib/markers.mjs';
 
-const REVIEW_TS = '2026-07-29T00:00:00Z';
-const EPOCH = `review:1:${REVIEW_TS}`;
-const SHA = 'abc1234';
-
-function currentReviewAuthorityBody({ fullAuto = false } = {}) {
-  return [
-    `<!-- aitm-dod-verified sha="${SHA}" ts="2026-07-28T23:59:00Z" -->`,
-    `<!-- aitm-entered-review ts="${REVIEW_TS}" -->`,
-    `<!-- aitm-agent-review-proof schema="1" epoch="${EPOCH}" sha="${SHA}" ts="2026-07-29T00:00:01Z" validators="unit" result="pass" -->`,
-    buildReviewApprovedMarker('2026-07-29T00:00:02Z', {
-      epoch: EPOCH,
-      proofSha: SHA,
-      provenance: fullAuto ? 'full-auto' : 'human',
-      signals: fullAuto ? 'reviewer-unset=1' : '',
-    }),
-  ].join('\n');
-}
-
 function makeRecorder() {
   const comments = [];
   const writes = [];
@@ -162,41 +144,22 @@ test('Human-reviewer path is idempotent — does not double-stamp marker', async
 });
 
 test('hasGenuineReviewApprovedMarker: true for non-full-auto marker, false for full-auto marker or absent', () => {
-  assert.equal(hasGenuineReviewApprovedMarker(currentReviewAuthorityBody()), true);
-  assert.equal(
-    hasGenuineReviewApprovedMarker(currentReviewAuthorityBody({ fullAuto: true })),
-    false
-  );
+  const genuine = buildReviewApprovedMarker('2026-07-26T00:00:00Z');
+  const fullAuto = buildReviewApprovedMarker('2026-07-26T00:00:00Z', {
+    fullAuto: true,
+    signals: 'reviewer-unset=1',
+  });
+  assert.equal(hasGenuineReviewApprovedMarker(`body\n\n${genuine}\n`), true);
+  assert.equal(hasGenuineReviewApprovedMarker(`body\n\n${fullAuto}\n`), false);
   assert.equal(hasGenuineReviewApprovedMarker('body with no marker'), false);
   assert.equal(hasGenuineReviewApprovedMarker(null), false);
-});
-
-test('current Full-Auto provenance overrides a human-gate call-site hint', async () => {
-  const rec = makeRecorder();
-  const result = await enforceFullAutoAudit({
-    issueNumber: 1050,
-    repo: 'org/repo',
-    body: currentReviewAuthorityBody({ fullAuto: true }),
-    env: { [HUMAN_REVIEWER_ENV]: 'alice' },
-    reviewAuthority: 'human-gate',
-    writeIssueBody: rec.writeIssueBody,
-    postComment: rec.postComment,
-    listComments: rec.listComments,
-    now: () => '2026-07-29T00:00:03Z',
-  });
-
-  assert.equal(result.mode, 'full-auto');
-  assert.equal(rec.writes.length, 0);
-  assert.equal(rec.comments.length, 1);
-  assert.match(rec.comments[0], /persisted Full-Auto review authority/i);
-  assert.doesNotMatch(rec.comments[0], /without a `TASK_TRACKER_HUMAN_REVIEWER` signal/);
 });
 
 test('explicit review authority takes precedence over legacy reviewer environment detection', async () => {
   const cases = [
     {
       name: 'genuine marker wins over a bypass context',
-      body: currentReviewAuthorityBody(),
+      body: '<!-- aitm-review-approved ts="2026-07-29T00:00:00Z" -->',
       reviewAuthority: 'gate-bypassed',
       expected: 'human-reviewer',
     },
@@ -293,10 +256,11 @@ test('resolveReviewAuthority accepts only the internal authority union', () => {
 // comment, human-reviewer marker stamped instead.
 test('body already carrying a genuine review-approved marker suppresses the Full-Auto audit even with env unset', async () => {
   const rec = makeRecorder();
+  const genuineMarker = buildReviewApprovedMarker('2026-07-26T00:00:00Z');
   const result = await enforceFullAutoAudit({
     issueNumber: 979,
     repo: 'org/repo',
-    body: `## Acceptance Criteria\n\n${currentReviewAuthorityBody()}\n`,
+    body: `## Acceptance Criteria\n\n${genuineMarker}\n`,
     env: {},
     writeIssueBody: rec.writeIssueBody,
     postComment: rec.postComment,
@@ -367,30 +331,4 @@ test('Full-Auto path returns error when postComment throws', async () => {
   assert.equal(result.mode, 'full-auto');
   assert.equal(result.auditPosted, false);
   assert.match(result.error, /rate-limited/);
-});
-
-test('Full-Auto list and post catches preserve governed authority failures', async () => {
-  for (const collaborator of ['listComments', 'postComment']) {
-    const error = Object.assign(new Error(`stale ${collaborator} fence`), {
-      code: 'fence-stale',
-    });
-    await assert.rejects(
-      () =>
-        enforceFullAutoAudit({
-          issueNumber: 169,
-          repo: 'org/repo',
-          body: 'issue body',
-          env: {},
-          listComments: async () => {
-            if (collaborator === 'listComments') throw error;
-            return [];
-          },
-          postComment: async () => {
-            if (collaborator === 'postComment') throw error;
-          },
-        }),
-      (thrown) => thrown === error,
-      collaborator
-    );
-  }
 });

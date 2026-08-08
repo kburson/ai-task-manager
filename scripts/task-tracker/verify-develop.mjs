@@ -1,97 +1,285 @@
 #!/usr/bin/env node
-/**
- * Develop-phase verification: lint-first auto-fix, full lint, then targeted
- * test execution.
- *
- * Replaces ad-hoc `npm run test:all` during Develop. Full regression (test:all)
- * runs exclusively at the Test stage.
- *
- * Steps:
- *  1. `npm run lint:js -- --fix` — auto-fix eslint violations; abort if unfixable
- *  2. `npm run format`           — prettier auto-format (tree now in committed shape)
- *  3. `npm run lint`             — full lint suite (lint:js, lint:md, lint:spell, …)
- *                                  so spell/markdown violations fail in Develop,
- *                                  not deferred to Test (#529; closes the
- *                                  "multiset" spell-escape gap)
- *  4. Collect *.test.mjs files changed vs HEAD via git diff, unioned with
- *     never-`git add`-ed *.test.mjs files via `git ls-files --others`
- *  5. `node --test <file>` for each; abort on first failure
- *
- * Exit codes: 0 = pass, 1 = lint/format/test failure
- */
+// @story #447 #448 #529 #855 #867 #1089
+// Stage-aware Develop verification. Iteration is fast and affected-only;
+// finalization is clean-tree, exact-SHA, and receipt-producing.
 
-import { execSync, spawnSync } from 'node:child_process';
-import { realpathSync } from 'node:fs';
+import { execFileSync, spawnSync } from 'node:child_process';
+import { existsSync, realpathSync } from 'node:fs';
+import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { findUnitTests } from './find-unit-tests.mjs';
+
 import { wantsHelp, emitSelfDoc } from '../lib/self-doc.mjs';
+import {
+  buildVerificationFingerprint,
+  createVerificationReceipt,
+} from './lib/verification-receipt.mjs';
+import { formatTestImpactReport, selectAffectedTests } from './lib/test-impact-selector.mjs';
 
-/**
- * The ordered lint/format command plan run before tests. Autofix steps
- * (`lint:js --fix`, `format`) land first so the tree is in its committed
- * shape; the final full `npm run lint` then verifies that shape against the
- * complete suite — including `lint:spell` and `lint:md`, which the old
- * `lint:js`-only gate skipped (#529). Exported pure so the command set is
- * unit-testable without spawning npm.
- */
-export function buildLintFormatSteps() {
-  return [
-    { cmd: 'npm', args: ['run', 'lint:js', '--', '--fix'], label: 'npm run lint:js -- --fix' },
-    { cmd: 'npm', args: ['run', 'format'], label: 'npm run format' },
-    { cmd: 'npm', args: ['run', 'lint'], label: 'npm run lint' },
-  ];
-}
+const FORMATTABLE_RE = /\.(?:c?js|mjs|json|jsonc|md|ya?ml)$/i;
+const JAVASCRIPT_RE = /\.(?:c?js|mjs)$/i;
 
-/**
- * Collects the `*.test.mjs` files verify-develop should run: the tracked diff
- * vs HEAD (`ACMR` — added/copied/modified/renamed) unioned with never-`git
- * add`-ed test files (`git ls-files --others --exclude-standard`, which
- * respects `.gitignore`). Without the untracked union, a brand-new test file
- * that was never staged is invisible to `git diff` and silently skipped
- * (#855). Exported and `cwd`-parameterized so it is unit-testable against a
- * real temp git fixture rather than the live repo.
- */
-export function collectTestFiles({ cwd = process.cwd() } = {}) {
-  const rawTests = execSync("git diff --diff-filter=ACMR --name-only HEAD -- '*.test.mjs'", {
-    encoding: 'utf8',
-    shell: true,
+export function collectChangedPaths({ cwd = process.cwd() } = {}) {
+  const tracked = execFileSync('git', ['diff', '--name-status', '--find-renames', '-z', 'HEAD'], {
     cwd,
+    encoding: 'utf8',
   });
-  const rawUntrackedTests = execSync("git ls-files --others --exclude-standard -- '*.test.mjs'", {
-    encoding: 'utf8',
-    shell: true,
+  const untracked = execFileSync('git', ['ls-files', '--others', '--exclude-standard'], {
     cwd,
+    encoding: 'utf8',
   });
   return [
     ...new Set(
-      [rawTests, rawUntrackedTests]
-        .join('\n')
+      `${parseChangedNameStatus(tracked).join('\n')}\n${untracked}`
         .split('\n')
-        .map((f) => f.trim())
+        .map((item) => item.trim())
         .filter(Boolean)
     ),
+  ].sort();
+}
+
+export function parseChangedNameStatus(raw) {
+  const tokens = String(raw || '')
+    .split('\0')
+    .filter(Boolean);
+  const paths = [];
+  for (let index = 0; index < tokens.length;) {
+    const status = tokens[index++];
+    const firstPath = tokens[index++];
+    if (!status || !firstPath) break;
+    paths.push(firstPath);
+    if (/^[RC]/.test(status)) {
+      const secondPath = tokens[index++];
+      if (secondPath) paths.push(secondPath);
+    }
+  }
+  return paths;
+}
+
+/** Compatibility export retained for existing callers and regression tests. */
+export function collectTestFiles({ cwd = process.cwd() } = {}) {
+  return collectChangedPaths({ cwd }).filter((file) => file.endsWith('.test.mjs'));
+}
+
+export function buildIterationSteps(changedPaths = []) {
+  const javascript = changedPaths.filter((file) => JAVASCRIPT_RE.test(file)).sort();
+  const formattable = changedPaths.filter((file) => FORMATTABLE_RE.test(file)).sort();
+  const steps = [];
+  if (javascript.length > 0) {
+    steps.push({
+      classification: 'lint-affected-fix',
+      command: 'npx',
+      args: ['eslint', '--fix', ...javascript],
+      label: `eslint --fix (${javascript.length} changed file(s))`,
+    });
+  }
+  if (formattable.length > 0) {
+    steps.push({
+      classification: 'format-affected-fix',
+      command: 'npx',
+      args: ['prettier', '--write', ...formattable],
+      label: `prettier --write (${formattable.length} changed file(s))`,
+    });
+  }
+  return steps;
+}
+
+export function buildFinalSteps() {
+  return [
+    {
+      classification: 'lint-full',
+      command: 'npm',
+      args: ['run', 'lint'],
+      label: 'npm run lint',
+    },
+    {
+      classification: 'format-full',
+      command: 'npm',
+      args: ['run', 'format:check'],
+      label: 'npm run format:check',
+    },
   ];
 }
 
-function run(cmd, args = [], { label = cmd, allowFailure = false } = {}) {
-  const result = spawnSync(cmd, args, { stdio: 'inherit', shell: false });
+function defaultRunCommand(step, projectDir) {
+  const startedAt = new Date().toISOString();
+  const startedMs = Date.now();
+  const result = spawnSync(step.command, step.args, {
+    cwd: projectDir,
+    stdio: 'inherit',
+    shell: false,
+  });
   if (result.error) throw result.error;
-  if (!allowFailure && result.status !== 0) {
-    console.error(`\nverify-develop: "${label}" failed (exit ${result.status})`);
-    process.exit(1);
-  }
-  return result.status;
+  return {
+    exitCode: result.status ?? 1,
+    durationMs: Date.now() - startedMs,
+    startedAt,
+    completedAt: new Date().toISOString(),
+  };
 }
 
-/**
- * True only when this file is the process entry point (invoked as
- * `node verify-develop.mjs`), false when it is `import`-ed. Guards the gate so
- * importing a pure export (e.g. `buildLintFormatSteps`) never executes lint,
- * format, tests, or `process.exit` as an import side effect (#867). Uses the
- * `argv[1]`/`import.meta.url` realpath compare (portable to Node 18; survives
- * the `node_modules/ai-task-manager` self-symlink this repo relies on) rather
- * than the newer `import.meta.main`.
- */
+function gitHead(projectDir) {
+  return execFileSync('git', ['rev-parse', 'HEAD'], { cwd: projectDir, encoding: 'utf8' }).trim();
+}
+
+function gitClean(projectDir) {
+  return (
+    execFileSync('git', ['status', '--porcelain', '--untracked-files=normal'], {
+      cwd: projectDir,
+      encoding: 'utf8',
+    }).trim() === ''
+  );
+}
+
+function execute(step, projectDir, runCommand) {
+  const result = runCommand(step, projectDir) || {};
+  return {
+    classification: step.classification,
+    command: step.command,
+    args: [...step.args],
+    exitCode: Number.isInteger(result.exitCode) ? result.exitCode : 1,
+    durationMs: Number.isFinite(result.durationMs) ? result.durationMs : 0,
+    ...(result.startedAt ? { startedAt: result.startedAt } : {}),
+    ...(result.completedAt ? { completedAt: result.completedAt } : {}),
+  };
+}
+
+function commandFailure(command) {
+  return {
+    code: 'command-red',
+    classification: command.classification,
+    exitCode: command.exitCode,
+    message: `${command.command} ${command.args.join(' ')} exited ${command.exitCode}`,
+  };
+}
+
+export function runDevelopVerification({
+  projectDir = process.cwd(),
+  mode = 'iteration',
+  issueNumber,
+  deps = {},
+} = {}) {
+  if (!['iteration', 'final'].includes(mode)) {
+    return { ok: false, mode, commands: [], reasons: [{ code: 'invalid-mode' }] };
+  }
+  const runCommand = deps.runCommand || defaultRunCommand;
+  const getHeadSha = deps.getHeadSha || gitHead;
+  const isClean = deps.isClean || gitClean;
+  const commands = [];
+
+  if (mode === 'iteration') {
+    try {
+      const changedPaths = (deps.collectChangedPaths || collectChangedPaths)({ cwd: projectDir });
+      const selection = (deps.selectAffectedTests || selectAffectedTests)({
+        projectDir,
+        changedPaths,
+      });
+      const pathExists = deps.pathExists || ((file) => existsSync(path.join(projectDir, file)));
+      const fixablePaths = changedPaths.filter(pathExists);
+      const steps = [
+        ...buildIterationSteps(fixablePaths),
+        ...selection.tests.map((file) => ({
+          classification: 'test-affected',
+          command: 'node',
+          args: ['--test', file],
+          label: `node --test ${file}`,
+        })),
+      ];
+      for (const step of steps) {
+        const command = execute(step, projectDir, runCommand);
+        commands.push(command);
+        if (command.exitCode !== 0) {
+          return {
+            ok: false,
+            mode,
+            changedPaths,
+            selection,
+            commands,
+            reasons: [commandFailure(command)],
+          };
+        }
+      }
+      return { ok: true, mode, changedPaths, selection, commands, reasons: [] };
+    } catch (error) {
+      return {
+        ok: false,
+        mode,
+        commands,
+        reasons: [{ code: 'iteration-error', message: error.message }],
+      };
+    }
+  }
+
+  if (!Number.isInteger(Number(issueNumber)) || Number(issueNumber) <= 0) {
+    return { ok: false, mode, commands, reasons: [{ code: 'issue-required' }] };
+  }
+  if (!isClean(projectDir)) {
+    return {
+      ok: false,
+      mode,
+      commands,
+      reasons: [
+        {
+          code: 'final-tree-dirty',
+          message: 'finalization requires a clean committed tree; inspect, commit, and retry',
+        },
+      ],
+    };
+  }
+
+  const commitSha = getHeadSha(projectDir);
+  for (const step of buildFinalSteps()) {
+    const command = execute(step, projectDir, runCommand);
+    commands.push(command);
+    if (command.exitCode !== 0) {
+      return { ok: false, mode, commands, reasons: [commandFailure(command)] };
+    }
+    if (!isClean(projectDir)) {
+      return {
+        ok: false,
+        mode,
+        commands,
+        reasons: [
+          {
+            code: 'final-tree-mutated',
+            message:
+              'finalization changed tracked files; inspect, commit, and retry against the new SHA',
+          },
+        ],
+      };
+    }
+    if (getHeadSha(projectDir) !== commitSha) {
+      return {
+        ok: false,
+        mode,
+        commands,
+        reasons: [{ code: 'final-sha-changed', message: 'HEAD changed during finalization' }],
+      };
+    }
+  }
+
+  try {
+    const fingerprint = (deps.buildFingerprint || buildVerificationFingerprint)({
+      projectDir,
+      commitSha,
+    });
+    const receipt = (deps.createReceipt || createVerificationReceipt)({
+      issueNumber: Number(issueNumber),
+      stage: 'develop-final',
+      fingerprint,
+      commands,
+      now: deps.now,
+    });
+    return { ok: true, mode, commands, reasons: [], fingerprint, receipt };
+  } catch (error) {
+    return {
+      ok: false,
+      mode,
+      commands,
+      reasons: [{ code: 'receipt-error', message: error.message }],
+    };
+  }
+}
+
 export function isMainModule() {
   try {
     return (
@@ -102,72 +290,47 @@ export function isMainModule() {
   }
 }
 
-/**
- * The Develop gate. Runs steps 1–4 and exits the process on completion or
- * failure. Only invoked under the main-module guard, never on import.
- */
-export function main() {
-  if (wantsHelp(process.argv.slice(2))) {
+function parseArgs(argv) {
+  let mode = 'iteration';
+  let issueNumber;
+  for (let index = 0; index < argv.length; index += 1) {
+    if (argv[index] === '--mode') mode = argv[++index];
+    else if (argv[index] === '--issue') issueNumber = Number(argv[++index]);
+    else throw new Error(`unknown argument: ${argv[index]}`);
+  }
+  return { mode, issueNumber };
+}
+
+export function main(argv = process.argv.slice(2)) {
+  if (wantsHelp(argv)) {
     emitSelfDoc('verify-develop');
-    process.exit(0);
+    return 0;
   }
-
-  // Steps 1–3: lint:js --fix, format, then full lint suite
-  const lintFormatSteps = buildLintFormatSteps();
-  lintFormatSteps.forEach((step, i) => {
-    console.log(`verify-develop: step ${i + 1} — ${step.label}`);
-    run(step.cmd, step.args, { label: step.label });
-  });
-
-  // Step 3: Collect changed files (working tree vs HEAD)
-  console.log('verify-develop: step 3 — collecting changed files');
-  let testFiles = [];
-  let rawSources = '';
+  let options;
   try {
-    testFiles = collectTestFiles();
-    rawSources = execSync(
-      "git diff --diff-filter=ACMR --name-only HEAD -- '*.mjs' ':!*.test.mjs'",
-      {
-        encoding: 'utf8',
-        shell: true,
-      }
-    );
-  } catch {
-    console.error('verify-develop: git diff failed');
-    process.exit(1);
+    options = parseArgs(argv);
+  } catch (error) {
+    console.error(`verify-develop: ${error.message}`);
+    return 2;
   }
-
-  const sourceFiles = rawSources
-    .split('\n')
-    .map((f) => f.trim())
-    .filter(Boolean);
-
-  // Step 3b: Discover unit tests for changed source files (C2 of #431)
-  const discoveredTests = findUnitTests(sourceFiles);
-  if (discoveredTests.length > 0) {
+  const result = runDevelopVerification({ projectDir: process.cwd(), ...options });
+  if (result.mode === 'iteration' && result.selection) {
+    const report = formatTestImpactReport(result.selection);
+    if (report) console.log(report);
+  }
+  for (const command of result.commands) {
     console.log(
-      `verify-develop: step 3b — discovered ${discoveredTests.length} unit test(s) from source changes`
+      `verify-develop: ${command.classification} exit=${command.exitCode} duration=${command.durationMs}ms`
     );
   }
-
-  const allTestFiles = [...new Set([...testFiles, ...discoveredTests])];
-
-  if (allTestFiles.length === 0) {
-    console.log('verify-develop: nothing to verify (no test files changed vs HEAD)');
-    process.exit(0);
+  if (!result.ok) {
+    for (const reason of result.reasons)
+      console.error(`verify-develop: ${reason.code}: ${reason.message || ''}`);
+    return 1;
   }
-
-  console.log(`verify-develop: step 4 — running ${allTestFiles.length} test file(s)`);
-
-  // Step 4: Run each test file
-  for (const file of allTestFiles) {
-    console.log(`  node --test ${file}`);
-    run('node', ['--test', file], { label: `node --test ${file}` });
-  }
-
-  console.log('verify-develop: all checks passed');
+  if (result.receipt) console.log(JSON.stringify(result.receipt));
+  console.log(`verify-develop: ${result.mode} checks passed`);
+  return 0;
 }
 
-if (isMainModule()) {
-  main();
-}
+if (isMainModule()) process.exitCode = main();

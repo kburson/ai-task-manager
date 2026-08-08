@@ -13,6 +13,7 @@
 // cfg/issueNumber/body.
 
 import { gateCodeComplete } from './code-complete-gate.mjs';
+import { hasAcceptedTestEvidence } from './github-records/lifecycle-gate-source.mjs';
 
 export const GUARD_ID = 'develop-exit-code-complete';
 
@@ -22,6 +23,7 @@ export const developExitCodeCompleteGuard = {
     if (ctx?.toState && ctx.toState !== 'test') return { ok: true };
     if (!ctx || !ctx.cfg || ctx.issueNumber == null) return { ok: true };
     if (typeof ctx.body !== 'string') return { ok: true };
+    if (hasAcceptedTestEvidence(ctx.lifecycleEvidence)) return { ok: true };
     const gateFn = ctx.deps?.codeCompleteGate || gateCodeComplete;
     const result = await gateFn({
       cfg: ctx.cfg,

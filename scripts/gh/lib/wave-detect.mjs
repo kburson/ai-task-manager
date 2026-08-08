@@ -13,7 +13,7 @@ import { gql, splitRepo } from './github-projects.mjs';
 
 const BATCH_SIZE = 20;
 
-export async function classify({ candidates, repo, env, runQuery = defaultRunQuery } = {}) {
+export async function classify({ candidates, repo, runQuery = defaultRunQuery } = {}) {
   const nums = (candidates || [])
     .map((n) => Number(String(n).replace(/^#/, '')))
     .filter(Number.isFinite);
@@ -26,7 +26,7 @@ export async function classify({ candidates, repo, env, runQuery = defaultRunQue
   const lookups = new Map();
   for (let i = 0; i < nums.length; i += BATCH_SIZE) {
     const batch = nums.slice(i, i + BATCH_SIZE);
-    const res = await runQuery({ owner, repoName, batch, env });
+    const res = await runQuery({ owner, repoName, batch });
     for (const row of res || []) {
       lookups.set(Number(row.child), row.parent == null ? null : Number(row.parent));
     }
@@ -67,13 +67,13 @@ export function buildBatchQuery(batch) {
     }`;
 }
 
-export async function defaultRunQuery({ owner, repoName, batch, env }) {
+export async function defaultRunQuery({ owner, repoName, batch }) {
   const query = buildBatchQuery(batch);
   const variables = { owner, name: repoName };
   batch.forEach((n, i) => {
     variables[`n${i}`] = Number(n);
   });
-  const data = await gql(query, variables, { env });
+  const data = await gql(query, variables);
   const repo = data?.repository || {};
   const out = [];
   batch.forEach((n, i) => {

@@ -25,7 +25,7 @@ import { actionPolicyFor, normalizeStateId } from '../lib/lifecycle-policy/index
 import { withIssueLock, IssueLockError } from '../issue-mutator-lock.mjs';
 import { getProjectDir } from '../paths.mjs';
 import { readLastKnownState, writeLastKnownState } from '../gh-timing-comment.mjs';
-import { splitRepo, gql, projectValuesForIssue } from '../../gh/lib/github-projects.mjs';
+import { splitRepo, gql } from '../../gh/lib/github-projects.mjs';
 import { applyRefinementEstimate } from '../lib/apply-refinement-estimate.mjs';
 import { stampStartTime } from '../lib/stamp-start-time.mjs';
 import { postNewAutomatedTestsComment } from '../lib/new-automated-tests-comment.mjs';
@@ -45,11 +45,6 @@ import {
   isAgentReviewComplete,
   agentReviewIncompleteReason,
 } from '../lib/agent-review/review-gate.mjs';
-import { buildOwnedChildEnvironment } from '../lib/work-lease/child-environment.mjs';
-import {
-  createRuntimeGovernedEffectAdapter,
-  isGovernedAuthorityError,
-} from '../lib/work-lease/governed-effect.mjs';
 
 const pexec = promisify(execFile);
 const __dir = path.dirname(fileURLToPath(import.meta.url));
@@ -66,10 +61,12 @@ const REFUSAL_ID_TO_STATUS = {
   'refine-exit-wip-budget': 'wip-budget-refused',
   'plan-exit-planned-estimate': 'planned-estimate-refused',
   'plan-exit-deep-dive': 'deep-dive-refused',
+  'plan-exit-plan-metadata': 'plan-metadata-refused',
   // #386 — plan→develop refuses a body with no `## Verification Commands`
   // section (>= 1 parseable entry); the gate-first `test` verb would otherwise
   // dead-end at "nothing to verify".
   'plan-exit-vc-presence': 'vc-presence-refused',
+  'plan-exit-decomposition': 'decomposition-refused',
   'plan-exit-epic-children-refine-or-beyond': 'epic-children-refused',
   // `plan-exit-plan-approved` intentionally omitted: historical verb didn't
   // enforce this marker; the central `move-state.mjs` subprocess does. Adding
@@ -144,7 +141,7 @@ export const ALIAS_VERB = Object.fromEntries(
 // Default I/O — extracted so tests inject stubs.
 // ---------------------------------------------------------------------------
 
-async function defaultFetchIssueBody({ issueNumber, repo, env }) {
+async function defaultFetchIssueBody({ issueNumber, repo }) {
   const { owner, repoName } = splitRepo(repo);
   const data = await gql(
     `
@@ -153,8 +150,7 @@ async function defaultFetchIssueBody({ issueNumber, repo, env }) {
         issue(number: $issue) { body }
       }
     }`,
-    { owner, repo: repoName, issue: Number(issueNumber) },
-    { env }
+    { owner, repo: repoName, issue: Number(issueNumber) }
   );
   const issue = data?.repository?.issue;
   if (!issue) throw new Error(`promote: issue #${issueNumber} not found in ${repo}`);
@@ -163,16 +159,11 @@ async function defaultFetchIssueBody({ issueNumber, repo, env }) {
 
 // #295 — body writes go through `mutateIssueBody({ mutate })`; the closure
 // runs on the FRESH base each push attempt.
-async function defaultMutateIssueBody({ issueNumber, repo, mutate, withGovernedEffect, env }) {
-  return mutateIssueBody({
-    issueNumber,
-    repo,
-    mutate,
-    deps: { env, withGovernedEffect },
-  });
+async function defaultMutateIssueBody({ issueNumber, repo, mutate }) {
+  return mutateIssueBody({ issueNumber, repo, mutate, deps: { pexec } });
 }
 
-async function defaultGetLiveState({ issueNumber, cfg, env }) {
+async function defaultGetLiveState({ issueNumber, cfg }) {
   const { owner, repoName } = splitRepo(cfg.repo);
   const data = await gql(
     `
@@ -190,8 +181,7 @@ async function defaultGetLiveState({ issueNumber, cfg, env }) {
         }
       }
     }`,
-    { owner, repo: repoName, issue: Number(issueNumber) },
-    { env }
+    { owner, repo: repoName, issue: Number(issueNumber) }
   );
   const nodes = data?.repository?.issue?.projectItems?.nodes ?? [];
   const node = nodes.find((n) => n.project?.id === cfg.projectId) ?? nodes[0];
@@ -212,19 +202,12 @@ export function spawnVerbTimeout(verb) {
   return GH_API_TIMEOUT_MS * 4;
 }
 
-export function defaultSpawnVerb(
-  { verb, issueNumber, cfg, leaseContext, baseEnv = process.env },
-  { spawn: spawnImpl = spawn } = {}
-) {
+function defaultSpawnVerb({ verb, issueNumber }) {
   const script = path.resolve(__dir, '../task-tracker.mjs');
   return new Promise((resolve) => {
-    const child = spawnImpl(process.execPath, [script, verb, String(issueNumber)], {
+    const child = spawn(process.execPath, [script, verb, String(issueNumber)], {
       stdio: ['ignore', 'inherit', 'inherit'],
-      env: buildOwnedChildEnvironment({
-        baseEnv,
-        leaseContext,
-        tokenEnv: cfg?.workLease?.tokenEnv,
-      }),
+      env: { ...process.env },
       timeout: spawnVerbTimeout(verb),
     });
     child.on('exit', (code) => resolve(code ?? 1));
@@ -243,16 +226,10 @@ export const MOVE_STATE_DELEGATE_TIMEOUT_MS = GH_API_TIMEOUT_MS * 2;
 // caller's cwd via getProjectDir (never the package install dir), and it inherits
 // the promote-held advisory lock via env[AITM_ISSUE_LOCK_HELD] so it skips
 // re-acquisition rather than deadlocking. `host` is injectable for tests.
-export function defaultRunMoveState(
-  { issueNumber, target, withGovernedEffect, env },
-  { host = runMoveStateHost } = {}
-) {
+export function defaultRunMoveState({ issueNumber, target }, { host = runMoveStateHost } = {}) {
   return host({
     argv: [process.execPath, 'move-state.mjs', String(issueNumber), target],
-    env: { ...env, AITM_INTERNAL: '1', AITM_VERB_CONTEXT: 'promote' },
-    governedIssueId: String(issueNumber),
-    governedOperation: 'lifecycle-mutation',
-    withGovernedEffect,
+    env: { ...process.env, AITM_INTERNAL: '1', AITM_VERB_CONTEXT: 'promote' },
   });
 }
 
@@ -273,95 +250,16 @@ export async function runPromote({
   if (!cfg) throw new Error('promote: cfg is required');
   const assertBound = deps.assertBound ?? assertBoundToIssue;
   assertBound(issueNumber);
-  if (typeof deps.withGovernedEffect === 'function' && !deps.promoteAuthority) {
-    return deps.withGovernedEffect(
-      {
-        issueId: String(issueNumber),
-        operation: 'lifecycle-mutation',
-        heartbeat: true,
-      },
-      (authority) =>
-        runPromote({
-          issueNumber,
-          cfg,
-          now,
-          deps: {
-            ...deps,
-            withGovernedEffect: undefined,
-            promoteAuthority: authority,
-          },
-        })
-    );
-  }
-
-  const promoteAuthority = deps.promoteAuthority;
-  const withPromoteAuthorization = promoteAuthority
-    ? async (options, callback) => {
-        if (
-          String(options?.issueId).replace(/^#/, '') !== String(issueNumber) ||
-          !['lifecycle-mutation', 'evidence-mutation', 'issue-body-mutation'].includes(
-            options?.operation
-          )
-        ) {
-          throw new Error('promote authorization scope mismatch');
-        }
-        if (typeof callback !== 'function') {
-          throw new Error('promote authorization callback is required');
-        }
-        await promoteAuthority.reverify();
-        return callback(promoteAuthority);
-      }
-    : undefined;
-  const nestedAuthorization =
-    withPromoteAuthorization ??
-    (async (_options, callback) => callback({ reverify: async () => {}, leaseContext: undefined }));
-  const ownedChildEnv = buildOwnedChildEnvironment({
-    baseEnv: deps.baseEnv ?? process.env,
-    leaseContext: promoteAuthority?.leaseContext,
-    tokenEnv: cfg.workLease?.tokenEnv,
-  });
-  const processExec = deps.pexec || pexec;
-  const ownedPexec = (command, args, options = {}) =>
-    processExec(command, args, { ...options, env: ownedChildEnv });
-  const ownedGql = (query, variables, options = {}) =>
-    gql(query, variables, { ...options, env: ownedChildEnv });
-  const ownedProjectValues = (options) => projectValuesForIssue({ ...options, runGql: ownedGql });
-  const refinementDeps = {
-    ...(deps.refinementEstimate || deps.groomEstimate),
-    projectValuesForIssue:
-      (deps.refinementEstimate || deps.groomEstimate)?.projectValuesForIssue || ownedProjectValues,
-    pexec: ownedPexec,
-    env: ownedChildEnv,
-    gql: ownedGql,
-  };
-  const refineToPlanGateDeps = {
-    ...deps.refineToPlanGateDeps,
-    projectValuesForIssue: deps.refineToPlanGateDeps?.projectValuesForIssue || ownedProjectValues,
-    pexec: ownedPexec,
-    env: ownedChildEnv,
-    gql: ownedGql,
-  };
 
   const fetchIssueBody = deps.fetchIssueBody || defaultFetchIssueBody;
-  const rawMutateBody = deps.mutateIssueBody || defaultMutateIssueBody;
-  const mutateBody = (options) =>
-    rawMutateBody({
-      ...options,
-      withGovernedEffect: nestedAuthorization,
-      env: ownedChildEnv,
-    });
+  const mutateBody = deps.mutateIssueBody || defaultMutateIssueBody;
   const getLiveState = deps.getLiveState || defaultGetLiveState;
   const spawnVerb = deps.spawnVerb || defaultSpawnVerb;
   const runMoveState = deps.runMoveState || defaultRunMoveState;
-  const deriveAndRescanFn = deps.deriveAndRescan || deriveAndRescan;
 
-  const { body: initialBody } = await fetchIssueBody({
-    issueNumber,
-    repo: cfg.repo,
-    env: ownedChildEnv,
-  });
+  const { body: initialBody } = await fetchIssueBody({ issueNumber, repo: cfg.repo });
   const { state: rawRecorded } = readLastKnownState(initialBody);
-  const live = (await getLiveState({ issueNumber, cfg, env: ownedChildEnv })) || null;
+  const live = (await getLiveState({ issueNumber, cfg })) || null;
 
   // First-touch bootstrap: a pre-existing issue with no lastKnownState metadata.
   // Sync recorded to live and continue — drift detection has nothing to compare
@@ -423,19 +321,7 @@ export async function runPromote({
   // already gates human sign-off on — instead of proceeding to `close`.
   if (recorded === 'review' && !isAgentReviewComplete(body)) {
     const reason = agentReviewIncompleteReason(body);
-    const exitCode = await (withPromoteAuthorization
-      ? withPromoteAuthorization(
-          { issueId: String(issueNumber), operation: 'lifecycle-mutation' },
-          () =>
-            spawnVerb({
-              verb: 'review',
-              issueNumber,
-              cfg,
-              leaseContext: promoteAuthority.leaseContext,
-              baseEnv: ownedChildEnv,
-            })
-        )
-      : spawnVerb({ verb: 'review', issueNumber, cfg }));
+    const exitCode = await spawnVerb({ verb: 'review', issueNumber, cfg });
     return {
       status: 'redelegated-to-review',
       reason,
@@ -478,17 +364,11 @@ export async function runPromote({
   // failure) and ALWAYS re-fetches the live body so the guard reads ground
   // truth regardless of derive ok/noop/throw.
   if (recorded === 'test' && target === 'review') {
-    const { scanBody } = await deriveAndRescanFn({
+    const { scanBody } = await deriveAndRescan({
       issueNumber,
       repo: cfg.repo,
       scanBody: body,
-      deps: {
-        pexec: ownedPexec,
-        env: ownedChildEnv,
-        deriveAndStampFunctionalDod,
-        nowIso,
-        withGovernedEffect: nestedAuthorization,
-      },
+      deps: { pexec, deriveAndStampFunctionalDod, nowIso },
     });
     body = scanBody;
   }
@@ -500,15 +380,7 @@ export async function runPromote({
     toState: target,
     body,
     cfg,
-    deps: {
-      ...deps,
-      refinementEstimate: refinementDeps,
-      groomEstimate: refinementDeps,
-      refineToPlanGateDeps,
-      env: ownedChildEnv,
-      pexec: ownedPexec,
-      gql: ownedGql,
-    },
+    deps,
     projectDir: deps.projectDir || process.env.TASK_TRACKER_PROJECT_DIR || process.cwd(),
   };
   const guardResult = await runGuards(recorded, target, guardCtx);
@@ -536,30 +408,9 @@ export async function runPromote({
     ? {
         kind: 'alias',
         verb: aliasVerb,
-        exitCode: await (withPromoteAuthorization
-          ? withPromoteAuthorization(
-              { issueId: String(issueNumber), operation: 'lifecycle-mutation' },
-              () =>
-                spawnVerb({
-                  verb: aliasVerb,
-                  issueNumber,
-                  cfg,
-                  leaseContext: promoteAuthority.leaseContext,
-                  baseEnv: ownedChildEnv,
-                })
-            )
-          : spawnVerb({ verb: aliasVerb, issueNumber, cfg })),
+        exitCode: await spawnVerb({ verb: aliasVerb, issueNumber, cfg }),
       }
-    : {
-        kind: 'direct',
-        exitCode: await runMoveState({
-          issueNumber,
-          target,
-          cfg,
-          withGovernedEffect: nestedAuthorization,
-          env: ownedChildEnv,
-        }),
-      };
+    : { kind: 'direct', exitCode: await runMoveState({ issueNumber, target, cfg }) };
 
   if (transitionResult.exitCode !== 0) {
     // Re-read live board to classify the failure.
@@ -570,7 +421,7 @@ export async function runPromote({
     //                            unchanged): keep transition-failed semantics.
     let liveAfter = null;
     try {
-      liveAfter = (await getLiveState({ issueNumber, cfg, env: ownedChildEnv })) || null;
+      liveAfter = (await getLiveState({ issueNumber, cfg })) || null;
     } catch {
       liveAfter = null;
     }
@@ -606,8 +457,7 @@ export async function runPromote({
           deps: { mutateIssueBody: mutateBody },
           postComment: deps.postComment,
         });
-      } catch (error) {
-        if (isGovernedAuthorityError(error)) throw error;
+      } catch {
         // best-effort — marker is unreadable; warning still surfaces below.
       }
 
@@ -659,8 +509,7 @@ export async function runPromote({
               } exited ${transitionResult.exitCode})`,
             }),
         });
-      } catch (error) {
-        if (isGovernedAuthorityError(error)) throw error;
+      } catch {
         // best-effort
       }
     }
@@ -690,7 +539,7 @@ export async function runPromote({
   if (transitionResult.kind === 'alias') {
     let liveAfter = null;
     try {
-      liveAfter = (await getLiveState({ issueNumber, cfg, env: ownedChildEnv })) || null;
+      liveAfter = (await getLiveState({ issueNumber, cfg })) || null;
     } catch {
       liveAfter = null;
     }
@@ -714,17 +563,8 @@ export async function runPromote({
   if (target === 'refine') {
     try {
       const stamp = deps.stampStartTime || stampStartTime;
-      await stamp({
-        cfg,
-        issueNumber,
-        now,
-        deps: {
-          withGovernedEffect: nestedAuthorization,
-          gql: ownedGql,
-        },
-      });
-    } catch (error) {
-      if (isGovernedAuthorityError(error)) throw error;
+      await stamp({ cfg, issueNumber, now });
+    } catch {
       // best-effort
     }
   }
@@ -739,15 +579,9 @@ export async function runPromote({
         cfg,
         issueNumber,
         plan: refinementPlan,
-        deps: {
-          ...refinementDeps,
-          withGovernedEffect: nestedAuthorization,
-          pexec: ownedPexec,
-          env: ownedChildEnv,
-        },
+        deps: deps.refinementEstimate || deps.groomEstimate,
       });
     } catch (err) {
-      if (isGovernedAuthorityError(err)) throw err;
       refinementPost = { status: 'post-failed', error: err.message };
     }
   }
@@ -762,15 +596,9 @@ export async function runPromote({
         cfg,
         issueNumber,
         cwd: guardCtx.projectDir,
-        deps: {
-          ...deps.newAutomatedTestsComment,
-          withGovernedEffect: nestedAuthorization,
-          pexec: ownedPexec,
-          env: ownedChildEnv,
-        },
+        deps: deps.newAutomatedTestsComment,
       });
     } catch (err) {
-      if (isGovernedAuthorityError(err)) throw err;
       newTestsPost = { status: 'post-failed', error: err.message };
     }
   }
@@ -812,23 +640,11 @@ export async function verbPromote(rest, cfg, deps = {}) {
 
   let result;
   try {
-    const projectDir = deps.projectDir || getProjectDir();
-    const executionDeps =
-      typeof deps.withGovernedEffect === 'function' || typeof deps.assertBound === 'function'
-        ? deps
-        : {
-            ...deps,
-            projectDir,
-            withGovernedEffect: createRuntimeGovernedEffectAdapter({
-              projectDir,
-              config: cfg,
-            }),
-          };
     result = await withIssueLock(
-      { issue: issueNumber, verb: 'promote', projDir: projectDir },
+      { issue: issueNumber, verb: 'promote', projDir: getProjectDir() },
       // `deps` defaults to `{}` on the real CLI path, so live behaviour is
       // unchanged; verb tests inject the seam to drive every result branch.
-      () => runPromote({ issueNumber, cfg, deps: executionDeps })
+      () => runPromote({ issueNumber, cfg, deps })
     );
   } catch (err) {
     if (err instanceof IssueLockError) {
@@ -885,6 +701,8 @@ export async function verbPromote(rest, cfg, deps = {}) {
     case 'refine-stub-placeholder-refused':
     case 'planned-estimate-refused':
     case 'deep-dive-refused':
+    case 'plan-metadata-refused':
+    case 'decomposition-refused':
     case 'wip-budget-refused':
     case 'commit-trail-stale':
     case 'blocked-refused':

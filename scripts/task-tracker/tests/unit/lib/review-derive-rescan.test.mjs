@@ -5,7 +5,6 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 import { deriveAndRescan } from '../../../lib/review-derive-rescan.mjs';
-import { WorkLeaseError } from '@kburson/aitm-ledger';
 
 const __dir = path.dirname(fileURLToPath(import.meta.url)) + '/..';
 const VERB_DIR = path.resolve(__dir, '../../verbs');
@@ -141,45 +140,6 @@ test('deriveAndRescan: live refresh throws → diagnostic logged AND falls back 
   assert.ok(lines.some((l) => l.includes('live-body refresh failed')));
 });
 
-test('deriveAndRescan propagates the exact review mutation continuation', async () => {
-  const continuation = async () => {};
-  let received;
-  await deriveAndRescan({
-    issueNumber: 502,
-    repo: 'o/r',
-    scanBody: STALE_BODY,
-    deps: {
-      pexec: makePexec(),
-      operation: 'review-mutation',
-      withGovernedEffect: continuation,
-      deriveAndStampFunctionalDod: async (options) => {
-        received = options;
-        return { status: 'noop' };
-      },
-    },
-  });
-  assert.equal(received.operation, 'review-mutation');
-  assert.equal(received.deps.withGovernedEffect, continuation);
-});
-
-test('deriveAndRescan rethrows governed authority errors from best-effort derive', async () => {
-  await assert.rejects(
-    () =>
-      deriveAndRescan({
-        issueNumber: 502,
-        repo: 'o/r',
-        scanBody: STALE_BODY,
-        deps: {
-          pexec: makePexec(),
-          deriveAndStampFunctionalDod: async () => {
-            throw new WorkLeaseError('fence-stale', 'review authority expired');
-          },
-        },
-      }),
-    (error) => error instanceof WorkLeaseError && error.code === 'fence-stale'
-  );
-});
-
 // #502 — the bug reproduces through BOTH callers of the test→review pre-close
 // completeness guard: `verbs/review.mjs` AND `verbs/promote.mjs`. The original
 // fix wired the derive into review.mjs only; promote.mjs (the `/task promote`
@@ -195,15 +155,7 @@ for (const verb of ['review.mjs', 'promote.mjs']) {
       ),
       `${verb} should import deriveAndRescan`
     );
-    const callName = verb === 'promote.mjs' ? 'deriveAndRescanFn(' : 'deriveAndRescan(';
-    assert.ok(src.includes(callName), `${verb} should call ${callName.slice(0, -1)}`);
-    if (verb === 'promote.mjs') {
-      assert.match(
-        src,
-        /const deriveAndRescanFn = deps\.deriveAndRescan \|\| deriveAndRescan/,
-        'promote keeps the production default while exposing an offline test seam'
-      );
-    }
+    assert.ok(src.includes('deriveAndRescan('), `${verb} should call deriveAndRescan`);
   });
 }
 

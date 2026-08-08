@@ -64,8 +64,6 @@ await postTimingEvent({
   repo: 'x/y',
   row,
   retries: 3,
-  withGovernedEffect: async (_options, callback) =>
-    callback({ reverify: async () => {} }),
   // projDir picks up via AI_TASK_MANAGER_PROJECT_DIR
 });
 `

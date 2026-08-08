@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// @story #137
+// @story #137 #1089
 // E2E: drive `/task test` against an issue body that contains a malicious
 // backtick-wrapped verification command. Asserts:
 //   1. The malicious payload is REJECTED by the allowlist validator — no shell side effect.
@@ -13,6 +13,8 @@
 // and any body-file write to side files we can inspect.
 
 import { strict as assert } from 'node:assert';
+import { execFile } from 'node:child_process';
+import { promisify } from 'node:util';
 import {
   mkdtempSync,
   mkdirSync,
@@ -24,7 +26,11 @@ import {
 } from 'node:fs';
 import { projectScratchDir } from '../../../lib/scratch-dir.mjs';
 import path from 'node:path';
-import { runVerbTest } from '../../../verbs/test.mjs';
+import { fileURLToPath } from 'node:url';
+
+const pexec = promisify(execFile);
+const __dir = path.dirname(fileURLToPath(import.meta.url)) + '/..';
+const CLI = path.resolve(__dir, '..', '..', 'task-tracker.mjs');
 
 const sandbox = mkdtempSync(path.join(projectScratchDir('test'), 'tt-test-injection-'));
 try {
@@ -40,13 +46,16 @@ try {
     path.join(sandbox, '.ai-task-manager', 'task-tracker-state.json'),
     JSON.stringify({ active: '#999', lastActive: '#999', entryStartTs: null, wordsAtEntryStart: 0 })
   );
+  // Stage-aware Test now finalizes Develop and fingerprints both the outer
+  // checkout and clean sandbox. Model the tracked lockfile that every real
+  // repository worktree contains so this fixture can still reach the command
+  // injection boundary it exists to exercise.
+  writeFileSync(path.join(sandbox, 'package-lock.json'), '{}\n');
   mkdirSync(path.join(sandbox, 'scripts'), { recursive: true });
 
   const pwnedMarker = path.join(sandbox, 'PWNED.txt');
 
   const fixtureBody = [
-    '<!-- aitm-last-known-state: develop -->',
-    '',
     '## Verification Commands',
     '',
     '- [ ] `node --version`',
@@ -64,7 +73,7 @@ try {
   writeFileSync(
     gitShim,
     `#!/usr/bin/env node
-import { mkdirSync, rmSync } from 'node:fs';
+import { copyFileSync, mkdirSync, rmSync } from 'node:fs';
 const argv = process.argv.slice(2);
 const joined = argv.join(' ');
 if (joined === 'rev-parse HEAD') {
@@ -74,7 +83,10 @@ if (joined === 'rev-parse HEAD') {
 if (argv[0] === 'worktree' && argv[1] === 'add') {
   // last positional that isn't HEAD/--detach is the path
   const wt = argv.find((a, i) => i >= 2 && a !== '--detach' && a !== 'HEAD');
-  if (wt) mkdirSync(wt, { recursive: true });
+  if (wt) {
+    mkdirSync(wt, { recursive: true });
+    copyFileSync(${JSON.stringify(path.join(sandbox, 'package-lock.json'))}, wt + '/package-lock.json');
+  }
   process.exit(0);
 }
 if (argv[0] === 'worktree' && argv[1] === 'remove') {
@@ -144,27 +156,25 @@ process.exit(0);
   );
   chmodSync(ghShim, 0o755);
 
-  let currentBody = fixtureBody;
-  const outcome = await runVerbTest({
-    cfg: { repo: 'test-owner/test-repo' },
-    issueNumber: '999',
-    projectDir: sandbox,
-    deps: {
-      fetchBody: async () => currentBody,
-      mutateBody: async ({ mutate }) => {
-        currentBody = mutate(currentBody);
-        writeFileSync(recordedBodyPath, currentBody);
-        return { status: 'ok', body: currentBody };
-      },
-      postComment: async ({ body }) => writeFileSync(recordedCommentPath, body),
-      getHeadSha: async () => headSha,
-      createWorktree: async () => {},
-      removeWorktree: async () => {},
-      npmCi: async () => {},
-      execInSandbox: async () => ({ exit: 0, stdout: '', stderr: '' }),
-    },
-  });
-  const exitCode = outcome.status === 'failed' ? 1 : 0;
+  const env = {
+    ...process.env,
+    PATH: `${binDir}:${process.env.PATH}`,
+    AI_TASK_MANAGER_PROJECT_DIR: sandbox,
+    TT_SKIP_NETWORK: '',
+  };
+
+  let stdout = '',
+    stderr = '',
+    exitCode = 0;
+  try {
+    const r = await pexec('node', [CLI, 'test', '#999'], { env, timeout: 30000 });
+    stdout = r.stdout;
+    stderr = r.stderr;
+  } catch (err) {
+    stdout = err.stdout || '';
+    stderr = err.stderr || '';
+    exitCode = err.code ?? 1;
+  }
 
   assert.equal(
     existsSync(pwnedMarker),
@@ -181,6 +191,8 @@ process.exit(0);
     /forbidden semicolon/,
     `expected rejection reason in failure comment; comment was:\n${comment}`
   );
+  assert.match(comment, /node --version/, 'green VC is represented in the result table');
+  assert.match(comment, /node x; touch/, 'rejected VC is represented in the result table');
 
   // The entry marker (aitm-test-started) is stamped BEFORE the VC runs, so the
   // body file will exist on red. What MUST NOT appear is the dod-verified exit

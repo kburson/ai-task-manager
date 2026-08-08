@@ -62,6 +62,8 @@ const PREFLIGHT_MODE = {
   pause: 'active-only',
   stop: 'active-only',
   update: 'active-only',
+  resume: 'active-only',
+  start: 'active-only',
 };
 
 function targetFromRest(rest) {
@@ -357,6 +359,11 @@ if (_isMain)
           await verbEvidenceMarkers(ctx);
           break;
         }
+        case 'adopt-github-records': {
+          const { verbAdoptGithubRecords } = await import('./verbs/adopt-github-records.mjs');
+          await verbAdoptGithubRecords(ctx);
+          break;
+        }
         case 'mirror-deep-dive': {
           const { verbMirrorDeepDive } = await import('./verbs/mirror-deep-dive.mjs');
           await verbMirrorDeepDive(ctx);
@@ -369,16 +376,12 @@ if (_isMain)
         }
         case 'approve': {
           const { verbApprove } = await import('./verbs/approve.mjs');
-          await verbApprove(ctx.rest, ctx.cfg, {
-            withGovernedEffect: ctx.workLeaseGuard.withGovernedEffect,
-          });
+          await verbApprove(ctx.rest, ctx.cfg);
           break;
         }
         case 'plan-approve': {
           const { verbPlanApprove } = await import('./verbs/plan-approve.mjs');
-          await verbPlanApprove(ctx.rest, ctx.cfg, {
-            withGovernedEffect: ctx.workLeaseGuard.withGovernedEffect,
-          });
+          await verbPlanApprove(ctx.rest, ctx.cfg);
           break;
         }
         case 'user-story':
@@ -431,6 +434,16 @@ if (_isMain)
         case 'plan-estimate': {
           const { verbPlanEstimate } = await import('./verbs/plan-estimate.mjs');
           await verbPlanEstimate(ctx);
+          break;
+        }
+        case 'decompose-check': {
+          const { verbDecomposeCheck } = await import('./verbs/decompose-check.mjs');
+          await verbDecomposeCheck(ctx);
+          break;
+        }
+        case 'split-plan': {
+          const { verbSplitPlan } = await import('./verbs/split-plan.mjs');
+          await verbSplitPlan(ctx);
           break;
         }
         case 'block': {

@@ -44,7 +44,7 @@ const ROUTABLE_SELF_DOC = {
     audience:
       'AI/operator creating a new issue. Prefer `aitm preflight-issue` to stamp the body first.',
     usage:
-      'aitm create-issue --title <t> (--body-file <path> | --shape epic|sub-issue|solo --scope-file <p> --ac-file <p> --plan-metadata-file <p> [--sub-issue-list-file <p>] | --shape stub [--idea-file <p>]) [--label <l> ...] [--priority p0|p1|p2] [--size XS|S|M|L|XL] [--estimate <hours>] [--rank <n>] [--start-time <iso>] [--kind <kind>] [--parent <N>] [--assignee <a>] [--allow-duplicate-child] [--dry-run] [--no-tether] [--no-placeholder-substitution] [--internal]',
+      'aitm create-issue --title <t> (--body-file <path> | --shape epic|sub-issue|solo|defect --scope-file <p> --ac-file <p> --story-origin-file <p> [--plan-metadata-file <p>] [--verification-commands-file <p>] [--reproduction-file <p>] [--root-cause-file <p>] [--fix-direction-file <p>] [--out-of-scope-file <p>] [--sub-issue-list-file <p>] | --shape stub [--idea-file <p>]) [--label <l> ...] [--priority p0|p1|p2] [--size XS|S|M|L|XL] [--estimate <hours>] [--rank <n>] [--start-time <iso>] [--kind <kind>] [--parent <N>] [--assignee <a>] [--allow-duplicate-child] [--dry-run] [--no-tether] [--no-placeholder-substitution] [--internal]',
   },
   'preflight-issue': {
     group: 'GitHub',
@@ -52,7 +52,7 @@ const ROUTABLE_SELF_DOC = {
     synopsis: 'Stamp the DoD + Pickup-Directive tail onto a draft issue body before creation.',
     audience: 'AI/operator preparing an issue body. Output feeds `aitm create-issue --body-file`.',
     usage:
-      'aitm preflight-issue [--check-only|--check-integrity <N>] [--shape epic|sub-issue|solo|stub] [--scope-file <p>] [--ac-file <p>] [--plan-metadata-file <p>] [--parent <N>] [--sub-issue-list-file <p>] [--idea-file <p>] [--priority <P>] [--size <S>] [--estimate <hours>] [--rank <n>] [--start-time <iso>] [--kind <kind>] [--changed-paths-file <p>]',
+      'aitm preflight-issue [--check-only|--check-integrity <N>] [--shape epic|sub-issue|solo|defect|stub] [--scope-file <p>] [--ac-file <p>] [--story-origin-file <p>] [--plan-metadata-file <p>] [--verification-commands-file <p>] [--reproduction-file <p>] [--root-cause-file <p>] [--fix-direction-file <p>] [--out-of-scope-file <p>] [--parent <N>] [--sub-issue-list-file <p>] [--idea-file <p>] [--priority <P>] [--size <S>] [--estimate <hours>] [--rank <n>] [--start-time <iso>] [--kind <kind>] [--changed-paths-file <p>]',
   },
   'set-priority': {
     group: 'GitHub',
@@ -95,10 +95,10 @@ const ROUTABLE_SELF_DOC = {
   'verify-develop': {
     group: 'Workflow',
     path: 'scripts/task-tracker/verify-develop.mjs',
-    synopsis:
-      'Develop-phase gate: lint:js --fix, format, then targeted node --test on changed tests.',
-    audience: 'AI/operator before every Develop commit. Never run npm run test:all in Develop.',
-    usage: 'aitm verify-develop',
+    synopsis: 'Run affected Develop iteration checks or clean exact-SHA finalization.',
+    audience:
+      'AI/operator during Develop. Use iteration while editing; Test invokes final with an issue number.',
+    usage: 'aitm verify-develop [--mode iteration|final] [--issue <N>]',
   },
   'value-report': {
     group: 'Reports',
@@ -135,7 +135,7 @@ const ROUTABLE_SELF_DOC = {
     audience:
       'Orchestrator before a parallel dispatch loop. Emits `PARENT: #<N>` or `NO_WAVE_PARENT_NEEDED`.',
     usage:
-      'aitm ensure-wave-parent --children 12,13,14 --purpose "<text>" --anchor <controller#> [--priority p0|p1|p2] [--rank <n>] [--dry-run]',
+      'aitm ensure-wave-parent --children 12,13,14 --purpose "<text>" [--priority p0|p1|p2] [--rank <n>] [--dry-run]',
   },
   'dispatch-prep': {
     group: 'Parallel',
@@ -143,7 +143,7 @@ const ROUTABLE_SELF_DOC = {
     synopsis:
       'Claim a sub-issue for an agent: flip the board to In Progress and post a start timing row.',
     audience: 'Orchestrator just before handing a sub-issue to an agent.',
-    usage: 'aitm dispatch-prep <issue#> --anchor <parent-or-controller#> [--description "<text>"]',
+    usage: 'aitm dispatch-prep <issue#> [--description "<text>"]',
   },
   'cut-epic-branch': {
     group: 'Epic Branching',
@@ -191,10 +191,19 @@ const ROUTABLE_ARGUMENTS = Object.freeze({
   'create-issue': [
     argument('--title <text>', 'Issue title.'),
     argument('--body-file <path>', 'Use an already assembled canonical issue body.'),
-    argument('--shape epic|sub-issue|solo|stub', 'Assemble a sanctioned issue shape.'),
+    argument('--shape epic|sub-issue|solo|defect|stub', 'Assemble a sanctioned issue shape.'),
     argument('--scope-file <path>', 'Scope section required for non-stub shape assembly.'),
     argument('--ac-file <path>', 'Acceptance Criteria required for non-stub shape assembly.'),
-    argument('--plan-metadata-file <path>', 'Plan Metadata required for non-stub assembly.'),
+    argument('--story-origin-file <path>', 'Story Origin required for non-stub assembly.'),
+    argument('--plan-metadata-file <path>', 'Optional early Plan Metadata for shaped assembly.'),
+    argument(
+      '--verification-commands-file <path>',
+      'Optional exact verification commands for shaped assembly.'
+    ),
+    argument('--reproduction-file <path>', 'Optional defect reproduction section.'),
+    argument('--root-cause-file <path>', 'Optional defect root-cause section.'),
+    argument('--fix-direction-file <path>', 'Optional defect fix-direction section.'),
+    argument('--out-of-scope-file <path>', 'Optional defect out-of-scope section.'),
     argument('--sub-issue-list-file <path>', 'Optional epic sub-issue list section.'),
     argument('--idea-file <path>', 'Optional initial Scope content for a stub.'),
     argument('--label <name>', 'Repeatable issue label.'),
@@ -215,10 +224,22 @@ const ROUTABLE_ARGUMENTS = Object.freeze({
   'preflight-issue': [
     argument('--check-only', 'Verify required templates without rendering a body.'),
     argument('--check-integrity <N>', 'Audit one issue body against close-gate integrity checks.'),
-    argument('--shape epic|sub-issue|solo|stub', 'Optional full-body template shape.'),
+    argument('--shape epic|sub-issue|solo|defect|stub', 'Optional full-body template shape.'),
     argument('--scope-file <path>', 'Scope section source for full-body rendering.'),
     argument('--ac-file <path>', 'Acceptance Criteria source for full-body rendering.'),
-    argument('--plan-metadata-file <path>', 'Plan Metadata source for full-body rendering.'),
+    argument('--story-origin-file <path>', 'Story Origin source for full-body rendering.'),
+    argument(
+      '--plan-metadata-file <path>',
+      'Optional Plan Metadata source for full-body rendering.'
+    ),
+    argument(
+      '--verification-commands-file <path>',
+      'Optional exact verification commands for full-body rendering.'
+    ),
+    argument('--reproduction-file <path>', 'Optional defect reproduction section source.'),
+    argument('--root-cause-file <path>', 'Optional defect root-cause section source.'),
+    argument('--fix-direction-file <path>', 'Optional defect fix-direction section source.'),
+    argument('--out-of-scope-file <path>', 'Optional defect out-of-scope section source.'),
     argument('--parent <N>', 'Parent issue substituted into a sub-issue body.'),
     argument('--sub-issue-list-file <path>', 'Epic sub-issue list section source.'),
     argument('--idea-file <path>', 'Optional stub idea source.'),
@@ -256,7 +277,10 @@ const ROUTABLE_ARGUMENTS = Object.freeze({
     argument('<issue#>', 'Issue whose timing log is reconciled.'),
     argument('--dry-run', 'Report field writes without applying them.'),
   ],
-  'verify-develop': [],
+  'verify-develop': [
+    argument('--mode iteration|final', 'Affected edit loop (default) or exact-SHA finalization.'),
+    argument('--issue <N>', 'Required in final mode; binds the receipt to its issue.'),
+  ],
   'value-report': [
     argument('--project-id <id>', 'GitHub Project id override.'),
     argument('--repo owner/name', 'Repository override.'),
@@ -333,7 +357,10 @@ const routableContract = ({ output, exitCodes, examples, relatedCommands }) =>
 
 const ROUTABLE_CONTRACTS = Object.freeze({
   'create-issue': routableContract({
-    output: ['Prints the created issue URL, or the validated dry-run payload.'],
+    output: [
+      'Prints the created issue URL, or the validated dry-run payload.',
+      'After creation, stderr includes `AITM_CREATED_ISSUE=<N>` for partial-success recovery.',
+    ],
     exitCodes: [
       exitCode(0, 'issue created or dry-run validation passed'),
       exitCode(1, 'generic GitHub, tether, or internal failure'),
@@ -413,12 +440,18 @@ const ROUTABLE_CONTRACTS = Object.freeze({
     relatedCommands: ['value-report', 'update-event-fields'],
   }),
   'verify-develop': routableContract({
-    output: ['Prints lint, format, changed-test discovery, and targeted test results.'],
-    exitCodes: [
-      exitCode(0, 'all develop checks passed or no changed tests required execution'),
-      exitCode(1, 'lint, format, diff discovery, or a targeted test failed'),
+    output: [
+      'Prints affected-test explanations and structured command results; final mode also prints the receipt.',
     ],
-    examples: ['npx aitm verify-develop'],
+    exitCodes: [
+      exitCode(0, 'iteration passed, or clean finalization emitted an exact-SHA receipt'),
+      exitCode(1, 'selection, command, cleanliness, SHA, or receipt validation failed'),
+      exitCode(2, 'invalid mode or command argument'),
+    ],
+    examples: [
+      'npx aitm verify-develop --mode iteration',
+      'npx aitm verify-develop --mode final --issue 1089',
+    ],
     relatedCommands: ['test', 'run-tests'],
   }),
   'value-report': routableContract({
@@ -468,7 +501,7 @@ const ROUTABLE_CONTRACTS = Object.freeze({
       exitCode(2, 'arguments or child-parent topology are invalid'),
     ],
     examples: [
-      'npx aitm ensure-wave-parent --children 12,13 --purpose "parser refactor" --anchor 900 --dry-run',
+      'npx aitm ensure-wave-parent --children 12,13 --purpose "parser refactor" --dry-run',
     ],
     relatedCommands: ['dispatch-prep', 'create-issue'],
   }),
@@ -487,7 +520,7 @@ const ROUTABLE_CONTRACTS = Object.freeze({
       exitCode(9, 'move-state human-move guard refused the transition'),
       exitCode(10, 'move-state assignee guard refused the transition'),
     ],
-    examples: ['npx aitm dispatch-prep 1023 --anchor 1005 --description "agent boot"'],
+    examples: ['npx aitm dispatch-prep 1023 --description "agent boot"'],
     relatedCommands: ['ensure-wave-parent', 'start'],
   }),
   'cut-epic-branch': routableContract({
@@ -644,11 +677,9 @@ const DIRECT_SELF_DOC = Object.freeze({
     path: 'scripts/run-tests.mjs',
     classification: 'package-lifecycle-cli',
     synopsis: 'Run the selected repository test lane with bounded pooling and timing.',
-    usage:
-      'run-tests [--lane <unit|integration|fast|slow|all>] [--shard <index/total>] [--timing-report]',
+    usage: 'run-tests [--lane <unit|integration|fast|slow|all>] [--timing-report]',
     arguments: [
       argument('--lane <name>', 'Test lane; fast is the default.'),
-      argument('--shard <index/total>', 'Run one deterministic shard of the selected lane.'),
       argument('--timing-report', 'Print the human-readable timing report.'),
     ],
     preconditions: ['Repository dependencies must be installed.'],
@@ -656,19 +687,42 @@ const DIRECT_SELF_DOC = Object.freeze({
     output: ['Prints per-file and aggregate test results.'],
     relatedCommands: ['npm test', 'npm run test:slow'],
   }),
-  'publish-ledger-if-needed': directDoc('publish-ledger-if-needed', {
+  'compare-test-fixtures': directDoc('compare-test-fixtures', {
     group: 'Package lifecycle',
-    path: 'scripts/release/publish-ledger-if-needed.mjs',
+    path: 'scripts/benchmarks/compare-test-fixtures.mjs',
     classification: 'package-lifecycle-cli',
-    synopsis: 'Publish the ledger workspace only when its exact version is absent from npm.',
-    usage: 'publish-ledger-if-needed',
+    synopsis: 'Benchmark old and new test-file compositions in seeded temporary worktrees.',
+    usage:
+      'compare-test-fixtures --baseline-ref <ref> --candidate-ref <ref> --file <path> [--file <path> ...] [--samples <n>] [--output <json>]',
+    arguments: [
+      argument('--baseline-ref <ref>', 'Git ref for the original composition.'),
+      argument('--candidate-ref <ref>', 'Git ref for the candidate composition.'),
+      argument('--file <path>', 'Repeatable path used by both refs.'),
+      argument('--baseline-file <path>', 'Repeatable baseline-only path.'),
+      argument('--candidate-file <path>', 'Repeatable candidate-only path.'),
+      argument('--samples <n>', 'Cold and warm sample count per ref; defaults to five.'),
+      argument('--output <json>', 'Machine-readable result path.'),
+    ],
+    preconditions: ['Both refs must be locally resolvable and repository setup must succeed.'],
+    effects: [
+      'Creates, seeds, measures, and removes two explicit temporary git worktrees without mutating the caller worktree.',
+    ],
+    output: ['Writes benchmark JSON and prints the threshold comparison.'],
+    relatedCommands: ['run-tests', 'npm run test:unit'],
+  }),
+  'verify-local-worktree': directDoc('verify-local-worktree', {
+    group: 'Package lifecycle',
+    path: 'scripts/dev-env/verify-local-worktree.mjs',
+    classification: 'package-lifecycle-cli',
+    synopsis: 'Verify a local AITM dogfood worktree and its required development tools.',
+    usage: 'verify-local-worktree',
     arguments: [],
     preconditions: [
-      'Root and ledger package versions must match; npm registry access is required.',
+      'Run from an AITM source checkout with Node.js 22 or newer after dependencies and the self-link are installed.',
     ],
-    effects: ['Reads the npm registry and conditionally publishes the public ledger workspace.'],
-    output: ['Reports an already-published ledger or npm publish progress.'],
-    relatedCommands: ['npm run release', 'npm run release:ledger'],
+    effects: ['Reads environment and worktree state without modifying either.'],
+    output: ['Reports every contract violation or confirms the local worktree is ready.'],
+    relatedCommands: ['ensure-self-link', 'npm ci', 'npm run link:self'],
   }),
   'heal-stage-rollups': directDoc('heal-stage-rollups', {
     group: 'Maintenance',
@@ -878,14 +932,16 @@ const DIRECT_SELF_DOC = Object.freeze({
     group: 'Maintenance',
     path: 'scripts/task-tracker/backfill-plan-metadata.mjs',
     classification: 'live-maintenance-or-migration',
-    synopsis: 'Bold legacy Plan Metadata labels across open issues.',
+    synopsis: 'Split legacy Story Origin provenance and normalize metadata labels.',
     usage: 'backfill-plan-metadata [--apply] [--yes]',
     arguments: [
       argument(APPLY_FLAG, 'Write matching issue bodies.'),
       argument('--yes', 'Skip multi-issue confirmation.'),
     ],
     preconditions: ['Configured repository and issue access are required.'],
-    effects: ['Dry-run by default; --apply rewrites matching Plan Metadata sections.'],
+    effects: [
+      'Dry-run by default; --apply rewrites matching Story Origin and Plan Metadata sections.',
+    ],
     output: ['Reports issues needing or receiving the backfill.'],
     relatedCommands: ['heal-backlog'],
   }),
@@ -1034,6 +1090,29 @@ const DIRECT_SELF_DOC = Object.freeze({
     effects: ['Dry-run by default; --apply rewrites Timing Log comments.'],
     output: ['Reports row transformations and per-issue results.'],
     relatedCommands: ['backfill-timing-logs', 'log-issue-time'],
+  }),
+  'heal-timing-departure': directDoc('heal-timing-departure', {
+    group: 'Maintenance',
+    path: 'scripts/task-tracker/heal-timing-departure.mjs',
+    classification: 'live-maintenance-or-migration',
+    synopsis: 'Repair one missing Timing Log departure before an unpaired reengagement.',
+    usage:
+      'heal-timing-departure <issue#> [--apply|--check-only] [--row-index N] [--event pause:<reason>] [--description TEXT] [--yes]',
+    arguments: [
+      argument('<issue#>', 'Issue whose Timing Log is inspected.'),
+      argument(APPLY_FLAG, 'Write the selected missing departure repair.'),
+      argument('--check-only', 'Audit and render the repair without writing.'),
+      argument('--row-index N', 'Select a zero-based Timing Log data-row index when ambiguous.'),
+      argument('--event pause:<reason>', 'Departure event to insert; pause:other is the default.'),
+      argument('--description TEXT', 'Description recorded on the repaired departure row.'),
+      argument('--yes', 'Skip confirmation for apply.'),
+    ],
+    preconditions: ['Configured repository and timing-comment access are required.'],
+    effects: [
+      'Dry-run by default; --apply inserts one zero-duration departure under the timing lock.',
+    ],
+    output: ['Reports unpaired reengagement counts before and after the repair.'],
+    relatedCommands: ['heal-timing-log', 'heal-timing-starts'],
   }),
   'heal-timing-starts-sweep': directDoc('heal-timing-starts-sweep', {
     group: 'Maintenance',

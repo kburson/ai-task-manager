@@ -90,14 +90,13 @@ export function coLocatedTestPath(srcPath) {
  * @param {{ projectRoot?: string, discovered?: string[] }} [opts]
  * @returns {string[]} repo-root-relative unit-test paths that exist
  */
-export function findUnitTests(
+export function findUnitTestMatches(
   sourcePaths,
   { projectRoot = DEFAULT_PROJECT_ROOT, discovered } = {}
 ) {
   const known = discovered || discoverTestFiles({ projectRoot });
   const knownSet = new Set(known);
   const byBase = unitTreeIndex(known);
-  const seen = new Set();
   const results = [];
   for (const src of sourcePaths) {
     if (src.endsWith('.test.mjs')) continue;
@@ -105,9 +104,12 @@ export function findUnitTests(
     const base = `${path.basename(src, '.mjs')}.test.mjs`;
     // Co-located preferred; else the nesting-aware unit-tree match by basename.
     const rel = (colocated && knownSet.has(colocated) && colocated) || byBase.get(base) || null;
-    if (!rel || seen.has(rel)) continue;
-    seen.add(rel);
-    results.push(rel);
+    if (!rel) continue;
+    results.push({ source: src, test: rel });
   }
   return results;
+}
+
+export function findUnitTests(sourcePaths, opts = {}) {
+  return [...new Set(findUnitTestMatches(sourcePaths, opts).map(({ test }) => test))];
 }

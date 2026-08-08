@@ -15,7 +15,17 @@ import {
 
 // ── fixtures ────────────────────────────────────────────────────────────────
 const UNBOLD = ['## Plan Metadata', '', '- effort: 2', '- risk: low', '', '## Next'].join('\n');
-const BOLD = ['## Plan Metadata', '', '- **effort**: 2', '- **risk**: low', ''].join('\n');
+const BOLD = [
+  '## Story Origin',
+  '',
+  '- **kind**: code',
+  '',
+  '## Plan Metadata',
+  '',
+  '- **effort**: 2',
+  '- **risk**: low',
+  '',
+].join('\n');
 const NO_SECTION = '# Title\n\nsome body text\n';
 
 // ── buildPlanMetadataBackfill (pure) ─────────────────────────────────────────
@@ -30,7 +40,8 @@ test('buildPlanMetadataBackfill: already-bold section → skip', () => {
 test('buildPlanMetadataBackfill: unbold labels → healed w/ bolded body + changed list', () => {
   const r = buildPlanMetadataBackfill(UNBOLD);
   assert.equal(r.status, 'healed');
-  assert.deepEqual(r.changed, ['effort', 'risk']);
+  assert.deepEqual(r.changed, ['kind', 'effort', 'risk']);
+  assert.match(r.body, /## Story Origin\n\n- \*\*kind\*\*: code/);
   assert.match(r.body, /- \*\*effort\*\*: 2/);
   assert.match(r.body, /- \*\*risk\*\*: low/);
 });
@@ -53,7 +64,7 @@ test('listOpenIssues: parses gh json via injected pexec', async () => {
 });
 
 // ── main orchestration ───────────────────────────────────────────────────────
-test('main: audit dry-run logs would-bold + skips clean issues, no writes', async () => {
+test('main: audit dry-run logs would-heal + skips clean issues, no writes', async () => {
   const logs = [];
   let mutated = 0;
   await main([], {
@@ -69,7 +80,7 @@ test('main: audit dry-run logs would-bold + skips clean issues, no writes', asyn
     err: () => {},
   });
   const joined = logs.join('\n');
-  assert.match(joined, /#3 {2}would-bold {2}\[effort, risk\] {2}\(audit\)/);
+  assert.match(joined, /#3 {2}would-heal {2}\[kind, effort, risk\] {2}\(audit\)/);
   assert.match(joined, /skipped=1 {2}healed=1/);
   assert.match(joined, /audit — no writes/);
   assert.equal(mutated, 0); // audit never writes
@@ -92,7 +103,7 @@ test('main: --apply writes healed issues through mutateIssueBody', async () => {
   assert.equal(mutations.length, 1);
   assert.equal(mutations[0].issueNumber, 5);
   assert.match(mutations[0].nb, /\*\*effort\*\*/);
-  assert.match(logs.join('\n'), /#5 {2}bolded {2}updated/);
+  assert.match(logs.join('\n'), /#5 {2}healed {2}updated/);
   assert.match(logs.join('\n'), /healed=1 {2}failed=0/);
 });
 

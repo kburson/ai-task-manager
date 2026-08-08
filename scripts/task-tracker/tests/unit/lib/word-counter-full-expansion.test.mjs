@@ -128,13 +128,11 @@ const lm = loadMarker(legacyMarker);
 assert.equal(lm.words, 42);
 assert.equal(lm.wordsFull, 42, 'legacy marker wordsFull defaults to words');
 
-// Test 5: saveMarker persists exact full-expansion, task, and timestamp inputs.
-saveMarker(markerPath, 7, 100, '#1049', 250, '2026-07-30T12:00:00.000Z');
+// Test 5: saveMarker persists an explicit full-expansion cumulative (5th arg).
+saveMarker(markerPath, 7, 100, null, 250);
 const mf = loadMarker(markerPath);
 assert.equal(mf.words, 100);
 assert.equal(mf.wordsFull, 250, 'explicit wordsFull round-trips through saveMarker/loadMarker');
-assert.equal(mf.task, '#1049');
-assert.equal(mf.ts, '2026-07-30T12:00:00.000Z');
 
 rmSync(tmp, { recursive: true });
 console.log('word-counter-full-expansion.test.mjs: all passed');

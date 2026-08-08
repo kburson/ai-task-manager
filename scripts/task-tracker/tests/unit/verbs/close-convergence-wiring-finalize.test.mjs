@@ -25,20 +25,6 @@ test('finalize passes the configured tail profile and explicit review authority'
   assert.equal(bypassed.calls.movesToDone[0].options.reviewAuthority, 'gate-bypassed');
 });
 
-test('closed completed not-Done Full-Auto convergence recovers stale Review authority', async () => {
-  const run = await runClose({
-    gateReviewToDone: false,
-    body: closeBody({ authority: 'stale' }),
-  });
-
-  assert.equal(run.result?.action, 'aberration');
-  assert.equal(run.result?.status, 'recovered');
-  assert.deepEqual(run.calls.movesToDone, []);
-  assert.equal(run.calls.reopens, 1);
-  assert.deepEqual(readUnauthorizedCloseRecovery(run.body)?.unticked, ['Current Review authority']);
-  assert.equal(run.exitCode, 0);
-});
-
 for (const [name, convergenceTailProfile] of [
   ['empty string', ''],
   ['null', null],

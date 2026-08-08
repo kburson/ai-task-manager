@@ -9,7 +9,6 @@
 import { splitRepo, gql, writeProjectFieldValue } from '../../gh/lib/github-projects.mjs';
 import { fieldIdFor } from '../project-fields.mjs';
 import { warnMissingFieldId } from './field-config-warn.mjs';
-import { isGovernedAuthorityError } from './work-lease/governed-effect.mjs';
 
 // Exported for unit coverage: the GraphQL I/O seams (`gql` / `splitRepo`) are
 // injectable via `deps` so the query-build + project-item filtering can be
@@ -89,28 +88,13 @@ export async function stampStartTime({ cfg, issueNumber, now = () => new Date(),
 
   const stamp = formatStartTime(now());
   try {
-    const write = () =>
-      writeField({
-        projectId: cfg.projectId,
-        itemId: item.id,
-        fieldId: startTimeFieldId,
-        value: { text: stamp },
-        runGql: deps.gql,
-      });
-    if (typeof deps.withGovernedEffect === 'function') {
-      await deps.withGovernedEffect(
-        {
-          issueId: String(issueNumber),
-          operation: 'evidence-mutation',
-          heartbeat: true,
-        },
-        write
-      );
-    } else {
-      await write();
-    }
+    await writeField({
+      projectId: cfg.projectId,
+      itemId: item.id,
+      fieldId: startTimeFieldId,
+      value: { text: stamp },
+    });
   } catch (err) {
-    if (isGovernedAuthorityError(err)) throw err;
     return { status: 'error', message: `stamp-start-time: write failed: ${err.message}` };
   }
   return { status: 'stamped', value: stamp };

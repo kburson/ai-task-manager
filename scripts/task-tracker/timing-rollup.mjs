@@ -174,43 +174,22 @@ export function computePlanMin(rows) {
 // (whose first attempt emitted `review:approved` + `issue:wrap` but aborted
 // before the terminal `issue:closed` board move — e.g. `assertFieldsPersisted`
 // threw) must not re-emit either half. Scan the current, not-yet-terminated
-// close window (the rows AFTER the last `issue:closed`, i.e. the in-flight
-// attempt) and report which halves are already present so the caller can skip
-// them. A cleanly-closed-then-reopened issue starts a fresh window past its
-// `issue:closed`, so a legitimate future close is unaffected.
+// close window and report which halves are already present so the caller can
+// skip them. Any durable `issue:closed` row seals the ledger irreversibly and
+// reports both halves handled, even when malformed activity follows it.
 export function pendingClosePairState(body) {
   const rows = parseTimingRows(String(body || ''));
   const closedEvent = PHASE_EVENTS.done.complete.event; // issue:closed
   const approvedEvent = PHASE_EVENTS.review.complete.event; // review:approved
   const wrapEvent = PHASE_EVENTS.done.enter.event; // issue:wrap
-  const closedIndexes = [];
-  for (let i = 0; i < rows.length; i++) {
-    if (rows[i].event === closedEvent) closedIndexes.push(i);
-  }
-  const lastClosedIdx = closedIndexes.length ? closedIndexes[closedIndexes.length - 1] : -1;
 
-  // Terminal seal (#817): when `issue:closed` is the LAST recorded row the log is
-  // sealed — the close-pair for that terminal necessarily precedes it, so the
-  // after-window is empty and would falsely read as "pair unwritten," letting a
-  // re-run of the close/flush tail append a second `review:approved`/`issue:wrap`
-  // AFTER the terminal event (the doubled/illegal-after-terminal defect). Inspect
-  // the pre-terminal window instead — the rows between the PRIOR `issue:closed`
-  // (if any) and this terminal one — and report the pair as present so the caller
-  // skips re-emission. Non-terminal `issue:closed` (a cleanly closed-then-reopened
-  // issue mid re-close) keeps the original after-window semantics below.
-  if (lastClosedIdx !== -1 && lastClosedIdx === rows.length - 1) {
-    const priorClosedIdx = closedIndexes.length > 1 ? closedIndexes[closedIndexes.length - 2] : -1;
-    const sealedWindow = rows.slice(priorClosedIdx + 1, lastClosedIdx);
-    return {
-      reviewApproved: sealedWindow.some((r) => r.event === approvedEvent),
-      issueWrap: sealedWindow.some((r) => r.event === wrapEvent),
-    };
+  if (rows.some((row) => row.event === closedEvent)) {
+    return { reviewApproved: true, issueWrap: true };
   }
 
-  const windowRows = rows.slice(lastClosedIdx + 1);
   return {
-    reviewApproved: windowRows.some((r) => r.event === approvedEvent),
-    issueWrap: windowRows.some((r) => r.event === wrapEvent),
+    reviewApproved: rows.some((r) => r.event === approvedEvent),
+    issueWrap: rows.some((r) => r.event === wrapEvent),
   };
 }
 
@@ -359,4 +338,44 @@ export function rollupTotals(rows, thresholdMin, body = null) {
     engagedSec,
     lastWordMarker,
   };
+}
+
+// #1085 — deterministic structured source for the mutable timing singleton.
+// All values come from the existing Timing Log and issue stage markers; local
+// clocks, fleet files, and caches are deliberately absent from the interface.
+export function buildStructuredTimingProjection({
+  timingBody,
+  issueBody = '',
+  thresholdMin = 5,
+  revision = 1,
+} = {}) {
+  if (
+    typeof timingBody !== 'string' ||
+    timingBody.length === 0 ||
+    typeof issueBody !== 'string' ||
+    !Number.isFinite(thresholdMin) ||
+    thresholdMin < 0 ||
+    !Number.isSafeInteger(revision) ||
+    revision <= 0
+  ) {
+    throw new TypeError('timing-projection:input');
+  }
+  const rows = applyPauseSpansToRows(parseTimingRows(timingBody), timingBody);
+  const totals = rollupTotals(rows, thresholdMin, timingBody);
+  const stageTiming = computeStageDurations(issueBody);
+  return Object.freeze({
+    schema: 'aitm.timing-projection/v1',
+    revision,
+    rows: Object.freeze(
+      rows.map(({ tsMs, event, activeSec, idleSec, wordMarker }) =>
+        Object.freeze({ tsMs, event, activeSec, idleSec, wordMarker })
+      )
+    ),
+    totals: Object.freeze({ ...totals }),
+    stageTiming: Object.freeze({
+      perStageSec: Object.freeze({ ...stageTiming.perStageSec }),
+      totalSec: stageTiming.totalSec,
+      visits: Object.freeze(stageTiming.visits.map((visit) => Object.freeze({ ...visit }))),
+    }),
+  });
 }

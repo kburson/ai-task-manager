@@ -48,8 +48,8 @@ Backward-compat read paths accept the legacy `aitm-groom-*` forms; write paths e
 | `/task plan #N`    | Plan (Sprint-Planning) | Promotes Refine → Plan (Sprint-Planning ceremony: deep-dive analysis, child story breakdown, estimate revision). Refuses on any current state other than Refine. **Not for backlog item generation** — use `/task discover` for that. |
 | `/task develop #N` | Develop                | (Reserved; currently use `/task promote` from Plan after `/task plan-approve`.)                                                                                                                                                       |
 | `/task verify #N`  | Test                   | Runs sandboxed verification of all ACs and test automation; stamps `aitm-dod-verified` marker. (To be built per epic #107.)                                                                                                           |
-| `/task review #N`  | Review                 | Promotes Test → Review after verification passes.                                                                                                                                                                                     |
-| `/task approve #N` | (gate stamp)           | Stamps Plan approval, or records Review approval bound to the current Review epoch and persisted Test SHA. Use `--human` for approval given in chat.                                                                                  |
+| `/task review #N`  | Review                 | Promotes Test → Review after verification passes; in Review, `--probe "command"` records focused evidence without rerunning standard commands.                                                                                        |
+| `/task approve #N` | (gate stamp)           | Stamps the human-approval marker for the current gate (plan→develop or review→done).                                                                                                                                                  |
 | `/task close #N`   | Done                   | Closes the issue and moves Review → Done.                                                                                                                                                                                             |
 | `/task promote #N` | next stage             | Generic one-step advance; used for transitions without bespoke prep.                                                                                                                                                                  |
 
@@ -65,7 +65,7 @@ npx aitm create-issue \
   --title "Feature: ..." \
   --scope-file ./.tmp/gh/scope.md \
   --ac-file ./.tmp/gh/acs.md \
-  --plan-metadata-file ./.tmp/gh/plan-meta.md \
+  --story-origin-file ./.tmp/gh/story-origin.md \
   --label needs-triage
 ```
 
@@ -103,9 +103,155 @@ scripts/gh/move-state.mjs 42 develop
 - Before `/task review`, commit the implementation and run `/task commit-trace #N`; Review requires a clean tracked worktree and a `### 🔗 Commits` ledger comment. Attribution is **message-based**, not SHA-reachability — the gate is satisfied by a commit whose subject carries the `[#N]` prefix (see [Commit Attribution](#commit-attribution) below), regardless of which branch or worktree it lives on.
 - **Test** is entered automatically by `/task review` while the verification gate runs.
 - Move to **Review** automatically when verification passes (ready-for-review).
-- Move to **Done** only by `/task close` after the current Review epoch has
-  passing Agent Review proof for the persisted Test SHA and a matching truthful
-  human or Full-Auto approval with no later invalidation.
+- Move to **Done** only by `/task close` after a human approves.
+
+### Stage-owned verification and exact-SHA receipts
+
+Verification work has one owner for each unchanged committed source state:
+
+| Stage                | Owned work                                                                                       | Reused work                                    |
+| -------------------- | ------------------------------------------------------------------------------------------------ | ---------------------------------------------- |
+| Develop iteration    | Changed-file autofix/format and explainable impact-selected tests                                | None                                           |
+| Develop finalization | Full `npm run lint` and `npm run format:check`, exactly once at the clean final SHA              | None                                           |
+| Test                 | Complete unit, integration, and slow lanes in the clean sandbox, plus declared targeted commands | Valid Develop lint/format receipt              |
+| Review               | Finding-driven targeted probes only                                                              | Valid Test receipt; no standard command reruns |
+
+During Develop, `node scripts/task-tracker/verify-develop.mjs --mode iteration`
+is the normal feedback loop. The selector reports every changed path, selected
+test, reason (`changed-test`, direct/transitive import, fixture, basename
+compatibility, or manifest rule), and any lane escalation. Package/lockfile,
+runner, lane-classifier, global-helper, or impact-manifest changes deliberately
+fail closed to the lanes declared by the manifest.
+
+Synchronize the branch with its resolved parent before Develop finalization and
+`/task test #N`. For a trunk-parent issue, fetch `origin/trunk` and rebase or
+merge it into the feature branch first; for an epic child, synchronize with the
+current epic head through the owned merge-back flow. Resolve conflicts and
+commit any resulting edits before Test so the exact-SHA receipt covers the tree
+that will be reviewed and published. When the resolved parent is already an
+ancestor, synchronization should not manufacture an empty commit.
+
+After Test, any operation that moves HEAD—including a merge, rebase, amend, or
+empty commit—makes the exact-SHA receipt stale.
+That HEAD move requires a new `/task test #N` pass before Review. The re-Test is
+not redundant when the synchronized parent changed the tree: the earlier receipt
+did not observe those changes, even when they are outside the issue's own files.
+Sync again after Test only when the parent actually advanced or another
+integration requirement makes the HEAD move unavoidable.
+
+`/task test #N` owns finalization. While the issue is still in Develop it checks
+that the tree is clean and committed, runs full lint and format once, persists
+and reads back an `aitm.verification-receipt/v1` for the complete 40-hex SHA,
+then creates the isolated Test worktree at that exact SHA. Test reuses the two
+validated finalization results and runs `test:unit`, `test:integration`, and
+`test:slow` once. The resulting Test receipt records runtime/config/lockfile
+fingerprints, clean-worktree identity, command classifications, exits, and
+durations. Existing `aitm-test-started` and `aitm-dod-verified` markers remain
+present for backward compatibility.
+
+Review validates the Test receipt, current fingerprint, and both compatibility
+SHA markers. A missing, malformed, red, dirty, stale, or incomplete v1 receipt
+fails closed and takes the audited Test → Develop rework path. Review does not
+rerun lint, format, or complete test lanes. A focused probe arising from a
+concrete review finding is recorded separately as `review-probe` evidence and
+does not alter or masquerade as the Test receipt. Marker-only issues without a
+v1 receipt retain the bounded legacy path; the presence of a malformed v1
+marker can never fall back to it.
+
+The `Functional (verified at Test)` DoD subsection is the visible checklist for
+this cumulative evidence, not a claim that every command executes inside the
+Test sandbox. Lint and format are verified during Develop finalization and
+carried forward by receipt. Commit and Acceptance Criteria gates are satisfied
+before the transition is allowed to leave Develop. Test owns the fresh isolated
+worktree, dependency install, full test lanes, and read-back of the combined
+receipt that Review later validates.
+
+Run a focused probe only after the issue is already in Review:
+
+```bash
+npx aitm review 1089 --probe "node --test scripts/task-tracker/tests/unit/lib/review-receipt-reuse.test.mjs"
+```
+
+`--probe` is repeatable. Each command must pass the normal verification
+allowlist, runs without a shell against the current clean exact SHA, and is
+persisted/read back in a Review receipt whether green or red. The probe mode does
+not run the normal Review gate; rerun plain `npx aitm review 1089` after the
+finding is resolved.
+
+Recovery after receipt invalidation is:
+
+1. Bind/resume the issue in Develop and inspect the structured refusal codes.
+2. Run Develop iteration checks, fix the finding, and commit the new source state.
+3. Run `/task test #N` once to produce new finalization and Test receipts.
+4. Retry `/task review #N`.
+
+A Test self-loop with a valid exact-SHA receipt runs no commands. Use `/task
+test #N --force` only for an intentional diagnostic rerun; the override is
+posted to the issue audit trail.
+
+### Adaptive Plan estimates and frozen AI forecasts
+
+Refine Size and Estimate are provisional. In Plan, create a detailed evidence
+packet using `aitm.plan-estimation-input/v1` and converge it with:
+
+```bash
+npx aitm config estimationRubricIssue 1091
+npx aitm plan-estimate 1091 --evidence-file .tmp/plan/1091-estimation.json
+```
+
+The configured rubric issue must be a governed issue dedicated to immutable
+`estimation-rubric` records. The evidence file contains independently reviewable
+WBS rows with base human hours, module/dependency signals, test lanes and
+isolation, expected unavoidable test minutes, risks, and optional comparable
+issue numbers. `plan-estimate` then refreshes the rubric, preserves the Refine
+values in the historical estimate comment, replaces board and `aitm-fields`
+Size/Estimate with the human Plan values, publishes a separate AI P50/P80
+forecast, and reads every surface back. Plan cannot exit if those projections
+diverge.
+
+The two forecasts have different meanings:
+
+- **Human Plan** is mid-level engineer effort, including normal implementation,
+  verification, review response, and unavoidable repository execution. It is
+  the only value written to the board Estimate field.
+- **AI P50/P80** predicts agent engaged time. P50 is the median forecast; P80 is
+  the more conservative planning bound. Stage allocations, rubric identity,
+  cohort, confidence, comparables, and limitations live in the immutable issue
+  comment, not the board Estimate.
+
+Both freeze at Plan → Develop through the
+`aitm-estimation-forecast-ready` record ID. Scope changes after that point use
+the existing audited replan/inflation path; never edit a frozen record. At
+close, AITM refuses Done until it can append and read back the matching outcome
+with stage timing, verification attempts, review cycles, diff landscape,
+variance, and necessary versus avoidable workflow cost.
+
+Operators can inspect the visible `Plan Estimation Forecast`, `Estimation
+Outcome`, and `Estimation Rubric` comments directly. The leading hidden
+`aitm-record` envelope is canonical truth; its record ID, payload hash,
+predecessor/supersedes links, repository, and issue correlation are validated by
+the #1070 comment store. Missing, malformed, truncated, conflicting, or
+uncorrelated evidence fails closed instead of becoming a zero.
+
+Bootstrap rubrics intentionally start with low confidence and wide P80 bounds.
+Each later Plan refreshes from completed outcome records, names the exact cohort,
+and publishes a superseding immutable rubric snapshot. If refresh or read-back
+fails, leave the issue in Plan, repair the configured rubric issue or GitHub
+comment evidence, and replay `plan-estimate`; the authority writer is
+convergent. Do not delete prior rubric records or hand-edit payload hashes.
+
+An issue already in Develop when adaptive estimation is first installed may
+adopt its legacy Plan baseline once with `--adopt-legacy-baseline`. This recovery
+refuses unless the live board, canonical body fields, and historical Planned
+Estimate appendix all exactly match the newly generated human Plan, and unless
+no forecast/freeze evidence already exists. It publishes the missing immutable
+forecast and ready marker without rewriting the in-flight baseline; it is not a
+general way to bypass Plan or revise scope after Develop.
+
+Adaptive evidence adds no approval gate. `/task auto both` still suppresses the
+Plan and Review human gates without introducing a forecast prompt; human-gated
+configuration still stops at the existing `plan-approve` and `approve` points.
+Critical work therefore retains the operator's chosen approval policy.
 
 ## Commit Attribution
 
@@ -310,38 +456,11 @@ The config key `gateAnalysisToDevelopment` retains its legacy name for backward-
 
 The Plan → Develop gate is enforced by a hidden marker `<!-- aitm-plan-approved: <ISO ts> -->` written into the issue body by `/task approve #N`. `move-state.mjs` refuses (exit 4, `BLOCKED: plan -> develop requires <!-- aitm-plan-approved: <ts> --> marker`) when the marker is missing and the current state is Plan. The legacy `- [ ] Plan approved by human` checkbox is no longer recognized — run `scripts/task-tracker/migrate-plan-approved.mjs <issue#>` on any in-flight issue that still carries it.
 
-The Review → Done gate is enforced by the current Review-authority projection,
-not by the presence of any historical marker or checked box. The persisted
-`aitm-dod-verified` Test SHA must match a passing `aitm-agent-review-proof` in
-the latest Review epoch. An `aitm-review-approved` marker must bind that same
-epoch and proof SHA with truthful `provenance="human"` or
-`provenance="full-auto"`, and no later invalidation may exist. `/task close`
-refuses (exit 7, `PROMPT_REQUIRED: review-approval #N`) when that authority is
-missing, stale, malformed, ambiguous, SHA-mismatched, or invalidated and
-`gateReviewToDone=true`.
-
-Demotion, demotion-shaped reconciliation, and an active Agent Review failure
-invalidate current authority. Historical proof and approval markers remain for
-audit but cannot authorize a later close. Repair by re-running Test to persist
-the verified SHA, re-running Review for a current-epoch pass, and recording a
-new authentic approval. Do not hand-edit hidden markers or tick
-`Final Review Passed` as a repair.
-
-When a human approves in chat, run `/task approve #N --human`. A genuine
-pre-ticked GitHub UI approval is also treated as human provenance. Under
-Full-Auto, `/task approve #N` writes the same consolidated
-`aitm-review-approved` marker with Full-Auto provenance and its detection
-signals; the standalone `aitm-full-auto-approved` marker is historical and must
-not be used as current authority.
+The Review → Done gate is enforced by a hidden marker `<!-- aitm-review-approved: <ISO ts> -->` written into the issue body by `/task approve #N`. `/task close` refuses (exit 7, `PROMPT_REQUIRED: review-approval #N`) when the marker is missing and `gateReviewToDone=true`.
 
 The Plan → Develop gate also requires a hidden marker `<!-- aitm-deep-dive-complete: <ISO ts> -->` written into the issue body by `/task ensureChecked "Deep dive complete"` after the Deep-Dive Analysis section is posted. `/task approve #N` refuses with `deep-dive-required` when the marker is missing. As with the other two markers, the legacy visible `- [x] Deep dive complete` AC checkbox is no longer recognized — the marker is the sole source of truth. All three marker helpers live in [`scripts/task-tracker/lib/markers.mjs`](../../scripts/task-tracker/lib/markers.mjs) and write to the body only via the canonical encoding (legacy fenced field-DB blocks are normalized on the same write).
 
-**`--answer yes` does not satisfy human gates.** `/task close #N --answer yes`
-without current Review authority exits 8 with a refusal message. Record an
-authentic approval only after current Test and Agent Review proof exist, or use
-an explicitly authorized `gateReviewToDone false` configuration. `--answer
-yes|no` still works at the dirty-workspace prompt, which is operational, not an
-approval gate.
+**`--answer yes` does not satisfy human gates.** `/task close #N --answer yes` when no review-approval marker is present exits 8 with a refusal message. The only ways to satisfy the gate are running `/task approve #N` (human) or setting `gateReviewToDone false` in config. `--answer yes|no` still works at the dirty-workspace prompt, which is operational, not a human gate.
 
 Toggle a gate (project-wide, persisted to `.ai-task-manager/task-tracker.json`):
 
@@ -461,25 +580,39 @@ Documenting this token gives a future Develop→Test enforcement gate a stable c
 
 Tenets 1 and 2 are a tension held on purpose: act by default, but stop at the edge of your authority. Tenet 3 is absolute and overrides both — there is no version of "staying automatic" that justifies a fabricated marker.
 
-### Creation shapes: stub vs solo (and epic / sub-issue)
+### Creation shapes: stub, solo, defect, epic, and sub-issue
 
 `scripts/gh/create-issue.mjs --shape <shape>` picks how much ceremony is required at creation. Every shape lands in Backlog with the standard Definition-of-Done + Pickup-Directive + Verification-Commands tail; they differ only in what the author must supply up front.
 
-- **`stub`** — the fast idea-capture path (#426). Requires only `--title`; takes an optional `--idea-file <path>` whose free text seeds the Scope section. Scope / Acceptance Criteria / Plan Metadata are placeholders the Refine stage fills. Use this when you are capturing a raw idea at Backlog and the ACs, scope decomposition, and plan-metadata block do not yet exist and should not be invented. **Do not** set Size or Estimate on a stub — those are Refine-exit gate fields, not creation-time fields.
-- **`solo`** — full ceremony up front. Requires `--scope-file`, `--ac-file`, and `--plan-metadata-file`. Use this when you already have the scope, acceptance criteria, and plan worked out at creation time and want to chain straight into `promote`.
-- **`epic`** — a parent/XL story; same three-file requirement as solo.
-- **`sub-issue`** — a child story; same three-file requirement plus `--parent <N>`.
+- **`stub`** — the fast idea-capture path (#426). Requires only `--title`; takes an optional `--idea-file <path>` whose free text seeds the Scope section. Scope and Acceptance Criteria remain Refine placeholders; Story Origin records the resolved kind immediately, and Plan Metadata stays empty until planning. **Do not** set Size or Estimate on a stub — those are planning fields, not creation-time provenance.
+- **`solo`** — full ceremony up front. Requires `--scope-file`, `--ac-file`, and `--story-origin-file`; `--plan-metadata-file` is optional when planning output is already known.
+- **`defect`** — governed local bug-story intake. Invoke `npx aitm create-issue --shape defect` with the same required Scope, Acceptance Criteria, and Story Origin fragments as `solo`; diagnostic reproduction, root-cause, fix-direction, and out-of-scope fragments are optional. The wrapper adds the `bug` label and canonical `🐞 [BUG]` prefix idempotently. A GitHub web form submission carrying the `bug` label is normalized through this same renderer when its body is not already canonical.
+- **`epic`** — a parent/XL story; same Story Origin requirement as solo.
+- **`sub-issue`** — a child story; same Story Origin requirement plus `--parent <N>`, recorded inside Story Origin.
 
-A stub deliberately fails the Refine→Plan gate (which still demands Sequence, labels, Start Time, and substantive ACs) until Refine fleshes it out. Creation is cheap; promotion past Refine still enforces the full contract.
+A stub deliberately fails the Refine→Plan gate until Refine supplies substantive ACs. Plan Metadata becomes mandatory at Plan→Develop, the first point where planning output must exist.
+
+`/task report` files an upstream external-product report; it does not create a local defect story. Use the `defect` shape for work tracked in the current repository.
 
 ### Issue kinds (`/task kind <N> <kind>`)
 
 A shape decides creation ceremony; a **kind** decides which Definition-of-Done items an issue is held to and how its deliverable is attributed. The kind is stored as an `aitm-issue-kind` marker (`code` — the default — carries no marker) and set with `/task kind <N> <kind>`. Two families:
 
-- **No-commit kinds** — `audit`, `research`, `spike`, `epic`. Their deliverable is an artifact in the issue itself (a comment, document, decision, or the rollup of children's commits), not committed source. The develop→test gate replaces the `### 🔗 Commits` trail requirement with an `aitm-deliverable-posted` evidence marker, and the `tests` DoD item is statically excluded — these kinds ship no code, so a test-suite line would be un-satisfiable ceremony.
+- **No-commit kinds** — `audit`, `research`, `spike`, `epic`. Their deliverable is an artifact in the issue itself (a comment, document, decision, or the rollup of children's commits), not committed source. The develop→test gate replaces the `### 🔗 Commits` trail requirement with an `aitm-deliverable-posted` evidence marker, and the `tests` DoD item is statically excluded — these kinds ship no code, so a test-suite line would be un-satisfiable ceremony. For an epic, publish the final child/evidence summary comment and attach it through `npx aitm epic-reconcile <N> --deliverable-comment <id|url>`; the verb validates that the comment belongs to the same repository and issue before writing the marker.
 - **Commit-bearing kinds** — `code` (default) and `docs-only` (#865/#923). Both ship committed source and are attributed identically: `commit-trace`, `review-preflight`, and `close` locate the deliverable by grepping the `[#N]` commit token exactly as for `code`. `docs-only` is **not** a no-commit kind.
 
 **The `docs-only` kind: "the kind declares, the diff decides" (#865).** A `docs-only` issue is a documentation task — prose under a `docs/` directory or `*.md` / `*.markdown` files. It would be dishonest to run the functional test suite against a pure prose edit, but a static `exclude="docs-only"` on the `tests` DoD item would be unsafe: unlike `spike`/`research`, a `docs-only` issue carries commits and could quietly edit `scripts/**` and launder its way out of the suite by label alone. So the relief is **conditional on the actual diff**: the `docs-only` kind _declares_ the intent to skip tests, but the Test-stage classification of the real `trunk...HEAD` changed-path set _decides_. The functional `tests` item (and its derived `npm test` + `npm run test:slow` verification commands) is dropped only when the diff is **provably documentation-only** — every changed path is a doc path. The rule is **default-deny**: an empty diff is not proven docs-only, and any unrecognized or non-doc path counts as functional, so the item is kept. `preflight-issue.mjs` reads the changed-path list via `--changed-paths-file <p>` when rendering a `--kind docs-only` issue; absent that flag the suite is always kept. Lint and format DoD items carry no kind annotation and are required for `docs-only` exactly as for `code`. Because mislabelling can never subtract from what the diff proves, the kind is a convenience, not a bypass.
+
+### Definition of Done phase ownership
+
+Canonical issue bodies render three exact Definition-of-Done categories.
+`Functional (verified at Test)` contains sandbox-proven work. `Lifecycle
+(verified at Review)` contains `Agent Review Passed` and `Final Review Passed`.
+`Housekeeping (verified at Close)` contains `Story closed and moved to Done` and
+`Timing data flushed to issue`. Review and Close mutate only their owned
+categories. The historical combined `Lifecycle (auto-ticked at Review/Close)`
+heading remains a supported read and mutation fallback for existing issues, but
+new templates never emit it.
 
 This diff-decides relief lives at the **DoD/VC layer** only. The Agent Review "New Automated Tests" gate still keys off the body-level `expectsAutomatedTests(body)` classifier (a `docs-only` body is testless there), which reads no diff — making that gate diff-aware is the focused follow-up **#940**.
 
@@ -502,12 +635,13 @@ the defect's commits off the story's ancestry.
 **Ascend deepest-first.** Blockers form a ladder (`#A` blocked by `#B` blocked by
 `#C`), discovered top-down but completed bottom-up. For each rung, ascending:
 
-1. On its trunk-rooted worktree, fix the rung.
-2. Test it in isolation.
-3. Merge it to trunk.
-4. Close it.
-5. Rebase the next rung up's worktree onto the now-updated trunk.
-6. Repeat until the original story is finished, merged, and closed.
+1. If the rung is newly discovered, create it first with `npx aitm create-issue --shape defect`, then annotate its parent with `npx aitm block <parent> --by <defect>`.
+2. On its trunk-rooted worktree, fix the rung.
+3. Test it in isolation.
+4. Merge it to trunk.
+5. Close it.
+6. Rebase the next rung up's worktree onto the now-updated trunk.
+7. Repeat until the original story is finished, merged, and closed.
 
 Because each rung reaches trunk before the rung above rebases onto trunk, the
 upper rung always sits cleanly on top — no entanglement, no cherry-picks.
@@ -868,6 +1002,7 @@ npx aitm create-issue \
   --title "Planning: <epic title>" \
   --scope-file ./.tmp/gh/planning-scope.md \
   --ac-file ./.tmp/gh/planning-acs.md \
+  --story-origin-file ./.tmp/gh/planning-origin.md \
   --plan-metadata-file ./.tmp/gh/planning-meta.md \
   --label planning
 ```

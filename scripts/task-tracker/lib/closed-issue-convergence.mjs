@@ -3,8 +3,6 @@ import { uncheckedPreCloseCheckboxes } from '../close-gate.mjs';
 import { lifecycleSatisfaction } from './lifecycle-dod.mjs';
 import { parseMarker } from './marker-grammar.mjs';
 import { stripFencedCodeBlocks, upsertProgressMarker } from './markers.mjs';
-import { derivePersistedReviewAuthority } from './review-authority.mjs';
-import { isGovernedAuthorityError } from './work-lease/governed-effect.mjs';
 
 const SATISFIED_LIFECYCLE_STATUSES = new Set(['ticked', 'audited', 'optout']);
 const UNAUTHORIZED_CLOSE_PHASES = new Set(['intent', 'reopened', 'review', 'timing', 'complete']);
@@ -110,16 +108,12 @@ function validateUnauthorizedCloseRecovery(recovery, prefix) {
 export function deriveClosedIssueIntegrity({ body, fullAuto = false, childBoardStates = [] } = {}) {
   const unticked = uncheckedPreCloseCheckboxes(body).map(checkboxLabel);
   const lifecycle = lifecycleSatisfaction(body);
-  const reviewAuthority = derivePersistedReviewAuthority(body);
 
   if (lifecycleKeyMissing(lifecycle, 'agent-review-passed')) {
     unticked.push('Agent Review Passed');
   }
   if (!fullAuto && lifecycleKeyMissing(lifecycle, 'passed-final-review')) {
     unticked.push('Final Review Passed');
-  }
-  if (reviewAuthority.status !== 'current') {
-    unticked.push('Current Review authority');
   }
 
   const unfinishedChildren = (childBoardStates || []).filter(
@@ -333,6 +327,7 @@ export async function runClosedIssueConvergence(input = {}, deps = {}) {
         await runStep('moveToDone');
       }
       await runStep('emitClosePair');
+      await runStep('ensureOutcome');
       await runStep('reconcileLifecycle');
       await runStep('cleanup');
       return { action, status: 'completed', steps };
@@ -402,7 +397,6 @@ export async function runClosedIssueConvergence(input = {}, deps = {}) {
 
     return { action, status: 'not-handled', steps };
   } catch (error) {
-    if (isGovernedAuthorityError(error)) throw error;
     return {
       action,
       status: 'failed',

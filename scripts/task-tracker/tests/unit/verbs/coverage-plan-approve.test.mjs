@@ -38,7 +38,6 @@ function deps({ body = CLEAN_BODY, state = 'plan', onMutate } = {}) {
       if (onMutate) onMutate(mutate(body));
       return { status: 'ok' };
     },
-    withGovernedEffect: async (_options, callback) => callback({ reverify: async () => {} }),
   };
 }
 
@@ -104,7 +103,7 @@ test('runPlanApprove: approval present, entry missing → re-stamped-entry', asy
 // --- verbPlanApprove: process.exit + stdout/stderr trapped, deps injected ---
 // The verb forwards its third arg straight to runPlanApprove's dep seam, so we
 // drive every switch branch (and the try/catch) offline without any network.
-function runVerb(rest, { env = {}, deps } = {}) {
+function runVerb(rest, { env = {}, deps, cfg = CFG } = {}) {
   const realExit = process.exit;
   const realErr = process.stderr.write.bind(process.stderr);
   const realOut = process.stdout.write.bind(process.stdout);
@@ -127,7 +126,7 @@ function runVerb(rest, { env = {}, deps } = {}) {
     else process.env.TT_SKIP_NETWORK = prevSkip;
   };
   const result = () => ({ exitCode, stderr: errOut.join(''), stdout: outOut.join('') });
-  return verbPlanApprove(rest, CFG, deps)
+  return verbPlanApprove(rest, cfg, deps)
     .then(result)
     .catch((err) => {
       if (!/__exit_\d+__/.test(err.message)) throw err;
@@ -164,6 +163,30 @@ test('verbPlanApprove: re-stamped-entry → stdout, no exit', async () => {
   const r = await runVerb(['5'], { deps: deps({ body: APPROVED_NO_ENTRY }) });
   assert.equal(r.exitCode, null);
   assert.match(r.stdout, /Re-stamped missing aitm-entered-plan/);
+});
+
+test('verbPlanApprove: repaired adaptive approval → stdout, no exit', async () => {
+  const ready = '01J00000000000000000000934';
+  const body = [
+    '<!-- aitm-entered-plan ts="2026-06-01T00:00:00Z" -->',
+    '<!-- aitm-plan-approved ts="2026-06-01T00:00:00Z" -->',
+    `<!-- aitm-estimation-forecast-ready record-id="${ready}" -->`,
+  ].join('\n');
+  const r = await runVerb(['5'], {
+    cfg: { ...CFG, estimationRubricIssue: 1091 },
+    deps: deps({ state: 'develop', body }),
+  });
+  assert.equal(r.exitCode, null);
+  assert.match(r.stdout, /Repaired adaptive Plan approval lineage/);
+});
+
+test('verbPlanApprove: missing adaptive forecast → stderr, exit 13', async () => {
+  const r = await runVerb(['5'], {
+    cfg: { ...CFG, estimationRubricIssue: 1091 },
+    deps: deps({ body: CLEAN_BODY }),
+  });
+  assert.equal(r.exitCode, 13);
+  assert.match(r.stderr, /no converged adaptive forecast/);
 });
 
 test('verbPlanApprove: wrong-state → stderr, exit 3', async () => {

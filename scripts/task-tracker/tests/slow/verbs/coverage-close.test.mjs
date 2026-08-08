@@ -14,11 +14,17 @@ import { execFileSync } from 'node:child_process';
 import { verbClose, tickLifecycleOnClose } from '../../../verbs/close.mjs';
 import { projectScratchDir } from '../../../lib/scratch-dir.mjs';
 
-// Current Full-Auto review authority + populated aitm-fields (engagedTime
-// non-null) so assertFieldsPersisted passes and shouldEmitReviewApprovedRow is
-// true without relying on legacy marker presence.
+// Review-approval marker + populated aitm-fields (engagedTime non-null) so
+// assertFieldsPersisted passes and shouldEmitReviewApprovedRow is true.
 const APPROVED_BODY =
-  '## Done\n\n<!-- aitm-dod-verified sha="abc1234" ts="2026-06-28T00:00:00Z" -->\n<!-- aitm-entered-review ts="2026-06-28T00:00:01Z" -->\n<!-- aitm-agent-review-proof schema="1" epoch="review:1:2026-06-28T00:00:01Z" sha="abc1234" ts="2026-06-28T00:00:02Z" validators="unit" result="pass" -->\n<!-- aitm-review-approved schema="1" epoch="review:1:2026-06-28T00:00:01Z" proof-sha="abc1234" ts="2026-06-28T00:00:03Z" provenance="full-auto" signals="ci=1" -->\n<!-- aitm-fields: {"engagedTime":3600,"size":"M","estimate":3} -->\n';
+  '## Done\n\n<!-- aitm-review-approved ts="2026-06-28T00:00:00Z" full-auto="yes" -->\n<!-- aitm-fields: {"engagedTime":3600,"size":"M","estimate":3} -->\n';
+const FORECAST_ID = '01J00000000000000000000005';
+const READY_BODY = [
+  APPROVED_BODY,
+  `<!-- aitm-plan-approved ts="2026-06-28T00:00:00Z" forecast-record-id="${FORECAST_ID}" -->`,
+  `<!-- aitm-estimation-forecast-ready record-id="${FORECAST_ID}" -->`,
+  '',
+].join('\n');
 
 const baseState = (active = '#5') => ({
   active,
@@ -45,8 +51,6 @@ function makeDirtyRepo() {
 }
 
 function makeCtx(statePath, dir, over = {}) {
-  const allowClose = async (_options, callback) =>
-    callback({ leaseContext: {}, reverify: async () => {} });
   return {
     cfg: { repo: 'o/r', lifecycleCheckboxesRequired: false },
     statePath,
@@ -61,20 +65,21 @@ function makeCtx(statePath, dir, over = {}) {
     runMoveState: async () => ({ ok: true, benign: false }),
     runMoveStateDone: async () => ({ ok: true, benign: false }),
     writeTerminalDisposition: async () => ({ disposition: 'Delivered' }),
-    applyReviewDelta: async () => ({ status: 'applied' }),
     runLogIssueTime: async () => {},
     fetchSubIssues: async () => [],
     getIssueBoardState: async () => 'review',
     getIssueClosedState: async () => false,
     uncheckedPreCloseCheckboxes: () => [],
     nowIso: () => new Date().toISOString(),
-    withIssueLock: async (_options, callback) => callback(),
-    withGovernedEffect: allowClose,
     // Offline the #753 lifecycle-box reconcile for every verbClose-driven test.
     // The real one reaches live `gh` (the injected pexec does not intercept
     // versionedWriteBody), which stalls the full-suite run. The exported helper
     // itself is covered directly below via its deps.mutateIssueBody seam.
     tickLifecycleOnClose: async () => ({ ok: true }),
+    // Keep this broad close-coverage harness on its injected timing boundary.
+    // The real approval reconciler is covered by approve-timing-boundary and
+    // requires a populated Review timing log that these legacy fixtures omit.
+    reconcileReviewApprovedTiming: async () => ({ status: 'present' }),
     ...over,
   };
 }
@@ -85,16 +90,16 @@ function makeCtx(statePath, dir, over = {}) {
 async function run({ state = baseState(), over = {}, ci, dirty = false } = {}) {
   const prevSkip = process.env.TT_SKIP_DIRTY_CHECK;
   const prevCI = process.env.CI;
+  const prevProjectDir = process.env.AI_TASK_MANAGER_PROJECT_DIR;
   const setEnv = (k, v) => (v === undefined ? delete process.env[k] : (process.env[k] = v));
   setEnv('TT_SKIP_DIRTY_CHECK', dirty ? undefined : '1');
   setEnv('CI', ci);
   const { statePath, dir } = tmpState(state);
+  setEnv('AI_TASK_MANAGER_PROJECT_DIR', dir);
   const ctx = makeCtx(statePath, dir, over);
   let repo;
   if (dirty) ctx.projectDir = repo = makeDirtyRepo();
   const real = { exit: process.exit, log: console.log, err: console.error, warn: console.warn };
-  const previousExitCode = process.exitCode;
-  process.exitCode = 0;
   let exitCode = null;
   const stdout = [];
   const stderr = [];
@@ -107,8 +112,7 @@ async function run({ state = baseState(), over = {}, ci, dirty = false } = {}) {
   let thrown = null;
   let finalState = null;
   try {
-    const outcome = await verbClose(ctx);
-    exitCode = outcome?.exitCode ?? (process.exitCode || null);
+    await verbClose(ctx);
   } catch (err) {
     if (!/__exit_\d+__/.test(err.message)) thrown = err;
   } finally {
@@ -117,11 +121,11 @@ async function run({ state = baseState(), over = {}, ci, dirty = false } = {}) {
     console.log = real.log;
     console.error = real.err;
     console.warn = real.warn;
-    process.exitCode = previousExitCode;
     rmSync(dir, { recursive: true, force: true });
     if (repo) rmSync(repo, { recursive: true, force: true });
     setEnv('TT_SKIP_DIRTY_CHECK', prevSkip);
     setEnv('CI', prevCI);
+    setEnv('AI_TASK_MANAGER_PROJECT_DIR', prevProjectDir);
   }
   return {
     exitCode,
@@ -182,43 +186,64 @@ test('convergence close-issue: board Done + issue OPEN → gh close', async () =
   const r = await run({
     over: {
       SKIP_NETWORK: false,
-      closeBody: APPROVED_BODY,
       getIssueBoardState: async () => 'done',
+      estimationOutcomeWriter: {
+        ensure: async () => {
+          calls.push('outcome 5');
+          return { status: 'written' };
+        },
+      },
       writeTerminalDisposition: async ({ issueNumber, disposition }) => {
         calls.push(`disposition ${issueNumber} ${disposition}`);
       },
-      pexec: async (cmd, args) => (
-        calls.push(`${cmd} ${args.join(' ')}`),
-        { stdout: '', stderr: '' }
-      ),
+      pexec: async (cmd, args) => {
+        calls.push(`${cmd} ${args.join(' ')}`);
+        if (cmd === 'gh' && args.join(' ').includes('issue view')) {
+          return { stdout: JSON.stringify({ body: READY_BODY }), stderr: '' };
+        }
+        return { stdout: '', stderr: '' };
+      },
     },
   });
   assert.match(r.stdout, /board was Done but the GitHub issue was still OPEN/);
   const dispositionIndex = calls.indexOf('disposition 5 Delivered');
+  const outcomeIndex = calls.indexOf('outcome 5');
   const closeIndex = calls.findIndex((c) => c.includes('issue close 5'));
   assert.ok(dispositionIndex >= 0, `expected Delivered write; got ${JSON.stringify(calls)}`);
   assert.ok(
-    closeIndex > dispositionIndex,
-    `expected write before close; got ${JSON.stringify(calls)}`
+    outcomeIndex >= 0 && dispositionIndex > outcomeIndex && closeIndex > dispositionIndex,
+    `expected outcome, Delivered write, then close; got ${JSON.stringify(calls)}`
   );
 });
-test('convergence close-issue: stale authority refuses before gh close', async () => {
+test('convergence close-issue: outcome failure leaves the issue OPEN and active', async () => {
   resetExit();
   const calls = [];
-  const staleBody = `${APPROVED_BODY}<!-- aitm-review-invalidated schema="1" epoch="review:1:2026-06-28T00:00:01Z" ts="2026-06-28T00:00:04Z" reason="review-failed" -->`;
   const r = await run({
     over: {
       SKIP_NETWORK: false,
-      closeBody: staleBody,
       getIssueBoardState: async () => 'done',
-      pexec: async (cmd, args) => (
-        calls.push(`${cmd} ${args.join(' ')}`),
-        { stdout: '', stderr: '' }
-      ),
+      estimationOutcomeWriter: {
+        ensure: async () => {
+          calls.push('outcome 5');
+          throw new Error('outcome unavailable');
+        },
+      },
+      writeTerminalDisposition: async () => calls.push('disposition'),
+      pexec: async (cmd, args) => {
+        calls.push(`${cmd} ${args.join(' ')}`);
+        if (cmd === 'gh' && args.join(' ').includes('issue view')) {
+          return { stdout: JSON.stringify({ body: READY_BODY }), stderr: '' };
+        }
+        return { stdout: '', stderr: '' };
+      },
     },
   });
-  assert.equal(exitOf(r), 3);
+  assert.equal(exitOf(r), 1);
+  assert.equal(r.finalState.active, '#5');
+  assert.ok(calls.includes('outcome 5'));
+  assert.ok(!calls.includes('disposition'));
   assert.ok(!calls.some((call) => call.includes('issue close 5')));
+  assert.match(r.stderr, /outcome unavailable/);
   resetExit();
 });
 test('convergence close-issue: disposition failure leaves issue OPEN and active', async () => {
@@ -227,7 +252,6 @@ test('convergence close-issue: disposition failure leaves issue OPEN and active'
   const r = await run({
     over: {
       SKIP_NETWORK: false,
-      closeBody: APPROVED_BODY,
       getIssueBoardState: async () => 'done',
       writeTerminalDisposition: async () => {
         throw new Error('Disposition field missing');
@@ -248,7 +272,6 @@ test('convergence close-issue: gh close fails → exit 1', async () => {
   const r = await run({
     over: {
       SKIP_NETWORK: false,
-      closeBody: APPROVED_BODY,
       getIssueBoardState: async () => 'done',
       pexec: async () => {
         throw new Error('gh boom');
@@ -286,16 +309,30 @@ test('convergence noop + boardDrift: move fails + board not Done → exit 1', as
   resetExit();
 });
 test('convergence noop, no drift: issue CLOSED + board Done → already closed', async () => {
+  const calls = [];
   const r = await run({
     over: {
       SKIP_NETWORK: false,
       getIssueBoardState: async () => 'done',
       getIssueClosedState: async () => true,
+      estimationOutcomeWriter: {
+        ensure: async () => {
+          calls.push('outcome 5');
+          return { status: 'existing' };
+        },
+      },
+      pexec: async (cmd, args) => {
+        if (cmd === 'gh' && args.join(' ').includes('issue view')) {
+          return { stdout: JSON.stringify({ body: READY_BODY }), stderr: '' };
+        }
+        return { stdout: '', stderr: '' };
+      },
       writeTerminalDisposition: async () => {
         throw new Error('already-closed noop must not infer Delivered');
       },
     },
   });
+  assert.deepEqual(calls, ['outcome 5']);
   assert.match(r.stdout, /already fully closed/);
 });
 
@@ -318,6 +355,18 @@ test('happy tail: no approval marker → review:approved suppressed', async () =
   });
   assert.match(r.stdout, /Closed #5/);
   assert.equal(rows.filter((row) => /review:approved/.test(row)).length, 0);
+});
+test('happy-tail candidate refuses close when terminal timing is only queued', async () => {
+  const r = await run({
+    over: {
+      closeBody: APPROVED_BODY,
+      safePostTiming: async () => ({ ok: false, queued: true, err: 'network down' }),
+    },
+  });
+  assert.doesNotMatch(r.stdout, /Closed #5/);
+  assert.match(r.stderr, /terminal timing .* was not durably posted/);
+  assert.equal(exitOf(r), 1);
+  resetExit();
 });
 test('final move non-benign failure + board not Done → exit 1', async () => {
   const r = await run({
@@ -389,15 +438,12 @@ test('gate-eval failure, no --force → fail-closed exit 3', async () => {
         cmd === 'gh' && args.join(' ').includes('issue view')
           ? { stdout: JSON.stringify({ body: APPROVED_BODY }), stderr: '' }
           : { stdout: '', stderr: '' },
-      uncheckedPreCloseCheckboxes: () => {
-        throw new Error('synthetic close-gate evaluation failure');
-      },
     },
   });
   assert.equal(r.exitCode, 3);
   assert.match(r.stderr, /close-gate evaluation failed/);
 });
-test('--force cannot use the parent lease for child cascade effects', async () => {
+test('--force: gate-eval throw swallowed → cascade + close pipeline → Closed', async () => {
   const calls = [];
   const parentDoneOptions = [];
   const r = await run({
@@ -407,6 +453,12 @@ test('--force cannot use the parent lease for child cascade effects', async () =
       getIssueBoardState: async (n) =>
         String(n).replace(/^#/, '') === '102' ? 'develop' : 'review',
       fetchSubIssues: async () => ['101', '102'],
+      estimationOutcomeWriter: {
+        ensure: async ({ issueNumber }) => {
+          calls.push(`outcome ${issueNumber}`);
+          return { status: 'written' };
+        },
+      },
       writeTerminalDisposition: async ({ issueNumber, disposition }) => {
         calls.push(`disposition ${issueNumber} ${disposition}`);
       },
@@ -430,13 +482,37 @@ test('--force cannot use the parent lease for child cascade effects', async () =
       },
     },
   });
-  assert.equal(r.exitCode, 3);
-  assert.match(r.stderr, /child issue\(s\) require their own work lease/);
-  assert.ok(!calls.some((c) => /disposition 101|move 101|issue close (101|5)/.test(c)), calls);
-  assert.ok(!calls.some((c) => /disposition 5/.test(c)), calls);
-  assert.equal(parentDoneOptions.length, 0, 'no parent Done move occurs before child refusal');
+  assert.match(r.stdout, /Closed #5/);
+  const childDispositionIndex = calls.indexOf('disposition 101 Delivered');
+  const childOutcomeIndex = calls.indexOf('outcome 101');
+  const childDoneIndex = calls.indexOf('move 101 done');
+  const childCloseIndex = calls.findIndex((c) => /issue close 101/.test(c));
+  const parentDispositionIndex = calls.indexOf('disposition 5 Delivered');
+  const parentOutcomeIndex = calls.indexOf('outcome 5');
+  const parentDoneIndex = calls.indexOf('move 5 done');
+  const parentCloseIndex = calls.findIndex((c) => /issue close 5/.test(c));
+  assert.ok(childDispositionIndex >= 0, `expected child Delivered write; got ${calls}`);
+  assert.ok(
+    childOutcomeIndex >= 0 &&
+      childDoneIndex > childOutcomeIndex &&
+      childDispositionIndex > childDoneIndex &&
+      childCloseIndex > childDispositionIndex,
+    `expected child outcome before Done, Delivered write, and close; got ${calls}`
+  );
+  assert.ok(parentDispositionIndex >= 0, `expected parent Delivered write; got ${calls}`);
+  assert.ok(
+    parentOutcomeIndex >= 0 &&
+      parentDoneIndex > parentOutcomeIndex &&
+      parentDispositionIndex > parentDoneIndex &&
+      parentCloseIndex > parentDispositionIndex,
+    `expected parent outcome before Done, Delivered write, and close; got ${calls}`
+  );
+  assert.equal(parentDoneOptions.length, 2, 'forced pre-move and final move must both run');
+  assert.deepEqual(parentDoneOptions[0].extraArgs, ['--force']);
+  assert.equal(parentDoneOptions[0].reviewAuthority, 'human-gate');
+  assert.equal(parentDoneOptions[1].reviewAuthority, 'human-gate');
 });
-test('cascade refusal leaves child and parent OPEN and active before disposition', async () => {
+test('cascade: disposition failure leaves child and parent OPEN and active', async () => {
   resetExit();
   const ghCalls = [];
   const r = await run({
@@ -461,12 +537,145 @@ test('cascade refusal leaves child and parent OPEN and active before disposition
       },
     },
   });
-  assert.equal(exitOf(r), 3);
+  assert.equal(exitOf(r), 1);
   assert.equal(r.finalState.active, '#5');
   assert.ok(!ghCalls.some((c) => /issue close (101|5)/.test(c)));
   assert.doesNotMatch(r.stdout, /✓ #101 closed/);
-  assert.match(r.stderr, /require their own work lease/);
+  assert.match(r.stderr, /Delivered option missing/);
   resetExit();
+});
+
+test('cascade: outcome failure leaves child in Review and parent OPEN and active', async () => {
+  resetExit();
+  const calls = [];
+  const r = await run({
+    over: {
+      SKIP_NETWORK: false,
+      rest: ['#5', '--force'],
+      getIssueBoardState: async () => 'review',
+      fetchSubIssues: async () => ['101'],
+      estimationOutcomeWriter: {
+        ensure: async ({ issueNumber }) => {
+          calls.push(`outcome ${issueNumber}`);
+          if (String(issueNumber) === '101') throw new Error('child outcome unavailable');
+          return { status: 'written' };
+        },
+      },
+      runMoveState: async (issueNumber, state) => {
+        calls.push(`move ${issueNumber} ${state}`);
+        return { ok: true, benign: false };
+      },
+      writeTerminalDisposition: async ({ issueNumber, disposition }) => {
+        calls.push(`disposition ${issueNumber} ${disposition}`);
+      },
+      pexec: async (cmd, args) => {
+        const rendered = `${cmd} ${args.join(' ')}`;
+        calls.push(rendered);
+        if (cmd === 'gh' && rendered.includes('issue view') && rendered.includes('--jq')) {
+          return { stdout: APPROVED_BODY, stderr: '' };
+        }
+        if (cmd === 'gh' && rendered.includes('issue view')) {
+          return { stdout: JSON.stringify({ body: APPROVED_BODY }), stderr: '' };
+        }
+        return { stdout: '', stderr: '' };
+      },
+    },
+  });
+  assert.equal(exitOf(r), 1);
+  assert.equal(r.finalState.active, '#5');
+  assert.ok(calls.includes('outcome 101'));
+  assert.ok(!calls.includes('move 101 done'));
+  assert.ok(!calls.includes('disposition 101 Delivered'));
+  assert.ok(!calls.some((call) => /issue close (101|5)/.test(call)));
+  assert.match(r.stderr, /child outcome unavailable/);
+  resetExit();
+});
+
+test('cascade: queued terminal timing leaves child in Review and retains evidence for retry', async () => {
+  resetExit();
+  const calls = [];
+  const r = await run({
+    over: {
+      SKIP_NETWORK: false,
+      rest: ['#5', '--force'],
+      getIssueBoardState: async () => 'review',
+      fetchSubIssues: async () => ['101'],
+      safePostTiming: async (target) => {
+        calls.push(`timing ${target}`);
+        return { ok: false, queued: true, err: 'network down' };
+      },
+      flushQueueFor: async (target) => {
+        calls.push(`flush ${target}`);
+        return { delivered: 0, pending: 1 };
+      },
+      estimationOutcomeWriter: {
+        ensure: async ({ issueNumber }) => {
+          calls.push(`outcome ${issueNumber}`);
+          return { status: 'written' };
+        },
+      },
+      runMoveState: async (issueNumber, state) => {
+        calls.push(`move ${issueNumber} ${state}`);
+        return { ok: true, benign: false };
+      },
+      pexec: async (cmd, args) => {
+        const rendered = `${cmd} ${args.join(' ')}`;
+        calls.push(rendered);
+        if (cmd === 'gh' && rendered.includes('issue view')) {
+          return rendered.includes('--jq')
+            ? { stdout: APPROVED_BODY, stderr: '' }
+            : { stdout: JSON.stringify({ body: APPROVED_BODY }), stderr: '' };
+        }
+        return { stdout: '', stderr: '' };
+      },
+    },
+  });
+  assert.equal(exitOf(r), 1);
+  assert.equal(r.finalState.active, '#5');
+  assert.ok(calls.includes('timing #101'));
+  assert.ok(!calls.includes('outcome 101'));
+  assert.ok(!calls.includes('move 101 done'));
+  assert.ok(!calls.some((call) => /issue close (101|5)/.test(call)));
+  assert.match(r.stderr, /terminal timing issue:wrap was not durably posted/);
+  resetExit();
+});
+
+test('cascade: each child outcome uses its own resolved worktree', async () => {
+  const calls = [];
+  const r = await run({
+    over: {
+      SKIP_NETWORK: false,
+      rest: ['#5', '--force'],
+      closeBody: READY_BODY,
+      getIssueBoardState: async () => 'review',
+      fetchSubIssues: async () => ['101'],
+      resolveIssueWorkspace: ({ issueRef }) => `/dedicated/${issueRef.replace('#', '')}`,
+      createEstimationOutcomeWriter: ({ projectDir }) => ({
+        ensure: async ({ issueNumber }) => {
+          calls.push(`outcome ${issueNumber} ${projectDir}`);
+          return { status: 'written' };
+        },
+      }),
+      runMoveState: async () => ({ ok: true, benign: false }),
+      runMoveStateDone: async () => ({ ok: true, benign: false }),
+      pexec: async (cmd, args) => {
+        const rendered = `${cmd} ${args.join(' ')}`;
+        if (cmd === 'gh' && rendered.includes('issue view') && rendered.includes('--jq')) {
+          return { stdout: READY_BODY, stderr: '' };
+        }
+        if (cmd === 'gh' && rendered.includes('issue view')) {
+          return { stdout: JSON.stringify({ body: READY_BODY }), stderr: '' };
+        }
+        return { stdout: '', stderr: '' };
+      },
+    },
+  });
+  assert.match(r.stdout, /Closed #5/);
+  assert.ok(calls.includes('outcome 101 /dedicated/101'), JSON.stringify(calls));
+  assert.ok(
+    calls.some((call) => /^outcome 5 /.test(call)),
+    JSON.stringify(calls)
+  );
 });
 
 // --- assertFieldsPersisted throw branches via the --force tail ---

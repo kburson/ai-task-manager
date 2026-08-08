@@ -42,7 +42,7 @@ assert.match(r.stdout, /no active task/i);
 
 // Test 5: /task #107 starts a task (network skipped)
 let r5 = await pexec('node', [CLI, '#107'], { env });
-assert.match(r5.stdout, /Started #107/);
+assert.match(r5.stdout, /Active: #107/);
 
 // Test 6: /task status reflects active
 r5 = await pexec('node', [CLI, 'status'], { env });
@@ -136,18 +136,19 @@ await pexec('node', [CLI, 'pause'], { env: switchEnv });
 
 // `/task start #201` must bind #201, not lastActive #200. It binds the target
 // directly rather than delegating to switch. The first-ever bind of #201 (no
-// timing history of its own — the pause was on #200). The stable CLI contract
-// reports the requested issue as active.
+// timing history of its own — the pause was on #200) reads an absent timing
+// log and emits the canonical `start` row, not `resumed`: a re-engagement on an
+// issue with no open interruption and no prior start is downgraded to `start`.
 let rs = await pexec('node', [CLI, 'start', '#201'], { env: switchEnv });
-assert.match(rs.stdout, /Active: #201/, '/task start #N should bind the requested issue');
+assert.match(rs.stdout, /Started #201/, '/task start #N should bind #N as a fresh start');
 assert.doesNotMatch(rs.stdout, /Resumed #200/, '/task start #N must not resume lastActive');
 
 // Regression guard: `/task resume #N` binds the target directly (no switch
 // delegation) when there is no active task. #202 is likewise a fresh first
-// bind and reports the requested issue as active.
+// bind, so under the #534 pairing invariant it emits `start`, not `resumed`.
 await pexec('node', [CLI, 'pause'], { env: switchEnv });
 rs = await pexec('node', [CLI, 'resume', '#202'], { env: switchEnv });
-assert.match(rs.stdout, /Active: #202/, '/task resume #N should bind the requested issue');
+assert.match(rs.stdout, /Started #202/, '/task resume #N should bind #N as a fresh start');
 
 // `/task resume` with no arg and after pause resumes lastActive.
 await pexec('node', [CLI, 'pause'], { env: switchEnv });

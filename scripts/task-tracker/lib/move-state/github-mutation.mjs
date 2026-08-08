@@ -26,7 +26,6 @@ import { getProjectDir, projectTmpDir } from '../../paths.mjs';
 import { GH_API_TIMEOUT_MS } from '../process-timeouts.mjs';
 import { writeFileSync, unlinkSync } from 'node:fs';
 import path from 'node:path';
-import { isGovernedAuthorityError } from '../work-lease/governed-effect.mjs';
 
 // #711 — how many times the write+read-back cycle is attempted before
 // runStatusWrite gives up and fails loudly, and the base backoff between them.
@@ -130,7 +129,6 @@ export async function runStatusWrite(ctx) {
     let confirmed = false;
     let lastSeen = '';
     for (let attempt = 1; attempt <= STATUS_WRITE_MAX_ATTEMPTS; attempt++) {
-      await ctx.reverifyGovernedEffect?.();
       await gh([
         'project',
         'item-edit',
@@ -219,7 +217,6 @@ export async function stampEntryMarkers(ctx) {
         target: stateArg,
         writeIssueBody: async ({ body }) => {
           try {
-            await ctx.reverifyGovernedEffect?.();
             writeFileSync(tmp, body, 'utf8');
             await gh(['issue', 'edit', issueArg, '-R', cfg.repo, '--body-file', tmp]);
           } finally {
@@ -243,25 +240,10 @@ export async function stampEntryMarkers(ctx) {
         stage: stateArg,
         visit: nextVisitCount,
         ts: stampTs,
-        listComments: async ({ repo, issueNumber }) => {
-          await ctx.reverifyGovernedEffect?.();
-          const { stdout } = await pexec(
-            'gh',
-            ['issue', 'view', String(issueNumber), '-R', repo, '--json', 'comments'],
-            { timeout: GH_API_TIMEOUT_MS }
-          );
-          const parsed = JSON.parse(stdout || '{}');
-          return Array.isArray(parsed.comments) ? parsed.comments : [];
-        },
-        postComment: async ({ repo, issueNumber, body }) => {
-          await ctx.reverifyGovernedEffect?.();
-          await gh(['issue', 'comment', String(issueNumber), '-R', repo, '--body', body]);
-        },
       });
     }
     return { priorState };
   } catch (err) {
-    if (isGovernedAuthorityError(err)) throw err;
     // #544 — a stamp failure here is non-atomic with the already-committed
     // board move (runStatusWrite ran first): the board now shows `stateArg`
     // with no `aitm-entered-<stage>` marker, a silent contiguity hole that can
@@ -274,12 +256,11 @@ export async function stampEntryMarkers(ctx) {
       repo: cfg.repo,
       stage: stateArg,
       error: err.message,
-      postComment: async (args) => {
-        await ctx.reverifyGovernedEffect?.();
-        if (ctx.postComment) return ctx.postComment(args);
-        const { issueNumber, repo, body } = args;
-        return gh(['issue', 'comment', String(issueNumber), '-R', repo, '--body', body]);
-      },
+      postComment:
+        ctx.postComment ||
+        (async ({ issueNumber, repo, body }) => {
+          await gh(['issue', 'comment', String(issueNumber), '-R', repo, '--body', body]);
+        }),
     });
   }
 }
@@ -317,7 +298,6 @@ export async function postStampFailureAudit({ issueNumber, repo, stage, error, p
     await postComment({ issueNumber, repo, body });
     return { mode: 'posted' };
   } catch (postErr) {
-    if (isGovernedAuthorityError(postErr)) throw postErr;
     process.stderr.write(
       `[move-state] #${issueNumber}: stamp-failure audit comment post FAILED: ${postErr.message}\n`
     );
@@ -361,7 +341,6 @@ export async function rollbackRecordedState(ctx, priorState) {
     target: priorState,
     writeIssueBody: async ({ body }) => {
       try {
-        await ctx.reverifyGovernedEffect?.();
         writeFileSync(tmp, body, 'utf8');
         await gh(['issue', 'edit', issueArg, '-R', cfg.repo, '--body-file', tmp]);
       } finally {

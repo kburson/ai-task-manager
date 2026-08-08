@@ -17,6 +17,7 @@
 // (other guards / verb-layer surface the absence).
 
 import { hasDodVerifiedMarker } from './markers.mjs';
+import { hasAcceptedTestEvidence } from './github-records/lifecycle-gate-source.mjs';
 
 export const GUARD_ID = 'develop-exit-sandbox-proof';
 
@@ -25,6 +26,7 @@ export const developExitSandboxProofGuard = {
   run(ctx) {
     if (ctx?.toState && ctx.toState !== 'test') return { ok: true };
     if (typeof ctx?.body !== 'string') return { ok: true };
+    if (hasAcceptedTestEvidence(ctx.lifecycleEvidence)) return { ok: true };
     if (hasDodVerifiedMarker(ctx.body)) return { ok: true };
     const n = String(ctx.issueNumber ?? '').replace(/^#/, '');
     const blocker =

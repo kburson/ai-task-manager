@@ -36,9 +36,9 @@ const EXPECTED_CODEX_STATE_DIR = '.tmp/aitm/app/codex';
 const EXPECTED_CLAUDE_TRANSCRIPT_LOCATOR = '.claude/projects';
 const EXPECTED_CODEX_TRANSCRIPT_LOCATOR = '.codex/sessions'; // #477 — date-bucketed rollout dir
 const EXPECTED_CLAUDE_SESSION_ID_ENV_KEYS = ['CLAUDE_CODE_SESSION_ID', 'CLAUDE_SESSION_ID'];
-const EXPECTED_CODEX_SESSION_ID_ENV_KEYS = ['CODEX_SESSION_ID'];
+const EXPECTED_CODEX_SESSION_ID_ENV_KEYS = ['CODEX_THREAD_ID', 'CODEX_SESSION_ID'];
 const EXPECTED_CLAUDE_DETECTION_ENV_KEYS = ['CLAUDE_CODE_SESSION_ID', 'CLAUDE_SESSION_ID'];
-const EXPECTED_CODEX_DETECTION_ENV_KEYS = ['CODEX_SESSION_ID', 'CODEX_HOME'];
+const EXPECTED_CODEX_DETECTION_ENV_KEYS = ['CODEX_THREAD_ID', 'CODEX_SESSION_ID', 'CODEX_HOME'];
 const EXPECTED_CLAUDE_HOOK_CAPABILITY = true;
 const EXPECTED_CODEX_HOOK_CAPABILITY = true;
 
@@ -68,6 +68,11 @@ test('detectProvider returns codex when CODEX_SESSION_ID is set', () => {
   assert.equal(adapter.name, 'codex');
 });
 
+test('#1092: detectProvider returns codex when Codex Desktop exposes CODEX_THREAD_ID', () => {
+  const adapter = detectProvider({ env: { CODEX_THREAD_ID: 'desktop-thread' } });
+  assert.equal(adapter.name, 'codex');
+});
+
 test('detectProvider returns claude when CLAUDE_SESSION_ID is set', () => {
   const adapter = detectProvider({ env: { CLAUDE_SESSION_ID: 'abc' } });
   assert.equal(adapter.name, 'claude');
@@ -88,6 +93,7 @@ test('claude adapter enumerates all six capabilities', () => {
     'installTarget',
     'stateDir',
     'transcriptLocator',
+    'transcriptSchema',
     'sessionIdEnvKeys',
     'hookCapability',
     'skillAdapterPath',
@@ -101,6 +107,7 @@ test('codex adapter enumerates all six capabilities', () => {
     'installTarget',
     'stateDir',
     'transcriptLocator',
+    'transcriptSchema',
     'sessionIdEnvKeys',
     'hookCapability',
     'skillAdapterPath',
@@ -185,6 +192,11 @@ test('parity: claude.transcriptLocator matches previous hard-coded homedir-relat
 
 test('parity: codex.transcriptLocator is the date-bucketed rollout dir (#477)', () => {
   assert.equal(codexAdapter.transcriptLocator, EXPECTED_CODEX_TRANSCRIPT_LOCATOR);
+});
+
+test('#1092: provider adapters declare their native transcript schemas', () => {
+  assert.equal(claudeAdapter.transcriptSchema, 'claude-message-v1');
+  assert.equal(codexAdapter.transcriptSchema, 'codex-rollout-v1');
 });
 
 test('parity: claude.sessionIdEnvKeys matches previous hard-coded list', () => {

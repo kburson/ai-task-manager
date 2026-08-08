@@ -1,4 +1,4 @@
-// @story #310
+// @story #310 #1089
 // Unit tests for scripts/task-tracker/verbs/test.mjs — the sandboxed /task test
 // runner (#137). All I/O is stubbed; no real worktree, npm, or gh.
 

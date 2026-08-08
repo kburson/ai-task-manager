@@ -19,7 +19,6 @@ import path from 'node:path';
 import { mkdtempSync, mkdirSync, writeFileSync, rmSync, chmodSync } from 'node:fs';
 
 import { verbDodStamp } from '../../../verbs/dod-stamp.mjs';
-import { withTestGovernedEffect } from '../../helpers/governed-effect.mjs';
 import { projectScratchDir } from '../../../lib/scratch-dir.mjs';
 
 const TEST_CMD = 'node --test scripts/task-tracker/tests/unit/coverage-dod-stamp.test.mjs';
@@ -137,10 +136,7 @@ async function runVerb(ctx) {
 const baseCtx = (over) => ({
   cfg: { repo: 'o/r' },
   projectDir: tmpRoot,
-  deps: {
-    now: () => '2026-06-29T00:00:00.000Z',
-    withGovernedEffect: withTestGovernedEffect,
-  },
+  deps: { now: () => '2026-06-29T00:00:00.000Z' },
   ...over,
 });
 
