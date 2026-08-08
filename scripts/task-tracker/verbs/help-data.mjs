@@ -515,12 +515,20 @@ export const VERB_REFERENCE = {
   },
   'mirror-deep-dive': {
     topic: 'evidence',
-    summary: 'Mirror a deep-dive analysis from an existing comment into the issue body.',
-    usage: '/task mirror-deep-dive --from-comment <id|url> [#N]',
+    summary:
+      'Mirror a deep-dive analysis from an existing comment or repair one legacy block placement.',
+    usage: '/task mirror-deep-dive (--from-comment <id|url> | --repair-placement) [#N]',
     flags: [
       { flag: '--from-comment <id|url>', desc: 'source comment (id, URL, or #issuecomment-<id>)' },
+      {
+        flag: '--repair-placement',
+        desc: 'relocate one existing block after Pickup without fetching a comment',
+      },
     ],
-    examples: ['/task mirror-deep-dive --from-comment 4866618296 667'],
+    examples: [
+      '/task mirror-deep-dive --from-comment 4866618296 667',
+      '/task mirror-deep-dive --repair-placement 667',
+    ],
   },
 
   // ── creation & discovery ──────────────────────────────────────────────────

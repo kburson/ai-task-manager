@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// @story #32
+// @story #32 #1183
 // Tests for scripts/task-tracker/lib/body-gates.mjs
 //   - ticked-without-section refuses
 //   - unticked is allowed
@@ -10,6 +10,7 @@
 
 import { strict as assert } from 'node:assert';
 import { validateBody, DEFAULT_GATES } from '../../../lib/body-gates.mjs';
+import { repairDeepDivePlacementBody } from '../../../lib/deep-dive.mjs';
 
 // #325 — body-gates `deep-dive-complete` rule changed from
 // `minNonEmptyLines: 20` to `minSectionChars: 2000`. Each generated line
@@ -268,6 +269,30 @@ function deepDiveSection(lines = 25) {
   ].join('\n');
   const r = validateBody(body, { gates: DEFAULT_GATES });
   assert.equal(r.ok, true, `expected ok, refused: ${JSON.stringify(r.refusedRules)}`);
+}
+
+// 13b. #1183 repair output satisfies the existing placement gate without
+// weakening or replacing that gate.
+{
+  const legacy = [
+    '## Scope',
+    'stuff',
+    '',
+    '<details>',
+    '<summary>Legacy Deep-Dive</summary>',
+    '',
+    deepDiveSection(25),
+    '',
+    '</details>',
+    '',
+    '## Pickup Directive',
+    '- [ ] Deep dive complete',
+    '',
+    '<!-- aitm-fields: {"schema":1,"values":{"size":"M"}} -->',
+  ].join('\n');
+  const repaired = repairDeepDivePlacementBody(legacy);
+  const r = validateBody(repaired, { gates: DEFAULT_GATES });
+  assert.equal(r.ok, true, `expected repaired body to pass: ${JSON.stringify(r.refusedRules)}`);
 }
 
 // 14. deep-dive-complete: size-bucketed floor — XS body with ~1400 chars passes

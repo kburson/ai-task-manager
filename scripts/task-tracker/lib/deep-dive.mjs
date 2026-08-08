@@ -411,6 +411,134 @@ export function parseFromCommentArg(input) {
   );
 }
 
+const REPAIR_HEADING_RE = /^##\s+Deep[- ]Dive Analysis\b.*$/i;
+const REPAIR_PICKUP_RE = /^##\s+Pickup Directive\b.*$/i;
+const REPAIR_FIELDS_RE = /^\s*<!--\s*(?:ai-task-manager:fields:start|aitm-fields:)\s*/i;
+const REPAIR_DETAILS_OPEN_RE = /^\s*<details\b[^>]*>\s*$/i;
+const REPAIR_DETAILS_CLOSE_RE = /^\s*<\/details>\s*$/i;
+const REPAIR_MARKER_BOUNDARY_RE = /^\s*<!--\s*aitm-/i;
+
+function repairError(category) {
+  return new TypeError(`deep-dive-placement-repair:${category}`);
+}
+
+function repairLines(src) {
+  const text = src.split('\n');
+  let offset = 0;
+  return text.map((line, index) => {
+    const start = offset;
+    const end = start + line.length + (index < text.length - 1 ? 1 : 0);
+    offset = end;
+    return { line, start, end };
+  });
+}
+
+/**
+ * Relocate one legacy Deep-Dive block into the Pickup-to-fields boundary.
+ * The identified block is carried as an opaque byte slice; only separator
+ * newlines at its removal and insertion seams may be added.
+ */
+export function repairDeepDivePlacementBody(body = '') {
+  const src = String(body || '');
+  const lines = repairLines(src);
+  const containers = [];
+  let openLine = null;
+
+  for (let index = 0; index < lines.length; index += 1) {
+    const { line } = lines[index];
+    if (REPAIR_DETAILS_OPEN_RE.test(line)) {
+      if (openLine !== null) throw repairError('ambiguous-wrapper');
+      openLine = index;
+      continue;
+    }
+    if (REPAIR_DETAILS_CLOSE_RE.test(line)) {
+      if (openLine === null) throw repairError('malformed-wrapper');
+      containers.push({ open: openLine, close: index });
+      openLine = null;
+    }
+  }
+  if (openLine !== null) throw repairError('malformed-wrapper');
+
+  const insideContainer = (index) =>
+    containers.some(({ open, close }) => index > open && index < close);
+  const headings = lines
+    .map(({ line }, index) => (REPAIR_HEADING_RE.test(line) ? index : -1))
+    .filter((index) => index !== -1);
+  if (headings.length !== 1) throw repairError('heading-count');
+  const heading = headings[0];
+
+  const pickups = lines
+    .map(({ line }, index) => (REPAIR_PICKUP_RE.test(line) && !insideContainer(index) ? index : -1))
+    .filter((index) => index !== -1);
+  if (pickups.length !== 1) throw repairError('pickup-boundary');
+  const fields = lines
+    .map(({ line }, index) => (REPAIR_FIELDS_RE.test(line) && !insideContainer(index) ? index : -1))
+    .filter((index) => index !== -1);
+  if (fields.length !== 1) throw repairError('fields-boundary');
+
+  const wrappers = containers.filter(({ open, close }) => heading > open && heading < close);
+  if (wrappers.length > 1) throw repairError('ambiguous-wrapper');
+
+  // Validate the whole structure before honoring the already-canonical no-op.
+  if (heading > pickups[0] && heading < fields[0]) return src;
+
+  const wrapper = wrappers[0] ?? null;
+  let startLine = wrapper ? wrapper.open : heading;
+  let previous = startLine - 1;
+  while (previous >= 0 && lines[previous].line.trim() === '') previous -= 1;
+  if (previous >= 0 && POSTED_RE.test(lines[previous].line)) startLine = previous;
+
+  let end;
+  if (wrapper) {
+    let endLine = wrapper.close + 1;
+    while (endLine < lines.length && lines[endLine].line.trim() === '') endLine += 1;
+    end = endLine < lines.length ? lines[endLine].start : src.length;
+  } else {
+    let endLine = heading + 1;
+    while (endLine < lines.length) {
+      const line = lines[endLine].line;
+      if (
+        (!insideContainer(endLine) && /^##\s+/.test(line)) ||
+        REPAIR_FIELDS_RE.test(line) ||
+        REPAIR_MARKER_BOUNDARY_RE.test(line)
+      ) {
+        break;
+      }
+      endLine += 1;
+    }
+    end = endLine < lines.length ? lines[endLine].start : src.length;
+  }
+
+  const start = lines[startLine].start;
+  const block = src.slice(start, end);
+  const without = `${src.slice(0, start)}${src.slice(end)}`;
+  const offset = findInsertOffset(without);
+  const before = without.slice(0, offset);
+  const after = without.slice(offset);
+  const leftSeparator = before && !before.endsWith('\n') && !block.startsWith('\n') ? '\n\n' : '';
+  const rightSeparator =
+    block && !block.endsWith('\n') && after && !after.startsWith('\n') ? '\n\n' : '';
+  return `${before}${leftSeparator}${block}${rightSeparator}${after}`;
+}
+
+export async function repairDeepDivePlacement({ issueNumber, repo, deps = {} } = {}) {
+  if (issueNumber == null) throw new Error('repairDeepDivePlacement: issueNumber is required');
+  if (!repo) throw new Error('repairDeepDivePlacement: repo is required');
+  const mutateIssueBodyFn = deps.mutateIssueBody || mutateIssueBody;
+  let changed = false;
+  await mutateIssueBodyFn({
+    issueNumber,
+    repo,
+    deps,
+    mutate(base) {
+      const next = repairDeepDivePlacementBody(base);
+      changed = next !== base;
+      return next;
+    },
+  });
+  return { status: changed ? 'repaired' : 'no-op' };
+}
+
 // #331 — strip a leading top-level heading from a comment body before it is
 // mirrored into the issue body. Removes any of:
 //   - `## Deep-Dive Analysis [(...)]`

@@ -6,7 +6,7 @@
 // Defaults to the active bound issue when `#N` is omitted. Refuses (exit 2)
 // when `--from-comment` is missing or when no `#N` and no active binding.
 
-import { mirrorDeepDiveFromComment } from '../lib/deep-dive.mjs';
+import { mirrorDeepDiveFromComment, repairDeepDivePlacement } from '../lib/deep-dive.mjs';
 import { loadState } from '../state.mjs';
 
 function parseRepoFromCfg(cfg) {
@@ -18,23 +18,51 @@ function parseRepoFromCfg(cfg) {
 }
 
 export async function verbMirrorDeepDive(ctx) {
-  const { cfg, rest, statePath } = ctx;
+  const { cfg, rest, statePath, deps = {} } = ctx;
   let fromComment = null;
+  let repairPlacement = false;
   let target = null;
   for (let i = 0; i < rest.length; i++) {
     const a = rest[i];
     if (a === '--from-comment') {
+      if (fromComment !== null || rest[i + 1] == null || rest[i + 1].startsWith('--')) {
+        process.stderr.write('mirror-deep-dive: invalid --from-comment value\n');
+        process.exit(2);
+      }
       fromComment = rest[++i];
     } else if (a.startsWith('--from-comment=')) {
+      if (fromComment !== null || a.slice('--from-comment='.length) === '') {
+        process.stderr.write('mirror-deep-dive: invalid --from-comment value\n');
+        process.exit(2);
+      }
       fromComment = a.slice('--from-comment='.length);
+    } else if (a === '--repair-placement') {
+      if (repairPlacement) {
+        process.stderr.write('mirror-deep-dive: duplicate --repair-placement\n');
+        process.exit(2);
+      }
+      repairPlacement = true;
     } else if (/^#?\d+$/.test(a)) {
+      if (target !== null) {
+        process.stderr.write('mirror-deep-dive: duplicate issue target\n');
+        process.exit(2);
+      }
       target = a.replace(/^#/, '');
+    } else {
+      process.stderr.write(`mirror-deep-dive: unknown argument "${a}"\n`);
+      process.exit(2);
     }
   }
 
-  if (!fromComment) {
+  if (repairPlacement && fromComment) {
     process.stderr.write(
-      'mirror-deep-dive: --from-comment <id|url|#issuecomment-<id>> is required\n'
+      'mirror-deep-dive: --repair-placement and --from-comment are mutually exclusive\n'
+    );
+    process.exit(2);
+  }
+  if (!repairPlacement && !fromComment) {
+    process.stderr.write(
+      'mirror-deep-dive: --from-comment <id|url|#issuecomment-<id>> or --repair-placement is required\n'
     );
     process.exit(2);
   }
@@ -52,10 +80,15 @@ export async function verbMirrorDeepDive(ctx) {
   }
 
   const repo = parseRepoFromCfg(cfg);
-  const result = await mirrorDeepDiveFromComment({
-    issueNumber: Number(target),
-    repo,
-    fromComment,
-  });
+  const result = repairPlacement
+    ? await (deps.repairDeepDivePlacement || repairDeepDivePlacement)({
+        issueNumber: Number(target),
+        repo,
+      })
+    : await (deps.mirrorDeepDiveFromComment || mirrorDeepDiveFromComment)({
+        issueNumber: Number(target),
+        repo,
+        fromComment,
+      });
   process.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
 }

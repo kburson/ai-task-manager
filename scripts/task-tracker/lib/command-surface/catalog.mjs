@@ -335,9 +335,13 @@ export const VERB_CONTRACTS = Object.freeze({
     ['Prints the traced commits and comment reference.']
   ),
   'mirror-deep-dive': contract(
-    ['A valid source comment and target issue are required.'],
-    ['Copies the source deep-dive block into the canonical issue-body section.'],
-    ['Prints the source comment and updated issue reference.']
+    [
+      'A target issue and exactly one mode are required: a valid source comment, or one unambiguous existing block for placement repair.',
+    ],
+    [
+      'Copies source prose into the canonical section, or relocates the existing block byte-for-byte through the versioned body writer.',
+    ],
+    ['Prints the source comment or placement-repair result and updated issue reference.']
   ),
   new: contract(
     [

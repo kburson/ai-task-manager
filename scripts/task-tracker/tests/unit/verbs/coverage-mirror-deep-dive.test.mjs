@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// @story #598
+// @story #598 #1183
 // Coverage tests for scripts/task-tracker/verbs/mirror-deep-dive.mjs.
 //
 // `verbMirrorDeepDive` parses `--from-comment` (space and = forms) and an
@@ -99,6 +99,32 @@ async function runVerb(ctx) {
 
 test('missing --from-comment → exit 2', async () => {
   const r = await runVerb({ cfg: { repo: 'o/r' }, rest: [] });
+  assert.equal(r.exitCode, 2);
+});
+
+test('--repair-placement needs no source comment and uses the active target', async () => {
+  const calls = [];
+  const r = await runVerb({
+    cfg: { repo: 'o/r' },
+    rest: ['--repair-placement'],
+    statePath: stateFile('#1183'),
+    deps: {
+      repairDeepDivePlacement: async (input) => {
+        calls.push(input);
+        return { status: 'repaired' };
+      },
+    },
+  });
+  assert.equal(r.threw, null);
+  assert.equal(r.exitCode, null);
+  assert.deepEqual(calls, [{ issueNumber: 1183, repo: 'o/r' }]);
+});
+
+test('repair and source-comment modes are mutually exclusive', async () => {
+  const r = await runVerb({
+    cfg: { repo: 'o/r' },
+    rest: ['--repair-placement', '--from-comment', '777', '1183'],
+  });
   assert.equal(r.exitCode, 2);
 });
 

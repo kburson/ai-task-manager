@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// @story #331
+// @story #331 #1183
 // #331 — unit tests for `mirrorDeepDiveFromComment` + helpers
 // (`parseFromCommentArg`, `stripLeadingDeepDiveHeading`). Hermetic: injects
 // a fake `mutateIssueBody` AND a fake `fetchCommentBody` so no GH I/O
@@ -14,8 +14,10 @@ import {
   DeepDiveAlreadyInlineError,
   mirrorDeepDiveFromComment,
   parseFromCommentArg,
+  repairDeepDivePlacementBody,
   stripLeadingDeepDiveHeading,
 } from '../../../lib/deep-dive.mjs';
+import { validateBody, DEFAULT_GATES } from '../../../lib/body-gates.mjs';
 
 const TS = '2026-06-07T05:00:00.000Z';
 
@@ -267,4 +269,131 @@ test('mirrorDeepDiveFromComment: refuses when comment body is empty', async () =
   assert.equal(result.status, 'refused');
   assert.equal(result.reason, 'empty-comment-body');
   assert.equal(m.log.calls, 0);
+});
+
+// ---------------------------------------------------------------------------
+// repairDeepDivePlacementBody — #1183
+// ---------------------------------------------------------------------------
+
+const POSTED = '<!-- aitm-deep-dive-posted ts="2026-06-07T05:00:00.000Z" -->';
+const SECTION_H2 = '## Deep-Dive Analysis (2026-06-07)';
+const KEEP_SECTION = '## Acceptance Criteria\n\n- [ ] preserve these exact bytes';
+const LEGACY_WRAPPED_BLOCK = [
+  '<details>',
+  '<summary>Deep-Dive Analysis (collapsed)</summary>',
+  '',
+  POSTED,
+  '',
+  SECTION_H2,
+  '',
+  `> Mirrored from comment #issuecomment-${COMMENT_ID} (${COMMENT_URL}).`,
+  '',
+  'legacy wrapped prose',
+  '',
+  '</details>',
+  '',
+].join('\n');
+
+const LEGACY_WRAPPED_BODY = [
+  '## Plan Metadata',
+  '',
+  'plan bytes',
+  '',
+  LEGACY_WRAPPED_BLOCK,
+  '## Pickup Directive — MANDATORY, DO NOT SKIP',
+  '',
+  '> Follow the directive.',
+  '',
+  KEEP_SECTION,
+  '',
+  '<!-- aitm-fields: {"schema":1,"values":{"size":"XS"}} -->',
+  '',
+].join('\n');
+
+test('repairDeepDivePlacementBody relocates a wrapped legacy block byte-for-byte', () => {
+  const repaired = repairDeepDivePlacementBody(LEGACY_WRAPPED_BODY);
+  assert.ok(repaired.indexOf('## Pickup Directive') < repaired.indexOf(SECTION_H2));
+  assert.ok(repaired.indexOf(SECTION_H2) < repaired.indexOf('<!-- aitm-fields:'));
+  assert.ok(repaired.includes(LEGACY_WRAPPED_BLOCK));
+  assert.ok(repaired.includes(KEEP_SECTION));
+  assert.equal((repaired.match(/^## Deep-Dive Analysis\b/gm) ?? []).length, 1);
+  assert.equal(repairDeepDivePlacementBody(repaired), repaired, 'retry must be byte-identical');
+  const gate = validateBody(repaired, { gates: DEFAULT_GATES });
+  assert.equal(gate.ok, true, JSON.stringify(gate));
+});
+
+test('repairDeepDivePlacementBody relocates an unwrapped block after the fields trailer', () => {
+  const unwrapped = [
+    '## Pickup Directive — MANDATORY, DO NOT SKIP',
+    '',
+    '> Follow the directive.',
+    '',
+    KEEP_SECTION,
+    '',
+    '<!-- aitm-fields: {"schema":1,"values":{"size":"XS"}} -->',
+    '',
+    POSTED,
+    '',
+    SECTION_H2,
+    '',
+    `> Mirrored from comment #issuecomment-${COMMENT_ID} (${COMMENT_URL}).`,
+    '',
+    'unwrapped prose bytes',
+    '',
+    '## Tail Section',
+    '',
+    'tail bytes',
+    '',
+  ].join('\n');
+  const movable = [
+    POSTED,
+    '',
+    SECTION_H2,
+    '',
+    `> Mirrored from comment #issuecomment-${COMMENT_ID} (${COMMENT_URL}).`,
+    '',
+    'unwrapped prose bytes',
+    '',
+  ].join('\n');
+  const repaired = repairDeepDivePlacementBody(unwrapped);
+  assert.ok(repaired.includes(movable));
+  assert.ok(repaired.includes(KEEP_SECTION));
+  assert.ok(repaired.includes('## Tail Section\n\ntail bytes'));
+  assert.ok(repaired.indexOf('## Pickup Directive') < repaired.indexOf(SECTION_H2));
+  assert.ok(repaired.indexOf(SECTION_H2) < repaired.indexOf('<!-- aitm-fields:'));
+});
+
+test('repairDeepDivePlacementBody is a no-op for an already-canonical block', () => {
+  const canonical = [
+    '## Plan Metadata',
+    '',
+    'plan bytes',
+    '',
+    '## Pickup Directive — MANDATORY, DO NOT SKIP',
+    '',
+    '> Follow the directive.',
+    '',
+    LEGACY_WRAPPED_BLOCK,
+    KEEP_SECTION,
+    '',
+    '<!-- aitm-fields: {"schema":1,"values":{"size":"XS"}} -->',
+    '',
+  ].join('\n');
+  assert.equal(repairDeepDivePlacementBody(canonical), canonical);
+});
+
+test('repairDeepDivePlacementBody refuses ambiguous and malformed layouts', () => {
+  const cases = [
+    LEGACY_WRAPPED_BODY.replace(KEEP_SECTION, `${KEEP_SECTION}\n\n## Deep-Dive Analysis duplicate`),
+    LEGACY_WRAPPED_BODY.replace('</details>', ''),
+    LEGACY_WRAPPED_BODY.replace('## Pickup Directive — MANDATORY, DO NOT SKIP', '## Other'),
+    LEGACY_WRAPPED_BODY.replace('<!-- aitm-fields:', '<!-- other-fields:'),
+    LEGACY_WRAPPED_BODY.replace(
+      '<summary>Deep-Dive Analysis (collapsed)</summary>',
+      '<details>\n<summary>nested</summary>\n</details>'
+    ),
+  ];
+  for (const body of cases) {
+    assert.throws(() => repairDeepDivePlacementBody(body), /deep-dive-placement-repair:/);
+  }
 });
