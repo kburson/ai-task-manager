@@ -319,10 +319,22 @@ export const VERB_REFERENCE = {
   'epic-reconcile': {
     topic: 'board',
     summary:
-      "Record that an epic's Acceptance Criteria were reconciled against what its children delivered (stamps the epic-only marker `gateCodeComplete` requires to exit develop).",
-    usage: '/task epic-reconcile [<N>]',
-    exitCodes: [{ code: 1, meaning: 'no active/valid issue number, or the target is not an epic' }],
-    examples: ['/task epic-reconcile', '/task epic-reconcile 883'],
+      "Record that an epic's Acceptance Criteria were reconciled against what its children delivered and optionally attach its existing deliverable comment.",
+    usage: '/task epic-reconcile [<N>] [--deliverable-comment <id|url>]',
+    flags: [
+      {
+        flag: '--deliverable-comment <id|url>',
+        desc: 'validate and record an existing comment on this epic as its no-commit deliverable',
+      },
+    ],
+    exitCodes: [
+      {
+        code: 1,
+        meaning:
+          'no active/valid issue number, target is not an epic, or deliverable provenance is invalid',
+      },
+    ],
+    examples: ['/task epic-reconcile', '/task epic-reconcile 883 --deliverable-comment 4866618296'],
   },
   'pull-next': {
     topic: 'board',

@@ -222,9 +222,13 @@ export const VERB_CONTRACTS = Object.freeze({
     ['Prints the canonical live board state.']
   ),
   'epic-reconcile': contract(
-    ['The target must be a valid epic whose child delivery can be inspected.'],
-    ['Records the epic acceptance-criteria reconciliation marker.'],
-    ['Prints the epic, inspected child set, and marker result.']
+    [
+      'The target must be a valid epic whose child delivery can be inspected; a supplied deliverable comment must belong to that issue in the configured repository.',
+    ],
+    [
+      'Refreshes the epic acceptance-criteria reconciliation marker and optionally records the validated no-commit deliverable in the same versioned body write.',
+    ],
+    ['Prints the epic, optional deliverable URL, inspected child set, and marker result.']
   ),
   'pull-next': contract(
     ['The epic must exist and have an eligible ranked child currently in Refine.'],

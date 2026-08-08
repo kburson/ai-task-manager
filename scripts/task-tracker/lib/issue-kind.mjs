@@ -214,6 +214,37 @@ export function hasDeliverableMarker(body) {
   return DELIVERABLE_MARKER_RE.test(progressMarkersSection(body));
 }
 
+/**
+ * Record the exact issue-comment URL that supplies a no-commit deliverable.
+ *
+ * The writer is deliberately conflict-intolerant. Repeating the same URL is a
+ * byte-identical no-op, while a bare legacy marker or a different URL must be
+ * reconciled explicitly instead of silently re-authoring accepted provenance.
+ */
+export function setDeliverablePosted(body, { url, ts = new Date().toISOString() } = {}) {
+  if (typeof url !== 'string' || url.trim() !== url || url === '') {
+    throw new TypeError('deliverable-marker-url');
+  }
+  if (typeof ts !== 'string' || ts.trim() !== ts || ts === '') {
+    throw new TypeError('deliverable-marker-ts');
+  }
+
+  const existing = progressMarkersSection(body).match(DELIVERABLE_MARKER_RE)?.[0];
+  if (existing) {
+    const parsed = parseMarker(existing);
+    if (parsed?.name === 'deliverable-posted' && parsed.props?.url === url) {
+      return String(body || '');
+    }
+    throw new Error('deliverable-marker-conflict');
+  }
+
+  const marker = serializeMarker('deliverable-posted', { url, ts });
+  return replaceProgressMarkersSection(
+    body,
+    (section) => `${marker}\n${trimSectionStart(section)}`
+  );
+}
+
 /** True when an AC label carries a sanctioned `aitm-ac-waived` marker. */
 export function isAcWaived(label) {
   return AC_WAIVED_RE.test(String(label || ''));
