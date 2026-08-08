@@ -21,6 +21,12 @@ import {
 const SINGLETON_SCHEMA = 'aitm.singleton/v1';
 const SINGLETON_RECORD_TYPE = 'singleton-projection';
 const FIRST_GITHUB_INSTANT = '1970-01-01T00:00:00.000Z';
+const EVOLVED_SINGLETON_KINDS = Object.freeze({
+  'aitm.delivery-contract/v1': 'delivery-contract',
+  'aitm.coordination-singleton/v1': 'coordination',
+  'aitm.evidence-projection/v1': 'evidence-projection',
+  'aitm.timing-projection/v1': 'timing',
+});
 
 function initializerError(category) {
   return new TypeError(`singleton-initializer:${category}`);
@@ -139,20 +145,30 @@ function assertSingletonRecord(record, { repository, issue }) {
   if (envelope.repository !== repository || envelope.issue !== issue) {
     throw initializerError('record');
   }
-  if (envelope.authority?.epoch !== 1) throw initializerError('epoch');
   const payload = envelope.payload;
+  if (envelope.payloadHash !== hashRecordPayload(payload)) throw initializerError('record');
+  if (payload?.schema === SINGLETON_SCHEMA) {
+    if (envelope.authority?.epoch !== 1) throw initializerError('epoch');
+    if (!hasExactlyKeys(payload, ['kind', 'logicalId', 'schema'])) {
+      throw initializerError('record');
+    }
+    if (!SINGLETON_KINDS.includes(payload.kind)) throw initializerError('record');
+    if (payload.logicalId !== singletonLogicalIdentity({ repository, issue, kind: payload.kind })) {
+      throw initializerError('record');
+    }
+    return Object.freeze({ kind: payload.kind, record });
+  }
+  const kind = EVOLVED_SINGLETON_KINDS[payload?.schema];
   if (
-    !hasExactlyKeys(payload, ['kind', 'logicalId', 'schema']) ||
-    payload.schema !== SINGLETON_SCHEMA
+    kind === undefined ||
+    !Number.isSafeInteger(payload?.revision) ||
+    payload.revision <= 0 ||
+    !Number.isSafeInteger(envelope.authority?.epoch) ||
+    envelope.authority.epoch <= 0
   ) {
     throw initializerError('record');
   }
-  if (envelope.payloadHash !== hashRecordPayload(payload)) throw initializerError('record');
-  if (!SINGLETON_KINDS.includes(payload.kind)) throw initializerError('record');
-  if (payload.logicalId !== singletonLogicalIdentity({ repository, issue, kind: payload.kind })) {
-    throw initializerError('record');
-  }
-  return record;
+  return Object.freeze({ kind, record });
 }
 
 function withDirectory(issueBody, directory) {
@@ -236,7 +252,7 @@ async function discover({ repository, issue, issueNodeId, deps, issueBody }) {
   for (const record of records) {
     if (record?.envelope?.recordType !== SINGLETON_RECORD_TYPE) continue;
     const singleton = assertSingletonRecord(record, { repository, issue });
-    candidates.get(singleton.envelope.payload.kind).push(singleton);
+    candidates.get(singleton.kind).push(singleton.record);
   }
   const singletons = {};
   const missing = [];
@@ -302,8 +318,10 @@ export async function initializeIssueDirectory({
   deps,
   now,
   crashAt,
+  publishDirectory = true,
 } = {}) {
   assertInput({ repository, issue, issueNodeId, actor }, { needsActor: true });
+  if (typeof publishDirectory !== 'boolean') throw initializerError('input');
   assertDirectoryInput(issueNodeId);
   const clock = resolveClock(now);
   const resolvedDeps = resolveDependencies(deps, {
@@ -357,6 +375,14 @@ export async function initializeIssueDirectory({
     deps: resolvedDeps,
     intendedSingletons: singletons,
   });
+  if (!publishDirectory) {
+    return Object.freeze({
+      directory,
+      singletons: Object.freeze(SINGLETON_KINDS.map((kind) => singletons[kind])),
+      initialized: true,
+      published: false,
+    });
+  }
   await writeAndReadBackDirectory({
     repository,
     issue,

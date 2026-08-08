@@ -97,6 +97,20 @@ export const VERB_REFERENCE = {
     usage: '/task words-count',
     examples: ['/task words-count'],
   },
+  'adopt-github-records': {
+    topic: 'meta',
+    summary: 'Audit or adopt one legacy issue into GitHub-native authority records.',
+    usage: '/task adopt-github-records <N> [--apply|--rollback|--repair]',
+    flags: [
+      { flag: '--apply', desc: 'perform adoption after exact parity audit' },
+      { flag: '--rollback', desc: 'remove the directory only before divergent authority exists' },
+      { flag: '--repair', desc: 'repair only from complete validated singleton records' },
+      { flag: '--grant-id <id>', desc: 'current coordinator grant ID required by --apply' },
+      { flag: '--authority-epoch <n>', desc: 'current coordinator epoch required by --apply' },
+      { flag: '--actor <id>', desc: 'coordinator actor identity required by --apply' },
+    ],
+    examples: ['/task adopt-github-records 1086', '/task adopt-github-records 1086 --apply'],
+  },
 
   // ── board / state machine ─────────────────────────────────────────────────
   promote: {

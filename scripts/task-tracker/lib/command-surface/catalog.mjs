@@ -320,6 +320,11 @@ export const VERB_CONTRACTS = Object.freeze({
     ['Prints per-criterion evidence status and mutation totals.'],
     [exit(3, 'evidence audit found invalid or incomplete marker state')]
   ),
+  'adopt-github-records': contract(
+    ['The issue must exist; mutation modes additionally require current coordinator authority.'],
+    ['Audits legacy parity by default, or explicitly adopts, rolls back, or repairs one issue.'],
+    ['Prints the parity hash and the resulting adoption or repair status.']
+  ),
   'commit-trace': contract(
     ['The target issue must exist and the current Git HEAD must be readable.'],
     ['Creates or updates the canonical commit-trace issue comment from HEAD history.'],
@@ -461,6 +466,7 @@ export const VERB_RELATED_COMMANDS = Object.freeze({
   ensureChecked: Object.freeze(['ac-stamp', 'dod-stamp', 'ensureUnchecked']),
   ensureUnchecked: Object.freeze(['ensureChecked', 'reject']),
   'evidence-markers': Object.freeze(['ac-stamp', 'ensureChecked']),
+  'adopt-github-records': Object.freeze(['evidence-markers', 'reconcile']),
   'commit-trace': Object.freeze(['close', 'status']),
   'mirror-deep-dive': Object.freeze(['plan', 'save-plan']),
   new: Object.freeze(['discover', 'refine', '#N']),
@@ -566,6 +572,9 @@ export const VERB_POSITIONAL_ARGUMENTS = Object.freeze({
   'evidence-markers': Object.freeze([
     positional('<audit|backfill>', 'Evidence-marker operation.'),
     positional('#N', 'Issue number to audit or backfill.'),
+  ]),
+  'adopt-github-records': Object.freeze([
+    positional('<N>', 'Issue number to audit, adopt, roll back, or repair.'),
   ]),
   'commit-trace': Object.freeze([
     positional('[#N]', 'Optional issue number; defaults to the active task.'),

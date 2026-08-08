@@ -359,6 +359,11 @@ if (_isMain)
           await verbEvidenceMarkers(ctx);
           break;
         }
+        case 'adopt-github-records': {
+          const { verbAdoptGithubRecords } = await import('./verbs/adopt-github-records.mjs');
+          await verbAdoptGithubRecords(ctx);
+          break;
+        }
         case 'mirror-deep-dive': {
           const { verbMirrorDeepDive } = await import('./verbs/mirror-deep-dive.mjs');
           await verbMirrorDeepDive(ctx);

@@ -8,6 +8,10 @@ import {
   renderAitmRecord,
 } from '../../../lib/github-records/record-envelope.mjs';
 import {
+  createDraftContract,
+  sealContract,
+} from '../../../lib/github-records/delivery-contract.mjs';
+import {
   parseIssueDirectory,
   singletonLogicalIdentity,
 } from '../../../lib/github-records/issue-directory.mjs';
@@ -49,6 +53,38 @@ function singletonRecord({ kind, commentNodeId, id = ids()() }) {
     commentNodeId,
     envelope,
     body: renderAitmRecord({ envelope, visibleMarkdown: 'AITM singleton projection.\n' }),
+  });
+}
+
+function adoptedContractRecord({ commentNodeId, id = ids()() }) {
+  const grantId = '01J00000000000000000000009';
+  const contract = sealContract({
+    contract: createDraftContract({
+      recordId: id,
+      authorityEpoch: 2,
+      coordinatorGrantId: grantId,
+      acceptanceCriteria: [{ logicalId: 'ac-1', text: 'Adopt records.' }],
+      verificationCommands: [{ logicalId: 'vc-1', command: 'npm test' }],
+      definitionOfDone: [{ logicalId: 'dod-1', text: 'Tests pass.' }],
+    }),
+    authorityEpoch: 2,
+    coordinatorGrantId: grantId,
+  }).contract;
+  const envelope = createAitmRecordEnvelope({
+    recordType: 'singleton-projection',
+    repository,
+    issue,
+    payload: contract,
+    actor,
+    epoch: 2,
+    createdAt: '2026-08-03T17:30:00.000Z',
+    recordId: id,
+    grantId,
+  });
+  return Object.freeze({
+    commentNodeId,
+    envelope,
+    body: renderAitmRecord({ envelope, visibleMarkdown: 'AITM Delivery Contract.\n' }),
   });
 }
 
@@ -111,6 +147,17 @@ test('initialization writes four validated singleton comments before one complet
 
   await initializeIssueDirectory(input(memory));
   assert.deepEqual(memory.state.writes, { comments: 4, body: 1 });
+});
+
+test('pre-publication mode prepares validated singletons without exposing the directory', async () => {
+  const memory = memoryIssue();
+
+  const result = await initializeIssueDirectory(input(memory, { publishDirectory: false }));
+
+  assert.equal(result.published, false);
+  assert.equal(result.singletons.length, 4);
+  assert.equal(parseIssueDirectory({ issueBody: memory.state.body }), null);
+  assert.deepEqual(memory.state.writes, { comments: 4, body: 0 });
 });
 
 test('discovery is read-only and does not need an actor or write transport', async () => {
@@ -289,6 +336,24 @@ test('explicit repair writes a missing directory only from one complete unambigu
   assert.equal(memory.state.writes.comments, 0);
   assert.equal(memory.state.writes.body, 1);
   await repairIssueDirectory(input(memory));
+  assert.equal(memory.state.writes.body, 1);
+});
+
+test('repair recognizes an adopted Delivery Contract singleton after the directory marker is lost', async () => {
+  const records = [
+    adoptedContractRecord({ commentNodeId: 'IC_kwDOpaqueAdoptedContract' }),
+    ...kinds
+      .filter((kind) => kind !== 'delivery-contract')
+      .map((kind, index) =>
+        singletonRecord({ kind, commentNodeId: `IC_kwDOpaqueAdopted${index}` })
+      ),
+  ];
+  const memory = memoryIssue({ records });
+
+  const repaired = await repairIssueDirectory(input(memory));
+
+  assert.equal(repaired.repaired, true);
+  assert.equal(repaired.directory.singletons['delivery-contract'], 'IC_kwDOpaqueAdoptedContract');
   assert.equal(memory.state.writes.body, 1);
 });
 
