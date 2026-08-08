@@ -13,6 +13,7 @@ import {
 import { GH_API_TIMEOUT_MS } from '../lib/process-timeouts.mjs';
 import { projectScratchDir } from '../lib/scratch-dir.mjs';
 import { buildSplitProposals, writeProposalFragments } from '../lib/split-plan.mjs';
+import { resolveProjectDir } from '../lib/project-dir.mjs';
 
 const pexec = promisify(execFile);
 const DEFAULT_GOVERNING_SPEC =
@@ -110,7 +111,10 @@ export async function runSplitPlan({
   assertMode(mode);
   if (!cfg?.repo) throw new Error('split-plan: cfg.repo is required');
 
-  const projectDir = deps.projectDir || process.cwd();
+  const projectDir = (deps.resolveProjectDir ?? resolveProjectDir)({
+    issue: sourceIssue,
+    deps,
+  });
   const fetchIssueBody = deps.fetchIssueBody || defaultFetchIssueBody;
   const evaluate = deps.evaluateIssueDecomposition || evaluateIssueDecomposition;
   const readPlanAtCommit = deps.readPlanAtCommit || defaultReadPlanAtCommit;

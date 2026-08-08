@@ -14,7 +14,9 @@ import { runReconcile } from '../../../verbs/reconcile.mjs';
 import { setActiveTask, getActiveTask } from '../../../session-state.mjs';
 
 function makeProjDir() {
-  const root = mkdtempSync(path.join(projectScratchDir('test'), 'reconcile-no-seed-'));
+  const root = mkdtempSync(
+    path.join(projectScratchDir('test', process.cwd()), 'reconcile-no-seed-')
+  );
   mkdirSync(path.join(root, '.ai-task-manager', 'sessions'), { recursive: true });
   return root;
 }

@@ -134,6 +134,7 @@ function makePromoteDeps({ live = 'review', liveAfter, spawnCode = 0 } = {}) {
   return {
     calls,
     deps: {
+      projectDir: process.cwd(),
       assertBound: () => {},
       fetchIssueBody: async () => ({ body: reviewBody() }),
       mutateIssueBody: async ({ mutate }) => {

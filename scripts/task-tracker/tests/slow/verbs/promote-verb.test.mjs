@@ -33,6 +33,7 @@ function makeDeps({
   return {
     calls,
     deps: {
+      projectDir: process.cwd(),
       assertBound: () => {},
       fetchIssueBody: async () => {
         calls.fetches++;

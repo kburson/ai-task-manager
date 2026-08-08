@@ -73,6 +73,7 @@ async function observeRefine(recordedState) {
     },
     cfg: TEST_CFG,
     deps: {
+      projectDir: process.cwd(),
       assertBound: () => {},
       tetherIssueToProject: async () => ({ itemId: 'PVTI_TEST' }),
       fetchBody: async () => body,
@@ -189,6 +190,7 @@ test('bootstrap policy resolves live state and refuses a missing board item', as
     issueNumber: 1007,
     cfg: TEST_CFG,
     deps: {
+      projectDir: process.cwd(),
       assertBound: () => {},
       fetchIssueBody: async () => ({ body: bodyWithRecordedState(null) }),
       getLiveState: async () => null,
@@ -204,6 +206,7 @@ test('bootstrap policy resolves live state and refuses a missing board item', as
     issueNumber: 1007,
     cfg: TEST_CFG,
     deps: {
+      projectDir: process.cwd(),
       assertBound: () => {},
       fetchIssueBody: async () => ({ body: bodyWithRecordedState(null) }),
       getLiveState: async () => 'backlog',

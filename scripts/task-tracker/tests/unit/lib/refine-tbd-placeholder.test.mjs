@@ -188,6 +188,7 @@ function makeRefineDeps(bodyOverride) {
 
 function makePromoteDeps(body) {
   return {
+    projectDir: process.cwd(),
     assertBound: () => {},
     fetchIssueBody: async () => ({ body }),
     getLiveState: async () => 'refine',

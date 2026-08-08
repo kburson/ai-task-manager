@@ -38,6 +38,7 @@ function makeDeps({ body, live, liveAfter, moveCode = 0 } = {}) {
   return {
     calls,
     deps: {
+      projectDir: process.cwd(),
       assertBound: () => {},
       fetchIssueBody: async () => ({ body }),
       writeIssueBody: async ({ body: b }) => {

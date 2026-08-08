@@ -45,6 +45,7 @@ import {
   isAgentReviewComplete,
   agentReviewIncompleteReason,
 } from '../lib/agent-review/review-gate.mjs';
+import { resolveProjectDir } from '../lib/project-dir.mjs';
 
 const pexec = promisify(execFile);
 const __dir = path.dirname(fileURLToPath(import.meta.url));
@@ -381,7 +382,7 @@ export async function runPromote({
     body,
     cfg,
     deps,
-    projectDir: deps.projectDir || process.env.TASK_TRACKER_PROJECT_DIR || process.cwd(),
+    projectDir: (deps.resolveProjectDir ?? resolveProjectDir)({ issue: issueNumber, deps }),
   };
   const guardResult = await runGuards(recorded, target, guardCtx);
   const mappedRefusals = (guardResult.refusals || []).filter((r) => REFUSAL_ID_TO_STATUS[r.id]);
