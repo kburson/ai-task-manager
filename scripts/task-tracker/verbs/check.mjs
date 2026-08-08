@@ -7,6 +7,7 @@ import { parseFunctionalDodKeys, KEY_CLASSIFICATION } from '../lib/functional-do
 import { findEvidenceAc, findAcSectionCheckbox, stripMarkers } from '../lib/ac-evidence.mjs';
 import { NON_DEMONSTRABLE_TAG_RE } from '../lib/body-invariants.mjs';
 import { escapeValue } from '../lib/marker-grammar.mjs';
+import { writeDirectoryContractOperation } from '../lib/github-records/contract-write.mjs';
 
 // Toggle a single checklist line whose VISIBLE label matches `label`.
 //
@@ -307,6 +308,22 @@ async function runEnsure(ctx, desired) {
   );
   const body = stdout;
 
+  const directoryWrite = await writeDirectoryContractOperation({
+    repository: cfg.repo,
+    issue: Number(issueNum),
+    issueBody: body,
+    action: 'set-check',
+    label,
+    checked: checking,
+    pexec,
+    deps: ctx.deps?.contractWrite,
+  });
+  if (directoryWrite.status === 'directory-written') {
+    const action = checking ? 'Checked' : 'Unchecked';
+    console.log(`[task-tracker] ✓ ${action} "${label}" on ${s.active} via Delivery Contract`);
+    return;
+  }
+
   // Special-label routes are checked-only outcomes (they stamp markers, not
   // checkboxes); ensureUnchecked treats these labels as ordinary checkbox text.
   if (checking && /^deep[- ]?dive complete$/i.test(label)) {
@@ -516,6 +533,29 @@ async function runEnsureBatch({
       ['issue', 'view', issueNum, '-R', cfg.repo, '--json', 'body', '--jq', '.body'],
       { timeout: GH_API_TIMEOUT_MS }
     );
+    let directoryCount = 0;
+    for (const label of checklistLabels) {
+      const result = await writeDirectoryContractOperation({
+        repository: cfg.repo,
+        issue: Number(issueNum),
+        issueBody: stdout,
+        action: 'set-check',
+        label,
+        checked: checking,
+        pexec,
+        deps: ctx.deps?.contractWrite,
+      });
+      if (result.status === 'directory-written') directoryCount += 1;
+    }
+    if (directoryCount > 0) {
+      if (directoryCount !== checklistLabels.length) {
+        throw new Error('check: mixed legacy/directory batch routing');
+      }
+      console.log(
+        `[task-tracker] ✓ ${checking ? 'Checked' : 'Unchecked'} ${directoryCount} item(s) on ${active} via Delivery Contract`
+      );
+      return;
+    }
     // #303 / #567 — per-label eligibility gate (checked-only; un-ticking is not
     // a proof claim so ensureUnchecked runs no gate). Batch is atomic: if ANY
     // label fails, refuse the entire batch. The gate only applies to labels

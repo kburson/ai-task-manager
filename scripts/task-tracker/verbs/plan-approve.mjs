@@ -31,6 +31,7 @@ import {
   isExplicitFullAutoPlanApproval,
   readPlanApprovedTimestamp,
 } from '../lib/plan-approval-audit.mjs';
+import { writeDirectoryContractOperation } from '../lib/github-records/contract-write.mjs';
 
 // Visit-suffix-aware check for any aitm-entered-plan marker (bare or -N).
 // We only backfill the original visit when NO plan entry marker exists at
@@ -172,6 +173,27 @@ export async function runPlanApprove({ issueNumber, cfg, projectDir, deps = {} }
     };
   }
 
+  const directoryWrite = await writeDirectoryContractOperation({
+    repository: cfg.repo,
+    issue: Number(issueNumber),
+    issueBody: body,
+    action: 'seal',
+    pexec,
+    deps: deps.contractWrite,
+  });
+  if (directoryWrite.status === 'directory-written') {
+    const ts = nowIso();
+    const audit = await ensureAudit({
+      issueNumber,
+      repo: cfg.repo,
+      ts,
+      mode: requestedMode,
+      env,
+      ...auditDeps,
+    });
+    return { status: 'directory-approved', ts, mode: requestedMode, audit };
+  }
+
   const hasPlanEntry = PLAN_ENTRY_RE.test(body);
 
   // Both markers present — true no-op. (Diagnostic fast-path; the closure
@@ -267,6 +289,8 @@ export function formatPlanApproveOutcome(issueNumber, result) {
   const audit = auditDisposition(result?.audit);
   const detail = `provenance=${provenance}; Full-Auto audit=${audit}`;
   switch (result?.status) {
+    case 'directory-approved':
+      return `✓ Plan approved for #${issueNumber} at ${result.ts} via sealed Delivery Contract (${detail}). \`/task promote #${issueNumber}\` to move to Develop.`;
     case 'approved':
       return `✓ Plan approved for #${issueNumber} at ${result.ts} (${detail}). \`/task promote #${issueNumber}\` to move to Develop.`;
     case 'already-approved':
@@ -308,6 +332,7 @@ export async function verbPlanApprove(rest, cfg, deps = {}) {
     process.exit(1);
   }
   switch (result.status) {
+    case 'directory-approved':
     case 'approved':
     case 'already-approved':
     case 're-stamped-entry':

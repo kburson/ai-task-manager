@@ -16,6 +16,10 @@ import { mutateIssueBody } from '../lib/issue-body-mutate.mjs';
 import { headSha, nowIso, runVerifiers } from '../lib/evidence-runner.mjs';
 import { findEvidenceAc, stampAcEvidenceAndReconcile } from '../lib/ac-evidence.mjs';
 import { assertVerifierStateAllowed } from '../lib/verifier-state-gate.mjs';
+import {
+  readDirectoryContract,
+  writeDirectoryContractOperation,
+} from '../lib/github-records/contract-write.mjs';
 
 export async function verbAcStamp(ctx) {
   const { cfg, statePath, rest, pexec, projectDir } = ctx;
@@ -36,7 +40,23 @@ export async function verbAcStamp(ctx) {
     ['issue', 'view', issueNum, '-R', cfg.repo, '--json', 'body', '--jq', '.body'],
     { timeout: GH_API_TIMEOUT_MS }
   );
-  const target = findEvidenceAc(body, label);
+  const directory = await readDirectoryContract({
+    repository: cfg.repo,
+    issue: Number(issueNum),
+    issueBody: body,
+    readContractRecord: ctx.deps?.contractWrite?.readContractRecord,
+  });
+  const contractTarget = directory?.contract.acceptanceCriteria.find(
+    (entry) => entry.text.replace(/\s+/g, ' ').trim() === label.replace(/\s+/g, ' ').trim()
+  );
+  const target = directory
+    ? contractTarget && {
+        ...contractTarget,
+        key: contractTarget.logicalId,
+        label: contractTarget.text,
+        evidenceCommands: directory.contract.verificationCommands.map((entry) => entry.command),
+      }
+    : findEvidenceAc(body, label);
   if (!target) {
     console.error(
       `[task-tracker] ac-stamp: no Acceptance Criteria line carrying \`aitm-verified-by\` matching "${label}" found in #${issueNum} body.`
@@ -97,6 +117,24 @@ export async function verbAcStamp(ctx) {
   const sha = runSha && runSha !== 'unknown' ? runSha : await headSha(pexec);
   const ts = ran[0]?.ts || nowIso(ctx.deps);
   const canonicalCmd = ran[0]?.cmd || '';
+
+  if (directory) {
+    await writeDirectoryContractOperation({
+      repository: cfg.repo,
+      issue: Number(issueNum),
+      issueBody: body,
+      action: 'record-evidence',
+      kind: 'acceptanceCriteria',
+      logicalId: target.logicalId,
+      evidence: { command: canonicalCmd, result: 'passed', sha, ts },
+      pexec,
+      deps: ctx.deps?.contractWrite,
+    });
+    console.log(
+      `[task-tracker] ✓ ac-stamp on ${s.active}: accepted Delivery Contract evidence for ${target.logicalId} (sha=${sha}).`
+    );
+    return;
+  }
 
   await mutateIssueBody({
     issueNumber: issueNum,

@@ -129,7 +129,7 @@ function validateEnvelope(envelope, { requireCurrentForecast = false } = {}) {
     throw recordError('payload-hash');
   }
   const isDeliveryContract =
-    envelope.recordType === DELIVERY_CONTRACT_RECORD_TYPE &&
+    ['singleton-projection', 'contract-sealed', 'contract-amended'].includes(envelope.recordType) &&
     envelope.payload?.schema === DELIVERY_CONTRACT_SCHEMA;
   if (isDeliveryContract) {
     assertNoSecretRecordData(envelope.payload, {
@@ -137,9 +137,10 @@ function validateEnvelope(envelope, { requireCurrentForecast = false } = {}) {
     });
     validateDeliveryContract(envelope.payload);
     if (
-      envelope.payload.recordId !== envelope.recordId ||
       envelope.payload.authorityEpoch !== envelope.authority.epoch ||
-      envelope.payload.coordinatorGrantId !== envelope.authority.grantId
+      envelope.payload.coordinatorGrantId !== envelope.authority.grantId ||
+      (envelope.recordType === DELIVERY_CONTRACT_RECORD_TYPE &&
+        envelope.payload.recordId !== envelope.recordId)
     ) {
       throw recordError('delivery-contract-authority');
     }

@@ -345,6 +345,64 @@ export function sealContract({ contract, authorityEpoch, coordinatorGrantId } = 
   });
 }
 
+export function projectContractLifecycle({
+  contract,
+  kind,
+  logicalId,
+  checked,
+  acceptedRecordId,
+} = {}) {
+  validateContract(contract);
+  if (!DEFINITION_KINDS.includes(kind) || typeof checked !== 'boolean') {
+    throw contractError('lifecycle-projection');
+  }
+  if (!contract[kind].some((entry) => entry.logicalId === logicalId)) {
+    throw contractError('logical-id');
+  }
+  if (!isRecordId(acceptedRecordId)) throw contractError('accepted-record-ids');
+  const projected = structuredClone(contract);
+  projected.revision += 1;
+  projected.lifecycleProjection[kind][logicalId] = checked;
+  projected.acceptedRecordIds = [
+    ...new Set([...projected.acceptedRecordIds, acceptedRecordId]),
+  ].sort();
+  projected.projectionHash = '';
+  const rendered = renderContract({ contract: projected });
+  const snapshot = deepFreeze({ ...projected, projectionHash: rendered.projectionHash });
+  validateContract(snapshot);
+  return snapshot;
+}
+
+export function invalidateContractProof({ contract, authorityEpoch, coordinatorGrantId } = {}) {
+  validateContract(contract);
+  if (
+    contract.status !== 'sealed' ||
+    authorityEpoch !== contract.authorityEpoch ||
+    coordinatorGrantId !== contract.coordinatorGrantId
+  ) {
+    throw contractError('authority');
+  }
+  const invalidated = structuredClone(contract);
+  invalidated.revision += 1;
+  invalidated.contractEpoch += 1;
+  invalidated.lifecycleProjection = resetLifecycleProjection();
+  invalidated.acceptedRecordIds = [];
+  invalidated.projectionHash = '';
+  const rendered = renderContract({ contract: invalidated });
+  const snapshot = deepFreeze({ ...invalidated, projectionHash: rendered.projectionHash });
+  validateContract(snapshot);
+  return deepFreeze({
+    contract: snapshot,
+    invalidation: {
+      priorContractEpoch: contract.contractEpoch,
+      invalidatedEvidenceKinds: ['test', 'review', 'approval'],
+      removedAcceptedRecordIds: structuredClone(contract.acceptedRecordIds),
+      resetLifecycleChecks: resetLifecycleChecks(contract),
+    },
+    capsule: { recordType: 'contract-amended', payload: snapshot },
+  });
+}
+
 function resetLifecycleProjection() {
   return Object.fromEntries(DEFINITION_KINDS.map((kind) => [kind, {}]));
 }
