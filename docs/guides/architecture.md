@@ -185,10 +185,10 @@ Dogfooding note: the repo's own development uses a `node_modules/ai-task-manager
 
 Both leaks below were addressed by a shared verb-preflight helper — [`scripts/task-tracker/lib/verb-preflight.mjs`](../../scripts/task-tracker/lib/verb-preflight.mjs) (#208, refactored in #218) — wired centrally into verb dispatch in [`task-tracker.mjs`](../../scripts/task-tracker/task-tracker.mjs), not per-verb:
 
-| Was-leak                                            | Now enforced by                                                                                                                                                          |
-| ---------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Bind-mismatch only enforced by `close.mjs`          | `runPreflight` in `verb-preflight.mjs` cross-checks `target` against `state.active` for every dispatched verb, not just `close`                                                                                                                                                                   |
-| Manual GH-UI Status changes leave local state stale | `runPreflight` compares the issue body's `aitm-last-known-state` marker against live board state on every verb entry and prompts to reconcile on drift (kind: `human-move`)                                                                                                                       |
+| Was-leak                                            | Now enforced by                                                                                                                                                             |
+| --------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Bind-mismatch only enforced by `close.mjs`          | `runPreflight` in `verb-preflight.mjs` cross-checks `target` against `state.active` for every dispatched verb, not just `close`                                             |
+| Manual GH-UI Status changes leave local state stale | `runPreflight` compares the issue body's `aitm-last-known-state` marker against live board state on every verb entry and prompts to reconcile on drift (kind: `human-move`) |
 
 ## When to choose this pattern
 

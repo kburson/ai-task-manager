@@ -42,6 +42,6 @@ Use [../README.md](../README.md) for the current documentation table of contents
 
 ## Retired Guides
 
-| File                                                                             | Why it is retained                                                                                                                            |
-| --------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
-| [retired-guides/migration-7-state.md](./retired-guides/migration-7-state.md)     | Dead runbook whose target scripts (`migrate-to-7-state.mjs`, `rename-status-2026-05.mjs`) have since been deleted; retained for the `Groom`/`Analyze`/`R4R` → current-vocab mapping table. |
+| File                                                                         | Why it is retained                                                                                                                                                                         |
+| ---------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| [retired-guides/migration-7-state.md](./retired-guides/migration-7-state.md) | Dead runbook whose target scripts (`migrate-to-7-state.mjs`, `rename-status-2026-05.mjs`) have since been deleted; retained for the `Groom`/`Analyze`/`R4R` → current-vocab mapping table. |

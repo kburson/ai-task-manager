@@ -102,54 +102,54 @@ standalone solos beside it. Hard chain: 1 → {2, 3} → 4; story 5 and the solo
       (`fleetPath`, `orchestratorLockPath`) and a cwd-anchored family
       (`statePath`, `queuePath`, `cacheDir`, `locksDir`, `sessionsDir`, …). No files
       move in this story; behavior is unchanged; resolver has unit coverage.
-      *Shipped — `scripts/task-tracker/paths.mjs` defines all named helpers listed.*
+      _Shipped — `scripts/task-tracker/paths.mjs` defines all named helpers listed._
 - [x] **Story 2 — Move live runtime state to `.tmp/aitm/`.** state, queue, cache,
       locks, sessions, per-app (`claude/`, `codex/`), gate-override files (flip
       `session-store.mjs` `DEFAULT_DIR`), and fleet/orchestrator.lock
       (**main-anchored preserved**) resolve under `.tmp/aitm/`; gitignore block
       rewritten; no functional regression across bind/pause/resume/fleet.
-      *Shipped — `.tmp/aitm/{state,cache,locks,sessions,app}` populated at runtime;
-      `.gitignore` documents the consolidation under #573.*
+      _Shipped — `.tmp/aitm/{state,cache,locks,sessions,app}` populated at runtime;
+      `.gitignore` documents the consolidation under #573._
 - [x] **Story 3 — Track config + consolidate templates.**
       `project-fields.json` + `project-field-events.json` tracked with a
       write-if-changed writer (verify a refresh of unchanged content leaves the tree
       clean); DoD, pickup-directive, `*-body.md`, `session-boot.md`, `references/`
       relocated into `.ai-task-manager/templates/` with all references updated
       (router hard-rules 9 & 11, SKILL.md, seed paths).
-      *Shipped — both JSON files are git-tracked under `.ai-task-manager/`; all
-      templates listed live under `.ai-task-manager/templates/`.*
+      _Shipped — both JSON files are git-tracked under `.ai-task-manager/`; all
+      templates listed live under `.ai-task-manager/templates/`._
 - [x] **Story 4 — Retire seed-worktree.** A freshly created worktree functions with
       **zero seeding** (contracts arrive via git, runtime state auto-creates under
       `.tmp/aitm/`); `seed-worktree.mjs` + `create-worktree.mjs` copy logic
       deleted/shrunk; the #539 "missing templates" gap is provably closed.
-      *Shipped — `seed-worktree.mjs`/`create-worktree.mjs` no longer exist;
+      _Shipped — `seed-worktree.mjs`/`create-worktree.mjs` no longer exist;
       `scripts/task-tracker/ensure-worktree-seeded.mjs` (#869) only heals the
-      `node_modules` self-link, it copies no config or templates.*
+      `node_modules` self-link, it copies no config or templates._
 - [x] **Story 5 — Discover-autosave carve-out.** `/task discover` autosaves its
       working bucket to a tracked `docs/plans/.drafts/<slug>.md` so an unsaved
       brainstorm survives a machine swap.
-      *Shipped as #576 — `scripts/task-tracker/lib/draft-file.mjs` +
+      _Shipped as #576 — `scripts/task-tracker/lib/draft-file.mjs` +
       `verbs/save-draft.mjs` implement the tracked `.drafts/<slug>.md` autosave;
       `save-plan.mjs` clears the matching draft on finalize. Covered by
-      `tests/slow/lib/discover-autosave.test.mjs`.*
+      `tests/slow/lib/discover-autosave.test.mjs`._
 
 ### Standalone solos (filed beside the epic, not children)
 
 - [x] **`brainstorm` alias for `discover`.** Declared in `command-manifest.mjs`
       `aliases` AND as a fall-through `case 'brainstorm':` in `task-tracker.mjs`;
       `parseVerbs` parity test passes.
-      *Shipped — the alias declaration now lives in `bin/aitm-registry.mjs`'s
+      _Shipped — the alias declaration now lives in `bin/aitm-registry.mjs`'s
       `parseVerbs`/`VERBS` (the command-surface layer evolved past the plan's
       literal `command-manifest.mjs` filename), plus the `case 'brainstorm':
-      case 'discover':` fall-through in `task-tracker.mjs`; the parity test in
+    case 'discover':` fall-through in `task-tracker.mjs`; the parity test in
       `tests/unit/core/command-manifest.test.mjs` covers `['brainstorm',
-      'discover']`.*
+    'discover']`._
 - [ ] **`project-fields` nesting by project-id.** Migrate the flat array to
       `{ "<projectId>": [...] }` for multi-board support; note the
       teammate-creates-own-board → stories-not-on-shared-board caveat (a GitHub
       Projects reality, documented not solved). Distinct feature; depends on Story 3
       landing first.
-      *Not shipped — `.ai-task-manager/project-fields.json` is still a flat array.*
+      _Not shipped — `.ai-task-manager/project-fields.json` is still a flat array._
 
 ## Plan Metadata
 

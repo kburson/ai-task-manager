@@ -62,13 +62,13 @@ Once install and configure are done, this is the whole day-to-day surface — fi
 /task promote|demote
 ```
 
-| Command                 | What it does                                                                 |
-| ------------------------ | ------------------------------------------------------------------------------ |
-| `/task brainstorm`       | Open an untracked planning bucket for spec/design work before any issue exists |
-| `/task new`              | Turn a spec (or a one-line idea) into a tracked issue — or a whole backlog     |
+| Command                    | What it does                                                                                    |
+| -------------------------- | ----------------------------------------------------------------------------------------------- |
+| `/task brainstorm`         | Open an untracked planning bucket for spec/design work before any issue exists                  |
+| `/task new`                | Turn a spec (or a one-line idea) into a tracked issue — or a whole backlog                      |
 | `/task [start\|resume] #N` | Bind the session to issue `#N` and show its brief — start it fresh or pick a paused one back up |
-| `/task pause`            | Flush timing and step away — run this before `/clear` or ending a session      |
-| `/task promote\|demote`   | Move the active issue one state forward, or send it back a state for rework    |
+| `/task pause`              | Flush timing and step away — run this before `/clear` or ending a session                       |
+| `/task promote\|demote`    | Move the active issue one state forward, or send it back a state for rework                     |
 
 Bare `/task` (no arguments) always works too — it shows whatever is active right now: issue, elapsed time, word count.
 
@@ -121,16 +121,16 @@ flowchart LR
 
 Solid arrows are `/task promote`. Dashed arrows are `/task demote` (or `/task park <reason>` for the early states) — a state is never a one-way door.
 
-| State       | Entry gate                                                                                                       | Exit gate                                                                                  |
-| ----------- | ------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Backlog** | Marker-trail contiguity (see below)                                                                                | Not blocked · no unresolved `{discuss}` brainstorming trigger                                                                                 |
-| **On Deck** | Marker-trail contiguity (this stage's own marker is optional — pre-#433 issues never recorded it)                  | Not blocked · Refine-entry fields present · parent/child state consistent · epic-child can't lead                                             |
-| **Refine**  | Marker-trail contiguity                                                                                            | Refine marked complete · not a stub · not blocked · Plan-entry fields present · WIP budget · parent/child consistent · user-story rule (hard) |
-| **Plan**    | Marker-trail contiguity                                                                                            | Not blocked · **plan approved (human gate)** · estimate set · deep dive present · Plan Metadata present · Verification Commands present · decomposition check · epic children ready |
-| **Develop** | Marker-trail contiguity                                                                                            | Not blocked · code complete · sandbox/verify proof exists · commit trail has HEAD · every epic child at Review-or-later                       |
-| **Test**    | Marker-trail contiguity · deep-dive placement/completeness · dependency map present                                | Not blocked · Definition of Done verified · pre-close completeness check                                                                     |
-| **Review**  | Marker-trail contiguity · deep-dive placement/completeness · dependency map · all Verification Commands checked    | Not blocked · **review approved (human gate)** · every epic child at Done · close gates                                                       |
-| **Done**    | Same body gates as Review · no stray unchecked boxes anywhere · lifecycle labels (`agent-review-passed`, `passed-final-review`) satisfied | none — terminal                                                                                                                 |
+| State       | Entry gate                                                                                                                                | Exit gate                                                                                                                                                                           |
+| ----------- | ----------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Backlog** | Marker-trail contiguity (see below)                                                                                                       | Not blocked · no unresolved `{discuss}` brainstorming trigger                                                                                                                       |
+| **On Deck** | Marker-trail contiguity (this stage's own marker is optional — pre-#433 issues never recorded it)                                         | Not blocked · Refine-entry fields present · parent/child state consistent · epic-child can't lead                                                                                   |
+| **Refine**  | Marker-trail contiguity                                                                                                                   | Refine marked complete · not a stub · not blocked · Plan-entry fields present · WIP budget · parent/child consistent · user-story rule (hard)                                       |
+| **Plan**    | Marker-trail contiguity                                                                                                                   | Not blocked · **plan approved (human gate)** · estimate set · deep dive present · Plan Metadata present · Verification Commands present · decomposition check · epic children ready |
+| **Develop** | Marker-trail contiguity                                                                                                                   | Not blocked · code complete · sandbox/verify proof exists · commit trail has HEAD · every epic child at Review-or-later                                                             |
+| **Test**    | Marker-trail contiguity · deep-dive placement/completeness · dependency map present                                                       | Not blocked · Definition of Done verified · pre-close completeness check                                                                                                            |
+| **Review**  | Marker-trail contiguity · deep-dive placement/completeness · dependency map · all Verification Commands checked                           | Not blocked · **review approved (human gate)** · every epic child at Done · close gates                                                                                             |
+| **Done**    | Same body gates as Review · no stray unchecked boxes anywhere · lifecycle labels (`agent-review-passed`, `passed-final-review`) satisfied | none — terminal                                                                                                                                                                     |
 
 **Marker-trail contiguity** means every prior canonical stage must already carry an `aitm-entered-<stage>` HTML-comment marker on the issue body — the guard names the exact missing stage and refuses the move if one is gone (`contiguity-hole`); backward moves skip this check entirely. **Deep-dive placement/completeness** and **dependency map** are body-shape checks: the Deep-Dive Analysis section must sit between the Pickup Directive and the fields-block marker and clear a size-bucketed character floor once marked complete; the Dependency Map section must exist with real content once its checkbox is ticked. Source: [`scripts/task-tracker/lib/contiguity-entry-guard.mjs`](scripts/task-tracker/lib/contiguity-entry-guard.mjs), [`stage-entry-markers.mjs`](scripts/task-tracker/lib/stage-entry-markers.mjs), [`body-gates.mjs`](scripts/task-tracker/lib/body-gates.mjs).
 
@@ -230,7 +230,7 @@ Beyond the five daily-driver commands in the quickstart above, this is the fulle
 | `/task ensureUnchecked "<label>"` | Ensure a checkbox is unticked — idempotent, never ticks (exact label match)                          |
 | `/task promote`                   | Promote the active task to the next kanban state (pre-flights cheap exit-gates first)                |
 | `/task demote`                    | Send the active task back a state for rework (Test/Review → Develop)                                 |
-| `/task park <reason>`             | Send a Refine/Plan/On Deck issue back to Backlog without clearing sizing                              |
+| `/task park <reason>`             | Send a Refine/Plan/On Deck issue back to Backlog without clearing sizing                             |
 | `/task fleet`                     | Show all active tasks across parallel agent worktrees                                                |
 | `/task config`                    | List all config values with sources                                                                  |
 | `/task config <key> <value>`      | Set a config value project-locally                                                                   |
@@ -458,7 +458,7 @@ When an epic is picked up, before fanning out sub-agents:
 Both files below are project-editable — the whole point of the Pickup Directive and DoD is that they encode **your** project's workflow, not a fixed one. They're installed to `.ai-task-manager/templates/` and can be edited freely:
 
 | File                    | Purpose                                                                     |
-| ----------------------- | ----------------------------------------------------------------------------- |
+| ----------------------- | --------------------------------------------------------------------------- |
 | `pickup-directive.md`   | Agent instructions — deep dive steps, implementation pattern, fan-out rules |
 | `definition-of-done.md` | DoD checklist inlined into every new issue body at creation                 |
 
@@ -585,11 +585,11 @@ Internal, `init`-managed settings (board/field IDs) are not meant for manual edi
 `install` adds auto-allow rules to `.claude/settings.json` so orchestration runs hands-free. During backlog creation, every shell command executes without a prompt:
 
 | Rule                             | What it covers                                |
-| --------------------------------- | ------------------------------------------------ |
+| -------------------------------- | --------------------------------------------- |
 | `Bash(gh issue create*)`         | Issue creation                                |
 | `Bash(gh api graphql*)`          | Project field mutations, sub-issue linking    |
 | `Bash(gh label create*)`         | Label setup                                   |
-| `Bash(gh project item-edit*)`    | Size, Estimate, Priority fields                |
+| `Bash(gh project item-edit*)`    | Size, Estimate, Priority fields               |
 | `Bash(cat > ./.tmp/gh/*)`        | Issue body temp files (project-local scratch) |
 | `Bash(node */task-tracker.mjs*)` | All `/task` verbs                             |
 | `Bash(*/move-state.mjs*)`        | Kanban state transitions                      |
@@ -609,7 +609,7 @@ To review each invocation manually, remove the rules from `.claude/settings.json
 Default to `/compact`. It summarizes your session, keeps hooks active, and costs ~25× fewer tokens than a cold reload.
 
 |             | `/compact`                     | `/clear`                     |
-| ----------- | ------------------------------- | ------------------------------- |
+| ----------- | ------------------------------ | ---------------------------- |
 | Token cost  | ~2k (summary)                  | ~50k (full reload)           |
 | Hooks       | Fires PreCompact + PostCompact | Bypasses all hooks           |
 | Timing data | Flushed automatically          | Lost if not manually paused  |
@@ -641,7 +641,7 @@ npx aitm help
 ```
 
 | Script                                                        | Description                                                                                                                                                                                                       |
-| --------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| ------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `scripts/gh/project-tether.mjs --issue <N> ...`               | Add an issue to the configured Project V2, verify it through `ProjectV2.items`, repair issue-side phantom project items when possible, set project fields, and optionally link a parent epic with `--parent <N>`. |
 | `scripts/gh/move-state.mjs <issue#> <state> [--item-id <id>]` | Move issue to Kanban state (backlog/assigned/refine/plan/develop/test/review/done). Pass `--item-id` to skip the GraphQL lookup when you already have the project item ID.                                        |
 | `scripts/gh/set-priority.mjs <issue#> <priority> [--cascade]` | Set P0/P1/P2 priority. `--cascade` applies to all sub-issues too.                                                                                                                                                 |
@@ -669,15 +669,15 @@ All scripts read board/field IDs from `.ai-task-manager/task-tracker.json`. No m
 
 ## Design and References
 
-| Document                                                                                                | Contents                                                                                         |
-| ----------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
-| [docs/README.md](docs/README.md)                                                                        | Documentation table of contents and archive map                                                  |
-| [Introduction guide](https://github.com/kburson/ai-task-manager/blob/trunk/docs/introduction/README.md) | Current onboarding guide and quickstart path (hosted on the project, not shipped in the package) |
-| [docs/DESIGN.md](docs/DESIGN.md)                                                                        | Full design spec — data model, state file format, timing comment structure, hook behavior        |
+| Document                                                                                                | Contents                                                                                                                                                   |
+| ------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [docs/README.md](docs/README.md)                                                                        | Documentation table of contents and archive map                                                                                                            |
+| [Introduction guide](https://github.com/kburson/ai-task-manager/blob/trunk/docs/introduction/README.md) | Current onboarding guide and quickstart path (hosted on the project, not shipped in the package)                                                           |
+| [docs/DESIGN.md](docs/DESIGN.md)                                                                        | Full design spec — data model, state file format, timing comment structure, hook behavior                                                                  |
 | [docs/architecture/state-machine.md](docs/architecture/state-machine.md)                                | The state-object model behind [How Work Moves Through the Board](#how-work-moves-through-the-board) — guard/action containers, registry, migration roadmap |
-| [docs/guides/workflow.md](docs/guides/workflow.md)                                                      | GitHub Issues, Kanban, estimates, and cleanup — full workflow rules                              |
-| [docs/guides/ai-value-framework.md](docs/guides/ai-value-framework.md)                                  | ROI methodology — how Engaged Hours, acceleration, and cost tables are calculated                |
-| [docs/guides/settings-guide.md](docs/guides/settings-guide.md)                                          | Recommended Claude Code settings for this tool                                                   |
+| [docs/guides/workflow.md](docs/guides/workflow.md)                                                      | GitHub Issues, Kanban, estimates, and cleanup — full workflow rules                                                                                        |
+| [docs/guides/ai-value-framework.md](docs/guides/ai-value-framework.md)                                  | ROI methodology — how Engaged Hours, acceleration, and cost tables are calculated                                                                          |
+| [docs/guides/settings-guide.md](docs/guides/settings-guide.md)                                          | Recommended Claude Code settings for this tool                                                                                                             |
 
 ---
 
