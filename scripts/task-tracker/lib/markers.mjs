@@ -362,6 +362,8 @@ const FULL_AUTO_FOOTNOTE_BLOCK_RE = new RegExp(
   `^${escapeRegExp(FULL_AUTO_FOOTNOTE_START)}[ \\t]*$[\\s\\S]*?^${escapeRegExp(FULL_AUTO_FOOTNOTE_END)}[ \\t]*$\\n?`,
   'gm'
 );
+const LEGACY_FULL_AUTO_FOOTNOTE_RE =
+  /^> ⚙️ \*\*Full-Auto mode enabled: human review skipped\.\*\*[ \t]*\r?\n> Approval was stamped by an autonomous agent \(`[^`\r\n]*`\) at \d{4}-\d{2}-\d{2}T[\d:.]+(?:Z|[+-]\d{2}:\d{2})\.[ \t]*\r?\n> Hidden marker: `aitm-review-approved full-auto="yes"`\.[ \t]*$\r?\n?/gm;
 
 function escapeRegExp(s) {
   return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -444,6 +446,23 @@ export function removeFullAutoFootnote(body) {
   return String(body)
     .replace(FULL_AUTO_FOOTNOTE_BLOCK_RE, '')
     .replace(/\n{3,}/g, '\n\n');
+}
+
+export function removeLegacyFullAutoFootnote(body) {
+  const src = String(body || '');
+  let masked = maskFencedCodeBlocksPreservingOffsets(src);
+  FULL_AUTO_FOOTNOTE_BLOCK_RE.lastIndex = 0;
+  masked = masked.replace(FULL_AUTO_FOOTNOTE_BLOCK_RE, (block) => block.replace(/[^\r\n]/g, ' '));
+  LEGACY_FULL_AUTO_FOOTNOTE_RE.lastIndex = 0;
+  const matches = [...masked.matchAll(LEGACY_FULL_AUTO_FOOTNOTE_RE)];
+  if (matches.length === 0) return src;
+
+  let next = src;
+  for (let i = matches.length - 1; i >= 0; i -= 1) {
+    const match = matches[i];
+    next = `${next.slice(0, match.index)}${next.slice(match.index + match[0].length)}`;
+  }
+  return next.replace(/\n{3,}/g, '\n\n');
 }
 
 // ---------------------------------------------------------------------------

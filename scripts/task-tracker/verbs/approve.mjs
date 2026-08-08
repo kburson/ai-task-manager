@@ -23,6 +23,7 @@ import {
   insertReviewApprovedMarker,
   insertFullAutoFootnote,
   removeFullAutoFootnote,
+  removeLegacyFullAutoFootnote,
 } from '../lib/markers.mjs';
 import {
   tickLifecycleItem,
@@ -44,6 +45,10 @@ import {
 import { reconcileReviewApprovedTiming } from '../lib/review-approval-timing.mjs';
 
 const pexec = promisify(execFile);
+
+function removeStaleApprovalCarriers(body) {
+  return removeLegacyFullAutoFootnote(removeFullAutoFootnote(removeReviewApprovedMarker(body)));
+}
 
 // Re-exports for back-compat with existing tests/callers that imported the
 // helpers from this module before the centralization in lib/markers.mjs.
@@ -294,9 +299,7 @@ export async function runApprove({ issueNumber, cfg, projectDir, deps = {}, huma
           freshApprovalState.labelFound &&
           !freshApprovalState.alreadyTicked;
         if (hasApprovalMarker(base) && !freshCarriersAreStale) return base;
-        const approvalBase = freshCarriersAreStale
-          ? removeFullAutoFootnote(removeReviewApprovedMarker(base))
-          : base;
+        const approvalBase = freshCarriersAreStale ? removeStaleApprovalCarriers(base) : base;
         // #480 — single consolidated marker: the full-auto audit props ride on
         // `aitm-review-approved` itself, replacing the separate hidden
         // `aitm-full-auto-approved` marker. The visible footnote stays as a
@@ -315,9 +318,7 @@ export async function runApprove({ issueNumber, cfg, projectDir, deps = {}, huma
       // legacy-DoD warning. This duplicates the early transform but is
       // observability rather than correctness — the closure above is the
       // authoritative write.
-      const diagnosticBase = staleApprovalCarriers
-        ? removeFullAutoFootnote(removeReviewApprovedMarker(body))
-        : body;
+      const diagnosticBase = staleApprovalCarriers ? removeStaleApprovalCarriers(body) : body;
       let updated = insertApprovalMarker(
         diagnosticBase,
         ts,

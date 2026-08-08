@@ -300,3 +300,48 @@ test('runApprove refreshes stale Full-Auto approval carriers after lifecycle inv
     rmSync(projectDir, { recursive: true, force: true });
   }
 });
+
+// @story #1172
+test('runApprove removes a legacy unbounded Full-Auto footnote during stale re-approval', async () => {
+  const projectDir = mkdtempSync(`${projectScratchDir('test')}/aitm-1172-`);
+  const staleMarker = `<!-- aitm-review-approved ts="${STALE_APPROVED}" full-auto="yes" signals="env=1" -->`;
+  const staleLegacyFootnote = [
+    '> ⚙️ **Full-Auto mode enabled: human review skipped.**',
+    `> Approval was stamped by an autonomous agent (\`env=1\`) at ${STALE_APPROVED}.`,
+    '> Hidden marker: `aitm-review-approved full-auto="yes"`.',
+  ].join('\n');
+  const body = [
+    '## Definition of Done',
+    '',
+    '### Lifecycle (verified at Review)',
+    '',
+    '- [ ] Final Review Passed',
+    AGENT_REVIEW_PASSED,
+    '',
+    staleLegacyFootnote,
+    '',
+    staleMarker,
+    '',
+  ].join('\n');
+  const reconciliations = [];
+  try {
+    const result = await runApprove({
+      issueNumber: 1172,
+      cfg: { repo: 'o/r' },
+      projectDir,
+      deps: approveDeps({ initialBody: body, reconciliations }),
+    });
+
+    assert.equal(result.status, 'approved');
+    const refreshed = reconciliations[0].issueBody;
+    assert.doesNotMatch(refreshed, new RegExp(STALE_APPROVED));
+    assert.equal(
+      (refreshed.match(/Full-Auto mode enabled: human review skipped/g) || []).length,
+      1
+    );
+    assert.equal((refreshed.match(/aitm-full-auto-footnote:start/g) || []).length, 1);
+    assert.equal((refreshed.match(/aitm-review-approved ts=/g) || []).length, 1);
+  } finally {
+    rmSync(projectDir, { recursive: true, force: true });
+  }
+});
