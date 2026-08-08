@@ -20,9 +20,9 @@ Parallel sub-agents are an **explicit, approved** operation — never the defaul
 **Every `Agent` spawn runs in its own git worktree.** The orchestrator stays in the main worktree; agents work in `.claude/worktrees/<agent-id>/`.
 
 - The `agent-guard` hook blocks `Agent` tool invocations issued from the main worktree. If you see that block, you skipped a worktree — create one and retry.
-- Worktrees need no seeding: `.ai-task-manager/` config + templates are git-tracked (#574), so a `git worktree add` checkout carries every behavioral contract, and transient runtime state auto-creates under `.tmp/aitm/` on first write (#573). The `seed-worktree` helper was retired in #575.
+- Worktrees need no separate config-copy step: `.ai-task-manager/` config and templates are git-tracked (#574), and transient runtime state auto-creates under `.tmp/aitm/` on first write (#573). They **do** require dependency seeding as described below; tracked policy without the runtime self-link is not an operationally ready worktree.
 - **`node_modules/` bootstrap (#791).** `node_modules/` is inherently untrackable, and every SessionStart/PreCompact/PostCompact hook plus the bash/agent/activity PreToolUse guards resolve through the _unscoped_ alias `node_modules/ai-task-manager` (a self-link to the repo root). A worktree where npm was never run lacks that link, so `node <missing path>` crashes and Claude Code treats the failed hook/guard as a non-blocking no-op — the timing roll-up, SessionStart self-heal, and every guard **silently fail open**. After creating a worktree, run `npm ci` (or `npm run link:self` if deps are already present) so the link exists and the hooks + guards fire. The `link:self` script and the npm `prepare` lifecycle both invoke `scripts/task-tracker/ensure-self-link.mjs`, which is idempotent and dogfooding-gated (`isDevPackage()` — no effect on consumer installs).
-- Every worktree starts from fresh `trunk` HEAD. Delete any pre-existing local branch that would collide with the planned worktree branch name before dispatch. Verify post-dispatch that `git -C <worktree> rev-parse HEAD == git rev-parse trunk`.
+- A standalone issue worktree starts from fresh `trunk` HEAD. An epic starts from its governed parent integration ref, and an epic child starts from the current epic head. Delete any pre-existing local branch that would collide with the planned worktree branch name before dispatch. Verify post-dispatch that `git -C <worktree> rev-parse HEAD` equals the exact governing base selected for that issue.
 
 ### 2a. Worktree-isolation dispatch recipe (`Agent({ isolation: "worktree" })`)
 
@@ -107,6 +107,22 @@ work stopped. There are exactly two sanctioned outcomes:
 
 The rule is: a child is either driven to done on its parent branch, blocked with a
 recorded blocker, or dropped with an audit trail — but never left dangling.
+
+### 2d. GitHub-native coordination authority
+
+Worktree isolation protects files; it does not grant assignment, lifecycle, or
+integration authority. On a directory-governed issue, the active GitHub
+coordinator grant and accepted record chain are authoritative. A worker result,
+chat handoff, local fleet row, or green branch remains a submission until the
+current coordinator records its disposition.
+
+Refresh the directory, grant epoch, assignment, contract epoch, and record-chain
+head before accepting work or integrating a branch. A replaced worker may report
+observed work but cannot exercise the old grant. A delegated nested-epic
+coordinator may integrate only within its granted branch boundary.
+
+See [GitHub-Native Coordination](github-native-coordination.md) for adoption,
+append-first mutation, replacement, repair, and recovery procedures.
 
 ---
 

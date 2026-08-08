@@ -103,6 +103,25 @@ The marker is registered in `MARKER_PATTERNS` at
 [lib/gh-edit-guard.mjs](../../scripts/task-tracker/lib/gh-edit-guard.mjs), so
 once stamped it cannot be silently dropped by a subsequent `gh issue edit`.
 
+## Directory-governed issues
+
+This inventory remains the compatibility contract for `legacy-body/v1`. For a
+`github-records/v1` issue, gate consumers resolve the Delivery Contract and
+accepted lifecycle evidence through the contract-source boundary. Stable logical
+IDs, contract and authority epochs, accepted record IDs, and projection hashes
+are authoritative; visible checkbox wording and order are rendered projections.
+
+The hybrid lifecycle rule still applies semantically, but a manual Markdown tick
+cannot satisfy it. Test, review, and approval evidence must be accepted under the
+current contract and authority epochs. A contract amendment invalidates older
+evidence unless policy proves that the changed definition cannot affect it.
+
+Normal directory-governed Develop → Test → Review delivery updates records and
+singleton projections, not the issue body. Body label matching remains only for
+legacy compatibility and explicit directory-owned operations. See
+[GitHub-Native Coordination](../guides/github-native-coordination.md) for the
+operator boundary and recovery procedure.
+
 ## Verification
 
 - Unit: `npm test -- lifecycle-satisfaction close-gates gh-edit-guard preflight-issue`
