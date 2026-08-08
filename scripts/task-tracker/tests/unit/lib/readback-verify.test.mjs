@@ -243,8 +243,12 @@ test('AC4 source: close gates ONLY the review:approved row on the decision; issu
     'the converge-path call site must read the live convergeBody for the approval marker'
   );
   assert.ok(
-    /hasApprovalMarker: hasReviewApprovedMarker\(closeBody\)/.test(closeSrc),
-    'the full-path call site must read the live closeBody for the approval marker'
+    /hasApprovalMarker:[\s\S]{0,100}hasReviewApprovedMarker\(closeBody\)/.test(closeSrc),
+    'the full-path call site must include the live closeBody in the approval decision'
+  );
+  assert.ok(
+    /hasAcceptedApprovalEvidence\(closeLifecycleEvidence/.test(closeSrc),
+    'the full-path call site must include accepted directory evidence in the approval decision'
   );
 
   // Inside the helper: the approved row is inside the shouldEmit guard; the wrap

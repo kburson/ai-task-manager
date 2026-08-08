@@ -6,13 +6,15 @@
 // marker (stamped by `/task approve`).
 //
 // Context contract:
-//   { body: string }
+//   { body: string, lifecycleEvidence?: object }
 //
-// Body-only (no network). Fail-open when ctx.body is undefined — other
+// Projection/body-only (no network). Fail-open when ctx.body is undefined — other
 // guards (or the move-state body-pull) will surface the real reason.
 //
 // Scope: only fires for review → done. Approve writes the marker; this
 // guard reads it. Symmetric with `planApprovedGuard` for plan → develop.
+
+import { hasAcceptedApprovalEvidence } from './github-records/lifecycle-gate-source.mjs';
 
 export const GUARD_ID = 'review-exit-review-approved';
 
@@ -24,6 +26,12 @@ export const reviewExitReviewApprovedGuard = {
   run(ctx) {
     if (ctx?.toState && ctx.toState !== 'done') return { ok: true };
     if (!ctx || typeof ctx.body !== 'string') return { ok: true };
+    if (
+      hasAcceptedApprovalEvidence(ctx.lifecycleEvidence, { provenance: 'human' }) ||
+      hasAcceptedApprovalEvidence(ctx.lifecycleEvidence, { provenance: 'full-auto' })
+    ) {
+      return { ok: true };
+    }
     if (APPROVED_RE.test(ctx.body)) return { ok: true };
     return {
       ok: false,

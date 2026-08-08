@@ -60,6 +60,23 @@ export function hasAcceptedTestEvidence(projection) {
   });
 }
 
+export function hasAcceptedReviewEvidence(projection) {
+  return hasAcceptedLifecycleEvidence(projection, {
+    evidenceKind: 'review',
+    result: 'passed',
+    provenance: 'agent',
+  });
+}
+
+export function hasAcceptedApprovalEvidence(projection, { provenance } = {}) {
+  if (!['human', 'full-auto'].includes(provenance)) return false;
+  return hasAcceptedLifecycleEvidence(projection, {
+    evidenceKind: 'approval',
+    result: 'approved',
+    provenance,
+  });
+}
+
 export class LifecycleGateSourceError extends TypeError {
   constructor(category, cause) {
     super(`lifecycle-gate-source:${category}`, cause === undefined ? undefined : { cause });
