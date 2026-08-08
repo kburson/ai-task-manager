@@ -140,10 +140,10 @@ standalone solos beside it. Hard chain: 1 → {2, 3} → 4; story 5 and the solo
       `parseVerbs` parity test passes.
       _Shipped — the alias declaration now lives in `bin/aitm-registry.mjs`'s
       `parseVerbs`/`VERBS` (the command-surface layer evolved past the plan's
-      literal `command-manifest.mjs` filename), plus the `case 'brainstorm':
-    case 'discover':` fall-through in `task-tracker.mjs`; the parity test in
-      `tests/unit/core/command-manifest.test.mjs` covers `['brainstorm',
-    'discover']`._
+      literal `command-manifest.mjs` filename), plus the
+      `case 'brainstorm': case 'discover':` fall-through in `task-tracker.mjs`;
+      the parity test in `tests/unit/core/command-manifest.test.mjs` covers
+      `['brainstorm', 'discover']`._
 - [ ] **`project-fields` nesting by project-id.** Migrate the flat array to
       `{ "<projectId>": [...] }` for multi-board support; note the
       teammate-creates-own-board → stories-not-on-shared-board caveat (a GitHub
