@@ -27,10 +27,14 @@ import { loadState, saveState, pauseTimingKeepBinding } from '../state.mjs';
 import { projectTmpDir } from '../paths.mjs';
 import { validateVerificationCommand } from '../lib/verification-allowlist.mjs';
 import {
+  COMPLETE_TEST_LANES,
   parseVerificationCommands,
   partitionVerificationCommands,
 } from '../lib/verification-commands.mjs';
 import { migrateTestsLaneSplit } from '../lib/tests-lane-split.mjs';
+import { parseIssueKind } from '../lib/issue-kind.mjs';
+import { docsKindDropsTests } from '../lib/dod-kind-filter.mjs';
+import { computeReviewChangedPaths } from '../lib/review-changed-paths.mjs';
 import {
   insertDodVerifiedMarker,
   insertTestStartedMarker,
@@ -255,7 +259,7 @@ async function defaultPostComment({ cfg, issueNum, body }) {
   });
 }
 
-function buildResultTable(results, { sha, status, autoTicked = 0 }) {
+function buildResultTable(results, { sha, status, autoTicked = 0, laneSkip = null }) {
   const rows = results.map((r) => {
     const mark = r.passed ? '✓' : r.rejected ? '⚠' : '✗';
     // #856 — a killed command carries an honest `cause` (e.g. a timeout naming
@@ -268,7 +272,12 @@ function buildResultTable(results, { sha, status, autoTicked = 0 }) {
     status === 'green' && autoTicked > 0
       ? `\n\n_Auto-ticked ${autoTicked} command-backed checkbox${autoTicked === 1 ? '' : 'es'} from passing evidence (#255)._`
       : '';
-  const table = ['| | Command | Result |', '|---|---|---|', ...rows].join('\n') + ticked;
+  // #1158 — an omitted lane has no row, so say plainly which lanes were skipped
+  // and on what evidence. Silence would read as "the table is the whole run".
+  const skipped = laneSkip
+    ? `\n\n_Complete test lanes skipped (${laneSkip.lanes.join(', ')}): kind \`${laneSkip.kind}\` and a provably documentation-only diff of ${laneSkip.changedPaths.length} file${laneSkip.changedPaths.length === 1 ? '' : 's'} (#1158)._`
+    : '';
+  const table = ['| | Command | Result |', '|---|---|---|', ...rows].join('\n') + ticked + skipped;
   const tails = results
     .filter((r) => !r.passed)
     .map(
@@ -389,6 +398,13 @@ export async function runVerbTest({
   const runDevelopFinalization = deps.runDevelopFinalization;
   const buildFingerprint = deps.buildFingerprint || buildVerificationFingerprint;
   const getSandboxHeadSha = deps.getSandboxHeadSha || defaultGetHeadSha;
+  // #1158 — the sandbox's own `trunk...HEAD` changed-path set. Shares the
+  // #940 Review-layer helper so both gates decide "is this diff docs-only?"
+  // from the same computation; it is best-effort and returns [] on any
+  // failure, which is default-deny downstream.
+  const computeChangedPaths =
+    deps.computeChangedPaths ||
+    (({ projectDir: dir }) => computeReviewChangedPaths({ cfg, projectDir: dir, deps: { pexec } }));
   const moveState = deps.moveState;
   const logIssueTime = deps.logIssueTime;
   const postNewTests = deps.postNewAutomatedTestsComment;
@@ -585,6 +601,14 @@ export async function runVerbTest({
   let testFingerprint = null;
   let evidenceRefusal = null;
   let partition = null;
+  // #1158 — set only when the complete-lane floor was PROVEN droppable for this
+  // run; carries the evidence that made the drop legal so the receipt can say
+  // "these lanes were skipped, and here is why" rather than staying silent.
+  let laneSkip = null;
+  // #1158 — fail-loud blocker: the lanes were skipped while the VC list still
+  // declares a legacy aggregate (`npm test` / `npm run test:all`) whose verdict
+  // is derived from those very lanes. Refuse instead of deriving from nothing.
+  let laneSkipRefusal = null;
   try {
     // #154 — Stamp `aitm-test-started: <sha>:<ts>` BEFORE the sandbox runs so
     // verbReview's preflight can compare outer HEAD at review-time against the
@@ -642,12 +666,48 @@ export async function runVerbTest({
       }
 
       if (!evidenceRefusal) {
+        // #1158 — "the kind declares, the diff decides". The complete-lane floor
+        // is dropped ONLY when the issue is marked `docs-only` AND the sandbox's
+        // own `trunk...HEAD` diff is provably documentation-only. This is the
+        // same `docsKindDropsTests` rule the DoD layer (#865) and the Review NAT
+        // gate (#940) already use, so all three layers relax together or not at
+        // all. `computeChangedPaths` yields [] on any failure and
+        // `diffIsDocsOnly` treats an empty set as NOT proven, so an unresolvable
+        // diff keeps every lane running — exactly like a code-touching one.
+        const kind = parseIssueKind(body);
+        const changedPaths = await computeChangedPaths({ projectDir: wtPath });
+        const dropLanes = docsKindDropsTests(kind, changedPaths);
+        if (dropLanes) {
+          laneSkip = {
+            reason: 'docs-only-diff',
+            kind,
+            lanes: COMPLETE_TEST_LANES.map(({ classification }) => classification),
+            changedPaths,
+          };
+        }
         partition = partitionVerificationCommands({
           commands: vcs,
           reusableClassifications: developEvidence.validation.reusableCommands.map(
             ({ classification }) => classification
           ),
+          includeCompleteLanes: !dropLanes,
         });
+        // #1158 — a legacy aggregate's verdict is DERIVED from the complete
+        // lanes' results (see the compatibility block below). With the lanes
+        // skipped there is nothing to derive from, and the derivation would
+        // quietly report the aggregate as failed. Refuse the run instead: the
+        // operator either drops the aggregate from the VC list or lets the lanes
+        // run. The board is not moved and no verdict is invented.
+        if (laneSkip && partition.compatibility.length > 0) {
+          laneSkipRefusal = {
+            code: 'lane-skip-vs-legacy-aggregate',
+            declared: partition.compatibility.map(({ command }) => command),
+            lanes: laneSkip.lanes,
+          };
+        }
+      }
+
+      if (!evidenceRefusal && !laneSkipRefusal) {
         for (const reused of partition.reused) {
           const source = developEvidence.receipt.commands.find(
             ({ classification }) => classification === reused.classification
@@ -757,7 +817,7 @@ export async function runVerbTest({
       });
     }
 
-    if (developEvidence && !evidenceRefusal) {
+    if (developEvidence && !evidenceRefusal && !laneSkipRefusal) {
       const completedFingerprint = await buildFingerprint({ projectDir: wtPath, commitSha: sha });
       const completedValidation = validateVerificationReceipt({
         receipt: developEvidence.receipt,
@@ -817,6 +877,26 @@ export async function runVerbTest({
     return { status: 'develop-evidence-invalid', sha, reasons: evidenceRefusal, wtPath };
   }
 
+  // #1158 — lanes were legally skipped but the VC list still declares an
+  // aggregate that can only be derived FROM those lanes. Refuse loudly; the
+  // board is untouched (gate-first flow never moved it) and no verdict is
+  // manufactured for a command that did not run.
+  if (laneSkipRefusal) {
+    await postComment({
+      cfg,
+      issueNum,
+      body: [
+        `⛔ Test refused: ${laneSkipRefusal.code}.`,
+        '',
+        `This issue's diff is provably documentation-only, so the complete test lanes (${laneSkipRefusal.lanes.join(', ')}) were skipped.`,
+        `But \`## Verification Commands\` still declares ${laneSkipRefusal.declared.map((c) => `\`${c}\``).join(', ')}, whose pass/fail is derived from those lanes.`,
+        '',
+        'Deriving a verdict from lanes that never ran would be fabricated evidence. Either remove the aggregate command from the VC list, or drop the `docs-only` kind so the lanes run.',
+      ].join('\n'),
+    });
+    return { status: 'lane-skip-refused', sha, reasons: [laneSkipRefusal], laneSkip, wtPath };
+  }
+
   // #973 — a `rejected` result whose reason is a policy-shape mismatch (see
   // `isPolicyShapeRejection` above) must not gate promotion the same way a
   // genuine nonzero-exit `failed` result does. A metachar/injection-vector
@@ -830,7 +910,7 @@ export async function runVerbTest({
 
   if (allGreen) {
     const ts = now();
-    const testReceipt = developEvidence
+    const baseReceipt = developEvidence
       ? createVerificationReceipt({
           issueNumber: Number(issueNum),
           stage: 'test',
@@ -841,6 +921,13 @@ export async function runVerbTest({
           now,
         })
       : null;
+    // #1158 — a lane that did not run contributes NO command entry, so the
+    // receipt never claims a pass it did not earn. Absence alone, though, is
+    // ambiguous: it reads the same as a run that simply never reached the lane.
+    // `laneSkip` is the positive record that disambiguates it — which lanes were
+    // omitted, and on what evidence. Its absence means the lanes were declared
+    // and ran; its presence means they were deliberately skipped.
+    const testReceipt = baseReceipt && laneSkip ? { ...baseReceipt, laneSkip } : baseReceipt;
     // #270 — Gate-first: stamp `aitm-dod-verified` (and a defensive
     // `test`-entry marker for stub moveStates that skip stamping) BEFORE
     // `moveState('test')`. The develop-exit-sandbox-proof guard inside
@@ -919,6 +1006,7 @@ export async function runVerbTest({
         sha,
         status: 'green',
         autoTicked: autoTick.tickedVc.length + autoTick.tickedFunctional.length,
+        laneSkip,
       }),
     });
     if (logIssueTime) await logIssueTime(issueNum);
@@ -974,7 +1062,7 @@ export async function runVerbTest({
   await postComment({
     cfg,
     issueNum,
-    body: buildResultTable(results, { sha, status: 'red' }),
+    body: buildResultTable(results, { sha, status: 'red', laneSkip }),
   });
   return { status: 'failed', sha, results, wtPath };
 }

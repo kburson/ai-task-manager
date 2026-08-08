@@ -77,9 +77,21 @@ export function classifyVerificationCommand(command) {
   return STANDARD_CLASSIFICATIONS.get(String(command || '').trim()) || 'targeted';
 }
 
+/**
+ * Split a parsed VC list into the four buckets the Test sandbox runs.
+ *
+ * #1158 — `includeCompleteLanes` (default `true`) is the ONLY switch that can
+ * empty `completeLanes`. Defaulting it to `true` keeps every pre-#1158 caller
+ * byte-identical: the complete-lane floor is returned unconditionally unless a
+ * caller has affirmatively proven it may be dropped. This function stays pure —
+ * it holds no kind logic and reads no git state; the caller decides (see
+ * `verbs/test.mjs`, which derives the flag through `docsKindDropsTests` so an
+ * unclassifiable or empty diff keeps the lanes).
+ */
 export function partitionVerificationCommands({
   commands = [],
   reusableClassifications = [],
+  includeCompleteLanes = true,
 } = {}) {
   const reusable = new Set(reusableClassifications);
   const normalized = commands.map((item) => {
@@ -92,7 +104,7 @@ export function partitionVerificationCommands({
   });
   return {
     reused: normalized.filter(({ classification }) => reusable.has(classification)),
-    completeLanes: COMPLETE_TEST_LANES.map((lane) => ({ ...lane })),
+    completeLanes: includeCompleteLanes ? COMPLETE_TEST_LANES.map((lane) => ({ ...lane })) : [],
     targeted: normalized.filter(({ classification }) => classification === 'targeted'),
     compatibility: normalized.filter(({ classification }) =>
       ['test-fast-legacy', 'test-all-legacy'].includes(classification)
