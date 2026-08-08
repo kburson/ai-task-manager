@@ -13,6 +13,7 @@
 
 import { hasDodVerifiedMarker } from './markers.mjs';
 import { hasVerificationReceiptMarker, parseVerificationReceipt } from './verification-receipt.mjs';
+import { hasAcceptedTestEvidence } from './github-records/lifecycle-gate-source.mjs';
 
 export const GUARD_ID = 'test-exit-dod-verified';
 
@@ -21,6 +22,7 @@ export const testExitDodVerifiedGuard = {
   run(ctx) {
     if (ctx?.toState && ctx.toState !== 'review') return { ok: true };
     if (typeof ctx?.body !== 'string') return { ok: true };
+    if (hasAcceptedTestEvidence(ctx.lifecycleEvidence)) return { ok: true };
     if (
       hasVerificationReceiptMarker(ctx.body, 'test') &&
       !parseVerificationReceipt(ctx.body, 'test')

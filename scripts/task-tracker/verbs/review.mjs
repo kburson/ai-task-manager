@@ -57,6 +57,12 @@ import {
   upsertVerificationReceipt,
   validateVerificationReceipt,
 } from '../lib/verification-receipt.mjs';
+import { locateAuthoritySource } from '../lib/github-records/authority-locator.mjs';
+import {
+  hasAcceptedTestEvidence,
+  resolveLifecycleGateEvidence,
+} from '../lib/github-records/lifecycle-gate-source.mjs';
+import { gql } from '../../gh/lib/github-projects.mjs';
 
 const TEST_RECEIPT_REQUIRED = Object.freeze([
   'lint-full',
@@ -66,6 +72,14 @@ const TEST_RECEIPT_REQUIRED = Object.freeze([
   'test-slow',
 ]);
 const reviewPexec = promisify(execFile);
+
+function defaultLifecycleGraphql({ query, variables }) {
+  return gql(query, variables).then((data) => ({ data }));
+}
+
+function lifecycleEvidenceReason(error) {
+  return { code: String(error?.message || 'lifecycle-gate-source:unknown') };
+}
 
 function isExactProjectFile(token, projectDir, { testFile = false } = {}) {
   if (!projectDir || typeof token !== 'string' || /[*?{}[\]]/.test(token)) return false;
@@ -121,10 +135,85 @@ function markerMatchesSha(marker, sha) {
 export async function resolveReviewVerificationEvidence({
   body,
   issueNumber,
+  repository,
   projectDir,
   getHeadSha,
   buildFingerprint = buildVerificationFingerprint,
+  graphql,
+  readContractRecord,
+  listIssueRecords,
+  resolveLifecycleEvidence = resolveLifecycleGateEvidence,
 } = {}) {
+  let authoritySource;
+  try {
+    authoritySource = locateAuthoritySource({ issueBody: body });
+  } catch (error) {
+    return {
+      ok: false,
+      mode: 'github-records-v1',
+      receipt: null,
+      commandResults: new Map(),
+      reasons: [lifecycleEvidenceReason(error)],
+      remediation: 'Repair the issue directory and current accepted Test evidence.',
+    };
+  }
+  if (authoritySource.kind === 'github-records/v1') {
+    let commitSha;
+    try {
+      commitSha = await getHeadSha({ projectDir });
+    } catch {
+      return {
+        ok: false,
+        mode: 'github-records-v1',
+        receipt: null,
+        commandResults: new Map(),
+        reasons: [{ code: 'head-unresolvable' }],
+        remediation: 'Resolve the bound worktree HEAD before retrying Review.',
+      };
+    }
+    let lifecycleEvidence;
+    try {
+      lifecycleEvidence = await resolveLifecycleEvidence({
+        repository,
+        issue: Number(issueNumber),
+        issueBody: body,
+        expectedSha: commitSha,
+        graphql: graphql || defaultLifecycleGraphql,
+        readContractRecord,
+        deps: listIssueRecords ? { listIssueRecords } : undefined,
+      });
+    } catch (error) {
+      return {
+        ok: false,
+        mode: 'github-records-v1',
+        receipt: null,
+        commandResults: new Map(),
+        reasons: [lifecycleEvidenceReason(error)],
+        remediation: 'Refresh current accepted Test evidence under active coordinator authority.',
+      };
+    }
+    if (!hasAcceptedTestEvidence(lifecycleEvidence)) {
+      return {
+        ok: false,
+        mode: 'github-records-v1',
+        receipt: null,
+        commandResults: new Map(),
+        lifecycleEvidence,
+        reasons: [{ code: 'directory-test-evidence-missing' }],
+        remediation: 'Record and accept current-contract exact-SHA Test evidence before Review.',
+      };
+    }
+    return {
+      ok: true,
+      mode: 'github-records-v1',
+      receipt: null,
+      fingerprint: null,
+      commandResults: standardReviewCommandResults(),
+      lifecycleEvidence,
+      reasons: [],
+      remediation: 'Record and accept current-contract exact-SHA Test evidence before Review.',
+    };
+  }
   const receipt = parseVerificationReceipt(body, 'test');
   const commandResults = standardReviewCommandResults();
   if (!receipt) {
@@ -334,9 +423,14 @@ export async function runReviewProbes({
   const testEvidence = await resolveReviewVerificationEvidence({
     body,
     issueNumber,
+    repository: cfg.repo,
     projectDir,
     getHeadSha,
     buildFingerprint,
+    graphql: deps.graphql,
+    readContractRecord: deps.readContractRecord,
+    listIssueRecords: deps.listIssueRecords,
+    resolveLifecycleEvidence: deps.resolveLifecycleEvidence || resolveLifecycleGateEvidence,
   });
   if (!testEvidence.ok) {
     return { status: 'test-evidence-invalid', probes: [], reasons: testEvidence.reasons };
@@ -816,7 +910,14 @@ export async function verbReview(ctx) {
     // bodies before doing the full AC verification pass below. The full
     // exit-guard set (including pre-close completeness) runs again at the
     // runMoveState boundary below — single source of truth in the registry.
-    {
+    let directoryEvidenceLane = false;
+    try {
+      directoryEvidenceLane =
+        locateAuthoritySource({ issueBody: rawBody }).kind === 'github-records/v1';
+    } catch {
+      // The authoritative resolver below renders a precise fail-closed reason.
+    }
+    if (!directoryEvidenceLane) {
       const dodResult = await runGuardsFn('test', 'review', {
         issueNumber: Number(issueNum),
         repo: cfg.repo,
@@ -919,9 +1020,14 @@ export async function verbReview(ctx) {
     const reviewEvidence = await resolveReviewVerificationEvidence({
       body: rawBody,
       issueNumber: Number(issueNum),
+      repository: cfg.repo,
       projectDir,
       getHeadSha: getReviewHeadSha,
       buildFingerprint: ctx.buildVerificationFingerprint || buildVerificationFingerprint,
+      graphql: ctx.graphql,
+      readContractRecord: ctx.readContractRecord,
+      listIssueRecords: ctx.listIssueRecords,
+      resolveLifecycleEvidence: ctx.resolveLifecycleEvidence || resolveLifecycleGateEvidence,
     });
     if (!reviewEvidence.ok) {
       const codes = reviewEvidence.reasons.map(({ code }) => code).join(', ');
@@ -1228,6 +1334,7 @@ export async function verbReview(ctx) {
         cfg,
         fromState: 'test',
         toState: 'review',
+        lifecycleEvidence: reviewEvidence.lifecycleEvidence,
       });
       const completenessRefusal = (guardResult.refusals || []).find(
         (r) => r.id === 'test-exit-pre-close-completeness'
@@ -1281,7 +1388,10 @@ export async function verbReview(ctx) {
     // gating on this result is the only correct check. A re-run while already in
     // Review is a satisfied no-op (#882) and passes here, which is what makes the
     // state action re-runnable in place.
-    const reviewMove = await runMoveState(target, 'review', { silent: true });
+    const reviewMove = await runMoveState(target, 'review', {
+      silent: true,
+      lifecycleEvidence: reviewEvidence.lifecycleEvidence,
+    });
     if (reviewMove && reviewMove.ok === false && reviewMove.benign !== true) {
       process.stderr.write('\n');
       process.stderr.write(

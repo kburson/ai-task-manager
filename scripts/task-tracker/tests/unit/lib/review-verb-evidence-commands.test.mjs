@@ -176,7 +176,7 @@ const reviewSource = readFileSync(reviewVerbPath, 'utf8');
   // The move result is captured into a named binding, not discarded.
   assert.match(
     reviewSource,
-    /const\s+reviewMove\s*=\s*await\s+runMoveState\(target,\s*'review',\s*\{\s*silent:\s*true\s*\}\)/,
+    /const\s+reviewMove\s*=\s*await\s+runMoveState\(target,\s*'review',\s*\{\s*silent:\s*true,\s*lifecycleEvidence:\s*reviewEvidence\.lifecycleEvidence,?\s*\}\)/,
     'review.mjs captures the runMoveState result into `reviewMove`'
   );
 

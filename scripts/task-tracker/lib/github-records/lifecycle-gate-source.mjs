@@ -21,6 +21,45 @@ const EVIDENCE_RULES = Object.freeze({
   ]),
 });
 
+export function hasAcceptedLifecycleEvidence(
+  projection,
+  { evidenceKind, result, provenance } = {}
+) {
+  if (
+    !isPlainObject(projection) ||
+    projection.sourceKind !== 'github-records/v1' ||
+    typeof projection.expectedSha !== 'string' ||
+    !SHA_RE.test(projection.expectedSha) ||
+    !Array.isArray(projection.evidence) ||
+    !Array.isArray(projection.acceptedRecordIds) ||
+    !isPlainObject(projection.authority)
+  ) {
+    return false;
+  }
+  const authority = projection.authority;
+  return projection.evidence.some(
+    (entry) =>
+      isPlainObject(entry) &&
+      projection.acceptedRecordIds.includes(entry.recordId) &&
+      entry.evidenceKind === evidenceKind &&
+      entry.result === result &&
+      entry.provenance === provenance &&
+      entry.commitSha === projection.expectedSha &&
+      entry.contractEpoch === authority.contractEpoch &&
+      isPlainObject(entry.authority) &&
+      entry.authority.grantId === authority.coordinatorGrantId &&
+      entry.authority.epoch === authority.authorityEpoch
+  );
+}
+
+export function hasAcceptedTestEvidence(projection) {
+  return hasAcceptedLifecycleEvidence(projection, {
+    evidenceKind: 'test',
+    result: 'passed',
+    provenance: 'agent',
+  });
+}
+
 export class LifecycleGateSourceError extends TypeError {
   constructor(category, cause) {
     super(`lifecycle-gate-source:${category}`, cause === undefined ? undefined : { cause });

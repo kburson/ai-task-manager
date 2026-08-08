@@ -60,6 +60,7 @@ export async function runGuardExecution(ctx) {
     formatSummary,
     resolveWorkspaceForIssue,
     backlogMoveWarning,
+    lifecycleEvidence,
   } = ctx;
 
   // Gate 1: dirty-workspace warning on move to review. Non-blocking — move still proceeds.
@@ -152,6 +153,7 @@ export async function runGuardExecution(ctx) {
       fetchBlockerState,
       cfg,
       deps,
+      lifecycleEvidence,
     });
 
     // #1017 — a just-created issue can briefly return a stale body snapshot
