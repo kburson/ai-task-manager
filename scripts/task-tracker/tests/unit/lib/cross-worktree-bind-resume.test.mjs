@@ -114,40 +114,41 @@ test('pause, switch-out, and stop are recorded departures that still need resume
   assert.deepEqual(classifyEvent('stop'), { role: 'open', kind: 'stop' });
 });
 
-const tmp = mkdtempProjectIsolated('tt-cross-worktree-bind-');
-process.env.AI_TASK_MANAGER_PROJECT_DIR = tmp;
-process.env.AI_TASK_MANAGER_TRANSCRIPT_DIR = path.join(tmp, 'transcripts');
-mkdirSync(process.env.AI_TASK_MANAGER_TRANSCRIPT_DIR, { recursive: true });
-
 const { verbResume } = await import('../../../verbs/resume.mjs');
 test('fresh worktree binds locally but posts no row over an already-active live span', async () => {
-  process.env.AI_TASK_MANAGER_SESSION_ID = 'cross-worktree-active-tail-1018';
-  const statePath = path.join(tmp, 'state.json');
-  writeFileSync(statePath, JSON.stringify({ active: null, lastActive: null }), 'utf8');
-  const posts = [];
-  const now = new Date();
-  const fiveMinutesAgo = new Date(now.getTime() - 5 * 60_000)
-    .toISOString()
-    .replace('T', ' ')
-    .replace('Z', ' +00:00');
-  const timingBody = body(row(fiveMinutesAgo, 'plan:started'));
+  const tmp = mkdtempProjectIsolated('tt-cross-worktree-bind-');
+  try {
+    process.env.AI_TASK_MANAGER_PROJECT_DIR = tmp;
+    process.env.AI_TASK_MANAGER_TRANSCRIPT_DIR = path.join(tmp, 'transcripts');
+    process.env.AI_TASK_MANAGER_SESSION_ID = 'cross-worktree-active-tail-1018';
+    mkdirSync(process.env.AI_TASK_MANAGER_TRANSCRIPT_DIR, { recursive: true });
+    const statePath = path.join(tmp, 'state.json');
+    writeFileSync(statePath, JSON.stringify({ active: null, lastActive: null }), 'utf8');
+    const posts = [];
+    const now = new Date();
+    const fiveMinutesAgo = new Date(now.getTime() - 5 * 60_000)
+      .toISOString()
+      .replace('T', ' ')
+      .replace('Z', ' +00:00');
+    const timingBody = body(row(fiveMinutesAgo, 'plan:started'));
 
-  await verbResume({
-    rest: ['#1018'],
-    cfg: { repo: 'owner/repo' },
-    statePath,
-    projectDir: tmp,
-    role: 'agent',
-    drainQueueIfAny: async () => {},
-    safePostTiming: async (issue, timingRow) => posts.push({ issue, timingRow }),
-    nowIso: () => now.toISOString(),
-    readTimingCommentBody: async () => ({ status: 'found', body: timingBody }),
-    seedKanban: async () => ({ kanbanState: 'develop' }),
-  });
+    await verbResume({
+      rest: ['#1018'],
+      cfg: { repo: 'owner/repo' },
+      statePath,
+      projectDir: tmp,
+      role: 'agent',
+      drainQueueIfAny: async () => {},
+      safePostTiming: async (issue, timingRow) => posts.push({ issue, timingRow }),
+      nowIso: () => now.toISOString(),
+      readTimingCommentBody: async () => ({ status: 'found', body: timingBody }),
+      seedKanban: async () => ({ kanbanState: 'develop' }),
+    });
 
-  const persisted = JSON.parse(readFileSync(statePath, 'utf8'));
-  assert.equal(persisted.active, '#1018', 'the new local session is bound');
-  assert.equal(posts.length, 0, 'no duplicate active→active reengagement row is posted');
+    const persisted = JSON.parse(readFileSync(statePath, 'utf8'));
+    assert.equal(persisted.active, '#1018', 'the new local session is bound');
+    assert.equal(posts.length, 0, 'no duplicate active→active reengagement row is posted');
+  } finally {
+    rmSync(tmp, { recursive: true, force: true });
+  }
 });
-
-test.after(() => rmSync(tmp, { recursive: true, force: true }));
