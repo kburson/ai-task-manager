@@ -21,7 +21,13 @@ const GUARD = path.resolve(__dir, '..', '..', 'bash-guard.mjs');
 
 function runGuard(command) {
   return new Promise((resolve, reject) => {
-    const child = spawn('node', [GUARD], { stdio: ['pipe', 'pipe', 'pipe'] });
+    // #1166: this suite exercises move-state policy, not session binding. Give
+    // the hook an isolated session so a parent Test sandbox cannot contribute
+    // its real issue/worktree binding and preempt these assertions.
+    const child = spawn('node', [GUARD], {
+      env: { ...process.env, AI_TASK_MANAGER_SESSION_ID: 'bash-guard-move-state-unbound' },
+      stdio: ['pipe', 'pipe', 'pipe'],
+    });
     let stdout = '';
     let stderr = '';
     child.stdout.on('data', (b) => (stdout += b.toString()));
