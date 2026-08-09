@@ -2,8 +2,7 @@
 
 import { strict as assert } from 'node:assert';
 import { execFileSync, spawn } from 'node:child_process';
-import { mkdtempSync, rmSync } from 'node:fs';
-import os from 'node:os';
+import { rmSync } from 'node:fs';
 import path from 'node:path';
 import test from 'node:test';
 
@@ -15,6 +14,7 @@ import { evaluateGhEdit } from '../../../lib/gh-edit-guard.mjs';
 import { writeFleet } from '../../../fleet-registry.mjs';
 import { fleetPath } from '../../../paths.mjs';
 import { setActiveTask } from '../../../session-state.mjs';
+import { mkdtempOutsideRepo } from '../../../lib/scratch-dir.mjs';
 
 const GUARD = path.resolve(
   path.dirname(new URL(import.meta.url).pathname),
@@ -39,7 +39,7 @@ function git(cwd, ...args) {
 }
 
 function makeRepo() {
-  const root = mkdtempSync(path.join(os.tmpdir(), 'aitm-bash-binding-'));
+  const root = mkdtempOutsideRepo('aitm-bash-binding-');
   git(root, 'init', '-q', '-b', 'trunk');
   git(root, 'config', 'user.name', 'aitm-test');
   git(root, 'config', 'user.email', 'aitm-test@example.com');
