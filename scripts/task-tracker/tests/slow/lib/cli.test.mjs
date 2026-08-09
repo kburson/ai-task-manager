@@ -23,52 +23,52 @@ writeFileSync(
 const env = { ...process.env, AI_TASK_MANAGER_PROJECT_DIR: sandbox, TT_SKIP_NETWORK: '1' };
 
 // Test 1: status with no active → "no active task"
-let r = await pexec('node', [CLI, 'status'], { env });
+let r = await pexec('node', [CLI, 'status'], { env, cwd: sandbox });
 assert.match(r.stdout, /no active task/i);
 
 // Test 2: config lists defaults
-r = await pexec('node', [CLI, 'config'], { env });
+r = await pexec('node', [CLI, 'config'], { env, cwd: sandbox });
 assert.match(r.stdout, /wpm/);
 assert.match(r.stdout, /180/);
 
 // Test 3: config set then read
-await pexec('node', [CLI, 'config', 'wpm', '175'], { env });
-r = await pexec('node', [CLI, 'config'], { env });
+await pexec('node', [CLI, 'config', 'wpm', '175'], { env, cwd: sandbox });
+r = await pexec('node', [CLI, 'config'], { env, cwd: sandbox });
 assert.match(r.stdout, /wpm.*175/);
 
 // Test 4: end with nothing active is a no-op
-r = await pexec('node', [CLI, 'end'], { env });
+r = await pexec('node', [CLI, 'end'], { env, cwd: sandbox });
 assert.match(r.stdout, /no active task/i);
 
 // Test 5: /task #107 starts a task (network skipped)
-let r5 = await pexec('node', [CLI, '#107'], { env });
+let r5 = await pexec('node', [CLI, '#107'], { env, cwd: sandbox });
 assert.match(r5.stdout, /Active: #107/);
 
 // Test 6: /task status reflects active
-r5 = await pexec('node', [CLI, 'status'], { env });
+r5 = await pexec('node', [CLI, 'status'], { env, cwd: sandbox });
 assert.match(r5.stdout, /Active: #107/);
 
 // Test 7: /task pause flushes and sets lastActive
-r5 = await pexec('node', [CLI, 'pause'], { env });
+r5 = await pexec('node', [CLI, 'pause'], { env, cwd: sandbox });
 assert.match(r5.stdout, /Paused #107/);
 
-r5 = await pexec('node', [CLI, 'status'], { env });
+r5 = await pexec('node', [CLI, 'status'], { env, cwd: sandbox });
 assert.match(r5.stdout, /Last active: #107/);
 
 // Test 8: /task resume (no arg) resumes after pause
-r5 = await pexec('node', [CLI, 'resume'], { env });
+r5 = await pexec('node', [CLI, 'resume'], { env, cwd: sandbox });
 assert.match(r5.stdout, /Resumed #107/);
 
 // Test 9: /task #108 auto-ends #107
-r5 = await pexec('node', [CLI, '#108'], { env });
+r5 = await pexec('node', [CLI, '#108'], { env, cwd: sandbox });
 assert.match(r5.stdout, /Active: #108/);
 assert.match(r5.stdout, /Previous: #107/);
 
 // Test 10: /task discover starts discovery bucket
-r5 = await pexec('node', [CLI, 'discover'], { env });
+r5 = await pexec('node', [CLI, 'discover'], { env, cwd: sandbox });
 assert.match(r5.stdout, /discovery bucket/i);
 
-r5 = await pexec('node', [CLI, 'status'], { env });
+r5 = await pexec('node', [CLI, 'status'], { env, cwd: sandbox });
 assert.match(r5.stdout, /discovery bucket/i);
 
 // Test 10b: /task plan with no args prints usage and exits non-zero.
@@ -77,7 +77,7 @@ assert.match(r5.stdout, /discovery bucket/i);
 // retired (see #322).
 let planNoArgsErr = null;
 try {
-  await pexec('node', [CLI, 'plan'], { env });
+  await pexec('node', [CLI, 'plan'], { env, cwd: sandbox });
 } catch (err) {
   planNoArgsErr = err;
 }
@@ -90,8 +90,11 @@ assert.match(planNoArgsErr.stderr || '', /Usage: \/task plan/);
 const envNew = { ...env, TT_FAKE_NEW_ISSUE: '#999' };
 const planDraftPath = path.join(sandbox, 'draft-plan.md');
 writeFileSync(planDraftPath, '# Fake Title\n\n## Scope\ntest scope\n', 'utf8');
-await pexec('node', [CLI, 'save-plan', '--from-file', planDraftPath], { env: envNew });
-r5 = await pexec('node', [CLI, 'new'], { env: envNew });
+await pexec('node', [CLI, 'save-plan', '--from-file', planDraftPath], {
+  env: envNew,
+  cwd: sandbox,
+});
+r5 = await pexec('node', [CLI, 'new'], { env: envNew, cwd: sandbox });
 assert.match(r5.stdout, /Active: #999/);
 
 // ---- Regression: /task start #N must switch (not resume lastActive) ----
@@ -131,28 +134,34 @@ const switchEnv = {
 };
 
 // Bind #200, pause it so lastActive=#200 and active=null.
-await pexec('node', [CLI, '#200'], { env: switchEnv });
-await pexec('node', [CLI, 'pause'], { env: switchEnv });
+await pexec('node', [CLI, '#200'], { env: switchEnv, cwd: startSwitchSandbox });
+await pexec('node', [CLI, 'pause'], { env: switchEnv, cwd: startSwitchSandbox });
 
 // `/task start #201` must bind #201, not lastActive #200. It binds the target
 // directly rather than delegating to switch. The first-ever bind of #201 (no
 // timing history of its own — the pause was on #200) reads an absent timing
 // log and emits the canonical `start` row, not `resumed`: a re-engagement on an
 // issue with no open interruption and no prior start is downgraded to `start`.
-let rs = await pexec('node', [CLI, 'start', '#201'], { env: switchEnv });
+let rs = await pexec('node', [CLI, 'start', '#201'], {
+  env: switchEnv,
+  cwd: startSwitchSandbox,
+});
 assert.match(rs.stdout, /Started #201/, '/task start #N should bind #N as a fresh start');
 assert.doesNotMatch(rs.stdout, /Resumed #200/, '/task start #N must not resume lastActive');
 
 // Regression guard: `/task resume #N` binds the target directly (no switch
 // delegation) when there is no active task. #202 is likewise a fresh first
 // bind, so under the #534 pairing invariant it emits `start`, not `resumed`.
-await pexec('node', [CLI, 'pause'], { env: switchEnv });
-rs = await pexec('node', [CLI, 'resume', '#202'], { env: switchEnv });
+await pexec('node', [CLI, 'pause'], { env: switchEnv, cwd: startSwitchSandbox });
+rs = await pexec('node', [CLI, 'resume', '#202'], {
+  env: switchEnv,
+  cwd: startSwitchSandbox,
+});
 assert.match(rs.stdout, /Started #202/, '/task resume #N should bind #N as a fresh start');
 
 // `/task resume` with no arg and after pause resumes lastActive.
-await pexec('node', [CLI, 'pause'], { env: switchEnv });
-rs = await pexec('node', [CLI, 'resume'], { env: switchEnv });
+await pexec('node', [CLI, 'pause'], { env: switchEnv, cwd: startSwitchSandbox });
+rs = await pexec('node', [CLI, 'resume'], { env: switchEnv, cwd: startSwitchSandbox });
 assert.match(
   rs.stdout,
   /Resumed #202/,
@@ -186,7 +195,7 @@ for (const blockedVerb of [
   'log',
 ]) {
   try {
-    await pexec('node', [CLI, blockedVerb], { env: noRepoEnv });
+    await pexec('node', [CLI, blockedVerb], { env: noRepoEnv, cwd: noRepoDirBase });
     assert.fail(`Expected non-zero exit for verb: ${blockedVerb}`);
   } catch (err) {
     assert.match(
@@ -199,7 +208,7 @@ for (const blockedVerb of [
 
 // Exempt verbs succeed without repo
 for (const exemptVerb of ['status', 'config', 'help', '?']) {
-  const er = await pexec('node', [CLI, exemptVerb], { env: noRepoEnv });
+  const er = await pexec('node', [CLI, exemptVerb], { env: noRepoEnv, cwd: noRepoDirBase });
   assert.ok(
     er.stdout.length > 0 || er.stderr.length === 0,
     `exempt verb "${exemptVerb}" should not error`
@@ -215,7 +224,7 @@ rmSync(noRepoDirBase, { recursive: true });
 const bareWorktree = mkdtempSync(path.join(projectScratchDir('test'), 'tt-bare-wt-'));
 const bareEnv = { ...process.env, AI_TASK_MANAGER_PROJECT_DIR: bareWorktree, TT_SKIP_NETWORK: '1' };
 try {
-  await pexec('node', [CLI, '#42', '--role', 'agent'], { env: bareEnv });
+  await pexec('node', [CLI, '#42', '--role', 'agent'], { env: bareEnv, cwd: bareWorktree });
   assert.fail('Expected non-zero exit for --role agent in unseeded worktree');
 } catch (err) {
   assert.match(

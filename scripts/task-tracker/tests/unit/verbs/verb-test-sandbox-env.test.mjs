@@ -1,25 +1,23 @@
 // @story #453
-// Verifies that defaultExecInSandbox forwards AI_TASK_MANAGER_PROJECT_DIR into
-// the spawned child process environment so projectScratchDir resolves against
-// the real project root rather than the sandbox CWD.
+// Verifies that defaultExecInSandbox binds AI_TASK_MANAGER_PROJECT_DIR to the
+// detached verification worktree so project authority matches the child CWD.
 
 import { strict as assert } from 'node:assert';
 import { test } from 'node:test';
 import { defaultExecInSandbox } from '../../../verbs/test.mjs';
 
-test('defaultExecInSandbox: forwards AI_TASK_MANAGER_PROJECT_DIR to child env', async () => {
-  const projectDir = '/fake/project/root';
+test('defaultExecInSandbox: binds AI_TASK_MANAGER_PROJECT_DIR to the sandbox path', async () => {
+  const sandboxPath = process.cwd();
   const result = await defaultExecInSandbox({
     argv: [
       process.execPath,
       '-e',
       "process.stdout.write(process.env.AI_TASK_MANAGER_PROJECT_DIR || 'MISSING')",
     ],
-    path: process.cwd(),
-    projectDir,
+    path: sandboxPath,
   });
   assert.equal(result.exit, 0, `child exited non-zero: ${result.stderr}`);
-  assert.equal(result.stdout.trim(), projectDir);
+  assert.equal(result.stdout.trim(), sandboxPath);
 });
 
 test('defaultExecInSandbox: child inherits parent env alongside AI_TASK_MANAGER_PROJECT_DIR', async () => {
@@ -35,7 +33,6 @@ test('defaultExecInSandbox: child inherits parent env alongside AI_TASK_MANAGER_
         `process.stdout.write(process.env.${sentinelKey} || 'MISSING')`,
       ],
       path: process.cwd(),
-      projectDir: '/any/dir',
     });
     assert.equal(result.exit, 0);
     assert.equal(result.stdout.trim(), sentinelVal);
