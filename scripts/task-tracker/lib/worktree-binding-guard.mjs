@@ -13,6 +13,7 @@ import { getActiveTask } from '../session-state.mjs';
 import { currentSessionId } from '../word-counter.mjs';
 import { GH_API_TIMEOUT_MS } from './process-timeouts.mjs';
 import { BoundWorktreeMissingError, resolveProjectDir } from './project-dir.mjs';
+import { fleetRegistryPath, readFleet } from '../fleet-registry.mjs';
 
 const pexec = promisify(execFile);
 
@@ -86,7 +87,7 @@ function issueNumberFromBoundDir(boundDir) {
   return match ? Number(match[1]) : null;
 }
 
-function readWorktreeIdentity({ projectDir }) {
+function locateWorktreeMetadata(projectDir) {
   let cursor = path.resolve(projectDir);
   const root = path.parse(cursor).root;
   while (true) {
@@ -99,17 +100,92 @@ function readWorktreeIdentity({ projectDir }) {
         if (!match) throw new Error(`Malformed Git worktree marker at ${marker}`);
         gitDir = path.resolve(cursor, match[1]);
       }
-      const head = readFileSync(path.join(gitDir, 'HEAD'), 'utf8').trim();
-      const ref = head.match(/^ref:\s*refs\/heads\/(.+)$/);
-      return {
-        worktreePath: realpathSync(cursor),
-        worktreeBranch: ref ? ref[1] : 'HEAD',
-      };
+      return { worktreePath: realpathSync(cursor), gitDir };
     }
     if (cursor === root) break;
     cursor = path.dirname(cursor);
   }
   throw new Error(`Unable to locate Git worktree metadata from ${projectDir}`);
+}
+
+export function readWorktreeIdentity({ projectDir }) {
+  const metadata = locateWorktreeMetadata(projectDir);
+  const head = readFileSync(path.join(metadata.gitDir, 'HEAD'), 'utf8').trim();
+  const ref = head.match(/^ref:\s*refs\/heads\/(.+)$/);
+  return {
+    worktreePath: metadata.worktreePath,
+    worktreeBranch: ref ? ref[1] : 'HEAD',
+  };
+}
+
+function mainWorktreePathFromMetadata(projectDir) {
+  const metadata = locateWorktreeMetadata(projectDir);
+  if (statSync(path.join(metadata.worktreePath, '.git')).isDirectory()) {
+    return metadata.worktreePath;
+  }
+  const commonDeclaration = path.join(metadata.gitDir, 'commondir');
+  if (!existsSync(commonDeclaration)) return metadata.worktreePath;
+  const commonDir = path.resolve(metadata.gitDir, readFileSync(commonDeclaration, 'utf8').trim());
+  return path.basename(commonDir) === '.git' ? path.dirname(commonDir) : metadata.worktreePath;
+}
+
+export function resolveCurrentSessionWorktreeBinding({
+  invokingDir = process.cwd(),
+  deps = {},
+} = {}) {
+  const sessionId = deps.sessionId ?? currentSessionId();
+  if (!sessionId) return null;
+  const pathExists = deps.pathExists ?? existsSync;
+  const getRecord = deps.getActiveTask ?? getActiveTask;
+  const resolveIdentity = deps.resolveIdentity ?? readWorktreeIdentity;
+  const findMain = deps.findMain ?? mainWorktreePathFromMetadata;
+  const loadFleet = deps.readFleet ?? readFleet;
+  const candidates = new Set([path.resolve(invokingDir)]);
+
+  for (const variable of ['AI_TASK_MANAGER_PROJECT_DIR', 'TASK_TRACKER_PROJECT_DIR']) {
+    const value = process.env[variable];
+    if (typeof value === 'string' && value.trim()) candidates.add(path.resolve(value));
+  }
+
+  const mainPath = findMain(invokingDir);
+  const fleet = loadFleet(fleetRegistryPath(mainPath));
+  for (const entry of Object.values(fleet || {})) {
+    if (typeof entry?.worktreePath === 'string' && entry.worktreePath.trim()) {
+      candidates.add(path.resolve(entry.worktreePath));
+    }
+  }
+
+  let best = null;
+  for (const candidate of candidates) {
+    if (!pathExists(candidate)) continue;
+    const record = getRecord(sessionId, candidate);
+    if (
+      !record ||
+      typeof record.issue !== 'string' ||
+      typeof record.worktreePath !== 'string' ||
+      !record.worktreePath.trim() ||
+      !pathExists(record.worktreePath)
+    ) {
+      continue;
+    }
+    let identity;
+    try {
+      identity = resolveIdentity({ projectDir: record.worktreePath });
+    } catch {
+      continue;
+    }
+    const issueMatch = record.issue.match(/^#(\d+)$/);
+    const timestamp = Date.parse(record.worktreeResolvedAt || record.boundAt || '') || 0;
+    const resolved = {
+      issueNumber: issueMatch ? Number(issueMatch[1]) : null,
+      ...identity,
+      timestamp,
+    };
+    if (!best || resolved.timestamp > best.timestamp) best = resolved;
+  }
+  if (!best) return null;
+  const { timestamp: _timestamp, ...binding } = best;
+  return binding;
 }
 
 function auditBody({ issueNumber, verb, bound, invoking }) {

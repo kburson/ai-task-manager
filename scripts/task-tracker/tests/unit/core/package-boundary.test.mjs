@@ -58,7 +58,9 @@ function repoRoot() {
 // #1133 later added one focused runtime reconciliation module and measured the
 // packed surface at 601 entries, confirming that the same ceiling still leaves
 // bounded development headroom well below the pre-tightening surface.
-const ENTRY_CEILING = 625;
+// #1166 adds one shipped Bash-hook policy module; keep the ceiling exact so any
+// further package-surface growth still requires an explicit review.
+const ENTRY_CEILING = 626;
 
 function packedFiles() {
   const out = execFileSync('npm', ['pack', '--dry-run', '--json'], {
