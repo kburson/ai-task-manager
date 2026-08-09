@@ -26,6 +26,7 @@ export async function runHealDeparture({
   rowIndex,
   event = 'pause:other',
   description,
+  ts,
   deps = {},
 } = {}) {
   if (issueNumber == null) throw new Error('runHealDeparture: issueNumber is required');
@@ -46,7 +47,7 @@ export async function runHealDeparture({
       commentId: comment.id,
     };
   }
-  const healed = repairMissingDeparture(comment.body, { rowIndex, event, description });
+  const healed = repairMissingDeparture(comment.body, { rowIndex, event, description, ts });
   const candidatesAfter = findUnpairedReengagements(healed).length;
   const result = { candidatesBefore, candidatesAfter, commentId: comment.id };
   if (!apply) return { status: 'dry-run', ...result };
@@ -63,6 +64,7 @@ export function parseArgs(argv) {
     rowIndex: undefined,
     event: 'pause:other',
     description: undefined,
+    ts: undefined,
   };
   for (let index = 0; index < argv.length; index++) {
     const arg = argv[index];
@@ -73,6 +75,7 @@ export function parseArgs(argv) {
     else if (arg === '--row-index') out.rowIndex = Number(argv[++index]);
     else if (arg === '--event') out.event = argv[++index];
     else if (arg === '--description') out.description = argv[++index];
+    else if (arg === '--at') out.ts = argv[++index];
     else if (/^#?[1-9]\d*$/.test(arg)) out.issue = arg.replace(/^#/, '');
   }
   return out;
@@ -80,8 +83,9 @@ export function parseArgs(argv) {
 
 export function printUsage(out = process.stdout) {
   out.write(
-    'Usage: node scripts/task-tracker/heal-timing-departure.mjs <issue#> [--apply | --check-only] [--row-index N] [--event pause:<reason>] [--description TEXT] [--yes]\n' +
-      '  row indexes are zero-based Timing Log data-row indexes; dry-run is the default\n'
+    'Usage: node scripts/task-tracker/heal-timing-departure.mjs <issue#> [--apply | --check-only] [--row-index N] [--event pause:<reason>] [--description TEXT] [--at TIMESTAMP] [--yes]\n' +
+      '  row indexes are zero-based Timing Log data-row indexes; dry-run is the default\n' +
+      '  --at places the departure at that timestamp; it must fall strictly between the preceding row and the reengagement\n'
   );
 }
 
@@ -97,7 +101,7 @@ export async function main(argv, deps = {}) {
   try {
     assertKnownArgv(argv, {
       flags: ['--apply', '--check-only', '--yes', '--help', '-h'],
-      options: ['--row-index', '--event', '--description'],
+      options: ['--row-index', '--event', '--description', '--at'],
       positionals: { max: 1 },
     });
   } catch (error) {
@@ -143,6 +147,7 @@ export async function main(argv, deps = {}) {
         rowIndex: args.rowIndex,
         event: args.event,
         description: args.description,
+        ts: args.ts,
       }),
     { timeoutMs: 10_000, retries: 2 }
   );

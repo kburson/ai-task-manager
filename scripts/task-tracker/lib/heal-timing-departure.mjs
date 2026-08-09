@@ -32,7 +32,11 @@ export function findUnpairedReengagements(body) {
   for (const row of rows) {
     if (!isReengagementEvent(row.event)) continue;
     const previous = rows[row.rowIndex - 1] ?? null;
-    if (previous && isDepartureEvent(previous.event)) continue;
+    // #1187 — a predecessor-less reengagement (the `start` row) can never be
+    // repaired: repairMissingDeparture throws on it. Offering it as a candidate
+    // only inflates the count into a spurious "ambiguous" refusal.
+    if (!previous) continue;
+    if (isDepartureEvent(previous.event)) continue;
     candidates.push({
       rowIndex: row.rowIndex,
       lineIndex: row.lineIndex,
@@ -44,9 +48,34 @@ export function findUnpairedReengagements(body) {
   return candidates;
 }
 
+// #1187 — resolve the timestamp the inserted departure is stamped with. Without
+// an explicit `ts` the historical default stands (one second before the
+// reengagement). A supplied `ts` must fall strictly between the preceding row
+// and the reengagement; out-of-interval values are rejected, never clamped,
+// because a clamped write looks like a repair and is not one.
+function resolveDepartureMs({ ts, previousMs, reengagementMs, rowIndex }) {
+  if (ts === undefined || ts === null) return reengagementMs - 1000;
+  const departureMs = typeof ts === 'number' ? ts : timingTimestampToMs(ts);
+  if (!Number.isFinite(departureMs)) {
+    throw new Error(`departure timestamp is not readable: ${String(ts)}`);
+  }
+  if (!Number.isFinite(previousMs)) {
+    throw new Error(
+      `cannot place a departure at rowIndex ${rowIndex}: invalid preceding timestamp`
+    );
+  }
+  if (departureMs <= previousMs || departureMs >= reengagementMs) {
+    throw new Error(
+      `departure timestamp ${new Date(departureMs).toISOString()} must fall strictly between ` +
+        `${new Date(previousMs).toISOString()} and ${new Date(reengagementMs).toISOString()}`
+    );
+  }
+  return departureMs;
+}
+
 export function repairMissingDeparture(
   body,
-  { rowIndex, event = 'pause:other', description } = {}
+  { rowIndex, event = 'pause:other', description, ts } = {}
 ) {
   if (typeof body !== 'string' || body.length === 0) {
     throw new Error('no Timing Log body supplied');
@@ -98,8 +127,15 @@ export function repairMissingDeparture(
     throw new Error(`cannot repair rowIndex ${target.rowIndex}: invalid reengagement timestamp`);
   }
 
+  const departureMs = resolveDepartureMs({
+    ts,
+    previousMs: timingTimestampToMs(previous.ts),
+    reengagementMs,
+    rowIndex: target.rowIndex,
+  });
+
   const insertedRow = buildBackdatedDepartureRow({
-    ts: reengagementMs - 1000,
+    ts: departureMs,
     event,
     description: description ?? `repaired missing departure before ${target.event}`,
     wordMarker: previous.wordMarker,
