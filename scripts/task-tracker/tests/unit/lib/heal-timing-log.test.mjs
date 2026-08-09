@@ -16,6 +16,7 @@ import {
   countZeroValueStopResumePairs,
   countRedundantReviewPassRows,
   countPostTerminalRows,
+  recomputeCompletedRows,
 } from '../../../lib/heal-timing-log.mjs';
 
 const HEADER =
@@ -450,11 +451,16 @@ test('removed stop/resume brackets feed the existing phase-duration recomputatio
 });
 
 test('review pass healing preserves the first outcome in each reset sequence', () => {
+  // 3m00s is the span the surrounding rows actually imply (review:started at
+  // 10:08:00 → review:approved at 10:11:00, no brackets), so this row is
+  // self-consistent and the drift recompute (#1189) leaves it alone. The
+  // assertion below then measures what it was written to measure: removing the
+  // duplicate passes does not alter phase totals.
   const approved = noiseRow({
     ts: '2026-08-01 10:11:00 -05:00',
     event: 'review:approved',
-    active: '0h 00m 10s',
-    rowActive: 10,
+    active: '0h 03m 00s',
+    rowActive: 180,
   });
   const body = noiseBody(
     noiseRow({ ts: '2026-08-01 10:00:00 -05:00', event: 'review:started' }),
@@ -580,4 +586,95 @@ test('mixed valueless-noise healing is byte-identical on a second pass', () => {
   );
   const once = healTimingLog(body);
   assert.equal(healTimingLog(once), once);
+});
+
+// --- #1189: cached-duration drift after a retroactive departure insert -------
+//
+// `heal-timing-departure` backfills a `switch-out:#N` / `pause:*` row into an
+// already-closed span. That moves the bracket set out from under the enclosing
+// `:completed` row, whose active/idle were cached before the insert. Before
+// #1189 the pass-2 early-return discarded the (already computed) correct
+// values because no strip row, no zero-value stop/resume pair and no word fold
+// was present — the three indirect proxies the gate keyed on.
+
+const DRIFT_STARTED =
+  '| 2026-08-05 10:00:00 -05:00 | develop:started |  |  |  | 90,000 | start development | <!-- row-sec: a=0 i=0 -->';
+const DRIFT_DEPARTURE =
+  '| 2026-08-05 10:05:00 -05:00 | switch-out:#999 |  |  |  | 90,010 | switched out | <!-- row-sec: a=0 i=0 -->';
+const DRIFT_RESUMED =
+  '| 2026-08-05 11:55:00 -05:00 | resumed |  |  |  | 90,020 | resumed | <!-- row-sec: a=0 i=0 -->';
+// Cached as an uninterrupted 2h span — what the writer stamped before the
+// departure row existed.
+const DRIFT_COMPLETED_STALE =
+  '| 2026-08-05 12:00:00 -05:00 | develop:completed | 2h 00m 00s |  |  | 90,100 | development complete | <!-- row-sec: a=7200 i=0 -->';
+
+function driftBody(...rows) {
+  return ['## ⏱ Timing Log', '', HEADER, SEP, ...rows, ''].join('\n');
+}
+
+test('recomputes a :completed row whose cached durations drifted after a retroactive departure insert', () => {
+  const body = driftBody(DRIFT_STARTED, DRIFT_DEPARTURE, DRIFT_RESUMED, DRIFT_COMPLETED_STALE);
+  const healed = healTimingLog(body);
+
+  assert.notEqual(healed, body);
+  const completed = healed.split('\n').find((line) => line.includes('develop:completed'));
+  // 2h span, 1h50m of it bracketed by switch-out→resumed: 600s active, 6600s idle.
+  assert.match(completed, /\| 0h 10m 00s \| 1h 50m 00s \|/);
+  assert.match(completed, /<!-- row-sec: a=600 i=6600 -->/);
+  // Every other cell is preserved byte-for-byte.
+  assert.ok(completed.includes('| 90,100 | development complete |'));
+  // The pre-terminal rows are untouched.
+  for (const row of [DRIFT_STARTED, DRIFT_DEPARTURE, DRIFT_RESUMED]) {
+    assert.ok(healed.includes(row));
+  }
+});
+
+test('drift repair is idempotent', () => {
+  const body = driftBody(DRIFT_STARTED, DRIFT_DEPARTURE, DRIFT_RESUMED, DRIFT_COMPLETED_STALE);
+  const once = healTimingLog(body);
+  assert.equal(healTimingLog(once), once);
+});
+
+test('a log with no cached drift is returned byte-identical', () => {
+  const consistent = driftBody(
+    DRIFT_STARTED,
+    DRIFT_DEPARTURE,
+    DRIFT_RESUMED,
+    DRIFT_COMPLETED_STALE
+  );
+  const healed = healTimingLog(consistent);
+  // `healed` is now self-consistent; healing it again changes nothing, and the
+  // same holds for a natively-consistent uninterrupted span.
+  assert.equal(healTimingLog(healed), healed);
+  const uninterrupted = driftBody(DRIFT_STARTED, DRIFT_COMPLETED_STALE);
+  assert.equal(healTimingLog(uninterrupted), uninterrupted);
+});
+
+test('an unmatched span keeps its existing durations rather than regressing to zero', () => {
+  // No `develop:started` row — `computePhaseCloseDelta` cannot match the span.
+  const orphan = driftBody(DRIFT_DEPARTURE, DRIFT_RESUMED, DRIFT_COMPLETED_STALE);
+  assert.equal(healTimingLog(orphan), orphan);
+});
+
+test('a pre-v2 completion row without a row-sec marker is left to the legacy paths', () => {
+  const withoutMarker =
+    '| 2026-08-05 12:00:00 -05:00 | develop:completed | 2h 00m 00s |  |  | 90,100 | development complete |';
+  const body = driftBody(DRIFT_STARTED, DRIFT_DEPARTURE, DRIFT_RESUMED, withoutMarker);
+  assert.equal(healTimingLog(body), body);
+});
+
+test('recomputeCompletedRows drives the drift repair standalone', () => {
+  const body = driftBody(DRIFT_STARTED, DRIFT_DEPARTURE, DRIFT_RESUMED, DRIFT_COMPLETED_STALE);
+  const recomputed = recomputeCompletedRows(body);
+
+  const completed = recomputed.split('\n').find((line) => line.includes('develop:completed'));
+  assert.match(completed, /<!-- row-sec: a=600 i=6600 -->/);
+  assert.equal(recomputeCompletedRows(recomputed), recomputed);
+  // Recompute alone neither seals nor strips: the retired rows a full heal
+  // would remove survive untouched.
+  const legacyRecomputed = recomputeCompletedRows(legacyBody());
+  assert.ok(legacyRecomputed.includes(IDLE_ROW));
+  assert.ok(legacyRecomputed.includes(ACTIVE_WORK_1));
+  assert.ok(legacyRecomputed.includes(ACTIVE_WORK_2));
+  assert.equal(recomputeCompletedRows(null), null);
 });

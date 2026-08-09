@@ -25,6 +25,15 @@
 // Idempotence: a healed log has no strip rows (fold is 0) and its completed
 // rows already equal the recompute, so re-running is byte-identical. Healing a
 // native v2 log is likewise a no-op.
+//
+// That invariant only holds for logs written forward in time. Inserting a row
+// retroactively — a `switch-out:#N` / `pause:*` departure backfilled into an
+// already-closed span — moves the bracket set out from under a `:completed`
+// row whose durations were cached before the insert. The recompute is
+// therefore also triggered by CACHED-VALUE DRIFT: when a completion row's
+// `<!-- row-sec -->` marker disagrees with the span the current rows imply,
+// the row is re-rendered from the computed value. Convergence, not refusal,
+// is what makes the transform idempotent.
 
 import {
   computePhaseCloseDelta,
@@ -311,6 +320,56 @@ function renderCompletedRow(line, { activeSec, idleSec, deltaWords }) {
   return rewritten + ' ' + formatRowSecMarker({ activeSec: aSec, idleSec: iSec });
 }
 
+// True when the row's CACHED durations disagree with the ones just computed
+// from the surrounding rows — the direct signal that a retroactive edit (an
+// inserted `switch-out:#N` / `pause:*` departure row, say) moved the phase
+// bracket out from under a `:completed` row that was written before it.
+//
+// Three deliberate guards keep the blast radius tight:
+//   - `close.matched` must be true. An unmatched span falls through to the
+//     "never regress a real span to 0" path and must keep doing so.
+//   - The row must actually carry a `row-sec` marker. A pre-v2 row has no
+//     stored value to disagree with, so it stays on the legacy paths rather
+//     than silently pulling the whole historical corpus into the recompute.
+//   - The cached marker must be non-zero. `a=0 i=0` is the writer's "no span
+//     recorded" sentinel — bookkeeping rows (`issue:closed`, repeated
+//     `review:passed`) carry it by construction — and is therefore the same
+//     nothing-to-disagree-with case as a missing marker. Repairing those would
+//     churn valueless rows that every existing heal rule deliberately leaves
+//     alone.
+function cachedRowSecDrifts(line, close) {
+  if (!close?.matched) return false;
+  const cached = parseRowSecMarker(line);
+  if (!cached) return false;
+  if (cached.activeSec === 0 && cached.idleSec === 0) return false;
+  return cached.activeSec !== close.activeSec || cached.idleSec !== close.idleSec;
+}
+
+// Recompute every `:completed` row in `body` whose cached durations have
+// drifted from the span the current rows imply, leaving Δ Words and every
+// other cell untouched. This is the pass-2 recompute on its own — no seal, no
+// strip, no word fold — exposed so other healers and tests can drive the
+// repair without duplicating the render logic. Idempotent: after one pass the
+// cached marker equals the computed value, so a second pass is a no-op.
+export function recomputeCompletedRows(body) {
+  if (!body || typeof body !== 'string') return body;
+  const lines = body.split('\n');
+  const out = lines.map((line) => {
+    const row = parseTimingRow(line);
+    if (!row || !isTableTimingTimestamp(row.ts)) return line;
+    const state = COMPLETE_SLUG_TO_STATE.get(row.event);
+    if (!state) return line;
+    const close = computePhaseCloseDelta(body, state, row.ts);
+    if (!cachedRowSecDrifts(line, close)) return line;
+    return renderCompletedRow(line, {
+      activeSec: close.activeSec,
+      idleSec: close.idleSec,
+      deltaWords: parseWordsCell(row.cells[5]),
+    });
+  });
+  return out.join('\n');
+}
+
 // Pure transform. Returns the healed body string; input is never mutated.
 // Non-string input is returned unchanged.
 export function healTimingLog(body) {
@@ -390,7 +449,8 @@ export function healTimingLog(body) {
           close.matched &&
           (before.activeSec !== close.activeSec || before.idleSec !== close.idleSec);
       }
-      if (!bracketChanged && foldedWords === existingWords) return line;
+      const drifted = cachedRowSecDrifts(line, close);
+      if (!bracketChanged && !drifted && foldedWords === existingWords) return line;
     }
 
     // Fall back to the row's existing active/idle when no enter row matched
