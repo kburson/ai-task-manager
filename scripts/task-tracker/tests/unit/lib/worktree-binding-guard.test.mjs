@@ -72,6 +72,12 @@ test('entry wiring enforces the guard before verb preflight reads task state', (
   assert.ok(guard < preflight, 'binding guard runs before state-reading verb preflight');
 });
 
+test('Test commands bind their project-dir override to the detached sandbox worktree', () => {
+  const source = readFileSync(path.join(ROOT, 'scripts/task-tracker/verbs/test.mjs'), 'utf8');
+  assert.match(source, /AI_TASK_MANAGER_PROJECT_DIR:\s*wtPath/);
+  assert.doesNotMatch(source, /AI_TASK_MANAGER_PROJECT_DIR:\s*projectDir/);
+});
+
 test('explicit override proceeds only after a durable audit is recorded', async () => {
   const input = fixture();
   const result = await enforceVerbWorktreeBinding({ ...input, allowForeignWorktree: true });

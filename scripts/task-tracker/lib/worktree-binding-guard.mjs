@@ -5,13 +5,14 @@
 // Git commands cannot silently remain in the foreign tree.
 
 import { execFile } from 'node:child_process';
+import { existsSync, readFileSync, realpathSync, statSync } from 'node:fs';
+import path from 'node:path';
 import { promisify } from 'node:util';
 
 import { getActiveTask } from '../session-state.mjs';
 import { currentSessionId } from '../word-counter.mjs';
 import { GH_API_TIMEOUT_MS } from './process-timeouts.mjs';
 import { BoundWorktreeMissingError, resolveProjectDir } from './project-dir.mjs';
-import { resolveWorktreeBinding } from './worktree-binding.mjs';
 
 const pexec = promisify(execFile);
 
@@ -85,6 +86,32 @@ function issueNumberFromBoundDir(boundDir) {
   return match ? Number(match[1]) : null;
 }
 
+function readWorktreeIdentity({ projectDir }) {
+  let cursor = path.resolve(projectDir);
+  const root = path.parse(cursor).root;
+  while (true) {
+    const marker = path.join(cursor, '.git');
+    if (existsSync(marker)) {
+      let gitDir = marker;
+      if (!statSync(marker).isDirectory()) {
+        const declaration = readFileSync(marker, 'utf8').trim();
+        const match = declaration.match(/^gitdir:\s*(.+)$/i);
+        if (!match) throw new Error(`Malformed Git worktree marker at ${marker}`);
+        gitDir = path.resolve(cursor, match[1]);
+      }
+      const head = readFileSync(path.join(gitDir, 'HEAD'), 'utf8').trim();
+      const ref = head.match(/^ref:\s*refs\/heads\/(.+)$/);
+      return {
+        worktreePath: realpathSync(cursor),
+        worktreeBranch: ref ? ref[1] : 'HEAD',
+      };
+    }
+    if (cursor === root) break;
+    cursor = path.dirname(cursor);
+  }
+  throw new Error(`Unable to locate Git worktree metadata from ${projectDir}`);
+}
+
 function auditBody({ issueNumber, verb, bound, invoking }) {
   return [
     '### AITM Foreign-Worktree Override Audit',
@@ -144,7 +171,10 @@ export async function enforceVerbWorktreeBinding({
   allowForeignWorktree = false,
   deps = {},
 } = {}) {
-  const resolveBinding = deps.resolveBinding || resolveWorktreeBinding;
+  // Read `.git` metadata directly. The entry guard must run before verbs and
+  // remain trustworthy even when a verification fixture intentionally shims
+  // the `git` executable on PATH.
+  const resolveBinding = deps.resolveBinding || readWorktreeIdentity;
   const resolveBoundDir = deps.resolveBoundDir || resolveProjectDir;
   const resolveBoundIssue = deps.resolveBoundIssue || issueNumberFromBoundDir;
   const postAudit = deps.postAudit || postForeignWorktreeAudit;

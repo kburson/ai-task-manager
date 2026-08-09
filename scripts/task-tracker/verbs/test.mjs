@@ -198,11 +198,13 @@ async function defaultNpmCi({ path: wtPath }) {
     cwd: wtPath,
     timeout: NPM_CI_TIMEOUT_MS,
     maxBuffer: 64 * 1024 * 1024,
-    env: buildSandboxEnv(), // @story #541 — strip leaked lock state
+    // @story #541/#1165 — strip leaked lock state and keep all project-local
+    // setup authority inside the detached verification worktree.
+    env: buildSandboxEnv(process.env, { AI_TASK_MANAGER_PROJECT_DIR: wtPath }),
   });
 }
 
-async function defaultExecInSandbox({ argv, path: wtPath, projectDir }) {
+async function defaultExecInSandbox({ argv, path: wtPath }) {
   const timeoutMs = sandboxTimeoutMs();
   const startedAt = Date.now();
   const startedInstant = new Date().toISOString();
@@ -211,8 +213,9 @@ async function defaultExecInSandbox({ argv, path: wtPath, projectDir }) {
       cwd: wtPath,
       timeout: timeoutMs,
       maxBuffer: 64 * 1024 * 1024,
-      // @story #541 — strip leaked lock state, then set the project dir.
-      env: buildSandboxEnv(process.env, { AI_TASK_MANAGER_PROJECT_DIR: projectDir }),
+      // @story #541/#1165 — strip leaked lock state, then bind project-local
+      // execution to this detached verification worktree, never its parent.
+      env: buildSandboxEnv(process.env, { AI_TASK_MANAGER_PROJECT_DIR: wtPath }),
     });
     return {
       exit: 0,

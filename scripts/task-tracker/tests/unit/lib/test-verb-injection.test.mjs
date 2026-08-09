@@ -184,7 +184,13 @@ process.exit(0);
 
   assert.notEqual(exitCode, 0, '/task test must exit non-zero when a VC is rejected');
 
-  assert.ok(existsSync(recordedCommentPath), 'gh issue comment was never called');
+  const ghCalls = existsSync(path.join(sandbox, 'gh-calls.log'))
+    ? readFileSync(path.join(sandbox, 'gh-calls.log'), 'utf8')
+    : '(none)';
+  assert.ok(
+    existsSync(recordedCommentPath),
+    `gh issue comment was never called\nstdout:\n${stdout}\nstderr:\n${stderr}\ngh calls:\n${ghCalls}`
+  );
   const comment = readFileSync(recordedCommentPath, 'utf8');
   assert.match(
     comment,
