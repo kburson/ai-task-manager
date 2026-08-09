@@ -691,6 +691,7 @@ export async function runVerbTest({
   let cleanupNeeded = false;
   let setupDiag = null; // #254 — tagged diagnostics from the last failed setup attempt
   let testFingerprint = null;
+  let testExecutionContext = null;
   let evidenceRefusal = null;
   let partition = null;
   // #1158 — set only when the complete-lane floor was PROVEN droppable for this
@@ -920,6 +921,15 @@ export async function runVerbTest({
       });
       if (!completedValidation.ok) evidenceRefusal = completedValidation.reasons;
       testFingerprint = completedFingerprint;
+      if (!evidenceRefusal) {
+        // Capture while the detached sandbox still exists. Once `finally`
+        // removes it, Git metadata lookup would walk up to the bound child
+        // worktree and falsely attribute the receipt to that checkout.
+        testExecutionContext = captureEvidenceProvenance({
+          projectDir: wtPath,
+          boundIssue: issueNum,
+        });
+      }
     }
   } catch (err) {
     // #270 — sandbox-setup or sandbox-run threw. The board is still on
@@ -1007,10 +1017,7 @@ export async function runVerbTest({
           issueNumber: Number(issueNum),
           stage: 'test',
           fingerprint: testFingerprint,
-          executionContext: captureEvidenceProvenance({
-            projectDir: wtPath,
-            boundIssue: issueNum,
-          }),
+          executionContext: testExecutionContext,
           commands: results
             .filter(({ receiptCommand }) => receiptCommand)
             .map(({ receiptCommand }) => receiptCommand),

@@ -1,14 +1,15 @@
 // @story #1167
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
-import { realpathSync, rmSync } from 'node:fs';
+import { mkdtempSync, realpathSync, rmSync } from 'node:fs';
+import path from 'node:path';
 import test from 'node:test';
 
 import { stampAcEvidenceMarker } from '../../../lib/ac-evidence.mjs';
 import { captureEvidenceProvenance } from '../../../lib/evidence-provenance.mjs';
 import { stampEvidenceMarker } from '../../../lib/functional-dod-evidence.mjs';
 import { hasExecutionProof, parseProofMarker } from '../../../lib/proof-marker.mjs';
-import { mkdtempProjectIsolated } from '../../../lib/scratch-dir.mjs';
+import { mkdtempProjectIsolated, projectScratchDir } from '../../../lib/scratch-dir.mjs';
 import {
   createVerificationReceipt,
   validateVerificationReceiptStructure,
@@ -48,6 +49,23 @@ test('captures the actual checked-out branch instead of an expected issue branch
       boundIssue: 1167,
     });
   } finally {
+    rmSync(repo, { recursive: true, force: true });
+  }
+});
+
+test('captures a detached verification sandbox before it is removed', () => {
+  const repo = mkdtempProjectIsolated('evidence-provenance-repo-');
+  const sandbox = mkdtempSync(path.join(projectScratchDir('test'), 'evidence-sandbox-'));
+  rmSync(sandbox, { recursive: true, force: true });
+  try {
+    execFileSync('git', ['worktree', 'add', '--detach', sandbox, 'HEAD'], { cwd: repo });
+    assert.deepEqual(captureEvidenceProvenance({ projectDir: sandbox, boundIssue: 1167 }), {
+      worktreePath: realpathSync(sandbox),
+      branch: 'HEAD',
+      boundIssue: 1167,
+    });
+  } finally {
+    execFileSync('git', ['worktree', 'remove', '--force', sandbox], { cwd: repo });
     rmSync(repo, { recursive: true, force: true });
   }
 });
