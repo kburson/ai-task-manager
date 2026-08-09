@@ -3,6 +3,7 @@ import { promisify } from 'node:util';
 import { findTrailComment } from '../commit-trail-handler.mjs';
 import { parseMarker, TRAIL_HEADING } from './commit-trail.mjs';
 import { auditEvidenceMarkers } from './evidence-markers.mjs';
+import { auditEvidenceBranchReachability } from './evidence-branch-reachability.mjs';
 import { NON_DEMONSTRABLE_TAG_RE } from './body-invariants.mjs';
 import { isNoCommitKind, isAcWaived, hasDeliverableMarker } from './issue-kind.mjs';
 import { GH_API_TIMEOUT_MS, GIT_TIMEOUT_MS } from './process-timeouts.mjs';
@@ -104,6 +105,9 @@ export async function runReviewPreflight({ issueNumber, repo, projectDir, cfg, d
   // comment/analysis, not a commit) — mirrors `code-complete-gate.mjs`'s
   // `isNoCommitKind(body)` → `hasDeliverableMarker(body)` check.
   const body = String(await getIssueBody());
+  const reachabilityAudit = deps.evidenceBranchReachability || auditEvidenceBranchReachability;
+  const reachability = await reachabilityAudit({ body, issueNumber, projectDir });
+  reasons.push(...reachability.reasons);
   let lifecycleEvidence = null;
   let authoritySource = null;
   try {
