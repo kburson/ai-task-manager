@@ -6,6 +6,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
 import { main, parseArgs, printUsage, runHealDeparture } from '../../heal-timing-departure.mjs';
+import { emitSelfDoc } from '../../../lib/self-doc.mjs';
 
 const fixture = readFileSync(
   new URL('../fixtures/timing-departure-gap-1099.txt', import.meta.url),
@@ -33,6 +34,14 @@ const fixture = readFileSync(
   printUsage({ write: (chunk) => (text += chunk) });
   assert.match(text, /--at TIMESTAMP/, 'usage lists --at');
   assert.match(text, /strictly between/i, 'usage states the interval rule');
+}
+
+// The self-doc entry advertises --at too.
+{
+  let doc = '';
+  emitSelfDoc('heal-timing-departure', (chunk) => (doc += chunk));
+  assert.match(doc, /--at TIMESTAMP/, 'self-doc usage lists --at');
+  assert.match(doc, /never clamped/i, 'self-doc records the fail-loud effect');
 }
 
 function harness(body) {
