@@ -1,4 +1,5 @@
 // @story #1165
+// cspell:ignore commondir
 // Operator-facing execution-context guard. Project-dir resolution redirects
 // governed reads to the issue-bound worktree; this guard additionally refuses
 // a CLI launched from a different checkout so the operator's edits, tests, and

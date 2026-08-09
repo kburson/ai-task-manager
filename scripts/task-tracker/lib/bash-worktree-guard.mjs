@@ -1,4 +1,5 @@
 // @story #1166
+// cspell:ignore reflog
 // Pure command classification and refusal rendering for the Bash PreToolUse
 // worktree-binding guard. Binding discovery stays in worktree-binding-guard.mjs;
 // this module decides whether a command needs that authority and what a
