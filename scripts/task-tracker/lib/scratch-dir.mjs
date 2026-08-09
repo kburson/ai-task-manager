@@ -15,23 +15,49 @@ import { mkdirSync, mkdtempSync, existsSync, writeFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { tmpdir as systemTmpdir } from 'node:os';
 import path from 'node:path';
-import { resolveProjectDir } from './project-dir.mjs';
+import { BoundWorktreeMissingError, resolveProjectDir } from './project-dir.mjs';
 
 const VALID_PURPOSE_RE = /^[a-z0-9][a-z0-9-]{0,31}$/;
 
 // Resolve `<projectDir>/.tmp/<purpose>/`, creating it if missing. `projectDir`
-// defaults to `process.env.AI_TASK_MANAGER_PROJECT_DIR` (the same override the
-// task-tracker honours) and then the recorded issue-bound worktree. `purpose` is a short slug;
-// the canonical buckets are: `test`, `gh`, `plan`, `heal`, `inspect`.
+// defaults to the recorded issue-bound worktree (#1164), then
+// `process.env.AI_TASK_MANAGER_PROJECT_DIR`, then `process.cwd()`.
+//
+// The bound-worktree lookup is best-effort by design. Scratch space is not
+// execution authority: this helper is called from CI, from `node --test`, from
+// PreToolUse hooks, and from every unbound `scripts/` entry point, none of which
+// hold an active-task record. #1164 made the lookup fail closed for verbs, where
+// running in the wrong tree is a real defect; propagating that refusal here just
+// denies an unbound process a temp directory it is entitled to. So a
+// `BoundWorktreeMissingError` degrades to the pre-#1164 resolution order rather
+// than aborting the caller.
+//
+// `purpose` is a short slug; the canonical buckets are: `test`, `gh`, `plan`,
+// `heal`, `inspect`.
 export function projectScratchDir(purpose, projectDir) {
   const slug = String(purpose || '');
   if (!VALID_PURPOSE_RE.test(slug)) {
     throw new Error(`projectScratchDir: purpose must match ${VALID_PURPOSE_RE} — got "${purpose}"`);
   }
-  const root = resolveProjectDir({ deps: { projectDir } });
+  const root = resolveScratchRoot(projectDir);
   const dir = path.join(root, '.tmp', slug);
   if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
   return dir;
+}
+
+// Bound worktree first, then the historical fallbacks. Only the
+// "no bind record" case degrades; any other resolver failure still propagates,
+// because it means the record exists and is unusable.
+export function resolveScratchRoot(projectDir, deps = {}) {
+  const resolve = deps.resolveProjectDir || resolveProjectDir;
+  const env = deps.env || process.env;
+  const cwd = deps.cwd || (() => process.cwd());
+  try {
+    return resolve({ deps: { projectDir } });
+  } catch (error) {
+    if (!(error instanceof BoundWorktreeMissingError)) throw error;
+    return projectDir || env.AI_TASK_MANAGER_PROJECT_DIR || cwd();
+  }
 }
 
 // `mkdtempSync` inside `projectScratchDir(purpose)`, then `git init -q` so the
