@@ -88,6 +88,11 @@ test('runPullNext delegates the selected child through the real promote bind sea
   delete deps.promote;
 
   const moves = [];
+  const resolvedIssues = [];
+  deps.resolveProjectDir = ({ issue }) => {
+    resolvedIssues.push(issue);
+    return '/repo/worktrees/epic-100';
+  };
   const refineBody = `<!-- aitm-last-known-state: refine -->
 <!-- aitm-last-known-state-ts: 2026-08-05T00:00:00Z -->
 
@@ -109,6 +114,11 @@ So that JIT planning can continue
     // pull-next must replace it only for its already-selected child.
     assertBound: (issueNumber) => {
       throw new Error(`Bind mismatch: active is #100, target is #${issueNumber}`);
+    },
+    resolveProjectDir: ({ issue, deps: projectDirDeps }) => {
+      assert.equal(issue, 103);
+      assert.equal(projectDirDeps.projectDir, '/repo/worktrees/epic-100');
+      return projectDirDeps.projectDir;
     },
     fetchIssueBody: async () => ({ body: refineBody }),
     mutateIssueBody: async ({ mutate }) => {
@@ -143,6 +153,7 @@ So that JIT planning can continue
 
   assert.equal(result.status, 'pulled');
   assert.equal(result.childNumber, 103);
+  assert.deepEqual(resolvedIssues, [100], 'execution authority comes from the bound epic');
   assert.deepEqual(moves, [{ issueNumber: 103, target: 'plan' }]);
 });
 
