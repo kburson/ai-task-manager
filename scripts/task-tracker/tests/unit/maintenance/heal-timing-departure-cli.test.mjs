@@ -5,11 +5,11 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
-import { main, parseArgs, printUsage, runHealDeparture } from '../../heal-timing-departure.mjs';
-import { emitSelfDoc } from '../../../lib/self-doc.mjs';
+import { main, parseArgs, printUsage, runHealDeparture } from '../../../heal-timing-departure.mjs';
+import { emitSelfDoc } from '../../../../lib/self-doc.mjs';
 
 const fixture = readFileSync(
-  new URL('../fixtures/timing-departure-gap-1099.txt', import.meta.url),
+  new URL('../../fixtures/timing-departure-gap-1099.txt', import.meta.url),
   'utf8'
 );
 
