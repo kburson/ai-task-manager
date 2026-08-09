@@ -47,6 +47,7 @@ import {
   hasVerificationReceiptMarker,
   validateVerificationReceipt,
 } from '../lib/verification-receipt.mjs';
+import { captureEvidenceProvenance } from '../lib/evidence-provenance.mjs';
 import { runDevelopVerification } from '../verify-develop.mjs';
 import { autoTickVerified } from '../lib/auto-tick-verified.mjs';
 import { STAGES, parseEntryMarkers, stampEntryMarker } from '../lib/stage-entry-markers.mjs';
@@ -1006,6 +1007,10 @@ export async function runVerbTest({
           issueNumber: Number(issueNum),
           stage: 'test',
           fingerprint: testFingerprint,
+          executionContext: captureEvidenceProvenance({
+            projectDir: wtPath,
+            boundIssue: issueNum,
+          }),
           commands: results
             .filter(({ receiptCommand }) => receiptCommand)
             .map(({ receiptCommand }) => receiptCommand),

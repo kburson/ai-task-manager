@@ -155,6 +155,7 @@ export function createVerificationReceipt({
   stage,
   fingerprint,
   commands,
+  executionContext,
   now = () => new Date().toISOString(),
 } = {}) {
   const normalizedCommands = (commands || []).map(normalizeCommand);
@@ -166,7 +167,7 @@ export function createVerificationReceipt({
   const startedAt = starts.length > 0 ? starts.sort()[0] : fallback;
   const completedAt = completions.length > 0 ? completions.sort().at(-1) : fallback;
 
-  return {
+  const receipt = {
     schema: VERIFICATION_RECEIPT_SCHEMA,
     receiptId: createUlid(completedAt),
     issue: Number(issueNumber),
@@ -178,6 +179,10 @@ export function createVerificationReceipt({
     commands: normalizedCommands,
     supersedes: null,
   };
+  if (executionContext !== undefined) {
+    receipt.executionContext = structuredClone(executionContext);
+  }
+  return receipt;
 }
 
 function malformedReceipt(receipt) {
@@ -190,6 +195,22 @@ function malformedReceipt(receipt) {
   if (!canonicalInstant(receipt.startedAt) || !canonicalInstant(receipt.completedAt)) return true;
   if (Date.parse(receipt.startedAt) > Date.parse(receipt.completedAt)) return true;
   if (receipt.supersedes !== null && !ULID_RE.test(receipt.supersedes)) return true;
+  if (receipt.executionContext !== undefined) {
+    const context = receipt.executionContext;
+    if (
+      !context ||
+      typeof context !== 'object' ||
+      Array.isArray(context) ||
+      typeof context.worktreePath !== 'string' ||
+      context.worktreePath.length === 0 ||
+      typeof context.branch !== 'string' ||
+      context.branch.length === 0 ||
+      !Number.isInteger(context.boundIssue) ||
+      context.boundIssue <= 0
+    ) {
+      return true;
+    }
+  }
   const environment = receipt.environment;
   if (!environment || typeof environment !== 'object') return true;
   if (typeof environment.node !== 'string' || typeof environment.platform !== 'string') return true;

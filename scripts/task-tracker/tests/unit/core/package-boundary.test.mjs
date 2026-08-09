@@ -60,7 +60,9 @@ function repoRoot() {
 // bounded development headroom well below the pre-tightening surface.
 // #1166 adds one shipped Bash-hook policy module; keep the ceiling exact so any
 // further package-surface growth still requires an explicit review.
-const ENTRY_CEILING = 626;
+// #1167 adds the shared evidence-provenance runtime module; this one-entry
+// increase is the intentional package surface for the write-side contract.
+const ENTRY_CEILING = 627;
 
 function packedFiles() {
   const out = execFileSync('npm', ['pack', '--dry-run', '--json'], {

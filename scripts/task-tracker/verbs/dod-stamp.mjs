@@ -21,6 +21,7 @@ import {
   stampEvidenceAndReconcile,
 } from '../lib/functional-dod-evidence.mjs';
 import { assertVerifierStateAllowed } from '../lib/verifier-state-gate.mjs';
+import { captureEvidenceProvenance } from '../lib/evidence-provenance.mjs';
 import {
   readDirectoryContract,
   writeDirectoryContractOperation,
@@ -148,6 +149,10 @@ export async function verbDodStamp(ctx) {
   // into `## Verification Commands` below so the tick and the #231 orphan-command
   // check can never strand against each other.
   const executedCommands = ran.map((r) => r.cmd).filter(Boolean);
+  const executionContext = captureEvidenceProvenance({
+    projectDir,
+    boundIssue: issueNum,
+  });
 
   if (directory) {
     await writeDirectoryContractOperation({
@@ -157,7 +162,13 @@ export async function verbDodStamp(ctx) {
       action: 'record-evidence',
       kind: 'definitionOfDone',
       logicalId: target.logicalId,
-      evidence: { commands: executedCommands, result: 'passed', sha, ts },
+      evidence: {
+        commands: executedCommands,
+        result: 'passed',
+        sha,
+        ts,
+        executionContext,
+      },
       pexec,
       deps: ctx.deps?.contractWrite,
     });
@@ -186,7 +197,7 @@ export async function verbDodStamp(ctx) {
       stampEvidenceAndReconcile(
         base,
         key,
-        { cmd: canonicalCmd, sha, ts, exit: 0 },
+        { cmd: canonicalCmd, sha, ts, exit: 0, ...executionContext },
         executedCommands
       ),
   });

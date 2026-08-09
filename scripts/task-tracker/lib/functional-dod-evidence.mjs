@@ -34,6 +34,7 @@ import {
   insertVerificationCommands,
   projectEvidenceChecklist,
 } from './evidence-markers.mjs';
+import { markerProvenanceProperties } from './evidence-provenance.mjs';
 
 export const KEY_CLASSIFICATION = Object.freeze({
   tests: 'stampable',
@@ -265,7 +266,12 @@ export function stampEvidenceMarker(body, key, evidence) {
     .replace(/\s{2,}/g, ' ')
     .replace(/\s+$/, '');
   const hasDecl = /<!--\s*aitm-verified\s/.test(stripped);
-  const props = { exit: String(exitN), sha: String(sha), ts: String(ts) };
+  const props = {
+    exit: String(exitN),
+    sha: String(sha),
+    ts: String(ts),
+    ...markerProvenanceProperties(evidence),
+  };
   if (!hasDecl) props.cmd = String(cmd);
   const next = upsertProofMarker(stripped, props);
   if (next === line) return src;

@@ -16,6 +16,7 @@ import { mutateIssueBody } from '../lib/issue-body-mutate.mjs';
 import { headSha, nowIso, runVerifiers } from '../lib/evidence-runner.mjs';
 import { findEvidenceAc, stampAcEvidenceAndReconcile } from '../lib/ac-evidence.mjs';
 import { assertVerifierStateAllowed } from '../lib/verifier-state-gate.mjs';
+import { captureEvidenceProvenance } from '../lib/evidence-provenance.mjs';
 import {
   readDirectoryContract,
   writeDirectoryContractOperation,
@@ -117,6 +118,10 @@ export async function verbAcStamp(ctx) {
   const sha = runSha && runSha !== 'unknown' ? runSha : await headSha(pexec);
   const ts = ran[0]?.ts || nowIso(ctx.deps);
   const canonicalCmd = ran[0]?.cmd || '';
+  const executionContext = captureEvidenceProvenance({
+    projectDir,
+    boundIssue: issueNum,
+  });
 
   if (directory) {
     await writeDirectoryContractOperation({
@@ -126,7 +131,13 @@ export async function verbAcStamp(ctx) {
       action: 'record-evidence',
       kind: 'acceptanceCriteria',
       logicalId: target.logicalId,
-      evidence: { command: canonicalCmd, result: 'passed', sha, ts },
+      evidence: {
+        command: canonicalCmd,
+        result: 'passed',
+        sha,
+        ts,
+        executionContext,
+      },
       pexec,
       deps: ctx.deps?.contractWrite,
     });
@@ -145,7 +156,13 @@ export async function verbAcStamp(ctx) {
     // bypassed for this minting site.
     evidenceStamp: true,
     mutate: (base) =>
-      stampAcEvidenceAndReconcile(base, label, { cmd: canonicalCmd, sha, ts, exit: 0 }),
+      stampAcEvidenceAndReconcile(base, label, {
+        cmd: canonicalCmd,
+        sha,
+        ts,
+        exit: 0,
+        ...executionContext,
+      }),
   });
 
   console.log(
