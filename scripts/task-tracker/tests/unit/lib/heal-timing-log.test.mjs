@@ -657,9 +657,9 @@ test('an unmatched span keeps its existing durations rather than regressing to z
 });
 
 test('a pre-v2 completion row without a row-sec marker is left to the legacy paths', () => {
-  const markerless =
+  const withoutMarker =
     '| 2026-08-05 12:00:00 -05:00 | develop:completed | 2h 00m 00s |  |  | 90,100 | development complete |';
-  const body = driftBody(DRIFT_STARTED, DRIFT_DEPARTURE, DRIFT_RESUMED, markerless);
+  const body = driftBody(DRIFT_STARTED, DRIFT_DEPARTURE, DRIFT_RESUMED, withoutMarker);
   assert.equal(healTimingLog(body), body);
 });
 
