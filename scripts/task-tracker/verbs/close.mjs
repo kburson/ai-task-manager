@@ -1492,6 +1492,7 @@ export async function verbClose(ctx) {
     const fam = await enableFullAutoMergeForClose({
       cfg,
       branch: closeBranch,
+      issueNumber: closeIssueNum,
       isFullAuto: isFullAuto(),
       pexec,
     });
