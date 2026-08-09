@@ -9,6 +9,11 @@ import { existsSync, realpathSync } from 'node:fs';
 import { buildContext, handleMigrateResult } from './runtime.mjs';
 import { currentSessionId, jsonlPath, countWords } from './word-counter.mjs';
 import { GIT_TIMEOUT_MS } from './lib/process-timeouts.mjs';
+import {
+  enforceVerbWorktreeBinding,
+  ForeignWorktreeBindingError,
+  parseForeignWorktreeOverride,
+} from './lib/worktree-binding-guard.mjs';
 
 function parseRepoFromRemote(remoteUrl) {
   const s = remoteUrl.trim().replace(/\.git$/, '');
@@ -192,7 +197,22 @@ if (_isMain)
       verbHelp(helpRequest.target);
       process.exit(0);
     }
-    const ctx = buildContext();
+    const foreignWorktree = parseForeignWorktreeOverride(process.argv.slice(2));
+    const ctx = buildContext(foreignWorktree.argv);
+    try {
+      await enforceVerbWorktreeBinding({
+        verb: ctx.verb,
+        rest: ctx.rest,
+        cfg: ctx.cfg,
+        invokingDir: process.cwd(),
+        allowForeignWorktree: foreignWorktree.allowForeignWorktree,
+      });
+    } catch (error) {
+      if (!(error instanceof ForeignWorktreeBindingError)) throw error;
+      process.stderr.write(`${error.message}\n`);
+      process.exitCode = 7;
+      return;
+    }
     checkRepoMismatch(ctx);
     checkInit(ctx);
     await runVerbPreflight(ctx);
