@@ -105,3 +105,27 @@ test('#1139 approval fixtures that share issue 58 are excluded from the parallel
     assert.equal(isParallelSafe(fullPath), false, `${file} must run serially`);
   }
 });
+
+// @story #1203
+test('#1203 timing-comment issue-number regression is excluded from the parallel pool', () => {
+  const fullPath = fileURLToPath(
+    new URL('../core/gh-timing-comment-issue-number.test.mjs', import.meta.url)
+  );
+
+  assert.equal(
+    isParallelSafe(fullPath),
+    false,
+    'the real timing-comment test spawns gh transitively and must run serially'
+  );
+});
+
+test('#1203 pure source remains eligible for the parallel pool', () => {
+  const read = () =>
+    [
+      '// @story #1203 pure-source control',
+      "import { test } from 'node:test';",
+      "import assert from 'node:assert/strict';",
+    ].join('\n');
+
+  assert.equal(isParallelSafe('/x/1203-pure-control.test.mjs', read), true);
+});

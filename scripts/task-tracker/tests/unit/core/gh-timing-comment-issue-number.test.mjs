@@ -1,4 +1,5 @@
 // @story #1138
+// @parallel-unsafe (gh-timing-comment imports and spawns the gh CLI transitively)
 // Regression: lifecycle verbs pass numeric issue identifiers to the Timing Log
 // writer. The GitHub boundary must normalize every supported reference shape.
 
