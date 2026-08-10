@@ -8,6 +8,8 @@ import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 
 import { canonicalRecordJson } from './github-records/canonical-json.mjs';
+import { docsKindDropsTests } from './dod-kind-filter.mjs';
+import { COMPLETE_TEST_LANES } from './verification-commands.mjs';
 
 export const VERIFICATION_RECEIPT_SCHEMA = 'aitm.verification-receipt/v1';
 export const VERIFICATION_COMMAND_IDENTITIES = Object.freeze({
@@ -20,6 +22,19 @@ export const VERIFICATION_COMMAND_IDENTITIES = Object.freeze({
   }),
   'test-slow': Object.freeze({ command: 'npm', args: Object.freeze(['run', 'test:slow']) }),
 });
+
+const TEST_RECEIPT_REQUIRED = Object.freeze([
+  'lint-full',
+  'format-full',
+  'test-unit',
+  'test-integration',
+  'test-slow',
+]);
+// Lint and format always run. Only the complete Test lanes may be removed by
+// a valid docs-only lane-skip decision.
+const DROPPABLE_LANE_CLASSIFICATIONS = Object.freeze(
+  COMPLETE_TEST_LANES.map(({ classification }) => classification)
+);
 
 const HASH_RE = /^sha256:[0-9a-f]{64}$/;
 const SHA_RE = /^[0-9a-f]{40}$/;
@@ -284,6 +299,27 @@ function nodeMajor(version) {
 
 function reason(code, details = {}) {
   return { code, ...details };
+}
+
+/**
+ * Derive the command classifications required by a canonical Test receipt.
+ * Default-deny: malformed or unearned lane-skip claims relax nothing.
+ */
+export function requiredTestReceiptClassifications(receipt) {
+  const laneSkip = receipt?.laneSkip;
+  if (!laneSkip || typeof laneSkip !== 'object' || Array.isArray(laneSkip)) {
+    return [...TEST_RECEIPT_REQUIRED];
+  }
+  if (laneSkip.reason !== 'docs-only-diff') return [...TEST_RECEIPT_REQUIRED];
+  if (!docsKindDropsTests(laneSkip.kind, laneSkip.changedPaths)) {
+    return [...TEST_RECEIPT_REQUIRED];
+  }
+  const dropped = new Set(
+    (Array.isArray(laneSkip.lanes) ? laneSkip.lanes : []).filter((classification) =>
+      DROPPABLE_LANE_CLASSIFICATIONS.includes(classification)
+    )
+  );
+  return TEST_RECEIPT_REQUIRED.filter((classification) => !dropped.has(classification));
 }
 
 export function validateVerificationReceipt({

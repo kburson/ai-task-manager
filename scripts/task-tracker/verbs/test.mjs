@@ -45,6 +45,7 @@ import {
   buildVerificationFingerprint,
   createVerificationReceipt,
   hasVerificationReceiptMarker,
+  requiredTestReceiptClassifications,
   validateVerificationReceipt,
 } from '../lib/verification-receipt.mjs';
 import { captureEvidenceProvenance } from '../lib/evidence-provenance.mjs';
@@ -577,7 +578,7 @@ export async function runVerbTest({
       expectedIssue: Number(issueNum),
       expectedStage: 'test',
       fingerprint: currentFingerprint,
-      required: ['lint-full', 'format-full', 'test-unit', 'test-integration', 'test-slow'],
+      required: requiredTestReceiptClassifications(existingTestReceipt),
     });
     if (existingValidation.ok && deps.forceRerun !== true) {
       return {

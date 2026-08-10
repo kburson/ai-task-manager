@@ -170,7 +170,7 @@ test('exact final SHA requires a complete canonical Test receipt and rejects an 
         expectedFinalSha: sha,
         expectedFingerprint: { commitSha: sha, environment },
       }),
-    /complete canonical Test receipt/i
+    /no Test receipt for exact final SHA/i
   );
 
   const canonical = receipt({

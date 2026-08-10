@@ -1,6 +1,5 @@
 // @story #1185
-// Unit tests for `requiredTestReceiptClassifications` in
-// scripts/task-tracker/verbs/review.mjs.
+// Unit tests for the shared `requiredTestReceiptClassifications` policy.
 //
 // #1158 taught the Test verb to skip the three complete test lanes for a
 // docs-only issue with a provably documentation-only diff, recording the
@@ -24,7 +23,7 @@
 import { strict as assert } from 'node:assert';
 import { test } from 'node:test';
 
-import { requiredTestReceiptClassifications } from '../../../verbs/review.mjs';
+import { requiredTestReceiptClassifications } from '../../../lib/verification-receipt.mjs';
 
 const ALL = ['lint-full', 'format-full', 'test-unit', 'test-integration', 'test-slow'];
 const LANES = ['test-unit', 'test-integration', 'test-slow'];

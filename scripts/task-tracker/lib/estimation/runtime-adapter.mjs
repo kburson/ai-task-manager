@@ -20,6 +20,7 @@ import { readTimingCommentBody, bodyOf } from '../../gh-timing-comment.mjs';
 import { readEstimationStageTiming } from '../timing-row-reader.mjs';
 import {
   parseValidatedVerificationReceipts,
+  requiredTestReceiptClassifications,
   validateVerificationReceipt,
 } from '../verification-receipt.mjs';
 import { withCrossProcessRecordClaim } from './record-claim.mjs';
@@ -781,14 +782,6 @@ export function createAdaptivePlanRuntime({ cfg, deps = {}, adoptLegacyBaseline 
   };
 }
 
-const REQUIRED_TEST_COMMANDS = Object.freeze([
-  'lint-full',
-  'format-full',
-  'test-unit',
-  'test-integration',
-  'test-slow',
-]);
-
 export function verificationEvidence(
   body,
   { expectedIssue, expectedFinalSha, expectedFingerprint } = {}
@@ -799,24 +792,44 @@ export function verificationEvidence(
     const testReceipts = receipts.filter(
       (receipt) => receipt.stage === 'test' && receipt.commitSha === expectedFinalSha
     );
+    if (testReceipts.length === 0) {
+      throw new TypeError('verification-receipt: no Test receipt for exact final SHA');
+    }
+    if (testReceipts.length > 1) {
+      throw new TypeError('verification-receipt: multiple Test receipts for exact final SHA');
+    }
     const fingerprint = expectedFingerprint ?? {
       commitSha: expectedFinalSha,
-      environment: structuredClone(testReceipts[0]?.environment),
+      environment: structuredClone(testReceipts[0].environment),
     };
-    if (
-      testReceipts.length !== 1 ||
-      fingerprint.commitSha !== expectedFinalSha ||
-      !validateVerificationReceipt({
-        receipt: testReceipts[0],
-        expectedIssue,
-        expectedStage: 'test',
-        fingerprint,
-        required: REQUIRED_TEST_COMMANDS,
-      }).ok
-    ) {
+    if (fingerprint.commitSha !== expectedFinalSha) {
       throw new TypeError(
-        'verification-receipt: complete canonical Test receipt for exact final SHA is missing'
+        'verification-receipt: expected fingerprint does not match exact final SHA'
       );
+    }
+    const receipt = testReceipts[0];
+    const validation = validateVerificationReceipt({
+      receipt,
+      expectedIssue,
+      expectedStage: 'test',
+      fingerprint,
+      required: requiredTestReceiptClassifications(receipt),
+    });
+    if (!validation.ok) {
+      const missing = validation.reasons
+        .filter(({ code }) => code === 'command-missing')
+        .map(({ classification }) => classification);
+      if (missing.length > 0) {
+        throw new TypeError(
+          `verification-receipt: Test receipt missing required classifications: ${missing.join(', ')}`
+        );
+      }
+      const reasons = validation.reasons
+        .map(({ code, classification }) =>
+          classification === undefined ? code : `${code}:${classification}`
+        )
+        .join(', ');
+      throw new TypeError(`verification-receipt: Test receipt invalid (${reasons})`);
     }
   }
   for (const receipt of receipts) {

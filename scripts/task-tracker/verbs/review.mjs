@@ -54,6 +54,7 @@ import {
   buildVerificationFingerprint,
   createVerificationReceipt,
   hasVerificationReceiptMarker,
+  requiredTestReceiptClassifications,
   upsertVerificationReceipt,
   validateVerificationReceipt,
 } from '../lib/verification-receipt.mjs';
@@ -64,59 +65,7 @@ import {
   resolveLifecycleGateEvidence,
 } from '../lib/github-records/lifecycle-gate-source.mjs';
 import { gql } from '../../gh/lib/github-projects.mjs';
-import { COMPLETE_TEST_LANES } from '../lib/verification-commands.mjs';
-import { docsKindDropsTests } from '../lib/dod-kind-filter.mjs';
-
-const TEST_RECEIPT_REQUIRED = Object.freeze([
-  'lint-full',
-  'format-full',
-  'test-unit',
-  'test-integration',
-  'test-slow',
-]);
-// The only classifications a `laneSkip` record may remove. `lint-full` and
-// `format-full` run for every kind, docs-only included, so they are absent here
-// and stay required no matter what the receipt claims.
-const DROPPABLE_LANE_CLASSIFICATIONS = Object.freeze(
-  COMPLETE_TEST_LANES.map(({ classification }) => classification)
-);
 const reviewPexec = promisify(execFile);
-
-/**
- * #1185 — derive the Test-receipt requirement from the receipt instead of a
- * frozen literal.
- *
- * #1158 taught `verbs/test.mjs` to skip the three complete test lanes when the
- * issue's kind is `docs-only` AND the sandbox's own `trunk...HEAD` diff is
- * provably documentation-only, recording the decision as a positive `laneSkip`
- * entry on the `stage="test"` receipt. Without this function the Review gate
- * still demanded all five classifications and refused every such receipt with
- * three `command-missing` reasons — a loop with no exit, since the next Test pass
- * legitimately skips the same lanes again.
- *
- * Default-deny at every step, and re-validated rather than trusted: the
- * `reason`, `kind` and `changedPaths` the receipt recorded must themselves still
- * satisfy `docsKindDropsTests` — the same predicate the DoD layer (#865), the
- * Review NAT gate (#940) and the Test verb (#1158) use — so a receipt cannot
- * claim a relaxation it did not earn, and all four layers relax together or not
- * at all. Anything unexpected returns the full base set.
- */
-export function requiredTestReceiptClassifications(receipt) {
-  const laneSkip = receipt?.laneSkip;
-  if (!laneSkip || typeof laneSkip !== 'object' || Array.isArray(laneSkip)) {
-    return [...TEST_RECEIPT_REQUIRED];
-  }
-  if (laneSkip.reason !== 'docs-only-diff') return [...TEST_RECEIPT_REQUIRED];
-  if (!docsKindDropsTests(laneSkip.kind, laneSkip.changedPaths)) {
-    return [...TEST_RECEIPT_REQUIRED];
-  }
-  const dropped = new Set(
-    (Array.isArray(laneSkip.lanes) ? laneSkip.lanes : []).filter((lane) =>
-      DROPPABLE_LANE_CLASSIFICATIONS.includes(lane)
-    )
-  );
-  return TEST_RECEIPT_REQUIRED.filter((classification) => !dropped.has(classification));
-}
 
 function defaultLifecycleGraphql({ query, variables }) {
   return gql(query, variables).then((data) => ({ data }));
