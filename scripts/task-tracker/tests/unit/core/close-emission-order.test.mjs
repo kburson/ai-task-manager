@@ -109,9 +109,6 @@ test('verbClose emits review:approved + issue:wrap before the done board move', 
     getIssueBoardState: async () => 'review',
     getIssueClosedState: async () => false,
     uncheckedPreCloseCheckboxes: () => [],
-    // Offline the #753 lifecycle-box reconcile (the real one reaches live `gh`
-    // and stalls the full-suite run). This test asserts only row-emission order.
-    tickLifecycleOnClose: async () => ({ ok: true }),
     nowIso: () => new Date().toISOString(),
   };
 
@@ -251,9 +248,6 @@ test('#692 AC2 — retried close does not re-emit an existing review:approved/is
     getIssueBoardState: async () => 'review',
     getIssueClosedState: async () => false,
     uncheckedPreCloseCheckboxes: () => [],
-    // Offline the #753 lifecycle-box reconcile (the real one reaches live `gh`
-    // and stalls the full-suite run). This test asserts only row-emission order.
-    tickLifecycleOnClose: async () => ({ ok: true }),
     nowIso: () => new Date().toISOString(),
   };
 
@@ -327,9 +321,6 @@ test('#692 AC3 — review:approved active duration derives from the timing comme
     getIssueBoardState: async () => 'review',
     getIssueClosedState: async () => false,
     uncheckedPreCloseCheckboxes: () => [],
-    // Offline the #753 lifecycle-box reconcile (the real one reaches live `gh`
-    // and stalls the full-suite run). This test asserts only row-emission order.
-    tickLifecycleOnClose: async () => ({ ok: true }),
     // Close exactly 5 minutes after the review:started row.
     nowIso: () => new Date(closeMs).toISOString(),
   };

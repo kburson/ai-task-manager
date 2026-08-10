@@ -5,10 +5,8 @@
 // `verbKind` resolves a target issue + kind from `rest` (two-arg explicit form,
 // one-arg "active bind" form, or zero-arg usage error), validates the kind via
 // `normalizeKind` and the issue number, then upserts the issue-kind marker
-// through `mutateIssueBody`. The body fetch goes through the injected `pexec`;
-// the WRITE goes through `versionedWriteBody`, which spawns the real `gh` binary
-// (it does not honour the injected pexec), so the happy-path tests put a stateful
-// fake `gh` on PATH that round-trips the pushed body through a temp file. Every
+// through `mutateIssueBody`. Body fetch and write both use the injected `pexec`;
+// the happy-path tests round-trip write input through a stateful body store. Every
 // early-exit branch (no-args usage, one-arg-no-active, invalid kind, invalid
 // issue number) is driven in-process with a `process.exit` that throws a sentinel.
 
@@ -23,6 +21,7 @@ import { projectScratchDir } from '../../../lib/scratch-dir.mjs';
 import { dodPath } from '../../../paths.mjs';
 import { parseVerificationCommands } from '../../../lib/verification-commands.mjs';
 import { runReviewPreflight } from '../../../lib/review-preflight.mjs';
+import { pexecGithubBodyStore } from '../../helpers/pexec-body-store.mjs';
 
 let tmpRoot;
 let fakeBin;
@@ -71,8 +70,9 @@ function hashish(s) {
 }
 
 function makePexec(body) {
-  return async (bin, args = []) => {
-    if (bin === 'gh') return { stdout: body ?? '', stderr: '' };
+  return async (bin, args = [], options = {}) => {
+    const gh = pexecGithubBodyStore({ bin, args, options, fallbackBody: body ?? '' });
+    if (gh) return gh;
     if (bin === 'git') {
       if (args.includes('status')) return { stdout: '', stderr: '' };
       return { stdout: 'abc1234\n', stderr: '' };

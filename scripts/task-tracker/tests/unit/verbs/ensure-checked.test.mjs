@@ -10,10 +10,9 @@
 // `- [ ]`→`- [x]` evidence-tick gate (+ the `--allow-unverified-ticks` honest
 // hatch) are preserved from the legacy toggle.
 //
-// Harness mirrors coverage-check-verb.test.mjs: a stateful fake `gh` on PATH
-// round-trips the pushed body through a temp file (mutateIssueBody spawns the
-// real `gh`, not the injected pexec), and a `process.exit` sentinel captures
-// early-exit branches.
+// Harness mirrors coverage-check-verb.test.mjs: an injected pexec round-trips
+// the pushed body through a temp file without spawning `gh`, and a
+// `process.exit` sentinel captures early-exit branches.
 
 import { strict as assert } from 'node:assert';
 import { test, before, after } from 'node:test';
@@ -22,6 +21,7 @@ import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, rmSync, chmodSync 
 
 import { setChecklistLine, setChecklistLines, verbEnsureChecked } from '../../../verbs/check.mjs';
 import { projectScratchDir } from '../../../lib/scratch-dir.mjs';
+import { pexecGithubBodyStore } from '../../helpers/pexec-body-store.mjs';
 
 const AC_PLAIN = 'plain ac no verifier';
 const AC_UNDECLARED = 'undeclared ac no verifier no marker';
@@ -173,8 +173,9 @@ function stateFile(active) {
 }
 
 function makePexec(body) {
-  return async (bin) => {
-    if (bin === 'gh') return { stdout: body ?? '', stderr: '' };
+  return async (bin, args = [], options = {}) => {
+    const gh = pexecGithubBodyStore({ bin, args, options, fallbackBody: body ?? '' });
+    if (gh) return gh;
     return { stdout: '', stderr: '' };
   };
 }

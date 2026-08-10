@@ -5,11 +5,9 @@
 // stay under the 400-line per-file cap; the pure-helper tests live in the
 // sibling file).
 //
-// `verbCheck` reads its issue body through the injected `pexec`, but its WRITES
-// go through `mutateIssueBody` → `versionedWriteBody`, which spawns the real
-// `gh` binary (it does NOT honour the injected `pexec`). So happy-path writes
-// use a stateful fake `gh` on PATH that round-trips the pushed body through a
-// temp file (`AITM_FAKE_BODY_FILE`). Every early-exit branch is driven
+// `verbCheck` reads and writes its issue body through the injected `pexec`.
+// Happy-path writes round-trip through a stateful body store
+// (`AITM_FAKE_BODY_FILE`). Every early-exit branch is driven
 // in-process with a fake `pexec` and a `process.exit` that throws a sentinel.
 
 import { strict as assert } from 'node:assert';
@@ -19,6 +17,7 @@ import { mkdtempSync, mkdirSync, writeFileSync, rmSync, chmodSync } from 'node:f
 
 import { verbCheck } from '../../../verbs/check.mjs';
 import { projectScratchDir } from '../../../lib/scratch-dir.mjs';
+import { pexecGithubBodyStore } from '../../helpers/pexec-body-store.mjs';
 import { statePath as resolveStatePath } from '../../../paths.mjs';
 
 const AC_PLAIN = 'plain ac no verifier';
@@ -113,8 +112,9 @@ function stateFile(active, legacyState) {
 }
 
 function makePexec(body) {
-  return async (bin) => {
-    if (bin === 'gh') return { stdout: body ?? '', stderr: '' };
+  return async (bin, args = [], options = {}) => {
+    const gh = pexecGithubBodyStore({ bin, args, options, fallbackBody: body ?? '' });
+    if (gh) return gh;
     return { stdout: '', stderr: '' };
   };
 }

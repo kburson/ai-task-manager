@@ -277,6 +277,24 @@ function ghPushBody(repo, issueNumber, body) {
   });
 }
 
+async function pexecFetchBody(pexec, repo, issueNumber) {
+  const { stdout } = await pexec('gh', ghFetchArgs(repo, issueNumber), {});
+  return String(stdout ?? '');
+}
+
+async function pexecPushBody(pexec, repo, issueNumber, body) {
+  // promisify(execFile) exposes its ChildProcess as `promise.child`. Writing
+  // through that handle preserves the existing `--body-file -` stdin contract
+  // in production. The declarative `input` option gives injected executors a
+  // child-free way to consume the same bytes; such executors own the input when
+  // they do not expose a child handle.
+  const pending = pexec('gh', ghPushArgs(repo, issueNumber), { input: body });
+  if (pending?.child?.stdin && pending.inputHandled !== true) {
+    pending.child.stdin.end(body);
+  }
+  await pending;
+}
+
 export async function versionedWriteBody({
   issueNumber,
   repo,
@@ -288,8 +306,18 @@ export async function versionedWriteBody({
   if (typeof mutate !== 'function') {
     throw new TypeError('versionedWriteBody: mutate must be a function (baseBody) => newBody');
   }
-  const fetchBody = deps.fetchBody || ghFetchBody;
-  const pushBody = deps.pushBody || ghPushBody;
+  const injectedPexec = typeof deps.pexec === 'function' ? deps.pexec : null;
+  const fetchBody =
+    deps.fetchBody ||
+    (injectedPexec
+      ? (targetRepo, targetIssue) => pexecFetchBody(injectedPexec, targetRepo, targetIssue)
+      : ghFetchBody);
+  const pushBody =
+    deps.pushBody ||
+    (injectedPexec
+      ? (targetRepo, targetIssue, body) =>
+          pexecPushBody(injectedPexec, targetRepo, targetIssue, body)
+      : ghPushBody);
 
   let attempts = 0;
   let lastBase = null;
