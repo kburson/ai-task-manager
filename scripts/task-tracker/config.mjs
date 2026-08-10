@@ -110,6 +110,10 @@ export const DEFAULTS = {
   // #1091 — governed GitHub issue that stores versioned estimation rubric
   // snapshots. Zero explicitly means the adaptive rubric is not configured.
   estimationRubricIssue: 0,
+  // #1202 — structured opt-in for the Full-Auto close integration lane.
+  // Null deliberately preserves the fail-closed default; a project-local
+  // object must explicitly select and authorize a mechanism.
+  fullAutoMerge: null,
 };
 
 export const TYPES = {
@@ -163,6 +167,7 @@ export const TYPES = {
   discussLabel: 'string',
   releaseDetection: 'boolean',
   estimationRubricIssue: 'integer',
+  fullAutoMerge: 'object',
 };
 
 function defaultPaths() {
@@ -368,6 +373,7 @@ const USER_KEYS = [
   'lifecycleCheckboxesRequired',
   'directMoveStateAllowed',
   'deadSessionMaxAgeMs',
+  'fullAutoMerge',
   'statePath',
   'queuePath',
 ];
