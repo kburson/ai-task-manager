@@ -59,6 +59,7 @@ import { describeSandboxFailure } from '../lib/sandbox-exit-render.mjs';
 import { readLastKnownState } from '../gh-timing-comment.mjs';
 import { assertVerbHomeState } from '../lib/verb-home-state-guard.mjs';
 import { postNewAutomatedTestsComment } from '../lib/new-automated-tests-comment.mjs';
+import { withIssueLock } from '../issue-mutator-lock.mjs';
 import { locateAuthoritySource } from '../lib/github-records/authority-locator.mjs';
 import {
   hasAcceptedTestEvidence,
@@ -1176,6 +1177,27 @@ export async function runVerbTest({
 // reaching through `runVerbTest` deps injection.
 export { defaultRemoveWorktree, defaultCreateWorktree, defaultExecInSandbox };
 
+// #1169 — Test owns an issue-scoped interlock for its complete execution,
+// including exact-SHA receipt short-circuits. Acquiring here keeps every body,
+// receipt, sandbox, and mutation path inside the #656 PID-liveness primitive.
+export async function runTestWithEntryInterlock({
+  cfg,
+  issueNumber,
+  projectDir,
+  deps = {},
+  now,
+} = {}) {
+  const {
+    acquireIssueLock = withIssueLock,
+    runVerbTest: executeTest = runVerbTest,
+    ...runDeps
+  } = deps;
+  return acquireIssueLock(
+    { issue: issueNumber, verb: 'test', projDir: projectDir, retries: 0 },
+    () => executeTest({ cfg, issueNumber, projectDir, deps: runDeps, now })
+  );
+}
+
 export async function verbTest(ctx) {
   const { cfg, projectDir, rest, SKIP_NETWORK, statePath, runMoveState, runLogIssueTime } = ctx;
   if (SKIP_NETWORK) {
@@ -1199,7 +1221,7 @@ export async function verbTest(ctx) {
 
   let result;
   try {
-    result = await runVerbTest({
+    result = await runTestWithEntryInterlock({
       cfg,
       issueNumber,
       projectDir,
