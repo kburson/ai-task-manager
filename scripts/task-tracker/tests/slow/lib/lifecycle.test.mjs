@@ -20,10 +20,10 @@ writeFileSync(
 );
 const env = { ...process.env, AI_TASK_MANAGER_PROJECT_DIR: sandbox, TT_SKIP_NETWORK: '1' };
 
-let r = await pexec('node', [CLI, '#321'], { env });
+let r = await pexec('node', [CLI, '#321'], { env, cwd: sandbox });
 assert.match(r.stdout, /Active: #321/);
 
-r = await pexec('node', [CLI, 'review', '#321'], { env });
+r = await pexec('node', [CLI, 'review', '#321'], { env, cwd: sandbox });
 assert.match(r.stdout, /Review #321/);
 assert.match(r.stdout, /paused/i);
 
@@ -38,10 +38,10 @@ assert.equal(state.active, '#321');
 assert.equal(state.entryStartTs, null);
 assert.equal(state.lastActive, '#321');
 
-r = await pexec('node', [CLI, 'close', '#321'], { env });
+r = await pexec('node', [CLI, 'close', '#321'], { env, cwd: sandbox });
 assert.match(r.stdout, /Closed #321/);
 
-r = await pexec('node', [CLI, 'help'], { env });
+r = await pexec('node', [CLI, 'help'], { env, cwd: sandbox });
 assert.match(r.stdout, /\/task review #N/);
 assert.match(r.stdout, /\/task close \[#N\]/);
 
@@ -57,7 +57,7 @@ assert.match(r.stdout, /\/task close \[#N\]/);
   );
   const env2 = { ...process.env, AI_TASK_MANAGER_PROJECT_DIR: sandbox2, TT_SKIP_NETWORK: '1' };
 
-  await pexec('node', [CLI, '#385'], { env: env2 });
+  await pexec('node', [CLI, '#385'], { env: env2, cwd: sandbox2 });
   let st = JSON.parse(
     readFileSync(path.join(sandbox2, '.tmp', 'aitm', 'state', 'task-tracker-state.json'), 'utf8')
   );
@@ -65,7 +65,7 @@ assert.match(r.stdout, /\/task close \[#N\]/);
 
   let refusalErr = null;
   try {
-    await pexec('node', [CLI, 'close', '#386'], { env: env2 });
+    await pexec('node', [CLI, 'close', '#386'], { env: env2, cwd: sandbox2 });
   } catch (e) {
     refusalErr = e;
   }
@@ -91,7 +91,10 @@ assert.match(r.stdout, /\/task close \[#N\]/);
   );
   const env3 = { ...process.env, AI_TASK_MANAGER_PROJECT_DIR: sandbox3, TT_SKIP_NETWORK: '1' };
 
-  const closeResult = await pexec('node', [CLI, 'close', '#400'], { env: env3 });
+  const closeResult = await pexec('node', [CLI, 'close', '#400'], {
+    env: env3,
+    cwd: sandbox3,
+  });
   assert.match(closeResult.stdout, /Closed #400/);
 
   const st = JSON.parse(

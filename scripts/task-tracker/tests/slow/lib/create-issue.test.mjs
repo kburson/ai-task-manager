@@ -129,7 +129,7 @@ test('happy path: creates, tethers, substitutes placeholders', () => {
       cwd: ctx.temp,
       env: {
         ...process.env,
-        AI_TASK_MANAGER_PROJECT_DIR: undefined,
+        AI_TASK_MANAGER_PROJECT_DIR: ctx.temp,
         PATH: `${ctx.binDir}:${process.env.PATH}`,
         CREATE_ISSUE_TETHER_SCRIPT: ctx.tetherStub,
       },
@@ -182,7 +182,7 @@ test('explicit --assignee is forwarded to gh issue create', () => {
       cwd: ctx.temp,
       env: {
         ...process.env,
-        AI_TASK_MANAGER_PROJECT_DIR: undefined,
+        AI_TASK_MANAGER_PROJECT_DIR: ctx.temp,
         PATH: `${ctx.binDir}:${process.env.PATH}`,
         CREATE_ISSUE_TETHER_SCRIPT: ctx.tetherStub,
       },
@@ -205,7 +205,7 @@ test('missing projectId: exits non-zero before calling gh', () => {
     cwd: ctx.temp,
     env: {
       ...process.env,
-      AI_TASK_MANAGER_PROJECT_DIR: undefined,
+      AI_TASK_MANAGER_PROJECT_DIR: ctx.temp,
       PATH: `${ctx.binDir}:${process.env.PATH}`,
       CREATE_ISSUE_TETHER_SCRIPT: ctx.tetherStub,
     },
@@ -229,7 +229,7 @@ test('tether failure: prints recovery command and exits non-zero', () => {
       cwd: ctx.temp,
       env: {
         ...process.env,
-        AI_TASK_MANAGER_PROJECT_DIR: undefined,
+        AI_TASK_MANAGER_PROJECT_DIR: ctx.temp,
         PATH: `${ctx.binDir}:${process.env.PATH}`,
         CREATE_ISSUE_TETHER_SCRIPT: ctx.tetherStub,
       },
@@ -256,7 +256,7 @@ test('--parent flag forwards to project-tether', () => {
       cwd: ctx.temp,
       env: {
         ...process.env,
-        AI_TASK_MANAGER_PROJECT_DIR: undefined,
+        AI_TASK_MANAGER_PROJECT_DIR: ctx.temp,
         PATH: `${ctx.binDir}:${process.env.PATH}`,
         CREATE_ISSUE_TETHER_SCRIPT: ctx.tetherStub,
       },
@@ -282,7 +282,7 @@ test('--no-tether: skips tether step entirely', () => {
       cwd: ctx.temp,
       env: {
         ...process.env,
-        AI_TASK_MANAGER_PROJECT_DIR: undefined,
+        AI_TASK_MANAGER_PROJECT_DIR: ctx.temp,
         PATH: `${ctx.binDir}:${process.env.PATH}`,
         CREATE_ISSUE_TETHER_SCRIPT: ctx.tetherStub,
       },
@@ -339,7 +339,7 @@ exit 1
       cwd: ctx.temp,
       env: {
         ...process.env,
-        AI_TASK_MANAGER_PROJECT_DIR: undefined,
+        AI_TASK_MANAGER_PROJECT_DIR: ctx.temp,
         PATH: `${ctx.binDir}:${process.env.PATH}`,
         CREATE_ISSUE_TETHER_SCRIPT: ctx.tetherStub,
       },
@@ -395,7 +395,7 @@ exit 1
       cwd: ctx.temp,
       env: {
         ...process.env,
-        AI_TASK_MANAGER_PROJECT_DIR: undefined,
+        AI_TASK_MANAGER_PROJECT_DIR: ctx.temp,
         PATH: `${ctx.binDir}:${process.env.PATH}`,
         CREATE_ISSUE_TETHER_SCRIPT: ctx.tetherStub,
         AITM_SKIP_PARENT_STATE_GATE: '1',

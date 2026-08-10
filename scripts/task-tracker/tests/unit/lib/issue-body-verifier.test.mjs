@@ -323,6 +323,7 @@ test('create-issue --body-file: refuses non-canonical body with exit 4', () => {
       cwd: ctx.temp,
       env: {
         ...process.env,
+        AI_TASK_MANAGER_PROJECT_DIR: ctx.temp,
         PATH: `${ctx.binDir}:${process.env.PATH}`,
         CREATE_ISSUE_TETHER_SCRIPT: ctx.tetherStub,
         // Ensure env-gate is NOT set
@@ -350,6 +351,7 @@ test('create-issue --body-file --internal + env: bypasses verifier', () => {
       cwd: ctx.temp,
       env: {
         ...process.env,
+        AI_TASK_MANAGER_PROJECT_DIR: ctx.temp,
         PATH: `${ctx.binDir}:${process.env.PATH}`,
         CREATE_ISSUE_TETHER_SCRIPT: ctx.tetherStub,
         AITM_CREATE_ISSUE_INTERNAL: '1',
@@ -374,6 +376,7 @@ test('create-issue --body-file --internal without env: still refused', () => {
       cwd: ctx.temp,
       env: {
         ...process.env,
+        AI_TASK_MANAGER_PROJECT_DIR: ctx.temp,
         PATH: `${ctx.binDir}:${process.env.PATH}`,
         CREATE_ISSUE_TETHER_SCRIPT: ctx.tetherStub,
         AITM_CREATE_ISSUE_INTERNAL: '',
@@ -397,6 +400,7 @@ test('create-issue --body-file: canonical body passes verifier and creates issue
       cwd: ctx.temp,
       env: {
         ...process.env,
+        AI_TASK_MANAGER_PROJECT_DIR: ctx.temp,
         PATH: `${ctx.binDir}:${process.env.PATH}`,
         CREATE_ISSUE_TETHER_SCRIPT: ctx.tetherStub,
         AITM_CREATE_ISSUE_INTERNAL: '',

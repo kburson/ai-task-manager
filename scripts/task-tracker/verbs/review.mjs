@@ -57,6 +57,7 @@ import {
   upsertVerificationReceipt,
   validateVerificationReceipt,
 } from '../lib/verification-receipt.mjs';
+import { captureEvidenceProvenance } from '../lib/evidence-provenance.mjs';
 import { locateAuthoritySource } from '../lib/github-records/authority-locator.mjs';
 import {
   hasAcceptedTestEvidence,
@@ -332,7 +333,14 @@ export async function resolveReviewVerificationEvidence({
   };
 }
 
-export function appendReviewProbeEvidence({ body, issueNumber, fingerprint, probes, now } = {}) {
+export function appendReviewProbeEvidence({
+  body,
+  issueNumber,
+  fingerprint,
+  probes,
+  executionContext,
+  now,
+} = {}) {
   const prior = parseVerificationReceipt(body, 'review');
   const priorMatchesFingerprint =
     prior?.commitSha === fingerprint?.commitSha &&
@@ -351,6 +359,7 @@ export function appendReviewProbeEvidence({ body, issueNumber, fingerprint, prob
     issueNumber,
     stage: 'review',
     fingerprint,
+    executionContext,
     commands: [...(priorMatchesFingerprint ? prior.commands : []), ...commands],
     now,
   });
@@ -461,6 +470,7 @@ export async function runReviewProbes({
   const executeCommand = deps.executeCommand || defaultExecuteReviewProbe;
   const mutateBody = deps.mutateBody || defaultReviewProbeMutateBody;
   const fetchBody = deps.fetchBody || defaultReviewProbeFetchBody;
+  const captureProvenance = deps.captureEvidenceProvenance || captureEvidenceProvenance;
   const requested = Array.isArray(commands) ? commands : [];
   if (requested.length === 0) return { status: 'no-probes', probes: [] };
 
@@ -540,6 +550,10 @@ export async function runReviewProbes({
         issueNumber,
         fingerprint: completedFingerprint,
         probes,
+        executionContext: captureProvenance({
+          projectDir,
+          boundIssue: issueNumber,
+        }),
         now,
       });
       writtenReceipt = appended.receipt;

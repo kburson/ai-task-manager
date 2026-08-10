@@ -39,6 +39,7 @@ function bodyWithState(state) {
     },
     cfg: baseCfg,
     deps: {
+      projectDir: process.cwd(),
       assertBound: () => {},
       tetherIssueToProject: async () => ({ itemId: 'X' }),
       fetchBody: async () => bodyWithState('refine'),
@@ -111,6 +112,7 @@ function bodyWithState(state) {
     args: { issueNumber: 702, size: 'S', estimate: '2', priority: 'p1', reason: 'stamp it' },
     cfg: baseCfg,
     deps: {
+      projectDir: process.cwd(),
       assertBound: () => {},
       tetherIssueToProject: async () => ({ itemId: 'X' }),
       fetchBody: async () => bodyWithState('refine'),
@@ -148,6 +150,7 @@ function bodyWithState(state) {
     issueNumber: 703,
     cfg: baseCfg,
     deps: {
+      projectDir: process.cwd(),
       assertBound: () => {},
       fetchIssueBody: async () => ({ body }),
       writeIssueBody: async () => {},
@@ -171,6 +174,7 @@ function bodyWithState(state) {
     issueNumber: 704,
     cfg: baseCfg,
     deps: {
+      projectDir: process.cwd(),
       assertBound: () => {},
       fetchIssueBody: async () => ({ body }),
       writeIssueBody: async () => {},
@@ -198,6 +202,7 @@ function bodyWithState(state) {
       issueNumber: 705,
       cfg: baseCfg,
       deps: {
+        projectDir: process.cwd(),
         assertBound: () => {},
         fetchIssueBody: async () => ({ body: bodyWithState('refine') }),
         writeIssueBody: async () => {},
@@ -213,6 +218,7 @@ function bodyWithState(state) {
       issueNumber: 706,
       cfg: baseCfg,
       deps: {
+        projectDir: process.cwd(),
         assertBound: () => {},
         fetchIssueBody: async () => ({
           body: bodyWithState('refine') + '<!-- aitm-refine-complete: 2026-06-03T00:00:00Z -->\n',

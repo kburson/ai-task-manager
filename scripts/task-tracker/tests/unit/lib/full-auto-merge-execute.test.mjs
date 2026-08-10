@@ -6,6 +6,7 @@
 // wiring is provable without git/gh.
 
 import { strict as assert } from 'node:assert';
+import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
 
 import {
@@ -14,6 +15,7 @@ import {
   resolveOpenPrNumber,
   enableFullAutoMergeForClose,
 } from '../../../lib/full-auto-merge-execute.mjs';
+import { fetchParentIssueStrict } from '../../../lib/fetch-parent-issue.mjs';
 
 // A recording pexec: routes by `${cmd} ${args.join(' ')}` prefix, records calls.
 function fakePexec(routes) {
@@ -106,18 +108,81 @@ test('enableFullAutoMergeForClose: no open PR → skipped-no-pr (interactive/loc
   assert.deepEqual(r, { status: 'skipped-no-pr' });
 });
 
+test('enableFullAutoMergeForClose: child delivery skips before inspecting the epic PR', async () => {
+  const px = fakePexec({ 'gh pr list --head feature/epic/1162': '[{"number":1192}]' });
+  const r = await enableFullAutoMergeForClose({
+    cfg: {},
+    branch: 'feature/epic/1162',
+    issueNumber: 1193,
+    isFullAuto: true,
+    pexec: px,
+    resolveParentIssue: async ({ issueNumber }) => {
+      assert.equal(issueNumber, 1193);
+      return 1162;
+    },
+  });
+  assert.deepEqual(r, { status: 'skipped-parent-branch', parentIssueNumber: 1162 });
+  assert.equal(px.calls.length, 0, 'a child must not inspect or enable its epic branch PR');
+});
+
+test('enableFullAutoMergeForClose: unknown lineage fails closed before PR discovery', async () => {
+  const px = fakePexec({ 'gh pr list --head feature/epic/1162': '[{"number":1192}]' });
+  const r = await enableFullAutoMergeForClose({
+    cfg: {},
+    branch: 'feature/epic/1162',
+    issueNumber: 1193,
+    isFullAuto: true,
+    pexec: px,
+    resolveParentIssue: async () => {
+      throw new Error('graphql unavailable');
+    },
+  });
+  assert.equal(r.status, 'fail-closed');
+  assert.match(r.message, /lineage.*graphql unavailable/i);
+  assert.equal(px.calls.length, 0, 'unknown lineage must not fall through to PR discovery');
+});
+
 test('enableFullAutoMergeForClose: PR present + fullAutoMerge unconfigured → fail-closed', async () => {
   const px = fakePexec({ 'gh pr list --head b': '[{"number":42}]' });
   const r = await enableFullAutoMergeForClose({
     cfg: {},
     branch: 'b',
+    issueNumber: 1196,
     isFullAuto: true,
     pexec: px,
+    resolveParentIssue: async () => null,
   });
   assert.equal(r.status, 'fail-closed');
   assert.match(r.message, /full-auto-merge-unconfigured/);
   // it must NOT have attempted any merge command
   assert.ok(!px.calls.some((c) => c.args.includes('merge')));
+});
+
+test('fetchParentIssueStrict returns the live parent and propagates lookup failure', async () => {
+  const parent = await fetchParentIssueStrict({
+    issueNumber: 1193,
+    repo: 'o/r',
+    deps: {
+      gql: async () => ({ repository: { issue: { parent: { number: 1162 } } } }),
+    },
+  });
+  assert.equal(parent, 1162);
+  await assert.rejects(
+    () =>
+      fetchParentIssueStrict({
+        issueNumber: 1193,
+        repo: 'o/r',
+        deps: { gql: async () => Promise.reject(new Error('graphql unavailable')) },
+      }),
+    /graphql unavailable/
+  );
+});
+
+test('close passes issue identity into Full-Auto merge preparation', () => {
+  const source = readFileSync(new URL('../../../verbs/close.mjs', import.meta.url), 'utf8');
+  const callStart = source.indexOf('enableFullAutoMergeForClose({');
+  const callEnd = source.indexOf('});', callStart);
+  assert.match(source.slice(callStart, callEnd), /issueNumber:\s*closeIssueNum/);
 });
 
 test('enableFullAutoMergeForClose: gh-auto-merge configured → enables auto-merge (--auto), never bare merge', async () => {

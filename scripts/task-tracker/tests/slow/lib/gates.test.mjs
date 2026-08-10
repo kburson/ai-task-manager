@@ -114,7 +114,7 @@ async function run(sandbox, binDir, args) {
     TT_SKIP_NETWORK: '',
   };
   try {
-    const r = await pexec('node', [CLI, ...args], { env, timeout: 30000 });
+    const r = await pexec('node', [CLI, ...args], { env, cwd: sandbox, timeout: 30000 });
     return { code: 0, stdout: r.stdout, stderr: r.stderr };
   } catch (err) {
     return { code: err.code ?? 1, stdout: err.stdout || '', stderr: err.stderr || '' };
@@ -280,7 +280,7 @@ function writeState(sandbox, issueNum) {
     };
     let r;
     try {
-      const out = await pexec('node', [CLI, 'close', '#205'], {
+      const out = await pexec('node', [CLI, 'close', '#205', '--allow-foreign-worktree'], {
         env,
         cwd: hostileCwd,
         timeout: 30000,

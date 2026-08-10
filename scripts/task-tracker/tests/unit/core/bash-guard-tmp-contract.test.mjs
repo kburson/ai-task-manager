@@ -18,7 +18,12 @@ const GUARD = path.resolve(__dir, '..', '..', 'bash-guard.mjs');
 
 function runGuard(command) {
   return new Promise((resolve, reject) => {
-    const child = spawn('node', [GUARD], { stdio: ['pipe', 'pipe', 'pipe'] });
+    // #1166: this suite owns path-scope policy. Isolate the hook session so a
+    // parent Test sandbox's real worktree binding cannot preempt that policy.
+    const child = spawn('node', [GUARD], {
+      env: { ...process.env, AI_TASK_MANAGER_SESSION_ID: 'bash-guard-tmp-contract-unbound' },
+      stdio: ['pipe', 'pipe', 'pipe'],
+    });
     let stdout = '';
     let stderr = '';
     child.stdout.on('data', (b) => (stdout += b.toString()));

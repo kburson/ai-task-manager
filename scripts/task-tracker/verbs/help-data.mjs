@@ -57,13 +57,25 @@ export const VERB_REFERENCE = {
   '#N': {
     topic: 'lifecycle',
     summary: 'Start or switch the timer to issue #N (binds it as the active task).',
-    usage: '/task #N',
+    usage: '/task #N [--confirm-relocation]',
+    flags: [
+      {
+        flag: '--confirm-relocation',
+        desc: 'explicitly accept and append a changed issue-resident worktree location',
+      },
+    ],
     examples: ['/task #667'],
   },
   start: {
     topic: 'lifecycle',
     summary: 'Bind to issue #N and start the timer (same path as `/task #N`).',
-    usage: '/task start <N>',
+    usage: '/task start <N> [--confirm-relocation]',
+    flags: [
+      {
+        flag: '--confirm-relocation',
+        desc: 'explicitly accept and append a changed issue-resident worktree location',
+      },
+    ],
     exitCodes: [{ code: 1, meaning: 'no issue number provided' }],
     examples: ['/task start 667'],
   },
@@ -76,7 +88,13 @@ export const VERB_REFERENCE = {
   resume: {
     topic: 'lifecycle',
     summary: 'Resume the last paused task, or return to a specific paused/stopped issue.',
-    usage: '/task resume [#N] ["reason"]',
+    usage: '/task resume [#N] ["reason"] [--confirm-relocation]',
+    flags: [
+      {
+        flag: '--confirm-relocation',
+        desc: 'explicitly accept and append a changed issue-resident worktree location',
+      },
+    ],
     examples: ['/task resume', '/task resume 667 "question answered"'],
   },
   stop: {

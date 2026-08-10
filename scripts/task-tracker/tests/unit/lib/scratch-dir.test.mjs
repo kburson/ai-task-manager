@@ -3,7 +3,8 @@
 import { strict as assert } from 'node:assert';
 import { existsSync, mkdirSync, mkdtempSync, rmSync, statSync } from 'node:fs';
 import path from 'node:path';
-import { projectScratchDir } from '../../../lib/scratch-dir.mjs';
+import { projectScratchDir, resolveScratchRoot } from '../../../lib/scratch-dir.mjs';
+import { BoundWorktreeMissingError } from '../../../lib/project-dir.mjs';
 
 const scratchRoot = path.join(process.cwd(), '.tmp', 'test');
 mkdirSync(scratchRoot, { recursive: true });
@@ -40,6 +41,52 @@ try {
     if (prev === undefined) delete process.env.AI_TASK_MANAGER_PROJECT_DIR;
     else process.env.AI_TASK_MANAGER_PROJECT_DIR = prev;
   }
+
+  // 6. a valid bound-worktree result remains authoritative
+  const boundRoot = path.join(sandbox, 'bound-worktree');
+  assert.equal(
+    resolveScratchRoot(undefined, {
+      resolveProjectDir: () => boundRoot,
+      env: {},
+      cwd: () => path.join(sandbox, 'wrong-cwd'),
+    }),
+    boundRoot
+  );
+
+  // 7. only a missing binding degrades through env and cwd fallbacks
+  const missingBinding = () => {
+    throw new BoundWorktreeMissingError('the active issue');
+  };
+  assert.equal(
+    resolveScratchRoot(undefined, {
+      resolveProjectDir: missingBinding,
+      env: { AI_TASK_MANAGER_PROJECT_DIR: sandbox },
+      cwd: () => path.join(sandbox, 'wrong-cwd'),
+    }),
+    sandbox
+  );
+  assert.equal(
+    resolveScratchRoot(undefined, {
+      resolveProjectDir: missingBinding,
+      env: {},
+      cwd: () => sandbox,
+    }),
+    sandbox
+  );
+
+  // 8. a resolver failure other than BoundWorktreeMissingError stays fatal
+  const corruptBinding = new Error('corrupt binding record');
+  assert.throws(
+    () =>
+      resolveScratchRoot(undefined, {
+        resolveProjectDir: () => {
+          throw corruptBinding;
+        },
+        env: {},
+        cwd: () => sandbox,
+      }),
+    (error) => error === corruptBinding
+  );
 } finally {
   rmSync(sandbox, { recursive: true, force: true });
 }

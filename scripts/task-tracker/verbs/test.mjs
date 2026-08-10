@@ -47,6 +47,7 @@ import {
   hasVerificationReceiptMarker,
   validateVerificationReceipt,
 } from '../lib/verification-receipt.mjs';
+import { captureEvidenceProvenance } from '../lib/evidence-provenance.mjs';
 import { runDevelopVerification } from '../verify-develop.mjs';
 import { autoTickVerified } from '../lib/auto-tick-verified.mjs';
 import { STAGES, parseEntryMarkers, stampEntryMarker } from '../lib/stage-entry-markers.mjs';
@@ -198,11 +199,13 @@ async function defaultNpmCi({ path: wtPath }) {
     cwd: wtPath,
     timeout: NPM_CI_TIMEOUT_MS,
     maxBuffer: 64 * 1024 * 1024,
-    env: buildSandboxEnv(), // @story #541 — strip leaked lock state
+    // @story #541/#1165 — strip leaked lock state and keep all project-local
+    // setup authority inside the detached verification worktree.
+    env: buildSandboxEnv(process.env, { AI_TASK_MANAGER_PROJECT_DIR: wtPath }),
   });
 }
 
-async function defaultExecInSandbox({ argv, path: wtPath, projectDir }) {
+async function defaultExecInSandbox({ argv, path: wtPath }) {
   const timeoutMs = sandboxTimeoutMs();
   const startedAt = Date.now();
   const startedInstant = new Date().toISOString();
@@ -211,8 +214,9 @@ async function defaultExecInSandbox({ argv, path: wtPath, projectDir }) {
       cwd: wtPath,
       timeout: timeoutMs,
       maxBuffer: 64 * 1024 * 1024,
-      // @story #541 — strip leaked lock state, then set the project dir.
-      env: buildSandboxEnv(process.env, { AI_TASK_MANAGER_PROJECT_DIR: projectDir }),
+      // @story #541/#1165 — strip leaked lock state, then bind project-local
+      // execution to this detached verification worktree, never its parent.
+      env: buildSandboxEnv(process.env, { AI_TASK_MANAGER_PROJECT_DIR: wtPath }),
     });
     return {
       exit: 0,
@@ -687,6 +691,7 @@ export async function runVerbTest({
   let cleanupNeeded = false;
   let setupDiag = null; // #254 — tagged diagnostics from the last failed setup attempt
   let testFingerprint = null;
+  let testExecutionContext = null;
   let evidenceRefusal = null;
   let partition = null;
   // #1158 — set only when the complete-lane floor was PROVEN droppable for this
@@ -916,6 +921,15 @@ export async function runVerbTest({
       });
       if (!completedValidation.ok) evidenceRefusal = completedValidation.reasons;
       testFingerprint = completedFingerprint;
+      if (!evidenceRefusal) {
+        // Capture while the detached sandbox still exists. Once `finally`
+        // removes it, Git metadata lookup would walk up to the bound child
+        // worktree and falsely attribute the receipt to that checkout.
+        testExecutionContext = captureEvidenceProvenance({
+          projectDir: wtPath,
+          boundIssue: issueNum,
+        });
+      }
     }
   } catch (err) {
     // #270 — sandbox-setup or sandbox-run threw. The board is still on
@@ -1003,6 +1017,7 @@ export async function runVerbTest({
           issueNumber: Number(issueNum),
           stage: 'test',
           fingerprint: testFingerprint,
+          executionContext: testExecutionContext,
           commands: results
             .filter(({ receiptCommand }) => receiptCommand)
             .map(({ receiptCommand }) => receiptCommand),

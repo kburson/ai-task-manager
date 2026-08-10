@@ -103,6 +103,7 @@ export function bankTranscriptTail(projDir) {
 // now the single source of truth. Stale `state` fields on disk are silently
 // dropped on read.
 const PER_SESSION_FIELDS = ['active', 'entryStartTs', 'wordsAtEntryStart'];
+const WORKTREE_SESSION_FIELDS = ['worktreePath', 'worktreeBranch', 'worktreeResolvedAt'];
 
 function currentSid() {
   // #273 — delegate to the lone resolver so this writer agrees with the
@@ -183,6 +184,9 @@ export function loadState(statePath) {
   // #218: silently drop any stale `state` field from on-disk JSON. The issue
   // body is now the single source of truth.
   delete base.state;
+  // #1163 — checkout identity is per-session authority. Never inherit it from
+  // the global compatibility ledger if an older writer happened to mirror it.
+  for (const field of WORKTREE_SESSION_FIELDS) delete base[field];
   // Per-session overlay (#212). When a session-scoped active-task.json exists,
   // its values take precedence over any legacy fields surfaced from the global
   // file. Missing-dir tolerated by getActiveTask (returns null).
@@ -195,6 +199,9 @@ export function loadState(statePath) {
     }
     if (active.entryStartTs != null) base.entryStartTs = active.entryStartTs;
     if (active.wordsAtStart != null) base.wordsAtEntryStart = active.wordsAtStart;
+    for (const field of WORKTREE_SESSION_FIELDS) {
+      if (active[field] != null) base[field] = active[field];
+    }
   }
   return base;
 }
@@ -210,12 +217,19 @@ export function saveState(state, statePath) {
     state.entryStartTs != null ||
     (state.wordsAtEntryStart != null && state.wordsAtEntryStart !== 0);
   if (hasActiveBinding) {
+    const worktreeFields = Object.fromEntries(
+      WORKTREE_SESSION_FIELDS.filter((field) => state[field] != null).map((field) => [
+        field,
+        state[field],
+      ])
+    );
     setActiveTask(
       sid,
       {
         issue: state.active ?? null,
         entryStartTs: state.entryStartTs ?? null,
         wordsAtStart: state.wordsAtEntryStart ?? 0,
+        ...worktreeFields,
       },
       projDir
     );
@@ -228,6 +242,7 @@ export function saveState(state, statePath) {
   const globalPayload = { ...state };
   // #218: never persist `state` to disk — issue body is the source of truth.
   delete globalPayload.state;
+  for (const field of WORKTREE_SESSION_FIELDS) delete globalPayload[field];
   writeFileSync(statePath, JSON.stringify(globalPayload, null, 2) + '\n', 'utf8');
 }
 

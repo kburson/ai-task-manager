@@ -13,6 +13,7 @@
 // cfg/issueNumber/body.
 
 import { gateCodeComplete } from './code-complete-gate.mjs';
+import { auditEvidenceBranchReachability } from './evidence-branch-reachability.mjs';
 import { hasAcceptedTestEvidence } from './github-records/lifecycle-gate-source.mjs';
 
 export const GUARD_ID = 'develop-exit-code-complete';
@@ -24,6 +25,21 @@ export const developExitCodeCompleteGuard = {
     if (!ctx || !ctx.cfg || ctx.issueNumber == null) return { ok: true };
     if (typeof ctx.body !== 'string') return { ok: true };
     if (hasAcceptedTestEvidence(ctx.lifecycleEvidence)) return { ok: true };
+    if (typeof ctx.projectDir === 'string') {
+      const auditFn = ctx.deps?.evidenceBranchReachability || auditEvidenceBranchReachability;
+      const reachability = await auditFn({
+        body: ctx.body,
+        issueNumber: ctx.issueNumber,
+        projectDir: ctx.projectDir,
+      });
+      if (!reachability.ok) {
+        return {
+          ok: false,
+          reason: reachability.reasons.join('; '),
+          blockers: reachability.reasons,
+        };
+      }
+    }
     const gateFn = ctx.deps?.codeCompleteGate || gateCodeComplete;
     const result = await gateFn({
       cfg: ctx.cfg,

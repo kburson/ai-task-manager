@@ -26,6 +26,7 @@ import { verbPromote } from './promote.mjs';
 import { runMoveInvariantAudit } from '../lib/verify-move-invariants.mjs';
 import { buildContext } from '../runtime.mjs';
 import { verbClose } from './close.mjs';
+import { resolveProjectDir } from '../lib/project-dir.mjs';
 
 async function defaultGetLiveState({ issueNumber, cfg }) {
   const { owner, repoName } = splitRepo(cfg.repo);
@@ -69,12 +70,16 @@ export async function defaultConvergeClosedIssue(
 export async function promoteSelectedChild({
   issueNumber,
   cfg,
+  projectDir,
   promoteDeps = {},
   promoteVerb = verbPromote,
 } = {}) {
   const selectedIssueNumber = Number(issueNumber);
   if (!Number.isSafeInteger(selectedIssueNumber) || selectedIssueNumber <= 0) {
     throw new Error('promoteSelectedChild: valid issueNumber is required');
+  }
+  if (typeof projectDir !== 'string' || !projectDir.trim()) {
+    throw new Error('promoteSelectedChild: bound epic projectDir is required');
   }
 
   // pull-next owns an epic-bound orchestration session, so the ordinary
@@ -92,6 +97,7 @@ export async function promoteSelectedChild({
 
   return promoteVerb([String(selectedIssueNumber)], cfg, {
     ...promoteDeps,
+    projectDir,
     assertBound: assertSelectedChild,
   });
 }
@@ -226,6 +232,10 @@ export async function runPullNext({ epicNumber, cfg, deps = {} } = {}) {
     : await promoteSelectedChild({
         issueNumber: next.number,
         cfg,
+        projectDir: (deps.resolveProjectDir ?? resolveProjectDir)({
+          issue: epicNumber,
+          deps: deps.projectDirDeps ?? deps,
+        }),
         promoteDeps: deps.promoteDeps,
         promoteVerb: deps.promoteVerb,
       });

@@ -63,16 +63,19 @@ const baseEnv = { ...process.env, TT_SKIP_NETWORK: '1' };
 
 // Parent worktree binds epic #500.
 await pexec('node', [CLI, '#500'], {
+  cwd: parent,
   env: { ...baseEnv, AI_TASK_MANAGER_PROJECT_DIR: parent },
 });
 
 // Child A worktree binds sub-issue #501.
 await pexec('node', [CLI, '#501'], {
+  cwd: childA,
   env: { ...baseEnv, AI_TASK_MANAGER_PROJECT_DIR: childA },
 });
 
 // Child B worktree binds sub-issue #502.
 await pexec('node', [CLI, '#502'], {
+  cwd: childB,
   env: { ...baseEnv, AI_TASK_MANAGER_PROJECT_DIR: childB },
 });
 
@@ -101,6 +104,7 @@ assert.notEqual(aPath, bPath);
 
 // Closing child A in its worktree must not clear the parent's active.
 await pexec('node', [CLI, 'close', '#501'], {
+  cwd: childA,
   env: { ...baseEnv, AI_TASK_MANAGER_PROJECT_DIR: childA },
 });
 const sParentAfter = readState(parent);

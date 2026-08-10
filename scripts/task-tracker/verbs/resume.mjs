@@ -26,6 +26,7 @@ import {
   formatPickupDirectiveDeferredBanner,
 } from '../lib/pickup-directive-gate.mjs';
 import { runMoveInvariantAudit } from '../lib/verify-move-invariants.mjs';
+import { resolveWorktreeBinding } from '../lib/worktree-binding.mjs';
 
 // #475 AC2 — idle span of a pause window in whole seconds. Returns 0 when no
 // `pausedAtTs` was recorded (e.g. resuming after a stop rather than a pause, or
@@ -76,6 +77,8 @@ export async function verbResume(ctx) {
       console.log('no previous task on record.');
       return;
     }
+    const resolveBinding = ctx.resolveWorktreeBinding ?? resolveWorktreeBinding;
+    const binding = resolveBinding({ projectDir, now: nowIso });
     // Inline the lastActive-bind logic (previously in verbStart)
     try {
       const sidPre = currentSessionId();
@@ -115,6 +118,7 @@ export async function verbResume(ctx) {
         pauseReasonSlug: null,
         pauseReasonText: null,
         lastWordMarker: carriedMarker,
+        ...binding,
       },
       statePath
     );
@@ -187,6 +191,9 @@ export async function verbResume(ctx) {
     return;
   }
   if (ownIssue === normalizedTarget) {
+    const resolveBinding = ctx.resolveWorktreeBinding ?? resolveWorktreeBinding;
+    const binding = resolveBinding({ projectDir, now: nowIso });
+    saveState({ ...s, ...binding }, statePath);
     try {
       const register = ctx.registerTask ?? registerTask;
       const branch = (ctx.currentBranch ?? currentBranch)(projectDir);
@@ -197,6 +204,9 @@ export async function verbResume(ctx) {
     console.log(`already active: ${normalizedTarget}`);
     return;
   }
+
+  const resolveBinding = ctx.resolveWorktreeBinding ?? resolveWorktreeBinding;
+  const binding = resolveBinding({ projectDir, now: nowIso });
 
   await drainQueueIfAny();
   try {
@@ -233,6 +243,7 @@ export async function verbResume(ctx) {
       paused: undefined,
       pausedAtTs: null,
       lastWordMarker: carriedMarker,
+      ...binding,
     },
     statePath
   );

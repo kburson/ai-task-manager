@@ -94,6 +94,10 @@ async function evaluate(input) {
   // own module evaluation is catchable and fails closed (see contract above).
   const { evaluateGhEdit, evaluateGhCreate, evaluateGhApiCreate } =
     await import('./lib/gh-edit-guard.mjs');
+  const { classifyBashWorktreeCommand, evaluateBashWorktreeBinding } =
+    await import('./lib/bash-worktree-guard.mjs');
+  const { readWorktreeIdentity, resolveCurrentSessionWorktreeBinding } =
+    await import('./lib/worktree-binding-guard.mjs');
   const { evaluateGhProject } = await import('./lib/gh-project-guard.mjs');
   const { evaluateAitmPath } = await import('./lib/aitm-path-guard.mjs');
   const { GIT_TIMEOUT_MS } = await import('./lib/process-timeouts.mjs');
@@ -130,6 +134,23 @@ async function evaluate(input) {
     if (command.includes(pattern)) {
       block(`Command contains dangerous pattern (${label}): ${pattern}`);
     }
+  }
+
+  // #1166 — refuse writes, verification, and task verbs from a checkout other
+  // than this session's recorded bound worktree. Navigation and read-only
+  // inspection remain available so the operator can reach the corrective path.
+  const worktreeClassification = classifyBashWorktreeCommand(command);
+  if (worktreeClassification.guarded) {
+    const invokingDir = input?.cwd || process.cwd();
+    const bound = resolveCurrentSessionWorktreeBinding({ invokingDir });
+    const invoking = bound ? readWorktreeIdentity({ projectDir: invokingDir }) : null;
+    const worktreeResult = evaluateBashWorktreeBinding({
+      command,
+      bound,
+      invoking,
+      classification: worktreeClassification,
+    });
+    if (worktreeResult.block) block(worktreeResult.reason);
   }
 
   // Write-allowed prefixes — project root only. `./.tmp/` lives inside the

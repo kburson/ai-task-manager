@@ -56,6 +56,7 @@ import { runStatusWrite } from '../lib/move-state/github-mutation.mjs';
 import { pushIssueBody } from '../lib/issue-body-push.mjs';
 import { withIssueLock, IssueLockError } from '../issue-mutator-lock.mjs';
 import { runMoveStateHost } from '../../gh/move-state.mjs';
+import { resolveProjectDir } from '../lib/project-dir.mjs';
 
 const pexec = promisify(execFile);
 
@@ -165,7 +166,7 @@ function defaultPersistTrackerState({ issueNumber, state } = {}) {
   try {
     const sid = currentSessionId();
     if (!sid) return;
-    const projDir = process.env.AI_TASK_MANAGER_PROJECT_DIR || process.cwd();
+    const projDir = resolveProjectDir({ issue: issueNumber });
     const active = getActiveTask(sid, projDir);
     const wantIssue = String(issueNumber).startsWith('#') ? String(issueNumber) : `#${issueNumber}`;
     if (active && active.issue === wantIssue) {

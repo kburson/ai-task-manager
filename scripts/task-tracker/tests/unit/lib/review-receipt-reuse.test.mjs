@@ -309,6 +309,11 @@ test('Review probe mode executes an allowlisted command and persists read-back e
     deps: {
       getHeadSha: async () => SHA,
       buildFingerprint: () => fingerprint(),
+      captureEvidenceProvenance: () => ({
+        worktreePath: '/project',
+        branch: 'feature/child/1089',
+        boundIssue: 1089,
+      }),
       validateCommand: () => ({ ok: true, argv: ['node', '--test', 'probe.test.mjs'] }),
       executeCommand: async () => {
         executions += 1;
@@ -346,6 +351,11 @@ test('Review probe mode persists a red probe and returns failure', async () => {
     deps: {
       getHeadSha: async () => SHA,
       buildFingerprint: () => fingerprint(),
+      captureEvidenceProvenance: () => ({
+        worktreePath: '/project',
+        branch: 'feature/child/1089',
+        boundIssue: 1089,
+      }),
       validateCommand: () => ({ ok: true, argv: ['node', '--test', 'probe.test.mjs'] }),
       executeCommand: async () => ({
         exitCode: 1,
