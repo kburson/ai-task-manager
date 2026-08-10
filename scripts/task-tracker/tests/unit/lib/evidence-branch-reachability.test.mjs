@@ -63,6 +63,8 @@ function initDivergedRepo() {
       encoding: 'utf8',
       stdio: ['ignore', 'pipe', 'pipe'],
     }).trim();
+  git('config', 'user.email', 'aitm-test@example.com');
+  git('config', 'user.name', 'aitm-test');
   const base = git('rev-parse', 'HEAD');
   git('checkout', '-qb', BOUND_BRANCH);
   appendFileSync(`${projectDir}/.gitignore`, '# bound\n');
