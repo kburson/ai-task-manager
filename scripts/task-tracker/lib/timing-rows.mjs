@@ -295,7 +295,13 @@ export function computePhaseCloseDelta(body, phase, nowTs, nowMarker = NaN) {
     if (!row || !isTableTimingTimestamp(row.ts)) continue;
     const ms = tsToMs(row.ts);
     if (!Number.isFinite(ms) || ms > nowMs) continue;
-    const markerNum = Number(row.wordMarker);
+    // #1142 — Markdown renders cumulative markers with thousands separators.
+    // Normalize the storage cell before arithmetic (`Number('59,894')` is NaN).
+    const markerNum = Number(
+      String(row.wordMarker ?? '')
+        .replace(/,/g, '')
+        .trim()
+    );
     parsed.push({
       ms,
       event: row.event,

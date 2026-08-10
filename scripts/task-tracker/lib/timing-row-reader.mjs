@@ -83,6 +83,9 @@ export function parseTimingRow(line) {
     event: (cells[2] ?? '').toLowerCase(),
     wordMarker: cells[6] ?? '',
     description: cells[7] ?? '',
+    // #1142 — canonical eight-column rows carry the cumulative full-expansion
+    // cursor after Description. Seven-column historical rows expose ''.
+    fullWordMarker: cells.length >= 10 ? (cells[8] ?? '') : '',
   };
 }
 
@@ -100,6 +103,19 @@ export function replaceTimingRowCells(line, replacements) {
 
 export function replaceTimingRowCell(line, index, replacement) {
   return replaceTimingRowCells(line, { [index]: replacement });
+}
+
+// #1142 — schema evolution stays in this lexical leaf so policy-aware timing
+// consumers never acquire their own Markdown pipe grammar. Canonical rows have
+// an empty leading cell, eight data cells, and an empty trailing cell; insert
+// the new absolute full-word cursor before that trailing cell when reading a
+// historical seven-column row.
+export function ensureTimingRowFullMarkerCell(line, value = '—') {
+  const source = String(line ?? '');
+  const { core, marker } = splitTimingRowMarker(source);
+  const cells = core.split('|');
+  if (cells.length < 10) cells.splice(8, 0, ` ${value} `);
+  return cells.join('|') + marker;
 }
 
 export function readEstimationStageTiming(lines = []) {

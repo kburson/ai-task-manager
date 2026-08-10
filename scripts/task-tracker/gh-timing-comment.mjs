@@ -3,14 +3,16 @@
 
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
-import { resolvePhaseEvent } from './phase-events.mjs';
+import { PHASE_EVENTS, resolvePhaseEvent } from './phase-events.mjs';
 import { withLock } from './locks.mjs';
 import { getProjectDir, timingLockPath as resolveTimingLockPath } from './paths.mjs';
 import { serializeMarker, unescapeValue } from './lib/marker-grammar.mjs';
 import { hasReviewApprovedMarker, parseReviewApprovedMarker } from './lib/markers.mjs';
 import {
+  ensureTimingRowFullMarkerCell,
   isTableTimingTimestamp,
   parseTimingRow,
+  replaceTimingRowCells,
   replaceTimingRowCell,
 } from './lib/timing-row-reader.mjs';
 import { formatDurationSeconds, lastRowTsFromBody, _tsToMs } from './lib/timing-rows.mjs';
@@ -39,16 +41,14 @@ export class DuplicateStartError extends Error {
 
 const TIMING_HEADING = '⏱ Timing Log';
 
-// #475 AC3 — column legend. Documents that a `0` in the Δ Words column on a
-// lifecycle/audit row is CORRECT, not a defect: Δ Words is the per-segment word
-// delta for that row, not a running total. Lifecycle/audit rows (state moves,
-// gate refusals, recovery, close) have no live transcript segment, so their
-// delta is legitimately 0 while the cumulative Word Marker still carries forward.
+// #1142 — both transcript cursors are absolute, durable ledger snapshots. The
+// visible primary delta is derived at the locked append boundary from adjacent
+// Word Marker cells; callers cannot independently transport a divergent delta.
 const COLUMN_LEGEND =
-  '<sub>Δ Words = stay-abreast words added during this row’s segment (monologue + prose + tool-summary chips; per-row delta, `0` on lifecycle/audit rows is expected). Word Marker = cumulative stay-abreast word count, carried forward monotonically. Δ Words (full) = full-expansion per-row delta (stay-abreast + full tool inputs + full tool outputs); blank on lifecycle/audit rows.</sub>';
+  '<sub>Δ Words = current Word Marker minus the adjacent previous Word Marker (`0` on the first or a flat row). Word Marker = cumulative stay-abreast words. Full Word Marker = cumulative full-expansion words including complete tool inputs and outputs. Both markers carry forward monotonically; `—` means the transcript was unavailable.</sub>';
 
 const TABLE_HEADER = [
-  '| Timestamp | Event | Active | Idle | Δ Words | Word Marker | Description | Δ Words (full) |',
+  '| Timestamp | Event | Active | Idle | Δ Words | Word Marker | Description | Full Word Marker |',
   '|---|---|---|---|---|---|---|---|',
 ].join('\n');
 
@@ -132,6 +132,7 @@ export function buildRow({
   deltaWords,
   deltaWordsFull,
   wordMarker,
+  fullWordMarker,
   description = '',
   phase,
 }) {
@@ -180,12 +181,16 @@ export function buildRow({
     activeCell = fmtNumBlankZero(activeMin);
     idleCell = fmtNumBlankZero(idleMin);
   }
-  // Full-expansion column is trailing (after Description) and rendered ONLY when
-  // the caller opts in by passing `deltaWordsFull`. Legacy callers that omit it
-  // produce the exact pre-#795 row string byte-for-byte, so pre-existing rows
-  // and every exact-match test stay unchanged; opted-in rows gain the extra cell
-  // before the `<!-- row-sec -->` marker.
-  const fullCell = deltaWordsFull === undefined ? '' : ` ${fmtNumBlankZero(deltaWordsFull)} |`;
+  // #1142 — `fullWordMarker` is the absolute full-expansion cursor. Keep the
+  // legacy delta option byte-compatible for non-posting fixtures while live
+  // producers migrate; appendRow normalizes every posted row to the absolute
+  // schema and treats an omitted value as explicitly unavailable.
+  const fullCell =
+    fullWordMarker !== undefined
+      ? ` ${fmtNum(fullWordMarker)} |`
+      : deltaWordsFull === undefined
+        ? ''
+        : ` ${fmtNumBlankZero(deltaWordsFull)} |`;
   return `| ${fmtTs(ts)} | ${event} | ${activeCell} | ${idleCell} | ${fmtNumBlankZero(deltaWords)} | ${fmtNum(wordMarker)} | ${description} |${fullCell}${trailingMarker}`;
 }
 
@@ -263,6 +268,7 @@ export function buildFlushRow({
   deltaWords,
   deltaWordsFull,
   wordMarker,
+  fullWordMarker,
   description = '',
   phase,
 }) {
@@ -275,6 +281,7 @@ export function buildFlushRow({
     deltaWords,
     deltaWordsFull,
     wordMarker,
+    fullWordMarker,
     description,
     phase,
   });
@@ -415,6 +422,76 @@ function numericWordMarker(value) {
   return Number.isFinite(marker) && marker >= 0 ? marker : null;
 }
 
+function normalizeTimingSchema(body) {
+  const source = String(body ?? '');
+  const legacyFullDelta = source.includes('| Δ Words (full) |');
+  let sawHeader = false;
+  return source
+    .split('\n')
+    .map((line) => {
+      if (line.startsWith('<sub>Δ Words =')) return COLUMN_LEGEND;
+      if (line.startsWith('| Timestamp |')) {
+        sawHeader = true;
+        return TABLE_HEADER.split('\n')[0];
+      }
+      if (sawHeader && line.startsWith('|---')) {
+        sawHeader = false;
+        return TABLE_HEADER.split('\n')[1];
+      }
+      const parsed = parseTimingRow(line);
+      if (!parsed || !isTableTimingTimestamp(parsed.ts)) return line;
+      let next = ensureTimingRowFullMarkerCell(line);
+      if (legacyFullDelta) next = replaceTimingRowCell(next, 8, ' — ');
+      return next;
+    })
+    .join('\n');
+}
+
+function lastDurableFullWordMarker(body) {
+  let marker = null;
+  for (const line of String(body ?? '').split('\n')) {
+    const candidate = numericWordMarker(parseTimingRow(line)?.fullWordMarker);
+    if (candidate !== null) marker = candidate;
+  }
+  return marker;
+}
+
+function carryForwardFullWordMarker(body, row) {
+  const durable = lastDurableFullWordMarker(body);
+  const normalized = ensureTimingRowFullMarkerCell(row);
+  const incoming = numericWordMarker(parseTimingRow(normalized)?.fullWordMarker);
+  if (durable === null || (incoming !== null && incoming >= durable)) return normalized;
+  return replaceTimingRowCell(normalized, 8, ` ${durable.toLocaleString('en-US')} `);
+}
+
+function deriveAdjacentWordDelta(body, row) {
+  const previous = lastDurableWordMarker(body);
+  const current = numericWordMarker(parseTimingRow(row)?.wordMarker);
+  const delta = previous === null || current === null ? 0 : Math.max(0, current - previous);
+  return replaceTimingRowCell(row, 5, ` ${delta.toLocaleString('en-US')} `);
+}
+
+const LIFECYCLE_OPENERS = new Set(
+  Object.values(PHASE_EVENTS)
+    .map((phase) => phase?.enter?.event)
+    .filter(Boolean)
+);
+
+function resumedBoundaryFrom(row) {
+  let resumed = replaceTimingRowCells(ensureTimingRowFullMarkerCell(row), {
+    2: ' resumed ',
+    3: ' ',
+    4: ' ',
+    5: ' 0 ',
+    7: ' resumed ',
+  });
+  resumed = resumed.replace(
+    /<!--\s*row-sec:\s*a=-?\d+\s+i=-?\d+\s*-->/,
+    '<!-- row-sec: a=0 i=0 -->'
+  );
+  return resumed;
+}
+
 function lastDurableWordMarker(body) {
   let marker = null;
   for (const line of String(body ?? '').split('\n')) {
@@ -441,11 +518,12 @@ function carryForwardWordMarker(body, row) {
 // This makes a duplicate `start` impossible by construction, independent of any
 // upstream read/resolve state.
 function appendRow(body, row) {
+  body = normalizeTimingSchema(body);
   if (shouldSuppressTimingAppend(body, rowEventSlug(row))) {
     return body;
   }
 
-  let effectiveRow = row;
+  let effectiveRow = ensureTimingRowFullMarkerCell(row);
   const incomingEvent = rowEventSlug(effectiveRow);
   if (incomingEvent === 'review:approved') {
     const incomingApprovalMs = _tsToMs(rowTs(effectiveRow));
@@ -474,6 +552,15 @@ function appendRow(body, row) {
           'rows with no open interruption to pair against (duplicate-start is forbidden)'
       );
     }
+  }
+
+  // #1142 — a phase/activity opener cannot leap over an open interruption.
+  // Interpose the sole canonical closer at the same recording instant. Its
+  // adjacent marker growth remains visible on `resumed`; the lifecycle opener
+  // then sees a flat marker and renders zero.
+  if (lastOpenInterruption(body) && LIFECYCLE_OPENERS.has(rowEventSlug(effectiveRow))) {
+    const withResume = appendRow(body, resumedBoundaryFrom(effectiveRow));
+    return appendRow(withResume, effectiveRow);
   }
 
   // #972 — redundant-departure guard. A second departure event (`switch-out:*`
@@ -506,7 +593,11 @@ function appendRow(body, row) {
       else effectiveRow = rewriteTsCell(effectiveRow, tailTs);
     }
   }
-  if (!insertByTimestamp) effectiveRow = carryForwardWordMarker(body, effectiveRow);
+  if (!insertByTimestamp) {
+    effectiveRow = carryForwardWordMarker(body, effectiveRow);
+    effectiveRow = carryForwardFullWordMarker(body, effectiveRow);
+    effectiveRow = deriveAdjacentWordDelta(body, effectiveRow);
+  }
 
   const lines = body.split('\n');
   let lastTableIdx = -1;
@@ -693,6 +784,7 @@ export const __internals = {
   RETROACTIVE_TS_ERROR,
   buildInitialComment,
   appendRow,
+  normalizeTimingSchema,
   findTimingComment,
   createTimingComment,
   updateTimingComment,

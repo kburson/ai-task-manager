@@ -4,8 +4,10 @@ import {
   currentSessionId,
   jsonlPath,
   markerPathFor,
+  loadMarker,
   saveMarker,
   countWords,
+  aiAppName,
 } from '../word-counter.mjs';
 import { loadPlanFile } from '../lib/plan-file.mjs';
 import { existsSync } from 'node:fs';
@@ -199,6 +201,26 @@ export async function verbNew(ctx) {
     // after `createNewIssue`, so the flush is deferred until we know the number.
   }
   const issue = await createNewIssue(title, ctx, kind);
+  const sid = currentSessionId();
+  let wordsAtStart = 0;
+  let fullWordsAtStart = null;
+  if (sid) {
+    const counted = countWords(jsonlPath(sid), 0, { provider: aiAppName(), sid });
+    if (counted.status === 'ok') {
+      saveMarker(
+        markerPathFor(sid),
+        counted.totalLines,
+        counted.count,
+        issue,
+        counted.fullExpansion
+      );
+      wordsAtStart = counted.count;
+      fullWordsAtStart = counted.fullExpansion;
+    } else {
+      wordsAtStart = loadMarker(markerPathFor(sid)).words;
+    }
+  }
+  const bindWordMarker = advanceWordMarker(s.lastWordMarker, wordsAtStart);
   if (previousActive && previousActive !== 'discover' && cfg.autoEndOnSwitch) {
     const { deltaMin, deltaWords } = await flushActiveToGH(
       s,
@@ -220,7 +242,8 @@ export async function verbNew(ctx) {
       idleSec: 0,
       deltaWords: 0,
       // #475 AC1 — carry the durable session-global marker forward; never 0
-      wordMarker: s.lastWordMarker ?? 0,
+      wordMarker: bindWordMarker,
+      fullWordMarker: fullWordsAtStart,
       description: PHASE_EVENTS.backlog.enter.description,
     })
   );
@@ -232,7 +255,7 @@ export async function verbNew(ctx) {
     // deliberate anti-backdating invariant, so rather than weaken it we
     // reconcile the elapsed bucket time honestly: ONE fresh-stamped row that
     // records the whole window as idle. No active work is fabricated.
-    const { startedAt, wordsAtStart } = s.discoverBucket;
+    const { startedAt, wordsAtStart: bucketWordsAtStart } = s.discoverBucket;
     const startedMs = Date.parse(startedAt);
     const idleMin = Number.isFinite(startedMs)
       ? Math.max(0, Math.round((Date.parse(createdTs) - startedMs) / 60000))
@@ -248,19 +271,13 @@ export async function verbNew(ctx) {
         idleSec: idleMin * 60,
         deltaWords: 0,
         // #475 AC1 — monotonic carry-forward, never below the durable marker
-        wordMarker: advanceWordMarker(s.lastWordMarker, wordsAtStart),
+        wordMarker: advanceWordMarker(bindWordMarker, bucketWordsAtStart),
+        fullWordMarker: fullWordsAtStart,
         description: `discovery session reconciled as idle (opened ${startedAt})`,
       })
     );
   }
   const ts = nowIso();
-  const sid = currentSessionId();
-  let wordsAtStart = 0;
-  if (sid) {
-    const { totalLines, count } = countWords(jsonlPath(sid), 0);
-    saveMarker(markerPathFor(sid), totalLines, count, issue);
-    wordsAtStart = count;
-  }
   saveState(
     {
       ...EMPTY_STATE,
@@ -270,7 +287,7 @@ export async function verbNew(ctx) {
       wordsAtEntryStart: wordsAtStart,
       // #475 AC1 — preserve the durable session-global marker across the new
       // binding (…EMPTY_STATE would otherwise reset it to 0).
-      lastWordMarker: advanceWordMarker(s.lastWordMarker, wordsAtStart),
+      lastWordMarker: bindWordMarker,
     },
     statePath
   );
@@ -289,7 +306,8 @@ export async function verbNew(ctx) {
       idleSec: 0,
       deltaWords: 0,
       // #475 AC1 — monotonic carry-forward of the durable marker
-      wordMarker: advanceWordMarker(s.lastWordMarker, wordsAtStart),
+      wordMarker: bindWordMarker,
+      fullWordMarker: fullWordsAtStart,
       description: role,
     })
   );

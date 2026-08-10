@@ -436,6 +436,7 @@ export function buildContext(rawArgv = process.argv.slice(2)) {
     // the trailing `Δ Words (full)` column and persist the full cursor.
     let deltaWordsFull = 0;
     let priorWordsFull = 0;
+    let transcriptWordsAvailable = false;
     // #483 — capture the live transcript line count so the cursor can be
     // advanced after this flush. Without persisting the cursor, every flush
     // re-counts from the same (bind-time) offset, so `Δ Words` is never a
@@ -448,8 +449,12 @@ export function buildContext(rawArgv = process.argv.slice(2)) {
       const counted = countWords(transcriptPath, marker.line, { provider: aiAppName(), sid });
       deltaWords = counted.count;
       deltaWordsFull = counted.fullExpansion ?? counted.count;
+      transcriptWordsAvailable = counted.status === 'ok';
       priorWordsFull = marker.wordsFull ?? marker.words ?? 0;
-      markerLineToPersist = counted.totalLines;
+      // #1142 — an unavailable resolution returns a synthetic zero-line
+      // result. Treat it as no observation, not a cursor reset; the durable
+      // marker remains the last known truth until a transcript can be read.
+      markerLineToPersist = transcriptWordsAvailable ? counted.totalLines : null;
     }
     // #476 — append-only session-reference chain. On every timing-emitting verb
     // (incl. first bind via `start`), compare the live { sid, jsonlPath } against
@@ -497,15 +502,14 @@ export function buildContext(rawArgv = process.argv.slice(2)) {
       // Marker cell still advances (the close walker reads it), so no words are
       // lost — only their display moves off the interruption row (AC1/AC3).
       const rowDeltaWords = opts.suppressRowWords ? 0 : deltaWords;
-      const rowDeltaWordsFull = opts.suppressRowWords ? 0 : deltaWordsFull;
       const row = buildFlushRow({
         ts,
         event: effectiveEvent,
         activeMin: 0,
         idleMin: 0,
         deltaWords: rowDeltaWords,
-        deltaWordsFull: rowDeltaWordsFull,
         wordMarker,
+        fullWordMarker: transcriptWordsAvailable ? wordMarkerFull : null,
         description: effectiveDescription,
       });
       const post = opts.computeOnly
@@ -605,8 +609,8 @@ export function buildContext(rawArgv = process.argv.slice(2)) {
         activeSec: 0,
         idleSec: 0,
         deltaWords: 0,
-        deltaWordsFull: 0,
         wordMarker,
+        fullWordMarker: transcriptWordsAvailable ? wordMarkerFull : null,
         description: 'resumed',
       });
       postReengage = await ctx.safePostTiming(state.active, reengageRow);
@@ -618,15 +622,14 @@ export function buildContext(rawArgv = process.argv.slice(2)) {
     // words onto the durable marker but renders the row's Δ Words cell as 0 so
     // they attribute to the `<phase>:completed` row, not the interruption row.
     const rowDeltaWords = opts.suppressRowWords ? 0 : deltaWords;
-    const rowDeltaWordsFull = opts.suppressRowWords ? 0 : deltaWordsFull;
     const row = buildRow({
       ts,
       event: effectiveEvent,
       activeSec,
       idleSec,
       deltaWords: rowDeltaWords,
-      deltaWordsFull: rowDeltaWordsFull,
       wordMarker,
+      fullWordMarker: transcriptWordsAvailable ? wordMarkerFull : null,
       description: effectiveDescription,
     });
     const post = opts.computeOnly

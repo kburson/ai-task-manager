@@ -143,8 +143,8 @@ test('locked append reduces the #1077 handoff to canonical terminal rows', () =>
   );
   assert.equal(
     rows.reduce((sum, row) => sum + Number(row.cells[5].replaceAll(',', '') || 0), 0),
-    0,
-    'suppressed stale stop rows cannot duplicate their word delta'
+    2016,
+    'only adjacent growth between retained canonical rows is counted'
   );
 });
 
@@ -209,7 +209,7 @@ test('prose and malformed rows mentioning issue:closed do not create a terminal 
   );
 });
 
-test('locked append carries the durable Word Marker without changing other cells', () => {
+test('locked append carries durable markers and derives delta without changing event evidence', () => {
   const ts = Date.now();
   const start = buildRow({
     ts: new Date(ts).toISOString(),
@@ -237,10 +237,16 @@ test('locked append carries the durable Word Marker without changing other cells
   const expected = parseTimingRow(incoming);
 
   assert.equal(actual.wordMarker, '200');
+  assert.equal(actual.cells[5], '0', 'flat carried-forward marker derives a zero delta');
+  assert.equal(
+    actual.fullWordMarker,
+    '—',
+    'missing full transcript remains explicitly unavailable'
+  );
   assert.deepEqual(
-    actual.cells.filter((_, index) => index !== 6),
-    expected.cells.filter((_, index) => index !== 6),
-    'only the Word Marker cell may change'
+    [1, 2, 3, 4, 7].map((index) => actual.cells[index]),
+    [1, 2, 3, 4, 7].map((index) => expected.cells[index]),
+    'timestamp, event, duration, and description evidence remain byte-identical'
   );
   assert.equal(actual.marker, expected.marker, 'row-sec evidence remains byte-identical');
 });

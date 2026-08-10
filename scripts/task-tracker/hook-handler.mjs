@@ -20,9 +20,11 @@ import {
   markerPathFor,
   loadMarker,
   saveMarker,
+  advanceMarkerCursor,
   countWords,
   currentSessionId,
   ensureSessionTracking,
+  aiAppName,
 } from './word-counter.mjs';
 import { collectEventTimestamps, computeActiveAndIdleMinutes } from './active-time.mjs';
 import { enqueue, drain } from './queue.mjs';
@@ -130,10 +132,16 @@ async function onPreCompact(sid) {
     count: newWords,
     totalLines,
     fullExpansion: newWordsFull,
-  } = countWords(jsonlPath(sid), marker.line);
+    status: transcriptStatus,
+  } = countWords(jsonlPath(sid), marker.line, { provider: aiAppName(), sid });
+  const transcriptWordsAvailable = transcriptStatus === 'ok';
   const ts = new Date().toISOString();
   // #475 AC1 — advance + persist the durable monotonic marker on every flush.
   const wordMarker = advanceWordMarker(s.lastWordMarker, s.wordsAtEntryStart + newWords);
+  const fullWordMarker = advanceWordMarker(
+    marker.wordsFull ?? marker.words ?? 0,
+    (marker.wordsFull ?? marker.words ?? 0) + newWordsFull
+  );
   const startMs = new Date(s.entryStartTs).getTime();
   const endMs = Date.now();
   const events = collectEventTimestamps(jsonlPath(sid), startMs, endMs);
@@ -149,12 +157,14 @@ async function onPreCompact(sid) {
     activeMin,
     idleMin,
     deltaWords: newWords,
-    deltaWordsFull: newWordsFull,
     wordMarker,
+    fullWordMarker: transcriptWordsAvailable ? fullWordMarker : null,
     description: 'context compacted',
   });
   await safePost(s.active, row);
-  saveMarker(markerPathFor(sid), totalLines, 0, s.active);
+  if (transcriptWordsAvailable) {
+    saveMarker(markerPathFor(sid), totalLines, wordMarker, s.active, fullWordMarker);
+  }
   saveState(
     { ...s, entryStartTs: ts, wordsAtEntryStart: wordMarker, lastWordMarker: wordMarker },
     statePath
@@ -164,17 +174,20 @@ async function onPreCompact(sid) {
 async function onPostCompact(sid) {
   const s = loadState(statePath);
   if (!s.active || s.active === 'discover') return;
-  const { totalLines } = countWords(jsonlPath(sid), 0);
-  saveMarker(markerPathFor(sid), totalLines, 0, s.active);
+  const markerPath = markerPathFor(sid);
+  const marker = loadMarker(markerPath);
+  const counted = countWords(jsonlPath(sid), 0, { provider: aiAppName(), sid });
+  const transcriptWordsAvailable = counted.status === 'ok';
+  if (transcriptWordsAvailable) advanceMarkerCursor(markerPath, counted.totalLines, s.active);
   const row = buildRow({
     ts: new Date().toISOString(),
     event: 'post-compact-resume',
     activeMin: 0,
     idleMin: 0,
     deltaWords: 0,
-    deltaWordsFull: 0,
     // #475 AC1 — carry the durable marker forward across compact
-    wordMarker: advanceWordMarker(s.lastWordMarker, s.wordsAtEntryStart),
+    wordMarker: advanceWordMarker(s.lastWordMarker, marker.words),
+    fullWordMarker: transcriptWordsAvailable ? marker.wordsFull : null,
     description: 'resumed after compact',
   });
   await safePost(s.active, row);
@@ -233,7 +246,7 @@ export function buildOrphanRecoveryRowSpecs({ wallMin, wordMarker }) {
         activeMin: wallMin,
         idleMin: 0,
         deltaWords: 0,
-        deltaWordsFull: 0,
+        fullWordMarker: null,
         wordMarker,
         description: 'recovered — session closed without /task pause (wall time only)',
       },
@@ -246,7 +259,7 @@ export function buildOrphanRecoveryRowSpecs({ wallMin, wordMarker }) {
       activeMin: 0,
       idleMin: wallMin,
       deltaWords: 0,
-      deltaWordsFull: 0,
+      fullWordMarker: null,
       wordMarker,
       description: `recovered — session closed without /task pause; gap exceeds ${gapHours}h so it is logged as idle, not active (wall time only)`,
     },
@@ -255,7 +268,7 @@ export function buildOrphanRecoveryRowSpecs({ wallMin, wordMarker }) {
       activeMin: 0,
       idleMin: 0,
       deltaWords: 0,
-      deltaWordsFull: 0,
+      fullWordMarker: null,
       wordMarker,
       description: 'orphan-recovery gap closed',
     },
@@ -407,18 +420,26 @@ async function onSessionStart(sid) {
 
   let newWordBaseline = s.wordsAtEntryStart;
   if (sid) {
-    const { totalLines, count, fullExpansion } = countWords(jsonlPath(sid), 0);
-    newWordBaseline = count;
+    const { totalLines, count, fullExpansion, status } = countWords(jsonlPath(sid), 0, {
+      provider: aiAppName(),
+      sid,
+    });
+    const transcriptWordsAvailable = status === 'ok';
+    if (transcriptWordsAvailable) newWordBaseline = count;
     // #795 — persist the full-expansion baseline alongside the stay-abreast
     // count so the runtime flush path reads a meaningful `wordsFull` cursor.
-    saveMarker(markerPathFor(sid), totalLines, count, s.active, fullExpansion);
+    // #1142 — an unavailable count is not an observed zero and must not reset
+    // either cumulative marker or the persisted transcript line cursor.
+    if (transcriptWordsAvailable) {
+      saveMarker(markerPathFor(sid), totalLines, count, s.active, fullExpansion);
+    }
     const startRow = buildRow({
       ts: nowTs,
       event: 'session-start',
       activeMin: 0,
       idleMin: 0,
       deltaWords: 0,
-      deltaWordsFull: 0,
+      fullWordMarker: transcriptWordsAvailable ? fullExpansion : null,
       // #475 AC1 — monotonic carry-forward of the durable marker
       wordMarker: advanceWordMarker(s.lastWordMarker, newWordBaseline),
       description: 'session resumed',

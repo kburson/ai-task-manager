@@ -150,6 +150,20 @@ export function saveMarker(markerPath, line, words, task = null, wordsFull = wor
   );
 }
 
+// #1142 — compaction is a transcript cursor boundary, not a word-count reset.
+// Advance only the consumed line index while carrying both absolute markers.
+export function advanceMarkerCursor(markerPath, line, task = undefined) {
+  const marker = loadMarker(markerPath);
+  saveMarker(
+    markerPath,
+    line,
+    marker.words,
+    task === undefined ? marker.task : task,
+    marker.wordsFull
+  );
+  return loadMarker(markerPath);
+}
+
 // Prefixes/markers that indicate injected (non-reader-visible) text.
 // These arrive as user-typed content in the JSONL but are never rendered in
 // the chat window — they're system-reminders, slash-command scaffolding,

@@ -184,50 +184,50 @@ export const TIMING_EVENT_BASELINE = Object.freeze({
     timingEmitter('scripts/gh/ensure-wave-parent.mjs', 334, 'event-call', "'start'", ['start']),
     timingEmitter(
       'scripts/task-tracker/gh-timing-comment.mjs',
-      300,
+      307,
       'phase-call',
       "{ state: 'review', phase: 'complete' }",
       ['review:approved']
     ),
     timingEmitter(
       'scripts/task-tracker/gh-timing-comment.mjs',
-      308,
+      315,
       'phase-call',
       "{ state: 'done', phase: 'enter' }",
       ['issue:wrap']
     ),
     timingEmitter(
       'scripts/task-tracker/hook-handler.mjs',
-      148,
+      156,
       'event-call',
       "'pre-compact-flush'",
       ['pre-compact-flush']
     ),
     timingEmitter(
       'scripts/task-tracker/hook-handler.mjs',
-      171,
+      184,
       'event-call',
       "'post-compact-resume'",
       ['post-compact-resume']
     ),
     timingEmitter(
       'scripts/task-tracker/hook-handler.mjs',
-      232,
+      245,
       'event-spec',
       "'session-end-recovery'",
       ['session-end-recovery']
     ),
     timingEmitter(
       'scripts/task-tracker/hook-handler.mjs',
-      245,
+      258,
       'event-spec',
       "'pause:orphan-recovery'",
       ['pause:orphan-recovery']
     ),
-    timingEmitter('scripts/task-tracker/hook-handler.mjs', 254, 'event-spec', "'resumed'", [
+    timingEmitter('scripts/task-tracker/hook-handler.mjs', 267, 'event-spec', "'resumed'", [
       'resumed',
     ]),
-    timingEmitter('scripts/task-tracker/hook-handler.mjs', 417, 'event-call', "'session-start'", [
+    timingEmitter('scripts/task-tracker/hook-handler.mjs', 438, 'event-call', "'session-start'", [
       'session-start',
     ]),
     timingEmitter('scripts/task-tracker/hooks/on-ask.mjs', 183, 'event-call', "'paused'", [
@@ -340,43 +340,43 @@ export const TIMING_EVENT_BASELINE = Object.freeze({
     ]),
     timingEmitter(
       'scripts/task-tracker/verbs/new.mjs',
-      205,
+      227,
       'flush-call',
       '`switch-out:${issue}`',
       ['switch-out:#1007']
     ),
     timingEmitter(
       'scripts/task-tracker/verbs/new.mjs',
-      217,
+      239,
       'event-call',
       'PHASE_EVENTS.backlog.enter.event',
       ['backlog:created']
     ),
     timingEmitter(
       'scripts/task-tracker/verbs/new.mjs',
-      244,
+      267,
       'event-call',
       "'discovery: idle-reconciled'",
       ['discovery: idle-reconciled']
     ),
-    timingEmitter('scripts/task-tracker/verbs/new.mjs', 286, 'event-call', "'start'", ['start']),
+    timingEmitter('scripts/task-tracker/verbs/new.mjs', 303, 'event-call', "'start'", ['start']),
     timingEmitter('scripts/task-tracker/verbs/pause.mjs', 31, 'flush-call', 'pauseEvent', [
       'pause:other',
     ]),
     timingEmitter('scripts/task-tracker/verbs/reject.mjs', 70, 'event-call', "'rejected:develop'", [
       'rejected:develop',
     ]),
-    timingEmitter('scripts/task-tracker/verbs/resume.mjs', 159, 'event-call', 'resumeEvent', [
+    timingEmitter('scripts/task-tracker/verbs/resume.mjs', 173, 'event-call', 'resumeEvent', [
       'resume:manual',
     ]),
     timingEmitter(
       'scripts/task-tracker/verbs/resume.mjs',
-      371,
+      398,
       'event-call',
       "'pause:auto-detected-gap'",
       ['pause:auto-detected-gap']
     ),
-    timingEmitter('scripts/task-tracker/verbs/resume.mjs', 393, 'event-call', 'bindEvent', [
+    timingEmitter('scripts/task-tracker/verbs/resume.mjs', 420, 'event-call', 'bindEvent', [
       'start',
       'resumed',
     ]),
@@ -396,10 +396,10 @@ export const TIMING_EVENT_BASELINE = Object.freeze({
       'gate-refused',
     ]),
     timingEmitter('scripts/task-tracker/verbs/stop.mjs', 47, 'flush-call', "'stop'", ['stop']),
-    timingEmitter('scripts/task-tracker/verbs/switch.mjs', 96, 'flush-call', 'eventSlug', [
+    timingEmitter('scripts/task-tracker/verbs/switch.mjs', 98, 'flush-call', 'eventSlug', [
       'switch-out:#1007',
     ]),
-    timingEmitter('scripts/task-tracker/verbs/switch.mjs', 199, 'event-call', 'bindEvent', [
+    timingEmitter('scripts/task-tracker/verbs/switch.mjs', 213, 'event-call', 'bindEvent', [
       'start',
       'resumed',
     ]),

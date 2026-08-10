@@ -4,8 +4,10 @@ import {
   currentSessionId,
   jsonlPath,
   markerPathFor,
+  loadMarker,
   saveMarker,
   countWords,
+  aiAppName,
 } from '../word-counter.mjs';
 import { loadSession } from '../lib/session-store.mjs';
 import { bothGatesExplicit } from '../lib/gate-resolve.mjs';
@@ -109,11 +111,23 @@ export async function verbSwitch(ctx, target) {
   const ts = nowIso();
   const sid = currentSessionId();
   let wordsAtStart = 0;
+  let fullWordsAtStart = null;
   if (sid) {
     const jp = jsonlPath(sid);
-    const { totalLines, count } = countWords(jp, 0);
-    saveMarker(markerPathFor(sid), totalLines, count, target);
-    wordsAtStart = count;
+    const counted = countWords(jp, 0, { provider: aiAppName(), sid });
+    if (counted.status === 'ok') {
+      saveMarker(
+        markerPathFor(sid),
+        counted.totalLines,
+        counted.count,
+        target,
+        counted.fullExpansion
+      );
+      wordsAtStart = counted.count;
+      fullWordsAtStart = counted.fullExpansion;
+    } else {
+      wordsAtStart = loadMarker(markerPathFor(sid)).words;
+    }
   }
   const newState = {
     ...EMPTY_STATE,
@@ -202,6 +216,7 @@ export async function verbSwitch(ctx, target) {
     deltaWords: 0,
     // #475 AC1 — monotonic carry-forward of the durable marker
     wordMarker: advanceWordMarker(s.lastWordMarker, wordsAtStart),
+    fullWordMarker: fullWordsAtStart,
     description: role,
   });
   await safePostTiming(target, row);
