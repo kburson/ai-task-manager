@@ -128,6 +128,7 @@ export async function runMoveStateInProcess(
     skipNetwork = false,
     tailProfile = 'task-owner',
     reviewAuthority = null,
+    lifecycleEvidence = null,
   } = {},
   {
     host = runMoveStateHost,
@@ -168,7 +169,7 @@ export async function runMoveStateInProcess(
   stderr.write = capture(errParts);
   let code;
   try {
-    code = await host({ argv, env: mergedEnv, tailProfile, reviewAuthority });
+    code = await host({ argv, env: mergedEnv, tailProfile, reviewAuthority, lifecycleEvidence });
   } finally {
     stdout.write = realOut;
     stderr.write = realErr;

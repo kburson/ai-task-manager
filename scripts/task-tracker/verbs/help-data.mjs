@@ -57,13 +57,25 @@ export const VERB_REFERENCE = {
   '#N': {
     topic: 'lifecycle',
     summary: 'Start or switch the timer to issue #N (binds it as the active task).',
-    usage: '/task #N',
+    usage: '/task #N [--confirm-relocation]',
+    flags: [
+      {
+        flag: '--confirm-relocation',
+        desc: 'explicitly accept and append a changed issue-resident worktree location',
+      },
+    ],
     examples: ['/task #667'],
   },
   start: {
     topic: 'lifecycle',
     summary: 'Bind to issue #N and start the timer (same path as `/task #N`).',
-    usage: '/task start <N>',
+    usage: '/task start <N> [--confirm-relocation]',
+    flags: [
+      {
+        flag: '--confirm-relocation',
+        desc: 'explicitly accept and append a changed issue-resident worktree location',
+      },
+    ],
     exitCodes: [{ code: 1, meaning: 'no issue number provided' }],
     examples: ['/task start 667'],
   },
@@ -76,7 +88,13 @@ export const VERB_REFERENCE = {
   resume: {
     topic: 'lifecycle',
     summary: 'Resume the last paused task, or return to a specific paused/stopped issue.',
-    usage: '/task resume [#N] ["reason"]',
+    usage: '/task resume [#N] ["reason"] [--confirm-relocation]',
+    flags: [
+      {
+        flag: '--confirm-relocation',
+        desc: 'explicitly accept and append a changed issue-resident worktree location',
+      },
+    ],
     examples: ['/task resume', '/task resume 667 "question answered"'],
   },
   stop: {
@@ -96,6 +114,20 @@ export const VERB_REFERENCE = {
     summary: 'Print the word count for the current session (agent bookkeeping).',
     usage: '/task words-count',
     examples: ['/task words-count'],
+  },
+  'adopt-github-records': {
+    topic: 'meta',
+    summary: 'Audit or adopt one legacy issue into GitHub-native authority records.',
+    usage: '/task adopt-github-records <N> [--apply|--rollback|--repair]',
+    flags: [
+      { flag: '--apply', desc: 'perform adoption after exact parity audit' },
+      { flag: '--rollback', desc: 'remove the directory only before divergent authority exists' },
+      { flag: '--repair', desc: 'repair only from complete validated singleton records' },
+      { flag: '--grant-id <id>', desc: 'current coordinator grant ID required by --apply' },
+      { flag: '--authority-epoch <n>', desc: 'current coordinator epoch required by --apply' },
+      { flag: '--actor <id>', desc: 'coordinator actor identity required by --apply' },
+    ],
+    examples: ['/task adopt-github-records 1086', '/task adopt-github-records 1086 --apply'],
   },
 
   // ── board / state machine ─────────────────────────────────────────────────
@@ -305,10 +337,22 @@ export const VERB_REFERENCE = {
   'epic-reconcile': {
     topic: 'board',
     summary:
-      "Record that an epic's Acceptance Criteria were reconciled against what its children delivered (stamps the epic-only marker `gateCodeComplete` requires to exit develop).",
-    usage: '/task epic-reconcile [<N>]',
-    exitCodes: [{ code: 1, meaning: 'no active/valid issue number, or the target is not an epic' }],
-    examples: ['/task epic-reconcile', '/task epic-reconcile 883'],
+      "Record that an epic's Acceptance Criteria were reconciled against what its children delivered and optionally attach its existing deliverable comment.",
+    usage: '/task epic-reconcile [<N>] [--deliverable-comment <id|url>]',
+    flags: [
+      {
+        flag: '--deliverable-comment <id|url>',
+        desc: 'validate and record an existing comment on this epic as its no-commit deliverable',
+      },
+    ],
+    exitCodes: [
+      {
+        code: 1,
+        meaning:
+          'no active/valid issue number, target is not an epic, or deliverable provenance is invalid',
+      },
+    ],
+    examples: ['/task epic-reconcile', '/task epic-reconcile 883 --deliverable-comment 4866618296'],
   },
   'pull-next': {
     topic: 'board',
@@ -489,12 +533,20 @@ export const VERB_REFERENCE = {
   },
   'mirror-deep-dive': {
     topic: 'evidence',
-    summary: 'Mirror a deep-dive analysis from an existing comment into the issue body.',
-    usage: '/task mirror-deep-dive --from-comment <id|url> [#N]',
+    summary:
+      'Mirror a deep-dive analysis from an existing comment or repair one legacy block placement.',
+    usage: '/task mirror-deep-dive (--from-comment <id|url> | --repair-placement) [#N]',
     flags: [
       { flag: '--from-comment <id|url>', desc: 'source comment (id, URL, or #issuecomment-<id>)' },
+      {
+        flag: '--repair-placement',
+        desc: 'relocate one existing block after Pickup without fetching a comment',
+      },
     ],
-    examples: ['/task mirror-deep-dive --from-comment 4866618296 667'],
+    examples: [
+      '/task mirror-deep-dive --from-comment 4866618296 667',
+      '/task mirror-deep-dive --repair-placement 667',
+    ],
   },
 
   // ── creation & discovery ──────────────────────────────────────────────────

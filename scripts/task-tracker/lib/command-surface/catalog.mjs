@@ -222,9 +222,13 @@ export const VERB_CONTRACTS = Object.freeze({
     ['Prints the canonical live board state.']
   ),
   'epic-reconcile': contract(
-    ['The target must be a valid epic whose child delivery can be inspected.'],
-    ['Records the epic acceptance-criteria reconciliation marker.'],
-    ['Prints the epic, inspected child set, and marker result.']
+    [
+      'The target must be a valid epic whose child delivery can be inspected; a supplied deliverable comment must belong to that issue in the configured repository.',
+    ],
+    [
+      'Refreshes the epic acceptance-criteria reconciliation marker and optionally records the validated no-commit deliverable in the same versioned body write.',
+    ],
+    ['Prints the epic, optional deliverable URL, inspected child set, and marker result.']
   ),
   'pull-next': contract(
     ['The epic must exist and have an eligible ranked child currently in Refine.'],
@@ -320,15 +324,24 @@ export const VERB_CONTRACTS = Object.freeze({
     ['Prints per-criterion evidence status and mutation totals.'],
     [exit(3, 'evidence audit found invalid or incomplete marker state')]
   ),
+  'adopt-github-records': contract(
+    ['The issue must exist; mutation modes additionally require current coordinator authority.'],
+    ['Audits legacy parity by default, or explicitly adopts, rolls back, or repairs one issue.'],
+    ['Prints the parity hash and the resulting adoption or repair status.']
+  ),
   'commit-trace': contract(
     ['The target issue must exist and the current Git HEAD must be readable.'],
     ['Creates or updates the canonical commit-trace issue comment from HEAD history.'],
     ['Prints the traced commits and comment reference.']
   ),
   'mirror-deep-dive': contract(
-    ['A valid source comment and target issue are required.'],
-    ['Copies the source deep-dive block into the canonical issue-body section.'],
-    ['Prints the source comment and updated issue reference.']
+    [
+      'A target issue and exactly one mode are required: a valid source comment, or one unambiguous existing block for placement repair.',
+    ],
+    [
+      'Copies source prose into the canonical section, or relocates the existing block byte-for-byte through the versioned body writer.',
+    ],
+    ['Prints the source comment or placement-repair result and updated issue reference.']
   ),
   new: contract(
     [
@@ -461,6 +474,7 @@ export const VERB_RELATED_COMMANDS = Object.freeze({
   ensureChecked: Object.freeze(['ac-stamp', 'dod-stamp', 'ensureUnchecked']),
   ensureUnchecked: Object.freeze(['ensureChecked', 'reject']),
   'evidence-markers': Object.freeze(['ac-stamp', 'ensureChecked']),
+  'adopt-github-records': Object.freeze(['evidence-markers', 'reconcile']),
   'commit-trace': Object.freeze(['close', 'status']),
   'mirror-deep-dive': Object.freeze(['plan', 'save-plan']),
   new: Object.freeze(['discover', 'refine', '#N']),
@@ -566,6 +580,9 @@ export const VERB_POSITIONAL_ARGUMENTS = Object.freeze({
   'evidence-markers': Object.freeze([
     positional('<audit|backfill>', 'Evidence-marker operation.'),
     positional('#N', 'Issue number to audit or backfill.'),
+  ]),
+  'adopt-github-records': Object.freeze([
+    positional('<N>', 'Issue number to audit, adopt, roll back, or repair.'),
   ]),
   'commit-trace': Object.freeze([
     positional('[#N]', 'Optional issue number; defaults to the active task.'),

@@ -92,6 +92,8 @@ const MARKER_PATTERNS = [
   // #476 — append-only session-reference chain; presence backstop against an
   // external `gh issue edit` dropping the family.
   { name: 'aitm-session-ref', re: /<!--\s*aitm-session-ref\s+sid="/i },
+  // #1191 — presence backstop for append-only issue-resident worktree history.
+  { name: 'aitm-worktree-location', re: /<!--\s*aitm-worktree-location\s+worktree="/i },
 ];
 
 const DEEP_DIVE_HEADING_RE = /^##\s+Deep-Dive Analysis\b/im;

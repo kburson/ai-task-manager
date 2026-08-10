@@ -19,8 +19,11 @@ import { durableWordMarker } from '../state.mjs';
 import {
   buildReviewApprovedMarker,
   hasReviewApprovedMarker,
+  removeReviewApprovedMarker,
   insertReviewApprovedMarker,
   insertFullAutoFootnote,
+  removeFullAutoFootnote,
+  removeLegacyFullAutoFootnote,
 } from '../lib/markers.mjs';
 import {
   tickLifecycleItem,
@@ -40,8 +43,27 @@ import {
   agentReviewIncompleteReason,
 } from '../lib/agent-review/review-gate.mjs';
 import { reconcileReviewApprovedTiming } from '../lib/review-approval-timing.mjs';
+import { locateAuthoritySource } from '../lib/github-records/authority-locator.mjs';
+import {
+  hasAcceptedApprovalEvidence,
+  hasAcceptedReviewEvidence,
+  resolveLifecycleGateEvidence,
+} from '../lib/github-records/lifecycle-gate-source.mjs';
 
 const pexec = promisify(execFile);
+
+function defaultLifecycleGraphql({ query, variables }) {
+  return gql(query, variables).then((data) => ({ data }));
+}
+
+async function defaultGetHeadSha({ projectDir }) {
+  const { stdout } = await pexec('git', ['rev-parse', 'HEAD'], { cwd: projectDir });
+  return String(stdout || '').trim();
+}
+
+function removeStaleApprovalCarriers(body) {
+  return removeLegacyFullAutoFootnote(removeFullAutoFootnote(removeReviewApprovedMarker(body)));
+}
 
 // Re-exports for back-compat with existing tests/callers that imported the
 // helpers from this module before the centralization in lib/markers.mjs.
@@ -204,7 +226,54 @@ export async function runApprove({ issueNumber, cfg, projectDir, deps = {}, huma
     { issue: issueNumber, verb: 'approve', projDir: projectDir || getProjectDir() },
     async () => {
       const body = await fetchIssueBody({ issueNumber, repo: cfg.repo });
-      if (hasApprovalMarker(body)) {
+      const preTickedByHuman = lifecycleItemState({
+        body,
+        key: 'passed-final-review',
+      }).alreadyTicked;
+      const humanOverride = preTickedByHuman || Boolean(human);
+      const auto = humanOverride ? { fired: false, signals: '' } : detect();
+      const authoritySource = (deps.locateAuthoritySource || locateAuthoritySource)({
+        issueBody: body,
+      });
+      if (authoritySource.kind === 'github-records/v1') {
+        let lifecycleEvidence;
+        try {
+          const expectedSha = await (deps.getHeadSha || defaultGetHeadSha)({ projectDir });
+          lifecycleEvidence = await (deps.resolveLifecycleEvidence || resolveLifecycleGateEvidence)(
+            {
+              repository: cfg.repo,
+              issue: Number(issueNumber),
+              issueBody: body,
+              expectedSha,
+              graphql: deps.graphql || defaultLifecycleGraphql,
+              readContractRecord: deps.readContractRecord,
+              deps: deps.listIssueRecords ? { listIssueRecords: deps.listIssueRecords } : undefined,
+            }
+          );
+        } catch (error) {
+          return {
+            status: 'directory-evidence-invalid',
+            reasons: [{ code: String(error?.message || 'lifecycle-gate-source:unknown') }],
+          };
+        }
+        const provenance = auto.fired ? 'full-auto' : 'human';
+        const reasons = [];
+        if (!hasAcceptedReviewEvidence(lifecycleEvidence)) {
+          reasons.push({ code: 'directory-review-evidence-missing' });
+        }
+        if (!hasAcceptedApprovalEvidence(lifecycleEvidence, { provenance })) {
+          reasons.push({ code: `directory-${provenance}-approval-missing` });
+        }
+        if (reasons.length > 0) return { status: 'directory-evidence-invalid', reasons };
+        return { status: 'directory-approved', provenance, lifecycleEvidence };
+      }
+      const approvalState = lifecycleItemState({
+        body,
+        key: 'passed-final-review',
+      });
+      const staleApprovalCarriers =
+        hasApprovalMarker(body) && approvalState.labelFound && !approvalState.alreadyTicked;
+      if (hasApprovalMarker(body) && !staleApprovalCarriers) {
         await reconcileTiming({
           issueNumber,
           repo: cfg.repo,
@@ -238,13 +307,6 @@ export async function runApprove({ issueNumber, cfg, projectDir, deps = {}, huma
       // approve ran), or the caller passed `--human` (chat-relayed approval
       // that never touched the UI). Either short-circuits `detect()` so the
       // marker/footnote stay non-full-auto.
-      const preTickedByHuman = lifecycleItemState({
-        body,
-        key: 'passed-final-review',
-      }).alreadyTicked;
-      const humanOverride = preTickedByHuman || Boolean(human);
-      const auto = humanOverride ? { fired: false, signals: '' } : detect();
-
       // D1 — post `### 📝 Review Notes` comment BEFORE the approval marker so the
       // delta-comment in `close` can consume it. Human mode prompts stdin; full-
       // auto mode derives from observable signals. Either may yield zero drivers;
@@ -277,13 +339,22 @@ export async function runApprove({ issueNumber, cfg, projectDir, deps = {}, huma
       // gate (hasApprovalMarker / state check / drivers derivation); the
       // actual write transform reads its own base.
       const stamp = (base) => {
-        if (hasApprovalMarker(base)) return base;
+        const freshApprovalState = lifecycleItemState({
+          body: base,
+          key: 'passed-final-review',
+        });
+        const freshCarriersAreStale =
+          hasApprovalMarker(base) &&
+          freshApprovalState.labelFound &&
+          !freshApprovalState.alreadyTicked;
+        if (hasApprovalMarker(base) && !freshCarriersAreStale) return base;
+        const approvalBase = freshCarriersAreStale ? removeStaleApprovalCarriers(base) : base;
         // #480 — single consolidated marker: the full-auto audit props ride on
         // `aitm-review-approved` itself, replacing the separate hidden
         // `aitm-full-auto-approved` marker. The visible footnote stays as a
         // human-readable audit signal.
         let updated = insertApprovalMarker(
-          base,
+          approvalBase,
           ts,
           auto.fired ? { fullAuto: true, signals: auto.signals } : {}
         );
@@ -296,8 +367,9 @@ export async function runApprove({ issueNumber, cfg, projectDir, deps = {}, huma
       // legacy-DoD warning. This duplicates the early transform but is
       // observability rather than correctness — the closure above is the
       // authoritative write.
+      const diagnosticBase = staleApprovalCarriers ? removeStaleApprovalCarriers(body) : body;
       let updated = insertApprovalMarker(
-        body,
+        diagnosticBase,
         ts,
         auto.fired ? { fullAuto: true, signals: auto.signals } : {}
       );
@@ -420,6 +492,18 @@ export async function verbApprove(rest, cfg, deps = {}) {
     process.exit(1);
   }
   switch (result.status) {
+    case 'directory-approved':
+      process.stdout.write(
+        `#${issueNumber} has accepted ${result.provenance} approval evidence for the current commit. \`/task close #${issueNumber}\` may now proceed.\n`
+      );
+      return;
+    case 'directory-evidence-invalid':
+      process.stderr.write(
+        `⛔ #${issueNumber} directory approval evidence is invalid: ${result.reasons
+          .map((reason) => reason.code)
+          .join(', ')}\n`
+      );
+      process.exit(6);
     case 'approved':
       process.stdout.write(
         `✓ Review approved for #${issueNumber} at ${result.ts}. \`/task close #${issueNumber}\` may now proceed.\n`

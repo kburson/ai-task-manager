@@ -163,6 +163,10 @@ export const ROUTE_IDENTITIES = Object.freeze(
       dispatch: 'verbs/evidence-markers.mjs',
     },
     {
+      verb: 'adopt-github-records',
+      dispatch: 'verbs/adopt-github-records.mjs',
+    },
+    {
       verb: 'approve',
       dispatch: 'verbs/approve.mjs',
     },

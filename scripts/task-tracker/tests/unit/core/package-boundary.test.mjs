@@ -48,10 +48,23 @@ function repoRoot() {
 // surface — a re-shipped test suite still blows straight past it. (#910 also
 // dropped `docs/introduction/` from the package, so the live surface fell too.)
 //
-// #1133 adds one focused runtime reconciliation module. The packed surface is
-// now 601 entries, so 625 restores bounded development headroom while remaining
-// far below the 797-entry pre-tightening surface.
-const ENTRY_CEILING = 625;
+// #1113 raised this from 600 to 625 for the approved #1067 GitHub-native
+// authority sequence. Measured surfaces were 599 on trunk, 606 after Tasks 1-8,
+// and 608 with Task 9. The remaining plan names five packed runtime modules and
+// three packed documentation artifacts, projecting 616 entries; 625 leaves nine
+// entries of bounded contingency while remaining 172 below the 797-entry
+// pre-tightening surface. Exclusions and required-entry assertions remain the
+// controlling guardrails.
+// #1133 later added one focused runtime reconciliation module and measured the
+// packed surface at 601 entries, confirming that the same ceiling still leaves
+// bounded development headroom well below the pre-tightening surface.
+// #1166 adds one shipped Bash-hook policy module; keep the ceiling exact so any
+// further package-surface growth still requires an explicit review.
+// #1167 adds the shared evidence-provenance runtime module; this one-entry
+// increase is the intentional package surface for the write-side contract.
+// #1191 adds the issue-resident location marker and its relocation gate; both
+// are shipped runtime modules, so the exact packed surface grows by two.
+const ENTRY_CEILING = 630;
 
 function packedFiles() {
   const out = execFileSync('npm', ['pack', '--dry-run', '--json'], {

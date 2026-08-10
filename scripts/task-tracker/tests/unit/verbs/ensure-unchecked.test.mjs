@@ -10,7 +10,7 @@
 // complete`) as ordinary checkbox text — those marker routes are checked-only,
 // so under `ensureUnchecked` they are NOT taken.
 //
-// Harness mirrors coverage-check-verb.test.mjs (fake `gh` on PATH +
+// Harness mirrors coverage-check-verb.test.mjs (stateful injected pexec +
 // process.exit sentinel).
 
 import { strict as assert } from 'node:assert';
@@ -20,6 +20,7 @@ import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, rmSync, chmodSync 
 
 import { setChecklistLine, setChecklistLines, verbEnsureUnchecked } from '../../../verbs/check.mjs';
 import { projectScratchDir } from '../../../lib/scratch-dir.mjs';
+import { pexecGithubBodyStore } from '../../helpers/pexec-body-store.mjs';
 
 const AC_PLAIN = 'plain ac no verifier';
 const AC_VERIFIED_CHECKED = 'verified ac checked';
@@ -135,8 +136,9 @@ function stateFile(active) {
 }
 
 function makePexec(body) {
-  return async (bin) => {
-    if (bin === 'gh') return { stdout: body ?? '', stderr: '' };
+  return async (bin, args = [], options = {}) => {
+    const gh = pexecGithubBodyStore({ bin, args, options, fallbackBody: body ?? '' });
+    if (gh) return gh;
     return { stdout: '', stderr: '' };
   };
 }

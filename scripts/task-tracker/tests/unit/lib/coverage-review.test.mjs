@@ -152,17 +152,21 @@ function makeCtx(opts = {}) {
 
 // Run verbReview, trapping process.exit (thrown to unwind) and muting the
 // verb's stderr/console chatter. Returns the captured exit code (null = no exit).
-async function runExit(ctx) {
+async function runExit(ctx, { captureStderr = false } = {}) {
   const origExit = process.exit;
   const origErr = process.stderr.write.bind(process.stderr);
   const ol = console.log;
   const oe = console.error;
   let code = null;
+  let stderr = '';
   process.exit = (c) => {
     code = c;
     throw new Error(`__exit__${c}`);
   };
-  process.stderr.write = () => true;
+  process.stderr.write = (chunk) => {
+    if (captureStderr) stderr += String(chunk);
+    return true;
+  };
   console.log = () => {};
   console.error = () => {};
   try {
@@ -175,7 +179,7 @@ async function runExit(ctx) {
     console.log = ol;
     console.error = oe;
   }
-  return code;
+  return captureStderr ? { code, stderr } : code;
 }
 
 // A V1-well-formed body: all ten canonical sections, in order, each non-empty,
@@ -245,7 +249,11 @@ test('preflight refusal → exit 4', async () => {
       statePath,
       preflight: { ok: false, reasons: ['uncommitted work'] },
     });
-    assert.equal(await runExit(ctx), 4);
+    const result = await runExit(ctx, { captureStderr: true });
+    assert.equal(result.code, 4);
+    assert.match(result.stderr, /Refusing to move #777 to Review/);
+    assert.match(result.stderr, /Resolve the blockers above, then retry `\/task review #777`/);
+    assert.doesNotMatch(result.stderr, /commit-trace/);
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
@@ -259,7 +267,9 @@ test('validateBody gate refusal → exit 4', async () => {
   process.env.AI_TASK_MANAGER_PROJECT_DIR = dir;
   try {
     const { ctx } = makeCtx({ statePath, gateBody: '- [x] Dependency Map\n' });
-    assert.equal(await runExit(ctx), 4);
+    const result = await runExit(ctx, { captureStderr: true });
+    assert.equal(result.code, 4);
+    assert.match(result.stderr, /Refusing to move #777 to Review/);
   } finally {
     process.env.PATH = origPath;
     if (origProj === undefined) delete process.env.AI_TASK_MANAGER_PROJECT_DIR;

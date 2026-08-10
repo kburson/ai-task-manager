@@ -16,7 +16,7 @@
 //      own deprecation notice) does NOT match `task check "` so it is exempt.
 //      node_modules, docs/archive, .tmp, and the tests dir are excluded.
 //
-// Harness mirrors coverage-check-verb.test.mjs (fake `gh` on PATH +
+// Harness mirrors coverage-check-verb.test.mjs (stateful injected pexec +
 // process.exit sentinel); the grep arm shells out to `grep`.
 
 import { strict as assert } from 'node:assert';
@@ -28,6 +28,7 @@ import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, rmSync, chmodSync 
 
 import { verbCheck } from '../../../verbs/check.mjs';
 import { projectScratchDir } from '../../../lib/scratch-dir.mjs';
+import { pexecGithubBodyStore } from '../../helpers/pexec-body-store.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url)) + '/..';
 // scripts/task-tracker/tests/unit → repo root is four levels up.
@@ -100,8 +101,9 @@ function stateFile(active) {
 }
 
 function makePexec(body) {
-  return async (bin) => {
-    if (bin === 'gh') return { stdout: body ?? '', stderr: '' };
+  return async (bin, args = [], options = {}) => {
+    const gh = pexecGithubBodyStore({ bin, args, options, fallbackBody: body ?? '' });
+    if (gh) return gh;
     return { stdout: '', stderr: '' };
   };
 }

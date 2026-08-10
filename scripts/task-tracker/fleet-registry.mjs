@@ -181,6 +181,29 @@ export function readFleet(registryPath, opts) {
   return kept;
 }
 
+// #1085 — fleet data is an explicitly observational local view. Consumers may
+// render it for diagnostics, but this tagged snapshot cannot satisfy an
+// authority, assignment, lifecycle, evidence, or integration gate.
+export function fleetObservation(fleet = {}) {
+  const entries = Object.entries(fleet || {})
+    .sort(([left], [right]) => left.localeCompare(right))
+    .map(([ref, entry]) =>
+      Object.freeze({
+        ref,
+        branch: typeof entry?.branch === 'string' ? entry.branch : null,
+        kind: effectiveKind(entry),
+        startedAt: typeof entry?.startedAt === 'string' ? entry.startedAt : null,
+        status: typeof entry?.status === 'string' ? entry.status : null,
+        worktreePath: typeof entry?.worktreePath === 'string' ? entry.worktreePath : null,
+      })
+    );
+  return Object.freeze({
+    schema: 'aitm.fleet-observation/v1',
+    authoritative: false,
+    entries: Object.freeze(entries),
+  });
+}
+
 // #441 — operator-facing prune. Shares isStaleEntry with the guard-time reap so
 // `fleet prune` and lazy auto-reap never diverge. dryRun computes without
 // writing; otherwise evicts under lock and returns the plan either way.

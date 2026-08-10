@@ -14,6 +14,7 @@ import { fileURLToPath } from 'node:url';
 
 import { postCommitTrail } from '../../../commit-trail-handler.mjs';
 import { TRAIL_HEADING } from '../../../lib/commit-trail.mjs';
+import { GH_API_TIMEOUT_MS } from '../../../lib/process-timeouts.mjs';
 
 const pexec = promisify(execFile);
 const __dir = path.dirname(fileURLToPath(import.meta.url)) + '/..';
@@ -24,16 +25,16 @@ function makeFakeGh({ findResponse = null, failCreate = false, failUpdate = fals
   return {
     calls,
     deps: {
-      find: async (issueNumber, repo) => {
-        calls.find.push({ issueNumber, repo });
+      find: async (issueNumber, repo, options) => {
+        calls.find.push({ issueNumber, repo, ...options });
         return findResponse;
       },
-      create: async (issueNumber, repo, body) => {
-        calls.create.push({ issueNumber, repo, body });
+      create: async (issueNumber, repo, body, options) => {
+        calls.create.push({ issueNumber, repo, body, ...options });
         if (failCreate) throw new Error('gh create failed');
       },
-      update: async (id, body) => {
-        calls.update.push({ id, body });
+      update: async (id, body, options) => {
+        calls.update.push({ id, body, ...options });
         if (failUpdate) throw new Error('gh update failed');
       },
     },
@@ -49,6 +50,8 @@ function makeFakeGh({ findResponse = null, failCreate = false, failUpdate = fals
   const r = await postCommitTrail({ issueNumber: '1', repo: 'o/r', info, deps: fake.deps });
   assert.equal(r.action, 'created');
   assert.equal(fake.calls.create.length, 1);
+  assert.equal(fake.calls.find[0].timeoutMs, GH_API_TIMEOUT_MS);
+  assert.equal(fake.calls.create[0].timeoutMs, GH_API_TIMEOUT_MS);
   const body = fake.calls.create[0].body;
   assert.match(body, /### 🔗 Commits/);
   assert.match(body, /abc123/);
@@ -330,7 +333,7 @@ try {
     assert.equal(readLog(logPath), '');
   }
 
-  // E2E-6: gh failure → handler still exits 0 (silent)
+  // E2E-6: gh failure → handler reports the failure but still exits 0
   {
     const sandbox = setupSandbox();
     cleanups.push(sandbox);
@@ -353,6 +356,7 @@ try {
     };
     const r = await runHandler(payload, { sandbox, binDir });
     assert.equal(r.code, 0);
+    assert.match(r.stderr, /\[commit-trail\] gh error:.*simulated failure/s);
   }
 
   // E2E-7: not a git commit → no calls

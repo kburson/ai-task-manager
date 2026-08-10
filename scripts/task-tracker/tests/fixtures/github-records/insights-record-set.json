@@ -1,0 +1,38 @@
+{
+  "repository": {
+    "repositoryNodeId": "R_kgDOInsightsRepository",
+    "nameWithOwner": "kburson/ai-task-manager"
+  },
+  "issue": {
+    "issueNodeId": "I_kwDOInsightsIssue",
+    "number": 1087
+  },
+  "comments": {
+    "delivery-contract": "IC_kwDOInsightsContract",
+    "coordination": "IC_kwDOInsightsCoordination",
+    "evidence-projection": "IC_kwDOInsightsEvidence",
+    "timing": "IC_kwDOInsightsTiming",
+    "submission": "IC_kwDOInsightsSubmission"
+  },
+  "recordIds": {
+    "delivery-contract": "01000000000000000000000001",
+    "grant": "01000000000000000000000002",
+    "coordination": "01000000000000000000000003",
+    "evidence-projection": "01000000000000000000000004",
+    "timing": "01000000000000000000000005",
+    "submission": "01000000000000000000000006"
+  },
+  "instants": {
+    "initial": "2026-08-08T14:00:00.000Z",
+    "corrected": "2026-08-08T14:02:00.000Z"
+  },
+  "expectedCounts": {
+    "repositories": 1,
+    "issues": 1,
+    "directories": 1,
+    "contracts": 1,
+    "records": 5,
+    "projections": 1,
+    "cursorHints": 1
+  }
+}

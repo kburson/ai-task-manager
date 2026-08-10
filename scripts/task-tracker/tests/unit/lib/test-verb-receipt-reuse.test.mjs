@@ -6,7 +6,9 @@ import { runVerbTest } from '../../../verbs/test.mjs';
 import {
   createVerificationReceipt,
   parseVerificationReceipt,
+  requiredTestReceiptClassifications,
   upsertVerificationReceipt,
+  validateVerificationReceipt,
 } from '../../../lib/verification-receipt.mjs';
 import { partitionVerificationCommands } from '../../../lib/verification-commands.mjs';
 
@@ -72,6 +74,22 @@ function testReceipt() {
     })),
     now: () => INSTANT,
   });
+}
+
+function docsOnlyTestReceipt() {
+  const full = testReceipt();
+  return {
+    ...full,
+    commands: full.commands.filter(({ classification }) =>
+      ['lint-full', 'format-full'].includes(classification)
+    ),
+    laneSkip: {
+      reason: 'docs-only-diff',
+      kind: 'docs-only',
+      lanes: ['test-unit', 'test-integration', 'test-slow'],
+      changedPaths: ['docs/DESIGN.md'],
+    },
+  };
 }
 
 function issueBody() {
@@ -283,6 +301,37 @@ test('/task test does not rerun a valid exact-SHA Test receipt without --force',
   });
   assert.equal(result.status, 'already-verified');
   assert.equal(finalizations, 0);
+  assert.equal(worktrees, 0);
+});
+
+test('/task test does not rerun a valid docs-only lane-skip receipt without --force', async () => {
+  let body = issueBody().replace('last-known-state: develop', 'last-known-state: test');
+  body = upsertVerificationReceipt(body, docsOnlyTestReceipt());
+  const persisted = parseVerificationReceipt(body, 'test');
+  const validation = validateVerificationReceipt({
+    receipt: persisted,
+    expectedIssue: 1089,
+    expectedStage: 'test',
+    fingerprint: fingerprint('/outer'),
+    required: requiredTestReceiptClassifications(persisted),
+  });
+  assert.deepEqual(validation.reasons, []);
+  let worktrees = 0;
+  const result = await runVerbTest({
+    cfg,
+    issueNumber: 1089,
+    projectDir: process.cwd(),
+    deps: {
+      fetchBody: async () => body,
+      getHeadSha: async () => SHA,
+      buildFingerprint: () => fingerprint('/outer'),
+      runDevelopFinalization: async () => ({ ok: false }),
+      createWorktree: async () => {
+        worktrees += 1;
+      },
+    },
+  });
+  assert.equal(result.status, 'already-verified');
   assert.equal(worktrees, 0);
 });
 

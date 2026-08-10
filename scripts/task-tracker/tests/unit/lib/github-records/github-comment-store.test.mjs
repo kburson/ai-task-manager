@@ -177,7 +177,13 @@ test('GraphQL transport and partial responses fail with safe normalized categori
         assert.equal(error.name, 'GitHubCommentStoreError');
         assert.equal(error.category, category);
         assert.doesNotMatch(error.message, /ghp_/);
-        assert.doesNotMatch(inspect(error), /ghp_/);
+        if (category === 'transport') {
+          assert.equal(error.cause?.message, secret);
+          assert.match(inspect(error), /ghp_/);
+        } else {
+          assert.equal(error.cause, undefined);
+          assert.doesNotMatch(inspect(error), /ghp_/);
+        }
         return true;
       }
     );

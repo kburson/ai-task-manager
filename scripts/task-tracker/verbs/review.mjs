@@ -15,10 +15,13 @@ import {
 import { runGuards } from '../lib/guard-registry.mjs';
 import '../lib/guard-bootstrap.mjs';
 import { STANDARD_DOD_COMMANDS } from '../lib/evidence-markers.mjs';
-import { parseProofMarker, hasExecutionProof } from '../lib/proof-marker.mjs';
-import { unescapeValue } from '../lib/proof-marker.mjs';
+import {
+  parseProofMarker,
+  hasExecutionProof,
+  extractVerifiedCommands,
+  unescapeValue,
+} from '../lib/proof-marker.mjs';
 import { parseVerificationCommands } from '../lib/verification-commands.mjs';
-import { resolveVcRefCommands } from '../lib/vc-ref.mjs';
 import { stripMarkers } from '../lib/ac-evidence.mjs';
 import {
   postTimingEvent,
@@ -51,18 +54,26 @@ import {
   buildVerificationFingerprint,
   createVerificationReceipt,
   hasVerificationReceiptMarker,
+  requiredTestReceiptClassifications,
   upsertVerificationReceipt,
   validateVerificationReceipt,
 } from '../lib/verification-receipt.mjs';
-
-const TEST_RECEIPT_REQUIRED = Object.freeze([
-  'lint-full',
-  'format-full',
-  'test-unit',
-  'test-integration',
-  'test-slow',
-]);
+import { captureEvidenceProvenance } from '../lib/evidence-provenance.mjs';
+import { locateAuthoritySource } from '../lib/github-records/authority-locator.mjs';
+import {
+  hasAcceptedTestEvidence,
+  resolveLifecycleGateEvidence,
+} from '../lib/github-records/lifecycle-gate-source.mjs';
+import { gql } from '../../gh/lib/github-projects.mjs';
 const reviewPexec = promisify(execFile);
+
+function defaultLifecycleGraphql({ query, variables }) {
+  return gql(query, variables).then((data) => ({ data }));
+}
+
+function lifecycleEvidenceReason(error) {
+  return { code: String(error?.message || 'lifecycle-gate-source:unknown') };
+}
 
 function isExactProjectFile(token, projectDir, { testFile = false } = {}) {
   if (!projectDir || typeof token !== 'string' || /[*?{}[\]]/.test(token)) return false;
@@ -118,10 +129,85 @@ function markerMatchesSha(marker, sha) {
 export async function resolveReviewVerificationEvidence({
   body,
   issueNumber,
+  repository,
   projectDir,
   getHeadSha,
   buildFingerprint = buildVerificationFingerprint,
+  graphql,
+  readContractRecord,
+  listIssueRecords,
+  resolveLifecycleEvidence = resolveLifecycleGateEvidence,
 } = {}) {
+  let authoritySource;
+  try {
+    authoritySource = locateAuthoritySource({ issueBody: body });
+  } catch (error) {
+    return {
+      ok: false,
+      mode: 'github-records-v1',
+      receipt: null,
+      commandResults: new Map(),
+      reasons: [lifecycleEvidenceReason(error)],
+      remediation: 'Repair the issue directory and current accepted Test evidence.',
+    };
+  }
+  if (authoritySource.kind === 'github-records/v1') {
+    let commitSha;
+    try {
+      commitSha = await getHeadSha({ projectDir });
+    } catch {
+      return {
+        ok: false,
+        mode: 'github-records-v1',
+        receipt: null,
+        commandResults: new Map(),
+        reasons: [{ code: 'head-unresolvable' }],
+        remediation: 'Resolve the bound worktree HEAD before retrying Review.',
+      };
+    }
+    let lifecycleEvidence;
+    try {
+      lifecycleEvidence = await resolveLifecycleEvidence({
+        repository,
+        issue: Number(issueNumber),
+        issueBody: body,
+        expectedSha: commitSha,
+        graphql: graphql || defaultLifecycleGraphql,
+        readContractRecord,
+        deps: listIssueRecords ? { listIssueRecords } : undefined,
+      });
+    } catch (error) {
+      return {
+        ok: false,
+        mode: 'github-records-v1',
+        receipt: null,
+        commandResults: new Map(),
+        reasons: [lifecycleEvidenceReason(error)],
+        remediation: 'Refresh current accepted Test evidence under active coordinator authority.',
+      };
+    }
+    if (!hasAcceptedTestEvidence(lifecycleEvidence)) {
+      return {
+        ok: false,
+        mode: 'github-records-v1',
+        receipt: null,
+        commandResults: new Map(),
+        lifecycleEvidence,
+        reasons: [{ code: 'directory-test-evidence-missing' }],
+        remediation: 'Record and accept current-contract exact-SHA Test evidence before Review.',
+      };
+    }
+    return {
+      ok: true,
+      mode: 'github-records-v1',
+      receipt: null,
+      fingerprint: null,
+      commandResults: standardReviewCommandResults(),
+      lifecycleEvidence,
+      reasons: [],
+      remediation: 'Record and accept current-contract exact-SHA Test evidence before Review.',
+    };
+  }
   const receipt = parseVerificationReceipt(body, 'test');
   const commandResults = standardReviewCommandResults();
   if (!receipt) {
@@ -170,7 +256,7 @@ export async function resolveReviewVerificationEvidence({
     ...(issueNumber !== undefined ? { expectedIssue: Number(issueNumber) } : {}),
     expectedStage: 'test',
     fingerprint,
-    required: TEST_RECEIPT_REQUIRED,
+    required: requiredTestReceiptClassifications(receipt),
   });
   const reasons = [...validation.reasons];
   const testStarted = parseTestStartedMarker(body);
@@ -196,7 +282,14 @@ export async function resolveReviewVerificationEvidence({
   };
 }
 
-export function appendReviewProbeEvidence({ body, issueNumber, fingerprint, probes, now } = {}) {
+export function appendReviewProbeEvidence({
+  body,
+  issueNumber,
+  fingerprint,
+  probes,
+  executionContext,
+  now,
+} = {}) {
   const prior = parseVerificationReceipt(body, 'review');
   const priorMatchesFingerprint =
     prior?.commitSha === fingerprint?.commitSha &&
@@ -215,6 +308,7 @@ export function appendReviewProbeEvidence({ body, issueNumber, fingerprint, prob
     issueNumber,
     stage: 'review',
     fingerprint,
+    executionContext,
     commands: [...(priorMatchesFingerprint ? prior.commands : []), ...commands],
     now,
   });
@@ -325,15 +419,21 @@ export async function runReviewProbes({
   const executeCommand = deps.executeCommand || defaultExecuteReviewProbe;
   const mutateBody = deps.mutateBody || defaultReviewProbeMutateBody;
   const fetchBody = deps.fetchBody || defaultReviewProbeFetchBody;
+  const captureProvenance = deps.captureEvidenceProvenance || captureEvidenceProvenance;
   const requested = Array.isArray(commands) ? commands : [];
   if (requested.length === 0) return { status: 'no-probes', probes: [] };
 
   const testEvidence = await resolveReviewVerificationEvidence({
     body,
     issueNumber,
+    repository: cfg.repo,
     projectDir,
     getHeadSha,
     buildFingerprint,
+    graphql: deps.graphql,
+    readContractRecord: deps.readContractRecord,
+    listIssueRecords: deps.listIssueRecords,
+    resolveLifecycleEvidence: deps.resolveLifecycleEvidence || resolveLifecycleGateEvidence,
   });
   if (!testEvidence.ok) {
     return { status: 'test-evidence-invalid', probes: [], reasons: testEvidence.reasons };
@@ -399,6 +499,10 @@ export async function runReviewProbes({
         issueNumber,
         fingerprint: completedFingerprint,
         probes,
+        executionContext: captureProvenance({
+          projectDir,
+          boundIssue: issueNumber,
+        }),
         now,
       });
       writtenReceipt = appended.receipt;
@@ -661,12 +765,13 @@ export async function verbReview(ctx) {
     });
     if (!preflight.ok) {
       process.stderr.write('\n');
-      process.stderr.write(`⛔ Refusing to move ${target} to Test:\n`);
+      process.stderr.write(`⛔ Refusing to move ${target} to Review:\n`);
       for (const reason of preflight.reasons) {
         process.stderr.write(`   BLOCKED: ${reason}\n`);
       }
-      process.stderr.write('\nRun `/task commit-trace ');
-      process.stderr.write(`${target}` + '` after committing, then retry `/task review`.\n\n');
+      process.stderr.write(
+        `\nResolve the blockers above, then retry \`/task review ${target}\`.\n\n`
+      );
       process.exit(4);
     }
   }
@@ -739,14 +844,14 @@ export async function verbReview(ctx) {
             deltaWords: 0,
             // #475 AC1 — carried-forward durable marker (gate-refused, no active session)
             wordMarker: s.lastWordMarker ?? 0,
-            description: `→ test: ${result.refusedRules.map((r) => r.rule).join(', ')}`,
+            description: `→ review: ${result.refusedRules.map((r) => r.rule).join(', ')}`,
           });
           await postTimingEvent({ issueNumber: issueNum, repo: cfg.repo, row, timeoutMs: 3000 });
         } catch {
           /* best-effort: failure must not abort the primary operation */
         }
         process.stderr.write('\n');
-        process.stderr.write(`⛔ Refusing to move ${target} to Test:\n`);
+        process.stderr.write(`⛔ Refusing to move ${target} to Review:\n`);
         for (const r of result.refusedRules)
           process.stderr.write(`   BLOCKED: ${r.rule}: ${r.reason}\n`);
         process.stderr.write(
@@ -812,7 +917,14 @@ export async function verbReview(ctx) {
     // bodies before doing the full AC verification pass below. The full
     // exit-guard set (including pre-close completeness) runs again at the
     // runMoveState boundary below — single source of truth in the registry.
-    {
+    let directoryEvidenceLane = false;
+    try {
+      directoryEvidenceLane =
+        locateAuthoritySource({ issueBody: rawBody }).kind === 'github-records/v1';
+    } catch {
+      // The authoritative resolver below renders a precise fail-closed reason.
+    }
+    if (!directoryEvidenceLane) {
       const dodResult = await runGuardsFn('test', 'review', {
         issueNumber: Number(issueNum),
         repo: cfg.repo,
@@ -864,9 +976,10 @@ export async function verbReview(ctx) {
       // (parseVerificationCommands / parseEvidenceChecklist); review.mjs kept
       // its own un-migrated copy with the anchored `$` that this fixes.
       const cmdMatch = canRunCommand ? label.match(/^`([^`]+)`/) : null;
-      // #396/#468 — consolidated declaration is the sole path. When this is a
-      // prose-evidence checkbox, read the declared command(s) from the
-      // `aitm-verified cmd="..."` form.
+      // #396/#468/#1131 — consolidated declaration is the sole path. Resolve
+      // prose-evidence commands through the shared helper so canonical
+      // `vc-list` citations take precedence when a sandbox-stamped marker also
+      // retains a raw `cmd` attribute.
       // #481 — `cmd` is the persistent declaration component, read regardless of
       // run-props. The consolidated single-marker form carries declaration AND
       // run-props (`exit`/`sha`/`ts`) in one comment; `ac-stamp`/`dod-stamp`
@@ -879,18 +992,10 @@ export async function verbReview(ctx) {
       let proofPassed = false;
       if (!cmdMatch) {
         const props = parseProofMarker(label);
-        if (props && typeof props.cmd === 'string') {
-          evidenceCommands = [...props.cmd.matchAll(/`([^`]+)`/g)].map((cmd) => cmd[1]);
-        } else if (props && typeof props['vc-list'] === 'string') {
-          // #774 — the canonical by-id citation the Refine-exit guardrail (#773)
-          // mandates lives in `vc-list`; resolve it against the VC section so a
-          // vc-list-authored AC is not falsely un-ticked as "missing automated
-          // evidence" here (this was review.mjs's own un-migrated inline parser).
-          try {
-            evidenceCommands = resolveVcRefCommands(props['vc-list'], vcItems) || [];
-          } catch {
-            evidenceCommands = [];
-          }
+        try {
+          evidenceCommands = extractVerifiedCommands(label, vcItems);
+        } catch {
+          evidenceCommands = [];
         }
         if (props && hasExecutionProof(label)) {
           proofPassed = String(props.exit) === '0';
@@ -922,9 +1027,14 @@ export async function verbReview(ctx) {
     const reviewEvidence = await resolveReviewVerificationEvidence({
       body: rawBody,
       issueNumber: Number(issueNum),
+      repository: cfg.repo,
       projectDir,
       getHeadSha: getReviewHeadSha,
       buildFingerprint: ctx.buildVerificationFingerprint || buildVerificationFingerprint,
+      graphql: ctx.graphql,
+      readContractRecord: ctx.readContractRecord,
+      listIssueRecords: ctx.listIssueRecords,
+      resolveLifecycleEvidence: ctx.resolveLifecycleEvidence || resolveLifecycleGateEvidence,
     });
     if (!reviewEvidence.ok) {
       const codes = reviewEvidence.reasons.map(({ code }) => code).join(', ');
@@ -1231,6 +1341,7 @@ export async function verbReview(ctx) {
         cfg,
         fromState: 'test',
         toState: 'review',
+        lifecycleEvidence: reviewEvidence.lifecycleEvidence,
       });
       const completenessRefusal = (guardResult.refusals || []).find(
         (r) => r.id === 'test-exit-pre-close-completeness'
@@ -1284,7 +1395,10 @@ export async function verbReview(ctx) {
     // gating on this result is the only correct check. A re-run while already in
     // Review is a satisfied no-op (#882) and passes here, which is what makes the
     // state action re-runnable in place.
-    const reviewMove = await runMoveState(target, 'review', { silent: true });
+    const reviewMove = await runMoveState(target, 'review', {
+      silent: true,
+      lifecycleEvidence: reviewEvidence.lifecycleEvidence,
+    });
     if (reviewMove && reviewMove.ok === false && reviewMove.benign !== true) {
       process.stderr.write('\n');
       process.stderr.write(

@@ -27,6 +27,7 @@ import { projectScratchDir } from '../../../lib/scratch-dir.mjs';
 
 import { verbClose } from '../../../verbs/close.mjs';
 import { verbHelp } from '../../../verbs/help.mjs';
+import { mutateIssueBody } from '../../../lib/issue-body-mutate.mjs';
 
 // A body that satisfies assertFieldsPersisted (engagedTime non-null) so the
 // full-pipeline path reaches its terminal "Closed" line offline.
@@ -74,6 +75,9 @@ function buildCtx({ statePath, rest, sideEffects }) {
     rest,
     SKIP_NETWORK: false,
     pexec,
+    issueBodyMutator: {
+      mutate: (args) => mutateIssueBody({ ...args, deps: { pexec } }),
+    },
     // Real now: the timing rows go through buildRow's anti-backdating guard,
     // which refuses a `ts` more than 60s from wall-clock (data-fabrication
     // guard). A fixed literal would trip it.
@@ -105,13 +109,6 @@ function buildCtx({ statePath, rest, sideEffects }) {
     getIssueBoardState: async () => 'done',
     getIssueClosedState: async () => true,
     uncheckedPreCloseCheckboxes: () => [],
-    // Offline the lifecycle-box reconcile. The real `tickLifecycleOnClose`
-    // (#753) reaches live `gh` — the injected `pexec` never intercepts it
-    // because `versionedWriteBody`'s seam is fetchBody/pushBody, not pexec — so
-    // in the full-suite burst it stalls on rate-limits and SIGTERMs the run.
-    // The converge-path reconcile behavior is owned by
-    // close-reconcile-lifecycle.test.mjs; here it is a pure no-op.
-    tickLifecycleOnClose: async () => ({ ok: true }),
   };
 }
 

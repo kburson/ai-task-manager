@@ -17,6 +17,8 @@
 // (other guards / verb-layer surface the absence).
 
 import { hasDodVerifiedMarker } from './markers.mjs';
+import { auditEvidenceBranchReachability } from './evidence-branch-reachability.mjs';
+import { hasAcceptedTestEvidence } from './github-records/lifecycle-gate-source.mjs';
 
 export const GUARD_ID = 'develop-exit-sandbox-proof';
 
@@ -25,12 +27,32 @@ export const developExitSandboxProofGuard = {
   run(ctx) {
     if (ctx?.toState && ctx.toState !== 'test') return { ok: true };
     if (typeof ctx?.body !== 'string') return { ok: true };
-    if (hasDodVerifiedMarker(ctx.body)) return { ok: true };
-    const n = String(ctx.issueNumber ?? '').replace(/^#/, '');
-    const blocker =
-      'develop-to-test-sandbox-proof-missing: `aitm-dod-verified` marker absent — run `/task test #' +
-      n +
-      '` so the sandbox stamps proof before the board moves to Test.';
-    return { ok: false, reason: blocker, blockers: [blocker] };
+    if (hasAcceptedTestEvidence(ctx.lifecycleEvidence)) return { ok: true };
+    if (typeof ctx.projectDir === 'string') {
+      const auditFn = ctx.deps?.evidenceBranchReachability || auditEvidenceBranchReachability;
+      return Promise.resolve(
+        auditFn({ body: ctx.body, issueNumber: ctx.issueNumber, projectDir: ctx.projectDir })
+      ).then((reachability) => {
+        if (!reachability.ok) {
+          return {
+            ok: false,
+            reason: reachability.reasons.join('; '),
+            blockers: reachability.reasons,
+          };
+        }
+        return runPresenceGate(ctx);
+      });
+    }
+    return runPresenceGate(ctx);
   },
 };
+
+function runPresenceGate(ctx) {
+  if (hasDodVerifiedMarker(ctx.body)) return { ok: true };
+  const n = String(ctx.issueNumber ?? '').replace(/^#/, '');
+  const blocker =
+    'develop-to-test-sandbox-proof-missing: `aitm-dod-verified` marker absent — run `/task test #' +
+    n +
+    '` so the sandbox stamps proof before the board moves to Test.';
+  return { ok: false, reason: blocker, blockers: [blocker] };
+}

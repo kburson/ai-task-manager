@@ -1097,7 +1097,7 @@ const DIRECT_SELF_DOC = Object.freeze({
     classification: 'live-maintenance-or-migration',
     synopsis: 'Repair one missing Timing Log departure before an unpaired reengagement.',
     usage:
-      'heal-timing-departure <issue#> [--apply|--check-only] [--row-index N] [--event pause:<reason>] [--description TEXT] [--yes]',
+      'heal-timing-departure <issue#> [--apply|--check-only] [--row-index N] [--event pause:<reason>] [--description TEXT] [--at TIMESTAMP] [--yes]',
     arguments: [
       argument('<issue#>', 'Issue whose Timing Log is inspected.'),
       argument(APPLY_FLAG, 'Write the selected missing departure repair.'),
@@ -1105,11 +1105,16 @@ const DIRECT_SELF_DOC = Object.freeze({
       argument('--row-index N', 'Select a zero-based Timing Log data-row index when ambiguous.'),
       argument('--event pause:<reason>', 'Departure event to insert; pause:other is the default.'),
       argument('--description TEXT', 'Description recorded on the repaired departure row.'),
+      argument(
+        '--at TIMESTAMP',
+        'Place the departure at this timestamp; it must fall strictly between the preceding row and the reengagement. Defaults to one second before the reengagement.'
+      ),
       argument('--yes', 'Skip confirmation for apply.'),
     ],
     preconditions: ['Configured repository and timing-comment access are required.'],
     effects: [
-      'Dry-run by default; --apply inserts one zero-duration departure under the timing lock.',
+      'Dry-run by default; --apply inserts one departure row under the timing lock.',
+      'An out-of-interval --at is rejected, never clamped; nothing is written.',
     ],
     output: ['Reports unpaired reengagement counts before and after the repair.'],
     relatedCommands: ['heal-timing-log', 'heal-timing-starts'],

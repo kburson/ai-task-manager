@@ -25,8 +25,96 @@ const CLOSED_AS_LINE_RE = /^<!--\s*aitm-closed-as(\s|-->).*$/m;
 
 export const DISPOSITIONS = Object.freeze({
   duplicate: { stateReason: 'DUPLICATE' },
-  'not-planned': { stateReason: 'not planned' },
+  'not-planned': { stateReason: 'NOT_PLANNED', cliReason: 'not planned' },
 });
+
+const DUPLICATE_NODE_IDS_QUERY = `query($owner:String!,$name:String!,$issue:Int!,$duplicate:Int!){
+  repository(owner:$owner,name:$name){
+    issue(number:$issue){id}
+    duplicate:issue(number:$duplicate){id}
+  }
+}`;
+
+const CLOSE_DUPLICATE_MUTATION = `mutation($issue:ID!,$duplicate:ID!){
+  closeIssue(input:{issueId:$issue,stateReason:DUPLICATE,duplicateIssueId:$duplicate}){
+    issue{state stateReason}
+  }
+}`;
+
+function splitRepository(repo) {
+  const parts = String(repo || '').split('/');
+  if (parts.length !== 2 || parts.some((part) => part.trim() === '')) {
+    throw new Error(`close-disposition: invalid repository ${JSON.stringify(repo)}`);
+  }
+  return { owner: parts[0], name: parts[1] };
+}
+
+function parseGitHubJson(result, operation) {
+  const stdout = typeof result === 'string' ? result : result?.stdout;
+  try {
+    return JSON.parse(String(stdout || ''));
+  } catch {
+    throw new Error(`close-disposition: ${operation} returned malformed JSON`);
+  }
+}
+
+async function closeDuplicate({ pexec, issueNumber, ofRef, repo }) {
+  const { owner, name } = splitRepository(repo);
+  const duplicateNumber = ofRef.replace(/^#/, '');
+  const resolved = parseGitHubJson(
+    await pexec('gh', [
+      'api',
+      'graphql',
+      '-f',
+      `query=${DUPLICATE_NODE_IDS_QUERY}`,
+      '-F',
+      `owner=${owner}`,
+      '-F',
+      `name=${name}`,
+      '-F',
+      `issue=${issueNumber}`,
+      '-F',
+      `duplicate=${duplicateNumber}`,
+    ]),
+    'duplicate node-id query'
+  );
+  const issueId = resolved?.data?.repository?.issue?.id;
+  const duplicateIssueId = resolved?.data?.repository?.duplicate?.id;
+  if (!issueId || !duplicateIssueId) {
+    throw new Error(
+      `close-disposition: duplicate node-id query did not resolve #${issueNumber} and ${ofRef}`
+    );
+  }
+  await pexec('gh', [
+    'api',
+    'graphql',
+    '-f',
+    `query=${CLOSE_DUPLICATE_MUTATION}`,
+    '-F',
+    `issue=${issueId}`,
+    '-F',
+    `duplicate=${duplicateIssueId}`,
+  ]);
+}
+
+async function readCloseState({ pexec, issueNumber, repo }) {
+  const value = parseGitHubJson(
+    await pexec('gh', [
+      'issue',
+      'view',
+      String(issueNumber),
+      '-R',
+      repo,
+      '--json',
+      'state,stateReason',
+    ]),
+    'close read-back'
+  );
+  return {
+    state: String(value?.state || '').toUpperCase(),
+    stateReason: String(value?.stateReason || '').toUpperCase(),
+  };
+}
 
 function normalizeRef(ref) {
   const m = String(ref)
@@ -159,10 +247,37 @@ export async function runDispose({
   });
   await moveToDone({ cfg: terminalCfg, issueNumber });
 
-  // 4. Close on GitHub with the correct stateReason. Verb-internal pexec — the
-  //    bash-guard only mediates the operator's Bash tool, not tracker code.
-  if (typeof pexec === 'function') {
-    await pexec('gh', ['issue', 'close', String(issueNumber), '-R', repo, '--reason', stateReason]);
+  // 4. Close on GitHub, then read the native state back. Duplicate needs the
+  //    surviving issue id in the same GraphQL mutation; the CLI cannot express
+  //    that input. Not-planned remains on the supported CLI path.
+  if (typeof pexec !== 'function') {
+    throw new Error('close-disposition: pexec is required to close and verify the issue');
+  }
+  if (key === 'duplicate') {
+    await closeDuplicate({ pexec, issueNumber, ofRef, repo });
+  } else {
+    await pexec('gh', [
+      'issue',
+      'close',
+      String(issueNumber),
+      '-R',
+      repo,
+      '--reason',
+      DISPOSITIONS[key].cliReason,
+    ]);
+  }
+  const stored = await readCloseState({ pexec, issueNumber, repo });
+  if (stored.state !== 'CLOSED') {
+    throw new Error(
+      `close-disposition: requested state CLOSED but GitHub stored ${stored.state || 'UNKNOWN'}`
+    );
+  }
+  if (stored.stateReason !== stateReason) {
+    throw new Error(
+      `close-disposition: requested stateReason ${stateReason} but GitHub stored ${
+        stored.stateReason || 'UNKNOWN'
+      }`
+    );
   }
 
   // 5. Audit comment.
@@ -174,7 +289,7 @@ export async function runDispose({
       body:
         `### 🗂 Closed as ${key}\n\n` +
         `This issue was closed via the sanctioned \`/task close --as ${key}\` ` +
-        `disposition lane (GitHub stateReason \`${stateReason}\`).${ofLine} ` +
+        `disposition lane (GitHub stateReason \`${stored.stateReason}\`).${ofLine} ` +
         `It was retained on the project board in **Done** with Disposition ` +
         `**${key === 'duplicate' ? 'Duplicate' : 'Discarded'}**, and its timing was flushed. ` +
         `No delivery is implied.`,
@@ -186,7 +301,7 @@ export async function runDispose({
     issueNumber,
     reason: key,
     of: ofRef,
-    stateReason,
+    stateReason: stored.stateReason,
     ts,
     retained: true,
   };

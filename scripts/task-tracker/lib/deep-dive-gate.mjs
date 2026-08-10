@@ -27,6 +27,7 @@
 
 import { readDeepDiveSignals } from './deep-dive.mjs';
 import { validateBody, DEFAULT_GATES } from './body-gates.mjs';
+import { maskDetailsBlocks } from './details-blocks.mjs';
 
 const DEEP_DIVE_COMPLETE_RULES = DEFAULT_GATES.filter((g) => g.name === 'deep-dive-complete');
 
@@ -70,7 +71,7 @@ export function planDeepDiveGate({ body = '' } = {}) {
   }
   // #469 — Pickup Directive must be present at the top level (not inside
   // a <details> block) before Plan→Develop is allowed.
-  const strippedForPickup = body.replace(/<details[\s\S]*?<\/details>/gi, '');
+  const strippedForPickup = maskDetailsBlocks(body);
   if (!/^##\s+Pickup Directive\s+—\s+MANDATORY,\s+DO NOT SKIP\s*$/m.test(strippedForPickup)) {
     blockers.push(
       'plan-develop-pickup-directive-missing: body must contain a top-level `## Pickup Directive — MANDATORY, DO NOT SKIP` heading (not inside a `<details>` block) before promoting to Develop'

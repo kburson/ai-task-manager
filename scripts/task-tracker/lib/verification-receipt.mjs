@@ -8,6 +8,8 @@ import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 
 import { canonicalRecordJson } from './github-records/canonical-json.mjs';
+import { docsKindDropsTests } from './dod-kind-filter.mjs';
+import { COMPLETE_TEST_LANES } from './verification-commands.mjs';
 
 export const VERIFICATION_RECEIPT_SCHEMA = 'aitm.verification-receipt/v1';
 export const VERIFICATION_COMMAND_IDENTITIES = Object.freeze({
@@ -20,6 +22,19 @@ export const VERIFICATION_COMMAND_IDENTITIES = Object.freeze({
   }),
   'test-slow': Object.freeze({ command: 'npm', args: Object.freeze(['run', 'test:slow']) }),
 });
+
+const TEST_RECEIPT_REQUIRED = Object.freeze([
+  'lint-full',
+  'format-full',
+  'test-unit',
+  'test-integration',
+  'test-slow',
+]);
+// Lint and format always run. Only the complete Test lanes may be removed by
+// a valid docs-only lane-skip decision.
+const DROPPABLE_LANE_CLASSIFICATIONS = Object.freeze(
+  COMPLETE_TEST_LANES.map(({ classification }) => classification)
+);
 
 const HASH_RE = /^sha256:[0-9a-f]{64}$/;
 const SHA_RE = /^[0-9a-f]{40}$/;
@@ -155,6 +170,7 @@ export function createVerificationReceipt({
   stage,
   fingerprint,
   commands,
+  executionContext,
   now = () => new Date().toISOString(),
 } = {}) {
   const normalizedCommands = (commands || []).map(normalizeCommand);
@@ -166,7 +182,7 @@ export function createVerificationReceipt({
   const startedAt = starts.length > 0 ? starts.sort()[0] : fallback;
   const completedAt = completions.length > 0 ? completions.sort().at(-1) : fallback;
 
-  return {
+  const receipt = {
     schema: VERIFICATION_RECEIPT_SCHEMA,
     receiptId: createUlid(completedAt),
     issue: Number(issueNumber),
@@ -178,6 +194,10 @@ export function createVerificationReceipt({
     commands: normalizedCommands,
     supersedes: null,
   };
+  if (executionContext !== undefined) {
+    receipt.executionContext = structuredClone(executionContext);
+  }
+  return receipt;
 }
 
 function malformedReceipt(receipt) {
@@ -190,6 +210,22 @@ function malformedReceipt(receipt) {
   if (!canonicalInstant(receipt.startedAt) || !canonicalInstant(receipt.completedAt)) return true;
   if (Date.parse(receipt.startedAt) > Date.parse(receipt.completedAt)) return true;
   if (receipt.supersedes !== null && !ULID_RE.test(receipt.supersedes)) return true;
+  if (receipt.executionContext !== undefined) {
+    const context = receipt.executionContext;
+    if (
+      !context ||
+      typeof context !== 'object' ||
+      Array.isArray(context) ||
+      typeof context.worktreePath !== 'string' ||
+      context.worktreePath.length === 0 ||
+      typeof context.branch !== 'string' ||
+      context.branch.length === 0 ||
+      !Number.isInteger(context.boundIssue) ||
+      context.boundIssue <= 0
+    ) {
+      return true;
+    }
+  }
   const environment = receipt.environment;
   if (!environment || typeof environment !== 'object') return true;
   if (typeof environment.node !== 'string' || typeof environment.platform !== 'string') return true;
@@ -263,6 +299,27 @@ function nodeMajor(version) {
 
 function reason(code, details = {}) {
   return { code, ...details };
+}
+
+/**
+ * Derive the command classifications required by a canonical Test receipt.
+ * Default-deny: malformed or unearned lane-skip claims relax nothing.
+ */
+export function requiredTestReceiptClassifications(receipt) {
+  const laneSkip = receipt?.laneSkip;
+  if (!laneSkip || typeof laneSkip !== 'object' || Array.isArray(laneSkip)) {
+    return [...TEST_RECEIPT_REQUIRED];
+  }
+  if (laneSkip.reason !== 'docs-only-diff') return [...TEST_RECEIPT_REQUIRED];
+  if (!docsKindDropsTests(laneSkip.kind, laneSkip.changedPaths)) {
+    return [...TEST_RECEIPT_REQUIRED];
+  }
+  const dropped = new Set(
+    (Array.isArray(laneSkip.lanes) ? laneSkip.lanes : []).filter((classification) =>
+      DROPPABLE_LANE_CLASSIFICATIONS.includes(classification)
+    )
+  );
+  return TEST_RECEIPT_REQUIRED.filter((classification) => !dropped.has(classification));
 }
 
 export function validateVerificationReceipt({

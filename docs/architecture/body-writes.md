@@ -83,6 +83,28 @@ The gate only fires on the snapshot anti-pattern.
 `pushIssueBody` emits a one-time `console.warn` deprecation notice per
 process the first time it's called.
 
+## GitHub-native record boundary
+
+`versionedWriteBody` remains the only issue-body write path, but a
+directory-governed issue intentionally uses it rarely. The body owns stable story
+intent and the singleton directory. Routine Develop, Test, Review, approval, and
+integration state is written append-first to immutable GitHub record comments and
+then projected into identified singleton comments.
+
+Use the body writer only for a body-owned operation such as initial directory
+publication, validated directory repair, stable story metadata, or legacy-body
+compatibility. Record and singleton writes use the GitHub comment store with
+node-ID correlation, content read-back, schema/hash validation, and idempotent
+projection convergence. Do not route comment payloads through
+`mutateIssueBody`, and do not treat a singleton edit as authoritative without its
+accepted predecessor record.
+
+Directory publication is last during adoption: create and validate every
+self-identifying singleton first, then add their opaque node IDs to the body in
+one versioned write. Recovery discovers those identities before creating a
+replacement. See [GitHub-Native Coordination](../guides/github-native-coordination.md)
+for the complete mutation and repair sequence.
+
 ## Errors
 
 All three refusal modes throw `BodyWriteRefusalError` (exported from

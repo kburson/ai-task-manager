@@ -12,7 +12,9 @@
 // (other guards / verb-layer surface the absence).
 
 import { hasDodVerifiedMarker } from './markers.mjs';
+import { auditEvidenceBranchReachability } from './evidence-branch-reachability.mjs';
 import { hasVerificationReceiptMarker, parseVerificationReceipt } from './verification-receipt.mjs';
+import { hasAcceptedTestEvidence } from './github-records/lifecycle-gate-source.mjs';
 
 export const GUARD_ID = 'test-exit-dod-verified';
 
@@ -21,20 +23,40 @@ export const testExitDodVerifiedGuard = {
   run(ctx) {
     if (ctx?.toState && ctx.toState !== 'review') return { ok: true };
     if (typeof ctx?.body !== 'string') return { ok: true };
-    if (
-      hasVerificationReceiptMarker(ctx.body, 'test') &&
-      !parseVerificationReceipt(ctx.body, 'test')
-    ) {
-      const blocker =
-        'test-to-review-receipt-malformed: Test verification receipt is malformed — return to Develop, finalize, and re-run `/task test`.';
-      return { ok: false, reason: blocker, blockers: [blocker] };
+    if (hasAcceptedTestEvidence(ctx.lifecycleEvidence)) return { ok: true };
+    if (typeof ctx.projectDir === 'string') {
+      const auditFn = ctx.deps?.evidenceBranchReachability || auditEvidenceBranchReachability;
+      return Promise.resolve(
+        auditFn({ body: ctx.body, issueNumber: ctx.issueNumber, projectDir: ctx.projectDir })
+      ).then((reachability) => {
+        if (!reachability.ok) {
+          return {
+            ok: false,
+            reason: reachability.reasons.join('; '),
+            blockers: reachability.reasons,
+          };
+        }
+        return runPresenceGate(ctx);
+      });
     }
-    if (hasDodVerifiedMarker(ctx.body)) return { ok: true };
-    const n = String(ctx.issueNumber ?? '').replace(/^#/, '');
-    const blocker =
-      'test-to-review-dod-missing: `aitm-dod-verified` marker absent — re-run `/task test #' +
-      n +
-      '` to produce sandbox evidence before promoting to Review.';
-    return { ok: false, reason: blocker, blockers: [blocker] };
+    return runPresenceGate(ctx);
   },
 };
+
+function runPresenceGate(ctx) {
+  if (
+    hasVerificationReceiptMarker(ctx.body, 'test') &&
+    !parseVerificationReceipt(ctx.body, 'test')
+  ) {
+    const blocker =
+      'test-to-review-receipt-malformed: Test verification receipt is malformed — return to Develop, finalize, and re-run `/task test`.';
+    return { ok: false, reason: blocker, blockers: [blocker] };
+  }
+  if (hasDodVerifiedMarker(ctx.body)) return { ok: true };
+  const n = String(ctx.issueNumber ?? '').replace(/^#/, '');
+  const blocker =
+    'test-to-review-dod-missing: `aitm-dod-verified` marker absent — re-run `/task test #' +
+    n +
+    '` to produce sandbox evidence before promoting to Review.';
+  return { ok: false, reason: blocker, blockers: [blocker] };
+}

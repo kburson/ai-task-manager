@@ -6,10 +6,9 @@
 // Acceptance-Criteria line whose visible label matches the argument, runs that
 // line's declared `aitm-verified` command(s) through `runVerifiers` (also via
 // `pexec`), and on all-green stamps the run-props proof marker onto the line via
-// `mutateIssueBody`. The body WRITE goes through `versionedWriteBody`, which
-// spawns the real `gh` binary (it does not honour the injected `pexec`), so the
-// happy-path test puts a stateful fake `gh` on PATH that round-trips the pushed
-// body through a temp file. Every early-exit branch is driven in-process with a
+// `mutateIssueBody`. Body fetch and write both use the injected `pexec`, so the
+// happy-path test round-trips write input through a stateful body store. Every
+// early-exit branch is driven in-process with a
 // fake `pexec` and a `process.exit` that throws a sentinel.
 
 import { strict as assert } from 'node:assert';
@@ -19,6 +18,7 @@ import { mkdtempSync, mkdirSync, writeFileSync, rmSync, chmodSync } from 'node:f
 
 import { verbAcStamp } from '../../../verbs/ac-stamp.mjs';
 import { projectScratchDir } from '../../../lib/scratch-dir.mjs';
+import { pexecGithubBodyStore } from '../../helpers/pexec-body-store.mjs';
 
 const VERIFIER_CMD =
   'node scripts/task-tracker/tools/coverage-threshold.mjs ' +
@@ -93,8 +93,9 @@ function hashish(s) {
 // Build a fake pexec. `onVerifier` decides the verifier (node) result:
 //   'pass' → resolve, 'fail' → throw {code:1}.
 function makePexec({ body, onVerifier = 'pass' } = {}) {
-  return async (bin, args = []) => {
-    if (bin === 'gh') return { stdout: body ?? '', stderr: '' };
+  return async (bin, args = [], options = {}) => {
+    const gh = pexecGithubBodyStore({ bin, args, options, fallbackBody: body ?? '' });
+    if (gh) return gh;
     if (bin === 'git') {
       if (args.includes('status')) return { stdout: '', stderr: '' };
       return { stdout: 'abc1234\n', stderr: '' }; // rev-parse --short HEAD

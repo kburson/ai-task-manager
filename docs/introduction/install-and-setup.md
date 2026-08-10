@@ -164,15 +164,18 @@ A successful start should:
 
 ## Package Publishing Note
 
-When publishing this package to npm, include the introduction docs in `package.json#files`. The package should ship:
+This package was published to npm with the following functional directories:
 
-- `docs/introduction/`
-- `docs/guides/`
 - `skill/`
 - `scripts/`
 - `hooks/` for legacy compatibility assets
 - `templates/`
 - `config/`
+
+In addition we have included the following documentation directories as listed in `package.json#files`:
+
+- `docs/introduction/`
+- `docs/guides/`
 
 That ensures users installing from npm can read the same onboarding material locally under `node_modules/ai-task-manager/docs/`.
 

@@ -113,7 +113,16 @@ test('close-as retains the board item and writes matching terminal values', asyn
     },
     writeDisposition: async ({ disposition }) => events.push(`disposition:${disposition}`),
     moveToDone: async () => events.push('done'),
-    pexec: async () => events.push('close'),
+    pexec: async (_bin, argv) => {
+      if (argv[0] === 'issue' && argv[1] === 'close') {
+        events.push('close');
+        return { stdout: '' };
+      }
+      if (argv[0] === 'issue' && argv[1] === 'view') {
+        return { stdout: JSON.stringify({ state: 'CLOSED', stateReason: 'NOT_PLANNED' }) };
+      }
+      throw new Error(`unexpected pexec call: ${argv.join(' ')}`);
+    },
     postComment: async ({ body }) => {
       events.push('comment');
       assert.match(body, /retained on the project board/i);
@@ -153,7 +162,13 @@ test('close-as reports sequence-significant timing rows retained for retry', asy
       mutateIssueBody: async () => {},
       writeDisposition: async () => {},
       moveToDone: async () => {},
-      pexec: async () => {},
+      pexec: async (_bin, argv) => {
+        if (argv[0] === 'issue' && argv[1] === 'close') return { stdout: '' };
+        if (argv[0] === 'issue' && argv[1] === 'view') {
+          return { stdout: JSON.stringify({ state: 'CLOSED', stateReason: 'NOT_PLANNED' }) };
+        }
+        throw new Error(`unexpected pexec call: ${argv.join(' ')}`);
+      },
       postComment: async () => {},
     },
   });

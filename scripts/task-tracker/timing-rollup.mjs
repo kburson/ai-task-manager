@@ -339,3 +339,43 @@ export function rollupTotals(rows, thresholdMin, body = null) {
     lastWordMarker,
   };
 }
+
+// #1085 — deterministic structured source for the mutable timing singleton.
+// All values come from the existing Timing Log and issue stage markers; local
+// clocks, fleet files, and caches are deliberately absent from the interface.
+export function buildStructuredTimingProjection({
+  timingBody,
+  issueBody = '',
+  thresholdMin = 5,
+  revision = 1,
+} = {}) {
+  if (
+    typeof timingBody !== 'string' ||
+    timingBody.length === 0 ||
+    typeof issueBody !== 'string' ||
+    !Number.isFinite(thresholdMin) ||
+    thresholdMin < 0 ||
+    !Number.isSafeInteger(revision) ||
+    revision <= 0
+  ) {
+    throw new TypeError('timing-projection:input');
+  }
+  const rows = applyPauseSpansToRows(parseTimingRows(timingBody), timingBody);
+  const totals = rollupTotals(rows, thresholdMin, timingBody);
+  const stageTiming = computeStageDurations(issueBody);
+  return Object.freeze({
+    schema: 'aitm.timing-projection/v1',
+    revision,
+    rows: Object.freeze(
+      rows.map(({ tsMs, event, activeSec, idleSec, wordMarker }) =>
+        Object.freeze({ tsMs, event, activeSec, idleSec, wordMarker })
+      )
+    ),
+    totals: Object.freeze({ ...totals }),
+    stageTiming: Object.freeze({
+      perStageSec: Object.freeze({ ...stageTiming.perStageSec }),
+      totalSec: stageTiming.totalSec,
+      visits: Object.freeze(stageTiming.visits.map((visit) => Object.freeze({ ...visit }))),
+    }),
+  });
+}

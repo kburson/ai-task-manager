@@ -51,15 +51,15 @@ const UPDATE_ISSUE_COMMENT_MUTATION = `
 const MAX_ISSUE_COMMENT_PAGES = 1000;
 
 export class GitHubCommentStoreError extends Error {
-  constructor(category) {
-    super(`github-comment-store:${category}`);
+  constructor(category, options) {
+    super(`github-comment-store:${category}`, options);
     this.name = 'GitHubCommentStoreError';
     this.category = category;
   }
 }
 
-function storeError(category) {
-  return new GitHubCommentStoreError(category);
+function storeError(category, cause) {
+  return new GitHubCommentStoreError(category, cause === undefined ? undefined : { cause });
 }
 
 function assertNoGraphqlErrors(response) {
@@ -222,8 +222,8 @@ export async function getCommentsByNodeIds(input = {}) {
       query: COMMENTS_BY_NODE_IDS_QUERY,
       variables: { ids: [...ids] },
     });
-  } catch {
-    throw storeError('transport');
+  } catch (error) {
+    throw storeError('transport', error);
   }
   assertNoGraphqlErrors(response);
   if (!Array.isArray(response?.data?.nodes)) throw storeError('partial-response');
@@ -252,8 +252,8 @@ export async function createIssueComment(input = {}) {
   let response;
   try {
     response = await rest.createIssueComment({ repository, issue, body });
-  } catch {
-    throw storeError('transport');
+  } catch (error) {
+    throw storeError('transport', error);
   }
   if (!isOpaqueId(response?.node_id)) throw storeError('write-response');
   return verifyWriteReadBack({
@@ -280,8 +280,8 @@ export async function updateIssueComment(input = {}) {
       query: UPDATE_ISSUE_COMMENT_MUTATION,
       variables: { id: commentNodeId, body },
     });
-  } catch {
-    throw storeError('transport');
+  } catch (error) {
+    throw storeError('transport', error);
   }
   assertNoGraphqlErrors(response);
   if (response?.data?.updateIssueComment?.issueComment?.id !== commentNodeId) {
@@ -316,8 +316,8 @@ export async function listIssueCommentsSince(input = {}) {
         query: ISSUE_COMMENTS_QUERY,
         variables: { owner, name, issue, after },
       });
-    } catch {
-      throw storeError('transport');
+    } catch (error) {
+      throw storeError('transport', error);
     }
     assertNoGraphqlErrors(response);
     const responseIssue = response?.data?.repository?.issue;

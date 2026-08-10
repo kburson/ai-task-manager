@@ -11,7 +11,7 @@ import {
 
 // Build a runDispose deps bag of spies. Every I/O seam records its calls so the
 // tests can assert ordering and payloads without any network access.
-function makeDeps(overrides = {}) {
+function makeDeps({ readbackStateReason, ...overrides } = {}) {
   const calls = {
     mutate: [],
     pexec: [],
@@ -20,6 +20,7 @@ function makeDeps(overrides = {}) {
     disposition: [],
     done: [],
   };
+  let requestedStateReason = null;
   const deps = {
     mutateIssueBody: async ({ mutate }) => {
       const out = mutate('BODY BASE\n');
@@ -28,6 +29,42 @@ function makeDeps(overrides = {}) {
     },
     pexec: async (bin, argv) => {
       calls.pexec.push([bin, ...argv]);
+      if (argv[0] === 'api' && argv[1] === 'graphql') {
+        const query = argv.find((arg) => String(arg).startsWith('query=')) || '';
+        if (query.includes('duplicate:issue')) {
+          return {
+            stdout: JSON.stringify({
+              data: {
+                repository: {
+                  issue: { id: 'I_target' },
+                  duplicate: { id: 'I_survivor' },
+                },
+              },
+            }),
+          };
+        }
+        if (query.includes('closeIssue')) {
+          requestedStateReason = 'DUPLICATE';
+          return {
+            stdout: JSON.stringify({
+              data: { closeIssue: { issue: { state: 'CLOSED', stateReason: 'DUPLICATE' } } },
+            }),
+          };
+        }
+      }
+      if (argv[0] === 'issue' && argv[1] === 'close') {
+        requestedStateReason = 'NOT_PLANNED';
+        return { stdout: '' };
+      }
+      if (argv[0] === 'issue' && argv[1] === 'view') {
+        return {
+          stdout: JSON.stringify({
+            state: 'CLOSED',
+            stateReason: readbackStateReason || requestedStateReason,
+          }),
+        };
+      }
+      throw new Error(`unexpected pexec call: ${bin} ${argv.join(' ')}`);
     },
     postComment: async ({ issueNumber, repo, body }) => {
       calls.comment.push({ issueNumber, repo, body });
@@ -77,29 +114,76 @@ test('AC1: runDispose closes without invoking any Done DoD/commit-trace dep', as
 });
 
 // ── AC2 — correct stateReason + timing flush ───────────────────────────────
-test('AC2: duplicate → stateReason DUPLICATE and timing is flushed', async () => {
+test('AC1/AC2: duplicate uses closeIssue with the target and surviving issue node IDs', async () => {
   const { deps, calls } = makeDeps();
-  await runDispose({ issueNumber: '761', reason: 'duplicate', of: '742', ...BASE, deps });
-  const closeCall = calls.pexec.find((c) => c.includes('close'));
-  assert.ok(closeCall, 'gh issue close was invoked');
-  assert.deepEqual(closeCall, [
-    'gh',
-    'issue',
-    'close',
-    '761',
-    '-R',
-    'kburson/ai-task-manager',
-    '--reason',
-    'DUPLICATE',
-  ]);
+  const result = await runDispose({
+    issueNumber: '761',
+    reason: 'duplicate',
+    of: '742',
+    ...BASE,
+    deps,
+  });
+  const idQuery = calls.pexec.find(
+    (call) => call[1] === 'api' && call.some((arg) => String(arg).includes('duplicate:issue'))
+  );
+  assert.ok(idQuery, 'target and surviving issue node IDs are resolved together');
+  assert.ok(idQuery.includes('issue=761'));
+  assert.ok(idQuery.includes('duplicate=742'));
+  const closeMutation = calls.pexec.find(
+    (call) => call[1] === 'api' && call.some((arg) => String(arg).includes('closeIssue'))
+  );
+  assert.ok(closeMutation, 'GraphQL closeIssue mutation was invoked');
+  assert.ok(closeMutation.some((arg) => String(arg).includes('duplicateIssueId:$duplicate')));
+  assert.ok(closeMutation.includes('issue=I_target'));
+  assert.ok(closeMutation.includes('duplicate=I_survivor'));
+  assert.equal(
+    calls.pexec.some((call) => call[1] === 'issue' && call[2] === 'close'),
+    false,
+    'duplicate does not use the unsupported gh issue close reason'
+  );
+  assert.equal(result.stateReason, 'DUPLICATE');
   assert.deepEqual(calls.flush, ['761'], 'timing flushed for the issue');
 });
 
-test('AC2: not-planned → stateReason "not planned"', async () => {
+test('AC5: not-planned keeps the supported CLI transport and verifies NOT_PLANNED', async () => {
   const { deps, calls } = makeDeps();
-  await runDispose({ issueNumber: '761', reason: 'not-planned', ...BASE, deps });
-  const closeCall = calls.pexec.find((c) => c.includes('close'));
+  const result = await runDispose({
+    issueNumber: '761',
+    reason: 'not-planned',
+    ...BASE,
+    deps,
+  });
+  const closeCall = calls.pexec.find((call) => call[1] === 'issue' && call[2] === 'close');
   assert.equal(closeCall[closeCall.length - 1], 'not planned');
+  assert.equal(result.stateReason, 'NOT_PLANNED');
+});
+
+test('AC3: a coerced stateReason fails loud with requested and stored values', async () => {
+  const { deps, calls } = makeDeps({ readbackStateReason: 'COMPLETED' });
+  await assert.rejects(
+    runDispose({ issueNumber: '761', reason: 'duplicate', of: '742', ...BASE, deps }),
+    /requested stateReason DUPLICATE.*stored COMPLETED/
+  );
+  assert.equal(calls.comment.length, 0, 'no success audit comment is posted after mismatch');
+});
+
+test('AC4: the success result and audit comment use the read-back stateReason', async () => {
+  const { deps, calls } = makeDeps();
+  const result = await runDispose({
+    issueNumber: '761',
+    reason: 'duplicate',
+    of: '742',
+    ...BASE,
+    deps,
+  });
+  assert.equal(result.stateReason, 'DUPLICATE');
+  assert.match(calls.comment[0].body, /stateReason `DUPLICATE`/);
+  assert.ok(
+    calls.pexec.some(
+      (call) => call[1] === 'issue' && call[2] === 'view' && call.includes('state,stateReason')
+    ),
+    'GitHub state and stateReason are read back after close'
+  );
 });
 
 // ── AC3 — retained on the board with an honest terminal value ───────────────

@@ -26,7 +26,7 @@ import {
   hasWorktreeCols,
   TRAIL_HEADING,
 } from './lib/commit-trail.mjs';
-import { GIT_TIMEOUT_MS } from './lib/process-timeouts.mjs';
+import { GH_API_TIMEOUT_MS, GIT_TIMEOUT_MS } from './lib/process-timeouts.mjs';
 import { isChoreModeActive } from './lib/chore-mode.mjs';
 import { lintCommitSubject } from './lib/commit-attribution-format.mjs';
 import { statePath as resolveStatePath } from './paths.mjs';
@@ -130,7 +130,7 @@ export async function gitInfo(cwd) {
   return { sha: logSha || sha, subject, author, ts, branch, worktree, isWorktree };
 }
 
-async function ghJson(args, { timeoutMs = 5000 } = {}) {
+async function ghJson(args, { timeoutMs = GH_API_TIMEOUT_MS } = {}) {
   const { stdout } = await pexec('gh', args, { timeout: timeoutMs });
   return stdout;
 }
@@ -181,7 +181,13 @@ export async function defaultIsReachable(sha, { cwd, pexec: pexecDep = pexec } =
   }
 }
 
-export async function postCommitTrail({ issueNumber, repo, info, timeoutMs = 5000, deps = {} }) {
+export async function postCommitTrail({
+  issueNumber,
+  repo,
+  info,
+  timeoutMs = GH_API_TIMEOUT_MS,
+  deps = {},
+}) {
   const find = deps.find || findTrailComment;
   const create = deps.create || createTrailComment;
   const update = deps.update || updateTrailComment;

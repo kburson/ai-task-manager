@@ -5,10 +5,9 @@
 // `verbDodStamp` resolves a stampable Functional-DoD key (tests/lint/commits),
 // fetches the issue body (via injected `pexec`), runs the keyed line's declared
 // verifier command(s) through `runVerifiers`, and on all-green upserts the
-// run-props proof marker onto that line via `mutateIssueBody`. The body WRITE
-// goes through `versionedWriteBody`, which spawns the real `gh` binary (it does
-// not honour the injected `pexec`), so the happy-path test puts a stateful fake
-// `gh` on PATH that round-trips the pushed body through a temp file. Every
+// run-props proof marker onto that line via `mutateIssueBody`. Body fetch and
+// write both use the injected `pexec`, so the happy-path test round-trips write
+// input through a stateful body store. Every
 // early-exit branch (no-active, empty-key, unknown-key, derived-key, key-absent,
 // no-verifier-command, verifier-failure) is driven in-process with a fake
 // `pexec` and a `process.exit` that throws a sentinel.
@@ -20,6 +19,7 @@ import { mkdtempSync, mkdirSync, writeFileSync, rmSync, chmodSync } from 'node:f
 
 import { verbDodStamp } from '../../../verbs/dod-stamp.mjs';
 import { projectScratchDir } from '../../../lib/scratch-dir.mjs';
+import { pexecGithubBodyStore } from '../../helpers/pexec-body-store.mjs';
 
 const TEST_CMD = 'node --test scripts/task-tracker/tests/unit/coverage-dod-stamp.test.mjs';
 
@@ -92,8 +92,9 @@ function hashish(s) {
 }
 
 function makePexec({ body, onVerifier = 'pass' } = {}) {
-  return async (bin, args = []) => {
-    if (bin === 'gh') return { stdout: body ?? '', stderr: '' };
+  return async (bin, args = [], options = {}) => {
+    const gh = pexecGithubBodyStore({ bin, args, options, fallbackBody: body ?? '' });
+    if (gh) return gh;
     if (bin === 'git') {
       if (args.includes('status')) return { stdout: '', stderr: '' };
       return { stdout: 'abc1234\n', stderr: '' };

@@ -1,4 +1,4 @@
-// @story #630
+// @story #630 #1184
 // Coverage-lift unit test for `lib/refine-to-plan-gate.mjs` (`gateRefineToPlan`
 // plus its two module-private default gh fetchers). Every collaborator is
 // injected via the module's existing `deps` seam — extended in #630 with a
@@ -93,6 +93,28 @@ test('a Pickup Directive inside a <details> block does not satisfy the gate', as
   const body = `# Story\n\n<details>\n${PICKUP}\n</details>\n`;
   const deps = makeDeps({ fetchBody: async () => body });
   const res = await gateRefineToPlan({ cfg, issueNumber: 630, deps });
+  assert.ok(res.blockers.some((b) => b.startsWith('refine-exit-pickup-directive-missing')));
+});
+
+test('inline-code details tag examples do not hide a top-level Pickup Directive', async () => {
+  const body = [
+    '# Story',
+    '',
+    'Document the `<details>` opening-tag example.',
+    '',
+    PICKUP,
+    '',
+    'Document the `</details>` closing-tag example.',
+  ].join('\n');
+  const deps = makeDeps({ fetchBody: async () => body });
+  const res = await gateRefineToPlan({ cfg, issueNumber: 1184, deps });
+  assert.equal(res.ok, true, JSON.stringify(res));
+});
+
+test('an unclosed line-level details container keeps Pickup hidden fail-closed', async () => {
+  const body = `# Story\n\n<details>\n${PICKUP}\n`;
+  const deps = makeDeps({ fetchBody: async () => body });
+  const res = await gateRefineToPlan({ cfg, issueNumber: 1184, deps });
   assert.ok(res.blockers.some((b) => b.startsWith('refine-exit-pickup-directive-missing')));
 });
 

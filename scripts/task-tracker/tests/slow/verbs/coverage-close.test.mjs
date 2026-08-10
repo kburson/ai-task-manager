@@ -13,6 +13,7 @@ import { join } from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { verbClose, tickLifecycleOnClose } from '../../../verbs/close.mjs';
 import { projectScratchDir } from '../../../lib/scratch-dir.mjs';
+import { mutateIssueBody } from '../../../lib/issue-body-mutate.mjs';
 
 // Review-approval marker + populated aitm-fields (engagedTime non-null) so
 // assertFieldsPersisted passes and shouldEmitReviewApprovedRow is true.
@@ -51,7 +52,7 @@ function makeDirtyRepo() {
 }
 
 function makeCtx(statePath, dir, over = {}) {
-  return {
+  const ctx = {
     cfg: { repo: 'o/r', lifecycleCheckboxesRequired: false },
     statePath,
     projectDir: dir,
@@ -71,17 +72,16 @@ function makeCtx(statePath, dir, over = {}) {
     getIssueClosedState: async () => false,
     uncheckedPreCloseCheckboxes: () => [],
     nowIso: () => new Date().toISOString(),
-    // Offline the #753 lifecycle-box reconcile for every verbClose-driven test.
-    // The real one reaches live `gh` (the injected pexec does not intercept
-    // versionedWriteBody), which stalls the full-suite run. The exported helper
-    // itself is covered directly below via its deps.mutateIssueBody seam.
-    tickLifecycleOnClose: async () => ({ ok: true }),
     // Keep this broad close-coverage harness on its injected timing boundary.
     // The real approval reconciler is covered by approve-timing-boundary and
     // requires a populated Review timing log that these legacy fixtures omit.
     reconcileReviewApprovedTiming: async () => ({ status: 'present' }),
     ...over,
   };
+  ctx.issueBodyMutator ??= {
+    mutate: (args) => mutateIssueBody({ ...args, deps: { pexec: ctx.pexec } }),
+  };
+  return ctx;
 }
 
 // Drive verbClose with managed state/env/cleanup; trap process.exit + capture

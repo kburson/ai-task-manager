@@ -45,8 +45,10 @@ import {
   buildVerificationFingerprint,
   createVerificationReceipt,
   hasVerificationReceiptMarker,
+  requiredTestReceiptClassifications,
   validateVerificationReceipt,
 } from '../lib/verification-receipt.mjs';
+import { captureEvidenceProvenance } from '../lib/evidence-provenance.mjs';
 import { runDevelopVerification } from '../verify-develop.mjs';
 import { autoTickVerified } from '../lib/auto-tick-verified.mjs';
 import { STAGES, parseEntryMarkers, stampEntryMarker } from '../lib/stage-entry-markers.mjs';
@@ -57,6 +59,12 @@ import { describeSandboxFailure } from '../lib/sandbox-exit-render.mjs';
 import { readLastKnownState } from '../gh-timing-comment.mjs';
 import { assertVerbHomeState } from '../lib/verb-home-state-guard.mjs';
 import { postNewAutomatedTestsComment } from '../lib/new-automated-tests-comment.mjs';
+import { locateAuthoritySource } from '../lib/github-records/authority-locator.mjs';
+import {
+  hasAcceptedTestEvidence,
+  resolveLifecycleGateEvidence,
+} from '../lib/github-records/lifecycle-gate-source.mjs';
+import { gql } from '../../gh/lib/github-projects.mjs';
 
 const pexec = promisify(execFile);
 
@@ -74,6 +82,14 @@ const pexec = promisify(execFile);
 const POLICY_SHAPE_REJECTION_RE = /^bin '[^']+' rejects (?:(?:flag|subcommand) )?'/;
 function isPolicyShapeRejection(reason) {
   return typeof reason === 'string' && POLICY_SHAPE_REJECTION_RE.test(reason);
+}
+
+function defaultLifecycleGraphql({ query, variables }) {
+  return gql(query, variables).then((data) => ({ data }));
+}
+
+function lifecycleEvidenceReason(error) {
+  return { code: String(error?.message || 'lifecycle-gate-source:unknown') };
 }
 
 const NPM_CI_TIMEOUT_MS = 600_000; // 10 min worst-case fresh install
@@ -184,11 +200,13 @@ async function defaultNpmCi({ path: wtPath }) {
     cwd: wtPath,
     timeout: NPM_CI_TIMEOUT_MS,
     maxBuffer: 64 * 1024 * 1024,
-    env: buildSandboxEnv(), // @story #541 — strip leaked lock state
+    // @story #541/#1165 — strip leaked lock state and keep all project-local
+    // setup authority inside the detached verification worktree.
+    env: buildSandboxEnv(process.env, { AI_TASK_MANAGER_PROJECT_DIR: wtPath }),
   });
 }
 
-async function defaultExecInSandbox({ argv, path: wtPath, projectDir }) {
+async function defaultExecInSandbox({ argv, path: wtPath }) {
   const timeoutMs = sandboxTimeoutMs();
   const startedAt = Date.now();
   const startedInstant = new Date().toISOString();
@@ -197,8 +215,9 @@ async function defaultExecInSandbox({ argv, path: wtPath, projectDir }) {
       cwd: wtPath,
       timeout: timeoutMs,
       maxBuffer: 64 * 1024 * 1024,
-      // @story #541 — strip leaked lock state, then set the project dir.
-      env: buildSandboxEnv(process.env, { AI_TASK_MANAGER_PROJECT_DIR: projectDir }),
+      // @story #541/#1165 — strip leaked lock state, then bind project-local
+      // execution to this detached verification worktree, never its parent.
+      env: buildSandboxEnv(process.env, { AI_TASK_MANAGER_PROJECT_DIR: wtPath }),
     });
     return {
       exit: 0,
@@ -420,6 +439,81 @@ export async function runVerbTest({
     currentState,
     issueNumber: issueNum,
   });
+  const sha = await getHeadSha({ projectDir });
+  let authoritySource;
+  try {
+    authoritySource = locateAuthoritySource({ issueBody: body });
+  } catch (error) {
+    return {
+      status: 'directory-evidence-invalid',
+      sha,
+      reasons: [lifecycleEvidenceReason(error)],
+    };
+  }
+  if (authoritySource.kind === 'github-records/v1') {
+    const resolveLifecycleEvidence = deps.resolveLifecycleEvidence || resolveLifecycleGateEvidence;
+    let lifecycleEvidence;
+    try {
+      lifecycleEvidence = await resolveLifecycleEvidence({
+        repository: cfg.repo,
+        issue: Number(issueNum),
+        issueBody: body,
+        expectedSha: sha,
+        graphql: deps.graphql || defaultLifecycleGraphql,
+        readContractRecord: deps.readContractRecord,
+        deps: deps.listIssueRecords ? { listIssueRecords: deps.listIssueRecords } : undefined,
+      });
+    } catch (error) {
+      return {
+        status: 'directory-evidence-invalid',
+        sha,
+        reasons: [lifecycleEvidenceReason(error)],
+      };
+    }
+    if (!hasAcceptedTestEvidence(lifecycleEvidence)) {
+      return {
+        status: 'directory-evidence-invalid',
+        sha,
+        sourceKind: lifecycleEvidence.sourceKind,
+        lifecycleEvidence,
+        reasons: [{ code: 'directory-test-evidence-missing' }],
+      };
+    }
+    if (currentState === 'test') {
+      return {
+        status: 'directory-evidence-accepted',
+        sha,
+        sourceKind: lifecycleEvidence.sourceKind,
+        lifecycleEvidence,
+      };
+    }
+    const moveResult = moveState
+      ? await moveState({ issueNumber: issueNum, target: 'test', lifecycleEvidence })
+      : undefined;
+    const moveFailed = moveResult && moveResult.ok === false && moveResult.benign !== true;
+    if (moveFailed) {
+      return {
+        status: 'move-failed',
+        sha,
+        results: [],
+        target: 'test',
+        move: moveResult,
+        sourceKind: lifecycleEvidence.sourceKind,
+        lifecycleEvidence,
+      };
+    }
+    if (logIssueTime) await logIssueTime(issueNum);
+    return {
+      status: 'passed',
+      sha,
+      results: [],
+      receipt: null,
+      target: 'test',
+      move: moveResult,
+      sourceKind: lifecycleEvidence.sourceKind,
+      lifecycleEvidence,
+    };
+  }
   const pretick = detectLifecyclePretick(body);
   if (pretick.regressions.length > 0) {
     body = pretick.body;
@@ -476,7 +570,6 @@ export async function runVerbTest({
     };
   }
 
-  const sha = await getHeadSha({ projectDir });
   if (runDevelopFinalization && currentState === 'test') {
     const currentFingerprint = await buildFingerprint({ projectDir, commitSha: sha });
     const existingTestReceipt = parseVerificationReceipt(body, 'test');
@@ -485,7 +578,7 @@ export async function runVerbTest({
       expectedIssue: Number(issueNum),
       expectedStage: 'test',
       fingerprint: currentFingerprint,
-      required: ['lint-full', 'format-full', 'test-unit', 'test-integration', 'test-slow'],
+      required: requiredTestReceiptClassifications(existingTestReceipt),
     });
     if (existingValidation.ok && deps.forceRerun !== true) {
       return {
@@ -599,6 +692,7 @@ export async function runVerbTest({
   let cleanupNeeded = false;
   let setupDiag = null; // #254 — tagged diagnostics from the last failed setup attempt
   let testFingerprint = null;
+  let testExecutionContext = null;
   let evidenceRefusal = null;
   let partition = null;
   // #1158 — set only when the complete-lane floor was PROVEN droppable for this
@@ -828,6 +922,15 @@ export async function runVerbTest({
       });
       if (!completedValidation.ok) evidenceRefusal = completedValidation.reasons;
       testFingerprint = completedFingerprint;
+      if (!evidenceRefusal) {
+        // Capture while the detached sandbox still exists. Once `finally`
+        // removes it, Git metadata lookup would walk up to the bound child
+        // worktree and falsely attribute the receipt to that checkout.
+        testExecutionContext = captureEvidenceProvenance({
+          projectDir: wtPath,
+          boundIssue: issueNum,
+        });
+      }
     }
   } catch (err) {
     // #270 — sandbox-setup or sandbox-run threw. The board is still on
@@ -915,6 +1018,7 @@ export async function runVerbTest({
           issueNumber: Number(issueNum),
           stage: 'test',
           fingerprint: testFingerprint,
+          executionContext: testExecutionContext,
           commands: results
             .filter(({ receiptCommand }) => receiptCommand)
             .map(({ receiptCommand }) => receiptCommand),
@@ -1087,8 +1191,8 @@ export async function verbTest(ctx) {
   }
   const issueNumber = String(target).replace(/^#/, '');
 
-  const moveState = async ({ issueNumber: n, target: t }) =>
-    runMoveState(`#${n}`, t, { silent: true });
+  const moveState = async ({ issueNumber: n, target: t, lifecycleEvidence }) =>
+    runMoveState(`#${n}`, t, { silent: true, lifecycleEvidence });
   const logIssueTime = async (n) => {
     await runLogIssueTime(`#${n}`);
   };
@@ -1150,6 +1254,12 @@ export async function verbTest(ctx) {
       );
       saveState(pauseTimingKeepBinding(s, `#${issueNumber}`), statePath);
       return;
+    case 'directory-evidence-accepted':
+      console.log(
+        `✓ #${issueNumber} already has accepted current-contract exact-SHA Test evidence; body receipts were not consulted.`
+      );
+      saveState(pauseTimingKeepBinding(s, `#${issueNumber}`), statePath);
+      return;
     case 'move-failed': {
       // #406 — sandbox passed but the board move was refused. Do NOT print the
       // success banner; surface the move-state child's real refusal reason and
@@ -1173,6 +1283,7 @@ export async function verbTest(ctx) {
     }
     case 'develop-final-invalid':
     case 'develop-evidence-invalid':
+    case 'directory-evidence-invalid':
       console.error(
         `✗ #${issueNumber} verification evidence refused: ${result.reasons.map(({ code }) => code).join(', ')}`
       );

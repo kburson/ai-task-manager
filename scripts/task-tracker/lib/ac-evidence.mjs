@@ -16,6 +16,7 @@ import { createHash } from 'node:crypto';
 import { unescapeValue } from './marker-grammar.mjs';
 import { parseProofMarker, hasExecutionProof, upsertProofMarker } from './proof-marker.mjs';
 import { auditEvidenceMarkers, insertVerificationCommands } from './evidence-markers.mjs';
+import { markerProvenanceProperties } from './evidence-provenance.mjs';
 import { parseVerificationCommands } from './verification-commands.mjs';
 import { resolveCitedOrLiteralCommands, resolveVcListStrict } from './vc-ref.mjs';
 
@@ -255,6 +256,7 @@ export function stampAcEvidenceMarker(body, label, evidence) {
     sha: String(sha),
     ts: String(ts),
     key: String(key),
+    ...markerProvenanceProperties(evidence),
   });
   if (next === line) return src;
   lines[target.lineIndex] = next;

@@ -37,6 +37,7 @@ import { mutateIssueBody } from '../lib/issue-body-mutate.mjs';
 import { invalidateEvidence } from '../lib/evidence-invalidation.mjs';
 import { assertBoundToIssue } from '../lib/bind-context.mjs';
 import { runMoveStateHost } from '../../gh/move-state.mjs';
+import { writeDirectoryContractOperation } from '../lib/github-records/contract-write.mjs';
 
 const pexec = promisify(execFile);
 
@@ -221,6 +222,25 @@ export async function runDemote({ issueNumber, cfg, rework, deps = {} } = {}) {
       status: 'transition-failed',
       exitCode,
       message: `demote: move-state.mjs ${DEMOTE_TARGET} exited ${exitCode}; recorded state left at "${recorded}".`,
+    };
+  }
+
+  const directoryWrite = await writeDirectoryContractOperation({
+    repository: cfg.repo,
+    issue: Number(issueNumber),
+    issueBody: initialBody,
+    action: 'invalidate',
+    pexec,
+    deps: deps.contractWrite,
+  });
+  if (directoryWrite.status === 'directory-written') {
+    return {
+      status: 'demoted',
+      from: recorded,
+      to: DEMOTE_TARGET,
+      bootstrapped,
+      invalidated: ['test', 'review', 'approval'],
+      authoritySource: 'github-records/v1',
     };
   }
 

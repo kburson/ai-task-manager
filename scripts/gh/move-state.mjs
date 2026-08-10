@@ -78,6 +78,7 @@ export async function runMoveStateHost({
   isTty = process.stdin.isTTY,
   tailProfile = 'task-owner',
   reviewAuthority = null,
+  lifecycleEvidence = null,
 } = {}) {
   const { name: resolvedTailProfile } = resolveTailProfile(tailProfile);
   reviewAuthority = resolveReviewAuthority(reviewAuthority);
@@ -330,6 +331,7 @@ export async function runMoveStateHost({
     backlogMoveWarning,
     tailProfile: resolvedTailProfile,
     reviewAuthority,
+    lifecycleEvidence,
   };
 
   // #559 — guard-execution concern: the dirty-workspace warn, the universal

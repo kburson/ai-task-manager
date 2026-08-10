@@ -3,6 +3,7 @@ import { promisify } from 'node:util';
 import { findTrailComment } from '../commit-trail-handler.mjs';
 import { parseMarker, TRAIL_HEADING } from './commit-trail.mjs';
 import { auditEvidenceMarkers } from './evidence-markers.mjs';
+import { auditEvidenceBranchReachability } from './evidence-branch-reachability.mjs';
 import { NON_DEMONSTRABLE_TAG_RE } from './body-invariants.mjs';
 import { isNoCommitKind, isAcWaived, hasDeliverableMarker } from './issue-kind.mjs';
 import { GH_API_TIMEOUT_MS, GIT_TIMEOUT_MS } from './process-timeouts.mjs';
@@ -15,8 +16,18 @@ import {
 } from './epic-derived-commit-trail.mjs';
 import { parseAcCommitCitation, verifyAcCommitCitations } from './epic-ac-commit-citation.mjs';
 import { parseIssueKind } from './issue-kind.mjs';
+import { locateAuthoritySource } from './github-records/authority-locator.mjs';
+import {
+  hasAcceptedTestEvidence,
+  resolveLifecycleGateEvidence,
+} from './github-records/lifecycle-gate-source.mjs';
+import { gql } from '../../gh/lib/github-projects.mjs';
 
 const pexec = promisify(execFile);
+
+function defaultLifecycleGraphql({ query, variables }) {
+  return gql(query, variables).then((data) => ({ data }));
+}
 
 async function defaultGitStatus({ projectDir }) {
   const { stdout } = await pexec('git', ['status', '--porcelain', '--untracked-files=no'], {
@@ -94,6 +105,35 @@ export async function runReviewPreflight({ issueNumber, repo, projectDir, cfg, d
   // comment/analysis, not a commit) — mirrors `code-complete-gate.mjs`'s
   // `isNoCommitKind(body)` → `hasDeliverableMarker(body)` check.
   const body = String(await getIssueBody());
+  const reachabilityAudit = deps.evidenceBranchReachability || auditEvidenceBranchReachability;
+  const reachability = await reachabilityAudit({ body, issueNumber, projectDir });
+  reasons.push(...reachability.reasons);
+  let lifecycleEvidence = null;
+  let authoritySource = null;
+  try {
+    authoritySource = locateAuthoritySource({ issueBody: body });
+  } catch (error) {
+    reasons.push(`review-preflight-lifecycle-source-failed: ${error.message}`);
+  }
+  if (authoritySource?.kind === 'github-records/v1') {
+    const resolveLifecycleEvidence = deps.resolveLifecycleEvidence || resolveLifecycleGateEvidence;
+    try {
+      lifecycleEvidence = await resolveLifecycleEvidence({
+        repository: repo,
+        issue: Number(String(issueNumber).replace(/^#/, '')),
+        issueBody: body,
+        expectedSha: headSha,
+        graphql: deps.graphql || defaultLifecycleGraphql,
+        readContractRecord: deps.readContractRecord,
+        deps: deps.listIssueRecords ? { listIssueRecords: deps.listIssueRecords } : undefined,
+      });
+      if (!hasAcceptedTestEvidence(lifecycleEvidence)) {
+        reasons.push('review-preflight-lifecycle-source-failed: directory-test-evidence-missing');
+      }
+    } catch (error) {
+      reasons.push(`review-preflight-lifecycle-source-failed: ${error.message}`);
+    }
+  }
   const isEpic = parseIssueKind(body) === 'epic';
   const noCommitKindForTrail = isNoCommitKind(body);
 
@@ -167,7 +207,7 @@ export async function runReviewPreflight({ issueNumber, repo, projectDir, cfg, d
     }
   }
 
-  if (body.trim()) {
+  if (body.trim() && authoritySource?.kind !== 'github-records/v1') {
     // #836 — resolve the no-commit-kind classification once so the waiver skip
     // below mirrors the sibling Develop→Test gate exactly.
     const noCommitKind = isNoCommitKind(body);
@@ -202,5 +242,5 @@ export async function runReviewPreflight({ issueNumber, repo, projectDir, cfg, d
     }
   }
 
-  return { ok: reasons.length === 0, reasons, headSha, derivedTrail };
+  return { ok: reasons.length === 0, reasons, headSha, derivedTrail, lifecycleEvidence };
 }

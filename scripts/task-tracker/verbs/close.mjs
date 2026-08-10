@@ -1,4 +1,6 @@
 import { randomUUID } from 'node:crypto';
+import { execFile } from 'node:child_process';
+import { promisify } from 'node:util';
 
 import { loadState, saveState, clearActive } from '../state.mjs';
 import { deregisterTask } from '../fleet-registry.mjs';
@@ -49,6 +51,53 @@ import {
 import { resolveTailProfile } from '../lib/move-state/tail-profiles.mjs';
 import { createEstimationOutcomeRuntime } from '../lib/estimation/runtime-adapter.mjs';
 import { reconcileReviewApprovedTiming } from '../lib/review-approval-timing.mjs';
+import { locateAuthoritySource } from '../lib/github-records/authority-locator.mjs';
+import {
+  hasAcceptedApprovalEvidence,
+  hasAcceptedReviewEvidence,
+  resolveLifecycleGateEvidence,
+} from '../lib/github-records/lifecycle-gate-source.mjs';
+import { gql } from '../../gh/lib/github-projects.mjs';
+
+const closePexec = promisify(execFile);
+
+function defaultLifecycleGraphql({ query, variables }) {
+  return gql(query, variables).then((data) => ({ data }));
+}
+
+async function defaultCloseHeadSha({ projectDir }) {
+  const { stdout } = await closePexec('git', ['rev-parse', 'HEAD'], { cwd: projectDir });
+  return String(stdout || '').trim();
+}
+
+export async function resolveCloseLifecycleEvidence({
+  body,
+  issueNumber,
+  repository,
+  projectDir,
+  deps = {},
+} = {}) {
+  const source = (deps.locateAuthoritySource || locateAuthoritySource)({ issueBody: body });
+  if (source.kind !== 'github-records/v1') return null;
+  const expectedSha = await (deps.getHeadSha || defaultCloseHeadSha)({ projectDir });
+  const lifecycleEvidence = await (deps.resolveLifecycleEvidence || resolveLifecycleGateEvidence)({
+    repository,
+    issue: Number(issueNumber),
+    issueBody: body,
+    expectedSha,
+    graphql: deps.graphql || defaultLifecycleGraphql,
+    readContractRecord: deps.readContractRecord,
+    deps: deps.listIssueRecords ? { listIssueRecords: deps.listIssueRecords } : undefined,
+  });
+  if (!hasAcceptedReviewEvidence(lifecycleEvidence)) {
+    throw new Error('directory-review-evidence-missing');
+  }
+  const approvalAccepted =
+    hasAcceptedApprovalEvidence(lifecycleEvidence, { provenance: 'human' }) ||
+    hasAcceptedApprovalEvidence(lifecycleEvidence, { provenance: 'full-auto' });
+  if (!approvalAccepted) throw new Error('directory-approval-evidence-missing');
+  return lifecycleEvidence;
+}
 
 // #705 — best-effort: a label-strip failure must never block or fail the
 // close itself, mirroring the deregisterTask cleanup calls below.
@@ -863,6 +912,7 @@ export async function verbClose(ctx) {
   // `!SKIP_NETWORK` block would otherwise fetch, so the review:approved emission
   // gate (which predicates on the approval marker) is exercisable in-process.
   let closeBody = ctx.closeBody ?? '';
+  let closeLifecycleEvidence = null;
   // #655 — hoisted out of the `!SKIP_NETWORK` gate-evaluation block (where
   // `_resolvedReviewGate` is scoped) so the later `review:approved` timing-row
   // emission can predicate on it. True iff the review→done gate was explicitly
@@ -1030,6 +1080,21 @@ export async function verbClose(ctx) {
         console.warn(`[task-tracker] Functional DoD derivation skipped: ${err.message}`);
       }
 
+      closeLifecycleEvidence = await resolveCloseLifecycleEvidence({
+        body,
+        issueNumber: closeIssueNum,
+        repository: cfg.repo,
+        projectDir,
+        deps: {
+          locateAuthoritySource: ctx.locateAuthoritySource,
+          getHeadSha: ctx.getHeadSha,
+          resolveLifecycleEvidence: ctx.resolveLifecycleEvidence,
+          graphql: ctx.graphql,
+          readContractRecord: ctx.readContractRecord,
+          listIssueRecords: ctx.listIssueRecords,
+        },
+      });
+
       const unchecked = uncheckedPreCloseCheckboxes(body);
       const reasons = [];
       if (unchecked.length > 0) {
@@ -1042,7 +1107,11 @@ export async function verbClose(ctx) {
       // each lifecycle key is ticked, audited (Full-Auto), or per-key opt-out marker
       // present. When toggled off, downgrade to a WARN timing-log row.
       const lifecycleRequired = cfg.lifecycleCheckboxesRequired !== false;
-      const lifecycleGate = assertLifecycleSatisfied({ body, required: lifecycleRequired });
+      const lifecycleGate = assertLifecycleSatisfied({
+        body,
+        required: lifecycleRequired,
+        lifecycleEvidence: closeLifecycleEvidence,
+      });
       if (lifecycleGate.block) {
         reasons.push(lifecycleGate.reason);
       } else if (!lifecycleRequired && lifecycleGate.missing.length > 0) {
@@ -1088,6 +1157,7 @@ export async function verbClose(ctx) {
           fromState: 'review',
           toState: 'done',
           body,
+          lifecycleEvidence: closeLifecycleEvidence,
           cfg,
           projectDir,
           deps: { closeGates: { resolveTrunkRef: makeCloseTrunkRefResolver({ inWorktree }) } },
@@ -1364,7 +1434,10 @@ export async function verbClose(ctx) {
       closeTarget,
       closeIssueNum,
       cfg,
-      hasApprovalMarker: hasReviewApprovedMarker(closeBody),
+      hasApprovalMarker:
+        hasReviewApprovedMarker(closeBody) ||
+        hasAcceptedApprovalEvidence(closeLifecycleEvidence, { provenance: 'human' }) ||
+        hasAcceptedApprovalEvidence(closeLifecycleEvidence, { provenance: 'full-auto' }),
       issueBody: closeBody,
       reviewGateBypassed,
       lastWordMarker: s.lastWordMarker,
@@ -1419,6 +1492,7 @@ export async function verbClose(ctx) {
     const fam = await enableFullAutoMergeForClose({
       cfg,
       branch: closeBranch,
+      issueNumber: closeIssueNum,
       isFullAuto: isFullAuto(),
       pexec,
     });

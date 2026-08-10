@@ -26,6 +26,7 @@ import { verbPromote } from './promote.mjs';
 import { runMoveInvariantAudit } from '../lib/verify-move-invariants.mjs';
 import { buildContext } from '../runtime.mjs';
 import { verbClose } from './close.mjs';
+import { resolveProjectDir } from '../lib/project-dir.mjs';
 
 async function defaultGetLiveState({ issueNumber, cfg }) {
   const { owner, repoName } = splitRepo(cfg.repo);
@@ -66,11 +67,45 @@ export async function defaultConvergeClosedIssue(
   return closeFn(ctx);
 }
 
+export async function promoteSelectedChild({
+  issueNumber,
+  cfg,
+  projectDir,
+  promoteDeps = {},
+  promoteVerb = verbPromote,
+} = {}) {
+  const selectedIssueNumber = Number(issueNumber);
+  if (!Number.isSafeInteger(selectedIssueNumber) || selectedIssueNumber <= 0) {
+    throw new Error('promoteSelectedChild: valid issueNumber is required');
+  }
+  if (typeof projectDir !== 'string' || !projectDir.trim()) {
+    throw new Error('promoteSelectedChild: bound epic projectDir is required');
+  }
+
+  // pull-next owns an epic-bound orchestration session, so the ordinary
+  // active-issue assertion cannot authorize its selected child. Replace only
+  // that dependency, and scope the replacement to the child already chosen by
+  // the rank/blocker gates above. Every other verbPromote guard remains live.
+  const assertSelectedChild = (targetIssueNumber) => {
+    if (Number(targetIssueNumber) !== selectedIssueNumber) {
+      throw new Error(
+        `pull-next promote authority is limited to #${selectedIssueNumber}; ` +
+          `received #${targetIssueNumber}`
+      );
+    }
+  };
+
+  return promoteVerb([String(selectedIssueNumber)], cfg, {
+    ...promoteDeps,
+    projectDir,
+    assertBound: assertSelectedChild,
+  });
+}
+
 export async function runPullNext({ epicNumber, cfg, deps = {} } = {}) {
   if (!epicNumber) throw new Error('runPullNext: epicNumber is required');
   if (!cfg) throw new Error('runPullNext: cfg is required');
   const getLiveState = deps.getLiveState || defaultGetLiveState;
-  const promote = deps.promote || verbPromote;
   const audit = deps.audit || runMoveInvariantAudit;
 
   const liveState = await getLiveState({ issueNumber: epicNumber, cfg });
@@ -192,7 +227,18 @@ export async function runPullNext({ epicNumber, cfg, deps = {} } = {}) {
     };
   }
 
-  const promoteResult = await promote([String(next.number)], cfg);
+  const promoteResult = deps.promote
+    ? await deps.promote([String(next.number)], cfg)
+    : await promoteSelectedChild({
+        issueNumber: next.number,
+        cfg,
+        projectDir: (deps.resolveProjectDir ?? resolveProjectDir)({
+          issue: epicNumber,
+          deps: deps.projectDirDeps ?? deps,
+        }),
+        promoteDeps: deps.promoteDeps,
+        promoteVerb: deps.promoteVerb,
+      });
   return {
     status: 'pulled',
     childNumber: next.number,

@@ -26,6 +26,12 @@ function cleanLabel(label) {
   return label.trim();
 }
 
+function deepFreeze(value) {
+  if (value === null || typeof value !== 'object' || Object.isFrozen(value)) return value;
+  for (const child of Object.values(value)) deepFreeze(child);
+  return Object.freeze(value);
+}
+
 function evidenceCommands(label, vcItems = []) {
   // #481 — `cmd` is the PERSISTENT declaration component, read regardless of any
   // run-props upserted onto the same `aitm-verified` marker. The pre-#481
@@ -61,6 +67,44 @@ function evidenceCommands(label, vcItems = []) {
     // command; surface zero evidence so the audit flags it rather than throwing.
     return [];
   }
+}
+
+export function projectEvidenceChecklist(contractSource) {
+  const { sourceKind, contract, authority } = contractSource;
+  const vcItems = contract.verificationCommands.map((item) => {
+    const match = /^vc-(\d+)$/.exec(item.logicalId);
+    return { ...item, id: match ? Number(match[1]) : null };
+  });
+  const projectDeclaration = (item) => ({
+    logicalId: item.logicalId,
+    checked: item.checked,
+    label: item.text,
+    declaration: item.declaration,
+    evidenceCommands: evidenceCommands(item.declaration, vcItems),
+  });
+  return deepFreeze({
+    sourceKind,
+    acceptanceCriteria: contract.acceptanceCriteria.map(projectDeclaration),
+    functionalDodItems: contract.definitionOfDone.map(projectDeclaration),
+    verificationCommands: contract.verificationCommands.map((item) => ({ ...item })),
+    acceptedRecordIds: [...contract.acceptedRecordIds],
+    authority,
+  });
+}
+
+export async function resolveEvidenceChecklist({
+  repository,
+  issue,
+  issueBody,
+  graphql,
+  readContractRecord,
+  deps = {},
+} = {}) {
+  const resolve =
+    deps.resolveContractSource ||
+    (await import('./github-records/contract-source.mjs')).resolveContractSource;
+  const source = await resolve({ repository, issue, issueBody, graphql, readContractRecord });
+  return projectEvidenceChecklist(source);
 }
 
 const FUNCTIONAL_HEADING_RE = /^#{1,6}\s+Functional\b/i;

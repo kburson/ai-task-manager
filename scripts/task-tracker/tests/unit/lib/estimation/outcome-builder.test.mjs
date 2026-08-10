@@ -3,6 +3,7 @@ import { strict as assert } from 'node:assert';
 import test from 'node:test';
 
 import { buildEstimationOutcome } from '../../../../lib/estimation/outcome-builder.mjs';
+import { canonicalRecordJson } from '../../../../lib/github-records/canonical-json.mjs';
 
 const forecast = {
   recordId: '01J00000000000000000000800',
@@ -122,4 +123,25 @@ test('unknown production cost remains unclassified instead of being labeled nece
   });
   assert.equal(outcome.costClassification.necessaryHours, 0);
   assert.equal(outcome.costClassification.unclassifiedHours, 5);
+});
+
+test('close outcome normalizes a rounded negative-zero cost residual (#1115)', () => {
+  const outcome = buildEstimationOutcome({
+    issue: 1091,
+    forecast,
+    timing: {
+      // Exact #1114 close inputs: 0.699 engaged hours after stage rounding.
+      stagesMs: { plan: 288_000, develop: 1_253_000, test: 100_000, review: 875_000 },
+    },
+    verification: [],
+    diff: { filesChanged: 2, modules: ['estimation'], lanes: ['sandbox'], dependencyBreadth: 1 },
+    review: { fixCycles: 0 },
+    cost: { avoidableProcessWasteHours: 0.0006, drivers: [] },
+  });
+
+  assert.equal(outcome.actual.engagedHours, 0.699);
+  assert.equal(outcome.costClassification.unclassifiedHours, 0.6984);
+  assert.equal(outcome.costClassification.necessaryHours, 0);
+  assert.equal(Object.is(outcome.costClassification.necessaryHours, -0), false);
+  assert.doesNotThrow(() => canonicalRecordJson(outcome));
 });

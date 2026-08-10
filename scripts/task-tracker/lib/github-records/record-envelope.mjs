@@ -9,6 +9,8 @@
 import { createHash, randomBytes } from 'node:crypto';
 
 import { canonicalRecordJson } from './canonical-json.mjs';
+import { validateDeliveryContract } from './delivery-contract.mjs';
+import { assertNoCredentialValues, assertNoSecretRecordData } from './record-secret-policy.mjs';
 import {
   FORECAST_RECORD_TYPE,
   validateEstimationForecast,
@@ -38,39 +40,14 @@ const HASH_RE = /^sha256:[0-9a-f]{64}$/;
 const ULID_RE = /^[0-7][0-9A-HJKMNP-TV-Z]{25}$/;
 const RECORD_TYPE_RE = /^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$/;
 const REPOSITORY_RE = /^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/;
-const SAFE_KEY_FAMILY_PREFIXES = [
-  'inputtokencount',
-  'outputtokencount',
-  'tokencount',
-  'passwordpolicy',
-  'priorauthorization',
-  'authorizationdecision',
-  'credentialpolicy',
-  'apikeypolicy',
-  'sessioncookiepolicy',
-  'fortunecookie',
-  'secretary',
-  'tokenizer',
-];
-const COLLAPSED_SENSITIVE_FRAGMENTS = [
-  'token',
-  'secret',
-  'credential',
-  'password',
-  'passwd',
-  'authorization',
-  'cookie',
-  'apikey',
-  'privatekey',
-  'bearer',
-];
-const AUTHORIZATION_BEARER_RE = /\bauthorization\s*:\s*bearer\b/i;
-const BEARER_CREDENTIAL_RE = /\bbearer\s+\S+/i;
-const GITHUB_TOKEN_RE = /\b(?:gh[pousr]_[A-Za-z0-9]{16,}|github_pat_[A-Za-z0-9_]{20,})\b/i;
-const TOKEN_ENV_NAME_RE =
-  /\b[A-Z][A-Z0-9]*(?:_[A-Z0-9]+)*_(?:ACCESS_TOKEN|API_KEY|AUTH_TOKEN|CLIENT_SECRET|PRIVATE_KEY|TOKEN|PASSWORD|CREDENTIALS)\b/i;
-const PRIVATE_KEY_RE = /-----BEGIN(?: [A-Z0-9]+)* PRIVATE KEY-----/i;
 const CROCKFORD32 = '0123456789ABCDEFGHJKMNPQRSTVWXYZ';
+const DELIVERY_CONTRACT_SCHEMA = 'aitm.delivery-contract/v1';
+const DELIVERY_CONTRACT_RECORD_TYPE = 'singleton-projection';
+const DELIVERY_CONTRACT_SAFE_KEYS = Object.freeze([
+  'authorityEpoch',
+  'coordinatorGrantId',
+  'verificationCommands',
+]);
 
 function recordError(category) {
   return new TypeError(`record-envelope:${category}`);
@@ -107,63 +84,6 @@ function isCanonicalInstant(value) {
   }
   const timestamp = Date.parse(value);
   return Number.isFinite(timestamp) && new Date(timestamp).toISOString() === value;
-}
-
-function collapsedSecretKey(key) {
-  return key.toLowerCase().replace(/[^a-z0-9]/g, '');
-}
-
-function containsSensitiveKeyFragment(value) {
-  return COLLAPSED_SENSITIVE_FRAGMENTS.some((fragment) => value.includes(fragment));
-}
-
-function containsAuthPatAbbreviation(value) {
-  return value.includes('auth') || value.includes('pat');
-}
-
-function isSafeSemanticKey(collapsed) {
-  const family = SAFE_KEY_FAMILY_PREFIXES.find((prefix) => collapsed.startsWith(prefix));
-  if (family === undefined) return false;
-  const suffix = collapsed.slice(family.length);
-  return (
-    !containsSensitiveKeyFragment(suffix) &&
-    !containsAuthPatAbbreviation(suffix) &&
-    !suffix.includes('header')
-  );
-}
-
-function isSecretKey(key) {
-  const collapsed = collapsedSecretKey(key);
-  if (isSafeSemanticKey(collapsed)) return false;
-  return containsSensitiveKeyFragment(collapsed) || containsAuthPatAbbreviation(collapsed);
-}
-
-function containsCredentialSignature(value) {
-  return (
-    AUTHORIZATION_BEARER_RE.test(value) ||
-    BEARER_CREDENTIAL_RE.test(value) ||
-    GITHUB_TOKEN_RE.test(value) ||
-    TOKEN_ENV_NAME_RE.test(value) ||
-    PRIVATE_KEY_RE.test(value)
-  );
-}
-
-function assertNoSecretKeys(value) {
-  if (value === null || typeof value !== 'object') return;
-
-  for (const key of Object.keys(value)) {
-    if (isSecretKey(key)) throw recordError('secret');
-    assertNoSecretKeys(value[key]);
-  }
-}
-
-function assertNoCredentialValues(value) {
-  if (typeof value === 'string') {
-    if (containsCredentialSignature(value)) throw recordError('secret');
-    return;
-  }
-  if (value === null || typeof value !== 'object') return;
-  for (const child of Object.values(value)) assertNoCredentialValues(child);
 }
 
 function assertLink(value, category) {
@@ -208,7 +128,25 @@ function validateEnvelope(envelope, { requireCurrentForecast = false } = {}) {
   if (typeof envelope.payloadHash !== 'string' || !HASH_RE.test(envelope.payloadHash)) {
     throw recordError('payload-hash');
   }
-  assertNoSecretKeys(envelope.payload);
+  const isDeliveryContract =
+    ['singleton-projection', 'contract-sealed', 'contract-amended'].includes(envelope.recordType) &&
+    envelope.payload?.schema === DELIVERY_CONTRACT_SCHEMA;
+  if (isDeliveryContract) {
+    assertNoSecretRecordData(envelope.payload, {
+      safeKeyNames: DELIVERY_CONTRACT_SAFE_KEYS,
+    });
+    validateDeliveryContract(envelope.payload);
+    if (
+      envelope.payload.authorityEpoch !== envelope.authority.epoch ||
+      envelope.payload.coordinatorGrantId !== envelope.authority.grantId ||
+      (envelope.recordType === DELIVERY_CONTRACT_RECORD_TYPE &&
+        envelope.payload.recordId !== envelope.recordId)
+    ) {
+      throw recordError('delivery-contract-authority');
+    }
+  } else {
+    assertNoSecretRecordData(envelope.payload);
+  }
   assertNoCredentialValues(envelope);
   if (envelope.recordType === FORECAST_RECORD_TYPE) {
     validateEstimationForecast(envelope.payload, {
@@ -260,6 +198,8 @@ function deepFreeze(value) {
 export function hashRecordPayload(payload) {
   return `sha256:${createHash('sha256').update(canonicalRecordJson(payload)).digest('hex')}`;
 }
+
+export { assertNoSecretRecordData } from './record-secret-policy.mjs';
 
 function encodeBase32(value, length) {
   let remaining = value;
@@ -320,10 +260,9 @@ export function createAitmRecordEnvelope({
 
 function canonicalCommentRecordJson(envelope) {
   const recordJson = canonicalRecordJson(envelope);
-  if (recordJson.includes('-->')) throw recordError('unsafe-comment');
   // HTML comments cannot safely carry a raw double hyphen. JSON's Unicode
-  // escape is value-preserving, so command flags such as `--test` can remain
-  // exact in the parsed envelope without changing canonical payload hashes.
+  // escape is value-preserving, so command flags such as `--test` and complete
+  // marker strings can remain exact after parsing without changing hashes.
   return recordJson.replaceAll('--', '-\\u002d');
 }
 

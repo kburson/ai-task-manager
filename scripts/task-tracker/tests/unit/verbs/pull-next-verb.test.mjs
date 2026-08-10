@@ -6,6 +6,7 @@ import { strict as assert } from 'node:assert';
 import { test } from 'node:test';
 
 import { runPullNext } from '../../../verbs/pull-next.mjs';
+import { runPromote } from '../../../verbs/promote.mjs';
 
 const cfg = { repo: 'o/r', projectId: 'PROJ_1' };
 
@@ -78,6 +79,98 @@ test('runPullNext promotes lowest-rank refine child', async () => {
   assert.equal(result.childNumber, 103);
   assert.equal(result.childRank, 3);
   assert.deepEqual(calls.promotes, [['103']]);
+});
+
+test('runPullNext delegates the selected child through the real promote bind seam (#1114)', async () => {
+  const { deps } = makeDeps({
+    children: [{ number: 103, state: 'refine', rank: 3 }],
+  });
+  delete deps.promote;
+
+  const moves = [];
+  const resolvedIssues = [];
+  deps.resolveProjectDir = ({ issue }) => {
+    resolvedIssues.push(issue);
+    return '/repo/worktrees/epic-100';
+  };
+  const refineBody = `<!-- aitm-last-known-state: refine -->
+<!-- aitm-last-known-state-ts: 2026-08-05T00:00:00Z -->
+
+## User Story
+
+As an operator
+I want the selected child promoted
+So that JIT planning can continue
+
+<!-- aitm-refine-complete: 2026-08-05T00:00:00Z -->
+<!-- aitm-refinement-rationale: {"size":"a","estimate":"b","priority":"c"} -->
+
+## Acceptance Criteria
+
+- [ ] Selected child reaches Plan
+`;
+  deps.promoteDeps = {
+    // This models the active epic bind that rejects a direct child promote.
+    // pull-next must replace it only for its already-selected child.
+    assertBound: (issueNumber) => {
+      throw new Error(`Bind mismatch: active is #100, target is #${issueNumber}`);
+    },
+    resolveProjectDir: ({ issue, deps: projectDirDeps }) => {
+      assert.equal(issue, 103);
+      assert.equal(projectDirDeps.projectDir, '/repo/worktrees/epic-100');
+      return projectDirDeps.projectDir;
+    },
+    fetchIssueBody: async () => ({ body: refineBody }),
+    mutateIssueBody: async ({ mutate }) => {
+      mutate(refineBody);
+      return { status: 'ok', attempts: 1 };
+    },
+    getLiveState: async () => 'refine',
+    runMoveState: async ({ issueNumber, target }) => {
+      moves.push({ issueNumber, target });
+      return 0;
+    },
+    spawnVerb: async () => 0,
+    epicChildren: { fetchSiblings: async () => [] },
+    decomposition: {
+      projectDir: process.cwd(),
+      loadProjectFieldDefs: () => [],
+      projectValuesForIssue: async () => ({ size: 'XS', estimate: 1 }),
+    },
+    refinementEstimate: {
+      loadProjectFieldDefs: () => [],
+      projectValuesForIssue: async () => ({ size: 'S', estimate: 1, priority: 'P1' }),
+      listCommentBodies: async () => [],
+      postComment: async () => {},
+      writeIssueBody: async () => {},
+    },
+    refineToPlanGate: async () => ({ ok: true, blockers: [] }),
+    codeCompleteGate: async () => ({ ok: true, blockers: [], shas: [] }),
+    commitTrailHeadGate: async () => ({ ok: true, headSha: 'deadbeef', trailShas: [] }),
+  };
+
+  const result = await runPullNext({ epicNumber: 100, cfg, deps });
+
+  assert.equal(result.status, 'pulled');
+  assert.equal(result.childNumber, 103);
+  assert.deepEqual(resolvedIssues, [100], 'execution authority comes from the bound epic');
+  assert.deepEqual(moves, [{ issueNumber: 103, target: 'plan' }]);
+});
+
+test('direct promote remains fail-closed on a mismatched bind (#1114)', async () => {
+  await assert.rejects(
+    () =>
+      runPromote({
+        issueNumber: 103,
+        cfg,
+        deps: {
+          assertBound: () => {
+            throw new Error('Bind mismatch: active is #100, target is #103');
+          },
+        },
+      }),
+    /Bind mismatch: active is #100, target is #103/
+  );
 });
 
 test('runPullNext skips a child whose blocker is not Done (#248)', async () => {

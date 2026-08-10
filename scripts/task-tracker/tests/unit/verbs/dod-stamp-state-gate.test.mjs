@@ -20,6 +20,7 @@ import { mkdtempSync, mkdirSync, writeFileSync, rmSync, chmodSync } from 'node:f
 import { verbDodStamp } from '../../../verbs/dod-stamp.mjs';
 import { verbAcStamp } from '../../../verbs/ac-stamp.mjs';
 import { projectScratchDir } from '../../../lib/scratch-dir.mjs';
+import { pexecGithubBodyStore } from '../../helpers/pexec-body-store.mjs';
 
 const RESTRICTED_CMD = 'npm run test:all';
 const AC_LABEL = 'full suite must pass';
@@ -93,8 +94,9 @@ function hashish(s) {
 }
 
 function makePexec({ body, verifierCalled }) {
-  return async (bin, args = []) => {
-    if (bin === 'gh') return { stdout: body ?? '', stderr: '' };
+  return async (bin, args = [], options = {}) => {
+    const gh = pexecGithubBodyStore({ bin, args, options, fallbackBody: body ?? '' });
+    if (gh) return gh;
     if (bin === 'git') {
       if (args.includes('status')) return { stdout: '', stderr: '' };
       return { stdout: 'abc1234\n', stderr: '' };

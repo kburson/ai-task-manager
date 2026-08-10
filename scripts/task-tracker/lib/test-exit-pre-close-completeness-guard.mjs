@@ -12,6 +12,7 @@
 // Scope: only fires for test → review. Fail-open when ctx.body is missing.
 
 import { uncheckedPreCloseCheckboxes } from '../close-gate.mjs';
+import { hasAcceptedTestEvidence } from './github-records/lifecycle-gate-source.mjs';
 
 export const GUARD_ID = 'test-exit-pre-close-completeness';
 
@@ -20,6 +21,7 @@ export const testExitPreCloseCompletenessGuard = {
   run(ctx) {
     if (ctx?.toState && ctx.toState !== 'review') return { ok: true };
     if (typeof ctx?.body !== 'string') return { ok: true };
+    if (hasAcceptedTestEvidence(ctx.lifecycleEvidence)) return { ok: true };
     const stillUnticked = uncheckedPreCloseCheckboxes(ctx.body);
     if (stillUnticked.length === 0) return { ok: true };
     const blockers = stillUnticked.map(

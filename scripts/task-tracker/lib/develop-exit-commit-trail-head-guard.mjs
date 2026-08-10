@@ -15,6 +15,7 @@
 
 import { gateCommitTrailContainsHead } from './code-complete-gate.mjs';
 import { isNoCommitKind } from './issue-kind.mjs';
+import { hasAcceptedTestEvidence } from './github-records/lifecycle-gate-source.mjs';
 import { resolveProjectDir } from './project-dir.mjs';
 
 export const GUARD_ID = 'develop-exit-commit-trail-head';
@@ -24,6 +25,7 @@ export const developExitCommitTrailHeadGuard = {
   async run(ctx) {
     if (ctx?.toState && ctx.toState !== 'test') return { ok: true };
     if (!ctx || !ctx.cfg || ctx.issueNumber == null) return { ok: true };
+    if (hasAcceptedTestEvidence(ctx.lifecycleEvidence)) return { ok: true };
     // #494, #500 — no-commit-lane issues (audit/research/spike/epic) carry no
     // `### 🔗 Commits` trail (their evidence is an `aitm-deliverable-posted`
     // marker checked by `gateCodeComplete`), so a HEAD-in-trail requirement is

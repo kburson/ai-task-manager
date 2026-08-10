@@ -660,6 +660,30 @@ export function bodyOf(result) {
   return result.body ?? '';
 }
 
+// #1085 — directory-governed timing uses the same human table as the legacy
+// timing comment. The existing body is retained byte-for-byte as the prefix;
+// only a deterministic normalized summary is appended for projection readers.
+// This function is render-only and cannot grant lifecycle or timing authority.
+export function renderTimingSingletonMarkdown({ timingBody, timingProjection } = {}) {
+  if (
+    typeof timingBody !== 'string' ||
+    timingBody.length === 0 ||
+    timingProjection?.schema !== 'aitm.timing-projection/v1' ||
+    !Number.isSafeInteger(timingProjection?.revision) ||
+    timingProjection.revision <= 0
+  ) {
+    throw new TypeError('timing-singleton-projection:input');
+  }
+  const body = timingBody.endsWith('\n') ? timingBody : `${timingBody}\n`;
+  return (
+    `${body}\n### Normalized timing projection\n\n` +
+    `- Total active: ${formatDurationSeconds(timingProjection.totals.totalActiveSec)}\n` +
+    `- Total idle: ${formatDurationSeconds(timingProjection.totals.totalIdleSec)}\n` +
+    `- Engaged: ${formatDurationSeconds(timingProjection.totals.engagedSec)}\n` +
+    `- Plan: ${timingProjection.totals.planMin} min\n`
+  );
+}
+
 // Internal symbols — exported under a dedicated namespace strictly so the
 // sibling `gh-timing-comment.internals.mjs` module can re-export them for
 // tests. Production code MUST NOT import `__internals` directly; it is not
