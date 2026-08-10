@@ -9,7 +9,9 @@
 // This is a heuristic, not truth. The threshold is tunable via config
 // (idleThresholdMinutes, default 5).
 
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync } from 'node:fs';
+
+import { scanJsonlRecords } from './lib/jsonl-line-scanner.mjs';
 
 // EPIC #823 timing model v2 (C3, AC1): a phase's active time is computed as its
 // span − Σ(pause/switch-out→resume brackets), reading no `idle`/`active-work`
@@ -23,23 +25,18 @@ const ACTIVITY_TYPES = new Set(['user', 'assistant']);
 
 export function collectEventTimestamps(filePath, startMs, endMs) {
   if (!existsSync(filePath)) return [];
-  const lines = readFileSync(filePath, 'utf8').split('\n').filter(Boolean);
   const out = [];
-  for (const l of lines) {
-    let o;
-    try {
-      o = JSON.parse(l);
-    } catch {
-      continue;
-    }
-    if (!ACTIVITY_TYPES.has(o.type)) continue;
-    if (o.isMeta || o.isSidechain) continue;
-    if (!o.timestamp) continue;
-    const t = Date.parse(o.timestamp);
-    if (Number.isNaN(t)) continue;
-    if (t < startMs || t > endMs) continue;
-    out.push(t);
-  }
+  scanJsonlRecords(filePath, {
+    onRecord(o) {
+      if (!ACTIVITY_TYPES.has(o.type)) return;
+      if (o.isMeta || o.isSidechain) return;
+      if (!o.timestamp) return;
+      const t = Date.parse(o.timestamp);
+      if (Number.isNaN(t)) return;
+      if (t < startMs || t > endMs) return;
+      out.push(t);
+    },
+  });
   out.sort((a, b) => a - b);
   return out;
 }

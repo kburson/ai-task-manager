@@ -64,7 +64,9 @@ function repoRoot() {
 // increase is the intentional package surface for the write-side contract.
 // #1191 adds the issue-resident location marker and its relocation gate; both
 // are shipped runtime modules, so the exact packed surface grows by two.
-const ENTRY_CEILING = 630;
+// #1205 adds one shared bounded JSONL scanner used by the word-count and
+// active-time lifecycle readers; the exact packed surface grows by one.
+const ENTRY_CEILING = 631;
 
 function packedFiles() {
   const out = execFileSync('npm', ['pack', '--dry-run', '--json'], {

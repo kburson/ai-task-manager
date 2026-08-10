@@ -9,6 +9,7 @@ import {
   collectTranscriptStringLeaves,
   normalizeTranscriptRecord,
 } from '../providers/transcript-normalizer.mjs';
+import { scanJsonlRecords } from './lib/jsonl-line-scanner.mjs';
 import { resolveSessionId } from './lib/session-id.mjs';
 
 export function projectKey() {
@@ -238,39 +239,34 @@ export function countWords(filePath, fromLine = 0, options = {}) {
     }
     return countResult();
   }
-  const lines = readFileSync(filePath, 'utf8').split('\n').filter(Boolean);
   let tier1 = 0;
   let chipWords = 0;
   let toolInputWords = 0;
   let toolResultWords = 0;
   let codexSchemaRecognized = false;
-  for (let i = 0; i < lines.length; i++) {
-    let obj;
-    try {
-      obj = JSON.parse(lines[i]);
-    } catch {
-      continue;
-    }
-    const normalized = normalizeTranscriptRecord(obj);
-    if (normalized.schema === 'codex-rollout-v1' && normalized.recognized) {
-      codexSchemaRecognized = true;
-    }
-    if (i < fromLine) continue;
-    const { events } = normalized;
-    for (const event of events) {
-      if (event.kind === 'text') {
-        if (isInjection(event.text)) continue;
-        tier1 += wordCount(event.text);
-      } else if (event.kind === 'tool-call') {
-        chipWords += wordCount(event.chip);
-        const leaves = collectTranscriptStringLeaves(event.input);
-        if (leaves.length) toolInputWords += wordCount(leaves.join(' '));
-      } else if (event.kind === 'tool-result') {
-        if (isInjection(event.text)) continue;
-        toolResultWords += wordCount(event.text);
+  const totalLines = scanJsonlRecords(filePath, {
+    onRecord(obj, i) {
+      const normalized = normalizeTranscriptRecord(obj);
+      if (normalized.schema === 'codex-rollout-v1' && normalized.recognized) {
+        codexSchemaRecognized = true;
       }
-    }
-  }
+      if (i < fromLine) return;
+      const { events } = normalized;
+      for (const event of events) {
+        if (event.kind === 'text') {
+          if (isInjection(event.text)) continue;
+          tier1 += wordCount(event.text);
+        } else if (event.kind === 'tool-call') {
+          chipWords += wordCount(event.chip);
+          const leaves = collectTranscriptStringLeaves(event.input);
+          if (leaves.length) toolInputWords += wordCount(leaves.join(' '));
+        } else if (event.kind === 'tool-result') {
+          if (isInjection(event.text)) continue;
+          toolResultWords += wordCount(event.text);
+        }
+      }
+    },
+  });
   const count = tier1 + chipWords;
   const fullExpansion = count + toolInputWords + toolResultWords;
   if (provider === 'codex' && !codexSchemaRecognized) {
@@ -280,5 +276,5 @@ export function countWords(filePath, fromLine = 0, options = {}) {
       onDiagnostic,
     });
   }
-  return countResult({ count, totalLines: lines.length, fullExpansion });
+  return countResult({ count, totalLines, fullExpansion });
 }
