@@ -93,6 +93,10 @@ function issueNumberFromVerb({ verb, rest }) {
   };
 }
 
+function isBindVerb(verb) {
+  return /^#\d+$/.test(String(verb || '')) || verb === 'start' || verb === 'resume';
+}
+
 async function fetchIssueBody({ issueNumber, repo }) {
   const { stdout } = await pexec(
     'gh',
@@ -147,6 +151,13 @@ export async function enforceIssueWorktreeLocation({
       recorded,
       live,
     });
+  }
+  // Legacy issues acquire their initial durable location at bind. A later verb
+  // that is invoked without the required bind may still run its existing
+  // semantic preflight, but this entry guard must not mutate the body before
+  // that preflight decides whether the verb itself is permitted.
+  if (!recorded && !isBindVerb(verb)) {
+    return { status: 'unrecorded', issueNumber: target.issueNumber, live };
   }
 
   const sessionIdProvider = deps.sessionId || currentSessionId;

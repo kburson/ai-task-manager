@@ -184,6 +184,20 @@ test('repository no-network mode preserves offline dispatcher preflight behavior
   assert.equal(fixture.calls.mutate, 0);
 });
 
+test('legacy issue does not mutate before a non-bind verb semantic preflight', async () => {
+  const fixture = depsFor();
+  const result = await enforceIssueWorktreeLocation({
+    verb: 'review',
+    rest: ['1191'],
+    cfg: { repo: 'owner/repo' },
+    invokingDir: '/repo/.worktrees/1191',
+    deps: fixture.deps,
+  });
+  assert.equal(result.status, 'unrecorded');
+  assert.equal(fixture.calls.fetch, 1);
+  assert.equal(fixture.calls.mutate, 0);
+});
+
 test('CLI entrypoint checks issue-resident location before local binding and verb preflight', () => {
   const source = readFileSync(new URL('../../../task-tracker.mjs', import.meta.url), 'utf8');
   const durable = source.indexOf('enforceIssueWorktreeLocation(');
