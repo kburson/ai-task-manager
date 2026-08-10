@@ -14,6 +14,11 @@ import {
   ForeignWorktreeBindingError,
   parseForeignWorktreeOverride,
 } from './lib/worktree-binding-guard.mjs';
+import {
+  enforceIssueWorktreeLocation,
+  parseWorktreeRelocationConfirmation,
+  WorktreeRelocationRequiredError,
+} from './lib/worktree-relocation-guard.mjs';
 
 function parseRepoFromRemote(remoteUrl) {
   const s = remoteUrl.trim().replace(/\.git$/, '');
@@ -197,8 +202,24 @@ if (_isMain)
       verbHelp(helpRequest.target);
       process.exit(0);
     }
-    const foreignWorktree = parseForeignWorktreeOverride(process.argv.slice(2));
+    const relocation = parseWorktreeRelocationConfirmation(process.argv.slice(2));
+    const foreignWorktree = parseForeignWorktreeOverride(relocation.argv);
     const ctx = buildContext(foreignWorktree.argv);
+    try {
+      await enforceIssueWorktreeLocation({
+        verb: ctx.verb,
+        rest: ctx.rest,
+        cfg: ctx.cfg,
+        invokingDir: process.cwd(),
+        confirmRelocation: relocation.confirmRelocation,
+      });
+    } catch (error) {
+      if (!(error instanceof WorktreeRelocationRequiredError)) throw error;
+      process.stdout.write(`${error.promptToken}\n`);
+      process.stderr.write(`${error.message}\n`);
+      process.exitCode = 12;
+      return;
+    }
     try {
       await enforceVerbWorktreeBinding({
         verb: ctx.verb,

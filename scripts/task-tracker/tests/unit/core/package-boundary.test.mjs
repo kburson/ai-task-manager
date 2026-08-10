@@ -62,7 +62,9 @@ function repoRoot() {
 // further package-surface growth still requires an explicit review.
 // #1167 adds the shared evidence-provenance runtime module; this one-entry
 // increase is the intentional package surface for the write-side contract.
-const ENTRY_CEILING = 628;
+// #1191 adds the issue-resident location marker and its relocation gate; both
+// are shipped runtime modules, so the exact packed surface grows by two.
+const ENTRY_CEILING = 630;
 
 function packedFiles() {
   const out = execFileSync('npm', ['pack', '--dry-run', '--json'], {
