@@ -29,6 +29,11 @@ import { fileURLToPath } from 'node:url';
 const pexec = promisify(execFile);
 const __dir = path.dirname(fileURLToPath(import.meta.url)) + '/..';
 const CLI = path.resolve(__dir, '..', '..', 'task-tracker.mjs');
+// #1159 — this file measured 27.3s on an idle host. The former 30s ceiling
+// left only ~9% headroom and killed healthy CLI/gh-shim children under load;
+// a 120s retry still expired under two isolated full unit lanes, so 600s keeps
+// a 10-minute hard bound while allowing the host's process-launch queue to drain.
+const REVIEW_CLI_TIMEOUT_MS = 600_000;
 
 const OPT_REVIEW = 'OPT_review';
 const OPT_DEV = 'OPT_dev';
@@ -275,7 +280,7 @@ async function run(sandbox, binDir, args) {
     TT_SKIP_NETWORK: '',
   };
   try {
-    const r = await pexec('node', [CLI, ...args], { env, timeout: 30000 });
+    const r = await pexec('node', [CLI, ...args], { env, timeout: REVIEW_CLI_TIMEOUT_MS });
     return { code: 0, stdout: r.stdout, stderr: r.stderr };
   } catch (err) {
     return { code: err.code ?? 1, stdout: err.stdout || '', stderr: err.stderr || '' };
