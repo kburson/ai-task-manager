@@ -55,14 +55,14 @@ of CI results rather than a producer of them.
 Local machines run agent-hours. GitHub runners run test-hours. The boundary sits
 at the Test stage, where cost inverts.
 
-| Stage | Where | What executes |
-| --- | --- | --- |
-| Backlog → Develop | Local | Agent work; `verify-develop.mjs` targeted tests |
-| Test | GitHub PR | `fast` + `slow` on the story's own base |
-| Review | Local | Issue-structure and story-record inspection |
-| Merge | GitHub queue | `fast` + `slow` on the speculative merged tree |
-| Triage on red | Local | `node --test` on the manifest's failing files only |
-| Escalation | Cloud | Only when the failing files pass locally |
+| Stage             | Where        | What executes                                      |
+| ----------------- | ------------ | -------------------------------------------------- |
+| Backlog → Develop | Local        | Agent work; `verify-develop.mjs` targeted tests    |
+| Test              | GitHub PR    | `fast` + `slow` on the story's own base            |
+| Review            | Local        | Issue-structure and story-record inspection        |
+| Merge             | GitHub queue | `fast` + `slow` on the speculative merged tree     |
+| Triage on red     | Local        | `node --test` on the manifest's failing files only |
+| Escalation        | Cloud        | Only when the failing files pass locally           |
 
 **Local concurrency** is bounded by a configurable ceiling on stories in `plan`
 or `develop` — the only stages that consume local resources. **CI concurrency**
