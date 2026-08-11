@@ -221,7 +221,7 @@ for (const [failureName, exitCode] of [
       assignees: ['alice'],
       moveCodes: [exitCode],
     });
-    const states = ['assigned', 'backlog', 'backlog'];
+    const states = ['assigned', 'backlog', 'backlog', 'backlog', 'backlog', 'backlog'];
     deps.getLiveState = async () => states.shift();
 
     const result = await runAssign({
@@ -415,7 +415,7 @@ test('ambiguous landed add is compensated when the subsequent Assigned move is r
 
 test('concurrent replacement owner after final removal restores and verifies Assigned', async () => {
   const calls = { mutations: [], moves: [] };
-  const states = ['assigned', 'backlog', 'assigned'];
+  let state = 'assigned';
   let read = 0;
   const result = await runAssign({
     issueNumber: 47,
@@ -424,10 +424,14 @@ test('concurrent replacement owner after final removal restores and verifies Ass
     cfg,
     deps: {
       resolveLogin: async () => 'alice',
-      getLiveState: async () => states.shift(),
+      getLiveState: async () => state,
       fetchAssignees: async () => (read++ === 0 ? ['alice'] : ['bob']),
       mutateAssignee: async (args) => calls.mutations.push(args),
-      runMoveState: async ({ target }) => calls.moves.push(target) && 0,
+      runMoveState: async ({ target }) => {
+        calls.moves.push(target);
+        state = target;
+        return 0;
+      },
     },
   });
 
@@ -439,7 +443,7 @@ test('concurrent replacement owner after final removal restores and verifies Ass
 
 test('replacement-owner restoration failure is nonzero and reports the verified Backlog state', async () => {
   const calls = { mutations: [], moves: [] };
-  const states = ['assigned', 'backlog', 'backlog'];
+  let state = 'assigned';
   let read = 0;
   const moveCodes = [0, 11];
   const result = await runAssign({
@@ -449,10 +453,15 @@ test('replacement-owner restoration failure is nonzero and reports the verified 
     cfg,
     deps: {
       resolveLogin: async () => 'alice',
-      getLiveState: async () => states.shift(),
+      getLiveState: async () => state,
       fetchAssignees: async () => (read++ === 0 ? ['alice'] : ['bob']),
       mutateAssignee: async (args) => calls.mutations.push(args),
-      runMoveState: async ({ target }) => calls.moves.push(target) && moveCodes.shift(),
+      runMoveState: async ({ target }) => {
+        calls.moves.push(target);
+        const exitCode = moveCodes.shift();
+        if (exitCode === 0) state = target;
+        return exitCode;
+      },
     },
   });
 
@@ -464,7 +473,8 @@ test('replacement-owner restoration failure is nonzero and reports the verified 
 
 test('replacement-owner restoration with an unreadable postcondition is indeterminate', async () => {
   const calls = { mutations: [], moves: [] };
-  let stateReads = 0;
+  let state = 'assigned';
+  let restoring = false;
   let assigneeReads = 0;
   const result = await runAssign({
     issueNumber: 49,
@@ -474,14 +484,17 @@ test('replacement-owner restoration with an unreadable postcondition is indeterm
     deps: {
       resolveLogin: async () => 'alice',
       getLiveState: async () => {
-        stateReads += 1;
-        if (stateReads === 1) return 'assigned';
-        if (stateReads === 2) return 'backlog';
+        if (!restoring) return state;
         throw new Error('restoration state unreadable');
       },
       fetchAssignees: async () => (assigneeReads++ === 0 ? ['alice'] : ['bob']),
       mutateAssignee: async (args) => calls.mutations.push(args),
-      runMoveState: async ({ target }) => calls.moves.push(target) && 0,
+      runMoveState: async ({ target }) => {
+        calls.moves.push(target);
+        if (target === 'backlog') state = 'backlog';
+        else restoring = true;
+        return 0;
+      },
     },
   });
 
@@ -493,7 +506,7 @@ test('replacement-owner restoration with an unreadable postcondition is indeterm
 
 test('replacement-owner restoration propagates post-Status move evidence failure', async () => {
   const calls = { moves: [] };
-  const states = ['assigned', 'backlog', 'assigned'];
+  let state = 'assigned';
   let assigneeReads = 0;
   const moveCodes = [0, 7];
   const result = await runAssign({
@@ -503,10 +516,15 @@ test('replacement-owner restoration propagates post-Status move evidence failure
     cfg,
     deps: {
       resolveLogin: async () => 'alice',
-      getLiveState: async () => states.shift(),
+      getLiveState: async () => state,
       fetchAssignees: async () => (assigneeReads++ === 0 ? ['alice'] : ['bob']),
       mutateAssignee: async () => {},
-      runMoveState: async ({ target }) => calls.moves.push(target) && moveCodes.shift(),
+      runMoveState: async ({ target }) => {
+        calls.moves.push(target);
+        const exitCode = moveCodes.shift();
+        state = target;
+        return exitCode;
+      },
     },
   });
 

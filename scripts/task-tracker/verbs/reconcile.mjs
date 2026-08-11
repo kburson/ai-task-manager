@@ -429,28 +429,30 @@ export async function runReconcile({
       };
     }
 
-    if (live !== sentinel) {
-      // This recovery path intentionally bypasses lifecycle/history writers,
-      // but Assigned remains a hard data invariant. The public verb already
-      // holds the per-issue lock here, so re-read ownership immediately before
-      // the raw Status-only write just as the central mover does.
-      if (sentinel === 'assigned') {
-        const guard = await assignedRequiresAssigneeGuard.run({
-          issueNumber,
-          repo: cfg.repo,
-          cfg,
-          deps: { fetchAssignedInvariantAssignees: fetchAssignees },
-        });
-        if (!guard.ok) {
-          return {
-            status: 'transition-failed',
-            exitCode: guard.exitCode,
-            walked: [],
-            failedAt: sentinel,
-            message: `reconcile revert-to-sentinel: ${guard.reason}`,
-          };
-        }
+    // This recovery path intentionally bypasses lifecycle/history writers, but
+    // Assigned remains a hard data invariant. Evidence-only repair can make an
+    // ownerless live Assigned state look authoritative just as surely as a raw
+    // Status write can, so guard every drift repair after the exact no-drift
+    // return. The public verb holds the per-issue lock for this fresh read.
+    if (sentinel === 'assigned') {
+      const guard = await assignedRequiresAssigneeGuard.run({
+        issueNumber,
+        repo: cfg.repo,
+        cfg,
+        deps: { fetchAssignedInvariantAssignees: fetchAssignees },
+      });
+      if (!guard.ok) {
+        return {
+          status: 'transition-failed',
+          exitCode: guard.exitCode,
+          walked: [],
+          failedAt: sentinel,
+          message: `reconcile revert-to-sentinel: ${guard.reason}`,
+        };
       }
+    }
+
+    if (live !== sentinel) {
       const exitCode = await runSentinelStatusWrite({
         issueNumber,
         target: sentinel,

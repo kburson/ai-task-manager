@@ -209,16 +209,131 @@ async function inspectFailedMove({
   }
 }
 
-async function readAssignmentSnapshot({ issueNumber, cfg, getLiveState, fetchAssignees }) {
-  const state = await getLiveState({ issueNumber, cfg });
+function assertRecognizedState(state, context = 'live project state') {
   if (!stateIds().includes(state)) {
-    throw new Error('live project state is missing or unrecognized');
+    throw new Error(`${context} is missing or unrecognized`);
   }
-  const assignees = await readAssigneesWithRetry(fetchAssignees, {
-    issueNumber,
-    repo: cfg.repo,
-  });
-  return { state, assignees };
+  return state;
+}
+
+async function readPairedAssignmentSnapshot({ issueNumber, cfg, getLiveState, fetchAssignees }) {
+  let stateBefore = null;
+  let assignees = null;
+  let stateAfter = null;
+  try {
+    stateBefore = assertRecognizedState(
+      await getLiveState({ issueNumber, cfg }),
+      'live project state before assignee read'
+    );
+  } catch (error) {
+    return { stateBefore, stateAfter, state: null, assignees, error };
+  }
+  try {
+    assignees = parseAssigneeLogins(await fetchAssignees({ issueNumber, repo: cfg.repo }));
+  } catch (error) {
+    return { stateBefore, stateAfter, state: null, assignees, error };
+  }
+  try {
+    stateAfter = assertRecognizedState(
+      await getLiveState({ issueNumber, cfg }),
+      'live project state after assignee read'
+    );
+  } catch (error) {
+    return { stateBefore, stateAfter, state: null, assignees, error };
+  }
+  return {
+    stateBefore,
+    stateAfter,
+    state: stateBefore === stateAfter ? stateBefore : null,
+    assignees,
+  };
+}
+
+async function observeFinalRemovalPostcondition({
+  issueNumber,
+  cfg,
+  getLiveState,
+  fetchAssignees,
+  attempts = 3,
+}) {
+  let consecutiveClean = 0;
+  let lastSnapshot = null;
+  let lastError = null;
+  let readFailed = false;
+
+  for (let attempt = 0; attempt < attempts; attempt += 1) {
+    const snapshot = await readPairedAssignmentSnapshot({
+      issueNumber,
+      cfg,
+      getLiveState,
+      fetchAssignees,
+    });
+    lastSnapshot = snapshot;
+    if (snapshot.assignees?.length > 0) {
+      return { ...snapshot, kind: 'owner-present' };
+    }
+    if (snapshot.error) {
+      readFailed = true;
+      lastError = snapshot.error;
+      consecutiveClean = 0;
+      continue;
+    }
+    if (snapshot.state === 'backlog') {
+      consecutiveClean += 1;
+      if (consecutiveClean >= 2) return { ...snapshot, kind: 'confirmed-clean' };
+    } else {
+      consecutiveClean = 0;
+    }
+  }
+
+  return {
+    kind: 'indeterminate',
+    state: lastSnapshot?.state ?? null,
+    stateBefore: lastSnapshot?.stateBefore ?? null,
+    stateAfter: lastSnapshot?.stateAfter ?? null,
+    assignees: lastSnapshot?.assignees ?? null,
+    readFailed,
+    error:
+      lastError?.message ||
+      `post-removal state did not stabilize as Backlog with no assignees` +
+        (lastSnapshot ? ` (Status ${lastSnapshot.stateBefore} → ${lastSnapshot.stateAfter})` : ''),
+  };
+}
+
+async function observeAssignedRestoration({
+  issueNumber,
+  cfg,
+  getLiveState,
+  fetchAssignees,
+  attempts = 3,
+}) {
+  let lastSnapshot = null;
+  let lastError = null;
+  let successfulReads = 0;
+  for (let attempt = 0; attempt < attempts; attempt += 1) {
+    const snapshot = await readPairedAssignmentSnapshot({
+      issueNumber,
+      cfg,
+      getLiveState,
+      fetchAssignees,
+    });
+    lastSnapshot = snapshot;
+    if (snapshot.error) {
+      lastError = snapshot.error;
+      continue;
+    }
+    successfulReads += 1;
+    if (snapshot.state === 'assigned' && snapshot.assignees.length > 0) {
+      return { ...snapshot, kind: 'confirmed' };
+    }
+  }
+  if (successfulReads === attempts) return { kind: 'failed', ...lastSnapshot };
+  return {
+    kind: 'indeterminate',
+    state: lastSnapshot?.state ?? null,
+    assignees: lastSnapshot?.assignees ?? null,
+    error: lastError?.message || 'Assigned restoration postcondition was not observable',
+  };
 }
 
 async function restoreAssignedAndVerify({
@@ -229,33 +344,30 @@ async function restoreAssignedAndVerify({
   fetchAssignees,
 }) {
   const restoreExit = await runMoveState({ issueNumber, target: 'assigned', cfg });
-  try {
-    const snapshot = await readAssignmentSnapshot({
-      issueNumber,
-      cfg,
-      getLiveState,
-      fetchAssignees,
-    });
-    if (snapshot.state === 'assigned' && snapshot.assignees.length > 0) {
-      return {
-        kind: restoreExit === 0 ? 'restored' : 'restored-move-incomplete',
-        restoreExit,
-        ...snapshot,
-      };
-    }
-    return { kind: 'failed', restoreExit, ...snapshot };
-  } catch (error) {
+  const observation = await observeAssignedRestoration({
+    issueNumber,
+    cfg,
+    getLiveState,
+    fetchAssignees,
+  });
+  if (observation.kind === 'confirmed') {
     return {
-      kind: 'indeterminate',
+      ...observation,
+      kind: restoreExit === 0 ? 'restored' : 'restored-move-incomplete',
       restoreExit,
-      state: null,
-      assignees: null,
-      error: error?.message || String(error),
     };
   }
+  return { ...observation, restoreExit };
 }
 
-export async function runAssign({ issueNumber, login, remove = false, cfg, deps = {} } = {}) {
+export async function runAssign({
+  issueNumber,
+  login,
+  remove = false,
+  expectedUnassigned = false,
+  cfg,
+  deps = {},
+} = {}) {
   if (!Number.isInteger(issueNumber) || issueNumber <= 0) {
     throw new Error('assign: issue# must be a positive integer');
   }
@@ -276,6 +388,23 @@ export async function runAssign({ issueNumber, login, remove = false, cfg, deps 
     }
     const before = parseAssigneeLogins(await fetchAssignees({ issueNumber, repo: cfg.repo }));
     const alreadyPresent = before.some((entry) => sameLogin(entry, resolvedLogin));
+
+    // Full-Auto claims are the only assignment mode that requires an empty
+    // ownership set. This snapshot is inside the caller-held issue lock and is
+    // the authoritative pre-mutation check; the wrapper's earlier read is only
+    // an optimistic fast refusal. Generic human-directed assignment retains its
+    // established ability to add another assignee.
+    if (!remove && expectedUnassigned && before.length > 0) {
+      return {
+        status: 'claim-refused-owner-present',
+        exitCode: 1,
+        issueNumber,
+        login: requestedLogin,
+        state,
+        assignees: before,
+        message: `claim refused because #${issueNumber} already has an assignee`,
+      };
+    }
 
     if (!remove) {
       if (!alreadyPresent) {
@@ -375,6 +504,39 @@ export async function runAssign({ issueNumber, login, remove = false, cfg, deps 
             compensationError,
             message: `assignment could not be verified: GitHub did not report ${resolvedLogin}`,
           };
+        }
+
+        if (expectedUnassigned) {
+          const foreignOwners = afterAdd.filter((entry) => !sameLogin(entry, resolvedLogin));
+          if (foreignOwners.length > 0) {
+            const compensationError = await safeCompensate({
+              action: () =>
+                mutateAssignee({
+                  issueNumber,
+                  repo: cfg.repo,
+                  login: requestedLogin,
+                  remove: true,
+                }),
+              fetchAssignees,
+              fetchArgs: { issueNumber, repo: cfg.repo },
+              login: resolvedLogin,
+              shouldBePresent: false,
+            });
+            return {
+              status: compensationError
+                ? 'claim-race-compensation-unverified'
+                : 'claim-refused-owner-present',
+              exitCode: 1,
+              issueNumber,
+              login: requestedLogin,
+              state,
+              assignees: foreignOwners,
+              compensationError,
+              message: compensationError
+                ? `another owner appeared during claim and removal of ${resolvedLogin} is unverified`
+                : `claim refused because another owner appeared during assignment`,
+            };
+          }
         }
       }
 
@@ -529,18 +691,31 @@ export async function runAssign({ issueNumber, login, remove = false, cfg, deps 
       };
     }
 
-    let afterRemove;
-    let verificationError = null;
-    try {
-      afterRemove = await readAssigneesWithRetry(fetchAssignees, {
+    if (removesFinalAssigned) {
+      const finalObservation = await observeFinalRemovalPostcondition({
         issueNumber,
-        repo: cfg.repo,
+        cfg,
+        getLiveState,
+        fetchAssignees,
       });
-    } catch (error) {
-      verificationError = error;
-    }
-    if (verificationError || afterRemove.some((entry) => sameLogin(entry, resolvedLogin))) {
-      if (removesFinalAssigned) {
+
+      if (finalObservation.kind === 'owner-present') {
+        const removedLoginRemains = finalObservation.assignees.some((entry) =>
+          sameLogin(entry, resolvedLogin)
+        );
+        if (finalObservation.state === 'assigned') {
+          return {
+            status: removedLoginRemains
+              ? 'remove-verification-failed-restored'
+              : 'unassigned-owner-remains-assigned',
+            ...(removedLoginRemains ? { exitCode: 1 } : {}),
+            issueNumber,
+            login: requestedLogin,
+            state: 'assigned',
+            assignees: finalObservation.assignees,
+          };
+        }
+
         const restoration = await restoreAssignedAndVerify({
           issueNumber,
           cfg,
@@ -548,130 +723,85 @@ export async function runAssign({ issueNumber, login, remove = false, cfg, deps 
           getLiveState,
           fetchAssignees,
         });
+        const statusBase = removedLoginRemains ? 'remove-verification-failed' : 'owner-remains';
         return {
           status:
             restoration.kind === 'restored'
-              ? 'remove-verification-failed-restored'
+              ? removedLoginRemains
+                ? 'remove-verification-failed-restored'
+                : 'unassigned-owner-remains-restored'
               : restoration.kind === 'restored-move-incomplete'
-                ? 'remove-verification-failed-restored-move-incomplete'
+                ? `${statusBase}-restored-move-incomplete`
                 : restoration.kind === 'indeterminate'
-                  ? 'remove-verification-failed-restore-indeterminate'
-                  : 'remove-verification-failed-restore-failed',
+                  ? `${statusBase}-restore-indeterminate`
+                  : `${statusBase}-restore-failed`,
           exitCode: restoration.kind === 'restored' ? 1 : restoration.restoreExit || 1,
+          issueNumber,
           login: requestedLogin,
           restoreExit: restoration.restoreExit,
           state: restoration.state,
-          message: verificationError
-            ? `assignee removal could not be verified: ${verificationError.message}` +
-              (restoration.error ? `; restoration is indeterminate: ${restoration.error}` : '')
-            : `GitHub still reports ${resolvedLogin} after removal`,
+          assignees: restoration.assignees || finalObservation.assignees,
+          message:
+            `${removedLoginRemains ? `GitHub still reports ${resolvedLogin}` : 'replacement owner remains'} after removal` +
+            (restoration.error ? `; restoration is indeterminate: ${restoration.error}` : ''),
         };
       }
-      return {
-        status: 'error',
-        exitCode: 1,
-        message: verificationError
-          ? `assignee removal could not be verified: ${verificationError.message}`
-          : `GitHub still reports ${resolvedLogin} after removal`,
-      };
-    }
 
-    if (removesFinalAssigned) {
-      let postState;
-      try {
-        postState = await getLiveState({ issueNumber, cfg });
-        if (!stateIds().includes(postState)) {
-          throw new Error('post-removal live project state is missing or unrecognized');
+      if (finalObservation.kind === 'indeterminate') {
+        if (finalObservation.readFailed) {
+          const restoration = await restoreAssignedAndVerify({
+            issueNumber,
+            cfg,
+            runMoveState,
+            getLiveState,
+            fetchAssignees,
+          });
+          return {
+            status:
+              restoration.kind === 'restored'
+                ? 'remove-verification-failed-restored'
+                : restoration.kind === 'restored-move-incomplete'
+                  ? 'remove-verification-failed-restored-move-incomplete'
+                  : restoration.kind === 'indeterminate'
+                    ? 'remove-verification-failed-restore-indeterminate'
+                    : 'remove-verification-failed-restore-failed',
+            exitCode: restoration.kind === 'restored' ? 1 : restoration.restoreExit || 1,
+            login: requestedLogin,
+            restoreExit: restoration.restoreExit,
+            state: restoration.state,
+            message:
+              `assignee removal could not be verified: ${finalObservation.error}` +
+              (restoration.error ? `; restoration is indeterminate: ${restoration.error}` : ''),
+          };
         }
-      } catch (error) {
         return {
           status: 'remove-outcome-indeterminate',
           exitCode: incompleteMoveExit || 1,
           login: requestedLogin,
-          message: `assignee removal landed but Status could not be verified: ${error?.message || String(error)}`,
+          state: finalObservation.state,
+          assignees: finalObservation.assignees,
+          message: `assignee removal landed but its paired postcondition is indeterminate: ${finalObservation.error}`,
         };
       }
-
-      if (afterRemove.length > 0) {
-        if (postState === 'assigned') {
-          return {
-            status: 'unassigned-owner-remains-assigned',
-            issueNumber,
-            login: requestedLogin,
-            state: 'assigned',
-            assignees: afterRemove,
-          };
-        }
-        if (postState !== 'backlog') {
-          return {
-            status: 'owner-remains-restore-indeterminate',
-            exitCode: incompleteMoveExit || 1,
-            login: requestedLogin,
-            state: postState,
-            assignees: afterRemove,
-            message:
-              `replacement ownership remains, but configured project Status is ${postState}; ` +
-              'refusing an unproven restoration',
-          };
-        }
-        const restoration = await restoreAssignedAndVerify({
+    } else {
+      let afterRemove;
+      try {
+        afterRemove = await readAssigneesWithRetry(fetchAssignees, {
           issueNumber,
-          cfg,
-          runMoveState,
-          getLiveState,
-          fetchAssignees,
+          repo: cfg.repo,
         });
-        if (restoration.kind === 'restored') {
-          return {
-            status: 'unassigned-owner-remains-restored',
-            issueNumber,
-            login: requestedLogin,
-            state: restoration.state,
-            assignees: restoration.assignees,
-          };
-        }
-        if (restoration.kind === 'indeterminate') {
-          return {
-            status: 'owner-remains-restore-indeterminate',
-            exitCode: restoration.restoreExit || 1,
-            login: requestedLogin,
-            state: restoration.state,
-            assignees: afterRemove,
-            message: `replacement owner remains but Assigned restoration is indeterminate: ${restoration.error}`,
-          };
-        }
-        if (restoration.kind === 'restored-move-incomplete') {
-          return {
-            status: 'owner-remains-restored-move-incomplete',
-            exitCode: restoration.restoreExit,
-            login: requestedLogin,
-            state: restoration.state,
-            assignees: restoration.assignees,
-            message:
-              `replacement owner and Assigned Status landed, but move completion evidence failed ` +
-              `with exit ${restoration.restoreExit}`,
-          };
-        }
+      } catch (error) {
         return {
-          status: 'owner-remains-restore-failed',
-          exitCode: restoration.restoreExit || 1,
-          login: requestedLogin,
-          state: restoration.state,
-          assignees: restoration.assignees,
-          message:
-            `replacement owner remains but Assigned restoration failed; ` +
-            `configured project Status is ${restoration.state}`,
+          status: 'error',
+          exitCode: 1,
+          message: `assignee removal could not be verified: ${error?.message || String(error)}`,
         };
       }
-
-      if (postState !== 'backlog') {
+      if (afterRemove.some((entry) => sameLogin(entry, resolvedLogin))) {
         return {
-          status: 'remove-state-inconsistent',
-          exitCode: incompleteMoveExit || 1,
-          login: requestedLogin,
-          state: postState,
-          assignees: afterRemove,
-          message: `final assignee was removed but configured project Status is ${postState}`,
+          status: 'error',
+          exitCode: 1,
+          message: `GitHub still reports ${resolvedLogin} after removal`,
         };
       }
     }
@@ -705,14 +835,23 @@ export async function runInvariantAwareClaim({ issueNumber, cfg, deps = {} } = {
       if (before.length > 0) {
         return { ok: false, kind: 'already-assigned', assignees: before };
       }
-      const result = await runAssignFn({ issueNumber, login: '@me', cfg, deps });
+      const result = await runAssignFn({
+        issueNumber,
+        login: '@me',
+        expectedUnassigned: true,
+        cfg,
+        deps,
+      });
+      if (result.status === 'claim-refused-owner-present') {
+        return { ok: false, kind: 'already-assigned', assignees: result.assignees };
+      }
       if (result.status === 'assigned' || result.status === 'already-assigned') {
         return { ok: true, claimed: true, state: result.state, login: result.login };
       }
       return {
         ok: false,
         kind: result.status,
-        assignees: [],
+        assignees: result.assignees || [],
         exitCode: result.exitCode || 1,
         message: result.message,
       };
