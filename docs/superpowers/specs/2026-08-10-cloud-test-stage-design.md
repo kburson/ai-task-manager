@@ -2,13 +2,29 @@
 
 **Date:** 2026-08-10 (revised 2026-08-11)
 
-**Status:** Revised after Codex design review; pending Claude review
+**Status:** Revised after Codex and Claude design review; pending Claude re-review
 
 **Branch:** `cloud-test-automation`
 
 **Supersedes:** the 2026-08-10 first draft of this file, which assumed a GitHub
 merge queue, and the intermediate 2026-08-11 draft, which proposed a custom
 Checks API receipt publisher.
+
+## Design-Review Additions
+
+The following scope was added during the Codex/maintainer design review rather
+than inherited from the first Claude draft. It is retained deliberately and is
+not an incidental implementation detail:
+
+- host-wide admission for at most six local worker agents, with configured
+  cloud-VM overflow;
+- required-check and strict-base ruleset coverage for `feature/epic/*`;
+- hierarchical child-to-epic-to-trunk coalescence; and
+- crash repair after receipt acceptance or merge.
+
+Claude's follow-up review added two corrections to the policy design: a
+separate, fail-closed slow-impact classifier and an explicit cloud-defer outcome
+for Develop selections that correctly escalate complete lanes.
 
 ## Decision Summary
 
@@ -21,13 +37,15 @@ capsule. CI receives no issue-write or check-write authority.
 
 The design has four independent controls:
 
-1. **Fast Develop feedback.** A worker runs affected tests only. Healthy
-   verification finishes within 180 seconds and must not exceed 300 seconds.
+1. **Fast Develop feedback.** A worker runs bounded affected tests only.
+   Healthy verification finishes within 180 seconds and must not exceed 300
+   seconds; complete-lane escalation is deferred to cloud Test.
 2. **Cloud Test validation.** Independent fast and slow GitHub Actions jobs run
    on separate VMs and each has a ten-minute execution ceiling.
-3. **Local resource admission.** One local orchestrator may coordinate at most
-   six concurrent local worker agents for this repository on one physical
-   host. Additional workers use configured cloud VMs or remain queued.
+3. **Local resource admission.** All local orchestrators collectively admit at
+   most six concurrent local worker agents for this repository on one physical
+   host. Orchestrators do not consume those slots. Additional workers use
+   configured cloud VMs or remain queued.
 4. **Serial integration per target branch.** Parallel work converges through a
    lazy, one-PR-at-a-time merge tail. Occasional conflicts return the later
    story to Develop; AITM does not add a repository-wide path-locking system.
@@ -108,22 +126,42 @@ check.
 
 ### Develop feedback budget
 
-`verify-develop.mjs` remains local to the worker and runs only format/lint work
-and tests selected from the story's affected surface. It does not run the full
-suite and does not compute the cloud slow-lane decision.
+`verify-develop.mjs` remains local to the worker and runs format/lint work plus
+a bounded set of tests selected directly from the story's affected surface. It
+does not run the full suite and does not compute the cloud slow-lane decision.
+
+The existing affected-test selector exposes two different kinds of result:
+
+- directly selected tests, found from changed test files, the reverse-import
+  graph, basename heuristics, or explicit manifest entries; and
+- lane escalation, where a policy-sensitive change means that an entire lane
+  must run.
+
+Develop executes the directly selected tests locally. It must not materialize
+an escalated lane into every test file on the worker. When escalation is
+required, Develop still runs format, lint, and its bounded direct selection,
+then records `develop-cloud-escalation` evidence containing the head SHA,
+changed paths, escalation reasons, and required lanes. That evidence is a
+cloud-validation obligation, not a claim that those lanes passed. `/task test`
+must preserve the obligation, and receipt acceptance must prove the named
+complete lanes ran for the same head in GitHub Actions. A slow-lane obligation
+also prevents a no-impact slow skip.
 
 The elapsed budget for one Develop verification invocation is:
 
-| Elapsed time | Classification | Required response                                     |
-| -----------: | -------------- | ----------------------------------------------------- |
-|      <= 180s | Healthy        | Continue                                              |
-|     181-300s | Degraded       | Pass with timing evidence and an optimization warning |
-|       > 300s | Over budget    | Fail `develop-verification-budget-exceeded`           |
+| Selection and elapsed time | Classification   | Required response                                     |
+| -------------------------- | ---------------- | ----------------------------------------------------- |
+| Direct, <= 180s            | Healthy          | Continue                                              |
+| Direct, 181-300s           | Degraded         | Pass with timing evidence and an optimization warning |
+| Direct, > 300s             | Over budget      | Fail `develop-verification-budget-exceeded`           |
+| Escalated lane             | Cloud escalation | Run bounded local checks; require complete cloud lane |
 
-An over-budget result is a test-architecture defect even when every assertion
-passes. The remedy is to reduce repeated setup, merge related cases into one
-fixture, narrow the affected-test selector, or replace redundant deep coverage
-with a justified smoke test. Raising the ceiling is not the default remedy.
+The 180/300-second budget applies to a direct selection and to the bounded local
+portion of an escalated selection. An over-budget result is a test-architecture
+defect even when every assertion passes. The remedy is to reduce repeated
+setup, merge related cases into one fixture, narrow the direct selection, or
+replace redundant deep coverage with a justified smoke test. Raising the
+ceiling or silently omitting an escalated lane is not the default remedy.
 
 ### Cloud Test budget
 
@@ -153,17 +191,30 @@ configured cloud VMs before the host is allowed to turn every worker's feedback
 loop into a five-minute wait. If an isolated worker still exceeds the ceiling,
 the test architecture—not host admission—is the defect.
 
-A host-local capacity registry, keyed by repository identity, supplies six
-ephemeral worker leases. Each lease records the issue, worker/session identity,
-process identity, heartbeat, and expiry. It covers the worker and every child
-process it starts. All local orchestrators share the same registry, so opening a
-second session does not create six more slots.
+AITM extends the existing `scripts/task-tracker/fleet-registry.mjs`; it does not
+introduce a second, competing fleet abstraction. The current per-clone registry
+continues to record task bindings, worktree observations, and conservative
+pruning under the clone's main worktree. Its existing lock, read/write,
+registration, status, stale-entry, pruning, and observation primitives are
+reused where their semantics fit.
 
-The registry is an operational semaphore, not lifecycle authority. A lost or
-deleted lease can affect resource utilization but cannot authorize work,
+A separate host-capacity overlay supplies the six ephemeral worker leases. It
+lives in AITM's machine-level user-state directory and is indexed by canonical
+repository identity rather than clone or worktree path, so independent clones
+and sessions on one physical host consult the same capacity record. Each lease
+records the repository identity, issue, worker/session identity, process
+identity, heartbeat, and expiry. It covers the worker and every child process it
+starts. Opening a second orchestrator session therefore does not create six
+more slots.
+
+The host overlay is an operational semaphore, not lifecycle authority. A lost
+or deleted lease can affect resource utilization but cannot authorize work,
 advance an issue, or satisfy a gate. GitHub coordinator grants and work
-assignments remain authoritative. Stale leases are reclaimed by heartbeat and
-process-liveness checks.
+assignments remain authoritative. Worker leases use heartbeat and
+process-liveness checks with a short operational expiry; this is distinct from
+the fleet registry's existing 24-hour observational staleness default. See
+`docs/spikes/429-fleet-registry-gc.md` for the existing registry and reclamation
+constraints.
 
 The test runner derives its internal pool ceiling from the active host leases
 instead of assuming it owns the machine. A seventh runnable worker is sent to a
@@ -201,14 +252,18 @@ matches.
 
 ## Lifecycle Walk
 
-Develop is complete only after affected verification passes within the local
-budget and the branch contains a clean committed head.
+Develop is complete only after bounded affected verification passes within the
+local budget and the branch contains a clean committed head. A
+`develop-cloud-escalation` may accompany that completion, but it creates a
+mandatory Test-stage lane obligation and never represents a local pass for the
+escalated lane.
 
 The canonical Test entry point is `/task test #N`:
 
 1. Resolve the active authority locator and coordinator grant.
-2. Validate Develop completion, the exact committed head, branch ownership,
-   work assignment, and target integration branch.
+2. Validate Develop completion, any cloud-escalation obligation, the exact
+   committed head, branch ownership, work assignment, and target integration
+   branch.
 3. Push with lease and create, or idempotently reuse, exactly one PR from the
    story branch to its immediate parent branch. A standalone or root story
    targets `trunk`; a child story targets its epic branch.
@@ -282,6 +337,8 @@ The v2 payload contains at least:
   conclusions;
 - expected runner labels, `linux-x64`, and Node 22 policy;
 - lockfile, verification-config, and CI-policy fingerprints;
+- any Develop cloud-escalation reasons and required lanes, plus evidence that
+  each obligation was satisfied by a complete native job for the same head;
 - the five classifications `lint-full`, `format-full`, `test-unit`,
   `test-integration`, and `test-slow`, or an authorized slow-lane skip;
 - clean-checkout/worktree verification; and
@@ -310,17 +367,21 @@ CI policy rather than the orchestrator's local machine:
 - all required jobs and steps must have acceptable native conclusions;
 - lockfile, verification config, and CI policy hashes must match the tested
   head and target-base policy;
+- every lane named by `develop-cloud-escalation` must have a successful native
+  execution for the exact head;
 - the final clean-worktree step must pass; and
 - the issue must be derived from the PR's assigned story branch and active work
   assignment, never parsed from untrusted CI output.
 
-Policy-surface changes—workflow files, the impact selector, receipt validation,
+Policy-surface changes—workflow files, either impact policy, receipt validation,
 package test scripts, the test runner, or lifecycle gates—force the slow lane
-and require the workflow-security review defined by the Delivery Contract. The
-default rule is that CI-policy fingerprints match the protected target base. An
-approved policy-change story may accept a new fingerprint only when its sealed
-contract identifies the reviewed old and new values. The orchestrator refuses a
-topology that silently removes or renames a required job or step.
+and require the workflow-security review defined by the Delivery Contract. This
+decision comes from the fail-closed slow-impact policy below, not from the
+existing affected-test selector. The default rule is that CI-policy fingerprints
+match the protected target base. An approved policy-change story may accept a
+new fingerprint only when its sealed contract identifies the reviewed old and
+new values. The orchestrator refuses a topology that silently removes or
+renames a required job or step.
 
 ### Record mapping and distributed idempotency
 
@@ -372,11 +433,50 @@ or upload another job's diagnostics.
 ### Slow job
 
 The required context is `Slow lane (full test fleet)`. It starts independently
-of the fast job on its own VM and:
+of the fast job on its own VM.
+
+The slow decision does **not** treat `selectAffectedTests` as a slow-coverage
+oracle. That function is intentionally fail-open for otherwise-unmapped paths,
+and its reverse-import graph cannot see subprocess slow tests that never import
+the modules they exercise. Cloud Test adds
+`scripts/task-tracker/lib/slow-impact-selector.mjs`, exposing
+`classifySlowImpact(changedPaths, policy)`, plus the checked-in
+`scripts/task-tracker/slow-impact-manifest.json` policy.
+
+Each slow-impact rule gives matching paths one explicit outcome:
+
+- `slow-required`; or
+- `safe-to-skip-slow`, with a reason that explains the positive exclusion.
+
+For every changed path, `slow-required` wins over an exclusion. A path that
+matches no rule is classified `slow-required` with reason
+`unclassified-path`. The job may skip slow execution only when **every** changed
+path is affirmatively `safe-to-skip-slow`. This is the normative default-deny
+rule.
+
+The initial required rules include:
+
+- `.github/workflows/**`;
+- `package.json`, lock files, and verification configuration;
+- `scripts/run-tests*.mjs` and test discovery/lane infrastructure;
+- `scripts/gh/**`;
+- `scripts/task-tracker/verbs/**` and `scripts/task-tracker/states/**`;
+- lifecycle, transition, close, review, and evidence-gate modules;
+- both impact selectors and their manifests; and
+- slow tests and their shared fixtures.
+
+The manifest also positively classifies safe exclusions such as documentation
+and reviewed source categories with no slow-system responsibility. A
+completeness test inventories source paths under `scripts/**` and fails when
+any path lacks either outcome. Fallthrough therefore stays safe in production
+while repository tests prevent the policy from silently degrading into
+always-running slow coverage through manifest neglect.
+
+The slow job then:
 
 1. checks out full history and sets up Node 22;
 2. resolves the PR target base and exact head;
-3. runs the slow-impact selector before `npm ci`;
+3. runs `classifySlowImpact` before `npm ci`;
 4. exits successfully with a structured step summary when no slow test can be
    affected; or
 5. installs dependencies, runs `npm run test:slow`, and verifies a clean
@@ -386,8 +486,13 @@ There is one job and one stable check name. There is no same-named skip job and
 no workflow-level `paths:` filter. The check always exists. A no-impact run is
 cheap but still leaves native evidence that selection executed.
 
-The orchestrator accepts the skip only after recomputing the decision with the
-selector and policy from the protected target base. The v2 receipt then carries:
+The orchestrator cannot accept a skip when the head-bound Develop evidence
+names `test-slow`, even if path classification alone would permit it. That
+mismatch is a policy defect and requires a corrected run; a locally written
+obligation does not grant the workflow permission to read or trust issue state.
+The orchestrator accepts any other skip only after recomputing the decision
+with `classifySlowImpact` and the manifest from the protected target base. The
+v2 receipt then carries:
 
 - `reason: no-slow-impact`;
 - target base and head SHAs;
@@ -395,9 +500,7 @@ selector and policy from the protected target base. The v2 receipt then carries:
 - selector version and hash; and
 - `lanes: [test-slow]`.
 
-Malformed, stale, or unreproducible skip claims relax nothing. Changes to
-`.github/workflows/**`, the selector, test infrastructure, dependency manifests,
-or lock files require slow execution unconditionally.
+Malformed, stale, unclassified, or unreproducible skip claims relax nothing.
 
 ### Workflow concurrency and required checks
 
@@ -653,11 +756,18 @@ reachable from it.
 - Stale epoch, stale capsule head, conflicting logical key, and changed-head
   rejection.
 - Native job/step classification for every failure-taxonomy row.
-- Slow-impact execution and default-deny skip validation using target-base
-  policy.
+- Slow-impact required-over-safe precedence, all-paths-safe skip semantics, and
+  `unclassified-path` default-deny behavior using target-base policy.
+- Slow-impact manifest completeness over source files under `scripts/**`, with
+  explicit required cases for workflows, `scripts/gh/**`, task-tracker verbs
+  and states, lifecycle gates, impact policy, and test infrastructure.
+- Direct Develop selection without lane materialization, head-bound
+  `develop-cloud-escalation` evidence, and receipt refusal when a required
+  cloud lane did not execute.
 - Develop timing classification at 180 and 300 second boundaries.
-- Host lease acquisition, six-worker saturation, heartbeat expiry, and shared
-  capacity across local sessions.
+- Existing per-clone fleet behavior plus host-overlay lease acquisition,
+  six-worker saturation across independent clones, heartbeat expiry, process
+  liveness, and shared capacity across local sessions.
 - WIP exemption only for a fully validated `awaiting-ci` record.
 - Legacy-body/local-Test and GitHub-records/cloud-Test routing.
 - Trailer construction and parsing, including run attempt and concatenated
@@ -694,6 +804,11 @@ Extend `tests/slow/core/ci-lane-wiring.test.mjs` and
 - `include-hidden-files: true` and `if: always()` uploads; and
 - workflow/policy paths forcing slow execution.
 
+`ci-lane-wiring.test.mjs` itself runs in the slow lane, so these assertions
+depend on the slow-impact authority classifying `.github/workflows/**` and the
+selector policy as `slow-required`. The wiring test cannot protect its own
+execution until that fail-closed classification lands.
+
 Static assertions complement, but do not replace, a canary PR that proves the
 live rulesets recognize both native contexts before enforcement changes land.
 
@@ -721,36 +836,44 @@ queues rather than oversubscribing the local host.
 
 Ordered by dependency; each item is independently reviewable.
 
-1. **Receipt v2 and native Actions adapter.** Add source-aware schema,
+1. **Slow-impact authority.** Add `classifySlowImpact`, the outcome-based
+   manifest, required-over-safe evaluation, target-base recomputation,
+   `unclassified-path` default denial, and source-path completeness tests.
+2. **Receipt v2 and native Actions adapter.** Add source-aware schema,
    deterministic logical key, Actions response normalization, policy
-   fingerprinting, and `github-actions` lifecycle provenance.
-2. **Develop timing budget.** Measure affected verification, emit degraded
-   evidence after 180 seconds, and refuse over-budget runs after 300 seconds.
-3. **Host worker admission.** Add the repository-keyed six-slot host registry,
-   lease heartbeat/reclamation, runner-pool scaling, and cloud-adapter fallback.
-4. **Failure manifests.** Add bounded lane-specific manifests using
+   fingerprinting, Develop escalation obligations, and `github-actions`
+   lifecycle provenance.
+3. **Bounded Develop verification.** Separate direct test selection from lane
+   escalation, avoid local lane materialization, emit head-bound cloud
+   obligations, warn after 180 seconds, and refuse bounded work after 300
+   seconds.
+4. **Host worker admission.** Extend `fleet-registry.mjs` without replacing its
+   per-clone observation model; add the repository-keyed machine-wide capacity
+   overlay, lease heartbeat/process reclamation, adaptive runner-pool scaling,
+   and cloud-adapter fallback.
+5. **Failure manifests.** Add bounded lane-specific manifests using
    repository-relative `entry.full` paths and unique artifact names.
-5. **Failure classifier.** Classify from native run/job/step conclusions and
+6. **Failure classifier.** Classify from native run/job/step conclusions and
    use artifacts only for diagnosis.
-6. **CI fast-lane split.** Add explicit unit/integration steps, clean-worktree
+7. **CI fast-lane split.** Add explicit unit/integration steps, clean-worktree
    verification, timeout, and stable context assertions.
-7. **Independent slow lane.** Move impact selection into the slow job, add
-   target-base recomputation, fail-closed skip evidence, timeout, and nightly
-   unconditional execution.
-8. **Ruleset coverage.** Require native Fast and Slow contexts with strict
+8. **Independent slow lane.** Consume the fail-closed slow-impact authority in
+   the slow job, add target-base recomputation, fail-closed skip evidence,
+   timeout, and nightly unconditional execution.
+9. **Ruleset coverage.** Require native Fast and Slow contexts with strict
    up-to-date enforcement on trunk and epic integration branches.
-9. **Test-stage repoint.** Make `/task test #N` create/reuse the PR, append the
-   transition, project `awaiting-ci`, and retain the legacy locator path.
-10. **Receipt acceptance.** Poll native Actions, append
+10. **Test-stage repoint.** Make `/task test #N` create/reuse the PR, append the
+    transition, project `awaiting-ci`, and retain the legacy locator path.
+11. **Receipt acceptance.** Poll native Actions, append
     `verification-evidence`, converge projection, and emit `REVIEW_COMPLETE`.
-11. **WIP and do-si-do.** Exempt only validated `awaiting-ci` stories and resume
+12. **WIP and do-si-do.** Exempt only validated `awaiting-ci` stories and resume
     them from GitHub state across sessions.
-12. **Merge tail and trailers.** Implement per-target deterministic ordering,
+13. **Merge tail and trailers.** Implement per-target deterministic ordering,
     lazy update, exact-head merge, receipt trailers, and `integration-result`.
-13. **Conflict rework.** Record merge/rebase conflicts, demote to Develop, and
+14. **Conflict rework.** Record merge/rebase conflicts, demote to Develop, and
     require affected verification plus a fresh cloud receipt.
-14. **Triage.** Add manifest/log-driven diagnosis and Worker Report output.
-15. **Documentation.** Update workflow, settings, Test-stage, cloud-worker
+15. **Triage.** Add manifest/log-driven diagnosis and Worker Report output.
+16. **Documentation.** Update workflow, settings, Test-stage, cloud-worker
     adapter, recovery, and merge guidance.
 
 Out of scope and separately tracked: #1208, which targets the runner's process
@@ -759,6 +882,7 @@ spawn overhead and serial phase through weighted pooling.
 ## References
 
 - `docs/decisions/0002-github-native-authority-records.md`
+- `docs/spikes/429-fleet-registry-gc.md`
 - `docs/superpowers/specs/2026-07-31-github-native-authority-records-design.md`
 - `docs/superpowers/specs/2026-07-20-epic-aware-git-branching-design.md`
 - [GitHub Actions job conditions](https://docs.github.com/en/actions/how-tos/write-workflows/choose-when-workflows-run/control-jobs-with-conditions)
