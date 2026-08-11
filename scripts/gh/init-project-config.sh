@@ -85,6 +85,16 @@ PKG_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 CONFIG_INIT_CLI="$PKG_ROOT/scripts/task-tracker/config-init.mjs"
 FIELD_DEFS_FILE="$CONFIG_DIR/project-fields.json"
 FIELD_EVENTS_FILE="$CONFIG_DIR/project-field-events.json"
+
+# Validate the existing canonical/legacy Assigned config keys before any
+# GraphQL project mutation can run. The final writer repeats this invariant;
+# this early read-only pass prevents a late conflict from leaving a partially
+# mutated board behind.
+if ! node "$CONFIG_INIT_CLI" preflight-config --file "$CONFIG_FILE"; then
+  err "Existing task-tracker config is ambiguous; init refused before project mutation."
+  exit 1
+fi
+
 if [[ ! -f "$FIELD_DEFS_FILE" && -f "$PKG_ROOT/config/project-fields.default.json" ]]; then
   cp "$PKG_ROOT/config/project-fields.default.json" "$FIELD_DEFS_FILE"
 fi
@@ -594,6 +604,16 @@ CANONICAL_ASSIGNED_OPTION_COUNT=$(echo "$KANBAN_FIELD_JSON" | jq '
 ' 2>/dev/null || echo '0')
 LEGACY_ASSIGNED_OPTION_ID=""
 
+if [[ "$LEGACY_ASSIGNED_OPTION_COUNT" -gt 1 ]]; then
+  err "Status contains duplicate 'On Deck' options; init cannot choose a stable option id."
+  info "Resolve the duplicate options explicitly, then rerun init."
+  exit 1
+fi
+if [[ "$CANONICAL_ASSIGNED_OPTION_COUNT" -gt 1 ]]; then
+  err "Status contains duplicate 'Assigned' options; init cannot choose a stable option id."
+  info "Resolve the duplicate options explicitly, then rerun init."
+  exit 1
+fi
 if [[ "$LEGACY_ASSIGNED_OPTION_COUNT" -gt 0 && "$CANONICAL_ASSIGNED_OPTION_COUNT" -gt 0 ]]; then
   err "Status contains both 'On Deck' and 'Assigned'; init will not choose or mutate either option."
   info "Resolve the ambiguous duplicate, then preview the explicit migration:"

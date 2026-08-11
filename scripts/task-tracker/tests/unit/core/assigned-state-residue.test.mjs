@@ -24,7 +24,7 @@ const ALLOWLIST = new Map(
     ],
     'docs/ai-memory/MEMORY.md': [1, 'mirrored factual state-rename history'],
     'docs/ai-memory/project_board_columns_2026_05.md': [2, 'mirrored factual state-rename history'],
-    'scripts/gh/init-project-config.sh': [8, 'explicit migration refusal and guidance'],
+    'scripts/gh/init-project-config.sh': [9, 'explicit migration refusal and guidance'],
     'scripts/gh/init-repair.mjs': [5, 'legacy config-key rewrite'],
     'scripts/gh/lib/live-state.mjs': [1, 'raw live-board compatibility boundary'],
     'scripts/lib/self-doc.mjs': [5, 'explicit migration CLI help contract'],
@@ -63,8 +63,8 @@ const ALLOWLIST = new Map(
     'scripts/task-tracker/lib/timing-ladder.mjs': [1, 'historical timing ladder alias'],
     'scripts/task-tracker/lib/timing-ladder.test.mjs': [1, 'historical timing fixture'],
     'scripts/task-tracker/tests/slow/lib/init-status-palette.test.mjs': [
-      6,
-      'live-init migration-refusal fixtures',
+      13,
+      'live-init migration-refusal and ambiguity fixtures',
     ],
     'scripts/task-tracker/tests/slow/core/lifecycle-traversal-e2e.test.mjs': [
       2,
@@ -107,7 +107,7 @@ const ALLOWLIST = new Map(
       'historical bound-state cache fixtures',
     ],
     'scripts/task-tracker/tests/unit/lib/config-init/config-init.test.mjs': [
-      4,
+      5,
       'legacy config rewrite fixtures',
     ],
     'scripts/task-tracker/tests/unit/lib/config.test.mjs': [7, 'legacy config fallback fixtures'],
@@ -147,6 +147,7 @@ const ALLOWLIST = new Map(
       3,
       'historical timing descriptor fixture',
     ],
+    'skill/shared/rules/state-walk.md': [1, 'documented raw-boundary compatibility exception'],
   })
 );
 

@@ -6,7 +6,7 @@
 // (it is I/O plumbing, not testable transform logic); this entry owns only the
 // pure/file-writing responsibilities extracted under lib/config-init/.
 
-import { writeConfig } from './lib/config-init/config-authoring.mjs';
+import { preflightConfig, writeConfig } from './lib/config-init/config-authoring.mjs';
 import { writeIssueTemplates } from './lib/config-init/issue-templates.mjs';
 import {
   projectNumberFromInput,
@@ -23,6 +23,20 @@ function getArg(argv, name) {
 function main(argv) {
   const [sub, ...rest] = argv;
   switch (sub) {
+    case 'preflight-config': {
+      const file = getArg(rest, '--file') || process.env.CONFIG_FILE;
+      if (!file) {
+        process.stderr.write('config-init preflight-config: --file (or CONFIG_FILE) required\n');
+        return 1;
+      }
+      try {
+        preflightConfig({ file });
+      } catch (error) {
+        process.stderr.write(`${error?.message || error}\n`);
+        return 1;
+      }
+      return 0;
+    }
     case 'write-config': {
       const file = getArg(rest, '--file') || process.env.CONFIG_FILE;
       if (!file) {
@@ -72,7 +86,7 @@ function main(argv) {
     default:
       process.stderr.write(
         `config-init: unknown subcommand '${sub ?? ''}'\n` +
-          'usage: config-init <write-config|write-templates|parse-project-input|canon-color|normalize-projects>\n'
+          'usage: config-init <preflight-config|write-config|write-templates|parse-project-input|canon-color|normalize-projects>\n'
       );
       return 1;
   }

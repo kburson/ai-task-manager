@@ -145,6 +145,12 @@ if [[ "$1" == "api" && "$2" == "graphql" ]]; then
     elif [[ "$AITM_TEST_ASSIGNED_SHAPE" == "both" ]]; then
       ASSIGNED_OPTIONS='    {"id":"O_ASSIGNED","name":"On Deck","color":"BLUE","description":""},
     {"id":"O_ASSIGNED_DUP","name":"Assigned","color":"GRAY","description":""},'
+    elif [[ "$AITM_TEST_ASSIGNED_SHAPE" == "duplicate-legacy" ]]; then
+      ASSIGNED_OPTIONS='    {"id":"O_ASSIGNED","name":"On Deck","color":"BLUE","description":""},
+    {"id":"O_ASSIGNED_DUP","name":"On Deck","color":"GRAY","description":""},'
+    elif [[ "$AITM_TEST_ASSIGNED_SHAPE" == "duplicate-canonical" ]]; then
+      ASSIGNED_OPTIONS='    {"id":"O_ASSIGNED","name":"Assigned","color":"BLUE","description":""},
+    {"id":"O_ASSIGNED_DUP","name":"Assigned","color":"GRAY","description":""},'
     elif [[ "$AITM_TEST_ASSIGNED_SHAPE" == "missing" && ! -f "${temp}/assigned-created" ]]; then
       ASSIGNED_OPTIONS=''
     fi
@@ -255,9 +261,33 @@ function updatePayloads() {
     .filter((p) => typeof p.query === 'string' && p.query.includes('updateProjectV2Field'));
 }
 
-function runAssignedShape(shape) {
+function projectMutationPayloads() {
+  return readdirSync(inputsDir)
+    .map((f) => JSON.parse(readFileSync(join(inputsDir, f), 'utf8')))
+    .filter((p) => typeof p.query === 'string' && /^\s*mutation\b/.test(p.query));
+}
+
+function projectMutationCount() {
+  const inlineMutations = readFileSync(join(temp, 'gh-calls.log'), 'utf8')
+    .split('\n')
+    .filter((line) => /\bmutation\(/.test(line)).length;
+  return projectMutationPayloads().length + inlineMutations;
+}
+
+function runAssignedShape(shape, { conflictingConfig = false } = {}) {
   const runTarget = join(temp, `target-${shape}`);
   spawnSync('mkdir', ['-p', runTarget], { check: true });
+  if (conflictingConfig) {
+    const configDir = join(runTarget, '.ai-task-manager');
+    spawnSync('mkdir', ['-p', configDir], { check: true });
+    writeFileSync(
+      join(configDir, 'task-tracker.json'),
+      JSON.stringify({
+        kanbanOptionOnDeck: 'O_LEGACY_CONFIG',
+        kanbanOptionAssigned: 'O_CANONICAL_CONFIG',
+      })
+    );
+  }
   const run = spawnSync('bash', [script, '--target', runTarget], {
     input,
     encoding: 'utf8',
@@ -313,5 +343,49 @@ assert.equal(
   beforeBoth,
   'both-spellings board must emit zero updateProjectV2Field mutations'
 );
+
+// Final-review regressions: every ambiguous input must fail before choosing an
+// option id or issuing a project mutation. A selector lets the TDD RED phase
+// execute each shell-level contract independently even when all three fail.
+const reviewCase = process.env.AITM_REVIEW_CASE || '';
+
+if (!reviewCase || reviewCase === 'duplicate-legacy') {
+  const before = projectMutationCount();
+  const duplicateLegacy = runAssignedShape('duplicate-legacy');
+  assert.notEqual(duplicateLegacy.status, 0, 'duplicate On Deck options should fail closed');
+  assert.match(duplicateLegacy.stdout + duplicateLegacy.stderr, /duplicate.*On Deck/i);
+  assert.equal(
+    projectMutationCount(),
+    before,
+    'duplicate On Deck options must emit zero project mutations'
+  );
+}
+
+if (!reviewCase || reviewCase === 'duplicate-canonical') {
+  const before = projectMutationCount();
+  const duplicateCanonical = runAssignedShape('duplicate-canonical');
+  assert.notEqual(duplicateCanonical.status, 0, 'duplicate Assigned options should fail closed');
+  assert.match(duplicateCanonical.stdout + duplicateCanonical.stderr, /duplicate.*Assigned/i);
+  assert.equal(
+    projectMutationCount(),
+    before,
+    'duplicate Assigned options must emit zero project mutations'
+  );
+}
+
+if (!reviewCase || reviewCase === 'conflicting-config') {
+  const before = projectMutationCount();
+  const conflictingConfig = runAssignedShape('conflicting-config', { conflictingConfig: true });
+  assert.notEqual(conflictingConfig.status, 0, 'conflicting config ids should fail closed');
+  assert.match(
+    conflictingConfig.stdout + conflictingConfig.stderr,
+    /kanbanOptionOnDeck conflicts with kanbanOptionAssigned/i
+  );
+  assert.equal(
+    projectMutationCount(),
+    before,
+    'conflicting config ids must emit zero project mutations'
+  );
+}
 
 console.log('init-status-palette: OK');

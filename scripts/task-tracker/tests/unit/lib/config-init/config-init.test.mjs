@@ -17,6 +17,7 @@ import {
   buildUpdates,
   mergeConfig,
   loadExisting,
+  preflightConfig,
   serializeConfig,
   writeConfig,
 } from '../../../../lib/config-init/config-authoring.mjs';
@@ -115,6 +116,28 @@ test('mergeConfig fails closed when legacy and canonical option ids conflict', (
       ),
     /conflicts.*refusing repair/i
   );
+});
+
+test('preflightConfig validates existing config without writing', () => {
+  let writes = 0;
+  assert.throws(
+    () =>
+      preflightConfig(
+        { file: '/proj/.ai-task-manager/task-tracker.json' },
+        {
+          readFileSync: () =>
+            JSON.stringify({
+              kanbanOptionOnDeck: 'legacy-id',
+              kanbanOptionAssigned: 'different-id',
+            }),
+          writeFileSync: () => {
+            writes += 1;
+          },
+        }
+      ),
+    /conflicts.*refusing repair/i
+  );
+  assert.equal(writes, 0, 'preflight must never write config or project state');
 });
 
 test('loadExisting falls back to the legacy .claude/ path then to {}', () => {

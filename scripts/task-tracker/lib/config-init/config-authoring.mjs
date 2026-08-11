@@ -69,6 +69,15 @@ export function buildUpdates(env = {}) {
 
 // mergeConfig(existing, env) → the config object to serialize. Pure.
 export function mergeConfig(existing = {}, env = {}) {
+  const normalized = normalizeExistingConfig(existing);
+  return Object.assign(normalized, buildUpdates(env));
+}
+
+// normalizeExistingConfig(existing) validates and canonicalizes the one-release
+// Assigned config-key fallback without writing anything. Keeping this separate
+// lets the interactive shell fail closed before it performs any project
+// mutation, while writeConfig reuses the exact same conflict rule.
+export function normalizeExistingConfig(existing = {}) {
   const normalized = { ...existing };
   if (
     normalized.kanbanOptionOnDeck &&
@@ -81,7 +90,7 @@ export function mergeConfig(existing = {}, env = {}) {
   }
   normalized.kanbanOptionAssigned ||= normalized.kanbanOptionOnDeck;
   delete normalized.kanbanOptionOnDeck;
-  return Object.assign(normalized, buildUpdates(env));
+  return normalized;
 }
 
 // loadExisting(file, deps) → parsed config from `file`, or from the legacy
@@ -98,6 +107,13 @@ export function loadExisting(file, deps = {}) {
       return {};
     }
   }
+}
+
+// preflightConfig({file}, deps) performs the read + compatibility validation
+// phase only. It deliberately has no writer dependency and cannot mutate the
+// config or GitHub project.
+export function preflightConfig({ file }, deps = {}) {
+  return normalizeExistingConfig(loadExisting(file, deps));
 }
 
 // serializeConfig(config) → the exact on-disk string (2-space indent + \n).

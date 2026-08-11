@@ -17,7 +17,12 @@ backlog → assigned → refine → plan → develop → test → review → don
 
 `assigned` (display: "Assigned") is an inert, gateless tranche waiting room between Backlog and Refine. `backlog → assigned` carries no entry gate; the Priority entry gate lives on `assigned → refine`. Backward arc `assigned → backlog` drops an item out of the current tranche. Every item passes through Assigned — there is no `backlog → refine` shortcut.
 
-State slugs are canonical. There is no slug shim — the renamed states are the only recognized inputs. See `docs/migration-history.md` for the migration from the prior 4-state vocabulary.
+Internal state slugs and sanctioned `/task` inputs are canonical; they recognize
+only the current state names. The raw, internal-only `move-state.mjs` boundary
+temporarily accepts `on-deck` as a one-release compatibility alias and warns
+before canonicalizing it to `assigned`. This narrow migration shim does not add
+a user-facing `/task` alias or another lifecycle state. See
+`docs/migration-history.md` for the migration history.
 
 ## Canonical verbs
 
