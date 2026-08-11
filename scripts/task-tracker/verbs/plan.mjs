@@ -19,7 +19,7 @@
 //   2  usage error
 
 import { verbPromote } from './promote.mjs';
-import { gql, splitRepo } from '../../gh/lib/github-projects.mjs';
+import { fetchConfiguredProjectIssue } from '../../gh/lib/github-projects.mjs';
 import { resolveConfiguredProjectState } from '../lib/project-state-resolver.mjs';
 import { assertBoundToIssue } from '../lib/bind-context.mjs';
 
@@ -32,27 +32,15 @@ function parseArgs(rest = []) {
 }
 
 async function defaultGetLiveState({ issueNumber, cfg }) {
-  const { owner, repoName } = splitRepo(cfg.repo);
-  const data = await gql(
-    `
-    query($owner: String!, $repo: String!, $issue: Int!) {
-      repository(owner: $owner, name: $repo) {
-        issue(number: $issue) {
-          projectItems(first: 10) {
-            nodes {
-              project { id }
-              fieldValueByName(name: "Status") {
-                ... on ProjectV2ItemFieldSingleSelectValue { name }
-              }
-            }
-          }
-        }
-      }
-    }`,
-    { owner, repo: repoName, issue: Number(issueNumber) }
+  const snapshot = await fetchConfiguredProjectIssue({
+    repo: cfg.repo,
+    projectId: cfg.projectId,
+    issueNumber,
+  });
+  return resolveConfiguredProjectState(
+    snapshot.projectItem ? [snapshot.projectItem] : [],
+    cfg.projectId
   );
-  const nodes = data?.repository?.issue?.projectItems?.nodes ?? [];
-  return resolveConfiguredProjectState(nodes, cfg.projectId);
 }
 
 export async function runPlan({ issueNumber, cfg, deps = {} } = {}) {

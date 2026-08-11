@@ -128,7 +128,14 @@ test('projectItemForIssue: returns matching item id', async () => {
     stdout: JSON.stringify({
       data: {
         repository: {
-          issue: { id: 'ISS1', projectItems: { nodes: [{ id: 'IT1', project: { id: 'P1' } }] } },
+          issue: {
+            id: 'ISS1',
+            assignees: { nodes: [] },
+            projectItems: {
+              nodes: [{ id: 'IT1', project: { id: 'P1' } }],
+              pageInfo: { hasNextPage: false, endCursor: null },
+            },
+          },
         },
       },
     }),
@@ -142,7 +149,14 @@ test('projectItemForIssue: no matching project → empty itemId', async () => {
     stdout: JSON.stringify({
       data: {
         repository: {
-          issue: { id: 'ISS2', projectItems: { nodes: [{ id: 'IT9', project: { id: 'OTHER' } }] } },
+          issue: {
+            id: 'ISS2',
+            assignees: { nodes: [] },
+            projectItems: {
+              nodes: [{ id: 'IT9', project: { id: 'OTHER' } }],
+              pageInfo: { hasNextPage: false, endCursor: null },
+            },
+          },
         },
       },
     }),
@@ -206,6 +220,8 @@ test('projectValuesForIssue: maps number/date/text/name field values', async () 
       data: {
         repository: {
           issue: {
+            id: 'ISS7',
+            assignees: { nodes: [] },
             projectItems: {
               nodes: [
                 {
@@ -222,6 +238,7 @@ test('projectValuesForIssue: maps number/date/text/name field values', async () 
                   },
                 },
               ],
+              pageInfo: { hasNextPage: false, endCursor: null },
             },
           },
         },
@@ -246,7 +263,18 @@ test('projectValuesForIssue: returns {} when no item matches project', async () 
   const cfg = { repo: 'o/r', projectId: 'P1', fieldEstimate: 'FE' };
   deps.spawn = fakeSpawn({
     stdout: JSON.stringify({
-      data: { repository: { issue: { projectItems: { nodes: [{ project: { id: 'OTHER' } }] } } } },
+      data: {
+        repository: {
+          issue: {
+            id: 'ISS8',
+            assignees: { nodes: [] },
+            projectItems: {
+              nodes: [{ project: { id: 'OTHER' } }],
+              pageInfo: { hasNextPage: false, endCursor: null },
+            },
+          },
+        },
+      },
     }),
   });
   assert.deepEqual(

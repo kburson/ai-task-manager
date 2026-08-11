@@ -111,7 +111,7 @@ test('AC2: assembleCapabilities groups flat members by reference', () => {
   assert.equal(typeof caps.issueBodyMutator.mutate, 'function');
 });
 
-test('strict sub-issue capability fetches project identity and Status name in one query', () => {
+test('strict sub-issue capability hydrates every child through the paginated project lookup', () => {
   const src = readFileSync(path.resolve(here, '..', '..', 'runtime.mjs'), 'utf8');
   const start = src.indexOf('ctx.fetchSubIssueBoardSnapshot = async');
   const end = src.indexOf('ctx.fetchSubIssues = async', start);
@@ -121,14 +121,8 @@ test('strict sub-issue capability fetches project identity and Status name in on
 
   const capabilitySource = src.slice(start, end);
   assert.match(capabilitySource, /subIssues\(first:\s*100\)/);
-  assert.match(capabilitySource, /projectItems\(first:\s*\d+\)/);
-  assert.match(capabilitySource, /project\s*\{\s*id\s*\}/);
-  assert.match(capabilitySource, /fieldValueByName\(name:\s*"Status"\)/);
-  assert.match(
-    capabilitySource,
-    /ProjectV2ItemFieldSingleSelectValue\s*\{\s*name\s*\}/,
-    'the same child query requests the Status name'
-  );
+  assert.match(capabilitySource, /fetchConfiguredProjectIssue/);
+  assert.doesNotMatch(capabilitySource, /projectItems\(first:/);
 });
 
 test('strict sub-issue capability reports a thrown GraphQL query as unknown', async () => {

@@ -2,7 +2,7 @@
 import { strict as assert } from 'node:assert';
 import { test } from 'node:test';
 
-import { parseArgs, runAssign } from '../../../verbs/assign.mjs';
+import { parseArgs, runAssign, verbAssign } from '../../../verbs/assign.mjs';
 
 const cfg = { repo: 'o/r', assignee: 'configured-user' };
 
@@ -204,7 +204,7 @@ for (const [failureName, exitCode] of [
 ]) {
   test(`post-Status ${failureName} failure keeps the added assignee when Assigned landed`, async () => {
     const { calls, deps } = harness({ moveCodes: [exitCode] });
-    const states = ['backlog', 'assigned'];
+    const states = ['backlog', 'assigned', 'assigned'];
     deps.getLiveState = async () => states.shift();
 
     const result = await runAssign({ issueNumber: 37, login: 'alice', cfg, deps });
@@ -221,7 +221,7 @@ for (const [failureName, exitCode] of [
       assignees: ['alice'],
       moveCodes: [exitCode],
     });
-    const states = ['assigned', 'backlog', 'backlog', 'backlog', 'backlog', 'backlog'];
+    const states = ['assigned', 'backlog', 'backlog', 'backlog', 'backlog', 'backlog', 'backlog'];
     deps.getLiveState = async () => states.shift();
 
     const result = await runAssign({
@@ -299,7 +299,7 @@ test('compensation is nonzero when its strict assignee re-read fails', async () 
   let reads = 0;
   deps.fetchAssignees = async () => {
     reads += 1;
-    if (reads <= 3) return reads === 1 ? [] : ['alice'];
+    if (reads <= 4) return reads === 1 ? [] : ['alice'];
     throw new Error('compensation transport failed');
   };
   deps.getLiveState = async () => 'backlog';
@@ -379,7 +379,7 @@ test('an unreadable postcondition after a thrown add is explicitly indeterminate
   assert.deepEqual(calls.mutations, [{ login: 'alice', remove: false }]);
 });
 
-test('ambiguous landed add is compensated when the subsequent Assigned move is refused', async () => {
+test('ambiguous landed add is not destructively compensated when the subsequent move is refused', async () => {
   const calls = { mutations: [], moves: [] };
   let assignees = [];
   const result = await runAssign({
@@ -406,11 +406,100 @@ test('ambiguous landed add is compensated when the subsequent Assigned move is r
     },
   });
 
-  assert.equal(result.status, 'move-failed-compensated');
-  assert.deepEqual(calls.mutations, [
-    { login: 'alice', remove: false },
-    { login: 'alice', remove: true },
-  ]);
+  assert.equal(result.status, 'move-failed-ambiguous-add-not-compensated');
+  assert.equal(result.exitCode, 11);
+  assert.match(result.message, /ownership.*indeterminate/i);
+  assert.deepEqual(calls.mutations, [{ login: 'alice', remove: false }]);
+});
+
+test('pre-apply add failure never removes a concurrent actor case-variant assignment', async () => {
+  const calls = { mutations: [], moves: [] };
+  let assignees = [];
+  const result = await runAssign({
+    issueNumber: 461,
+    login: 'alice',
+    cfg,
+    deps: {
+      resolveLogin: async () => 'alice',
+      getLiveState: async () => 'backlog',
+      fetchAssignees: async () => [...assignees],
+      mutateAssignee: async ({ login, remove }) => {
+        calls.mutations.push({ login, remove });
+        if (!remove) {
+          assignees = ['ALICE'];
+          throw new Error('request rejected before apply; concurrent actor assigned ALICE');
+        }
+        assignees = [];
+      },
+      runMoveState: async ({ target }) => {
+        calls.moves.push(target);
+        return 11;
+      },
+    },
+  });
+
+  assert.equal(result.status, 'move-failed-ambiguous-add-not-compensated');
+  assert.equal(result.exitCode, 11);
+  assert.deepEqual(calls.mutations, [{ login: 'alice', remove: false }]);
+  assert.deepEqual(assignees, ['ALICE']);
+});
+
+test('assign argv parser rejects ambiguous and malformed invocation shapes', () => {
+  for (const argv of [
+    ['#51', '--unknown'],
+    ['#51', '--assignee'],
+    ['#51', '--assignee='],
+    ['#51', '--assignee', '--remove'],
+    ['#51', '--assignee', '-alice'],
+    ['#51', '--assignee', 'alice', '--assignee', 'bob'],
+    ['#51', 'alice', '--assignee', 'bob'],
+    ['#51', '--remove', '--remove'],
+    ['#51', '#52', 'alice'],
+    ['#51', '#52'],
+    ['#51', 'alice', 'bob'],
+  ]) {
+    assert.throws(
+      () => parseArgs(argv),
+      /assign:|argument|requires|duplicate|unexpected/i,
+      argv.join(' ')
+    );
+  }
+});
+
+test('assign production entrypoint rejects invalid argv before lock or mutation', async () => {
+  const calls = { locks: 0, mutations: 0, exits: [] };
+  const exitError = new Error('test exit');
+  const originalExit = process.exit;
+  process.exit = (code) => {
+    calls.exits.push(code);
+    throw exitError;
+  };
+  try {
+    await assert.rejects(
+      () =>
+        verbAssign(['#52', '--unknown'], cfg, {
+          exit: (code) => {
+            calls.exits.push(code);
+            throw exitError;
+          },
+          err: () => {},
+          out: () => {},
+          withIssueLock: async () => {
+            calls.locks += 1;
+          },
+          mutateAssignee: async () => {
+            calls.mutations += 1;
+          },
+          getLiveState: async () => 'backlog',
+          fetchAssignees: async () => [],
+          resolveLogin: async (login) => login,
+        }),
+      (error) => error === exitError
+    );
+  } finally {
+    process.exit = originalExit;
+  }
+  assert.deepEqual(calls, { locks: 0, mutations: 0, exits: [2] });
 });
 
 test('concurrent replacement owner after final removal restores and verifies Assigned', async () => {

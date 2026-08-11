@@ -60,6 +60,87 @@ function finalRemovalHarness({
   };
 }
 
+test('replacement owner appearing during the second trailing Status read is never missed', async () => {
+  const calls = { mutations: [], moves: [] };
+  let assignees = ['alice'];
+  let stateReads = 0;
+  let restoring = false;
+
+  const result = await runAssign({
+    issueNumber: 1217,
+    login: 'alice',
+    remove: true,
+    cfg,
+    deps: {
+      resolveLogin: async (login) => login,
+      getLiveState: async () => {
+        stateReads += 1;
+        if (stateReads === 1) return 'assigned';
+        if (restoring) return 'assigned';
+        // The first paired confirmation is Status(2), assignees, Status(3).
+        // The second is Status(4), assignees, Status(5).  Publish Bob only
+        // while that final trailing Status read is in flight: the old proof
+        // returned success without making one last assignee observation.
+        if (stateReads === 5) assignees = ['bob'];
+        return 'backlog';
+      },
+      fetchAssignees: async () => [...assignees],
+      mutateAssignee: async (args) => {
+        calls.mutations.push(args);
+        assignees = [];
+      },
+      runMoveState: async ({ target }) => {
+        calls.moves.push(target);
+        if (target === 'assigned') restoring = true;
+        return 0;
+      },
+    },
+  });
+
+  assert.equal(result.status, 'unassigned-owner-remains-restored');
+  assert.equal(result.state, 'assigned');
+  assert.deepEqual(result.assignees, ['bob']);
+  assert.deepEqual(calls.moves, ['backlog', 'assigned']);
+});
+
+test('an owner that disappears on the fresh closing read cannot legitimize Assigned', async () => {
+  const calls = { moves: [] };
+  let state = 'assigned';
+  let assigneeReads = 0;
+  let removed = false;
+
+  const result = await runAssign({
+    issueNumber: 1218,
+    login: 'alice',
+    remove: true,
+    cfg,
+    deps: {
+      resolveLogin: async (login) => login,
+      getLiveState: async () => state,
+      fetchAssignees: async () => {
+        assigneeReads += 1;
+        if (!removed) return ['alice'];
+        // Observe Bob before the trailing Status, then observe the authoritative
+        // fresh close as empty. Assigned+empty must never be called success.
+        return assigneeReads === 2 ? ['bob'] : [];
+      },
+      mutateAssignee: async () => {
+        removed = true;
+        state = 'assigned';
+      },
+      runMoveState: async ({ target }) => {
+        calls.moves.push(target);
+        state = target;
+        return 0;
+      },
+    },
+  });
+
+  assert.equal(result.status, 'owner-remains-restore-failed');
+  assert.equal(result.exitCode, 1);
+  assert.deepEqual(calls.moves, ['backlog', 'assigned']);
+});
+
 for (const ownerTiming of ['before', 'between', 'after']) {
   test(`replacement owner appearing ${ownerTiming} final paired reads restores Assigned`, async () => {
     const { calls, deps } = finalRemovalHarness({ ownerTiming });
@@ -130,6 +211,35 @@ test('replacement owner restoration with unreadable Status is explicitly indeter
   assert.equal(result.exitCode, 1);
   assert.match(result.message, /restoration Status unreadable/);
   assert.deepEqual(calls.moves, ['backlog', 'assigned']);
+});
+
+test('failed Assigned move never compensates across a changing Status snapshot', async () => {
+  const calls = { mutations: [], stateReads: 0, assigneeReads: 0 };
+  const result = await runAssign({
+    issueNumber: 1219,
+    login: 'alice',
+    cfg,
+    deps: {
+      resolveLogin: async (login) => login,
+      getLiveState: async () => {
+        calls.stateReads += 1;
+        if (calls.stateReads <= 2) return 'backlog';
+        return 'assigned';
+      },
+      fetchAssignees: async () => {
+        calls.assigneeReads += 1;
+        return calls.assigneeReads === 1 ? [] : ['alice'];
+      },
+      mutateAssignee: async (args) => calls.mutations.push(args),
+      runMoveState: async () => 11,
+    },
+  });
+
+  assert.equal(result.status, 'move-outcome-indeterminate');
+  assert.equal(result.exitCode, 11);
+  assert.deepEqual(calls.mutations, [
+    { issueNumber: 1219, repo: 'o/r', login: 'alice', remove: false },
+  ]);
 });
 
 function claimHarness({

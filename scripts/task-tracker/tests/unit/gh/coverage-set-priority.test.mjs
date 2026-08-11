@@ -42,6 +42,21 @@ function harness({ cfg = FULL_CFG, gql, gh, skipNetwork = false } = {}) {
 
 const argv = (...rest) => ['node', 'set-priority.mjs', ...rest];
 
+function membership(nodes = []) {
+  return {
+    repository: {
+      issue: {
+        id: 'ISS',
+        assignees: { nodes: [] },
+        projectItems: {
+          nodes,
+          pageInfo: { hasNextPage: false, endCursor: null },
+        },
+      },
+    },
+  };
+}
+
 test('help route emits self-doc and exits 0', async () => {
   const h = harness();
   await main(argv('--help'), h.deps);
@@ -91,10 +106,7 @@ test('TT_SKIP_NETWORK short-circuit logs the check mark, no gh call', async () =
 });
 
 test('network happy path resolves item and issues item-edit', async () => {
-  const gql = async () => ({
-    data: undefined,
-    repository: { issue: { projectItems: { nodes: [{ id: 'IT1', project: { id: 'P1' } }] } } },
-  });
+  const gql = async () => membership([{ id: 'IT1', project: { id: 'P1' } }]);
   const h = harness({ gql });
   await main(argv('7', 'p1'), h.deps);
   assert.equal(h.ghCalls.length, 1);
@@ -106,9 +118,7 @@ test('network happy path resolves item and issues item-edit', async () => {
 });
 
 test('network item not found → skip, no gh call', async () => {
-  const gql = async () => ({
-    repository: { issue: { projectItems: { nodes: [{ id: 'X', project: { id: 'OTHER' } }] } } },
-  });
+  const gql = async () => membership([{ id: 'X', project: { id: 'OTHER' } }]);
   const h = harness({ gql });
   await main(argv('8', 'p1'), h.deps);
   assert.equal(h.ghCalls.length, 0);
@@ -124,11 +134,7 @@ test('cascade with two sub-issues sets priority on parent + each child', async (
       return { repository: { issue: { subIssues: { nodes: [{ number: 11 }, { number: 12 }] } } } };
     }
     call++;
-    return {
-      repository: {
-        issue: { projectItems: { nodes: [{ id: `IT${call}`, project: { id: 'P1' } }] } },
-      },
-    };
+    return membership([{ id: `IT${call}`, project: { id: 'P1' } }]);
   };
   const h = harness({ gql });
   await main(argv('10', 'p1', '--cascade'), h.deps);
@@ -142,9 +148,7 @@ test('cascade with no sub-issues logs "No sub-issues found"', async () => {
     if (/subIssues/.test(query)) {
       return { repository: { issue: { subIssues: { nodes: [] } } } };
     }
-    return {
-      repository: { issue: { projectItems: { nodes: [{ id: 'IT1', project: { id: 'P1' } }] } } },
-    };
+    return membership([{ id: 'IT1', project: { id: 'P1' } }]);
   };
   const h = harness({ gql });
   await main(argv('10', 'p1', '--cascade'), h.deps);
@@ -154,9 +158,7 @@ test('cascade with no sub-issues logs "No sub-issues found"', async () => {
 test('cascade sub-issue query throwing is swallowed → No sub-issues found', async () => {
   const gql = async (query) => {
     if (/subIssues/.test(query)) throw new Error('subIssues unsupported');
-    return {
-      repository: { issue: { projectItems: { nodes: [{ id: 'IT1', project: { id: 'P1' } }] } } },
-    };
+    return membership([{ id: 'IT1', project: { id: 'P1' } }]);
   };
   const h = harness({ gql });
   await main(argv('10', 'p1', '--cascade'), h.deps);
@@ -165,9 +167,7 @@ test('cascade sub-issue query throwing is swallowed → No sub-issues found', as
 
 // ── direct unit tests for the exported helpers ────────────────────────────────
 test('getProjectItemId returns the matching project item id', async () => {
-  const gql = async () => ({
-    repository: { issue: { projectItems: { nodes: [{ id: 'IT9', project: { id: 'P1' } }] } } },
-  });
+  const gql = async () => membership([{ id: 'IT9', project: { id: 'P1' } }]);
   const id = await getProjectItemId({
     gql,
     owner: 'o',
@@ -178,8 +178,8 @@ test('getProjectItemId returns the matching project item id', async () => {
   assert.equal(id, 'IT9');
 });
 
-test('getProjectItemId returns "" when no node matches / nodes missing', async () => {
-  const gql = async () => ({ repository: { issue: { projectItems: {} } } });
+test('getProjectItemId returns "" when no configured project node matches', async () => {
+  const gql = async () => membership([]);
   const id = await getProjectItemId({
     gql,
     owner: 'o',
@@ -188,6 +188,20 @@ test('getProjectItemId returns "" when no node matches / nodes missing', async (
     projectId: 'P1',
   });
   assert.equal(id, '');
+});
+
+test('getProjectItemId fails closed when the membership payload is malformed', async () => {
+  await assert.rejects(
+    () =>
+      getProjectItemId({
+        gql: async () => ({ repository: { issue: { projectItems: {} } } }),
+        owner: 'o',
+        repoName: 'r',
+        issueNum: 3,
+        projectId: 'P1',
+      }),
+    /payload is invalid/
+  );
 });
 
 test('setPriority skipNetwork branch just logs', async () => {

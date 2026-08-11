@@ -48,29 +48,13 @@ const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 // Returns '' when the value is absent/unreadable; never throws.
 async function defaultReadBackStatusOptionId({ cfg, issueNumber }) {
   try {
-    const { gql, splitRepo } = await import('../../../gh/lib/github-projects.mjs');
-    const { owner, repoName } = splitRepo(cfg.repo);
-    const data = await gql(
-      `
-      query($owner: String!, $repo: String!, $issue: Int!) {
-        repository(owner: $owner, name: $repo) {
-          issue(number: $issue) {
-            projectItems(first: 10) {
-              nodes {
-                project { id }
-                fieldValueByName(name: "Status") {
-                  ... on ProjectV2ItemFieldSingleSelectValue { optionId }
-                }
-              }
-            }
-          }
-        }
-      }`,
-      { owner, repo: repoName, issue: Number(issueNumber) }
-    );
-    const nodes = data?.repository?.issue?.projectItems?.nodes || [];
-    const node = nodes.find((n) => n?.project?.id === cfg.projectId);
-    return String(node?.fieldValueByName?.optionId || '');
+    const { fetchConfiguredProjectIssue } = await import('../../../gh/lib/github-projects.mjs');
+    const snapshot = await fetchConfiguredProjectIssue({
+      repo: cfg.repo,
+      projectId: cfg.projectId,
+      issueNumber,
+    });
+    return String(snapshot.projectItem?.fieldValueByName?.optionId || '');
   } catch {
     return '';
   }

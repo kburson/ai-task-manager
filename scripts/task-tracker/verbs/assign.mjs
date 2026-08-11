@@ -3,7 +3,7 @@
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 
-import { splitRepo, gql } from '../../gh/lib/github-projects.mjs';
+import { fetchConfiguredProjectIssue } from '../../gh/lib/github-projects.mjs';
 import { runMoveStateHost } from '../../gh/move-state.mjs';
 import { getProjectDir } from '../paths.mjs';
 import { withIssueLock, IssueLockError } from '../issue-mutator-lock.mjs';
@@ -15,31 +15,35 @@ import {
 } from '../lib/assigned-assignee-invariant.mjs';
 import { stateIds } from '../lib/lifecycle-policy/index.mjs';
 import { GH_API_TIMEOUT_MS } from '../lib/process-timeouts.mjs';
+import { parseStrict, StrictArgvError } from '../lib/argv-strict.mjs';
 
 const pexec = promisify(execFile);
 
 async function defaultGetLiveState({ issueNumber, cfg }) {
-  const { owner, repoName } = splitRepo(cfg.repo);
-  const data = await gql(
-    `
-    query($owner: String!, $repo: String!, $issue: Int!) {
-      repository(owner: $owner, name: $repo) {
-        issue(number: $issue) {
-          projectItems(first: 10) {
-            nodes {
-              project { id }
-              fieldValueByName(name: "Status") {
-                ... on ProjectV2ItemFieldSingleSelectValue { name }
-              }
-            }
-          }
-        }
-      }
-    }`,
-    { owner, repo: repoName, issue: Number(issueNumber) }
+  const snapshot = await fetchConfiguredProjectIssue({
+    repo: cfg.repo,
+    projectId: cfg.projectId,
+    issueNumber,
+  });
+  return resolveConfiguredProjectState(
+    snapshot.projectItem ? [snapshot.projectItem] : [],
+    cfg.projectId
   );
-  const nodes = data?.repository?.issue?.projectItems?.nodes ?? [];
-  return resolveConfiguredProjectState(nodes, cfg.projectId);
+}
+
+async function defaultGetAssignmentSnapshot({ issueNumber, cfg }) {
+  const snapshot = await fetchConfiguredProjectIssue({
+    repo: cfg.repo,
+    projectId: cfg.projectId,
+    issueNumber,
+  });
+  return {
+    state: resolveConfiguredProjectState(
+      snapshot.projectItem ? [snapshot.projectItem] : [],
+      cfg.projectId
+    ),
+    assignees: parseAssigneeLogins(snapshot.assignees),
+  };
 }
 
 async function defaultResolveLogin(login) {
@@ -163,19 +167,33 @@ async function inspectFailedMove({
   login,
   getLiveState,
   fetchAssignees,
+  getAssignmentSnapshot,
 }) {
   try {
-    const state = await getLiveState({ issueNumber, cfg });
-    if (!stateIds().includes(state)) {
-      throw new Error('live project state is missing or unrecognized');
-    }
-    const assignees = await readAssigneesWithRetry(fetchAssignees, {
+    const snapshot = await readPairedAssignmentSnapshot({
       issueNumber,
-      repo: cfg.repo,
+      cfg,
+      getLiveState,
+      fetchAssignees,
+      getAssignmentSnapshot,
     });
-    const loginPresent = assignees.some((entry) => sameLogin(entry, login));
+    if (snapshot.error) throw snapshot.error;
+    if (!snapshot.state) {
+      return {
+        landed: false,
+        indeterminate: true,
+        state: null,
+        assignees: snapshot.assignees,
+        error:
+          `configured project Status changed during failed-move inspection ` +
+          `(${snapshot.stateBefore} → ${snapshot.stateAfter})`,
+      };
+    }
+    const state = snapshot.state;
+    const assignees = snapshot.assignees;
     if (state === target) {
-      if (target === 'assigned' && !loginPresent) {
+      const freshLoginPresent = snapshot.assigneesAfter.some((entry) => sameLogin(entry, login));
+      if (target === 'assigned' && !freshLoginPresent) {
         return {
           landed: true,
           indeterminate: true,
@@ -216,8 +234,41 @@ function assertRecognizedState(state, context = 'live project state') {
   return state;
 }
 
-async function readPairedAssignmentSnapshot({ issueNumber, cfg, getLiveState, fetchAssignees }) {
+async function readPairedAssignmentSnapshot({
+  issueNumber,
+  cfg,
+  getLiveState,
+  fetchAssignees,
+  getAssignmentSnapshot,
+}) {
+  if (getAssignmentSnapshot) {
+    try {
+      const snapshot = await getAssignmentSnapshot({ issueNumber, cfg });
+      const state = assertRecognizedState(snapshot?.state, 'live assignment snapshot state');
+      const assignees = parseAssigneeLogins(snapshot?.assignees);
+      return {
+        stateBefore: state,
+        stateAfter: state,
+        state,
+        assigneesBefore: assignees,
+        assigneesAfter: assignees,
+        assignees,
+      };
+    } catch (error) {
+      return {
+        stateBefore: null,
+        stateAfter: null,
+        state: null,
+        assigneesBefore: null,
+        assigneesAfter: null,
+        assignees: null,
+        error,
+      };
+    }
+  }
+
   let stateBefore = null;
+  let assigneesBefore = null;
   let assignees = null;
   let stateAfter = null;
   try {
@@ -226,12 +277,28 @@ async function readPairedAssignmentSnapshot({ issueNumber, cfg, getLiveState, fe
       'live project state before assignee read'
     );
   } catch (error) {
-    return { stateBefore, stateAfter, state: null, assignees, error };
+    return {
+      stateBefore,
+      stateAfter,
+      state: null,
+      assigneesBefore,
+      assigneesAfter: assignees,
+      assignees,
+      error,
+    };
   }
   try {
-    assignees = parseAssigneeLogins(await fetchAssignees({ issueNumber, repo: cfg.repo }));
+    assigneesBefore = parseAssigneeLogins(await fetchAssignees({ issueNumber, repo: cfg.repo }));
   } catch (error) {
-    return { stateBefore, stateAfter, state: null, assignees, error };
+    return {
+      stateBefore,
+      stateAfter,
+      state: null,
+      assigneesBefore,
+      assigneesAfter: assignees,
+      assignees,
+      error,
+    };
   }
   try {
     stateAfter = assertRecognizedState(
@@ -239,13 +306,43 @@ async function readPairedAssignmentSnapshot({ issueNumber, cfg, getLiveState, fe
       'live project state after assignee read'
     );
   } catch (error) {
-    return { stateBefore, stateAfter, state: null, assignees, error };
+    return {
+      stateBefore,
+      stateAfter,
+      state: null,
+      assigneesBefore,
+      assigneesAfter: assignees,
+      assignees,
+      error,
+    };
+  }
+  try {
+    // Close the fallback proof on ownership, not Status. An owner published
+    // while the trailing Status read is in flight is therefore observable
+    // before this snapshot can be classified clean.
+    assignees = parseAssigneeLogins(await fetchAssignees({ issueNumber, repo: cfg.repo }));
+  } catch (error) {
+    return {
+      stateBefore,
+      stateAfter,
+      state: null,
+      assigneesBefore,
+      assigneesAfter: assignees,
+      assignees,
+      error,
+    };
+  }
+  const observed = [...assigneesBefore];
+  for (const login of assignees) {
+    if (!observed.some((entry) => sameLogin(entry, login))) observed.push(login);
   }
   return {
     stateBefore,
     stateAfter,
     state: stateBefore === stateAfter ? stateBefore : null,
-    assignees,
+    assigneesBefore,
+    assigneesAfter: assignees,
+    assignees: observed,
   };
 }
 
@@ -254,6 +351,7 @@ async function observeFinalRemovalPostcondition({
   cfg,
   getLiveState,
   fetchAssignees,
+  getAssignmentSnapshot,
   attempts = 3,
 }) {
   let consecutiveClean = 0;
@@ -267,6 +365,7 @@ async function observeFinalRemovalPostcondition({
       cfg,
       getLiveState,
       fetchAssignees,
+      getAssignmentSnapshot,
     });
     lastSnapshot = snapshot;
     if (snapshot.assignees?.length > 0) {
@@ -305,6 +404,7 @@ async function observeAssignedRestoration({
   cfg,
   getLiveState,
   fetchAssignees,
+  getAssignmentSnapshot,
   attempts = 3,
 }) {
   let lastSnapshot = null;
@@ -316,6 +416,7 @@ async function observeAssignedRestoration({
       cfg,
       getLiveState,
       fetchAssignees,
+      getAssignmentSnapshot,
     });
     lastSnapshot = snapshot;
     if (snapshot.error) {
@@ -323,7 +424,7 @@ async function observeAssignedRestoration({
       continue;
     }
     successfulReads += 1;
-    if (snapshot.state === 'assigned' && snapshot.assignees.length > 0) {
+    if (snapshot.state === 'assigned' && snapshot.assigneesAfter.length > 0) {
       return { ...snapshot, kind: 'confirmed' };
     }
   }
@@ -342,6 +443,7 @@ async function restoreAssignedAndVerify({
   runMoveState,
   getLiveState,
   fetchAssignees,
+  getAssignmentSnapshot,
 }) {
   const restoreExit = await runMoveState({ issueNumber, target: 'assigned', cfg });
   const observation = await observeAssignedRestoration({
@@ -349,6 +451,7 @@ async function restoreAssignedAndVerify({
     cfg,
     getLiveState,
     fetchAssignees,
+    getAssignmentSnapshot,
   });
   if (observation.kind === 'confirmed') {
     return {
@@ -377,16 +480,27 @@ export async function runAssign({
   const resolveLogin = deps.resolveLogin || defaultResolveLogin;
   const getLiveState = deps.getLiveState || defaultGetLiveState;
   const fetchAssignees = deps.fetchAssignees || fetchAssignedInvariantAssignees;
+  const getAssignmentSnapshot =
+    deps.getAssignmentSnapshot ||
+    (!deps.getLiveState && !deps.fetchAssignees ? defaultGetAssignmentSnapshot : null);
   const mutateAssignee = deps.mutateAssignee || defaultMutateAssignee;
   const runMoveState = deps.runMoveState || defaultRunMoveState;
 
   try {
     const resolvedLogin = await resolveLogin(requestedLogin);
-    const state = await getLiveState({ issueNumber, cfg });
-    if (!stateIds().includes(state)) {
-      throw new Error('live project state is missing or unrecognized');
+    let state;
+    let before;
+    if (getAssignmentSnapshot) {
+      const snapshot = await getAssignmentSnapshot({ issueNumber, cfg });
+      state = assertRecognizedState(snapshot?.state);
+      before = parseAssigneeLogins(snapshot?.assignees);
+    } else {
+      state = await getLiveState({ issueNumber, cfg });
+      if (!stateIds().includes(state)) {
+        throw new Error('live project state is missing or unrecognized');
+      }
+      before = parseAssigneeLogins(await fetchAssignees({ issueNumber, repo: cfg.repo }));
     }
-    const before = parseAssigneeLogins(await fetchAssignees({ issueNumber, repo: cfg.repo }));
     const alreadyPresent = before.some((entry) => sameLogin(entry, resolvedLogin));
 
     // Full-Auto claims are the only assignment mode that requires an empty
@@ -407,6 +521,7 @@ export async function runAssign({
     }
 
     if (!remove) {
+      let addProvenance = alreadyPresent ? 'preexisting' : null;
       if (!alreadyPresent) {
         let mutationError = null;
         try {
@@ -448,7 +563,9 @@ export async function runAssign({
             };
           }
           afterAdd = observation.assignees;
+          addProvenance = 'ambiguous';
         } else {
+          addProvenance = 'confirmed';
           try {
             afterAdd = await readAssigneesWithRetry(fetchAssignees, {
               issueNumber,
@@ -509,6 +626,19 @@ export async function runAssign({
         if (expectedUnassigned) {
           const foreignOwners = afterAdd.filter((entry) => !sameLogin(entry, resolvedLogin));
           if (foreignOwners.length > 0) {
+            if (addProvenance === 'ambiguous') {
+              return {
+                status: 'claim-race-ambiguous-add-not-compensated',
+                exitCode: 1,
+                issueNumber,
+                login: requestedLogin,
+                state,
+                assignees: foreignOwners,
+                message:
+                  `another owner appeared during a thrown assignment mutation; ` +
+                  `mutation ownership is indeterminate and no destructive compensation was attempted`,
+              };
+            }
             const compensationError = await safeCompensate({
               action: () =>
                 mutateAssignee({
@@ -550,6 +680,7 @@ export async function runAssign({
             login: resolvedLogin,
             getLiveState,
             fetchAssignees,
+            getAssignmentSnapshot,
           });
           if (outcome.landed) {
             return {
@@ -575,27 +706,42 @@ export async function runAssign({
                 `${exitCode}: ${outcome.error}`,
             };
           }
-          const compensationError = alreadyPresent
-            ? null
-            : await safeCompensate({
-                action: () =>
-                  mutateAssignee({
-                    issueNumber,
-                    repo: cfg.repo,
-                    login: requestedLogin,
-                    remove: true,
-                  }),
-                fetchAssignees,
-                fetchArgs: { issueNumber, repo: cfg.repo },
-                login: resolvedLogin,
-                shouldBePresent: false,
-              });
+          if (addProvenance === 'ambiguous') {
+            return {
+              status: 'move-failed-ambiguous-add-not-compensated',
+              exitCode,
+              issueNumber,
+              login: requestedLogin,
+              state: outcome.state,
+              assignees: outcome.assignees,
+              message:
+                `Backlog → Assigned failed with exit ${exitCode}; assignment mutation ownership ` +
+                `is indeterminate, so no destructive compensation was attempted`,
+            };
+          }
+          const compensationError =
+            addProvenance !== 'confirmed'
+              ? null
+              : await safeCompensate({
+                  action: () =>
+                    mutateAssignee({
+                      issueNumber,
+                      repo: cfg.repo,
+                      login: requestedLogin,
+                      remove: true,
+                    }),
+                  fetchAssignees,
+                  fetchArgs: { issueNumber, repo: cfg.repo },
+                  login: resolvedLogin,
+                  shouldBePresent: false,
+                });
           return {
-            status: alreadyPresent
-              ? 'move-failed'
-              : compensationError
-                ? 'move-failed-compensation-unverified'
-                : 'move-failed-compensated',
+            status:
+              addProvenance !== 'confirmed'
+                ? 'move-failed'
+                : compensationError
+                  ? 'move-failed-compensation-unverified'
+                  : 'move-failed-compensated',
             exitCode,
             login: requestedLogin,
             compensationError,
@@ -633,6 +779,7 @@ export async function runAssign({
           login: resolvedLogin,
           getLiveState,
           fetchAssignees,
+          getAssignmentSnapshot,
         });
         if (outcome.indeterminate) {
           return {
@@ -671,6 +818,7 @@ export async function runAssign({
         runMoveState,
         getLiveState,
         fetchAssignees,
+        getAssignmentSnapshot,
       });
       return {
         status:
@@ -697,13 +845,14 @@ export async function runAssign({
         cfg,
         getLiveState,
         fetchAssignees,
+        getAssignmentSnapshot,
       });
 
       if (finalObservation.kind === 'owner-present') {
         const removedLoginRemains = finalObservation.assignees.some((entry) =>
           sameLogin(entry, resolvedLogin)
         );
-        if (finalObservation.state === 'assigned') {
+        if (finalObservation.state === 'assigned' && finalObservation.assigneesAfter?.length > 0) {
           return {
             status: removedLoginRemains
               ? 'remove-verification-failed-restored'
@@ -722,6 +871,7 @@ export async function runAssign({
           runMoveState,
           getLiveState,
           fetchAssignees,
+          getAssignmentSnapshot,
         });
         const statusBase = removedLoginRemains ? 'remove-verification-failed' : 'owner-remains';
         return {
@@ -755,6 +905,7 @@ export async function runAssign({
             runMoveState,
             getLiveState,
             fetchAssignees,
+            getAssignmentSnapshot,
           });
           return {
             status:
@@ -860,39 +1011,81 @@ export async function runInvariantAwareClaim({ issueNumber, cfg, deps = {} } = {
 }
 
 export function parseArgs(rest = []) {
-  let issueNumber = null;
-  let login = null;
-  let remove = false;
-  for (let index = 0; index < rest.length; index += 1) {
-    const value = String(rest[index]);
-    const issue = value.match(/^#?(\d+)$/);
-    if (issue) issueNumber = Number(issue[1]);
-    else if (value === '--remove') remove = true;
-    else if (value === '--assignee' && rest[index + 1]) login = String(rest[++index]);
-    else if (!value.startsWith('--') && login == null) login = value;
+  const argv = rest.map(String);
+  let removeCount = 0;
+  let assigneeCount = 0;
+  for (const token of argv) {
+    if (token === '--remove') removeCount += 1;
+    if (token === '--assignee' || token.startsWith('--assignee=')) assigneeCount += 1;
   }
-  return { issueNumber, login, remove };
+  if (removeCount > 1) throw new StrictArgvError('assign: duplicate --remove');
+  if (assigneeCount > 1) throw new StrictArgvError('assign: duplicate --assignee');
+
+  const parsed = parseStrict(argv, {
+    flags: ['--remove'],
+    options: ['--assignee'],
+    positionals: { min: 1, max: 2 },
+    allowHelp: false,
+  });
+  const issueMatch = String(parsed.positionals[0]).match(/^#?(\d+)$/);
+  if (!issueMatch || Number(issueMatch[1]) <= 0) {
+    throw new StrictArgvError('assign: issue# must be a positive integer');
+  }
+  const positionalLogin = parsed.positionals[1] ?? null;
+  const flaggedLogin = parsed.values['--assignee'] ?? null;
+  if (assigneeCount > 0 && !String(flaggedLogin ?? '').trim()) {
+    throw new StrictArgvError('assign: --assignee requires a non-empty login');
+  }
+  if (positionalLogin && flaggedLogin) {
+    throw new StrictArgvError('assign: positional login conflicts with --assignee');
+  }
+  const login = flaggedLogin || positionalLogin;
+  if (login && (String(login).startsWith('-') || /^#?\d+$/.test(String(login)))) {
+    throw new StrictArgvError(`assign: invalid assignee login: ${login}`);
+  }
+  return {
+    issueNumber: Number(issueMatch[1]),
+    login: login ? String(login) : null,
+    remove: parsed.values['--remove'] === true,
+  };
 }
 
 export async function verbAssign(rest, cfg, deps = {}) {
-  const args = parseArgs(rest);
-  if (!args.issueNumber) {
-    process.stderr.write('Usage: /task assign #N [<login>|--assignee <login>] [--remove]\n');
-    process.exit(2);
+  const writeErr = deps.err || ((message) => process.stderr.write(message));
+  const writeOut = deps.out || ((message) => process.stdout.write(message));
+  const exit = deps.exit || process.exit;
+  const lock = deps.withIssueLock || withIssueLock;
+  const usage = 'Usage: /task assign #N [<login>|--assignee <login>] [--remove]\n';
+  let args;
+  try {
+    args = parseArgs(rest);
+  } catch (error) {
+    if (error instanceof StrictArgvError) {
+      writeErr(`assign: ${error.message.replace(/^assign:\s*/, '')}\n${usage}`);
+      exit(2);
+      return;
+    }
+    throw error;
   }
   let result;
   try {
-    result = await withIssueLock(
-      { issue: args.issueNumber, verb: 'assign', projDir: getProjectDir() },
+    result = await lock(
+      {
+        issue: args.issueNumber,
+        verb: 'assign',
+        projDir: deps.projDir || (deps.getProjectDir || getProjectDir)(),
+      },
       () => runAssign({ ...args, cfg, deps })
     );
   } catch (error) {
     if (error instanceof IssueLockError) {
-      process.stderr.write(`⛔ ${error.message}\n`);
-      process.exit(7);
+      writeErr(`⛔ ${error.message}\n`);
+      exit(7);
+      return;
     }
-    process.stderr.write(`assign: ${error?.message || String(error)}\n`);
-    process.exit(1);
+    writeErr(`assign: ${error?.message || String(error)}\n`);
+    exit(1);
+    return;
   }
   if (
     [
@@ -904,14 +1097,12 @@ export async function verbAssign(rest, cfg, deps = {}) {
       'unassigned-owner-remains-restored',
     ].includes(result.status)
   ) {
-    process.stdout.write(
-      `✓ #${args.issueNumber} ${result.status}: ${result.login} (${result.state})\n`
-    );
+    writeOut(`✓ #${args.issueNumber} ${result.status}: ${result.login} (${result.state})\n`);
     return;
   }
-  process.stderr.write(`assign: ${result.message || result.status}\n`);
+  writeErr(`assign: ${result.message || result.status}\n`);
   if (result.compensationError) {
-    process.stderr.write(`assign: compensation failed: ${result.compensationError}\n`);
+    writeErr(`assign: compensation failed: ${result.compensationError}\n`);
   }
-  process.exit(result.exitCode || 1);
+  exit(result.exitCode || 1);
 }

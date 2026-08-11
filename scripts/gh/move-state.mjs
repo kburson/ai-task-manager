@@ -27,7 +27,7 @@ import { promisify } from 'node:util';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { loadConfig } from '../task-tracker/config.mjs';
-import { gh, projectItemForIssue } from './lib/github-projects.mjs';
+import { gh, projectItemForIssue, fetchConfiguredProjectIssue } from './lib/github-projects.mjs';
 import { backlogMoveWarning } from './lib/project-tether.mjs';
 import { checkDirty, formatSummary, resolveWorkspaceForIssue } from './lib/dirty-workspace.mjs';
 import { normalizeStateId } from '../task-tracker/lib/lifecycle-policy/index.mjs';
@@ -201,33 +201,14 @@ export async function runMoveStateHost({
   // plan->develop approval gate.
   async function resolveLiveStateName(issueNumber) {
     if (SKIP_NETWORK) return '';
-    try {
-      const { gql, splitRepo } = await import('./lib/github-projects.mjs');
-      const { owner, repoName } = splitRepo(cfg.repo);
-      const data = await gql(
-        `
-        query($owner: String!, $repo: String!, $issue: Int!) {
-          repository(owner: $owner, name: $repo) {
-            issue(number: $issue) {
-              projectItems(first: 10) {
-                nodes {
-                  project { id }
-                  fieldValueByName(name: "Status") {
-                    ... on ProjectV2ItemFieldSingleSelectValue { name }
-                  }
-                }
-              }
-            }
-          }
-        }`,
-        { owner, repo: repoName, issue: Number(issueNumber) }
-      );
-      const nodes = data?.repository?.issue?.projectItems?.nodes || [];
-      const node = nodes.find((n) => n?.project?.id === cfg.projectId);
-      return normalizeStateId(node?.fieldValueByName?.name) || '';
-    } catch {
-      return '';
-    }
+    const snapshot = await fetchConfiguredProjectIssue({
+      repo: cfg.repo,
+      projectId: cfg.projectId,
+      issueNumber,
+    });
+    const state = normalizeStateId(snapshot.projectItem?.fieldValueByName?.name);
+    if (!state) throw new Error(`configured project ${cfg.projectId} has no recognized Status`);
+    return state;
   }
 
   // #711 — read the item's live Status single-select `optionId` back for the
@@ -238,132 +219,128 @@ export async function runMoveStateHost({
   async function readBackStatusOptionId({ issueNumber } = {}) {
     if (SKIP_NETWORK) return '';
     try {
-      const { gql, splitRepo } = await import('./lib/github-projects.mjs');
-      const { owner, repoName } = splitRepo(cfg.repo);
-      const data = await gql(
-        `
-        query($owner: String!, $repo: String!, $issue: Int!) {
-          repository(owner: $owner, name: $repo) {
-            issue(number: $issue) {
-              projectItems(first: 10) {
-                nodes {
-                  project { id }
-                  fieldValueByName(name: "Status") {
-                    ... on ProjectV2ItemFieldSingleSelectValue { optionId }
-                  }
-                }
-              }
-            }
-          }
-        }`,
-        { owner, repo: repoName, issue: Number(issueNumber) }
-      );
-      const nodes = data?.repository?.issue?.projectItems?.nodes || [];
-      const node = nodes.find((n) => n?.project?.id === cfg.projectId);
-      return String(node?.fieldValueByName?.optionId || '');
+      const snapshot = await fetchConfiguredProjectIssue({
+        repo: cfg.repo,
+        projectId: cfg.projectId,
+        issueNumber,
+      });
+      return String(snapshot.projectItem?.fieldValueByName?.optionId || '');
     } catch {
       return '';
     }
   }
 
-  let resolvedFromState = '';
-  if (fromOverride) {
-    resolvedFromState = String(fromOverride).toLowerCase();
-  } else if (!SKIP_NETWORK) {
-    resolvedFromState = await resolveLiveStateName(issueArg);
-  }
+  // Keep the authoritative Status read, transition classification, guards, and
+  // mutation in one issue-locked critical section. Otherwise a competing
+  // writer can change Status after classification but before the write, and a
+  // contended invocation can perform network reads before reporting the lock.
+  // Callers that already own the issue lock signal that fact through
+  // ISSUE_LOCK_HELD_ENV, so the same critical section remains deadlock-free
+  // when move-state is nested under a public verb.
+  const runLockedTransition = async () => {
+    let resolvedFromState = '';
+    if (fromOverride) {
+      resolvedFromState = String(fromOverride).toLowerCase();
+    } else if (!SKIP_NETWORK) {
+      try {
+        resolvedFromState = await resolveLiveStateName(issueArg);
+      } catch (error) {
+        process.stderr.write(
+          `⛔ Cannot resolve configured-project Status for #${issueArg} (fail-closed): ` +
+            `${error?.message || String(error)}\n`
+        );
+        return 1;
+      }
+    }
 
-  // #559 — the from/to decision is now a value. `computeTransitionPlan` folds
-  // the matrix gate, the guard-pipeline applicability, and the done-path
-  // side-effect flags into one plan object that the host iterates below.
-  const plan = computeTransitionPlan({
-    fromState: resolvedFromState,
-    toState: stateArg,
-    flags: { supersede: supersedeFlag, force: forceFlag, demote: demoteFlag },
-  });
+    // #559 — the from/to decision is now a value. `computeTransitionPlan` folds
+    // the matrix gate, the guard-pipeline applicability, and the done-path
+    // side-effect flags into one plan object that the host iterates below.
+    const plan = computeTransitionPlan({
+      fromState: resolvedFromState,
+      toState: stateArg,
+      flags: { supersede: supersedeFlag, force: forceFlag, demote: demoteFlag },
+    });
 
-  if (plan.matrix.applies && !plan.matrix.ok) {
-    process.stderr.write(`\n⛔ Refusing to move #${issueArg} to ${stateArg}:\n`);
-    process.stderr.write(`   BLOCKED: ${plan.matrix.reason}\n`);
-    process.stderr.write(
-      '\nThe 8-state kanban only permits one-step forward moves plus test->develop\n'
-    );
-    process.stderr.write(
-      'and review->develop rework. See scripts/task-tracker/lib/lifecycle-policy/.\n\n'
-    );
-    return 5;
-  }
+    if (plan.matrix.applies && !plan.matrix.ok) {
+      process.stderr.write(`\n⛔ Refusing to move #${issueArg} to ${stateArg}:\n`);
+      process.stderr.write(`   BLOCKED: ${plan.matrix.reason}\n`);
+      process.stderr.write(
+        '\nThe 8-state kanban only permits one-step forward moves plus test->develop\n'
+      );
+      process.stderr.write(
+        'and review->develop rework. See scripts/task-tracker/lib/lifecycle-policy/.\n\n'
+      );
+      return 5;
+    }
 
-  // #882 — satisfied no-op: the issue is already in the requested state. Return
-  // BEFORE the ctx below so nothing downstream runs — no guard pipeline, no body
-  // mutation, no entry marker, no timing row, no board write. Re-entering a state
-  // would double-stamp `aitm-entered-<stage>` and open a duplicate stage-timing
-  // row, corrupting the stage table. The machine token is what
-  // `runMoveStateInProcess` matches to set `noop` on its structured result.
-  if (plan.noop) {
-    process.stdout.write(`↻ #${issueArg} is already in ${stateArg} — no state change\n`);
-    process.stdout.write(`aitm-move-noop state=${stateArg}\n`);
-    return 0;
-  }
+    // #882 — satisfied no-op: the issue is already in the requested state. Return
+    // BEFORE the ctx below so nothing downstream runs — no guard pipeline, no body
+    // mutation, no entry marker, no timing row, no board write. Re-entering a state
+    // would double-stamp `aitm-entered-<stage>` and open a duplicate stage-timing
+    // row, corrupting the stage table. The machine token is what
+    // `runMoveStateInProcess` matches to set `noop` on its structured result.
+    if (plan.noop) {
+      process.stdout.write(`↻ #${issueArg} is already in ${stateArg} — no state change\n`);
+      process.stdout.write(`aitm-move-noop state=${stateArg}\n`);
+      return 0;
+    }
 
-  // #559 — the shared context the extracted move-state concern modules consume.
-  // Runtime values + cfg + the I/O primitives (`gh`/`pexec`) and the cross-tree
-  // helpers (`projectItemForIssue`, dirty-workspace, backlog-warning) plus the
-  // host-local `resolveLiveStateName` closure are injected here; the modules
-  // import their stateless task-tracker helpers + node builtins directly. The
-  // modules NEVER call process.exit — they return an `exit` descriptor and the
-  // host owns termination, mirroring the policy/transition-plan split.
-  const ctx = {
-    issueArg,
-    stateArg,
-    resolvedFromState,
-    demoteFlag,
-    demoteReason,
-    outOfBandReason,
-    optionId,
-    itemIdOverride,
-    itemId: itemIdOverride,
-    plan,
-    forceFlag,
-    supersedeFlag,
-    SKIP_NETWORK,
-    cfg,
-    __dir,
-    gh,
-    pexec,
-    projectItemForIssue,
-    resolveLiveStateName,
-    readBackStatusOptionId,
-    checkDirty,
-    formatSummary,
-    resolveWorkspaceForIssue,
-    backlogMoveWarning,
-    tailProfile: resolvedTailProfile,
-    reviewAuthority,
-    lifecycleEvidence,
-  };
+    // #559 — the shared context the extracted move-state concern modules consume.
+    // Runtime values + cfg + the I/O primitives (`gh`/`pexec`) and the cross-tree
+    // helpers (`projectItemForIssue`, dirty-workspace, backlog-warning) plus the
+    // host-local `resolveLiveStateName` closure are injected here; the modules
+    // import their stateless task-tracker helpers + node builtins directly. The
+    // modules NEVER call process.exit — they return an `exit` descriptor and the
+    // host owns termination, mirroring the policy/transition-plan split.
+    const ctx = {
+      issueArg,
+      stateArg,
+      resolvedFromState,
+      demoteFlag,
+      demoteReason,
+      outOfBandReason,
+      optionId,
+      itemIdOverride,
+      itemId: itemIdOverride,
+      plan,
+      forceFlag,
+      supersedeFlag,
+      SKIP_NETWORK,
+      cfg,
+      __dir,
+      gh,
+      pexec,
+      projectItemForIssue,
+      resolveLiveStateName,
+      readBackStatusOptionId,
+      checkDirty,
+      formatSummary,
+      resolveWorkspaceForIssue,
+      backlogMoveWarning,
+      tailProfile: resolvedTailProfile,
+      reviewAuthority,
+      lifecycleEvidence,
+    };
 
-  // #559 — guard-execution concern: the dirty-workspace warn, the universal
-  // exit/entry guard pipeline (#286/#359/#355/#511), and the sized→backlog warn
-  // (formerly three inline blocks here). runGuardExecution emits every banner +
-  // fire-and-forget timing row verbatim and returns `{ exit }` — a number when
-  // the pipeline refuses (6 contiguity / 4 generic / body-fetch-fail code), null
-  // otherwise. The host owns termination so the exact codes survive.
-  //
-  // #358 — the inline plan→develop deep-dive gate that once lived here is a
-  // strict duplicate of `planExitDeepDiveGuard` (#277), fired inside the
-  // pipeline. #355 — the forward contiguity guard is likewise a registry
-  // entry-guard whose refusal id the pipeline special-cases for exit 6.
-  const guardOutcome = await runGuardExecution(ctx);
-  if (guardOutcome.exit !== null) return guardOutcome.exit;
+    // #559 — guard-execution concern: the dirty-workspace warn, the universal
+    // exit/entry guard pipeline (#286/#359/#355/#511), and the sized→backlog warn
+    // (formerly three inline blocks here). runGuardExecution emits every banner +
+    // fire-and-forget timing row verbatim and returns `{ exit }` — a number when
+    // the pipeline refuses (6 contiguity / 4 generic / body-fetch-fail code), null
+    // otherwise. The host owns termination so the exact codes survive.
+    //
+    // #358 — the inline plan→develop deep-dive gate that once lived here is a
+    // strict duplicate of `planExitDeepDiveGuard` (#277), fired inside the
+    // pipeline. #355 — the forward contiguity guard is likewise a registry
+    // entry-guard whose refusal id the pipeline special-cases for exit 6.
+    const guardOutcome = await runGuardExecution(ctx);
+    if (guardOutcome.exit !== null) return guardOutcome.exit;
 
-  // --- mutation block (per-issue advisory lock — EPIC #207 / #214) ---
-  // Wrap every write that touches the issue (board status field, body markers,
-  // timing-log comment, audit comments, local state file) so two parallel
-  // sessions on the same issue serialize cleanly. The verb pipeline
-  // (promote/approve/reconcile) may have already acquired this lock and signal
-  // via `AITM_ISSUE_LOCK_HELD=1`; in that case skip re-acquisition.
-  const runMutation = async () => {
+    // --- mutation block (per-issue advisory lock — EPIC #207 / #214) ---
+    // The enclosing critical section starts before authoritative state
+    // resolution, so every read/classify/guard/write step observes one
+    // serialized issue history.
     // #559/#1207 — the mutation block is now a thin sequencer over the extracted
     // concern modules. The lock-time Assigned revalidation runs first; only then
     // may phase-pair rows and entry/last-known markers land before the verified
@@ -372,7 +349,7 @@ export async function runMoveStateHost({
     // evidence to compensate.
     // #755 — delegate guarded evidence → Status → sentinel → tail to moveState(ctx).
     // The exit/entry guard already ran and was honored above (guardOutcome,
-    // OUTSIDE the lock), so the core's guard seam is stubbed to a no-op here; the
+    // inside this same lock), so the core's guard seam is stubbed to a no-op here; the
     // core then runs the lock-time revalidation and ordered saga. moveState
     // never calls process.exit — it returns
     // { exit, itemId, tail } and the mutation propagates result.exit outward so
@@ -408,7 +385,7 @@ export async function runMoveStateHost({
   };
 
   if (env[ISSUE_LOCK_HELD_ENV] === '1') {
-    return await runMutation();
+    return await runLockedTransition();
   }
   try {
     return await withIssueLock(
@@ -417,7 +394,7 @@ export async function runMoveStateHost({
         verb: AITM_VERB_CONTEXT || 'move-state',
         projDir: getProjectDir(env),
       },
-      runMutation
+      runLockedTransition
     );
   } catch (err) {
     if (err instanceof IssueLockError) {

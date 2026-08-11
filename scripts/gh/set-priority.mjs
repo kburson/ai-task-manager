@@ -5,7 +5,11 @@
 // --cascade: also set the same priority on all direct sub-issues
 
 import { loadConfig } from '../task-tracker/config.mjs';
-import { gh as ghDefault, gql as gqlDefault } from './lib/github-projects.mjs';
+import {
+  gh as ghDefault,
+  gql as gqlDefault,
+  fetchConfiguredProjectIssue,
+} from './lib/github-projects.mjs';
 import { wantsHelp, emitSelfDoc } from '../lib/self-doc.mjs';
 
 const PRIORITY_TO_CONFIG_KEY = {
@@ -16,20 +20,13 @@ const PRIORITY_TO_CONFIG_KEY = {
 };
 
 export async function getProjectItemId({ gql, owner, repoName, issueNum, projectId }) {
-  const data = await gql(
-    `
-    query($owner: String!, $repo: String!, $issue: Int!) {
-      repository(owner: $owner, name: $repo) {
-        issue(number: $issue) {
-          projectItems(first: 20) { nodes { id project { id } } }
-        }
-      }
-    }`,
-    { owner, repo: repoName, issue: Number(issueNum) }
-  );
-  const nodes = data?.repository?.issue?.projectItems?.nodes || [];
-  const match = nodes.find((n) => n?.project?.id === projectId);
-  return match?.id || '';
+  const snapshot = await fetchConfiguredProjectIssue({
+    repo: `${owner}/${repoName}`,
+    projectId,
+    issueNumber: issueNum,
+    gqlFn: gql,
+  });
+  return snapshot.projectItem?.id || '';
 }
 
 export async function setPriority(issueNum, ctx) {

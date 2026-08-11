@@ -192,10 +192,18 @@ if (args[0] === 'api' && args[1] === 'graphql') {
     let opt = '';
     try { opt = fs.readFileSync(STATE_FILE, 'utf8'); } catch {}
     const payload = {
-      data: { repository: { issue: { projectItems: { nodes: [
-        { project: { id: ${JSON.stringify(PROJECT_ID)} },
-          fieldValueByName: { name: ${JSON.stringify(currentState)}, optionId: opt } },
-      ] } } } },
+      data: { repository: { issue: {
+        id: 'ISS_100',
+        assignees: { nodes: [] },
+        projectItems: {
+          pageInfo: { hasNextPage: false, endCursor: null },
+          nodes: [
+            { id: 'PVTI_test', project: { id: ${JSON.stringify(PROJECT_ID)} },
+              fieldValueByName: { name: ${JSON.stringify(currentState)}, optionId: opt },
+              fieldValues: { nodes: [] } },
+          ],
+        },
+      } } },
     };
     fs.writeSync(1, JSON.stringify(payload));
     process.exit(0);

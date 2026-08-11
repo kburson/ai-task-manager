@@ -6,7 +6,12 @@
 //
 // Pure-ish: I/O injectable via deps for tests.
 
-import { splitRepo, gql, writeProjectFieldValue } from '../../gh/lib/github-projects.mjs';
+import {
+  splitRepo,
+  gql,
+  writeProjectFieldValue,
+  fetchConfiguredProjectIssue,
+} from '../../gh/lib/github-projects.mjs';
 import { fieldIdFor } from '../project-fields.mjs';
 import { warnMissingFieldId } from './field-config-warn.mjs';
 
@@ -18,32 +23,13 @@ export async function defaultResolveItem({ cfg, issueNumber, deps = {} }) {
   const gqlFn = deps.gql || gql;
   const splitRepoFn = deps.splitRepo || splitRepo;
   const { owner, repoName } = splitRepoFn(cfg.repo);
-  const data = await gqlFn(
-    `
-    query($owner: String!, $repo: String!, $issue: Int!) {
-      repository(owner: $owner, name: $repo) {
-        issue(number: $issue) {
-          projectItems(first: 20) {
-            nodes {
-              id
-              project { id }
-              fieldValues(first: 100) {
-                nodes {
-                  ... on ProjectV2ItemFieldTextValue {
-                    text
-                    field { ... on ProjectV2FieldCommon { id } }
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-    }`,
-    { owner, repo: repoName, issue: Number(issueNumber) }
-  );
-  const items = data?.repository?.issue?.projectItems?.nodes ?? [];
-  return items.find((n) => n.project?.id === cfg.projectId) ?? null;
+  const snapshot = await fetchConfiguredProjectIssue({
+    repo: `${owner}/${repoName}`,
+    projectId: cfg.projectId,
+    issueNumber,
+    gqlFn,
+  });
+  return snapshot.projectItem;
 }
 
 function formatStartTime(d) {

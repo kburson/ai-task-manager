@@ -303,7 +303,7 @@ test('--shape sub-issue: refuses creation under a Done parent epic', () => {
   const doneParentGh = `
 if [[ "$1" == "api" && "$2" == "graphql" ]]; then
   cat >/dev/null
-  echo '{"data":{"repository":{"issue":{"projectItems":{"nodes":[{"project":{"id":"PVT_TEST"},"fieldValues":{"nodes":[{"name":"Done","field":{"name":"Status"}}]}}]}}}}}'
+  echo '{"data":{"repository":{"issue":{"id":"ISS_5","assignees":{"nodes":[]},"projectItems":{"pageInfo":{"hasNextPage":false,"endCursor":null},"nodes":[{"id":"PVTI_5","project":{"id":"PVT_TEST"},"fieldValueByName":{"name":"Done","optionId":"OPT_done"},"fieldValues":{"nodes":[{"name":"Done","field":{"name":"Status"}}]}}]}}}}}'
   exit 0
 fi
 if [[ "$1 $2" == "issue create" ]]; then
@@ -361,7 +361,7 @@ test('--shape sub-issue: AITM_SKIP_PARENT_STATE_GATE=1 bypasses the Done-parent 
   const doneParentGh = `
 if [[ "$1" == "api" && "$2" == "graphql" ]]; then
   cat >/dev/null
-  echo '{"data":{"repository":{"issue":{"projectItems":{"nodes":[{"project":{"id":"PVT_TEST"},"fieldValues":{"nodes":[{"name":"Done","field":{"name":"Status"}}]}}]}}}}}'
+  echo '{"data":{"repository":{"issue":{"id":"ISS_5","assignees":{"nodes":[]},"projectItems":{"pageInfo":{"hasNextPage":false,"endCursor":null},"nodes":[{"id":"PVTI_5","project":{"id":"PVT_TEST"},"fieldValueByName":{"name":"Done","optionId":"OPT_done"},"fieldValues":{"nodes":[{"name":"Done","field":{"name":"Status"}}]}}]}}}}}'
   exit 0
 fi
 echo "unexpected gh call: $*" >&2

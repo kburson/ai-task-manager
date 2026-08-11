@@ -98,6 +98,8 @@ function makeGhShim(
     issueNumber: 999999,
     ts: '2026-05-10T00:00:00.000Z',
   });
+  const stateName =
+    stateOptionId === OPT_REVIEW ? 'Review' : stateOptionId === OPT_DEV ? 'Develop' : '';
   const gitShim = path.join(binDir, 'git');
   writeFileSync(
     gitShim,
@@ -244,7 +246,19 @@ if (argv[0] === 'api' && argv[1] === 'graphql') {
           id: 'ISS_test',
           subIssues: { nodes: [] },
           parent: null,
-          projectItems: { nodes: [{ id: 'PVTI_test', project: { id: 'PVT_test' }, fieldValueByName: { optionId: ${JSON.stringify(stateOptionId)} } }] },
+          assignees: { nodes: [] },
+          projectItems: {
+            pageInfo: { hasNextPage: false, endCursor: null },
+            nodes: [{
+              id: 'PVTI_test',
+              project: { id: 'PVT_test' },
+              fieldValueByName: {
+                name: ${JSON.stringify(stateName)},
+                optionId: ${JSON.stringify(stateOptionId)}
+              },
+              fieldValues: { nodes: [] }
+            }]
+          },
           comments: { nodes: [] }
         }
       },

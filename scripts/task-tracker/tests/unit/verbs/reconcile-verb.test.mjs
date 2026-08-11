@@ -193,6 +193,7 @@ test('reconcile accept-live: Assigned live status stamps aitm-entered-assigned w
   const liveSlug = normalizeStateId('Assigned'); // mirrors defaultGetLiveState
   assert.equal(liveSlug, 'assigned', 'resolver must produce the kebab slug');
   const { deps, calls } = makeDeps({ body: bodyWithState('backlog'), live: liveSlug });
+  deps.fetchAssignees = async () => ['alice'];
   let result;
   await assert.doesNotReject(async () => {
     result = await runReconcile({ issueNumber: 436, mode: 'accept-live', cfg, deps });

@@ -111,10 +111,10 @@ import { appendFileSync } from 'node:fs';
 const argv = process.argv.slice(2);
 appendFileSync(${JSON.stringify(argvLog)}, JSON.stringify(argv) + '\\n');
 if (argv[0] === 'api' && argv[1] === 'graphql') {
-  process.stdout.write(JSON.stringify({ data: { repository: { issue: { projectItems: { nodes: [
+  process.stdout.write(JSON.stringify({ data: { repository: { issue: { id: 'ISS', assignees: { nodes: [] }, projectItems: { nodes: [
     { id: ${JSON.stringify(OTHER_ITEM)}, project: { id: ${JSON.stringify(OTHER_PROJECT)} } },
     { id: ${JSON.stringify(TARGET_ITEM)}, project: { id: ${JSON.stringify(TARGET_PROJECT)} } },
-  ] } } } } }));
+  ], pageInfo: { hasNextPage: false, endCursor: null } } } } } }));
 } else {
   process.stdout.write('{}');
 }

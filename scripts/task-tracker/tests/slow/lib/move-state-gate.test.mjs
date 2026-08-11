@@ -21,6 +21,7 @@ const pexec = promisify(execFile);
 const __dir = path.dirname(fileURLToPath(import.meta.url)) + '/..';
 // #764 — move-state.mjs is import-only; spawn the test-only CLI harness instead.
 const SCRIPT = path.resolve(__dir, '../helpers/move-state-cli.mjs');
+const HEAD_SHA = 'abcdef1234567890abcdef1234567890abcdef12';
 
 function deepDiveAdequate() {
   const lines = [
@@ -42,7 +43,7 @@ function deepDiveAdequate() {
   return lines.join('\n');
 }
 
-function makeSandbox(body) {
+function makeSandbox(body, { currentState = 'Develop' } = {}) {
   const sandbox = mkdtempSync(path.join(projectScratchDir('test'), 'tt-gate-'));
   mkdirSync(path.join(sandbox, '.ai-task-manager'), { recursive: true });
   writeFileSync(
@@ -76,9 +77,36 @@ function makeSandbox(body) {
   // use ESM-style imports. We use `fs.writeSync(1, ...)` below to flush
   // synchronously; `process.stdout.write` + `process.exit` would truncate
   // bodies larger than the pipe high-watermark (~8KB on macOS).
+  const bodyWithAcEvidence = body.replace(
+    /^## Acceptance Criteria\s*$/m,
+    '$&\n- [x] Structural guard fixture remains valid <!-- aitm-verified cmd="node --version" -->'
+  );
+  const bodyWithHistory = [
+    bodyWithAcEvidence,
+    '<!-- aitm-entered-backlog: 2026-05-08T08:00:00Z -->',
+    '<!-- aitm-entered-assigned: 2026-05-08T08:15:00Z -->',
+    '<!-- aitm-entered-refine: 2026-05-08T08:30:00Z -->',
+    '<!-- aitm-entered-plan: 2026-05-08T08:45:00Z -->',
+    '<!-- aitm-entered-develop: 2026-05-08T09:00:00Z -->',
+    '<!-- aitm-entered-test: 2026-05-08T09:15:00Z -->',
+    '<!-- aitm-entered-review: 2026-05-08T09:30:00Z -->',
+    `<!-- aitm-dod-verified: ${HEAD_SHA}:2026-05-08T09:20:00Z -->`,
+  ].join('\n');
+  const gitShim = path.join(binDir, 'git');
+  writeFileSync(
+    gitShim,
+    `#!/usr/bin/env node
+import fs from 'node:fs';
+const args = process.argv.slice(2);
+if (args.join(' ') === 'rev-parse HEAD') fs.writeSync(1, ${JSON.stringify(`${HEAD_SHA}\n`)});
+process.exit(0);
+`
+  );
+  chmodSync(gitShim, 0o755);
   const shim = `#!/usr/bin/env node
 import fs from 'node:fs';
-const BODY = ${JSON.stringify(body)};
+const BODY = ${JSON.stringify(bodyWithHistory)};
+const TRAIL = ${JSON.stringify(`### 🔗 Commits\n\n<!-- aitm-commits: ${HEAD_SHA} -->\n`)};
 // #747 — runStatusWrite now reads the Status field back after the item-edit
 // and fails closed (exit 7) unless it confirms the written optionId. A shim
 // that swallowed everything returned an empty read-back, which the old
@@ -119,7 +147,17 @@ if (args[0] === 'issue' && args[1] === 'view') {
   // any body that exceeded the pipe high-watermark (~8KB on macOS).
   const b = currentBody();
   const jqFiltered = args.includes('--jq') || args.includes('-q');
-  if (args.includes('--json') && !jqFiltered) {
+  const jsonFields = String(args[args.indexOf('--json') + 1] || '').split(',');
+  if (jsonFields.includes('comments')) {
+    const comments = [{ id: 'IC_trace', body: TRAIL }];
+    if (jqFiltered && !jsonFields.includes('body')) {
+      fs.writeSync(1, JSON.stringify(comments));
+    } else {
+      const response = { comments };
+      if (jsonFields.includes('body')) response.body = b;
+      fs.writeSync(1, JSON.stringify(response));
+    }
+  } else if (args.includes('--json') && !jqFiltered) {
     fs.writeSync(1, JSON.stringify({ body: b }));
   } else {
     fs.writeSync(1, b);
@@ -142,12 +180,26 @@ if (args[0] === 'api' && args[1] === 'graphql') {
   if (payload.includes('fieldValueByName')) {
     let opt = '';
     try { opt = fs.readFileSync(STATE_FILE, 'utf8'); } catch {}
-    const res = { data: { repository: { issue: { projectItems: { nodes: [
-      { project: { id: PROJECT_ID }, fieldValueByName: { optionId: opt } },
-    ] } } } } };
+    const res = { data: { repository: { issue: {
+      id: 'ISS_100',
+      assignees: { nodes: [] },
+      projectItems: {
+        pageInfo: { hasNextPage: false, endCursor: null },
+        nodes: [
+          { id: 'PVTI_test', project: { id: PROJECT_ID },
+            fieldValueByName: { name: ${JSON.stringify(currentState)}, optionId: opt },
+            fieldValues: { nodes: [] } },
+        ],
+      },
+    } } } };
     fs.writeSync(1, JSON.stringify(res));
     process.exit(0);
   }
+  fs.writeSync(1, JSON.stringify({ data: { repository: { issue: {
+    id: 'ISS_100',
+    subIssues: { nodes: [] },
+    parent: null,
+  } } } }));
   process.exit(0);
 }
 // issue comment, other api calls, etc — silent success
@@ -161,9 +213,8 @@ process.exit(0);
 }
 
 async function runMove(sandbox, binDir, args, extraEnv = {}) {
-  // We need projectItemForIssue to NOT fire (it makes a real GraphQL call we
-  // can't easily stub here). The script provides --item-id to skip lookup, so
-  // the test always passes one.
+  // The fixture carries a complete prior-stage marker chain so this suite can
+  // isolate structural body guards while still using authoritative live state.
   return pexec('node', [SCRIPT, ...args, '--item-id', 'PVTI_test'], {
     env: {
       ...process.env,
@@ -187,7 +238,7 @@ async function runMoveExpectFail(sandbox, binDir, args, extraEnv = {}) {
 // 1. test with ticked Deep dive but no section → blocked
 {
   const body = '## Acceptance Criteria\n<!-- aitm-deep-dive-complete: 2026-05-11T00:00:00Z -->\n';
-  const { sandbox, binDir } = makeSandbox(body);
+  const { sandbox, binDir } = makeSandbox(body, { currentState: 'Develop' });
   const e = await runMoveExpectFail(sandbox, binDir, ['100', 'test']);
   assert.equal(e.code, 4, `expected exit 4, got ${e.code}: ${e.stderr}`);
   assert.match(e.stderr, /BLOCKED: deep-dive-complete/);
@@ -197,7 +248,7 @@ async function runMoveExpectFail(sandbox, binDir, args, extraEnv = {}) {
 // 2. test with ticked Deep dive + adequate section → success
 {
   const body = `## Acceptance Criteria\n<!-- aitm-deep-dive-complete: 2026-05-11T00:00:00Z -->\n\n${deepDiveAdequate()}\n`;
-  const { sandbox, binDir } = makeSandbox(body);
+  const { sandbox, binDir } = makeSandbox(body, { currentState: 'Develop' });
   const r = await runMove(sandbox, binDir, ['100', 'test']);
   assert.match(r.stdout, /moved to: test/);
   rmSync(sandbox, { recursive: true });
@@ -206,7 +257,7 @@ async function runMoveExpectFail(sandbox, binDir, args, extraEnv = {}) {
 // 3. review with ticked Deep dive but no section → blocked
 {
   const body = '## Acceptance Criteria\n<!-- aitm-deep-dive-complete: 2026-05-11T00:00:00Z -->\n';
-  const { sandbox, binDir } = makeSandbox(body);
+  const { sandbox, binDir } = makeSandbox(body, { currentState: 'Test' });
   const e = await runMoveExpectFail(sandbox, binDir, ['100', 'review']);
   assert.equal(e.code, 4);
   assert.match(e.stderr, /BLOCKED: deep-dive-complete/);
@@ -217,7 +268,7 @@ async function runMoveExpectFail(sandbox, binDir, args, extraEnv = {}) {
 {
   const body =
     '## Acceptance Criteria\n<!-- aitm-deep-dive-complete: 2026-05-11T00:00:00Z -->\n- [ ] something else\n';
-  const { sandbox, binDir } = makeSandbox(body);
+  const { sandbox, binDir } = makeSandbox(body, { currentState: 'Review' });
   const e = await runMoveExpectFail(sandbox, binDir, ['100', 'done']);
   assert.equal(e.code, 4);
   // Must mention both the structural rule AND the unchecked-checkbox rule
@@ -228,7 +279,7 @@ async function runMoveExpectFail(sandbox, binDir, args, extraEnv = {}) {
 // 5. TASK_TRACKER_FORCE_DONE=1 is NO LONGER honored — gate refuses anyway
 {
   const body = '## Acceptance Criteria\n<!-- aitm-deep-dive-complete: 2026-05-11T00:00:00Z -->\n';
-  const { sandbox, binDir } = makeSandbox(body);
+  const { sandbox, binDir } = makeSandbox(body, { currentState: 'Develop' });
   const e = await runMoveExpectFail(sandbox, binDir, ['100', 'test'], {
     TASK_TRACKER_FORCE_DONE: '1',
   });
@@ -241,8 +292,8 @@ async function runMoveExpectFail(sandbox, binDir, args, extraEnv = {}) {
 {
   const body =
     '## Acceptance Criteria\n- [ ] AC\n\n<!-- ai-task-manager:fields:start -->\n```json\n{"schema":1,"values":{"size":"S","estimate":3}}\n```\n<!-- ai-task-manager:fields:end -->\n';
-  const { sandbox, binDir } = makeSandbox(body);
-  const r = await runMove(sandbox, binDir, ['100', 'backlog']);
+  const { sandbox, binDir } = makeSandbox(body, { currentState: 'Refine' });
+  const r = await runMove(sandbox, binDir, ['100', 'backlog', '--force']);
   assert.match(r.stderr, /sized \+ estimated issue to Backlog/);
   assert.match(r.stdout, /moved to: backlog/);
   rmSync(sandbox, { recursive: true });
@@ -252,8 +303,8 @@ async function runMoveExpectFail(sandbox, binDir, args, extraEnv = {}) {
 {
   const body =
     '## Acceptance Criteria\n- [ ] AC\n\n<!-- ai-task-manager:fields:start -->\n```json\n{"schema":1,"values":{"size":null,"estimate":null}}\n```\n<!-- ai-task-manager:fields:end -->\n';
-  const { sandbox, binDir } = makeSandbox(body);
-  const r = await runMove(sandbox, binDir, ['100', 'backlog']);
+  const { sandbox, binDir } = makeSandbox(body, { currentState: 'Refine' });
+  const r = await runMove(sandbox, binDir, ['100', 'backlog', '--force']);
   assert.doesNotMatch(r.stderr, /sized \+ estimated issue to Backlog/);
   assert.match(r.stdout, /moved to: backlog/);
   rmSync(sandbox, { recursive: true });

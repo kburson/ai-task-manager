@@ -39,7 +39,7 @@ import { recordSessionRefOnChange } from './lib/session-ref.mjs';
 import { mutateIssueBody } from './lib/issue-body-mutate.mjs';
 import { advanceWordMarker, stateFullWordMarker } from './state.mjs';
 import { findMainWorktreePath, currentBranch } from './fleet-registry.mjs';
-import { gql, splitRepo } from '../gh/lib/github-projects.mjs';
+import { gql, splitRepo, fetchConfiguredProjectIssue } from '../gh/lib/github-projects.mjs';
 import { runMoveStateHost } from '../gh/move-state.mjs';
 import { getProjectDir } from './paths.mjs';
 import { GH_API_TIMEOUT_MS } from './lib/process-timeouts.mjs';
@@ -751,14 +751,6 @@ export function buildContext(rawArgv = process.argv.slice(2)) {
               subIssues(first: 100) {
                 nodes {
                   number
-                  projectItems(first: 20) {
-                    nodes {
-                      project { id }
-                      fieldValueByName(name: "Status") {
-                        ... on ProjectV2ItemFieldSingleSelectValue { name }
-                      }
-                    }
-                  }
                 }
               }
             }
@@ -767,7 +759,27 @@ export function buildContext(rawArgv = process.argv.slice(2)) {
         { owner, repo: repoName, issue: Number(issueNum) },
         { timeout: GH_API_TIMEOUT_MS }
       );
-      return normalizeSubIssueBoardSnapshot(data, cfg.projectId);
+      const children = data?.repository?.issue?.subIssues?.nodes;
+      if (!Array.isArray(children)) {
+        return normalizeSubIssueBoardSnapshot(data, cfg.projectId);
+      }
+      const hydrated = await Promise.all(
+        children.map(async (child) => {
+          const snapshot = await fetchConfiguredProjectIssue({
+            repo: cfg.repo,
+            projectId: cfg.projectId,
+            issueNumber: child?.number,
+          });
+          return {
+            number: child?.number,
+            projectItems: { nodes: snapshot.projectItem ? [snapshot.projectItem] : [] },
+          };
+        })
+      );
+      return normalizeSubIssueBoardSnapshot(
+        { repository: { issue: { subIssues: { nodes: hydrated } } } },
+        cfg.projectId
+      );
     } catch (err) {
       return { status: 'unknown', error: err?.message || String(err) };
     }
@@ -800,28 +812,12 @@ export function buildContext(rawArgv = process.argv.slice(2)) {
   ctx.getIssueBoardState = async (issueNum) => {
     if (SKIP_NETWORK) return null;
     try {
-      const { owner, repoName } = splitRepo(cfg.repo);
-      const data = await gql(
-        `query($owner: String!, $repo: String!, $issue: Int!) {
-          repository(owner: $owner, name: $repo) {
-            issue(number: $issue) {
-              projectItems(first: 10) {
-                nodes {
-                  project { id }
-                  fieldValueByName(name: "Status") {
-                    ... on ProjectV2ItemFieldSingleSelectValue { optionId }
-                  }
-                }
-              }
-            }
-          }
-        }`,
-        { owner, repo: repoName, issue: Number(issueNum) },
-        { timeout: GH_API_TIMEOUT_MS }
-      );
-      const nodes = data?.repository?.issue?.projectItems?.nodes ?? [];
-      const node = nodes.find((n) => n.project?.id === cfg.projectId);
-      const optionId = node?.fieldValueByName?.optionId;
+      const snapshot = await fetchConfiguredProjectIssue({
+        repo: cfg.repo,
+        projectId: cfg.projectId,
+        issueNumber: issueNum,
+      });
+      const optionId = snapshot.projectItem?.fieldValueByName?.optionId;
       return optionId ? (ctx.buildStateOptionMap()[optionId] ?? null) : null;
     } catch {
       return null;

@@ -58,23 +58,126 @@ export function splitRepo(repo) {
   return { owner, repoName };
 }
 
-export async function projectItemForIssue({ repo, projectId, issueNumber }) {
+const CONFIGURED_MEMBERSHIP_PAGE_SIZE = 100;
+const CONFIGURED_MEMBERSHIP_MAX_PAGES = 100;
+
+/**
+ * Read one issue's membership in the configured ProjectV2 without assuming it
+ * appears on the first connection page.  Assignees are selected in the same
+ * GraphQL response as each membership page so callers that find the configured
+ * item also receive an authoritative cross-resource snapshot.
+ */
+export async function fetchConfiguredProjectIssue({
+  repo,
+  projectId,
+  issueNumber,
+  gqlFn = gql,
+  maxPages = CONFIGURED_MEMBERSHIP_MAX_PAGES,
+} = {}) {
+  if (!projectId) throw new Error('configured project id is required');
+  if (!Number.isInteger(Number(issueNumber)) || Number(issueNumber) <= 0) {
+    throw new Error('issue number must be a positive integer');
+  }
+  if (!Number.isInteger(maxPages) || maxPages <= 0) {
+    throw new Error('configured-project pagination maxPages must be a positive integer');
+  }
+
   const { owner, repoName } = splitRepo(repo);
-  const data = await gql(
-    `
-    query($owner: String!, $repo: String!, $issue: Int!) {
-      repository(owner: $owner, name: $repo) {
-        issue(number: $issue) {
-          id
-          projectItems(first: 20) { nodes { id project { id } } }
+  let cursor = null;
+  let issueId = '';
+  let assignees = [];
+  const seenCursors = new Set();
+
+  for (let page = 1; page <= maxPages; page += 1) {
+    const data = await gqlFn(
+      `
+      query($owner: String!, $repo: String!, $issue: Int!, $cursor: String) {
+        repository(owner: $owner, name: $repo) {
+          issue(number: $issue) {
+            id
+            assignees(first: 100) { nodes { login } }
+            projectItems(first: ${CONFIGURED_MEMBERSHIP_PAGE_SIZE}, after: $cursor) {
+              pageInfo { hasNextPage endCursor }
+              nodes {
+                id
+                project { id title url }
+                fieldValueByName(name: "Status") {
+                  ... on ProjectV2ItemFieldSingleSelectValue { name optionId }
+                }
+                fieldValues(first: 100) {
+                  nodes {
+                    ... on ProjectV2ItemFieldNumberValue {
+                      number
+                      field { ... on ProjectV2FieldCommon { id name } }
+                    }
+                    ... on ProjectV2ItemFieldDateValue {
+                      date
+                      field { ... on ProjectV2FieldCommon { id name } }
+                    }
+                    ... on ProjectV2ItemFieldTextValue {
+                      text
+                      field { ... on ProjectV2FieldCommon { id name } }
+                    }
+                    ... on ProjectV2ItemFieldSingleSelectValue {
+                      name
+                      field { ... on ProjectV2FieldCommon { id name } }
+                    }
+                  }
+                }
+              }
+            }
+          }
         }
+      }`,
+      { owner, repo: repoName, issue: Number(issueNumber), cursor }
+    );
+
+    const issue = data?.repository?.issue;
+    if (!issue) throw new Error(`issue #${issueNumber} not found in ${repo}`);
+    const connection = issue.projectItems;
+    if (!connection || !Array.isArray(connection.nodes) || !connection.pageInfo) {
+      throw new Error('configured project items payload is invalid');
+    }
+    const assigneeNodes = issue.assignees?.nodes;
+    if (!Array.isArray(assigneeNodes)) {
+      throw new Error('configured project issue assignee payload is invalid');
+    }
+    issueId = issue.id || issueId;
+    assignees = assigneeNodes.map((entry) => {
+      if (!entry || typeof entry.login !== 'string' || !entry.login.trim()) {
+        throw new Error('configured project issue assignee payload is invalid');
       }
-    }`,
-    { owner, repo: repoName, issue: Number(issueNumber) }
-  );
-  const issue = data.repository.issue;
-  const existing = issue.projectItems.nodes.find((n) => n.project?.id === projectId);
-  return { issueId: issue.id, itemId: existing?.id || '' };
+      return entry.login;
+    });
+
+    const projectItem = connection.nodes.find((entry) => entry?.project?.id === projectId);
+    if (projectItem) return { issueId, projectItem, assignees };
+
+    if (!connection.pageInfo.hasNextPage) {
+      return { issueId, projectItem: null, assignees };
+    }
+    const nextCursor = connection.pageInfo.endCursor;
+    if (typeof nextCursor !== 'string' || !nextCursor) {
+      throw new Error('configured-project pagination hasNextPage but endCursor is missing');
+    }
+    if (nextCursor === cursor || seenCursors.has(nextCursor)) {
+      throw new Error(`configured-project pagination cursor did not progress: ${nextCursor}`);
+    }
+    if (page === maxPages) {
+      throw new Error(
+        `configured-project pagination safety limit (${maxPages} pages) reached; partial scan refused`
+      );
+    }
+    seenCursors.add(nextCursor);
+    cursor = nextCursor;
+  }
+
+  throw new Error('configured-project pagination ended without an exhaustive result');
+}
+
+export async function projectItemForIssue({ repo, projectId, issueNumber }) {
+  const snapshot = await fetchConfiguredProjectIssue({ repo, projectId, issueNumber });
+  return { issueId: snapshot.issueId, itemId: snapshot.projectItem?.id || '' };
 }
 
 export async function addIssueToProject(projectId, issueId) {
@@ -136,45 +239,12 @@ export async function fieldOptionMap(projectId) {
 
 export async function projectValuesForIssue({ cfg, fieldDefs, issueNumber }) {
   if (!cfg?.repo || !cfg.projectId) return {};
-  const { owner, repoName } = splitRepo(cfg.repo);
-  const data = await gql(
-    `
-    query($owner: String!, $repo: String!, $issue: Int!) {
-      repository(owner: $owner, name: $repo) {
-        issue(number: $issue) {
-          projectItems(first: 20) {
-            nodes {
-              project { id }
-              fieldValues(first: 100) {
-                nodes {
-                  ... on ProjectV2ItemFieldNumberValue {
-                    number
-                    field { ... on ProjectV2FieldCommon { id } }
-                  }
-                  ... on ProjectV2ItemFieldDateValue {
-                    date
-                    field { ... on ProjectV2FieldCommon { id } }
-                  }
-                  ... on ProjectV2ItemFieldTextValue {
-                    text
-                    field { ... on ProjectV2FieldCommon { id } }
-                  }
-                  ... on ProjectV2ItemFieldSingleSelectValue {
-                    name
-                    field { ... on ProjectV2FieldCommon { id } }
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-    }`,
-    { owner, repo: repoName, issue: Number(issueNumber) }
-  );
-  const item = data.repository.issue.projectItems.nodes.find(
-    (n) => n.project?.id === cfg.projectId
-  );
+  const snapshot = await fetchConfiguredProjectIssue({
+    repo: cfg.repo,
+    projectId: cfg.projectId,
+    issueNumber,
+  });
+  const item = snapshot.projectItem;
   if (!item) return {};
   const values = {};
   for (const def of fieldDefs) {

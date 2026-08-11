@@ -34,7 +34,7 @@ import {
 } from '../lib/lifecycle-policy/index.mjs';
 import { resolveConfiguredProjectState } from '../lib/project-state-resolver.mjs';
 import { readLastKnownState, writeLastKnownState } from '../gh-timing-comment.mjs';
-import { splitRepo, gql } from '../../gh/lib/github-projects.mjs';
+import { splitRepo, gql, fetchConfiguredProjectIssue } from '../../gh/lib/github-projects.mjs';
 import { writeIssueBodyWithRetry } from '../lib/state-recording.mjs';
 import { mutateIssueBody } from '../lib/issue-body-mutate.mjs';
 import { assertBoundToIssue } from '../lib/bind-context.mjs';
@@ -77,27 +77,15 @@ async function defaultMutateIssueBody({ issueNumber, repo, mutate }) {
 }
 
 async function defaultGetLiveState({ issueNumber, cfg }) {
-  const { owner, repoName } = splitRepo(cfg.repo);
-  const data = await gql(
-    `
-    query($owner: String!, $repo: String!, $issue: Int!) {
-      repository(owner: $owner, name: $repo) {
-        issue(number: $issue) {
-          projectItems(first: 10) {
-            nodes {
-              project { id }
-              fieldValueByName(name: "Status") {
-                ... on ProjectV2ItemFieldSingleSelectValue { name }
-              }
-            }
-          }
-        }
-      }
-    }`,
-    { owner, repo: repoName, issue: Number(issueNumber) }
+  const snapshot = await fetchConfiguredProjectIssue({
+    repo: cfg.repo,
+    projectId: cfg.projectId,
+    issueNumber,
+  });
+  return resolveConfiguredProjectState(
+    snapshot.projectItem ? [snapshot.projectItem] : [],
+    cfg.projectId
   );
-  const nodes = data?.repository?.issue?.projectItems?.nodes ?? [];
-  return resolveConfiguredProjectState(nodes, cfg.projectId);
 }
 
 // Reuses the `--demote`/`--demote-reason` flag pair (see file header for why):

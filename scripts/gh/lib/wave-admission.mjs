@@ -32,7 +32,7 @@
 //   column survives additively as `boardState`; the disposition survives as
 //   `closeReason` (#888). Gates read `state`.
 
-import { gql, splitRepo } from './github-projects.mjs';
+import { gql, splitRepo, fetchConfiguredProjectIssue } from './github-projects.mjs';
 import { readUnauthorizedCloseRecovery } from '../../task-tracker/lib/closed-issue-convergence.mjs';
 import { normalizeStateId } from '../../task-tracker/lib/lifecycle-policy/index.mjs';
 
@@ -94,23 +94,6 @@ export async function defaultFetchSiblings({ parentEpicNumber, repo, projectId }
               state
               stateReason
               body
-              projectItems(first: 20) {
-                nodes {
-                  project { id }
-                  fieldValues(first: 100) {
-                    nodes {
-                      ... on ProjectV2ItemFieldNumberValue {
-                        number
-                        field { ... on ProjectV2FieldCommon { name } }
-                      }
-                      ... on ProjectV2ItemFieldSingleSelectValue {
-                        name
-                        field { ... on ProjectV2FieldCommon { name } }
-                      }
-                    }
-                  }
-                }
-              }
             }
           }
         }
@@ -118,7 +101,22 @@ export async function defaultFetchSiblings({ parentEpicNumber, repo, projectId }
     }`,
     { owner, repo: repoName, issue: Number(parentEpicNumber) }
   );
-  return mapSubIssueNodes(data?.repository?.issue?.subIssues?.nodes, projectId);
+  const children = data?.repository?.issue?.subIssues?.nodes;
+  if (!Array.isArray(children)) return mapSubIssueNodes(children, projectId);
+  const hydrated = await Promise.all(
+    children.map(async (child) => {
+      const snapshot = await fetchConfiguredProjectIssue({
+        repo,
+        projectId,
+        issueNumber: child.number,
+      });
+      return {
+        ...child,
+        projectItems: { nodes: snapshot.projectItem ? [snapshot.projectItem] : [] },
+      };
+    })
+  );
+  return mapSubIssueNodes(hydrated, projectId);
 }
 
 /**

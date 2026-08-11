@@ -43,7 +43,7 @@ import {
 import { insertDeepDivePostedMarker, readDeepDiveSignals } from './lib/deep-dive.mjs';
 import { convergeDiscuss, isDiscussPending } from './lib/discuss-marker.mjs';
 import { getDiscussLabel, syncDiscussLabel } from './lib/discuss-label.mjs';
-import { gh, gql, splitRepo } from '../gh/lib/github-projects.mjs';
+import { gh, gql, fetchConfiguredProjectIssue } from '../gh/lib/github-projects.mjs';
 import { STATE_TO_CONFIG_KEY } from './lib/move-state/policy.mjs';
 import { wantsHelp, emitSelfDoc } from '../lib/self-doc.mjs';
 import { findTimingComment, updateTimingComment } from './gh-timing-comment.mjs';
@@ -556,32 +556,18 @@ export async function fetchIssueBundle(issueNumber, repo, ghFn = gh) {
 }
 
 export async function fetchAssignedInvariantRow({ issueNumber, cfg }, gqlFn = gql) {
-  const { owner, repoName } = splitRepo(cfg.repo);
-  const data = await gqlFn(
-    `
-    query($owner: String!, $repo: String!, $issue: Int!) {
-      repository(owner: $owner, name: $repo) {
-        issue(number: $issue) {
-          assignees(first: 100) { nodes { login } }
-          projectItems(first: 10) {
-            nodes {
-              project { id }
-              fieldValueByName(name: "Status") {
-                ... on ProjectV2ItemFieldSingleSelectValue { name }
-              }
-            }
-          }
-        }
-      }
-    }`,
-    { owner, repo: repoName, issue: Number(issueNumber) }
-  );
-  const issue = data?.repository?.issue;
-  if (!issue) throw new Error(`issue #${issueNumber} not found`);
-  const items = issue.projectItems?.nodes ?? [];
+  const snapshot = await fetchConfiguredProjectIssue({
+    repo: cfg.repo,
+    projectId: cfg.projectId,
+    issueNumber,
+    gqlFn,
+  });
   return {
-    state: resolveConfiguredProjectState(items, cfg.projectId),
-    assignees: parseAssigneeLogins(issue.assignees?.nodes ?? []),
+    state: resolveConfiguredProjectState(
+      snapshot.projectItem ? [snapshot.projectItem] : [],
+      cfg.projectId
+    ),
+    assignees: parseAssigneeLogins(snapshot.assignees),
   };
 }
 

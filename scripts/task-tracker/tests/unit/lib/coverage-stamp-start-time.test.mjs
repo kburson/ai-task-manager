@@ -154,11 +154,14 @@ test('defaultResolveItem: returns the node matching cfg.projectId', async () => 
         return {
           repository: {
             issue: {
+              id: 'ISS42',
+              assignees: { nodes: [] },
               projectItems: {
                 nodes: [
                   { id: 'OTHER', project: { id: 'PVT_other' } },
                   { id: 'WANT', project: { id: 'PVT_target' } },
                 ],
+                pageInfo: { hasNextPage: false, endCursor: null },
               },
             },
           },
@@ -176,23 +179,35 @@ test('defaultResolveItem: no matching project → null', async () => {
     deps: {
       splitRepo: () => ({ owner: 'o', repoName: 'r' }),
       gql: async () => ({
-        repository: { issue: { projectItems: { nodes: [{ id: 'X', project: { id: 'no' } }] } } },
+        repository: {
+          issue: {
+            id: 'ISS42',
+            assignees: { nodes: [] },
+            projectItems: {
+              nodes: [{ id: 'X', project: { id: 'no' } }],
+              pageInfo: { hasNextPage: false, endCursor: null },
+            },
+          },
+        },
       }),
     },
   });
   assert.equal(item, null);
 });
 
-test('defaultResolveItem: empty / missing nodes → null', async () => {
-  const item = await defaultResolveItem({
-    cfg: { repo: 'o/r', projectId: 'PVT_target' },
-    issueNumber: 42,
-    deps: {
-      splitRepo: () => ({ owner: 'o', repoName: 'r' }),
-      gql: async () => ({}),
-    },
-  });
-  assert.equal(item, null);
+test('defaultResolveItem: missing issue payload fails closed', async () => {
+  await assert.rejects(
+    () =>
+      defaultResolveItem({
+        cfg: { repo: 'o/r', projectId: 'PVT_target' },
+        issueNumber: 42,
+        deps: {
+          splitRepo: () => ({ owner: 'o', repoName: 'r' }),
+          gql: async () => ({}),
+        },
+      }),
+    /issue #42 not found/
+  );
 });
 
 console.log('coverage-stamp-start-time.test.mjs: defined');
