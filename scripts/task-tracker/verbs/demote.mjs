@@ -27,9 +27,9 @@ import { fileURLToPath } from 'node:url';
 import {
   actionPolicyFor,
   backwardTargets,
-  normalizeStateId,
   validateExecutableTransition,
 } from '../lib/lifecycle-policy/index.mjs';
+import { resolveConfiguredProjectState } from '../lib/project-state-resolver.mjs';
 import { readLastKnownState, writeLastKnownState } from '../gh-timing-comment.mjs';
 import { splitRepo, gql } from '../../gh/lib/github-projects.mjs';
 import { writeIssueBodyWithRetry } from '../lib/state-recording.mjs';
@@ -96,8 +96,7 @@ async function defaultGetLiveState({ issueNumber, cfg }) {
     { owner, repo: repoName, issue: Number(issueNumber) }
   );
   const nodes = data?.repository?.issue?.projectItems?.nodes ?? [];
-  const node = nodes.find((n) => n.project?.id === cfg.projectId) ?? nodes[0];
-  return normalizeStateId(node?.fieldValueByName?.name);
+  return resolveConfiguredProjectState(nodes, cfg.projectId);
 }
 
 // #755 — call the move-state host in-process (was: spawn

@@ -76,17 +76,51 @@ function defaultRunMoveState({ issueNumber, target, reason }) {
   });
 }
 
-async function safeCompensate(action) {
+async function safeCompensate({
+  action,
+  fetchAssignees,
+  fetchArgs,
+  login,
+  shouldBePresent = false,
+}) {
   try {
     await action();
-    return null;
   } catch (error) {
     return error?.message || String(error);
   }
+  return verifyAssigneePostcondition({
+    fetchAssignees,
+    fetchArgs,
+    login,
+    shouldBePresent,
+  });
 }
 
 function sameLogin(left, right) {
   return String(left).toLowerCase() === String(right).toLowerCase();
+}
+
+async function verifyAssigneePostcondition({
+  fetchAssignees,
+  fetchArgs,
+  login,
+  shouldBePresent,
+  attempts = 3,
+}) {
+  let lastError = null;
+  for (let attempt = 0; attempt < attempts; attempt += 1) {
+    try {
+      const assignees = parseAssigneeLogins(await fetchAssignees(fetchArgs));
+      const present = assignees.some((entry) => sameLogin(entry, login));
+      if (present === shouldBePresent) return null;
+      lastError = shouldBePresent
+        ? new Error(`GitHub does not report ${login}`)
+        : new Error(`GitHub still reports ${login}`);
+    } catch (error) {
+      lastError = error;
+    }
+  }
+  return `compensation unverified: ${lastError?.message || String(lastError)}`;
 }
 
 async function readAssigneesWithRetry(fetchAssignees, args, attempts = 2) {
@@ -99,6 +133,59 @@ async function readAssigneesWithRetry(fetchAssignees, args, attempts = 2) {
     }
   }
   throw lastError;
+}
+
+async function inspectFailedMove({
+  issueNumber,
+  target,
+  cfg,
+  login,
+  getLiveState,
+  fetchAssignees,
+}) {
+  try {
+    const state = await getLiveState({ issueNumber, cfg });
+    if (!stateIds().includes(state)) {
+      throw new Error('live project state is missing or unrecognized');
+    }
+    const assignees = await readAssigneesWithRetry(fetchAssignees, {
+      issueNumber,
+      repo: cfg.repo,
+    });
+    const loginPresent = assignees.some((entry) => sameLogin(entry, login));
+    if (state === target) {
+      if (target === 'assigned' && !loginPresent) {
+        return {
+          landed: true,
+          indeterminate: true,
+          state,
+          assignees,
+          error: `Assigned landed but ${login} is not observable`,
+        };
+      }
+      return { landed: true, indeterminate: false, state, assignees };
+    }
+
+    const knownPrior =
+      (target === 'assigned' && state === 'backlog') ||
+      (target === 'backlog' && state === 'assigned');
+    if (knownPrior) return { landed: false, indeterminate: false, state, assignees };
+    return {
+      landed: false,
+      indeterminate: true,
+      state,
+      assignees,
+      error: `configured project Status is ${state}, expected ${target}`,
+    };
+  } catch (error) {
+    return {
+      landed: false,
+      indeterminate: true,
+      state: null,
+      assignees: null,
+      error: error?.message || String(error),
+    };
+  }
 }
 
 export async function runAssign({ issueNumber, login, remove = false, cfg, deps = {} } = {}) {
@@ -139,17 +226,22 @@ export async function runAssign({ issueNumber, login, remove = false, cfg, deps 
             throw new Error(`GitHub did not report ${resolvedLogin} after assignment`);
           }
         } catch (error) {
-          const compensationError = await safeCompensate(() =>
-            mutateAssignee({
-              issueNumber,
-              repo: cfg.repo,
-              login: requestedLogin,
-              remove: true,
-            })
-          );
+          const compensationError = await safeCompensate({
+            action: () =>
+              mutateAssignee({
+                issueNumber,
+                repo: cfg.repo,
+                login: requestedLogin,
+                remove: true,
+              }),
+            fetchAssignees,
+            fetchArgs: { issueNumber, repo: cfg.repo },
+            login: resolvedLogin,
+            shouldBePresent: false,
+          });
           return {
             status: compensationError
-              ? 'assignment-verification-failed-compensation-failed'
+              ? 'assignment-verification-failed-compensation-unverified'
               : 'assignment-verification-failed-compensated',
             exitCode: 1,
             login: requestedLogin,
@@ -162,20 +254,59 @@ export async function runAssign({ issueNumber, login, remove = false, cfg, deps 
       if (state === 'backlog') {
         const exitCode = await runMoveState({ issueNumber, target: 'assigned', cfg });
         if (exitCode !== 0) {
+          const outcome = await inspectFailedMove({
+            issueNumber,
+            target: 'assigned',
+            cfg,
+            login: resolvedLogin,
+            getLiveState,
+            fetchAssignees,
+          });
+          if (outcome.landed) {
+            return {
+              status: 'assigned-move-incomplete',
+              exitCode,
+              issueNumber,
+              login: requestedLogin,
+              state: 'assigned',
+              message:
+                `assignment and Assigned Status landed, but move completion evidence failed ` +
+                `with exit ${exitCode}${outcome.error ? `: ${outcome.error}` : ''}`,
+            };
+          }
+          if (outcome.indeterminate) {
+            return {
+              status: 'move-outcome-indeterminate',
+              exitCode,
+              issueNumber,
+              login: requestedLogin,
+              state: outcome.state,
+              message:
+                `assignment succeeded but Backlog → Assigned outcome is indeterminate after exit ` +
+                `${exitCode}: ${outcome.error}`,
+            };
+          }
           const compensationError = alreadyPresent
             ? null
-            : await safeCompensate(() =>
-                mutateAssignee({
-                  issueNumber,
-                  repo: cfg.repo,
-                  login: requestedLogin,
-                  remove: true,
-                })
-              );
+            : await safeCompensate({
+                action: () =>
+                  mutateAssignee({
+                    issueNumber,
+                    repo: cfg.repo,
+                    login: requestedLogin,
+                    remove: true,
+                  }),
+                fetchAssignees,
+                fetchArgs: { issueNumber, repo: cfg.repo },
+                login: resolvedLogin,
+                shouldBePresent: false,
+              });
           return {
-            status: compensationError
-              ? 'move-failed-compensation-failed'
-              : 'move-failed-compensated',
+            status: alreadyPresent
+              ? 'move-failed'
+              : compensationError
+                ? 'move-failed-compensation-unverified'
+                : 'move-failed-compensated',
             exitCode,
             login: requestedLogin,
             compensationError,
@@ -197,6 +328,7 @@ export async function runAssign({ issueNumber, login, remove = false, cfg, deps 
     }
 
     const removesFinalAssigned = state === 'assigned' && before.length === 1;
+    let incompleteMoveExit = null;
     if (removesFinalAssigned) {
       const demoteExit = await runMoveState({
         issueNumber,
@@ -205,12 +337,33 @@ export async function runAssign({ issueNumber, login, remove = false, cfg, deps 
         cfg,
       });
       if (demoteExit !== 0) {
-        return {
-          status: 'demote-failed',
-          exitCode: demoteExit,
-          login: requestedLogin,
-          message: `refusing to remove the final Assigned assignee because demotion failed`,
-        };
+        const outcome = await inspectFailedMove({
+          issueNumber,
+          target: 'backlog',
+          cfg,
+          login: resolvedLogin,
+          getLiveState,
+          fetchAssignees,
+        });
+        if (outcome.indeterminate) {
+          return {
+            status: 'demote-outcome-indeterminate',
+            exitCode: demoteExit,
+            login: requestedLogin,
+            message:
+              `refusing to remove the final Assigned assignee because demotion outcome is ` +
+              `indeterminate: ${outcome.error}`,
+          };
+        }
+        if (!outcome.landed) {
+          return {
+            status: 'demote-failed',
+            exitCode: demoteExit,
+            login: requestedLogin,
+            message: `refusing to remove the final Assigned assignee because demotion failed`,
+          };
+        }
+        incompleteMoveExit = demoteExit;
       }
     }
 
@@ -268,10 +421,18 @@ export async function runAssign({ issueNumber, login, remove = false, cfg, deps 
       };
     }
     return {
-      status: 'unassigned',
+      status: incompleteMoveExit == null ? 'unassigned' : 'unassigned-move-incomplete',
       issueNumber,
       login: requestedLogin,
       state: removesFinalAssigned ? 'backlog' : state,
+      ...(incompleteMoveExit == null
+        ? {}
+        : {
+            exitCode: incompleteMoveExit,
+            message:
+              `Backlog Status and assignee removal landed, but move completion evidence failed ` +
+              `with exit ${incompleteMoveExit}`,
+          }),
     };
   } catch (error) {
     return { status: 'error', exitCode: 1, message: error?.message || String(error) };

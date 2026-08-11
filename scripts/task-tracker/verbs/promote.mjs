@@ -21,7 +21,8 @@ import { fileURLToPath } from 'node:url';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 
-import { actionPolicyFor, normalizeStateId } from '../lib/lifecycle-policy/index.mjs';
+import { actionPolicyFor } from '../lib/lifecycle-policy/index.mjs';
+import { resolveConfiguredProjectState } from '../lib/project-state-resolver.mjs';
 import { withIssueLock, IssueLockError } from '../issue-mutator-lock.mjs';
 import { getProjectDir } from '../paths.mjs';
 import { readLastKnownState, writeLastKnownState } from '../gh-timing-comment.mjs';
@@ -187,8 +188,7 @@ async function defaultGetLiveState({ issueNumber, cfg }) {
     { owner, repo: repoName, issue: Number(issueNumber) }
   );
   const nodes = data?.repository?.issue?.projectItems?.nodes ?? [];
-  const node = nodes.find((n) => n.project?.id === cfg.projectId) ?? nodes[0];
-  return normalizeStateId(node?.fieldValueByName?.name);
+  return resolveConfiguredProjectState(nodes, cfg.projectId);
 }
 
 // #533 — the alias delegate spawned for a forward transition is `test`

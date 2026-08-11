@@ -266,7 +266,7 @@ const ROUTABLE_ARGUMENTS = Object.freeze({
     argument('--parent <N>', 'Optional parent epic relationship.'),
     argument(
       '--status <state>',
-      'Initial backlog, assigned, refine, plan, develop, test, review, or done state.'
+      'Initial state; assigned requires a live assignee verified under the issue lock before any write.'
     ),
     argument('--priority P0|P1|P2', 'Initial priority value.'),
     argument('--size XS|S|M|L|XL', 'Initial size value.'),
@@ -419,7 +419,10 @@ const ROUTABLE_CONTRACTS = Object.freeze({
     relatedCommands: ['project-tether', 'log-issue-time'],
   }),
   'project-tether': routableContract({
-    output: ['Prints the attached project title and GitHub Project item id.'],
+    output: [
+      'Prints the attached project title and GitHub Project item id.',
+      'Assigned writes fail closed unless a live assignee is verified under the issue lock.',
+    ],
     exitCodes: [
       exitCode(0, 'issue attached and requested fields applied'),
       exitCode(1, 'configuration, project lookup, or GitHub update failed'),

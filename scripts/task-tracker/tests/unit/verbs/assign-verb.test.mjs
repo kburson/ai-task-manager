@@ -76,7 +76,7 @@ test('failed post-add verification compensates the assignee added by this invoca
     throw new Error('verification unavailable');
   };
   const result = await runAssign({ issueNumber: 241, login: 'alice', cfg, deps });
-  assert.equal(result.status, 'assignment-verification-failed-compensated');
+  assert.equal(result.status, 'assignment-verification-failed-compensation-unverified');
   assert.deepEqual(calls.mutations, [
     { login: 'alice', remove: false },
     { login: 'alice', remove: true },
@@ -155,7 +155,7 @@ test('unknown live state fails closed before any assignment mutation', async () 
 test('login identity comparison is case-insensitive and never compensates a pre-existing identity', async () => {
   const { calls, deps } = harness({ assignees: ['Alice'], moveCodes: [11] });
   const result = await runAssign({ issueNumber: 33, login: 'alice', cfg, deps });
-  assert.equal(result.status, 'move-failed-compensated');
+  assert.equal(result.status, 'move-failed');
   assert.deepEqual(calls.mutations, [], 'pre-existing Alice must never be removed as compensation');
   assert.deepEqual(calls.moves, ['assigned']);
 });
@@ -193,4 +193,121 @@ test('Assigned to Backlog move carries invariant demotion provenance', async () 
   };
   await runAssign({ issueNumber: 36, login: 'alice', remove: true, cfg, deps });
   assert.match(seen[0].reason, /final assignee removal/i);
+});
+
+for (const [failureName, exitCode] of [
+  ['sentinel', 7],
+  ['consistency', 8],
+]) {
+  test(`post-Status ${failureName} failure keeps the added assignee when Assigned landed`, async () => {
+    const { calls, deps } = harness({ moveCodes: [exitCode] });
+    const states = ['backlog', 'assigned'];
+    deps.getLiveState = async () => states.shift();
+
+    const result = await runAssign({ issueNumber: 37, login: 'alice', cfg, deps });
+
+    assert.equal(result.status, 'assigned-move-incomplete');
+    assert.equal(result.exitCode, exitCode);
+    assert.equal(result.state, 'assigned');
+    assert.deepEqual(calls.mutations, [{ login: 'alice', remove: false }]);
+  });
+
+  test(`post-Status ${failureName} failure continues final-assignee removal when Backlog landed`, async () => {
+    const { calls, deps } = harness({
+      state: 'assigned',
+      assignees: ['alice'],
+      moveCodes: [exitCode],
+    });
+    const states = ['assigned', 'backlog'];
+    deps.getLiveState = async () => states.shift();
+
+    const result = await runAssign({
+      issueNumber: 38,
+      login: 'alice',
+      remove: true,
+      cfg,
+      deps,
+    });
+
+    assert.equal(result.status, 'unassigned-move-incomplete');
+    assert.equal(result.exitCode, exitCode);
+    assert.equal(result.state, 'backlog');
+    assert.deepEqual(calls.mutations, [{ login: 'alice', remove: true }]);
+  });
+}
+
+test('indeterminate failed move never removes the assignee added by this invocation', async () => {
+  const { calls, deps } = harness({ moveCodes: [7] });
+  let stateReads = 0;
+  deps.getLiveState = async () => {
+    stateReads += 1;
+    if (stateReads === 1) return 'backlog';
+    throw new Error('configured project status transport failed');
+  };
+
+  const result = await runAssign({ issueNumber: 39, login: 'alice', cfg, deps });
+
+  assert.equal(result.status, 'move-outcome-indeterminate');
+  assert.equal(result.exitCode, 7);
+  assert.match(result.message, /transport failed/);
+  assert.deepEqual(calls.mutations, [{ login: 'alice', remove: false }]);
+});
+
+test('compensation waits for a case-insensitive absent postcondition', async () => {
+  const { calls, deps } = harness({ moveCodes: [11] });
+  let verificationReads = 0;
+  let compensationStarted = false;
+  deps.mutateAssignee = async ({ login, remove }) => {
+    calls.mutations.push({ login, remove });
+    if (remove) compensationStarted = true;
+  };
+  deps.fetchAssignees = async () => {
+    if (!compensationStarted) return verificationReads++ === 0 ? [] : ['Alice'];
+    verificationReads += 1;
+    return verificationReads >= 5 ? [] : ['ALICE'];
+  };
+  deps.getLiveState = async () => 'backlog';
+
+  const result = await runAssign({ issueNumber: 40, login: 'alice', cfg, deps });
+
+  assert.equal(result.status, 'move-failed-compensated');
+  assert.ok(verificationReads >= 5, 'bounded postcondition reads observe delayed removal');
+});
+
+test('zero-exit compensation is nonzero when the assignee remains observable', async () => {
+  const { calls, deps } = harness({ moveCodes: [11] });
+  let added = false;
+  deps.mutateAssignee = async ({ login, remove }) => {
+    calls.mutations.push({ login, remove });
+    if (!remove) added = true;
+  };
+  deps.fetchAssignees = async () => (added ? ['Alice'] : []);
+  deps.getLiveState = async () => 'backlog';
+
+  const result = await runAssign({ issueNumber: 41, login: 'alice', cfg, deps });
+
+  assert.equal(result.status, 'move-failed-compensation-unverified');
+  assert.equal(result.exitCode, 11);
+  assert.match(result.compensationError, /still reports alice/i);
+});
+
+test('compensation is nonzero when its strict assignee re-read fails', async () => {
+  const { calls, deps } = harness({ moveCodes: [11] });
+  let reads = 0;
+  deps.fetchAssignees = async () => {
+    reads += 1;
+    if (reads <= 3) return reads === 1 ? [] : ['alice'];
+    throw new Error('compensation transport failed');
+  };
+  deps.getLiveState = async () => 'backlog';
+
+  const result = await runAssign({ issueNumber: 42, login: 'alice', cfg, deps });
+
+  assert.equal(result.status, 'move-failed-compensation-unverified');
+  assert.equal(result.exitCode, 11);
+  assert.match(result.compensationError, /transport failed/);
+  assert.deepEqual(calls.mutations, [
+    { login: 'alice', remove: false },
+    { login: 'alice', remove: true },
+  ]);
 });

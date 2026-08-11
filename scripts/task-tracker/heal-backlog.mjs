@@ -57,6 +57,7 @@ import {
 } from './lib/assigned-assignee-invariant.mjs';
 import { stateIds } from './lib/lifecycle-policy/index.mjs';
 import { runMoveStateHost } from '../gh/move-state.mjs';
+import { withIssueLock } from './issue-mutator-lock.mjs';
 
 // Vestigial visible AC bullets that are now driven by hidden markers. Stripped
 // only when the corresponding marker is present; otherwise left alone to
@@ -462,38 +463,51 @@ export async function fetchProjectFields(projectId, gqlFn = gql) {
 }
 
 export async function fetchAllIssueNumbers({ repo, state, projectId }, gqlFn = gql) {
-  // Pull every issue tethered to the project, paginated.
-  const { owner, repoName } = splitRepo(repo);
+  // Enumerate the configured project itself. Issue-side projectItems pagination
+  // is independent per issue and a capped nested connection can hide this
+  // project after the first memberships; project-side pagination cannot.
   const numbers = [];
   let cursor = null;
   for (let page = 0; page < 50; page++) {
     const data = await gqlFn(
       `
-      query($owner: String!, $repo: String!, $cursor: String) {
-        repository(owner: $owner, name: $repo) {
-          issues(first: 100, after: $cursor, states: [OPEN, CLOSED], orderBy: {field: CREATED_AT, direction: ASC}) {
+      query($projectId: ID!, $cursor: String) {
+        node(id: $projectId) {
+          ... on ProjectV2 {
+            items(first: 100, after: $cursor) {
             pageInfo { hasNextPage endCursor }
             nodes {
-              number
-              state
-              projectItems(first: 5) { nodes { project { id } } }
+                content {
+                  ... on Issue {
+                    number
+                    state
+                    repository { nameWithOwner }
+                  }
+                }
+              }
             }
           }
         }
       }
     `,
-      { owner, repo: repoName, cursor }
+      { projectId, cursor }
     );
-    const issues = data.repository.issues.nodes;
-    for (const i of issues) {
-      const onProject = i.projectItems.nodes.some((n) => n.project?.id === projectId);
-      if (!onProject) continue;
+    const items = data?.node?.items;
+    if (!items || !Array.isArray(items.nodes)) {
+      throw new Error(`configured project ${projectId} could not be enumerated`);
+    }
+    for (const item of items.nodes) {
+      const i = item?.content;
+      if (!Number.isInteger(i?.number)) continue;
+      if (String(i.repository?.nameWithOwner || '').toLowerCase() !== String(repo).toLowerCase()) {
+        continue;
+      }
       if (state === 'open' && i.state !== 'OPEN') continue;
       if (state === 'closed' && i.state !== 'CLOSED') continue;
       numbers.push(i.number);
     }
-    if (!data.repository.issues.pageInfo.hasNextPage) break;
-    cursor = data.repository.issues.pageInfo.endCursor;
+    if (!items.pageInfo?.hasNextPage) break;
+    cursor = items.pageInfo.endCursor;
   }
   return numbers;
 }
@@ -569,6 +583,7 @@ export async function runAssignedInvariantHeal({ cfg, args, projectDir }, deps =
   const fetchRow =
     deps.fetchInvariantRow || ((issueNumber) => fetchAssignedInvariantRow({ issueNumber, cfg }));
   const runMoveState = deps.runMoveState || runAssignedInvariantMove;
+  const lockIssue = deps.withIssueLock || withIssueLock;
   const out = deps.out || process.stdout;
   const numbers =
     args.scope ??
@@ -597,45 +612,50 @@ export async function runAssignedInvariantHeal({ cfg, args, projectDir }, deps =
   let errors = 0;
   for (const issueNumber of numbers) {
     try {
-      const row = await fetchRow(issueNumber);
-      if (!stateIds().includes(row.state)) {
-        throw new Error('live project state is missing or unrecognized');
-      }
-      const drift = classifyAssignedAssigneeDrift(row);
-      if (drift.kind === 'none' || drift.kind === 'out-of-scope') continue;
-      violations += 1;
-      lines.push(`#${issueNumber} ${drift.kind}: ${row.state} → ${drift.targetState}`);
-      out.write(`#${issueNumber} ${drift.kind}: ${row.state} -> ${drift.targetState}\n`);
-      if (args.apply) {
-        const reason =
-          drift.kind === 'assigned-without-assignee'
-            ? 'Assigned invariant repair: Assigned has no live assignee'
-            : 'Assigned invariant repair: Backlog has a live assignee';
-        const exitCode = await runMoveState({
-          issueNumber,
-          target: drift.targetState,
-          reason,
-          cfg,
-        });
-        if (exitCode !== 0) {
-          errors += 1;
-          lines.push(`  ERROR: central mover exited ${exitCode}`);
-          continue;
+      await lockIssue(
+        { issue: issueNumber, verb: 'heal-backlog-assigned-invariant', projDir: projectDir },
+        async () => {
+          const row = await fetchRow(issueNumber);
+          if (!stateIds().includes(row.state)) {
+            throw new Error('live project state is missing or unrecognized');
+          }
+          const drift = classifyAssignedAssigneeDrift(row);
+          if (drift.kind === 'none' || drift.kind === 'out-of-scope') return;
+          violations += 1;
+          lines.push(`#${issueNumber} ${drift.kind}: ${row.state} → ${drift.targetState}`);
+          out.write(`#${issueNumber} ${drift.kind}: ${row.state} -> ${drift.targetState}\n`);
+          if (!args.apply) return;
+
+          const reason =
+            drift.kind === 'assigned-without-assignee'
+              ? 'Assigned invariant repair: Assigned has no live assignee'
+              : 'Assigned invariant repair: Backlog has a live assignee';
+          const exitCode = await runMoveState({
+            issueNumber,
+            target: drift.targetState,
+            reason,
+            cfg,
+          });
+          if (exitCode !== 0) {
+            errors += 1;
+            lines.push(`  ERROR: central mover exited ${exitCode}`);
+            return;
+          }
+          const post = await fetchRow(issueNumber);
+          if (!stateIds().includes(post.state)) {
+            throw new Error('postcondition live project state is missing or unrecognized');
+          }
+          const postDrift = classifyAssignedAssigneeDrift(post);
+          if (post.state === drift.targetState && postDrift.kind === 'none') {
+            repaired += 1;
+          } else {
+            errors += 1;
+            lines.push(
+              `  ERROR: repair postcondition failed: state=${post.state} drift=${postDrift.kind}`
+            );
+          }
         }
-        const post = await fetchRow(issueNumber);
-        if (!stateIds().includes(post.state)) {
-          throw new Error('postcondition live project state is missing or unrecognized');
-        }
-        const postDrift = classifyAssignedAssigneeDrift(post);
-        if (post.state === drift.targetState && postDrift.kind === 'none') {
-          repaired += 1;
-        } else {
-          errors += 1;
-          lines.push(
-            `  ERROR: repair postcondition failed: state=${post.state} drift=${postDrift.kind}`
-          );
-        }
-      }
+      );
     } catch (error) {
       errors += 1;
       lines.push(`#${issueNumber} ERROR: ${error?.message || String(error)}`);

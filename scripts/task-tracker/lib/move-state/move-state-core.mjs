@@ -174,6 +174,23 @@ export async function moveState(ctx) {
     };
   }
 
+  // The Assigned/assignee invariant is re-read while the issue lock is held,
+  // before ANY durable evidence or Status write. This closes the gap between
+  // the optimistic outer guard and mutation without leaving timing rows, entry
+  // markers, or last-known-state evidence behind on a lock-time refusal.
+  const lockedGuard = await preStatusGuard(ctx);
+  if (lockedGuard.exit !== null && lockedGuard.exit !== undefined) {
+    return {
+      exit: lockedGuard.exit,
+      itemId: '',
+      tail: { failures: [] },
+      phase: 'guard',
+      sentinelPresent: false,
+      boardMoved: false,
+      rolledBack: false,
+    };
+  }
+
   // Pre-Status evidence: exit-flush the departing row + entry row, then the
   // entry markers. Both are individually idempotent and re-read-verified.
   await emitPhasePairRows(ctx);
@@ -182,35 +199,6 @@ export async function moveState(ctx) {
   // stage). Captured so a failed board write below can compensate.
   const stampResult = await stampEntryMarkers(ctx);
   const priorState = stampResult?.priorState ?? null;
-
-  // The Assigned/assignee invariant is re-read while the issue lock is held,
-  // immediately before the authoritative Status write. This closes the gap
-  // between the optimistic outer guard and mutation without re-running every
-  // body/timing guard (which would duplicate their side effects).
-  const lockedGuard = await preStatusGuard(ctx);
-  if (lockedGuard.exit !== null && lockedGuard.exit !== undefined) {
-    let rolledBack = false;
-    if (priorState != null) {
-      try {
-        const rb = await rollbackRecordedState(ctx, priorState);
-        rolledBack = rb?.rolledBack ?? false;
-      } catch (err) {
-        process.stderr.write(
-          `[move-state] #${ctx.issueArg}: last-known-state rollback to ${priorState} ` +
-            `FAILED after lock-time guard refusal: ${err.message}\n`
-        );
-      }
-    }
-    return {
-      exit: lockedGuard.exit,
-      itemId: '',
-      tail: { failures: [] },
-      phase: 'guard',
-      sentinelPresent: false,
-      boardMoved: false,
-      rolledBack,
-    };
-  }
 
   // Status is the LAST authoritative board write (#711 fail-closed verify).
   const writeResult = await runStatusWrite(ctx);

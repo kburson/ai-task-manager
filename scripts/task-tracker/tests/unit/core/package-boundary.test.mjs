@@ -69,8 +69,9 @@ function repoRoot() {
 // #1206 adds the explicit Assigned Status migration entry point and its
 // injected runtime library; both ship so operators can preview/apply it from
 // an installed package. The exact packed surface grows by two.
-// #1207 adds the shipped invariant policy and assign verb intentionally.
-const ENTRY_CEILING = 635;
+// #1207 review hardening adds one shared exact-project state resolver; it is a
+// shipped runtime dependency, so the exact packed surface grows by one.
+const ENTRY_CEILING = 636;
 
 function packedFiles() {
   const out = execFileSync('npm', ['pack', '--dry-run', '--json'], {

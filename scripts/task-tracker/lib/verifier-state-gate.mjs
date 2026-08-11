@@ -15,7 +15,8 @@
 // the fast lane's targeted use.
 
 import { gql, splitRepo } from '../../gh/lib/github-projects.mjs';
-import { normalizeStateId, stateIds } from './lifecycle-policy/index.mjs';
+import { stateIds } from './lifecycle-policy/index.mjs';
+import { resolveConfiguredProjectState } from './project-state-resolver.mjs';
 
 const RESTRICTED_COMMAND_RE = /\bnpm\s+run\s+test:(all|slow)\b/;
 const MIN_STATE = 'test';
@@ -45,8 +46,7 @@ export async function defaultGetLiveState({ issueNumber, cfg }) {
     { owner, repo: repoName, issue: Number(issueNumber) }
   );
   const nodes = data?.repository?.issue?.projectItems?.nodes ?? [];
-  const node = nodes.find((n) => n.project?.id === cfg.projectId) ?? nodes[0];
-  return normalizeStateId(node?.fieldValueByName?.name);
+  return resolveConfiguredProjectState(nodes, cfg.projectId);
 }
 
 export async function assertVerifierStateAllowed({ issueNumber, cfg, commands, deps = {} }) {

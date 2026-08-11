@@ -124,6 +124,8 @@ test('central mover guard execution returns the invariant exit code before board
 
 test('changed assignee read under the issue lock refuses before the Status write', async () => {
   let statusWrites = 0;
+  let timingWrites = 0;
+  let entryWrites = 0;
   let rollbacks = 0;
   const result = await moveState({
     issueArg: '1207',
@@ -132,8 +134,13 @@ test('changed assignee read under the issue lock refuses before the Status write
     reviewAuthority: null,
     _runGuardExecution: async () => ({ exit: null }),
     _probeCompletion: async () => ({ sentinelPresent: false, boardAtTarget: false }),
-    _emitPhasePairRows: async () => {},
-    _stampEntryMarkers: async () => ({ priorState: 'backlog' }),
+    _emitPhasePairRows: async () => {
+      timingWrites += 1;
+    },
+    _stampEntryMarkers: async () => {
+      entryWrites += 1;
+      return { priorState: 'backlog' };
+    },
     _preStatusGuard: async () => ({ exit: EXIT_ASSIGNED_REQUIRES_ASSIGNEE }),
     _runStatusWrite: async () => {
       statusWrites += 1;
@@ -146,8 +153,10 @@ test('changed assignee read under the issue lock refuses before the Status write
   });
   assert.equal(result.exit, EXIT_ASSIGNED_REQUIRES_ASSIGNEE);
   assert.equal(result.phase, 'guard');
+  assert.equal(timingWrites, 0, 'refusal writes no phase timing evidence');
+  assert.equal(entryWrites, 0, 'refusal writes no entry or last-known-state evidence');
   assert.equal(statusWrites, 0);
-  assert.equal(rollbacks, 1);
+  assert.equal(rollbacks, 0, 'nothing durable landed, so no compensation is needed');
 });
 
 test('move-state host wires a lock-time Assigned guard instead of stubbing all guards', () => {

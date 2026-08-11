@@ -9,7 +9,8 @@ import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 
 import { GH_API_TIMEOUT_MS } from './process-timeouts.mjs';
-import { normalizeStateId, stateIds } from './lifecycle-policy/index.mjs';
+
+export { resolveConfiguredProjectState } from './project-state-resolver.mjs';
 
 const pexec = promisify(execFile);
 
@@ -74,18 +75,6 @@ export function classifyAssignedAssigneeDrift({ state, assignees } = {}) {
     return { kind: 'none', targetState: null };
   }
   return { kind: 'out-of-scope', targetState: null };
-}
-
-export function resolveConfiguredProjectState(nodes, projectId) {
-  if (!projectId) throw new Error('configured project id is required');
-  if (!Array.isArray(nodes)) throw new Error('configured project items payload is invalid');
-  const item = nodes.find((entry) => entry?.project?.id === projectId);
-  if (!item) throw new Error(`configured project item ${projectId} is missing`);
-  const state = normalizeStateId(item?.fieldValueByName?.name);
-  if (!stateIds().includes(state)) {
-    throw new Error(`configured project item ${projectId} has no recognized AITM state`);
-  }
-  return state;
 }
 
 export function resolveAssignmentTarget(cfg) {

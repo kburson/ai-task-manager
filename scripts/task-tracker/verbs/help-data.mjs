@@ -349,7 +349,9 @@ export const VERB_REFERENCE = {
       },
     ],
     exitCodes: [
-      { code: 7, meaning: 'the issue mutation lock is held' },
+      { code: 1, meaning: 'assignee mutation or compensation postcondition could not be verified' },
+      { code: 7, meaning: 'the issue mutation lock is held, or mover sentinel completion failed' },
+      { code: 8, meaning: 'mover board/marker consistency failed after Status landed' },
       { code: 11, meaning: 'Assigned entry could not verify at least one assignee' },
     ],
     examples: ['/task assign 667', '/task assign 667 octocat --remove'],

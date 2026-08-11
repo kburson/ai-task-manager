@@ -1,8 +1,12 @@
 // @story #1207
 import { strict as assert } from 'node:assert';
 import { test } from 'node:test';
+import { rmSync } from 'node:fs';
 
 import { main, parseArgs, runAssignedInvariantHeal } from '../../../heal-backlog.mjs';
+import { mkdtempProjectIsolated } from '../../../lib/scratch-dir.mjs';
+
+const passthroughLock = async (_options, action) => action();
 
 test('parser exposes an explicit assigned-invariant mode', () => {
   const args = parseArgs(['--assigned-invariant', '--scope', '1,2']);
@@ -20,6 +24,7 @@ test('project-wide dry-run reports both drift shapes and writes nothing', async 
       projectDir: '/workspace',
     },
     {
+      withIssueLock: passthroughLock,
       fetchInvariantRow: async (number) =>
         ({
           1: { state: 'assigned', assignees: [] },
@@ -48,6 +53,7 @@ test('project-wide apply repairs only violations through adjacent moves', async 
       projectDir: '/workspace',
     },
     {
+      withIssueLock: passthroughLock,
       fetchInvariantRow: async (number) => {
         const count = (reads.get(number) || 0) + 1;
         reads.set(number, count);
@@ -88,6 +94,7 @@ test('apply does not count a zero-exit move as repaired without a confirmed post
       projectDir: '/workspace',
     },
     {
+      withIssueLock: passthroughLock,
       fetchInvariantRow: async () => ({ state: 'assigned', assignees: [] }),
       runMoveState: async () => 0,
       confirmBlastRadius: async () => ({ proceed: true }),
@@ -111,4 +118,66 @@ test('assigned-invariant CLI exits non-zero when the healer reports errors', asy
     },
   });
   assert.equal(exitCode, 1);
+});
+
+test('classification occurs under the issue lock so a newly compliant issue is not demoted', async () => {
+  let row = { state: 'assigned', assignees: [] };
+  const moves = [];
+  const lockCalls = [];
+  const result = await runAssignedInvariantHeal(
+    {
+      cfg: { repo: 'o/r', projectId: 'P1' },
+      args: { state: 'all', scope: [4], apply: true, yes: true },
+      projectDir: '/workspace',
+    },
+    {
+      withIssueLock: async (options, action) => {
+        lockCalls.push(options);
+        row = { state: 'assigned', assignees: ['alice'] };
+        return action();
+      },
+      fetchInvariantRow: async () => row,
+      runMoveState: async (args) => moves.push(args) && 0,
+      confirmBlastRadius: async () => ({ proceed: true }),
+      writeReport: () => {},
+      out: { write: () => {} },
+    }
+  );
+
+  assert.equal(lockCalls.length, 1);
+  assert.equal(lockCalls[0].issue, 4);
+  assert.equal(result.violations, 0);
+  assert.deepEqual(moves, []);
+});
+
+test('real outer issue lock is inherited by the nested central mover without deadlock', async () => {
+  const projectDir = mkdtempProjectIsolated('aitm-heal-lock-');
+  let reads = 0;
+  try {
+    const result = await runAssignedInvariantHeal(
+      {
+        cfg: { repo: 'o/r', projectId: 'P1' },
+        args: { state: 'all', scope: [5], apply: true, yes: true },
+        projectDir,
+      },
+      {
+        fetchInvariantRow: async () => {
+          reads += 1;
+          return reads === 1
+            ? { state: 'backlog', assignees: ['alice'] }
+            : { state: 'assigned', assignees: ['alice'] };
+        },
+        runMoveState: async () => {
+          assert.equal(process.env.AITM_ISSUE_LOCK_HELD, '1');
+          return 0;
+        },
+        confirmBlastRadius: async () => ({ proceed: true }),
+        writeReport: () => {},
+        out: { write: () => {} },
+      }
+    );
+    assert.equal(result.repaired, 1);
+  } finally {
+    rmSync(projectDir, { recursive: true, force: true });
+  }
 });

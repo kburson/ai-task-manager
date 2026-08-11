@@ -4,6 +4,12 @@ import { fieldOptionMap } from './lib/github-projects.mjs';
 import { tetherIssueToProject, backlogSizingWarning } from './lib/project-tether.mjs';
 import { wantsHelp, emitSelfDoc } from '../lib/self-doc.mjs';
 import { stateIds } from '../task-tracker/lib/lifecycle-policy/index.mjs';
+import { getProjectDir } from '../task-tracker/paths.mjs';
+import { withIssueLock } from '../task-tracker/issue-mutator-lock.mjs';
+import {
+  fetchAssignedInvariantAssignees,
+  parseAssigneeLogins,
+} from '../task-tracker/lib/assigned-assignee-invariant.mjs';
 
 function usage() {
   return `Usage: project-tether.mjs --issue <N> [--parent <N>] [--status ${stateIds().join('|')}] [--priority P0|P1|P2] [--size XS|S|M|L|XL] [--estimate <hours>] [--rank <N>]`;
@@ -34,6 +40,35 @@ function numberFlag(value, name) {
 }
 
 const VALID_STATUSES = new Set(stateIds());
+
+export async function tetherIssueWithAssignedInvariant(params, deps = {}) {
+  const { cfg, issueNumber } = params || {};
+  const status = String(params?.status || '').toLowerCase();
+  const lockIssue = deps.withIssueLock || withIssueLock;
+  const fetchAssignees = deps.fetchAssignees || fetchAssignedInvariantAssignees;
+  const tether = deps.tetherIssueToProject || tetherIssueToProject;
+
+  return lockIssue(
+    {
+      issue: issueNumber,
+      verb: 'project-tether',
+      projDir: deps.projectDir || getProjectDir(),
+    },
+    async () => {
+      if (status === 'assigned') {
+        const assignees = parseAssigneeLogins(
+          await fetchAssignees({ issueNumber, repo: cfg?.repo })
+        );
+        if (assignees.length === 0) {
+          throw new Error(
+            `refusing to tether #${issueNumber} to Assigned: at least one live GitHub assignee is required`
+          );
+        }
+      }
+      return tether(params);
+    }
+  );
+}
 
 async function main() {
   if (wantsHelp(process.argv.slice(2))) {
@@ -67,7 +102,7 @@ async function main() {
     cfg.sizeOptionMap = options[cfg.sizeFieldId] || {};
   }
 
-  const result = await tetherIssueToProject({
+  const result = await tetherIssueWithAssignedInvariant({
     cfg,
     issueNumber,
     parentIssueNumber: numberFlag(args.parent, '--parent'),

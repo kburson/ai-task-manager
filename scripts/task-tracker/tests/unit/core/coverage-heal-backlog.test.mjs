@@ -300,35 +300,68 @@ assert.deepEqual(parseArgs(['--scope=4,5']).scope, [4, 5]);
 }
 
 // ---- fetchAllIssueNumbers with a fake gql (pagination + filters) -----------
-function pageResponse(nodes, hasNextPage, endCursor = null) {
-  return { repository: { issues: { pageInfo: { hasNextPage, endCursor }, nodes } } };
+function pageResponse(contents, hasNextPage, endCursor = null) {
+  return {
+    // Legacy response shape is included so the pre-fix implementation reaches
+    // an assertion failure (wrong enumeration contract) instead of crashing.
+    repository: {
+      issues: {
+        pageInfo: { hasNextPage, endCursor },
+        nodes: contents.map((content) => ({
+          number: content.number,
+          state: content.state,
+          // Model an issue whose configured-project membership is sixth and
+          // therefore absent from the legacy `projectItems(first: 5)` payload.
+          projectItems: {
+            nodes: Array.from({ length: 5 }, (_value, index) => ({
+              project: { id: `PVT_other_${index}` },
+            })),
+          },
+        })),
+      },
+    },
+    node: {
+      items: {
+        pageInfo: { hasNextPage, endCursor },
+        nodes: contents.map((content, index) => ({ id: `ITEM_${index}`, content })),
+      },
+    },
+  };
 }
 const PID = 'PVT_target';
 {
+  const queries = [];
   const pages = [
     pageResponse(
       [
-        { number: 1, state: 'OPEN', projectItems: { nodes: [{ project: { id: PID } }] } },
-        { number: 2, state: 'CLOSED', projectItems: { nodes: [{ project: { id: PID } }] } },
-        { number: 3, state: 'OPEN', projectItems: { nodes: [{ project: { id: 'other' } }] } },
+        { number: 1, state: 'OPEN', repository: { nameWithOwner: 'o/r' } },
+        { number: 2, state: 'CLOSED', repository: { nameWithOwner: 'o/r' } },
+        { number: 3, state: 'OPEN', repository: { nameWithOwner: 'other/r' } },
       ],
       true,
       'CUR'
     ),
-    pageResponse(
-      [{ number: 4, state: 'OPEN', projectItems: { nodes: [{ project: { id: PID } }] } }],
-      false
-    ),
+    pageResponse([{ number: 4, state: 'OPEN', repository: { nameWithOwner: 'o/r' } }], false),
   ];
   let call = 0;
-  const gqlFn = async () => pages[call++];
+  const gqlFn = async (query) => {
+    queries.push(query);
+    return pages[call++];
+  };
   const open = await fetchAllIssueNumbers({ repo: 'o/r', state: 'open', projectId: PID }, gqlFn);
-  assert.deepEqual(open, [1, 4]); // #2 closed filtered, #3 off-project filtered
+  assert.deepEqual(open, [1, 4]); // #2 closed filtered, #3 belongs to another repository
+  assert.match(queries[0], /node\(id: \$projectId\)/);
+  assert.match(queries[0], /items\(first: 100/);
+  assert.doesNotMatch(
+    queries[0],
+    /projectItems\(first:\s*5\)/,
+    'configured-project enumeration cannot miss membership after the first five projects'
+  );
 }
 {
   const nodes = [
-    { number: 7, state: 'CLOSED', projectItems: { nodes: [{ project: { id: PID } }] } },
-    { number: 8, state: 'OPEN', projectItems: { nodes: [{ project: { id: PID } }] } },
+    { number: 7, state: 'CLOSED', repository: { nameWithOwner: 'o/r' } },
+    { number: 8, state: 'OPEN', repository: { nameWithOwner: 'o/r' } },
   ];
   const gqlFn = async () => pageResponse(nodes, false);
   assert.deepEqual(

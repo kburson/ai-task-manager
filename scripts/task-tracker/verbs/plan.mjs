@@ -20,7 +20,7 @@
 
 import { verbPromote } from './promote.mjs';
 import { gql, splitRepo } from '../../gh/lib/github-projects.mjs';
-import { normalizeStateId } from '../lib/lifecycle-policy/index.mjs';
+import { resolveConfiguredProjectState } from '../lib/project-state-resolver.mjs';
 import { assertBoundToIssue } from '../lib/bind-context.mjs';
 
 function parseArgs(rest = []) {
@@ -52,8 +52,7 @@ async function defaultGetLiveState({ issueNumber, cfg }) {
     { owner, repo: repoName, issue: Number(issueNumber) }
   );
   const nodes = data?.repository?.issue?.projectItems?.nodes ?? [];
-  const node = nodes.find((n) => n.project?.id === cfg.projectId) ?? nodes[0];
-  return normalizeStateId(node?.fieldValueByName?.name);
+  return resolveConfiguredProjectState(nodes, cfg.projectId);
 }
 
 export async function runPlan({ issueNumber, cfg, deps = {} } = {}) {

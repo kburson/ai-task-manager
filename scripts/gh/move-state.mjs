@@ -364,21 +364,17 @@ export async function runMoveStateHost({
   // (promote/approve/reconcile) may have already acquired this lock and signal
   // via `AITM_ISSUE_LOCK_HELD=1`; in that case skip re-acquisition.
   const runMutation = async () => {
-    // #559 — the mutation block is now a thin sequencer over the extracted
-    // concern modules. The call order is byte-identical to the pre-#559 inline
-    // block so observable side-effect ordering (the #535/#516 timeline-row
-    // guarantees) is preserved: status write → entry markers → onEnter dispatch
-    // → kanban cache refresh → phase-pair rows → full-auto review audit →
-    // unpark dependents → out-of-band audit → tracker-state sync → event-field
-    // sync → end task tracking. Each module is best-effort (failures surface on
-    // stderr, never roll back the committed board move) EXCEPT runStatusWrite,
-    // which returns a non-null `exit` the host must honor (issue absent from the
-    // project → exit 1).
-    // #755 — delegate status → tail to the extracted saga core moveState(ctx).
+    // #559/#1207 — the mutation block is now a thin sequencer over the extracted
+    // concern modules. The lock-time Assigned revalidation runs first; only then
+    // may phase-pair rows and entry/last-known markers land before the verified
+    // Status write. The sentinel is written after Status, and the remaining
+    // tail steps run last. A lock-time refusal therefore leaves no lifecycle
+    // evidence to compensate.
+    // #755 — delegate guarded evidence → Status → sentinel → tail to moveState(ctx).
     // The exit/entry guard already ran and was honored above (guardOutcome,
     // OUTSIDE the lock), so the core's guard seam is stubbed to a no-op here; the
-    // core then runs runStatusWrite → runPostCommitTail in the byte-identical
-    // pre-#755 order. moveState never calls process.exit — it returns
+    // core then runs the lock-time revalidation and ordered saga. moveState
+    // never calls process.exit — it returns
     // { exit, itemId, tail } and the mutation propagates result.exit outward so
     // the host returns it.
     //
