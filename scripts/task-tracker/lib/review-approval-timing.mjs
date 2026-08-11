@@ -47,12 +47,14 @@ export async function reconcileReviewApprovedTiming({
   const hasLaterRow = timingRows.some(({ tsMs }) => Number.isFinite(tsMs) && tsMs > approvalMs);
   let boundaryWordMarker = wordMarker;
   let boundaryFullWordMarker = fullWordMarker;
+  let boundaryFullWordMarkerTs = -Infinity;
   if (hasLaterRow) {
     for (const timingRow of timingRows) {
       if (!Number.isFinite(timingRow.tsMs) || timingRow.tsMs > approvalMs) continue;
       if (Number.isFinite(timingRow.wordMarker)) boundaryWordMarker = timingRow.wordMarker;
-      if (Number.isFinite(timingRow.fullWordMarker)) {
+      if (timingRow.tsMs >= boundaryFullWordMarkerTs) {
         boundaryFullWordMarker = timingRow.fullWordMarker;
+        boundaryFullWordMarkerTs = timingRow.tsMs;
       }
     }
   }

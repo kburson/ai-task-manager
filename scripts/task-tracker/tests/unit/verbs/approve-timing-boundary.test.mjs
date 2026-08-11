@@ -167,6 +167,54 @@ test('legacy repair uses the last marker at approval, not a later close marker',
   );
 });
 
+test('legacy repair preserves an explicit unavailable full marker at approval', async () => {
+  const issueBody = `body\n\n${APPROVAL_MARKER}\n`;
+  let timingBody = [
+    buildInitialComment(),
+    row(REVIEW_STARTED, 'review:started', 35742, '—'),
+    row(CLOSE_PAUSE, 'pause:other', 36316, 51000),
+  ].join('\n');
+  await timingModule.reconcileReviewApprovedTiming({
+    issueNumber: 1127,
+    repo: 'o/r',
+    issueBody,
+    wordMarker: 40000,
+    fullWordMarker: 60000,
+    readTimingCommentBody: async () => ({ status: 'found', body: timingBody }),
+    postTimingEvent: async ({ row: next }) => {
+      timingBody = appendRow(timingBody, next);
+    },
+  });
+  const rows = eventRows(timingBody);
+  const approval = rows.find(({ event }) => event === 'review:approved');
+  assert.equal(approval.fullWordMarker, '—');
+  assert.equal(markerNumber(rows.at(-1).fullWordMarker), 51000);
+});
+
+test('legacy repair treats an empty historical full-marker cell as unavailable', async () => {
+  const issueBody = `body\n\n${APPROVAL_MARKER}\n`;
+  let timingBody = [
+    buildInitialComment(),
+    row(REVIEW_STARTED, 'review:started', 35742, ''),
+    row(CLOSE_PAUSE, 'pause:other', 36316, 51000),
+  ].join('\n');
+  await timingModule.reconcileReviewApprovedTiming({
+    issueNumber: 1127,
+    repo: 'o/r',
+    issueBody,
+    wordMarker: 40000,
+    fullWordMarker: 60000,
+    readTimingCommentBody: async () => ({ status: 'found', body: timingBody }),
+    postTimingEvent: async ({ row: next }) => {
+      timingBody = appendRow(timingBody, next);
+    },
+  });
+  const rows = eventRows(timingBody);
+  const approval = rows.find(({ event }) => event === 'review:approved');
+  assert.equal(approval.fullWordMarker, '—');
+  assert.equal(markerNumber(rows.at(-1).fullWordMarker), 51000);
+});
+
 test('post-close retry cannot duplicate the same authoritative approval event', async () => {
   const issueBody = `body\n\n${APPROVAL_MARKER}\n`;
   const existingApproval = timingCommentModule.buildMarkerAuthorizedReviewApprovedRow({
