@@ -1,9 +1,13 @@
 # Ready for Planning and Exclusive Story Ownership Design
 
-**Status:** Draft for user review  
-**Date:** 2026-08-11  
-**Tracking epic:** #1209  
-**Supersedes:** The proposed Assigned-state coupling in issue #1207  
+**Status:** Draft for user review
+
+**Date:** 2026-08-11
+
+**Tracking epic:** #1209
+
+**Supersedes:** The proposed Assigned-state coupling in issue #1207
+
 **Target lifecycle:** Backlog -> Refine -> Ready for Planning -> Plan -> Develop -> Test -> Review -> Done
 
 ## Purpose
@@ -24,8 +28,10 @@ The canonical state chain is:
 Backlog -> Refine -> Ready for Planning -> Plan -> Develop -> Test -> Review -> Done
 ```
 
-Display name: `Ready for Planning`  
-Short form: `R4P`  
+Display name: `Ready for Planning`
+
+Short form: `R4P`
+
 Internal slug: `ready-for-plan`
 
 ### Backlog
