@@ -130,5 +130,7 @@
 - [x] Run `npm run lint`, `npm run format:check`, `npm test`, and `npm run test:slow` sequentially.
 - [x] Run `git diff --check` and inspect the complete base-to-head diff.
 - [x] Perform structured self-review against all eight ACs and repair Critical/Important findings TDD-first.
-- [ ] Commit only #1207 files with a `[#1207]` attribution token and run `npx aitm commit-trace 1207`.
-- [ ] Run `TT_FULL_AUTO=1 npx aitm test 1207`, verify the sandbox receipt and live Test state, then report CODE_COMPLETE without review, push, merge, close, or cleanup.
+- [x] Commit only #1207 files with a `[#1207]` attribution token and run `npx aitm commit-trace 1207`.
+  - Evidence: implementation commit `ac2c47539ecc4a2553f5dcaba67ee2105a9b4993` contains only the reviewed #1207 rework, and `npx aitm commit-trace 1207` completed successfully.
+- [x] Run `TT_FULL_AUTO=1 npx aitm test 1207`, verify the sandbox receipt and live Test state, then report CODE_COMPLETE without review, push, merge, close, or cleanup.
+  - Evidence: the governed sandbox exited successfully on `ac2c47539ecc4a2553f5dcaba67ee2105a9b4993`, updated the project fields, and moved #1207 to Test. After this evidence-only follow-up commit, repeat the governed Test gate on the final SHA before the CODE_COMPLETE handoff.
