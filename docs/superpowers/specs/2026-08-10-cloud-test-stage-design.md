@@ -2,21 +2,48 @@
 
 **Date:** 2026-08-10 (revised 2026-08-11)
 
-**Status:** Approved in chat; pending Codex review
+**Status:** Revised after Codex design review; pending Claude review
 
 **Branch:** `cloud-test-automation`
 
 **Supersedes:** the 2026-08-10 first draft of this file, which assumed a GitHub
-merge queue. The queue is abandoned — see [Rejected Alternatives](#rejected-alternatives).
+merge queue, and the intermediate 2026-08-11 draft, which proposed a custom
+Checks API receipt publisher.
+
+## Decision Summary
+
+AITM keeps planning, code changes, and affected-test feedback close to the
+worker, but moves authoritative Test-stage validation to GitHub Actions.
+GitHub's native workflow, job, and step results are the machine evidence. An
+authorized orchestrator may run locally or in a cloud environment; it reads and
+validates that evidence and appends the existing `verification-evidence`
+capsule. CI receives no issue-write or check-write authority.
+
+The design has four independent controls:
+
+1. **Fast Develop feedback.** A worker runs affected tests only. Healthy
+   verification finishes within 180 seconds and must not exceed 300 seconds.
+2. **Cloud Test validation.** Independent fast and slow GitHub Actions jobs run
+   on separate VMs and each has a ten-minute execution ceiling.
+3. **Local resource admission.** One local orchestrator may coordinate at most
+   six concurrent local worker agents for this repository on one physical
+   host. Additional workers use configured cloud VMs or remain queued.
+4. **Serial integration per target branch.** Parallel work converges through a
+   lazy, one-PR-at-a-time merge tail. Occasional conflicts return the later
+   story to Develop; AITM does not add a repository-wide path-locking system.
+
+No local process, worktree, or database is lifecycle authority. GitHub issues,
+authority records, pull requests, Actions results, protected target branches,
+and merged commits are the distributed coordination surfaces.
 
 ## Context
 
-The test suite no longer fits on the maintainer's laptop. Discovery finds 895
-`*.test.mjs` files across three lanes — 821 unit, 24 integration, 50 slow. The
-runner spawns one `node` child per file, and the parallel pool admits only
-files that do not reference `node:child_process`, so 174 files run strictly
-serially. A fast-lane run measured on 2026-08-11 (`.aitm/test-timing.json`,
-845 files) shows where the time goes:
+The test suite no longer fits comfortably in the feedback loop on the
+maintainer's laptop. Discovery finds 895 `*.test.mjs` files across three lanes:
+821 unit, 24 integration, and 50 slow. The runner starts one `node` process per
+file, and files that reference `node:child_process` run serially. A fast-lane
+measurement from 2026-08-11 (`.aitm/test-timing.json`, 845 files) shows the
+cost:
 
 | Measure                      |      Value | Note                                     |
 | ---------------------------- | ---------: | ---------------------------------------- |
@@ -28,487 +55,713 @@ serially. A fast-lane run measured on 2026-08-11 (`.aitm/test-timing.json`,
 | Process spawn and I/O        | 522 254 ms | 55.6% of file wall time is not test work |
 | Files over the 2 s threshold |         63 | worst single file 24 133 ms              |
 
-Running two agents' suites concurrently on one machine oversubscribes CPU and
-memory. But the Backlog-to-Develop walk is where the expensive agent-hours are
-spent, and those hours are cheap locally and costly in a rented cloud
-environment. Test-hours are the inverse: free on GitHub-hosted runners for a
-public repository, and sandboxed per job so ten stories can validate at once
-without contending for a single machine's resources.
+One worker can tolerate that cost occasionally. Six workers running similar
+fleets concurrently cannot: their agents, package installs, subprocesses, and
+test pools compete for the same CPU, memory, and disk. The orchestrator is a
+seventh agent on the host, but it performs coordination rather than build and
+test work and therefore does not consume a worker slot.
 
-The natural extension is to keep the agentic walk local and move validation to
-the cloud, promoting parallel fan-out through ephemeral CI environments rather
-than through local worktrees.
-
-Two decisions constrain the design. `trunk` is protected by ruleset 20694244,
-which requires the `Fast lane (format, lint, unit)` status check with
-`strict_required_status_checks_policy: true` — GitHub's native
-"require branches to be up to date before merging". And the repository will not
-be moved into an organization, so merge queues are unavailable.
+GitHub-hosted jobs provide isolated VMs and are free for this public repository.
+They are the appropriate place for full validation. The repository remains
+user-owned, so GitHub merge queues are unavailable. Ruleset 20694244 currently
+protects only `trunk`, requires `Fast lane (format, lint, unit)`, and enables
+`strict_required_status_checks_policy`. This design extends equivalent
+protection to epic integration branches and adds the slow verdict as a required
+check.
 
 ## Goals
 
-- Support ten or more stories validating in parallel, each in its own sandboxed
-  CI environment.
-- Keep Backlog through Develop local; move only full-suite validation to CI.
-- Make a cloud CI pass the authoritative validation evidence for a story,
-  generated by CI rather than asserted by an agent.
-- Give a failing run enough structured detail that triage does not have to
-  reproduce the failure by re-running the whole suite.
-- Eliminate the local Test-stage sandbox worktree.
-- Add no new record mechanism: reuse the approved GitHub-native authority
-  records already implemented in `scripts/task-tracker/lib/github-records/`.
+- Let many atomic stories execute concurrently without running their complete
+  validation fleets on one local machine.
+- Keep the local Develop feedback loop below 180 seconds in the healthy case
+  and at or below 300 seconds in all supported cases.
+- Complete each cloud validation job within ten minutes of runner start.
+- Make native GitHub Actions results authoritative machine evidence without
+  granting CI authority to write AITM records or custom checks.
+- Let local and cloud orchestrators use exactly the same GitHub-backed receipt,
+  lifecycle, parking, and integration protocol.
+- Preserve a compact validation receipt reference in the merged commit.
+- Make retries, handoffs, and crash recovery deterministic.
+- Give a failing run enough structured detail for targeted diagnosis without
+  rerunning the complete fleet.
+- Reuse the GitHub-native record mechanism already implemented under
+  `scripts/task-tracker/lib/github-records/`.
 
 ## Non-Goals
 
-- No merge queue, and no organization migration to obtain one.
-- No cross-platform validation. CI runs Linux only. Linux/macOS/Windows
-  discrepancies are deferred until one actually presents itself.
-- No cloud provisioner. CI is the cloud environment; there is nothing to
-  provision.
-- No agent authoring code inside CI. The workflow is rote execution.
-- No change to the parallel-safety of the test runner. That work is #1208.
-- No change to the eight-state chain.
+- No merge queue and no organization migration.
+- No repository-wide path or subsystem lease registry. Planning should isolate
+  work; the integration tail handles the occasional conflict.
+- No cloud VM provisioner. AITM may dispatch through a configured cloud-worker
+  adapter, but provisioning and billing remain external.
+- No agent authors code inside GitHub Actions. CI performs deterministic
+  validation only.
+- No cross-platform matrix. The initial CI policy is `linux-x64` with Node 22.
+- No ninth kanban state. `awaiting-ci` is a coordination condition within Test.
+- No automatic retirement or weakening of slow tests. Test consolidation,
+  shared fixtures, and smoke-test substitutions require separately reviewed
+  changes with equivalent risk coverage.
+- No change to the test runner's subprocess parallel-safety in this design.
+  Weighted pooling remains tracked by #1208.
 
-## Division of Labor
+## Time and Capacity Budgets
 
-| Concern                       | Owner                    | Surface                             |
-| ----------------------------- | ------------------------ | ----------------------------------- |
-| Backlog through Develop       | Local orchestrator       | Local worktree                      |
-| Per-AC targeted tests         | Local orchestrator       | `verify-develop.mjs`                |
-| Full-suite validation         | GitHub Actions           | Ephemeral runner                    |
-| Machine verification evidence | GitHub Actions           | Check run on the PR head SHA        |
-| Failure detail                | GitHub Actions           | `.aitm/test-failures.json` artifact |
-| Root-cause diagnosis          | Triage agent (on demand) | Local worktree, failing files only  |
-| Authority records             | Local orchestrator       | Issue capsules and projections      |
-| Merge                         | Human or orchestrator    | `gh pr merge`                       |
-| Permanent pass claim          | Local orchestrator       | Merge-commit trailers               |
+### Develop feedback budget
 
-CI never writes issue content. The orchestrator remains the sole author of the
-issue body and its record comments, which preserves the single-author invariant
-and means a compromised workflow cannot forge a story record.
+`verify-develop.mjs` remains local to the worker and runs only format/lint work
+and tests selected from the story's affected surface. It does not run the full
+suite and does not compute the cloud slow-lane decision.
 
-## State Walk
+The elapsed budget for one Develop verification invocation is:
 
-Develop is unchanged: `verify-develop.mjs` lints, formats, and runs the test
-files touched by the change, using `selectAffectedTests` from
-`lib/test-impact-selector.mjs`.
+| Elapsed time | Classification | Required response                                     |
+| -----------: | -------------- | ----------------------------------------------------- |
+|      <= 180s | Healthy        | Continue                                              |
+|     181-300s | Degraded       | Pass with timing evidence and an optimization warning |
+|       > 300s | Over budget    | Fail `develop-verification-budget-exceeded`           |
 
-Test replaces the local sandbox with a pull request.
+An over-budget result is a test-architecture defect even when every assertion
+passes. The remedy is to reduce repeated setup, merge related cases into one
+fixture, narrow the affected-test selector, or replace redundant deep coverage
+with a justified smoke test. Raising the ceiling is not the default remedy.
 
-1. `promote <N> test` pushes the story branch and opens a PR. Parent is the
-   epic branch when the story has a non-trunk parent, `trunk` otherwise.
-2. The PR triggers `.github/workflows/ci.yml`. The fast lane is a required
-   check; the slow lane is required and path-conditional.
-3. On success, CI publishes a verification receipt as a check run against the
-   PR head SHA.
-4. The orchestrator polls, reads the receipt, validates it, and appends a
-   `verification-evidence` capsule to the issue.
-5. Test to Review is gated on that capsule, not on a local sandbox run.
-6. Review validates issue-record structure only — ACs, DoD, evidence
-   completeness, plan-approval audit. It no longer validates code, because CI
-   already did.
-7. Merge is serial. See [Merge Discipline](#merge-discipline).
-8. `close` verifies the `[#N]` token on the resolved trunk ref as it does
-   today, and additionally requires the `integration-result` capsule.
+### Cloud Test budget
 
-While a story waits on CI the session is not idle. See
-[Blocker Chains and the Do-Si-Do](#blocker-chains-and-the-do-si-do).
+The fast and slow jobs each use `timeout-minutes: 10`. The budget begins when a
+runner starts; GitHub queue time is measured separately because repository code
+cannot control it. A timeout is not a test assertion failure. It is classified
+as `ci-time-budget-exceeded` and creates performance work before the timeout is
+relaxed.
 
-## The Verification Receipt
+Fast and slow jobs are independent and start concurrently. Slow-impact
+selection belongs to the slow job, before dependency installation or slow-test
+execution. It never delays the fast job and never enters the Develop loop.
 
-### What CI writes
+### Local worker budget
 
-The existing receipt contract lives in
-`scripts/task-tracker/lib/verification-receipt.mjs`, schema
-`aitm.verification-receipt/v1`, with lane identities in
-`VERIFICATION_COMMAND_IDENTITIES` and the Test-stage requirement set in
-`TEST_RECEIPT_REQUIRED` — `lint-full`, `format-full`, `test-unit`,
-`test-integration`, `test-slow`.
+The default physical-host budget is:
 
-CI emits the same document, bumped to `aitm.verification-receipt/v2`, and
-publishes it through the Checks API:
+- one or more lightweight orchestrator sessions, which do not consume worker
+  slots; and
+- at most six worker agents modifying or testing this repository across all
+  clones and worktrees on that host.
 
-- `output.summary` carries a one-line verdict for the rare human glance.
-- `output.text` carries the receipt JSON in a fenced block. The consumer is an
-  agent, so the payload is parseable rather than prose.
-- `conclusion` carries the verdict a gate can read with a single request:
-  `GET /repos/{owner}/{repo}/commits/{sha}/check-runs`.
+Six is a ceiling, not a utilization target. The admission controller may reduce
+local concurrency when memory pressure, CPU saturation, or recent Develop
+timings show that the feedback budget cannot be maintained. Overflow moves to
+configured cloud VMs before the host is allowed to turn every worker's feedback
+loop into a five-minute wait. If an isolated worker still exceeds the ceiling,
+the test architecture—not host admission—is the defect.
 
-Check-run writes are available only to GitHub Apps. `GITHUB_TOKEN` is an App
-installation token, so a workflow with `checks: write` can publish; a local
-`gh` invocation with a user token cannot. This is deliberate — the receipt is
-write-once from inside CI, with no local backfill path. A workflow that dies
-after testing but before publishing is recovered by re-running CI, never by
-hand-authoring a receipt.
+A host-local capacity registry, keyed by repository identity, supplies six
+ephemeral worker leases. Each lease records the issue, worker/session identity,
+process identity, heartbeat, and expiry. It covers the worker and every child
+process it starts. All local orchestrators share the same registry, so opening a
+second session does not create six more slots.
 
-### What the orchestrator writes
+The registry is an operational semaphore, not lifecycle authority. A lost or
+deleted lease can affect resource utilization but cannot authorize work,
+advance an issue, or satisfy a gate. GitHub coordinator grants and work
+assignments remain authoritative. Stale leases are reclaimed by heartbeat and
+process-liveness checks.
 
-The approved GitHub-native authority-records model
-(`docs/decisions/0002-github-native-authority-records.md`) already provides
-every record shape this design needs. Nothing new is introduced.
+The test runner derives its internal pool ceiling from the active host leases
+instead of assuming it owns the machine. A seventh runnable worker is sent to a
+configured cloud-worker adapter. Each overflow worker receives a different VM;
+two overflow workers are never placed on one VM merely to reproduce the local
+contention elsewhere. Without such an adapter the work remains queued. CI jobs
+do not consume local leases.
 
-- `CAPSULE_TYPES` in `lib/github-records/capsule-chain.mjs` already includes
-  `verification-evidence` and `integration-result`.
-- `SINGLETON_KINDS` in `lib/github-records/issue-directory.mjs` already
-  includes `evidence-projection`.
-- `buildEvidenceProjection` stores only
-  `{recordId, recordType, createdAt, logicalId}` — an index, not a payload.
+## Trust and Authority Boundaries
 
-So the receipt maps cleanly onto the existing layering:
+| Concern                       | Authority or executor       | Durable surface                         |
+| ----------------------------- | --------------------------- | --------------------------------------- |
+| Story and lifecycle authority | Active issue coordinator    | GitHub authority records                |
+| Code changes                  | Assigned local/cloud worker | Story branch and work assignment        |
+| Develop verification          | Assigned worker             | Develop evidence                        |
+| Test execution                | GitHub Actions              | Native run, job, and step conclusions   |
+| Test evidence acceptance      | Active issue coordinator    | `verification-evidence` capsule         |
+| CI wait state                 | Active issue coordinator    | Coordination projection                 |
+| Merge eligibility             | Derived by orchestrators    | PR plus effective issue records         |
+| Merge serialization           | Protected target branch     | GitHub branch rules and merge operation |
+| Integration evidence          | Active issue coordinator    | `integration-result` capsule            |
+| Permanent receipt pointer     | Merge author                | Git commit trailers                     |
 
-| Layer                           | Holds                               | Written by   |
-| ------------------------------- | ----------------------------------- | ------------ |
-| Check run                       | Receipt JSON, verdict, run identity | CI           |
-| `verification-evidence` capsule | Receipt payload plus run and SHA    | Orchestrator |
-| `evidence-projection` singleton | Pointer index to accepted records   | Orchestrator |
-| Issue directory in body         | Singleton comment node IDs          | Orchestrator |
+CI uses `contents: read` and the permissions GitHub implicitly needs to report
+its native job checks. It receives no `checks: write`, `issues: write`, or
+`pull-requests: write`. The workflow cannot append issue records or create a
+custom receipt check.
 
-The orchestrator appends the capsule with `appendCapsule`, converges the
-projection with `convergeSingletonProjections`, and locates the singleton
-through `parseIssueDirectory`. There is no new marker family and no new
-schema id.
+An orchestrator may run in one local session, one of several local sessions, or
+a disposable cloud environment. Its authority comes from the active,
+epoch-fenced GitHub coordinator grant—not from its filesystem or host. Separate
+orchestrators for different tasks and epics write separate issue chains.
+Replaced or stale orchestrators fail closed when their authority epoch no longer
+matches.
 
-### Fingerprint relaxation
+## Lifecycle Walk
 
-`validateVerificationReceipt` currently rejects on `stage-mismatch`,
-`issue-mismatch`, `sha-mismatch`, `node-major-mismatch`, `platform-mismatch`,
-`lockfile-mismatch`, `config-mismatch`, and `sandbox-dirty`. A CI-generated
-receipt must relax exactly two of those:
+Develop is complete only after affected verification passes within the local
+budget and the branch contains a clean committed head.
 
-- **`platform`** — line 116 records `${process.platform}-${process.arch}`.
-  Local is `darwin-arm64`; CI is `linux-x64`. Both components differ.
-- **Node major** — `ci.yml` pins Node 22; local development prefers Node 25.
+The canonical Test entry point is `/task test #N`:
 
-`commitSha` stays strict. It is the anti-fabrication anchor: a receipt is
-valid only for the exact tree that produced it. Run identity is verified
-independently by fetching the run, so a forged receipt fails against the API
-even if its fields are internally consistent.
+1. Resolve the active authority locator and coordinator grant.
+2. Validate Develop completion, the exact committed head, branch ownership,
+   work assignment, and target integration branch.
+3. Push with lease and create, or idempotently reuse, exactly one PR from the
+   story branch to its immediate parent branch. A standalone or root story
+   targets `trunk`; a child story targets its epic branch.
+4. Read the PR back and verify repository, issue, base branch, head branch, and
+   head SHA.
+5. Append a Develop-to-Test `lifecycle-transition` capsule whose payload records
+   PR number, target branch, base SHA, and head SHA. Then project the assignment
+   state as `awaiting-ci` and point the coordination chain head at that capsule.
+6. Release the local worker lease. The orchestrator may advance another
+   eligible story while it polls GitHub.
+7. Validate the native Actions result for the exact PR head.
+8. On green, append the `verification-evidence` capsule, converge the evidence
+   projection, clear `awaiting-ci`, and emit `REVIEW_COMPLETE` for Test to
+   Review.
+9. On red, clear the WIP exemption and route the story to retry, diagnosis, or
+   `/task demote #N --rework` according to the failure taxonomy.
 
-`v2` adds provenance fields absent from `v1` — a grep for
-`provenance|ciRun|runId|GITHUB_ACTIONS|actor` across the current module returns
-nothing, so this is new surface: `ciRun`, `ciAttempt`, `workflow`, `actor`,
-`eventName`, `repository`.
+Every boundary is retry-safe:
 
-### Durability
+- Failure before PR creation leaves the issue in Develop.
+- Failure after PR creation but before the transition record adopts the one
+  matching PR on retry; it never opens a duplicate.
+- Failure after the transition record reconstructs `awaiting-ci` from GitHub.
+- A new commit invalidates the pending or accepted receipt and requires a new
+  run.
+- A stale authority epoch cannot accept evidence or advance the issue.
 
-Four tiers, and they are not equal:
+`github-records/v1` issues use this cloud Test path. Issues that still use
+`legacy-body/v1` retain the existing local sandbox and
+`aitm-dod-verified` behavior until explicitly adopted. There is no dual-write
+mode and no bulk migration.
 
-| Tier | Store                         | Lifespan                           |
-| ---- | ----------------------------- | ---------------------------------- |
-| 1    | Git objects — commit messages | Permanent, cloneable, offline      |
-| 2    | Check runs, workflow runs     | 400 days, archived, deleted at 410 |
-| 3    | Issue comments and body       | No expiry; agent-deletable         |
-| 4    | Actions logs and artifacts    | 90 days by default                 |
+## Native Actions Evidence
 
-Two consequences. An issue comment **outlives a check run** if the issue is
-kept past 410 days, so the capsule is the more durable home for the payload
-than the check run that produced it. And a PR whose required checks have been
-archived cannot merge without re-running them — irrelevant at normal velocity,
-relevant for a long-parked PR.
+### Why there is no custom receipt check
 
-Only tier 1 is permanent, so the merge commit carries two trailers:
+GitHub Actions already creates app-authenticated workflow, job, and step
+results. A second check run would duplicate those facts, require write
+permission in a job that executes repository-controlled code, and introduce an
+aggregation problem across fast and slow jobs.
 
+The orchestrator therefore constructs the canonical receipt from read-only
+sources:
+
+- the PR and exact head commit;
+- the Actions workflow run and attempt;
+- the native fast and slow job/check results;
+- named step conclusions;
+- the workflow definition and policy fingerprints at the accepted commit;
+- the target-base slow-impact policy; and
+- the issue's assignment, contract, and authority records.
+
+The orchestrator does not assert that tests passed. It verifies GitHub's native
+conclusions and records them. Receipt provenance is `github-actions`, not
+`agent`.
+
+### Receipt schema and identity
+
+The existing `aitm.verification-receipt/v1` remains the legacy local-sandbox
+format. Cloud Test introduces `aitm.verification-receipt/v2`; this is a new
+payload schema, not a new authority-record mechanism.
+
+The v2 payload contains at least:
+
+- repository name and immutable repository ID;
+- issue, contract epoch, authority grant, and authority epoch;
+- PR number, target branch, target base SHA, and exact head SHA;
+- workflow ID, path, workflow commit, event, actor, and GitHub Actions app ID;
+- run ID, run attempt, run URL, and timestamps;
+- native job/check IDs, names, statuses, conclusions, and required step
+  conclusions;
+- expected runner labels, `linux-x64`, and Node 22 policy;
+- lockfile, verification-config, and CI-policy fingerprints;
+- the five classifications `lint-full`, `format-full`, `test-unit`,
+  `test-integration`, and `test-slow`, or an authorized slow-lane skip;
+- clean-checkout/worktree verification; and
+- acceptance timestamp and logical validation key.
+
+The logical validation key is deterministic:
+
+```text
+github-actions:<repository-id>:<workflow-id>:<run-id>:<attempt>:<head-sha>
 ```
-[#1210] feat(ci): publish verification receipt
 
-<concatenated squash body>
+Retries first search effective evidence for this key. An identical accepted
+payload is reused; a conflicting payload fails closed. The immutable capsule's
+existing ULID `recordId` is the canonical validation receipt ID exposed outside
+the issue.
 
-CI-Verified-Sha: a1b2c3d4e5f6...
-CI-Run: 18234567890
+### Source-aware validation
+
+V2 does not ignore Node or platform mismatches. It validates them against the
+CI policy rather than the orchestrator's local machine:
+
+- runner labels must resolve to the allowed Linux runner profile;
+- the successful setup step and workflow contract must select Node 22;
+- repository, workflow, event, PR, base, and head identities must match;
+- run attempt and job/check IDs must exist in the fetched Actions run;
+- all required jobs and steps must have acceptable native conclusions;
+- lockfile, verification config, and CI policy hashes must match the tested
+  head and target-base policy;
+- the final clean-worktree step must pass; and
+- the issue must be derived from the PR's assigned story branch and active work
+  assignment, never parsed from untrusted CI output.
+
+Policy-surface changes—workflow files, the impact selector, receipt validation,
+package test scripts, the test runner, or lifecycle gates—force the slow lane
+and require the workflow-security review defined by the Delivery Contract. The
+default rule is that CI-policy fingerprints match the protected target base. An
+approved policy-change story may accept a new fingerprint only when its sealed
+contract identifies the reviewed old and new values. The orchestrator refuses a
+topology that silently removes or renames a required job or step.
+
+### Record mapping and distributed idempotency
+
+The approved GitHub-native authority model already supplies the storage layers:
+
+| Layer                           | Contents                             |
+| ------------------------------- | ------------------------------------ |
+| Native Actions run/jobs         | Machine execution facts              |
+| `verification-evidence` capsule | Canonical v2 receipt and logical key |
+| `evidence-projection` singleton | Accepted-record pointer index        |
+| Issue directory                 | Singleton comment node IDs           |
+
+The active coordinator appends with `appendCapsule`, reads the record back,
+and converges `evidence-projection`. Append-first, expected-head checks,
+authority epochs, and immutable logical keys make retries portable across
+local and cloud sessions. The existing capsule and projection mechanisms are
+reused; no receipt marker family or CI-authored issue comment is added.
+
+## GitHub Actions Workflow
+
+`.github/workflows/ci.yml` keeps its `pull_request:` trigger without a branch
+filter so child-to-epic PRs run the same workflow as trunk PRs. It also retains
+nightly, push-to-trunk, and manual entry points.
+
+Workflow-level permissions remain:
+
+```yaml
+permissions:
+  contents: read
 ```
 
-Both fields are required. Squash and rebase merges create a **new** commit with
-a different SHA, so the commit on trunk was never itself tested and carries no
-check runs from the PR; `CI-Verified-Sha` is the only surviving link to the
-tree that was validated. The orchestrator authors the trailers at merge time,
-composing them from the receipt, and must preserve GitHub's default
-concatenated squash body rather than replacing it — that concatenation is what
-carries the `[#N]` tokens the attribution layer greps.
+### Fast job
 
-The trailers preserve an auditable claim, not verifiable proof. Once the branch
-is deleted the tested SHA becomes unreachable, and past 410 days the run is
-deleted, so nothing can confirm the squashed content equals what was tested.
-This is accepted: legacy receipts depreciate, and the claim is the right level
-of investment. Landing receipt JSON in the git tree would give permanent proof
-at the cost of a committed file per validated commit, and is rejected.
+The required context remains `Fast lane (format, lint, unit)` for ruleset
+compatibility, even though integration is now an explicit step. The job:
 
-## The Failure Manifest
+1. checks out full history;
+2. materializes the local `trunk` ref for real-git tests;
+3. sets up Node 22 and installs with `npm ci`;
+4. runs format check;
+5. runs lint and memory-index parity;
+6. runs `npm run test:unit`;
+7. runs `npm run test:integration`; and
+8. verifies the worktree is clean after validation.
 
-`run-tests.mjs` already writes `.aitm/test-timing.json` through
-`writeTimingArtifact()`, wrapped in try/catch so the write can never fail the
-run. A sibling `.aitm/test-failures.json` follows the same pattern and carries,
-per failing file: repository-relative path, lane, exit status, and captured
-stdout and stderr.
+It does not compute slow impact, wait on the slow job, publish a custom receipt,
+or upload another job's diagnostics.
 
-One correction is required in the runner. Line 234 pushes
-`{ file: label, stdout, stderr, status }`, where `label` is a display string.
-The manifest needs the path from `entry.full` so a consumer can pass it
-straight to `node --test`.
+### Slow job
 
-Two upload details matter:
+The required context is `Slow lane (full test fleet)`. It starts independently
+of the fast job on its own VM and:
 
-- `actions/upload-artifact@v4` excludes hidden directories by default. The
-  upload step needs `include-hidden-files: true` or `.aitm/` is silently
-  dropped and the artifact appears empty.
-- The upload runs with `if: always()` so a red job still publishes its
-  manifest.
+1. checks out full history and sets up Node 22;
+2. resolves the PR target base and exact head;
+3. runs the slow-impact selector before `npm ci`;
+4. exits successfully with a structured step summary when no slow test can be
+   affected; or
+5. installs dependencies, runs `npm run test:slow`, and verifies a clean
+   worktree when slow coverage is required.
 
-## Failure Taxonomy
+There is one job and one stable check name. There is no same-named skip job and
+no workflow-level `paths:` filter. The check always exists. A no-impact run is
+cheap but still leaves native evidence that selection executed.
 
-A manifest cannot explain every red job, and the gate must distinguish four
-outcomes rather than assuming "red implies test failure".
+The orchestrator accepts the skip only after recomputing the decision with the
+selector and policy from the protected target base. The v2 receipt then carries:
 
-| Outcome                      | Manifest state        | Handling                                    |
-| ---------------------------- | --------------------- | ------------------------------------------- |
-| Test failure                 | Present, non-empty    | Triage the named files                      |
-| Pre-test failure             | Absent                | Lint or format failed; read the step log    |
-| Post-artifact policy failure | Present and **green** | Fleet leak or section ceiling; read the log |
-| Cancellation or timeout      | Absent or partial     | Re-run; do not treat as a code defect       |
+- `reason: no-slow-impact`;
+- target base and head SHAs;
+- changed paths;
+- selector version and hash; and
+- `lanes: [test-slow]`.
 
-The third row is a genuine trap. In `run-tests.mjs` the fleet-leak exit (line 313) and the section-ceiling exit (line 333) both occur **after**
-`writeTimingArtifact()`. A green manifest can therefore accompany a red job,
-and a gate that trusts the manifest alone would read that as a pass. The gate
-must key on the job conclusion first and consult the manifest only to explain
-a failure, never to establish one.
+Malformed, stale, or unreproducible skip claims relax nothing. Changes to
+`.github/workflows/**`, the selector, test infrastructure, dependency manifests,
+or lock files require slow execution unconditionally.
 
-## CI Workflow Changes
+### Workflow concurrency and required checks
 
-`.github/workflows/ci.yml` today has a bare `pull_request:` trigger with no
-`branches:` filter, so child-to-epic-branch PRs already receive full CI with no
-workflow change. Required changes:
+The workflow uses a concurrency group keyed by repository and PR number with
+`cancel-in-progress: true`. A new head cancels obsolete runs. A cancelled run
+cannot produce accepted evidence.
 
-1. **Split the fast job's test step.** `npm test` runs `--lane fast`, which
-   satisfies neither the `test-unit` nor the `test-integration` receipt
-   classification. The job must run `npm run test:unit` and
-   `npm run test:integration` as separate steps so the receipt's required set
-   can be populated honestly.
-2. **Add `checks: write`** to the job's `permissions` block, which is currently
-   `contents: read` only. Do not add `issues: write` or
-   `pull-requests: write`; CI has no business writing either.
-3. **Publish the receipt** as a check run in a step gated `if: always()`.
-4. **Upload the manifest** with `include-hidden-files: true` and
-   `if: always()`.
-5. **Add a `concurrency:` group** keyed on the PR ref with
-   `cancel-in-progress: true`. There is no such block today, so every push to
-   a PR currently races an obsolete run against the new one, burning jobs from
-   a hard ceiling.
-6. **Make the slow lane path-conditional and required.** See below.
+Both fast and slow contexts become required, with strict up-to-date enforcement,
+for:
 
-The `Materialize local trunk ref for real-git tests (#745)` step stays gated on
-`github.event_name == 'pull_request'`. Without a merge queue there is no
-`merge_group` event to extend it to.
+- `trunk`; and
+- `feature/epic/*` integration branches.
 
-## Slow Lane Policy
+Ruleset changes and workflow changes are deployed in an order that never leaves
+a required context absent: emit the stable contexts first, observe them on a
+canary PR, add requirements, then remove any obsolete policy.
 
-The slow lane guards exactly the surfaces that historically break — the state
-machine, worktree isolation, locking, and board writes. Its 50 files are almost
-entirely subprocess end-to-end coverage of `move-state`, `promote`, `close`,
-`cli`, `worktree-isolation`, `fleet-registry-concurrent`,
-`coverage-orchestrator-lock`, `state-marker-single-writer`,
-`deadlock-regression`, `board-field-readback`, and
-`lifecycle-traversal-e2e`. Moving that to nightly-only would merge changes to
-the state machine without the only tests that exercise it end to end, and under
-serial merge a red trunk blocks every other story.
+GitHub-hosted concurrency is finite. At the current 20-standard-job ceiling,
+ten PRs can execute two real jobs simultaneously and additional PRs queue. That
+queue is acceptable; oversubscribing the maintainer's machine is not. If demand
+persistently exceeds the hosted limit, increasing runner capacity is a separate
+operational decision, not a reason to weaken validation.
 
-So the slow lane becomes a **required, path-conditional** check:
+## Failure Diagnostics
 
-- The decision is driven by `selectAffectedTests` against the PR diff — the
-  mechanism already proven in Develop and currently wired into
-  `verify-develop.mjs` alone. A hand-maintained `paths:` list would drift.
-- `.github/workflows/**` counts as slow-lane-affecting. The test that asserts
-  the workflow's wiring lives in the slow lane, so without this the workflow
-  could change its own gate unguarded. See
-  [Testing Strategy](#testing-strategy).
-- When the diff cannot affect the slow lane, a **same-named job** publishes a
-  passing conclusion without doing work. A `paths:`-filtered required check
-  that never runs leaves the PR pending forever; the skip job is what makes
-  "required" and "conditional" coexist.
-- A nightly run on trunk executes the slow lane unconditionally. This is not a
-  substitute for the PR gate — it catches environment drift, such as
-  dependency and GitHub API changes, that no PR diff would ever trigger. The
-  `schedule` trigger at `0 7 * * *` already exists.
+### Lane-specific manifests
 
-Jobs, not minutes, are the scarce resource. GitHub Free allows 20 concurrent
-standard jobs. Ten PRs each running two lanes consumes the entire ceiling with
-nothing left for the merge-lane retest; matrix-sharding the slow lane five ways
-would need 60 and does not fit even on Pro's 40. Path-conditioning is what
-keeps most PRs at one real job and ten-wide fan-out affordable.
+`run-tests.mjs` adds diagnostic output per invocation:
 
-Any bound on coverage is logged, never silent. A skipped slow lane states in
-its check output which paths were examined and why the lane was not required.
+```text
+.aitm/test-failures-unit.json
+.aitm/test-failures-integration.json
+.aitm/test-failures-slow.json
+```
 
-The underlying inefficiency — 55.6% spawn overhead and a serial phase costing
-more than the pool — is out of scope here and tracked as **#1208**. That work
-targets wall-clock, not CPU: pooling overlaps spawn cost rather than removing
-it, and would bring the fast lane from 236 822 ms toward 100 000-130 000 ms.
+Each failing entry contains the repository-relative `entry.full` path, lane,
+exit status, duration, and bounded stdout/stderr. Truncation is explicit in the
+document so a pathological failure cannot create an unbounded artifact.
+
+Each job uploads a unique immutable artifact name containing lane, run ID, and
+attempt. Upload uses `include-hidden-files: true` and `if: always()`. Manifest
+serialization remains diagnostic and best-effort; it can never turn a passing
+test into a failure or establish that a failing test passed.
+
+### Failure taxonomy
+
+Classification begins with native workflow, job, and step conclusions. Artifact
+presence explains a failure but never establishes the verdict.
+
+| Outcome                    | Evidence                                     | Handling                             |
+| -------------------------- | -------------------------------------------- | ------------------------------------ |
+| Setup or pre-test failure  | Checkout/setup/install/quality step failed   | Diagnose the named step              |
+| Test assertion failure     | Test step failed; manifest may be present    | Triage listed files, then logs       |
+| Post-test policy failure   | Tests green; clean/fleet/policy step failed  | Diagnose the policy step             |
+| Manifest unavailable       | Expected diagnostic absent or unreadable     | Use logs; do not infer test category |
+| Cancellation or stale head | Run cancelled or head no longer current      | Ignore or rerun current head         |
+| Timeout                    | Job conclusion `timed_out`                   | Record `ci-time-budget-exceeded`     |
+| Platform or GitHub outage  | Runner/API evidence indicates infrastructure | Retry without labeling a code defect |
+
+A triage agent is spawned only after classification. It acquires a worker slot,
+reads the lane artifact or failing step log, and reruns only named files or the
+smallest reproducer. It produces a Worker Report with `root_cause` and proposed
+rework; it does not commit unless it receives a new sanctioned assignment.
+
+## CI Parking and the Do-Si-Do
+
+`awaiting-ci` is a value in the GitHub-backed coordination projection. Its
+details live in the immutable Develop-to-Test `lifecycle-transition` capsule
+identified by the projection's chain head. This uses the current projection
+shape: assignment state remains a string, while PR, base, and head identity stay
+in an authoritative capsule. It is not a new issue state and is not inferred
+from a local process.
+
+A Test story is exempt from its epic's one-advancing-child WIP budget only when:
+
+- the effective coordination projection says `awaiting-ci`;
+- the record is authorized by the current coordinator epoch;
+- the referenced PR is open;
+- PR base and head match the recorded target and SHA; and
+- no terminal Actions result for that head has been accepted or rejected.
+
+The orchestrator can then select and dispatch other eligible stories. A parked
+Test story consumes neither an epic WIP slot nor a local worker lease, so other
+stories may also reach Test and validate concurrently. One orchestrator may
+track many awaiting PRs; the practical bound is dependency correctness and
+GitHub runner capacity, not one Test occupant per orchestrator. Each worker
+context still owns only one active code-changing assignment at a time.
+
+Green, red, cancellation, head drift, PR closure, authority replacement, or
+expiration clears the exemption. A replacement coordinator rebuilds the wait
+from the capsule chain, coordination projection, PR, and Actions run.
+
+Blocker chains use the same rule. A session may work another eligible item while
+one rung waits, but dependencies still unwind deepest-first; parallelism does
+not permit a parent to integrate before its blocker.
+
+## Planning-Time Isolation and Merge-Time Conflicts
+
+AITM should attempt to decompose concurrent stories into atomic, isolated work
+during refinement, planning, and assignment. Scope descriptions should name
+expected files, subsystems, and interfaces so coordinators can avoid obvious
+overlap.
+
+These boundaries are planning guidance, not repository-wide exclusive leases.
+This design deliberately does not add a global write-set registry, cross-epic
+path lock, or hard Develop gate for undeclared files. The added coordination
+cost is not justified until observed PR conflict or semantic-collision rates
+show a material problem.
+
+The occasional conflict is handled at the integration tail:
+
+1. GitHub refuses the stale or conflicting merge, or the head-of-line rebase
+   reports conflicts.
+2. The orchestrator records the integration failure and runs
+   `/task demote #N --rework`.
+3. The story returns to Develop, rebases on the current target, resolves the
+   conflict, and runs affected verification again.
+4. A new commit invalidates the old receipt.
+5. `/task test #N` updates the PR and obtains a fresh cloud receipt before the
+   story can re-enter Review and the merge tail.
+
+Semantic collisions that do not produce textual conflicts are caught by the
+required tests after the lazy rebase. If conflict frequency rises, a future
+design may add stronger overlap observation or leases using measured evidence.
 
 ## Merge Discipline
 
-Without a queue, merging is serial and enforced by the existing ruleset.
-`strict_required_status_checks_policy: true` already refuses to merge a branch
-that is behind its base, which is rebase-and-retest by another name.
+Integration is serial per target branch, not globally across unrelated target
+branches. A PR enters the lane when its story reaches Review with accepted Test
+evidence and the required Review/approval evidence. Its lane position is the
+authorized Test-to-Review transition time, with PR number as the tie-breaker.
 
-The policy is a **single-slot merge lane with lazy update**:
+That position remains stable while the head PR rebases, retests, and renews any
+head-bound evidence. Temporary invalidation caused by that authorized refresh
+does not let the next PR take the slot. A PR leaves the lane only by merging,
+closing, explicit approval rejection or revocation, an abandoned/expired merge
+attempt, or demotion for rework. Every orchestrator derives the same head from
+GitHub records. An orchestrator acts only when its own authorized PR is first;
+it does not update later PRs. This is lazy update and avoids O(N²) retesting
+without a local or repository-wide merge mutex.
 
-- One PR holds the merge slot at a time.
-- Only the head-of-line PR rebases onto the updated base and retests.
-- PRs behind it are left untouched until they reach the head.
+For the head PR:
 
-Eager updates are the failure mode to avoid: with N open PRs, updating every
-branch after each merge makes retests O(N²). For ten open PRs that is roughly
-45-55 runs against roughly 10 for lazy update.
+1. Fetch the protected target branch and verify the PR's base.
+2. Rebase or update only the head PR to the current target.
+3. Push with lease; the new SHA invalidates prior evidence.
+4. Wait for fresh required fast and slow verdicts and accept a fresh receipt.
+5. Reconfirm Review/approval evidence against that receipt and head.
+6. Merge while supplying the expected PR-head SHA.
+7. Read back the PR and merged commit before recording success.
+8. Append `integration-result` with target branch, tested base SHA, tested head
+   SHA, merged SHA, merge method, PR, and validation receipt ID.
 
-Two accepted limits. Presence on trunk proves only what the ruleset required at
-merge time — today the fast lane alone — and the commit records nothing about
-which policy was in force or whether a bypass actor existed. And `close`
-already answers "did this pass" by grepping `[#N]` on the resolved trunk ref,
-so the trailers are not needed for that question. They exist for the two
-questions trunk presence cannot answer: what was validated before the merge
-existed, and which run validated it after a squash rewrote the SHA.
+Strict required checks on `trunk` and epic branches are the distributed
+serialization boundary. If another merge advances the target, GitHub refuses
+the stale merge; the PR becomes the next lazy-update candidate. A local mutex
+cannot satisfy or replace this protection.
 
-## Triage
+### Hierarchical coalescence to trunk
 
-A triage agent spawns only on a red run, and only after the gate has
-classified the outcome. It does not re-run the full suite. It reads the failure
-manifest, runs `node --test` against the named files in a local worktree, and
-produces a Worker Report with a `root_cause` section. That is what makes the
-manifest worth building: without it, reproducing a 20-minute failure costs
-another 20 minutes before diagnosis can begin.
+Child stories first integrate into their immediate epic branch. Different epic
+branches may accept child work concurrently because they are different target
+lanes. An epic does not close merely because its children reached that branch.
+When its Delivery Contract is complete, the epic branch itself opens or updates
+one PR to its parent branch, ultimately `trunk`, and the combined tree receives
+a fresh native Actions receipt.
 
-For a pre-test or post-artifact-policy failure there is no manifest to read, so
-triage starts from the step log identified by the taxonomy.
+The same lazy lane rules apply at every level. At the final level, top-level
+epic and standalone-story PRs serialize into `trunk`; deployment consumes only
+that protected branch. This final validation detects interactions between
+otherwise independent epics before deployment.
 
-Diagnosis only. The triage agent proposes the demotion and the fix direction;
-it does not commit. Remediation follows the sanctioned Develop loop —
-demote with `--rework`, fix, `verify-develop.mjs`, commit, re-promote.
+## Receipt Trailers and Crash Recovery
 
-## Blocker Chains and the Do-Si-Do
+The `verification-evidence` capsule exists before merge, so its ULID can be
+written into the commit message tail:
 
-A parked session is not a stopped session. When a story is waiting on CI, the
-orchestrator selects the next eligible story and drives it forward **up to but
-not including Test**, then parks it and returns to whichever story's CI has
-finished. Only one story occupies Test at a time per session, so the
-pattern alternates — the do-si-do.
+```text
+[#1210] feat(ci): consume native Actions evidence
 
-This matters most for observed blocker chains. A defect discovered in Develop
-spawns a blocker, the session descends to it, discovers another, and descends
-again; a five-deep chain is a thing that happens rather than a thing that is
-declared. The latency of unwinding such a chain is irreducible, because each
-rung must clear CI and merge before its parent can resume. The do-si-do does
-not shorten the chain; it stops the wall-clock from being pure idle while each
-rung validates.
+<concatenated squash body>
 
-Physical isolation per rung follows the existing
-[blocking-defect isolation dance](../../guides/workflow.md#blocking-defect-isolation-dance):
-a worktree per rung rooted at trunk, ascending deepest-first.
+AITM-Validation-Receipt: 01K...
+CI-Verified-Sha: a1b2c3d4e5f6...
+CI-Run: 18234567890/2
+```
 
-## Rejected Alternatives
+All three trailers are required:
 
-**GitHub merge queue.** Rejected because it is unavailable. Branch protection
-is a documented prerequisite and the repository will stay user-owned. Dropping
-it also removes three costs that the first draft of this design carried: the
-`merge_group` trigger and its slow-lane and trunk-materialization extensions,
-queue-eviction cascades, and the fact that a queue tests a speculative merge
-commit whose SHA is not the PR head — which broke the "passes locally, fails in
-CI, therefore environmental" heuristic. Serial merge restores it, because the
-tested SHA _is_ the PR head.
+- `AITM-Validation-Receipt` points to the authoritative issue capsule;
+- `CI-Verified-Sha` records the exact pre-merge head; and
+- `CI-Run` records run ID and attempt, distinguishing reruns.
 
-**A cloud agent driving the suite.** Rejected. Validation is rote execution, so
-it needs a script, not intelligence. Putting an agent in the validation path
-would also make CI do double duty as both gate and author.
+The merge author preserves GitHub's concatenated squash body because its
+`[#N]` tokens feed commit attribution. For merge and rebase methods, equivalent
+message preservation is required.
 
-**Re-running the full suite for triage.** Rejected. A 20-minute failure would
-cost 20 more minutes before diagnosis started. The manifest exists to avoid it.
+If the merge succeeds and the orchestrator dies before appending
+`integration-result`, a replacement coordinator verifies the merged PR, commit,
+trailers, receipt capsule, and authority epoch, then appends the missing
+integration record as a repair. It never reconstructs a receipt from trailers
+alone.
 
-**A PR comment carrying the receipt.** Rejected. PR comments and issue comments
-are the same API store and the same durability tier, so this buys nothing over
-the capsule, and the reader is an agent that would rather make one SHA-keyed
-request than paginate a thread. It would also require `pull-requests: write`.
+Check data is retained by GitHub for 400 days and deleted after archival; logs
+and artifacts have shorter repository-configured retention. The issue capsule
+outlives those stores but remains an auditable claim after its external evidence
+expires. The git trailers preserve the durable pointer and claim, not a
+permanent copy of Actions data. This limitation is explicit and accepted.
 
-**A new `aitm-ci-receipt` body marker.** Rejected. It duplicates
-`issue-directory.mjs` and the `evidence-projection` singleton, creating a
-second record mechanism to reconcile later.
+## Ruleset and Branch-Topology Requirements
 
-**A cloud provisioner.** Rejected as unnecessary. `scripts/dev-env/setup-cloud.sh`
-is a bootstrap validator that runs inside an already-provisioned environment,
-not a provisioner — and with CI as the cloud, nothing needs provisioning.
+The current trunk-only ruleset is insufficient for child PRs. Delivery requires
+equivalent active protections for `trunk` and `feature/epic/*`:
 
-**Nightly-only slow lane.** Rejected. See [Slow Lane Policy](#slow-lane-policy).
+- pull requests required;
+- native Fast and Slow lane contexts required from GitHub Actions;
+- strict up-to-date status checks;
+- stale review dismissal where configured;
+- review-thread resolution; and
+- deletion and non-fast-forward protection appropriate to the branch role.
+
+Close and integration gates use the existing Axis-1 done target: the nearest
+surviving parent branch for a child story and `trunk` for a top-level story.
+They do not describe every target as trunk. `integration-result.targetBranch`
+must equal that resolved done target, and the attributed `[#N]` commit must be
+reachable from it.
+
+## Security Properties
+
+- PR test code receives no write token capable of creating issue records or
+  custom checks.
+- Receipt acceptance independently queries GitHub and does not trust a JSON
+  blob produced by the tested branch.
+- Required job and step topology is validated against CI policy.
+- Policy-surface changes force slow coverage and explicit review.
+- Exact head SHA, base SHA, run attempt, workflow identity, and app identity are
+  bound into evidence.
+- Authority grants and epochs fence stale local and cloud orchestrators.
+- A trailer cannot create or repair a missing receipt; it can only point to an
+  existing accepted capsule.
+- A green manifest cannot override a red native job conclusion.
+- A skipped slow execution is accepted only after independent, default-deny
+  impact recomputation.
 
 ## Testing Strategy
 
-The receipt and gate logic is unit-testable without network access, and must
-be:
+### Pure and unit tests
 
-- `v2` receipt construction, and `validateVerificationReceipt` accepting a
-  Linux Node 22 receipt while still rejecting a SHA mismatch.
-- Failure-taxonomy classification across all four outcomes, including the
-  green-manifest-red-job case.
-- Manifest serialization, including the `entry.full` path fix.
-- Slow-lane path conditioning: a diff that requires the lane, one that does
-  not, and the skip job publishing the same check name.
-- Capsule and projection integration: `appendCapsule` with
-  `verification-evidence`, projection convergence, directory round-trip.
-- Trailer composition preserving a concatenated squash body.
+- V2 construction from representative native Actions API responses.
+- Source-aware Node, platform, repository, workflow, event, app, run-attempt,
+  base-SHA, and head-SHA validation.
+- Deterministic logical keys and idempotent reuse across orchestrator sessions.
+- Stale epoch, stale capsule head, conflicting logical key, and changed-head
+  rejection.
+- Native job/step classification for every failure-taxonomy row.
+- Slow-impact execution and default-deny skip validation using target-base
+  policy.
+- Develop timing classification at 180 and 300 second boundaries.
+- Host lease acquisition, six-worker saturation, heartbeat expiry, and shared
+  capacity across local sessions.
+- WIP exemption only for a fully validated `awaiting-ci` record.
+- Legacy-body/local-Test and GitHub-records/cloud-Test routing.
+- Trailer construction and parsing, including run attempt and concatenated
+  squash-body preservation.
 
-The CI workflow itself is verified by asserting against the checked-in YAML
-rather than by running it. Two existing surfaces establish the pattern and both
-must be extended:
+### Integration tests
 
-- `tests/slow/core/ci-lane-wiring.test.mjs` asserts lane wiring. Note that it
-  lives in the slow lane — the lane this design makes path-conditional — so the
-  path predicate must treat `.github/workflows/**` as slow-lane-affecting or the
-  test that guards the workflow will be skipped by the workflow it guards.
-- `lib/ci-workflow-history.mjs` (#949) already audits the workflow with
-  line-based parsing rather than a YAML dependency, and `auditCheckoutHistory`
-  returns findings instead of throwing so every offending line is reported at
-  once. New workflow assertions follow that shape; the repo carries no YAML
-  parser in its runtime dependencies and this design does not add one.
+- Two orchestrators for different issues accept independent receipts without
+  shared local state.
+- A stale coordinator cannot accept evidence after epoch replacement.
+- Crash after PR creation adopts the existing PR.
+- Crash after receipt append repairs the projection without another receipt.
+- Crash after merge reconstructs only the missing `integration-result`.
+- Two eligible PRs targeting one base produce one lazy update; a stale merge is
+  refused and retried.
+- A merge conflict records failure, demotes to Develop, and requires a new
+  receipt after repair.
+- A seventh local worker uses the cloud adapter or remains queued.
 
-Extensions required: the split unit and integration steps, the `checks: write`
-permission, the concurrency group, `include-hidden-files`, and the
-`if: always()` guards on the receipt and upload steps.
+### Workflow assertions
+
+Extend `tests/slow/core/ci-lane-wiring.test.mjs` and
+`lib/ci-workflow-history.mjs` to assert:
+
+- read-only permissions;
+- no custom Checks API publisher;
+- independent fast and slow jobs;
+- split unit and integration steps;
+- slow-impact selection only in the slow job;
+- stable required context names;
+- ten-minute job timeouts;
+- PR concurrency cancellation;
+- lane-specific artifact names;
+- `include-hidden-files: true` and `if: always()` uploads; and
+- workflow/policy paths forcing slow execution.
+
+Static assertions complement, but do not replace, a canary PR that proves the
+live rulesets recognize both native contexts before enforcement changes land.
 
 ## Consequences
 
-**Better.** Ten-wide validation without local resource contention. Validation
-evidence generated by the machine that ran the tests rather than asserted by an
-agent. No local Test-stage sandbox worktree to leak or reclaim. Local
-agent-hours stay cheap while test-hours move to free runners.
+**Better.** Full validation leaves the maintainer's machine. Six local workers
+can retain short affected-test feedback while cloud VMs absorb complete Test
+work. Native GitHub evidence removes a privileged custom publisher. A stable
+receipt ULID connects issue authority, Actions identity, and the merged commit.
+Local and cloud orchestrators recover from the same GitHub state.
 
-**Worse.** Test-stage latency rises from local wall time to queue plus run
-time. A network partition blocks promotion out of Develop. The receipt cannot
-be repaired locally when a workflow dies mid-publish. Validation becomes
-Linux-only, so a platform-specific defect reaches trunk undetected.
+**Worse.** Test includes queue latency. Ten PRs can consume the current 20-job
+GitHub-hosted ceiling and additional runs will queue. Required protection on
+epic branches adds ruleset administration. A network or GitHub outage pauses
+authoritative lifecycle progress. Linux-only validation can miss a platform
+defect.
 
-**Accepted.** The 410-day evidence horizon. The trailers as claim rather than
-proof. Serial merge as the throughput ceiling on integration.
+**Accepted.** Planning-time isolation does not guarantee conflict-free merges.
+Occasional conflicts return to Develop. Evidence loses external verifiability
+after GitHub retention expires, although its capsule and commit pointer remain.
+Integration is serial per target branch. Unconfigured cloud-worker overflow
+queues rather than oversubscribing the local host.
 
 ## Decomposition
 
-Ordered by dependency. Each is a story, not an epic.
+Ordered by dependency; each item is independently reviewable.
 
-1. **Receipt v2 and CI provenance.** Extend
-   `lib/verification-receipt.mjs` with `v2`, the provenance fields, and the
-   two relaxed fingerprint checks. Pure unit work, no workflow change.
-2. **Failure manifest.** Add `.aitm/test-failures.json` to `run-tests.mjs`,
-   including the `entry.full` path correction.
-3. **Failure taxonomy and gate classifier.** The four-outcome classifier,
-   keyed on job conclusion first.
-4. **CI workflow changes.** Split test steps, `checks: write`, receipt
-   publication, manifest upload with hidden files, concurrency group.
-5. **Slow-lane path conditioning.** Drive `selectAffectedTests` from the PR
-   diff; add the same-named skip job.
-6. **Receipt-to-records binding.** Orchestrator polls, validates, appends the
-   `verification-evidence` capsule, converges the projection.
-7. **Test-stage repoint.** `promote <N> test` opens the PR instead of creating
-   a sandbox worktree; Test-to-Review gates on the capsule.
-8. **Merge lane and trailers.** Single-slot lazy merge policy;
-   `integration-result` capsule; `CI-Verified-Sha` and `CI-Run` trailers.
-9. **Triage lane.** Manifest-driven triage agent and Worker Report shape.
-10. **Do-si-do scheduling.** Parked-session next-story selection bounded at
-    Develop.
-11. **Documentation.** `docs/guides/workflow.md` Test-stage and merge sections.
+1. **Receipt v2 and native Actions adapter.** Add source-aware schema,
+   deterministic logical key, Actions response normalization, policy
+   fingerprinting, and `github-actions` lifecycle provenance.
+2. **Develop timing budget.** Measure affected verification, emit degraded
+   evidence after 180 seconds, and refuse over-budget runs after 300 seconds.
+3. **Host worker admission.** Add the repository-keyed six-slot host registry,
+   lease heartbeat/reclamation, runner-pool scaling, and cloud-adapter fallback.
+4. **Failure manifests.** Add bounded lane-specific manifests using
+   repository-relative `entry.full` paths and unique artifact names.
+5. **Failure classifier.** Classify from native run/job/step conclusions and
+   use artifacts only for diagnosis.
+6. **CI fast-lane split.** Add explicit unit/integration steps, clean-worktree
+   verification, timeout, and stable context assertions.
+7. **Independent slow lane.** Move impact selection into the slow job, add
+   target-base recomputation, fail-closed skip evidence, timeout, and nightly
+   unconditional execution.
+8. **Ruleset coverage.** Require native Fast and Slow contexts with strict
+   up-to-date enforcement on trunk and epic integration branches.
+9. **Test-stage repoint.** Make `/task test #N` create/reuse the PR, append the
+   transition, project `awaiting-ci`, and retain the legacy locator path.
+10. **Receipt acceptance.** Poll native Actions, append
+    `verification-evidence`, converge projection, and emit `REVIEW_COMPLETE`.
+11. **WIP and do-si-do.** Exempt only validated `awaiting-ci` stories and resume
+    them from GitHub state across sessions.
+12. **Merge tail and trailers.** Implement per-target deterministic ordering,
+    lazy update, exact-head merge, receipt trailers, and `integration-result`.
+13. **Conflict rework.** Record merge/rebase conflicts, demote to Develop, and
+    require affected verification plus a fresh cloud receipt.
+14. **Triage.** Add manifest/log-driven diagnosis and Worker Report output.
+15. **Documentation.** Update workflow, settings, Test-stage, cloud-worker
+    adapter, recovery, and merge guidance.
 
-Out of scope and separately tracked: **#1208**, admitting subprocess-spawning
-tests to a weighted pool.
+Out of scope and separately tracked: #1208, which targets the runner's process
+spawn overhead and serial phase through weighted pooling.
+
+## References
+
+- `docs/decisions/0002-github-native-authority-records.md`
+- `docs/superpowers/specs/2026-07-31-github-native-authority-records-design.md`
+- `docs/superpowers/specs/2026-07-20-epic-aware-git-branching-design.md`
+- [GitHub Actions job conditions](https://docs.github.com/en/actions/how-tos/write-workflows/choose-when-workflows-run/control-jobs-with-conditions)
+- [GitHub required status check troubleshooting](https://docs.github.com/en/pull-requests/how-tos/merge-and-close-pull-requests/troubleshooting-required-status-checks)
+- [GitHub Actions secure-use reference](https://docs.github.com/en/actions/reference/security/secure-use)
+- [GitHub check data retention](https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/collaborating-on-repositories-with-code-quality-features/about-status-checks)
