@@ -28,6 +28,10 @@ export const EMPTY_STATE = {
   // live session) so the cumulative total never collapses to 0. Lives in the
   // global ledger, not the per-session overlay, so it survives rebinds.
   lastWordMarker: 0,
+  // #1142 — full-expansion accounting is a second durable cumulative cursor,
+  // not a per-transcript raw total. Keeping it beside `lastWordMarker` prevents
+  // a new session id from resetting Full Word Marker back to that session's 0.
+  lastFullWordMarker: 0,
   // #475 AC2 — timestamp of the most recent `/task pause`. `resume` uses it to
   // compute the idle span of the pause window, then clears it.
   pausedAtTs: null,
@@ -40,6 +44,12 @@ export function advanceWordMarker(prev, candidate) {
   const p = Number.isFinite(Number(prev)) ? Math.max(0, Number(prev)) : 0;
   const c = Number.isFinite(Number(candidate)) ? Math.max(0, Number(candidate)) : 0;
   return Math.max(p, c);
+}
+
+export function stateFullWordMarker(state, marker = null) {
+  const global = advanceWordMarker(state?.lastWordMarker, state?.lastFullWordMarker);
+  const session = advanceWordMarker(marker?.words, marker?.wordsFull);
+  return advanceWordMarker(global, session);
 }
 
 // #475 AC1 — read the durable Word Marker for audit/lifecycle rows emitted by
@@ -56,6 +66,18 @@ export function durableWordMarker(projDir) {
   }
 }
 
+export function durableWordMarkers(projDir) {
+  try {
+    const state = loadState(resolveStatePath(projDir));
+    return {
+      marker: state.lastWordMarker ?? 0,
+      fullMarker: stateFullWordMarker(state),
+    };
+  } catch {
+    return { marker: 0, fullMarker: 0 };
+  }
+}
+
 // EPIC #823 (C8, #832) — bank the UNINTERRUPTED transcript tail into the durable
 // marker + per-sid cursor. The promote verbs (`develop`/`test`/`review`) never
 // call `flushActiveToGH`, so context-words accrued since the last flush sit
@@ -67,7 +89,7 @@ export function durableWordMarker(projDir) {
 // with no further words counts 0. Best-effort: any failure (no sid, unreadable
 // transcript) returns the unchanged durable marker and never throws.
 export function bankTranscriptTail(projDir) {
-  const fallback = () => ({ banked: 0, marker: durableWordMarker(projDir) });
+  const fallback = () => ({ banked: 0, fullBanked: 0, ...durableWordMarkers(projDir) });
   try {
     const sid = currentSessionId();
     if (!sid) return fallback();
@@ -78,16 +100,17 @@ export function bankTranscriptTail(projDir) {
     const sp = resolveStatePath(projDir);
     const state = loadState(sp);
     const prior = state.lastWordMarker ?? 0;
+    const tailFull = Math.max(0, Number(counted.fullExpansion ?? counted.count) || 0);
+    const priorFull = stateFullWordMarker(state, marker);
     const nextMarker = advanceWordMarker(prior, prior + tail);
-    if (tail > 0) {
+    const nextFull = advanceWordMarker(priorFull, priorFull + tailFull);
+    if (tail > 0 || tailFull > 0) {
       state.lastWordMarker = nextMarker;
+      state.lastFullWordMarker = nextFull;
       saveState(state, sp);
-      const priorFull = marker.wordsFull ?? marker.words ?? 0;
-      const tailFull = Math.max(0, Number(counted.fullExpansion ?? counted.count) || 0);
-      const nextFull = advanceWordMarker(priorFull, priorFull + tailFull);
       saveMarker(markerPath, counted.totalLines, nextMarker, state.active, nextFull);
     }
-    return { banked: tail, marker: nextMarker };
+    return { banked: tail, fullBanked: tailFull, marker: nextMarker, fullMarker: nextFull };
   } catch {
     return fallback();
   }

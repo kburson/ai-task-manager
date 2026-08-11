@@ -7,6 +7,8 @@ import test from 'node:test';
 import { buildRow, __internals as timingInternals } from '../../../gh-timing-comment.mjs';
 import { parseTimingRow } from '../../../lib/timing-row-reader.mjs';
 import { mkdtempProjectIsolated } from '../../../lib/scratch-dir.mjs';
+import { bankTranscriptTail, loadState, saveState } from '../../../state.mjs';
+import { markerPathFor, saveMarker } from '../../../word-counter.mjs';
 
 const { appendRow, buildInitialComment } = timingInternals;
 const now = () => new Date().toISOString();
@@ -83,6 +85,139 @@ test('legacy full deltas migrate to unavailable instead of fabricated cumulative
     .filter((row) => row?.ts?.startsWith('20'));
   assert.equal(rows[0].fullWordMarker, '—');
   assert.equal(rows[1].fullWordMarker, '—');
+});
+
+test('an explicit unavailable full marker is not replaced by a prior numeric observation', () => {
+  let body = buildInitialComment();
+  body = appendRow(
+    body,
+    buildRow({
+      ts: now(),
+      event: 'start',
+      activeSec: 0,
+      idleSec: 0,
+      deltaWords: 0,
+      wordMarker: 100,
+      fullWordMarker: 200,
+      description: 'available',
+    })
+  );
+  body = appendRow(
+    body,
+    buildRow({
+      ts: now(),
+      event: 'update',
+      activeSec: 0,
+      idleSec: 0,
+      deltaWords: 0,
+      wordMarker: 110,
+      fullWordMarker: null,
+      description: 'transcript unavailable',
+    })
+  );
+  const rows = body
+    .split('\n')
+    .map(parseTimingRow)
+    .filter((row) => row?.ts?.startsWith('20'));
+  assert.equal(rows[1].fullWordMarker, '—');
+});
+
+test('bankTranscriptTail carries both durable markers across session ids', () => {
+  const projectDir = mkdtempProjectIsolated('absolute-bank-1142-', 'test');
+  const transcriptDir = path.join(projectDir, 'transcripts');
+  const statePath = path.join(projectDir, '.tmp/aitm/state/task-tracker-state.json');
+  const priorEnv = {
+    projectDir: process.env.AI_TASK_MANAGER_PROJECT_DIR,
+    transcriptDir: process.env.AI_TASK_MANAGER_TRANSCRIPT_DIR,
+    appName: process.env.AI_TASK_MANAGER_APP_NAME,
+    sid: process.env.AI_TASK_MANAGER_SESSION_ID,
+  };
+  mkdirSync(transcriptDir, { recursive: true });
+  process.env.AI_TASK_MANAGER_PROJECT_DIR = projectDir;
+  process.env.AI_TASK_MANAGER_TRANSCRIPT_DIR = transcriptDir;
+  process.env.AI_TASK_MANAGER_APP_NAME = 'claude';
+  try {
+    saveState(
+      { active: '#1142', lastActive: '#1142', lastWordMarker: 100, lastFullWordMarker: 200 },
+      statePath
+    );
+    for (const [sid, text] of [
+      ['absolute-bank-one', 'one two three'],
+      ['absolute-bank-two', 'four five'],
+    ]) {
+      process.env.AI_TASK_MANAGER_SESSION_ID = sid;
+      writeFileSync(
+        path.join(transcriptDir, `${sid}.jsonl`),
+        `${JSON.stringify({ type: 'assistant', message: { content: text } })}\n`,
+        'utf8'
+      );
+      const current = loadState(statePath);
+      saveMarker(
+        markerPathFor(sid),
+        0,
+        current.lastWordMarker,
+        '#1142',
+        current.lastFullWordMarker
+      );
+      bankTranscriptTail(projectDir);
+    }
+    const state = loadState(statePath);
+    assert.equal(state.lastWordMarker, 105);
+    assert.equal(state.lastFullWordMarker, 205);
+  } finally {
+    for (const [key, value] of Object.entries({
+      AI_TASK_MANAGER_PROJECT_DIR: priorEnv.projectDir,
+      AI_TASK_MANAGER_TRANSCRIPT_DIR: priorEnv.transcriptDir,
+      AI_TASK_MANAGER_APP_NAME: priorEnv.appName,
+      AI_TASK_MANAGER_SESSION_ID: priorEnv.sid,
+    })) {
+      if (value === undefined) delete process.env[key];
+      else process.env[key] = value;
+    }
+    rmSync(projectDir, { recursive: true, force: true });
+  }
+});
+
+test('bankTranscriptTail preserves a legacy per-session full cursor above global state', () => {
+  const projectDir = mkdtempProjectIsolated('absolute-legacy-bank-1142-', 'test');
+  const transcriptDir = path.join(projectDir, 'transcripts');
+  const statePath = path.join(projectDir, '.tmp/aitm/state/task-tracker-state.json');
+  const sid = 'absolute-legacy-bank';
+  const priorEnv = {
+    projectDir: process.env.AI_TASK_MANAGER_PROJECT_DIR,
+    transcriptDir: process.env.AI_TASK_MANAGER_TRANSCRIPT_DIR,
+    appName: process.env.AI_TASK_MANAGER_APP_NAME,
+    sid: process.env.AI_TASK_MANAGER_SESSION_ID,
+  };
+  mkdirSync(transcriptDir, { recursive: true });
+  writeFileSync(
+    path.join(transcriptDir, `${sid}.jsonl`),
+    `${JSON.stringify({ type: 'assistant', message: { content: 'one two three' } })}\n`,
+    'utf8'
+  );
+  process.env.AI_TASK_MANAGER_PROJECT_DIR = projectDir;
+  process.env.AI_TASK_MANAGER_TRANSCRIPT_DIR = transcriptDir;
+  process.env.AI_TASK_MANAGER_APP_NAME = 'claude';
+  process.env.AI_TASK_MANAGER_SESSION_ID = sid;
+  try {
+    saveState({ active: '#1142', lastActive: '#1142', lastWordMarker: 100 }, statePath);
+    saveMarker(markerPathFor(sid), 0, 100, '#1142', 200);
+    const banked = bankTranscriptTail(projectDir);
+    const state = loadState(statePath);
+    assert.equal(banked.fullMarker, 203);
+    assert.equal(state.lastFullWordMarker, 203);
+  } finally {
+    for (const [key, value] of Object.entries({
+      AI_TASK_MANAGER_PROJECT_DIR: priorEnv.projectDir,
+      AI_TASK_MANAGER_TRANSCRIPT_DIR: priorEnv.transcriptDir,
+      AI_TASK_MANAGER_APP_NAME: priorEnv.appName,
+      AI_TASK_MANAGER_SESSION_ID: priorEnv.sid,
+    })) {
+      if (value === undefined) delete process.env[key];
+      else process.env[key] = value;
+    }
+    rmSync(projectDir, { recursive: true, force: true });
+  }
 });
 
 test('a fresh governed bind emits the available full-expansion marker', async () => {

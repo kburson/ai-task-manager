@@ -115,6 +115,28 @@ test('emitPhasePairRows: forward move emits <prev>:complete then <next>:enter', 
   assert.deepEqual(posted[1].row.__row.phase, { state: 'test', phase: 'enter' });
 });
 
+test('emitPhasePairRows stamps the newly banked primary and full markers on both rows', async () => {
+  const posted = [];
+  await emitPhasePairRows({
+    issueArg: '10',
+    stateArg: 'test',
+    resolvedFromState: 'develop',
+    demoteFlag: false,
+    SKIP_NETWORK: false,
+    cfg: { repo: 'o/r' },
+    deps: {
+      ...makeTimingDeps({ posted }),
+      ...phaseEvents({ develop: { complete: true }, test: { enter: true } }),
+      bankTail: () => ({ marker: 123, fullMarker: 234 }),
+    },
+  });
+  assert.equal(posted.length, 2);
+  assert.equal(posted[0].row.__row.wordMarker, 123);
+  assert.equal(posted[0].row.__row.fullWordMarker, 234);
+  assert.equal(posted[1].row.__row.wordMarker, 123);
+  assert.equal(posted[1].row.__row.fullWordMarker, 234);
+});
+
 test('emitPhasePairRows: move to done emits a single done.complete row', async () => {
   const posted = [];
   await emitPhasePairRows({

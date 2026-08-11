@@ -1,4 +1,10 @@
-import { loadState, saveState, EMPTY_STATE, advanceWordMarker } from '../state.mjs';
+import {
+  loadState,
+  saveState,
+  EMPTY_STATE,
+  advanceWordMarker,
+  stateFullWordMarker,
+} from '../state.mjs';
 import { registerTask, currentBranch } from '../fleet-registry.mjs';
 import {
   currentSessionId,
@@ -201,27 +207,11 @@ export async function verbNew(ctx) {
     // after `createNewIssue`, so the flush is deferred until we know the number.
   }
   const issue = await createNewIssue(title, ctx, kind);
-  const sid = currentSessionId();
-  let wordsAtStart = 0;
-  let fullWordsAtStart = null;
-  if (sid) {
-    const counted = countWords(jsonlPath(sid), 0, { provider: aiAppName(), sid });
-    if (counted.status === 'ok') {
-      saveMarker(
-        markerPathFor(sid),
-        counted.totalLines,
-        counted.count,
-        issue,
-        counted.fullExpansion
-      );
-      wordsAtStart = counted.count;
-      fullWordsAtStart = counted.fullExpansion;
-    } else {
-      wordsAtStart = loadMarker(markerPathFor(sid)).words;
-    }
-  }
-  const bindWordMarker = advanceWordMarker(s.lastWordMarker, wordsAtStart);
   if (previousActive && previousActive !== 'discover' && cfg.autoEndOnSwitch) {
+    // #1142 — the outgoing flush owns the transcript tail and must advance the
+    // old issue's cursor before the new issue reseeds that cursor. Seeding first
+    // made the flush start at EOF and rewrote marker ownership back to the old
+    // issue, dropping both primary and full-expansion tail words.
     const { deltaMin, deltaWords } = await flushActiveToGH(
       s,
       `switch-out:${issue}`,
@@ -229,6 +219,27 @@ export async function verbNew(ctx) {
     );
     previousNote = ` Previous: ${previousActive} ended (+${deltaMin} min, +${deltaWords} words).`;
   }
+  const sid = currentSessionId();
+  let wordsAtStart = 0;
+  let fullWordsAtStart = null;
+  if (sid) {
+    const existingMarker = loadMarker(markerPathFor(sid));
+    const counted = countWords(jsonlPath(sid), 0, { provider: aiAppName(), sid });
+    if (counted.status === 'ok') {
+      wordsAtStart = advanceWordMarker(
+        advanceWordMarker(s.lastWordMarker, existingMarker.words),
+        counted.count
+      );
+      fullWordsAtStart = advanceWordMarker(
+        stateFullWordMarker(s, existingMarker),
+        counted.fullExpansion
+      );
+      saveMarker(markerPathFor(sid), counted.totalLines, wordsAtStart, issue, fullWordsAtStart);
+    } else {
+      wordsAtStart = existingMarker.words;
+    }
+  }
+  const bindWordMarker = advanceWordMarker(s.lastWordMarker, wordsAtStart);
   const createdTs = nowIso();
   const { buildRow } = await import('../gh-timing-comment.mjs');
   const { PHASE_EVENTS } = await import('../phase-events.mjs');
@@ -288,6 +299,7 @@ export async function verbNew(ctx) {
       // #475 AC1 — preserve the durable session-global marker across the new
       // binding (…EMPTY_STATE would otherwise reset it to 0).
       lastWordMarker: bindWordMarker,
+      lastFullWordMarker: fullWordsAtStart ?? stateFullWordMarker(s),
     },
     statePath
   );

@@ -460,8 +460,23 @@ function carryForwardFullWordMarker(body, row) {
   const durable = lastDurableFullWordMarker(body);
   const normalized = ensureTimingRowFullMarkerCell(row);
   const incoming = numericWordMarker(parseTimingRow(normalized)?.fullWordMarker);
-  if (durable === null || (incoming !== null && incoming >= durable)) return normalized;
+  // #1142 — `—` is an explicit observation that the transcript was
+  // unavailable, not a missing value to fill from history. Preserve it so a
+  // degraded read remains visible to operators and downstream validators.
+  if (incoming === null || durable === null || incoming >= durable) return normalized;
   return replaceTimingRowCell(normalized, 8, ` ${durable.toLocaleString('en-US')} `);
+}
+
+function normalizeAdjacentWordDeltas(lines) {
+  let previous = null;
+  return lines.map((line) => {
+    const parsed = parseTimingRow(line);
+    if (!parsed || !isTableTimingTimestamp(parsed.ts)) return line;
+    const current = numericWordMarker(parsed.wordMarker);
+    const delta = previous === null || current === null ? 0 : Math.max(0, current - previous);
+    if (current !== null) previous = current;
+    return replaceTimingRowCell(line, 5, ` ${delta.toLocaleString('en-US')} `);
+  });
 }
 
 function deriveAdjacentWordDelta(body, row) {
@@ -627,6 +642,11 @@ function appendRow(body, row) {
       return Number.isFinite(candidateMs) && candidateMs > incomingMs;
     });
     lines.splice(laterIdx === -1 ? lastTableIdx + 1 : laterIdx, 0, effectiveRow);
+    // #1142 — chronological insertion changes two adjacency edges: previous →
+    // inserted and inserted → next. Re-derive the displayed deltas across the
+    // ordered table so neither the inserted row nor its successor retains a
+    // stale pre-insertion value.
+    lines.splice(0, lines.length, ...normalizeAdjacentWordDeltas(lines));
   } else {
     lines.splice(lastTableIdx + 1, 0, effectiveRow);
   }

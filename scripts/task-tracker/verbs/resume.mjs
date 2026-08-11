@@ -1,4 +1,4 @@
-import { loadState, saveState, advanceWordMarker } from '../state.mjs';
+import { loadState, saveState, advanceWordMarker, stateFullWordMarker } from '../state.mjs';
 import { setTaskStatus, registerTask, currentBranch } from '../fleet-registry.mjs';
 import {
   currentSessionId,
@@ -95,19 +95,26 @@ export async function verbResume(ctx) {
     let wordsAtStart = 0;
     let fullWordsAtStart = null;
     if (sid) {
+      const existingMarker = loadMarker(markerPathFor(sid));
       const counted = countWords(jsonlPath(sid), 0, { provider: aiAppName(), sid });
       if (counted.status === 'ok') {
+        wordsAtStart = advanceWordMarker(
+          advanceWordMarker(s.lastWordMarker, existingMarker.words),
+          counted.count
+        );
+        fullWordsAtStart = advanceWordMarker(
+          stateFullWordMarker(s, existingMarker),
+          counted.fullExpansion
+        );
         saveMarker(
           markerPathFor(sid),
           counted.totalLines,
-          counted.count,
+          wordsAtStart,
           s.lastActive,
-          counted.fullExpansion
+          fullWordsAtStart
         );
-        wordsAtStart = counted.count;
-        fullWordsAtStart = counted.fullExpansion;
       } else {
-        wordsAtStart = loadMarker(markerPathFor(sid)).words;
+        wordsAtStart = existingMarker.words;
       }
     }
     // #475 AC2 — idle span of the pause window = resume_ts − pausedAtTs.
@@ -132,6 +139,7 @@ export async function verbResume(ctx) {
         pauseReasonSlug: null,
         pauseReasonText: null,
         lastWordMarker: carriedMarker,
+        lastFullWordMarker: fullWordsAtStart ?? stateFullWordMarker(s),
         ...binding,
       },
       statePath
@@ -241,19 +249,26 @@ export async function verbResume(ctx) {
   let wordsAtStart = 0;
   let fullWordsAtStart = null;
   if (sid) {
+    const existingMarker = loadMarker(markerPathFor(sid));
     const counted = countWords(jsonlPath(sid), 0, { provider: aiAppName(), sid });
     if (counted.status === 'ok') {
+      wordsAtStart = advanceWordMarker(
+        advanceWordMarker(s.lastWordMarker, existingMarker.words),
+        counted.count
+      );
+      fullWordsAtStart = advanceWordMarker(
+        stateFullWordMarker(s, existingMarker),
+        counted.fullExpansion
+      );
       saveMarker(
         markerPathFor(sid),
         counted.totalLines,
-        counted.count,
+        wordsAtStart,
         normalizedTarget,
-        counted.fullExpansion
+        fullWordsAtStart
       );
-      wordsAtStart = counted.count;
-      fullWordsAtStart = counted.fullExpansion;
     } else {
-      wordsAtStart = loadMarker(markerPathFor(sid)).words;
+      wordsAtStart = existingMarker.words;
     }
   }
   // #475 AC2 — idle span of the pause window (if this #N resume follows a pause).
@@ -270,6 +285,7 @@ export async function verbResume(ctx) {
       paused: undefined,
       pausedAtTs: null,
       lastWordMarker: carriedMarker,
+      lastFullWordMarker: fullWordsAtStart ?? stateFullWordMarker(s),
       ...binding,
     },
     statePath

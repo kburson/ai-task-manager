@@ -37,7 +37,7 @@ import {
 } from './active-time.mjs';
 import { recordSessionRefOnChange } from './lib/session-ref.mjs';
 import { mutateIssueBody } from './lib/issue-body-mutate.mjs';
-import { advanceWordMarker } from './state.mjs';
+import { advanceWordMarker, stateFullWordMarker } from './state.mjs';
 import { findMainWorktreePath, currentBranch } from './fleet-registry.mjs';
 import { gql, splitRepo } from '../gh/lib/github-projects.mjs';
 import { runMoveStateHost } from '../gh/move-state.mjs';
@@ -450,7 +450,7 @@ export function buildContext(rawArgv = process.argv.slice(2)) {
       deltaWords = counted.count;
       deltaWordsFull = counted.fullExpansion ?? counted.count;
       transcriptWordsAvailable = counted.status === 'ok';
-      priorWordsFull = marker.wordsFull ?? marker.words ?? 0;
+      priorWordsFull = stateFullWordMarker(state, marker);
       // #1142 — an unavailable resolution returns a synthetic zero-line
       // result. Treat it as no observation, not a cursor reset; the durable
       // marker remains the last known truth until a transcript can be read.
@@ -483,6 +483,7 @@ export function buildContext(rawArgv = process.argv.slice(2)) {
       // the prior persisted `wordsFull` (falls back to stay-abreast for legacy
       // markers). Rendered per-row as a delta; persisted for cursor continuity.
       const wordMarkerFull = advanceWordMarker(priorWordsFull, priorWordsFull + deltaWordsFull);
+      state.lastFullWordMarker = wordMarkerFull;
       // #483 — advance and persist the per-sid cursor so the next flush counts
       // only words added after this row's segment (no re-count, no frozen cursor).
       if (!opts.computeOnly && sid && markerLineToPersist != null) {
@@ -525,6 +526,7 @@ export function buildContext(rawArgv = process.argv.slice(2)) {
         deltaWords,
         wordMarker,
         lastWordMarker: wordMarker,
+        lastFullWordMarker: wordMarkerFull,
       };
     }
     // #720 — anchor the Active-duration window on `max(entryStartTs, lastRowTs)`
@@ -570,6 +572,7 @@ export function buildContext(rawArgv = process.argv.slice(2)) {
     state.lastWordMarker = wordMarker;
     // #795 — cumulative full-expansion snapshot (see zero-duration branch above).
     const wordMarkerFull = advanceWordMarker(priorWordsFull, priorWordsFull + deltaWordsFull);
+    state.lastFullWordMarker = wordMarkerFull;
     // #483 — advance and persist the per-sid cursor so the next flush counts
     // only words added after this row's segment (no re-count, no frozen cursor).
     if (!opts.computeOnly && sid && markerLineToPersist != null) {
@@ -646,6 +649,7 @@ export function buildContext(rawArgv = process.argv.slice(2)) {
       deltaWords,
       wordMarker,
       lastWordMarker: wordMarker,
+      lastFullWordMarker: wordMarkerFull,
     };
   };
 

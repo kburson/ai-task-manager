@@ -14,10 +14,11 @@
 import { strict as assert } from 'node:assert';
 import { test, before, after } from 'node:test';
 import { execFileSync } from 'node:child_process';
-import { mkdtempSync, mkdirSync, writeFileSync, rmSync, chmodSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, rmSync, chmodSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { projectScratchDir, mkdtempProjectIsolated } from '../../../lib/scratch-dir.mjs';
+import { parseTimingRow } from '../../../lib/timing-row-reader.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url)) + '/..';
 const REPO_ROOT = path.resolve(__dirname, '../../../..');
@@ -46,7 +47,7 @@ after(() => {
 });
 
 // Build a hermetic project + transcript fixture and return the env for a spawn.
-function fixture({ state, jsonlLines = [] } = {}) {
+function fixture({ state, jsonlLines = [], marker = null } = {}) {
   // git-isolated sandbox root so the spawned hook's repo-walk can't escape
   // into the live repo and touch real .ai-task-manager state.
   const proj = mkdtempProjectIsolated('proj-', 'test');
@@ -64,6 +65,19 @@ function fixture({ state, jsonlLines = [] } = {}) {
       jsonlLines.map((l) => JSON.stringify(l)).join('\n') + '\n'
     );
   }
+  if (marker) {
+    const markerPath = path.join(
+      proj,
+      '.tmp',
+      'aitm',
+      'app',
+      'claude',
+      'session-tracking',
+      `${sid}.json`
+    );
+    mkdirSync(path.dirname(markerPath), { recursive: true });
+    writeFileSync(markerPath, JSON.stringify({ sessionId: sid, wordCount: marker }), 'utf8');
+  }
   const env = {
     ...process.env,
     PATH: `${root.binDir}:${process.env.PATH}`,
@@ -76,8 +90,12 @@ function fixture({ state, jsonlLines = [] } = {}) {
 }
 
 // Spawn the hook with the given event + stdin payload; return stdout (+stderr).
-function runHook(event, { state, jsonlLines, sid = 'sess-test', rawStdin } = {}) {
-  const fx = fixture({ state, jsonlLines });
+function runHook(event, { state, jsonlLines, marker, sid = 'sess-test', rawStdin } = {}) {
+  const fx = fixture({ state, jsonlLines, marker });
+  return spawnHook(fx, event, { sid, rawStdin });
+}
+
+function spawnHook(fx, event, { sid = 'sess-test', rawStdin } = {}) {
   const input =
     rawStdin !== undefined ? rawStdin : JSON.stringify({ hook_event_name: event, session_id: sid });
   let out = '';
@@ -128,6 +146,37 @@ test('SessionStart: active task with no entryStartTs → active banner, no recov
   assert.match(out, /#7 is active/);
 });
 
+test('SessionStart banks an existing session cursor tail exactly once', () => {
+  const fx = fixture({
+    state: {
+      active: '#7',
+      entryStartTs: null,
+      wordsAtEntryStart: 100,
+      lastWordMarker: 100,
+      lastFullWordMarker: 200,
+    },
+    marker: { line: 1, words: 100, wordsFull: 200, task: '#7' },
+    jsonlLines: [
+      {
+        type: 'assistant',
+        message: { content: 'one two three four five six seven eight nine ten' },
+      },
+      { type: 'assistant', message: { content: 'tail adds three' } },
+    ],
+  });
+  spawnHook(fx, 'SessionStart');
+  spawnHook(fx, 'SessionStart');
+  const state = JSON.parse(readFileSync(path.join(fx.proj, STATE_REL), 'utf8'));
+  const marker = JSON.parse(
+    readFileSync(path.join(fx.proj, '.tmp/aitm/app/claude/session-tracking/sess-test.json'), 'utf8')
+  ).wordCount;
+  assert.equal(state.lastWordMarker, 103);
+  assert.equal(state.lastFullWordMarker, 203);
+  assert.equal(marker.line, 2);
+  assert.equal(marker.words, 103);
+  assert.equal(marker.wordsFull, 203);
+});
+
 test('PreCompact: active with entryStartTs → flush path runs (exit 0)', () => {
   const out = runHook('PreCompact', {
     state: { active: '#7', entryStartTs: pastTs, wordsAtEntryStart: 0, lastWordMarker: 0 },
@@ -153,6 +202,37 @@ test('PostCompact: active → resume row path (exit 0)', () => {
     jsonlLines: [{ type: 'user', message: { content: 'post compact words' } }],
   });
   assert.doesNotMatch(out, /task-tracker-hook/);
+});
+
+test('PreCompact/PostCompact rows advance durable primary and full markers from the prior cursor', () => {
+  const fx = fixture({
+    state: {
+      active: '#7',
+      entryStartTs: new Date(Date.now() - 1_000).toISOString(),
+      wordsAtEntryStart: 20,
+      lastWordMarker: 100,
+      lastFullWordMarker: 200,
+    },
+    jsonlLines: [{ type: 'assistant', message: { content: 'one two three four five' } }],
+  });
+  spawnHook(fx, 'PreCompact');
+  spawnHook(fx, 'PostCompact');
+  const queued = JSON.parse(
+    readFileSync(path.join(fx.proj, '.tmp/aitm/state/task-tracker-queue.json'), 'utf8')
+  );
+  const rows = queued.map((item) => parseTimingRow(item.row));
+  assert.deepEqual(
+    rows.map((row) => row.event),
+    ['pre-compact-flush', 'post-compact-resume']
+  );
+  assert.deepEqual(
+    rows.map((row) => row.wordMarker),
+    ['105', '105']
+  );
+  assert.deepEqual(
+    rows.map((row) => row.fullWordMarker),
+    ['205', '205']
+  );
 });
 
 test('PostCompact: nothing active → early return', () => {

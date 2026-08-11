@@ -10,7 +10,9 @@ import {
   clearActive,
   EMPTY_STATE,
   advanceWordMarker,
+  stateFullWordMarker,
   durableWordMarker,
+  durableWordMarkers,
 } from '../../../state.mjs';
 
 const tmp = mkdtempSync(path.join(projectScratchDir('test'), 'tt-state-'));
@@ -177,6 +179,7 @@ assert.equal(s.active, '#201');
 
 // Test 9 (#475 AC1): EMPTY_STATE carries the durable marker fields.
 assert.equal(EMPTY_STATE.lastWordMarker, 0, 'EMPTY_STATE seeds lastWordMarker to 0');
+assert.equal(EMPTY_STATE.lastFullWordMarker, 0, 'EMPTY_STATE seeds lastFullWordMarker to 0');
 assert.equal(EMPTY_STATE.pausedAtTs, null, 'EMPTY_STATE seeds pausedAtTs to null');
 
 // Test 10 (#475 AC1): advanceWordMarker is monotonic and floors junk to 0.
@@ -188,6 +191,16 @@ assert.equal(advanceWordMarker(200, -5), 200, 'negative candidate floors to 0');
 assert.equal(advanceWordMarker('abc', 300), 300, 'non-numeric prev floors to 0');
 assert.equal(advanceWordMarker(300, 'xyz'), 300, 'non-numeric candidate floors to 0');
 assert.equal(advanceWordMarker(undefined, undefined), 0, 'both missing => 0');
+assert.equal(
+  stateFullWordMarker({ lastWordMarker: 100 }),
+  100,
+  'legacy state without a full cursor falls back to the primary durable marker'
+);
+assert.equal(
+  stateFullWordMarker({ lastWordMarker: 100 }, { words: 100, wordsFull: 200 }),
+  200,
+  'legacy per-session full cursor participates in the durable maximum'
+);
 
 // Test 11 (#475 AC1): durableWordMarker reads lastWordMarker off the on-disk
 // global ledger, and returns 0 when the project has no state yet.
@@ -211,11 +224,24 @@ assert.equal(advanceWordMarker(undefined, undefined), 0, 'both missing => 0');
     // #573 — the ledger now lives under `.tmp/aitm/state/`; durableWordMarker
     // resolves the same path via statePath(), so write where it reads.
     const ledger = path.join(dwTmp, '.tmp', 'aitm', 'state', 'task-tracker-state.json');
-    saveState({ active: '#475', lastActive: '#475', lastWordMarker: 4242 }, ledger);
+    saveState(
+      {
+        active: '#475',
+        lastActive: '#475',
+        lastWordMarker: 4242,
+        lastFullWordMarker: 8484,
+      },
+      ledger
+    );
     assert.equal(
       durableWordMarker(dwTmp),
       4242,
       'durableWordMarker reads persisted lastWordMarker'
+    );
+    assert.deepEqual(
+      durableWordMarkers(dwTmp),
+      { marker: 4242, fullMarker: 8484 },
+      'durableWordMarkers reads both persisted cumulative cursors'
     );
   } finally {
     process.chdir(cwdBefore);

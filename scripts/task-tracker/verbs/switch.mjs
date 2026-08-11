@@ -1,4 +1,10 @@
-import { saveState, loadState, EMPTY_STATE, advanceWordMarker } from '../state.mjs';
+import {
+  saveState,
+  loadState,
+  EMPTY_STATE,
+  advanceWordMarker,
+  stateFullWordMarker,
+} from '../state.mjs';
 import { registerTask, deregisterTask, currentBranch } from '../fleet-registry.mjs';
 import {
   currentSessionId,
@@ -114,19 +120,20 @@ export async function verbSwitch(ctx, target) {
   let fullWordsAtStart = null;
   if (sid) {
     const jp = jsonlPath(sid);
+    const existingMarker = loadMarker(markerPathFor(sid));
     const counted = countWords(jp, 0, { provider: aiAppName(), sid });
     if (counted.status === 'ok') {
-      saveMarker(
-        markerPathFor(sid),
-        counted.totalLines,
-        counted.count,
-        target,
+      wordsAtStart = advanceWordMarker(
+        advanceWordMarker(s.lastWordMarker, existingMarker.words),
+        counted.count
+      );
+      fullWordsAtStart = advanceWordMarker(
+        stateFullWordMarker(s, existingMarker),
         counted.fullExpansion
       );
-      wordsAtStart = counted.count;
-      fullWordsAtStart = counted.fullExpansion;
+      saveMarker(markerPathFor(sid), counted.totalLines, wordsAtStart, target, fullWordsAtStart);
     } else {
-      wordsAtStart = loadMarker(markerPathFor(sid)).words;
+      wordsAtStart = existingMarker.words;
     }
   }
   const newState = {
@@ -138,6 +145,7 @@ export async function verbSwitch(ctx, target) {
     // #475 AC1 — carry the durable session-global marker across the switch
     // (…EMPTY_STATE would otherwise reset it to 0).
     lastWordMarker: advanceWordMarker(s.lastWordMarker, wordsAtStart),
+    lastFullWordMarker: fullWordsAtStart ?? stateFullWordMarker(s),
     ...binding,
   };
   saveState(newState, statePath);

@@ -18,7 +18,7 @@
 // builtins are imported directly here (identical module instances, no behavior
 // drift).
 
-import { durableWordMarker, bankTranscriptTail } from '../../state.mjs';
+import { durableWordMarker, durableWordMarkers, bankTranscriptTail } from '../../state.mjs';
 import { getProjectDir, projectTmpDir } from '../../paths.mjs';
 import { GH_API_TIMEOUT_MS } from '../process-timeouts.mjs';
 import { writeFileSync, unlinkSync } from 'node:fs';
@@ -74,11 +74,13 @@ export async function emitPhasePairRows(ctx) {
     // its words stranded in the per-sid cursor and the completed row reads 0.
     // Injectable for tests (`ctx.deps.bankTail`); best-effort in production.
     const bankTail = (ctx.deps && ctx.deps.bankTail) || bankTranscriptTail;
-    bankTail(getProjectDir());
+    const banked = bankTail(getProjectDir());
 
     // #475 AC1 — every phase-pair row carries the carried-forward durable
     // marker rather than collapsing to 0.
-    const _phaseMarker = durableWordMarker(getProjectDir());
+    const durable = durableWordMarkers(getProjectDir());
+    const _phaseMarker = banked?.marker ?? durable.marker;
+    const _phaseFullMarker = banked?.fullMarker ?? durable.fullMarker;
     // First row: completion of the previous state (or `demoted` for demote).
     if (demoteFlag) {
       // v2 (#823 C7 / defect D3) — the demote audit row names its TARGET state
@@ -102,6 +104,7 @@ export async function emitPhasePairRows(ctx) {
         idleSec,
         deltaWords: 0,
         wordMarker: _phaseMarker,
+        fullWordMarker: _phaseFullMarker,
         description,
       });
       await postTimingEvent({ issueNumber: issueArg, repo: cfg.repo, row, timeoutMs: 3000 });
@@ -141,6 +144,7 @@ export async function emitPhasePairRows(ctx) {
         idleSec: closeIdle,
         deltaWords,
         wordMarker: _phaseMarker,
+        fullWordMarker: _phaseFullMarker,
       });
       await postTimingEvent({ issueNumber: issueArg, repo: cfg.repo, row, timeoutMs: 3000 });
     }
@@ -165,6 +169,7 @@ export async function emitPhasePairRows(ctx) {
         idleSec,
         deltaWords: 0,
         wordMarker: _phaseMarker,
+        fullWordMarker: _phaseFullMarker,
       });
       await postTimingEvent({ issueNumber: issueArg, repo: cfg.repo, row, timeoutMs: 3000 });
     } else if (PHASE_EVENTS[stateArg]?.enter) {
@@ -178,6 +183,7 @@ export async function emitPhasePairRows(ctx) {
         idleSec: 0,
         deltaWords: 0,
         wordMarker: _phaseMarker,
+        fullWordMarker: _phaseFullMarker,
       });
       await postTimingEvent({ issueNumber: issueArg, repo: cfg.repo, row, timeoutMs: 3000 });
     }

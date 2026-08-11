@@ -12,7 +12,13 @@ import { promisify } from 'node:util';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { loadConfig } from './config.mjs';
-import { loadState, saveState, advanceWordMarker, clearActive } from './state.mjs';
+import {
+  loadState,
+  saveState,
+  advanceWordMarker,
+  stateFullWordMarker,
+  clearActive,
+} from './state.mjs';
 import { postTimingEvent, buildRow } from './gh-timing-comment.mjs';
 import { SUSPICIOUS_GAP_SEC } from './lib/bind-event.mjs';
 import {
@@ -137,10 +143,10 @@ async function onPreCompact(sid) {
   const transcriptWordsAvailable = transcriptStatus === 'ok';
   const ts = new Date().toISOString();
   // #475 AC1 — advance + persist the durable monotonic marker on every flush.
-  const wordMarker = advanceWordMarker(s.lastWordMarker, s.wordsAtEntryStart + newWords);
+  const wordMarker = advanceWordMarker(s.lastWordMarker, s.lastWordMarker + newWords);
   const fullWordMarker = advanceWordMarker(
-    marker.wordsFull ?? marker.words ?? 0,
-    (marker.wordsFull ?? marker.words ?? 0) + newWordsFull
+    stateFullWordMarker(s, marker),
+    stateFullWordMarker(s, marker) + newWordsFull
   );
   const startMs = new Date(s.entryStartTs).getTime();
   const endMs = Date.now();
@@ -166,7 +172,13 @@ async function onPreCompact(sid) {
     saveMarker(markerPathFor(sid), totalLines, wordMarker, s.active, fullWordMarker);
   }
   saveState(
-    { ...s, entryStartTs: ts, wordsAtEntryStart: wordMarker, lastWordMarker: wordMarker },
+    {
+      ...s,
+      entryStartTs: ts,
+      wordsAtEntryStart: wordMarker,
+      lastWordMarker: wordMarker,
+      lastFullWordMarker: fullWordMarker,
+    },
     statePath
   );
 }
@@ -187,7 +199,7 @@ async function onPostCompact(sid) {
     deltaWords: 0,
     // #475 AC1 — carry the durable marker forward across compact
     wordMarker: advanceWordMarker(s.lastWordMarker, marker.words),
-    fullWordMarker: transcriptWordsAvailable ? marker.wordsFull : null,
+    fullWordMarker: transcriptWordsAvailable ? stateFullWordMarker(s, marker) : null,
     description: 'resumed after compact',
   });
   await safePost(s.active, row);
@@ -419,19 +431,36 @@ async function onSessionStart(sid) {
   }
 
   let newWordBaseline = s.wordsAtEntryStart;
+  let newFullWordBaseline = stateFullWordMarker(s);
   if (sid) {
-    const { totalLines, count, fullExpansion, status } = countWords(jsonlPath(sid), 0, {
-      provider: aiAppName(),
-      sid,
-    });
+    const existingMarker = loadMarker(markerPathFor(sid));
+    const { totalLines, count, fullExpansion, status } = countWords(
+      jsonlPath(sid),
+      existingMarker.line,
+      {
+        provider: aiAppName(),
+        sid,
+      }
+    );
     const transcriptWordsAvailable = status === 'ok';
-    if (transcriptWordsAvailable) newWordBaseline = count;
+    if (transcriptWordsAvailable) {
+      newWordBaseline = advanceWordMarker(
+        s.lastWordMarker,
+        advanceWordMarker(s.lastWordMarker, existingMarker.words) + count
+      );
+    }
+    if (transcriptWordsAvailable) {
+      newFullWordBaseline = advanceWordMarker(
+        stateFullWordMarker(s, existingMarker),
+        stateFullWordMarker(s, existingMarker) + fullExpansion
+      );
+    }
     // #795 — persist the full-expansion baseline alongside the stay-abreast
     // count so the runtime flush path reads a meaningful `wordsFull` cursor.
     // #1142 — an unavailable count is not an observed zero and must not reset
     // either cumulative marker or the persisted transcript line cursor.
     if (transcriptWordsAvailable) {
-      saveMarker(markerPathFor(sid), totalLines, count, s.active, fullExpansion);
+      saveMarker(markerPathFor(sid), totalLines, newWordBaseline, s.active, newFullWordBaseline);
     }
     const startRow = buildRow({
       ts: nowTs,
@@ -439,7 +468,7 @@ async function onSessionStart(sid) {
       activeMin: 0,
       idleMin: 0,
       deltaWords: 0,
-      fullWordMarker: transcriptWordsAvailable ? fullExpansion : null,
+      fullWordMarker: transcriptWordsAvailable ? newFullWordBaseline : null,
       // #475 AC1 — monotonic carry-forward of the durable marker
       wordMarker: advanceWordMarker(s.lastWordMarker, newWordBaseline),
       description: 'session resumed',
@@ -454,6 +483,7 @@ async function onSessionStart(sid) {
       wordsAtEntryStart: newWordBaseline,
       // #475 AC1 — persist the durable monotonic marker across the recovery.
       lastWordMarker: advanceWordMarker(s.lastWordMarker, newWordBaseline),
+      lastFullWordMarker: newFullWordBaseline,
     },
     statePath
   );
