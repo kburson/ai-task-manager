@@ -119,7 +119,11 @@ if [[ "$1" == "api" && "$2" == "graphql" ]]; then
     exit 0
   fi
   if [[ "$args" == *"repository(owner:"*"projectsV2(first: 50)"* ]]; then
-    echo '[{"id":"PVT_LINKED","title":"Linked Board","number":2,"linked":true}]'
+    if [[ "\${AITM_TEST_PROJECT_MODE:-linked}" == "unlinked-selection" ]]; then
+      echo '[]'
+    else
+      echo '[{"id":"PVT_LINKED","title":"Linked Board","number":2,"linked":true}]'
+    fi
     exit 0
   fi
   if [[ "$args" == *"organization(login:"* && "$args" == *"projectsV2(first: 50)"* ]]; then
@@ -274,8 +278,15 @@ function projectMutationCount() {
   return projectMutationPayloads().length + inlineMutations;
 }
 
-function runAssignedShape(shape, { conflictingConfig = false } = {}) {
-  const runTarget = join(temp, `target-${shape}`);
+function ghCallLines() {
+  return readFileSync(join(temp, 'gh-calls.log'), 'utf8').split('\n');
+}
+
+function runAssignedShape(
+  shape,
+  { conflictingConfig = false, explicitProject = false, projectMode = 'linked', label = shape } = {}
+) {
+  const runTarget = join(temp, `target-${label}`);
   spawnSync('mkdir', ['-p', runTarget], { check: true });
   if (conflictingConfig) {
     const configDir = join(runTarget, '.ai-task-manager');
@@ -288,12 +299,15 @@ function runAssignedShape(shape, { conflictingConfig = false } = {}) {
       })
     );
   }
-  const run = spawnSync('bash', [script, '--target', runTarget], {
-    input,
+  const args = [script, '--target', runTarget];
+  if (explicitProject) args.push('--project', 'kburson:5');
+  const run = spawnSync('bash', args, {
+    input: explicitProject ? ['', '', ...Array(24).fill('')].join('\n') + '\n' : input,
     encoding: 'utf8',
     env: {
       ...process.env,
       AITM_TEST_ASSIGNED_SHAPE: shape,
+      AITM_TEST_PROJECT_MODE: projectMode,
       PATH: `${binDir}:${process.env.PATH}`,
     },
   });
@@ -385,6 +399,61 @@ if (!reviewCase || reviewCase === 'conflicting-config') {
     projectMutationCount(),
     before,
     'conflicting config ids must emit zero project mutations'
+  );
+}
+
+// Second-pass review regressions exercise the real existing-project selection
+// branches. Link mutations must remain deferred until the selected Status
+// field has passed ambiguity validation.
+const secondPassCase = process.env.AITM_SECOND_PASS_CASE || '';
+
+if (!secondPassCase || secondPassCase === 'explicit-duplicate-legacy') {
+  const before = projectMutationCount();
+  const duplicateLegacy = runAssignedShape('duplicate-legacy', {
+    explicitProject: true,
+    label: 'explicit-duplicate-legacy',
+  });
+  assert.notEqual(duplicateLegacy.status, 0, 'explicit duplicate On Deck should fail closed');
+  assert.match(duplicateLegacy.stdout + duplicateLegacy.stderr, /duplicate.*On Deck/i);
+  assert.equal(
+    projectMutationCount(),
+    before,
+    'explicit duplicate On Deck must refuse before every project mutation'
+  );
+}
+
+if (!secondPassCase || secondPassCase === 'unlinked-duplicate-canonical') {
+  const before = projectMutationCount();
+  const duplicateCanonical = runAssignedShape('duplicate-canonical', {
+    projectMode: 'unlinked-selection',
+    label: 'unlinked-duplicate-canonical',
+  });
+  assert.notEqual(duplicateCanonical.status, 0, 'unlinked duplicate Assigned should fail closed');
+  assert.match(duplicateCanonical.stdout + duplicateCanonical.stderr, /duplicate.*Assigned/i);
+  assert.equal(
+    projectMutationCount(),
+    before,
+    'unlinked duplicate Assigned must refuse before every project mutation'
+  );
+}
+
+if (!secondPassCase || secondPassCase === 'explicit-canonical-link-order') {
+  const beforeLines = ghCallLines().length;
+  const canonical = runAssignedShape('canonical', {
+    explicitProject: true,
+    label: 'explicit-canonical-link-order',
+  });
+  assert.equal(canonical.status, 0, `${canonical.stderr}\n${canonical.stdout}`);
+  const calls = ghCallLines().slice(beforeLines);
+  const linkIndexes = calls
+    .map((line, index) => (line.includes('linkProjectV2ToRepository') ? index : -1))
+    .filter((index) => index >= 0);
+  const statusReadIndex = calls.findIndex((line) => line.includes('fields(first: 30)'));
+  assert.equal(linkIndexes.length, 1, 'canonical explicit selection should link exactly once');
+  assert.ok(statusReadIndex >= 0, 'canonical explicit selection should read Status fields');
+  assert.ok(
+    linkIndexes[0] > statusReadIndex,
+    'canonical explicit selection must link only after Status ambiguity validation'
   );
 }
 

@@ -244,6 +244,7 @@ LINKED_PROJECT_COUNT=$(echo "$PROJECTS_JSON" | jq '[.[] | select(.linked)] | len
 PROJECT_NODE_ID=""
 PROJECT_NUMBER=""
 PROJECT_TITLE=""
+EXISTING_PROJECT_LINK_PENDING="false"
 
 link_project_to_repo() {
   local project_id="$1"
@@ -427,7 +428,7 @@ create_and_link_project() {
 if [[ -n "$PROJECT_INPUT" ]]; then
   if resolve_existing_project "$PROJECT_INPUT"; then
     ok "Using existing project #$PROJECT_NUMBER: $PROJECT_TITLE"
-    link_project_to_repo "$PROJECT_NODE_ID"
+    EXISTING_PROJECT_LINK_PENDING="true"
   else
     err "Could not resolve project from: $PROJECT_INPUT"
     err "Use a URL like https://github.com/users/kburson/projects/5 or an owner:number value like kburson:5."
@@ -447,7 +448,7 @@ elif [[ "$PROJECT_COUNT" == "0" ]]; then
   if [[ "$PROJECT_CHOICE" != "new" ]]; then
     if resolve_existing_project "$PROJECT_CHOICE"; then
       ok "Using existing project #$PROJECT_NUMBER: $PROJECT_TITLE"
-      link_project_to_repo "$PROJECT_NODE_ID"
+      EXISTING_PROJECT_LINK_PENDING="true"
     else
       err "Could not resolve project from: $PROJECT_CHOICE"
       exit 1
@@ -505,19 +506,19 @@ else
       PROJECT_TITLE=$(echo "$PROJECTS_JSON" | jq -r --argjson i "$idx" '.[$i].title')
       PROJECT_LINKED=$(echo "$PROJECTS_JSON" | jq -r --argjson i "$idx" '.[$i].linked')
       if [[ "$PROJECT_LINKED" != "true" ]]; then
-        link_project_to_repo "$PROJECT_NODE_ID"
+        EXISTING_PROJECT_LINK_PENDING="true"
       fi
       break
     elif [[ "$PROJECT_NUMBER_INPUT" == "url" ]]; then
       prompt "Project URL or owner:number:"
       read -r PROJECT_URL_INPUT
       if resolve_existing_project "$PROJECT_URL_INPUT"; then
-        link_project_to_repo "$PROJECT_NODE_ID"
+        EXISTING_PROJECT_LINK_PENDING="true"
         break
       fi
       err "Could not resolve project from: $PROJECT_URL_INPUT"
     elif resolve_existing_project "$PROJECT_NUMBER_INPUT"; then
-      link_project_to_repo "$PROJECT_NODE_ID"
+      EXISTING_PROJECT_LINK_PENDING="true"
       break
     fi
     err "Please enter a number 1-$PROJECT_COUNT_DISPLAY, a project URL, owner:number, or 'new'."
@@ -625,6 +626,13 @@ if [[ "$LEGACY_ASSIGNED_OPTION_COUNT" -gt 0 ]]; then
     first(.options[] | select((.name | ascii_downcase) == "on deck") | .id) // empty
   ' 2>/dev/null || echo '')
   warn "Status still uses legacy 'On Deck'; init will preserve its option id and defer the rename."
+fi
+
+# Existing projects are linked only after the selected Status field has passed
+# every Assigned-spelling ambiguity check above. A duplicate or coexistence
+# refusal must leave repository/project linkage unchanged.
+if [[ "$EXISTING_PROJECT_LINK_PENDING" == "true" ]]; then
+  link_project_to_repo "$PROJECT_NODE_ID"
 fi
 
 # Global used for inter-function return value (avoids subshell scoping issues)

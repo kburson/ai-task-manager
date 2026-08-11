@@ -63,7 +63,7 @@ const ALLOWLIST = new Map(
     'scripts/task-tracker/lib/timing-ladder.mjs': [1, 'historical timing ladder alias'],
     'scripts/task-tracker/lib/timing-ladder.test.mjs': [1, 'historical timing fixture'],
     'scripts/task-tracker/tests/slow/lib/init-status-palette.test.mjs': [
-      13,
+      16,
       'live-init migration-refusal and ambiguity fixtures',
     ],
     'scripts/task-tracker/tests/slow/core/lifecycle-traversal-e2e.test.mjs': [
