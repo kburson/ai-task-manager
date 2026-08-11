@@ -99,6 +99,22 @@ test('issue numbers are sorted and reported regardless of input order', async ()
   assert.match(log.lines[0], /#10, #20, #30/);
 });
 
+test('generic write targets use the supplied label without pretending to be issues', async () => {
+  const log = collector();
+  const r = await confirmBlastRadius({
+    targets: ['Status option OPT_ASSIGNED'],
+    targetLabel: 'project Status option',
+    log: log.fn,
+  });
+  assert.equal(r.proceed, true);
+  assert.equal(r.count, 1);
+  assert.match(
+    log.lines[0],
+    /About to write 1 project Status option\(s\): Status option OPT_ASSIGNED/
+  );
+  assert.doesNotMatch(log.lines[0], /#\d+/);
+});
+
 test('custom threshold shifts the boundary', async () => {
   const noConfirm = await confirmBlastRadius({
     issueNumbers: [1, 2, 3, 4, 5],

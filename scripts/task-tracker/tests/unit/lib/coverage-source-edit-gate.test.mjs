@@ -31,6 +31,7 @@ import { statePath } from '../../../paths.mjs';
 const KANBAN = {
   repo: 'o/r',
   kanbanOptionBacklog: 'opt-backlog',
+  kanbanOptionAssigned: 'opt-assigned',
   kanbanOptionRefine: 'opt-refine',
   kanbanOptionPlan: 'opt-plan',
   kanbanOptionDevelop: 'opt-develop',
@@ -100,6 +101,16 @@ test('decide: no bound issue → block', () => {
 test('decide: pre-develop state → block state-gate', () => {
   const r = decideSourceEdit({ ...base, toolName: 'Edit', boundIssue: '#1', issueState: 'refine' });
   assert.equal(r.code, 'source-edit-state-gate');
+});
+test('decide: historical On Deck state remains a pre-develop block', () => {
+  const r = decideSourceEdit({
+    ...base,
+    toolName: 'Edit',
+    boundIssue: '#1',
+    issueState: 'on-deck',
+  });
+  assert.equal(r.code, 'source-edit-state-gate');
+  assert.match(r.reason, /'assigned'/);
 });
 test('decide: develop but markers missing → block marker-gate', () => {
   const r = decideSourceEdit({
@@ -179,12 +190,34 @@ test('fetchIssueSignals: optionId shape → mapped state + markers', async () =>
   assert.equal(s.hasPostedMarker, true);
   assert.equal(s.hasCompleteMarker, true);
 });
-test('fetchIssueSignals: name shape → lowercased state', async () => {
+test('fetchIssueSignals: name shape → canonical state', async () => {
   const dir = project();
   const gh = async () =>
     JSON.stringify({ body: '', projectItems: [{ status: { name: 'Review' } }] });
   const s = await fetchIssueSignals('#644', dir, { gh });
   assert.equal(s.state, 'review');
+});
+test('fetchIssueSignals: pre-migration display name and legacy config key map to Assigned', async () => {
+  const legacy = { ...KANBAN, kanbanOptionOnDeck: KANBAN.kanbanOptionAssigned };
+  delete legacy.kanbanOptionAssigned;
+  const dir = project({ config: legacy });
+  const warnings = [];
+  const originalWarn = console.warn;
+  console.warn = (message) => warnings.push(String(message));
+  try {
+    const byId = await fetchIssueSignals('#1206', dir, {
+      gh: async () =>
+        JSON.stringify({ body: '', projectItems: [{ status: { optionId: 'opt-assigned' } }] }),
+    });
+    assert.equal(byId.state, 'assigned');
+    const byName = await fetchIssueSignals('#1206', dir, {
+      gh: async () => JSON.stringify({ body: '', projectItems: [{ status: { name: 'On Deck' } }] }),
+    });
+    assert.equal(byName.state, 'assigned');
+  } finally {
+    console.warn = originalWarn;
+  }
+  assert.match(warnings.join('\n'), /kanbanOptionOnDeck.*deprecated/);
 });
 test('resolveIssueSignals: cache miss fetches then warms cache', async () => {
   const dir = project();

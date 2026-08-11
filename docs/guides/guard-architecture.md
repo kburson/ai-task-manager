@@ -32,7 +32,7 @@ Holds a flat `GUARDS` map keyed by state name, each with an `exit` array and an
 ```js
 GUARDS = {
   backlog: { exit: [...], entry: [...] },
-  'on-deck': { exit: [...], entry: [...] },
+  'assigned': { exit: [...], entry: [...] },
   refine:  { exit: [...], entry: [...] },
   // … plan, develop, test, review, done
 }

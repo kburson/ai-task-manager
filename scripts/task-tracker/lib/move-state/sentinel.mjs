@@ -6,6 +6,8 @@
 // have exactly one source of truth, shared by the idempotent short-circuit
 // and the promote/demote gates.
 
+import { normalizeStateId } from '../lifecycle-policy/index.mjs';
+
 export const MOVE_COMPLETE_RE = /<!-- aitm-move-complete state=(\S+) ts=(\S+) -->/;
 const GLOBAL_RE = /<!-- aitm-move-complete state=\S+ ts=\S+ -->\n?/g;
 
@@ -19,7 +21,7 @@ const GLOBAL_RE = /<!-- aitm-move-complete state=\S+ ts=\S+ -->\n?/g;
  */
 export function writeMoveCompleteMarker(body, state, ts) {
   const stripped = body.replace(GLOBAL_RE, '').replace(/\s+$/, '');
-  return `${stripped}\n<!-- aitm-move-complete state=${state} ts=${ts} -->\n`;
+  return `${stripped}\n<!-- aitm-move-complete state=${normalizeStateId(state)} ts=${ts} -->\n`;
 }
 
 /**
@@ -28,7 +30,7 @@ export function writeMoveCompleteMarker(body, state, ts) {
  */
 export function readMoveCompleteState(body) {
   const m = MOVE_COMPLETE_RE.exec(body || '');
-  return m ? m[1] : '';
+  return m ? normalizeStateId(m[1]) : '';
 }
 
 /**

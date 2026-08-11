@@ -1,6 +1,6 @@
 // Stamps the "Start time" TEXT field on the project board (#147).
 //
-// Called from `verbPromote` on the backlog→refine success path, before the
+// Called from `verbPromote` on the assigned→refine success path, before the
 // refine→plan gate runs. Idempotent: if Start time is already set, the helper
 // is a no-op. The value is the current ISO timestamp by default.
 //

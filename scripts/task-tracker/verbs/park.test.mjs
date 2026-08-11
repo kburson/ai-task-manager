@@ -117,7 +117,7 @@ test('runPark from plan with a real --reason parks', async () => {
   assert.equal(calls.runMoveState.length, 1);
 });
 
-for (const state of ['on-deck', 'develop', 'test', 'review', 'done', 'backlog']) {
+for (const state of ['assigned', 'develop', 'test', 'review', 'done', 'backlog']) {
   test(`runPark refuses from ${state} even with --reason`, async () => {
     const { calls, deps } = makeDeps({ recorded: state });
     const result = await runPark({ issueNumber: 848, cfg: CFG, reason: 'any reason', deps });

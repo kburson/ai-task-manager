@@ -12,10 +12,10 @@ aitm-skill-loaded:rules/state-walk:1.1.0
 ## 8-state model
 
 ```
-backlog → on-deck → refine → plan → develop → test → review → done
+backlog → assigned → refine → plan → develop → test → review → done
 ```
 
-`on-deck` (display: "On Deck") is an inert, gateless tranche waiting room between Backlog and Refine. `backlog → on-deck` carries no entry gate; the Priority entry gate lives on `on-deck → refine`. Backward arc `on-deck → backlog` drops an item out of the current tranche. Every item passes through On Deck — there is no `backlog → refine` shortcut.
+`assigned` (display: "Assigned") is an inert, gateless tranche waiting room between Backlog and Refine. `backlog → assigned` carries no entry gate; the Priority entry gate lives on `assigned → refine`. Backward arc `assigned → backlog` drops an item out of the current tranche. Every item passes through Assigned — there is no `backlog → refine` shortcut.
 
 State slugs are canonical. There is no slug shim — the renamed states are the only recognized inputs. See `docs/migration-history.md` for the migration from the prior 4-state vocabulary.
 

@@ -9,7 +9,7 @@
 // states + colors must stay in lock-step with the board.
 export const CANONICAL_STATUS_PALETTE = [
   { name: 'Backlog', color: 'GRAY', description: '' },
-  { name: 'On Deck', color: 'BLUE', description: '' },
+  { name: 'Assigned', color: 'BLUE', description: '' },
   { name: 'Refine', color: 'YELLOW', description: '' },
   { name: 'Plan', color: 'ORANGE', description: '' },
   { name: 'Develop', color: 'GREEN', description: '' },

@@ -1,6 +1,7 @@
 // @story #699
 // Schema-drift false positives: CANONICAL_STATUS_OPTIONS was a second
-// hand-maintained column list (stale — no 'On Deck' after #433) and the
+// hand-maintained column list (stale — no 'On Deck' after #433; renamed
+// 'Assigned' by #1206) and the
 // diffSchema builtIns set predated GitHub's Created/Updated/Closed fields.
 // Post-#699 the options derive from the move-state STATE_TO_CONFIG_KEY
 // constant and the newer built-ins are recognized.
@@ -45,7 +46,7 @@ function currentBoardFields() {
   ];
 }
 
-test('CANONICAL_STATUS_OPTIONS derives from the move-state state list and includes On Deck', () => {
+test('CANONICAL_STATUS_OPTIONS derives from the move-state state list and includes Assigned', () => {
   const expected = Object.keys(STATE_TO_CONFIG_KEY).map((state) =>
     state
       .split('-')
@@ -53,7 +54,7 @@ test('CANONICAL_STATUS_OPTIONS derives from the move-state state list and includ
       .join(' ')
   );
   assert.deepEqual(CANONICAL_STATUS_OPTIONS, expected);
-  assert.ok(CANONICAL_STATUS_OPTIONS.includes('On Deck'));
+  assert.ok(CANONICAL_STATUS_OPTIONS.includes('Assigned'));
 });
 
 test('current 8-column board with Created/Updated/Closed reports no drift', () => {
@@ -63,14 +64,14 @@ test('current 8-column board with Created/Updated/Closed reports no drift', () =
   assert.deepEqual(drift.statusOptionDrift, []);
 });
 
-test('legacy 7-column board (no On Deck) reports status-option drift missing on deck', () => {
+test('legacy 7-column board reports status-option drift missing Assigned', () => {
   const fields = currentBoardFields().map((f) =>
-    f.name === 'Status' ? { ...f, options: f.options.filter((o) => o.name !== 'On Deck') } : f
+    f.name === 'Status' ? { ...f, options: f.options.filter((o) => o.name !== 'Assigned') } : f
   );
   const drift = diffSchema(fields, FIELD_DEFS);
   assert.equal(drift.hasDrift, true);
   assert.equal(drift.statusOptionDrift.length, 1);
-  assert.deepEqual(drift.statusOptionDrift[0].missing, ['on deck']);
+  assert.deepEqual(drift.statusOptionDrift[0].missing, ['assigned']);
   assert.deepEqual(drift.statusOptionDrift[0].extra, []);
 });
 

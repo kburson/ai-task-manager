@@ -51,7 +51,7 @@
 import { stateIds, forwardTarget } from '../lib/lifecycle-policy/index.mjs';
 
 import backlog from './backlog.mjs';
-import onDeck from './on-deck.mjs';
+import assigned from './assigned.mjs';
 import refine from './refine.mjs';
 import plan from './plan.mjs';
 import develop from './develop.mjs';
@@ -61,7 +61,7 @@ import done from './done.mjs';
 
 export const STATES = Object.freeze({
   backlog,
-  'on-deck': onDeck,
+  assigned: assigned,
   refine,
   plan,
   develop,

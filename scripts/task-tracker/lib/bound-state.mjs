@@ -13,6 +13,7 @@ import { STATE_MATRIX } from '../activity-policy.mjs';
 import { sessionsDir as resolveSessionsDir, statePath as resolveStatePath } from '../paths.mjs';
 import { getActiveTask } from '../session-state.mjs';
 import { currentSessionId } from '../word-counter.mjs';
+import { normalizeStateId } from './lifecycle-policy/index.mjs';
 
 export function readBoundState(root) {
   // #666: the current session is authoritative for its own binding. Prefer this
@@ -42,7 +43,7 @@ export function readBoundState(root) {
   if (sessionState != null) return { activeIssue, state: sessionState };
 
   if (parsed && typeof parsed === 'object' && typeof parsed.state === 'string') {
-    const legacy = parsed.state;
+    const legacy = normalizeStateId(parsed.state);
     if (Object.prototype.hasOwnProperty.call(STATE_MATRIX, legacy)) {
       return { activeIssue, state: legacy };
     }
@@ -93,7 +94,7 @@ function readSessionKanbanState(root, activeIssue) {
     }
     if (!parsed || typeof parsed !== 'object') continue;
     if (parsed.issue !== activeIssue) continue;
-    const k = typeof parsed.kanbanState === 'string' ? parsed.kanbanState : null;
+    const k = typeof parsed.kanbanState === 'string' ? normalizeStateId(parsed.kanbanState) : null;
     if (!k || !Object.prototype.hasOwnProperty.call(STATE_MATRIX, k)) continue;
     if (!best || mtimeMs > best.mtimeMs) best = { mtimeMs, state: k };
   }

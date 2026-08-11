@@ -73,35 +73,53 @@ assert.equal(legacyParsed.length, 2);
 assert.equal(legacyParsed[0].visit, 1);
 assert.equal(legacyParsed[1].visit, 1);
 
+// #1206: historical On Deck markers stay byte-for-byte readable but project
+// to the canonical Assigned stage. New writers must never emit the old slug.
+const historicalOnDeck =
+  '<!-- aitm-entered-backlog ts="2026-01-01T00:00:00Z" -->\n' +
+  '<!-- aitm-entered-on-deck ts="2026-01-02T00:00:00Z" -->\n' +
+  '<!-- aitm-entered-refine ts="2026-01-03T00:00:00Z" -->\n';
+assert.deepEqual(parseEntryMarkers(historicalOnDeck)[1], {
+  stage: 'assigned',
+  visit: 1,
+  ts: '2026-01-02T00:00:00Z',
+});
+assert.equal(getStageVisitCount(historicalOnDeck, 'assigned'), 1);
+assert.equal(verifyChainIntegrity(historicalOnDeck, 'refine').ok, true);
+assert.doesNotMatch(
+  stampEntryMarker('', 'assigned', '2026-01-02T00:00:00Z'),
+  /aitm-entered-on-deck/
+);
+
 // 4. verifyChainIntegrity — no holes, no illegal arcs
 let chain = '';
 chain = stampEntryMarker(chain, 'backlog', '2026-01-01T00:00:00Z');
-chain = stampEntryMarker(chain, 'on-deck', '2026-01-02T00:00:00Z');
+chain = stampEntryMarker(chain, 'assigned', '2026-01-02T00:00:00Z');
 chain = stampEntryMarker(chain, 'refine', '2026-01-03T00:00:00Z');
 chain = stampEntryMarker(chain, 'plan', '2026-01-04T00:00:00Z');
 let r = verifyChainIntegrity(chain, 'plan');
 assert.equal(r.ok, true);
 assert.deepEqual(r.holes, []);
 assert.deepEqual(r.illegalArcs, []);
-assert.deepEqual(r.presentStages, ['backlog', 'on-deck', 'refine', 'plan']);
+assert.deepEqual(r.presentStages, ['backlog', 'assigned', 'refine', 'plan']);
 
 // 5. One hole: backlog + plan, current=plan
 let hole = stampEntryMarker('', 'backlog', '2026-01-01T00:00:00Z');
 hole = stampEntryMarker(hole, 'plan', '2026-01-03T00:00:00Z');
 r = verifyChainIntegrity(hole, 'plan');
 assert.equal(r.ok, false);
-assert.deepEqual(r.holes, ['on-deck', 'refine']);
+assert.deepEqual(r.holes, ['assigned', 'refine']);
 
 // 6. Multiple holes
 let holes2 = stampEntryMarker('', 'backlog', '2026-01-01T00:00:00Z');
 holes2 = stampEntryMarker(holes2, 'develop', '2026-01-04T00:00:00Z');
 r = verifyChainIntegrity(holes2, 'develop');
-assert.deepEqual(r.holes, ['on-deck', 'refine', 'plan']);
+assert.deepEqual(r.holes, ['assigned', 'refine', 'plan']);
 
-// 7. Legal rollback arcs pass: backlog→refine→plan→refine-2→plan-2
+// 7. Legal rollback arcs pass: backlog→assigned→refine→plan→refine-2→plan-2
 let rollback = '';
 rollback = stampEntryMarker(rollback, 'backlog', '2026-01-01T00:00:00Z');
-rollback = stampEntryMarker(rollback, 'on-deck', '2026-01-01T12:00:00Z');
+rollback = stampEntryMarker(rollback, 'assigned', '2026-01-01T12:00:00Z');
 rollback = stampEntryMarker(rollback, 'refine', '2026-01-02T00:00:00Z');
 rollback = stampEntryMarker(rollback, 'plan', '2026-01-03T00:00:00Z');
 rollback = stampEntryMarker(rollback, 'refine', '2026-01-04T00:00:00Z');
@@ -114,7 +132,7 @@ assert.deepEqual(r.illegalArcs, []);
 let devRollback = '';
 for (const [s, ts] of [
   ['backlog', '2026-01-01T00:00:00Z'],
-  ['on-deck', '2026-01-01T12:00:00Z'],
+  ['assigned', '2026-01-01T12:00:00Z'],
   ['refine', '2026-01-02T00:00:00Z'],
   ['plan', '2026-01-03T00:00:00Z'],
   ['develop', '2026-01-04T00:00:00Z'],
@@ -129,7 +147,7 @@ assert.equal(r.ok, true);
 let reworkChain = '';
 for (const [s, ts] of [
   ['backlog', '2026-01-01T00:00:00Z'],
-  ['on-deck', '2026-01-01T12:00:00Z'],
+  ['assigned', '2026-01-01T12:00:00Z'],
   ['refine', '2026-01-02T00:00:00Z'],
   ['plan', '2026-01-03T00:00:00Z'],
   ['develop', '2026-01-04T00:00:00Z'],
@@ -164,9 +182,9 @@ assert.equal(r.illegalArcs[0].to, 'refine');
 // 9. LEGAL_TRANSITIONS exported and contains expected entries
 assert.ok(LEGAL_TRANSITIONS instanceof Set);
 for (const arc of [
-  'backlog->on-deck',
-  'on-deck->refine',
-  'on-deck->backlog',
+  'backlog->assigned',
+  'assigned->refine',
+  'assigned->backlog',
   'refine->plan',
   'plan->develop',
   'develop->test',

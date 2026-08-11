@@ -39,7 +39,7 @@ import {
 // Captures the stage name from both the legacy `aitm-entered-<stage>[-N]:`
 // form and the new `aitm-entered-<stage>[-N] ts="..."` property form (#374),
 // so dropped entry markers are detected under either grammar.
-const ENTERED_STAGE_RE = /<!--\s*aitm-entered-([a-z]+)(?:-\d+)?(?:\s*:|\s+ts=")/gi;
+const ENTERED_STAGE_RE = /<!--\s*aitm-entered-([a-z]+(?:-[a-z]+)*)(?:-\d+)?(?:\s*:|\s+ts=")/gi;
 
 // #476 — global counter for the append-only session-ref family. Kept separate
 // from the non-global presence pattern in `lib/session-ref.mjs` because
@@ -136,6 +136,9 @@ function enteredStages(body) {
   const set = new Set();
   // matchAll requires a global regex; ENTERED_STAGE_RE is /g.
   for (const m of String(body || '').matchAll(ENTERED_STAGE_RE)) {
+    // Preserve raw historical stage identity. Entry markers are append-only
+    // audit bytes: adding a canonical alias does not authorize removing the
+    // marker that actually recorded the historical transition.
     set.add(m[1].toLowerCase());
   }
   return set;

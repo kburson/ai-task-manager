@@ -24,6 +24,7 @@ import {
   isEmittableTimingEvent,
 } from './lib/timing-events/index.mjs';
 import { GH_TIMING_COMMENT_TIMEOUT_MS } from './lib/process-timeouts.mjs';
+import { normalizeStateId } from './lib/lifecycle-policy/index.mjs';
 export { GH_TIMING_COMMENT_TIMEOUT_MS };
 const pexec = promisify(execFile);
 
@@ -378,12 +379,12 @@ export function readLastKnownState(body) {
   // New single-marker grammar takes precedence over the legacy pair.
   const neu = body.match(LAST_KNOWN_STATE_NEW_RE);
   if (neu) {
-    return { state: unescapeValue(neu[1]), ts: unescapeValue(neu[2]).trim() };
+    return { state: normalizeStateId(unescapeValue(neu[1])), ts: unescapeValue(neu[2]).trim() };
   }
   const stateMatch = body.match(LAST_KNOWN_STATE_RE);
   const tsMatch = body.match(LAST_KNOWN_STATE_TS_RE);
   return {
-    state: stateMatch ? stateMatch[1] : null,
+    state: stateMatch ? normalizeStateId(stateMatch[1]) : null,
     ts: tsMatch ? tsMatch[1].trim() : null,
   };
 }
@@ -392,7 +393,7 @@ export function writeLastKnownState(body, state) {
   if (typeof state !== 'string' || !state.trim()) {
     throw new Error('writeLastKnownState: state must be a non-empty string');
   }
-  const normalized = state.trim();
+  const normalized = normalizeStateId(state);
   const ts = new Date().toISOString();
   const block = `${serializeMarker('last-known-state', { state: normalized, ts })}\n`;
   const src = typeof body === 'string' ? body : '';

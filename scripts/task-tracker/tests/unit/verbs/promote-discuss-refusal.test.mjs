@@ -2,7 +2,7 @@
 // End-to-end proof that the #405 `{discuss}` directive is full-auto-proof on
 // the promote path. Drives the real `runPromote` verb core (not the guard in
 // isolation) with injected deps so the whole chain runs hermetically:
-//   fetchIssueBody → runGuards(backlog→on-deck) → discussBlockGuard refusal →
+//   fetchIssueBody → runGuards(backlog→assigned) → discussBlockGuard refusal →
 //   REFUSAL_ID_TO_STATUS → refusalsToVerbResult → { status: 'discuss-refused' }.
 //
 // The decisive assertion: TT_FULL_AUTO=1 is set for the refusal case. Full-auto
@@ -23,7 +23,7 @@ const TOKEN = '{' + 'discuss' + '}'; // avoid a literal bare token in source
 const cfg = { repo: 'owner/name' };
 
 // backlog body carrying a bare directive; recorded state = backlog so the
-// transition under test is backlog → on-deck (smallest exit-guard surface:
+// transition under test is backlog → assigned (smallest exit-guard surface:
 // blockedByGuard passes with no aitm-blocked-by marker, leaving only the
 // discuss guard in play).
 const blockedBody = writeLastKnownState(`## Scope\n\nNeed direction here\n\n${TOKEN}\n`, 'backlog');
@@ -78,5 +78,5 @@ test('runPromote: promotes once the discussion is resolved (token stripped)', as
   });
   assert.equal(res.status, 'promoted');
   assert.equal(res.from, 'backlog');
-  assert.equal(res.to, 'on-deck');
+  assert.equal(res.to, 'assigned');
 });

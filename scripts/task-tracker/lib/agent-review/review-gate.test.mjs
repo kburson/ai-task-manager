@@ -33,6 +33,13 @@ test('parseEnteredStages tolerates a non-string and returns []', () => {
   assert.deepEqual(parseEnteredStages(null), []);
 });
 
+test('#1206: parseEnteredStages projects historical second-stage markers to Assigned', () => {
+  assert.deepEqual(
+    parseEnteredStages('<!-- aitm-entered-on-deck ts="2026-07-01T00:00:00.000Z" -->'),
+    [{ stage: 'assigned', ts: '2026-07-01T00:00:00.000Z' }]
+  );
+});
+
 test('buildReviewContext exposes body, comments, and parsed markers', () => {
   const body = '<!-- aitm-entered-develop ts="2026-07-02T00:00:00.000Z" -->';
   const ctx = buildReviewContext({

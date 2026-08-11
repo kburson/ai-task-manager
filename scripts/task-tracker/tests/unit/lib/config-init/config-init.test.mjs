@@ -43,7 +43,7 @@ const FULL_ENV = {
   PROJECT_NODE_ID: 'PVT_node',
   KANBAN_FIELD_ID: 'kanbanF',
   OPTION_BACKLOG: 'b',
-  OPTION_ON_DECK: 'od',
+  OPTION_ASSIGNED: 'as',
   OPTION_REFINE: 'r',
   OPTION_PLAN: 'pl',
   OPTION_DEVELOP: 'd',
@@ -63,7 +63,7 @@ test('buildUpdates always writes the required field-id keys', () => {
   assert.equal(u.projectId, 'PVT_node');
   assert.equal(u.kanbanFieldId, 'kanbanF');
   assert.equal(u.kanbanOptionBacklog, 'b');
-  assert.equal(u.kanbanOptionOnDeck, 'od');
+  assert.equal(u.kanbanOptionAssigned, 'as');
   assert.equal(u.priorityOptionP3, 'p3');
 });
 
@@ -98,6 +98,23 @@ test('mergeConfig preserves hand-set keys the bootstrap never touches', () => {
   assert.equal(merged.assignee, '@me', 'unrelated keys survive');
   assert.equal(merged.customField, 'keep-me');
   assert.equal(merged.repo, 'owner/repo', 'required keys are overwritten');
+});
+
+test('mergeConfig rewrites the legacy On Deck option key to Assigned', () => {
+  const merged = mergeConfig({ kanbanOptionOnDeck: 'legacy-id' }, FULL_ENV);
+  assert.equal(merged.kanbanOptionAssigned, 'as');
+  assert.ok(!('kanbanOptionOnDeck' in merged), 'legacy key must be removed on repair');
+});
+
+test('mergeConfig fails closed when legacy and canonical option ids conflict', () => {
+  assert.throws(
+    () =>
+      mergeConfig(
+        { kanbanOptionOnDeck: 'legacy-id', kanbanOptionAssigned: 'different-id' },
+        FULL_ENV
+      ),
+    /conflicts.*refusing repair/i
+  );
 });
 
 test('loadExisting falls back to the legacy .claude/ path then to {}', () => {

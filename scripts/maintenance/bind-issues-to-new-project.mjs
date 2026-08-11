@@ -8,8 +8,8 @@
 //   - `<!-- aitm-last-known-state: <slug> -->` — kanban slug
 //
 // Status mapping for new vocab:
-//   backlog→Backlog, refine→Refine, plan→Plan, develop→Develop,
-//   test→Test, review→Review, done→Done.
+//   backlog→Backlog, assigned→Assigned, refine→Refine, plan→Plan,
+//   develop→Develop, test→Test, review→Review, done→Done.
 // Closed issues are forced to `Done` regardless of marker, and skip Sequence.
 //
 // Usage:
@@ -23,6 +23,8 @@ import { promisify } from 'node:util';
 import { loadConfig } from '../task-tracker/config.mjs';
 import { loadProjectFieldDefs, buildFieldSyncPlan } from '../task-tracker/project-fields.mjs';
 import { parseIssueFieldDb } from '../task-tracker/issue-field-db.mjs';
+import { readLastKnownState } from '../task-tracker/gh-timing-comment.mjs';
+import { stateIds } from '../task-tracker/lib/lifecycle-policy/index.mjs';
 import {
   addIssueToProject,
   fieldOptionMap,
@@ -33,17 +35,14 @@ import { listAllIssues } from '../gh/lib/list-issues.mjs';
 
 const pexec = promisify(execFile);
 
-const SLUG_TO_STATUS = {
-  backlog: 'Backlog',
-  refine: 'Refine',
-  plan: 'Plan',
-  develop: 'Develop',
-  test: 'Test',
-  review: 'Review',
-  done: 'Done',
-};
+const VALID_STATES = new Set(stateIds());
 
-const LKS_RE = /<!--\s*aitm-last-known-state:\s*([a-z-]+)\s*-->/i;
+function statusName(state) {
+  return state
+    .split('-')
+    .map((part) => `${part[0].toUpperCase()}${part.slice(1)}`)
+    .join(' ');
+}
 
 function parseArgs(argv) {
   const args = { dryRun: false, repo: null, project: null };
@@ -64,11 +63,10 @@ async function fetchIssueBody(repo, issueNumber) {
   return stdout;
 }
 
-function statusForIssue(body, state) {
-  if (state === 'closed') return 'Done';
-  const m = body.match(LKS_RE);
-  if (!m) return null;
-  return SLUG_TO_STATUS[m[1].toLowerCase()] || null;
+export function statusForIssue(body, state) {
+  if (String(state).toLowerCase() === 'closed') return 'Done';
+  const { state: markerState } = readLastKnownState(body);
+  return VALID_STATES.has(markerState) ? statusName(markerState) : null;
 }
 
 async function main() {

@@ -219,6 +219,22 @@ function loadOptionsFromEnv() {
   return JSON.parse(raw);
 }
 
+export function migrateLegacyAssignedConfig(cfg) {
+  if (!cfg || typeof cfg !== 'object' || Array.isArray(cfg)) return false;
+  const hasLegacy = Object.prototype.hasOwnProperty.call(cfg, 'kanbanOptionOnDeck');
+  if (!hasLegacy) return false;
+  const legacyId = cfg.kanbanOptionOnDeck;
+  const assignedId = cfg.kanbanOptionAssigned;
+  if (legacyId && assignedId && legacyId !== assignedId) {
+    throw new Error(
+      'init-repair: kanbanOptionOnDeck conflicts with kanbanOptionAssigned; refusing repair'
+    );
+  }
+  if (!assignedId && legacyId) cfg.kanbanOptionAssigned = legacyId;
+  delete cfg.kanbanOptionOnDeck;
+  return true;
+}
+
 export async function runRepair(overrides = {}) {
   const d = { ...deps, ...overrides };
   const skipNetwork =
@@ -240,6 +256,7 @@ export async function runRepair(overrides = {}) {
     return d.exit(1);
   }
   const cfg = JSON.parse(d.readFileSync(cfgPath, 'utf8'));
+  const legacyConfigChanged = migrateLegacyAssignedConfig(cfg);
   if (!cfg.projectId || !cfg.kanbanFieldId) {
     d.err('Config is missing projectId or kanbanFieldId. Run: npx ai-task-manager init\n');
     return d.exit(1);
@@ -289,15 +306,18 @@ export async function runRepair(overrides = {}) {
     dispositionChanged = persistDispositionField(cfg, disposition.fieldId);
   }
 
-  if (filled.length > 0 || dispositionChanged) {
+  if (filled.length > 0 || dispositionChanged || legacyConfigChanged) {
     d.mkdirSync(path.dirname(cfgPath), { recursive: true });
     d.writeFileSync(cfgPath, JSON.stringify(cfg, null, 2) + '\n', 'utf8');
   }
 
-  if (empties.length === 0 && !dispositionChanged) {
+  if (empties.length === 0 && !dispositionChanged && !legacyConfigChanged) {
     d.log('All kanbanOption* fields already populated. Nothing to repair.');
   }
   d.log(`Filled: ${filled.length === 0 ? '(none)' : filled.join(', ')}`);
+  if (legacyConfigChanged) {
+    d.log('Migrated: kanbanOptionOnDeck → kanbanOptionAssigned (option id preserved)');
+  }
   const alreadySet = Object.keys(OPTION_KEYS).filter((k) => !empties.includes(k));
   if (alreadySet.length) d.log(`Already set: ${alreadySet.join(', ')}`);
   if (unmatched.length) {
@@ -309,7 +329,7 @@ export async function runRepair(overrides = {}) {
   if (disposition?.created) d.log(`Created: ${dispositionDefinition.name}`);
   else if (disposition?.optionsUpdated) d.log(`Updated options: ${dispositionDefinition.name}`);
   else if (disposition?.fieldId) d.log(`Already set: ${dispositionDefinition.name}`);
-  return { filled, alreadySet, unmatched, disposition };
+  return { filled, alreadySet, unmatched, disposition, legacyConfigChanged };
 }
 
 const isMain = import.meta.url === `file://${process.argv[1]}`;

@@ -170,3 +170,55 @@ test('an exact operation replay returns its durable capsule without a duplicate 
   assert.equal(first.record.envelope.authority.epoch, 1);
   assert.equal(first.record.envelope.payload.branch, branch);
 });
+
+test('historical On Deck transition capsules replay byte-for-byte but new writers reject the alias', async () => {
+  const historicalPayload = transitionPayload({
+    operationId: 'lifecycle:1079:on-deck:refine:1',
+    fromState: 'on-deck',
+    toState: 'refine',
+  });
+
+  assert.throws(
+    () => validate({ payload: historicalPayload }),
+    /lifecycle-transition:(?:legacy-state|payload)/
+  );
+  for (const rawAlias of ['On Deck', 'ON-DECK', ' on-deck ']) {
+    assert.throws(
+      () => validate({ payload: transitionPayload({ fromState: rawAlias, toState: 'refine' }) }),
+      /lifecycle-transition:payload/
+    );
+  }
+
+  const historical = capsule({
+    recordId: id(30),
+    recordType: 'lifecycle-transition',
+    payload: historicalPayload,
+  });
+  const memory = memoryLifecycleStore({ records: [historical] });
+  const transitionAuthority = validate({ payload: historicalPayload, records: [historical] });
+  const replay = await appendLifecycleTransition({
+    repository,
+    issue,
+    transitionAuthority,
+    recordId: id(31),
+    deps: memory.deps,
+  });
+
+  assert.equal(replay.replayed, true);
+  assert.equal(memory.state.capsuleWrites, 0);
+  assert.equal(replay.record.envelope.payload.fromState, 'on-deck');
+  assert.equal(replay.record.envelope.payload.toState, 'refine');
+
+  const vanished = memoryLifecycleStore();
+  await assert.rejects(
+    appendLifecycleTransition({
+      repository,
+      issue,
+      transitionAuthority,
+      recordId: id(32),
+      deps: vanished.deps,
+    }),
+    /lifecycle-transition:stale-transition/
+  );
+  assert.equal(vanished.state.capsuleWrites, 0);
+});

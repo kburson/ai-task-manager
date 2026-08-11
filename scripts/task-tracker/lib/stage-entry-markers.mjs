@@ -17,11 +17,21 @@ export const STAGES = [...stateIds()];
 const STAGE_INDEX = Object.fromEntries(STAGES.map((s, i) => [s, i]));
 const KNOWN_STAGES = new Set(STAGES);
 
-// On Deck (#433) is an inert, gateless waiting room. Pre-#433 issues never
-// recorded an `aitm-entered-on-deck` marker, so the contiguity check below
+// Assigned (#1206; introduced as On Deck in #433) is an inert, gateless
+// waiting room. Pre-#433 issues never recorded a second-stage marker, so the contiguity check below
 // treats it as optional in the required-prior set — it must never manufacture
 // a hard forward-move prerequisite for the in-flight corpus.
-export const OPTIONAL_CONTIGUITY_STAGES = new Set(['on-deck']);
+export const OPTIONAL_CONTIGUITY_STAGES = new Set(['assigned']);
+
+const LEGACY_ASSIGNED_STAGE = 'on-deck';
+
+function canonicalStage(stage) {
+  return stage === LEGACY_ASSIGNED_STAGE ? 'assigned' : stage;
+}
+
+export function markerStagePattern(stage) {
+  return stage === 'assigned' ? '(?:assigned|on-deck)' : stage;
+}
 
 // Legal entry-history transitions. This compatibility Set is derived from the
 // named lifecycle-policy projection so recovery-only arcs never become runtime
@@ -45,9 +55,10 @@ export const LEGAL_TRANSITIONS = buildLegalTransitions();
 // ts (which may carry `&quot;`-escaped quotes — unescaped by parseEntryMarkers).
 // The migration widens the reader strictly: every body that parsed before still
 // parses. The corpus rewrite of historical bodies is deferred to #369.
-// Stage group accepts hyphenated slugs (`on-deck`, #433) via `[a-z]+(?:-[a-z]+)*`
+// Stage group accepts hyphenated legacy slugs via `[a-z]+(?:-[a-z]+)*`
 // — this matches whole alpha-hyphen words but stops before the `-<digits>` visit
-// suffix, so `aitm-entered-on-deck-2` still parses as stage `on-deck`, visit 2.
+// suffix. The historical `aitm-entered-on-deck[-N]` spelling is retained in
+// issue bodies and projected to canonical `assigned` by the reader below.
 const ENTRY_RE_GLOBAL =
   /<!--\s*aitm-entered-([a-z]+(?:-[a-z]+)*)(?:-(\d+))?(?::\s*([^>\s]+)|\s+ts="((?:[^"]|&quot;)*)")\s*-->/gi;
 
@@ -66,7 +77,7 @@ function backfillAuditMarker(stage, reason, ts) {
 function stageMarkerRe(stage) {
   // Matches both legacy `: <iso>` and new `ts="<iso>"` forms (#374).
   return new RegExp(
-    `<!--\\s*aitm-entered-${stage}(?:-\\d+)?(?::\\s*[^>]*?|\\s+ts="[^"]*")\\s*-->`,
+    `<!--\\s*aitm-entered-${markerStagePattern(stage)}(?:-\\d+)?(?::\\s*[^>]*?|\\s+ts="[^"]*")\\s*-->`,
     'i'
   );
 }
@@ -75,7 +86,7 @@ function backfillMarkerRe(stage) {
   // Matches both legacy `aitm-backfill: <stage>:…` and new
   // `aitm-backfill stage="<stage>" …` forms (#380).
   return new RegExp(
-    `<!--\\s*aitm-backfill(?::\\s*${stage}:[^>]*?|\\s+stage="${stage}"[^>]*?)\\s*-->`,
+    `<!--\\s*aitm-backfill(?::\\s*${markerStagePattern(stage)}:[^>]*?|\\s+stage="${markerStagePattern(stage)}"[^>]*?)\\s*-->`,
     'i'
   );
 }
@@ -127,10 +138,10 @@ export function parseEntryMarkers(body) {
   ENTRY_RE_GLOBAL.lastIndex = 0;
   let m;
   while ((m = ENTRY_RE_GLOBAL.exec(src)) !== null) {
-    const [, stage, visitStr, legacyTs, newTs] = m;
+    const [, rawStage, visitStr, legacyTs, newTs] = m;
     const visit = visitStr ? Number(visitStr) : 1;
     const ts = legacyTs !== undefined ? legacyTs : unescapeValue(newTs);
-    out.push({ stage, visit, ts });
+    out.push({ stage: canonicalStage(rawStage), visit, ts });
   }
   return out;
 }
@@ -236,7 +247,7 @@ export function stripEntryMarkersAfter(body, stage) {
     // Strip both legacy `: <iso>` and new `ts="<iso>"` forms, including any
     // numeric re-entry suffix (`-N`) on the future-stage marker (#374).
     const re = new RegExp(
-      `[ \\t]*<!--\\s*aitm-entered-${future}(?:-\\d+)?(?::[^>]*?|\\s+ts="[^"]*")\\s*-->[ \\t]*\\n?`,
+      `[ \\t]*<!--\\s*aitm-entered-${markerStagePattern(future)}(?:-\\d+)?(?::[^>]*?|\\s+ts="[^"]*")\\s*-->[ \\t]*\\n?`,
       'gi'
     );
     if (re.test(out)) {
@@ -357,11 +368,15 @@ function hasReentryAuditCommentFor(comments, stage, visit) {
   if (!Array.isArray(comments)) return false;
   // Form-tolerant (#380): accept the legacy `<stage>-<visit>` colon substring
   // OR the new `stage="…" visit="…"` property grammar.
-  const legacy = `aitm-reentry-audit: ${stage}-${visit}`;
-  const newRe = new RegExp(`aitm-reentry-audit\\s+stage="${stage}"\\s+visit="${visit}"`, 'i');
+  const stagePattern = markerStagePattern(stage);
+  const legacyRe = new RegExp(`aitm-reentry-audit:\\s*${stagePattern}-${visit}`, 'i');
+  const newRe = new RegExp(
+    `aitm-reentry-audit\\s+stage="${stagePattern}"\\s+visit="${visit}"`,
+    'i'
+  );
   return comments.some((c) => {
     const b = String(c?.body ?? '');
-    return b.includes(legacy) || newRe.test(b);
+    return legacyRe.test(b) || newRe.test(b);
   });
 }
 

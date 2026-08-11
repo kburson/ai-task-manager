@@ -556,8 +556,8 @@ try {
   );
   assert.match(
     agents,
-    /Backlog → On Deck → Refine → Plan → Develop → Test → Review → Done/,
-    'AGENTS.md bootstrap must include On Deck in the state chain'
+    /Backlog → Assigned → Refine → Plan → Develop → Test → Review → Done/,
+    'AGENTS.md bootstrap must include Assigned in the state chain'
   );
   assert.match(agents, /\/task plan #N/, 'AGENTS.md bootstrap must name the plan verb');
   assert.match(agents, /\/task test #N/, 'AGENTS.md bootstrap must name the test verb');

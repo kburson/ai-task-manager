@@ -12,7 +12,7 @@
 // sibling of the #510 close-gate fail-open.
 //
 // The body-gated target states are exactly the ones whose entry guards read the
-// body. For every OTHER target (backlog, on-deck, refine, plan, develop, and
+// body. For every OTHER target (backlog, assigned, refine, plan, develop, and
 // backward demotes) a missing/empty body is legitimately tolerated, so a fetch
 // failure there must NOT block the move — preserving the pre-#511 behavior.
 export const BODY_GATED_STATES = Object.freeze(new Set(['test', 'review', 'done']));

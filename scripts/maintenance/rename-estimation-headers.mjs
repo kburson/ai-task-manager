@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // One-shot migration: rewrite estimation-comment headers from old vocab
 // (`### 🛠 Groom estimate`, `### 🔁 Analysis re-estimate`) to the new
-// 7-state Scrum vocab (`### 🛠 Refine estimate`, `### 🔁 Plan re-estimate`).
+// then-current 7-state Scrum vocab (`### 🛠 Refine estimate`, `### 🔁 Plan re-estimate`).
 //
 // Scope: comment bodies on every issue (open AND closed) in `cfg.repo`.
 // Hidden markers (`aitm-groom-estimate`) are left as-is — see #99 deep-dive.

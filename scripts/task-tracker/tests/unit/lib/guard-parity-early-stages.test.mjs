@@ -124,14 +124,14 @@ function makeRefineDeps(fixture) {
 }
 
 // -----------------------------------------------------------------------------
-// 1) backlog → refine
+// 1) assigned → refine (the gated edge; `/task refine` may first walk backlog → assigned)
 // -----------------------------------------------------------------------------
-describe('guard-parity: backlog→refine', () => {
+describe('guard-parity: assigned→refine', () => {
   it('accept fixture: refine-preflight ok on a well-formed fresh issue', async () => {
     const f = loadFixture('backlog-to-refine', 'accept');
     // Promote-path and direct-verb-path both consume `validateBody` at this
-    // boundary. There is no preflight gate at backlog→refine today; the
-    // refine-side gates fire on the NEXT transition. Parity check here is
+    // boundary. The Priority preflight is board-backed, while this fixture
+    // checks the shared body-gate stack. Parity here is
     // that validateBody (the shared body-gate stack) accepts.
     const promote = validateBody(f.body, { gates: DEFAULT_GATES });
     const direct = validateBody(f.body, { gates: DEFAULT_GATES });
@@ -144,9 +144,9 @@ describe('guard-parity: backlog→refine', () => {
     const f = loadFixture('backlog-to-refine', 'refuse');
     const promote = validateBody(f.body, { gates: DEFAULT_GATES });
     const direct = validateBody(f.body, { gates: DEFAULT_GATES });
-    // Today neither path refuses backlog→refine on body alone; AC-section
-    // absence is checked on the NEXT transition. Baseline-correct: both
-    // accept here. Any migration that adds a backlog→refine entry gate must
+    // Neither path refuses assigned→refine on body alone; AC-section
+    // completeness is checked at Refine exit. Baseline-correct: both
+    // accept here. Any migration that adds an assigned→refine body gate must
     // update this fixture.
     assert.equal(promote.ok, true);
     assert.equal(direct.ok, true);
@@ -220,9 +220,9 @@ describe('guard-parity: refine→plan', () => {
 });
 
 // -----------------------------------------------------------------------------
-// via-registry: on-deck→refine + refine→plan through runGuards (#276; the
-// Priority entry-field adapter relocated from backlog-exit to on-deck-exit in
-// #433, so it now fires on the on-deck→refine hop).
+// via-registry: assigned→refine + refine→plan through runGuards (#276; the
+// Priority entry-field adapter relocated from backlog-exit to assigned-exit in
+// #433, so it now fires on the assigned→refine hop).
 // -----------------------------------------------------------------------------
 // Asserts that the in-registry entry-field adapters produce the SAME refusal
 // content as the underlying gate libraries when invoked through the
@@ -230,17 +230,17 @@ describe('guard-parity: refine→plan', () => {
 // Pre-flight in promote.mjs and in-registry guards both wrap the same gates;
 // these tests prove the registry path agrees with the library-baseline path
 // the other describes already cover.
-describe('guard-parity: on-deck→refine via-registry', () => {
+describe('guard-parity: assigned→refine via-registry', () => {
   it('accept fixture: runGuards passes when Priority is set', async () => {
     const f = loadFixture('backlog-to-refine', 'accept');
     const deps = makeRefineDeps({
       ...f,
-      // Adapter expects Priority on the board; the on-deck→refine accept
+      // Adapter expects Priority on the board; the assigned→refine accept
       // fixture has no projectValues block (validateBody-only). Stamp one
       // in so the registry path mirrors the post-Refine reality.
       projectValues: { priority: 'P2' },
     });
-    const r = await runGuards('on-deck', 'refine', {
+    const r = await runGuards('assigned', 'refine', {
       cfg: CFG,
       issueNumber: 1,
       body: f.body,
@@ -252,7 +252,7 @@ describe('guard-parity: on-deck→refine via-registry', () => {
   it('refuse fixture: runGuards refuses when Priority missing', async () => {
     const f = loadFixture('backlog-to-refine', 'refuse');
     const deps = makeRefineDeps({ ...f, projectValues: {} }); // no priority
-    const r = await runGuards('on-deck', 'refine', {
+    const r = await runGuards('assigned', 'refine', {
       cfg: CFG,
       issueNumber: 1,
       body: f.body,

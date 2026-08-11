@@ -25,9 +25,9 @@ export async function fetchLiveKanbanState({ repo, projectId, issueNumber }) {
     );
     const nodes = data?.repository?.issue?.projectItems?.nodes || [];
     const node = nodes.find((n) => n?.project?.id === projectId);
-    // #436 — route the live board display name through normalizeStateSlug so
-    // multi-word states (e.g. "On Deck") resolve to their kebab slug
-    // ("on-deck"), not a space-separated string that downstream consumers reject.
+    // Normalize the live board display name at the ingress boundary. Current
+    // `Assigned` and the historical multi-word `On Deck` spelling both project
+    // onto the canonical `assigned` state.
     return normalizeStateId(node?.fieldValueByName?.name) || '';
   } catch {
     return '';

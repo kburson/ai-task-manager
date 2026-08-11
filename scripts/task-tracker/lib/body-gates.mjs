@@ -259,7 +259,7 @@ const DEFAULT_PARENT_ADMIT_STATE = 'develop';
 // but must wait for the epic to enter Develop before advancing to Plan or
 // beyond. Without this, parent and children can be promoted to Plan together,
 // which then deadlocks the epic's plan→develop epic-children-at-refine gate
-// (every child would need to be reverted, which the 7-state machine
+// (every child would need to be reverted, which the 8-state machine
 // disallows).
 //
 // Rule:

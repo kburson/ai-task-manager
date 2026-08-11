@@ -89,3 +89,13 @@ test('AC3 — no current-session record falls back to global pointer + cross-ses
   assert.equal(result.activeIssue, '#628', 'AC3: falls back to the global pointer');
   assert.equal(result.state, 'refine', 'AC3: legacy cross-session scan still resolves state');
 });
+
+test('#1206 — historical session and global state caches resolve as Assigned', () => {
+  writeJson(statePath(root), { active: '#1206', state: 'on-deck' });
+  writeJson(sessionActiveTaskPath(root, CURRENT_SID), {
+    issue: '#1206',
+    kanbanState: 'on-deck',
+  });
+
+  assert.deepEqual(readBoundState(root), { activeIssue: '#1206', state: 'assigned' });
+});

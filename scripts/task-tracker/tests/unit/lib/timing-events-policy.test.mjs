@@ -22,7 +22,7 @@ import { buildRow, buildBackdatedDepartureRow } from '../../../gh-timing-comment
 
 const LIFECYCLE_EVENTS = [
   ['backlog:created', 'lifecycle', 'backlog'],
-  ['on-deck:started', 'lifecycle', 'on-deck'],
+  ['assigned:started', 'lifecycle', 'assigned'],
   ['refine:started', 'lifecycle', 'refine'],
   ['refine:completed', 'lifecycle', 'refine'],
   ['plan:started', 'lifecycle', 'plan'],
@@ -115,13 +115,21 @@ test('parameterized event families validate payload grammar', () => {
 });
 
 test('legacy aliases remain readable while retired vocabulary cannot be emitted', () => {
-  for (const event of ['pause', 'switch-out', 'switch-in', 'switch-in:#1010', 'end']) {
+  for (const event of [
+    'pause',
+    'switch-out',
+    'switch-in',
+    'switch-in:#1010',
+    'end',
+    'on-deck:started',
+  ]) {
     const descriptor = describeTimingEvent(event);
     assert.equal(descriptor.legacy, true, event);
     assert.equal(descriptor.retired, false, event);
     assert.equal(descriptor.emittable, false, event);
     assert.equal(isKnownTimingEvent(event), true, event);
   }
+  assert.equal(stageOfTimingEvent('on-deck:started'), 'assigned');
 
   for (const event of ['idle', 'active-work']) {
     const descriptor = describeTimingEvent(event);
@@ -143,7 +151,7 @@ test('central row construction refuses unknown, legacy, and retired emission', (
     deltaWords: 0,
     wordMarker: 0,
   };
-  for (const event of ['unknown:anything', 'pause', 'idle', 'active-work']) {
+  for (const event of ['unknown:anything', 'pause', 'idle', 'active-work', 'on-deck:started']) {
     assert.throws(
       () => buildRow({ ...row, event }),
       /refusing non-emittable Timing Log event/,

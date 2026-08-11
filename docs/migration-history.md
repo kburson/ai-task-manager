@@ -1,16 +1,52 @@
 # State Slug Migration History
 
-Reference for the 4-state → 7-state Kanban migration. Loaded on demand only.
+## 2026: Assigned state vocabulary
 
-## Current canonical states (post-migration)
+AITM renamed the second lifecycle state from `On Deck` (`on-deck`) to
+`Assigned` (`assigned`) without changing the eight-state topology or any gate:
+
+`Backlog → Assigned → Refine → Plan → Develop → Test → Review → Done`
+
+For one compatibility release, the raw move-state boundary accepts `on-deck`
+as a deprecated alias and the config loader accepts `kanbanOptionOnDeck` as a
+fallback for `kanbanOptionAssigned`. Config init/repair author only the new
+key and remove the old key while preserving the option id. Historical
+`aitm-entered-on-deck` markers and `on-deck:started` Timing Log rows remain
+readable audit data; new writers emit only the Assigned spellings.
+
+The GitHub Project schema is never changed implicitly. Preview the in-place
+Status option rename with:
+
+```sh
+node scripts/migrate/rename-on-deck-to-assigned.mjs
+```
+
+After the implementation is integrated, apply it explicitly with:
+
+```sh
+node scripts/migrate/rename-on-deck-to-assigned.mjs --apply
+```
+
+The command preserves the existing Status option id and therefore every
+project item's Status assignment. Assignee/state coupling is not part of this
+migration; it is tracked separately in issue #1207.
+
+## Historical: 4-state → 7-state Kanban migration
+
+The following reference records the earlier 4-state → 7-state migration. It
+is retained as historical provenance; the current topology is the eight-state
+chain documented above.
+
+### Canonical states at that migration boundary
 
 ```
 backlog → refine → plan → develop → test → review → done
 ```
 
-State slugs are the only recognized inputs — there is no compatibility shim. Verbs and `move-state.mjs` reject prior slugs.
+At that boundary, state slugs were the only recognized inputs and there was no
+compatibility shim. Verbs and `move-state.mjs` rejected the prior slugs.
 
-## Prior 4-state vocabulary (removed)
+### Prior 4-state vocabulary (removed)
 
 | Old slug      | New equivalent | Notes                                                                           |
 | ------------- | -------------- | ------------------------------------------------------------------------------- |
@@ -19,9 +55,9 @@ State slugs are the only recognized inputs — there is no compatibility shim. V
 | `in-progress` | `develop`      | Develop is the work-execution state.                                            |
 | `r4r`         | `review`       | Review is the human-approval gate (renamed in #112 from R4R).                   |
 
-`test` is a new state added between `develop` and `review` for verification.
+`test` was a new state added between `develop` and `review` for verification.
 
-## Verbs that changed name
+### Verbs that changed name
 
 | Old verb            | New verb                           | Notes                                          |
 | ------------------- | ---------------------------------- | ---------------------------------------------- |
@@ -30,9 +66,10 @@ State slugs are the only recognized inputs — there is no compatibility shim. V
 | `/task approve <N>` | `/task plan-approve <N>`           | Plan→Develop gate; idempotent marker.          |
 | `/task r4r <N>`     | `/task review <N>`                 | Test→Review transition; renamed in #112.       |
 
-The renamed verbs are not aliased — invoking an old name returns an "unknown verb" error.
+The renamed verbs were not aliased; invoking an old name returned an
+"unknown verb" error.
 
-## Why the migration happened
+### Why that migration happened
 
 The 4-state model conflated three concerns inside `groom`:
 
@@ -40,9 +77,12 @@ The 4-state model conflated three concerns inside `groom`:
 2. Sizing (Size, Estimate, Priority, Sequence)
 3. JIT re-evaluation immediately before execution
 
-The 7-state split moves triage to `backlog → refine` and pushes JIT re-evaluation into `refine → plan`, so a sized + AC'd story can sit in Plan without re-grooming on every pickup. See Epic #41 (closed) for the full rationale.
+The 7-state split moved triage to `backlog → refine` and pushed JIT
+re-evaluation into `refine → plan`, so a sized + AC'd story could sit in Plan
+without re-grooming on every pickup. See Epic #41 (closed) for the full
+rationale.
 
-## Related commits
+### Related commits
 
 - `ac6e49e` — rename R4R to Review throughout live source files (#112)
 - `34156df` — forbid direct state-jump calls; require promote/demote (#111)

@@ -201,7 +201,7 @@ test('#439: collectStreamUtf8 — 4-byte emoji split 2+2 decodes with zero U+FFF
 });
 
 test('#439: collectStreamUtf8 — many tiny chunks (every byte its own event) survive', async () => {
-  const original = `On Deck ${String.fromCodePoint(0x1f7e2)} ready`; // 🟢 = 4 bytes
+  const original = `Assigned ${String.fromCodePoint(0x1f7e2)} ready`; // 🟢 = 4 bytes
   const full = Buffer.from(original, 'utf8');
   const oneByteChunks = [...full].map((b) => Buffer.from([b]));
   const decoded = await collectStreamUtf8(streamOfChunks(oneByteChunks));

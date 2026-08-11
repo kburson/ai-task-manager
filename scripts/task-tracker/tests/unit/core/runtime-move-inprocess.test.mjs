@@ -80,7 +80,7 @@ test('exit-5 test→test self-loop is classified benign', async () => {
 test('exit-5 genuine illegal transition (backlog→done) is NOT benign', async () => {
   const { host } = makeHost({
     code: 5,
-    stderr: '   BLOCKED: illegal transition: backlog → done. Allowed: on-deck.\n',
+    stderr: '   BLOCKED: illegal transition: backlog → done. Allowed: assigned.\n',
   });
   const res = await runMoveStateInProcess(9, 'done', { silent: true }, { host });
   assert.equal(res.ok, false);

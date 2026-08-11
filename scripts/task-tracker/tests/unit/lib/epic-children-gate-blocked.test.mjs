@@ -196,10 +196,11 @@ test('planRefineWipGate: fails open when sibling fetch throws', async () => {
 // #247 — childCreationAllowedAtEpicState (AC4)
 // ---------------------------------------------------------------------------
 
-test('childCreationAllowedAtEpicState: true for every state except done', () => {
+test('childCreationAllowedAtEpicState preserves the pre-#1206 admission set', () => {
   for (const s of ['backlog', 'refine', 'plan', 'develop', 'test', 'review']) {
     assert.equal(childCreationAllowedAtEpicState(s), true, `expected ${s} to allow`);
   }
+  assert.equal(childCreationAllowedAtEpicState('assigned'), false);
   assert.equal(childCreationAllowedAtEpicState('done'), false);
   assert.equal(childCreationAllowedAtEpicState('DONE'), false);
   assert.equal(childCreationAllowedAtEpicState(undefined), false);
@@ -222,7 +223,7 @@ test('developEpicTestChildrenGate passes for non-epic (no children)', async () =
   assert.deepEqual(result.children, []);
 });
 
-for (const pendingState of ['backlog', 'on-deck', 'refine', 'plan', 'develop', 'test']) {
+for (const pendingState of ['backlog', 'assigned', 'refine', 'plan', 'develop', 'test']) {
   test(`developEpicTestChildrenGate refuses when any child is at ${pendingState}`, async () => {
     const result = await developEpicTestChildrenGate({
       cfg,

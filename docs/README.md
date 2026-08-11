@@ -14,7 +14,7 @@ Start here if you are adopting the package:
 | -------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
 | [introduction/README.md](./introduction/README.md)                                           | Primary onboarding page for developers evaluating or adopting AI Task Manager. Includes the quickstart, positioning, and reading path. |
 | [introduction/install-and-setup.md](./introduction/install-and-setup.md)                     | Practical setup guide covering prerequisites, GitHub CLI install/auth, package install, generated files, and verification.             |
-| [introduction/core-workflow.md](./introduction/core-workflow.md)                             | Beginner-friendly explanation of the task loop, seven-state workflow, human gates, timing logs, and common commands.                   |
+| [introduction/core-workflow.md](./introduction/core-workflow.md)                             | Beginner-friendly explanation of the task loop, eight-state workflow, human gates, timing logs, and common commands.                   |
 | [introduction/agentic-development-process.md](./introduction/agentic-development-process.md) | Explains how specs become backlogs, how epics fan out to workers, and how Pickup Directives make issues restartable.                   |
 | [introduction/measurement-and-roi.md](./introduction/measurement-and-roi.md)                 | Explains estimates, actuals, context-word accounting, engaged hours, and value reporting.                                              |
 | [introduction/adoption-guide.md](./introduction/adoption-guide.md)                           | Gives rollout guidance for solo developers, small teams, and organizations.                                                            |
@@ -30,7 +30,7 @@ Start here if you are adopting the package:
 | [guides/settings-guide.md](./guides/settings-guide.md)           | Claude Code and Codex-adjacent settings that make the task workflow smoother.                                                                         |
 | [guides/parallel-agents.md](./guides/parallel-agents.md)         | Rules for parallel agent dispatch, worktree isolation, state gates, and postmortems.                                                                  |
 | [guides/migrations.md](./guides/migrations.md)                   | Current migration helper notes for issue comments and field encoding maintenance.                                                                     |
-| [guides/migration-7-state.md](./guides/migration-7-state.md)     | Runbook for migrating older GitHub Projects boards onto the canonical seven-state workflow.                                                           |
+| [guides/migration-7-state.md](./guides/migration-7-state.md)     | Historical runbook for migrating still-older GitHub Projects boards onto the former seven-state workflow.                                             |
 | [guides/postmortem-template.md](./guides/postmortem-template.md) | Template for documenting process failures and guardrail fixes.                                                                                        |
 
 ## Technical Reference

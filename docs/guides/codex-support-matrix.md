@@ -31,7 +31,7 @@ Features delivered entirely through skill text — present in `skill/adapters/co
 
 Current generated bootstrap state chain:
 
-`Backlog → On Deck → Refine → Plan → Develop → Test → Review → Done`
+`Backlog → Assigned → Refine → Plan → Develop → Test → Review → Done`
 
 The generated map names both generic and dedicated verbs: `/task promote #N`
 for one-step advancement, `/task refine #N ...` for Refine field entry,

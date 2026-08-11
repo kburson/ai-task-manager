@@ -66,7 +66,10 @@ function repoRoot() {
 // are shipped runtime modules, so the exact packed surface grows by two.
 // #1205 adds one shared bounded JSONL scanner used by the word-count and
 // active-time lifecycle readers; the exact packed surface grows by one.
-const ENTRY_CEILING = 631;
+// #1206 adds the explicit Assigned Status migration entry point and its
+// injected runtime library; both ship so operators can preview/apply it from
+// an installed package. The exact packed surface grows by two.
+const ENTRY_CEILING = 633;
 
 function packedFiles() {
   const out = execFileSync('npm', ['pack', '--dry-run', '--json'], {

@@ -125,7 +125,7 @@ exit 0
   console.log('PASS: set_once guard skips write when startTime already set');
 }
 
-// 4. refine binding fires on backlog→refine transition (#133)
+// 4. refine binding fires on assigned→refine transition (#133, #433)
 {
   const { env } = makeTempEnv(`#!/bin/bash
 set -euo pipefail
@@ -151,7 +151,7 @@ exit 0
 
   assert.equal(result.status, 0, `expected exit 0 but got ${result.status}\n${result.stderr}`);
   assert.match(result.stdout, /startTime set for #999/);
-  console.log('PASS: refine binding fires on backlog→refine');
+  console.log('PASS: refine binding fires on assigned→refine');
 }
 
 // 5. develop transition no longer triggers startTime write (binding moved to refine)

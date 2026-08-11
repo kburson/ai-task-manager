@@ -152,7 +152,7 @@ assert.equal(REFINEMENT_HEADER, '### 🛠 Refine estimate');
   assert.ok(result.blockers.some((b) => b.startsWith('refine-ac-section-empty')));
 }
 
-// --- planPriorityGate: Backlog→Refine only requires Priority (#133) ------
+// --- planPriorityGate: Assigned→Refine only requires Priority (#133, #433) ---
 
 {
   const result = await planPriorityGate({

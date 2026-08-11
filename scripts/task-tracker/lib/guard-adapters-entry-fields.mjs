@@ -1,6 +1,6 @@
-// Guard-registry adapters for on-deck→refine and refine→plan entry-field
+// Guard-registry adapters for assigned→refine and refine→plan entry-field
 // gates (#276, parent epic #259; refine-entry relocated from backlog-exit to
-// on-deck-exit in #433).
+// assigned-exit in #433).
 //
 // These adapters present existing gate-library functions as
 // `{ id, run(ctx) }` guards so the guard-registry (`./guard-registry.mjs`)
@@ -38,7 +38,7 @@ function joinBlockers(blockers) {
   return blockers.join('; ');
 }
 
-// on-deck.exit — Priority on the board (refine-entry).
+// assigned.exit — Priority on the board (refine-entry).
 export const refineEntryFieldsPriority = {
   id: 'refine-entry-fields-priority',
   async run(ctx) {

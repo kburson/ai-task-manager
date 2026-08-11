@@ -36,7 +36,7 @@
 //
 // `refine` and `plan` are intentionally NOT in this map — each already
 // enforces its own, differently-shaped predecessor-state guard inline:
-//   - refine.mjs's `runRefine` allows entry from `{backlog, on-deck, refine}`
+//   - refine.mjs's `runRefine` allows entry from `{backlog, assigned, refine}`
 //     (`PRE_REFINE_STATES`), not a single home state.
 //   - plan.mjs's `runPlan` requires the *predecessor* state `refine` (via a
 //     live board query), not its own state `plan`.

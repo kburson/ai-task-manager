@@ -11,6 +11,14 @@
 import { existsSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { activeTaskPath, sessionDir } from './paths.mjs';
+import { normalizeStateId } from './lib/lifecycle-policy/index.mjs';
+
+function normalizeCachedKanbanState(record) {
+  if (!record || typeof record !== 'object' || typeof record.kanbanState !== 'string') {
+    return record;
+  }
+  return { ...record, kanbanState: normalizeStateId(record.kanbanState) };
+}
 
 function readJson(p) {
   if (!existsSync(p)) return null;
@@ -36,7 +44,7 @@ function atomicWrite(p, payload) {
 // on a partially-populated or legacy file.
 export function getActiveTask(sid, projDir) {
   const p = activeTaskPath(sid, projDir);
-  return readJson(p);
+  return normalizeCachedKanbanState(readJson(p));
 }
 
 // Persists the active-task record for `sid`. Stamps `boundAt` to the current
@@ -61,7 +69,7 @@ export function setActiveTask(sid, record, projDir) {
   if (!('kanbanState' in recordWithoutState) && record.issue != null) {
     const existing = readJson(activeTaskPath(sid, projDir));
     if (existing && existing.issue === record.issue && existing.kanbanState) {
-      stickyKanban = { kanbanState: existing.kanbanState };
+      stickyKanban = { kanbanState: normalizeStateId(existing.kanbanState) };
     }
   }
   const payload = {
@@ -72,6 +80,9 @@ export function setActiveTask(sid, record, projDir) {
     ...stickyKanban,
     ...recordWithoutState,
   };
+  if (typeof payload.kanbanState === 'string') {
+    payload.kanbanState = normalizeStateId(payload.kanbanState);
+  }
   atomicWrite(activeTaskPath(sid, projDir), payload);
   return payload;
 }
@@ -82,11 +93,16 @@ export function setActiveTask(sid, record, projDir) {
 // single state mutator (move-state.mjs) and by reconcile / bind. Idempotent
 // no-op when the record is absent or `kanbanState` is already current.
 export function setSessionKanbanState(sid, kanbanState, projDir) {
-  const existing = getActiveTask(sid, projDir);
-  if (!existing || typeof existing !== 'object') return null;
-  if (existing.kanbanState === kanbanState) return existing;
-  const next = { ...existing, kanbanState };
-  atomicWrite(activeTaskPath(sid, projDir), next);
+  const p = activeTaskPath(sid, projDir);
+  const rawExisting = readJson(p);
+  if (!rawExisting || typeof rawExisting !== 'object') return null;
+  const existing = normalizeCachedKanbanState(rawExisting);
+  const canonicalState = normalizeStateId(kanbanState);
+  if (existing.kanbanState === canonicalState && rawExisting.kanbanState === canonicalState) {
+    return existing;
+  }
+  const next = { ...existing, kanbanState: canonicalState };
+  atomicWrite(p, next);
   return next;
 }
 

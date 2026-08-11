@@ -51,7 +51,7 @@
 //   ---------|---------------------------------------|------------------------------------------------------------
 //   backlog  | contiguity                            | blocked-by, refine-entry-fields-priority,
 //            |                                       | backlog-exit-child-parent-state, child-cannot-lead-epic
-//   on-deck  | contiguity                            | blocked-by, refine-entry-fields-priority,
+//   assigned  | contiguity                            | blocked-by, refine-entry-fields-priority,
 //            |                                       | backlog-exit-child-parent-state, child-cannot-lead-epic,
 //            |                                       | user-story-warn (non-blocking)
 //   refine   | contiguity                            | refine-exit-complete-marker, refine-exit-stub-placeholder,

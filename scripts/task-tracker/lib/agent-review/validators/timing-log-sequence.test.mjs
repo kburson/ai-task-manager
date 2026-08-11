@@ -2,7 +2,12 @@
 // timing model v2 grammar under #828).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { validate, extractDataRows, findTimingLogBody } from './timing-log-sequence.mjs';
+import {
+  validate,
+  extractDataRows,
+  findTimingLogBody,
+  extractSentinelStageResets,
+} from './timing-log-sequence.mjs';
 
 // Build a ⏱ Timing Log comment body from `[ts, event, desc?]` rows, mirroring
 // the live table shape. Returns a review-context object.
@@ -109,6 +114,23 @@ test('passes a full healed v2 log including the review→develop rework path', (
   );
   assert.equal(res.pass, true, JSON.stringify(res.failures));
   assert.deepEqual(res.failures, []);
+});
+
+test('#1206: historical timing rows still require the canonicalized entry marker', () => {
+  const res = validate(
+    logCtx(
+      [
+        [T(0), 'on-deck:started'],
+        [T(1), 'refine:started'],
+      ],
+      entered('refine')
+    )
+  );
+  assert.equal(res.pass, false);
+  assert.ok(
+    res.failures.some((failure) => /no aitm-entered-assigned marker/.test(failure)),
+    JSON.stringify(res.failures)
+  );
 });
 
 // --- Retired v2 vocabulary (AC1) ---------------------------------------------
@@ -260,6 +282,21 @@ test('applies a timestamped sentinel-revert audit before the next stage row', ()
   assert.equal(res.pass, true, JSON.stringify(res.failures));
 });
 
+test('#1206: historical sentinel reset states project to Assigned', () => {
+  assert.deepEqual(
+    extractSentinelStageResets(
+      sentinelRevertMarker({ from: 'on-deck', to: 'backlog', ts: '2026-07-14T08:03:30Z' })
+    ),
+    [
+      {
+        ms: Date.parse('2026-07-14T08:03:30Z'),
+        from: 'assigned',
+        to: 'backlog',
+      },
+    ]
+  );
+});
+
 test('compares sentinel audits at the Timing Log row precision within the same second', () => {
   const rows = [
     [T(0), 'plan:started'],
@@ -315,7 +352,7 @@ test('malformed or source-mismatched sentinel audits do not open a reverse edge'
 });
 
 test('seeds the walk on the first stage row (a log starting mid-ladder is legal)', () => {
-  // No backlog/on-deck rows; walk seeds at refine and never trips a phantom
+  // No backlog/assigned rows; walk seeds at refine and never trips a phantom
   // forward-skip against a backlog it never recorded.
   const res = validate(
     logCtx(

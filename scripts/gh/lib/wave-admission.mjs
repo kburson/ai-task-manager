@@ -17,13 +17,14 @@
 // - **Same-Rank siblings (newcomers).** Never block. Members of the same
 //   wave advance independently.
 // - **Higher-Rank siblings.** Never block (they are the next wave).
-// - **Backlog / On Deck siblings.** Excluded — backlog is unvetted ideas and
-//   On Deck (#433) is an inert tranche waiting room; neither is in flight.
+// - **Backlog / Assigned siblings.** Excluded — backlog is unvetted ideas and
+//   Assigned (#1206; the second slot was introduced in #433) is an inert
+//   tranche waiting room; neither is in flight.
 // - **Review / Done siblings.** Excluded — terminal states never block.
 //
 // `fetchSiblings({ parentEpicNumber, repo, projectId })` must return an array
 // of sibling descriptors `{ number, rank, state }` where `state` is one
-// of the lower-cased 8-state slugs (e.g. `'backlog'`, `'on-deck'`, `'review'`,
+// of the lower-cased 8-state slugs (e.g. `'backlog'`, `'assigned'`, `'review'`,
 // `'done'`).
 //
 // - **CLOSED is terminal (#947).** A sub-issue closed on GitHub always resolves
@@ -33,6 +34,7 @@
 
 import { gql, splitRepo } from './github-projects.mjs';
 import { readUnauthorizedCloseRecovery } from '../../task-tracker/lib/closed-issue-convergence.mjs';
+import { normalizeStateId } from '../../task-tracker/lib/lifecycle-policy/index.mjs';
 
 const IN_FLIGHT_STATES = new Set(['refine', 'plan', 'develop', 'test', 'review']);
 
@@ -144,7 +146,7 @@ export function mapSubIssueNodes(subs, projectId) {
       for (const fv of item.fieldValues?.nodes || []) {
         const fname = fv?.field?.name;
         if (!fname) continue;
-        if (fname.toLowerCase() === 'status' && fv.name) state = String(fv.name).toLowerCase();
+        if (fname.toLowerCase() === 'status' && fv.name) state = normalizeStateId(fv.name) || '';
         else if (
           (fname.toLowerCase() === 'rank' || fname.toLowerCase() === 'sequence') &&
           fv.number != null

@@ -51,7 +51,7 @@ test('decideBodyFetchFailure: fetch failure into a gated state fails closed, exi
 });
 
 test('decideBodyFetchFailure: fetch failure into a non-gated state continues', () => {
-  for (const state of ['backlog', 'on-deck', 'refine', 'plan', 'develop']) {
+  for (const state of ['backlog', 'assigned', 'refine', 'plan', 'develop']) {
     const d = decideBodyFetchFailure({ toState: state, fetchFailed: true, force: false });
     assert.equal(d.failClosed, false, `${state} is not body-gated`);
   }

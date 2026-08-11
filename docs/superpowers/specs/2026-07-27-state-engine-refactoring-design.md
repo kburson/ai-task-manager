@@ -325,7 +325,7 @@ canonical records.
 The canonical ordered states remain:
 
 ```text
-backlog -> on-deck -> refine -> plan -> develop -> test -> review -> done
+backlog -> assigned -> refine -> plan -> develop -> test -> review -> done
 ```
 
 ### 6.2 Executable transitions
@@ -333,8 +333,8 @@ backlog -> on-deck -> refine -> plan -> develop -> test -> review -> done
 Forward executable edges remain:
 
 ```text
-backlog -> on-deck
-on-deck -> refine
+backlog -> assigned
+assigned -> refine
 refine -> plan
 plan -> develop
 develop -> test
@@ -345,7 +345,7 @@ review -> done
 Reverse executable edges remain:
 
 ```text
-on-deck -> backlog
+assigned -> backlog
 refine -> backlog
 plan -> backlog
 test -> develop

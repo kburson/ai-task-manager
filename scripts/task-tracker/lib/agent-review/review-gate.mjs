@@ -16,6 +16,7 @@ import { registry as defaultRegistry } from './registry.mjs';
 import { readLastKnownState } from '../../gh-timing-comment.mjs';
 import { tickLifecycleItem } from '../lifecycle-dod.mjs';
 import { serializeProofMarker } from '../proof-marker.mjs';
+import { parseEntryMarkers } from '../stage-entry-markers.mjs';
 import {
   REVIEW_FAILED_START,
   REVIEW_FAILED_END,
@@ -27,15 +28,9 @@ import {
 //   <!-- aitm-entered-develop ts="2026-05-30T08:00:00.000Z" -->
 //   <!-- aitm-entered-develop: 2026-05-30T08:00:00Z -->
 // Returns [{ stage, ts }] in body order.
-const ENTERED_RE = /<!--\s*aitm-entered-([a-z-]+)(?:\s+ts="([^"]*)"|:\s*([^\s>]+))\s*-->/gi;
-
 export function parseEnteredStages(body) {
   const src = typeof body === 'string' ? body : '';
-  const out = [];
-  for (const m of src.matchAll(ENTERED_RE)) {
-    out.push({ stage: m[1].toLowerCase(), ts: (m[2] ?? m[3] ?? '').trim() });
-  }
-  return out;
+  return parseEntryMarkers(src).map(({ stage, ts }) => ({ stage, ts }));
 }
 
 // Build the context object passed to every validator. Kept deliberately flat:

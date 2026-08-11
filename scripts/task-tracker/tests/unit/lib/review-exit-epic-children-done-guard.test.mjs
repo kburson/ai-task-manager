@@ -76,7 +76,7 @@ test('gate refuses when a child is still at review', async () => {
   assert.equal(result.offendingChildren[0].number, 102);
 });
 
-for (const pendingState of ['backlog', 'on-deck', 'refine', 'plan', 'develop', 'test', 'review']) {
+for (const pendingState of ['backlog', 'assigned', 'refine', 'plan', 'develop', 'test', 'review']) {
   test(`gate refuses when any child is at ${pendingState}`, async () => {
     const result = await reviewEpicDoneChildrenGate({
       cfg,

@@ -5,7 +5,7 @@ type: project
 originSessionId: a2956386-6efd-462f-8527-e3f5a578f958
 ---
 
-In the 7-state kanban Sequence-driven wave model (issue #41 epic), when a deep-dive discovers a new sub-issue and slots it into the _current_ wave (same `Sequence` as already-flowing members), the gate behavior is asymmetric:
+In the 8-state kanban Sequence-driven wave model (issue #41 epic, extended by #433), when a deep-dive discovers a new sub-issue and slots it into the _current_ wave (same `Sequence` as already-flowing members), the gate behavior is asymmetric:
 
 - **In-flight wave members are NOT blocked.** They continue through Develop → Test → Review → Done on their own timing.
 - **The epic's next-wave admission IS blocked.** The epic waits until every member of the current wave (including the newcomer, after it fully traverses Refine → Plan → Develop → Test → Review → Done) reaches Done. Only then can the next Sequence-numbered wave promote.

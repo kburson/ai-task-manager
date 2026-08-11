@@ -35,7 +35,7 @@ function bodyOf(lines) {
 
 const CHAIN = [
   ['backlog', '2026-01-01T00:00:00Z'],
-  ['on-deck', '2026-01-01T12:00:00Z'],
+  ['assigned', '2026-01-01T12:00:00Z'],
   ['refine', '2026-01-02T00:00:00Z'],
   ['plan', '2026-01-03T00:00:00Z'],
   ['develop', '2026-01-04T00:00:00Z'],
@@ -78,6 +78,16 @@ test('stripStageMarkers removes entry + legacy/new audit markers', () => {
   assert.ok(!/aitm-backfill:\s*refine:/.test(out));
   assert.ok(!/aitm-backfill stage="refine"/.test(out));
   assert.ok(/aitm-entered-plan:/.test(out)); // untouched
+});
+
+test('#1206: stripStageMarkers does not rewrite historical second-stage audit bytes', () => {
+  const src = bodyOf([
+    '<!-- aitm-entered-on-deck ts="2026-01-02T00:00:00Z" -->',
+    '<!-- aitm-backfill stage="on-deck" reason="legacy" ts="t" -->',
+    entered('refine', '2026-01-03T00:00:00Z'),
+  ]);
+  const out = stripStageMarkers(src, 'assigned');
+  assert.equal(out, src);
 });
 
 // ---- detectIllegalArcs ----------------------------------------------------
@@ -260,6 +270,25 @@ test('healOne: dry-run returns plan without writing', async () => {
   const r = await healOne({ repo: 'o/r', num: '2', apply: false, deps });
   assert.equal(r.action, 'plan');
   assert.equal(sink.writes.length, 0);
+});
+
+test('#1206: apply preserves an out-of-order historical second-stage marker byte-for-byte', async () => {
+  const sink = { writes: [], comments: [] };
+  const body = bodyOf([
+    entered('backlog', '2026-01-01T00:00:01Z'),
+    audit('backlog'),
+    '<!-- aitm-entered-on-deck: 2026-01-04T00:00:00Z -->',
+    '<!-- aitm-backfill: on-deck: reason=legacy ts=t -->',
+    entered('refine', '2026-01-02T00:00:00Z'),
+    audit('refine'),
+    entered('plan', '2026-01-03T00:00:00Z'),
+    audit('plan'),
+  ]);
+  const deps = healDeps({ body, createdAt: '2026-01-01T00:00:00Z' }, sink);
+  const r = await healOne({ repo: 'o/r', num: '1206', apply: true, deps });
+  assert.equal(r.action, 'illegal-arcs');
+  assert.equal(sink.writes.length, 0);
+  assert.equal(sink.comments.length, 0);
 });
 
 test('healOne: apply writes body + posts comment', async () => {

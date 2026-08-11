@@ -8,17 +8,17 @@ Full workflow rules for projects using `ai-task-manager`. These rules define how
 
 Stage names are nouns describing a process; the corresponding activity is a verb. We shorten both to the verb form for brevity (e.g., we say "Refine stage" rather than "Refinement stage" — same column, shorter label).
 
-| Stage (column)                     | Full process name | Activity verb | Also known as               | What happens here                                                                                                                                                                                                              |
-| ---------------------------------- | ----------------- | ------------- | --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Discover _(agent-side, pre-issue)_ | Discovery         | discover      | Ideation, Triage            | Untracked ideation bucket. Not a kanban column — `/task discover` opens a scratch bucket for pre-Backlog work.                                                                                                                 |
-| Backlog                            | Backlog           | —             | —                           | Collection of prioritized backlog items (user stories, tasks).                                                                                                                                                                 |
-| On Deck                            | On Deck           | —             | —                           | Inert, gateless tranche waiting room between Backlog and Refine. `backlog → on-deck` carries no entry gate; the Priority gate lives on `on-deck → refine`. Every item passes through On Deck (no `backlog → refine` shortcut). |
-| Refine                             | Refinement        | refine        | —                           | Backlog item is shaped to be ready for planning: acceptance criteria, estimate, size, priority, labels.                                                                                                                        |
-| Plan                               | Planning          | plan          | —                           | Team performs a deep-dive on the story to determine a plan of action: enhanced ACs, refined estimate.                                                                                                                          |
-| Develop                            | Development       | develop       | In Progress                 | Code changes are made and committed against the story, including test automation.                                                                                                                                              |
-| Test                               | Testing           | verify        | Verify, QA                  | Committed source is run against all ACs and test automation in a sandboxed environment.                                                                                                                                        |
-| Review                             | Review            | review        | Ready for Acceptance        | Story waits for product owner to review functionality in a live demo and confirm all ACs (functional + non-functional) are met.                                                                                                |
-| Done                               | Done              | —             | Complete, Ready for Release | All ACs and Definition of Done are satisfied.                                                                                                                                                                                  |
+| Stage (column)                     | Full process name | Activity verb | Also known as               | What happens here                                                                                                                                                                                                                                                                                                                            |
+| ---------------------------------- | ----------------- | ------------- | --------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Discover _(agent-side, pre-issue)_ | Discovery         | discover      | Ideation, Triage            | Untracked ideation bucket. Not a kanban column — `/task discover` opens a scratch bucket for pre-Backlog work.                                                                                                                                                                                                                               |
+| Backlog                            | Backlog           | —             | —                           | Collection of prioritized backlog items (user stories, tasks).                                                                                                                                                                                                                                                                               |
+| Assigned                           | Assigned          | —             | —                           | Assigned / in-play / ready to work. This is an inert, gateless tranche waiting room between Backlog and Refine. `backlog → assigned` carries no entry gate; the Priority gate lives on `assigned → refine`. Every item passes through Assigned (no `backlog → refine` shortcut). Filter ownership with the GitHub Project `Assignees` field. |
+| Refine                             | Refinement        | refine        | —                           | Backlog item is shaped to be ready for planning: acceptance criteria, estimate, size, priority, labels.                                                                                                                                                                                                                                      |
+| Plan                               | Planning          | plan          | —                           | Team performs a deep-dive on the story to determine a plan of action: enhanced ACs, refined estimate.                                                                                                                                                                                                                                        |
+| Develop                            | Development       | develop       | In Progress                 | Code changes are made and committed against the story, including test automation.                                                                                                                                                                                                                                                            |
+| Test                               | Testing           | verify        | Verify, QA                  | Committed source is run against all ACs and test automation in a sandboxed environment.                                                                                                                                                                                                                                                      |
+| Review                             | Review            | review        | Ready for Acceptance        | Story waits for product owner to review functionality in a live demo and confirm all ACs (functional + non-functional) are met.                                                                                                                                                                                                              |
+| Done                               | Done              | —             | Complete, Ready for Release | All ACs and Definition of Done are satisfied.                                                                                                                                                                                                                                                                                                |
 
 **Retired terms** (do not use):
 
@@ -43,7 +43,7 @@ Backward-compat read paths accept the legacy `aitm-groom-*` forms; write paths e
 
 | Verb               | Enters stage           | Notes                                                                                                                                                                                                                                 |
 | ------------------ | ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `/task refine #N`  | Refine                 | Sets Size + Estimate + Priority + writes `aitm-refine-rationale` marker, then promotes Backlog → Refine.                                                                                                                              |
+| `/task refine #N`  | Refine                 | Sets Size + Estimate + Priority + writes `aitm-refine-rationale`, then walks Backlog → Assigned → Refine (or Assigned → Refine) one edge at a time.                                                                                   |
 | `/task discover`   | (pre-backlog ideation) | Opens an untracked discovery bucket for backlog item generation / pre-issue ideation; promote to an issue with `/task new <title>`. **Distinct from Sprint-Planning** — that is `/task plan`.                                         |
 | `/task plan #N`    | Plan (Sprint-Planning) | Promotes Refine → Plan (Sprint-Planning ceremony: deep-dive analysis, child story breakdown, estimate revision). Refuses on any current state other than Refine. **Not for backlog item generation** — use `/task discover` for that. |
 | `/task develop #N` | Develop                | (Reserved; currently use `/task promote` from Plan after `/task plan-approve`.)                                                                                                                                                       |
@@ -80,7 +80,7 @@ Immediately after creating, set **both** `Estimate` (hours) and `Size` on the Gi
 Issues move through eight states:
 
 ```
-Backlog → On Deck → Refine → Plan → Develop → Test → Review → Done
+Backlog → Assigned → Refine → Plan → Develop → Test → Review → Done
 ```
 
 Each state is a first-class object (`scripts/task-tracker/states/<state>.mjs`)
@@ -92,7 +92,7 @@ Move issues using the helper script (reads all IDs from `.ai-task-manager/task-t
 
 ```bash
 scripts/gh/move-state.mjs <issue#> <state>
-# States: backlog | refine | plan | develop | test | review | done
+# States: backlog | assigned | refine | plan | develop | test | review | done
 
 scripts/gh/move-state.mjs 42 develop
 ```
@@ -532,7 +532,7 @@ Backlog and Refine are not interchangeable — they encode different states of i
 - **Backlog** = raw, unvetted ideas. No `Size`, no `Estimate`, no fully-formed acceptance criteria required. Backlog is the idea inbox; pulling from Backlog requires shaping work first.
 - **Refine** = stories that are fully formed and ready to pick up. Acceptance criteria, `Size`, and `Estimate` are all set. Pulling from Refine never requires additional shaping.
 
-All issues are created in Backlog — no exceptions (#272). `scripts/gh/create-issue.mjs` no longer accepts `--status`. When an agent or human files a new issue with full ACs and sizing already set, create it (lands in Backlog and stamps `aitm-entered-backlog`) and immediately chain `node scripts/task-tracker/task-tracker.mjs promote <N>` to advance through On Deck and Refine (every item now passes through On Deck — the inert tranche waiting room; #433). The previous "tether straight to Refine" shortcut left `aitm-entered-backlog` unstamped and broke the contiguity guard on later forward transitions.
+All issues are created in Backlog — no exceptions (#272). `scripts/gh/create-issue.mjs` no longer accepts `--status`. When an agent or human files a new issue with full ACs and sizing already set, create it (lands in Backlog and stamps `aitm-entered-backlog`) and immediately chain `node scripts/task-tracker/task-tracker.mjs promote <N>` to advance through Assigned and Refine (every item now passes through Assigned — the inert tranche waiting room; #433). The previous "tether straight to Refine" shortcut left `aitm-entered-backlog` unstamped and broke the contiguity guard on later forward transitions.
 
 `scripts/gh/project-tether.mjs` and `scripts/gh/move-state.mjs` emit non-blocking warnings when this rule is violated (e.g. tethering a sized + estimated issue to Backlog, or moving a sized issue back to Backlog).
 
@@ -744,13 +744,13 @@ See `docs/guides/ai-value-framework.md` for the sizing guide, field IDs after `i
 
 Size and Estimate move through three distinct stages. Only the first two ever mutate fields; the third is read-only.
 
-| Stage  | Verb that fires it                              | Mutates fields?               | Comment surface           |
-| ------ | ----------------------------------------------- | ----------------------------- | ------------------------- |
-| Refine | `/task promote <N>` (backlog → refine boundary) | Yes — initial set (manual)    | `### 🛠 Refine estimate`   |
-| Plan   | `/task promote <N>` (plan → develop boundary)   | Yes — rebucket from Deep Dive | `### 🔁 Plan re-estimate` |
-| Review | `/task close <N>` (review → done)               | **No** — read-only delta      | `### 📊 Review delta`     |
+| Stage  | Verb that fires it                                                                 | Mutates fields?               | Comment surface           |
+| ------ | ---------------------------------------------------------------------------------- | ----------------------------- | ------------------------- |
+| Refine | `/task refine <N>` (Assigned → Refine; walks Backlog → Assigned first when needed) | Yes — initial set (manual)    | `### 🛠 Refine estimate`   |
+| Plan   | `/task promote <N>` (plan → develop boundary)                                      | Yes — rebucket from Deep Dive | `### 🔁 Plan re-estimate` |
+| Review | `/task close <N>` (review → done)                                                  | **No** — read-only delta      | `### 📊 Review delta`     |
 
-**Refine estimate.** When `/task promote <N>` advances an issue from Backlog to Refine, the harness pre-checks two signals and posts an audit comment:
+**Refine estimate.** When `/task refine <N>` advances an issue from Assigned to Refine (after a gateless Backlog → Assigned hop when needed), the harness pre-checks two signals and posts an audit comment:
 
 - **Board values.** Size, Estimate, and Priority must already be set on the project board. The agent/human sets these manually before invoking promote.
 - **Rationale marker.** The agent embeds a one-line hidden marker in the issue body before promoting: `<!-- aitm-refinement-rationale: {"size":"...","estimate":"...","priority":"..."} -->` (legacy `aitm-groom-rationale` still read-accepted on existing issues).

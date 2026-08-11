@@ -111,8 +111,8 @@ churn is a smell.
 ## Vocab and field-schema drift
 
 Refusal-text assertions reference current refusal strings. Fixture bodies
-use the current verb vocabulary (Refine, Plan, Develop, Test, Review,
-Done) — not `Groom` / `Analyze` / pre-7-state names. Field schema and
+use the current verb vocabulary (Backlog, Assigned, Refine, Plan, Develop,
+Test, Review, Done) — not `Groom` / `Analyze` / pre-eight-state names. Field schema and
 assignee in fixtures must match the current `task-tracker.json`.
 
 ## When something is genuinely shim-incompatible

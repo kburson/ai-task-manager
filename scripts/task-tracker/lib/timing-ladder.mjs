@@ -29,10 +29,14 @@ import { PHASE_EVENTS } from '../phase-events.mjs';
 // slug (`refine:started`) → state (`refine`) for canonical ENTER events only.
 // Built from the frozen table so it can never drift from the emitters.
 const ENTER_SLUG_TO_STATE = Object.freeze(
-  Object.fromEntries(
-    Object.entries(PHASE_EVENTS)
-      .filter(([, kinds]) => kinds.enter)
-      .map(([state, kinds]) => [kinds.enter.event, state])
+  Object.assign(
+    Object.fromEntries(
+      Object.entries(PHASE_EVENTS)
+        .filter(([, kinds]) => kinds.enter)
+        .map(([state, kinds]) => [kinds.enter.event, state])
+    ),
+    // Historical timing rows remain readable but are never emitted.
+    { 'on-deck:started': 'assigned' }
   )
 );
 

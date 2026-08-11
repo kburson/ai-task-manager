@@ -27,7 +27,7 @@ const argv = (...rest) => ['node', 'move-state.mjs', ...rest];
 // ===========================================================================
 
 test('STATE_TO_CONFIG_KEY maps every canonical state to a kanban option key', () => {
-  for (const s of ['backlog', 'on-deck', 'refine', 'plan', 'develop', 'test', 'review', 'done']) {
+  for (const s of ['backlog', 'assigned', 'refine', 'plan', 'develop', 'test', 'review', 'done']) {
     assert.match(STATE_TO_CONFIG_KEY[s], /^kanbanOption/);
   }
   // Unknown states are absent (host treats absence as the unknown-state exit).
@@ -206,7 +206,7 @@ test('computeTransitionPlan: non-done move has null doneSideEffects + state warn
   assert.equal(review.dirtyCheckOnReview, true);
   assert.equal(review.backlogWarn, false);
 
-  const backlog = computeTransitionPlan({ fromState: 'on-deck', toState: 'backlog' });
+  const backlog = computeTransitionPlan({ fromState: 'assigned', toState: 'backlog' });
   assert.equal(backlog.backlogWarn, true);
   assert.equal(backlog.dirtyCheckOnReview, false);
 });

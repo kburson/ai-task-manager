@@ -3,8 +3,8 @@
 // Lifecycle integration — issue #130.
 //
 // Asserts that walking the canonical state graph
-// (Backlog → Refine → Plan → Develop → Test → Review → Done)
-// produces exactly the 12 expected timing rows in order, using the same
+// (Backlog → Assigned → Refine → Plan → Develop → Test → Review → Done)
+// produces exactly the 13 expected timing rows in order, using the same
 // paired (`<prev>:complete` + `<next>:enter`) emission rule that
 // `scripts/gh/move-state.mjs` implements via the canonical
 // PHASE_EVENTS table.
@@ -17,18 +17,19 @@
 // This is a structural test: rather than running the live CLI against
 // the real network (TT_SKIP_NETWORK suppresses emission anyway), we
 // drive the same `buildRow` + PHASE_EVENTS pieces the chokepoint uses
-// and assert the assembled row list matches the 12-event sequence in
+// and assert the assembled row list matches the 13-event sequence in
 // order, including the `backlog:created` Backlog row emitted by the `new` verb.
 import { strict as assert } from 'node:assert';
 import { PHASE_EVENTS } from '../../../phase-events.mjs';
 import { buildRow } from '../../../gh-timing-comment.mjs';
 
-const STAGES = ['backlog', 'refine', 'plan', 'develop', 'test', 'review', 'done'];
+const STAGES = ['backlog', 'assigned', 'refine', 'plan', 'develop', 'test', 'review', 'done'];
 
 // Expected emission order (#516) — must match the slugs asserted by
 // phase-events.test.mjs.
 const expectedSlugs = [
   'backlog:created',
+  'assigned:started',
   'refine:started',
   'refine:completed',
   'plan:started',
@@ -88,7 +89,7 @@ for (let i = 1; i < STAGES.length; i += 1) {
   }
 }
 
-assert.equal(rows.length, 12, `expected 12 lifecycle rows, got ${rows.length}`);
+assert.equal(rows.length, 13, `expected 13 lifecycle rows, got ${rows.length}`);
 
 // Each row must contain its expected slug, in order.
 for (let i = 0; i < expectedSlugs.length; i += 1) {

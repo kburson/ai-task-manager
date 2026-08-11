@@ -103,7 +103,7 @@ for (const parentState of ['develop', 'test', 'review', 'done']) {
   });
 }
 
-for (const parentState of ['backlog', 'refine', 'plan']) {
+for (const parentState of ['backlog', 'assigned', 'refine', 'plan']) {
   test(`refuses when parent state is "${parentState}"`, async () => {
     const result = await refineExitChildParentStateGuard.run({
       cfg,

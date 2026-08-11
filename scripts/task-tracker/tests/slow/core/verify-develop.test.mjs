@@ -62,8 +62,8 @@ describe('parseTestFiles', () => {
   });
 
   it('parses a single test file', () => {
-    assert.deepEqual(parseTestFiles('tests/integration/seven-state-flow.test.mjs\n'), [
-      'tests/integration/seven-state-flow.test.mjs',
+    assert.deepEqual(parseTestFiles('tests/integration/eight-state-flow.test.mjs\n'), [
+      'tests/integration/eight-state-flow.test.mjs',
     ]);
   });
 

@@ -4,7 +4,7 @@
 //
 // isPickupDirectiveEligible(kanbanState): pure predicate over the issue's
 // kanban state — eligible at `plan` and every later state in the verb chain,
-// not eligible at `backlog`/`on-deck`/`refine`, and fails closed (not
+// not eligible at `backlog`/`assigned`/`refine`, and fails closed (not
 // eligible) on unknown/missing state.
 //
 // formatPickupDirectiveDeferredBanner(ref, kanbanState): the routing banner
@@ -22,7 +22,7 @@ import {
 
 test('isPickupDirectiveEligible: early states (AC1 — suppression)', () => {
   assert.equal(isPickupDirectiveEligible('backlog'), false);
-  assert.equal(isPickupDirectiveEligible('on-deck'), false);
+  assert.equal(isPickupDirectiveEligible('assigned'), false);
   assert.equal(isPickupDirectiveEligible('refine'), false);
 });
 
@@ -50,9 +50,9 @@ test('formatPickupDirectiveDeferredBanner: routes refine -> promote', () => {
   assert.match(banner, /\/task promote #673/);
 });
 
-test('formatPickupDirectiveDeferredBanner: routes backlog\\/on-deck -> refine', () => {
+test('formatPickupDirectiveDeferredBanner: routes backlog\\/assigned -> refine', () => {
   const backlogBanner = formatPickupDirectiveDeferredBanner('#673', 'backlog');
   assert.match(backlogBanner, /\/task refine #673/);
-  const onDeckBanner = formatPickupDirectiveDeferredBanner('#673', 'on-deck');
-  assert.match(onDeckBanner, /\/task refine #673/);
+  const assignedBanner = formatPickupDirectiveDeferredBanner('#673', 'assigned');
+  assert.match(assignedBanner, /\/task refine #673/);
 });

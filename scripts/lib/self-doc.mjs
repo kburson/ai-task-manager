@@ -266,7 +266,7 @@ const ROUTABLE_ARGUMENTS = Object.freeze({
     argument('--parent <N>', 'Optional parent epic relationship.'),
     argument(
       '--status <state>',
-      'Initial backlog, on-deck, refine, plan, develop, test, review, or done state.'
+      'Initial backlog, assigned, refine, plan, develop, test, review, or done state.'
     ),
     argument('--priority P0|P1|P2', 'Initial priority value.'),
     argument('--size XS|S|M|L|XL', 'Initial size value.'),
@@ -893,6 +893,34 @@ const DIRECT_SELF_DOC = Object.freeze({
     effects: ['May create, translate, rename, or delete project fields unless dry-run.'],
     output: ['Prints field and item migration actions.'],
     relatedCommands: ['migrate-project'],
+  }),
+  'rename-on-deck-to-assigned': directDoc('rename-on-deck-to-assigned', {
+    group: 'Maintenance',
+    path: 'scripts/migrate/rename-on-deck-to-assigned.mjs',
+    classification: 'live-maintenance-or-migration',
+    synopsis: 'Preview or explicitly rename the legacy Status option to Assigned in place.',
+    usage: 'rename-on-deck-to-assigned [--apply] [--yes]',
+    arguments: [
+      argument(APPLY_FLAG, 'Rename the configured option; default is a read-only preview.'),
+      argument('--yes', 'Bypass blast-radius confirmation when required.'),
+    ],
+    preconditions: [
+      'Configured project and Status field ids plus authenticated GitHub access are required.',
+    ],
+    effects: [
+      'Read-only by default; --apply renames the existing option without changing its id or item assignments.',
+    ],
+    output: ['Prints the stable option id and dry-run, applied, or already-canonical result.'],
+    exitCodes: [
+      exitCode(0, 'preview, no-op, or explicit migration completed successfully'),
+      exitCode(1, 'configuration, project query, schema validation, or mutation failed'),
+      exitCode(2, 'invalid usage or blast-radius confirmation refusal'),
+    ],
+    examples: [
+      'node scripts/migrate/rename-on-deck-to-assigned.mjs',
+      'node scripts/migrate/rename-on-deck-to-assigned.mjs --apply',
+    ],
+    relatedCommands: ['migrate-project', 'ai-task-manager init'],
   }),
   'start-time-field': directDoc('start-time-field', {
     group: 'Maintenance',

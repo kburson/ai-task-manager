@@ -82,7 +82,7 @@ test('classifyMoveStateBenign is de-enumerated — it matches ANY self-loop', ()
   }
   // Every other state, including the one that was missing (#882) and the
   // multi-word slug, must classify the same way with no further patching.
-  for (const s of ['review', 'develop', 'plan', 'refine', 'on-deck', 'backlog']) {
+  for (const s of ['review', 'develop', 'plan', 'refine', 'assigned', 'backlog']) {
     assert.equal(
       classifyMoveStateBenign({
         state: s,

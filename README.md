@@ -184,7 +184,7 @@ Hooks flush timing on every `/compact` and session start, so long sessions are n
 
 When you switch tasks or close an issue, the skill updates your board automatically:
 
-- **Kanban state** → moves the card through the 7-state workflow (Backlog → Refine → Plan → Develop → Test → Review → Done)
+- **Kanban state** → moves the card through the 8-state workflow (Backlog → Assigned → Refine → Plan → Develop → Test → Review → Done)
 - **Engaged Time / Session Time** → measured minutes used by reports and board filters
 - **Sequence** → the issue's position in the fan-out order
 - **Start date / End date** → set automatically when work moves into active development or Done
@@ -547,16 +547,16 @@ Or set individual values:
 
 ### Internal Settings (set by `init`)
 
-| Key               | Description                                                            |
-| ----------------- | ---------------------------------------------------------------------- |
-| `projectId`       | GitHub Projects V2 node ID                                             |
-| `kanbanFieldId`   | Status field ID                                                        |
-| `kanbanOption*`   | Kanban state option IDs (Backlog/Refine/Plan/Develop/Test/Review/Done) |
-| `sizeFieldId`     | Size field ID                                                          |
-| `sequenceFieldId` | Sequence field ID (numeric)                                            |
-| `priorityFieldId` | Priority field ID                                                      |
-| `priorityOption*` | Priority option IDs (P0/P1/P2)                                         |
-| `fieldEstimate`   | Estimate field ID                                                      |
+| Key               | Description                                                                     |
+| ----------------- | ------------------------------------------------------------------------------- |
+| `projectId`       | GitHub Projects V2 node ID                                                      |
+| `kanbanFieldId`   | Status field ID                                                                 |
+| `kanbanOption*`   | Kanban state option IDs (Backlog/Assigned/Refine/Plan/Develop/Test/Review/Done) |
+| `sizeFieldId`     | Size field ID                                                                   |
+| `sequenceFieldId` | Sequence field ID (numeric)                                                     |
+| `priorityFieldId` | Priority field ID                                                               |
+| `priorityOption*` | Priority option IDs (P0/P1/P2)                                                  |
+| `fieldEstimate`   | Estimate field ID                                                               |
 
 ---
 
@@ -615,7 +615,7 @@ The state file (`.ai-task-manager/task-tracker-state.json`) is workspace-scoped.
 | Script                                                        | Description                                                                                                                                                                                                       |
 | ------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `scripts/gh/project-tether.mjs --issue <N> ...`               | Add an issue to the configured Project V2, verify it through `ProjectV2.items`, repair issue-side phantom project items when possible, set project fields, and optionally link a parent epic with `--parent <N>`. |
-| `scripts/gh/move-state.mjs <issue#> <state> [--item-id <id>]` | Move issue to Kanban state (backlog/refine/plan/develop/test/review/done). Pass `--item-id` to skip the GraphQL lookup when you already have the project item ID.                                                 |
+| `scripts/gh/move-state.mjs <issue#> <state> [--item-id <id>]` | Move issue to Kanban state (backlog/assigned/refine/plan/develop/test/review/done). Pass `--item-id` to skip the GraphQL lookup when you already have the project item ID.                                        |
 | `scripts/gh/set-priority.mjs <issue#> <priority> [--cascade]` | Set P0/P1/P2 priority. `--cascade` applies to all sub-issues too.                                                                                                                                                 |
 | `scripts/gh/set-rank.mjs <issue#> <n>`                        | Set the project Rank number field (wave ordering) on one issue. Warns and exits 0 when no rank field is configured.                                                                                               |
 

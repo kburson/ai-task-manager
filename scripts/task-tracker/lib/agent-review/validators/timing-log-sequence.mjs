@@ -37,7 +37,7 @@ import {
 import { parseMarker } from '../../marker-grammar.mjs';
 import { parseRowSecMarker, _tsToMs } from '../../timing-rows.mjs';
 import { parseTimingRow } from '../../timing-row-reader.mjs';
-import { stateIds, isTimingHistoryEdge } from '../../lifecycle-policy/index.mjs';
+import { stateIds, isTimingHistoryEdge, normalizeStateId } from '../../lifecycle-policy/index.mjs';
 
 const TIMING_LOG_RE = /⏱\s*Timing Log/;
 // The timing table's header row: `| Timestamp | Event | ... |`.
@@ -124,8 +124,8 @@ export function extractSentinelStageResets(issueBody) {
     const match = detail.match(SENTINEL_REVERT_DETAIL_RE);
     const ms = _tsToMs(marker.props.ts);
     if (!match || !Number.isFinite(ms)) continue;
-    const from = match[1].toLowerCase();
-    const to = match[2].toLowerCase();
+    const from = normalizeStateId(match[1]);
+    const to = normalizeStateId(match[2]);
     if (!LADDER_INDEX.has(from) || !LADDER_INDEX.has(to)) continue;
     resets.push({ ms: Math.floor(ms / 1000) * 1000, from, to });
   }
@@ -168,7 +168,7 @@ export function validate(context = {}) {
   const markers = context.markers || {};
   const enteredList = Array.isArray(markers.enteredStages) ? markers.enteredStages : [];
   const enteredSet = new Set(
-    enteredList.map((e) => (e && e.stage ? String(e.stage).toLowerCase() : '')).filter(Boolean)
+    enteredList.map((e) => (e && e.stage ? normalizeStateId(e.stage) : '')).filter(Boolean)
   );
   const sentinelResets = extractSentinelStageResets(context.body);
 
@@ -252,21 +252,11 @@ export function validate(context = {}) {
     }
 
     // --- Reconciliation vs aitm-entered markers ------------------------------
-    const colon = row.event.indexOf(':');
-    if (colon > 0) {
-      const stage = row.event.slice(0, colon);
-      const qualifier = row.event.slice(colon + 1);
-      // A `<stage>:failed` row is a gate AUDIT record of a rejected attempt, not
-      // a stage-entry claim: the Agent Review Gate writes it on a failed review
-      // and demotes without stamping `aitm-entered-<stage>`. Excluding it here
-      // (only in this reconciliation pass) prevents the catch-22 where a
-      // failed-then-retried review poisons its own timing log. Genuine entry
-      // rows (`<stage>:started` / `<stage>:completed`) still require their marker.
-      if (qualifier !== 'failed' && LIFECYCLE_STAGES.has(stage) && !enteredSet.has(stage)) {
-        failures.push(
-          `${loc(row)}: timing row records stage "${stage}" but body has no aitm-entered-${stage} marker`
-        );
-      }
+    const lifecycleStage = stageOf(row.event);
+    if (lifecycleStage && LIFECYCLE_STAGES.has(lifecycleStage) && !enteredSet.has(lifecycleStage)) {
+      failures.push(
+        `${loc(row)}: timing row records stage "${lifecycleStage}" but body has no aitm-entered-${lifecycleStage} marker`
+      );
     }
 
     // --- Kanban stage-transition walk ----------------------------------------

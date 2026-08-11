@@ -2,16 +2,17 @@
 // @story #438
 // #438 AC1 — Full-lifecycle traversal E2E.
 //
-// Walk the canonical FORWARD chain backlog → on-deck → refine → plan →
+// Walk the canonical FORWARD chain backlog → assigned → refine → plan →
 // develop → test → review → done. For every hop assert (a) the state machine
 // considers the transition legal AND (b) the DESTINATION slug resolves to a
 // non-empty board option ID through the PRODUCTION resolution path:
 // `STATUS_CONFIG_KEYS[slug]` → config key → `cfg[key]`.
 //
-// This is the exact resolution that returned EMPTY for `on-deck` under Bug A
-// (#433/#436): `kanbanOptionOnDeck` was written to task-tracker.json but
-// absent from config.mjs DEFAULTS, so loadConfig dropped it and the option ID
-// came back ''. The first On Deck hop would have gone red here.
+// This carries forward the exact second-state resolution invariant from Bug A
+// (#433/#436). The defect originally involved `kanbanOptionOnDeck` / On Deck:
+// the key was written to task-tracker.json but absent from config.mjs DEFAULTS,
+// so loadConfig dropped it and the option ID came back ''. #1206 renames that
+// state and key to Assigned while preserving the same end-to-end pin.
 
 import { strict as assert } from 'node:assert';
 import { test } from 'node:test';
@@ -61,7 +62,7 @@ test('AC1: every canonical FORWARD hop is legal and resolves a non-empty option 
     assert.ok(
       typeof optId === 'string' && optId.length > 0,
       `destination state "${to}" must resolve a non-empty board option ID ` +
-        `(this is the resolution that returned '' for on-deck under Bug A)`
+        `(this is the second-state resolution that returned '' for On Deck under Bug A)`
     );
 
     visited.push(to);
@@ -71,13 +72,13 @@ test('AC1: every canonical FORWARD hop is legal and resolves a non-empty option 
   // The full canonical chain must have been traversed end-to-end.
   assert.deepEqual(
     visited,
-    ['backlog', 'on-deck', 'refine', 'plan', 'develop', 'test', 'review', 'done'],
+    ['backlog', 'assigned', 'refine', 'plan', 'develop', 'test', 'review', 'done'],
     'traversal must cover the entire canonical 8-state chain'
   );
 });
 
-test('AC1: on-deck specifically resolves (direct Bug A regression pin)', () => {
+test('AC1: assigned specifically resolves (current form of the Bug A regression pin)', () => {
   const cfg = populatedConfig();
-  const optId = resolveOptionId(cfg, 'on-deck');
-  assert.ok(optId && optId.length > 0, 'on-deck must resolve — the exact Bug A failure locus');
+  const optId = resolveOptionId(cfg, 'assigned');
+  assert.ok(optId && optId.length > 0, 'assigned must resolve — the exact Bug A failure locus');
 });

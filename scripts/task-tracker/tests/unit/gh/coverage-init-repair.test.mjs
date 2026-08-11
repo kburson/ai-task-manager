@@ -10,7 +10,7 @@ import assert from 'node:assert/strict';
 
 import { runRepair, fetchStatusOptions } from '../../../../gh/init-repair.mjs';
 
-const ALL_COLUMNS = ['backlog', 'on deck', 'refine', 'plan', 'develop', 'test', 'review', 'done'];
+const ALL_COLUMNS = ['backlog', 'assigned', 'refine', 'plan', 'develop', 'test', 'review', 'done'];
 
 // Options list where every kanban column maps to `<name>-id`.
 const FULL_OPTIONS = ALL_COLUMNS.map((name) => ({ id: `${name}-id`, name }));

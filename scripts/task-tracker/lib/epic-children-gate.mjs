@@ -308,9 +308,9 @@ export async function planRefineWipGate({ cfg, issueNumber, deps = {} } = {}) {
   };
 }
 
-// Epic states at which new sub-issues may be created. A Done epic must not grow
-// new children (it would have to reopen). Backlog/Refine/Plan/Develop/Test/
-// Review all admit children; Done refuses.
+// Epic states at which new sub-issues may be created. Preserve the established
+// admission set across #1206: the renamed second slot remains non-admitting,
+// while Backlog/Refine/Plan/Develop/Test/Review admit children and Done refuses.
 const CHILD_CREATION_EPIC_STATES = new Set([
   'backlog',
   'refine',
@@ -324,7 +324,7 @@ const CHILD_CREATION_EPIC_STATES = new Set([
  * Whether a sub-issue may be created under an epic at the given board state.
  * @param {string} state epic board state
  * @returns {boolean} true for backlog/refine/plan/develop/test/review; false for
- *   done (or any unrecognized state).
+ *   assigned, done, or any unrecognized state.
  */
 export function childCreationAllowedAtEpicState(state) {
   return CHILD_CREATION_EPIC_STATES.has(String(state || '').toLowerCase());

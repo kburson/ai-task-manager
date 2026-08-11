@@ -1,6 +1,6 @@
 flowchart TB
-    Backlog["Backlog"] --> OnDeck["On Deck"]
-    OnDeck --> Refine["Refine\npriority, size, ACs"]
+    Backlog["Backlog"] --> Assigned["Assigned"]
+    Assigned --> Refine["Refine\npriority, size, ACs"]
     Refine --> Plan["Plan\ndeep dive"]
     Plan --> Develop["Develop\nimplementation"]
     Develop --> Test["Test\nverification"]

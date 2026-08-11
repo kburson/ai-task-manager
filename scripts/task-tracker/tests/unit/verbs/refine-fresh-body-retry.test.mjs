@@ -24,7 +24,7 @@ test('stale backlog body recovers from one fresh read before the first Refine wa
   const initialBody = '## Scope\n\nstale snapshot';
   const result = await refreshPreRefineContiguity({
     fromState: 'backlog',
-    toState: 'on-deck',
+    toState: 'assigned',
     issueNumber: 1017,
     body: initialBody,
     guardResult: refusal(),
@@ -45,9 +45,9 @@ test('stale backlog body recovers from one fresh read before the first Refine wa
   );
 });
 
-test('on-deck → refine can recover when the refreshed body contains both prior markers', async () => {
+test('assigned → refine can recover when the refreshed body contains both prior markers', async () => {
   const result = await refreshPreRefineContiguity({
-    fromState: 'on-deck',
+    fromState: 'assigned',
     toState: 'refine',
     issueNumber: 1017,
     body: '',
@@ -55,7 +55,7 @@ test('on-deck → refine can recover when the refreshed body contains both prior
     fetchFreshBody: async () =>
       [
         '<!-- aitm-entered-backlog ts="2026-07-28T00:05:14Z" -->',
-        '<!-- aitm-entered-on-deck ts="2026-07-28T00:06:14Z" -->',
+        '<!-- aitm-entered-assigned ts="2026-07-28T00:06:14Z" -->',
       ].join('\n'),
   });
 
@@ -68,7 +68,7 @@ test('genuine marker absence remains fail-closed after exactly one fresh read', 
   const original = refusal();
   const result = await refreshPreRefineContiguity({
     fromState: 'backlog',
-    toState: 'on-deck',
+    toState: 'assigned',
     issueNumber: 1017,
     body: '',
     guardResult: original,
@@ -87,7 +87,7 @@ test('fresh-read failure preserves the original refusal', async () => {
   const original = refusal();
   const result = await refreshPreRefineContiguity({
     fromState: 'backlog',
-    toState: 'on-deck',
+    toState: 'assigned',
     issueNumber: 1017,
     body: '',
     guardResult: original,
@@ -124,7 +124,7 @@ test('successful contiguity refresh preserves unrelated refusals', async () => {
   const blocked = { id: 'blocked-by-not-done', reason: 'blocker remains open' };
   const result = await refreshPreRefineContiguity({
     fromState: 'backlog',
-    toState: 'on-deck',
+    toState: 'assigned',
     issueNumber: 1017,
     body: '',
     guardResult: refusal([blocked]),

@@ -4,9 +4,9 @@ description: Current board columns and the retired vocabulary as of 2026-05 — 
 type: project
 originSessionId: 485cd5ff-0dc3-459b-bbfe-a1318911129c
 ---
-Board columns mirror the verb-state machine 1:1: **Backlog → On Deck → Refine → Plan → Develop → Test → Review → Done** (8 states as of #433, ~2026-06-16).
+Board columns mirror the verb-state machine 1:1: **Backlog → Assigned → Refine → Plan → Develop → Test → Review → Done** (the second state was added as On Deck by #433 and renamed Assigned by #1206).
 
-**On Deck** (added by #433): an inert, gateless waiting room / tranche filter between Backlog and Refine. Every item now passes through it — the old `backlog → refine` shortcut is gone. `backlog → on-deck` is gateless (only the universal blocked-by guard); the **Priority** entry gate and the two child-parent guards relocated from backlog-exit to **on-deck-exit** (`on-deck → refine`). Slug `on-deck`, display "On Deck", color GRAY, live board optionId `f627e155` (config key `kanbanOptionOnDeck`). Backward arc `on-deck → backlog` exists.
+**Assigned** (introduced under the name On Deck by #433; renamed by #1206): an inert, gateless waiting room / tranche filter between Backlog and Refine. Every item now passes through it — the old `backlog → refine` shortcut is gone. `backlog → assigned` is gateless (only the universal blocked-by guard); the **Priority** entry gate and the two child-parent guards relocated from backlog-exit to **assigned-exit** (`assigned → refine`). Slug `assigned`, display "Assigned", color GRAY, live board optionId `f627e155` (config key `kanbanOptionAssigned`). Backward arc `assigned → backlog` exists.
 
 Retired ~2026-05-13: **Groom**, **Analyze**, **Todo**, and the previous **Review** column (which is now **Test**). The new **Review** column sits between Test and Done — it is the human-approval gate, not the validation gate.
 

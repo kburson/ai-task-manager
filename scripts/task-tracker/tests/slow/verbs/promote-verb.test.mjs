@@ -221,8 +221,8 @@ test('promote: refine→plan refused when refine-exit gate returns blockers (#14
   assert.equal(calls.spawns.length, 0);
 });
 
-test('promote: on-deck→refine stamps Start time on success (#147, #433)', async () => {
-  const { deps, calls } = makeDeps({ body: bodyWithState('on-deck'), live: 'on-deck' });
+test('promote: assigned→refine stamps Start time on success (#147, #433)', async () => {
+  const { deps, calls } = makeDeps({ body: bodyWithState('assigned'), live: 'assigned' });
   deps.refinementEstimate = {
     loadProjectFieldDefs: () => [],
     projectValuesForIssue: async () => ({ priority: 'P2' }),
@@ -241,9 +241,9 @@ test('promote: on-deck→refine stamps Start time on success (#147, #433)', asyn
   assert.equal(stampArgs.issueNumber, 1472);
 });
 
-test('promote: backlog→on-deck is a gateless direct move-state call (#433)', async () => {
-  // #433 — Backlog → On Deck carries no field gate. The Priority gate relocated
-  // to On Deck → Refine, so promote out of backlog needs no board values and
+test('promote: backlog→assigned is a gateless direct move-state call (#433)', async () => {
+  // #433 — Backlog → Assigned carries no field gate. The Priority gate relocated
+  // to Assigned → Refine, so promote out of backlog needs no board values and
   // stamps no Start time.
   const { deps, calls } = makeDeps({ body: bodyWithState('backlog'), live: 'backlog' });
   let stampCalls = 0;
@@ -254,10 +254,10 @@ test('promote: backlog→on-deck is a gateless direct move-state call (#433)', a
   const r = await runPromote({ issueNumber: 1473, cfg, deps });
   assert.equal(r.status, 'promoted');
   assert.equal(r.from, 'backlog');
-  assert.equal(r.to, 'on-deck');
+  assert.equal(r.to, 'assigned');
   assert.equal(r.via, 'direct');
-  assert.deepEqual(calls.moves, [{ issueNumber: 1473, target: 'on-deck' }]);
-  assert.equal(stampCalls, 0, 'Start time is stamped at on-deck→refine, not backlog→on-deck');
+  assert.deepEqual(calls.moves, [{ issueNumber: 1473, target: 'assigned' }]);
+  assert.equal(stampCalls, 0, 'Start time is stamped at assigned→refine, not backlog→assigned');
   assert.equal(r.refinementPost, null);
 });
 
@@ -553,8 +553,8 @@ test('promote: review→done reports transition-failed when close exits 0 but bo
   assert.deepEqual(calls.spawns, [{ verb: 'close', issueNumber: 710 }]);
 });
 
-test('promote: on-deck→refine is a direct move-state call gated only on Priority (#133, #433)', async () => {
-  const { deps, calls } = makeDeps({ body: bodyWithState('on-deck'), live: 'on-deck' });
+test('promote: assigned→refine is a direct move-state call gated only on Priority (#133, #433)', async () => {
+  const { deps, calls } = makeDeps({ body: bodyWithState('assigned'), live: 'assigned' });
   deps.refinementEstimate = {
     loadProjectFieldDefs: () => [],
     projectValuesForIssue: async () => ({ priority: 'P2' }),
@@ -563,12 +563,12 @@ test('promote: on-deck→refine is a direct move-state call gated only on Priori
   assert.equal(r.status, 'promoted');
   assert.equal(r.via, 'direct');
   assert.deepEqual(calls.moves, [{ issueNumber: 105, target: 'refine' }]);
-  // No refine-estimate comment posted on on-deck→refine; that fires at refine→plan.
+  // No refine-estimate comment posted on assigned→refine; that fires at refine→plan.
   assert.equal(r.refinementPost, null);
 });
 
-test('promote: on-deck→refine refused when Priority is missing on the board (#433)', async () => {
-  const { deps, calls } = makeDeps({ body: bodyWithState('on-deck'), live: 'on-deck' });
+test('promote: assigned→refine refused when Priority is missing on the board (#433)', async () => {
+  const { deps, calls } = makeDeps({ body: bodyWithState('assigned'), live: 'assigned' });
   deps.refinementEstimate = {
     loadProjectFieldDefs: () => [],
     projectValuesForIssue: async () => ({}),

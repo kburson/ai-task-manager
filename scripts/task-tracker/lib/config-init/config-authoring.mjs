@@ -20,7 +20,7 @@ const REQUIRED_ENV = {
   projectId: 'PROJECT_NODE_ID',
   kanbanFieldId: 'KANBAN_FIELD_ID',
   kanbanOptionBacklog: 'OPTION_BACKLOG',
-  kanbanOptionOnDeck: 'OPTION_ON_DECK',
+  kanbanOptionAssigned: 'OPTION_ASSIGNED',
   kanbanOptionRefine: 'OPTION_REFINE',
   kanbanOptionPlan: 'OPTION_PLAN',
   kanbanOptionDevelop: 'OPTION_DEVELOP',
@@ -69,7 +69,19 @@ export function buildUpdates(env = {}) {
 
 // mergeConfig(existing, env) → the config object to serialize. Pure.
 export function mergeConfig(existing = {}, env = {}) {
-  return Object.assign({}, existing, buildUpdates(env));
+  const normalized = { ...existing };
+  if (
+    normalized.kanbanOptionOnDeck &&
+    normalized.kanbanOptionAssigned &&
+    normalized.kanbanOptionOnDeck !== normalized.kanbanOptionAssigned
+  ) {
+    throw new Error(
+      'config-init: kanbanOptionOnDeck conflicts with kanbanOptionAssigned; refusing repair'
+    );
+  }
+  normalized.kanbanOptionAssigned ||= normalized.kanbanOptionOnDeck;
+  delete normalized.kanbanOptionOnDeck;
+  return Object.assign(normalized, buildUpdates(env));
 }
 
 // loadExisting(file, deps) → parsed config from `file`, or from the legacy

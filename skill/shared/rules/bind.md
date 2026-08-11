@@ -30,7 +30,7 @@ After bind succeeds, follow `.ai-task-manager/templates/pickup-directive.md` —
 **Board-state gate (#673).** Pickup Directive's deep-dive/implementation
 instructions only make sense once an issue has been through Refine/Plan. If
 the CLI prints a `🚧 PICKUP DIRECTIVE DEFERRED — #N (state: <state>)` banner on
-bind, the issue is still at `backlog`/`on-deck`/`refine` — do NOT load or
+bind, the issue is still at `backlog`/`assigned`/`refine` — do NOT load or
 follow the pickup directive. Instead continue the state walk with the verb the
 banner names (`/task refine #N` or `/task promote #N`). The gate is computed
 by `isPickupDirectiveEligible` (`scripts/task-tracker/lib/pickup-directive-gate.mjs`)

@@ -20,8 +20,8 @@ async function freshRegistry() {
 test('empty registry: runGuards returns { ok: true, refusals: [] } for any state pair', async () => {
   const { runGuards } = await freshRegistry();
   for (const pair of [
-    ['backlog', 'on-deck'],
-    ['on-deck', 'refine'],
+    ['backlog', 'assigned'],
+    ['assigned', 'refine'],
     ['refine', 'plan'],
     ['plan', 'develop'],
     ['develop', 'test'],
@@ -35,7 +35,7 @@ test('empty registry: runGuards returns { ok: true, refusals: [] } for any state
 
 test('GUARDS exposes all 8 states keyed with { exit: [], entry: [] }', async () => {
   const { GUARDS } = await freshRegistry();
-  const expected = ['backlog', 'on-deck', 'refine', 'plan', 'develop', 'test', 'review', 'done'];
+  const expected = ['backlog', 'assigned', 'refine', 'plan', 'develop', 'test', 'review', 'done'];
   assert.deepEqual(Object.keys(GUARDS).sort(), [...expected].sort());
   for (const s of expected) {
     assert.deepEqual(GUARDS[s], { exit: [], entry: [] }, `state ${s} shape`);

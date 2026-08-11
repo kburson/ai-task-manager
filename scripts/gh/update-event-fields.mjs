@@ -36,7 +36,7 @@ const state = args.find((a) => VALID_STATES.includes(a));
 const idIdx = args.indexOf('--item-id');
 const itemId = idIdx === -1 ? '' : args[idIdx + 1] || '';
 
-// No event bindings exist for this state (backlog, on-deck) — the sync is a
+// No event bindings exist for this state (backlog, assigned) — the sync is a
 // no-op by definition, so exit before the arg guard: a missing --item-id is
 // irrelevant when there is nothing to write (#701).
 if (state && !STATE_TO_EVENT[state]) process.exit(0);

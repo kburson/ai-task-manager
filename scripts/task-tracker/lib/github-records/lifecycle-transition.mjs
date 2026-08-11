@@ -8,6 +8,8 @@ import { assertNoSecretRecordData, createAitmRecordEnvelope } from './record-env
 import { SINGLETON_KINDS } from './issue-directory.mjs';
 import { stateIds } from '../lifecycle-policy/index.mjs';
 
+const LEGACY_ASSIGNED_STATE = 'on-deck';
+
 const PAYLOAD_KEYS = [
   'action',
   'branch',
@@ -105,15 +107,20 @@ function validatePayload(payload, expectedIssue) {
   } catch {
     throw transitionError('secret');
   }
+  // Payload state ids remain exact-canonical. The sole exception is the exact
+  // historical slug retained in immutable v1 capsules; replay-only enforcement
+  // happens after the record chain is loaded below.
+  const fromState = payload?.fromState === LEGACY_ASSIGNED_STATE ? 'assigned' : payload?.fromState;
+  const toState = payload?.toState === LEGACY_ASSIGNED_STATE ? 'assigned' : payload?.toState;
   if (
     !hasExactlyKeys(payload, PAYLOAD_KEYS) ||
     payload.schema !== 'aitm.lifecycle-transition/v1' ||
     payload.issue !== expectedIssue ||
     !isOpaqueId(payload.operationId) ||
     !isOpaqueId(payload.action) ||
-    !stateIds().includes(payload.fromState) ||
-    !stateIds().includes(payload.toState) ||
-    payload.fromState === payload.toState ||
+    !stateIds().includes(fromState) ||
+    !stateIds().includes(toState) ||
+    fromState === toState ||
     !isOpaqueId(payload.branch) ||
     !RECORD_ID_RE.test(payload.grantId) ||
     !Number.isSafeInteger(payload.grantEpoch) ||
@@ -137,6 +144,10 @@ function validatePayload(payload, expectedIssue) {
     throw transitionError('projection-identity');
   }
   return deepFreeze(structuredClone(payload));
+}
+
+function hasLegacyAssignedState(payload) {
+  return payload.fromState === LEGACY_ASSIGNED_STATE || payload.toState === LEGACY_ASSIGNED_STATE;
 }
 
 function validateContract(contract, payload) {
@@ -247,6 +258,12 @@ export function validateTransitionAuthority({
   const validatedRecords = validateRecords(records, repository, issue);
   const head = resolveHead(validatedRecords);
   const transitionRecord = findExistingTransition(validatedRecords, payload);
+  // Immutable v1 capsules may contain the historical second-state slug.  It is
+  // accepted only as an exact replay of a record whose payload hash already
+  // covers those bytes; no new transition may emit the retired spelling.
+  if (hasLegacyAssignedState(payload) && transitionRecord === null) {
+    throw transitionError('legacy-state');
+  }
   if (transitionRecord !== null && head.envelope.recordId !== transitionRecord.envelope.recordId) {
     throw transitionError('stale-transition');
   }
@@ -298,6 +315,9 @@ async function appendAuthorized({
   }
   const validatedRecords = validateRecords(records, repository, issue);
   const existing = findExistingTransition(validatedRecords, data.payload);
+  if (data.transitionRecord !== null && existing === null) {
+    throw transitionError('stale-transition');
+  }
   if (existing !== null) {
     if (existing.envelope.predecessor !== data.expectedHeadRecordId) {
       throw transitionError('operation-conflict');

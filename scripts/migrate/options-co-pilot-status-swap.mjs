@@ -218,7 +218,7 @@ async function translateStatusValues() {
   }
 }
 
-// Renames the existing built-in Status field's options in place to the 7-state
+// Historical migration: renames the built-in Status field's options in place to the former 7-state
 // schema. Preserves existing option IDs for the 5 that map (so already-set
 // Status values auto-pick up new names) and adds 2 new options (Analyze, Review).
 //

@@ -5,6 +5,7 @@ function legacyDescriptor({
   kind,
   eventClass = EVENT_CLASS.PHASE,
   stage = null,
+  phase = null,
   retired = false,
   role = null,
   interruptionKind = null,
@@ -17,7 +18,7 @@ function legacyDescriptor({
     kind,
     eventClass,
     stage,
-    phase: null,
+    phase,
     description: '',
     emittable: false,
     legacy: true,
@@ -31,6 +32,15 @@ function legacyDescriptor({
 }
 
 const EXACT_LEGACY = new Map([
+  [
+    'on-deck:started',
+    legacyDescriptor({
+      event: 'on-deck:started',
+      kind: 'lifecycle',
+      stage: 'assigned',
+      phase: 'enter',
+    }),
+  ],
   [
     'pause',
     legacyDescriptor({

@@ -1,6 +1,6 @@
 export const STATE_IDS = Object.freeze([
   'backlog',
-  'on-deck',
+  'assigned',
   'refine',
   'plan',
   'develop',
@@ -10,8 +10,8 @@ export const STATE_IDS = Object.freeze([
 ]);
 
 const FORWARD_EDGES = Object.freeze([
-  'backlog->on-deck',
-  'on-deck->refine',
+  'backlog->assigned',
+  'assigned->refine',
   'refine->plan',
   'plan->develop',
   'develop->test',
@@ -20,7 +20,7 @@ const FORWARD_EDGES = Object.freeze([
 ]);
 
 const EXECUTABLE_REVERSE_EDGES = Object.freeze([
-  'on-deck->backlog',
+  'assigned->backlog',
   'refine->backlog',
   'plan->backlog',
   'test->develop',
@@ -37,7 +37,7 @@ const ENTRY_HISTORY_REVERSE_EDGES = Object.freeze([
   'plan->refine',
   'plan->backlog',
   'refine->backlog',
-  'on-deck->backlog',
+  'assigned->backlog',
 ]);
 
 const TIMING_HISTORY_REVERSE_EDGES = Object.freeze([
@@ -88,7 +88,7 @@ export const ACTION_BASELINE = Object.freeze({
     review: 'close',
   }),
   refine: Object.freeze({
-    from: Object.freeze(['backlog', 'on-deck']),
+    from: Object.freeze(['backlog', 'assigned']),
     selfRun: 're-estimate-in-place',
   }),
   demote: Object.freeze({
@@ -110,7 +110,7 @@ export const ACTION_BASELINE = Object.freeze({
 
 const TIMING_EXACT = Object.freeze([
   'backlog:created',
-  'on-deck:started',
+  'assigned:started',
   'refine:started',
   'refine:completed',
   'plan:started',
@@ -184,14 +184,14 @@ export const TIMING_EVENT_BASELINE = Object.freeze({
     timingEmitter('scripts/gh/ensure-wave-parent.mjs', 335, 'event-call', "'start'", ['start']),
     timingEmitter(
       'scripts/task-tracker/gh-timing-comment.mjs',
-      329,
+      330,
       'phase-call',
       "{ state: 'review', phase: 'complete' }",
       ['review:approved']
     ),
     timingEmitter(
       'scripts/task-tracker/gh-timing-comment.mjs',
-      338,
+      339,
       'phase-call',
       "{ state: 'done', phase: 'enter' }",
       ['issue:wrap']
@@ -271,7 +271,7 @@ export const TIMING_EVENT_BASELINE = Object.freeze({
       "{ state: stateArg, phase: 'enter' }",
       [
         'backlog:created',
-        'on-deck:started',
+        'assigned:started',
         'refine:started',
         'plan:started',
         'develop:started',

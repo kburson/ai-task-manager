@@ -13,6 +13,7 @@
 
 import {
   classifyTimingEventForAccounting as classifyTimingEvent,
+  describeTimingEvent,
   EVENT_CLASS,
 } from './timing-events/index.mjs';
 import {
@@ -406,11 +407,20 @@ export function computeActiveByPhaseSpans(body, nowTs) {
     }
     if (state.complete?.event) boundarySlugs.add(state.complete.event);
   }
-  const isBoundary = (event) => boundarySlugs.has(event) || event.startsWith('demoted:');
+  const canonicalEnterSlug = (event) => {
+    const descriptor = describeTimingEvent(event);
+    if (descriptor?.kind !== 'lifecycle' || descriptor.phase !== 'enter' || !descriptor.stage) {
+      return event;
+    }
+    return PHASE_EVENTS[descriptor.stage]?.enter?.event || event;
+  };
+  const isBoundary = (event) =>
+    boundarySlugs.has(canonicalEnterSlug(event)) || event.startsWith('demoted:');
 
   const perPhaseMap = new Map();
   for (let ei = 0; ei < rows.length; ei++) {
-    if (!enterSlugs.has(rows[ei].event)) continue;
+    const enterEvent = canonicalEnterSlug(rows[ei].event);
+    if (!enterSlugs.has(enterEvent)) continue;
     let endIdx = rows.length;
     for (let j = ei + 1; j < rows.length; j++) {
       if (isBoundary(rows[j].event)) {
@@ -428,7 +438,7 @@ export function computeActiveByPhaseSpans(body, nowTs) {
       if (classifyTimingEvent(rows[j].event) === EVENT_CLASS.DEPARTURE) idleSec += spanSec;
       else activeSec += spanSec;
     }
-    const key = rows[ei].event;
+    const key = enterEvent;
     const acc = perPhaseMap.get(key) || { event: key, activeSec: 0, idleSec: 0 };
     acc.activeSec += activeSec;
     acc.idleSec += idleSec;

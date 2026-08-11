@@ -236,7 +236,7 @@ export async function runReconcile({
       return { status: 'error', message: `reconcile backfill: no state for #${issueNumber}` };
     }
     // Mirror the forward-move contiguity check (evaluateContiguity): the
-    // gateless `on-deck` waiting room is optional and never blocks a promotion,
+    // gateless `assigned` waiting room is optional and never blocks a promotion,
     // so backfill must not manufacture a marker the normal flow legitimately
     // omits. Fill only the holes that would actually wedge a forward move.
     const holes = computeBackfillHoles(body, currentStage).holes.filter(

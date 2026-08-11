@@ -23,8 +23,8 @@ const ACTION_POLICIES = Object.freeze({
     allowedStates: frozen(stateIds().slice(0, -1)),
   }),
   refine: Object.freeze({
-    allowedStates: frozen(['backlog', 'on-deck', 'refine']),
-    entryStates: frozen(['backlog', 'on-deck']),
+    allowedStates: frozen(['backlog', 'assigned', 'refine']),
+    entryStates: frozen(['backlog', 'assigned']),
     selfRun: 're-estimate-in-place',
   }),
   demote: Object.freeze({

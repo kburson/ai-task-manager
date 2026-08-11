@@ -4,14 +4,14 @@
 // `.ai-task-manager/templates/pickup-directive.md` after every successful
 // bind, regardless of the issue's kanban state. The directive's own
 // applicability check only looks for an absent `aitm-deep-dive-complete`
-// marker, so binding to a `backlog`/`on-deck`/`refine` issue (which has not
+// marker, so binding to a `backlog`/`assigned`/`refine` issue (which has not
 // yet been through Refine/Plan) fires the same deep-dive/implementation
 // instructions as binding to a `develop`+ issue. This predicate gives the
 // bind verbs a board-state-aware check to route on instead.
 //
 // Eligible states are `plan` and everything after it in the verb chain
 // (`plan`, `develop`, `test`, `review`, `done`) — Pickup Directive's deep-dive
-// step is meaningful once Plan-stage scoping exists. `backlog`/`on-deck`/
+// step is meaningful once Plan-stage scoping exists. `backlog`/`assigned`/
 // `refine` are not eligible: those issues haven't been sized/scoped yet, so
 // jumping to deep-dive/implementation instructions skips Refine/Plan.
 

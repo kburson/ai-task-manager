@@ -2,7 +2,7 @@
 //
 // Two guards over the same validation function:
 //
-//   userStoryWarnGuard  — on-deck exit (on-deck → refine):
+//   userStoryWarnGuard  — assigned exit (assigned → refine):
 //     non-blocking; prints a warning to stderr but returns { ok: true } so the
 //     transition is never refused. Existing issues without the section can still
 //     advance to Refine; the warning nudges the author to fill it in.

@@ -142,9 +142,9 @@ The `activity-guard` hook enforces `.ai-task-manager/activity-policy.json` on ev
 
 ---
 
-## 4. State-machine rules (7-state model)
+## 4. State-machine rules (8-state model)
 
-The state chain is: `Backlog → Refine → Plan → Develop → Test → Review → Done`.
+The state chain is: `Backlog → Assigned → Refine → Plan → Develop → Test → Review → Done`.
 
 Forward transitions run through the verb surface — never through direct `move-state.mjs` calls (§5). Backward transitions are limited to two named paths:
 

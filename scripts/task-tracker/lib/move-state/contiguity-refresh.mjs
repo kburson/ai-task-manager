@@ -8,7 +8,7 @@
 
 import { contiguityEntryGuard } from '../contiguity-entry-guard.mjs';
 
-const PRE_REFINE_ARCS = new Set(['backlog→on-deck', 'on-deck→refine']);
+const PRE_REFINE_ARCS = new Set(['backlog→assigned', 'assigned→refine']);
 
 function isPreRefineArc(fromState, toState) {
   return PRE_REFINE_ARCS.has(`${fromState}→${toState}`);

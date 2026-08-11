@@ -9,6 +9,20 @@
 
 import { stateIds, stateConfigKey, forwardTarget } from '../lifecycle-policy/index.mjs';
 
+const LEGACY_ASSIGNED_STATE = 'on-deck';
+const CANONICAL_ASSIGNED_STATE = 'assigned';
+
+function canonicalizeStateToken(token) {
+  if (token === LEGACY_ASSIGNED_STATE) {
+    return { value: CANONICAL_ASSIGNED_STATE, legacy: true };
+  }
+  return { value: token, legacy: false };
+}
+
+export function legacyStateAliasWarning(location = 'state') {
+  return `[aitm] deprecated ${location} alias "on-deck"; use "assigned".`;
+}
+
 // Canonical board-state → config option-id key map. The host reads
 // `cfg[STATE_TO_CONFIG_KEY[state]]` to find the single-select option id.
 export const STATE_TO_CONFIG_KEY = Object.freeze(
@@ -42,7 +56,9 @@ export function refusalVerbHint(targetState) {
 export function parseMoveStateArgs(argv) {
   const cliArgs = argv.slice(2);
   const issueArg = cliArgs[0];
-  const stateArg = cliArgs[1];
+  const rawStateArg = cliArgs[1];
+  const canonicalState = canonicalizeStateToken(rawStateArg);
+  const stateArg = canonicalState.value;
 
   const result = {
     issueArg,
@@ -54,6 +70,7 @@ export function parseMoveStateArgs(argv) {
     supersedeFlag: false,
     forceFlag: false,
     outOfBandReason: '',
+    legacyStateAliases: canonicalState.legacy ? ['state'] : [],
     // error kinds the host turns into an exit:
     //   'usage'          → usage() / exit 1
     //   'unknown-state'  → unknown-state message / exit 1
@@ -78,7 +95,9 @@ export function parseMoveStateArgs(argv) {
       result.itemIdOverride = cliArgs[i + 1];
       i++;
     } else if (cliArgs[i] === '--from' && cliArgs[i + 1]) {
-      result.fromOverride = cliArgs[i + 1];
+      const fromState = canonicalizeStateToken(cliArgs[i + 1]);
+      result.fromOverride = fromState.value;
+      if (fromState.legacy) result.legacyStateAliases.push('--from');
       i++;
     } else if (cliArgs[i] === '--demote') {
       result.demoteFlag = true;
@@ -104,6 +123,7 @@ export function parseMoveStateArgs(argv) {
     return result;
   }
   if (!Object.prototype.hasOwnProperty.call(STATE_TO_CONFIG_KEY, stateArg)) {
+    result.stateArg = rawStateArg;
     result.error = 'unknown-state';
     return result;
   }

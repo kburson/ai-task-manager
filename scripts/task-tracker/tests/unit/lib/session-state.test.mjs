@@ -5,7 +5,7 @@
 // tolerance contract.
 
 import { strict as assert } from 'node:assert';
-import { existsSync, mkdtempSync, rmSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { projectScratchDir } from '../../../lib/scratch-dir.mjs';
 import path from 'node:path';
 import {
@@ -73,9 +73,7 @@ assert.equal(getActiveTask('sess-a', tmp), null);
 assert.equal(getActiveTask('sess-b', tmp).issue, '#200', 'clearing sess-a must not affect sess-b');
 
 // AC: corrupt JSON read returns null (does not throw)
-const { writeFileSync } = await import('node:fs');
 const corruptPath = activeTaskPath('sess-c', tmp);
-const { mkdirSync } = await import('node:fs');
 mkdirSync(path.dirname(corruptPath), { recursive: true });
 writeFileSync(corruptPath, '{not json');
 assert.equal(getActiveTask('sess-c', tmp), null);
@@ -107,6 +105,15 @@ assert.equal(
   undefined,
   'kanbanState must not bleed across different bound issues'
 );
+
+// #1206: an in-flight cache written before the rename remains readable, while
+// every subsequent write persists only the canonical state id.
+const legacyPath = activeTaskPath('sess-legacy-assigned', tmp);
+mkdirSync(path.dirname(legacyPath), { recursive: true });
+writeFileSync(legacyPath, JSON.stringify({ issue: '#1206', kanbanState: 'on-deck' }));
+assert.equal(getActiveTask('sess-legacy-assigned', tmp).kanbanState, 'assigned');
+setSessionKanbanState('sess-legacy-assigned', 'on-deck', tmp);
+assert.equal(JSON.parse(readFileSync(legacyPath, 'utf8')).kanbanState, 'assigned');
 
 rmSync(tmp, { recursive: true });
 console.log('session-state.test.mjs: all passed');

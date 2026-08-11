@@ -1,13 +1,13 @@
 // @story #309
 // Integration test for #298: a body emitted by `scripts/gh/create-issue.mjs
 // --dry-run` must be gate-compliant — i.e. it must satisfy every body-shape
-// requirement of the five state-transition gates in the 7-state machine:
+// requirement of the five state-transition gates in the 8-state machine:
 //
-//   1. Backlog → Refine entry   (`planPriorityGate`)
+//   1. Assigned → Refine entry  (`planPriorityGate`)
 //   2. Refine  → Plan   exit #1 (`planRefinementEstimate` — body half)
 //   3. Refine  → Plan   exit #2 (`gateRefineToPlan` — board + body lint)
 //   4. Plan    → Develop entry  (`planDeepDiveGate`)
-//   5. Backlog → Refine entry-fields body sections (`checkRequiredBodySections`)
+//   5. Assigned → Refine entry-fields body sections (`checkRequiredBodySections`)
 //
 // Workflow-deferred markers (the `aitm-refinement-rationale` block added by
 // the `refine` verb and the `aitm-deep-dive-*` markers added during plan)
@@ -142,7 +142,7 @@ test('create-issue.mjs --dry-run body is gate-compliant', async (t) => {
     assert.deepEqual(refusals, [], `field refusals: ${JSON.stringify(refusals)}`);
   });
 
-  await t.test('gate 1 — Backlog → Refine entry (planPriorityGate)', async () => {
+  await t.test('gate 1 — Assigned → Refine entry (planPriorityGate)', async () => {
     const r = await planPriorityGate({
       cfg: CFG,
       issueNumber: 1,

@@ -4,7 +4,7 @@ One-shot scripts under `scripts/maintenance/` perform bounded, idempotent rewrit
 
 ## `rename-estimation-headers.mjs`
 
-Rewrites estimation-comment headers from the legacy vocab (`Groom estimate`, `Analysis re-estimate`) to the new 7-state Scrum vocab (`Refine estimate`, `Plan re-estimate`) across every issue in the repo, open AND closed.
+Historical migration that rewrites estimation-comment headers from the legacy vocab (`Groom estimate`, `Analysis re-estimate`) to the then-current 7-state Scrum vocab (`Refine estimate`, `Plan re-estimate`) across every issue in the repo, open AND closed.
 
 ### Scope
 

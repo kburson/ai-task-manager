@@ -4,8 +4,8 @@ const STATE_DESCRIPTORS = Object.freeze([
     configKey: 'kanbanOptionBacklog',
   }),
   Object.freeze({
-    id: 'on-deck',
-    configKey: 'kanbanOptionOnDeck',
+    id: 'assigned',
+    configKey: 'kanbanOptionAssigned',
   }),
   Object.freeze({
     id: 'refine',
@@ -52,5 +52,6 @@ export function stateConfigKey(state) {
 export function normalizeStateId(input) {
   if (input == null) return null;
   const normalized = String(input).trim().toLowerCase().replace(/\s+/g, '-');
+  if (normalized === 'on-deck') return 'assigned';
   return normalized || null;
 }

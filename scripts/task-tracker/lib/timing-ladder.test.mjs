@@ -10,7 +10,8 @@ import assert from 'node:assert/strict';
 import { deriveLadder, parseRowTs, parseTimingRows } from './timing-ladder.mjs';
 import { EVENT_CLASS } from './timing-events/index.mjs';
 
-// The exact #625 timing fixture (19 rows), CDT (-05:00) throughout.
+// The exact historical #625 timing fixture (19 rows), CDT (-05:00)
+// throughout. Its legacy second-stage row proves read compatibility.
 const FIXTURE = [
   ['2026-06-30 08:33:25 -05:00', 'resumed'],
   ['2026-06-30 08:39:49 -05:00', 'resumed'],
@@ -76,8 +77,8 @@ test('re-engagement and phase rows book their span as active, zero idle', () => 
 
 test('other states aggregate their own sub-spans', () => {
   const { states } = deriveLadder(FIXTURE);
-  assert.equal(states['on-deck'].activeSec, 22); // 08:40:01→08:40:23
-  assert.equal(states['on-deck'].idleSec, 0);
+  assert.equal(states.assigned.activeSec, 22); // 08:40:01→08:40:23
+  assert.equal(states.assigned.idleSec, 0);
   assert.equal(states.plan.activeSec, 395); // 21:55:01→22:01:36
   assert.equal(states.develop.activeSec, 466); // 22:01:36→22:09:22
   assert.equal(states.test.activeSec, 89); // 22:09:22→22:10:51

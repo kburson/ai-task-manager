@@ -274,7 +274,7 @@ await assert.rejects(
   // verifyChainIntegrity treats a mixed-grammar chain as a contiguous chain
   const mixedChain =
     '<!-- aitm-entered-backlog: 2026-05-01T00:00:00Z -->\n' +
-    '<!-- aitm-entered-on-deck ts="2026-05-01T12:00:00Z" -->\n' +
+    '<!-- aitm-entered-assigned ts="2026-05-01T12:00:00Z" -->\n' +
     '<!-- aitm-entered-refine ts="2026-05-02T00:00:00Z" -->\n' +
     '<!-- aitm-entered-plan ts="2026-05-03T00:00:00Z" -->\n';
   const mr = verifyChainIntegrity(mixedChain, 'plan');

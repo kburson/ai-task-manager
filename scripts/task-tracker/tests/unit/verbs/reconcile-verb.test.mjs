@@ -184,14 +184,14 @@ test('reconcile accept-live is idempotent for entry marker (#174)', async () => 
 // #436 — regression for the live-board-status → slug → stampEntryMarker path
 // that #433's AC5 never exercised. `defaultGetLiveState` resolves the live
 // status by passing the raw board display name through `normalizeStateId`;
-// for the On Deck column that name is "On Deck" (a space). Before the fix the
-// slug was "on deck", which `stampEntryMarker` rejected with `unknown stage`,
-// crashing every `reconcile accept-live` of an On-Deck issue. We feed the raw
+// for the Assigned column that name is "Assigned" (a space). Before the fix the
+// slug once contained a space, which `stampEntryMarker` rejected with
+// `unknown stage`, crashing `reconcile accept-live`. We feed the raw
 // display name through the SAME resolver the production default uses so the
 // test covers the whole chain end-to-end.
-test('reconcile accept-live: On Deck live status stamps aitm-entered-on-deck without throwing (#436)', async () => {
-  const liveSlug = normalizeStateId('On Deck'); // mirrors defaultGetLiveState
-  assert.equal(liveSlug, 'on-deck', 'resolver must produce the kebab slug');
+test('reconcile accept-live: Assigned live status stamps aitm-entered-assigned without throwing (#436)', async () => {
+  const liveSlug = normalizeStateId('Assigned'); // mirrors defaultGetLiveState
+  assert.equal(liveSlug, 'assigned', 'resolver must produce the kebab slug');
   const { deps, calls } = makeDeps({ body: bodyWithState('backlog'), live: liveSlug });
   let result;
   await assert.doesNotReject(async () => {
@@ -199,10 +199,10 @@ test('reconcile accept-live: On Deck live status stamps aitm-entered-on-deck wit
   }, /unknown stage/);
   assert.equal(result.status, 'reconciled');
   assert.equal(result.from, 'backlog');
-  assert.equal(result.to, 'on-deck');
+  assert.equal(result.to, 'assigned');
   assert.equal(calls.writes.length, 1);
-  assert.match(calls.writes[0], /aitm-last-known-state state="on-deck"/);
-  assert.match(calls.writes[0], /aitm-entered-on-deck(?::|\s+ts=")/);
+  assert.match(calls.writes[0], /aitm-last-known-state state="assigned"/);
+  assert.match(calls.writes[0], /aitm-entered-assigned(?::|\s+ts=")/);
 });
 
 // #740 — revert-to-recorded is now FORWARD-ONLY. A recorded state BEHIND the

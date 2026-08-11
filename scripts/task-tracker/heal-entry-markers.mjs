@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Generalized heal for stage-entry markers. Backfills missing markers and
-// re-stamps out-of-order chains for the lifecycle stages (refine, plan,
-// develop, test, review) that historically traversed before entry-marker
+// re-stamps out-of-order chains for the lifecycle stages (refine, plan, develop,
+// test, review) that historically traversed before entry-marker
 // stamping was mandatory (#140) or the chain-integrity close gate (#138)
 // treated them as required, or whose entries were stamped out-of-order by
 // retrospective verb runs after a delegate-failure drift (#172/#175).
@@ -76,6 +76,9 @@ const pexec = promisify(execFile);
 // create-issue.mjs stamped the initial-state marker (e.g. #237, #230) lack it; the
 // case-(a) backfill (marker missing AND a later-indexed stage marker present) repairs
 // them. safeBackfillTs already handles stageIdx 0 (lowerMs falls back to createdAt).
+// Assigned remains an optional historical marker, just as On Deck was before #1206:
+// readers normalize the legacy spelling, but this healer must never synthesize or
+// rewrite second-stage audit bytes.
 const HEALABLE_STAGES = ['backlog', 'refine', 'plan', 'develop', 'test', 'review'];
 const STAGE_INDEX = Object.fromEntries(STAGES.map((s, i) => [s, i]));
 
@@ -155,11 +158,18 @@ export async function postComment(repo, num, body, deps = {}) {
 // Strip both entry and audit-backfill markers for a single stage. Used before
 // re-stamping out-of-order entries.
 export function stripStageMarkers(body, stage) {
-  const entryRe = new RegExp(`[ \\t]*<!--\\s*aitm-entered-${stage}:[^>]*?-->[ \\t]*\\n?`, 'gi');
+  // Deliberately match the requested spelling only. Historical entry/audit bytes
+  // are append-only evidence; in particular, `assigned` must never cause an
+  // existing `on-deck` marker to be deleted and rewritten.
+  const stagePattern = stage;
+  const entryRe = new RegExp(
+    `[ \\t]*<!--\\s*aitm-entered-${stagePattern}(?:-\\d+)?(?::[^>]*?|\\s+ts="[^"]*")\\s*-->[ \\t]*\\n?`,
+    'gi'
+  );
   // Strip both legacy `aitm-backfill: <stage>:…` and new
   // `aitm-backfill stage="<stage>" …` forms (#380).
   const auditRe = new RegExp(
-    `[ \\t]*<!--\\s*aitm-backfill(?::\\s*${stage}:[^>]*?|\\s+stage="${stage}"[^>]*?)-->[ \\t]*\\n?`,
+    `[ \\t]*<!--\\s*aitm-backfill(?::\\s*${stagePattern}:[^>]*?|\\s+stage="${stagePattern}"[^>]*?)-->[ \\t]*\\n?`,
     'gi'
   );
   return body

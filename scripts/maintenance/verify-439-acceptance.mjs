@@ -6,7 +6,7 @@
 //
 //   node scripts/maintenance/verify-439-acceptance.mjs ac3   # #436 body U+FFFD-free
 //   node scripts/maintenance/verify-439-acceptance.mjs ac5    # probe markers + scratch gone
-//   node scripts/maintenance/verify-439-acceptance.mjs ac7    # on-deck config key present
+//   node scripts/maintenance/verify-439-acceptance.mjs ac7    # assigned config key present
 //
 // The decode fix lives in scripts/task-tracker/lib/versioned-issue-write.mjs
 // (collectStreamUtf8). AC3/AC5 query live GitHub via `gh`; AC7 reads loadConfig.
@@ -59,9 +59,9 @@ async function ac5() {
 async function ac7() {
   const { loadConfig } = await import('../task-tracker/config.mjs');
   const cfg = loadConfig();
-  if (!cfg.kanbanOptionOnDeck)
-    throw new Error('AC7 FAIL: loadConfig().kanbanOptionOnDeck is empty');
-  console.log(`AC7 OK: loadConfig().kanbanOptionOnDeck = ${cfg.kanbanOptionOnDeck}`);
+  if (!cfg.kanbanOptionAssigned)
+    throw new Error('AC7 FAIL: loadConfig().kanbanOptionAssigned is empty');
+  console.log(`AC7 OK: loadConfig().kanbanOptionAssigned = ${cfg.kanbanOptionAssigned}`);
 }
 
 const probes = { ac3, ac5, ac7 };

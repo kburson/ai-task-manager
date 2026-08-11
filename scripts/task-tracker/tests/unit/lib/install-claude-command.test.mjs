@@ -24,8 +24,8 @@ try {
   );
   assert.match(
     stub,
-    /Backlog → On Deck → Refine → Plan → Develop → Test → Review → Done/,
-    'Claude task.md stub must include On Deck in the state chain'
+    /Backlog → Assigned → Refine → Plan → Develop → Test → Review → Done/,
+    'Claude task.md stub must include Assigned in the state chain'
   );
   assert.match(stub, /\/task plan #N/, 'Claude task.md stub must name the plan verb');
   assert.match(stub, /\/task test #N/, 'Claude task.md stub must name the test verb');

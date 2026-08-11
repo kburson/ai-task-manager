@@ -159,22 +159,22 @@ describe('guard-parity: review→done', () => {
 });
 
 // -----------------------------------------------------------------------------
-// via-state-objects: on-deck→refine + refine→plan through STATES (#292; the
-// Priority guard relocated to on-deck-exit in #433)
+// via-state-objects: assigned→refine + refine→plan through STATES (#292; the
+// Priority guard relocated to assigned-exit in #433)
 // -----------------------------------------------------------------------------
 // Exercises `STATES[from].exitGuards` + `STATES[to].entryGuards` DIRECTLY,
 // bypassing the flat registry. Asserts the refusal-reason set is identical
 // to the via-registry baseline above. Proves the state-object containers and
 // the registry agree, so callers can be migrated to read from STATES with no
 // behavior drift.
-describe('guard-parity: on-deck→refine via-state-objects', () => {
+describe('guard-parity: assigned→refine via-state-objects', () => {
   it('accept fixture: state-object walk passes when Priority is set', async () => {
     const f = loadFixture('backlog-to-refine', 'accept');
     const deps = makeRefineDeps({
       ...f,
       projectValues: { priority: 'P2' },
     });
-    const r = await runStateObjectGuards('on-deck', 'refine', {
+    const r = await runStateObjectGuards('assigned', 'refine', {
       cfg: CFG,
       issueNumber: 1,
       body: f.body,
@@ -186,7 +186,7 @@ describe('guard-parity: on-deck→refine via-state-objects', () => {
   it('refuse fixture: state-object walk refuses when Priority missing', async () => {
     const f = loadFixture('backlog-to-refine', 'refuse');
     const deps = makeRefineDeps({ ...f, projectValues: {} });
-    const r = await runStateObjectGuards('on-deck', 'refine', {
+    const r = await runStateObjectGuards('assigned', 'refine', {
       cfg: CFG,
       issueNumber: 1,
       body: f.body,
@@ -212,8 +212,8 @@ describe('guard-parity: on-deck→refine via-state-objects', () => {
       body: f.body,
       deps: { refinementEstimate: deps },
     };
-    const reg = await runGuards('on-deck', 'refine', ctxRegistry);
-    const obj = await runStateObjectGuards('on-deck', 'refine', ctxStates);
+    const reg = await runGuards('assigned', 'refine', ctxRegistry);
+    const obj = await runStateObjectGuards('assigned', 'refine', ctxStates);
     const regKeys = new Set((reg.refusals || []).map((x) => x.id));
     const objKeys = new Set((obj.refusals || []).map((x) => x.id));
     assert.deepEqual(objKeys, regKeys);

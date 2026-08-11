@@ -1,13 +1,13 @@
 #!/usr/bin/env node
 // @story #701
 // Regression: `update-event-fields.mjs` must accept every board state and be a
-// SILENT no-op for states without an event binding (backlog, on-deck).
+// SILENT no-op for states without an event binding (backlog, assigned).
 //
 // Before the fix, `syncEventFields` (cache-unpark.mjs) spawned this script for
 // every transition target, but the script's whitelist covered only the six
-// working states — a backlog→on-deck promote tripped the usage guard, exited 1,
+// working states — a backlog→assigned promote tripped the usage guard, exited 1,
 // and the caller printed "warning: Start Time field sync failed" on every
-// on-deck promotion, with a repair hint that failed the same way.
+// assigned promotion, with a repair hint that failed the same way.
 //
 // The drift-guard sweep spawns the script once per board state (from
 // STATE_TO_CONFIG_KEY, the canonical frozen map) with the issue number
@@ -43,8 +43,8 @@ function run(args) {
   });
 }
 
-test('on-deck with --item-id is a silent exit-0 no-op', () => {
-  const r = run(['999999', 'on-deck', '--item-id', 'PVTI_fake']);
+test('assigned with --item-id is a silent exit-0 no-op', () => {
+  const r = run(['999999', 'assigned', '--item-id', 'PVTI_fake']);
   assert.equal(r.status, 0, `expected exit 0, got ${r.status}; stderr: ${r.stderr}`);
   assert.equal(r.stdout.trim(), '');
   assert.equal(r.stderr.trim(), '');

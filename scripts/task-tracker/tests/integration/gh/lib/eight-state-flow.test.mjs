@@ -1,7 +1,7 @@
 // @story #54
 // Integration smoke test: a fixture epic with sub-issues across two waves runs
-// through the 7-state lifecycle (Backlog → Groom → Analyze → Development →
-// Validate → Review → Done). Wave-admission and cascade-grooming gates are
+// through the 8-state lifecycle (Backlog → Assigned → Refine → Plan → Develop →
+// Test → Review → Done). Wave-admission and cascade-grooming gates are
 // driven via the pure helpers in scripts/gh/lib/wave-admission.mjs and
 // scripts/task-tracker/lib/body-gates.mjs against an in-memory project state —
 // no live `gh` invocations.
@@ -10,7 +10,7 @@ import assert from 'node:assert/strict';
 import { admit } from '../../../../../gh/lib/wave-admission.mjs';
 import { checkCascadeGrooming, checkWaveAdmission } from '../../../../lib/body-gates.mjs';
 
-const STATES = ['backlog', 'refine', 'plan', 'develop', 'test', 'review', 'done'];
+const STATES = ['backlog', 'assigned', 'refine', 'plan', 'develop', 'test', 'review', 'done'];
 
 function makeProject() {
   const issues = new Map();
@@ -68,7 +68,7 @@ async function cascadeFor(proj, epicNumber) {
 }
 
 // -----------------------------------------------------------------------
-// Test 1: epic + 2 waves through full 7-state flow.
+// Test 1: epic + 2 waves through full 8-state flow.
 // -----------------------------------------------------------------------
 async function testFullFlow() {
   const p = makeProject();
@@ -82,7 +82,10 @@ async function testFullFlow() {
   let refusals = await cascadeFor(p, 100);
   assert.equal(refusals.length, 4, 'all 4 sub-issues should block cascade-grooming');
 
-  for (const n of [101, 102, 103, 104]) p.move(n, 'refine');
+  for (const n of [101, 102, 103, 104]) {
+    p.move(n, 'assigned');
+    p.move(n, 'refine');
+  }
   refusals = await cascadeFor(p, 100);
   assert.equal(refusals.length, 0, 'cascade-grooming clears once all sub-issues are groom+');
 
@@ -190,7 +193,8 @@ async function testSoloIssue() {
   });
   assert.deepEqual(cascade, [], 'checkWaveAdmission solo bypass returns []');
 
-  // Drive solo through Backlog → Groom → Analyze without any gate firing.
+  // Drive solo through Backlog → Assigned → Refine → Plan without any gate firing.
+  p.move(300, 'assigned');
   p.move(300, 'refine');
   p.move(300, 'plan');
   assert.equal(p.read(300).status, 'plan');
@@ -201,7 +205,7 @@ async function main() {
   await testFullFlow();
   await testSameWaveNewcomer();
   await testSoloIssue();
-  console.log('seven-state-flow integration: ok');
+  console.log('eight-state-flow integration: ok');
 }
 
 main().catch((err) => {

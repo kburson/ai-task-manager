@@ -81,7 +81,7 @@ Expected: FAIL with `ERR_MODULE_NOT_FOUND` for `state-engine-policy-baseline.mjs
 ```js
 export const STATE_IDS = Object.freeze([
   'backlog',
-  'on-deck',
+  'assigned',
   'refine',
   'plan',
   'develop',
@@ -104,14 +104,14 @@ export const EXECUTABLE_MATRIX = matrixFrom((from, to) => ({
   allowed:
     from === to ||
     [
-      'backlog->on-deck',
-      'on-deck->refine',
+      'backlog->assigned',
+      'assigned->refine',
       'refine->plan',
       'plan->develop',
       'develop->test',
       'test->review',
       'review->done',
-      'on-deck->backlog',
+      'assigned->backlog',
       'refine->backlog',
       'plan->backlog',
       'test->develop',
@@ -188,7 +188,7 @@ Record:
 export const TIMING_EVENT_BASELINE = Object.freeze({
   exact: Object.freeze([
     'backlog:created',
-    'on-deck:started',
+    'assigned:started',
     'refine:started',
     'refine:completed',
     'plan:started',

@@ -25,11 +25,13 @@ export const DEFAULTS = {
   // `STATUS_CONFIG_KEYS` maps the new state slugs onto these keys.
   kanbanFieldId: '',
   kanbanOptionBacklog: '',
-  // On Deck (#433) — inert holding state inserted between Backlog and Refine.
+  // Assigned (#1206; introduced as On Deck in #433) — inert holding state
+  // inserted between Backlog and Refine.
   // The option ID lives in task-tracker.json; this DEFAULTS entry (#439 AC7) is
   // what lets loadConfig retain it (loadConfig drops any key absent from
-  // DEFAULTS), so move-state can resolve the board option for the backlog→on-deck hop.
-  kanbanOptionOnDeck: '',
+  // DEFAULTS), so move-state can resolve the board option for the
+  // backlog→assigned hop.
+  kanbanOptionAssigned: '',
   kanbanOptionRefine: '',
   kanbanOptionPlan: '',
   kanbanOptionDevelop: '',
@@ -122,7 +124,7 @@ export const TYPES = {
   projectId: 'string',
   kanbanFieldId: 'string',
   kanbanOptionBacklog: 'string',
-  kanbanOptionOnDeck: 'string',
+  kanbanOptionAssigned: 'string',
   kanbanOptionRefine: 'string',
   kanbanOptionPlan: 'string',
   kanbanOptionDevelop: 'string',
@@ -187,6 +189,30 @@ function readJson(p) {
   } catch {
     return {};
   }
+}
+
+const LEGACY_ASSIGNED_CONFIG_KEY = 'kanbanOptionOnDeck';
+const ASSIGNED_CONFIG_KEY = 'kanbanOptionAssigned';
+
+function withLegacyAssignedFallback(raw, source) {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return raw;
+  if (!Object.prototype.hasOwnProperty.call(raw, LEGACY_ASSIGNED_CONFIG_KEY)) return raw;
+  const legacy = raw[LEGACY_ASSIGNED_CONFIG_KEY];
+  const assigned = raw[ASSIGNED_CONFIG_KEY];
+  if (legacy && assigned && legacy !== assigned) {
+    throw new Error(
+      `[aitm] ${source} config: ${LEGACY_ASSIGNED_CONFIG_KEY} conflicts with ` +
+        `${ASSIGNED_CONFIG_KEY}; refusing ambiguous Assigned option ids.`
+    );
+  }
+  console.warn(
+    `[aitm] ${source} config key ${LEGACY_ASSIGNED_CONFIG_KEY} is deprecated; ` +
+      `use ${ASSIGNED_CONFIG_KEY}. The option id was loaded canonically.`
+  );
+  const normalized = { ...raw };
+  if (!assigned && legacy) normalized[ASSIGNED_CONFIG_KEY] = legacy;
+  delete normalized[LEGACY_ASSIGNED_CONFIG_KEY];
+  return normalized;
 }
 
 // Return the raw project-config JSON without merging defaults. Used by the
@@ -256,14 +282,14 @@ export function loadConfig(paths = {}) {
   const userPath = paths.userPath ?? defaults.userPath;
   const legacyUserPath = paths.legacyUserPath ?? (paths.userPath ? null : defaults.legacyUserPath);
   const user = existsSync(userPath)
-    ? readJson(userPath)
+    ? withLegacyAssignedFallback(readJson(userPath), 'user')
     : legacyUserPath
-      ? readJson(legacyUserPath)
+      ? withLegacyAssignedFallback(readJson(legacyUserPath), 'legacy user')
       : {};
   const project = existsSync(projectPath)
-    ? readJson(projectPath)
+    ? withLegacyAssignedFallback(readJson(projectPath), 'project')
     : legacyProjectPath
-      ? readJson(legacyProjectPath)
+      ? withLegacyAssignedFallback(readJson(legacyProjectPath), 'legacy project')
       : {};
   const merged = { ...DEFAULTS };
   const sources = {};
@@ -382,7 +408,7 @@ const INTERNAL_KEYS = [
   'projectId',
   'kanbanFieldId',
   'kanbanOptionBacklog',
-  'kanbanOptionOnDeck',
+  'kanbanOptionAssigned',
   'kanbanOptionRefine',
   'kanbanOptionPlan',
   'kanbanOptionDevelop',

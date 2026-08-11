@@ -133,7 +133,7 @@ test('AC3: postStampFailureAudit degrades (no throw) when the post itself fails'
 test('AC4: reconcile backfill fills the missing prior-stage markers', async () => {
   const body = gapBody();
   // Confirm the precondition: refine + plan are genuine non-optional holes at
-  // develop (on-deck is an optional waiting room and is filtered by backfill).
+  // develop (assigned is an optional waiting room and is filtered by backfill).
   const rawHoles = verifyChainIntegrity(body, 'develop').holes;
   assert.ok(rawHoles.includes('refine') && rawHoles.includes('plan'));
 
@@ -159,7 +159,7 @@ test('AC4: reconcile backfill fills the missing prior-stage markers', async () =
   assert.match(written, /aitm-entered-refine/);
   assert.match(written, /aitm-entered-plan/);
   // The repaired chain has no remaining non-optional holes at develop.
-  const remaining = verifyChainIntegrity(written, 'develop').holes.filter((s) => s !== 'on-deck');
+  const remaining = verifyChainIntegrity(written, 'develop').holes.filter((s) => s !== 'assigned');
   assert.deepEqual(remaining, []);
 });
 

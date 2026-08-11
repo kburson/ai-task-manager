@@ -6,7 +6,7 @@
 //
 //   - Sequence set on the project board
 //   - Labels set on the issue (≥ 1)
-//   - Start Time set on the project board (auto-stamped at backlog→refine)
+//   - Start Time set on the project board (auto-stamped at assigned→refine)
 //
 // Returns `{ ok, blockers, projectValues, labels }`. All I/O is injectable;
 // the production wiring uses `projectValuesForIssue` and a GraphQL labels

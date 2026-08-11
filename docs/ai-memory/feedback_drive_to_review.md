@@ -6,7 +6,7 @@ originSessionId: e96a51b2-052b-40ba-8357-84786b2b5e77
 ---
 User wants stories driven all the way to the **Review** column without intermediate "should I proceed" check-ins. The Review column is the agreed handoff point — that's where the human reviews and gives feedback. Everything before Review is orchestrator domain.
 
-Vocabulary note: "R4R" (Ready For Review) is **retired terminology** — do not use it. The columns are Backlog → Refine → Plan → Develop → Test → Review → Done. The stop point is the Review column.
+Vocabulary note: "R4R" (Ready For Review) is **retired terminology** — do not use it. The columns are Backlog → Assigned → Refine → Plan → Develop → Test → Review → Done. The stop point is the Review column.
 
 **Why:** Repeated mid-flow confirmations slow down sub-issue throughput. The user named the pattern explicitly: "There have been too many checking for my feedback. I need you to take the story all the way to [Review] — that is where I will review the work and make any feedback."
 

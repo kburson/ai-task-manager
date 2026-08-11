@@ -1,7 +1,7 @@
 // @story #675 (AC3)
 // `refine` verb atomicity: the pre-Refine entry path stamps
 // `aitm-refine-complete` (+ rationale) BEFORE calling `verbPromote` to walk
-// backlog/on-deck up to Refine. If that promote call throws (a refused
+// backlog/assigned up to Refine. If that promote call throws (a refused
 // promote), the body must not be left claiming refine-complete without the
 // state having actually advanced — the marker must be rolled back.
 

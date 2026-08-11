@@ -20,7 +20,7 @@ assert.ok(LEGAL_TRANSITIONS.has('review->test'), 'expected legal arc: review->te
 let chain = '';
 for (const [s, ts] of [
   ['backlog', '2026-01-01T00:00:00Z'],
-  ['on-deck', '2026-01-01T12:00:00Z'],
+  ['assigned', '2026-01-01T12:00:00Z'],
   ['refine', '2026-01-02T00:00:00Z'],
   ['plan', '2026-01-03T00:00:00Z'],
   ['develop', '2026-01-04T00:00:00Z'],

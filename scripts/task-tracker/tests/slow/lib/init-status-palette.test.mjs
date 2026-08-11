@@ -24,7 +24,7 @@ const scriptSrc = readFileSync(script, 'utf8');
 
 const EXPECTED = [
   { name: 'Backlog', color: 'GRAY' },
-  { name: 'On Deck', color: 'GRAY' },
+  { name: 'Assigned', color: 'GRAY' },
   { name: 'Refine', color: 'GREEN' },
   { name: 'Plan', color: 'BLUE' },
   { name: 'Develop', color: 'YELLOW' },
@@ -48,7 +48,7 @@ const EXPECTED = [
   // not carry its own hardcoded color literals (the #415 drift bug).
   assert.doesNotMatch(
     scriptSrc,
-    /STATES_TO_CREATE\+=\("(?:Backlog|On Deck|Refine|Plan|Develop|Test|Review|Done):[A-Z]+"\)/,
+    /STATES_TO_CREATE\+=\("(?:Backlog|Assigned|Refine|Plan|Develop|Test|Review|Done):[A-Z]+"\)/,
     'STATES_TO_CREATE still hardcodes colors — it must use canon_color so it cannot drift'
   );
   assert.match(
@@ -74,7 +74,7 @@ spawnSync('mkdir', ['-p', binDir, targetDir, inputsDir], { check: true });
 // Board mirroring the broken real-world install: all 8 columns already
 // exist (so STATES_TO_CREATE is empty and no refetch is needed), but with the
 // GitHub default names "Todo"/"In Progress" and pre-fix wrong colors (incl.
-// "On Deck" carrying a wrong BLUE so normalization must recolor it to GRAY).
+// "Assigned" carrying a wrong BLUE so normalization must recolor it to GRAY).
 const ghMock = join(binDir, 'gh');
 writeFileSync(
   ghMock,
@@ -109,6 +109,9 @@ if [[ "$1" == "api" && "$2" == "graphql" ]]; then
     n=$(ls "${inputsDir}" | wc -l | tr -d ' ')
     printf '%s' "$body" > "${inputsDir}/\${n}.json"
     if [[ "$body" == *"updateProjectV2Field"* ]]; then
+      if [[ "$AITM_TEST_ASSIGNED_SHAPE" == "missing" ]]; then
+        touch "${temp}/assigned-created"
+      fi
       echo "F_STATUS"
     else
       echo "F_CREATED"
@@ -136,11 +139,20 @@ if [[ "$1" == "api" && "$2" == "graphql" ]]; then
     exit 0
   fi
   if [[ "$args" == *".data.node.fields.nodes"* || "$args" == *"fields(first:"* ]]; then
-    cat <<'JSON'
+    ASSIGNED_OPTIONS='    {"id":"O_ASSIGNED","name":"Assigned","color":"BLUE","description":""},'
+    if [[ "$AITM_TEST_ASSIGNED_SHAPE" == "legacy" ]]; then
+      ASSIGNED_OPTIONS='    {"id":"O_ASSIGNED","name":"On Deck","color":"BLUE","description":""},'
+    elif [[ "$AITM_TEST_ASSIGNED_SHAPE" == "both" ]]; then
+      ASSIGNED_OPTIONS='    {"id":"O_ASSIGNED","name":"On Deck","color":"BLUE","description":""},
+    {"id":"O_ASSIGNED_DUP","name":"Assigned","color":"GRAY","description":""},'
+    elif [[ "$AITM_TEST_ASSIGNED_SHAPE" == "missing" && ! -f "${temp}/assigned-created" ]]; then
+      ASSIGNED_OPTIONS=''
+    fi
+    cat <<JSON
 [
   {"id":"F_STATUS","name":"Status","options":[
     {"id":"O_BACKLOG","name":"Backlog","color":"GRAY","description":""},
-    {"id":"O_ON_DECK","name":"On Deck","color":"BLUE","description":""},
+\$ASSIGNED_OPTIONS
     {"id":"O_TODO","name":"Todo","color":"GREEN","description":""},
     {"id":"O_PLAN","name":"Plan","color":"PURPLE","description":""},
     {"id":"O_PROGRESS","name":"In Progress","color":"YELLOW","description":""},
@@ -189,27 +201,16 @@ exit 1
 );
 chmodSync(ghMock, 0o755);
 
-const input =
-  [
-    '', // use detected repo
-    '1', // select linked project
-    '', // status field default
-    '', // estimate field default
-    '', // engaged field default
-    '', // session field default
-    '', // review field default
-    '', // plan field default
-    '', // rank field default
-    '', // started field default
-    '',
-    '',
-    '',
-  ].join('\n') + '\n';
+const input = ['', '1', '', ...Array(24).fill('')].join('\n') + '\n';
 
 const result = spawnSync('bash', [script, '--target', targetDir], {
   input,
   encoding: 'utf8',
-  env: { ...process.env, PATH: `${binDir}:${process.env.PATH}` },
+  env: {
+    ...process.env,
+    AITM_TEST_ASSIGNED_SHAPE: 'canonical',
+    PATH: `${binDir}:${process.env.PATH}`,
+  },
 });
 
 assert.equal(result.status, 0, `${result.stderr}\n${result.stdout}`);
@@ -239,13 +240,78 @@ assert.equal(
   'Develop must reuse the matched "In Progress" option id'
 );
 assert.equal(
-  byName['On Deck'].id,
-  'O_ON_DECK',
-  'On Deck must reuse the matched "On Deck" option id (recolored in place, not recreated)'
+  byName['Assigned'].id,
+  'O_ASSIGNED',
+  'Assigned must reuse the matched "Assigned" option id (recolored in place, not recreated)'
 );
 // Every managed option carries an id (in-place edit, never create).
 for (const o of opts.slice(0, 8)) {
   assert.ok(o.id && o.id.length > 0, `managed option ${o.name} must carry an id`);
 }
+
+function updatePayloads() {
+  return readdirSync(inputsDir)
+    .map((f) => JSON.parse(readFileSync(join(inputsDir, f), 'utf8')))
+    .filter((p) => typeof p.query === 'string' && p.query.includes('updateProjectV2Field'));
+}
+
+function runAssignedShape(shape) {
+  const runTarget = join(temp, `target-${shape}`);
+  spawnSync('mkdir', ['-p', runTarget], { check: true });
+  const run = spawnSync('bash', [script, '--target', runTarget], {
+    input,
+    encoding: 'utf8',
+    env: {
+      ...process.env,
+      AITM_TEST_ASSIGNED_SHAPE: shape,
+      PATH: `${binDir}:${process.env.PATH}`,
+    },
+  });
+  return { ...run, target: runTarget };
+}
+
+// A board with neither spelling may create Assigned normally.  The first
+// Status mutation includes the new option without an id; the mock then exposes
+// its created id on the script's refetch so init can finish normally.
+const missingResult = runAssignedShape('missing');
+assert.equal(missingResult.status, 0, `${missingResult.stderr}\n${missingResult.stdout}`);
+assert.ok(
+  updatePayloads().some(({ variables }) =>
+    variables.opts.some(({ id, name }) => name === 'Assigned' && id == null)
+  ),
+  'a fresh board should create the canonical Assigned option'
+);
+
+// An unambiguous legacy board may finish config authoring with the stable old
+// option id, but it may not rename the board.  Palette normalization stays off
+// and the operator receives package-resolved dry-run/apply commands.
+const beforeLegacy = updatePayloads().length;
+const legacy = runAssignedShape('legacy');
+assert.equal(legacy.status, 0, `${legacy.stderr}\n${legacy.stdout}`);
+assert.match(legacy.stdout + legacy.stderr, /rename-on-deck-to-assigned\.mjs.*--apply/);
+assert.equal(
+  updatePayloads().length,
+  beforeLegacy,
+  'legacy-only board must emit zero updateProjectV2Field mutations'
+);
+const legacyConfig = JSON.parse(
+  readFileSync(join(legacy.target, '.ai-task-manager/task-tracker.json'), 'utf8')
+);
+assert.equal(legacyConfig.kanbanOptionAssigned, 'O_ASSIGNED');
+assert.ok(!('kanbanOptionOnDeck' in legacyConfig));
+
+// Both spellings are ambiguous even to the explicit migration, so init fails
+// closed before mutation and tells the operator to resolve the duplicate first.
+const beforeBoth = updatePayloads().length;
+const both = runAssignedShape('both');
+assert.notEqual(both.status, 0, 'both-spellings board should fail closed');
+assert.match(both.stdout + both.stderr, /both 'On Deck' and 'Assigned'/);
+assert.match(both.stdout + both.stderr, /resolve the ambiguous duplicate/i);
+assert.match(both.stdout + both.stderr, /rename-on-deck-to-assigned\.mjs/);
+assert.equal(
+  updatePayloads().length,
+  beforeBoth,
+  'both-spellings board must emit zero updateProjectV2Field mutations'
+);
 
 console.log('init-status-palette: OK');

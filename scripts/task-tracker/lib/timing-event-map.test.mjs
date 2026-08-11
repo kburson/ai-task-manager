@@ -54,6 +54,7 @@ test('phase events classify as phase', () => {
     'develop:completed',
     'test:passed',
     'review:approved',
+    'assigned:started',
     'on-deck:started',
     'backlog:created',
     'issue:wrap',

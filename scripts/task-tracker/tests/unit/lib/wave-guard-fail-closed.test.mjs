@@ -6,7 +6,7 @@
 // are fail-closed, so the guard must refuse the move rather than wave it through.
 //
 // Covers the three guards flagged by #562 audit defect D3:
-//   - backlog-exit-child-parent-state-guard.mjs  (on-deck → refine)
+//   - backlog-exit-child-parent-state-guard.mjs  (assigned → refine)
 //   - refine-exit-child-parent-state-guard.mjs   (refine → plan)
 //   - child-cannot-lead-epic-exit-guard.mjs      (every forward transition)
 
@@ -29,13 +29,13 @@ const throwStatus = () => {
   throw new Error('gh project status read: transient API failure');
 };
 
-// --- Guard 1: backlog-exit (on-deck → refine) ----------------------------------
+// --- Guard 1: backlog-exit (assigned → refine) ----------------------------------
 
 test('#565 backlog-exit: fetchParentIssue throw → fail closed', async () => {
   const r = await backlogExitChildParentStateGuard.run({
     cfg: CFG,
     issueNumber: 900,
-    fromState: 'on-deck',
+    fromState: 'assigned',
     toState: 'refine',
     deps: { fetchParentIssue: throwFetch },
   });
@@ -47,7 +47,7 @@ test('#565 backlog-exit: readParentStatus throw → fail closed', async () => {
   const r = await backlogExitChildParentStateGuard.run({
     cfg: CFG,
     issueNumber: 900,
-    fromState: 'on-deck',
+    fromState: 'assigned',
     toState: 'refine',
     deps: { fetchParentIssue: async () => 100, readParentStatus: throwStatus },
   });
@@ -59,7 +59,7 @@ test('#565 backlog-exit: genuine no-parent (fetch returns null) → ok:true', as
   const r = await backlogExitChildParentStateGuard.run({
     cfg: CFG,
     issueNumber: 900,
-    fromState: 'on-deck',
+    fromState: 'assigned',
     toState: 'refine',
     deps: { fetchParentIssue: async () => null },
   });

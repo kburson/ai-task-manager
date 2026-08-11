@@ -20,6 +20,17 @@ test('readMoveCompleteState returns empty when absent', () => {
   assert.equal(readMoveCompleteState('no marker here'), '');
 });
 
+test('historical On Deck sentinels read as Assigned and writers stay canonical', () => {
+  assert.equal(
+    readMoveCompleteState('<!-- aitm-move-complete state=on-deck ts=2026-07-08T00:00:00.000Z -->'),
+    'assigned'
+  );
+  assert.doesNotMatch(
+    writeMoveCompleteMarker('Body', 'on-deck', '2026-07-08T00:00:00.000Z'),
+    /state=on-deck/
+  );
+});
+
 test('isMoveComplete requires sentinel AND status AND markers AND both rows', () => {
   const all = {
     sentinelState: 'test',

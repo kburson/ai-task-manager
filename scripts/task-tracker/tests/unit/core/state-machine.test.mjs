@@ -27,7 +27,7 @@ const BACKWARD = Object.fromEntries(
 test('STATES is the canonical 8-state chain in order', () => {
   assert.deepEqual(STATES, [
     'backlog',
-    'on-deck',
+    'assigned',
     'refine',
     'plan',
     'develop',
@@ -39,8 +39,8 @@ test('STATES is the canonical 8-state chain in order', () => {
 
 test('FORWARD covers every adjacent forward pair', () => {
   const pairs = [
-    ['backlog', 'on-deck'],
-    ['on-deck', 'refine'],
+    ['backlog', 'assigned'],
+    ['assigned', 'refine'],
     ['refine', 'plan'],
     ['plan', 'develop'],
     ['develop', 'test'],
@@ -53,18 +53,18 @@ test('FORWARD covers every adjacent forward pair', () => {
   }
 });
 
-test('no backlog→refine shortcut — every item passes through On Deck', () => {
-  assert.equal(FORWARD.backlog, 'on-deck');
+test('no backlog→refine shortcut — every item passes through Assigned', () => {
+  assert.equal(FORWARD.backlog, 'assigned');
   const r = validateTransition('backlog', 'refine');
   assert.equal(r.ok, false);
   assert.match(r.reason, /illegal transition/);
 });
 
-test('BACKWARD allows on-deck→backlog, test→develop and review→develop', () => {
-  assert.equal(BACKWARD['on-deck'], 'backlog');
+test('BACKWARD allows assigned→backlog, test→develop and review→develop', () => {
+  assert.equal(BACKWARD['assigned'], 'backlog');
   assert.equal(BACKWARD.test, 'develop');
   assert.deepEqual(BACKWARD.review, ['develop', 'test']);
-  assert.deepEqual(validateTransition('on-deck', 'backlog'), { ok: true });
+  assert.deepEqual(validateTransition('assigned', 'backlog'), { ok: true });
   assert.deepEqual(validateTransition('test', 'develop'), { ok: true });
   assert.deepEqual(validateTransition('review', 'develop'), { ok: true });
 });
@@ -126,7 +126,7 @@ test('illegal backward transitions refuse', () => {
 });
 
 // #848 — refine/plan → backlog is the `park` verb's transition (premise
-// falsified / deprioritized), added to the BACKWARD map alongside on-deck→backlog
+// falsified / deprioritized), added to the BACKWARD map alongside assigned→backlog
 // and test|review→develop.
 test('refine→backlog and plan→backlog are legal (park verb, #848)', () => {
   assert.equal(BACKWARD.refine, 'backlog');
@@ -149,23 +149,31 @@ test('unknown state strings refuse with unknown-state message', () => {
   assert.match(r3.reason, /unknown state/);
 });
 
-// #436 — regression: normalizeStateSlug must collapse a multi-word board
-// display name to its canonical kebab slug. Before the fix it only lowercased,
-// so "On Deck" (the first multi-word state, added in #433) resolved to
-// "on deck" (space) and downstream consumers — the live-board-status → slug
-// path #433's AC5 never exercised — rejected it as an unknown stage.
-test('normalizeStateSlug maps the multi-word display name "On Deck" to "on-deck"', () => {
-  assert.equal(normalizeStateSlug('On Deck'), 'on-deck');
+test('normalizeStateSlug maps the canonical display name "Assigned" to "assigned"', () => {
+  assert.equal(normalizeStateSlug('Assigned'), 'assigned');
 });
 
-test('normalizeStateSlug collapses interior whitespace runs and trims', () => {
-  assert.equal(normalizeStateSlug('  On   Deck  '), 'on-deck');
-  assert.equal(normalizeStateSlug('On\tDeck'), 'on-deck');
-  assert.equal(normalizeStateSlug('On Deck Soon'), 'on-deck-soon');
+// #436 originally pinned whitespace-to-hyphen normalization for the multi-word
+// `On Deck` display name added by #433. #1206 retains that spelling as a read
+// alias while projecting it onto the canonical `assigned` state.
+test('normalizeStateSlug preserves historical On Deck display-name compatibility', () => {
+  assert.equal(normalizeStateSlug('On Deck'), 'assigned');
+  assert.equal(normalizeStateSlug('  On   Deck  '), 'assigned');
+  assert.equal(normalizeStateSlug('On\tDeck'), 'assigned');
+  assert.equal(normalizeStateSlug('Assigned Soon'), 'assigned-soon');
 });
 
 test('normalizeStateSlug leaves every single-word state slug unchanged', () => {
-  const displayNames = ['Backlog', 'Refine', 'Plan', 'Develop', 'Test', 'Review', 'Done'];
+  const displayNames = [
+    'Backlog',
+    'Assigned',
+    'Refine',
+    'Plan',
+    'Develop',
+    'Test',
+    'Review',
+    'Done',
+  ];
   for (const name of displayNames) {
     const slug = name.toLowerCase();
     assert.equal(normalizeStateSlug(name), slug, `${name} should normalize to ${slug}`);

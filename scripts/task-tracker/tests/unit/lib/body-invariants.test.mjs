@@ -70,6 +70,14 @@ test('findLostMarkers reports each lost aitm-entered-<stage> individually', () =
   assert.deepEqual(lost.sort(), ['aitm-entered-plan', 'aitm-entered-refine']);
 });
 
+test('#1206: historical second-stage marker bytes remain append-only audit residue', () => {
+  const historical = '<!-- aitm-entered-on-deck ts="2026-06-01T00:00:00Z" -->\n';
+  assert.deepEqual(findLostMarkers(historical, ''), ['aitm-entered-on-deck']);
+  const canonical = '<!-- aitm-entered-assigned ts="2026-06-01T00:00:00Z" -->\n';
+  assert.deepEqual(findLostMarkers(historical, canonical), ['aitm-entered-on-deck']);
+  assert.deepEqual(findLostMarkers(historical, historical + canonical), []);
+});
+
 test('findLostMarkers reports multiple single-kind markers when several drop', () => {
   const base =
     '## AC\n<!-- aitm-fields: {} -->\n<!-- aitm-body-version: 1 -->\n<!-- aitm-stage-rollup: refine=1 -->\n<!-- aitm-plan-approved: 2026-06-01 -->\n';

@@ -69,7 +69,7 @@ This article explains why specs need an execution layer underneath them, the lay
 
 I introduced AITM — `@kburson/ai-task-manager` — in the [opening article](00-technical-product-operations.md#aitm-and-the-backlog-manager-pattern): the skill I built after hitting the exact wall described above one too many times. This is the piece of AITM that answers the spec-to-story gap directly.
 
-AITM treats the backlog as the execution layer beneath the spec. The spec becomes epics, sub-issues, standalone stories, dependencies, sequence waves, estimates, and acceptance criteria. Each item then moves through a state machine — Backlog, On Deck, Refine, Plan, Develop, Test, Review, Done — and every state carries an entry gate, a state action, and an exit gate.
+AITM treats the backlog as the execution layer beneath the spec. The spec becomes epics, sub-issues, standalone stories, dependencies, sequence waves, estimates, and acceptance criteria. Each item then moves through a state machine — Backlog, Assigned, Refine, Plan, Develop, Test, Review, Done — and every state carries an entry gate, a state action, and an exit gate.
 
 The just-in-time planner is the bridge I built between the spec and the implementation. It delays detailed design until the smallest useful work item reaches the Plan state, then requires a deep-dive analysis against the actual repository before any code is touched in Develop. That is progressive elaboration enforced structurally rather than left to individual judgment.
 

@@ -13,11 +13,11 @@ import { buildRow } from '../../../gh-timing-comment.mjs';
 
 // ---- 1. Table completeness: all 14 lifecycle events present --------------
 // #516 — uniform `<state>:<past-tense>` vocabulary. 8 enter events: backlog,
-// on-deck, refine, plan, develop, test, review, done. 6 complete events:
+// assigned, refine, plan, develop, test, review, done. 6 complete events:
 // refine, plan, develop, test, review (now a true pair), done.
 const expected = [
   ['backlog', 'enter', 'backlog:created', 'task created in Backlog'],
-  ['on-deck', 'enter', 'on-deck:started', 'queued on deck'],
+  ['assigned', 'enter', 'assigned:started', 'assigned and ready to work'],
   ['refine', 'enter', 'refine:started', 'start refinement'],
   ['refine', 'complete', 'refine:completed', 'refinement completed'],
   ['plan', 'enter', 'plan:started', 'plan started'],
@@ -50,10 +50,10 @@ for (const state of Object.keys(PHASE_EVENTS)) {
 }
 assert.equal(actualCount, 14, 'PHASE_EVENTS must have exactly 14 entries');
 
-// ---- 2. Terminal states (no `complete`) — backlog, on-deck only ----------
+// ---- 2. Terminal states (no `complete`) — backlog, assigned only ----------
 // #516 — review is now a true entry/exit pair, so it is no longer terminal.
 // `done` carries BOTH enter (`issue:wrap`) and complete (`issue:closed`).
-for (const state of ['backlog', 'on-deck']) {
+for (const state of ['backlog', 'assigned']) {
   assert.equal(
     PHASE_EVENTS[state].complete,
     undefined,

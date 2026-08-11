@@ -31,6 +31,8 @@ import { isChoreModeActive } from './lib/chore-mode.mjs';
 import { readDeepDiveSignals } from './lib/deep-dive.mjs';
 import { SCRATCH_REL_PREFIX, statePath as resolveStatePath } from './paths.mjs';
 import { classifyEdit, isAllowed, loadPolicy, DEFAULT_POLICY } from './activity-policy.mjs';
+import { loadConfig } from './config.mjs';
+import { normalizeStateId, stateConfigKey, stateIds } from './lib/lifecycle-policy/index.mjs';
 
 const pexec = promisify(execFile);
 
@@ -39,7 +41,7 @@ export const CACHE_TTL_MS = 30_000;
 export const ALLOWLIST_PREFIXES = ['.tmp/', SCRATCH_REL_PREFIX];
 
 // States that LACK source-edit permission (below `develop`).
-const PRE_DEVELOP_STATES = new Set(['backlog', 'on-deck', 'refine', 'plan', 'unknown']);
+const PRE_DEVELOP_STATES = new Set(['backlog', 'assigned', 'refine', 'plan', 'unknown']);
 
 // States AT or PAST `develop` where the state machine has already closed the
 // coding window (#805). WRITE_CODE edits here are refused fail-closed; edits
@@ -115,7 +117,7 @@ export function decideSourceEdit({
     };
   }
 
-  const state = (issueState || 'unknown').toLowerCase();
+  const state = normalizeStateId(issueState) || 'unknown';
 
   if (PRE_DEVELOP_STATES.has(state)) {
     return {
@@ -228,7 +230,10 @@ export function readCache(projectDir, boundIssue) {
     if (!c || c.issue !== boundIssue) return null;
     if (typeof c.fetchedAt !== 'number') return null;
     if (Date.now() - c.fetchedAt > CACHE_TTL_MS) return null;
-    return c;
+    return {
+      ...c,
+      state: normalizeStateId(c.state) || 'unknown',
+    };
   } catch {
     return null;
   }
@@ -238,7 +243,12 @@ export function writeCache(projectDir, entry) {
   const p = cacheFilePath(projectDir);
   try {
     mkdirSync(path.dirname(p), { recursive: true });
-    writeFileSync(p, JSON.stringify({ ...entry, fetchedAt: Date.now() }, null, 2));
+    const canonicalEntry = {
+      ...entry,
+      ...(entry?.state ? { state: normalizeStateId(entry.state) } : {}),
+      fetchedAt: Date.now(),
+    };
+    writeFileSync(p, JSON.stringify(canonicalEntry, null, 2));
   } catch {
     /* tolerate */
   }
@@ -247,22 +257,16 @@ export function writeCache(projectDir, entry) {
 // Maps a kanbanOption* GUID back to its lowercase verb-state name.
 function mapKanbanToState(cfg, optionId) {
   if (!cfg || !optionId) return 'unknown';
-  const reverse = {
-    [cfg.kanbanOptionBacklog]: 'backlog',
-    [cfg.kanbanOptionRefine]: 'refine',
-    [cfg.kanbanOptionPlan]: 'plan',
-    [cfg.kanbanOptionDevelop]: 'develop',
-    [cfg.kanbanOptionTest]: 'test',
-    [cfg.kanbanOptionReview]: 'review',
-    [cfg.kanbanOptionDone]: 'done',
-  };
-  return reverse[optionId] || 'unknown';
+  return stateIds().find((state) => cfg[stateConfigKey(state)] === optionId) || 'unknown';
 }
 
 // Cold path: fetch state + markers via `gh`. Returns `{ state, hasPostedMarker, hasCompleteMarker }`.
 export async function fetchIssueSignals(boundIssue, projectDir, deps = {}) {
   const ghImpl = deps.gh || (async (args) => (await pexec('gh', args, { timeout: 5000 })).stdout);
-  const cfg = JSON.parse(readFileSync(configPath(projectDir), 'utf8'));
+  const cfg = loadConfig({
+    projectPath: configPath(projectDir),
+    userPath: path.join(projectDir, '.ai-task-manager', '.cache', 'no-user-config.json'),
+  });
   const issueNum = boundIssue.replace(/^#/, '');
   const out = await ghImpl([
     'issue',
@@ -286,7 +290,7 @@ export async function fetchIssueSignals(boundIssue, projectDir, deps = {}) {
       break;
     }
     // Some gh shapes expose the option name directly:
-    const name = (item.status?.name || item['Status']?.name || '').toLowerCase();
+    const name = normalizeStateId(item.status?.name || item['Status']?.name || '');
     if (name) {
       state = name;
       break;

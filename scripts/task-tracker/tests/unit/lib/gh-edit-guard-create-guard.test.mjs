@@ -35,6 +35,29 @@ import {
     issueNumber: 258,
   });
   assert.equal(r.block, false);
+
+  // Historical second-stage marker bytes remain append-only audit residue.
+  const ENTER_LEGACY = '<!-- aitm-entered-on-deck: 2026-06-01T08:00:00Z -->';
+  r = checkBodyChange({
+    newBody: '## Scope\n',
+    currentBody: `## Scope\n${ENTER_LEGACY}\n`,
+    issueNumber: 1206,
+  });
+  assert.equal(r.block, true);
+  assert.match(r.reason, /aitm-entered-on-deck/);
+  r = checkBodyChange({
+    newBody: '## Scope\n<!-- aitm-entered-assigned: 2026-06-01T08:00:00Z -->\n',
+    currentBody: `## Scope\n${ENTER_LEGACY}\n`,
+    issueNumber: 1206,
+  });
+  assert.equal(r.block, true);
+  assert.match(r.reason, /aitm-entered-on-deck/);
+  r = checkBodyChange({
+    newBody: `## Scope\n${ENTER_LEGACY}\n<!-- aitm-entered-assigned: 2026-06-01T08:00:00Z -->\n`,
+    currentBody: `## Scope\n${ENTER_LEGACY}\n`,
+    issueNumber: 1206,
+  });
+  assert.equal(r.block, false);
 }
 
 // ── checkBodyChange: aitm-entered-<stage> set-diff drop (#258) ────────────────

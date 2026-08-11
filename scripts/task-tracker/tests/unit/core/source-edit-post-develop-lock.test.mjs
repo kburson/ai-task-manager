@@ -5,7 +5,7 @@
 // Reproducing regression test for the jailbreak hole: a `test`-state WRITE_CODE
 // edit (e.g. editing a `*.test.mjs` regression test out-of-band to make it pass)
 // was ALLOWED because `decideSourceEdit` had no rule for post-develop states —
-// `PRE_DEVELOP_STATES` blocked backlog/on-deck/refine/plan/unknown, `develop`
+// `PRE_DEVELOP_STATES` blocked backlog/assigned/refine/plan/unknown, `develop`
 // gated on deep-dive markers, and every later state (`test`/`review`/`done`) fell
 // through to `{decision:'allow'}`. This drove the demonstrated #801 jailbreak.
 //

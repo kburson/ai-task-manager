@@ -47,10 +47,10 @@ group below.
 
 | Verb                | Purpose                                                                                                                                                                  |
 | ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `promote` / `next`  | Advance one forward state (Backlog→On Deck→Refine→Plan→Develop→Test→Review→Done).                                                                                        |
+| `promote` / `next`  | Advance one forward state (Backlog→Assigned→Refine→Plan→Develop→Test→Review→Done).                                                                                       |
 | `demote`            | Return one state backward (from Test or Review back to Develop).                                                                                                         |
 | `park`              | Return a Refine or Plan issue to Backlog (premise falsified, deprioritized); keeps Priority/Size/Estimate.                                                               |
-| `refine`            | Atomic Backlog→Refine: set Priority+Size+Estimate, write the rationale marker, enter Refine.                                                                             |
+| `refine`            | Atomic pre-Refine entry: set Priority+Size+Estimate, write the rationale marker, then walk Backlog→Assigned→Refine (or Assigned→Refine).                                 |
 | `plan`              | Refine→Plan (Sprint-Planning entry); distinct from `discover`'s backlog-item generation. Refuses on any other current state.                                             |
 | `plan-approve`      | Record plan approval with durable human or Full-Auto provenance (stamps the `aitm-plan-approved` marker Plan→Develop needs).                                             |
 | `plan-estimate`     | Converge the detailed human Plan estimate and publish a separate AI forecast.                                                                                            |
@@ -203,19 +203,19 @@ which existed in the v1 spec above.
 ### The eight states
 
 ```
-Backlog → On Deck → Refine → Plan → Develop → Test → Review → Done
+Backlog → Assigned → Refine → Plan → Develop → Test → Review → Done
 ```
 
-| State     | Board column | What happens here                                                                                                                                                                                            |
-| --------- | ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `backlog` | Backlog      | Collection of prioritized backlog items (user stories, tasks).                                                                                                                                               |
-| `on-deck` | On Deck      | Inert, gateless tranche waiting room. `backlog → on-deck` carries no entry gate; the Priority gate lives on `on-deck → refine`. Every item passes through On Deck — there is no `backlog → refine` shortcut. |
-| `refine`  | Refine       | Backlog item is shaped to be ready for planning: acceptance criteria, estimate, size, priority, labels.                                                                                                      |
-| `plan`    | Plan         | Deep-dive on the story to determine a plan of action: enhanced ACs, refined estimate, plan approval.                                                                                                         |
-| `develop` | Develop      | Code changes are made and committed against the story, including test automation.                                                                                                                            |
-| `test`    | Test         | Committed source is run against all ACs and test automation in a sandboxed/isolated worktree.                                                                                                                |
-| `review`  | Review       | Story waits for review of functionality; ACs (functional + non-functional) are confirmed met.                                                                                                                |
-| `done`    | Done         | All ACs and Definition of Done are satisfied. Terminal — no exit guards.                                                                                                                                     |
+| State      | Board column | What happens here                                                                                                                                                                                                                                                                                                                |
+| ---------- | ------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `backlog`  | Backlog      | Collection of prioritized backlog items (user stories, tasks).                                                                                                                                                                                                                                                                   |
+| `assigned` | Assigned     | Assigned / in-play / ready to work. It is an inert, gateless tranche waiting room: `backlog → assigned` carries no entry gate, while the Priority gate lives on `assigned → refine`. Every item passes through Assigned — there is no `backlog → refine` shortcut. Use the GitHub Project `Assignees` field to filter ownership. |
+| `refine`   | Refine       | Backlog item is shaped to be ready for planning: acceptance criteria, estimate, size, priority, labels.                                                                                                                                                                                                                          |
+| `plan`     | Plan         | Deep-dive on the story to determine a plan of action: enhanced ACs, refined estimate, plan approval.                                                                                                                                                                                                                             |
+| `develop`  | Develop      | Code changes are made and committed against the story, including test automation.                                                                                                                                                                                                                                                |
+| `test`     | Test         | Committed source is run against all ACs and test automation in a sandboxed/isolated worktree.                                                                                                                                                                                                                                    |
+| `review`   | Review       | Story waits for review of functionality; ACs (functional + non-functional) are confirmed met.                                                                                                                                                                                                                                    |
+| `done`     | Done         | All ACs and Definition of Done are satisfied. Terminal — no exit guards.                                                                                                                                                                                                                                                         |
 
 `promote` walks this chain forward one state at a time; `demote` walks Test or
 Review back to Develop. `refine`, `park`, `plan`, `plan-approve`, `pull-next`,
@@ -335,14 +335,14 @@ Precedence: project-local > user-global > hardcoded defaults.
 
 **Internal keys** (managed by `npx ai-task-manager init` — do not set manually):
 
-| Key                                                                                                                                                                                                                                                     | Purpose                                      |
-| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------- |
-| `projectId`                                                                                                                                                                                                                                             | GH Projects V2 project node ID               |
-| `kanbanFieldId`                                                                                                                                                                                                                                         | Kanban single-select field ID                |
-| `kanbanOptionBacklog` / `OnDeck` / `Refine` / `Plan` / `Develop` / `Test` / `Review` / `Done` (canonical config keys, one per state slug; the project-tether maps state slugs onto them — see `scripts/gh/lib/project-tether.mjs` `STATUS_CONFIG_KEYS`) | Kanban option IDs                            |
-| `sequenceFieldId`                                                                                                                                                                                                                                       | Numeric Sequence field ID (fan-out ordering) |
-| `priorityFieldId`                                                                                                                                                                                                                                       | Priority single-select field ID              |
-| `priorityOptionP0` / `P1` / `P2`                                                                                                                                                                                                                        | Priority option IDs                          |
+| Key                                                                                                                                                                                                                                                                                                                                           | Purpose                                      |
+| --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------- |
+| `projectId`                                                                                                                                                                                                                                                                                                                                   | GH Projects V2 project node ID               |
+| `kanbanFieldId`                                                                                                                                                                                                                                                                                                                               | Kanban single-select field ID                |
+| `kanbanOptionBacklog` / `kanbanOptionAssigned` / `kanbanOptionRefine` / `kanbanOptionPlan` / `kanbanOptionDevelop` / `kanbanOptionTest` / `kanbanOptionReview` / `kanbanOptionDone` (canonical config keys, one per state slug; the project-tether maps state slugs onto them — see `scripts/gh/lib/project-tether.mjs` `STATUS_CONFIG_KEYS`) | Kanban option IDs                            |
+| `sequenceFieldId`                                                                                                                                                                                                                                                                                                                             | Numeric Sequence field ID (fan-out ordering) |
+| `priorityFieldId`                                                                                                                                                                                                                                                                                                                             | Priority single-select field ID              |
+| `priorityOptionP0` / `P1` / `P2`                                                                                                                                                                                                                                                                                                              | Priority option IDs                          |
 
 ## State File
 
@@ -550,7 +550,7 @@ scripts/task-tracker/
 ├── states/                        # 9 files — one per kanban state plus the index:
 │   ├── index.mjs                  #   STATES map, FORWARD_CHAIN, Guard/Action contract docs
 │   ├── backlog.mjs
-│   ├── on-deck.mjs
+│   ├── assigned.mjs
 │   ├── refine.mjs
 │   ├── plan.mjs
 │   ├── develop.mjs                #   worked example in State Machine section above

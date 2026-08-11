@@ -17,7 +17,7 @@ import { EXECUTABLE_MATRIX } from '../../fixtures/state-engine-policy-baseline.m
 
 const EXPECTED_STATES = [
   'backlog',
-  'on-deck',
+  'assigned',
   'refine',
   'plan',
   'develop',
@@ -28,7 +28,7 @@ const EXPECTED_STATES = [
 
 const EXPECTED_CONFIG_KEYS = [
   'kanbanOptionBacklog',
-  'kanbanOptionOnDeck',
+  'kanbanOptionAssigned',
   'kanbanOptionRefine',
   'kanbanOptionPlan',
   'kanbanOptionDevelop',
@@ -52,8 +52,8 @@ test('state queries expose ordered identity and configuration metadata without a
 
 test('executable target queries expose only forward and runtime-walkable reverse edges', () => {
   assert.deepEqual(Object.fromEntries(stateIds().map((state) => [state, forwardTarget(state)])), {
-    backlog: 'on-deck',
-    'on-deck': 'refine',
+    backlog: 'assigned',
+    assigned: 'refine',
     refine: 'plan',
     plan: 'develop',
     develop: 'test',
@@ -62,7 +62,7 @@ test('executable target queries expose only forward and runtime-walkable reverse
     done: undefined,
   });
 
-  assert.deepEqual(backwardTargets('on-deck'), ['backlog']);
+  assert.deepEqual(backwardTargets('assigned'), ['backlog']);
   assert.deepEqual(backwardTargets('refine'), ['backlog']);
   assert.deepEqual(backwardTargets('plan'), ['backlog']);
   assert.deepEqual(backwardTargets('test'), ['develop']);

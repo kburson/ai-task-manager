@@ -1,4 +1,4 @@
-// Refine-stage estimate comment poster. Fires on On Deck → Refine in promote.mjs.
+// Refine-stage estimate comment poster. Fires on Assigned → Refine in promote.mjs.
 //
 // Symmetric to apply-reevaluate.mjs: reads the agent-authored rationale marker
 // from the issue body, combines it with the project board's Size / Estimate /
@@ -108,7 +108,7 @@ async function defaultMutateIssueBody({ issueNumber, repo, mutate }) {
   await mutateIssueBody({ issueNumber, repo, mutate, deps: { pexec } });
 }
 
-// On Deck → Refine gate (#133, relocated from Backlog → Refine in #433):
+// Assigned → Refine gate (#133, relocated from Backlog → Refine in #433):
 // require only Priority on the board. Sizing and rationale are produced during
 // Refine and verified at Refine → Plan.
 export async function planPriorityGate({ cfg, issueNumber, deps = {} } = {}) {

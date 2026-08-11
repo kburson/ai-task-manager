@@ -52,7 +52,7 @@ help` forwards the help token to the target, which self-documents.
 ## 3. The state machine and its guards
 
 Work moves through eight kanban states —
-`backlog → on-deck → refine → plan → develop → test → review → done` — and the
+`backlog → assigned → refine → plan → develop → test → review → done` — and the
 column on the GitHub Projects board is the source of truth for state.
 
 - **Single state-mutator.** Only `scripts/gh/move-state.mjs` writes the Status

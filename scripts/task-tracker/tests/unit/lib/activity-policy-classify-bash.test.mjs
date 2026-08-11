@@ -132,7 +132,7 @@ test('STATE_MATRIX: matches epic #61 allow-list verbatim', () => {
 });
 
 test('isAllowed: every state allows READ_*', () => {
-  for (const s of ['backlog', 'refine', 'plan', 'develop', 'test', 'review', 'done']) {
+  for (const s of ['backlog', 'assigned', 'refine', 'plan', 'develop', 'test', 'review', 'done']) {
     assert.equal(isAllowed(s, 'READ_*'), true, `${s} should allow READ_*`);
   }
 });

@@ -58,7 +58,16 @@ for (const legacy of ['in-progress', 'in-review', 'r4r', 'ready']) {
 }
 
 // Test: each new state with TT_SKIP_NETWORK prints success without hitting GH
-for (const state of ['backlog', 'refine', 'plan', 'develop', 'test', 'review', 'done']) {
+for (const state of [
+  'backlog',
+  'assigned',
+  'refine',
+  'plan',
+  'develop',
+  'test',
+  'review',
+  'done',
+]) {
   const sandbox = mkdtempSync(path.join(projectScratchDir('test'), `tt-ms-${state}-`));
   mkdirSync(path.join(sandbox, '.ai-task-manager'), { recursive: true });
   writeFileSync(
@@ -69,6 +78,7 @@ for (const state of ['backlog', 'refine', 'plan', 'develop', 'test', 'review', '
         projectId: 'PVT_test123',
         kanbanFieldId: 'PVTF_test',
         kanbanOptionBacklog: 'PVTO_b',
+        kanbanOptionAssigned: 'PVTO_assigned',
         kanbanOptionRefine: 'PVTO_g',
         kanbanOptionPlan: 'PVTO_a',
         kanbanOptionDevelop: 'PVTO_d',

@@ -37,7 +37,7 @@ test('needsBackfill: false when refine-entry present and no later-stage markers 
   assert.equal(needsBackfill(body), false);
 });
 
-test('needsBackfill: false when no later-stage markers (issue still in backlog/refine)', () => {
+test('needsBackfill: false when no later-stage markers (issue still in backlog/assigned/refine)', () => {
   assert.equal(needsBackfill('## Scope\n\nstill being refined'), false);
 });
 

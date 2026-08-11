@@ -72,6 +72,23 @@ test('#664: readCache returns the entry on a fresh hit', () => {
   }
 });
 
+test('#1206: legacy On Deck cache entries read as Assigned and new writes are canonical', () => {
+  const { dir, cleanup } = makeProjectDir();
+  try {
+    const sidecar = cacheFilePath(dir);
+    mkdirSync(path.dirname(sidecar), { recursive: true });
+    writeFileSync(
+      sidecar,
+      JSON.stringify({ issue: '#1206', state: 'on-deck', fetchedAt: Date.now() })
+    );
+    assert.equal(readCache(dir, '#1206').state, 'assigned');
+    writeCache(dir, { issue: '#1206', state: 'on-deck' });
+    assert.equal(JSON.parse(readFileSync(sidecar, 'utf8')).state, 'assigned');
+  } finally {
+    cleanup();
+  }
+});
+
 test('#664: readCache returns null on a miss (no sidecar)', () => {
   const { dir, cleanup } = makeProjectDir();
   try {
