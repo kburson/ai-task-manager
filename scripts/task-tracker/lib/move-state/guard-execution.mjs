@@ -24,7 +24,7 @@ import { runGuards } from '../guard-registry.mjs';
 import '../guard-bootstrap.mjs';
 import { decideBodyFetchFailure } from '../body-fetch-gate.mjs';
 import { parseIssueFieldDb } from '../../issue-field-db.mjs';
-import { durableWordMarker } from '../../state.mjs';
+import { durableWordMarkers } from '../../state.mjs';
 import { getProjectDir } from '../../paths.mjs';
 import { detectLinkedWorktree, makeCloseTrunkRefResolver } from '../full-auto-merge-execute.mjs';
 import { refreshPreRefineContiguity } from './contiguity-refresh.mjs';
@@ -213,6 +213,7 @@ export async function runGuardExecution(ctx) {
           const ruleNames = bodyGateRefusals.flatMap((r) =>
             (r.blockers ?? [r.reason]).map((b) => String(b).split(':')[0].trim())
           );
+          const markers = durableWordMarkers(getProjectDir());
           const row = buildRow({
             ts: _tsM1,
             event: 'gate-refused',
@@ -220,7 +221,8 @@ export async function runGuardExecution(ctx) {
             idleSec: _dM1.idleSec,
             deltaWords: 0,
             // #475 AC1 — carried-forward durable marker (gate-refused audit row)
-            wordMarker: durableWordMarker(getProjectDir()),
+            wordMarker: markers.marker,
+            fullWordMarker: markers.fullMarker,
             description: `→ ${stateArg}: ${ruleNames.join(', ')}`,
           });
           await postTimingEvent({ issueNumber: issueArg, repo: cfg.repo, row, timeoutMs: 3000 });
@@ -266,6 +268,7 @@ export async function runGuardExecution(ctx) {
         // (no prior reference point available; warn is fire-and-forget).
         const _d = _dsm('', _ts);
         const missLabels = (lifecycleWarn.warn.labels ?? []).join(', ');
+        const markers = durableWordMarkers(getProjectDir());
         await _pe({
           issueNumber: issueArg,
           repo: cfg.repo,
@@ -277,7 +280,8 @@ export async function runGuardExecution(ctx) {
             idleSec: _d.idleSec,
             deltaWords: 0,
             // #475 AC1 — carried-forward durable marker (lifecycle-warn audit row)
-            wordMarker: durableWordMarker(getProjectDir()),
+            wordMarker: markers.marker,
+            fullWordMarker: markers.fullMarker,
             description: `WARN: lifecycle-incomplete (lifecycleCheckboxesRequired=false): ${missLabels}`,
           }),
         });

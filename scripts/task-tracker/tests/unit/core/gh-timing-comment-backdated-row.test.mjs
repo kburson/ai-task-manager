@@ -14,6 +14,7 @@ function row(overrides = {}) {
     ts: historicalTs,
     event: 'pause:auto-detected-gap',
     wordMarker: 0,
+    fullWordMarker: 0,
     description: 'synthetic departure',
     ...overrides,
   });
@@ -30,7 +31,7 @@ function row(overrides = {}) {
 // the pre-#1104 form omitted it and so failed on every non-CDT runner.
 assert.equal(
   row({ offsetMin: -300 }),
-  '| 2026-07-24 04:20:00 -05:00 | pause:auto-detected-gap |  |  |  | 0 | synthetic departure | <!-- row-sec: a=0 i=0 -->'
+  '| 2026-07-24 04:20:00 -05:00 | pause:auto-detected-gap |  |  |  | 0 | synthetic departure | 0 | <!-- row-sec: a=0 i=0 -->'
 );
 
 // Test 27b: omitting `offsetMin` keeps the pre-#1104 local-zone rendering.
@@ -38,7 +39,7 @@ assert.equal(
 // holds in every zone while still pinning the fallback behavior.
 assert.equal(
   row(),
-  `| ${fmtTs(historicalTs)} | pause:auto-detected-gap |  |  |  | 0 | synthetic departure | <!-- row-sec: a=0 i=0 -->`
+  `| ${fmtTs(historicalTs)} | pause:auto-detected-gap |  |  |  | 0 | synthetic departure | 0 | <!-- row-sec: a=0 i=0 -->`
 );
 
 // Test 27c: the change is display-only — rendering the same instant at +00:00
@@ -59,12 +60,14 @@ const histRowIgnoresExtras = buildBackdatedDepartureRow({
   ts: historicalTs,
   event: 'pause:x',
   wordMarker: 5,
+  fullWordMarker: 8,
   description: 'd',
   activeSec: 99999,
   idleSec: 99999,
   deltaWords: 99999,
 });
 assert.ok(histRowIgnoresExtras.includes('<!-- row-sec: a=0 i=0 -->'));
+assert.ok(histRowIgnoresExtras.includes('| 5 | d | 8 |'));
 
 // Test 29: a non-parseable ts throws rather than silently building a bad row.
 assert.throws(() => buildBackdatedDepartureRow({ ts: 'not-a-timestamp', event: 'pause:x' }));

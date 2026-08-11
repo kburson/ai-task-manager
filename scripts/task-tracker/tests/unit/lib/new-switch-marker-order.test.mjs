@@ -5,7 +5,7 @@ import path from 'node:path';
 import test from 'node:test';
 
 import { mkdtempProjectIsolated } from '../../../lib/scratch-dir.mjs';
-import { loadState, saveState } from '../../../state.mjs';
+import { bankTranscriptTail, loadState, saveState } from '../../../state.mjs';
 import { loadMarker, markerPathFor, saveMarker } from '../../../word-counter.mjs';
 import { verbNew } from '../../../verbs/new.mjs';
 import { verbSwitch } from '../../../verbs/switch.mjs';
@@ -57,8 +57,10 @@ function baseCtx(caseDir, statePath, observed) {
     drainQueueIfAny: async () => {},
     safePostTiming: async () => {},
     flushActiveToGH: async () => {
-      const marker = loadMarker(markerPathFor(sid));
-      observed.push({ line: marker.line, task: marker.task });
+      const before = loadMarker(markerPathFor(sid));
+      const banked = bankTranscriptTail(caseDir);
+      const after = loadMarker(markerPathFor(sid));
+      observed.push({ before, banked, after });
       return { deltaMin: 0, deltaWords: 3 };
     },
     nowIso: () => new Date().toISOString(),
@@ -76,9 +78,15 @@ test('new and switch both flush the outgoing issue before reseeding the cursor f
     SKIP_NETWORK: true,
     pexec: async () => ({ stdout: '' }),
   });
-  assert.deepEqual(newObserved, [{ line: 0, task: '#700' }], 'new flushes before target seed');
+  assert.equal(newObserved[0].before.task, '#700', 'new flushes the outgoing binding');
+  assert.equal(newObserved[0].banked.marker, 103, 'new banks the outgoing primary words');
+  assert.equal(newObserved[0].banked.fullMarker, 203, 'new banks the outgoing full words');
+  assert.equal(newObserved[0].after.words, 103);
+  assert.equal(newObserved[0].after.wordsFull, 203);
   assert.equal(loadMarker(markerPathFor(sid)).task, '#1142');
   assert.equal(loadState(newStatePath).active, '#1142');
+  assert.equal(loadState(newStatePath).lastWordMarker, 103);
+  assert.equal(loadState(newStatePath).lastFullWordMarker, 203);
 
   const switchDir = path.join(base, 'switch-case');
   const switchObserved = [];
@@ -92,13 +100,15 @@ test('new and switch both flush the outgoing issue before reseeding the cursor f
     },
     '#1143'
   );
-  assert.deepEqual(
-    switchObserved,
-    [{ line: 0, task: '#700' }],
-    'switch flushes before target seed'
-  );
+  assert.equal(switchObserved[0].before.task, '#700', 'switch flushes the outgoing binding');
+  assert.equal(switchObserved[0].banked.marker, 103, 'switch banks the outgoing primary words');
+  assert.equal(switchObserved[0].banked.fullMarker, 203, 'switch banks the outgoing full words');
+  assert.equal(switchObserved[0].after.words, 103);
+  assert.equal(switchObserved[0].after.wordsFull, 203);
   assert.equal(loadMarker(markerPathFor(sid)).task, '#1143');
   assert.equal(loadState(switchStatePath).active, '#1143');
+  assert.equal(loadState(switchStatePath).lastWordMarker, 103);
+  assert.equal(loadState(switchStatePath).lastFullWordMarker, 203);
 });
 
 test.after(() => {

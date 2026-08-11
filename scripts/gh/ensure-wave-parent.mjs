@@ -35,7 +35,7 @@ import { gql, splitRepo } from './lib/github-projects.mjs';
 import { ensureParentEpicTitle } from './lib/epic-retitle.mjs';
 import { buildRow, postTimingEvent } from '../task-tracker/gh-timing-comment.mjs';
 import { stampEntryMarker } from '../task-tracker/lib/stage-entry-markers.mjs';
-import { durableWordMarker } from '../task-tracker/state.mjs';
+import { durableWordMarkers } from '../task-tracker/state.mjs';
 import { getProjectDir } from '../task-tracker/paths.mjs';
 import { wantsHelp, emitSelfDoc } from '../lib/self-doc.mjs';
 
@@ -329,6 +329,7 @@ async function main() {
   }
 
   if (process.env.TT_SKIP_NETWORK !== '1') {
+    const markers = durableWordMarkers(getProjectDir());
     const row = buildRow({
       ts: new Date().toISOString(),
       event: 'start',
@@ -336,7 +337,8 @@ async function main() {
       idleMin: 0,
       deltaWords: 0,
       // #475 AC1 — carried-forward durable marker (orchestrator wave-parent start row)
-      wordMarker: durableWordMarker(getProjectDir()),
+      wordMarker: markers.marker,
+      fullWordMarker: markers.fullMarker,
       description: `orchestration start — wave fan-out (${result.solos.length} children)`,
     });
     await postTimingEvent({

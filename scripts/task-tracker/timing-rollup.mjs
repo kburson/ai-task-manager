@@ -34,6 +34,7 @@ export function parseTimingRows(body) {
   let eventCol = -1;
   let activeCol = -1;
   let wordMarkerCol = -1;
+  let fullWordMarkerCol = -1;
 
   for (const line of lines) {
     if (!line.startsWith('|')) continue;
@@ -43,6 +44,7 @@ export function parseTimingRows(body) {
       eventCol = cells.findIndex((c) => c.trim() === 'Event');
       activeCol = cells.findIndex((c) => ['Active', 'Active Min'].includes(c.trim()));
       wordMarkerCol = cells.findIndex((c) => c.trim() === 'Word Marker');
+      fullWordMarkerCol = cells.findIndex((c) => c.trim() === 'Full Word Marker');
       continue;
     }
     if (cells.every((c) => /^[-: ]+$/.test(c.trim()))) continue;
@@ -60,6 +62,7 @@ export function parseTimingRows(body) {
       activeSec,
       idleSec,
       wordMarker: parseNum(cells[wordMarkerCol] ?? ''),
+      fullWordMarker: parseNum(cells[fullWordMarkerCol] ?? ''),
     });
   }
   return rows;

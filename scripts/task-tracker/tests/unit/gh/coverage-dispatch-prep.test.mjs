@@ -1,7 +1,7 @@
 // @story #649
 // Offline coverage-lift for scripts/gh/dispatch-prep.mjs. Drives the exported
 // main(argv, deps) and parseArgs through injected runMoveState/loadConfig/buildRow/
-// postTimingEvent/durableWordMarker/getProjectDir/emitSelfDoc/log/err/exit — no
+// postTimingEvent/durableWordMarkers/getProjectDir/emitSelfDoc/log/err/exit — no
 // gh, no move-state, no network. Covers the help route, the missing-issue and
 // invalid-issue usage exits, the no-repo guard, the skipNetwork happy path (no
 // timing post), the network happy path (in-process move flip + timing post), and
@@ -37,7 +37,7 @@ function harness({ cfg = { repo: 'o/r' }, runMoveState } = {}) {
     loadConfig: () => cfg,
     buildRow: (r) => ({ row: r }),
     postTimingEvent: async (p) => posts.push(p),
-    durableWordMarker: () => 'MARK',
+    durableWordMarkers: () => ({ marker: 100, fullMarker: 200 }),
     getProjectDir: () => '/proj',
     emitSelfDoc: () => logs.push('self-doc-emitted'),
     log: (s) => logs.push(s),
@@ -94,6 +94,8 @@ test('network happy path: flips board and posts a start timing row', async () =>
   assert.equal(h.posts.length, 1);
   assert.equal(h.posts[0].issueNumber, '#42');
   assert.equal(h.posts[0].repo, 'o/r');
+  assert.equal(h.posts[0].row.row.wordMarker, 100);
+  assert.equal(h.posts[0].row.row.fullWordMarker, 200);
   assert.deepEqual(h.exits, []);
 });
 

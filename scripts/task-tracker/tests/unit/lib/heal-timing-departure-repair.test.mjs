@@ -25,7 +25,7 @@ const repaired = repairMissingDeparture(fixture, {
 });
 assert.match(
   repaired,
-  /\| 2026-08-04 21:35:23 -05:00 \| pause:question \| {2}\| {2}\| {2}\| 10,900 \| repaired missing departure \| <!-- row-sec: a=0 i=0 -->/
+  /\| 2026-08-04 21:35:23 -05:00 \| pause:question \| {2}\| {2}\| {2}\| 10,900 \| repaired missing departure \| — \| <!-- row-sec: a=0 i=0 -->/
 );
 assert.equal(findUnpairedReengagements(repaired).length, 0, 'the repaired log is paired');
 assert.throws(

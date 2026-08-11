@@ -7,7 +7,7 @@
 
 import { loadConfig } from '../task-tracker/config.mjs';
 import { buildRow, postTimingEvent } from '../task-tracker/gh-timing-comment.mjs';
-import { durableWordMarker } from '../task-tracker/state.mjs';
+import { durableWordMarkers } from '../task-tracker/state.mjs';
 import { getProjectDir } from '../task-tracker/paths.mjs';
 import { wantsHelp, emitSelfDoc } from '../lib/self-doc.mjs';
 import { runMoveStateHost } from './move-state.mjs';
@@ -32,7 +32,7 @@ export const deps = {
   loadConfig,
   buildRow,
   postTimingEvent,
-  durableWordMarker,
+  durableWordMarkers,
   getProjectDir,
   emitSelfDoc,
   log: (s) => process.stdout.write(s),
@@ -99,6 +99,7 @@ export async function main(argv, overrides = {}) {
   //    even if the agent's bootstrap never lands. The agent's own subsequent
   //    `start` row becomes a confirmation rather than the load-bearing entry.
   if (!skipNetwork) {
+    const markers = d.durableWordMarkers(d.getProjectDir());
     const row = d.buildRow({
       ts: new Date().toISOString(),
       event: 'start',
@@ -106,7 +107,8 @@ export async function main(argv, overrides = {}) {
       idleMin: 0,
       deltaWords: 0,
       // #475 AC1 — carried-forward durable marker (orchestrator dispatch start row)
-      wordMarker: d.durableWordMarker(d.getProjectDir()),
+      wordMarker: markers.marker,
+      fullWordMarker: markers.fullMarker,
       description: args.description,
     });
     await d.postTimingEvent({

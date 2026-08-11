@@ -3,7 +3,7 @@ import { statSync } from 'node:fs';
 import path from 'node:path';
 import { promisify } from 'node:util';
 
-import { loadState, saveState, pauseTimingKeepBinding } from '../state.mjs';
+import { loadState, saveState, pauseTimingKeepBinding, stateFullWordMarker } from '../state.mjs';
 import { setTaskStatus } from '../fleet-registry.mjs';
 import { validateVerificationCommand } from '../lib/verification-allowlist.mjs';
 import { validateBody, DEFAULT_GATES } from '../lib/body-gates.mjs';
@@ -585,6 +585,7 @@ export async function emitReviewGateFailureTimeline({
   ts,
   delta,
   wordMarker,
+  fullWordMarker,
   deps,
 }) {
   const {
@@ -620,6 +621,7 @@ export async function emitReviewGateFailureTimeline({
       deltaWords: 0,
       // #475 AC1 — carried-forward durable marker (gate failure, no live session)
       wordMarker,
+      fullWordMarker,
       description: `${objectionSummary}, staying in Review`,
     })
   );
@@ -643,6 +645,7 @@ export async function emitReviewGatePassTimeline({
   ts,
   delta,
   wordMarker,
+  fullWordMarker,
   validators,
   deps,
 }) {
@@ -659,6 +662,7 @@ export async function emitReviewGatePassTimeline({
       deltaWords: 0,
       // #475 AC1 — carried-forward durable marker (gate pass, no live session)
       wordMarker,
+      fullWordMarker,
       description: `agent review passed — validators: ${validatorSummary}, result=pass`,
     })
   );
@@ -679,6 +683,7 @@ export async function emitSandboxVerificationFailureTimeline({
   ts,
   delta,
   wordMarker,
+  fullWordMarker,
   reason = 'sandbox verification failed',
   deps,
 }) {
@@ -693,6 +698,7 @@ export async function emitSandboxVerificationFailureTimeline({
       deltaWords: 0,
       // #475 AC1 — carried-forward durable marker (verification-failed revert, no live session)
       wordMarker,
+      fullWordMarker,
       description: `${reason}, reverted to Develop`,
     })
   );
@@ -844,6 +850,7 @@ export async function verbReview(ctx) {
             deltaWords: 0,
             // #475 AC1 — carried-forward durable marker (gate-refused, no active session)
             wordMarker: s.lastWordMarker ?? 0,
+            fullWordMarker: stateFullWordMarker(s),
             description: `→ review: ${result.refusedRules.map((r) => r.rule).join(', ')}`,
           });
           await postTimingEvent({ issueNumber: issueNum, repo: cfg.repo, row, timeoutMs: 3000 });
@@ -1046,6 +1053,7 @@ export async function verbReview(ctx) {
         ts: _tsReceipt,
         delta: _dReceipt,
         wordMarker: s.lastWordMarker ?? 0,
+        fullWordMarker: stateFullWordMarker(s),
         reason,
         deps: { runMoveState, safePostTiming, buildRow },
       });
@@ -1279,6 +1287,7 @@ export async function verbReview(ctx) {
         ts: _tsR1,
         delta: _dR1,
         wordMarker: s.lastWordMarker ?? 0,
+        fullWordMarker: stateFullWordMarker(s),
         deps: { runMoveState, safePostTiming, buildRow },
       });
       console.error(`[task-tracker] Review failed for ${target}:`);
@@ -1368,6 +1377,7 @@ export async function verbReview(ctx) {
             deltaWords: 0,
             // #475 AC1 — carried-forward durable marker (completeness gate refusal, no live session)
             wordMarker: s.lastWordMarker ?? 0,
+            fullWordMarker: stateFullWordMarker(s),
             description: `→ review blocked: ${stillUnticked.length} unticked checkbox(es)`,
           })
         );
@@ -1485,6 +1495,7 @@ export async function verbReview(ctx) {
           ts: _tsRF,
           delta: _dRF,
           wordMarker: s.lastWordMarker ?? 0,
+          fullWordMarker: stateFullWordMarker(s),
           deps: { runMoveState, safePostTiming, mutateBodyFn, pexec },
         });
         process.stderr.write('\n');
@@ -1537,6 +1548,7 @@ export async function verbReview(ctx) {
         ts: _tsRP,
         delta: _dRP,
         wordMarker: s.lastWordMarker ?? 0,
+        fullWordMarker: stateFullWordMarker(s),
         validators: gate.validatorsRun,
         deps: { safePostTiming, buildRow },
       });

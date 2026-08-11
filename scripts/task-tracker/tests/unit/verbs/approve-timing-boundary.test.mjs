@@ -23,8 +23,8 @@ const APPROVAL_MARKER = `<!-- aitm-review-approved ts="${APPROVED}" -->`;
 const AGENT_REVIEW_PASSED =
   '- [ ] Agent Review Passed <!-- aitm-verified gate="agent-review" ts="2026-08-06T05:58:14Z" sha="sandbox" validators="body-sections" result="pass" -->';
 
-const row = (ts, event, marker = 100) =>
-  `| ${ts.replace('T', ' ').replace('Z', ' +00:00')} | ${event} |  |  |  | ${marker} |  | <!-- row-sec: a=0 i=0 -->`;
+const row = (ts, event, marker = 100, fullMarker = marker) =>
+  `| ${ts.replace('T', ' ').replace('Z', ' +00:00')} | ${event} |  |  |  | ${marker} |  | ${fullMarker} | <!-- row-sec: a=0 i=0 -->`;
 
 const eventRows = (body) =>
   String(body)
@@ -59,8 +59,8 @@ test('#1127 marker-authorized boundary is inserted at approval and deduplicated'
     wordMarker: 35742,
   });
   let timingBody = buildInitialComment();
-  timingBody = appendRow(timingBody, row(REVIEW_STARTED, 'review:started', 35742));
-  timingBody = appendRow(timingBody, row(CLOSE_PAUSE, 'pause:other', 36316));
+  timingBody = appendRow(timingBody, row(REVIEW_STARTED, 'review:started', 35742, 50000));
+  timingBody = appendRow(timingBody, row(CLOSE_PAUSE, 'pause:other', 36316, 51000));
   timingBody = appendRow(timingBody, approvalRow);
   const once = timingBody;
   timingBody = appendRow(timingBody, approvalRow);
@@ -144,13 +144,14 @@ test('legacy repair uses the last marker at approval, not a later close marker',
   assert.equal(typeof timingModule.reconcileReviewApprovedTiming, 'function');
   const issueBody = `body\n\n${APPROVAL_MARKER}\n`;
   let timingBody = buildInitialComment();
-  timingBody = appendRow(timingBody, row(REVIEW_STARTED, 'review:started', 35742));
-  timingBody = appendRow(timingBody, row(CLOSE_PAUSE, 'pause:other', 36316));
+  timingBody = appendRow(timingBody, row(REVIEW_STARTED, 'review:started', 35742, 50000));
+  timingBody = appendRow(timingBody, row(CLOSE_PAUSE, 'pause:other', 36316, 51000));
   await timingModule.reconcileReviewApprovedTiming({
     issueNumber: 1127,
     repo: 'o/r',
     issueBody,
     wordMarker: 40000,
+    fullWordMarker: 60000,
     readTimingCommentBody: async () => ({ status: 'found', body: timingBody }),
     postTimingEvent: async ({ row: next }) => {
       timingBody = appendRow(timingBody, next);
@@ -159,6 +160,7 @@ test('legacy repair uses the last marker at approval, not a later close marker',
   const rows = eventRows(timingBody);
   const approval = rows.find(({ event }) => event === 'review:approved');
   assert.equal(markerNumber(approval.wordMarker), 35742);
+  assert.equal(markerNumber(approval.fullWordMarker), 50000);
   assert.deepEqual(
     rows.map(({ wordMarker }) => markerNumber(wordMarker)),
     [35742, 35742, 36316]

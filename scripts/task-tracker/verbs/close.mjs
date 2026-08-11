@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 
-import { loadState, saveState, clearActive } from '../state.mjs';
+import { loadState, saveState, clearActive, stateFullWordMarker } from '../state.mjs';
 import { deregisterTask } from '../fleet-registry.mjs';
 import { loadSession } from '../lib/session-store.mjs';
 import { resolveGate } from '../lib/gate-resolve.mjs';
@@ -147,6 +147,7 @@ async function emitReviewToDoneClosePair({
   issueBody,
   reviewGateBypassed,
   lastWordMarker,
+  lastFullWordMarker,
   ctx,
   SKIP_NETWORK,
   nowIso,
@@ -190,6 +191,7 @@ async function emitReviewToDoneClosePair({
       repo: cfg.repo,
       issueBody,
       wordMarker: lastWordMarker ?? 0,
+      fullWordMarker: lastFullWordMarker ?? 0,
       readTimingCommentBody: async () => timingRead,
       postTimingEvent: async ({ row }) => postRequiredTiming(row, 'review:approved'),
     });
@@ -206,6 +208,7 @@ async function emitReviewToDoneClosePair({
     idleSec: delta.idleSec,
     // #475 AC1 — carried-forward durable marker (timing flushed at Review; close audit row)
     wordMarker: lastWordMarker ?? 0,
+    fullWordMarker: lastFullWordMarker ?? 0,
   });
   const { pendingClosePairState } = await import('../timing-rollup.mjs');
   const pending = pendingClosePairState(timingBody);
@@ -635,6 +638,7 @@ export async function verbClose(ctx) {
           issueBody: convergeBody,
           reviewGateBypassed: configuredFullAuto,
           lastWordMarker: s.lastWordMarker,
+          lastFullWordMarker: stateFullWordMarker(s),
           ctx,
           SKIP_NETWORK,
           nowIso,
@@ -733,6 +737,7 @@ export async function verbClose(ctx) {
               issueBody: convergeBody,
               reviewGateBypassed: fullAuto,
               lastWordMarker: s.lastWordMarker,
+              lastFullWordMarker: stateFullWordMarker(s),
               ctx,
               SKIP_NETWORK,
               nowIso,
@@ -798,6 +803,7 @@ export async function verbClose(ctx) {
                 idleSec: 0,
                 deltaWords: 0,
                 wordMarker: s.lastWordMarker ?? 0,
+                fullWordMarker: stateFullWordMarker(s),
                 description:
                   `closed without authorization — reopened and restored to Review; ` +
                   `tx=${activeRecovery.tx}; ` +
@@ -979,6 +985,7 @@ export async function verbClose(ctx) {
           deltaWords: 0,
           // #475 AC1 — carried-forward durable marker (closed-with-dirty-tree audit, no active session)
           wordMarker: s.lastWordMarker ?? 0,
+          fullWordMarker: stateFullWordMarker(s),
           description: shortAuditDescription(dirty),
         });
       } else {
@@ -1131,6 +1138,7 @@ export async function verbClose(ctx) {
               deltaWords: 0,
               // #475 AC1 — carried-forward durable marker (lifecycle WARN bypass, no active session work)
               wordMarker: s.lastWordMarker ?? 0,
+              fullWordMarker: stateFullWordMarker(s),
               description: `WARN: lifecycle-incomplete (lifecycleCheckboxesRequired=false): ${missLabels}`,
             })
           );
@@ -1300,6 +1308,7 @@ export async function verbClose(ctx) {
                 // performing the cascade); the per-log monotonic-max in
                 // rollupTotals protects each child's own running total.
                 wordMarker: s.lastWordMarker ?? 0,
+                fullWordMarker: stateFullWordMarker(s),
                 description: `${_PEcascade.done.enter.description} (cascade closed by epic)`,
               })
             );
@@ -1441,6 +1450,7 @@ export async function verbClose(ctx) {
       issueBody: closeBody,
       reviewGateBypassed,
       lastWordMarker: s.lastWordMarker,
+      lastFullWordMarker: stateFullWordMarker(s),
       ctx,
       SKIP_NETWORK,
       nowIso,

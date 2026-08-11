@@ -213,7 +213,14 @@ export function buildRow({
 // neighboring row (`verbResume` parses it off `gap.lastRowTs`); rendering in
 // the emitting machine's zone instead would show a reader an offset jump that
 // is not real. Omitted, the local-zone default is unchanged.
-export function buildBackdatedDepartureRow({ ts, event, description = '', wordMarker, offsetMin }) {
+export function buildBackdatedDepartureRow({
+  ts,
+  event,
+  description = '',
+  wordMarker,
+  fullWordMarker,
+  offsetMin,
+}) {
   const tsMs = tsToMs(ts);
   if (!Number.isFinite(tsMs)) {
     throw new Error(`buildBackdatedDepartureRow: non-parseable ts: ${String(ts)}`);
@@ -221,8 +228,17 @@ export function buildBackdatedDepartureRow({ ts, event, description = '', wordMa
   if (!isEmittableTimingEvent(event) || classifyTimingEvent(event) !== EVENT_CLASS.DEPARTURE) {
     throw new Error(`refusing non-emittable departure Timing Log event: ${String(event)}`);
   }
-  const wm = wordMarker == null ? null : Number(String(wordMarker).replace(/,/g, ''));
-  return `| ${fmtTs(ts, { offsetMin })} | ${event} |  |  |  | ${fmtNum(Number.isFinite(wm) ? wm : null)} | ${description} | <!-- row-sec: a=0 i=0 -->`;
+  const parseMarker = (value) => {
+    const normalized = String(value ?? '')
+      .trim()
+      .replace(/,/g, '');
+    if (!normalized || normalized === '—') return null;
+    const parsed = Number(normalized);
+    return Number.isFinite(parsed) ? parsed : null;
+  };
+  const wm = parseMarker(wordMarker);
+  const fwm = parseMarker(fullWordMarker);
+  return `| ${fmtTs(ts, { offsetMin })} | ${event} |  |  |  | ${fmtNum(Number.isFinite(wm) ? wm : null)} | ${description} | ${fmtNum(Number.isFinite(fwm) ? fwm : null)} | <!-- row-sec: a=0 i=0 -->`;
 }
 
 // #1133 — the Review approval marker is a durable authority record, so a
@@ -235,6 +251,7 @@ export function buildMarkerAuthorizedReviewApprovedRow({
   activeSec,
   idleSec,
   wordMarker,
+  fullWordMarker,
 }) {
   if (!hasReviewApprovedMarker(issueBody)) {
     throw new Error('review approval timing requires an authoritative approval marker');
@@ -247,7 +264,12 @@ export function buildMarkerAuthorizedReviewApprovedRow({
   const aSec = Number.isFinite(Number(activeSec)) ? Math.max(0, Math.floor(Number(activeSec))) : 0;
   const iSec = Number.isFinite(Number(idleSec)) ? Math.max(0, Math.floor(Number(idleSec))) : 0;
   const marker = Number(String(wordMarker ?? '').replace(/,/g, ''));
-  return `| ${fmtTs(approval.ts)} | review:approved | ${aSec === 0 ? '' : formatDurationSeconds(aSec)} | ${iSec === 0 ? '' : formatDurationSeconds(iSec)} |  | ${fmtNum(Number.isFinite(marker) ? marker : null)} | story approved | <!-- row-sec: a=${aSec} i=${iSec} -->`;
+  const normalizedFullMarker = String(fullWordMarker ?? '')
+    .trim()
+    .replace(/,/g, '');
+  const fullMarker =
+    normalizedFullMarker && normalizedFullMarker !== '—' ? Number(normalizedFullMarker) : NaN;
+  return `| ${fmtTs(approval.ts)} | review:approved | ${aSec === 0 ? '' : formatDurationSeconds(aSec)} | ${iSec === 0 ? '' : formatDurationSeconds(iSec)} |  | ${fmtNum(Number.isFinite(marker) ? marker : null)} | story approved | ${fmtNum(Number.isFinite(fullMarker) ? fullMarker : null)} | <!-- row-sec: a=${aSec} i=${iSec} -->`;
 }
 
 // #484 — shared flush-path row builder. `flushActiveToGH` (the path behind every
@@ -301,7 +323,7 @@ export function buildFlushRow({
 // `review:approved` on the done transition it would land AFTER `issue:wrap`
 // (the #535 inversion) and duplicate the row. move-state.mjs suppresses its
 // `<prev>:complete` emission when `stateArg === 'done'` for exactly this reason.
-export function buildReviewToDoneClosePair({ ts, activeSec, idleSec, wordMarker }) {
+export function buildReviewToDoneClosePair({ ts, activeSec, idleSec, wordMarker, fullWordMarker }) {
   const approvedRow = buildRow({
     ts,
     phase: { state: 'review', phase: 'complete' },
@@ -309,6 +331,7 @@ export function buildReviewToDoneClosePair({ ts, activeSec, idleSec, wordMarker 
     idleSec,
     deltaWords: 0,
     wordMarker,
+    fullWordMarker,
   });
   const wrapRow = buildRow({
     ts,
@@ -317,6 +340,7 @@ export function buildReviewToDoneClosePair({ ts, activeSec, idleSec, wordMarker 
     idleSec: 0,
     deltaWords: 0,
     wordMarker,
+    fullWordMarker,
   });
   return [approvedRow, wrapRow];
 }

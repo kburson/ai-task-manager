@@ -1,4 +1,4 @@
-import { loadState } from '../state.mjs';
+import { loadState, stateFullWordMarker } from '../state.mjs';
 import { GH_API_TIMEOUT_MS } from '../lib/process-timeouts.mjs';
 
 export async function verbReject(ctx) {
@@ -60,7 +60,8 @@ export async function verbReject(ctx) {
   }
   const descReason = reason.trim().slice(0, 40);
   // #475 AC1 — stamp the durable carried-forward Word Marker, not 0.
-  const _lwm = loadState(statePath).lastWordMarker ?? 0;
+  const _state = loadState(statePath);
+  const _lwm = _state.lastWordMarker ?? 0;
   const _ts = nowIso();
   const _d = deriveStateMoveDelta(rejectBody, _ts);
   await safePostTiming(
@@ -73,6 +74,7 @@ export async function verbReject(ctx) {
       deltaWords: 0,
       // #475 AC1 — carried-forward durable marker, not 0 (review-rejected revert, no live session)
       wordMarker: _lwm,
+      fullWordMarker: stateFullWordMarker(_state),
       description: `review rejected: ${descReason}`,
     })
   );

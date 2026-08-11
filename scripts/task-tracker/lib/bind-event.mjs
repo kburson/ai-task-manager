@@ -177,6 +177,7 @@ export function detectUnmarkedDepartureGap(
     lastRowTs: last.ts,
     lastRowEvent: last.event,
     wordMarker: last.wordMarker,
+    fullWordMarker: last.fullWordMarker,
     gapSec: elapsedSec,
     syntheticTs: new Date(lastMs + 1000).toISOString(),
   };

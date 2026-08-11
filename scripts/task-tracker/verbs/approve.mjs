@@ -15,7 +15,7 @@ import { fileURLToPath } from 'node:url';
 
 import { gql, splitRepo } from '../../gh/lib/github-projects.mjs';
 import { getProjectDir } from '../paths.mjs';
-import { durableWordMarker } from '../state.mjs';
+import { durableWordMarkers } from '../state.mjs';
 import {
   buildReviewApprovedMarker,
   hasReviewApprovedMarker,
@@ -274,11 +274,13 @@ export async function runApprove({ issueNumber, cfg, projectDir, deps = {}, huma
       const staleApprovalCarriers =
         hasApprovalMarker(body) && approvalState.labelFound && !approvalState.alreadyTicked;
       if (hasApprovalMarker(body) && !staleApprovalCarriers) {
+        const markers = durableWordMarkers(projectDir || getProjectDir());
         await reconcileTiming({
           issueNumber,
           repo: cfg.repo,
           issueBody: body,
-          wordMarker: durableWordMarker(projectDir || getProjectDir()),
+          wordMarker: markers.marker,
+          fullWordMarker: markers.fullMarker,
         });
         return { status: 'already-approved' };
       }
@@ -392,6 +394,7 @@ export async function runApprove({ issueNumber, cfg, projectDir, deps = {}, huma
           const { deriveStateMoveDelta: _dsm } = await import('../lib/timing-rows.mjs');
           const _ts = new Date().toISOString();
           const _d = _dsm(beforeTick, _ts);
+          const markers = durableWordMarkers(getProjectDir());
           await _pe({
             issueNumber,
             repo: cfg.repo,
@@ -403,7 +406,8 @@ export async function runApprove({ issueNumber, cfg, projectDir, deps = {}, huma
               idleSec: _d.idleSec,
               deltaWords: 0,
               // #475 AC1 — carried-forward durable marker (lifecycle-noop warning, no active session work)
-              wordMarker: durableWordMarker(getProjectDir()),
+              wordMarker: markers.marker,
+              fullWordMarker: markers.fullMarker,
               description: `WARN: lifecycle-tick-noop 'passed-final-review' — customized DoD or legacy heading; stamp <!-- aitm-lifecycle-optout: passed-final-review --> to acknowledge.`,
             }),
           });
@@ -438,11 +442,13 @@ export async function runApprove({ issueNumber, cfg, projectDir, deps = {}, huma
         marker: 'aitm-review-approved',
         issueNumber,
       });
+      const markers = durableWordMarkers(projectDir || getProjectDir());
       await reconcileTiming({
         issueNumber,
         repo: cfg.repo,
         issueBody: writeResult.body,
-        wordMarker: durableWordMarker(projectDir || getProjectDir()),
+        wordMarker: markers.marker,
+        fullWordMarker: markers.fullMarker,
       });
       return {
         status: 'approved',

@@ -13,6 +13,7 @@ export async function reconcileReviewApprovedTiming({
   repo,
   issueBody,
   wordMarker = 0,
+  fullWordMarker = 0,
   readTimingCommentBody = defaultReadTimingCommentBody,
   postTimingEvent = defaultPostTimingEvent,
 } = {}) {
@@ -45,10 +46,14 @@ export async function reconcileReviewApprovedTiming({
   const timingRows = parseTimingRows(timingBody);
   const hasLaterRow = timingRows.some(({ tsMs }) => Number.isFinite(tsMs) && tsMs > approvalMs);
   let boundaryWordMarker = wordMarker;
+  let boundaryFullWordMarker = fullWordMarker;
   if (hasLaterRow) {
     for (const timingRow of timingRows) {
       if (!Number.isFinite(timingRow.tsMs) || timingRow.tsMs > approvalMs) continue;
       if (Number.isFinite(timingRow.wordMarker)) boundaryWordMarker = timingRow.wordMarker;
+      if (Number.isFinite(timingRow.fullWordMarker)) {
+        boundaryFullWordMarker = timingRow.fullWordMarker;
+      }
     }
   }
   const row = buildMarkerAuthorizedReviewApprovedRow({
@@ -56,6 +61,7 @@ export async function reconcileReviewApprovedTiming({
     activeSec: delta.activeSec,
     idleSec: delta.idleSec,
     wordMarker: boundaryWordMarker,
+    fullWordMarker: boundaryFullWordMarker,
   });
   await postTimingEvent({ issueNumber, repo, row });
   return { status: 'posted', ts: approval.ts };

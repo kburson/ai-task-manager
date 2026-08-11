@@ -131,6 +131,7 @@ export function discoverTimingEmitters() {
         line: sourceLine(source, offset),
         kind: property[1] === 'phase' ? 'phase-call' : 'event-call',
         expression: property[2].replace(/,$/, '').trim(),
+        hasFullWordMarker: /\bfullWordMarker\s*[:},]/.test(body),
       });
     }
 
@@ -198,7 +199,12 @@ test('vocabulary definitions are separate from emitters and source-verified', ()
 });
 
 test('production timing emitter discovery exactly matches the characterized call sites', () => {
-  const actual = discoverTimingEmitters();
+  const actual = discoverTimingEmitters().map(({ file, line, kind, expression }) => ({
+    file,
+    line,
+    kind,
+    expression,
+  }));
   const expected = TIMING_EVENT_BASELINE.emitters
     .map(({ file, line, kind, expression }) => ({ file, line, kind, expression }))
     .sort(
@@ -209,6 +215,14 @@ test('production timing emitter discovery exactly matches the characterized call
         a.expression.localeCompare(b.expression)
     );
   assert.deepEqual(expected, actual);
+});
+
+test('every direct production timing-row producer supplies the full-marker observation', () => {
+  const omissions = discoverTimingEmitters()
+    .filter(({ kind }) => kind === 'event-call' || kind === 'phase-call')
+    .filter(({ hasFullWordMarker }) => !hasFullWordMarker)
+    .map(({ file, line, expression }) => `${file}:${line}: ${expression}`);
+  assert.deepEqual(omissions, []);
 });
 
 test('every characterized production timing emitter maps to known strict-reader rules', () => {

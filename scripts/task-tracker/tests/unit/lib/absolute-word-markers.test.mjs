@@ -4,7 +4,11 @@ import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import test from 'node:test';
 
-import { buildRow, __internals as timingInternals } from '../../../gh-timing-comment.mjs';
+import {
+  buildReviewToDoneClosePair,
+  buildRow,
+  __internals as timingInternals,
+} from '../../../gh-timing-comment.mjs';
 import { parseTimingRow } from '../../../lib/timing-row-reader.mjs';
 import { mkdtempProjectIsolated } from '../../../lib/scratch-dir.mjs';
 import { bankTranscriptTail, loadState, saveState } from '../../../state.mjs';
@@ -122,6 +126,26 @@ test('an explicit unavailable full marker is not replaced by a prior numeric obs
   assert.equal(rows[1].fullWordMarker, '—');
 });
 
+test('the real review-approved and issue-wrap producer preserves a known full marker', () => {
+  let body = buildInitialComment();
+  const pair = buildReviewToDoneClosePair({
+    ts: now(),
+    activeSec: 12,
+    idleSec: 3,
+    wordMarker: 100,
+    fullWordMarker: 200,
+  });
+  for (const produced of pair) body = appendRow(body, produced);
+  const rows = body
+    .split('\n')
+    .map(parseTimingRow)
+    .filter((row) => ['review:approved', 'issue:wrap'].includes(row?.event));
+  assert.deepEqual(
+    rows.map((row) => row.fullWordMarker),
+    ['200', '200']
+  );
+});
+
 test('bankTranscriptTail carries both durable markers across session ids', () => {
   const projectDir = mkdtempProjectIsolated('absolute-bank-1142-', 'test');
   const transcriptDir = path.join(projectDir, 'transcripts');
@@ -212,6 +236,51 @@ test('bankTranscriptTail preserves a legacy per-session full cursor above global
       AI_TASK_MANAGER_TRANSCRIPT_DIR: priorEnv.transcriptDir,
       AI_TASK_MANAGER_APP_NAME: priorEnv.appName,
       AI_TASK_MANAGER_SESSION_ID: priorEnv.sid,
+    })) {
+      if (value === undefined) delete process.env[key];
+      else process.env[key] = value;
+    }
+    rmSync(projectDir, { recursive: true, force: true });
+  }
+});
+
+test('bankTranscriptTail reports unavailable Codex input without advancing durable cursors', () => {
+  const projectDir = mkdtempProjectIsolated('absolute-unavailable-bank-1142-', 'test');
+  const statePath = path.join(projectDir, '.tmp/aitm/state/task-tracker-state.json');
+  const sid = '019fbf00-unavailable-codex-bank';
+  const priorEnv = {
+    projectDir: process.env.AI_TASK_MANAGER_PROJECT_DIR,
+    appName: process.env.AI_TASK_MANAGER_APP_NAME,
+    sid: process.env.CODEX_THREAD_ID,
+    home: process.env.HOME,
+    userProfile: process.env.USERPROFILE,
+  };
+  process.env.AI_TASK_MANAGER_PROJECT_DIR = projectDir;
+  process.env.AI_TASK_MANAGER_APP_NAME = 'codex';
+  process.env.CODEX_THREAD_ID = sid;
+  process.env.HOME = projectDir;
+  process.env.USERPROFILE = projectDir;
+  try {
+    saveState(
+      { active: '#1142', lastActive: '#1142', lastWordMarker: 100, lastFullWordMarker: 200 },
+      statePath
+    );
+    saveMarker(markerPathFor(sid), 4, 100, '#1142', 200);
+    const banked = bankTranscriptTail(projectDir);
+    const state = loadState(statePath);
+    assert.equal(banked.transcriptStatus, 'unavailable');
+    assert.equal(banked.fullMarkerAvailable, false);
+    assert.equal(banked.marker, 100);
+    assert.equal(banked.fullMarker, 200);
+    assert.equal(state.lastWordMarker, 100);
+    assert.equal(state.lastFullWordMarker, 200);
+  } finally {
+    for (const [key, value] of Object.entries({
+      AI_TASK_MANAGER_PROJECT_DIR: priorEnv.projectDir,
+      AI_TASK_MANAGER_APP_NAME: priorEnv.appName,
+      CODEX_THREAD_ID: priorEnv.sid,
+      HOME: priorEnv.home,
+      USERPROFILE: priorEnv.userProfile,
     })) {
       if (value === undefined) delete process.env[key];
       else process.env[key] = value;

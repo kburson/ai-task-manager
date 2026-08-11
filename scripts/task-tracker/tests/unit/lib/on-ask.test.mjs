@@ -6,6 +6,8 @@ import { mkdtempSync, rmSync, existsSync } from 'node:fs';
 import { projectScratchDir } from '../../../lib/scratch-dir.mjs';
 import path from 'node:path';
 import { setActiveTask } from '../../../session-state.mjs';
+import { parseTimingRow } from '../../../lib/timing-row-reader.mjs';
+import { saveState } from '../../../state.mjs';
 import {
   recordAskPause,
   finalizeAskResume,
@@ -46,6 +48,10 @@ const tmp = mkdtempSync(path.join(projectScratchDir('test'), 'tt-on-ask-'));
 {
   const sid = 'paired';
   setActiveTask(sid, { issue: '#240', entryStartTs: 'x', wordsAtStart: 0 }, tmp);
+  saveState(
+    { active: '#240', lastActive: '#240', lastWordMarker: 100, lastFullWordMarker: 200 },
+    path.join(tmp, '.tmp/aitm/state/task-tracker-state.json')
+  );
   const env = { CLAUDE_SESSION_ID: sid, AI_TASK_MANAGER_PROJECT_DIR: tmp };
   const posts = [];
   const deps = {
@@ -75,6 +81,11 @@ const tmp = mkdtempSync(path.join(projectScratchDir('test'), 'tt-on-ask-'));
   assert.match(pause.row, /reason: ask-pause/);
   assert.match(resume.row, /\bresume\b/);
   assert.match(resume.row, /reason: ask-resume/);
+  assert.deepEqual(
+    posts.map(({ row }) => parseTimingRow(row).fullWordMarker),
+    ['200', '200'],
+    'the real ask pause/resume producers preserve the durable full cursor'
+  );
   // Seconds-precision idle cell rides the row-sec marker (AC5).
   assert.match(resume.row, /row-sec: a=0 i=47/);
   assert.equal(existsSync(markerPath), false, 'marker deleted on resume');

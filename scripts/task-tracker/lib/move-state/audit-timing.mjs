@@ -18,7 +18,7 @@
 // builtins are imported directly here (identical module instances, no behavior
 // drift).
 
-import { durableWordMarker, durableWordMarkers, bankTranscriptTail } from '../../state.mjs';
+import { durableWordMarkers, bankTranscriptTail } from '../../state.mjs';
 import { getProjectDir, projectTmpDir } from '../../paths.mjs';
 import { GH_API_TIMEOUT_MS } from '../process-timeouts.mjs';
 import { writeFileSync, unlinkSync } from 'node:fs';
@@ -81,6 +81,7 @@ export async function emitPhasePairRows(ctx) {
     const durable = durableWordMarkers(getProjectDir());
     const _phaseMarker = banked?.marker ?? durable.marker;
     const _phaseFullMarker = banked?.fullMarker ?? durable.fullMarker;
+    const _phaseFullObservation = banked?.fullMarkerAvailable === false ? null : _phaseFullMarker;
     // First row: completion of the previous state (or `demoted` for demote).
     if (demoteFlag) {
       // v2 (#823 C7 / defect D3) — the demote audit row names its TARGET state
@@ -104,7 +105,7 @@ export async function emitPhasePairRows(ctx) {
         idleSec,
         deltaWords: 0,
         wordMarker: _phaseMarker,
-        fullWordMarker: _phaseFullMarker,
+        fullWordMarker: _phaseFullObservation,
         description,
       });
       await postTimingEvent({ issueNumber: issueArg, repo: cfg.repo, row, timeoutMs: 3000 });
@@ -144,7 +145,7 @@ export async function emitPhasePairRows(ctx) {
         idleSec: closeIdle,
         deltaWords,
         wordMarker: _phaseMarker,
-        fullWordMarker: _phaseFullMarker,
+        fullWordMarker: _phaseFullObservation,
       });
       await postTimingEvent({ issueNumber: issueArg, repo: cfg.repo, row, timeoutMs: 3000 });
     }
@@ -169,7 +170,7 @@ export async function emitPhasePairRows(ctx) {
         idleSec,
         deltaWords: 0,
         wordMarker: _phaseMarker,
-        fullWordMarker: _phaseFullMarker,
+        fullWordMarker: _phaseFullObservation,
       });
       await postTimingEvent({ issueNumber: issueArg, repo: cfg.repo, row, timeoutMs: 3000 });
     } else if (PHASE_EVENTS[stateArg]?.enter) {
@@ -183,7 +184,7 @@ export async function emitPhasePairRows(ctx) {
         idleSec: 0,
         deltaWords: 0,
         wordMarker: _phaseMarker,
-        fullWordMarker: _phaseFullMarker,
+        fullWordMarker: _phaseFullObservation,
       });
       await postTimingEvent({ issueNumber: issueArg, repo: cfg.repo, row, timeoutMs: 3000 });
     }
@@ -288,6 +289,7 @@ export async function emitOutOfBandAudit(ctx) {
       })
     );
     const _dM2 = deriveStateMoveDelta(_timingBodyM2, ts);
+    const markers = durableWordMarkers(getProjectDir());
     const row = buildRow({
       ts,
       event: 'out-of-band-move',
@@ -295,7 +297,8 @@ export async function emitOutOfBandAudit(ctx) {
       idleSec: _dM2.idleSec,
       deltaWords: 0,
       // #475 AC1 — carried-forward durable marker (out-of-band audit row)
-      wordMarker: durableWordMarker(getProjectDir()),
+      wordMarker: markers.marker,
+      fullWordMarker: markers.fullMarker,
       description: `${fromLabel}→${stateArg}: ${outOfBandReason}`,
     });
     await postTimingEvent({ issueNumber: issueArg, repo: cfg.repo, row, timeoutMs: 3000 });

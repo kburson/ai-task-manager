@@ -413,6 +413,7 @@ export async function verbResume(ctx) {
         ts: gap.syntheticTs,
         event: 'pause:auto-detected-gap',
         wordMarker: gap.wordMarker,
+        fullWordMarker: gap.fullWordMarker,
         description: `resume after a ${Math.round(gap.gapSec / 3600)}h gap with no departure row — synthetic departure inserted per #981 so the gap reclassifies as idle`,
         // #1104 — `gap.syntheticTs` is a UTC-normalized instant, so it carries no
         // offset worth preserving. This row lands one second after `gap.lastRowTs`

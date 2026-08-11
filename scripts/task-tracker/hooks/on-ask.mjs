@@ -36,7 +36,7 @@ import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node
 import path from 'node:path';
 import { getProjectDir, sessionDir } from '../paths.mjs';
 import { getActiveTask } from '../session-state.mjs';
-import { durableWordMarker } from '../state.mjs';
+import { durableWordMarkers } from '../state.mjs';
 import { loadConfig } from '../config.mjs';
 import { postTimingEvent, buildRow } from '../gh-timing-comment.mjs';
 import { enqueue } from '../queue.mjs';
@@ -177,6 +177,7 @@ export async function recordAskPause({
     return { status: 'recent-pause' };
   }
 
+  const markers = durableWordMarkers(projDir);
   const row = buildRow({
     ts: nowIso,
     // #516 — uniform vocabulary: auto ask-pause writes the `paused` slug.
@@ -185,7 +186,8 @@ export async function recordAskPause({
     idleSec: 0,
     deltaWords: 0,
     // #475 AC1 — carried-forward durable marker, never null (auto ask-pause, no live session)
-    wordMarker: durableWordMarker(projDir),
+    wordMarker: markers.marker,
+    fullWordMarker: markers.fullMarker,
     description: `<!-- sess: ${sid} reason: ask-pause -->`,
   });
   await postOrEnqueue({ cfg, projDir, issue, row, deps });
@@ -232,6 +234,7 @@ export async function finalizeAskResume({
   const cfg = loadConfig();
   const nowDate = now();
   const idleSec = computeGapSeconds(marker.pausedAt, nowDate.getTime());
+  const markers = durableWordMarkers(projDir);
   const row = buildRow({
     ts: nowDate.toISOString(),
     event: 'resume',
@@ -239,7 +242,8 @@ export async function finalizeAskResume({
     idleSec,
     deltaWords: 0,
     // #475 AC1 — carried-forward durable marker, never null (auto ask-resume, no live session)
-    wordMarker: durableWordMarker(projDir),
+    wordMarker: markers.marker,
+    fullWordMarker: markers.fullMarker,
     description: `<!-- sess: ${sid} reason: ask-resume -->`,
   });
   await postOrEnqueue({ cfg, projDir, issue: marker.issue, row, deps });

@@ -139,6 +139,7 @@ export function repairMissingDeparture(
     event,
     description: description ?? `repaired missing departure before ${target.event}`,
     wordMarker: previous.wordMarker,
+    fullWordMarker: previous.fullWordMarker,
     offsetMin: timingTimestampOffsetMin(previous.ts) ?? undefined,
   });
   const lines = body.split('\n');

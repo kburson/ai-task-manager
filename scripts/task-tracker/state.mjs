@@ -14,6 +14,7 @@ import {
   loadMarker,
   saveMarker,
   countWords,
+  aiAppName,
 } from './word-counter.mjs';
 
 export const EMPTY_STATE = {
@@ -89,13 +90,20 @@ export function durableWordMarkers(projDir) {
 // with no further words counts 0. Best-effort: any failure (no sid, unreadable
 // transcript) returns the unchanged durable marker and never throws.
 export function bankTranscriptTail(projDir) {
-  const fallback = () => ({ banked: 0, fullBanked: 0, ...durableWordMarkers(projDir) });
+  const fallback = (transcriptStatus = 'unavailable') => ({
+    banked: 0,
+    fullBanked: 0,
+    ...durableWordMarkers(projDir),
+    transcriptStatus,
+    fullMarkerAvailable: false,
+  });
   try {
     const sid = currentSessionId();
     if (!sid) return fallback();
     const markerPath = markerPathFor(sid);
     const marker = loadMarker(markerPath);
-    const counted = countWords(jsonlPath(sid), marker.line);
+    const counted = countWords(jsonlPath(sid), marker.line, { provider: aiAppName(), sid });
+    if (counted.status !== 'ok') return fallback(counted.status);
     const tail = Math.max(0, Number(counted.count) || 0);
     const sp = resolveStatePath(projDir);
     const state = loadState(sp);
@@ -110,7 +118,14 @@ export function bankTranscriptTail(projDir) {
       saveState(state, sp);
       saveMarker(markerPath, counted.totalLines, nextMarker, state.active, nextFull);
     }
-    return { banked: tail, fullBanked: tailFull, marker: nextMarker, fullMarker: nextFull };
+    return {
+      banked: tail,
+      fullBanked: tailFull,
+      marker: nextMarker,
+      fullMarker: nextFull,
+      transcriptStatus: 'ok',
+      fullMarkerAvailable: true,
+    };
   } catch {
     return fallback();
   }

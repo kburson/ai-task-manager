@@ -26,6 +26,7 @@ import { join } from 'node:path';
 import { buildReviewToDoneClosePair } from '../../../gh-timing-comment.mjs';
 import { PHASE_EVENTS } from '../../../phase-events.mjs';
 import { projectScratchDir } from '../../../lib/scratch-dir.mjs';
+import { parseTimingRow } from '../../../lib/timing-row-reader.mjs';
 import { verbClose } from '../../../verbs/close.mjs';
 
 // Extract the `Event` column (2nd cell) from a built timing-row string.
@@ -47,6 +48,7 @@ test('buildReviewToDoneClosePair emits review:approved then issue:wrap', () => {
     activeSec: 4200,
     idleSec: 600,
     wordMarker: 123,
+    fullWordMarker: 200,
   });
 
   // AC1 — canonical order: approval first, wrap second.
@@ -57,6 +59,8 @@ test('buildReviewToDoneClosePair emits review:approved then issue:wrap', () => {
   // is the zero-delta paired half.
   assert.deepEqual(secOf(approved), { a: 4200, i: 600 });
   assert.deepEqual(secOf(wrap), { a: 0, i: 0 });
+  assert.equal(parseTimingRow(approved).fullWordMarker, '200');
+  assert.equal(parseTimingRow(wrap).fullWordMarker, '200');
 });
 
 // ── Part B: real verbClose path — rows precede the terminal move (AC4) ───────
@@ -77,6 +81,7 @@ test('verbClose emits review:approved + issue:wrap before the done board move', 
     entryStartTs: new Date(Date.now() - 60_000).toISOString(),
     wordsAtEntryStart: 0,
     lastWordMarker: 0,
+    lastFullWordMarker: 200,
   });
 
   // Single ordered log of side effects: timing rows (by event) and the
@@ -144,6 +149,15 @@ test('verbClose emits review:approved + issue:wrap before the done board move', 
     rowEvents.filter((e) => e === PHASE_EVENTS.review.complete.event).length,
     1,
     `exactly one review:approved expected from close; got ${rowEvents.join(', ')}`
+  );
+  assert.deepEqual(
+    sequence
+      .filter(({ event }) =>
+        [PHASE_EVENTS.review.complete.event, PHASE_EVENTS.done.enter.event].includes(event)
+      )
+      .map(({ row }) => parseTimingRow(row).fullWordMarker),
+    ['200', '200'],
+    'real close caller preserves the known full cursor through both terminal rows'
   );
 });
 
