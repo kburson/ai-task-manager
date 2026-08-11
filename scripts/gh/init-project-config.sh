@@ -372,7 +372,7 @@ create_project_field_if_missing() {
 # PURPLE.
 CANONICAL_STATUS_PALETTE='[
   {"name":"Backlog","color":"GRAY","description":"Unvetted ideas; not yet shaped."},
-  {"name":"Assigned","color":"GRAY","description":"Current tranche pulled from Backlog; inert waiting room."},
+  {"name":"Assigned","color":"GRAY","description":"Current tranche pulled from Backlog; requires an assignee."},
   {"name":"Refine","color":"GREEN","description":"Items being shaped: AC, sizing, estimates."},
   {"name":"Plan","color":"BLUE","description":"Items being deep-dived: design + caller analysis."},
   {"name":"Develop","color":"YELLOW","description":"Implementation in progress."},

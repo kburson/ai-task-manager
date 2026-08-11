@@ -85,6 +85,19 @@ test('runGuards aggregates refusals across exit + entry (no short-circuit)', asy
   assert.equal(reasonById['entry-fail'], 'entry refused');
 });
 
+test('runGuards preserves a guard-specific exit code on its refusal', async () => {
+  const { registerGuard, runGuards } = await freshRegistry();
+  registerGuard('assigned', 'entry', {
+    id: 'distinct-code',
+    run: () => ({ ok: false, reason: 'specific refusal', exitCode: 11 }),
+  });
+
+  const result = await runGuards('backlog', 'assigned', {});
+  assert.deepEqual(result.refusals, [
+    { id: 'distinct-code', reason: 'specific refusal', exitCode: 11 },
+  ]);
+});
+
 test('runGuards passes ctx to each guard.run', async () => {
   const { registerGuard, runGuards } = await freshRegistry();
   const seen = [];

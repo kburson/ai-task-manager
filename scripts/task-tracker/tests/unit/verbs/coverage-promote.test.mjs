@@ -20,6 +20,7 @@ function makeDeps({
   spawnCode = 0,
   moveCode = 0,
   fetchSecondBody,
+  assignees = ['alice'],
 } = {}) {
   let secondFetch = false;
   let liveCalls = 0;
@@ -52,6 +53,7 @@ function makeDeps({
         calls.spawns.push({ verb, issueNumber }) && spawnCode,
       runMoveState: async ({ issueNumber, target }) =>
         calls.moves.push({ issueNumber, target }) && moveCode,
+      fetchAssignedInvariantAssignees: async () => assignees,
       epicChildren: { fetchSiblings: async () => [] },
       decomposition: {
         projectDir: process.cwd(),
@@ -155,12 +157,23 @@ test('runPromote: refine→plan refused when refine-exit gate returns blockers',
   assert.equal(r.status, 'refine-exit-refused');
   assert.equal(calls.moves.length, 0);
 });
-test('runPromote: backlog→assigned gateless direct move', async () => {
+test('runPromote: backlog→assigned requires an assignee before the direct move', async () => {
   const { deps, calls } = makeDeps({ body: bodyWithState('backlog'), live: 'backlog' });
   const r = await runPromote({ issueNumber: 1473, cfg, deps });
   assert.equal(r.status, 'promoted');
   assert.equal(r.to, 'assigned');
   assert.equal(r.refinementPost, null);
+});
+test('runPromote: backlog→assigned refuses without an assignee using invariant exit code', async () => {
+  const { deps, calls } = makeDeps({
+    body: bodyWithState('backlog'),
+    live: 'backlog',
+    assignees: [],
+  });
+  const r = await runPromote({ issueNumber: 1474, cfg, deps });
+  assert.equal(r.status, 'assigned-assignee-refused');
+  assert.equal(r.exitCode, 11);
+  assert.deepEqual(calls.moves, []);
 });
 test('runPromote: assigned→refine stamps Start time on success', async () => {
   const { deps } = makeDeps({ body: bodyWithState('assigned'), live: 'assigned' });
@@ -360,6 +373,16 @@ test('verbPromote: promoted → stdout, no exit', async () => {
   const r = await runVerb(['1473'], deps);
   assert.equal(r.exitCode, null);
   assert.match(r.stdout, /promoted: backlog → assigned/);
+});
+test('verbPromote: unassigned backlog entry refusal preserves invariant exit code 11', async () => {
+  const { deps } = makeDeps({
+    body: bodyWithState('backlog'),
+    live: 'backlog',
+    assignees: [],
+  });
+  const r = await runVerb(['1474'], deps);
+  assert.equal(r.exitCode, 11);
+  assert.match(r.stderr, /cannot enter Assigned: at least one live GitHub assignee is required/);
 });
 test('verbPromote: refine→plan promoted prints refine-estimate comment line', async () => {
   const { deps } = makeDeps({ body: refineBody(), live: 'refine' });

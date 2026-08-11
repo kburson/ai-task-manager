@@ -1,12 +1,12 @@
 // State object: assigned (#1206; the second slot was introduced in #433).
 //
-// Assigned is an inert, gateless waiting room between Backlog and Refine — a
+// Assigned is the assignee-coupled waiting room between Backlog and Refine — a
 // positional tranche filter whose issue content is identical to Backlog.
-// Entering Assigned from Backlog has no field gate. The long-standing
+// Entering Assigned requires at least one live assignee but no refinement field. The long-standing
 // refine-entry Priority gate, and the child/parent contiguity floors that
 // previously fired on backlog-exit, relocate here so they now guard entry
 // into Refine (assigned → refine), keeping the gate semantics unchanged while
-// the second state stays free to enter.
+// the second state stays cheap to enter.
 
 import { blockedByGuard } from '../lib/blocked-by-guard.mjs';
 import { refineEntryFieldsPriority } from '../lib/guard-adapters-entry-fields.mjs';
@@ -15,10 +15,11 @@ import { contiguityEntryGuard } from '../lib/contiguity-entry-guard.mjs';
 import { childCannotLeadEpicExitGuard } from '../lib/child-cannot-lead-epic-exit-guard.mjs';
 import { userStoryWarnGuard } from '../lib/user-story-guard.mjs';
 import { discussBlockGuard } from '../lib/discuss-block-guard.mjs';
+import { assignedRequiresAssigneeGuard } from '../lib/assigned-assignee-invariant.mjs';
 
 export default Object.freeze({
   name: 'assigned',
-  entryGuards: Object.freeze([contiguityEntryGuard]),
+  entryGuards: Object.freeze([contiguityEntryGuard, assignedRequiresAssigneeGuard]),
   exitGuards: Object.freeze([
     blockedByGuard,
     refineEntryFieldsPriority,

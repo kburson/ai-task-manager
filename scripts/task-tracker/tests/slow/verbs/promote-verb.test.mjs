@@ -19,6 +19,7 @@ function makeDeps({
   spawnCode = 0,
   moveCode = 0,
   fetchSecondBody,
+  assignees = ['alice'],
 } = {}) {
   let secondFetch = false;
   let liveCalls = 0;
@@ -68,6 +69,7 @@ function makeDeps({
         calls.moves.push({ issueNumber, target });
         return moveCode;
       },
+      fetchAssignedInvariantAssignees: async () => assignees,
       postTimingRow: async ({ row }) => {
         calls.timings.push(row);
       },
@@ -241,10 +243,9 @@ test('promote: assigned→refine stamps Start time on success (#147, #433)', asy
   assert.equal(stampArgs.issueNumber, 1472);
 });
 
-test('promote: backlog→assigned is a gateless direct move-state call (#433)', async () => {
-  // #433 — Backlog → Assigned carries no field gate. The Priority gate relocated
-  // to Assigned → Refine, so promote out of backlog needs no board values and
-  // stamps no Start time.
+test('promote: backlog→assigned is an assignee-gated direct move-state call (#1207)', async () => {
+  // Backlog → Assigned requires a live assignee but carries no refinement-field
+  // gate. The Priority gate remains on Assigned → Refine.
   const { deps, calls } = makeDeps({ body: bodyWithState('backlog'), live: 'backlog' });
   let stampCalls = 0;
   deps.stampStartTime = async () => {

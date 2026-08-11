@@ -56,6 +56,7 @@ const __dir = path.dirname(fileURLToPath(import.meta.url));
 // message }` vocabulary that `verbs/check`, `auto`, and the slow tests pin.
 // Unknown refusal ids default to `guard-refused`.
 const REFUSAL_ID_TO_STATUS = {
+  'assigned-requires-assignee': 'assigned-assignee-refused',
   'refine-entry-fields-priority': 'refine-gate-refused',
   'plan-entry-fields-body': 'refine-gate-refused',
   'plan-entry-fields-board': 'refine-exit-refused',
@@ -112,6 +113,7 @@ function refusalsToVerbResult(refusals, { issueNumber, target }) {
   }
   return {
     status,
+    ...(Number.isInteger(primary.exitCode) ? { exitCode: primary.exitCode } : {}),
     blockers,
     message: `Refusing to promote #${issueNumber} to ${target}: ${primary.reason}`,
   };
@@ -718,6 +720,12 @@ export async function verbPromote(rest, cfg, deps = {}) {
       for (const b of result.blockers) process.stderr.write(`   BLOCKED: ${b}\n`);
       process.stderr.write('\n');
       process.exit(4);
+    }
+    case 'assigned-assignee-refused': {
+      process.stderr.write(`\n⛔ ${result.message}\n`);
+      for (const b of result.blockers) process.stderr.write(`   BLOCKED: ${b}\n`);
+      process.stderr.write('\n');
+      process.exit(result.exitCode || 11);
     }
     case 'drift-refused': {
       process.stderr.write(

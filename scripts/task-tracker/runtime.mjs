@@ -251,6 +251,7 @@ export function buildContext(rawArgv = process.argv.slice(2)) {
     'demote',
     'next',
     'reconcile',
+    'assign',
   ]);
   const rest = _argvClean
     .slice(1)

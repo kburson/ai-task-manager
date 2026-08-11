@@ -12,6 +12,7 @@ import { loadConfig } from '../task-tracker/config.mjs';
 import { GH_API_TIMEOUT_MS } from '../task-tracker/lib/process-timeouts.mjs';
 import { verifyIssueBody } from './lib/issue-body-verifier.mjs';
 import { stampEntryMarker } from '../task-tracker/lib/stage-entry-markers.mjs';
+import { writeLastKnownState } from '../task-tracker/gh-timing-comment.mjs';
 import { readParentStatus } from './lib/parent-status.mjs';
 import { childCreationAllowedAtEpicState } from '../task-tracker/lib/epic-children-gate.mjs';
 import { wantsHelp, emitSelfDoc } from '../lib/self-doc.mjs';
@@ -111,12 +112,12 @@ export function formatCreatedIssueToken(issueNumber) {
 
 function validateArgs(args) {
   if (!args.title || args.title === true) die(`missing --title\n${usage()}`, 2);
-  // #272 — --status is no longer accepted. All issues are created in Backlog
-  // and only advance via promote verbs.
+  // --status is no longer accepted. Initial state is derived from explicit
+  // assignment: unassigned → Backlog, assigned → Assigned.
   if ('status' in args) {
     die(
-      `--status is no longer accepted (#272). All issues are created in Backlog; ` +
-        `promote afterward via \`node scripts/task-tracker/task-tracker.mjs promote <N>\`.`,
+      `--status is no longer accepted. Initial state is derived from --assignee; ` +
+        `use sanctioned task verbs for later movement.`,
       2
     );
   }
@@ -266,10 +267,13 @@ function ghCreate(args, assignee) {
   return issueNumber;
 }
 
-function buildTetherArgs(issueNumber, args, priority) {
-  // #272 — Always create new issues in Backlog. The --status flag was removed
-  // from this script's surface; the project tether call hard-codes `backlog`.
-  const tArgs = [TETHER_SCRIPT, '--issue', String(issueNumber), '--status', 'backlog'];
+export function initialStateForAssignee(assignee) {
+  return typeof assignee === 'string' && assignee.trim() ? 'assigned' : 'backlog';
+}
+
+export function buildTetherArgs(issueNumber, args, priority) {
+  const initialState = initialStateForAssignee(resolveAssignee(args));
+  const tArgs = [TETHER_SCRIPT, '--issue', String(issueNumber), '--status', initialState];
   if (priority) tArgs.push('--priority', priority);
   if (typeof args.size === 'string') tArgs.push('--size', args.size);
   if (typeof args.estimate === 'string') tArgs.push('--estimate', args.estimate);
@@ -326,6 +330,15 @@ function substitutePlaceholders(issueNumber, bodyContent, args, repo) {
 // `[Y|n]` prompt passes explicitly as `--assignee` when the human opts in.
 export function resolveAssignee(args) {
   return typeof args.assignee === 'string' && args.assignee ? args.assignee : null;
+}
+
+export function stampInitialEntry(body, assignee, timestamp = new Date().toISOString()) {
+  const state = initialStateForAssignee(assignee);
+  const entered = stampEntryMarker(body, state, timestamp);
+  // Fresh Backlog bodies retain the historical marker-less bootstrap. Assigned
+  // creation is already beyond Backlog, so seed the authoritative state marker
+  // or bind-time cache seeding would correctly classify the body as corrupt.
+  return state === 'assigned' ? writeLastKnownState(entered, state) : entered;
 }
 
 function enforcePriorityGate(_args) {
@@ -512,12 +525,10 @@ async function main() {
     }
   }
 
-  // #221 — stamp the initial-state entry marker so the lifecycle chain starts
-  // at creation instead of at the first transition. #272 — initial state is
-  // hard-coded to `backlog`: all issues are born in Backlog. stampEntryMarker
-  // is idempotent — if the body already contains the marker (template-injected),
-  // re-stamping with the same ts is a no-op.
-  bodyContent = stampEntryMarker(bodyContent, 'backlog', new Date().toISOString());
+  // #1207 — explicit assignment makes Assigned the initial state; unassigned
+  // creation remains in Backlog. The body marker and project tether derive from
+  // the same helper so they cannot disagree.
+  bodyContent = stampInitialEntry(bodyContent, assignee);
   if (!tmpDir) {
     tmpDir = mkdtempSync(path.join(projectScratchDir('test'), 'aitm-create-issue-'));
     bodyFilePath = path.join(tmpDir, 'body.md');

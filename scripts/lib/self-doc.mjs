@@ -122,10 +122,10 @@ const ROUTABLE_SELF_DOC = {
     group: 'Maintenance',
     path: 'scripts/task-tracker/heal-backlog.mjs',
     synopsis:
-      'Normalize body encodings, reconcile aitm-fields vs the timing log, validate field schema. `--rename-timing-slugs` rewrites historical timing-log Event slugs to the #516 vocabulary.',
+      'Normalize issue metadata or audit the Assigned/assignee invariant. Dedicated modes include `--rename-timing-slugs` and `--assigned-invariant`.',
     audience: 'Operator healing drifted issue bodies. Dry-run by default; --apply to write.',
     usage:
-      'aitm heal-backlog [--state open|closed|all] [--apply] [--scope N,N] [--no-schema-check] [--ignore-schema-drift] [--rename-timing-slugs] [--yes]',
+      'aitm heal-backlog [--state open|closed|all] [--apply] [--scope N,N] [--no-schema-check] [--ignore-schema-drift] [--rename-timing-slugs] [--assigned-invariant] [--yes]',
   },
   'ensure-wave-parent': {
     group: 'Parallel',
@@ -320,6 +320,7 @@ const ROUTABLE_ARGUMENTS = Object.freeze({
     argument('--no-schema-check', 'Skip project field schema comparison.'),
     argument('--ignore-schema-drift', 'Continue despite detected project field drift.'),
     argument('--rename-timing-slugs', 'Run the timing-event rename mode.'),
+    argument('--assigned-invariant', 'Audit Backlog/Assigned against live assignees.'),
     argument('--yes', 'Skip multi-issue write confirmation.'),
   ],
   'ensure-wave-parent': [
@@ -489,6 +490,7 @@ const ROUTABLE_CONTRACTS = Object.freeze({
     ],
     examples: [
       'npx aitm heal-backlog --state open',
+      'npx aitm heal-backlog --assigned-invariant --state open',
       'npx aitm heal-backlog --scope 1023 --apply --yes',
     ],
     relatedCommands: ['verify-open-issue-bodies', 'heal-entry-markers'],

@@ -5,8 +5,8 @@
 // Mirrors the parent-side `planEpicChildrenGuard` from #277 but from the child's
 // perspective: a sub-issue moving assigned → refine (the 8-state predecessor of
 // refine) is refused when its parent's live board Status is anything other than
-// `refine`, `plan`, or `develop`. The earlier backlog → assigned hop is gateless
-// (Assigned is an inert tranche waiting room), so the parent-state floor moved
+// `refine`, `plan`, or `develop`. The earlier backlog → assigned hop has only
+// the assignee invariant (no refinement-field gate), so the parent-state floor moved
 // with the real refinement-entry transition.
 //
 // Wave-model invariant: children should join the active planning wave while the

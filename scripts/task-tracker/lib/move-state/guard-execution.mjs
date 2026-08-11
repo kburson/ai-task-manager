@@ -61,6 +61,7 @@ export async function runGuardExecution(ctx) {
     resolveWorkspaceForIssue,
     backlogMoveWarning,
     lifecycleEvidence,
+    guardDeps,
   } = ctx;
 
   // Gate 1: dirty-workspace warning on move to review. Non-blocking — move still proceeds.
@@ -142,7 +143,12 @@ export async function runGuardExecution(ctx) {
     // side-channels its resolved `refinementPlan` onto ctx; that field is
     // consumed today only by promote.mjs's inline pre-flight (which still runs
     // ahead of move-state spawn), so the in-registry assignment is harmless.
-    const deps = await buildCloseGatesDeps({ stateArg, pexec, projectDir: getProjectDir() });
+    const closeGatesDeps = await buildCloseGatesDeps({
+      stateArg,
+      pexec,
+      projectDir: getProjectDir(),
+    });
+    const deps = { ...(guardDeps || {}), ...(closeGatesDeps || {}) };
 
     let guardResult = await runGuards(resolvedFromState, stateArg, {
       issueNumber: Number(issueArg),
@@ -194,6 +200,18 @@ export async function runGuardExecution(ctx) {
           `   • Only if the board and recorded body state have actually drifted (not merely a missing historical marker), run \`/task reconcile accept-live ${issueArg}\` instead.\n\n`
         );
         return { exit: 6 };
+      }
+      const assignedAssigneeRefusal = guardResult.refusals.find(
+        (r) => r.id === 'assigned-requires-assignee'
+      );
+      if (assignedAssigneeRefusal) {
+        process.stderr.write('\n');
+        process.stderr.write(`⛔ Refusing to move #${issueArg} to ${stateArg}:\n`);
+        process.stderr.write(`   BLOCKED: ${assignedAssigneeRefusal.reason}\n\n`);
+        process.stderr.write(
+          `Assign the issue first with \`npx aitm assign ${issueArg}\`, then retry the move.\n\n`
+        );
+        return { exit: assignedAssigneeRefusal.exitCode };
       }
       // #359 — body-gates-entry-{test,review,done} refusals replay the
       // inline composite's fire-and-forget `gate-refused` timing row before

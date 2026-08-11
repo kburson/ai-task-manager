@@ -21,6 +21,7 @@ const pexec = promisify(execFile);
 const ISSUE_TARGET_VERBS = new Set([
   'ac-stamp',
   'approve',
+  'assign',
   'board',
   'check',
   'close',

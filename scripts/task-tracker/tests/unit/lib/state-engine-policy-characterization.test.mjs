@@ -228,6 +228,7 @@ test('bootstrap policy resolves live state and refuses a missing board item', as
         return { status: 'ok' };
       },
       runMoveState: async () => 0,
+      fetchAssignedInvariantAssignees: async () => ['alice'],
     },
   });
   assert.equal(resolved.status, 'promoted');

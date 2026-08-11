@@ -29,6 +29,20 @@ test('the default convergence adapter owns the background profile and preserves 
   assert.deepEqual(result, { action: 'finalize', status: 'completed' });
 });
 
+test('selected-child promotion delegates without flattening an Assigned invariant refusal', async () => {
+  const refusal = { status: 'assigned-assignee-refused', exitCode: 11 };
+  const result = await pullNext.promoteSelectedChild({
+    issueNumber: 102,
+    cfg: { repo: 'o/r' },
+    projectDir: '/bound/epic',
+    promoteVerb: async (_rest, _cfg, deps) => {
+      deps.assertBound(102);
+      return refusal;
+    },
+  });
+  assert.equal(result, refusal);
+});
+
 test('a background Done move runs issue/project tail steps without touching the parent session', async () => {
   const calls = [];
   const parentSession = {

@@ -104,6 +104,7 @@ export const VERB_CONTRACTS = Object.freeze({
       MOVE_REFUSAL,
       ...PREFLIGHT_TARGET_EXITS,
       exit(7, 'target binding differs or the issue mutation lock is held'),
+      exit(11, 'Assigned entry could not verify at least one assignee'),
     ]
   ),
   demote: contract(
@@ -119,6 +120,18 @@ export const VERB_CONTRACTS = Object.freeze({
     ['Moves the issue to Backlog while retaining estimate fields and records the reason.'],
     ['Prints the parked issue, retained fields, and transition result.'],
     [MOVE_REFUSAL, ...PREFLIGHT_TARGET_EXITS]
+  ),
+  assign: contract(
+    ['The numbered issue must exist and its live Status and assignees must be readable.'],
+    [
+      'Adds the configured or requested assignee and moves Backlog to Assigned, or removes an assignee and demotes only when it was the final assignee in Assigned.',
+      'Compensates a partial cross-resource mutation when the paired operation fails.',
+    ],
+    ['Prints the resulting assignee and state, or the failed step and compensation result.'],
+    [
+      exit(7, 'the issue mutation lock is held'),
+      exit(11, 'Backlog-to-Assigned was refused because assignees were empty or unverifiable'),
+    ]
   ),
   refine: contract(
     [
@@ -203,7 +216,10 @@ export const VERB_CONTRACTS = Object.freeze({
     [
       'The issue must exist, a listed reconciliation or backfill mode is required, and its mutation lock must be available.',
     ],
-    ['Adopts live state, walks the board to a recorded sentinel, or backfills missing markers.'],
+    [
+      'Adopts live state, walks the board to a recorded sentinel, backfills missing markers, or audits the Assigned/assignee invariant.',
+      'The assigned-invariant mode writes only with --apply.',
+    ],
     ['Prints detected drift, each repair step, and the final reconciled state.'],
     [
       exit(3, 'delegated board transition refused its verb-context gate'),
@@ -447,6 +463,7 @@ export const VERB_RELATED_COMMANDS = Object.freeze({
   promote: Object.freeze(['demote', 'plan', 'test', 'review', 'close']),
   demote: Object.freeze(['promote', 'review', 'test']),
   park: Object.freeze(['refine', 'promote']),
+  assign: Object.freeze(['promote', 'reconcile', 'board']),
   refine: Object.freeze(['park', 'plan', 'promote']),
   plan: Object.freeze(['plan-estimate', 'plan-approve', 'promote']),
   'plan-approve': Object.freeze(['plan-estimate', 'promote']),
@@ -513,6 +530,10 @@ export const VERB_POSITIONAL_ARGUMENTS = Object.freeze({
     positional('#N', 'Required issue number returned one state toward Develop.'),
   ]),
   park: Object.freeze([positional('<N>', 'Issue number to return to Backlog.')]),
+  assign: Object.freeze([
+    positional('#N', 'Issue number whose assignee is changed.'),
+    positional('[<login>]', 'Optional assignee login; defaults to configured assignee or @me.'),
+  ]),
   refine: Object.freeze([positional('<N>', 'Issue number to refine.')]),
   plan: Object.freeze([positional('#N', 'Issue number to move from Refine to Plan.')]),
   'plan-approve': Object.freeze([
@@ -533,7 +554,7 @@ export const VERB_POSITIONAL_ARGUMENTS = Object.freeze({
   test: Object.freeze([positional('#N', 'Issue number verified in the sandbox.')]),
   reconcile: Object.freeze([
     positional(
-      '<accept-live|revert-to-recorded|revert-to-sentinel|backfill>',
+      '<accept-live|revert-to-recorded|revert-to-sentinel|backfill|assigned-invariant>',
       'Explicit reconciliation or missing-field backfill mode.'
     ),
     positional('#N', 'Issue number whose recorded and live state differ.'),

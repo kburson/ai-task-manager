@@ -17,7 +17,7 @@ export const STAGES = [...stateIds()];
 const STAGE_INDEX = Object.fromEntries(STAGES.map((s, i) => [s, i]));
 const KNOWN_STAGES = new Set(STAGES);
 
-// Assigned (#1206; introduced as On Deck in #433) is an inert, gateless
+// Assigned (#1206; introduced as On Deck in #433) is an assignee-coupled
 // waiting room. Pre-#433 issues never recorded a second-stage marker, so the contiguity check below
 // treats it as optional in the required-prior set — it must never manufacture
 // a hard forward-move prerequisite for the in-flight corpus.

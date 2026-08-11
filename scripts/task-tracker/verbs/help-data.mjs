@@ -318,13 +318,41 @@ export const VERB_REFERENCE = {
   reconcile: {
     topic: 'board',
     summary:
-      'Drift recovery — align recorded state with the live board or restore the saga-verified sentinel.',
-    usage: '/task reconcile <accept-live|revert-to-recorded|revert-to-sentinel|backfill> #N',
+      'Drift recovery — align recorded/live state, restore the saga sentinel, or audit the Assigned invariant.',
+    usage:
+      '/task reconcile <accept-live|revert-to-recorded|revert-to-sentinel|backfill|assigned-invariant> #N [--apply]',
+    flags: [
+      {
+        flag: '--apply',
+        desc: 'apply an assigned-invariant repair; that mode is report-only without this flag',
+      },
+    ],
     examples: [
       '/task reconcile accept-live 667',
       '/task reconcile revert-to-sentinel 667',
       '/task reconcile backfill 667',
+      '/task reconcile assigned-invariant 667 --apply',
     ],
+  },
+  assign: {
+    topic: 'board',
+    summary: 'Couple a local GitHub assignee edit to the Backlog/Assigned invariant.',
+    usage: '/task assign #N [<login>|--assignee <login>] [--remove]',
+    flags: [
+      {
+        flag: '--assignee <login>',
+        desc: 'assignee login; defaults to config.assignee and then @me',
+      },
+      {
+        flag: '--remove',
+        desc: 'remove the login and demote only when it was the final assignee in Assigned',
+      },
+    ],
+    exitCodes: [
+      { code: 7, meaning: 'the issue mutation lock is held' },
+      { code: 11, meaning: 'Assigned entry could not verify at least one assignee' },
+    ],
+    examples: ['/task assign 667', '/task assign 667 octocat --remove'],
   },
   board: {
     topic: 'board',

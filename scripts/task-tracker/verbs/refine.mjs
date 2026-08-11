@@ -324,7 +324,7 @@ export async function runRefine({ args, cfg, deps = {} } = {}) {
   //     verb-name entry transition — the one legitimate transitive advance for
   //     this verb. Under the 8-state model the issue may start in Backlog or
   //     Assigned; advance one state at a time until it reaches Refine (backlog →
-  //     assigned → refine, or assigned → refine). backlog → assigned is gateless;
+  //     assigned → refine, or assigned → refine). backlog → assigned requires an assignee;
   //     assigned → refine runs the Priority gate, which step 2's tether already
   //     satisfied. When the issue is already in Refine (or any later state) we
   //     do NOT advance; the user must call `/task promote` explicitly to exit

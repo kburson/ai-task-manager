@@ -57,10 +57,21 @@ import { pushIssueBody } from '../lib/issue-body-push.mjs';
 import { withIssueLock, IssueLockError } from '../issue-mutator-lock.mjs';
 import { runMoveStateHost } from '../../gh/move-state.mjs';
 import { resolveProjectDir } from '../lib/project-dir.mjs';
+import {
+  classifyAssignedAssigneeDrift,
+  fetchAssignedInvariantAssignees,
+  parseAssigneeLogins,
+} from '../lib/assigned-assignee-invariant.mjs';
 
 const pexec = promisify(execFile);
 
-const MODES = new Set(['accept-live', 'revert-to-recorded', 'revert-to-sentinel', 'backfill']);
+const MODES = new Set([
+  'accept-live',
+  'revert-to-recorded',
+  'revert-to-sentinel',
+  'backfill',
+  'assigned-invariant',
+]);
 const DEMOTION_RECOVERY_SOURCES = new Set(['test', 'review']);
 
 // ---------------------------------------------------------------------------
@@ -181,6 +192,76 @@ function defaultPersistTrackerState({ issueNumber, state } = {}) {
 // Pure core.
 // ---------------------------------------------------------------------------
 
+export async function runAssignedInvariantReconcile({
+  issueNumber,
+  apply = false,
+  cfg,
+  deps = {},
+} = {}) {
+  if (!Number.isInteger(issueNumber) || issueNumber <= 0) {
+    throw new Error('reconcile assigned-invariant: issue# must be a positive integer');
+  }
+  if (!cfg?.repo) throw new Error('reconcile assigned-invariant: cfg.repo is required');
+  const getLiveState = deps.getLiveState || defaultGetLiveState;
+  const fetchAssignees = deps.fetchAssignees || fetchAssignedInvariantAssignees;
+  const runMoveState = deps.runMoveState || defaultRunMoveState;
+  try {
+    const state = await getLiveState({ issueNumber, cfg });
+    const assignees = parseAssigneeLogins(await fetchAssignees({ issueNumber, repo: cfg.repo }));
+    const drift = classifyAssignedAssigneeDrift({ state, assignees });
+    if (drift.kind === 'none' || drift.kind === 'out-of-scope') {
+      return {
+        status: 'compliant',
+        kind: drift.kind,
+        issueNumber,
+        state,
+        assignees,
+        applied: false,
+      };
+    }
+    if (!apply) {
+      return {
+        status: 'drift-detected',
+        kind: drift.kind,
+        issueNumber,
+        state,
+        assignees,
+        targetState: drift.targetState,
+        applied: false,
+      };
+    }
+    const exitCode = await runMoveState({ issueNumber, target: drift.targetState, cfg });
+    if (exitCode !== 0) {
+      return {
+        status: 'repair-failed',
+        kind: drift.kind,
+        issueNumber,
+        state,
+        assignees,
+        targetState: drift.targetState,
+        exitCode,
+        applied: true,
+      };
+    }
+    return {
+      status: 'repaired',
+      kind: drift.kind,
+      issueNumber,
+      from: state,
+      to: drift.targetState,
+      assignees,
+      applied: true,
+    };
+  } catch (error) {
+    return {
+      status: 'error',
+      issueNumber,
+      exitCode: 1,
+      message: `reconcile assigned-invariant: ${error?.message || String(error)}`,
+    };
+  }
+}
+
 export async function runReconcile({
   issueNumber,
   mode,
@@ -236,7 +317,7 @@ export async function runReconcile({
       return { status: 'error', message: `reconcile backfill: no state for #${issueNumber}` };
     }
     // Mirror the forward-move contiguity check (evaluateContiguity): the
-    // gateless `assigned` waiting room is optional and never blocks a promotion,
+    // historical `assigned` waiting-room marker is optional for contiguity and never blocks a promotion,
     // so backfill must not manufacture a marker the normal flow legitimately
     // omits. Fill only the holes that would actually wedge a forward move.
     const holes = computeBackfillHoles(body, currentStage).holes.filter(
@@ -582,6 +663,7 @@ export async function runReconcile({
 function parseArgs(rest) {
   let issueNumber = null;
   let mode = null;
+  let apply = false;
   for (const a of rest) {
     const m = String(a).match(/^#?(\d+)$/);
     if (m) {
@@ -592,15 +674,16 @@ function parseArgs(rest) {
       mode = a;
       continue;
     }
+    if (a === '--apply') apply = true;
   }
-  return { issueNumber, mode };
+  return { issueNumber, mode, apply };
 }
 
 export async function verbReconcile(rest, cfg, deps = {}) {
-  const { issueNumber, mode } = parseArgs(rest);
+  const { issueNumber, mode, apply } = parseArgs(rest);
   if (!issueNumber || !mode) {
     process.stderr.write(
-      'Usage: /task reconcile <accept-live|revert-to-recorded|revert-to-sentinel|backfill> #N\n'
+      'Usage: /task reconcile <accept-live|revert-to-recorded|revert-to-sentinel|backfill|assigned-invariant> #N [--apply]\n'
     );
     process.exit(1);
   }
@@ -612,7 +695,10 @@ export async function verbReconcile(rest, cfg, deps = {}) {
       // `deps` defaults to `{}` on the real CLI path, so live behaviour is
       // unchanged; tests forward mocked I/O seams to drive every CLI arm
       // offline without a `gh` subprocess inside the process.exit trap window.
-      () => runReconcile({ issueNumber, mode, cfg, deps })
+      () =>
+        mode === 'assigned-invariant'
+          ? runAssignedInvariantReconcile({ issueNumber, apply, cfg, deps })
+          : runReconcile({ issueNumber, mode, cfg, deps })
     );
   } catch (err) {
     if (err instanceof IssueLockError) {
@@ -624,6 +710,28 @@ export async function verbReconcile(rest, cfg, deps = {}) {
   }
 
   switch (result.status) {
+    case 'drift-detected': {
+      process.stdout.write(
+        `DRY-RUN #${issueNumber}: ${result.kind}; would move ${result.state} → ${result.targetState}. Re-run with --apply.\n`
+      );
+      return;
+    }
+    case 'repaired': {
+      process.stdout.write(
+        `✓ #${issueNumber} assigned invariant repaired: ${result.from} → ${result.to}\n`
+      );
+      return;
+    }
+    case 'compliant': {
+      process.stdout.write(`✓ #${issueNumber} assigned invariant compliant (${result.state})\n`);
+      return;
+    }
+    case 'repair-failed': {
+      process.stderr.write(
+        `reconcile assigned-invariant: move to ${result.targetState} exited ${result.exitCode}\n`
+      );
+      process.exit(result.exitCode || 1);
+    }
     case 'reconciled': {
       process.stdout.write(
         `✓ #${issueNumber} reconciled (${result.mode}): ${result.from ?? '∅'} → ${result.to}\n`

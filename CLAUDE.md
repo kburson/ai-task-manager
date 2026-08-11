@@ -35,7 +35,8 @@ Parallel sub-agent fan-out is an explicit, approved operation. Before any `Agent
 
 Full rules in `docs/guides/workflow.md`. Quick reference:
 
-- **New issues default to UNASSIGNED in Backlog** (#793). `gh issue create` / `/task new` / `create-issue.mjs` no longer inject `--assignee`; assignment is opt-in. Pass an explicit `--assignee <login>` only when you deliberately want to assign. **Exception — defect spawned mid-task:** when you discover a defect while working an issue and file a tracking issue for it, ask the human `[Y|n]` (default **Yes**) whether to self-assign it; on Yes create it with `--assignee @me` (the `assignee` key in `.ai-task-manager/task-tracker.json` is the self-assign target login), on No leave it unassigned.
+- **New issues default to UNASSIGNED in Backlog** when `--assignee` is omitted. Assigned requires at least one live GitHub assignee; explicit `create-issue.mjs --assignee <login>` creation lands in Assigned. Use `/task assign #N` to assign locally and `/task assign #N --assignee <login> --remove` to remove. Removing the final assignee demotes only Assigned to Backlog; Refine through Done are assignment-neutral and never move backward. Audit with `/task reconcile assigned-invariant #N` and repair only with `/task reconcile assigned-invariant #N --apply`. Assigned entry fails closed with exit code 11 if assignees are empty or unverifiable. For a defect spawned mid-task, ask `[Y|n]` (default Yes) whether to self-assign; Yes passes `--assignee @me`, No keeps the default.
+- Never call `gh issue create` directly; route creation through the sanctioned `create-issue.mjs` workflow.
 - Move issues through states: `scripts/gh/move-state.mjs <issue#> <state>`
 - Set priority: `scripts/gh/set-priority.mjs <issue#> <priority> [--cascade]`
 - Link sub-issues via `addSubIssue` GraphQL mutation. Parent cannot close until all children close.

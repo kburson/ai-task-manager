@@ -15,7 +15,9 @@ aitm-skill-loaded:rules/state-walk:1.1.0
 backlog → assigned → refine → plan → develop → test → review → done
 ```
 
-`assigned` (display: "Assigned") is an inert, gateless tranche waiting room between Backlog and Refine. `backlog → assigned` carries no entry gate; the Priority entry gate lives on `assigned → refine`. Backward arc `assigned → backlog` drops an item out of the current tranche. Every item passes through Assigned — there is no `backlog → refine` shortcut.
+`assigned` (display: "Assigned") is the assignee-coupled tranche between Backlog and Refine. Assigned requires at least one live GitHub assignee; Backlog → Assigned fails closed with exit code 11 when assignees are empty or unverifiable. The Priority entry gate remains on `assigned → refine`. Every item passes through Assigned — there is no `backlog → refine` shortcut.
+
+Use `/task assign #N` to add the configured assignee (falling back to `@me`) and move Backlog to Assigned. `/task assign #N --assignee <login> --remove` removes a login; removing the final assignee demotes only Assigned to Backlog. Refine through Done are assignment-neutral and never move backward because of assignee removal. Audit with `/task reconcile assigned-invariant #N`; it is dry-run by default. Repair only with `/task reconcile assigned-invariant #N --apply`.
 
 Internal state slugs and sanctioned `/task` inputs are canonical; they recognize
 only the current state names. The raw, internal-only `move-state.mjs` boundary
@@ -32,6 +34,7 @@ a user-facing `/task` alias or another lifecycle state. See
 | `/task next [<N>]`                                      | Alias of `/task promote`.                                                                                                                                                                                                           |
 | `/task demote [<N>]`                                    | Back to `develop` from `test`/`review`. Code-rework path; requires `--rework "<reason>"`. Invalidates stale AC/VC/DoD evidence and records the demotion in the timing log.                                                          |
 | `/task park <N> --reason "<text>"`                      | Back to `backlog` from `refine`/`plan`. For a falsified premise or deprioritization — not code rework. Requires a reason; preserves Priority/Size/Estimate and any already-stamped evidence untouched.                              |
+| `/task assign #N [--assignee <login>] [--remove]`       | Couple local assignee edits to Backlog/Assigned. Final-assignee removal demotes only Assigned.                                                                                                                                      |
 | `/task reconcile <N> <accept-live\|revert-to-recorded>` | Drift recovery. Board ↔ local field-DB disagreement. `accept-live` treats GitHub Projects as source of truth; `revert-to-recorded` pushes the local recorded state back to the board. Run before any other verb on a drifted issue. |
 
 `/task plan-approve #N`, `/task approve #N`, and `/task reject #N --reason "..."` remain first-class — they are gate verbs, not state-walking verbs.

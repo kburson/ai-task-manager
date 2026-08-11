@@ -306,7 +306,10 @@ test('every task verb has an explicit positional contract', () => {
   for (const [name, expected] of Object.entries({
     start: ['<N>'],
     log: ['#N'],
-    reconcile: ['#N', '<accept-live|revert-to-recorded|revert-to-sentinel|backfill>'],
+    reconcile: [
+      '#N',
+      '<accept-live|revert-to-recorded|revert-to-sentinel|backfill|assigned-invariant>',
+    ],
     plan: ['#N'],
     config: ['[<key> <value> | init]'],
     help: ['[<verb>]'],

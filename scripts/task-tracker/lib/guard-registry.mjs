@@ -51,7 +51,7 @@
 //   ---------|---------------------------------------|------------------------------------------------------------
 //   backlog  | contiguity                            | blocked-by, refine-entry-fields-priority,
 //            |                                       | backlog-exit-child-parent-state, child-cannot-lead-epic
-//   assigned  | contiguity                            | blocked-by, refine-entry-fields-priority,
+//   assigned  | contiguity, assigned-requires-assignee | blocked-by, refine-entry-fields-priority,
 //            |                                       | backlog-exit-child-parent-state, child-cannot-lead-epic,
 //            |                                       | user-story-warn (non-blocking)
 //   refine   | contiguity                            | refine-exit-complete-marker, refine-exit-stub-placeholder,
@@ -137,6 +137,7 @@ async function invoke(guard, ctx) {
       // Reason remains the canonical single-string surface.
       const out = { ok: false, reason: result.reason ?? '(no reason given)' };
       if (Array.isArray(result.blockers)) out.blockers = result.blockers;
+      if (Number.isInteger(result.exitCode)) out.exitCode = result.exitCode;
       if (result.warn != null) out.warn = result.warn;
       return out;
     }
@@ -159,6 +160,7 @@ export async function runGuards(fromState, toState, ctx) {
     if (!r.ok) {
       const entry = { id: g.id, reason: r.reason };
       if (r.blockers) entry.blockers = r.blockers;
+      if (Number.isInteger(r.exitCode)) entry.exitCode = r.exitCode;
       refusals.push(entry);
     }
     if (r.warn != null) warns.push({ id: g.id, warn: r.warn });

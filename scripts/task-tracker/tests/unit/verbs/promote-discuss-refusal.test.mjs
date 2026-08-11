@@ -43,6 +43,7 @@ function baseDeps() {
       return { status: 'no-op' };
     },
     stampStartTime: async () => {},
+    fetchAssignedInvariantAssignees: async () => ['alice'],
   };
 }
 

@@ -457,6 +457,11 @@ if (_isMain)
           await verbPark(ctx.rest, ctx.cfg);
           break;
         }
+        case 'assign': {
+          const { verbAssign } = await import('./verbs/assign.mjs');
+          await verbAssign(ctx.rest, ctx.cfg);
+          break;
+        }
         case 'reconcile': {
           const { verbReconcile } = await import('./verbs/reconcile.mjs');
           await verbReconcile(ctx.rest, ctx.cfg);

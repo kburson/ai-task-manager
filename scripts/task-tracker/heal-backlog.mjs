@@ -50,6 +50,12 @@ import { findTimingComment, updateTimingComment } from './gh-timing-comment.mjs'
 import { renameTimingLogBody } from './lib/timing-slug-rename.mjs';
 import { assertKnownArgv, reportStrictArgvError } from './lib/argv-strict.mjs';
 import { confirmBlastRadius } from './lib/blast-radius-guard.mjs';
+import {
+  classifyAssignedAssigneeDrift,
+  parseAssigneeLogins,
+} from './lib/assigned-assignee-invariant.mjs';
+import { normalizeStateId } from './lib/lifecycle-policy/index.mjs';
+import { runMoveStateHost } from '../gh/move-state.mjs';
 
 // Vestigial visible AC bullets that are now driven by hidden markers. Stripped
 // only when the corresponding marker is present; otherwise left alone to
@@ -365,6 +371,7 @@ export function parseArgs(argv, io = {}) {
     schemaCheck: true,
     ignoreSchemaDrift: false,
     renameTimingSlugs: false,
+    assignedInvariant: false,
     yes: false,
   };
 
@@ -377,6 +384,7 @@ export function parseArgs(argv, io = {}) {
         '--no-schema-check',
         '--ignore-schema-drift',
         '--rename-timing-slugs',
+        '--assigned-invariant',
         '--yes',
       ],
       options: ['--state', '--scope'],
@@ -395,6 +403,7 @@ export function parseArgs(argv, io = {}) {
     else if (a === '--no-schema-check') args.schemaCheck = false;
     else if (a === '--ignore-schema-drift') args.ignoreSchemaDrift = true;
     else if (a === '--rename-timing-slugs') args.renameTimingSlugs = true;
+    else if (a === '--assigned-invariant') args.assignedInvariant = true;
     else if (a === '--state') args.state = argv[++i];
     else if (a === '--scope')
       args.scope = argv[++i]
@@ -424,7 +433,7 @@ export function parseArgs(argv, io = {}) {
 
 export function printUsage(out = process.stdout) {
   out.write(
-    'Usage: heal-backlog.mjs [--state open|closed|all] [--apply] [--scope N,N,...] [--no-schema-check] [--ignore-schema-drift] [--rename-timing-slugs] [--yes]\n' +
+    'Usage: heal-backlog.mjs [--state open|closed|all] [--apply] [--scope N,N,...] [--no-schema-check] [--ignore-schema-drift] [--rename-timing-slugs] [--assigned-invariant] [--yes]\n' +
       '  --yes  skip the blast-radius confirmation prompt on a multi-issue --apply\n'
   );
 }
@@ -510,6 +519,119 @@ export async function fetchIssueBundle(issueNumber, repo, ghFn = gh) {
     createdAt: parsed.createdAt ?? null,
     closedAt: parsed.closedAt ?? null,
   };
+}
+
+export async function fetchAssignedInvariantRow({ issueNumber, cfg }, gqlFn = gql) {
+  const { owner, repoName } = splitRepo(cfg.repo);
+  const data = await gqlFn(
+    `
+    query($owner: String!, $repo: String!, $issue: Int!) {
+      repository(owner: $owner, name: $repo) {
+        issue(number: $issue) {
+          assignees(first: 100) { nodes { login } }
+          projectItems(first: 10) {
+            nodes {
+              project { id }
+              fieldValueByName(name: "Status") {
+                ... on ProjectV2ItemFieldSingleSelectValue { name }
+              }
+            }
+          }
+        }
+      }
+    }`,
+    { owner, repo: repoName, issue: Number(issueNumber) }
+  );
+  const issue = data?.repository?.issue;
+  if (!issue) throw new Error(`issue #${issueNumber} not found`);
+  const items = issue.projectItems?.nodes ?? [];
+  const item = items.find((entry) => entry.project?.id === cfg.projectId) ?? items[0];
+  return {
+    state: normalizeStateId(item?.fieldValueByName?.name),
+    assignees: parseAssigneeLogins(issue.assignees?.nodes ?? []),
+  };
+}
+
+function runAssignedInvariantMove({ issueNumber, target }) {
+  return runMoveStateHost({
+    argv: [process.execPath, 'move-state.mjs', String(issueNumber), target],
+    env: {
+      ...process.env,
+      AITM_INTERNAL: '1',
+      AITM_VERB_CONTEXT: 'reconcile',
+    },
+  });
+}
+
+export async function runAssignedInvariantHeal({ cfg, args, projectDir }, deps = {}) {
+  const fetchNumbers = deps.fetchAllIssueNumbers || fetchAllIssueNumbers;
+  const fetchRow =
+    deps.fetchInvariantRow || ((issueNumber) => fetchAssignedInvariantRow({ issueNumber, cfg }));
+  const runMoveState = deps.runMoveState || runAssignedInvariantMove;
+  const out = deps.out || process.stdout;
+  const numbers =
+    args.scope ??
+    (await fetchNumbers({ repo: cfg.repo, state: args.state, projectId: cfg.projectId }));
+
+  if (args.apply) {
+    const confirm = deps.confirmBlastRadius || confirmBlastRadius;
+    const decision = await confirm({
+      issueNumbers: numbers,
+      yes: args.yes,
+      log: (value) => out.write(value),
+      warn: (value) => (deps.err || process.stderr).write(value),
+    });
+    if (!decision.proceed) return { scanned: 0, violations: 0, repaired: 0, errors: 0 };
+  }
+
+  const lines = [
+    `# Assigned invariant report — ${new Date().toISOString()}`,
+    '',
+    `- mode: ${args.apply ? 'APPLY' : 'dry-run'}`,
+    `- issues: ${numbers.length}`,
+    '',
+  ];
+  let violations = 0;
+  let repaired = 0;
+  let errors = 0;
+  for (const issueNumber of numbers) {
+    try {
+      const row = await fetchRow(issueNumber);
+      const drift = classifyAssignedAssigneeDrift(row);
+      if (drift.kind === 'none' || drift.kind === 'out-of-scope') continue;
+      violations += 1;
+      lines.push(`#${issueNumber} ${drift.kind}: ${row.state} → ${drift.targetState}`);
+      out.write(`#${issueNumber} ${drift.kind}: ${row.state} -> ${drift.targetState}\n`);
+      if (args.apply) {
+        const exitCode = await runMoveState({ issueNumber, target: drift.targetState, cfg });
+        if (exitCode === 0) repaired += 1;
+        else {
+          errors += 1;
+          lines.push(`  ERROR: central mover exited ${exitCode}`);
+        }
+      }
+    } catch (error) {
+      errors += 1;
+      lines.push(`#${issueNumber} ERROR: ${error?.message || String(error)}`);
+    }
+  }
+  lines.push('', `violations=${violations} repaired=${repaired} errors=${errors}`);
+  if (deps.writeReport) {
+    await deps.writeReport(lines.join('\n'));
+  } else {
+    const reportDir = projectTmpDir(projectDir);
+    mkdirSync(reportDir, { recursive: true });
+    const reportPath = path.join(
+      reportDir,
+      `assigned-invariant-${new Date().toISOString().replace(/[:.]/g, '-')}.md`
+    );
+    writeFileSync(reportPath, lines.join('\n'), 'utf8');
+    out.write(`Report written: ${reportPath}\n`);
+  }
+  out.write(
+    `${args.apply ? 'APPLIED' : 'DRY-RUN'}: scanned=${numbers.length} violations=${violations} repaired=${repaired} errors=${errors}\n`
+  );
+  return { scanned: numbers.length, violations, repaired, errors };
 }
 
 export async function writeIssueBody(issueNumber, repo, body, projectDir, ghFn = gh) {
@@ -656,6 +778,7 @@ export async function main(argv, deps = {}) {
   const postComment = deps.postHealComment || postHealComment;
   const syncLabel = deps.syncDiscussLabel || syncDiscussLabel;
   const runRename = deps.runTimingSlugRename || runTimingSlugRename;
+  const runInvariantHeal = deps.runAssignedInvariantHeal || runAssignedInvariantHeal;
   const out = deps.out || process.stdout;
   const err = deps.err || process.stderr;
   const exit = deps.exit || ((code) => process.exit(code));
@@ -682,6 +805,9 @@ export async function main(argv, deps = {}) {
   if (args.renameTimingSlugs) {
     await runRename({ cfg, args, projectDir });
     return;
+  }
+  if (args.assignedInvariant) {
+    return runInvariantHeal({ cfg, args, projectDir }, deps);
   }
 
   const fieldDefs = loadFieldDefsFn(projectDir);

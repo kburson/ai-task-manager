@@ -13,6 +13,13 @@ import { strict as assert } from 'node:assert';
 import { PHASE_EVENTS, resolvePhaseEvent } from '../../../phase-events.mjs';
 import { buildRow, readLastKnownState, writeLastKnownState } from '../../../gh-timing-comment.mjs';
 import { parseMoveStateArgs, legacyStateAliasWarning } from '../../../lib/move-state/policy.mjs';
+import '../../../lib/guard-bootstrap.mjs';
+import { GUARDS, runGuards } from '../../../lib/guard-registry.mjs';
+import {
+  ASSIGNED_ASSIGNEE_GUARD_ID,
+  EXIT_ASSIGNED_REQUIRES_ASSIGNEE,
+} from '../../../lib/assigned-assignee-invariant.mjs';
+import { runGuardExecution } from '../../../lib/move-state/guard-execution.mjs';
 
 function argv(...args) {
   return ['node', 'move-state.mjs', ...args];
@@ -68,4 +75,47 @@ test('move-state assigned enter renders an assigned:started timing row', () => {
     row.includes('assigned and ready to work'),
     `assigned enter must render its description; got: ${row}`
   );
+});
+
+test('Assigned entry registers the assignee invariant at the central guard boundary', () => {
+  assert.ok(
+    GUARDS.assigned.entry.some((guard) => guard.id === ASSIGNED_ASSIGNEE_GUARD_ID),
+    'Assigned must register the live-assignee entry guard'
+  );
+});
+
+test('Backlog to Assigned refuses an empty assignee read with the invariant exit code', async () => {
+  const result = await runGuards('backlog', 'assigned', {
+    issueNumber: 1207,
+    repo: 'owner/repo',
+    deps: { fetchAssignedInvariantAssignees: async () => [] },
+  });
+  assert.equal(result.ok, false);
+  const refusal = result.refusals.find((item) => item.id === ASSIGNED_ASSIGNEE_GUARD_ID);
+  assert.equal(refusal.exitCode, EXIT_ASSIGNED_REQUIRES_ASSIGNEE);
+  assert.match(refusal.reason, /at least one live GitHub assignee/);
+});
+
+test('central mover guard execution returns the invariant exit code before board mutation', async () => {
+  const result = await runGuardExecution({
+    issueArg: '1207',
+    stateArg: 'assigned',
+    resolvedFromState: 'backlog',
+    plan: { runGuardPipeline: true },
+    forceFlag: false,
+    supersedeFlag: false,
+    SKIP_NETWORK: false,
+    cfg: { repo: 'owner/repo' },
+    gh: async () => '<!-- aitm-entered-backlog ts="2026-08-11T00:00:00.000Z" -->',
+    pexec: async () => ({ stdout: '' }),
+    resolveLiveStateName: async () => null,
+    checkDirty: async () => ({ dirty: false }),
+    formatSummary: () => '',
+    resolveWorkspaceForIssue: () => process.cwd(),
+    backlogMoveWarning: () => null,
+    lifecycleEvidence: null,
+    guardDeps: { fetchAssignedInvariantAssignees: async () => [] },
+  });
+
+  assert.deepEqual(result, { exit: EXIT_ASSIGNED_REQUIRES_ASSIGNEE });
 });

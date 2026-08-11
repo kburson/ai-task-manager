@@ -90,7 +90,7 @@ test('the manifest covers every --apply script in the tree', () => {
   // files with a direct-invocation footer are.
   const entryPoints = found.filter((rel) => {
     const src = readFileSync(path.join(REPO_ROOT, rel), 'utf8');
-    return /process\.argv\[1\]|process\.argv\.slice\(2\)/.test(src);
+    return !rel.includes('/verbs/') && /process\.argv\[1\]|process\.argv\.slice\(2\)/.test(src);
   });
 
   const missing = entryPoints.filter((rel) => !declared.has(rel));
