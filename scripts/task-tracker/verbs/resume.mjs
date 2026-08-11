@@ -1,4 +1,10 @@
-import { loadState, saveState, advanceWordMarker, stateFullWordMarker } from '../state.mjs';
+import {
+  loadState,
+  saveState,
+  advanceWordMarker,
+  stateFullWordMarker,
+  computeTranscriptTailBank,
+} from '../state.mjs';
 import { setTaskStatus, registerTask, currentBranch } from '../fleet-registry.mjs';
 import {
   currentSessionId,
@@ -58,6 +64,27 @@ function ownBoundIssue(projectDir) {
   return /^#/.test(issue) ? issue : `#${issue}`;
 }
 
+function bankResumeTranscriptTail(state, sid, task) {
+  if (!sid) {
+    return {
+      marker: state.lastWordMarker ?? 0,
+      fullMarker: stateFullWordMarker(state),
+      fullMarkerAvailable: false,
+    };
+  }
+  const markerPath = markerPathFor(sid);
+  const existingMarker = loadMarker(markerPath);
+  const counted = countWords(jsonlPath(sid), existingMarker.line, {
+    provider: aiAppName(),
+    sid,
+  });
+  const bank = computeTranscriptTailBank(state, existingMarker, counted);
+  if (bank.transcriptStatus === 'ok') {
+    saveMarker(markerPath, bank.line, bank.marker, task, bank.fullMarker);
+  }
+  return bank;
+}
+
 // `/task resume` — two paths:
 //   no arg: only valid after `/task pause` (s.paused === true). Rebinds lastActive.
 //   #N arg: unrestricted rebind to a specific issue (works after pause OR stop).
@@ -92,40 +119,15 @@ export async function verbResume(ctx) {
     }
     const ts = nowIso();
     const sid = currentSessionId();
-    let wordsAtStart = 0;
-    let fullWordsAtStart = null;
-    if (sid) {
-      const existingMarker = loadMarker(markerPathFor(sid));
-      const counted = countWords(jsonlPath(sid), 0, { provider: aiAppName(), sid });
-      if (counted.status === 'ok') {
-        wordsAtStart = advanceWordMarker(
-          advanceWordMarker(s.lastWordMarker, existingMarker.words),
-          counted.count
-        );
-        fullWordsAtStart = advanceWordMarker(
-          stateFullWordMarker(s, existingMarker),
-          counted.fullExpansion
-        );
-        saveMarker(
-          markerPathFor(sid),
-          counted.totalLines,
-          wordsAtStart,
-          s.lastActive,
-          fullWordsAtStart
-        );
-      } else {
-        wordsAtStart = existingMarker.words;
-      }
-    }
+    const resumeBank = bankResumeTranscriptTail(s, sid, s.lastActive);
+    const wordsAtStart = resumeBank.marker;
+    const fullWordsAtStart = resumeBank.fullMarkerAvailable ? resumeBank.fullMarker : null;
     // #475 AC2 — idle span of the pause window = resume_ts − pausedAtTs.
     const idleSec = computePauseIdleSec(s.pausedAtTs, ts);
     // #475 AC1 — carry the durable marker forward across the pause.
     const carriedMarker = advanceWordMarker(s.lastWordMarker, wordsAtStart);
-    // #534 — pair the resume to the pause's canonical reason. The no-arg path
-    // is gated on `s.paused`, so a matching open `pause:<slug>` always exists;
-    // emit `resume:<slug>` and echo the operator's free text in Description.
-    const reasonSlug = s.pauseReasonSlug || 'other';
-    const resumeEvent = `resume:${reasonSlug}`;
+    // #1142 — every return from an interruption uses the canonical `resumed`
+    // boundary. The pause reason remains available to humans in Description.
     const resumeDesc = s.pauseReasonText || role || 'task resumed';
     saveState(
       {
@@ -139,7 +141,7 @@ export async function verbResume(ctx) {
         pauseReasonSlug: null,
         pauseReasonText: null,
         lastWordMarker: carriedMarker,
-        lastFullWordMarker: fullWordsAtStart ?? stateFullWordMarker(s),
+        lastFullWordMarker: resumeBank.fullMarker,
         ...binding,
       },
       statePath
@@ -178,7 +180,7 @@ export async function verbResume(ctx) {
     const { buildRow } = await import('../gh-timing-comment.mjs');
     const row = buildRow({
       ts,
-      event: resumeEvent,
+      event: 'resumed',
       activeSec: 0,
       idleSec,
       deltaWords: 0,
@@ -246,31 +248,9 @@ export async function verbResume(ctx) {
   }
   const ts = nowIso();
   const sid = currentSessionId();
-  let wordsAtStart = 0;
-  let fullWordsAtStart = null;
-  if (sid) {
-    const existingMarker = loadMarker(markerPathFor(sid));
-    const counted = countWords(jsonlPath(sid), 0, { provider: aiAppName(), sid });
-    if (counted.status === 'ok') {
-      wordsAtStart = advanceWordMarker(
-        advanceWordMarker(s.lastWordMarker, existingMarker.words),
-        counted.count
-      );
-      fullWordsAtStart = advanceWordMarker(
-        stateFullWordMarker(s, existingMarker),
-        counted.fullExpansion
-      );
-      saveMarker(
-        markerPathFor(sid),
-        counted.totalLines,
-        wordsAtStart,
-        normalizedTarget,
-        fullWordsAtStart
-      );
-    } else {
-      wordsAtStart = existingMarker.words;
-    }
-  }
+  const resumeBank = bankResumeTranscriptTail(s, sid, normalizedTarget);
+  const wordsAtStart = resumeBank.marker;
+  const fullWordsAtStart = resumeBank.fullMarkerAvailable ? resumeBank.fullMarker : null;
   // #475 AC2 — idle span of the pause window (if this #N resume follows a pause).
   const idleSec = computePauseIdleSec(s.pausedAtTs, ts);
   // #475 AC1 — carry the durable marker forward across the rebind.
@@ -285,7 +265,7 @@ export async function verbResume(ctx) {
       paused: undefined,
       pausedAtTs: null,
       lastWordMarker: carriedMarker,
-      lastFullWordMarker: fullWordsAtStart ?? stateFullWordMarker(s),
+      lastFullWordMarker: resumeBank.fullMarker,
       ...binding,
     },
     statePath

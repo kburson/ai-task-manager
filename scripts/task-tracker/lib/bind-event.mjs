@@ -111,7 +111,7 @@ function hasStartRow(body) {
   return false;
 }
 
-// #981 — the last timing-log data row's { ts, event, wordMarker } (raw,
+// #981 — the last timing-log data row's marker pair (raw,
 // as-rendered cell strings), or null when the body has no data rows.
 function lastDataRow(body) {
   if (!body) return null;
@@ -119,7 +119,12 @@ function lastDataRow(body) {
   for (const line of String(body).split('\n')) {
     const row = parseTimingRow(line);
     if (!row || row.cells.length < 7 || !isTimingRowTimestamp(row.ts)) continue;
-    last = { ts: row.ts, event: row.event, wordMarker: row.wordMarker };
+    last = {
+      ts: row.ts,
+      event: row.event,
+      wordMarker: row.wordMarker,
+      fullWordMarker: row.fullWordMarker,
+    };
   }
   return last;
 }

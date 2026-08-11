@@ -153,13 +153,18 @@ export function discoverTimingEmitters() {
     if (specsStart >= 0) {
       const specsEnd = source.indexOf('\nasync function ', specsStart);
       const specsSource = source.slice(specsStart, specsEnd < 0 ? source.length : specsEnd);
-      for (const match of specsSource.matchAll(/^\s*event:\s*(.+?),?\s*$/gm)) {
+      for (const match of specsSource.matchAll(/{\s*event:\s*(.+?),([\s\S]*?)\n\s*},?/g)) {
         const expression = match[1].replace(/,$/, '').trim();
+        const fullWordMarker = match[0].match(/\bfullWordMarker\s*:\s*([^,\n}]+)/)?.[1].trim();
+        const hasFullWordMarker =
+          /\bfullWordMarker\s*,/.test(match[0]) ||
+          (fullWordMarker != null && fullWordMarker !== 'null');
         found.push({
           file,
-          line: sourceLine(source, specsStart + match.index),
+          line: sourceLine(source, specsStart + match.index + match[0].indexOf('event:')),
           kind: 'event-spec',
           expression,
+          hasFullWordMarker,
         });
       }
     }
@@ -219,7 +224,7 @@ test('production timing emitter discovery exactly matches the characterized call
 
 test('every direct production timing-row producer supplies the full-marker observation', () => {
   const omissions = discoverTimingEmitters()
-    .filter(({ kind }) => kind === 'event-call' || kind === 'phase-call')
+    .filter(({ kind }) => ['event-call', 'phase-call', 'event-spec'].includes(kind))
     .filter(({ hasFullWordMarker }) => !hasFullWordMarker)
     .map(({ file, line, expression }) => `${file}:${line}: ${expression}`);
   assert.deepEqual(omissions, []);

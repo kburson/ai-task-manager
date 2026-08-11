@@ -4,6 +4,8 @@ import { rmSync, writeFileSync, mkdirSync } from 'node:fs';
 import { mkdtempProjectIsolated } from '../../../lib/scratch-dir.mjs';
 import path from 'node:path';
 
+import { parseTimingRow } from '../../../lib/timing-row-reader.mjs';
+
 const tmp = mkdtempProjectIsolated('tt-verb-start-resume-stop-');
 process.env.AI_TASK_MANAGER_PROJECT_DIR = tmp;
 process.env.AI_TASK_MANAGER_TRANSCRIPT_DIR = path.join(tmp, 'transcripts');
@@ -130,13 +132,22 @@ function captureLog(fn) {
 // ─── resume no-arg after pause → rebinds lastActive, clears paused ───────────
 {
   resetSession();
-  const statePath = writeState({ active: null, lastActive: '#453', paused: true });
+  const statePath = writeState({
+    active: null,
+    lastActive: '#453',
+    paused: true,
+    pauseReasonSlug: 'break',
+    pauseReasonText: 'lunch break',
+  });
   const { ctx, posts } = makeCtx({ rest: [], statePath });
   await verbResume(ctx);
   const s = loadState(statePath);
   assert.equal(s.active, '#453', 'resume no-arg rebinds lastActive');
   assert.ok(!s.paused, 'resume no-arg clears paused flag');
   assert.equal(posts.length, 1, 'resumed row posted');
+  const resumed = parseTimingRow(posts[0].row);
+  assert.equal(resumed.event, 'resumed', 'normal pause resume uses the canonical boundary');
+  assert.equal(resumed.description, 'lunch break', 'pause reason remains human-readable');
 }
 
 // ─── resume no-arg when not paused → error ───────────────────────────────────

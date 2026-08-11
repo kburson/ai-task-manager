@@ -132,11 +132,12 @@ test('resolveBindEvent: positive-empty read (absent) → start', () => {
 // the session dies without emitting a departure event, and the gap to the next
 // bind exceeds SUSPICIOUS_GAP_SEC with no pause/switch-out row bracketing it.
 
-const rowAt = (ts, event) => `| ${ts} | ${event} | 0s | 0s | 0 | 1,234 | row |`;
+const rowAt = (ts, event, fullWordMarker = '2,468') =>
+  `| ${ts} | ${event} | 0s | 0s | 0 | 1,234 | row | ${fullWordMarker} |`;
 const logAt = (...rows) =>
   [
-    '| Timestamp | Event | Active | Idle | ΔWords | Word Marker | Description |',
-    '| --- | --- | --- | --- | --- | --- | --- |',
+    '| Timestamp | Event | Active | Idle | ΔWords | Word Marker | Description | Full Word Marker |',
+    '| --- | --- | --- | --- | --- | --- | --- | --- |',
     ...rows,
   ].join('\n');
 
@@ -148,6 +149,7 @@ test('detectUnmarkedDepartureGap: long gap with no departure row → detected', 
   assert.ok(gap, 'expected an unmarked-departure gap to be detected');
   assert.equal(gap.lastRowTs, started);
   assert.equal(gap.lastRowEvent, 'plan:started');
+  assert.equal(gap.fullWordMarker, '2,468');
   assert.ok(gap.gapSec > SUSPICIOUS_GAP_SEC);
   assert.equal(gap.syntheticTs, new Date(Date.parse('2026-07-24T04:17:41+00:00')).toISOString());
 });

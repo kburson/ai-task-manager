@@ -12,7 +12,7 @@ import {
 import { parseTimingRow } from '../../../lib/timing-row-reader.mjs';
 import { mkdtempProjectIsolated } from '../../../lib/scratch-dir.mjs';
 import { bankTranscriptTail, loadState, saveState } from '../../../state.mjs';
-import { markerPathFor, saveMarker } from '../../../word-counter.mjs';
+import { loadMarker, markerPathFor, saveMarker } from '../../../word-counter.mjs';
 
 const { appendRow, buildInitialComment } = timingInternals;
 const now = () => new Date().toISOString();
@@ -340,4 +340,99 @@ test('a fresh governed bind emits the available full-expansion marker', async ()
     }
     rmSync(projectDir, { recursive: true, force: true });
   }
+});
+
+async function runResumeTailCase({ explicitTarget }) {
+  const projectDir = mkdtempProjectIsolated(
+    `absolute-${explicitTarget ? 'target' : 'normal'}-resume-tail-1142-`,
+    'test'
+  );
+  const transcriptDir = path.join(projectDir, 'transcripts');
+  const sid = `absolute-${explicitTarget ? 'target' : 'normal'}-resume-tail-1142`;
+  const statePath = path.join(projectDir, '.tmp/aitm/state/task-tracker-state.json');
+  const priorEnv = {
+    projectDir: process.env.AI_TASK_MANAGER_PROJECT_DIR,
+    transcriptDir: process.env.AI_TASK_MANAGER_TRANSCRIPT_DIR,
+    appName: process.env.AI_TASK_MANAGER_APP_NAME,
+    sid: process.env.AI_TASK_MANAGER_SESSION_ID,
+  };
+  mkdirSync(transcriptDir, { recursive: true });
+  writeFileSync(
+    path.join(transcriptDir, `${sid}.jsonl`),
+    [
+      { type: 'assistant', message: { content: 'historical words already included in marker' } },
+      { type: 'assistant', message: { content: 'away tail grows' } },
+    ]
+      .map(JSON.stringify)
+      .join('\n') + '\n',
+    'utf8'
+  );
+  process.env.AI_TASK_MANAGER_PROJECT_DIR = projectDir;
+  process.env.AI_TASK_MANAGER_TRANSCRIPT_DIR = transcriptDir;
+  process.env.AI_TASK_MANAGER_APP_NAME = 'claude';
+  process.env.AI_TASK_MANAGER_SESSION_ID = sid;
+  try {
+    saveState(
+      {
+        active: null,
+        lastActive: '#1142',
+        paused: !explicitTarget,
+        pausedAtTs: new Date(Date.now() - 1_000).toISOString(),
+        pauseReasonSlug: 'break',
+        pauseReasonText: 'lunch break',
+        lastWordMarker: 100,
+        lastFullWordMarker: 200,
+      },
+      statePath
+    );
+    saveMarker(markerPathFor(sid), 1, 100, '#1142', 200);
+    const { verbResume } = await import('../../../verbs/resume.mjs');
+    const posts = [];
+    await verbResume({
+      rest: explicitTarget ? ['#1142'] : [],
+      cfg: {},
+      statePath,
+      projectDir,
+      role: 'agent',
+      drainQueueIfAny: async () => {},
+      safePostTiming: async (issue, row) => posts.push({ issue, row }),
+      nowIso: () => new Date().toISOString(),
+      resolveWorktreeBinding: () => ({}),
+      currentBranch: () => 'codex/test',
+      registerTask: () => {},
+    });
+    const state = loadState(statePath);
+    const marker = loadMarker(markerPathFor(sid));
+    const row = parseTimingRow(posts.at(-1).row);
+    assert.equal(state.lastWordMarker, 103);
+    assert.equal(state.lastFullWordMarker, 203);
+    assert.equal(marker.line, 2);
+    assert.equal(marker.words, 103);
+    assert.equal(marker.wordsFull, 203);
+    assert.equal(row.wordMarker, '103');
+    assert.equal(row.fullWordMarker, '203');
+    if (!explicitTarget) {
+      assert.equal(row.event, 'resumed');
+      assert.equal(row.description, 'lunch break');
+    }
+  } finally {
+    for (const [key, value] of Object.entries({
+      AI_TASK_MANAGER_PROJECT_DIR: priorEnv.projectDir,
+      AI_TASK_MANAGER_TRANSCRIPT_DIR: priorEnv.transcriptDir,
+      AI_TASK_MANAGER_APP_NAME: priorEnv.appName,
+      AI_TASK_MANAGER_SESSION_ID: priorEnv.sid,
+    })) {
+      if (value === undefined) delete process.env[key];
+      else process.env[key] = value;
+    }
+    rmSync(projectDir, { recursive: true, force: true });
+  }
+}
+
+test('normal pause resume banks the unread away-period tail from the stored cursor', async () => {
+  await runResumeTailCase({ explicitTarget: false });
+});
+
+test('explicit target resume banks the unread away-period tail from the stored cursor', async () => {
+  await runResumeTailCase({ explicitTarget: true });
 });

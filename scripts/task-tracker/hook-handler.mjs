@@ -17,6 +17,7 @@ import {
   saveState,
   advanceWordMarker,
   stateFullWordMarker,
+  computeTranscriptTailBank,
   clearActive,
 } from './state.mjs';
 import { postTimingEvent, buildRow } from './gh-timing-comment.mjs';
@@ -26,7 +27,6 @@ import {
   markerPathFor,
   loadMarker,
   saveMarker,
-  advanceMarkerCursor,
   countWords,
   currentSessionId,
   ensureSessionTracking,
@@ -141,13 +141,15 @@ async function onPreCompact(sid) {
     status: transcriptStatus,
   } = countWords(jsonlPath(sid), marker.line, { provider: aiAppName(), sid });
   const transcriptWordsAvailable = transcriptStatus === 'ok';
+  const bank = computeTranscriptTailBank(s, marker, {
+    count: newWords,
+    totalLines,
+    fullExpansion: newWordsFull,
+    status: transcriptStatus,
+  });
   const ts = new Date().toISOString();
-  // #475 AC1 — advance + persist the durable monotonic marker on every flush.
-  const wordMarker = advanceWordMarker(s.lastWordMarker, s.lastWordMarker + newWords);
-  const fullWordMarker = advanceWordMarker(
-    stateFullWordMarker(s, marker),
-    stateFullWordMarker(s, marker) + newWordsFull
-  );
+  const wordMarker = bank.marker;
+  const fullWordMarker = bank.fullMarker;
   const startMs = new Date(s.entryStartTs).getTime();
   const endMs = Date.now();
   const events = collectEventTimestamps(jsonlPath(sid), startMs, endMs);
@@ -169,7 +171,7 @@ async function onPreCompact(sid) {
   });
   await safePost(s.active, row);
   if (transcriptWordsAvailable) {
-    saveMarker(markerPathFor(sid), totalLines, wordMarker, s.active, fullWordMarker);
+    saveMarker(markerPathFor(sid), bank.line, wordMarker, s.active, fullWordMarker);
   }
   saveState(
     {
@@ -188,9 +190,21 @@ async function onPostCompact(sid) {
   if (!s.active || s.active === 'discover') return;
   const markerPath = markerPathFor(sid);
   const marker = loadMarker(markerPath);
-  const counted = countWords(jsonlPath(sid), 0, { provider: aiAppName(), sid });
+  const counted = countWords(jsonlPath(sid), marker.line, { provider: aiAppName(), sid });
   const transcriptWordsAvailable = counted.status === 'ok';
-  if (transcriptWordsAvailable) advanceMarkerCursor(markerPath, counted.totalLines, s.active);
+  const bank = computeTranscriptTailBank(s, marker, counted);
+  if (transcriptWordsAvailable) {
+    saveMarker(markerPath, bank.line, bank.marker, s.active, bank.fullMarker);
+    saveState(
+      {
+        ...s,
+        wordsAtEntryStart: bank.marker,
+        lastWordMarker: bank.marker,
+        lastFullWordMarker: bank.fullMarker,
+      },
+      statePath
+    );
+  }
   const row = buildRow({
     ts: new Date().toISOString(),
     event: 'post-compact-resume',
@@ -198,8 +212,8 @@ async function onPostCompact(sid) {
     idleMin: 0,
     deltaWords: 0,
     // #475 AC1 — carry the durable marker forward across compact
-    wordMarker: advanceWordMarker(s.lastWordMarker, marker.words),
-    fullWordMarker: transcriptWordsAvailable ? stateFullWordMarker(s, marker) : null,
+    wordMarker: bank.marker,
+    fullWordMarker: transcriptWordsAvailable ? bank.fullMarker : null,
     description: 'resumed after compact',
   });
   await safePost(s.active, row);
@@ -248,9 +262,10 @@ async function bestEffortDrainQueue() {
 // honest departure/return pair instead — the gap is credited as idle, not
 // active — so the phase-span rollup (`computeActiveByPhaseSpans`) no longer
 // misclassifies it, while the Review Gate's raw-gap forensic check still
-// flags the historical gap for review. Pure: returns `buildRow()` argument
-// objects, does not post them. Exported for testing.
-export function buildOrphanRecoveryRowSpecs({ wallMin, wordMarker }) {
+// flags the historical gap for review. The caller supplies the already-banked
+// marker pair (or an unavailable full-marker observation). Pure: returns
+// `buildRow()` argument objects, does not post them. Exported for testing.
+export function buildOrphanRecoveryRowSpecs({ wallMin, wordMarker, fullWordMarker }) {
   if (wallMin * 60 <= SUSPICIOUS_GAP_SEC) {
     return [
       {
@@ -258,7 +273,7 @@ export function buildOrphanRecoveryRowSpecs({ wallMin, wordMarker }) {
         activeMin: wallMin,
         idleMin: 0,
         deltaWords: 0,
-        fullWordMarker: null,
+        fullWordMarker,
         wordMarker,
         description: 'recovered — session closed without /task pause (wall time only)',
       },
@@ -271,7 +286,7 @@ export function buildOrphanRecoveryRowSpecs({ wallMin, wordMarker }) {
       activeMin: 0,
       idleMin: wallMin,
       deltaWords: 0,
-      fullWordMarker: null,
+      fullWordMarker,
       wordMarker,
       description: `recovered — session closed without /task pause; gap exceeds ${gapHours}h so it is logged as idle, not active (wall time only)`,
     },
@@ -280,7 +295,7 @@ export function buildOrphanRecoveryRowSpecs({ wallMin, wordMarker }) {
       activeMin: 0,
       idleMin: 0,
       deltaWords: 0,
-      fullWordMarker: null,
+      fullWordMarker,
       wordMarker,
       description: 'orphan-recovery gap closed',
     },
@@ -401,6 +416,27 @@ async function onSessionStart(sid) {
     ? Math.round((Date.now() - new Date(s.entryStartTs).getTime()) / 60000)
     : 0;
 
+  let newWordBaseline = advanceWordMarker(s.lastWordMarker, s.wordsAtEntryStart);
+  let newFullWordBaseline = stateFullWordMarker(s);
+  let transcriptWordsAvailable = false;
+  if (sid) {
+    const markerPath = markerPathFor(sid);
+    const existingMarker = loadMarker(markerPath);
+    const counted = countWords(jsonlPath(sid), existingMarker.line, {
+      provider: aiAppName(),
+      sid,
+    });
+    const bank = computeTranscriptTailBank(s, existingMarker, counted);
+    transcriptWordsAvailable = bank.transcriptStatus === 'ok';
+    newWordBaseline = bank.marker;
+    newFullWordBaseline = bank.fullMarker;
+    // Bank before authoring recovery boundaries so every row observes the same
+    // durable pair. Unavailable reads preserve the old cursor and render `—`.
+    if (transcriptWordsAvailable) {
+      saveMarker(markerPath, bank.line, bank.marker, s.active, bank.fullMarker);
+    }
+  }
+
   if (wallMin > 0) {
     // #709 — idempotent per session id. Two racing SessionStart invocations both
     // read the same pre-write `entryStartTs` and compute the same `wallMin`;
@@ -419,49 +455,18 @@ async function onSessionStart(sid) {
       }
     }
     if (mayPostRecovery) {
-      // #475 AC1 — carried-forward durable marker (recovery row, no live session)
-      const wordMarker = advanceWordMarker(s.lastWordMarker, s.wordsAtEntryStart);
-      const recoveryRows = buildOrphanRecoveryRowSpecs({ wallMin, wordMarker }).map((spec) =>
-        buildRow({ ts: nowTs, ...spec })
-      );
+      const recoveryRows = buildOrphanRecoveryRowSpecs({
+        wallMin,
+        wordMarker: newWordBaseline,
+        fullWordMarker: transcriptWordsAvailable ? newFullWordBaseline : null,
+      }).map((spec) => buildRow({ ts: nowTs, ...spec }));
       for (const recoveryRow of recoveryRows) {
         await safePost(s.active, recoveryRow);
       }
     }
   }
 
-  let newWordBaseline = s.wordsAtEntryStart;
-  let newFullWordBaseline = stateFullWordMarker(s);
   if (sid) {
-    const existingMarker = loadMarker(markerPathFor(sid));
-    const { totalLines, count, fullExpansion, status } = countWords(
-      jsonlPath(sid),
-      existingMarker.line,
-      {
-        provider: aiAppName(),
-        sid,
-      }
-    );
-    const transcriptWordsAvailable = status === 'ok';
-    if (transcriptWordsAvailable) {
-      newWordBaseline = advanceWordMarker(
-        s.lastWordMarker,
-        advanceWordMarker(s.lastWordMarker, existingMarker.words) + count
-      );
-    }
-    if (transcriptWordsAvailable) {
-      newFullWordBaseline = advanceWordMarker(
-        stateFullWordMarker(s, existingMarker),
-        stateFullWordMarker(s, existingMarker) + fullExpansion
-      );
-    }
-    // #795 — persist the full-expansion baseline alongside the stay-abreast
-    // count so the runtime flush path reads a meaningful `wordsFull` cursor.
-    // #1142 — an unavailable count is not an observed zero and must not reset
-    // either cumulative marker or the persisted transcript line cursor.
-    if (transcriptWordsAvailable) {
-      saveMarker(markerPathFor(sid), totalLines, newWordBaseline, s.active, newFullWordBaseline);
-    }
     const startRow = buildRow({
       ts: nowTs,
       event: 'session-start',
@@ -470,7 +475,7 @@ async function onSessionStart(sid) {
       deltaWords: 0,
       fullWordMarker: transcriptWordsAvailable ? newFullWordBaseline : null,
       // #475 AC1 — monotonic carry-forward of the durable marker
-      wordMarker: advanceWordMarker(s.lastWordMarker, newWordBaseline),
+      wordMarker: newWordBaseline,
       description: 'session resumed',
     });
     await safePost(s.active, startRow);
@@ -482,7 +487,7 @@ async function onSessionStart(sid) {
       entryStartTs: nowTs,
       wordsAtEntryStart: newWordBaseline,
       // #475 AC1 — persist the durable monotonic marker across the recovery.
-      lastWordMarker: advanceWordMarker(s.lastWordMarker, newWordBaseline),
+      lastWordMarker: newWordBaseline,
       lastFullWordMarker: newFullWordBaseline,
     },
     statePath

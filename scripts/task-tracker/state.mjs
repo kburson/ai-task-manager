@@ -79,6 +79,31 @@ export function durableWordMarkers(projDir) {
   }
 }
 
+// #1142 — one invariant for every transcript-boundary producer: the per-session
+// line cursor identifies the unread tail, while the state/marker word values are
+// durable cumulative bases. An available observation adds only that tail to
+// both bases before advancing the cursor. An unavailable observation carries
+// the known bases without fabricating growth or consuming the unread cursor.
+export function computeTranscriptTailBank(state, marker, counted) {
+  const priorMarker = advanceWordMarker(state?.lastWordMarker, marker?.words);
+  const priorFullMarker = stateFullWordMarker(state, marker);
+  const transcriptStatus = counted?.status ?? 'unavailable';
+  const available = transcriptStatus === 'ok';
+  const banked = available ? Math.max(0, Number(counted?.count) || 0) : 0;
+  const fullBanked = available
+    ? Math.max(0, Number(counted?.fullExpansion ?? counted?.count) || 0)
+    : 0;
+  return {
+    banked,
+    fullBanked,
+    marker: advanceWordMarker(priorMarker, priorMarker + banked),
+    fullMarker: advanceWordMarker(priorFullMarker, priorFullMarker + fullBanked),
+    line: available ? Math.max(0, Number(counted?.totalLines) || 0) : (marker?.line ?? 0),
+    transcriptStatus,
+    fullMarkerAvailable: available,
+  };
+}
+
 // EPIC #823 (C8, #832) — bank the UNINTERRUPTED transcript tail into the durable
 // marker + per-sid cursor. The promote verbs (`develop`/`test`/`review`) never
 // call `flushActiveToGH`, so context-words accrued since the last flush sit
@@ -104,28 +129,18 @@ export function bankTranscriptTail(projDir) {
     const marker = loadMarker(markerPath);
     const counted = countWords(jsonlPath(sid), marker.line, { provider: aiAppName(), sid });
     if (counted.status !== 'ok') return fallback(counted.status);
-    const tail = Math.max(0, Number(counted.count) || 0);
     const sp = resolveStatePath(projDir);
     const state = loadState(sp);
-    const prior = state.lastWordMarker ?? 0;
-    const tailFull = Math.max(0, Number(counted.fullExpansion ?? counted.count) || 0);
-    const priorFull = stateFullWordMarker(state, marker);
-    const nextMarker = advanceWordMarker(prior, prior + tail);
-    const nextFull = advanceWordMarker(priorFull, priorFull + tailFull);
-    if (tail > 0 || tailFull > 0) {
-      state.lastWordMarker = nextMarker;
-      state.lastFullWordMarker = nextFull;
+    const bank = computeTranscriptTailBank(state, marker, counted);
+    if (bank.marker !== state.lastWordMarker || bank.fullMarker !== state.lastFullWordMarker) {
+      state.lastWordMarker = bank.marker;
+      state.lastFullWordMarker = bank.fullMarker;
       saveState(state, sp);
-      saveMarker(markerPath, counted.totalLines, nextMarker, state.active, nextFull);
     }
-    return {
-      banked: tail,
-      fullBanked: tailFull,
-      marker: nextMarker,
-      fullMarker: nextFull,
-      transcriptStatus: 'ok',
-      fullMarkerAvailable: true,
-    };
+    // Advance even when the unread records contain only metadata. Cursor
+    // progress is distinct from word growth and makes the operation idempotent.
+    saveMarker(markerPath, bank.line, bank.marker, state.active, bank.fullMarker);
+    return bank;
   } catch {
     return fallback();
   }

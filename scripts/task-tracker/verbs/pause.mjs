@@ -20,8 +20,8 @@ export async function verbPause(ctx) {
   const reasonSlug = canonicalPauseReason(reasonText);
   const pauseEvent = `pause:${reasonSlug}`;
   // For `other`, the free text is the only carrier of intent → keep it in the
-  // Description. For a canonical slug, still echo any free text the operator
-  // typed so context is never lost.
+  // Description. `/task resume` emits the canonical `resumed` boundary and
+  // carries this text forward so the operator's reason is never lost.
   const pauseDesc = reasonText ?? (isOtherReason(reasonSlug) ? undefined : reasonSlug);
   // #832 (D4) — pause is an interruption: bank the span's words onto the durable
   // marker but render this pause row's Δ Words cell as 0, so the words attribute

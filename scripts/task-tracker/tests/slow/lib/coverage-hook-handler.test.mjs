@@ -47,7 +47,7 @@ after(() => {
 });
 
 // Build a hermetic project + transcript fixture and return the env for a spawn.
-function fixture({ state, jsonlLines = [], marker = null } = {}) {
+function fixture({ state, jsonlLines = [], marker = null, appName = 'claude' } = {}) {
   // git-isolated sandbox root so the spawned hook's repo-walk can't escape
   // into the live repo and touch real .ai-task-manager state.
   const proj = mkdtempProjectIsolated('proj-', 'test');
@@ -71,7 +71,7 @@ function fixture({ state, jsonlLines = [], marker = null } = {}) {
       '.tmp',
       'aitm',
       'app',
-      'claude',
+      appName,
       'session-tracking',
       `${sid}.json`
     );
@@ -83,7 +83,7 @@ function fixture({ state, jsonlLines = [], marker = null } = {}) {
     PATH: `${root.binDir}:${process.env.PATH}`,
     AI_TASK_MANAGER_PROJECT_DIR: proj,
     AI_TASK_MANAGER_TRANSCRIPT_DIR: transcripts,
-    AI_TASK_MANAGER_APP_NAME: 'claude',
+    AI_TASK_MANAGER_APP_NAME: appName,
     TT_SKIP_NETWORK: '1',
   };
   return { proj, sid, env };
@@ -177,6 +177,40 @@ test('SessionStart banks an existing session cursor tail exactly once', () => {
   assert.equal(marker.wordsFull, 203);
 });
 
+test('SessionStart orphan recovery rows use the freshly banked marker pair', () => {
+  const fx = fixture({
+    state: {
+      active: '#7',
+      entryStartTs: pastTs,
+      wordsAtEntryStart: 100,
+      lastWordMarker: 100,
+      lastFullWordMarker: 200,
+    },
+    marker: { line: 1, words: 100, wordsFull: 200, task: '#7' },
+    jsonlLines: [
+      { type: 'assistant', message: { content: 'historical text already banked' } },
+      { type: 'assistant', message: { content: 'tail adds three' } },
+    ],
+  });
+  spawnHook(fx, 'SessionStart');
+  const queued = JSON.parse(
+    readFileSync(path.join(fx.proj, '.tmp/aitm/state/task-tracker-queue.json'), 'utf8')
+  );
+  const rows = queued.map((item) => parseTimingRow(item.row));
+  assert.deepEqual(
+    rows.map((row) => row.event),
+    ['pause:orphan-recovery', 'resumed', 'session-start']
+  );
+  assert.deepEqual(
+    rows.map((row) => row.wordMarker),
+    ['103', '103', '103']
+  );
+  assert.deepEqual(
+    rows.map((row) => row.fullWordMarker),
+    ['203', '203', '203']
+  );
+});
+
 test('PreCompact: active with entryStartTs → flush path runs (exit 0)', () => {
   const out = runHook('PreCompact', {
     state: { active: '#7', entryStartTs: pastTs, wordsAtEntryStart: 0, lastWordMarker: 0 },
@@ -232,6 +266,64 @@ test('PreCompact/PostCompact rows advance durable primary and full markers from 
   assert.deepEqual(
     rows.map((row) => row.fullWordMarker),
     ['205', '205']
+  );
+});
+
+test('PostCompact banks a tail preserved by an unavailable PreCompact exactly once', () => {
+  const fx = fixture({
+    appName: 'codex',
+    state: {
+      active: '#7',
+      entryStartTs: new Date(Date.now() - 1_000).toISOString(),
+      wordsAtEntryStart: 100,
+      lastWordMarker: 100,
+      lastFullWordMarker: 200,
+    },
+    marker: { line: 1, words: 100, wordsFull: 200, task: '#7' },
+  });
+  spawnHook(fx, 'PreCompact');
+  writeFileSync(
+    path.join(fx.env.AI_TASK_MANAGER_TRANSCRIPT_DIR, `${fx.sid}.jsonl`),
+    [
+      {
+        type: 'response_item',
+        payload: {
+          type: 'message',
+          role: 'assistant',
+          content: [{ type: 'output_text', text: 'historical text already banked' }],
+        },
+      },
+      {
+        type: 'response_item',
+        payload: {
+          type: 'message',
+          role: 'assistant',
+          content: [{ type: 'output_text', text: 'tail adds three' }],
+        },
+      },
+    ]
+      .map(JSON.stringify)
+      .join('\n') + '\n',
+    'utf8'
+  );
+  spawnHook(fx, 'PostCompact');
+  spawnHook(fx, 'PostCompact');
+  const state = JSON.parse(readFileSync(path.join(fx.proj, STATE_REL), 'utf8'));
+  const marker = JSON.parse(
+    readFileSync(path.join(fx.proj, '.tmp/aitm/app/codex/session-tracking/sess-test.json'), 'utf8')
+  ).wordCount;
+  const queued = JSON.parse(
+    readFileSync(path.join(fx.proj, '.tmp/aitm/state/task-tracker-queue.json'), 'utf8')
+  );
+  const rows = queued.map((item) => parseTimingRow(item.row));
+  assert.equal(state.lastWordMarker, 103);
+  assert.equal(state.lastFullWordMarker, 203);
+  assert.equal(marker.line, 2);
+  assert.equal(marker.words, 103);
+  assert.equal(marker.wordsFull, 203);
+  assert.deepEqual(
+    rows.map((row) => row.fullWordMarker),
+    ['—', '203', '203']
   );
 });
 

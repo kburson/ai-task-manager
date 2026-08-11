@@ -128,12 +128,17 @@ test('claimRecoveryOnce: a fresh path in the same dir wins independently', () =>
 // #983 — background-agent termination leaves an open Develop span; recovery
 // must not credit a suspiciously large gap as active time (the #899 shape).
 test('buildOrphanRecoveryRowSpecs: below threshold posts a single active session-end-recovery row', () => {
-  const specs = buildOrphanRecoveryRowSpecs({ wallMin: 30, wordMarker: 42 });
+  const specs = buildOrphanRecoveryRowSpecs({
+    wallMin: 30,
+    wordMarker: 42,
+    fullWordMarker: 84,
+  });
   assert.equal(specs.length, 1);
   assert.equal(specs[0].event, 'session-end-recovery');
   assert.equal(specs[0].activeMin, 30);
   assert.equal(specs[0].idleMin, 0);
   assert.equal(specs[0].wordMarker, 42);
+  assert.equal(specs[0].fullWordMarker, 84);
 });
 
 test('buildOrphanRecoveryRowSpecs: at the threshold still posts the active row (boundary is exclusive)', () => {
@@ -146,14 +151,16 @@ test('buildOrphanRecoveryRowSpecs: at the threshold still posts the active row (
 
 test('buildOrphanRecoveryRowSpecs: above threshold posts an honest pause/resumed pair, no fabricated active time', () => {
   const wallMin = SUSPICIOUS_GAP_SEC / 60 + 10; // ~8h10m — the #899 shape
-  const specs = buildOrphanRecoveryRowSpecs({ wallMin, wordMarker: 7 });
+  const specs = buildOrphanRecoveryRowSpecs({ wallMin, wordMarker: 7, fullWordMarker: 14 });
   assert.equal(specs.length, 2);
   assert.equal(specs[0].event, 'pause:orphan-recovery');
   assert.equal(specs[0].activeMin, 0);
   assert.equal(specs[0].idleMin, wallMin);
   assert.equal(specs[0].wordMarker, 7);
+  assert.equal(specs[0].fullWordMarker, 14);
   assert.equal(specs[1].event, 'resumed');
   assert.equal(specs[1].activeMin, 0);
   assert.equal(specs[1].idleMin, 0);
   assert.equal(specs[1].wordMarker, 7);
+  assert.equal(specs[1].fullWordMarker, 14);
 });
