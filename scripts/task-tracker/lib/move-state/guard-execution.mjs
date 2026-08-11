@@ -31,7 +31,10 @@ import { refreshPreRefineContiguity } from './contiguity-refresh.mjs';
 import { assignedRequiresAssigneeGuard } from '../assigned-assignee-invariant.mjs';
 
 export async function runAssignedEntryRevalidation(ctx) {
-  if (ctx.SKIP_NETWORK || ctx.stateArg !== 'assigned' || !ctx.plan?.runGuardPipeline) {
+  // Assigned is a data invariant, not a lifecycle delivery gate. Operator
+  // bypasses (`--force` / `--supersede`) may skip the generic guard pipeline,
+  // but they must never authorize an ownerless Assigned Status write.
+  if (ctx.SKIP_NETWORK || ctx.stateArg !== 'assigned') {
     return { exit: null };
   }
   const result = await assignedRequiresAssigneeGuard.run({

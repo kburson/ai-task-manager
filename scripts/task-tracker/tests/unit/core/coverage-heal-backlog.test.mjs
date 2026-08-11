@@ -374,4 +374,63 @@ const PID = 'PVT_target';
   );
 }
 
+{
+  let call = 0;
+  const gqlFn = async () => {
+    call += 1;
+    return pageResponse(
+      [{ number: call, state: 'OPEN', repository: { nameWithOwner: 'o/r' } }],
+      call < 51,
+      call < 51 ? `CUR_${call}` : null
+    );
+  };
+  const all = await fetchAllIssueNumbers({ repo: 'o/r', state: 'all', projectId: PID }, gqlFn);
+  assert.equal(call, 51, 'project enumeration must continue beyond fifty pages to exhaustion');
+  assert.equal(all.length, 51);
+  assert.equal(all.at(-1), 51);
+}
+{
+  let call = 0;
+  const gqlFn = async () => {
+    call += 1;
+    return pageResponse([], true, 'REPEATED');
+  };
+  await assert.rejects(
+    fetchAllIssueNumbers({ repo: 'o/r', state: 'all', projectId: PID }, gqlFn),
+    /cursor.*advance|repeated cursor/i
+  );
+  assert.equal(call, 2);
+}
+{
+  const gqlFn = async () => pageResponse([], true, null);
+  await assert.rejects(
+    fetchAllIssueNumbers({ repo: 'o/r', state: 'all', projectId: PID }, gqlFn),
+    /missing.*cursor|endCursor/i
+  );
+}
+{
+  let call = 0;
+  const gqlFn = async () => {
+    call += 1;
+    return pageResponse([], false, 'IGNORED');
+  };
+  assert.deepEqual(
+    await fetchAllIssueNumbers({ repo: 'o/r', state: 'all', projectId: PID }, gqlFn),
+    []
+  );
+  assert.equal(call, 1, 'exhausted pagination must not fetch another page');
+}
+{
+  let call = 0;
+  const gqlFn = async () => {
+    call += 1;
+    return pageResponse([], true, `CUR_${call}`);
+  };
+  await assert.rejects(
+    fetchAllIssueNumbers({ repo: 'o/r', state: 'all', projectId: PID }, gqlFn),
+    /1000-page safety limit/i
+  );
+  assert.equal(call, 1000);
+}
+
 console.log('coverage-heal-backlog.test.mjs: ok');

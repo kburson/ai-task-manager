@@ -468,7 +468,9 @@ export async function fetchAllIssueNumbers({ repo, state, projectId }, gqlFn = g
   // project after the first memberships; project-side pagination cannot.
   const numbers = [];
   let cursor = null;
-  for (let page = 0; page < 50; page++) {
+  const seenCursors = new Set();
+  const maxPages = 1000;
+  for (let page = 0; ; page += 1) {
     const data = await gqlFn(
       `
       query($projectId: ID!, $cursor: String) {
@@ -507,7 +509,24 @@ export async function fetchAllIssueNumbers({ repo, state, projectId }, gqlFn = g
       numbers.push(i.number);
     }
     if (!items.pageInfo?.hasNextPage) break;
-    cursor = items.pageInfo.endCursor;
+    if (page + 1 >= maxPages) {
+      throw new Error(
+        `configured project ${projectId} pagination exceeded the ${maxPages}-page safety limit`
+      );
+    }
+    const nextCursor = items.pageInfo?.endCursor;
+    if (typeof nextCursor !== 'string' || !nextCursor.trim()) {
+      throw new Error(
+        `configured project ${projectId} pagination hasNextPage=true but endCursor is missing`
+      );
+    }
+    if (nextCursor === cursor || seenCursors.has(nextCursor)) {
+      throw new Error(
+        `configured project ${projectId} pagination cursor did not advance (${nextCursor})`
+      );
+    }
+    seenCursors.add(nextCursor);
+    cursor = nextCursor;
   }
   return numbers;
 }

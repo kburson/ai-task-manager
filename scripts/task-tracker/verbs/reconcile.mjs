@@ -58,6 +58,7 @@ import { withIssueLock, IssueLockError } from '../issue-mutator-lock.mjs';
 import { runMoveStateHost } from '../../gh/move-state.mjs';
 import { resolveProjectDir } from '../lib/project-dir.mjs';
 import {
+  assignedRequiresAssigneeGuard,
   classifyAssignedAssigneeDrift,
   fetchAssignedInvariantAssignees,
   parseAssigneeLogins,
@@ -330,6 +331,7 @@ export async function runReconcile({
   const getLiveState = deps.getLiveState || defaultGetLiveState;
   const runMoveState = deps.runMoveState || defaultRunMoveState;
   const runSentinelStatusWrite = deps.runSentinelStatusWrite || defaultRunSentinelStatusWrite;
+  const fetchAssignees = deps.fetchAssignees || fetchAssignedInvariantAssignees;
   const persistTrackerState = deps.persistTrackerState || defaultPersistTrackerState;
   const listComments = deps.listComments || null;
   // #516 — drift events are demoted to body audit markers via mutateIssueBody.
@@ -428,6 +430,27 @@ export async function runReconcile({
     }
 
     if (live !== sentinel) {
+      // This recovery path intentionally bypasses lifecycle/history writers,
+      // but Assigned remains a hard data invariant. The public verb already
+      // holds the per-issue lock here, so re-read ownership immediately before
+      // the raw Status-only write just as the central mover does.
+      if (sentinel === 'assigned') {
+        const guard = await assignedRequiresAssigneeGuard.run({
+          issueNumber,
+          repo: cfg.repo,
+          cfg,
+          deps: { fetchAssignedInvariantAssignees: fetchAssignees },
+        });
+        if (!guard.ok) {
+          return {
+            status: 'transition-failed',
+            exitCode: guard.exitCode,
+            walked: [],
+            failedAt: sentinel,
+            message: `reconcile revert-to-sentinel: ${guard.reason}`,
+          };
+        }
+      }
       const exitCode = await runSentinelStatusWrite({
         issueNumber,
         target: sentinel,

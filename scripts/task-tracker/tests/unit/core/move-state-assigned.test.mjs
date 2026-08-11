@@ -20,7 +20,10 @@ import {
   ASSIGNED_ASSIGNEE_GUARD_ID,
   EXIT_ASSIGNED_REQUIRES_ASSIGNEE,
 } from '../../../lib/assigned-assignee-invariant.mjs';
-import { runGuardExecution } from '../../../lib/move-state/guard-execution.mjs';
+import {
+  runAssignedEntryRevalidation,
+  runGuardExecution,
+} from '../../../lib/move-state/guard-execution.mjs';
 import { moveState } from '../../../lib/move-state/move-state-core.mjs';
 
 function argv(...args) {
@@ -158,6 +161,68 @@ test('changed assignee read under the issue lock refuses before the Status write
   assert.equal(statusWrites, 0);
   assert.equal(rollbacks, 0, 'nothing durable landed, so no compensation is needed');
 });
+
+async function runBypassedAssignedMove({ bypassFlag, fetchAssignees }) {
+  let statusWrites = 0;
+  const ctx = {
+    issueArg: '1207',
+    stateArg: 'assigned',
+    plan: { runGuardPipeline: false },
+    forceFlag: bypassFlag === 'force',
+    supersedeFlag: bypassFlag === 'supersede',
+    SKIP_NETWORK: false,
+    cfg: { repo: 'owner/repo' },
+    guardDeps: { fetchAssignedInvariantAssignees: fetchAssignees },
+    tailProfile: 'task-owner',
+    reviewAuthority: null,
+    _runGuardExecution: async () => ({ exit: null }),
+    _probeCompletion: async () => ({ sentinelPresent: false, boardAtTarget: false }),
+    _preStatusGuard: () => runAssignedEntryRevalidation(ctx),
+    _emitPhasePairRows: async () => {},
+    _stampEntryMarkers: async () => undefined,
+    _runStatusWrite: async () => {
+      statusWrites += 1;
+      return { exit: null, itemId: 'ITEM' };
+    },
+    _writeSentinel: async () => ({ verified: true }),
+    _runPostCommitTail: async () => ({ failures: [] }),
+  };
+  return { result: await moveState(ctx), statusWrites };
+}
+
+for (const bypassFlag of ['force', 'supersede']) {
+  test(`${bypassFlag} cannot bypass Assigned revalidation when assignees are empty`, async () => {
+    const { result, statusWrites } = await runBypassedAssignedMove({
+      bypassFlag,
+      fetchAssignees: async () => [],
+    });
+    assert.equal(result.exit, EXIT_ASSIGNED_REQUIRES_ASSIGNEE);
+    assert.equal(result.phase, 'guard');
+    assert.equal(statusWrites, 0);
+  });
+
+  test(`${bypassFlag} cannot bypass Assigned revalidation when the assignee read fails`, async () => {
+    const { result, statusWrites } = await runBypassedAssignedMove({
+      bypassFlag,
+      fetchAssignees: async () => {
+        throw new Error('assignee transport unavailable');
+      },
+    });
+    assert.equal(result.exit, EXIT_ASSIGNED_REQUIRES_ASSIGNEE);
+    assert.equal(result.phase, 'guard');
+    assert.equal(statusWrites, 0);
+  });
+
+  test(`${bypassFlag} permits Assigned after lock-time assignee proof`, async () => {
+    const { result, statusWrites } = await runBypassedAssignedMove({
+      bypassFlag,
+      fetchAssignees: async () => [{ login: 'Alice' }],
+    });
+    assert.equal(result.exit, null);
+    assert.equal(result.phase, 'complete');
+    assert.equal(statusWrites, 1);
+  });
+}
 
 test('move-state host wires a lock-time Assigned guard instead of stubbing all guards', () => {
   const src = readFileSync(new URL('../../../../gh/move-state.mjs', import.meta.url), 'utf8');

@@ -41,6 +41,7 @@ function makeDeps({
   live = 'develop',
   statusCode = 0,
   recordFailures = 0,
+  fetchAssignees = async () => ['alice'],
 } = {}) {
   const calls = { statusWrites: [], bodyWrites: [], audits: [], persists: [] };
   let recordAttempts = 0;
@@ -50,6 +51,7 @@ function makeDeps({
     deps: {
       fetchIssueBody: async () => ({ body }),
       getLiveState: async () => live,
+      fetchAssignees,
       runSentinelStatusWrite: async (args) => {
         calls.statusWrites.push(args);
         return statusCode;
@@ -75,6 +77,68 @@ function makeDeps({
     },
   };
 }
+
+test('#1207 sentinel Assigned refuses an empty assignee read before every write', async () => {
+  const { deps, calls } = makeDeps({
+    body: driftBody({ recorded: 'backlog', sentinel: 'assigned' }),
+    live: 'backlog',
+    fetchAssignees: async () => [],
+  });
+  const result = await runReconcile({
+    issueNumber: 1207,
+    mode: 'revert-to-sentinel',
+    cfg,
+    deps,
+  });
+
+  assert.equal(result.status, 'transition-failed');
+  assert.equal(result.exitCode, 11);
+  assert.deepEqual(calls.statusWrites, []);
+  assert.deepEqual(calls.bodyWrites, []);
+  assert.deepEqual(calls.audits, []);
+  assert.deepEqual(calls.persists, []);
+});
+
+test('#1207 sentinel Assigned refuses an unreadable assignee set before every write', async () => {
+  const { deps, calls } = makeDeps({
+    body: driftBody({ recorded: 'backlog', sentinel: 'assigned' }),
+    live: 'backlog',
+    fetchAssignees: async () => {
+      throw new Error('assignee transport unavailable');
+    },
+  });
+  const result = await runReconcile({
+    issueNumber: 1207,
+    mode: 'revert-to-sentinel',
+    cfg,
+    deps,
+  });
+
+  assert.equal(result.status, 'transition-failed');
+  assert.equal(result.exitCode, 11);
+  assert.deepEqual(calls.statusWrites, []);
+  assert.deepEqual(calls.bodyWrites, []);
+  assert.deepEqual(calls.audits, []);
+  assert.deepEqual(calls.persists, []);
+});
+
+test('#1207 sentinel Assigned writes only after a present-assignee proof', async () => {
+  const { deps, calls } = makeDeps({
+    body: driftBody({ recorded: 'backlog', sentinel: 'assigned' }),
+    live: 'backlog',
+    fetchAssignees: async () => [{ login: 'Alice' }],
+  });
+  const result = await runReconcile({
+    issueNumber: 1207,
+    mode: 'revert-to-sentinel',
+    cfg,
+    deps,
+  });
+
+  assert.equal(result.status, 'reconciled');
+  assert.equal(calls.statusWrites.length, 1);
+  assert.equal(calls.bodyWrites.length, 1);
+});
 
 test('#1016 restores board=recorded drift to the saga-verified sentinel', async () => {
   const { deps, calls } = makeDeps();

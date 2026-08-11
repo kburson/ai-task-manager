@@ -135,6 +135,27 @@ async function readAssigneesWithRetry(fetchAssignees, args, attempts = 2) {
   throw lastError;
 }
 
+async function observeAmbiguousAdd({ fetchAssignees, fetchArgs, login, attempts = 3 }) {
+  let successfulAbsentReads = 0;
+  let lastError = null;
+  for (let attempt = 0; attempt < attempts; attempt += 1) {
+    try {
+      const assignees = parseAssigneeLogins(await fetchAssignees(fetchArgs));
+      if (assignees.some((entry) => sameLogin(entry, login))) {
+        return { kind: 'present', assignees };
+      }
+      successfulAbsentReads += 1;
+    } catch (error) {
+      lastError = error;
+    }
+  }
+  if (successfulAbsentReads === attempts) return { kind: 'absent', assignees: [] };
+  return {
+    kind: 'indeterminate',
+    error: lastError?.message || 'assignee postcondition was not consistently observable',
+  };
+}
+
 async function inspectFailedMove({
   issueNumber,
   target,
@@ -188,6 +209,52 @@ async function inspectFailedMove({
   }
 }
 
+async function readAssignmentSnapshot({ issueNumber, cfg, getLiveState, fetchAssignees }) {
+  const state = await getLiveState({ issueNumber, cfg });
+  if (!stateIds().includes(state)) {
+    throw new Error('live project state is missing or unrecognized');
+  }
+  const assignees = await readAssigneesWithRetry(fetchAssignees, {
+    issueNumber,
+    repo: cfg.repo,
+  });
+  return { state, assignees };
+}
+
+async function restoreAssignedAndVerify({
+  issueNumber,
+  cfg,
+  runMoveState,
+  getLiveState,
+  fetchAssignees,
+}) {
+  const restoreExit = await runMoveState({ issueNumber, target: 'assigned', cfg });
+  try {
+    const snapshot = await readAssignmentSnapshot({
+      issueNumber,
+      cfg,
+      getLiveState,
+      fetchAssignees,
+    });
+    if (snapshot.state === 'assigned' && snapshot.assignees.length > 0) {
+      return {
+        kind: restoreExit === 0 ? 'restored' : 'restored-move-incomplete',
+        restoreExit,
+        ...snapshot,
+      };
+    }
+    return { kind: 'failed', restoreExit, ...snapshot };
+  } catch (error) {
+    return {
+      kind: 'indeterminate',
+      restoreExit,
+      state: null,
+      assignees: null,
+      error: error?.message || String(error),
+    };
+  }
+}
+
 export async function runAssign({ issueNumber, login, remove = false, cfg, deps = {} } = {}) {
   if (!Number.isInteger(issueNumber) || issueNumber <= 0) {
     throw new Error('assign: issue# must be a positive integer');
@@ -212,20 +279,80 @@ export async function runAssign({ issueNumber, login, remove = false, cfg, deps 
 
     if (!remove) {
       if (!alreadyPresent) {
-        await mutateAssignee({
-          issueNumber,
-          repo: cfg.repo,
-          login: requestedLogin,
-          remove: false,
-        });
+        let mutationError = null;
         try {
-          const afterAdd = parseAssigneeLogins(
-            await fetchAssignees({ issueNumber, repo: cfg.repo })
-          );
-          if (!afterAdd.some((entry) => sameLogin(entry, resolvedLogin))) {
-            throw new Error(`GitHub did not report ${resolvedLogin} after assignment`);
-          }
+          await mutateAssignee({
+            issueNumber,
+            repo: cfg.repo,
+            login: requestedLogin,
+            remove: false,
+          });
         } catch (error) {
+          mutationError = error;
+        }
+
+        let afterAdd;
+        if (mutationError) {
+          const observation = await observeAmbiguousAdd({
+            fetchAssignees,
+            fetchArgs: { issueNumber, repo: cfg.repo },
+            login: resolvedLogin,
+          });
+          if (observation.kind === 'indeterminate') {
+            return {
+              status: 'assignment-outcome-indeterminate',
+              exitCode: 1,
+              login: requestedLogin,
+              message:
+                `assignment mutation failed (${mutationError?.message || String(mutationError)}) ` +
+                `and its postcondition is unreadable: ${observation.error}`,
+            };
+          }
+          if (observation.kind === 'absent') {
+            return {
+              status: 'assignment-mutation-failed-no-change',
+              exitCode: 1,
+              login: requestedLogin,
+              message:
+                `assignment mutation failed and the assignee is confirmed absent: ` +
+                `${mutationError?.message || String(mutationError)}`,
+            };
+          }
+          afterAdd = observation.assignees;
+        } else {
+          try {
+            afterAdd = await readAssigneesWithRetry(fetchAssignees, {
+              issueNumber,
+              repo: cfg.repo,
+            });
+          } catch (error) {
+            const compensationError = await safeCompensate({
+              action: () =>
+                mutateAssignee({
+                  issueNumber,
+                  repo: cfg.repo,
+                  login: requestedLogin,
+                  remove: true,
+                }),
+              fetchAssignees,
+              fetchArgs: { issueNumber, repo: cfg.repo },
+              login: resolvedLogin,
+              shouldBePresent: false,
+            });
+            return {
+              status: compensationError
+                ? 'assignment-verification-failed-compensation-unverified'
+                : 'assignment-verification-failed-compensated',
+              exitCode: 1,
+              login: requestedLogin,
+              compensationError,
+              message: `assignment could not be verified: ${error?.message || String(error)}`,
+            };
+          }
+        }
+
+        const addLanded = afterAdd.some((entry) => sameLogin(entry, resolvedLogin));
+        if (!addLanded) {
           const compensationError = await safeCompensate({
             action: () =>
               mutateAssignee({
@@ -246,7 +373,7 @@ export async function runAssign({ issueNumber, login, remove = false, cfg, deps 
             exitCode: 1,
             login: requestedLogin,
             compensationError,
-            message: `assignment could not be verified: ${error?.message || String(error)}`,
+            message: `assignment could not be verified: GitHub did not report ${resolvedLogin}`,
           };
         }
       }
@@ -376,13 +503,29 @@ export async function runAssign({ issueNumber, login, remove = false, cfg, deps 
       });
     } catch (error) {
       if (!removesFinalAssigned) throw error;
-      const restoreExit = await runMoveState({ issueNumber, target: 'assigned', cfg });
+      const restoration = await restoreAssignedAndVerify({
+        issueNumber,
+        cfg,
+        runMoveState,
+        getLiveState,
+        fetchAssignees,
+      });
       return {
-        status: restoreExit === 0 ? 'remove-failed-restored' : 'remove-failed-restore-failed',
-        exitCode: 1,
+        status:
+          restoration.kind === 'restored'
+            ? 'remove-failed-restored'
+            : restoration.kind === 'restored-move-incomplete'
+              ? 'remove-failed-restored-move-incomplete'
+              : restoration.kind === 'indeterminate'
+                ? 'remove-failed-restore-indeterminate'
+                : 'remove-failed-restore-failed',
+        exitCode: restoration.kind === 'restored' ? 1 : restoration.restoreExit || 1,
         login: requestedLogin,
-        restoreExit,
-        message: `assignee removal failed after demotion: ${error?.message || String(error)}`,
+        restoreExit: restoration.restoreExit,
+        state: restoration.state,
+        message:
+          `assignee removal failed after demotion: ${error?.message || String(error)}` +
+          (restoration.error ? `; restoration is indeterminate: ${restoration.error}` : ''),
       };
     }
 
@@ -398,17 +541,29 @@ export async function runAssign({ issueNumber, login, remove = false, cfg, deps 
     }
     if (verificationError || afterRemove.some((entry) => sameLogin(entry, resolvedLogin))) {
       if (removesFinalAssigned) {
-        const restoreExit = await runMoveState({ issueNumber, target: 'assigned', cfg });
+        const restoration = await restoreAssignedAndVerify({
+          issueNumber,
+          cfg,
+          runMoveState,
+          getLiveState,
+          fetchAssignees,
+        });
         return {
           status:
-            restoreExit === 0
+            restoration.kind === 'restored'
               ? 'remove-verification-failed-restored'
-              : 'remove-verification-failed-restore-failed',
-          exitCode: 1,
+              : restoration.kind === 'restored-move-incomplete'
+                ? 'remove-verification-failed-restored-move-incomplete'
+                : restoration.kind === 'indeterminate'
+                  ? 'remove-verification-failed-restore-indeterminate'
+                  : 'remove-verification-failed-restore-failed',
+          exitCode: restoration.kind === 'restored' ? 1 : restoration.restoreExit || 1,
           login: requestedLogin,
-          restoreExit,
+          restoreExit: restoration.restoreExit,
+          state: restoration.state,
           message: verificationError
-            ? `assignee removal could not be verified: ${verificationError.message}`
+            ? `assignee removal could not be verified: ${verificationError.message}` +
+              (restoration.error ? `; restoration is indeterminate: ${restoration.error}` : '')
             : `GitHub still reports ${resolvedLogin} after removal`,
         };
       }
@@ -419,6 +574,106 @@ export async function runAssign({ issueNumber, login, remove = false, cfg, deps 
           ? `assignee removal could not be verified: ${verificationError.message}`
           : `GitHub still reports ${resolvedLogin} after removal`,
       };
+    }
+
+    if (removesFinalAssigned) {
+      let postState;
+      try {
+        postState = await getLiveState({ issueNumber, cfg });
+        if (!stateIds().includes(postState)) {
+          throw new Error('post-removal live project state is missing or unrecognized');
+        }
+      } catch (error) {
+        return {
+          status: 'remove-outcome-indeterminate',
+          exitCode: incompleteMoveExit || 1,
+          login: requestedLogin,
+          message: `assignee removal landed but Status could not be verified: ${error?.message || String(error)}`,
+        };
+      }
+
+      if (afterRemove.length > 0) {
+        if (postState === 'assigned') {
+          return {
+            status: 'unassigned-owner-remains-assigned',
+            issueNumber,
+            login: requestedLogin,
+            state: 'assigned',
+            assignees: afterRemove,
+          };
+        }
+        if (postState !== 'backlog') {
+          return {
+            status: 'owner-remains-restore-indeterminate',
+            exitCode: incompleteMoveExit || 1,
+            login: requestedLogin,
+            state: postState,
+            assignees: afterRemove,
+            message:
+              `replacement ownership remains, but configured project Status is ${postState}; ` +
+              'refusing an unproven restoration',
+          };
+        }
+        const restoration = await restoreAssignedAndVerify({
+          issueNumber,
+          cfg,
+          runMoveState,
+          getLiveState,
+          fetchAssignees,
+        });
+        if (restoration.kind === 'restored') {
+          return {
+            status: 'unassigned-owner-remains-restored',
+            issueNumber,
+            login: requestedLogin,
+            state: restoration.state,
+            assignees: restoration.assignees,
+          };
+        }
+        if (restoration.kind === 'indeterminate') {
+          return {
+            status: 'owner-remains-restore-indeterminate',
+            exitCode: restoration.restoreExit || 1,
+            login: requestedLogin,
+            state: restoration.state,
+            assignees: afterRemove,
+            message: `replacement owner remains but Assigned restoration is indeterminate: ${restoration.error}`,
+          };
+        }
+        if (restoration.kind === 'restored-move-incomplete') {
+          return {
+            status: 'owner-remains-restored-move-incomplete',
+            exitCode: restoration.restoreExit,
+            login: requestedLogin,
+            state: restoration.state,
+            assignees: restoration.assignees,
+            message:
+              `replacement owner and Assigned Status landed, but move completion evidence failed ` +
+              `with exit ${restoration.restoreExit}`,
+          };
+        }
+        return {
+          status: 'owner-remains-restore-failed',
+          exitCode: restoration.restoreExit || 1,
+          login: requestedLogin,
+          state: restoration.state,
+          assignees: restoration.assignees,
+          message:
+            `replacement owner remains but Assigned restoration failed; ` +
+            `configured project Status is ${restoration.state}`,
+        };
+      }
+
+      if (postState !== 'backlog') {
+        return {
+          status: 'remove-state-inconsistent',
+          exitCode: incompleteMoveExit || 1,
+          login: requestedLogin,
+          state: postState,
+          assignees: afterRemove,
+          message: `final assignee was removed but configured project Status is ${postState}`,
+        };
+      }
     }
     return {
       status: incompleteMoveExit == null ? 'unassigned' : 'unassigned-move-incomplete',
@@ -501,7 +756,14 @@ export async function verbAssign(rest, cfg, deps = {}) {
     process.exit(1);
   }
   if (
-    ['assigned', 'already-assigned', 'unassigned', 'already-unassigned'].includes(result.status)
+    [
+      'assigned',
+      'already-assigned',
+      'unassigned',
+      'already-unassigned',
+      'unassigned-owner-remains-assigned',
+      'unassigned-owner-remains-restored',
+    ].includes(result.status)
   ) {
     process.stdout.write(
       `✓ #${args.issueNumber} ${result.status}: ${result.login} (${result.state})\n`
