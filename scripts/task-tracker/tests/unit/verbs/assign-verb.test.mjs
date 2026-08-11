@@ -151,3 +151,46 @@ test('unknown live state fails closed before any assignment mutation', async () 
   assert.deepEqual(calls.mutations, []);
   assert.deepEqual(calls.moves, []);
 });
+
+test('login identity comparison is case-insensitive and never compensates a pre-existing identity', async () => {
+  const { calls, deps } = harness({ assignees: ['Alice'], moveCodes: [11] });
+  const result = await runAssign({ issueNumber: 33, login: 'alice', cfg, deps });
+  assert.equal(result.status, 'move-failed-compensated');
+  assert.deepEqual(calls.mutations, [], 'pre-existing Alice must never be removed as compensation');
+  assert.deepEqual(calls.moves, ['assigned']);
+});
+
+test('final-assignee removal that remains visible restores Assigned', async () => {
+  const { calls, deps } = harness({ state: 'assigned', assignees: ['alice'] });
+  deps.mutateAssignee = async ({ login, remove }) => {
+    calls.mutations.push({ login, remove });
+  };
+  const result = await runAssign({ issueNumber: 34, login: 'alice', remove: true, cfg, deps });
+  assert.equal(result.status, 'remove-verification-failed-restored');
+  assert.deepEqual(calls.moves, ['backlog', 'assigned']);
+});
+
+test('final-assignee removal read failure retries then restores Assigned safely', async () => {
+  const { calls, deps } = harness({ state: 'assigned', assignees: ['alice'] });
+  let reads = 0;
+  deps.fetchAssignees = async () => {
+    reads += 1;
+    if (reads === 1) return ['alice'];
+    throw new Error('post-remove transport failed');
+  };
+  const result = await runAssign({ issueNumber: 35, login: 'alice', remove: true, cfg, deps });
+  assert.equal(result.status, 'remove-verification-failed-restored');
+  assert.equal(reads, 3);
+  assert.deepEqual(calls.moves, ['backlog', 'assigned']);
+});
+
+test('Assigned to Backlog move carries invariant demotion provenance', async () => {
+  const seen = [];
+  const { deps } = harness({ state: 'assigned', assignees: ['alice'] });
+  deps.runMoveState = async (args) => {
+    seen.push(args);
+    return 0;
+  };
+  await runAssign({ issueNumber: 36, login: 'alice', remove: true, cfg, deps });
+  assert.match(seen[0].reason, /final assignee removal/i);
+});

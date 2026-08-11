@@ -303,7 +303,7 @@ export async function preflightVerb({
             // Audit comment is best-effort; the claim itself is the gate.
           }
           process.stderr.write(
-            `🤖 Full-Auto: #${verdict.issueNumber} was unassigned — auto-claimed via \`--add-assignee @me\` (audit comment posted).\n`
+            `🤖 Full-Auto: #${verdict.issueNumber} was unassigned — auto-claimed via the locked assignment saga (audit comment posted).\n`
           );
           return preflightVerb({
             stateBefore,

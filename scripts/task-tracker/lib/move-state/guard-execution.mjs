@@ -28,6 +28,27 @@ import { durableWordMarkers } from '../../state.mjs';
 import { getProjectDir } from '../../paths.mjs';
 import { detectLinkedWorktree, makeCloseTrunkRefResolver } from '../full-auto-merge-execute.mjs';
 import { refreshPreRefineContiguity } from './contiguity-refresh.mjs';
+import { assignedRequiresAssigneeGuard } from '../assigned-assignee-invariant.mjs';
+
+export async function runAssignedEntryRevalidation(ctx) {
+  if (ctx.SKIP_NETWORK || ctx.stateArg !== 'assigned' || !ctx.plan?.runGuardPipeline) {
+    return { exit: null };
+  }
+  const result = await assignedRequiresAssigneeGuard.run({
+    issueNumber: Number(ctx.issueArg),
+    repo: ctx.cfg?.repo,
+    cfg: ctx.cfg,
+    deps: ctx.guardDeps || {},
+  });
+  if (result.ok) return { exit: null };
+  process.stderr.write('\n');
+  process.stderr.write(`⛔ Refusing to move #${ctx.issueArg} to assigned:\n`);
+  process.stderr.write(`   BLOCKED: ${result.reason}\n\n`);
+  process.stderr.write(
+    `Assign the issue first with \`npx aitm assign ${ctx.issueArg}\`, then retry.\n\n`
+  );
+  return { exit: result.exitCode };
+}
 
 // #968 — worktree-aware `deps.closeGates` for the review→done exit-slot.
 // Parity with `verbs/close.mjs`'s #908 fix: `review-exit-close-gates` calls

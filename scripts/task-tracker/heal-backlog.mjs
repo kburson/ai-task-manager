@@ -53,8 +53,9 @@ import { confirmBlastRadius } from './lib/blast-radius-guard.mjs';
 import {
   classifyAssignedAssigneeDrift,
   parseAssigneeLogins,
+  resolveConfiguredProjectState,
 } from './lib/assigned-assignee-invariant.mjs';
-import { normalizeStateId } from './lib/lifecycle-policy/index.mjs';
+import { stateIds } from './lib/lifecycle-policy/index.mjs';
 import { runMoveStateHost } from '../gh/move-state.mjs';
 
 // Vestigial visible AC bullets that are now driven by hidden markers. Stripped
@@ -545,16 +546,16 @@ export async function fetchAssignedInvariantRow({ issueNumber, cfg }, gqlFn = gq
   const issue = data?.repository?.issue;
   if (!issue) throw new Error(`issue #${issueNumber} not found`);
   const items = issue.projectItems?.nodes ?? [];
-  const item = items.find((entry) => entry.project?.id === cfg.projectId) ?? items[0];
   return {
-    state: normalizeStateId(item?.fieldValueByName?.name),
+    state: resolveConfiguredProjectState(items, cfg.projectId),
     assignees: parseAssigneeLogins(issue.assignees?.nodes ?? []),
   };
 }
 
-function runAssignedInvariantMove({ issueNumber, target }) {
+function runAssignedInvariantMove({ issueNumber, target, reason }) {
+  const extraArgs = target === 'backlog' && reason ? ['--demote', '--demote-reason', reason] : [];
   return runMoveStateHost({
-    argv: [process.execPath, 'move-state.mjs', String(issueNumber), target],
+    argv: [process.execPath, 'move-state.mjs', String(issueNumber), target, ...extraArgs],
     env: {
       ...process.env,
       AITM_INTERNAL: '1',
@@ -597,17 +598,42 @@ export async function runAssignedInvariantHeal({ cfg, args, projectDir }, deps =
   for (const issueNumber of numbers) {
     try {
       const row = await fetchRow(issueNumber);
+      if (!stateIds().includes(row.state)) {
+        throw new Error('live project state is missing or unrecognized');
+      }
       const drift = classifyAssignedAssigneeDrift(row);
       if (drift.kind === 'none' || drift.kind === 'out-of-scope') continue;
       violations += 1;
       lines.push(`#${issueNumber} ${drift.kind}: ${row.state} → ${drift.targetState}`);
       out.write(`#${issueNumber} ${drift.kind}: ${row.state} -> ${drift.targetState}\n`);
       if (args.apply) {
-        const exitCode = await runMoveState({ issueNumber, target: drift.targetState, cfg });
-        if (exitCode === 0) repaired += 1;
-        else {
+        const reason =
+          drift.kind === 'assigned-without-assignee'
+            ? 'Assigned invariant repair: Assigned has no live assignee'
+            : 'Assigned invariant repair: Backlog has a live assignee';
+        const exitCode = await runMoveState({
+          issueNumber,
+          target: drift.targetState,
+          reason,
+          cfg,
+        });
+        if (exitCode !== 0) {
           errors += 1;
           lines.push(`  ERROR: central mover exited ${exitCode}`);
+          continue;
+        }
+        const post = await fetchRow(issueNumber);
+        if (!stateIds().includes(post.state)) {
+          throw new Error('postcondition live project state is missing or unrecognized');
+        }
+        const postDrift = classifyAssignedAssigneeDrift(post);
+        if (post.state === drift.targetState && postDrift.kind === 'none') {
+          repaired += 1;
+        } else {
+          errors += 1;
+          lines.push(
+            `  ERROR: repair postcondition failed: state=${post.state} drift=${postDrift.kind}`
+          );
         }
       }
     } catch (error) {
@@ -807,7 +833,9 @@ export async function main(argv, deps = {}) {
     return;
   }
   if (args.assignedInvariant) {
-    return runInvariantHeal({ cfg, args, projectDir }, deps);
+    const result = await runInvariantHeal({ cfg, args, projectDir }, deps);
+    if (result.errors > 0) return exit(1);
+    return result;
   }
 
   const fieldDefs = loadFieldDefsFn(projectDir);

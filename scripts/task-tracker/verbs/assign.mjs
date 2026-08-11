@@ -11,8 +11,9 @@ import {
   fetchAssignedInvariantAssignees,
   parseAssigneeLogins,
   resolveAssignmentTarget,
+  resolveConfiguredProjectState,
 } from '../lib/assigned-assignee-invariant.mjs';
-import { normalizeStateId, stateIds } from '../lib/lifecycle-policy/index.mjs';
+import { stateIds } from '../lib/lifecycle-policy/index.mjs';
 import { GH_API_TIMEOUT_MS } from '../lib/process-timeouts.mjs';
 
 const pexec = promisify(execFile);
@@ -38,8 +39,7 @@ async function defaultGetLiveState({ issueNumber, cfg }) {
     { owner, repo: repoName, issue: Number(issueNumber) }
   );
   const nodes = data?.repository?.issue?.projectItems?.nodes ?? [];
-  const node = nodes.find((entry) => entry.project?.id === cfg.projectId) ?? nodes[0];
-  return normalizeStateId(node?.fieldValueByName?.name);
+  return resolveConfiguredProjectState(nodes, cfg.projectId);
 }
 
 async function defaultResolveLogin(login) {
@@ -68,9 +68,10 @@ async function defaultMutateAssignee({ issueNumber, repo, login, remove }) {
   );
 }
 
-function defaultRunMoveState({ issueNumber, target }) {
+function defaultRunMoveState({ issueNumber, target, reason }) {
+  const extraArgs = target === 'backlog' && reason ? ['--demote', '--demote-reason', reason] : [];
   return runMoveStateHost({
-    argv: [process.execPath, 'move-state.mjs', String(issueNumber), target],
+    argv: [process.execPath, 'move-state.mjs', String(issueNumber), target, ...extraArgs],
     env: { ...process.env, AITM_INTERNAL: '1', AITM_VERB_CONTEXT: 'assign' },
   });
 }
@@ -82,6 +83,22 @@ async function safeCompensate(action) {
   } catch (error) {
     return error?.message || String(error);
   }
+}
+
+function sameLogin(left, right) {
+  return String(left).toLowerCase() === String(right).toLowerCase();
+}
+
+async function readAssigneesWithRetry(fetchAssignees, args, attempts = 2) {
+  let lastError;
+  for (let attempt = 0; attempt < attempts; attempt += 1) {
+    try {
+      return parseAssigneeLogins(await fetchAssignees(args));
+    } catch (error) {
+      lastError = error;
+    }
+  }
+  throw lastError;
 }
 
 export async function runAssign({ issueNumber, login, remove = false, cfg, deps = {} } = {}) {
@@ -104,7 +121,7 @@ export async function runAssign({ issueNumber, login, remove = false, cfg, deps 
       throw new Error('live project state is missing or unrecognized');
     }
     const before = parseAssigneeLogins(await fetchAssignees({ issueNumber, repo: cfg.repo }));
-    const alreadyPresent = before.includes(resolvedLogin);
+    const alreadyPresent = before.some((entry) => sameLogin(entry, resolvedLogin));
 
     if (!remove) {
       if (!alreadyPresent) {
@@ -118,7 +135,7 @@ export async function runAssign({ issueNumber, login, remove = false, cfg, deps 
           const afterAdd = parseAssigneeLogins(
             await fetchAssignees({ issueNumber, repo: cfg.repo })
           );
-          if (!afterAdd.includes(resolvedLogin)) {
+          if (!afterAdd.some((entry) => sameLogin(entry, resolvedLogin))) {
             throw new Error(`GitHub did not report ${resolvedLogin} after assignment`);
           }
         } catch (error) {
@@ -181,7 +198,12 @@ export async function runAssign({ issueNumber, login, remove = false, cfg, deps 
 
     const removesFinalAssigned = state === 'assigned' && before.length === 1;
     if (removesFinalAssigned) {
-      const demoteExit = await runMoveState({ issueNumber, target: 'backlog', cfg });
+      const demoteExit = await runMoveState({
+        issueNumber,
+        target: 'backlog',
+        reason: 'Assigned invariant: final assignee removal requires Assigned → Backlog',
+        cfg,
+      });
       if (demoteExit !== 0) {
         return {
           status: 'demote-failed',
@@ -211,12 +233,38 @@ export async function runAssign({ issueNumber, login, remove = false, cfg, deps 
       };
     }
 
-    const afterRemove = parseAssigneeLogins(await fetchAssignees({ issueNumber, repo: cfg.repo }));
-    if (afterRemove.includes(resolvedLogin)) {
+    let afterRemove;
+    let verificationError = null;
+    try {
+      afterRemove = await readAssigneesWithRetry(fetchAssignees, {
+        issueNumber,
+        repo: cfg.repo,
+      });
+    } catch (error) {
+      verificationError = error;
+    }
+    if (verificationError || afterRemove.some((entry) => sameLogin(entry, resolvedLogin))) {
+      if (removesFinalAssigned) {
+        const restoreExit = await runMoveState({ issueNumber, target: 'assigned', cfg });
+        return {
+          status:
+            restoreExit === 0
+              ? 'remove-verification-failed-restored'
+              : 'remove-verification-failed-restore-failed',
+          exitCode: 1,
+          login: requestedLogin,
+          restoreExit,
+          message: verificationError
+            ? `assignee removal could not be verified: ${verificationError.message}`
+            : `GitHub still reports ${resolvedLogin} after removal`,
+        };
+      }
       return {
         status: 'error',
         exitCode: 1,
-        message: `GitHub still reports ${resolvedLogin} after removal`,
+        message: verificationError
+          ? `assignee removal could not be verified: ${verificationError.message}`
+          : `GitHub still reports ${resolvedLogin} after removal`,
       };
     }
     return {
@@ -228,6 +276,32 @@ export async function runAssign({ issueNumber, login, remove = false, cfg, deps 
   } catch (error) {
     return { status: 'error', exitCode: 1, message: error?.message || String(error) };
   }
+}
+
+export async function runInvariantAwareClaim({ issueNumber, cfg, deps = {} } = {}) {
+  const fetchAssignees = deps.fetchAssignees || fetchAssignedInvariantAssignees;
+  const lock = deps.withIssueLock || withIssueLock;
+  const runAssignFn = deps.runAssign || runAssign;
+  return lock(
+    { issue: issueNumber, verb: 'full-auto-claim', projDir: deps.projDir || getProjectDir() },
+    async () => {
+      const before = parseAssigneeLogins(await fetchAssignees({ issueNumber, repo: cfg.repo }));
+      if (before.length > 0) {
+        return { ok: false, kind: 'already-assigned', assignees: before };
+      }
+      const result = await runAssignFn({ issueNumber, login: '@me', cfg, deps });
+      if (result.status === 'assigned' || result.status === 'already-assigned') {
+        return { ok: true, claimed: true, state: result.state, login: result.login };
+      }
+      return {
+        ok: false,
+        kind: result.status,
+        assignees: [],
+        exitCode: result.exitCode || 1,
+        message: result.message,
+      };
+    }
+  );
 }
 
 export function parseArgs(rest = []) {

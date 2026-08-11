@@ -90,7 +90,7 @@ function depsOf({ assignees = [], currentUser = 'kburson', cache } = {}) {
   );
 }
 
-// 7. Refusal message includes assignees and gh edit command (assigned-to-other).
+// 7. Refusal message routes assignment through the invariant-aware verb.
 {
   const msg = formatAssigneeRefusal({
     verb: 'promote',
@@ -100,7 +100,8 @@ function depsOf({ assignees = [], currentUser = 'kburson', cache } = {}) {
   assert.match(msg, /Refusing \/task promote/);
   assert.match(msg, /#219/);
   assert.match(msg, /alice/);
-  assert.match(msg, /gh issue edit 219 --add-assignee @me/);
+  assert.match(msg, /npx aitm assign 219/);
+  assert.doesNotMatch(msg, /gh issue edit/);
   assert.match(msg, /gateAssigneeMatch/);
 }
 
@@ -112,7 +113,8 @@ function depsOf({ assignees = [], currentUser = 'kburson', cache } = {}) {
     verdict: { kind: 'unassigned', currentUser: 'kburson', assignees: [] },
   });
   assert.match(msg, /no assignees/);
-  assert.match(msg, /gh issue edit 219 --add-assignee @me/);
+  assert.match(msg, /npx aitm assign 219/);
+  assert.doesNotMatch(msg, /gh issue edit/);
 }
 
 // 9. Prompt line format.

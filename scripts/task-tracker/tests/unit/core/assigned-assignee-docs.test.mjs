@@ -17,4 +17,7 @@ test('authoritative workflow surfaces document the Assigned assignee invariant',
     assert.match(body, /reconcile assigned-invariant #?N --apply/i, file);
     assert.match(body, /exit (?:code )?11/i, file);
   }
+  const workflow = readFileSync('docs/guides/workflow.md', 'utf8');
+  assert.match(workflow, /compensated (?:invocation|saga)/i);
+  assert.doesNotMatch(workflow, /atomically move Backlog to Assigned/i);
 });

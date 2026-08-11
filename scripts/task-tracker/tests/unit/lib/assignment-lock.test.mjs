@@ -114,38 +114,39 @@ async function capturePreflightVerb(opts) {
   assert.equal(cap.exitCode, EXIT_ASSIGNEE_MISMATCH);
   assert.match(cap.out, /PROMPT_REQUIRED: assignee-mismatch #769 unassigned/);
 
-  // claimAssignee assigns @me only when the issue is empty.
-  let added = 0;
+  // claimAssignee routes the claim through the invariant-aware locked saga.
+  let sagaCalls = 0;
   const okClaim = await claimAssignee({
     issueNumber: 769,
     cfg: CFG,
     deps: {
-      fetchAssignees: async () => [],
-      addAssignee: async () => {
-        added += 1;
+      runInvariantClaim: async () => {
+        sagaCalls += 1;
+        return { ok: true, claimed: true, state: 'assigned' };
       },
     },
   });
   assert.equal(okClaim.ok, true);
   assert.equal(okClaim.claimed, true);
-  assert.equal(added, 1);
+  assert.equal(sagaCalls, 1);
+  assert.equal(okClaim.state, 'assigned');
 
   // The AI can NEVER go other→me: claimAssignee refuses any pre-assigned issue
   // and never invokes the assignment mutation.
-  let addedForeign = 0;
+  let foreignSagaCalls = 0;
   const refuse = await claimAssignee({
     issueNumber: 769,
     cfg: CFG,
     deps: {
-      fetchAssignees: async () => ['alice'],
-      addAssignee: async () => {
-        addedForeign += 1;
+      runInvariantClaim: async () => {
+        foreignSagaCalls += 1;
+        return { ok: false, kind: 'already-assigned', assignees: ['alice'] };
       },
     },
   });
   assert.equal(refuse.ok, false);
   assert.equal(refuse.kind, 'already-assigned');
-  assert.equal(addedForeign, 0, 'AI must never reassign an issue from another user');
+  assert.equal(foreignSagaCalls, 1);
 }
 
 // --- AC3: every mutator re-checks the lock (shared runPreflight gate) -------

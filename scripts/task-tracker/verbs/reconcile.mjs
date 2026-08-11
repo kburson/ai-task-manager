@@ -46,7 +46,7 @@ import {
   parseEntryMarkersFirstVisit,
   safeBackfillTs,
 } from '../lib/stage-entry-markers.mjs';
-import { forwardTarget, normalizeStateId, stateIds } from '../lib/lifecycle-policy/index.mjs';
+import { forwardTarget, stateIds } from '../lib/lifecycle-policy/index.mjs';
 import { getProjectDir } from '../paths.mjs';
 import { readMoveCompleteState } from '../lib/move-state/sentinel.mjs';
 import { STATE_TO_CONFIG_KEY } from '../lib/move-state/policy.mjs';
@@ -61,6 +61,7 @@ import {
   classifyAssignedAssigneeDrift,
   fetchAssignedInvariantAssignees,
   parseAssigneeLogins,
+  resolveConfiguredProjectState,
 } from '../lib/assigned-assignee-invariant.mjs';
 
 const pexec = promisify(execFile);
@@ -127,8 +128,7 @@ async function defaultGetLiveState({ issueNumber, cfg }) {
     { owner, repo: repoName, issue: Number(issueNumber) }
   );
   const nodes = data?.repository?.issue?.projectItems?.nodes ?? [];
-  const node = nodes.find((n) => n.project?.id === cfg.projectId) ?? nodes[0];
-  return normalizeStateId(node?.fieldValueByName?.name);
+  return resolveConfiguredProjectState(nodes, cfg.projectId);
 }
 
 // #764 — push the board back to the recorded state in-process (was: spawn
@@ -136,9 +136,13 @@ async function defaultGetLiveState({ issueNumber, cfg }) {
 // migrated helper: runMoveStateHost returns the same numeric exit code the child
 // exit gave us, so revert-to-recorded's exitCode branch is unchanged. No bypass
 // flag — reconcile drives a plain matrix move. host is injectable for tests.
-export function defaultRunMoveState({ issueNumber, target }, { host = runMoveStateHost } = {}) {
+export function defaultRunMoveState(
+  { issueNumber, target, reason },
+  { host = runMoveStateHost } = {}
+) {
+  const extraArgs = target === 'backlog' && reason ? ['--demote', '--demote-reason', reason] : [];
   return host({
-    argv: [process.execPath, 'move-state.mjs', String(issueNumber), target],
+    argv: [process.execPath, 'move-state.mjs', String(issueNumber), target, ...extraArgs],
     env: { ...process.env, AITM_INTERNAL: '1', AITM_VERB_CONTEXT: 'reconcile' },
   });
 }
@@ -207,6 +211,9 @@ export async function runAssignedInvariantReconcile({
   const runMoveState = deps.runMoveState || defaultRunMoveState;
   try {
     const state = await getLiveState({ issueNumber, cfg });
+    if (!stateIds().includes(state)) {
+      throw new Error('live project state is missing or unrecognized');
+    }
     const assignees = parseAssigneeLogins(await fetchAssignees({ issueNumber, repo: cfg.repo }));
     const drift = classifyAssignedAssigneeDrift({ state, assignees });
     if (drift.kind === 'none' || drift.kind === 'out-of-scope') {
@@ -230,7 +237,16 @@ export async function runAssignedInvariantReconcile({
         applied: false,
       };
     }
-    const exitCode = await runMoveState({ issueNumber, target: drift.targetState, cfg });
+    const reason =
+      drift.kind === 'assigned-without-assignee'
+        ? 'Assigned invariant repair: Assigned has no live assignee'
+        : 'Assigned invariant repair: Backlog has a live assignee';
+    const exitCode = await runMoveState({
+      issueNumber,
+      target: drift.targetState,
+      reason,
+      cfg,
+    });
     if (exitCode !== 0) {
       return {
         status: 'repair-failed',
@@ -241,6 +257,30 @@ export async function runAssignedInvariantReconcile({
         targetState: drift.targetState,
         exitCode,
         applied: true,
+      };
+    }
+    const postState = await getLiveState({ issueNumber, cfg });
+    if (!stateIds().includes(postState)) {
+      throw new Error('postcondition live project state is missing or unrecognized');
+    }
+    const postAssignees = parseAssigneeLogins(
+      await fetchAssignees({ issueNumber, repo: cfg.repo })
+    );
+    const postDrift = classifyAssignedAssigneeDrift({
+      state: postState,
+      assignees: postAssignees,
+    });
+    if (postState !== drift.targetState || postDrift.kind !== 'none') {
+      return {
+        status: 'repair-failed',
+        kind: drift.kind,
+        issueNumber,
+        state: postState,
+        assignees: postAssignees,
+        targetState: drift.targetState,
+        exitCode: 1,
+        applied: true,
+        message: `repair postcondition failed: state=${postState} drift=${postDrift.kind}`,
       };
     }
     return {

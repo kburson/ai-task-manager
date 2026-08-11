@@ -9,6 +9,7 @@ import {
   classifyAssignedAssigneeDrift,
   parseAssigneeLogins,
   resolveAssignmentTarget,
+  resolveConfiguredProjectState,
 } from '../../../lib/assigned-assignee-invariant.mjs';
 
 test('strict assignee parser accepts string and login-object arrays', () => {
@@ -106,4 +107,23 @@ test('assignment target uses configured login with @me fallback', () => {
   assert.equal(resolveAssignmentTarget({ assignee: '  octocat  ' }), 'octocat');
   assert.equal(resolveAssignmentTarget({}), '@me');
   assert.equal(resolveAssignmentTarget(null), '@me');
+});
+
+test('configured-project state resolver refuses missing, foreign, null, and unknown state', () => {
+  const configured = {
+    project: { id: 'P1' },
+    fieldValueByName: { name: 'Assigned' },
+  };
+  assert.equal(resolveConfiguredProjectState([configured], 'P1'), 'assigned');
+  for (const nodes of [
+    [],
+    [{ project: { id: 'FOREIGN' }, fieldValueByName: { name: 'Backlog' } }],
+    [{ project: { id: 'P1' }, fieldValueByName: null }],
+    [{ project: { id: 'P1' }, fieldValueByName: { name: 'Mystery' } }],
+  ]) {
+    assert.throws(
+      () => resolveConfiguredProjectState(nodes, 'P1'),
+      /configured project|recognized/i
+    );
+  }
 });

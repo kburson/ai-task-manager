@@ -48,16 +48,6 @@ async function defaultFetchCurrentUser() {
   return String(stdout).trim();
 }
 
-// The ONLY assignment mutation the AI is ever permitted to perform: claim an
-// unassigned issue for the authenticated user. `@me` resolves to the same
-// login `defaultFetchCurrentUser` reads, so a claim and a subsequent check
-// agree. Label/assignee edits are not body writes, so they pass the bash guard.
-async function defaultAddAssignee({ issueNumber, repo }) {
-  await pexec('gh', ['issue', 'edit', String(issueNumber), '-R', repo, '--add-assignee', '@me'], {
-    timeout: GH_API_TIMEOUT_MS,
-  });
-}
-
 async function defaultPostComment({ issueNumber, repo, body }) {
   await pexec('gh', ['issue', 'comment', String(issueNumber), '-R', repo, '--body', body], {
     timeout: GH_API_TIMEOUT_MS,
@@ -95,7 +85,7 @@ export async function checkAssigneeMatch({ issueNumber, cfg, deps = {} } = {}) {
 
 export function formatAssigneeRefusal({ verb, issueNumber, verdict }) {
   const issue = `#${issueNumber}`;
-  const cmd = `gh issue edit ${issueNumber} --add-assignee @me`;
+  const cmd = `npx aitm assign ${issueNumber}`;
   const disableHint = `  To disable for solo workflows: set "preferences.gateAssigneeMatch": false in .claude/task-tracker.json.`;
   if (verdict.kind === 'unassigned') {
     return [
@@ -109,7 +99,7 @@ export function formatAssigneeRefusal({ verb, issueNumber, verdict }) {
   return [
     `⛔ Refusing /task ${verb}: ${issue} is assigned to ${others}, not @${verdict.currentUser}.`,
     `  Confer with the assignee(s) and sync WIP (branch, in-flight changes, blockers) before requesting reassignment.`,
-    `  After the conversation, run \`${cmd}\` to claim it, then retry.`,
+    `  After the conversation, transfer assignment in the GitHub UI or run \`${cmd}\` only after it is unassigned, then retry.`,
     disableHint,
   ].join('\n');
 }
@@ -143,7 +133,7 @@ export function formatClaimAuditComment({ verb, issueNumber, currentUser }) {
     '### 🤖 Full-Auto assignee claim',
     '',
     `\`#${issueNumber}\` was **unassigned**; \`TT_FULL_AUTO=1\` auto-claimed it for ${who}`,
-    `(\`gh issue edit ${issueNumber} --add-assignee @me\`) so \`/task ${verb}\` could proceed.`,
+    `(\`npx aitm assign ${issueNumber}\`) so \`/task ${verb}\` could proceed.`,
     '',
     'Only the unassigned→me claim is automated. An issue already assigned to another',
     'developer is never reassigned by the AI — a human must transfer the lock via the',
@@ -153,24 +143,21 @@ export function formatClaimAuditComment({ verb, issueNumber, currentUser }) {
   ].join('\n');
 }
 
-// #769 — the single chokepoint for the "only permitted AI assignment"
-// invariant. Re-fetches the live assignee list and refuses to touch an issue
-// that already has ANY assignee, so the AI can only ever go unassigned→me and
-// structurally never other→me (AC2). Only on an empty assignee list does it run
-// the `--add-assignee @me` mutation.
+// #769/#1207 — the single chokepoint for the "only permitted AI assignment"
+// invariant. The claim is delegated to the locked assignment saga, which
+// re-checks that the issue is unassigned, couples Backlog → Assigned, and
+// compensates only mutations made by this invocation.
 export async function claimAssignee({ issueNumber, cfg, deps = {} } = {}) {
   if (!issueNumber) throw new Error('claimAssignee: issueNumber is required');
   if (!cfg) throw new Error('claimAssignee: cfg is required');
 
-  const fetchAssignees = deps.fetchAssignees || defaultFetchAssignees;
-  const addAssignee = deps.addAssignee || defaultAddAssignee;
-
-  const assignees = (await fetchAssignees({ issueNumber, repo: cfg.repo })) || [];
-  if (assignees.length > 0) {
-    return { ok: false, kind: 'already-assigned', assignees };
-  }
-  await addAssignee({ issueNumber, repo: cfg.repo });
-  return { ok: true, claimed: true, assignees };
+  const runInvariantClaim =
+    deps.runInvariantClaim ||
+    (async (args) => {
+      const { runInvariantAwareClaim } = await import('../verbs/assign.mjs');
+      return runInvariantAwareClaim(args);
+    });
+  return runInvariantClaim({ issueNumber, cfg, deps });
 }
 
 // #769 — extract the issue ids a commit command attributes to, via its leading

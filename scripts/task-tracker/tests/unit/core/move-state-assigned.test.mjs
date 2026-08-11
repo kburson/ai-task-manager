@@ -10,6 +10,7 @@
 // move-state posts would silently regress to empty again.
 import { test } from 'node:test';
 import { strict as assert } from 'node:assert';
+import { readFileSync } from 'node:fs';
 import { PHASE_EVENTS, resolvePhaseEvent } from '../../../phase-events.mjs';
 import { buildRow, readLastKnownState, writeLastKnownState } from '../../../gh-timing-comment.mjs';
 import { parseMoveStateArgs, legacyStateAliasWarning } from '../../../lib/move-state/policy.mjs';
@@ -20,6 +21,7 @@ import {
   EXIT_ASSIGNED_REQUIRES_ASSIGNEE,
 } from '../../../lib/assigned-assignee-invariant.mjs';
 import { runGuardExecution } from '../../../lib/move-state/guard-execution.mjs';
+import { moveState } from '../../../lib/move-state/move-state-core.mjs';
 
 function argv(...args) {
   return ['node', 'move-state.mjs', ...args];
@@ -118,4 +120,37 @@ test('central mover guard execution returns the invariant exit code before board
   });
 
   assert.deepEqual(result, { exit: EXIT_ASSIGNED_REQUIRES_ASSIGNEE });
+});
+
+test('changed assignee read under the issue lock refuses before the Status write', async () => {
+  let statusWrites = 0;
+  let rollbacks = 0;
+  const result = await moveState({
+    issueArg: '1207',
+    stateArg: 'assigned',
+    tailProfile: 'task-owner',
+    reviewAuthority: null,
+    _runGuardExecution: async () => ({ exit: null }),
+    _probeCompletion: async () => ({ sentinelPresent: false, boardAtTarget: false }),
+    _emitPhasePairRows: async () => {},
+    _stampEntryMarkers: async () => ({ priorState: 'backlog' }),
+    _preStatusGuard: async () => ({ exit: EXIT_ASSIGNED_REQUIRES_ASSIGNEE }),
+    _runStatusWrite: async () => {
+      statusWrites += 1;
+      return { exit: null, itemId: 'ITEM' };
+    },
+    _rollbackRecordedState: async () => {
+      rollbacks += 1;
+      return { rolledBack: true };
+    },
+  });
+  assert.equal(result.exit, EXIT_ASSIGNED_REQUIRES_ASSIGNEE);
+  assert.equal(result.phase, 'guard');
+  assert.equal(statusWrites, 0);
+  assert.equal(rollbacks, 1);
+});
+
+test('move-state host wires a lock-time Assigned guard instead of stubbing all guards', () => {
+  const src = readFileSync(new URL('../../../../gh/move-state.mjs', import.meta.url), 'utf8');
+  assert.match(src, /_preStatusGuard\s*=\s*runAssignedEntryRevalidation/);
 });

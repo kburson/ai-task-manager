@@ -334,7 +334,9 @@ export function resolveAssignee(args) {
 
 export function stampInitialEntry(body, assignee, timestamp = new Date().toISOString()) {
   const state = initialStateForAssignee(assignee);
-  const entered = stampEntryMarker(body, state, timestamp);
+  const enteredBacklog = stampEntryMarker(body, 'backlog', timestamp);
+  const entered =
+    state === 'assigned' ? stampEntryMarker(enteredBacklog, state, timestamp) : enteredBacklog;
   // Fresh Backlog bodies retain the historical marker-less bootstrap. Assigned
   // creation is already beyond Backlog, so seed the authoritative state marker
   // or bind-time cache seeding would correctly classify the body as corrupt.

@@ -137,6 +137,7 @@ export async function moveState(ctx) {
   const emitPhasePairRows = ctx._emitPhasePairRows || defaultEmitPhasePairRows;
   const stampEntryMarkers = ctx._stampEntryMarkers || defaultStampEntryMarkers;
   const runStatusWrite = ctx._runStatusWrite || defaultRunStatusWrite;
+  const preStatusGuard = ctx._preStatusGuard || (async () => ({ exit: null }));
   const writeSentinel = ctx._writeSentinel || defaultWriteSentinel;
   const runPostCommitTail = ctx._runPostCommitTail || defaultRunPostCommitTail;
   const rollbackRecordedState = ctx._rollbackRecordedState || defaultRollbackRecordedState;
@@ -181,6 +182,35 @@ export async function moveState(ctx) {
   // stage). Captured so a failed board write below can compensate.
   const stampResult = await stampEntryMarkers(ctx);
   const priorState = stampResult?.priorState ?? null;
+
+  // The Assigned/assignee invariant is re-read while the issue lock is held,
+  // immediately before the authoritative Status write. This closes the gap
+  // between the optimistic outer guard and mutation without re-running every
+  // body/timing guard (which would duplicate their side effects).
+  const lockedGuard = await preStatusGuard(ctx);
+  if (lockedGuard.exit !== null && lockedGuard.exit !== undefined) {
+    let rolledBack = false;
+    if (priorState != null) {
+      try {
+        const rb = await rollbackRecordedState(ctx, priorState);
+        rolledBack = rb?.rolledBack ?? false;
+      } catch (err) {
+        process.stderr.write(
+          `[move-state] #${ctx.issueArg}: last-known-state rollback to ${priorState} ` +
+            `FAILED after lock-time guard refusal: ${err.message}\n`
+        );
+      }
+    }
+    return {
+      exit: lockedGuard.exit,
+      itemId: '',
+      tail: { failures: [] },
+      phase: 'guard',
+      sentinelPresent: false,
+      boardMoved: false,
+      rolledBack,
+    };
+  }
 
   // Status is the LAST authoritative board write (#711 fail-closed verify).
   const writeResult = await runStatusWrite(ctx);

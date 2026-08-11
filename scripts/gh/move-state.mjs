@@ -52,7 +52,10 @@ import { computeTransitionPlan } from '../task-tracker/lib/move-state/transition
 // audit/timing emissions, cache/unpark) extracted from this host into focused
 // modules. The host assembles a single `ctx` and calls them in the exact
 // pre-#559 interleaved order; each is a faithful relocation of an inline block.
-import { runGuardExecution } from '../task-tracker/lib/move-state/guard-execution.mjs';
+import {
+  runAssignedEntryRevalidation,
+  runGuardExecution,
+} from '../task-tracker/lib/move-state/guard-execution.mjs';
 // #755 — the status write + post-commit tail are now sequenced by the extracted
 // saga core moveState(ctx) (task-tracker/lib/move-state/move-state-core.mjs). The
 // host no longer imports runStatusWrite / runPostCommitTail directly; it
@@ -384,6 +387,7 @@ export async function runMoveStateHost({
     // step is caught, logged, and never flips the exit code) live inside
     // runStatusWrite / runPostCommitTail and are preserved verbatim by the core.
     ctx._runGuardExecution = async () => ({ exit: null });
+    ctx._preStatusGuard = runAssignedEntryRevalidation;
     const result = await moveState(ctx);
     // #757 — the per-element move readout (Design §9 success / §12 failure).
     // Rendered purely from the enriched result the saga already verified-as-

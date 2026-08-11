@@ -11,7 +11,9 @@ import {
 test('explicit assignee selects Assigned for entry marker and project tether', () => {
   assert.equal(initialStateForAssignee('alice'), 'assigned');
   const body = stampInitialEntry('## Issue\n', 'alice', '2026-08-11T00:00:00Z');
+  assert.match(body, /entered-backlog/);
   assert.match(body, /entered-assigned/);
+  assert.ok(body.indexOf('entered-backlog') < body.indexOf('entered-assigned'));
   assert.match(body, /aitm-last-known-state state="assigned"/);
   assert.deepEqual(buildTetherArgs(42, { assignee: 'alice' }), [
     expectTetherScript(),

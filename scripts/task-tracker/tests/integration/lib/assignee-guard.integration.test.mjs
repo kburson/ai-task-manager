@@ -117,7 +117,8 @@ async function runCli(sandbox, binDir, args) {
     assert.equal(r.code, 10, `expected exit 10; stdout:\n${r.stdout}\nstderr:\n${r.stderr}`);
     assert.match(r.stdout, /PROMPT_REQUIRED: assignee-mismatch #219 assigned-to-other alice/);
     assert.match(r.stderr, /assigned to alice/);
-    assert.match(r.stderr, /gh issue edit 219 --add-assignee @me/);
+    assert.match(r.stderr, /npx aitm assign 219/);
+    assert.doesNotMatch(r.stderr, /gh issue edit/);
     console.log('test 1: guard ON + foreign assignee → exit 10 OK');
   } finally {
     rmSync(sandbox, { recursive: true, force: true });
