@@ -47,7 +47,11 @@ function runGuard(fixture, command) {
       PATH: `${fixture.bin}:${process.env.PATH}`,
       AI_TASK_MANAGER_SESSION_ID: 'commit-ownership-message-sources',
     },
-    timeout: 10_000,
+    // The governed unit lane runs hundreds of files concurrently; cold Node
+    // startup plus guard dependency loading can exceed 10s under host pressure.
+    // Keep a finite hang ceiling without turning scheduler contention into a
+    // false ownership-policy failure.
+    timeout: 120_000,
   });
   const payload = JSON.parse(result.stdout || '{}');
   return { result, payload };
