@@ -17,8 +17,9 @@ const ISSUE_URL_NUMBER_RE = /github\.com\/[\w.-]+\/[\w.-]+\/issues\/(\d+)\b/i;
 const ISSUE_API_ENDPOINT_RE = /\brepos\/[\w.-]+\/[\w.-]+\/issues\/(\d+)\b/i;
 const ISSUE_API_PATCH_METHOD_RE = /(?:-X\s*|--method(?:=|\s+))PATCH\b/i;
 const ASSIGNEE_FLAG_RE = /(?:^|\s)--(?:add|remove)-assignee(?:\s|=)/;
-const API_ASSIGNEE_FIELD_RE = /(?:^|\s)(?:-f|--field|-F|--raw-field)\s+assignees(?:\[\])?=/i;
+const API_ASSIGNEE_FIELD_RE = /(?:^|\s)(?:-f|--field|-F|--raw-field)\s+['"]?assignees(?:\[\])?=/i;
 const API_INPUT_RE = /(?:^|\s)--input(?:=|\s+)/;
+const GRAPHQL_UPDATE_ASSIGNEES_RE = /\bupdateIssue\s*\([\s\S]*\bassigneeIds\s*:/i;
 const ISSUE_CREATE_RE = /\bgh\s+issue\s+create\b/;
 const BODY_FILE_RE = /--body-file\s+(\S+)/;
 const BODY_INLINE_RE = /--body\s+(['"])((?:\\.|(?!\1).)*?)\1/;
@@ -562,6 +563,17 @@ export function evaluateGhEdit({ command }) {
       reason:
         `Direct REST ownership mutation on #${Number(match[1])} is forbidden.\n` +
         `  Use the governed ownership verbs (\`npx aitm assign\`, \`transfer\`, or \`unassign\`) so the issue lock, lifecycle policy, audit, and exact read-back all run.`,
+    };
+  }
+
+  for (const segment of splitCommandSegments(command)) {
+    if (!GH_API_RE.test(segment) || !GH_API_GRAPHQL_RE.test(segment)) continue;
+    if (!GRAPHQL_UPDATE_ASSIGNEES_RE.test(segment)) continue;
+    return {
+      block: true,
+      reason:
+        'Direct GraphQL ownership mutation is forbidden.\n' +
+        '  Use the governed ownership verbs (`npx aitm assign`, `transfer`, or `unassign`) so the issue lock, lifecycle policy, audit, and exact read-back all run.',
     };
   }
 

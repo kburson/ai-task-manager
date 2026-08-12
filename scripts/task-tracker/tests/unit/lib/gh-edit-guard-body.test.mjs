@@ -219,7 +219,9 @@ import {
     'gh issue edit -R acme/widgets 1212 --add-assignee alice',
     'gh issue edit https://github.com/acme/widgets/issues/1212 --remove-assignee alice',
     'gh api repos/acme/widgets/issues/1212 -X PATCH -f assignees[]=alice',
+    "gh api repos/acme/widgets/issues/1212 -X PATCH -f 'assignees[]=alice'",
     'gh api --method=PATCH repos/acme/widgets/issues/1212 --input owners.json',
+    `gh api graphql -f 'query=mutation { updateIssue(input:{id:"I_1",assigneeIds:["U_1"]}) { issue { id } } }'`,
   ]) {
     r = evaluateGhEdit({ command });
     assert.equal(r.block, true, `raw ownership mutation must refuse: ${command}`);

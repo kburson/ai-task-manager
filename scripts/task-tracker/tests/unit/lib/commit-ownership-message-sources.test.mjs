@@ -65,12 +65,30 @@ test('indirect and globally-configured attributed commits enforce ownership', ()
     for (const command of [
       'git commit -F .tmp/message.txt',
       'git commit --amend --no-edit',
+      'git commit --amend',
+      'git commit --reuse-message=HEAD',
+      'git commit -C HEAD',
+      'git commit --reedit-message=HEAD',
+      'git commit -c HEAD',
       'git -c user.name=x commit -m "[#1212] configured attribution"',
+      '/usr/bin/git commit -m "[#1212] absolute git path"',
     ]) {
       const { payload } = runGuard(fixture, command);
       assert.equal(payload.decision, 'block', `must block foreign ownership: ${command}`);
       assert.match(payload.reason, /exclusive ownership|ownership is foreign-owner/i);
     }
+  } finally {
+    fixture.cleanup();
+  }
+});
+
+test('attributed commits fail closed when repository ownership config is unreadable', () => {
+  const fixture = makeFixture();
+  try {
+    rmSync(path.join(fixture.dir, '.ai-task-manager', 'task-tracker.json'));
+    const { payload } = runGuard(fixture, 'git commit -m "[#1212] missing config"');
+    assert.equal(payload.decision, 'block');
+    assert.match(payload.reason, /config|ownership.*unverifiable/i);
   } finally {
     fixture.cleanup();
   }

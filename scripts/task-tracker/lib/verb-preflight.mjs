@@ -105,6 +105,7 @@ export async function runPreflight({
   target,
   cfg,
   ownershipManagement = false,
+  ownershipOnly = false,
   deps = {},
 } = {}) {
   if (!stateBefore) throw new Error('runPreflight: stateBefore is required');
@@ -194,6 +195,10 @@ export async function runPreflight({
     }
   }
 
+  if (ownershipOnly) {
+    return { ok: true, stateAfter: stateBefore, changed: false };
+  }
+
   // #436 — normalize through the single slug helper (collapses interior
   // whitespace) so a multi-word board name compares equal to the kebab marker.
   if (!live) return { ok: true, stateAfter: stateBefore, changed: false };
@@ -243,6 +248,7 @@ export async function preflightVerb({
   cfg,
   verb = 'verb',
   ownershipManagement = false,
+  ownershipOnly = false,
   deps = {},
 } = {}) {
   const verdict = await runPreflight({
@@ -250,6 +256,7 @@ export async function preflightVerb({
     target,
     cfg,
     ownershipManagement,
+    ownershipOnly,
     deps,
   });
   if (verdict.ok) {

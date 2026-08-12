@@ -234,9 +234,9 @@ test('fetchIssueSignals: historical display name and legacy config key map to Re
 test('resolveIssueSignals: cache miss fetches then warms cache', async () => {
   const dir = project();
   let calls = 0;
-  const gh = async () => {
+  const gh = async (args) => {
     calls += 1;
-    if (calls % 2 === 0) return 'kburson\n';
+    if (args[0] === 'api') return 'kburson\n';
     return JSON.stringify({ body: DEV_BODY });
   };
   const first = await resolveIssueSignals('#644', dir, {
@@ -249,7 +249,8 @@ test('resolveIssueSignals: cache miss fetches then warms cache', async () => {
     fetchSnapshot: async () => ({ state: 'develop', assignees: ['kburson'] }),
   });
   assert.equal(second.source, 'cache+ownership-fetch');
-  assert.equal(calls, 2);
+  assert.equal(second.currentUser, 'kburson');
+  assert.equal(calls, 3);
 });
 
 // ── runHook orchestration ─────────────────────────────────────────────────────

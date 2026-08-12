@@ -67,6 +67,17 @@ export const PREFLIGHT_MODE = {
   plan: 'target-required',
   test: 'target-required',
   reconcile: 'target-required',
+  check: 'target-optional',
+  ensureChecked: 'target-optional',
+  ensureUnchecked: 'target-optional',
+  'dod-stamp': 'target-required',
+  'ac-stamp': 'target-required',
+  kind: 'target-required',
+  'epic-reconcile': 'target-required',
+  'commit-trace': 'target-required',
+  'evidence-markers': 'target-required',
+  block: 'target-required',
+  unblock: 'target-required',
   promote: 'target-required',
   next: 'target-required',
   refine: 'target-required',
@@ -80,8 +91,8 @@ export const PREFLIGHT_MODE = {
   pause: 'active-only',
   stop: 'active-only',
   update: 'active-only',
-  resume: 'active-only',
-  start: 'active-only',
+  resume: 'switch-target',
+  start: 'switch-target',
 };
 
 function targetFromRest(rest) {
@@ -105,20 +116,38 @@ export function resolvePreflightTarget({ mode, rest, stateBefore }) {
   return stateBefore?.active == null ? targetFromRest(rest) : undefined;
 }
 
+export function resolvePreflightInvocation({ verb, mode, rest, stateBefore }) {
+  if (mode === 'switch-target') {
+    const target = /^#\d+$/.test(String(verb)) ? String(verb) : targetFromRest(rest);
+    if (!target) return { target: undefined, stateBefore };
+    return { target, stateBefore: { ...stateBefore, active: target } };
+  }
+  return {
+    target: resolvePreflightTarget({ mode, rest, stateBefore }),
+    stateBefore,
+  };
+}
+
 async function runVerbPreflight(ctx) {
-  const mode = PREFLIGHT_MODE[ctx.verb];
+  const mode = PREFLIGHT_MODE[ctx.verb] || (/^#\d+$/.test(ctx.verb) ? 'switch-target' : null);
   if (!mode) return;
   const { preflightVerb } = await import('./lib/verb-preflight.mjs');
   const { loadState } = await import('./state.mjs');
   const stateBefore = loadState(ctx.statePath);
-  const target = resolvePreflightTarget({ mode, rest: ctx.rest, stateBefore });
-  await preflightVerb({
+  const invocation = resolvePreflightInvocation({
+    verb: ctx.verb,
+    mode,
+    rest: ctx.rest,
     stateBefore,
+  });
+  await preflightVerb({
+    stateBefore: invocation.stateBefore,
     statePath: ctx.statePath,
-    target,
+    target: invocation.target,
     cfg: ctx.cfg,
     verb: ctx.verb,
     ownershipManagement: ['assign', 'transfer', 'unassign'].includes(ctx.verb),
+    ownershipOnly: ctx.verb === 'reconcile',
   });
 }
 

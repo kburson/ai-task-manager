@@ -58,6 +58,11 @@ export async function commitPlanExitOwnershipClaim({
       `plan-develop-claim-unverifiable: ownership could not be revalidated under lock (${error?.message || String(error)})`
     );
   }
+  if (before.state !== 'plan') {
+    return refusal(
+      `plan-develop-claim-revalidation-refused: expected Status plan under lock; observed ${before.state || 'unknown'}`
+    );
+  }
   const decision = ownershipDecision({
     state: before.state,
     transition: 'develop',
@@ -127,14 +132,22 @@ export const planExitOwnershipGuard = Object.freeze({
         `plan-develop-ownership-unverifiable: could not verify exclusive story ownership (${error?.message || String(error)})`
       );
     }
+    if (before.state !== 'plan') {
+      return refusal(
+        `plan-develop-state-refused: expected Status plan; observed ${before.state || 'unknown'}`
+      );
+    }
     const decision = ownershipDecision({
-      state: 'plan',
+      state: before.state,
       transition: 'develop',
       assignees: before.assignees,
       currentUser,
       mode: env.TT_FULL_AUTO === '1' ? 'full-auto' : 'interactive',
     });
-    if (decision.ok) return { ok: true };
+    if (decision.ok) {
+      ctx.planExitOwnershipClaim = { currentUser };
+      return { ok: true };
+    }
     if (decision.kind === 'assignment-required') {
       return refusal(
         `plan-develop-assignment-required: #${ctx.issueNumber} is unassigned; would you like me to assign it to @${currentUser}?`

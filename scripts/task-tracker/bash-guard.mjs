@@ -39,9 +39,9 @@
 // starts, so it cannot self-defend; that case is guarded at install/startup.
 
 import { readFileSync } from 'node:fs';
-import { execSync } from 'node:child_process';
+import { execFileSync, execSync } from 'node:child_process';
 import { homedir } from 'node:os';
-import { isAbsolute, join, resolve } from 'node:path';
+import { basename, isAbsolute, join, resolve } from 'node:path';
 
 // --- Phase 1: parse stdin -------------------------------------------------
 // A malformed payload is not a guard failure — preserve the intentional
@@ -364,27 +364,17 @@ async function evaluate(input) {
   // #769 — commit-time assignee-lock check. Nested so it shares `block()` and
   // the resolved `projectRoot`/`configPath`. Any block() short-circuits with
   // exit 0; ownership verification is fail-closed for attributed commits.
-  async function checkCommitAssigneeLock({
-    command: rawCommand,
-    scanned: scannedCommand,
-    projectRoot: root,
-  }) {
-    // Detect a genuine `git commit` action on the quote-stripped command so a
-    // commit *message* that mentions "git commit" does not self-trigger.
+  async function checkCommitAssigneeLock({ command: rawCommand, projectRoot: root }) {
     const rawSegments = splitCommandSegments(rawCommand);
-    const scannedSegments = splitCommandSegments(scannedCommand);
-    const commitIndexes = [];
-    for (let index = 0; index < scannedSegments.length; index += 1) {
-      if (isGitCommitSegment(scannedSegments[index])) commitIndexes.push(index);
+    const commits = [];
+    for (let index = 0; index < rawSegments.length; index += 1) {
+      const parsed = parseGitCommitSegment(rawSegments[index]);
+      if (parsed) commits.push({ index, ...parsed });
     }
-    if (commitIndexes.length === 0) return;
+    if (commits.length === 0) return;
 
     // Offline escape — consistent with the verb preflight's TT_SKIP_NETWORK gate.
     if (process.env.TT_SKIP_NETWORK === '1') return;
-
-    const cfg = readAssigneeCfg(root);
-    if (!cfg) return; // no config / unresolved repo — don't wedge commits
-    if ((cfg.preferences?.gateAssigneeMatch ?? true) === false) return;
 
     const { parseCommitIssueRefs, checkAssigneeMatch } = await import('./lib/assignee-guard.mjs');
     const refs = [];
@@ -397,10 +387,10 @@ async function evaluate(input) {
         }
       }
     };
-    for (const index of commitIndexes) {
+    for (const { index, args } of commits) {
       const segment = rawSegments[index] || '';
       addRefs(segment);
-      for (const messagePath of commitMessageFiles(segment)) {
+      for (const messagePath of commitMessageFiles(args)) {
         if (messagePath === '-') {
           block(
             'Refusing git commit: attributed ownership cannot be verified from `git commit -F -` stdin.\n' +
@@ -417,10 +407,10 @@ async function evaluate(input) {
           );
         }
       }
-      if (/(?:^|\s)--amend(?:\s|$)/.test(segment) && /(?:^|\s)--no-edit(?:\s|$)/.test(segment)) {
+      for (const inheritedRef of inheritedMessageRefs(args)) {
         try {
           addRefs(
-            execSync('git log -1 --format=%B', {
+            execFileSync('git', ['log', '-1', '--format=%B', inheritedRef], {
               cwd: root,
               encoding: 'utf8',
               stdio: ['ignore', 'pipe', 'pipe'],
@@ -429,12 +419,21 @@ async function evaluate(input) {
           );
         } catch (error) {
           block(
-            `Refusing git commit --amend --no-edit: could not resolve the existing commit message (${error?.message || String(error)}).`
+            `Refusing git commit: could not resolve inherited message from ${inheritedRef} (${error?.message || String(error)}).`
           );
         }
       }
     }
     if (refs.length === 0) return; // token-less / chore — escape hatch
+
+    const cfg = readAssigneeCfg(root);
+    if (!cfg) {
+      block(
+        'Refusing attributed git commit: repository ownership config is missing or unreadable.\n' +
+          '  Attributed development commits fail closed when ownership cannot be resolved; restore task-tracker.json or use an un-attributed chore commit.'
+      );
+    }
+    if ((cfg.preferences?.gateAssigneeMatch ?? true) === false) return;
 
     const cache = {};
     for (const issueNumber of refs) {
@@ -459,17 +458,14 @@ async function evaluate(input) {
     }
   }
 
-  function isGitCommitSegment(segment) {
-    const tokens = String(segment || '')
-      .trim()
-      .split(/\s+/)
-      .filter(Boolean);
-    const gitIndex = tokens.indexOf('git');
+  function parseGitCommitSegment(segment) {
+    const tokens = shellWords(segment);
+    const gitIndex = tokens.findIndex((token) => basename(token) === 'git');
     if (gitIndex < 0) return false;
     let index = gitIndex + 1;
     while (index < tokens.length) {
       const token = tokens[index];
-      if (token === 'commit') return true;
+      if (token === 'commit') return { args: tokens.slice(index + 1) };
       if (!token.startsWith('-')) return false;
       if (['-c', '-C', '--git-dir', '--work-tree', '--namespace'].includes(token)) index += 2;
       else index += 1;
@@ -477,18 +473,79 @@ async function evaluate(input) {
     return false;
   }
 
-  function commitMessageFiles(segment) {
+  function shellWords(segment) {
+    const words = [];
+    let word = '';
+    let quote = '';
+    let escaped = false;
+    for (const char of String(segment || '')) {
+      if (escaped) {
+        word += char;
+        escaped = false;
+      } else if (char === '\\' && quote !== "'") {
+        escaped = true;
+      } else if (quote) {
+        if (char === quote) quote = '';
+        else word += char;
+      } else if (char === "'" || char === '"') {
+        quote = char;
+      } else if (/\s/.test(char)) {
+        if (word) {
+          words.push(word);
+          word = '';
+        }
+      } else {
+        word += char;
+      }
+    }
+    if (word) words.push(word);
+    return words;
+  }
+
+  function commitMessageFiles(args) {
     const paths = [];
-    const pattern = /(?:^|\s)(?:-F|--file)(?:=|\s+)(?:"([^"]+)"|'([^']+)'|(\S+))|(?:^|\s)-F(\S+)/g;
-    for (const match of String(segment || '').matchAll(pattern)) {
-      paths.push(match[1] || match[2] || match[3] || match[4]);
+    for (let index = 0; index < args.length; index += 1) {
+      const token = args[index];
+      if (token === '-F' || token === '--file') paths.push(args[++index]);
+      else if (token.startsWith('--file=')) paths.push(token.slice('--file='.length));
+      else if (token.startsWith('-F') && token.length > 2) paths.push(token.slice(2));
     }
     return paths.filter(Boolean);
   }
 
-  // #769 — best-effort read of the bound repo + assignee preference for the
-  // commit-time lock. Returns null on any failure so the check no-ops rather
-  // than wedging commits (the primary lock lives at bind/mutator time).
+  function inheritedMessageRefs(args) {
+    const refs = [];
+    let amend = false;
+    let explicitMessage = false;
+    for (let index = 0; index < args.length; index += 1) {
+      const token = args[index];
+      if (token === '--amend') amend = true;
+      if (['-m', '--message', '-F', '--file'].includes(token)) {
+        explicitMessage = true;
+        index += 1;
+        continue;
+      }
+      if (/^(?:-m|--message=|-F|--file=)/.test(token)) explicitMessage = true;
+      if (['-C', '--reuse-message', '-c', '--reedit-message'].includes(token)) {
+        const ref = args[++index];
+        if (ref) refs.push(ref);
+      } else if (token.startsWith('--reuse-message=')) {
+        refs.push(token.slice('--reuse-message='.length));
+      } else if (token.startsWith('--reedit-message=')) {
+        refs.push(token.slice('--reedit-message='.length));
+      } else if (/^-C.+/.test(token)) {
+        refs.push(token.slice(2));
+      } else if (/^-c.+/.test(token)) {
+        refs.push(token.slice(2));
+      }
+    }
+    if (amend && !explicitMessage && refs.length === 0) refs.push('HEAD');
+    return refs;
+  }
+
+  // #769/#1212 — read the bound repo + assignee preference for the commit-time
+  // lock. Returning null lets tokenless chore commits pass, but attributed
+  // commits fail closed above because their ownership authority is unreadable.
   function readAssigneeCfg(root) {
     try {
       const cfg = JSON.parse(readFileSync(configPath(root), 'utf8'));

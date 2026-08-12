@@ -7,13 +7,49 @@ import { canonicalLogins, ownershipDecision } from '../../../lib/ownership-polic
 const taskTrackerModule = await import('../../../task-tracker.mjs');
 
 test('all governed lifecycle mutators route through exclusive-ownership preflight', () => {
-  for (const verb of ['plan', 'test', 'reconcile']) {
+  for (const verb of [
+    'plan',
+    'test',
+    'reconcile',
+    'check',
+    'ensureChecked',
+    'ensureUnchecked',
+    'dod-stamp',
+    'ac-stamp',
+    'kind',
+    'epic-reconcile',
+    'commit-trace',
+    'evidence-markers',
+    'block',
+    'unblock',
+  ]) {
     assert.equal(
-      taskTrackerModule.PREFLIGHT_MODE?.[verb],
-      'target-required',
+      Boolean(taskTrackerModule.PREFLIGHT_MODE?.[verb]),
+      true,
       `${verb} must resolve its target and run the shared ownership preflight`
     );
   }
+});
+
+test('direct and warm switch-style binds preflight the requested issue ownership', () => {
+  assert.deepEqual(
+    taskTrackerModule.resolvePreflightInvocation({
+      verb: '#1212',
+      mode: 'switch-target',
+      rest: [],
+      stateBefore: { active: '#999' },
+    }),
+    { target: '#1212', stateBefore: { active: '#1212' } }
+  );
+  assert.deepEqual(
+    taskTrackerModule.resolvePreflightInvocation({
+      verb: 'start',
+      mode: 'switch-target',
+      rest: ['1212'],
+      stateBefore: { active: '#999' },
+    }),
+    { target: '#1212', stateBefore: { active: '#1212' } }
+  );
 });
 
 const decide = (overrides = {}) =>

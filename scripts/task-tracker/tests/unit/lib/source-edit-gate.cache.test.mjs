@@ -90,19 +90,24 @@ test('#1212: a warm metadata cache never reuses stale ownership', async () => {
       currentUser: 'alice',
     });
     let snapshotReads = 0;
+    let identityReads = 0;
     const signals = await resolveIssueSignals('#1212', dir, {
       fetchSnapshot: async () => {
         snapshotReads += 1;
         return { state: 'develop', assignees: ['bob'] };
       },
       gh: async (args) => {
-        if (args[0] === 'api') return 'alice\n';
+        if (args[0] === 'api') {
+          identityReads += 1;
+          return 'bob\n';
+        }
         throw new Error(`unexpected gh call: ${args.join(' ')}`);
       },
     });
     assert.equal(snapshotReads, 1, 'ownership must be fetched on every gated edit');
     assert.deepEqual(signals.assignees, ['bob']);
-    assert.equal(signals.currentUser, 'alice');
+    assert.equal(identityReads, 1, 'authenticated identity must be fetched with ownership');
+    assert.equal(signals.currentUser, 'bob');
     assert.equal(signals.source, 'cache+ownership-fetch');
   } finally {
     cleanup();

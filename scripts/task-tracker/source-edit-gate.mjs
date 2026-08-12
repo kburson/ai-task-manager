@@ -325,16 +325,14 @@ export async function resolveIssueSignals(boundIssue, projectDir, deps = {}) {
       issueNumber: boundIssue.replace(/^#/, ''),
       cfg,
     });
-    const currentUser = cached.currentUser
-      ? cached.currentUser
-      : String(
-          await (deps.gh || (async (args) => (await pexec('gh', args, { timeout: 5000 })).stdout))([
-            'api',
-            'user',
-            '--jq',
-            '.login',
-          ])
-        ).trim();
+    const currentUser = String(
+      await (deps.gh || (async (args) => (await pexec('gh', args, { timeout: 5000 })).stdout))([
+        'api',
+        'user',
+        '--jq',
+        '.login',
+      ])
+    ).trim();
     const fresh = {
       state: snapshot.state,
       hasPostedMarker: !!cached.hasPostedMarker,

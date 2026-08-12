@@ -67,6 +67,30 @@ test('preflight blocks foreign multiple and lost in-flight ownership', async () 
   }
 });
 
+test('reconcile ownership-only preflight blocks foreign ownership but permits drift repair', async () => {
+  const owned = await runPreflight({
+    stateBefore: { active: '#1212' },
+    target: '#1212',
+    cfg,
+    ownershipOnly: true,
+    deps: {
+      ...preflightDeps({ state: 'develop', assignees: ['alice'] }),
+      fetchLastKnownState: async () => 'plan',
+    },
+  });
+  assert.equal(owned.ok, true);
+
+  const foreign = await runPreflight({
+    stateBefore: { active: '#1212' },
+    target: '#1212',
+    cfg,
+    ownershipOnly: true,
+    deps: preflightDeps({ state: 'develop', assignees: ['bob'] }),
+  });
+  assert.equal(foreign.ok, false);
+  assert.equal(foreign.assigneeKind, 'foreign-owner');
+});
+
 test('Plan exit Full-Auto defers notice and assignment until the post-guard commit boundary', async () => {
   const order = [];
   const ctx = {
@@ -105,6 +129,62 @@ test('Plan exit Full-Auto defers notice and assignment until the post-guard comm
   });
   assert.deepEqual(result, { ok: true });
   assert.deepEqual(order, ['notice', 'add:alice']);
+});
+
+test('Plan exit always schedules under-lock revalidation for an existing local owner', async () => {
+  const ctx = {
+    issueNumber: 1212,
+    fromState: 'plan',
+    toState: 'develop',
+    cfg,
+    deps: {
+      env: { TT_FULL_AUTO: '1' },
+      ownership: {
+        fetchCurrentUser: async () => 'alice',
+        fetchSnapshot: async () => ({ state: 'plan', assignees: ['alice'] }),
+      },
+    },
+  };
+  assert.deepEqual(await planExitOwnershipGuard.run(ctx), { ok: true });
+  assert.deepEqual(ctx.planExitOwnershipClaim, { currentUser: 'alice' });
+});
+
+test('Plan exit refuses stale non-Plan snapshots before and under the issue lock', async () => {
+  const outside = await planExitOwnershipGuard.run({
+    issueNumber: 1212,
+    fromState: 'plan',
+    toState: 'develop',
+    cfg,
+    deps: {
+      env: { TT_FULL_AUTO: '1' },
+      ownership: {
+        fetchCurrentUser: async () => 'alice',
+        fetchSnapshot: async () => ({ state: 'review', assignees: ['alice'] }),
+      },
+    },
+  });
+  assert.equal(outside.ok, false);
+  assert.match(outside.reason, /expected Status plan/i);
+
+  const inside = await commitPlanExitOwnershipClaim({
+    issueNumber: 1212,
+    cfg,
+    currentUser: 'alice',
+    deps: { fetchSnapshot: async () => ({ state: 'review', assignees: ['alice'] }) },
+  });
+  assert.equal(inside.ok, false);
+  assert.match(inside.reason, /expected Status plan/i);
+});
+
+test('Plan exit under-lock revalidation refuses ownership changed after guard aggregation', async () => {
+  const result = await commitPlanExitOwnershipClaim({
+    issueNumber: 1212,
+    cfg,
+    currentUser: 'alice',
+    deps: { fetchSnapshot: async () => ({ state: 'plan', assignees: ['bob'] }) },
+  });
+  assert.equal(result.ok, false);
+  assert.match(result.reason, /singleton @alice|observed.*@bob/i);
 });
 
 test('Plan exit interactive mode prompts with zero assignment mutation', async () => {
