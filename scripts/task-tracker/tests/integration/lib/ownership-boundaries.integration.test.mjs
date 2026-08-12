@@ -331,6 +331,23 @@ test('source edits in Develop require the exact singleton local owner', () => {
   }
 });
 
+test('foreign-owner source-edit recovery renders an executable issue argument', () => {
+  const result = decideSourceEdit({
+    toolName: 'Edit',
+    filePath: '/repo/scripts/task-tracker/lib/example.mjs',
+    projectDir: '/repo',
+    boundIssue: '#1212',
+    issueState: 'develop',
+    assignees: ['bob'],
+    currentUser: 'alice',
+    hasPostedMarker: true,
+    hasCompleteMarker: true,
+  });
+  assert.equal(result.code, 'source-edit-ownership-gate');
+  assert.match(result.reason, /transfer 1212 --to @alice/);
+  assert.doesNotMatch(result.reason, /transfer #1212/);
+});
+
 test('raw gh assignee edits are refused in favor of governed ownership verbs', () => {
   for (const command of [
     'gh issue edit 1212 --add-assignee @me',

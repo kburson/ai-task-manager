@@ -1,4 +1,5 @@
 // @story #310
+// cspell:ignore fassignees Fassignees fquery Fquery
 // Tests for scripts/task-tracker/lib/gh-edit-guard.mjs — the body-write
 // chokepoint that protects against legacy-checkbox reintroduction and
 // hidden-marker drops on `gh issue edit ... --body-file/--body ...`.
@@ -222,8 +223,12 @@ import {
     "gh api repos/acme/widgets/issues/1212 -X PATCH -f 'assignees[]=alice'",
     'gh api --method=PATCH repos/acme/widgets/issues/1212 --input owners.json',
     'gh api repos/acme/widgets/issues/1212/assignees -f assignees[]=bob',
+    'gh api repos/acme/widgets/issues/1212/assignees -fassignees[]=bob',
+    'gh api repos/acme/widgets/issues/1212/assignees -Fassignees[]=bob',
     'gh api repos/acme/widgets/issues/1212/assignees --input owners.json',
     'gh api graphql -f query="$QUERY"',
+    'gh api graphql -fquery="$QUERY"',
+    'gh api graphql -Fquery="$QUERY"',
     "eval 'gh issue edit 1212 --add-assignee bob'",
     "eval 'gh api repos/acme/widgets/issues/1212/assignees -f assignees[]=bob'",
     'gh api graphql -F query=@mutation.graphql',

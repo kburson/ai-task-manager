@@ -129,8 +129,9 @@ export function decideSourceEdit({
       let recovery;
       if (ownership.kind === 'foreign-owner') {
         const owner = ownership.owners[0] || 'the current owner';
+        const issueNumber = String(boundIssue).replace(/^#/, '');
         recovery =
-          `  @${owner} must run \`npx aitm transfer ${boundIssue} --to @${ownership.currentUser || 'me'}\` from their workstation,\n` +
+          `  @${owner} must run \`npx aitm transfer ${issueNumber} --to @${ownership.currentUser || 'me'}\` from their workstation,\n` +
           `  or a human must reconcile the single owner in the GitHub UI before this workspace retries.`;
       } else if (ownership.kind === 'multiple-owners') {
         recovery = `  Reconcile the assignees in the GitHub UI to exactly one owner, then continue from that owner's workstation.`;

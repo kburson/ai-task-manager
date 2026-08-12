@@ -635,7 +635,10 @@ function evaluateGhEditRecursive(command, nestedDepth) {
     const opaqueInput = API_INPUT_RE.test(segment);
     const assigneeEndpoint = /\/issues\/\d+\/assignees\b/i.test(segment);
     const implicitWrite = args.some(
-      (arg) => /^(?:-f|-F|--field|--raw-field)(?:=|$)/.test(arg) || /^--input(?:=|$)/.test(arg)
+      (arg) =>
+        /^(?:-f|-F)/.test(arg) ||
+        /^--(?:field|raw-field)(?:=|$)/.test(arg) ||
+        /^--input(?:=|$)/.test(arg)
     );
     if (
       (!writeMethod && !implicitWrite && !ISSUE_API_PATCH_METHOD_RE.test(segment)) ||
@@ -665,8 +668,10 @@ function evaluateGhEditRecursive(command, nestedDepth) {
     });
     const opaqueDynamicQuery = args.some(
       (arg, index) =>
-        /^(?:query=)?\$/.test(arg) &&
-        (index === 0 || /^(?:-f|-F|--field|--raw-field)(?:=|$)/.test(args[index - 1]))
+        (/^(?:query=)?\$/.test(arg) &&
+          (index === 0 || /^(?:-f|-F|--field|--raw-field)(?:=|$)/.test(args[index - 1]))) ||
+        /^(?:-f|-F)query=\$/.test(arg) ||
+        /^--(?:field|raw-field)=query=\$/.test(arg)
     );
     if (
       !hasOpaqueInput &&

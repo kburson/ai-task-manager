@@ -365,10 +365,10 @@ async function evaluate(input) {
   // the resolved `projectRoot`/`configPath`. Any block() short-circuits with
   // exit 0; ownership verification is fail-closed for attributed commits.
   async function checkCommitAssigneeLock({ command: rawCommand, projectRoot: root }) {
-    if (/\beval\b[\s\S]*\bgit\b[\s\S]*\bcommit\b/i.test(rawCommand)) {
+    if (/\beval\b/i.test(rawCommand)) {
       block(
-        'Refusing evaluated git commit: the final command and ownership attribution cannot be inspected before execution.\n' +
-          '  Invoke `git commit` directly with a literal or readable message source.'
+        'Refusing eval: deferred shell commands can hide a git commit and its ownership attribution from inspection.\n' +
+          '  Invoke the final command directly; use `git commit` with a literal or readable message source.'
       );
     }
     const rawSegments = expandNestedShellSegments(rawCommand);
@@ -490,7 +490,13 @@ async function evaluate(input) {
     while (index < tokens.length) {
       const token = tokens[index];
       if (token === 'commit') return { args: tokens.slice(index + 1) };
-      if (aliases.get(token) === 'commit') return { args: tokens.slice(index + 1) };
+      const alias = aliases.get(token);
+      if (
+        /^commit(?:\s|$)/.test(alias || '') ||
+        /^!\s*(?:\S*git\s+)?commit(?:\s|$)/.test(alias || '')
+      ) {
+        return { args: tokens.slice(index + 1) };
+      }
       if (!token.startsWith('-')) return false;
       if (['-c', '-C', '--git-dir', '--work-tree', '--namespace'].includes(token)) index += 2;
       else index += 1;
