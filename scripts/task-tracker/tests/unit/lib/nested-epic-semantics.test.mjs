@@ -10,7 +10,7 @@
 // surface a transitive bug if a gate started reading beyond its immediate edge:
 //
 //   1. planEpicDevelopChildrenGate on a root epic whose sole child is a
-//      sub-epic at `refine` — passes. The gate must NOT walk into the sub-epic
+//      sub-epic at R4P — passes. The gate must NOT walk into the sub-epic
 //      and refuse based on grandchildren.
 //   2. checkParentAdmission on a grandchild whose IMMEDIATE parent (the
 //      sub-epic) is at `develop`. Passes regardless of root state, because the
@@ -39,15 +39,19 @@ function stubFetchSiblings(map) {
   return async ({ parentEpicNumber }) => map.get(Number(parentEpicNumber)) || [];
 }
 
-// -------- (1) planEpicDevelopChildrenGate against a sub-epic at refine -----
+function ready(number, rank, state = 'ready-for-plan') {
+  return { number, state, rank, blockedBy: [], hasCurrentRefinement: true };
+}
 
-test('planEpicDevelopChildrenGate: root epic with sole sub-epic at refine passes (does not walk into grandchildren)', async () => {
-  // Shape: root #100 → sub-epic #200 (refine) → grandchildren #201..#203 in
+// -------- (1) planEpicDevelopChildrenGate against a sub-epic at R4P -------
+
+test('planEpicDevelopChildrenGate: root epic with sole sub-epic at R4P passes (does not walk into grandchildren)', async () => {
+  // Shape: root #100 → sub-epic #200 (R4P) → grandchildren #201..#203 in
   // whatever states. If the gate transitively read grandchildren it would see
   // non-refine states and refuse. It must NOT — it only inspects immediate
   // children of #100.
   const siblings = new Map([
-    [100, [{ number: 200, state: 'refine', rank: 1 }]],
+    [100, [ready(200, 1)]],
     [
       200,
       [
@@ -67,18 +71,10 @@ test('planEpicDevelopChildrenGate: root epic with sole sub-epic at refine passes
   assert.equal(result.children[0].number, 200);
 });
 
-test('planEpicDevelopChildrenGate: sub-epic with all grandchildren at refine passes (per-level recursion)', async () => {
+test('planEpicDevelopChildrenGate: sub-epic with all grandchildren at R4P passes (per-level recursion)', async () => {
   // The sub-epic's own plan→develop check is the same gate, one level lower.
   // This is the recursion that makes nesting work.
-  const siblings = new Map([
-    [
-      200,
-      [
-        { number: 201, state: 'refine', rank: 1 },
-        { number: 202, state: 'refine', rank: 2 },
-      ],
-    ],
-  ]);
+  const siblings = new Map([[200, [ready(201, 1), ready(202, 2)]]]);
   const result = await planEpicDevelopChildrenGate({
     cfg,
     issueNumber: 200,

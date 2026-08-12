@@ -81,12 +81,12 @@ test('documented examples use parser-valid aliases and enumerated issue kinds', 
   }
 });
 
-test('pull-next documents every reachable Refine-to-Plan delegated refusal', () => {
+test('pull-next documents every reachable R4P-to-Plan delegated refusal', () => {
   const exits = new Map(
     commandByName('pull-next').exitCodes.map((entry) => [entry.code, entry.meaning])
   );
-  assert.match(exits.get(4), /Refine-to-Plan gate/);
-  assert.match(exits.get(5), /legal Refine-to-Plan edge/);
+  assert.match(exits.get(4), /Ready-for-Planning-to-Plan gate/);
+  assert.match(exits.get(5), /legal R4P-to-Plan edge/);
   assert.match(exits.get(6), /entry-marker history/);
   assert.match(exits.get(7), /mutation lock.*verified/);
 });

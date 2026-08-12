@@ -6,9 +6,8 @@
 // existing `runGuards('develop', 'test', ctx)` call in
 // scripts/gh/move-state.mjs.
 //
-// Rule: an EPIC moving develop → test is refused if any sub-issue has not yet
-// reached `review`. Mirrors `planEpicChildrenGuard` (#277) shape with a later
-// floor. Leaf issues (no `aitm-sub-issues` children) pass trivially.
+// Rule: an EPIC moving develop → test is refused unless every required child
+// is Done or closed with an accepted terminal disposition.
 //
 // #877 moved the stricter child-`done` requirement to the review → done arc;
 // it lives in `reviewExitEpicChildrenDoneGuard`. The guard id and export name
@@ -42,7 +41,7 @@ export const developExitEpicChildrenDoneGuard = {
       deps: ctx.deps?.epicChildren,
     });
     if (result.ok) return { ok: true };
-    const reason = (result.blockers || []).join('; ') || 'epic-children-not-in-review';
+    const reason = (result.blockers || []).join('; ') || 'epic-children-not-terminal';
     return { ok: false, reason, blockers: result.blockers || [] };
   },
 };

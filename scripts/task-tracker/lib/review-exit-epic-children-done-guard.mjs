@@ -4,11 +4,9 @@
 // gate.mjs) so the epic-children done rule reaches the registry through the
 // `runGuards('review', 'done', ctx)` call in scripts/gh/move-state.mjs.
 //
-// Rule: an EPIC moving review → done is refused if any sub-issue is in any
-// state other than `done`. This is the invariant #337 originally enforced at
-// develop → test; #877 relaxed that arc to "children at review or later" and
-// re-seated the strict check here, where it does not deadlock the PR-based
-// flow (children cannot reach `done` until the epic branch lands on trunk).
+// Rule: an EPIC moving review → done is refused unless every required child is
+// terminally delivered. #1216 enforces the same terminal floor at Develop →
+// Test; this guard remains the final defense at close.
 //
 // Before this guard existed the review → done arc had NO epic-side children
 // check at all — `childCannotLeadEpicExitGuard` inspects the issue's own

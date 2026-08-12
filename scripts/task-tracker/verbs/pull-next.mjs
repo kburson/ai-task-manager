@@ -4,13 +4,11 @@
 //
 // Behavior:
 // 1. Verify the epic is in `develop` (the orchestrator must be active).
-// 2. Fetch the epic's children and pick the first-in-rank whose state is
-//    `refine`.
-// 3. Promote that child refine→plan via `verbPromote`. The agent then performs
-//    the JIT deep-dive in Plan, appends the planned-estimate, and runs promote
-//    again for plan→develop.
+// 2. Fetch the epic's children and pick the first dependency-ready R4P child.
+// 3. Promote that child ready-for-plan→plan via `verbPromote`. The agent then
+//    refreshes JIT planning in Plan and runs promote again for plan→develop.
 //
-// If no refine-state child exists, the verb is a no-op success (idempotent).
+// If no dependency-ready R4P child exists, the verb is a no-op success.
 // If the epic is not in `develop`, the verb errors.
 
 import { loadConfig } from '../config.mjs';
@@ -18,10 +16,11 @@ import {
   fetchEpicChildren,
   findNextEligibleChild,
   enrichChildrenWithBlockedBy,
+  isActiveChild,
   isPendingRecoveryPhase,
 } from '../lib/epic-children-gate.mjs';
-import { splitRepo, gql } from '../../gh/lib/github-projects.mjs';
 import { normalizeStateId } from '../lib/lifecycle-policy/index.mjs';
+import { fetchAssignmentSnapshot } from '../lib/assignment-snapshot.mjs';
 import { verbPromote } from './promote.mjs';
 import { runMoveInvariantAudit } from '../lib/verify-move-invariants.mjs';
 import { buildContext } from '../runtime.mjs';
@@ -29,29 +28,10 @@ import { verbClose } from './close.mjs';
 import { resolveProjectDir } from '../lib/project-dir.mjs';
 import { runPreflight } from '../lib/verb-preflight.mjs';
 
-async function defaultGetLiveState({ issueNumber, cfg }) {
-  const { owner, repoName } = splitRepo(cfg.repo);
-  const data = await gql(
-    `
-    query($owner: String!, $repo: String!, $issue: Int!) {
-      repository(owner: $owner, name: $repo) {
-        issue(number: $issue) {
-          projectItems(first: 10) {
-            nodes {
-              project { id }
-              fieldValueByName(name: "Status") {
-                ... on ProjectV2ItemFieldSingleSelectValue { name }
-              }
-            }
-          }
-        }
-      }
-    }`,
-    { owner, repo: repoName, issue: Number(issueNumber) }
-  );
-  const nodes = data?.repository?.issue?.projectItems?.nodes ?? [];
-  const node = nodes.find((n) => n.project?.id === cfg.projectId) ?? nodes[0];
-  return normalizeStateId(node?.fieldValueByName?.name);
+export async function defaultGetLiveState({ issueNumber, cfg, deps = {} }) {
+  const fetchSnapshot = deps.fetchSnapshot || fetchAssignmentSnapshot;
+  const snapshot = await fetchSnapshot({ issueNumber, cfg, deps });
+  return normalizeStateId(snapshot?.state);
 }
 
 export async function defaultConvergeClosedIssue(
@@ -121,6 +101,7 @@ export async function runPullNext({ epicNumber, cfg, deps = {} } = {}) {
   if (!epicNumber) throw new Error('runPullNext: epicNumber is required');
   if (!cfg) throw new Error('runPullNext: cfg is required');
   const getLiveState = deps.getLiveState || defaultGetLiveState;
+  const getChildLiveState = deps.getChildLiveState || defaultGetLiveState;
   const audit = deps.audit || runMoveInvariantAudit;
 
   const liveState = await getLiveState({ issueNumber: epicNumber, cfg });
@@ -227,6 +208,18 @@ export async function runPullNext({ epicNumber, cfg, deps = {} } = {}) {
     deps: deps.enrich,
   });
 
+  const active = enriched.filter(isActiveChild);
+  if (active.length) {
+    return {
+      status: 'active-child',
+      activeChildren: active.map((child) => child.number),
+      sweep,
+      message: `Refusing to pull another local child while ${active
+        .map((child) => `#${child.number} (${child.state})`)
+        .join(', ')} is active. Finish the active child before continuing.`,
+    };
+  }
+
   const next = findNextEligibleChild(enriched);
   if (!next) {
     const counts = children.reduce((acc, c) => {
@@ -236,7 +229,7 @@ export async function runPullNext({ epicNumber, cfg, deps = {} } = {}) {
     }, {});
     return {
       status: 'no-eligible',
-      message: `No refine-state children eligible for JIT pull on #${epicNumber}. States: ${JSON.stringify(counts)}`,
+      message: `No dependency-ready R4P children eligible for JIT pull on #${epicNumber}. States: ${JSON.stringify(counts)}`,
       counts,
       sweep,
     };
@@ -254,13 +247,36 @@ export async function runPullNext({ epicNumber, cfg, deps = {} } = {}) {
         promoteDeps: deps.promoteDeps,
         promoteVerb: deps.promoteVerb,
       });
+
+  let observedState = null;
+  let verificationError = null;
+  try {
+    observedState = await getChildLiveState({ issueNumber: next.number, cfg });
+  } catch (err) {
+    verificationError = err;
+  }
+  if (observedState !== 'plan') {
+    return {
+      status: 'promotion-unverified',
+      childNumber: next.number,
+      childRank: next.rank,
+      observedState,
+      promoteResult,
+      sweep,
+      message:
+        `Refusing to report #${next.number} as pulled: expected "plan" after promotion, ` +
+        `observed "${observedState || 'unknown'}"` +
+        (verificationError ? ` (${verificationError.message})` : '') +
+        '.',
+    };
+  }
   return {
     status: 'pulled',
     childNumber: next.number,
     childRank: next.rank,
     promoteResult,
     sweep,
-    message: `Pulled #${next.number} (rank=${next.rank}) refine→plan. Perform deep-dive + planned-estimate, then run /task promote ${next.number}.`,
+    message: `Pulled #${next.number} (rank=${next.rank}) ready-for-plan→plan. Refresh JIT planning against current trunk, then run /task promote ${next.number}; Plan→Develop will verify exclusive ownership.`,
   };
 }
 

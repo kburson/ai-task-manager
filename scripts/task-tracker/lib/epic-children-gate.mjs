@@ -1,20 +1,40 @@
-// Epic plan→develop gate + JIT child-pull helpers (#135).
-//
-// At plan→develop, an epic (issue with sub-issues) refuses to advance if any
-// child is still in `backlog` (or any other pre-`refine` state). Children must
-// be at least refined before the orchestrator starts driving them. Children
-// that have already advanced past `refine` (plan/develop/test/review/done)
-// trivially satisfy the refinement requirement and pass. Non-epic issues
-// (no children) pass through.
-//
-// The `/task pull-next` verb consumes `findNextEligibleChild` to pick the
-// next-in-rank refine-state child to promote refine→plan.
+// Epic R4P admission + sequential JIT child-pull authority (#1216).
 
 import { defaultFetchSiblings } from '../../gh/lib/wave-admission.mjs';
 import { splitRepo, gql } from '../../gh/lib/github-projects.mjs';
 import { parseBlockedBy } from './blocked-marker.mjs';
+import { parseRefinementSnapshot } from './refinement-snapshot.mjs';
 
 const PENDING_RECOVERY_PHASES = new Set(['intent', 'reopened', 'review', 'timing']);
+export const CHILD_STAGING_STATE = 'ready-for-plan';
+export const ACTIVE_CHILD_STATES = Object.freeze(new Set(['plan', 'develop', 'test', 'review']));
+const PLAN_ADMISSION_STATES = new Set([CHILD_STAGING_STATE, ...ACTIVE_CHILD_STATES]);
+const ACCEPTED_TERMINAL_DISPOSITIONS = new Set(['completed', 'not_planned']);
+
+function childState(child) {
+  return String(child?.state || '').toLowerCase();
+}
+
+export function isAcceptedTerminalChild(child) {
+  return (
+    childState(child) === 'done' &&
+    String(child?.issueState || '').toLowerCase() === 'closed' &&
+    ACCEPTED_TERMINAL_DISPOSITIONS.has(String(child?.closeReason || '').toLowerCase()) &&
+    !isPendingRecoveryPhase(child?.recoveryPhase)
+  );
+}
+
+export function isActiveChild(child) {
+  return ACTIVE_CHILD_STATES.has(childState(child));
+}
+
+function hasCompletePlanningRecord(child) {
+  return (
+    PLAN_ADMISSION_STATES.has(childState(child)) &&
+    child?.hasCurrentRefinement === true &&
+    Number.isFinite(Number(child?.rank ?? child?.sequence))
+  );
+}
 
 export function isPendingRecoveryPhase(phase) {
   return PENDING_RECOVERY_PHASES.has(phase);
@@ -48,20 +68,15 @@ export async function planEpicDevelopChildrenGate({ cfg, issueNumber, deps = {} 
   if (!children.length) {
     return { ok: true, children: [] };
   }
-  // Refusal criterion: a child is an offender iff its state is `backlog`
-  // (or any state that has not yet entered refine). Children at refine, plan,
-  // develop, test, review, or done all demonstrably satisfy the refinement
-  // requirement and pass.
-  const REFINE_OR_LATER = new Set(['refine', 'plan', 'develop', 'test', 'review', 'done']);
   const offenders = children.filter(
-    (c) => !REFINE_OR_LATER.has(String(c.state || '').toLowerCase())
+    (child) => !isAcceptedTerminalChild(child) && !hasCompletePlanningRecord(child)
   );
   if (offenders.length) {
     const lines = offenders.map((c) => `#${c.number} (state=${c.state || 'unknown'})`);
     return {
       ok: false,
       blockers: [
-        `epic-children-not-refined: every child must be at refine or later before the epic promotes to Develop: ${lines.join(', ')}`,
+        `epic-children-not-r4p: every executable nonterminal child must be at Ready for Planning or later with current refinement evidence and a finite rank before the epic promotes to Develop: ${lines.join(', ')}`,
       ],
       offendingChildren: offenders,
     };
@@ -69,17 +84,9 @@ export async function planEpicDevelopChildrenGate({ cfg, issueNumber, deps = {} 
   return { ok: true, children };
 }
 
-// Develop→test admission gate (#337, relaxed by #877): an epic refuses to leave
-// Develop unless every sub-issue has reached `review`. Mirrors
-// `planEpicDevelopChildrenGate` with a later floor. Leaf issues (no children)
-// pass trivially.
-//
-// #877 moved the child-`done` requirement off this arc and onto review→done
-// (see `reviewEpicDoneChildrenGate` below). Rationale: under the PR-based flow a
-// child cannot reach `done` until the epic branch lands on trunk, but the epic
-// cannot reach the branch-landing step without first passing Test and Review —
-// a deadlock. Holding children at `review` lets the epic and its children be
-// reviewed together and close together once the branch merges.
+// Develop→Test requires every child to be terminally delivered or carry the
+// accepted Closed Not Planned disposition. A Review child is not delivered to
+// the epic branch yet and therefore cannot admit the parent.
 export async function developEpicTestChildrenGate({ cfg, issueNumber, deps = {} } = {}) {
   if (!cfg) throw new Error('developEpicTestChildrenGate: cfg is required');
   if (!issueNumber) throw new Error('developEpicTestChildrenGate: issueNumber is required');
@@ -96,16 +103,13 @@ export async function developEpicTestChildrenGate({ cfg, issueNumber, deps = {} 
   if (!children.length) {
     return { ok: true, children: [] };
   }
-  const REVIEW_OR_LATER = new Set(['review', 'done']);
-  const offenders = children.filter(
-    (c) => !REVIEW_OR_LATER.has(String(c.state || '').toLowerCase())
-  );
+  const offenders = children.filter((child) => !isAcceptedTerminalChild(child));
   if (offenders.length) {
     const lines = offenders.map((c) => `#${c.number} (state=${c.state || 'unknown'})`);
     return {
       ok: false,
       blockers: [
-        `epic-children-not-in-review: every child must be at review or later before the epic promotes to Test: ${lines.join(', ')}`,
+        `epic-children-not-terminal: every required child must be Done or closed with an accepted terminal disposition before the epic promotes to Test: ${lines.join(', ')}`,
       ],
       offendingChildren: offenders,
     };
@@ -136,7 +140,7 @@ export async function reviewEpicDoneChildrenGate({ cfg, issueNumber, deps = {} }
   if (!children.length) {
     return { ok: true, children: [] };
   }
-  const offenders = children.filter((c) => String(c.state || '').toLowerCase() !== 'done');
+  const offenders = children.filter((child) => !isAcceptedTerminalChild(child));
   if (offenders.length) {
     const lines = offenders.map((c) => `#${c.number} (state=${c.state || 'unknown'})`);
     return {
@@ -160,9 +164,10 @@ function childBlockers(child) {
 }
 
 /**
- * Pick the next child to pull refine→plan, dependency-aware.
+ * Pick the next child to pull Ready for Planning→Plan, dependency-aware.
  *
- * Eligibility: state `refine`, finite `rank`, and every `aitm-blocked-by`
+ * Eligibility: state `ready-for-plan`, current refinement evidence, finite
+ * `rank`, every `aitm-blocked-by`
  * blocker already Done. Ordering: children that block a sibling sort ahead of
  * leaf children (so blockers clear first), then `rank` ascending.
  *
@@ -176,10 +181,12 @@ function childBlockers(child) {
 export function findNextEligibleChild(children = []) {
   const list = children || [];
 
+  if (list.some(isActiveChild)) return null;
+
   // Set of issue numbers that are Done — used to test whether a blocker cleared.
   const doneNumbers = new Set(
     list
-      .filter((c) => String(c.state || '').toLowerCase() === 'done')
+      .filter(isAcceptedTerminalChild)
       .map((c) => Number(c.number))
       .filter((n) => Number.isInteger(n))
   );
@@ -191,7 +198,9 @@ export function findNextEligibleChild(children = []) {
   }
 
   const eligible = list
-    .filter((c) => String(c.state || '').toLowerCase() === 'refine')
+    .filter((c) => childState(c) === CHILD_STAGING_STATE)
+    .filter((c) => c.hasCurrentRefinement === true)
+    .filter((c) => Array.isArray(c.blockedBy))
     .filter((c) => (c.rank ?? c.sequence) != null && Number.isFinite(Number(c.rank ?? c.sequence)))
     // Exclude any child whose blockers are not all Done.
     .filter((c) => childBlockers(c).every((b) => doneNumbers.has(b)))
@@ -207,29 +216,16 @@ export function findNextEligibleChild(children = []) {
   return eligible[0] || null;
 }
 
-// States that count as "out of Refine but not yet Done" — a child occupying one
-// of these is actively advancing through the verb chain.
-const OUT_OF_REFINE_ACTIVE = new Set(['plan', 'develop', 'test', 'review']);
-
-// A child is "parked" when it carries at least one unmet blocker
-// (`aitm-blocked-by`), attached as `blockedBy` by enrichChildrenWithBlockedBy.
-function isParked(child) {
-  return childBlockers(child).length > 0;
-}
-
 /**
- * WIP-budget decision for a child leaving Refine (Refine→Plan).
+ * WIP-budget decision for a child leaving R4P (R4P→Plan).
  *
- * The budget is **one advancing child**: a child may leave Refine iff no other
- * non-Done child is already out of Refine, OR the promoting child is a blocker
- * of a now-parked out-of-Refine sibling (so the blocker can run ahead and clear
- * the park). Parked children (carrying an unmet `aitm-blocked-by`) never count
- * against the budget.
+ * The local budget is exactly one active child. Until isolated cloud CI is an
+ * explicit proven prerequisite, dependencies never create a parallel bypass.
  *
  * Pure: reads each child's `state` and optional `blockedBy` (number[]).
  *
  * @param {object} opts
- * @param {number} opts.promotingNumber  the child being promoted out of Refine
+ * @param {number} opts.promotingNumber  the child being promoted out of R4P
  * @param {Array<{number:number, state?:string, blockedBy?:number[]}>} opts.children
  *   the full sibling set (may include the promoting child).
  * @returns {{ok:boolean, reason:string, advancing:number[]}}
@@ -238,41 +234,23 @@ export function wipAdvanceDecision({ promotingNumber, children = [] } = {}) {
   const me = Number(promotingNumber);
   const others = (children || []).filter((c) => Number(c.number) !== me);
 
-  // Advancing = out-of-refine, not Done, not parked.
-  const advancing = others
-    .filter((c) => OUT_OF_REFINE_ACTIVE.has(String(c.state || '').toLowerCase()))
-    .filter((c) => !isParked(c));
+  const advancing = others.filter(isActiveChild);
 
   if (advancing.length === 0) {
-    return { ok: true, reason: 'no advancing sibling', advancing: [] };
+    return { ok: true, reason: 'no active sibling', advancing: [] };
   }
-
-  // Blocker-exception: the promoting child unblocks a parked, out-of-refine
-  // sibling.
-  const parkedOutOfRefine = others.filter(
-    (c) => OUT_OF_REFINE_ACTIVE.has(String(c.state || '').toLowerCase()) && isParked(c)
-  );
-  const unblocksParked = parkedOutOfRefine.some((c) => childBlockers(c).includes(me));
-
   const advancingNums = advancing.map((c) => Number(c.number));
-  if (unblocksParked) {
-    return {
-      ok: true,
-      reason: `blocker-exception: #${me} unblocks a parked out-of-Refine sibling`,
-      advancing: advancingNums,
-    };
-  }
   return {
     ok: false,
-    reason: `wip-budget: ${advancingNums.map((n) => `#${n}`).join(', ')} already out of Refine`,
+    reason: `wip-budget: ${advancingNums.map((n) => `#${n}`).join(', ')} already active`,
     advancing: advancingNums,
   };
 }
 
 /**
- * Network wrapper for the WIP gate, called from the promote verb at Refine→Plan.
- * Solo issues (no parent epic) bypass. Fails open on any fetch error so a
- * transient GitHub failure never deadlocks the board.
+ * Network wrapper for the WIP gate, called from the promote verb at R4P→Plan.
+ * Solo issues bypass. Epic reads fail closed: an unreadable sibling set cannot
+ * authorize another local child.
  *
  * @returns {Promise<{ok:boolean, blockers?:string[]}>}
  */
@@ -285,8 +263,8 @@ export async function planRefineWipGate({ cfg, issueNumber, deps = {} } = {}) {
   try {
     const fetchParent = deps.fetchParentIssue;
     parentEpicNumber = fetchParent ? await fetchParent({ issueNumber: me, repo: cfg.repo }) : null;
-  } catch {
-    return { ok: true }; // fail open
+  } catch (error) {
+    return { ok: false, blockers: [`wip-parent-fetch-failed: ${error.message}`] };
   }
   if (parentEpicNumber == null) return { ok: true }; // solo issue — bypass
 
@@ -294,8 +272,8 @@ export async function planRefineWipGate({ cfg, issueNumber, deps = {} } = {}) {
   try {
     children = await fetchEpicChildren({ cfg, parentEpicNumber, deps });
     children = await enrichChildrenWithBlockedBy({ children, cfg, deps });
-  } catch {
-    return { ok: true }; // fail open
+  } catch (error) {
+    return { ok: false, blockers: [`wip-children-fetch-failed: ${error.message}`] };
   }
 
   const decision = wipAdvanceDecision({ promotingNumber: me, children });
@@ -303,7 +281,7 @@ export async function planRefineWipGate({ cfg, issueNumber, deps = {} } = {}) {
   return {
     ok: false,
     blockers: [
-      `wip-budget-exceeded: ${decision.reason}. Finish or park the advancing sibling first, or make #${me} its blocker.`,
+      `wip-budget-exceeded: ${decision.reason}. Finish the active sibling before pulling another local child.`,
     ],
   };
 }
@@ -314,6 +292,7 @@ export async function planRefineWipGate({ cfg, issueNumber, deps = {} } = {}) {
 const CHILD_CREATION_EPIC_STATES = new Set([
   'backlog',
   'refine',
+  CHILD_STAGING_STATE,
   'plan',
   'develop',
   'test',
@@ -323,15 +302,14 @@ const CHILD_CREATION_EPIC_STATES = new Set([
 /**
  * Whether a sub-issue may be created under an epic at the given board state.
  * @param {string} state epic board state
- * @returns {boolean} true for backlog/refine/plan/develop/test/review; false for
- *   assigned, done, or any unrecognized state.
+ * @returns {boolean} true for backlog/refine/R4P/plan/develop/test/review;
+ *   false for done or any unrecognized state.
  */
 export function childCreationAllowedAtEpicState(state) {
   return CHILD_CREATION_EPIC_STATES.has(String(state || '').toLowerCase());
 }
 
-// Default per-child body fetch (used by enrichChildrenWithBlockedBy). Returns
-// the issue body text, or '' on any failure (treated as no blockers).
+// Default per-child body fetch (used by enrichChildrenWithBlockedBy).
 async function defaultFetchBody({ issueNumber, cfg }) {
   const { owner, repoName } = splitRepo(cfg.repo);
   const data = await gql(
@@ -346,9 +324,8 @@ async function defaultFetchBody({ issueNumber, cfg }) {
 }
 
 /**
- * Attach a `blockedBy` (number[]) field to each child by reading its
- * `aitm-blocked-by` body marker (via child (b)'s `parseBlockedBy`). Per-child
- * fetch/parse failure is non-fatal → that child gets `blockedBy: []`.
+ * Attach blocker and current-refinement evidence to each child. Per-child
+ * fetch/parse failure remains ineligible rather than being treated as empty.
  *
  * Layering note: this lives in task-tracker/lib (which already depends on
  * gh/lib) and consumes the sibling `blocked-marker.mjs`. No new back-edge.
@@ -361,11 +338,23 @@ export async function enrichChildrenWithBlockedBy({ children = [], cfg, deps = {
   const list = children || [];
   return Promise.all(
     list.map(async (child) => {
+      if (Array.isArray(child.blockedBy) && typeof child.hasCurrentRefinement === 'boolean') {
+        return child;
+      }
       try {
         const body = await fetchBody({ issueNumber: child.number, cfg });
-        return { ...child, blockedBy: parseBlockedBy(body) };
-      } catch {
-        return { ...child, blockedBy: [] };
+        return {
+          ...child,
+          blockedBy: parseBlockedBy(body),
+          hasCurrentRefinement: Boolean(parseRefinementSnapshot(body)),
+        };
+      } catch (error) {
+        return {
+          ...child,
+          blockedBy: null,
+          hasCurrentRefinement: false,
+          childEvidenceError: error.message,
+        };
       }
     })
   );

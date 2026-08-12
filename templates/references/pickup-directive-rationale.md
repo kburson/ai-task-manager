@@ -193,9 +193,12 @@ rarely, so they live here rather than in the resident directive.
   inherits, it does not set, the epic's position. Discovered sub-issues
   joining the current wave do not block already-flowing wave members, but
   next-wave admission waits for every current-wave member to reach Done.
-- **Refine WIP rule** — Refine is a single-item-in-flight column. Do not
-  pull a second issue into Refine while one is still being groomed; finish
-  or park the first.
+- **R4P pull budget** — Ready for Planning is the durable child queue. For a
+  local epic, do not pull another child into Plan while a sibling occupies
+  Plan, Develop, Test, or Review. Finish the active child first; a blocked
+  active child still consumes the budget. Future parallel waves require an
+  explicit dependency re-triage, isolated worktrees, distinct owners, and
+  isolated exact-SHA cloud validation for every child.
 - **Dependency representation** — a blocked issue carries the `BLOCKED`
   label, a `Blocked By` project-field reference to its blocker, and a
   `<!-- aitm-blocked-by: #N -->` body marker. Drive blocker chains

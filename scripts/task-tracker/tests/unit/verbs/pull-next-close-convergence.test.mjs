@@ -6,10 +6,37 @@ import { runPullNext } from '../../../verbs/pull-next.mjs';
 
 const cfg = { repo: 'o/r', projectId: 'PROJ_1' };
 
+function ready(number, rank) {
+  return {
+    number,
+    state: 'ready-for-plan',
+    boardState: 'ready-for-plan',
+    closeReason: null,
+    rank,
+    blockedBy: [],
+    hasCurrentRefinement: true,
+  };
+}
+
+function terminal(number, rank, extra = {}) {
+  return {
+    number,
+    state: 'done',
+    boardState: 'done',
+    issueState: 'closed',
+    closeReason: 'completed',
+    rank,
+    blockedBy: [],
+    hasCurrentRefinement: false,
+    ...extra,
+  };
+}
+
 function harness({ children, outcomes = {} } = {}) {
   const calls = [];
   const deps = {
     getLiveState: async () => 'develop',
+    getChildLiveState: async () => 'plan',
     audit: async () => {
       calls.push('audit');
       return { ok: true };
@@ -40,16 +67,7 @@ function harness({ children, outcomes = {} } = {}) {
 
 test('finalizes a completed closed child before selecting the next ranked child', async () => {
   const { calls, deps } = harness({
-    children: [
-      {
-        number: 101,
-        state: 'done',
-        boardState: 'review',
-        closeReason: 'completed',
-        rank: 1,
-      },
-      { number: 102, state: 'refine', boardState: 'refine', closeReason: null, rank: 2 },
-    ],
+    children: [terminal(101, 1, { boardState: 'review' }), ready(102, 2)],
     outcomes: {
       101: { action: 'finalize', status: 'completed', steps: ['moveToDone'] },
     },
@@ -63,21 +81,14 @@ test('finalizes a completed closed child before selecting the next ranked child'
     dead: [],
     failed: [],
   });
-  assert.ok(calls.indexOf('converge:101:completed:review') < calls.indexOf('enrich:101'));
   assert.ok(calls.indexOf('converge:101:completed:review') < calls.indexOf('promote:102'));
 });
 
 test('leaves a dead-disposition child untouched and continues selection', async () => {
   const { calls, deps } = harness({
     children: [
-      {
-        number: 101,
-        state: 'done',
-        boardState: 'refine',
-        closeReason: 'not_planned',
-        rank: 1,
-      },
-      { number: 102, state: 'refine', boardState: 'refine', closeReason: null, rank: 2 },
+      terminal(101, 1, { boardState: 'refine', closeReason: 'not_planned' }),
+      ready(102, 2),
     ],
     outcomes: {
       101: { action: 'dead', status: 'untouched', steps: [] },
@@ -91,16 +102,7 @@ test('leaves a dead-disposition child untouched and continues selection', async 
 
 test('an aberration recovery pauses without promoting another child', async () => {
   const { calls, deps } = harness({
-    children: [
-      {
-        number: 101,
-        state: 'done',
-        boardState: 'review',
-        closeReason: 'completed',
-        rank: 1,
-      },
-      { number: 102, state: 'refine', boardState: 'refine', closeReason: null, rank: 2 },
-    ],
+    children: [terminal(101, 1, { boardState: 'review' }), ready(102, 2)],
     outcomes: {
       101: { action: 'aberration', status: 'recovered', steps: ['reopenIssue'] },
     },
@@ -116,16 +118,7 @@ test('an aberration recovery pauses without promoting another child', async () =
 
 test('a failed convergence pauses selection and reports the child', async () => {
   const { calls, deps } = harness({
-    children: [
-      {
-        number: 101,
-        state: 'done',
-        boardState: 'develop',
-        closeReason: 'completed',
-        rank: 1,
-      },
-      { number: 102, state: 'refine', boardState: 'refine', closeReason: null, rank: 2 },
-    ],
+    children: [terminal(101, 1, { boardState: 'develop' }), ready(102, 2)],
     outcomes: {
       101: { action: 'finalize', status: 'failed', failedStep: 'moveToDone' },
     },
@@ -151,7 +144,7 @@ test('a pending durable recovery is converged and pauses before promotion', asyn
         recoveryTx: 'tx-101',
         rank: 1,
       },
-      { number: 102, state: 'refine', boardState: 'refine', closeReason: null, rank: 2 },
+      ready(102, 2),
     ],
     outcomes: {
       101: {
@@ -175,18 +168,7 @@ test('a pending durable recovery is converged and pauses before promotion', asyn
 
 test('a completed durable recovery is not pending and selection may continue', async () => {
   const { calls, deps } = harness({
-    children: [
-      {
-        number: 101,
-        state: 'review',
-        boardState: 'review',
-        closeReason: null,
-        recoveryPhase: 'complete',
-        recoveryTx: null,
-        rank: 1,
-      },
-      { number: 102, state: 'refine', boardState: 'refine', closeReason: null, rank: 2 },
-    ],
+    children: [terminal(101, 1, { recoveryPhase: 'complete', recoveryTx: null }), ready(102, 2)],
   });
   const result = await runPullNext({ epicNumber: 100, cfg, deps });
   assert.equal(result.status, 'pulled');
@@ -200,16 +182,7 @@ test('a completed durable recovery is not pending and selection may continue', a
 
 test('already-Done closed children and open children are not convergence candidates', async () => {
   const { calls, deps } = harness({
-    children: [
-      {
-        number: 101,
-        state: 'done',
-        boardState: 'done',
-        closeReason: 'completed',
-        rank: 1,
-      },
-      { number: 102, state: 'refine', boardState: 'refine', closeReason: null, rank: 2 },
-    ],
+    children: [terminal(101, 1), ready(102, 2)],
   });
   const result = await runPullNext({ epicNumber: 100, cfg, deps });
   assert.equal(result.status, 'pulled');

@@ -412,11 +412,12 @@ export const VERB_REFERENCE = {
   },
   'pull-next': {
     topic: 'board',
-    summary: 'JIT child-pull: promote the next refine-state child of an epic (by rank) into Plan.',
+    summary:
+      'JIT child-pull: promote the next dependency-ready R4P child of an epic (by rank) into Plan.',
     usage: '/task pull-next <epic#>',
     exitCodes: [
-      { code: 4, meaning: 'the selected child failed a Refine-to-Plan gate' },
-      { code: 5, meaning: 'the selected child no longer has a legal Refine-to-Plan edge' },
+      { code: 4, meaning: 'the selected child failed a Ready-for-Planning-to-Plan gate' },
+      { code: 5, meaning: 'the selected child no longer has a legal R4P-to-Plan edge' },
       { code: 6, meaning: 'the selected child is missing required entry-marker history' },
       {
         code: 7,

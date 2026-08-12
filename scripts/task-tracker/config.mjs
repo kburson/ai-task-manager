@@ -70,10 +70,9 @@ export const DEFAULTS = {
   // Defaults preserve today's behavior. See docs/guides/workflow.md → Human Gates.
   gateAnalysisToDevelopment: true,
   gateReviewToDone: true,
-  // #247 — Refine→Plan WIP budget: at most one child past Refine per epic.
-  // Default true preserves WIP enforcement. Set false to permit sanctioned
-  // parallel-agent batches under one epic; restore to true when the batch
-  // closes.
+  // #1216 — R4P→Plan local WIP budget: at most one active child per epic.
+  // Default true preserves sequential execution. Keep enabled until isolated
+  // cloud verification is an explicit, proven parallel prerequisite.
   gatePlanRefineWip: true,
   // #179 — Hard Review→Done lifecycle-checkbox gate. When true (default), close
   // refuses to advance unless each Lifecycle DoD item is ticked, audit-marker

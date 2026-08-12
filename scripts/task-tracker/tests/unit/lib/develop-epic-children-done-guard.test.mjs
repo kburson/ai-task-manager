@@ -65,7 +65,7 @@ test('passes when gate returns ok (leaf or all-children-done)', async () => {
 
 test('surfaces gate refusal with reason + blockers', async () => {
   const blockers = [
-    'epic-children-not-in-review: every child must be at review or later before the epic promotes to Test: #101 (state=develop), #102 (state=plan)',
+    'epic-children-not-terminal: every required child must be Done or closed with an accepted terminal disposition before the epic promotes to Test: #101 (state=develop), #102 (state=plan)',
   ];
   const result = await developExitEpicChildrenDoneGuard.run({
     cfg,
@@ -109,6 +109,6 @@ test('defaults reason to generic key when gate omits blockers', async () => {
     },
   });
   assert.equal(result.ok, false);
-  assert.equal(result.reason, 'epic-children-not-in-review');
+  assert.equal(result.reason, 'epic-children-not-terminal');
   assert.deepEqual(result.blockers, []);
 });

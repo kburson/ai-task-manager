@@ -1,12 +1,12 @@
-// Refine-exit guard: epic WIP budget (#336, parent epic #340).
+// R4P-exit guard: sequential local epic WIP budget (#1216).
 //
 // Wraps `planRefineWipGate` (scripts/task-tracker/lib/epic-children-gate.mjs)
-// so the refine→plan WIP budget reaches the registry through the existing
-// `runGuards('refine', 'plan', ctx)` call at scripts/gh/move-state.mjs:394.
+// so the R4P→Plan WIP budget reaches the registry through the central guard
+// registry.
 //
-// Rule: at most one child per epic may advance out of Refine at a time
-// (parked-on-dependency children excepted; a blocker may run ahead of the
-// sibling it unblocks). Solo issues bypass; fetch failures fail open.
+// Rule: at most one child per epic may occupy Plan/Develop/Test/Review. Blocked
+// active children still count and dependencies provide no local parallel
+// exception. Solo issues bypass; unreadable sibling state fails closed.
 //
 // Soft-off knob: `cfg.gatePlanRefineWip === false` skips the guard for the
 // whole project — mirror of the inline branch retired from promote.mjs:321.

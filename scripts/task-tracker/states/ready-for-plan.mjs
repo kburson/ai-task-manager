@@ -9,12 +9,14 @@ import { contiguityEntryGuard } from '../lib/contiguity-entry-guard.mjs';
 import { refineExitWipBudgetGuard } from '../lib/refine-exit-wip-budget-guard.mjs';
 import { refineExitChildParentStateGuard } from '../lib/refine-exit-child-parent-state-guard.mjs';
 import { childCannotLeadEpicExitGuard } from '../lib/child-cannot-lead-epic-exit-guard.mjs';
+import { r4pEpicChildrenGuard } from '../lib/plan-epic-children-guard.mjs';
 
 export default Object.freeze({
   name: 'ready-for-plan',
   entryGuards: Object.freeze([contiguityEntryGuard]),
   exitGuards: Object.freeze([
     blockedByGuard,
+    r4pEpicChildrenGuard,
     refineExitWipBudgetGuard,
     refineExitChildParentStateGuard,
     childCannotLeadEpicExitGuard,

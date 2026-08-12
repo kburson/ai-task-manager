@@ -32,8 +32,10 @@
 //   `closeReason` (#888). Gates read `state`.
 
 import { gql, splitRepo } from './github-projects.mjs';
+import { parseBlockedBy } from '../../task-tracker/lib/blocked-marker.mjs';
 import { readUnauthorizedCloseRecovery } from '../../task-tracker/lib/closed-issue-convergence.mjs';
 import { normalizeStateId } from '../../task-tracker/lib/lifecycle-policy/index.mjs';
+import { parseRefinementSnapshot } from '../../task-tracker/lib/refinement-snapshot.mjs';
 
 const IN_FLIGHT_STATES = new Set(['refine', 'plan', 'develop', 'test', 'review']);
 
@@ -81,13 +83,27 @@ export function normalizeCloseReason(sub) {
 export async function defaultFetchSiblings({ parentEpicNumber, repo, projectId } = {}) {
   if (!repo) throw new Error('wave-admission: repo is required');
   if (!projectId) throw new Error('wave-admission: projectId is required');
+  const nodes = await fetchAllSubIssueNodes({ parentEpicNumber, repo });
+  return mapSubIssueNodes(nodes, projectId);
+}
+
+export async function fetchAllSubIssueNodes({ parentEpicNumber, repo, gqlFn = gql } = {}) {
+  if (!repo) throw new Error('wave-admission: repo is required');
+  if (!Number.isSafeInteger(Number(parentEpicNumber)) || Number(parentEpicNumber) <= 0) {
+    throw new Error('wave-admission: parentEpicNumber is required');
+  }
   const { owner, repoName } = splitRepo(repo);
-  const data = await gql(
-    `
-    query($owner: String!, $repo: String!, $issue: Int!) {
+  const nodes = [];
+  const seenCursors = new Set();
+  let after = null;
+
+  for (let page = 0; page < 1000; page++) {
+    const data = await gqlFn(
+      `
+    query($owner: String!, $repo: String!, $issue: Int!, $after: String) {
       repository(owner: $owner, name: $repo) {
         issue(number: $issue) {
-          subIssues(first: 100) {
+          subIssues(first: 100, after: $after) {
             nodes {
               number
               state
@@ -111,13 +127,24 @@ export async function defaultFetchSiblings({ parentEpicNumber, repo, projectId }
                 }
               }
             }
+            pageInfo { hasNextPage endCursor }
           }
         }
       }
     }`,
-    { owner, repo: repoName, issue: Number(parentEpicNumber) }
-  );
-  return mapSubIssueNodes(data?.repository?.issue?.subIssues?.nodes, projectId);
+      { owner, repo: repoName, issue: Number(parentEpicNumber), after }
+    );
+    const connection = data?.repository?.issue?.subIssues;
+    if (!connection) throw new Error('wave-admission: parent issue or sub-issues unreadable');
+    nodes.push(...(Array.isArray(connection.nodes) ? connection.nodes : []));
+    if (!connection.pageInfo?.hasNextPage) return nodes;
+    const next = connection.pageInfo.endCursor;
+    if (!next) throw new Error('wave-admission: sub-issue page missing end cursor');
+    if (seenCursors.has(next)) throw new Error('wave-admission: repeated sub-issue cursor');
+    seenCursors.add(next);
+    after = next;
+  }
+  throw new Error('wave-admission: sub-issue pagination safety limit exceeded');
 }
 
 /**
@@ -188,9 +215,12 @@ export function mapSubIssueNodes(subs, projectId) {
       rank,
       state,
       boardState,
+      issueState: String(sub.state || '').toLowerCase(),
       closeReason: normalizeCloseReason(sub),
       recoveryPhase: pendingRecovery?.phase ?? null,
       recoveryTx: pendingRecovery?.tx ?? null,
+      blockedBy: parseBlockedBy(sub.body),
+      hasCurrentRefinement: Boolean(parseRefinementSnapshot(sub.body)),
     });
   }
   return out;

@@ -165,7 +165,13 @@ describe('guard-parity-plan-develop: registry == state-object walk', () => {
     const ctx = makeCtx({
       body: APPROVED_BODY,
       epicChildren: [
-        { number: 1, state: 'refine' },
+        {
+          number: 1,
+          state: 'ready-for-plan',
+          rank: 1,
+          blockedBy: [],
+          hasCurrentRefinement: true,
+        },
         { number: 2, state: 'backlog' },
       ],
     });
@@ -175,8 +181,8 @@ describe('guard-parity-plan-develop: registry == state-object walk', () => {
     assert.equal(obj.ok, false);
     const regIds = new Set(reg.refusals.map((x) => x.id));
     const objIds = new Set(obj.refusals.map((x) => x.id));
-    assert.ok(regIds.has('plan-exit-epic-children-refine-or-beyond'));
-    assert.ok(objIds.has('plan-exit-epic-children-refine-or-beyond'));
+    assert.ok(regIds.has('plan-exit-epic-children-r4p-or-beyond'));
+    assert.ok(objIds.has('plan-exit-epic-children-r4p-or-beyond'));
     assert.deepEqual(regIds, objIds);
   });
 
@@ -189,7 +195,7 @@ describe('guard-parity-plan-develop: registry == state-object walk', () => {
     assert.equal(reg.ok, false);
     const ids = new Set(reg.refusals.map((x) => x.id));
     assert.ok(ids.has('plan-exit-plan-approved'));
-    assert.ok(ids.has('plan-exit-epic-children-refine-or-beyond'));
+    assert.ok(ids.has('plan-exit-epic-children-r4p-or-beyond'));
   });
 
   it('rollback: plan → refine bypasses plan-exit-develop guards', async () => {

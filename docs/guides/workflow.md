@@ -498,32 +498,26 @@ discovered-sub-issue and same-wave-newcomer semantics.
 
 Within a wave, child flow is further constrained:
 
-- **WIP rule** — at most one child advances out of Refine per epic at a time
-  (`planRefineWipGate`, entering Plan). A child _parked_ on a dependency does
-  not count against the budget, and a blocker may run ahead of the parked
-  sibling it unblocks. No env override exists.
+- **Sequential local WIP rule** — Ready for Planning is the durable child
+  queue. At most one child may occupy Plan, Develop, Test, or Review for an epic
+  at a time. A blocked active child still consumes that budget; local
+  dependencies create no parallel exception. No env override exists.
 - **Dependency representation** — a parked child carries the `BLOCKED` label
   plus an `aitm-blocked-by: #N[, #M]` body marker.
-- **Dependency-aware JIT selection** — the next child pulled Refine → Plan
-  prefers blockers and excludes any child whose blockers are not all Done. When
-  a blocker reaches Done its dependents are auto-unparked.
-- **Discovered work** may be created and driven Refine → Review (never straight
+- **Dependency-aware JIT selection** — the next child pulled Ready for Planning → Plan
+  is selected by dependency readiness and rank. Refine and Backlog are never
+  eligible. A child is admitted only after every blocker reaches an accepted
+  terminal disposition.
+- **Discovered work** may be created and driven Refine → Ready for Planning
+  (never straight
   to Done) at any epic state except a Done epic; the `childCreationAllowedAtEpicState`
   guard refuses new children under a Done parent (override
-  `AITM_SKIP_PARENT_STATE_GATE=1`). Children are no longer required to all reach
-  Refine before the epic may move to Plan — that exit-gate requirement was retired.
-- **Epic child-state floors** (#877) — two gates, on two different arcs:
-  - **Develop → Test** requires every child at **Review or later**
-    (`developEpicTestChildrenGate`, refusal `epic-children-not-in-review`).
-  - **Review → Done** requires every child at **Done**
-    (`reviewEpicDoneChildrenGate`, refusal `epic-children-not-done`).
-
-  The strict child-`done` requirement used to sit on develop → test, which
-  deadlocked the PR-based flow: a child cannot reach Done until the epic branch
-  lands on trunk, but the branch cannot land until the epic itself clears Test
-  and Review. Holding children at Review lets the epic be reviewed alongside
-  them and close together once the branch merges. The invariant was **moved,
-  not dropped** — an epic still cannot reach Done with an unfinished child.
+  `AITM_SKIP_PARENT_STATE_GATE=1`). Before an epic enters Plan, every
+  executable nonterminal child must be at R4P or later with current refinement
+  evidence and a finite rank.
+- **Epic child-state floors** — Develop → Test and Review → Done both require
+  every required child to be Done or closed with an accepted terminal
+  disposition. Review alone is not delivery to the epic branch.
 
 ### Backlog vs Refine
 

@@ -331,7 +331,7 @@ test('promote: plan→develop refused when any sub-issue still in Backlog (#135)
   };
   deps.epicChildren = {
     fetchSiblings: async () => [
-      { number: 201, state: 'refine', rank: 1 },
+      { number: 201, state: 'ready-for-plan', rank: 1, hasCurrentRefinement: true },
       { number: 202, state: 'backlog', rank: 2 },
     ],
   };
@@ -341,10 +341,7 @@ test('promote: plan→develop refused when any sub-issue still in Backlog (#135)
   assert.equal(calls.moves.length, 0);
 });
 
-test('promote: plan→develop refused only when a sub-issue is in backlog (#335 — corrected rule, children past refine pass)', async () => {
-  // #335: the plan→develop epic-children gate exists to confirm every child
-  // has been refined. Children at refine OR past refine (plan/develop/test/
-  // review/done) all satisfy the rule. Only `backlog` children refuse.
+test('promote: plan→develop refuses only children without current R4P-or-later evidence', async () => {
   const { deps, calls } = makeDeps({ body: bodyWithState('plan'), live: 'plan' });
   deps.plannedEstimate = {
     listComments: async () => [
@@ -356,17 +353,17 @@ test('promote: plan→develop refused only when a sub-issue is in backlog (#335 
   };
   deps.epicChildren = {
     fetchSiblings: async () => [
-      { number: 201, state: 'refine', rank: 1 },
-      { number: 202, state: 'plan', rank: 2 }, // past refine — must pass
-      { number: 203, state: 'develop', rank: 3 }, // past refine — must pass
-      { number: 204, state: 'backlog', rank: 4 }, // pre-refine — refuses
+      { number: 201, state: 'ready-for-plan', rank: 1, hasCurrentRefinement: true },
+      { number: 202, state: 'plan', rank: 2, hasCurrentRefinement: true },
+      { number: 203, state: 'develop', rank: 3, hasCurrentRefinement: true },
+      { number: 204, state: 'backlog', rank: 4, hasCurrentRefinement: false },
     ],
   };
   const r = await runPromote({ issueNumber: 2000, cfg, deps });
   assert.equal(r.status, 'epic-children-refused');
-  assert.ok(r.blockers.some((b) => /epic-children-not-refined/.test(b)));
+  assert.ok(r.blockers.some((b) => /epic-children-not-r4p/.test(b)));
   assert.ok(r.blockers.some((b) => /#204/.test(b)));
-  // Children past refine must NOT appear in the offender list.
+  // Current R4P-or-later children must NOT appear in the offender list.
   assert.ok(!r.blockers.some((b) => /#202/.test(b)));
   assert.ok(!r.blockers.some((b) => /#203/.test(b)));
   assert.equal(calls.moves.length, 0);

@@ -192,6 +192,15 @@ if (args[0] === 'api' && args[1] === 'graphql') {
   // Query payload comes via stdin (--input -). Read it to decide the shape.
   let stdin = '';
   try { stdin = fs.readFileSync(0, 'utf8'); } catch {}
+  if (stdin.includes('subIssues')) {
+    const payload = {
+      data: { repository: { issue: {
+        subIssues: { nodes: [], pageInfo: { hasNextPage: false, endCursor: null } },
+      } } },
+    };
+    fs.writeSync(1, JSON.stringify(payload));
+    process.exit(0);
+  }
   if (stdin.includes('projectItems')) {
     let opt = '';
     try { opt = fs.readFileSync(STATE_FILE, 'utf8'); } catch {}

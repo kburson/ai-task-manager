@@ -433,7 +433,7 @@ test('planEpicChildrenGuard: solo issue (no children) → ok', async () => {
   assert.deepEqual(r, { ok: true });
 });
 
-test('planEpicChildrenGuard: epic with all children at refine → ok', async () => {
+test('planEpicChildrenGuard: epic with all children at R4P → ok', async () => {
   const r = await planEpicChildrenGuard.run({
     toState: 'develop',
     cfg: CFG,
@@ -441,8 +441,8 @@ test('planEpicChildrenGuard: epic with all children at refine → ok', async () 
     deps: {
       epicChildren: {
         fetchSiblings: async () => [
-          { number: 1, state: 'refine' },
-          { number: 2, state: 'refine' },
+          { number: 1, state: 'ready-for-plan', rank: 1, hasCurrentRefinement: true },
+          { number: 2, state: 'ready-for-plan', rank: 2, hasCurrentRefinement: true },
         ],
       },
     },
@@ -458,14 +458,14 @@ test('planEpicChildrenGuard: epic with backlog child → refuse', async () => {
     deps: {
       epicChildren: {
         fetchSiblings: async () => [
-          { number: 1, state: 'refine' },
+          { number: 1, state: 'ready-for-plan', rank: 1, hasCurrentRefinement: true },
           { number: 2, state: 'backlog' },
         ],
       },
     },
   });
   assert.equal(r.ok, false);
-  assert.match(r.reason, /epic-children-not-refined/);
+  assert.match(r.reason, /epic-children-not-r4p/);
   assert.match(r.reason, /#2/);
 });
 
@@ -548,11 +548,11 @@ test('STATES.plan.exitGuards: includes plan-exit-plan-approved', () => {
   );
 });
 
-test('STATES.plan.exitGuards: includes plan-exit-epic-children-refine-or-beyond', () => {
+test('STATES.plan.exitGuards: includes plan-exit-epic-children-r4p-or-beyond', () => {
   const ids = STATES.plan.exitGuards.map((g) => g.id);
   assert.ok(
-    ids.includes('plan-exit-epic-children-refine-or-beyond'),
-    `expected plan-exit-epic-children-refine-or-beyond in [${ids.join(', ')}]`
+    ids.includes('plan-exit-epic-children-r4p-or-beyond'),
+    `expected plan-exit-epic-children-r4p-or-beyond in [${ids.join(', ')}]`
   );
 });
 

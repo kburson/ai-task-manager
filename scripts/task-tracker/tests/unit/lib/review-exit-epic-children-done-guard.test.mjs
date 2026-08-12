@@ -25,6 +25,10 @@ function stubFetch(children) {
   return async () => children;
 }
 
+function terminal(number, rank) {
+  return { number, state: 'done', rank, issueState: 'closed', closeReason: 'completed' };
+}
+
 // ---------------------------------------------------------------------------
 // reviewEpicDoneChildrenGate — the predicate.
 // ---------------------------------------------------------------------------
@@ -44,10 +48,7 @@ test('gate passes when every child is done', async () => {
     cfg,
     issueNumber: 100,
     deps: {
-      fetchSiblings: stubFetch([
-        { number: 101, state: 'done', rank: 1 },
-        { number: 102, state: 'done', rank: 2 },
-      ]),
+      fetchSiblings: stubFetch([terminal(101, 1), terminal(102, 2)]),
     },
   });
   assert.equal(result.ok, true);
@@ -61,10 +62,7 @@ test('gate refuses when a child is still at review', async () => {
     cfg,
     issueNumber: 100,
     deps: {
-      fetchSiblings: stubFetch([
-        { number: 101, state: 'done', rank: 1 },
-        { number: 102, state: 'review', rank: 2 },
-      ]),
+      fetchSiblings: stubFetch([terminal(101, 1), { number: 102, state: 'review', rank: 2 }]),
     },
   });
   assert.equal(result.ok, false);
@@ -82,10 +80,7 @@ for (const pendingState of ['backlog', 'assigned', 'refine', 'plan', 'develop', 
       cfg,
       issueNumber: 100,
       deps: {
-        fetchSiblings: stubFetch([
-          { number: 101, state: 'done', rank: 1 },
-          { number: 102, state: pendingState, rank: 2 },
-        ]),
+        fetchSiblings: stubFetch([terminal(101, 1), { number: 102, state: pendingState, rank: 2 }]),
       },
     });
     assert.equal(result.ok, false);
@@ -98,7 +93,11 @@ test('gate accepts mixed-case "DONE"', async () => {
   const result = await reviewEpicDoneChildrenGate({
     cfg,
     issueNumber: 100,
-    deps: { fetchSiblings: stubFetch([{ number: 101, state: 'DONE', rank: 1 }]) },
+    deps: {
+      fetchSiblings: stubFetch([
+        { number: 101, state: 'DONE', rank: 1, issueState: 'CLOSED', closeReason: 'COMPLETED' },
+      ]),
+    },
   });
   assert.equal(result.ok, true);
 });
