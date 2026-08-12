@@ -2,7 +2,7 @@
 
 **Date:** 2026-08-10 (revised 2026-08-12)
 
-**Status:** Revised after Codex and five Claude design reviews; pending Claude re-review
+**Status:** Revised after Codex and six Claude design reviews; pending Claude re-review
 
 **Branch:** `cloud-test-automation`
 
@@ -264,10 +264,20 @@ The unmeasured cloud multiplier is not sufficient evidence to choose two or
 three shards permanently. A paired disposable canary runs both candidates on
 the same head and runner profile for five completed workflow runs, including
 controlled cold and warm npm-cache conditions. Width two is preferred when
-every shard in all five width-two runs fits the 480-second repository envelope
-and 540-second total target with complete exactly-once coverage. Otherwise the
-interim production width is three. This is an envelope decision, not a p95
-claim; five samples cannot establish the policy p95 below.
+every shard in all five width-two runs has a repository phase at or below 408
+seconds, 85% of the 480-second envelope, and also fits the 540-second total
+target. Otherwise the interim production width is three. The 72-second
+repository margin protects against ordinary dependency and test growth instead
+of selecting a width that merely passed just below red. This is a guarded
+envelope decision, not a p95 claim; five samples cannot establish the policy
+p95 below.
+
+The canary owns a minimal standalone partition proof before accepting either
+width. For the exact head, it emits each shard's sorted file list, verifies that
+their union equals the complete Slow lane manifest, and verifies that every
+pairwise intersection is empty. Missing or duplicated tests fail the candidate.
+This proves exactly-once file coverage without depending on item 8's production
+family-policy fingerprint or head-specific resolution digest.
 
 A fourth shard buys only 41.469 seconds locally, and a fifth buys nothing because
 `scripts/task-tracker/tests/slow/lib/cli.test.mjs` alone takes 130.386 seconds.
@@ -283,6 +293,12 @@ environment override, which cannot express different pooled and serial limits:
 | Repository-controlled phase soft envelope |              480s | Fails with the active named phase before hard stop |
 | Fast-shard pooled section                 |              210s | 133s floor plus ~58% runner/imbalance headroom     |
 | Fast-shard serial section                 |              150s | ~70s balanced share plus >100% headroom            |
+
+The temporary Fast/Slow asymmetry is intentional. Fast's provisional 210/150
+section ceilings sit about 58% and more than 100% above measured local floors.
+The retired 420-second Slow ceiling sat below the measured 515.373-second local
+runtime, so no similarly defensible Slow section value exists yet. Future work
+must not restore symmetry by copying an unmeasured Slow ceiling into policy.
 
 No replacement Slow section ceiling is asserted from a single local run. Until
 at least 20 eligible production-shaped cloud cycles establish a measured p95
@@ -310,6 +326,16 @@ classified as platform outages are excluded with recorded reasons. Below 20
 eligible samples, policy holds its bootstrap values and does not extrapolate.
 Changing runner profile, shard width, or family-policy fingerprint starts a new
 eligible sample set; observations from incompatible topologies do not combine.
+To make the threshold reachable, production declares a measurement window and
+freezes those three fingerprint inputs until at least 20 eligible cycles finish.
+Checked-in measurement policy records the window ID, opening commit, topology
+fingerprint, runner profile, and target sample count; accepted Actions/receipt
+evidence supplies the samples, so no host-local counter becomes authority.
+Performance changes may be developed and tested in the canary during the window
+but are queued for adoption until the measured value is recorded. An urgent correctness
+or security change may break the window; doing so discards the incompatible
+sample set and restarts the 60-minute bootstrap rather than carrying a
+discounted prior across topologies.
 Specifically, Slow retains no section ceiling beyond the 480-second outer
 envelope, and freeze expiry remains 60 minutes. If any shard misses, the
 response is family rebalancing, fixture decomposition, weighted pooling, or
@@ -594,9 +620,11 @@ Calibration temporarily adds
 read-only workflow that runs both candidate widths against the same selected
 head. It emits no required context and has no issue, check-write, or merge
 authority. Its family assignments are workflow-local experimental inputs, not
-the production policy. The production fan-out slice deletes or supersedes this
+the production policy. A canary-owned partition verifier compares the union of
+emitted shard file lists with the exact-head Slow manifest and rejects any
+pairwise overlap. The production fan-out slice deletes or supersedes this
 workflow after promoting the selected width and family rules into checked-in
-policy.
+policy; item 8 then adds the stronger durable fingerprint and resolution digest.
 
 ### Staged fan-out
 
@@ -1032,6 +1060,15 @@ projection update is repaired from the capsule, while a crash after merge
 releases the reconstructed freeze when it appends the missing
 `integration-result`.
 
+The 60-minute bootstrap deliberately favors tested-head durability and recovery
+over child throughput while the cycle distribution is unknown. It is not the
+normal hold duration: green merge, red validation, cancellation, drift, or
+coordinator recovery releases the freeze as soon as that outcome is observed.
+The maximum matters only for a stalled attempt that recovery does not resolve.
+Choosing 30 minutes instead would reduce worst-case child delay but could expire a valid
+slow first cycle before evidence establishes whether that is safe; this design
+accepts the bounded throughput risk and retains the fairness rule below.
+
 Slow sits on the critical path of every non-documentation validation. The
 freeze implementation therefore depends on the two-versus-three-shard canary;
 no measured freeze-expiry fingerprint is calibrated from the obsolete
@@ -1195,7 +1232,10 @@ reachable from it.
   conclusion and rejection of an unmeasured Slow-specific ceiling.
 - Slow timing-artifact parsing, provenance preservation, Pareto shares,
   deterministic two-through-five shard LPT calculations, explicit estimate
-  labels, paired two-versus-three canary selection, and width-two preference.
+  labels, paired two-versus-three canary selection, and the width-two 408-second
+  margin boundary.
+- Canary partition proof for exact manifest union, empty pairwise intersections,
+  missing files, duplicate files, and head mismatch without item 8 policy data.
 - Capacity-bound arithmetic for Free and Pro ceilings, reserved slots, and
   interim versus #1208 target shard widths.
 - Slow-impact required-over-safe precedence, all-paths-safe skip semantics, and
@@ -1216,7 +1256,9 @@ reachable from it.
 - Develop timing classification at 180 and 300 second boundaries.
 - Freeze-expiry bootstrap at 60 minutes below 20 eligible samples, nearest-rank
   p95 calculation at and above the threshold, both clamp boundaries,
-  outage-sample exclusion, and policy-fingerprint changes.
+  outage-sample exclusion, frozen measurement windows, queued performance
+  changes, GitHub-evidence sample reconstruction, and correctness-driven reset
+  to bootstrap.
 - Existing per-clone fleet behavior plus host-overlay lease acquisition,
   six-worker saturation across independent clones, heartbeat expiry, process
   liveness, and shared capacity across local sessions.
@@ -1257,6 +1299,8 @@ Extend `tests/slow/core/ci-lane-wiring.test.mjs` and
 - no custom Checks API publisher;
 - the disposable Slow-width canary is manual-only, read-only, non-required,
   paired on one head, and absent or superseded after production policy lands;
+- its standalone partition check proves exact Slow-manifest union and empty
+  pairwise shard intersections without using the production resolution digest;
 - independent Quality, two Fast-shard, and the selected two or three Slow-shard
   execution jobs;
 - Stage 2 Fast and Slow gate dependencies with `if: always()` and explicit
@@ -1330,8 +1374,10 @@ proceed in parallel. Each item is independently reviewable.
    read-only canary workflow whose provisional in-workflow family assignments
    run Slow widths two and three against the same head and runner profile for at
    least five paired workflow runs across controlled cold and warm npm-cache
-   conditions. Prefer width two only when every shard in every run proves exact
-   coverage and fits the 480-second repository and 540-second total envelopes;
+   conditions. Add the standalone exact-head partition verifier: shard-list
+   union equals the Slow manifest and pairwise intersections are empty. Prefer
+   width two only when every shard in every run passes that proof, stays at or
+   below the 408-second repository margin, and fits the 540-second total target;
    otherwise select width three. Five runs choose width but establish no p95 or
    Slow section ceiling. Production fan-out depends on the selection;
    freeze-policy calibration holds its bootstrap until 20 eligible cycles.
@@ -1357,9 +1403,9 @@ proceed in parallel. Each item is independently reviewable.
    and cloud-adapter fallback.
 7. **CI budget harness and failure evidence.** Add the 480-second named-phase
    envelope, provisional Fast section values, explicit absence of a pre-p95 Slow
-   section ceiling, sample-gated adoption of later measured values, bounded
-   lane/shard manifests, artifact ordering rules, and native-first failure
-   classification.
+   section ceiling, documented Fast/Slow asymmetry, sample-gated adoption of
+   later measured values, bounded lane/shard manifests, artifact ordering rules,
+   and native-first failure classification.
 8. **Timing-balanced family policy.** Treat item 1's canary-local assignment as
    provisional input, then promote the selected width into checked-in
    fixture-family-to-shard rules, exhaustive family resolution, head-specific
@@ -1398,8 +1444,10 @@ proceed in parallel. Each item is independently reviewable.
 17. **Integration freeze.** After item 1 selects the Slow shape, add authorized
     freeze/release capsules, projection indexing, child final-gate checks,
     drift handling, 60-minute bootstrap expiry, sample-gated p95-derived expiry,
-    crash repair, and starvation-bounded fairness. Do not replace the bootstrap
-    until 20 eligible selected-topology cycles exist.
+    frozen measurement windows, crash repair, and starvation-bounded fairness.
+    Do not replace the bootstrap until 20 eligible selected-topology cycles
+    exist; queue performance-policy adoption during the window, and reset on an
+    urgent correctness or security change.
 18. **Merge tail and trailers.** Implement per-target deterministic ordering,
     lazy update, exact-head merge, throughput observation, receipt trailers,
     and `integration-result`.
