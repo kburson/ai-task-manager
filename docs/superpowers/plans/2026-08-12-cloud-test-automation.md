@@ -80,6 +80,15 @@ planWeightedShards({ lane, width, discoveredTests, weights });
 resolveTestShard({ lane, shard, partition });
 verifyExactPartition({ laneManifest, shardManifests, expectedHeadSha, actualHeadSha });
 buildFamilyResolutionDigest({ headSha, lane, assignments });
+createMeasurementWindow({
+  id,
+  openingCommit,
+  runnerProfile,
+  shardWidth,
+  familyPolicyFingerprint,
+  targetSampleCount,
+});
+evaluateMeasurementSample({ window, actionsEvidence, receiptEvidence });
 
 evaluateCiBudget({ policy, job, phase, elapsedMs, sections });
 recordCiPhase({ state, phase, startedAt, completedAt, conclusion });
@@ -132,7 +141,7 @@ receipt validator.
 
 | Gate                      | Required before proceeding                                                     |
 | ------------------------- | ------------------------------------------------------------------------------ |
-| Canary selection          | Tasks 1-3 complete and five accepted paired cold/warm runs recorded            |
+| Canary selection          | Tasks 1-2 complete plus five accepted paired cold/warm runs within Task 3      |
 | Production Stage 1        | Tasks 3-6 complete with a selected Slow width                                  |
 | Required contexts         | Tasks 9-10 green on a canary PR before Task 15 mutates rulesets                |
 | Cloud Test lifecycle      | Tasks 11-13 complete before Task 14 grants WIP exemption                       |
@@ -174,7 +183,7 @@ is not itself an issue, do not invent an `aitm-blocked-by` issue reference.
 |    3 | Tasks 1-2 decision and execution primitives                  | Canary summaries and `cloud-test-policy.json` with the selected Slow width                       |
 |    4 | Git changed paths and target-base policy                     | `classifySlowImpact`, completeness audit, and the sole cloud Slow decision                       |
 |    5 | `cloud-test-policy.json` budgets                             | `evaluateCiBudget`, phase state, failure manifests, and `classifyNativeFailure`                  |
-|    6 | Task 3 selected width and Task 2 partition interface         | Production family policy, head-specific digest, and initial measurement window                   |
+|    6 | Task 3 selected width and Task 2 partition interface         | Family policy, digest, measurement-window schema, and sample-eligibility predicate               |
 |    7 | Existing affected selector and receipt v1                    | Direct-only local execution plus a head-bound `develop-cloud-escalation` obligation              |
 |    8 | Fleet locks, user-global capacity config, host/process facts | Host lease lifecycle, cloud dispatch result, and runner concurrency input                        |
 |    9 | Tasks 3-6 policy/runner outputs                              | Production Stage 1 native execution jobs and immutable diagnostic artifacts                      |
@@ -184,7 +193,7 @@ is not itself an issue, do not invent an `aitm-blocked-by` issue reference.
 |   13 | Tasks 11-12 plus native Actions facts                        | Accepted `verification-evidence`, repaired evidence projection, and `REVIEW_COMPLETE`            |
 |   14 | Task 12 transition and Task 13 terminal result               | Recoverable WIP exemption decision                                                               |
 |   15 | Task 10 stable gate names and live rulesets                  | Audited strict protection on `trunk` and `feature/epic/*`                                        |
-|   16 | Tasks 3, 13, and 15                                          | Freeze capsule lifecycle, fairness, measurement window, and derived expiry                       |
+|   16 | Tasks 3, 6, 13, and 15                                       | Freeze lifecycle and fairness consuming Task 6 windows, plus derived expiry                      |
 |   17 | Accepted receipt, approval evidence, Task 16 freeze          | Per-target lane, exact-head merge, trailers, `integration-result`, and crash repair              |
 |   18 | Task 17 structured integration failure                       | Authorized rework demotion and receipt invalidation                                              |
 |   19 | Task 5 failure classification and native diagnostics         | Bounded triage input and Worker Report                                                           |
@@ -330,6 +339,11 @@ is not itself an issue, do not invent an `aitm-blocked-by` issue reference.
 - [ ] Add RED workflow tests proving every candidate invokes Task 2's
       `verifyExactPartition` against the canary's exact-head lane manifest
       before any test child runs.
+- [ ] Add RED selection tests proving a nonzero `unmeasured-fallback` Slow file
+      count refuses width selection. Require every canary summary and the
+      checked-in decision fixture to carry `unmeasuredFallbackFileCount` and
+      `unmeasuredFallbackWeightSeconds`; the accepted boundary is exactly zero
+      files and zero summed fallback weight.
 - [ ] Run the unit and workflow tests; expect FAIL on the missing workflow and
       policy.
 - [ ] Implement the canary so a cache-prime job precedes warm-cache candidates,
@@ -339,6 +353,12 @@ is not itself an issue, do not invent an `aitm-blocked-by` issue reference.
       Include Quality and two Fast shards in both cache conditions for
       calibration. The workflow-local partitions are experimental inputs, not a
       checked-in production family policy.
+- [ ] Before any candidate test child starts, resolve the exact-head Slow lane
+      manifest against the Task 1 baseline. If any file is labeled
+      `unmeasured-fallback`, fail the canary as calibration-incomplete rather
+      than selecting a width from estimated weight. Emit the fallback file count
+      and summed fallback weight in every summary so the final selection record
+      proves measurement completeness.
 - [ ] Reject the calibration unless Quality and both Fast shards pass all five
       cold/warm pairs under the provisional 210/150-second Fast section limits,
       480-second repository envelope, and 600-second hard job stop. Record the
@@ -372,7 +392,9 @@ is not itself an issue, do not invent an `aitm-blocked-by` issue reference.
       `scripts/task-tracker/tests/fixtures/performance/cloud-test-canary-selection.json`.
       The code writes `production.slowWidth` as `2` only if every all-run rule
       passes; otherwise it writes `3`. It must not write a Slow section ceiling
-      or p95.
+      or p95. It refuses either width when the recorded fallback file count or
+      summed fallback weight is nonzero; the committed evidence therefore
+      records both values as zero.
 - [ ] Re-run the focused tests and `npx prettier --check` on both YAML/JSON files.
 - [ ] Commit the selected topology without squashing away the canary evidence:
 
@@ -482,7 +504,9 @@ the Slow width
 
 - Create: `scripts/task-tracker/test-family-policy.json`
 - Create: `scripts/task-tracker/lib/cloud-test/test-family-policy.mjs`
+- Create: `scripts/task-tracker/lib/cloud-test/measurement-window.mjs`
 - Create: `scripts/task-tracker/tests/unit/lib/cloud-test/test-family-policy.test.mjs`
+- Create: `scripts/task-tracker/tests/unit/lib/cloud-test/measurement-window.test.mjs`
 - Modify: `scripts/task-tracker/cloud-test-policy.json`
 - Modify: `scripts/task-tracker/lib/cloud-test/shard-partition.mjs`
 - Modify: `scripts/run-tests-lanes.mjs`
@@ -493,6 +517,14 @@ the Slow width
       missing families, lane mismatch, unknown shard, exact-head mismatch,
       deterministic resolution digest, and a new test inheriting an existing
       family without changing the policy hash.
+- [ ] Add RED measurement-window tests for the exact checked-in record shape:
+      window ID, opening commit, `runnerProfile`, `shardWidth`,
+      `familyPolicyFingerprint`, a deterministic `topologyFingerprint` over
+      those three inputs, and `targetSampleCount: 20`. Test the eligibility
+      predicate against accepted matching Actions/receipt evidence, rejected or
+      incomplete evidence, incompatible fingerprints, platform outages with
+      recorded exclusion reasons, and canary-selection runs, which are always
+      ineligible.
 - [ ] Encode fixture-cohesive families by stable path patterns, not individual
       files. Assign Unit/Integration families to `fast-a` or `fast-b` and Slow
       families to exactly the selected number of `slow-*` shards using the
@@ -506,13 +538,18 @@ the Slow width
       commit, newly available family-policy fingerprint, and target sample
       count 20. Canary selection runs remain ineligible because they predate
       the production fingerprint.
+- [ ] Implement `createMeasurementWindow` as the sole schema owner and
+      `evaluateMeasurementSample` as a pure predicate over normalized
+      Actions/receipt evidence. Accept only complete production cycles with the
+      exact window fingerprint; classify platform outages as excluded with a
+      reason rather than eligible failures. No host-local counter is authority.
 - [ ] Run the focused tests; expect PASS only after every currently discovered
       test resolves exactly once.
 - [ ] Commit:
 
   ```bash
   node scripts/task-tracker/verify-develop.mjs
-  git add scripts/run-tests-lanes.mjs scripts/run-tests.mjs scripts/task-tracker/cloud-test-policy.json scripts/task-tracker/test-family-policy.json scripts/task-tracker/lib/cloud-test/test-family-policy.mjs scripts/task-tracker/lib/cloud-test/shard-partition.mjs scripts/task-tracker/tests/unit/core/run-tests-lanes.test.mjs scripts/task-tracker/tests/unit/lib/cloud-test/test-family-policy.test.mjs
+  git add scripts/run-tests-lanes.mjs scripts/run-tests.mjs scripts/task-tracker/cloud-test-policy.json scripts/task-tracker/test-family-policy.json scripts/task-tracker/lib/cloud-test/test-family-policy.mjs scripts/task-tracker/lib/cloud-test/measurement-window.mjs scripts/task-tracker/lib/cloud-test/shard-partition.mjs scripts/task-tracker/tests/unit/core/run-tests-lanes.test.mjs scripts/task-tracker/tests/unit/lib/cloud-test/test-family-policy.test.mjs scripts/task-tracker/tests/unit/lib/cloud-test/measurement-window.test.mjs
   git commit -m "feat(ci): add fixture-family shard policy"
   ```
 
@@ -902,13 +939,13 @@ the Slow width
 
 **Spec decomposition:** 17
 
-**Prerequisites:** Tasks 3, 13, and 15
+**Prerequisites:** Tasks 3, 6, 13, and 15
 
 **Files:**
 
-- Create: `scripts/task-tracker/lib/cloud-test/measurement-window.mjs`
+- Modify: `scripts/task-tracker/lib/cloud-test/measurement-window.mjs`
 - Create: `scripts/task-tracker/lib/cloud-test/integration-freeze.mjs`
-- Create: `scripts/task-tracker/tests/unit/lib/cloud-test/measurement-window.test.mjs`
+- Modify: `scripts/task-tracker/tests/unit/lib/cloud-test/measurement-window.test.mjs`
 - Create: `scripts/task-tracker/tests/unit/lib/cloud-test/integration-freeze.test.mjs`
 - Create: `scripts/task-tracker/tests/integration/lib/integration-freeze.integration.test.mjs`
 - Modify: `scripts/task-tracker/lib/github-records/capsule-chain.mjs`
@@ -925,13 +962,15 @@ the Slow width
 - [ ] Project an effective active freeze as assignment state
       `integration-frozen` with its capsule chain head. The capsule is append-first
       authority; the projection remains a repairable index.
-- [ ] Add measurement-window tests: frozen runner/width/family fingerprint;
-      accepted Actions/receipt samples only; target count 20; platform-outage
-      exclusions with reasons; queued performance changes; urgent
-      correctness/security reset.
-- [ ] Implement bootstrap expiry at 60 minutes below 20 samples. At/above 20,
-      use `clamp(2 * nearestRankP95Cycle, 30 minutes, 60 minutes)` where the
-      cycle includes refresh through merge readback.
+- [ ] Extend the Task 6 measurement-window tests only for queued performance
+      changes, urgent correctness/security reset, and `deriveFreezeExpiry`.
+      Reuse Task 6's record validator and sample-eligibility predicate; do not
+      redefine either schema or eligibility in the freeze implementation.
+- [ ] Extend `measurement-window.mjs` with `deriveFreezeExpiry`. Use the
+      60-minute bootstrap below 20 eligible samples. At or above 20, use
+      `clamp(2 * nearestRankP95Cycle, 30 minutes, 60 minutes)` where the cycle
+      includes refresh through merge readback. `integration-freeze.mjs` imports
+      that function and the Task 6 window owner.
 - [ ] Implement fairness: after red, cancellation, drift, or expiry, one
       already-eligible child may use the epic-branch lane before reacquisition.
 - [ ] Run the focused unit/integration tests and expect PASS.
