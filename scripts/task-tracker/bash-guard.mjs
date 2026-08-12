@@ -544,7 +544,7 @@ async function evaluate(input) {
   }
 
   // #769/#1212 — read the bound repo + assignee preference for the commit-time
-  // lock. Returning null lets tokenless chore commits pass, but attributed
+  // lock. Returning null lets token-less chore commits pass, but attributed
   // commits fail closed above because their ownership authority is unreadable.
   function readAssigneeCfg(root) {
     try {
