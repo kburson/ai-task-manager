@@ -168,7 +168,8 @@ While the epic remains in Develop:
 2. JIT planning refreshes the child against current trunk.
 3. Plan -> Develop assigns or verifies that child's exclusive owner.
 4. Sequential children are driven to Done before their successor is admitted.
-5. Independent children may enter an explicit parallel wave, each with its own owner and isolated worktree.
+5. Local child development and full-suite validation remain strictly sequential until the separately planned cloud CI test-automation story receives a task number, completes, and proves isolated exact-SHA verification.
+6. After that external prerequisite is complete, independent children may enter an explicit parallel wave only after dependency re-triage, with isolated worktrees, distinct owners, and one isolated cloud validation run per child.
 
 The epic cannot enter Test until every required child is Done or terminally closed with an accepted disposition. Shelving an epic does not silently cascade to children; every child transition remains explicit and auditable.
 
@@ -231,4 +232,5 @@ The architecture is complete only when tests prove:
 - Existing Assigned cards migrate to Backlog without losing assignees.
 - Historical Assigned evidence remains readable without being rewritten.
 - Epics stage children in R4P and admit dependency-ready sequential or explicit parallel work through JIT Plan.
+- Local story execution remains sequential until the external cloud CI automation story is complete and verified; its task number is intentionally pending.
 - Closed - Not Planned remains terminal and distinct from Shelve.
