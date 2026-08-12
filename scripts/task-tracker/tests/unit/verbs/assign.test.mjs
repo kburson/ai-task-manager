@@ -113,7 +113,7 @@ test('assign treats a thrown add with a matching read-back as ambiguous and neve
   });
   assert.equal(result.status, 'assignment-ambiguous');
   assert.deepEqual(h.mutations, [{ action: 'add', login: 'alice' }]);
-  assert.equal(h.audits.length, 0);
+  assert.equal(h.audits.length, 1, 'durable intent precedes any ownership mutation');
 });
 
 test('assign never destructively compensates a successful but provenance-ambiguous add', async () => {
@@ -151,7 +151,25 @@ test('transfer does not destructively compensate after the prior owner was remov
     { action: 'add', login: 'bob' },
     { action: 'remove', login: 'alice' },
   ]);
-  assert.deepEqual(h.audits, []);
+  assert.equal(h.audits.length, 1, 'durable transfer intent survives a refused postcondition');
+});
+
+test('assign never mutates when the durable audit reservation fails', async () => {
+  const h = harness([{ state: 'plan', assignees: [] }]);
+  h.deps.postAudit = async () => {
+    throw new Error('comment transport unavailable');
+  };
+  await assert.rejects(
+    runAssign({
+      issueNumber: 1212,
+      cfg,
+      target: 'alice',
+      currentUser: 'alice',
+      deps: h.deps,
+    }),
+    /comment transport unavailable/
+  );
+  assert.deepEqual(h.mutations, []);
 });
 
 test('assign is idempotent for the requested singleton owner', async () => {

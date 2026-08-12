@@ -31,10 +31,11 @@ async function defaultMutateAssignee({ issueNumber, repo, action, login }) {
 
 export function formatOwnershipAudit({ issueNumber, from, to, state }) {
   return [
-    '### Story ownership changed',
+    '### Story ownership transaction',
     '',
-    `Issue #${issueNumber} ownership changed from ${from ? `@${from}` : 'unassigned'} to @${to}.`,
+    `Requested ownership change for #${issueNumber} from ${from ? `@${from}` : 'unassigned'} to @${to}.`,
     `Lifecycle Status remained \`${state}\`.`,
+    'This durable intent is recorded before mutation; AITM accepts success only after exact read-back.',
     '',
     `<!-- aitm-ownership-change from="${from || 'unassigned'}" to="${to}" -->`,
   ].join('\n');
@@ -94,6 +95,17 @@ export async function runAssign({
     if (prior === login) {
       return { status: 'already-assigned', state: before.state, assignees: owners };
     }
+
+    // Reserve durable audit provenance before the first irreversible GitHub
+    // mutation. If the comment write fails, ownership is untouched. If a
+    // later mutation/read-back fails, the record truthfully remains an attempt.
+    await runtime.postAudit({
+      issueNumber,
+      repo: cfg.repo,
+      from: prior,
+      to: login,
+      state: before.state,
+    });
 
     let addError = null;
     try {
@@ -183,23 +195,8 @@ export async function runAssign({
           assignees: canonicalLogins(afterTransfer.assignees),
         };
       }
-      await runtime.postAudit({
-        issueNumber,
-        repo: cfg.repo,
-        from: prior,
-        to: login,
-        state: before.state,
-      });
       return { status: 'transferred', state: before.state, assignees: [login] };
     }
-
-    await runtime.postAudit({
-      issueNumber,
-      repo: cfg.repo,
-      from: null,
-      to: login,
-      state: before.state,
-    });
     return { status: 'assigned', state: before.state, assignees: [login] };
   });
 }

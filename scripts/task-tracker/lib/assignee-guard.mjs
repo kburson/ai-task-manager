@@ -20,6 +20,7 @@ import { gql, splitRepo } from '../../gh/lib/github-projects.mjs';
 import { GH_API_TIMEOUT_MS } from './process-timeouts.mjs';
 import { ISSUE_ID_GLOBAL_RE } from './commit-attribution-format.mjs';
 import { ownershipDecision } from './ownership-policy.mjs';
+import { fetchAssignmentSnapshot } from './assignment-snapshot.mjs';
 
 const pexec = promisify(execFile);
 
@@ -71,6 +72,7 @@ export async function checkAssigneeMatch({ issueNumber, cfg, state = 'develop', 
   if (!cfg) throw new Error('checkAssigneeMatch: cfg is required');
 
   const fetchAssignees = deps.fetchAssignees || defaultFetchAssignees;
+  const fetchSnapshot = deps.fetchSnapshot || fetchAssignmentSnapshot;
   const fetchCurrentUser = deps.fetchCurrentUser || defaultFetchCurrentUser;
   const cache = deps.cache || {};
 
@@ -81,9 +83,15 @@ export async function checkAssigneeMatch({ issueNumber, cfg, state = 'develop', 
   }
   currentUser = String(currentUser || '').toLowerCase();
 
-  const assignees = (await fetchAssignees({ issueNumber, repo: cfg.repo })) || [];
+  // Production callers resolve lifecycle Status and assignees from one GraphQL
+  // response.  The legacy fetchAssignees seam remains only for focused tests
+  // and explicitly injected compatibility callers.
+  const snapshot = deps.fetchAssignees
+    ? { state, assignees: (await fetchAssignees({ issueNumber, repo: cfg.repo })) || [] }
+    : await fetchSnapshot({ issueNumber, cfg });
+  const assignees = snapshot.assignees;
   const decision = ownershipDecision({
-    state,
+    state: snapshot.state || state,
     assignees,
     currentUser,
     mode: 'interactive',

@@ -74,7 +74,13 @@ if (argv[0] === 'api' && argv[1] === 'user') {
 }
 if (argv[0] === 'api' && argv[1] === 'graphql') {
   if (stdinBody.includes('assignees')) {
-    process.stdout.write(JSON.stringify({ data: { repository: { issue: { assignees: { nodes: ${JSON.stringify(assigneeNodes)} } } } } }));
+    process.stdout.write(JSON.stringify({ data: { repository: { issue: {
+      assignees: { nodes: ${JSON.stringify(assigneeNodes)} },
+      projectItems: {
+        nodes: [{ id: 'PVTI', project: { id: 'PVT_test' }, fieldValueByName: { optionId: 'OPT_dev', name: 'Develop' } }],
+        pageInfo: { hasNextPage: false, endCursor: null }
+      }
+    } } } }));
     process.exit(0);
   }
   process.stdout.write(JSON.stringify({ data: { repository: { issue: { id: 'ISS', body: '', projectItems: { nodes: [{ id: 'PVTI', project: { id: 'PVT_test' }, fieldValueByName: { optionId: 'OPT_dev', name: 'Develop' } }] }, comments: { nodes: [] }, subIssues: { nodes: [] }, parent: null } } } }));

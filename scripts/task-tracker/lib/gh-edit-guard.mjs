@@ -561,6 +561,24 @@ export function checkBodyChange({ newBody, currentBody, issueNumber, currentStat
 // fail-open. The diff logic survives, exercised via `mutateIssueBody`, in the
 // exported `checkBodyChange`.)
 export function evaluateGhEdit({ command }) {
+  return evaluateGhEditRecursive(command, 0);
+}
+
+function evaluateGhEditRecursive(command, nestedDepth) {
+  // Shell wrappers are not an ownership escape hatch. Inspect the exact `-c`
+  // payload recursively before evaluating the outer command.
+  if (nestedDepth < 4) {
+    for (const segment of splitCommandSegments(command)) {
+      const words = shellWords(segment);
+      const shellIndex = words.findIndex((word) => /(?:^|\/)(?:sh|bash|zsh)$/.test(word));
+      if (shellIndex < 0) continue;
+      const commandIndex = words.indexOf('-c', shellIndex + 1);
+      const payload = commandIndex < 0 ? null : words[commandIndex + 1];
+      if (!payload) continue;
+      const nested = evaluateGhEditRecursive(payload, nestedDepth + 1);
+      if (nested.block) return nested;
+    }
+  }
   // #1212 — direct assignee mutation is an ownership-state bypass. It skips
   // the issue lock, lifecycle-aware preconditions, exact-singleton read-back,
   // transfer provenance, and audit comment enforced by the governed verbs.
@@ -602,16 +620,17 @@ export function evaluateGhEdit({ command }) {
     const assigneeField = args.some((arg) =>
       /^(?:-f|--field|-F|--raw-field)=?assignees(?:\[\])?=/i.test(arg)
     );
+    const opaqueInput = API_INPUT_RE.test(segment);
     if (
-      !match ||
       (!writeMethod && !ISSUE_API_PATCH_METHOD_RE.test(segment)) ||
-      (!assigneeField && !API_ASSIGNEE_FIELD_RE.test(segment) && !API_INPUT_RE.test(segment))
+      (!assigneeField && !API_ASSIGNEE_FIELD_RE.test(segment) && !opaqueInput)
     )
       continue;
+    if (!match && !opaqueInput) continue;
     return {
       block: true,
       reason:
-        `Direct REST ownership mutation on #${Number(match[1])} is forbidden.\n` +
+        `Direct REST ownership mutation${match ? ` on #${Number(match[1])}` : ' through an opaque endpoint/input'} is forbidden.\n` +
         `  Use the governed ownership verbs (\`npx aitm assign\`, \`transfer\`, or \`unassign\`) so the issue lock, lifecycle policy, audit, and exact read-back all run.`,
     };
   }
@@ -620,7 +639,13 @@ export function evaluateGhEdit({ command }) {
     const args = ghArgs(segment);
     if (!args || !args.includes('api') || !args.includes('graphql')) continue;
     const hasOpaqueInput = args.some((arg) => arg === '--input' || arg.startsWith('--input='));
-    if (!hasOpaqueInput && !GRAPHQL_ASSIGNEE_MUTATION_RE.test(segment)) continue;
+    const hasOpaqueQueryFile = args.some(
+      (arg, index) =>
+        /^(?:query=)?@/.test(arg) &&
+        (index === 0 || ['-f', '-F', '--field', '--raw-field'].includes(args[index - 1]))
+    );
+    if (!hasOpaqueInput && !hasOpaqueQueryFile && !GRAPHQL_ASSIGNEE_MUTATION_RE.test(segment))
+      continue;
     return {
       block: true,
       reason:

@@ -25,10 +25,11 @@ async function defaultMutateAssignee({ issueNumber, repo, action, login }) {
 
 async function defaultPostAudit({ issueNumber, repo, from, state }) {
   const body = [
-    '### Story ownership removed',
+    '### Story ownership transaction',
     '',
-    `Issue #${issueNumber} was unassigned from @${from}.`,
+    `Requested removal of #${issueNumber} ownership from @${from}.`,
     `Lifecycle Status remained \`${state}\`.`,
+    'This durable intent is recorded before mutation; AITM accepts success only after exact read-back.',
     '',
     `<!-- aitm-ownership-change from="${from}" to="unassigned" -->`,
   ].join('\n');
@@ -75,6 +76,16 @@ export async function runUnassign({ issueNumber, cfg, currentUser, deps = {} } =
     if (owners.length === 0) return { status: 'already-unassigned', state: before.state };
     if (owners.length > 1) return { status: 'multiple-owners-refused', assignees: owners };
     if (owners[0] !== actor) return { status: 'foreign-owner-refused', assignees: owners };
+
+    // Audit intent is the transaction's durable first write. A failed audit
+    // leaves ownership unchanged; a failed mutation leaves a truthful attempt.
+    await postAudit({
+      issueNumber,
+      repo: cfg.repo,
+      from: actor,
+      to: null,
+      state: before.state,
+    });
 
     let removeError = null;
     try {
@@ -131,13 +142,6 @@ export async function runUnassign({ issueNumber, cfg, currentUser, deps = {} } =
     if (finalOwners.length !== 0) {
       return { status: 'postcondition-refused', state: after.state, assignees: finalOwners };
     }
-    await postAudit({
-      issueNumber,
-      repo: cfg.repo,
-      from: actor,
-      to: null,
-      state: before.state,
-    });
     return { status: 'unassigned', state: before.state, assignees: [] };
   });
 }

@@ -101,7 +101,7 @@ test('unassign treats a thrown removal with empty read-back as ambiguous, not su
     { action: 'remove', login: 'alice' },
     { action: 'add', login: 'alice' },
   ]);
-  assert.equal(h.audits.length, 0);
+  assert.equal(h.audits.length, 1, 'durable intent precedes assignee removal');
 });
 
 test('unassign fails closed when Status changes around the ownership mutation', async () => {
@@ -121,5 +121,17 @@ test('unassign fails closed when Status changes around the ownership mutation', 
     { action: 'remove', login: 'alice' },
     { action: 'add', login: 'alice' },
   ]);
-  assert.equal(h.audits.length, 0);
+  assert.equal(h.audits.length, 1, 'durable intent remains truthful when restoration is needed');
+});
+
+test('unassign never mutates when the durable audit reservation fails', async () => {
+  const h = harness([{ state: 'plan', assignees: ['alice'] }]);
+  h.deps.postAudit = async () => {
+    throw new Error('comment transport unavailable');
+  };
+  await assert.rejects(
+    runUnassign({ issueNumber: 1212, cfg, currentUser: 'alice', deps: h.deps }),
+    /comment transport unavailable/
+  );
+  assert.deepEqual(h.mutations, []);
 });

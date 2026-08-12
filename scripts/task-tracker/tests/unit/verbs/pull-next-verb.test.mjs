@@ -110,6 +110,10 @@ So that JIT planning can continue
 - [ ] Selected child reaches Plan
 `;
   deps.promoteDeps = {
+    preflightDeps: {
+      fetchSnapshot: async () => ({ state: 'refine', assignees: [] }),
+      fetchCurrentUser: async () => 'alice',
+    },
     // This models the active epic bind that rejects a direct child promote.
     // pull-next must replace it only for its already-selected child.
     assertBound: (issueNumber) => {

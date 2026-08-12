@@ -758,6 +758,18 @@ const _isMain = (() => {
 
 if (_isMain) {
   const { loadConfig } = await import('../config.mjs');
+  const { loadState } = await import('../state.mjs');
+  const { statePath } = await import('../paths.mjs');
+  const { preflightVerb } = await import('../lib/verb-preflight.mjs');
   const cfg = loadConfig();
+  const target = parseArgs(process.argv.slice(2)).issueNumber;
+  const sp = statePath();
+  await preflightVerb({
+    stateBefore: loadState(sp),
+    statePath: sp,
+    target: target ? `#${target}` : undefined,
+    cfg,
+    verb: 'promote',
+  });
   await verbPromote(process.argv.slice(2), cfg);
 }

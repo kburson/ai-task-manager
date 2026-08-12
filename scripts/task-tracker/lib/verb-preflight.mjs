@@ -32,6 +32,7 @@ import { gql, splitRepo } from '../../gh/lib/github-projects.mjs';
 import { readLastKnownState } from '../gh-timing-comment.mjs';
 import { saveState } from '../state.mjs';
 import { GH_API_TIMEOUT_MS } from './process-timeouts.mjs';
+import { fetchAssignmentSnapshot } from './assignment-snapshot.mjs';
 import {
   checkAssigneeMatch,
   formatAssigneeRefusal,
@@ -143,16 +144,6 @@ export async function runPreflight({
     deps.fetchLastStatusActor || ((a) => defaultFetchLastStatusActor({ ...a, exec: execFn }));
 
   let live = '';
-  try {
-    live = await fetchLive({
-      repo: cfg.repo,
-      projectId: cfg.projectId,
-      issueNumber: issueForReconcile,
-    });
-  } catch {
-    live = '';
-  }
-  live = normalizeStateId(live) || '';
 
   // #1212: assignment is orthogonal to lifecycle Status. Zero owners are
   // valid through Plan; foreign or multiple owners always refuse; Develop+
@@ -161,12 +152,28 @@ export async function runPreflight({
   if (gateAssignee && !ownershipManagement) {
     let assigneeVerdict;
     try {
+      const snapshot = deps.fetchSnapshot
+        ? await deps.fetchSnapshot({ issueNumber: issueForReconcile, cfg })
+        : deps.fetchLive || deps.fetchAssignees
+          ? {
+              state: await fetchLive({
+                repo: cfg.repo,
+                projectId: cfg.projectId,
+                issueNumber: issueForReconcile,
+              }),
+              assignees: await (deps.fetchAssignees || (async () => []))({
+                issueNumber: issueForReconcile,
+                repo: cfg.repo,
+              }),
+            }
+          : await fetchAssignmentSnapshot({ issueNumber: issueForReconcile, cfg });
+      live = normalizeStateId(snapshot.state) || '';
       assigneeVerdict = await checkAssigneeMatch({
         issueNumber: issueForReconcile,
         cfg,
         state: live || 'unknown',
         deps: {
-          fetchAssignees: deps.fetchAssignees,
+          fetchAssignees: async () => snapshot.assignees,
           fetchCurrentUser: deps.fetchCurrentUser,
           cache: deps.assigneeCache,
         },
@@ -193,6 +200,17 @@ export async function runPreflight({
         issueNumber: issueForReconcile,
       };
     }
+  } else {
+    try {
+      live = await fetchLive({
+        repo: cfg.repo,
+        projectId: cfg.projectId,
+        issueNumber: issueForReconcile,
+      });
+    } catch {
+      live = '';
+    }
+    live = normalizeStateId(live) || '';
   }
 
   if (ownershipOnly) {

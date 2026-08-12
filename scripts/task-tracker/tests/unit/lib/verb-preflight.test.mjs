@@ -111,6 +111,29 @@ function depsOf({
   assert.equal(v.changed, false);
 }
 
+// 3c. Production preflight consumes one atomic Status+assignee snapshot and
+// never calls the split live/assignee readers.
+{
+  let snapshots = 0;
+  const v = await runPreflight({
+    stateBefore: { active: '#1212' },
+    target: '#1212',
+    cfg: CFG,
+    deps: {
+      fetchSnapshot: async () => {
+        snapshots += 1;
+        return { state: 'develop', assignees: ['kburson'] };
+      },
+      fetchLive: async () => assert.fail('split Status read must not run'),
+      fetchAssignees: async () => assert.fail('split assignee read must not run'),
+      fetchCurrentUser: async () => 'kburson',
+      fetchLastKnownState: async () => 'develop',
+    },
+  });
+  assert.equal(v.ok, true);
+  assert.equal(snapshots, 1);
+}
+
 // 4. Marker absent (fresh issue, never moved) — ok, unchanged.
 {
   const v = await runPreflight({

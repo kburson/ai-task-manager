@@ -89,6 +89,7 @@ export const PREFLIGHT_MODE = {
   discover: 'active-only',
   new: 'active-only',
   'split-plan': 'target-required',
+  'pull-next': 'target-required',
   promote: 'target-required',
   next: 'target-required',
   refine: 'target-required',

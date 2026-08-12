@@ -27,6 +27,7 @@ import { runMoveInvariantAudit } from '../lib/verify-move-invariants.mjs';
 import { buildContext } from '../runtime.mjs';
 import { verbClose } from './close.mjs';
 import { resolveProjectDir } from '../lib/project-dir.mjs';
+import { runPreflight } from '../lib/verb-preflight.mjs';
 
 async function defaultGetLiveState({ issueNumber, cfg }) {
   const { owner, repoName } = splitRepo(cfg.repo);
@@ -73,6 +74,7 @@ export async function promoteSelectedChild({
   projectDir,
   promoteDeps = {},
   promoteVerb = verbPromote,
+  ownershipPreflight = runPreflight,
 } = {}) {
   const selectedIssueNumber = Number(issueNumber);
   if (!Number.isSafeInteger(selectedIssueNumber) || selectedIssueNumber <= 0) {
@@ -94,6 +96,19 @@ export async function promoteSelectedChild({
       );
     }
   };
+
+  const ownership = await ownershipPreflight({
+    stateBefore: { active: `#${selectedIssueNumber}` },
+    target: `#${selectedIssueNumber}`,
+    cfg,
+    ownershipOnly: true,
+    deps: promoteDeps.preflightDeps || {},
+  });
+  if (!ownership.ok) {
+    throw new Error(
+      `pull-next ownership preflight refused #${selectedIssueNumber}: ${ownership.assigneeKind || ownership.kind}`
+    );
+  }
 
   return promoteVerb([String(selectedIssueNumber)], cfg, {
     ...promoteDeps,

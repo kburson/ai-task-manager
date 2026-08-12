@@ -365,7 +365,7 @@ async function evaluate(input) {
   // the resolved `projectRoot`/`configPath`. Any block() short-circuits with
   // exit 0; ownership verification is fail-closed for attributed commits.
   async function checkCommitAssigneeLock({ command: rawCommand, projectRoot: root }) {
-    const rawSegments = splitCommandSegments(rawCommand);
+    const rawSegments = expandNestedShellSegments(rawCommand);
     const commits = [];
     for (let index = 0; index < rawSegments.length; index += 1) {
       const parsed = parseGitCommitSegment(rawSegments[index]);
@@ -389,6 +389,12 @@ async function evaluate(input) {
     };
     for (const { index, args } of commits) {
       const segment = rawSegments[index] || '';
+      if (hasDynamicCommitMessage(args)) {
+        block(
+          'Refusing git commit: the final message contains shell expansion and cannot be inspected before execution.\n' +
+            '  Use a literal `-m` message, a readable `-F <file>`, or an un-attributed literal chore message.'
+        );
+      }
       addRefs(segment);
       for (const messagePath of commitMessageFiles(args)) {
         if (messagePath === '-') {
@@ -475,6 +481,37 @@ async function evaluate(input) {
       if (!token.startsWith('-')) return false;
       if (['-c', '-C', '--git-dir', '--work-tree', '--namespace'].includes(token)) index += 2;
       else index += 1;
+    }
+    return false;
+  }
+
+  function expandNestedShellSegments(command, depth = 0) {
+    const segments = splitCommandSegments(command);
+    if (depth >= 4) return segments;
+    const expanded = [...segments];
+    for (const segment of segments) {
+      const words = shellWords(segment);
+      const shellIndex = words.findIndex((word) => /(?:^|\/)(?:sh|bash|zsh)$/.test(word));
+      if (shellIndex < 0) continue;
+      const commandIndex = words.indexOf('-c', shellIndex + 1);
+      const payload = commandIndex < 0 ? null : words[commandIndex + 1];
+      if (payload) expanded.push(...expandNestedShellSegments(payload, depth + 1));
+    }
+    return expanded;
+  }
+
+  function hasDynamicCommitMessage(args) {
+    for (let index = 0; index < args.length; index += 1) {
+      const arg = args[index];
+      const value =
+        arg === '-m' || arg === '--message'
+          ? args[index + 1]
+          : arg.startsWith('--message=')
+            ? arg.slice('--message='.length)
+            : arg.startsWith('-m') && arg.length > 2
+              ? arg.slice(2)
+              : null;
+      if (value != null && /\$\{|\$[A-Za-z_(]|`/.test(value)) return true;
     }
     return false;
   }

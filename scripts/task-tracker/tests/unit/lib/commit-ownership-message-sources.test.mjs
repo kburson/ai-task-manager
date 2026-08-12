@@ -107,3 +107,19 @@ test('indirect tokenless chore message remains the explicit escape hatch', () =>
     fixture.cleanup();
   }
 });
+
+test('dynamic and nested commit messages cannot bypass attribution inspection', () => {
+  const fixture = makeFixture();
+  try {
+    for (const command of [
+      'MSG="[#1212] hidden"; git commit -m "$MSG"',
+      'sh -c \'git commit -m "[#1212] nested"\'',
+    ]) {
+      const { payload } = runGuard(fixture, command);
+      assert.equal(payload.decision, 'block', `must inspect or refuse: ${command}`);
+      assert.match(payload.reason, /ownership|shell expansion/i);
+    }
+  } finally {
+    fixture.cleanup();
+  }
+});

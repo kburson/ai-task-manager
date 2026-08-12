@@ -339,6 +339,9 @@ test('raw gh assignee edits are refused in favor of governed ownership verbs', (
     "gh api graphql -f 'query=mutation { updateIssue(input:$input) { issue { id } } }' -F 'input[assigneeIds][]=U_1'",
     'gh api graphql -f \'query=mutation { addAssigneesToAssignable(input:{assignableId:"I",assigneeIds:["U"]}) { clientMutationId } }\'',
     'gh api graphql --input .tmp/ownership-mutation.json',
+    'gh api graphql -F query=@.tmp/ownership-mutation.graphql',
+    "sh -c 'gh issue edit 1212 --add-assignee bob'",
+    'gh api -X PATCH "$ISSUE_ENDPOINT" --input=.tmp/assignees.json',
   ]) {
     const result = evaluateGhEdit({ command });
     assert.equal(result.block, true);
