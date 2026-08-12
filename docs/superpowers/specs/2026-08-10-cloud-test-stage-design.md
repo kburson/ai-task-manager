@@ -2,7 +2,7 @@
 
 **Date:** 2026-08-10 (revised 2026-08-11)
 
-**Status:** Revised after Codex and two Claude design reviews; pending Claude re-review
+**Status:** Revised after Codex and three Claude design reviews; pending Claude re-review
 
 **Branch:** `cloud-test-automation`
 
@@ -41,10 +41,10 @@ The design has four independent controls:
 1. **Fast Develop feedback.** A worker runs bounded affected tests only.
    Healthy verification finishes within 180 seconds and must not exceed 300
    seconds; complete-lane escalation is deferred to cloud Test.
-2. **Cloud Test validation.** Quality, unit, integration, and slow validation
-   fan out to independent GitHub-hosted VMs for the same head SHA. Stable native
-   gate jobs converge their results. Every execution job has a ten-minute hard
-   ceiling.
+2. **Cloud Test validation.** Quality, two fixture-family Fast shards, and Slow
+   validation fan out to independent GitHub-hosted VMs for the same head SHA.
+   Stable native policy gates converge their results. Every execution job has a
+   ten-minute hard ceiling.
 3. **Local resource admission.** All local orchestrators collectively admit at
    most six concurrent local worker agents for this repository on one physical
    host. Orchestrators do not consume those slots. Additional workers use
@@ -125,8 +125,9 @@ check.
   shared fixtures, and smoke-test substitutions require separately reviewed
   changes with equivalent risk coverage.
 - No unconditional rewrite of the test runner's subprocess parallel-safety.
-  Weighted pooling remains tracked by #1208, but becomes a rollout prerequisite
-  when baseline GitHub-runner measurements cannot satisfy the budgets below.
+  Weighted pooling remains tracked by #1208. Fixture-family sharding is an
+  independent way to reduce per-VM aggregate work; measurement promotes #1208
+  to a rollout prerequisite only if the sharded baseline still misses budget.
 
 ## Time and Capacity Budgets
 
@@ -177,16 +178,34 @@ repository code cannot control it.
 
 The existing runner ceiling is insufficient for this contract: its default is
 600 seconds **per non-empty execution section**, so a pooled section followed by
-a serial section can consume nearly 1,200 seconds. CI therefore supplies lower
-lane-specific section ceilings and an outer repository-phase budget:
+a serial section can consume nearly 1,200 seconds. The prior 120-second
+provisional values are also disproved by the only current timing artifact:
 
-| Boundary                                  | Provisional limit | Purpose                                            |
+| Local fast-lane population | Files | Aggregate file wall | Phase contribution |
+| -------------------------- | ----: | ------------------: | -----------------: |
+| Pool-eligible unit         |   721 |            798.241s |            96.562s |
+| Serial unit                |   100 |            131.486s |          ~131.486s |
+| Integration                |    24 |              8.774s |            ~8.774s |
+| Slow                       |    50 |          unmeasured |         unmeasured |
+
+`poolConcurrency(4)` is three because the runner reserves one vCPU. An unsplit
+Unit executor therefore has an optimistic pooled floor of `798.241 / 3 =
+266.080s` before GitHub-runner penalty. Instead, the initial policy divides the
+pool aggregate approximately evenly across two fixture-family Fast shards:
+about 399 seconds of aggregate pool work, with an optimistic 133-second floor,
+per shard. Serial unit families are divided between the shards and the 8.774
+seconds of Integration work joins one shard.
+
+CI uses section-specific budget policy rather than the existing single-value
+environment override, which cannot express different pooled and serial limits:
+
+| Boundary                                  | Provisional limit | Derivation                                         |
 | ----------------------------------------- | ----------------: | -------------------------------------------------- |
-| GitHub execution-job hard stop            |              600s | Last-resort platform containment                   |
+| GitHub execution-job hard stop            |              600s | Fixed last-resort platform containment             |
 | Repository-controlled phase soft envelope |              480s | Fails with the active named phase before hard stop |
-| Unit pooled or serial section             |              120s | `AITM_TEST_CEILING_MS=120000`                      |
-| Integration serial section                |              120s | `AITM_TEST_CEILING_MS=120000`                      |
-| Slow serial section                       |              420s | `AITM_TEST_CEILING_MS=420000`                      |
+| Fast-shard pooled section                 |              210s | 133s floor plus ~58% runner/imbalance headroom     |
+| Fast-shard serial section                 |              150s | ~70s balanced share plus >100% headroom            |
+| Slow serial section                       |              420s | Unmeasured; must be replaced by spike evidence     |
 
 The 480-second envelope begins before `npm ci` and includes dependency install,
 repository quality or test commands, clean-worktree checks, and diagnostic
@@ -199,20 +218,20 @@ a last-resort `ci-hard-timeout`, not the normal signal for test growth.
 These internal values are provisional until a measurement spike runs each job
 at least five times on the selected GitHub-hosted runner profile. It records
 cold and warm cache behavior, p50 and p95 checkout, setup, `npm ci`, quality,
-pooled-unit, serial-unit, integration, slow, cleanup, artifact, and Stage 2 gate
-times. The spike must prove p95 repository work fits its 480-second envelope and
-p95 total execution-job time is at most 540 seconds, leaving 60 seconds before
-the hard stop. If unit or integration cannot meet 120 seconds, or slow cannot
-meet 420 seconds, test consolidation, fixture reuse, or #1208 becomes a
-prerequisite; the 600-second hard stop is not relaxed.
+each Fast shard's pooled and serial sections, slow, cleanup, artifact, and Stage
+2 gate times. The spike must prove p95 repository work fits its 480-second
+envelope and p95 total execution-job time is at most 540 seconds, leaving 60
+seconds before the hard stop. If a Fast shard cannot meet 210/150 seconds, or
+Slow cannot meet 420 seconds, the response is fixture rebalancing, another
+measured shard, test consolidation, or #1208—not a higher hard stop.
 
-Quality, unit, integration, and slow execution start concurrently. Keeping
-integration in its own job spends another runner slot but removes its serial
-cost from the unit/quality critical path. This design deliberately chooses
-lower head-of-line PR latency over the higher whole-repository PR concurrency
-of a two-job layout. Slow-impact selection belongs only to slow executors,
-before dependency installation or slow-test execution; it never delays quality,
-unit, or integration feedback and never enters the Develop loop.
+Quality, both Fast shards, and Slow execution start concurrently. A dedicated
+Integration executor would remove only 8.774 seconds from the critical path
+while consuming a full heavy-runner slot. Folding that family into one Fast
+shard and spending the same slot on half of the 798.241 seconds of pool-eligible
+unit work is the material latency optimization. Slow-impact selection belongs
+only to Slow executors, before dependency installation or slow-test execution;
+it never delays Quality or Fast feedback and never enters the Develop loop.
 
 ### Local worker budget
 
@@ -375,9 +394,10 @@ The v2 payload contains at least:
 - native job/check IDs, names, statuses, conclusions, and required step
   conclusions;
 - expected runner labels, `linux-x64`, and Node 22 policy;
-- lockfile, verification-config, CI-policy, and shard-policy fingerprints;
-- the Quality, Unit, Integration, and Slow executor/shard identities and their
-  stable Stage 2 gate conclusions;
+- lockfile, verification-config, CI-policy, and fixture-family policy
+  fingerprints;
+- the Quality, Fast-shard, and Slow executor identities, the head-specific
+  family-resolution digest, and their stable Stage 2 gate conclusions;
 - any Develop cloud-escalation reasons and required lanes, plus evidence that
   each obligation was satisfied by a complete native job for the same head;
 - the five classifications `lint-full`, `format-full`, `test-unit`,
@@ -407,8 +427,9 @@ CI policy rather than the orchestrator's local machine:
 - run attempt and job/check IDs must exist in the fetched Actions run;
 - all required executors, shards, gates, and steps must have acceptable native
   conclusions;
-- discovered tests must be covered exactly once by the accepted shard-policy
-  fingerprint, with no missing or duplicate shard;
+- every discovered test must resolve through the accepted fixture-family policy
+  to exactly one shard, with no missing or duplicate assignment in the
+  head-specific resolution digest;
 - lockfile, verification config, and CI policy hashes must match the tested
   head and target-base policy;
 - every lane named by `develop-cloud-escalation` must have a successful native
@@ -463,9 +484,10 @@ Stage 1 fans out four execution jobs immediately for the exact same PR head:
 
 1. **Quality** runs format, lint, memory-index parity, and its clean-worktree
    check.
-2. **Unit** runs `npm run test:unit` and its clean-worktree check.
-3. **Integration** runs `npm run test:integration` and its clean-worktree
-   check.
+2. **Fast shard A** runs its assigned pool-eligible and serial unit fixture
+   families and its clean-worktree check.
+3. **Fast shard B** runs the remaining unit fixture families, the Integration
+   family, and its clean-worktree check.
 4. **Slow** evaluates slow impact and normally runs `npm run test:slow` before
    its clean-worktree check.
 
@@ -476,15 +498,19 @@ Jobs do not share a mutable workspace or `node_modules` artifact. Repeating
 deterministic setup costs runner minutes but preserves isolation and avoids
 trusting files produced by another validation VM.
 
-Stage 2 contains two short native aggregation jobs. `Fast lane (format, lint,
-unit)` remains the required fast context for ruleset compatibility and depends
-on successful Quality, Unit, and Integration results. The new required slow
-context is `Slow validation policy` and depends on the Slow result. Both gates
-run with `if: always()`, fail unless every required dependency has an acceptable
-native conclusion, and receive no write permission. They are native Actions
-jobs, not custom Checks API publishers. Receipt acceptance independently
-validates every underlying execution job and cannot rely only on the aggregate
-gate's conclusion.
+Stage 2 contains two short native aggregation jobs. `Fast validation policy`
+depends on Quality and both Fast shards. `Slow validation policy` depends on
+Slow. Both gates run with `if: always()` so they still report a required context
+after an upstream failure, but their pass predicate is explicit: every expected
+`needs.<job>.result` must equal `success`. `failure`, `cancelled`, or `skipped`
+is non-passing. An authorized no-slow-impact result is represented by a
+successful Slow executor after classification; the executor itself is never
+skipped.
+
+The gates receive no write permission. They are native Actions jobs, not custom
+Checks API publishers. Receipt acceptance independently validates every
+underlying execution job and cannot rely only on the aggregate gate's
+conclusion.
 
 Each gate uses `timeout-minutes: 2` and performs no checkout, dependency setup,
 or repository execution. Its only work is to evaluate the native dependency
@@ -494,18 +520,22 @@ of the head-of-line cycle and must be included in the measurement spike.
 ### Timing-balanced sharding
 
 The four-executor topology is the initial deployment, not a permanent maximum.
-After the measurement spike, Unit, Integration, or Slow may expand into a
-fixed-size matrix of timing-balanced shards. Every shard receives the same head
-SHA, runner policy, Node version, lockfile, and lane manifest. The checked-in
-shard policy assigns every discovered test exactly once and is fingerprinted in
-the receipt.
+After the measurement spike, Fast or Slow may expand into a fixed-size matrix
+of timing-balanced shards. Every shard receives the same head SHA, runner
+policy, Node version, lockfile, and lane manifest.
 
-Shards align to fixture families rather than arbitrary equal file counts. Tests
-that can share one expensive repository, sandbox, or process fixture stay in
-one shard and reuse that setup; independent fixture families move to different
-VMs. Shard counts increase only when measured critical-path reduction exceeds
-the extra checkout, setup, and queue cost. Stable Stage 2 gate names insulate
-rulesets from matrix width changes.
+The checked-in policy maps fixture-family patterns to shard identities; it does
+not enumerate individual test files. Every discovered test must resolve to
+exactly one family, and every family must resolve to exactly one shard. A new
+test inherits its family's shard without changing the policy fingerprint. The
+receipt binds both the stable family-policy hash and a head-specific resolution
+digest proving exactly-once coverage for the tested tree.
+
+Tests that can share one expensive repository, sandbox, or process fixture stay
+in one family and reuse that setup; independent fixture families move to
+different VMs. Shard counts increase only when measured critical-path reduction
+exceeds the extra checkout, setup, and queue cost. Stable Stage 2 gate names
+insulate rulesets from matrix width changes.
 
 ### Slow-impact authority
 
@@ -608,9 +638,12 @@ for:
 - `trunk`; and
 - `feature/epic/*` integration branches.
 
-Ruleset changes and workflow changes are deployed in an order that never leaves
-a required context absent: emit the stable contexts first, observe them on a
-canary PR, add requirements, then remove any obsolete policy.
+The existing `Fast lane (format, lint, unit)` context is not retained as the
+permanent name because it becomes a no-execution aggregate and also covers
+Integration. The workflow first emits both `Fast validation policy` and
+`Slow validation policy` on a canary PR. Rulesets then require both new contexts
+with strict mode before the obsolete Fast context is removed. The paired rename
+never leaves a protected branch without a fast requirement.
 
 GitHub-hosted concurrency is finite. At the current 20-standard-job ceiling,
 the initial four-executor topology can run Stage 1 for at most five PRs with no
@@ -623,8 +656,11 @@ their measured latency improvement justifies that trade-off.
 Slow execution is normal, so capacity planning counts its executor or shards
 for every non-documentation PR. A ten-PR execution claim would require at least
 40 simultaneous heavy-job slots under the initial topology, not the current 20.
-If demand persistently exceeds hosted capacity, increasing runner capacity is a
-separate operational decision, not a reason to weaken validation.
+GitHub Pro raises the standard hosted-job ceiling from 20 to 40. With four
+executors, that permits ten Stage 1 validations at the hard maximum; an
+operational target of nine leaves four slots for gates and background work.
+Plan upgrade, a GitHub Support concurrency increase, or additional runner
+capacity are explicit scaling options—not reasons to weaken validation.
 
 ## Delivery Throughput Model
 
@@ -652,14 +688,22 @@ The optimization order is therefore:
 2. reuse expensive fixtures within timing-balanced shards;
 3. reduce checkout, dependency, and setup churn with safe caches;
 4. optimize serial runner work, including #1208 when measurements require it;
-5. add runner capacity only when queueing, rather than test duration, dominates.
+5. upgrade the plan or add runner capacity only when queueing, rather than test
+   duration, dominates.
 
-Hierarchical coalescence is the architectural multiplier. Different epic
-branches have independent 3-6 merge-per-hour tails and can integrate children
-concurrently. Trunk then validates and merges one combined epic tree instead of
-replaying every child PR serially. Standalone stories and completed epics still
-share trunk's one serial tail, so hierarchy improves aggregate delivery without
-weakening strict mode or skipping the final interaction test.
+Hierarchical coalescence is the architectural multiplier. With `N` active epic
+branches, the theoretical child-integration rate is:
+
+```text
+aggregate child merges per hour = N * (3 to 6)
+```
+
+Three active epic branches therefore provide 9-18 child merges per hour before
+shared Actions capacity or workload imbalance becomes limiting. Trunk receives
+only completed epic-to-parent PRs rather than replaying every child PR serially.
+Standalone stories and completed epics still share trunk's one serial tail, so
+hierarchy improves aggregate delivery without weakening strict mode or skipping
+the final interaction test.
 
 ## Failure Diagnostics
 
@@ -817,10 +861,19 @@ success is read back. An authorized release capsule supersedes the freeze on:
 - freeze expiration; or
 - coordinator authority replacement or revocation.
 
-The default expiry is 30 minutes and cannot be silently renewed. A replacement
-coordinator reads the epic capsule chain, projection, live PR, exact branch
-head, and Actions run. A freeze from an obsolete authority epoch is ineffective;
-the replacement may acquire a new freeze only if the epic is still eligible and
+Freeze expiry is derived from the measured rolling p95 head-of-line cycle rather
+than fixed at 30 minutes:
+
+```text
+freeze expiry = clamp(2 * p95 cycle, 30 minutes, 60 minutes)
+```
+
+The p95 includes refresh, queue, validation, gates, receipt acceptance, merge,
+and readback; samples classified as platform outages are excluded. The value is
+fingerprinted policy and cannot be silently renewed. A replacement coordinator
+reads the epic capsule chain, projection, live PR, exact branch head, and
+Actions run. A freeze from an obsolete authority epoch is ineffective; the
+replacement may acquire a new freeze only if the epic is still eligible and
 head-of-line. A crash between capsule append and projection update is repaired
 from the capsule, while a crash after merge releases the reconstructed freeze
 when it appends the missing `integration-result`.
@@ -932,8 +985,8 @@ The current trunk-only ruleset is insufficient for child PRs. Delivery requires
 equivalent active protections for `trunk` and `feature/epic/*`:
 
 - pull requests required;
-- native `Fast lane (format, lint, unit)` and `Slow validation policy` contexts
-  required from GitHub Actions;
+- native `Fast validation policy` and `Slow validation policy` contexts required
+  from GitHub Actions;
 - strict up-to-date status checks;
 - stale review dismissal where configured;
 - review-thread resolution; and
@@ -952,6 +1005,8 @@ reachable from it.
 - Receipt acceptance independently queries GitHub and does not trust a JSON
   blob produced by the tested branch.
 - Required job and step topology is validated against CI policy.
+- A required policy gate succeeds only when every expected upstream native job
+  result is `success`; cancelled, skipped, failed, or missing work fails closed.
 - Policy-surface changes force slow coverage and explicit review.
 - Exact head SHA, base SHA, run attempt, workflow identity, and app identity are
   bound into evidence.
@@ -975,9 +1030,9 @@ reachable from it.
 - Stale epoch, stale capsule head, conflicting logical key, and changed-head
   rejection.
 - Native job/step classification for every failure-taxonomy row.
-- Section, repository-phase, and hard-job budget classification at 120, 420,
-  480, and 600 seconds, including a green timing artifact with a red policy
-  conclusion.
+- Section, repository-phase, and hard-job budget classification at 150, 210,
+  420, 480, and 600 seconds, including a green timing artifact with a red
+  policy conclusion.
 - Slow-impact required-over-safe precedence, all-paths-safe skip semantics, and
   `unclassified-path` default-deny behavior using target-base policy.
 - Slow-impact completeness over the target-base tracked tree minus the explicit
@@ -987,12 +1042,15 @@ reachable from it.
 - Migration invariant that every old-manifest `slow` escalation is
   `slow-required`, followed by rejection of any permanent `slow` lane in the
   affected-test manifest.
-- Shard policy completeness, no duplicates, fixture-family cohesion, exact-head
-  identity, and deterministic timing-balanced assignment.
+- Fixture-family policy completeness, no duplicate resolution, exact-head
+  identity, deterministic timing-balanced assignment, and inheritance of an
+  existing family by a new test without a policy-fingerprint change.
 - Direct Develop selection without lane materialization, head-bound
   `develop-cloud-escalation` evidence, and receipt refusal when a required
   cloud lane did not execute.
 - Develop timing classification at 180 and 300 second boundaries.
+- Freeze-expiry calculation at both clamp boundaries, measured p95 changes,
+  outage-sample exclusion, and policy-fingerprint changes.
 - Existing per-clone fleet behavior plus host-overlay lease acquisition,
   six-worker saturation across independent clones, heartbeat expiry, process
   liveness, and shared capacity across local sessions.
@@ -1028,12 +1086,16 @@ Extend `tests/slow/core/ci-lane-wiring.test.mjs` and
 
 - read-only permissions;
 - no custom Checks API publisher;
-- independent Quality, Unit, Integration, and Slow execution jobs;
-- Stage 2 Fast and Slow gate dependencies with `if: always()`;
+- independent Quality, two Fast-shard, and Slow execution jobs;
+- Stage 2 Fast and Slow gate dependencies with `if: always()` and explicit
+  `needs.*.result === success` predicates;
+- cancelled, skipped, failed, or missing dependencies producing red gates, with
+  an authorized slow skip represented by a successful Slow executor;
 - identical head SHA and policy fingerprints across every shard;
 - slow-impact selection only in Slow executors;
-- stable required contexts `Fast lane (format, lint, unit)` and
-  `Slow validation policy`;
+- stable required contexts `Fast validation policy` and
+  `Slow validation policy`, plus canary-first removal of the obsolete Fast
+  context;
 - 600-second job stops, the 480-second repository envelope, and lane-specific
   section ceilings, plus the two-minute gate stop;
 - PR concurrency cancellation;
@@ -1053,18 +1115,19 @@ live rulesets recognize both native contexts before enforcement changes land.
 
 **Better.** Full validation leaves the maintainer's machine. Six local workers
 can retain short affected-test feedback while independent cloud VMs execute
-quality, unit, integration, and slow work concurrently. Fixture-aligned shards
-can reduce the slowest path further. Native GitHub evidence removes a privileged
-custom publisher. A stable receipt ULID connects issue authority, Actions
-identity, and the merged commit. Local and cloud orchestrators recover from the
-same GitHub state.
+Quality, two fixture-family Fast shards, and Slow concurrently. The fourth VM
+halves the dominant unit pool instead of isolating nine seconds of Integration
+work. Native GitHub evidence removes a privileged custom publisher. A stable
+receipt ULID connects issue authority, Actions identity, and the merged commit.
+Local and cloud orchestrators recover from the same GitHub state.
 
 **Worse.** One PR initially consumes four heavy execution slots plus two short
 gate jobs. Four simultaneous PR validations are the practical admission target
-under the current 20-job ceiling; wider matrices reduce it. Test includes queue
-latency. Required protection on epic branches adds ruleset administration. A
-network or GitHub outage pauses authoritative lifecycle progress. Linux-only
-validation can miss a platform defect.
+under the current Free-plan 20-job ceiling; wider matrices reduce it. GitHub Pro
+raises the ceiling to 40 but adds a paid operational dependency. Test includes
+queue latency. Required protection on epic branches adds ruleset
+administration. A network or GitHub outage pauses authoritative lifecycle
+progress. Linux-only validation can miss a platform defect.
 
 **Accepted.** Planning-time isolation does not guarantee conflict-free merges.
 Occasional conflicts return to Develop. Evidence loses external verifiability
@@ -1083,9 +1146,10 @@ Ordered by dependency; each item is independently reviewable.
 
 1. **GitHub-runner measurement and budget calibration.** Measure at least five
    cold/warm runs for every proposed executor, record p50/p95 phase timings, and
-   prove or revise the provisional 120/420/480-second internal budgets without
-   raising the 600-second job stop. Gate later CI execution slices on the result
-   and make #1208 or fixture consolidation prerequisite when required.
+   prove or revise the provisional 210/150/420/480-second internal budgets
+   without raising the 600-second job stop. Gate later CI execution slices on
+   the result and make #1208 or fixture consolidation prerequisite when
+   required.
 2. **Slow-impact authority and migration.** Add `classifySlowImpact`, the
    outcome-based manifest, required-over-safe evaluation, target-base
    recomputation, `unclassified-path` default denial, tracked-tree completeness,
@@ -1105,17 +1169,18 @@ Ordered by dependency; each item is independently reviewable.
 6. **CI budget harness and failure evidence.** Add the 480-second named-phase
    envelope, lane-specific section values, bounded lane/shard manifests,
    artifact ordering rules, and native-first failure classification.
-7. **Stage 1 validation fan-out.** Add independent Quality, Unit, Integration,
-   and Slow executors with exact-head checks, clean installation, safe npm
-   caching, clean-worktree verification, and unique diagnostics.
-8. **Timing-balanced shard policy.** Add checked-in, fixture-aligned,
-   exactly-once shard assignment and measurement-gated matrix widths for lanes
-   whose critical path justifies more VMs.
-9. **Stage 2 native gates.** Add read-only Fast and Slow aggregate jobs, stable
-   context assertions, underlying-job validation, timeout, and nightly
-   unconditional slow execution.
-10. **Ruleset coverage.** Require native Fast and Slow contexts with strict
-    up-to-date enforcement on trunk and epic integration branches.
+7. **Stage 1 validation fan-out.** Add independent Quality, two Fast-shard, and
+   Slow executors with exact-head checks, clean installation, safe npm caching,
+   clean-worktree verification, and unique diagnostics.
+8. **Timing-balanced family policy.** Add checked-in fixture-family-to-shard
+   rules, exhaustive family resolution, head-specific exactly-once evidence,
+   and measurement-gated matrix widths without file enumeration.
+9. **Stage 2 native gates.** Add read-only Fast and Slow aggregate jobs,
+   explicit all-success dependency predicates, stable policy context names,
+   timeout, and nightly unconditional slow execution.
+10. **Ruleset coverage.** Require `Fast validation policy` and
+    `Slow validation policy` with strict up-to-date enforcement on trunk and
+    epic integration branches, using canary-first paired migration.
 11. **Test-stage repoint.** Make `/task test #N` create/reuse the PR, append the
     transition, project `awaiting-ci`, and retain the legacy locator path.
 12. **Receipt acceptance.** Poll native Actions, append
@@ -1123,8 +1188,8 @@ Ordered by dependency; each item is independently reviewable.
 13. **WIP and do-si-do.** Exempt only validated `awaiting-ci` stories and resume
     them from GitHub state across sessions.
 14. **Integration freeze.** Add authorized freeze/release capsules, projection
-    indexing, child final-gate checks, drift handling, expiry, crash repair, and
-    starvation-bounded fairness.
+    indexing, child final-gate checks, drift handling, p95-derived bounded
+    expiry, crash repair, and starvation-bounded fairness.
 15. **Merge tail and trailers.** Implement per-target deterministic ordering,
     lazy update, exact-head merge, throughput observation, receipt trailers,
     and `integration-result`.
@@ -1134,9 +1199,9 @@ Ordered by dependency; each item is independently reviewable.
 18. **Documentation.** Update workflow, settings, Test-stage, cloud-worker
     adapter, recovery, and merge guidance.
 
-Issue #1208 remains separately tracked, but item 1 may promote it to a rollout
-dependency if measured GitHub-runner timings cannot meet this design's fixed
-budgets.
+Issue #1208 remains separately tracked. Fixture-family sharding reduces the
+measured per-VM pool burden independently; item 1 promotes #1208 to a rollout
+dependency only if the two-shard GitHub baseline cannot meet the fixed budgets.
 
 ## References
 
@@ -1147,6 +1212,8 @@ budgets.
 - [GitHub Actions workflow syntax and matrices](https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax)
 - [GitHub Actions jobs and dependencies](https://docs.github.com/en/actions/how-tos/write-workflows/choose-what-workflows-do/use-jobs)
 - [GitHub Actions dependency caching](https://docs.github.com/en/actions/reference/workflows-and-actions/dependency-caching)
+- [GitHub Actions concurrency limits](https://docs.github.com/en/actions/reference/limits)
+- [GitHub Actions billing](https://docs.github.com/en/billing/concepts/product-billing/github-actions)
 - [GitHub Actions job conditions](https://docs.github.com/en/actions/how-tos/write-workflows/choose-when-workflows-run/control-jobs-with-conditions)
 - [GitHub required status check troubleshooting](https://docs.github.com/en/pull-requests/how-tos/merge-and-close-pull-requests/troubleshooting-required-status-checks)
 - [GitHub Actions secure-use reference](https://docs.github.com/en/actions/reference/security/secure-use)
