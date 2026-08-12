@@ -116,7 +116,7 @@ for (const parentState of ['backlog', 'ready-for-plan', 'refine', 'plan']) {
     assert.match(
       result.reason,
       new RegExp(
-        `parent #100 is in ${parentState}; child cannot leave refine until parent reaches develop`
+        `parent #100 is in ${parentState}; child cannot leave ready-for-plan until parent reaches develop`
       )
     );
     assert.deepEqual(result.blockers, [result.reason]);

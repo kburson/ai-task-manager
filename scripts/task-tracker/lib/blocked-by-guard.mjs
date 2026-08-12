@@ -1,6 +1,6 @@
 // Universal blocked-by-not-done exit-guard (#286, parent epic #280).
 //
-// Registers at every exit slot in the guard-registry (backlog, assigned, refine, plan,
+// Registers at every exit slot in the guard-registry (backlog, refine, ready-for-plan, plan,
 // develop, test, review — done has no exit slot). When invoked, the guard:
 //
 //   1. Reads the active issue's body for the `aitm-blocked-by` marker.
@@ -19,7 +19,7 @@
 //     repo: string,            // <owner>/<name>
 //     body: string,            // active issue body (may be empty)
 //     fetchBlockerState: async (blockerNumber) =>
-//       'backlog'|'assigned'|'refine'|'plan'|'develop'|'test'|'review'|'done'|null,
+//       'backlog'|'refine'|'ready-for-plan'|'plan'|'develop'|'test'|'review'|'done'|null,
 //     // ^ null when the blocker has no project-status / cannot be resolved.
 //   }
 //

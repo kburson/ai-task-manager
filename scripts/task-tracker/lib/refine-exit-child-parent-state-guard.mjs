@@ -75,7 +75,7 @@ export const refineExitChildParentStateGuard = {
     const slug = normalizeStateId(parentState);
     if (ALLOWED_PARENT_STATES.has(slug)) return { ok: true };
 
-    const reason = `parent #${parentNumber} is in ${slug}; child cannot leave refine until parent reaches develop`;
+    const reason = `parent #${parentNumber} is in ${slug}; child cannot leave ready-for-plan until parent reaches develop`;
     return { ok: false, reason, blockers: [reason] };
   },
 };

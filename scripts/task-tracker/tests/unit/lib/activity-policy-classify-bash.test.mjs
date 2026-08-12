@@ -22,6 +22,7 @@ import {
   isAllowed,
   loadPolicy,
 } from '../../../activity-policy.mjs';
+import { stateIds } from '../../../lib/lifecycle-policy/index.mjs';
 
 // ---------------------------------------------------------------------------
 // classifyEdit
@@ -132,7 +133,7 @@ test('STATE_MATRIX: matches epic #61 allow-list verbatim', () => {
 });
 
 test('isAllowed: every state allows READ_*', () => {
-  for (const s of ['backlog', 'assigned', 'refine', 'plan', 'develop', 'test', 'review', 'done']) {
+  for (const s of stateIds()) {
     assert.equal(isAllowed(s, 'READ_*'), true, `${s} should allow READ_*`);
   }
 });

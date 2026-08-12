@@ -11,8 +11,8 @@
 //
 // Eligible states are `plan` and everything after it in the verb chain
 // (`plan`, `develop`, `test`, `review`, `done`) — Pickup Directive's deep-dive
-// step is meaningful once Plan-stage scoping exists. `backlog`/`assigned`/
-// `refine`/`ready-for-plan` are not eligible for implementation: they have not
+// step is meaningful once Plan-stage scoping exists. `backlog`/`refine`/
+// `ready-for-plan` are not eligible for implementation: they have not
 // entered the short-lived JIT Plan stage yet, so
 // jumping to deep-dive/implementation instructions skips Refine/Plan.
 

@@ -1,7 +1,8 @@
-// @story #54
+// @story #54 #1211
 // Integration smoke test: a fixture epic with sub-issues across two waves runs
-// through the 8-state lifecycle (Backlog → Assigned → Refine → Plan → Develop →
-// Test → Review → Done). Wave-admission and cascade-grooming gates are
+// through the canonical 8-state lifecycle (Backlog → Refine → Ready for
+// Planning → Plan → Develop → Test → Review → Done). Wave-admission
+// and cascade-grooming gates are
 // driven via the pure helpers in scripts/gh/lib/wave-admission.mjs and
 // scripts/task-tracker/lib/body-gates.mjs against an in-memory project state —
 // no live `gh` invocations.
@@ -9,8 +10,9 @@
 import assert from 'node:assert/strict';
 import { admit } from '../../../../../gh/lib/wave-admission.mjs';
 import { checkCascadeGrooming, checkWaveAdmission } from '../../../../lib/body-gates.mjs';
+import { stateIds } from '../../../../lib/lifecycle-policy/index.mjs';
 
-const STATES = ['backlog', 'assigned', 'refine', 'plan', 'develop', 'test', 'review', 'done'];
+const STATES = [...stateIds()];
 
 function makeProject() {
   const issues = new Map();
@@ -83,13 +85,14 @@ async function testFullFlow() {
   assert.equal(refusals.length, 4, 'all 4 sub-issues should block cascade-grooming');
 
   for (const n of [101, 102, 103, 104]) {
-    p.move(n, 'assigned');
     p.move(n, 'refine');
+    p.move(n, 'ready-for-plan');
   }
   refusals = await cascadeFor(p, 100);
   assert.equal(refusals.length, 0, 'cascade-grooming clears once all sub-issues are groom+');
 
-  // Epic moves through Analyze → Development.
+  // Epic moves through Ready for Planning → Plan → Develop.
+  p.move(100, 'ready-for-plan');
   p.move(100, 'plan');
   p.move(100, 'develop');
 
@@ -193,9 +196,9 @@ async function testSoloIssue() {
   });
   assert.deepEqual(cascade, [], 'checkWaveAdmission solo bypass returns []');
 
-  // Drive solo through Backlog → Assigned → Refine → Plan without any gate firing.
-  p.move(300, 'assigned');
+  // Drive solo through the canonical early-state chain without any gate firing.
   p.move(300, 'refine');
+  p.move(300, 'ready-for-plan');
   p.move(300, 'plan');
   assert.equal(p.read(300).status, 'plan');
 }

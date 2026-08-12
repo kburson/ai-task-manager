@@ -82,3 +82,14 @@ test('this topology child contains no live board migration execution', () => {
     /updateProjectV2ItemFieldValue|updateProjectV2Field/
   );
 });
+
+test('the named eight-state integration flow consumes canonical lifecycle authority', () => {
+  const source = readFileSync(
+    'scripts/task-tracker/tests/integration/gh/lib/eight-state-flow.test.mjs',
+    'utf8'
+  );
+  assert.match(source, /import \{ stateIds \}/);
+  assert.match(source, /const STATES = \[\.\.\.stateIds\(\)\]/);
+  assert.doesNotMatch(source, /Backlog → Assigned → Refine/);
+  assert.doesNotMatch(source, /p\.move\([^\n]+, 'assigned'\)/);
+});
