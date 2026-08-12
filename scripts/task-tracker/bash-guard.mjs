@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// cspell:words nocorrect noglob
 // INTERNAL — DO NOT INVOKE DIRECTLY, and not exposed through `aitm`.
 // Plumbing: invoked only by the Claude Code hook runner, never by a human or
 // the AI. See bin/aitm-registry.mjs (INTERNAL map) for the rationale.
@@ -483,31 +484,21 @@ async function evaluate(input) {
       while (index < tokens.length && /^[A-Za-z_][A-Za-z0-9_]*=/.test(tokens[index])) {
         index += 1;
       }
-      while (tokens[index] === 'command' || tokens[index] === 'builtin') index += 1;
+      while (['-', 'builtin', 'command', 'exec', 'nocorrect', 'noglob'].includes(tokens[index])) {
+        index += 1;
+      }
       return tokens[index] === 'eval';
     });
   }
 
-  function gitInvocationCommitIndex(tokens, gitIndex) {
-    let index = gitIndex + 1;
-    while (index < tokens.length) {
-      const token = tokens[index];
-      if (token === 'commit') return index;
-      if (!token.startsWith('-')) return -1;
-      if (['-c', '-C', '--git-dir', '--work-tree', '--namespace'].includes(token)) index += 2;
-      else index += 1;
-    }
-    return -1;
-  }
-
   function aliasInvokesCommit(alias) {
     const value = String(alias || '').trim();
-    if (/^commit(?:\s|$)/.test(value) || /^!\s*commit(?:\s|$)/.test(value)) return true;
-    if (!value.startsWith('!')) return false;
-    const tokens = shellWords(value.slice(1));
-    return tokens.some(
-      (token, index) => basename(token) === 'git' && gitInvocationCommitIndex(tokens, index) >= 0
-    );
+    if (/^commit(?:\s|$)/.test(value)) return true;
+    // Git's `!` aliases are arbitrary deferred shell programs. Even a definition
+    // with no literal `commit` can forward invocation arguments into `git "$@"`.
+    // Treat every shell alias as a potential commit so attributed invocations
+    // cannot escape the ownership check through an opaque program.
+    return value.startsWith('!');
   }
 
   function parseGitCommitSegment(segment, root) {

@@ -5,6 +5,7 @@
 // must traverse the exclusive-ownership guard.
 
 import test from 'node:test';
+// cspell:words nocorrect noglob
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { chmodSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
@@ -121,12 +122,15 @@ test('dynamic and nested commit messages cannot bypass attribution inspection', 
       'eval "$COMMIT_CMD"',
       'builtin eval "$COMMIT_CMD"',
       'command builtin eval "$COMMIT_CMD"',
+      'noglob eval "$COMMIT_CMD"',
+      'nocorrect eval "$COMMIT_CMD"',
       'git -c alias.ci=commit ci -m "[#1212] alias commit"',
       'git -c alias.ci=\'commit --signoff\' ci -m "[#1212] alias options"',
       'git -c alias.ci=\'!git commit\' ci -m "[#1212] shell alias"',
       'git -c alias.ci=\'!git -c user.name=Test commit\' ci -m "[#1212] git config alias"',
       'git -c alias.ci=\'!git --no-pager commit\' ci -m "[#1212] git option alias"',
       'git -c alias.ci=\'!f() { git commit "$@"; }; f\' ci -m "[#1212] function alias"',
+      'git -c alias.ci=\'!f() { git "$@"; }; f\' ci commit -m "[#1212] argument alias"',
     ]) {
       const { payload } = runGuard(fixture, command);
       assert.equal(payload.decision, 'block', `must inspect or refuse: ${command}`);
@@ -154,6 +158,19 @@ test('persistently configured commit aliases enforce ownership', () => {
     assert.equal(configuredOptionAlias.payload.decision, 'block');
     assert.match(
       configuredOptionAlias.payload.reason,
+      /exclusive ownership|ownership is foreign-owner/i
+    );
+
+    spawnSync('git', ['config', 'alias.cx', '!f() { git "$@"; }; f'], {
+      cwd: fixture.dir,
+    });
+    const configuredArgumentAlias = runGuard(
+      fixture,
+      'git cx commit -m "[#1212] configured argument alias"'
+    );
+    assert.equal(configuredArgumentAlias.payload.decision, 'block');
+    assert.match(
+      configuredArgumentAlias.payload.reason,
       /exclusive ownership|ownership is foreign-owner/i
     );
   } finally {
