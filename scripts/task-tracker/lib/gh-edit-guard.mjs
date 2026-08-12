@@ -565,6 +565,16 @@ export function evaluateGhEdit({ command }) {
 }
 
 function evaluateGhEditRecursive(command, nestedDepth) {
+  // `eval` defers parsing until after this guard. Any evaluated command that
+  // mentions GitHub ownership is opaque and therefore refused fail-closed.
+  if (/\beval\b[\s\S]*\bgh\b[\s\S]*(?:assignee|issue\s+edit)/i.test(String(command || ''))) {
+    return {
+      block: true,
+      reason:
+        'Evaluated GitHub ownership commands are forbidden.\n' +
+        '  Use the governed ownership verbs so the command is inspectable, locked, audited, and verified.',
+    };
+  }
   // Shell wrappers are not an ownership escape hatch. Inspect the exact `-c`
   // payload recursively before evaluating the outer command.
   if (nestedDepth < 4) {
@@ -624,8 +634,11 @@ function evaluateGhEditRecursive(command, nestedDepth) {
     );
     const opaqueInput = API_INPUT_RE.test(segment);
     const assigneeEndpoint = /\/issues\/\d+\/assignees\b/i.test(segment);
+    const implicitWrite = args.some(
+      (arg) => /^(?:-f|-F|--field|--raw-field)(?:=|$)/.test(arg) || /^--input(?:=|$)/.test(arg)
+    );
     if (
-      (!writeMethod && !ISSUE_API_PATCH_METHOD_RE.test(segment)) ||
+      (!writeMethod && !implicitWrite && !ISSUE_API_PATCH_METHOD_RE.test(segment)) ||
       (!assigneeEndpoint && !assigneeField && !API_ASSIGNEE_FIELD_RE.test(segment) && !opaqueInput)
     )
       continue;
@@ -650,7 +663,17 @@ function evaluateGhEditRecursive(command, nestedDepth) {
         (index === 0 || ['-f', '-F', '--field', '--raw-field'].includes(args[index - 1]))
       );
     });
-    if (!hasOpaqueInput && !hasOpaqueQueryFile && !GRAPHQL_ASSIGNEE_MUTATION_RE.test(segment))
+    const opaqueDynamicQuery = args.some(
+      (arg, index) =>
+        /^(?:query=)?\$/.test(arg) &&
+        (index === 0 || /^(?:-f|-F|--field|--raw-field)(?:=|$)/.test(args[index - 1]))
+    );
+    if (
+      !hasOpaqueInput &&
+      !hasOpaqueQueryFile &&
+      !opaqueDynamicQuery &&
+      !GRAPHQL_ASSIGNEE_MUTATION_RE.test(segment)
+    )
       continue;
     return {
       block: true,

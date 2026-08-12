@@ -365,6 +365,12 @@ async function evaluate(input) {
   // the resolved `projectRoot`/`configPath`. Any block() short-circuits with
   // exit 0; ownership verification is fail-closed for attributed commits.
   async function checkCommitAssigneeLock({ command: rawCommand, projectRoot: root }) {
+    if (/\beval\b[\s\S]*\bgit\b[\s\S]*\bcommit\b/i.test(rawCommand)) {
+      block(
+        'Refusing evaluated git commit: the final command and ownership attribution cannot be inspected before execution.\n' +
+          '  Invoke `git commit` directly with a literal or readable message source.'
+      );
+    }
     const rawSegments = expandNestedShellSegments(rawCommand);
     const commits = [];
     for (let index = 0; index < rawSegments.length; index += 1) {
@@ -475,9 +481,16 @@ async function evaluate(input) {
     const gitIndex = tokens.findIndex((token) => basename(token) === 'git');
     if (gitIndex < 0) return false;
     let index = gitIndex + 1;
+    const aliases = new Map();
+    for (let cursor = gitIndex + 1; cursor < tokens.length - 1; cursor += 1) {
+      if (tokens[cursor] !== '-c') continue;
+      const match = String(tokens[cursor + 1] || '').match(/^alias\.([^=]+)=(.+)$/);
+      if (match) aliases.set(match[1], match[2]);
+    }
     while (index < tokens.length) {
       const token = tokens[index];
       if (token === 'commit') return { args: tokens.slice(index + 1) };
+      if (aliases.get(token) === 'commit') return { args: tokens.slice(index + 1) };
       if (!token.startsWith('-')) return false;
       if (['-c', '-C', '--git-dir', '--work-tree', '--namespace'].includes(token)) index += 2;
       else index += 1;

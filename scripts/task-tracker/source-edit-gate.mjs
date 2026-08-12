@@ -126,6 +126,21 @@ export function decideSourceEdit({
   if (['develop', 'test', 'review'].includes(state)) {
     const ownership = ownershipDecision({ state, assignees, currentUser });
     if (!ownership.ok) {
+      let recovery;
+      if (ownership.kind === 'foreign-owner') {
+        const owner = ownership.owners[0] || 'the current owner';
+        recovery =
+          `  @${owner} must run \`npx aitm transfer ${boundIssue} --to @${ownership.currentUser || 'me'}\` from their workstation,\n` +
+          `  or a human must reconcile the single owner in the GitHub UI before this workspace retries.`;
+      } else if (ownership.kind === 'multiple-owners') {
+        recovery = `  Reconcile the assignees in the GitHub UI to exactly one owner, then continue from that owner's workstation.`;
+      } else if (ownership.kind === 'human-coordination-required') {
+        recovery =
+          `  Assign the story to @${ownership.currentUser || 'the local workspace owner'}, or transfer it to another owner and continue from that owner's workstation.\n` +
+          `  Full-Auto does not reclaim an in-flight story.`;
+      } else {
+        recovery = `  Ownership is unverifiable. Restore GitHub connectivity and retry; do not edit source until exact singleton ownership is confirmed.`;
+      }
       return {
         decision: 'block',
         code: 'source-edit-ownership-gate',
@@ -134,7 +149,7 @@ export function decideSourceEdit({
           `  Ownership: ${ownership.kind}\n` +
           `  Expected: @${ownership.currentUser || '(unverifiable)'}\n` +
           `  Observed: ${ownership.owners.length ? ownership.owners.map((owner) => `@${owner}`).join(', ') : 'unassigned'}\n` +
-          `  Assign the story to this workspace owner, or transfer it and continue from the new owner's workstation.`,
+          recovery,
       };
     }
   }

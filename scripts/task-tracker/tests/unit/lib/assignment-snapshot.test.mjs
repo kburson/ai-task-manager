@@ -81,6 +81,15 @@ test('fetchAssignmentSnapshot paginates project membership without accepting par
     cfg,
     deps: {
       gql: async (_query, variables) => {
+        if (variables.item) {
+          return {
+            repository: { issue: { assignees: { nodes: [{ login: 'ALICE' }] } } },
+            node: {
+              project: { id: 'PVT_target' },
+              fieldValueByName: { name: 'Ready for Planning' },
+            },
+          };
+        }
         cursors.push(variables.cursor ?? null);
         return {
           repository: {
@@ -90,6 +99,7 @@ test('fetchAssignmentSnapshot paginates project membership without accepting par
                 ? {
                     nodes: [
                       {
+                        id: 'PVTI_target',
                         project: { id: 'PVT_target' },
                         fieldValueByName: { name: 'Ready for Planning' },
                       },
@@ -108,6 +118,53 @@ test('fetchAssignmentSnapshot paginates project membership without accepting par
   });
   assert.deepEqual(cursors, [null, 'next']);
   assert.deepEqual(snapshot, { state: 'ready-for-plan', assignees: ['alice'] });
+});
+
+test('fetchAssignmentSnapshot re-reads Status and owners atomically after pagination', async () => {
+  let page = 0;
+  const snapshot = await fetchAssignmentSnapshot({
+    issueNumber: 12,
+    cfg,
+    deps: {
+      gql: async (_query, variables) => {
+        if (variables.item) {
+          return {
+            repository: { issue: { assignees: { nodes: [{ login: 'alice' }] } } },
+            node: {
+              project: { id: cfg.projectId },
+              fieldValueByName: { name: 'Develop' },
+            },
+          };
+        }
+        page += 1;
+        return {
+          repository: {
+            issue: {
+              assignees: { nodes: [{ login: 'alice' }] },
+              projectItems:
+                page === 1
+                  ? {
+                      nodes: [{ id: 'other', project: { id: 'OTHER' } }],
+                      pageInfo: { hasNextPage: true, endCursor: 'next' },
+                    }
+                  : {
+                      nodes: [
+                        {
+                          id: 'PVTI_target',
+                          project: { id: cfg.projectId },
+                          fieldValueByName: { name: 'Plan' },
+                        },
+                      ],
+                      pageInfo: { hasNextPage: false, endCursor: null },
+                    },
+            },
+          },
+        };
+      },
+    },
+  });
+
+  assert.deepEqual(snapshot, { state: 'develop', assignees: ['alice'] });
 });
 
 test('fetchAssignmentSnapshot refuses pagination with a missing or repeated cursor', async () => {

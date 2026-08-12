@@ -144,6 +144,7 @@ test('unassign retries a pending completion audit without repeating ownership mu
     to: 'unassigned',
     state: 'plan',
     phase: 'intent',
+    tx: 'unassign-retry-1',
   });
   const h = harness([{ state: 'plan', assignees: [] }]);
   h.deps.listAuditBodies = async () => [intent];
@@ -159,4 +160,44 @@ test('unassign retries a pending completion audit without repeating ownership mu
     h.audits.map((audit) => audit.phase),
     ['completed']
   );
+});
+
+test('unassign repairs only the newest unmatched transaction id', async () => {
+  const oldIntent = formatOwnershipAudit({
+    issueNumber: 1212,
+    from: 'alice',
+    to: 'unassigned',
+    state: 'plan',
+    phase: 'intent',
+    tx: 'old-unassign',
+  });
+  const oldCompleted = formatOwnershipAudit({
+    issueNumber: 1212,
+    from: 'alice',
+    to: 'unassigned',
+    state: 'plan',
+    phase: 'completed',
+    tx: 'old-unassign',
+  });
+  const newIntent = formatOwnershipAudit({
+    issueNumber: 1212,
+    from: 'alice',
+    to: 'unassigned',
+    state: 'plan',
+    phase: 'intent',
+    tx: 'new-unassign',
+  });
+  const h = harness([{ state: 'plan', assignees: [] }]);
+  h.deps.listAuditBodies = async () => [oldIntent, oldCompleted, newIntent];
+
+  const result = await runUnassign({
+    issueNumber: 1212,
+    cfg,
+    currentUser: 'alice',
+    deps: h.deps,
+  });
+
+  assert.equal(result.status, 'unassigned');
+  assert.deepEqual(h.mutations, []);
+  assert.equal(h.audits[0].tx, 'new-unassign');
 });

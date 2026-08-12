@@ -44,6 +44,7 @@ export async function fetchAssignmentSnapshot({ issueNumber, cfg, deps = {} } = 
   const projectItems = [];
   let assignees = null;
   let cursor = null;
+  let didPaginate = false;
   const seen = new Set();
 
   for (let page = 0; page < 1000; page += 1) {
@@ -54,6 +55,7 @@ export async function fetchAssignmentSnapshot({ issueNumber, cfg, deps = {} } = 
             assignees(first: 100) { nodes { login } }
             projectItems(first: 50, after: $cursor) {
               nodes {
+                id
                 project { id }
                 fieldValueByName(name: "Status") {
                   ... on ProjectV2ItemFieldSingleSelectValue { name }
@@ -88,6 +90,45 @@ export async function fetchAssignmentSnapshot({ issueNumber, cfg, deps = {} } = 
     }
     projectItems.push(...connection.nodes);
     if (!connection.pageInfo?.hasNextPage) {
+      if (didPaginate) {
+        const matches = projectItems.filter(
+          (candidate) => candidate?.project?.id === cfg.projectId
+        );
+        if (matches.length !== 1) {
+          throw new Error(
+            matches.length === 0
+              ? 'assignment snapshot: configured project item is missing'
+              : 'assignment snapshot: configured project membership is ambiguous'
+          );
+        }
+        const itemId = matches[0]?.id;
+        if (!itemId) throw new Error('assignment snapshot: configured project item id is missing');
+        const final = await query(
+          `query($owner: String!, $repo: String!, $issue: Int!, $item: ID!) {
+            repository(owner: $owner, name: $repo) {
+              issue(number: $issue) { assignees(first: 100) { nodes { login } } }
+            }
+            node(id: $item) {
+              ... on ProjectV2Item {
+                project { id }
+                fieldValueByName(name: "Status") {
+                  ... on ProjectV2ItemFieldSingleSelectValue { name }
+                }
+              }
+            }
+          }`,
+          { owner, repo: repoName, issue: Number(issueNumber), item: itemId }
+        );
+        if (final?.node?.project?.id !== cfg.projectId) {
+          throw new Error('assignment snapshot: final configured project item is missing');
+        }
+        const state = normalizeStateId(final.node.fieldValueByName?.name);
+        const finalNodes = final?.repository?.issue?.assignees?.nodes;
+        if (!state || !Array.isArray(finalNodes)) {
+          throw new Error('assignment snapshot: final Status or assignees are unreadable');
+        }
+        return { state, assignees: canonicalLogins(finalNodes) };
+      }
       return assignmentSnapshotFromGraphql(
         {
           repository: {
@@ -102,6 +143,7 @@ export async function fetchAssignmentSnapshot({ issueNumber, cfg, deps = {} } = 
     if (seen.has(next)) throw new Error('assignment snapshot: pagination repeated a cursor');
     seen.add(next);
     cursor = next;
+    didPaginate = true;
   }
   throw new Error('assignment snapshot: pagination exceeded the 1000-page safety limit');
 }

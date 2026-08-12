@@ -116,6 +116,8 @@ test('dynamic and nested commit messages cannot bypass attribution inspection', 
       'sh -c \'git commit -m "[#1212] nested"\'',
       'bash -lc \'git commit -m "[#1212] nested login shell"\'',
       'set -- \'[#1212] hidden\'; git commit -m "$1"',
+      'eval \'git commit -m "[#1212] evaluated"\'',
+      'git -c alias.ci=commit ci -m "[#1212] alias commit"',
     ]) {
       const { payload } = runGuard(fixture, command);
       assert.equal(payload.decision, 'block', `must inspect or refuse: ${command}`);

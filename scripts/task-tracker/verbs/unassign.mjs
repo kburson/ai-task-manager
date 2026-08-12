@@ -2,6 +2,7 @@
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { execFile } from 'node:child_process';
+import { randomUUID } from 'node:crypto';
 import { promisify } from 'node:util';
 
 import { getProjectDir } from '../paths.mjs';
@@ -66,20 +67,16 @@ export async function runUnassign({ issueNumber, cfg, currentUser, deps = {} } =
       return { status: 'in-flight-unassign-refused', state: before.state, assignees: owners };
     }
     const audits = parseOwnershipAudits(await listAuditBodies({ issueNumber, repo: cfg.repo }));
-    const pending = audits.find(
-      (record) =>
-        record.phase === 'intent' &&
-        record.from === actor &&
-        record.to === 'unassigned' &&
-        record.state === before.state &&
-        !audits.some(
-          (candidate) =>
-            candidate.phase === 'completed' &&
-            candidate.from === record.from &&
-            candidate.to === record.to &&
-            candidate.state === record.state
-        )
-    );
+    const pending = [...audits]
+      .reverse()
+      .find(
+        (record) =>
+          record.phase === 'intent' &&
+          record.from === actor &&
+          record.to === 'unassigned' &&
+          record.state === before.state &&
+          !audits.some((candidate) => candidate.phase === 'completed' && candidate.tx === record.tx)
+      );
     if (owners.length === 0) {
       if (pending) {
         await postAudit({ issueNumber, repo: cfg.repo, ...pending, phase: 'completed' });
@@ -90,6 +87,8 @@ export async function runUnassign({ issueNumber, cfg, currentUser, deps = {} } =
     if (owners.length > 1) return { status: 'multiple-owners-refused', assignees: owners };
     if (owners[0] !== actor) return { status: 'foreign-owner-refused', assignees: owners };
 
+    const tx = randomUUID();
+
     // Audit intent is the transaction's durable first write. A failed audit
     // leaves ownership unchanged; a failed mutation leaves a truthful attempt.
     await postAudit({
@@ -99,6 +98,7 @@ export async function runUnassign({ issueNumber, cfg, currentUser, deps = {} } =
       to: 'unassigned',
       state: before.state,
       phase: 'intent',
+      tx,
     });
 
     let removeError = null;
@@ -164,6 +164,7 @@ export async function runUnassign({ issueNumber, cfg, currentUser, deps = {} } =
         to: 'unassigned',
         state: before.state,
         phase: 'completed',
+        tx,
       });
     } catch (error) {
       return {

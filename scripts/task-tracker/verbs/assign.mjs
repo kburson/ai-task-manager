@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import { execFile } from 'node:child_process';
+import { randomUUID } from 'node:crypto';
 import { promisify } from 'node:util';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -29,7 +30,14 @@ async function defaultMutateAssignee({ issueNumber, repo, action, login }) {
   });
 }
 
-export function formatOwnershipAudit({ issueNumber, from, to, state, phase = 'completed' }) {
+export function formatOwnershipAudit({
+  issueNumber,
+  from,
+  to,
+  state,
+  phase = 'completed',
+  tx = 'legacy',
+}) {
   const completed = phase === 'completed';
   return [
     '### Story ownership transaction',
@@ -45,11 +53,11 @@ export function formatOwnershipAudit({ issueNumber, from, to, state, phase = 'co
         ]
       : []),
     '',
-    `<!-- aitm-ownership-change phase="${phase}" from="${from || 'unassigned'}" to="${to}" state="${state}" -->`,
+    `<!-- aitm-ownership-change tx="${tx}" phase="${phase}" from="${from || 'unassigned'}" to="${to}" state="${state}" -->`,
   ].join('\n');
 }
 
-export async function defaultPostOwnershipAudit({ issueNumber, repo, from, to, state, phase }) {
+export async function defaultPostOwnershipAudit({ issueNumber, repo, from, to, state, phase, tx }) {
   await pexec(
     'gh',
     [
@@ -59,7 +67,7 @@ export async function defaultPostOwnershipAudit({ issueNumber, repo, from, to, s
       '-R',
       repo,
       '--body',
-      formatOwnershipAudit({ issueNumber, from, to, state, phase }),
+      formatOwnershipAudit({ issueNumber, from, to, state, phase, tx }),
     ],
     { timeout: GH_API_TIMEOUT_MS }
   );
@@ -76,21 +84,27 @@ export async function defaultListOwnershipAudits({ issueNumber, repo }) {
 }
 
 const OWNERSHIP_AUDIT_RE =
-  /<!--\s*aitm-ownership-change\s+phase="(intent|completed)"\s+from="([^"]+)"\s+to="([^"]+)"\s+state="([^"]+)"\s*-->/i;
+  /<!--\s*aitm-ownership-change\s+(?:tx="([^"]+)"\s+)?phase="(intent|completed)"\s+from="([^"]+)"\s+to="([^"]+)"\s+state="([^"]+)"\s*-->/i;
 
 export function parseOwnershipAudits(bodies) {
   return (bodies || []).flatMap((body) => {
     const match = String(body || '').match(OWNERSHIP_AUDIT_RE);
     return match
-      ? [{ phase: match[1].toLowerCase(), from: match[2], to: match[3], state: match[4] }]
+      ? [
+          {
+            tx: match[1] || 'legacy',
+            phase: match[2].toLowerCase(),
+            from: match[3],
+            to: match[4],
+            state: match[5],
+          },
+        ]
       : [];
   });
 }
 
-function auditMatches(record, tx) {
-  return (
-    record.from === (tx.from || 'unassigned') && record.to === tx.to && record.state === tx.state
-  );
+function auditMatches(record, transaction) {
+  return record.tx === transaction.tx;
 }
 
 export async function runAssign({
@@ -126,15 +140,17 @@ export async function runAssign({
     const audits = parseOwnershipAudits(
       await runtime.listAuditBodies({ issueNumber, repo: cfg.repo })
     );
-    const pending = audits.find(
-      (record) =>
-        record.phase === 'intent' &&
-        record.to === (prior || login) &&
-        record.state === before.state &&
-        !audits.some(
-          (candidate) => candidate.phase === 'completed' && auditMatches(candidate, record)
-        )
-    );
+    const pending = [...audits]
+      .reverse()
+      .find(
+        (record) =>
+          record.phase === 'intent' &&
+          record.to === login &&
+          record.state === before.state &&
+          !audits.some(
+            (candidate) => candidate.phase === 'completed' && auditMatches(candidate, record)
+          )
+      );
     if (prior && prior !== actor) {
       if (operation === 'transfer' && pending?.from === actor && pending.to === prior) {
         await runtime.postAudit({ issueNumber, repo: cfg.repo, ...pending, phase: 'completed' });
@@ -164,6 +180,8 @@ export async function runAssign({
       return { status: 'done-ownership-immutable', state: before.state, assignees: owners };
     }
 
+    const tx = randomUUID();
+
     // Reserve durable audit provenance before the first irreversible GitHub
     // mutation. If the comment write fails, ownership is untouched. If a
     // later mutation/read-back fails, the record truthfully remains an attempt.
@@ -174,6 +192,7 @@ export async function runAssign({
       to: login,
       state: before.state,
       phase: 'intent',
+      tx,
     });
 
     let addError = null;
@@ -272,6 +291,7 @@ export async function runAssign({
           to: login,
           state: before.state,
           phase: 'completed',
+          tx,
         });
       } catch (error) {
         return {
@@ -291,6 +311,7 @@ export async function runAssign({
         to: login,
         state: before.state,
         phase: 'completed',
+        tx,
       });
     } catch (error) {
       return {
@@ -318,6 +339,33 @@ function parseOwnershipArgs(rest, usage) {
   return { issueNumber: Number(issue[1]), target: parsed.values['--to'] };
 }
 
+export function formatOwnershipRefusal({ operation, issueNumber, result, currentUser }) {
+  const owner = result.assignees?.[0];
+  if (result.status === 'foreign-owner-refused') {
+    return [
+      `${operation}: refused (foreign-owner-refused); #${issueNumber} is owned by @${owner || 'unknown'}, not @${currentUser || 'unknown'}.`,
+      `  @${owner || 'the current owner'} must run \`npx aitm transfer ${issueNumber} --to @${currentUser || 'me'}\` from their workstation,`,
+      '  or a human must reconcile the single owner in the GitHub UI before this workspace retries.',
+    ].join('\n');
+  }
+  if (result.status === 'multiple-owners-refused') {
+    return [
+      `${operation}: refused (multiple-owners-refused); #${issueNumber} has ${result.assignees?.length || 0} owners.`,
+      "  Reconcile the assignees in the GitHub UI to exactly one owner, then retry from that owner's workstation.",
+    ].join('\n');
+  }
+  if (result.status === 'done-ownership-immutable') {
+    return `${operation}: refused (done-ownership-immutable); Done preserves its final owner. Reopen/demote through the governed lifecycle before changing ownership.`;
+  }
+  if (String(result.status || '').endsWith('-audit-pending')) {
+    return [
+      `${operation}: incomplete (${result.status}); ownership is verified but the completed audit comment is pending.`,
+      '  Retry the exact same command; AITM will correlate the durable transaction and write only its missing completion record.',
+    ].join('\n');
+  }
+  return `${operation}: refused (${result.status}); inspect the reported live Status/owners and use the governed assign, transfer, or unassign verb to reconcile them.`;
+}
+
 async function runOwnershipVerb(rest, cfg, operation, deps = {}) {
   const usage = `Usage: ${operation} <N> --to <github-login|@me>`;
   let args;
@@ -340,7 +388,14 @@ async function runOwnershipVerb(rest, cfg, operation, deps = {}) {
     );
     return;
   }
-  process.stderr.write(`${operation}: refused (${result.status})\n`);
+  process.stderr.write(
+    `${formatOwnershipRefusal({
+      operation,
+      issueNumber: args.issueNumber,
+      result,
+      currentUser,
+    })}\n`
+  );
   process.exitCode = 10;
 }
 

@@ -221,6 +221,13 @@ import {
     'gh api repos/acme/widgets/issues/1212 -X PATCH -f assignees[]=alice',
     "gh api repos/acme/widgets/issues/1212 -X PATCH -f 'assignees[]=alice'",
     'gh api --method=PATCH repos/acme/widgets/issues/1212 --input owners.json',
+    'gh api repos/acme/widgets/issues/1212/assignees -f assignees[]=bob',
+    'gh api repos/acme/widgets/issues/1212/assignees --input owners.json',
+    'gh api graphql -f query="$QUERY"',
+    "eval 'gh issue edit 1212 --add-assignee bob'",
+    "eval 'gh api repos/acme/widgets/issues/1212/assignees -f assignees[]=bob'",
+    'gh api graphql -F query=@mutation.graphql',
+    'gh api graphql --field=query=@mutation.graphql',
     `gh api graphql -f 'query=mutation { updateIssue(input:{id:"I_1",assigneeIds:["U_1"]}) { issue { id } } }'`,
   ]) {
     r = evaluateGhEdit({ command });

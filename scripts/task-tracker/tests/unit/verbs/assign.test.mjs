@@ -2,7 +2,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { formatOwnershipAudit, runAssign } from '../../../verbs/assign.mjs';
+import { formatOwnershipAudit, formatOwnershipRefusal, runAssign } from '../../../verbs/assign.mjs';
 
 const cfg = { repo: 'acme/widgets', projectId: 'PVT_target' };
 
@@ -198,6 +198,7 @@ test('assign retries a pending completion audit without repeating ownership muta
     to: 'alice',
     state: 'plan',
     phase: 'intent',
+    tx: 'assign-retry-1',
   });
   const h = harness([{ state: 'plan', assignees: ['alice'] }]);
   h.deps.listAuditBodies = async () => [intent];
@@ -246,6 +247,7 @@ test('transfer retry repairs completion audit from the original owner workstatio
     to: 'bob',
     state: 'develop',
     phase: 'intent',
+    tx: 'transfer-retry-1',
   });
   const h = harness([{ state: 'develop', assignees: ['bob'] }]);
   h.deps.listAuditBodies = async () => [intent];
@@ -262,6 +264,103 @@ test('transfer retry repairs completion audit from the original owner workstatio
   assert.deepEqual(
     h.audits.map((audit) => audit.phase),
     ['completed']
+  );
+});
+
+test('audit retry correlates by transaction id instead of suppressing a newer identical intent', async () => {
+  const oldIntent = formatOwnershipAudit({
+    issueNumber: 1212,
+    from: null,
+    to: 'alice',
+    state: 'plan',
+    phase: 'intent',
+    tx: 'old-tx',
+  });
+  const oldCompleted = formatOwnershipAudit({
+    issueNumber: 1212,
+    from: null,
+    to: 'alice',
+    state: 'plan',
+    phase: 'completed',
+    tx: 'old-tx',
+  });
+  const newIntent = formatOwnershipAudit({
+    issueNumber: 1212,
+    from: null,
+    to: 'alice',
+    state: 'plan',
+    phase: 'intent',
+    tx: 'new-tx',
+  });
+  const h = harness([{ state: 'plan', assignees: ['alice'] }]);
+  h.deps.listAuditBodies = async () => [oldIntent, oldCompleted, newIntent];
+
+  const result = await runAssign({
+    issueNumber: 1212,
+    cfg,
+    target: 'alice',
+    currentUser: 'alice',
+    deps: h.deps,
+  });
+
+  assert.equal(result.status, 'assigned');
+  assert.deepEqual(h.mutations, []);
+  assert.equal(h.audits[0].tx, 'new-tx');
+});
+
+test('transfer retry never completes a pending transaction for a different requested target', async () => {
+  const bobIntent = formatOwnershipAudit({
+    issueNumber: 1212,
+    from: 'alice',
+    to: 'bob',
+    state: 'develop',
+    phase: 'intent',
+    tx: 'alice-to-bob',
+  });
+  const h = harness([{ state: 'develop', assignees: ['bob'] }]);
+  h.deps.listAuditBodies = async () => [bobIntent];
+
+  const result = await runAssign({
+    issueNumber: 1212,
+    cfg,
+    target: 'carol',
+    currentUser: 'alice',
+    operation: 'transfer',
+    deps: h.deps,
+  });
+
+  assert.equal(result.status, 'foreign-owner-refused');
+  assert.deepEqual(h.audits, []);
+  assert.deepEqual(h.mutations, []);
+});
+
+test('ownership verb refusals give the operator a concrete recovery action', () => {
+  assert.match(
+    formatOwnershipRefusal({
+      operation: 'transfer',
+      issueNumber: 1212,
+      result: { status: 'foreign-owner-refused', assignees: ['bob'] },
+      currentUser: 'alice',
+    }),
+    /@bob.*their workstation.*transfer.*@alice|human.*GitHub UI/i
+  );
+  assert.match(
+    formatOwnershipRefusal({
+      operation: 'assign',
+      issueNumber: 1212,
+      result: { status: 'multiple-owners-refused', assignees: ['alice', 'bob'] },
+      currentUser: 'alice',
+    }),
+    /GitHub UI.*exactly one owner/i
+  );
+  assert.match(
+    formatOwnershipRefusal({
+      operation: 'assign',
+      issueNumber: 1212,
+      result: { status: 'assigned-audit-pending', assignees: ['alice'] },
+      currentUser: 'alice',
+    }),
+    /ownership is verified[\s\S]*retry the exact same command/i
   );
 });
 
