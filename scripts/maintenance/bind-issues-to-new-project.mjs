@@ -38,6 +38,7 @@ const pexec = promisify(execFile);
 const VALID_STATES = new Set(stateIds());
 
 function statusName(state) {
+  if (state === 'ready-for-plan') return 'Ready for Planning';
   return state
     .split('-')
     .map((part) => `${part[0].toUpperCase()}${part.slice(1)}`)

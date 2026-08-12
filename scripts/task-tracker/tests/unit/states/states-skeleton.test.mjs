@@ -15,8 +15,8 @@ import { STATES, FORWARD_CHAIN, getState } from '../../../states/index.mjs';
 
 const EXPECTED_NAMES = [
   'backlog',
-  'assigned',
   'refine',
+  'ready-for-plan',
   'plan',
   'develop',
   'test',
@@ -84,9 +84,9 @@ describe('states-skeleton: FORWARD_CHAIN', () => {
     // Mirrors state-machine.mjs FORWARD: each non-terminal state has exactly
     // one canonical forward successor; done is terminal.
     const expected = {
-      backlog: 'assigned',
-      assigned: 'refine',
-      refine: 'plan',
+      backlog: 'refine',
+      refine: 'ready-for-plan',
+      'ready-for-plan': 'plan',
       plan: 'develop',
       develop: 'test',
       test: 'review',

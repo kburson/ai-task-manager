@@ -23,8 +23,8 @@ const ACTION_POLICIES = Object.freeze({
     allowedStates: frozen(stateIds().slice(0, -1)),
   }),
   refine: Object.freeze({
-    allowedStates: frozen(['backlog', 'assigned', 'refine']),
-    entryStates: frozen(['backlog', 'assigned']),
+    allowedStates: frozen(['backlog', 'refine']),
+    entryStates: frozen(['backlog']),
     selfRun: 're-estimate-in-place',
   }),
   demote: Object.freeze({
@@ -33,7 +33,7 @@ const ACTION_POLICIES = Object.freeze({
     requires: 'rework-reason',
   }),
   park: Object.freeze({
-    allowedStates: frozen(['refine', 'plan']),
+    allowedStates: frozen(['refine', 'ready-for-plan', 'plan']),
     target: 'backlog',
     requires: 'reason',
   }),

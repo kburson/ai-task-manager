@@ -33,11 +33,20 @@ function legacyDescriptor({
 
 const EXACT_LEGACY = new Map([
   [
+    'assigned:started',
+    legacyDescriptor({
+      event: 'assigned:started',
+      kind: 'lifecycle',
+      stage: 'ready-for-plan',
+      phase: 'enter',
+    }),
+  ],
+  [
     'on-deck:started',
     legacyDescriptor({
       event: 'on-deck:started',
       kind: 'lifecycle',
-      stage: 'assigned',
+      stage: 'ready-for-plan',
       phase: 'enter',
     }),
   ],

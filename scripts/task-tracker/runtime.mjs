@@ -416,7 +416,7 @@ export function buildContext(rawArgv = process.argv.slice(2)) {
 
   ctx.flushActiveToGH = async (state, event, description, phase, opts = {}) => {
     // Phase descriptor (optional): `{state, phase}` where state is a lifecycle
-    // state slug (backlog/assigned/refine/plan/develop/test/review/done) and phase is
+    // state slug (backlog/refine/ready-for-plan/plan/develop/test/review/done) and phase is
     // `enter` or `complete`. When supplied and resolvable against
     // PHASE_EVENTS, it provides defaults for `event` and `description` that
     // the caller can still override by passing them explicitly. Wiring only
@@ -729,8 +729,8 @@ export function buildContext(rawArgv = process.argv.slice(2)) {
     Object.fromEntries(
       [
         [cfg.kanbanOptionBacklog, 'backlog'],
-        [cfg.kanbanOptionAssigned, 'assigned'],
         [cfg.kanbanOptionRefine, 'refine'],
+        [cfg.kanbanOptionReadyForPlan, 'ready-for-plan'],
         [cfg.kanbanOptionPlan, 'plan'],
         [cfg.kanbanOptionDevelop, 'develop'],
         [cfg.kanbanOptionTest, 'test'],

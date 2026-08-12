@@ -274,7 +274,7 @@ export async function planPlannedEstimateGate({ cfg, issueNumber, deps = {} } = 
     return {
       ok: false,
       blockers: [
-        'planned-estimate-missing-comment: `### 🛠 Refine estimate` comment not found — re-run the backlog→assigned→refine→plan workflow or post the comment manually',
+        'planned-estimate-missing-comment: `### 🛠 Refine estimate` comment not found — re-run the backlog→refine→ready-for-plan workflow or post the comment manually',
       ],
     };
   }

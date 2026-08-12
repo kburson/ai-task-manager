@@ -1,5 +1,5 @@
 // @story #309
-// #299 Item 2 — `/task plan #N` is a dedicated refine→plan promoter.
+// #299 Item 2 — `/task plan #N` is a dedicated R4P→Plan promoter.
 // These tests pin the behavior the deprecation alias used to drop.
 
 import assert from 'node:assert/strict';
@@ -7,7 +7,7 @@ import { runPlan } from '../../../verbs/plan.mjs';
 
 const cfg = { repo: 'kburson/ai-task-manager', projectId: 'PVT_TEST' };
 
-// 1. From `refine`: delegates to verbPromote and returns the promoted result.
+// 1. From `ready-for-plan`: delegates to verbPromote and returns the promoted result.
 {
   const calls = [];
   const result = await runPlan({
@@ -17,7 +17,7 @@ const cfg = { repo: 'kburson/ai-task-manager', projectId: 'PVT_TEST' };
       assertBound: () => {},
       getLiveState: async ({ issueNumber }) => {
         calls.push(['live', issueNumber]);
-        return 'refine';
+        return 'ready-for-plan';
       },
       verbPromote: async (rest, cfgArg) => {
         calls.push(['promote', rest, cfgArg.repo]);
@@ -26,18 +26,18 @@ const cfg = { repo: 'kburson/ai-task-manager', projectId: 'PVT_TEST' };
   });
   assert.equal(result.status, 'promoted');
   assert.equal(result.issueNumber, 299);
-  assert.equal(result.from, 'refine');
+  assert.equal(result.from, 'ready-for-plan');
   assert.equal(result.to, 'plan');
   assert.deepEqual(calls, [
     ['live', 299],
     ['promote', ['299'], 'kburson/ai-task-manager'],
   ]);
-  console.log('PASS: runPlan(refine) promotes refine→plan via verbPromote');
+  console.log('PASS: runPlan(ready-for-plan) promotes R4P→Plan via verbPromote');
 }
 
-// 2. From any non-refine state: refuse, do NOT delegate to verbPromote, and
+// 2. From any non-R4P state: refuse, do NOT delegate to verbPromote, and
 //    explicitly mention `/task discover` as the alternative for backlog work.
-for (const wrong of ['backlog', 'plan', 'develop', 'test', 'review', 'done', null]) {
+for (const wrong of ['backlog', 'refine', 'plan', 'develop', 'test', 'review', 'done', null]) {
   let promoteCalled = false;
   const result = await runPlan({
     issueNumber: 42,
@@ -54,9 +54,9 @@ for (const wrong of ['backlog', 'plan', 'develop', 'test', 'review', 'done', nul
   assert.equal(result.status, 'wrong-state', `expected wrong-state for ${wrong}`);
   assert.equal(result.current, wrong);
   assert.match(result.message, /\/task discover/, 'refusal must redirect to discover');
-  assert.match(result.message, /refine/i);
+  assert.match(result.message, /ready for planning/i);
 }
-console.log('PASS: runPlan refuses any non-refine current state and never delegates to promote');
+console.log('PASS: runPlan refuses any non-R4P current state and never delegates to promote');
 
 // 3. Bad args.
 await assert.rejects(() => runPlan({ cfg }), /positive integer/);

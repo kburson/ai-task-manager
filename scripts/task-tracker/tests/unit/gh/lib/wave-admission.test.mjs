@@ -134,17 +134,23 @@ function stub(siblings) {
   assert.equal(r.ok, true, JSON.stringify(r));
 }
 
-// 10. plan state is treated as in-flight
+// 10. Plan is in-flight; Ready for Planning remains parked.
 {
   const r = await admit({
     parentEpicNumber: 41,
     rank: 3,
     repo: 'o/r',
     projectId: 'P',
-    fetchSiblings: stub([{ number: 47, rank: 1, state: 'plan' }]),
+    fetchSiblings: stub([
+      { number: 47, rank: 1, state: 'ready-for-plan' },
+      { number: 48, rank: 2, state: 'plan' },
+    ]),
   });
   assert.equal(r.ok, false);
-  assert.equal(r.blockers[0].state, 'plan');
+  assert.deepEqual(
+    r.blockers.map((blocker) => blocker.state),
+    ['plan']
+  );
 }
 
 // ---------------------------------------------------------------------------

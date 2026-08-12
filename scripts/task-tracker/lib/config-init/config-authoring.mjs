@@ -20,8 +20,8 @@ const REQUIRED_ENV = {
   projectId: 'PROJECT_NODE_ID',
   kanbanFieldId: 'KANBAN_FIELD_ID',
   kanbanOptionBacklog: 'OPTION_BACKLOG',
-  kanbanOptionAssigned: 'OPTION_ASSIGNED',
   kanbanOptionRefine: 'OPTION_REFINE',
+  kanbanOptionReadyForPlan: 'OPTION_READY_FOR_PLAN',
   kanbanOptionPlan: 'OPTION_PLAN',
   kanbanOptionDevelop: 'OPTION_DEVELOP',
   kanbanOptionTest: 'OPTION_TEST',
@@ -74,21 +74,22 @@ export function mergeConfig(existing = {}, env = {}) {
 }
 
 // normalizeExistingConfig(existing) validates and canonicalizes the one-release
-// Assigned config-key fallback without writing anything. Keeping this separate
+// Ready for Planning config-key fallback without writing anything. Keeping this separate
 // lets the interactive shell fail closed before it performs any project
 // mutation, while writeConfig reuses the exact same conflict rule.
 export function normalizeExistingConfig(existing = {}) {
   const normalized = { ...existing };
-  if (
-    normalized.kanbanOptionOnDeck &&
-    normalized.kanbanOptionAssigned &&
-    normalized.kanbanOptionOnDeck !== normalized.kanbanOptionAssigned
-  ) {
-    throw new Error(
-      'config-init: kanbanOptionOnDeck conflicts with kanbanOptionAssigned; refusing repair'
-    );
+  const configured = [
+    normalized.kanbanOptionReadyForPlan,
+    normalized.kanbanOptionAssigned,
+    normalized.kanbanOptionOnDeck,
+  ].filter(Boolean);
+  if (new Set(configured).size > 1) {
+    throw new Error('config-init: Ready for Planning compatibility keys conflict; refusing repair');
   }
-  normalized.kanbanOptionAssigned ||= normalized.kanbanOptionOnDeck;
+  normalized.kanbanOptionReadyForPlan ||=
+    normalized.kanbanOptionAssigned || normalized.kanbanOptionOnDeck;
+  delete normalized.kanbanOptionAssigned;
   delete normalized.kanbanOptionOnDeck;
   return normalized;
 }

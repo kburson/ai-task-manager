@@ -9,18 +9,18 @@
 
 import { stateIds, stateConfigKey, forwardTarget } from '../lifecycle-policy/index.mjs';
 
-const LEGACY_ASSIGNED_STATE = 'on-deck';
-const CANONICAL_ASSIGNED_STATE = 'assigned';
+const LEGACY_READY_FOR_PLAN_STATES = new Set(['assigned', 'on-deck']);
+const CANONICAL_READY_FOR_PLAN_STATE = 'ready-for-plan';
 
 function canonicalizeStateToken(token) {
-  if (token === LEGACY_ASSIGNED_STATE) {
-    return { value: CANONICAL_ASSIGNED_STATE, legacy: true };
+  if (LEGACY_READY_FOR_PLAN_STATES.has(token)) {
+    return { value: CANONICAL_READY_FOR_PLAN_STATE, legacy: true };
   }
   return { value: token, legacy: false };
 }
 
 export function legacyStateAliasWarning(location = 'state') {
-  return `[aitm] deprecated ${location} alias "on-deck"; use "assigned".`;
+  return `[aitm] deprecated ${location} alias; use "ready-for-plan".`;
 }
 
 // Canonical board-state → config option-id key map. The host reads

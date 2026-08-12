@@ -1,12 +1,12 @@
-// Refine → Plan exit gate (#147).
+// Refine → Ready for Planning exit gate (#147).
 //
 // Layered on top of the existing `planRefinementEstimate` gate (which already
 // checks Size + Estimate + Priority + AC items + rationale marker). This gate
-// adds the Refine-EXIT signals required before an issue can advance to Plan:
+// adds the Refine-EXIT signals required before an issue can advance to R4P:
 //
 //   - Sequence set on the project board
 //   - Labels set on the issue (≥ 1)
-//   - Start Time set on the project board (auto-stamped at assigned→refine)
+//   - Start Time set on the project board
 //
 // Returns `{ ok, blockers, projectValues, labels }`. All I/O is injectable;
 // the production wiring uses `projectValuesForIssue` and a GraphQL labels

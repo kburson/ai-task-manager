@@ -55,9 +55,9 @@ function makeDeps({ recorded = 'refine', moveExit = 0 } = {}) {
   };
 }
 
-test('PARK_TARGET is backlog and LEGAL_FROM is exactly refine/plan', () => {
+test('PARK_TARGET is backlog and LEGAL_FROM includes Refine, R4P, and Plan', () => {
   assert.equal(PARK_TARGET, 'backlog');
-  assert.deepEqual([...LEGAL_FROM].sort(), ['plan', 'refine']);
+  assert.deepEqual([...LEGAL_FROM].sort(), ['plan', 'ready-for-plan', 'refine']);
 });
 
 test('runPark hard-refuses with no --reason (from refine)', async () => {
@@ -117,7 +117,21 @@ test('runPark from plan with a real --reason parks', async () => {
   assert.equal(calls.runMoveState.length, 1);
 });
 
-for (const state of ['assigned', 'develop', 'test', 'review', 'done', 'backlog']) {
+test('runPark from Ready for Planning with a real --reason parks', async () => {
+  const { calls, deps } = makeDeps({ recorded: 'ready-for-plan', moveExit: 0 });
+  const result = await runPark({
+    issueNumber: 848,
+    cfg: CFG,
+    reason: 'returning refined work to the shelf',
+    deps,
+  });
+  assert.equal(result.status, 'parked');
+  assert.equal(result.from, 'ready-for-plan');
+  assert.equal(result.to, 'backlog');
+  assert.equal(calls.runMoveState.length, 1);
+});
+
+for (const state of ['develop', 'test', 'review', 'done', 'backlog']) {
   test(`runPark refuses from ${state} even with --reason`, async () => {
     const { calls, deps } = makeDeps({ recorded: state });
     const result = await runPark({ issueNumber: 848, cfg: CFG, reason: 'any reason', deps });

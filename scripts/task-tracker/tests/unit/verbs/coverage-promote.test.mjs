@@ -125,16 +125,16 @@ test('runPromote: assertBound is invoked and may throw', async () => {
   };
   await assert.rejects(() => runPromote({ issueNumber: 9, cfg, deps }), /not bound/);
 });
-test('runPromote: refine→plan promoted via direct move + refine-estimate hook', async () => {
+test('runPromote: refine→R4P promoted via direct move + refine-estimate hook', async () => {
   const { deps, calls } = makeDeps({ body: refineBody(), live: 'refine' });
   refineEstimateOk(deps);
   const r = await runPromote({ issueNumber: 100, cfg, deps });
   assert.equal(r.status, 'promoted');
-  assert.equal(r.to, 'plan');
-  assert.deepEqual(calls.moves, [{ issueNumber: 100, target: 'plan' }]);
+  assert.equal(r.to, 'ready-for-plan');
+  assert.deepEqual(calls.moves, [{ issueNumber: 100, target: 'ready-for-plan' }]);
   assert.equal(r.refinementPost.status, 'posted');
 });
-test('runPromote: refine→plan refused when refine-estimate signals missing', async () => {
+test('runPromote: refine→R4P refused when refine-estimate signals missing', async () => {
   const { deps, calls } = makeDeps({
     body: `${bodyWithState('refine')}\n${REFINE_COMPLETE_MARKER}\n`,
     live: 'refine',
@@ -147,7 +147,7 @@ test('runPromote: refine→plan refused when refine-estimate signals missing', a
   assert.equal(r.status, 'refine-gate-refused');
   assert.equal(calls.moves.length, 0);
 });
-test('runPromote: refine→plan refused when refine-exit gate returns blockers', async () => {
+test('runPromote: refine→R4P refused when refine-exit gate returns blockers', async () => {
   const { deps, calls } = makeDeps({ body: refineBody(), live: 'refine' });
   refineEstimateOk(deps);
   deps.refineToPlanGate = async () => ({ ok: false, blockers: ['refine-exit-missing: Rank'] });
@@ -155,35 +155,21 @@ test('runPromote: refine→plan refused when refine-exit gate returns blockers',
   assert.equal(r.status, 'refine-exit-refused');
   assert.equal(calls.moves.length, 0);
 });
-test('runPromote: backlog→assigned gateless direct move', async () => {
+test('runPromote: backlog→refine direct move', async () => {
   const { deps, calls } = makeDeps({ body: bodyWithState('backlog'), live: 'backlog' });
   const r = await runPromote({ issueNumber: 1473, cfg, deps });
   assert.equal(r.status, 'promoted');
-  assert.equal(r.to, 'assigned');
+  assert.equal(r.to, 'refine');
   assert.equal(r.refinementPost, null);
 });
-test('runPromote: assigned→refine stamps Start time on success', async () => {
-  const { deps } = makeDeps({ body: bodyWithState('assigned'), live: 'assigned' });
-  deps.refinementEstimate = {
-    loadProjectFieldDefs: () => [],
-    projectValuesForIssue: async () => ({ priority: 'P2' }),
-  };
+test('runPromote: backlog→refine stamps Start time on success', async () => {
+  const { deps } = makeDeps({ body: bodyWithState('backlog'), live: 'backlog' });
   let stampArgs = null;
   deps.stampStartTime = async (opts) => ((stampArgs = opts), { status: 'stamped' });
   const r = await runPromote({ issueNumber: 1472, cfg, deps });
   assert.equal(r.status, 'promoted');
   assert.equal(r.to, 'refine');
   assert.equal(stampArgs.issueNumber, 1472);
-});
-test('runPromote: assigned→refine refused when Priority missing', async () => {
-  const { deps, calls } = makeDeps({ body: bodyWithState('assigned'), live: 'assigned' });
-  deps.refinementEstimate = {
-    loadProjectFieldDefs: () => [],
-    projectValuesForIssue: async () => ({}),
-  };
-  const r = await runPromote({ issueNumber: 1055, cfg, deps });
-  assert.equal(r.status, 'refine-gate-refused');
-  assert.equal(calls.moves.length, 0);
 });
 test('runPromote: plan→develop promoted when planned-estimate appendix present', async () => {
   const { deps, calls } = makeDeps({ body: bodyWithState('plan'), live: 'plan' });
@@ -359,9 +345,9 @@ test('verbPromote: promoted → stdout, no exit', async () => {
   const { deps } = makeDeps({ body: bodyWithState('backlog'), live: 'backlog' });
   const r = await runVerb(['1473'], deps);
   assert.equal(r.exitCode, null);
-  assert.match(r.stdout, /promoted: backlog → assigned/);
+  assert.match(r.stdout, /promoted: backlog → refine/);
 });
-test('verbPromote: refine→plan promoted prints refine-estimate comment line', async () => {
+test('verbPromote: refine→R4P promoted prints refine-estimate comment line', async () => {
   const { deps } = makeDeps({ body: refineBody(), live: 'refine' });
   refineEstimateOk(deps);
   const r = await runVerb(['100'], deps);

@@ -198,6 +198,7 @@ await assert.rejects(
   // by a corrected suffix `review -> develop-2 -> test -> review-2`.
   const repaired =
     '<!-- aitm-entered-refine: 2026-01-01T00:00:00Z -->\n' +
+    '<!-- aitm-entered-ready-for-plan: 2026-01-01T12:00:00Z -->\n' +
     '<!-- aitm-entered-plan: 2026-01-02T00:00:00Z -->\n' +
     '<!-- aitm-entered-develop: 2026-01-03T00:00:00Z -->\n' +
     '<!-- aitm-entered-review: 2026-01-04T00:00:00Z -->\n' +
@@ -274,8 +275,8 @@ await assert.rejects(
   // verifyChainIntegrity treats a mixed-grammar chain as a contiguous chain
   const mixedChain =
     '<!-- aitm-entered-backlog: 2026-05-01T00:00:00Z -->\n' +
-    '<!-- aitm-entered-assigned ts="2026-05-01T12:00:00Z" -->\n' +
     '<!-- aitm-entered-refine ts="2026-05-02T00:00:00Z" -->\n' +
+    '<!-- aitm-entered-ready-for-plan ts="2026-05-02T12:00:00Z" -->\n' +
     '<!-- aitm-entered-plan ts="2026-05-03T00:00:00Z" -->\n';
   const mr = verifyChainIntegrity(mixedChain, 'plan');
   assert.equal(mr.ok, true, `mixed-grammar chain should pass: ${JSON.stringify(mr)}`);

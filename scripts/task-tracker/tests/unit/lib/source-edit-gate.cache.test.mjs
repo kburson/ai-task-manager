@@ -72,7 +72,7 @@ test('#664: readCache returns the entry on a fresh hit', () => {
   }
 });
 
-test('#1206: legacy On Deck cache entries read as Assigned and new writes are canonical', () => {
+test('#1211: legacy On Deck cache entries read as Ready for Planning and new writes are canonical', () => {
   const { dir, cleanup } = makeProjectDir();
   try {
     const sidecar = cacheFilePath(dir);
@@ -81,9 +81,9 @@ test('#1206: legacy On Deck cache entries read as Assigned and new writes are ca
       sidecar,
       JSON.stringify({ issue: '#1206', state: 'on-deck', fetchedAt: Date.now() })
     );
-    assert.equal(readCache(dir, '#1206').state, 'assigned');
+    assert.equal(readCache(dir, '#1206').state, 'ready-for-plan');
     writeCache(dir, { issue: '#1206', state: 'on-deck' });
-    assert.equal(JSON.parse(readFileSync(sidecar, 'utf8')).state, 'assigned');
+    assert.equal(JSON.parse(readFileSync(sidecar, 'utf8')).state, 'ready-for-plan');
   } finally {
     cleanup();
   }

@@ -17,15 +17,14 @@
 // - **Same-Rank siblings (newcomers).** Never block. Members of the same
 //   wave advance independently.
 // - **Higher-Rank siblings.** Never block (they are the next wave).
-// - **Backlog / Assigned siblings.** Excluded — backlog is unvetted ideas and
-//   Assigned (#1206; the second slot was introduced in #433) is an inert
-//   tranche waiting room; neither is in flight.
+// - **Backlog / Ready for Planning siblings.** Excluded — backlog is unvetted,
+//   while R4P is a durable parking queue not yet admitted to JIT planning.
 // - **Review / Done siblings.** Excluded — terminal states never block.
 //
 // `fetchSiblings({ parentEpicNumber, repo, projectId })` must return an array
 // of sibling descriptors `{ number, rank, state }` where `state` is one
-// of the lower-cased 8-state slugs (e.g. `'backlog'`, `'assigned'`, `'review'`,
-// `'done'`).
+// of the lower-cased 8-state slugs (e.g. `'backlog'`, `'ready-for-plan'`,
+// `'review'`, `'done'`).
 //
 // - **CLOSED is terminal (#947).** A sub-issue closed on GitHub always resolves
 //   to `state: 'done'`, whatever column its board item was left in. The raw

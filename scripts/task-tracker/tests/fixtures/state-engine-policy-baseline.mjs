@@ -1,7 +1,7 @@
 export const STATE_IDS = Object.freeze([
   'backlog',
-  'assigned',
   'refine',
+  'ready-for-plan',
   'plan',
   'develop',
   'test',
@@ -10,9 +10,9 @@ export const STATE_IDS = Object.freeze([
 ]);
 
 const FORWARD_EDGES = Object.freeze([
-  'backlog->assigned',
-  'assigned->refine',
-  'refine->plan',
+  'backlog->refine',
+  'refine->ready-for-plan',
+  'ready-for-plan->plan',
   'plan->develop',
   'develop->test',
   'test->review',
@@ -20,7 +20,7 @@ const FORWARD_EDGES = Object.freeze([
 ]);
 
 const EXECUTABLE_REVERSE_EDGES = Object.freeze([
-  'assigned->backlog',
+  'ready-for-plan->backlog',
   'refine->backlog',
   'plan->backlog',
   'test->develop',
@@ -33,11 +33,14 @@ const ENTRY_HISTORY_REVERSE_EDGES = Object.freeze([
   'review->test',
   'test->develop',
   'develop->plan',
-  'develop->refine',
-  'plan->refine',
+  'develop->ready-for-plan',
+  'plan->ready-for-plan',
   'plan->backlog',
   'refine->backlog',
-  'assigned->backlog',
+  'ready-for-plan->backlog',
+  'backlog->ready-for-plan',
+  'refine->plan',
+  'ready-for-plan->refine',
 ]);
 
 const TIMING_HISTORY_REVERSE_EDGES = Object.freeze([
@@ -45,6 +48,9 @@ const TIMING_HISTORY_REVERSE_EDGES = Object.freeze([
   'review->test',
   'review->develop',
   'done->test',
+  'backlog->ready-for-plan',
+  'refine->plan',
+  'ready-for-plan->refine',
 ]);
 
 function pairMatrix(build) {
@@ -88,7 +94,7 @@ export const ACTION_BASELINE = Object.freeze({
     review: 'close',
   }),
   refine: Object.freeze({
-    from: Object.freeze(['backlog', 'assigned']),
+    from: Object.freeze(['backlog']),
     selfRun: 're-estimate-in-place',
   }),
   demote: Object.freeze({
@@ -97,7 +103,7 @@ export const ACTION_BASELINE = Object.freeze({
     requires: 'rework-reason',
   }),
   park: Object.freeze({
-    from: Object.freeze(['refine', 'plan']),
+    from: Object.freeze(['refine', 'ready-for-plan', 'plan']),
     to: 'backlog',
     requires: 'reason',
   }),
@@ -110,9 +116,9 @@ export const ACTION_BASELINE = Object.freeze({
 
 const TIMING_EXACT = Object.freeze([
   'backlog:created',
-  'assigned:started',
   'refine:started',
   'refine:completed',
+  'ready-for-plan:started',
   'plan:started',
   'plan:completed',
   'develop:started',
@@ -152,7 +158,7 @@ const TIMING_DEFINITIONS = Object.freeze(
   TIMING_EXACT.slice(0, 14).map((event, index) =>
     Object.freeze({
       file: 'scripts/task-tracker/lib/timing-events/catalog.mjs',
-      line: [52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 65][index],
+      line: [52, 53, 54, 56, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71][index],
       expression: `'${event}'`,
       event,
     })
@@ -271,7 +277,7 @@ export const TIMING_EVENT_BASELINE = Object.freeze({
       "{ state: stateArg, phase: 'enter' }",
       [
         'backlog:created',
-        'assigned:started',
+        'ready-for-plan:started',
         'refine:started',
         'plan:started',
         'develop:started',

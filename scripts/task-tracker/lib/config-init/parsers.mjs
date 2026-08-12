@@ -8,13 +8,17 @@
 // CANONICAL_STATUS_PALETTE heredoc array in init-project-config.sh; the eight
 // states + colors must stay in lock-step with the board.
 export const CANONICAL_STATUS_PALETTE = [
-  { name: 'Backlog', color: 'GRAY', description: '' },
-  { name: 'Assigned', color: 'BLUE', description: '' },
-  { name: 'Refine', color: 'YELLOW', description: '' },
-  { name: 'Plan', color: 'ORANGE', description: '' },
-  { name: 'Develop', color: 'GREEN', description: '' },
-  { name: 'Test', color: 'PINK', description: '' },
-  { name: 'Review', color: 'RED', description: '' },
+  { name: 'Backlog', color: 'GRAY', description: 'Unvetted ideas; not yet shaped.' },
+  { name: 'Refine', color: 'GREEN', description: 'Items being shaped: AC, sizing, estimates.' },
+  {
+    name: 'Ready for Planning',
+    color: 'GRAY',
+    description: 'Refinement is complete; eligible for JIT planning.',
+  },
+  { name: 'Plan', color: 'BLUE', description: 'Items being deep-dived: design + caller analysis.' },
+  { name: 'Develop', color: 'YELLOW', description: 'Implementation in progress.' },
+  { name: 'Test', color: 'ORANGE', description: 'Agent verification in progress.' },
+  { name: 'Review', color: 'BLUE', description: 'All checks passed; awaiting human approval.' },
   { name: 'Done', color: 'PURPLE', description: '' },
 ];
 

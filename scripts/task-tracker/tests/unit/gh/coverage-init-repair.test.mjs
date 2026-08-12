@@ -10,10 +10,19 @@ import assert from 'node:assert/strict';
 
 import { runRepair, fetchStatusOptions } from '../../../../gh/init-repair.mjs';
 
-const ALL_COLUMNS = ['backlog', 'assigned', 'refine', 'plan', 'develop', 'test', 'review', 'done'];
+const ALL_COLUMNS = [
+  ['backlog', 'Backlog'],
+  ['refine', 'Refine'],
+  ['readyForPlan', 'Ready for Planning'],
+  ['plan', 'Plan'],
+  ['develop', 'Develop'],
+  ['test', 'Test'],
+  ['review', 'Review'],
+  ['done', 'Done'],
+];
 
 // Options list where every kanban column maps to `<name>-id`.
-const FULL_OPTIONS = ALL_COLUMNS.map((name) => ({ id: `${name}-id`, name }));
+const FULL_OPTIONS = ALL_COLUMNS.map(([key, name]) => ({ id: `${key}-id`, name }));
 
 // Build a deps bundle: an in-memory config file plus log/err/exit collectors.
 function harness({ cfg, exists = true, gql } = {}) {
@@ -51,10 +60,8 @@ test('config missing projectId/kanbanFieldId → err + exit 1', async () => {
 
 test('all kanbanOption* already populated → early return, no write', async () => {
   const cfg = { projectId: 'P', kanbanFieldId: 'K' };
-  for (const c of ALL_COLUMNS) {
-    cfg[
-      'kanbanOption' + c.replace(/(^| )(\w)/g, (_, __, ch) => ch.toUpperCase()).replace(/ /g, '')
-    ] = `${c}-id`;
+  for (const [key] of ALL_COLUMNS) {
+    cfg[`kanbanOption${key[0].toUpperCase()}${key.slice(1)}`] = `${key}-id`;
   }
   const h = harness({ cfg });
   const res = await runRepair(h.overrides);

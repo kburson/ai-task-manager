@@ -16,7 +16,10 @@ test('GitHub status projections derive every state and config key from lifecycle
     stateIds().map((state) => [state, stateConfigKey(state)])
   );
   const expectedOptionKeys = Object.fromEntries(
-    stateIds().map((state) => [stateConfigKey(state), state.replaceAll('-', ' ')])
+    stateIds().map((state) => [
+      stateConfigKey(state),
+      state === 'ready-for-plan' ? 'ready for planning' : state.replaceAll('-', ' '),
+    ])
   );
 
   assert.deepEqual(STATUS_CONFIG_KEYS, expectedStatusConfigKeys);

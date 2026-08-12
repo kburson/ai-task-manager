@@ -31,8 +31,8 @@ import { statePath } from '../../../paths.mjs';
 const KANBAN = {
   repo: 'o/r',
   kanbanOptionBacklog: 'opt-backlog',
-  kanbanOptionAssigned: 'opt-assigned',
   kanbanOptionRefine: 'opt-refine',
+  kanbanOptionReadyForPlan: 'opt-ready-for-plan',
   kanbanOptionPlan: 'opt-plan',
   kanbanOptionDevelop: 'opt-develop',
   kanbanOptionTest: 'opt-test',
@@ -110,7 +110,7 @@ test('decide: historical On Deck state remains a pre-develop block', () => {
     issueState: 'on-deck',
   });
   assert.equal(r.code, 'source-edit-state-gate');
-  assert.match(r.reason, /'assigned'/);
+  assert.match(r.reason, /'ready-for-plan'/);
 });
 test('decide: develop but markers missing → block marker-gate', () => {
   const r = decideSourceEdit({
@@ -197,9 +197,9 @@ test('fetchIssueSignals: name shape → canonical state', async () => {
   const s = await fetchIssueSignals('#644', dir, { gh });
   assert.equal(s.state, 'review');
 });
-test('fetchIssueSignals: pre-migration display name and legacy config key map to Assigned', async () => {
-  const legacy = { ...KANBAN, kanbanOptionOnDeck: KANBAN.kanbanOptionAssigned };
-  delete legacy.kanbanOptionAssigned;
+test('fetchIssueSignals: historical display name and legacy config key map to Ready for Planning', async () => {
+  const legacy = { ...KANBAN, kanbanOptionOnDeck: KANBAN.kanbanOptionReadyForPlan };
+  delete legacy.kanbanOptionReadyForPlan;
   const dir = project({ config: legacy });
   const warnings = [];
   const originalWarn = console.warn;
@@ -207,13 +207,16 @@ test('fetchIssueSignals: pre-migration display name and legacy config key map to
   try {
     const byId = await fetchIssueSignals('#1206', dir, {
       gh: async () =>
-        JSON.stringify({ body: '', projectItems: [{ status: { optionId: 'opt-assigned' } }] }),
+        JSON.stringify({
+          body: '',
+          projectItems: [{ status: { optionId: 'opt-ready-for-plan' } }],
+        }),
     });
-    assert.equal(byId.state, 'assigned');
+    assert.equal(byId.state, 'ready-for-plan');
     const byName = await fetchIssueSignals('#1206', dir, {
       gh: async () => JSON.stringify({ body: '', projectItems: [{ status: { name: 'On Deck' } }] }),
     });
-    assert.equal(byName.state, 'assigned');
+    assert.equal(byName.state, 'ready-for-plan');
   } finally {
     console.warn = originalWarn;
   }

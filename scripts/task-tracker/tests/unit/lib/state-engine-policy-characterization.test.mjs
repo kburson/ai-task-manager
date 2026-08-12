@@ -22,11 +22,11 @@ import { LEGAL_FROM as PARK_FROM, PARK_TARGET } from '../../../verbs/park.mjs';
 const TEST_CFG = { repo: 'owner/repo', projectId: 'PVT_TEST' };
 const PRODUCTION_STATES = stateIds();
 
-test('the production lifecycle keeps eight states and canonically names Assigned', () => {
+test('the production lifecycle keeps eight states and canonically names Ready for Planning', () => {
   assert.deepEqual(PRODUCTION_STATES, [
     'backlog',
-    'assigned',
     'refine',
+    'ready-for-plan',
     'plan',
     'develop',
     'test',
@@ -176,11 +176,11 @@ test('action eligibility and delegation match current verb exports', () => {
 
 test('refine entry and self-run policy match injected production behavior', async () => {
   const observations = await Promise.all(
-    ['backlog', 'assigned', 'refine', 'plan'].map(observeRefine)
+    ['backlog', 'refine', 'ready-for-plan', 'plan'].map(observeRefine)
   );
   assert.deepEqual(
     observations.map(({ promoteCalls }) => promoteCalls.length),
-    [2, 1, 0, 0]
+    [1, 0, 0, 0]
   );
   assert.deepEqual(
     ACTION_BASELINE.refine.from,
@@ -232,7 +232,7 @@ test('bootstrap policy resolves live state and refuses a missing board item', as
   });
   assert.equal(resolved.status, 'promoted');
   assert.equal(resolved.bootstrapped, true);
-  assert.deepEqual([resolved.from, resolved.to], ['backlog', 'assigned']);
+  assert.deepEqual([resolved.from, resolved.to], ['backlog', 'refine']);
   assert.match(bootstrappedBody, /aitm-last-known-state state="backlog"/);
   assert.equal(ACTION_BASELINE.bootstrap.behavior, 'resolve-live-state-then-apply-action-policy');
 });

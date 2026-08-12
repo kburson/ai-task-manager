@@ -75,10 +75,10 @@ test('AC1/AC2: a wider gap (board=refine, marker=review) walks every intermediat
   assert.equal(r.status, 'reconciled');
   assert.equal(r.from, 'refine');
   assert.equal(r.to, 'review');
-  assert.deepEqual(r.walked, ['plan', 'develop', 'test', 'review']);
+  assert.deepEqual(r.walked, ['ready-for-plan', 'plan', 'develop', 'test', 'review']);
   assert.deepEqual(
     calls.moves.map((m) => m.target),
-    ['plan', 'develop', 'test', 'review']
+    ['ready-for-plan', 'plan', 'develop', 'test', 'review']
   );
 });
 

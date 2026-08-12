@@ -37,7 +37,12 @@ export const deps = {
 };
 
 export const OPTION_KEYS = Object.freeze(
-  Object.fromEntries(stateIds().map((state) => [stateConfigKey(state), state.replaceAll('-', ' ')]))
+  Object.fromEntries(
+    stateIds().map((state) => [
+      stateConfigKey(state),
+      state === 'ready-for-plan' ? 'ready for planning' : state.replaceAll('-', ' '),
+    ])
+  )
 );
 
 function configPath(d = deps) {
@@ -221,16 +226,20 @@ function loadOptionsFromEnv() {
 
 export function migrateLegacyAssignedConfig(cfg) {
   if (!cfg || typeof cfg !== 'object' || Array.isArray(cfg)) return false;
-  const hasLegacy = Object.prototype.hasOwnProperty.call(cfg, 'kanbanOptionOnDeck');
-  if (!hasLegacy) return false;
-  const legacyId = cfg.kanbanOptionOnDeck;
-  const assignedId = cfg.kanbanOptionAssigned;
-  if (legacyId && assignedId && legacyId !== assignedId) {
-    throw new Error(
-      'init-repair: kanbanOptionOnDeck conflicts with kanbanOptionAssigned; refusing repair'
-    );
+  const legacyPresent = ['kanbanOptionAssigned', 'kanbanOptionOnDeck'].some((key) =>
+    Object.prototype.hasOwnProperty.call(cfg, key)
+  );
+  if (!legacyPresent) return false;
+  const configured = [
+    cfg.kanbanOptionReadyForPlan,
+    cfg.kanbanOptionAssigned,
+    cfg.kanbanOptionOnDeck,
+  ].filter(Boolean);
+  if (new Set(configured).size > 1) {
+    throw new Error('init-repair: Ready for Planning compatibility keys conflict; refusing repair');
   }
-  if (!assignedId && legacyId) cfg.kanbanOptionAssigned = legacyId;
+  cfg.kanbanOptionReadyForPlan ||= cfg.kanbanOptionAssigned || cfg.kanbanOptionOnDeck;
+  delete cfg.kanbanOptionAssigned;
   delete cfg.kanbanOptionOnDeck;
   return true;
 }
@@ -316,7 +325,9 @@ export async function runRepair(overrides = {}) {
   }
   d.log(`Filled: ${filled.length === 0 ? '(none)' : filled.join(', ')}`);
   if (legacyConfigChanged) {
-    d.log('Migrated: kanbanOptionOnDeck → kanbanOptionAssigned (option id preserved)');
+    d.log(
+      'Migrated: legacy Assigned/On Deck config → kanbanOptionReadyForPlan (option id preserved)'
+    );
   }
   const alreadySet = Object.keys(OPTION_KEYS).filter((k) => !empties.includes(k));
   if (alreadySet.length) d.log(`Already set: ${alreadySet.join(', ')}`);

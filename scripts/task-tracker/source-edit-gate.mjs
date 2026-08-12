@@ -41,7 +41,7 @@ export const CACHE_TTL_MS = 30_000;
 export const ALLOWLIST_PREFIXES = ['.tmp/', SCRATCH_REL_PREFIX];
 
 // States that LACK source-edit permission (below `develop`).
-const PRE_DEVELOP_STATES = new Set(['backlog', 'assigned', 'refine', 'plan', 'unknown']);
+const PRE_DEVELOP_STATES = new Set(['backlog', 'refine', 'ready-for-plan', 'plan', 'unknown']);
 
 // States AT or PAST `develop` where the state machine has already closed the
 // coding window (#805). WRITE_CODE edits here are refused fail-closed; edits

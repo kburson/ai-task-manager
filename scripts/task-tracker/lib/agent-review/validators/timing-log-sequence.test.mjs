@@ -116,7 +116,7 @@ test('passes a full healed v2 log including the review→develop rework path', (
   assert.deepEqual(res.failures, []);
 });
 
-test('#1206: historical timing rows still require the canonicalized entry marker', () => {
+test('#1211: historical timing rows still require the canonicalized R4P entry marker', () => {
   const res = validate(
     logCtx(
       [
@@ -128,7 +128,7 @@ test('#1206: historical timing rows still require the canonicalized entry marker
   );
   assert.equal(res.pass, false);
   assert.ok(
-    res.failures.some((failure) => /no aitm-entered-assigned marker/.test(failure)),
+    res.failures.some((failure) => /no aitm-entered-ready-for-plan marker/.test(failure)),
     JSON.stringify(res.failures)
   );
 });
@@ -282,7 +282,7 @@ test('applies a timestamped sentinel-revert audit before the next stage row', ()
   assert.equal(res.pass, true, JSON.stringify(res.failures));
 });
 
-test('#1206: historical sentinel reset states project to Assigned', () => {
+test('#1211: historical sentinel reset states project to R4P', () => {
   assert.deepEqual(
     extractSentinelStageResets(
       sentinelRevertMarker({ from: 'on-deck', to: 'backlog', ts: '2026-07-14T08:03:30Z' })
@@ -290,7 +290,7 @@ test('#1206: historical sentinel reset states project to Assigned', () => {
     [
       {
         ms: Date.parse('2026-07-14T08:03:30Z'),
-        from: 'assigned',
+        from: 'ready-for-plan',
         to: 'backlog',
       },
     ]

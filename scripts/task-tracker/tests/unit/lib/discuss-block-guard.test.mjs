@@ -90,36 +90,30 @@ test('GUARD_ID is stable', () => {
 
 // ── registry wiring (full-auto-proof: runGuards is never exempted) ──────────
 
-test('runGuards backlog→assigned refuses on bare token', async () => {
-  const res = await runGuards('backlog', 'assigned', ctx(`body\n${TOKEN}`));
+test('runGuards backlog→refine refuses on bare token', async () => {
+  const res = await runGuards('backlog', 'refine', ctx(`body\n${TOKEN}`));
   const refusal = (res.refusals || []).find((r) => r.id === GUARD_ID);
   assert.ok(refusal, 'discuss-unresolved refusal should be present on backlog exit');
 });
 
-test('runGuards assigned→refine refuses on bare token', async () => {
-  const res = await runGuards('assigned', 'refine', ctx(`body\n${TOKEN}`));
-  const refusal = (res.refusals || []).find((r) => r.id === GUARD_ID);
-  assert.ok(refusal, 'discuss-unresolved refusal should be present on assigned exit');
-});
-
 // #479: an inline mention must not block promotion under runGuards either.
-test('runGuards backlog→assigned passes on an inline-only mention (#479)', async () => {
-  const res = await runGuards('backlog', 'assigned', ctx(`body mentions ${TOKEN} inline`));
+test('runGuards backlog→refine passes on an inline-only mention (#479)', async () => {
+  const res = await runGuards('backlog', 'refine', ctx(`body mentions ${TOKEN} inline`));
   const refusal = (res.refusals || []).find((r) => r.id === GUARD_ID);
   assert.ok(!refusal, 'inline mention is not a marker; no refusal');
 });
 
 // #486 — a converged (token-stripped, marker-bearing) body still refuses.
-test('runGuards backlog→assigned refuses on a converged request marker (#486)', async () => {
+test('runGuards backlog→refine refuses on a converged request marker (#486)', async () => {
   const converged = convergeDiscuss(`body\n${TOKEN}`, { ts: 'T' });
-  const res = await runGuards('backlog', 'assigned', ctx(converged));
+  const res = await runGuards('backlog', 'refine', ctx(converged));
   const refusal = (res.refusals || []).find((r) => r.id === GUARD_ID);
   assert.ok(refusal, 'request marker keeps the gate live after token convergence');
 });
 
-test('runGuards backlog→assigned passes once token is stripped', async () => {
+test('runGuards backlog→refine passes once token is stripped', async () => {
   const resolved = markDiscussed(`body\n${TOKEN}`, { ts: '2026-06-20T00:00:00Z' });
-  const res = await runGuards('backlog', 'assigned', ctx(resolved));
+  const res = await runGuards('backlog', 'refine', ctx(resolved));
   const refusal = (res.refusals || []).find((r) => r.id === GUARD_ID);
   assert.ok(!refusal, 'no discuss-unresolved refusal after resolution');
 });

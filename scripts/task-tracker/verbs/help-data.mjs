@@ -133,7 +133,8 @@ export const VERB_REFERENCE = {
   // ── board / state machine ─────────────────────────────────────────────────
   promote: {
     topic: 'board',
-    summary: 'Advance one forward state (Backlog→Assigned→Refine→Plan→Develop→Test→Review→Done).',
+    summary:
+      'Advance one forward state (Backlog→Refine→Ready for Planning→Plan→Develop→Test→Review→Done).',
     usage: '/task promote #N',
     aliases: ['next'],
     exitCodes: [GATE_REFUSAL],
@@ -168,8 +169,7 @@ export const VERB_REFERENCE = {
   },
   refine: {
     topic: 'board',
-    summary:
-      'Atomic pre-Refine entry: set fields, then walk Backlog→Assigned→Refine or Assigned→Refine.',
+    summary: 'Atomic pre-Refine entry: set fields, then move Backlog→Refine.',
     usage:
       '/task refine <N> --size <XS|S|M|L|XL> --estimate <hours> --priority <p0|p1|p2> --reason <text>',
     flags: [

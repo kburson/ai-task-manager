@@ -50,9 +50,15 @@ const TERMINAL_REVIEW_HANDOFF_CLOSERS = new Set([
 
 const LIFECYCLE = [
   ['backlog:created', 'backlog', 'backlog', 'enter', 'task created in Backlog'],
-  ['assigned:started', 'assigned', 'assigned', 'enter', 'assigned and ready to work'],
   ['refine:started', 'refine', 'refine', 'enter', 'start refinement'],
   ['refine:completed', 'refine', 'refine', 'complete', 'refinement completed'],
+  [
+    'ready-for-plan:started',
+    'ready-for-plan',
+    'ready-for-plan',
+    'enter',
+    'refinement complete — ready for planning',
+  ],
   ['plan:started', 'plan', 'plan', 'enter', 'plan started'],
   ['plan:completed', 'plan', 'plan', 'complete', 'plan completed — waiting approval'],
   ['develop:started', 'develop', 'develop', 'enter', 'start development'],

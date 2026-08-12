@@ -3,9 +3,8 @@
 // Sets Priority + Size + Estimate on the GitHub project board (via
 // tetherIssueToProject), prepends a `<!-- aitm-refinement-rationale: {...} -->`
 // marker AND stamps a `<!-- aitm-refine-complete: <ts> -->` stage-completion
-// marker to the issue body. When the issue is still pre-Refine (Backlog or
-// Assigned), executes the entry transition up to Refine (the verb-name entry):
-// backlog → assigned → refine, or assigned → refine. Does NOT forward-promote
+// marker to the issue body. When the issue is still in Backlog, executes the
+// single entry transition to Refine (the verb-name entry). Does NOT forward-promote
 // out of Refine — `/task promote` must be called explicitly.
 //
 // CLI:
@@ -239,8 +238,7 @@ export async function runRefine({ args, cfg, deps = {} } = {}) {
   // 1b. Read the issue body up front so we can decide whether this run is a
   //     pre-Refine entry transition (the one legitimate transitive advance for
   //     this verb) or a Refine-state field/rationale refresh. Under the 8-state
-  //     model the predecessor of Refine is Assigned, so an entry can start from
-  //     either Backlog (2 hops: backlog → assigned → refine) or Assigned (1 hop).
+  //     model the predecessor of Refine is Backlog, so entry is exactly one hop.
   const body = await fetchBody({ issueNumber, repo: cfg.repo });
   const { state: recordedState } = readLastKnownState(body);
   const isPreRefineEntry = recordedState == null || PRE_REFINE_STATES.has(recordedState);
@@ -321,18 +319,15 @@ export async function runRefine({ args, cfg, deps = {} } = {}) {
   }
 
   // 4. Pre-Refine → Refine entry transition (#282, #433). This is the
-  //     verb-name entry transition — the one legitimate transitive advance for
-  //     this verb. Under the 8-state model the issue may start in Backlog or
-  //     Assigned; advance one state at a time until it reaches Refine (backlog →
-  //     assigned → refine, or assigned → refine). backlog → assigned is gateless;
-  //     assigned → refine runs the Priority gate, which step 2's tether already
-  //     satisfied. When the issue is already in Refine (or any later state) we
+  //     verb-name entry transition. Under the R4P model the issue may start in
+  //     Backlog and advances directly to Refine. When already in Refine (or any
+  //     later state) we
   //     do NOT advance; the user must call `/task promote` explicitly to exit
   //     Refine. No forward EXIT advancement from a stage verb.
   let promoted = false;
   if (isPreRefineEntry) {
     const startState = recordedState == null ? 'backlog' : recordedState;
-    const hops = startState === 'backlog' ? 2 : 1;
+    const hops = startState === 'backlog' ? 1 : 0;
     try {
       for (let i = 0; i < hops; i += 1) {
         await promote([String(issueNumber)], cfg);

@@ -18,7 +18,7 @@ const CFG = { repo: 'o/r' };
 
 // A fake `gh` on PATH so the default getLiveState (gql → `gh api graphql`) runs
 // offline. It reads the GraphQL payload on stdin and answers a projectItems
-// query with a single Status = "Refine" node, which normalizes to `refine`.
+// query with a single Ready for Planning node, which normalizes to `ready-for-plan`.
 const FAKE_GH_DIR = mkdtempSync(join(projectScratchDir('test'), 'plan-gh-'));
 writeFileSync(
   join(FAKE_GH_DIR, 'gh'),
@@ -27,7 +27,7 @@ writeFileSync(
     "let input = '';",
     "process.stdin.on('data', (c) => (input += c));",
     "process.stdin.on('end', () => {",
-    "  const data = { repository: { issue: { projectItems: { nodes: [{ project: { id: 'P' }, fieldValueByName: { name: 'Refine' } }] } } } };",
+    "  const data = { repository: { issue: { projectItems: { nodes: [{ project: { id: 'P' }, fieldValueByName: { name: 'Ready for Planning' } }] } } } };",
     '  process.stdout.write(JSON.stringify({ data }));',
     '});',
   ].join('\n'),
@@ -36,8 +36,8 @@ writeFileSync(
 chmodSync(join(FAKE_GH_DIR, 'gh'), 0o755);
 process.env.PATH = `${FAKE_GH_DIR}:${process.env.PATH}`;
 
-// Assemble a deps object; defaults give a bound, refine-state, promote-ok path.
-function deps({ live = 'refine', boundThrows = false, onPromote } = {}) {
+// Assemble a deps object; defaults give a bound, R4P-state, promote-ok path.
+function deps({ live = 'ready-for-plan', boundThrows = false, onPromote } = {}) {
   return {
     assertBound: () => {
       if (boundThrows) throw new Error('not bound to #5');
@@ -66,7 +66,7 @@ test('runPlan: assertBound is invoked and may throw', async () => {
   );
 });
 
-test('runPlan: current !== refine → wrong-state (no promote)', async () => {
+test('runPlan: current is not R4P → wrong-state (no promote)', async () => {
   let promoted = false;
   const r = await runPlan({
     issueNumber: 5,
@@ -75,7 +75,7 @@ test('runPlan: current !== refine → wrong-state (no promote)', async () => {
   });
   assert.equal(r.status, 'wrong-state');
   assert.equal(r.current, 'develop');
-  assert.match(r.message, /only enters Sprint-Planning from Refine/);
+  assert.match(r.message, /only enters Sprint-Planning from Ready for Planning/);
   assert.equal(promoted, false);
 });
 
@@ -85,16 +85,16 @@ test('runPlan: unknown live state → wrong-state message names "unknown"', asyn
   assert.match(r.message, /unknown/);
 });
 
-test('runPlan: refine → promoted (promote called with issue#)', async () => {
+test('runPlan: R4P → promoted (promote called with issue#)', async () => {
   let seen = null;
   const r = await runPlan({
     issueNumber: 5,
     cfg: CFG,
-    deps: deps({ live: 'refine', onPromote: (rest) => (seen = rest) }),
+    deps: deps({ live: 'ready-for-plan', onPromote: (rest) => (seen = rest) }),
   });
   assert.equal(r.status, 'promoted');
   assert.equal(r.issueNumber, 5);
-  assert.equal(r.from, 'refine');
+  assert.equal(r.from, 'ready-for-plan');
   assert.equal(r.to, 'plan');
   assert.deepEqual(seen, ['5']);
 });
@@ -109,7 +109,7 @@ test('runPlan: default getLiveState via fake gh → promoted', async () => {
     deps: { assertBound: () => {}, verbPromote: async () => {} },
   });
   assert.equal(r.status, 'promoted');
-  assert.equal(r.from, 'refine');
+  assert.equal(r.from, 'ready-for-plan');
   assert.equal(r.to, 'plan');
 });
 
@@ -148,8 +148,8 @@ test('verbPlan: no issue number → usage, exit 2', async () => {
   assert.match(r.stderr, /Usage: \/task plan/);
 });
 
-test('verbPlan: refine → promoted, no exit', async () => {
-  const r = await runVerb(['5'], { deps: deps({ live: 'refine' }) });
+test('verbPlan: R4P → promoted, no exit', async () => {
+  const r = await runVerb(['5'], { deps: deps({ live: 'ready-for-plan' }) });
   assert.equal(r.exitCode, null);
 });
 

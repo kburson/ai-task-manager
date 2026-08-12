@@ -22,8 +22,8 @@ test('forward move with all prior markers → allow', () => {
   assert.deepEqual(v.missing, []);
 });
 
-test('first forward move (backlog→assigned) with backlog marker → allow', () => {
-  const v = evaluateContiguity({ fromState: 'backlog', toState: 'assigned', body: M('backlog') });
+test('first forward move (backlog→refine) with backlog marker → allow', () => {
+  const v = evaluateContiguity({ fromState: 'backlog', toState: 'refine', body: M('backlog') });
   assert.equal(v.action, 'allow');
 });
 
@@ -31,7 +31,7 @@ test('first forward move (backlog→assigned) with backlog marker → allow', ()
 
 test('forward move missing immediately-prior marker → refuse, names it', () => {
   // plan→develop but no plan marker
-  // A pre-#433 historical chain legitimately lacks the optional Assigned marker.
+  // Historical chains may omit the new Ready for Planning marker.
   const body = M('backlog', 'refine');
   const v = evaluateContiguity({ fromState: 'plan', toState: 'develop', body });
   assert.equal(v.action, 'refuse');

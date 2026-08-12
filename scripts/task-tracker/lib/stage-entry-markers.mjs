@@ -17,20 +17,18 @@ export const STAGES = [...stateIds()];
 const STAGE_INDEX = Object.fromEntries(STAGES.map((s, i) => [s, i]));
 const KNOWN_STAGES = new Set(STAGES);
 
-// Assigned (#1206; introduced as On Deck in #433) is an inert, gateless
-// waiting room. Pre-#433 issues never recorded a second-stage marker, so the contiguity check below
-// treats it as optional in the required-prior set — it must never manufacture
-// a hard forward-move prerequisite for the in-flight corpus.
-export const OPTIONAL_CONTIGUITY_STAGES = new Set(['assigned']);
+// Ready for Planning reuses the historical Assigned/On Deck slot. Older issues
+// never recorded this stage, so it remains optional for historical contiguity.
+export const OPTIONAL_CONTIGUITY_STAGES = new Set(['ready-for-plan']);
 
-const LEGACY_ASSIGNED_STAGE = 'on-deck';
+const LEGACY_READY_FOR_PLAN_STAGES = new Set(['assigned', 'on-deck']);
 
 function canonicalStage(stage) {
-  return stage === LEGACY_ASSIGNED_STAGE ? 'assigned' : stage;
+  return LEGACY_READY_FOR_PLAN_STAGES.has(stage) ? 'ready-for-plan' : stage;
 }
 
 export function markerStagePattern(stage) {
-  return stage === 'assigned' ? '(?:assigned|on-deck)' : stage;
+  return stage === 'ready-for-plan' ? '(?:ready-for-plan|assigned|on-deck)' : stage;
 }
 
 // Legal entry-history transitions. This compatibility Set is derived from the
@@ -58,7 +56,7 @@ export const LEGAL_TRANSITIONS = buildLegalTransitions();
 // Stage group accepts hyphenated legacy slugs via `[a-z]+(?:-[a-z]+)*`
 // — this matches whole alpha-hyphen words but stops before the `-<digits>` visit
 // suffix. The historical `aitm-entered-on-deck[-N]` spelling is retained in
-// issue bodies and projected to canonical `assigned` by the reader below.
+// issue bodies and projected to canonical `ready-for-plan` by the reader below.
 const ENTRY_RE_GLOBAL =
   /<!--\s*aitm-entered-([a-z]+(?:-[a-z]+)*)(?:-(\d+))?(?::\s*([^>\s]+)|\s+ts="((?:[^"]|&quot;)*)")\s*-->/gi;
 

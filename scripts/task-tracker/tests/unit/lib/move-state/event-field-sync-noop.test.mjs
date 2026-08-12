@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // @story #701
 // Regression: `update-event-fields.mjs` must accept every board state and be a
-// SILENT no-op for states without an event binding (backlog, assigned).
+// SILENT no-op for states without an event binding (backlog, ready-for-plan).
 //
 // Before the fix, `syncEventFields` (cache-unpark.mjs) spawned this script for
 // every transition target, but the script's whitelist covered only the six
@@ -43,8 +43,8 @@ function run(args) {
   });
 }
 
-test('assigned with --item-id is a silent exit-0 no-op', () => {
-  const r = run(['999999', 'assigned', '--item-id', 'PVTI_fake']);
+test('ready-for-plan with --item-id is a silent exit-0 no-op', () => {
+  const r = run(['999999', 'ready-for-plan', '--item-id', 'PVTI_fake']);
   assert.equal(r.status, 0, `expected exit 0, got ${r.status}; stderr: ${r.stderr}`);
   assert.equal(r.stdout.trim(), '');
   assert.equal(r.stderr.trim(), '');

@@ -21,8 +21,8 @@ test('#1006 JIT audit records the converged entry milestone and scope contract',
   assert.match(audit, /#1012 Closed\/Done/);
   assert.deepEqual(stateIds(), [
     'backlog',
-    'assigned',
     'refine',
+    'ready-for-plan',
     'plan',
     'develop',
     'test',

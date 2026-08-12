@@ -75,7 +75,7 @@ function makeDeps({ body, live, liveAfter, moveCode = 0 } = {}) {
   };
 }
 
-test('promote does not write aitm-last-known-state on successful refine→plan', async () => {
+test('promote does not write aitm-last-known-state on successful refine→R4P', async () => {
   const rationale =
     '<!-- aitm-refinement-rationale: {"size":"a","estimate":"b","priority":"c"} -->';
   const refineComplete = '<!-- aitm-refine-complete: 2026-06-03T00:00:00Z -->';
@@ -97,11 +97,11 @@ test('promote does not write aitm-last-known-state on successful refine→plan',
 
   const r = await runPromote({ issueNumber: 100, cfg, deps });
   assert.equal(r.status, 'promoted');
-  assert.equal(r.to, 'plan');
+  assert.equal(r.to, 'ready-for-plan');
   // The bootstrap path is the only place promote.mjs is allowed to write
   // aitm-last-known-state. Body already had a recorded state, so no write.
   const wroteLastKnownState = calls.writes.some((b) =>
-    /<!--\s*aitm-last-known-state:\s*plan\s*-->/.test(b)
+    /<!--\s*aitm-last-known-state:\s*ready-for-plan\s*-->/.test(b)
   );
   assert.equal(
     wroteLastKnownState,

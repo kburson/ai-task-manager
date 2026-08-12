@@ -49,15 +49,12 @@
 //
 //   State    | Entry guards                          | Exit guards
 //   ---------|---------------------------------------|------------------------------------------------------------
-//   backlog  | contiguity                            | blocked-by, refine-entry-fields-priority,
-//            |                                       | backlog-exit-child-parent-state, child-cannot-lead-epic
-//   assigned  | contiguity                            | blocked-by, refine-entry-fields-priority,
-//            |                                       | backlog-exit-child-parent-state, child-cannot-lead-epic,
-//            |                                       | user-story-warn (non-blocking)
-//   refine   | contiguity                            | refine-exit-complete-marker, refine-exit-stub-placeholder,
-//            |                                       | blocked-by, plan-entry-fields (body + board adapters),
-//            |                                       | refine-exit-wip-budget, refine-exit-child-parent-state,
-//            |                                       | child-cannot-lead-epic, user-story-block
+//   backlog  | contiguity                            | blocked-by, discuss-unresolved
+//   refine   | contiguity, child-parent-state,       | refine-exit-complete-marker, refine-exit-stub-placeholder,
+//            | user-story-warn (non-blocking)        | blocked-by, plan-entry-fields (body + board adapters),
+//            |                                       | user-story-block
+//   ready-   | contiguity                            | blocked-by, refine-exit-wip-budget,
+//   for-plan |                                       | refine-exit-child-parent-state, child-cannot-lead-epic
 //   plan     | contiguity                            | blocked-by, plan-approved, plan-epic-children,
 //            |                                       | plan-exit-planned-estimate, plan-exit-deep-dive,
 //            |                                       | plan-exit-plan-metadata, child-cannot-lead-epic

@@ -1,6 +1,5 @@
-// Guard-registry adapters for assigned→refine and refine→plan entry-field
-// gates (#276, parent epic #259; refine-entry relocated from backlog-exit to
-// assigned-exit in #433).
+// Guard-registry adapters for refinement entry/completion fields (#276,
+// parent epic #259). Canonical Refine completion advances to R4P.
 //
 // These adapters present existing gate-library functions as
 // `{ id, run(ctx) }` guards so the guard-registry (`./guard-registry.mjs`)
@@ -38,7 +37,7 @@ function joinBlockers(blockers) {
   return blockers.join('; ');
 }
 
-// assigned.exit — Priority on the board (refine-entry).
+// Historical Priority adapter retained for compatibility consumers.
 export const refineEntryFieldsPriority = {
   id: 'refine-entry-fields-priority',
   async run(ctx) {
@@ -59,7 +58,7 @@ export const refineEntryFieldsPriority = {
   },
 };
 
-// refine.exit #1 — Size / Estimate / Priority / AC items / rationale.
+// refine.exit #1 — Size / Estimate / Priority / AC items / rationale before R4P.
 // Side-effect: on success, stashes the resolved `plan` on ctx so the
 // promote refine post-success hook can run `applyRefinementEstimate`.
 export const planEntryFieldsBody = {

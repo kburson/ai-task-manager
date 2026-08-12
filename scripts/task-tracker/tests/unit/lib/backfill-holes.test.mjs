@@ -25,7 +25,7 @@ const cfg = { repo: 'o/r', projectId: 'PROJ_1' };
 test('computeBackfillHoles: zero markers + non-backlog stage reports every prior stage as a hole', () => {
   const r = computeBackfillHoles('', 'develop');
   assert.equal(r.ok, false);
-  assert.deepEqual(r.holes, ['backlog', 'assigned', 'refine', 'plan', 'develop']);
+  assert.deepEqual(r.holes, ['backlog', 'refine', 'ready-for-plan', 'plan', 'develop']);
 });
 
 test('computeBackfillHoles: zero markers + backlog stage reports no holes (fresh issue, preserved contract)', () => {
@@ -40,7 +40,7 @@ test('computeBackfillHoles: non-zero markers delegates to verifyChainIntegrity u
   body = stampEntryMarker(body, 'plan', '2026-01-03T00:00:00Z');
   const r = computeBackfillHoles(body, 'plan');
   assert.deepEqual(r, verifyChainIntegrity(body, 'plan'));
-  assert.deepEqual(r.holes, ['assigned', 'refine']);
+  assert.deepEqual(r.holes, ['refine', 'ready-for-plan']);
 });
 
 function makeDeps({ body = '', createdAt = '2026-01-01T00:00:00Z', live = null } = {}) {

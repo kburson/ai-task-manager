@@ -142,7 +142,7 @@ function bodyWithState(state) {
 }
 
 // ---------------------------------------------------------------------------
-// #4 — promote refuses refine→plan when marker is absent
+// #4 — promote refuses refine→R4P when marker is absent
 // ---------------------------------------------------------------------------
 {
   const body = bodyWithState('refine');
@@ -162,7 +162,7 @@ function bodyWithState(state) {
     r.blockers.some((b) => /aitm-refine-complete/.test(b)),
     'blocker names the missing marker'
   );
-  console.log('PASS: promote refuses refine→plan when aitm-refine-complete absent (#282)');
+  console.log('PASS: promote refuses refine→R4P when aitm-refine-complete absent (#282)');
 }
 
 // ---------------------------------------------------------------------------

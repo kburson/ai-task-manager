@@ -17,8 +17,8 @@ import { EXECUTABLE_MATRIX } from '../../fixtures/state-engine-policy-baseline.m
 
 const EXPECTED_STATES = [
   'backlog',
-  'assigned',
   'refine',
+  'ready-for-plan',
   'plan',
   'develop',
   'test',
@@ -28,8 +28,8 @@ const EXPECTED_STATES = [
 
 const EXPECTED_CONFIG_KEYS = [
   'kanbanOptionBacklog',
-  'kanbanOptionAssigned',
   'kanbanOptionRefine',
+  'kanbanOptionReadyForPlan',
   'kanbanOptionPlan',
   'kanbanOptionDevelop',
   'kanbanOptionTest',
@@ -52,9 +52,9 @@ test('state queries expose ordered identity and configuration metadata without a
 
 test('executable target queries expose only forward and runtime-walkable reverse edges', () => {
   assert.deepEqual(Object.fromEntries(stateIds().map((state) => [state, forwardTarget(state)])), {
-    backlog: 'assigned',
-    assigned: 'refine',
-    refine: 'plan',
+    backlog: 'refine',
+    refine: 'ready-for-plan',
+    'ready-for-plan': 'plan',
     plan: 'develop',
     develop: 'test',
     test: 'review',
@@ -62,8 +62,8 @@ test('executable target queries expose only forward and runtime-walkable reverse
     done: undefined,
   });
 
-  assert.deepEqual(backwardTargets('assigned'), ['backlog']);
   assert.deepEqual(backwardTargets('refine'), ['backlog']);
+  assert.deepEqual(backwardTargets('ready-for-plan'), ['backlog']);
   assert.deepEqual(backwardTargets('plan'), ['backlog']);
   assert.deepEqual(backwardTargets('test'), ['develop']);
   assert.deepEqual(backwardTargets('review'), ['develop', 'test']);

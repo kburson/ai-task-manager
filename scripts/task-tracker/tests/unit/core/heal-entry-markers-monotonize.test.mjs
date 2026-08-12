@@ -66,6 +66,7 @@ test('outOfOrderHealableStages: monotonic chain across all five stages flags not
 test('planStageHeal restamps out-of-order test with safe lower-bound ts', () => {
   const body = bodyWith([
     ['refine', '2026-05-18T10:00:00Z'],
+    ['ready-for-plan', '2026-05-18T10:30:00Z'],
     ['plan', '2026-05-18T11:00:00Z'],
     ['develop', '2026-05-18T12:00:00Z'],
     ['review', '2026-05-18T14:29:00Z'],
@@ -83,6 +84,7 @@ test('planStageHeal restamps out-of-order test with safe lower-bound ts', () => 
 test('planStageHeal backfills missing develop when test is present', () => {
   const body = bodyWith([
     ['refine', '2026-05-18T10:00:00Z'],
+    ['ready-for-plan', '2026-05-18T10:30:00Z'],
     ['plan', '2026-05-18T11:00:00Z'],
     ['test', '2026-05-18T13:00:00Z'],
   ]);
@@ -105,6 +107,7 @@ test('planStageHeal audit-only on review entry with no audit marker and later ma
 test('planStageHeal skip on monotonic chain (no regression for any stage)', () => {
   const body = bodyWith([
     ['refine', '2026-05-18T10:00:00Z'],
+    ['ready-for-plan', '2026-05-18T10:30:00Z'],
     ['plan', '2026-05-18T11:00:00Z'],
     ['develop', '2026-05-18T12:00:00Z'],
     ['test', '2026-05-18T13:00:00Z'],
@@ -154,6 +157,7 @@ test('verifyChainIntegrity passes after restamping out-of-order test (full round
   const { stripStageMarkers } = await import('../../../heal-entry-markers.mjs');
   const body = bodyWith([
     ['refine', '2026-05-18T10:00:00Z'],
+    ['ready-for-plan', '2026-05-18T10:30:00Z'],
     ['plan', '2026-05-18T11:00:00Z'],
     ['develop', '2026-05-18T12:00:00Z'],
     ['review', '2026-05-18T14:29:00Z'],

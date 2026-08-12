@@ -1,11 +1,11 @@
-// `/task plan` — dedicated refine→plan promoter (#299 Item 2).
+// `/task plan` — dedicated Ready for Planning→Plan promoter (#299 Item 2).
 //
 // Before #299 this verb was a deprecated alias for `/task discover`. That
 // shape collided with the kanban-state rename Analyze→Plan: `/task plan #N`
 // would start a discovery bucket instead of entering the Sprint-Planning
 // state. This verb mirrors the `/task refine`, `/task test`, `/task review`
 // pattern — a thin wrapper around `verbPromote` for its target state — with
-// a live-state pre-check that refuses anything but a refine→plan transition.
+// a live-state pre-check that refuses anything but an R4P→Plan transition.
 //
 // Discovery (backlog-item generation / pre-issue ideation) lives in
 // `verbs/discover.mjs` and is the only home for that workflow.
@@ -67,20 +67,20 @@ export async function runPlan({ issueNumber, cfg, deps = {} } = {}) {
   const promote = deps.verbPromote || verbPromote;
 
   const current = await getLiveState({ issueNumber, cfg });
-  if (current !== 'refine') {
+  if (current !== 'ready-for-plan') {
     return {
       status: 'wrong-state',
       issueNumber,
       current,
       message:
-        `plan: refuses to run on #${issueNumber} — current state is \`${current ?? 'unknown'}\`, expected \`refine\`. ` +
-        `\`/task plan\` only enters Sprint-Planning from Refine. ` +
+        `plan: refuses to run on #${issueNumber} — current state is \`${current ?? 'unknown'}\`, expected \`ready-for-plan\`. ` +
+        `\`/task plan\` only enters Sprint-Planning from Ready for Planning. ` +
         `For backlog item generation use \`/task discover\`; for other transitions use \`/task promote\`.`,
     };
   }
 
   await promote([String(issueNumber)], cfg);
-  return { status: 'promoted', issueNumber, from: 'refine', to: 'plan' };
+  return { status: 'promoted', issueNumber, from: 'ready-for-plan', to: 'plan' };
 }
 
 export async function verbPlan(ctx) {
@@ -89,7 +89,7 @@ export async function verbPlan(ctx) {
   if (!issueNumber) {
     process.stderr.write('Usage: /task plan <issue#>\n');
     process.stderr.write(
-      '  Promotes <issue#> from Refine to Plan (Sprint-Planning entry). For backlog item generation use `/task discover`.\n'
+      '  Promotes <issue#> from Ready for Planning to Plan (Sprint-Planning entry). For backlog item generation use `/task discover`.\n'
     );
     process.exit(2);
   }

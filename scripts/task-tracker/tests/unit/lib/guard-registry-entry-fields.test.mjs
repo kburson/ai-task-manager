@@ -48,10 +48,10 @@ function fieldDefs() {
 
 describe('guard-bootstrap: entry-field adapter registration', () => {
   // Bootstrap is eager on import — calling it again must be a no-op.
-  it('refineEntryFieldsPriority is registered at assigned.exit', () => {
+  it('the obsolete pre-refine Priority adapter is not registered', () => {
     bootstrapGuards();
-    const ids = GUARDS['assigned'].exit.map((g) => g.id);
-    assert.ok(ids.includes('refine-entry-fields-priority'), `got ${ids.join(',')}`);
+    const ids = Object.values(GUARDS).flatMap((state) => state.exit.map((g) => g.id));
+    assert.equal(ids.includes('refine-entry-fields-priority'), false, `got ${ids.join(',')}`);
   });
 
   it('planEntryFieldsBody and planEntryFieldsBoard are registered at refine.exit', () => {

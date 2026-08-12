@@ -2,7 +2,7 @@
 // @story #438
 // #438 AC1 — Full-lifecycle traversal E2E.
 //
-// Walk the canonical FORWARD chain backlog → assigned → refine → plan →
+// Walk the canonical FORWARD chain backlog → refine → ready-for-plan → plan →
 // develop → test → review → done. For every hop assert (a) the state machine
 // considers the transition legal AND (b) the DESTINATION slug resolves to a
 // non-empty board option ID through the PRODUCTION resolution path:
@@ -12,7 +12,7 @@
 // (#433/#436). The defect originally involved `kanbanOptionOnDeck` / On Deck:
 // the key was written to task-tracker.json but absent from config.mjs DEFAULTS,
 // so loadConfig dropped it and the option ID came back ''. #1206 renames that
-// state and key to Assigned while preserving the same end-to-end pin.
+// state and key to Ready for Planning while preserving the same end-to-end pin.
 
 import { strict as assert } from 'node:assert';
 import { test } from 'node:test';
@@ -72,13 +72,13 @@ test('AC1: every canonical FORWARD hop is legal and resolves a non-empty option 
   // The full canonical chain must have been traversed end-to-end.
   assert.deepEqual(
     visited,
-    ['backlog', 'assigned', 'refine', 'plan', 'develop', 'test', 'review', 'done'],
+    ['backlog', 'refine', 'ready-for-plan', 'plan', 'develop', 'test', 'review', 'done'],
     'traversal must cover the entire canonical 8-state chain'
   );
 });
 
-test('AC1: assigned specifically resolves (current form of the Bug A regression pin)', () => {
+test('AC1: ready-for-plan specifically resolves (current Bug A regression pin)', () => {
   const cfg = populatedConfig();
-  const optId = resolveOptionId(cfg, 'assigned');
-  assert.ok(optId && optId.length > 0, 'assigned must resolve — the exact Bug A failure locus');
+  const optId = resolveOptionId(cfg, 'ready-for-plan');
+  assert.ok(optId && optId.length > 0, 'R4P must resolve — the exact Bug A failure locus');
 });

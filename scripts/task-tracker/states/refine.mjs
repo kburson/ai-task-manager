@@ -6,17 +6,20 @@
 
 import { blockedByGuard } from '../lib/blocked-by-guard.mjs';
 import { planEntryFieldsBody, planEntryFieldsBoard } from '../lib/guard-adapters-entry-fields.mjs';
-import { refineExitWipBudgetGuard } from '../lib/refine-exit-wip-budget-guard.mjs';
-import { refineExitChildParentStateGuard } from '../lib/refine-exit-child-parent-state-guard.mjs';
 import { contiguityEntryGuard } from '../lib/contiguity-entry-guard.mjs';
-import { childCannotLeadEpicExitGuard } from '../lib/child-cannot-lead-epic-exit-guard.mjs';
 import { refineExitCompleteMarkerGuard } from '../lib/refine-exit-complete-marker-guard.mjs';
 import { refineExitStubPlaceholderGuard } from '../lib/refine-exit-stub-placeholder-guard.mjs';
 import { userStoryBlockGuard } from '../lib/user-story-guard.mjs';
+import { userStoryWarnGuard } from '../lib/user-story-guard.mjs';
+import { backlogExitChildParentStateGuard } from '../lib/backlog-exit-child-parent-state-guard.mjs';
 
 export default Object.freeze({
   name: 'refine',
-  entryGuards: Object.freeze([contiguityEntryGuard]),
+  entryGuards: Object.freeze([
+    contiguityEntryGuard,
+    backlogExitChildParentStateGuard,
+    userStoryWarnGuard,
+  ]),
   exitGuards: Object.freeze([
     // #357 — the `aitm-refine-complete` marker is the user's "refine is done"
     // signal; check it FIRST so the absence surfaces before downstream gates
@@ -27,9 +30,6 @@ export default Object.freeze({
     blockedByGuard,
     planEntryFieldsBody,
     planEntryFieldsBoard,
-    refineExitWipBudgetGuard,
-    refineExitChildParentStateGuard,
-    childCannotLeadEpicExitGuard,
     // #432 — hard-refuse if ## User Story is missing or still a placeholder.
     userStoryBlockGuard,
   ]),

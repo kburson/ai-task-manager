@@ -154,7 +154,7 @@ So that JIT planning can continue
   assert.equal(result.status, 'pulled');
   assert.equal(result.childNumber, 103);
   assert.deepEqual(resolvedIssues, [100], 'execution authority comes from the bound epic');
-  assert.deepEqual(moves, [{ issueNumber: 103, target: 'plan' }]);
+  assert.deepEqual(moves, [{ issueNumber: 103, target: 'ready-for-plan' }]);
 });
 
 test('direct promote remains fail-closed on a mismatched bind (#1114)', async () => {

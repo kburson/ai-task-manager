@@ -24,8 +24,8 @@ const scriptSrc = readFileSync(script, 'utf8');
 
 const EXPECTED = [
   { name: 'Backlog', color: 'GRAY' },
-  { name: 'Assigned', color: 'GRAY' },
   { name: 'Refine', color: 'GREEN' },
+  { name: 'Ready for Planning', color: 'GRAY' },
   { name: 'Plan', color: 'BLUE' },
   { name: 'Develop', color: 'YELLOW' },
   { name: 'Test', color: 'ORANGE' },
@@ -48,7 +48,7 @@ const EXPECTED = [
   // not carry its own hardcoded color literals (the #415 drift bug).
   assert.doesNotMatch(
     scriptSrc,
-    /STATES_TO_CREATE\+=\("(?:Backlog|Assigned|Refine|Plan|Develop|Test|Review|Done):[A-Z]+"\)/,
+    /STATES_TO_CREATE\+=\("(?:Backlog|Refine|Ready for Planning|Plan|Develop|Test|Review|Done):[A-Z]+"\)/,
     'STATES_TO_CREATE still hardcodes colors — it must use canon_color so it cannot drift'
   );
   assert.match(
@@ -74,7 +74,7 @@ spawnSync('mkdir', ['-p', binDir, targetDir, inputsDir], { check: true });
 // Board mirroring the broken real-world install: all 8 columns already
 // exist (so STATES_TO_CREATE is empty and no refetch is needed), but with the
 // GitHub default names "Todo"/"In Progress" and pre-fix wrong colors (incl.
-// "Assigned" carrying a wrong BLUE so normalization must recolor it to GRAY).
+// "Ready for Planning" carrying a wrong BLUE so normalization must recolor it to GRAY).
 const ghMock = join(binDir, 'gh');
 writeFileSync(
   ghMock,
@@ -143,18 +143,18 @@ if [[ "$1" == "api" && "$2" == "graphql" ]]; then
     exit 0
   fi
   if [[ "$args" == *".data.node.fields.nodes"* || "$args" == *"fields(first:"* ]]; then
-    ASSIGNED_OPTIONS='    {"id":"O_ASSIGNED","name":"Assigned","color":"BLUE","description":""},'
+    ASSIGNED_OPTIONS='    {"id":"O_ASSIGNED","name":"Ready for Planning","color":"BLUE","description":""},'
     if [[ "$AITM_TEST_ASSIGNED_SHAPE" == "legacy" ]]; then
       ASSIGNED_OPTIONS='    {"id":"O_ASSIGNED","name":"On Deck","color":"BLUE","description":""},'
     elif [[ "$AITM_TEST_ASSIGNED_SHAPE" == "both" ]]; then
       ASSIGNED_OPTIONS='    {"id":"O_ASSIGNED","name":"On Deck","color":"BLUE","description":""},
-    {"id":"O_ASSIGNED_DUP","name":"Assigned","color":"GRAY","description":""},'
+    {"id":"O_ASSIGNED_DUP","name":"Ready for Planning","color":"GRAY","description":""},'
     elif [[ "$AITM_TEST_ASSIGNED_SHAPE" == "duplicate-legacy" ]]; then
       ASSIGNED_OPTIONS='    {"id":"O_ASSIGNED","name":"On Deck","color":"BLUE","description":""},
     {"id":"O_ASSIGNED_DUP","name":"On Deck","color":"GRAY","description":""},'
     elif [[ "$AITM_TEST_ASSIGNED_SHAPE" == "duplicate-canonical" ]]; then
-      ASSIGNED_OPTIONS='    {"id":"O_ASSIGNED","name":"Assigned","color":"BLUE","description":""},
-    {"id":"O_ASSIGNED_DUP","name":"Assigned","color":"GRAY","description":""},'
+      ASSIGNED_OPTIONS='    {"id":"O_ASSIGNED","name":"Ready for Planning","color":"BLUE","description":""},
+    {"id":"O_ASSIGNED_DUP","name":"Ready for Planning","color":"GRAY","description":""},'
     elif [[ "$AITM_TEST_ASSIGNED_SHAPE" == "missing" && ! -f "${temp}/assigned-created" ]]; then
       ASSIGNED_OPTIONS=''
     fi
@@ -250,9 +250,9 @@ assert.equal(
   'Develop must reuse the matched "In Progress" option id'
 );
 assert.equal(
-  byName['Assigned'].id,
+  byName['Ready for Planning'].id,
   'O_ASSIGNED',
-  'Assigned must reuse the matched "Assigned" option id (recolored in place, not recreated)'
+  'Ready for Planning must reuse its matched option id (recolored in place, not recreated)'
 );
 // Every managed option carries an id (in-place edit, never create).
 for (const o of opts.slice(0, 8)) {
@@ -314,16 +314,16 @@ function runAssignedShape(
   return { ...run, target: runTarget };
 }
 
-// A board with neither spelling may create Assigned normally.  The first
+// A board with no R4P spelling may create Ready for Planning normally. The first
 // Status mutation includes the new option without an id; the mock then exposes
 // its created id on the script's refetch so init can finish normally.
 const missingResult = runAssignedShape('missing');
 assert.equal(missingResult.status, 0, `${missingResult.stderr}\n${missingResult.stdout}`);
 assert.ok(
   updatePayloads().some(({ variables }) =>
-    variables.opts.some(({ id, name }) => name === 'Assigned' && id == null)
+    variables.opts.some(({ id, name }) => name === 'Ready for Planning' && id == null)
   ),
-  'a fresh board should create the canonical Assigned option'
+  'a fresh board should create the canonical Ready for Planning option'
 );
 
 // An unambiguous legacy board may finish config authoring with the stable old
@@ -332,7 +332,7 @@ assert.ok(
 const beforeLegacy = updatePayloads().length;
 const legacy = runAssignedShape('legacy');
 assert.equal(legacy.status, 0, `${legacy.stderr}\n${legacy.stdout}`);
-assert.match(legacy.stdout + legacy.stderr, /rename-on-deck-to-assigned\.mjs.*--apply/);
+assert.match(legacy.stdout + legacy.stderr, /explicit #1217 R4P migration/i);
 assert.equal(
   updatePayloads().length,
   beforeLegacy,
@@ -341,7 +341,7 @@ assert.equal(
 const legacyConfig = JSON.parse(
   readFileSync(join(legacy.target, '.ai-task-manager/task-tracker.json'), 'utf8')
 );
-assert.equal(legacyConfig.kanbanOptionAssigned, 'O_ASSIGNED');
+assert.equal(legacyConfig.kanbanOptionReadyForPlan, 'O_ASSIGNED');
 assert.ok(!('kanbanOptionOnDeck' in legacyConfig));
 
 // Both spellings are ambiguous even to the explicit migration, so init fails
@@ -349,9 +349,9 @@ assert.ok(!('kanbanOptionOnDeck' in legacyConfig));
 const beforeBoth = updatePayloads().length;
 const both = runAssignedShape('both');
 assert.notEqual(both.status, 0, 'both-spellings board should fail closed');
-assert.match(both.stdout + both.stderr, /both 'On Deck' and 'Assigned'/);
-assert.match(both.stdout + both.stderr, /resolve the ambiguous duplicate/i);
-assert.match(both.stdout + both.stderr, /rename-on-deck-to-assigned\.mjs/);
+assert.match(both.stdout + both.stderr, /multiple Ready-for-Planning spellings/i);
+assert.match(both.stdout + both.stderr, /resolve the ambiguity/i);
+assert.match(both.stdout + both.stderr, /explicit #1217 migration/i);
 assert.equal(
   updatePayloads().length,
   beforeBoth,
@@ -378,12 +378,15 @@ if (!reviewCase || reviewCase === 'duplicate-legacy') {
 if (!reviewCase || reviewCase === 'duplicate-canonical') {
   const before = projectMutationCount();
   const duplicateCanonical = runAssignedShape('duplicate-canonical');
-  assert.notEqual(duplicateCanonical.status, 0, 'duplicate Assigned options should fail closed');
-  assert.match(duplicateCanonical.stdout + duplicateCanonical.stderr, /duplicate.*Assigned/i);
+  assert.notEqual(duplicateCanonical.status, 0, 'duplicate R4P options should fail closed');
+  assert.match(
+    duplicateCanonical.stdout + duplicateCanonical.stderr,
+    /duplicate.*Ready for Planning/i
+  );
   assert.equal(
     projectMutationCount(),
     before,
-    'duplicate Assigned options must emit zero project mutations'
+    'duplicate R4P options must emit zero project mutations'
   );
 }
 
@@ -393,7 +396,7 @@ if (!reviewCase || reviewCase === 'conflicting-config') {
   assert.notEqual(conflictingConfig.status, 0, 'conflicting config ids should fail closed');
   assert.match(
     conflictingConfig.stdout + conflictingConfig.stderr,
-    /kanbanOptionOnDeck conflicts with kanbanOptionAssigned/i
+    /Ready for Planning compatibility keys conflict/i
   );
   assert.equal(
     projectMutationCount(),
@@ -428,12 +431,15 @@ if (!secondPassCase || secondPassCase === 'unlinked-duplicate-canonical') {
     projectMode: 'unlinked-selection',
     label: 'unlinked-duplicate-canonical',
   });
-  assert.notEqual(duplicateCanonical.status, 0, 'unlinked duplicate Assigned should fail closed');
-  assert.match(duplicateCanonical.stdout + duplicateCanonical.stderr, /duplicate.*Assigned/i);
+  assert.notEqual(duplicateCanonical.status, 0, 'unlinked duplicate R4P should fail closed');
+  assert.match(
+    duplicateCanonical.stdout + duplicateCanonical.stderr,
+    /duplicate.*Ready for Planning/i
+  );
   assert.equal(
     projectMutationCount(),
     before,
-    'unlinked duplicate Assigned must refuse before every project mutation'
+    'unlinked duplicate R4P must refuse before every project mutation'
   );
 }
 

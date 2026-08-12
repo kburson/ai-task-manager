@@ -46,15 +46,17 @@ function currentBoardFields() {
   ];
 }
 
-test('CANONICAL_STATUS_OPTIONS derives from the move-state state list and includes Assigned', () => {
+test('CANONICAL_STATUS_OPTIONS derives from the move-state state list and includes R4P', () => {
   const expected = Object.keys(STATE_TO_CONFIG_KEY).map((state) =>
-    state
-      .split('-')
-      .map((seg) => seg.charAt(0).toUpperCase() + seg.slice(1))
-      .join(' ')
+    state === 'ready-for-plan'
+      ? 'Ready for Planning'
+      : state
+          .split('-')
+          .map((seg) => seg.charAt(0).toUpperCase() + seg.slice(1))
+          .join(' ')
   );
   assert.deepEqual(CANONICAL_STATUS_OPTIONS, expected);
-  assert.ok(CANONICAL_STATUS_OPTIONS.includes('Assigned'));
+  assert.ok(CANONICAL_STATUS_OPTIONS.includes('Ready for Planning'));
 });
 
 test('current 8-column board with Created/Updated/Closed reports no drift', () => {
@@ -64,14 +66,16 @@ test('current 8-column board with Created/Updated/Closed reports no drift', () =
   assert.deepEqual(drift.statusOptionDrift, []);
 });
 
-test('legacy 7-column board reports status-option drift missing Assigned', () => {
+test('legacy 7-column board reports status-option drift missing R4P', () => {
   const fields = currentBoardFields().map((f) =>
-    f.name === 'Status' ? { ...f, options: f.options.filter((o) => o.name !== 'Assigned') } : f
+    f.name === 'Status'
+      ? { ...f, options: f.options.filter((o) => o.name !== 'Ready for Planning') }
+      : f
   );
   const drift = diffSchema(fields, FIELD_DEFS);
   assert.equal(drift.hasDrift, true);
   assert.equal(drift.statusOptionDrift.length, 1);
-  assert.deepEqual(drift.statusOptionDrift[0].missing, ['assigned']);
+  assert.deepEqual(drift.statusOptionDrift[0].missing, ['ready for planning']);
   assert.deepEqual(drift.statusOptionDrift[0].extra, []);
 });
 

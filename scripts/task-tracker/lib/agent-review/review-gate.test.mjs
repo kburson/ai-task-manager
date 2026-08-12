@@ -33,10 +33,10 @@ test('parseEnteredStages tolerates a non-string and returns []', () => {
   assert.deepEqual(parseEnteredStages(null), []);
 });
 
-test('#1206: parseEnteredStages projects historical second-stage markers to Assigned', () => {
+test('#1211: parseEnteredStages projects historical second-stage markers to R4P', () => {
   assert.deepEqual(
     parseEnteredStages('<!-- aitm-entered-on-deck ts="2026-07-01T00:00:00.000Z" -->'),
-    [{ stage: 'assigned', ts: '2026-07-01T00:00:00.000Z' }]
+    [{ stage: 'ready-for-plan', ts: '2026-07-01T00:00:00.000Z' }]
   );
 });
 

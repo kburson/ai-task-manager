@@ -19,4 +19,12 @@ export { bootstrapGuards } from './state-bootstrap.mjs';
 // All board states that have an `exit` transition (`done` is terminal).
 // Re-exported for back-compat with callers that iterated the list
 // directly to mirror the old registration loop.
-export const EXIT_STATES = ['backlog', 'assigned', 'refine', 'plan', 'develop', 'test', 'review'];
+export const EXIT_STATES = [
+  'backlog',
+  'refine',
+  'ready-for-plan',
+  'plan',
+  'develop',
+  'test',
+  'review',
+];

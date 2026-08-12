@@ -51,7 +51,7 @@ test('every non-self executable edge is accepted by entry history', () => {
 test('history-only edges remain distinct and never authorize executable movement', () => {
   const historyOnly = [
     ['develop', 'plan', 'entry'],
-    ['develop', 'refine', 'entry'],
+    ['refine', 'plan', 'entry'],
     ['done', 'test', 'timing'],
   ];
 

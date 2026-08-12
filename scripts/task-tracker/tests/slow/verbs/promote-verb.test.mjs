@@ -129,12 +129,12 @@ function bodyWithState(state) {
   return state === 'plan' ? base + DEEP_DIVE_SIGNALS : base;
 }
 
-// #282 — refine→plan promotion requires this stage-completion marker.
-// Tests that exercise the refine→plan deeper gates include it in the body
+// #282 — refine→R4P promotion requires this stage-completion marker.
+// Tests that exercise the refine→R4P deeper gates include it in the body
 // so the new marker-presence check passes and the deeper gate under test runs.
 const REFINE_COMPLETE_MARKER = '<!-- aitm-refine-complete: 2026-06-03T00:00:00Z -->';
 
-test('promote: refine→plan is a direct move-state call with refine-estimate hook', async () => {
+test('promote: refine→R4P is a direct move-state call with refine-estimate hook', async () => {
   const rationale =
     '<!-- aitm-refinement-rationale: {"size":"a","estimate":"b","priority":"c"} -->';
   const ac = '## Acceptance Criteria\n- [ ] foo\n';
@@ -151,10 +151,10 @@ test('promote: refine→plan is a direct move-state call with refine-estimate ho
   const r = await runPromote({ issueNumber: 100, cfg, deps });
   assert.equal(r.status, 'promoted');
   assert.equal(r.from, 'refine');
-  assert.equal(r.to, 'plan');
+  assert.equal(r.to, 'ready-for-plan');
   assert.equal(r.via, 'direct');
   assert.equal(calls.spawns.length, 0);
-  assert.deepEqual(calls.moves, [{ issueNumber: 100, target: 'plan' }]);
+  assert.deepEqual(calls.moves, [{ issueNumber: 100, target: 'ready-for-plan' }]);
   // #128 — promote no longer emits a `move:<target>` audit row. The paired
   // `<prev>:complete` + `<next>:enter` rows are emitted from move-state.mjs
   // (the chokepoint) and not visible to this dependency-injected fake.
@@ -164,12 +164,12 @@ test('promote: refine→plan is a direct move-state call with refine-estimate ho
   // feedback_single_state_mutator.md). promote.mjs no longer stamps
   // aitm-entered-<stage>; verify it does not write the marker itself.
   assert.ok(
-    !calls.writes.some((b) => /aitm-entered-plan(?::|\s+ts=")/.test(b)),
-    'promote must not stamp aitm-entered-plan; that is move-state.mjs responsibility'
+    !calls.writes.some((b) => /aitm-entered-ready-for-plan(?::|\s+ts=")/.test(b)),
+    'promote must not stamp R4P entry; that is move-state.mjs responsibility'
   );
 });
 
-test('promote: refine→plan refused when full refine-estimate signals are missing', async () => {
+test('promote: refine→R4P refused when full refine-estimate signals are missing', async () => {
   const body = `${bodyWithState('refine')}\n${REFINE_COMPLETE_MARKER}\n`;
   const { deps, calls } = makeDeps({ body, live: 'refine' });
   deps.refinementEstimate = {
@@ -182,7 +182,7 @@ test('promote: refine→plan refused when full refine-estimate signals are missi
   assert.equal(calls.moves.length, 0);
 });
 
-test('promote: refine→plan refused when Acceptance Criteria section is empty', async () => {
+test('promote: refine→R4P refused when Acceptance Criteria section is empty', async () => {
   const rationale =
     '<!-- aitm-refinement-rationale: {"size":"a","estimate":"b","priority":"c"} -->';
   const body = `${bodyWithState('refine')}\n${REFINE_COMPLETE_MARKER}\n${rationale}\n\n## Acceptance Criteria\n\n(none)\n`;
@@ -197,7 +197,7 @@ test('promote: refine→plan refused when Acceptance Criteria section is empty',
   assert.equal(calls.moves.length, 0);
 });
 
-test('promote: refine→plan refused when refine-exit gate returns blockers (#147)', async () => {
+test('promote: refine→R4P refused when refine-exit gate returns blockers (#147)', async () => {
   const rationale =
     '<!-- aitm-refinement-rationale: {"size":"a","estimate":"b","priority":"c"} -->';
   const ac = '## Acceptance Criteria\n- [ ] foo\n';
@@ -221,12 +221,8 @@ test('promote: refine→plan refused when refine-exit gate returns blockers (#14
   assert.equal(calls.spawns.length, 0);
 });
 
-test('promote: assigned→refine stamps Start time on success (#147, #433)', async () => {
-  const { deps, calls } = makeDeps({ body: bodyWithState('assigned'), live: 'assigned' });
-  deps.refinementEstimate = {
-    loadProjectFieldDefs: () => [],
-    projectValuesForIssue: async () => ({ priority: 'P2' }),
-  };
+test('promote: backlog→refine stamps Start time on success (#147, #1211)', async () => {
+  const { deps, calls } = makeDeps({ body: bodyWithState('backlog'), live: 'backlog' });
   let stampCalls = 0;
   let stampArgs = null;
   deps.stampStartTime = async (opts) => {
@@ -241,10 +237,7 @@ test('promote: assigned→refine stamps Start time on success (#147, #433)', asy
   assert.equal(stampArgs.issueNumber, 1472);
 });
 
-test('promote: backlog→assigned is a gateless direct move-state call (#433)', async () => {
-  // #433 — Backlog → Assigned carries no field gate. The Priority gate relocated
-  // to Assigned → Refine, so promote out of backlog needs no board values and
-  // stamps no Start time.
+test('promote: backlog→refine is a direct move-state call without a Priority gate', async () => {
   const { deps, calls } = makeDeps({ body: bodyWithState('backlog'), live: 'backlog' });
   let stampCalls = 0;
   deps.stampStartTime = async () => {
@@ -254,10 +247,10 @@ test('promote: backlog→assigned is a gateless direct move-state call (#433)', 
   const r = await runPromote({ issueNumber: 1473, cfg, deps });
   assert.equal(r.status, 'promoted');
   assert.equal(r.from, 'backlog');
-  assert.equal(r.to, 'assigned');
+  assert.equal(r.to, 'refine');
   assert.equal(r.via, 'direct');
-  assert.deepEqual(calls.moves, [{ issueNumber: 1473, target: 'assigned' }]);
-  assert.equal(stampCalls, 0, 'Start time is stamped at assigned→refine, not backlog→assigned');
+  assert.deepEqual(calls.moves, [{ issueNumber: 1473, target: 'refine' }]);
+  assert.equal(stampCalls, 1, 'Start time is stamped on Refine entry');
   assert.equal(r.refinementPost, null);
 });
 
@@ -553,30 +546,13 @@ test('promote: review→done reports transition-failed when close exits 0 but bo
   assert.deepEqual(calls.spawns, [{ verb: 'close', issueNumber: 710 }]);
 });
 
-test('promote: assigned→refine is a direct move-state call gated only on Priority (#133, #433)', async () => {
-  const { deps, calls } = makeDeps({ body: bodyWithState('assigned'), live: 'assigned' });
-  deps.refinementEstimate = {
-    loadProjectFieldDefs: () => [],
-    projectValuesForIssue: async () => ({ priority: 'P2' }),
-  };
+test('promote: historical Assigned body canonicalizes to R4P before drift comparison', async () => {
+  const { deps, calls } = makeDeps({ body: bodyWithState('assigned'), live: 'ready-for-plan' });
   const r = await runPromote({ issueNumber: 105, cfg, deps });
   assert.equal(r.status, 'promoted');
   assert.equal(r.via, 'direct');
-  assert.deepEqual(calls.moves, [{ issueNumber: 105, target: 'refine' }]);
-  // No refine-estimate comment posted on assigned→refine; that fires at refine→plan.
+  assert.deepEqual(calls.moves, [{ issueNumber: 105, target: 'plan' }]);
   assert.equal(r.refinementPost, null);
-});
-
-test('promote: assigned→refine refused when Priority is missing on the board (#433)', async () => {
-  const { deps, calls } = makeDeps({ body: bodyWithState('assigned'), live: 'assigned' });
-  deps.refinementEstimate = {
-    loadProjectFieldDefs: () => [],
-    projectValuesForIssue: async () => ({}),
-  };
-  const r = await runPromote({ issueNumber: 1055, cfg, deps });
-  assert.equal(r.status, 'refine-gate-refused');
-  assert.ok(r.blockers.some((b) => b.startsWith('refine-field-missing')));
-  assert.equal(calls.moves.length, 0);
 });
 
 test('promote: terminal refusal on done', async () => {

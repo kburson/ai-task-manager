@@ -60,8 +60,8 @@ for (const legacy of ['in-progress', 'in-review', 'r4r', 'ready']) {
 // Test: each new state with TT_SKIP_NETWORK prints success without hitting GH
 for (const state of [
   'backlog',
-  'assigned',
   'refine',
+  'ready-for-plan',
   'plan',
   'develop',
   'test',
@@ -78,7 +78,7 @@ for (const state of [
         projectId: 'PVT_test123',
         kanbanFieldId: 'PVTF_test',
         kanbanOptionBacklog: 'PVTO_b',
-        kanbanOptionAssigned: 'PVTO_assigned',
+        kanbanOptionReadyForPlan: 'PVTO_ready_for_plan',
         kanbanOptionRefine: 'PVTO_g',
         kanbanOptionPlan: 'PVTO_a',
         kanbanOptionDevelop: 'PVTO_d',

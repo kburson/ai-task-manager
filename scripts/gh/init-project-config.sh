@@ -372,8 +372,8 @@ create_project_field_if_missing() {
 # PURPLE.
 CANONICAL_STATUS_PALETTE='[
   {"name":"Backlog","color":"GRAY","description":"Unvetted ideas; not yet shaped."},
-  {"name":"Assigned","color":"GRAY","description":"Current tranche pulled from Backlog; inert waiting room."},
   {"name":"Refine","color":"GREEN","description":"Items being shaped: AC, sizing, estimates."},
+  {"name":"Ready for Planning","color":"GRAY","description":"Refinement is complete; eligible for JIT planning."},
   {"name":"Plan","color":"BLUE","description":"Items being deep-dived: design + caller analysis."},
   {"name":"Develop","color":"YELLOW","description":"Implementation in progress."},
   {"name":"Test","color":"ORANGE","description":"Agent verification in progress."},
@@ -587,45 +587,50 @@ echo ""
 info "Current states in this field:"
 echo "$KANBAN_FIELD_JSON" | jq -r '.options[] | "    \(.name)"'
 echo ""
-info "Required task-tracker states: Backlog, Assigned, Refine, Plan, Develop, Test, Review, Done"
+info "Required task-tracker states: Backlog, Refine, Ready for Planning, Plan, Develop, Test, Review, Done"
 info "You can also add custom unmanaged states."
 echo ""
 
-# Renaming the historical "On Deck" option is an explicit, separately audited
-# migration. In particular, do not let the interactive picker map Assigned to
-# that option and then silently rename it as a side effect of palette
-# normalization. An unambiguous legacy-only board keeps its stable option id
-# while init writes canonical config and skips palette mutation; a board with
-# both spellings refuses before any Status-field mutation.
-LEGACY_ASSIGNED_OPTION_COUNT=$(echo "$KANBAN_FIELD_JSON" | jq '
+# Renaming/reordering a historical Assigned or On Deck option is owned by the
+# explicit #1217 migration. Init may preserve one unambiguous legacy option id
+# as the R4P config identity, but must not rename or reorder the live field.
+LEGACY_ON_DECK_OPTION_COUNT=$(echo "$KANBAN_FIELD_JSON" | jq '
   [.options[]? | select((.name | ascii_downcase) == "on deck")] | length
 ' 2>/dev/null || echo '0')
-CANONICAL_ASSIGNED_OPTION_COUNT=$(echo "$KANBAN_FIELD_JSON" | jq '
+LEGACY_ASSIGNED_OPTION_COUNT=$(echo "$KANBAN_FIELD_JSON" | jq '
   [.options[]? | select((.name | ascii_downcase) == "assigned")] | length
 ' 2>/dev/null || echo '0')
-LEGACY_ASSIGNED_OPTION_ID=""
+CANONICAL_READY_FOR_PLAN_OPTION_COUNT=$(echo "$KANBAN_FIELD_JSON" | jq '
+  [.options[]? | select((.name | ascii_downcase) == "ready for planning")] | length
+' 2>/dev/null || echo '0')
+LEGACY_READY_FOR_PLAN_OPTION_ID=""
 
-if [[ "$LEGACY_ASSIGNED_OPTION_COUNT" -gt 1 ]]; then
+if [[ "$LEGACY_ON_DECK_OPTION_COUNT" -gt 1 ]]; then
   err "Status contains duplicate 'On Deck' options; init cannot choose a stable option id."
   info "Resolve the duplicate options explicitly, then rerun init."
   exit 1
 fi
-if [[ "$CANONICAL_ASSIGNED_OPTION_COUNT" -gt 1 ]]; then
+if [[ "$LEGACY_ASSIGNED_OPTION_COUNT" -gt 1 ]]; then
   err "Status contains duplicate 'Assigned' options; init cannot choose a stable option id."
   info "Resolve the duplicate options explicitly, then rerun init."
   exit 1
 fi
-if [[ "$LEGACY_ASSIGNED_OPTION_COUNT" -gt 0 && "$CANONICAL_ASSIGNED_OPTION_COUNT" -gt 0 ]]; then
-  err "Status contains both 'On Deck' and 'Assigned'; init will not choose or mutate either option."
-  info "Resolve the ambiguous duplicate, then preview the explicit migration:"
-  info "  AI_TASK_MANAGER_PROJECT_DIR=\"$TARGET_DIR\" node \"$PKG_ROOT/scripts/migrate/rename-on-deck-to-assigned.mjs\""
+if [[ "$CANONICAL_READY_FOR_PLAN_OPTION_COUNT" -gt 1 ]]; then
+  err "Status contains duplicate 'Ready for Planning' options; init cannot choose a stable option id."
+  info "Resolve the duplicate options explicitly, then rerun init."
   exit 1
 fi
-if [[ "$LEGACY_ASSIGNED_OPTION_COUNT" -gt 0 ]]; then
-  LEGACY_ASSIGNED_OPTION_ID=$(echo "$KANBAN_FIELD_JSON" | jq -r '
-    first(.options[] | select((.name | ascii_downcase) == "on deck") | .id) // empty
+READY_FOR_PLAN_SPELLING_COUNT=$((LEGACY_ON_DECK_OPTION_COUNT + LEGACY_ASSIGNED_OPTION_COUNT + CANONICAL_READY_FOR_PLAN_OPTION_COUNT))
+if [[ "$READY_FOR_PLAN_SPELLING_COUNT" -gt 1 ]]; then
+  err "Status contains multiple Ready-for-Planning spellings; init will not choose or mutate an ambiguous option."
+  info "Resolve the ambiguity before running the explicit #1217 migration."
+  exit 1
+fi
+if [[ "$LEGACY_ON_DECK_OPTION_COUNT" -gt 0 || "$LEGACY_ASSIGNED_OPTION_COUNT" -gt 0 ]]; then
+  LEGACY_READY_FOR_PLAN_OPTION_ID=$(echo "$KANBAN_FIELD_JSON" | jq -r '
+    first(.options[] | select(((.name | ascii_downcase) == "on deck") or ((.name | ascii_downcase) == "assigned")) | .id) // empty
   ' 2>/dev/null || echo '')
-  warn "Status still uses legacy 'On Deck'; init will preserve its option id and defer the rename."
+  warn "Status still uses a legacy R4P spelling; init will preserve its option id and defer live migration to #1217."
 fi
 
 # Existing projects are linked only after the selected Status field has passed
@@ -697,13 +702,13 @@ auto_or_pick() {
 # boards; the canonical Scrum vocab is the first entry of each list.
 # Backlog only auto-matches "backlog" — not "todo" (that belongs to Refine).
 auto_or_pick "Backlog" "backlog"                                              "required"; OPTION_BACKLOG="$PICKED_ID"
-if [[ -n "$LEGACY_ASSIGNED_OPTION_ID" ]]; then
-  OPTION_ASSIGNED="$LEGACY_ASSIGNED_OPTION_ID"
-  ok "Mapped canonical config key kanbanOptionAssigned to legacy option id '$OPTION_ASSIGNED'."
-else
-  auto_or_pick "Assigned" "assigned"                                          "required"; OPTION_ASSIGNED="$PICKED_ID"
-fi
 auto_or_pick "Refine"  "refine,groom,grooming,refined,ready,todo,to do"       "required"; OPTION_REFINE="$PICKED_ID"
+if [[ -n "$LEGACY_READY_FOR_PLAN_OPTION_ID" ]]; then
+  OPTION_READY_FOR_PLAN="$LEGACY_READY_FOR_PLAN_OPTION_ID"
+  ok "Mapped canonical config key kanbanOptionReadyForPlan to legacy option id '$OPTION_READY_FOR_PLAN'."
+else
+  auto_or_pick "Ready for Planning" "ready for planning,ready-for-planning,r4p" "required"; OPTION_READY_FOR_PLAN="$PICKED_ID"
+fi
 auto_or_pick "Plan"    "plan,analyze,analysis"                                "required"; OPTION_PLAN="$PICKED_ID"
 auto_or_pick "Develop" "develop,development,in progress,in-progress,doing,wip" "required"; OPTION_DEVELOP="$PICKED_ID"
 auto_or_pick "Test"    "test,validate,verify,in review,in-review,reviewing"   "required"; OPTION_TEST="$PICKED_ID"
@@ -715,8 +720,8 @@ auto_or_pick "Done"    "done,closed,complete,completed"                       "r
 # canonical palette (#415) so this list cannot drift from the fresh-field path.
 STATES_TO_CREATE=()
 [[ "$OPTION_BACKLOG" == "__NEW__" ]] && STATES_TO_CREATE+=("Backlog:$(canon_color Backlog)")
-[[ "$OPTION_ASSIGNED" == "__NEW__" ]] && STATES_TO_CREATE+=("Assigned:$(canon_color "Assigned")")
 [[ "$OPTION_REFINE"  == "__NEW__" ]] && STATES_TO_CREATE+=("Refine:$(canon_color Refine)")
+[[ "$OPTION_READY_FOR_PLAN" == "__NEW__" ]] && STATES_TO_CREATE+=("Ready for Planning:$(canon_color "Ready for Planning")")
 [[ "$OPTION_PLAN"    == "__NEW__" ]] && STATES_TO_CREATE+=("Plan:$(canon_color Plan)")
 [[ "$OPTION_DEVELOP" == "__NEW__" ]] && STATES_TO_CREATE+=("Develop:$(canon_color Develop)")
 [[ "$OPTION_TEST"    == "__NEW__" ]] && STATES_TO_CREATE+=("Test:$(canon_color Test)")
@@ -774,8 +779,8 @@ if [[ ${#STATES_TO_CREATE[@]} -gt 0 ]]; then
     echo "$KANBAN_FIELD_JSON" | jq -r --arg n "$1" '.options[] | select(.name == $n) | .id'
   }
   [[ "$OPTION_BACKLOG" == "__NEW__" ]] && OPTION_BACKLOG=$(remap_state "Backlog")
-  [[ "$OPTION_ASSIGNED" == "__NEW__" ]] && OPTION_ASSIGNED=$(remap_state "Assigned")
   [[ "$OPTION_REFINE"  == "__NEW__" ]] && OPTION_REFINE=$(remap_state "Refine")
+  [[ "$OPTION_READY_FOR_PLAN" == "__NEW__" ]] && OPTION_READY_FOR_PLAN=$(remap_state "Ready for Planning")
   [[ "$OPTION_PLAN"    == "__NEW__" ]] && OPTION_PLAN=$(remap_state "Plan")
   [[ "$OPTION_DEVELOP" == "__NEW__" ]] && OPTION_DEVELOP=$(remap_state "Develop")
   [[ "$OPTION_TEST"    == "__NEW__" ]] && OPTION_TEST=$(remap_state "Test")
@@ -794,29 +799,25 @@ fi
 # (the old logic only ran when exactly 8 existed, leaving renames undone on
 # boards with extra columns).
 
-if [[ -n "$LEGACY_ASSIGNED_OPTION_ID" ]]; then
-  warn "Skipping Status palette normalization until the explicit Assigned migration runs."
-  info "After init finishes, preview:"
-  info "  AI_TASK_MANAGER_PROJECT_DIR=\"$TARGET_DIR\" node \"$PKG_ROOT/scripts/migrate/rename-on-deck-to-assigned.mjs\""
-  info "Then apply explicitly:"
-  info "  AI_TASK_MANAGER_PROJECT_DIR=\"$TARGET_DIR\" node \"$PKG_ROOT/scripts/migrate/rename-on-deck-to-assigned.mjs\" --apply"
-elif [[ -z "$OPTION_BACKLOG" || -z "$OPTION_ASSIGNED" || -z "$OPTION_REFINE" || -z "$OPTION_PLAN" || \
+if [[ -n "$LEGACY_READY_FOR_PLAN_OPTION_ID" ]]; then
+  warn "Skipping Status palette normalization until the explicit #1217 R4P migration runs."
+elif [[ -z "$OPTION_BACKLOG" || -z "$OPTION_REFINE" || -z "$OPTION_READY_FOR_PLAN" || -z "$OPTION_PLAN" || \
       -z "$OPTION_DEVELOP" || -z "$OPTION_TEST" || -z "$OPTION_REVIEW" || -z "$OPTION_DONE" ]]; then
   warn "One or more managed Status options did not resolve to an id — skipping palette normalization. Set names/colors manually in the GitHub Project board."
 else
-  info "Normalizing Status columns to canonical names + colors: Backlog → Assigned → Refine → Plan → Develop → Test → Review → Done"
+  info "Normalizing Status columns to canonical names + colors: Backlog → Refine → Ready for Planning → Plan → Develop → Test → Review → Done"
   NORMALIZED_OPTS=$(echo "$KANBAN_FIELD_JSON" | jq -c \
     --argjson canon "$CANONICAL_STATUS_PALETTE" \
     --arg b   "$OPTION_BACKLOG" \
-    --arg assigned "$OPTION_ASSIGNED" \
     --arg rf  "$OPTION_REFINE" \
+    --arg r4p "$OPTION_READY_FOR_PLAN" \
     --arg pl  "$OPTION_PLAN" \
     --arg dev "$OPTION_DEVELOP" \
     --arg t   "$OPTION_TEST" \
     --arg rv  "$OPTION_REVIEW" \
     --arg d   "$OPTION_DONE" \
     '
-    [{name:"Backlog",id:$b},{name:"Assigned",id:$assigned},{name:"Refine",id:$rf},{name:"Plan",id:$pl},
+    [{name:"Backlog",id:$b},{name:"Refine",id:$rf},{name:"Ready for Planning",id:$r4p},{name:"Plan",id:$pl},
      {name:"Develop",id:$dev},{name:"Test",id:$t},{name:"Review",id:$rv},
      {name:"Done",id:$d}] as $managed |
     ($managed | map(.id)) as $managedIds |
@@ -863,7 +864,7 @@ else
   info "  1. Open the project in the GitHub web UI"
   info "  2. Click 'New view' → choose 'Board' layout"
   info "  3. Group by 'Status'"
-  info "  4. Confirm columns: Backlog → Assigned → Refine → Plan → Develop → Test → Review → Done"
+  info "  4. Confirm columns: Backlog → Refine → Ready for Planning → Plan → Develop → Test → Review → Done"
 fi
 echo ""
 
@@ -1394,8 +1395,8 @@ REPO="$REPO" \
 PROJECT_NODE_ID="$PROJECT_NODE_ID" \
 KANBAN_FIELD_ID="$KANBAN_FIELD_ID" \
 OPTION_BACKLOG="$OPTION_BACKLOG" \
-OPTION_ASSIGNED="$OPTION_ASSIGNED" \
 OPTION_REFINE="$OPTION_REFINE" \
+OPTION_READY_FOR_PLAN="$OPTION_READY_FOR_PLAN" \
 OPTION_PLAN="$OPTION_PLAN" \
 OPTION_DEVELOP="$OPTION_DEVELOP" \
 OPTION_TEST="$OPTION_TEST" \
