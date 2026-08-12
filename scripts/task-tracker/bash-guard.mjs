@@ -506,17 +506,30 @@ async function evaluate(input) {
     }
   }
 
+  function gitSubcommandIndex(tokens, start = 0) {
+    let index = start;
+    while (index < tokens.length && tokens[index].startsWith('-')) {
+      if (['-c', '-C', '--git-dir', '--work-tree', '--namespace'].includes(tokens[index])) {
+        index += 2;
+      } else {
+        index += 1;
+      }
+    }
+    return index;
+  }
+
   function aliasInvokesCommit(alias, { aliases, root, seen, depth = 0 }) {
     const value = String(alias || '').trim();
-    if (/^commit(?:\s|$)/.test(value)) return true;
     // Git's `!` aliases are arbitrary deferred shell programs. Even a definition
     // with no literal `commit` can forward invocation arguments into `git "$@"`.
     // Treat every shell alias as a potential commit so attributed invocations
     // cannot escape the ownership check through an opaque program.
     if (value.startsWith('!')) return true;
 
-    const [target] = shellWords(value);
+    const tokens = shellWords(value);
+    const target = tokens[gitSubcommandIndex(tokens)];
     if (!target) return false;
+    if (target === 'commit') return true;
     // Normal Git aliases may name another alias. Resolve the chain exactly as
     // Git does before deciding that an attributed invocation is harmless.
     // Cycles and unreasonable depth are opaque, so fail closed rather than
@@ -546,15 +559,15 @@ async function evaluate(input) {
       if (match) aliases.set(match[1], match[2]);
     }
     while (index < tokens.length) {
+      index = gitSubcommandIndex(tokens, index);
       const token = tokens[index];
+      if (!token) return false;
       if (token === 'commit') return { args: tokens.slice(index + 1) };
       const alias = readGitAlias(token, aliases, root);
       if (aliasInvokesCommit(alias, { aliases, root, seen: new Set([token]) })) {
         return { args: tokens.slice(index + 1) };
       }
-      if (!token.startsWith('-')) return false;
-      if (['-c', '-C', '--git-dir', '--work-tree', '--namespace'].includes(token)) index += 2;
-      else index += 1;
+      return false;
     }
     return false;
   }

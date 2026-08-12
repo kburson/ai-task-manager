@@ -134,6 +134,7 @@ test('dynamic and nested commit messages cannot bypass attribution inspection', 
       'git -c alias.ci=co -c alias.co=commit ci -m "[#1212] chained builtin alias"',
       'git -c alias.ci=co -c alias.co=\'!git commit\' ci -m "[#1212] chained shell alias"',
       'git -c alias.ci=co -c alias.co=ci ci -m "[#1212] cyclic alias"',
+      'git -c alias.ci=\'-c user.name=Test commit\' ci -m "[#1212] option-bearing alias"',
     ]) {
       const { payload } = runGuard(fixture, command);
       assert.equal(payload.decision, 'block', `must inspect or refuse: ${command}`);
@@ -183,6 +184,19 @@ test('persistently configured commit aliases enforce ownership', () => {
     assert.equal(configuredAliasChain.payload.decision, 'block');
     assert.match(
       configuredAliasChain.payload.reason,
+      /exclusive ownership|ownership is foreign-owner/i
+    );
+
+    spawnSync('git', ['config', 'alias.c3', '-c user.name=Test commit'], {
+      cwd: fixture.dir,
+    });
+    const configuredOptionChain = runGuard(
+      fixture,
+      'git c3 -m "[#1212] configured option-bearing alias"'
+    );
+    assert.equal(configuredOptionChain.payload.decision, 'block');
+    assert.match(
+      configuredOptionChain.payload.reason,
       /exclusive ownership|ownership is foreign-owner/i
     );
   } finally {
