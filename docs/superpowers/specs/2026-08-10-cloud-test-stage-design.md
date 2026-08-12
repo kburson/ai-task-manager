@@ -1,8 +1,8 @@
 # Cloud Test-Stage Delivery Design
 
-**Date:** 2026-08-10 (revised 2026-08-11)
+**Date:** 2026-08-10 (revised 2026-08-12)
 
-**Status:** Revised after Codex and four Claude design reviews; pending Claude re-review
+**Status:** Revised after Codex and five Claude design reviews; pending Claude re-review
 
 **Branch:** `cloud-test-automation`
 
@@ -41,11 +41,12 @@ The design has four independent controls:
 1. **Fast Develop feedback.** A worker runs bounded affected tests only.
    Healthy verification finishes within 180 seconds and must not exceed 300
    seconds; complete-lane escalation is deferred to cloud Test.
-2. **Cloud Test validation.** Quality, two fixture-family Fast shards, and three
-   fixture-family Slow shards fan out to six independent GitHub-hosted VMs for
-   the same head SHA. Stable native policy gates converge their results. Every
-   execution job has a ten-minute hard ceiling. Weighted Slow pooling may later
-   reduce the shard width after #1208 is implemented and measured.
+2. **Cloud Test validation.** Quality, two fixture-family Fast shards, and an
+   empirically selected two or three fixture-family Slow shards fan out to five
+   or six independent GitHub-hosted VMs for the same head SHA. Stable native
+   policy gates converge their results. Every execution job has a ten-minute
+   hard ceiling. Weighted Slow pooling may later reduce the shard width after
+   #1208 is implemented and measured.
 3. **Local resource admission.** All local orchestrators collectively admit at
    most six concurrent local worker agents for this repository on one physical
    host. Orchestrators do not consume those slots. Additional workers use
@@ -98,8 +99,10 @@ check.
 - Keep the local Develop feedback loop below 180 seconds in the healthy case
   and at or below 300 seconds in all supported cases.
 - Complete each cloud validation job within ten minutes of runner start.
-- Sustain three to six merges per hour on one busy target branch initially and
-  use measured fixture-aligned sharding to work toward ten per hour.
+- Sustain three to six merges per hour on one busy target branch initially.
+  Treat ten per hour as a separate target that requires `cli.test.mjs`
+  decomposition and a measured end-to-end head-of-line cycle at or below 360
+  seconds; sharding or #1208 alone cannot establish it.
 - Make native GitHub Actions results authoritative machine evidence without
   granting CI authority to write AITM records or custom checks.
 - Let local and cloud orchestrators use exactly the same GitHub-backed receipt,
@@ -125,11 +128,11 @@ check.
 - No automatic retirement or weakening of slow tests. Test consolidation,
   shared fixtures, and smoke-test substitutions require separately reviewed
   changes with equivalent risk coverage.
-- No assumption that subprocess-weighted pooling is already safe. Three-way
-  fixture-family Slow sharding is the interim rollout topology. Issue #1208 is
-  required before reclaiming the higher PR admission of a one-job Slow target;
-  shard width drops only after cloud measurements prove its weighted pool safe
-  and within budget.
+- No assumption that subprocess-weighted pooling is already safe. A paired
+  cloud canary chooses two or three fixture-family Slow shards for the interim
+  rollout. Issue #1208 is required before reclaiming the higher PR admission of
+  a one-job Slow target; shard width drops only after cloud measurements prove
+  its weighted pool safe and within budget.
 
 ## Time and Capacity Budgets
 
@@ -191,6 +194,27 @@ separate 2026-08-11 Slow run now replaces the unmeasured Slow estimate:
 | Integration                |    24 |              8.774s |            ~8.774s |
 | Slow                       |    50 |            515.372s |           515.373s |
 
+### Local measurement provenance
+
+Both source artifacts currently survive only as ignored inspection copies at
+`.tmp/inspect/test-timing-fast-2026-08-11.json` and
+`.tmp/inspect/test-timing-slow-2026-08-11.json`; they are therefore not durable
+repository evidence. Decomposition item 1 must begin by committing their
+normalized fields and per-file timings to
+`scripts/task-tracker/tests/fixtures/performance/cloud-test-local-baselines-2026-08-11.json`.
+The fixture records these source details and hashes:
+
+| Baseline | Generated at               | Command provenance                                                                                    | Host class                                              | SHA-256                                                            |
+| -------- | -------------------------- | ----------------------------------------------------------------------------------------------------- | ------------------------------------------------------- | ------------------------------------------------------------------ |
+| Fast     | `2026-08-11T11:23:39.827Z` | Original shell spelling was not retained; canonical equivalent is `npm test` (`lane=fast`, 845 files) | Apple M1 Max, 10 logical CPUs, 64 GiB RAM, macOS 26.5.1 | `a470c73077e6e429ff0f95eae794a2352182985acc6078eddba6a9a1c28f9016` |
+| Slow     | `2026-08-12T01:50:03.480Z` | `node scripts/run-tests.mjs --lane slow` (`lane=slow`, 50 files)                                      | Apple M1 Max, 10 logical CPUs, 64 GiB RAM, macOS 26.5.1 | `cece9471149992c46806f3206f20701a4c5bc9b820ef9bc1dc2af3cbee08af9c` |
+
+The current JSON schema does not embed host metadata. The host class above is
+the reported and locally verified measurement machine, not a claim extracted
+from either artifact. The normalized fixture preserves that limitation and the
+missing original Fast command rather than inventing provenance. Future timing
+artifacts must embed command, commit, runner/host profile, lane, and file count.
+
 `poolConcurrency(4)` is three because the runner reserves one vCPU. An unsplit
 Unit executor therefore has an optimistic pooled floor of `798.241 / 3 =
 266.080s` before GitHub-runner penalty. Instead, the initial policy divides the
@@ -236,12 +260,18 @@ less even:
 | 4                |          130.386s |                170-196s |
 | 5                |          130.386s |                170-196s |
 
-Two shards leave little credible space for `npm ci` and other repository work.
-Three provide materially more envelope headroom. A fourth buys only 41.469
-seconds locally, and a fifth buys nothing because
+The unmeasured cloud multiplier is not sufficient evidence to choose two or
+three shards permanently. A paired disposable canary runs both candidates on
+the same head and runner profile for five completed workflow runs, including
+controlled cold and warm npm-cache conditions. Width two is preferred when
+every shard in all five width-two runs fits the 480-second repository envelope
+and 540-second total target with complete exactly-once coverage. Otherwise the
+interim production width is three. This is an envelope decision, not a p95
+claim; five samples cannot establish the policy p95 below.
+
+A fourth shard buys only 41.469 seconds locally, and a fifth buys nothing because
 `scripts/task-tracker/tests/slow/lib/cli.test.mjs` alone takes 130.386 seconds.
-The initial topology therefore uses three family-aligned Slow shards. The cloud
-spike must measure their actual family assignment rather than treating the
+The canary must measure family-aligned assignments rather than treating the
 file-level calculation as proof.
 
 CI uses section-specific budget policy rather than the existing single-value
@@ -255,9 +285,10 @@ environment override, which cannot express different pooled and serial limits:
 | Fast-shard serial section                 |              150s | ~70s balanced share plus >100% headroom            |
 
 No replacement Slow section ceiling is asserted from a single local run. Until
-the GitHub spike establishes a measured p95 ceiling, the 480-second outer
-repository envelope is the binding repository-controlled limit for each Slow
-shard; the 600-second execution-job stop remains last-resort containment.
+at least 20 eligible production-shaped cloud cycles establish a measured p95
+ceiling, the 480-second outer repository envelope is the binding
+repository-controlled limit for each Slow shard; the 600-second execution-job
+stop remains last-resort containment.
 
 The 480-second envelope begins before `npm ci` and includes dependency install,
 repository quality or test commands, clean-worktree checks, and diagnostic
@@ -267,18 +298,24 @@ serialization. Checkout, runner setup, and artifact upload share the remaining
 the runner's more specific message. GitHub conclusion `timed_out` is therefore
 a last-resort `ci-hard-timeout`, not the normal signal for test growth.
 
-These internal values are provisional until a measurement spike runs each job
-at least five times on the selected GitHub-hosted runner profile. It records
-cold and warm cache behavior, p50 and p95 checkout, setup, `npm ci`, quality,
-each Fast shard's pooled and serial sections, each family-aligned Slow shard,
-cleanup, artifact, and Stage 2 gate times. The spike must prove p95 repository
-work fits its 480-second envelope and p95 total execution-job time is at most
-540 seconds, leaving 60 seconds before the hard stop. It also establishes the
-first evidence-backed Slow section ceiling. If any shard misses, the response
-is family rebalancing, fixture decomposition, weighted pooling, or another
-measured shard—not a higher hard stop.
+The initial measurement spike records cold and warm cache behavior, checkout,
+setup, `npm ci`, quality, both Fast sections, every candidate Slow shard,
+cleanup, artifact, and Stage 2 gate times. Five paired Slow-candidate runs are
+sufficient only to choose width by the all-runs envelope rule above. They do not
+produce a p95. After the selected production-shaped topology accumulates at
+least 20 eligible complete cycles, policy computes nearest-rank p95 at rank
+`ceil(0.95 * n)`. Eligible samples share the runner profile and topology
+fingerprint and include the complete repository and total-job phases; samples
+classified as platform outages are excluded with recorded reasons. Below 20
+eligible samples, policy holds its bootstrap values and does not extrapolate.
+Changing runner profile, shard width, or family-policy fingerprint starts a new
+eligible sample set; observations from incompatible topologies do not combine.
+Specifically, Slow retains no section ceiling beyond the 480-second outer
+envelope, and freeze expiry remains 60 minutes. If any shard misses, the
+response is family rebalancing, fixture decomposition, weighted pooling, or
+another measured shard—not a higher hard stop.
 
-Quality, both Fast shards, and all three Slow shards start concurrently. A
+Quality, both Fast shards, and all selected Slow shards start concurrently. A
 dedicated Integration executor would remove only 8.774 seconds from the
 critical path while consuming a full heavy-runner slot. Folding that family
 into one Fast shard and spending the same slot on half of the 798.241 seconds of
@@ -287,20 +324,23 @@ selection belongs only to Slow executors, before dependency installation or
 slow-test execution; it never delays Quality or Fast feedback and never enters
 the Develop loop.
 
-Issue #1208 is the target-state capacity lever. If weighted pooling safely
-admits Slow files at `poolConcurrency(4) = 3`, division of the measured 515.372
-seconds gives an optimistic one-VM floor near 171.8 seconds. That is an
-estimate, not a predicted runtime: subprocess contention, shared fixtures, and
-cloud penalty must be measured. The interim three-shard rollout does not wait
-for #1208, but admission above six simultaneous Pro-plan PR validations does.
-Slow shard width may converge from three toward one only after #1208's canary
-proves the same coverage, reliability, and p95 envelope.
+Issue #1208 is a target-state capacity lever, not a latency claim. If weighted
+pooling safely admits Slow files at `poolConcurrency(4) = 3`, division of the
+measured 515.372 seconds gives an optimistic one-VM floor near 171.8 seconds.
+That is an estimate, not a predicted runtime: subprocess contention, shared
+fixtures, and cloud penalty must be measured. Its estimated one-job floor is
+approximately the same as the three-way file-level schedule, so #1208 is
+expected to recover runner slots rather than shorten the Slow critical path.
+The selected two- or three-shard interim rollout does not wait for #1208. Slow
+shard width may converge toward one only after #1208's canary proves the same
+coverage, reliability, and p95 envelope.
 
 The 130.386-second `cli.test.mjs` file is the irreducible floor for file-level
 sharding. Decomposing its reusable setup is required before pursuing a Slow
 critical path below that floor or seeking gains beyond the useful four-shard
-range for the six-minute end-to-end target. It is not an initial three-shard
-rollout blocker unless the GitHub spike shows its family breaches the outer
+range. Ten merges per hour remains gated on that decomposition plus a measured
+complete cycle at or below 360 seconds. Decomposition is not an interim rollout
+blocker unless the GitHub canary shows the file's family breaches the outer
 envelope.
 
 ### Local worker budget
@@ -466,7 +506,7 @@ The v2 payload contains at least:
 - expected runner labels, `linux-x64`, and Node 22 policy;
 - lockfile, verification-config, CI-policy, and fixture-family policy
   fingerprints;
-- the Quality, Fast-shard, and three Slow-shard executor identities, the
+- the Quality, Fast-shard, and selected Slow-shard executor identities, the
   head-specific family-resolution digest, and their stable Stage 2 gate
   conclusions;
 - any Develop cloud-escalation reasons and required lanes, plus evidence that
@@ -549,9 +589,19 @@ permissions:
   contents: read
 ```
 
+Calibration temporarily adds
+`.github/workflows/ci-slow-shard-canary.yml`, a `workflow_dispatch`-only,
+read-only workflow that runs both candidate widths against the same selected
+head. It emits no required context and has no issue, check-write, or merge
+authority. Its family assignments are workflow-local experimental inputs, not
+the production policy. The production fan-out slice deletes or supersedes this
+workflow after promoting the selected width and family rules into checked-in
+policy.
+
 ### Staged fan-out
 
-Stage 1 fans out six execution jobs immediately for the exact same PR head:
+Stage 1 fans out five or six execution jobs immediately for the exact same PR
+head, according to the canary-selected Slow width:
 
 1. **Quality** runs format, lint, memory-index parity, and its clean-worktree
    check.
@@ -564,7 +614,8 @@ Stage 1 fans out six execution jobs immediately for the exact same PR head:
 5. **Slow shard B** evaluates the same head-bound slow-impact policy and
    normally runs its assigned Slow fixture families before its clean-worktree
    check.
-6. **Slow shard C** does the same for the remaining Slow fixture families.
+6. **Slow shard C**, present only when width three is selected, does the same for
+   the remaining Slow fixture families.
 
 Each job independently checks out full history, verifies the expected head SHA,
 materializes the local `trunk` ref when required by real-git tests, sets up Node
@@ -574,12 +625,13 @@ deterministic setup costs runner minutes but preserves isolation and avoids
 trusting files produced by another validation VM.
 
 Stage 2 contains two short native aggregation jobs. `Fast validation policy`
-depends on Quality and both Fast shards. `Slow validation policy` depends on all
-three Slow shards. Both gates run with `if: always()` so they still report a
-required context after an upstream failure, but their pass predicate is
-explicit: every expected `needs.<job>.result` must equal `success`. `failure`,
-`cancelled`, or `skipped` is non-passing. An authorized no-slow-impact result is
-represented by three successful Slow executors after classification; the
+depends on Quality and both Fast shards. `Slow validation policy` depends on
+every shard in the checked-in selected Slow matrix. Both gates run with
+`if: always()` so they still report a required context after an upstream
+failure, but their pass predicate is explicit: every expected
+`needs.<job>.result` must equal `success`. `failure`, `cancelled`, or `skipped`
+is non-passing. An authorized no-slow-impact result is represented by a
+successful result from every selected Slow executor after classification; the
 executors themselves are never skipped.
 
 The gates receive no write permission. They are native Actions jobs, not custom
@@ -594,11 +646,12 @@ of the head-of-line cycle and must be included in the measurement spike.
 
 ### Timing-balanced sharding
 
-The six-executor topology is the interim deployment, not the target width.
-Fast starts at two shards and Slow starts at three. After the measurement spike,
-either family may change width through a fixed-size matrix of timing-balanced
-shards. Every shard receives the same head SHA, runner policy, Node version,
-lockfile, and lane manifest.
+The five- or six-executor topology is the interim deployment, not the target
+width. Fast starts at two shards; the disposable paired canary selects Slow
+width two or three before production fan-out lands. Afterward, either family
+may change width through a fixed-size matrix of timing-balanced shards. Every
+shard receives the same head SHA, runner policy, Node version, lockfile, and
+lane manifest.
 
 The checked-in policy maps fixture-family patterns to shard identities; it does
 not enumerate individual test files. Every discovered test must resolve to
@@ -722,25 +775,26 @@ Integration. The workflow first emits both `Fast validation policy` and
 with strict mode before the obsolete Fast context is removed. The paired rename
 never leaves a protected branch without a fast requirement.
 
-GitHub-hosted concurrency is finite. At the current 20-standard-job ceiling,
-the interim six-executor topology can run Stage 1 for at most three PRs with
-only two slots left. The operational admission target is therefore two active
-PR validations: 12 execution slots, leaving eight for short gates, a
-head-of-line refresh, nightly work, or push-to-trunk validation. Additional PRs
-remain queued. Wider test matrices reduce simultaneous PR capacity further and
-are admitted only when their measured latency improvement justifies that
-trade-off.
+GitHub-hosted concurrency is finite. Capacity reserves `R = 4` slots on both
+Free and Pro for short gates, a head-of-line refresh, nightly work, or
+push-to-trunk validation. With the current `C = 20` ceiling, Slow width two
+means `J = 5` and admits three Stage 1 PR validations; one slot is unused due to
+integer fragmentation. Slow width three means `J = 6` and admits two; four
+additional slots are unused fragmentation. Those unused slots are not a larger
+reserve. Additional PRs remain queued.
 
-Slow execution is normal, so capacity planning counts all three Slow shards for
-every non-documentation PR. GitHub Pro raises the standard hosted-job ceiling
-from 20 to 40. With six execution jobs and four slots reserved for gates and
-background work, that admits six simultaneous Stage 1 PR validations. The
-interim topology therefore does not support the former nine-PR operational
-claim. Plan upgrade, a GitHub Support concurrency increase, additional runner
-capacity, or a measured #1208 reduction in Slow shard width are explicit
-scaling options—not reasons to weaken validation. If #1208 proves one Slow job
-and returns `J` from six to four, the same Pro reserve admits nine concurrent
-validations: `floor((40 - 4) / 4) = 9`.
+Slow execution is normal, so capacity planning counts every selected Slow shard
+for each non-documentation PR. GitHub Pro raises the standard hosted-job ceiling
+from 20 to 40. With the same four-slot reserve, width two admits seven Stage 1
+PR validations and width three admits six. Neither topology supplies the
+maintainer's desired ten or more concurrent cloud streams. Plan upgrade, a
+GitHub Support concurrency increase, additional runner capacity, or a measured
+Slow shard-width reduction from #1208 are explicit scaling options—not reasons
+to weaken validation. If #1208 proves one Slow job and returns `J` to four, Pro
+admits nine concurrent validations: `floor((40 - 4) / 4) = 9`. Ten concurrent
+validations at that width require at least 44 hosted-job slots, so purchased or
+support-approved concurrency remains a cost decision rather than an
+unacknowledged design promise.
 
 ## Delivery Throughput Model
 
@@ -759,15 +813,21 @@ The cycle includes update/rebase, GitHub queue delay, the slowest parallel
 validation path, Stage 2 gates, receipt acceptance, and merge. At a measured or
 assumed 10-20 minutes per cycle, one target delivers approximately 3-6 merges
 per hour. Ten merges per hour requires the complete cycle—not merely one test
-lane—to reach six minutes or less. Once ready work arrives faster than that
-rate, additional agents increase the queue but not target-branch throughput.
+lane—to reach six minutes or less. The current `cli.test.mjs` floor blocks a
+credible design claim below the estimated 171.8-second Slow floor; item 16 must
+decompose it, and production evidence must then prove the complete cycle at or
+below 360 seconds. Issue #1208 does not satisfy this latency gate: its estimated
+one-job floor is approximately the same as three-way sharding and its purpose is
+capacity recovery. Once ready work arrives faster than the measured merge rate,
+additional agents increase the queue but not target-branch throughput.
 
 The optimization order is therefore:
 
 1. split independent validation onto parallel VMs;
-2. deploy and measure the three-way family-aligned Slow split;
-3. reuse expensive fixtures and decompose `cli.test.mjs` when its floor binds;
-4. implement #1208 and reduce Slow shard width after weighted-pool proof;
+2. canary Slow widths two and three and deploy the smaller passing width;
+3. reuse expensive fixtures and decompose `cli.test.mjs` to pursue the
+   six-minute cycle;
+4. implement #1208 to recover capacity after weighted-pool proof;
 5. reduce checkout, dependency, and setup churn with safe caches; and
 6. upgrade the plan or add runner capacity only when queueing, rather than test
    duration, dominates.
@@ -783,15 +843,16 @@ simultaneously validating targets = min(N, floor((C - R) / J))
 aggregate child merges per hour <= simultaneously validating targets * (3 to 6)
 ```
 
-Under the interim topology, `J = 6`. GitHub Pro with `C = 40` and `R = 4`
-supports at most six validating targets, while the current 20-job ceiling
-supports two at the same reserve. Three active epic branches can still provide
-9-18 child merges per hour on Pro because the per-target 3-6 rate is unchanged;
-the executor count limits concurrent targets, not the serial formula for one
-target. Trunk receives only completed epic-to-parent PRs rather than replaying
-every child PR serially. Standalone stories and completed epics still share
-trunk's one serial tail, so hierarchy improves aggregate delivery without
-weakening strict mode or skipping the final interaction test.
+Under the interim topology, `J = 5` when Slow width two passes and `J = 6`
+otherwise. With `R = 4`, the current 20-job ceiling supports three or two
+validating targets respectively; Pro's 40-job ceiling supports seven or six.
+Three active epic branches can still provide 9-18 child merges per hour on Pro
+because the per-target 3-6 rate is unchanged. The executor count limits
+concurrent targets, not the serial formula for one target. Trunk receives only
+completed epic-to-parent PRs rather than replaying every child PR serially.
+Standalone stories and completed epics still share trunk's one serial tail, so
+hierarchy improves aggregate delivery without weakening strict mode or skipping
+the final interaction test.
 
 ## Failure Diagnostics
 
@@ -949,27 +1010,33 @@ success is read back. An authorized release capsule supersedes the freeze on:
 - freeze expiration; or
 - coordinator authority replacement or revocation.
 
-Freeze expiry is derived from the measured rolling p95 head-of-line cycle rather
-than fixed at 30 minutes:
+Before sufficient production-shaped evidence exists, freeze expiry uses a
+60-minute bootstrap value. After at least 20 eligible cycles exist for the
+active topology fingerprint, expiry is derived from the nearest-rank rolling
+p95 head-of-line cycle:
 
 ```text
 freeze expiry = clamp(2 * p95 cycle, 30 minutes, 60 minutes)
 ```
 
 The p95 includes refresh, queue, validation, gates, receipt acceptance, merge,
-and readback; samples classified as platform outages are excluded. The value is
-fingerprinted policy and cannot be silently renewed. A replacement coordinator
-reads the epic capsule chain, projection, live PR, exact branch head, and
-Actions run. A freeze from an obsolete authority epoch is ineffective; the
-replacement may acquire a new freeze only if the epic is still eligible and
-head-of-line. A crash between capsule append and projection update is repaired
-from the capsule, while a crash after merge releases the reconstructed freeze
-when it appends the missing `integration-result`.
+and readback and uses rank `ceil(0.95 * n)`. Samples classified as platform
+outages are excluded with reasons. If fewer than 20 eligible samples remain,
+policy holds 60 minutes and does not extrapolate. The sample-set identity,
+calculation, and resulting value are fingerprinted policy and cannot be silently
+renewed. A replacement coordinator reads the epic capsule chain, projection,
+live PR, exact branch head, and Actions run. A freeze from an obsolete authority
+epoch is ineffective; the replacement may acquire a new freeze only if the epic
+is still eligible and head-of-line. A crash between capsule append and
+projection update is repaired from the capsule, while a crash after merge
+releases the reconstructed freeze when it appends the missing
+`integration-result`.
 
 Slow sits on the critical path of every non-documentation validation. The
-freeze implementation therefore depends on the three-shard cloud spike; no
-freeze-expiry fingerprint is calibrated from the obsolete single-job Slow
-shape or developed concurrently against an assumed cycle value.
+freeze implementation therefore depends on the two-versus-three-shard canary;
+no measured freeze-expiry fingerprint is calibrated from the obsolete
+single-job Slow shape or from the five-run width decision. The 60-minute
+bootstrap covers the interval until 20 eligible selected-topology cycles exist.
 
 Freeze priority is bounded to prevent child starvation. Acquisition is allowed
 only for a contract-complete, head-of-line epic. After red, cancellation, drift,
@@ -1126,8 +1193,9 @@ reachable from it.
 - Fast-section, repository-phase, and hard-job budget classification at 150,
   210, 480, and 600 seconds, including a green timing artifact with a red policy
   conclusion and rejection of an unmeasured Slow-specific ceiling.
-- Slow timing-artifact parsing, Pareto shares, deterministic two-through-five
-  shard LPT calculations, explicit estimate labels, and three-shard selection.
+- Slow timing-artifact parsing, provenance preservation, Pareto shares,
+  deterministic two-through-five shard LPT calculations, explicit estimate
+  labels, paired two-versus-three canary selection, and width-two preference.
 - Capacity-bound arithmetic for Free and Pro ceilings, reserved slots, and
   interim versus #1208 target shard widths.
 - Slow-impact required-over-safe precedence, all-paths-safe skip semantics, and
@@ -1146,7 +1214,8 @@ reachable from it.
   `develop-cloud-escalation` evidence, and receipt refusal when a required
   cloud lane did not execute.
 - Develop timing classification at 180 and 300 second boundaries.
-- Freeze-expiry calculation at both clamp boundaries, measured p95 changes,
+- Freeze-expiry bootstrap at 60 minutes below 20 eligible samples, nearest-rank
+  p95 calculation at and above the threshold, both clamp boundaries,
   outage-sample exclusion, and policy-fingerprint changes.
 - Existing per-clone fleet behavior plus host-overlay lease acquisition,
   six-worker saturation across independent clones, heartbeat expiry, process
@@ -1174,8 +1243,9 @@ reachable from it.
   failure release, authority replacement, and projection repair after crash.
 - Freeze fairness permits one already-eligible child after an unsuccessful or
   expired parent attempt and prevents immediate reacquisition starvation.
-- A #1208 Slow-pool canary preserves exact coverage and remains within its p95
-  envelope before reducing the checked-in Slow shard width.
+- A #1208 Slow-pool canary preserves exact coverage and accumulates at least 20
+  eligible cycles within its p95 envelope before reducing the checked-in Slow
+  shard width.
 - A seventh local worker uses the cloud adapter or remains queued.
 
 ### Workflow assertions
@@ -1185,11 +1255,15 @@ Extend `tests/slow/core/ci-lane-wiring.test.mjs` and
 
 - read-only permissions;
 - no custom Checks API publisher;
-- independent Quality, two Fast-shard, and three Slow-shard execution jobs;
+- the disposable Slow-width canary is manual-only, read-only, non-required,
+  paired on one head, and absent or superseded after production policy lands;
+- independent Quality, two Fast-shard, and the selected two or three Slow-shard
+  execution jobs;
 - Stage 2 Fast and Slow gate dependencies with `if: always()` and explicit
   `needs.*.result === success` predicates;
 - cancelled, skipped, failed, or missing dependencies producing red gates, with
-  an authorized slow skip represented by three successful Slow executors;
+  an authorized slow skip represented by every selected Slow executor
+  succeeding;
 - identical head SHA and policy fingerprints across every shard;
 - slow-impact selection only in Slow executors;
 - stable required contexts `Fast validation policy` and
@@ -1215,21 +1289,22 @@ live rulesets recognize both native contexts before enforcement changes land.
 
 **Better.** Full validation leaves the maintainer's machine. Six local workers
 can retain short affected-test feedback while independent cloud VMs execute
-Quality, two fixture-family Fast shards, and three Slow shards concurrently.
-The Fast split halves the dominant unit pool, while the Slow split replaces a
-515.373-second single-job local critical path that cannot fit the cloud
-contract.
-Native GitHub evidence removes a privileged custom publisher. A stable receipt
-ULID connects issue authority, Actions identity, and the merged commit. Local
-and cloud orchestrators recover from the same GitHub state.
+Quality, two fixture-family Fast shards, and two or three selected Slow shards
+concurrently. The Fast split halves the dominant unit pool, while the measured
+Slow split replaces a 515.373-second single-job local critical path that cannot
+fit the cloud contract. Native GitHub evidence removes a privileged custom
+publisher. A stable receipt ULID connects issue authority, Actions identity,
+and the merged commit. Local and cloud orchestrators recover from the same
+GitHub state.
 
-**Worse.** One PR initially consumes six heavy execution slots plus two short
-gate jobs. Two simultaneous PR validations are the practical admission target
-under the current Free-plan 20-job ceiling. GitHub Pro raises the ceiling to 40
-and permits six with four reserved slots, but adds a paid operational
-dependency. Test includes queue latency. Required protection on epic branches
-adds ruleset administration. A network or GitHub outage pauses authoritative
-lifecycle progress. Linux-only validation can miss a platform defect.
+**Worse.** One PR initially consumes five or six heavy execution slots plus two
+short gate jobs. The current Free-plan 20-job ceiling admits three validations
+at Slow width two or two at width three with four reserved slots. GitHub Pro
+raises the ceiling to 40 and admits seven or six respectively, but adds a paid
+operational dependency. Test includes queue latency. Required protection on
+epic branches adds ruleset administration. A network or GitHub outage pauses
+authoritative lifecycle progress. Linux-only validation can miss a platform
+defect.
 
 **Accepted.** Planning-time isolation does not guarantee conflict-free merges.
 Occasional conflicts return to Develop. Evidence loses external verifiability
@@ -1240,27 +1315,30 @@ head-of-line cycle, one target branch delivers only 3-6 merges per hour no
 matter how many agents produced ready PRs. Ten per hour requires a measured
 end-to-end cycle of six minutes or less. Integration freezes temporarily delay
 children of an epic being promoted, with expiry and fairness limiting
-starvation. The interim three-way Slow split spends capacity to establish
-acceptable latency; #1208 must earn back that capacity before admission can
-exceed six simultaneous Pro-plan validations.
+starvation. The interim measured Slow split spends capacity to establish
+acceptable latency; #1208 may recover runner slots but cannot satisfy the
+six-minute latency target. Even after a one-job Slow target, Pro admits nine,
+not ten, validations with the four-slot reserve.
 
 ## Decomposition
 
 Ordered roughly by rollout; explicit dependencies below control which work may
 proceed in parallel. Each item is independently reviewable.
 
-1. **Slow sharding and cloud calibration.** Check in a normalized baseline
-   fixture derived from the measured 515.373-second local artifact, create a
-   candidate three-way fixture-family assignment, and run at least five
-   cold/warm GitHub canaries per shard. Record p50/p95 setup, `npm ci`, shard
-   execution, cleanup, artifact, and total timings; establish the first measured
-   Slow section ceiling while proving the 480-second repository envelope and
-   540-second total target. Production fan-out and freeze-policy calibration
-   both depend on this result.
-2. **Fast and Quality budget calibration.** Measure at least five cold/warm
-   GitHub runs for Quality and both Fast shards, prove or revise the provisional
-   210/150-second Fast section budgets, and retain the 480/600-second outer
-   limits.
+1. **Slow sharding and cloud calibration.** First commit the normalized local
+   baseline fixture and provenance described above. Then add a disposable,
+   read-only canary workflow whose provisional in-workflow family assignments
+   run Slow widths two and three against the same head and runner profile for at
+   least five paired workflow runs across controlled cold and warm npm-cache
+   conditions. Prefer width two only when every shard in every run proves exact
+   coverage and fits the 480-second repository and 540-second total envelopes;
+   otherwise select width three. Five runs choose width but establish no p95 or
+   Slow section ceiling. Production fan-out depends on the selection;
+   freeze-policy calibration holds its bootstrap until 20 eligible cycles.
+2. **Fast and Quality budget calibration.** Run at least five cold/warm GitHub
+   canaries for Quality and both Fast shards, prove initial compatibility with
+   the provisional 210/150-second Fast section and 480/600-second outer limits,
+   and make no p95 claim until 20 eligible production-shaped cycles exist.
 3. **Slow-impact authority and migration.** Add `classifySlowImpact`, the
    outcome-based manifest, required-over-safe evaluation, target-base
    recomputation, `unclassified-path` default denial, tracked-tree completeness,
@@ -1278,17 +1356,21 @@ proceed in parallel. Each item is independently reviewable.
    overlay, lease heartbeat/process reclamation, adaptive runner-pool scaling,
    and cloud-adapter fallback.
 7. **CI budget harness and failure evidence.** Add the 480-second named-phase
-   envelope, measured Fast and Slow section values, bounded lane/shard
-   manifests, artifact ordering rules, and native-first failure classification.
-8. **Timing-balanced family policy.** Promote the calibrated assignment from
-   item 1 into checked-in fixture-family-to-shard rules, exhaustive family
-   resolution, head-specific exactly-once evidence, and measurement-gated
-   matrix widths without file enumeration. Preserve fixture cohesion even when
-   it differs from the file-level LPT floor.
+   envelope, provisional Fast section values, explicit absence of a pre-p95 Slow
+   section ceiling, sample-gated adoption of later measured values, bounded
+   lane/shard manifests, artifact ordering rules, and native-first failure
+   classification.
+8. **Timing-balanced family policy.** Treat item 1's canary-local assignment as
+   provisional input, then promote the selected width into checked-in
+   fixture-family-to-shard rules, exhaustive family resolution, head-specific
+   exactly-once evidence, and measurement-gated matrix widths without file
+   enumeration. Preserve fixture cohesion even when it differs from the
+   file-level LPT floor.
 9. **Stage 1 validation fan-out.** After items 1-3 and 7-8 pass, add independent
-   Quality, two Fast-shard, and three Slow-shard executors with exact-head
-   checks, clean installation, safe npm caching, clean-worktree verification,
-   and unique diagnostics.
+   Quality, two Fast-shard, and the selected two or three Slow-shard executors
+   with exact-head checks, clean installation, safe npm caching, clean-worktree
+   verification, and unique diagnostics. Delete or supersede the disposable
+   canary workflow in the same slice.
 10. **Stage 2 native gates.** Add read-only Fast and Slow aggregate jobs,
     explicit all-success dependency predicates, stable policy context names,
     timeout, and nightly unconditional slow execution.
@@ -1303,17 +1385,21 @@ proceed in parallel. Each item is independently reviewable.
     them from GitHub state across sessions.
 15. **Weighted Slow-pool capacity recovery (#1208).** Refine and implement
     reduced-concurrency admission for Slow subprocess tests, canary exact
-    coverage and reliability on GitHub, measure p95, then reduce Slow shard
-    width toward one. Admission above six simultaneous Pro-plan validations
-    depends on this item.
+    coverage and reliability on GitHub, accumulate at least 20 eligible cycles,
+    measure nearest-rank p95, then reduce Slow shard width toward one. This item
+    recovers runner capacity rather than claiming a lower critical path; Pro
+    admission becomes nine at one Slow job and still requires at least 44 total
+    slots to reach ten with the four-slot reserve.
 16. **Slow fixture-floor reduction.** Decompose reusable setup in
     `scripts/task-tracker/tests/slow/lib/cli.test.mjs` before pursuing a Slow
     critical path below its measured 130.386-second local floor or seeking gains
-    beyond the useful four-shard range for the six-minute end-to-end goal.
-17. **Integration freeze.** After item 1 establishes the Slow-shaped cycle, add
-    authorized freeze/release capsules, projection indexing, child final-gate
-    checks, drift handling, p95-derived bounded expiry, crash repair, and
-    starvation-bounded fairness.
+    beyond the useful four-shard range. Ten merges per hour remains unclaimed
+    until this item lands and measured complete cycles are at most 360 seconds.
+17. **Integration freeze.** After item 1 selects the Slow shape, add authorized
+    freeze/release capsules, projection indexing, child final-gate checks,
+    drift handling, 60-minute bootstrap expiry, sample-gated p95-derived expiry,
+    crash repair, and starvation-bounded fairness. Do not replace the bootstrap
+    until 20 eligible selected-topology cycles exist.
 18. **Merge tail and trailers.** Implement per-target deterministic ordering,
     lazy update, exact-head merge, throughput observation, receipt trailers,
     and `integration-result`.
@@ -1324,9 +1410,10 @@ proceed in parallel. Each item is independently reviewable.
     adapter, recovery, and merge guidance.
 
 Issue #1208 remains separately tracked but is no longer optional in the target
-architecture. Three-way Slow sharding enables the interim rollout; #1208 is the
-required capacity-recovery step before claiming more than six simultaneous
-Pro-plan validations or returning to the former nine-PR admission target.
+architecture. Empirically selected two- or three-way Slow sharding enables the
+interim rollout; #1208 is the required capacity-recovery step for the one-job
+Slow target. It does not reduce the estimated Slow critical path or make ten
+concurrent Pro-plan validations arithmetically possible by itself.
 
 ## References
 
