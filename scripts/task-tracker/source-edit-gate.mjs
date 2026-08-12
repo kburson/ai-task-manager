@@ -312,14 +312,39 @@ export async function fetchIssueSignals(boundIssue, projectDir, deps = {}) {
 export async function resolveIssueSignals(boundIssue, projectDir, deps = {}) {
   const cached = readCache(projectDir, boundIssue);
   if (cached) {
-    return {
-      state: cached.state,
+    // #1212 — metadata may tolerate the short cache, ownership may not. A
+    // transfer/unassign can happen in another process or through the GitHub UI,
+    // so there is no reliable cross-process invalidation signal. Refresh the
+    // exact configured-project Status + assignees snapshot on every gated edit
+    // while retaining the body/deep-dive metadata cache.
+    const cfg = loadConfig({
+      projectPath: configPath(projectDir),
+      userPath: path.join(projectDir, '.ai-task-manager', '.cache', 'no-user-config.json'),
+    });
+    const snapshot = await (deps.fetchSnapshot || fetchAssignmentSnapshot)({
+      issueNumber: boundIssue.replace(/^#/, ''),
+      cfg,
+    });
+    const currentUser = cached.currentUser
+      ? cached.currentUser
+      : String(
+          await (deps.gh || (async (args) => (await pexec('gh', args, { timeout: 5000 })).stdout))([
+            'api',
+            'user',
+            '--jq',
+            '.login',
+          ])
+        ).trim();
+    const fresh = {
+      state: snapshot.state,
       hasPostedMarker: !!cached.hasPostedMarker,
       hasCompleteMarker: !!cached.hasCompleteMarker,
-      assignees: cached.assignees,
-      currentUser: cached.currentUser,
-      source: 'cache',
+      assignees: snapshot.assignees,
+      currentUser,
+      source: 'cache+ownership-fetch',
     };
+    writeCache(projectDir, { issue: boundIssue, ...fresh });
+    return fresh;
   }
   const fresh = await fetchIssueSignals(boundIssue, projectDir, deps);
   writeCache(projectDir, { issue: boundIssue, ...fresh });

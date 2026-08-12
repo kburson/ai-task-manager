@@ -14,7 +14,13 @@ import { execFileSync } from 'node:child_process';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { mkdtempProjectIsolated } from '../../../lib/scratch-dir.mjs';
-import { readCache, writeCache, cacheFilePath, CACHE_TTL_MS } from '../../../source-edit-gate.mjs';
+import {
+  readCache,
+  writeCache,
+  cacheFilePath,
+  CACHE_TTL_MS,
+  resolveIssueSignals,
+} from '../../../source-edit-gate.mjs';
 
 // Repo root (…/scripts/task-tracker/tests/unit/ → four levels up). Used so the
 // gitignore assertion runs against the real worktree the suite executes in
@@ -67,6 +73,37 @@ test('#664: readCache returns the entry on a fresh hit', () => {
     const c = readCache(dir, '#664');
     assert.ok(c);
     assert.equal(c.issue, '#664');
+  } finally {
+    cleanup();
+  }
+});
+
+test('#1212: a warm metadata cache never reuses stale ownership', async () => {
+  const { dir, cleanup } = makeProjectDir();
+  try {
+    writeCache(dir, {
+      issue: '#1212',
+      state: 'develop',
+      hasPostedMarker: true,
+      hasCompleteMarker: true,
+      assignees: ['alice'],
+      currentUser: 'alice',
+    });
+    let snapshotReads = 0;
+    const signals = await resolveIssueSignals('#1212', dir, {
+      fetchSnapshot: async () => {
+        snapshotReads += 1;
+        return { state: 'develop', assignees: ['bob'] };
+      },
+      gh: async (args) => {
+        if (args[0] === 'api') return 'alice\n';
+        throw new Error(`unexpected gh call: ${args.join(' ')}`);
+      },
+    });
+    assert.equal(snapshotReads, 1, 'ownership must be fetched on every gated edit');
+    assert.deepEqual(signals.assignees, ['bob']);
+    assert.equal(signals.currentUser, 'alice');
+    assert.equal(signals.source, 'cache+ownership-fetch');
   } finally {
     cleanup();
   }

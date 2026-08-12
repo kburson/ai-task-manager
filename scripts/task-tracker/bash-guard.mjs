@@ -41,7 +41,7 @@
 import { readFileSync } from 'node:fs';
 import { execSync } from 'node:child_process';
 import { homedir } from 'node:os';
-import { join } from 'node:path';
+import { isAbsolute, join, resolve } from 'node:path';
 
 // --- Phase 1: parse stdin -------------------------------------------------
 // A malformed payload is not a guard failure — preserve the intentional
@@ -92,7 +92,7 @@ async function evaluate(input) {
 
   // Guard-logic dependencies are imported dynamically so a throw during their
   // own module evaluation is catchable and fails closed (see contract above).
-  const { evaluateGhEdit, evaluateGhCreate, evaluateGhApiCreate } =
+  const { evaluateGhEdit, evaluateGhCreate, evaluateGhApiCreate, splitCommandSegments } =
     await import('./lib/gh-edit-guard.mjs');
   const { classifyBashWorktreeCommand, evaluateBashWorktreeBinding } =
     await import('./lib/bash-worktree-guard.mjs');
@@ -371,9 +371,13 @@ async function evaluate(input) {
   }) {
     // Detect a genuine `git commit` action on the quote-stripped command so a
     // commit *message* that mentions "git commit" does not self-trigger.
-    const GIT_COMMIT_RE = /\bgit\s+(?:-\S+\s+|--[\w-]+(?:=\S+)?\s+)*commit\b/;
-    const commitSegments = scannedCommand.split(/&&|\|\||[;&|\n]|\$\(/);
-    if (!commitSegments.some((seg) => GIT_COMMIT_RE.test(seg))) return;
+    const rawSegments = splitCommandSegments(rawCommand);
+    const scannedSegments = splitCommandSegments(scannedCommand);
+    const commitIndexes = [];
+    for (let index = 0; index < scannedSegments.length; index += 1) {
+      if (isGitCommitSegment(scannedSegments[index])) commitIndexes.push(index);
+    }
+    if (commitIndexes.length === 0) return;
 
     // Offline escape — consistent with the verb preflight's TT_SKIP_NETWORK gate.
     if (process.env.TT_SKIP_NETWORK === '1') return;
@@ -383,9 +387,53 @@ async function evaluate(input) {
     if ((cfg.preferences?.gateAssigneeMatch ?? true) === false) return;
 
     const { parseCommitIssueRefs, checkAssigneeMatch } = await import('./lib/assignee-guard.mjs');
-    // `[#N]` tokens live inside the quoted commit message, so parse the RAW
-    // command (scanned blanks quoted regions).
-    const refs = parseCommitIssueRefs(rawCommand);
+    const refs = [];
+    const seen = new Set();
+    const addRefs = (text) => {
+      for (const issue of parseCommitIssueRefs(text)) {
+        if (!seen.has(issue)) {
+          seen.add(issue);
+          refs.push(issue);
+        }
+      }
+    };
+    for (const index of commitIndexes) {
+      const segment = rawSegments[index] || '';
+      addRefs(segment);
+      for (const messagePath of commitMessageFiles(segment)) {
+        if (messagePath === '-') {
+          block(
+            'Refusing git commit: attributed ownership cannot be verified from `git commit -F -` stdin.\n' +
+              '  Use `-F <file>`, `-m`, or an un-attributed chore commit.'
+          );
+        }
+        try {
+          const absolutePath = isAbsolute(messagePath) ? messagePath : resolve(root, messagePath);
+          addRefs(readFileSync(absolutePath, 'utf8'));
+        } catch (error) {
+          block(
+            `Refusing git commit: could not read commit message file ${messagePath} (${error?.message || String(error)}).\n` +
+              '  Attributed ownership verification fails closed when the final message is unreadable.'
+          );
+        }
+      }
+      if (/(?:^|\s)--amend(?:\s|$)/.test(segment) && /(?:^|\s)--no-edit(?:\s|$)/.test(segment)) {
+        try {
+          addRefs(
+            execSync('git log -1 --format=%B', {
+              cwd: root,
+              encoding: 'utf8',
+              stdio: ['ignore', 'pipe', 'pipe'],
+              timeout: GIT_TIMEOUT_MS,
+            })
+          );
+        } catch (error) {
+          block(
+            `Refusing git commit --amend --no-edit: could not resolve the existing commit message (${error?.message || String(error)}).`
+          );
+        }
+      }
+    }
     if (refs.length === 0) return; // token-less / chore — escape hatch
 
     const cache = {};
@@ -409,6 +457,33 @@ async function evaluate(input) {
         );
       }
     }
+  }
+
+  function isGitCommitSegment(segment) {
+    const tokens = String(segment || '')
+      .trim()
+      .split(/\s+/)
+      .filter(Boolean);
+    const gitIndex = tokens.indexOf('git');
+    if (gitIndex < 0) return false;
+    let index = gitIndex + 1;
+    while (index < tokens.length) {
+      const token = tokens[index];
+      if (token === 'commit') return true;
+      if (!token.startsWith('-')) return false;
+      if (['-c', '-C', '--git-dir', '--work-tree', '--namespace'].includes(token)) index += 2;
+      else index += 1;
+    }
+    return false;
+  }
+
+  function commitMessageFiles(segment) {
+    const paths = [];
+    const pattern = /(?:^|\s)(?:-F|--file)(?:=|\s+)(?:"([^"]+)"|'([^']+)'|(\S+))|(?:^|\s)-F(\S+)/g;
+    for (const match of String(segment || '').matchAll(pattern)) {
+      paths.push(match[1] || match[2] || match[3] || match[4]);
+    }
+    return paths.filter(Boolean);
   }
 
   // #769 — best-effort read of the bound repo + assignee preference for the

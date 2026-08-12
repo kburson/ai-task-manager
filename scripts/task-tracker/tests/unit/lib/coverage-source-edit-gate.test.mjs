@@ -248,7 +248,7 @@ test('resolveIssueSignals: cache miss fetches then warms cache', async () => {
     gh,
     fetchSnapshot: async () => ({ state: 'develop', assignees: ['kburson'] }),
   });
-  assert.equal(second.source, 'cache');
+  assert.equal(second.source, 'cache+ownership-fetch');
   assert.equal(calls, 2);
 });
 

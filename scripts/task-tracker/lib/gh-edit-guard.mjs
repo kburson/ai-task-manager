@@ -12,6 +12,13 @@ import { formatStageBoundRefusal, hasStageBoundGrandfather } from './stage-bound
 import { appendDefectHint } from './defect-hint.mjs';
 
 const ISSUE_EDIT_RE = /\bgh\s+issue\s+edit\s+(?:#)?(\d+)\b/;
+const ISSUE_EDIT_COMMAND_RE = /\bgh\s+issue\s+edit\b/;
+const ISSUE_URL_NUMBER_RE = /github\.com\/[\w.-]+\/[\w.-]+\/issues\/(\d+)\b/i;
+const ISSUE_API_ENDPOINT_RE = /\brepos\/[\w.-]+\/[\w.-]+\/issues\/(\d+)\b/i;
+const ISSUE_API_PATCH_METHOD_RE = /(?:-X\s*|--method(?:=|\s+))PATCH\b/i;
+const ASSIGNEE_FLAG_RE = /(?:^|\s)--(?:add|remove)-assignee(?:\s|=)/;
+const API_ASSIGNEE_FIELD_RE = /(?:^|\s)(?:-f|--field|-F|--raw-field)\s+assignees(?:\[\])?=/i;
+const API_INPUT_RE = /(?:^|\s)--input(?:=|\s+)/;
 const ISSUE_CREATE_RE = /\bgh\s+issue\s+create\b/;
 const BODY_FILE_RE = /--body-file\s+(\S+)/;
 const BODY_INLINE_RE = /--body\s+(['"])((?:\\.|(?!\1).)*?)\1/;
@@ -526,15 +533,35 @@ export function evaluateGhEdit({ command }) {
   // transfer provenance, and audit comment enforced by the governed verbs.
   // Internal adapters use execFile and do not traverse this Bash hook.
   for (const segment of splitCommandSegments(command)) {
-    const match = segment.match(ISSUE_EDIT_RE);
-    if (!match || !/(?:^|\s)--(?:add|remove)-assignee(?:\s|=)/.test(segment)) continue;
+    if (!ISSUE_EDIT_COMMAND_RE.test(segment) || !ASSIGNEE_FLAG_RE.test(segment)) continue;
+    const match =
+      segment.match(ISSUE_EDIT_RE) ||
+      segment.match(ISSUE_URL_NUMBER_RE) ||
+      segment.match(/\b(\d+)\b/);
+    const issueNumber = match ? Number(match[1]) : null;
     return {
       block: true,
       reason:
-        `Direct assignee mutation on #${Number(match[1])} is forbidden.\n` +
-        `  Use \`npx aitm assign ${Number(match[1])} --to <login|@me>\`, ` +
-        `\`npx aitm transfer ${Number(match[1])} --to <login|@me>\`, or ` +
-        `\`npx aitm unassign ${Number(match[1])}\` so exclusive ownership is locked, audited, and verified.`,
+        `Direct assignee mutation${issueNumber ? ` on #${issueNumber}` : ''} is forbidden.\n` +
+        `  Use the governed ownership verbs (\`npx aitm assign${issueNumber ? ` ${issueNumber}` : ''} --to <login|@me>\`, ` +
+        `\`npx aitm transfer${issueNumber ? ` ${issueNumber}` : ''} --to <login|@me>\`, or ` +
+        `\`npx aitm unassign${issueNumber ? ` ${issueNumber}` : ''}\`) so exclusive ownership is locked, audited, and verified.`,
+    };
+  }
+
+  for (const segment of splitCommandSegments(command)) {
+    const match = segment.match(ISSUE_API_ENDPOINT_RE);
+    if (
+      !match ||
+      !ISSUE_API_PATCH_METHOD_RE.test(segment) ||
+      (!API_ASSIGNEE_FIELD_RE.test(segment) && !API_INPUT_RE.test(segment))
+    )
+      continue;
+    return {
+      block: true,
+      reason:
+        `Direct REST ownership mutation on #${Number(match[1])} is forbidden.\n` +
+        `  Use the governed ownership verbs (\`npx aitm assign\`, \`transfer\`, or \`unassign\`) so the issue lock, lifecycle policy, audit, and exact read-back all run.`,
     };
   }
 

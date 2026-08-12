@@ -4,6 +4,18 @@ import assert from 'node:assert/strict';
 
 import { canonicalLogins, ownershipDecision } from '../../../lib/ownership-policy.mjs';
 
+const taskTrackerModule = await import('../../../task-tracker.mjs');
+
+test('all governed lifecycle mutators route through exclusive-ownership preflight', () => {
+  for (const verb of ['plan', 'test', 'reconcile']) {
+    assert.equal(
+      taskTrackerModule.PREFLIGHT_MODE?.[verb],
+      'target-required',
+      `${verb} must resolve its target and run the shared ownership preflight`
+    );
+  }
+});
+
 const decide = (overrides = {}) =>
   ownershipDecision({
     state: 'refine',
@@ -129,3 +141,6 @@ await import('./assignment-snapshot.test.mjs');
 await import('../verbs/assign.test.mjs');
 await import('../verbs/unassign.test.mjs');
 await import('../../integration/lib/ownership-boundaries.integration.test.mjs');
+await import('./source-edit-gate.cache.test.mjs');
+await import('./commit-ownership-message-sources.test.mjs');
+await import('./gh-edit-guard-body.test.mjs');

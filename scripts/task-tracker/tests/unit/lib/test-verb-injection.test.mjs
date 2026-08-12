@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// @story #137 #1089
+// @story #137 #1089 #1212
 // E2E: drive `/task test` against an issue body that contains a malicious
 // backtick-wrapped verification command. Asserts:
 //   1. The malicious payload is REJECTED by the allowlist validator — no shell side effect.
@@ -148,7 +148,17 @@ if (argv[0] === 'issue' && argv[1] === 'comment') {
   process.exit(0);
 }
 if (argv[0] === 'api' && argv[1] === 'graphql') {
-  process.stdout.write(JSON.stringify({ data: { repository: { issue: { subIssues: { nodes: [] }, parent: null, projectItems: { nodes: [] }, comments: { nodes: [] } } } } }));
+  process.stdout.write(JSON.stringify({ data: { repository: { issue: {
+    subIssues: { nodes: [] },
+    parent: null,
+    assignees: { nodes: [{ login: 'kburson' }] },
+    projectItems: { nodes: [{ project: { id: 'PVT_test' }, fieldValueByName: { name: 'Develop' } }] },
+    comments: { nodes: [] }
+  } } } }));
+  process.exit(0);
+}
+if (argv[0] === 'api' && argv[1] === 'user') {
+  process.stdout.write('kburson\\n');
   process.exit(0);
 }
 process.exit(0);

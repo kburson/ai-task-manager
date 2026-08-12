@@ -56,7 +56,7 @@ const INIT_EXEMPT = new Set(['config', 'help', '?', 'migrate', 'status', 'fleet'
 // enforces bind-match. `target-optional` falls back to active when no `#N` is
 // in rest. `active-only` skips bind-match entirely (operates on active or is
 // a switch-style verb that handles target itself).
-const PREFLIGHT_MODE = {
+export const PREFLIGHT_MODE = {
   approve: 'target-required',
   'plan-approve': 'target-required',
   'issue-body': 'target-required',
@@ -64,6 +64,9 @@ const PREFLIGHT_MODE = {
   assign: 'target-required',
   transfer: 'target-required',
   unassign: 'target-required',
+  plan: 'target-required',
+  test: 'target-required',
+  reconcile: 'target-required',
   promote: 'target-required',
   next: 'target-required',
   refine: 'target-required',
