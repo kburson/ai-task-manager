@@ -158,8 +158,10 @@ test('Shelve invalidation clears active fields and derived evidence while preser
   assert.equal(shelveBodyIsInvalidated(after), true);
   assert.doesNotMatch(
     after,
-    /aitm-refine-complete|aitm-refinement-rationale|aitm-refinement-snapshot|aitm-entered-ready-for-plan|aitm-stage-rollup/
+    /aitm-refine-complete|aitm-refinement-rationale|aitm-refinement-snapshot/
   );
+  assert.match(after, /aitm-entered-ready-for-plan ts="2026-08-12T00:00:30.000Z"/);
+  assert.match(after, /aitm-stage-rollup: \{"schema":2/);
   assert.doesNotMatch(after, /aitm-plan-approved|aitm-estimation-forecast-ready/);
   assert.doesNotMatch(after, /aitm-deep-dive-complete/);
   assert.match(after, /- \[ \] Preserve the criterion/);
@@ -175,7 +177,7 @@ test('Shelve invalidation clears active fields and derived evidence while preser
   assert.equal(parseRefinementHistory(after).length, 1);
 });
 
-test('Shelve invalidation recognizes every supported R4P entry-marker grammar', () => {
+test('Shelve preserves every supported immutable R4P entry-marker grammar', () => {
   const invalidated = invalidateShelveEvidence(BODY);
   const markers = [
     '<!-- aitm-entered-ready-for-plan ts="2026-08-12T00:00:30.000Z" -->',
@@ -185,8 +187,11 @@ test('Shelve invalidation recognizes every supported R4P entry-marker grammar', 
 
   for (const marker of markers) {
     const body = `${invalidated.trimEnd()}\n${marker}\n`;
-    assert.equal(shelveEvidenceIsInvalidated(body), false, marker);
-    assert.doesNotMatch(invalidateShelveEvidence(body), /aitm-entered-ready-for-plan/);
+    assert.equal(shelveEvidenceIsInvalidated(body), true, marker);
+    assert.match(
+      invalidateShelveEvidence(body),
+      new RegExp(marker.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
+    );
   }
 });
 

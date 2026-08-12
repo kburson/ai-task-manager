@@ -5,6 +5,7 @@ import assert from 'node:assert/strict';
 import { writeLastKnownState } from '../../../gh-timing-comment.mjs';
 import { parseBodyVersion, stampBodyVersion } from '../../../lib/body-version.mjs';
 import { stampRefinementSnapshot } from '../../../lib/refinement-snapshot.mjs';
+import { computeStageDurations } from '../../../timing-rollup.mjs';
 import { stripBodyVersion } from '../../../lib/versioned-issue-write.mjs';
 import {
   SHELVE_PHASES,
@@ -69,7 +70,12 @@ This integration fixture has enough durable scope to build a current snapshot.
   if (state === 'ready-for-plan') {
     body = body.replace(
       '<!-- aitm-body-version version="7" -->',
-      '<!-- aitm-body-version version="7" -->\n<!-- aitm-entered-ready-for-plan ts="2026-08-12T00:00:30.000Z" -->'
+      `<!-- aitm-body-version version="7" -->
+<!-- aitm-entered-refine ts="2026-08-12T00:00:00.000Z" -->
+<!-- aitm-entered-ready-for-plan ts="2026-08-12T01:00:00.000Z" -->
+<!-- aitm-entered-plan ts="2026-08-12T02:00:00.000Z" -->
+<!-- aitm-entered-ready-for-plan-2 ts="2026-08-12T03:00:00.000Z" -->
+<!-- aitm-stage-rollup: {"schema":2,"perStageSec":{"backlog":0,"refine":3600,"ready-for-plan":3600,"plan":3600,"develop":0,"test":0,"review":0,"done":0},"totalSec":10800,"visits":[{"stage":"refine","visit":1,"durationSec":3600},{"stage":"ready-for-plan","visit":1,"durationSec":3600},{"stage":"plan","visit":1,"durationSec":3600},{"stage":"ready-for-plan","visit":2,"durationSec":0}]} -->`
     );
   }
   return stampRefinementSnapshot(body, {
@@ -194,8 +200,12 @@ ${body}`;
   });
 }
 
-test('Shelve clears the canonical R4P entry marker before returning success', async () => {
+test('Shelve preserves immutable lifecycle timing while invalidating current R4P eligibility', async () => {
   const h = harness({ state: 'ready-for-plan' });
+  const timingLines = h.store.body
+    .split('\n')
+    .filter((line) => /aitm-entered-|aitm-stage-rollup/.test(line));
+  const beforeTiming = computeStageDurations(h.store.body);
 
   const result = await runShelveTransaction({
     issueNumber: 1215,
@@ -205,7 +215,9 @@ test('Shelve clears the canonical R4P entry marker before returning success', as
   });
 
   assert.equal(result.status, 'shelved', JSON.stringify(result));
-  assert.doesNotMatch(h.store.body, /aitm-entered-ready-for-plan/);
+  for (const line of timingLines) assert.ok(h.store.body.includes(line), line);
+  assert.deepEqual(computeStageDurations(h.store.body), beforeTiming);
+  assert.doesNotMatch(h.store.body, /aitm-refine-complete|aitm-refinement-rationale/);
 });
 
 test('Shelve runs the ordered journal, preserves classifications, and verifies exact final state', async () => {
