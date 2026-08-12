@@ -70,7 +70,9 @@ function repoRoot() {
 // injected runtime library; both ship so operators can preview/apply it from
 // an installed package. The exact packed surface grows by two.
 // #1249 adds one shipped maintenance CLI and its pure timing interval authority.
-const ENTRY_CEILING = 635;
+// #1210 intentionally ships two governed verbs, their generic owned-comment
+// store, and the task-skill rule that documents the governed surface.
+const ENTRY_CEILING = 639;
 
 function packedFiles() {
   const out = execFileSync('npm', ['pack', '--dry-run', '--json'], {

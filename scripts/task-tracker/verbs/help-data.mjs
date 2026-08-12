@@ -525,6 +525,28 @@ export const VERB_REFERENCE = {
       '/task evidence-markers backfill 667 --map-file map.json --dry-run',
     ],
   },
+  'issue-body': {
+    topic: 'evidence',
+    summary: 'Apply one governed, declarative fresh-base issue-body operation from a JSON file.',
+    usage: '/task issue-body #N --operation-file <path>',
+    flags: [
+      {
+        flag: '--operation-file <path>',
+        desc: 'aitm.issue-body-operation/v1 exact or named-section replacement',
+      },
+    ],
+    examples: ['/task issue-body 667 --operation-file .tmp/gh/667-body-operation.json'],
+  },
+  comment: {
+    topic: 'evidence',
+    summary: 'Idempotently create or update one marker-owned issue comment from a file.',
+    usage: '/task comment #N --key <stable-key> --body-file <path>',
+    flags: [
+      { flag: '--key <stable-key>', desc: 'stable lowercase ownership key' },
+      { flag: '--body-file <path>', desc: 'markdown comment body without an ownership marker' },
+    ],
+    examples: ['/task comment 667 --key plan.audit-v1 --body-file .tmp/gh/667-audit.md'],
+  },
   'commit-trace': {
     topic: 'evidence',
     summary: 'Create or update the canonical commit-trace comment from HEAD.',

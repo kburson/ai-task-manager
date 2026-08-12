@@ -3,7 +3,7 @@ name: task
 description: Bind work sessions to GitHub issues and track time + context words per issue. Use when the user types /task with no args or followed by #N, new, plan, resume, pause, update, review, close, log, check, fleet, or config.
 ---
 
-<!-- aitm-skill-version: 1.1.0 -->
+<!-- aitm-skill-version: 1.2.0 -->
 
 # Task Router
 
@@ -58,7 +58,7 @@ Load the rule file ONLY when its verb is about to run. If the sentinel `aitm-ski
 | First commit in session, commit-trail troubleshooting                    | `rules/commit-trail.md`                                                   |
 | Hook-output diagnosis (rare)                                             | `rules/hooks.md`                                                          |
 | `/task plan-approve`, `/task approve`, `/task reject`                    | `rules/state-walk.md` (gate verbs; covered there)                         |
-| Writing transient/scratch file (sandbox, issue body, plan/heal/inspect)  | `rules/scratch-dirs.md`                                                   |
+| Scratch writes; `/task issue-body` or `comment`                          | `rules/scratch-dirs.md`; `rules/issue-records.md`                         |
 | `/task block`, `/task unblock`, spawning a defect mid-task               | `rules/block.md`                                                          |
 | Skill script blocks you (hook `block`, or `aitm-defect-hint:` on stderr) | `rules/report-on-block.md`                                                |
 

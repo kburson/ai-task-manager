@@ -59,6 +59,8 @@ const INIT_EXEMPT = new Set(['config', 'help', '?', 'migrate', 'status', 'fleet'
 const PREFLIGHT_MODE = {
   approve: 'target-required',
   'plan-approve': 'target-required',
+  'issue-body': 'target-required',
+  comment: 'target-required',
   promote: 'target-required',
   next: 'target-required',
   refine: 'target-required',
@@ -398,6 +400,16 @@ if (_isMain)
         case 'evidence-markers': {
           const { verbEvidenceMarkers } = await import('./verbs/evidence-markers.mjs');
           await verbEvidenceMarkers(ctx);
+          break;
+        }
+        case 'issue-body': {
+          const { verbIssueBody } = await import('./verbs/issue-body.mjs');
+          await verbIssueBody(ctx);
+          break;
+        }
+        case 'comment': {
+          const { verbComment } = await import('./verbs/comment.mjs');
+          await verbComment(ctx);
           break;
         }
         case 'adopt-github-records': {

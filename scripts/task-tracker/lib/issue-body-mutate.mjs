@@ -95,6 +95,7 @@ export async function mutateIssueBody({
   evidenceStamp = false,
   expectedRemovedHeadings = [],
   allowLargeShrink = false,
+  expectedVersion,
 } = {}) {
   const warn = deps.warn || ((msg) => console.error(msg));
   if (issueNumber == null) throw new Error('mutateIssueBody: issueNumber is required');
@@ -182,5 +183,12 @@ export async function mutateIssueBody({
     return next;
   };
 
-  return versionedWriteBody({ issueNumber, repo, mutate: guardedMutate, deps, maxRetries });
+  return versionedWriteBody({
+    issueNumber,
+    repo,
+    mutate: guardedMutate,
+    deps,
+    maxRetries,
+    expectedVersion,
+  });
 }

@@ -324,6 +324,26 @@ export const VERB_CONTRACTS = Object.freeze({
     ['Prints per-criterion evidence status and mutation totals.'],
     [exit(3, 'evidence audit found invalid or incomplete marker state')]
   ),
+  'issue-body': contract(
+    [
+      'The target must be the active issue with an open timing session, matching assignee, matching worktree, and a valid aitm.issue-body-operation/v1 file.',
+    ],
+    [
+      'Evaluates one exact or named-section replacement against every fresh remote body through mutateIssueBody and verifies the persisted body.',
+    ],
+    ['Prints the mutation status and verified body version.'],
+    PREFLIGHT_TARGET_EXITS
+  ),
+  comment: contract(
+    [
+      'The target must be the active issue with an open timing session, matching assignee, matching worktree, a stable key, and a readable body file.',
+    ],
+    [
+      'Exhaustively finds the marker-owned comment, creates, updates, or no-ops exactly one match, and verifies correlated read-back.',
+    ],
+    ['Prints the idempotent result and verified comment node id.'],
+    PREFLIGHT_TARGET_EXITS
+  ),
   'adopt-github-records': contract(
     ['The issue must exist; mutation modes additionally require current coordinator authority.'],
     ['Audits legacy parity by default, or explicitly adopts, rolls back, or repairs one issue.'],
@@ -474,6 +494,8 @@ export const VERB_RELATED_COMMANDS = Object.freeze({
   ensureChecked: Object.freeze(['ac-stamp', 'dod-stamp', 'ensureUnchecked']),
   ensureUnchecked: Object.freeze(['ensureChecked', 'reject']),
   'evidence-markers': Object.freeze(['ac-stamp', 'ensureChecked']),
+  'issue-body': Object.freeze(['comment', 'evidence-markers']),
+  comment: Object.freeze(['issue-body', 'commit-trace']),
   'adopt-github-records': Object.freeze(['evidence-markers', 'reconcile']),
   'commit-trace': Object.freeze(['close', 'status']),
   'mirror-deep-dive': Object.freeze(['plan', 'save-plan']),
@@ -580,6 +602,12 @@ export const VERB_POSITIONAL_ARGUMENTS = Object.freeze({
   'evidence-markers': Object.freeze([
     positional('<audit|backfill>', 'Evidence-marker operation.'),
     positional('#N', 'Issue number to audit or backfill.'),
+  ]),
+  'issue-body': Object.freeze([
+    positional('#N', 'Issue number whose fresh body will be transformed.'),
+  ]),
+  comment: Object.freeze([
+    positional('#N', 'Issue number whose marker-owned comment will be upserted.'),
   ]),
   'adopt-github-records': Object.freeze([
     positional('<N>', 'Issue number to audit, adopt, roll back, or repair.'),

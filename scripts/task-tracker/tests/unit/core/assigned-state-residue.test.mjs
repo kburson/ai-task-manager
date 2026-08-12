@@ -18,6 +18,10 @@ const ALLOWLIST = new Map(
     '.ai-task-manager/memory/MEMORY.md': [1, 'factual state-rename history'],
     '.ai-task-manager/memory/project_board_columns_2026_05.md': [2, 'factual state-rename history'],
     'docs/migration-history.md': [6, 'published compatibility and operator migration guide'],
+    'docs/superpowers/plans/2026-08-11-ready-for-planning-ownership-lifecycle.md': [
+      5,
+      'approved #1209 compatibility and migration plan',
+    ],
     'docs/code-review/562-correctness-concurrency-audit.md': [
       1,
       'immutable historical defect reproduction',
