@@ -66,6 +66,12 @@ This integration fixture has enough durable scope to build a current snapshot.
     /^(<!--\s*aitm-last-known-state[^>]*?-->)/,
     '$1\n<!-- aitm-body-version version="7" -->'
   );
+  if (state === 'ready-for-plan') {
+    body = body.replace(
+      '<!-- aitm-body-version version="7" -->',
+      '<!-- aitm-body-version version="7" -->\n<!-- aitm-entered-ready-for-plan ts="2026-08-12T00:00:30.000Z" -->'
+    );
+  }
   return stampRefinementSnapshot(body, {
     labels: LABELS,
     ts: '2026-08-12T00:00:00.000Z',
@@ -187,6 +193,20 @@ ${body}`;
     ts: '2026-08-12T01:00:00.000Z',
   });
 }
+
+test('Shelve clears the canonical R4P entry marker before returning success', async () => {
+  const h = harness({ state: 'ready-for-plan' });
+
+  const result = await runShelveTransaction({
+    issueNumber: 1215,
+    reason: 'No longer prioritized',
+    cfg: CFG,
+    deps: h.deps,
+  });
+
+  assert.equal(result.status, 'shelved', JSON.stringify(result));
+  assert.doesNotMatch(h.store.body, /aitm-entered-ready-for-plan/);
+});
 
 test('Shelve runs the ordered journal, preserves classifications, and verifies exact final state', async () => {
   const h = harness();

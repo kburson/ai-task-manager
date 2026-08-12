@@ -41,7 +41,8 @@ const ACTIVE_FIELD_KEYS = Object.freeze(['priority', 'size', 'estimate', 'rank']
 const ACTIVE_MARKERS = Object.freeze([
   /<!--\s*aitm-refine-complete(?::[^>]*|\s+[^>]*?)\s*-->\s*\n?/gi,
   /<!--\s*aitm-refinement-rationale:\s*[^>]*?-->\s*\n?/gi,
-  /<!--\s*aitm-ready-for-plan[^>]*?-->\s*\n?/gi,
+  /<!--\s*aitm-entered-ready-for-plan(?:-\d+)?(?::\s*[^>]*?|\s+ts="[^"]*")\s*-->\s*\n?/gi,
+  /<!--\s*aitm-stage-rollup:\s*\{[\s\S]*?\}\s*-->\s*\n?/gi,
   /<!--\s*aitm-refinement-snapshot\s+[^>]*?-->\s*\n?/gi,
   /<!--\s*aitm-plan-approved(?::[^>]*|\s+[^>]*?)\s*-->\s*\n?/gi,
   /<!--\s*aitm-estimation-forecast(?:-ready)?\s+[^>]*?-->\s*\n?/gi,

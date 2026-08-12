@@ -10,8 +10,10 @@ import {
 } from '../../../lib/refinement-history.mjs';
 import {
   activeFieldsAfterShelve,
+  invalidateShelveEvidence,
   invalidateShelveBody,
   shelveBodyIsInvalidated,
+  shelveEvidenceIsInvalidated,
 } from '../../../lib/shelve-transaction.mjs';
 
 const FIELD_DEFS = [
@@ -26,7 +28,8 @@ const BODY = `<!-- aitm-last-known-state state="refine" ts="2026-08-12T00:00:00.
 <!-- aitm-refine-complete ts="2026-08-12T00:00:00.000Z" -->
 <!-- aitm-refinement-rationale: {"size":"M","estimate":"4","priority":"P1","rank":2,"rationale":"current"} -->
 <!-- aitm-refinement-snapshot schema="1" digest="${'a'.repeat(64)}" provenance="${'b'.repeat(64)}" priority="P1" size="M" estimate="4" rank="2" blocked-by="#11" ts="2026-08-12T00:00:00.000Z" -->
-<!-- aitm-ready-for-plan ts="2026-08-12T00:00:30.000Z" -->
+<!-- aitm-entered-ready-for-plan ts="2026-08-12T00:00:30.000Z" -->
+<!-- aitm-stage-rollup: {"schema":2,"perStageSec":{"refine":30},"totalSec":30,"visits":[{"stage":"refine","visit":1,"durationSec":30}]} -->
 <!-- aitm-plan-approved ts="2026-08-12T00:01:00.000Z" -->
 <!-- aitm-estimation-forecast-ready schema="2" record-id="forecast-1" -->
 <!-- aitm-deep-dive-complete ts="2026-08-12T00:02:00.000Z" -->
@@ -155,7 +158,7 @@ test('Shelve invalidation clears active fields and derived evidence while preser
   assert.equal(shelveBodyIsInvalidated(after), true);
   assert.doesNotMatch(
     after,
-    /aitm-refine-complete|aitm-refinement-rationale|aitm-refinement-snapshot|aitm-ready-for-plan/
+    /aitm-refine-complete|aitm-refinement-rationale|aitm-refinement-snapshot|aitm-entered-ready-for-plan|aitm-stage-rollup/
   );
   assert.doesNotMatch(after, /aitm-plan-approved|aitm-estimation-forecast-ready/);
   assert.doesNotMatch(after, /aitm-deep-dive-complete/);
@@ -170,6 +173,21 @@ test('Shelve invalidation clears active fields and derived evidence while preser
   assert.match(after, /Keep this human discussion exactly as written/);
   assert.match(after, /Second discussion paragraph keeps its original spacing/);
   assert.equal(parseRefinementHistory(after).length, 1);
+});
+
+test('Shelve invalidation recognizes every supported R4P entry-marker grammar', () => {
+  const invalidated = invalidateShelveEvidence(BODY);
+  const markers = [
+    '<!-- aitm-entered-ready-for-plan ts="2026-08-12T00:00:30.000Z" -->',
+    '<!-- aitm-entered-ready-for-plan-2 ts="2026-08-12T01:00:30.000Z" -->',
+    '<!-- aitm-entered-ready-for-plan: 2026-08-12T02:00:30.000Z -->',
+  ];
+
+  for (const marker of markers) {
+    const body = `${invalidated.trimEnd()}\n${marker}\n`;
+    assert.equal(shelveEvidenceIsInvalidated(body), false, marker);
+    assert.doesNotMatch(invalidateShelveEvidence(body), /aitm-entered-ready-for-plan/);
+  }
 });
 
 test('Shelve does not mutate labels because labels remain classification evidence', () => {
