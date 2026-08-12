@@ -15,8 +15,10 @@ import {
   verifyRefinementSnapshot,
 } from '../../../lib/refinement-snapshot.mjs';
 import { refinementSnapshotGuard } from '../../../lib/refinement-snapshot-guard.mjs';
-import { runCancelPlan } from '../../../verbs/cancel-plan.mjs';
+import * as cancelPlanModule from '../../../verbs/cancel-plan.mjs';
 import { runRefine } from '../../../verbs/refine.mjs';
+
+const { runCancelPlan } = cancelPlanModule;
 
 const CFG = { repo: 'owner/repo', projectId: 'PVT_PROJECT' };
 const TS = '2026-08-12T12:00:00.000Z';
@@ -287,6 +289,10 @@ function plannedBody() {
   ].join('\n');
 }
 
+function fetchPlanBoardFields(overrides = {}) {
+  return async () => ({ priority: 'P1', size: 'M', estimate: 8, rank: 4, ...overrides });
+}
+
 function plannedEstimateFixture() {
   const comments = [
     {
@@ -322,6 +328,7 @@ test('cancel-plan clears Plan-only artifacts while preserving refinement evidenc
       assertBound: () => {},
       fetchIssueBody: async () => ({ body, labels: ['enhancement'] }),
       getLiveState: async () => 'plan',
+      fetchBoardFields: fetchPlanBoardFields(),
       mutateIssueBody: async ({ mutate }) => {
         body = mutate(body);
         return { status: 'ok' };
@@ -364,6 +371,7 @@ test('cancel-plan refuses a stale refinement snapshot before any mutation', asyn
       assertBound: () => {},
       fetchIssueBody: async () => ({ body, labels: ['enhancement'] }),
       getLiveState: async () => 'plan',
+      fetchBoardFields: fetchPlanBoardFields(),
       mutateIssueBody: async () => {
         writes += 1;
       },
@@ -385,6 +393,7 @@ test('cancel-plan restores Refine fields after legitimate Plan re-estimation dri
       assertBound: () => {},
       fetchIssueBody: async () => ({ body, labels: ['enhancement'] }),
       getLiveState: async () => 'plan',
+      fetchBoardFields: fetchPlanBoardFields({ size: 'L', estimate: 13 }),
       mutateIssueBody: async ({ mutate }) => {
         body = mutate(body);
         return { status: 'ok' };
@@ -429,6 +438,43 @@ test('cancel-plan still refuses non-estimation refinement field drift', async ()
   assert.equal(writes, 0);
 });
 
+test('cancel-plan refuses concurrent configured-project field drift before any artifact mutation', async () => {
+  let body = plannedBody();
+  const plannedEstimate = plannedEstimateFixture();
+  let bodyWrites = 0;
+  let boardWrites = 0;
+  const result = await runCancelPlan({
+    issueNumber: 1213,
+    cfg: CFG,
+    reason: 'planning interrupted after board-only priority drift',
+    deps: {
+      assertBound: () => {},
+      fetchIssueBody: async () => ({ body, labels: ['enhancement'] }),
+      getLiveState: async () => 'plan',
+      fetchBoardFields: async () => ({ priority: 'P0', size: 'M', estimate: 8, rank: 4 }),
+      mutateIssueBody: async ({ mutate }) => {
+        bodyWrites += 1;
+        body = mutate(body);
+        return { status: 'ok' };
+      },
+      restoreBoardFields: async () => {
+        boardWrites += 1;
+      },
+      plannedEstimate: plannedEstimate.deps,
+      runMoveState: async () => 0,
+    },
+  });
+  assert.equal(result.status, 'board-fields-refused');
+  assert.match(result.reason, /live board fields disagree/);
+  assert.equal(bodyWrites, 0);
+  assert.equal(boardWrites, 0);
+  assert.match(plannedEstimate.comments[0].body, /### Planned Estimate/);
+});
+
+test('cancel-plan remains a hub-only handler with no direct executable entrypoint', () => {
+  assert.equal(cancelPlanModule.runCancelPlanEntrypoint, undefined);
+});
+
 test('cancel-plan restores original Plan artifacts without clobbering concurrent body edits', async () => {
   const original = plannedBody();
   let body = original;
@@ -444,6 +490,7 @@ test('cancel-plan restores original Plan artifacts without clobbering concurrent
       assertBound: () => {},
       fetchIssueBody: async () => ({ body, labels: ['enhancement'] }),
       getLiveState: async () => 'plan',
+      fetchBoardFields: fetchPlanBoardFields(),
       mutateIssueBody: async ({ mutate }) => {
         bodyWrites += 1;
         if (bodyWrites === 2) body += '\n## Concurrent Note\n\nPreserve this remote edit.\n';
@@ -491,6 +538,7 @@ test('cancel-plan reconciles a thrown mover and restores Plan artifacts when Sta
       assertBound: () => {},
       fetchIssueBody: async () => ({ body, labels: ['enhancement'] }),
       getLiveState: async () => 'plan',
+      fetchBoardFields: fetchPlanBoardFields(),
       mutateIssueBody: async ({ mutate }) => {
         body = mutate(body);
         return { status: 'ok' };
@@ -528,6 +576,7 @@ test('successful cancellation removes the old Planned Estimate appendix', async 
       assertBound: () => {},
       fetchIssueBody: async () => ({ body, labels: ['enhancement'] }),
       getLiveState: async () => 'plan',
+      fetchBoardFields: fetchPlanBoardFields(),
       mutateIssueBody: async ({ mutate }) => {
         body = mutate(body);
         return { status: 'ok' };
@@ -571,6 +620,7 @@ test('early Plan cancellation succeeds when no Planned Estimate appendix exists 
       assertBound: () => {},
       fetchIssueBody: async () => ({ body, labels: ['enhancement'] }),
       getLiveState: async () => 'plan',
+      fetchBoardFields: fetchPlanBoardFields(),
       mutateIssueBody: async ({ mutate }) => {
         body = mutate(body);
         return { status: 'ok' };
@@ -606,6 +656,7 @@ test('Plan cancellation succeeds when best-effort Refine estimate comment postin
       assertBound: () => {},
       fetchIssueBody: async () => ({ body, labels: ['enhancement'] }),
       getLiveState: async () => 'plan',
+      fetchBoardFields: fetchPlanBoardFields(),
       mutateIssueBody: async ({ mutate }) => {
         body = mutate(body);
         return { status: 'ok' };
@@ -643,6 +694,7 @@ test('cancel-plan refuses before body mutation when Planned Estimate read-back i
       assertBound: () => {},
       fetchIssueBody: async () => ({ body, labels: ['enhancement'] }),
       getLiveState: async () => 'plan',
+      fetchBoardFields: fetchPlanBoardFields(),
       mutateIssueBody: async () => {
         bodyWrites += 1;
       },
@@ -667,6 +719,7 @@ test('cancel-plan accepts a nonzero delegate when live Status reached R4P', asyn
       assertBound: () => {},
       fetchIssueBody: async () => ({ body, labels: ['enhancement'] }),
       getLiveState: async () => (stateReads++ === 0 ? 'plan' : 'ready-for-plan'),
+      fetchBoardFields: fetchPlanBoardFields(),
       mutateIssueBody: async ({ mutate }) => {
         body = mutate(body);
         return { status: 'ok' };

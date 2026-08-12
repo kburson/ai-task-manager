@@ -4,9 +4,6 @@
 // Plan-only evidence before moving Status, preserves the Refine snapshot and
 // issue fields, and restores the original body if Status does not move.
 
-import path from 'node:path';
-import { fileURLToPath } from 'node:url';
-
 import { runMoveStateHost } from '../../gh/move-state.mjs';
 import { fieldOptionMap, gql, splitRepo } from '../../gh/lib/github-projects.mjs';
 import { readLastKnownState } from '../gh-timing-comment.mjs';
@@ -22,6 +19,10 @@ import {
 import { serializeMarker } from '../lib/marker-grammar.mjs';
 import { getProjectDir } from '../paths.mjs';
 import { verifyRefinementSnapshot } from '../lib/refinement-snapshot.mjs';
+import {
+  fetchRefinementBoardFields,
+  fetchRefinementBoardSnapshot,
+} from '../lib/refinement-snapshot-guard.mjs';
 import { clearPlannedEstimate, restorePlannedEstimate } from '../lib/refine-estimate-comment.mjs';
 import { ensureIssueFieldDb, parseIssueFieldDb } from '../issue-field-db.mjs';
 import { loadProjectFieldDefs } from '../project-fields.mjs';
@@ -135,6 +136,15 @@ export function defaultRunMoveState({ issueNumber, reason }, { host = runMoveSta
   });
 }
 
+function boardFieldsMatchCurrentPlan(board, current) {
+  return (
+    String(board?.priority || '').toUpperCase() === String(current?.priority || '').toUpperCase() &&
+    String(board?.size || '').toUpperCase() === String(current?.size || '').toUpperCase() &&
+    Number(board?.estimate) === Number(current?.estimate) &&
+    Number(board?.rank) === Number(current?.rank)
+  );
+}
+
 export async function runCancelPlan({ issueNumber, cfg, reason, now, deps = {} } = {}) {
   if (!Number.isInteger(issueNumber) || issueNumber <= 0)
     throw new Error('cancel-plan: issue# must be a positive integer');
@@ -150,7 +160,19 @@ export async function runCancelPlan({ issueNumber, cfg, reason, now, deps = {} }
   const issueRecord = await fetchIssueBody({ issueNumber, cfg });
   const originalBody = issueRecord.body;
   const recorded = readLastKnownState(originalBody).state;
-  const live = await getLiveState({ issueNumber, cfg });
+  let live;
+  let liveBoardFields = null;
+  if (deps.fetchBoardSnapshot) {
+    const boardSnapshot = await deps.fetchBoardSnapshot({ issueNumber, cfg });
+    live = normalizeStateId(boardSnapshot?.state);
+    liveBoardFields = boardSnapshot?.fields || null;
+  } else if (!deps.getLiveState && !deps.fetchBoardFields) {
+    const boardSnapshot = await fetchRefinementBoardSnapshot({ issueNumber, cfg });
+    live = normalizeStateId(boardSnapshot?.state);
+    liveBoardFields = boardSnapshot?.fields || null;
+  } else {
+    live = await getLiveState({ issueNumber, cfg });
+  }
   if (recorded !== live) return { status: 'drift-refused', recorded, live };
   const policy = actionPolicyFor('cancel-plan', recorded);
   if (!policy.ok) return { status: 'invalid-source-refused', from: recorded };
@@ -167,6 +189,23 @@ export async function runCancelPlan({ issueNumber, cfg, reason, now, deps = {} }
   const snapshot = snapshotResult.snapshot;
   const originalFields = parseIssueFieldDb(originalBody);
   if (!originalFields.ok) return { status: 'fields-refused' };
+  if (!liveBoardFields) {
+    const fetchBoardFields = deps.fetchBoardFields || fetchRefinementBoardFields;
+    try {
+      liveBoardFields = await fetchBoardFields({ issueNumber, cfg });
+    } catch (error) {
+      return {
+        status: 'board-fields-refused',
+        reason: `live board fields unreadable: ${error.message}`,
+      };
+    }
+  }
+  if (!boardFieldsMatchCurrentPlan(liveBoardFields, originalFields.values)) {
+    return {
+      status: 'board-fields-refused',
+      reason: 'live board fields disagree with the current Plan body; cancellation refused',
+    };
+  }
   if (
     !backwardTargets(recorded).includes(CANCEL_PLAN_TARGET) ||
     !validateExecutableTransition(recorded, CANCEL_PLAN_TARGET).ok
@@ -364,16 +403,4 @@ export async function verbCancelPlan(rest, cfg, deps = {}) {
   }
   process.stderr.write(`cancel-plan: ${result.status}\n`);
   process.exit(result.status === 'transition-failed-restored' ? result.exitCode || 1 : 4);
-}
-
-const isMain = (() => {
-  try {
-    return fileURLToPath(import.meta.url) === path.resolve(process.argv[1]);
-  } catch {
-    return false;
-  }
-})();
-if (isMain) {
-  const { loadConfig } = await import('../config.mjs');
-  await verbCancelPlan(process.argv.slice(2), loadConfig());
 }

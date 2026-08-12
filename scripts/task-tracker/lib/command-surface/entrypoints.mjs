@@ -41,7 +41,6 @@ export const EXECUTABLE_ENTRYPOINTS = Object.freeze([
   ...publicRows('agent-callable-verb', [
     ['scripts/task-tracker/verbs/approve.mjs', 'approve'],
     ['scripts/task-tracker/verbs/assign.mjs', 'assign'],
-    ['scripts/task-tracker/verbs/cancel-plan.mjs', 'cancel-plan'],
     ['scripts/task-tracker/verbs/demote.mjs', 'demote'],
     ['scripts/task-tracker/verbs/park.mjs', 'park'],
     ['scripts/task-tracker/verbs/plan-approve.mjs', 'plan-approve'],

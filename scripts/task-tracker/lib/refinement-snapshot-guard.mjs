@@ -29,7 +29,7 @@ async function defaultFetchLabels({ issueNumber, cfg }) {
   return (labels.nodes || []).map(({ name }) => name);
 }
 
-async function defaultFetchBoardFields({ issueNumber, cfg }) {
+export async function fetchRefinementBoardSnapshot({ issueNumber, cfg }) {
   const { owner, repoName } = splitRepo(cfg.repo);
   const data = await gql(
     `
@@ -39,6 +39,9 @@ async function defaultFetchBoardFields({ issueNumber, cfg }) {
           projectItems(first: 100) {
             nodes {
               project { id }
+              fieldValueByName(name: "Status") {
+                ... on ProjectV2ItemFieldSingleSelectValue { name }
+              }
               fieldValues(first: 100) {
                 nodes {
                   ... on ProjectV2ItemFieldSingleSelectValue {
@@ -77,11 +80,18 @@ async function defaultFetchBoardFields({ issueNumber, cfg }) {
     return node?.number ?? node?.name ?? null;
   };
   return {
-    priority: read('priority'),
-    size: read('size'),
-    estimate: read('estimate'),
-    rank: read('rank'),
+    state: item.fieldValueByName?.name || null,
+    fields: {
+      priority: read('priority'),
+      size: read('size'),
+      estimate: read('estimate'),
+      rank: read('rank'),
+    },
   };
+}
+
+export async function fetchRefinementBoardFields(args) {
+  return (await fetchRefinementBoardSnapshot(args)).fields;
 }
 
 function boardFieldsMatch(snapshot, board) {
@@ -116,7 +126,7 @@ export const refinementSnapshotGuard = Object.freeze({
       return { ok: false, reason, blockers: [reason] };
     }
     const fetchBoardFields =
-      ctx.deps?.refinementSnapshot?.fetchBoardFields || defaultFetchBoardFields;
+      ctx.deps?.refinementSnapshot?.fetchBoardFields || fetchRefinementBoardFields;
     let boardFields;
     try {
       boardFields = await fetchBoardFields({ issueNumber: ctx.issueNumber, cfg: ctx.cfg });
