@@ -111,7 +111,7 @@ test('Plan exit Full-Auto defers notice and assignment until the post-guard comm
   const guardResult = await planExitOwnershipGuard.run(ctx);
   assert.deepEqual(guardResult, { ok: true });
   assert.deepEqual(order, [], 'guard aggregation must not mutate ownership');
-  assert.deepEqual(ctx.planExitOwnershipClaim, { currentUser: 'alice' });
+  assert.deepEqual(ctx.planExitOwnershipClaim, { currentUser: 'alice', mode: 'full-auto' });
 
   const snapshots = [
     { state: 'plan', assignees: [] },
@@ -121,7 +121,9 @@ test('Plan exit Full-Auto defers notice and assignment until the post-guard comm
     issueNumber: 1212,
     cfg,
     currentUser: ctx.planExitOwnershipClaim.currentUser,
+    mode: ctx.planExitOwnershipClaim.mode,
     deps: {
+      fetchCurrentUser: async () => 'alice',
       fetchSnapshot: async () => snapshots.shift(),
       postNotice: async () => order.push('notice'),
       mutateAssignee: async ({ action, login }) => order.push(`${action}:${login}`),
@@ -146,7 +148,7 @@ test('Plan exit always schedules under-lock revalidation for an existing local o
     },
   };
   assert.deepEqual(await planExitOwnershipGuard.run(ctx), { ok: true });
-  assert.deepEqual(ctx.planExitOwnershipClaim, { currentUser: 'alice' });
+  assert.deepEqual(ctx.planExitOwnershipClaim, { currentUser: 'alice', mode: 'full-auto' });
 });
 
 test('Plan exit refuses stale non-Plan snapshots before and under the issue lock', async () => {
@@ -170,7 +172,10 @@ test('Plan exit refuses stale non-Plan snapshots before and under the issue lock
     issueNumber: 1212,
     cfg,
     currentUser: 'alice',
-    deps: { fetchSnapshot: async () => ({ state: 'review', assignees: ['alice'] }) },
+    deps: {
+      fetchCurrentUser: async () => 'alice',
+      fetchSnapshot: async () => ({ state: 'review', assignees: ['alice'] }),
+    },
   });
   assert.equal(inside.ok, false);
   assert.match(inside.reason, /expected Status plan/i);
@@ -181,7 +186,10 @@ test('Plan exit under-lock revalidation refuses ownership changed after guard ag
     issueNumber: 1212,
     cfg,
     currentUser: 'alice',
-    deps: { fetchSnapshot: async () => ({ state: 'plan', assignees: ['bob'] }) },
+    deps: {
+      fetchCurrentUser: async () => 'alice',
+      fetchSnapshot: async () => ({ state: 'plan', assignees: ['bob'] }),
+    },
   });
   assert.equal(result.ok, false);
   assert.match(result.reason, /singleton @alice|observed.*@bob/i);
@@ -211,6 +219,44 @@ test('Plan exit interactive mode prompts with zero assignment mutation', async (
   assert.equal(result.ok, false);
   assert.match(result.reason, /would you like me to assign.*@alice/i);
   assert.equal(writes, 0);
+});
+
+test('interactive Plan revalidation never turns a lost owner into a Full-Auto claim', async () => {
+  let writes = 0;
+  const result = await commitPlanExitOwnershipClaim({
+    issueNumber: 1212,
+    cfg,
+    currentUser: 'alice',
+    mode: 'interactive',
+    deps: {
+      fetchCurrentUser: async () => 'alice',
+      fetchSnapshot: async () => ({ state: 'plan', assignees: [] }),
+      postNotice: async () => {
+        writes += 1;
+      },
+      mutateAssignee: async () => {
+        writes += 1;
+      },
+    },
+  });
+  assert.equal(result.ok, false);
+  assert.match(result.reason, /assignment-required|would you like/i);
+  assert.equal(writes, 0);
+});
+
+test('Plan revalidation refreshes authenticated identity under lock', async () => {
+  const result = await commitPlanExitOwnershipClaim({
+    issueNumber: 1212,
+    cfg,
+    currentUser: 'alice',
+    mode: 'full-auto',
+    deps: {
+      fetchCurrentUser: async () => 'bob',
+      fetchSnapshot: async () => ({ state: 'plan', assignees: ['alice'] }),
+    },
+  });
+  assert.equal(result.ok, false);
+  assert.match(result.reason, /identity-changed.*@alice.*@bob/i);
 });
 
 test('Plan exit refuses a foreign or multiple owner before notice or mutation', async () => {
@@ -250,6 +296,7 @@ test('Plan exit commit treats thrown assignment transport as ambiguous despite m
     cfg,
     currentUser: 'alice',
     deps: {
+      fetchCurrentUser: async () => 'alice',
       fetchSnapshot: async () => snapshots.shift(),
       postNotice: async () => {},
       mutateAssignee: async () => {
@@ -287,6 +334,11 @@ test('raw gh assignee edits are refused in favor of governed ownership verbs', (
   for (const command of [
     'gh issue edit 1212 --add-assignee @me',
     'git status && gh issue edit #1212 --remove-assignee alice',
+    'gh -R o/r issue edit 1212 --add-assignee bob',
+    'gh api --method PATCH repos/o/r/issues/1212 --field=assignees[]=bob',
+    "gh api graphql -f 'query=mutation { updateIssue(input:$input) { issue { id } } }' -F 'input[assigneeIds][]=U_1'",
+    'gh api graphql -f \'query=mutation { addAssigneesToAssignable(input:{assignableId:"I",assigneeIds:["U"]}) { clientMutationId } }\'',
+    'gh api graphql --input .tmp/ownership-mutation.json',
   ]) {
     const result = evaluateGhEdit({ command });
     assert.equal(result.block, true);

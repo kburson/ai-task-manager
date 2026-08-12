@@ -367,6 +367,7 @@ export async function runMoveStateHost({
         issueNumber: Number(issueArg),
         cfg,
         currentUser: ctx.planExitOwnershipClaim.currentUser,
+        mode: ctx.planExitOwnershipClaim.mode,
       });
       if (!ownership.ok) {
         process.stderr.write(`\n⛔ Refusing to move #${issueArg} to ${stateArg}:\n`);

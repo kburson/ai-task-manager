@@ -12,14 +12,13 @@ import { formatStageBoundRefusal, hasStageBoundGrandfather } from './stage-bound
 import { appendDefectHint } from './defect-hint.mjs';
 
 const ISSUE_EDIT_RE = /\bgh\s+issue\s+edit\s+(?:#)?(\d+)\b/;
-const ISSUE_EDIT_COMMAND_RE = /\bgh\s+issue\s+edit\b/;
 const ISSUE_URL_NUMBER_RE = /github\.com\/[\w.-]+\/[\w.-]+\/issues\/(\d+)\b/i;
 const ISSUE_API_ENDPOINT_RE = /\brepos\/[\w.-]+\/[\w.-]+\/issues\/(\d+)\b/i;
 const ISSUE_API_PATCH_METHOD_RE = /(?:-X\s*|--method(?:=|\s+))PATCH\b/i;
-const ASSIGNEE_FLAG_RE = /(?:^|\s)--(?:add|remove)-assignee(?:\s|=)/;
 const API_ASSIGNEE_FIELD_RE = /(?:^|\s)(?:-f|--field|-F|--raw-field)\s+['"]?assignees(?:\[\])?=/i;
 const API_INPUT_RE = /(?:^|\s)--input(?:=|\s+)/;
-const GRAPHQL_UPDATE_ASSIGNEES_RE = /\bupdateIssue\s*\([\s\S]*\bassigneeIds\s*:/i;
+const GRAPHQL_ASSIGNEE_MUTATION_RE =
+  /\b(?:addAssigneesToAssignable|removeAssigneesFromAssignable)\b|\bassigneeIds\b/i;
 const ISSUE_CREATE_RE = /\bgh\s+issue\s+create\b/;
 const BODY_FILE_RE = /--body-file\s+(\S+)/;
 const BODY_INLINE_RE = /--body\s+(['"])((?:\\.|(?!\1).)*?)\1/;
@@ -265,6 +264,39 @@ export function splitCommandSegments(command) {
   flush();
 
   return segments;
+}
+
+function shellWords(segment) {
+  const words = [];
+  let word = '';
+  let quote = '';
+  let escaped = false;
+  for (const char of String(segment || '')) {
+    if (escaped) {
+      word += char;
+      escaped = false;
+    } else if (char === '\\' && quote !== "'") {
+      escaped = true;
+    } else if (quote) {
+      if (char === quote) quote = '';
+      else word += char;
+    } else if (char === "'" || char === '"') {
+      quote = char;
+    } else if (/\s/.test(char)) {
+      if (word) words.push(word);
+      word = '';
+    } else {
+      word += char;
+    }
+  }
+  if (word) words.push(word);
+  return words;
+}
+
+function ghArgs(segment) {
+  const words = shellWords(segment);
+  const index = words.findIndex((word) => /(?:^|\/)gh$/.test(word));
+  return index < 0 ? null : words.slice(index + 1);
 }
 
 // #849 — locate the body-write flag WITHIN a single segment. Callers must pass
@@ -534,7 +566,15 @@ export function evaluateGhEdit({ command }) {
   // transfer provenance, and audit comment enforced by the governed verbs.
   // Internal adapters use execFile and do not traverse this Bash hook.
   for (const segment of splitCommandSegments(command)) {
-    if (!ISSUE_EDIT_COMMAND_RE.test(segment) || !ASSIGNEE_FLAG_RE.test(segment)) continue;
+    const args = ghArgs(segment);
+    if (!args) continue;
+    const issueIndex = args.indexOf('issue');
+    if (
+      issueIndex < 0 ||
+      args[issueIndex + 1] !== 'edit' ||
+      !args.some((arg) => /^--(?:add|remove)-assignee(?:=|$)/.test(arg))
+    )
+      continue;
     const match =
       segment.match(ISSUE_EDIT_RE) ||
       segment.match(ISSUE_URL_NUMBER_RE) ||
@@ -551,11 +591,21 @@ export function evaluateGhEdit({ command }) {
   }
 
   for (const segment of splitCommandSegments(command)) {
+    const args = ghArgs(segment);
+    if (!args || !args.includes('api')) continue;
     const match = segment.match(ISSUE_API_ENDPOINT_RE);
+    const writeMethod = args.some(
+      (arg, index) =>
+        /^(?:-X|--method=?)PATCH$/i.test(arg) ||
+        (['-X', '--method'].includes(arg) && /^PATCH$/i.test(args[index + 1] || ''))
+    );
+    const assigneeField = args.some((arg) =>
+      /^(?:-f|--field|-F|--raw-field)=?assignees(?:\[\])?=/i.test(arg)
+    );
     if (
       !match ||
-      !ISSUE_API_PATCH_METHOD_RE.test(segment) ||
-      (!API_ASSIGNEE_FIELD_RE.test(segment) && !API_INPUT_RE.test(segment))
+      (!writeMethod && !ISSUE_API_PATCH_METHOD_RE.test(segment)) ||
+      (!assigneeField && !API_ASSIGNEE_FIELD_RE.test(segment) && !API_INPUT_RE.test(segment))
     )
       continue;
     return {
@@ -567,8 +617,10 @@ export function evaluateGhEdit({ command }) {
   }
 
   for (const segment of splitCommandSegments(command)) {
-    if (!GH_API_RE.test(segment) || !GH_API_GRAPHQL_RE.test(segment)) continue;
-    if (!GRAPHQL_UPDATE_ASSIGNEES_RE.test(segment)) continue;
+    const args = ghArgs(segment);
+    if (!args || !args.includes('api') || !args.includes('graphql')) continue;
+    const hasOpaqueInput = args.some((arg) => arg === '--input' || arg.startsWith('--input='));
+    if (!hasOpaqueInput && !GRAPHQL_ASSIGNEE_MUTATION_RE.test(segment)) continue;
     return {
       block: true,
       reason:

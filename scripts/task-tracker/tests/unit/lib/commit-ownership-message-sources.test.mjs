@@ -72,6 +72,9 @@ test('indirect and globally-configured attributed commits enforce ownership', ()
       'git commit -c HEAD',
       'git -c user.name=x commit -m "[#1212] configured attribution"',
       '/usr/bin/git commit -m "[#1212] absolute git path"',
+      'git commit --fixup=HEAD',
+      'git commit --squash HEAD',
+      'git commit',
     ]) {
       const { payload } = runGuard(fixture, command);
       assert.equal(payload.decision, 'block', `must block foreign ownership: ${command}`);

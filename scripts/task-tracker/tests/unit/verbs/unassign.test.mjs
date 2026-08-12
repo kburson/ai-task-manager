@@ -20,7 +20,13 @@ function harness(snapshots, { mutationError = null } = {}) {
       },
       mutateAssignee: async (args) => {
         mutations.push({ action: args.action, login: args.login });
-        if (mutationError) throw new Error(mutationError);
+        if (
+          mutationError &&
+          (typeof mutationError === 'string' || mutationError.at === mutations.length)
+        )
+          throw new Error(
+            typeof mutationError === 'string' ? mutationError : mutationError.message
+          );
       },
       postAudit: async (entry) => audits.push(entry),
       withIssueLock: async (_options, fn) => fn(),
@@ -80,8 +86,9 @@ test('unassign treats a thrown removal with empty read-back as ambiguous, not su
     [
       { state: 'plan', assignees: ['alice'] },
       { state: 'plan', assignees: [] },
+      { state: 'plan', assignees: ['alice'] },
     ],
-    { mutationError: 'connection reset after apply' }
+    { mutationError: { at: 1, message: 'connection reset after apply' } }
   );
   const result = await runUnassign({
     issueNumber: 1212,
@@ -89,7 +96,11 @@ test('unassign treats a thrown removal with empty read-back as ambiguous, not su
     currentUser: 'alice',
     deps: h.deps,
   });
-  assert.equal(result.status, 'assignee-removal-ambiguous');
+  assert.equal(result.status, 'assignee-removal-ambiguous-restored');
+  assert.deepEqual(h.mutations, [
+    { action: 'remove', login: 'alice' },
+    { action: 'add', login: 'alice' },
+  ]);
   assert.equal(h.audits.length, 0);
 });
 
@@ -97,6 +108,7 @@ test('unassign fails closed when Status changes around the ownership mutation', 
   const h = harness([
     { state: 'plan', assignees: ['alice'] },
     { state: 'develop', assignees: [] },
+    { state: 'develop', assignees: ['alice'] },
   ]);
   const result = await runUnassign({
     issueNumber: 1212,
@@ -104,7 +116,10 @@ test('unassign fails closed when Status changes around the ownership mutation', 
     currentUser: 'alice',
     deps: h.deps,
   });
-  assert.equal(result.status, 'status-drift-refused');
-  assert.deepEqual(h.mutations, [{ action: 'remove', login: 'alice' }]);
+  assert.equal(result.status, 'status-drift-restored');
+  assert.deepEqual(h.mutations, [
+    { action: 'remove', login: 'alice' },
+    { action: 'add', login: 'alice' },
+  ]);
   assert.equal(h.audits.length, 0);
 });

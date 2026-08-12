@@ -78,6 +78,17 @@ export const PREFLIGHT_MODE = {
   'evidence-markers': 'target-required',
   block: 'target-required',
   unblock: 'target-required',
+  'user-story': 'target-optional',
+  story: 'target-optional',
+  'inflate-estimate': 'target-required',
+  'plan-estimate': 'target-required',
+  'mirror-deep-dive': 'target-last-optional',
+  'adopt-github-records': 'target-required',
+  log: 'target-required',
+  brainstorm: 'active-only',
+  discover: 'active-only',
+  new: 'active-only',
+  'split-plan': 'target-required',
   promote: 'target-required',
   next: 'target-required',
   refine: 'target-required',
@@ -118,9 +129,16 @@ export function resolvePreflightTarget({ mode, rest, stateBefore }) {
 
 export function resolvePreflightInvocation({ verb, mode, rest, stateBefore }) {
   if (mode === 'switch-target') {
-    const target = /^#\d+$/.test(String(verb)) ? String(verb) : targetFromRest(rest);
+    const explicit = /^#\d+$/.test(String(verb)) ? String(verb) : targetFromRest(rest);
+    const target =
+      explicit ||
+      (verb === 'resume' && stateBefore?.paused ? stateBefore?.lastActive || undefined : undefined);
     if (!target) return { target: undefined, stateBefore };
     return { target, stateBefore: { ...stateBefore, active: target } };
+  }
+  if (mode === 'target-last-optional') {
+    const target = targetFromRest([...(rest || [])].reverse());
+    return { target: target || stateBefore?.active || undefined, stateBefore };
   }
   return {
     target: resolvePreflightTarget({ mode, rest, stateBefore }),

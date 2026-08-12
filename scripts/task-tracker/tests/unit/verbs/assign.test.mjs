@@ -116,11 +116,10 @@ test('assign treats a thrown add with a matching read-back as ambiguous and neve
   assert.equal(h.audits.length, 0);
 });
 
-test('assign compensates only a target conclusively added by this transaction', async () => {
+test('assign never destructively compensates a successful but provenance-ambiguous add', async () => {
   const h = harness([
     { state: 'plan', assignees: [] },
     { state: 'plan', assignees: ['alice', 'bob'] },
-    { state: 'plan', assignees: ['bob'] },
   ]);
   const result = await runAssign({
     issueNumber: 1212,
@@ -129,11 +128,8 @@ test('assign compensates only a target conclusively added by this transaction', 
     currentUser: 'alice',
     deps: h.deps,
   });
-  assert.equal(result.status, 'postcondition-refused-compensated');
-  assert.deepEqual(h.mutations, [
-    { action: 'add', login: 'alice' },
-    { action: 'remove', login: 'alice' },
-  ]);
+  assert.equal(result.status, 'postcondition-refused-uncompensated');
+  assert.deepEqual(h.mutations, [{ action: 'add', login: 'alice' }]);
 });
 
 test('transfer does not destructively compensate after the prior owner was removed', async () => {

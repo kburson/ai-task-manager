@@ -423,6 +423,12 @@ async function evaluate(input) {
           );
         }
       }
+      if (!hasInspectableMessageSource(args)) {
+        block(
+          'Refusing bare git commit: exclusive ownership cannot be verified because the editor-supplied final message is unavailable before commit.\n' +
+            '  Use `git commit -m <message>`, `-F <file>`, an inherited-message option, or an explicit un-attributed chore message.'
+        );
+      }
     }
     if (refs.length === 0) return; // token-less / chore — escape hatch
 
@@ -537,10 +543,26 @@ async function evaluate(input) {
         refs.push(token.slice(2));
       } else if (/^-c.+/.test(token)) {
         refs.push(token.slice(2));
+      } else if (['--fixup', '--squash'].includes(token)) {
+        const ref = args[++index];
+        if (ref) refs.push(ref.replace(/^(?:amend|reword):/, ''));
+      } else if (token.startsWith('--fixup=')) {
+        refs.push(token.slice('--fixup='.length).replace(/^(?:amend|reword):/, ''));
+      } else if (token.startsWith('--squash=')) {
+        refs.push(token.slice('--squash='.length));
       }
     }
     if (amend && !explicitMessage && refs.length === 0) refs.push('HEAD');
     return refs;
+  }
+
+  function hasInspectableMessageSource(args) {
+    if (inheritedMessageRefs(args).length > 0) return true;
+    return args.some(
+      (token) =>
+        ['-m', '--message', '-F', '--file'].includes(token) ||
+        /^(?:-m.+|--message=|-F.+|--file=)/.test(token)
+    );
   }
 
   // #769/#1212 — read the bound repo + assignee preference for the commit-time

@@ -6,7 +6,7 @@ import { promisify } from 'node:util';
 
 import { getProjectDir } from '../paths.mjs';
 import { withIssueLock } from '../issue-mutator-lock.mjs';
-import { fetchAssignmentSnapshot } from '../lib/assignment-snapshot.mjs';
+import { exactSingleton, fetchAssignmentSnapshot } from '../lib/assignment-snapshot.mjs';
 import { canonicalLogin, canonicalLogins, isPreDevelopState } from '../lib/ownership-policy.mjs';
 import { GH_API_TIMEOUT_MS } from '../lib/process-timeouts.mjs';
 import { parseStrict, StrictArgvError } from '../lib/argv-strict.mjs';
@@ -16,12 +16,11 @@ import { defaultResolveLogin } from './assign.mjs';
 const pexec = promisify(execFile);
 
 async function defaultMutateAssignee({ issueNumber, repo, action, login }) {
-  if (action !== 'remove') throw new Error('unassign: only remove is supported');
-  await pexec(
-    'gh',
-    ['issue', 'edit', String(issueNumber), '-R', repo, '--remove-assignee', login],
-    { timeout: GH_API_TIMEOUT_MS }
-  );
+  if (!['add', 'remove'].includes(action)) throw new Error(`unassign: unsupported ${action}`);
+  const flag = action === 'add' ? '--add-assignee' : '--remove-assignee';
+  await pexec('gh', ['issue', 'edit', String(issueNumber), '-R', repo, flag, login], {
+    timeout: GH_API_TIMEOUT_MS,
+  });
 }
 
 async function defaultPostAudit({ issueNumber, repo, from, state }) {
@@ -49,6 +48,24 @@ export async function runUnassign({ issueNumber, cfg, currentUser, deps = {} } =
   const lock = deps.withIssueLock || withIssueLock;
   const projectDir = deps.projectDir || getProjectDir();
 
+  async function restorePriorOwner() {
+    try {
+      await mutateAssignee({
+        issueNumber,
+        repo: cfg.repo,
+        action: 'add',
+        login: actor,
+      });
+      const restored = await fetchSnapshot({ issueNumber, cfg });
+      return {
+        verified: exactSingleton(restored, actor),
+        snapshot: restored,
+      };
+    } catch {
+      return { verified: false, snapshot: null };
+    }
+  }
+
   return lock({ issue: issueNumber, verb: 'unassign', projDir: projectDir }, async () => {
     const before = await fetchSnapshot({ issueNumber, cfg });
     const owners = canonicalLogins(before.assignees);
@@ -74,24 +91,40 @@ export async function runUnassign({ issueNumber, cfg, currentUser, deps = {} } =
     try {
       after = await fetchSnapshot({ issueNumber, cfg });
     } catch (error) {
+      const restoration = await restorePriorOwner();
       return {
-        status: removeError ? 'assignee-removal-ambiguous' : 'postcondition-unverifiable',
+        status: restoration.verified
+          ? 'postcondition-unverifiable-restored'
+          : 'postcondition-unverifiable-restoration-unverified',
         error: error?.message || String(error),
+        state: restoration.snapshot?.state,
+        assignees: canonicalLogins(restoration.snapshot?.assignees || []),
       };
     }
     if (removeError) {
+      const afterOwners = canonicalLogins(after.assignees);
+      const restoration = afterOwners.includes(actor)
+        ? { verified: true, snapshot: after }
+        : await restorePriorOwner();
       return {
-        status: 'assignee-removal-ambiguous',
+        status: restoration.verified
+          ? 'assignee-removal-ambiguous-restored'
+          : 'assignee-removal-ambiguous-restoration-unverified',
         error: removeError?.message || String(removeError),
-        state: after.state,
-        assignees: canonicalLogins(after.assignees),
+        state: restoration.snapshot?.state || after.state,
+        assignees: canonicalLogins(restoration.snapshot?.assignees || after.assignees),
       };
     }
     if (after.state !== before.state) {
+      const restoration = await restorePriorOwner();
+      const restored = restoration.snapshot;
       return {
-        status: 'status-drift-refused',
-        state: after.state,
-        assignees: canonicalLogins(after.assignees),
+        status:
+          restored?.state === after.state && restoration.verified
+            ? 'status-drift-restored'
+            : 'status-drift-restoration-unverified',
+        state: restored?.state || after.state,
+        assignees: canonicalLogins(restored?.assignees || after.assignees),
       };
     }
     const finalOwners = canonicalLogins(after.assignees);

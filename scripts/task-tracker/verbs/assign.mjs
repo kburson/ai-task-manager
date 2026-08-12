@@ -56,21 +56,6 @@ async function defaultPostAudit({ issueNumber, repo, from, to, state }) {
   );
 }
 
-async function compensateAddedTarget({ issueNumber, cfg, login, state, deps }) {
-  try {
-    await deps.mutateAssignee({
-      issueNumber,
-      repo: cfg.repo,
-      action: 'remove',
-      login,
-    });
-    const restored = await deps.fetchSnapshot({ issueNumber, cfg });
-    return restored.state === state && !canonicalLogins(restored.assignees).includes(login);
-  } catch {
-    return false;
-  }
-}
-
 export async function runAssign({
   issueNumber,
   cfg,
@@ -148,17 +133,11 @@ export async function runAssign({
       expectedSet.length === actualSet.length &&
       expectedSet.every((owner, index) => owner === actualSet[index]);
     if (afterAdd.state !== before.state || !postAddMatches) {
-      const compensated = await compensateAddedTarget({
-        issueNumber,
-        cfg,
-        login,
-        state: before.state,
-        deps: runtime,
-      });
       return {
-        status: compensated
-          ? 'postcondition-refused-compensated'
-          : 'postcondition-refused-compensation-unverified',
+        // A successful GitHub add has no transaction provenance. A concurrent
+        // UI actor could have added the same owner between our snapshots, so
+        // removing it would be destructive compensation we cannot justify.
+        status: 'postcondition-refused-uncompensated',
         state: afterAdd.state,
         assignees: ownersAfterAdd,
       };

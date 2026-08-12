@@ -43,19 +43,28 @@ export async function commitPlanExitOwnershipClaim({
   issueNumber,
   cfg,
   currentUser,
+  mode = 'full-auto',
   deps = {},
 } = {}) {
-  const user = canonicalLogin(currentUser);
+  const expectedUser = canonicalLogin(currentUser);
+  const fetchCurrentUser = deps.fetchCurrentUser || defaultFetchCurrentUser;
   const fetchSnapshot = deps.fetchSnapshot || fetchAssignmentSnapshot;
   const postNotice = deps.postNotice || defaultPostNotice;
   const mutateAssignee = deps.mutateAssignee || defaultMutateAssignee;
 
   let before;
+  let user;
   try {
+    user = canonicalLogin(await fetchCurrentUser());
     before = await fetchSnapshot({ issueNumber, cfg });
   } catch (error) {
     return refusal(
       `plan-develop-claim-unverifiable: ownership could not be revalidated under lock (${error?.message || String(error)})`
+    );
+  }
+  if (!user || user !== expectedUser) {
+    return refusal(
+      `plan-develop-identity-changed: authenticated owner changed from @${expectedUser || 'unverifiable'} to @${user || 'unverifiable'} during transition`
     );
   }
   if (before.state !== 'plan') {
@@ -68,9 +77,14 @@ export async function commitPlanExitOwnershipClaim({
     transition: 'develop',
     assignees: before.assignees,
     currentUser: user,
-    mode: 'full-auto',
+    mode,
   });
   if (decision.ok) return { ok: true };
+  if (decision.kind === 'assignment-required') {
+    return refusal(
+      `plan-develop-assignment-required: #${issueNumber} is unassigned; would you like me to assign it to @${user}?`
+    );
+  }
   if (decision.kind !== 'claim-at-commitment') {
     return refusal(
       `plan-develop-claim-revalidation-refused: expected unassigned Plan or singleton @${user}; observed Status ${before.state || 'unknown'} and ${decision.owners.length ? decision.owners.map((owner) => `@${owner}`).join(', ') : 'no owners'}`
@@ -145,7 +159,10 @@ export const planExitOwnershipGuard = Object.freeze({
       mode: env.TT_FULL_AUTO === '1' ? 'full-auto' : 'interactive',
     });
     if (decision.ok) {
-      ctx.planExitOwnershipClaim = { currentUser };
+      ctx.planExitOwnershipClaim = {
+        currentUser,
+        mode: env.TT_FULL_AUTO === '1' ? 'full-auto' : 'interactive',
+      };
       return { ok: true };
     }
     if (decision.kind === 'assignment-required') {
@@ -158,7 +175,10 @@ export const planExitOwnershipGuard = Object.freeze({
         `plan-develop-${decision.kind}: expected exactly one owner @${currentUser}; observed ${decision.owners.length ? decision.owners.map((owner) => `@${owner}`).join(', ') : 'none'}`
       );
     }
-    ctx.planExitOwnershipClaim = { currentUser };
+    ctx.planExitOwnershipClaim = {
+      currentUser,
+      mode: env.TT_FULL_AUTO === '1' ? 'full-auto' : 'interactive',
+    };
     return { ok: true };
   },
 });

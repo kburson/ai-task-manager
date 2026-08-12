@@ -22,6 +22,17 @@ test('all governed lifecycle mutators route through exclusive-ownership prefligh
     'evidence-markers',
     'block',
     'unblock',
+    'user-story',
+    'story',
+    'inflate-estimate',
+    'plan-estimate',
+    'mirror-deep-dive',
+    'adopt-github-records',
+    'log',
+    'brainstorm',
+    'discover',
+    'new',
+    'split-plan',
   ]) {
     assert.equal(
       Boolean(taskTrackerModule.PREFLIGHT_MODE?.[verb]),
@@ -43,12 +54,33 @@ test('direct and warm switch-style binds preflight the requested issue ownership
   );
   assert.deepEqual(
     taskTrackerModule.resolvePreflightInvocation({
+      verb: 'mirror-deep-dive',
+      mode: 'target-last-optional',
+      rest: ['--from-comment', '4866618296', '1212'],
+      stateBefore: { active: '#999' },
+    }),
+    { target: '#1212', stateBefore: { active: '#999' } }
+  );
+  assert.deepEqual(
+    taskTrackerModule.resolvePreflightInvocation({
       verb: 'start',
       mode: 'switch-target',
       rest: ['1212'],
       stateBefore: { active: '#999' },
     }),
     { target: '#1212', stateBefore: { active: '#1212' } }
+  );
+  assert.deepEqual(
+    taskTrackerModule.resolvePreflightInvocation({
+      verb: 'resume',
+      mode: 'switch-target',
+      rest: [],
+      stateBefore: { active: null, lastActive: '#1212', paused: true },
+    }),
+    {
+      target: '#1212',
+      stateBefore: { active: '#1212', lastActive: '#1212', paused: true },
+    }
   );
 });
 
