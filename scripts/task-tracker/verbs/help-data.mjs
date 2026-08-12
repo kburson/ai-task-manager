@@ -167,6 +167,17 @@ export const VERB_REFERENCE = {
     ],
     examples: ['/task park 848 --reason "premise falsified after refine review"'],
   },
+  'cancel-plan': {
+    topic: 'board',
+    summary: 'Cancel short-lived Plan work and return exactly one edge to Ready for Planning.',
+    usage: '/task cancel-plan <N> --reason <text>',
+    flags: [{ flag: '--reason <text>', desc: 'required cancellation provenance' }],
+    exitCodes: [
+      { code: 2, meaning: 'required issue or reason is missing or malformed' },
+      GATE_REFUSAL,
+    ],
+    examples: ['/task cancel-plan 1213 --reason "planning interrupted"'],
+  },
   assign: {
     topic: 'board',
     summary: 'Assign an unowned story to one GitHub owner without changing lifecycle Status.',
@@ -195,7 +206,8 @@ export const VERB_REFERENCE = {
   },
   refine: {
     topic: 'board',
-    summary: 'Atomic pre-Refine entry: set fields, then move Backlog→Refine.',
+    summary:
+      'Start active Refine WIP from Backlog, or complete current Refine work into Ready for Planning.',
     usage:
       '/task refine <N> --size <XS|S|M|L|XL> --estimate <hours> --priority <p0|p1|p2> --reason <text>',
     flags: [
@@ -217,7 +229,7 @@ export const VERB_REFERENCE = {
   plan: {
     topic: 'board',
     summary:
-      'Refine→Plan (Sprint-Planning entry); distinct from discover backlog item generation. Refuses on any other current state.',
+      'Ready for Planning→Plan (JIT planning entry); distinct from discover backlog item generation. Refuses on any other current state.',
     usage: '/task plan #N',
     exitCodes: [GATE_REFUSAL],
     examples: ['/task plan 667'],

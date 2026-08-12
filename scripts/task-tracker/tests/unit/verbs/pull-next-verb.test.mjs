@@ -5,6 +5,7 @@
 import { strict as assert } from 'node:assert';
 import { test } from 'node:test';
 
+import { stampRefinementSnapshot } from '../../../lib/refinement-snapshot.mjs';
 import { runPullNext } from '../../../verbs/pull-next.mjs';
 import { runPromote } from '../../../verbs/promote.mjs';
 
@@ -93,7 +94,8 @@ test('runPullNext delegates the selected child through the real promote bind sea
     resolvedIssues.push(issue);
     return '/repo/worktrees/epic-100';
   };
-  const refineBody = `<!-- aitm-last-known-state: refine -->
+  const refineBody = stampRefinementSnapshot(
+    `<!-- aitm-last-known-state: refine -->
 <!-- aitm-last-known-state-ts: 2026-08-05T00:00:00Z -->
 
 ## User Story
@@ -103,12 +105,24 @@ I want the selected child promoted
 So that JIT planning can continue
 
 <!-- aitm-refine-complete: 2026-08-05T00:00:00Z -->
-<!-- aitm-refinement-rationale: {"size":"a","estimate":"b","priority":"c"} -->
+<!-- aitm-refinement-rationale: {"size":"S","estimate":"1","priority":"P1","rank":3,"rationale":"current"} -->
+
+## Scope
+
+Promote the selected refined child into durable planning readiness.
+
+## Plan Metadata
+
+- **Depends On**: none
 
 ## Acceptance Criteria
 
-- [ ] Selected child reaches Plan
-`;
+- [ ] Selected child reaches Ready for Planning
+
+<!-- aitm-fields: {"schema":1,"values":{"priority":"P1","size":"S","estimate":1,"rank":3,"blockedBy":null}} -->
+`,
+    { labels: ['enhancement'], ts: '2026-08-05T00:00:00Z' }
+  );
   deps.promoteDeps = {
     preflightDeps: {
       fetchSnapshot: async () => ({ state: 'refine', assignees: [] }),
@@ -147,6 +161,10 @@ So that JIT planning can continue
       listCommentBodies: async () => [],
       postComment: async () => {},
       writeIssueBody: async () => {},
+    },
+    refinementSnapshot: {
+      fetchLabels: async () => ['enhancement'],
+      fetchBoardFields: async () => ({ priority: 'P1', size: 'S', estimate: 1, rank: 3 }),
     },
     refineToPlanGate: async () => ({ ok: true, blockers: [] }),
     codeCompleteGate: async () => ({ ok: true, blockers: [], shas: [] }),

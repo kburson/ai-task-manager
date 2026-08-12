@@ -1,7 +1,7 @@
 // @story #309
 // #299 Item 2 — `/task discover` and `/task plan` must be distinct in the
 // help text. Discover is backlog-item generation / pre-issue ideation; plan
-// is the Sprint-Planning entry (refine→plan). Neither description may
+// is the Sprint-Planning entry (R4P→Plan). Neither description may
 // describe the other's workflow.
 
 import assert from 'node:assert/strict';
@@ -28,7 +28,11 @@ assert.match(
 // 2. `/task plan #N` is present and described as Sprint-Planning entry.
 assert.match(help, /\/task plan #N/);
 assert.match(help, /plan[^\n]*Sprint-Planning/i, 'plan description must mention Sprint-Planning');
-assert.match(help, /Refine→Plan/, 'plan description must show the refine→plan transition');
+assert.match(
+  help,
+  /Ready for Planning→Plan/,
+  'plan description must show the Ready for Planning→Plan transition'
+);
 
 // 3. The two must be cross-referenced so an operator does not pick the wrong verb.
 //    Discover description must mention `/task plan` (or Sprint-Planning) and the

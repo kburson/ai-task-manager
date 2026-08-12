@@ -67,6 +67,10 @@ export const ROUTE_IDENTITIES = Object.freeze(
       dispatch: 'verbs/park.mjs',
     },
     {
+      verb: 'cancel-plan',
+      dispatch: 'verbs/cancel-plan.mjs',
+    },
+    {
       verb: 'assign',
       dispatch: 'verbs/assign.mjs',
     },

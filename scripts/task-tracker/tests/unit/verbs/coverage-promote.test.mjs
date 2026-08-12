@@ -9,6 +9,7 @@ import { mkdtempSync } from 'node:fs';
 import { join } from 'node:path';
 import { projectScratchDir } from '../../../lib/scratch-dir.mjs';
 import { runPromote, verbPromote } from '../../../verbs/promote.mjs';
+import { stampRefinementSnapshot } from '../../../lib/refinement-snapshot.mjs';
 // Isolate the verb's withIssueLock dir from the live project tree.
 process.env.AI_TASK_MANAGER_PROJECT_DIR = mkdtempSync(join(projectScratchDir('test'), 'promote-'));
 const cfg = { repo: 'o/r', projectId: 'PROJ_1' };
@@ -95,10 +96,17 @@ function bodyWithState(state) {
 const STALE_AFTER = bodyWithState('develop') + DOD_MARKER;
 function refineBody() {
   const rationale =
-    '<!-- aitm-refinement-rationale: {"size":"a","estimate":"b","priority":"c"} -->';
-  return `${bodyWithState('refine')}\n${REFINE_COMPLETE_MARKER}\n${rationale}\n\n## Acceptance Criteria\n- [ ] foo\n`;
+    '<!-- aitm-refinement-rationale: {"size":"S","estimate":"4","priority":"p2","rank":4,"rationale":"current"} -->';
+  return stampRefinementSnapshot(
+    `${bodyWithState('refine')}\n${REFINE_COMPLETE_MARKER}\n${rationale}\n\n## Scope\n\nCurrent refinement scope.\n\n## Plan Metadata\n\n- **Depends On**: none\n\n## Acceptance Criteria\n\n- [ ] foo\n\n<!-- aitm-fields: {"schema":1,"values":{"priority":"P2","size":"S","estimate":4,"rank":4,"blockedBy":null}} -->\n`,
+    { labels: ['enhancement'], ts: '2026-06-03T00:00:00Z' }
+  );
 }
 function refineEstimateOk(deps) {
+  deps.refinementSnapshot = {
+    fetchLabels: async () => ['enhancement'],
+    fetchBoardFields: async () => ({ priority: 'P2', size: 'S', estimate: 4, rank: 4 }),
+  };
   deps.refinementEstimate = {
     loadProjectFieldDefs: () => [],
     projectValuesForIssue: async () => ({ size: 'S', estimate: 4, priority: 'P2' }),
@@ -140,9 +148,13 @@ test('runPromote: refine→R4P promoted via direct move + refine-estimate hook',
 });
 test('runPromote: refine→R4P refused when refine-estimate signals missing', async () => {
   const { deps, calls } = makeDeps({
-    body: `${bodyWithState('refine')}\n${REFINE_COMPLETE_MARKER}\n`,
+    body: refineBody(),
     live: 'refine',
   });
+  deps.refinementSnapshot = {
+    fetchLabels: async () => ['enhancement'],
+    fetchBoardFields: async () => ({ priority: 'P2', size: 'S', estimate: 4, rank: 4 }),
+  };
   deps.refinementEstimate = {
     loadProjectFieldDefs: () => [],
     projectValuesForIssue: async () => ({}),

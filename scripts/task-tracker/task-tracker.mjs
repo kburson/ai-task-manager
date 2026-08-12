@@ -95,6 +95,7 @@ export const PREFLIGHT_MODE = {
   refine: 'target-required',
   demote: 'target-required',
   park: 'target-required',
+  'cancel-plan': 'target-required',
   supersede: 'target-required',
   close: 'target-optional',
   end: 'target-optional',
@@ -537,6 +538,11 @@ if (_isMain)
         case 'park': {
           const { verbPark } = await import('./verbs/park.mjs');
           await verbPark(ctx.rest, ctx.cfg);
+          break;
+        }
+        case 'cancel-plan': {
+          const { verbCancelPlan } = await import('./verbs/cancel-plan.mjs');
+          await verbCancelPlan(ctx.rest, ctx.cfg);
           break;
         }
         case 'reconcile': {

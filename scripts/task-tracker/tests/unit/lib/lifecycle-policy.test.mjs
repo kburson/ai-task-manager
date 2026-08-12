@@ -64,7 +64,7 @@ test('executable target queries expose only forward and runtime-walkable reverse
 
   assert.deepEqual(backwardTargets('refine'), ['backlog']);
   assert.deepEqual(backwardTargets('ready-for-plan'), ['backlog']);
-  assert.deepEqual(backwardTargets('plan'), ['backlog']);
+  assert.deepEqual(backwardTargets('plan'), ['backlog', 'ready-for-plan']);
   assert.deepEqual(backwardTargets('test'), ['develop']);
   assert.deepEqual(backwardTargets('review'), ['develop', 'test']);
   assert.deepEqual(backwardTargets('done'), []);

@@ -144,6 +144,7 @@ function makeRefineDeps(bodyOverride) {
     fetchBody: async () => bodyOverride,
     tetherIssueToProject: async () => ({ itemId: 'PVTI_FAKE' }),
     moveState: async () => ({ status: 'ok' }),
+    verbPromote: async () => {},
     mutateBody: async ({ mutate }) => {
       mutate(bodyOverride);
       return { status: 'ok' };

@@ -120,6 +120,15 @@ export const VERB_CONTRACTS = Object.freeze({
     ['Prints the parked issue, retained fields, and transition result.'],
     [MOVE_REFUSAL, ...PREFLIGHT_TARGET_EXITS]
   ),
+  'cancel-plan': contract(
+    ['The target must be in Plan, --reason is required, and preflight checks must pass.'],
+    [
+      'Invalidates Plan-only approval, forecast, deep-dive completion, and incomplete verification evidence, then moves exactly one edge to Ready for Planning.',
+      'Clears the stale Planned Estimate appendix and restores Plan artifacts, board fields, and comment evidence when the Status transition fails.',
+    ],
+    ['Prints the cancellation edge or a fail-closed recovery diagnostic.'],
+    [MOVE_REFUSAL, ...PREFLIGHT_TARGET_EXITS]
+  ),
   assign: contract(
     [
       'The target must match the active binding and be unassigned; ownership-management preflight still enforces live-state drift.',
@@ -150,14 +159,19 @@ export const VERB_CONTRACTS = Object.freeze({
   ),
   refine: contract(
     [
-      'The issue must exist in Backlog; size, estimate, priority, and reason are required; assignee and drift checks must pass.',
+      'The issue must exist in Backlog or Refine; size, estimate, priority, and reason are required; assignee and drift checks must pass.',
     ],
-    ['Writes refinement fields and rationale, then moves the issue one edge into Refine.'],
+    [
+      'From Backlog, writes refinement fields and enters active Refine WIP without completion evidence.',
+      'From Refine, writes a current refinement snapshot and advances one edge to Ready for Planning.',
+    ],
     ['Prints the applied fields, rationale marker, transition result, or refusal prompt.'],
     [MOVE_REFUSAL, ...PREFLIGHT_TARGET_EXITS]
   ),
   plan: contract(
-    ['The numbered issue must exist in Refine and satisfy the Refine-to-Plan entry gates.'],
+    [
+      'The numbered issue must exist in Ready for Planning and satisfy the R4P-to-Plan entry gates.',
+    ],
     ['Moves the issue one edge into Plan without running discovery-plan generation.'],
     ['Prints gate failures or the confirmed Plan state.'],
     [MOVE_REFUSAL]
@@ -495,6 +509,7 @@ export const VERB_RELATED_COMMANDS = Object.freeze({
   promote: Object.freeze(['demote', 'plan', 'test', 'review', 'close']),
   demote: Object.freeze(['promote', 'review', 'test']),
   park: Object.freeze(['refine', 'promote']),
+  'cancel-plan': Object.freeze(['plan', 'plan-estimate', 'plan-approve']),
   assign: Object.freeze(['transfer', 'unassign', 'promote']),
   transfer: Object.freeze(['assign', 'unassign', 'status']),
   unassign: Object.freeze(['assign', 'transfer', 'park']),
@@ -566,6 +581,9 @@ export const VERB_POSITIONAL_ARGUMENTS = Object.freeze({
     positional('#N', 'Required issue number returned one state toward Develop.'),
   ]),
   park: Object.freeze([positional('<N>', 'Issue number to return to Backlog.')]),
+  'cancel-plan': Object.freeze([
+    positional('<N>', 'Plan issue number to return to Ready for Planning.'),
+  ]),
   assign: Object.freeze([positional('<N>', 'Issue number to assign to one owner.')]),
   transfer: Object.freeze([positional('<N>', 'Issue number whose owner will be replaced.')]),
   unassign: Object.freeze([positional('<N>', 'Pre-Develop issue number to unassign.')]),

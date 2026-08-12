@@ -126,13 +126,14 @@ test('illegal backward transitions refuse', () => {
 });
 
 // #848 — refine/plan → backlog is the `park` verb's transition (premise
-// falsified / deprioritized), added to the BACKWARD map alongside assigned→backlog
-// and test|review→develop.
-test('refine→backlog and plan→backlog are legal (park verb, #848)', () => {
+// falsified / deprioritized). #1213 adds the governed Plan→R4P cancellation
+// edge without removing Plan→Backlog shelving.
+test('refine→backlog, plan→backlog, and plan→R4P are legal', () => {
   assert.equal(BACKWARD.refine, 'backlog');
-  assert.equal(BACKWARD.plan, 'backlog');
+  assert.deepEqual(BACKWARD.plan, ['backlog', 'ready-for-plan']);
   assert.deepEqual(validateTransition('refine', 'backlog'), { ok: true });
   assert.deepEqual(validateTransition('plan', 'backlog'), { ok: true });
+  assert.deepEqual(validateTransition('plan', 'ready-for-plan'), { ok: true });
 });
 
 test('unknown state strings refuse with unknown-state message', () => {

@@ -69,6 +69,16 @@ export const INVARIANT_MARKER_PATTERNS = [
     re: /<!--\s*aitm-refine-complete(?:\s*:|\s+ts=")/i,
     kind: 'single',
   },
+  {
+    name: 'aitm-refinement-snapshot',
+    re: /<!--\s*aitm-refinement-snapshot\s+schema="/i,
+    kind: 'single',
+  },
+  {
+    name: 'aitm-plan-cancelled',
+    re: /<!--\s*aitm-plan-cancelled\s+ts="/i,
+    kind: 'single',
+  },
   { name: 'aitm-plan-approved', re: /<!--\s*aitm-plan-approved(?:\s*:|\s+ts=")/i, kind: 'single' },
   // #887 — epic AC reconciliation. The marker takes no variable parameter, so
   // `kind: 'single'` needs no custom `findLostMarkers` branch (contrast the

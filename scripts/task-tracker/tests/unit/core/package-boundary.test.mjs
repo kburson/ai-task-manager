@@ -74,7 +74,8 @@ function repoRoot() {
 // store, and the task-skill rule that documents the governed surface.
 // #1212 intentionally ships five ownership authorities/verbs: canonical
 // policy, exact snapshot, Plan commitment guard, assign/transfer, and unassign.
-const ENTRY_CEILING = 644;
+// #1213 intentionally ships the snapshot authority, its guard, and cancel-plan.
+const ENTRY_CEILING = 647;
 
 function packedFiles() {
   const out = execFileSync('npm', ['pack', '--dry-run', '--json'], {

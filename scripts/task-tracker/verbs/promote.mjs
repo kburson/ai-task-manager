@@ -59,6 +59,7 @@ const REFUSAL_ID_TO_STATUS = {
   'refine-entry-fields-priority': 'refine-gate-refused',
   'plan-entry-fields-body': 'refine-gate-refused',
   'plan-entry-fields-board': 'refine-exit-refused',
+  'refine-exit-current-snapshot': 'refine-exit-refused',
   'refine-exit-wip-budget': 'wip-budget-refused',
   'plan-exit-planned-estimate': 'planned-estimate-refused',
   'plan-exit-deep-dive': 'deep-dive-refused',

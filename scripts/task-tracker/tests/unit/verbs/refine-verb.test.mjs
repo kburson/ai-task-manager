@@ -253,9 +253,10 @@ import {
   // body fetched once
   assert.equal(calls.fetch, 1);
 
-  // body write contains both stage markers and preserves scope
+  // Backlog entry begins active Refine WIP: rationale is present, completion
+  // evidence is deliberately absent until refine is run from Refine.
   assert.match(calls.write, /<!-- aitm-refinement-rationale: /);
-  assert.match(calls.write, /<!-- aitm-refine-complete(?: ts="|: )/);
+  assert.doesNotMatch(calls.write, /<!-- aitm-refine-complete(?: ts="|: )/);
   assert.match(calls.write, /## Scope/);
 
   // body has no recorded state → treated as backlog entry, so verbPromote

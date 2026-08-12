@@ -7,6 +7,7 @@
 import { strict as assert } from 'node:assert';
 import { test } from 'node:test';
 
+import { stampRefinementSnapshot } from '../../../lib/refinement-snapshot.mjs';
 import { runPromote } from '../../../verbs/promote.mjs';
 
 const cfg = { repo: 'o/r', projectId: 'PROJ_1' };
@@ -138,12 +139,26 @@ function bodyWithState(state) {
 // so the new marker-presence check passes and the deeper gate under test runs.
 const REFINE_COMPLETE_MARKER = '<!-- aitm-refine-complete: 2026-06-03T00:00:00Z -->';
 
-test('promote: refine→R4P is a direct move-state call with refine-estimate hook', async () => {
+function validRefineBody() {
   const rationale =
-    '<!-- aitm-refinement-rationale: {"size":"a","estimate":"b","priority":"c"} -->';
-  const ac = '## Acceptance Criteria\n- [ ] foo\n';
-  const body = `${bodyWithState('refine')}\n${REFINE_COMPLETE_MARKER}\n${rationale}\n\n${ac}`;
+    '<!-- aitm-refinement-rationale: {"size":"S","estimate":"4","priority":"P2","rank":3,"rationale":"current"} -->';
+  return stampRefinementSnapshot(
+    `${bodyWithState('refine')}\n${REFINE_COMPLETE_MARKER}\n${rationale}\n\n## Scope\n\nCurrent refinement scope for promote behavior.\n\n## Plan Metadata\n\n- **Depends On**: none\n\n## Acceptance Criteria\n\n- [ ] foo\n\n<!-- aitm-fields: {"schema":1,"values":{"priority":"P2","size":"S","estimate":4,"rank":3,"blockedBy":null}} -->\n`,
+    { labels: ['enhancement'], ts: '2026-06-03T00:00:00Z' }
+  );
+}
+
+function addRefinementSnapshotDeps(deps) {
+  deps.refinementSnapshot = {
+    fetchLabels: async () => ['enhancement'],
+    fetchBoardFields: async () => ({ priority: 'P2', size: 'S', estimate: 4, rank: 3 }),
+  };
+}
+
+test('promote: refine→R4P is a direct move-state call with refine-estimate hook', async () => {
+  const body = validRefineBody();
   const { deps, calls } = makeDeps({ body, live: 'refine' });
+  addRefinementSnapshotDeps(deps);
   deps.refinementEstimate = {
     loadProjectFieldDefs: () => [],
     projectValuesForIssue: async () => ({ size: 'S', estimate: 4, priority: 'P2' }),
@@ -174,8 +189,9 @@ test('promote: refine→R4P is a direct move-state call with refine-estimate hoo
 });
 
 test('promote: refine→R4P refused when full refine-estimate signals are missing', async () => {
-  const body = `${bodyWithState('refine')}\n${REFINE_COMPLETE_MARKER}\n`;
+  const body = validRefineBody();
   const { deps, calls } = makeDeps({ body, live: 'refine' });
+  addRefinementSnapshotDeps(deps);
   deps.refinementEstimate = {
     loadProjectFieldDefs: () => [],
     projectValuesForIssue: async () => ({}),
@@ -186,27 +202,24 @@ test('promote: refine→R4P refused when full refine-estimate signals are missin
   assert.equal(calls.moves.length, 0);
 });
 
-test('promote: refine→R4P refused when Acceptance Criteria section is empty', async () => {
-  const rationale =
-    '<!-- aitm-refinement-rationale: {"size":"a","estimate":"b","priority":"c"} -->';
-  const body = `${bodyWithState('refine')}\n${REFINE_COMPLETE_MARKER}\n${rationale}\n\n## Acceptance Criteria\n\n(none)\n`;
+test('promote: refine→R4P refuses when Acceptance Criteria drift after snapshot', async () => {
+  const body = validRefineBody().replace('- [ ] foo', '(none)');
   const { deps, calls } = makeDeps({ body, live: 'refine' });
+  addRefinementSnapshotDeps(deps);
   deps.refinementEstimate = {
     loadProjectFieldDefs: () => [],
     projectValuesForIssue: async () => ({ size: 'S', estimate: 4, priority: 'P2' }),
   };
   const r = await runPromote({ issueNumber: 1006, cfg, deps });
-  assert.equal(r.status, 'refine-gate-refused');
-  assert.ok(r.blockers.some((b) => b.startsWith('refine-ac-section-empty')));
+  assert.equal(r.status, 'refine-exit-refused');
+  assert.ok(r.blockers.some((b) => /refinement-snapshot:acceptance-criteria/.test(b)));
   assert.equal(calls.moves.length, 0);
 });
 
 test('promote: refine→R4P refused when refine-exit gate returns blockers (#147)', async () => {
-  const rationale =
-    '<!-- aitm-refinement-rationale: {"size":"a","estimate":"b","priority":"c"} -->';
-  const ac = '## Acceptance Criteria\n- [ ] foo\n';
-  const body = `${bodyWithState('refine')}\n${REFINE_COMPLETE_MARKER}\n${rationale}\n\n${ac}`;
+  const body = validRefineBody();
   const { deps, calls } = makeDeps({ body, live: 'refine' });
+  addRefinementSnapshotDeps(deps);
   deps.refinementEstimate = {
     loadProjectFieldDefs: () => [],
     projectValuesForIssue: async () => ({ size: 'S', estimate: 4, priority: 'P2' }),
@@ -360,11 +373,9 @@ test('promote: plan→develop refused only when a sub-issue is in backlog (#335 
 });
 
 test('promote: refine→plan refused when an epic child is PAST refine (#149 — lead-rule)', async () => {
-  const rationale =
-    '<!-- aitm-refinement-rationale: {"size":"a","estimate":"b","priority":"c"} -->';
-  const ac = '## Acceptance Criteria\n- [ ] foo\n';
-  const body = `${bodyWithState('refine')}\n${REFINE_COMPLETE_MARKER}\n${rationale}\n\n${ac}`;
+  const body = validRefineBody();
   const { deps, calls } = makeDeps({ body, live: 'refine' });
+  addRefinementSnapshotDeps(deps);
   deps.refinementEstimate = {
     loadProjectFieldDefs: () => [],
     projectValuesForIssue: async () => ({ size: 'S', estimate: 4, priority: 'P2' }),

@@ -23,6 +23,7 @@ const EXECUTABLE_REVERSE_EDGES = Object.freeze([
   'ready-for-plan->backlog',
   'refine->backlog',
   'plan->backlog',
+  'plan->ready-for-plan',
   'test->develop',
   'review->develop',
   'review->test',
@@ -44,6 +45,7 @@ const ENTRY_HISTORY_REVERSE_EDGES = Object.freeze([
 ]);
 
 const TIMING_HISTORY_REVERSE_EDGES = Object.freeze([
+  'plan->ready-for-plan',
   'test->develop',
   'review->test',
   'review->develop',
@@ -94,8 +96,8 @@ export const ACTION_BASELINE = Object.freeze({
     review: 'close',
   }),
   refine: Object.freeze({
-    from: Object.freeze(['backlog']),
-    selfRun: 're-estimate-in-place',
+    from: Object.freeze(['backlog', 'refine']),
+    selfRun: 'complete-to-ready-for-plan',
   }),
   demote: Object.freeze({
     from: Object.freeze(['test', 'review']),

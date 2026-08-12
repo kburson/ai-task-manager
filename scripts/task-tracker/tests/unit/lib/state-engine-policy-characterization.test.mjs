@@ -76,32 +76,36 @@ function bodyWithRecordedState(state) {
 async function observeRefine(recordedState) {
   const body = bodyWithRecordedState(recordedState);
   const promoteCalls = [];
-  const result = await runRefine({
-    args: {
-      issueNumber: 1007,
-      size: 'S',
-      estimate: '2',
-      priority: 'p1',
-      reason: `characterize ${recordedState ?? 'bootstrap'}`,
-    },
-    cfg: TEST_CFG,
-    deps: {
-      projectDir: process.cwd(),
-      assertBound: () => {},
-      tetherIssueToProject: async () => ({ itemId: 'PVTI_TEST' }),
-      fetchBody: async () => body,
-      mutateBody: async ({ mutate }) => {
-        mutate(body);
-        return { status: 'ok' };
+  try {
+    const result = await runRefine({
+      args: {
+        issueNumber: 1007,
+        size: 'S',
+        estimate: '2',
+        priority: 'p1',
+        reason: `characterize ${recordedState ?? 'bootstrap'}`,
       },
-      loadProjectFieldDefs: () => [],
-      ensureIssueFieldDb: (next) => ({ body: next }),
-      verbPromote: async () => {
-        promoteCalls.push(recordedState);
+      cfg: TEST_CFG,
+      deps: {
+        projectDir: process.cwd(),
+        assertBound: () => {},
+        tetherIssueToProject: async () => ({ itemId: 'PVTI_TEST' }),
+        fetchBody: async () => body,
+        mutateBody: async ({ mutate }) => {
+          mutate(body);
+          return { status: 'ok' };
+        },
+        loadProjectFieldDefs: () => [],
+        ensureIssueFieldDb: (next) => ({ body: next }),
+        verbPromote: async () => {
+          promoteCalls.push(recordedState);
+        },
       },
-    },
-  });
-  return { recordedState, promoteCalls, result };
+    });
+    return { recordedState, promoteCalls, result, error: null };
+  } catch (error) {
+    return { recordedState, promoteCalls, result: null, error };
+  }
 }
 
 test('the baseline names the canonical eight states in production order', () => {
@@ -180,7 +184,7 @@ test('refine entry and self-run policy match injected production behavior', asyn
   );
   assert.deepEqual(
     observations.map(({ promoteCalls }) => promoteCalls.length),
-    [1, 0, 0, 0]
+    [1, 1, 0, 0]
   );
   assert.deepEqual(
     ACTION_BASELINE.refine.from,
@@ -190,8 +194,14 @@ test('refine entry and self-run policy match injected production behavior', asyn
   );
   const refineSelfRun = observations.find(({ recordedState }) => recordedState === 'refine');
   assert.equal(refineSelfRun.result.status, 'refined');
-  assert.equal(refineSelfRun.result.promoted, false);
-  assert.equal(ACTION_BASELINE.refine.selfRun, 're-estimate-in-place');
+  assert.equal(refineSelfRun.result.promoted, true);
+  for (const state of ['ready-for-plan', 'plan']) {
+    assert.match(
+      observations.find(({ recordedState }) => recordedState === state).error.message,
+      /is not Backlog or Refine/
+    );
+  }
+  assert.equal(ACTION_BASELINE.refine.selfRun, 'complete-to-ready-for-plan');
 });
 
 test('bootstrap policy resolves live state and refuses a missing board item', async () => {

@@ -2,7 +2,7 @@
 //
 // Refine is the issue-shaping state: scope, ACs, plan metadata, board
 // fields (Rank, Labels, Start time). Exit-gates enforce the
-// plan-entry contract via the #276 body + board adapters.
+// R4P-entry contract via the #276 body + board adapters.
 
 import { blockedByGuard } from '../lib/blocked-by-guard.mjs';
 import { planEntryFieldsBody, planEntryFieldsBoard } from '../lib/guard-adapters-entry-fields.mjs';
@@ -12,6 +12,7 @@ import { refineExitStubPlaceholderGuard } from '../lib/refine-exit-stub-placehol
 import { userStoryBlockGuard } from '../lib/user-story-guard.mjs';
 import { userStoryWarnGuard } from '../lib/user-story-guard.mjs';
 import { backlogExitChildParentStateGuard } from '../lib/backlog-exit-child-parent-state-guard.mjs';
+import { refinementSnapshotGuard } from '../lib/refinement-snapshot-guard.mjs';
 
 export default Object.freeze({
   name: 'refine',
@@ -27,6 +28,7 @@ export default Object.freeze({
     refineExitCompleteMarkerGuard,
     // #450 — stub TBD placeholders must be replaced before advancing to plan.
     refineExitStubPlaceholderGuard,
+    refinementSnapshotGuard,
     blockedByGuard,
     planEntryFieldsBody,
     planEntryFieldsBoard,
