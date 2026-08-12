@@ -139,7 +139,7 @@ The verification receipt is already the right audit artifact. It is SHA-bound
 persisted as a base64url `<!-- aitm-verification-receipt … -->` marker parsed from
 the issue body (`evidence-branch-reachability.mjs:48`).
 
-The manifest is **not** tracked in git. Three reasons, the first decisive:
+The manifest is **not** tracked in git. Four reasons, the first decisive:
 
 - **It collides with the clean-tree invariant.** `verify-develop.mjs` finalization
   refuses to start unless the tree is clean (`final-tree-dirty`) and re-checks
