@@ -23,10 +23,14 @@ const { runCancelPlan } = cancelPlanModule;
 const CFG = { repo: 'owner/repo', projectId: 'PVT_PROJECT' };
 const TS = '2026-08-12T12:00:00.000Z';
 
-function refinedBody({ state = 'refine', scope = 'Implement the governed R4P boundary.' } = {}) {
+function refinedBody({
+  state = 'refine',
+  scope = 'Implement the governed R4P boundary.',
+  rank = 4,
+} = {}) {
   return [
     `<!-- aitm-last-known-state state="${state}" ts="2026-08-12T11:00:00.000Z" -->`,
-    '<!-- aitm-refinement-rationale: {"size":"M","estimate":"8","priority":"p1","rank":4,"rationale":"current architecture"} -->',
+    `<!-- aitm-refinement-rationale: {"size":"M","estimate":"8","priority":"p1","rank":${rank},"rationale":"current architecture"} -->`,
     '',
     '## Scope',
     '',
@@ -45,7 +49,7 @@ function refinedBody({ state = 'refine', scope = 'Implement the governed R4P bou
     '',
     '- [ ] Acceptance criteria met.',
     '',
-    '<!-- aitm-fields: {"schema":1,"values":{"priority":"P1","size":"M","estimate":8,"rank":4,"blockedBy":null}} -->',
+    `<!-- aitm-fields: {"schema":1,"values":{"priority":"P1","size":"M","estimate":8,"rank":${rank},"blockedBy":null}} -->`,
     '',
   ].join('\n');
 }
@@ -197,6 +201,32 @@ test('Refine exit guard refuses body snapshot fields that disagree with the live
   assert.match(result.reason, /live board fields disagree with refinement snapshot/);
 });
 
+test('Refine exit guard refuses a missing live Rank instead of coercing it to rank zero', async () => {
+  const stamped = stampRefinementSnapshot(refinedBody({ rank: 0 }), {
+    labels: ['enhancement'],
+    ts: TS,
+  });
+  const result = await refinementSnapshotGuard.run({
+    toState: 'ready-for-plan',
+    body: stamped,
+    issueNumber: 1213,
+    cfg: CFG,
+    deps: {
+      refinementSnapshot: {
+        fetchLabels: async () => ['enhancement'],
+        fetchBoardFields: async () => ({
+          priority: 'P1',
+          size: 'M',
+          estimate: 8,
+          rank: null,
+        }),
+      },
+    },
+  });
+  assert.equal(result.ok, false);
+  assert.match(result.reason, /live board fields disagree with refinement snapshot/);
+});
+
 test('runRefine stamps the snapshot from the final body and exact live labels', async () => {
   let current = refinedBody();
   let promoted = 0;
@@ -273,8 +303,8 @@ test('cancel-plan is the sole governed Plan to R4P one-edge action', () => {
   assert.equal(isTimingHistoryEdge('plan', 'ready-for-plan'), true);
 });
 
-function plannedBody() {
-  const refined = stampRefinementSnapshot(refinedBody({ state: 'plan' }), {
+function plannedBody({ rank = 4 } = {}) {
+  const refined = stampRefinementSnapshot(refinedBody({ state: 'plan', rank }), {
     labels: ['enhancement'],
     ts: TS,
   });
@@ -469,6 +499,29 @@ test('cancel-plan refuses concurrent configured-project field drift before any a
   assert.equal(bodyWrites, 0);
   assert.equal(boardWrites, 0);
   assert.match(plannedEstimate.comments[0].body, /### Planned Estimate/);
+});
+
+test('cancel-plan refuses a missing live Rank instead of coercing it to rank zero', async () => {
+  const body = plannedBody({ rank: 0 });
+  let bodyWrites = 0;
+  const result = await runCancelPlan({
+    issueNumber: 1213,
+    cfg: CFG,
+    reason: 'planning interrupted with missing board rank',
+    deps: {
+      assertBound: () => {},
+      fetchIssueBody: async () => ({ body, labels: ['enhancement'] }),
+      getLiveState: async () => 'plan',
+      fetchBoardFields: async () => ({ priority: 'P1', size: 'M', estimate: 8, rank: null }),
+      mutateIssueBody: async () => {
+        bodyWrites += 1;
+      },
+      plannedEstimate: plannedEstimateFixture().deps,
+      runMoveState: async () => 0,
+    },
+  });
+  assert.equal(result.status, 'board-fields-refused');
+  assert.equal(bodyWrites, 0);
 });
 
 test('cancel-plan remains a hub-only handler with no direct executable entrypoint', () => {

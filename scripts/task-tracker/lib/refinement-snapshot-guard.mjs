@@ -94,13 +94,19 @@ export async function fetchRefinementBoardFields(args) {
   return (await fetchRefinementBoardSnapshot(args)).fields;
 }
 
+export function numericBoardFieldMatches(actual, expected) {
+  if (actual === null || actual === undefined || String(actual).trim() === '') return false;
+  const numeric = Number(actual);
+  return Number.isFinite(numeric) && numeric === Number(expected);
+}
+
 function boardFieldsMatch(snapshot, board) {
   const expected = snapshot.fields;
   return (
     String(board?.priority || '').toUpperCase() === String(expected.priority).toUpperCase() &&
     String(board?.size || '').toUpperCase() === String(expected.size).toUpperCase() &&
-    Number(board?.estimate) === Number(expected.estimate) &&
-    Number(board?.rank) === Number(expected.rank)
+    numericBoardFieldMatches(board?.estimate, expected.estimate) &&
+    numericBoardFieldMatches(board?.rank, expected.rank)
   );
 }
 

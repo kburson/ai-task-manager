@@ -22,6 +22,7 @@ import { verifyRefinementSnapshot } from '../lib/refinement-snapshot.mjs';
 import {
   fetchRefinementBoardFields,
   fetchRefinementBoardSnapshot,
+  numericBoardFieldMatches,
 } from '../lib/refinement-snapshot-guard.mjs';
 import { clearPlannedEstimate, restorePlannedEstimate } from '../lib/refine-estimate-comment.mjs';
 import { ensureIssueFieldDb, parseIssueFieldDb } from '../issue-field-db.mjs';
@@ -140,8 +141,8 @@ function boardFieldsMatchCurrentPlan(board, current) {
   return (
     String(board?.priority || '').toUpperCase() === String(current?.priority || '').toUpperCase() &&
     String(board?.size || '').toUpperCase() === String(current?.size || '').toUpperCase() &&
-    Number(board?.estimate) === Number(current?.estimate) &&
-    Number(board?.rank) === Number(current?.rank)
+    numericBoardFieldMatches(board?.estimate, current?.estimate) &&
+    numericBoardFieldMatches(board?.rank, current?.rank)
   );
 }
 
