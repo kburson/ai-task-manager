@@ -114,9 +114,13 @@ test('immutable refinement history captures required pre-invalidation provenance
   assert.equal(record.baseSha, 'c02bdd3e00000000000000000000000000000000');
   assert.match(record.scopeFingerprint, /^[0-9a-f]{64}$/);
   assert.match(record.acceptanceCriteriaFingerprint, /^[0-9a-f]{64}$/);
+  assert.match(record.verificationCommandsFingerprint, /^[0-9a-f]{64}$/);
+  assert.match(record.testingFingerprint, /^[0-9a-f]{64}$/);
+  assert.match(record.definitionOfDoneFingerprint, /^[0-9a-f]{64}$/);
   assert.equal(record.reason, 'No longer prioritized');
   assert.equal(record.previousOwner, 'alice');
   assert.equal(record.refinementSnapshotDigest, 'a'.repeat(64));
+  assert.match(record.sourceDigest, /^[0-9a-f]{64}$/);
   assert.match(record.digest, /^[0-9a-f]{64}$/);
 });
 

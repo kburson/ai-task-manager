@@ -12,9 +12,10 @@ import { fieldIdFor, loadProjectFieldDefs } from '../project-fields.mjs';
 import { runUnassign } from '../verbs/unassign.mjs';
 import { defaultResolveLogin } from '../verbs/assign.mjs';
 import { mutateIssueBody } from './issue-body-mutate.mjs';
+import { stripBodyVersion } from './versioned-issue-write.mjs';
 import { actionPolicyFor, normalizeStateId } from './lifecycle-policy/index.mjs';
 import { parseMarker, serializeMarker } from './marker-grammar.mjs';
-import { canonicalLogins } from './ownership-policy.mjs';
+import { canonicalLogins, ownershipDecision } from './ownership-policy.mjs';
 import { hasExecutionProof, stripExecutionProof } from './proof-marker.mjs';
 import { verifyRefinementSnapshot } from './refinement-snapshot.mjs';
 import {
@@ -22,6 +23,7 @@ import {
   buildRefinementHistoryRecord,
   parseRefinementHistory,
   refinementBodyFingerprints,
+  refinementHistoryMatchesSource,
 } from './refinement-history.mjs';
 
 const pexec = promisify(execFile);
@@ -247,41 +249,54 @@ function serializeJournal(journal) {
 }
 
 export function parseShelveJournal(body) {
+  const journals = parseShelveJournals(body);
+  return journals.at(-1) || null;
+}
+
+export function parseShelveJournals(body) {
   const markers = [...String(body || '').matchAll(SHELVE_JOURNAL_MARKER_RE)];
-  if (markers.length === 0) return null;
-  if (markers.length !== 1) throw new Error('shelve: multiple transaction journals found');
-  const marker = parseMarker(markers[0][0]);
-  const props = marker?.props || {};
-  if (
-    marker?.name !== 'shelve-transaction' ||
-    props.schema !== '1' ||
-    !props.tx ||
-    !SHELVE_PHASES.includes(props.phase) ||
-    !/^[0-9a-f]{64}$/.test(props['intent-digest'] || '') ||
-    !/^[0-9a-f]{64}$/.test(props['history-digest'] || '')
-  ) {
-    throw new Error('shelve: malformed transaction journal');
+  const journals = [];
+  const seen = new Set();
+  for (const match of markers) {
+    const marker = parseMarker(match[0]);
+    const props = marker?.props || {};
+    if (
+      marker?.name !== 'shelve-transaction' ||
+      props.schema !== '1' ||
+      !props.tx ||
+      !SHELVE_PHASES.includes(props.phase) ||
+      !/^[0-9a-f]{64}$/.test(props['intent-digest'] || '') ||
+      !/^[0-9a-f]{64}$/.test(props['history-digest'] || '')
+    ) {
+      throw new Error('shelve: malformed transaction journal');
+    }
+    if (seen.has(props.tx)) throw new Error(`shelve: duplicate transaction journal ${props.tx}`);
+    seen.add(props.tx);
+    journals.push({
+      tx: props.tx,
+      issueNumber: Number(props.issue),
+      from: props.from,
+      phase: props.phase,
+      intentDigest: props['intent-digest'],
+      historyDigest: props['history-digest'],
+      removeOwner: props['remove-owner'] === 'true',
+      previousOwner: props['previous-owner'] || null,
+    });
   }
-  return {
-    tx: props.tx,
-    issueNumber: Number(props.issue),
-    from: props.from,
-    phase: props.phase,
-    intentDigest: props['intent-digest'],
-    historyDigest: props['history-digest'],
-    removeOwner: props['remove-owner'] === 'true',
-    previousOwner: props['previous-owner'] || null,
-  };
+  return journals;
 }
 
 function writeJournal(body, journal) {
   const marker = serializeJournal(journal);
-  if (SHELVE_JOURNAL_MARKER_RE.test(String(body || ''))) {
-    SHELVE_JOURNAL_MARKER_RE.lastIndex = 0;
-    return String(body).replace(SHELVE_JOURNAL_MARKER_RE, marker);
-  }
-  SHELVE_JOURNAL_MARKER_RE.lastIndex = 0;
-  return `${String(body || '').trimEnd()}\n${marker}\n`;
+  let found = false;
+  const source = String(body || '');
+  const updated = source.replace(SHELVE_JOURNAL_MARKER_RE, (candidate) => {
+    const parsed = parseMarker(candidate);
+    if (parsed?.props?.tx !== journal.tx) return candidate;
+    found = true;
+    return marker;
+  });
+  return found ? updated : `${source.trimEnd()}\n${marker}\n`;
 }
 
 function sameValue(left, right) {
@@ -343,8 +358,73 @@ function verifyPreserved(snapshot, record) {
     sameLabels(snapshot.labels, record.labels) &&
     fingerprints.narrativeFingerprint === record.narrativeFingerprint &&
     fingerprints.scopeFingerprint === record.scopeFingerprint &&
-    fingerprints.acceptanceCriteriaFingerprint === record.acceptanceCriteriaFingerprint
+    fingerprints.acceptanceCriteriaFingerprint === record.acceptanceCriteriaFingerprint &&
+    fingerprints.storyOriginFingerprint === record.storyOriginFingerprint &&
+    fingerprints.discussionFingerprint === record.discussionFingerprint &&
+    fingerprints.planMetadataFingerprint === record.planMetadataFingerprint &&
+    fingerprints.verificationCommandsFingerprint === record.verificationCommandsFingerprint &&
+    fingerprints.testingFingerprint === record.testingFingerprint &&
+    fingerprints.definitionOfDoneFingerprint === record.definitionOfDoneFingerprint
   );
+}
+
+function defaultAssertIssueLockHeld() {
+  if (process.env.AITM_ISSUE_LOCK_HELD !== '1') {
+    throw new Error('shelve: transaction authority requires the issue lock');
+  }
+}
+
+function sourceMatchArgs(snapshot) {
+  const owners = canonicalLogins(snapshot.assignees);
+  return {
+    title: snapshot.title,
+    body: snapshot.body,
+    fields: snapshot.fields,
+    labels: snapshot.labels,
+    previousOwner: owners.length === 1 ? owners[0] : null,
+    sourceState: snapshot.state,
+  };
+}
+
+function ownershipRefusal(snapshot, { gateAssignee, currentUser } = {}) {
+  if (gateAssignee) {
+    const ownership = ownershipDecision({
+      state: snapshot.state,
+      assignees: snapshot.assignees,
+      currentUser,
+      mode: 'interactive',
+    });
+    if (!ownership.ok) {
+      const status =
+        ownership.kind === 'foreign-owner'
+          ? 'foreign-owner-refused'
+          : ownership.kind === 'multiple-owners'
+            ? 'multiple-owners-refused'
+            : 'ownership-unverifiable-refused';
+      return { status, assignees: ownership.owners, currentUser: ownership.currentUser };
+    }
+  }
+  return null;
+}
+
+function sourceRefusal(snapshot, { gateAssignee, currentUser } = {}) {
+  const recorded = readLastKnownState(snapshot.body).state;
+  if (!recorded || recorded !== snapshot.state) {
+    return { status: 'drift-refused', recorded, live: snapshot.state };
+  }
+  const policy = actionPolicyFor('shelve', snapshot.state);
+  if (!policy.ok) return { status: 'invalid-source-refused', from: snapshot.state };
+  const ownerRefusal = ownershipRefusal(snapshot, { gateAssignee, currentUser });
+  if (ownerRefusal) return ownerRefusal;
+  const parsedFields = parseIssueFieldDb(snapshot.body);
+  if (!parsedFields.ok || !sameFields(parsedFields.values, snapshot.fields)) {
+    return { status: 'fields-refused' };
+  }
+  const currentSnapshot = verifyRefinementSnapshot(snapshot.body, { labels: snapshot.labels });
+  if (!currentSnapshot.ok) {
+    return { status: 'snapshot-refused', reason: currentSnapshot.reason };
+  }
+  return null;
 }
 
 export async function runShelveTransaction({
@@ -361,6 +441,8 @@ export async function runShelveTransaction({
   const why = String(reason || '').trim();
   if (!why) return { status: 'reason-required' };
 
+  (deps.assertIssueLockHeld || defaultAssertIssueLockHeld)();
+
   const fetchSnapshot = deps.fetchSnapshot || defaultFetchSnapshot;
   const mutateBodyFn = deps.mutateBody || mutateIssueBody;
   const clearBoardFields = deps.clearBoardFields || defaultClearBoardFields;
@@ -372,6 +454,7 @@ export async function runShelveTransaction({
     : loadProjectFieldDefs();
   const now = deps.now || (() => new Date().toISOString());
   const makeTx = deps.makeTx || randomUUID;
+  const resolveLogin = deps.resolveLogin || defaultResolveLogin;
   const requestedIntent = intentDigest(why, removeOwner);
 
   let snapshot = await fetchSnapshot({ issueNumber, cfg });
@@ -380,7 +463,22 @@ export async function runShelveTransaction({
       status: snapshot.issueState === 'CLOSED' ? 'closed-issue-refused' : 'issue-state-refused',
     };
   }
+  const gateAssignee = cfg.preferences?.gateAssigneeMatch ?? true;
+  let currentUser = null;
+  if (gateAssignee) {
+    try {
+      currentUser = await resolveLogin('@me');
+    } catch (error) {
+      return { status: 'ownership-unverifiable-refused', error: error.message };
+    }
+  }
+  const ownerRefusal = ownershipRefusal(snapshot, { gateAssignee, currentUser });
+  if (ownerRefusal) return ownerRefusal;
   let journal = parseShelveJournal(snapshot.body);
+  if (journal?.phase === 'verified' && actionPolicyFor('shelve', snapshot.state).ok) {
+    currentHistory(snapshot.body, journal);
+    journal = null;
+  }
   if (journal) {
     if (
       journal.issueNumber !== issueNumber ||
@@ -391,22 +489,23 @@ export async function runShelveTransaction({
     }
     currentHistory(snapshot.body, journal);
   } else {
-    const recorded = readLastKnownState(snapshot.body).state;
-    if (!recorded || recorded !== snapshot.state) {
-      return { status: 'drift-refused', recorded, live: snapshot.state };
+    let refusal = sourceRefusal(snapshot, { gateAssignee, currentUser });
+    if (refusal) return refusal;
+
+    // Re-fetch the complete source immediately before building durable history.
+    // The body write below also compares its fresh mutation base byte-for-byte,
+    // while the post-write source digest covers the non-body surfaces.
+    snapshot = await fetchSnapshot({ issueNumber, cfg });
+    if (snapshot.issueState !== 'OPEN') {
+      return {
+        status: snapshot.issueState === 'CLOSED' ? 'closed-issue-refused' : 'issue-state-refused',
+      };
     }
-    const policy = actionPolicyFor('shelve', snapshot.state);
-    if (!policy.ok) return { status: 'invalid-source-refused', from: snapshot.state };
+    refusal = sourceRefusal(snapshot, { gateAssignee, currentUser });
+    if (refusal) return refusal;
+
     const owners = canonicalLogins(snapshot.assignees);
-    if (owners.length > 1) return { status: 'multiple-owners-refused', assignees: owners };
-    const parsedFields = parseIssueFieldDb(snapshot.body);
-    if (!parsedFields.ok || !sameFields(parsedFields.values, snapshot.fields)) {
-      return { status: 'fields-refused' };
-    }
-    const currentSnapshot = verifyRefinementSnapshot(snapshot.body, { labels: snapshot.labels });
-    if (!currentSnapshot.ok) {
-      return { status: 'snapshot-refused', reason: currentSnapshot.reason };
-    }
+    const sourceBody = stripBodyVersion(snapshot.body);
     const tx = String(makeTx());
     const record = buildRefinementHistoryRecord({
       tx,
@@ -417,6 +516,7 @@ export async function runShelveTransaction({
       labels: snapshot.labels,
       reason: why,
       previousOwner: owners[0] || null,
+      sourceState: snapshot.state,
       baseSha: await getBaseSha(),
       createdAt: now(),
     });
@@ -436,7 +536,12 @@ export async function runShelveTransaction({
         fetchSnapshot,
         issueNumber,
         cfg,
-        mutate: (base) => writeJournal(appendRefinementHistory(base, record), journal),
+        mutate: (base) => {
+          if (sha256(base) !== sha256(sourceBody)) {
+            throw new Error('shelve: source body changed before snapshot append');
+          }
+          return writeJournal(appendRefinementHistory(base, record), journal);
+        },
       });
     } catch (error) {
       try {
@@ -461,15 +566,33 @@ export async function runShelveTransaction({
       throw new Error('shelve: snapshot-recorded journal read-back failed');
     }
     Object.assign(journal, readBack);
-    currentHistory(snapshot.body, journal);
+    const readBackRecord = currentHistory(snapshot.body, journal);
+    if (!refinementHistoryMatchesSource(readBackRecord, sourceMatchArgs(snapshot))) {
+      return {
+        status: 'recovery-pending',
+        phase: journal.phase,
+        error: 'shelve: source changed before snapshot verification',
+      };
+    }
   }
 
   const context = { journal, mutateBodyFn, fetchSnapshot, issueNumber, cfg };
   try {
     if (SHELVE_PHASES.indexOf(journal.phase) < SHELVE_PHASES.indexOf('active-evidence-cleared')) {
+      snapshot = await fetchSnapshot({ issueNumber, cfg });
+      const record = currentHistory(snapshot.body, journal);
+      if (!refinementHistoryMatchesSource(record, sourceMatchArgs(snapshot))) {
+        throw new Error('shelve: source changed before destructive phases');
+      }
+      const sourceBody = stripBodyVersion(snapshot.body);
       snapshot = await mutateAndFetch({
         ...context,
-        mutate: (base) => invalidateShelveEvidence(base),
+        mutate: (base) => {
+          if (sha256(base) !== sha256(sourceBody)) {
+            throw new Error('shelve: source body changed before evidence invalidation');
+          }
+          return invalidateShelveEvidence(base);
+        },
       });
       if (!shelveEvidenceIsInvalidated(snapshot.body)) {
         throw new Error('shelve: active evidence read-back failed');

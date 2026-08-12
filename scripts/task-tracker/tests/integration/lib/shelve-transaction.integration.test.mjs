@@ -3,7 +3,9 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import { writeLastKnownState } from '../../../gh-timing-comment.mjs';
+import { parseBodyVersion, stampBodyVersion } from '../../../lib/body-version.mjs';
 import { stampRefinementSnapshot } from '../../../lib/refinement-snapshot.mjs';
+import { stripBodyVersion } from '../../../lib/versioned-issue-write.mjs';
 import {
   SHELVE_PHASES,
   activeFieldsAfterShelve,
@@ -32,7 +34,7 @@ const FIELD_DEFS = [
 const LABELS = ['kind:code', 'area:backlog'];
 
 function initialBody(state = 'refine') {
-  const body = writeLastKnownState(
+  let body = writeLastKnownState(
     `<!-- aitm-refinement-rationale: {"size":"M","estimate":"4","priority":"P1","rank":2,"rationale":"current"} -->
 <!-- aitm-refine-complete ts="2026-08-12T00:00:00.000Z" -->
 <!-- aitm-estimation-forecast-ready schema="2" id="forecast-1" -->
@@ -60,6 +62,10 @@ This integration fixture has enough durable scope to build a current snapshot.
     state,
     '2026-08-12T00:00:00.000Z'
   );
+  body = body.replace(
+    /^(<!--\s*aitm-last-known-state[^>]*?-->)/,
+    '$1\n<!-- aitm-body-version version="7" -->'
+  );
   return stampRefinementSnapshot(body, {
     labels: LABELS,
     ts: '2026-08-12T00:00:00.000Z',
@@ -72,6 +78,8 @@ function harness({
   assignees = ['alice'],
   failOnce = null,
   failAfterPhase = null,
+  onFetch = null,
+  beforeFirstMutation = null,
 } = {}) {
   const store = {
     issueState,
@@ -84,6 +92,8 @@ function harness({
   };
   const calls = [];
   let failure = failOnce;
+  let fetchCount = 0;
+  let mutationCount = 0;
 
   function maybeFail(name) {
     if (failure === name) {
@@ -93,14 +103,23 @@ function harness({
   }
 
   const deps = {
+    assertIssueLockHeld: () => {},
     now: () => '2026-08-12T00:05:00.000Z',
     makeTx: () => 'tx-1215',
     getBaseSha: async () => 'c02bdd3e00000000000000000000000000000000',
     loadProjectFieldDefs: () => FIELD_DEFS,
-    fetchSnapshot: async () => structuredClone(store),
+    resolveLogin: async () => 'alice',
+    fetchSnapshot: async () => {
+      fetchCount += 1;
+      await onFetch?.({ store, fetchCount });
+      return structuredClone(store);
+    },
     mutateBody: async ({ mutate }) => {
       maybeFail('mutate-body');
-      store.body = await mutate(store.body);
+      mutationCount += 1;
+      if (mutationCount === 1) await beforeFirstMutation?.({ store });
+      const nextVersion = parseBodyVersion(store.body) + 1;
+      store.body = stampBodyVersion(await mutate(stripBodyVersion(store.body)), nextVersion);
       const phase = parseShelveJournal(store.body)?.phase || 'none';
       calls.push(['body', phase]);
       if (failAfterPhase === phase) {
@@ -129,6 +148,24 @@ function harness({
     },
   };
   return { store, calls, deps };
+}
+
+function restoreRefinementCycle(store) {
+  store.state = 'refine';
+  store.fields = { priority: 'P1', size: 'M', estimate: 4, rank: 2 };
+  let body = store.body.replace(
+    /<!-- aitm-fields: [^>]+ -->/,
+    '<!-- aitm-fields: {"schema":1,"values":{"priority":"P1","size":"M","estimate":4,"rank":2,"blockedBy":"#1213"}} -->'
+  );
+  body = `<!-- aitm-refinement-rationale: {"size":"M","estimate":"4","priority":"P1","rank":2,"rationale":"re-refined"} -->
+<!-- aitm-refine-complete ts="2026-08-12T01:00:00.000Z" -->
+<!-- aitm-estimation-forecast-ready schema="2" id="forecast-2" -->
+${body}`;
+  body = writeLastKnownState(body, 'refine', '2026-08-12T01:00:00.000Z');
+  store.body = stampRefinementSnapshot(body, {
+    labels: store.labels,
+    ts: '2026-08-12T01:00:00.000Z',
+  });
 }
 
 test('Shelve runs the ordered journal, preserves classifications, and verifies exact final state', async () => {
@@ -187,6 +224,174 @@ test('Shelve explicitly removes the sole owner only when requested', async () =>
     h.calls.filter(([name]) => name === 'owner-removed'),
     [['owner-removed']]
   );
+});
+
+test('a verified Shelve cycle does not block a later legitimate re-refinement cycle', async () => {
+  const h = harness();
+  const txs = ['tx-1215-a', 'tx-1215-b'];
+  h.deps.makeTx = () => txs.shift();
+
+  const first = await runShelveTransaction({
+    issueNumber: 1215,
+    reason: 'First deprioritization',
+    cfg: CFG,
+    deps: h.deps,
+  });
+  assert.equal(first.status, 'shelved', JSON.stringify(first));
+
+  restoreRefinementCycle(h.store);
+  const second = await runShelveTransaction({
+    issueNumber: 1215,
+    reason: 'Second deprioritization',
+    cfg: CFG,
+    deps: h.deps,
+  });
+
+  assert.equal(second.status, 'shelved', JSON.stringify(second));
+  assert.deepEqual(
+    parseRefinementHistory(h.store.body).map(({ tx }) => tx),
+    ['tx-1215-a', 'tx-1215-b']
+  );
+  assert.equal([...h.store.body.matchAll(/<!--\s*aitm-shelve-transaction\s+[^>]*?-->/g)].length, 2);
+  assert.equal(parseShelveJournal(h.store.body).tx, 'tx-1215-b');
+  assert.equal(parseShelveJournal(h.store.body).phase, 'verified');
+});
+
+test('Shelve rebuilds history from the fresh complete source snapshot before append', async () => {
+  const h = harness({
+    onFetch: ({ store, fetchCount }) => {
+      if (fetchCount !== 2) return;
+      store.title = 'Fresh Shelve story';
+      store.labels = [...LABELS, 'triage:fresh'];
+      store.fields.estimate = 8;
+      store.body = store.body
+        .replace('"estimate":"4"', '"estimate":"8"')
+        .replace('"estimate":4', '"estimate":8')
+        .replace('**Depends On**: #1213', '**Depends On**: #9999')
+        .replace('id="forecast-1"', 'id="forecast-fresh"');
+      store.body = stampRefinementSnapshot(store.body, {
+        labels: store.labels,
+        ts: '2026-08-12T00:04:00.000Z',
+      });
+    },
+  });
+
+  const result = await runShelveTransaction({
+    issueNumber: 1215,
+    reason: 'No longer prioritized',
+    cfg: CFG,
+    deps: h.deps,
+  });
+
+  assert.equal(result.status, 'shelved', JSON.stringify(result));
+  const [record] = parseRefinementHistory(h.store.body);
+  assert.equal(record.title, 'Fresh Shelve story');
+  assert.deepEqual(record.labels, [...LABELS, 'triage:fresh'].sort());
+  assert.equal(record.fields.estimate, 8);
+  assert.match(record.dependencies, /#9999/);
+  assert.equal(record.forecastProvenance, 'forecast-fresh');
+  assert.match(record.sourceDigest, /^[0-9a-f]{64}$/);
+});
+
+test('source drift after the fresh snapshot is journaled but blocks every destructive phase', async () => {
+  const h = harness({
+    beforeFirstMutation: ({ store }) => {
+      store.title = 'Concurrent title edit';
+    },
+  });
+
+  const result = await runShelveTransaction({
+    issueNumber: 1215,
+    reason: 'No longer prioritized',
+    cfg: CFG,
+    deps: h.deps,
+  });
+
+  assert.equal(result.status, 'recovery-pending', JSON.stringify(result));
+  assert.equal(result.phase, 'snapshot-recorded');
+  assert.deepEqual(
+    h.calls.filter(([name]) =>
+      ['fields-cleared', 'status-backlog', 'owner-removed'].includes(name)
+    ),
+    []
+  );
+});
+
+test('body CAS refuses a changed mutation base instead of appending stale history', async () => {
+  const h = harness({
+    beforeFirstMutation: ({ store }) => {
+      store.body = store.body.replace('**Execution Order**: 5', '**Execution Order**: 6');
+    },
+  });
+
+  const result = await runShelveTransaction({
+    issueNumber: 1215,
+    reason: 'No longer prioritized',
+    cfg: CFG,
+    deps: h.deps,
+  });
+
+  assert.notEqual(result.status, 'shelved', JSON.stringify(result));
+  assert.equal(parseRefinementHistory(h.store.body).length, 0);
+  assert.equal(parseShelveJournal(h.store.body), null);
+  assert.deepEqual(
+    h.calls.filter(([name]) =>
+      ['fields-cleared', 'status-backlog', 'owner-removed'].includes(name)
+    ),
+    []
+  );
+});
+
+test('Shelve enforces the shared ownership decision from its fetched snapshot', async () => {
+  const h = harness({ assignees: ['bob'] });
+  const result = await runShelveTransaction({
+    issueNumber: 1215,
+    reason: 'No longer prioritized',
+    cfg: CFG,
+    deps: h.deps,
+  });
+
+  assert.equal(result.status, 'foreign-owner-refused');
+  assert.deepEqual(h.calls, []);
+  assert.equal(parseRefinementHistory(h.store.body).length, 0);
+});
+
+test('a resumable journal cannot bypass a new foreign-owner decision', async () => {
+  const h = harness({ failOnce: 'move-status' });
+  const first = await runShelveTransaction({
+    issueNumber: 1215,
+    reason: 'No longer prioritized',
+    cfg: CFG,
+    deps: h.deps,
+  });
+  assert.equal(first.status, 'recovery-pending');
+  const beforeRetryCalls = h.calls.length;
+  h.store.assignees = ['bob'];
+
+  const retry = await runShelveTransaction({
+    issueNumber: 1215,
+    reason: 'No longer prioritized',
+    cfg: CFG,
+    deps: h.deps,
+  });
+
+  assert.equal(retry.status, 'foreign-owner-refused');
+  assert.equal(h.calls.length, beforeRetryCalls);
+});
+
+test('the transaction authority refuses production calls outside the issue lock', async () => {
+  const h = harness();
+  delete h.deps.assertIssueLockHeld;
+  await assert.rejects(
+    runShelveTransaction({
+      issueNumber: 1215,
+      reason: 'No longer prioritized',
+      cfg: CFG,
+      deps: h.deps,
+    }),
+    /issue lock/i
+  );
+  assert.deepEqual(h.calls, []);
 });
 
 for (const source of ['backlog', 'plan', 'develop', 'test', 'review', 'done']) {

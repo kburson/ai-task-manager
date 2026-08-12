@@ -11,6 +11,8 @@ import { parseRefinementSnapshot } from './refinement-snapshot.mjs';
 
 export const REFINEMENT_HISTORY_SCHEMA = 'aitm.refinement-history/v1';
 export const REFINEMENT_HISTORY_MARKER_RE = /<!--\s*aitm-refinement-history\s+[^>]*?-->/g;
+const SHELVE_JOURNAL_MARKER_RE = /<!--\s*aitm-shelve-transaction\s+[^>]*?-->/g;
+const BODY_VERSION_MARKER_RE = /<!--\s*aitm-body-version(?::\s*\d+|\s+version="\d+")\s*-->/g;
 
 function sha256(value) {
   return createHash('sha256').update(String(value)).digest('hex');
@@ -62,6 +64,14 @@ function canonicalLabels(labels) {
 }
 
 export function refinementBodyFingerprints(body) {
+  const durableSectionFingerprint = (heading) =>
+    sha256(
+      rootSection(body, heading)
+        .replace(/^(\s*- \[)[x ](\]\s+)/gm, '$1 $2')
+        .replace(/<!--[^>]*-->/g, '')
+        .replace(/[ \t]+$/gm, '')
+        .trim()
+    );
   const acceptanceCriteria = rootSection(body, 'Acceptance Criteria')
     .replace(/^(\s*- \[)[x ](\]\s+)/gm, '$1 $2')
     .replace(/<!--[^>]*-->/g, '')
@@ -71,7 +81,64 @@ export function refinementBodyFingerprints(body) {
     narrativeFingerprint: sha256(rootSection(body, 'User Story')),
     scopeFingerprint: sha256(rootSection(body, 'Scope')),
     acceptanceCriteriaFingerprint: sha256(acceptanceCriteria),
+    storyOriginFingerprint: sha256(rootSection(body, 'Story Origin')),
+    discussionFingerprint: sha256(rootSection(body, 'Discussion')),
+    planMetadataFingerprint: sha256(rootSection(body, 'Plan Metadata')),
+    verificationCommandsFingerprint: durableSectionFingerprint('Verification Commands'),
+    testingFingerprint: durableSectionFingerprint('Testing'),
+    definitionOfDoneFingerprint: durableSectionFingerprint('Definition of Done'),
   };
+}
+
+function refinementSourceBodyFingerprint(body) {
+  const source = String(body || '')
+    .replace(REFINEMENT_HISTORY_MARKER_RE, '')
+    .replace(SHELVE_JOURNAL_MARKER_RE, '')
+    .replace(BODY_VERSION_MARKER_RE, '')
+    .replace(/\n{3,}/g, '\n\n');
+  return sha256(normalizedText(source));
+}
+
+function sourceEvidence({ title = '', body, fields, labels, previousOwner, sourceState } = {}) {
+  const snapshot = parseRefinementSnapshot(body);
+  if (!snapshot) throw new Error('refinement-history: current refinement snapshot is missing');
+  const activeFields = {
+    priority: fields?.priority ?? null,
+    size: fields?.size ?? null,
+    estimate: fields?.estimate ?? null,
+    rank: fields?.rank ?? null,
+  };
+  if (Object.values(activeFields).some((value) => value === null || value === '')) {
+    throw new Error('refinement-history: active refinement fields are incomplete');
+  }
+  return {
+    sourceState: sourceState ? String(sourceState).trim().toLowerCase() : null,
+    title: String(title || ''),
+    labels: canonicalLabels(labels),
+    fields: activeFields,
+    dependencies: dependencyEvidence(body),
+    forecastProvenance: forecastProvenance(body, snapshot.provenance),
+    refinementTimestamp: snapshot.ts,
+    ...refinementBodyFingerprints(body),
+    previousOwner: previousOwner ? String(previousOwner).toLowerCase() : null,
+    refinementSnapshotDigest: snapshot.digest,
+    refinementSnapshotProvenance: snapshot.provenance,
+    refinementSnapshotFields: snapshot.fields,
+    sourceBodyFingerprint: refinementSourceBodyFingerprint(body),
+  };
+}
+
+function sourceDigest(issueNumber, evidence) {
+  return sha256(JSON.stringify({ issueNumber: Number(issueNumber), ...evidence }));
+}
+
+export function refinementHistoryMatchesSource(record, source = {}) {
+  try {
+    const evidence = sourceEvidence(source);
+    return record?.sourceDigest === sourceDigest(record?.issueNumber, evidence);
+  } catch {
+    return false;
+  }
 }
 
 function digestibleRecord(record) {
@@ -92,15 +159,14 @@ export function buildRefinementHistoryRecord({
   labels,
   reason,
   previousOwner = null,
+  sourceState = null,
   baseSha,
   createdAt,
 } = {}) {
   const why = String(reason || '').trim();
-  const snapshot = parseRefinementSnapshot(body);
   if (!tx || !Number.isInteger(Number(issueNumber)) || !why) {
     throw new Error('refinement-history: tx, issueNumber, and reason are required');
   }
-  if (!snapshot) throw new Error('refinement-history: current refinement snapshot is missing');
   if (!/^[0-9a-f]{7,64}$/i.test(String(baseSha || ''))) {
     throw new Error('refinement-history: base SHA is missing or malformed');
   }
@@ -108,30 +174,22 @@ export function buildRefinementHistoryRecord({
   if (!Number.isFinite(Date.parse(timestamp))) {
     throw new Error('refinement-history: createdAt is malformed');
   }
-  const activeFields = {
-    priority: fields?.priority ?? null,
-    size: fields?.size ?? null,
-    estimate: fields?.estimate ?? null,
-    rank: fields?.rank ?? null,
-  };
-  if (Object.values(activeFields).some((value) => value === null || value === '')) {
-    throw new Error('refinement-history: active refinement fields are incomplete');
-  }
+  const evidence = sourceEvidence({
+    title,
+    body,
+    fields,
+    labels,
+    previousOwner,
+    sourceState,
+  });
   const record = {
     schema: REFINEMENT_HISTORY_SCHEMA,
     tx: String(tx),
     issueNumber: Number(issueNumber),
-    title: String(title || ''),
-    labels: canonicalLabels(labels),
-    fields: activeFields,
-    dependencies: dependencyEvidence(body),
-    forecastProvenance: forecastProvenance(body, snapshot.provenance),
-    refinementTimestamp: snapshot.ts,
+    ...evidence,
+    sourceDigest: sourceDigest(issueNumber, evidence),
     baseSha: String(baseSha),
-    ...refinementBodyFingerprints(body),
     reason: why,
-    previousOwner: previousOwner ? String(previousOwner).toLowerCase() : null,
-    refinementSnapshotDigest: snapshot.digest,
     createdAt: timestamp,
   };
   return { ...record, digest: recordDigest(record) };

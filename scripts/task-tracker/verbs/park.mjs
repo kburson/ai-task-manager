@@ -5,7 +5,7 @@
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { LEGAL_FROM, SHELVE_TARGET, parseArgs, runShelve, verbShelve } from './shelve.mjs';
+import { LEGAL_FROM, SHELVE_TARGET, parseArgs, runShelve, verbShelveAs } from './shelve.mjs';
 import { defaultRunMoveState } from '../lib/shelve-transaction.mjs';
 
 export const PARK_TARGET = SHELVE_TARGET;
@@ -16,7 +16,7 @@ export function runPark(options = {}) {
 }
 
 export function verbPark(rest, cfg, deps = {}) {
-  return verbShelve(rest, cfg, deps);
+  return verbShelveAs('park', rest, cfg, deps);
 }
 
 const isMain = (() => {
@@ -28,6 +28,8 @@ const isMain = (() => {
 })();
 
 if (isMain) {
-  const { loadConfig } = await import('../config.mjs');
-  await verbPark(process.argv.slice(2), loadConfig());
+  process.stderr.write(
+    'park: direct execution refused; use `npx aitm park <N> --reason <text>` so hub preflight runs\n'
+  );
+  process.exitCode = 2;
 }
