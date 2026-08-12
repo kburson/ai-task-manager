@@ -243,6 +243,7 @@ function serializeJournal(journal) {
     phase: journal.phase,
     'intent-digest': journal.intentDigest,
     'history-digest': journal.historyDigest,
+    'evidence-digest': journal.evidenceDigest,
     'remove-owner': String(journal.removeOwner),
     'previous-owner': journal.previousOwner || '',
   });
@@ -266,7 +267,8 @@ export function parseShelveJournals(body) {
       !props.tx ||
       !SHELVE_PHASES.includes(props.phase) ||
       !/^[0-9a-f]{64}$/.test(props['intent-digest'] || '') ||
-      !/^[0-9a-f]{64}$/.test(props['history-digest'] || '')
+      !/^[0-9a-f]{64}$/.test(props['history-digest'] || '') ||
+      !/^[0-9a-f]{64}$/.test(props['evidence-digest'] || '')
     ) {
       throw new Error('shelve: malformed transaction journal');
     }
@@ -279,6 +281,7 @@ export function parseShelveJournals(body) {
       phase: props.phase,
       intentDigest: props['intent-digest'],
       historyDigest: props['history-digest'],
+      evidenceDigest: props['evidence-digest'],
       removeOwner: props['remove-owner'] === 'true',
       previousOwner: props['previous-owner'] || null,
     });
@@ -365,6 +368,24 @@ function verifyPreserved(snapshot, record) {
     fingerprints.verificationCommandsFingerprint === record.verificationCommandsFingerprint &&
     fingerprints.testingFingerprint === record.testingFingerprint &&
     fingerprints.definitionOfDoneFingerprint === record.definitionOfDoneFingerprint
+  );
+}
+
+function evidenceStateDigest(body) {
+  const withoutJournals = String(body || '').replace(SHELVE_JOURNAL_MARKER_RE, '');
+  return sha256(stripBodyVersion(withoutJournals).trim());
+}
+
+function exactLandedEvidenceTransform(snapshot, record, journal) {
+  const expectedOwners = record.previousOwner ? [record.previousOwner] : [];
+  return (
+    snapshot.issueState === 'OPEN' &&
+    snapshot.state === record.sourceState &&
+    sameFields(snapshot.fields, record.fields) &&
+    sameLabels(canonicalLogins(snapshot.assignees), expectedOwners) &&
+    verifyPreserved(snapshot, record) &&
+    shelveEvidenceIsInvalidated(snapshot.body) &&
+    evidenceStateDigest(snapshot.body) === journal.evidenceDigest
   );
 }
 
@@ -520,6 +541,7 @@ export async function runShelveTransaction({
       baseSha: await getBaseSha(),
       createdAt: now(),
     });
+    const historyBody = appendRefinementHistory(sourceBody, record);
     journal = {
       tx,
       issueNumber,
@@ -527,6 +549,7 @@ export async function runShelveTransaction({
       phase: 'snapshot-recorded',
       intentDigest: requestedIntent,
       historyDigest: record.digest,
+      evidenceDigest: evidenceStateDigest(invalidateShelveEvidence(historyBody)),
       removeOwner: Boolean(removeOwner),
       previousOwner: owners[0] || null,
     };
@@ -582,22 +605,30 @@ export async function runShelveTransaction({
       snapshot = await fetchSnapshot({ issueNumber, cfg });
       const record = currentHistory(snapshot.body, journal);
       if (!refinementHistoryMatchesSource(record, sourceMatchArgs(snapshot))) {
-        throw new Error('shelve: source changed before destructive phases');
+        if (exactLandedEvidenceTransform(snapshot, record, journal)) {
+          await advanceJournal(context, 'active-evidence-cleared');
+        } else {
+          throw new Error('shelve: source changed before destructive phases');
+        }
+      } else {
+        const sourceBody = stripBodyVersion(snapshot.body);
+        snapshot = await mutateAndFetch({
+          ...context,
+          mutate: (base) => {
+            if (sha256(base) !== sha256(sourceBody)) {
+              throw new Error('shelve: source body changed before evidence invalidation');
+            }
+            return invalidateShelveEvidence(base);
+          },
+        });
+        if (!shelveEvidenceIsInvalidated(snapshot.body)) {
+          throw new Error('shelve: active evidence read-back failed');
+        }
+        if (evidenceStateDigest(snapshot.body) !== journal.evidenceDigest) {
+          throw new Error('shelve: active evidence digest read-back failed');
+        }
+        await advanceJournal(context, 'active-evidence-cleared');
       }
-      const sourceBody = stripBodyVersion(snapshot.body);
-      snapshot = await mutateAndFetch({
-        ...context,
-        mutate: (base) => {
-          if (sha256(base) !== sha256(sourceBody)) {
-            throw new Error('shelve: source body changed before evidence invalidation');
-          }
-          return invalidateShelveEvidence(base);
-        },
-      });
-      if (!shelveEvidenceIsInvalidated(snapshot.body)) {
-        throw new Error('shelve: active evidence read-back failed');
-      }
-      await advanceJournal(context, 'active-evidence-cleared');
     }
 
     if (SHELVE_PHASES.indexOf(journal.phase) < SHELVE_PHASES.indexOf('fields-cleared')) {

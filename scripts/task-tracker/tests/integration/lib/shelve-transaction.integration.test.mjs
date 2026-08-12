@@ -78,6 +78,10 @@ function harness({
   assignees = ['alice'],
   failOnce = null,
   failAfterPhase = null,
+  failAfterMutation = null,
+  failAfterClearFields = false,
+  failAfterMove = false,
+  failAfterOwner = false,
   onFetch = null,
   beforeFirstMutation = null,
 } = {}) {
@@ -122,6 +126,10 @@ function harness({
       store.body = stampBodyVersion(await mutate(stripBodyVersion(store.body)), nextVersion);
       const phase = parseShelveJournal(store.body)?.phase || 'none';
       calls.push(['body', phase]);
+      if (failAfterMutation === mutationCount) {
+        failAfterMutation = null;
+        throw new Error(`transport failed after mutation ${mutationCount} landed`);
+      }
       if (failAfterPhase === phase) {
         failAfterPhase = null;
         throw new Error(`injected:after-${phase}`);
@@ -132,18 +140,30 @@ function harness({
       maybeFail('clear-fields');
       store.fields = { priority: null, size: null, estimate: null, rank: null };
       calls.push(['fields-cleared']);
+      if (failAfterClearFields) {
+        failAfterClearFields = false;
+        throw new Error('transport failed after board fields landed');
+      }
     },
     runMoveState: async () => {
       maybeFail('move-status');
       store.state = 'backlog';
       store.body = writeLastKnownState(store.body, 'backlog', '2026-08-12T00:06:00.000Z');
       calls.push(['status-backlog']);
+      if (failAfterMove) {
+        failAfterMove = false;
+        throw new Error('transport failed after Status landed');
+      }
       return 0;
     },
     removeOwner: async () => {
       maybeFail('remove-owner');
       store.assignees = [];
       calls.push(['owner-removed']);
+      if (failAfterOwner) {
+        failAfterOwner = false;
+        throw new Error('transport failed after owner removal landed');
+      }
       return { status: 'unassigned' };
     },
   };
@@ -445,6 +465,89 @@ test('a partial failure remains journaled and an identical retry resumes without
   assert.equal(second.status, 'shelved', JSON.stringify(second));
   assert.equal(parseRefinementHistory(h.store.body).length, 1);
 });
+
+test('a landed active-evidence write with a lost response resumes from its exact durable transform', async () => {
+  const h = harness({ failAfterMutation: 2 });
+  const first = await runShelveTransaction({
+    issueNumber: 1215,
+    reason: 'No longer prioritized',
+    cfg: CFG,
+    deps: h.deps,
+  });
+  assert.deepEqual(
+    { status: first.status, phase: first.phase },
+    { status: 'recovery-pending', phase: 'snapshot-recorded' }
+  );
+  assert.match(first.error, /transport failed after mutation 2 landed/);
+  assert.equal(parseShelveJournal(h.store.body).phase, 'snapshot-recorded');
+
+  const second = await runShelveTransaction({
+    issueNumber: 1215,
+    reason: 'No longer prioritized',
+    cfg: CFG,
+    deps: h.deps,
+  });
+
+  assert.equal(second.status, 'shelved', JSON.stringify(second));
+  assert.equal(parseShelveJournal(h.store.body).phase, 'verified');
+  assert.equal(h.store.state, 'backlog');
+  assert.deepEqual(h.store.fields, {
+    priority: null,
+    size: null,
+    estimate: null,
+    rank: null,
+  });
+});
+
+test('unrelated drift after a landed active-evidence write still blocks later phases', async () => {
+  const h = harness({ failAfterMutation: 2 });
+  const intent = {
+    issueNumber: 1215,
+    reason: 'No longer prioritized',
+    cfg: CFG,
+    deps: h.deps,
+  };
+  const first = await runShelveTransaction(intent);
+  assert.equal(first.status, 'recovery-pending');
+  h.store.body = h.store.body.replace(
+    'This integration fixture has enough durable scope to build a current snapshot.',
+    'A concurrent editor changed the durable scope after invalidation landed.'
+  );
+  const beforeRetryCalls = h.calls.length;
+
+  const second = await runShelveTransaction(intent);
+
+  assert.equal(second.status, 'recovery-pending');
+  assert.equal(second.phase, 'snapshot-recorded');
+  assert.match(second.error, /source changed before destructive phases/);
+  assert.equal(h.calls.length, beforeRetryCalls);
+  assert.equal(h.store.state, 'refine');
+  assert.deepEqual(h.store.fields, { priority: 'P1', size: 'M', estimate: 4, rank: 2 });
+});
+
+for (const [name, options] of [
+  ['board field clear', { failAfterClearFields: true }],
+  ['body field clear', { failAfterMutation: 4 }],
+  ['Status move', { failAfterMove: true }],
+  ['owner removal', { failAfterOwner: true, assignees: ['alice'] }],
+]) {
+  test(`a lost response after landed ${name} remains idempotently resumable`, async () => {
+    const h = harness(options);
+    const intent = {
+      issueNumber: 1215,
+      reason: 'No longer prioritized',
+      removeOwner: name === 'owner removal',
+      cfg: CFG,
+      deps: h.deps,
+    };
+    const first = await runShelveTransaction(intent);
+    if (first.status !== 'shelved') {
+      const second = await runShelveTransaction(intent);
+      assert.equal(second.status, 'shelved', JSON.stringify(second));
+    }
+    assert.equal(parseShelveJournal(h.store.body).phase, 'verified');
+  });
+}
 
 for (const phase of SHELVE_PHASES) {
   test(`an ambiguous response after ${phase} resumes from durable read-back`, async () => {
