@@ -491,14 +491,47 @@ async function evaluate(input) {
     });
   }
 
-  function aliasInvokesCommit(alias) {
+  function readGitAlias(name, aliases, root) {
+    if (aliases.has(name)) return aliases.get(name);
+    if (!root || String(name || '').startsWith('-')) return undefined;
+    try {
+      return execFileSync('git', ['config', '--get', `alias.${name}`], {
+        cwd: root,
+        encoding: 'utf8',
+        stdio: ['ignore', 'pipe', 'ignore'],
+        timeout: GIT_TIMEOUT_MS,
+      }).trim();
+    } catch {
+      return undefined;
+    }
+  }
+
+  function aliasInvokesCommit(alias, { aliases, root, seen, depth = 0 }) {
     const value = String(alias || '').trim();
     if (/^commit(?:\s|$)/.test(value)) return true;
     // Git's `!` aliases are arbitrary deferred shell programs. Even a definition
     // with no literal `commit` can forward invocation arguments into `git "$@"`.
     // Treat every shell alias as a potential commit so attributed invocations
     // cannot escape the ownership check through an opaque program.
-    return value.startsWith('!');
+    if (value.startsWith('!')) return true;
+
+    const [target] = shellWords(value);
+    if (!target) return false;
+    // Normal Git aliases may name another alias. Resolve the chain exactly as
+    // Git does before deciding that an attributed invocation is harmless.
+    // Cycles and unreasonable depth are opaque, so fail closed rather than
+    // allowing a future Git/config behavior change to bypass ownership.
+    if (seen.has(target) || depth >= 32) return true;
+    const nested = readGitAlias(target, aliases, root);
+    if (nested === undefined) return false;
+    const nextSeen = new Set(seen);
+    nextSeen.add(target);
+    return aliasInvokesCommit(nested, {
+      aliases,
+      root,
+      seen: nextSeen,
+      depth: depth + 1,
+    });
   }
 
   function parseGitCommitSegment(segment, root) {
@@ -515,20 +548,8 @@ async function evaluate(input) {
     while (index < tokens.length) {
       const token = tokens[index];
       if (token === 'commit') return { args: tokens.slice(index + 1) };
-      let alias = aliases.get(token);
-      if (alias === undefined && root && !token.startsWith('-')) {
-        try {
-          alias = execFileSync('git', ['config', '--get', `alias.${token}`], {
-            cwd: root,
-            encoding: 'utf8',
-            stdio: ['ignore', 'pipe', 'ignore'],
-            timeout: GIT_TIMEOUT_MS,
-          }).trim();
-        } catch {
-          alias = '';
-        }
-      }
-      if (aliasInvokesCommit(alias)) {
+      const alias = readGitAlias(token, aliases, root);
+      if (aliasInvokesCommit(alias, { aliases, root, seen: new Set([token]) })) {
         return { args: tokens.slice(index + 1) };
       }
       if (!token.startsWith('-')) return false;

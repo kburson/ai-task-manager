@@ -131,6 +131,9 @@ test('dynamic and nested commit messages cannot bypass attribution inspection', 
       'git -c alias.ci=\'!git --no-pager commit\' ci -m "[#1212] git option alias"',
       'git -c alias.ci=\'!f() { git commit "$@"; }; f\' ci -m "[#1212] function alias"',
       'git -c alias.ci=\'!f() { git "$@"; }; f\' ci commit -m "[#1212] argument alias"',
+      'git -c alias.ci=co -c alias.co=commit ci -m "[#1212] chained builtin alias"',
+      'git -c alias.ci=co -c alias.co=\'!git commit\' ci -m "[#1212] chained shell alias"',
+      'git -c alias.ci=co -c alias.co=ci ci -m "[#1212] cyclic alias"',
     ]) {
       const { payload } = runGuard(fixture, command);
       assert.equal(payload.decision, 'block', `must inspect or refuse: ${command}`);
@@ -171,6 +174,15 @@ test('persistently configured commit aliases enforce ownership', () => {
     assert.equal(configuredArgumentAlias.payload.decision, 'block');
     assert.match(
       configuredArgumentAlias.payload.reason,
+      /exclusive ownership|ownership is foreign-owner/i
+    );
+
+    spawnSync('git', ['config', 'alias.c1', 'c2'], { cwd: fixture.dir });
+    spawnSync('git', ['config', 'alias.c2', 'commit'], { cwd: fixture.dir });
+    const configuredAliasChain = runGuard(fixture, 'git c1 -m "[#1212] configured alias chain"');
+    assert.equal(configuredAliasChain.payload.decision, 'block');
+    assert.match(
+      configuredAliasChain.payload.reason,
       /exclusive ownership|ownership is foreign-owner/i
     );
   } finally {
