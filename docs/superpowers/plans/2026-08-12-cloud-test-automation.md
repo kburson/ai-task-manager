@@ -88,6 +88,8 @@ createMeasurementWindow({
   familyPolicyFingerprint,
   targetSampleCount,
 });
+MEASUREMENT_EVIDENCE_CONTRACT;
+validateMeasurementEvidence({ evidence });
 evaluateMeasurementSample({ window, actionsEvidence, receiptEvidence });
 
 evaluateCiBudget({ policy, job, phase, elapsedMs, sections });
@@ -180,15 +182,15 @@ is not itself an issue, do not invent an `aitm-blocked-by` issue reference.
 | ---: | ------------------------------------------------------------ | ------------------------------------------------------------------------------------------------ |
 |    1 | Timing artifact schema 2                                     | `normalizeCloudTestBaseline`, `selectCanarySlowWidth`, nearest-rank p95, and capacity arithmetic |
 |    2 | Task 1 baseline weights                                      | Parameterized LPT partition, `--shard`, exact-head partition proof, and shard manifest           |
-|    3 | Tasks 1-2 decision and execution primitives                  | Canary summaries and `cloud-test-policy.json` with the selected Slow width                       |
+|    3 | Tasks 1-2 decision and execution primitives                  | Source-bound canary summaries and policy with the selected Slow width                            |
 |    4 | Git changed paths and target-base policy                     | `classifySlowImpact`, completeness audit, and the sole cloud Slow decision                       |
 |    5 | `cloud-test-policy.json` budgets                             | `evaluateCiBudget`, phase state, failure manifests, and `classifyNativeFailure`                  |
-|    6 | Task 3 selected width and Task 2 partition interface         | Family policy, digest, measurement-window schema, and sample-eligibility predicate               |
+|    6 | Task 3 selected width and Task 2 partition interface         | Family policy, window schema, normalized-evidence contract, and eligibility predicate            |
 |    7 | Existing affected selector and receipt v1                    | Direct-only local execution plus a head-bound `develop-cloud-escalation` obligation              |
 |    8 | Fleet locks, user-global capacity config, host/process facts | Host lease lifecycle, cloud dispatch result, and runner concurrency input                        |
 |    9 | Tasks 3-6 policy/runner outputs                              | Production Stage 1 native execution jobs and immutable diagnostic artifacts                      |
 |   10 | Task 9 execution results                                     | Stable native Fast/Slow gate conclusions                                                         |
-|   11 | Tasks 4, 6, and 10 native/policy facts                       | Normalized Actions evidence, v2 receipt validation, and deterministic logical key                |
+|   11 | Task 6 evidence contract plus Tasks 4 and 10 policy facts    | Contract-valid Actions evidence, v2 receipt validation, and deterministic logical key            |
 |   12 | Authority, assignment, contract, branch lineage, PR adapter  | Authorized Test transition capsule and `awaiting-ci` projection                                  |
 |   13 | Tasks 11-12 plus native Actions facts                        | Accepted `verification-evidence`, repaired evidence projection, and `REVIEW_COMPLETE`            |
 |   14 | Task 12 transition and Task 13 terminal result               | Recoverable WIP exemption decision                                                               |
@@ -344,6 +346,10 @@ is not itself an issue, do not invent an `aitm-blocked-by` issue reference.
       checked-in decision fixture to carry `unmeasuredFallbackFileCount` and
       `unmeasuredFallbackWeightSeconds`; the accepted boundary is exactly zero
       files and zero summed fallback weight.
+- [ ] Add RED selection-record tests requiring `sourceBaseline.path` and
+      `sourceBaseline.sha256`. Refuse an unnamed source, a digest that does not
+      match the checked-in baseline file, or summaries that name different
+      baselines.
 - [ ] Run the unit and workflow tests; expect FAIL on the missing workflow and
       policy.
 - [ ] Implement the canary so a cache-prime job precedes warm-cache candidates,
@@ -357,8 +363,28 @@ is not itself an issue, do not invent an `aitm-blocked-by` issue reference.
       manifest against the Task 1 baseline. If any file is labeled
       `unmeasured-fallback`, fail the canary as calibration-incomplete rather
       than selecting a width from estimated weight. Emit the fallback file count
-      and summed fallback weight in every summary so the final selection record
-      proves measurement completeness.
+      and summed fallback weight plus the exact `sourceBaseline.path` and
+      `sourceBaseline.sha256` in every summary so the final selection record
+      proves measurement completeness and source identity.
+- [ ] On `calibration-incomplete`, stop the candidate cohort and run the same
+      local Slow measurement command used by the original evidence:
+
+  ```bash
+  node scripts/run-tests.mjs --lane slow
+  ```
+
+  Normalize `.aitm/test-timing.json` through Task 1's baseline normalizer into
+  a new dated
+  `scripts/task-tracker/tests/fixtures/performance/cloud-test-local-baselines-YYYY-MM-DD.json`
+  beside the 2026-08-11 fixture; never replace or edit the older evidence. The
+  superseding fixture carries its own generated timestamp, exact command, lane,
+  file count, source-artifact SHA-256, and reported host profile in Task 1's
+  provenance shape. Update the canary's source-baseline path and checked-in-file
+  SHA-256, re-run the zero-fallback preflight, commit and push the new immutable
+  head using the verifier-before-commit block below, and restart the five paired
+  runs from zero. A newer baseline applies only to selections that name it and
+  never retroactively changes an earlier selection record.
+
 - [ ] Reject the calibration unless Quality and both Fast shards pass all five
       cold/warm pairs under the provisional 210/150-second Fast section limits,
       480-second repository envelope, and 600-second hard job stop. Record the
@@ -371,7 +397,7 @@ is not itself an issue, do not invent an `aitm-blocked-by` issue reference.
   ```bash
   npx prettier --check .github/workflows/ci-slow-shard-canary.yml scripts/task-tracker/cloud-test-policy.json
   node scripts/task-tracker/verify-develop.mjs
-  git add .github/workflows/ci-slow-shard-canary.yml scripts/task-tracker/cloud-test-policy.json scripts/task-tracker/lib/cloud-test/canary-policy.mjs scripts/task-tracker/lib/ci-workflow-history.mjs scripts/task-tracker/tests/unit/lib/cloud-test/canary-policy.test.mjs scripts/task-tracker/tests/slow/core/ci-lane-wiring.test.mjs
+  git add .github/workflows/ci-slow-shard-canary.yml scripts/task-tracker/cloud-test-policy.json scripts/task-tracker/lib/cloud-test/canary-policy.mjs scripts/task-tracker/lib/ci-workflow-history.mjs scripts/task-tracker/tests/fixtures/performance/cloud-test-local-baselines-*.json scripts/task-tracker/tests/unit/lib/cloud-test/canary-policy.test.mjs scripts/task-tracker/tests/slow/core/ci-lane-wiring.test.mjs
   git commit -m "ci: add cloud shard calibration canary"
   git push origin cloud-test-automation
   ```
@@ -394,7 +420,9 @@ is not itself an issue, do not invent an `aitm-blocked-by` issue reference.
       passes; otherwise it writes `3`. It must not write a Slow section ceiling
       or p95. It refuses either width when the recorded fallback file count or
       summed fallback weight is nonzero; the committed evidence therefore
-      records both values as zero.
+      records both values as zero. It also records the exact
+      `sourceBaseline.path` and checked-in-file SHA-256 consumed by the accepted
+      summaries.
 - [ ] Re-run the focused tests and `npx prettier --check` on both YAML/JSON files.
 - [ ] Commit the selected topology without squashing away the canary evidence:
 
@@ -525,6 +553,13 @@ the Slow width
       incomplete evidence, incompatible fingerprints, platform outages with
       recorded exclusion reasons, and canary-selection runs, which are always
       ineligible.
+- [ ] Declare `MEASUREMENT_EVIDENCE_CONTRACT` in `measurement-window.mjs` with
+      exactly the normalized fields the eligibility predicate reads:
+      `repositoryId`, `workflowId`, `runId`, `attempt`, `headSha`,
+      `runConclusion`, `jobs[].conclusion`, and `policyFingerprints`. Add RED
+      tests for `validateMeasurementEvidence` rejecting every missing or
+      malformed required field. Tests may use synthetic values, but may not
+      invent additional adapter-owned fields as eligibility requirements.
 - [ ] Encode fixture-cohesive families by stable path patterns, not individual
       files. Assign Unit/Integration families to `fast-a` or `fast-b` and Slow
       families to exactly the selected number of `slow-*` shards using the
@@ -539,10 +574,12 @@ the Slow width
       count 20. Canary selection runs remain ineligible because they predate
       the production fingerprint.
 - [ ] Implement `createMeasurementWindow` as the sole schema owner and
-      `evaluateMeasurementSample` as a pure predicate over normalized
-      Actions/receipt evidence. Accept only complete production cycles with the
-      exact window fingerprint; classify platform outages as excluded with a
-      reason rather than eligible failures. No host-local counter is authority.
+      `validateMeasurementEvidence` as the named normalized-evidence boundary.
+      Implement `evaluateMeasurementSample` as a pure predicate over contract-
+      valid Actions/receipt evidence. Accept only complete production cycles
+      with the exact window fingerprint; classify platform outages as excluded
+      with a reason rather than eligible failures. No host-local counter is
+      authority.
 - [ ] Run the focused tests; expect PASS only after every currently discovered
       test resolves exactly once.
 - [ ] Commit:
@@ -734,6 +771,8 @@ the Slow width
 
 **Spec decomposition:** 4
 
+**Prerequisites:** Tasks 4, 6, and 10
+
 **Files:**
 
 - Create: `scripts/task-tracker/lib/cloud-test/actions-adapter.mjs`
@@ -742,12 +781,22 @@ the Slow width
 - Create: `scripts/task-tracker/tests/fixtures/github-actions/cloud-test-failures.json`
 - Create: `scripts/task-tracker/tests/unit/lib/cloud-test/actions-adapter.test.mjs`
 - Create: `scripts/task-tracker/tests/unit/lib/cloud-test/receipt-v2.test.mjs`
+- Consume unchanged: `scripts/task-tracker/lib/cloud-test/measurement-window.mjs`
+- Modify: `scripts/task-tracker/tests/unit/lib/cloud-test/measurement-window.test.mjs`
 - Modify: `scripts/task-tracker/lib/github-records/lifecycle-gate-source.mjs`
 - Modify: `scripts/task-tracker/tests/unit/lib/github-records/lifecycle-gate-source.test.mjs`
 
 - [ ] Add fixture-driven RED tests for repository ID/name, PR/base/head,
       workflow identity/path/commit/event/actor/app, run attempt, job/check IDs,
       runner labels, Node 22 setup, steps, gates, timestamps, and URLs.
+- [ ] Add RED contract tests that pass normalized output from both
+      `cloud-test-green.json` and `cloud-test-failures.json` through Task 6's
+      `validateMeasurementEvidence` and `evaluateMeasurementSample`. The green
+      fixture produces an eligible success sample. Every failure fixture entry
+      receives an explicit disposition: a complete non-platform failure remains
+      an eligible production observation, while a platform outage is excluded
+      with its recorded reason. No failed run may disappear because the adapter
+      omitted a required contract field or silently filtered it.
 - [ ] Add RED receipt tests for every source-aware refusal: stale epoch, wrong
       SHA/base/PR/workflow/app/platform/Node, missing or renamed executor/gate,
       skipped dependency, policy hash mismatch, incomplete family resolution,
@@ -768,6 +817,10 @@ the Slow width
 - [ ] Keep `aitm.verification-receipt/v1` untouched. Receipt v2 is the payload of
       a `verification-evidence` capsule, uses provenance `github-actions`, and
       relies on the capsule ULID as its externally exposed receipt ID.
+- [ ] Implement `actions-adapter.mjs` so every normalized run satisfies
+      `MEASUREMENT_EVIDENCE_CONTRACT` before receipt construction. Keep richer
+      receipt provenance additive; Task 6's predicate consumes only the named
+      minimal field set.
 - [ ] Update lifecycle gate evidence to accept `test|passed|github-actions` for
       github-record sources while retaining `test|passed|agent` compatibility
       for existing records.
