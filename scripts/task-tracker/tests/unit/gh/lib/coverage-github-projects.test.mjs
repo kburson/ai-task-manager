@@ -3,7 +3,7 @@
 // CLI wrapper (execFile no-input path + spawn stdin path, success/failure/error
 // branches), gql() (parse + API-error surfacing), and every project helper
 // (splitRepo, projectItemForIssue, addIssueToProject, fieldOptionMap,
-// projectValuesForIssue, writeProjectFieldValue) through the injectable
+// projectValuesForIssue, writeProjectFieldValue, clearProjectFieldValue) through the injectable
 // child_process `deps` seam — no gh, no network, no live board.
 import { test, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
@@ -19,6 +19,7 @@ import {
   fieldOptionMap,
   projectValuesForIssue,
   writeProjectFieldValue,
+  clearProjectFieldValue,
 } from '../../../../../gh/lib/github-projects.mjs';
 
 const realExecFile = deps.execFile;
@@ -325,4 +326,17 @@ test('writeProjectFieldValue: single-select missing option → false, no write',
     optionMap: { F: { Done: 'opt1' } },
   });
   assert.equal(r, false);
+});
+
+test('clearProjectFieldValue: uses the canonical ProjectV2 clear mutation', async () => {
+  const sp = fakeSpawn({
+    stdout: JSON.stringify({
+      data: { clearProjectV2ItemFieldValue: { projectV2Item: { id: 'I' } } },
+    }),
+  });
+  deps.spawn = sp;
+  assert.equal(await clearProjectFieldValue({ projectId: 'P', itemId: 'I', fieldId: 'F' }), true);
+  const payload = JSON.parse(sp.calls[0].input);
+  assert.match(payload.query, /clearProjectV2ItemFieldValue/);
+  assert.deepEqual(payload.variables, { project: 'P', item: 'I', field: 'F' });
 });

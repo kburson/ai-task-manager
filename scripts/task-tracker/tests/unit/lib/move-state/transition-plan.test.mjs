@@ -43,12 +43,12 @@ test('STATE_TO_CONFIG_KEY maps every canonical state to a kanban option key', ()
   assert.equal(STATE_TO_CONFIG_KEY.bogus, undefined);
 });
 
-test('refusalVerbHint: forward → promote, backlog → park, else reconcile', () => {
+test('refusalVerbHint: forward → promote, backlog → shelve, else reconcile', () => {
   assert.equal(refusalVerbHint('develop'), '/task promote');
   assert.equal(refusalVerbHint('done'), '/task promote');
   // #848 — demote can never reach backlog (DEMOTE_TARGET is hardcoded to
-  // develop); park is the dedicated Refine|Plan → Backlog verb.
-  assert.equal(refusalVerbHint('backlog'), '/task park');
+  // develop); Shelve is the canonical Refine|R4P → Backlog verb.
+  assert.equal(refusalVerbHint('backlog'), '/task shelve');
   // A state with no forward/backward classification falls to reconcile.
   assert.equal(refusalVerbHint('mystery'), '/task reconcile');
 });

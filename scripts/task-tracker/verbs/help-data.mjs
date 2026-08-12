@@ -155,17 +155,35 @@ export const VERB_REFERENCE = {
   },
   park: {
     topic: 'board',
-    summary:
-      'Return a Refine or Plan issue to Backlog (premise falsified, deprioritized); keeps Priority/Size/Estimate.',
-    usage: '/task park <N> --reason "<text>"',
-    flags: [{ flag: '--reason <text>', desc: 'why this issue is returning to Backlog (required)' }],
+    summary: 'Compatibility alias for Shelve; invalidates active refinement and planning evidence.',
+    usage: '/task park <N> --reason "<text>" [--remove-owner]',
+    flags: [
+      { flag: '--reason <text>', desc: 'why this issue is returning to Backlog (required)' },
+      { flag: '--remove-owner', desc: 'also remove the verified sole owner' },
+    ],
     exitCodes: [
+      { code: 2, meaning: 'missing reason or malformed issue number' },
       {
         code: 4,
-        meaning: 'drift, source state, missing reason, or transition gate refused; state unchanged',
+        meaning: 'source, evidence, or exact read-back refused; no success is reported',
       },
     ],
     examples: ['/task park 848 --reason "premise falsified after refine review"'],
+  },
+  shelve: {
+    topic: 'board',
+    summary:
+      'Return Refine or Ready for Planning work to Backlog with immutable refinement history.',
+    usage: '/task shelve <N> --reason "<text>" [--remove-owner]',
+    flags: [
+      { flag: '--reason <text>', desc: 'required shelving provenance' },
+      { flag: '--remove-owner', desc: 'also remove the verified sole owner' },
+    ],
+    exitCodes: [
+      { code: 2, meaning: 'missing reason or malformed issue number' },
+      { code: 4, meaning: 'source, evidence, or exact read-back refused' },
+    ],
+    examples: ['/task shelve 1215 --reason "refinement is no longer current"'],
   },
   'cancel-plan': {
     topic: 'board',

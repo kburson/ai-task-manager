@@ -137,7 +137,7 @@ test('task metadata exposes parser-accurate exit statuses', () => {
     /agent review/
   );
   assert.match(
-    commandByName('park').exitCodes.find((entry) => entry.code === 4).meaning,
+    commandByName('park').exitCodes.find((entry) => entry.code === 2).meaning,
     /missing reason/
   );
   assert.match(

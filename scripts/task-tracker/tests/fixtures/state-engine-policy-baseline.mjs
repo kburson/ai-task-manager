@@ -22,7 +22,6 @@ const FORWARD_EDGES = Object.freeze([
 const EXECUTABLE_REVERSE_EDGES = Object.freeze([
   'ready-for-plan->backlog',
   'refine->backlog',
-  'plan->backlog',
   'plan->ready-for-plan',
   'test->develop',
   'review->develop',
@@ -105,7 +104,12 @@ export const ACTION_BASELINE = Object.freeze({
     requires: 'rework-reason',
   }),
   park: Object.freeze({
-    from: Object.freeze(['refine', 'ready-for-plan', 'plan']),
+    from: Object.freeze(['refine', 'ready-for-plan']),
+    to: 'backlog',
+    requires: 'reason',
+  }),
+  shelve: Object.freeze({
+    from: Object.freeze(['refine', 'ready-for-plan']),
     to: 'backlog',
     requires: 'reason',
   }),

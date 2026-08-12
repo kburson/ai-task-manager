@@ -125,14 +125,14 @@ test('illegal backward transitions refuse', () => {
   }
 });
 
-// #848 — refine/plan → backlog is the `park` verb's transition (premise
-// falsified / deprioritized). #1213 adds the governed Plan→R4P cancellation
-// edge without removing Plan→Backlog shelving.
-test('refine→backlog, plan→backlog, and plan→R4P are legal', () => {
+// #1215 — Shelve owns Refine/R4P → Backlog. Plan interruption is exclusively
+// the separate cancel-plan edge back to R4P.
+test('Refine/R4P→Backlog and Plan→R4P are legal while Plan→Backlog refuses', () => {
   assert.equal(BACKWARD.refine, 'backlog');
-  assert.deepEqual(BACKWARD.plan, ['backlog', 'ready-for-plan']);
+  assert.equal(BACKWARD['ready-for-plan'], 'backlog');
+  assert.equal(BACKWARD.plan, 'ready-for-plan');
   assert.deepEqual(validateTransition('refine', 'backlog'), { ok: true });
-  assert.deepEqual(validateTransition('plan', 'backlog'), { ok: true });
+  assert.equal(validateTransition('plan', 'backlog').ok, false);
   assert.deepEqual(validateTransition('plan', 'ready-for-plan'), { ok: true });
 });
 

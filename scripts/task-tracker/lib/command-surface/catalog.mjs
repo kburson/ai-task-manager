@@ -114,10 +114,24 @@ export const VERB_CONTRACTS = Object.freeze({
     ['Prints the prior and resulting state or the refusing gate.'],
     [MOVE_REFUSAL, ...PREFLIGHT_TARGET_EXITS]
   ),
+  shelve: contract(
+    [
+      'The target must be in Refine or Ready for Planning, --reason is required, and configured-project preflight must pass.',
+      'The current refinement snapshot, active body fields, exact configured-project fields, labels, Status, and ownership must be readable.',
+    ],
+    [
+      'Appends an immutable refinement-history snapshot before invalidating active refinement, planning, and execution evidence.',
+      'Clears Priority, Size, Estimate, and Rank, moves Status to Backlog, and optionally removes the verified sole owner through one recoverable phase journal.',
+    ],
+    ['Prints the verified Shelve transaction id or a phase-specific recovery refusal.'],
+    [MOVE_REFUSAL, ...PREFLIGHT_TARGET_EXITS]
+  ),
   park: contract(
-    ['The target must be in Refine or Plan, --reason is required, and preflight checks must pass.'],
-    ['Moves the issue to Backlog while retaining estimate fields and records the reason.'],
-    ['Prints the parked issue, retained fields, and transition result.'],
+    [
+      'Compatibility spelling of Shelve; the target must be in Refine or Ready for Planning and --reason is required.',
+    ],
+    ['Delegates to the canonical Shelve transaction; no estimate-preserving Park path remains.'],
+    ['Prints the verified Shelve result or the same recovery refusal as shelve.'],
     [MOVE_REFUSAL, ...PREFLIGHT_TARGET_EXITS]
   ),
   'cancel-plan': contract(
@@ -508,12 +522,13 @@ export const VERB_RELATED_COMMANDS = Object.freeze({
   'words-count': Object.freeze(['status', 'update', 'log']),
   promote: Object.freeze(['demote', 'plan', 'test', 'review', 'close']),
   demote: Object.freeze(['promote', 'review', 'test']),
-  park: Object.freeze(['refine', 'promote']),
+  shelve: Object.freeze(['refine', 'park', 'promote']),
+  park: Object.freeze(['shelve', 'refine', 'promote']),
   'cancel-plan': Object.freeze(['plan', 'plan-estimate', 'plan-approve']),
   assign: Object.freeze(['transfer', 'unassign', 'promote']),
   transfer: Object.freeze(['assign', 'unassign', 'status']),
-  unassign: Object.freeze(['assign', 'transfer', 'park']),
-  refine: Object.freeze(['park', 'plan', 'promote']),
+  unassign: Object.freeze(['assign', 'transfer', 'shelve']),
+  refine: Object.freeze(['shelve', 'plan', 'promote']),
   plan: Object.freeze(['plan-estimate', 'plan-approve', 'promote']),
   'plan-approve': Object.freeze(['plan-estimate', 'promote']),
   'plan-estimate': Object.freeze(['plan-approve', 'promote']),
@@ -580,6 +595,7 @@ export const VERB_POSITIONAL_ARGUMENTS = Object.freeze({
   demote: Object.freeze([
     positional('#N', 'Required issue number returned one state toward Develop.'),
   ]),
+  shelve: Object.freeze([positional('<N>', 'Refine or R4P issue number to return to Backlog.')]),
   park: Object.freeze([positional('<N>', 'Issue number to return to Backlog.')]),
   'cancel-plan': Object.freeze([
     positional('<N>', 'Plan issue number to return to Ready for Planning.'),

@@ -49,7 +49,8 @@ group below.
 | ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `promote` / `next`  | Advance one forward state (Backlog→Assigned→Refine→Plan→Develop→Test→Review→Done).                                                                                       |
 | `demote`            | Return one state backward (from Test or Review back to Develop).                                                                                                         |
-| `park`              | Return a Refine or Plan issue to Backlog (premise falsified, deprioritized); keeps Priority/Size/Estimate.                                                               |
+| `shelve`            | Return Refine or Ready for Planning work to Backlog with immutable refinement history and cleared active refinement evidence.                                            |
+| `park`              | Compatibility alias for Shelve; no estimate-preserving Park path remains.                                                                                                |
 | `refine`            | Atomic pre-Refine entry: set Priority+Size+Estimate, write the rationale marker, then walk Backlog→Assigned→Refine (or Assigned→Refine).                                 |
 | `plan`              | Refine→Plan (Sprint-Planning entry); distinct from `discover`'s backlog-item generation. Refuses on any other current state.                                             |
 | `plan-approve`      | Record plan approval with durable human or Full-Auto provenance (stamps the `aitm-plan-approved` marker Plan→Develop needs).                                             |

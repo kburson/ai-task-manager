@@ -94,6 +94,7 @@ export const PREFLIGHT_MODE = {
   next: 'target-required',
   refine: 'target-required',
   demote: 'target-required',
+  shelve: 'target-required',
   park: 'target-required',
   'cancel-plan': 'target-required',
   supersede: 'target-required',
@@ -533,6 +534,11 @@ if (_isMain)
         case 'demote': {
           const { verbDemote } = await import('./verbs/demote.mjs');
           await verbDemote(ctx.rest, ctx.cfg);
+          break;
+        }
+        case 'shelve': {
+          const { verbShelve } = await import('./verbs/shelve.mjs');
+          await verbShelve(ctx.rest, ctx.cfg);
           break;
         }
         case 'park': {

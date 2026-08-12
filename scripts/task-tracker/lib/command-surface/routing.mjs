@@ -63,6 +63,10 @@ export const ROUTE_IDENTITIES = Object.freeze(
       dispatch: 'verbs/demote.mjs',
     },
     {
+      verb: 'shelve',
+      dispatch: 'verbs/shelve.mjs',
+    },
+    {
       verb: 'park',
       dispatch: 'verbs/park.mjs',
     },

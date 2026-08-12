@@ -32,8 +32,13 @@ const ACTION_POLICIES = Object.freeze({
     target: 'develop',
     requires: 'rework-reason',
   }),
+  shelve: Object.freeze({
+    allowedStates: frozen(['refine', 'ready-for-plan']),
+    target: 'backlog',
+    requires: 'reason',
+  }),
   park: Object.freeze({
-    allowedStates: frozen(['refine', 'ready-for-plan', 'plan']),
+    allowedStates: frozen(['refine', 'ready-for-plan']),
     target: 'backlog',
     requires: 'reason',
   }),

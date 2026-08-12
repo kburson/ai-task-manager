@@ -75,7 +75,7 @@ function repoRoot() {
 // #1212 intentionally ships five ownership authorities/verbs: canonical
 // policy, exact snapshot, Plan commitment guard, assign/transfer, and unassign.
 // #1213 intentionally ships the snapshot authority, its guard, and cancel-plan.
-const ENTRY_CEILING = 647;
+const ENTRY_CEILING = 650;
 
 function packedFiles() {
   const out = execFileSync('npm', ['pack', '--dry-run', '--json'], {

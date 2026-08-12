@@ -234,3 +234,16 @@ export async function writeProjectFieldValue({
   }
   return true;
 }
+
+export async function clearProjectFieldValue({ projectId, itemId, fieldId }) {
+  await gql(
+    `
+    mutation($project: ID!, $item: ID!, $field: ID!) {
+      clearProjectV2ItemFieldValue(input: { projectId: $project, itemId: $item, fieldId: $field }) {
+        projectV2Item { id }
+      }
+    }`,
+    { project: projectId, item: itemId, field: fieldId }
+  );
+  return true;
+}
