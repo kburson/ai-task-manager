@@ -40,8 +40,8 @@ Git, npm, existing AITM GitHub-record capsules and singleton projections.
   obligation and never expands into a complete local lane.
 - Every execution job has `timeout-minutes: 10`; the repository-controlled
   phase fails at 480 seconds. Fast sections start at 210 seconds pooled and 150
-  seconds serial. Slow has no section ceiling until 20 eligible production
-  samples establish one.
+  seconds serial. Slow has no section ceiling until 20 cycle-eligible
+  production samples establish one.
 - Production starts with two Fast shards and the canary-selected two or three
   Slow shards. Do not encode an unmeasured Slow width in production policy.
 - Host admission is a machine-wide operational semaphore, not lifecycle
@@ -120,6 +120,14 @@ buildValidationTrailers({ receiptRecordId, verifiedSha, runId, attempt });
 repairPostMergeIntegration({ pr, mergeCommit, records, effectiveFreeze });
 ```
 
+`evaluateMeasurementSample` returns exactly one disposition:
+`cycle-eligible`, `recorded-non-cycle`, or `excluded`. Only
+`cycle-eligible` carries `cycleDurationMs`, advances the 20-sample target, and
+enters the nearest-rank p95 distribution. The other dispositions carry no
+cycle duration and include an auditable reason. Its result shape is
+`{ disposition, cycleDurationMs, reason }`: `cycleDurationMs` is finite only for
+`cycle-eligible`, while `reason` is non-null for the other two dispositions.
+
 `validateActionsReceiptV2` returns
 `{ ok, reasons, logicalKey, normalizedReceipt }`. All planners return data only;
 the calling coordinator supplies the GitHub, Git, record-store, clock, and
@@ -149,8 +157,8 @@ receipt validator.
 | Cloud Test lifecycle      | Tasks 11-13 complete before Task 14 grants WIP exemption                       |
 | Parent integration freeze | Selected production topology from Task 3 and lifecycle acceptance from Task 13 |
 | Merge tail                | Tasks 13, 15, and 16 complete                                                  |
-| One-job Slow target       | Task 20 plus 20 eligible production-shaped cycles                              |
-| Ten merges/hour claim     | Task 21 plus measured complete cycles at or below 360 seconds                  |
+| One-job Slow target       | Task 20 plus 20 cycle-eligible production-shaped cycles                        |
+| Ten merges/hour claim     | Task 21 plus cycle-eligible complete cycles at or below 360 seconds            |
 
 ## Delivery Decomposition
 
@@ -185,7 +193,7 @@ is not itself an issue, do not invent an `aitm-blocked-by` issue reference.
 |    3 | Tasks 1-2 decision and execution primitives                  | Source-bound canary summaries and policy with the selected Slow width                            |
 |    4 | Git changed paths and target-base policy                     | `classifySlowImpact`, completeness audit, and the sole cloud Slow decision                       |
 |    5 | `cloud-test-policy.json` budgets                             | `evaluateCiBudget`, phase state, failure manifests, and `classifyNativeFailure`                  |
-|    6 | Task 3 selected width and Task 2 partition interface         | Family policy, window schema, normalized-evidence contract, and eligibility predicate            |
+|    6 | Task 3 selected width and Task 2 partition interface         | Family policy, window schema, normalized-evidence contract, and disposition predicate            |
 |    7 | Existing affected selector and receipt v1                    | Direct-only local execution plus a head-bound `develop-cloud-escalation` obligation              |
 |    8 | Fleet locks, user-global capacity config, host/process facts | Host lease lifecycle, cloud dispatch result, and runner concurrency input                        |
 |    9 | Tasks 3-6 policy/runner outputs                              | Production Stage 1 native execution jobs and immutable diagnostic artifacts                      |
@@ -243,7 +251,7 @@ is not itself an issue, do not invent an `aitm-blocked-by` issue reference.
 - [ ] Extend timing serialization so future artifacts include command, commit,
       runner/host profile, lane, and file count without changing schema-2 reads.
 - [ ] Implement nearest-rank percentile as `sorted[ceil(0.95 * n) - 1]` but
-      refuse a policy p95 when fewer than 20 eligible samples exist.
+      refuse a policy p95 when fewer than 20 cycle-eligible samples exist.
 - [ ] Re-run the two focused tests and expect PASS.
 - [ ] Commit:
 
@@ -511,7 +519,8 @@ is not itself an issue, do not invent an `aitm-blocked-by` issue reference.
       seconds and preserves a more specific section breach when one exists.
 - [ ] Encode the deliberate asymmetry in policy validation: Fast requires its
       measured provisional section ceilings; Slow rejects any non-null section
-      ceiling until the active measurement window has 20 eligible samples.
+      ceiling until the active measurement window has 20 cycle-eligible
+      samples.
 - [ ] Re-run the focused tests and expect PASS.
 - [ ] Commit:
 
@@ -548,18 +557,32 @@ the Slow width
 - [ ] Add RED measurement-window tests for the exact checked-in record shape:
       window ID, opening commit, `runnerProfile`, `shardWidth`,
       `familyPolicyFingerprint`, a deterministic `topologyFingerprint` over
-      those three inputs, and `targetSampleCount: 20`. Test the eligibility
+      those three inputs, and `targetSampleCount: 20`. Test the disposition
       predicate against accepted matching Actions/receipt evidence, rejected or
       incomplete evidence, incompatible fingerprints, platform outages with
       recorded exclusion reasons, and canary-selection runs, which are always
-      ineligible.
+      `excluded`.
 - [ ] Declare `MEASUREMENT_EVIDENCE_CONTRACT` in `measurement-window.mjs` with
-      exactly the normalized fields the eligibility predicate reads:
+      exactly the normalized fields the disposition predicate reads:
       `repositoryId`, `workflowId`, `runId`, `attempt`, `headSha`,
       `runConclusion`, `jobs[].conclusion`, and `policyFingerprints`. Add RED
       tests for `validateMeasurementEvidence` rejecting every missing or
       malformed required field. Tests may use synthetic values, but may not
-      invent additional adapter-owned fields as eligibility requirements.
+      invent additional adapter-owned fields as disposition requirements.
+- [ ] Add RED tests for the three mutually exclusive dispositions:
+      `cycle-eligible` requires contract-valid production evidence, the exact
+      window fingerprint, merge readback, and a finite full
+      `cycleDurationMs`; `recorded-non-cycle` covers contract-valid red
+      validation, cancellation, or invalidated-head evidence that never reached
+      merge readback; `excluded` covers contract-invalid evidence, platform
+      outages, incompatible fingerprints, and canary-selection runs, always
+      with an exclusion reason. Prove every observed run receives exactly one
+      disposition and is never silently dropped.
+- [ ] Add RED aggregation tests proving only `cycle-eligible` samples advance
+      `targetSampleCount` or enter the p95 duration array. A
+      `recorded-non-cycle` sample contributes no duration, does not turn 19
+      cycle-eligible samples into 20, and cannot bypass the below-20
+      nearest-rank p95 refusal.
 - [ ] Encode fixture-cohesive families by stable path patterns, not individual
       files. Assign Unit/Integration families to `fast-a` or `fast-b` and Slow
       families to exactly the selected number of `slow-*` shards using the
@@ -571,15 +594,19 @@ the Slow width
 - [ ] Open measurement window `cloud-test-bootstrap-1` in
       `cloud-test-policy.json` with the selected width, runner profile, opening
       commit, newly available family-policy fingerprint, and target sample
-      count 20. Canary selection runs remain ineligible because they predate
-      the production fingerprint.
+      count 20 cycle-eligible samples. Canary selection runs remain excluded
+      because they predate the production fingerprint.
 - [ ] Implement `createMeasurementWindow` as the sole schema owner and
       `validateMeasurementEvidence` as the named normalized-evidence boundary.
-      Implement `evaluateMeasurementSample` as a pure predicate over contract-
-      valid Actions/receipt evidence. Accept only complete production cycles
-      with the exact window fingerprint; classify platform outages as excluded
-      with a reason rather than eligible failures. No host-local counter is
-      authority.
+      Implement `evaluateMeasurementSample` as a pure three-way disposition
+      over normalized Actions/receipt evidence. Only `cycle-eligible` evidence
+      has the exact window fingerprint, reaches merge readback, carries the full
+      cycle duration, counts toward the 20-sample target, and enters the p95
+      distribution. A contract-valid production run that stops early is
+      `recorded-non-cycle` with no duration. Platform outages and
+      contract-invalid evidence are `excluded` with reasons. Never silently
+      drop a run, and never treat a truncated duration as a full cycle. No
+      host-local counter is authority.
 - [ ] Run the focused tests; expect PASS only after every currently discovered
       test resolves exactly once.
 - [ ] Commit:
@@ -791,12 +818,14 @@ the Slow width
       runner labels, Node 22 setup, steps, gates, timestamps, and URLs.
 - [ ] Add RED contract tests that pass normalized output from both
       `cloud-test-green.json` and `cloud-test-failures.json` through Task 6's
-      `validateMeasurementEvidence` and `evaluateMeasurementSample`. The green
-      fixture produces an eligible success sample. Every failure fixture entry
-      receives an explicit disposition: a complete non-platform failure remains
-      an eligible production observation, while a platform outage is excluded
-      with its recorded reason. No failed run may disappear because the adapter
-      omitted a required contract field or silently filtered it.
+      `validateMeasurementEvidence` and `evaluateMeasurementSample`. Pair the
+      green adapter output with accepted receipt evidence containing merge
+      readback and a full cycle duration; that pair produces a
+      `cycle-eligible` success. Every failure fixture entry receives an explicit
+      disposition: red validation, cancellation, or an invalidated head becomes
+      `recorded-non-cycle`, while a platform outage or contract-invalid entry
+      becomes `excluded` with its recorded reason. No failed run may disappear
+      because the adapter omitted a contract field or silently filtered it.
 - [ ] Add RED receipt tests for every source-aware refusal: stale epoch, wrong
       SHA/base/PR/workflow/app/platform/Node, missing or renamed executor/gate,
       skipped dependency, policy hash mismatch, incomplete family resolution,
@@ -1017,10 +1046,10 @@ the Slow width
       authority; the projection remains a repairable index.
 - [ ] Extend the Task 6 measurement-window tests only for queued performance
       changes, urgent correctness/security reset, and `deriveFreezeExpiry`.
-      Reuse Task 6's record validator and sample-eligibility predicate; do not
-      redefine either schema or eligibility in the freeze implementation.
+      Reuse Task 6's record validator and sample-disposition predicate; do not
+      redefine either schema or disposition in the freeze implementation.
 - [ ] Extend `measurement-window.mjs` with `deriveFreezeExpiry`. Use the
-      60-minute bootstrap below 20 eligible samples. At or above 20, use
+      60-minute bootstrap below 20 cycle-eligible samples. At or above 20, use
       `clamp(2 * nearestRankP95Cycle, 30 minutes, 60 minutes)` where the cycle
       includes refresh through merge readback. `integration-freeze.mjs` imports
       that function and the Task 6 window owner.
@@ -1158,7 +1187,7 @@ the Slow width
 **Spec decomposition:** 15
 
 **Prerequisites:** Interim production fan-out is stable and the active
-measurement window has at least 20 eligible cycles.
+measurement window has at least 20 cycle-eligible samples.
 
 **Files:**
 
@@ -1179,13 +1208,14 @@ measurement window has at least 20 eligible cycles.
       concurrently.
 - [ ] Add a GitHub canary that compares serial/interim shards with weighted
       pooling on the same heads. Require exact coverage, no reliability
-      regression, and 20 eligible production-shaped cycles.
+      regression, and 20 cycle-eligible production-shaped cycles.
 - [ ] Reduce Slow width toward one only after nearest-rank p95 stays inside the
       480-second repository envelope. Open a new measurement window because
       width/policy fingerprint changed. Do not claim a lower critical path from
       slot recovery alone.
 - [ ] Delete `.github/workflows/ci-slow-pool-canary.yml` in the topology-adoption
-      commit after the 20-cycle evidence fixture is checked in.
+      commit after an evidence fixture containing 20 cycle-eligible samples is
+      checked in.
 - [ ] Re-run focused tests, workflow assertions, and the live policy audit.
 - [ ] Commit:
 
@@ -1225,10 +1255,12 @@ measurement window has at least 20 eligible cycles.
 - [ ] Recompute family weights from the new measurement, rebalance the affected
       Slow families in `test-family-policy.json`, and close the prior measurement
       window. Open a successor window with the new family-policy fingerprint,
-      runner profile, shard width, opening commit, and target sample count 20;
-      no pre-refactor sample is eligible in the successor set.
+      runner profile, shard width, opening commit, and target count 20
+      cycle-eligible samples; no pre-refactor sample is cycle-eligible in the
+      successor set.
 - [ ] Claim ten merges/hour only after production end-to-end cycles, including
-      queue/gates/receipt/merge, measure at or below 360 seconds.
+      queue/gates/receipt/merge readback, produce cycle-eligible samples at or
+      below 360 seconds.
 - [ ] Commit:
 
   ```bash
