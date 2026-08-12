@@ -365,7 +365,7 @@ async function evaluate(input) {
   // the resolved `projectRoot`/`configPath`. Any block() short-circuits with
   // exit 0; ownership verification is fail-closed for attributed commits.
   async function checkCommitAssigneeLock({ command: rawCommand, projectRoot: root }) {
-    if (/\beval\b/i.test(rawCommand)) {
+    if (containsEvalInvocation(rawCommand)) {
       block(
         'Refusing eval: deferred shell commands can hide a git commit and its ownership attribution from inspection.\n' +
           '  Invoke the final command directly; use `git commit` with a literal or readable message source.'
@@ -374,7 +374,7 @@ async function evaluate(input) {
     const rawSegments = expandNestedShellSegments(rawCommand);
     const commits = [];
     for (let index = 0; index < rawSegments.length; index += 1) {
-      const parsed = parseGitCommitSegment(rawSegments[index]);
+      const parsed = parseGitCommitSegment(rawSegments[index], root);
       if (parsed) commits.push({ index, ...parsed });
     }
     if (commits.length === 0) return;
@@ -476,7 +476,28 @@ async function evaluate(input) {
     }
   }
 
-  function parseGitCommitSegment(segment) {
+  function containsEvalInvocation(command) {
+    return splitCommandSegments(command).some((segment) => {
+      const tokens = shellWords(segment);
+      let index = 0;
+      while (index < tokens.length && /^[A-Za-z_][A-Za-z0-9_]*=/.test(tokens[index])) {
+        index += 1;
+      }
+      if (tokens[index] === 'command') index += 1;
+      return tokens[index] === 'eval';
+    });
+  }
+
+  function aliasInvokesCommit(alias) {
+    const value = String(alias || '').trim();
+    return (
+      /^commit(?:\s|$)/.test(value) ||
+      /^!\s*commit(?:\s|$)/.test(value) ||
+      /^![\s\S]*\bgit\s+commit(?:\s|$)/.test(value)
+    );
+  }
+
+  function parseGitCommitSegment(segment, root) {
     const tokens = shellWords(segment);
     const gitIndex = tokens.findIndex((token) => basename(token) === 'git');
     if (gitIndex < 0) return false;
@@ -490,11 +511,20 @@ async function evaluate(input) {
     while (index < tokens.length) {
       const token = tokens[index];
       if (token === 'commit') return { args: tokens.slice(index + 1) };
-      const alias = aliases.get(token);
-      if (
-        /^commit(?:\s|$)/.test(alias || '') ||
-        /^!\s*(?:\S*git\s+)?commit(?:\s|$)/.test(alias || '')
-      ) {
+      let alias = aliases.get(token);
+      if (alias === undefined && root && !token.startsWith('-')) {
+        try {
+          alias = execFileSync('git', ['config', '--get', `alias.${token}`], {
+            cwd: root,
+            encoding: 'utf8',
+            stdio: ['ignore', 'pipe', 'ignore'],
+            timeout: GIT_TIMEOUT_MS,
+          }).trim();
+        } catch {
+          alias = '';
+        }
+      }
+      if (aliasInvokesCommit(alias)) {
         return { args: tokens.slice(index + 1) };
       }
       if (!token.startsWith('-')) return false;

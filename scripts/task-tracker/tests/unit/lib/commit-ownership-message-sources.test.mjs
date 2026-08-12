@@ -122,10 +122,41 @@ test('dynamic and nested commit messages cannot bypass attribution inspection', 
       'git -c alias.ci=commit ci -m "[#1212] alias commit"',
       'git -c alias.ci=\'commit --signoff\' ci -m "[#1212] alias options"',
       'git -c alias.ci=\'!git commit\' ci -m "[#1212] shell alias"',
+      'git -c alias.ci=\'!f() { git commit "$@"; }; f\' ci -m "[#1212] function alias"',
     ]) {
       const { payload } = runGuard(fixture, command);
       assert.equal(payload.decision, 'block', `must inspect or refuse: ${command}`);
       assert.match(payload.reason, /ownership|shell expansion/i);
+    }
+  } finally {
+    fixture.cleanup();
+  }
+});
+
+test('persistently configured commit aliases enforce ownership', () => {
+  const fixture = makeFixture();
+  try {
+    spawnSync('git', ['config', 'alias.ci', '!f() { git commit "$@"; }; f'], {
+      cwd: fixture.dir,
+    });
+    const { payload } = runGuard(fixture, 'git ci -m "[#1212] configured function alias"');
+    assert.equal(payload.decision, 'block');
+    assert.match(payload.reason, /exclusive ownership|ownership is foreign-owner/i);
+  } finally {
+    fixture.cleanup();
+  }
+});
+
+test('the word eval outside shell-builtin command position remains harmless', () => {
+  const fixture = makeFixture();
+  try {
+    for (const command of [
+      'rg -n eval scripts/task-tracker/bash-guard.mjs',
+      "node --eval 'console.log(1)'",
+      "printf '%s\\n' 'eval is discussed here'",
+    ]) {
+      const { payload } = runGuard(fixture, command);
+      assert.notEqual(payload.decision, 'block', `must not block harmless eval text: ${command}`);
     }
   } finally {
     fixture.cleanup();
