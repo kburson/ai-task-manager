@@ -90,7 +90,9 @@ createMeasurementWindow({
 });
 MEASUREMENT_EVIDENCE_CONTRACT;
 validateMeasurementEvidence({ evidence });
-evaluateMeasurementSample({ window, actionsEvidence, receiptEvidence });
+MERGE_OBSERVATION_CONTRACT;
+validateMergeObservation({ observation });
+evaluateMeasurementSample({ window, actionsEvidence, receiptEvidence, mergeObservation });
 
 evaluateCiBudget({ policy, job, phase, elapsedMs, sections });
 recordCiPhase({ state, phase, startedAt, completedAt, conclusion });
@@ -127,6 +129,10 @@ enters the nearest-rank p95 distribution. The other dispositions carry no
 cycle duration and include an auditable reason. Its result shape is
 `{ disposition, cycleDurationMs, reason }`: `cycleDurationMs` is finite only for
 `cycle-eligible`, while `reason` is non-null for the other two dispositions.
+`mergeObservation` is optional. Its absence means a contract-valid cycle has
+not reached merge readback and yields `recorded-non-cycle`; a present but
+contract-invalid observation yields `excluded`. Neither case may reuse a
+validation-phase duration.
 
 `validateActionsReceiptV2` returns
 `{ ok, reasons, logicalKey, normalizedReceipt }`. All planners return data only;
@@ -157,8 +163,8 @@ receipt validator.
 | Cloud Test lifecycle      | Tasks 11-13 complete before Task 14 grants WIP exemption                       |
 | Parent integration freeze | Selected production topology from Task 3 and lifecycle acceptance from Task 13 |
 | Merge tail                | Tasks 13, 15, and 16 complete                                                  |
-| One-job Slow target       | Task 20 plus 20 cycle-eligible production-shaped cycles                        |
-| Ten merges/hour claim     | Task 21 plus cycle-eligible complete cycles at or below 360 seconds            |
+| One-job Slow target       | Task 17 live, then Task 20 plus 20 cycle-eligible production-shaped cycles     |
+| Ten merges/hour claim     | Task 17 live, then Task 21 plus cycle-eligible cycles at or below 360 seconds  |
 
 ## Delivery Decomposition
 
@@ -193,7 +199,7 @@ is not itself an issue, do not invent an `aitm-blocked-by` issue reference.
 |    3 | Tasks 1-2 decision and execution primitives                  | Source-bound canary summaries and policy with the selected Slow width                            |
 |    4 | Git changed paths and target-base policy                     | `classifySlowImpact`, completeness audit, and the sole cloud Slow decision                       |
 |    5 | `cloud-test-policy.json` budgets                             | `evaluateCiBudget`, phase state, failure manifests, and `classifyNativeFailure`                  |
-|    6 | Task 3 selected width and Task 2 partition interface         | Family policy, window schema, normalized-evidence contract, and disposition predicate            |
+|    6 | Task 3 selected width and Task 2 partition interface         | Family policy; window, Actions, merge contracts; and disposition predicate                       |
 |    7 | Existing affected selector and receipt v1                    | Direct-only local execution plus a head-bound `develop-cloud-escalation` obligation              |
 |    8 | Fleet locks, user-global capacity config, host/process facts | Host lease lifecycle, cloud dispatch result, and runner concurrency input                        |
 |    9 | Tasks 3-6 policy/runner outputs                              | Production Stage 1 native execution jobs and immutable diagnostic artifacts                      |
@@ -204,11 +210,11 @@ is not itself an issue, do not invent an `aitm-blocked-by` issue reference.
 |   14 | Task 12 transition and Task 13 terminal result               | Recoverable WIP exemption decision                                                               |
 |   15 | Task 10 stable gate names and live rulesets                  | Audited strict protection on `trunk` and `feature/epic/*`                                        |
 |   16 | Tasks 3, 6, 13, and 15                                       | Freeze lifecycle and fairness consuming Task 6 windows, plus derived expiry                      |
-|   17 | Accepted receipt, approval evidence, Task 16 freeze          | Per-target lane, exact-head merge, trailers, `integration-result`, and crash repair              |
+|   17 | Task 6 merge contract plus receipt, approval, and freeze     | Exact-head merge, validated merge observation, `integration-result`, and crash repair            |
 |   18 | Task 17 structured integration failure                       | Authorized rework demotion and receipt invalidation                                              |
 |   19 | Task 5 failure classification and native diagnostics         | Bounded triage input and Worker Report                                                           |
-|   20 | Production samples and current family policy                 | Weighted Slow scheduler and measurement-gated width reduction                                    |
-|   21 | Current `cli.test.mjs` benchmark                             | Shared CLI fixture, rebalanced family policy, and successor measurement window                   |
+|   20 | Task 17 cycle samples and current family policy              | Weighted Slow scheduler and measurement-gated width reduction                                    |
+|   21 | Task 17 cycle samples and current `cli.test.mjs` benchmark   | Shared CLI fixture, rebalanced family policy, and successor measurement window                   |
 |   22 | Tasks 1-19 operational behavior                              | User/operations documentation and end-to-end regression coverage                                 |
 
 ---
@@ -569,15 +575,25 @@ the Slow width
       tests for `validateMeasurementEvidence` rejecting every missing or
       malformed required field. Tests may use synthetic values, but may not
       invent additional adapter-owned fields as disposition requirements.
+- [ ] Declare the separate `MERGE_OBSERVATION_CONTRACT` in the same module with
+      exactly `validatedHeadSha`, `mergeCommitSha`, `cycleStartedAt`, and
+      `mergeReadbackAt`. Add RED tests for `validateMergeObservation` requiring
+      non-empty SHAs, parseable instants, and readback not earlier than cycle
+      start. Keep `MEASUREMENT_EVIDENCE_CONTRACT` unchanged: post-merge facts
+      never become adapter-owned fields. A valid full-cycle duration is derived
+      as `mergeReadbackAt - cycleStartedAt`, never supplied by validation
+      evidence.
 - [ ] Add RED tests for the three mutually exclusive dispositions:
       `cycle-eligible` requires contract-valid production evidence, the exact
-      window fingerprint, merge readback, and a finite full
-      `cycleDurationMs`; `recorded-non-cycle` covers contract-valid red
-      validation, cancellation, or invalidated-head evidence that never reached
-      merge readback; `excluded` covers contract-invalid evidence, platform
-      outages, incompatible fingerprints, and canary-selection runs, always
-      with an exclusion reason. Prove every observed run receives exactly one
-      disposition and is never silently dropped.
+      window fingerprint, and a valid merge observation whose
+      `validatedHeadSha` matches the Actions/receipt head; it derives a finite
+      full `cycleDurationMs`. `recorded-non-cycle` covers contract-valid red
+      validation, cancellation, invalidated-head evidence, or accepted
+      validation evidence with no merge observation. `excluded` covers invalid
+      Actions/receipt evidence, platform outages, incompatible fingerprints,
+      canary-selection runs, or a present but invalid/mismatched merge
+      observation, always with a reason. Prove every observed run receives
+      exactly one disposition and is never silently dropped.
 - [ ] Add RED aggregation tests proving only `cycle-eligible` samples advance
       `targetSampleCount` or enter the p95 duration array. A
       `recorded-non-cycle` sample contributes no duration, does not turn 19
@@ -599,14 +615,15 @@ the Slow width
 - [ ] Implement `createMeasurementWindow` as the sole schema owner and
       `validateMeasurementEvidence` as the named normalized-evidence boundary.
       Implement `evaluateMeasurementSample` as a pure three-way disposition
-      over normalized Actions/receipt evidence. Only `cycle-eligible` evidence
-      has the exact window fingerprint, reaches merge readback, carries the full
-      cycle duration, counts toward the 20-sample target, and enters the p95
-      distribution. A contract-valid production run that stops early is
-      `recorded-non-cycle` with no duration. Platform outages and
-      contract-invalid evidence are `excluded` with reasons. Never silently
-      drop a run, and never treat a truncated duration as a full cycle. No
-      host-local counter is authority.
+      over normalized Actions/receipt evidence and the optional merge
+      observation. Only `cycle-eligible` evidence has the exact window
+      fingerprint plus a valid, head-matched merge observation, and derives its
+      full duration from the observation instants; only it counts toward the
+      20-sample target or p95 distribution. A contract-valid production run
+      with no observation is `recorded-non-cycle` with no duration. A present
+      but invalid observation, platform outage, or contract-invalid evidence is
+      `excluded` with reasons. Never silently drop a run, and never treat a
+      validation duration as a full cycle. No host-local counter is authority.
 - [ ] Run the focused tests; expect PASS only after every currently discovered
       test resolves exactly once.
 - [ ] Commit:
@@ -819,12 +836,14 @@ the Slow width
 - [ ] Add RED contract tests that pass normalized output from both
       `cloud-test-green.json` and `cloud-test-failures.json` through Task 6's
       `validateMeasurementEvidence` and `evaluateMeasurementSample`. Pair the
-      green adapter output with accepted receipt evidence containing merge
-      readback and a full cycle duration; that pair produces a
-      `cycle-eligible` success. Every failure fixture entry receives an explicit
+      green adapter output only with its validation receipt and omit
+      `mergeObservation`; at Task 11 this must be `recorded-non-cycle`, because
+      no merge has occurred. Every failure fixture entry receives an explicit
       disposition: red validation, cancellation, or an invalidated head becomes
       `recorded-non-cycle`, while a platform outage or contract-invalid entry
-      becomes `excluded` with its recorded reason. No failed run may disappear
+      becomes `excluded` with its recorded reason. Do not fabricate post-merge
+      fields in Actions or receipt fixtures: receipt v2 is validation-time
+      evidence and cannot own merge readback. No failed run may disappear
       because the adapter omitted a contract field or silently filtered it.
 - [ ] Add RED receipt tests for every source-aware refusal: stale epoch, wrong
       SHA/base/PR/workflow/app/platform/Node, missing or renamed executor/gate,
@@ -927,6 +946,10 @@ the Slow width
 - [ ] On green, append `verification-evidence`, read it back, converge the
       evidence projection, clear `awaiting-ci`, and emit `REVIEW_COMPLETE` for
       the existing Test-to-Review transition path.
+- [ ] Receipt acceptance is still pre-merge. Evaluating its contract-valid
+      Actions/receipt evidence without a Task 17 merge observation yields
+      `recorded-non-cycle`; Test-to-Review success never advances the
+      measurement target by itself.
 - [ ] On red, cancellation, stale head, or policy failure, clear parking and
       return a structured disposition without allowing Test evidence. Do not
       demote automatically until Task 18 installs conflict/failure rework.
@@ -1053,6 +1076,10 @@ the Slow width
       `clamp(2 * nearestRankP95Cycle, 30 minutes, 60 minutes)` where the cycle
       includes refresh through merge readback. `integration-freeze.mjs` imports
       that function and the Task 6 window owner.
+- [ ] Before Task 17 produces validated merge observations, no run can be
+      `cycle-eligible`; validation-time runs remain `recorded-non-cycle` or
+      `excluded`, and freeze expiry therefore stays at the below-20 60-minute
+      bootstrap. Do not seed the distribution with pre-merge timing.
 - [ ] Implement fairness: after red, cancellation, drift, or expiry, one
       already-eligible child may use the epic-branch lane before reacquisition.
 - [ ] Run the focused unit/integration tests and expect PASS.
@@ -1068,7 +1095,7 @@ the Slow width
 
 **Spec decomposition:** 18
 
-**Prerequisites:** Tasks 13, 15, and 16
+**Prerequisites:** Tasks 6, 13, 15, and 16
 
 **Files:**
 
@@ -1077,6 +1104,7 @@ the Slow width
 - Create: `scripts/task-tracker/tests/unit/lib/cloud-test/integration-lane.test.mjs`
 - Create: `scripts/task-tracker/tests/unit/lib/cloud-test/receipt-trailers.test.mjs`
 - Create: `scripts/task-tracker/tests/integration/lib/cloud-test-merge-tail.integration.test.mjs`
+- Consume unchanged: `scripts/task-tracker/lib/cloud-test/measurement-window.mjs`
 - Modify: `scripts/task-tracker/lib/full-auto-merge.mjs`
 - Modify: `scripts/task-tracker/lib/full-auto-merge-execute.mjs`
 - Modify: `scripts/task-tracker/merge-back.mjs`
@@ -1088,6 +1116,17 @@ the Slow width
 - [ ] Add RED merge tests for target fetch, base verification, lazy rebase,
       lease-protected push, fresh receipt, approval recheck, expected-head merge,
       PR/commit readback, and stale-target refusal.
+- [ ] Add RED merge-observation tests. Capture `cycleStartedAt` when the
+      head-of-line candidate begins refresh and preserve it through validation,
+      gates, receipt acceptance, and merge. After successful PR/commit readback,
+      emit a merge observation containing `validatedHeadSha`, `mergeCommitSha`,
+      `cycleStartedAt`, and `mergeReadbackAt`. Require Task 6's
+      `validateMergeObservation` to accept it, and prove
+      `evaluateMeasurementSample` returns `cycle-eligible` with
+      `cycleDurationMs = mergeReadbackAt - cycleStartedAt`. A present invalid
+      or head-mismatched observation is `excluded`; a red, cancelled,
+      invalidated, or otherwise pre-merge attempt emits no observation and
+      remains `recorded-non-cycle`.
 - [ ] Keep lane position stable while the head PR refreshes and retests. Remove
       it only after merge, close, approval rejection/revocation, abandoned or
       expired merge attempt, or authorized rework demotion.
@@ -1102,11 +1141,16 @@ the Slow width
   Preserve the concatenated squash body and every `[#N]` attribution token.
 
 - [ ] Append `integration-result` with target, tested base/head, merged SHA,
-      merge method, PR, receipt record ID, and observed timings; release any
-      effective freeze only after merge readback.
+      merge method, PR, receipt record ID, the Task-6-validated merge
+      observation, and observed timings; release any effective freeze only
+      after merge readback. Task 17 consumes the observation contract unchanged
+      and must not redefine its schema or any disposition rule.
 - [ ] Add crash repair that verifies merged PR, commit, trailers, receipt, and
-      authority before appending one missing integration result. Trailers alone
-      can never reconstruct receipt evidence.
+      authority before appending one missing integration result. Persist
+      `cycleStartedAt` with the lane attempt before refresh so repair can combine
+      it with authoritative PR/commit readback, validate the reconstructed merge
+      observation, and append it exactly once. Trailers alone can never
+      reconstruct receipt or full-cycle evidence.
 - [ ] Replace `merge-back.mjs` local complete-lane execution for
       `github-records/v1` with the same PR/receipt merge service; keep its legacy
       path for legacy issues.
@@ -1186,8 +1230,9 @@ the Slow width
 
 **Spec decomposition:** 15
 
-**Prerequisites:** Interim production fan-out is stable and the active
-measurement window has at least 20 cycle-eligible samples.
+**Prerequisites:** Task 17's merge-observation producer and interim production
+fan-out are stable, and the active measurement window has at least 20
+cycle-eligible samples.
 
 **Files:**
 
@@ -1229,8 +1274,9 @@ measurement window has at least 20 cycle-eligible samples.
 
 **Spec decomposition:** 16
 
-**Prerequisite:** Production timing identifies
-`scripts/task-tracker/tests/slow/lib/cli.test.mjs` as the active floor.
+**Prerequisites:** Task 17's merge-observation producer is live, and production
+timing identifies `scripts/task-tracker/tests/slow/lib/cli.test.mjs` as the
+active floor.
 
 **Files:**
 
