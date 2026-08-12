@@ -1,11 +1,10 @@
-// #219 — Assignee guard for state-mutating verbs.
+// #219 / #1212 — Lifecycle-aware exclusive ownership adapter for governed
+// boundaries.
 //
-// `checkAssigneeMatch` is a pure core: given an issue number + cfg + injected
-// fetchers, it returns one of three verdicts:
-//
-//   ok:                  current `gh` user is in the issue's assignees.
-//   assigned-to-other:   non-empty assignees, current user absent — refuse.
-//   unassigned:          assignees list is empty — refuse ("dropped on floor").
+// `checkAssigneeMatch` fetches identity/assignees and delegates all decisions
+// to ownership-policy.mjs. Early lifecycle work may be unassigned; Develop+
+// requires exactly one case-insensitively matching local owner; foreign,
+// multiple, unknown, and unreadable ownership fail closed.
 //
 // All network I/O is injected. When the preference `gateAssigneeMatch=false`,
 // or env `TT_SKIP_NETWORK=1`, the caller should skip invoking this entirely;
@@ -20,6 +19,7 @@ import { promisify } from 'node:util';
 import { gql, splitRepo } from '../../gh/lib/github-projects.mjs';
 import { GH_API_TIMEOUT_MS } from './process-timeouts.mjs';
 import { ISSUE_ID_GLOBAL_RE } from './commit-attribution-format.mjs';
+import { ownershipDecision } from './ownership-policy.mjs';
 
 const pexec = promisify(execFile);
 
@@ -66,7 +66,7 @@ async function defaultPostComment({ issueNumber, repo, body }) {
 
 export { defaultPostComment };
 
-export async function checkAssigneeMatch({ issueNumber, cfg, deps = {} } = {}) {
+export async function checkAssigneeMatch({ issueNumber, cfg, state = 'develop', deps = {} } = {}) {
   if (!issueNumber) throw new Error('checkAssigneeMatch: issueNumber is required');
   if (!cfg) throw new Error('checkAssigneeMatch: cfg is required');
 
@@ -82,35 +82,45 @@ export async function checkAssigneeMatch({ issueNumber, cfg, deps = {} } = {}) {
   currentUser = String(currentUser || '').toLowerCase();
 
   const assignees = (await fetchAssignees({ issueNumber, repo: cfg.repo })) || [];
-  const lower = assignees.map((a) => String(a).toLowerCase());
-
-  if (lower.length === 0) {
-    return { ok: false, kind: 'unassigned', currentUser, assignees };
-  }
-  if (!lower.includes(currentUser)) {
-    return { ok: false, kind: 'assigned-to-other', currentUser, assignees };
-  }
-  return { ok: true, currentUser, assignees };
+  const decision = ownershipDecision({
+    state,
+    assignees,
+    currentUser,
+    mode: 'interactive',
+  });
+  return {
+    ...decision,
+    assignees: decision.owners,
+  };
 }
 
 export function formatAssigneeRefusal({ verb, issueNumber, verdict }) {
   const issue = `#${issueNumber}`;
-  const cmd = `gh issue edit ${issueNumber} --add-assignee @me`;
-  const disableHint = `  To disable for solo workflows: set "preferences.gateAssigneeMatch": false in .claude/task-tracker.json.`;
-  if (verdict.kind === 'unassigned') {
+  if (verdict.kind === 'team-unassigned') {
     return [
       `⛔ Refusing /task ${verb}: ${issue} has no assignees.`,
-      `  Even unassigned tickets require a sync conversation — someone may be working on this off-board.`,
-      `  Confer with the team, then run \`${cmd}\` to claim it.`,
-      disableHint,
+      `  Assign it with \`npx aitm assign ${issueNumber} --to @me\` before entering Develop.`,
+    ].join('\n');
+  }
+  if (verdict.kind === 'human-coordination-required') {
+    return [
+      `⛔ Refusing /task ${verb}: ${issue} is in flight but has no story owner.`,
+      `  Work cannot progress until the story is assigned to @${verdict.currentUser} for this workspace,`,
+      `  or transferred to another owner and continued from that owner's workstation.`,
+      `  Full-Auto does not reclaim ownership after development has begun.`,
+    ].join('\n');
+  }
+  if (verdict.kind === 'multiple-owners') {
+    return [
+      `⛔ Refusing /task ${verb}: ${issue} has multiple story owners (${verdict.assignees.join(', ')}).`,
+      `  AITM development collateral belongs to exactly one workstation owner. Transfer to one owner before continuing.`,
     ].join('\n');
   }
   const others = verdict.assignees.join(', ');
   return [
     `⛔ Refusing /task ${verb}: ${issue} is assigned to ${others}, not @${verdict.currentUser}.`,
     `  Confer with the assignee(s) and sync WIP (branch, in-flight changes, blockers) before requesting reassignment.`,
-    `  After the conversation, run \`${cmd}\` to claim it, then retry.`,
-    disableHint,
+    `  After the conversation, use \`npx aitm transfer ${issueNumber} --to @${verdict.currentUser}\`, then retry.`,
   ].join('\n');
 }
 
@@ -129,8 +139,8 @@ export function formatAssigneeUnverifiable({ verb, issueNumber, error }) {
     `⛔ Refusing /task ${verb}: could not verify the assignee of #${issueNumber}${detail}.`,
     `  The assignee is a work-lock; with the lock unverifiable this fails CLOSED rather than`,
     `  assuming ownership. Retry when \`gh\` connectivity is restored.`,
-    `  Offline escapes: set "preferences.gateAssigneeMatch": false in .claude/task-tracker.json,`,
-    `  or run with TT_SKIP_NETWORK=1 for a genuinely offline session.`,
+    `  Retry when GitHub connectivity is restored; TT_SKIP_NETWORK=1 remains the explicit`,
+    `  genuinely-offline escape for non-network work.`,
   ].join('\n');
 }
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// @story #219
+// @story #219 #1212
 // Unit: `checkAssigneeMatch` from lib/assignee-guard.mjs (#219).
 
 import { strict as assert } from 'node:assert';
@@ -45,21 +45,21 @@ function depsOf({ assignees = [], currentUser = 'kburson', cache } = {}) {
   assert.equal(v.ok, true);
 }
 
-// 2. Current user not in non-empty assignees → assigned-to-other.
+// 2. Multiple owners refuse even when the local owner is absent.
 {
   const deps = depsOf({ assignees: ['alice', 'bob'], currentUser: 'kburson' });
   const v = await checkAssigneeMatch({ issueNumber: 219, cfg: CFG, deps });
   assert.equal(v.ok, false);
-  assert.equal(v.kind, 'assigned-to-other');
+  assert.equal(v.kind, 'multiple-owners');
   assert.deepEqual(v.assignees, ['alice', 'bob']);
 }
 
-// 3. Empty assignees → unassigned.
+// 3. Empty assignees in Develop require human coordination.
 {
   const deps = depsOf({ assignees: [], currentUser: 'kburson' });
   const v = await checkAssigneeMatch({ issueNumber: 219, cfg: CFG, deps });
   assert.equal(v.ok, false);
-  assert.equal(v.kind, 'unassigned');
+  assert.equal(v.kind, 'human-coordination-required');
 }
 
 // 4. Memoized currentUser — second invocation reuses cache.
@@ -90,18 +90,17 @@ function depsOf({ assignees = [], currentUser = 'kburson', cache } = {}) {
   );
 }
 
-// 7. Refusal message includes assignees and gh edit command (assigned-to-other).
+// 7. Foreign-owner refusal names the governed transfer command.
 {
   const msg = formatAssigneeRefusal({
     verb: 'promote',
     issueNumber: 219,
-    verdict: { kind: 'assigned-to-other', currentUser: 'kburson', assignees: ['alice'] },
+    verdict: { kind: 'foreign-owner', currentUser: 'kburson', assignees: ['alice'] },
   });
   assert.match(msg, /Refusing \/task promote/);
   assert.match(msg, /#219/);
   assert.match(msg, /alice/);
-  assert.match(msg, /gh issue edit 219 --add-assignee @me/);
-  assert.match(msg, /gateAssigneeMatch/);
+  assert.match(msg, /npx aitm transfer 219 --to @kburson/);
 }
 
 // 8. Refusal message handles unassigned case.
@@ -109,19 +108,19 @@ function depsOf({ assignees = [], currentUser = 'kburson', cache } = {}) {
   const msg = formatAssigneeRefusal({
     verb: 'promote',
     issueNumber: 219,
-    verdict: { kind: 'unassigned', currentUser: 'kburson', assignees: [] },
+    verdict: { kind: 'team-unassigned', currentUser: 'kburson', assignees: [] },
   });
   assert.match(msg, /no assignees/);
-  assert.match(msg, /gh issue edit 219 --add-assignee @me/);
+  assert.match(msg, /npx aitm assign 219 --to @me/);
 }
 
 // 9. Prompt line format.
 {
   const line = formatAssigneePromptLine({
     issueNumber: 219,
-    verdict: { kind: 'assigned-to-other', assignees: ['alice', 'bob'] },
+    verdict: { kind: 'multiple-owners', assignees: ['alice', 'bob'] },
   });
-  assert.equal(line, 'PROMPT_REQUIRED: assignee-mismatch #219 assigned-to-other alice,bob');
+  assert.equal(line, 'PROMPT_REQUIRED: assignee-mismatch #219 multiple-owners alice,bob');
 }
 
 // 10. Exit code constant.

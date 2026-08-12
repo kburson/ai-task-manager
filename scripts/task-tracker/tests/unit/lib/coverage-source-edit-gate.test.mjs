@@ -30,6 +30,7 @@ import { statePath } from '../../../paths.mjs';
 // ── temp project scaffold ─────────────────────────────────────────────────────
 const KANBAN = {
   repo: 'o/r',
+  projectId: 'PVT_target',
   kanbanOptionBacklog: 'opt-backlog',
   kanbanOptionRefine: 'opt-refine',
   kanbanOptionReadyForPlan: 'opt-ready-for-plan',
@@ -80,7 +81,12 @@ test('isAllowlistedPath: empty false, .tmp/ true, scratch true, src false', () =
 });
 
 // ── decideSourceEdit branches ─────────────────────────────────────────────────
-const base = { projectDir: '/proj', filePath: 'scripts/x.mjs' };
+const base = {
+  projectDir: '/proj',
+  filePath: 'scripts/x.mjs',
+  assignees: ['kburson'],
+  currentUser: 'kburson',
+};
 
 test('decide: non-gated tool → allow', () => {
   assert.equal(decideSourceEdit({ ...base, toolName: 'Read' }).decision, 'allow');
@@ -181,20 +187,25 @@ test('readCache: stale entry → null', () => {
 });
 
 // ── fetchIssueSignals / resolveIssueSignals (injected gh) ─────────────────────
-test('fetchIssueSignals: optionId shape → mapped state + markers', async () => {
+test('fetchIssueSignals: shared exact-project snapshot supplies state and ownership', async () => {
   const dir = project();
-  const gh = async () =>
-    JSON.stringify({ body: DEV_BODY, projectItems: [{ status: { optionId: 'opt-develop' } }] });
-  const s = await fetchIssueSignals('#644', dir, { gh });
+  const gh = async (args) => (args[0] === 'api' ? 'kburson\n' : JSON.stringify({ body: DEV_BODY }));
+  const s = await fetchIssueSignals('#644', dir, {
+    gh,
+    fetchSnapshot: async () => ({ state: 'develop', assignees: ['kburson'] }),
+  });
   assert.equal(s.state, 'develop');
+  assert.deepEqual(s.assignees, ['kburson']);
   assert.equal(s.hasPostedMarker, true);
   assert.equal(s.hasCompleteMarker, true);
 });
 test('fetchIssueSignals: name shape → canonical state', async () => {
   const dir = project();
-  const gh = async () =>
-    JSON.stringify({ body: '', projectItems: [{ status: { name: 'Review' } }] });
-  const s = await fetchIssueSignals('#644', dir, { gh });
+  const gh = async (args) => (args[0] === 'api' ? 'kburson\n' : JSON.stringify({ body: '' }));
+  const s = await fetchIssueSignals('#644', dir, {
+    gh,
+    fetchSnapshot: async () => ({ state: 'review', assignees: ['kburson'] }),
+  });
   assert.equal(s.state, 'review');
 });
 test('fetchIssueSignals: historical display name and legacy config key map to Ready for Planning', async () => {
@@ -206,15 +217,13 @@ test('fetchIssueSignals: historical display name and legacy config key map to Re
   console.warn = (message) => warnings.push(String(message));
   try {
     const byId = await fetchIssueSignals('#1206', dir, {
-      gh: async () =>
-        JSON.stringify({
-          body: '',
-          projectItems: [{ status: { optionId: 'opt-ready-for-plan' } }],
-        }),
+      gh: async (args) => (args[0] === 'api' ? 'kburson\n' : JSON.stringify({ body: '' })),
+      fetchSnapshot: async () => ({ state: 'ready-for-plan', assignees: [] }),
     });
     assert.equal(byId.state, 'ready-for-plan');
     const byName = await fetchIssueSignals('#1206', dir, {
-      gh: async () => JSON.stringify({ body: '', projectItems: [{ status: { name: 'On Deck' } }] }),
+      gh: async (args) => (args[0] === 'api' ? 'kburson\n' : JSON.stringify({ body: '' })),
+      fetchSnapshot: async () => ({ state: 'ready-for-plan', assignees: [] }),
     });
     assert.equal(byName.state, 'ready-for-plan');
   } finally {
@@ -227,16 +236,20 @@ test('resolveIssueSignals: cache miss fetches then warms cache', async () => {
   let calls = 0;
   const gh = async () => {
     calls += 1;
-    return JSON.stringify({
-      body: DEV_BODY,
-      projectItems: [{ status: { optionId: 'opt-develop' } }],
-    });
+    if (calls % 2 === 0) return 'kburson\n';
+    return JSON.stringify({ body: DEV_BODY });
   };
-  const first = await resolveIssueSignals('#644', dir, { gh });
+  const first = await resolveIssueSignals('#644', dir, {
+    gh,
+    fetchSnapshot: async () => ({ state: 'develop', assignees: ['kburson'] }),
+  });
   assert.equal(first.source, 'fetch');
-  const second = await resolveIssueSignals('#644', dir, { gh });
+  const second = await resolveIssueSignals('#644', dir, {
+    gh,
+    fetchSnapshot: async () => ({ state: 'develop', assignees: ['kburson'] }),
+  });
   assert.equal(second.source, 'cache');
-  assert.equal(calls, 1);
+  assert.equal(calls, 2);
 });
 
 // ── runHook orchestration ─────────────────────────────────────────────────────
@@ -266,6 +279,8 @@ test('runHook: bound + develop + markers via injected resolve → allow', async 
         state: 'develop',
         hasPostedMarker: true,
         hasCompleteMarker: true,
+        assignees: ['kburson'],
+        currentUser: 'kburson',
       }),
     }
   );

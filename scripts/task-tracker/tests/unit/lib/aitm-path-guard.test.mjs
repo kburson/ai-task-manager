@@ -148,7 +148,6 @@ const LITERAL_ALLOWLIST = new Set([
   'gh/lib/issue-body-verifier.mjs', // canonical `> Follow:` issue-body content constant + message
   'maintenance/verify-vocab-cleanup.mjs', // frozen #196 retirement fixture (CHECKS.file paths)
   'migrate/start-time-field.mjs', // one-shot migration NOTE message
-  'task-tracker/lib/assignee-guard.mjs', // legacy `.claude/...` user hint message
   'task-tracker/lib/close-gates.mjs', // trunk-ref diagnostic message
   'task-tracker/migrate-fields-encoding.mjs', // missing-repo diagnostic message
   'task-tracker/preflight-issue.mjs', // `> Follow:` content + missing-template diagnostics

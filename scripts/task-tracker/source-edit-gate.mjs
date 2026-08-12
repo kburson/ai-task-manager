@@ -32,7 +32,9 @@ import { readDeepDiveSignals } from './lib/deep-dive.mjs';
 import { SCRATCH_REL_PREFIX, statePath as resolveStatePath } from './paths.mjs';
 import { classifyEdit, isAllowed, loadPolicy, DEFAULT_POLICY } from './activity-policy.mjs';
 import { loadConfig } from './config.mjs';
-import { normalizeStateId, stateConfigKey, stateIds } from './lib/lifecycle-policy/index.mjs';
+import { normalizeStateId } from './lib/lifecycle-policy/index.mjs';
+import { ownershipDecision } from './lib/ownership-policy.mjs';
+import { fetchAssignmentSnapshot } from './lib/assignment-snapshot.mjs';
 
 const pexec = promisify(execFile);
 
@@ -83,6 +85,8 @@ export function decideSourceEdit({
   issueState,
   hasPostedMarker,
   hasCompleteMarker,
+  assignees,
+  currentUser,
   policy = DEFAULT_POLICY,
 }) {
   if (!GATED_TOOLS.has(toolName)) {
@@ -118,6 +122,22 @@ export function decideSourceEdit({
   }
 
   const state = normalizeStateId(issueState) || 'unknown';
+
+  if (['develop', 'test', 'review'].includes(state)) {
+    const ownership = ownershipDecision({ state, assignees, currentUser });
+    if (!ownership.ok) {
+      return {
+        decision: 'block',
+        code: 'source-edit-ownership-gate',
+        reason:
+          `[task-tracker] Source-edit refused: ${boundIssue} does not have the exact singleton owner for this workspace.\n` +
+          `  Ownership: ${ownership.kind}\n` +
+          `  Expected: @${ownership.currentUser || '(unverifiable)'}\n` +
+          `  Observed: ${ownership.owners.length ? ownership.owners.map((owner) => `@${owner}`).join(', ') : 'unassigned'}\n` +
+          `  Assign the story to this workspace owner, or transfer it and continue from the new owner's workstation.`,
+      };
+    }
+  }
 
   if (PRE_DEVELOP_STATES.has(state)) {
     return {
@@ -254,13 +274,7 @@ export function writeCache(projectDir, entry) {
   }
 }
 
-// Maps a kanbanOption* GUID back to its lowercase verb-state name.
-function mapKanbanToState(cfg, optionId) {
-  if (!cfg || !optionId) return 'unknown';
-  return stateIds().find((state) => cfg[stateConfigKey(state)] === optionId) || 'unknown';
-}
-
-// Cold path: fetch state + markers via `gh`. Returns `{ state, hasPostedMarker, hasCompleteMarker }`.
+// Cold path: fetch state, markers, and exclusive ownership via `gh`.
 export async function fetchIssueSignals(boundIssue, projectDir, deps = {}) {
   const ghImpl = deps.gh || (async (args) => (await pexec('gh', args, { timeout: 5000 })).stdout);
   const cfg = loadConfig({
@@ -268,34 +282,14 @@ export async function fetchIssueSignals(boundIssue, projectDir, deps = {}) {
     userPath: path.join(projectDir, '.ai-task-manager', '.cache', 'no-user-config.json'),
   });
   const issueNum = boundIssue.replace(/^#/, '');
-  const out = await ghImpl([
-    'issue',
-    'view',
-    issueNum,
-    '-R',
-    cfg.repo,
-    '--json',
-    'body,projectItems',
-  ]);
+  const out = await ghImpl(['issue', 'view', issueNum, '-R', cfg.repo, '--json', 'body']);
   const parsed = JSON.parse(out);
+  const snapshot = await (deps.fetchSnapshot || fetchAssignmentSnapshot)({
+    issueNumber: issueNum,
+    cfg,
+  });
+  const currentUser = String(await ghImpl(['api', 'user', '--jq', '.login'])).trim();
   const body = parsed.body || '';
-  const items = parsed.projectItems || [];
-  let state = 'unknown';
-  for (const item of items) {
-    const status =
-      item.status?.optionId || item.fieldValueByName?.optionId || item['Status']?.optionId || null;
-    const mapped = mapKanbanToState(cfg, status);
-    if (mapped !== 'unknown') {
-      state = mapped;
-      break;
-    }
-    // Some gh shapes expose the option name directly:
-    const name = normalizeStateId(item.status?.name || item['Status']?.name || '');
-    if (name) {
-      state = name;
-      break;
-    }
-  }
   // #658 — derive marker presence from the canonical reader rather than a
   // hand-rolled substring check. The old `body.includes('<!-- aitm-deep-dive-posted:')`
   // form only matched the legacy colon grammar and silently missed the
@@ -305,7 +299,13 @@ export async function fetchIssueSignals(boundIssue, projectDir, deps = {}) {
   // is the same reader the Plan→Develop promote gate uses, so the gate and
   // this reader can no longer drift apart.
   const { hasPosted, hasComplete } = readDeepDiveSignals(body);
-  return { state, hasPostedMarker: hasPosted, hasCompleteMarker: hasComplete };
+  return {
+    state: snapshot.state,
+    hasPostedMarker: hasPosted,
+    hasCompleteMarker: hasComplete,
+    assignees: snapshot.assignees,
+    currentUser,
+  };
 }
 
 // Resolves (state, markers) using the cache when warm; falls back to gh.
@@ -316,6 +316,8 @@ export async function resolveIssueSignals(boundIssue, projectDir, deps = {}) {
       state: cached.state,
       hasPostedMarker: !!cached.hasPostedMarker,
       hasCompleteMarker: !!cached.hasCompleteMarker,
+      assignees: cached.assignees,
+      currentUser: cached.currentUser,
       source: 'cache',
     };
   }
@@ -386,6 +388,8 @@ export async function runHook(payload, deps = {}) {
     issueState: signals.state,
     hasPostedMarker: signals.hasPostedMarker,
     hasCompleteMarker: signals.hasCompleteMarker,
+    assignees: signals.assignees,
+    currentUser: signals.currentUser,
     policy: (deps.loadPolicy || loadPolicy)(projectDir),
   });
 }

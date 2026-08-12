@@ -525,6 +525,10 @@ test('runGuards(plan,develop): no VC section → surfaces plan-exit-vc-presence 
     cfg: CFG,
     deps: {
       epicChildren: { fetchSiblings: async () => [] },
+      ownership: {
+        fetchCurrentUser: async () => 'kburson',
+        fetchSnapshot: async () => ({ state: 'plan', assignees: ['kburson'] }),
+      },
       ...PLANNED_ESTIMATE_OK_DEPS,
     },
     fetchBlockerState: async () => null,
@@ -606,6 +610,10 @@ test('runGuards(plan,develop): marker present + solo issue → ok', async () => 
     cfg: CFG,
     deps: {
       epicChildren: { fetchSiblings: async () => [] },
+      ownership: {
+        fetchCurrentUser: async () => 'kburson',
+        fetchSnapshot: async () => ({ state: 'plan', assignees: ['kburson'] }),
+      },
       ...PLANNED_ESTIMATE_OK_DEPS,
     },
     fetchBlockerState: async () => null,

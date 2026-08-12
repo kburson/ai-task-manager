@@ -120,7 +120,7 @@ const ALLOWLIST = new Map(
     ],
     'scripts/task-tracker/tests/unit/lib/config.test.mjs': [6, 'legacy config fallback fixtures'],
     'scripts/task-tracker/tests/unit/lib/coverage-source-edit-gate.test.mjs': [
-      5,
+      4,
       'legacy cache display and config fixtures',
     ],
     'scripts/task-tracker/tests/unit/lib/gh-edit-guard-create-guard.test.mjs': [

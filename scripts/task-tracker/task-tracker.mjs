@@ -61,6 +61,9 @@ const PREFLIGHT_MODE = {
   'plan-approve': 'target-required',
   'issue-body': 'target-required',
   comment: 'target-required',
+  assign: 'target-required',
+  transfer: 'target-required',
+  unassign: 'target-required',
   promote: 'target-required',
   next: 'target-required',
   refine: 'target-required',
@@ -112,6 +115,7 @@ async function runVerbPreflight(ctx) {
     target,
     cfg: ctx.cfg,
     verb: ctx.verb,
+    ownershipManagement: ['assign', 'transfer', 'unassign'].includes(ctx.verb),
   });
 }
 
@@ -254,6 +258,21 @@ if (_isMain)
         case 'board': {
           const { verbBoard } = await import('./verbs/board.mjs');
           await verbBoard(ctx);
+          break;
+        }
+        case 'assign': {
+          const { verbAssign } = await import('./verbs/assign.mjs');
+          await verbAssign(ctx.rest, ctx.cfg);
+          break;
+        }
+        case 'transfer': {
+          const { verbTransfer } = await import('./verbs/assign.mjs');
+          await verbTransfer(ctx.rest, ctx.cfg);
+          break;
+        }
+        case 'unassign': {
+          const { verbUnassign } = await import('./verbs/unassign.mjs');
+          await verbUnassign(ctx.rest, ctx.cfg);
           break;
         }
         case 'close':

@@ -72,7 +72,9 @@ function repoRoot() {
 // #1249 adds one shipped maintenance CLI and its pure timing interval authority.
 // #1210 intentionally ships two governed verbs, their generic owned-comment
 // store, and the task-skill rule that documents the governed surface.
-const ENTRY_CEILING = 639;
+// #1212 intentionally ships five ownership authorities/verbs: canonical
+// policy, exact snapshot, Plan commitment guard, assign/transfer, and unassign.
+const ENTRY_CEILING = 644;
 
 function packedFiles() {
   const out = execFileSync('npm', ['pack', '--dry-run', '--json'], {

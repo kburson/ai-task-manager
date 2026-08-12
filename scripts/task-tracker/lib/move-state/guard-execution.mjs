@@ -144,7 +144,7 @@ export async function runGuardExecution(ctx) {
     // ahead of move-state spawn), so the in-registry assignment is harmless.
     const deps = await buildCloseGatesDeps({ stateArg, pexec, projectDir: getProjectDir() });
 
-    let guardResult = await runGuards(resolvedFromState, stateArg, {
+    const guardCtx = {
       issueNumber: Number(issueArg),
       repo: cfg.repo,
       fromState: resolvedFromState,
@@ -154,7 +154,8 @@ export async function runGuardExecution(ctx) {
       cfg,
       deps,
       lifecycleEvidence,
-    });
+    };
+    let guardResult = await runGuards(resolvedFromState, stateArg, guardCtx);
 
     // #1017 — a just-created issue can briefly return a stale body snapshot
     // without its verified Backlog marker. Only when contiguity objects on one
@@ -250,6 +251,10 @@ export async function runGuardExecution(ctx) {
         'Use `/task unblock` (or close the blockers) before retrying this move.\n\n'
       );
       return { exit: 4 };
+    }
+
+    if (guardCtx.planExitOwnershipClaim) {
+      ctx.planExitOwnershipClaim = guardCtx.planExitOwnershipClaim;
     }
 
     // #359 — preserve the inline composite's lifecycle warn-only side

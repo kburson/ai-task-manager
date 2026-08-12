@@ -63,6 +63,7 @@ import { moveState } from '../task-tracker/lib/move-state/move-state-core.mjs';
 import { formatMoveReadout, formatMoveError } from '../task-tracker/lib/move-state/readout.mjs';
 import { resolveTailProfile } from '../task-tracker/lib/move-state/tail-profiles.mjs';
 import { resolveReviewAuthority } from '../task-tracker/lib/human-reviewer-audit.mjs';
+import { commitPlanExitOwnershipClaim } from '../task-tracker/lib/plan-exit-ownership-guard.mjs';
 
 const pexec = promisify(execFile);
 const __dir = path.dirname(fileURLToPath(import.meta.url));
@@ -361,6 +362,22 @@ export async function runMoveStateHost({
   // (promote/approve/reconcile) may have already acquired this lock and signal
   // via `AITM_ISSUE_LOCK_HELD=1`; in that case skip re-acquisition.
   const runMutation = async () => {
+    if (ctx.planExitOwnershipClaim) {
+      const ownership = await commitPlanExitOwnershipClaim({
+        issueNumber: Number(issueArg),
+        cfg,
+        currentUser: ctx.planExitOwnershipClaim.currentUser,
+      });
+      if (!ownership.ok) {
+        process.stderr.write(`\n⛔ Refusing to move #${issueArg} to ${stateArg}:\n`);
+        for (const blocker of ownership.blockers || [ownership.reason]) {
+          process.stderr.write(`   BLOCKED: ${blocker}\n`);
+        }
+        process.stderr.write('\n');
+        return 4;
+      }
+    }
+
     // #559 — the mutation block is now a thin sequencer over the extracted
     // concern modules. The call order is byte-identical to the pre-#559 inline
     // block so observable side-effect ordering (the #535/#516 timeline-row

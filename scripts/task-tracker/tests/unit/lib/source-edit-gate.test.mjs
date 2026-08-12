@@ -26,6 +26,7 @@ import {
 } from '../../../source-edit-gate.mjs';
 
 const PROJECT_DIR = '/fake/project';
+const LOCAL_OWNERSHIP = { assignees: ['kburson'], currentUser: 'kburson' };
 
 // Builds a throwaway project dir with a minimal task-tracker.json so
 // `fetchIssueSignals` can read its config off disk. Returns { dir, cleanup }.
@@ -34,7 +35,7 @@ function makeProjectDir() {
   mkdirSync(path.join(dir, '.ai-task-manager'), { recursive: true });
   writeFileSync(
     path.join(dir, '.ai-task-manager', 'task-tracker.json'),
-    JSON.stringify({ repo: 'owner/repo' })
+    JSON.stringify({ repo: 'owner/repo', projectId: 'PVT_target' })
   );
   return { dir, cleanup: () => rmSync(dir, { recursive: true, force: true }) };
 }
@@ -85,6 +86,7 @@ test('case (b): Edit refused in Develop without both deep-dive markers', () => {
     boundIssue: '#42',
     choreModeActive: false,
     issueState: 'develop',
+    ...LOCAL_OWNERSHIP,
     hasPostedMarker: false,
     hasCompleteMarker: false,
   });
@@ -100,6 +102,7 @@ test('case (b): Edit refused in Develop without both deep-dive markers', () => {
     boundIssue: '#42',
     choreModeActive: false,
     issueState: 'develop',
+    ...LOCAL_OWNERSHIP,
     hasPostedMarker: true,
     hasCompleteMarker: false,
   });
@@ -117,6 +120,7 @@ test('case (c): Edit permitted in Develop with both markers stamped', () => {
     boundIssue: '#42',
     choreModeActive: false,
     issueState: 'develop',
+    ...LOCAL_OWNERSHIP,
     hasPostedMarker: true,
     hasCompleteMarker: true,
   });
@@ -134,6 +138,7 @@ test('case (c) variants #805: test/review/done REFUSE WRITE_CODE despite markers
       boundIssue: '#42',
       choreModeActive: false,
       issueState: state,
+      ...LOCAL_OWNERSHIP,
       hasPostedMarker: true,
       hasCompleteMarker: true,
     });
@@ -361,14 +366,17 @@ const LEGACY_COLON_BODY = [
 
 const NO_MARKER_BODY = '## User Story\nno markers here';
 
-function ghStubReturning(body) {
-  return async () => JSON.stringify({ body, projectItems: [] });
+function signalDeps(body) {
+  return {
+    gh: async (args) => (args[0] === 'api' ? 'kburson\n' : JSON.stringify({ body })),
+    fetchSnapshot: async () => ({ state: 'develop', assignees: ['kburson'] }),
+  };
 }
 
 test('#658: fetchIssueSignals detects the ts="..." property grammar', async () => {
   const { dir, cleanup } = makeProjectDir();
   try {
-    const r = await fetchIssueSignals('#658', dir, { gh: ghStubReturning(PROPERTY_GRAMMAR_BODY) });
+    const r = await fetchIssueSignals('#658', dir, signalDeps(PROPERTY_GRAMMAR_BODY));
     assert.equal(r.hasPostedMarker, true, 'posted marker (property grammar) must be detected');
     assert.equal(r.hasCompleteMarker, true, 'complete marker (property grammar) must be detected');
   } finally {
@@ -379,7 +387,7 @@ test('#658: fetchIssueSignals detects the ts="..." property grammar', async () =
 test('#658: fetchIssueSignals still detects the legacy colon grammar', async () => {
   const { dir, cleanup } = makeProjectDir();
   try {
-    const r = await fetchIssueSignals('#658', dir, { gh: ghStubReturning(LEGACY_COLON_BODY) });
+    const r = await fetchIssueSignals('#658', dir, signalDeps(LEGACY_COLON_BODY));
     assert.equal(r.hasPostedMarker, true);
     assert.equal(r.hasCompleteMarker, true);
   } finally {
@@ -390,7 +398,7 @@ test('#658: fetchIssueSignals still detects the legacy colon grammar', async () 
 test('#658: fetchIssueSignals reads false when neither grammar is present', async () => {
   const { dir, cleanup } = makeProjectDir();
   try {
-    const r = await fetchIssueSignals('#658', dir, { gh: ghStubReturning(NO_MARKER_BODY) });
+    const r = await fetchIssueSignals('#658', dir, signalDeps(NO_MARKER_BODY));
     assert.equal(r.hasPostedMarker, false);
     assert.equal(r.hasCompleteMarker, false);
   } finally {

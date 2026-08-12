@@ -34,12 +34,9 @@ import { saveState } from '../state.mjs';
 import { GH_API_TIMEOUT_MS } from './process-timeouts.mjs';
 import {
   checkAssigneeMatch,
-  claimAssignee,
   formatAssigneeRefusal,
   formatAssigneePromptLine,
   formatAssigneeUnverifiable,
-  formatClaimAuditComment,
-  defaultPostComment,
   EXIT_ASSIGNEE_MISMATCH,
 } from './assignee-guard.mjs';
 import { execFile } from 'node:child_process';
@@ -103,7 +100,13 @@ async function defaultFetchLastStatusActor({ issueNumber, repo, exec = pexec }) 
 }
 
 // Pure core. Caller provides loaded state + deps; we return a verdict.
-export async function runPreflight({ stateBefore, target, cfg, deps = {} } = {}) {
+export async function runPreflight({
+  stateBefore,
+  target,
+  cfg,
+  ownershipManagement = false,
+  deps = {},
+} = {}) {
   if (!stateBefore) throw new Error('runPreflight: stateBefore is required');
 
   const targetIssue = normalizeIssueNumber(target);
@@ -127,43 +130,9 @@ export async function runPreflight({ stateBefore, target, cfg, deps = {} } = {})
   }
   if (!cfg) return { ok: true, stateAfter: stateBefore, changed: false };
 
-  // #219: assignee guard runs before drift check. Preference-gated; default on.
-  const gateAssignee = cfg.preferences?.gateAssigneeMatch ?? true;
-  if (gateAssignee) {
-    let assigneeVerdict;
-    try {
-      assigneeVerdict = await checkAssigneeMatch({
-        issueNumber: issueForReconcile,
-        cfg,
-        deps: {
-          fetchAssignees: deps.fetchAssignees,
-          fetchCurrentUser: deps.fetchCurrentUser,
-          cache: deps.assigneeCache,
-        },
-      });
-    } catch (e) {
-      // #769 — fail CLOSED: a lock must not open on a transient `gh` failure.
-      // The documented escapes (gateAssigneeMatch:false, TT_SKIP_NETWORK=1)
-      // remain the way through when genuinely offline.
-      assigneeVerdict = { ok: false, kind: 'unverifiable', error: e?.message || String(e) };
-    }
-    if (!assigneeVerdict.ok) {
-      return {
-        ok: false,
-        code: EXIT_ASSIGNEE_MISMATCH,
-        kind: 'assignee-mismatch',
-        assigneeKind: assigneeVerdict.kind,
-        currentUser: assigneeVerdict.currentUser,
-        assignees: assigneeVerdict.assignees,
-        error: assigneeVerdict.error,
-        issueNumber: issueForReconcile,
-      };
-    }
-  }
-
-  // #633 — thread injectable gql/exec into the two default fetchers so their
-  // network round-trips are unit-drivable. Production passes neither, so the
-  // real `gql`/`pexec` bind — byte-identical to prior behavior.
+  // Ownership is lifecycle-aware, so resolve the canonical live state before
+  // evaluating the assignee set. The same live value is reused by drift
+  // detection below; this does not add a second board fetch.
   const gqlFn = deps.gql || gql;
   const execFn = deps.exec || pexec;
   const fetchLive = deps.fetchLive || fetchLiveKanbanState;
@@ -182,9 +151,51 @@ export async function runPreflight({ stateBefore, target, cfg, deps = {} } = {})
   } catch {
     live = '';
   }
+  live = normalizeStateId(live) || '';
+
+  // #1212: assignment is orthogonal to lifecycle Status. Zero owners are
+  // valid through Plan; foreign or multiple owners always refuse; Develop+
+  // requires the singleton local owner. No preflight path auto-claims.
+  const gateAssignee = cfg.preferences?.gateAssigneeMatch ?? true;
+  if (gateAssignee && !ownershipManagement) {
+    let assigneeVerdict;
+    try {
+      assigneeVerdict = await checkAssigneeMatch({
+        issueNumber: issueForReconcile,
+        cfg,
+        state: live || 'unknown',
+        deps: {
+          fetchAssignees: deps.fetchAssignees,
+          fetchCurrentUser: deps.fetchCurrentUser,
+          cache: deps.assigneeCache,
+        },
+      });
+    } catch (e) {
+      // #769 — fail CLOSED: a lock must not open on a transient `gh` failure.
+      // The documented escapes (gateAssigneeMatch:false, TT_SKIP_NETWORK=1)
+      // remain the way through when genuinely offline.
+      assigneeVerdict = {
+        ok: false,
+        kind: 'ownership-unverifiable',
+        error: e?.message || String(e),
+      };
+    }
+    if (!assigneeVerdict.ok) {
+      return {
+        ok: false,
+        code: EXIT_ASSIGNEE_MISMATCH,
+        kind: 'assignee-mismatch',
+        assigneeKind: assigneeVerdict.kind,
+        currentUser: assigneeVerdict.currentUser,
+        assignees: assigneeVerdict.assignees,
+        error: assigneeVerdict.error,
+        issueNumber: issueForReconcile,
+      };
+    }
+  }
+
   // #436 — normalize through the single slug helper (collapses interior
   // whitespace) so a multi-word board name compares equal to the kebab marker.
-  live = normalizeStateId(live) || '';
   if (!live) return { ok: true, stateAfter: stateBefore, changed: false };
 
   // #218: the issue body marker is the single local source of truth. Fetch
@@ -231,9 +242,16 @@ export async function preflightVerb({
   target,
   cfg,
   verb = 'verb',
+  ownershipManagement = false,
   deps = {},
 } = {}) {
-  const verdict = await runPreflight({ stateBefore, target, cfg, deps });
+  const verdict = await runPreflight({
+    stateBefore,
+    target,
+    cfg,
+    ownershipManagement,
+    deps,
+  });
   if (verdict.ok) {
     if (verdict.changed) saveState(verdict.stateAfter, statePath);
     return verdict.stateAfter;
@@ -264,7 +282,7 @@ export async function preflightVerb({
 
       // #769 — fail-closed lane: the assignee could not be verified. Refuse
       // rather than assume ownership; the two offline escapes are the way through.
-      if (kind === 'unverifiable') {
+      if (kind === 'ownership-unverifiable') {
         process.stdout.write(`PROMPT_REQUIRED: assignee-unverifiable #${verdict.issueNumber}\n`);
         process.stderr.write(
           formatAssigneeUnverifiable({
@@ -275,47 +293,6 @@ export async function preflightVerb({
         );
         process.exit(EXIT_ASSIGNEE_MISMATCH);
         return;
-      }
-
-      // #769 — Full-Auto unassigned lane: auto-claim `@me` (the only
-      // AI-permitted assignment), record an audit trail, then re-run preflight
-      // once so the verb proceeds. `_claimAttempted` guards re-entry. Full-Auto
-      // NEVER touches the assigned-to-other lane — that stays a hard refuse in
-      // every mode.
-      const env = deps.env || process.env;
-      const fullAuto = env.TT_FULL_AUTO === '1';
-      if (kind === 'unassigned' && fullAuto && !deps._claimAttempted) {
-        const claim = deps.claimAssignee || claimAssignee;
-        const post = deps.postComment || defaultPostComment;
-        const result = await claim({ issueNumber: verdict.issueNumber, cfg, deps });
-        if (result.ok) {
-          try {
-            await post({
-              issueNumber: verdict.issueNumber,
-              repo: cfg.repo,
-              body: formatClaimAuditComment({
-                verb,
-                issueNumber: verdict.issueNumber,
-                currentUser: verdict.currentUser,
-              }),
-            });
-          } catch {
-            // Audit comment is best-effort; the claim itself is the gate.
-          }
-          process.stderr.write(
-            `🤖 Full-Auto: #${verdict.issueNumber} was unassigned — auto-claimed via \`--add-assignee @me\` (audit comment posted).\n`
-          );
-          return preflightVerb({
-            stateBefore,
-            statePath,
-            target,
-            cfg,
-            verb,
-            deps: { ...deps, _claimAttempted: true },
-          });
-        }
-        // Claim refused (an assignee appeared between the check and the claim)
-        // — fall through to the standard refusal below.
       }
 
       const verdict2 = {

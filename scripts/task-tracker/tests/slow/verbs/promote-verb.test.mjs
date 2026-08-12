@@ -79,6 +79,10 @@ function makeDeps({
         loadProjectFieldDefs: () => [],
         projectValuesForIssue: async () => ({ size: 'XS', estimate: 4 }),
       },
+      ownership: {
+        fetchCurrentUser: async () => 'kburson',
+        fetchSnapshot: async () => ({ state: 'plan', assignees: ['kburson'] }),
+      },
       codeCompleteGate: async () => ({ ok: true, blockers: [], shas: [] }),
       commitTrailHeadGate: async () => ({ ok: true, headSha: 'deadbeef', trailShas: ['deadbeef'] }),
     },

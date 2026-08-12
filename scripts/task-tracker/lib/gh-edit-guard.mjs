@@ -521,6 +521,23 @@ export function checkBodyChange({ newBody, currentBody, issueNumber, currentStat
 // fail-open. The diff logic survives, exercised via `mutateIssueBody`, in the
 // exported `checkBodyChange`.)
 export function evaluateGhEdit({ command }) {
+  // #1212 — direct assignee mutation is an ownership-state bypass. It skips
+  // the issue lock, lifecycle-aware preconditions, exact-singleton read-back,
+  // transfer provenance, and audit comment enforced by the governed verbs.
+  // Internal adapters use execFile and do not traverse this Bash hook.
+  for (const segment of splitCommandSegments(command)) {
+    const match = segment.match(ISSUE_EDIT_RE);
+    if (!match || !/(?:^|\s)--(?:add|remove)-assignee(?:\s|=)/.test(segment)) continue;
+    return {
+      block: true,
+      reason:
+        `Direct assignee mutation on #${Number(match[1])} is forbidden.\n` +
+        `  Use \`npx aitm assign ${Number(match[1])} --to <login|@me>\`, ` +
+        `\`npx aitm transfer ${Number(match[1])} --to <login|@me>\`, or ` +
+        `\`npx aitm unassign ${Number(match[1])}\` so exclusive ownership is locked, audited, and verified.`,
+    };
+  }
+
   const parsed = parseGhIssueEdit(command);
   if (!parsed || parsed.source === 'none') return { block: false };
 

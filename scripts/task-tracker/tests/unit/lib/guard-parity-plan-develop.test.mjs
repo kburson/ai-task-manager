@@ -64,6 +64,10 @@ function makeCtx({ body = '', epicChildren = [] } = {}) {
         loadProjectFieldDefs: () => [],
         projectValuesForIssue: async () => ({ size: 'XS', estimate: 4 }),
       },
+      ownership: {
+        fetchCurrentUser: async () => 'kburson',
+        fetchSnapshot: async () => ({ state: 'plan', assignees: ['kburson'] }),
+      },
       plannedEstimate: {
         listComments: async ({ issueNumber }) => [
           {

@@ -1,16 +1,16 @@
 #!/usr/bin/env node
-// @story #769
-// Unit: assignment-lock contract — the GitHub assignee is an exclusive
-// work-lock enforced at bind, every state mutator, and commit time.
+// @story #769 #1212
+// Unit: lifecycle-aware exclusive story ownership at bind, mutation, and
+// commit boundaries.
 //
 // One case per acceptance criterion:
-//   AC1  bind refused when assigned-to-other; allowed when among assignees.
-//   AC2  unassigned → alert+claim-permitted; AI other→me reassignment forbidden.
+//   AC1  foreign ownership is refused; exact singleton local ownership passes.
+//   AC2  in-flight unassigned refuses; the legacy claim primitive never transfers.
 //   AC3  every state mutator re-checks the lock (shared runPreflight gate).
 //   AC4  commit-time `[#N]` attribution block; chore/token-less passthrough.
-//   AC5  multi-assignee including the current user satisfies the lock.
+//   AC5  multiple assignees always refuse, including when one is local.
 //   AC6  a single `gateAssigneeMatch` flag governs the gate; default on.
-//   AC7  Full-Auto unassigned auto-claim (no prompt) + audit; foreign refused.
+//   AC7  generic Full-Auto preflight never claims; Plan exit owns that mutation.
 //   AC8  this file — every case above is covered.
 
 import { strict as assert } from 'node:assert';
@@ -90,7 +90,7 @@ async function capturePreflightVerb(opts) {
   });
   assert.equal(other.ok, false);
   assert.equal(other.code, EXIT_ASSIGNEE_MISMATCH);
-  assert.equal(other.assigneeKind, 'assigned-to-other');
+  assert.equal(other.assigneeKind, 'foreign-owner');
 
   const mine = await runPreflight({
     stateBefore: { active: '#769' },
@@ -101,7 +101,7 @@ async function capturePreflightVerb(opts) {
   assert.equal(mine.ok, true);
 }
 
-// --- AC2: unassigned alerts + claim-permitted; other→me forbidden ----------
+// --- AC2: in-flight unassigned alerts; other→me claim forbidden ------------
 {
   // Interactive unassigned bind emits the PROMPT_REQUIRED alert and refuses.
   const cap = await capturePreflightVerb({
@@ -112,7 +112,7 @@ async function capturePreflightVerb(opts) {
     deps: { ...depsOf({ assignees: [] }), env: {} },
   });
   assert.equal(cap.exitCode, EXIT_ASSIGNEE_MISMATCH);
-  assert.match(cap.out, /PROMPT_REQUIRED: assignee-mismatch #769 unassigned/);
+  assert.match(cap.out, /PROMPT_REQUIRED: assignee-mismatch #769 human-coordination-required/);
 
   // claimAssignee assigns @me only when the issue is empty.
   let added = 0;
@@ -173,14 +173,14 @@ async function capturePreflightVerb(opts) {
     deps: { fetchAssignees: async () => ['alice'], fetchCurrentUser: async () => 'kburson' },
   });
   assert.equal(verdict.ok, false);
-  assert.equal(verdict.kind, 'assigned-to-other', 'attributed foreign commit would block');
+  assert.equal(verdict.kind, 'foreign-owner', 'attributed foreign commit would block');
 
   // Chore / un-bound commit carries no token → no check → passthrough.
   assert.deepEqual(parseCommitIssueRefs('git commit -m "chore: tidy scripts"'), []);
   assert.deepEqual(parseCommitIssueRefs('git commit -m "wip no token"'), []);
 }
 
-// --- AC5: multi-assignee including me satisfies the lock -------------------
+// --- AC5: multi-assignee including me still refuses ------------------------
 {
   const v = await checkAssigneeMatch({
     issueNumber: 769,
@@ -190,7 +190,8 @@ async function capturePreflightVerb(opts) {
       fetchCurrentUser: async () => 'kburson',
     },
   });
-  assert.equal(v.ok, true);
+  assert.equal(v.ok, false);
+  assert.equal(v.kind, 'multiple-owners');
 }
 
 // --- AC6: single gateAssigneeMatch flag; default on ------------------------
@@ -225,9 +226,10 @@ async function capturePreflightVerb(opts) {
   assert.equal(fetched, false, 'guard skipped when gateAssigneeMatch=false');
 }
 
-// --- AC7: Full-Auto unassigned auto-claim (no prompt) + audit; foreign refused
+// --- AC7: generic Full-Auto preflight never claims --------------------------
 {
-  // Auto-claim: unassigned issue is claimed with no prompt; audit comment posted.
+  // In-flight unassigned issues refuse even in Full-Auto. The only automatic
+  // claim boundary is the dedicated Plan→Develop exit guard.
   let assignees = [];
   let claimCalls = 0;
   let postCalls = 0;
@@ -253,15 +255,10 @@ async function capturePreflightVerb(opts) {
       },
     },
   });
-  assert.equal(cap.exitCode, null, 'Full-Auto claim proceeds without refusal');
-  assert.equal(claimCalls, 1, 'auto-claim ran exactly once');
-  assert.equal(postCalls, 1, 'audit comment posted');
-  assert.ok(cap.returned, 'verb proceeds after claim');
-  assert.doesNotMatch(
-    cap.out,
-    /PROMPT_REQUIRED: assignee-mismatch/,
-    'no permission prompt emitted'
-  );
+  assert.equal(cap.exitCode, EXIT_ASSIGNEE_MISMATCH);
+  assert.equal(claimCalls, 0, 'generic preflight cannot claim ownership');
+  assert.equal(postCalls, 0, 'generic preflight cannot post a claim audit');
+  assert.match(cap.out, /PROMPT_REQUIRED: assignee-mismatch/);
 
   // Foreign refused even under Full-Auto: claim never attempted.
   let foreignClaimCalls = 0;

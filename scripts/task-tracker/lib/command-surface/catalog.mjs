@@ -120,6 +120,34 @@ export const VERB_CONTRACTS = Object.freeze({
     ['Prints the parked issue, retained fields, and transition result.'],
     [MOVE_REFUSAL, ...PREFLIGHT_TARGET_EXITS]
   ),
+  assign: contract(
+    [
+      'The target must match the active binding and be unassigned; ownership-management preflight still enforces live-state drift.',
+    ],
+    [
+      'Assigns exactly one verified GitHub owner under the issue lock without changing lifecycle Status.',
+    ],
+    ['Prints the final singleton owner and unchanged Status or the refusing ownership condition.'],
+    [exit(2, 'strict argument usage failed'), ...PREFLIGHT_TARGET_EXITS]
+  ),
+  transfer: contract(
+    [
+      'The target must match the active binding and be owned solely by the authenticated local identity.',
+    ],
+    [
+      'Transfers to exactly one verified replacement owner under the issue lock without changing Status.',
+    ],
+    ['Prints the replacement owner and unchanged Status or the refusing ownership condition.'],
+    [exit(2, 'strict argument usage failed'), ...PREFLIGHT_TARGET_EXITS]
+  ),
+  unassign: contract(
+    [
+      'The target must match the active binding, be pre-Develop, and be owned solely by the local identity.',
+    ],
+    ['Removes the singleton owner under the issue lock without changing lifecycle Status.'],
+    ['Prints the unassigned result and unchanged Status or the refusing ownership condition.'],
+    [exit(2, 'strict argument usage failed'), ...PREFLIGHT_TARGET_EXITS]
+  ),
   refine: contract(
     [
       'The issue must exist in Backlog; size, estimate, priority, and reason are required; assignee and drift checks must pass.',
@@ -467,6 +495,9 @@ export const VERB_RELATED_COMMANDS = Object.freeze({
   promote: Object.freeze(['demote', 'plan', 'test', 'review', 'close']),
   demote: Object.freeze(['promote', 'review', 'test']),
   park: Object.freeze(['refine', 'promote']),
+  assign: Object.freeze(['transfer', 'unassign', 'promote']),
+  transfer: Object.freeze(['assign', 'unassign', 'status']),
+  unassign: Object.freeze(['assign', 'transfer', 'park']),
   refine: Object.freeze(['park', 'plan', 'promote']),
   plan: Object.freeze(['plan-estimate', 'plan-approve', 'promote']),
   'plan-approve': Object.freeze(['plan-estimate', 'promote']),
@@ -535,6 +566,9 @@ export const VERB_POSITIONAL_ARGUMENTS = Object.freeze({
     positional('#N', 'Required issue number returned one state toward Develop.'),
   ]),
   park: Object.freeze([positional('<N>', 'Issue number to return to Backlog.')]),
+  assign: Object.freeze([positional('<N>', 'Issue number to assign to one owner.')]),
+  transfer: Object.freeze([positional('<N>', 'Issue number whose owner will be replaced.')]),
+  unassign: Object.freeze([positional('<N>', 'Pre-Develop issue number to unassign.')]),
   refine: Object.freeze([positional('<N>', 'Issue number to refine.')]),
   plan: Object.freeze([positional('#N', 'Issue number to move from Refine to Plan.')]),
   'plan-approve': Object.freeze([

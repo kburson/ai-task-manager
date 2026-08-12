@@ -333,8 +333,9 @@ async function evaluate(input) {
 
   // --- gh issue edit body protection ---
   // #361 hard refusal: any `gh issue edit --body` / `--body-file` from Bash is
-  // forbidden (route body writes through `mutateIssueBody`). Label/title/
-  // assignee edits, carrying no body, pass through. (#566 removed the former
+  // forbidden (route body writes through `mutateIssueBody`). Label/title edits
+  // pass through; #1212 routes assignee edits through governed ownership verbs.
+  // (#566 removed the former
   // diff-based path — it was unreachable behind the hard refusal — so the guard
   // no longer needs the live body or the bound issue's state.)
   const ghEditResult = evaluateGhEdit({ command });
@@ -351,18 +352,18 @@ async function evaluate(input) {
 
   // --- #769 commit-time assignee lock ---
   // A `git commit` whose message attributes to an issue (`[#N]` token) is
-  // refused when that issue is assigned to another developer — the assignee is
-  // a work-lock. This is a DEFENSIVE layer; the primary lock is at bind/mutator
-  // time. Unlike the fail-closed verb preflight, fetch failures PASS here so an
-  // offline `gh` never wedges every commit. Token-less/chore commits carry no
-  // `[#N]` and pass — the visible escape hatch.
+  // refused unless that issue has exactly one owner matching the authenticated
+  // clone identity. This is a DEFENSIVE layer; the primary lock is at
+  // bind/mutator time. Ownership failures fail closed because an attributed
+  // commit is development collateral. Token-less/chore commits carry no `[#N]`
+  // and pass — the visible escape hatch.
   await checkCommitAssigneeLock({ command, scanned, projectRoot });
 
   // All checks passed — evaluate() returns and the caller exits 0.
 
   // #769 — commit-time assignee-lock check. Nested so it shares `block()` and
   // the resolved `projectRoot`/`configPath`. Any block() short-circuits with
-  // exit 0; every fetch/parse failure is swallowed so commits are never wedged.
+  // exit 0; ownership verification is fail-closed for attributed commits.
   async function checkCommitAssigneeLock({
     command: rawCommand,
     scanned: scannedCommand,
@@ -392,14 +393,18 @@ async function evaluate(input) {
       let verdict;
       try {
         verdict = await checkAssigneeMatch({ issueNumber, cfg, deps: { cache } });
-      } catch {
-        continue; // fetch failure PASSES at commit-time (defensive layer)
-      }
-      if (!verdict.ok && verdict.kind === 'assigned-to-other') {
+      } catch (error) {
         block(
-          `Refusing git commit: #${issueNumber} is assigned to ${verdict.assignees.join(', ')}, not @${verdict.currentUser}.\n` +
-            `  The issue's assignee is a work-lock — you cannot commit work attributed to another developer's issue.\n` +
-            `  A human must reassign via the GitHub UI (with the current assignee's agreement) before you commit.\n` +
+          `Refusing git commit: could not verify exclusive ownership of #${issueNumber} (${error?.message || String(error)}).\n` +
+            `  Attributed development commits fail closed when ownership is unreadable.\n` +
+            `  Retry with GitHub connectivity, or use an un-attributed chore commit for work that does not belong to the story.`
+        );
+      }
+      if (!verdict.ok) {
+        block(
+          `Refusing git commit: #${issueNumber} ownership is ${verdict.kind}; expected exactly @${verdict.currentUser}.\n` +
+            `  Observed owners: ${verdict.assignees.length ? verdict.assignees.join(', ') : 'none'}.\n` +
+            `  Story ownership is an exclusive workstation lock for attributed development commits.\n` +
             `  Un-attributed chore commits (no \`[#N]\` token) are the intended escape hatch.`
         );
       }

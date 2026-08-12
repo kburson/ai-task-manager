@@ -167,6 +167,32 @@ export const VERB_REFERENCE = {
     ],
     examples: ['/task park 848 --reason "premise falsified after refine review"'],
   },
+  assign: {
+    topic: 'board',
+    summary: 'Assign an unowned story to one GitHub owner without changing lifecycle Status.',
+    usage: '/task assign <N> --to <github-login|@me>',
+    flags: [{ flag: '--to <github-login|@me>', desc: 'required singleton story owner' }],
+    exitCodes: [{ code: 10, meaning: 'ownership precondition or verified postcondition refused' }],
+    examples: ['/task assign 1212 --to @me'],
+  },
+  transfer: {
+    topic: 'board',
+    summary:
+      'Transfer a locally-owned story to one different GitHub owner without changing Status.',
+    usage: '/task transfer <N> --to <github-login>',
+    flags: [{ flag: '--to <github-login>', desc: 'required replacement singleton story owner' }],
+    exitCodes: [{ code: 10, meaning: 'ownership precondition or verified postcondition refused' }],
+    examples: ['/task transfer 1212 --to bob'],
+  },
+  unassign: {
+    topic: 'board',
+    summary: 'Remove the local story owner before Develop without changing lifecycle Status.',
+    usage: '/task unassign <N>',
+    exitCodes: [
+      { code: 10, meaning: 'foreign, multiple, in-flight, or unverifiable ownership refused' },
+    ],
+    examples: ['/task unassign 1212'],
+  },
   refine: {
     topic: 'board',
     summary: 'Atomic pre-Refine entry: set fields, then move Backlog→Refine.',

@@ -206,13 +206,14 @@ import {
   });
   assert.equal(r.block, false);
 
-  // Edit with title/milestone/assignee → pass
+  // Direct assignee edits are governed ownership bypasses and refuse.
   r = evaluateGhEdit({
     command: 'gh issue edit 64 --title "new" --add-assignee @me --milestone v2',
     readBodyFile,
     fetchCurrentBody,
   });
-  assert.equal(r.block, false);
+  assert.equal(r.block, true);
+  assert.match(r.reason, /npx aitm transfer/);
 }
 
 // ── checkBodyChange: aitm-body-version / aitm-stage-rollup marker protection (#361)
