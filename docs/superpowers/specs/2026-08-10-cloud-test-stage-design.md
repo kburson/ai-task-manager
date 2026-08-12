@@ -2,7 +2,7 @@
 
 **Date:** 2026-08-10 (revised 2026-08-12)
 
-**Status:** Revised after Codex and six Claude design reviews; pending Claude re-review
+**Status:** Revised after Codex and seven Claude design reviews; pending Claude re-review
 
 **Branch:** `cloud-test-automation`
 
@@ -250,8 +250,9 @@ The observed Slow distribution is concentrated:
 Greedy longest-processing-time placement over the measured individual file
 timings gives the following calculated schedules. They are within 0.064 seconds
 of the simple `max(total / width, largest file)` lower bound, but they are not
-measured shard runtimes. Fixture-family cohesion may make the real assignment
-less even:
+measured shard runtimes. The estimated cloud maximum is an estimate of the Slow
+execution section, not dependency installation or the complete repository
+phase. Fixture-family cohesion may make the real assignment less even:
 
 | Slow shard width | Local LPT maximum | Estimated cloud maximum |
 | ---------------- | ----------------: | ----------------------: |
@@ -263,14 +264,27 @@ less even:
 The unmeasured cloud multiplier is not sufficient evidence to choose two or
 three shards permanently. A paired disposable canary runs both candidates on
 the same head and runner profile for five completed workflow runs, including
-controlled cold and warm npm-cache conditions. Width two is preferred when
-every shard in all five width-two runs has a repository phase at or below 408
-seconds, 85% of the 480-second envelope, and also fits the 540-second total
-target. Otherwise the interim production width is three. The 72-second
-repository margin protects against ordinary dependency and test growth instead
-of selecting a width that merely passed just below red. This is a guarded
-envelope decision, not a p95 claim; five samples cannot establish the policy
-p95 below.
+controlled cold and warm npm-cache conditions. Every shard in every run must
+fit the install-inclusive 480-second repository envelope and the 540-second
+total-job target. Width two is preferred only when its Slow execution section
+also stays at or below 408 seconds in every warm-cache run. Otherwise the
+interim production width is three. Applying the 85% margin to the execution
+section under warm-cache conditions compares the candidate widths without
+charging width two for the fixed dependency-install cost. The cold-cache runs
+prove that the complete job survives that cost under the unmargined outer
+limits.
+
+The arithmetic makes width two deliberately reachable but marginal. Its
+estimated cloud Slow execution is 335-387 seconds. Using a provisional 60-90
+second install assumption gives a 395-477 second repository subtotal before
+the remaining repository diagnostics and cleanup. These are planning estimates,
+not cloud measurements. Against the warm-cache execution margin, width two has
+an estimated 21-73 seconds of test-growth headroom; against the cold-cache
+480-second repository envelope, it has only 3-85 seconds before the remaining
+repository work. The canary therefore selects width two only when measured
+execution preserves the growth margin and measured cold-cache end-to-end phases
+still satisfy both outer limits. This is a guarded envelope decision, not a p95
+claim; five samples cannot establish the policy p95 below.
 
 The canary owns a minimal standalone partition proof before accepting either
 width. For the exact head, it emits each shard's sorted file list, verifies that
@@ -1232,8 +1246,9 @@ reachable from it.
   conclusion and rejection of an unmeasured Slow-specific ceiling.
 - Slow timing-artifact parsing, provenance preservation, Pareto shares,
   deterministic two-through-five shard LPT calculations, explicit estimate
-  labels, paired two-versus-three canary selection, and the width-two 408-second
-  margin boundary.
+  labels, paired two-versus-three canary selection, the width-two warm-cache
+  408-second execution margin, and the all-run 480-second repository and
+  540-second total-job boundaries, including cold-cache worst cases.
 - Canary partition proof for exact manifest union, empty pairwise intersections,
   missing files, duplicate files, and head mismatch without item 8 policy data.
 - Capacity-bound arithmetic for Free and Pro ceilings, reserved slots, and
@@ -1301,6 +1316,10 @@ Extend `tests/slow/core/ci-lane-wiring.test.mjs` and
   paired on one head, and absent or superseded after production policy lands;
 - its standalone partition check proves exact Slow-manifest union and empty
   pairwise shard intersections without using the production resolution digest;
+- width two is selected only when every paired run passes the partition proof,
+  every warm-cache Slow execution section stays at or below 408 seconds, and
+  every cold- and warm-cache run stays within the 480-second repository and
+  540-second total-job boundaries;
 - independent Quality, two Fast-shard, and the selected two or three Slow-shard
   execution jobs;
 - Stage 2 Fast and Slow gate dependencies with `if: always()` and explicit
@@ -1376,10 +1395,14 @@ proceed in parallel. Each item is independently reviewable.
    least five paired workflow runs across controlled cold and warm npm-cache
    conditions. Add the standalone exact-head partition verifier: shard-list
    union equals the Slow manifest and pairwise intersections are empty. Prefer
-   width two only when every shard in every run passes that proof, stays at or
-   below the 408-second repository margin, and fits the 540-second total target;
-   otherwise select width three. Five runs choose width but establish no p95 or
-   Slow section ceiling. Production fan-out depends on the selection;
+   width two only when every shard in every run passes that proof, every
+   warm-cache width-two Slow execution section stays at or below the 408-second
+   margin, and every cold- and warm-cache run stays within the install-inclusive
+   480-second repository envelope and 540-second total-job target; otherwise
+   select width three. Record the 335-387-second execution estimate, provisional
+   60-90-second install assumption, and 395-477-second repository subtotal as
+   estimates rather than measurements. Five runs choose width but establish no
+   p95 or Slow section ceiling. Production fan-out depends on the selection;
    freeze-policy calibration holds its bootstrap until 20 eligible cycles.
 2. **Fast and Quality budget calibration.** Run at least five cold/warm GitHub
    canaries for Quality and both Fast shards, prove initial compatibility with
