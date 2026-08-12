@@ -2,7 +2,7 @@
 
 **Date:** 2026-08-10 (revised 2026-08-12)
 
-**Status:** Revised after Codex and seven Claude design reviews; pending Claude re-review
+**Status:** Approved after Codex and seven Claude design reviews; implementation plan available
 
 **Branch:** `cloud-test-automation`
 
@@ -271,8 +271,8 @@ also stays at or below 408 seconds in every warm-cache run. Otherwise the
 interim production width is three. Applying the 85% margin to the execution
 section under warm-cache conditions compares the candidate widths without
 charging width two for the fixed dependency-install cost. The cold-cache runs
-prove that the complete job survives that cost under the unmargined outer
-limits.
+prove that the complete job survives that cost without applying a margin to the
+outer limits.
 
 The arithmetic makes width two deliberately reachable but marginal. Its
 estimated cloud Slow execution is 335-387 seconds. Using a provisional 60-90
