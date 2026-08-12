@@ -483,17 +483,30 @@ async function evaluate(input) {
       while (index < tokens.length && /^[A-Za-z_][A-Za-z0-9_]*=/.test(tokens[index])) {
         index += 1;
       }
-      if (tokens[index] === 'command') index += 1;
+      while (tokens[index] === 'command' || tokens[index] === 'builtin') index += 1;
       return tokens[index] === 'eval';
     });
   }
 
+  function gitInvocationCommitIndex(tokens, gitIndex) {
+    let index = gitIndex + 1;
+    while (index < tokens.length) {
+      const token = tokens[index];
+      if (token === 'commit') return index;
+      if (!token.startsWith('-')) return -1;
+      if (['-c', '-C', '--git-dir', '--work-tree', '--namespace'].includes(token)) index += 2;
+      else index += 1;
+    }
+    return -1;
+  }
+
   function aliasInvokesCommit(alias) {
     const value = String(alias || '').trim();
-    return (
-      /^commit(?:\s|$)/.test(value) ||
-      /^!\s*commit(?:\s|$)/.test(value) ||
-      /^![\s\S]*\bgit\s+commit(?:\s|$)/.test(value)
+    if (/^commit(?:\s|$)/.test(value) || /^!\s*commit(?:\s|$)/.test(value)) return true;
+    if (!value.startsWith('!')) return false;
+    const tokens = shellWords(value.slice(1));
+    return tokens.some(
+      (token, index) => basename(token) === 'git' && gitInvocationCommitIndex(tokens, index) >= 0
     );
   }
 

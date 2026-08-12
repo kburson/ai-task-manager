@@ -119,9 +119,13 @@ test('dynamic and nested commit messages cannot bypass attribution inspection', 
       'eval \'git commit -m "[#1212] evaluated"\'',
       'CMD=\'git commit -m "[#1212] evaluated variable"\'; eval "$CMD"',
       'eval "$COMMIT_CMD"',
+      'builtin eval "$COMMIT_CMD"',
+      'command builtin eval "$COMMIT_CMD"',
       'git -c alias.ci=commit ci -m "[#1212] alias commit"',
       'git -c alias.ci=\'commit --signoff\' ci -m "[#1212] alias options"',
       'git -c alias.ci=\'!git commit\' ci -m "[#1212] shell alias"',
+      'git -c alias.ci=\'!git -c user.name=Test commit\' ci -m "[#1212] git config alias"',
+      'git -c alias.ci=\'!git --no-pager commit\' ci -m "[#1212] git option alias"',
       'git -c alias.ci=\'!f() { git commit "$@"; }; f\' ci -m "[#1212] function alias"',
     ]) {
       const { payload } = runGuard(fixture, command);
@@ -142,6 +146,16 @@ test('persistently configured commit aliases enforce ownership', () => {
     const { payload } = runGuard(fixture, 'git ci -m "[#1212] configured function alias"');
     assert.equal(payload.decision, 'block');
     assert.match(payload.reason, /exclusive ownership|ownership is foreign-owner/i);
+
+    spawnSync('git', ['config', 'alias.co', '!git --no-pager commit'], {
+      cwd: fixture.dir,
+    });
+    const configuredOptionAlias = runGuard(fixture, 'git co -m "[#1212] configured option alias"');
+    assert.equal(configuredOptionAlias.payload.decision, 'block');
+    assert.match(
+      configuredOptionAlias.payload.reason,
+      /exclusive ownership|ownership is foreign-owner/i
+    );
   } finally {
     fixture.cleanup();
   }
