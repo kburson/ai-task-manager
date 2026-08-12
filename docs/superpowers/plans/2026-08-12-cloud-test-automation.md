@@ -53,6 +53,17 @@ Git, npm, existing AITM GitHub-record capsules and singleton projections.
 - Each task starts with a focused failing test, ends with focused green tests,
   and is committed independently. Do not combine external measurement or
   ruleset changes with unrelated code.
+- Immediately before every Develop commit, run
+  `node scripts/task-tracker/verify-develop.mjs`. It owns the required lint-fix,
+  formatting, and changed/untracked test-file union; do not replace it with a
+  hand-selected test command or a nonexistent aggregate script. Explicit YAML
+  and JSON Prettier checks remain additive where a task names them. The command
+  must exit 0 before staging; any mutation it makes is inspected and included in
+  the task's declared file scope before the commit proceeds.
+- Any runner profile, shard width, fixture-family policy, or measured-weight
+  change ends the active measurement window. Rebalance against the new weights,
+  open a successor window with the new fingerprint, and never combine samples
+  across the old and new topologies.
 
 ## Stable Interfaces
 
@@ -65,7 +76,8 @@ selectCanarySlowWidth({ runs, expectedHeadSha });
 classifySlowImpact({ changedPaths, policy });
 assertSlowImpactPolicyComplete({ trackedPaths, policy, exclusions });
 
-resolveTestShard({ lane, shard, discoveredTests, familyPolicy });
+planWeightedShards({ lane, width, discoveredTests, weights });
+resolveTestShard({ lane, shard, partition });
 verifyExactPartition({ laneManifest, shardManifests, expectedHeadSha, actualHeadSha });
 buildFamilyResolutionDigest({ headSha, lane, assignments });
 
@@ -120,40 +132,65 @@ receipt validator.
 
 | Gate                      | Required before proceeding                                                     |
 | ------------------------- | ------------------------------------------------------------------------------ |
-| Canary selection          | Tasks 1-2 complete and five accepted paired cold/warm runs recorded            |
-| Production Stage 1        | Tasks 2-5 complete with a selected Slow width                                  |
-| Required contexts         | Tasks 8-9 green on a canary PR before Task 14 mutates rulesets                 |
-| Cloud Test lifecycle      | Tasks 10-12 complete before Task 13 grants WIP exemption                       |
-| Parent integration freeze | Selected production topology from Task 2 and lifecycle acceptance from Task 12 |
-| Merge tail                | Tasks 12, 14, and 15 complete                                                  |
-| One-job Slow target       | Task 19 plus 20 eligible production-shaped cycles                              |
-| Ten merges/hour claim     | Task 20 plus measured complete cycles at or below 360 seconds                  |
+| Canary selection          | Tasks 1-3 complete and five accepted paired cold/warm runs recorded            |
+| Production Stage 1        | Tasks 3-6 complete with a selected Slow width                                  |
+| Required contexts         | Tasks 9-10 green on a canary PR before Task 15 mutates rulesets                |
+| Cloud Test lifecycle      | Tasks 11-13 complete before Task 14 grants WIP exemption                       |
+| Parent integration freeze | Selected production topology from Task 3 and lifecycle acceptance from Task 13 |
+| Merge tail                | Tasks 13, 15, and 16 complete                                                  |
+| One-job Slow target       | Task 20 plus 20 eligible production-shaped cycles                              |
+| Ten merges/hour claim     | Task 21 plus measured complete cycles at or below 360 seconds                  |
+
+## Delivery Decomposition
+
+Create no GitHub issues while reviewing or editing this plan. When the plan is
+approved for backlog creation, represent it as one top-level **XL epic** with
+six sub-epics. Each implementation task below becomes one child story under
+exactly one sub-epic. The root epic, every sub-epic, and every child story must
+carry both `Estimate` and `Size` before work starts:
+
+| Sub-epic                            | Child stories      | Delivery boundary                                                         |
+| ----------------------------------- | ------------------ | ------------------------------------------------------------------------- |
+| Calibration and shard bootstrap     | Tasks 1-3          | Durable baseline, parameterized shard runner, and selected cloud topology |
+| Repository execution                | Tasks 4-6 and 9-10 | Slow authority, budgets, production family policy, fan-out, and gates     |
+| Local behavior                      | Tasks 7-8          | Bounded Develop obligations and six-worker host admission                 |
+| Record lifecycle                    | Tasks 11-14        | Receipt v2, PR transition, evidence acceptance, and recoverable parking   |
+| External protection and integration | Tasks 15-18        | Rulesets, freezes, merge tail, and conflict rework                        |
+| Measured follow-on and operations   | Tasks 19-22        | Triage, weighted Slow pool, fixture floor, and operational documentation  |
+
+Task 15 is filed with the **BLOCKED** label and “maintainer approval of the
+exported ruleset delta” as its blocker. Code and read-only audit work may be
+prepared, but the label cannot be cleared and live rulesets cannot be mutated
+until the maintainer explicitly approves the exact external change. Use the
+`BLOCKED` label plus a visible blocking-condition note. Because human approval
+is not itself an issue, do not invent an `aitm-blocked-by` issue reference.
 
 ## Task Interface Map
 
 | Task | Consumes                                                     | Produces                                                                                         |
 | ---: | ------------------------------------------------------------ | ------------------------------------------------------------------------------------------------ |
 |    1 | Timing artifact schema 2                                     | `normalizeCloudTestBaseline`, `selectCanarySlowWidth`, nearest-rank p95, and capacity arithmetic |
-|    2 | Task 1 decision primitives                                   | Canary summaries and `cloud-test-policy.json` with selected Slow width and measurement window    |
-|    3 | Git changed paths and target-base policy                     | `classifySlowImpact`, completeness audit, and the sole cloud Slow decision                       |
-|    4 | `cloud-test-policy.json` budgets                             | `evaluateCiBudget`, phase state, failure manifests, and `classifyNativeFailure`                  |
-|    5 | Task 2 selected width and baseline weights                   | `resolveTestShard`, exact partition proof, family hash, and head-specific digest                 |
-|    6 | Existing affected selector and receipt v1                    | Direct-only local execution plus a head-bound `develop-cloud-escalation` obligation              |
-|    7 | Fleet locks, user-global capacity config, host/process facts | Host lease lifecycle, cloud dispatch result, and runner concurrency input                        |
-|    8 | Tasks 2-5 policy/runner outputs                              | Production Stage 1 native execution jobs and immutable diagnostic artifacts                      |
-|    9 | Task 8 execution results                                     | Stable native Fast/Slow gate conclusions                                                         |
-|   10 | Tasks 3, 5, and 9 native/policy facts                        | Normalized Actions evidence, v2 receipt validation, and deterministic logical key                |
-|   11 | Authority, assignment, contract, branch lineage, PR adapter  | Authorized Test transition capsule and `awaiting-ci` projection                                  |
-|   12 | Tasks 10-11 plus native Actions facts                        | Accepted `verification-evidence`, repaired evidence projection, and `REVIEW_COMPLETE`            |
-|   13 | Task 11 transition and Task 12 terminal result               | Recoverable WIP exemption decision                                                               |
-|   14 | Task 9 stable gate names and live rulesets                   | Audited strict protection on `trunk` and `feature/epic/*`                                        |
-|   15 | Tasks 2, 12, and 14                                          | Freeze capsule lifecycle, fairness, measurement window, and derived expiry                       |
-|   16 | Accepted receipt, approval evidence, Task 15 freeze          | Per-target lane, exact-head merge, trailers, `integration-result`, and crash repair              |
-|   17 | Task 16 structured integration failure                       | Authorized rework demotion and receipt invalidation                                              |
-|   18 | Task 4 failure classification and native diagnostics         | Bounded triage input and Worker Report                                                           |
-|   19 | Production samples and current family policy                 | Weighted Slow scheduler and measurement-gated width reduction                                    |
-|   20 | Current `cli.test.mjs` benchmark                             | Shared CLI fixture and measured lower file floor                                                 |
-|   21 | Tasks 1-18 operational behavior                              | User/operations documentation and end-to-end regression coverage                                 |
+|    2 | Task 1 baseline weights                                      | Parameterized LPT partition, `--shard`, exact-head partition proof, and shard manifest           |
+|    3 | Tasks 1-2 decision and execution primitives                  | Canary summaries and `cloud-test-policy.json` with the selected Slow width                       |
+|    4 | Git changed paths and target-base policy                     | `classifySlowImpact`, completeness audit, and the sole cloud Slow decision                       |
+|    5 | `cloud-test-policy.json` budgets                             | `evaluateCiBudget`, phase state, failure manifests, and `classifyNativeFailure`                  |
+|    6 | Task 3 selected width and Task 2 partition interface         | Production family policy, head-specific digest, and initial measurement window                   |
+|    7 | Existing affected selector and receipt v1                    | Direct-only local execution plus a head-bound `develop-cloud-escalation` obligation              |
+|    8 | Fleet locks, user-global capacity config, host/process facts | Host lease lifecycle, cloud dispatch result, and runner concurrency input                        |
+|    9 | Tasks 3-6 policy/runner outputs                              | Production Stage 1 native execution jobs and immutable diagnostic artifacts                      |
+|   10 | Task 9 execution results                                     | Stable native Fast/Slow gate conclusions                                                         |
+|   11 | Tasks 4, 6, and 10 native/policy facts                       | Normalized Actions evidence, v2 receipt validation, and deterministic logical key                |
+|   12 | Authority, assignment, contract, branch lineage, PR adapter  | Authorized Test transition capsule and `awaiting-ci` projection                                  |
+|   13 | Tasks 11-12 plus native Actions facts                        | Accepted `verification-evidence`, repaired evidence projection, and `REVIEW_COMPLETE`            |
+|   14 | Task 12 transition and Task 13 terminal result               | Recoverable WIP exemption decision                                                               |
+|   15 | Task 10 stable gate names and live rulesets                  | Audited strict protection on `trunk` and `feature/epic/*`                                        |
+|   16 | Tasks 3, 13, and 15                                          | Freeze capsule lifecycle, fairness, measurement window, and derived expiry                       |
+|   17 | Accepted receipt, approval evidence, Task 16 freeze          | Per-target lane, exact-head merge, trailers, `integration-result`, and crash repair              |
+|   18 | Task 17 structured integration failure                       | Authorized rework demotion and receipt invalidation                                              |
+|   19 | Task 5 failure classification and native diagnostics         | Bounded triage input and Worker Report                                                           |
+|   20 | Production samples and current family policy                 | Weighted Slow scheduler and measurement-gated width reduction                                    |
+|   21 | Current `cli.test.mjs` benchmark                             | Shared CLI fixture, rebalanced family policy, and successor measurement window                   |
+|   22 | Tasks 1-19 operational behavior                              | User/operations documentation and end-to-end regression coverage                                 |
 
 ---
 
@@ -200,15 +237,83 @@ receipt validator.
 - [ ] Commit:
 
   ```bash
+  node scripts/task-tracker/verify-develop.mjs
   git add scripts/run-tests-timing.mjs scripts/task-tracker/lib/cloud-test/performance-baseline.mjs scripts/task-tracker/tests/fixtures/performance/cloud-test-local-baselines-2026-08-11.json scripts/task-tracker/tests/unit/core/run-tests-timing.test.mjs scripts/task-tracker/tests/unit/lib/cloud-test/performance-baseline.test.mjs
   git commit -m "test(ci): preserve cloud test calibration baselines"
   ```
 
-## Task 2: Run the Disposable Cloud Canary and Record the Selected Topology
+## Task 2: Add Parameterized Shard Execution and Standalone Partition Proof
+
+**Spec decomposition:** 1 and 8 (canary bootstrap only)
+
+**Prerequisite:** Task 1
+
+**Files:**
+
+- Create: `scripts/partition-tests.mjs`
+- Create: `scripts/task-tracker/lib/cloud-test/shard-partition.mjs`
+- Create: `scripts/task-tracker/tests/unit/lib/cloud-test/shard-partition.test.mjs`
+- Modify: `scripts/run-tests-lanes.mjs`
+- Modify: `scripts/run-tests.mjs`
+- Modify: `scripts/task-tracker/tests/unit/core/run-tests-lanes.test.mjs`
+
+- [ ] Add RED tests for
+      `planWeightedShards({ lane, width, discoveredTests, weights })`. Require a
+      positive integer width, one finite non-negative weight for every
+      discovered file, deterministic greedy longest-processing-time placement,
+      stable shard IDs `${lane}-${index}`, and no assumed production width. For
+      a test added after the 2026-08-11 baseline, derive a lane-median fallback
+      from that baseline and label it `unmeasured-fallback`; never present the
+      fallback as a measured file timing.
+- [ ] Add RED tests for `verifyExactPartition`: manifest-union equality, empty
+      pairwise intersections, exact-head binding, missing-file rejection,
+      duplicate-file rejection, unexpected-file rejection, and deterministic
+      sorted shard lists.
+- [ ] Add RED CLI tests proving
+      `node scripts/partition-tests.mjs --lane slow --width 2 --weights scripts/task-tracker/tests/fixtures/performance/cloud-test-local-baselines-2026-08-11.json --output .aitm/canary-slow-width-2.json`
+      writes a complete parameterized partition, and
+      `node scripts/run-tests.mjs --lane slow --shard slow-1 --partition .aitm/canary-slow-width-2.json`
+      executes only the named shard and refuses an invalid or incomplete
+      partition before starting a test child.
+- [ ] Run:
+
+  ```bash
+  node --test scripts/task-tracker/tests/unit/lib/cloud-test/shard-partition.test.mjs scripts/task-tracker/tests/unit/core/run-tests-lanes.test.mjs
+  ```
+
+  Expected: FAIL because the partition module and runner arguments do not exist.
+
+- [ ] Implement the pure LPT planner and partition verifier. A partition input
+      contains `headSha`, `lane`, `width`, and a complete mapping from shard IDs
+      to sorted files; it contains no production family-policy hash or
+      resolution digest.
+- [ ] Implement `partition-tests.mjs` as the CLI adapter around
+      `planWeightedShards`; it loads the exact-head lane manifest and normalized
+      baseline weight list, fills only genuinely new files with the labeled
+      lane-median fallback, verifies the output, and writes only the requested
+      repository-relative JSON path.
+- [ ] Extend the runner with `--shard slow-1` and
+      `--partition .aitm/canary-slow-width-2.json`. Treat those values as
+      repeatable CLI parameters rather than hard-coded constants. Resolve the
+      exact shard only after verifying the partition against the lane manifest
+      and current head.
+- [ ] Emit `.aitm/test-shard-${lane}-${shard}.json` containing head SHA, lane,
+      shard, width, sorted files, and the partition proof result. This is the
+      canary-owned exactly-once evidence consumed by Task 3.
+- [ ] Re-run the focused tests and expect PASS.
+- [ ] Commit:
+
+  ```bash
+  node scripts/task-tracker/verify-develop.mjs
+  git add scripts/partition-tests.mjs scripts/task-tracker/lib/cloud-test/shard-partition.mjs scripts/task-tracker/tests/unit/lib/cloud-test/shard-partition.test.mjs scripts/run-tests-lanes.mjs scripts/run-tests.mjs scripts/task-tracker/tests/unit/core/run-tests-lanes.test.mjs
+  git commit -m "feat(test): add parameterized shard execution"
+  ```
+
+## Task 3: Run the Disposable Cloud Canary and Record the Selected Topology
 
 **Spec decomposition:** 1-2
 
-**Prerequisite:** Task 1
+**Prerequisites:** Tasks 1-2
 
 **Files:**
 
@@ -222,15 +327,18 @@ receipt validator.
 - [ ] Add RED tests proving the canary is `workflow_dispatch` only, uses
       `contents: read`, runs widths two and three against one exact SHA, has
       controlled cold and warm cache jobs, and emits no stable required context.
-- [ ] Add RED tests for standalone partition proof: manifest union equality,
-      pairwise-empty intersections, missing file, duplicate file, and head
-      mismatch.
+- [ ] Add RED workflow tests proving every candidate invokes Task 2's
+      `verifyExactPartition` against the canary's exact-head lane manifest
+      before any test child runs.
 - [ ] Run the unit and workflow tests; expect FAIL on the missing workflow and
       policy.
 - [ ] Implement the canary so a cache-prime job precedes warm-cache candidates,
       cold jobs use a run-unique cache key with no restore key, and both
-      candidates emit sorted shard manifests plus phase timings. Include Quality
-      and two Fast shards in both cache conditions for calibration.
+      candidates invoke `scripts/partition-tests.mjs` with workflow-local width
+      and Task 1 weights, then emit sorted shard manifests plus phase timings.
+      Include Quality and two Fast shards in both cache conditions for
+      calibration. The workflow-local partitions are experimental inputs, not a
+      checked-in production family policy.
 - [ ] Reject the calibration unless Quality and both Fast shards pass all five
       cold/warm pairs under the provisional 210/150-second Fast section limits,
       480-second repository envelope, and 600-second hard job stop. Record the
@@ -241,6 +349,8 @@ receipt validator.
 - [ ] Commit and push the disposable canary before dispatching it:
 
   ```bash
+  npx prettier --check .github/workflows/ci-slow-shard-canary.yml scripts/task-tracker/cloud-test-policy.json
+  node scripts/task-tracker/verify-develop.mjs
   git add .github/workflows/ci-slow-shard-canary.yml scripts/task-tracker/cloud-test-policy.json scripts/task-tracker/lib/cloud-test/canary-policy.mjs scripts/task-tracker/lib/ci-workflow-history.mjs scripts/task-tracker/tests/unit/lib/cloud-test/canary-policy.test.mjs scripts/task-tracker/tests/slow/core/ci-lane-wiring.test.mjs
   git commit -m "ci: add cloud shard calibration canary"
   git push origin cloud-test-automation
@@ -263,18 +373,16 @@ receipt validator.
       The code writes `production.slowWidth` as `2` only if every all-run rule
       passes; otherwise it writes `3`. It must not write a Slow section ceiling
       or p95.
-- [ ] Open measurement window `cloud-test-bootstrap-1` in the policy with the
-      selected width, runner profile, opening commit, family-policy fingerprint,
-      and target sample count 20.
 - [ ] Re-run the focused tests and `npx prettier --check` on both YAML/JSON files.
 - [ ] Commit the selected topology without squashing away the canary evidence:
 
   ```bash
+  node scripts/task-tracker/verify-develop.mjs
   git add .github/workflows/ci-slow-shard-canary.yml scripts/task-tracker/cloud-test-policy.json scripts/task-tracker/tests/fixtures/performance/cloud-test-canary-selection.json scripts/task-tracker/lib/cloud-test/canary-policy.mjs scripts/task-tracker/lib/ci-workflow-history.mjs scripts/task-tracker/tests/unit/lib/cloud-test/canary-policy.test.mjs scripts/task-tracker/tests/slow/core/ci-lane-wiring.test.mjs
   git commit -m "ci: record measured cloud shard topology"
   ```
 
-## Task 3: Make Slow Impact a Default-Deny Cloud Authority
+## Task 4: Make Slow Impact a Default-Deny Cloud Authority
 
 **Spec decomposition:** 3
 
@@ -310,11 +418,12 @@ receipt validator.
 - [ ] Commit:
 
   ```bash
+  node scripts/task-tracker/verify-develop.mjs
   git add scripts/task-tracker/lib/slow-impact-selector.mjs scripts/task-tracker/slow-impact-manifest.json scripts/task-tracker/slow-impact-inventory-exclusions.json scripts/task-tracker/test-impact-manifest.json scripts/task-tracker/tests/unit/lib/slow-impact-selector.test.mjs scripts/task-tracker/tests/unit/lib/test-impact-selector.test.mjs
   git commit -m "feat(ci): add default-deny slow impact authority"
   ```
 
-## Task 4: Add Repository-Phase Budgets and Native-First Diagnostics
+## Task 5: Add Repository-Phase Budgets and Native-First Diagnostics
 
 **Spec decomposition:** 7
 
@@ -357,21 +466,25 @@ receipt validator.
 - [ ] Commit:
 
   ```bash
+  node scripts/task-tracker/verify-develop.mjs
   git add scripts/ci-budget.mjs scripts/run-tests-ceiling.mjs scripts/run-tests-report.mjs scripts/run-tests.mjs scripts/task-tracker/lib/cloud-test/ci-budget.mjs scripts/task-tracker/lib/cloud-test/failure-classification.mjs scripts/task-tracker/tests/unit/core/run-tests-ceiling.test.mjs scripts/task-tracker/tests/unit/lib/cloud-test/ci-budget.test.mjs scripts/task-tracker/tests/unit/lib/cloud-test/failure-classification.test.mjs
   git commit -m "feat(ci): enforce named repository phase budgets"
   ```
 
-## Task 5: Promote Timing-Balanced Fixture Families into Checked-In Policy
+## Task 6: Promote Selected Fixture Families into Checked-In Policy
 
 **Spec decomposition:** 8
 
-**Prerequisite:** Task 2 selected the Slow width
+**Prerequisites:** Task 2 provides parameterized shard execution; Task 3 selects
+the Slow width
 
 **Files:**
 
 - Create: `scripts/task-tracker/test-family-policy.json`
 - Create: `scripts/task-tracker/lib/cloud-test/test-family-policy.mjs`
 - Create: `scripts/task-tracker/tests/unit/lib/cloud-test/test-family-policy.test.mjs`
+- Modify: `scripts/task-tracker/cloud-test-policy.json`
+- Modify: `scripts/task-tracker/lib/cloud-test/shard-partition.mjs`
 - Modify: `scripts/run-tests-lanes.mjs`
 - Modify: `scripts/run-tests.mjs`
 - Modify: `scripts/task-tracker/tests/unit/core/run-tests-lanes.test.mjs`
@@ -384,21 +497,26 @@ receipt validator.
       files. Assign Unit/Integration families to `fast-a` or `fast-b` and Slow
       families to exactly the selected number of `slow-*` shards using the
       baseline timings as weights.
-- [ ] Extend the runner with `--shard fast-a`. `laneFiles(lane, { shard,
-familyPolicy })` must return only that shard's sorted files and must fail
-      if the complete lane cannot be proven exactly once across the policy.
-- [ ] Emit `.aitm/test-shard-${lane}-${shard}.json` with head SHA, sorted files,
-      family-policy hash, and resolution digest.
+- [ ] Resolve the checked-in family policy into Task 2's partition input. The
+      existing `--shard` path must still verify exact coverage, then add the
+      stable family-policy hash and head-specific resolution digest to
+      `.aitm/test-shard-${lane}-${shard}.json`.
+- [ ] Open measurement window `cloud-test-bootstrap-1` in
+      `cloud-test-policy.json` with the selected width, runner profile, opening
+      commit, newly available family-policy fingerprint, and target sample
+      count 20. Canary selection runs remain ineligible because they predate
+      the production fingerprint.
 - [ ] Run the focused tests; expect PASS only after every currently discovered
       test resolves exactly once.
 - [ ] Commit:
 
   ```bash
-  git add scripts/run-tests-lanes.mjs scripts/run-tests.mjs scripts/task-tracker/test-family-policy.json scripts/task-tracker/lib/cloud-test/test-family-policy.mjs scripts/task-tracker/tests/unit/core/run-tests-lanes.test.mjs scripts/task-tracker/tests/unit/lib/cloud-test/test-family-policy.test.mjs
+  node scripts/task-tracker/verify-develop.mjs
+  git add scripts/run-tests-lanes.mjs scripts/run-tests.mjs scripts/task-tracker/cloud-test-policy.json scripts/task-tracker/test-family-policy.json scripts/task-tracker/lib/cloud-test/test-family-policy.mjs scripts/task-tracker/lib/cloud-test/shard-partition.mjs scripts/task-tracker/tests/unit/core/run-tests-lanes.test.mjs scripts/task-tracker/tests/unit/lib/cloud-test/test-family-policy.test.mjs
   git commit -m "feat(ci): add fixture-family shard policy"
   ```
 
-## Task 6: Bound Develop Verification and Preserve Cloud Obligations
+## Task 7: Bound Develop Verification and Preserve Cloud Obligations
 
 **Spec decomposition:** 5
 
@@ -427,11 +545,12 @@ familyPolicy })` must return only that shard's sorted files and must fail
 - [ ] Commit:
 
   ```bash
+  node scripts/task-tracker/verify-develop.mjs
   git add scripts/task-tracker/lib/test-impact-selector.mjs scripts/task-tracker/verify-develop.mjs scripts/task-tracker/lib/verification-receipt.mjs scripts/task-tracker/tests/unit/lib/test-impact-selector.test.mjs scripts/task-tracker/tests/slow/core/verify-develop.test.mjs scripts/task-tracker/tests/unit/lib/verification-receipt.test.mjs
   git commit -m "feat(verify): defer escalated lanes to cloud Test"
   ```
 
-## Task 7: Add Machine-Wide Worker Admission and Cloud Overflow
+## Task 8: Add Machine-Wide Worker Admission and Cloud Overflow
 
 **Spec decomposition:** 6
 
@@ -492,15 +611,16 @@ familyPolicy })` must return only that shard's sorted files and must fail
 - [ ] Commit:
 
   ```bash
+  node scripts/task-tracker/verify-develop.mjs
   git add scripts/task-tracker/lib/host-worker-admission.mjs scripts/task-tracker/lib/cloud-worker-adapter.mjs scripts/task-tracker/paths.mjs scripts/task-tracker/config.mjs scripts/task-tracker/fleet-registry.mjs scripts/run-tests-pool.mjs scripts/run-tests.mjs scripts/task-tracker/tests/unit/lib/host-worker-admission.test.mjs scripts/task-tracker/tests/integration/lib/host-worker-admission.integration.test.mjs scripts/task-tracker/tests/unit/core/config-host-worker-capacity.test.mjs scripts/task-tracker/tests/unit/lib/fleet-registry.test.mjs
   git commit -m "feat(fleet): enforce host-wide worker admission"
   ```
 
-## Task 8: Replace the Canary with Production Stage 1 Fan-Out
+## Task 9: Replace the Canary with Production Stage 1 Fan-Out
 
 **Spec decomposition:** 9
 
-**Prerequisites:** Tasks 2-5
+**Prerequisites:** Tasks 3-6
 
 **Files:**
 
@@ -538,15 +658,16 @@ familyPolicy })` must return only that shard's sorted files and must fail
 - [ ] Commit:
 
   ```bash
+  node scripts/task-tracker/verify-develop.mjs
   git add -A .github/workflows scripts/slow-impact.mjs scripts/task-tracker/lib/ci-workflow-history.mjs scripts/task-tracker/tests/slow/core/ci-lane-wiring.test.mjs
   git commit -m "ci: fan out production cloud validation"
   ```
 
-## Task 9: Add Stable Stage 2 Gates and Nightly Validation
+## Task 10: Add Stable Stage 2 Gates and Nightly Validation
 
 **Spec decomposition:** 10
 
-**Prerequisite:** Task 8
+**Prerequisite:** Task 9
 
 **Files:**
 
@@ -567,11 +688,12 @@ familyPolicy })` must return only that shard's sorted files and must fail
 - [ ] Commit:
 
   ```bash
+  node scripts/task-tracker/verify-develop.mjs
   git add .github/workflows/ci.yml scripts/task-tracker/lib/ci-workflow-history.mjs scripts/task-tracker/tests/slow/core/ci-lane-wiring.test.mjs
   git commit -m "ci: add native fast and slow policy gates"
   ```
 
-## Task 10: Normalize Native Actions Evidence and Build Receipt V2
+## Task 11: Normalize Native Actions Evidence and Build Receipt V2
 
 **Spec decomposition:** 4
 
@@ -616,15 +738,16 @@ familyPolicy })` must return only that shard's sorted files and must fail
 - [ ] Commit:
 
   ```bash
+  node scripts/task-tracker/verify-develop.mjs
   git add scripts/task-tracker/lib/cloud-test/actions-adapter.mjs scripts/task-tracker/lib/cloud-test/receipt-v2.mjs scripts/task-tracker/tests/fixtures/github-actions scripts/task-tracker/tests/unit/lib/cloud-test scripts/task-tracker/lib/github-records/lifecycle-gate-source.mjs scripts/task-tracker/tests/unit/lib/github-records/lifecycle-gate-source.test.mjs
   git commit -m "feat(records): add GitHub Actions receipt v2"
   ```
 
-## Task 11: Repoint GitHub-Record Test Entry to a PR Transition
+## Task 12: Repoint GitHub-Record Test Entry to a PR Transition
 
 **Spec decomposition:** 12
 
-**Prerequisite:** Task 10
+**Prerequisite:** Task 11
 
 **Files:**
 
@@ -656,15 +779,16 @@ familyPolicy })` must return only that shard's sorted files and must fail
 - [ ] Commit:
 
   ```bash
+  node scripts/task-tracker/verify-develop.mjs
   git add scripts/task-tracker/lib/cloud-test/test-transition.mjs scripts/task-tracker/lib/cloud-test/github-pr-adapter.mjs scripts/task-tracker/verbs/test.mjs scripts/task-tracker/lib/github-records/lifecycle-transition.mjs scripts/task-tracker/lib/github-records/singleton-projections.mjs scripts/task-tracker/tests/unit/lib/cloud-test/test-transition.test.mjs scripts/task-tracker/tests/integration/verbs/github-record-cloud-test-transition.test.mjs
   git commit -m "feat(task): route GitHub records through cloud Test"
   ```
 
-## Task 12: Accept Native Evidence and Advance Test to Review
+## Task 13: Accept Native Evidence and Advance Test to Review
 
 **Spec decomposition:** 13
 
-**Prerequisites:** Tasks 9-11
+**Prerequisites:** Tasks 10-12
 
 **Files:**
 
@@ -686,20 +810,21 @@ familyPolicy })` must return only that shard's sorted files and must fail
       the existing Test-to-Review transition path.
 - [ ] On red, cancellation, stale head, or policy failure, clear parking and
       return a structured disposition without allowing Test evidence. Do not
-      demote automatically until Task 17 installs conflict/failure rework.
+      demote automatically until Task 18 installs conflict/failure rework.
 - [ ] Run the focused unit/integration suites and expect PASS.
 - [ ] Commit:
 
   ```bash
+  node scripts/task-tracker/verify-develop.mjs
   git add scripts/task-tracker/lib/cloud-test/receipt-acceptance.mjs scripts/task-tracker/lib/github-records/singleton-projections.mjs scripts/task-tracker/lib/github-records/projection-repair.mjs scripts/task-tracker/verbs/test.mjs scripts/task-tracker/tests/unit/lib/cloud-test/receipt-acceptance.test.mjs scripts/task-tracker/tests/integration/lib/cloud-test-acceptance.integration.test.mjs
   git commit -m "feat(task): accept native cloud Test evidence"
   ```
 
-## Task 13: Make Awaiting-CI Parking Recoverable and WIP-Safe
+## Task 14: Make Awaiting-CI Parking Recoverable and WIP-Safe
 
 **Spec decomposition:** 14
 
-**Prerequisite:** Task 12
+**Prerequisite:** Task 13
 
 **Files:**
 
@@ -726,15 +851,16 @@ familyPolicy })` must return only that shard's sorted files and must fail
 - [ ] Commit:
 
   ```bash
+  node scripts/task-tracker/verify-develop.mjs
   git add scripts/task-tracker/lib/cloud-test/awaiting-ci.mjs scripts/task-tracker/lib/epic-children-gate.mjs scripts/task-tracker/lib/refine-exit-wip-budget-guard.mjs scripts/task-tracker/lib/decomposition-plan-exit-guard.mjs scripts/task-tracker/lib/github-records/projection-repair.mjs scripts/task-tracker/tests/unit/lib/cloud-test/awaiting-ci.test.mjs scripts/task-tracker/tests/integration/lib/cloud-test-handoff.integration.test.mjs
   git commit -m "feat(task): park and recover awaiting CI work"
   ```
 
-## Task 14: Migrate Required Contexts and Epic-Branch Protection
+## Task 15: Migrate Required Contexts and Epic-Branch Protection
 
 **Spec decomposition:** 11
 
-**Prerequisite:** Tasks 8-9 are green on a canary PR
+**Prerequisite:** Tasks 9-10 are green on a canary PR
 
 **Files:**
 
@@ -767,15 +893,16 @@ familyPolicy })` must return only that shard's sorted files and must fail
 - [ ] Commit repository policy and the auditable migration record:
 
   ```bash
+  node scripts/task-tracker/verify-develop.mjs
   git add scripts/gh/audit-ci-rulesets.mjs scripts/gh/tests/audit-ci-rulesets.test.mjs docs/operations/cloud-test-ruleset-migration.md scripts/task-tracker/cloud-test-policy.json
   git commit -m "ops(ci): require cloud validation policy gates"
   ```
 
-## Task 15: Add Parent-Directed Integration Freezes and Measurement Windows
+## Task 16: Add Parent-Directed Integration Freezes and Measurement Windows
 
 **Spec decomposition:** 17
 
-**Prerequisites:** Tasks 2, 12, and 14
+**Prerequisites:** Tasks 3, 13, and 15
 
 **Files:**
 
@@ -811,15 +938,16 @@ familyPolicy })` must return only that shard's sorted files and must fail
 - [ ] Commit:
 
   ```bash
+  node scripts/task-tracker/verify-develop.mjs
   git add scripts/task-tracker/lib/cloud-test/measurement-window.mjs scripts/task-tracker/lib/cloud-test/integration-freeze.mjs scripts/task-tracker/lib/github-records/capsule-chain.mjs scripts/task-tracker/lib/github-records/singleton-projections.mjs scripts/task-tracker/lib/github-records/projection-repair.mjs scripts/task-tracker/tests/unit/lib/cloud-test/measurement-window.test.mjs scripts/task-tracker/tests/unit/lib/cloud-test/integration-freeze.test.mjs scripts/task-tracker/tests/integration/lib/integration-freeze.integration.test.mjs
   git commit -m "feat(records): coordinate parent integration freezes"
   ```
 
-## Task 16: Implement the Lazy Merge Tail, Receipt Trailers, and Crash Repair
+## Task 17: Implement the Lazy Merge Tail, Receipt Trailers, and Crash Repair
 
 **Spec decomposition:** 18
 
-**Prerequisites:** Tasks 12, 14, and 15
+**Prerequisites:** Tasks 13, 15, and 16
 
 **Files:**
 
@@ -866,15 +994,16 @@ familyPolicy })` must return only that shard's sorted files and must fail
 - [ ] Commit:
 
   ```bash
+  node scripts/task-tracker/verify-develop.mjs
   git add scripts/task-tracker/lib/cloud-test/integration-lane.mjs scripts/task-tracker/lib/cloud-test/receipt-trailers.mjs scripts/task-tracker/lib/full-auto-merge.mjs scripts/task-tracker/lib/full-auto-merge-execute.mjs scripts/task-tracker/merge-back.mjs scripts/task-tracker/lib/github-records/capsule-chain.mjs scripts/task-tracker/tests/unit/lib/cloud-test/integration-lane.test.mjs scripts/task-tracker/tests/unit/lib/cloud-test/receipt-trailers.test.mjs scripts/task-tracker/tests/integration/lib/cloud-test-merge-tail.integration.test.mjs
   git commit -m "feat(merge): add receipt-bound integration tail"
   ```
 
-## Task 17: Route Conflicts and Invalidated Heads Back to Develop
+## Task 18: Route Conflicts and Invalidated Heads Back to Develop
 
 **Spec decomposition:** 19
 
-**Prerequisite:** Task 16
+**Prerequisite:** Task 17
 
 **Files:**
 
@@ -896,15 +1025,16 @@ familyPolicy })` must return only that shard's sorted files and must fail
 - [ ] Commit:
 
   ```bash
+  node scripts/task-tracker/verify-develop.mjs
   git add scripts/task-tracker/lib/cloud-test/integration-rework.mjs scripts/task-tracker/verbs/demote.mjs scripts/task-tracker/lib/evidence-invalidation.mjs scripts/task-tracker/tests/unit/lib/cloud-test/integration-rework.test.mjs scripts/task-tracker/tests/integration/lib/cloud-test-conflict-rework.integration.test.mjs
   git commit -m "feat(task): return integration conflicts to Develop"
   ```
 
-## Task 18: Produce Manifest-Driven Triage Reports
+## Task 19: Produce Manifest-Driven Triage Reports
 
 **Spec decomposition:** 20
 
-**Prerequisites:** Tasks 4 and 12
+**Prerequisites:** Tasks 5 and 13
 
 **Files:**
 
@@ -926,11 +1056,12 @@ familyPolicy })` must return only that shard's sorted files and must fail
 - [ ] Commit:
 
   ```bash
+  node scripts/task-tracker/verify-develop.mjs
   git add scripts/task-tracker/lib/cloud-test/triage.mjs scripts/task-tracker/tests/unit/lib/cloud-test/triage.test.mjs scripts/task-tracker/tests/integration/lib/cloud-test-triage.integration.test.mjs .ai-task-manager/templates/worker-report.md docs/guides/worker-context-contract.md
   git commit -m "feat(ci): add native-first failure triage"
   ```
 
-## Task 19: Recover Slow-Lane Capacity with Weighted Pooling (#1208)
+## Task 20: Recover Slow-Lane Capacity with Weighted Pooling (#1208)
 
 **Spec decomposition:** 15
 
@@ -967,11 +1098,12 @@ measurement window has at least 20 eligible cycles.
 - [ ] Commit:
 
   ```bash
+  node scripts/task-tracker/verify-develop.mjs
   git add -A .github/workflows/ci-slow-pool-canary.yml scripts/task-tracker/lib/test-parallel-safety.mjs scripts/run-tests-pool.mjs scripts/run-tests.mjs scripts/task-tracker/test-family-policy.json scripts/task-tracker/cloud-test-policy.json scripts/task-tracker/tests/unit/lib/slow-weighted-pool.test.mjs scripts/task-tracker/tests/integration/lib/slow-weighted-pool.integration.test.mjs
   git commit -m "perf(test): add measured weighted Slow pooling"
   ```
 
-## Task 20: Lower the Slow Fixture Floor Before Claiming Ten Merges per Hour
+## Task 21: Lower the Slow Fixture Floor Before Claiming Ten Merges per Hour
 
 **Spec decomposition:** 16
 
@@ -984,6 +1116,7 @@ measurement window has at least 20 eligible cycles.
 - Create: `scripts/task-tracker/tests/fixtures/cli/shared-cli-fixture.mjs`
 - Modify: `scripts/benchmarks/compare-test-fixtures.mjs`
 - Create: `scripts/task-tracker/tests/unit/lib/cli-shared-fixture.test.mjs`
+- Modify: `scripts/task-tracker/test-family-policy.json`
 - Modify: `scripts/task-tracker/cloud-test-policy.json`
 
 - [ ] Record a before benchmark for setup count, file wall time, in-process
@@ -997,20 +1130,26 @@ measurement window has at least 20 eligible cycles.
       that mapping in the test.
 - [ ] Run the focused Slow test repeatedly and compare the after benchmark.
       Record the measured floor; do not raise budgets if the target is missed.
+- [ ] Recompute family weights from the new measurement, rebalance the affected
+      Slow families in `test-family-policy.json`, and close the prior measurement
+      window. Open a successor window with the new family-policy fingerprint,
+      runner profile, shard width, opening commit, and target sample count 20;
+      no pre-refactor sample is eligible in the successor set.
 - [ ] Claim ten merges/hour only after production end-to-end cycles, including
       queue/gates/receipt/merge, measure at or below 360 seconds.
 - [ ] Commit:
 
   ```bash
-  git add scripts/task-tracker/tests/slow/lib/cli.test.mjs scripts/task-tracker/tests/fixtures/cli/shared-cli-fixture.mjs scripts/benchmarks/compare-test-fixtures.mjs scripts/task-tracker/tests/unit/lib/cli-shared-fixture.test.mjs scripts/task-tracker/cloud-test-policy.json
+  node scripts/task-tracker/verify-develop.mjs
+  git add scripts/task-tracker/tests/slow/lib/cli.test.mjs scripts/task-tracker/tests/fixtures/cli/shared-cli-fixture.mjs scripts/benchmarks/compare-test-fixtures.mjs scripts/task-tracker/tests/unit/lib/cli-shared-fixture.test.mjs scripts/task-tracker/test-family-policy.json scripts/task-tracker/cloud-test-policy.json
   git commit -m "perf(test): reuse CLI integration fixtures"
   ```
 
-## Task 21: Complete Documentation and End-to-End Rollout Verification
+## Task 22: Complete Documentation and End-to-End Rollout Verification
 
 **Spec decomposition:** 21
 
-**Prerequisites:** Tasks 1-18; Tasks 19-20 are documented as measured follow-on
+**Prerequisites:** Tasks 1-19; Tasks 20-21 are documented as measured follow-on
 gates if they have not yet satisfied their production prerequisites.
 
 **Files:**
@@ -1066,6 +1205,7 @@ gates if they have not yet satisfied their production prerequisites.
 - [ ] Commit:
 
   ```bash
+  node scripts/task-tracker/verify-develop.mjs
   git add docs/guides docs/operations CLAUDE.md scripts/task-tracker/tests/integration/cloud-test-delivery.integration.test.mjs
   git commit -m "docs(ci): publish cloud Test operations and recovery"
   ```
@@ -1074,27 +1214,27 @@ gates if they have not yet satisfied their production prerequisites.
 
 |                              Spec item | Plan task(s) |
 | -------------------------------------: | ------------ |
-| 1. Slow sharding and cloud calibration | 1-2          |
-|        2. Fast and Quality calibration | 2            |
-| 3. Slow-impact authority and migration | 3            |
-|      4. Receipt v2 and Actions adapter | 10           |
-|        5. Bounded Develop verification | 6            |
-|               6. Host worker admission | 7            |
-|      7. CI budget and failure evidence | 4            |
-|       8. Timing-balanced family policy | 5            |
-|                     9. Stage 1 fan-out | 8            |
-|               10. Stage 2 native gates | 9            |
-|                   11. Ruleset coverage | 14           |
-|                 12. Test-stage repoint | 11           |
-|                 13. Receipt acceptance | 12           |
-|                   14. WIP and do-si-do | 13           |
-|                 15. Weighted Slow pool | 19           |
-|                 16. Slow fixture floor | 20           |
-|                 17. Integration freeze | 15           |
-|            18. Merge tail and trailers | 16           |
-|                    19. Conflict rework | 17           |
-|                             20. Triage | 18           |
-|                      21. Documentation | 21           |
+| 1. Slow sharding and cloud calibration | 1-3          |
+|        2. Fast and Quality calibration | 3            |
+| 3. Slow-impact authority and migration | 4            |
+|      4. Receipt v2 and Actions adapter | 11           |
+|        5. Bounded Develop verification | 7            |
+|               6. Host worker admission | 8            |
+|      7. CI budget and failure evidence | 5            |
+|       8. Timing-balanced family policy | 2, 6         |
+|                     9. Stage 1 fan-out | 9            |
+|               10. Stage 2 native gates | 10           |
+|                   11. Ruleset coverage | 15           |
+|                 12. Test-stage repoint | 12           |
+|                 13. Receipt acceptance | 13           |
+|                   14. WIP and do-si-do | 14           |
+|                 15. Weighted Slow pool | 20           |
+|                 16. Slow fixture floor | 21           |
+|                 17. Integration freeze | 16           |
+|            18. Merge tail and trailers | 17           |
+|                    19. Conflict rework | 18           |
+|                             20. Triage | 19           |
+|                      21. Documentation | 22           |
 
 ## Final Verification Checklist
 
