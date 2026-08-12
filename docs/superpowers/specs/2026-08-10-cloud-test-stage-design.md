@@ -2,7 +2,7 @@
 
 **Date:** 2026-08-10 (revised 2026-08-11)
 
-**Status:** Revised after Codex and Claude design review; pending Claude re-review
+**Status:** Revised after Codex and two Claude design reviews; pending Claude re-review
 
 **Branch:** `cloud-test-automation`
 
@@ -22,9 +22,10 @@ not an incidental implementation detail:
 - hierarchical child-to-epic-to-trunk coalescence; and
 - crash repair after receipt acceptance or merge.
 
-Claude's follow-up review added two corrections to the policy design: a
-separate, fail-closed slow-impact classifier and an explicit cloud-defer outcome
-for Develop selections that correctly escalate complete lanes.
+Claude's follow-up reviews added a fail-closed slow-impact authority, an
+explicit cloud-defer outcome for Develop lane escalation, measured staged
+fan-out, an honest merge-throughput model, and a GitHub-backed integration
+freeze at the epic-to-parent boundary.
 
 ## Decision Summary
 
@@ -40,8 +41,10 @@ The design has four independent controls:
 1. **Fast Develop feedback.** A worker runs bounded affected tests only.
    Healthy verification finishes within 180 seconds and must not exceed 300
    seconds; complete-lane escalation is deferred to cloud Test.
-2. **Cloud Test validation.** Independent fast and slow GitHub Actions jobs run
-   on separate VMs and each has a ten-minute execution ceiling.
+2. **Cloud Test validation.** Quality, unit, integration, and slow validation
+   fan out to independent GitHub-hosted VMs for the same head SHA. Stable native
+   gate jobs converge their results. Every execution job has a ten-minute hard
+   ceiling.
 3. **Local resource admission.** All local orchestrators collectively admit at
    most six concurrent local worker agents for this repository on one physical
    host. Orchestrators do not consume those slots. Additional workers use
@@ -94,6 +97,8 @@ check.
 - Keep the local Develop feedback loop below 180 seconds in the healthy case
   and at or below 300 seconds in all supported cases.
 - Complete each cloud validation job within ten minutes of runner start.
+- Sustain three to six merges per hour on one busy target branch initially and
+  use measured fixture-aligned sharding to work toward ten per hour.
 - Make native GitHub Actions results authoritative machine evidence without
   granting CI authority to write AITM records or custom checks.
 - Let local and cloud orchestrators use exactly the same GitHub-backed receipt,
@@ -119,8 +124,9 @@ check.
 - No automatic retirement or weakening of slow tests. Test consolidation,
   shared fixtures, and smoke-test substitutions require separately reviewed
   changes with equivalent risk coverage.
-- No change to the test runner's subprocess parallel-safety in this design.
-  Weighted pooling remains tracked by #1208.
+- No unconditional rewrite of the test runner's subprocess parallel-safety.
+  Weighted pooling remains tracked by #1208, but becomes a rollout prerequisite
+  when baseline GitHub-runner measurements cannot satisfy the budgets below.
 
 ## Time and Capacity Budgets
 
@@ -134,8 +140,8 @@ The existing affected-test selector exposes two different kinds of result:
 
 - directly selected tests, found from changed test files, the reverse-import
   graph, basename heuristics, or explicit manifest entries; and
-- lane escalation, where a policy-sensitive change means that an entire lane
-  must run.
+- unit/integration lane escalation, where a policy-sensitive change means that
+  an entire local-selection lane must run in cloud Test.
 
 Develop executes the directly selected tests locally. It must not materialize
 an escalated lane into every test file on the worker. When escalation is
@@ -144,8 +150,8 @@ then records `develop-cloud-escalation` evidence containing the head SHA,
 changed paths, escalation reasons, and required lanes. That evidence is a
 cloud-validation obligation, not a claim that those lanes passed. `/task test`
 must preserve the obligation, and receipt acceptance must prove the named
-complete lanes ran for the same head in GitHub Actions. A slow-lane obligation
-also prevents a no-impact slow skip.
+complete lanes ran for the same head in GitHub Actions. Slow execution is
+decided separately by the fail-closed cloud policy.
 
 The elapsed budget for one Develop verification invocation is:
 
@@ -165,15 +171,48 @@ ceiling or silently omitting an escalated lane is not the default remedy.
 
 ### Cloud Test budget
 
-The fast and slow jobs each use `timeout-minutes: 10`. The budget begins when a
-runner starts; GitHub queue time is measured separately because repository code
-cannot control it. A timeout is not a test assertion failure. It is classified
-as `ci-time-budget-exceeded` and creates performance work before the timeout is
-relaxed.
+Every execution job uses `timeout-minutes: 10`; this 600-second hard stop is not
+raised to accommodate test growth. Queue time is measured separately because
+repository code cannot control it.
 
-Fast and slow jobs are independent and start concurrently. Slow-impact
-selection belongs to the slow job, before dependency installation or slow-test
-execution. It never delays the fast job and never enters the Develop loop.
+The existing runner ceiling is insufficient for this contract: its default is
+600 seconds **per non-empty execution section**, so a pooled section followed by
+a serial section can consume nearly 1,200 seconds. CI therefore supplies lower
+lane-specific section ceilings and an outer repository-phase budget:
+
+| Boundary                                  | Provisional limit | Purpose                                            |
+| ----------------------------------------- | ----------------: | -------------------------------------------------- |
+| GitHub execution-job hard stop            |              600s | Last-resort platform containment                   |
+| Repository-controlled phase soft envelope |              480s | Fails with the active named phase before hard stop |
+| Unit pooled or serial section             |              120s | `AITM_TEST_CEILING_MS=120000`                      |
+| Integration serial section                |              120s | `AITM_TEST_CEILING_MS=120000`                      |
+| Slow serial section                       |              420s | `AITM_TEST_CEILING_MS=420000`                      |
+
+The 480-second envelope begins before `npm ci` and includes dependency install,
+repository quality or test commands, clean-worktree checks, and diagnostic
+serialization. Checkout, runner setup, and artifact upload share the remaining
+120 seconds. A repository-controlled overrun exits with
+`ci-repository-budget-exceeded` and the active phase. A section overrun retains
+the runner's more specific message. GitHub conclusion `timed_out` is therefore
+a last-resort `ci-hard-timeout`, not the normal signal for test growth.
+
+These internal values are provisional until a measurement spike runs each job
+at least five times on the selected GitHub-hosted runner profile. It records
+cold and warm cache behavior, p50 and p95 checkout, setup, `npm ci`, quality,
+pooled-unit, serial-unit, integration, slow, cleanup, artifact, and Stage 2 gate
+times. The spike must prove p95 repository work fits its 480-second envelope and
+p95 total execution-job time is at most 540 seconds, leaving 60 seconds before
+the hard stop. If unit or integration cannot meet 120 seconds, or slow cannot
+meet 420 seconds, test consolidation, fixture reuse, or #1208 becomes a
+prerequisite; the 600-second hard stop is not relaxed.
+
+Quality, unit, integration, and slow execution start concurrently. Keeping
+integration in its own job spends another runner slot but removes its serial
+cost from the unit/quality critical path. This design deliberately chooses
+lower head-of-line PR latency over the higher whole-repository PR concurrency
+of a two-job layout. Slow-impact selection belongs only to slow executors,
+before dependency installation or slow-test execution; it never delays quality,
+unit, or integration feedback and never enters the Develop loop.
 
 ### Local worker budget
 
@@ -301,16 +340,16 @@ mode and no bulk migration.
 ### Why there is no custom receipt check
 
 GitHub Actions already creates app-authenticated workflow, job, and step
-results. A second check run would duplicate those facts, require write
-permission in a job that executes repository-controlled code, and introduce an
-aggregation problem across fast and slow jobs.
+results. A custom check run would duplicate those facts, require write
+permission in a job that executes repository-controlled code, and introduce a
+second authority beside the native Stage 2 gates.
 
 The orchestrator therefore constructs the canonical receipt from read-only
 sources:
 
 - the PR and exact head commit;
 - the Actions workflow run and attempt;
-- the native fast and slow job/check results;
+- every native execution, shard, and Stage 2 gate result;
 - named step conclusions;
 - the workflow definition and policy fingerprints at the accepted commit;
 - the target-base slow-impact policy; and
@@ -336,7 +375,9 @@ The v2 payload contains at least:
 - native job/check IDs, names, statuses, conclusions, and required step
   conclusions;
 - expected runner labels, `linux-x64`, and Node 22 policy;
-- lockfile, verification-config, and CI-policy fingerprints;
+- lockfile, verification-config, CI-policy, and shard-policy fingerprints;
+- the Quality, Unit, Integration, and Slow executor/shard identities and their
+  stable Stage 2 gate conclusions;
 - any Develop cloud-escalation reasons and required lanes, plus evidence that
   each obligation was satisfied by a complete native job for the same head;
 - the five classifications `lint-full`, `format-full`, `test-unit`,
@@ -364,7 +405,10 @@ CI policy rather than the orchestrator's local machine:
 - the successful setup step and workflow contract must select Node 22;
 - repository, workflow, event, PR, base, and head identities must match;
 - run attempt and job/check IDs must exist in the fetched Actions run;
-- all required jobs and steps must have acceptable native conclusions;
+- all required executors, shards, gates, and steps must have acceptable native
+  conclusions;
+- discovered tests must be covered exactly once by the accepted shard-policy
+  fingerprint, with no missing or duplicate shard;
 - lockfile, verification config, and CI policy hashes must match the tested
   head and target-base policy;
 - every lane named by `develop-cloud-escalation` must have a successful native
@@ -373,15 +417,15 @@ CI policy rather than the orchestrator's local machine:
 - the issue must be derived from the PR's assigned story branch and active work
   assignment, never parsed from untrusted CI output.
 
-Policy-surface changes—workflow files, either impact policy, receipt validation,
-package test scripts, the test runner, or lifecycle gates—force the slow lane
-and require the workflow-security review defined by the Delivery Contract. This
-decision comes from the fail-closed slow-impact policy below, not from the
-existing affected-test selector. The default rule is that CI-policy fingerprints
-match the protected target base. An approved policy-change story may accept a
-new fingerprint only when its sealed contract identifies the reviewed old and
-new values. The orchestrator refuses a topology that silently removes or
-renames a required job or step.
+Policy-surface changes—workflow files, either impact policy, shard or budget
+policy, receipt validation, package test scripts, the test runner, or lifecycle
+gates—force slow execution and require the workflow-security review defined by
+the Delivery Contract. This decision comes from the fail-closed slow-impact
+policy below, not from the existing affected-test selector. The default rule is
+that CI-policy fingerprints match the protected target base. An approved
+policy-change story may accept a new fingerprint only when its sealed contract
+identifies the reviewed old and new values. The orchestrator refuses a topology
+that silently removes or renames a required job, gate, shard, or step.
 
 ### Record mapping and distributed idempotency
 
@@ -413,27 +457,57 @@ permissions:
   contents: read
 ```
 
-### Fast job
+### Staged fan-out
 
-The required context remains `Fast lane (format, lint, unit)` for ruleset
-compatibility, even though integration is now an explicit step. The job:
+Stage 1 fans out four execution jobs immediately for the exact same PR head:
 
-1. checks out full history;
-2. materializes the local `trunk` ref for real-git tests;
-3. sets up Node 22 and installs with `npm ci`;
-4. runs format check;
-5. runs lint and memory-index parity;
-6. runs `npm run test:unit`;
-7. runs `npm run test:integration`; and
-8. verifies the worktree is clean after validation.
+1. **Quality** runs format, lint, memory-index parity, and its clean-worktree
+   check.
+2. **Unit** runs `npm run test:unit` and its clean-worktree check.
+3. **Integration** runs `npm run test:integration` and its clean-worktree
+   check.
+4. **Slow** evaluates slow impact and normally runs `npm run test:slow` before
+   its clean-worktree check.
 
-It does not compute slow impact, wait on the slow job, publish a custom receipt,
-or upload another job's diagnostics.
+Each job independently checks out full history, verifies the expected head SHA,
+materializes the local `trunk` ref when required by real-git tests, sets up Node
+22, and uses the lockfile-keyed npm download cache before a clean `npm ci`.
+Jobs do not share a mutable workspace or `node_modules` artifact. Repeating
+deterministic setup costs runner minutes but preserves isolation and avoids
+trusting files produced by another validation VM.
 
-### Slow job
+Stage 2 contains two short native aggregation jobs. `Fast lane (format, lint,
+unit)` remains the required fast context for ruleset compatibility and depends
+on successful Quality, Unit, and Integration results. The new required slow
+context is `Slow validation policy` and depends on the Slow result. Both gates
+run with `if: always()`, fail unless every required dependency has an acceptable
+native conclusion, and receive no write permission. They are native Actions
+jobs, not custom Checks API publishers. Receipt acceptance independently
+validates every underlying execution job and cannot rely only on the aggregate
+gate's conclusion.
 
-The required context is `Slow lane (full test fleet)`. It starts independently
-of the fast job on its own VM.
+Each gate uses `timeout-minutes: 2` and performs no checkout, dependency setup,
+or repository execution. Its only work is to evaluate the native dependency
+results and emit the stable context. Gate queue and startup latency remain part
+of the head-of-line cycle and must be included in the measurement spike.
+
+### Timing-balanced sharding
+
+The four-executor topology is the initial deployment, not a permanent maximum.
+After the measurement spike, Unit, Integration, or Slow may expand into a
+fixed-size matrix of timing-balanced shards. Every shard receives the same head
+SHA, runner policy, Node version, lockfile, and lane manifest. The checked-in
+shard policy assigns every discovered test exactly once and is fingerprinted in
+the receipt.
+
+Shards align to fixture families rather than arbitrary equal file counts. Tests
+that can share one expensive repository, sandbox, or process fixture stay in
+one shard and reuse that setup; independent fixture families move to different
+VMs. Shard counts increase only when measured critical-path reduction exceeds
+the extra checkout, setup, and queue cost. Stable Stage 2 gate names insulate
+rulesets from matrix width changes.
+
+### Slow-impact authority
 
 The slow decision does **not** treat `selectAffectedTests` as a slow-coverage
 oracle. That function is intentionally fail-open for otherwise-unmapped paths,
@@ -465,34 +539,54 @@ The initial required rules include:
 - both impact selectors and their manifests; and
 - slow tests and their shared fixtures.
 
-The manifest also positively classifies safe exclusions such as documentation
-and reviewed source categories with no slow-system responsibility. A
-completeness test inventories source paths under `scripts/**` and fails when
-any path lacks either outcome. Fallthrough therefore stays safe in production
-while repository tests prevent the policy from silently degrading into
-always-running slow coverage through manifest neglect.
+The manifest also positively classifies narrow safe exclusions such as
+documentation and specifically reviewed source categories with no slow-system
+responsibility. Slow execution is the normal path for an AITM code change; a
+skip is expected mainly for documentation-only or explicitly reviewed changes.
+The optimization model therefore budgets two real validation families rather
+than treating slow execution as exceptional.
 
-The slow job then:
+The completeness test inventories the protected target's entire tracked tree,
+using `git ls-files`, minus a checked-in, reviewed inventory-exclusion list that
+is initially empty. Every remaining path must match at least one explicit
+`slow-required` or `safe-to-skip-slow` rule. A new top-level directory, workflow,
+fixture, or configuration file therefore cannot escape policy review.
+Fallthrough remains safe in production while repository tests prevent manifest
+neglect from silently degrading into always-running slow coverage.
+
+During migration, every path that the existing
+`scripts/task-tracker/test-impact-manifest.json` escalates to `slow` must also
+resolve `slow-required` under the new authority. The same implementation slice
+then removes `slow` lane escalation from the old manifest and adds a test
+forbidding its return. Thereafter the fail-open affected-test selector owns
+bounded local unit/integration selection only, and the fail-closed slow-impact
+manifest is the single permanent authority for cloud slow execution.
+
+Each Slow executor then:
 
 1. checks out full history and sets up Node 22;
 2. resolves the PR target base and exact head;
 3. runs `classifySlowImpact` before `npm ci`;
-4. exits successfully with a structured step summary when no slow test can be
-   affected; or
-5. installs dependencies, runs `npm run test:slow`, and verifies a clean
-   worktree when slow coverage is required.
+4. exits successfully with a structured step summary when every path is
+   positively safe; or
+5. installs dependencies, runs its complete assigned slow shard, and verifies a
+   clean worktree when slow coverage is required.
 
-There is one job and one stable check name. There is no same-named skip job and
-no workflow-level `paths:` filter. The check always exists. A no-impact run is
-cheap but still leaves native evidence that selection executed.
+Scheduled nightly runs bypass path-based skipping and execute every slow shard
+unconditionally. Manual runs expose the same unconditional mode for policy and
+fixture validation.
 
-The orchestrator cannot accept a skip when the head-bound Develop evidence
-names `test-slow`, even if path classification alone would permit it. That
-mismatch is a policy defect and requires a corrected run; a locally written
-obligation does not grant the workflow permission to read or trust issue state.
-The orchestrator accepts any other skip only after recomputing the decision
-with `classifySlowImpact` and the manifest from the protected target base. The
-v2 receipt then carries:
+There is one stable slow gate name. There is no same-named skip job and no
+workflow-level `paths:` filter. The gate always exists. A no-impact run is the
+narrow exception; it is cheap but still leaves native evidence that selection
+executed.
+
+For compatibility during migration, the orchestrator cannot accept a skip when
+older head-bound Develop evidence names `test-slow`, even if path classification
+alone would permit it. New Develop evidence does not create slow obligations;
+the fail-closed cloud policy is authoritative. The orchestrator accepts a skip
+only after recomputing the decision with `classifySlowImpact` and the manifest
+from the protected target base. The v2 receipt then carries:
 
 - `reason: no-slow-impact`;
 - target base and head SHAs;
@@ -519,10 +613,53 @@ a required context absent: emit the stable contexts first, observe them on a
 canary PR, add requirements, then remove any obsolete policy.
 
 GitHub-hosted concurrency is finite. At the current 20-standard-job ceiling,
-ten PRs can execute two real jobs simultaneously and additional PRs queue. That
-queue is acceptable; oversubscribing the maintainer's machine is not. If demand
-persistently exceeds the hosted limit, increasing runner capacity is a separate
-operational decision, not a reason to weaken validation.
+the initial four-executor topology can run Stage 1 for at most five PRs with no
+headroom. The operational admission target is four active PR validations: 16
+execution slots, leaving four for short gates, a head-of-line refresh, nightly
+work, or push-to-trunk validation. Additional PRs remain queued. Wider test
+matrices reduce simultaneous PR capacity further and are admitted only when
+their measured latency improvement justifies that trade-off.
+
+Slow execution is normal, so capacity planning counts its executor or shards
+for every non-documentation PR. A ten-PR execution claim would require at least
+40 simultaneous heavy-job slots under the initial topology, not the current 20.
+If demand persistently exceeds hosted capacity, increasing runner capacity is a
+separate operational decision, not a reason to weaken validation.
+
+## Delivery Throughput Model
+
+Validation fan-out improves one PR's latency, but strict up-to-date checks make
+the merge tail the binding throughput constraint on a busy target branch. Only
+the head PR is refreshed against the latest target, validated, and merged. The
+next PR then repeats that cycle against the new target head.
+
+For one target branch:
+
+```text
+merges per hour = 3600 / head-of-line cycle seconds
+```
+
+The cycle includes update/rebase, GitHub queue delay, the slowest parallel
+validation path, Stage 2 gates, receipt acceptance, and merge. At a measured or
+assumed 10-20 minutes per cycle, one target delivers approximately 3-6 merges
+per hour. Ten merges per hour requires the complete cycle—not merely one test
+lane—to reach six minutes or less. Once ready work arrives faster than that
+rate, additional agents increase the queue but not target-branch throughput.
+
+The optimization order is therefore:
+
+1. split independent validation onto parallel VMs;
+2. reuse expensive fixtures within timing-balanced shards;
+3. reduce checkout, dependency, and setup churn with safe caches;
+4. optimize serial runner work, including #1208 when measurements require it;
+5. add runner capacity only when queueing, rather than test duration, dominates.
+
+Hierarchical coalescence is the architectural multiplier. Different epic
+branches have independent 3-6 merge-per-hour tails and can integrate children
+concurrently. Trunk then validates and merges one combined epic tree instead of
+replaying every child PR serially. Standalone stories and completed epics still
+share trunk's one serial tail, so hierarchy improves aggregate delivery without
+weakening strict mode or skipping the final interaction test.
 
 ## Failure Diagnostics
 
@@ -540,25 +677,30 @@ Each failing entry contains the repository-relative `entry.full` path, lane,
 exit status, duration, and bounded stdout/stderr. Truncation is explicit in the
 document so a pathological failure cannot create an unbounded artifact.
 
-Each job uploads a unique immutable artifact name containing lane, run ID, and
-attempt. Upload uses `include-hidden-files: true` and `if: always()`. Manifest
-serialization remains diagnostic and best-effort; it can never turn a passing
-test into a failure or establish that a failing test passed.
+Each job uploads a unique immutable artifact name containing lane, shard, run
+ID, and attempt. Upload uses `include-hidden-files: true` and `if: always()`.
+`run-tests.mjs` writes timing output before fleet-leak and section-ceiling
+evaluation, and failure manifests are likewise diagnostic rather than verdicts.
+A complete, green-looking artifact can therefore accompany a red native job.
+Artifact presence is interpreted only after run, job, and step conclusions; it
+can never establish that a failing job passed.
 
 ### Failure taxonomy
 
 Classification begins with native workflow, job, and step conclusions. Artifact
 presence explains a failure but never establishes the verdict.
 
-| Outcome                    | Evidence                                     | Handling                             |
-| -------------------------- | -------------------------------------------- | ------------------------------------ |
-| Setup or pre-test failure  | Checkout/setup/install/quality step failed   | Diagnose the named step              |
-| Test assertion failure     | Test step failed; manifest may be present    | Triage listed files, then logs       |
-| Post-test policy failure   | Tests green; clean/fleet/policy step failed  | Diagnose the policy step             |
-| Manifest unavailable       | Expected diagnostic absent or unreadable     | Use logs; do not infer test category |
-| Cancellation or stale head | Run cancelled or head no longer current      | Ignore or rerun current head         |
-| Timeout                    | Job conclusion `timed_out`                   | Record `ci-time-budget-exceeded`     |
-| Platform or GitHub outage  | Runner/API evidence indicates infrastructure | Retry without labeling a code defect |
+| Outcome                    | Evidence                                     | Handling                                |
+| -------------------------- | -------------------------------------------- | --------------------------------------- |
+| Setup or pre-test failure  | Checkout/setup/install/quality step failed   | Diagnose the named step                 |
+| Test assertion failure     | Test step failed; manifest may be present    | Triage listed files, then logs          |
+| Test-section budget        | Runner emits a named section-ceiling breach  | Create test-performance rework          |
+| Repository-phase budget    | Soft envelope names the active phase         | Create phase-specific performance work  |
+| Post-test policy failure   | Tests green; clean/fleet/policy step failed  | Diagnose the policy step                |
+| Manifest unavailable       | Expected diagnostic absent or unreadable     | Use logs; do not infer test category    |
+| Cancellation or stale head | Run cancelled or head no longer current      | Ignore or rerun current head            |
+| Hard timeout               | Job conclusion `timed_out` without soft exit | Record `ci-hard-timeout`; inspect infra |
+| Platform or GitHub outage  | Runner/API evidence indicates infrastructure | Retry without labeling a code defect    |
 
 A triage agent is spawned only after classification. It acquires a worker slot,
 reads the lane artifact or failing step log, and reruns only named files or the
@@ -626,6 +768,71 @@ Semantic collisions that do not produce textual conflicts are caught by the
 required tests after the lazy rebase. If conflict frequency rises, a future
 design may add stronger overlap observation or leases using measured evidence.
 
+## Parent-Directed Integration Freeze
+
+An epic branch cannot obtain a stable receipt for its parent-directed PR while
+child integrations continue advancing that same branch. AITM therefore freezes
+child integration only when the branch-owning epic is first in its parent
+branch's merge lane and begins its final refresh.
+
+The active epic coordinator appends an immutable `integration-freeze` capsule
+to the epic issue before updating the parent-directed PR. Its payload binds:
+
+- the frozen epic branch and parent target branch;
+- the parent-directed PR and observed epic-branch head SHA;
+- the coordinator grant and authority epoch;
+- acquisition and expiration timestamps; and
+- phase `pending-receipt`, `accepted-receipt`, `merging`, or `released`.
+
+Phase changes append successor `integration-freeze` capsules that supersede the
+prior record; no capsule is edited in place. A release is the terminal
+`released` phase with a reason and observed live state.
+
+The epic's coordination projection uses opaque assignment state
+`integration-frozen` and points at the effective capsule chain head. This reuses
+the existing projection shape; no local lock or database becomes authority. The
+capsule is authoritative and append-first, while the projection is a repairable
+index. A child orchestrator resolves the issue that owns its target epic branch
+and checks that issue's effective freeze immediately before its expected-SHA
+merge. An active freeze queues the child without demoting it or invalidating its
+receipt.
+
+A child merge already past its final check may race with freeze acquisition.
+After appending the freeze, the epic coordinator re-reads the branch head before
+starting validation. Any drift releases that freeze and retries only after the
+finite set of already-authorized child merges settles. Once the freeze is
+visible, no new compliant child integration may pass its final gate. Strict
+branch protection remains the final defense against an external or stale actor.
+
+The freeze remains active through a pending receipt, an accepted green receipt,
+and the expected-SHA merge. Releasing it when the verdict first turns green
+would reopen the invalidation race; the green path releases only after merge
+success is read back. An authorized release capsule supersedes the freeze on:
+
+- successful parent merge;
+- red validation or repository-phase budget failure;
+- workflow cancellation;
+- epic-branch head drift;
+- parent PR closure;
+- freeze expiration; or
+- coordinator authority replacement or revocation.
+
+The default expiry is 30 minutes and cannot be silently renewed. A replacement
+coordinator reads the epic capsule chain, projection, live PR, exact branch
+head, and Actions run. A freeze from an obsolete authority epoch is ineffective;
+the replacement may acquire a new freeze only if the epic is still eligible and
+head-of-line. A crash between capsule append and projection update is repaired
+from the capsule, while a crash after merge releases the reconstructed freeze
+when it appends the missing `integration-result`.
+
+Freeze priority is bounded to prevent child starvation. Acquisition is allowed
+only for a contract-complete, head-of-line epic. After red, cancellation, drift,
+or expiry, one already-eligible child integration may take the epic-branch lane
+before the same parent-directed PR reacquires, unless no child is waiting. A
+successful freeze normally lasts one validation-and-merge cycle; queued
+children resume against the post-release branch state or the epic's next
+integration cycle.
+
 ## Merge Discipline
 
 Integration is serial per target branch, not globally across unrelated target
@@ -644,15 +851,19 @@ without a local or repository-wide merge mutex.
 
 For the head PR:
 
-1. Fetch the protected target branch and verify the PR's base.
-2. Rebase or update only the head PR to the current target.
-3. Push with lease; the new SHA invalidates prior evidence.
-4. Wait for fresh required fast and slow verdicts and accept a fresh receipt.
-5. Reconfirm Review/approval evidence against that receipt and head.
-6. Merge while supplying the expected PR-head SHA.
-7. Read back the PR and merged commit before recording success.
-8. Append `integration-result` with target branch, tested base SHA, tested head
+1. If the head owns a child-bearing branch, acquire and verify its integration
+   freeze.
+2. Fetch the protected target branch and verify the PR's base.
+3. Rebase or update only the head PR to the current target.
+4. Push with lease; the new SHA invalidates prior evidence.
+5. Wait for fresh required fast and slow gates and accept a fresh receipt.
+6. Reconfirm Review/approval evidence against that receipt and head.
+7. Advance any effective freeze to `merging` and merge while supplying the
+   expected PR-head SHA.
+8. Read back the PR and merged commit before recording success.
+9. Append `integration-result` with target branch, tested base SHA, tested head
    SHA, merged SHA, merge method, PR, and validation receipt ID.
+10. Release any effective integration freeze.
 
 Strict required checks on `trunk` and epic branches are the distributed
 serialization boundary. If another merge advances the target, GitHub refuses
@@ -672,6 +883,11 @@ The same lazy lane rules apply at every level. At the final level, top-level
 epic and standalone-story PRs serialize into `trunk`; deployment consumes only
 that protected branch. This final validation detects interactions between
 otherwise independent epics before deployment.
+
+When an epic reaches this final level, its integration freeze lets one combined
+tree retain a valid receipt long enough to merge. Other epic branches continue
+integrating independently, so the freeze serializes only children targeting the
+branch being promoted; it is not a repository-wide stop-the-world lock.
 
 ## Receipt Trailers and Crash Recovery
 
@@ -701,8 +917,8 @@ message preservation is required.
 If the merge succeeds and the orchestrator dies before appending
 `integration-result`, a replacement coordinator verifies the merged PR, commit,
 trailers, receipt capsule, and authority epoch, then appends the missing
-integration record as a repair. It never reconstructs a receipt from trailers
-alone.
+integration record and releases any effective freeze as one idempotent repair.
+It never reconstructs a receipt from trailers alone.
 
 Check data is retained by GitHub for 400 days and deleted after archival; logs
 and artifacts have shorter repository-configured retention. The issue capsule
@@ -716,7 +932,8 @@ The current trunk-only ruleset is insufficient for child PRs. Delivery requires
 equivalent active protections for `trunk` and `feature/epic/*`:
 
 - pull requests required;
-- native Fast and Slow lane contexts required from GitHub Actions;
+- native `Fast lane (format, lint, unit)` and `Slow validation policy` contexts
+  required from GitHub Actions;
 - strict up-to-date status checks;
 - stale review dismissal where configured;
 - review-thread resolution; and
@@ -739,6 +956,8 @@ reachable from it.
 - Exact head SHA, base SHA, run attempt, workflow identity, and app identity are
   bound into evidence.
 - Authority grants and epochs fence stale local and cloud orchestrators.
+- Child integration gates derive branch freezes from authorized GitHub capsules,
+  never a host-local mutex.
 - A trailer cannot create or repair a missing receipt; it can only point to an
   existing accepted capsule.
 - A green manifest cannot override a red native job conclusion.
@@ -756,11 +975,20 @@ reachable from it.
 - Stale epoch, stale capsule head, conflicting logical key, and changed-head
   rejection.
 - Native job/step classification for every failure-taxonomy row.
+- Section, repository-phase, and hard-job budget classification at 120, 420,
+  480, and 600 seconds, including a green timing artifact with a red policy
+  conclusion.
 - Slow-impact required-over-safe precedence, all-paths-safe skip semantics, and
   `unclassified-path` default-deny behavior using target-base policy.
-- Slow-impact manifest completeness over source files under `scripts/**`, with
-  explicit required cases for workflows, `scripts/gh/**`, task-tracker verbs
-  and states, lifecycle gates, impact policy, and test infrastructure.
+- Slow-impact completeness over the target-base tracked tree minus the explicit
+  inventory exclusions, including new top-level paths, workflows,
+  `scripts/gh/**`, task-tracker verbs and states, lifecycle gates, impact policy,
+  and test infrastructure.
+- Migration invariant that every old-manifest `slow` escalation is
+  `slow-required`, followed by rejection of any permanent `slow` lane in the
+  affected-test manifest.
+- Shard policy completeness, no duplicates, fixture-family cohesion, exact-head
+  identity, and deterministic timing-balanced assignment.
 - Direct Develop selection without lane materialization, head-bound
   `develop-cloud-escalation` evidence, and receipt refusal when a required
   cloud lane did not execute.
@@ -780,11 +1008,17 @@ reachable from it.
 - A stale coordinator cannot accept evidence after epoch replacement.
 - Crash after PR creation adopts the existing PR.
 - Crash after receipt append repairs the projection without another receipt.
-- Crash after merge reconstructs only the missing `integration-result`.
+- Crash after merge reconstructs the missing `integration-result` and releases
+  the effective freeze without duplicating either record.
 - Two eligible PRs targeting one base produce one lazy update; a stale merge is
   refused and retried.
 - A merge conflict records failure, demotes to Develop, and requires a new
   receipt after repair.
+- Integration-freeze acquisition before parent refresh, child refusal while
+  active, race-driven release on head drift, green hold-through-merge, bounded
+  failure release, authority replacement, and projection repair after crash.
+- Freeze fairness permits one already-eligible child after an unsuccessful or
+  expired parent attempt and prevents immediate reacquisition starvation.
 - A seventh local worker uses the cloud adapter or remains queued.
 
 ### Workflow assertions
@@ -794,11 +1028,14 @@ Extend `tests/slow/core/ci-lane-wiring.test.mjs` and
 
 - read-only permissions;
 - no custom Checks API publisher;
-- independent fast and slow jobs;
-- split unit and integration steps;
-- slow-impact selection only in the slow job;
-- stable required context names;
-- ten-minute job timeouts;
+- independent Quality, Unit, Integration, and Slow execution jobs;
+- Stage 2 Fast and Slow gate dependencies with `if: always()`;
+- identical head SHA and policy fingerprints across every shard;
+- slow-impact selection only in Slow executors;
+- stable required contexts `Fast lane (format, lint, unit)` and
+  `Slow validation policy`;
+- 600-second job stops, the 480-second repository envelope, and lane-specific
+  section ceilings, plus the two-minute gate stop;
 - PR concurrency cancellation;
 - lane-specific artifact names;
 - `include-hidden-files: true` and `if: always()` uploads; and
@@ -815,69 +1052,91 @@ live rulesets recognize both native contexts before enforcement changes land.
 ## Consequences
 
 **Better.** Full validation leaves the maintainer's machine. Six local workers
-can retain short affected-test feedback while cloud VMs absorb complete Test
-work. Native GitHub evidence removes a privileged custom publisher. A stable
-receipt ULID connects issue authority, Actions identity, and the merged commit.
-Local and cloud orchestrators recover from the same GitHub state.
+can retain short affected-test feedback while independent cloud VMs execute
+quality, unit, integration, and slow work concurrently. Fixture-aligned shards
+can reduce the slowest path further. Native GitHub evidence removes a privileged
+custom publisher. A stable receipt ULID connects issue authority, Actions
+identity, and the merged commit. Local and cloud orchestrators recover from the
+same GitHub state.
 
-**Worse.** Test includes queue latency. Ten PRs can consume the current 20-job
-GitHub-hosted ceiling and additional runs will queue. Required protection on
-epic branches adds ruleset administration. A network or GitHub outage pauses
-authoritative lifecycle progress. Linux-only validation can miss a platform
-defect.
+**Worse.** One PR initially consumes four heavy execution slots plus two short
+gate jobs. Four simultaneous PR validations are the practical admission target
+under the current 20-job ceiling; wider matrices reduce it. Test includes queue
+latency. Required protection on epic branches adds ruleset administration. A
+network or GitHub outage pauses authoritative lifecycle progress. Linux-only
+validation can miss a platform defect.
 
 **Accepted.** Planning-time isolation does not guarantee conflict-free merges.
 Occasional conflicts return to Develop. Evidence loses external verifiability
 after GitHub retention expires, although its capsule and commit pointer remain.
 Integration is serial per target branch. Unconfigured cloud-worker overflow
-queues rather than oversubscribing the local host.
+queues rather than oversubscribing the local host. At a 10-20 minute
+head-of-line cycle, one target branch delivers only 3-6 merges per hour no
+matter how many agents produced ready PRs. Ten per hour requires a measured
+end-to-end cycle of six minutes or less. Integration freezes temporarily delay
+children of an epic being promoted, with expiry and fairness limiting
+starvation.
 
 ## Decomposition
 
 Ordered by dependency; each item is independently reviewable.
 
-1. **Slow-impact authority.** Add `classifySlowImpact`, the outcome-based
-   manifest, required-over-safe evaluation, target-base recomputation,
-   `unclassified-path` default denial, and source-path completeness tests.
-2. **Receipt v2 and native Actions adapter.** Add source-aware schema,
+1. **GitHub-runner measurement and budget calibration.** Measure at least five
+   cold/warm runs for every proposed executor, record p50/p95 phase timings, and
+   prove or revise the provisional 120/420/480-second internal budgets without
+   raising the 600-second job stop. Gate later CI execution slices on the result
+   and make #1208 or fixture consolidation prerequisite when required.
+2. **Slow-impact authority and migration.** Add `classifySlowImpact`, the
+   outcome-based manifest, required-over-safe evaluation, target-base
+   recomputation, `unclassified-path` default denial, tracked-tree completeness,
+   the cross-manifest invariant, and removal of old-manifest `slow` lanes.
+3. **Receipt v2 and native Actions adapter.** Add source-aware schema,
    deterministic logical key, Actions response normalization, policy
-   fingerprinting, Develop escalation obligations, and `github-actions`
-   lifecycle provenance.
-3. **Bounded Develop verification.** Separate direct test selection from lane
+   fingerprinting, executor/shard identity, Develop escalation obligations, and
+   `github-actions` lifecycle provenance.
+4. **Bounded Develop verification.** Separate direct test selection from lane
    escalation, avoid local lane materialization, emit head-bound cloud
    obligations, warn after 180 seconds, and refuse bounded work after 300
    seconds.
-4. **Host worker admission.** Extend `fleet-registry.mjs` without replacing its
+5. **Host worker admission.** Extend `fleet-registry.mjs` without replacing its
    per-clone observation model; add the repository-keyed machine-wide capacity
    overlay, lease heartbeat/process reclamation, adaptive runner-pool scaling,
    and cloud-adapter fallback.
-5. **Failure manifests.** Add bounded lane-specific manifests using
-   repository-relative `entry.full` paths and unique artifact names.
-6. **Failure classifier.** Classify from native run/job/step conclusions and
-   use artifacts only for diagnosis.
-7. **CI fast-lane split.** Add explicit unit/integration steps, clean-worktree
-   verification, timeout, and stable context assertions.
-8. **Independent slow lane.** Consume the fail-closed slow-impact authority in
-   the slow job, add target-base recomputation, fail-closed skip evidence,
-   timeout, and nightly unconditional execution.
-9. **Ruleset coverage.** Require native Fast and Slow contexts with strict
-   up-to-date enforcement on trunk and epic integration branches.
-10. **Test-stage repoint.** Make `/task test #N` create/reuse the PR, append the
+6. **CI budget harness and failure evidence.** Add the 480-second named-phase
+   envelope, lane-specific section values, bounded lane/shard manifests,
+   artifact ordering rules, and native-first failure classification.
+7. **Stage 1 validation fan-out.** Add independent Quality, Unit, Integration,
+   and Slow executors with exact-head checks, clean installation, safe npm
+   caching, clean-worktree verification, and unique diagnostics.
+8. **Timing-balanced shard policy.** Add checked-in, fixture-aligned,
+   exactly-once shard assignment and measurement-gated matrix widths for lanes
+   whose critical path justifies more VMs.
+9. **Stage 2 native gates.** Add read-only Fast and Slow aggregate jobs, stable
+   context assertions, underlying-job validation, timeout, and nightly
+   unconditional slow execution.
+10. **Ruleset coverage.** Require native Fast and Slow contexts with strict
+    up-to-date enforcement on trunk and epic integration branches.
+11. **Test-stage repoint.** Make `/task test #N` create/reuse the PR, append the
     transition, project `awaiting-ci`, and retain the legacy locator path.
-11. **Receipt acceptance.** Poll native Actions, append
+12. **Receipt acceptance.** Poll native Actions, append
     `verification-evidence`, converge projection, and emit `REVIEW_COMPLETE`.
-12. **WIP and do-si-do.** Exempt only validated `awaiting-ci` stories and resume
+13. **WIP and do-si-do.** Exempt only validated `awaiting-ci` stories and resume
     them from GitHub state across sessions.
-13. **Merge tail and trailers.** Implement per-target deterministic ordering,
-    lazy update, exact-head merge, receipt trailers, and `integration-result`.
-14. **Conflict rework.** Record merge/rebase conflicts, demote to Develop, and
+14. **Integration freeze.** Add authorized freeze/release capsules, projection
+    indexing, child final-gate checks, drift handling, expiry, crash repair, and
+    starvation-bounded fairness.
+15. **Merge tail and trailers.** Implement per-target deterministic ordering,
+    lazy update, exact-head merge, throughput observation, receipt trailers,
+    and `integration-result`.
+16. **Conflict rework.** Record merge/rebase conflicts, demote to Develop, and
     require affected verification plus a fresh cloud receipt.
-15. **Triage.** Add manifest/log-driven diagnosis and Worker Report output.
-16. **Documentation.** Update workflow, settings, Test-stage, cloud-worker
+17. **Triage.** Add manifest/log-driven diagnosis and Worker Report output.
+18. **Documentation.** Update workflow, settings, Test-stage, cloud-worker
     adapter, recovery, and merge guidance.
 
-Out of scope and separately tracked: #1208, which targets the runner's process
-spawn overhead and serial phase through weighted pooling.
+Issue #1208 remains separately tracked, but item 1 may promote it to a rollout
+dependency if measured GitHub-runner timings cannot meet this design's fixed
+budgets.
 
 ## References
 
@@ -885,6 +1144,9 @@ spawn overhead and serial phase through weighted pooling.
 - `docs/spikes/429-fleet-registry-gc.md`
 - `docs/superpowers/specs/2026-07-31-github-native-authority-records-design.md`
 - `docs/superpowers/specs/2026-07-20-epic-aware-git-branching-design.md`
+- [GitHub Actions workflow syntax and matrices](https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax)
+- [GitHub Actions jobs and dependencies](https://docs.github.com/en/actions/how-tos/write-workflows/choose-what-workflows-do/use-jobs)
+- [GitHub Actions dependency caching](https://docs.github.com/en/actions/reference/workflows-and-actions/dependency-caching)
 - [GitHub Actions job conditions](https://docs.github.com/en/actions/how-tos/write-workflows/choose-when-workflows-run/control-jobs-with-conditions)
 - [GitHub required status check troubleshooting](https://docs.github.com/en/pull-requests/how-tos/merge-and-close-pull-requests/troubleshooting-required-status-checks)
 - [GitHub Actions secure-use reference](https://docs.github.com/en/actions/reference/security/secure-use)
