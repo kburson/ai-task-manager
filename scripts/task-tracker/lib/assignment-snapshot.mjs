@@ -68,7 +68,20 @@ export async function fetchAssignmentSnapshot({ issueNumber, cfg, deps = {} } = 
     );
     const issue = data?.repository?.issue;
     if (!issue) throw new Error('assignment snapshot: issue is missing');
+    if (!Array.isArray(issue.assignees?.nodes)) {
+      throw new Error('assignment snapshot: assignees are unreadable');
+    }
     if (!assignees) assignees = issue.assignees;
+    else {
+      const prior = canonicalLogins(assignees.nodes).sort();
+      const current = canonicalLogins(issue.assignees.nodes).sort();
+      if (
+        prior.length !== current.length ||
+        prior.some((owner, index) => owner !== current[index])
+      ) {
+        throw new Error('assignment snapshot: assignees changed during pagination');
+      }
+    }
     const connection = issue.projectItems;
     if (!Array.isArray(connection?.nodes)) {
       throw new Error('assignment snapshot: project membership is unreadable');

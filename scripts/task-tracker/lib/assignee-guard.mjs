@@ -121,14 +121,15 @@ export function formatAssigneeRefusal({ verb, issueNumber, verdict }) {
   if (verdict.kind === 'multiple-owners') {
     return [
       `⛔ Refusing /task ${verb}: ${issue} has multiple story owners (${verdict.assignees.join(', ')}).`,
-      `  AITM development collateral belongs to exactly one workstation owner. Transfer to one owner before continuing.`,
+      `  AITM development collateral belongs to exactly one workstation owner. Reconcile the assignees in the GitHub UI, then retry.`,
     ].join('\n');
   }
   const others = verdict.assignees.join(', ');
   return [
     `⛔ Refusing /task ${verb}: ${issue} is assigned to ${others}, not @${verdict.currentUser}.`,
-    `  Confer with the assignee(s) and sync WIP (branch, in-flight changes, blockers) before requesting reassignment.`,
-    `  After the conversation, use \`npx aitm transfer ${issueNumber} --to @${verdict.currentUser}\`, then retry.`,
+    `  Confer with the current owner and sync WIP (branch, in-flight changes, blockers).`,
+    `  The current owner must run \`npx aitm transfer ${issueNumber} --to @${verdict.currentUser}\` from their workstation,`,
+    `  or a human must reconcile ownership in the GitHub UI before this session retries.`,
   ].join('\n');
 }
 

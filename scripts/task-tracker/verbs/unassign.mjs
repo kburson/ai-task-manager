@@ -11,7 +11,12 @@ import { canonicalLogin, canonicalLogins, isPreDevelopState } from '../lib/owner
 import { GH_API_TIMEOUT_MS } from '../lib/process-timeouts.mjs';
 import { parseStrict, StrictArgvError } from '../lib/argv-strict.mjs';
 import { assertBoundToIssue } from '../lib/bind-context.mjs';
-import { defaultResolveLogin } from './assign.mjs';
+import {
+  defaultListOwnershipAudits,
+  defaultPostOwnershipAudit,
+  defaultResolveLogin,
+  parseOwnershipAudits,
+} from './assign.mjs';
 
 const pexec = promisify(execFile);
 
@@ -23,21 +28,6 @@ async function defaultMutateAssignee({ issueNumber, repo, action, login }) {
   });
 }
 
-async function defaultPostAudit({ issueNumber, repo, from, state }) {
-  const body = [
-    '### Story ownership transaction',
-    '',
-    `Requested removal of #${issueNumber} ownership from @${from}.`,
-    `Lifecycle Status remained \`${state}\`.`,
-    'This durable intent is recorded before mutation; AITM accepts success only after exact read-back.',
-    '',
-    `<!-- aitm-ownership-change from="${from}" to="unassigned" -->`,
-  ].join('\n');
-  await pexec('gh', ['issue', 'comment', String(issueNumber), '-R', repo, '--body', body], {
-    timeout: GH_API_TIMEOUT_MS,
-  });
-}
-
 export async function runUnassign({ issueNumber, cfg, currentUser, deps = {} } = {}) {
   if (!issueNumber) throw new Error('unassign: issueNumber is required');
   if (!cfg?.repo || !cfg?.projectId) throw new Error('unassign: cfg is required');
@@ -45,7 +35,9 @@ export async function runUnassign({ issueNumber, cfg, currentUser, deps = {} } =
   if (!actor) return { status: 'identity-unverifiable' };
   const fetchSnapshot = deps.fetchSnapshot || fetchAssignmentSnapshot;
   const mutateAssignee = deps.mutateAssignee || defaultMutateAssignee;
-  const postAudit = deps.postAudit || defaultPostAudit;
+  const postAudit = deps.postAudit || defaultPostOwnershipAudit;
+  const listAuditBodies =
+    deps.listAuditBodies || (deps.postAudit ? async () => [] : defaultListOwnershipAudits);
   const lock = deps.withIssueLock || withIssueLock;
   const projectDir = deps.projectDir || getProjectDir();
 
@@ -73,7 +65,28 @@ export async function runUnassign({ issueNumber, cfg, currentUser, deps = {} } =
     if (!isPreDevelopState(before.state)) {
       return { status: 'in-flight-unassign-refused', state: before.state, assignees: owners };
     }
-    if (owners.length === 0) return { status: 'already-unassigned', state: before.state };
+    const audits = parseOwnershipAudits(await listAuditBodies({ issueNumber, repo: cfg.repo }));
+    const pending = audits.find(
+      (record) =>
+        record.phase === 'intent' &&
+        record.from === actor &&
+        record.to === 'unassigned' &&
+        record.state === before.state &&
+        !audits.some(
+          (candidate) =>
+            candidate.phase === 'completed' &&
+            candidate.from === record.from &&
+            candidate.to === record.to &&
+            candidate.state === record.state
+        )
+    );
+    if (owners.length === 0) {
+      if (pending) {
+        await postAudit({ issueNumber, repo: cfg.repo, ...pending, phase: 'completed' });
+        return { status: 'unassigned', state: before.state, assignees: [] };
+      }
+      return { status: 'already-unassigned', state: before.state };
+    }
     if (owners.length > 1) return { status: 'multiple-owners-refused', assignees: owners };
     if (owners[0] !== actor) return { status: 'foreign-owner-refused', assignees: owners };
 
@@ -83,8 +96,9 @@ export async function runUnassign({ issueNumber, cfg, currentUser, deps = {} } =
       issueNumber,
       repo: cfg.repo,
       from: actor,
-      to: null,
+      to: 'unassigned',
       state: before.state,
+      phase: 'intent',
     });
 
     let removeError = null;
@@ -141,6 +155,23 @@ export async function runUnassign({ issueNumber, cfg, currentUser, deps = {} } =
     const finalOwners = canonicalLogins(after.assignees);
     if (finalOwners.length !== 0) {
       return { status: 'postcondition-refused', state: after.state, assignees: finalOwners };
+    }
+    try {
+      await postAudit({
+        issueNumber,
+        repo: cfg.repo,
+        from: actor,
+        to: 'unassigned',
+        state: before.state,
+        phase: 'completed',
+      });
+    } catch (error) {
+      return {
+        status: 'unassigned-audit-pending',
+        state: before.state,
+        assignees: [],
+        error: error?.message || String(error),
+      };
     }
     return { status: 'unassigned', state: before.state, assignees: [] };
   });

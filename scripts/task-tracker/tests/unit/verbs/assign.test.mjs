@@ -2,7 +2,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { runAssign } from '../../../verbs/assign.mjs';
+import { formatOwnershipAudit, runAssign } from '../../../verbs/assign.mjs';
 
 const cfg = { repo: 'acme/widgets', projectId: 'PVT_target' };
 
@@ -55,7 +55,11 @@ test('assign claims an unassigned pre-Develop story without changing Status', as
   assert.equal(result.status, 'assigned');
   assert.deepEqual(result.assignees, ['alice']);
   assert.deepEqual(h.mutations, [{ action: 'add', login: 'alice' }]);
-  assert.equal(h.audits.length, 1);
+  assert.equal(h.audits.length, 2);
+  assert.deepEqual(
+    h.audits.map((audit) => audit.phase),
+    ['intent', 'completed']
+  );
   assert.equal(h.lockCalls, 1);
 });
 
@@ -79,6 +83,7 @@ test('assign transfers a locally-owned story to one different owner while preser
   ]);
   assert.equal(h.audits[0].from, 'alice');
   assert.equal(h.audits[0].to, 'bob');
+  assert.equal(h.audits[1].phase, 'completed');
 });
 
 test('assign refuses foreign and multiple ownership before mutation', async () => {
@@ -182,6 +187,95 @@ test('assign is idempotent for the requested singleton owner', async () => {
     deps: h.deps,
   });
   assert.equal(result.status, 'already-assigned');
+  assert.deepEqual(h.mutations, []);
+  assert.deepEqual(h.audits, []);
+});
+
+test('assign retries a pending completion audit without repeating ownership mutation', async () => {
+  const intent = formatOwnershipAudit({
+    issueNumber: 1212,
+    from: null,
+    to: 'alice',
+    state: 'plan',
+    phase: 'intent',
+  });
+  const h = harness([{ state: 'plan', assignees: ['alice'] }]);
+  h.deps.listAuditBodies = async () => [intent];
+  const result = await runAssign({
+    issueNumber: 1212,
+    cfg,
+    target: 'alice',
+    currentUser: 'alice',
+    deps: h.deps,
+  });
+  assert.equal(result.status, 'assigned');
+  assert.deepEqual(h.mutations, []);
+  assert.deepEqual(
+    h.audits.map((audit) => audit.phase),
+    ['completed']
+  );
+});
+
+test('assign reports audit-pending after verified mutation when completion write fails', async () => {
+  const h = harness([
+    { state: 'plan', assignees: [] },
+    { state: 'plan', assignees: ['alice'] },
+  ]);
+  let posts = 0;
+  h.deps.postAudit = async (entry) => {
+    posts += 1;
+    h.audits.push(entry);
+    if (entry.phase === 'completed') throw new Error('completion comment failed');
+  };
+  const result = await runAssign({
+    issueNumber: 1212,
+    cfg,
+    target: 'alice',
+    currentUser: 'alice',
+    deps: h.deps,
+  });
+  assert.equal(result.status, 'assigned-audit-pending');
+  assert.equal(posts, 2);
+  assert.deepEqual(h.mutations, [{ action: 'add', login: 'alice' }]);
+});
+
+test('transfer retry repairs completion audit from the original owner workstation', async () => {
+  const intent = formatOwnershipAudit({
+    issueNumber: 1212,
+    from: 'alice',
+    to: 'bob',
+    state: 'develop',
+    phase: 'intent',
+  });
+  const h = harness([{ state: 'develop', assignees: ['bob'] }]);
+  h.deps.listAuditBodies = async () => [intent];
+  const result = await runAssign({
+    issueNumber: 1212,
+    cfg,
+    target: 'bob',
+    currentUser: 'alice',
+    operation: 'transfer',
+    deps: h.deps,
+  });
+  assert.equal(result.status, 'transferred');
+  assert.deepEqual(h.mutations, []);
+  assert.deepEqual(
+    h.audits.map((audit) => audit.phase),
+    ['completed']
+  );
+});
+
+test('Done preserves final ownership and refuses transfer', async () => {
+  const h = harness([{ state: 'done', assignees: ['alice'] }]);
+  const result = await runAssign({
+    issueNumber: 1212,
+    cfg,
+    target: 'bob',
+    currentUser: 'alice',
+    operation: 'transfer',
+    deps: h.deps,
+  });
+  assert.equal(result.status, 'done-ownership-immutable');
   assert.deepEqual(h.mutations, []);
   assert.deepEqual(h.audits, []);
 });

@@ -493,7 +493,9 @@ async function evaluate(input) {
       const words = shellWords(segment);
       const shellIndex = words.findIndex((word) => /(?:^|\/)(?:sh|bash|zsh)$/.test(word));
       if (shellIndex < 0) continue;
-      const commandIndex = words.indexOf('-c', shellIndex + 1);
+      const commandIndex = words.findIndex(
+        (word, index) => index > shellIndex && /^-[^-]*c[^-]*$/.test(word)
+      );
       const payload = commandIndex < 0 ? null : words[commandIndex + 1];
       if (payload) expanded.push(...expandNestedShellSegments(payload, depth + 1));
     }
@@ -511,7 +513,7 @@ async function evaluate(input) {
             : arg.startsWith('-m') && arg.length > 2
               ? arg.slice(2)
               : null;
-      if (value != null && /\$\{|\$[A-Za-z_(]|`/.test(value)) return true;
+      if (value != null && /\$\{|\$[A-Za-z0-9_(@?*#!-]|`/.test(value)) return true;
     }
     return false;
   }

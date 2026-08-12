@@ -2,6 +2,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
+import { formatOwnershipAudit } from '../../../verbs/assign.mjs';
 import { runUnassign } from '../../../verbs/unassign.mjs';
 
 const cfg = { repo: 'acme/widgets', projectId: 'PVT_target' };
@@ -49,7 +50,7 @@ test('unassign removes the local singleton only before Develop and preserves Sta
     });
     assert.equal(result.status, 'unassigned');
     assert.deepEqual(h.mutations, [{ action: 'remove', login: 'alice' }]);
-    assert.equal(h.audits.length, 1);
+    assert.equal(h.audits.length, 2);
   }
 });
 
@@ -134,4 +135,28 @@ test('unassign never mutates when the durable audit reservation fails', async ()
     /comment transport unavailable/
   );
   assert.deepEqual(h.mutations, []);
+});
+
+test('unassign retries a pending completion audit without repeating ownership mutation', async () => {
+  const intent = formatOwnershipAudit({
+    issueNumber: 1212,
+    from: 'alice',
+    to: 'unassigned',
+    state: 'plan',
+    phase: 'intent',
+  });
+  const h = harness([{ state: 'plan', assignees: [] }]);
+  h.deps.listAuditBodies = async () => [intent];
+  const result = await runUnassign({
+    issueNumber: 1212,
+    cfg,
+    currentUser: 'alice',
+    deps: h.deps,
+  });
+  assert.equal(result.status, 'unassigned');
+  assert.deepEqual(h.mutations, []);
+  assert.deepEqual(
+    h.audits.map((audit) => audit.phase),
+    ['completed']
+  );
 });

@@ -125,6 +125,44 @@ test('fetchAssignmentSnapshot refuses pagination with a missing or repeated curs
   );
 });
 
+test('fetchAssignmentSnapshot refuses owner drift across project-membership pages', async () => {
+  let page = 0;
+  await assert.rejects(
+    fetchAssignmentSnapshot({
+      issueNumber: 12,
+      cfg,
+      deps: {
+        gql: async () => {
+          page += 1;
+          return {
+            repository: {
+              issue: {
+                assignees: { nodes: [{ login: page === 1 ? 'alice' : 'bob' }] },
+                projectItems: {
+                  nodes:
+                    page === 1
+                      ? [{ project: { id: 'OTHER' }, fieldValueByName: { name: 'Plan' } }]
+                      : [
+                          {
+                            project: { id: cfg.projectId },
+                            fieldValueByName: { name: 'Develop' },
+                          },
+                        ],
+                  pageInfo: {
+                    hasNextPage: page === 1,
+                    endCursor: page === 1 ? 'next' : null,
+                  },
+                },
+              },
+            },
+          };
+        },
+      },
+    }),
+    /assignees changed during pagination/
+  );
+});
+
 test('owner helpers are case-insensitive but reject duplicate singleton claims', () => {
   assert.equal(singletonOwner(['Alice']), 'alice');
   assert.equal(singletonOwner(['Alice', 'alice']), null);

@@ -572,7 +572,9 @@ function evaluateGhEditRecursive(command, nestedDepth) {
       const words = shellWords(segment);
       const shellIndex = words.findIndex((word) => /(?:^|\/)(?:sh|bash|zsh)$/.test(word));
       if (shellIndex < 0) continue;
-      const commandIndex = words.indexOf('-c', shellIndex + 1);
+      const commandIndex = words.findIndex(
+        (word, index) => index > shellIndex && /^-[^-]*c[^-]*$/.test(word)
+      );
       const payload = commandIndex < 0 ? null : words[commandIndex + 1];
       if (!payload) continue;
       const nested = evaluateGhEditRecursive(payload, nestedDepth + 1);
@@ -614,19 +616,20 @@ function evaluateGhEditRecursive(command, nestedDepth) {
     const match = segment.match(ISSUE_API_ENDPOINT_RE);
     const writeMethod = args.some(
       (arg, index) =>
-        /^(?:-X|--method=?)PATCH$/i.test(arg) ||
-        (['-X', '--method'].includes(arg) && /^PATCH$/i.test(args[index + 1] || ''))
+        /^(?:-X|--method=?)(?:PATCH|POST|DELETE)$/i.test(arg) ||
+        (['-X', '--method'].includes(arg) && /^(?:PATCH|POST|DELETE)$/i.test(args[index + 1] || ''))
     );
     const assigneeField = args.some((arg) =>
       /^(?:-f|--field|-F|--raw-field)=?assignees(?:\[\])?=/i.test(arg)
     );
     const opaqueInput = API_INPUT_RE.test(segment);
+    const assigneeEndpoint = /\/issues\/\d+\/assignees\b/i.test(segment);
     if (
       (!writeMethod && !ISSUE_API_PATCH_METHOD_RE.test(segment)) ||
-      (!assigneeField && !API_ASSIGNEE_FIELD_RE.test(segment) && !opaqueInput)
+      (!assigneeEndpoint && !assigneeField && !API_ASSIGNEE_FIELD_RE.test(segment) && !opaqueInput)
     )
       continue;
-    if (!match && !opaqueInput) continue;
+    if (!match && !opaqueInput && !assigneeField && !API_ASSIGNEE_FIELD_RE.test(segment)) continue;
     return {
       block: true,
       reason:
@@ -639,11 +642,14 @@ function evaluateGhEditRecursive(command, nestedDepth) {
     const args = ghArgs(segment);
     if (!args || !args.includes('api') || !args.includes('graphql')) continue;
     const hasOpaqueInput = args.some((arg) => arg === '--input' || arg.startsWith('--input='));
-    const hasOpaqueQueryFile = args.some(
-      (arg, index) =>
+    const hasOpaqueQueryFile = args.some((arg, index) => {
+      if (/^(?:-f|-F)(?:query=)?@/.test(arg)) return true;
+      if (/^--(?:field|raw-field)=query=@/.test(arg)) return true;
+      return (
         /^(?:query=)?@/.test(arg) &&
         (index === 0 || ['-f', '-F', '--field', '--raw-field'].includes(args[index - 1]))
-    );
+      );
+    });
     if (!hasOpaqueInput && !hasOpaqueQueryFile && !GRAPHQL_ASSIGNEE_MUTATION_RE.test(segment))
       continue;
     return {

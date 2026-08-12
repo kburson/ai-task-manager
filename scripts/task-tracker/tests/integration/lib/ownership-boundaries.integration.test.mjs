@@ -1,4 +1,5 @@
 // @story #1212
+// cspell:ignore Fquery
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
@@ -342,6 +343,12 @@ test('raw gh assignee edits are refused in favor of governed ownership verbs', (
     'gh api graphql -F query=@.tmp/ownership-mutation.graphql',
     "sh -c 'gh issue edit 1212 --add-assignee bob'",
     'gh api -X PATCH "$ISSUE_ENDPOINT" --input=.tmp/assignees.json',
+    "bash -lc 'gh issue edit 1212 --add-assignee bob'",
+    'gh api -X POST repos/o/r/issues/1212/assignees -f assignees[]=bob',
+    'gh api -X DELETE repos/o/r/issues/1212/assignees -f assignees[]=alice',
+    'gh api -X PATCH "$ISSUE_ENDPOINT" -f assignees[]=bob',
+    'gh api graphql -Fquery=@file',
+    'gh api graphql --field=query=@file',
   ]) {
     const result = evaluateGhEdit({ command });
     assert.equal(result.block, true);

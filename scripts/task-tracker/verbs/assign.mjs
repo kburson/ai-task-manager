@@ -29,19 +29,27 @@ async function defaultMutateAssignee({ issueNumber, repo, action, login }) {
   });
 }
 
-export function formatOwnershipAudit({ issueNumber, from, to, state }) {
+export function formatOwnershipAudit({ issueNumber, from, to, state, phase = 'completed' }) {
+  const completed = phase === 'completed';
   return [
     '### Story ownership transaction',
     '',
-    `Requested ownership change for #${issueNumber} from ${from ? `@${from}` : 'unassigned'} to @${to}.`,
+    `${completed ? 'Verified' : 'Requested'} ownership change for #${issueNumber} from ${from ? `@${from}` : 'unassigned'} to ${to === 'unassigned' ? 'unassigned' : `@${to}`}.`,
     `Lifecycle Status remained \`${state}\`.`,
-    'This durable intent is recorded before mutation; AITM accepts success only after exact read-back.',
+    completed
+      ? 'AITM verified the final singleton ownership and unchanged Status by exact read-back.'
+      : 'This durable intent is recorded before mutation; a separate completed record follows exact read-back.',
+    ...(completed && from && to !== 'unassigned'
+      ? [
+          'Repeated ownership transfers can indicate coordination or delivery risk; review the transaction history.',
+        ]
+      : []),
     '',
-    `<!-- aitm-ownership-change from="${from || 'unassigned'}" to="${to}" -->`,
+    `<!-- aitm-ownership-change phase="${phase}" from="${from || 'unassigned'}" to="${to}" state="${state}" -->`,
   ].join('\n');
 }
 
-async function defaultPostAudit({ issueNumber, repo, from, to, state }) {
+export async function defaultPostOwnershipAudit({ issueNumber, repo, from, to, state, phase }) {
   await pexec(
     'gh',
     [
@@ -51,9 +59,37 @@ async function defaultPostAudit({ issueNumber, repo, from, to, state }) {
       '-R',
       repo,
       '--body',
-      formatOwnershipAudit({ issueNumber, from, to, state }),
+      formatOwnershipAudit({ issueNumber, from, to, state, phase }),
     ],
     { timeout: GH_API_TIMEOUT_MS }
+  );
+}
+
+export async function defaultListOwnershipAudits({ issueNumber, repo }) {
+  const { stdout } = await pexec(
+    'gh',
+    ['api', '--paginate', '--slurp', `repos/${repo}/issues/${issueNumber}/comments?per_page=100`],
+    { timeout: GH_API_TIMEOUT_MS }
+  );
+  const pages = JSON.parse(stdout || '[]');
+  return pages.flat().map((comment) => String(comment?.body || ''));
+}
+
+const OWNERSHIP_AUDIT_RE =
+  /<!--\s*aitm-ownership-change\s+phase="(intent|completed)"\s+from="([^"]+)"\s+to="([^"]+)"\s+state="([^"]+)"\s*-->/i;
+
+export function parseOwnershipAudits(bodies) {
+  return (bodies || []).flatMap((body) => {
+    const match = String(body || '').match(OWNERSHIP_AUDIT_RE);
+    return match
+      ? [{ phase: match[1].toLowerCase(), from: match[2], to: match[3], state: match[4] }]
+      : [];
+  });
+}
+
+function auditMatches(record, tx) {
+  return (
+    record.from === (tx.from || 'unassigned') && record.to === tx.to && record.state === tx.state
   );
 }
 
@@ -75,7 +111,9 @@ export async function runAssign({
   const runtime = {
     fetchSnapshot: deps.fetchSnapshot || fetchAssignmentSnapshot,
     mutateAssignee: deps.mutateAssignee || defaultMutateAssignee,
-    postAudit: deps.postAudit || defaultPostAudit,
+    postAudit: deps.postAudit || defaultPostOwnershipAudit,
+    listAuditBodies:
+      deps.listAuditBodies || (deps.postAudit ? async () => [] : defaultListOwnershipAudits),
   };
   const lock = deps.withIssueLock || withIssueLock;
   const projectDir = deps.projectDir || getProjectDir();
@@ -85,7 +123,25 @@ export async function runAssign({
     const owners = canonicalLogins(before.assignees);
     if (owners.length > 1) return { status: 'multiple-owners-refused', assignees: owners };
     const prior = owners[0] || null;
-    if (prior && prior !== actor) return { status: 'foreign-owner-refused', assignees: owners };
+    const audits = parseOwnershipAudits(
+      await runtime.listAuditBodies({ issueNumber, repo: cfg.repo })
+    );
+    const pending = audits.find(
+      (record) =>
+        record.phase === 'intent' &&
+        record.to === (prior || login) &&
+        record.state === before.state &&
+        !audits.some(
+          (candidate) => candidate.phase === 'completed' && auditMatches(candidate, record)
+        )
+    );
+    if (prior && prior !== actor) {
+      if (operation === 'transfer' && pending?.from === actor && pending.to === prior) {
+        await runtime.postAudit({ issueNumber, repo: cfg.repo, ...pending, phase: 'completed' });
+        return { status: 'transferred', state: before.state, assignees: [prior] };
+      }
+      return { status: 'foreign-owner-refused', assignees: owners };
+    }
     if (operation === 'assign' && prior && prior !== login) {
       return { status: 'transfer-required', state: before.state, assignees: owners };
     }
@@ -93,7 +149,19 @@ export async function runAssign({
       return { status: 'assign-required', state: before.state, assignees: owners };
     }
     if (prior === login) {
+      if (pending) {
+        await runtime.postAudit({ issueNumber, repo: cfg.repo, ...pending, phase: 'completed' });
+        return {
+          status: pending.from === 'unassigned' ? 'assigned' : 'transferred',
+          state: before.state,
+          assignees: owners,
+        };
+      }
       return { status: 'already-assigned', state: before.state, assignees: owners };
+    }
+
+    if (before.state === 'done') {
+      return { status: 'done-ownership-immutable', state: before.state, assignees: owners };
     }
 
     // Reserve durable audit provenance before the first irreversible GitHub
@@ -105,6 +173,7 @@ export async function runAssign({
       from: prior,
       to: login,
       state: before.state,
+      phase: 'intent',
     });
 
     let addError = null;
@@ -195,7 +264,41 @@ export async function runAssign({
           assignees: canonicalLogins(afterTransfer.assignees),
         };
       }
+      try {
+        await runtime.postAudit({
+          issueNumber,
+          repo: cfg.repo,
+          from: prior,
+          to: login,
+          state: before.state,
+          phase: 'completed',
+        });
+      } catch (error) {
+        return {
+          status: 'transferred-audit-pending',
+          state: before.state,
+          assignees: [login],
+          error: error?.message || String(error),
+        };
+      }
       return { status: 'transferred', state: before.state, assignees: [login] };
+    }
+    try {
+      await runtime.postAudit({
+        issueNumber,
+        repo: cfg.repo,
+        from: null,
+        to: login,
+        state: before.state,
+        phase: 'completed',
+      });
+    } catch (error) {
+      return {
+        status: 'assigned-audit-pending',
+        state: before.state,
+        assignees: [login],
+        error: error?.message || String(error),
+      };
     }
     return { status: 'assigned', state: before.state, assignees: [login] };
   });
