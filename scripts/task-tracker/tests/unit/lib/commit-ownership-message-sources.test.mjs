@@ -28,7 +28,7 @@ function makeFixture() {
   const gh = path.join(bin, 'gh');
   writeFileSync(
     gh,
-    '#!/bin/sh\ncase "$*" in\n  *"api user"*) echo alice ;;\n  *) echo \'{"data":{"repository":{"issue":{"assignees":{"nodes":[{"login":"bob"}]}}}}}\' ;;\nesac\n'
+    '#!/bin/sh\ncase "$*" in\n  *"api user"*) echo alice ;;\n  *) cat >/dev/null; echo \'{"data":{"repository":{"issue":{"assignees":{"nodes":[{"login":"bob"}]}}}}}\' ;;\nesac\n'
   );
   chmodSync(gh, 0o755);
   spawnSync('git', ['init', '-q'], { cwd: dir });
