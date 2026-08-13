@@ -1,9 +1,13 @@
 // @story #876
 import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
+import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
+
+import { parseCanonicalTestPath } from '../../../lib/test-lanes.mjs';
 
 const PROJECT_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../../../..');
 const manifestPath = path.join(
@@ -44,4 +48,18 @@ test('pre-move corpus manifest is a one-to-one, lane-preserving path map', () =>
     integration: manifest.counts.integration,
     slow: manifest.counts.slow,
   });
+});
+
+test('pre-move corpus manifest destinations and hashes retain their immutable source', () => {
+  for (const entry of manifest.tests) {
+    const parsed = parseCanonicalTestPath(entry.newPath);
+    assert.ok(parsed, `${entry.newPath} is canonical`);
+    assert.equal(parsed.lane, entry.lane, `${entry.newPath} retains its lane`);
+
+    const source = execFileSync('git', ['show', `${manifest.sourceCommit}:${entry.oldPath}`], {
+      cwd: PROJECT_ROOT,
+    });
+    const digest = createHash('sha256').update(source).digest('hex');
+    assert.equal(digest, entry.sha256, `${entry.oldPath} retains its source digest`);
+  }
 });

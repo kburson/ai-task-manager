@@ -30,6 +30,8 @@ test('parseCanonicalTestPath rejects noncanonical paths', () => {
   assert.equal(parseCanonicalTestPath('scripts/gh/create-issue.test.mjs'), null);
   assert.equal(parseCanonicalTestPath('scripts/tests/fixtures/data.test.mjs'), null);
   assert.equal(parseCanonicalTestPath('scripts/tests/unit/../gh/create-issue.test.mjs'), null);
+  assert.equal(parseCanonicalTestPath('scripts/tests/unit/./gh/create-issue.test.mjs'), null);
+  assert.equal(parseCanonicalTestPath('scripts/tests/unit//gh/create-issue.test.mjs'), null);
 });
 
 test('canonicalLayoutViolations returns sorted noncanonical paths', () => {
