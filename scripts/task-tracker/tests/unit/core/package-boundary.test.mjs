@@ -69,7 +69,8 @@ function repoRoot() {
 // #1206 adds the explicit Assigned Status migration entry point and its
 // injected runtime library; both ship so operators can preview/apply it from
 // an installed package. The exact packed surface grows by two.
-const ENTRY_CEILING = 633;
+// #1249 adds one shipped maintenance CLI and its pure timing interval authority.
+const ENTRY_CEILING = 635;
 
 function packedFiles() {
   const out = execFileSync('npm', ['pack', '--dry-run', '--json'], {

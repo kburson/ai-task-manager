@@ -28,6 +28,14 @@ const accepts = [
     ['node', 'scripts/task-tracker/tests/state.test.mjs'],
   ],
   ['gh issue view 1', ['gh', 'issue', 'view', '1']],
+  [
+    'gh label list --repo kburson/ai-task-manager',
+    ['gh', 'label', 'list', '--repo', 'kburson/ai-task-manager'],
+  ],
+  [
+    'gh label view bug --repo kburson/ai-task-manager',
+    ['gh', 'label', 'view', 'bug', '--repo', 'kburson/ai-task-manager'],
+  ],
   ['npm run "test all"', ['npm', 'run', 'test all']],
 ];
 for (const [input, expected] of accepts) {
@@ -140,6 +148,9 @@ const ghMutatorCases = [
   ['gh api --method POST repos/foo', /rejects flag '--method'/],
   ['gh auth login', /rejects subcommand 'auth'/],
   ['gh repo delete foo', /'gh repo' rejects 'delete'/],
+  ['gh label create unsafe', /'gh label' rejects 'create'/],
+  ['gh label edit unsafe', /'gh label' rejects 'edit'/],
+  ['gh label delete unsafe', /'gh label' rejects 'delete'/],
 ];
 for (const [input, frag] of ghMutatorCases) {
   const r = validateVerificationCommand(input, opts);

@@ -30,6 +30,7 @@ export const APPLY_SCRIPTS = [
   'scripts/task-tracker/heal-lifecycle-dod.mjs',
   'scripts/task-tracker/heal-refine-entry-marker.mjs',
   'scripts/task-tracker/heal-timing-departure.mjs',
+  'scripts/task-tracker/heal-timing-interval.mjs',
   'scripts/task-tracker/heal-timing-log.mjs',
   'scripts/task-tracker/heal-timing-starts.mjs',
   'scripts/task-tracker/heal-vc-refs.mjs',
