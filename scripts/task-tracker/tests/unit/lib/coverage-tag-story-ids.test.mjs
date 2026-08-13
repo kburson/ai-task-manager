@@ -57,6 +57,26 @@ test('tag helpers can be imported without mutating the caller worktree', () => {
   assert.equal(readFileSync(untouched, 'utf8'), 'export const untouched = true;\n');
 });
 
+test('insertTag preserves CRLF line endings', async () => {
+  const { insertTag } = await import(pathToFileURL(SCRIPT).href);
+
+  assert.equal(
+    insertTag('export const x = true;\r\n', '#42'),
+    '// @story #42\r\nexport const x = true;\r\n'
+  );
+});
+
+test('tagger preserves a valid header with a later template shebang line', () => {
+  const cwd = mkdtempOutsideRepo('tag-story-template-shebang-');
+  const content = '// @story #42\nconst x = `\n#!/usr/bin/env node\n`;\n';
+  const fixture = write(cwd, 'scripts/gh/template-shebang.test.mjs', content);
+
+  const result = run(cwd);
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(result.stdout, /Tagged: 0, Fixed shebang order: 0, Skipped \(already correct\): 1/);
+  assert.equal(readFileSync(fixture, 'utf8'), content);
+});
+
 test('non-git sandbox: fixes misplaced tags and discovers co-located tests', () => {
   const cwd = mkdtempOutsideRepo('tag-story-plain-');
 

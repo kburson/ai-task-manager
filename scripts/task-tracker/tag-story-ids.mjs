@@ -32,7 +32,8 @@ export function findCreationIssue(filePath, { exec = execFileSync } = {}) {
 }
 
 export function insertTag(content, storyTag) {
-  const lines = content.split('\n');
+  const eol = content.includes('\r\n') ? '\r\n' : '\n';
+  const lines = content.split(eol);
   const storyLine = `// @story ${storyTag}`;
   if (SHEBANG_RE.test(lines[0])) {
     // Insert after shebang
@@ -41,7 +42,7 @@ export function insertTag(content, storyTag) {
     // Prepend
     lines.unshift(storyLine);
   }
-  return lines.join('\n');
+  return lines.join(eol);
 }
 
 export function fixMisplacedTag(content) {
