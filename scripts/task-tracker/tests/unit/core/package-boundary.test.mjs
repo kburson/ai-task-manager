@@ -75,7 +75,10 @@ function repoRoot() {
 // #1212 intentionally ships five ownership authorities/verbs: canonical
 // policy, exact snapshot, Plan commitment guard, assign/transfer, and unassign.
 // #1213 intentionally ships the snapshot authority, its guard, and cancel-plan.
-const ENTRY_CEILING = 651;
+// #1217 intentionally ships the final board-cutover CLI, transaction authority,
+// shared lifecycle-freeze reader, and operator migration guide. The measured
+// package surface therefore grows by exactly four entries.
+const ENTRY_CEILING = 655;
 
 function packedFiles() {
   const out = execFileSync('npm', ['pack', '--dry-run', '--json'], {

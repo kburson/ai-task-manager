@@ -42,12 +42,14 @@ import {
 } from './assignee-guard.mjs';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
+import { isReadyForPlanMigrationActive } from './ready-for-plan-migration-freeze.mjs';
 
 const pexec = promisify(execFile);
 
 export const EXIT_BIND_MISMATCH = 7;
 export const EXIT_AI_OVERSIGHT = 8;
 export const EXIT_HUMAN_MOVE = 9;
+export const EXIT_MIGRATION_FREEZE = 14;
 export { EXIT_ASSIGNEE_MISMATCH };
 
 function normalizeIssueNumber(target) {
@@ -121,6 +123,16 @@ export async function runPreflight({
       kind: 'bind-mismatch',
       active: stateBefore.active,
       target,
+    };
+  }
+
+  const migrationFreezeActive = deps.migrationFreezeActive || isReadyForPlanMigrationActive;
+  if (migrationFreezeActive()) {
+    return {
+      ok: false,
+      code: EXIT_MIGRATION_FREEZE,
+      kind: 'migration-freeze',
+      issueNumber: targetIssue || activeIssue,
     };
   }
 
@@ -283,6 +295,14 @@ export async function preflightVerb({
   }
 
   switch (verdict.kind) {
+    case 'migration-freeze': {
+      process.stdout.write('PROMPT_REQUIRED: ready-for-plan-migration-freeze\n');
+      process.stderr.write(
+        `⛔ Refusing /task ${verb}: the live Assigned → Ready for Planning board migration is active. Resume or recover #1217's migration journal before any lifecycle write.\n`
+      );
+      process.exit(EXIT_MIGRATION_FREEZE);
+      return;
+    }
     case 'bind-mismatch': {
       process.stdout.write(`PROMPT_REQUIRED: bind-mismatch ${verdict.active}:${verdict.target}\n`);
       process.stderr.write(

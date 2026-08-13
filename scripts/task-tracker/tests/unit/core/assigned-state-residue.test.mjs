@@ -31,7 +31,7 @@ const ALLOWLIST = new Map(
     'scripts/gh/init-project-config.sh': [8, 'explicit migration refusal and guidance'],
     'scripts/gh/init-repair.mjs': [5, 'legacy config-key rewrite'],
     'scripts/gh/lib/live-state.mjs': [1, 'raw live-board compatibility boundary'],
-    'scripts/lib/self-doc.mjs': [5, 'explicit migration CLI help contract'],
+    'scripts/lib/self-doc.mjs': [6, 'explicit migration CLI help contract'],
     'scripts/migrate/rename-on-deck-to-assigned.mjs': [3, 'explicit migration CLI'],
     'scripts/task-tracker/lib/command-surface/entrypoints.mjs': [
       1,
@@ -51,6 +51,10 @@ const ALLOWLIST = new Map(
       'historical marker timing fixtures',
     ],
     'scripts/task-tracker/lib/assigned-status-migration.mjs': [6, 'migration implementation'],
+    'scripts/task-tracker/lib/ready-for-plan-migration.mjs': [
+      3,
+      'explicit final compatibility-key cutover',
+    ],
     'scripts/task-tracker/lib/config-init/config-authoring.mjs': [
       3,
       'legacy config authoring rewrite',

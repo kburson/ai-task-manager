@@ -19,6 +19,7 @@ import {
   EXIT_BIND_MISMATCH,
   EXIT_HUMAN_MOVE,
   EXIT_ASSIGNEE_MISMATCH,
+  EXIT_MIGRATION_FREEZE,
 } from '../../../lib/verb-preflight.mjs';
 
 const CFG = { repo: 'test/repo', projectId: 'PVT_test' };
@@ -36,12 +37,34 @@ function depsOf({
   currentUser = 'kburson',
 } = {}) {
   return {
+    migrationFreezeActive: () => false,
     fetchLive: async () => live,
     fetchLastKnownState: async () => marker,
     fetchLastStatusActor: async () => actor,
     fetchAssignees: async () => assignees,
     fetchCurrentUser: async () => currentUser,
   };
+}
+
+// #1217: a live board migration freezes every governed lifecycle writer before network reads.
+{
+  let fetched = false;
+  const v = await runPreflight({
+    stateBefore: { active: '#208' },
+    target: '#208',
+    cfg: CFG,
+    deps: {
+      migrationFreezeActive: () => true,
+      fetchLive: async () => {
+        fetched = true;
+        return 'develop';
+      },
+    },
+  });
+  assert.equal(v.ok, false);
+  assert.equal(v.kind, 'migration-freeze');
+  assert.equal(v.code, EXIT_MIGRATION_FREEZE);
+  assert.equal(fetched, false);
 }
 
 // 1. No active, no target — nothing to reconcile.

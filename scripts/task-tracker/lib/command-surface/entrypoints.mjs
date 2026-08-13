@@ -72,6 +72,7 @@ export const EXECUTABLE_ENTRYPOINTS = Object.freeze([
       'scripts/inspect/ai-memory-parity.mjs',
       'scripts/migrate/heal-options-co-pilot-bodies.mjs',
       'scripts/migrate/options-co-pilot-status-swap.mjs',
+      'scripts/migrate/assigned-to-ready-for-plan.mjs',
       'scripts/migrate/rename-on-deck-to-assigned.mjs',
       'scripts/migrate/start-time-field.mjs',
       'scripts/reports/heal-backlog-attribution.mjs',
