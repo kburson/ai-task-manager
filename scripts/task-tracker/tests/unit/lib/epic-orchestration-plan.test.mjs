@@ -162,3 +162,38 @@ test('plan approval stamps trunk and complete epic orchestration provenance', as
   assert.match(body, new RegExp(`trunk-sha="${SHA_A}"`));
   assert.equal(verifyEpicOrchestrationPlan(body, { children, trunkSha: SHA_A }).ok, true);
 });
+
+test('plan approval discovers children for an implicit epic before stamping approval', async () => {
+  let body = [
+    '## Acceptance Criteria',
+    '',
+    '- [x] planned',
+    '',
+    '## AITM Progress Markers',
+    '',
+    '<!-- aitm-entered-ready-for-plan ts="2026-08-12T00:00:00Z" -->',
+  ].join('\n');
+  const result = await runPlanApprove({
+    issueNumber: 1209,
+    cfg: { repo: 'o/r', projectId: 'PVT_1', trunkRef: 'origin/trunk' },
+    projectDir: process.cwd(),
+    deps: {
+      getBoardState: async () => 'plan',
+      fetchIssueBody: async () => body,
+      mutateIssueBody: async ({ mutate }) => {
+        body = mutate(body);
+        return { status: 'ok', body };
+      },
+      nowIso: () => '2026-08-12T00:01:00Z',
+      env: { TT_FULL_AUTO: '1' },
+      listComments: async () => [],
+      postComment: async () => {},
+      resolveTrunkSha: async () => SHA_A,
+      fetchEpicChildren: async () => children,
+      contractWrite: { writeOperation: async () => ({ status: 'not-applicable' }) },
+    },
+  });
+
+  assert.equal(result.status, 'approved');
+  assert.equal(verifyEpicOrchestrationPlan(body, { children, trunkSha: SHA_A }).ok, true);
+});

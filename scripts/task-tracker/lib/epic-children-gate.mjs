@@ -17,6 +17,7 @@ function childState(child) {
 }
 
 export function isAcceptedTerminalChild(child) {
+  if (child?.childEvidenceError) return false;
   const disposition = String(child?.closeReason || '').toLowerCase();
   if (
     childState(child) !== 'done' ||

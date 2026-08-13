@@ -54,9 +54,9 @@ AI Task Manager uses an eight-state flow:
 
 ```mermaid
 flowchart LR
-    Backlog --> Assigned
-    Assigned --> Refine
-    Refine --> Plan
+    Backlog --> Refine
+    Refine --> ReadyForPlanning["Ready for Planning"]
+    ReadyForPlanning --> Plan
     Plan -->|human gate| Develop
     Develop --> Test
     Test -->|verification passed| Review
@@ -65,16 +65,16 @@ flowchart LR
     Review -->|changes requested| Develop
 ```
 
-| State    | Meaning                                                                         |
-| -------- | ------------------------------------------------------------------------------- |
-| Backlog  | Raw or planned work that is not yet ready to pick up                            |
-| Assigned | Assigned / in-play / ready to work; filter ownership with the `Assignees` field |
-| Refine   | Acceptance criteria, priority, size, and estimate are ready                     |
-| Plan     | Deep-dive analysis is complete or awaiting approval                             |
-| Develop  | Implementation work is active                                                   |
-| Test     | Verification gate is running                                                    |
-| Review   | Work is ready for human approval                                                |
-| Done     | Human-approved work is closed                                                   |
+| State              | Meaning                                                                       |
+| ------------------ | ----------------------------------------------------------------------------- |
+| Backlog            | Raw or planned work that is not yet ready to pick up                          |
+| Refine             | Active WIP where acceptance criteria, priority, size, and estimate are shaped |
+| Ready for Planning | Durable parking queue for currently refined work                              |
+| Plan               | JIT deep-dive analysis is active or awaiting approval                         |
+| Develop            | Implementation work is active                                                 |
+| Test               | Verification gate is running                                                  |
+| Review             | Work is ready for human approval                                              |
+| Done               | Human-approved work is closed                                                 |
 
 Use `/task promote`, `/task demote`, and `/task reconcile` for state transitions when you need explicit workflow movement. Use `/task review` and `/task close` for the review and completion paths because those commands also flush timing, write project fields, and enforce gates.
 

@@ -112,10 +112,10 @@ export async function runPlanApprove({ issueNumber, cfg, projectDir, deps = {} }
     ? await resolveTrunkSha({ cfg, projectDir: projectDir || getProjectDir() })
     : null;
   const fetchChildren = deps.fetchEpicChildren || fetchEpicChildren;
-  const epicChildren =
-    parseIssueKind(body) === 'epic'
-      ? await fetchChildren({ cfg, parentEpicNumber: issueNumber, deps: deps.epicChildren })
-      : [];
+  const shouldDiscoverChildren = requiresTrunkProvenance || parseIssueKind(body) === 'epic';
+  const epicChildren = shouldDiscoverChildren
+    ? await fetchChildren({ cfg, parentEpicNumber: issueNumber, deps: deps.epicChildren })
+    : [];
   const forecastRecordId = body.match(FORECAST_READY_RE)?.[1] ?? null;
   const hasApproval = hasPlanApprovedMarker(body);
   const frozenForecastRecordId = readPlanApprovedForecastRecordId(body);

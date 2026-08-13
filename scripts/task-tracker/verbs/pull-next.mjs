@@ -21,7 +21,7 @@ import {
 } from '../lib/epic-children-gate.mjs';
 import { normalizeStateId } from '../lib/lifecycle-policy/index.mjs';
 import { fetchAssignmentSnapshot } from '../lib/assignment-snapshot.mjs';
-import { verbPromote } from './promote.mjs';
+import { runPromote } from './promote.mjs';
 import { runMoveInvariantAudit } from '../lib/verify-move-invariants.mjs';
 import { buildContext } from '../runtime.mjs';
 import { verbClose } from './close.mjs';
@@ -55,7 +55,7 @@ export async function promoteSelectedChild({
   cfg,
   projectDir,
   promoteDeps = {},
-  promoteVerb = verbPromote,
+  promoteRunner = runPromote,
   ownershipPreflight = runPreflight,
   acquireIssueLock = withIssueLock,
 } = {}) {
@@ -96,10 +96,14 @@ export async function promoteSelectedChild({
         );
       }
 
-      return promoteVerb([String(selectedIssueNumber)], cfg, {
-        ...promoteDeps,
-        projectDir,
-        assertBound: assertSelectedChild,
+      return promoteRunner({
+        issueNumber: selectedIssueNumber,
+        cfg,
+        deps: {
+          ...promoteDeps,
+          projectDir,
+          assertBound: assertSelectedChild,
+        },
       });
     }
   );
@@ -287,7 +291,7 @@ async function runPullNextLocked({ epicNumber, cfg, deps, projectDir }) {
         cfg,
         projectDir,
         promoteDeps: deps.promoteDeps,
-        promoteVerb: deps.promoteVerb,
+        promoteRunner: deps.promoteRunner,
         acquireIssueLock: deps.childIssueLock || withIssueLock,
       });
 

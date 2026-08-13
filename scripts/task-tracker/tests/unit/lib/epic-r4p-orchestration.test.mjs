@@ -150,6 +150,27 @@ test('epic admission and terminal delivery fail closed on incomplete descriptors
     ]),
   });
   assert.equal(mismatchedCompleted.ok, false);
+
+  const [malformedRecovery] = mapSubIssueNodes(
+    [
+      projectNode({
+        number: 11,
+        issueState: 'CLOSED',
+        stateReason: 'COMPLETED',
+        status: 'Done',
+        rank: 2,
+        body: '<!-- aitm-unauthorized-close tx="abc" phase="intent" -->',
+      }),
+    ],
+    cfg.projectId
+  );
+  assert.match(malformedRecovery.childEvidenceError, /recovery.*malformed/i);
+  const malformedRecoveryGate = await developEpicTestChildrenGate({
+    cfg,
+    issueNumber: 1209,
+    deps: fetchChildren([malformedRecovery]),
+  });
+  assert.equal(malformedRecoveryGate.ok, false);
 });
 
 test('strict local WIP cannot be disabled by project configuration', async () => {
@@ -365,6 +386,20 @@ test('operator help, architecture, and pickup guidance describe R4P child stagin
   assert.match(surfaces[2], /next child pulled Ready for Planning → Plan/);
   assert.match(surfaces[3], /R4P pull budget/);
   assert.match(surfaces[4], /Ready for Planning is the durable child queue/);
+
+  const activeCollateral = [
+    'templates/stub-body.md',
+    'docs/guides/github-native-coordination.md',
+    'docs/introduction/README.md',
+    'docs/introduction/core-workflow.md',
+    'docs/guides/test-authoring.md',
+  ].map((path) => readFileSync(path, 'utf8'));
+  for (const text of activeCollateral) {
+    assert.doesNotMatch(text, /Backlog\s*(?:→|->)\s*Assigned/);
+    assert.doesNotMatch(text, /Refine\s*(?:→|->)\s*Plan/);
+  }
+  assert.match(activeCollateral[0], /Refine(?:→|->)Ready for Planning gate/);
+  assert.match(activeCollateral[3], /Backlog --> Refine[\s\S]*Refine --> ReadyForPlanning/);
 });
 
 test('epic child enumeration exhausts every GraphQL page and refuses cursor ambiguity', async () => {
@@ -382,8 +417,16 @@ test('epic child enumeration exhausts every GraphQL page and refuses cursor ambi
           issue: {
             subIssues:
               variables.after == null
-                ? { nodes: [{ number: 1 }], pageInfo: { hasNextPage: true, endCursor: 'c1' } }
-                : { nodes: [{ number: 2 }], pageInfo: { hasNextPage: false, endCursor: null } },
+                ? {
+                    totalCount: 2,
+                    nodes: [{ id: 'I1', number: 1 }],
+                    pageInfo: { hasNextPage: true, endCursor: 'c1' },
+                  }
+                : {
+                    totalCount: 2,
+                    nodes: [{ id: 'I2', number: 2 }],
+                    pageInfo: { hasNextPage: false, endCursor: null },
+                  },
           },
         },
       };
@@ -400,10 +443,38 @@ test('epic child enumeration exhausts every GraphQL page and refuses cursor ambi
       fetchAllSubIssueNodes({
         parentEpicNumber: 1209,
         repo: 'o/r',
+        gqlFn: async (_query, variables) => ({
+          repository: {
+            issue: {
+              subIssues:
+                variables.after == null
+                  ? {
+                      totalCount: 2,
+                      nodes: [{ id: 'I1', number: 1 }],
+                      pageInfo: { hasNextPage: true, endCursor: 'dup' },
+                    }
+                  : {
+                      totalCount: 2,
+                      nodes: [{ id: 'I1', number: 1 }],
+                      pageInfo: { hasNextPage: false, endCursor: null },
+                    },
+            },
+          },
+        }),
+      }),
+    /duplicate sub-issue identity/
+  );
+
+  await assert.rejects(
+    () =>
+      fetchAllSubIssueNodes({
+        parentEpicNumber: 1209,
+        repo: 'o/r',
         gqlFn: async () => ({
           repository: {
             issue: {
               subIssues: {
+                totalCount: 0,
                 nodes: [],
                 pageInfo: { hasNextPage: true, endCursor: null },
               },

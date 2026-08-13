@@ -6,7 +6,11 @@ import { strict as assert } from 'node:assert';
 import { test } from 'node:test';
 
 import { stampRefinementSnapshot } from '../../../lib/refinement-snapshot.mjs';
-import { defaultGetLiveState, runPullNext } from '../../../verbs/pull-next.mjs';
+import {
+  defaultGetLiveState,
+  promoteSelectedChild,
+  runPullNext,
+} from '../../../verbs/pull-next.mjs';
 import { runPromote } from '../../../verbs/promote.mjs';
 
 const cfg = { repo: 'o/r', projectId: 'PROJ_1' };
@@ -243,6 +247,31 @@ Promote the selected refined child into durable planning readiness.
   assert.equal(result.childNumber, 103);
   assert.deepEqual(resolvedIssues, [100], 'execution authority comes from the bound epic');
   assert.deepEqual(moves, [{ issueNumber: 103, target: 'plan' }]);
+});
+
+test('selected-child promotion reuses its held lock instead of entering the locking verb wrapper', async () => {
+  const calls = [];
+  const result = await promoteSelectedChild({
+    issueNumber: 103,
+    cfg,
+    projectDir: '/repo/worktrees/epic-100',
+    acquireIssueLock: async (options, fn) => {
+      calls.push(`lock:${options.issue}`);
+      return fn();
+    },
+    ownershipPreflight: async () => ({ ok: true }),
+    promoteRunner: async ({ issueNumber, deps }) => {
+      calls.push(`run:${issueNumber}`);
+      deps.assertBound(issueNumber);
+      return { status: 'promoted', from: 'ready-for-plan', to: 'plan' };
+    },
+    promoteVerb: async () => {
+      throw new Error('locking verb wrapper must not run inside the selected-child lock');
+    },
+  });
+
+  assert.equal(result.status, 'promoted');
+  assert.deepEqual(calls, ['lock:103', 'run:103']);
 });
 
 test('direct promote remains fail-closed on a mismatched bind (#1114)', async () => {

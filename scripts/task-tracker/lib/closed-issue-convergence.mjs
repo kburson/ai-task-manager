@@ -23,6 +23,10 @@ const PHASE_RANK = Object.freeze({
   complete: 4,
 });
 
+export function hasUnauthorizedCloseRecoveryMarker(body) {
+  return UNAUTHORIZED_CLOSE_RE.test(stripFencedCodeBlocks(body));
+}
+
 export function normalizeIssueCloseSnapshot({ state, stateReason } = {}) {
   const normalizedState = String(state || '')
     .trim()

@@ -195,7 +195,11 @@ if (args[0] === 'api' && args[1] === 'graphql') {
   if (stdin.includes('subIssues')) {
     const payload = {
       data: { repository: { issue: {
-        subIssues: { nodes: [], pageInfo: { hasNextPage: false, endCursor: null } },
+        subIssues: {
+          totalCount: 0,
+          nodes: [],
+          pageInfo: { hasNextPage: false, endCursor: null },
+        },
       } } },
     };
     fs.writeSync(1, JSON.stringify(payload));

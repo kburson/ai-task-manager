@@ -34,7 +34,10 @@
 
 import { gql, splitRepo } from './github-projects.mjs';
 import { parseBlockedBy } from '../../task-tracker/lib/blocked-marker.mjs';
-import { readUnauthorizedCloseRecovery } from '../../task-tracker/lib/closed-issue-convergence.mjs';
+import {
+  hasUnauthorizedCloseRecoveryMarker,
+  readUnauthorizedCloseRecovery,
+} from '../../task-tracker/lib/closed-issue-convergence.mjs';
 import { normalizeStateId } from '../../task-tracker/lib/lifecycle-policy/index.mjs';
 import { fieldIdFor } from '../../task-tracker/project-fields.mjs';
 import { verifyRefinementSnapshot } from '../../task-tracker/lib/refinement-snapshot.mjs';
@@ -212,7 +215,10 @@ export async function fetchAllSubIssueNodes({
   }
   const { owner, repoName } = splitRepo(repo);
   const nodes = [];
+  const seenNodeIds = new Set();
+  const seenIssueNumbers = new Set();
   const seenCursors = new Set();
+  let expectedTotalCount = null;
   let after = null;
 
   for (let page = 0; page < 1000; page++) {
@@ -222,7 +228,9 @@ export async function fetchAllSubIssueNodes({
       repository(owner: $owner, name: $repo) {
         issue(number: $issue) {
           subIssues(first: 100, after: $after) {
+            totalCount
             nodes {
+              id
               number
               state
               stateReason
@@ -264,8 +272,31 @@ export async function fetchAllSubIssueNodes({
     if (!Array.isArray(connection.nodes) || !connection.pageInfo) {
       throw new Error('wave-admission: malformed sub-issue page');
     }
-    nodes.push(...connection.nodes);
+    const pageTotalCount = Number(connection.totalCount);
+    if (!Number.isSafeInteger(pageTotalCount) || pageTotalCount < 0) {
+      throw new Error('wave-admission: sub-issue total count unreadable');
+    }
+    if (expectedTotalCount === null) expectedTotalCount = pageTotalCount;
+    else if (pageTotalCount !== expectedTotalCount) {
+      throw new Error('wave-admission: sub-issue snapshot count changed during pagination');
+    }
+    for (const node of connection.nodes) {
+      const nodeId = String(node?.id || '').trim();
+      const issueNumber = Number(node?.number);
+      if (!nodeId || !Number.isSafeInteger(issueNumber) || issueNumber <= 0) {
+        throw new Error('wave-admission: malformed sub-issue identity');
+      }
+      if (seenNodeIds.has(nodeId) || seenIssueNumbers.has(issueNumber)) {
+        throw new Error('wave-admission: duplicate sub-issue identity');
+      }
+      seenNodeIds.add(nodeId);
+      seenIssueNumbers.add(issueNumber);
+      nodes.push(node);
+    }
     if (!connection.pageInfo?.hasNextPage) {
+      if (nodes.length !== expectedTotalCount) {
+        throw new Error('wave-admission: sub-issue snapshot count mismatch');
+      }
       if (!projectId) return nodes;
       for (const sub of nodes) {
         const projectItems = sub?.projectItems;
@@ -389,6 +420,7 @@ export function mapSubIssueNodes(subs, cfgOrProjectId) {
     // The shared protected-marker reader ignores fenced examples and malformed
     // markers. A complete transaction is historical evidence, not pending
     // work, so it deliberately maps to null just like no marker.
+    const recoveryMarkerPresent = hasUnauthorizedCloseRecoveryMarker(sub.body);
     const recovery = readUnauthorizedCloseRecovery(sub.body);
     const pendingRecovery = recovery?.phase !== 'complete' ? recovery : null;
     const closeReason = normalizeCloseReason(sub);
@@ -397,7 +429,10 @@ export function mapSubIssueNodes(subs, cfgOrProjectId) {
     const blockedBy = parseBlockedBy(sub.body);
     let childEvidenceError = null;
     let hasCurrentRefinement = false;
-    if (projectMatches.length > 1) childEvidenceError = 'configured project membership ambiguous';
+    if (recoveryMarkerPresent && !recovery)
+      childEvidenceError = 'unauthorized-close recovery marker malformed';
+    else if (projectMatches.length > 1)
+      childEvidenceError = 'configured project membership ambiguous';
     else if (!item) childEvidenceError = 'configured project membership missing';
     else if (sub.projectItems?.pageInfo?.hasNextPage)
       childEvidenceError = 'project membership incomplete';

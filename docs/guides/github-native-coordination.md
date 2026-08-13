@@ -104,7 +104,7 @@ repair when authority has advanced.
 Continue to use the workflow verbs:
 
 ```text
-Backlog → Assigned → Refine → Plan → Develop → Test → Review → Done
+Backlog → Refine → Ready for Planning → Plan → Develop → Test → Review → Done
 ```
 
 The verbs resolve the current contract source, evaluate gates without writing,
