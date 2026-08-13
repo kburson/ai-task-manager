@@ -10,10 +10,10 @@ import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 
 import { discoverTestFiles } from './lib/discover-test-files.mjs';
+import { hasPermittedStoryTag, moveMalformedStoryTag } from './lib/story-tag-header.mjs';
 import { wantsHelp, emitSelfDoc } from '../lib/self-doc.mjs';
 
 const FALLBACK_STORY = '#309';
-const STORY_TAG_RE = /^\/\/ @story #\d/m;
 const SHEBANG_RE = /^#!.+/;
 const ISSUE_RE = /#(\d+)/;
 
@@ -45,16 +45,7 @@ export function insertTag(content, storyTag) {
 }
 
 export function fixMisplacedTag(content) {
-  // Fix files where @story was incorrectly placed before a shebang
-  const lines = content.split('\n');
-  if (STORY_TAG_RE.test(lines[0]) && lines.length > 1 && SHEBANG_RE.test(lines[1])) {
-    const storyLine = lines[0];
-    const rest = lines.slice(1);
-    // Move: shebang first, then story tag
-    rest.splice(1, 0, storyLine);
-    return rest.join('\n');
-  }
-  return null; // no fix needed
+  return moveMalformedStoryTag(content);
 }
 
 export function repairStoryTags({
@@ -82,7 +73,7 @@ export function repairStoryTags({
       continue;
     }
 
-    if (STORY_TAG_RE.test(content)) {
+    if (hasPermittedStoryTag(content)) {
       skipped++;
       continue;
     }

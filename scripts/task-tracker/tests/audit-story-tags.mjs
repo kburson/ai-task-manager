@@ -4,10 +4,9 @@
 
 import { readFileSync } from 'fs';
 import path from 'node:path';
+import { pathToFileURL } from 'node:url';
 import { discoverTestFiles } from '../lib/discover-test-files.mjs';
-
-// Matches `// @story #NNN` on line 1 or line 2 (after shebang)
-const STORY_TAG_RE = /^\/\/ @story #\d/m;
+import { hasPermittedStoryTag } from '../lib/story-tag-header.mjs';
 
 export function auditStoryTags({
   projectRoot = process.cwd(),
@@ -16,7 +15,7 @@ export function auditStoryTags({
 } = {}) {
   const files = discover({ projectRoot });
   const untagged = files.filter(
-    (file) => !STORY_TAG_RE.test(read(path.join(projectRoot, file), 'utf8'))
+    (file) => !hasPermittedStoryTag(read(path.join(projectRoot, file), 'utf8'))
   );
   return { files, untagged };
 }
@@ -34,4 +33,6 @@ function main() {
   return 1;
 }
 
-process.exit(main());
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  process.exit(main());
+}

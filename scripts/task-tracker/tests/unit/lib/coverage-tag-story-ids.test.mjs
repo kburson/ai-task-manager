@@ -1,8 +1,8 @@
 // @story #602
 // Coverage leaf for `scripts/task-tracker/tag-story-ids.mjs`.
 //
-// `tag-story-ids.mjs` is a run-once maintenance script: it executes its scan/
-// rewrite loop writes `// @story #NNN` tags into every discovered
+// `tag-story-ids.mjs` is a run-once maintenance script: its rewrite loop adds
+// `// @story #NNN` tags to every discovered
 // `*.test.mjs`. It is driven as a child process with `cwd` pointed at a
 // throwaway directory holding fixture files. Two runs cover every branch: a
 // non-git sandbox (git-log throws → fallback) and a git sandbox (git-log
@@ -83,10 +83,15 @@ test('non-git sandbox: fixes misplaced tags and discovers co-located tests', () 
     '#!/usr/bin/env node\n// @story #8\nconsole.log(4)\n'
   );
   const coLocated = write(cwd, 'scripts/gh/d-colocated.test.mjs', 'export const x = 1;\n');
+  const malformed = write(
+    cwd,
+    'scripts/gh/e-malformed.test.mjs',
+    'export const malformed = true;\n// @story #9\n'
+  );
 
   const res = run(cwd);
   assert.equal(res.status, 0, res.stderr);
-  assert.match(res.stdout, /Tagged: 2, Fixed shebang order: 1, Skipped \(already correct\): 2/);
+  assert.match(res.stdout, /Tagged: 2, Fixed shebang order: 2, Skipped \(already correct\): 2/);
   // No git repo → findCreationIssue throws → fallback list printed.
   assert.match(res.stdout, /fallback #309/);
 
@@ -111,6 +116,9 @@ test('non-git sandbox: fixes misplaced tags and discovers co-located tests', () 
 
   // A co-located untagged file gets the tag prepended on line 1.
   assert.equal(readFileSync(coLocated, 'utf8').split('\n')[0], '// @story #309');
+
+  // A malformed later tag is moved to the header without duplication.
+  assert.equal(readFileSync(malformed, 'utf8'), '// @story #9\nexport const malformed = true;\n');
 });
 
 test('git sandbox: resolves creation issue from git log; empty log falls back', () => {
