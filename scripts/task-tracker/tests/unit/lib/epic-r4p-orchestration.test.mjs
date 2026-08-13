@@ -436,7 +436,7 @@ test('epic child enumeration exhausts every GraphQL page and refuses cursor ambi
     nodes.map((node) => node.number),
     [1, 2]
   );
-  assert.deepEqual(afters, [null, 'c1']);
+  assert.deepEqual(afters, [null, 'c1', null, 'c1']);
 
   await assert.rejects(
     () =>
@@ -483,6 +483,35 @@ test('epic child enumeration exhausts every GraphQL page and refuses cursor ambi
         }),
       }),
     /missing end cursor/
+  );
+
+  let scan = 0;
+  await assert.rejects(
+    () =>
+      fetchAllSubIssueNodes({
+        parentEpicNumber: 1209,
+        repo: 'o/r',
+        gqlFn: async (_query, variables) => {
+          if (variables.after == null) scan += 1;
+          const identities = scan === 1 ? ['I1', 'I3'] : ['I2', 'I3'];
+          const index = variables.after == null ? 0 : 1;
+          return {
+            repository: {
+              issue: {
+                subIssues: {
+                  totalCount: 2,
+                  nodes: [{ id: identities[index], number: index + 1 }],
+                  pageInfo: {
+                    hasNextPage: index === 0,
+                    endCursor: index === 0 ? `c${scan}` : null,
+                  },
+                },
+              },
+            },
+          };
+        },
+      }),
+    /sub-issue snapshot changed during verification/
   );
 });
 

@@ -297,28 +297,39 @@ export async function fetchAllSubIssueNodes({
       if (nodes.length !== expectedTotalCount) {
         throw new Error('wave-admission: sub-issue snapshot count mismatch');
       }
-      if (!projectId) return nodes;
-      for (const sub of nodes) {
-        const projectItems = sub?.projectItems;
-        const configured = projectItems?.nodes?.filter((item) => item?.project?.id === projectId);
-        const needsHydration =
-          !Array.isArray(projectItems?.nodes) ||
-          !projectItems?.pageInfo ||
-          projectItems.pageInfo.hasNextPage ||
-          configured?.length !== 1 ||
-          !configured[0]?.fieldValues?.pageInfo ||
-          configured[0].fieldValues.pageInfo.hasNextPage;
-        if (!needsHydration) continue;
-        const item = await fetchConfiguredProjectItem({
-          issueNumber: sub?.number,
-          repo,
-          projectId,
-          gqlFn,
-        });
-        sub.projectItems = {
-          nodes: [item],
-          pageInfo: { hasNextPage: false, endCursor: null },
-        };
+      if (projectId) {
+        for (const sub of nodes) {
+          const projectItems = sub?.projectItems;
+          const configured = projectItems?.nodes?.filter((item) => item?.project?.id === projectId);
+          const needsHydration =
+            !Array.isArray(projectItems?.nodes) ||
+            !projectItems?.pageInfo ||
+            projectItems.pageInfo.hasNextPage ||
+            configured?.length !== 1 ||
+            !configured[0]?.fieldValues?.pageInfo ||
+            configured[0].fieldValues.pageInfo.hasNextPage;
+          if (!needsHydration) continue;
+          const item = await fetchConfiguredProjectItem({
+            issueNumber: sub?.number,
+            repo,
+            projectId,
+            gqlFn,
+          });
+          sub.projectItems = {
+            nodes: [item],
+            pageInfo: { hasNextPage: false, endCursor: null },
+          };
+        }
+      }
+      const verifiedIdentities = await fetchSubIssueIdentities({
+        owner,
+        repoName,
+        parentEpicNumber,
+        gqlFn,
+      });
+      const initialIdentities = nodes.map((node) => `${node.id}:${node.number}`).sort();
+      if (JSON.stringify(initialIdentities) !== JSON.stringify(verifiedIdentities)) {
+        throw new Error('wave-admission: sub-issue snapshot changed during verification');
       }
       return nodes;
     }
@@ -329,6 +340,71 @@ export async function fetchAllSubIssueNodes({
     after = next;
   }
   throw new Error('wave-admission: sub-issue pagination safety limit exceeded');
+}
+
+async function fetchSubIssueIdentities({ owner, repoName, parentEpicNumber, gqlFn } = {}) {
+  const identities = [];
+  const seenIds = new Set();
+  const seenNumbers = new Set();
+  const seenCursors = new Set();
+  let expectedTotalCount = null;
+  let after = null;
+
+  for (let page = 0; page < 1000; page++) {
+    const data = await gqlFn(
+      `query($owner: String!, $repo: String!, $issue: Int!, $after: String) {
+        repository(owner: $owner, name: $repo) {
+          issue(number: $issue) {
+            subIssues(first: 100, after: $after) {
+              totalCount
+              nodes { id number }
+              pageInfo { hasNextPage endCursor }
+            }
+          }
+        }
+      }`,
+      { owner, repo: repoName, issue: Number(parentEpicNumber), after }
+    );
+    const connection = data?.repository?.issue?.subIssues;
+    if (!connection || !Array.isArray(connection.nodes) || !connection.pageInfo) {
+      throw new Error('wave-admission: sub-issue verification unreadable');
+    }
+    const totalCount = Number(connection.totalCount);
+    if (!Number.isSafeInteger(totalCount) || totalCount < 0) {
+      throw new Error('wave-admission: sub-issue verification count unreadable');
+    }
+    if (expectedTotalCount === null) expectedTotalCount = totalCount;
+    else if (expectedTotalCount !== totalCount) {
+      throw new Error('wave-admission: sub-issue snapshot changed during verification');
+    }
+    for (const node of connection.nodes) {
+      const id = String(node?.id || '').trim();
+      const number = Number(node?.number);
+      if (!id || !Number.isSafeInteger(number) || number <= 0) {
+        throw new Error('wave-admission: malformed sub-issue verification identity');
+      }
+      if (seenIds.has(id) || seenNumbers.has(number)) {
+        throw new Error('wave-admission: duplicate sub-issue verification identity');
+      }
+      seenIds.add(id);
+      seenNumbers.add(number);
+      identities.push(`${id}:${number}`);
+    }
+    if (!connection.pageInfo.hasNextPage) {
+      if (identities.length !== expectedTotalCount) {
+        throw new Error('wave-admission: sub-issue verification count mismatch');
+      }
+      return identities.sort();
+    }
+    const next = connection.pageInfo.endCursor;
+    if (!next) throw new Error('wave-admission: sub-issue verification missing end cursor');
+    if (seenCursors.has(next)) {
+      throw new Error('wave-admission: repeated sub-issue verification cursor');
+    }
+    seenCursors.add(next);
+    after = next;
+  }
+  throw new Error('wave-admission: sub-issue verification safety limit exceeded');
 }
 
 /**

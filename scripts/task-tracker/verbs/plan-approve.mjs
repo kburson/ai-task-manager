@@ -33,7 +33,6 @@ import {
   readPlanApprovedTimestamp,
 } from '../lib/plan-approval-audit.mjs';
 import { writeDirectoryContractOperation } from '../lib/github-records/contract-write.mjs';
-import { parseIssueKind } from '../lib/issue-kind.mjs';
 import { fetchEpicChildren } from '../lib/epic-children-gate.mjs';
 import {
   upsertEpicOrchestrationPlan,
@@ -107,15 +106,17 @@ export async function runPlanApprove({ issueNumber, cfg, projectDir, deps = {} }
 
   const body = await fetchIssueBody({ issueNumber, repo: cfg.repo });
   const requiresTrunkProvenance = R4P_ENTRY_RE.test(body);
-  const resolveTrunkSha = deps.resolveTrunkSha || defaultResolveTrunkSha;
-  const trunkSha = requiresTrunkProvenance
-    ? await resolveTrunkSha({ cfg, projectDir: projectDir || getProjectDir() })
-    : null;
   const fetchChildren = deps.fetchEpicChildren || fetchEpicChildren;
-  const shouldDiscoverChildren = requiresTrunkProvenance || parseIssueKind(body) === 'epic';
-  const epicChildren = shouldDiscoverChildren
-    ? await fetchChildren({ cfg, parentEpicNumber: issueNumber, deps: deps.epicChildren })
-    : [];
+  const epicChildren = await fetchChildren({
+    cfg,
+    parentEpicNumber: issueNumber,
+    deps: deps.epicChildren,
+  });
+  const resolveTrunkSha = deps.resolveTrunkSha || defaultResolveTrunkSha;
+  const trunkSha =
+    requiresTrunkProvenance || epicChildren.length > 0
+      ? await resolveTrunkSha({ cfg, projectDir: projectDir || getProjectDir() })
+      : null;
   const forecastRecordId = body.match(FORECAST_READY_RE)?.[1] ?? null;
   const hasApproval = hasPlanApprovedMarker(body);
   const frozenForecastRecordId = readPlanApprovedForecastRecordId(body);
