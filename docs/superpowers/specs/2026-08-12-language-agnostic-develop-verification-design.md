@@ -68,7 +68,7 @@ classification string, and the allowlist never has to grow — every step remain
 | `test:affected`    | `test-affected`       | Develop (iteration) | yes               |
 
 The five complete lanes already exist and already satisfy the shim; this design
-only formalises them as roster members. The three `:affected` labels are new.
+only formalizes them as roster members. The three `:affected` labels are new.
 
 **Ordering is the core's, not the project's.** The core always spawns
 `lint:affected` → `format:affected` → `test:affected`, aborting on first failure.
@@ -308,7 +308,7 @@ changeset with labels present must spawn all three lanes. Today's code returns
 **Dogfood parity.** This repository's own `lint:affected` / `format:affected` /
 `test:affected` must produce the same verification outcome as today's hardcoded
 path for a representative changeset — proof the refactor did not weaken this
-repository's own gate while generalising it.
+repository's own gate while generalizing it.
 
 **Lane placement.** All of the above are `test:unit` except the non-JS fixture
 end-to-end test, which spawns real child processes and belongs in
