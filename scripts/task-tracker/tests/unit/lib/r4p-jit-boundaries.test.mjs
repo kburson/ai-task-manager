@@ -314,6 +314,7 @@ function plannedBody({ rank = 4 } = {}) {
     '<!-- aitm-deep-dive-complete ts="2026-08-12T12:06:00.000Z" -->',
     '<!-- aitm-estimation-forecast-ready record-id="forecast-record-1213" -->',
     '<!-- aitm-plan-approved ts="2026-08-12T12:07:00.000Z" forecast-record-id="forecast-record-1213" mode="full-auto" -->',
+    `<!-- aitm-epic-orchestration-plan schema="1" digest="${'a'.repeat(64)}" payload="e30" -->`,
     '<!-- aitm-test-started sha="abcdef1" ts="2026-08-12T12:08:00.000Z" -->',
     '<!-- aitm-dod-verified sha="abcdef1" ts="2026-08-12T12:09:00.000Z" -->',
   ].join('\n');
@@ -381,6 +382,7 @@ test('cancel-plan clears Plan-only artifacts while preserving refinement evidenc
   assert.equal(result.from, 'plan');
   assert.equal(result.to, 'ready-for-plan');
   assert.equal(body.includes('aitm-plan-approved'), false);
+  assert.equal(body.includes('aitm-epic-orchestration-plan'), false);
   assert.equal(body.includes('aitm-estimation-forecast-ready'), false);
   assert.equal(body.includes('aitm-deep-dive-complete'), false);
   assert.equal(body.includes('aitm-deep-dive-posted'), false);

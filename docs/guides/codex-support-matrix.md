@@ -31,11 +31,11 @@ Features delivered entirely through skill text — present in `skill/adapters/co
 
 Current generated bootstrap state chain:
 
-`Backlog → Assigned → Refine → Plan → Develop → Test → Review → Done`
+`Backlog → Refine → Ready for Planning → Plan → Develop → Test → Review → Done`
 
 The generated map names both generic and dedicated verbs: `/task promote #N`
 for one-step advancement, `/task refine #N ...` for Refine field entry,
-`/task plan #N` for Refine → Plan, `/task plan-approve #N` for the Plan gate,
+`/task plan #N` for Ready for Planning → Plan, `/task plan-approve #N` for the Plan gate,
 `/task test #N` for Develop → Test, `/task approve #N` for human Review
 approval, and `/task close #N` for Review → Done.
 

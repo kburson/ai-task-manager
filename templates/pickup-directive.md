@@ -32,7 +32,7 @@ Enforced by `/task close` and `move-state.mjs <issue> done`; bypassing is a proc
 1. **Move the issue to `in-progress` and capture your entry word count:**
 
    ```bash
-   node node_modules/ai-task-manager/scripts/gh/move-state.mjs <this-issue-#> in-progress
+   npx aitm start <this-issue-#> --role agent
    node node_modules/ai-task-manager/scripts/task-tracker/task-tracker.mjs words-count
    ```
 

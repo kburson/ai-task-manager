@@ -68,6 +68,10 @@ const MARKER_PATTERNS = [
   { name: 'aitm-last-known-state', re: /<!--\s*aitm-last-known-state(?:\s*:|\s+state=")/i },
   // Widened (#375) to detect both legacy colon and new `ts="..."` grammars.
   { name: 'aitm-plan-approved', re: /<!--\s*aitm-plan-approved(?:\s*:|\s+ts=")/i },
+  {
+    name: 'aitm-epic-orchestration-plan',
+    re: /<!--\s*aitm-epic-orchestration-plan\s+schema="/i,
+  },
   { name: 'aitm-deep-dive-complete', re: /<!--\s*aitm-deep-dive-complete(?:\s*:|\s+ts=")/i },
   // #887 — mirrors the `INVARIANT_MARKER_PATTERNS` entry. Without this line an
   // external `gh issue edit --body` would strip the reconciliation marker past

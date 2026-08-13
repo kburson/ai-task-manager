@@ -62,7 +62,7 @@ To load a previously saved plan file outside of a discover session: `/task new d
 
 ## Verb disambiguation — `/task plan` vs `/task discover`
 
-`/task plan #N` (Refine → Plan sprint-planning entry, refuses on any other state) and `/task discover` (untracked pre-issue ideation bucket, no kanban move) are permanently distinct verbs — the historical `plan → discover` alias was removed in #299. The full note lives in `shared/router.md`.
+`/task plan #N` (Ready for Planning → Plan JIT sprint-planning entry, refuses on any other state) and `/task discover` (untracked pre-issue ideation bucket, no kanban move) are permanently distinct verbs — the historical `plan → discover` alias was removed in #299. The full note lives in `shared/router.md`.
 
 ## Checkpoint Pause
 

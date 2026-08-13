@@ -326,16 +326,12 @@ if (runtimePickupDirective !== null) {
 
 for (const [file, text] of pickupDirectiveFiles) {
   assert.ok(
-    text.includes(
-      'node node_modules/ai-task-manager/scripts/gh/move-state.mjs <this-issue-#> in-progress'
-    ),
-    `${file} must invoke move-state.mjs through node`
+    text.includes('npx aitm start <this-issue-#> --role agent'),
+    `${file} must bind agent work through the governed start verb`
   );
   assert.ok(
-    !text.includes(
-      '\n   node_modules/ai-task-manager/scripts/gh/move-state.mjs <this-issue-#> in-progress'
-    ),
-    `${file} must not invoke move-state.mjs directly`
+    !text.includes('scripts/gh/move-state.mjs <this-issue-#> in-progress'),
+    `${file} must not bypass start with a direct move-state invocation`
   );
 }
 

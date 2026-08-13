@@ -18,6 +18,7 @@ import { getProjectDir } from '../paths.mjs';
 import {
   hasPlanApprovedMarker,
   insertPlanApprovedMarker,
+  parsePlanApprovedMarker,
   readPlanApprovedForecastRecordId,
   readPlanApprovedMode,
   upsertPlanApprovedMarker,
@@ -32,6 +33,13 @@ import {
   readPlanApprovedTimestamp,
 } from '../lib/plan-approval-audit.mjs';
 import { writeDirectoryContractOperation } from '../lib/github-records/contract-write.mjs';
+import { parseIssueKind } from '../lib/issue-kind.mjs';
+import { fetchEpicChildren } from '../lib/epic-children-gate.mjs';
+import {
+  upsertEpicOrchestrationPlan,
+  verifyEpicOrchestrationPlan,
+} from '../lib/epic-orchestration-plan.mjs';
+import { defaultResolveTrunkSha } from '../lib/plan-approved-guard.mjs';
 
 // Visit-suffix-aware check for any aitm-entered-plan marker (bare or -N).
 // We only backfill the original visit when NO plan entry marker exists at
@@ -42,6 +50,7 @@ import { writeDirectoryContractOperation } from '../lib/github-records/contract-
 const PLAN_ENTRY_RE = /<!--\s*aitm-entered-plan(?:-\d+)?(?::|\s+ts=")/i;
 const FORECAST_READY_RE =
   /<!--\s*aitm-estimation-forecast-ready\s+record-id="([0-7][0-9A-HJKMNP-TV-Z]{25})"\s*-->/i;
+const R4P_ENTRY_RE = /<!--\s*aitm-entered-ready-for-plan(?:-\d+)?(?:\s+|:)/i;
 
 const pexec = promisify(execFile);
 
@@ -97,6 +106,16 @@ export async function runPlanApprove({ issueNumber, cfg, projectDir, deps = {} }
   }
 
   const body = await fetchIssueBody({ issueNumber, repo: cfg.repo });
+  const requiresTrunkProvenance = R4P_ENTRY_RE.test(body);
+  const resolveTrunkSha = deps.resolveTrunkSha || defaultResolveTrunkSha;
+  const trunkSha = requiresTrunkProvenance
+    ? await resolveTrunkSha({ cfg, projectDir: projectDir || getProjectDir() })
+    : null;
+  const fetchChildren = deps.fetchEpicChildren || fetchEpicChildren;
+  const epicChildren =
+    parseIssueKind(body) === 'epic'
+      ? await fetchChildren({ cfg, parentEpicNumber: issueNumber, deps: deps.epicChildren })
+      : [];
   const forecastRecordId = body.match(FORECAST_READY_RE)?.[1] ?? null;
   const hasApproval = hasPlanApprovedMarker(body);
   const frozenForecastRecordId = readPlanApprovedForecastRecordId(body);
@@ -128,10 +147,15 @@ export async function runPlanApprove({ issueNumber, cfg, projectDir, deps = {} }
           throw new Error('plan-approve: adaptive approval repair evidence disappeared');
         }
         const existingMode = readPlanApprovedMode(base);
-        return upsertPlanApprovedMarker(base, approvalTs, {
+        let next = upsertPlanApprovedMarker(base, approvalTs, {
           forecastRecordId: freshReady,
           mode: existingMode === 'unknown' ? null : existingMode,
+          trunkSha,
         });
+        if (epicChildren.length > 0) {
+          next = upsertEpicOrchestrationPlan(next, { children: epicChildren, trunkSha });
+        }
+        return next;
       },
     });
     const persistedBody =
@@ -200,9 +224,16 @@ export async function runPlanApprove({ issueNumber, cfg, projectDir, deps = {} }
   // below would re-check the FRESH base anyway. The audit still runs here:
   // this is the repair path when the body write succeeded but the comment post
   // failed on a prior invocation.
+  const parsedApproval = parsePlanApprovedMarker(body);
+  const trunkComplete = !requiresTrunkProvenance || parsedApproval?.trunkSha === trunkSha;
+  const epicPlanComplete =
+    epicChildren.length === 0 ||
+    verifyEpicOrchestrationPlan(body, { children: epicChildren, trunkSha }).ok;
   const approvalComplete =
-    !adaptiveConfigured ||
-    (frozenForecastRecordId !== null && frozenForecastRecordId === forecastRecordId);
+    trunkComplete &&
+    epicPlanComplete &&
+    (!adaptiveConfigured ||
+      (frozenForecastRecordId !== null && frozenForecastRecordId === forecastRecordId));
   if (hasApproval && hasPlanEntry && approvalComplete) {
     const audit = await ensureAudit({
       issueNumber,
@@ -247,9 +278,19 @@ export async function runPlanApprove({ issueNumber, cfg, projectDir, deps = {} }
               ? null
               : existingMode
             : requestedMode,
+          trunkSha,
         });
       } else if (!hasPlanApprovedMarker(n)) {
-        n = insertPlanApprovedMarker(n, ts, { mode: requestedMode });
+        n = insertPlanApprovedMarker(n, ts, { mode: requestedMode, trunkSha });
+      } else if (requiresTrunkProvenance) {
+        const existingMode = readPlanApprovedMode(n);
+        n = upsertPlanApprovedMarker(n, ts, {
+          mode: existingMode === 'unknown' ? null : existingMode,
+          trunkSha,
+        });
+      }
+      if (epicChildren.length > 0) {
+        n = upsertEpicOrchestrationPlan(n, { children: epicChildren, trunkSha });
       }
       return wrapDeepDiveInDetails(n);
     },

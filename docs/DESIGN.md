@@ -336,14 +336,14 @@ Precedence: project-local > user-global > hardcoded defaults.
 
 **Internal keys** (managed by `npx ai-task-manager init` — do not set manually):
 
-| Key                                                                                                                                                                                                                                                                                                                                           | Purpose                                      |
-| --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------- |
-| `projectId`                                                                                                                                                                                                                                                                                                                                   | GH Projects V2 project node ID               |
-| `kanbanFieldId`                                                                                                                                                                                                                                                                                                                               | Kanban single-select field ID                |
-| `kanbanOptionBacklog` / `kanbanOptionAssigned` / `kanbanOptionRefine` / `kanbanOptionPlan` / `kanbanOptionDevelop` / `kanbanOptionTest` / `kanbanOptionReview` / `kanbanOptionDone` (canonical config keys, one per state slug; the project-tether maps state slugs onto them — see `scripts/gh/lib/project-tether.mjs` `STATUS_CONFIG_KEYS`) | Kanban option IDs                            |
-| `sequenceFieldId`                                                                                                                                                                                                                                                                                                                             | Numeric Sequence field ID (fan-out ordering) |
-| `priorityFieldId`                                                                                                                                                                                                                                                                                                                             | Priority single-select field ID              |
-| `priorityOptionP0` / `P1` / `P2`                                                                                                                                                                                                                                                                                                              | Priority option IDs                          |
+| Key                                                                                                                                                                                                                                                                                                         | Purpose                                      |
+| ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------- |
+| `projectId`                                                                                                                                                                                                                                                                                                 | GH Projects V2 project node ID               |
+| `kanbanFieldId`                                                                                                                                                                                                                                                                                             | Kanban single-select field ID                |
+| `kanbanOptionBacklog` / `kanbanOptionRefine` / `kanbanOptionReadyForPlan` / `kanbanOptionPlan` / `kanbanOptionDevelop` / `kanbanOptionTest` / `kanbanOptionReview` / `kanbanOptionDone` (canonical config keys, one per state slug; legacy `kanbanOptionAssigned` remains read-compatible during migration) | Kanban option IDs                            |
+| `sequenceFieldId`                                                                                                                                                                                                                                                                                           | Numeric Sequence field ID (fan-out ordering) |
+| `priorityFieldId`                                                                                                                                                                                                                                                                                           | Priority single-select field ID              |
+| `priorityOptionP0` / `P1` / `P2`                                                                                                                                                                                                                                                                            | Priority option IDs                          |
 
 ## State File
 
@@ -638,9 +638,13 @@ Labels use plain names (no `purpose/` namespace) to keep them short in the GitHu
 
 ### Sequencing
 
-Every issue in a spec should include `**Sequence:** N`. Issues with the same number can be fanned out in parallel; higher-sequence issues are blocked until all lower-sequence issues in the same epic close. The value is written to the `sequenceFieldId` numeric field on the GitHub Projects board, making fan-out order machine-readable.
+Every issue in a spec should include a numeric Rank and explicit dependencies.
+Rank orders dependency-ready children; it is not a parallel-wave identifier.
+Locally, only one child may occupy Plan, Develop, Test, or Review at a time.
 
-**Rule:** Once an epic is in progress, all parallel work runs within that epic's sub-issues. No cross-epic fan-out until the active epic closes.
+**Rule:** Local epic children run sequentially. Parallel execution is not
+authorized until a separately governed cloud-isolation capability explicitly
+re-triages and records an approved wave.
 
 ### Pickup Directive
 

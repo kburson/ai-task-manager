@@ -14,8 +14,9 @@
 //   than this issue's `rank` AND its board state is one of the
 //   "in-flight" states. In-flight = past Backlog and before Review/Done:
 //   `grooming | analyze | development | validate | review`.
-// - **Same-Rank siblings (newcomers).** Never block. Members of the same
-//   wave advance independently.
+// - **Same-Rank siblings (newcomers).** This rank-order reader does not order
+//   them against one another. It does not authorize concurrent execution; the
+//   strict local WIP gate independently permits only one active epic child.
 // - **Higher-Rank siblings.** Never block (they are the next wave).
 // - **Backlog / Ready for Planning siblings.** Excluded — backlog is unvetted,
 //   while R4P is a durable parking queue not yet admitted to JIT planning.
@@ -35,7 +36,8 @@ import { gql, splitRepo } from './github-projects.mjs';
 import { parseBlockedBy } from '../../task-tracker/lib/blocked-marker.mjs';
 import { readUnauthorizedCloseRecovery } from '../../task-tracker/lib/closed-issue-convergence.mjs';
 import { normalizeStateId } from '../../task-tracker/lib/lifecycle-policy/index.mjs';
-import { parseRefinementSnapshot } from '../../task-tracker/lib/refinement-snapshot.mjs';
+import { fieldIdFor } from '../../task-tracker/project-fields.mjs';
+import { verifyRefinementSnapshot } from '../../task-tracker/lib/refinement-snapshot.mjs';
 
 const IN_FLIGHT_STATES = new Set(['refine', 'plan', 'develop', 'test', 'review']);
 
@@ -80,14 +82,130 @@ export function normalizeCloseReason(sub) {
 // each sub-issue's project status (kanban single-select) and Sequence number.
 //
 // Throws if `repo` or `projectId` is missing — wave-admission is fail-closed.
-export async function defaultFetchSiblings({ parentEpicNumber, repo, projectId } = {}) {
+export async function defaultFetchSiblings({ parentEpicNumber, repo, projectId, cfg = {} } = {}) {
   if (!repo) throw new Error('wave-admission: repo is required');
   if (!projectId) throw new Error('wave-admission: projectId is required');
-  const nodes = await fetchAllSubIssueNodes({ parentEpicNumber, repo });
-  return mapSubIssueNodes(nodes, projectId);
+  const nodes = await fetchAllSubIssueNodes({ parentEpicNumber, repo, projectId });
+  return mapSubIssueNodes(nodes, { ...cfg, projectId });
 }
 
-export async function fetchAllSubIssueNodes({ parentEpicNumber, repo, gqlFn = gql } = {}) {
+function projectFieldSelection() {
+  return `
+    nodes {
+      ... on ProjectV2ItemFieldNumberValue {
+        number
+        field { ... on ProjectV2FieldCommon { id name } }
+      }
+      ... on ProjectV2ItemFieldSingleSelectValue {
+        name
+        field { ... on ProjectV2FieldCommon { id name } }
+      }
+    }
+    pageInfo { hasNextPage endCursor }
+  `;
+}
+
+export async function fetchConfiguredProjectItem({
+  issueNumber,
+  repo,
+  projectId,
+  gqlFn = gql,
+} = {}) {
+  if (!repo || !projectId) throw new Error('wave-admission: configured project is required');
+  const { owner, repoName } = splitRepo(repo);
+  const matches = [];
+  const seenMembershipCursors = new Set();
+  let after = null;
+
+  for (let page = 0; page < 1000; page++) {
+    const data = await gqlFn(
+      `query($owner: String!, $repo: String!, $issue: Int!, $after: String) {
+        repository(owner: $owner, name: $repo) {
+          issue(number: $issue) {
+            projectItems(first: 50, after: $after) {
+              nodes {
+                id
+                project { id }
+                fieldValues(first: 100) { ${projectFieldSelection()} }
+              }
+              pageInfo { hasNextPage endCursor }
+            }
+          }
+        }
+      }`,
+      { owner, repo: repoName, issue: Number(issueNumber), after }
+    );
+    const connection = data?.repository?.issue?.projectItems;
+    if (!connection || !Array.isArray(connection.nodes) || !connection.pageInfo) {
+      throw new Error('wave-admission: configured project membership unreadable');
+    }
+    matches.push(...connection.nodes.filter((item) => item?.project?.id === projectId));
+    if (!connection.pageInfo.hasNextPage) break;
+    const next = connection.pageInfo.endCursor;
+    if (!next) throw new Error('wave-admission: project membership page missing end cursor');
+    if (seenMembershipCursors.has(next)) {
+      throw new Error('wave-admission: repeated project membership cursor');
+    }
+    seenMembershipCursors.add(next);
+    after = next;
+    if (page === 999) throw new Error('wave-admission: project membership safety limit exceeded');
+  }
+
+  if (matches.length !== 1) {
+    throw new Error(
+      matches.length === 0
+        ? 'wave-admission: configured project membership missing'
+        : 'wave-admission: configured project membership ambiguous'
+    );
+  }
+  const item = matches[0];
+  const initialFields = item.fieldValues;
+  if (!initialFields || !Array.isArray(initialFields.nodes) || !initialFields.pageInfo) {
+    throw new Error('wave-admission: configured project fields unreadable');
+  }
+  const fieldNodes = [...initialFields.nodes];
+  const seenFieldCursors = new Set();
+  let fieldAfter = initialFields.pageInfo.endCursor;
+  let hasNextFields = initialFields.pageInfo.hasNextPage;
+  for (let page = 0; hasNextFields && page < 1000; page++) {
+    if (!fieldAfter) throw new Error('wave-admission: project fields page missing end cursor');
+    if (seenFieldCursors.has(fieldAfter)) {
+      throw new Error('wave-admission: repeated project fields cursor');
+    }
+    seenFieldCursors.add(fieldAfter);
+    const data = await gqlFn(
+      `query($item: ID!, $after: String) {
+        node(id: $item) {
+          ... on ProjectV2Item {
+            fieldValues(first: 100, after: $after) { ${projectFieldSelection()} }
+          }
+        }
+      }`,
+      { item: item.id, after: fieldAfter }
+    );
+    const fields = data?.node?.fieldValues;
+    if (!fields || !Array.isArray(fields.nodes) || !fields.pageInfo) {
+      throw new Error('wave-admission: configured project fields unreadable');
+    }
+    fieldNodes.push(...fields.nodes);
+    hasNextFields = fields.pageInfo.hasNextPage;
+    fieldAfter = fields.pageInfo.endCursor;
+    if (hasNextFields && page === 999) {
+      throw new Error('wave-admission: project fields safety limit exceeded');
+    }
+  }
+  return {
+    ...item,
+    fieldValues: { nodes: fieldNodes, pageInfo: { hasNextPage: false, endCursor: null } },
+  };
+}
+
+export async function fetchAllSubIssueNodes({
+  parentEpicNumber,
+  repo,
+  projectId,
+  gqlFn = gql,
+} = {}) {
   if (!repo) throw new Error('wave-admission: repo is required');
   if (!Number.isSafeInteger(Number(parentEpicNumber)) || Number(parentEpicNumber) <= 0) {
     throw new Error('wave-admission: parentEpicNumber is required');
@@ -109,22 +227,29 @@ export async function fetchAllSubIssueNodes({ parentEpicNumber, repo, gqlFn = gq
               state
               stateReason
               body
+              labels(first: 100) {
+                nodes { name }
+                pageInfo { hasNextPage }
+              }
               projectItems(first: 20) {
                 nodes {
+                  id
                   project { id }
                   fieldValues(first: 100) {
                     nodes {
                       ... on ProjectV2ItemFieldNumberValue {
                         number
-                        field { ... on ProjectV2FieldCommon { name } }
+                        field { ... on ProjectV2FieldCommon { id name } }
                       }
                       ... on ProjectV2ItemFieldSingleSelectValue {
                         name
-                        field { ... on ProjectV2FieldCommon { name } }
+                        field { ... on ProjectV2FieldCommon { id name } }
                       }
                     }
+                    pageInfo { hasNextPage }
                   }
                 }
+                pageInfo { hasNextPage }
               }
             }
             pageInfo { hasNextPage endCursor }
@@ -136,8 +261,36 @@ export async function fetchAllSubIssueNodes({ parentEpicNumber, repo, gqlFn = gq
     );
     const connection = data?.repository?.issue?.subIssues;
     if (!connection) throw new Error('wave-admission: parent issue or sub-issues unreadable');
-    nodes.push(...(Array.isArray(connection.nodes) ? connection.nodes : []));
-    if (!connection.pageInfo?.hasNextPage) return nodes;
+    if (!Array.isArray(connection.nodes) || !connection.pageInfo) {
+      throw new Error('wave-admission: malformed sub-issue page');
+    }
+    nodes.push(...connection.nodes);
+    if (!connection.pageInfo?.hasNextPage) {
+      if (!projectId) return nodes;
+      for (const sub of nodes) {
+        const projectItems = sub?.projectItems;
+        const configured = projectItems?.nodes?.filter((item) => item?.project?.id === projectId);
+        const needsHydration =
+          !Array.isArray(projectItems?.nodes) ||
+          !projectItems?.pageInfo ||
+          projectItems.pageInfo.hasNextPage ||
+          configured?.length !== 1 ||
+          !configured[0]?.fieldValues?.pageInfo ||
+          configured[0].fieldValues.pageInfo.hasNextPage;
+        if (!needsHydration) continue;
+        const item = await fetchConfiguredProjectItem({
+          issueNumber: sub?.number,
+          repo,
+          projectId,
+          gqlFn,
+        });
+        sub.projectItems = {
+          nodes: [item],
+          pageInfo: { hasNextPage: false, endCursor: null },
+        };
+      }
+      return nodes;
+    }
     const next = connection.pageInfo.endCursor;
     if (!next) throw new Error('wave-admission: sub-issue page missing end cursor');
     if (seenCursors.has(next)) throw new Error('wave-admission: repeated sub-issue cursor');
@@ -161,23 +314,51 @@ export async function fetchAllSubIssueNodes({ parentEpicNumber, repo, gqlFn = gq
  *   boardState:string, closeReason:string|null, recoveryPhase:string|null,
  *   recoveryTx:string|null}>}
  */
-export function mapSubIssueNodes(subs, projectId) {
+export function mapSubIssueNodes(subs, cfgOrProjectId) {
+  const cfg =
+    typeof cfgOrProjectId === 'string'
+      ? { projectId: cfgOrProjectId }
+      : { ...(cfgOrProjectId || {}) };
+  const projectId = cfg.projectId;
   const out = [];
-  for (const sub of subs || []) {
-    if (!sub) continue;
-    const item = (sub.projectItems?.nodes || []).find((n) => n?.project?.id === projectId);
+  if (!Array.isArray(subs)) return out;
+  for (const sub of subs) {
+    if (!sub || !Number.isSafeInteger(Number(sub.number))) {
+      out.push({
+        number: null,
+        rank: null,
+        state: '',
+        boardState: '',
+        issueState: '',
+        closeReason: null,
+        recoveryPhase: null,
+        recoveryTx: null,
+        blockedBy: null,
+        hasCurrentRefinement: false,
+        childEvidenceError: 'malformed child descriptor',
+      });
+      continue;
+    }
+    const projectMatches = (sub.projectItems?.nodes || []).filter(
+      (node) => node?.project?.id === projectId
+    );
+    const item = projectMatches.length === 1 ? projectMatches[0] : null;
     let state = '';
     let rank = null;
     if (item) {
       for (const fv of item.fieldValues?.nodes || []) {
         const fname = fv?.field?.name;
+        const fieldId = fv?.field?.id;
         if (!fname) continue;
-        if (fname.toLowerCase() === 'status' && fv.name) state = normalizeStateId(fv.name) || '';
-        else if (
-          (fname.toLowerCase() === 'rank' || fname.toLowerCase() === 'sequence') &&
-          fv.number != null
-        )
-          rank = Number(fv.number);
+        const statusMatches = cfg.kanbanFieldId
+          ? fieldId === cfg.kanbanFieldId
+          : fname.toLowerCase() === 'status';
+        const rankId = fieldIdFor(cfg, 'rank') || cfg.rankFieldId;
+        const rankMatches = rankId
+          ? fieldId === rankId
+          : fname.toLowerCase() === 'rank' || fname.toLowerCase() === 'sequence';
+        if (statusMatches && fv.name) state = normalizeStateId(fv.name) || '';
+        else if (rankMatches && fv.number != null) rank = Number(fv.number);
       }
     }
     // #947 — a CLOSED sub-issue is terminal, full stop. This coercion used to
@@ -210,17 +391,54 @@ export function mapSubIssueNodes(subs, projectId) {
     // work, so it deliberately maps to null just like no marker.
     const recovery = readUnauthorizedCloseRecovery(sub.body);
     const pendingRecovery = recovery?.phase !== 'complete' ? recovery : null;
+    const closeReason = normalizeCloseReason(sub);
+    const issueClosed = String(sub.state || '').toUpperCase() === 'CLOSED';
+    const labels = sub.labels;
+    const blockedBy = parseBlockedBy(sub.body);
+    let childEvidenceError = null;
+    let hasCurrentRefinement = false;
+    if (projectMatches.length > 1) childEvidenceError = 'configured project membership ambiguous';
+    else if (!item) childEvidenceError = 'configured project membership missing';
+    else if (sub.projectItems?.pageInfo?.hasNextPage)
+      childEvidenceError = 'project membership incomplete';
+    else if (item.fieldValues?.pageInfo?.hasNextPage)
+      childEvidenceError = 'project fields incomplete';
+    else if (!labels || labels.pageInfo?.hasNextPage || !Array.isArray(labels.nodes)) {
+      childEvidenceError = 'labels incomplete';
+    } else if (issueClosed) {
+      // Terminal children do not need a still-current refinement snapshot.
+      // Their authoritative evidence is the recognized GitHub disposition,
+      // raw configured-board Status, and durable recovery phase.
+      if (!closeReason) childEvidenceError = 'closed child disposition unreadable';
+    } else {
+      const verified = verifyRefinementSnapshot(sub.body, {
+        labels: labels.nodes.map((label) => label?.name).filter(Boolean),
+      });
+      const snapshotRank = verified.snapshot?.fields?.rank;
+      const snapshotBlocked = String(verified.snapshot?.fields?.blockedBy || '')
+        .split(',')
+        .map((value) => Number(String(value).trim().replace(/^#/, '')))
+        .filter((value) => Number.isSafeInteger(value) && value > 0)
+        .sort((a, b) => a - b);
+      if (!verified.ok) childEvidenceError = verified.reason;
+      else if (!Number.isFinite(rank) || Number(snapshotRank) !== Number(rank)) {
+        childEvidenceError = 'live board rank disagrees with refinement snapshot';
+      } else if (JSON.stringify(snapshotBlocked) !== JSON.stringify(blockedBy)) {
+        childEvidenceError = 'live dependencies disagree with refinement snapshot';
+      } else hasCurrentRefinement = true;
+    }
     out.push({
       number: sub.number,
       rank,
       state,
       boardState,
       issueState: String(sub.state || '').toLowerCase(),
-      closeReason: normalizeCloseReason(sub),
+      closeReason,
       recoveryPhase: pendingRecovery?.phase ?? null,
       recoveryTx: pendingRecovery?.tx ?? null,
-      blockedBy: parseBlockedBy(sub.body),
-      hasCurrentRefinement: Boolean(parseRefinementSnapshot(sub.body)),
+      blockedBy,
+      hasCurrentRefinement,
+      ...(childEvidenceError ? { childEvidenceError } : {}),
     });
   }
   return out;

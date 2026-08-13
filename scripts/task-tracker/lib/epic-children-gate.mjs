@@ -4,6 +4,7 @@ import { defaultFetchSiblings } from '../../gh/lib/wave-admission.mjs';
 import { splitRepo, gql } from '../../gh/lib/github-projects.mjs';
 import { parseBlockedBy } from './blocked-marker.mjs';
 import { parseRefinementSnapshot } from './refinement-snapshot.mjs';
+import { normalizeStateId } from './lifecycle-policy/index.mjs';
 
 const PENDING_RECOVERY_PHASES = new Set(['intent', 'reopened', 'review', 'timing']);
 export const CHILD_STAGING_STATE = 'ready-for-plan';
@@ -16,12 +17,16 @@ function childState(child) {
 }
 
 export function isAcceptedTerminalChild(child) {
-  return (
-    childState(child) === 'done' &&
-    String(child?.issueState || '').toLowerCase() === 'closed' &&
-    ACCEPTED_TERMINAL_DISPOSITIONS.has(String(child?.closeReason || '').toLowerCase()) &&
-    !isPendingRecoveryPhase(child?.recoveryPhase)
-  );
+  const disposition = String(child?.closeReason || '').toLowerCase();
+  if (
+    childState(child) !== 'done' ||
+    String(child?.issueState || '').toLowerCase() !== 'closed' ||
+    !ACCEPTED_TERMINAL_DISPOSITIONS.has(disposition) ||
+    isPendingRecoveryPhase(child?.recoveryPhase)
+  )
+    return false;
+  if (disposition === 'not_planned') return true;
+  return normalizeStateId(child?.boardState) === 'done';
 }
 
 export function isActiveChild(child) {
@@ -48,8 +53,10 @@ export async function fetchEpicChildren({ cfg, parentEpicNumber, deps = {} } = {
     parentEpicNumber,
     repo: cfg.repo,
     projectId: cfg.projectId,
+    cfg,
   });
-  return Array.isArray(children) ? children : [];
+  if (!Array.isArray(children)) throw new Error('fetchEpicChildren: malformed child list');
+  return children;
 }
 
 export async function planEpicDevelopChildrenGate({ cfg, issueNumber, deps = {} } = {}) {
@@ -72,7 +79,9 @@ export async function planEpicDevelopChildrenGate({ cfg, issueNumber, deps = {} 
     (child) => !isAcceptedTerminalChild(child) && !hasCompletePlanningRecord(child)
   );
   if (offenders.length) {
-    const lines = offenders.map((c) => `#${c.number} (state=${c.state || 'unknown'})`);
+    const lines = offenders.map(
+      (c) => `#${c?.number || 'unknown'} (state=${c?.state || 'unknown'})`
+    );
     return {
       ok: false,
       blockers: [
@@ -105,7 +114,9 @@ export async function developEpicTestChildrenGate({ cfg, issueNumber, deps = {} 
   }
   const offenders = children.filter((child) => !isAcceptedTerminalChild(child));
   if (offenders.length) {
-    const lines = offenders.map((c) => `#${c.number} (state=${c.state || 'unknown'})`);
+    const lines = offenders.map(
+      (c) => `#${c?.number || 'unknown'} (state=${c?.state || 'unknown'})`
+    );
     return {
       ok: false,
       blockers: [

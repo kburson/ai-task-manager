@@ -43,6 +43,7 @@ const ACTIVE_MARKERS = Object.freeze([
   /<!--\s*aitm-refinement-rationale:\s*[^>]*?-->\s*\n?/gi,
   /<!--\s*aitm-refinement-snapshot\s+[^>]*?-->\s*\n?/gi,
   /<!--\s*aitm-plan-approved(?::[^>]*|\s+[^>]*?)\s*-->\s*\n?/gi,
+  /<!--\s*aitm-epic-orchestration-plan\s+[^>]*?-->\s*\n?/gi,
   /<!--\s*aitm-estimation-forecast(?:-ready)?\s+[^>]*?-->\s*\n?/gi,
   /<!--\s*aitm-deep-dive-posted(?::[^>]*|\s+[^>]*?)\s*-->\s*\n?/gi,
   /<!--\s*aitm-deep-dive-complete(?::[^>]*|\s+[^>]*?)\s*-->\s*\n?/gi,

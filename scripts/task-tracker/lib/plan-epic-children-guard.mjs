@@ -25,11 +25,13 @@
 // other guard genuinely caused the run to fail.
 
 import { planEpicDevelopChildrenGate } from './epic-children-gate.mjs';
+import { verifyEpicOrchestrationPlan } from './epic-orchestration-plan.mjs';
+import { defaultResolveTrunkSha } from './plan-approved-guard.mjs';
 
 export const GUARD_ID = 'plan-exit-epic-children-r4p-or-beyond';
 export const R4P_GUARD_ID = 'ready-for-plan-exit-epic-children-r4p-or-beyond';
 
-async function runAdmission(ctx) {
+async function runAdmission(ctx, { requireDurablePlan = false } = {}) {
   if (!ctx || !ctx.cfg || !ctx.issueNumber) return { ok: true };
   const gateFn = ctx.deps?.planEpicDevelopChildrenGate || planEpicDevelopChildrenGate;
   const result = await gateFn({
@@ -37,6 +39,22 @@ async function runAdmission(ctx) {
     issueNumber: ctx.issueNumber,
     deps: ctx.deps?.epicChildren,
   });
+  if (result.ok && requireDurablePlan && result.children.length > 0) {
+    try {
+      const resolveTrunkSha = ctx.deps?.resolveTrunkSha || defaultResolveTrunkSha;
+      const trunkSha = await resolveTrunkSha({ cfg: ctx.cfg, projectDir: ctx.projectDir });
+      const verified = verifyEpicOrchestrationPlan(ctx.body, {
+        children: result.children,
+        trunkSha,
+      });
+      if (!verified.ok) {
+        return { ok: false, reason: verified.reason, blockers: [verified.reason] };
+      }
+    } catch (error) {
+      const reason = `epic orchestration plan unreadable: ${error.message}`;
+      return { ok: false, reason, blockers: [reason] };
+    }
+  }
   if (result.ok) return { ok: true };
   const reason = (result.blockers || []).join('; ') || 'epic-children-not-r4p';
   return { ok: false, reason, blockers: result.blockers || [] };
@@ -56,6 +74,6 @@ export const planEpicChildrenGuard = {
     // Scoped to plan → develop. Rollbacks and bounce-backs to other states
     // must NOT trigger an epic-children admission check.
     if (ctx?.toState && ctx.toState !== 'develop') return { ok: true };
-    return runAdmission(ctx);
+    return runAdmission(ctx, { requireDurablePlan: true });
   },
 };

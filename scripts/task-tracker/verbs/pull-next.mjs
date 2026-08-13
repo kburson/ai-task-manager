@@ -27,6 +27,8 @@ import { buildContext } from '../runtime.mjs';
 import { verbClose } from './close.mjs';
 import { resolveProjectDir } from '../lib/project-dir.mjs';
 import { runPreflight } from '../lib/verb-preflight.mjs';
+import { withIssueLock } from '../issue-mutator-lock.mjs';
+import { stateIds } from '../lib/lifecycle-policy/index.mjs';
 
 export async function defaultGetLiveState({ issueNumber, cfg, deps = {} }) {
   const fetchSnapshot = deps.fetchSnapshot || fetchAssignmentSnapshot;
@@ -55,6 +57,7 @@ export async function promoteSelectedChild({
   promoteDeps = {},
   promoteVerb = verbPromote,
   ownershipPreflight = runPreflight,
+  acquireIssueLock = withIssueLock,
 } = {}) {
   const selectedIssueNumber = Number(issueNumber);
   if (!Number.isSafeInteger(selectedIssueNumber) || selectedIssueNumber <= 0) {
@@ -77,29 +80,47 @@ export async function promoteSelectedChild({
     }
   };
 
-  const ownership = await ownershipPreflight({
-    stateBefore: { active: `#${selectedIssueNumber}` },
-    target: `#${selectedIssueNumber}`,
-    cfg,
-    ownershipOnly: true,
-    deps: promoteDeps.preflightDeps || {},
-  });
-  if (!ownership.ok) {
-    throw new Error(
-      `pull-next ownership preflight refused #${selectedIssueNumber}: ${ownership.assigneeKind || ownership.kind}`
-    );
-  }
+  return acquireIssueLock(
+    { issue: selectedIssueNumber, verb: 'pull-next-child', projDir: projectDir },
+    async () => {
+      const ownership = await ownershipPreflight({
+        stateBefore: { active: `#${selectedIssueNumber}` },
+        target: `#${selectedIssueNumber}`,
+        cfg,
+        ownershipOnly: true,
+        deps: promoteDeps.preflightDeps || {},
+      });
+      if (!ownership.ok) {
+        throw new Error(
+          `pull-next ownership preflight refused #${selectedIssueNumber}: ${ownership.assigneeKind || ownership.kind}`
+        );
+      }
 
-  return promoteVerb([String(selectedIssueNumber)], cfg, {
-    ...promoteDeps,
-    projectDir,
-    assertBound: assertSelectedChild,
-  });
+      return promoteVerb([String(selectedIssueNumber)], cfg, {
+        ...promoteDeps,
+        projectDir,
+        assertBound: assertSelectedChild,
+      });
+    }
+  );
 }
 
 export async function runPullNext({ epicNumber, cfg, deps = {} } = {}) {
   if (!epicNumber) throw new Error('runPullNext: epicNumber is required');
   if (!cfg) throw new Error('runPullNext: cfg is required');
+  const acquireIssueLock = deps.withIssueLock || withIssueLock;
+  const projectDir =
+    deps.projectDir ||
+    (deps.resolveProjectDir ?? resolveProjectDir)({
+      issue: epicNumber,
+      deps: deps.projectDirDeps ?? deps,
+    });
+  return acquireIssueLock({ issue: epicNumber, verb: 'pull-next', projDir: projectDir }, () =>
+    runPullNextLocked({ epicNumber, cfg, deps, projectDir })
+  );
+}
+
+async function runPullNextLocked({ epicNumber, cfg, deps, projectDir }) {
   const getLiveState = deps.getLiveState || defaultGetLiveState;
   const getChildLiveState = deps.getChildLiveState || defaultGetLiveState;
   const audit = deps.audit || runMoveInvariantAudit;
@@ -112,10 +133,16 @@ export async function runPullNext({ epicNumber, cfg, deps = {} } = {}) {
     };
   }
 
-  // #758 — audit the epic for out-of-band Status drift before selecting a child,
-  // so orchestrator drift is caught on the normal develop loop. Best-effort:
-  // prints a warning + recommended reconcile on drift, never blocks selection.
-  await audit({ issueNumber: epicNumber, cfg, deps: deps.auditDeps });
+  // #758 — audit the epic for out-of-band Status drift before selecting a child.
+  // Ambiguous or dirty authority blocks selection; pull-next must never create
+  // new work from an unverified parent snapshot.
+  const auditResult = await audit({ issueNumber: epicNumber, cfg, deps: deps.auditDeps });
+  if (!auditResult?.ok) {
+    return {
+      status: 'epic-audit-refused',
+      message: `Refusing to pull-next on #${epicNumber}: epic invariant audit is not clean (${auditResult?.drift || 'unknown'}).`,
+    };
+  }
 
   let children;
   try {
@@ -135,6 +162,24 @@ export async function runPullNext({ epicNumber, cfg, deps = {} } = {}) {
     return {
       status: 'no-children',
       message: `#${epicNumber} has no sub-issues — nothing to pull.`,
+    };
+  }
+
+  const ambiguous = children.filter(
+    (child) =>
+      !child ||
+      !Number.isSafeInteger(Number(child.number)) ||
+      !childStateIsKnown(child) ||
+      child.childEvidenceError ||
+      (!isPendingRecoveryPhase(child.recoveryPhase) &&
+        childStateNeedsPlanningEvidence(child) &&
+        (!Number.isFinite(Number(child.rank)) || child.hasCurrentRefinement !== true))
+  );
+  if (ambiguous.length) {
+    return {
+      status: 'child-state-ambiguous',
+      ambiguousChildren: ambiguous.map((child) => child?.number || null),
+      message: `Refusing to pull-next on #${epicNumber}: child enumeration or planning evidence is incomplete.`,
     };
   }
 
@@ -240,12 +285,10 @@ export async function runPullNext({ epicNumber, cfg, deps = {} } = {}) {
     : await promoteSelectedChild({
         issueNumber: next.number,
         cfg,
-        projectDir: (deps.resolveProjectDir ?? resolveProjectDir)({
-          issue: epicNumber,
-          deps: deps.projectDirDeps ?? deps,
-        }),
+        projectDir,
         promoteDeps: deps.promoteDeps,
         promoteVerb: deps.promoteVerb,
+        acquireIssueLock: deps.childIssueLock || withIssueLock,
       });
 
   let observedState = null;
@@ -278,6 +321,16 @@ export async function runPullNext({ epicNumber, cfg, deps = {} } = {}) {
     sweep,
     message: `Pulled #${next.number} (rank=${next.rank}) ready-for-plan→plan. Refresh JIT planning against current trunk, then run /task promote ${next.number}; Plan→Develop will verify exclusive ownership.`,
   };
+}
+
+const knownChildStates = new Set(stateIds());
+
+function childStateIsKnown(child) {
+  return knownChildStates.has(String(child?.state || '').toLowerCase());
+}
+
+function childStateNeedsPlanningEvidence(child) {
+  return !['backlog', 'refine', 'done'].includes(String(child?.state || '').toLowerCase());
 }
 
 export async function verbPullNext(rest = [], cfgArg = null) {

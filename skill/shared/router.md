@@ -64,7 +64,7 @@ Load the rule file ONLY when its verb is about to run. If the sentinel `aitm-ski
 
 Verbs not listed (`/task`, `/task discover`, `/task plan`, `/task resume`, `/task pause`, `/task update`, `/task log`, `/task migrate`, `/task check`, `/task fleet`, `/task config`) need no Tier-2 file — invoke the CLI and print output.
 
-> `/task plan #N` is the Refine → Plan (Sprint-Planning) entry verb — refuses on any other current state. `/task discover` is the separate backlog-item-generation / pre-issue ideation bucket. The two are not interchangeable; the historical `plan → discover` deprecation alias was removed in #299.
+> `/task plan #N` is the Ready for Planning → Plan JIT-planning entry verb — refuses on any other current state. `/task discover` is the separate backlog-item-generation / pre-issue ideation bucket. The two are not interchangeable; the historical `plan → discover` deprecation alias was removed in #299.
 
 ## gh issue command policy (bash-guard)
 

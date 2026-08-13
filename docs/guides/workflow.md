@@ -8,17 +8,17 @@ Full workflow rules for projects using `ai-task-manager`. These rules define how
 
 Stage names are nouns describing a process; the corresponding activity is a verb. We shorten both to the verb form for brevity (e.g., we say "Refine stage" rather than "Refinement stage" — same column, shorter label).
 
-| Stage (column)                     | Full process name | Activity verb | Also known as               | What happens here                                                                                                                                                                                                                                                                                                                            |
-| ---------------------------------- | ----------------- | ------------- | --------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Discover _(agent-side, pre-issue)_ | Discovery         | discover      | Ideation, Triage            | Untracked ideation bucket. Not a kanban column — `/task discover` opens a scratch bucket for pre-Backlog work.                                                                                                                                                                                                                               |
-| Backlog                            | Backlog           | —             | —                           | Collection of prioritized backlog items (user stories, tasks).                                                                                                                                                                                                                                                                               |
-| Assigned                           | Assigned          | —             | —                           | Assigned / in-play / ready to work. This is an inert, gateless tranche waiting room between Backlog and Refine. `backlog → assigned` carries no entry gate; the Priority gate lives on `assigned → refine`. Every item passes through Assigned (no `backlog → refine` shortcut). Filter ownership with the GitHub Project `Assignees` field. |
-| Refine                             | Refinement        | refine        | —                           | Backlog item is shaped to be ready for planning: acceptance criteria, estimate, size, priority, labels.                                                                                                                                                                                                                                      |
-| Plan                               | Planning          | plan          | —                           | Team performs a deep-dive on the story to determine a plan of action: enhanced ACs, refined estimate.                                                                                                                                                                                                                                        |
-| Develop                            | Development       | develop       | In Progress                 | Code changes are made and committed against the story, including test automation.                                                                                                                                                                                                                                                            |
-| Test                               | Testing           | verify        | Verify, QA                  | Committed source is run against all ACs and test automation in a sandboxed environment.                                                                                                                                                                                                                                                      |
-| Review                             | Review            | review        | Ready for Acceptance        | Story waits for product owner to review functionality in a live demo and confirm all ACs (functional + non-functional) are met.                                                                                                                                                                                                              |
-| Done                               | Done              | —             | Complete, Ready for Release | All ACs and Definition of Done are satisfied.                                                                                                                                                                                                                                                                                                |
+| Stage (column)                     | Full process name  | Activity verb | Also known as               | What happens here                                                                                                                                   |
+| ---------------------------------- | ------------------ | ------------- | --------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Discover _(agent-side, pre-issue)_ | Discovery          | discover      | Ideation, Triage            | Untracked ideation bucket. Not a kanban column — `/task discover` opens a scratch bucket for pre-Backlog work.                                      |
+| Backlog                            | Backlog            | —             | —                           | Collection of prioritized backlog items (user stories, tasks).                                                                                      |
+| Refine                             | Refinement         | refine        | —                           | Backlog item is shaped to be ready for planning: acceptance criteria, estimate, size, priority, labels.                                             |
+| Ready for Planning                 | Planning readiness | —             | R4P                         | Durable parking queue for stories with a current refinement snapshot. Rank and dependencies determine JIT pull order; ownership remains orthogonal. |
+| Plan                               | Planning           | plan          | —                           | Team performs a deep-dive on the story to determine a plan of action: enhanced ACs, refined estimate.                                               |
+| Develop                            | Development        | develop       | In Progress                 | Code changes are made and committed against the story, including test automation.                                                                   |
+| Test                               | Testing            | verify        | Verify, QA                  | Committed source is run against all ACs and test automation in a sandboxed environment.                                                             |
+| Review                             | Review             | review        | Ready for Acceptance        | Story waits for product owner to review functionality in a live demo and confirm all ACs (functional + non-functional) are met.                     |
+| Done                               | Done               | —             | Complete, Ready for Release | All ACs and Definition of Done are satisfied.                                                                                                       |
 
 **Retired terms** (do not use):
 
@@ -41,17 +41,17 @@ Backward-compat read paths accept the legacy `aitm-groom-*` forms; write paths e
 
 **Verb-to-state-entry mapping** (state-entry verbs do the prep + transition atomically):
 
-| Verb               | Enters stage           | Notes                                                                                                                                                                                                                                 |
-| ------------------ | ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `/task refine #N`  | Refine                 | Sets Size + Estimate + Priority + writes `aitm-refine-rationale`, then walks Backlog → Assigned → Refine (or Assigned → Refine) one edge at a time.                                                                                   |
-| `/task discover`   | (pre-backlog ideation) | Opens an untracked discovery bucket for backlog item generation / pre-issue ideation; promote to an issue with `/task new <title>`. **Distinct from Sprint-Planning** — that is `/task plan`.                                         |
-| `/task plan #N`    | Plan (Sprint-Planning) | Promotes Refine → Plan (Sprint-Planning ceremony: deep-dive analysis, child story breakdown, estimate revision). Refuses on any current state other than Refine. **Not for backlog item generation** — use `/task discover` for that. |
-| `/task develop #N` | Develop                | (Reserved; currently use `/task promote` from Plan after `/task plan-approve`.)                                                                                                                                                       |
-| `/task verify #N`  | Test                   | Runs sandboxed verification of all ACs and test automation; stamps `aitm-dod-verified` marker. (To be built per epic #107.)                                                                                                           |
-| `/task review #N`  | Review                 | Promotes Test → Review after verification passes; in Review, `--probe "command"` records focused evidence without rerunning standard commands.                                                                                        |
-| `/task approve #N` | (gate stamp)           | Stamps the human-approval marker for the current gate (plan→develop or review→done).                                                                                                                                                  |
-| `/task close #N`   | Done                   | Closes the issue and moves Review → Done.                                                                                                                                                                                             |
-| `/task promote #N` | next stage             | Generic one-step advance; used for transitions without bespoke prep.                                                                                                                                                                  |
+| Verb               | Enters stage           | Notes                                                                                                                                                                                         |
+| ------------------ | ---------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `/task refine #N`  | Refine                 | Sets Size + Estimate + Priority and writes `aitm-refine-rationale`; successful refinement then parks the issue in Ready for Planning.                                                         |
+| `/task discover`   | (pre-backlog ideation) | Opens an untracked discovery bucket for backlog item generation / pre-issue ideation; promote to an issue with `/task new <title>`. **Distinct from Sprint-Planning** — that is `/task plan`. |
+| `/task plan #N`    | Plan (Sprint-Planning) | Promotes Ready for Planning → Plan for JIT deep-dive, child breakdown, and estimate refresh. Refuses on any other state. **Not for backlog item generation** — use `/task discover` for that. |
+| `/task develop #N` | Develop                | (Reserved; currently use `/task promote` from Plan after `/task plan-approve`.)                                                                                                               |
+| `/task verify #N`  | Test                   | Runs sandboxed verification of all ACs and test automation; stamps `aitm-dod-verified` marker. (To be built per epic #107.)                                                                   |
+| `/task review #N`  | Review                 | Promotes Test → Review after verification passes; in Review, `--probe "command"` records focused evidence without rerunning standard commands.                                                |
+| `/task approve #N` | (gate stamp)           | Stamps the human-approval marker for the current gate (plan→develop or review→done).                                                                                                          |
+| `/task close #N`   | Done                   | Closes the issue and moves Review → Done.                                                                                                                                                     |
+| `/task promote #N` | next stage             | Generic one-step advance; used for transitions without bespoke prep.                                                                                                                          |
 
 ---
 
@@ -80,7 +80,7 @@ Immediately after creating, set **both** `Estimate` (hours) and `Size` on the Gi
 Issues move through eight states:
 
 ```
-Backlog → Assigned → Refine → Plan → Develop → Test → Review → Done
+Backlog → Refine → Ready for Planning → Plan → Develop → Test → Review → Done
 ```
 
 Each state is a first-class object (`scripts/task-tracker/states/<state>.mjs`)
@@ -92,12 +92,13 @@ Move issues using the helper script (reads all IDs from `.ai-task-manager/task-t
 
 ```bash
 scripts/gh/move-state.mjs <issue#> <state>
-# States: backlog | assigned | refine | plan | develop | test | review | done
+# States: backlog | refine | ready-for-plan | plan | develop | test | review | done
 
 scripts/gh/move-state.mjs 42 develop
 ```
 
 - Move to **Refine** when an issue is being shaped (sized, AC drafted).
+- Move to **Ready for Planning** after refinement is complete and current.
 - Move to **Plan** after the deep-dive analysis is posted.
 - Move to **Develop** when `/task #N` activates an issue and code work begins.
 - Before `/task review`, commit the implementation and run `/task commit-trace #N`; Review requires a clean tracked worktree and a `### 🔗 Commits` ledger comment. Attribution is **message-based**, not SHA-reachability — the gate is satisfied by a commit whose subject carries the `[#N]` prefix (see [Commit Attribution](#commit-attribution) below), regardless of which branch or worktree it lives on.
@@ -487,14 +488,12 @@ For one-off parallel batches (e.g., dispatching several sub-issues without pausi
 
 **Orphan GC**: on `SessionStart`, override files older than `deadSessionMaxAgeMs` (default 7 days) are swept. Tunable via `/task config deadSessionMaxAgeMs <ms>`.
 
-### Sequence-as-wave-id
+### Rank and dependency order
 
-Sequence is a numeric field on each issue. Sub-issues sharing the same Sequence
-form a wave: they may be dispatched in parallel, but a sub-issue at Sequence
-N+1 cannot start until every Sequence-N sibling reaches Done. The
-`wave-admission` gate enforces this on `/task promote` (entering Plan). Solo issues with no
-parent epic bypass the gate. See [DESIGN.md](../DESIGN.md) for the
-discovered-sub-issue and same-wave-newcomer semantics.
+Rank is the deterministic order among dependency-ready children. The
+`wave-admission` reader exhaustively loads the epic's sub-issues, but local
+execution is strictly sequential: sharing a rank never authorizes parallel
+work. Solo issues with no parent epic bypass the epic child gate.
 
 Within a wave, child flow is further constrained:
 
@@ -524,15 +523,16 @@ Within a wave, child flow is further constrained:
 Backlog and Refine are not interchangeable — they encode different states of issue readiness:
 
 - **Backlog** = raw, unvetted ideas. No `Size`, no `Estimate`, no fully-formed acceptance criteria required. Backlog is the idea inbox; pulling from Backlog requires shaping work first.
-- **Refine** = stories that are fully formed and ready to pick up. Acceptance criteria, `Size`, and `Estimate` are all set. Pulling from Refine never requires additional shaping.
+- **Refine** = active shaping work. Successful refinement moves the story to
+  Ready for Planning; Refine is not a durable parking queue.
 
-All issues are created in Backlog — no exceptions (#272). `scripts/gh/create-issue.mjs` no longer accepts `--status`. When an agent or human files a new issue with full ACs and sizing already set, create it (lands in Backlog and stamps `aitm-entered-backlog`) and immediately chain `node scripts/task-tracker/task-tracker.mjs promote <N>` to advance through Assigned and Refine (every item now passes through Assigned — the inert tranche waiting room; #433). The previous "tether straight to Refine" shortcut left `aitm-entered-backlog` unstamped and broke the contiguity guard on later forward transitions.
+All issues are created in Backlog — no exceptions (#272). `scripts/gh/create-issue.mjs` no longer accepts `--status`. Use governed one-step verbs to enter active Refine and then park successful refinement in Ready for Planning. Assignment does not move lifecycle Status.
 
 `scripts/gh/project-tether.mjs` and `scripts/gh/move-state.mjs` emit non-blocking warnings when this rule is violated (e.g. tethering a sized + estimated issue to Backlog, or moving a sized issue back to Backlog).
 
-### Demonstrable-AC Standard (Refine→Plan exit gate)
+### Demonstrable-AC Standard (Refine→Ready for Planning exit gate)
 
-Every Acceptance Criterion must be _demonstrable_: bound to a concrete check a machine can run, or honestly marked as not checkable. The Refine→Plan exit gate (`lib/refine-to-plan-gate.mjs`, walker `findAcsWithoutVerifierOrInvalidTag` in `lib/body-invariants.mjs`) refuses promotion and emits one `refine-exit-demonstrable:` blocker per offending AC until every AC line satisfies one of:
+Every Acceptance Criterion must be _demonstrable_: bound to a concrete check a machine can run, or honestly marked as not checkable. The Refine→Ready for Planning exit gate (`lib/refine-to-plan-gate.mjs`, walker `findAcsWithoutVerifierOrInvalidTag` in `lib/body-invariants.mjs`) refuses promotion and emits one `refine-exit-demonstrable:` blocker per offending AC until every AC line satisfies one of:
 
 - **Targeted verifier.** The AC carries an `aitm-verified cmd="…"` declaration naming at least one specific command — e.g. `<!-- aitm-verified cmd="\`node --test scripts/task-tracker/tests/unit/foo.test.mjs\`" -->`. The command must exercise _that AC_, not the whole suite.
 - **Honest opt-out.** The AC line carries an `<!-- aitm-non-demonstrable -->` marker. Use this only for genuinely unverifiable assertions (subjective quality goals, external-process facts); it is an explicit, grep-able admission, not an escape hatch for laziness. (Before #891, this was a plain prose tag — `invalid — non-demonstrable` — matched as an unanchored substring against the visible label, which made prose that merely _discussed_ the tag falsely count as an opt-out; the marker form closes that gap. Legacy bodies are migrated by `scripts/maintenance/migrate-non-demonstrable-tag-position.mjs`.)
@@ -551,7 +551,7 @@ This threads the sanctioned `allowUnverifiedTicks` bypass of `mutateIssueBody` (
 
 ### Defect-First / Suite-Must-Grow (engineering doctrine)
 
-The [Demonstrable-AC Standard](#demonstrable-ac-standard-refineplan-exit-gate) above governs the _artifact_ — every AC must bind to a concrete verifier. This section states the matching _engineering behavior_ that produces demonstrable work. Two rules, applied to every change:
+The [Demonstrable-AC Standard](#demonstrable-ac-standard-refineready-for-planning-exit-gate) above governs the _artifact_ — every AC must bind to a concrete verifier. This section states the matching _engineering behavior_ that produces demonstrable work. Two rules, applied to every change:
 
 - **Defect-First.** Every defect begins with a _failing test that reproduces it_ (RED), and only then is the fix written to turn that test GREEN. The reproducing test is committed alongside the fix as durable, re-runnable evidence that the bug existed and is closed. This is the bug-fix branch of the TDD Iron Law ("no production code without a failing test first") restated for defects specifically, so it is not left to inference from the general TDD skill. No defect is "fixed" without a reproducing test committed alongside it.
 - **Suite-Must-Grow.** Regression tests prove only that _previously-tested_ behavior still holds — they are a **floor**, never proof of _new_ behavior. `npm run test:all` passing on a change that adds behavior with no new test is a false signal: it confirms nothing was broken, not that the new behavior works. So the suite grows monotonically — every new behavior ships with new targeted tests. This is the same principle as the Demonstrable-AC rule that `test:all` is the regression floor, not an AC verifier; here it is stated for the code, there for the criteria.
@@ -570,7 +570,7 @@ Documenting this token gives a future Develop→Test enforcement gate a stable c
 
 1. **Trusted judgment.** Full-Auto means you are trusted to find and execute the best honest path to the right outcome. The default is to act. Do not invent ceremony, and do not stall on decisions you can responsibly make yourself — deferring those turns the agent into noise and erodes the operator's reliance on it.
 2. **Stop only when there is no discernible path.** Escalate to the human when, and only when, there is genuinely no responsible route to the right thing — a real ambiguity or a missing decision only the operator can make. A blocking question pauses the timer (`/task pause`) and waits for a typed answer; it is not a way to offload work you could have done.
-3. **Never fabricate to stay automatic.** When the only remaining routes to "done" are _fabricate evidence_ or _stop and ask_, always stop and ask. Forging proof to dodge a check-in is the cardinal failure this epic exists to prevent. Full-Auto never authorizes inventing evidence: use the real runner (`ac-stamp` / `dod-stamp`), the honest `allowUnverifiedTicks` escape hatch, or halt. This tenet is the operational face of the `never-fabricate-evidence` rule and the [Demonstrable-AC Standard](#demonstrable-ac-standard-refineplan-exit-gate) above — autonomy is bounded by honesty, and honesty wins every conflict.
+3. **Never fabricate to stay automatic.** When the only remaining routes to "done" are _fabricate evidence_ or _stop and ask_, always stop and ask. Forging proof to dodge a check-in is the cardinal failure this epic exists to prevent. Full-Auto never authorizes inventing evidence: use the real runner (`ac-stamp` / `dod-stamp`), the honest `allowUnverifiedTicks` escape hatch, or halt. This tenet is the operational face of the `never-fabricate-evidence` rule and the [Demonstrable-AC Standard](#demonstrable-ac-standard-refineready-for-planning-exit-gate) above — autonomy is bounded by honesty, and honesty wins every conflict.
 
 Tenets 1 and 2 are a tension held on purpose: act by default, but stop at the edge of your authority. Tenet 3 is absolute and overrides both — there is no version of "staying automatic" that justifies a fabricated marker.
 
@@ -584,7 +584,7 @@ Tenets 1 and 2 are a tension held on purpose: act by default, but stop at the ed
 - **`epic`** — a parent/XL story; same Story Origin requirement as solo.
 - **`sub-issue`** — a child story; same Story Origin requirement plus `--parent <N>`, recorded inside Story Origin.
 
-A stub deliberately fails the Refine→Plan gate until Refine supplies substantive ACs. Plan Metadata becomes mandatory at Plan→Develop, the first point where planning output must exist.
+A stub deliberately fails the Refine→Ready for Planning gate until Refine supplies substantive ACs. Plan Metadata becomes mandatory at Plan→Develop, the first point where planning output must exist.
 
 `/task report` files an upstream external-product report; it does not create a local defect story. Use the `defect` shape for work tracked in the current repository.
 
@@ -738,13 +738,13 @@ See `docs/guides/ai-value-framework.md` for the sizing guide, field IDs after `i
 
 Size and Estimate move through three distinct stages. Only the first two ever mutate fields; the third is read-only.
 
-| Stage  | Verb that fires it                                                                 | Mutates fields?               | Comment surface           |
-| ------ | ---------------------------------------------------------------------------------- | ----------------------------- | ------------------------- |
-| Refine | `/task refine <N>` (Assigned → Refine; walks Backlog → Assigned first when needed) | Yes — initial set (manual)    | `### 🛠 Refine estimate`   |
-| Plan   | `/task promote <N>` (plan → develop boundary)                                      | Yes — rebucket from Deep Dive | `### 🔁 Plan re-estimate` |
-| Review | `/task close <N>` (review → done)                                                  | **No** — read-only delta      | `### 📊 Review delta`     |
+| Stage  | Verb that fires it                            | Mutates fields?               | Comment surface           |
+| ------ | --------------------------------------------- | ----------------------------- | ------------------------- |
+| Refine | `/task refine <N>` (Backlog → Refine)         | Yes — initial set (manual)    | `### 🛠 Refine estimate`   |
+| Plan   | `/task promote <N>` (plan → develop boundary) | Yes — rebucket from Deep Dive | `### 🔁 Plan re-estimate` |
+| Review | `/task close <N>` (review → done)             | **No** — read-only delta      | `### 📊 Review delta`     |
 
-**Refine estimate.** When `/task refine <N>` advances an issue from Assigned to Refine (after a gateless Backlog → Assigned hop when needed), the harness pre-checks two signals and posts an audit comment:
+**Refine estimate.** When `/task refine <N>` advances an issue from Backlog to Refine, the harness pre-checks two signals and posts an audit comment:
 
 - **Board values.** Size, Estimate, and Priority must already be set on the project board. The agent/human sets these manually before invoking promote.
 - **Rationale marker.** The agent embeds a one-line hidden marker in the issue body before promoting: `<!-- aitm-refinement-rationale: {"size":"...","estimate":"...","priority":"..."} -->` (legacy `aitm-groom-rationale` still read-accepted on existing issues).
@@ -1001,7 +1001,7 @@ npx aitm create-issue \
   --label planning
 ```
 
-Use `/task discover` in Claude Code to open an untracked discovery bucket (backlog item generation / pre-issue ideation); use `/task new <title>` to promote it to a real issue when the scope is clear. Do not confuse this with `/task plan #N`, which is the Sprint-Planning entry verb (Refine → Plan).
+Use `/task discover` in Claude Code to open an untracked discovery bucket (backlog item generation / pre-issue ideation); use `/task new <title>` to promote it to a real issue when the scope is clear. Do not confuse this with `/task plan #N`, which is the Sprint-Planning entry verb (Ready for Planning → Plan).
 
 ---
 

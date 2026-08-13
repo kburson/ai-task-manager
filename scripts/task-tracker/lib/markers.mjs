@@ -119,9 +119,18 @@ export const PLAN_APPROVAL_MODES = Object.freeze({
   UNKNOWN: 'unknown',
 });
 
-export function buildPlanApprovedMarker(ts, { forecastRecordId = null, mode = null } = {}) {
+export function buildPlanApprovedMarker(
+  ts,
+  { forecastRecordId = null, mode = null, trunkSha = null } = {}
+) {
   const properties = { ts };
   if (forecastRecordId !== null) properties['forecast-record-id'] = forecastRecordId;
+  if (trunkSha !== null) {
+    if (!/^[0-9a-f]{40}$/i.test(String(trunkSha))) {
+      throw new TypeError('buildPlanApprovedMarker: trunkSha must be a 40-character SHA');
+    }
+    properties['trunk-sha'] = String(trunkSha).toLowerCase();
+  }
   if (mode !== null) {
     if (mode !== PLAN_APPROVAL_MODES.HUMAN && mode !== PLAN_APPROVAL_MODES.FULL_AUTO) {
       throw new TypeError(
@@ -150,6 +159,7 @@ export function parsePlanApprovedMarker(body) {
       ts: legacy[1].trim(),
       forecastRecordId: null,
       mode: PLAN_APPROVAL_MODES.UNKNOWN,
+      trunkSha: null,
     };
   }
 
@@ -163,7 +173,10 @@ export function parsePlanApprovedMarker(body) {
   const forecastRecordId = /^[0-7][0-9A-HJKMNP-TV-Z]{25}$/.test(props['forecast-record-id'] || '')
     ? props['forecast-record-id']
     : null;
-  return { ts: props.ts || '', forecastRecordId, mode };
+  const trunkSha = /^[0-9a-f]{40}$/i.test(props['trunk-sha'] || '')
+    ? props['trunk-sha'].toLowerCase()
+    : null;
+  return { ts: props.ts || '', forecastRecordId, mode, trunkSha };
 }
 
 export function readPlanApprovedMode(body) {

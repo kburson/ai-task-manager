@@ -80,6 +80,11 @@ export const INVARIANT_MARKER_PATTERNS = [
     kind: 'single',
   },
   { name: 'aitm-plan-approved', re: /<!--\s*aitm-plan-approved(?:\s*:|\s+ts=")/i, kind: 'single' },
+  {
+    name: 'aitm-epic-orchestration-plan',
+    re: /<!--\s*aitm-epic-orchestration-plan\s+schema="/i,
+    kind: 'single',
+  },
   // #887 — epic AC reconciliation. The marker takes no variable parameter, so
   // `kind: 'single'` needs no custom `findLostMarkers` branch (contrast the
   // `aitm-entered-<stage>` family). Registering it here makes *un*-reconciling

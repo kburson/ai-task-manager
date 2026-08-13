@@ -13,6 +13,7 @@ import { stampRefinementSnapshot } from '../../../lib/refinement-snapshot.mjs';
 import { runPullNext } from '../../../verbs/pull-next.mjs';
 import { mapSubIssueNodes } from '../../../../gh/lib/wave-admission.mjs';
 import { STATES } from '../../../states/index.mjs';
+import { refineExitWipBudgetGuard } from '../../../lib/refine-exit-wip-budget-guard.mjs';
 
 const cfg = { repo: 'o/r', projectId: 'PVT_1' };
 
@@ -21,7 +22,15 @@ function fetchChildren(children) {
 }
 
 function currentChild(number, state, rank, extra = {}) {
-  return { number, state, rank, blockedBy: [], hasCurrentRefinement: true, ...extra };
+  return {
+    number,
+    state,
+    boardState: state,
+    rank,
+    blockedBy: [],
+    hasCurrentRefinement: true,
+    ...extra,
+  };
 }
 
 function refinementBody() {
@@ -50,6 +59,7 @@ function projectNode({ number, issueState = 'OPEN', stateReason = null, status, 
     state: issueState,
     stateReason,
     body,
+    labels: { nodes: [{ name: 'enhancement' }], pageInfo: { hasNextPage: false } },
     projectItems: {
       nodes: [
         {
@@ -93,6 +103,71 @@ test('configured-project child mapping carries current refinement and terminal e
   assert.equal(abandoned.state, 'done');
   assert.equal(abandoned.closeReason, 'not_planned');
   assert.equal(abandoned.issueState, 'closed');
+  assert.equal(abandoned.childEvidenceError, undefined);
+});
+
+test('configured-project mapping rejects stale refinement evidence and board-rank drift', () => {
+  const current = refinementBody();
+  const stale = current.replace(
+    'Keep one current refinement snapshot.',
+    'Mutated after refinement.'
+  );
+  const [mapped] = mapSubIssueNodes(
+    [
+      projectNode({
+        number: 10,
+        status: 'Ready for Planning',
+        rank: 99,
+        body: stale,
+      }),
+    ],
+    cfg.projectId
+  );
+
+  assert.equal(mapped.hasCurrentRefinement, false);
+  assert.match(mapped.childEvidenceError, /stale|rank/i);
+});
+
+test('epic admission and terminal delivery fail closed on incomplete descriptors and board drift', async () => {
+  const malformed = await planEpicDevelopChildrenGate({
+    cfg,
+    issueNumber: 1209,
+    deps: fetchChildren([null]),
+  });
+  assert.equal(malformed.ok, false);
+
+  const mismatchedCompleted = await developEpicTestChildrenGate({
+    cfg,
+    issueNumber: 1209,
+    deps: fetchChildren([
+      {
+        number: 10,
+        state: 'done',
+        boardState: 'Develop',
+        issueState: 'closed',
+        closeReason: 'completed',
+      },
+    ]),
+  });
+  assert.equal(mismatchedCompleted.ok, false);
+});
+
+test('strict local WIP cannot be disabled by project configuration', async () => {
+  const result = await refineExitWipBudgetGuard.run({
+    toState: 'plan',
+    issueNumber: 12,
+    cfg: { ...cfg, gatePlanRefineWip: false },
+    deps: {
+      projectDir: process.cwd(),
+      withIssueLock: async (_options, fn) => fn(),
+      fetchParentIssue: async () => 1209,
+      epicChildren: fetchChildren([
+        currentChild(11, 'develop', 1),
+        currentChild(12, 'ready-for-plan', 2),
+      ]),
+    },
+  });
+  assert.equal(result.ok, false);
 });
 
 test('epic Plan admission requires every executable child at R4P or later with refinement evidence', async () => {
@@ -102,7 +177,14 @@ test('epic Plan admission requires every executable child at R4P or later with r
     deps: fetchChildren([
       currentChild(1216, 'ready-for-plan', 6),
       currentChild(1217, 'plan', 7),
-      { number: 1215, state: 'done', rank: 5, issueState: 'closed', closeReason: 'completed' },
+      {
+        number: 1215,
+        state: 'done',
+        boardState: 'done',
+        rank: 5,
+        issueState: 'closed',
+        closeReason: 'completed',
+      },
       {
         number: 1214,
         state: 'done',
@@ -146,6 +228,7 @@ test('next-child selection uses only dependency-ready R4P children and rank', ()
     {
       number: 13,
       state: 'done',
+      boardState: 'done',
       rank: 4,
       issueState: 'closed',
       closeReason: 'completed',
@@ -182,7 +265,13 @@ test('epic Test admission requires Done or an accepted closed disposition', asyn
     cfg,
     issueNumber: 1209,
     deps: fetchChildren([
-      { number: 10, state: 'done', issueState: 'closed', closeReason: 'completed' },
+      {
+        number: 10,
+        state: 'done',
+        boardState: 'done',
+        issueState: 'closed',
+        closeReason: 'completed',
+      },
       { number: 11, state: 'done', issueState: 'closed', closeReason: 'not_planned' },
     ]),
   });
@@ -216,6 +305,8 @@ test('pull-next advances one dependency-ready R4P child exactly one edge and the
     epicNumber: 1209,
     cfg,
     deps: {
+      projectDir: process.cwd(),
+      withIssueLock: async (_options, fn) => fn(),
       audit: async () => ({ ok: true }),
       getLiveState: async () => 'develop',
       getChildLiveState: async () => 'plan',
@@ -243,6 +334,8 @@ test('pull-next refuses to start another local child while a sibling is active',
     epicNumber: 1209,
     cfg,
     deps: {
+      projectDir: process.cwd(),
+      withIssueLock: async (_options, fn) => fn(),
       audit: async () => ({ ok: true }),
       getLiveState: async () => 'develop',
       epicChildren: fetchChildren([
@@ -320,4 +413,58 @@ test('epic child enumeration exhausts every GraphQL page and refuses cursor ambi
       }),
     /missing end cursor/
   );
+});
+
+test('configured child project membership and fields paginate exhaustively', async () => {
+  const { fetchConfiguredProjectItem } = await import('../../../../gh/lib/wave-admission.mjs');
+  assert.equal(typeof fetchConfiguredProjectItem, 'function');
+
+  const calls = [];
+  const item = await fetchConfiguredProjectItem({
+    issueNumber: 10,
+    repo: 'o/r',
+    projectId: cfg.projectId,
+    gqlFn: async (query, variables) => {
+      calls.push({ query, variables });
+      if (query.includes('issue(number: $issue)')) {
+        return {
+          repository: {
+            issue: {
+              projectItems:
+                variables.after == null
+                  ? {
+                      nodes: [{ id: 'OTHER', project: { id: 'PVT_other' } }],
+                      pageInfo: { hasNextPage: true, endCursor: 'p1' },
+                    }
+                  : {
+                      nodes: [
+                        {
+                          id: 'ITEM_1',
+                          project: { id: cfg.projectId },
+                          fieldValues: {
+                            nodes: [{ name: 'Ready for Planning', field: { id: 'STATUS' } }],
+                            pageInfo: { hasNextPage: true, endCursor: 'f1' },
+                          },
+                        },
+                      ],
+                      pageInfo: { hasNextPage: false, endCursor: null },
+                    },
+            },
+          },
+        };
+      }
+      return {
+        node: {
+          fieldValues: {
+            nodes: [{ number: 7, field: { id: 'RANK' } }],
+            pageInfo: { hasNextPage: false, endCursor: null },
+          },
+        },
+      };
+    },
+  });
+
+  assert.equal(item.id, 'ITEM_1');
+  assert.equal(item.fieldValues.nodes.length, 2);
+  assert.equal(calls.length, 3);
 });

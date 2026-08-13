@@ -16,11 +16,11 @@ AITM added this this workspace AGENTS.md block to approximate Claude Code Superp
 
 **State Transition Verb Map (8-state model)**
 
-States: `Backlog → Assigned → Refine → Plan → Develop → Test → Review → Done`.
+States: `Backlog → Refine → Ready for Planning → Plan → Develop → Test → Review → Done`.
 
 - `/task promote #N` or `/task next #N` — advance one state along the chain when no dedicated stage verb applies.
-- `/task refine #N --size <XS|S|M|L|XL> --estimate <hours> --priority <p0|p1|p2> --rank <N> --reason "<text>"` — Backlog/Assigned → Refine with required fields.
-- `/task plan #N` — Refine → Plan for Sprint-Planning entry; distinct from `/task discover`.
+- `/task refine #N --size <XS|S|M|L|XL> --estimate <hours> --priority <p0|p1|p2> --rank <N> --reason "<text>"` — Backlog → Refine with required fields.
+- `/task plan #N` — Ready for Planning → Plan for JIT Sprint-Planning entry; distinct from `/task discover`.
 - `/task plan-approve #N` — records the Plan-approval marker required before Develop.
 - `/task test #N` — Develop → Test after implementation verification.
 - `/task approve #N` — records human review-approval marker on a Review-state issue (gate for `close`).

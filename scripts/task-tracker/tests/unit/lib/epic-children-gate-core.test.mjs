@@ -36,7 +36,14 @@ function ready(number, rank, state = 'ready-for-plan') {
 }
 
 function terminal(number, rank, closeReason = 'completed') {
-  return { number, state: 'done', rank, issueState: 'closed', closeReason };
+  return {
+    number,
+    state: 'done',
+    boardState: closeReason === 'completed' ? 'done' : 'backlog',
+    rank,
+    issueState: 'closed',
+    closeReason,
+  };
 }
 
 test('planEpicDevelopChildrenGate passes for non-epic (no children)', async () => {
@@ -173,14 +180,16 @@ test('fetchEpicChildren throws when cfg or parentEpicNumber missing', async () =
   await assert.rejects(() => fetchEpicChildren({ cfg }), /parentEpicNumber is required/);
 });
 
-test('fetchEpicChildren returns array even when underlying returns non-array', async () => {
-  const result = await fetchEpicChildren({
-    cfg,
-    parentEpicNumber: 1,
-    deps: { fetchSiblings: async () => null },
-  });
-  assert.ok(Array.isArray(result));
-  assert.equal(result.length, 0);
+test('fetchEpicChildren refuses a malformed child collection', async () => {
+  await assert.rejects(
+    () =>
+      fetchEpicChildren({
+        cfg,
+        parentEpicNumber: 1,
+        deps: { fetchSiblings: async () => null },
+      }),
+    /malformed child list/
+  );
 });
 
 test('isPendingRecoveryPhase accepts only incomplete durable recovery phases', () => {
@@ -209,12 +218,21 @@ function ghNode({ number, state = 'OPEN', stateReason = null, body = '', column,
     state,
     stateReason,
     body,
-    projectItems: { nodes: [{ project: { id: cfg.projectId }, fieldValues: { nodes } }] },
+    labels: { nodes: [{ name: 'enhancement' }], pageInfo: { hasNextPage: false } },
+    projectItems: {
+      nodes: [
+        {
+          project: { id: cfg.projectId },
+          fieldValues: { nodes, pageInfo: { hasNextPage: false } },
+        },
+      ],
+      pageInfo: { hasNextPage: false },
+    },
   };
 }
 
 function mapped(nodes) {
-  return mapSubIssueNodes(nodes, cfg.projectId);
+  return mapSubIssueNodes(nodes, cfg);
 }
 
 function currentRefinementBody() {
@@ -239,7 +257,7 @@ Current refinement.
 
 test('developEpicTestChildrenGate passes when a child was closed from Backlog (#947 — the #859 case)', async () => {
   const children = mapped([
-    ghNode({ number: 868, state: 'CLOSED', stateReason: 'COMPLETED', column: 'Review', rank: 4 }),
+    ghNode({ number: 868, state: 'CLOSED', stateReason: 'COMPLETED', column: 'Done', rank: 4 }),
     ghNode({
       number: 945,
       state: 'CLOSED',

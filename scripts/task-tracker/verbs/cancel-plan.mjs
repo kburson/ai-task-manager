@@ -34,6 +34,7 @@ export const LEGAL_FROM = new Set(actionPolicyFor('cancel-plan').allowedStates);
 
 const PLAN_ONLY_MARKERS = Object.freeze([
   /<!--\s*aitm-plan-approved(?::[^>]*|\s+[^>]*?)\s*-->\s*\n?/gi,
+  /<!--\s*aitm-epic-orchestration-plan\s+[^>]*?-->\s*\n?/gi,
   /<!--\s*aitm-estimation-forecast-ready\s+[^>]*?-->\s*\n?/gi,
   /<!--\s*aitm-deep-dive-posted(?::[^>]*|\s+[^>]*?)\s*-->\s*\n?/gi,
   /<!--\s*aitm-deep-dive-complete(?::[^>]*|\s+[^>]*?)\s*-->\s*\n?/gi,

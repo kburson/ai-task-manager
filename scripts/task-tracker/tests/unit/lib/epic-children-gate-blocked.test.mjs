@@ -33,7 +33,14 @@ function ready(number, rank, extra = {}) {
 }
 
 function terminal(number, rank, closeReason = 'completed') {
-  return { number, state: 'done', rank, issueState: 'closed', closeReason };
+  return {
+    number,
+    state: 'done',
+    boardState: closeReason === 'completed' ? 'done' : 'backlog',
+    rank,
+    issueState: 'closed',
+    closeReason,
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -341,7 +348,14 @@ test('developEpicTestChildrenGate accepts mixed-case "DONE"', async () => {
     issueNumber: 100,
     deps: {
       fetchSiblings: stubFetch([
-        { number: 101, state: 'DONE', rank: 1, issueState: 'CLOSED', closeReason: 'COMPLETED' },
+        {
+          number: 101,
+          state: 'DONE',
+          boardState: 'DONE',
+          rank: 1,
+          issueState: 'CLOSED',
+          closeReason: 'COMPLETED',
+        },
       ]),
     },
   });

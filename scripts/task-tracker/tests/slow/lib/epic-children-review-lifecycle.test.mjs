@@ -56,6 +56,7 @@ function makeCtx({ fromState, toState, childState }) {
               ? {
                   number,
                   state: 'done',
+                  boardState: 'done',
                   issueState: 'closed',
                   closeReason: 'completed',
                   rank: i + 1,

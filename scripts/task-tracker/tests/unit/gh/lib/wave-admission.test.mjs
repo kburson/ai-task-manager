@@ -239,7 +239,10 @@ function node({ number, state = 'OPEN', stateReason = null, column, rank, projec
 // 16. Nullish / empty input is tolerated.
 {
   assert.deepEqual(mapSubIssueNodes(undefined, BOARD), []);
-  assert.deepEqual(mapSubIssueNodes([null], BOARD), []);
+  const [malformed] = mapSubIssueNodes([null], BOARD);
+  assert.equal(malformed.number, null);
+  assert.equal(malformed.hasCurrentRefinement, false);
+  assert.equal(malformed.childEvidenceError, 'malformed child descriptor');
 }
 
 // 17. End-to-end through `admit`: a lower-ranked CLOSED sibling stranded in

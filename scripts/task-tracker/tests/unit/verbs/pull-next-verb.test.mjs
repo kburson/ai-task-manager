@@ -23,7 +23,14 @@ function ready(number, rank, extra = {}) {
 }
 
 function terminal(number, rank) {
-  return { number, state: 'done', rank, issueState: 'closed', closeReason: 'completed' };
+  return {
+    number,
+    state: 'done',
+    boardState: 'done',
+    rank,
+    issueState: 'closed',
+    closeReason: 'completed',
+  };
 }
 
 function makeDeps({
@@ -36,6 +43,9 @@ function makeDeps({
   return {
     calls,
     deps: {
+      resolveProjectDir: () => '/repo/worktrees/epic-100',
+      withIssueLock: async (_options, fn) => fn(),
+      childIssueLock: async (_options, fn) => fn(),
       // #758 — inject a hermetic no-op auditor so the unit tests never spawn a
       // real `gh`/gql read; the spy also lets us assert it ran before selection.
       audit: async ({ issueNumber }) => {
@@ -179,6 +189,7 @@ Promote the selected refined child into durable planning readiness.
     { labels: ['enhancement'], ts: '2026-08-05T00:00:00Z' }
   );
   deps.promoteDeps = {
+    withIssueLock: async (_options, fn) => fn(),
     preflightDeps: {
       fetchSnapshot: async () => ({ state: 'ready-for-plan', assignees: [] }),
       fetchCurrentUser: async () => 'alice',
@@ -275,6 +286,47 @@ test('runPullNext audits the epic before child selection (#758)', async () => {
   assert.deepEqual(calls.audits, [100], 'auditor runs once, on the epic');
 });
 
+test('runPullNext refuses ambiguous epic audit drift', async () => {
+  const { deps, calls } = makeDeps({ children: [ready(103, 3)] });
+  deps.audit = async () => ({ ok: false, drift: 'out-of-band' });
+  const result = await runPullNext({ epicNumber: 100, cfg, deps });
+  assert.equal(result.status, 'epic-audit-refused');
+  assert.deepEqual(calls.promotes, []);
+});
+
+test('runPullNext refuses every pull when any child descriptor is incomplete', async () => {
+  const { deps, calls } = makeDeps({
+    children: [
+      { number: 102, state: '', rank: null, childEvidenceError: 'unreadable' },
+      ready(103, 3),
+    ],
+  });
+  const result = await runPullNext({ epicNumber: 100, cfg, deps });
+  assert.equal(result.status, 'child-state-ambiguous');
+  assert.deepEqual(calls.promotes, []);
+});
+
+test('runPullNext holds shared parent authority across selection and promotion', async () => {
+  const { deps, calls } = makeDeps({ children: [ready(103, 3)] });
+  const order = [];
+  deps.withIssueLock = async (options, fn) => {
+    order.push(`lock:${options.issue}`);
+    const result = await fn();
+    order.push(`unlock:${options.issue}`);
+    return result;
+  };
+  const originalPromote = deps.promote;
+  deps.promote = async (...args) => {
+    order.push('promote');
+    return originalPromote(...args);
+  };
+
+  const result = await runPullNext({ epicNumber: 100, cfg, deps });
+  assert.equal(result.status, 'pulled');
+  assert.deepEqual(calls.promotes, [['103']]);
+  assert.deepEqual(order, ['lock:100', 'promote', 'unlock:100']);
+});
+
 test('runPullNext does not audit when the epic is not in develop (#758)', async () => {
   const { deps, calls } = makeDeps({ liveState: 'plan' });
   await runPullNext({ epicNumber: 100, cfg, deps });
@@ -288,6 +340,8 @@ test('runPullNext requires epicNumber and cfg', async () => {
 
 test('runPullNext surfaces fetch failures', async () => {
   const deps = {
+    projectDir: '/repo/worktrees/epic-100',
+    withIssueLock: async (_options, fn) => fn(),
     audit: async () => ({ ok: true, drift: 'none' }),
     getLiveState: async () => 'develop',
     epicChildren: {

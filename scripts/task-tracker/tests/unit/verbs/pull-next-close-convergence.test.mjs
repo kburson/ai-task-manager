@@ -35,6 +35,9 @@ function terminal(number, rank, extra = {}) {
 function harness({ children, outcomes = {} } = {}) {
   const calls = [];
   const deps = {
+    projectDir: process.cwd(),
+    withIssueLock: async (_options, fn) => fn(),
+    childIssueLock: async (_options, fn) => fn(),
     getLiveState: async () => 'develop',
     getChildLiveState: async () => 'plan',
     audit: async () => {

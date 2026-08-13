@@ -8,6 +8,13 @@ How to fan out parallel sub-agents in this repo without corrupting state, timing
 
 Parallel sub-agents are an **explicit, approved** operation — never the default.
 
+Local implementation and full-suite validation are strictly sequential while
+the resource-isolated cloud CI prerequisite remains unproven. Sharing a Rank,
+using separate local worktrees, or disabling an approval gate does not waive
+that limit. A later parallel epic wave requires fresh dependency re-triage,
+independent dependencies, isolated worktrees, distinct owners, and isolated
+exact-SHA cloud validation for every child.
+
 - The orchestrator names the candidate sub-issues, estimates the parallelism (count + expected duration), and lists shared files (anything more than one agent might touch).
 - The user must approve **before** any `Agent` spawn. "No spawning without approval" — see `CLAUDE.md` § Sub-Agents.
 - Each candidate must already have `Size`, `Estimate`, `Priority`, and Acceptance Criteria set on the board. Unsized / un-AC'd issues do not fan out.
@@ -144,7 +151,7 @@ The `activity-guard` hook enforces `.ai-task-manager/activity-policy.json` on ev
 
 ## 4. State-machine rules (8-state model)
 
-The state chain is: `Backlog → Assigned → Refine → Plan → Develop → Test → Review → Done`.
+The state chain is: `Backlog → Refine → Ready for Planning → Plan → Develop → Test → Review → Done`.
 
 Forward transitions run through the verb surface — never through direct `move-state.mjs` calls (§5). Backward transitions are limited to two named paths:
 
@@ -157,10 +164,10 @@ Forward transitions run through the verb surface — never through direct `move-
 
 Two human gates exist between automation steps:
 
-| Gate                                 | Config key                  | What it blocks                                                                                                                 |
-| ------------------------------------ | --------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
-| Refine→Plan, Plan→Develop promotions | `gateAnalysisToDevelopment` | `/task promote` refuses unless the required issue-body approval marker exists when `true`. (config key retained for stability) |
-| Review→Done close                    | `gateReviewToDone`          | `/task close` refuses without the review-approval marker (written by `/task approve`) when `true`.                             |
+| Gate                                | Config key                  | What it blocks                                                                                                                             |
+| ----------------------------------- | --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| Refine→R4P, Plan→Develop promotions | `gateAnalysisToDevelopment` | `/task promote` refuses unless the required issue-body evidence or approval marker exists when `true`. (config key retained for stability) |
+| Review→Done close                   | `gateReviewToDone`          | `/task close` refuses without the review-approval marker (written by `/task approve`) when `true`.                                         |
 
 Both live in `.ai-task-manager/task-tracker.json`. **Defaults are `true`.** Disable only for an approved parallel batch (§ Disabling gates for a batch) and restore both to `true` after.
 
@@ -188,12 +195,12 @@ Two sub-agent terminal statuses look superficially identical — both end in `/t
 
 The canonical user-facing surface for state transitions is:
 
-| Verb                                                | Action                                                                                                                                                                                             |
-| --------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `/task promote [<N>]`                               | Forward by one state. Reads the current state, picks the legal next state, runs the appropriate gate. Applies to all forward transitions through `Refine → Plan → Develop → Test → Review → Done`. |
-| `/task next [<N>]`                                  | Alias of `/task promote`. Use whichever reads better in the moment.                                                                                                                                |
-| `/task demote [<N>]`                                | Back to `Develop` from any forward state. Records the demotion in the timing log.                                                                                                                  |
-| `/task reconcile <accept-live\|revert-to-recorded>` | Drift recovery only — see §7.                                                                                                                                                                      |
+| Verb                                                | Action                                                                                                                                                                                                                  |
+| --------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `/task promote [<N>]`                               | Forward by one state. Reads the current state, picks the legal next state, runs the appropriate gate. Applies to all forward transitions through `Refine → Ready for Planning → Plan → Develop → Test → Review → Done`. |
+| `/task next [<N>]`                                  | Alias of `/task promote`. Use whichever reads better in the moment.                                                                                                                                                     |
+| `/task demote [<N>]`                                | Back to `Develop` from any forward state. Records the demotion in the timing log.                                                                                                                                       |
+| `/task reconcile <accept-live\|revert-to-recorded>` | Drift recovery only — see §7.                                                                                                                                                                                           |
 
 `/task approve`, `/task review`, and `/task close` remain first-class verbs (they carry side effects beyond the state move: marker stamps, verification dispatch, fleet deregister). The retired single-purpose verbs for the Refine-and-Plan transitions have been removed; use `/task promote` (or `/task next`) for those transitions.
 

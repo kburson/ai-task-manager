@@ -31,6 +31,7 @@ const BODY = `<!-- aitm-last-known-state state="refine" ts="2026-08-12T00:00:00.
 <!-- aitm-entered-ready-for-plan ts="2026-08-12T00:00:30.000Z" -->
 <!-- aitm-stage-rollup: {"schema":2,"perStageSec":{"refine":30},"totalSec":30,"visits":[{"stage":"refine","visit":1,"durationSec":30}]} -->
 <!-- aitm-plan-approved ts="2026-08-12T00:01:00.000Z" -->
+<!-- aitm-epic-orchestration-plan schema="1" digest="${'c'.repeat(64)}" payload="e30" -->
 <!-- aitm-estimation-forecast-ready schema="2" record-id="forecast-1" -->
 <!-- aitm-deep-dive-complete ts="2026-08-12T00:02:00.000Z" -->
 
@@ -139,8 +140,8 @@ test('history append is deterministic, tamper-evident, and never rewrites prior 
   assert.ok(withSecond.includes(BODY.trimEnd()), 'story body is preserved byte-for-byte');
 
   const tampered = withSecond.replace(
-    /payload="([A-Za-z0-9_-])/,
-    (_match, firstByte) => `payload="${firstByte === 'A' ? 'B' : 'A'}`
+    /(aitm-refinement-history[^>]*payload=")([A-Za-z0-9_-])/,
+    (_match, prefix, firstByte) => `${prefix}${firstByte === 'A' ? 'B' : 'A'}`
   );
   assert.throws(() => parseRefinementHistory(tampered), /digest/i);
 });
@@ -162,7 +163,10 @@ test('Shelve invalidation clears active fields and derived evidence while preser
   );
   assert.match(after, /aitm-entered-ready-for-plan ts="2026-08-12T00:00:30.000Z"/);
   assert.match(after, /aitm-stage-rollup: \{"schema":2/);
-  assert.doesNotMatch(after, /aitm-plan-approved|aitm-estimation-forecast-ready/);
+  assert.doesNotMatch(
+    after,
+    /aitm-plan-approved|aitm-epic-orchestration-plan|aitm-estimation-forecast-ready/
+  );
   assert.doesNotMatch(after, /aitm-deep-dive-complete/);
   assert.match(after, /- \[ \] Preserve the criterion/);
   assert.match(after, /- \[ \] \`node --test focused\.test\.mjs\` <!-- id=1 -->/);

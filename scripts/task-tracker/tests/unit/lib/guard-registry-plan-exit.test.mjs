@@ -23,6 +23,7 @@ import {
 import { STATES } from '../../../states/index.mjs';
 import { runGuards } from '../../../lib/guard-registry.mjs';
 import { buildEstimationForecast } from '../../../lib/estimation/forecast-model.mjs';
+import { buildEpicOrchestrationPlanMarker } from '../../../lib/epic-orchestration-plan.mjs';
 import { createBootstrapRubric } from '../../../lib/estimation/rubric-model.mjs';
 import {
   createAitmRecordEnvelope,
@@ -434,17 +435,33 @@ test('planEpicChildrenGuard: solo issue (no children) → ok', async () => {
 });
 
 test('planEpicChildrenGuard: epic with all children at R4P → ok', async () => {
+  const children = [
+    {
+      number: 1,
+      state: 'ready-for-plan',
+      rank: 1,
+      blockedBy: [],
+      hasCurrentRefinement: true,
+    },
+    {
+      number: 2,
+      state: 'ready-for-plan',
+      rank: 2,
+      blockedBy: [],
+      hasCurrentRefinement: true,
+    },
+  ];
+  const trunkSha = 'a'.repeat(40);
   const r = await planEpicChildrenGuard.run({
     toState: 'develop',
     cfg: CFG,
     issueNumber: 999,
+    body: buildEpicOrchestrationPlanMarker({ children, trunkSha }),
     deps: {
       epicChildren: {
-        fetchSiblings: async () => [
-          { number: 1, state: 'ready-for-plan', rank: 1, hasCurrentRefinement: true },
-          { number: 2, state: 'ready-for-plan', rank: 2, hasCurrentRefinement: true },
-        ],
+        fetchSiblings: async () => children,
       },
+      resolveTrunkSha: async () => trunkSha,
     },
   });
   assert.deepEqual(r, { ok: true });

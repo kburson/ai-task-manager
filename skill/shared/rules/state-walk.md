@@ -15,7 +15,7 @@ aitm-skill-loaded:rules/state-walk:1.1.0
 backlog → assigned → refine → plan → develop → test → review → done
 ```
 
-`assigned` (display: "Assigned") is an inert, gateless tranche waiting room between Backlog and Refine. `backlog → assigned` carries no entry gate; the Priority entry gate lives on `assigned → refine`. Backward arc `assigned → backlog` drops an item out of the current tranche. Every item passes through Assigned — there is no `backlog → refine` shortcut.
+`ready-for-plan` (display: "Ready for Planning") is the durable parking state after active refinement and before short-lived JIT Plan. `backlog → refine` begins shaping; `refine → ready-for-plan` records current refinement evidence; `ready-for-plan → plan` admits JIT planning. Assignment is ownership metadata, not a lifecycle state, and Plan→Develop enforces the exclusive local owner at the last responsible moment.
 
 Internal state slugs and sanctioned `/task` inputs are canonical; they recognize
 only the current state names. The raw, internal-only `move-state.mjs` boundary

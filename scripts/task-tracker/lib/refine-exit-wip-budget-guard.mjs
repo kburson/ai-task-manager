@@ -8,9 +8,6 @@
 // active children still count and dependencies provide no local parallel
 // exception. Solo issues bypass; unreadable sibling state fails closed.
 //
-// Soft-off knob: `cfg.gatePlanRefineWip === false` skips the guard for the
-// whole project — mirror of the inline branch retired from promote.mjs:321.
-//
 // Context contract:
 //   { cfg: Config, issueNumber: number, deps?: { fetchParentIssue?, epicChildren? } }
 //
@@ -27,7 +24,6 @@ export const refineExitWipBudgetGuard = {
   async run(ctx) {
     if (ctx?.toState && ctx.toState !== 'plan') return { ok: true };
     if (!ctx || !ctx.cfg || ctx.issueNumber == null) return { ok: true };
-    if (ctx.cfg.gatePlanRefineWip === false) return { ok: true };
     const result = await planRefineWipGate({
       cfg: ctx.cfg,
       issueNumber: ctx.issueNumber,
