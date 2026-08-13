@@ -135,21 +135,21 @@ offending heading + line number." Do NOT add it to the appendix. Instead:
 This keeps the gate's view authoritative and prevents wrong-target
 mutations.
 
-## Step 5 — Epic sequencing & fan-out
+## Step 5 — Epic ranking & fan-out
 
 Skip this step for plain sub-issues. Only run it when picking up an issue
 whose title begins with `🧑‍🧒‍🧒 [Epic]` or that has linked sub-issues.
 
 a. Fetch all open sub-issues and read their Scope sections.
 
-b. Validate each sub-issue's `Sequence` field against actual code
+b. Validate each sub-issue's `Rank` field against actual code
 dependencies found in the deep dive. If a value is wrong, update it:
 
 ```bash
 gh project item-edit \
   --project-id <projectId> \
   --id <item-id> \
-  --field-id <sequenceFieldId from .ai-task-manager/task-tracker.json> \
+  --field-id <rankFieldId from .ai-task-manager/task-tracker.json> \
   --number <N>
 ```
 
@@ -158,12 +158,12 @@ c. Post a validated dependency map comment on the epic:
 ```markdown
 ## Dependency Map (validated YYYY-MM-DD)
 
-Sequence 1 — start immediately, parallel: #N, #M
-Sequence 2 — after all Seq 1 close: #P, #Q
-Sequence 3 — after all Seq 2 close: #R
+Rank 1 — start immediately, parallel: #N, #M
+Rank 2 — after all Rank 1 close: #P, #Q
+Rank 3 — after all Rank 2 close: #R
 ```
 
-d. Fan out in sequence order. Spawn agents for all Sequence-1 sub-issues
+d. Fan out in rank order. Spawn agents for all Rank-1 sub-issues
 simultaneously. Stay anchored to the epic (`/task #<epic>`) while agents
 work. When an agent returns, it will report `CODE_COMPLETE`,
 `ISSUE_READY_FOR_REVIEW`, or `BLOCKED`. For `CODE_COMPLETE`: extract
@@ -173,7 +173,7 @@ criteria, revert to In Progress, and re-dispatch; on success the
 sub-issue moves to Review. For `ISSUE_READY_FOR_REVIEW`: the sub-issue is
 already in Review — do NOT run `/task close`.
 
-**When every sub-issue in the current sequence reaches Review, the
+**When every sub-issue in the current rank reaches Review, the
 orchestrator must immediately call `/task review #<epic>` on the parent
 epic.** This is orchestrator work, not human work. Running `/task review`
 on the epic is what moves the epic to Review and gates the human
@@ -182,6 +182,6 @@ notification. Do not notify the human until the epic itself is in Review.
 Once the epic reaches Review, report `ISSUE_READY_FOR_REVIEW` and notify
 the human: "Epic #X and sub-issues #A–#Z are in Review awaiting your
 review and `/task close`." Do NOT run `/task close`. Only after every
-Sequence-N issue reaches Done via human-approved `/task close` should you
-spawn Sequence-(N+1). Do not pick up work from other epics or solo tasks
+Rank-N issue reaches Done via human-approved `/task close` should you
+spawn Rank-(N+1). Do not pick up work from other epics or solo tasks
 while this epic is in progress.
