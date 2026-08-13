@@ -21,6 +21,20 @@
 
 import { discoverTestFiles } from './discover-test-files.mjs';
 
+export const CANONICAL_TEST_ROOT = 'scripts/tests';
+export const CANONICAL_LANES = Object.freeze(['unit', 'integration', 'slow']);
+
+export function parseCanonicalTestPath(relPath) {
+  const normalized = String(relPath).replaceAll('\\', '/');
+  const match = /^scripts\/tests\/(unit|integration|slow)\/(.+\.test\.mjs)$/.exec(normalized);
+  if (!match || match[2].split('/').includes('..')) return null;
+  return { lane: match[1], relative: match[2] };
+}
+
+export function canonicalLayoutViolations(files) {
+  return files.filter((file) => parseCanonicalTestPath(file) === null).sort();
+}
+
 /** The three lanes, in fast→slow order. */
 export const LANES = Object.freeze(['unit', 'integration', 'slow']);
 
