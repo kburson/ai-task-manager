@@ -4,10 +4,9 @@ Status: **active** (post-#292, parent epic #259).
 
 ## Why this exists
 
-For most of the project's life, the kanban states (`backlog`, `on-deck`,
-`refine`, `plan`, `develop`, `test`, `review`, `done`) lived only as string constants
-threaded through `state-machine.mjs`'s transition matrix and the per-verb
-files. Guards (the "may this transition happen?" predicates) sat in two
+For most of the project's life, the kanban lifecycle states lived only as
+string constants threaded through `state-machine.mjs`'s transition matrix and
+the per-verb files. Guards (the "may this transition happen?" predicates) sat in two
 parallel places:
 
 1. inline checks in `/task <verb>` modules, and

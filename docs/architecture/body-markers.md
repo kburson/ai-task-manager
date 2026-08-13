@@ -28,7 +28,7 @@ decrease).
 | `aitm-fields`              | single | Structured JSON blob of board fields (priority, size, estimate, timing, etc).                                                                                |
 | `aitm-body-version`        | single | Optimistic-concurrency token for `versionedWriteBody`; see [`body-writes.md`](./body-writes.md).                                                             |
 | `aitm-stage-rollup`        | single | Per-stage cumulative time-in-state JSON, updated on every transition.                                                                                        |
-| `aitm-refine-complete`     | single | Timestamp of Refine-stage completion (Backlog/On-Deck → Refine exit gate input).                                                                             |
+| `aitm-refine-complete`     | single | Timestamp of current Refine-stage completion; gates Refine → Ready for Planning together with the current refinement snapshot.                               |
 | `aitm-plan-approved`       | single | Timestamp of the human/full-auto Plan approval; gates Plan → Develop.                                                                                        |
 | `aitm-epic-ac-reconciled`  | single | Timestamp an epic's AC list was reconciled against its children's delivered scope (#887).                                                                    |
 | `aitm-unauthorized-close`  | single | Flags an issue closed outside the sanctioned `close` verb, for convergence recovery.                                                                         |

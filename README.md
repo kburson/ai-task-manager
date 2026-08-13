@@ -104,33 +104,33 @@ Every Kanban state is the same shape: an **entry gate** (checks that must pass t
 
 ```mermaid
 flowchart LR
-    Backlog -->|promote| OnDeck["On Deck"]
-    OnDeck -->|promote| Refine
-    Refine -->|promote| Plan
+    Backlog -->|promote| Refine
+    Refine -->|promote| ReadyForPlanning["Ready for Planning"]
+    ReadyForPlanning -->|plan| Plan
     Plan -->|promote, human gate| Develop
     Develop -->|promote| Test
     Test -->|promote, verified| Review
     Review -->|promote, human gate| Done
-    OnDeck -.->|demote/park| Backlog
-    Refine -.->|demote/park| Backlog
-    Plan -.->|demote/park| Backlog
+    Refine -.->|shelve| Backlog
+    ReadyForPlanning -.->|shelve| Backlog
     Test -.->|demote| Develop
     Review -.->|demote| Develop
-    Review -.->|demote| Test
 ```
 
-Solid arrows are `/task promote`. Dashed arrows are `/task demote` (or `/task park <reason>` for the early states) — a state is never a one-way door.
+Solid arrows are `/task promote`, except the explicit Ready for Planning → Plan
+transition driven by `/task plan`. Dashed arrows are `/task demote` or `/task
+shelve <reason>`; `/task park` remains a compatibility alias for `shelve`.
 
-| State       | Entry gate                                                                                                                                | Exit gate                                                                                                                                                                           |
-| ----------- | ----------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Backlog** | Marker-trail contiguity (see below)                                                                                                       | Not blocked · no unresolved `{discuss}` brainstorming trigger                                                                                                                       |
-| **On Deck** | Marker-trail contiguity (this stage's own marker is optional — pre-#433 issues never recorded it)                                         | Not blocked · Refine-entry fields present · parent/child state consistent · epic-child can't lead                                                                                   |
-| **Refine**  | Marker-trail contiguity                                                                                                                   | Refine marked complete · not a stub · not blocked · Plan-entry fields present · WIP budget · parent/child consistent · user-story rule (hard)                                       |
-| **Plan**    | Marker-trail contiguity                                                                                                                   | Not blocked · **plan approved (human gate)** · estimate set · deep dive present · Plan Metadata present · Verification Commands present · decomposition check · epic children ready |
-| **Develop** | Marker-trail contiguity                                                                                                                   | Not blocked · code complete · sandbox/verify proof exists · commit trail has HEAD · every epic child at Review-or-later                                                             |
-| **Test**    | Marker-trail contiguity · deep-dive placement/completeness · dependency map present                                                       | Not blocked · Definition of Done verified · pre-close completeness check                                                                                                            |
-| **Review**  | Marker-trail contiguity · deep-dive placement/completeness · dependency map · all Verification Commands checked                           | Not blocked · **review approved (human gate)** · every epic child at Done · close gates                                                                                             |
-| **Done**    | Same body gates as Review · no stray unchecked boxes anywhere · lifecycle labels (`agent-review-passed`, `passed-final-review`) satisfied | none — terminal                                                                                                                                                                     |
+| State                  | Entry gate                                                                                                                                | Exit gate                                                                                                                                                                            |
+| ---------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Backlog**            | Marker-trail contiguity (see below)                                                                                                       | Not blocked · no unresolved `{discuss}` brainstorming trigger                                                                                                                        |
+| **Refine**             | Marker-trail contiguity · parent/child state consistent · user-story warning                                                              | Refine marked complete · current refinement snapshot · not a stub · not blocked · Plan-entry fields present · user-story rule (hard)                                                 |
+| **Ready for Planning** | Marker-trail contiguity                                                                                                                   | Not blocked · WIP budget · parent/child state consistent · epic children ready · epic-child cannot lead                                                                              |
+| **Plan**               | Marker-trail contiguity                                                                                                                   | Not blocked · **plan approved (human gate)** · estimate set · deep dive present · Plan Metadata present · Verification Commands present · ownership · decomposition · children ready |
+| **Develop**            | Marker-trail contiguity                                                                                                                   | Not blocked · code complete · sandbox/verify proof exists · commit trail has HEAD · every epic child at Review-or-later                                                              |
+| **Test**               | Marker-trail contiguity · deep-dive placement/completeness · dependency map present                                                       | Not blocked · Definition of Done verified · pre-close completeness check                                                                                                             |
+| **Review**             | Marker-trail contiguity · deep-dive placement/completeness · dependency map · all Verification Commands checked                           | Not blocked · **review approved (human gate)** · every epic child at Done · close gates                                                                                              |
+| **Done**               | Same body gates as Review · no stray unchecked boxes anywhere · lifecycle labels (`agent-review-passed`, `passed-final-review`) satisfied | none — terminal                                                                                                                                                                      |
 
 **Marker-trail contiguity** means every prior canonical stage must already carry an `aitm-entered-<stage>` HTML-comment marker on the issue body — the guard names the exact missing stage and refuses the move if one is gone (`contiguity-hole`); backward moves skip this check entirely. **Deep-dive placement/completeness** and **dependency map** are body-shape checks: the Deep-Dive Analysis section must sit between the Pickup Directive and the fields-block marker and clear a size-bucketed character floor once marked complete; the Dependency Map section must exist with real content once its checkbox is ticked. Source: [`scripts/task-tracker/lib/contiguity-entry-guard.mjs`](scripts/task-tracker/lib/contiguity-entry-guard.mjs), [`stage-entry-markers.mjs`](scripts/task-tracker/lib/stage-entry-markers.mjs), [`body-gates.mjs`](scripts/task-tracker/lib/body-gates.mjs).
 
@@ -230,7 +230,8 @@ Beyond the five daily-driver commands in the quickstart above, this is the fulle
 | `/task ensureUnchecked "<label>"` | Ensure a checkbox is unticked — idempotent, never ticks (exact label match)                          |
 | `/task promote`                   | Promote the active task to the next kanban state (pre-flights cheap exit-gates first)                |
 | `/task demote`                    | Send the active task back a state for rework (Test/Review → Develop)                                 |
-| `/task park <reason>`             | Send a Refine/Plan/On Deck issue back to Backlog without clearing sizing                             |
+| `/task shelve <reason>`           | Return Refine or Ready for Planning work to Backlog and clear active refinement evidence             |
+| `/task park <reason>`             | Compatibility alias for `/task shelve`                                                               |
 | `/task fleet`                     | Show all active tasks across parallel agent worktrees                                                |
 | `/task config`                    | List all config values with sources                                                                  |
 | `/task config <key> <value>`      | Set a config value project-locally                                                                   |

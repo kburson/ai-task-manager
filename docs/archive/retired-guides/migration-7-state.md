@@ -4,7 +4,7 @@
 > and `scripts/migrate/rename-status-2026-05.mjs`, both one-shot scripts that have
 > since been deleted after the repo's own board migration completed. The kanban
 > model has also moved on since this was written — the current model is
-> 8-state (`On Deck` was added between `Backlog` and `Refine` by issue #433).
+> 8-state, with `Ready for Planning` between `Refine` and `Plan`.
 > Retained for historical context on the `Groom`/`Analyze`/`R4R` → current-vocab
 > mapping, not as a runnable procedure.
 
