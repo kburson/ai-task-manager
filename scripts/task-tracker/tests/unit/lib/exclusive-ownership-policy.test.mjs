@@ -1,4 +1,5 @@
 // @story #1212
+// @parallel-unsafe (imports subprocess-spawning commit guard coverage below)
 import test from 'node:test';
 import assert from 'node:assert/strict';
 

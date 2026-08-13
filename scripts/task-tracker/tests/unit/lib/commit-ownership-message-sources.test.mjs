@@ -38,7 +38,7 @@ function makeFixture() {
   return { dir, bin, cleanup: () => rmSync(dir, { recursive: true, force: true }) };
 }
 
-function runGuard(fixture, command) {
+function runGuard(fixture, command, { expectDecision = true } = {}) {
   const result = spawnSync(process.execPath, [GUARD], {
     cwd: fixture.dir,
     input: JSON.stringify({ tool_input: { command } }),
@@ -54,6 +54,16 @@ function runGuard(fixture, command) {
     // false ownership-policy failure.
     timeout: 120_000,
   });
+  const diagnostic = [
+    `guard subprocess failed before emitting a decision for: ${command}`,
+    `status=${String(result.status)} signal=${String(result.signal)}`,
+    `error=${result.error?.stack || result.error?.message || String(result.error || '')}`,
+    `stderr=${String(result.stderr || '').trim()}`,
+  ].join('\n');
+  assert.ifError(result.error);
+  assert.equal(result.signal, null, diagnostic);
+  assert.notEqual(result.status, null, diagnostic);
+  if (expectDecision) assert.notEqual(String(result.stdout || '').trim(), '', diagnostic);
   const payload = JSON.parse(result.stdout || '{}');
   return { result, payload };
 }
@@ -102,7 +112,9 @@ test('indirect tokenless chore message remains the explicit escape hatch', () =>
   const fixture = makeFixture();
   try {
     writeFileSync(path.join(fixture.dir, '.tmp', 'message.txt'), 'chore: local maintenance\n');
-    const { payload } = runGuard(fixture, 'git commit -F .tmp/message.txt');
+    const { payload } = runGuard(fixture, 'git commit -F .tmp/message.txt', {
+      expectDecision: false,
+    });
     assert.notEqual(payload.decision, 'block');
   } finally {
     fixture.cleanup();
@@ -212,7 +224,7 @@ test('the word eval outside shell-builtin command position remains harmless', ()
       "node --eval 'console.log(1)'",
       "printf '%s\\n' 'eval is discussed here'",
     ]) {
-      const { payload } = runGuard(fixture, command);
+      const { payload } = runGuard(fixture, command, { expectDecision: false });
       assert.notEqual(payload.decision, 'block', `must not block harmless eval text: ${command}`);
     }
   } finally {
