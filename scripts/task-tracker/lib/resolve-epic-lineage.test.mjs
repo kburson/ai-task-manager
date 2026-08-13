@@ -1,3 +1,4 @@
+// @story #905
 // #905 — lineage resolution (design: "Lineage resolution"). Intended lineage is
 // derived live from the GitHub sub-issue graph, never stored in the branch name.
 // The single graph lookup is injected so these tests need no `gh`/git.

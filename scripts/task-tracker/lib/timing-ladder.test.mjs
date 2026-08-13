@@ -1,3 +1,4 @@
+// @story #683
 // #683 (AC2 / AC6) — the active/idle ladder. The canonical case is #625's real
 // refine span: one `refine:started` fragmented by TWO Departure gaps
 // (`switch-out:#626` and `pause:other`) before `refine:completed`. The recorded

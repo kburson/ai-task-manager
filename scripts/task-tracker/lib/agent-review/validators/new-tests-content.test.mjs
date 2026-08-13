@@ -1,3 +1,4 @@
+// @story #813
 // Tests for the V4 new-tests-content validator (#813).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';

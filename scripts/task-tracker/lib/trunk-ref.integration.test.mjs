@@ -1,3 +1,4 @@
+// @story #927
 // #927 — end-to-end desync proof with REAL git (no fakes for git/resolution).
 //
 // Reproduces the recurring bug's exact shape and asserts the fix:

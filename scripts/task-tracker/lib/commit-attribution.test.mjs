@@ -1,3 +1,4 @@
+// @story #731
 // #731 — attribution engine: message-grep replaces SHA reachability.
 //
 // These tests are the demonstrable proof bound to #731's ACs. They are

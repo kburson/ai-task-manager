@@ -1,3 +1,4 @@
+// @story #927
 // #927 — the one shared trunk-ref resolver. Pure unit tests: the injected git
 // runner reports which refs "exist", so no real repo is touched. Covers the
 // resolution order (cfg override → remote-tracking → local fallback → null), the

@@ -1,3 +1,4 @@
+// @story #928
 // #928 — AC-citation emitter serializes into the canonical `vc-list` attribute.
 //
 // Regression guard for the producer/gate mismatch: `buildEvidenceBackfill` cites

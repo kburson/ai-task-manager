@@ -1,3 +1,4 @@
+// @story #905
 // #905 — PreToolUse epic-base edit-guard. The fail-closed backstop: when an
 // agent's worktree is a managed child branch, refuse Edit/Write unless the child
 // is based on its epic head. Non-managed branches (trunk, claude/*, epic/story)

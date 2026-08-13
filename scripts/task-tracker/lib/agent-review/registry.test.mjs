@@ -1,3 +1,4 @@
+// @story #809
 // Tests for the Agent Review Gate validator registry (#809).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';

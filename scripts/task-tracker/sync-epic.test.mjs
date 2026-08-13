@@ -1,3 +1,4 @@
+// @story #905
 // #905 — re-sync an epic onto trunk (design: "Epic↔trunk re-sync"). Rebase the
 // epic onto trunk, then republish with --force-with-lease. Also exposes the
 // opportunistic is-ancestor check merge-back consults before a child merge. git +

@@ -1,3 +1,4 @@
+// @story #905
 // #905 — cut a child worktree from its epic head, by construction (design:
 // "Worktree ownership"). This is the correct-by-construction replacement for a
 // free-form `Agent({isolation:"worktree"})` cut: the base is the epic branch, never

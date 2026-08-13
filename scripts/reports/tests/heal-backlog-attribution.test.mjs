@@ -1,3 +1,4 @@
+// @story #782
 // #782 — fixture-based unit tests for the three-signal attribution resolver,
 // the heal-backlog-attribution classifier/re-trace, and the value-report
 // consume-point. Pure: no live `gh`/`git`; all signals are synthetic bodies +

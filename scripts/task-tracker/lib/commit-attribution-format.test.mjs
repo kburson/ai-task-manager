@@ -1,3 +1,4 @@
+// @story #730
 // #730 — canonical commit-message issue-ID attribution format.
 //
 // The token `[#N]` leads the commit subject, is greppable via a stable regex,

@@ -1,3 +1,4 @@
+// @story #762
 // #762 (AC3) — `/task ac-stamp` resolves a `vc:<n>` citation to its literal
 // verifier command and stamps the AC evidence marker exactly as it does for a
 // legacy embedded-command AC. `verbAcStamp` is thin gh/runner plumbing around

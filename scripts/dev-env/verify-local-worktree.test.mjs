@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @story #309
 // Local Codex-worktree environment contract tests.
 
 import { strict as assert } from 'node:assert';

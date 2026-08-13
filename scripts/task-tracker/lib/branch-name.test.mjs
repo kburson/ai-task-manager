@@ -1,3 +1,4 @@
+// @story #905
 // #905 — branch-name compose/parse/classify for the flat role-typed
 // `feature/{story|epic|child}/<N>` convention. Lineage lives in git, never the
 // name (design: "Naming convention"). Pure string logic, no I/O.

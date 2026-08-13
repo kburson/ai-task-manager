@@ -1,3 +1,4 @@
+// @story #687
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { extractKind, createNewIssue, findUnknownFlags } from './new.mjs';

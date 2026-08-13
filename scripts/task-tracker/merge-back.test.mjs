@@ -1,3 +1,4 @@
+// @story #905
 // #905 — merge a child back into its epic (design: "Merge-back protocol").
 // Opportunistically sync the epic onto its parent (skip if already current),
 // rebase the child onto the epic head, run the child's tests, then fast-forward

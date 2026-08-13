@@ -1,3 +1,4 @@
+// @story #931
 // #931 — bare state-bound action verb (test/review/close) home-state guard.
 // Pure logic, no I/O.
 

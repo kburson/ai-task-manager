@@ -1,3 +1,4 @@
+// @story #905
 // #905 — cut an epic branch at the correct base (design: "Worktree ownership" /
 // "Branching model"). A root epic forks from trunk; a nested sub-epic forks from
 // its parent epic's head. git + graph are injected so the test asserts argv only.

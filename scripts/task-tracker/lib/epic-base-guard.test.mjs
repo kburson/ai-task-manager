@@ -1,3 +1,4 @@
+// @story #905
 // #905 — fail-closed epic-base invariant (design: "Fail-closed guard").
 // Pure logic: given the three revs and whether the epic fork is an ancestor of
 // the child base (a fact the caller computes via `git merge-base --is-ancestor`),

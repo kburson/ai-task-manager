@@ -1,3 +1,4 @@
+// @story #762
 // #762 — write-side `vc:<n>` citation authoring. Proves that `citeCommands`
 // emits citations, that `buildEvidenceBackfill` authors AC verifiers as
 // citations by default (appending to `## Verification Commands` only when the

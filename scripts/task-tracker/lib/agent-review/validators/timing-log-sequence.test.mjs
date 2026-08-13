@@ -1,3 +1,4 @@
+// @story #812
 // Tests for the V3 timing-log-sequence validator (#812, rewritten for the
 // timing model v2 grammar under #828).
 import { test } from 'node:test';

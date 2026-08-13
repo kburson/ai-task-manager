@@ -1,3 +1,4 @@
+// @story #683
 // #683 (AC1) — the closed event vocabulary. Asserts every Event-cell slug the
 // timing log emits classifies into exactly one of {departure, reengagement,
 // phase}, that the retired aliases fold correctly, and that the canonical
