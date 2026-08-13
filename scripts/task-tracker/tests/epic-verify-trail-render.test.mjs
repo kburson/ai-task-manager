@@ -66,6 +66,16 @@ describe('#900 AC3: verify-epic-trail resolves the epic from the active session'
       assert.equal(resolveEpicNumber([], { loadState: () => ({ active: '#883' }) }), 883);
     });
 
+    it('a bare sandbox invocation resolves the issue injected by the Test owner', () => {
+      assert.equal(
+        resolveEpicNumber([], {
+          loadState: () => ({ active: null }),
+          env: { AITM_TEST_ISSUE_NUMBER: '1209' },
+        }),
+        1209
+      );
+    });
+
     it('an explicit positional wins even when the state read throws', () => {
       const loadState = () => {
         throw new Error('no state file');

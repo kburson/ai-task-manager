@@ -54,7 +54,7 @@ describe('#1089 verification stage ownership', () => {
     assert.match(testSource, /for \(const reused of partition\.reused\)/);
     assert.match(
       testSource,
-      /execInSandbox\(\{ argv: validation\.argv, path: wtPath, projectDir \}\)/
+      /execInSandbox\(\{[\s\S]*argv: validation\.argv,[\s\S]*path: wtPath,[\s\S]*projectDir,[\s\S]*issueNumber: issueNum,[\s\S]*\}\)/
     );
   });
 
