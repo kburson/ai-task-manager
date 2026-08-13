@@ -103,7 +103,7 @@ test('non-git sandbox: fixes misplaced tags and discovers co-located tests', () 
     '#!/usr/bin/env node\n// @story #8\nconsole.log(4)\n'
   );
   const coLocated = write(cwd, 'scripts/gh/d-colocated.test.mjs', 'export const x = 1;\n');
-  const malformed = write(
+  const bodyStoryLiteral = write(
     cwd,
     'scripts/gh/e-malformed.test.mjs',
     'export const malformed = true;\n// @story #9\n'
@@ -116,7 +116,7 @@ test('non-git sandbox: fixes misplaced tags and discovers co-located tests', () 
 
   const res = run(cwd);
   assert.equal(res.status, 0, res.stderr);
-  assert.match(res.stdout, /Tagged: 2, Fixed shebang order: 3, Skipped \(already correct\): 2/);
+  assert.match(res.stdout, /Tagged: 3, Fixed shebang order: 2, Skipped \(already correct\): 2/);
   // No git repo → findCreationIssue throws → fallback list printed.
   assert.match(res.stdout, /fallback #309/);
 
@@ -142,8 +142,12 @@ test('non-git sandbox: fixes misplaced tags and discovers co-located tests', () 
   // A co-located untagged file gets the tag prepended on line 1.
   assert.equal(readFileSync(coLocated, 'utf8').split('\n')[0], '// @story #309');
 
-  // A malformed later tag is moved to the header without duplication.
-  assert.equal(readFileSync(malformed, 'utf8'), '// @story #9\nexport const malformed = true;\n');
+  // A body comment that resembles a story tag remains in place; only the
+  // missing header receives fallback attribution.
+  assert.equal(
+    readFileSync(bodyStoryLiteral, 'utf8'),
+    '// @story #309\nexport const malformed = true;\n// @story #9\n'
+  );
 
   // A shebang after the cspell/story header is moved ahead of both lines.
   assert.equal(
@@ -176,4 +180,26 @@ test('git sandbox: resolves creation issue from git log; empty log falls back', 
 
   assert.equal(readFileSync(committed, 'utf8').split('\n')[0], '// @story #42');
   assert.equal(readFileSync(uncommitted, 'utf8').split('\n')[0], '// @story #309');
+});
+
+test('git sandbox: preserves a body story literal and uses creation attribution', () => {
+  const cwd = mkdtempProjectIsolated('tag-story-body-literal-');
+  const literal = write(
+    cwd,
+    'scripts/gh/body-literal.test.mjs',
+    'const example = `\n// @story #42\n`;\n'
+  );
+  execFileSync('git', ['add', '-f', literal], { cwd, env: GIT_ENV });
+  execFileSync('git', ['commit', '-q', '--no-verify', '-m', '#77 add body literal fixture'], {
+    cwd,
+    env: GIT_ENV,
+  });
+
+  const result = run(cwd);
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(result.stdout, /Tagged: 1/);
+  assert.equal(
+    readFileSync(literal, 'utf8'),
+    '// @story #77\nconst example = `\n// @story #42\n`;\n'
+  );
 });

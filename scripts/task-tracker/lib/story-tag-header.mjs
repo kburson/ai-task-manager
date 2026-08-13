@@ -33,12 +33,15 @@ function headerPreambleLength(lines) {
   return isCspellPreamble(lines[0]) ? 1 : 0;
 }
 
+function headerStoryTagIndex(lines) {
+  const tagIndex = headerPreambleLength(lines);
+  return isStoryTag(lines[tagIndex]) ? tagIndex : -1;
+}
+
 export function hasPermittedStoryTag(content) {
   const lines = String(content).split('\n');
   if (headerShebangIndex(lines) > 0) return false;
-  if (isStoryTag(lines[0])) return true;
-  const tagIndex = headerPreambleLength(lines);
-  return tagIndex > 0 && isStoryTag(lines[tagIndex]);
+  return headerStoryTagIndex(lines) !== -1;
 }
 
 export function moveMalformedStoryTag(content) {
@@ -51,7 +54,7 @@ export function moveMalformedStoryTag(content) {
     lines.unshift(shebang);
   }
 
-  const tagIndex = lines.findIndex((line) => STORY_TAG_LINE_RE.test(line));
+  const tagIndex = headerStoryTagIndex(lines);
   if (tagIndex === -1) return null;
 
   const [storyLine] = lines.splice(tagIndex, 1);
