@@ -42,7 +42,7 @@ export function resolveEpicNumber(args, deps = {}) {
   const {
     loadState: loadStateDep = loadState,
     statePath: statePathDep = defaultStatePath,
-    env = process.env,
+    env = {},
   } = deps;
 
   const explicit = String(args[0] || '').replace(/^#/, '');
@@ -72,6 +72,7 @@ export async function main(argv, deps = {}) {
     pexec: pexecDep = pexec,
     loadState: loadStateDep = loadState,
     statePath: statePathDep = defaultStatePath,
+    env = process.env,
   } = deps;
 
   const args = argv.filter((a) => a !== '');
@@ -84,6 +85,7 @@ export async function main(argv, deps = {}) {
   const epicNumber = resolveEpicNumber(args, {
     loadState: loadStateDep,
     statePath: statePathDep,
+    env,
   });
   if (!epicNumber) {
     console.error(

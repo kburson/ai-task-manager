@@ -47,6 +47,7 @@ function stubLog(childNumber) {
 function stubDeps({ active, children, log }) {
   const seen = {};
   const deps = {
+    env: {},
     loadState: () => ({ active }),
     statePath: () => '/does/not/exist/active-task.json',
     loadConfig: () => ({}),
