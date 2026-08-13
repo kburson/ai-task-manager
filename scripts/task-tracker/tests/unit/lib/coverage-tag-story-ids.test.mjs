@@ -88,10 +88,15 @@ test('non-git sandbox: fixes misplaced tags and discovers co-located tests', () 
     'scripts/gh/e-malformed.test.mjs',
     'export const malformed = true;\n// @story #9\n'
   );
+  const invalidShebangOrder = write(
+    cwd,
+    'scripts/gh/f-invalid-shebang-order.test.mjs',
+    '// cspell:ignore metachar\n// @story #10\n#!/usr/bin/env node\nconsole.log(5)\n'
+  );
 
   const res = run(cwd);
   assert.equal(res.status, 0, res.stderr);
-  assert.match(res.stdout, /Tagged: 2, Fixed shebang order: 2, Skipped \(already correct\): 2/);
+  assert.match(res.stdout, /Tagged: 2, Fixed shebang order: 3, Skipped \(already correct\): 2/);
   // No git repo → findCreationIssue throws → fallback list printed.
   assert.match(res.stdout, /fallback #309/);
 
@@ -119,6 +124,12 @@ test('non-git sandbox: fixes misplaced tags and discovers co-located tests', () 
 
   // A malformed later tag is moved to the header without duplication.
   assert.equal(readFileSync(malformed, 'utf8'), '// @story #9\nexport const malformed = true;\n');
+
+  // A shebang after the cspell/story header is moved ahead of both lines.
+  assert.equal(
+    readFileSync(invalidShebangOrder, 'utf8'),
+    '#!/usr/bin/env node\n// cspell:ignore metachar\n// @story #10\nconsole.log(5)\n'
+  );
 });
 
 test('git sandbox: resolves creation issue from git log; empty log falls back', () => {
