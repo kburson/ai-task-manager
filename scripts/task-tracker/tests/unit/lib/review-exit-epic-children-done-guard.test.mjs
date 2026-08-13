@@ -3,12 +3,9 @@
 // Unit tests for review-exit-epic-children-done-guard (#877) and the
 // `reviewEpicDoneChildrenGate` it wraps.
 //
-// #877 relaxed the develop → test epic gate from "children done" to "children
-// at review or later" and re-seated the strict child-`done` invariant on the
-// review → done arc. These tests pin BOTH halves of that move: the gate's
-// predicate, and the wrapper's transition scoping. The single most important
-// case is `refuses when a child is still at review` — that is exactly the hole
-// the relaxation would have opened if this guard had not landed with it.
+// #1216 requires completed children to converge on both CLOSED/COMPLETED issue
+// state and the Done board state. These tests pin that terminal predicate and
+// the wrapper's transition scoping. A child still in Review is not delivered.
 
 import { strict as assert } from 'node:assert';
 import { test } from 'node:test';
@@ -23,6 +20,17 @@ const cfg = { repo: 'o/r', projectId: 'PROJ_1' };
 
 function stubFetch(children) {
   return async () => children;
+}
+
+function terminal(number, rank) {
+  return {
+    number,
+    state: 'done',
+    boardState: 'done',
+    rank,
+    issueState: 'closed',
+    closeReason: 'completed',
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -44,10 +52,7 @@ test('gate passes when every child is done', async () => {
     cfg,
     issueNumber: 100,
     deps: {
-      fetchSiblings: stubFetch([
-        { number: 101, state: 'done', rank: 1 },
-        { number: 102, state: 'done', rank: 2 },
-      ]),
+      fetchSiblings: stubFetch([terminal(101, 1), terminal(102, 2)]),
     },
   });
   assert.equal(result.ok, true);
@@ -61,10 +66,7 @@ test('gate refuses when a child is still at review', async () => {
     cfg,
     issueNumber: 100,
     deps: {
-      fetchSiblings: stubFetch([
-        { number: 101, state: 'done', rank: 1 },
-        { number: 102, state: 'review', rank: 2 },
-      ]),
+      fetchSiblings: stubFetch([terminal(101, 1), { number: 102, state: 'review', rank: 2 }]),
     },
   });
   assert.equal(result.ok, false);
@@ -82,10 +84,7 @@ for (const pendingState of ['backlog', 'assigned', 'refine', 'plan', 'develop', 
       cfg,
       issueNumber: 100,
       deps: {
-        fetchSiblings: stubFetch([
-          { number: 101, state: 'done', rank: 1 },
-          { number: 102, state: pendingState, rank: 2 },
-        ]),
+        fetchSiblings: stubFetch([terminal(101, 1), { number: 102, state: pendingState, rank: 2 }]),
       },
     });
     assert.equal(result.ok, false);
@@ -98,7 +97,18 @@ test('gate accepts mixed-case "DONE"', async () => {
   const result = await reviewEpicDoneChildrenGate({
     cfg,
     issueNumber: 100,
-    deps: { fetchSiblings: stubFetch([{ number: 101, state: 'DONE', rank: 1 }]) },
+    deps: {
+      fetchSiblings: stubFetch([
+        {
+          number: 101,
+          state: 'DONE',
+          boardState: 'DONE',
+          rank: 1,
+          issueState: 'CLOSED',
+          closeReason: 'COMPLETED',
+        },
+      ]),
+    },
   });
   assert.equal(result.ok, true);
 });

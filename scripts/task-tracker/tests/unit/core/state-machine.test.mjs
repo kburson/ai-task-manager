@@ -27,8 +27,8 @@ const BACKWARD = Object.fromEntries(
 test('STATES is the canonical 8-state chain in order', () => {
   assert.deepEqual(STATES, [
     'backlog',
-    'assigned',
     'refine',
+    'ready-for-plan',
     'plan',
     'develop',
     'test',
@@ -39,9 +39,9 @@ test('STATES is the canonical 8-state chain in order', () => {
 
 test('FORWARD covers every adjacent forward pair', () => {
   const pairs = [
-    ['backlog', 'assigned'],
-    ['assigned', 'refine'],
-    ['refine', 'plan'],
+    ['backlog', 'refine'],
+    ['refine', 'ready-for-plan'],
+    ['ready-for-plan', 'plan'],
     ['plan', 'develop'],
     ['develop', 'test'],
     ['test', 'review'],
@@ -53,18 +53,18 @@ test('FORWARD covers every adjacent forward pair', () => {
   }
 });
 
-test('no backlog→refine shortcut — every item passes through Assigned', () => {
-  assert.equal(FORWARD.backlog, 'assigned');
-  const r = validateTransition('backlog', 'refine');
+test('no refine→plan shortcut — every refined item passes through Ready for Planning', () => {
+  assert.equal(FORWARD.refine, 'ready-for-plan');
+  const r = validateTransition('refine', 'plan');
   assert.equal(r.ok, false);
   assert.match(r.reason, /illegal transition/);
 });
 
-test('BACKWARD allows assigned→backlog, test→develop and review→develop', () => {
-  assert.equal(BACKWARD['assigned'], 'backlog');
+test('BACKWARD allows R4P→backlog, test→develop and review→develop', () => {
+  assert.equal(BACKWARD['ready-for-plan'], 'backlog');
   assert.equal(BACKWARD.test, 'develop');
   assert.deepEqual(BACKWARD.review, ['develop', 'test']);
-  assert.deepEqual(validateTransition('assigned', 'backlog'), { ok: true });
+  assert.deepEqual(validateTransition('ready-for-plan', 'backlog'), { ok: true });
   assert.deepEqual(validateTransition('test', 'develop'), { ok: true });
   assert.deepEqual(validateTransition('review', 'develop'), { ok: true });
 });
@@ -125,14 +125,15 @@ test('illegal backward transitions refuse', () => {
   }
 });
 
-// #848 — refine/plan → backlog is the `park` verb's transition (premise
-// falsified / deprioritized), added to the BACKWARD map alongside assigned→backlog
-// and test|review→develop.
-test('refine→backlog and plan→backlog are legal (park verb, #848)', () => {
+// #1215 — Shelve owns Refine/R4P → Backlog. Plan interruption is exclusively
+// the separate cancel-plan edge back to R4P.
+test('Refine/R4P→Backlog and Plan→R4P are legal while Plan→Backlog refuses', () => {
   assert.equal(BACKWARD.refine, 'backlog');
-  assert.equal(BACKWARD.plan, 'backlog');
+  assert.equal(BACKWARD['ready-for-plan'], 'backlog');
+  assert.equal(BACKWARD.plan, 'ready-for-plan');
   assert.deepEqual(validateTransition('refine', 'backlog'), { ok: true });
-  assert.deepEqual(validateTransition('plan', 'backlog'), { ok: true });
+  assert.equal(validateTransition('plan', 'backlog').ok, false);
+  assert.deepEqual(validateTransition('plan', 'ready-for-plan'), { ok: true });
 });
 
 test('unknown state strings refuse with unknown-state message', () => {
@@ -149,33 +150,33 @@ test('unknown state strings refuse with unknown-state message', () => {
   assert.match(r3.reason, /unknown state/);
 });
 
-test('normalizeStateSlug maps the canonical display name "Assigned" to "assigned"', () => {
-  assert.equal(normalizeStateSlug('Assigned'), 'assigned');
+test('normalizeStateSlug maps the canonical display name to ready-for-plan', () => {
+  assert.equal(normalizeStateSlug('Ready for Planning'), 'ready-for-plan');
 });
 
 // #436 originally pinned whitespace-to-hyphen normalization for the multi-word
 // `On Deck` display name added by #433. #1206 retains that spelling as a read
-// alias while projecting it onto the canonical `assigned` state.
+// alias while projecting it onto the canonical `ready-for-plan` state.
 test('normalizeStateSlug preserves historical On Deck display-name compatibility', () => {
-  assert.equal(normalizeStateSlug('On Deck'), 'assigned');
-  assert.equal(normalizeStateSlug('  On   Deck  '), 'assigned');
-  assert.equal(normalizeStateSlug('On\tDeck'), 'assigned');
+  assert.equal(normalizeStateSlug('On Deck'), 'ready-for-plan');
+  assert.equal(normalizeStateSlug('  On   Deck  '), 'ready-for-plan');
+  assert.equal(normalizeStateSlug('On\tDeck'), 'ready-for-plan');
+  assert.equal(normalizeStateSlug('Assigned'), 'ready-for-plan');
   assert.equal(normalizeStateSlug('Assigned Soon'), 'assigned-soon');
 });
 
-test('normalizeStateSlug leaves every single-word state slug unchanged', () => {
+test('normalizeStateSlug maps every canonical display name to its state id', () => {
   const displayNames = [
-    'Backlog',
-    'Assigned',
-    'Refine',
-    'Plan',
-    'Develop',
-    'Test',
-    'Review',
-    'Done',
+    ['Backlog', 'backlog'],
+    ['Refine', 'refine'],
+    ['Ready for Planning', 'ready-for-plan'],
+    ['Plan', 'plan'],
+    ['Develop', 'develop'],
+    ['Test', 'test'],
+    ['Review', 'review'],
+    ['Done', 'done'],
   ];
-  for (const name of displayNames) {
-    const slug = name.toLowerCase();
+  for (const [name, slug] of displayNames) {
     assert.equal(normalizeStateSlug(name), slug, `${name} should normalize to ${slug}`);
     assert.ok(STATES.includes(slug), `${slug} should be a canonical state`);
   }
@@ -195,8 +196,8 @@ test('refusal message lists allowed next states', () => {
   const r1 = validateTransition('test', 'backlog');
   assert.match(r1.reason, /Allowed: review, develop/);
   // forward only (no backward defined)
-  const r2 = validateTransition('refine', 'test');
-  assert.match(r2.reason, /Allowed: plan/);
+  const r2 = validateTransition('ready-for-plan', 'test');
+  assert.match(r2.reason, /Allowed: plan, backlog/);
   // terminal state (no forward, no backward)
   const r3 = validateTransition('done', 'review');
   assert.match(r3.reason, /Allowed: none/);

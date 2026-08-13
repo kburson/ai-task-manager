@@ -13,7 +13,7 @@ const installBody = readFileSync(
   'utf8'
 );
 
-assert.match(body, /Backlog → Assigned → Refine → Plan → Develop → Test → Review → Done/);
+assert.match(body, /Backlog → Refine → Ready for Planning → Plan → Develop → Test → Review → Done/);
 assert.match(body, /State Transition Verb Map \(8-state model\)/);
 assert.match(body, /\/task plan #N/);
 assert.match(body, /\/task test #N/);

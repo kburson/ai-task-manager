@@ -4,7 +4,7 @@ const EMPTY_TARGETS = Object.freeze([]);
 const REVERSE_TARGET_INDEXES = Object.freeze({
   1: Object.freeze([0]),
   2: Object.freeze([0]),
-  3: Object.freeze([0]),
+  3: Object.freeze([2]),
   5: Object.freeze([4]),
   6: Object.freeze([4, 5]),
 });

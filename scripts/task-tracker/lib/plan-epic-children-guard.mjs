@@ -5,10 +5,9 @@
 // the existing `runGuards('plan', 'develop', ctx)` call at
 // scripts/gh/move-state.mjs:394.
 //
-// Rule: an EPIC moving plan → develop is refused if any sub-issue is still in
-// a pre-refine state (currently only `backlog`). Children that have been
-// refined OR have advanced past refine (plan/develop/test/review/done) all
-// satisfy the admission rule — children may legitimately lead the parent.
+// Rule: an EPIC moving plan → develop is refused unless every executable
+// nonterminal child is at R4P or later with current refinement evidence and a
+// finite rank. Accepted terminal dispositions pass.
 // Solo issues (no `aitm-sub-issues` children) pass trivially — the underlying
 // gate returns `{ ok: true, children: [] }` when GraphQL reports zero children.
 //
@@ -26,8 +25,48 @@
 // other guard genuinely caused the run to fail.
 
 import { planEpicDevelopChildrenGate } from './epic-children-gate.mjs';
+import { verifyEpicOrchestrationPlan } from './epic-orchestration-plan.mjs';
+import { defaultResolveTrunkSha } from './plan-approved-guard.mjs';
 
-export const GUARD_ID = 'plan-exit-epic-children-refine-or-beyond';
+export const GUARD_ID = 'plan-exit-epic-children-r4p-or-beyond';
+export const R4P_GUARD_ID = 'ready-for-plan-exit-epic-children-r4p-or-beyond';
+
+async function runAdmission(ctx, { requireDurablePlan = false } = {}) {
+  if (!ctx || !ctx.cfg || !ctx.issueNumber) return { ok: true };
+  const gateFn = ctx.deps?.planEpicDevelopChildrenGate || planEpicDevelopChildrenGate;
+  const result = await gateFn({
+    cfg: ctx.cfg,
+    issueNumber: ctx.issueNumber,
+    deps: ctx.deps?.epicChildren,
+  });
+  if (result.ok && requireDurablePlan && result.children.length > 0) {
+    try {
+      const resolveTrunkSha = ctx.deps?.resolveTrunkSha || defaultResolveTrunkSha;
+      const trunkSha = await resolveTrunkSha({ cfg: ctx.cfg, projectDir: ctx.projectDir });
+      const verified = verifyEpicOrchestrationPlan(ctx.body, {
+        children: result.children,
+        trunkSha,
+      });
+      if (!verified.ok) {
+        return { ok: false, reason: verified.reason, blockers: [verified.reason] };
+      }
+    } catch (error) {
+      const reason = `epic orchestration plan unreadable: ${error.message}`;
+      return { ok: false, reason, blockers: [reason] };
+    }
+  }
+  if (result.ok) return { ok: true };
+  const reason = (result.blockers || []).join('; ') || 'epic-children-not-r4p';
+  return { ok: false, reason, blockers: result.blockers || [] };
+}
+
+export const r4pEpicChildrenGuard = {
+  id: R4P_GUARD_ID,
+  async run(ctx) {
+    if (ctx?.toState && ctx.toState !== 'plan') return { ok: true };
+    return runAdmission(ctx);
+  },
+};
 
 export const planEpicChildrenGuard = {
   id: GUARD_ID,
@@ -35,15 +74,6 @@ export const planEpicChildrenGuard = {
     // Scoped to plan → develop. Rollbacks and bounce-backs to other states
     // must NOT trigger an epic-children admission check.
     if (ctx?.toState && ctx.toState !== 'develop') return { ok: true };
-    if (!ctx || !ctx.cfg || !ctx.issueNumber) return { ok: true };
-    const gateFn = ctx.deps?.planEpicDevelopChildrenGate || planEpicDevelopChildrenGate;
-    const result = await gateFn({
-      cfg: ctx.cfg,
-      issueNumber: ctx.issueNumber,
-      deps: ctx.deps?.epicChildren,
-    });
-    if (result.ok) return { ok: true };
-    const reason = (result.blockers || []).join('; ') || 'epic-children-not-refined';
-    return { ok: false, reason, blockers: result.blockers || [] };
+    return runAdmission(ctx, { requireDurablePlan: true });
   },
 };

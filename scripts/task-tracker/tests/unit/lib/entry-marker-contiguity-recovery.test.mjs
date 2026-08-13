@@ -132,10 +132,11 @@ test('AC3: postStampFailureAudit degrades (no throw) when the post itself fails'
 
 test('AC4: reconcile backfill fills the missing prior-stage markers', async () => {
   const body = gapBody();
-  // Confirm the precondition: refine + plan are genuine non-optional holes at
-  // develop (assigned is an optional waiting room and is filtered by backfill).
+  // Confirm the precondition: Refine, Ready for Planning, and Plan are holes.
   const rawHoles = verifyChainIntegrity(body, 'develop').holes;
-  assert.ok(rawHoles.includes('refine') && rawHoles.includes('plan'));
+  assert.ok(
+    rawHoles.includes('refine') && rawHoles.includes('ready-for-plan') && rawHoles.includes('plan')
+  );
 
   let written = null;
   const res = await runReconcile({
@@ -159,13 +160,15 @@ test('AC4: reconcile backfill fills the missing prior-stage markers', async () =
   assert.match(written, /aitm-entered-refine/);
   assert.match(written, /aitm-entered-plan/);
   // The repaired chain has no remaining non-optional holes at develop.
-  const remaining = verifyChainIntegrity(written, 'develop').holes.filter((s) => s !== 'assigned');
+  const remaining = verifyChainIntegrity(written, 'develop').holes.filter(
+    (stage) => stage !== 'ready-for-plan'
+  );
   assert.deepEqual(remaining, []);
 });
 
 test('AC4: reconcile backfill is a no-op when the chain is already contiguous', async () => {
   let body = 'Body.\n';
-  for (const [i, stage] of ['backlog', 'refine', 'plan', 'develop'].entries()) {
+  for (const [i, stage] of ['backlog', 'refine', 'ready-for-plan', 'plan', 'develop'].entries()) {
     body = stampEntryMarker(body, stage, `2026-06-0${i + 1}T00:00:00.000Z`);
   }
   body = writeLastKnownState(body, 'develop');

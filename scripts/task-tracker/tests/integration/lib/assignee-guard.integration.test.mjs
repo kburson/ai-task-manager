@@ -74,10 +74,16 @@ if (argv[0] === 'api' && argv[1] === 'user') {
 }
 if (argv[0] === 'api' && argv[1] === 'graphql') {
   if (stdinBody.includes('assignees')) {
-    process.stdout.write(JSON.stringify({ data: { repository: { issue: { assignees: { nodes: ${JSON.stringify(assigneeNodes)} } } } } }));
+    process.stdout.write(JSON.stringify({ data: { repository: { issue: {
+      assignees: { nodes: ${JSON.stringify(assigneeNodes)} },
+      projectItems: {
+        nodes: [{ id: 'PVTI', project: { id: 'PVT_test' }, fieldValueByName: { optionId: 'OPT_dev', name: 'Develop' } }],
+        pageInfo: { hasNextPage: false, endCursor: null }
+      }
+    } } } }));
     process.exit(0);
   }
-  process.stdout.write(JSON.stringify({ data: { repository: { issue: { id: 'ISS', body: '', projectItems: { nodes: [{ id: 'PVTI', project: { id: 'PVT_test' }, fieldValueByName: { optionId: 'OPT_dev' } }] }, comments: { nodes: [] }, subIssues: { nodes: [] }, parent: null } } } }));
+  process.stdout.write(JSON.stringify({ data: { repository: { issue: { id: 'ISS', body: '', projectItems: { nodes: [{ id: 'PVTI', project: { id: 'PVT_test' }, fieldValueByName: { optionId: 'OPT_dev', name: 'Develop' } }] }, comments: { nodes: [] }, subIssues: { nodes: [] }, parent: null } } } }));
   process.exit(0);
 }
 if (argv[0] === 'issue' && argv[1] === 'view') {
@@ -115,9 +121,9 @@ async function runCli(sandbox, binDir, args) {
     const { binDir } = makeGhShim(sandbox, { assignees: ['alice'], currentUser: 'kburson' });
     const r = await runCli(sandbox, binDir, ['pause', '#219']);
     assert.equal(r.code, 10, `expected exit 10; stdout:\n${r.stdout}\nstderr:\n${r.stderr}`);
-    assert.match(r.stdout, /PROMPT_REQUIRED: assignee-mismatch #219 assigned-to-other alice/);
+    assert.match(r.stdout, /PROMPT_REQUIRED: assignee-mismatch #219 foreign-owner alice/);
     assert.match(r.stderr, /assigned to alice/);
-    assert.match(r.stderr, /gh issue edit 219 --add-assignee @me/);
+    assert.match(r.stderr, /npx aitm transfer 219 --to @kburson/);
     console.log('test 1: guard ON + foreign assignee → exit 10 OK');
   } finally {
     rmSync(sandbox, { recursive: true, force: true });

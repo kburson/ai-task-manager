@@ -1,7 +1,7 @@
 // `promote` verb — directional forward state-change (#81 rename of `/task move`).
 //
 // One verb advances the issue by exactly one state along the FORWARD chain:
-//   backlog → assigned → refine → plan → develop → test → review → done.
+//   backlog → refine → ready-for-plan → plan → develop → test → review → done.
 //
 // Promote is the only sanctioned forward chokepoint. Existing stage verbs
 // (refine / plan-approve / approve / review / close) remain as aliases — promote
@@ -59,16 +59,19 @@ const REFUSAL_ID_TO_STATUS = {
   'refine-entry-fields-priority': 'refine-gate-refused',
   'plan-entry-fields-body': 'refine-gate-refused',
   'plan-entry-fields-board': 'refine-exit-refused',
+  'refine-exit-current-snapshot': 'refine-exit-refused',
   'refine-exit-wip-budget': 'wip-budget-refused',
   'plan-exit-planned-estimate': 'planned-estimate-refused',
   'plan-exit-deep-dive': 'deep-dive-refused',
   'plan-exit-plan-metadata': 'plan-metadata-refused',
+  'plan-exit-ownership': 'ownership-refused',
   // #386 — plan→develop refuses a body with no `## Verification Commands`
   // section (>= 1 parseable entry); the gate-first `test` verb would otherwise
   // dead-end at "nothing to verify".
   'plan-exit-vc-presence': 'vc-presence-refused',
   'plan-exit-decomposition': 'decomposition-refused',
-  'plan-exit-epic-children-refine-or-beyond': 'epic-children-refused',
+  'ready-for-plan-exit-epic-children-r4p-or-beyond': 'epic-children-refused',
+  'plan-exit-epic-children-r4p-or-beyond': 'epic-children-refused',
   // `plan-exit-plan-approved` intentionally omitted: historical verb didn't
   // enforce this marker; the central `move-state.mjs` subprocess does. Adding
   // it here would surface refusals at the verb that legacy tests don't expect.
@@ -92,7 +95,7 @@ const REFUSAL_ID_TO_STATUS = {
   // #432 — ## User Story hard-refuse at refine→plan.
   'user-story-block': 'user-story-refused',
   // #473 — unresolved `{discuss}` directive hard-blocks the first forward
-  // promotion out of Backlog/Assigned, regardless of TT_FULL_AUTO.
+  // first promotion out of Backlog, regardless of TT_FULL_AUTO.
   'discuss-unresolved': 'discuss-refused',
 };
 
@@ -343,7 +346,8 @@ export async function runPromote({
   // REFUSAL_ID_TO_STATUS.
 
   // #336 — delegate forward-transition gate enforcement to the guard registry.
-  // Every previously-inline gate for assigned→refine, refine→plan, plan→develop,
+  // Every previously-inline gate for backlog→refine, refine→ready-for-plan,
+  // ready-for-plan→plan, plan→develop,
   // and develop→test now lives in `STATES[from].exitGuards`. Side-channel:
   // `planEntryFieldsBody` stashes the resolved refinement plan on `guardCtx`
   // so the refine→plan post-success hook can run `applyRefinementEstimate`.
@@ -558,7 +562,7 @@ export async function runPromote({
 
   // Transition succeeded. Entry-marker AND lastKnownState stamping are both
   // centralized in move-state.mjs's success path (#170 — single mutator).
-  // #147 — Assigned → Refine success hook: stamp the "Start time" field on the
+  // Refine-entry success hook: stamp the "Start time" field on the
   // project board so the refine→plan exit gate has a value to verify. Idempotent
   // (skips when already set). Best-effort — board state is already committed.
   if (target === 'refine') {
@@ -574,7 +578,7 @@ export async function runPromote({
   // strip the rationale marker from the body. Best-effort — failures here do
   // not roll back the board move.
   let refinementPost = null;
-  if (target === 'plan' && refinementPlan) {
+  if (target === 'ready-for-plan' && refinementPlan) {
     try {
       refinementPost = await applyRefinementEstimate({
         cfg,
@@ -704,6 +708,7 @@ export async function verbPromote(rest, cfg, deps = {}) {
     case 'deep-dive-refused':
     case 'plan-metadata-refused':
     case 'decomposition-refused':
+    case 'ownership-refused':
     case 'wip-budget-refused':
     case 'commit-trail-stale':
     case 'blocked-refused':
@@ -755,6 +760,18 @@ const _isMain = (() => {
 
 if (_isMain) {
   const { loadConfig } = await import('../config.mjs');
+  const { loadState } = await import('../state.mjs');
+  const { statePath } = await import('../paths.mjs');
+  const { preflightVerb } = await import('../lib/verb-preflight.mjs');
   const cfg = loadConfig();
+  const target = parseArgs(process.argv.slice(2)).issueNumber;
+  const sp = statePath();
+  await preflightVerb({
+    stateBefore: loadState(sp),
+    statePath: sp,
+    target: target ? `#${target}` : undefined,
+    cfg,
+    verb: 'promote',
+  });
   await verbPromote(process.argv.slice(2), cfg);
 }

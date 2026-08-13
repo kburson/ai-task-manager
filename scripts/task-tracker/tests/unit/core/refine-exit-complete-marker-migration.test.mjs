@@ -39,9 +39,9 @@ test('refineExitCompleteMarkerGuard module exports the expected shape (#357)', a
   assert.equal(typeof mod.refineExitCompleteMarkerGuard.run, 'function');
 });
 
-test('guard refuses when toState=plan and marker absent (#357)', async () => {
+test('guard refuses when toState=ready-for-plan and marker absent (#357)', async () => {
   const { refineExitCompleteMarkerGuard: g } = await import(guardPath);
-  const r = await g.run({ toState: 'plan', body: '## Scope\nno marker here' });
+  const r = await g.run({ toState: 'ready-for-plan', body: '## Scope\nno marker here' });
   assert.equal(r.ok, false);
   assert.match(r.reason, /aitm-refine-complete/);
   assert.ok(Array.isArray(r.blockers) && r.blockers.length >= 1);
@@ -50,13 +50,13 @@ test('guard refuses when toState=plan and marker absent (#357)', async () => {
 test('guard passes when marker present (#357)', async () => {
   const { refineExitCompleteMarkerGuard: g } = await import(guardPath);
   const r = await g.run({
-    toState: 'plan',
+    toState: 'ready-for-plan',
     body: 'body\n<!-- aitm-refine-complete: 2026-06-08T00:00:00Z -->\n',
   });
   assert.equal(r.ok, true);
 });
 
-test('guard fails-open when toState is not plan (#357)', async () => {
+test('guard fails-open when toState is not ready-for-plan (#357)', async () => {
   const { refineExitCompleteMarkerGuard: g } = await import(guardPath);
   const r = await g.run({ toState: 'develop', body: '' });
   assert.equal(r.ok, true);

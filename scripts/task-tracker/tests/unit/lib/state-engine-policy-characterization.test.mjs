@@ -22,11 +22,11 @@ import { LEGAL_FROM as PARK_FROM, PARK_TARGET } from '../../../verbs/park.mjs';
 const TEST_CFG = { repo: 'owner/repo', projectId: 'PVT_TEST' };
 const PRODUCTION_STATES = stateIds();
 
-test('the production lifecycle keeps eight states and canonically names Assigned', () => {
+test('the production lifecycle keeps eight states and canonically names Ready for Planning', () => {
   assert.deepEqual(PRODUCTION_STATES, [
     'backlog',
-    'assigned',
     'refine',
+    'ready-for-plan',
     'plan',
     'develop',
     'test',
@@ -76,32 +76,36 @@ function bodyWithRecordedState(state) {
 async function observeRefine(recordedState) {
   const body = bodyWithRecordedState(recordedState);
   const promoteCalls = [];
-  const result = await runRefine({
-    args: {
-      issueNumber: 1007,
-      size: 'S',
-      estimate: '2',
-      priority: 'p1',
-      reason: `characterize ${recordedState ?? 'bootstrap'}`,
-    },
-    cfg: TEST_CFG,
-    deps: {
-      projectDir: process.cwd(),
-      assertBound: () => {},
-      tetherIssueToProject: async () => ({ itemId: 'PVTI_TEST' }),
-      fetchBody: async () => body,
-      mutateBody: async ({ mutate }) => {
-        mutate(body);
-        return { status: 'ok' };
+  try {
+    const result = await runRefine({
+      args: {
+        issueNumber: 1007,
+        size: 'S',
+        estimate: '2',
+        priority: 'p1',
+        reason: `characterize ${recordedState ?? 'bootstrap'}`,
       },
-      loadProjectFieldDefs: () => [],
-      ensureIssueFieldDb: (next) => ({ body: next }),
-      verbPromote: async () => {
-        promoteCalls.push(recordedState);
+      cfg: TEST_CFG,
+      deps: {
+        projectDir: process.cwd(),
+        assertBound: () => {},
+        tetherIssueToProject: async () => ({ itemId: 'PVTI_TEST' }),
+        fetchBody: async () => body,
+        mutateBody: async ({ mutate }) => {
+          mutate(body);
+          return { status: 'ok' };
+        },
+        loadProjectFieldDefs: () => [],
+        ensureIssueFieldDb: (next) => ({ body: next }),
+        verbPromote: async () => {
+          promoteCalls.push(recordedState);
+        },
       },
-    },
-  });
-  return { recordedState, promoteCalls, result };
+    });
+    return { recordedState, promoteCalls, result, error: null };
+  } catch (error) {
+    return { recordedState, promoteCalls, result: null, error };
+  }
 }
 
 test('the baseline names the canonical eight states in production order', () => {
@@ -176,11 +180,11 @@ test('action eligibility and delegation match current verb exports', () => {
 
 test('refine entry and self-run policy match injected production behavior', async () => {
   const observations = await Promise.all(
-    ['backlog', 'assigned', 'refine', 'plan'].map(observeRefine)
+    ['backlog', 'refine', 'ready-for-plan', 'plan'].map(observeRefine)
   );
   assert.deepEqual(
     observations.map(({ promoteCalls }) => promoteCalls.length),
-    [2, 1, 0, 0]
+    [1, 1, 0, 0]
   );
   assert.deepEqual(
     ACTION_BASELINE.refine.from,
@@ -190,8 +194,14 @@ test('refine entry and self-run policy match injected production behavior', asyn
   );
   const refineSelfRun = observations.find(({ recordedState }) => recordedState === 'refine');
   assert.equal(refineSelfRun.result.status, 'refined');
-  assert.equal(refineSelfRun.result.promoted, false);
-  assert.equal(ACTION_BASELINE.refine.selfRun, 're-estimate-in-place');
+  assert.equal(refineSelfRun.result.promoted, true);
+  for (const state of ['ready-for-plan', 'plan']) {
+    assert.match(
+      observations.find(({ recordedState }) => recordedState === state).error.message,
+      /is not Backlog or Refine/
+    );
+  }
+  assert.equal(ACTION_BASELINE.refine.selfRun, 'complete-to-ready-for-plan');
 });
 
 test('bootstrap policy resolves live state and refuses a missing board item', async () => {
@@ -232,7 +242,7 @@ test('bootstrap policy resolves live state and refuses a missing board item', as
   });
   assert.equal(resolved.status, 'promoted');
   assert.equal(resolved.bootstrapped, true);
-  assert.deepEqual([resolved.from, resolved.to], ['backlog', 'assigned']);
+  assert.deepEqual([resolved.from, resolved.to], ['backlog', 'refine']);
   assert.match(bootstrappedBody, /aitm-last-known-state state="backlog"/);
   assert.equal(ACTION_BASELINE.bootstrap.behavior, 'resolve-live-state-then-apply-action-policy');
 });

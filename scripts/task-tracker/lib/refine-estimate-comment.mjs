@@ -213,6 +213,71 @@ export async function upsertPlannedEstimate({
   return { status: 'updated', commentId: comment.id };
 }
 
+// Plan cancellation returns the story to durable Ready for Planning. The
+// refine-estimate comment is preserved, but its Plan-only appendix must be
+// removed so a later Plan visit cannot reuse an estimate made against an older
+// codebase. The returned original body is the rollback record for the caller's
+// cross-resource cancellation transaction.
+export async function clearPlannedEstimate({ cfg, issueNumber, deps = {} } = {}) {
+  if (!cfg) throw new Error('clearPlannedEstimate: cfg is required');
+  if (!issueNumber) throw new Error('clearPlannedEstimate: issueNumber is required');
+  const patchComment = deps.patchComment || defaultPatchComment;
+  const comment = await findRefineEstimateComment({ cfg, issueNumber, deps });
+  if (!comment) return { status: 'no-refine-comment' };
+  const match = comment.body.match(PLANNED_HEADER_RE);
+  if (!match) return { status: 'no-appendix', commentId: comment.id };
+  const nextBody = `${comment.body.slice(0, match.index).replace(/\s+$/, '')}\n`;
+  try {
+    await patchComment({ cfg, commentId: comment.id, body: nextBody });
+  } catch (error) {
+    return { status: 'patch-failed', commentId: comment.id, error: error.message };
+  }
+  try {
+    const readBack = await findRefineEstimateComment({ cfg, issueNumber, deps });
+    if (readBack?.id === comment.id && readBack.body === nextBody) {
+      return {
+        status: 'cleared',
+        commentId: comment.id,
+        originalBody: comment.body,
+      };
+    }
+  } catch {
+    // Fall through to the recovery write below. A failed read-back is not
+    // sufficient evidence that the Plan appendix was invalidated.
+  }
+  let restored = false;
+  try {
+    await patchComment({ cfg, commentId: comment.id, body: comment.body });
+    const readBack = await findRefineEstimateComment({ cfg, issueNumber, deps });
+    restored = readBack?.id === comment.id && readBack.body === comment.body;
+  } catch {
+    restored = false;
+  }
+  return {
+    status: restored ? 'verification-failed-restored' : 'verification-failed-recovery-uncertain',
+    commentId: comment.id,
+  };
+}
+
+export async function restorePlannedEstimate({ cfg, issueNumber, record, deps = {} } = {}) {
+  if (!cfg) throw new Error('restorePlannedEstimate: cfg is required');
+  if (!issueNumber) throw new Error('restorePlannedEstimate: issueNumber is required');
+  if (!record?.commentId || typeof record.originalBody !== 'string') {
+    throw new Error('restorePlannedEstimate: clear record is required');
+  }
+  const patchComment = deps.patchComment || defaultPatchComment;
+  await patchComment({
+    cfg,
+    commentId: record.commentId,
+    body: record.originalBody,
+  });
+  const readBack = await findRefineEstimateComment({ cfg, issueNumber, deps });
+  if (readBack?.id !== record.commentId || readBack.body !== record.originalBody) {
+    throw new Error('restorePlannedEstimate: exact read-back mismatch');
+  }
+  return { status: 'restored', commentId: record.commentId };
+}
+
 // AC8 (#171) — re-populate an already-appended EMPTY Planned Estimate table.
 //
 // `appendPlannedEstimate` is terminal on `hasPlannedAppendix` (returns
@@ -274,7 +339,7 @@ export async function planPlannedEstimateGate({ cfg, issueNumber, deps = {} } = 
     return {
       ok: false,
       blockers: [
-        'planned-estimate-missing-comment: `### 🛠 Refine estimate` comment not found — re-run the backlog→assigned→refine→plan workflow or post the comment manually',
+        'planned-estimate-missing-comment: `### 🛠 Refine estimate` comment not found — re-run the backlog→refine→ready-for-plan workflow or post the comment manually',
       ],
     };
   }

@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// @story #208
+// @story #208 #1212
 // Unit: `runPreflight` from lib/verb-preflight.mjs (#208, refactored in #218).
 //
 // Under #218 the issue body `aitm-last-known-state` marker IS the local state.
@@ -9,7 +9,7 @@
 //   3. live == marker                 → ok, unchanged
 //   4. marker absent (fresh issue)    → ok, unchanged
 //   5. live ≠ marker                  → refused, exit 9 human-move
-//   6. live empty (offline / no item) → ok, unchanged
+//   6. live empty (offline / no item) → ownership-unverifiable, fail closed
 //   7. TT_SKIP_NETWORK=1 short-circuit
 //   8. missing cfg                    → ok, no network
 
@@ -19,6 +19,7 @@ import {
   EXIT_BIND_MISMATCH,
   EXIT_HUMAN_MOVE,
   EXIT_ASSIGNEE_MISMATCH,
+  EXIT_MIGRATION_FREEZE,
 } from '../../../lib/verb-preflight.mjs';
 
 const CFG = { repo: 'test/repo', projectId: 'PVT_test' };
@@ -36,12 +37,34 @@ function depsOf({
   currentUser = 'kburson',
 } = {}) {
   return {
+    migrationFreezeActive: () => false,
     fetchLive: async () => live,
     fetchLastKnownState: async () => marker,
     fetchLastStatusActor: async () => actor,
     fetchAssignees: async () => assignees,
     fetchCurrentUser: async () => currentUser,
   };
+}
+
+// #1217: a live board migration freezes every governed lifecycle writer before network reads.
+{
+  let fetched = false;
+  const v = await runPreflight({
+    stateBefore: { active: '#208' },
+    target: '#208',
+    cfg: CFG,
+    deps: {
+      migrationFreezeActive: () => true,
+      fetchLive: async () => {
+        fetched = true;
+        return 'develop';
+      },
+    },
+  });
+  assert.equal(v.ok, false);
+  assert.equal(v.kind, 'migration-freeze');
+  assert.equal(v.code, EXIT_MIGRATION_FREEZE);
+  assert.equal(fetched, false);
 }
 
 // 1. No active, no target — nothing to reconcile.
@@ -111,6 +134,29 @@ function depsOf({
   assert.equal(v.changed, false);
 }
 
+// 3c. Production preflight consumes one atomic Status+assignee snapshot and
+// never calls the split live/assignee readers.
+{
+  let snapshots = 0;
+  const v = await runPreflight({
+    stateBefore: { active: '#1212' },
+    target: '#1212',
+    cfg: CFG,
+    deps: {
+      fetchSnapshot: async () => {
+        snapshots += 1;
+        return { state: 'develop', assignees: ['kburson'] };
+      },
+      fetchLive: async () => assert.fail('split Status read must not run'),
+      fetchAssignees: async () => assert.fail('split assignee read must not run'),
+      fetchCurrentUser: async () => 'kburson',
+      fetchLastKnownState: async () => 'develop',
+    },
+  });
+  assert.equal(v.ok, true);
+  assert.equal(snapshots, 1);
+}
+
 // 4. Marker absent (fresh issue, never moved) — ok, unchanged.
 {
   const v = await runPreflight({
@@ -140,7 +186,8 @@ function depsOf({
   assert.equal(v.actor.login, 'kburson');
 }
 
-// 6. Live empty — fetch failed / item missing — ok, unchanged.
+// 6. Live empty — ownership policy cannot determine whether an owner is
+// required, so the shared preflight fails closed.
 {
   const v = await runPreflight({
     stateBefore: { active: '#208' },
@@ -148,8 +195,9 @@ function depsOf({
     cfg: CFG,
     deps: depsOf({ live: '', marker: 'develop' }),
   });
-  assert.equal(v.ok, true);
-  assert.equal(v.changed, false);
+  assert.equal(v.ok, false);
+  assert.equal(v.code, EXIT_ASSIGNEE_MISMATCH);
+  assert.equal(v.assigneeKind, 'ownership-unverifiable');
 }
 
 // 7. TT_SKIP_NETWORK=1 short-circuits live fetch.
@@ -225,7 +273,7 @@ function depsOf({
   assert.equal(v.ok, false);
   assert.equal(v.code, EXIT_ASSIGNEE_MISMATCH);
   assert.equal(v.kind, 'assignee-mismatch');
-  assert.equal(v.assigneeKind, 'assigned-to-other');
+  assert.equal(v.assigneeKind, 'foreign-owner');
   assert.deepEqual(v.assignees, ['alice']);
 }
 
@@ -239,7 +287,7 @@ function depsOf({
   });
   assert.equal(v.ok, false);
   assert.equal(v.code, EXIT_ASSIGNEE_MISMATCH);
-  assert.equal(v.assigneeKind, 'unassigned');
+  assert.equal(v.assigneeKind, 'human-coordination-required');
 }
 
 // 12. #219: gateAssigneeMatch=false skips guard.
@@ -284,7 +332,7 @@ function depsOf({
   assert.equal(assigneeFetched, false);
 }
 
-// 14. #219: assignee guard short-circuits before drift check.
+// 14. #1212: live state resolves before the lifecycle-aware ownership gate.
 {
   let liveFetched = false;
   const v = await runPreflight({
@@ -302,7 +350,7 @@ function depsOf({
     },
   });
   assert.equal(v.code, EXIT_ASSIGNEE_MISMATCH);
-  assert.equal(liveFetched, false, 'live fetch skipped when assignee guard fires');
+  assert.equal(liveFetched, true, 'live state is required to evaluate ownership');
 }
 
 // 15. #769: assignee fetch failure fails CLOSED (was fail-open under #219).
@@ -324,7 +372,7 @@ function depsOf({
   });
   assert.equal(v.ok, false);
   assert.equal(v.code, EXIT_ASSIGNEE_MISMATCH);
-  assert.equal(v.assigneeKind, 'unverifiable');
+  assert.equal(v.assigneeKind, 'ownership-unverifiable');
 }
 
 // 16. #845: cold bind with target now threaded — assignee gate runs and
@@ -340,7 +388,7 @@ function depsOf({
   });
   assert.equal(v.ok, false);
   assert.equal(v.code, EXIT_ASSIGNEE_MISMATCH);
-  assert.equal(v.assigneeKind, 'unassigned');
+  assert.equal(v.assigneeKind, 'human-coordination-required');
 }
 
 // 17. #845: cold bind, assigned to someone else — refused.
@@ -358,7 +406,7 @@ function depsOf({
   });
   assert.equal(v.ok, false);
   assert.equal(v.code, EXIT_ASSIGNEE_MISMATCH);
-  assert.equal(v.assigneeKind, 'assigned-to-other');
+  assert.equal(v.assigneeKind, 'foreign-owner');
 }
 
 // 18. #845: cold bind, assigned to the current user — succeeds.

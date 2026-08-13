@@ -36,7 +36,10 @@ const ENTER_SLUG_TO_STATE = Object.freeze(
         .map(([state, kinds]) => [kinds.enter.event, state])
     ),
     // Historical timing rows remain readable but are never emitted.
-    { 'on-deck:started': 'assigned' }
+    {
+      'assigned:started': 'ready-for-plan',
+      'on-deck:started': 'ready-for-plan',
+    }
   )
 );
 

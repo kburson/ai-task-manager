@@ -75,11 +75,13 @@ function assertMutateReturnedString({ ourLocal, issueNumber }) {
 
 export const DEFAULT_MAX_RETRIES = 3;
 
-function stripVersion(body) {
+export function stripBodyVersion(body) {
   return String(body ?? '')
     .replace(BODY_VERSION_MARKER_RE, '')
     .replace(/\n{3,}/g, '\n\n');
 }
+
+const stripVersion = stripBodyVersion;
 
 // Find the smallest edited line-range (between common prefix and suffix) and
 // return { startInclusive, endExclusive } as 0-based line indices into `before`.
@@ -301,10 +303,19 @@ export async function versionedWriteBody({
   mutate,
   deps = {},
   maxRetries = DEFAULT_MAX_RETRIES,
+  expectedVersion,
 } = {}) {
   if (issueNumber == null) throw new Error('versionedWriteBody: issueNumber is required');
   if (typeof mutate !== 'function') {
     throw new TypeError('versionedWriteBody: mutate must be a function (baseBody) => newBody');
+  }
+  if (
+    expectedVersion !== undefined &&
+    (!Number.isInteger(expectedVersion) || expectedVersion < 0)
+  ) {
+    throw new TypeError(
+      `versionedWriteBody: expectedVersion must be a non-negative integer, got ${expectedVersion}`
+    );
   }
   const injectedPexec = typeof deps.pexec === 'function' ? deps.pexec : null;
   const fetchBody =
@@ -328,6 +339,12 @@ export async function versionedWriteBody({
     attempts++;
     const remote = await fetchBody(repo, issueNumber);
     const remoteVersion = parseBodyVersion(remote);
+    if (expectedVersion !== undefined && remoteVersion !== expectedVersion) {
+      throw new BodyWriteRefusalError(
+        `versionedWriteBody: refusing — expected body version ${expectedVersion}, found ${remoteVersion} on issue #${issueNumber}`,
+        { reason: 'expected-version-mismatch', expectedVersion, remoteVersion, attempts }
+      );
+    }
     const remoteBase = stripVersion(remote);
 
     let ourBase;

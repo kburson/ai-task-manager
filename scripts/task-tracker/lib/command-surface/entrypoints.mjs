@@ -40,12 +40,15 @@ export const EXECUTABLE_ENTRYPOINTS = Object.freeze([
   ]),
   ...publicRows('agent-callable-verb', [
     ['scripts/task-tracker/verbs/approve.mjs', 'approve'],
+    ['scripts/task-tracker/verbs/assign.mjs', 'assign'],
     ['scripts/task-tracker/verbs/demote.mjs', 'demote'],
+    ['scripts/task-tracker/verbs/shelve.mjs', 'shelve'],
     ['scripts/task-tracker/verbs/park.mjs', 'park'],
     ['scripts/task-tracker/verbs/plan-approve.mjs', 'plan-approve'],
     ['scripts/task-tracker/verbs/promote.mjs', 'promote'],
     ['scripts/task-tracker/verbs/reconcile.mjs', 'reconcile'],
     ['scripts/task-tracker/verbs/refine.mjs', 'refine'],
+    ['scripts/task-tracker/verbs/unassign.mjs', 'unassign'],
   ]),
   ...internalRows(
     'package-lifecycle-cli',
@@ -69,6 +72,7 @@ export const EXECUTABLE_ENTRYPOINTS = Object.freeze([
       'scripts/inspect/ai-memory-parity.mjs',
       'scripts/migrate/heal-options-co-pilot-bodies.mjs',
       'scripts/migrate/options-co-pilot-status-swap.mjs',
+      'scripts/migrate/assigned-to-ready-for-plan.mjs',
       'scripts/migrate/rename-on-deck-to-assigned.mjs',
       'scripts/migrate/start-time-field.mjs',
       'scripts/reports/heal-backlog-attribution.mjs',

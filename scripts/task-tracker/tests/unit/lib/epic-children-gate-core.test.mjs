@@ -17,11 +17,33 @@ import {
   isPendingRecoveryPhase,
 } from '../../../lib/epic-children-gate.mjs';
 import { mapSubIssueNodes } from '../../../../gh/lib/wave-admission.mjs';
+import { stampRefinementSnapshot } from '../../../lib/refinement-snapshot.mjs';
 
 const cfg = { repo: 'o/r', projectId: 'PROJ_1' };
 
 function stubFetch(children) {
   return async () => children;
+}
+
+function ready(number, rank, state = 'ready-for-plan') {
+  return {
+    number,
+    state,
+    rank,
+    blockedBy: [],
+    hasCurrentRefinement: true,
+  };
+}
+
+function terminal(number, rank, closeReason = 'completed') {
+  return {
+    number,
+    state: 'done',
+    boardState: closeReason === 'completed' ? 'done' : 'backlog',
+    rank,
+    issueState: 'closed',
+    closeReason,
+  };
 }
 
 test('planEpicDevelopChildrenGate passes for non-epic (no children)', async () => {
@@ -38,33 +60,26 @@ test('planEpicDevelopChildrenGate refuses when any child is in backlog', async (
     cfg,
     issueNumber: 100,
     deps: {
-      fetchSiblings: stubFetch([
-        { number: 101, state: 'refine', rank: 1 },
-        { number: 102, state: 'backlog', rank: 2 },
-      ]),
+      fetchSiblings: stubFetch([ready(101, 1), { number: 102, state: 'backlog', rank: 2 }]),
     },
   });
   assert.equal(result.ok, false);
   assert.equal(result.blockers.length, 1);
-  assert.match(result.blockers[0], /epic-children-not-refined/);
+  assert.match(result.blockers[0], /epic-children-not-r4p/);
   assert.match(result.blockers[0], /#102/);
   assert.equal(result.offendingChildren.length, 1);
 });
 
-test('planEpicDevelopChildrenGate passes when children are PAST refine (#335 — children may legitimately lead the parent)', async () => {
-  // Corrected rule (#335): the plan→develop gate exists to confirm every child
-  // has been refined. Children that have already advanced past refine
-  // (plan/develop/test/review/done) trivially satisfy refinement and pass.
-  // Only `backlog` (and other pre-refine) children refuse.
+test('planEpicDevelopChildrenGate passes when children are R4P or later with current evidence', async () => {
   const result = await planEpicDevelopChildrenGate({
     cfg,
     issueNumber: 100,
     deps: {
       fetchSiblings: stubFetch([
-        { number: 101, state: 'refine', rank: 1 },
-        { number: 102, state: 'plan', rank: 2 },
-        { number: 103, state: 'develop', rank: 3 },
-        { number: 104, state: 'done', rank: 4 },
+        ready(101, 1),
+        ready(102, 2, 'plan'),
+        ready(103, 3, 'develop'),
+        terminal(104, 4),
       ]),
     },
   });
@@ -72,18 +87,27 @@ test('planEpicDevelopChildrenGate passes when children are PAST refine (#335 —
   assert.equal(result.children.length, 4);
 });
 
-for (const acceptState of ['refine', 'plan', 'develop', 'test', 'review', 'done']) {
-  test(`planEpicDevelopChildrenGate passes when sole child is at ${acceptState} (#335)`, async () => {
+for (const acceptState of ['ready-for-plan', 'plan', 'develop', 'test', 'review']) {
+  test(`planEpicDevelopChildrenGate passes when sole current child is at ${acceptState}`, async () => {
     const result = await planEpicDevelopChildrenGate({
       cfg,
       issueNumber: 200,
       deps: {
-        fetchSiblings: stubFetch([{ number: 201, state: acceptState, rank: 1 }]),
+        fetchSiblings: stubFetch([ready(201, 1, acceptState)]),
       },
     });
     assert.equal(result.ok, true, `expected ${acceptState} to pass`);
   });
 }
+
+test('planEpicDevelopChildrenGate passes an accepted terminal child', async () => {
+  const result = await planEpicDevelopChildrenGate({
+    cfg,
+    issueNumber: 200,
+    deps: { fetchSiblings: stubFetch([terminal(201, 1)]) },
+  });
+  assert.equal(result.ok, true);
+});
 
 test('planEpicDevelopChildrenGate refuses sole backlog child (#335 regression)', async () => {
   const result = await planEpicDevelopChildrenGate({
@@ -94,11 +118,11 @@ test('planEpicDevelopChildrenGate refuses sole backlog child (#335 regression)',
     },
   });
   assert.equal(result.ok, false);
-  assert.match(result.blockers[0], /epic-children-not-refined/);
+  assert.match(result.blockers[0], /epic-children-not-r4p/);
   assert.match(result.blockers[0], /#301/);
 });
 
-test('planEpicDevelopChildrenGate passes when all children are at refine', async () => {
+test('planEpicDevelopChildrenGate refuses children that are merely at refine', async () => {
   const result = await planEpicDevelopChildrenGate({
     cfg,
     issueNumber: 100,
@@ -110,8 +134,8 @@ test('planEpicDevelopChildrenGate passes when all children are at refine', async
       ]),
     },
   });
-  assert.equal(result.ok, true);
-  assert.equal(result.children.length, 3);
+  assert.equal(result.ok, false);
+  assert.equal(result.offendingChildren.length, 3);
 });
 
 test('planEpicDevelopChildrenGate surfaces fetch failures as blockers', async () => {
@@ -128,24 +152,17 @@ test('planEpicDevelopChildrenGate surfaces fetch failures as blockers', async ()
   assert.match(result.blockers[0], /epic-children-fetch-failed/);
 });
 
-test('findNextEligibleChild returns lowest-rank refine-state child', () => {
-  const next = findNextEligibleChild([
-    { number: 5, state: 'refine', rank: 3 },
-    { number: 6, state: 'refine', rank: 1 },
-    { number: 7, state: 'plan', rank: 2 },
-  ]);
+test('findNextEligibleChild returns lowest-rank R4P child', () => {
+  const next = findNextEligibleChild([ready(5, 3), ready(6, 1)]);
   assert.equal(next.number, 6);
 });
 
 test('findNextEligibleChild skips children with null rank', () => {
-  const next = findNextEligibleChild([
-    { number: 5, state: 'refine', rank: null },
-    { number: 6, state: 'refine', rank: 4 },
-  ]);
+  const next = findNextEligibleChild([ready(5, null), ready(6, 4)]);
   assert.equal(next.number, 6);
 });
 
-test('findNextEligibleChild returns null when no refine-state children', () => {
+test('findNextEligibleChild returns null when no R4P children', () => {
   const next = findNextEligibleChild([
     { number: 5, state: 'plan', rank: 1 },
     { number: 6, state: 'develop', rank: 2 },
@@ -163,14 +180,16 @@ test('fetchEpicChildren throws when cfg or parentEpicNumber missing', async () =
   await assert.rejects(() => fetchEpicChildren({ cfg }), /parentEpicNumber is required/);
 });
 
-test('fetchEpicChildren returns array even when underlying returns non-array', async () => {
-  const result = await fetchEpicChildren({
-    cfg,
-    parentEpicNumber: 1,
-    deps: { fetchSiblings: async () => null },
-  });
-  assert.ok(Array.isArray(result));
-  assert.equal(result.length, 0);
+test('fetchEpicChildren refuses a malformed child collection', async () => {
+  await assert.rejects(
+    () =>
+      fetchEpicChildren({
+        cfg,
+        parentEpicNumber: 1,
+        deps: { fetchSiblings: async () => null },
+      }),
+    /malformed child list/
+  );
 });
 
 test('isPendingRecoveryPhase accepts only incomplete durable recovery phases', () => {
@@ -199,17 +218,46 @@ function ghNode({ number, state = 'OPEN', stateReason = null, body = '', column,
     state,
     stateReason,
     body,
-    projectItems: { nodes: [{ project: { id: cfg.projectId }, fieldValues: { nodes } }] },
+    labels: { nodes: [{ name: 'enhancement' }], pageInfo: { hasNextPage: false } },
+    projectItems: {
+      nodes: [
+        {
+          project: { id: cfg.projectId },
+          fieldValues: { nodes, pageInfo: { hasNextPage: false } },
+        },
+      ],
+      pageInfo: { hasNextPage: false },
+    },
   };
 }
 
 function mapped(nodes) {
-  return mapSubIssueNodes(nodes, cfg.projectId);
+  return mapSubIssueNodes(nodes, cfg);
+}
+
+function currentRefinementBody() {
+  return stampRefinementSnapshot(
+    `## Scope
+
+Current refinement.
+
+## Plan Metadata
+
+- **Depends On**: none
+
+## Acceptance Criteria
+
+- [ ] Current
+
+<!-- aitm-refinement-rationale: {"size":"S","estimate":"1","priority":"P1","rank":2,"rationale":"current"} -->
+<!-- aitm-fields: {"schema":1,"values":{"priority":"P1","size":"S","estimate":1,"rank":2,"blockedBy":null}} -->`,
+    { labels: ['enhancement'], ts: '2026-08-12T00:00:00Z' }
+  );
 }
 
 test('developEpicTestChildrenGate passes when a child was closed from Backlog (#947 — the #859 case)', async () => {
   const children = mapped([
-    ghNode({ number: 868, state: 'CLOSED', stateReason: 'COMPLETED', column: 'Review', rank: 4 }),
+    ghNode({ number: 868, state: 'CLOSED', stateReason: 'COMPLETED', column: 'Done', rank: 4 }),
     ghNode({
       number: 945,
       state: 'CLOSED',
@@ -236,7 +284,7 @@ test('planEpicDevelopChildrenGate passes with a child closed from Backlog (#947)
       column: 'Backlog',
       rank: 1,
     }),
-    ghNode({ number: 946, column: 'Refine', rank: 2 }),
+    ghNode({ number: 946, column: 'Ready for Planning', rank: 2, body: currentRefinementBody() }),
   ]);
   const result = await planEpicDevelopChildrenGate({
     cfg,
@@ -279,7 +327,7 @@ test('reviewEpicDoneChildrenGate still refuses an OPEN child parked mid-flight (
 test('findNextEligibleChild never selects a child closed from Refine (#947)', () => {
   const children = mapped([
     ghNode({ number: 945, state: 'CLOSED', stateReason: 'NOT_PLANNED', column: 'Refine', rank: 1 }),
-    ghNode({ number: 946, column: 'Refine', rank: 2 }),
+    ghNode({ number: 946, column: 'Ready for Planning', rank: 2, body: currentRefinementBody() }),
   ]);
   const next = findNextEligibleChild(children);
   assert.equal(next.number, 946, 'the closed rank-1 child must not be pulled');

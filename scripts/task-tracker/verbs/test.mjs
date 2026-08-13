@@ -207,7 +207,7 @@ async function defaultNpmCi({ path: wtPath }) {
   });
 }
 
-async function defaultExecInSandbox({ argv, path: wtPath }) {
+async function defaultExecInSandbox({ argv, path: wtPath, issueNumber }) {
   const timeoutMs = sandboxTimeoutMs();
   const startedAt = Date.now();
   const startedInstant = new Date().toISOString();
@@ -218,7 +218,10 @@ async function defaultExecInSandbox({ argv, path: wtPath }) {
       maxBuffer: 64 * 1024 * 1024,
       // @story #541/#1165 — strip leaked lock state, then bind project-local
       // execution to this detached verification worktree, never its parent.
-      env: buildSandboxEnv(process.env, { AI_TASK_MANAGER_PROJECT_DIR: wtPath }),
+      env: buildSandboxEnv(process.env, {
+        AI_TASK_MANAGER_PROJECT_DIR: wtPath,
+        ...(issueNumber == null ? {} : { AITM_TEST_ISSUE_NUMBER: String(issueNumber) }),
+      }),
     });
     return {
       exit: 0,
@@ -823,7 +826,7 @@ export async function runVerbTest({
         }
         for (const lane of partition.completeLanes) {
           const argv = lane.command.split(' ');
-          const r = await execInSandbox({ argv, path: wtPath, projectDir });
+          const r = await execInSandbox({ argv, path: wtPath, projectDir, issueNumber: issueNum });
           results.push({
             command: lane.command,
             classification: lane.classification,
@@ -884,7 +887,12 @@ export async function runVerbTest({
         });
         continue;
       }
-      const r = await execInSandbox({ argv: validation.argv, path: wtPath, projectDir });
+      const r = await execInSandbox({
+        argv: validation.argv,
+        path: wtPath,
+        projectDir,
+        issueNumber: issueNum,
+      });
       results.push({
         command: vc.command,
         classification: developEvidence ? `test-targeted-${results.length + 1}` : undefined,

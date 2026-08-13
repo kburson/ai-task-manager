@@ -8,7 +8,7 @@ import { assertNoSecretRecordData, createAitmRecordEnvelope } from './record-env
 import { SINGLETON_KINDS } from './issue-directory.mjs';
 import { stateIds } from '../lifecycle-policy/index.mjs';
 
-const LEGACY_ASSIGNED_STATE = 'on-deck';
+const LEGACY_READY_FOR_PLAN_STATES = new Set(['assigned', 'on-deck']);
 
 const PAYLOAD_KEYS = [
   'action',
@@ -110,8 +110,12 @@ function validatePayload(payload, expectedIssue) {
   // Payload state ids remain exact-canonical. The sole exception is the exact
   // historical slug retained in immutable v1 capsules; replay-only enforcement
   // happens after the record chain is loaded below.
-  const fromState = payload?.fromState === LEGACY_ASSIGNED_STATE ? 'assigned' : payload?.fromState;
-  const toState = payload?.toState === LEGACY_ASSIGNED_STATE ? 'assigned' : payload?.toState;
+  const fromState = LEGACY_READY_FOR_PLAN_STATES.has(payload?.fromState)
+    ? 'ready-for-plan'
+    : payload?.fromState;
+  const toState = LEGACY_READY_FOR_PLAN_STATES.has(payload?.toState)
+    ? 'ready-for-plan'
+    : payload?.toState;
   if (
     !hasExactlyKeys(payload, PAYLOAD_KEYS) ||
     payload.schema !== 'aitm.lifecycle-transition/v1' ||
@@ -147,7 +151,10 @@ function validatePayload(payload, expectedIssue) {
 }
 
 function hasLegacyAssignedState(payload) {
-  return payload.fromState === LEGACY_ASSIGNED_STATE || payload.toState === LEGACY_ASSIGNED_STATE;
+  return (
+    LEGACY_READY_FOR_PLAN_STATES.has(payload.fromState) ||
+    LEGACY_READY_FOR_PLAN_STATES.has(payload.toState)
+  );
 }
 
 function validateContract(contract, payload) {

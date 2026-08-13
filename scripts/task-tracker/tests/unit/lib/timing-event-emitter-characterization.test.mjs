@@ -40,7 +40,7 @@ function strictReaderAccepts(event) {
     (slug, index) => `| 2026-07-27T00:00:0${index}.000Z | ${slug} | 0 | 0 | 0 | 0 | characterized |`
   );
   const stage = event.match(
-    /^(backlog|assigned|refine|plan|develop|test|review|done):(?!failed)/
+    /^(backlog|refine|ready-for-plan|plan|develop|test|review|done):(?!failed)/
   )?.[1];
   return validateTimingLog({
     comments: [

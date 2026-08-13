@@ -108,10 +108,14 @@ try {
   );
   assert.match(
     twice,
-    /Backlog → Assigned → Refine → Plan → Develop → Test → Review → Done/,
-    'bootstrap state map includes Assigned'
+    /Backlog → Refine → Ready for Planning → Plan → Develop → Test → Review → Done/,
+    'bootstrap state map includes Ready for Planning'
   );
-  assert.match(twice, /\/task plan #N/, 'bootstrap map names the dedicated Refine → Plan verb');
+  assert.match(
+    twice,
+    /\/task plan #N/,
+    'bootstrap map names the dedicated Ready for Planning → Plan verb'
+  );
   assert.match(twice, /\/task test #N/, 'bootstrap map names the Develop → Test verb');
   assert.match(twice, /\/task promote #N/, 'bootstrap map keeps one-step generic promotion');
 
@@ -136,7 +140,11 @@ try {
     /7-state model/,
     'managed block refresh removes stale state count'
   );
-  assert.match(refreshed, /Assigned/, 'managed block refresh installs current generated content');
+  assert.match(
+    refreshed,
+    /Ready for Planning/,
+    'managed block refresh installs current generated content'
+  );
 
   const missingHome = mkdtempSync(
     path.join(projectScratchDir('test'), 'aitm-codex-superpowers-missing-')

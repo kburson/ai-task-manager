@@ -51,8 +51,8 @@ const EMPTY_CFG = {
   projectId: 'PVT_x',
   kanbanFieldId: 'PVTSSF_status',
   kanbanOptionBacklog: '',
-  kanbanOptionAssigned: '',
   kanbanOptionRefine: '',
+  kanbanOptionReadyForPlan: '',
   kanbanOptionPlan: '',
   kanbanOptionDevelop: '',
   kanbanOptionTest: '',
@@ -62,8 +62,8 @@ const EMPTY_CFG = {
 
 const FULL_OPTS = [
   { id: 'OP_b', name: 'Backlog' },
-  { id: 'OP_od', name: 'Assigned' },
   { id: 'OP_g', name: 'Refine' },
+  { id: 'OP_r4p', name: 'Ready for Planning' },
   { id: 'OP_a', name: 'Plan' },
   { id: 'OP_d', name: 'Develop' },
   { id: 'OP_v', name: 'Test' },
@@ -78,8 +78,8 @@ const FULL_OPTS = [
   assert.match(r.stdout, /Filled:.*kanbanOptionRefine/);
   const cfg = readCfg(sandbox);
   assert.equal(cfg.kanbanOptionBacklog, 'OP_b');
-  assert.equal(cfg.kanbanOptionAssigned, 'OP_od');
   assert.equal(cfg.kanbanOptionRefine, 'OP_g');
+  assert.equal(cfg.kanbanOptionReadyForPlan, 'OP_r4p');
   assert.equal(cfg.kanbanOptionPlan, 'OP_a');
   assert.equal(cfg.kanbanOptionDevelop, 'OP_d');
   assert.equal(cfg.kanbanOptionTest, 'OP_v');
@@ -95,8 +95,8 @@ const FULL_OPTS = [
     projectId: 'PVT_x',
     kanbanFieldId: 'PVTSSF_status',
     kanbanOptionBacklog: 'EXISTING_B',
-    kanbanOptionAssigned: 'EXISTING_OD',
     kanbanOptionRefine: 'EXISTING_G',
+    kanbanOptionReadyForPlan: 'EXISTING_R4P',
     kanbanOptionPlan: 'EXISTING_A',
     kanbanOptionDevelop: 'EXISTING_D',
     kanbanOptionTest: '',
@@ -135,8 +135,8 @@ const FULL_OPTS = [
     projectId: 'PVT_x',
     kanbanFieldId: 'PVTSSF_status',
     kanbanOptionBacklog: 'OP_b',
-    kanbanOptionAssigned: 'OP_od',
     kanbanOptionRefine: 'OP_g',
+    kanbanOptionReadyForPlan: 'OP_r4p',
     kanbanOptionPlan: 'OP_a',
     kanbanOptionDevelop: 'OP_d',
     kanbanOptionTest: 'OP_v',
@@ -150,8 +150,8 @@ const FULL_OPTS = [
 
 // Test 5: static parse — init-project-config.sh canonical Status palette has the
 // 8 columns in order. (#415 renamed the former `status_opts` literal to the
-// single CANONICAL_STATUS_PALETTE source of truth; #433 inserted "On Deck"
-// between Backlog and Refine, and #1206 renamed it "Assigned". name+color coverage lives in
+// single CANONICAL_STATUS_PALETTE source of truth; #1211 places Ready for Planning
+// between Refine and Plan. Name+color coverage lives in
 // init-status-palette.test.mjs.)
 // Legacy config keys are rewritten in place without changing the option id.
 {
@@ -170,9 +170,9 @@ const FULL_OPTS = [
   });
   const result = await runRepair(sandbox, []);
   const cfg = readCfg(sandbox);
-  assert.equal(cfg.kanbanOptionAssigned, 'OP_assigned');
+  assert.equal(cfg.kanbanOptionReadyForPlan, 'OP_assigned');
   assert.ok(!('kanbanOptionOnDeck' in cfg));
-  assert.match(result.stdout, /Migrated: kanbanOptionOnDeck.*kanbanOptionAssigned/);
+  assert.match(result.stdout, /Migrated: legacy Assigned\/On Deck.*kanbanOptionReadyForPlan/);
   rmSync(sandbox, { recursive: true });
 }
 
@@ -181,9 +181,9 @@ const FULL_OPTS = [
   const sandbox = makeSandbox({
     ...EMPTY_CFG,
     kanbanOptionOnDeck: 'OP_legacy',
-    kanbanOptionAssigned: 'OP_canonical',
+    kanbanOptionReadyForPlan: 'OP_canonical',
   });
-  await assert.rejects(() => runRepair(sandbox, []), /conflicts.*refusing repair/i);
+  await assert.rejects(() => runRepair(sandbox, []), /conflict.*refusing repair/i);
   rmSync(sandbox, { recursive: true });
 }
 
@@ -196,7 +196,7 @@ const FULL_OPTS = [
   const names = arr.map((o) => o.name);
   assert.deepEqual(
     names,
-    ['Backlog', 'Assigned', 'Refine', 'Plan', 'Develop', 'Test', 'Review', 'Done'],
+    ['Backlog', 'Refine', 'Ready for Planning', 'Plan', 'Develop', 'Test', 'Review', 'Done'],
     'canonical palette names must be in canonical order'
   );
 }

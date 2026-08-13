@@ -189,9 +189,9 @@ test('reconcile accept-live is idempotent for entry marker (#174)', async () => 
 // `unknown stage`, crashing `reconcile accept-live`. We feed the raw
 // display name through the SAME resolver the production default uses so the
 // test covers the whole chain end-to-end.
-test('reconcile accept-live: Assigned live status stamps aitm-entered-assigned without throwing (#436)', async () => {
+test('reconcile accept-live: legacy Assigned status stamps canonical R4P evidence (#436, #1211)', async () => {
   const liveSlug = normalizeStateId('Assigned'); // mirrors defaultGetLiveState
-  assert.equal(liveSlug, 'assigned', 'resolver must produce the kebab slug');
+  assert.equal(liveSlug, 'ready-for-plan', 'resolver must produce the canonical slug');
   const { deps, calls } = makeDeps({ body: bodyWithState('backlog'), live: liveSlug });
   let result;
   await assert.doesNotReject(async () => {
@@ -199,10 +199,10 @@ test('reconcile accept-live: Assigned live status stamps aitm-entered-assigned w
   }, /unknown stage/);
   assert.equal(result.status, 'reconciled');
   assert.equal(result.from, 'backlog');
-  assert.equal(result.to, 'assigned');
+  assert.equal(result.to, 'ready-for-plan');
   assert.equal(calls.writes.length, 1);
-  assert.match(calls.writes[0], /aitm-last-known-state state="assigned"/);
-  assert.match(calls.writes[0], /aitm-entered-assigned(?::|\s+ts=")/);
+  assert.match(calls.writes[0], /aitm-last-known-state state="ready-for-plan"/);
+  assert.match(calls.writes[0], /aitm-entered-ready-for-plan(?::|\s+ts=")/);
 });
 
 // #740 — revert-to-recorded is now FORWARD-ONLY. A recorded state BEHIND the

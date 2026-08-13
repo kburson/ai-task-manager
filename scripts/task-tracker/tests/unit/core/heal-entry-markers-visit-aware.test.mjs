@@ -45,7 +45,7 @@ test('multi-loop case: not flagged', () => {
     entry('refine', '2026-05-18T10:00:00Z'),
     entry('plan', '2026-05-18T11:00:00Z'),
     entry('develop', '2026-05-18T12:00:00Z', 1),
-    entry('refine', '2026-05-18T12:30:00Z', 2),
+    entry('ready-for-plan', '2026-05-18T12:30:00Z', 2),
     entry('plan', '2026-05-18T13:00:00Z', 2),
     entry('develop', '2026-05-18T14:00:00Z', 2),
     entry('test', '2026-05-18T15:00:00Z'),

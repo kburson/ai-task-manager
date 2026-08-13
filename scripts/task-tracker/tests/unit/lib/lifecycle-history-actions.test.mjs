@@ -51,7 +51,7 @@ test('every non-self executable edge is accepted by entry history', () => {
 test('history-only edges remain distinct and never authorize executable movement', () => {
   const historyOnly = [
     ['develop', 'plan', 'entry'],
-    ['develop', 'refine', 'entry'],
+    ['refine', 'plan', 'entry'],
     ['done', 'test', 'timing'],
   ];
 
@@ -113,7 +113,7 @@ test('action policy returns frozen allowed, refused, unknown, and bootstrap outc
   }
 });
 
-test('action descriptors preserve home states, delegation, demote, park, and refine policy', () => {
+test('action descriptors preserve home states, delegation, demote, Shelve/Park, and refine policy', () => {
   for (const [action, allowedStates] of Object.entries(ACTION_BASELINE.homeStates)) {
     const expected = Array.isArray(allowedStates) ? allowedStates : [allowedStates];
     assert.deepEqual(actionPolicyFor(action).allowedStates, expected, action);
@@ -148,6 +148,14 @@ test('action descriptors preserve home states, delegation, demote, park, and ref
       requires: actionPolicyFor('park').requires,
     },
     ACTION_BASELINE.park
+  );
+  assert.deepEqual(
+    {
+      from: actionPolicyFor('shelve').allowedStates,
+      to: actionPolicyFor('shelve').target,
+      requires: actionPolicyFor('shelve').requires,
+    },
+    ACTION_BASELINE.shelve
   );
   assert.deepEqual(actionPolicyFor('refine').entryStates, ACTION_BASELINE.refine.from);
   assert.equal(actionPolicyFor('refine').selfRun, ACTION_BASELINE.refine.selfRun);
@@ -188,9 +196,15 @@ test('migrated consumers import lifecycle policy rather than owning action/histo
     '../../../verbs/promote.mjs',
     '../../../verbs/refine.mjs',
     '../../../verbs/demote.mjs',
-    '../../../verbs/park.mjs',
+    '../../../verbs/shelve.mjs',
   ]) {
     const source = await readFile(fileURLToPath(new URL(relativePath, import.meta.url)), 'utf8');
     assert.match(source, /lifecycle-policy\/index\.mjs/, relativePath);
   }
+  const park = await readFile(
+    fileURLToPath(new URL('../../../verbs/park.mjs', import.meta.url)),
+    'utf8'
+  );
+  assert.match(park, /from '\.\/shelve\.mjs'/);
+  assert.doesNotMatch(park, /actionPolicyFor|allowedStates:/);
 });

@@ -35,8 +35,8 @@ function bodyOf(lines) {
 
 const CHAIN = [
   ['backlog', '2026-01-01T00:00:00Z'],
-  ['assigned', '2026-01-01T12:00:00Z'],
   ['refine', '2026-01-02T00:00:00Z'],
+  ['ready-for-plan', '2026-01-02T12:00:00Z'],
   ['plan', '2026-01-03T00:00:00Z'],
   ['develop', '2026-01-04T00:00:00Z'],
   ['test', '2026-01-05T00:00:00Z'],
@@ -286,7 +286,7 @@ test('#1206: apply preserves an out-of-order historical second-stage marker byte
   ]);
   const deps = healDeps({ body, createdAt: '2026-01-01T00:00:00Z' }, sink);
   const r = await healOne({ repo: 'o/r', num: '1206', apply: true, deps });
-  assert.equal(r.action, 'illegal-arcs');
+  assert.equal(r.action, 'skip');
   assert.equal(sink.writes.length, 0);
   assert.equal(sink.comments.length, 0);
 });

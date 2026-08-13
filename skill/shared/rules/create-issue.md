@@ -27,7 +27,7 @@ This local defect-story route also applies in Full-Auto. `/task report` is not a
 
 For fast idea-capture, use `--shape stub`: it requires **only** `--title` and takes an optional `--idea-file <path>` whose free text seeds the Scope section. It does **not** require `scope.md`, `acs.md`, `story-origin.md`, or `plan-meta.md`: Scope and AC remain Refine placeholders, Story Origin is synthesized with the resolved kind, and Plan Metadata remains empty until Plan. Reach for `stub` when capturing a raw idea whose acceptance criteria and scope decomposition do not yet exist; use `solo` when those creation-time inputs are known.
 
-**Do not volunteer `Size` or `Estimate` at Backlog creation.** Those are Refine-exit gate fields, not creation-time fields — offering them on a stub (or any freshly-filed Backlog idea) invites premature, low-confidence sizing. Set them at Refine, where the Refine→Plan gate enforces them.
+**Do not volunteer `Size` or `Estimate` at Backlog creation.** Those are Refine-exit gate fields, not creation-time fields — offering them on a stub (or any freshly-filed Backlog idea) invites premature, low-confidence sizing. Set them during Refine, where Refine→Ready for Planning records a current refinement snapshot.
 
 ## Bind every AC to evidence
 

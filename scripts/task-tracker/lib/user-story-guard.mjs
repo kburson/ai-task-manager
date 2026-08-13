@@ -2,15 +2,15 @@
 //
 // Two guards over the same validation function:
 //
-//   userStoryWarnGuard  — assigned exit (assigned → refine):
+//   userStoryWarnGuard  — refine entry (backlog → refine):
 //     non-blocking; prints a warning to stderr but returns { ok: true } so the
 //     transition is never refused. Existing issues without the section can still
 //     advance to Refine; the warning nudges the author to fill it in.
 //
-//   userStoryBlockGuard — refine exit (refine → plan):
+//   userStoryBlockGuard — refine exit (refine → ready-for-plan):
 //     blocking; returns { ok: false, reason } when the section is missing,
 //     has fewer than 3 non-empty lines, or any line still contains placeholder
-//     text. Authors must fill in a real user story before entering Plan.
+//     text. Authors must fill in a real user story before entering R4P.
 //
 // Validation: `## User Story` heading present, followed by at least 3 non-empty
 // non-comment lines before the next `##` heading, none equal to a placeholder
@@ -31,7 +31,7 @@ const WARN_REASON =
   'User Story section missing or incomplete — add `## User Story` with three non-placeholder lines before promoting to Refine';
 
 const BLOCK_REASON =
-  'User Story section missing or incomplete — `## User Story` must contain three non-placeholder lines before promoting to Plan (Connextra format: "As a…\\nI want to…\\nSo that…")';
+  'User Story section missing or incomplete — `## User Story` must contain three non-placeholder lines before promoting to Ready for Planning (Connextra format: "As a…\\nI want to…\\nSo that…")';
 
 // #503 — `## User Story` must be the FIRST `## ` heading in the body. Bodies
 // authored outside the `--shape` templates (legacy tail-only / hand-written
@@ -93,7 +93,7 @@ export const userStoryBlockGuard = {
   id: GUARD_ID_BLOCK,
   run(ctx) {
     if (!ctx) return { ok: true };
-    if (ctx.toState && ctx.toState !== 'plan') return { ok: true };
+    if (ctx.toState && ctx.toState !== 'ready-for-plan') return { ok: true };
     const body = typeof ctx.body === 'string' ? ctx.body : '';
     return validateUserStory(body);
   },

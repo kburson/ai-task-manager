@@ -1,12 +1,12 @@
 // @story #450
-// #450/#892 — refine→plan gate keeps the AC stub refusal while Plan Metadata
+// #450/#892 — refine→Ready for Planning gate keeps the AC stub refusal while Plan Metadata
 // becomes a Plan→Develop concern.
 //
 // Acceptance criteria:
 //   1. Guard returns ok:false when AC placeholder is present
 //   2. Guard ignores the retired Plan Metadata placeholder text
 //   3. Guard returns ok:true when the AC placeholder is absent
-//   4. Guard returns ok:true when toState is not 'plan'
+//   4. Guard returns ok:true when toState is not 'ready-for-plan'
 //   5. Guard returns ok:true when ctx is falsy
 //   6. runRefine throws when AC placeholder is in body
 //   7. runRefine permits the retired Plan Metadata placeholder text
@@ -89,7 +89,7 @@ function bodyWithRetiredPlanPlaceholderMention(state = 'refine') {
 // AC #1 — guard rejects AC placeholder
 {
   const result = await refineExitStubPlaceholderGuard.run({
-    toState: 'plan',
+    toState: 'ready-for-plan',
     body: bodyWithACPlaceholder(),
   });
   assert.equal(result.ok, false, 'AC #1: ok should be false for AC placeholder');
@@ -104,7 +104,7 @@ function bodyWithRetiredPlanPlaceholderMention(state = 'refine') {
 // AC #2 — guard ignores the retired Plan Metadata placeholder text
 {
   const result = await refineExitStubPlaceholderGuard.run({
-    toState: 'plan',
+    toState: 'ready-for-plan',
     body: bodyWithRetiredPlanPlaceholderMention(),
   });
   assert.equal(result.ok, true, 'AC #2: Plan Metadata is no longer a Refine-exit concern');
@@ -113,13 +113,13 @@ function bodyWithRetiredPlanPlaceholderMention(state = 'refine') {
 // AC #3 — guard passes substantive body
 {
   const result = await refineExitStubPlaceholderGuard.run({
-    toState: 'plan',
+    toState: 'ready-for-plan',
     body: bodyWithMarkers(),
   });
   assert.equal(result.ok, true, 'AC #3: ok should be true for clean body');
 }
 
-// AC #4 — guard skips check when toState is not 'plan'
+// AC #4 — guard skips check when toState is not 'ready-for-plan'
 {
   const result = await refineExitStubPlaceholderGuard.run({
     toState: 'develop',
@@ -144,6 +144,7 @@ function makeRefineDeps(bodyOverride) {
     fetchBody: async () => bodyOverride,
     tetherIssueToProject: async () => ({ itemId: 'PVTI_FAKE' }),
     moveState: async () => ({ status: 'ok' }),
+    verbPromote: async () => {},
     mutateBody: async ({ mutate }) => {
       mutate(bodyOverride);
       return { status: 'ok' };

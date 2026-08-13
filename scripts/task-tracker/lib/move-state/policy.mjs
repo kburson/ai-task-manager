@@ -9,18 +9,18 @@
 
 import { stateIds, stateConfigKey, forwardTarget } from '../lifecycle-policy/index.mjs';
 
-const LEGACY_ASSIGNED_STATE = 'on-deck';
-const CANONICAL_ASSIGNED_STATE = 'assigned';
+const LEGACY_READY_FOR_PLAN_STATES = new Set(['assigned', 'on-deck']);
+const CANONICAL_READY_FOR_PLAN_STATE = 'ready-for-plan';
 
 function canonicalizeStateToken(token) {
-  if (token === LEGACY_ASSIGNED_STATE) {
-    return { value: CANONICAL_ASSIGNED_STATE, legacy: true };
+  if (LEGACY_READY_FOR_PLAN_STATES.has(token)) {
+    return { value: CANONICAL_READY_FOR_PLAN_STATE, legacy: true };
   }
   return { value: token, legacy: false };
 }
 
 export function legacyStateAliasWarning(location = 'state') {
-  return `[aitm] deprecated ${location} alias "on-deck"; use "assigned".`;
+  return `[aitm] deprecated ${location} alias; use "ready-for-plan".`;
 }
 
 // Canonical board-state → config option-id key map. The host reads
@@ -31,9 +31,9 @@ export const STATE_TO_CONFIG_KEY = Object.freeze(
 
 // Which `/task` verb a human should reach for instead of invoking move-state
 // directly, keyed on the move's target state. Forward moves → promote,
-// backlog (the only matrix-legal backward target) → park (#848 — `demote` is
-// hardcoded to `develop` and can never reach `backlog`; `park` is the
-// dedicated Refine|Plan → Backlog verb), everything else → reconcile.
+// backlog (the only matrix-legal backward target) → shelve (#1215 — `demote`
+// is hardcoded to `develop`; Shelve is the dedicated Refine|R4P → Backlog
+// operation), everything else → reconcile.
 const FORWARD_TARGETS = new Set(stateIds().map(forwardTarget).filter(Boolean));
 // Exported (not just local) so `move-state-policy.test.mjs` (#848 AC7) can
 // enumerate every backward target `refusalVerbHint` names a verb for, and
@@ -42,7 +42,7 @@ export const BACKWARD_TARGETS = new Set(['backlog']);
 
 export function refusalVerbHint(targetState) {
   if (FORWARD_TARGETS.has(targetState)) return '/task promote';
-  if (BACKWARD_TARGETS.has(targetState)) return '/task park';
+  if (BACKWARD_TARGETS.has(targetState)) return '/task shelve';
   return '/task reconcile';
 }
 

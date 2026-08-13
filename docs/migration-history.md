@@ -1,5 +1,34 @@
 # State Slug Migration History
 
+## 2026: Assigned to Ready for Planning board cutover
+
+The #1209 lifecycle design replaced the transient Assigned Status with the
+durable Ready for Planning parking state. Assignment remains exclusive story
+ownership rather than a lifecycle column. The live cutover is intentionally
+separate from the repository vocabulary changes and runs through one dry-run by
+default command:
+
+```sh
+node scripts/migrate/assigned-to-ready-for-plan.mjs
+```
+
+The immutable inventory names every repository-qualified issue, ProjectV2 item,
+and assignee set while performing zero writes. After reviewing that evidence,
+the authorized apply is:
+
+```sh
+node scripts/migrate/assigned-to-ready-for-plan.mjs --apply --yes
+```
+
+Apply preserves assignees while moving the inventoried items to Backlog, then
+renames the same Status option ID to Ready for Planning, reorders the canonical
+eight-state field, and cuts configuration over to
+`kanbanOptionReadyForPlan`. A durable journal makes each verified phase
+resumable. Assigned-work views use `has:assignee`; the Kanban Status board
+exposes Ready for Planning. See
+[Ready for Planning migration](guides/ready-for-planning-migration.md) for the
+operator procedure and recovery contract.
+
 ## 2026: Assigned state vocabulary
 
 AITM renamed the second lifecycle state from `On Deck` (`on-deck`) to

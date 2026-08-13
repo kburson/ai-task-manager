@@ -323,7 +323,9 @@ export async function checkWaveAdmission({ parentEpicNumber, rank, repo, project
   }));
 }
 
-const CASCADE_OK_STATES = new Set(['refine', 'plan', 'develop', 'test', 'review', 'done']);
+// Derive the refined-or-beyond floor from lifecycle authority. This includes
+// the durable Ready for Planning parking state and cannot drift on a rename.
+const CASCADE_OK_STATES = new Set(stateIds().slice(REFINE_IDX));
 
 export async function checkCascadeGrooming({
   isEpic,
@@ -349,7 +351,7 @@ export async function checkCascadeGrooming({
     if (!CASCADE_OK_STATES.has(state)) {
       refusals.push({
         kind: 'cascade-grooming',
-        message: `cascade-grooming: sub-issue #${s.number} is in ${state || 'unknown'} (must be Grooming or beyond)`,
+        message: `cascade-grooming: sub-issue #${s.number} is in ${state || 'unknown'} (must be Refine or beyond)`,
       });
     }
   }

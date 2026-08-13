@@ -14,7 +14,13 @@ import { execFileSync } from 'node:child_process';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { mkdtempProjectIsolated } from '../../../lib/scratch-dir.mjs';
-import { readCache, writeCache, cacheFilePath, CACHE_TTL_MS } from '../../../source-edit-gate.mjs';
+import {
+  readCache,
+  writeCache,
+  cacheFilePath,
+  CACHE_TTL_MS,
+  resolveIssueSignals,
+} from '../../../source-edit-gate.mjs';
 
 // Repo root (…/scripts/task-tracker/tests/unit/ → four levels up). Used so the
 // gitignore assertion runs against the real worktree the suite executes in
@@ -72,7 +78,43 @@ test('#664: readCache returns the entry on a fresh hit', () => {
   }
 });
 
-test('#1206: legacy On Deck cache entries read as Assigned and new writes are canonical', () => {
+test('#1212: a warm metadata cache never reuses stale ownership', async () => {
+  const { dir, cleanup } = makeProjectDir();
+  try {
+    writeCache(dir, {
+      issue: '#1212',
+      state: 'develop',
+      hasPostedMarker: true,
+      hasCompleteMarker: true,
+      assignees: ['alice'],
+      currentUser: 'alice',
+    });
+    let snapshotReads = 0;
+    let identityReads = 0;
+    const signals = await resolveIssueSignals('#1212', dir, {
+      fetchSnapshot: async () => {
+        snapshotReads += 1;
+        return { state: 'develop', assignees: ['bob'] };
+      },
+      gh: async (args) => {
+        if (args[0] === 'api') {
+          identityReads += 1;
+          return 'bob\n';
+        }
+        throw new Error(`unexpected gh call: ${args.join(' ')}`);
+      },
+    });
+    assert.equal(snapshotReads, 1, 'ownership must be fetched on every gated edit');
+    assert.deepEqual(signals.assignees, ['bob']);
+    assert.equal(identityReads, 1, 'authenticated identity must be fetched with ownership');
+    assert.equal(signals.currentUser, 'bob');
+    assert.equal(signals.source, 'cache+ownership-fetch');
+  } finally {
+    cleanup();
+  }
+});
+
+test('#1211: legacy On Deck cache entries read as Ready for Planning and new writes are canonical', () => {
   const { dir, cleanup } = makeProjectDir();
   try {
     const sidecar = cacheFilePath(dir);
@@ -81,9 +123,9 @@ test('#1206: legacy On Deck cache entries read as Assigned and new writes are ca
       sidecar,
       JSON.stringify({ issue: '#1206', state: 'on-deck', fetchedAt: Date.now() })
     );
-    assert.equal(readCache(dir, '#1206').state, 'assigned');
+    assert.equal(readCache(dir, '#1206').state, 'ready-for-plan');
     writeCache(dir, { issue: '#1206', state: 'on-deck' });
-    assert.equal(JSON.parse(readFileSync(sidecar, 'utf8')).state, 'assigned');
+    assert.equal(JSON.parse(readFileSync(sidecar, 'utf8')).state, 'ready-for-plan');
   } finally {
     cleanup();
   }

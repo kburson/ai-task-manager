@@ -18,9 +18,9 @@
 // scripts/task-tracker/tests/helpers/move-state-cli.mjs, which imports this
 // exported seam and maps the returned code onto process.exit.
 //
-// Move a GitHub issue through board states: Backlog → Assigned → Refine → Plan → Develop → Test → Review → Done
+// Move a GitHub issue through board states: Backlog → Refine → Ready for Planning → Plan → Develop → Test → Review → Done
 // Usage: node scripts/gh/move-state.mjs <issue#> <state> [--item-id <project-item-id>]
-// States: backlog | assigned | refine | plan | develop | test | review | done
+// States: backlog | refine | ready-for-plan | plan | develop | test | review | done
 
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
@@ -63,6 +63,7 @@ import { moveState } from '../task-tracker/lib/move-state/move-state-core.mjs';
 import { formatMoveReadout, formatMoveError } from '../task-tracker/lib/move-state/readout.mjs';
 import { resolveTailProfile } from '../task-tracker/lib/move-state/tail-profiles.mjs';
 import { resolveReviewAuthority } from '../task-tracker/lib/human-reviewer-audit.mjs';
+import { commitPlanExitOwnershipClaim } from '../task-tracker/lib/plan-exit-ownership-guard.mjs';
 
 const pexec = promisify(execFile);
 const __dir = path.dirname(fileURLToPath(import.meta.url));
@@ -101,7 +102,7 @@ export async function runMoveStateHost({
   function usage() {
     process.stderr.write(
       'Usage: node scripts/gh/move-state.mjs <issue#> <state> [--item-id <project-item-id>] [--from <state>] [--supersede] [--force]\n' +
-        'States: backlog | assigned | refine | plan | develop | test | review | done\n' +
+        'States: backlog | refine | ready-for-plan | plan | develop | test | review | done\n' +
         '--supersede: bypass the matrix + guard pipeline (reserved for the `supersede` verb — "abandoned")\n' +
         '--force: bypass the matrix + guard pipeline for a delivered operator override (reserved for `close --force`)\n'
     );
@@ -125,7 +126,7 @@ export async function runMoveStateHost({
   }
   if (parsed.error === 'unknown-state') {
     process.stderr.write(
-      `Unknown state: ${parsed.stateArg}\nStates: backlog | assigned | refine | plan | develop | test | review | done\n`
+      `Unknown state: ${parsed.stateArg}\nStates: backlog | refine | ready-for-plan | plan | develop | test | review | done\n`
     );
     return 1;
   }
@@ -361,6 +362,23 @@ export async function runMoveStateHost({
   // (promote/approve/reconcile) may have already acquired this lock and signal
   // via `AITM_ISSUE_LOCK_HELD=1`; in that case skip re-acquisition.
   const runMutation = async () => {
+    if (ctx.planExitOwnershipClaim) {
+      const ownership = await commitPlanExitOwnershipClaim({
+        issueNumber: Number(issueArg),
+        cfg,
+        currentUser: ctx.planExitOwnershipClaim.currentUser,
+        mode: ctx.planExitOwnershipClaim.mode,
+      });
+      if (!ownership.ok) {
+        process.stderr.write(`\n⛔ Refusing to move #${issueArg} to ${stateArg}:\n`);
+        for (const blocker of ownership.blockers || [ownership.reason]) {
+          process.stderr.write(`   BLOCKED: ${blocker}\n`);
+        }
+        process.stderr.write('\n');
+        return 4;
+      }
+    }
+
     // #559 — the mutation block is now a thin sequencer over the extracted
     // concern modules. The call order is byte-identical to the pre-#559 inline
     // block so observable side-effect ordering (the #535/#516 timeline-row

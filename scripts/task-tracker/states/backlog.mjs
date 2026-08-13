@@ -1,11 +1,9 @@
 // State object: backlog (#292).
 //
-// Backlog is the entry state for every new issue. Its only successor is the
-// gateless Assigned waiting room (#433) — Backlog → Assigned carries no field
-// gate. The refine-entry Priority gate and the child/parent contiguity floors
-// that formerly fired on backlog-exit have relocated to `states/assigned.mjs`,
-// so they now guard the Assigned → Refine boundary. Backlog keeps only the
-// universally-applicable blocked-by guard on exit.
+// Backlog is the entry state for every new issue. Its successor is Refine;
+// assignment is ownership metadata rather than a lifecycle column. Backlog
+// keeps the universal blocked-by/discussion gates on exit, while Refine entry
+// owns the child/parent contiguity floor.
 
 import { blockedByGuard } from '../lib/blocked-by-guard.mjs';
 import { contiguityEntryGuard } from '../lib/contiguity-entry-guard.mjs';

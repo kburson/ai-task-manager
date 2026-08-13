@@ -124,9 +124,9 @@ function makeRefineDeps(fixture) {
 }
 
 // -----------------------------------------------------------------------------
-// 1) assigned → refine (the gated edge; `/task refine` may first walk backlog → assigned)
+// 1) backlog → refine (entry into active refinement)
 // -----------------------------------------------------------------------------
-describe('guard-parity: assigned→refine', () => {
+describe('guard-parity: backlog→refine', () => {
   it('accept fixture: refine-preflight ok on a well-formed fresh issue', async () => {
     const f = loadFixture('backlog-to-refine', 'accept');
     // Promote-path and direct-verb-path both consume `validateBody` at this
@@ -144,9 +144,8 @@ describe('guard-parity: assigned→refine', () => {
     const f = loadFixture('backlog-to-refine', 'refuse');
     const promote = validateBody(f.body, { gates: DEFAULT_GATES });
     const direct = validateBody(f.body, { gates: DEFAULT_GATES });
-    // Neither path refuses assigned→refine on body alone; AC-section
-    // completeness is checked at Refine exit. Baseline-correct: both
-    // accept here. Any migration that adds an assigned→refine body gate must
+    // Neither path refuses backlog→refine on body alone; AC-section
+    // completeness is checked at Refine exit. Both accept here.
     // update this fixture.
     assert.equal(promote.ok, true);
     assert.equal(direct.ok, true);
@@ -155,9 +154,9 @@ describe('guard-parity: assigned→refine', () => {
 });
 
 // -----------------------------------------------------------------------------
-// 2) refine → plan
+// 2) refine → Ready for Planning
 // -----------------------------------------------------------------------------
-describe('guard-parity: refine→plan', () => {
+describe('guard-parity: refine→ready-for-plan', () => {
   it('accept fixture: preflight + exit gate agree on ok', async () => {
     const f = loadFixture('refine-to-plan', 'accept');
     const deps = makeRefineDeps(f);
@@ -220,9 +219,7 @@ describe('guard-parity: refine→plan', () => {
 });
 
 // -----------------------------------------------------------------------------
-// via-registry: assigned→refine + refine→plan through runGuards (#276; the
-// Priority entry-field adapter relocated from backlog-exit to assigned-exit in
-// #433, so it now fires on the assigned→refine hop).
+// via-registry: backlog→refine + refine→Ready for Planning through runGuards.
 // -----------------------------------------------------------------------------
 // Asserts that the in-registry entry-field adapters produce the SAME refusal
 // content as the underlying gate libraries when invoked through the
@@ -230,17 +227,15 @@ describe('guard-parity: refine→plan', () => {
 // Pre-flight in promote.mjs and in-registry guards both wrap the same gates;
 // these tests prove the registry path agrees with the library-baseline path
 // the other describes already cover.
-describe('guard-parity: assigned→refine via-registry', () => {
+describe('guard-parity: backlog→refine via-registry', () => {
   it('accept fixture: runGuards passes when Priority is set', async () => {
     const f = loadFixture('backlog-to-refine', 'accept');
     const deps = makeRefineDeps({
       ...f,
-      // Adapter expects Priority on the board; the assigned→refine accept
-      // fixture has no projectValues block (validateBody-only). Stamp one
-      // in so the registry path mirrors the post-Refine reality.
+      // The fixture carries Priority even though backlog→Refine does not require it.
       projectValues: { priority: 'P2' },
     });
-    const r = await runGuards('assigned', 'refine', {
+    const r = await runGuards('backlog', 'refine', {
       cfg: CFG,
       issueNumber: 1,
       body: f.body,
@@ -249,22 +244,20 @@ describe('guard-parity: assigned→refine via-registry', () => {
     assert.equal(r.ok, true, JSON.stringify(r.refusals || r));
   });
 
-  it('refuse fixture: runGuards refuses when Priority missing', async () => {
+  it('missing Priority does not block entry into active Refine', async () => {
     const f = loadFixture('backlog-to-refine', 'refuse');
     const deps = makeRefineDeps({ ...f, projectValues: {} }); // no priority
-    const r = await runGuards('assigned', 'refine', {
+    const r = await runGuards('backlog', 'refine', {
       cfg: CFG,
       issueNumber: 1,
       body: f.body,
       deps: { refinementEstimate: deps },
     });
-    assert.equal(r.ok, false);
-    const reasons = (r.refusals || []).map((x) => x.reason).join(' | ');
-    assert.match(reasons, /priority/i, `expected priority refusal, got: ${reasons}`);
+    assert.equal(r.ok, true, JSON.stringify(r.refusals));
   });
 });
 
-describe('guard-parity: refine→plan via-registry', () => {
+describe('guard-parity: refine→ready-for-plan via-registry', () => {
   it('refuse fixture: aggregate registry refusals match library refusals', async () => {
     const f = loadFixture('refine-to-plan', 'refuse');
     const deps = makeRefineDeps(f);
@@ -280,7 +273,7 @@ describe('guard-parity: refine→plan via-registry', () => {
     const libBlockers = new Set([...(libPreflight.blockers || []), ...(libExit.blockers || [])]);
 
     // Registry path.
-    const r = await runGuards('refine', 'plan', {
+    const r = await runGuards('refine', 'ready-for-plan', {
       cfg: CFG,
       issueNumber: 1,
       body: f.body,

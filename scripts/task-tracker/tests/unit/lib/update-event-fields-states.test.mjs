@@ -90,7 +90,10 @@ for (const state of states) {
     cwd: repoRoot,
   });
   assert.equal(result.status, 1, `expected exit 1 for unknown state, got ${result.status}`);
-  assert.match(result.stderr, /Usage:.*refine\|plan\|develop\|test\|review\|done/);
+  assert.match(
+    result.stderr,
+    /Usage:.*backlog\|refine\|ready-for-plan\|plan\|develop\|test\|review\|done/
+  );
   console.log('PASS: unknown state arg rejected with usage');
 }
 

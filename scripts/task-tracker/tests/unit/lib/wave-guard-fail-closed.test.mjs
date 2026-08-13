@@ -29,13 +29,13 @@ const throwStatus = () => {
   throw new Error('gh project status read: transient API failure');
 };
 
-// --- Guard 1: backlog-exit (assigned → refine) ----------------------------------
+// --- Guard 1: backlog-exit (backlog → refine) -----------------------------------
 
 test('#565 backlog-exit: fetchParentIssue throw → fail closed', async () => {
   const r = await backlogExitChildParentStateGuard.run({
     cfg: CFG,
     issueNumber: 900,
-    fromState: 'assigned',
+    fromState: 'backlog',
     toState: 'refine',
     deps: { fetchParentIssue: throwFetch },
   });
@@ -47,7 +47,7 @@ test('#565 backlog-exit: readParentStatus throw → fail closed', async () => {
   const r = await backlogExitChildParentStateGuard.run({
     cfg: CFG,
     issueNumber: 900,
-    fromState: 'assigned',
+    fromState: 'backlog',
     toState: 'refine',
     deps: { fetchParentIssue: async () => 100, readParentStatus: throwStatus },
   });
@@ -59,20 +59,20 @@ test('#565 backlog-exit: genuine no-parent (fetch returns null) → ok:true', as
   const r = await backlogExitChildParentStateGuard.run({
     cfg: CFG,
     issueNumber: 900,
-    fromState: 'assigned',
+    fromState: 'backlog',
     toState: 'refine',
     deps: { fetchParentIssue: async () => null },
   });
   assert.equal(r.ok, true, 'a real leaf issue must still pass');
 });
 
-// --- Guard 2: refine-exit (refine → plan) --------------------------------------
+// --- Guard 2: Ready-for-Planning exit (ready-for-plan → plan) --------------------
 
 test('#565 refine-exit: fetchParentIssue throw → fail closed', async () => {
   const r = await refineExitChildParentStateGuard.run({
     cfg: CFG,
     issueNumber: 901,
-    fromState: 'refine',
+    fromState: 'ready-for-plan',
     toState: 'plan',
     deps: { fetchParentIssue: throwFetch },
   });
@@ -84,7 +84,7 @@ test('#565 refine-exit: readParentStatus throw → fail closed', async () => {
   const r = await refineExitChildParentStateGuard.run({
     cfg: CFG,
     issueNumber: 901,
-    fromState: 'refine',
+    fromState: 'ready-for-plan',
     toState: 'plan',
     deps: { fetchParentIssue: async () => 100, readParentStatus: throwStatus },
   });
@@ -96,7 +96,7 @@ test('#565 refine-exit: genuine no-parent (fetch returns null) → ok:true', asy
   const r = await refineExitChildParentStateGuard.run({
     cfg: CFG,
     issueNumber: 901,
-    fromState: 'refine',
+    fromState: 'ready-for-plan',
     toState: 'plan',
     deps: { fetchParentIssue: async () => null },
   });

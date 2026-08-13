@@ -23,6 +23,7 @@ function makeDeps(initialBody, state = 'plan') {
     calls,
     deps: {
       env: {},
+      fetchEpicChildren: async () => [],
       fetchIssueBody: async () => body,
       // #295 — closure form.
       mutateIssueBody: async ({ mutate }) => {

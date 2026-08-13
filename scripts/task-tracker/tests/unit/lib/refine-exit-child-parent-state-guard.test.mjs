@@ -3,7 +3,7 @@
 // Unit tests for refine-exit-child-parent-state-guard (#339).
 //
 // Mirror of #338's backlog-exit child-parent-state guard one stage later:
-// a sub-issue moving refine → plan is refused when parent's board Status is
+// a sub-issue moving Ready for Planning → Plan is refused when parent's board Status is
 // outside {develop, test, review, done}.
 
 import { strict as assert } from 'node:assert';
@@ -34,7 +34,7 @@ test('guard exposes the expected id', () => {
   assert.equal(GUARD_ID, 'refine-exit-child-parent-developing-or-beyond');
 });
 
-test('short-circuits when fromState !== "refine"', async () => {
+test('short-circuits when fromState is not Ready for Planning', async () => {
   const result = await refineExitChildParentStateGuard.run({
     cfg,
     issueNumber: 999,
@@ -49,7 +49,7 @@ test('short-circuits when toState !== "plan"', async () => {
   const result = await refineExitChildParentStateGuard.run({
     cfg,
     issueNumber: 999,
-    fromState: 'refine',
+    fromState: 'ready-for-plan',
     toState: 'backlog',
     deps: makeDeps({ parentState: 'backlog' }),
   });
@@ -59,7 +59,7 @@ test('short-circuits when toState !== "plan"', async () => {
 test('short-circuits when ctx missing cfg', async () => {
   const result = await refineExitChildParentStateGuard.run({
     issueNumber: 999,
-    fromState: 'refine',
+    fromState: 'ready-for-plan',
     toState: 'plan',
   });
   assert.deepEqual(result, { ok: true });
@@ -68,7 +68,7 @@ test('short-circuits when ctx missing cfg', async () => {
 test('short-circuits when ctx missing issueNumber', async () => {
   const result = await refineExitChildParentStateGuard.run({
     cfg,
-    fromState: 'refine',
+    fromState: 'ready-for-plan',
     toState: 'plan',
   });
   assert.deepEqual(result, { ok: true });
@@ -95,7 +95,7 @@ for (const parentState of ['develop', 'test', 'review', 'done']) {
     const result = await refineExitChildParentStateGuard.run({
       cfg,
       issueNumber: 2,
-      fromState: 'refine',
+      fromState: 'ready-for-plan',
       toState: 'plan',
       deps: makeDeps({ parent: 100, parentState }),
     });
@@ -103,12 +103,12 @@ for (const parentState of ['develop', 'test', 'review', 'done']) {
   });
 }
 
-for (const parentState of ['backlog', 'assigned', 'refine', 'plan']) {
+for (const parentState of ['backlog', 'ready-for-plan', 'refine', 'plan']) {
   test(`refuses when parent state is "${parentState}"`, async () => {
     const result = await refineExitChildParentStateGuard.run({
       cfg,
       issueNumber: 3,
-      fromState: 'refine',
+      fromState: 'ready-for-plan',
       toState: 'plan',
       deps: makeDeps({ parent: 100, parentState }),
     });
@@ -116,7 +116,7 @@ for (const parentState of ['backlog', 'assigned', 'refine', 'plan']) {
     assert.match(
       result.reason,
       new RegExp(
-        `parent #100 is in ${parentState}; child cannot leave refine until parent reaches develop`
+        `parent #100 is in ${parentState}; child cannot leave ready-for-plan until parent reaches develop`
       )
     );
     assert.deepEqual(result.blockers, [result.reason]);
@@ -127,7 +127,7 @@ test('passes when parent state is null (not on board / transient read failure)',
   const result = await refineExitChildParentStateGuard.run({
     cfg,
     issueNumber: 4,
-    fromState: 'refine',
+    fromState: 'ready-for-plan',
     toState: 'plan',
     deps: makeDeps({ parent: 100, parentState: null }),
   });
@@ -140,7 +140,7 @@ test('fail-closed when fetchParentIssue throws (#565)', async () => {
   const result = await refineExitChildParentStateGuard.run({
     cfg,
     issueNumber: 5,
-    fromState: 'refine',
+    fromState: 'ready-for-plan',
     toState: 'plan',
     deps: makeDeps({ fetchThrows: 'graphql 500' }),
   });
@@ -155,7 +155,7 @@ test('fail-closed when readParentStatus throws (#565)', async () => {
   const result = await refineExitChildParentStateGuard.run({
     cfg,
     issueNumber: 6,
-    fromState: 'refine',
+    fromState: 'ready-for-plan',
     toState: 'plan',
     deps: makeDeps({ parent: 100, readThrows: 'graphql 502' }),
   });
@@ -170,7 +170,7 @@ test('mixed-case parent state still matches (normalized)', async () => {
   const result = await refineExitChildParentStateGuard.run({
     cfg,
     issueNumber: 7,
-    fromState: 'refine',
+    fromState: 'ready-for-plan',
     toState: 'plan',
     deps: makeDeps({ parent: 100, parentState: 'DEVELOP' }),
   });

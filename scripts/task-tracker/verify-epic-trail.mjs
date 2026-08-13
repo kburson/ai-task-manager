@@ -39,7 +39,11 @@ const pexec = promisify(execFile);
 // so the bare template command self-targets the issue currently at Test. Returns
 // a positive integer, or null when neither source yields a valid number.
 export function resolveEpicNumber(args, deps = {}) {
-  const { loadState: loadStateDep = loadState, statePath: statePathDep = defaultStatePath } = deps;
+  const {
+    loadState: loadStateDep = loadState,
+    statePath: statePathDep = defaultStatePath,
+    env = {},
+  } = deps;
 
   const explicit = String(args[0] || '').replace(/^#/, '');
   if (explicit) {
@@ -51,10 +55,14 @@ export function resolveEpicNumber(args, deps = {}) {
     const s = loadStateDep(statePathDep());
     const active = String(s.active || '').replace(/^#/, '');
     const n = Number(active);
-    return Number.isInteger(n) && n > 0 ? n : null;
+    if (Number.isInteger(n) && n > 0) return n;
   } catch {
-    return null;
+    // The detached Test worktree intentionally has no session state. Its
+    // governing issue is injected explicitly by the Test owner below.
   }
+
+  const governed = Number(String(env.AITM_TEST_ISSUE_NUMBER || '').replace(/^#/, ''));
+  return Number.isInteger(governed) && governed > 0 ? governed : null;
 }
 
 export async function main(argv, deps = {}) {
@@ -64,6 +72,7 @@ export async function main(argv, deps = {}) {
     pexec: pexecDep = pexec,
     loadState: loadStateDep = loadState,
     statePath: statePathDep = defaultStatePath,
+    env = process.env,
   } = deps;
 
   const args = argv.filter((a) => a !== '');
@@ -76,6 +85,7 @@ export async function main(argv, deps = {}) {
   const epicNumber = resolveEpicNumber(args, {
     loadState: loadStateDep,
     statePath: statePathDep,
+    env,
   });
   if (!epicNumber) {
     console.error(

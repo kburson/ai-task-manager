@@ -1,9 +1,8 @@
 // @story #675 (AC3)
-// `refine` verb atomicity: the pre-Refine entry path stamps
-// `aitm-refine-complete` (+ rationale) BEFORE calling `verbPromote` to walk
-// backlog/assigned up to Refine. If that promote call throws (a refused
-// promote), the body must not be left claiming refine-complete without the
-// state having actually advanced — the marker must be rolled back.
+// `refine` verb atomicity: the Refine-completion path stamps
+// `aitm-refine-complete` (+ rationale) BEFORE calling `verbPromote` to move to
+// Ready for Planning. If that promote call throws, completion evidence rolls
+// back so Refine remains honest active WIP.
 
 import { strict as assert } from 'node:assert';
 import { test } from 'node:test';
@@ -16,8 +15,8 @@ function bodyWithState(state) {
   return `<!-- aitm-last-known-state: ${state} -->\n<!-- aitm-last-known-state-ts: 2026-05-10T00:00:00Z -->\n\n## Issue\n\nbody.\n`;
 }
 
-test('a refused promote during pre-Refine entry rolls back the refine-complete marker', async () => {
-  let currentBody = bodyWithState('backlog');
+test('a refused Refine completion rolls back the refine-complete marker', async () => {
+  let currentBody = bodyWithState('refine');
   const mutateCalls = [];
   const deps = {
     assertBound: () => {},
@@ -90,8 +89,8 @@ test('rationale marker and field-db values survive a rolled-back promote', async
   );
 });
 
-test('a successful promote leaves the refine-complete marker in place', async () => {
-  let currentBody = bodyWithState('backlog');
+test('a successful Refine completion leaves the refine-complete marker in place', async () => {
+  let currentBody = bodyWithState('refine');
   const deps = {
     assertBound: () => {},
     tetherIssueToProject: async () => ({ itemId: 'X' }),

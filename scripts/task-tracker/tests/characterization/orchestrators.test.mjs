@@ -130,14 +130,14 @@ test('move-state: illegal matrix transition is refused with exit 5', async () =>
   }
 });
 
-test('move-state: valid forward transition (refine → plan) succeeds', async () => {
+test('move-state: valid forward transition (refine → ready-for-plan) succeeds', async () => {
   const sandbox = makeMoveStateSandbox();
   try {
     const r = await runMoveState(
-      ['123', 'plan', '--from', 'refine'],
+      ['123', 'ready-for-plan', '--from', 'refine'],
       moveStateEnv(sandbox, { AITM_INTERNAL: '1' })
     );
-    assert.match(r.stdout, /moved to: plan/);
+    assert.match(r.stdout, /moved to: ready-for-plan/);
   } finally {
     rmSync(sandbox, { recursive: true, force: true });
   }

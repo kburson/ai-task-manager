@@ -8,8 +8,8 @@
 // Refine → Plan → Develop with the requirement never surfaced (observed #461).
 //
 // This guard makes the existing token ENFORCE a blocking promotion gate. It is
-// registered on the `backlog` and `assigned` state exit guards, so it fires on
-// the first forward promotion out of Backlog/Assigned and (because the
+// registered on the `backlog` state exit guards, so it fires on
+// the first forward promotion out of Backlog and (because the
 // resolution strips the token) fires at most once.
 //
 // Full-auto-proof by construction: `runGuards(from, to, ctx)` executes

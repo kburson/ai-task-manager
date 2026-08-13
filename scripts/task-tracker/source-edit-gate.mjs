@@ -32,7 +32,9 @@ import { readDeepDiveSignals } from './lib/deep-dive.mjs';
 import { SCRATCH_REL_PREFIX, statePath as resolveStatePath } from './paths.mjs';
 import { classifyEdit, isAllowed, loadPolicy, DEFAULT_POLICY } from './activity-policy.mjs';
 import { loadConfig } from './config.mjs';
-import { normalizeStateId, stateConfigKey, stateIds } from './lib/lifecycle-policy/index.mjs';
+import { normalizeStateId } from './lib/lifecycle-policy/index.mjs';
+import { ownershipDecision } from './lib/ownership-policy.mjs';
+import { fetchAssignmentSnapshot } from './lib/assignment-snapshot.mjs';
 
 const pexec = promisify(execFile);
 
@@ -41,7 +43,7 @@ export const CACHE_TTL_MS = 30_000;
 export const ALLOWLIST_PREFIXES = ['.tmp/', SCRATCH_REL_PREFIX];
 
 // States that LACK source-edit permission (below `develop`).
-const PRE_DEVELOP_STATES = new Set(['backlog', 'assigned', 'refine', 'plan', 'unknown']);
+const PRE_DEVELOP_STATES = new Set(['backlog', 'refine', 'ready-for-plan', 'plan', 'unknown']);
 
 // States AT or PAST `develop` where the state machine has already closed the
 // coding window (#805). WRITE_CODE edits here are refused fail-closed; edits
@@ -83,6 +85,8 @@ export function decideSourceEdit({
   issueState,
   hasPostedMarker,
   hasCompleteMarker,
+  assignees,
+  currentUser,
   policy = DEFAULT_POLICY,
 }) {
   if (!GATED_TOOLS.has(toolName)) {
@@ -118,6 +122,38 @@ export function decideSourceEdit({
   }
 
   const state = normalizeStateId(issueState) || 'unknown';
+
+  if (['develop', 'test', 'review'].includes(state)) {
+    const ownership = ownershipDecision({ state, assignees, currentUser });
+    if (!ownership.ok) {
+      let recovery;
+      if (ownership.kind === 'foreign-owner') {
+        const owner = ownership.owners[0] || 'the current owner';
+        const issueNumber = String(boundIssue).replace(/^#/, '');
+        recovery =
+          `  @${owner} must run \`npx aitm transfer ${issueNumber} --to @${ownership.currentUser || 'me'}\` from their workstation,\n` +
+          `  or a human must reconcile the single owner in the GitHub UI before this workspace retries.`;
+      } else if (ownership.kind === 'multiple-owners') {
+        recovery = `  Reconcile the assignees in the GitHub UI to exactly one owner, then continue from that owner's workstation.`;
+      } else if (ownership.kind === 'human-coordination-required') {
+        recovery =
+          `  Assign the story to @${ownership.currentUser || 'the local workspace owner'}, or transfer it to another owner and continue from that owner's workstation.\n` +
+          `  Full-Auto does not reclaim an in-flight story.`;
+      } else {
+        recovery = `  Ownership is unverifiable. Restore GitHub connectivity and retry; do not edit source until exact singleton ownership is confirmed.`;
+      }
+      return {
+        decision: 'block',
+        code: 'source-edit-ownership-gate',
+        reason:
+          `[task-tracker] Source-edit refused: ${boundIssue} does not have the exact singleton owner for this workspace.\n` +
+          `  Ownership: ${ownership.kind}\n` +
+          `  Expected: @${ownership.currentUser || '(unverifiable)'}\n` +
+          `  Observed: ${ownership.owners.length ? ownership.owners.map((owner) => `@${owner}`).join(', ') : 'unassigned'}\n` +
+          recovery,
+      };
+    }
+  }
 
   if (PRE_DEVELOP_STATES.has(state)) {
     return {
@@ -254,13 +290,7 @@ export function writeCache(projectDir, entry) {
   }
 }
 
-// Maps a kanbanOption* GUID back to its lowercase verb-state name.
-function mapKanbanToState(cfg, optionId) {
-  if (!cfg || !optionId) return 'unknown';
-  return stateIds().find((state) => cfg[stateConfigKey(state)] === optionId) || 'unknown';
-}
-
-// Cold path: fetch state + markers via `gh`. Returns `{ state, hasPostedMarker, hasCompleteMarker }`.
+// Cold path: fetch state, markers, and exclusive ownership via `gh`.
 export async function fetchIssueSignals(boundIssue, projectDir, deps = {}) {
   const ghImpl = deps.gh || (async (args) => (await pexec('gh', args, { timeout: 5000 })).stdout);
   const cfg = loadConfig({
@@ -268,34 +298,14 @@ export async function fetchIssueSignals(boundIssue, projectDir, deps = {}) {
     userPath: path.join(projectDir, '.ai-task-manager', '.cache', 'no-user-config.json'),
   });
   const issueNum = boundIssue.replace(/^#/, '');
-  const out = await ghImpl([
-    'issue',
-    'view',
-    issueNum,
-    '-R',
-    cfg.repo,
-    '--json',
-    'body,projectItems',
-  ]);
+  const out = await ghImpl(['issue', 'view', issueNum, '-R', cfg.repo, '--json', 'body']);
   const parsed = JSON.parse(out);
+  const snapshot = await (deps.fetchSnapshot || fetchAssignmentSnapshot)({
+    issueNumber: issueNum,
+    cfg,
+  });
+  const currentUser = String(await ghImpl(['api', 'user', '--jq', '.login'])).trim();
   const body = parsed.body || '';
-  const items = parsed.projectItems || [];
-  let state = 'unknown';
-  for (const item of items) {
-    const status =
-      item.status?.optionId || item.fieldValueByName?.optionId || item['Status']?.optionId || null;
-    const mapped = mapKanbanToState(cfg, status);
-    if (mapped !== 'unknown') {
-      state = mapped;
-      break;
-    }
-    // Some gh shapes expose the option name directly:
-    const name = normalizeStateId(item.status?.name || item['Status']?.name || '');
-    if (name) {
-      state = name;
-      break;
-    }
-  }
   // #658 — derive marker presence from the canonical reader rather than a
   // hand-rolled substring check. The old `body.includes('<!-- aitm-deep-dive-posted:')`
   // form only matched the legacy colon grammar and silently missed the
@@ -305,19 +315,50 @@ export async function fetchIssueSignals(boundIssue, projectDir, deps = {}) {
   // is the same reader the Plan→Develop promote gate uses, so the gate and
   // this reader can no longer drift apart.
   const { hasPosted, hasComplete } = readDeepDiveSignals(body);
-  return { state, hasPostedMarker: hasPosted, hasCompleteMarker: hasComplete };
+  return {
+    state: snapshot.state,
+    hasPostedMarker: hasPosted,
+    hasCompleteMarker: hasComplete,
+    assignees: snapshot.assignees,
+    currentUser,
+  };
 }
 
 // Resolves (state, markers) using the cache when warm; falls back to gh.
 export async function resolveIssueSignals(boundIssue, projectDir, deps = {}) {
   const cached = readCache(projectDir, boundIssue);
   if (cached) {
-    return {
-      state: cached.state,
+    // #1212 — metadata may tolerate the short cache, ownership may not. A
+    // transfer/unassign can happen in another process or through the GitHub UI,
+    // so there is no reliable cross-process invalidation signal. Refresh the
+    // exact configured-project Status + assignees snapshot on every gated edit
+    // while retaining the body/deep-dive metadata cache.
+    const cfg = loadConfig({
+      projectPath: configPath(projectDir),
+      userPath: path.join(projectDir, '.ai-task-manager', '.cache', 'no-user-config.json'),
+    });
+    const snapshot = await (deps.fetchSnapshot || fetchAssignmentSnapshot)({
+      issueNumber: boundIssue.replace(/^#/, ''),
+      cfg,
+    });
+    const currentUser = String(
+      await (deps.gh || (async (args) => (await pexec('gh', args, { timeout: 5000 })).stdout))([
+        'api',
+        'user',
+        '--jq',
+        '.login',
+      ])
+    ).trim();
+    const fresh = {
+      state: snapshot.state,
       hasPostedMarker: !!cached.hasPostedMarker,
       hasCompleteMarker: !!cached.hasCompleteMarker,
-      source: 'cache',
+      assignees: snapshot.assignees,
+      currentUser,
+      source: 'cache+ownership-fetch',
     };
+    writeCache(projectDir, { issue: boundIssue, ...fresh });
+    return fresh;
   }
   const fresh = await fetchIssueSignals(boundIssue, projectDir, deps);
   writeCache(projectDir, { issue: boundIssue, ...fresh });
@@ -386,6 +427,8 @@ export async function runHook(payload, deps = {}) {
     issueState: signals.state,
     hasPostedMarker: signals.hasPostedMarker,
     hasCompleteMarker: signals.hasCompleteMarker,
+    assignees: signals.assignees,
+    currentUser: signals.currentUser,
     policy: (deps.loadPolicy || loadPolicy)(projectDir),
   });
 }

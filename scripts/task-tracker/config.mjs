@@ -25,14 +25,10 @@ export const DEFAULTS = {
   // `STATUS_CONFIG_KEYS` maps the new state slugs onto these keys.
   kanbanFieldId: '',
   kanbanOptionBacklog: '',
-  // Assigned (#1206; introduced as On Deck in #433) — inert holding state
-  // inserted between Backlog and Refine.
-  // The option ID lives in task-tracker.json; this DEFAULTS entry (#439 AC7) is
-  // what lets loadConfig retain it (loadConfig drops any key absent from
-  // DEFAULTS), so move-state can resolve the board option for the
-  // backlog→assigned hop.
-  kanbanOptionAssigned: '',
   kanbanOptionRefine: '',
+  // Ready for Planning (#1211) reuses the historical Assigned/On Deck option
+  // identity and is the durable parking state between Refine and Plan.
+  kanbanOptionReadyForPlan: '',
   kanbanOptionPlan: '',
   kanbanOptionDevelop: '',
   kanbanOptionTest: '',
@@ -74,10 +70,9 @@ export const DEFAULTS = {
   // Defaults preserve today's behavior. See docs/guides/workflow.md → Human Gates.
   gateAnalysisToDevelopment: true,
   gateReviewToDone: true,
-  // #247 — Refine→Plan WIP budget: at most one child past Refine per epic.
-  // Default true preserves WIP enforcement. Set false to permit sanctioned
-  // parallel-agent batches under one epic; restore to true when the batch
-  // closes.
+  // #1216 — R4P→Plan local WIP budget: at most one active child per epic.
+  // Default true preserves sequential execution. Keep enabled until isolated
+  // cloud verification is an explicit, proven parallel prerequisite.
   gatePlanRefineWip: true,
   // #179 — Hard Review→Done lifecycle-checkbox gate. When true (default), close
   // refuses to advance unless each Lifecycle DoD item is ticked, audit-marker
@@ -124,8 +119,8 @@ export const TYPES = {
   projectId: 'string',
   kanbanFieldId: 'string',
   kanbanOptionBacklog: 'string',
-  kanbanOptionAssigned: 'string',
   kanbanOptionRefine: 'string',
+  kanbanOptionReadyForPlan: 'string',
   kanbanOptionPlan: 'string',
   kanbanOptionDevelop: 'string',
   kanbanOptionTest: 'string',
@@ -191,27 +186,36 @@ function readJson(p) {
   }
 }
 
-const LEGACY_ASSIGNED_CONFIG_KEY = 'kanbanOptionOnDeck';
-const ASSIGNED_CONFIG_KEY = 'kanbanOptionAssigned';
+const READY_FOR_PLAN_CONFIG_KEY = 'kanbanOptionReadyForPlan';
+const LEGACY_READY_FOR_PLAN_CONFIG_KEYS = ['kanbanOptionAssigned', 'kanbanOptionOnDeck'];
 
 function withLegacyAssignedFallback(raw, source) {
   if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return raw;
-  if (!Object.prototype.hasOwnProperty.call(raw, LEGACY_ASSIGNED_CONFIG_KEY)) return raw;
-  const legacy = raw[LEGACY_ASSIGNED_CONFIG_KEY];
-  const assigned = raw[ASSIGNED_CONFIG_KEY];
-  if (legacy && assigned && legacy !== assigned) {
+  const configured = [
+    [READY_FOR_PLAN_CONFIG_KEY, raw[READY_FOR_PLAN_CONFIG_KEY]],
+    ...LEGACY_READY_FOR_PLAN_CONFIG_KEYS.map((key) => [key, raw[key]]),
+  ].filter(([, value]) => Boolean(value));
+  const ids = new Set(configured.map(([, value]) => value));
+  if (ids.size > 1) {
     throw new Error(
-      `[aitm] ${source} config: ${LEGACY_ASSIGNED_CONFIG_KEY} conflicts with ` +
-        `${ASSIGNED_CONFIG_KEY}; refusing ambiguous Assigned option ids.`
+      `[aitm] ${source} config: Ready for Planning compatibility keys conflict; ` +
+        'refusing ambiguous option ids.'
     );
   }
-  console.warn(
-    `[aitm] ${source} config key ${LEGACY_ASSIGNED_CONFIG_KEY} is deprecated; ` +
-      `use ${ASSIGNED_CONFIG_KEY}. The option id was loaded canonically.`
-  );
   const normalized = { ...raw };
-  if (!assigned && legacy) normalized[ASSIGNED_CONFIG_KEY] = legacy;
-  delete normalized[LEGACY_ASSIGNED_CONFIG_KEY];
+  const legacyKeys = configured
+    .map(([key]) => key)
+    .filter((key) => LEGACY_READY_FOR_PLAN_CONFIG_KEYS.includes(key));
+  if (legacyKeys.length > 0) {
+    console.warn(
+      `[aitm] ${source} config key${legacyKeys.length > 1 ? 's' : ''} ${legacyKeys.join(', ')} ` +
+        `deprecated; use ${READY_FOR_PLAN_CONFIG_KEY}. The option id was loaded canonically.`
+    );
+  }
+  if (!normalized[READY_FOR_PLAN_CONFIG_KEY] && configured[0]) {
+    normalized[READY_FOR_PLAN_CONFIG_KEY] = configured[0][1];
+  }
+  for (const key of LEGACY_READY_FOR_PLAN_CONFIG_KEYS) delete normalized[key];
   return normalized;
 }
 
@@ -408,8 +412,8 @@ const INTERNAL_KEYS = [
   'projectId',
   'kanbanFieldId',
   'kanbanOptionBacklog',
-  'kanbanOptionAssigned',
   'kanbanOptionRefine',
+  'kanbanOptionReadyForPlan',
   'kanbanOptionPlan',
   'kanbanOptionDevelop',
   'kanbanOptionTest',

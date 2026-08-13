@@ -41,6 +41,7 @@ import {
   epicTrailLogArgs,
   parseEpicTrailLog,
   groupCommitsByChild,
+  partitionChildrenByDeliveryRequirement,
   UnreachableChildrenError,
 } from './epic-derived-commit-trail.mjs';
 
@@ -281,7 +282,8 @@ async function epicDerivedTrailGate({ epicNumber, epicHead, projectDir, graph, e
     return { ok: false, blocker: `close-epic-trail-log-failed: ${err.message}`, epicHead };
   }
   const commits = parseEpicTrailLog(stdout);
-  const groups = groupCommitsByChild({ children: childList, commits });
+  const { deliveryRequired } = partitionChildrenByDeliveryRequirement(childList);
+  const groups = groupCommitsByChild({ children: deliveryRequired, commits });
   const unreachable = groups.filter((g) => g.commits.length === 0);
   if (unreachable.length === 0) return { ok: true, epicHead };
 
@@ -307,7 +309,7 @@ function defaultGraphFactory({ cfg, projectDir }) {
         'api',
         'graphql',
         '-f',
-        `query=query { repository(owner: "${cfg.repo.split('/')[0]}", name: "${cfg.repo.split('/')[1]}") { issue(number: ${issue}) { parent { number } subIssues(first: 100) { nodes { number title } } } } }`,
+        `query=query { repository(owner: "${cfg.repo.split('/')[0]}", name: "${cfg.repo.split('/')[1]}") { issue(number: ${issue}) { parent { number } subIssues(first: 100) { nodes { number title stateReason } } } } }`,
       ],
       { cwd: projectDir, encoding: 'utf8', timeout: 8000 }
     );
@@ -317,6 +319,7 @@ function defaultGraphFactory({ cfg, projectDir }) {
       children: (node.subIssues?.nodes ?? []).map((c) => ({
         number: Number(c.number),
         title: c.title || '',
+        closeReason: c.stateReason || null,
       })),
     };
   };

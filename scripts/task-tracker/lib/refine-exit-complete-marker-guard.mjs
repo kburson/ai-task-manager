@@ -5,14 +5,14 @@
 // fields and rationale are written; its absence means the user has not
 // signalled that refinement work is done.
 //
-// Reached through `runGuards('refine', 'plan', ctx)` invoked by promote.mjs
+// Reached through `runGuards('refine', 'ready-for-plan', ctx)` invoked by promote.mjs
 // and `scripts/gh/move-state.mjs`. Surfaces at verb level as
 // `refine-exit-refused` via the `REFUSAL_ID_TO_STATUS` mapping.
 //
 // Context contract:
 //   { toState?: string, body?: string }
 //
-// Fail-open when ctx is missing or `toState` is not `plan` — parity with
+// Fail-open when ctx is missing or `toState` is not `ready-for-plan` — parity with
 // sibling adapters; lets non-promote runGuards callers no-op safely.
 
 export const GUARD_ID = 'refine-exit-complete-marker';
@@ -21,7 +21,7 @@ export const refineExitCompleteMarkerGuard = {
   id: GUARD_ID,
   async run(ctx) {
     if (!ctx) return { ok: true };
-    if (ctx.toState && ctx.toState !== 'plan') return { ok: true };
+    if (ctx.toState && ctx.toState !== 'ready-for-plan') return { ok: true };
     const body = typeof ctx.body === 'string' ? ctx.body : '';
     // Widened (#375) to accept both legacy colon and new `ts="..."` forms.
     if (/<!--\s*aitm-refine-complete(?::[^>]*|\s+ts="[^"]*")\s*-->/i.test(body))

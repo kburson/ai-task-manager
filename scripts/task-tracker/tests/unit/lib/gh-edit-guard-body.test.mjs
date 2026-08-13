@@ -1,4 +1,5 @@
 // @story #310
+// cspell:ignore fassignees Fassignees fquery Fquery
 // Tests for scripts/task-tracker/lib/gh-edit-guard.mjs — the body-write
 // chokepoint that protects against legacy-checkbox reintroduction and
 // hidden-marker drops on `gh issue edit ... --body-file/--body ...`.
@@ -206,13 +207,38 @@ import {
   });
   assert.equal(r.block, false);
 
-  // Edit with title/milestone/assignee → pass
+  // Direct assignee edits are governed ownership bypasses and refuse.
   r = evaluateGhEdit({
     command: 'gh issue edit 64 --title "new" --add-assignee @me --milestone v2',
     readBodyFile,
     fetchCurrentBody,
   });
-  assert.equal(r.block, false);
+  assert.equal(r.block, true);
+  assert.match(r.reason, /npx aitm transfer/);
+
+  for (const command of [
+    'gh issue edit -R acme/widgets 1212 --add-assignee alice',
+    'gh issue edit https://github.com/acme/widgets/issues/1212 --remove-assignee alice',
+    'gh api repos/acme/widgets/issues/1212 -X PATCH -f assignees[]=alice',
+    "gh api repos/acme/widgets/issues/1212 -X PATCH -f 'assignees[]=alice'",
+    'gh api --method=PATCH repos/acme/widgets/issues/1212 --input owners.json',
+    'gh api repos/acme/widgets/issues/1212/assignees -f assignees[]=bob',
+    'gh api repos/acme/widgets/issues/1212/assignees -fassignees[]=bob',
+    'gh api repos/acme/widgets/issues/1212/assignees -Fassignees[]=bob',
+    'gh api repos/acme/widgets/issues/1212/assignees --input owners.json',
+    'gh api graphql -f query="$QUERY"',
+    'gh api graphql -fquery="$QUERY"',
+    'gh api graphql -Fquery="$QUERY"',
+    "eval 'gh issue edit 1212 --add-assignee bob'",
+    "eval 'gh api repos/acme/widgets/issues/1212/assignees -f assignees[]=bob'",
+    'gh api graphql -F query=@mutation.graphql',
+    'gh api graphql --field=query=@mutation.graphql',
+    `gh api graphql -f 'query=mutation { updateIssue(input:{id:"I_1",assigneeIds:["U_1"]}) { issue { id } } }'`,
+  ]) {
+    r = evaluateGhEdit({ command });
+    assert.equal(r.block, true, `raw ownership mutation must refuse: ${command}`);
+    assert.match(r.reason, /governed ownership|npx aitm/i);
+  }
 }
 
 // ── checkBodyChange: aitm-body-version / aitm-stage-rollup marker protection (#361)

@@ -4,7 +4,7 @@ STUB issue body template (lightweight idea capture, no epic parent).
 A stub is the fast idea-capture shape: only a title (and an optional free-text
 idea seed via --idea-file) are supplied at creation. The Scope / Acceptance
 Criteria / Plan Metadata sections are placeholders the Refine stage fills.
-The Refine→Plan gate still enforces substantive ACs, Plan Metadata, Size,
+The Refine→Ready for Planning gate still enforces substantive ACs, Plan Metadata, Size,
 Estimate, Sequence, and labels later — so a stub cannot advance past Refine
 until it is fleshed out. Use `--shape solo` instead when you already have the
 full scope/AC/plan worked out at creation time.

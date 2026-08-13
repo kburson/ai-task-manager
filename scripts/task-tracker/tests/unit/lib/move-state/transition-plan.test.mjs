@@ -27,19 +27,28 @@ const argv = (...rest) => ['node', 'move-state.mjs', ...rest];
 // ===========================================================================
 
 test('STATE_TO_CONFIG_KEY maps every canonical state to a kanban option key', () => {
-  for (const s of ['backlog', 'assigned', 'refine', 'plan', 'develop', 'test', 'review', 'done']) {
+  for (const s of [
+    'backlog',
+    'refine',
+    'ready-for-plan',
+    'plan',
+    'develop',
+    'test',
+    'review',
+    'done',
+  ]) {
     assert.match(STATE_TO_CONFIG_KEY[s], /^kanbanOption/);
   }
   // Unknown states are absent (host treats absence as the unknown-state exit).
   assert.equal(STATE_TO_CONFIG_KEY.bogus, undefined);
 });
 
-test('refusalVerbHint: forward → promote, backlog → park, else reconcile', () => {
+test('refusalVerbHint: forward → promote, backlog → shelve, else reconcile', () => {
   assert.equal(refusalVerbHint('develop'), '/task promote');
   assert.equal(refusalVerbHint('done'), '/task promote');
   // #848 — demote can never reach backlog (DEMOTE_TARGET is hardcoded to
-  // develop); park is the dedicated Refine|Plan → Backlog verb.
-  assert.equal(refusalVerbHint('backlog'), '/task park');
+  // develop); Shelve is the canonical Refine|R4P → Backlog verb.
+  assert.equal(refusalVerbHint('backlog'), '/task shelve');
   // A state with no forward/backward classification falls to reconcile.
   assert.equal(refusalVerbHint('mystery'), '/task reconcile');
 });
@@ -136,7 +145,7 @@ test('decideVerbGate: agent context with no escape hatch → refuse', () => {
 // ===========================================================================
 
 test('computeTransitionPlan: legal forward move passes the matrix gate', () => {
-  const p = computeTransitionPlan({ fromState: 'refine', toState: 'plan' });
+  const p = computeTransitionPlan({ fromState: 'refine', toState: 'ready-for-plan' });
   assert.equal(p.matrix.applies, true);
   assert.equal(p.matrix.ok, true);
   assert.equal(p.matrix.reason, null);
@@ -206,7 +215,7 @@ test('computeTransitionPlan: non-done move has null doneSideEffects + state warn
   assert.equal(review.dirtyCheckOnReview, true);
   assert.equal(review.backlogWarn, false);
 
-  const backlog = computeTransitionPlan({ fromState: 'assigned', toState: 'backlog' });
+  const backlog = computeTransitionPlan({ fromState: 'ready-for-plan', toState: 'backlog' });
   assert.equal(backlog.backlogWarn, true);
   assert.equal(backlog.dirtyCheckOnReview, false);
 });

@@ -2,8 +2,8 @@
 // #282 — Stage-completion marker for the Refine stage.
 //
 // Covers the six ACs from the deep-dive test surface:
-//   1. refine on a Refine-state issue does NOT call verbPromote
-//   2. refine on a Refine-state issue is idempotent (re-stamps marker)
+//   1. refine on a Refine-state issue completes to Ready for Planning
+//   2. repeated injected completion calls re-stamp without duplicate markers
 //   3. refine writes the aitm-refine-complete marker
 //   4. promote refuses refine→plan when marker is absent
 //   5. refusal message names the marker AND the verb that produces it
@@ -17,6 +17,7 @@ import {
   REFINE_COMPLETE_MARKER_RE,
 } from '../../../verbs/refine.mjs';
 import { runPromote } from '../../../verbs/promote.mjs';
+import { stampRefinementSnapshot } from '../../../lib/refinement-snapshot.mjs';
 
 const baseCfg = { repo: 'owner/repo', projectId: 'PVT_FAKE' };
 
@@ -53,13 +54,9 @@ function bodyWithState(state) {
     },
   });
   assert.equal(result.status, 'refined');
-  assert.equal(result.promoted, false, 'promoted=false on a Refine-state issue');
-  assert.equal(
-    promoteCalled,
-    false,
-    'verbPromote MUST NOT be called when issue is already in Refine'
-  );
-  console.log('PASS: refine on Refine-state issue does not call verbPromote (#282)');
+  assert.equal(result.promoted, true, 'completed Refine promotes to Ready for Planning');
+  assert.equal(promoteCalled, true, 'verbPromote is called once when issue is already in Refine');
+  console.log('PASS: refine on Refine-state issue completes to R4P (#1213)');
 }
 
 // ---------------------------------------------------------------------------
@@ -95,7 +92,7 @@ function bodyWithState(state) {
     cfg: baseCfg,
     deps,
   });
-  assert.equal(promoteCount, 0, 'no promote calls when state remains refine');
+  assert.equal(promoteCount, 2, 'each injected Refine completion advances one edge');
   assert.equal(writes.length, 2, 'body written twice');
   // Only one aitm-refine-complete marker should ever exist in the body.
   const matches = writes[1].match(/<!--\s*aitm-refine-complete(?: ts="|:)/g) || [];
@@ -142,7 +139,7 @@ function bodyWithState(state) {
 }
 
 // ---------------------------------------------------------------------------
-// #4 — promote refuses refine→plan when marker is absent
+// #4 — promote refuses refine→R4P when marker is absent
 // ---------------------------------------------------------------------------
 {
   const body = bodyWithState('refine');
@@ -162,7 +159,7 @@ function bodyWithState(state) {
     r.blockers.some((b) => /aitm-refine-complete/.test(b)),
     'blocker names the missing marker'
   );
-  console.log('PASS: promote refuses refine→plan when aitm-refine-complete absent (#282)');
+  console.log('PASS: promote refuses refine→R4P when aitm-refine-complete absent (#282)');
 }
 
 // ---------------------------------------------------------------------------
@@ -214,6 +211,16 @@ function bodyWithState(state) {
     // Now: refine→plan with marker present passes the new check (deeper
     // gates would still need to pass too, but those are covered elsewhere).
     let deeperGateCalled = false;
+    const currentRefinement = stampRefinementSnapshot(
+      bodyWithState('refine') +
+        '<!-- aitm-refine-complete: 2026-06-03T00:00:00Z -->\n' +
+        '<!-- aitm-refinement-rationale: {"size":"S","estimate":"2","priority":"p1","rank":4,"rationale":"current"} -->\n' +
+        '## Scope\n\nCurrent refinement scope.\n\n' +
+        '## Plan Metadata\n\n- **Depends On**: none\n\n' +
+        '## Acceptance Criteria\n\n- [ ] Current behavior.\n\n' +
+        '<!-- aitm-fields: {"schema":1,"values":{"priority":"P1","size":"S","estimate":2,"rank":4,"blockedBy":null}} -->\n',
+      { labels: ['enhancement'], ts: '2026-06-03T00:00:00Z' }
+    );
     const withMarker = await runPromote({
       issueNumber: 706,
       cfg: baseCfg,
@@ -221,10 +228,19 @@ function bodyWithState(state) {
         projectDir: process.cwd(),
         assertBound: () => {},
         fetchIssueBody: async () => ({
-          body: bodyWithState('refine') + '<!-- aitm-refine-complete: 2026-06-03T00:00:00Z -->\n',
+          body: currentRefinement,
         }),
         writeIssueBody: async () => {},
         getLiveState: async () => 'refine',
+        refinementSnapshot: {
+          fetchLabels: async () => ['enhancement'],
+          fetchBoardFields: async () => ({
+            priority: 'P1',
+            size: 'S',
+            estimate: 2,
+            rank: 4,
+          }),
+        },
         refinementEstimate: {
           loadProjectFieldDefs: () => [],
           projectValuesForIssue: async () => {

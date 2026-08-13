@@ -9,8 +9,8 @@
 //      matching `aitm-entered-<stage>` body marker (`<stage>:failed` audit rows
 //      are exempt, per #829).
 //   3. Kanban stage-transition walk — each entered stage must be one forward rung
-//      up the canonical ladder or one of the four sanctioned reverse edges
-//      (test→develop, review→test, review→develop, done→test). A multi-rung
+//      up the canonical ladder or a sanctioned history edge from lifecycle
+//      policy. A multi-rung
 //      forward jump is a skipped stage; any other backward jump is a corruption.
 //   4. Departure/return bracketing — the skip/double-step machine that catches an
 //      interruption opened but never closed, or a return with nothing open.
@@ -261,7 +261,7 @@ export function validate(context = {}) {
 
     // --- Kanban stage-transition walk ----------------------------------------
     // Every stage the log claims to enter must be reachable from the previous
-    // stage by a single forward rung or one of the four sanctioned reverse edges.
+    // stage by a single forward rung or a sanctioned reverse history edge.
     // Non-stage rows (departures, returns, `demoted:*`, `issue:*`, `<stage>:failed`)
     // do not move the walk.
     while (
@@ -289,7 +289,7 @@ export function validate(context = {}) {
         } else {
           failures.push(
             `${loc(row)}: illegal stage transition — reverse ${currentStage}→${stage} ` +
-              `is not one of the four sanctioned rework edges`
+              `is not a sanctioned lifecycle history edge`
           );
         }
         currentStage = stage;

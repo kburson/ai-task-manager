@@ -51,8 +51,8 @@
 import { stateIds, forwardTarget } from '../lib/lifecycle-policy/index.mjs';
 
 import backlog from './backlog.mjs';
-import assigned from './assigned.mjs';
 import refine from './refine.mjs';
+import readyForPlan from './ready-for-plan.mjs';
 import plan from './plan.mjs';
 import develop from './develop.mjs';
 import test from './test.mjs';
@@ -61,8 +61,8 @@ import done from './done.mjs';
 
 export const STATES = Object.freeze({
   backlog,
-  assigned: assigned,
   refine,
+  'ready-for-plan': readyForPlan,
   plan,
   develop,
   test,

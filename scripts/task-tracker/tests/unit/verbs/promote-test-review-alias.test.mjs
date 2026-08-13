@@ -26,7 +26,7 @@ test('the other aliases are unchanged', () => {
   assert.equal(ALIAS_VERB.review, 'close');
 });
 
-test('the states with no alias are exactly backlog, assigned, refine, plan, done', () => {
+test('only post-Develop transitions use alias verbs', () => {
   const aliased = Object.keys(ALIAS_VERB).sort();
   assert.deepEqual(aliased, ['develop', 'review', 'test']);
 });

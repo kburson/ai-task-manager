@@ -93,9 +93,16 @@ const BACKFILL_TS = '2026-06-01T00:00:00Z';
 const PID = 'PVT_target';
 const STATUS_OK = {
   name: 'Status',
-  options: ['Backlog', 'Assigned', 'Refine', 'Plan', 'Develop', 'Test', 'Review', 'Done'].map(
-    (n) => ({ name: n })
-  ),
+  options: [
+    'Backlog',
+    'Refine',
+    'Ready for Planning',
+    'Plan',
+    'Develop',
+    'Test',
+    'Review',
+    'Done',
+  ].map((n) => ({ name: n })),
 };
 
 // ---- fetchIssueBundle with a fake gh ---------------------------------------

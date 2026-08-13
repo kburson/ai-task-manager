@@ -49,22 +49,19 @@
 //
 //   State    | Entry guards                          | Exit guards
 //   ---------|---------------------------------------|------------------------------------------------------------
-//   backlog  | contiguity                            | blocked-by, refine-entry-fields-priority,
-//            |                                       | backlog-exit-child-parent-state, child-cannot-lead-epic
-//   assigned  | contiguity                            | blocked-by, refine-entry-fields-priority,
-//            |                                       | backlog-exit-child-parent-state, child-cannot-lead-epic,
-//            |                                       | user-story-warn (non-blocking)
-//   refine   | contiguity                            | refine-exit-complete-marker, refine-exit-stub-placeholder,
-//            |                                       | blocked-by, plan-entry-fields (body + board adapters),
-//            |                                       | refine-exit-wip-budget, refine-exit-child-parent-state,
-//            |                                       | child-cannot-lead-epic, user-story-block
+//   backlog  | contiguity                            | blocked-by, discuss-unresolved
+//   refine   | contiguity, child-parent-state,       | refine-exit-complete-marker, refine-exit-stub-placeholder,
+//            | user-story-warn (non-blocking)        | blocked-by, plan-entry-fields (body + board adapters),
+//            |                                       | user-story-block
+//   ready-   | contiguity                            | blocked-by, epic-children-r4p, sequential-wip,
+//   for-plan |                                       | child-parent-state, child-cannot-lead-epic
 //   plan     | contiguity                            | blocked-by, plan-approved, plan-epic-children,
 //            |                                       | plan-exit-planned-estimate, plan-exit-deep-dive,
 //            |                                       | plan-exit-plan-metadata, child-cannot-lead-epic
 //   develop  | contiguity                            | blocked-by, develop-exit-code-complete,
 //            |                                       | develop-exit-sandbox-proof,
 //            |                                       | develop-exit-commit-trail-head,
-//            |                                       | develop-epic-children-done (children at review+),
+//            |                                       | develop-epic-children-done (terminal children),
 //            |                                       | child-cannot-lead-epic
 //   test     | contiguity, body-gates                | blocked-by, test-exit-dod-verified,
 //            |                                       | test-exit-pre-close-completeness, child-cannot-lead-epic

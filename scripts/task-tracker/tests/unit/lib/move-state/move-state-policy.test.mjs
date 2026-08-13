@@ -26,6 +26,7 @@ import { backwardTargets } from '../../../../lib/lifecycle-policy/index.mjs';
 // target/legal-source constants. Extend this map alongside any future
 // backward-target verb.
 const VERB_MODULES = {
+  shelve: () => import('../../../../verbs/shelve.mjs'),
   park: () => import('../../../../verbs/park.mjs'),
   demote: () => import('../../../../verbs/demote.mjs'),
 };
@@ -53,9 +54,8 @@ test('every BACKWARD_TARGETS state has a refusalVerbHint verb that can actually 
     );
 
     const mod = await loader();
-    // Every backward-target verb exports its target as `<NAME>_TARGET` and its
-    // legal sources as `LEGAL_FROM`. park.mjs → PARK_TARGET; demote.mjs → DEMOTE_TARGET.
-    const verbTarget = mod.PARK_TARGET ?? mod.DEMOTE_TARGET;
+    // Every backward-target verb exports its target and legal-source constants.
+    const verbTarget = mod.SHELVE_TARGET ?? mod.PARK_TARGET ?? mod.DEMOTE_TARGET;
     assert.equal(
       verbTarget,
       target,

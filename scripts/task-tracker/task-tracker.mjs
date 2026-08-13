@@ -56,14 +56,47 @@ const INIT_EXEMPT = new Set(['config', 'help', '?', 'migrate', 'status', 'fleet'
 // enforces bind-match. `target-optional` falls back to active when no `#N` is
 // in rest. `active-only` skips bind-match entirely (operates on active or is
 // a switch-style verb that handles target itself).
-const PREFLIGHT_MODE = {
+export const PREFLIGHT_MODE = {
   approve: 'target-required',
   'plan-approve': 'target-required',
+  'issue-body': 'target-required',
+  comment: 'target-required',
+  assign: 'target-required',
+  transfer: 'target-required',
+  unassign: 'target-required',
+  plan: 'target-required',
+  test: 'target-required',
+  reconcile: 'target-required',
+  check: 'target-optional',
+  ensureChecked: 'target-optional',
+  ensureUnchecked: 'target-optional',
+  'dod-stamp': 'target-required',
+  'ac-stamp': 'target-required',
+  kind: 'target-required',
+  'epic-reconcile': 'target-required',
+  'commit-trace': 'target-required',
+  'evidence-markers': 'target-required',
+  block: 'target-required',
+  unblock: 'target-required',
+  'user-story': 'target-optional',
+  story: 'target-optional',
+  'inflate-estimate': 'target-required',
+  'plan-estimate': 'target-required',
+  'mirror-deep-dive': 'target-last-optional',
+  'adopt-github-records': 'target-required',
+  log: 'target-required',
+  brainstorm: 'active-only',
+  discover: 'active-only',
+  new: 'active-only',
+  'split-plan': 'target-required',
+  'pull-next': 'target-required',
   promote: 'target-required',
   next: 'target-required',
   refine: 'target-required',
   demote: 'target-required',
+  shelve: 'target-required',
   park: 'target-required',
+  'cancel-plan': 'target-required',
   supersede: 'target-required',
   close: 'target-optional',
   end: 'target-optional',
@@ -72,8 +105,8 @@ const PREFLIGHT_MODE = {
   pause: 'active-only',
   stop: 'active-only',
   update: 'active-only',
-  resume: 'active-only',
-  start: 'active-only',
+  resume: 'switch-target',
+  start: 'switch-target',
 };
 
 function targetFromRest(rest) {
@@ -97,19 +130,45 @@ export function resolvePreflightTarget({ mode, rest, stateBefore }) {
   return stateBefore?.active == null ? targetFromRest(rest) : undefined;
 }
 
+export function resolvePreflightInvocation({ verb, mode, rest, stateBefore }) {
+  if (mode === 'switch-target') {
+    const explicit = /^#\d+$/.test(String(verb)) ? String(verb) : targetFromRest(rest);
+    const target =
+      explicit ||
+      (verb === 'resume' && stateBefore?.paused ? stateBefore?.lastActive || undefined : undefined);
+    if (!target) return { target: undefined, stateBefore };
+    return { target, stateBefore: { ...stateBefore, active: target } };
+  }
+  if (mode === 'target-last-optional') {
+    const target = targetFromRest([...(rest || [])].reverse());
+    return { target: target || stateBefore?.active || undefined, stateBefore };
+  }
+  return {
+    target: resolvePreflightTarget({ mode, rest, stateBefore }),
+    stateBefore,
+  };
+}
+
 async function runVerbPreflight(ctx) {
-  const mode = PREFLIGHT_MODE[ctx.verb];
+  const mode = PREFLIGHT_MODE[ctx.verb] || (/^#\d+$/.test(ctx.verb) ? 'switch-target' : null);
   if (!mode) return;
   const { preflightVerb } = await import('./lib/verb-preflight.mjs');
   const { loadState } = await import('./state.mjs');
   const stateBefore = loadState(ctx.statePath);
-  const target = resolvePreflightTarget({ mode, rest: ctx.rest, stateBefore });
-  await preflightVerb({
+  const invocation = resolvePreflightInvocation({
+    verb: ctx.verb,
+    mode,
+    rest: ctx.rest,
     stateBefore,
+  });
+  await preflightVerb({
+    stateBefore: invocation.stateBefore,
     statePath: ctx.statePath,
-    target,
+    target: invocation.target,
     cfg: ctx.cfg,
     verb: ctx.verb,
+    ownershipManagement: ['assign', 'transfer', 'unassign'].includes(ctx.verb),
+    ownershipOnly: ctx.verb === 'reconcile',
   });
 }
 
@@ -252,6 +311,21 @@ if (_isMain)
         case 'board': {
           const { verbBoard } = await import('./verbs/board.mjs');
           await verbBoard(ctx);
+          break;
+        }
+        case 'assign': {
+          const { verbAssign } = await import('./verbs/assign.mjs');
+          await verbAssign(ctx.rest, ctx.cfg);
+          break;
+        }
+        case 'transfer': {
+          const { verbTransfer } = await import('./verbs/assign.mjs');
+          await verbTransfer(ctx.rest, ctx.cfg);
+          break;
+        }
+        case 'unassign': {
+          const { verbUnassign } = await import('./verbs/unassign.mjs');
+          await verbUnassign(ctx.rest, ctx.cfg);
           break;
         }
         case 'close':
@@ -400,6 +474,16 @@ if (_isMain)
           await verbEvidenceMarkers(ctx);
           break;
         }
+        case 'issue-body': {
+          const { verbIssueBody } = await import('./verbs/issue-body.mjs');
+          await verbIssueBody(ctx);
+          break;
+        }
+        case 'comment': {
+          const { verbComment } = await import('./verbs/comment.mjs');
+          await verbComment(ctx);
+          break;
+        }
         case 'adopt-github-records': {
           const { verbAdoptGithubRecords } = await import('./verbs/adopt-github-records.mjs');
           await verbAdoptGithubRecords(ctx);
@@ -452,9 +536,19 @@ if (_isMain)
           await verbDemote(ctx.rest, ctx.cfg);
           break;
         }
+        case 'shelve': {
+          const { verbShelve } = await import('./verbs/shelve.mjs');
+          await verbShelve(ctx.rest, ctx.cfg);
+          break;
+        }
         case 'park': {
           const { verbPark } = await import('./verbs/park.mjs');
           await verbPark(ctx.rest, ctx.cfg);
+          break;
+        }
+        case 'cancel-plan': {
+          const { verbCancelPlan } = await import('./verbs/cancel-plan.mjs');
+          await verbCancelPlan(ctx.rest, ctx.cfg);
           break;
         }
         case 'reconcile': {

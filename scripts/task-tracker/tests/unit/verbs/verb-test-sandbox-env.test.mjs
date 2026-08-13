@@ -41,3 +41,17 @@ test('defaultExecInSandbox: child inherits parent env alongside AI_TASK_MANAGER_
     else process.env[sentinelKey] = orig;
   }
 });
+
+test('defaultExecInSandbox: binds the governed Test issue for bare issue-aware verifiers', async () => {
+  const result = await defaultExecInSandbox({
+    argv: [
+      process.execPath,
+      '-e',
+      "process.stdout.write(process.env.AITM_TEST_ISSUE_NUMBER || 'MISSING')",
+    ],
+    path: process.cwd(),
+    issueNumber: 1209,
+  });
+  assert.equal(result.exit, 0);
+  assert.equal(result.stdout.trim(), '1209');
+});

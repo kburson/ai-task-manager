@@ -3,7 +3,7 @@
 // Lifecycle integration — issue #130.
 //
 // Asserts that walking the canonical state graph
-// (Backlog → Assigned → Refine → Plan → Develop → Test → Review → Done)
+// (Backlog → Refine → Ready for Planning → Plan → Develop → Test → Review → Done)
 // produces exactly the 13 expected timing rows in order, using the same
 // paired (`<prev>:complete` + `<next>:enter`) emission rule that
 // `scripts/gh/move-state.mjs` implements via the canonical
@@ -23,15 +23,15 @@ import { strict as assert } from 'node:assert';
 import { PHASE_EVENTS } from '../../../phase-events.mjs';
 import { buildRow } from '../../../gh-timing-comment.mjs';
 
-const STAGES = ['backlog', 'assigned', 'refine', 'plan', 'develop', 'test', 'review', 'done'];
+const STAGES = ['backlog', 'refine', 'ready-for-plan', 'plan', 'develop', 'test', 'review', 'done'];
 
 // Expected emission order (#516) — must match the slugs asserted by
 // phase-events.test.mjs.
 const expectedSlugs = [
   'backlog:created',
-  'assigned:started',
   'refine:started',
   'refine:completed',
+  'ready-for-plan:started',
   'plan:started',
   'plan:completed',
   'develop:started',

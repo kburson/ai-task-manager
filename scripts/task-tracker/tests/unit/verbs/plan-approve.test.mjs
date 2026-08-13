@@ -44,6 +44,7 @@ function makeDeps(overrides = {}) {
   return {
     calls,
     deps: {
+      fetchEpicChildren: async () => [],
       fetchIssueBody: async () => {
         calls.bodies.push(body);
         return body;

@@ -150,14 +150,17 @@ test('ambiguous or mismatched live-board state fails closed', { skip: !migration
   );
 });
 
-test('maintenance board rebinding projects canonical and historical second-state markers to Assigned', () => {
-  assert.equal(statusForIssue('<!-- aitm-last-known-state: on-deck -->', 'open'), 'Assigned');
+test('maintenance board rebinding projects historical second-state markers to Ready for Planning', () => {
+  assert.equal(
+    statusForIssue('<!-- aitm-last-known-state: on-deck -->', 'open'),
+    'Ready for Planning'
+  );
   assert.equal(
     statusForIssue(
       '<!-- aitm-last-known-state state="assigned" ts="2026-08-11T00:00:00.000Z" -->',
       'open'
     ),
-    'Assigned'
+    'Ready for Planning'
   );
   assert.equal(statusForIssue('no marker', 'open'), null);
   assert.equal(statusForIssue('<!-- aitm-last-known-state: unknown -->', 'open'), null);

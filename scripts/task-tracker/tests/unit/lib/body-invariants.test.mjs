@@ -21,6 +21,7 @@ test('INVARIANT_MARKER_PATTERNS includes the canonical invariant marker set', ()
     'aitm-stage-rollup',
     'aitm-refine-complete',
     'aitm-plan-approved',
+    'aitm-epic-orchestration-plan',
     'aitm-deep-dive-posted',
     'aitm-deep-dive-complete',
     'aitm-last-known-state',
@@ -59,6 +60,11 @@ test('findLostMarkers reports a single-kind marker by name when dropped', () => 
   const base = '## AC\n<!-- aitm-fields: {"size":"M"} -->\n<!-- aitm-body-version: 5 -->\n';
   const next = '## AC\n<!-- aitm-body-version: 5 -->\n';
   assert.deepEqual(findLostMarkers(base, next), ['aitm-fields']);
+});
+
+test('findLostMarkers protects the durable epic orchestration plan', () => {
+  const marker = `<!-- aitm-epic-orchestration-plan schema="1" digest="${'a'.repeat(64)}" payload="e30" -->`;
+  assert.deepEqual(findLostMarkers(marker, ''), ['aitm-epic-orchestration-plan']);
 });
 
 test('findLostMarkers reports each lost aitm-entered-<stage> individually', () => {

@@ -70,7 +70,15 @@ function repoRoot() {
 // injected runtime library; both ship so operators can preview/apply it from
 // an installed package. The exact packed surface grows by two.
 // #1249 adds one shipped maintenance CLI and its pure timing interval authority.
-const ENTRY_CEILING = 635;
+// #1210 intentionally ships two governed verbs, their generic owned-comment
+// store, and the task-skill rule that documents the governed surface.
+// #1212 intentionally ships five ownership authorities/verbs: canonical
+// policy, exact snapshot, Plan commitment guard, assign/transfer, and unassign.
+// #1213 intentionally ships the snapshot authority, its guard, and cancel-plan.
+// #1217 intentionally ships the final board-cutover CLI, transaction authority,
+// shared lifecycle-freeze reader, and operator migration guide. The measured
+// package surface therefore grows by exactly four entries.
+const ENTRY_CEILING = 655;
 
 function packedFiles() {
   const out = execFileSync('npm', ['pack', '--dry-run', '--json'], {

@@ -33,6 +33,7 @@ function deps({ body = CLEAN_BODY, state = 'plan', onMutate } = {}) {
     env: {},
     getBoardState: async () => state,
     fetchIssueBody: async () => body,
+    fetchEpicChildren: async () => [],
     nowIso: () => TS,
     mutateIssueBody: async ({ mutate }) => {
       if (onMutate) onMutate(mutate(body));

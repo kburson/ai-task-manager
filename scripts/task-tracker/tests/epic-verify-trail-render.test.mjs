@@ -47,6 +47,7 @@ function stubLog(childNumber) {
 function stubDeps({ active, children, log }) {
   const seen = {};
   const deps = {
+    env: {},
     loadState: () => ({ active }),
     statePath: () => '/does/not/exist/active-task.json',
     loadConfig: () => ({}),
@@ -64,6 +65,16 @@ describe('#900 AC3: verify-epic-trail resolves the epic from the active session'
     it('a bare invocation resolves the active bound issue', () => {
       assert.equal(resolveEpicNumber([], { loadState: () => ({ active: '883' }) }), 883);
       assert.equal(resolveEpicNumber([], { loadState: () => ({ active: '#883' }) }), 883);
+    });
+
+    it('a bare sandbox invocation resolves the issue injected by the Test owner', () => {
+      assert.equal(
+        resolveEpicNumber([], {
+          loadState: () => ({ active: null }),
+          env: { AITM_TEST_ISSUE_NUMBER: '1209' },
+        }),
+        1209
+      );
     });
 
     it('an explicit positional wins even when the state read throws', () => {

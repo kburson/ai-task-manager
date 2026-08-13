@@ -69,6 +69,7 @@ test('runPreflight: assignee mismatch returns EXIT_ASSIGNEE_MISMATCH', async () 
     stateBefore: { active: '633' },
     cfg,
     deps: {
+      fetchLive: async () => 'develop',
       fetchAssignees: async () => ['alice'],
       fetchCurrentUser: async () => 'bob',
     },
@@ -94,7 +95,7 @@ test('runPreflight: a throwing assignee check fails CLOSED (#769)', async () => 
   });
   assert.equal(res.ok, false);
   assert.equal(res.code, EXIT_ASSIGNEE_MISMATCH);
-  assert.equal(res.assigneeKind, 'unverifiable');
+  assert.equal(res.assigneeKind, 'ownership-unverifiable');
 });
 
 // ---- drift ----------------------------------------------------------------

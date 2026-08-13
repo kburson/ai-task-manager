@@ -63,8 +63,28 @@ export const ROUTE_IDENTITIES = Object.freeze(
       dispatch: 'verbs/demote.mjs',
     },
     {
+      verb: 'shelve',
+      dispatch: 'verbs/shelve.mjs',
+    },
+    {
       verb: 'park',
       dispatch: 'verbs/park.mjs',
+    },
+    {
+      verb: 'cancel-plan',
+      dispatch: 'verbs/cancel-plan.mjs',
+    },
+    {
+      verb: 'assign',
+      dispatch: 'verbs/assign.mjs',
+    },
+    {
+      verb: 'transfer',
+      dispatch: 'verbs/assign.mjs',
+    },
+    {
+      verb: 'unassign',
+      dispatch: 'verbs/unassign.mjs',
     },
     {
       verb: 'test',
@@ -161,6 +181,14 @@ export const ROUTE_IDENTITIES = Object.freeze(
     {
       verb: 'evidence-markers',
       dispatch: 'verbs/evidence-markers.mjs',
+    },
+    {
+      verb: 'issue-body',
+      dispatch: 'verbs/issue-body.mjs',
+    },
+    {
+      verb: 'comment',
+      dispatch: 'verbs/comment.mjs',
     },
     {
       verb: 'adopt-github-records',

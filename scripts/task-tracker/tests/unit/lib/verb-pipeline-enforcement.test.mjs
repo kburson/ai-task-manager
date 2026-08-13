@@ -96,14 +96,14 @@ async function runExpectFail(args, env) {
   rmSync(sandbox, { recursive: true });
 }
 
-// 3. Refusal for backward target (backlog) names /task park (#848).
+// 3. Refusal for backward target (backlog) names /task shelve (#1215).
 {
   const sandbox = makeSandbox();
   const e = await runExpectFail(['123', 'backlog'], cleanEnv(sandbox));
   assert.match(
     String(e.stderr || ''),
-    /\/task park/,
-    'refusal for backlog target must name `/task park`'
+    /\/task shelve/,
+    'refusal for backlog target must name `/task shelve`'
   );
   rmSync(sandbox, { recursive: true });
 }

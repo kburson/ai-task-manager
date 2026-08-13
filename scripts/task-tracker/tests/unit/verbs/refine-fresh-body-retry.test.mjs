@@ -24,7 +24,7 @@ test('stale backlog body recovers from one fresh read before the first Refine wa
   const initialBody = '## Scope\n\nstale snapshot';
   const result = await refreshPreRefineContiguity({
     fromState: 'backlog',
-    toState: 'assigned',
+    toState: 'refine',
     issueNumber: 1017,
     body: initialBody,
     guardResult: refusal(),
@@ -45,7 +45,7 @@ test('stale backlog body recovers from one fresh read before the first Refine wa
   );
 });
 
-test('assigned → refine can recover when the refreshed body contains both prior markers', async () => {
+test('historical Assigned alias is not treated as a canonical pre-Refine arc', async () => {
   const result = await refreshPreRefineContiguity({
     fromState: 'assigned',
     toState: 'refine',
@@ -59,8 +59,8 @@ test('assigned → refine can recover when the refreshed body contains both prio
       ].join('\n'),
   });
 
-  assert.equal(result.guardResult.ok, true);
-  assert.equal(result.attempts, 1);
+  assert.equal(result.guardResult.ok, false);
+  assert.equal(result.attempts, 0);
 });
 
 test('genuine marker absence remains fail-closed after exactly one fresh read', async () => {
@@ -68,7 +68,7 @@ test('genuine marker absence remains fail-closed after exactly one fresh read', 
   const original = refusal();
   const result = await refreshPreRefineContiguity({
     fromState: 'backlog',
-    toState: 'assigned',
+    toState: 'refine',
     issueNumber: 1017,
     body: '',
     guardResult: original,
@@ -87,7 +87,7 @@ test('fresh-read failure preserves the original refusal', async () => {
   const original = refusal();
   const result = await refreshPreRefineContiguity({
     fromState: 'backlog',
-    toState: 'assigned',
+    toState: 'refine',
     issueNumber: 1017,
     body: '',
     guardResult: original,
@@ -124,7 +124,7 @@ test('successful contiguity refresh preserves unrelated refusals', async () => {
   const blocked = { id: 'blocked-by-not-done', reason: 'blocker remains open' };
   const result = await refreshPreRefineContiguity({
     fromState: 'backlog',
-    toState: 'assigned',
+    toState: 'refine',
     issueNumber: 1017,
     body: '',
     guardResult: refusal([blocked]),

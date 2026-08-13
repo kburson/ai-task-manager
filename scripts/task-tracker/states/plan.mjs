@@ -23,6 +23,7 @@ import { planExitVcPresenceGuard } from '../lib/plan-exit-vc-presence-guard.mjs'
 import { decompositionPlanExitGuard } from '../lib/decomposition-plan-exit-guard.mjs';
 import { contiguityEntryGuard } from '../lib/contiguity-entry-guard.mjs';
 import { childCannotLeadEpicExitGuard } from '../lib/child-cannot-lead-epic-exit-guard.mjs';
+import { planExitOwnershipGuard } from '../lib/plan-exit-ownership-guard.mjs';
 
 export default Object.freeze({
   name: 'plan',
@@ -34,6 +35,7 @@ export default Object.freeze({
     planExitDeepDiveGuard,
     planExitPlanMetadataGuard,
     planExitVcPresenceGuard,
+    planExitOwnershipGuard,
     decompositionPlanExitGuard,
     planEpicChildrenGuard,
     childCannotLeadEpicExitGuard,

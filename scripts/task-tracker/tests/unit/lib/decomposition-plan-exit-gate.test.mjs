@@ -128,7 +128,7 @@ test('registers the decomposition guard before the epic children guard', () => {
   const ids = planState.exitGuards.map((guard) => guard.id);
   assert.ok(ids.includes('plan-exit-decomposition'));
   assert.ok(
-    ids.indexOf('plan-exit-decomposition') < ids.indexOf('plan-exit-epic-children-refine-or-beyond')
+    ids.indexOf('plan-exit-decomposition') < ids.indexOf('plan-exit-epic-children-r4p-or-beyond')
   );
 });
 

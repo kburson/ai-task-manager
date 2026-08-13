@@ -12,6 +12,13 @@ import { formatStageBoundRefusal, hasStageBoundGrandfather } from './stage-bound
 import { appendDefectHint } from './defect-hint.mjs';
 
 const ISSUE_EDIT_RE = /\bgh\s+issue\s+edit\s+(?:#)?(\d+)\b/;
+const ISSUE_URL_NUMBER_RE = /github\.com\/[\w.-]+\/[\w.-]+\/issues\/(\d+)\b/i;
+const ISSUE_API_ENDPOINT_RE = /\brepos\/[\w.-]+\/[\w.-]+\/issues\/(\d+)\b/i;
+const ISSUE_API_PATCH_METHOD_RE = /(?:-X\s*|--method(?:=|\s+))PATCH\b/i;
+const API_ASSIGNEE_FIELD_RE = /(?:^|\s)(?:-f|--field|-F|--raw-field)\s+['"]?assignees(?:\[\])?=/i;
+const API_INPUT_RE = /(?:^|\s)--input(?:=|\s+)/;
+const GRAPHQL_ASSIGNEE_MUTATION_RE =
+  /\b(?:addAssigneesToAssignable|removeAssigneesFromAssignable)\b|\bassigneeIds\b/i;
 const ISSUE_CREATE_RE = /\bgh\s+issue\s+create\b/;
 const BODY_FILE_RE = /--body-file\s+(\S+)/;
 const BODY_INLINE_RE = /--body\s+(['"])((?:\\.|(?!\1).)*?)\1/;
@@ -61,6 +68,10 @@ const MARKER_PATTERNS = [
   { name: 'aitm-last-known-state', re: /<!--\s*aitm-last-known-state(?:\s*:|\s+state=")/i },
   // Widened (#375) to detect both legacy colon and new `ts="..."` grammars.
   { name: 'aitm-plan-approved', re: /<!--\s*aitm-plan-approved(?:\s*:|\s+ts=")/i },
+  {
+    name: 'aitm-epic-orchestration-plan',
+    re: /<!--\s*aitm-epic-orchestration-plan\s+schema="/i,
+  },
   { name: 'aitm-deep-dive-complete', re: /<!--\s*aitm-deep-dive-complete(?:\s*:|\s+ts=")/i },
   // #887 — mirrors the `INVARIANT_MARKER_PATTERNS` entry. Without this line an
   // external `gh issue edit --body` would strip the reconciliation marker past
@@ -257,6 +268,39 @@ export function splitCommandSegments(command) {
   flush();
 
   return segments;
+}
+
+function shellWords(segment) {
+  const words = [];
+  let word = '';
+  let quote = '';
+  let escaped = false;
+  for (const char of String(segment || '')) {
+    if (escaped) {
+      word += char;
+      escaped = false;
+    } else if (char === '\\' && quote !== "'") {
+      escaped = true;
+    } else if (quote) {
+      if (char === quote) quote = '';
+      else word += char;
+    } else if (char === "'" || char === '"') {
+      quote = char;
+    } else if (/\s/.test(char)) {
+      if (word) words.push(word);
+      word = '';
+    } else {
+      word += char;
+    }
+  }
+  if (word) words.push(word);
+  return words;
+}
+
+function ghArgs(segment) {
+  const words = shellWords(segment);
+  const index = words.findIndex((word) => /(?:^|\/)gh$/.test(word));
+  return index < 0 ? null : words.slice(index + 1);
 }
 
 // #849 — locate the body-write flag WITHIN a single segment. Callers must pass
@@ -521,6 +565,133 @@ export function checkBodyChange({ newBody, currentBody, issueNumber, currentStat
 // fail-open. The diff logic survives, exercised via `mutateIssueBody`, in the
 // exported `checkBodyChange`.)
 export function evaluateGhEdit({ command }) {
+  return evaluateGhEditRecursive(command, 0);
+}
+
+function evaluateGhEditRecursive(command, nestedDepth) {
+  // `eval` defers parsing until after this guard. Any evaluated command that
+  // mentions GitHub ownership is opaque and therefore refused fail-closed.
+  if (/\beval\b[\s\S]*\bgh\b[\s\S]*(?:assignee|issue\s+edit)/i.test(String(command || ''))) {
+    return {
+      block: true,
+      reason:
+        'Evaluated GitHub ownership commands are forbidden.\n' +
+        '  Use the governed ownership verbs so the command is inspectable, locked, audited, and verified.',
+    };
+  }
+  // Shell wrappers are not an ownership escape hatch. Inspect the exact `-c`
+  // payload recursively before evaluating the outer command.
+  if (nestedDepth < 4) {
+    for (const segment of splitCommandSegments(command)) {
+      const words = shellWords(segment);
+      const shellIndex = words.findIndex((word) => /(?:^|\/)(?:sh|bash|zsh)$/.test(word));
+      if (shellIndex < 0) continue;
+      const commandIndex = words.findIndex(
+        (word, index) => index > shellIndex && /^-[^-]*c[^-]*$/.test(word)
+      );
+      const payload = commandIndex < 0 ? null : words[commandIndex + 1];
+      if (!payload) continue;
+      const nested = evaluateGhEditRecursive(payload, nestedDepth + 1);
+      if (nested.block) return nested;
+    }
+  }
+  // #1212 — direct assignee mutation is an ownership-state bypass. It skips
+  // the issue lock, lifecycle-aware preconditions, exact-singleton read-back,
+  // transfer provenance, and audit comment enforced by the governed verbs.
+  // Internal adapters use execFile and do not traverse this Bash hook.
+  for (const segment of splitCommandSegments(command)) {
+    const args = ghArgs(segment);
+    if (!args) continue;
+    const issueIndex = args.indexOf('issue');
+    if (
+      issueIndex < 0 ||
+      args[issueIndex + 1] !== 'edit' ||
+      !args.some((arg) => /^--(?:add|remove)-assignee(?:=|$)/.test(arg))
+    )
+      continue;
+    const match =
+      segment.match(ISSUE_EDIT_RE) ||
+      segment.match(ISSUE_URL_NUMBER_RE) ||
+      segment.match(/\b(\d+)\b/);
+    const issueNumber = match ? Number(match[1]) : null;
+    return {
+      block: true,
+      reason:
+        `Direct assignee mutation${issueNumber ? ` on #${issueNumber}` : ''} is forbidden.\n` +
+        `  Use the governed ownership verbs (\`npx aitm assign${issueNumber ? ` ${issueNumber}` : ''} --to <login|@me>\`, ` +
+        `\`npx aitm transfer${issueNumber ? ` ${issueNumber}` : ''} --to <login|@me>\`, or ` +
+        `\`npx aitm unassign${issueNumber ? ` ${issueNumber}` : ''}\`) so exclusive ownership is locked, audited, and verified.`,
+    };
+  }
+
+  for (const segment of splitCommandSegments(command)) {
+    const args = ghArgs(segment);
+    if (!args || !args.includes('api')) continue;
+    const match = segment.match(ISSUE_API_ENDPOINT_RE);
+    const writeMethod = args.some(
+      (arg, index) =>
+        /^(?:-X|--method=?)(?:PATCH|POST|DELETE)$/i.test(arg) ||
+        (['-X', '--method'].includes(arg) && /^(?:PATCH|POST|DELETE)$/i.test(args[index + 1] || ''))
+    );
+    const assigneeField = args.some((arg) =>
+      /^(?:-f|--field|-F|--raw-field)=?assignees(?:\[\])?=/i.test(arg)
+    );
+    const opaqueInput = API_INPUT_RE.test(segment);
+    const assigneeEndpoint = /\/issues\/\d+\/assignees\b/i.test(segment);
+    const implicitWrite = args.some(
+      (arg) =>
+        /^(?:-f|-F)/.test(arg) ||
+        /^--(?:field|raw-field)(?:=|$)/.test(arg) ||
+        /^--input(?:=|$)/.test(arg)
+    );
+    if (
+      (!writeMethod && !implicitWrite && !ISSUE_API_PATCH_METHOD_RE.test(segment)) ||
+      (!assigneeEndpoint && !assigneeField && !API_ASSIGNEE_FIELD_RE.test(segment) && !opaqueInput)
+    )
+      continue;
+    if (!match && !opaqueInput && !assigneeField && !API_ASSIGNEE_FIELD_RE.test(segment)) continue;
+    return {
+      block: true,
+      reason:
+        `Direct REST ownership mutation${match ? ` on #${Number(match[1])}` : ' through an opaque endpoint/input'} is forbidden.\n` +
+        `  Use the governed ownership verbs (\`npx aitm assign\`, \`transfer\`, or \`unassign\`) so the issue lock, lifecycle policy, audit, and exact read-back all run.`,
+    };
+  }
+
+  for (const segment of splitCommandSegments(command)) {
+    const args = ghArgs(segment);
+    if (!args || !args.includes('api') || !args.includes('graphql')) continue;
+    const hasOpaqueInput = args.some((arg) => arg === '--input' || arg.startsWith('--input='));
+    const hasOpaqueQueryFile = args.some((arg, index) => {
+      if (/^(?:-f|-F)(?:query=)?@/.test(arg)) return true;
+      if (/^--(?:field|raw-field)=query=@/.test(arg)) return true;
+      return (
+        /^(?:query=)?@/.test(arg) &&
+        (index === 0 || ['-f', '-F', '--field', '--raw-field'].includes(args[index - 1]))
+      );
+    });
+    const opaqueDynamicQuery = args.some(
+      (arg, index) =>
+        (/^(?:query=)?\$/.test(arg) &&
+          (index === 0 || /^(?:-f|-F|--field|--raw-field)(?:=|$)/.test(args[index - 1]))) ||
+        /^(?:-f|-F)query=\$/.test(arg) ||
+        /^--(?:field|raw-field)=query=\$/.test(arg)
+    );
+    if (
+      !hasOpaqueInput &&
+      !hasOpaqueQueryFile &&
+      !opaqueDynamicQuery &&
+      !GRAPHQL_ASSIGNEE_MUTATION_RE.test(segment)
+    )
+      continue;
+    return {
+      block: true,
+      reason:
+        'Direct GraphQL ownership mutation is forbidden.\n' +
+        '  Use the governed ownership verbs (`npx aitm assign`, `transfer`, or `unassign`) so the issue lock, lifecycle policy, audit, and exact read-back all run.',
+    };
+  }
+
   const parsed = parseGhIssueEdit(command);
   if (!parsed || parsed.source === 'none') return { block: false };
 

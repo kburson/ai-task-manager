@@ -23,6 +23,7 @@ import {
 import { STATES } from '../../../states/index.mjs';
 import { runGuards } from '../../../lib/guard-registry.mjs';
 import { buildEstimationForecast } from '../../../lib/estimation/forecast-model.mjs';
+import { buildEpicOrchestrationPlanMarker } from '../../../lib/epic-orchestration-plan.mjs';
 import { createBootstrapRubric } from '../../../lib/estimation/rubric-model.mjs';
 import {
   createAitmRecordEnvelope,
@@ -433,18 +434,34 @@ test('planEpicChildrenGuard: solo issue (no children) → ok', async () => {
   assert.deepEqual(r, { ok: true });
 });
 
-test('planEpicChildrenGuard: epic with all children at refine → ok', async () => {
+test('planEpicChildrenGuard: epic with all children at R4P → ok', async () => {
+  const children = [
+    {
+      number: 1,
+      state: 'ready-for-plan',
+      rank: 1,
+      blockedBy: [],
+      hasCurrentRefinement: true,
+    },
+    {
+      number: 2,
+      state: 'ready-for-plan',
+      rank: 2,
+      blockedBy: [],
+      hasCurrentRefinement: true,
+    },
+  ];
+  const trunkSha = 'a'.repeat(40);
   const r = await planEpicChildrenGuard.run({
     toState: 'develop',
     cfg: CFG,
     issueNumber: 999,
+    body: buildEpicOrchestrationPlanMarker({ children, trunkSha }),
     deps: {
       epicChildren: {
-        fetchSiblings: async () => [
-          { number: 1, state: 'refine' },
-          { number: 2, state: 'refine' },
-        ],
+        fetchSiblings: async () => children,
       },
+      resolveTrunkSha: async () => trunkSha,
     },
   });
   assert.deepEqual(r, { ok: true });
@@ -458,14 +475,14 @@ test('planEpicChildrenGuard: epic with backlog child → refuse', async () => {
     deps: {
       epicChildren: {
         fetchSiblings: async () => [
-          { number: 1, state: 'refine' },
+          { number: 1, state: 'ready-for-plan', rank: 1, hasCurrentRefinement: true },
           { number: 2, state: 'backlog' },
         ],
       },
     },
   });
   assert.equal(r.ok, false);
-  assert.match(r.reason, /epic-children-not-refined/);
+  assert.match(r.reason, /epic-children-not-r4p/);
   assert.match(r.reason, /#2/);
 });
 
@@ -525,6 +542,10 @@ test('runGuards(plan,develop): no VC section → surfaces plan-exit-vc-presence 
     cfg: CFG,
     deps: {
       epicChildren: { fetchSiblings: async () => [] },
+      ownership: {
+        fetchCurrentUser: async () => 'kburson',
+        fetchSnapshot: async () => ({ state: 'plan', assignees: ['kburson'] }),
+      },
       ...PLANNED_ESTIMATE_OK_DEPS,
     },
     fetchBlockerState: async () => null,
@@ -544,11 +565,11 @@ test('STATES.plan.exitGuards: includes plan-exit-plan-approved', () => {
   );
 });
 
-test('STATES.plan.exitGuards: includes plan-exit-epic-children-refine-or-beyond', () => {
+test('STATES.plan.exitGuards: includes plan-exit-epic-children-r4p-or-beyond', () => {
   const ids = STATES.plan.exitGuards.map((g) => g.id);
   assert.ok(
-    ids.includes('plan-exit-epic-children-refine-or-beyond'),
-    `expected plan-exit-epic-children-refine-or-beyond in [${ids.join(', ')}]`
+    ids.includes('plan-exit-epic-children-r4p-or-beyond'),
+    `expected plan-exit-epic-children-r4p-or-beyond in [${ids.join(', ')}]`
   );
 });
 
@@ -606,6 +627,10 @@ test('runGuards(plan,develop): marker present + solo issue → ok', async () => 
     cfg: CFG,
     deps: {
       epicChildren: { fetchSiblings: async () => [] },
+      ownership: {
+        fetchCurrentUser: async () => 'kburson',
+        fetchSnapshot: async () => ({ state: 'plan', assignees: ['kburson'] }),
+      },
       ...PLANNED_ESTIMATE_OK_DEPS,
     },
     fetchBlockerState: async () => null,

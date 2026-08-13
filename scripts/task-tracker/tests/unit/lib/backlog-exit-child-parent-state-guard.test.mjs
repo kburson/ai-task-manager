@@ -1,11 +1,11 @@
 #!/usr/bin/env node
 // @story #338
 // Unit tests for backlog-exit-child-parent-state-guard (#338; relocated to
-// assigned-exit in #433).
+// direct backlog-to-refine boundary in #1211).
 //
 // Mirror of plan-epic-children-guard's coverage but child-side: a child sub-
-// issue moving assigned → refine is refused when the parent epic's board Status
-// is outside {refine, plan, develop}.
+// issue moving backlog → refine is refused when the parent epic's board Status
+// is outside {refine, ready-for-plan, plan, develop}.
 
 import { strict as assert } from 'node:assert';
 import { test } from 'node:test';
@@ -35,7 +35,7 @@ test('guard exposes the expected id', () => {
   assert.equal(GUARD_ID, 'backlog-exit-child-parent-refine-or-plan');
 });
 
-test('short-circuits when fromState !== "assigned"', async () => {
+test('short-circuits when fromState !== "backlog"', async () => {
   const result = await backlogExitChildParentStateGuard.run({
     cfg,
     issueNumber: 999,
@@ -50,7 +50,7 @@ test('short-circuits when toState !== "refine"', async () => {
   const result = await backlogExitChildParentStateGuard.run({
     cfg,
     issueNumber: 999,
-    fromState: 'assigned',
+    fromState: 'backlog',
     toState: 'plan',
     deps: makeDeps({ parentState: 'done' }),
   });
@@ -60,7 +60,7 @@ test('short-circuits when toState !== "refine"', async () => {
 test('short-circuits when ctx missing cfg', async () => {
   const result = await backlogExitChildParentStateGuard.run({
     issueNumber: 999,
-    fromState: 'assigned',
+    fromState: 'backlog',
     toState: 'refine',
   });
   assert.deepEqual(result, { ok: true });
@@ -69,7 +69,7 @@ test('short-circuits when ctx missing cfg', async () => {
 test('short-circuits when ctx missing issueNumber', async () => {
   const result = await backlogExitChildParentStateGuard.run({
     cfg,
-    fromState: 'assigned',
+    fromState: 'backlog',
     toState: 'refine',
   });
   assert.deepEqual(result, { ok: true });
@@ -79,7 +79,7 @@ test('passes when issue has no parent (leaf / top-level epic)', async () => {
   const result = await backlogExitChildParentStateGuard.run({
     cfg,
     issueNumber: 1,
-    fromState: 'assigned',
+    fromState: 'backlog',
     toState: 'refine',
     deps: {
       fetchParentIssue: async () => null,
@@ -95,7 +95,7 @@ test('passes when parent state is "refine"', async () => {
   const result = await backlogExitChildParentStateGuard.run({
     cfg,
     issueNumber: 2,
-    fromState: 'assigned',
+    fromState: 'backlog',
     toState: 'refine',
     deps: makeDeps({ parent: 100, parentState: 'refine' }),
   });
@@ -106,7 +106,7 @@ test('passes when parent state is "plan"', async () => {
   const result = await backlogExitChildParentStateGuard.run({
     cfg,
     issueNumber: 3,
-    fromState: 'assigned',
+    fromState: 'backlog',
     toState: 'refine',
     deps: makeDeps({ parent: 100, parentState: 'plan' }),
   });
@@ -117,7 +117,7 @@ test('passes when parent state is "develop" (mid-develop discovery work)', async
   const result = await backlogExitChildParentStateGuard.run({
     cfg,
     issueNumber: 31,
-    fromState: 'assigned',
+    fromState: 'backlog',
     toState: 'refine',
     deps: makeDeps({ parent: 100, parentState: 'develop' }),
   });
@@ -129,7 +129,7 @@ for (const parentState of ['backlog', 'test', 'review', 'done']) {
     const result = await backlogExitChildParentStateGuard.run({
       cfg,
       issueNumber: 4,
-      fromState: 'assigned',
+      fromState: 'backlog',
       toState: 'refine',
       deps: makeDeps({ parent: 100, parentState }),
     });
@@ -137,7 +137,7 @@ for (const parentState of ['backlog', 'test', 'review', 'done']) {
     assert.match(
       result.reason,
       new RegExp(
-        `parent #100 is in ${parentState}; child cannot enter refine until parent is in refine, plan, or develop`
+        `parent #100 is in ${parentState}; child cannot enter refine until parent is in refine, ready-for-plan, plan, or develop`
       )
     );
     assert.deepEqual(result.blockers, [result.reason]);
@@ -148,7 +148,7 @@ test('passes when parent state is null (parent not on board / transient read fai
   const result = await backlogExitChildParentStateGuard.run({
     cfg,
     issueNumber: 5,
-    fromState: 'assigned',
+    fromState: 'backlog',
     toState: 'refine',
     deps: makeDeps({ parent: 100, parentState: null }),
   });
@@ -162,7 +162,7 @@ test('fail-closed when fetchParentIssue throws (#565)', async () => {
   const result = await backlogExitChildParentStateGuard.run({
     cfg,
     issueNumber: 6,
-    fromState: 'assigned',
+    fromState: 'backlog',
     toState: 'refine',
     deps: makeDeps({ fetchThrows: 'graphql 500' }),
   });
@@ -177,7 +177,7 @@ test('fail-closed when readParentStatus throws (#565)', async () => {
   const result = await backlogExitChildParentStateGuard.run({
     cfg,
     issueNumber: 7,
-    fromState: 'assigned',
+    fromState: 'backlog',
     toState: 'refine',
     deps: makeDeps({ parent: 100, readThrows: 'graphql 502' }),
   });
@@ -192,7 +192,7 @@ test('mixed-case parent state still matches (normalized)', async () => {
   const result = await backlogExitChildParentStateGuard.run({
     cfg,
     issueNumber: 8,
-    fromState: 'assigned',
+    fromState: 'backlog',
     toState: 'refine',
     deps: makeDeps({ parent: 100, parentState: 'PLAN' }),
   });

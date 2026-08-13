@@ -99,8 +99,8 @@ export const DEFAULT_POLICY = Object.freeze({
 
 export const STATE_MATRIX = Object.freeze({
   backlog: ['WRITE_ISSUE', 'READ_*'],
-  assigned: ['WRITE_ISSUE', 'READ_*'],
   refine: ['WRITE_ISSUE', 'READ_*'],
+  'ready-for-plan': ['WRITE_ISSUE', 'READ_*'],
   plan: ['WRITE_ISSUE', 'WRITE_DOCS', 'RUN_TESTS', 'READ_*'],
   develop: [
     'WRITE_CODE',

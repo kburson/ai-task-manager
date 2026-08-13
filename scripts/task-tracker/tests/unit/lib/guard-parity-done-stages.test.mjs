@@ -159,22 +159,21 @@ describe('guard-parity: review→done', () => {
 });
 
 // -----------------------------------------------------------------------------
-// via-state-objects: assigned→refine + refine→plan through STATES (#292; the
-// Priority guard relocated to assigned-exit in #433)
+// via-state-objects: backlog→refine + refine→Ready for Planning through STATES.
 // -----------------------------------------------------------------------------
 // Exercises `STATES[from].exitGuards` + `STATES[to].entryGuards` DIRECTLY,
 // bypassing the flat registry. Asserts the refusal-reason set is identical
 // to the via-registry baseline above. Proves the state-object containers and
 // the registry agree, so callers can be migrated to read from STATES with no
 // behavior drift.
-describe('guard-parity: assigned→refine via-state-objects', () => {
+describe('guard-parity: backlog→refine via-state-objects', () => {
   it('accept fixture: state-object walk passes when Priority is set', async () => {
     const f = loadFixture('backlog-to-refine', 'accept');
     const deps = makeRefineDeps({
       ...f,
       projectValues: { priority: 'P2' },
     });
-    const r = await runStateObjectGuards('assigned', 'refine', {
+    const r = await runStateObjectGuards('backlog', 'refine', {
       cfg: CFG,
       issueNumber: 1,
       body: f.body,
@@ -183,18 +182,16 @@ describe('guard-parity: assigned→refine via-state-objects', () => {
     assert.equal(r.ok, true, JSON.stringify(r.refusals));
   });
 
-  it('refuse fixture: state-object walk refuses when Priority missing', async () => {
+  it('missing Priority does not block entry into active Refine', async () => {
     const f = loadFixture('backlog-to-refine', 'refuse');
     const deps = makeRefineDeps({ ...f, projectValues: {} });
-    const r = await runStateObjectGuards('assigned', 'refine', {
+    const r = await runStateObjectGuards('backlog', 'refine', {
       cfg: CFG,
       issueNumber: 1,
       body: f.body,
       deps: { refinementEstimate: deps },
     });
-    assert.equal(r.ok, false);
-    const reasons = (r.refusals || []).map((x) => x.reason).join(' | ');
-    assert.match(reasons, /priority/i, `expected priority refusal, got: ${reasons}`);
+    assert.equal(r.ok, true, JSON.stringify(r.refusals));
   });
 
   it('parity: state-object refusal set equals registry refusal set', async () => {
@@ -212,15 +209,15 @@ describe('guard-parity: assigned→refine via-state-objects', () => {
       body: f.body,
       deps: { refinementEstimate: deps },
     };
-    const reg = await runGuards('assigned', 'refine', ctxRegistry);
-    const obj = await runStateObjectGuards('assigned', 'refine', ctxStates);
+    const reg = await runGuards('backlog', 'refine', ctxRegistry);
+    const obj = await runStateObjectGuards('backlog', 'refine', ctxStates);
     const regKeys = new Set((reg.refusals || []).map((x) => x.id));
     const objKeys = new Set((obj.refusals || []).map((x) => x.id));
     assert.deepEqual(objKeys, regKeys);
   });
 });
 
-describe('guard-parity: refine→plan via-state-objects', () => {
+describe('guard-parity: refine→ready-for-plan via-state-objects', () => {
   it('refuse fixture: aggregate state-object refusals match library refusals', async () => {
     const f = loadFixture('refine-to-plan', 'refuse');
     const deps = makeRefineDeps(f);
@@ -234,7 +231,7 @@ describe('guard-parity: refine→plan via-state-objects', () => {
     const libExit = await gateRefineToPlan({ cfg: CFG, issueNumber: 1, deps });
     const libBlockers = new Set([...(libPreflight.blockers || []), ...(libExit.blockers || [])]);
 
-    const r = await runStateObjectGuards('refine', 'plan', {
+    const r = await runStateObjectGuards('refine', 'ready-for-plan', {
       cfg: CFG,
       issueNumber: 1,
       body: f.body,
@@ -271,8 +268,8 @@ describe('guard-parity: refine→plan via-state-objects', () => {
       body: f.body,
       deps: { refinementEstimate: deps, refineToPlanGateDeps: deps },
     };
-    const reg = await runGuards('refine', 'plan', ctxRegistry);
-    const obj = await runStateObjectGuards('refine', 'plan', ctxStates);
+    const reg = await runGuards('refine', 'ready-for-plan', ctxRegistry);
+    const obj = await runStateObjectGuards('refine', 'ready-for-plan', ctxStates);
     const regKeys = new Set((reg.refusals || []).map((x) => x.id));
     const objKeys = new Set((obj.refusals || []).map((x) => x.id));
     assert.deepEqual(objKeys, regKeys);

@@ -3,10 +3,9 @@
 // Sets Priority + Size + Estimate on the GitHub project board (via
 // tetherIssueToProject), prepends a `<!-- aitm-refinement-rationale: {...} -->`
 // marker AND stamps a `<!-- aitm-refine-complete: <ts> -->` stage-completion
-// marker to the issue body. When the issue is still pre-Refine (Backlog or
-// Assigned), executes the entry transition up to Refine (the verb-name entry):
-// backlog → assigned → refine, or assigned → refine. Does NOT forward-promote
-// out of Refine — `/task promote` must be called explicitly.
+// marker to the issue body. Backlog entry starts active Refine WIP without a
+// completion marker. Re-running the verb from Refine records the completed
+// snapshot and advances exactly one edge to durable Ready for Planning.
 //
 // CLI:
 //   /task refine <issue#> --size <XS|S|M|L|XL> --estimate <hours>
@@ -33,6 +32,10 @@ import { assertBoundToIssue } from '../lib/bind-context.mjs';
 import { STUB_AC_PLACEHOLDER } from '../lib/refine-exit-stub-placeholder-guard.mjs';
 import { actionPolicyFor } from '../lib/lifecycle-policy/index.mjs';
 import { ceilEstimateHours } from '../lib/estimation/estimate-granularity.mjs';
+import {
+  REFINEMENT_SNAPSHOT_MARKER_RE,
+  stampRefinementSnapshot,
+} from '../lib/refinement-snapshot.mjs';
 
 const pexec = promisify(execFile);
 
@@ -202,6 +205,28 @@ async function defaultAddLabels({ issueNumber, repo, labels }) {
   await pexec('gh', args, { timeout: GH_API_TIMEOUT_MS });
 }
 
+async function defaultFetchLabels({ issueNumber, repo }) {
+  const { stdout } = await pexec(
+    'gh',
+    [
+      'issue',
+      'view',
+      String(issueNumber),
+      '-R',
+      repo,
+      '--json',
+      'labels',
+      '--jq',
+      '.labels[].name',
+    ],
+    { timeout: GH_API_TIMEOUT_MS }
+  );
+  return String(stdout || '')
+    .split('\n')
+    .map((label) => label.trim())
+    .filter(Boolean);
+}
+
 // ---------------------------------------------------------------------------
 // Pure core
 // ---------------------------------------------------------------------------
@@ -223,27 +248,31 @@ export async function runRefine({ args, cfg, deps = {} } = {}) {
   const fetchBody = deps.fetchBody || defaultFetchBody;
   const mutateBody = deps.mutateBody || defaultMutateBody;
   const addLabels = deps.addLabels || defaultAddLabels;
+  const fetchLabels = deps.fetchLabels || defaultFetchLabels;
   const promote = deps.verbPromote || verbPromote;
   const ensureFieldDb = deps.ensureIssueFieldDb || ensureIssueFieldDb;
   const loadFieldDefs = deps.loadProjectFieldDefs || loadProjectFieldDefs;
 
-  // 1. Pre-load size option IDs from the project so tetherIssueToProject can
-  //    resolve `size: 'S'` → option ID without requiring the config file to
-  //    carry sizeOptions (which most installs don't).
+  // 1. Read the issue body up front so we can decide whether this run is a
+  //     pre-Refine entry transition (the one legitimate transitive advance for
+  //     this verb) or a Refine-state field/rationale refresh. Under the 8-state
+  //     model the predecessor of Refine is Backlog, so entry is exactly one hop.
+  const body = await fetchBody({ issueNumber, repo: cfg.repo });
+  const { state: recordedState } = readLastKnownState(body);
+  const isPreRefineEntry = recordedState == null || PRE_REFINE_STATES.has(recordedState);
+  const completesRefinement = recordedState === 'refine';
+  if (!isPreRefineEntry && !completesRefinement) {
+    throw new Error(`refine: current state ${recordedState || 'unknown'} is not Backlog or Refine`);
+  }
+
+  // 1b. Pre-load size option IDs from the project so tetherIssueToProject can
+  //     resolve `size: 'S'` → option ID without requiring the config file to
+  //     carry sizeOptions (which most installs don't).
   let cfgForTether = cfg;
   if (cfg.sizeFieldId && !cfg.sizeOptions && !cfg.sizeOptionMap) {
     const optMap = await loadFieldOptionMap(cfg.projectId);
     cfgForTether = { ...cfg, sizeOptionMap: optMap };
   }
-
-  // 1b. Read the issue body up front so we can decide whether this run is a
-  //     pre-Refine entry transition (the one legitimate transitive advance for
-  //     this verb) or a Refine-state field/rationale refresh. Under the 8-state
-  //     model the predecessor of Refine is Assigned, so an entry can start from
-  //     either Backlog (2 hops: backlog → assigned → refine) or Assigned (1 hop).
-  const body = await fetchBody({ issueNumber, repo: cfg.repo });
-  const { state: recordedState } = readLastKnownState(body);
-  const isPreRefineEntry = recordedState == null || PRE_REFINE_STATES.has(recordedState);
 
   // 2. Set Priority + Size + Estimate (+ Sequence when supplied) atomically on
   //    the project board.
@@ -263,6 +292,12 @@ export async function runRefine({ args, cfg, deps = {} } = {}) {
   if (labelList.length > 0) {
     await addLabels({ issueNumber, repo: cfg.repo, labels: labelList });
   }
+  // Production always reads back the exact live labels. Legacy unit seams that
+  // inject body I/O but predate the snapshot contract may omit fetchLabels;
+  // they continue to characterize their narrower behavior without networking.
+  const snapshotEnabled =
+    typeof deps.fetchLabels === 'function' || typeof deps.fetchBody !== 'function';
+  const currentLabels = snapshotEnabled ? await fetchLabels({ issueNumber, repo: cfg.repo }) : [];
 
   // 2c. Write the rationale marker (replace any existing one — last write wins).
   const marker = buildRationaleMarker({
@@ -289,8 +324,9 @@ export async function runRefine({ args, cfg, deps = {} } = {}) {
           'stub AC placeholder still present — replace the TBD acceptance criteria before running refine'
         );
       }
-      // 2d. Stamp the Refine stage-completion marker (#282).
-      next = stampRefineCompleteMarker(next);
+      // 2d. Backlog entry begins active WIP. Only a run already in Refine
+      // declares the work current and stamps completion evidence.
+      if (completesRefinement) next = stampRefineCompleteMarker(next);
       // #223 — refresh the aitm-fields body cache.
       try {
         const fieldDefs = loadFieldDefs();
@@ -309,6 +345,9 @@ export async function runRefine({ args, cfg, deps = {} } = {}) {
       } catch (err) {
         process.stderr.write(`[refine] WARN: aitm-fields cache refresh skipped: ${err.message}\n`);
       }
+      if (completesRefinement && snapshotEnabled) {
+        next = stampRefinementSnapshot(next, { labels: currentLabels });
+      }
       newBody = next;
       return next;
     },
@@ -320,19 +359,12 @@ export async function runRefine({ args, cfg, deps = {} } = {}) {
     throw new Error(`refine: wrote rationale marker but parse failed: ${parsed.reason}`);
   }
 
-  // 4. Pre-Refine → Refine entry transition (#282, #433). This is the
-  //     verb-name entry transition — the one legitimate transitive advance for
-  //     this verb. Under the 8-state model the issue may start in Backlog or
-  //     Assigned; advance one state at a time until it reaches Refine (backlog →
-  //     assigned → refine, or assigned → refine). backlog → assigned is gateless;
-  //     assigned → refine runs the Priority gate, which step 2's tether already
-  //     satisfied. When the issue is already in Refine (or any later state) we
-  //     do NOT advance; the user must call `/task promote` explicitly to exit
-  //     Refine. No forward EXIT advancement from a stage verb.
+  // 4. The verb owns one edge per invocation: Backlog -> active Refine, or a
+  //    completed Refine -> durable Ready for Planning. Later states do not move.
   let promoted = false;
-  if (isPreRefineEntry) {
+  if (isPreRefineEntry || completesRefinement) {
     const startState = recordedState == null ? 'backlog' : recordedState;
-    const hops = startState === 'backlog' ? 2 : 1;
+    const hops = startState === 'backlog' || startState === 'refine' ? 1 : 0;
     try {
       for (let i = 0; i < hops; i += 1) {
         await promote([String(issueNumber)], cfg);
@@ -348,7 +380,8 @@ export async function runRefine({ args, cfg, deps = {} } = {}) {
       await mutateBody({
         issueNumber,
         repo: cfg.repo,
-        mutate: (base) => base.replace(REFINE_COMPLETE_MARKER_RE, ''),
+        mutate: (base) =>
+          base.replace(REFINE_COMPLETE_MARKER_RE, '').replace(REFINEMENT_SNAPSHOT_MARKER_RE, ''),
       });
       throw err;
     }
@@ -361,6 +394,7 @@ export async function runRefine({ args, cfg, deps = {} } = {}) {
     estimate: estimateNum,
     priority: priorityNorm.toUpperCase(),
     promoted,
+    completed: completesRefinement,
     recordedState: recordedState ?? null,
   };
 }
@@ -383,9 +417,10 @@ export async function verbRefine(rest, cfg) {
 
   try {
     const result = await runRefine({ args, cfg });
+    const target = result.completed ? 'Ready for Planning' : 'Refine';
     const tail = result.promoted
-      ? `; moved ${result.recordedState ?? 'backlog'} → Refine`
-      : `; stayed at ${result.recordedState ?? 'refine'} (no forward promote — run \`/task promote\` to advance)`;
+      ? `; moved ${result.recordedState ?? 'backlog'} → ${target}`
+      : `; stayed at ${result.recordedState ?? 'refine'}`;
     process.stdout.write(
       `✓ #${result.issueNumber} refined: size=${result.size}, estimate=${result.estimate}h, priority=${result.priority}${tail}\n`
     );

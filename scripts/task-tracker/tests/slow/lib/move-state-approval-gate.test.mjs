@@ -184,18 +184,38 @@ if (args[0] === 'api' && new RegExp('^repos/[^/]+/[^/]+/issues/[0-9]+/comments$'
   fs.writeSync(1, JSON.stringify([{ id: 1, body: commentBody }]));
   process.exit(0);
 }
+if (args[0] === 'api' && args[1] === 'user') {
+  fs.writeSync(1, 'kburson');
+  process.exit(0);
+}
 if (args[0] === 'api' && args[1] === 'graphql') {
   // Query payload comes via stdin (--input -). Read it to decide the shape.
   let stdin = '';
   try { stdin = fs.readFileSync(0, 'utf8'); } catch {}
+  if (stdin.includes('subIssues')) {
+    const payload = {
+      data: { repository: { issue: {
+        subIssues: {
+          totalCount: 0,
+          nodes: [],
+          pageInfo: { hasNextPage: false, endCursor: null },
+        },
+      } } },
+    };
+    fs.writeSync(1, JSON.stringify(payload));
+    process.exit(0);
+  }
   if (stdin.includes('projectItems')) {
     let opt = '';
     try { opt = fs.readFileSync(STATE_FILE, 'utf8'); } catch {}
     const payload = {
-      data: { repository: { issue: { projectItems: { nodes: [
+      data: { repository: { issue: {
+        assignees: { nodes: [{ login: 'kburson' }] },
+        projectItems: { nodes: [
         { project: { id: ${JSON.stringify(PROJECT_ID)} },
           fieldValueByName: { name: ${JSON.stringify(currentState)}, optionId: opt } },
-      ] } } } },
+        ], pageInfo: { hasNextPage: false, endCursor: null } },
+      } } },
     };
     fs.writeSync(1, JSON.stringify(payload));
     process.exit(0);

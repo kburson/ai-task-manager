@@ -1,22 +1,7 @@
 #!/usr/bin/env node
-// @story #877
-// Integration: the epic child-state invariant across the develop → test →
-// review → done arc, driven through the REAL guard registry (not the gate
-// functions in isolation).
-//
-// This is the end-to-end shape of the deadlock #877 fixes, observed live on
-// epic #860: children #872-875 all sat at `review` with the aggregate suite
-// green, yet develop → test refused with `epic-children-not-done`. Under the
-// PR-based flow a child cannot reach `done` until the epic branch lands on
-// trunk, and the branch cannot land until the epic itself passes Test and
-// Review — so the old gate left the epic with no legal forward move.
-//
-// The contract pinned here:
-//   children all at `review`  →  develop→test OK, test→review OK, review→done REFUSED
-//   children all at `done`    →  review→done OK
-//
-// The refusal half matters as much as the pass half: it proves the child-done
-// invariant was MOVED by #877, not dropped.
+// @story #1216
+// Production-shaped registry coverage for R4P epic admission and terminal
+// child delivery across the parent lifecycle.
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
@@ -66,7 +51,24 @@ function makeCtx({ fromState, toState, childState }) {
       // The seam both epic-children gates read through.
       epicChildren: {
         fetchSiblings: async () =>
-          CHILDREN.map((number, i) => ({ number, state: childState, rank: i + 1 })),
+          CHILDREN.map((number, i) =>
+            childState === 'done'
+              ? {
+                  number,
+                  state: 'done',
+                  boardState: 'done',
+                  issueState: 'closed',
+                  closeReason: 'completed',
+                  rank: i + 1,
+                }
+              : {
+                  number,
+                  state: childState,
+                  rank: i + 1,
+                  blockedBy: [],
+                  hasCurrentRefinement: childState !== 'backlog',
+                }
+          ),
       },
       // The epic has no parent, so child-cannot-lead-epic passes trivially.
       fetchParentIssue: async () => null,
@@ -97,53 +99,62 @@ function ids(result) {
   return new Set((result.refusals || []).map((r) => r.id));
 }
 
-describe('epic children at review: forward arcs open, close arc still gated (#877)', () => {
-  it('develop → test passes when every child is at review', async () => {
+describe('epic R4P admission and terminal delivery (#1216)', () => {
+  it('R4P → Plan passes when every child is currently refined and parked at R4P', async () => {
+    const result = await runGuards(
+      'ready-for-plan',
+      'plan',
+      makeCtx({ fromState: 'ready-for-plan', toState: 'plan', childState: 'ready-for-plan' })
+    );
+    assert.ok(
+      !ids(result).has('ready-for-plan-exit-epic-children-r4p-or-beyond'),
+      `epic-children guard refused: ${JSON.stringify(result.refusals)}`
+    );
+  });
+
+  it('R4P → Plan refuses when any child remains in Backlog', async () => {
+    const result = await runGuards(
+      'ready-for-plan',
+      'plan',
+      makeCtx({ fromState: 'ready-for-plan', toState: 'plan', childState: 'backlog' })
+    );
+    assert.equal(result.ok, false);
+    assert.ok(
+      ids(result).has('ready-for-plan-exit-epic-children-r4p-or-beyond'),
+      `expected R4P admission refusal; got ${JSON.stringify(result.refusals)}`
+    );
+  });
+
+  it('develop → test refuses while children are still at Review', async () => {
     const result = await runGuards(
       'develop',
       'test',
       makeCtx({ fromState: 'develop', toState: 'test', childState: 'review' })
     );
-    assert.ok(
-      !ids(result).has('develop-exit-epic-children-done'),
-      `epic-children guard refused: ${JSON.stringify(result.refusals)}`
-    );
-  });
-
-  it('test → review passes when every child is at review', async () => {
-    const result = await runGuards(
-      'test',
-      'review',
-      makeCtx({ fromState: 'test', toState: 'review', childState: 'review' })
-    );
-    assert.ok(
-      !ids(result).has('develop-exit-epic-children-done'),
-      `epic-children guard refused: ${JSON.stringify(result.refusals)}`
-    );
-    assert.ok(
-      !ids(result).has('review-exit-epic-children-done'),
-      'review-exit guard must not fire on the test → review arc'
-    );
-  });
-
-  it('review → done REFUSES while children are still at review', async () => {
-    const result = await runGuards(
-      'review',
-      'done',
-      makeCtx({ fromState: 'review', toState: 'done', childState: 'review' })
-    );
     assert.equal(result.ok, false);
     assert.ok(
-      ids(result).has('review-exit-epic-children-done'),
-      `expected review-exit-epic-children-done; got ${JSON.stringify(result.refusals)}`
+      ids(result).has('develop-exit-epic-children-done'),
+      `expected develop-exit-epic-children-done; got ${JSON.stringify(result.refusals)}`
     );
-    const refusal = result.refusals.find((r) => r.id === 'review-exit-epic-children-done');
+    const refusal = result.refusals.find((r) => r.id === 'develop-exit-epic-children-done');
     for (const n of CHILDREN) {
       assert.match(refusal.reason, new RegExp(`#${n}`));
     }
   });
 
-  it('review → done passes once every child reaches done', async () => {
+  it('develop → test passes once every child is terminally delivered', async () => {
+    const result = await runGuards(
+      'develop',
+      'test',
+      makeCtx({ fromState: 'develop', toState: 'test', childState: 'done' })
+    );
+    assert.ok(
+      !ids(result).has('develop-exit-epic-children-done'),
+      `epic-children guard refused: ${JSON.stringify(result.refusals)}`
+    );
+  });
+
+  it('review → done passes once every child is terminally delivered', async () => {
     const result = await runGuards(
       'review',
       'done',
@@ -154,20 +165,5 @@ describe('epic children at review: forward arcs open, close arc still gated (#87
       `epic-children guard refused: ${JSON.stringify(result.refusals)}`
     );
     assert.equal(result.ok, true, `registry refused: ${JSON.stringify(result.refusals)}`);
-  });
-
-  it('develop → test still REFUSES when a child is behind review', async () => {
-    const result = await runGuards(
-      'develop',
-      'test',
-      makeCtx({ fromState: 'develop', toState: 'test', childState: 'develop' })
-    );
-    assert.equal(result.ok, false);
-    assert.ok(
-      ids(result).has('develop-exit-epic-children-done'),
-      `expected develop-exit-epic-children-done; got ${JSON.stringify(result.refusals)}`
-    );
-    const refusal = result.refusals.find((r) => r.id === 'develop-exit-epic-children-done');
-    assert.match(refusal.reason, /epic-children-not-in-review/);
   });
 });

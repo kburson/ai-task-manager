@@ -93,18 +93,21 @@ test('AC2 — a demote re-entry accumulates under the same phase key', () => {
   assert.equal(r.totalActiveSec, 600);
 });
 
-test('#1206 — historical second-stage timing rows retain canonical phase totals', () => {
+test('#1211 — historical second-stage timing rows retain canonical phase totals', () => {
   const canonical = bodyWith([
     row('12:55:00', 'backlog:created'),
-    row('13:00:00', 'assigned:started'),
+    row('13:00:00', 'ready-for-plan:started'),
     row('13:05:00', 'refine:started'),
     row('13:10:00', 'refine:completed'),
   ]);
-  const historical = canonical.replace('assigned:started', 'on-deck:started');
+  const historical = canonical.replace('ready-for-plan:started', 'on-deck:started');
   const expected = computeActiveByPhaseSpans(canonical);
   const actual = computeActiveByPhaseSpans(historical);
   assert.deepEqual(actual, expected);
-  assert.equal(actual.perPhase.find(({ event }) => event === 'assigned:started').activeSec, 300);
+  assert.equal(
+    actual.perPhase.find(({ event }) => event === 'ready-for-plan:started').activeSec,
+    300
+  );
 });
 
 test('AC2 — rollupTotals derives totals from spans, not per-row sums', () => {

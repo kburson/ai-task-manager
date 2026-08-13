@@ -111,9 +111,9 @@ assert.equal(
 const legacyPath = activeTaskPath('sess-legacy-assigned', tmp);
 mkdirSync(path.dirname(legacyPath), { recursive: true });
 writeFileSync(legacyPath, JSON.stringify({ issue: '#1206', kanbanState: 'on-deck' }));
-assert.equal(getActiveTask('sess-legacy-assigned', tmp).kanbanState, 'assigned');
+assert.equal(getActiveTask('sess-legacy-assigned', tmp).kanbanState, 'ready-for-plan');
 setSessionKanbanState('sess-legacy-assigned', 'on-deck', tmp);
-assert.equal(JSON.parse(readFileSync(legacyPath, 'utf8')).kanbanState, 'assigned');
+assert.equal(JSON.parse(readFileSync(legacyPath, 'utf8')).kanbanState, 'ready-for-plan');
 
 rmSync(tmp, { recursive: true });
 console.log('session-state.test.mjs: all passed');

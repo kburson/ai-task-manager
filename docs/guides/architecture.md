@@ -49,7 +49,7 @@ Small, intentionally. Total prose is well under a thousand lines.
 | [`skill/shared/rules/hooks.md`](../../skill/shared/rules/hooks.md)                         | 45    | Rule: hook behavior (PreCompact / PostCompact / SessionStart)                                      |
 | [`skill/shared/rules/commit-trail.md`](../../skill/shared/rules/commit-trail.md)           | 45    | Rule: commit trail comment shape                                                                   |
 | [`skill/shared/rules/review.md`](../../skill/shared/rules/review.md)                       | 67    | Rule: review state — including the full-auto audit-comment requirement                             |
-| [`skill/shared/rules/state-walk.md`](../../skill/shared/rules/state-walk.md)               | 56    | Rule: the eight-state walk (Backlog → Assigned → Refine → Plan → Develop → Test → Review → Done)   |
+| [`skill/shared/rules/state-walk.md`](../../skill/shared/rules/state-walk.md)               | 56    | Rule: the eight-state walk (Backlog → Refine → R4P → Plan → Develop → Test → Review → Done)        |
 | [`skill/shared/rules/close.md`](../../skill/shared/rules/close.md)                         | 81    | Rule: close procedure                                                                              |
 | [`skill/shared/rules/preferences.md`](../../skill/shared/rules/preferences.md)             | 35    | Rule: user preferences (no PR push for solo project, etc.)                                         |
 | [`templates/pickup-directive.md`](../../templates/pickup-directive.md)                     | —     | Issue-body tail template — kept as a template so scripts inject it, the model doesn't hand-roll it |

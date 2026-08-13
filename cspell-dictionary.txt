@@ -284,4 +284,9 @@ worktreeinclude
 worktrees
 Worktrees
 zxcvbn
+cutover
+journaled
+noninteractive
+nonterminal
+reattribution
 Δwords

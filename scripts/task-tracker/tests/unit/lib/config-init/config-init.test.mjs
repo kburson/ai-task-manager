@@ -44,8 +44,8 @@ const FULL_ENV = {
   PROJECT_NODE_ID: 'PVT_node',
   KANBAN_FIELD_ID: 'kanbanF',
   OPTION_BACKLOG: 'b',
-  OPTION_ASSIGNED: 'as',
   OPTION_REFINE: 'r',
+  OPTION_READY_FOR_PLAN: 'r4p',
   OPTION_PLAN: 'pl',
   OPTION_DEVELOP: 'd',
   OPTION_TEST: 't',
@@ -64,7 +64,7 @@ test('buildUpdates always writes the required field-id keys', () => {
   assert.equal(u.projectId, 'PVT_node');
   assert.equal(u.kanbanFieldId, 'kanbanF');
   assert.equal(u.kanbanOptionBacklog, 'b');
-  assert.equal(u.kanbanOptionAssigned, 'as');
+  assert.equal(u.kanbanOptionReadyForPlan, 'r4p');
   assert.equal(u.priorityOptionP3, 'p3');
 });
 
@@ -101,9 +101,9 @@ test('mergeConfig preserves hand-set keys the bootstrap never touches', () => {
   assert.equal(merged.repo, 'owner/repo', 'required keys are overwritten');
 });
 
-test('mergeConfig rewrites the legacy On Deck option key to Assigned', () => {
+test('mergeConfig rewrites the legacy On Deck option key to Ready for Planning', () => {
   const merged = mergeConfig({ kanbanOptionOnDeck: 'legacy-id' }, FULL_ENV);
-  assert.equal(merged.kanbanOptionAssigned, 'as');
+  assert.equal(merged.kanbanOptionReadyForPlan, 'r4p');
   assert.ok(!('kanbanOptionOnDeck' in merged), 'legacy key must be removed on repair');
 });
 
@@ -111,10 +111,10 @@ test('mergeConfig fails closed when legacy and canonical option ids conflict', (
   assert.throws(
     () =>
       mergeConfig(
-        { kanbanOptionOnDeck: 'legacy-id', kanbanOptionAssigned: 'different-id' },
+        { kanbanOptionOnDeck: 'legacy-id', kanbanOptionReadyForPlan: 'different-id' },
         FULL_ENV
       ),
-    /conflicts.*refusing repair/i
+    /conflict.*refusing repair/i
   );
 });
 
@@ -128,14 +128,14 @@ test('preflightConfig validates existing config without writing', () => {
           readFileSync: () =>
             JSON.stringify({
               kanbanOptionOnDeck: 'legacy-id',
-              kanbanOptionAssigned: 'different-id',
+              kanbanOptionReadyForPlan: 'different-id',
             }),
           writeFileSync: () => {
             writes += 1;
           },
         }
       ),
-    /conflicts.*refusing repair/i
+    /conflict.*refusing repair/i
   );
   assert.equal(writes, 0, 'preflight must never write config or project state');
 });
@@ -236,7 +236,8 @@ test('writeIssueTemplates is idempotent — same bytes on re-run', () => {
 test('canonColor returns the palette color or empty for unknown', () => {
   assert.equal(canonColor('Backlog'), 'GRAY');
   assert.equal(canonColor('Done'), 'PURPLE');
-  assert.equal(canonColor('Develop'), 'GREEN');
+  assert.equal(canonColor('Develop'), 'YELLOW');
+  assert.equal(canonColor('Ready for Planning'), 'GRAY');
   assert.equal(canonColor('Nonexistent'), '');
   assert.equal(CANONICAL_STATUS_PALETTE.length, 8, 'eight canonical board states');
 });

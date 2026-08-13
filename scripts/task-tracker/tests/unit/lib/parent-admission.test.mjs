@@ -38,7 +38,7 @@ function stubReader(value) {
 }
 
 // 2. Refuse for each pre-Development parent state.
-for (const state of ['backlog', 'assigned', 'refine', 'plan']) {
+for (const state of ['backlog', 'refine', 'ready-for-plan', 'plan']) {
   const r = await checkParentAdmission({
     parentEpicNumber: 61,
     repo: 'o/r',

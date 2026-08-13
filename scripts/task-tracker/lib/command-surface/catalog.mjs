@@ -114,22 +114,78 @@ export const VERB_CONTRACTS = Object.freeze({
     ['Prints the prior and resulting state or the refusing gate.'],
     [MOVE_REFUSAL, ...PREFLIGHT_TARGET_EXITS]
   ),
-  park: contract(
-    ['The target must be in Refine or Plan, --reason is required, and preflight checks must pass.'],
-    ['Moves the issue to Backlog while retaining estimate fields and records the reason.'],
-    ['Prints the parked issue, retained fields, and transition result.'],
+  shelve: contract(
+    [
+      'The target must be in Refine or Ready for Planning, --reason is required, and configured-project preflight must pass.',
+      'The current refinement snapshot, active body fields, exact configured-project fields, labels, Status, and ownership must be readable.',
+    ],
+    [
+      'Appends an immutable refinement-history snapshot before invalidating active refinement, planning, and execution evidence.',
+      'Clears Priority, Size, Estimate, and Rank, moves Status to Backlog, and optionally removes the verified sole owner through one recoverable phase journal.',
+    ],
+    ['Prints the verified Shelve transaction id or a phase-specific recovery refusal.'],
     [MOVE_REFUSAL, ...PREFLIGHT_TARGET_EXITS]
+  ),
+  park: contract(
+    [
+      'Compatibility spelling of Shelve; the target must be in Refine or Ready for Planning and --reason is required.',
+    ],
+    ['Delegates to the canonical Shelve transaction; no estimate-preserving Park path remains.'],
+    ['Prints the verified Shelve result or the same recovery refusal as shelve.'],
+    [MOVE_REFUSAL, ...PREFLIGHT_TARGET_EXITS]
+  ),
+  'cancel-plan': contract(
+    ['The target must be in Plan, --reason is required, and preflight checks must pass.'],
+    [
+      'Invalidates Plan-only approval, forecast, deep-dive completion, and incomplete verification evidence, then moves exactly one edge to Ready for Planning.',
+      'Clears the stale Planned Estimate appendix and restores Plan artifacts, board fields, and comment evidence when the Status transition fails.',
+    ],
+    ['Prints the cancellation edge or a fail-closed recovery diagnostic.'],
+    [MOVE_REFUSAL, ...PREFLIGHT_TARGET_EXITS]
+  ),
+  assign: contract(
+    [
+      'The target must match the active binding and be unassigned; ownership-management preflight still enforces live-state drift.',
+    ],
+    [
+      'Assigns exactly one verified GitHub owner under the issue lock without changing lifecycle Status.',
+    ],
+    ['Prints the final singleton owner and unchanged Status or the refusing ownership condition.'],
+    [exit(2, 'strict argument usage failed'), ...PREFLIGHT_TARGET_EXITS]
+  ),
+  transfer: contract(
+    [
+      'The target must match the active binding and be owned solely by the authenticated local identity.',
+    ],
+    [
+      'Transfers to exactly one verified replacement owner under the issue lock without changing Status.',
+    ],
+    ['Prints the replacement owner and unchanged Status or the refusing ownership condition.'],
+    [exit(2, 'strict argument usage failed'), ...PREFLIGHT_TARGET_EXITS]
+  ),
+  unassign: contract(
+    [
+      'The target must match the active binding, be pre-Develop, and be owned solely by the local identity.',
+    ],
+    ['Removes the singleton owner under the issue lock without changing lifecycle Status.'],
+    ['Prints the unassigned result and unchanged Status or the refusing ownership condition.'],
+    [exit(2, 'strict argument usage failed'), ...PREFLIGHT_TARGET_EXITS]
   ),
   refine: contract(
     [
-      'The issue must exist in Backlog; size, estimate, priority, and reason are required; assignee and drift checks must pass.',
+      'The issue must exist in Backlog or Refine; size, estimate, priority, and reason are required; assignee and drift checks must pass.',
     ],
-    ['Writes refinement fields and rationale, then moves the issue one edge into Refine.'],
+    [
+      'From Backlog, writes refinement fields and enters active Refine WIP without completion evidence.',
+      'From Refine, writes a current refinement snapshot and advances one edge to Ready for Planning.',
+    ],
     ['Prints the applied fields, rationale marker, transition result, or refusal prompt.'],
     [MOVE_REFUSAL, ...PREFLIGHT_TARGET_EXITS]
   ),
   plan: contract(
-    ['The numbered issue must exist in Refine and satisfy the Refine-to-Plan entry gates.'],
+    [
+      'The numbered issue must exist in Ready for Planning and satisfy the R4P-to-Plan entry gates.',
+    ],
     ['Moves the issue one edge into Plan without running discovery-plan generation.'],
     ['Prints gate failures or the confirmed Plan state.'],
     [MOVE_REFUSAL]
@@ -324,6 +380,26 @@ export const VERB_CONTRACTS = Object.freeze({
     ['Prints per-criterion evidence status and mutation totals.'],
     [exit(3, 'evidence audit found invalid or incomplete marker state')]
   ),
+  'issue-body': contract(
+    [
+      'The target must be the active issue with an open timing session, matching assignee, matching worktree, and a valid aitm.issue-body-operation/v1 file.',
+    ],
+    [
+      'Evaluates one exact or named-section replacement against every fresh remote body through mutateIssueBody and verifies the persisted body.',
+    ],
+    ['Prints the mutation status and verified body version.'],
+    PREFLIGHT_TARGET_EXITS
+  ),
+  comment: contract(
+    [
+      'The target must be the active issue with an open timing session, matching assignee, matching worktree, a stable key, and a readable body file.',
+    ],
+    [
+      'Exhaustively finds the marker-owned comment, creates, updates, or no-ops exactly one match, and verifies correlated read-back.',
+    ],
+    ['Prints the idempotent result and verified comment node id.'],
+    PREFLIGHT_TARGET_EXITS
+  ),
   'adopt-github-records': contract(
     ['The issue must exist; mutation modes additionally require current coordinator authority.'],
     ['Audits legacy parity by default, or explicitly adopts, rolls back, or repairs one issue.'],
@@ -446,8 +522,13 @@ export const VERB_RELATED_COMMANDS = Object.freeze({
   'words-count': Object.freeze(['status', 'update', 'log']),
   promote: Object.freeze(['demote', 'plan', 'test', 'review', 'close']),
   demote: Object.freeze(['promote', 'review', 'test']),
-  park: Object.freeze(['refine', 'promote']),
-  refine: Object.freeze(['park', 'plan', 'promote']),
+  shelve: Object.freeze(['refine', 'park', 'promote']),
+  park: Object.freeze(['shelve', 'refine', 'promote']),
+  'cancel-plan': Object.freeze(['plan', 'plan-estimate', 'plan-approve']),
+  assign: Object.freeze(['transfer', 'unassign', 'promote']),
+  transfer: Object.freeze(['assign', 'unassign', 'status']),
+  unassign: Object.freeze(['assign', 'transfer', 'shelve']),
+  refine: Object.freeze(['shelve', 'plan', 'promote']),
   plan: Object.freeze(['plan-estimate', 'plan-approve', 'promote']),
   'plan-approve': Object.freeze(['plan-estimate', 'promote']),
   'plan-estimate': Object.freeze(['plan-approve', 'promote']),
@@ -474,6 +555,8 @@ export const VERB_RELATED_COMMANDS = Object.freeze({
   ensureChecked: Object.freeze(['ac-stamp', 'dod-stamp', 'ensureUnchecked']),
   ensureUnchecked: Object.freeze(['ensureChecked', 'reject']),
   'evidence-markers': Object.freeze(['ac-stamp', 'ensureChecked']),
+  'issue-body': Object.freeze(['comment', 'evidence-markers']),
+  comment: Object.freeze(['issue-body', 'commit-trace']),
   'adopt-github-records': Object.freeze(['evidence-markers', 'reconcile']),
   'commit-trace': Object.freeze(['close', 'status']),
   'mirror-deep-dive': Object.freeze(['plan', 'save-plan']),
@@ -512,7 +595,14 @@ export const VERB_POSITIONAL_ARGUMENTS = Object.freeze({
   demote: Object.freeze([
     positional('#N', 'Required issue number returned one state toward Develop.'),
   ]),
+  shelve: Object.freeze([positional('<N>', 'Refine or R4P issue number to return to Backlog.')]),
   park: Object.freeze([positional('<N>', 'Issue number to return to Backlog.')]),
+  'cancel-plan': Object.freeze([
+    positional('<N>', 'Plan issue number to return to Ready for Planning.'),
+  ]),
+  assign: Object.freeze([positional('<N>', 'Issue number to assign to one owner.')]),
+  transfer: Object.freeze([positional('<N>', 'Issue number whose owner will be replaced.')]),
+  unassign: Object.freeze([positional('<N>', 'Pre-Develop issue number to unassign.')]),
   refine: Object.freeze([positional('<N>', 'Issue number to refine.')]),
   plan: Object.freeze([positional('#N', 'Issue number to move from Refine to Plan.')]),
   'plan-approve': Object.freeze([
@@ -580,6 +670,12 @@ export const VERB_POSITIONAL_ARGUMENTS = Object.freeze({
   'evidence-markers': Object.freeze([
     positional('<audit|backfill>', 'Evidence-marker operation.'),
     positional('#N', 'Issue number to audit or backfill.'),
+  ]),
+  'issue-body': Object.freeze([
+    positional('#N', 'Issue number whose fresh body will be transformed.'),
+  ]),
+  comment: Object.freeze([
+    positional('#N', 'Issue number whose marker-owned comment will be upserted.'),
   ]),
   'adopt-github-records': Object.freeze([
     positional('<N>', 'Issue number to audit, adopt, roll back, or repair.'),

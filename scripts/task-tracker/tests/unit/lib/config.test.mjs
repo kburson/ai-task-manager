@@ -169,9 +169,13 @@ assert.throws(
   /zero or a positive integer/i
 );
 
-// Test 20 (#1206): Assigned is canonical while the legacy config key remains
+// Test 20 (#1211): Ready for Planning is canonical while both legacy keys remain
 // readable for one compatibility window with a deterministic warning.
-assert.equal(DEFAULTS.kanbanOptionAssigned, '', 'Assigned option is a known default key');
+assert.equal(
+  DEFAULTS.kanbanOptionReadyForPlan,
+  '',
+  'Ready for Planning option is a known default key'
+);
 assert.equal('kanbanOptionOnDeck' in DEFAULTS, false, 'legacy option is not canonical');
 writeFileSync(projectPath, JSON.stringify({ kanbanOptionOnDeck: 'LEGACY_ASSIGNED_ID' }));
 const warnings = [];
@@ -182,8 +186,8 @@ try {
 } finally {
   console.warn = originalWarn;
 }
-assert.equal(cfg.kanbanOptionAssigned, 'LEGACY_ASSIGNED_ID');
-assert.match(warnings.join('\n'), /kanbanOptionOnDeck.*deprecated.*kanbanOptionAssigned/i);
+assert.equal(cfg.kanbanOptionReadyForPlan, 'LEGACY_ASSIGNED_ID');
+assert.match(warnings.join('\n'), /kanbanOptionOnDeck.*deprecated.*kanbanOptionReadyForPlan/i);
 
 writeFileSync(
   projectPath,
@@ -199,7 +203,7 @@ try {
 } finally {
   console.warn = originalWarn;
 }
-assert.equal(cfg.kanbanOptionAssigned, 'SAME_ASSIGNED_ID');
+assert.equal(cfg.kanbanOptionReadyForPlan, 'SAME_ASSIGNED_ID');
 assert.match(warnings.join('\n'), /kanbanOptionOnDeck.*deprecated/i);
 
 writeFileSync(
@@ -209,10 +213,7 @@ writeFileSync(
     kanbanOptionAssigned: 'DIFFERENT_ASSIGNED_ID',
   })
 );
-assert.throws(
-  () => loadConfig({ projectPath, userPath }),
-  /kanbanOptionOnDeck conflicts with kanbanOptionAssigned/i
-);
+assert.throws(() => loadConfig({ projectPath, userPath }), /compatibility keys conflict/i);
 
 rmSync(tmp, { recursive: true });
 console.log('config.test.mjs: all passed');

@@ -66,8 +66,8 @@ const SHARED_RULES = [
     // is the canonical prose sentence, NOT the invariant name.
     name: 'rank',
     home: 'templates/references/pickup-directive-rationale.md',
-    homeAnchor: 'Refine is a single-item-in-flight column',
-    duped: 'Refine is a single-item-in-flight column',
+    homeAnchor: 'Ready for Planning is the durable child queue',
+    duped: 'Ready for Planning is the durable child queue',
   },
   {
     name: 'checkpoint',

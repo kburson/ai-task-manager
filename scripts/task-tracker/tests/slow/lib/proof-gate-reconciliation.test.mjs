@@ -59,7 +59,7 @@ function writeConfig(sandbox) {
   mkdirSync(path.join(sandbox, '.ai-task-manager'), { recursive: true });
   writeFileSync(
     path.join(sandbox, '.ai-task-manager', 'task-tracker.json'),
-    JSON.stringify({ repo: 'test-owner/test-repo' }, null, 2)
+    JSON.stringify({ repo: 'test-owner/test-repo', projectId: 'PVT_test' }, null, 2)
   );
 }
 
@@ -94,7 +94,19 @@ const argv = process.argv.slice(2);
 function currentBody() {
   try { return fs.readFileSync(STATE, 'utf8'); } catch { return ''; }
 }
-if (argv[0] === 'issue' && argv[1] === 'view') {
+if (argv[0] === 'api' && argv[1] === 'user') {
+  fs.writeSync(1, 'kburson');
+  process.exit(0);
+} else if (argv[0] === 'api' && argv[1] === 'graphql') {
+  fs.writeSync(1, JSON.stringify({ data: { repository: { issue: {
+    assignees: { nodes: [{ login: 'kburson' }] },
+    projectItems: {
+      nodes: [{ project: { id: 'PVT_test' }, fieldValueByName: { name: 'Develop' } }],
+      pageInfo: { hasNextPage: false, endCursor: null },
+    },
+  } } } }));
+  process.exit(0);
+} else if (argv[0] === 'issue' && argv[1] === 'view') {
   const raw = argv.includes('--jq') || argv.includes('-q');
   const body = currentBody();
   if (raw) { fs.writeSync(1, body); }

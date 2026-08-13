@@ -21,6 +21,7 @@ import { test } from 'node:test';
 
 import { runPromote } from '../../../verbs/promote.mjs';
 import { writeLastKnownState, readLastKnownState } from '../../../gh-timing-comment.mjs';
+import { stampRefinementSnapshot } from '../../../lib/refinement-snapshot.mjs';
 import { stampEntryMarker } from '../../../lib/stage-entry-markers.mjs';
 
 const cfg = { repo: 'o/r', projectId: 'PROJ_1' };
@@ -75,17 +76,25 @@ function makeDeps({ body, live, liveAfter, moveCode = 0 } = {}) {
   };
 }
 
-test('promote does not write aitm-last-known-state on successful refine→plan', async () => {
+test('promote does not write aitm-last-known-state on successful refine→R4P', async () => {
   const rationale =
-    '<!-- aitm-refinement-rationale: {"size":"a","estimate":"b","priority":"c"} -->';
+    '<!-- aitm-refinement-rationale: {"size":"S","estimate":"4","priority":"P2","rank":3,"rationale":"current"} -->';
   const refineComplete = '<!-- aitm-refine-complete: 2026-06-03T00:00:00Z -->';
-  const ac = '## Acceptance Criteria\n- [ ] foo\n';
+  const ac =
+    '## Scope\n\nCurrent refinement scope for marker ownership.\n\n## Plan Metadata\n\n- **Depends On**: none\n\n## Acceptance Criteria\n\n- [ ] foo\n\n<!-- aitm-fields: {"schema":1,"values":{"priority":"P2","size":"S","estimate":4,"rank":3,"blockedBy":null}} -->\n';
   const userStory =
     '## User Story\nAs a developer\nI want to rename a field\nSo that the terminology is consistent\n';
   // #503 — `## User Story` must be the first `## ` heading; lead with it.
   const head = `<!-- aitm-last-known-state: refine -->\n<!-- aitm-last-known-state-ts: 2026-05-10T00:00:00Z -->\n\n`;
-  const body = `${head}${userStory}\n## Issue\n\nbody.\n\n${refineComplete}\n${rationale}\n\n${ac}`;
+  const body = stampRefinementSnapshot(
+    `${head}${userStory}\n## Issue\n\nbody.\n\n${refineComplete}\n${rationale}\n\n${ac}`,
+    { labels: ['enhancement'], ts: '2026-06-03T00:00:00Z' }
+  );
   const { deps, calls } = makeDeps({ body, live: 'refine' });
+  deps.refinementSnapshot = {
+    fetchLabels: async () => ['enhancement'],
+    fetchBoardFields: async () => ({ priority: 'P2', size: 'S', estimate: 4, rank: 3 }),
+  };
   deps.refinementEstimate = {
     loadProjectFieldDefs: () => [],
     projectValuesForIssue: async () => ({ size: 'S', estimate: 4, priority: 'P2' }),
@@ -97,11 +106,11 @@ test('promote does not write aitm-last-known-state on successful refine→plan',
 
   const r = await runPromote({ issueNumber: 100, cfg, deps });
   assert.equal(r.status, 'promoted');
-  assert.equal(r.to, 'plan');
+  assert.equal(r.to, 'ready-for-plan');
   // The bootstrap path is the only place promote.mjs is allowed to write
   // aitm-last-known-state. Body already had a recorded state, so no write.
   const wroteLastKnownState = calls.writes.some((b) =>
-    /<!--\s*aitm-last-known-state:\s*plan\s*-->/.test(b)
+    /<!--\s*aitm-last-known-state:\s*ready-for-plan\s*-->/.test(b)
   );
   assert.equal(
     wroteLastKnownState,

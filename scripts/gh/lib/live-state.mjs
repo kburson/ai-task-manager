@@ -26,8 +26,8 @@ export async function fetchLiveKanbanState({ repo, projectId, issueNumber }) {
     const nodes = data?.repository?.issue?.projectItems?.nodes || [];
     const node = nodes.find((n) => n?.project?.id === projectId);
     // Normalize the live board display name at the ingress boundary. Current
-    // `Assigned` and the historical multi-word `On Deck` spelling both project
-    // onto the canonical `assigned` state.
+    // Historical `Assigned` and `On Deck` spellings both project onto the
+    // canonical `ready-for-plan` state without rewriting the board value.
     return normalizeStateId(node?.fieldValueByName?.name) || '';
   } catch {
     return '';

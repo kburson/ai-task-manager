@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// cspell:words nocorrect noglob
 // INTERNAL — DO NOT INVOKE DIRECTLY, and not exposed through `aitm`.
 // Plumbing: invoked only by the Claude Code hook runner, never by a human or
 // the AI. See bin/aitm-registry.mjs (INTERNAL map) for the rationale.
@@ -39,9 +40,9 @@
 // starts, so it cannot self-defend; that case is guarded at install/startup.
 
 import { readFileSync } from 'node:fs';
-import { execSync } from 'node:child_process';
+import { execFileSync, execSync } from 'node:child_process';
 import { homedir } from 'node:os';
-import { join } from 'node:path';
+import { basename, isAbsolute, join, resolve } from 'node:path';
 
 // --- Phase 1: parse stdin -------------------------------------------------
 // A malformed payload is not a guard failure — preserve the intentional
@@ -92,7 +93,7 @@ async function evaluate(input) {
 
   // Guard-logic dependencies are imported dynamically so a throw during their
   // own module evaluation is catchable and fails closed (see contract above).
-  const { evaluateGhEdit, evaluateGhCreate, evaluateGhApiCreate } =
+  const { evaluateGhEdit, evaluateGhCreate, evaluateGhApiCreate, splitCommandSegments } =
     await import('./lib/gh-edit-guard.mjs');
   const { classifyBashWorktreeCommand, evaluateBashWorktreeBinding } =
     await import('./lib/bash-worktree-guard.mjs');
@@ -333,8 +334,9 @@ async function evaluate(input) {
 
   // --- gh issue edit body protection ---
   // #361 hard refusal: any `gh issue edit --body` / `--body-file` from Bash is
-  // forbidden (route body writes through `mutateIssueBody`). Label/title/
-  // assignee edits, carrying no body, pass through. (#566 removed the former
+  // forbidden (route body writes through `mutateIssueBody`). Label/title edits
+  // pass through; #1212 routes assignee edits through governed ownership verbs.
+  // (#566 removed the former
   // diff-based path — it was unreachable behind the hard refusal — so the guard
   // no longer needs the live body or the bound issue's state.)
   const ghEditResult = evaluateGhEdit({ command });
@@ -351,64 +353,347 @@ async function evaluate(input) {
 
   // --- #769 commit-time assignee lock ---
   // A `git commit` whose message attributes to an issue (`[#N]` token) is
-  // refused when that issue is assigned to another developer — the assignee is
-  // a work-lock. This is a DEFENSIVE layer; the primary lock is at bind/mutator
-  // time. Unlike the fail-closed verb preflight, fetch failures PASS here so an
-  // offline `gh` never wedges every commit. Token-less/chore commits carry no
-  // `[#N]` and pass — the visible escape hatch.
+  // refused unless that issue has exactly one owner matching the authenticated
+  // clone identity. This is a DEFENSIVE layer; the primary lock is at
+  // bind/mutator time. Ownership failures fail closed because an attributed
+  // commit is development collateral. Token-less/chore commits carry no `[#N]`
+  // and pass — the visible escape hatch.
   await checkCommitAssigneeLock({ command, scanned, projectRoot });
 
   // All checks passed — evaluate() returns and the caller exits 0.
 
   // #769 — commit-time assignee-lock check. Nested so it shares `block()` and
   // the resolved `projectRoot`/`configPath`. Any block() short-circuits with
-  // exit 0; every fetch/parse failure is swallowed so commits are never wedged.
-  async function checkCommitAssigneeLock({
-    command: rawCommand,
-    scanned: scannedCommand,
-    projectRoot: root,
-  }) {
-    // Detect a genuine `git commit` action on the quote-stripped command so a
-    // commit *message* that mentions "git commit" does not self-trigger.
-    const GIT_COMMIT_RE = /\bgit\s+(?:-\S+\s+|--[\w-]+(?:=\S+)?\s+)*commit\b/;
-    const commitSegments = scannedCommand.split(/&&|\|\||[;&|\n]|\$\(/);
-    if (!commitSegments.some((seg) => GIT_COMMIT_RE.test(seg))) return;
+  // exit 0; ownership verification is fail-closed for attributed commits.
+  async function checkCommitAssigneeLock({ command: rawCommand, projectRoot: root }) {
+    if (containsEvalInvocation(rawCommand)) {
+      block(
+        'Refusing eval: deferred shell commands can hide a git commit and its ownership attribution from inspection.\n' +
+          '  Invoke the final command directly; use `git commit` with a literal or readable message source.'
+      );
+    }
+    const rawSegments = expandNestedShellSegments(rawCommand);
+    const commits = [];
+    for (let index = 0; index < rawSegments.length; index += 1) {
+      const parsed = parseGitCommitSegment(rawSegments[index], root);
+      if (parsed) commits.push({ index, ...parsed });
+    }
+    if (commits.length === 0) return;
 
     // Offline escape — consistent with the verb preflight's TT_SKIP_NETWORK gate.
     if (process.env.TT_SKIP_NETWORK === '1') return;
 
-    const cfg = readAssigneeCfg(root);
-    if (!cfg) return; // no config / unresolved repo — don't wedge commits
-    if ((cfg.preferences?.gateAssigneeMatch ?? true) === false) return;
-
     const { parseCommitIssueRefs, checkAssigneeMatch } = await import('./lib/assignee-guard.mjs');
-    // `[#N]` tokens live inside the quoted commit message, so parse the RAW
-    // command (scanned blanks quoted regions).
-    const refs = parseCommitIssueRefs(rawCommand);
+    const refs = [];
+    const seen = new Set();
+    const addRefs = (text) => {
+      for (const issue of parseCommitIssueRefs(text)) {
+        if (!seen.has(issue)) {
+          seen.add(issue);
+          refs.push(issue);
+        }
+      }
+    };
+    for (const { index, args } of commits) {
+      const segment = rawSegments[index] || '';
+      if (hasDynamicCommitMessage(args)) {
+        block(
+          'Refusing git commit: the final message contains shell expansion and cannot be inspected before execution.\n' +
+            '  Use a literal `-m` message, a readable `-F <file>`, or an un-attributed literal chore message.'
+        );
+      }
+      addRefs(segment);
+      for (const messagePath of commitMessageFiles(args)) {
+        if (messagePath === '-') {
+          block(
+            'Refusing git commit: attributed ownership cannot be verified from `git commit -F -` stdin.\n' +
+              '  Use `-F <file>`, `-m`, or an un-attributed chore commit.'
+          );
+        }
+        try {
+          const absolutePath = isAbsolute(messagePath) ? messagePath : resolve(root, messagePath);
+          addRefs(readFileSync(absolutePath, 'utf8'));
+        } catch (error) {
+          block(
+            `Refusing git commit: could not read commit message file ${messagePath} (${error?.message || String(error)}).\n` +
+              '  Attributed ownership verification fails closed when the final message is unreadable.'
+          );
+        }
+      }
+      for (const inheritedRef of inheritedMessageRefs(args)) {
+        try {
+          addRefs(
+            execFileSync('git', ['log', '-1', '--format=%B', inheritedRef], {
+              cwd: root,
+              encoding: 'utf8',
+              stdio: ['ignore', 'pipe', 'pipe'],
+              timeout: GIT_TIMEOUT_MS,
+            })
+          );
+        } catch (error) {
+          block(
+            `Refusing git commit: could not resolve inherited message from ${inheritedRef} (${error?.message || String(error)}).`
+          );
+        }
+      }
+      if (!hasInspectableMessageSource(args)) {
+        block(
+          'Refusing bare git commit: exclusive ownership cannot be verified because the editor-supplied final message is unavailable before commit.\n' +
+            '  Use `git commit -m <message>`, `-F <file>`, an inherited-message option, or an explicit un-attributed chore message.'
+        );
+      }
+    }
     if (refs.length === 0) return; // token-less / chore — escape hatch
+
+    const cfg = readAssigneeCfg(root);
+    if (!cfg) {
+      block(
+        'Refusing attributed git commit: repository ownership config is missing or unreadable.\n' +
+          '  Attributed development commits fail closed when ownership cannot be resolved; restore task-tracker.json or use an un-attributed chore commit.'
+      );
+    }
+    if ((cfg.preferences?.gateAssigneeMatch ?? true) === false) return;
 
     const cache = {};
     for (const issueNumber of refs) {
       let verdict;
       try {
         verdict = await checkAssigneeMatch({ issueNumber, cfg, deps: { cache } });
-      } catch {
-        continue; // fetch failure PASSES at commit-time (defensive layer)
-      }
-      if (!verdict.ok && verdict.kind === 'assigned-to-other') {
+      } catch (error) {
         block(
-          `Refusing git commit: #${issueNumber} is assigned to ${verdict.assignees.join(', ')}, not @${verdict.currentUser}.\n` +
-            `  The issue's assignee is a work-lock — you cannot commit work attributed to another developer's issue.\n` +
-            `  A human must reassign via the GitHub UI (with the current assignee's agreement) before you commit.\n` +
+          `Refusing git commit: could not verify exclusive ownership of #${issueNumber} (${error?.message || String(error)}).\n` +
+            `  Attributed development commits fail closed when ownership is unreadable.\n` +
+            `  Retry with GitHub connectivity, or use an un-attributed chore commit for work that does not belong to the story.`
+        );
+      }
+      if (!verdict.ok) {
+        block(
+          `Refusing git commit: #${issueNumber} ownership is ${verdict.kind}; expected exactly @${verdict.currentUser}.\n` +
+            `  Observed owners: ${verdict.assignees.length ? verdict.assignees.join(', ') : 'none'}.\n` +
+            `  Story ownership is an exclusive workstation lock for attributed development commits.\n` +
             `  Un-attributed chore commits (no \`[#N]\` token) are the intended escape hatch.`
         );
       }
     }
   }
 
-  // #769 — best-effort read of the bound repo + assignee preference for the
-  // commit-time lock. Returns null on any failure so the check no-ops rather
-  // than wedging commits (the primary lock lives at bind/mutator time).
+  function containsEvalInvocation(command) {
+    return splitCommandSegments(command).some((segment) => {
+      const tokens = shellWords(segment);
+      let index = 0;
+      while (index < tokens.length && /^[A-Za-z_][A-Za-z0-9_]*=/.test(tokens[index])) {
+        index += 1;
+      }
+      while (['-', 'builtin', 'command', 'exec', 'nocorrect', 'noglob'].includes(tokens[index])) {
+        index += 1;
+      }
+      return tokens[index] === 'eval';
+    });
+  }
+
+  function readGitAlias(name, aliases, root) {
+    if (aliases.has(name)) return aliases.get(name);
+    if (!root || String(name || '').startsWith('-')) return undefined;
+    try {
+      return execFileSync('git', ['config', '--get', `alias.${name}`], {
+        cwd: root,
+        encoding: 'utf8',
+        stdio: ['ignore', 'pipe', 'ignore'],
+        timeout: GIT_TIMEOUT_MS,
+      }).trim();
+    } catch {
+      return undefined;
+    }
+  }
+
+  function gitSubcommandIndex(tokens, start = 0) {
+    let index = start;
+    while (index < tokens.length && tokens[index].startsWith('-')) {
+      if (['-c', '-C', '--git-dir', '--work-tree', '--namespace'].includes(tokens[index])) {
+        index += 2;
+      } else {
+        index += 1;
+      }
+    }
+    return index;
+  }
+
+  function aliasInvokesCommit(alias, { aliases, root, seen, depth = 0 }) {
+    const value = String(alias || '').trim();
+    // Git's `!` aliases are arbitrary deferred shell programs. Even a definition
+    // with no literal `commit` can forward invocation arguments into `git "$@"`.
+    // Treat every shell alias as a potential commit so attributed invocations
+    // cannot escape the ownership check through an opaque program.
+    if (value.startsWith('!')) return true;
+
+    const tokens = shellWords(value);
+    const target = tokens[gitSubcommandIndex(tokens)];
+    if (!target) return false;
+    if (target === 'commit') return true;
+    // Normal Git aliases may name another alias. Resolve the chain exactly as
+    // Git does before deciding that an attributed invocation is harmless.
+    // Cycles and unreasonable depth are opaque, so fail closed rather than
+    // allowing a future Git/config behavior change to bypass ownership.
+    if (seen.has(target) || depth >= 32) return true;
+    const nested = readGitAlias(target, aliases, root);
+    if (nested === undefined) return false;
+    const nextSeen = new Set(seen);
+    nextSeen.add(target);
+    return aliasInvokesCommit(nested, {
+      aliases,
+      root,
+      seen: nextSeen,
+      depth: depth + 1,
+    });
+  }
+
+  function parseGitCommitSegment(segment, root) {
+    const tokens = shellWords(segment);
+    const gitIndex = tokens.findIndex((token) => basename(token) === 'git');
+    if (gitIndex < 0) return false;
+    let index = gitIndex + 1;
+    const aliases = new Map();
+    for (let cursor = gitIndex + 1; cursor < tokens.length - 1; cursor += 1) {
+      if (tokens[cursor] !== '-c') continue;
+      const match = String(tokens[cursor + 1] || '').match(/^alias\.([^=]+)=(.+)$/);
+      if (match) aliases.set(match[1], match[2]);
+    }
+    while (index < tokens.length) {
+      index = gitSubcommandIndex(tokens, index);
+      const token = tokens[index];
+      if (!token) return false;
+      if (token === 'commit') return { args: tokens.slice(index + 1) };
+      const alias = readGitAlias(token, aliases, root);
+      if (aliasInvokesCommit(alias, { aliases, root, seen: new Set([token]) })) {
+        return { args: tokens.slice(index + 1) };
+      }
+      return false;
+    }
+    return false;
+  }
+
+  function expandNestedShellSegments(command, depth = 0) {
+    const segments = splitCommandSegments(command);
+    if (depth >= 4) return segments;
+    const expanded = [...segments];
+    for (const segment of segments) {
+      const words = shellWords(segment);
+      const shellIndex = words.findIndex((word) => /(?:^|\/)(?:sh|bash|zsh)$/.test(word));
+      if (shellIndex < 0) continue;
+      const commandIndex = words.findIndex(
+        (word, index) => index > shellIndex && /^-[^-]*c[^-]*$/.test(word)
+      );
+      const payload = commandIndex < 0 ? null : words[commandIndex + 1];
+      if (payload) expanded.push(...expandNestedShellSegments(payload, depth + 1));
+    }
+    return expanded;
+  }
+
+  function hasDynamicCommitMessage(args) {
+    for (let index = 0; index < args.length; index += 1) {
+      const arg = args[index];
+      const value =
+        arg === '-m' || arg === '--message'
+          ? args[index + 1]
+          : arg.startsWith('--message=')
+            ? arg.slice('--message='.length)
+            : arg.startsWith('-m') && arg.length > 2
+              ? arg.slice(2)
+              : null;
+      if (value != null && /\$\{|\$[A-Za-z0-9_(@?*#!-]|`/.test(value)) return true;
+    }
+    return false;
+  }
+
+  function shellWords(segment) {
+    const words = [];
+    let word = '';
+    let quote = '';
+    let escaped = false;
+    for (const char of String(segment || '')) {
+      if (escaped) {
+        word += char;
+        escaped = false;
+      } else if (char === '\\' && quote !== "'") {
+        escaped = true;
+      } else if (quote) {
+        if (char === quote) quote = '';
+        else word += char;
+      } else if (char === "'" || char === '"') {
+        quote = char;
+      } else if (/\s/.test(char)) {
+        if (word) {
+          words.push(word);
+          word = '';
+        }
+      } else {
+        word += char;
+      }
+    }
+    if (word) words.push(word);
+    return words;
+  }
+
+  function commitMessageFiles(args) {
+    const paths = [];
+    for (let index = 0; index < args.length; index += 1) {
+      const token = args[index];
+      if (token === '-F' || token === '--file') paths.push(args[++index]);
+      else if (token.startsWith('--file=')) paths.push(token.slice('--file='.length));
+      else if (token.startsWith('-F') && token.length > 2) paths.push(token.slice(2));
+    }
+    return paths.filter(Boolean);
+  }
+
+  function inheritedMessageRefs(args) {
+    const refs = [];
+    let amend = false;
+    let explicitMessage = false;
+    for (let index = 0; index < args.length; index += 1) {
+      const token = args[index];
+      if (token === '--amend') amend = true;
+      if (['-m', '--message', '-F', '--file'].includes(token)) {
+        explicitMessage = true;
+        index += 1;
+        continue;
+      }
+      if (/^(?:-m|--message=|-F|--file=)/.test(token)) explicitMessage = true;
+      if (['-C', '--reuse-message', '-c', '--reedit-message'].includes(token)) {
+        const ref = args[++index];
+        if (ref) refs.push(ref);
+      } else if (token.startsWith('--reuse-message=')) {
+        refs.push(token.slice('--reuse-message='.length));
+      } else if (token.startsWith('--reedit-message=')) {
+        refs.push(token.slice('--reedit-message='.length));
+      } else if (/^-C.+/.test(token)) {
+        refs.push(token.slice(2));
+      } else if (/^-c.+/.test(token)) {
+        refs.push(token.slice(2));
+      } else if (['--fixup', '--squash'].includes(token)) {
+        const ref = args[++index];
+        if (ref) refs.push(ref.replace(/^(?:amend|reword):/, ''));
+      } else if (token.startsWith('--fixup=')) {
+        refs.push(token.slice('--fixup='.length).replace(/^(?:amend|reword):/, ''));
+      } else if (token.startsWith('--squash=')) {
+        refs.push(token.slice('--squash='.length));
+      }
+    }
+    if (amend && !explicitMessage && refs.length === 0) refs.push('HEAD');
+    return refs;
+  }
+
+  function hasInspectableMessageSource(args) {
+    if (inheritedMessageRefs(args).length > 0) return true;
+    return args.some(
+      (token) =>
+        ['-m', '--message', '-F', '--file'].includes(token) ||
+        /^(?:-m.+|--message=|-F.+|--file=)/.test(token)
+    );
+  }
+
+  // #769/#1212 — read the bound repo + assignee preference for the commit-time
+  // lock. Returning null lets token-less chore commits pass, but attributed
+  // commits fail closed above because their ownership authority is unreadable.
   function readAssigneeCfg(root) {
     try {
       const cfg = JSON.parse(readFileSync(configPath(root), 'utf8'));

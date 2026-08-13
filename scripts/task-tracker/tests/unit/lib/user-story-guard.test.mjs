@@ -145,7 +145,7 @@ test('userStoryBlockGuard: returns ok:false when User Story is not the first sec
     'I want issue bodies to start with a user story',
     'So that the value being delivered is always explicit',
   ].join('\n');
-  const result = userStoryBlockGuard.run({ toState: 'plan', body });
+  const result = userStoryBlockGuard.run({ toState: 'ready-for-plan', body });
   assert.equal(result.ok, false);
   assert.ok(result.reason);
 });
@@ -258,7 +258,7 @@ test('userStoryBlockGuard has correct id', () => {
   assert.equal(userStoryBlockGuard.id, GUARD_ID_BLOCK);
 });
 
-test('userStoryBlockGuard: returns ok:true when toState is not plan', () => {
+test('userStoryBlockGuard: returns ok:true when toState is not ready-for-plan', () => {
   const result = userStoryBlockGuard.run({ toState: 'refine', body: '' });
   assert.deepEqual(result, { ok: true });
 });
@@ -267,13 +267,16 @@ test('userStoryBlockGuard: returns ok:true for null ctx', () => {
   assert.deepEqual(userStoryBlockGuard.run(null), { ok: true });
 });
 
-test('userStoryBlockGuard: returns ok:false when plan target + section missing', () => {
-  const result = userStoryBlockGuard.run({ toState: 'plan', body: '## Scope\n\nno story\n' });
+test('userStoryBlockGuard: returns ok:false when R4P target + section missing', () => {
+  const result = userStoryBlockGuard.run({
+    toState: 'ready-for-plan',
+    body: '## Scope\n\nno story\n',
+  });
   assert.equal(result.ok, false);
   assert.ok(result.reason);
 });
 
-test('userStoryBlockGuard: returns ok:false when plan target + placeholder present', () => {
+test('userStoryBlockGuard: returns ok:false when R4P target + placeholder present', () => {
   const body = [
     '## User Story',
     '',
@@ -285,11 +288,11 @@ test('userStoryBlockGuard: returns ok:false when plan target + placeholder prese
     '',
     'text',
   ].join('\n');
-  const result = userStoryBlockGuard.run({ toState: 'plan', body });
+  const result = userStoryBlockGuard.run({ toState: 'ready-for-plan', body });
   assert.equal(result.ok, false);
 });
 
-test('userStoryBlockGuard: returns ok:true when plan target + story complete', () => {
+test('userStoryBlockGuard: returns ok:true when R4P target + story complete', () => {
   const body = [
     '## User Story',
     '',
@@ -301,6 +304,6 @@ test('userStoryBlockGuard: returns ok:true when plan target + story complete', (
     '',
     'text',
   ].join('\n');
-  const result = userStoryBlockGuard.run({ toState: 'plan', body });
+  const result = userStoryBlockGuard.run({ toState: 'ready-for-plan', body });
   assert.deepEqual(result, { ok: true });
 });

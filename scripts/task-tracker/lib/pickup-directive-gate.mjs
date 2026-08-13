@@ -11,8 +11,9 @@
 //
 // Eligible states are `plan` and everything after it in the verb chain
 // (`plan`, `develop`, `test`, `review`, `done`) — Pickup Directive's deep-dive
-// step is meaningful once Plan-stage scoping exists. `backlog`/`assigned`/
-// `refine` are not eligible: those issues haven't been sized/scoped yet, so
+// step is meaningful once Plan-stage scoping exists. `backlog`/`refine`/
+// `ready-for-plan` are not eligible for implementation: they have not
+// entered the short-lived JIT Plan stage yet, so
 // jumping to deep-dive/implementation instructions skips Refine/Plan.
 
 import { STAGES } from './stage-entry-markers.mjs';
@@ -33,7 +34,12 @@ export function isPickupDirectiveEligible(kanbanState) {
 // bound issue hasn't reached `plan` yet. Names the correct next state-walk
 // verb so the agent doesn't need to guess.
 export function formatPickupDirectiveDeferredBanner(ref, kanbanState) {
-  const nextVerb = kanbanState === 'refine' ? '/task promote' : '/task refine';
+  const nextVerb =
+    kanbanState === 'ready-for-plan'
+      ? '/task plan'
+      : kanbanState === 'refine'
+        ? '/task promote'
+        : '/task refine';
   return (
     `\n🚧 PICKUP DIRECTIVE DEFERRED — ${ref} (state: ${kanbanState})\n` +
     `   This issue hasn't reached Plan yet — deep-dive/implementation\n` +

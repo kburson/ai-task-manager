@@ -35,6 +35,8 @@ function edit(state, filePath = SOURCE) {
     boundIssue: '#805',
     choreModeActive: false,
     issueState: state,
+    assignees: ['kburson'],
+    currentUser: 'kburson',
     hasPostedMarker: true,
     hasCompleteMarker: true,
   });

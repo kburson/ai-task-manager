@@ -38,6 +38,7 @@ function makeSandbox() {
         kanbanFieldId: 'PVTF_test',
         kanbanOptionBacklog: 'PVTO_b',
         kanbanOptionRefine: 'PVTO_g',
+        kanbanOptionReadyForPlan: 'PVTO_r4p',
         kanbanOptionPlan: 'PVTO_a',
         kanbanOptionDevelop: 'PVTO_d',
         kanbanOptionTest: 'PVTO_v',
@@ -118,10 +119,10 @@ async function runExpectFail(args, env) {
 {
   const sandbox = makeSandbox();
   const r = await run(
-    ['123', 'plan', '--from', 'refine'],
+    ['123', 'ready-for-plan', '--from', 'refine'],
     cleanEnv(sandbox, { AITM_INTERNAL: '1' })
   );
-  assert.match(r.stdout, /moved to: plan/, 'forward refine->plan should succeed');
+  assert.match(r.stdout, /moved to: ready-for-plan/, 'forward refine->R4P should succeed');
   rmSync(sandbox, { recursive: true });
 }
 

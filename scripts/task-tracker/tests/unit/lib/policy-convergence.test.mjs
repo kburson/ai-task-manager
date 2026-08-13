@@ -59,7 +59,7 @@ test('every authority detector rejects a representative duplicate fixture', () =
   const fixtures = {
     'fixtures/duplicate-states.mjs': `
       const COMPLETE_STATES = [
-        'backlog', 'assigned', 'refine', 'plan', 'develop', 'test', 'review', 'done'
+        'backlog', 'refine', 'ready-for-plan', 'plan', 'develop', 'test', 'review', 'done'
       ];
     `,
     'fixtures/duplicate-edges.mjs': `
@@ -111,7 +111,7 @@ test('alternate keyed, catalog, and lowercase representations cannot evade the a
     'fixtures/lowercase-keyed-states.mjs': `
       const states = {
         backlog: true,
-        'assigned': true,
+        'ready-for-plan': true,
         refine: true,
         plan: true,
         develop: true,
@@ -160,61 +160,61 @@ test('regex declarations are non-data and do not hide following authorities', ()
   const fixtures = {
     'fixtures/regex-only.mjs': `
       const statePattern =
-        /'backlog','assigned','refine','plan','develop','test','review','done'/;
+        /'backlog', 'refine', 'ready-for-plan','plan','develop','test','review','done'/;
       const commandPattern =
         /{verb:'start',dispatch:'inline'},{verb:'review',dispatch:'inline'}/;
     `,
     'fixtures/block-comment-regex.mjs': `
       const statePattern = /* legacy state matcher */
-        /'backlog','assigned','refine','plan','develop','test','review','done'/;
+        /'backlog', 'refine', 'ready-for-plan','plan','develop','test','review','done'/;
     `,
     'fixtures/line-comment-regex.mjs': `
       const statePattern = // legacy state matcher
-        /'backlog','assigned','refine','plan','develop','test','review','done'/;
+        /'backlog', 'refine', 'ready-for-plan','plan','develop','test','review','done'/;
     `,
     'fixtures/grouped-regex.mjs': `
       const statePattern =
-        (((/'backlog','assigned','refine','plan','develop','test','review','done'/)));
+        (((/'backlog', 'refine', 'ready-for-plan','plan','develop','test','review','done'/)));
     `,
     'fixtures/nested-regexes.mjs': `
       const patterns = [
-        /'backlog','assigned','refine','plan','develop','test','review','done'/,
+        /'backlog', 'refine', 'ready-for-plan','plan','develop','test','review','done'/,
         { cli: /{verb:'start',dispatch:'inline'},{verb:'review',dispatch:'inline'}/ },
-        enabled ? /'develop','test','review'/ : /'backlog','assigned','refine'/,
+        enabled ? /'develop','test','review'/ : /'backlog', 'refine', 'ready-for-plan'/,
       ];
     `,
     'fixtures/comment-only.mjs': `
       const values = [
-        /* 'backlog','assigned','refine','plan','develop','test','review','done' */
+        /* 'backlog', 'refine', 'ready-for-plan','plan','develop','test','review','done' */
         // {verb:'start',dispatch:'inline'},{verb:'review',dispatch:'inline'}
       ];
     `,
     'fixtures/template-example-only.mjs': `
       const documentation =
-        \`'backlog','assigned','refine','plan','develop','test','review','done'\`;
+        \`'backlog', 'refine', 'ready-for-plan','plan','develop','test','review','done'\`;
     `,
     'fixtures/template-states.mjs': `
       const states = [
-        \`backlog\`, \`assigned\`, \`refine\`, \`plan\`,
+        \`backlog\`, \`refine\`, \`ready-for-plan\`, \`plan\`,
         \`develop\`, \`test\`, \`review\`, \`done\`,
       ];
     `,
     'fixtures/interpolated-template-then-data.mjs': `
       const documentation =
-        \`'backlog','assigned','refine','plan',\${suffix},'develop','test','review','done'\`;
+        \`'backlog', 'refine', 'ready-for-plan','plan',\${suffix},'develop','test','review','done'\`;
       const commands = {
         start: 'verbs/start.mjs',
         review: 'verbs/review.mjs',
       };
     `,
     'fixtures/nested-template-then-data.mjs': [
-      "const documentation = `example ${`'backlog','assigned','refine','plan','develop','test','review','done'`}`;",
+      "const documentation = `example ${`'backlog', 'refine', 'ready-for-plan','plan','develop','test','review','done'`}`;",
       "const commands = { start: 'verbs/start.mjs', review: 'verbs/review.mjs' };",
     ].join('\n'),
     'fixtures/real-state-keys-around-regex.mjs': `
       const patterns = {
         backlog: /backlog/,
-        'assigned': /assigned/,
+        'ready-for-plan': /ready-for-plan/,
         refine: /refine/,
         plan: /plan/,
         develop: /develop/,
@@ -226,12 +226,12 @@ test('regex declarations are non-data and do not hide following authorities', ()
     'fixtures/division-before-real-states.mjs': `
       const states = [
         total / count,
-        'backlog', 'assigned', 'refine', 'plan', 'develop', 'test', 'review', 'done',
+        'backlog', 'refine', 'ready-for-plan', 'plan', 'develop', 'test', 'review', 'done',
       ];
     `,
     'fixtures/regex-then-data.mjs': `
       const ignoredPattern = /* non-data */
-        ((/'backlog','assigned','refine','plan','develop','test','review','done'/));
+        ((/'backlog', 'refine', 'ready-for-plan','plan','develop','test','review','done'/));
       const commands = {
         start: 'verbs/start.mjs',
         review: 'verbs/review.mjs',

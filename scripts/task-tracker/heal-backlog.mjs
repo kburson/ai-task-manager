@@ -74,13 +74,16 @@ const HEAL_COMMENT_MARKER_RE = /<!--\s*aitm-heal:\s*[^>]+-->/i;
 const RECONCILE_KEYS = ['engagedTime', 'sessionTime', 'reviewTime', 'startTime'];
 const STATIC_KEYS = ['priority', 'size', 'estimate', 'rank'];
 // Derived from the move-state policy constant so the two column lists cannot
-// drift apart (#699): 'assigned' → 'Assigned', etc. diffSchema compares
-// case-insensitively; display casing only affects report text.
+// drift apart (#699). R4P has a deliberately non-mechanical display name;
+// diffSchema compares case-insensitively but must still diagnose the live
+// canonical board spelling.
 export const CANONICAL_STATUS_OPTIONS = Object.keys(STATE_TO_CONFIG_KEY).map((state) =>
-  state
-    .split('-')
-    .map((seg) => seg.charAt(0).toUpperCase() + seg.slice(1))
-    .join(' ')
+  state === 'ready-for-plan'
+    ? 'Ready for Planning'
+    : state
+        .split('-')
+        .map((seg) => seg.charAt(0).toUpperCase() + seg.slice(1))
+        .join(' ')
 );
 
 // ----- Pure helpers (unit-tested) -----

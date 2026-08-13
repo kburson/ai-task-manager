@@ -922,6 +922,42 @@ const DIRECT_SELF_DOC = Object.freeze({
     ],
     relatedCommands: ['migrate-project', 'ai-task-manager init'],
   }),
+  'assigned-to-ready-for-plan': directDoc('assigned-to-ready-for-plan', {
+    group: 'Maintenance',
+    path: 'scripts/migrate/assigned-to-ready-for-plan.mjs',
+    classification: 'live-maintenance-or-migration',
+    synopsis: 'Preview or apply the journaled Assigned to Ready for Planning board cutover.',
+    usage: 'assigned-to-ready-for-plan [--apply] [--yes] [--views-verified]',
+    arguments: [
+      argument(APPLY_FLAG, 'Apply the immutable dry-run plan; default is read-only inspection.'),
+      argument('--yes', 'Confirm the complete printed migration blast radius.'),
+      argument(
+        '--views-verified',
+        'Record an operator-confirmed saved-view fallback when GitHub read-back is unavailable.'
+      ),
+    ],
+    preconditions: [
+      'Run only after the #1209 repository behavior stack is integrated and the live board is otherwise quiescent.',
+      'Configured project, Status field, Backlog option, and legacy Assigned option ids are required.',
+    ],
+    effects: [
+      'Read-only by default; --apply moves inventoried Assigned items to Backlog, preserves assignees, renames and reorders the Status option, and cuts over configuration through a durable journal.',
+    ],
+    output: [
+      'Prints the repository-qualified immutable inventory, exact option id and target order, then the final journal phase.',
+    ],
+    exitCodes: [
+      exitCode(0, 'dry-run or explicit migration completed and verified successfully'),
+      exitCode(1, 'inventory, read-back, journal, view, configuration, or GitHub operation failed'),
+      exitCode(2, 'invalid usage or blast-radius confirmation refusal'),
+    ],
+    examples: [
+      'node scripts/migrate/assigned-to-ready-for-plan.mjs',
+      'node scripts/migrate/assigned-to-ready-for-plan.mjs --apply --yes',
+      'node scripts/migrate/assigned-to-ready-for-plan.mjs --apply --yes --views-verified',
+    ],
+    relatedCommands: ['rename-on-deck-to-assigned', 'ai-task-manager init'],
+  }),
   'start-time-field': directDoc('start-time-field', {
     group: 'Maintenance',
     path: 'scripts/migrate/start-time-field.mjs',

@@ -18,16 +18,20 @@ const ALLOWLIST = new Map(
     '.ai-task-manager/memory/MEMORY.md': [1, 'factual state-rename history'],
     '.ai-task-manager/memory/project_board_columns_2026_05.md': [2, 'factual state-rename history'],
     'docs/migration-history.md': [6, 'published compatibility and operator migration guide'],
+    'docs/superpowers/plans/2026-08-11-ready-for-planning-ownership-lifecycle.md': [
+      5,
+      'approved #1209 compatibility and migration plan',
+    ],
     'docs/code-review/562-correctness-concurrency-audit.md': [
       1,
       'immutable historical defect reproduction',
     ],
     'docs/ai-memory/MEMORY.md': [1, 'mirrored factual state-rename history'],
     'docs/ai-memory/project_board_columns_2026_05.md': [2, 'mirrored factual state-rename history'],
-    'scripts/gh/init-project-config.sh': [9, 'explicit migration refusal and guidance'],
+    'scripts/gh/init-project-config.sh': [8, 'explicit migration refusal and guidance'],
     'scripts/gh/init-repair.mjs': [5, 'legacy config-key rewrite'],
     'scripts/gh/lib/live-state.mjs': [1, 'raw live-board compatibility boundary'],
-    'scripts/lib/self-doc.mjs': [5, 'explicit migration CLI help contract'],
+    'scripts/lib/self-doc.mjs': [6, 'explicit migration CLI help contract'],
     'scripts/migrate/rename-on-deck-to-assigned.mjs': [3, 'explicit migration CLI'],
     'scripts/task-tracker/lib/command-surface/entrypoints.mjs': [
       1,
@@ -47,8 +51,12 @@ const ALLOWLIST = new Map(
       'historical marker timing fixtures',
     ],
     'scripts/task-tracker/lib/assigned-status-migration.mjs': [6, 'migration implementation'],
+    'scripts/task-tracker/lib/ready-for-plan-migration.mjs': [
+      3,
+      'explicit final compatibility-key cutover',
+    ],
     'scripts/task-tracker/lib/config-init/config-authoring.mjs': [
-      5,
+      3,
       'legacy config authoring rewrite',
     ],
     'scripts/task-tracker/lib/github-records/lifecycle-transition.mjs': [
@@ -56,14 +64,18 @@ const ALLOWLIST = new Map(
       'immutable v1 capsule replay alias',
     ],
     'scripts/task-tracker/lib/lifecycle-policy/states.mjs': [1, 'raw-state read alias'],
-    'scripts/task-tracker/lib/move-state/policy.mjs': [2, 'raw CLI alias and warning'],
+    'scripts/task-tracker/lib/lifecycle-policy/history.mjs': [
+      1,
+      'historical state-position projection',
+    ],
+    'scripts/task-tracker/lib/move-state/policy.mjs': [1, 'raw CLI aliases'],
     'scripts/task-tracker/lib/stage-entry-markers.mjs': [4, 'historical marker reader aliases'],
     'scripts/task-tracker/lib/timing-event-map.test.mjs': [1, 'historical timing fixture'],
     'scripts/task-tracker/lib/timing-events/legacy.mjs': [2, 'non-emittable timing read alias'],
     'scripts/task-tracker/lib/timing-ladder.mjs': [1, 'historical timing ladder alias'],
     'scripts/task-tracker/lib/timing-ladder.test.mjs': [1, 'historical timing fixture'],
     'scripts/task-tracker/tests/slow/lib/init-status-palette.test.mjs': [
-      16,
+      12,
       'live-init migration-refusal and ambiguity fixtures',
     ],
     'scripts/task-tracker/tests/slow/core/lifecycle-traversal-e2e.test.mjs': [
@@ -79,7 +91,7 @@ const ALLOWLIST = new Map(
       'historical marker healing fixtures',
     ],
     'scripts/task-tracker/tests/unit/core/move-state-assigned.test.mjs': [
-      7,
+      6,
       'raw alias and historical body fixtures',
     ],
     'scripts/task-tracker/tests/unit/core/heal-backlog-schema-drift.test.mjs': [
@@ -110,9 +122,9 @@ const ALLOWLIST = new Map(
       5,
       'legacy config rewrite fixtures',
     ],
-    'scripts/task-tracker/tests/unit/lib/config.test.mjs': [7, 'legacy config fallback fixtures'],
+    'scripts/task-tracker/tests/unit/lib/config.test.mjs': [6, 'legacy config fallback fixtures'],
     'scripts/task-tracker/tests/unit/lib/coverage-source-edit-gate.test.mjs': [
-      5,
+      4,
       'legacy cache display and config fixtures',
     ],
     'scripts/task-tracker/tests/unit/lib/gh-edit-guard-create-guard.test.mjs': [
@@ -124,8 +136,12 @@ const ALLOWLIST = new Map(
       'immutable v1 capsule replay fixtures',
     ],
     'scripts/task-tracker/tests/unit/lib/init-repair.test.mjs': [
-      5,
+      4,
       'legacy config repair fixtures',
+    ],
+    'scripts/task-tracker/tests/unit/lib/ready-for-plan-topology.test.mjs': [
+      5,
+      'canonical topology and historical-read compatibility contract',
     ],
     'scripts/task-tracker/tests/unit/lib/move-state/sentinel.test.mjs': [
       4,

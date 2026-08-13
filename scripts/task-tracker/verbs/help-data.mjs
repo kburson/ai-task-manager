@@ -133,7 +133,8 @@ export const VERB_REFERENCE = {
   // ── board / state machine ─────────────────────────────────────────────────
   promote: {
     topic: 'board',
-    summary: 'Advance one forward state (Backlog→Assigned→Refine→Plan→Develop→Test→Review→Done).',
+    summary:
+      'Advance one forward state (Backlog→Refine→Ready for Planning→Plan→Develop→Test→Review→Done).',
     usage: '/task promote #N',
     aliases: ['next'],
     exitCodes: [GATE_REFUSAL],
@@ -154,22 +155,77 @@ export const VERB_REFERENCE = {
   },
   park: {
     topic: 'board',
-    summary:
-      'Return a Refine or Plan issue to Backlog (premise falsified, deprioritized); keeps Priority/Size/Estimate.',
-    usage: '/task park <N> --reason "<text>"',
-    flags: [{ flag: '--reason <text>', desc: 'why this issue is returning to Backlog (required)' }],
+    summary: 'Compatibility alias for Shelve; invalidates active refinement and planning evidence.',
+    usage: '/task park <N> --reason "<text>" [--remove-owner]',
+    flags: [
+      { flag: '--reason <text>', desc: 'why this issue is returning to Backlog (required)' },
+      { flag: '--remove-owner', desc: 'also remove the verified sole owner' },
+    ],
     exitCodes: [
+      { code: 2, meaning: 'missing reason or malformed issue number' },
       {
         code: 4,
-        meaning: 'drift, source state, missing reason, or transition gate refused; state unchanged',
+        meaning: 'source, evidence, or exact read-back refused; no success is reported',
       },
     ],
     examples: ['/task park 848 --reason "premise falsified after refine review"'],
   },
+  shelve: {
+    topic: 'board',
+    summary:
+      'Return Refine or Ready for Planning work to Backlog with immutable refinement history.',
+    usage: '/task shelve <N> --reason "<text>" [--remove-owner]',
+    flags: [
+      { flag: '--reason <text>', desc: 'required shelving provenance' },
+      { flag: '--remove-owner', desc: 'also remove the verified sole owner' },
+    ],
+    exitCodes: [
+      { code: 2, meaning: 'missing reason or malformed issue number' },
+      { code: 4, meaning: 'source, evidence, or exact read-back refused' },
+    ],
+    examples: ['/task shelve 1215 --reason "refinement is no longer current"'],
+  },
+  'cancel-plan': {
+    topic: 'board',
+    summary: 'Cancel short-lived Plan work and return exactly one edge to Ready for Planning.',
+    usage: '/task cancel-plan <N> --reason <text>',
+    flags: [{ flag: '--reason <text>', desc: 'required cancellation provenance' }],
+    exitCodes: [
+      { code: 2, meaning: 'required issue or reason is missing or malformed' },
+      GATE_REFUSAL,
+    ],
+    examples: ['/task cancel-plan 1213 --reason "planning interrupted"'],
+  },
+  assign: {
+    topic: 'board',
+    summary: 'Assign an unowned story to one GitHub owner without changing lifecycle Status.',
+    usage: '/task assign <N> --to <github-login|@me>',
+    flags: [{ flag: '--to <github-login|@me>', desc: 'required singleton story owner' }],
+    exitCodes: [{ code: 10, meaning: 'ownership precondition or verified postcondition refused' }],
+    examples: ['/task assign 1212 --to @me'],
+  },
+  transfer: {
+    topic: 'board',
+    summary:
+      'Transfer a locally-owned story to one different GitHub owner without changing Status.',
+    usage: '/task transfer <N> --to <github-login>',
+    flags: [{ flag: '--to <github-login>', desc: 'required replacement singleton story owner' }],
+    exitCodes: [{ code: 10, meaning: 'ownership precondition or verified postcondition refused' }],
+    examples: ['/task transfer 1212 --to bob'],
+  },
+  unassign: {
+    topic: 'board',
+    summary: 'Remove the local story owner before Develop without changing lifecycle Status.',
+    usage: '/task unassign <N>',
+    exitCodes: [
+      { code: 10, meaning: 'foreign, multiple, in-flight, or unverifiable ownership refused' },
+    ],
+    examples: ['/task unassign 1212'],
+  },
   refine: {
     topic: 'board',
     summary:
-      'Atomic pre-Refine entry: set fields, then walk Backlog→Assigned→Refine or Assigned→Refine.',
+      'Start active Refine WIP from Backlog, or complete current Refine work into Ready for Planning.',
     usage:
       '/task refine <N> --size <XS|S|M|L|XL> --estimate <hours> --priority <p0|p1|p2> --reason <text>',
     flags: [
@@ -191,7 +247,7 @@ export const VERB_REFERENCE = {
   plan: {
     topic: 'board',
     summary:
-      'Refine→Plan (Sprint-Planning entry); distinct from discover backlog item generation. Refuses on any other current state.',
+      'Ready for Planning→Plan (JIT planning entry); distinct from discover backlog item generation. Refuses on any other current state.',
     usage: '/task plan #N',
     exitCodes: [GATE_REFUSAL],
     examples: ['/task plan 667'],
@@ -356,11 +412,12 @@ export const VERB_REFERENCE = {
   },
   'pull-next': {
     topic: 'board',
-    summary: 'JIT child-pull: promote the next refine-state child of an epic (by rank) into Plan.',
+    summary:
+      'JIT child-pull: promote the next dependency-ready R4P child of an epic (by rank) into Plan.',
     usage: '/task pull-next <epic#>',
     exitCodes: [
-      { code: 4, meaning: 'the selected child failed a Refine-to-Plan gate' },
-      { code: 5, meaning: 'the selected child no longer has a legal Refine-to-Plan edge' },
+      { code: 4, meaning: 'the selected child failed a Ready-for-Planning-to-Plan gate' },
+      { code: 5, meaning: 'the selected child no longer has a legal R4P-to-Plan edge' },
       { code: 6, meaning: 'the selected child is missing required entry-marker history' },
       {
         code: 7,
@@ -524,6 +581,28 @@ export const VERB_REFERENCE = {
       '/task evidence-markers audit 667',
       '/task evidence-markers backfill 667 --map-file map.json --dry-run',
     ],
+  },
+  'issue-body': {
+    topic: 'evidence',
+    summary: 'Apply one governed, declarative fresh-base issue-body operation from a JSON file.',
+    usage: '/task issue-body #N --operation-file <path>',
+    flags: [
+      {
+        flag: '--operation-file <path>',
+        desc: 'aitm.issue-body-operation/v1 exact or named-section replacement',
+      },
+    ],
+    examples: ['/task issue-body 667 --operation-file .tmp/gh/667-body-operation.json'],
+  },
+  comment: {
+    topic: 'evidence',
+    summary: 'Idempotently create or update one marker-owned issue comment from a file.',
+    usage: '/task comment #N --key <stable-key> --body-file <path>',
+    flags: [
+      { flag: '--key <stable-key>', desc: 'stable lowercase ownership key' },
+      { flag: '--body-file <path>', desc: 'markdown comment body without an ownership marker' },
+    ],
+    examples: ['/task comment 667 --key plan.audit-v1 --body-file .tmp/gh/667-audit.md'],
   },
   'commit-trace': {
     topic: 'evidence',
