@@ -84,7 +84,17 @@ const BIN_RULES = {
   // `gh`: only read verbs. Mutations (`close`, `merge`, `delete`, `api -X`,
   // `auth`, `repo create`, `release create`, ...) are excluded.
   gh: {
-    allowedSubcommands: ['issue', 'pr', 'api', 'repo', 'release', 'search', 'run', 'workflow'],
+    allowedSubcommands: [
+      'issue',
+      'pr',
+      'api',
+      'repo',
+      'release',
+      'search',
+      'run',
+      'workflow',
+      'label',
+    ],
     allowedSecondTokens: {
       issue: ['view', 'list', 'status'],
       pr: ['view', 'list', 'diff', 'status', 'checks'],
@@ -94,6 +104,7 @@ const BIN_RULES = {
       search: null, // search is read-only by design
       run: ['view', 'list'],
       workflow: ['view', 'list'],
+      label: ['list', 'view'],
     },
     // -X / --method anything other than GET is a mutation.
     forbiddenFlags: ['-X', '--method', '-F', '-f'],
