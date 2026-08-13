@@ -182,6 +182,33 @@ test('lineageDoneGate: epic passes when every child commit is on the epic branch
   assert.equal(r.epicHead, 'feature/epic/912');
 });
 
+test('lineageDoneGate: epic excludes a closed not-planned child from delivery reachability', async () => {
+  const r = await lineageDoneGate({
+    cfg: { repo: 'o/r' },
+    issueNumber: 912,
+    projectDir: '/x',
+    deps: {
+      graph: (issue) => {
+        if (Number(issue) === 912) {
+          return {
+            parent: null,
+            children: [
+              { number: 913, title: 'delivered child' },
+              { number: 914, title: 'abandoned duplicate', closeReason: 'NOT_PLANNED' },
+            ],
+          };
+        }
+        return { parent: 912, children: [] };
+      },
+      branchExists: () => true,
+      listComments: listWithTrail,
+      epicTrailLog: async () => 'h1\x1f[#913] feat\x1fme\x1f2026-01-01',
+    },
+  });
+  assert.equal(r.ok, true, r.blocker);
+  assert.equal(r.epicHead, 'feature/epic/912');
+});
+
 test('lineageDoneGate: epic refuses naming children whose commit is not on the epic branch', async () => {
   const r = await lineageDoneGate({
     cfg: { repo: 'o/r' },
