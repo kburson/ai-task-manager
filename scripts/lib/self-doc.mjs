@@ -1147,6 +1147,38 @@ const DIRECT_SELF_DOC = Object.freeze({
     output: ['Reports unpaired reengagement counts before and after the repair.'],
     relatedCommands: ['heal-timing-log', 'heal-timing-starts'],
   }),
+  'heal-timing-interval': directDoc('heal-timing-interval', {
+    group: 'Maintenance',
+    path: 'scripts/task-tracker/heal-timing-interval.mjs',
+    classification: 'live-maintenance-or-migration',
+    synopsis: 'Record one caller-reported AFK interval as an authoritative Timing Log bracket.',
+    usage:
+      'heal-timing-interval <issue#> --start TIMESTAMP --end TIMESTAMP [--apply|--check-only] [--yes]',
+    arguments: [
+      argument('<issue#>', 'Issue whose Timing Log is inspected.'),
+      argument('--start TIMESTAMP', 'Exclusive start of the retroactive AFK interval.'),
+      argument('--end TIMESTAMP', 'Exclusive end of the retroactive AFK interval.'),
+      argument(APPLY_FLAG, 'Write the validated pause:retroactive/resumed pair.'),
+      argument(
+        '--check-only',
+        'Render authoritative timing-v2 before/after totals without writing.'
+      ),
+      argument('--yes', 'Skip confirmation for apply.'),
+    ],
+    preconditions: [
+      'Both endpoints must fall strictly within one unambiguous lifecycle phase visit.',
+      'The interval must not overlap existing interruption evidence or any timing row.',
+    ],
+    effects: [
+      'Dry-run by default; --apply runs the full read/transform/write/read-back under the timing lock.',
+      'Apply inserts one zero-value pause:retroactive/resumed pair and reconciles cached completion durations.',
+      'A write is successful only after exact read-back, including ambiguous transport reconciliation.',
+    ],
+    output: [
+      'Reports the phase, interval seconds, and authoritative active/idle totals before and after.',
+    ],
+    relatedCommands: ['heal-timing-departure', 'heal-timing-log'],
+  }),
   'heal-timing-starts-sweep': directDoc('heal-timing-starts-sweep', {
     group: 'Maintenance',
     path: 'scripts/task-tracker/heal-timing-starts-sweep.mjs',
