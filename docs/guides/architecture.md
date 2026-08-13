@@ -65,27 +65,34 @@ Grouped by responsibility. This is the substantive surface — the layer that su
 
 ### State mutation (single-writer principle)
 
-| Script                                                                                   | Responsibility                                                                                                  |
-| ---------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
-| [`scripts/gh/move-state.mjs`](../../scripts/gh/move-state.mjs)                           | **The only writer of the GitHub Projects `Status` field.** Every verb that changes state delegates to this one. |
-| [`scripts/task-tracker/state.mjs`](../../scripts/task-tracker/state.mjs)                 | Local tracker state read/write                                                                                  |
-| [`scripts/task-tracker/state-machine.mjs`](../../scripts/task-tracker/state-machine.mjs) | Legal-transition table — rejects illegal moves before any side effect runs                                      |
+| Script                                                                                           | Responsibility                                                                                                                                    |
+| ------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [`scripts/gh/move-state.mjs`](../../scripts/gh/move-state.mjs)                                   | **The only writer of the GitHub Projects `Status` field.** Every verb that changes state delegates to this one.                                   |
+| [`scripts/task-tracker/state.mjs`](../../scripts/task-tracker/state.mjs)                         | Local tracker state read/write                                                                                                                    |
+| [`scripts/task-tracker/lib/lifecycle-policy/`](../../scripts/task-tracker/lib/lifecycle-policy/) | Legal-transition table (`validateTransition`, `forwardTarget`, `backwardTargets`, `stateIds`) — rejects illegal moves before any side effect runs |
+
+Per-state entry/exit guards (`guard-registry.mjs`, `state-bootstrap.mjs`, `states/*.mjs`) are a separate layer from the transition table above — see [`architecture-overview.md` §3](architecture-overview.md#3-the-state-machine-and-its-guards) and [`guard-architecture.md`](guard-architecture.md) for the canonical map rather than duplicating it here.
 
 ### Gates / verbs
 
-[`scripts/task-tracker/verbs/`](../../scripts/task-tracker/verbs/) holds one script per `/task` verb. Each verb verifies preconditions, then delegates state writes to `move-state.mjs`.
+[`scripts/task-tracker/verbs/`](../../scripts/task-tracker/verbs/) holds one script per `/task` verb, plus a handful of tokens (`log`, `migrate`, `words-count`) handled inline in `task-tracker.mjs` with no dedicated verb file. Each verb verifies preconditions, then delegates state writes to `move-state.mjs`. Every one of the 51 `case` labels in `task-tracker.mjs`'s dispatch switch is accounted for below, grouped by responsibility:
 
-- Lifecycle: [`refine.mjs`](../../scripts/task-tracker/verbs/refine.mjs), [`plan-approve.mjs`](../../scripts/task-tracker/verbs/plan-approve.mjs), [`approve.mjs`](../../scripts/task-tracker/verbs/approve.mjs), [`review.mjs`](../../scripts/task-tracker/verbs/review.mjs), [`close.mjs`](../../scripts/task-tracker/verbs/close.mjs), [`reject.mjs`](../../scripts/task-tracker/verbs/reject.mjs), [`demote.mjs`](../../scripts/task-tracker/verbs/demote.mjs), [`promote.mjs`](../../scripts/task-tracker/verbs/promote.mjs)
-- Session: [`start.mjs`](../../scripts/task-tracker/verbs/start.mjs), [`pause.mjs`](../../scripts/task-tracker/verbs/pause.mjs), [`resume.mjs`](../../scripts/task-tracker/verbs/resume.mjs), [`update.mjs`](../../scripts/task-tracker/verbs/update.mjs), [`status.mjs`](../../scripts/task-tracker/verbs/status.mjs), [`switch.mjs`](../../scripts/task-tracker/verbs/switch.mjs)
-- Coordination: [`auto.mjs`](../../scripts/task-tracker/verbs/auto.mjs), [`fleet.mjs`](../../scripts/task-tracker/verbs/fleet.mjs), [`pull-next.mjs`](../../scripts/task-tracker/verbs/pull-next.mjs), [`discover.mjs`](../../scripts/task-tracker/verbs/discover.mjs), [`reconcile.mjs`](../../scripts/task-tracker/verbs/reconcile.mjs)
-- Other: [`new.mjs`](../../scripts/task-tracker/verbs/new.mjs), [`check.mjs`](../../scripts/task-tracker/verbs/check.mjs), [`config.mjs`](../../scripts/task-tracker/verbs/config.mjs), [`commit-trace.mjs`](../../scripts/task-tracker/verbs/commit-trace.mjs), [`evidence-markers.mjs`](../../scripts/task-tracker/verbs/evidence-markers.mjs), [`inflate-estimate.mjs`](../../scripts/task-tracker/verbs/inflate-estimate.mjs), [`help.mjs`](../../scripts/task-tracker/verbs/help.mjs), [`test.mjs`](../../scripts/task-tracker/verbs/test.mjs)
+- Lifecycle: [`refine.mjs`](../../scripts/task-tracker/verbs/refine.mjs), [`plan.mjs`](../../scripts/task-tracker/verbs/plan.mjs), [`plan-approve.mjs`](../../scripts/task-tracker/verbs/plan-approve.mjs), [`approve.mjs`](../../scripts/task-tracker/verbs/approve.mjs), [`promote.mjs`](../../scripts/task-tracker/verbs/promote.mjs) (aliased `next`), [`demote.mjs`](../../scripts/task-tracker/verbs/demote.mjs), [`review.mjs`](../../scripts/task-tracker/verbs/review.mjs), [`reject.mjs`](../../scripts/task-tracker/verbs/reject.mjs), [`close.mjs`](../../scripts/task-tracker/verbs/close.mjs) (aliased `end`), [`pull-next.mjs`](../../scripts/task-tracker/verbs/pull-next.mjs), [`park.mjs`](../../scripts/task-tracker/verbs/park.mjs), [`block.mjs`](../../scripts/task-tracker/verbs/block.mjs), [`unblock.mjs`](../../scripts/task-tracker/verbs/unblock.mjs), [`chore-mode.mjs`](../../scripts/task-tracker/verbs/chore-mode.mjs), [`supersede.mjs`](../../scripts/task-tracker/verbs/supersede.mjs), [`reconcile.mjs`](../../scripts/task-tracker/verbs/reconcile.mjs), [`epic-reconcile.mjs`](../../scripts/task-tracker/verbs/epic-reconcile.mjs)
+- Session: [`start.mjs`](../../scripts/task-tracker/verbs/start.mjs), [`pause.mjs`](../../scripts/task-tracker/verbs/pause.mjs), [`resume.mjs`](../../scripts/task-tracker/verbs/resume.mjs), [`stop.mjs`](../../scripts/task-tracker/verbs/stop.mjs), [`update.mjs`](../../scripts/task-tracker/verbs/update.mjs), [`status.mjs`](../../scripts/task-tracker/verbs/status.mjs), [`board.mjs`](../../scripts/task-tracker/verbs/board.mjs), [`switch.mjs`](../../scripts/task-tracker/verbs/switch.mjs) (invoked as `/task #N`, not a literal `case` label)
+- Coordination: [`auto.mjs`](../../scripts/task-tracker/verbs/auto.mjs), [`fleet.mjs`](../../scripts/task-tracker/verbs/fleet.mjs), [`discover.mjs`](../../scripts/task-tracker/verbs/discover.mjs) (aliased `brainstorm`), [`decompose-check.mjs`](../../scripts/task-tracker/verbs/decompose-check.mjs), [`split-plan.mjs`](../../scripts/task-tracker/verbs/split-plan.mjs)
+- Issue creation & evidence markers: [`new.mjs`](../../scripts/task-tracker/verbs/new.mjs), [`save-plan.mjs`](../../scripts/task-tracker/verbs/save-plan.mjs), [`save-draft.mjs`](../../scripts/task-tracker/verbs/save-draft.mjs), [`cancel.mjs`](../../scripts/task-tracker/verbs/cancel.mjs), [`user-story.mjs`](../../scripts/task-tracker/verbs/user-story.mjs) (aliased `story`), [`kind.mjs`](../../scripts/task-tracker/verbs/kind.mjs), [`dod-stamp.mjs`](../../scripts/task-tracker/verbs/dod-stamp.mjs), [`ac-stamp.mjs`](../../scripts/task-tracker/verbs/ac-stamp.mjs), [`check.mjs`](../../scripts/task-tracker/verbs/check.mjs) (exports the deprecated `check` alias plus `ensureChecked`/`ensureUnchecked`), [`mirror-deep-dive.mjs`](../../scripts/task-tracker/verbs/mirror-deep-dive.mjs), [`evidence-markers.mjs`](../../scripts/task-tracker/verbs/evidence-markers.mjs), [`commit-trace.mjs`](../../scripts/task-tracker/verbs/commit-trace.mjs), [`inflate-estimate.mjs`](../../scripts/task-tracker/verbs/inflate-estimate.mjs), [`plan-estimate.mjs`](../../scripts/task-tracker/verbs/plan-estimate.mjs), [`report.mjs`](../../scripts/task-tracker/verbs/report.mjs)
+- Other: [`config.mjs`](../../scripts/task-tracker/verbs/config.mjs), [`test.mjs`](../../scripts/task-tracker/verbs/test.mjs), [`help.mjs`](../../scripts/task-tracker/verbs/help.mjs) (aliased `?`). `move` is not a real verb — it is an unknown-verb redirect pointing the caller at `promote`/`demote`.
+
+The full dispatch surface (every `case` label in `task-tracker.mjs`'s switch, sorted and de-duplicated) is:
+
+`ac-stamp approve auto block board brainstorm cancel check chore-mode close commit-trace config decompose-check demote discover dod-stamp end ensureChecked ensureUnchecked epic-reconcile evidence-markers fleet help inflate-estimate kind log migrate mirror-deep-dive move new next park pause plan plan-approve plan-estimate promote pull-next reconcile refine reject report resume review save-draft save-plan split-plan start status stop story supersede test unblock update user-story words-count`
 
 ### Issue shape enforcement
 
-| Script                                                                                       | Responsibility                                                                       |
-| -------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
-| [`scripts/task-tracker/preflight-issue.mjs`](../../scripts/task-tracker/preflight-issue.mjs) | Validates issue body shape (DoD + Pickup Directive tail); rejects hand-rolled bodies |
-| [`scripts/gh/create-issue.mjs`](../../scripts/gh/create-issue.mjs)                           | Single creation path; forces `--assignee` from `task-tracker.json`                   |
+| Script                                                                                       | Responsibility                                                                                             |
+| -------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| [`scripts/task-tracker/preflight-issue.mjs`](../../scripts/task-tracker/preflight-issue.mjs) | Validates issue body shape (DoD + Pickup Directive tail); rejects hand-rolled bodies                       |
+| [`scripts/gh/create-issue.mjs`](../../scripts/gh/create-issue.mjs)                           | Single creation path; new issues default unassigned — only an explicit `--assignee <login>` assigns (#793) |
 
 ### Audit / timing
 
@@ -174,14 +181,14 @@ The pattern is **script-backed + routed**, evolving toward **hook-enforced**. Th
 
 Dogfooding note: the repo's own development uses a `node_modules/ai-task-manager` symlink so the model can exercise scripts as they're built. A behavioral rule in memory keeps the model invoking via `scripts/`, not the symlink — this applies only to this repo's dogfooding workflow and is not present in deployed installations.
 
-### Still open
+### Now closed (was "still open")
 
-| Open leak                                           | Why it still leaks                                                                                                                                                                                                                                                                               |
-| --------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Bind-mismatch only enforced by `close.mjs`          | [`close.mjs:46-49`](../../scripts/task-tracker/verbs/close.mjs) cross-checks `target` against `state.active`; other targeted verbs (`approve`, `refine`, `plan-approve`, `review`, `reject`, `demote`, `promote`, `pause`, `resume`, `update`) trust `state.active` without verifying the target |
-| Manual GH-UI Status changes leave local state stale | Only `start.mjs` / `switch.mjs` reconcile local `state.state` via `fetchLiveKanbanState`; state-mutating verbs read live for preconditions but do not write the truth back to local state                                                                                                        |
+Both leaks below were addressed by a shared verb-preflight helper — [`scripts/task-tracker/lib/verb-preflight.mjs`](../../scripts/task-tracker/lib/verb-preflight.mjs) (#208, refactored in #218) — wired centrally into verb dispatch in [`task-tracker.mjs`](../../scripts/task-tracker/task-tracker.mjs), not per-verb:
 
-Both will be addressed by a shared verb-preflight helper — see [#208](https://github.com/kburson/ai-task-manager/issues/208).
+| Was-leak                                            | Now enforced by                                                                                                                                                             |
+| --------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Bind-mismatch only enforced by `close.mjs`          | `runPreflight` in `verb-preflight.mjs` cross-checks `target` against `state.active` for every dispatched verb, not just `close`                                             |
+| Manual GH-UI Status changes leave local state stale | `runPreflight` compares the issue body's `aitm-last-known-state` marker against live board state on every verb entry and prompts to reconcile on drift (kind: `human-move`) |
 
 ## When to choose this pattern
 
@@ -195,8 +202,6 @@ Both will be addressed by a shared verb-preflight helper — see [#208](https://
 
 ## Future direction
 
-The concrete next step is closing the two remaining open leaks with a shared verb-preflight helper that performs both bind-mismatch and live-state reconciliation at every state-mutating verb's entry. Tracked in [#208](https://github.com/kburson/ai-task-manager/issues/208).
-
-Beyond that, the broader trajectory is continuing to promote the surviving behavioral routing into harness hooks where the leverage is high — the script layer stays canonical so the workflow remains portable across harnesses, with hooks as the Claude-Code-specific belt to go with the cross-harness suspenders.
+The broader trajectory is continuing to promote the surviving behavioral routing into harness hooks where the leverage is high — the script layer stays canonical so the workflow remains portable across harnesses, with hooks as the Claude-Code-specific belt to go with the cross-harness suspenders.
 
 See [`guides/settings-guide.md`](./settings-guide.md) for the existing recommended hook setup and [`docs/DESIGN.md`](../DESIGN.md) §"Hook Behavior" for the events already in play.

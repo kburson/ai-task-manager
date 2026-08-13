@@ -16,7 +16,7 @@ Stage names are nouns describing a process; the corresponding activity is a verb
 | Ready for Planning                 | Planning readiness | —             | R4P                         | Durable parking queue for stories with a current refinement snapshot. Rank and dependencies determine JIT pull order; ownership remains orthogonal. |
 | Plan                               | Planning           | plan          | —                           | Team performs a deep-dive on the story to determine a plan of action: enhanced ACs, refined estimate.                                               |
 | Develop                            | Development        | develop       | In Progress                 | Code changes are made and committed against the story, including test automation.                                                                   |
-| Test                               | Testing            | verify        | Verify, QA                  | Committed source is run against all ACs and test automation in a sandboxed environment.                                                             |
+| Test                               | Testing            | test          | Verify, QA                  | Committed source is run against all ACs and test automation in a sandboxed environment.                                                             |
 | Review                             | Review             | review        | Ready for Acceptance        | Story waits for product owner to review functionality in a live demo and confirm all ACs (functional + non-functional) are met.                     |
 | Done                               | Done               | —             | Complete, Ready for Release | All ACs and Definition of Done are satisfied.                                                                                                       |
 
@@ -35,7 +35,7 @@ These rules tell you which spelling to use when introducing new code, markers, o
 | Comment marker (action taken)   | Past-tense verb                                 | `aitm-refined-estimate`                             |
 | Module constant (process)       | Noun                                            | `REFINEMENT_HEADER`                                 |
 | Function name (action)          | Verb                                            | `applyRefinementEstimate`, `planRefinementEstimate` |
-| CLI verb (`/task ...`)          | Verb                                            | `/task refine`, `/task discover`, `/task verify`    |
+| CLI verb (`/task ...`)          | Verb                                            | `/task refine`, `/task discover`, `/task test`      |
 
 Backward-compat read paths accept the legacy `aitm-groom-*` forms; write paths emit only the new forms.
 
@@ -47,7 +47,7 @@ Backward-compat read paths accept the legacy `aitm-groom-*` forms; write paths e
 | `/task discover`   | (pre-backlog ideation) | Opens an untracked discovery bucket for backlog item generation / pre-issue ideation; promote to an issue with `/task new <title>`. **Distinct from Sprint-Planning** — that is `/task plan`. |
 | `/task plan #N`    | Plan (Sprint-Planning) | Promotes Ready for Planning → Plan for JIT deep-dive, child breakdown, and estimate refresh. Refuses on any other state. **Not for backlog item generation** — use `/task discover` for that. |
 | `/task develop #N` | Develop                | (Reserved; currently use `/task promote` from Plan after `/task plan-approve`.)                                                                                                               |
-| `/task verify #N`  | Test                   | Runs sandboxed verification of all ACs and test automation; stamps `aitm-dod-verified` marker. (To be built per epic #107.)                                                                   |
+| `/task test #N`    | Test                   | Finalizes Develop lint/format evidence, then runs Test-owned verification commands in an isolated worktree; stamps `aitm-dod-verified` marker on success.                                     |
 | `/task review #N`  | Review                 | Promotes Test → Review after verification passes; in Review, `--probe "command"` records focused evidence without rerunning standard commands.                                                |
 | `/task approve #N` | (gate stamp)           | Stamps the human-approval marker for the current gate (plan→develop or review→done).                                                                                                          |
 | `/task close #N`   | Done                   | Closes the issue and moves Review → Done.                                                                                                                                                     |
@@ -769,7 +769,7 @@ Override: set `TASK_TRACKER_SKIP_REEVAL=1` to skip the analyze-stage hook. The b
 
 Then update the board fields and the `aitm-fields` block in the issue body to match.
 
-> Future automation: `/task inflate-estimate <N> --size <S|M|L> --estimate <Nh>` will find the marker, prompt for per-item rationale, append this section, and update board fields atomically. Until that verb exists, follow the manual steps above.
+`/task inflate-estimate <N> --size <S|M|L> --estimate <Nh>` (`scripts/task-tracker/verbs/inflate-estimate.mjs`) automates the steps above: it finds the `aitm-refined-estimate` marker, appends the dated section with per-item rationale, and atomically updates the Size + Estimate board fields and the `aitm-fields` body block. Each invocation appends a new dated block; re-runs do not overwrite prior inflations.
 
 **Review delta.** When `/task close <N>` advances an issue to Done, the harness posts a read-only retrospective comment recording Estimate vs. Actual:
 
@@ -925,7 +925,7 @@ When the user says **"cleanup"**, execute in order:
 `scripts/task-tracker/heal-backlog.mjs` walks every issue in the project board and performs three jobs in one pass:
 
 1. **Encoding normalization** — strips legacy fenced `<!-- ai-task-manager:fields:start/end -->` blocks and emits a single `<!-- aitm-fields: ... -->` HTML comment; converts visible "Plan approved by human" checkboxes into `<!-- aitm-plan-approved: <ts> -->` markers. Vestigial AC bullets (`- [x] approved by Human`, `- [x] Deep dive complete`) are stripped only when the corresponding hidden marker is present — this preserves history on issues that predate the marker model.
-2. **Timing reconciliation** — parses the `⏱ Timing Log` comment, recomputes `engagedTime` / `sessionTime` / `reviewTime` / `startTime` from the rollup, rewrites the fields-DB if they disagree, and posts a `### 🛠 Backlog heal` comment with a deltas table. Static fields (`priority`, `size`, `estimate`, `sequence`) are never touched.
+2. **Timing reconciliation** — parses the `⏱ Timing Log` comment, recomputes `engagedTime` / `sessionTime` / `reviewTime` / `startTime` from the rollup, rewrites the fields-DB if they disagree, and posts a `### 🛠 Backlog heal` comment with a deltas table. Static fields (`priority`, `size`, `estimate`, `rank`) are never touched.
 3. **Schema validation** — fetches the project's GraphQL field schema and diffs against the canonical set; reports missing / extra fields, type mismatches, and option drift (including Status column options). Exit code 3 on drift.
 
 ### Usage
@@ -1081,7 +1081,7 @@ FS-walking runner under `scripts/maintenance/` (or `scripts/task-tracker/tests/`
 `lint:test-reach`.
 
 `npm run lint:test-reach` (`scripts/maintenance/lint-test-coverage-reach.mjs`,
-detector in `scripts/task-tracker/lib/lint-test-coverage-reach.mjs`, issue #866)
+detector in `scripts/maintenance/lint-test-coverage-reach-detector.mjs`, issue #866)
 **rejects a `*.test.mjs` file that exercises no code in this repo.** The standard
 it enforces: every test must exercise a module under `scripts/`. A test that
 references no repo source module — no import of, and no spawned/resolved path to,

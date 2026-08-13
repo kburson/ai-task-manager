@@ -16,7 +16,7 @@ Install these before running the package:
 
 ## Install GitHub CLI
 
-AI Task Manager uses the GitHub CLI for issue, project, and GraphQL operations. Install `gh` first, then authenticate before running `npx ai-task-manager init`.
+AI Task Manager uses the GitHub CLI for issue, project, and GraphQL operations. Install `gh` first, then authenticate before running `npx @kburson/ai-task-manager init`.
 
 Recommended official install paths:
 
@@ -46,14 +46,14 @@ Useful official references:
 From the root of your project:
 
 ```bash
-npx ai-task-manager install
+npx @kburson/ai-task-manager install
 ```
 
 By default, this installs support for both Claude Code and Codex. To install only one adapter:
 
 ```bash
-npx ai-task-manager install --agent claude
-npx ai-task-manager install --agent codex
+npx @kburson/ai-task-manager install --agent claude
+npx @kburson/ai-task-manager install --agent codex
 ```
 
 The installer writes stable, project-local files so every developer and agent in the repository shares the same workflow contract.
@@ -70,10 +70,10 @@ Common generated paths:
 
 ```mermaid
 flowchart TB
-    Install["npx ai-task-manager install"] --> AgentFiles["Agent skill shims"]
+    Install["npx @kburson/ai-task-manager install"] --> AgentFiles["Agent skill shims"]
     Install --> Templates[".ai-task-manager templates"]
     Install --> Hooks["Claude hooks and guards"]
-    Init["npx ai-task-manager init"] --> ProjectConfig["task-tracker.json"]
+    Init["npx @kburson/ai-task-manager init"] --> ProjectConfig["task-tracker.json"]
     Init --> IssueTemplates["GitHub issue templates"]
     ProjectConfig --> Commands["/task commands"]
     AgentFiles --> Commands
@@ -103,7 +103,7 @@ Review the diff before committing. If your repository does not use both Claude C
 Run:
 
 ```bash
-npx ai-task-manager init
+npx @kburson/ai-task-manager init
 ```
 
 The initializer connects the local project to GitHub and stores the board IDs needed by the task workflow. It can use an existing linked project, link an existing user or organization project, or create/configure a compatible project board.
@@ -123,7 +123,7 @@ These IDs are intentionally stored in project config so future task commands do 
 If your team uses Claude Code Superpowers and wants Codex to follow similar workflow discipline, run:
 
 ```bash
-npx ai-task-manager install --codex-superpowers
+npx @kburson/ai-task-manager install --codex-superpowers
 ```
 
 This mirrors supported Superpowers skills into `~/.codex/skills` when a local Claude Code Superpowers cache is available, then writes a managed bootstrap block to the repo `AGENTS.md`. The AITM task skill remains separate at `.agents/skills/task/SKILL.md`.
@@ -131,7 +131,7 @@ This mirrors supported Superpowers skills into `~/.codex/skills` when a local Cl
 Use the global variant only when you intentionally want global Codex instructions:
 
 ```bash
-npx ai-task-manager install --codex-superpowers-global
+npx @kburson/ai-task-manager install --codex-superpowers-global
 ```
 
 ## Verify The Install
@@ -145,7 +145,7 @@ Run the task command help from an agent session:
 Or through the package CLI:
 
 ```bash
-npx ai-task-manager --help
+npx @kburson/ai-task-manager --help
 ```
 
 Then start with a real issue:
@@ -164,20 +164,21 @@ A successful start should:
 
 ## Package Publishing Note
 
-This package was published to npm with the following functional directories:
+`package.json#files` controls what actually ships to npm. The package currently ships:
 
-- `skill/`
-- `scripts/`
-- `hooks/` for legacy compatibility assets
-- `templates/`
+- `LICENSE`, `LICENSE-COMMERCIAL`, `NOTICE`
+- `bin/`
 - `config/`
-
-In addition we have included the following documentation directories as listed in `package.json#files`:
-
-- `docs/introduction/`
+- `skill/`
+- `hooks/` for legacy compatibility assets
+- `scripts/` (excluding `**/tests/**`, `scripts/maintenance/`, `scripts/articles/`, and `*.test.mjs` files)
+- `statusline/`
+- `docs/README.md`, `docs/QUICKSTART.md`, `docs/DESIGN.md`
 - `docs/guides/`
+- `docs/ai-memory/` (excluding `docs/ai-memory/archive/`)
+- `templates/`
 
-That ensures users installing from npm can read the same onboarding material locally under `node_modules/ai-task-manager/docs/`.
+Note that `docs/introduction/` — this file included — is **not** listed in `package.json#files`, so it does not ship to npm. Users installing from the registry can read `docs/README.md`, `docs/QUICKSTART.md`, `docs/DESIGN.md`, `docs/guides/`, and `docs/ai-memory/` locally under `node_modules/@kburson/ai-task-manager/docs/`; the introduction docs remain source-repository-only unless a future change adds them to `files`.
 
 ## Common Setup Problems
 
@@ -188,10 +189,10 @@ That ensures users installing from npm can read the same onboarding material loc
 : Install `jq` with your platform package manager.
 
 `task-tracker not configured`
-: Run `npx ai-task-manager init` from the project root.
+: Run `npx @kburson/ai-task-manager init` from the project root.
 
 Project field errors
-: Re-run `npx ai-task-manager init` and confirm the configured GitHub Project board has the expected Status, Size, Estimate, Priority, Sequence, and timing fields.
+: Re-run `npx @kburson/ai-task-manager init` and confirm the configured GitHub Project board has the expected Status, Size, Estimate, Priority, Sequence, and timing fields.
 
 Timing data missing after a reset
 : Make sure agent hooks were installed and avoid clearing a session without pausing first. Before a destructive context reset, run `/task pause`.

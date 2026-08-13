@@ -39,3 +39,9 @@ Use [../README.md](../README.md) for the current documentation table of contents
 | [superpowers/history/plans/2026-05-06-init-guard.md](./superpowers/history/plans/2026-05-06-init-guard.md)                                               | Historical implementation plan for initialization guardrails.                      |
 | [superpowers/history/plans/2026-05-07-project-tether.md](./superpowers/history/plans/2026-05-07-project-tether.md)                                       | Historical implementation plan for ProjectV2 tethering and verification.           |
 | [superpowers/history/plans/2026-05-07-r4r-state.md](./superpowers/history/plans/2026-05-07-r4r-state.md)                                                 | Historical plan for the retired R4R vocabulary; useful only as migration context.  |
+
+## Retired Guides
+
+| File                                                                         | Why it is retained                                                                                                                                                                         |
+| ---------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| [retired-guides/migration-7-state.md](./retired-guides/migration-7-state.md) | Dead runbook whose target scripts (`migrate-to-7-state.mjs`, `rename-status-2026-05.mjs`) have since been deleted; retained for the `Groom`/`Analyze`/`R4R` → current-vocab mapping table. |

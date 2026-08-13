@@ -51,10 +51,10 @@ need this guard — there's nothing for an accidental `import()` to trigger.
 `lintEntrypointGuard(source)`, a heuristic source-text scanner that flags any
 file with write capability and no guard pattern present. It is exercised by:
 
-- `scripts/task-tracker/tests/unit/entrypoint-guard-convention.test.mjs` —
+- `scripts/task-tracker/tests/unit/lib/entrypoint-guard-convention.test.mjs` —
   proves the rule against synthetic fixtures (a violating file, a compliant
   file via each guard form, a read-only file).
-- `scripts/task-tracker/tests/unit/audit-top-level-writes.test.mjs` — runs the
+- `scripts/task-tracker/tests/unit/lib/audit-top-level-writes.test.mjs` — runs the
   lint against every real file under `scripts/task-tracker/*.mjs` and asserts
   zero violations, locking in the current clean state and catching future
   regressions.

@@ -18,7 +18,7 @@
 - **best-effort** — the failure is non-fatal to the primary operation. The catch
   may swallow, but the catch body MUST carry an inline comment stating _why_ the
   swallow is deliberate (the audit test in
-  `tests/unit/empty-catch-audit.test.mjs` fails on any empty catch lacking one).
+  `tests/unit/core/empty-catch-audit.test.mjs` fails on any empty catch lacking one).
   Silence is opt-in and reviewed, never the path of least resistance.
 
 The literal token **fail-closed** is used as the greppable classification label
@@ -42,7 +42,7 @@ cannot silently drift.
 
 `no-empty` in `eslint.config.mjs` is configured with `allowEmptyCatch: true`, so
 eslint does **not** flag empty catch blocks. The enforcement is therefore the
-audit test, not the linter: `tests/unit/empty-catch-audit.test.mjs` walks the
+audit test, not the linter: `tests/unit/core/empty-catch-audit.test.mjs` walks the
 runtime scope (`bin/`, `scripts/`, excluding tests/maintenance/migrate), finds
 every `catch { … }` whose body is whitespace-only, and fails unless the body
 carries a justifying comment. Every best-effort swallow in the tree now reads
@@ -51,7 +51,7 @@ the test until its author either justifies it or converts it to surface the erro
 
 ## How fail-closed paths are proven
 
-`tests/unit/fail-closed-gates.test.mjs` exercises three representative
+`tests/unit/lib/fail-closed-gates.test.mjs` exercises three representative
 fail-closed cases and asserts each aborts rather than swallows:
 
 1. **State mutation** — `move-state.mjs` invoked outside the verb pipeline (no

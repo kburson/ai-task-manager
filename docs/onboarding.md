@@ -20,22 +20,23 @@ Reference tables previously embedded in `CLAUDE.md`. Read on demand when picking
 
 ## Key Files
 
-| File                                        | Role                                                                              |
-| ------------------------------------------- | --------------------------------------------------------------------------------- |
-| `bin/cli.mjs`                               | npm package CLI — `install` and `init` commands                                   |
-| `skill/SKILL.md`                            | Claude Code skill definition (copied to `.claude/skills/task/` on install)        |
-| `hooks/task-tracker.sh`                     | Hook dispatcher for SessionStart/PreCompact/PostCompact                           |
-| `scripts/task-tracker/task-tracker.mjs`     | Main CLI entry, dispatches verbs                                                  |
-| `scripts/task-tracker/config.mjs`           | Config loader (project > user > defaults)                                         |
-| `scripts/gh/move-state.mjs`                 | Move issue to Kanban state                                                        |
-| `scripts/gh/set-priority.mjs`               | Set issue priority P0/P1/P2                                                       |
-| `scripts/gh/set-rank.mjs`                   | Set issue project Rank (wave ordering) number field                               |
-| `scripts/gh/init-project-config.sh`         | Interactive setup: GH auth, project discovery, issue templates                    |
-| `docs/DESIGN.md`                            | Full design specification                                                         |
-| `docs/guides/workflow.md`                   | GitHub Issues, Kanban, estimates, cleanup — full workflow rules                   |
-| `docs/guides/settings-guide.md`             | Recommended Claude Code settings                                                  |
-| `docs/guides/ai-value-framework.md`         | ROI measurement model, sizing guide, session log template                         |
-| `statusline/statusline.sh`                  | Status line script (CLI only) — installed to `~/.claude/` by `statusline` command |
-| `scripts/reports/generate-value-report.mjs` | Generates HTML/PDF value report from GitHub Projects data                         |
-| `scripts/reports/value-report-config.json`  | Default config for report (region, role, WPM, output dir)                         |
-| `scripts/reports/regional-rates.json`       | Fully-burdened US engineering rates by region                                     |
+| File                                        | Role                                                                                                                 |
+| ------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| `bin/cli.mjs`                               | npm package CLI — `install` and `init` commands                                                                      |
+| `bin/aitm.mjs`                              | `aitm` CLI entrypoint — daily-driver orchestrator, routes `npx aitm <verb>` to task-tracker.mjs or an exposed script |
+| `skill/SKILL.md`                            | Claude Code skill definition (copied to `.claude/skills/task/` on install)                                           |
+| `hooks/task-tracker.sh`                     | Hook dispatcher for SessionStart/PreCompact/PostCompact                                                              |
+| `scripts/task-tracker/task-tracker.mjs`     | Main CLI entry, dispatches verbs                                                                                     |
+| `scripts/task-tracker/config.mjs`           | Config loader (project > user > defaults)                                                                            |
+| `scripts/gh/move-state.mjs`                 | Move issue to Kanban state                                                                                           |
+| `scripts/gh/set-priority.mjs`               | Set issue priority P0/P1/P2                                                                                          |
+| `scripts/gh/set-rank.mjs`                   | Set issue project Rank (wave ordering) number field                                                                  |
+| `scripts/gh/init-project-config.sh`         | Interactive setup: GH auth, project discovery, issue templates                                                       |
+| `docs/DESIGN.md`                            | Full design specification                                                                                            |
+| `docs/guides/workflow.md`                   | GitHub Issues, Kanban, estimates, cleanup — full workflow rules                                                      |
+| `docs/guides/settings-guide.md`             | Recommended Claude Code settings                                                                                     |
+| `docs/guides/ai-value-framework.md`         | ROI measurement model, sizing guide, session log template                                                            |
+| `statusline/statusline.sh`                  | Status line script (CLI only) — installed to `~/.claude/` by `statusline` command                                    |
+| `scripts/reports/generate-value-report.mjs` | Generates HTML/PDF value report from GitHub Projects data                                                            |
+| `scripts/reports/value-report-config.json`  | Default config for report (region, role, WPM, output dir)                                                            |
+| `scripts/reports/regional-rates.json`       | Fully-burdened US engineering rates by region                                                                        |

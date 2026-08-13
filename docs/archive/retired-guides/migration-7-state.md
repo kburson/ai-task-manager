@@ -1,4 +1,12 @@
-# Migration: 6-state → 7-state Kanban
+# Migration: 6-state → 7-state Kanban (retired)
+
+> **Status: retired.** This runbook targets `scripts/migrate/migrate-to-7-state.mjs`
+> and `scripts/migrate/rename-status-2026-05.mjs`, both one-shot scripts that have
+> since been deleted after the repo's own board migration completed. The kanban
+> model has also moved on since this was written — the current model is
+> 8-state, with `Ready for Planning` between `Refine` and `Plan`.
+> Retained for historical context on the `Groom`/`Analyze`/`R4R` → current-vocab
+> mapping, not as a runnable procedure.
 
 Runbook for upgrading a downstream project board from older Status vocabulary
 onto the canonical 7-state model (`Backlog / Refine / Plan / Develop / Test /
