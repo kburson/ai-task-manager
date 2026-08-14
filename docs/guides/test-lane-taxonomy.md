@@ -7,46 +7,50 @@ The contract that assigns every discovered `*.test.mjs` file to exactly one
 ## Why a contract, not a directory accident
 
 Historically a test's lane was implied by which directory the runner happened to
-read it from (`readdirSync(tests/unit)`, `tests/integration`, `tests/slow`). Once
-discovery went recursive (#872), the co-located tests that sit next to the source
-they exercise belonged to no such directory and therefore to no lane — discovered,
-but run nowhere. This contract makes lane a **rule applied to a path**, so every
-discovered file — present and future — resolves to exactly one lane.
+read it from. Recursive discovery (#872) exposed co-located and domain-local tests
+that belonged to no explicit lane. The canonical migration (#876) makes the lane a
+strict declaration in every test path while discovery continues to scan all of
+`scripts/`, so a misplaced file is reported instead of silently omitted.
 
 ## The three lanes
 
-| Lane          | Criterion                                               | Meaning                                                      |
-| ------------- | ------------------------------------------------------- | ------------------------------------------------------------ |
-| `slow`        | a `slow` path segment under a `tests/` ancestor         | tests that each take ≥ ~2s; skipped by the fast develop loop |
-| `integration` | an `integration` path segment under a `tests/` ancestor | tests that cross a module or process boundary                |
-| `unit`        | **default** — every other discovered file               | one module in isolation, including co-located `foo.test.mjs` |
+| Lane          | Required path prefix         | Meaning                                                                      |
+| ------------- | ---------------------------- | ---------------------------------------------------------------------------- |
+| `unit`        | `scripts/tests/unit/`        | one bounded module or feature, including isolated local Git/process fixtures |
+| `integration` | `scripts/tests/integration/` | end-to-end coordination across repositories/remotes or live external systems |
+| `slow`        | `scripts/tests/slow/`        | tests that each take ≥ ~2s; skipped by the fast develop loop                 |
 
-Classification is **total** and **mutually exclusive**, evaluated in order:
+Every path must match
+`scripts/tests/<unit|integration|slow>/<source-relative-subtree>/<name>.test.mjs`.
+The three lane prefixes are mutually exclusive, and the required lane segment makes
+classification total only for valid canonical paths. `laneOf()` throws for every
+other discovered test. Unit is never a default. Lane choice follows the behavior
+under test: an isolated local Git repository, filesystem fixture, or real child
+process may remain unit. `trunk-ref.integration.test.mjs` is integration because it
+coordinates multiple repositories and a remote end to end, including clone, push,
+fetch, and close-gate remote synchronization.
 
-1. If a `slow` segment follows a `tests` segment → `slow`.
-2. Else if an `integration` segment follows a `tests` segment → `integration`.
-3. Else → `unit`.
-
-Because `unit` is the catch-all default, **no discovered file is ever unassigned
-or ambiguous**. Matching is on whole path segments, so a file merely _named_
-`slow.test.mjs` is a unit test, not a slow one.
-
-A co-located test is a unit test **by construction**: it lives beside the single
-module it exercises. Promoting such a test to `integration` or `slow` means moving
-it under the corresponding `tests/` directory — the path is the declaration.
+Co-located tests such as `scripts/gh/foo.test.mjs`, domain-local test roots such as
+`scripts/providers/tests/`, and `.test.mjs` files in package-level support subtrees
+are rejected. Move the file into the correct canonical lane; do not narrow discovery
+or add an exception. Fixture-named directories are not an escape hatch: canonical
+test discovery descends into `fixtures/` and `__fixtures__/` so the runner and audits
+can reject any test-shaped file found there.
 
 ## API
 
 ```js
 import { LANES, laneOf, laneManifest } from '../lib/test-lanes.mjs';
 
-laneOf('scripts/task-tracker/tests/slow/x.test.mjs'); // 'slow'
-laneOf('scripts/task-tracker/tests/integration/y.test.mjs'); // 'integration'
-laneOf('scripts/task-tracker/lib/foo.test.mjs'); // 'unit' (co-located)
+laneOf('scripts/tests/slow/task-tracker/x.test.mjs'); // 'slow'
+laneOf('scripts/tests/integration/task-tracker/y.test.mjs'); // 'integration'
+laneOf('scripts/tests/unit/task-tracker/lib/foo.test.mjs'); // 'unit'
+laneOf('scripts/gh/foo.test.mjs'); // throws: outside the canonical tree
 
 laneManifest();
 // { unit: [...], integration: [...], slow: [...] }  — a partition of
 // discoverTestFiles(): the union is the full discovered set, the lists disjoint.
+// Any misplaced discovered test makes laneManifest() fail closed.
 ```
 
 ## Relationship to the runner's run-lanes

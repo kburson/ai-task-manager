@@ -2,17 +2,17 @@
 // Carve-out (see #22; parallelized by #863): the runner needs non-throwing
 // exit-code introspection to accumulate failures across files. #863 replaced the
 // blocking `for … spawnSync` loop with an async bounded pool (run-tests-pool.mjs)
-// so PURE in-process unit files run at `cpus - 1` concurrency; `spawnTestChild`
+// so the parallel-safe unit subset runs at `cpus - 1` concurrency; `spawnTestChild`
 // reshapes each async child into the same `{status,signal,error}` object
 // spawnSync gave, so failure accounting and `describeSpawnResult` are unchanged.
 // Subprocess-spawning unit files (`isParallelSafe === false`, e.g. execFileSync/
-// gh shell-outs) run SERIAL so their children aren't CPU-starved under the pool —
-// alongside integration + slow, which are serial too (#864 isolates integration
-// next; #868 relocates the misplaced integration files out of tests/unit/).
+// gh shell-outs) run SERIAL so their children aren't CPU-starved under the pool.
+// Integration and slow tests use the same serial scheduler.
 //
 // Lanes (#305, canonicalized #874; sectioned #864):
-//   --lane unit           — the pure/parallel-safe unit population (pooled)
-//   --lane integration    — the shared-resource population, on its own channel
+//   --lane unit           — all unit tests (parallel-safe subset pooled;
+//                           subprocess-spawning subset serial)
+//   --lane integration    — the integration population (serial)
 //   --lane fast (default)  — unit ∪ integration (the retained regression floor)
 //   --lane slow           — the slow lane only
 //   --lane all            — every lane; INTERNAL union for the divergence guard
@@ -25,8 +25,9 @@
 // Discovery and lane assignment come from the canonical modules
 // (`discoverTestFiles` #872 + `laneManifest` #873) via `run-tests-lanes.mjs`;
 // there is no hardcoded directory list here. A divergence guard fails the run if
-// the selection ever omits an on-disk `*.test.mjs`, so a green run provably ran
-// every committed test file (the 624-vs-652 false green cannot recur).
+// the complete lane union ever omits an on-disk `*.test.mjs`, proving that the
+// union accounts for every discovered committed test file. The selected lane
+// still executes only its own slice (the 624-vs-652 false green cannot recur).
 import { execFileSync } from 'node:child_process';
 import { writeFileSync, mkdirSync } from 'node:fs';
 import path from 'node:path';
@@ -165,14 +166,15 @@ async function runEntry(entry) {
   return { res, elapsedMs };
 }
 
-// #863 — only PURE in-process unit files run concurrently at a bounded `cpus - 1`
-// pool. A unit file that spawns subprocesses (`isParallelSafe === false`) would
+// #863 — only the parallel-safe unit subset runs concurrently at a bounded
+// `cpus - 1` pool. A unit file that spawns subprocesses
+// (`isParallelSafe === false`) would
 // have its child CPU-starved under a saturated pool and flake (exit `null` where
 // `1` was expected — the `coverage-close.test.mjs` case), so it joins the serial
-// phase alongside integration + slow (#864 isolates integration next; #868
-// physically relocates these files, after which the unit lane is pure by
-// construction). Output is emitted in INPUT order below, so the log stays
-// deterministic regardless of which child finishes first.
+// phase alongside integration + slow. This split is intentional: unit describes
+// the behavior under test, while pool eligibility describes safe scheduling.
+// Output is emitted in INPUT order below, so the log stays deterministic
+// regardless of which child finishes first.
 const CONCURRENCY = poolConcurrency();
 const runnable = files.filter((e) => !SKIP.has(e.label));
 const poolEligible = (e) => laneOf(e.label) === 'unit' && isParallelSafe(e.full);
@@ -192,7 +194,8 @@ const { results: unitResults, peakConcurrency } = await runPool({
 });
 const poolElapsedMs = Number(process.hrtime.bigint() - poolStart) / 1e6;
 
-// Integration + slow: one child at a time, semantics unchanged from the old loop.
+// Subprocess-spawning unit files plus integration and slow files run one child at
+// a time, preserving the serial semantics of the old loop for this subset.
 const serialStart = process.hrtime.bigint();
 const serialResults = [];
 for (const entry of serialEntries) {
@@ -247,7 +250,7 @@ for (const entry of files) {
 
 if (unitEntries.length) {
   console.log(
-    `\n▶ unit lane: ${unitEntries.length} pure file(s) at pool concurrency ${CONCURRENCY} (peak ${peakConcurrency}); ${serialEntries.length} subprocess-spawning/integration/slow file(s) serial`
+    `\n▶ unit lane: ${unitEntries.length} parallel-safe file(s) at pool concurrency ${CONCURRENCY} (peak ${peakConcurrency}); ${serialEntries.length} subprocess-spawning unit/integration/slow file(s) serial`
   );
 }
 

@@ -95,7 +95,7 @@ from #551).
 | `scripts/task-tracker/lib/issue-body-mutate.mjs`, `body-invariants.mjs`               | runtime-contract                        |
 | `skill/adapters/claude/SKILL.md`, `skill/shared/router.md`, `skill/shared/rules/*.md` | runtime-contract                        |
 | `scripts/reports/generate-value-report.mjs`                                           | runtime-contract                        |
-| `scripts/**/tests/**`, `**/*.test.mjs`                                                | support (never packed)                  |
+| `scripts/tests/**`, `**/*.test.mjs`                                                   | support (never packed)                  |
 | `scripts/maintenance/**`                                                              | support (never packed)                  |
 | `docs/**` (this file included)                                                        | support (guidance, not shipped runtime) |
 

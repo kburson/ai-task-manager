@@ -425,8 +425,8 @@ On first pickup, the agent runs a just-in-time analysis against the current repo
   ```markdown
   ### Verification Commands
 
-  - [ ] `node scripts/task-tracker/tests/config.test.mjs`
-  - [ ] `node scripts/task-tracker/tests/state.test.mjs`
+  - [ ] `node --test scripts/tests/unit/task-tracker/lib/config.test.mjs`
+  - [ ] `node --test scripts/tests/unit/task-tracker/lib/state.test.mjs`
   ```
 
   Do not add words like `PASS`; a checked box means the exact command was run successfully and output was read.

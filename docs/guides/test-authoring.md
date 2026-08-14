@@ -1,8 +1,9 @@
 # Test Authoring Guide
 
-Conventions for slow / integration tests under
-`scripts/task-tracker/tests/slow/` and any test that builds a `gh` or `git`
-shim and invokes a verb end-to-end. Captured as part of #344 after #343
+Conventions for tests under
+`scripts/tests/<unit|integration|slow>/<source-relative-subtree>/`, especially
+tests that build a `gh` or `git` shim and invoke a verb end-to-end. Captured as
+part of #344 after #343
 surfaced a body-truncation defect that had masked guard-cascade rot across
 multiple test files.
 
@@ -25,6 +26,35 @@ gone undetected for long stretches:
    Once the shim was fixed, the rot surfaced.
 
 Both defect classes are preventable with the conventions below.
+
+## Placement and ownership
+
+Mirror the production path below `scripts/` after the lane. For example:
+
+- `scripts/gh/create-issue.mjs` →
+  `scripts/tests/unit/gh/create-issue.test.mjs`
+- `scripts/task-tracker/lib/trunk-ref.mjs` →
+  `scripts/tests/integration/task-tracker/lib/trunk-ref.integration.test.mjs`
+- a slow task-tracker verb scenario →
+  `scripts/tests/slow/task-tracker/verbs/<feature>.test.mjs`
+
+Co-located tests and domain-local `tests/` roots are rejected. Do not place a test
+beside its source module, under `scripts/providers/tests/`, or directly in a lane
+root. Package-level `scripts/tests/{fixtures,helpers,tools}/` holds support files;
+executable fixture tests stay in a canonical lane, such as
+`scripts/tests/unit/fixtures/<feature>.test.mjs`.
+
+Choose the lane by behavior, not filename history. An isolated local Git fixture,
+filesystem fixture, or real child-process invocation alone does not determine the
+lane and may remain unit. `trunk-ref.integration.test.mjs` belongs in integration
+because it coordinates multiple repositories and a remote end to end through clone,
+push, fetch, and close-gate remote synchronization.
+
+Every test has `// @story #NNN` on line 1, or on line 2 immediately after a
+shebang. A `// cspell:ignore ...` preamble follows the story tag; it never precedes
+it. Run
+`npm run lint:test-layout`, `npm run lint:story-tags`, and
+`npm run lint:line-cap` before the relevant lane.
 
 ## Shim conventions
 
@@ -121,7 +151,8 @@ If a code path is impossible to shim without re-implementing half of `gh`,
 escalate to either:
 
 1. A unit test against a smaller injectable seam.
-2. A real integration test under `tests/task-tracker/integration/` that
+2. A real integration test under
+   `scripts/tests/integration/<source-relative-subtree>/` that
    talks to a live test repo (gated by env).
 
 Do not paper over with a shim that lies about the response shape — the lie

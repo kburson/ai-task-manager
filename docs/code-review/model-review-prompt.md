@@ -37,7 +37,7 @@ Recommended commands:
 - `npm test`
 - `npm pack --dry-run --json`
 - `find .github/workflows -maxdepth 1 -type f -print | sort`
-- `find scripts/task-tracker/tests scripts/providers/tests -type f -name '*.test.mjs' | wc -l`
+- `find scripts/tests -type f -name '*.test.mjs' | wc -l`
 
 Expected output:
 1. A validation table with columns: finding, classification, evidence, correction.

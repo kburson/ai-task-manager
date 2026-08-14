@@ -92,5 +92,5 @@ helper.
 
 - `scripts/task-tracker/lib/scratch-dir.mjs` — defines the escape hatch.
 - `scripts/maintenance/lint-no-system-tmp.mjs` — the guard itself.
-- `scripts/task-tracker/tests/bash-guard-tmp-contract.test.mjs` — verifies the
+- `scripts/tests/unit/task-tracker/core/bash-guard-tmp-contract.test.mjs` — verifies the
   bash guard rejects writes to `/tmp/` (the literal string is the contract).

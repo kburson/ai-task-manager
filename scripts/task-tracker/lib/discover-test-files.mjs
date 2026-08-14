@@ -24,10 +24,11 @@ const DEFAULT_PROJECT_ROOT = path.resolve(__dir, '../../..');
 const DEFAULT_ROOT = 'scripts';
 const TEST_FILE_RE = /\.test\.mjs$/;
 
-// Directory names never descended into, matched per path segment (not
-// substring): a directory literally named `fixtures` is skipped, while a real
-// file such as `fixtures-helpers.mjs` is never misclassified.
+// General file scans skip static fixture-data trees by default, matched per path
+// segment (not substring). Test discovery has a stricter default below: it must
+// see test-shaped files even under fixture-named directories so gates fail closed.
 export const DEFAULT_EXCLUDES = Object.freeze(['node_modules', 'fixtures', '__fixtures__']);
+export const TEST_FILE_EXCLUDES = Object.freeze(['node_modules']);
 
 function isExcludedDirectory(rel, name, excludeSet) {
   if (!excludeSet.has(name)) return false;
@@ -88,6 +89,11 @@ export function discoverFiles({
 /**
  * Recursively discover every `*.test.mjs` file under `root`. A `match`-fixed
  * view over {@link discoverFiles}, kept as the named primitive most callers use.
+ * Test discovery excludes only dependency trees by default: fixture-named
+ * directories must remain visible so the lane classifier and audits can reject
+ * a misplaced executable test instead of silently omitting it. Callers may
+ * still supply an explicit `excludes` list when intentionally inspecting a
+ * narrower synthetic corpus.
  *
  * @param {object} [opts]
  * @param {string} [opts.root='scripts'] - repo-relative (or absolute) start dir
@@ -96,7 +102,8 @@ export function discoverFiles({
  * @returns {string[]} sorted, repo-relative paths with POSIX separators
  */
 export function discoverTestFiles(opts = {}) {
-  return discoverFiles({ ...opts, match: TEST_FILE_RE });
+  const excludes = opts.excludes ?? TEST_FILE_EXCLUDES;
+  return discoverFiles({ ...opts, excludes, match: TEST_FILE_RE });
 }
 
 /**

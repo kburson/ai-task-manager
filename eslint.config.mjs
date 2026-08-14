@@ -32,7 +32,7 @@ export default [
     },
   },
   {
-    files: ['**/*.test.mjs', 'tests/**/*.mjs', 'scripts/task-tracker/tests/**/*.mjs'],
+    files: ['**/*.test.mjs', 'tests/**/*.mjs', 'scripts/tests/**/*.mjs'],
     languageOptions: {
       globals: {
         ...globals.node,

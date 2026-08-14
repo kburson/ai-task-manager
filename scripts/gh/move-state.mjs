@@ -15,7 +15,7 @@
 // IMPORT-ONLY: it has no entrypoint shim and never calls process.exit. The few
 // tests that still need a real move-state OS process (cross-process lock
 // fidelity, no-TTY gate) spawn the test-only harness
-// scripts/task-tracker/tests/helpers/move-state-cli.mjs, which imports this
+// scripts/tests/helpers/move-state-cli.mjs, which imports this
 // exported seam and maps the returned code onto process.exit.
 //
 // Move a GitHub issue through board states: Backlog → Refine → Ready for Planning → Plan → Develop → Test → Review → Done

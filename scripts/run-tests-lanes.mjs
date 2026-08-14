@@ -65,8 +65,9 @@ export function laneFiles(lane, opts = {}) {
 /**
  * Delta between the runner's full (`all`-lane) selection and the on-disk
  * `*.test.mjs` ground truth. A non-empty result means the runner would omit (or
- * over-claim) a file; the runner turns it into a non-zero exit so a green run
- * provably ran every committed test file.
+ * over-claim) a file; the runner turns it into a non-zero exit so the complete
+ * lane union accounts for every discovered committed test file. This does not
+ * imply that one selected lane executed the other lanes.
  *
  * @param {object} [opts] - forwarded to discovery
  * @returns {{missing: string[], extra: string[]}}

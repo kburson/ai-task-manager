@@ -143,7 +143,7 @@ The enclosing #1088 exact-SHA Test and Review receipts are authoritative for the
 final result. They must record green results for:
 
 ```bash
-node --test scripts/task-tracker/tests/integration/lib/github-records-initialization.test.mjs
+node --test scripts/tests/integration/task-tracker/lib/github-records-initialization.test.mjs
 npm test
 npm run test:slow
 npm run lint

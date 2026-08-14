@@ -484,7 +484,7 @@ The skill is delivered as a just-in-time loader to minimize context burden. Thre
 
 Both Claude and Codex adapters point at the same router; Tier-2 rule files are tool-agnostic. Tool-specific divergence (e.g. how the agent surfaces a `PROMPT_REQUIRED:` line) stays in the adapter `SKILL.md`.
 
-After `/clear` or `/compact`, sentinels are wiped from context and the router reloads on the next `/task` call; only the Tier-2 rule files needed by the next verb reload — unrelated rules stay unloaded. Budget targets (asserted by `scripts/task-tracker/tests/unit/core/measure-context.test.mjs`): idle ≤1,500 tokens, invoked ≤8,000 tokens, active ≤12,000 tokens. Measurement tool: `scripts/task-tracker/measure-context.mjs [--idle | --invoked | --active [N] | --all]`.
+After `/clear` or `/compact`, sentinels are wiped from context and the router reloads on the next `/task` call; only the Tier-2 rule files needed by the next verb reload — unrelated rules stay unloaded. Budget targets (asserted by `scripts/tests/unit/task-tracker/core/measure-context.test.mjs`): idle ≤1,500 tokens, invoked ≤8,000 tokens, active ≤12,000 tokens. Measurement tool: `scripts/task-tracker/measure-context.mjs [--idle | --invoked | --active [N] | --all]`.
 
 ## File Layout
 
@@ -560,8 +560,21 @@ scripts/task-tracker/
 │   └── done.mjs                   #   terminal — no exitGuards
 │
 ├── hooks/                         # PreToolUse/PostToolUse hook implementations
-├── tests/                         # node --test suites (unit + integration lanes)
 └── tools/                         # standalone maintenance/inspection scripts
+
+scripts/tests/
+├── unit/                          # Canonical unit lane
+│   ├── task-tracker/              # Example source-relative subsystem subtree
+│   └── ...                        # Other package subsystem mirrors
+├── integration/                   # Canonical integration lane
+│   ├── task-tracker/              # Example source-relative subsystem subtree
+│   └── ...                        # Other package subsystem mirrors
+├── slow/                          # Canonical slow lane
+│   ├── task-tracker/              # Example source-relative subsystem subtree
+│   └── ...                        # Other package subsystem mirrors
+├── fixtures/                      # Package-level static test fixtures
+├── helpers/                       # Package-level shared test helpers
+└── tools/                         # Package-level test audits and maintenance tools
 
 scripts/gh/
 ├── move-state.mjs                 # THE single state-mutator; every Status write goes through it
@@ -573,8 +586,7 @@ scripts/reports/
 ├── generate-value-report.mjs      # Value/ROI report generator
 ├── heal-backlog-attribution.mjs   # Maintenance: repair `[#N]` attribution across the backlog
 ├── value-report-config.json       # Report configuration
-├── lib/                           # Report helpers
-└── tests/                         # Report test suites
+└── lib/                           # Report helpers
 ```
 
 > The v1 design routed word counting through a thin
@@ -622,8 +634,10 @@ Migration steps (executed during implementation):
 
 This section reflects the original v1 plan (no formal test framework, a manual
 smoke-test checklist). Both have since been superseded: the repo now runs
-`node --test` across `scripts/task-tracker/tests/unit/` (fast + slow lanes) and
-`tests/task-tracker/integration/`, with `c8` coverage (see
+`node --test` across the canonical `scripts/tests/{unit,integration,slow}/` lane
+roots. Their task-tracker subtrees are
+`scripts/tests/{unit,integration,slow}/task-tracker/`; other package subsystems are
+nested beside them. The suite runs with `c8` coverage (see
 [`guides/test-authoring.md`](./guides/test-authoring.md) for current
 conventions). `docs/task-tracker-smoke-test.md` was never created — its
 coverage is now the automated test tree instead.

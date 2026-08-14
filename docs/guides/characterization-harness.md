@@ -12,7 +12,7 @@ the AITM state machine:
 Before any of those refactors lands, their **external behavior** is pinned by a
 characterization harness:
 
-`scripts/task-tracker/tests/characterization/orchestrators.test.mjs`
+`scripts/tests/unit/task-tracker/characterization/orchestrators.test.mjs`
 
 ## Why this exists
 
@@ -29,7 +29,7 @@ This harness is the safety net for the refactor user stories that follow it:
 Each of those stories is allowed to move internal structure freely **only
 because** this harness will go red the moment observable behavior drifts. The
 harness is therefore a hard gate: US-10/US-11/US-12 may not be marked complete
-unless `node --test scripts/task-tracker/tests/characterization/orchestrators.test.mjs`
+unless `node --test scripts/tests/unit/task-tracker/characterization/orchestrators.test.mjs`
 is still green against the refactored code.
 
 ## The binding constraint — public boundary only
@@ -49,7 +49,7 @@ because it would give a false green during exactly the refactors it exists to
 protect. If US-11 renames an internal helper inside `promote.mjs`, the harness
 stays green; if it changes what a caller observes, the harness goes red.
 
-Contrast with `scripts/task-tracker/tests/unit/close-fail-closed.test.mjs`,
+Contrast with `scripts/tests/unit/task-tracker/close-fail-closed.test.mjs`,
 which asserts on the _source text_ of `close.mjs` via regex. That style is
 exactly what this harness forbids — source-regex tests pass even when behavior
 changes (as long as the matched text survives) and fail on harmless renames.
@@ -70,7 +70,7 @@ changes (as long as the matched text survives) and fail on harmless renames.
 ## Running it
 
 ```
-node --test scripts/task-tracker/tests/characterization/orchestrators.test.mjs
+node --test scripts/tests/unit/task-tracker/characterization/orchestrators.test.mjs
 ```
 
 Expected: all tests pass against current `trunk`. A failure means either a real

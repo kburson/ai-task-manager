@@ -170,7 +170,7 @@ receipt that Review later validates.
 Run a focused probe only after the issue is already in Review:
 
 ```bash
-npx aitm review 1089 --probe "node --test scripts/task-tracker/tests/unit/lib/review-receipt-reuse.test.mjs"
+npx aitm review 1089 --probe "node --test scripts/tests/unit/task-tracker/lib/review-receipt-reuse.test.mjs"
 ```
 
 `--probe` is repeatable. Each command must pass the normal verification
@@ -534,7 +534,7 @@ All issues are created in Backlog — no exceptions (#272). `scripts/gh/create-i
 
 Every Acceptance Criterion must be _demonstrable_: bound to a concrete check a machine can run, or honestly marked as not checkable. The Refine→Ready for Planning exit gate (`lib/refine-to-plan-gate.mjs`, walker `findAcsWithoutVerifierOrInvalidTag` in `lib/body-invariants.mjs`) refuses promotion and emits one `refine-exit-demonstrable:` blocker per offending AC until every AC line satisfies one of:
 
-- **Targeted verifier.** The AC carries an `aitm-verified cmd="…"` declaration naming at least one specific command — e.g. `<!-- aitm-verified cmd="\`node --test scripts/task-tracker/tests/unit/foo.test.mjs\`" -->`. The command must exercise _that AC_, not the whole suite.
+- **Targeted verifier.** The AC carries an `aitm-verified cmd="…"` declaration naming at least one specific command — e.g. `<!-- aitm-verified cmd="\`node --test scripts/tests/unit/task-tracker/foo.test.mjs\`" -->`. The command must exercise _that AC_, not the whole suite.
 - **Honest opt-out.** The AC line carries an `<!-- aitm-non-demonstrable -->` marker. Use this only for genuinely unverifiable assertions (subjective quality goals, external-process facts); it is an explicit, grep-able admission, not an escape hatch for laziness. (Before #891, this was a plain prose tag — `invalid — non-demonstrable` — matched as an unanchored substring against the visible label, which made prose that merely _discussed_ the tag falsely count as an opt-out; the marker form closes that gap. Legacy bodies are migrated by `scripts/maintenance/migrate-non-demonstrable-tag-position.mjs`.)
 
 `npm run test:all` is the **regression floor**, not an AC verifier. An AC whose only declared command is `test:all` is rejected (`reason: test-all-verifier`) — it proves nothing specific to that criterion. Bind a targeted test instead, or add the opt-out marker. This standard exists because a vague AC cannot be honestly ticked: the #516 fabrication incident showed that ACs without a concrete verifier invite forged evidence. Demonstrability at the Refine gate is the upstream defense.
@@ -559,7 +559,7 @@ The [Demonstrable-AC Standard](#demonstrable-ac-standard-refineready-for-plannin
 **The `aitm-defect-repro-test` marker convention.** A defect's reproducing test is recorded in the issue body with a marker naming its path:
 
 ```
-<!-- aitm-defect-repro-test: scripts/task-tracker/tests/unit/<the-repro>.test.mjs -->
+<!-- aitm-defect-repro-test: scripts/tests/unit/task-tracker/<the-repro>.test.mjs -->
 ```
 
 Documenting this token gives a future Develop→Test enforcement gate a stable contract to read — a gate that refuses a defect-kind issue lacking the marker is a noted follow-up candidate, intentionally out of scope of this doctrine (the doctrine is documentation; the gate, when built, is enforcement). Recording the path now also makes "write a reproducing test" concrete rather than aspirational: the marker points at the exact artifact that demonstrates the fix.
@@ -1027,7 +1027,7 @@ After `/clear`, `/compact`, or `npm update ai-task-manager`, the sentinel/marker
 | `npm run test:slow` | slow | ~190s   | when iterating on a file under `tests/slow/`              |
 | `npm run test:all`  | both | ~530s+  | full regression floor (`fast ∪ slow`, coverage-identical) |
 
-The slow lane is everything under `scripts/task-tracker/tests/slow/`: integration-y tests that each spawn child processes and take ≥2s. Add a new file there when its measured runtime exceeds ~2s; otherwise default to `scripts/task-tracker/tests/`.
+The slow lane is everything under `scripts/tests/slow/task-tracker/`: integration-y tests that each spawn child processes and take ≥2s. Add a new file there when its measured runtime exceeds ~2s; otherwise default to `scripts/tests/unit/task-tracker/`.
 
 ### Two-lane DoD `tests` verification (#934)
 
@@ -1076,7 +1076,7 @@ When CSpell flags a legitimate token (project jargon, library name, person name)
 
 Beyond the four generic tools, `npm run lint` also runs several repo-specific
 "house lints" — a pure detector under `scripts/task-tracker/lib/` plus a thin
-FS-walking runner under `scripts/maintenance/` (or `scripts/task-tracker/tests/`):
+FS-walking runner under `scripts/maintenance/` (or `scripts/tests/unit/task-tracker/`):
 `lint:tmp`, `lint:fleet-sandbox`, `lint:story-tags`, `lint:line-cap`, and
 `lint:test-reach`.
 

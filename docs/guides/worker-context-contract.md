@@ -150,7 +150,7 @@ A complete worker prompt fits in well under a page. The example below briefs a w
 >
 > - `scripts/task-tracker/activity-guard.mjs`
 > - `scripts/task-tracker/lib/activity-policy-loader.mjs` (new file)
-> - `scripts/task-tracker/tests/activity-policy-loader.test.mjs` (new file)
+> - `scripts/tests/unit/task-tracker/activity-policy-loader.test.mjs` (new file)
 >
 > **You may NOT edit:**
 >
@@ -186,7 +186,7 @@ That prompt is ~30 lines. The worker reads the bound issue body for full ACs; th
 
 - scripts/task-tracker/activity-guard.mjs
 - scripts/task-tracker/lib/activity-policy-loader.mjs
-- scripts/task-tracker/tests/activity-policy-loader.test.mjs
+- scripts/tests/unit/task-tracker/activity-policy-loader.test.mjs
 
 ### root_cause
 
