@@ -31,7 +31,9 @@ import { projectScratchDir } from '../../../../task-tracker/lib/scratch-dir.mjs'
 
 const HERE = dirname(fileURLToPath(import.meta.url)) + '/..';
 const REPO_ROOT = resolve(HERE, '../../../..');
-const MODULE_URL = pathToFileURL(resolve(HERE, '../../verify-develop.mjs')).href;
+const MODULE_URL = pathToFileURL(
+  resolve(REPO_ROOT, 'scripts/task-tracker/verify-develop.mjs')
+).href;
 
 // ---------------------------------------------------------------------------
 // Pure helpers extracted for testing (mirrors the script's logic)

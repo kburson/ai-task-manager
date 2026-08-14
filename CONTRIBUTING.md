@@ -11,22 +11,26 @@ for the full taxonomy, integration vs unit boundary, and the slow-lane split pol
 
 | Path                                                | Contains                            |
 | --------------------------------------------------- | ----------------------------------- |
-| `scripts/tests/unit/task-tracker/`                  | Task-tracker unit tests             |
-| `scripts/tests/unit/providers/`                     | Provider unit tests                 |
+| `scripts/tests/unit/<source-relative-path>/`        | Unit tests                          |
 | `scripts/tests/integration/<source-relative-path>/` | Cross-stage E2E tests               |
 | `scripts/tests/slow/<source-relative-path>/`        | Integration / slow tests (≥2s each) |
 
-**Story-ID tagging:** Every test file begins with `// @story #NNN` on line 1 identifying the issue that owns it. Run `npm run lint:story-tags` to verify all files carry the tag.
+Co-located tests and domain-local `tests/` roots are rejected. Discovery scans all
+of `scripts/` so `npm run lint:test-layout` can name a misplaced file instead of
+silently omitting it.
 
-**Per-file line cap:** Each test file must stay under 400 lines. Run `npm run lint:line-cap` to check. Split into separate files when you hit the limit.
+**Story-ID tagging:** Every test file has a permitted `// @story #NNN` header identifying the issue that owns it. Run `npm run lint:story-tags` to verify all files carry the tag.
+
+**Per-file line cap:** Review files above 400 code lines; 800 code lines is the hard limit. Run `npm run lint:line-cap` to check package-wide discovery. Split at a cohesive feature boundary before the hard limit.
 
 **Audit commands:**
 
 ```
 npm run lint:story-tags   # every *.test.mjs has // @story #NNN
-npm run lint:line-cap     # no file exceeds 400 lines
+npm run lint:test-layout  # every discovered test declares a canonical lane
+npm run lint:line-cap     # no file exceeds 800 code lines
 npm test                  # fast lanes (unit + integration)
 npm run test:slow         # slow lane
 ```
 
-**Worked example:** To add a test for issue #500 covering a change in `scripts/task-tracker/lib/foo.mjs`, create `scripts/tests/unit/task-tracker/lib/foo.test.mjs`. Start the file with `// @story #500`, write your tests using Node's built-in `node:test` runner, and confirm the file is under 400 lines. Run `npm run test:unit` to verify it passes in the unit lane.
+**Worked example:** To add a test for issue #500 covering a change in `scripts/task-tracker/lib/foo.mjs`, create `scripts/tests/unit/task-tracker/lib/foo.test.mjs`. Start the file with `// @story #500`, write your tests using Node's built-in `node:test` runner, and keep the file below the 800-code-line hard limit. Run `npm run test:unit` to verify it passes in the unit lane.

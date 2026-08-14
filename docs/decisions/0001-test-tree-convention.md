@@ -7,16 +7,16 @@
 
 ## Context
 
-The repository had test files scattered across three roots (`./test/`, `./tests/`, and
-`scripts/tests/unit/task-tracker/`) with no documented convention for where new tests should
-live, how subdirectories should be named, how to attribute tests to the story that
-introduced them, or when a test file is large enough to be split.
+The repository originally had test files scattered across `./test/`, `./tests/`,
+domain-local `tests/` directories, and files co-located with production modules. It
+publishes one npm package, so those locations did not represent independent package
+boundaries. They instead made discovery, lane ownership, package exclusion, and
+source-to-test mapping disagree.
 
 Without an explicit convention:
 
 - New contributors default to whatever root looks familiar, perpetuating the sprawl.
-- The test runner (`scripts/run-tests.mjs`) discovers tests via hard-coded paths that do
-  not cover all roots, causing tests to silently drop out of CI.
+- A runner or audit that knew only selected roots could silently drop tests from CI.
 - Large test files accumulate without a split trigger, making per-story archaeology
   difficult.
 
@@ -27,37 +27,40 @@ epics (C2–C6 of #274).
 
 ## Decision
 
-### 1. Canonical test root
+### 1. Canonical test root and lane declaration
 
-The single canonical root for task-tracker subsystem tests is:
+Every package test lives at exactly one path of this form:
 
+```text
+scripts/tests/<unit|integration|slow>/<source-relative-subtree>/<name>.test.mjs
 ```
-scripts/tests/unit/task-tracker/
-```
 
-All unit, integration, and slow tests for code under `scripts/task-tracker/` live here.
+The lane segment is a required declaration. `laneOf()` rejects a test outside this
+tree or below a support-only subtree; unit is not a catch-all. Co-located tests such
+as `scripts/gh/create-issue.test.mjs` and domain-local roots such as
+`scripts/providers/tests/` are retired and rejected.
 
-**Exception — `scripts/tests/unit/providers/`:** Provider tests remain co-located in
-`scripts/tests/unit/providers/`. Providers are a self-contained package designed for future
-extraction; moving their tests to the task-tracker test root would couple two packages
-that are intentionally independent. This exception must be re-evaluated if providers are
-extracted into a separate npm package.
+Discovery deliberately remains rooted at all of `scripts/`. This is the fail-closed
+part of the convention: a misplaced `*.test.mjs` stays visible to audits, then
+`npm run lint:test-layout` reports its path and exits nonzero. Narrowing discovery to
+the canonical root would turn a layout mistake into a silently omitted test.
 
-The orphan roots `./test/` and `./tests/` are eliminated by #306. After that migration
-there are exactly two test roots: `scripts/tests/unit/task-tracker/` and
-`scripts/tests/unit/providers/`.
+There is one npm deliverable and therefore no provider or domain-root exception. If a
+subtree becomes a separately published package later, its test boundary requires a new
+decision rather than an implicit directory exception.
 
-### 2. Subdirectory taxonomy under `scripts/tests/unit/task-tracker/`
+### 2. Canonical tree and source-relative taxonomy
 
-| Path                                                  | Contents                                                                                                                               |
-| ----------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
-| `scripts/tests/unit/task-tracker/<subsystem>/`        | Unit tests — module-oriented by default, or feature-oriented when measured shared-fixture consolidation is faster, nested by subsystem |
-| `scripts/tests/integration/task-tracker/<subsystem>/` | Integration tests — make real GitHub API calls, spawn real child processes against the live filesystem, or use real git worktrees      |
-| `scripts/tests/slow/task-tracker/<subsystem>/`        | Slow tests — exceed ~5 s wall-clock time but are otherwise unit-style                                                                  |
-| `scripts/tests/fixtures/`                             | Shared fixture data and helper modules; lane-owned fixture tests live under `<lane>/fixtures/` so discovery executes them              |
+| Path                                                   | Contents                                                                                                                               |
+| ------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------- |
+| `scripts/tests/unit/<source-relative-subtree>/`        | Unit tests — module-oriented by default, or feature-oriented when measured shared-fixture consolidation is faster, nested by subsystem |
+| `scripts/tests/integration/<source-relative-subtree>/` | Integration tests — cross a module/process boundary, use a real filesystem subprocess, live GitHub API, or real git worktree           |
+| `scripts/tests/slow/<source-relative-subtree>/`        | Tests whose measured runtime belongs outside the fast development loop                                                                 |
+| `scripts/tests/{fixtures,helpers,tools}/`              | Package-level test support, shared fixtures, and audit tools; never test lanes or npm package content                                  |
+| `scripts/tests/<lane>/{core,meta,fixtures}/`           | Lane-owned buckets for package-root behavior, test-tree contracts, and executable fixture tests                                        |
 
-The three fast-lane subdirectories (`unit/`, `slow/`, `integration/`) are siblings under
-`tests/`. The `tests/` root retains only audit scripts and the subdirectories themselves.
+The three lane directories and the package-level support directories are siblings.
+Only files below `unit/`, `integration/`, or `slow/` may end in `.test.mjs`.
 
 #### Subsystem nesting (amended by #868)
 
@@ -68,10 +71,11 @@ convention ("no additional nesting … depth is a last resort") is superseded: t
 source layout is what makes the source→test mapping mechanical rather than archaeological.
 
 The mapping is: for a test named `<module>.test.mjs`, its subsystem subdirectory is the
-directory of the source `<module>.mjs` relative to its package root under `scripts/` —
-e.g. a test covering `scripts/task-tracker/lib/foo.mjs` lives at
-`tests/unit/lib/foo.test.mjs`, and one covering `scripts/gh/create-issue.mjs` (were it
-under a lane) mirrors to `gh/`. The subsystem set is exactly the source subsystems:
+directory of the source `<module>.mjs` relative to `scripts/`. For example,
+`scripts/task-tracker/lib/foo.mjs` maps to
+`scripts/tests/unit/task-tracker/lib/foo.test.mjs`, and
+`scripts/gh/create-issue.mjs` maps to
+`scripts/tests/unit/gh/create-issue.test.mjs`. The subsystem set is exactly the source subsystems:
 `lib/`, `lib/agent-review/`, `lib/agent-review/validators/`, `lib/move-state/`,
 `lib/config-init/`, `verbs/`, `gh/`, `gh/lib/`, `states/`, `hooks/`, `maintenance/`,
 `maintenance/lib/`, `tools/`, `migrate/lib/`. Three buckets have no 1:1 source directory:
@@ -84,20 +88,21 @@ under a lane) mirrors to `gh/`. The subsystem set is exactly the source subsyste
 
 Each lane (`unit/`, `integration/`, `slow/`) is nested identically. **No `*.test.mjs`
 file lives directly in a lane root** — every file is under a subsystem or bucket
-subdirectory. Lane classification is unchanged by the nesting: `laneOf` is path-segment
-based, so `tests/unit/lib/foo.test.mjs` is still a unit test. The layout is enforced at
-runtime by `tests/unit/meta/test-tree-layout.test.mjs`; a per-directory file cap (source
+subdirectory. `laneOf()` parses the exact canonical path rather than inferring a
+default. The layout is enforced by `npm run lint:test-layout` and
+`scripts/tests/unit/meta/test-tree-layout.test.mjs`; a per-directory file cap (source
 `lib/` is itself flat) is deferred to #946.
 
 ### 3. Story-ID tagging
 
-Every test file carries a first-line attribution comment:
+Every test file carries a mandatory attribution header:
 
 ```js
 // @story #NNN
 ```
 
-where `NNN` is the GitHub issue that introduced or owns the test. This is the
+where `NNN` is the GitHub issue that introduced or owns the test. The tag is line 1
+unless a shebang or bounded `cspell:ignore` preamble occupies the header. This is the
 authoritative attribution mechanism; filename suffixes and directory groupings are
 supplementary.
 
@@ -177,8 +182,8 @@ A test is an **integration test** if and only if it:
 Everything else is a **unit test**, even if it reads real config files on disk. Disk reads
 are fast and deterministic; they do not warrant the overhead of the `integration/` bucket.
 
-Integration tests are excluded from `npm test` (fast lane) and only run under
-`npm run test:all`.
+Unit and integration tests form the fast lane. Slow tests run separately with
+`npm run test:slow`.
 
 ### 6. Impact selection and verification ownership (amended by #1089)
 
@@ -205,15 +210,18 @@ a global fixture helper or test runner escalates to its declared complete lane.
 
 ## Consequences
 
-- All new test files must be placed under `scripts/tests/unit/task-tracker/` (or
-  `scripts/tests/unit/providers/` for provider code) and carry a `// @story #NNN` first-line
-  comment.
+- All new test files must be placed under
+  `scripts/tests/<unit|integration|slow>/<source-relative-subtree>/` and carry a
+  permitted `// @story #NNN` header.
+- Co-located and domain-local test roots are rejected; there are no retained
+  package-boundary exceptions.
+- `scripts/tests/{fixtures,helpers,tools}/` are support-only and excluded from the
+  published npm package with an explicit `!scripts/tests/**` rule.
 - C2 (#309) backfills the `@story` tag into all existing files.
 - C3 (#310) enforces the line cap by splitting god-files.
-- C4 (#311) reconciles `scripts/tests/unit/providers/` against this ADR (confirms or migrates
-  per the exception criteria above).
+- C4 (#311) originally reconciled provider placement; #876 retires that exception.
 - C5 (#312) updates tooling and CI config to reflect the single-root discovery path.
 - C6 (#313) updates `CONTRIBUTING.md` with the Test Convention section that links to
   this document.
-- The `scripts/run-tests.mjs` discovery paths are updated by #306 so that
-  `scripts/tests/integration/task-tracker/` is the only integration root.
+- Discovery scans all of `scripts/`; strict classification ensures only canonical
+  lane paths can execute.

@@ -25,12 +25,14 @@
 ### Task 1: Freeze the starting corpus and define canonical path semantics
 
 **Files:**
+
 - Modify: `scripts/task-tracker/lib/test-lanes.mjs`
 - Create: `scripts/task-tracker/tests/unit/lib/test-corpus-paths.test.mjs` (moved by Task 3 to `scripts/tests/unit/task-tracker/lib/test-corpus-paths.test.mjs`)
 - Create: `scripts/task-tracker/tests/unit/meta/package-test-corpus.test.mjs` (moved by Task 3 to `scripts/tests/unit/meta/package-test-corpus.test.mjs`)
 - Create: `scripts/task-tracker/tests/fixtures/test-corpus-pre-move.json` (moved by Task 3 to `scripts/tests/fixtures/test-corpus-pre-move.json`)
 
 **Interfaces:**
+
 - Produces: `CANONICAL_TEST_ROOT`, `CANONICAL_LANES`, `parseCanonicalTestPath(relPath)`, `canonicalLayoutViolations(files)`, and a frozen 915-entry migration manifest.
 - Consumes: `discoverTestFiles({ projectRoot })` and the existing `laneOf()` only to record each pre-move lane.
 
@@ -72,10 +74,13 @@ assert.deepEqual(parseCanonicalTestPath('scripts/tests/unit/gh/create-issue.test
 });
 assert.equal(parseCanonicalTestPath('scripts/gh/create-issue.test.mjs'), null);
 assert.equal(parseCanonicalTestPath('scripts/tests/fixtures/data.test.mjs'), null);
-assert.deepEqual(canonicalLayoutViolations([
-  'scripts/tests/slow/articles/publish-articles-e2e.test.mjs',
-  'scripts/reports/generate-value-report.test.mjs',
-]), ['scripts/reports/generate-value-report.test.mjs']);
+assert.deepEqual(
+  canonicalLayoutViolations([
+    'scripts/tests/slow/articles/publish-articles-e2e.test.mjs',
+    'scripts/reports/generate-value-report.test.mjs',
+  ]),
+  ['scripts/reports/generate-value-report.test.mjs']
+);
 ```
 
 The package-corpus test must validate manifest schema, exact starting counts, unique old/new paths, allowed lanes, basename preservation, and a one-to-one mapping.
@@ -121,6 +126,7 @@ Commit: `test: freeze #876 package corpus migration`
 ### Task 2: Enforce and repair whole-tree story attribution
 
 **Files:**
+
 - Modify: `scripts/task-tracker/tests/audit-story-tags.mjs` (moved by Task 3 to `scripts/tests/tools/audit-story-tags.mjs`)
 - Modify: `scripts/task-tracker/tag-story-ids.mjs`
 - Modify: `scripts/task-tracker/tests/unit/lib/coverage-tag-story-ids.test.mjs` (moved by Task 3)
@@ -128,6 +134,7 @@ Commit: `test: freeze #876 package corpus migration`
 - Modify: the 32 starting untagged `*.test.mjs` files listed by canonical discovery
 
 **Interfaces:**
+
 - Consumes: `discoverTestFiles({ projectRoot: process.cwd() })` with its default `scripts` root.
 - Produces: identical whole-tree file selection in the audit and repair commands, exported pure tag-placement helpers, and complete story attribution.
 
@@ -180,6 +187,7 @@ Commit: `fix: enforce whole-tree story tags for #876`
 ### Task 3: Move the complete corpus and repair path consumers
 
 **Files:**
+
 - Move: every manifest `oldPath` to its unique `newPath` with `git mv`
 - Move: `scripts/task-tracker/tests/fixtures/` to `scripts/tests/fixtures/`
 - Move: `scripts/task-tracker/tests/helpers/` to `scripts/tests/helpers/`
@@ -196,6 +204,7 @@ Commit: `fix: enforce whole-tree story tags for #876`
 - Modify: moved `scripts/tests/unit/meta/test-tree-layout.test.mjs`
 
 **Interfaces:**
+
 - Consumes: the frozen manifest and Task 1 canonical parser.
 - Produces: one canonical tree, strict `laneOf()`, source-to-test mapping by complete source-relative path, and zero retired live roots.
 
@@ -204,8 +213,14 @@ Commit: `fix: enforce whole-tree story tags for #876`
 Update tests to require:
 
 ```js
-assert.equal(laneOf('scripts/tests/integration/task-tracker/lib/trunk-ref.integration.test.mjs'), 'integration');
-assert.throws(() => laneOf('scripts/task-tracker/lib/trunk-ref.test.mjs'), /outside scripts\/tests/);
+assert.equal(
+  laneOf('scripts/tests/integration/task-tracker/lib/trunk-ref.integration.test.mjs'),
+  'integration'
+);
+assert.throws(
+  () => laneOf('scripts/task-tracker/lib/trunk-ref.test.mjs'),
+  /outside scripts\/tests/
+);
 assert.throws(() => laneOf('scripts/tests/fixtures/not-a-lane.test.mjs'), /canonical lane/);
 assert.deepEqual(findUnitTests(['scripts/gh/create-issue.mjs'], { discovered }), [
   'scripts/tests/unit/gh/create-issue.test.mjs',
@@ -239,7 +254,8 @@ Replace `laneOf()` with:
 ```js
 export function laneOf(relPath) {
   const parsed = parseCanonicalTestPath(relPath);
-  if (!parsed) throw new Error(`test-lanes: ${relPath} is outside scripts/tests/<unit|integration|slow>/`);
+  if (!parsed)
+    throw new Error(`test-lanes: ${relPath} is outside scripts/tests/<unit|integration|slow>/`);
   return parsed.lane;
 }
 ```
@@ -269,6 +285,7 @@ Commit: `refactor: centralize package tests for #876`
 ### Task 4: Activate permanent layout, packaging, and documentation gates
 
 **Files:**
+
 - Create: `scripts/tests/tools/audit-test-layout.mjs`
 - Modify: `scripts/tests/unit/meta/test-tree-layout.test.mjs`
 - Modify: `scripts/tests/unit/meta/package-test-corpus.test.mjs`
@@ -282,6 +299,7 @@ Commit: `refactor: centralize package tests for #876`
 - Modify: contributor/onboarding documentation containing the live test convention
 
 **Interfaces:**
+
 - Consumes: canonical discovery, strict path parsing, and the migration manifest.
 - Produces: `npm run lint:test-layout`, package-wide story/line-cap audits, and an npm-pack exclusion proof.
 

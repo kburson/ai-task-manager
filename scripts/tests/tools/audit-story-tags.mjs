@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 // @story #309
-// CI gate: exits non-zero when any *.test.mjs file is missing a @story tag.
+// Package-wide CI gate: exits non-zero when any test discovered anywhere below
+// scripts/ is missing a permitted @story header, including misplaced tests.
 
 import { readFileSync } from 'fs';
 import path from 'node:path';

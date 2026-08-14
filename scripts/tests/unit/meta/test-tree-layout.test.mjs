@@ -24,8 +24,8 @@
 
 import { strict as assert } from 'node:assert';
 import { test } from 'node:test';
-import { readFileSync, existsSync, readdirSync } from 'node:fs';
-import { execFileSync } from 'node:child_process';
+import { readFileSync, existsSync, mkdirSync, readdirSync, writeFileSync } from 'node:fs';
+import { execFileSync, spawnSync } from 'node:child_process';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -36,10 +36,13 @@ import {
   isShallowRepository,
 } from '../../../task-tracker/lib/git-provenance.mjs';
 import { countCodeLines } from '../../../task-tracker/lib/count-code-lines.mjs';
+import { mkdtempProjectIsolated } from '../../../task-tracker/lib/scratch-dir.mjs';
 
 // scripts/tests/unit/meta/ → four levels up is the repo root.
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(HERE, '../../../..');
+const LAYOUT_AUDIT = path.join(REPO_ROOT, 'scripts/tests/tools/audit-test-layout.mjs');
+const LINE_CAP_AUDIT = path.join(REPO_ROOT, 'scripts/tests/tools/audit-line-cap.mjs');
 
 const LANE_ROOTS = LANES.map((l) => `scripts/tests/${l}`);
 
@@ -50,6 +53,60 @@ const baseline = JSON.parse(
 function git(args) {
   return execFileSync('git', args, { cwd: REPO_ROOT, encoding: 'utf8' });
 }
+
+function writeFixture(projectRoot, relPath) {
+  const absPath = path.join(projectRoot, relPath);
+  mkdirSync(path.dirname(absPath), { recursive: true });
+  writeFileSync(absPath, '// @story #876\n');
+}
+
+test('layout audit rejects a discovered test outside the canonical lane tree', () => {
+  const projectRoot = mkdtempProjectIsolated('audit-test-layout-');
+  writeFixture(projectRoot, 'scripts/tests/unit/gh/canonical.test.mjs');
+  writeFixture(projectRoot, 'scripts/gh/misplaced.test.mjs');
+
+  const result = spawnSync(process.execPath, [LAYOUT_AUDIT], {
+    cwd: projectRoot,
+    encoding: 'utf8',
+  });
+
+  assert.equal(result.status, 1, result.stderr);
+  assert.match(result.stderr, /scripts\/gh\/misplaced\.test\.mjs/);
+  assert.doesNotMatch(result.stderr, /scripts\/tests\/unit\/gh\/canonical\.test\.mjs/);
+});
+
+test('layout audit rejects a test placed directly in a canonical lane root', () => {
+  const projectRoot = mkdtempProjectIsolated('audit-test-layout-loose-');
+  writeFixture(projectRoot, 'scripts/tests/unit/loose.test.mjs');
+
+  const result = spawnSync(process.execPath, [LAYOUT_AUDIT], {
+    cwd: projectRoot,
+    encoding: 'utf8',
+  });
+
+  assert.equal(result.status, 1, result.stderr);
+  assert.match(result.stderr, /scripts\/tests\/unit\/loose\.test\.mjs/);
+});
+
+test('line-cap audit still examines a misplaced test discovered outside the canonical tree', () => {
+  const projectRoot = mkdtempProjectIsolated('audit-test-line-cap-');
+  const oversized = [
+    '// @story #876',
+    ...Array.from({ length: 801 }, (_, index) => `export const line${index} = ${index};`),
+  ].join('\n');
+  const relPath = 'scripts/gh/oversized.test.mjs';
+  const absPath = path.join(projectRoot, relPath);
+  mkdirSync(path.dirname(absPath), { recursive: true });
+  writeFileSync(absPath, `${oversized}\n`);
+
+  const result = spawnSync(process.execPath, [LINE_CAP_AUDIT], {
+    cwd: projectRoot,
+    encoding: 'utf8',
+  });
+
+  assert.equal(result.status, 1, result.stderr);
+  assert.match(result.stderr, /scripts\/gh\/oversized\.test\.mjs/);
+});
 
 // The lane-root prefix for a lane, e.g. "scripts/tests/unit/task-tracker/".
 const laneRootPrefix = (lane) => `scripts/tests/${lane}/`;

@@ -21,6 +21,18 @@ const EXPECTED_POST_SNAPSHOT_TESTS = [
   'scripts/tests/unit/task-tracker/lib/test-corpus-paths.test.mjs',
 ];
 
+function npmPackFiles() {
+  const result = spawnSync('npm', ['pack', '--dry-run', '--json'], {
+    cwd: PROJECT_ROOT,
+    encoding: 'utf8',
+    maxBuffer: 64 * 1024 * 1024,
+  });
+  assert.equal(result.status, 0, result.stderr);
+  const packages = JSON.parse(result.stdout);
+  assert.equal(packages.length, 1, 'npm pack describes exactly one package');
+  return packages[0].files.map(({ path: relPath }) => `package/${relPath}`);
+}
+
 function readHistoricalBlobsBatch(sourceCommit, entries) {
   const requests = entries.map(({ oldPath }) => `${sourceCommit}:${oldPath}`);
   const result = spawnSync('git', ['cat-file', '--batch'], {
@@ -151,5 +163,28 @@ test('live discovery realizes the migration manifest exactly once and only in ca
   assert.deepEqual(storyOwned, EXPECTED_POST_SNAPSHOT_TESTS);
   for (const rel of storyOwned) {
     assert.ok(parseCanonicalTestPath(rel), `${rel} is a canonical story-owned test`);
+  }
+});
+
+test('package files explicitly exclude the canonical test support root', () => {
+  const packageJson = JSON.parse(readFileSync(path.join(PROJECT_ROOT, 'package.json'), 'utf8'));
+  assert.ok(packageJson.files.includes('!scripts/tests/**'));
+  assert.ok(!packageJson.files.includes('!scripts/**/tests/**'));
+  assert.ok(packageJson.files.includes('!**/*.test.mjs'), 'test suffix remains defense in depth');
+});
+
+test('npm pack excludes the test corpus while retaining required runtime files and assets', () => {
+  const packed = new Set(npmPackFiles());
+  const leakedTests = [...packed].filter((relPath) => relPath.startsWith('package/scripts/tests/'));
+  assert.deepEqual(leakedTests, []);
+
+  for (const required of [
+    'package/scripts/gh/create-issue.mjs',
+    'package/scripts/task-tracker/task-tracker.mjs',
+    'package/config/activity-policy.default.json',
+    'package/config/project-fields.default.json',
+    'package/scripts/reports/regional-rates.json',
+  ]) {
+    assert.ok(packed.has(required), `npm pack retains required runtime asset: ${required}`);
   }
 });
