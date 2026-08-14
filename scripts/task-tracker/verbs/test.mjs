@@ -785,9 +785,6 @@ export async function runVerbTest({
         }
         partition = partitionVerificationCommands({
           commands: vcs,
-          reusableClassifications: developEvidence.validation.reusableCommands.map(
-            ({ classification }) => classification
-          ),
           includeCompleteLanes: !dropLanes,
         });
         // #1158 — a legacy aggregate's verdict is DERIVED from the complete
@@ -806,13 +803,16 @@ export async function runVerbTest({
       }
 
       if (!evidenceRefusal && !laneSkipRefusal) {
-        for (const reused of partition.reused) {
-          const source = developEvidence.receipt.commands.find(
-            ({ classification }) => classification === reused.classification
-          );
+        // #1254 — the Develop receipt validator, not the issue-specific VC
+        // list, owns the reusable lint/format decision. Canonical bodies omit
+        // standard DoD commands from Verification Commands, so filtering that
+        // targeted list made a valid Test receipt silently lose both required
+        // classifications. Iterating the validator-approved records also
+        // deduplicates legacy bodies that still declare those standard VCs.
+        for (const source of developEvidence.validation.reusableCommands) {
           results.push({
-            command: reused.command,
-            classification: reused.classification,
+            command: [source.command, ...source.args].join(' '),
+            classification: source.classification,
             passed: true,
             exit: 0,
             stdout: '',

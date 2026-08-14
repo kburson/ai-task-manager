@@ -51,7 +51,11 @@ describe('#1089 verification stage ownership', () => {
   test('Test reuses finalization evidence and executes complete lanes plus targeted commands', () => {
     assert.match(testSource, /partitionVerificationCommands/);
     assert.match(testSource, /for \(const lane of partition\.completeLanes\)/);
-    assert.match(testSource, /for \(const reused of partition\.reused\)/);
+    assert.match(
+      testSource,
+      /for \(const source of developEvidence\.validation\.reusableCommands\)/
+    );
+    assert.doesNotMatch(testSource, /for \(const reused of partition\.reused\)/);
     assert.match(
       testSource,
       /execInSandbox\(\{[\s\S]*argv: validation\.argv,[\s\S]*path: wtPath,[\s\S]*projectDir,[\s\S]*issueNumber: issueNum,[\s\S]*\}\)/
