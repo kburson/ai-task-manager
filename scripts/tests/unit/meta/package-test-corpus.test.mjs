@@ -14,6 +14,7 @@ const PROJECT_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), 
 const manifestPath = path.join(PROJECT_ROOT, 'scripts/tests/fixtures/test-corpus-pre-move.json');
 const manifest = JSON.parse(readFileSync(manifestPath, 'utf8'));
 const TASK3_BASE_COMMIT = 'a48aa89be065b015c817d08cbdae71c92e8f99ed';
+const TASK3_MIGRATION_COMMIT = '859996db6728beabef821ad7e724c584bfcef31b';
 const EXPECTED_POST_SNAPSHOT_TESTS = [
   'scripts/tests/unit/meta/audit-story-tags.test.mjs',
   'scripts/tests/unit/meta/package-test-corpus.test.mjs',
@@ -50,10 +51,10 @@ function readHistoricalBlobsBatch(sourceCommit, entries) {
   return blobs;
 }
 
-function readTask3Renames(baseCommit) {
+function readTask3MigrationRenames({ baseCommit, migrationCommit }) {
   const output = execFileSync(
     'git',
-    ['diff', '--name-status', '--find-renames=50%', `${baseCommit}..HEAD`],
+    ['diff', '--name-status', '--find-renames=50%', `${baseCommit}..${migrationCommit}`],
     { cwd: PROJECT_ROOT, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 }
   );
   const expectedOldPaths = new Set(manifest.tests.map(({ oldPath }) => oldPath));
@@ -115,8 +116,11 @@ test('pre-move corpus manifest destinations and hashes retain their immutable so
   }
 });
 
-test('Task 3 records every frozen oldPath to newPath pair as an exact Git rename', () => {
-  const renames = readTask3Renames(TASK3_BASE_COMMIT);
+test('the immutable Task 3 migration commit records every frozen path pair as a Git rename', () => {
+  const renames = readTask3MigrationRenames({
+    baseCommit: TASK3_BASE_COMMIT,
+    migrationCommit: TASK3_MIGRATION_COMMIT,
+  });
   assert.equal(renames.size, manifest.counts.all);
   for (const entry of manifest.tests) {
     assert.equal(renames.get(entry.oldPath), entry.newPath, `${entry.oldPath} rename provenance`);
