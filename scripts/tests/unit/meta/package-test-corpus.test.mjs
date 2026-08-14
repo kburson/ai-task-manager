@@ -1,7 +1,7 @@
 // @story #876
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
-import { execFileSync } from 'node:child_process';
+import { execFileSync, spawnSync } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { test } from 'node:test';
@@ -13,11 +13,59 @@ import { parseCanonicalTestPath } from '../../../task-tracker/lib/test-lanes.mjs
 const PROJECT_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../../..');
 const manifestPath = path.join(PROJECT_ROOT, 'scripts/tests/fixtures/test-corpus-pre-move.json');
 const manifest = JSON.parse(readFileSync(manifestPath, 'utf8'));
+const TASK3_BASE_COMMIT = 'a48aa89be065b015c817d08cbdae71c92e8f99ed';
 const EXPECTED_POST_SNAPSHOT_TESTS = [
   'scripts/tests/unit/meta/audit-story-tags.test.mjs',
   'scripts/tests/unit/meta/package-test-corpus.test.mjs',
   'scripts/tests/unit/task-tracker/lib/test-corpus-paths.test.mjs',
 ];
+
+function readHistoricalBlobsBatch(sourceCommit, entries) {
+  const requests = entries.map(({ oldPath }) => `${sourceCommit}:${oldPath}`);
+  const result = spawnSync('git', ['cat-file', '--batch'], {
+    cwd: PROJECT_ROOT,
+    input: `${requests.join('\n')}\n`,
+    maxBuffer: 128 * 1024 * 1024,
+  });
+  assert.equal(result.status, 0, result.stderr.toString('utf8'));
+
+  const blobs = new Map();
+  let offset = 0;
+  for (const [index, entry] of entries.entries()) {
+    const headerEnd = result.stdout.indexOf(0x0a, offset);
+    assert.ok(headerEnd >= 0, `${entry.oldPath} has a cat-file header`);
+    const header = result.stdout.subarray(offset, headerEnd).toString('utf8');
+    const match = /^[a-f0-9]+ blob (\d+)$/.exec(header);
+    assert.ok(match, `${entry.oldPath} resolves to a blob: ${header}`);
+    const size = Number(match[1]);
+    const start = headerEnd + 1;
+    const end = start + size;
+    assert.ok(end < result.stdout.length, `${entry.oldPath} blob is complete`);
+    blobs.set(entry.oldPath, result.stdout.subarray(start, end));
+    assert.equal(result.stdout[end], 0x0a, `${entry.oldPath} blob has a batch separator`);
+    offset = end + 1;
+    assert.equal(blobs.size, index + 1);
+  }
+  assert.equal(offset, result.stdout.length, 'cat-file batch output is fully consumed');
+  return blobs;
+}
+
+function readTask3Renames(baseCommit) {
+  const output = execFileSync(
+    'git',
+    ['diff', '--name-status', '--find-renames=50%', `${baseCommit}..HEAD`],
+    { cwd: PROJECT_ROOT, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 }
+  );
+  const expectedOldPaths = new Set(manifest.tests.map(({ oldPath }) => oldPath));
+  const renames = new Map();
+  for (const line of output.split('\n').filter(Boolean)) {
+    const [status, oldPath, newPath] = line.split('\t');
+    if (!/^R\d+$/.test(status) || !expectedOldPaths.has(oldPath)) continue;
+    assert.ok(!renames.has(oldPath), `duplicate rename provenance for ${oldPath}`);
+    renames.set(oldPath, newPath);
+  }
+  return renames;
+}
 
 test('pre-move corpus manifest freezes the expected schema and lane census', () => {
   assert.equal(manifest.schema, 1);
@@ -54,16 +102,24 @@ test('pre-move corpus manifest is a one-to-one, lane-preserving path map', () =>
 });
 
 test('pre-move corpus manifest destinations and hashes retain their immutable source', () => {
+  const historicalSources = readHistoricalBlobsBatch(manifest.sourceCommit, manifest.tests);
+  assert.equal(historicalSources.size, manifest.counts.all);
   for (const entry of manifest.tests) {
     const parsed = parseCanonicalTestPath(entry.newPath);
     assert.ok(parsed, `${entry.newPath} is canonical`);
     assert.equal(parsed.lane, entry.lane, `${entry.newPath} retains its lane`);
 
-    const source = execFileSync('git', ['show', `${manifest.sourceCommit}:${entry.oldPath}`], {
-      cwd: PROJECT_ROOT,
-    });
+    const source = historicalSources.get(entry.oldPath);
     const digest = createHash('sha256').update(source).digest('hex');
     assert.equal(digest, entry.sha256, `${entry.oldPath} retains its source digest`);
+  }
+});
+
+test('Task 3 records every frozen oldPath to newPath pair as an exact Git rename', () => {
+  const renames = readTask3Renames(TASK3_BASE_COMMIT);
+  assert.equal(renames.size, manifest.counts.all);
+  for (const entry of manifest.tests) {
+    assert.equal(renames.get(entry.oldPath), entry.newPath, `${entry.oldPath} rename provenance`);
   }
 });
 

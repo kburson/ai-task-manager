@@ -20,9 +20,11 @@ import { migrateBody, migrateBodyWithFamilies, FAMILIES } from './lib/corpus-mar
 
 const LIB_PATH = fileURLToPath(new URL('./lib/corpus-marker-transforms.mjs', import.meta.url));
 const RUNNER_PATH = fileURLToPath(new URL('./migrate-markers-corpus.mjs', import.meta.url));
-const TEST_PATH = fileURLToPath(
-  new URL('../task-tracker/tests/corpus-marker-transforms.test.mjs', import.meta.url)
-);
+const TEST_PATHS = [
+  '../tests/unit/task-tracker/maintenance/lib/corpus-marker-transforms-read-core.test.mjs',
+  '../tests/unit/task-tracker/maintenance/lib/corpus-marker-transforms-read-chain.test.mjs',
+  '../tests/unit/task-tracker/maintenance/lib/corpus-marker-transforms-write.test.mjs',
+].map((relativePath) => fileURLToPath(new URL(relativePath, import.meta.url)));
 const EVIDENCE_PATH = fileURLToPath(new URL('./evidence/389-dryrun.txt', import.meta.url));
 
 const libSrc = readFileSync(LIB_PATH, 'utf8');
@@ -134,8 +136,8 @@ check('AC7 out-of-scope families left untouched', () => {
 // guard. The committed test file exists, the family chain is complete, and the
 // suite passes when executed standalone.
 check('AC8 per-family unit tests present, complete, and green', () => {
-  assert.ok(existsSync(TEST_PATH), 'test file exists');
-  const testSrc = readFileSync(TEST_PATH, 'utf8');
+  for (const testPath of TEST_PATHS) assert.ok(existsSync(testPath), `${testPath} exists`);
+  const testSrc = TEST_PATHS.map((testPath) => readFileSync(testPath, 'utf8')).join('\n');
   // Coverage is asserted by the family's transform-function name (the real
   // import the test exercises), not the kebab key — tests label families
   // descriptively ("sha:ts pair") but call them by function.
@@ -148,8 +150,10 @@ check('AC8 per-family unit tests present, complete, and green', () => {
     /JSON-payload|json payload|isJsonPayload|deep-dive-complete/i,
     'JSON guard tested'
   );
-  const res = spawnSync(process.execPath, [TEST_PATH], { encoding: 'utf8' });
-  assert.equal(res.status, 0, `unit test suite must exit 0:\n${res.stdout}\n${res.stderr}`);
+  for (const testPath of TEST_PATHS) {
+    const res = spawnSync(process.execPath, ['--test', testPath], { encoding: 'utf8' });
+    assert.equal(res.status, 0, `${testPath} must exit 0:\n${res.stdout}\n${res.stderr}`);
+  }
 });
 
 // AC-9 — the dry-run was run against the live corpus and its diff/count are

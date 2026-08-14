@@ -2,19 +2,19 @@
 
 ## Testing
 
-Tests for the task-tracker subsystem live under `scripts/task-tracker/tests/`.
-Provider tests are co-located under `scripts/providers/tests/`.
+All package tests live under `scripts/tests/<unit|integration|slow>/`, mirroring
+their source path below `scripts/`.
 See [ADR 0001 — Test Tree Convention](docs/decisions/0001-test-tree-convention.md)
 for the full taxonomy, integration vs unit boundary, and the slow-lane split policy.
 
 **Subdirectory taxonomy:**
 
-| Path                                      | Contains                            |
-| ----------------------------------------- | ----------------------------------- |
-| `scripts/task-tracker/tests/unit/`        | Unit tests (fast lane)              |
-| `scripts/task-tracker/tests/slow/`        | Integration / slow tests (≥2s each) |
-| `scripts/task-tracker/tests/integration/` | Cross-stage E2E tests               |
-| `scripts/providers/tests/`                | Provider package tests (co-located) |
+| Path                                                | Contains                            |
+| --------------------------------------------------- | ----------------------------------- |
+| `scripts/tests/unit/task-tracker/`                  | Task-tracker unit tests             |
+| `scripts/tests/unit/providers/`                     | Provider unit tests                 |
+| `scripts/tests/integration/<source-relative-path>/` | Cross-stage E2E tests               |
+| `scripts/tests/slow/<source-relative-path>/`        | Integration / slow tests (≥2s each) |
 
 **Story-ID tagging:** Every test file begins with `// @story #NNN` on line 1 identifying the issue that owns it. Run `npm run lint:story-tags` to verify all files carry the tag.
 
@@ -25,8 +25,8 @@ for the full taxonomy, integration vs unit boundary, and the slow-lane split pol
 ```
 npm run lint:story-tags   # every *.test.mjs has // @story #NNN
 npm run lint:line-cap     # no file exceeds 400 lines
-npm test                  # fast lane (unit tests + providers)
-npm run test:all          # all lanes including slow
+npm test                  # fast lanes (unit + integration)
+npm run test:slow         # slow lane
 ```
 
-**Worked example:** To add a test for issue #500 covering a change in `scripts/task-tracker/lib/foo.mjs`, create `scripts/task-tracker/tests/unit/foo.test.mjs`. Start the file with `// @story #500`, write your tests using Node's built-in `node:test` runner, and confirm the file is under 400 lines. Run `npm test` to verify it passes in the fast lane.
+**Worked example:** To add a test for issue #500 covering a change in `scripts/task-tracker/lib/foo.mjs`, create `scripts/tests/unit/task-tracker/lib/foo.test.mjs`. Start the file with `// @story #500`, write your tests using Node's built-in `node:test` runner, and confirm the file is under 400 lines. Run `npm run test:unit` to verify it passes in the unit lane.

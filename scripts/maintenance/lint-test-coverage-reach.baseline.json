@@ -4,7 +4,6 @@
   "note": "Recorded baseline of pre-existing test files (paths refreshed for the #868 subsystem-nesting move) that exercise no repo source module (see #866). The lint prints ALL offenders every run but exits non-zero ONLY on files not in this list. Each entry is a follow-up triage candidate: make it exercise a scripts/** module, convert its assertions to a lint, or delete it. Do NOT add new entries to silence the lint on freshly-added tests — fix the test instead.",
   "files": [
     "scripts/tests/unit/task-tracker/coverage-config.test.mjs",
-    "scripts/tests/slow/task-tracker/core/ci-lane-wiring.test.mjs",
     "scripts/tests/unit/task-tracker/core/adapter-dedup.test.mjs",
     "scripts/tests/unit/task-tracker/core/adapter-token-floor.test.mjs",
     "scripts/tests/unit/task-tracker/core/assignee-default-docs-793.test.mjs",
