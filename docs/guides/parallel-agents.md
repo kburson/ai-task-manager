@@ -24,7 +24,7 @@ exact-SHA cloud validation for every child.
 
 ## 2. Worktree requirement
 
-**Every `Agent` spawn runs in its own git worktree.** The orchestrator stays in the main worktree; agents work in `.claude/worktrees/<agent-id>/`.
+**Every `Agent` spawn runs in its own git worktree.** For a solo / non-epic fan-out the orchestrator stays in the main worktree; agents work in `.claude/worktrees/<agent-id>/`. **For an epic run the orchestrator gets its own worktree too** — see §2e.
 
 - The `agent-guard` hook blocks `Agent` tool invocations issued from the main worktree. If you see that block, you skipped a worktree — create one and retry.
 - Worktrees need no separate config-copy step: `.ai-task-manager/` config and templates are git-tracked (#574), and transient runtime state auto-creates under `.tmp/aitm/` on first write (#573). They **do** require dependency seeding as described below; tracked policy without the runtime self-link is not an operationally ready worktree.
@@ -34,6 +34,17 @@ exact-SHA cloud validation for every child.
 ### 2a. Worktree-isolation dispatch recipe (`Agent({ isolation: "worktree" })`)
 
 Aligned with Anthropic's `superpowers:using-git-worktrees` + `superpowers:dispatching-parallel-agents` skills (consulted under #299). The native isolation mechanism in this harness is `Agent({ isolation: "worktree" })`, with `EnterWorktree` / `ExitWorktree` as deferred tools for explicit orchestrator-side worktrees. Use the native tool; do not shell out to `git worktree add` when a native mechanism exists (the superpowers skill flags that as Red Flag #1).
+
+**Child-worktree lifecycle: fresh per child, never pooled or reused (#871).** Each child
+gets a worktree created for it and destroyed after its integration; no worktree is handed
+from one child to the next. The deciding evidence is the pair of #299 failure modes below.
+A pooled worktree carries **both** of them structurally: it holds a base captured when the
+pool entry was created (the stale-base failure, which for an epic child is the #859
+wrong-base debacle in slow motion), and it carries the previous child's residue in the
+working tree and index (the dirty-state failure). Recreating a worktree costs ~200–500ms;
+a mis-based or dirty child costs a wasted agent run and a corrupted integration. The
+trade is not close. Fresh-per-child also makes the cleanup contract in §2f tractable,
+because a worktree maps one-to-one to a child issue and its `[#N]` commit.
 
 Two failure modes were diagnosed against this recipe in #299:
 
@@ -57,6 +68,20 @@ Working recipe:
    isolation costs ~200–500ms of setup per agent and adds no value when no
    writes will occur.
 ```
+
+**Where cleanup runs in an epic loop, and against which base (#871).** The recipe above
+is the standalone case, where step 4 targets trunk and the native auto-clean suffices. An
+epic run has two cleanup points, and they pass **different** `--base` refs:
+
+- **After each child merges back**, while the epic is still in flight, the orchestrator
+  reaps that child with `--base feature/epic/<N>`. The child's `[#N]` commit is reachable
+  on the epic branch but nowhere near trunk, so this is the only base under which it is
+  prunable — and surviving siblings must rebase onto the **epic branch**, not trunk.
+- **After the epic PR merges to trunk**, the orchestrator runs cleanup once more with the
+  default `--base origin/trunk` to reap the epic branch itself and any straggler.
+
+Both invocations share one rule: the prune predicate and the rebase target are evaluated
+against the same `--base`. §2f is the contract; the routine itself is #1259.
 
 Skill cross-references (read these before authoring a worktree dispatch):
 
@@ -88,6 +113,20 @@ backstops make the gap safe if the wrong path is ever taken:
   child's tests, then `git merge --ff-only` into the epic and cleans up — refusing on
   rebase conflict or test failure. When trunk advances under a live epic, resync it
   with `node scripts/task-tracker/sync-epic.mjs <epic#>` (see `aitm help` → Epic Branching).
+
+> **Ratified-but-pending (#871 → #1257): child → epic integration becomes a squash.**
+> The `git merge --ff-only` step above is **what ships today**, and this guide describes
+> shipped behavior. The maintainer has ratified replacing it with `git merge --squash`, so
+> that each child lands as exactly **one commit** on the epic branch and the epic PR
+> presents a clean per-child review surface. That change order is #1257 and has not landed;
+> until it does, `--ff-only` remains correct.
+>
+> Attribution is safe under either strategy, for the same reason the trunk-facing squash PR
+> is safe (workflow.md → Two-Axis Delivery Model): attribution greps `[#N]` across commit
+> **messages**, and `git merge --squash` concatenates the squashed commits' messages into
+> the staged commit message. The squash commit's subject must still lead with `[#N]` for the
+> subject-line lint gate. #1257 also carries the required audit of `epic-derived-commit-trail`
+> and `epic-ac-commit-citation`, both of which currently assume a multi-commit-per-child epic.
 
 The epic branch itself is cut once with `node scripts/task-tracker/cut-epic-branch.mjs <epic#>`
 (from trunk for a root epic, from the parent-epic head for a nested one).
@@ -130,6 +169,127 @@ coordinator may integrate only within its granted branch boundary.
 
 See [GitHub-Native Coordination](github-native-coordination.md) for adoption,
 append-first mutation, replacement, repair, and recovery procedures.
+
+### 2e. The epic development pattern (#871)
+
+The ratified end-to-end shape of a full-auto epic run. Everything below is shipped
+except where explicitly marked pending.
+
+1. **Cut the epic integration branch.** `node scripts/task-tracker/cut-epic-branch.mjs <epic#>`
+   creates `feature/epic/<N>` from trunk head (or from the parent-epic head when the epic is
+   nested).
+2. **Orchestrate from a dedicated worktree** _(pending — #1258)_. The orchestrator runs in
+   its **own** worktree checked out on `feature/epic/<N>`; the main worktree stays on trunk
+   and is never moved by epic work. Two reasons this is the ratified shape rather than a
+   preference: it keeps the shared main checkout free while a long epic runs, and it removes
+   the `git update-ref refs/heads/trunk` desync hazard **by construction**, because no epic
+   operation ever needs to touch the main worktree's ref. Until #1258 lands, the orchestrator
+   still sits in the main worktree per §2.
+3. **Cut each child from the epic head.** `cut-child-worktree.mjs <child#> <path>`, fresh per
+   child (§2a), never from trunk (§2b).
+4. **Children develop in parallel** and commit to their own `feature/child/<N>` branches.
+5. **Each child rebases onto the epic head and integrates**, running its own tests first —
+   `merge-back.mjs`. Today that integration is `git merge --ff-only`; the ratified squash is
+   #1257 (§2b).
+6. **Reap the merged child** with cleanup `--base feature/epic/<N>` (§2a, §2f).
+7. **Verify the epic** once every child has merged back. Final verification runs **in the
+   orchestration worktree against the epic branch** — not in the main worktree, and not
+   against trunk, because trunk does not yet contain the epic's work.
+8. **Push the epic branch and open one PR to trunk** (§2e, "Remote/PR granularity").
+9. **After the PR merges**, run cleanup once more with the default `--base origin/trunk` to
+   reap the epic branch and any straggler.
+
+**Remote/PR granularity: one PR per epic, not one per child.** The epic's PR is the review
+and CI unit; children integrate locally into the epic branch and never open their own PRs.
+The trade-offs, recorded so the decision can be revisited on evidence rather than taste:
+
+- **CI cost** — decisive. Per-child PRs run the full required-contexts matrix once per child;
+  one epic PR runs it once for the whole epic. Children are not unverified under this model:
+  `merge-back` runs the child's own tests before integrating, and step 7 verifies the
+  assembled epic. The cost saved is redundant full-matrix runs, not verification.
+- **Review surface** — favors one PR. A reviewer reads the epic's change as one coherent
+  story instead of N partial diffs that only make sense assembled. This is also what makes
+  the #1257 squash worth doing: one commit per child turns the epic PR into a readable
+  per-child sequence.
+- **Trunk cleanliness** — favors one PR. Trunk gains one merge per epic rather than N, and
+  every `[#N]` child token still resolves, because the squash-to-trunk preserves commit
+  message bodies (workflow.md → Two-Axis Delivery Model).
+- **The cost, stated honestly** — a single PR is larger and lands later, so trunk-vs-epic
+  divergence has more time to accumulate. That is precisely why drift mitigation below is
+  not optional under this model.
+
+**Epic-branch drift mitigation.** The epic branch is long-lived, so `origin/trunk` moves
+underneath it. Two mechanisms, both shipped:
+
+- **Opportunistic, on every integration.** `merge-back` syncs the epic before it rebases the
+  child, so ordinary epic activity absorbs trunk drift continuously and no child is ever
+  rebased onto a stale epic head.
+- **Explicit, on demand.** `node scripts/task-tracker/sync-epic.mjs <epic#>` re-syncs the epic
+  branch with trunk. Run it when trunk advances during a quiet stretch of the epic — a
+  dependency bump, an unrelated hotfix — rather than discovering the drift at step 7.
+
+Sync must never force-push `feature/epic/*`: #1240 adds ruleset non-fast-forward and
+deletion protection over that namespace, so a force-push is both wrong and refused.
+
+### 2f. Base-aware cleanup contract (#871)
+
+Post-close cleanup is **base-aware**. It accepts `--base <ref>`, defaulting to
+`origin/trunk`, and both of its decisions are evaluated against that one ref:
+
+- **Prune predicate** — a child's worktree and branch are prunable when the child's `[#N]`
+  commit is reachable from `--base`.
+- **Rebase target** — surviving siblings rebase onto `--base`.
+
+The defect this prevents is a routine that hardcodes `origin/trunk` for both. Mid-epic, a
+merged child's commit is on `feature/epic/<N>` and nowhere near trunk, so a trunk-bound
+predicate reaps nothing; worse, a trunk-bound rebase target drags in-flight siblings off the
+epic head and back to trunk — the exact wrong-base failure `cut-child-worktree` and the
+epic-base edit-guard exist to prevent.
+
+Reachability is **message-based**, consistent with the repository's attribution contract
+(workflow.md → Commit Attribution): the probe greps the `[#N]` token across commit messages
+reachable from the base, never SHA identity, so it survives the rebase, squash, and amend
+that the integration path performs.
+
+Two sanctioned invocations, both described in §2a: `--base feature/epic/<N>` mid-epic, and
+the default `--base origin/trunk` after the epic PR merges.
+
+The pure planner is shipped — `resolveCleanupBase` and `planBaseAwareCleanup` in
+[`scripts/task-tracker/lib/cleanup-base-aware.mjs`](../../scripts/task-tracker/lib/cleanup-base-aware.mjs),
+covered by `scripts/tests/unit/task-tracker/lib/cleanup-base-aware.test.mjs`. It decides
+what a run **would** do and touches nothing. The executing half — the verb, the real
+reachability probe, `git worktree remove` / `git branch -d` / `git rebase`, and a dry-run
+mode — is #1259. Two invariants that story must hold: never prune a child with uncommitted
+work, and never prune a branch whose `[#N]` commit is not reachable from `--base`, because a
+false prune destroys unmerged work.
+
+### 2g. Interaction audit against existing mechanisms (#871)
+
+The pattern in §2e was checked against the three mechanisms most likely to contradict it.
+Findings, recorded so a future reader does not have to re-derive them:
+
+- **`orchestrator-lock.mjs` / `agent-guard.mjs` — compatible, with one consequence worth
+  knowing.** The lock file resolves against the **main** worktree
+  (`findMainWorktreePath`), not the current one, so an orchestrator running from a dedicated
+  worktree still contends for the same single per-repo lock — one orchestrator per repo,
+  exactly as today. The consequence: `agent-guard` returns early when `cwd !== main`, so its
+  two spawn protections (a live lock must exist, and every spawn must set
+  `isolation: "worktree"`) apply **only** to spawns from the main worktree. Once #1258 moves
+  the orchestrator out of main, those protections stop covering the orchestrator by default.
+  #1258 must therefore acquire the lock explicitly and keep setting `isolation: "worktree"`
+  on every spawn — the guard will no longer catch the omission.
+- **`pull-next` wave admission — no conflict.** Admission is decided from board state and
+  blocker markers; it never reads the git base, so cutting children from an epic head rather
+  than trunk does not change which child is admitted. One cosmetic inaccuracy: `pull-next`'s
+  success message tells the operator to "refresh JIT planning against current trunk", which
+  is the wrong base for an epic child (§2b). Message-only — behavior is correct.
+- **The 2026-07-07 PR-based migration — narrowed, not contradicted.** That migration made
+  _feature branch → push → CI → PR → merge trunk_ the default for a story. Under an epic it
+  still holds, but at the **epic** boundary: the epic branch is what gets pushed, CI'd, and
+  PR'd to trunk. Children integrate locally into the epic branch and open no PRs of their
+  own — see "Remote/PR granularity" in §2e for why, and note that children are still
+  verified (`merge-back` runs the child's tests before integrating). A **solo, non-epic**
+  story is unchanged: it PRs to trunk directly.
 
 ---
 

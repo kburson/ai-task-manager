@@ -321,6 +321,17 @@ thing:
 - A **non-trunk parent** takes the local merge-back path: rebase the child onto the
   parent, run the close/done gates, fast-forward the parent, and delete the child
   branch (verify-not-perform under the epic-branch guardrail).
+
+  > **Ratified-but-pending (#871 → [#1257](https://github.com/kburson/ai-task-manager/issues/1257)):**
+  > the fast-forward step becomes a **squash**, so each child lands on its epic as
+  > exactly one commit. `git merge --ff-only` is what ships today; the squash is
+  > ratified but not yet implemented. Either way the done-axis is unaffected —
+  > attribution greps commit **messages**, and `git merge --squash` concatenates the
+  > child's messages into the squash commit, exactly as the trunk PR path below
+  > already relies on. The squash subject must still lead with `[#N]`. #1257 also
+  > carries the audit of the epic commit-trail consumers (`epic-derived-commit-trail`,
+  > `epic-ac-commit-citation`).
+
 - The **trunk** parent takes the **PR-only** path: a squash merge. A squash would
   normally destroy the per-commit subjects a SHA-based scheme relied on, but ours
   survives it because **trunk attribution greps commit bodies**, not just subjects
@@ -917,6 +928,33 @@ When the user says **"cleanup"**, execute in order:
 5. **Feature value summary** — if a feature/epic completed this session, generate a value summary using the template in `docs/guides/ai-value-framework.md`. Post it as a comment on the parent epic issue.
 
 6. **Compact** — `/compact` to free context for the next phase.
+
+### Branch and worktree cleanup is base-aware (#871)
+
+The steps above clean up the **issue**. Reaping a child's branch and worktree is a
+separate, **base-aware** decision, because in an epic run the ref a child's work
+lives on is not trunk.
+
+Cleanup takes `--base <ref>`, defaulting to `origin/trunk`, and evaluates **both**
+of its decisions against that single ref: a child is prunable when its `[#N]` commit
+is reachable from `--base`, and surviving siblings rebase **onto `--base`**. There
+are two sanctioned invocations in an epic:
+
+- **Mid-epic, after each child merges back:** `--base feature/epic/<N>`. The merged
+  child's commit is on the epic branch and nowhere near trunk, so a trunk-bound run
+  would reap nothing — and, worse, would drag in-flight siblings off the epic head
+  back onto trunk.
+- **After the epic PR merges:** the default `--base origin/trunk`, to reap the epic
+  branch and any straggler.
+
+Reachability is message-based, consistent with **Commit Attribution** above, so it
+survives the rebase, squash, and amend the integration path performs.
+
+The pure planner ships in
+[`scripts/task-tracker/lib/cleanup-base-aware.mjs`](../../scripts/task-tracker/lib/cleanup-base-aware.mjs);
+the executing routine is
+[#1259](https://github.com/kburson/ai-task-manager/issues/1259). Full contract:
+[`docs/guides/parallel-agents.md`](parallel-agents.md) §2f.
 
 ---
 
