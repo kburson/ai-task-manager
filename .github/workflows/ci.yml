@@ -31,7 +31,7 @@ permissions:
 
 jobs:
   fast:
-    name: Fast lane (format, lint, unit)
+    name: Fast lane (format, lint, unit + integration)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
@@ -60,15 +60,17 @@ jobs:
       - run: npm ci
       - run: npm run format:check
       # `npm run lint` includes the fail-closed canonical-layout, package-wide
-      # story-tag, and package-wide line-cap gates. Unit tests below also prove
-      # `npm pack` excludes scripts/tests/** while retaining runtime assets.
+      # story-tag, and package-wide line-cap gates. Unit + integration tests
+      # below also prove `npm pack` excludes scripts/tests/** while retaining
+      # runtime assets.
       - run: npm run lint
       # Memory-seed index parity (#728, folds #744): fail on any MEMORY.md-index
       # ⇄ docs/ai-memory/ durable-set drift. Repo-only / CI-safe — `--mode index`
       # needs no maintainer $HOME memory dir (unlike the maintainer's `--mode diff`).
       - name: Memory-seed index parity (#728)
         run: node scripts/inspect/ai-memory-parity.mjs --mode index
-      - run: npm test
+      - name: Unit + integration tests
+        run: npm test
 
   slow:
     name: Slow lane (full test fleet)

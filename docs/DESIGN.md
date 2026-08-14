@@ -560,8 +560,21 @@ scripts/task-tracker/
 │   └── done.mjs                   #   terminal — no exitGuards
 │
 ├── hooks/                         # PreToolUse/PostToolUse hook implementations
-├── tests/                         # node --test suites (unit + integration lanes)
 └── tools/                         # standalone maintenance/inspection scripts
+
+scripts/tests/
+├── unit/                          # Canonical unit lane
+│   ├── task-tracker/              # Example source-relative subsystem subtree
+│   └── ...                        # Other package subsystem mirrors
+├── integration/                   # Canonical integration lane
+│   ├── task-tracker/              # Example source-relative subsystem subtree
+│   └── ...                        # Other package subsystem mirrors
+├── slow/                          # Canonical slow lane
+│   ├── task-tracker/              # Example source-relative subsystem subtree
+│   └── ...                        # Other package subsystem mirrors
+├── fixtures/                      # Package-level static test fixtures
+├── helpers/                       # Package-level shared test helpers
+└── tools/                         # Package-level test audits and maintenance tools
 
 scripts/gh/
 ├── move-state.mjs                 # THE single state-mutator; every Status write goes through it
@@ -573,8 +586,7 @@ scripts/reports/
 ├── generate-value-report.mjs      # Value/ROI report generator
 ├── heal-backlog-attribution.mjs   # Maintenance: repair `[#N]` attribution across the backlog
 ├── value-report-config.json       # Report configuration
-├── lib/                           # Report helpers
-└── tests/                         # Report test suites
+└── lib/                           # Report helpers
 ```
 
 > The v1 design routed word counting through a thin
