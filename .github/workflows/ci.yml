@@ -73,7 +73,7 @@ jobs:
         run: npm test
 
   slow:
-    name: Slow lane (full test fleet)
+    name: Slow lane (slow tests only)
     # Runs nightly (schedule), on manual dispatch, or when a PR carries the
     # `ci-slow` label — never on an ordinary push, to keep PR latency low.
     if: >-

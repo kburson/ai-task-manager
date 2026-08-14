@@ -25,8 +25,9 @@
 // Discovery and lane assignment come from the canonical modules
 // (`discoverTestFiles` #872 + `laneManifest` #873) via `run-tests-lanes.mjs`;
 // there is no hardcoded directory list here. A divergence guard fails the run if
-// the selection ever omits an on-disk `*.test.mjs`, so a green run provably ran
-// every committed test file (the 624-vs-652 false green cannot recur).
+// the complete lane union ever omits an on-disk `*.test.mjs`, proving that the
+// union accounts for every discovered committed test file. The selected lane
+// still executes only its own slice (the 624-vs-652 false green cannot recur).
 import { execFileSync } from 'node:child_process';
 import { writeFileSync, mkdirSync } from 'node:fs';
 import path from 'node:path';
