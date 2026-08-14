@@ -15,6 +15,7 @@ import { fileURLToPath } from 'node:url';
 import {
   discoverFiles,
   discoverTestFiles,
+  TEST_FILE_EXCLUDES,
 } from '../../../../task-tracker/lib/discover-test-files.mjs';
 import {
   unitTestPath,
@@ -113,16 +114,18 @@ test('AC4: no independent test-file walker exists under scripts/ outside the can
 
 // --- AC2 — the generalized primitive is a superset that honors excludes -------
 
-test('AC2: discoverFiles(all-.mjs) is a superset of discoverTestFiles and honors fixtures excludes', () => {
+test('AC2: generalized and test discovery share one walker with explicit exclusion policies', () => {
   const allMjs = new Set(discoverFiles({ match: /\.mjs$/, excludes: ['node_modules'], ...opts }));
   const tests = discoverTestFiles(opts);
   for (const t of tests) assert.ok(allMjs.has(t), `all-.mjs superset contains test file ${t}`);
 
-  // discoverTestFiles is exactly the `match: TEST_FILE_RE` view over discoverFiles.
+  // discoverTestFiles is exactly the TEST_FILE_EXCLUDES + match view over the
+  // generalized walker. Its default intentionally differs from discoverFiles:
+  // test-shaped files below fixture-named directories must not be hidden.
   assert.deepEqual(
     discoverTestFiles(opts),
-    discoverFiles({ match: /\.test\.mjs$/, ...opts }),
-    'discoverTestFiles == discoverFiles(match: /.test.mjs$/)'
+    discoverFiles({ match: /\.test\.mjs$/, excludes: TEST_FILE_EXCLUDES, ...opts }),
+    'discoverTestFiles == discoverFiles(TEST_FILE_EXCLUDES, match: /.test.mjs$/)'
   );
 
   // Fixtures are excluded by default but retained when the caller asks — the

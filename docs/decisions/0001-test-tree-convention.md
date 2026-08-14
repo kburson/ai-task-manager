@@ -43,7 +43,10 @@ as `scripts/gh/create-issue.test.mjs` and domain-local roots such as
 Discovery deliberately remains rooted at all of `scripts/`. This is the fail-closed
 part of the convention: a misplaced `*.test.mjs` stays visible to audits, then
 `npm run lint:test-layout` reports its path and exits nonzero. Narrowing discovery to
-the canonical root would turn a layout mistake into a silently omitted test.
+the canonical root would turn a layout mistake into a silently omitted test. Test
+discovery also descends into `fixtures/` and `__fixtures__/`: those names may hide
+static data from general source scans, but they never hide an executable test from
+the runner or audits.
 
 There is one npm deliverable and therefore no provider or domain-root exception. If a
 subtree becomes a separately published package later, its test boundary requires a new

@@ -10,6 +10,7 @@ import {
   onDiskTestFileCount,
   divergence,
   DEFAULT_EXCLUDES,
+  TEST_FILE_EXCLUDES,
 } from '../../../../task-tracker/lib/discover-test-files.mjs';
 
 const __dir = path.dirname(fileURLToPath(import.meta.url)) + '/..';
@@ -45,6 +46,7 @@ test('exported API surface is present and stable', () => {
   assert.equal(typeof onDiskTestFileCount, 'function');
   assert.equal(typeof divergence, 'function');
   assert.ok(Array.isArray(DEFAULT_EXCLUDES) && DEFAULT_EXCLUDES.includes('node_modules'));
+  assert.deepEqual(TEST_FILE_EXCLUDES, ['node_modules']);
 
   const count = onDiskTestFileCount({ projectRoot: PROJECT_ROOT });
   assert.ok(Number.isInteger(count) && count > 0, 'onDiskTestFileCount is a positive integer');
@@ -67,9 +69,11 @@ test('discoverTestFiles returns sorted, repo-relative POSIX paths', () => {
   }
 });
 
-test('feature-fixture tests remain discoverable while static fixture trees stay excluded', () => {
+test('test discovery keeps lane fixtures visible and has no hidden support-tree tests', () => {
   const files = discoverTestFiles({ projectRoot: PROJECT_ROOT });
   assert.ok(files.includes('scripts/tests/unit/fixtures/feature-fixtures.test.mjs'));
+  // The live support tree contains data/helpers only. If a *.test.mjs appears
+  // there later, TEST_FILE_EXCLUDES keeps it visible so layout fails closed.
   assert.equal(
     files.some((file) => file.startsWith('scripts/tests/fixtures/')),
     false

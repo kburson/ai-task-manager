@@ -29,7 +29,9 @@ other discovered test. Unit is never a default.
 Co-located tests such as `scripts/gh/foo.test.mjs`, domain-local test roots such as
 `scripts/providers/tests/`, and `.test.mjs` files in package-level support subtrees
 are rejected. Move the file into the correct canonical lane; do not narrow discovery
-or add an exception.
+or add an exception. Fixture-named directories are not an escape hatch: canonical
+test discovery descends into `fixtures/` and `__fixtures__/` so the runner and audits
+can reject any test-shaped file found there.
 
 ## API
 

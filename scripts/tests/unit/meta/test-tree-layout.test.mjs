@@ -37,11 +37,13 @@ import {
 } from '../../../task-tracker/lib/git-provenance.mjs';
 import { countCodeLines } from '../../../task-tracker/lib/count-code-lines.mjs';
 import { mkdtempProjectIsolated } from '../../../task-tracker/lib/scratch-dir.mjs';
+import { laneFiles } from '../../../run-tests-lanes.mjs';
 
 // scripts/tests/unit/meta/ → four levels up is the repo root.
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(HERE, '../../../..');
 const LAYOUT_AUDIT = path.join(REPO_ROOT, 'scripts/tests/tools/audit-test-layout.mjs');
+const STORY_AUDIT = path.join(REPO_ROOT, 'scripts/tests/tools/audit-story-tags.mjs');
 const LINE_CAP_AUDIT = path.join(REPO_ROOT, 'scripts/tests/tools/audit-line-cap.mjs');
 
 const LANE_ROOTS = LANES.map((l) => `scripts/tests/${l}`);
@@ -106,6 +108,30 @@ test('line-cap audit still examines a misplaced test discovered outside the cano
 
   assert.equal(result.status, 1, result.stderr);
   assert.match(result.stderr, /scripts\/gh\/oversized\.test\.mjs/);
+});
+
+test('a hidden support-subtree test cannot evade discovery, the runner, or any audit', () => {
+  const projectRoot = mkdtempProjectIsolated('audit-test-hidden-fixture-');
+  const relPath = 'scripts/tests/fixtures/hidden.test.mjs';
+  const absPath = path.join(projectRoot, relPath);
+  mkdirSync(path.dirname(absPath), { recursive: true });
+  writeFileSync(
+    absPath,
+    `${Array.from({ length: 801 }, (_, index) => `export const hidden${index} = ${index};`).join('\n')}\n`
+  );
+
+  const discovered = discoverTestFiles({ projectRoot });
+  assert.ok(discovered.includes(relPath), `${relPath} must remain visible to canonical discovery`);
+  assert.throws(
+    () => laneFiles('all', { projectRoot }),
+    new RegExp(relPath.replaceAll('/', '\\/'))
+  );
+
+  for (const audit of [LAYOUT_AUDIT, STORY_AUDIT, LINE_CAP_AUDIT]) {
+    const result = spawnSync(process.execPath, [audit], { cwd: projectRoot, encoding: 'utf8' });
+    assert.equal(result.status, 1, `${audit} must reject ${relPath}: ${result.stderr}`);
+    assert.match(result.stderr, /scripts\/tests\/fixtures\/hidden\.test\.mjs/);
+  }
 });
 
 // The lane-root prefix for a lane, e.g. "scripts/tests/unit/task-tracker/".
