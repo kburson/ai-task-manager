@@ -26,7 +26,13 @@ const EXPECTED_LANE_CORRECTION = {
   finalPath: 'scripts/tests/integration/task-tracker/lib/trunk-ref.integration.test.mjs',
   fromLane: 'unit',
   toLane: 'integration',
-  reason: 'exercises real git repositories, clones, pushes, and fetches',
+  reason:
+    'coordinates multiple Git repositories and a remote end to end via clone, push, fetch, and the close gate',
+  provenance: {
+    baseCommit: 'c175e52fc733455691ff16366ba6788aafc625c6',
+    correctionCommit: '68c0a072a4b467dd0adf78a1e3a94a22fb6273b1',
+    renameStatus: 'R100',
+  },
 };
 
 function finalPathFor(entry) {
@@ -153,6 +159,26 @@ test('the immutable Task 3 migration commit records every frozen path pair as a 
   for (const entry of manifest.tests) {
     assert.equal(renames.get(entry.oldPath), entry.newPath, `${entry.oldPath} rename provenance`);
   }
+});
+
+test('the intentional lane correction retains its exact post-migration Git rename', () => {
+  const [correction] = manifest.laneCorrections;
+  const { baseCommit, correctionCommit, renameStatus } = correction.provenance;
+  const output = execFileSync(
+    'git',
+    [
+      'diff',
+      '--name-status',
+      '--find-renames=100%',
+      `${baseCommit}..${correctionCommit}`,
+      '--',
+      correction.migrationPath,
+      correction.finalPath,
+    ],
+    { cwd: PROJECT_ROOT, encoding: 'utf8' }
+  ).trim();
+
+  assert.equal(output, `${renameStatus}\t${correction.migrationPath}\t${correction.finalPath}`);
 });
 
 test('live discovery realizes the migration manifest exactly once and only in canonical lanes', () => {

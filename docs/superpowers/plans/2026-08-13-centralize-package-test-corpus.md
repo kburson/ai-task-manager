@@ -15,9 +15,10 @@
 - Every discovered test must live below exactly one of `scripts/tests/unit/`, `scripts/tests/integration/`, or `scripts/tests/slow/`.
 - Preserve the frozen starting census for all 915 tests: 837 unit, 27 integration,
   and 51 slow. Record the intentional post-snapshot correction of
-  `trunk-ref.integration.test.mjs` from unit to integration separately; it exercises
-  real Git repositories, clones, pushes, and fetches. With three story-owned unit
-  tests, the final live census is 839 unit, 28 integration, and 51 slow (918 total).
+  `trunk-ref.integration.test.mjs` from unit to integration separately; it
+  coordinates multiple Git repositories and a remote end to end through clone,
+  push, fetch, and the close gate. With three story-owned unit tests, the final live
+  census is 839 unit, 28 integration, and 51 slow (918 total).
 - Use `git mv` for every existing test and test-only support asset; retain basename and rename provenance.
 - Every test must carry `// @story #NNN` on line 1, or line 2 after a shebang.
 - Use the creation issue when Git history exposes one; use the documented `#309` fallback only when attribution is unavailable.

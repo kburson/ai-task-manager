@@ -14,19 +14,21 @@ strict declaration in every test path while discovery continues to scan all of
 
 ## The three lanes
 
-| Lane          | Required path prefix         | Meaning                                                      |
-| ------------- | ---------------------------- | ------------------------------------------------------------ |
-| `unit`        | `scripts/tests/unit/`        | one module or bounded feature in isolation                   |
-| `integration` | `scripts/tests/integration/` | tests that cross a module or process boundary                |
-| `slow`        | `scripts/tests/slow/`        | tests that each take ≥ ~2s; skipped by the fast develop loop |
+| Lane          | Required path prefix         | Meaning                                                                      |
+| ------------- | ---------------------------- | ---------------------------------------------------------------------------- |
+| `unit`        | `scripts/tests/unit/`        | one bounded module or feature, including isolated local Git/process fixtures |
+| `integration` | `scripts/tests/integration/` | end-to-end coordination across repositories/remotes or live external systems |
+| `slow`        | `scripts/tests/slow/`        | tests that each take ≥ ~2s; skipped by the fast develop loop                 |
 
 Every path must match
 `scripts/tests/<unit|integration|slow>/<source-relative-subtree>/<name>.test.mjs`.
 The three lane prefixes are mutually exclusive, and the required lane segment makes
 classification total only for valid canonical paths. `laneOf()` throws for every
-other discovered test. Unit is never a default. Tests that create real Git
-repositories, clones, pushes, or fetches cross process and persistence boundaries
-and therefore belong in `integration`.
+other discovered test. Unit is never a default. Lane choice follows the behavior
+under test: an isolated local Git repository, filesystem fixture, or real child
+process may remain unit. `trunk-ref.integration.test.mjs` is integration because it
+coordinates multiple repositories and a remote end to end, including clone, push,
+fetch, and close-gate remote synchronization.
 
 Co-located tests such as `scripts/gh/foo.test.mjs`, domain-local test roots such as
 `scripts/providers/tests/`, and `.test.mjs` files in package-level support subtrees

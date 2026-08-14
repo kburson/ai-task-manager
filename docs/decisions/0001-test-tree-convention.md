@@ -54,13 +54,13 @@ decision rather than an implicit directory exception.
 
 ### 2. Canonical tree and source-relative taxonomy
 
-| Path                                                   | Contents                                                                                                                               |
-| ------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------- |
-| `scripts/tests/unit/<source-relative-subtree>/`        | Unit tests — module-oriented by default, or feature-oriented when measured shared-fixture consolidation is faster, nested by subsystem |
-| `scripts/tests/integration/<source-relative-subtree>/` | Integration tests — cross a module/process boundary, use a real filesystem subprocess, live GitHub API, or real git worktree           |
-| `scripts/tests/slow/<source-relative-subtree>/`        | Tests whose measured runtime belongs outside the fast development loop                                                                 |
-| `scripts/tests/{fixtures,helpers,tools}/`              | Package-level test support, shared fixtures, and audit tools; never test lanes or npm package content                                  |
-| `scripts/tests/<lane>/{core,meta,fixtures}/`           | Lane-owned buckets for package-root behavior, test-tree contracts, and executable fixture tests                                        |
+| Path                                                   | Contents                                                                                                         |
+| ------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------- |
+| `scripts/tests/unit/<source-relative-subtree>/`        | Unit tests — one bounded module or feature, including isolated local filesystem, Git, and child-process fixtures |
+| `scripts/tests/integration/<source-relative-subtree>/` | Integration tests — end-to-end coordination across independent repositories/remotes or live external systems     |
+| `scripts/tests/slow/<source-relative-subtree>/`        | Tests whose measured runtime belongs outside the fast development loop                                           |
+| `scripts/tests/{fixtures,helpers,tools}/`              | Package-level test support, shared fixtures, and audit tools; never test lanes or npm package content            |
+| `scripts/tests/<lane>/{core,meta,fixtures}/`           | Lane-owned buckets for package-root behavior, test-tree contracts, and executable fixture tests                  |
 
 The three lane directories and the package-level support directories are siblings.
 Only files below `unit/`, `integration/`, or `slow/` may end in `.test.mjs`.
@@ -104,10 +104,10 @@ Every test file carries a mandatory attribution header:
 // @story #NNN
 ```
 
-where `NNN` is the GitHub issue that introduced or owns the test. The tag is line 1
-unless a shebang or bounded `cspell:ignore` preamble occupies the header. This is the
-authoritative attribution mechanism; filename suffixes and directory groupings are
-supplementary.
+where `NNN` is the GitHub issue that introduced or owns the test. The tag is line 1,
+or line 2 immediately after a shebang. A bounded `cspell:ignore` preamble follows
+the story tag and never precedes it. This is the authoritative attribution
+mechanism; filename suffixes and directory groupings are supplementary.
 
 **Example:**
 
@@ -176,14 +176,17 @@ test-only amendment.
 
 ### 5. Integration vs unit boundary
 
-A test is an **integration test** if and only if it:
+A test is an **integration test** when its subject is end-to-end coordination across
+independent systems: for example, a live GitHub API boundary or synchronization
+across multiple repositories and a remote. `trunk-ref.integration.test.mjs` belongs
+here because it coordinates an origin, two clones, push/fetch behavior, and the close
+gate while proving remote-trunk synchronization.
 
-- (a) calls a live GitHub API (`gh` subprocess or direct GraphQL), or
-- (b) spawns a real child process against the live filesystem, or
-- (c) uses a real git worktree.
-
-Everything else is a **unit test**, even if it reads real config files on disk. Disk reads
-are fast and deterministic; they do not warrant the overhead of the `integration/` bucket.
+An isolated local Git repository or worktree, a deterministic filesystem fixture,
+or invoking a real child process does not by itself make a test integration. Those
+mechanics may remain in the unit lane when they exercise one bounded module or
+feature. Lane choice follows the behavior under test, not the mere presence of
+`git`, a subprocess, or filesystem I/O.
 
 Unit and integration tests form the fast lane. Slow tests run separately with
 `npm run test:slow`.

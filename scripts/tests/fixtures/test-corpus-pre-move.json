@@ -14,7 +14,12 @@
       "finalPath": "scripts/tests/integration/task-tracker/lib/trunk-ref.integration.test.mjs",
       "fromLane": "unit",
       "toLane": "integration",
-      "reason": "exercises real git repositories, clones, pushes, and fetches"
+      "reason": "coordinates multiple Git repositories and a remote end to end via clone, push, fetch, and the close gate",
+      "provenance": {
+        "baseCommit": "c175e52fc733455691ff16366ba6788aafc625c6",
+        "correctionCommit": "68c0a072a4b467dd0adf78a1e3a94a22fb6273b1",
+        "renameStatus": "R100"
+      }
     }
   ],
   "tests": [
