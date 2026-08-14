@@ -35,7 +35,7 @@ import { getProjectDir } from '../task-tracker/paths.mjs';
 import {
   withIssueLock,
   IssueLockError,
-  ISSUE_LOCK_HELD_ENV,
+  isIssueLockHeld,
 } from '../task-tracker/issue-mutator-lock.mjs';
 // #559 — input/policy + transition-plan concerns extracted into focused,
 // independently-testable modules. The host owns process.exit / stderr / I/O;
@@ -360,7 +360,8 @@ export async function runMoveStateHost({
   // timing-log comment, audit comments, local state file) so two parallel
   // sessions on the same issue serialize cleanly. The verb pipeline
   // (promote/approve/reconcile) may have already acquired this lock and signal
-  // via `AITM_ISSUE_LOCK_HELD=1`; in that case skip re-acquisition.
+  // via `AITM_ISSUE_LOCK_HELD=<issue>`; when that names this issue, skip
+  // re-acquisition.
   const runMutation = async () => {
     if (ctx.planExitOwnershipClaim) {
       const ownership = await commitPlanExitOwnershipClaim({
@@ -425,7 +426,10 @@ export async function runMoveStateHost({
     return 0;
   };
 
-  if (env[ISSUE_LOCK_HELD_ENV] === '1') {
+  // #1261 — the flag is issue-scoped, so only a frame holding THIS issue lets
+  // the mutation run unlocked. A frame holding a different issue falls through
+  // to a real acquisition below.
+  if (isIssueLockHeld(issueArg, env)) {
     return await runMutation();
   }
   try {

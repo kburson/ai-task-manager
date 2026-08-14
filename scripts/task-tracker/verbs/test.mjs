@@ -104,7 +104,7 @@ const SETUP_MAX_ATTEMPTS = 3;
 // @story #541 — the sandbox boundary must strip session-scoped lock state from
 // the env handed to `npm ci` and every Verification Command. `promote` wraps the
 // develop→test delegate spawn in `withIssueLock`, which sets
-// `AITM_ISSUE_LOCK_HELD=1` in `process.env` for the duration of the spawn; that
+// `AITM_ISSUE_LOCK_HELD=<issue>` in `process.env` for the duration of the spawn; that
 // flag then leaks `promote → test delegate → npm run test:all → each test file →
 // the move-state subprocess the lock-contention tests spawn`. move-state honors
 // the flag as "lock already held upstream, skip re-acquisition", so the

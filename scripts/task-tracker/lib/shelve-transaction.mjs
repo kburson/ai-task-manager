@@ -5,6 +5,7 @@ import { createHash, randomUUID } from 'node:crypto';
 import { promisify } from 'node:util';
 
 import { runMoveStateHost } from '../../gh/move-state.mjs';
+import { isIssueLockHeld } from '../issue-mutator-lock.mjs';
 import { clearProjectFieldValue, gql, splitRepo } from '../../gh/lib/github-projects.mjs';
 import { readLastKnownState } from '../gh-timing-comment.mjs';
 import { ensureIssueFieldDb, parseIssueFieldDb } from '../issue-field-db.mjs';
@@ -389,8 +390,11 @@ function exactLandedEvidenceTransform(snapshot, record, journal) {
   );
 }
 
-function defaultAssertIssueLockHeld() {
-  if (process.env.AITM_ISSUE_LOCK_HELD !== '1') {
+// #1261 — the held-lock flag names the issue it covers, so the authority check
+// asserts the lock is held for THIS issue. A frame holding some other issue no
+// longer confers shelve authority here.
+function defaultAssertIssueLockHeld(issueNumber) {
+  if (!isIssueLockHeld(issueNumber)) {
     throw new Error('shelve: transaction authority requires the issue lock');
   }
 }
@@ -462,7 +466,7 @@ export async function runShelveTransaction({
   const why = String(reason || '').trim();
   if (!why) return { status: 'reason-required' };
 
-  (deps.assertIssueLockHeld || defaultAssertIssueLockHeld)();
+  (deps.assertIssueLockHeld || defaultAssertIssueLockHeld)(issueNumber);
 
   const fetchSnapshot = deps.fetchSnapshot || defaultFetchSnapshot;
   const mutateBodyFn = deps.mutateBody || mutateIssueBody;
