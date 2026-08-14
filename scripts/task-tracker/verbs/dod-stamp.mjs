@@ -107,7 +107,7 @@ export async function verbDodStamp(ctx) {
   // default overflows on `npm test`).
   // (#304 follow-up to #303: GH_API_TIMEOUT_MS — 15s — killed `npm test` mid-run.)
   // Strip the lock-held signal so verifier subprocesses don't inherit it.
-  // A subprocess that sees AITM_ISSUE_LOCK_HELD=1 will bypass its own lock
+  // A subprocess that sees AITM_ISSUE_LOCK_HELD naming this issue bypasses its own lock
   // acquisition inside the state transition script, causing a deadlock if a
   // slow verifier test also tries to acquire the same per-issue lock (#456).
   const cleanEnv = { ...process.env };

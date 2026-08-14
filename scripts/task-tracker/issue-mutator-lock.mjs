@@ -23,15 +23,34 @@
 //   `ISSUE_LOCK_STALE_MS`, the dir is forcibly removed and acquisition retried.
 //   This is the same recovery rule as `locks.mjs`, but here the holder file is
 //   unlinked first so the rmdir succeeds.
-// - Caller hint: when the inner `fn` spawns a child process that also calls
-//   into a state-mutator chokepoint (e.g. verbs spawning `move-state.mjs`),
-//   the inner script should detect `AITM_ISSUE_LOCK_HELD=1` and skip its own
-//   lock acquisition. This module sets that env var for the duration of `fn`.
+// - Re-entrancy (#1261): a nested acquisition for an issue this call stack
+//   already holds skips acquisition and runs its callback directly, so a parent
+//   verb can delegate to a child verb that also guards itself (promote → test,
+//   promote → move-state) without deadlocking against its own lock. Two carriers
+//   express "held", and the distinction between them matters:
+//
+//     * In-process: an `AsyncLocalStorage` set of held tokens. Only the async
+//       context DESCENDED from the holding frame sees it, which is what
+//       separates true nesting from two concurrent same-issue runs sharing one
+//       process — the latter are unrelated contexts, so they still contend and
+//       still get `IssueLockError` (the #1169 Test entry interlock).
+//     * Cross-process: `AITM_ISSUE_LOCK_HELD`, published for the duration of
+//       `fn` so a spawned child inherits it. A token this process published is
+//       deliberately NOT honored for in-process decisions — otherwise the
+//       process-global env would re-introduce exactly the concurrency confusion
+//       the async context exists to avoid.
+//
+//   The flag is issue-SCOPED: a nested acquisition for a different issue still
+//   acquires its own lock. Cross-session protection is untouched — a competing
+//   session neither shares this process's async context nor inherits its env.
+//   Consumers outside this module must test with `isIssueLockHeld` rather than
+//   comparing the raw env value.
 //
 // Read-only verbs (`status`, `list`, `bind`) MUST NOT call this — that is
 // asserted by `tests/verb-locks.test.mjs`.
 
 import { mkdirSync, rmdirSync, writeFileSync, readFileSync, unlinkSync, statSync } from 'node:fs';
+import { AsyncLocalStorage } from 'node:async_hooks';
 import path from 'node:path';
 import os from 'node:os';
 import { randomBytes } from 'node:crypto';
@@ -47,6 +66,65 @@ export const ISSUE_LOCK_STALE_MS = 30 * 60_000;
 export const ISSUE_LOCK_DEFAULT_RETRY_MS = 500;
 export const ISSUE_LOCK_DEFAULT_RETRIES = 1;
 export const ISSUE_LOCK_HELD_ENV = 'AITM_ISSUE_LOCK_HELD';
+
+// The value published in `ISSUE_LOCK_HELD_ENV`: the issue number the frame
+// holds, normalized so `1261`, `'1261'` and `'#1261'` all produce `'1261'`.
+// `issueLockPath` does no `#`-stripping of its own, so normalizing here is what
+// keeps the env token and the lock path in agreement.
+export function issueLockToken(issue) {
+  return String(issue).trim().replace(/^#/, '');
+}
+
+// In-process held set, scoped to the async context of the holding frame. A
+// concurrent same-issue run in this process is a SIBLING context, not a
+// descendant, so it reads an empty set and contends normally.
+const heldContext = new AsyncLocalStorage();
+
+// Tokens this process itself published into the env, refcounted. Their presence
+// in the env says nothing about the CURRENT call stack — only the async context
+// does — so they are excluded from the env half of the predicate.
+const selfPublished = new Map();
+
+function heldHere(token) {
+  const store = heldContext.getStore();
+  return store ? store.has(token) : false;
+}
+
+function anyHeldHere() {
+  const store = heldContext.getStore();
+  return Boolean(store && store.size > 0);
+}
+
+// Shared predicate for every reader of the re-entrancy signal. Callers outside
+// this module MUST use it rather than comparing the raw env value, because the
+// value is an issue token, not a boolean, and because the env is only half the
+// signal (see the module header).
+//
+//   - `issue` given → true only when THAT issue is held. This is the
+//     issue-scoping that keeps a frame holding #A from waving through an
+//     acquisition for #B.
+//   - `issue` omitted → true when any issue is held. For callers that only need
+//     "am I inside a locked frame at all" (e.g. an authority assertion).
+//   - A bare `'1'` still reads as held for both shapes: it is the legacy
+//     unscoped value, honored so a mixed-version process tree degrades to the
+//     pre-#1261 behavior instead of double-acquiring.
+//   - An explicit `env` argument (a constructed env object rather than
+//     `process.env`) is read at face value, self-published tokens included: the
+//     caller is asking about that env, typically one destined for a child.
+export function isIssueLockHeld(issue, env = process.env) {
+  const token = issue === undefined || issue === null ? null : issueLockToken(issue);
+  if (token === null ? anyHeldHere() : heldHere(token)) return true;
+
+  const raw = env?.[ISSUE_LOCK_HELD_ENV];
+  if (raw === undefined || raw === null) return false;
+  const held = String(raw).trim();
+  if (held === '') return false;
+  // A token this process published is not evidence about this call stack.
+  if (env === process.env && selfPublished.has(held)) return false;
+  if (held === '1') return true;
+  if (token === null) return true;
+  return held === token;
+}
 
 // This process's host + a per-incarnation nonce. `host` lets a reclaiming peer
 // know whether `process.kill` means anything for the holder's PID; `startToken`
@@ -181,6 +259,18 @@ export async function withIssueLock(opts, fn) {
   } = opts || {};
   if (!issue) throw new Error('withIssueLock: issue is required');
   if (!projDir) throw new Error('withIssueLock: projDir is required');
+
+  const token = issueLockToken(issue);
+
+  // #1261 — re-entrancy short-circuit. Deliberately placed AFTER argument
+  // validation (a malformed call stays a hard error, never a silent
+  // pass-through) and BEFORE any lock-dir I/O: the nested frame must not touch
+  // the directory or the env, because the outer `finally` below unconditionally
+  // unlinks the holder and rmdirs the lock. A nested frame that duplicated that
+  // teardown would release its parent's lock early. The holding frame stays the
+  // sole owner of both the lock directory and the env restore.
+  if (isIssueLockHeld(issue)) return await fn();
+
   const lockPath = issueLockPath(issue, projDir);
   mkdirSync(path.dirname(lockPath), { recursive: true });
 
@@ -222,11 +312,24 @@ export async function withIssueLock(opts, fn) {
     /* best-effort: contention error degrades to "unknown" if read fails */
   }
 
+  // Publish WHICH issue is held, not a bare boolean, so an acquisition for a
+  // different issue still takes its own lock. The env carries the signal across
+  // a process boundary; the async-context set below carries it in-process. Read
+  // either back with `isIssueLockHeld`, never by comparing the raw value.
   const priorEnv = process.env[ISSUE_LOCK_HELD_ENV];
-  process.env[ISSUE_LOCK_HELD_ENV] = '1';
+  process.env[ISSUE_LOCK_HELD_ENV] = token;
+  selfPublished.set(token, (selfPublished.get(token) || 0) + 1);
+
+  const inherited = heldContext.getStore();
+  const nextHeld = new Set(inherited || []);
+  nextHeld.add(token);
+
   try {
-    return await fn();
+    return await heldContext.run(nextHeld, fn);
   } finally {
+    const depth = (selfPublished.get(token) || 1) - 1;
+    if (depth <= 0) selfPublished.delete(token);
+    else selfPublished.set(token, depth);
     if (priorEnv === undefined) delete process.env[ISSUE_LOCK_HELD_ENV];
     else process.env[ISSUE_LOCK_HELD_ENV] = priorEnv;
     try {
