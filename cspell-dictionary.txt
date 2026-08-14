@@ -73,6 +73,7 @@ dupguard
 duplicative
 dwords
 ensp
+entrancy
 fanin
 fanout
 Flesch
@@ -182,6 +183,8 @@ Reengagements
 reeval
 Reeval
 REEVAL
+reentrancy
+refcounted
 refetched
 regenerable
 Reincludes
@@ -196,6 +199,7 @@ requalify
 rescan
 rescanning
 retargeted
+rmdirs
 rollups
 Rovo
 sandboxed
