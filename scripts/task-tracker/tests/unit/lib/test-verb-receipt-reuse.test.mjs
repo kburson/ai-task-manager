@@ -41,6 +41,8 @@ function developReceipt() {
         args: ['run', 'lint'],
         exitCode: 0,
         durationMs: 10,
+        startedAt: '2026-08-01T17:59:58.000Z',
+        completedAt: '2026-08-01T17:59:59.000Z',
       },
       {
         classification: 'format-full',
@@ -48,6 +50,8 @@ function developReceipt() {
         args: ['run', 'format:check'],
         exitCode: 0,
         durationMs: 10,
+        startedAt: '2026-08-01T17:59:59.000Z',
+        completedAt: INSTANT,
       },
     ],
     now: () => INSTANT,
@@ -102,6 +106,14 @@ function issueBody() {
   ].join('\n');
 }
 
+function targetedOnlyIssueBody() {
+  return [
+    '<!-- aitm-last-known-state: develop -->',
+    '## Verification Commands',
+    '- [ ] `node --test scripts/task-tracker/tests/unit/lib/markers.test.mjs`',
+  ].join('\n');
+}
+
 test('partitionVerificationCommands reuses lint/format and plans all complete lanes once', () => {
   const partition = partitionVerificationCommands({
     commands: [
@@ -128,7 +140,7 @@ test('partitionVerificationCommands reuses lint/format and plans all complete la
 });
 
 test('/task test finalizes Develop, reads back evidence, reuses it, and emits Test receipt', async () => {
-  let body = issueBody();
+  let body = targetedOnlyIssueBody();
   const events = [];
   const sandboxRuns = [];
   const receipt = developReceipt();
@@ -191,6 +203,24 @@ test('/task test finalizes Develop, reads back evidence, reuses it, and emits Te
     testReceipt.commands.slice(0, 5).map(({ classification }) => classification),
     ['lint-full', 'format-full', 'test-unit', 'test-integration', 'test-slow']
   );
+  assert.deepEqual(
+    testReceipt.commands
+      .slice(0, 2)
+      .map(({ command, args, startedAt, completedAt, reusedFrom }) => ({
+        command,
+        args,
+        startedAt,
+        completedAt,
+        reusedFrom,
+      })),
+    receipt.commands.map(({ command, args, startedAt, completedAt }) => ({
+      command,
+      args,
+      startedAt,
+      completedAt,
+      reusedFrom: receipt.receiptId,
+    }))
+  );
 });
 
 test('/task test reuses a valid Develop-final receipt when retrying unchanged SHA', async () => {
@@ -243,6 +273,14 @@ test('/task test reuses a valid Develop-final receipt when retrying unchanged SH
     'npm run test:integration',
     'npm run test:slow',
   ]);
+  const carried = parseVerificationReceipt(body, 'test').commands.filter(({ classification }) =>
+    ['lint-full', 'format-full'].includes(classification)
+  );
+  assert.deepEqual(
+    carried.map(({ classification }) => classification),
+    ['lint-full', 'format-full'],
+    'legacy standard VCs must not duplicate validator-approved carried results'
+  );
 });
 
 test('/task test records invalid finalization and never creates a sandbox', async () => {
