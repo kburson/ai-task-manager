@@ -78,7 +78,9 @@ function repoRoot() {
 // #1217 intentionally ships the final board-cutover CLI, transaction authority,
 // shared lifecycle-freeze reader, and operator migration guide. The measured
 // package surface therefore grows by exactly four entries.
-const ENTRY_CEILING = 655;
+// #871 intentionally ships one runtime lib — the base-aware cleanup planner
+// (scripts/task-tracker/lib/cleanup-base-aware.mjs) — growing the surface by one.
+const ENTRY_CEILING = 656;
 
 function packedFiles() {
   const out = execFileSync('npm', ['pack', '--dry-run', '--json'], {
