@@ -157,8 +157,30 @@ test('non-git sandbox: fixes misplaced tags and discovers co-located tests', () 
   // A shebang after the cspell/story header is moved ahead of both lines.
   assert.equal(
     readFileSync(invalidShebangOrder, 'utf8'),
-    '#!/usr/bin/env node\n// cspell:ignore metachar\n// @story #10\nconsole.log(5)\n'
+    '#!/usr/bin/env node\n// @story #10\n// cspell:ignore metachar\nconsole.log(5)\n'
   );
+});
+
+test('tagger moves cspell after the exact story header and repairs numeric-prefix lookalikes', () => {
+  const cwd = mkdtempOutsideRepo('tag-story-exact-header-');
+  const cspellFirst = write(
+    cwd,
+    'scripts/gh/cspell-first.test.mjs',
+    '// cspell:ignore metachar\n// @story #42\nexport const x = 1;\n'
+  );
+  const malformed = write(
+    cwd,
+    'scripts/gh/malformed-prefix.test.mjs',
+    '// @story #7oops\nexport const y = 2;\n'
+  );
+
+  const result = run(cwd);
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(
+    readFileSync(cspellFirst, 'utf8'),
+    '// @story #42\n// cspell:ignore metachar\nexport const x = 1;\n'
+  );
+  assert.equal(readFileSync(malformed, 'utf8').split('\n')[0], '// @story #309');
 });
 
 test('git sandbox: resolves creation issue from git log; empty log falls back', () => {

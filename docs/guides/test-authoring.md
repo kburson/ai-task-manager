@@ -44,7 +44,13 @@ root. Package-level `scripts/tests/{fixtures,helpers,tools}/` holds support file
 executable fixture tests stay in a canonical lane, such as
 `scripts/tests/unit/fixtures/<feature>.test.mjs`.
 
-Every test has a permitted `// @story #NNN` header. Run
+Choose the lane by behavior, not filename history. A test that creates real Git
+repositories or crosses a real process boundary belongs in `integration`; this is
+why `trunk-ref.integration.test.mjs` is not in the unit subtree.
+
+Every test has `// @story #NNN` on line 1, or on line 2 immediately after a
+shebang. A `// cspell:ignore ...` preamble follows the story tag; it never precedes
+it. Run
 `npm run lint:test-layout`, `npm run lint:story-tags`, and
 `npm run lint:line-cap` before the relevant lane.
 

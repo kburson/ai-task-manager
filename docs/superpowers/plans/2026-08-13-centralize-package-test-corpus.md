@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Move the complete package test corpus into `scripts/tests/`, preserve every starting test and lane, and make canonical layout plus whole-tree `@story` attribution fail-closed.
+**Goal:** Move the complete package test corpus into `scripts/tests/`, preserve every starting test and the frozen lane census, record intentional semantic corrections, and make canonical layout plus whole-tree `@story` attribution fail-closed.
 
 **Architecture:** `discoverTestFiles()` remains the package-wide source of truth and continues scanning all of `scripts/`, including misplaced tests. A canonical path parser in `test-lanes.mjs` becomes the sole lane classifier, while meta audits compare discovery with the allowed `scripts/tests/{unit,integration,slow}` tree and a frozen old-to-new migration manifest. Test-only helpers, fixtures, audit scripts, and migration evidence live beneath `scripts/tests/` and are excluded from the published npm package.
 
@@ -13,7 +13,11 @@
 - The repository has one npm package deliverable; do not preserve domain-local test roots as package boundaries.
 - Canonical discovery remains rooted at all of `scripts/` so a misplaced `*.test.mjs` is detected and rejected.
 - Every discovered test must live below exactly one of `scripts/tests/unit/`, `scripts/tests/integration/`, or `scripts/tests/slow/`.
-- Preserve the starting lane for all 915 tests: 837 unit, 27 integration, and 51 slow.
+- Preserve the frozen starting census for all 915 tests: 837 unit, 27 integration,
+  and 51 slow. Record the intentional post-snapshot correction of
+  `trunk-ref.integration.test.mjs` from unit to integration separately; it exercises
+  real Git repositories, clones, pushes, and fetches. With three story-owned unit
+  tests, the final live census is 839 unit, 28 integration, and 51 slow (918 total).
 - Use `git mv` for every existing test and test-only support asset; retain basename and rename provenance.
 - Every test must carry `// @story #NNN` on line 1, or line 2 after a shebang.
 - Use the creation issue when Git history exposes one; use the documented `#309` fallback only when attribution is unavailable.
@@ -57,7 +61,7 @@ Run a repository-local Node script from the issue worktree that imports `discove
 }
 ```
 
-The generator must use an explicit destination mapping: existing lane roots retain their lane; `task-tracker` test subtrees map beneath `scripts/tests/<lane>/task-tracker/` except `meta`, `fixtures`, `helpers`, and `tools`, which map to the package-level support/bucket subtree; domain-local and co-located tests map beneath their production path relative to `scripts/`; `.integration.test.mjs` remains integration; the existing articles E2E test remains slow.
+The generator must use an explicit destination mapping: existing lane roots retain their lane; `task-tracker` test subtrees map beneath `scripts/tests/<lane>/task-tracker/` except `meta`, `fixtures`, `helpers`, and `tools`, which map to the package-level support/bucket subtree; domain-local and co-located tests map beneath their production path relative to `scripts/`; files already in declared integration roots remain integration; the existing articles E2E test remains slow. A filename suffix alone does not rewrite the historical lane. The frozen manifest therefore retains the old classifier's unit destination for `trunk-ref.integration.test.mjs` as migration provenance and records its final semantic integration destination in `laneCorrections`.
 
 Run: `node .tmp/inspect/build-876-manifest.mjs`
 
@@ -239,7 +243,7 @@ Expected: FAIL on permissive classification and noncanonical current paths.
 
 Run a checked migration driver that reads `test-corpus-pre-move.json`, refuses a missing source or existing destination, creates destination parents, and invokes `git mv -- <oldPath> <newPath>` once per entry. Move non-test support assets with explicit `git mv` commands. The driver must stop on the first error and print the completed count.
 
-Expected: all 915 starting tests appear as Git renames, old roots contain no tests, and new lanes contain 837/27/51 starting tests plus story-owned meta tests.
+Expected: all 915 starting tests appear as Git renames to their frozen migration destinations, old roots contain no tests, and the intentional post-snapshot `trunk-ref.integration.test.mjs` correction is recorded separately. Final discovery contains 839 unit, 28 integration, and 51 slow tests.
 
 - [ ] **Step 4: Repair imports and repository-root derivation mechanically, then format**
 
@@ -369,6 +373,6 @@ Commit: `chore: enforce canonical test corpus for #876`
 
 ## Plan Self-Review
 
-- Spec coverage: Tasks 1 and 3 prove lossless, lane-preserving migration; Tasks 2 and 4 enforce whole-tree tags; Tasks 1, 3, and 4 enforce canonical discovery/layout; Task 3 repairs all path consumers; Task 4 proves packaging and documentation.
+- Spec coverage: Tasks 1 and 3 prove lossless migration and preserve the frozen starting census while explicitly recording one semantic lane correction; Tasks 2 and 4 enforce whole-tree tags; Tasks 1, 3, and 4 enforce canonical discovery/layout; Task 3 repairs all path consumers; Task 4 proves packaging and documentation.
 - Placeholder scan: no implementation step delegates an unspecified error-handling or test-design decision; generated hashes and the complete 915-entry mapping are intentionally machine-produced from the frozen starting commit.
-- Interface consistency: `parseCanonicalTestPath()` is introduced before strict `laneOf()` consumes it; both audits consume `discoverTestFiles()`; the manifest’s `oldPath/newPath/lane/basename/sha256` fields are used consistently by migration and verification.
+- Interface consistency: `parseCanonicalTestPath()` is introduced before strict `laneOf()` consumes it; both audits consume `discoverTestFiles()`; the manifest’s `oldPath/newPath/lane/basename/sha256` fields preserve immutable migration provenance, while `laneCorrections` distinguishes the final live destination.

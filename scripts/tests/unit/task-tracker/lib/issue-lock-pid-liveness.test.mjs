@@ -1,6 +1,6 @@
 #!/usr/bin/env node
-// cspell:ignore TOCTOU
 // @story #656
+// cspell:ignore TOCTOU
 // PID-liveness staleness for the per-issue mutator lock.
 //
 // Regression coverage for #656: `tryReclaimStale` used to decide staleness

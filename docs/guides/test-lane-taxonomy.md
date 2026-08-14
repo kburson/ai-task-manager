@@ -24,7 +24,9 @@ Every path must match
 `scripts/tests/<unit|integration|slow>/<source-relative-subtree>/<name>.test.mjs`.
 The three lane prefixes are mutually exclusive, and the required lane segment makes
 classification total only for valid canonical paths. `laneOf()` throws for every
-other discovered test. Unit is never a default.
+other discovered test. Unit is never a default. Tests that create real Git
+repositories, clones, pushes, or fetches cross process and persistence boundaries
+and therefore belong in `integration`.
 
 Co-located tests such as `scripts/gh/foo.test.mjs`, domain-local test roots such as
 `scripts/providers/tests/`, and `.test.mjs` files in package-level support subtrees

@@ -20,6 +20,21 @@ const EXPECTED_POST_SNAPSHOT_TESTS = [
   'scripts/tests/unit/meta/package-test-corpus.test.mjs',
   'scripts/tests/unit/task-tracker/lib/test-corpus-paths.test.mjs',
 ];
+const EXPECTED_LANE_CORRECTION = {
+  oldPath: 'scripts/task-tracker/lib/trunk-ref.integration.test.mjs',
+  migrationPath: 'scripts/tests/unit/task-tracker/lib/trunk-ref.integration.test.mjs',
+  finalPath: 'scripts/tests/integration/task-tracker/lib/trunk-ref.integration.test.mjs',
+  fromLane: 'unit',
+  toLane: 'integration',
+  reason: 'exercises real git repositories, clones, pushes, and fetches',
+};
+
+function finalPathFor(entry) {
+  const correction = manifest.laneCorrections.find(
+    ({ migrationPath }) => migrationPath === entry.newPath
+  );
+  return correction?.finalPath ?? entry.newPath;
+}
 
 function npmPackFiles() {
   const result = spawnSync('npm', ['pack', '--dry-run', '--json'], {
@@ -85,9 +100,10 @@ test('pre-move corpus manifest freezes the expected schema and lane census', () 
   assert.equal(manifest.sourceCommit, '4f4d7ccf1c3b2f7375e38e7a227f8bec1ef2fdc3');
   assert.deepEqual(manifest.counts, { all: 915, unit: 837, integration: 27, slow: 51 });
   assert.equal(manifest.tests.length, manifest.counts.all);
+  assert.deepEqual(manifest.laneCorrections, [EXPECTED_LANE_CORRECTION]);
 });
 
-test('pre-move corpus manifest is a one-to-one, lane-preserving path map', () => {
+test('pre-move corpus manifest is a one-to-one, lane-preserving migration map', () => {
   const oldPaths = new Set();
   const newPaths = new Set();
   const allowedLanes = new Set(['unit', 'integration', 'slow']);
@@ -144,18 +160,22 @@ test('live discovery realizes the migration manifest exactly once and only in ca
   const live = new Set(discovered);
   assert.equal(live.size, discovered.length, 'live discovery has no duplicate path');
 
-  const manifestDestinations = new Set(manifest.tests.map(({ newPath }) => newPath));
+  const manifestDestinations = new Set(manifest.tests.map(finalPathFor));
   for (const entry of manifest.tests) {
-    assert.ok(existsSync(path.join(PROJECT_ROOT, entry.newPath)), `${entry.newPath} exists`);
-    assert.ok(live.has(entry.newPath), `${entry.newPath} is discovered`);
-    if (entry.oldPath !== entry.newPath) {
+    const finalPath = finalPathFor(entry);
+    assert.ok(existsSync(path.join(PROJECT_ROOT, finalPath)), `${finalPath} exists`);
+    assert.ok(live.has(finalPath), `${finalPath} is discovered`);
+    if (entry.oldPath !== finalPath) {
       assert.ok(!existsSync(path.join(PROJECT_ROOT, entry.oldPath)), `${entry.oldPath} is absent`);
       assert.ok(!live.has(entry.oldPath), `${entry.oldPath} is not discovered`);
     }
-    const parsed = parseCanonicalTestPath(entry.newPath);
-    assert.ok(parsed, `${entry.newPath} is canonical`);
-    assert.equal(parsed.lane, entry.lane, `${entry.newPath} retains ${entry.lane}`);
-    assert.equal(path.posix.basename(entry.newPath), entry.basename);
+    const correction = manifest.laneCorrections.find(
+      ({ migrationPath }) => migrationPath === entry.newPath
+    );
+    const parsed = parseCanonicalTestPath(finalPath);
+    assert.ok(parsed, `${finalPath} is canonical`);
+    assert.equal(parsed.lane, correction?.toLane ?? entry.lane, `${finalPath} has its final lane`);
+    assert.equal(path.posix.basename(finalPath), entry.basename);
   }
 
   const storyOwned = discovered.filter((rel) => !manifestDestinations.has(rel));
@@ -164,6 +184,10 @@ test('live discovery realizes the migration manifest exactly once and only in ca
   for (const rel of storyOwned) {
     assert.ok(parseCanonicalTestPath(rel), `${rel} is a canonical story-owned test`);
   }
+
+  const liveCounts = { unit: 0, integration: 0, slow: 0 };
+  for (const rel of discovered) liveCounts[parseCanonicalTestPath(rel).lane] += 1;
+  assert.deepEqual(liveCounts, { unit: 839, integration: 28, slow: 51 });
 });
 
 test('package files explicitly exclude the canonical test support root', () => {

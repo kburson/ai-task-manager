@@ -10,9 +10,9 @@
 //   - left no test file directly in a lane root (AC1),
 //   - nested every file under a directory that mirrors a real source subsystem
 //     or is the core/meta bucket (AC2),
-//   - preserved every file's lane and dropped nothing versus the frozen pre-move
-//     census (AC3/AC4 — baseline is a floor: no drop, no relane; new tests may be
-//     added),
+//   - dropped nothing versus the frozen pre-move census and records the one
+//     intentional post-snapshot unit→integration correction (AC3/AC4 — baseline
+//     is a floor; new tests may be added),
 //   - keeps the three lanes a disjoint partition whose union is the whole
 //     canonical discovery set (AC4),
 //   - carries git-mv provenance for a sample per subsystem (AC6).
@@ -51,6 +51,9 @@ const LANE_ROOTS = LANES.map((l) => `scripts/tests/${l}`);
 const baseline = JSON.parse(
   readFileSync(path.join(HERE, 'test-tree-layout.baseline.json'), 'utf8')
 ).lanes;
+const corpusManifest = JSON.parse(
+  readFileSync(path.join(REPO_ROOT, 'scripts/tests/fixtures/test-corpus-pre-move.json'), 'utf8')
+);
 
 function git(args) {
   return execFileSync('git', args, { cwd: REPO_ROOT, encoding: 'utf8' });
@@ -210,15 +213,27 @@ test('AC2: every lane subdirectory mirrors a real source subsystem (or is core/m
   }
 });
 
-test('AC3/AC4: no pre-move file was dropped or changed lane (baseline is a floor)', () => {
+test('AC3/AC4: no pre-move file was dropped outside an explicit lane correction', () => {
   for (const lane of LANES) {
     const live = new Set(manifest[lane].map((f) => f.split('/').pop()));
-    const dropped = baseline[lane].filter((b) => !live.has(b));
+    const correctedFromLane = new Set(
+      corpusManifest.laneCorrections
+        .filter(({ fromLane }) => fromLane === lane)
+        .map(({ migrationPath }) => path.posix.basename(migrationPath))
+    );
+    const dropped = baseline[lane].filter((b) => !live.has(b) && !correctedFromLane.has(b));
     assert.deepEqual(
       dropped,
       [],
       `${lane} lane lost ${dropped.length} pre-move file(s): ${dropped.slice(0, 8).join(', ')}` +
         ' — a move that drops or relanes a file breaks discovery'
+    );
+  }
+
+  for (const correction of corpusManifest.laneCorrections) {
+    assert.ok(
+      manifest[correction.toLane].includes(correction.finalPath),
+      `${correction.finalPath} realizes the intentional ${correction.fromLane}→${correction.toLane} correction`
     );
   }
 });

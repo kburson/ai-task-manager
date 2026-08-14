@@ -1,5 +1,5 @@
-// cspell:ignore metachar
 // @story #973
+// cspell:ignore metachar
 // A VC blocked by the security allowlist (`rejected`, before execution) must
 // not be scored the same as a VC that ran and returned nonzero (`failed`).
 // Regression for the promote gate that folded both into one failure count.

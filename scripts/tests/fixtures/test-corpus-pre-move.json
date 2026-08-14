@@ -7,6 +7,16 @@
     "integration": 27,
     "slow": 51
   },
+  "laneCorrections": [
+    {
+      "oldPath": "scripts/task-tracker/lib/trunk-ref.integration.test.mjs",
+      "migrationPath": "scripts/tests/unit/task-tracker/lib/trunk-ref.integration.test.mjs",
+      "finalPath": "scripts/tests/integration/task-tracker/lib/trunk-ref.integration.test.mjs",
+      "fromLane": "unit",
+      "toLane": "integration",
+      "reason": "exercises real git repositories, clones, pushes, and fetches"
+    }
+  ],
   "tests": [
     {
       "oldPath": "scripts/articles/publish-articles.test.mjs",

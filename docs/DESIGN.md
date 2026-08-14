@@ -622,8 +622,9 @@ Migration steps (executed during implementation):
 
 This section reflects the original v1 plan (no formal test framework, a manual
 smoke-test checklist). Both have since been superseded: the repo now runs
-`node --test` across `scripts/tests/unit/task-tracker/` (fast + slow lanes) and
-`scripts/tests/integration/task-tracker/`, with `c8` coverage (see
+`node --test` across the canonical `scripts/tests/unit/task-tracker/`,
+`scripts/tests/integration/task-tracker/`, and `scripts/tests/slow/task-tracker/`
+roots, with `c8` coverage (see
 [`guides/test-authoring.md`](./guides/test-authoring.md) for current
 conventions). `docs/task-tracker-smoke-test.md` was never created — its
 coverage is now the automated test tree instead.
