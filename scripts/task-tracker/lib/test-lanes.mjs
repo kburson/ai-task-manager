@@ -36,14 +36,14 @@ export const LANES = Object.freeze(['unit', 'integration', 'slow']);
 /**
  * Classify a repo-relative test path into exactly one lane.
  *
- * A `slow` or `integration` directory segment appearing after a `tests`
- * ancestor selects that lane; everything else — co-located `foo.test.mjs` next
- * to its source, and anything under `tests/unit/` — is a unit test by
- * construction. Matching is on whole path segments, so a file merely *named*
- * `slow.test.mjs` is never misclassified.
+ * The path must match `scripts/tests/<unit|integration|slow>/<relative>.test.mjs`;
+ * the declared lane segment is returned. Paths outside the canonical tree and
+ * files directly under support subtrees fail closed instead of receiving a
+ * default lane.
  *
  * @param {string} relPath - repo-relative POSIX path to a `*.test.mjs` file
- * @returns {'unit'|'integration'|'slow'} exactly one lane; never undefined
+ * @returns {'unit'|'integration'|'slow'} the path-declared canonical lane
+ * @throws {Error} when the path does not declare a canonical lane
  */
 export function laneOf(relPath) {
   const parsed = parseCanonicalTestPath(relPath);

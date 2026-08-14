@@ -19,15 +19,12 @@ const DEFAULT_PROJECT_ROOT = path.resolve(__dir, '../..');
 const UNIT_TEST_REL_PREFIX = 'scripts/tests/unit';
 
 /**
- * Pure mapping: returns the repo-root-relative **flat conventional** unit-test
- * path (`tests/unit/<name>.test.mjs`) for a source file, or null if srcPath is
- * already a test file.
+ * Return the exact canonical unit-test path for a supported source path.
  *
- * NOTE (#868): this is the *pre-nesting* flat location. It is retained as the
- * documented naming convention (`<module>` ↔ `<module>.test.mjs`) and for the
- * degenerate flat case, but real discovery is nesting-aware — `findUnitTests`
- * resolves the actual (possibly subsystem-nested) path by basename. Do not use
- * this function's return value as a filesystem path assumption.
+ * A source below `scripts/` keeps its complete directory path below
+ * `scripts/tests/unit/`. Package-root modules use `unit/core/`; modules at the
+ * task-tracker root use `unit/task-tracker/core/`. Tests and unsupported paths
+ * return null.
  *
  * @param {string} srcPath - any path ending in .mjs
  * @returns {string|null}
@@ -47,14 +44,11 @@ export function unitTestPath(srcPath) {
 }
 
 /**
- * Builds a basename → repo-relative-path index over the discovered test files
- * that live anywhere under the unit tree (`tests/unit/**`). First hit wins;
- * `discoverTestFiles` returns a sorted list, so the choice is deterministic when
- * a basename appears in more than one subsystem subdir (which the layout
- * verifier forbids, but the index stays total regardless).
+ * Build a basename → canonical-paths index over discovered unit tests. Keeping
+ * every match lets the compatibility fallback reject ambiguity.
  *
  * @param {string[]} known - repo-relative discovered test paths
- * @returns {Map<string,string>} basename (e.g. `foo.test.mjs`) → its unit path
+ * @returns {Map<string,string[]>} basename → all matching canonical unit paths
  */
 function unitTreeIndex(known) {
   const prefix = `${UNIT_TEST_REL_PREFIX}/`;
@@ -69,14 +63,7 @@ function unitTreeIndex(known) {
   return byBase;
 }
 
-/**
- * Pure mapping: returns the repo-root-relative **co-located** test path
- * (`<dir>/<name>.test.mjs`, next to the source) for a source file, or null if
- * srcPath is already a test file.
- *
- * @param {string} srcPath - any path ending in .mjs
- * @returns {string|null}
- */
+/** @deprecated Compatibility-only string helper; use {@link unitTestPath}. */
 export function coLocatedTestPath(srcPath) {
   if (srcPath.endsWith('.test.mjs')) return null;
   const dir = path.posix.dirname(srcPath);
@@ -85,12 +72,11 @@ export function coLocatedTestPath(srcPath) {
 }
 
 /**
- * Discovery reconciled with the canonical walker (#875) and nesting-aware after
- * #868: for each source `<dir>/<name>.mjs`, take the co-located test
- * `<dir>/<name>.test.mjs` if it exists, else the unit-tree test named
- * `<name>.test.mjs` wherever it now lives under `tests/unit/**` (flat root or a
- * subsystem subdir). "Exists" is membership in the canonical
- * `discoverTestFiles()` set — the same ground truth the runner uses.
+ * Match each source to its full source-relative canonical unit path when that
+ * path is discovered. If the exact path is absent, a basename compatibility
+ * fallback is accepted only when exactly one discovered unit test has that
+ * basename; zero or multiple matches produce no mapping. Discovery membership
+ * is the same canonical ground truth used by the runner.
  *
  * @param {string[]} sourcePaths - repo-root-relative source file paths
  * @param {{ projectRoot?: string, discovered?: string[] }} [opts]

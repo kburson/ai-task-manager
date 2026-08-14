@@ -20,6 +20,8 @@ const GUARD = path.resolve(
   '..',
   '..',
   '..',
+  '..',
+  'task-tracker',
   'activity-guard.mjs'
 );
 

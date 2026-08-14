@@ -13,6 +13,11 @@ import { parseCanonicalTestPath } from '../../../task-tracker/lib/test-lanes.mjs
 const PROJECT_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../../..');
 const manifestPath = path.join(PROJECT_ROOT, 'scripts/tests/fixtures/test-corpus-pre-move.json');
 const manifest = JSON.parse(readFileSync(manifestPath, 'utf8'));
+const EXPECTED_POST_SNAPSHOT_TESTS = [
+  'scripts/tests/unit/meta/audit-story-tags.test.mjs',
+  'scripts/tests/unit/meta/package-test-corpus.test.mjs',
+  'scripts/tests/unit/task-tracker/lib/test-corpus-paths.test.mjs',
+];
 
 test('pre-move corpus manifest freezes the expected schema and lane census', () => {
   assert.equal(manifest.schema, 1);
@@ -67,7 +72,7 @@ test('live discovery realizes the migration manifest exactly once and only in ca
   const live = new Set(discovered);
   assert.equal(live.size, discovered.length, 'live discovery has no duplicate path');
 
-  const oldPaths = new Set(manifest.tests.map(({ oldPath }) => oldPath));
+  const manifestDestinations = new Set(manifest.tests.map(({ newPath }) => newPath));
   for (const entry of manifest.tests) {
     assert.ok(existsSync(path.join(PROJECT_ROOT, entry.newPath)), `${entry.newPath} exists`);
     assert.ok(live.has(entry.newPath), `${entry.newPath} is discovered`);
@@ -81,8 +86,9 @@ test('live discovery realizes the migration manifest exactly once and only in ca
     assert.equal(path.posix.basename(entry.newPath), entry.basename);
   }
 
-  const storyOwned = discovered.filter((rel) => !oldPaths.has(rel));
-  assert.ok(storyOwned.length > 0, 'story-owned tests were added after the frozen snapshot');
+  const storyOwned = discovered.filter((rel) => !manifestDestinations.has(rel));
+  assert.equal(storyOwned.length, 3, 'exactly three story-owned tests follow the snapshot');
+  assert.deepEqual(storyOwned, EXPECTED_POST_SNAPSHOT_TESTS);
   for (const rel of storyOwned) {
     assert.ok(parseCanonicalTestPath(rel), `${rel} is a canonical story-owned test`);
   }
