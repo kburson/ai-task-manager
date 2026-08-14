@@ -16,8 +16,8 @@
       "toLane": "integration",
       "reason": "coordinates multiple Git repositories and a remote end to end via clone, push, fetch, and the close gate",
       "provenance": {
-        "baseCommit": "c175e52fc733455691ff16366ba6788aafc625c6",
-        "correctionCommit": "68c0a072a4b467dd0adf78a1e3a94a22fb6273b1",
+        "baseCommit": "2c531a0e911a5fadc3640b00dac5402878da8802",
+        "correctionCommit": "77cf0559cc076eb63e46c2a944045dc02dd2b5da",
         "renameStatus": "R100"
       }
     }

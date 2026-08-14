@@ -13,8 +13,8 @@ import { parseCanonicalTestPath } from '../../../task-tracker/lib/test-lanes.mjs
 const PROJECT_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../../..');
 const manifestPath = path.join(PROJECT_ROOT, 'scripts/tests/fixtures/test-corpus-pre-move.json');
 const manifest = JSON.parse(readFileSync(manifestPath, 'utf8'));
-const TASK3_BASE_COMMIT = 'a48aa89be065b015c817d08cbdae71c92e8f99ed';
-const TASK3_MIGRATION_COMMIT = '859996db6728beabef821ad7e724c584bfcef31b';
+const TASK3_BASE_COMMIT = 'db997e39e0fd76edbd2a3df6a19e7a226e33e55f';
+const TASK3_MIGRATION_COMMIT = 'cbff5ce683083c3e2a33a06ba2c81cafc9e27c22';
 const EXPECTED_POST_SNAPSHOT_TESTS = [
   'scripts/tests/unit/meta/audit-story-tags.test.mjs',
   'scripts/tests/unit/meta/package-test-corpus.test.mjs',
@@ -29,8 +29,8 @@ const EXPECTED_LANE_CORRECTION = {
   reason:
     'coordinates multiple Git repositories and a remote end to end via clone, push, fetch, and the close gate',
   provenance: {
-    baseCommit: 'c175e52fc733455691ff16366ba6788aafc625c6',
-    correctionCommit: '68c0a072a4b467dd0adf78a1e3a94a22fb6273b1',
+    baseCommit: '2c531a0e911a5fadc3640b00dac5402878da8802',
+    correctionCommit: '77cf0559cc076eb63e46c2a944045dc02dd2b5da',
     renameStatus: 'R100',
   },
 };
@@ -101,6 +101,14 @@ function readTask3MigrationRenames({ baseCommit, migrationCommit }) {
   return renames;
 }
 
+function assertCommitReachable(commit, label) {
+  const result = spawnSync('git', ['merge-base', '--is-ancestor', commit, 'HEAD'], {
+    cwd: PROJECT_ROOT,
+    encoding: 'utf8',
+  });
+  assert.equal(result.status, 0, `${label} ${commit} must remain reachable from HEAD`);
+}
+
 test('pre-move corpus manifest freezes the expected schema and lane census', () => {
   assert.equal(manifest.schema, 1);
   assert.equal(manifest.sourceCommit, '4f4d7ccf1c3b2f7375e38e7a227f8bec1ef2fdc3');
@@ -151,6 +159,8 @@ test('pre-move corpus manifest destinations and hashes retain their immutable so
 });
 
 test('the immutable Task 3 migration commit records every frozen path pair as a Git rename', () => {
+  assertCommitReachable(TASK3_BASE_COMMIT, 'Task 3 base');
+  assertCommitReachable(TASK3_MIGRATION_COMMIT, 'Task 3 migration');
   const renames = readTask3MigrationRenames({
     baseCommit: TASK3_BASE_COMMIT,
     migrationCommit: TASK3_MIGRATION_COMMIT,
@@ -164,6 +174,8 @@ test('the immutable Task 3 migration commit records every frozen path pair as a 
 test('the intentional lane correction retains its exact post-migration Git rename', () => {
   const [correction] = manifest.laneCorrections;
   const { baseCommit, correctionCommit, renameStatus } = correction.provenance;
+  assertCommitReachable(baseCommit, 'lane-correction base');
+  assertCommitReachable(correctionCommit, 'lane-correction commit');
   const output = execFileSync(
     'git',
     [

@@ -110,7 +110,7 @@ function targetedOnlyIssueBody() {
   return [
     '<!-- aitm-last-known-state: develop -->',
     '## Verification Commands',
-    '- [ ] `node --test scripts/task-tracker/tests/unit/lib/markers.test.mjs`',
+    '- [ ] `node --test scripts/tests/unit/task-tracker/lib/markers.test.mjs`',
   ].join('\n');
 }
 
