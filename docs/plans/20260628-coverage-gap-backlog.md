@@ -20,7 +20,7 @@ note says otherwise.
 
 These files are imported but never directly exercised by any test. Each needs
 a focused unit-test file added under
-`scripts/task-tracker/tests/unit/verb-<name>.test.mjs` (or a slow-lane file
+`scripts/tests/unit/task-tracker/verb-<name>.test.mjs` (or a slow-lane file
 if the verb makes real GH calls that cannot be stubbed cheaply).
 
 | File                                              | Lines | Notes                                                                                 |

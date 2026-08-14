@@ -8,7 +8,7 @@
 ## Context
 
 The repository had test files scattered across three roots (`./test/`, `./tests/`, and
-`scripts/task-tracker/tests/`) with no documented convention for where new tests should
+`scripts/tests/unit/task-tracker/`) with no documented convention for where new tests should
 live, how subdirectories should be named, how to attribute tests to the story that
 introduced them, or when a test file is large enough to be split.
 
@@ -32,29 +32,29 @@ epics (C2–C6 of #274).
 The single canonical root for task-tracker subsystem tests is:
 
 ```
-scripts/task-tracker/tests/
+scripts/tests/unit/task-tracker/
 ```
 
 All unit, integration, and slow tests for code under `scripts/task-tracker/` live here.
 
-**Exception — `scripts/providers/tests/`:** Provider tests remain co-located in
-`scripts/providers/tests/`. Providers are a self-contained package designed for future
+**Exception — `scripts/tests/unit/providers/`:** Provider tests remain co-located in
+`scripts/tests/unit/providers/`. Providers are a self-contained package designed for future
 extraction; moving their tests to the task-tracker test root would couple two packages
 that are intentionally independent. This exception must be re-evaluated if providers are
 extracted into a separate npm package.
 
 The orphan roots `./test/` and `./tests/` are eliminated by #306. After that migration
-there are exactly two test roots: `scripts/task-tracker/tests/` and
-`scripts/providers/tests/`.
+there are exactly two test roots: `scripts/tests/unit/task-tracker/` and
+`scripts/tests/unit/providers/`.
 
-### 2. Subdirectory taxonomy under `scripts/task-tracker/tests/`
+### 2. Subdirectory taxonomy under `scripts/tests/unit/task-tracker/`
 
 | Path                                                  | Contents                                                                                                                               |
 | ----------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
-| `scripts/task-tracker/tests/unit/<subsystem>/`        | Unit tests — module-oriented by default, or feature-oriented when measured shared-fixture consolidation is faster, nested by subsystem |
-| `scripts/task-tracker/tests/integration/<subsystem>/` | Integration tests — make real GitHub API calls, spawn real child processes against the live filesystem, or use real git worktrees      |
-| `scripts/task-tracker/tests/slow/<subsystem>/`        | Slow tests — exceed ~5 s wall-clock time but are otherwise unit-style                                                                  |
-| `scripts/task-tracker/tests/fixtures/`                | Shared fixture data and helper modules; lane-owned fixture tests live under `<lane>/fixtures/` so discovery executes them              |
+| `scripts/tests/unit/task-tracker/<subsystem>/`        | Unit tests — module-oriented by default, or feature-oriented when measured shared-fixture consolidation is faster, nested by subsystem |
+| `scripts/tests/integration/task-tracker/<subsystem>/` | Integration tests — make real GitHub API calls, spawn real child processes against the live filesystem, or use real git worktrees      |
+| `scripts/tests/slow/task-tracker/<subsystem>/`        | Slow tests — exceed ~5 s wall-clock time but are otherwise unit-style                                                                  |
+| `scripts/tests/fixtures/`                             | Shared fixture data and helper modules; lane-owned fixture tests live under `<lane>/fixtures/` so discovery executes them              |
 
 The three fast-lane subdirectories (`unit/`, `slow/`, `integration/`) are siblings under
 `tests/`. The `tests/` root retains only audit scripts and the subdirectories themselves.
@@ -122,7 +122,7 @@ comments, and `/* … */` block comments (including every line a multi-line bloc
 spans) do not count. A line with code plus a trailing comment counts as one code
 line. The scan is line-oriented and does not tokenize string literals — a `//` or
 `/*` inside a string literal on an otherwise-code line does not exempt that line.
-The gate is enforced by `scripts/task-tracker/tests/audit-line-cap.mjs` via
+The gate is enforced by `scripts/tests/tools/audit-line-cap.mjs` via
 `countCodeLines` (`scripts/task-tracker/lib/count-code-lines.mjs`).
 
 - **Soft review target:** 400 code lines.
@@ -205,15 +205,15 @@ a global fixture helper or test runner escalates to its declared complete lane.
 
 ## Consequences
 
-- All new test files must be placed under `scripts/task-tracker/tests/` (or
-  `scripts/providers/tests/` for provider code) and carry a `// @story #NNN` first-line
+- All new test files must be placed under `scripts/tests/unit/task-tracker/` (or
+  `scripts/tests/unit/providers/` for provider code) and carry a `// @story #NNN` first-line
   comment.
 - C2 (#309) backfills the `@story` tag into all existing files.
 - C3 (#310) enforces the line cap by splitting god-files.
-- C4 (#311) reconciles `scripts/providers/tests/` against this ADR (confirms or migrates
+- C4 (#311) reconciles `scripts/tests/unit/providers/` against this ADR (confirms or migrates
   per the exception criteria above).
 - C5 (#312) updates tooling and CI config to reflect the single-root discovery path.
 - C6 (#313) updates `CONTRIBUTING.md` with the Test Convention section that links to
   this document.
 - The `scripts/run-tests.mjs` discovery paths are updated by #306 so that
-  `scripts/task-tracker/tests/integration/` is the only integration root.
+  `scripts/tests/integration/task-tracker/` is the only integration root.

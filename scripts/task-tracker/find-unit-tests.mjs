@@ -2,13 +2,9 @@
 /**
  * Source-to-unit-test mapper for the Develop phase (C2 of #431).
  *
- * Convention (ADR 0001 §2, as amended by #868): each source module <name>.mjs
- * has a unit test named <name>.test.mjs somewhere under
- * scripts/task-tracker/tests/unit/. After the #868 subsystem-nesting reorg that
- * test lives in a subsystem subdirectory (e.g. tests/unit/lib/<name>.test.mjs),
- * not flat in the unit root — so the mapper resolves by basename ANYWHERE under
- * the unit tree rather than by a flat join. Discovery is best-effort: source
- * files with no matching test are silently skipped.
+ * The canonical unit-test location mirrors a source's complete path relative
+ * to scripts/. Root modules use the core bucket. Discovery is best-effort:
+ * source files with no matching test are silently skipped.
  */
 
 import path from 'node:path';
@@ -20,7 +16,7 @@ const __dir = path.dirname(fileURLToPath(import.meta.url));
 
 // Repo root inferred from this file's location (scripts/task-tracker/find-unit-tests.mjs)
 const DEFAULT_PROJECT_ROOT = path.resolve(__dir, '../..');
-const UNIT_TEST_REL_PREFIX = 'scripts/task-tracker/tests/unit';
+const UNIT_TEST_REL_PREFIX = 'scripts/tests/unit';
 
 /**
  * Pure mapping: returns the repo-root-relative **flat conventional** unit-test
@@ -38,8 +34,16 @@ const UNIT_TEST_REL_PREFIX = 'scripts/task-tracker/tests/unit';
  */
 export function unitTestPath(srcPath) {
   if (srcPath.endsWith('.test.mjs')) return null;
+  const normalized = String(srcPath).replaceAll('\\', '/');
+  if (!normalized.startsWith('scripts/') || !normalized.endsWith('.mjs')) return null;
+  const sourceRelative = normalized.slice('scripts/'.length, -'.mjs'.length);
+  const dirname = path.posix.dirname(sourceRelative);
   const base = path.basename(srcPath, '.mjs');
-  return `${UNIT_TEST_REL_PREFIX}/${base}.test.mjs`;
+  if (dirname === '.') return `${UNIT_TEST_REL_PREFIX}/core/${base}.test.mjs`;
+  if (dirname === 'task-tracker') {
+    return `${UNIT_TEST_REL_PREFIX}/task-tracker/core/${base}.test.mjs`;
+  }
+  return `${UNIT_TEST_REL_PREFIX}/${dirname}/${base}.test.mjs`;
 }
 
 /**
@@ -58,7 +62,9 @@ function unitTreeIndex(known) {
   for (const rel of known) {
     if (!rel.startsWith(prefix)) continue;
     const base = rel.slice(rel.lastIndexOf('/') + 1);
-    if (!byBase.has(base)) byBase.set(base, rel);
+    const matches = byBase.get(base) || [];
+    matches.push(rel);
+    byBase.set(base, matches);
   }
   return byBase;
 }
@@ -100,10 +106,12 @@ export function findUnitTestMatches(
   const results = [];
   for (const src of sourcePaths) {
     if (src.endsWith('.test.mjs')) continue;
-    const colocated = coLocatedTestPath(src);
+    const expected = unitTestPath(src);
     const base = `${path.basename(src, '.mjs')}.test.mjs`;
-    // Co-located preferred; else the nesting-aware unit-tree match by basename.
-    const rel = (colocated && knownSet.has(colocated) && colocated) || byBase.get(base) || null;
+    const fallback = byBase.get(base) || [];
+    const rel =
+      (expected && knownSet.has(expected) && expected) ||
+      (fallback.length === 1 ? fallback[0] : null);
     if (!rel) continue;
     results.push({ source: src, test: rel });
   }

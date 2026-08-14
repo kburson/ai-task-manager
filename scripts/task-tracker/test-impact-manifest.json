@@ -45,7 +45,7 @@
         "scripts/task-tracker/lib/decomposition-policy.mjs",
         "scripts/task-tracker/verbs/decompose-check.mjs"
       ],
-      "tests": ["scripts/task-tracker/tests/unit/lib/decomposition-policy.test.mjs"],
+      "tests": ["scripts/tests/unit/task-tracker/lib/decomposition-policy.test.mjs"],
       "reason": "decomposition classification and linked-plan policy"
     },
     {
@@ -54,7 +54,7 @@
         "scripts/task-tracker/states/plan.mjs",
         "scripts/task-tracker/verbs/promote.mjs"
       ],
-      "tests": ["scripts/task-tracker/tests/unit/lib/decomposition-plan-exit-gate.test.mjs"],
+      "tests": ["scripts/tests/unit/task-tracker/lib/decomposition-plan-exit-gate.test.mjs"],
       "reason": "Plan-exit decomposition enforcement"
     },
     {
@@ -62,7 +62,7 @@
         "scripts/task-tracker/lib/split-plan.mjs",
         "scripts/task-tracker/verbs/split-plan.mjs"
       ],
-      "tests": ["scripts/task-tracker/tests/unit/verbs/split-plan.test.mjs"],
+      "tests": ["scripts/tests/unit/task-tracker/verbs/split-plan.test.mjs"],
       "reason": "sanctioned plan-to-child proposal and creation workflow"
     },
     {
@@ -73,17 +73,17 @@
         "scripts/task-tracker/verbs/help-data.mjs"
       ],
       "tests": [
-        "scripts/task-tracker/tests/unit/core/command-manifest.test.mjs",
-        "scripts/task-tracker/tests/unit/lib/command-catalog-policy.test.mjs",
-        "scripts/task-tracker/tests/unit/lib/command-catalog-parser-policy.test.mjs",
-        "scripts/task-tracker/tests/unit/lib/decomposition-plan-exit-gate.test.mjs",
-        "scripts/task-tracker/tests/unit/verbs/split-plan.test.mjs"
+        "scripts/tests/unit/task-tracker/core/command-manifest.test.mjs",
+        "scripts/tests/unit/task-tracker/lib/command-catalog-policy.test.mjs",
+        "scripts/tests/unit/task-tracker/lib/command-catalog-parser-policy.test.mjs",
+        "scripts/tests/unit/task-tracker/lib/decomposition-plan-exit-gate.test.mjs",
+        "scripts/tests/unit/task-tracker/verbs/split-plan.test.mjs"
       ],
       "reason": "decomposition command routing, help, and parser surface"
     },
     {
       "sources": ["scripts/task-tracker/verbs/*.mjs"],
-      "tests": ["scripts/task-tracker/tests/unit/verbs/*.test.mjs"],
+      "tests": ["scripts/tests/unit/task-tracker/verbs/*.test.mjs"],
       "reason": "CLI subprocess coverage is not completely visible through static imports"
     }
   ]

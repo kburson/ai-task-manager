@@ -55,7 +55,7 @@ context management operations.
 ## The loading model
 
 The canonical design is documented in `docs/DESIGN.md` under "Skill loading
-model" and enforced by `scripts/task-tracker/tests/unit/core/skill-carve.test.mjs`.
+model" and enforced by `scripts/tests/unit/task-tracker/core/skill-carve.test.mjs`.
 
 ### Tier 0: installed shim
 

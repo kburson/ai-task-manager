@@ -40,9 +40,9 @@ it under the corresponding `tests/` directory — the path is the declaration.
 ```js
 import { LANES, laneOf, laneManifest } from '../lib/test-lanes.mjs';
 
-laneOf('scripts/task-tracker/tests/slow/x.test.mjs'); // 'slow'
-laneOf('scripts/task-tracker/tests/integration/y.test.mjs'); // 'integration'
-laneOf('scripts/task-tracker/lib/foo.test.mjs'); // 'unit' (co-located)
+laneOf('scripts/tests/slow/task-tracker/x.test.mjs'); // 'slow'
+laneOf('scripts/tests/integration/task-tracker/y.test.mjs'); // 'integration'
+laneOf('scripts/tests/unit/task-tracker/lib/foo.test.mjs'); // 'unit'
 
 laneManifest();
 // { unit: [...], integration: [...], slow: [...] }  — a partition of

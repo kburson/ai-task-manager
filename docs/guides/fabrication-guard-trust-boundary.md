@@ -8,7 +8,7 @@
 This record resolves the trust-boundary question that #522 deliberately deferred
 when it shipped the in-band fabrication guard. It is a decision record, not code:
 the only code #527 ships is the doc-presence test that pins this file's required
-sections (`scripts/task-tracker/tests/unit/core/guard-trust-boundary-doc.test.mjs`).
+sections (`scripts/tests/unit/task-tracker/core/guard-trust-boundary-doc.test.mjs`).
 
 ## Background
 

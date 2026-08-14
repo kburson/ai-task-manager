@@ -484,7 +484,7 @@ The skill is delivered as a just-in-time loader to minimize context burden. Thre
 
 Both Claude and Codex adapters point at the same router; Tier-2 rule files are tool-agnostic. Tool-specific divergence (e.g. how the agent surfaces a `PROMPT_REQUIRED:` line) stays in the adapter `SKILL.md`.
 
-After `/clear` or `/compact`, sentinels are wiped from context and the router reloads on the next `/task` call; only the Tier-2 rule files needed by the next verb reload — unrelated rules stay unloaded. Budget targets (asserted by `scripts/task-tracker/tests/unit/core/measure-context.test.mjs`): idle ≤1,500 tokens, invoked ≤8,000 tokens, active ≤12,000 tokens. Measurement tool: `scripts/task-tracker/measure-context.mjs [--idle | --invoked | --active [N] | --all]`.
+After `/clear` or `/compact`, sentinels are wiped from context and the router reloads on the next `/task` call; only the Tier-2 rule files needed by the next verb reload — unrelated rules stay unloaded. Budget targets (asserted by `scripts/tests/unit/task-tracker/core/measure-context.test.mjs`): idle ≤1,500 tokens, invoked ≤8,000 tokens, active ≤12,000 tokens. Measurement tool: `scripts/task-tracker/measure-context.mjs [--idle | --invoked | --active [N] | --all]`.
 
 ## File Layout
 
@@ -622,8 +622,8 @@ Migration steps (executed during implementation):
 
 This section reflects the original v1 plan (no formal test framework, a manual
 smoke-test checklist). Both have since been superseded: the repo now runs
-`node --test` across `scripts/task-tracker/tests/unit/` (fast + slow lanes) and
-`tests/task-tracker/integration/`, with `c8` coverage (see
+`node --test` across `scripts/tests/unit/task-tracker/` (fast + slow lanes) and
+`scripts/tests/integration/task-tracker/`, with `c8` coverage (see
 [`guides/test-authoring.md`](./guides/test-authoring.md) for current
 conventions). `docs/task-tracker-smoke-test.md` was never created — its
 coverage is now the automated test tree instead.

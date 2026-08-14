@@ -50,8 +50,8 @@ The deep-dive section must include:
   ```markdown
   ### Verification Commands
 
-  - [ ] `node scripts/task-tracker/tests/config.test.mjs`
-  - [ ] `node scripts/task-tracker/tests/state.test.mjs`
+  - [ ] `node --test scripts/tests/unit/task-tracker/lib/config.test.mjs`
+  - [ ] `node --test scripts/tests/unit/task-tracker/lib/state.test.mjs`
   ```
 
   Do not add words like `PASS`; the checked box is the proof.
@@ -74,7 +74,7 @@ The deep-dive section must include:
   marker:
 
   ```markdown
-  - [ ] Config loads from project root. <!-- aitm-verified-by: `node scripts/task-tracker/tests/config.test.mjs` -->
+  - [ ] Config loads from project root. <!-- aitm-verified-by: `node --test scripts/tests/unit/task-tracker/lib/config.test.mjs` -->
   ```
 
   If an AC is proved by a standard DoD command, reference that command in
@@ -123,7 +123,7 @@ offending heading + line number." Do NOT add it to the appendix. Instead:
    an `aitm-verified cmd="…"` marker bound to a test file:
 
    ```
-   - [ ] **Refusal names heading + line.** ... <!-- aitm-verified cmd="`node --test scripts/task-tracker/tests/gh-edit-guard.test.mjs`" -->
+   - [ ] **Refusal names heading + line.** ... <!-- aitm-verified cmd="`node --test scripts/tests/unit/task-tracker/lib/gh-edit-guard-body.test.mjs`" -->
    ```
 
 2. In the appendix prose, reference the root entry without a checkbox:

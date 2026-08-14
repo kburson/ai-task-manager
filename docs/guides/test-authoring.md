@@ -1,7 +1,7 @@
 # Test Authoring Guide
 
 Conventions for slow / integration tests under
-`scripts/task-tracker/tests/slow/` and any test that builds a `gh` or `git`
+`scripts/tests/slow/task-tracker/` and any test that builds a `gh` or `git`
 shim and invokes a verb end-to-end. Captured as part of #344 after #343
 surfaced a body-truncation defect that had masked guard-cascade rot across
 multiple test files.

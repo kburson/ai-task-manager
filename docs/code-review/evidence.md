@@ -47,11 +47,11 @@ Notes:
 Commands:
 
 ```sh
-find scripts/task-tracker/tests scripts/providers/tests -type f -name '*.test.mjs' | wc -l
-git ls-files scripts/task-tracker/tests/unit | wc -l
-git ls-files scripts/task-tracker/tests/slow | wc -l
-git ls-files scripts/task-tracker/tests/integration | wc -l
-git ls-files scripts/providers/tests | wc -l
+find scripts/tests -type f -name '*.test.mjs' | wc -l
+git ls-files 'scripts/tests/unit/**/*.test.mjs' | wc -l
+git ls-files 'scripts/tests/slow/**/*.test.mjs' | wc -l
+git ls-files 'scripts/tests/integration/**/*.test.mjs' | wc -l
+git ls-files 'scripts/tests/unit/providers/**/*.test.mjs' | wc -l
 ```
 
 Observed counts:
@@ -86,8 +86,8 @@ unpackedSize: 5644397
 
 Observed package contents included broad non-runtime material, such as:
 
-- `scripts/task-tracker/tests/**`
-- `scripts/providers/tests/**`
+- `scripts/tests/unit/task-tracker/**`
+- `scripts/tests/unit/providers/**`
 - `docs/archive/**`
 - documentation image/assets under `docs/**`
 - maintenance, report, and migration-oriented scripts
