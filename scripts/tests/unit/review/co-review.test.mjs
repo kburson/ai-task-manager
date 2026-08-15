@@ -67,6 +67,37 @@ function readEvents(root, dir) {
     .map((line) => JSON.parse(line));
 }
 
+function snapshotProtocol(root, dir) {
+  return {
+    state: readFileSync(path.join(root, dir, 'state.json'), 'utf8'),
+    events: readFileSync(path.join(root, dir, 'events.jsonl'), 'utf8'),
+  };
+}
+
+async function initializedProtocol({ imported = false, maxReviewTurns = 6 } = {}) {
+  const api = await protocol();
+  const fixture = repositoryFixture();
+  const options = {
+    cwd: fixture.root,
+    dir: '.tmp/review',
+    artifact: fixture.artifact,
+    owner: 'owner-agent',
+    reviewer: 'reviewer-agent',
+    maxReviewTurns,
+  };
+  if (imported) {
+    mkdirSync(path.join(fixture.root, options.dir), { recursive: true });
+    writeFileSync(
+      path.join(fixture.root, options.dir, 'r1-review.md'),
+      '# Review\n\n[finding:F-001] Clarify terminal acceptance.\n'
+    );
+    options.importReview = `${options.dir}/r1-review.md`;
+    options.reviewOf = fixture.initialCommit;
+  }
+  const state = api.initializeProtocol(options);
+  return { api, ...fixture, options, state };
+}
+
 test.afterEach(() => {
   for (const root of temporaryRoots) rmSync(root, { recursive: true, force: true });
   temporaryRoots.clear();
@@ -363,4 +394,105 @@ test('CLI rejects unknown or incomplete init flags before mutation', () => {
     assert.match(result.stderr, /co-review:usage/);
     assert.equal(existsSync(path.join(root, '.tmp/review/state.json')), false);
   }
+});
+
+test('claim is role-safe and an exact claimant retry is idempotent', async () => {
+  const { api, root, options } = await initializedProtocol();
+  assert.throws(
+    () => api.claimTurn({ cwd: root, dir: options.dir, actor: 'reviewer-agent' }),
+    /co-review:wrong-role/
+  );
+  const claimed = api.claimTurn({ cwd: root, dir: options.dir, actor: 'owner-agent' });
+  assert.equal(claimed.turnState, 'claimed');
+  assert.equal(claimed.claim.actor, 'owner-agent');
+  const before = snapshotProtocol(root, options.dir);
+  const retry = api.claimTurn({ cwd: root, dir: options.dir, actor: 'owner-agent' });
+  assert.equal(retry.revision, claimed.revision);
+  assert.deepEqual(snapshotProtocol(root, options.dir), before);
+  assert.deepEqual(
+    readEvents(root, options.dir).map(({ type }) => type),
+    ['init', 'claim']
+  );
+});
+
+test('recorded immutable drift is visible in status and blocks claim', async () => {
+  const { api, root, options } = await initializedProtocol({ imported: true });
+  writeFileSync(
+    path.join(root, options.dir, 'r1-review.md'),
+    '# Review\n\n[finding:F-001] Mutated after import.\n'
+  );
+  const status = api.statusProtocol({ cwd: root, dir: options.dir });
+  assert.equal(status.integrity.ok, false);
+  assert.match(status.integrity.errors.join('\n'), /artifact-drift.*r1-review\.md/);
+  const before = snapshotProtocol(root, options.dir);
+  assert.throws(
+    () => api.claimTurn({ cwd: root, dir: options.dir, actor: 'owner-agent' }),
+    /co-review:integrity/
+  );
+  assert.deepEqual(snapshotProtocol(root, options.dir), before);
+});
+
+test('bounded wait returns available or timeout without mutation', async () => {
+  const { api, root, options } = await initializedProtocol();
+  const before = snapshotProtocol(root, options.dir);
+  const available = await api.waitForTurn({
+    cwd: root,
+    dir: options.dir,
+    actor: 'owner-agent',
+    timeoutSeconds: 0.02,
+    pollMilliseconds: 5,
+  });
+  assert.equal(available.status, 'available');
+  const timeout = await api.waitForTurn({
+    cwd: root,
+    dir: options.dir,
+    actor: 'reviewer-agent',
+    timeoutSeconds: 0.02,
+    pollMilliseconds: 5,
+  });
+  assert.equal(timeout.status, 'timeout');
+  assert.deepEqual(snapshotProtocol(root, options.dir), before);
+  await assert.rejects(
+    api.waitForTurn({
+      cwd: root,
+      dir: options.dir,
+      actor: 'owner-agent',
+      timeoutSeconds: 61,
+    }),
+    /co-review:timeout/
+  );
+});
+
+test('CLI routes claim and maps bounded wait timeout to exit code 3', () => {
+  const { root, artifact } = repositoryFixture();
+  assert.equal(
+    runCli(
+      [
+        'init',
+        '--dir',
+        '.tmp/review',
+        '--artifact',
+        artifact,
+        '--owner',
+        'owner-agent',
+        '--reviewer',
+        'reviewer-agent',
+        '--max-turns',
+        '6',
+      ],
+      { cwd: root }
+    ).status,
+    0
+  );
+  const waiting = runCli(
+    ['wait', '--dir', '.tmp/review', '--actor', 'reviewer-agent', '--timeout', '0'],
+    { cwd: root }
+  );
+  assert.equal(waiting.status, 3, waiting.stderr);
+  assert.match(waiting.stdout, /"status": "timeout"/);
+  const claimed = runCli(['claim', '--dir', '.tmp/review', '--actor', 'owner-agent'], {
+    cwd: root,
+  });
+  assert.equal(claimed.status, 0, claimed.stderr);
+  assert.equal(JSON.parse(claimed.stdout).turnState, 'claimed');
 });

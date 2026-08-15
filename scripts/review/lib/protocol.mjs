@@ -214,6 +214,10 @@ function eventFor(state, type, at) {
   };
 }
 
+function appendEvent(paths, state, type, at = state.updatedAt) {
+  appendFileSync(paths.events, `${JSON.stringify(eventFor(state, type, at))}\n`);
+}
+
 function validateState(state) {
   if (
     state?.schema !== STATE_SCHEMA ||
@@ -331,6 +335,7 @@ export function initializeProtocol({
             imported: true,
           }
         : null,
+      immutableArtifacts: imported ? { [importedReview.path]: importedReview } : {},
       initialization,
       createdAt: at,
       updatedAt: at,
@@ -343,12 +348,73 @@ export function initializeProtocol({
 
 export function statusProtocol(options) {
   const state = readProtocol(options);
-  return { ...state, integrity: { ok: true, errors: [] } };
+  const root = repositoryRoot(options.cwd ?? process.cwd());
+  const errors = [];
+  for (const artifact of Object.values(state.immutableArtifacts ?? {})) {
+    try {
+      const actual = digestFile(root, artifact.path, 'recorded-artifact');
+      if (actual.sha256 !== artifact.sha256) {
+        errors.push(
+          `artifact-drift ${artifact.path}: expected ${artifact.sha256}, actual ${actual.sha256}`
+        );
+      }
+    } catch (error) {
+      errors.push(`${error.code ?? 'artifact-error'} ${artifact.path}: ${error.message}`);
+    }
+  }
+  if (state.lifecycle === 'active' && state.currentRole === 'reviewer') {
+    try {
+      const worktree = digestFile(root, state.artifact.path, 'authoritative-artifact');
+      if (worktree.sha256 !== state.artifact.sha256) {
+        errors.push(`artifact-drift ${state.artifact.path}: owner handoff changed`);
+      }
+      const head = git(root, ['rev-parse', 'HEAD']).trim();
+      if (head !== state.artifact.commit) {
+        errors.push(`branch-drift: expected ${state.artifact.commit}, actual ${head}`);
+      }
+      const index = git(root, ['show', `:${state.artifact.path}`], { buffer: true });
+      if (digestBuffer(index) !== state.artifact.sha256) {
+        errors.push(`index-drift ${state.artifact.path}`);
+      }
+    } catch (error) {
+      errors.push(`${error.code ?? 'git-integrity'}: ${error.message}`);
+    }
+  }
+  return { ...state, integrity: { ok: errors.length === 0, errors } };
 }
 
-// Later plan tasks replace these explicit boundaries after their RED tests exist.
-export function claimTurn() {
-  fail('not-implemented', 'claim');
+function assertIntegrity(options) {
+  const status = statusProtocol(options);
+  if (!status.integrity.ok) fail('integrity', status.integrity.errors.join('; '));
+  return status;
+}
+
+export function claimTurn({ cwd = process.cwd(), dir, actor }) {
+  const root = repositoryRoot(cwd);
+  const paths = protocolPaths(root, dir);
+  return withMutex(paths, actor, 'claim', () => {
+    const state = assertIntegrity({ cwd: root, dir: paths.relative });
+    const role = Object.entries(state.roles).find(([, identity]) => identity === actor)?.[0];
+    if (!role) fail('unknown-actor', String(actor));
+    if (state.lifecycle !== 'active') fail('terminal', state.lifecycle);
+    if (state.currentRole !== role) {
+      fail('wrong-role', `${actor} maps to ${role}; current role is ${state.currentRole}`);
+    }
+    if (state.turnState === 'claimed' && state.claim?.actor === actor)
+      return readProtocol({ cwd: root, dir: paths.relative });
+    if (state.turnState !== 'available') fail('not-available', state.turnState);
+    const at = new Date().toISOString();
+    const next = validateState({
+      ...state,
+      integrity: undefined,
+      revision: state.revision + 1,
+      turnState: 'claimed',
+      claim: { role, actor, pid: process.pid, host: hostname(), at },
+      updatedAt: at,
+    });
+    appendEvent(paths, next, 'claim', at);
+    return atomicStateWrite(paths, next);
+  });
 }
 
 export function handoffOwner() {
@@ -363,6 +429,34 @@ export function continueProtocol() {
   fail('not-implemented', 'continue');
 }
 
-export async function waitForTurn() {
-  fail('not-implemented', 'wait');
+export async function waitForTurn({
+  cwd = process.cwd(),
+  dir,
+  actor,
+  timeoutSeconds = 55,
+  pollMilliseconds = 250,
+}) {
+  if (!Number.isFinite(timeoutSeconds) || timeoutSeconds < 0 || timeoutSeconds > 60) {
+    fail('timeout', String(timeoutSeconds), { exitCode: 2 });
+  }
+  if (!Number.isFinite(pollMilliseconds) || pollMilliseconds <= 0) {
+    fail('poll-interval', String(pollMilliseconds), { exitCode: 2 });
+  }
+  const first = statusProtocol({ cwd, dir });
+  const role = Object.entries(first.roles).find(([, identity]) => identity === actor)?.[0];
+  if (!role) fail('unknown-actor', String(actor), { exitCode: 2 });
+  const deadline = Date.now() + timeoutSeconds * 1000;
+  let state = first;
+  while (true) {
+    if (!state.integrity.ok) fail('integrity', state.integrity.errors.join('; '));
+    if (state.lifecycle !== 'active') return { status: state.lifecycle, state };
+    if (state.currentRole === role && state.turnState === 'available') {
+      return { status: 'available', state };
+    }
+    if (Date.now() >= deadline) return { status: 'timeout', state };
+    await new Promise((resolve) =>
+      setTimeout(resolve, Math.min(pollMilliseconds, Math.max(1, deadline - Date.now())))
+    );
+    state = statusProtocol({ cwd, dir });
+  }
 }

@@ -19,6 +19,7 @@ export async function runCli(argv = process.argv.slice(2), io = {}) {
     const { values, booleans } = parseArguments(args);
     const protocol = await import('./lib/protocol.mjs');
     let result;
+    let exitCode = 0;
     if (name === 'init') {
       assertAllowed(values, booleans, [
         'dir',
@@ -47,13 +48,30 @@ export async function runCli(argv = process.argv.slice(2), io = {}) {
       });
       if (!booleans.has('json')) {
         writeOut(formatStatus(result));
-        return 0;
+        return result.integrity.ok ? 0 : 1;
       }
+      if (!result.integrity.ok) exitCode = 1;
+    } else if (name === 'claim') {
+      assertAllowed(values, booleans, ['dir', 'actor']);
+      result = protocol.claimTurn({
+        cwd: io.cwd ?? process.cwd(),
+        dir: required(values, 'dir'),
+        actor: required(values, 'actor'),
+      });
+    } else if (name === 'wait') {
+      assertAllowed(values, booleans, ['dir', 'actor', 'timeout']);
+      result = await protocol.waitForTurn({
+        cwd: io.cwd ?? process.cwd(),
+        dir: required(values, 'dir'),
+        actor: required(values, 'actor'),
+        timeoutSeconds: values.timeout === undefined ? 55 : number(values, 'timeout'),
+      });
+      if (result.status === 'timeout') exitCode = 3;
     } else {
       throw usage(`unknown command ${String(name)}`);
     }
     writeOut(`${JSON.stringify(result, null, 2)}\n`);
-    return 0;
+    return exitCode;
   } catch (error) {
     writeError(`${error.message}\n`);
     return error.exitCode ?? 1;
@@ -106,6 +124,13 @@ function integer(values, name) {
   const value = required(values, name);
   if (!/^[0-9]+$/.test(value)) throw usage(`--${name} must be an integer`);
   return Number(value);
+}
+
+function number(values, name) {
+  const value = required(values, name);
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) throw usage(`--${name} must be a number`);
+  return parsed;
 }
 
 function formatStatus(state) {
