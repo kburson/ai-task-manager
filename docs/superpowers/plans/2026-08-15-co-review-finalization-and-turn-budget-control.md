@@ -392,7 +392,10 @@ continues to be rejected by lifecycle rather than replaying an event.
 Accept bare `continue`, `continue --max-turns N`, or legacy
 `continue --additional-turns N`; reject both budget flags together. Accept but ignore
 `--approved-by`, emitting one deprecation line. Human-readable/JSON status identifies
-closing-owner exhaustion and prints one copyable command.
+closing-owner exhaustion and prints one copyable command. The single continuation
+command shown after intervention is an intentional provisional Task 2 surface;
+Task 5 replaces that intervention rendering with its complete available-action
+enumeration.
 
 - [ ] **Step 8: Run focused and repository Develop verification, then commit**
 
@@ -672,8 +675,10 @@ accepted state, decision basis/human/timestamp, optional unconsumed supplements,
 publication, and exit 4 if only publication fails. Immediately after the
 `human-good-enough` event, assert status reports `integrity.ok === true`. Before
 acceptance, assert human and JSON intervention status enumerate continue, eligible
-good-enough finalization, and no-action/return-later as three distinct choices; an
-opening zero-turn short circuit must omit or disable only good enough.
+good-enough finalization, and no-action/return-later as three distinct choices. For
+an opening zero-turn short circuit, assert JSON `availableActions` omits the
+good-enough action while retaining continue and no-action, and assert human output
+states that good enough is unavailable because no two-sided evidence pair exists.
 
 - [ ] **Step 4: Run focused tests and verify RED**
 
@@ -721,7 +726,10 @@ budget adjustment, supplement sets, and decision basis. At
 `intervention-required`, human and JSON output must enumerate three available
 actions: continue with a copyable command, finalize good enough with a copyable
 command only when a two-sided author-completed pair exists, or make no mutation and
-return later. Outside intervention, emit the single state-appropriate next command.
+return later. JSON represents these in `availableActions`; when no two-sided pair
+exists, it omits good enough from that array rather than emitting a disabled entry,
+and human output explains the two-sided-evidence requirement. Outside intervention,
+emit the single state-appropriate next command.
 
 - [ ] **Step 9: Run focused and repository Develop verification, then commit**
 
