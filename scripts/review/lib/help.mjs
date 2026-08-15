@@ -25,6 +25,7 @@ export const COMMANDS = Object.freeze({
     effects: [
       'Creates state.json and events.jsonl under --dir through the protocol mutex.',
       'An imported review is hashed and consumes reviewer turn 1.',
+      'An imported review therefore requires --max-turns 2 or greater so the owner can answer it and receive another review.',
     ],
     validations: [
       'Runtime ignore/containment, role separation, budget, Git reachability, artifact blob equality, import pairing, and immutable path separation.',
@@ -324,10 +325,19 @@ EXIT CODES
 FRESH EXAMPLE
   npx aitm co-review init --dir .tmp/design-review --artifact docs/design.md --owner owner-agent --reviewer reviewer-agent --max-turns 6
   npx aitm co-review claim --dir .tmp/design-review --actor owner-agent
+  # Owner commits docs/design.md and writes .tmp/design-review/r1-owner-response.md
+  npx aitm co-review handoff --dir <path> --actor <owner-identity> --response <response-file> --artifact <artifact-path> --commit <sha> --message <text>
+  npx aitm co-review claim --dir <path> --actor <reviewer-identity>
+  # Reviewer writes an immutable review of that exact SHA
+  npx aitm co-review handoff --dir <path> --actor <reviewer-identity> --review <review-file> --review-of <sha> --decision <accepted|changes-requested> --message <text>
+  # On changes-requested, the owner claims, revises, answers the exact review with --answers, and repeats.
 
 IMPORTED R1 EXAMPLE
   npx aitm co-review init --dir .tmp/1117-review --artifact docs/design.md --owner codex --reviewer claude --max-turns 6 --import-review .tmp/1117-review/r1-claude-review.md --review-of <sha>
   The imported review consumes turn 1; used=1, max=6, remaining=5.
+  # If the last allowed review requests changes, the reviewer supplies --summary and both agents stop.
+  npx aitm co-review continue --dir <path> --additional-turns <N> --approved-by <human-identity> [--focus <file>]
+  # Only explicit human approval may run continue; it adds turns and returns control to the owner.
 
 COMMON REFUSALS
   Wrong role/claim, malformed state, missing/drifted immutable artifact, dirty index/artifact, branch/commit drift, incomplete dispositions, implicit decision, exhausted budget without summary, or surviving lock. Every refusal leaves the attempted transition unapplied and prints a recovery action.

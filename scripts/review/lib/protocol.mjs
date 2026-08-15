@@ -5,12 +5,12 @@ import { createHash, randomUUID } from 'node:crypto';
 import {
   appendFileSync,
   existsSync,
+  lstatSync,
   mkdirSync,
   readFileSync,
   realpathSync,
   renameSync,
   rmdirSync,
-  statSync,
   unlinkSync,
   writeFileSync,
 } from 'node:fs';
@@ -68,6 +68,24 @@ function relativePath(root, candidate, label) {
   ) {
     fail('path-outside-repository', `${label}=${candidate}`);
   }
+  let existing = absolute;
+  const suffix = [];
+  while (!existsSync(existing)) {
+    const parent = path.dirname(existing);
+    if (parent === existing) fail('path-resolution', `${label}=${candidate}`);
+    suffix.unshift(path.basename(existing));
+    existing = parent;
+  }
+  const physical = path.resolve(realpathSync(existing), ...suffix);
+  const physicalRelative = path.relative(root, physical);
+  if (
+    !physicalRelative ||
+    physicalRelative === '..' ||
+    physicalRelative.startsWith(`..${path.sep}`) ||
+    path.isAbsolute(physicalRelative)
+  ) {
+    fail('path-outside-repository', `${label}=${candidate}`);
+  }
   return { absolute, relative: relative.split(path.sep).join('/') };
 }
 
@@ -87,9 +105,10 @@ function digestBuffer(buffer) {
 
 function digestFile(root, candidate, label = 'artifact') {
   const resolved = relativePath(root, candidate, label);
-  if (!existsSync(resolved.absolute) || !statSync(resolved.absolute).isFile()) {
+  if (!existsSync(resolved.absolute)) {
     fail('missing-artifact', `${label}=${candidate}`);
   }
+  if (!lstatSync(resolved.absolute).isFile()) fail(`${label}-not-regular`, resolved.relative);
   return { path: resolved.relative, sha256: digestBuffer(readFileSync(resolved.absolute)) };
 }
 
@@ -106,9 +125,10 @@ function assertIgnored(root, runtime) {
 
 function assertTrackedArtifact(root, artifact) {
   const resolved = relativePath(root, artifact, 'artifact');
-  if (!existsSync(resolved.absolute) || !statSync(resolved.absolute).isFile()) {
+  if (!existsSync(resolved.absolute)) {
     fail('missing-artifact', resolved.relative);
   }
+  if (!lstatSync(resolved.absolute).isFile()) fail('artifact-not-regular', resolved.relative);
   if (
     git(root, ['ls-files', '--error-unmatch', '--', resolved.relative], { allowFailure: true }) ===
     null
@@ -195,7 +215,7 @@ function atomicStateWrite(paths, state) {
   const temporary = path.join(paths.absolute, `.state-${process.pid}-${Date.now()}.json`);
   writeFileSync(temporary, `${JSON.stringify(state, null, 2)}\n`, { flag: 'wx' });
   renameSync(temporary, paths.state);
-  return state;
+  return validateState(JSON.parse(readFileSync(paths.state, 'utf8')));
 }
 
 function eventFor(state, type, at) {
@@ -223,6 +243,8 @@ function validateState(state) {
     state?.schema !== STATE_SCHEMA ||
     !Number.isInteger(state.revision) ||
     state.revision < 1 ||
+    !Number.isInteger(state.round) ||
+    state.round < 1 ||
     !['active', 'accepted', 'intervention-required'].includes(state.lifecycle) ||
     !Number.isInteger(state.reviewTurnsUsed) ||
     !Number.isInteger(state.maxReviewTurns) ||
@@ -230,9 +252,67 @@ function validateState(state) {
     state.maxReviewTurns < 1 ||
     state.remainingReviewTurns !== state.maxReviewTurns - state.reviewTurnsUsed
   ) {
-    fail('invalid-state', 'schema or budget invariant');
+    fail('invalid-state', 'schema, round, or budget invariant');
   }
   return state;
+}
+
+function eventIntegrity(paths, state) {
+  let events;
+  try {
+    const lines = readFileSync(paths.events, 'utf8')
+      .split('\n')
+      .filter((line) => line.trim());
+    events = lines.map((line) => JSON.parse(line));
+  } catch (error) {
+    return [`events-unreadable: ${error.message}`];
+  }
+  const errors = [];
+  if (events.length !== state.revision) {
+    errors.push(`event-count: expected ${state.revision}, actual ${events.length}`);
+  }
+  const allowedTypes = new Set([
+    'init',
+    'init-import',
+    'claim',
+    'owner-handoff',
+    'reviewer-handoff',
+    'continue',
+  ]);
+  for (let index = 0; index < events.length; index += 1) {
+    const event = events[index];
+    const expectedRevision = index + 1;
+    if (event.schema !== EVENT_SCHEMA) {
+      errors.push(`event-schema revision ${expectedRevision}: ${String(event.schema)}`);
+    }
+    if (event.protocolId !== state.protocolId) {
+      errors.push(`event-protocol revision ${expectedRevision}: ${String(event.protocolId)}`);
+    }
+    if (event.revision !== expectedRevision) {
+      errors.push(`event-revision: expected ${expectedRevision}, actual ${String(event.revision)}`);
+    }
+    if (!allowedTypes.has(event.type)) {
+      errors.push(`event-type revision ${expectedRevision}: ${String(event.type)}`);
+    }
+  }
+  const last = events.at(-1);
+  if (last?.revision === state.revision) {
+    for (const field of [
+      'lifecycle',
+      'currentRole',
+      'round',
+      'reviewTurnsUsed',
+      'maxReviewTurns',
+      'remainingReviewTurns',
+    ]) {
+      if (last[field] !== state[field]) {
+        errors.push(
+          `event-projection ${field}: expected ${String(state[field])}, actual ${String(last[field])}`
+        );
+      }
+    }
+  }
+  return errors;
 }
 
 function sameInitialization(state, desired) {
@@ -261,15 +341,20 @@ export function initializeProtocol({
   importReview,
   reviewOf,
 }) {
-  if (!dir || !artifact || !String(owner || '').trim() || !String(reviewer || '').trim()) {
+  const normalizedOwner = String(owner || '').trim();
+  const normalizedReviewer = String(reviewer || '').trim();
+  if (!dir || !artifact || !normalizedOwner || !normalizedReviewer) {
     fail('usage', 'dir, artifact, owner, and reviewer are required', { exitCode: 2 });
   }
-  if (owner === reviewer) fail('roles-not-distinct', owner);
+  if (normalizedOwner === normalizedReviewer) fail('roles-not-distinct', normalizedOwner);
   if (!Number.isInteger(maxReviewTurns) || maxReviewTurns < 1) {
     fail('max-turns', String(maxReviewTurns), { exitCode: 2 });
   }
   if (Boolean(importReview) !== Boolean(reviewOf)) {
     fail('import-pair', '--import-review and --review-of are required together', { exitCode: 2 });
+  }
+  if (importReview && maxReviewTurns === 1) {
+    fail('import-exhausts-budget', 'imported R1 requires --max-turns >= 2', { exitCode: 2 });
   }
 
   const root = repositoryRoot(cwd);
@@ -291,8 +376,9 @@ export function initializeProtocol({
   const initialization = {
     runtimeDir: paths.relative,
     artifact: artifactRecord.path,
-    owner: String(owner).trim(),
-    reviewer: String(reviewer).trim(),
+    artifactSha256: artifactRecord.sha256,
+    owner: normalizedOwner,
+    reviewer: normalizedReviewer,
     maxReviewTurns,
     importedReview,
     reviewOf: importedCommit,
@@ -349,7 +435,8 @@ export function initializeProtocol({
 export function statusProtocol(options) {
   const state = readProtocol(options);
   const root = repositoryRoot(options.cwd ?? process.cwd());
-  const errors = [];
+  const paths = protocolPaths(root, options.dir);
+  const errors = eventIntegrity(paths, state);
   for (const artifact of Object.values(state.immutableArtifacts ?? {})) {
     try {
       const actual = digestFile(root, artifact.path, 'recorded-artifact');
@@ -464,6 +551,10 @@ function validateResponse(root, reviewArtifact, responseArtifact) {
   const review = readFileSync(path.resolve(root, reviewArtifact.path), 'utf8');
   const response = readFileSync(path.resolve(root, responseArtifact.path), 'utf8');
   const reviewIds = uniqueFindingIds(review, 'review');
+  const responseFindingIds = uniqueFindingIds(response, 'response');
+  for (const id of responseFindingIds) {
+    if (!reviewIds.includes(id)) fail('unknown-finding', id);
+  }
   const responseMatches = [
     ...response.matchAll(/\[finding:([A-Za-z0-9][A-Za-z0-9._-]*)\]\s*\[disposition:([^\]\n]+)\]/g),
   ];

@@ -75,7 +75,8 @@ the repository self-documentation contract.
 
 Every command takes `--dir <path>`. A caller normally chooses a Git-ignored runtime
 directory such as `.tmp/1117-review`; the command refuses initialization if the
-directory is tracked or not ignored. Nothing in the runtime directory is committed.
+directory is tracked, not ignored, or resolves outside the repository through a
+symbolic link. Nothing in the runtime directory is committed.
 
 The directory contains:
 
@@ -112,8 +113,9 @@ agent can recover without reconstructing counts from filenames.
 
 Initialization requires `--max-turns <positive-integer>`. A review turn is consumed
 whenever the reviewer successfully hands off one immutable review, regardless of
-its decision. An imported review counts as reviewer turn 1. Owner revisions and
-failed/refused commands do not consume turns.
+its decision. An imported review counts as reviewer turn 1 and therefore requires
+`--max-turns` of at least 2 so the owner can answer it and receive another reviewer
+decision. Owner revisions and failed/refused commands do not consume turns.
 
 Reviewer decisions are exactly:
 
@@ -147,9 +149,11 @@ the authoritative artifact.
 
 ## Commands and Transitions
 
-All mutation failures are fail-closed: validate first, then acquire the mutex and
-revalidate, and either commit one complete transition or leave both state files
-unchanged.
+All protocol-validation failures are fail-closed: validate first, then acquire the
+mutex and revalidate, and either commit one complete transition or leave state and
+events unchanged. An interrupted filesystem write can leave an audit event ahead of
+the projection; `status` detects that mismatch, blocks further mutation, and directs
+human inspection instead of silently rewriting evidence.
 
 ### `init`
 
@@ -166,10 +170,11 @@ and hashed as reviewer turn 1, and round 2 starts available to the owner. This
 supports #1117's existing R1 without rewriting it.
 
 Initialization resolves the repository root and worktree, requires a clean artifact
-and index relationship, verifies distinct owner/reviewer identities, positive
-budget, ignored runtime directory, artifact containment, import immutability, and
-Git commit reachability from the current branch. An exact retry is idempotent;
-different configuration refuses without overwrite.
+and index relationship, verifies distinct normalized owner/reviewer identities,
+positive budget, ignored runtime directory, artifact containment, import
+immutability, and Git commit reachability from the current branch. An exact retry,
+including the authoritative artifact hash, is idempotent; different configuration
+or artifact bytes refuse without overwrite.
 
 ### `status`
 
@@ -179,8 +184,9 @@ npx aitm co-review status --dir <path> [--json]
 
 Reports lifecycle status, current role and actor, round, claim, artifact and commit,
 last handoff, review turns used/max/remaining, refocus provenance, integrity drift,
-and a copyable next command. It is read-only and uses a distinct nonzero integrity
-result when recorded artifacts have drifted.
+and a copyable next command. It validates event revision ordering and the final
+event/projection mirror as well as immutable artifacts. It is read-only and uses a
+distinct nonzero integrity result when recorded evidence has drifted.
 
 ### `claim`
 
@@ -267,10 +273,10 @@ owner available.
 
 ## Round Artifact Contract
 
-Round files are caller-written Markdown stored under the runtime directory. The
-configured roles may choose descriptive filenames, but each path becomes immutable
-when its handoff succeeds and cannot equal a state, lock, artifact, or another round
-path.
+Round files are caller-written regular Markdown files stored under the runtime
+directory. Symbolic links are refused. The configured roles may choose descriptive
+filenames, but each path becomes immutable when its handoff succeeds and cannot
+equal a state, lock, artifact, or another round path.
 
 A reviewer assigns stable finding IDs using `[finding:<ID>]`. The owner response
 must contain one matching marker for every finding plus exactly one
@@ -291,8 +297,9 @@ event, writes state to a sibling temporary file, atomically renames it, rereads 
 result, and releases the mutex.
 
 The helper never steals a lock. A surviving lock is reported with recovery context
-and escalated to the human. Read-only help, status, and wait never acquire it; status
-and wait tolerate a transient atomic replacement by bounded retry.
+and escalated to the human. Read-only help, status, and wait never acquire it; the
+atomic rename prevents a partially written `state.json`, while event/projection
+validation exposes an interrupted transition for human inspection.
 
 ## Recovery-Grade Help Contract
 

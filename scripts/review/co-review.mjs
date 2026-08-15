@@ -68,6 +68,19 @@ export async function runCli(argv = process.argv.slice(2), io = {}) {
       });
       if (result.status === 'timeout') exitCode = 3;
     } else if (name === 'handoff') {
+      assertAllowed(values, booleans, [
+        'dir',
+        'actor',
+        'response',
+        'artifact',
+        'commit',
+        'answers',
+        'review',
+        'review-of',
+        'decision',
+        'summary',
+        'message',
+      ]);
       const cwd = io.cwd ?? process.cwd();
       const dir = required(values, 'dir');
       const actor = required(values, 'actor');
@@ -191,12 +204,23 @@ function number(values, name) {
 }
 
 function formatStatus(state) {
+  const claim = state.claim
+    ? `${state.claim.actor} as ${state.claim.role} at ${state.claim.at}`
+    : 'none';
+  const lastHandoff = state.lastHandoff
+    ? `${state.lastHandoff.from} -> ${state.lastHandoff.to ?? 'terminal'} at ${state.lastHandoff.at}${
+        state.lastHandoff.decision ? ` (${state.lastHandoff.decision})` : ''
+      }`
+    : 'none';
   const actor = state.currentRole ? state.roles[state.currentRole] : 'none';
   return [
     `Lifecycle: ${state.lifecycle}`,
     `Turn: ${state.currentRole ?? 'none'} (${actor}) / ${state.turnState ?? 'terminal'}`,
     `Round: ${state.round}`,
+    `Branch: ${state.branch}`,
+    `Claim: ${claim}`,
     `Artifact: ${state.artifact.path} @ ${state.artifact.commit}`,
+    `Last handoff: ${lastHandoff}`,
     `Budget: ${state.reviewTurnsUsed} used / ${state.maxReviewTurns} max / ${state.remainingReviewTurns} remaining`,
     `Integrity: ${state.integrity.ok ? 'ok' : 'DRIFT'}`,
     `Next: ${state.nextAction}`,

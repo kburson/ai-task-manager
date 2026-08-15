@@ -1,7 +1,14 @@
 // @story #1266
 
 import assert from 'node:assert/strict';
-import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
+import {
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  readdirSync,
+  symlinkSync,
+  writeFileSync,
+} from 'node:fs';
 import path from 'node:path';
 import test from 'node:test';
 
@@ -9,6 +16,7 @@ import '../../fixtures/co-review-e2e-cases.mjs';
 import '../../fixtures/co-review-handoff-cases.mjs';
 import {
   cleanupTemporaryRoots,
+  commitArtifact,
   initializedProtocol,
   protocol,
   readEvents,
@@ -40,6 +48,13 @@ test('top-level help is recovery-grade and safe before initialization', () => {
       'CONTEXT-RESET CHECKLIST',
     ]) {
       assert.match(result.stdout, new RegExp(heading));
+    }
+    for (const command of [
+      'co-review handoff --dir <path> --actor <owner-identity>',
+      'co-review handoff --dir <path> --actor <reviewer-identity>',
+      'co-review continue --dir <path> --additional-turns <N>',
+    ]) {
+      assert.match(result.stdout, new RegExp(command.replaceAll(/[.*+?^${}()|[\]\\]/g, '\\$&')));
     }
     assert.deepEqual(readdirSync(emptyRoot), []);
   }
@@ -159,6 +174,28 @@ test('imported review consumes reviewer turn one and starts owner round two', as
   );
 });
 
+test('imported review refuses a budget already exhausted by imported turn one', async () => {
+  const { initializeProtocol } = await protocol();
+  const { root, artifact, initialCommit } = repositoryFixture();
+  mkdirSync(path.join(root, '.tmp/imported'), { recursive: true });
+  writeFileSync(path.join(root, '.tmp/imported/r1-review.md'), '# Review\n');
+  assert.throws(
+    () =>
+      initializeProtocol({
+        cwd: root,
+        dir: '.tmp/imported',
+        artifact,
+        owner: 'owner-agent',
+        reviewer: 'reviewer-agent',
+        maxReviewTurns: 1,
+        importReview: '.tmp/imported/r1-review.md',
+        reviewOf: initialCommit,
+      }),
+    /co-review:import-exhausts-budget/
+  );
+  assert.equal(existsSync(path.join(root, '.tmp/imported/state.json')), false);
+});
+
 test('exact init retry is idempotent and changed configuration refuses', async () => {
   const { initializeProtocol } = await protocol();
   const { root, artifact } = repositoryFixture();
@@ -175,6 +212,8 @@ test('exact init retry is idempotent and changed configuration refuses', async (
   assert.equal(readEvents(root, options.dir).length, 1);
   const beforeState = readFileSync(path.join(root, options.dir, 'state.json'), 'utf8');
   const beforeEvents = readFileSync(path.join(root, options.dir, 'events.jsonl'), 'utf8');
+  commitArtifact(root, '# Artifact\n\nRevision two.\n');
+  assert.throws(() => initializeProtocol(options), /co-review:already-initialized/);
   assert.throws(
     () => initializeProtocol({ ...options, maxReviewTurns: 7 }),
     /co-review:already-initialized/
@@ -187,6 +226,7 @@ test('init fails closed on invalid roles, budget, import pair, or runtime path',
   const { initializeProtocol } = await protocol();
   for (const mutate of [
     (options) => ({ ...options, reviewer: options.owner }),
+    (options) => ({ ...options, owner: ` ${options.reviewer} ` }),
     (options) => ({ ...options, maxReviewTurns: 0 }),
     (options) => ({ ...options, importReview: '.tmp/review/r1.md' }),
     (options) => ({ ...options, dir: 'review-state' }),
@@ -245,6 +285,27 @@ test('init refuses artifact/index mismatch and an unreachable import commit', as
   assert.equal(existsSync(path.join(imported.root, '.tmp/review/state.json')), false);
 });
 
+test('init refuses a runtime symlink that resolves outside the repository', async () => {
+  const { initializeProtocol } = await protocol();
+  const { root, artifact } = repositoryFixture();
+  const outside = temporaryRoot('aitm-co-review-outside-');
+  mkdirSync(path.join(root, '.tmp'), { recursive: true });
+  symlinkSync(outside, path.join(root, '.tmp/review'), 'dir');
+  assert.throws(
+    () =>
+      initializeProtocol({
+        cwd: root,
+        dir: '.tmp/review',
+        artifact,
+        owner: 'owner-agent',
+        reviewer: 'reviewer-agent',
+        maxReviewTurns: 6,
+      }),
+    /co-review:path-outside-repository:dir/
+  );
+  assert.equal(existsSync(path.join(outside, 'state.json')), false);
+});
+
 test('surviving initialization mutex is reported and never stolen', async () => {
   const { initializeProtocol } = await protocol();
   const { root, artifact } = repositoryFixture();
@@ -293,6 +354,9 @@ test('CLI initializes and reports human and JSON status', () => {
   const human = runCli(['status', '--dir', '.tmp/review'], { cwd: root });
   assert.equal(human.status, 0, human.stderr);
   assert.match(human.stdout, /Lifecycle: active/);
+  assert.match(human.stdout, /Branch: trunk/);
+  assert.match(human.stdout, /Claim: none/);
+  assert.match(human.stdout, /Last handoff: none/);
   assert.match(human.stdout, /Budget: 0 used \/ 6 max \/ 6 remaining/);
 
   const json = runCli(['status', '--dir', '.tmp/review', '--json'], { cwd: root });
@@ -311,6 +375,17 @@ test('CLI rejects unknown or incomplete init flags before mutation', () => {
     assert.match(result.stderr, /co-review:usage/);
     assert.equal(existsSync(path.join(root, '.tmp/review/state.json')), false);
   }
+});
+
+test('CLI rejects unknown handoff flags before protocol discovery', () => {
+  const { root } = repositoryFixture();
+  const result = runCli(
+    ['handoff', '--dir', '.tmp/missing', '--actor', 'owner-agent', '--unknown', 'value'],
+    { cwd: root }
+  );
+  assert.equal(result.status, 2, result.stderr);
+  assert.match(result.stderr, /option --unknown is not valid/);
+  assert.equal(existsSync(path.join(root, '.tmp/missing')), false);
 });
 
 test('claim is role-safe and an exact claimant retry is idempotent', async () => {
@@ -347,6 +422,33 @@ test('recorded immutable drift is visible in status and blocks claim', async () 
     /co-review:integrity/
   );
   assert.deepEqual(snapshotProtocol(root, options.dir), before);
+});
+
+test('event revision drift is visible in status and blocks mutation', async () => {
+  const { api, root, options } = await initializedProtocol();
+  const eventsPath = path.join(root, options.dir, 'events.jsonl');
+  const [event] = readEvents(root, options.dir);
+  writeFileSync(eventsPath, `${JSON.stringify({ ...event, revision: 2 })}\n`);
+  const status = api.statusProtocol({ cwd: root, dir: options.dir });
+  assert.equal(status.integrity.ok, false);
+  assert.match(status.integrity.errors.join('\n'), /event-revision.*expected 1.*actual 2/);
+  const before = snapshotProtocol(root, options.dir);
+  assert.throws(
+    () => api.claimTurn({ cwd: root, dir: options.dir, actor: 'owner-agent' }),
+    /co-review:integrity/
+  );
+  assert.deepEqual(snapshotProtocol(root, options.dir), before);
+});
+
+test('malformed round state is rejected before status can direct an actor', async () => {
+  const { api, root, options } = await initializedProtocol();
+  const statePath = path.join(root, options.dir, 'state.json');
+  const state = JSON.parse(readFileSync(statePath, 'utf8'));
+  writeFileSync(statePath, `${JSON.stringify({ ...state, round: 0 }, null, 2)}\n`);
+  assert.throws(
+    () => api.statusProtocol({ cwd: root, dir: options.dir }),
+    /co-review:invalid-state:.*round/
+  );
 });
 
 test('bounded wait returns available or timeout without mutation', async () => {

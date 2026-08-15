@@ -1,7 +1,7 @@
 // @story #1266
 
 import assert from 'node:assert/strict';
-import { writeFileSync } from 'node:fs';
+import { symlinkSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import test from 'node:test';
 
@@ -83,6 +83,14 @@ test('owner handoff rejects incomplete, invented, rejected, or deferred disposit
       expected: /co-review:unknown-finding:F-999/,
     },
     {
+      body: '[finding:F-001] [disposition:accepted]\n[finding:F-001] Repeated marker.\n',
+      expected: /co-review:duplicate-finding:response:F-001/,
+    },
+    {
+      body: '[finding:F-001] [disposition:accepted]\n[finding:F-999] Invented marker.\n',
+      expected: /co-review:unknown-finding:F-999/,
+    },
+    {
       body: '[finding:F-001] [disposition:rejected]\nNo citation.\n',
       expected: /co-review:rejected-without-evidence:F-001/,
     },
@@ -145,6 +153,30 @@ test('owner handoff refuses wrong path, stale commit, and artifact/index drift',
     assert.throws(() => api.handoffOwner(mutate({ call, root, initialCommit })), /co-review:/);
     assert.deepEqual(snapshotProtocol(root, options.dir), before);
   }
+});
+
+test('owner handoff refuses a symlinked response artifact', async () => {
+  const { api, root, options, initialCommit } = await initializedProtocol();
+  api.claimTurn({ cwd: root, dir: options.dir, actor: 'owner-agent' });
+  const external = '.tmp/external-response.md';
+  writeFileSync(path.join(root, external), '# Response\n');
+  const response = `${options.dir}/response.md`;
+  symlinkSync(path.join(root, external), path.join(root, response));
+  const before = snapshotProtocol(root, options.dir);
+  assert.throws(
+    () =>
+      api.handoffOwner({
+        cwd: root,
+        dir: options.dir,
+        actor: 'owner-agent',
+        response,
+        artifact: options.artifact,
+        commit: initialCommit,
+        message: 'attempt',
+      }),
+    /co-review:response-not-regular/
+  );
+  assert.deepEqual(snapshotProtocol(root, options.dir), before);
 });
 
 test('CLI routes the owner handoff and rejects reviewer-only flags', () => {

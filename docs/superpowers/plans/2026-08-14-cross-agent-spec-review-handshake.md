@@ -265,9 +265,10 @@ git commit -m "[#1266] feat: add co-review recovery help surface"
 
 Create a temporary Git repository helper that configures an identity, writes and
 commits `docs/artifact.md`, and ignores `.tmp/`. Add cases for fresh init, imported
-R1, exact idempotent retry, different-config refusal, same identity refusal,
-non-positive budget, not-ignored/tracked directory, outside paths, unreachable commit,
-artifact/index mismatch, lock survival, state/event schemas, and SHA-256 format.
+R1, exact artifact-hash-bound idempotent retry, different-config refusal, normalized
+same-identity refusal, non-positive or import-exhausted budget, not-ignored/tracked
+directory, outside paths, unreachable commit, artifact/index mismatch, lock survival,
+state/event schemas, and SHA-256 format.
 The core assertions are:
 
 ```js
@@ -352,13 +353,15 @@ and validate state.
 
 - [ ] **Step 4: Implement fresh and imported initialization**
 
-Resolve the Git root/worktree, require the runtime directory to be inside it and
-ignored via `git check-ignore`, require the artifact to be a tracked regular file,
-and verify worktree/index/HEAD equality. Fresh init records owner round 1 available.
-Imported init requires paired `importReview`/`reviewOf`, checks the review is inside
-the runtime directory and distinct from state paths, verifies `reviewOf` is a commit
-reachable from the current branch and contains the exact artifact blob, hashes R1,
-records reviewer turn 1, and starts owner round 2.
+Resolve the Git root/worktree, require the runtime directory to remain physically
+inside it after symlink resolution and be ignored via `git check-ignore`, require
+the artifact to be a tracked regular file, and verify worktree/index/HEAD equality.
+Fresh init records owner round 1 available.
+Imported init requires paired `importReview`/`reviewOf`, at least one remaining
+reviewer turn after imported R1, checks the review is inside the runtime directory
+and distinct from state paths, verifies `reviewOf` is a commit reachable from the
+current branch and contains the exact artifact blob, hashes R1, records reviewer turn
+1, and starts owner round 2.
 
 - [ ] **Step 5: Connect strict CLI parsing for `init` and `status`**
 
@@ -435,7 +438,8 @@ Expected: FAIL because `claimTurn`/`waitForTurn` are absent.
 
 - [ ] **Step 3: Implement integrity-aware status and idempotent claim**
 
-`statusProtocol` rehashes every handed-off artifact and compares recorded Git
+`statusProtocol` validates ordered event revisions and the final event/projection
+mirror, rehashes every handed-off artifact, and compares recorded Git
 artifact/index/branch anchors. It returns `integrity: { ok, errors }` without writing.
 All mutators call the same validation under the mutex. Claim maps configured identity
 to the current role, records pid/host/time, increments exactly one revision/event,
