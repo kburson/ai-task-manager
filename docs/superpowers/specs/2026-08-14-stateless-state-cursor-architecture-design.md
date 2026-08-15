@@ -275,9 +275,9 @@ Use `npx aitm action-ledger reconcile #N` if correction is required.
 
 The decoded `aitm.resident-action-event/v1` record contains `eventId`, `previousCommentId`, `previousHash`, `actionPreviousCommentId`, `actionPreviousHash`, `issue`, `state`, `stateVisitId`, `actionId`, `attemptId`, `phase`, `correlation`, `ts`, optional `deadline`, optional `attribution`, and optional evidence fingerprint. `stateVisitId` is derived from the exact current `aitm-entered-<state>-N` visit marker after move completion; it is not merely the state name or a process-local counter.
 
-Story D first widens every entry-marker reader, then begins writing `move="<transition-id>"`. The authoritative `parseEntryMarkers`, `stageMarkerRe`, future-marker stripper, `body-invariants.mjs`, and `gh-edit-guard.mjs` all consume the shared property grammar and accept zero or more trailing attributes in any order while retaining the legacy colon form. Characterization proves every previously parsed body still parses and that guards/readers agree. `serializeMarker` emits canonical `ts`, then `move`, but readers are order-insensitive. This reader migration must land before the writer change.
+Story D first consolidates and widens every entry-marker reader, then begins writing `move="<transition-id>"`. `stage-entry-markers.mjs` exports the only stage-entry matcher/parser primitives, including an explicitly named legacy-colon matcher for corpus migration. Runtime verbs, guards, healing tools, `body-invariants.mjs`, `gh-edit-guard.mjs`, and maintenance transforms import those primitives rather than constructing independent `aitm-entered` regular expressions. A repository-wide source characterization fails if an executable module outside `stage-entry-markers.mjs` constructs an `aitm-entered` regex; test fixtures and prose literals are excluded, but there is no runtime-module waiver. The shared grammar accepts properties in any order while retaining the legacy colon form. Characterization proves every previously parsed body still parses, modern readers agree, and legacy-only transformations call the named legacy primitive. `serializeMarker` still emits canonical `ts`, then `move`, for readability, but correctness never depends on property insertion order. This reader migration must land before the writer change.
 
-`moveState` receives one invocation-stable transition ID and carries it through phase rows, the entry marker, and the final sentinel. Marker idempotency keys on `(state, transitionId)`, not whole-second timestamp, so same-second demote/re-promote cycles remain distinct. After sentinel confirmation, the saga creates and read-back-verifies a permanent `aitm.transition-commit/v1` issue comment containing transition ID, source/target, visit marker, actor, and sentinel fingerprint. `probeCompletion` repairs a missing commit comment for an otherwise confirmed move before returning complete. A pre-commit marker with no transition-commit comment is abandoned, never a valid visit. Backfill assigns a deterministic `backfill:<sha256>` transition ID from repository, issue, state, visit suffix, and marker occurrence and records its authorized commit provenance. Legacy markers without `move` retain their parsed `(state, visit suffix, ts)` identity for compatibility. Timestamps are diagnostic only and never order or equate visits.
+`moveState` receives one invocation-stable transition ID and carries it through phase rows, the entry marker, and the final sentinel. Marker idempotency keys on `(state, transitionId)`, not whole-second timestamp, so same-second demote/re-promote cycles remain distinct. After sentinel confirmation, the saga attempts to create and read-back-verify a permanent `aitm.transition-commit/v1` issue comment containing transition ID, source/target, visit marker, actor, and sentinel fingerprint. This comment is audit and cross-visit ordering evidence, not movement authority: failure returns a successful committed move with `commit-provenance-missing` in ordered warnings. `probeCompletion` retries that repair on later write-authorized invocations but returns the already-confirmed move as complete even while comment creation remains unavailable. A transition-ID marker is abandoned only when the authoritative Status/entry-marker/sentinel completion predicate does not select it; a sentinel-confirmed current marker remains the current visit with `commitProvenance: 'missing'`. Backfill assigns a deterministic `backfill:<sha256>` transition ID from repository, issue, state, visit suffix, and marker occurrence and may record authorized commit provenance. Legacy markers without `move` are valid legacy visits whose identity remains `(state, visit suffix, marker occurrence)`; their timestamp is diagnostic only. Story D supports an indefinitely mixed corpus, and backfill is optional rather than a deployment precondition.
 
 `attemptId` is the one-based attempt ordinal for `(stateVisitId, actionId)`. Under the short issue lock, the appender derives it from the exact current action head and fresh `verify` result:
 
@@ -293,9 +293,9 @@ The head records a definition fingerprint and an `actions` map from every action
 
 Inline mode is attempted only when the exact marker is at most 8,192 characters and the resulting issue body is at most 57,344 characters, preserving an 8,192-character operational reserve below GitHub's 65,536-character limit. The factory performs an early estimate, but runtime serialization against the fresh body is authoritative and happens before any provider effect or event-comment creation.
 
-If either inline condition would fail, the writer automatically uses spill mode; `ledger-head-budget` is not a dormant result and never forces the operator to bypass work. Spill mode writes one protected, read-back-verified head comment containing the complete current-visit map and leaves only its fixed-size ID/hash pointer in the body. The comment payload is capped at 60 KiB, and the factory/runtime preflight caps action count and ID lengths so the full retained visit union fits before any effect. Once a visit spills it remains spilled, avoiding oscillation; each advance appends one replacement head comment and retains the superseded comment as audit history with no garbage collection. A new visit resets the map and may use inline mode again. The `advance` predicate permits `inline → spill`, `spill → spill`, and new-visit `spill → inline`, while refusing same-visit regression to inline. Hot lookup adds exactly one point fetch for a spilled issue.
+If either inline condition would fail, the writer automatically uses spill mode; `ledger-head-budget` is not a dormant result and never forces the operator to bypass work. Spill mode writes one protected, read-back-verified head comment containing the complete current-visit map and leaves only its fixed-size ID/hash pointer in the body. The comment payload is capped at 60 KiB. A state definition and its retained current-visit union each permit at most 192 resident action IDs, and each ID is at most 128 UTF-8 bytes. Exceeding a definition limit is `InvalidStateDefinitionError` before the state machine is usable. An upgrade that would push the retained union past 192 is refused before effects as `resident-action-definition-cap`; the author must preserve/reuse stable IDs or perform a sanctioned state re-entry before enabling the enlarged definition. Runtime serialization still proves the exact retained union fits before any provider effect; violating the supposedly sufficient schema bound is an internal contract failure. Once a visit spills it remains spilled, avoiding oscillation; each advance appends one replacement head comment. After the body pointer and successor read-back are confirmed, the predecessor spill snapshot becomes collectable because permanent event comments retain the audit chain. A failed best-effort deletion is an `orphaned-spill-snapshot` warning and the scheduled `action-ledger gc` retries only after re-proving that no body head references the comment. Current or referenced spill heads remain protected; verified superseded snapshots are not permanent evidence. A new visit resets the map and may use inline mode again. The `advance` predicate permits `inline → spill`, `spill → spill`, and new-visit `spill → inline`, while refusing same-visit regression to inline. Hot lookup adds exactly one point fetch for a spilled issue.
 
-The `audit` pair links global history without requiring hot-path traversal. On a new state visit, the first event records the prior head's fingerprint and global audit predecessor, then the body head replaces the old action map/head pointer with the new visit's head; it does not copy the prior map into a 4-KiB event. Prior action-event and spilled-head comments remain available to the full audit. Each event comment is capped at 4 KiB; large evidence stays in its existing receipt/comment artifact and the event stores only a fingerprint.
+The `audit` pair links global history without requiring hot-path traversal. On a new state visit, the first event records the prior head's fingerprint and global audit predecessor, then the body head replaces the old action map/head pointer with the new visit's head; it does not copy the prior map into a 4-KiB event. Permanent action-event comments remain available to the full audit; spilled-head comments are replaceable materialized views and may be collected only after their successor and the permanent event chain are verified. Each event comment is capped at 4 KiB; large evidence stays in its existing receipt/comment artifact and the event stores only a fingerprint.
 
 The head uses a fourth body-invariant kind named `advance`, not the presence-only `single` kind. Its `INVARIANT_MARKER_PATTERNS` entry registers `parse` and `validateAdvance` alongside the regex. `findLostMarkers` treats an `advance` entry like `single` for presence only. A sibling `validateMarkerAdvances(baseBody, nextBody, { allowMarkerAdvance })`, invoked by `guardedMutate` after loss/shrink checks, extracts both matches and calls the registered predicate with `{ markerId, baseMatch, nextMatch, baseBody, nextBody }`. The predicate is pure and synchronous; it validates only body-available ledger schema, exact global/action predecessors, visit rule, definition fingerprint, attempt/phase monotonicity, permitted inline/spill pointer transitions, and body budgets.
 
@@ -307,11 +307,11 @@ Spilled-head comment creation and read-back verification occur in `advanceAction
 
 Appending an event creates and read-back-verifies the comment before advancing the head. Crash recovery paginates all comments newer than the recorded audit comment to completion and accepts only the deterministic event whose global and action predecessors equal the recorded heads, then completes the head advance. A first append establishes and verifies a genesis head before creating the event, so recovery never has to guess an unknown initial predecessor. Read-only hydration reports an orphan but writes nothing. A write-authorized Cursor performs this mechanical recovery without human approval. Operator cancellation or a transient API failure returns `paused: ledger-orphan-scan-interrupted` and retries the same scan later; only missing, altered, or ambiguous deterministic candidates route to human-approved reconcile.
 
-The managed command guard rejects `gh issue comment` and `gh api` edit/delete operations when the target comment contains an AITM transition-commit, resident-action event, spilled-head, damage-carry, or correction marker; an ambiguous `--edit-last`/`--delete-last` is refused unless a preflight proves the selected comment is not protected. This is defense in depth, not a claim that the GitHub web UI is immutable. Every protected ledger/transition comment includes the visible warning above. Missing or altered current evidence is classified as damaged and has a named repair path: `npx aitm action-ledger reconcile #N --accept-live --reason <text> --approved-by <human>`.
+The managed command guard rejects `gh issue comment` and `gh api` edit/delete operations when the target comment contains an AITM transition-commit, resident-action event, currently referenced spilled-head, damage-carry, or correction marker; an ambiguous `--edit-last`/`--delete-last` is refused unless a preflight proves the selected comment is not protected. The only deletion exception is the dedicated `action-ledger gc` reachability proof for a superseded spill snapshot. This is defense in depth, not a claim that the GitHub web UI is immutable. Every protected ledger/transition comment includes the visible warning above. Missing or altered current evidence is classified as damaged and has a named repair path: `npx aitm action-ledger reconcile #N --accept-live --reason <text> --approved-by <human>`.
 
 `action-ledger reconcile` is a standalone maintenance command, distinct from movement `/task reconcile`; it never writes Status, movement markers, or transition timing. It runs under the issue lock, performs an explicitly paginated full audit, and requires declared human approval. It never fabricates or recreates deleted event bytes. It appends an `aitm.resident-action-ledger-correction/v1` comment containing the prior head, last verifiable ancestor, missing/altered comment IDs and hashes, operator, reason, timestamp, and fingerprints of the live provider/Git/receipt evidence inspected. It then advances the protected head to a new correction baseline and sets `proof: 'unproven'` on affected action heads without changing their last event phase; normal verify-first execution must re-establish completion. The correction remains linked to the abandoned head for audit. This is the only path allowed to authorize live evidence after a damaged chain.
 
-Normal hydration does not enumerate the issue timeline. It reads the inline head or point-fetches the one spilled-head comment, point-fetches the latest event for only the current action, and follows at most the three phase links in that attempt (`intent`, optional `waiting`, terminal phase). Prior attempts and visits are irrelevant to execution and are traversed only by the explicit audit/reconcile command or scheduled integrity audit. Per phase, the acknowledged network cost is lock acquisition, any spilled-head comment write/read-back, event-comment creation/read-back, monotonic body-pointer/head update, and body read-back; stories B and C include this cost in their estimates.
+Normal hydration does not enumerate the issue timeline. It reads the inline head or point-fetches the one spilled-head comment, point-fetches the latest event for only the current action, and follows at most the three phase links in that attempt (`intent`, optional `waiting`, terminal phase). A different transition-ID head requires up to two additional point fetches to verify the head/current commit comments; a missing current commit comment is cached as a diagnostic for the invocation and does not trigger timeline enumeration. Prior attempts and visits are irrelevant to execution and are traversed only by the explicit audit/reconcile command or scheduled integrity audit. Per phase, the acknowledged network cost is lock acquisition, any spilled-head comment write/read-back, event-comment creation/read-back, monotonic body-pointer/head update, body read-back, and the bounded commit-provenance reads when visits differ; stories B, C, and D include this cost in their estimates.
 
 `withCorrelationIntent` rehydrates and confirms the requested `stateVisitId` under its short issue lock immediately before recording intent and again immediately before its provider callback; a mismatch returns `paused` with `stale-state-visit` and no provider effect.
 
@@ -321,15 +321,17 @@ Hydration classifies the head against the authoritative current `stateVisitId`:
 
 - no head and no events is normal first execution, including legacy issues;
 - a head for the same visit folds the current action normally;
-- for transition-ID visits, a different head is prior history only when both visits have verified transition-commit comments and the head's immutable GitHub comment ID is lower than the current visit's commit-comment ID; the map then remains history until the first new event lazily fingerprints/replaces it, and no writer runs if all actions verify complete or the action list is empty;
-- a higher commit-comment ID is a newer-head drift diagnostic, and a transition marker without a verified commit comment is abandoned/uncommitted rather than a visit; and
-- malformed identity, missing commit provenance, or disagreement in the current move-completion facts is drift/damaged evidence.
+- a sentinel-confirmed current transition-ID marker with missing commit provenance is the current visit; hydration reports `commitProvenance: 'missing'`, resident actions for an exact same-visit head remain usable, and only a different-visit ordering decision is blocked;
+- for transition-ID visits, a different head is prior history only when both visits have verified transition-commit comments, the head comment ID is lower than the current comment ID, and state/visit ordinals do not contradict that order; the map then remains history until the first new event lazily fingerprints/replaces it, and no writer runs if all actions verify complete or the action list is empty;
+- for legacy markers without `move`, the authoritative five-signal current-move predicate validates the current visit, while durable body occurrence order plus per-state visit ordinal classify a different legacy head; disagreement is diagnostic rather than guessed, so mixed legacy/transition corpora remain operable without mandatory backfill;
+- a higher or equal commit-comment ID for a different head, contradictory visit ordinals, or an unverifiable different-visit comparison is newer/drift evidence; and
+- malformed identity or disagreement in the current move-completion facts is drift/damaged evidence.
 
-This classification does not order visits by timestamp: entry timestamps have only whole-second fidelity and equality is normal. Permanent transition-commit comment IDs provide the total historical order, while per-state visit ordinals detect a locally newer marker during legacy/backfill validation. Abandoned markers remain as audit evidence and may be annotated by reconcile, but never satisfy visit hydration. On the first append of a new visit, the global predecessor is the prior head's `audit` pair and the action predecessor is legitimately absent. Provider evidence alone cannot silently repair damaged current-visit history; only the human-approved correction path may establish a new unproven baseline from inspected live evidence.
+This classification does not order visits by timestamp: entry timestamps have only whole-second fidelity and equality is normal. It relies on the observed, not API-guaranteed, monotonic increase of GitHub comment IDs within one issue. The implementation names this assumption, checks equal/reversed IDs and ordinal contradictions defensively, and returns an ordering diagnostic rather than trusting a violation. Verified transition-commit comment IDs order post-migration visits; body occurrence plus per-state visit ordinal is the conservative legacy fallback. A marker is abandoned only when it has a transition ID but is not selected by the authoritative move-completion predicate. Abandoned markers remain as audit evidence and may be annotated by reconcile, but never satisfy visit hydration. On the first append of a new visit, the global predecessor is the prior head's `audit` pair and the action predecessor is legitimately absent. Provider evidence alone cannot silently repair damaged current-visit history; only the human-approved correction path may establish a new unproven baseline from inspected live evidence.
 
 `hydrateTask` never throws solely because the ledger is damaged; it returns `snapshot.actionLedger.status: 'damaged'` with provenance and diagnostics. The enforcement layer is `actions.resume`: actions-only and ordinary forward triggers return dormant `failed: action-ledger-damaged` before calling any action or boundary. Read-only surfaces render the diagnostic without a process error. Reverse and explicit bypass triggers may proceed without action evidence, but their movement-required snapshot fields must still be authoritative. Thus “fail closed” means the action executor refuses normal resident/forward execution, not that hydration becomes unavailable.
 
-Reverse or explicit bypass movement out of a damaged visit must preserve, not erase, the diagnosis. Inside the boundary lock and before `moveState`, the Cursor appends and read-back-verifies an `aitm.resident-action-ledger-damage-carry/v1` comment containing the damaged visit/head, diagnostics, target transition ID, actor, and movement flag; failure to record it refuses the move. The transition evidence includes that comment ID/hash. Hydration of later visits reports it as `inheritedHistoricalDamage` without blocking their clean current fold, and the first ledger write links it into the new head. It remains visible until a human-approved reconcile for the named damaged visit appends a correction; a visit change alone never clears it.
+Reverse or explicit bypass movement out of a damaged visit must preserve, not erase, the diagnosis. Inside the boundary lock, after the complete pre-mutation gate succeeds and before `moveState`, the Cursor appends and read-back-verifies an `aitm.resident-action-ledger-damage-carry/v1` comment containing the damaged visit/head, diagnostics, target transition ID, actor, and movement flag; failure to record it refuses the move. A refused pre-mutation gate therefore creates no carry record. The transition evidence includes that comment ID/hash. Hydration of later visits reports it as `inheritedHistoricalDamage` without blocking their clean current fold, and the first ledger write links it into the new head. It remains visible until a human-approved reconcile for the named damaged visit appends a correction; a visit change alone never clears it.
 
 If `run` returns `waiting` but a verified `waiting` event with correlation and deadline is absent or malformed, the step is `failed`, not dormant. Hydration is always read-only: it classifies an expired wait as failed in the immutable snapshot but writes nothing. The next write-authorized Cursor actions-only or forward invocation appends the deterministic `failed` event before returning recovery diagnostics. Read-only status, callbacks configured as observation-only, `TT_SKIP_NETWORK`, and offline hydration never append. The Cursor processes actions in order:
 
@@ -341,7 +343,7 @@ If `run` returns `waiting` but a verified `waiting` event with correlation and d
 6. verify the step again before treating it as complete; and
 7. stop dormant on waiting, paused, failed, or unverifiable results.
 
-An observation-only hydration reports `complete-pending-terminal-event` for complete evidence plus an open attempt and performs no write; the next write-authorized invocation closes it before advancing. `correlated` means the verifier proved the evidence belongs to the attempt's recorded provider correlation. `observed` means the action is complete but causation could be a human change, earlier attempt, or provider recovery; `resolved` then closes the action attempt without claiming it produced the evidence. This rule also closes a `waiting` attempt whose evidence completes before its deadline. No open attempt survives a successful write-authorized verification, so a later regression derives a new ordinal and correlation rather than reusing an abandoned one.
+An observation-only hydration reports `complete-pending-terminal-event` for complete evidence plus an open attempt and performs no write; the next write-authorized invocation closes it before advancing. `correlated` means the verifier proved the evidence belongs to the attempt's recorded provider correlation. `observed` means the action is complete but causation could be a human change, earlier attempt, or provider recovery; `resolved` then closes the action attempt without claiming it produced the evidence. `status` and `action-ledger audit` render observed closures with their evidence fingerprint and attempt ID. This attribution is audit-only: it does not weaken completion, block a boundary, or set `proof: 'unproven'`. This rule also closes a `waiting` attempt whose evidence completes before its deadline. No open attempt survives a successful write-authorized verification, so a later regression derives a new ordinal and correlation rather than reusing an abandoned one.
 
 No Cursor or action index is persisted. The event family is durable action evidence, not a program counter: on every invocation the Cursor still scans from the beginning and skips steps whose folded evidence remains fresh. This makes retries and crash recovery idempotent.
 
@@ -431,6 +433,8 @@ Each invocation has one trigger. Triggers either request resident work only or r
 
 Every requested target is normalized, then `computeTransitionPlan` decides matrix applicability, bypass, no-op, and whether the guard pipeline runs. A Cursor never auto-selects another target after completing actions and never crosses a second boundary in the same invocation. Human approval and dedicated verb semantics therefore remain at the command surface.
 
+A self-targeted human forward command is the explicit resume-in-place path: it runs the current resident actions and returns `noop` only after they complete. The generic `resume`, bind/rebind, and agent-turn surfaces remain actions-only aliases. Matrix refusal is always decided before resident execution because it proves the requested target is illegal; no-op is decided afterward because it represents legal in-state work with no boundary effect.
+
 The execution algorithm is:
 
 ```js
@@ -449,7 +453,6 @@ async function executeCursor({ issue, cwd, trigger, requestedTarget, flags = {} 
       })
     : null;
   if (plan?.matrix.applies && !plan.matrix.ok) return matrixRefused(plan.matrix);
-  if (plan?.noop) return moveNoop(plan);
 
   if (
     trigger === 'actions-only' ||
@@ -459,6 +462,8 @@ async function executeCursor({ issue, cwd, trigger, requestedTarget, flags = {} 
     if (actionResult.status !== 'complete') return dormant(actionResult);
     if (trigger === 'actions-only') return residentComplete(current.id);
   }
+
+  if (plan?.noop) return moveNoop(plan);
 
   let boundary;
   try {
@@ -473,16 +478,11 @@ async function executeCursor({ issue, cwd, trigger, requestedTarget, flags = {} 
             actualState: snapshot.currentState.value,
           };
         }
-        const damageCarry =
-          snapshot.actionLedger.status === 'damaged' &&
-          (trigger === 'advance-reverse' || plan.bypassResidentActions)
-            ? await repository.recordLedgerDamageCarry({ snapshot, movementIntent })
-            : null;
-        const moveContext = buildMoveContext({
+        let moveContext = buildMoveContext({
           snapshot,
           fromState: current.id,
           movementIntent,
-          damageCarry,
+          damageCarry: null,
         });
         if (plan.bypassResidentActions) {
           moveContext.skippedResidentActions = incompleteActionIds(current, snapshot);
@@ -491,6 +491,23 @@ async function executeCursor({ issue, cwd, trigger, requestedTarget, flags = {} 
         const gateResult = await repository.runPreMutationGate({ moveContext, snapshot, plan });
         if (gateResult.exit != null) {
           return { kind: 'gate-refused', phase: 'guard', gateResult };
+        }
+
+        const damageCarry =
+          snapshot.actionLedger.status === 'damaged' &&
+          (trigger === 'advance-reverse' || plan.bypassResidentActions)
+            ? await repository.recordLedgerDamageCarry({ snapshot, movementIntent })
+            : null;
+        if (damageCarry) {
+          moveContext = buildMoveContext({
+            snapshot,
+            fromState: current.id,
+            movementIntent,
+            damageCarry,
+          });
+          if (plan.bypassResidentActions) {
+            moveContext.skippedResidentActions = incompleteActionIds(current, snapshot);
+          }
         }
 
         const move = await repository.requestTransition({ moveContext, plan, gateResult });
@@ -546,8 +563,8 @@ The Cursor delegates transition persistence to the shipped `scripts/task-tracker
 3. `stampEntryMarkers`, advancing `aitm-last-known-state` and returning `priorState` for compensation;
 4. `runStatusWrite`, a verified fail-closed Status mutation that calls `rollbackRecordedState(priorState)` on failure;
 5. `writeSentinel`, writing and re-read-verifying `aitm-move-complete` after Status;
-6. `writeTransitionCommit`, creating and read-back-verifying the permanent transition-commit comment, with replay repair after a confirmed sentinel;
-7. `assertBoardMarkerConsistent`, enforcing the post-condition after sentinel/commit confirmation; and
+6. `assertBoardMarkerConsistent`, enforcing the authoritative post-condition after sentinel confirmation;
+7. `writeTransitionCommit`, best-effort creation and read-back verification of the permanent transition-commit audit comment, returning `commit-provenance-missing` as an ordered warning and retrying repair on replay without changing a committed move's exit code; and
 8. `runPostCommitTail`, isolating every best-effort projection failure without changing a committed move's exit code.
 
 Story D moves the complete shipped `runGuardExecution` responsibility inside the same issue lock immediately before this saga. `RepositoryAdapter.runPreMutationGate` always delegates to that refactored seam; the seam itself uses `plan.runGuardPipeline` so bypass moves skip matrix/guards without losing non-blocking warnings. It preserves all of its responsibilities, including:
@@ -560,7 +577,7 @@ Story D moves the complete shipped `runGuardExecution` responsibility inside the
 6. lifecycle-warning timing emitted from the aggregated `warns` payload; and
 7. the sized-and-estimated Backlog warning.
 
-Its guard payload retains the shipped `{ ok, refusals: [{ id, reason, blockers? }], warns?: [{ id, warn }] }` shape. Today the saga override is the underscore-private `ctx._runGuardExecution`. Story D promotes this to the public production option `ctx.runGuardExecution`, with precedence `runGuardExecution ?? _runGuardExecution ?? defaultRunGuardExecution`; the underscore form remains only for test/backward compatibility. The adapter passes an already-evaluated function through the public option so the saga does not repeat the gate. Body-fetch failure remains exit 3; generic guard refusal remains exit 4; contiguity refusal remains exit 6; lock, Status confirmation, or sentinel failure remains exit 7; and post-commit board/marker drift remains exit 8.
+Its guard payload retains the shipped `{ ok, refusals: [{ id, reason, blockers? }], warns?: [{ id, warn }] }` shape. Today the saga override is the underscore-private `ctx._runGuardExecution`. Story D promotes this to the public production option `ctx.runGuardExecution`, with precedence `runGuardExecution ?? _runGuardExecution ?? defaultRunGuardExecution`; the underscore form remains only for test/backward compatibility. The adapter passes an already-evaluated function through the public option so the saga does not repeat the gate. Body-fetch failure remains exit 3; generic guard refusal remains exit 4; contiguity refusal remains exit 6; lock, Status confirmation, or sentinel failure remains exit 7; post-commit board/marker drift remains exit 8; and transition-commit comment failure is a named success warning rather than exit 7.
 
 Post-commit cache and synchronization failures do not retroactively report the committed move as failed. They remain separately classified infrastructure results unless a specific operation is deliberately promoted into an action step with durable completion semantics.
 
@@ -647,7 +664,7 @@ Compatibility requirements across the split:
 - retain `runGuards(from, to, ctx)` result shapes, aggregation, warnings, and thrown-guard coercion;
 - retain `registerGuard` idempotency and empty-on-direct-import characterization until the factory-backed compatibility layer replaces bootstrap;
 - retain all move saga ordering, timing-row pairs, exit codes 3/4/6/7/8, and post-commit tail isolation;
-- widen all entry-marker readers/guards through the shared order-insensitive trailing-attribute grammar before extending new entry/sentinel/timing records with one invocation-stable transition ID; retain legacy parsing, deterministic backfill identity, and permanent transition-commit provenance;
+- consolidate every executable entry-marker reader/guard onto the shared order-insensitive grammar before extending new entry/sentinel/timing records with one invocation-stable transition ID; enforce the no-independent-regex rule repository-wide, retain indefinite mixed-corpus legacy parsing and optional deterministic backfill identity, and treat permanent transition-commit provenance as best-effort audit/ordering evidence rather than movement authority;
 - retain `buildCloseGatesDeps`, worktree-aware trunk resolution, and the temporary `refinementPlan` compatibility mirror;
 - add the `advance` invariant, narrow fresh-base `allowMarkerAdvance` path, ledger-specific monotonic advance primitive, `bash-guard.mjs`/managed-command comment edit-delete protection, visible warning, bounded hot reads, and audited `action-ledger reconcile` path; never use blanket `allowMarkerLoss` for a ledger advance;
 - introduce public `ctx.runGuardExecution` while retaining `_runGuardExecution` only for test/backward compatibility;
@@ -690,13 +707,18 @@ The future TIA design changes which checks the Test action requests and records.
 | Current action paused or failed                          | Existing state                              | Dormant paused/failed                                                 | Resume first incomplete step                 |
 | Action effect has no durable correlation                 | Existing state                              | Contract refusal                                                      | Correct action implementation                |
 | No ledger head and no events for the current visit       | Existing state                              | Normal first or legacy execution; verify first                        | Record events only if `run` is needed        |
-| Head commit comment precedes current commit comment      | Existing current state                      | Valid empty fold for current visit; no timestamp ordering             | Lazy reset only if current action appends    |
-| Head commit comment is newer or absent                   | Existing state                              | Newer-drift or abandoned-marker diagnostic                            | Reconcile transition/ledger provenance       |
+| Head commit comment defensively precedes current comment | Existing current state                      | Valid empty fold for current visit; no timestamp ordering             | Lazy reset only if current action appends    |
+| Current visit lacks transition-commit comment            | Existing current state                      | Current visit remains valid; named audit warning                      | Retry best-effort provenance repair          |
+| Different visit cannot be ordered or contradicts ordinal | Existing state                              | Drift diagnostic; no guessed fold                                     | Reconcile transition/ledger provenance       |
+| Legacy current/head visits form a consistent body order  | Existing current state                      | Valid mixed-corpus fold using occurrence and visit ordinal            | Optional backfill; no rollout gate           |
 | Head visit is malformed or lacks durable entry evidence  | Existing state                              | Hydration diagnoses; `actions.resume` refuses normal execution        | Inspect or reconcile the ledger              |
 | Defined current action has no head entry                 | Existing state                              | Legitimate attempt 1                                                  | Verify first, then record if `run` is needed |
 | Required current action event is missing or altered      | Existing state                              | Hydration diagnoses; `actions.resume` returns ledger-damaged          | Run human-approved `action-ledger reconcile` |
 | Mechanical orphan scan is interrupted                    | Existing state                              | Paused `ledger-orphan-scan-interrupted`                               | Retry full scan; no human repair needed      |
 | Inline head/body would exceed runtime budget             | Existing state                              | Automatically writes one protected spilled-head comment before effect | Continue with constant-size body pointer     |
+| State exceeds 192 actions or 128-byte action IDs         | No executable machine                       | `InvalidStateDefinitionError` at composition                          | Split actions/state or shorten IDs           |
+| Upgrade would make retained visit union exceed 192 IDs   | Existing state                              | `resident-action-definition-cap` before effects                       | Reuse IDs or sanctioned state re-entry       |
+| Superseded spill deletion fails                          | Existing state                              | Move/action succeeds with `orphaned-spill-snapshot` warning           | Scheduled GC re-proves reachability          |
 | Resolved evidence regresses within the same visit        | Existing state                              | Next ordinal begins after incomplete verification                     | Rerun with a new correlated attempt          |
 | Open attempt verifies complete                           | Existing state                              | Write-authorized Cursor appends deterministic `resolved`              | Continue; later regression gets new ordinal  |
 | Open attempt completes from unrelated/recovered evidence | Existing state                              | `resolved` with `attribution: observed`                               | Audit does not claim attempt caused evidence |
@@ -712,7 +734,7 @@ The future TIA design changes which checks the Test action requests and records.
 | Boundary host returns an unknown result kind             | Existing state                              | Internal contract failure, exit 1                                     | Repair adapter/result contract               |
 | Status write fails before confirmation                   | Source state; last-known marker compensated | exit 7                                                                | Replay saga                                  |
 | Status reaches target but sentinel is absent             | Target board, incomplete move               | exit 7                                                                | Replay to converge sentinel/evidence         |
-| Sentinel confirms target but transition commit is absent | Target board, incomplete audit              | exit 7                                                                | Replay repairs commit comment                |
+| Sentinel confirms target but transition commit is absent | Target board, committed move                | Success with `commit-provenance-missing` warning                      | Replay retries audit repair                  |
 | Sentinel present but board/marker post-condition drifts  | Explicitly inconsistent                     | exit 8                                                                | Run explicit reconcile path                  |
 | Crash after confirmed move and before target action      | Target state                                | Process absent                                                        | Rehydrate target and start resident actions  |
 | Any post-commit tail step fails                          | Target state                                | Move succeeds; ordered `failures[]` warning                           | Repair projection separately                 |
@@ -745,7 +767,7 @@ Required behaviors include:
 - exact three-list immutable shape for every `stateIds()` member;
 - shared reference identity without task-specific mutation;
 - alias normalization plus exact parity with `forwardTarget`, `backwardTargets`, and `validateExecutableTransition`;
-- `computeTransitionPlan` parity for ordinary, no-op, force, and supersede movement;
+- `computeTransitionPlan` parity for ordinary, no-op, force, and supersede movement, with matrix refusal before effects and human self-target resume before no-op;
 - reconstruction with no persisted action index;
 - verify-first step skipping and stale-evidence rerun;
 - dormant waiting, paused, and failed outcomes;
@@ -764,8 +786,8 @@ Required behaviors include:
 - per-action/per-visit event folding, retention across later steps, and invalidation by a new state visit;
 - full attempt derivation for absent, open, failed, resolved-but-stale, and separately flagged unproven heads;
 - definition fingerprints, within-visit union retention across upgrades/rollback, and legitimate attempt 1 for newly defined actions;
-- exact 8,192-character inline and 57,344-character final-body preflight, followed by one protected spilled-head comment rather than pause;
-- inline/spill lifecycle, append-only superseded-head retention, one-fetch hot lookup, and visit-reset return to inline;
+- exact 8,192-character inline and 57,344-character final-body preflight, followed by one protected spilled-head comment rather than pause, plus 192-action/128-byte-ID definition limits and remedies;
+- inline/spill lifecycle, verified successor before predecessor collection, failed-deletion warning plus reachability-proving GC, one-fetch hot lookup, and visit-reset return to inline;
 - `findLostMarkers` presence handling plus sibling synchronous/pure `validateMarkerAdvances`, registered predicate plumbing, dedicated `MarkerAdvanceError`, and narrow `allowMarkerAdvance` evaluated from every retry's fresh base while spill comments are verified outside mutation and all unrelated invariants/#725 remain armed;
 - monotonic predecessor validation, stale/regressing-head refusal, and read-back verification;
 - managed CLI comment edit/delete refusal, ambiguous last-comment preflight, and visible do-not-edit guidance;
@@ -774,11 +796,11 @@ Required behaviors include:
 - 4 KiB event-budget rejection before provider effects and oversized-evidence fingerprinting;
 - empty first/legacy fold acceptance versus missing-phase, altered-event, and broken-chain refusal;
 - read-only hydration diagnostics without throws, `actions.resume` fail-closed enforcement, and offline hydration producing no writes;
-- complete verification closing open intent/waiting attempts with explicit correlated/observed attribution before continuing;
+- complete verification closing open intent/waiting attempts with explicit correlated/observed attribution before continuing, with observed closures surfaced by status/audit but treated identically by gates;
 - crash-after-intent, genesis-head, full paginated orphan recovery, interrupted-scan retry without human repair, waiting-event verification, and injected-clock behavior at and beyond the deadline;
-- shared trailing-attribute entry-marker parsing before writer rollout, canonical `ts`/`move` serialization, and guard/reader parity;
-- transition-commit comment ordering, exact/current/lower/higher/abandoned visit classification without timestamp ordering, and lazy first-append replacement;
-- damaged-visit reverse/bypass carry records that survive into later visit diagnostics until correction;
+- shared order-independent entry-marker parsing before writer rollout, canonical `ts`/`move` serialization, every executable caller importing the shared primitive, and a repository-wide no-independent-`aitm-entered`-regex characterization;
+- best-effort transition-commit creation/repair, successful committed movement with missing-provenance warning, bounded extra provenance reads, named monotonic-comment-ID assumption with defensive contradiction handling, mixed legacy/current classification without timestamp ordering, and lazy first-append replacement;
+- damaged-visit reverse/bypass carry records created only after a clean pre-mutation gate and surviving into later visit diagnostics until correction;
 - same-second demote/re-promote transition IDs, invocation-stable marker/sentinel propagation, legacy marker identity, and deterministic backfill identity;
 - static pre-action transition planning plus final in-lock move-context/skipped-action construction;
 - forward-trigger retry after failed action plus audited force/supersede escape without false action resolution;
