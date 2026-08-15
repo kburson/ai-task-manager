@@ -151,7 +151,16 @@ assert.deepEqual(planAbsoluteBudget({ reviewTurnsUsed: 2, maxReviewTurns: 6 }, 0
 });
 ```
 
-- [ ] **Step 2: Add failing protocol and CLI adjustment tests**
+- [ ] **Step 2: Add failing archive-destination containment tests**
+
+Exercise `resolveArchiveDestination` before implementing it. Assert refusal for a
+repository escape, a symlink escape, an ignored destination, and the live protocol
+runtime directory. Assert acceptance for a nonexistent repository-relative final
+path whose nearest existing ancestor resolves inside the physical repository.
+Verify every refusal performs no filesystem write and leaves protocol state/events
+unchanged.
+
+- [ ] **Step 3: Add failing protocol and CLI adjustment tests**
 
 Initialize active owner/reviewer fixtures and assert `set-max-turns` preserves
 `currentRole`, `turnState`, `claim`, `round`, `artifact`, and
@@ -181,12 +190,12 @@ assert.deepEqual(readEvents(root, options.dir).at(-1).adjustment, {
 assert.notDeepEqual(snapshotProtocol(root, options.dir), before);
 ```
 
-- [ ] **Step 3: Run the focused suite and verify RED**
+- [ ] **Step 4: Run the focused suite and verify RED**
 
 Expected failures name missing `budget.mjs`, `github-identity.mjs`, optional archive
 destination support, and `setMaxReviewTurns`/`set-max-turns` dispatch.
 
-- [ ] **Step 4: Implement pure role-dependent arithmetic**
+- [ ] **Step 5: Implement pure role-dependent arithmetic**
 
 Use this complete arithmetic in `budget.mjs`:
 
@@ -221,7 +230,7 @@ export function planAbsoluteBudget(state, requestedMax, resumeRole) {
 }
 ```
 
-- [ ] **Step 5: Implement authenticated identity and archive-dir normalization**
+- [ ] **Step 6: Implement authenticated identity and archive-dir normalization**
 
 `resolveGitHubLogin` must execute only `gh api user --jq .login`, reject blank
 stdout, preserve the original error as `cause`, and include the exact command the
@@ -230,16 +239,17 @@ relative directory, reject repository escape/symlink escape, reject the runtime
 directory and ignored destinations, and permit a nonexistent final path whose
 nearest existing ancestor resolves inside the repository.
 
-- [ ] **Step 6: Extend v1 validation, initialization, events, and mutation**
+- [ ] **Step 7: Extend v1 validation, initialization, events, and mutation**
 
 Relax only the runtime validator from `maxReviewTurns < 1` to
-`maxReviewTurns < 0`; keep `initializeProtocol` input validation at one. Add
-`budget-adjustment` to allowed event types and optional `archiveDir` to
+`maxReviewTurns < 0`; keep `initializeProtocol` input validation at one. Add all
+three new event types—`budget-adjustment`, `supplement`, and `human-good-enough`—to
+`eventIntegrity`'s allowed set, and add optional `archiveDir` to
 `state.initialization`. Implement `setMaxReviewTurns` under `withMutex`, return the
 existing state without an event when `effectiveMax === state.maxReviewTurns`, and
 otherwise append exactly one event before atomic state replacement.
 
-- [ ] **Step 7: Add CLI parsing and injected identity orchestration**
+- [ ] **Step 8: Add CLI parsing and injected identity orchestration**
 
 Accept:
 
@@ -252,12 +262,14 @@ Resolve identity before calling `setMaxReviewTurns`. Add `nonnegativeInteger` ra
 than weakening the existing positive initialization parser. Keep help short-circuit
 ahead of dynamic protocol/archive imports and identity/network access.
 
-- [ ] **Step 8: Run focused verification and commit**
+- [ ] **Step 9: Run focused and repository Develop verification, then commit**
 
 Expected: focused tests pass; invalid/identity/lock/lifecycle refusals preserve
 state/events; initialization still rejects zero.
 
 ```bash
+node --test scripts/tests/unit/review/co-review.test.mjs
+node scripts/task-tracker/verify-develop.mjs
 git add scripts/review/co-review.mjs scripts/review/lib/protocol.mjs \
   scripts/review/lib/budget.mjs scripts/review/lib/github-identity.mjs \
   scripts/review/lib/archive.mjs scripts/tests/fixtures/co-review-fixture.mjs \
@@ -270,6 +282,7 @@ git commit -m "[#1268] feat: add co-review budget control"
 
 ```text
 node --test scripts/tests/unit/review/co-review.test.mjs
+node scripts/task-tracker/verify-develop.mjs
 ```
 
 ### Task 2: Preserve the closing owner turn and unify continuation arithmetic
@@ -381,9 +394,11 @@ Accept bare `continue`, `continue --max-turns N`, or legacy
 `--approved-by`, emitting one deprecation line. Human-readable/JSON status identifies
 closing-owner exhaustion and prints one copyable command.
 
-- [ ] **Step 8: Run focused verification and commit**
+- [ ] **Step 8: Run focused and repository Develop verification, then commit**
 
 ```bash
+node --test scripts/tests/unit/review/co-review.test.mjs
+node scripts/task-tracker/verify-develop.mjs
 git add scripts/review/co-review.mjs scripts/review/lib/protocol.mjs \
   scripts/review/lib/budget.mjs scripts/tests/fixtures/co-review-budget-cases.mjs \
   scripts/tests/fixtures/co-review-e2e-cases.mjs \
@@ -395,6 +410,7 @@ git commit -m "[#1268] feat: preserve exhausted review cycles"
 
 ```text
 node --test scripts/tests/unit/review/co-review.test.mjs
+node scripts/task-tracker/verify-develop.mjs
 ```
 
 ### Task 3: Register supplements and require reviewer acknowledgments
@@ -420,6 +436,8 @@ node --test scripts/tests/unit/review/co-review.test.mjs
 Cover one/multiple supplements, stable `S-001` IDs, regular files without extension
 requirements, symlink/state/event/lock/outside-runtime refusal, intervention-only
 enforcement, exact idempotent retry, and changed bytes or reused path conflict.
+After each successful `supplement` append, call status and assert the event log still
+reports `integrity.ok === true` with no event-type error.
 
 ```js
 const registered = api.registerSupplement({
@@ -478,9 +496,11 @@ Accept only `supplement --dir <runtime> --file <runtime-file>`. Resolve GitHub l
 before mutation. Human-readable and JSON status list pending/frozen IDs, paths,
 hashes, and target round while excluding consumed entries from next-action guidance.
 
-- [ ] **Step 8: Run focused verification and commit**
+- [ ] **Step 8: Run focused and repository Develop verification, then commit**
 
 ```bash
+node --test scripts/tests/unit/review/co-review.test.mjs
+node scripts/task-tracker/verify-develop.mjs
 git add scripts/review/co-review.mjs scripts/review/lib/protocol.mjs \
   scripts/tests/fixtures/co-review-fixture.mjs \
   scripts/tests/fixtures/co-review-supplement-cases.mjs \
@@ -492,6 +512,7 @@ git commit -m "[#1268] feat: add co-review supplements"
 
 ```text
 node --test scripts/tests/unit/review/co-review.test.mjs
+node scripts/task-tracker/verify-develop.mjs
 ```
 
 ### Task 4: Build deterministic terminal evidence archives
@@ -515,9 +536,11 @@ node --test scripts/tests/unit/review/co-review.test.mjs
 
 Build terminal consensus and author-completed good-enough candidate fixtures. Assert
 sources are selected from event references/hashes, never filename patterns. Assert
-consensus owner round 2/reviewer round 3 names both files with `r3`; good-enough
-review round 5/owner round 6 names both with `r6`. Cover arbitrary artifact basenames
-and lossy/colliding identity slugs with deterministic short digests.
+the authoritative artifact is always archived as `artifact-<original-basename>`;
+consensus owner round 2/reviewer round 3 names both role files with `r3`; and
+good-enough review round 5/owner round 6 names both role files with `r6`. Cover an
+authoritative artifact named `README.md`, arbitrary basenames, and lossy/colliding
+identity slugs with deterministic short digests.
 
 - [ ] **Step 2: Add failing deterministic manifest tests**
 
@@ -538,10 +561,11 @@ assert.deepEqual(parseManifestRegion(first), model);
 
 Cover manifest-last staging, injected copy/manifest/validation failures, unique
 concurrent staging names, complete-identical idempotency without rewrite, missing /
-extra / different file conflicts, pre-existing empty-directory conflict,
-post-preflight empty-destination replacement, non-empty `ENOTEMPTY` race recovery,
-runtime originals unchanged, unrelated dirty files unchanged, and unchanged HEAD /
-index.
+extra / different file conflicts across the exact four-path set (`README.md`,
+`artifact-<original-basename>`, reviewer document, owner response), pre-existing
+empty-directory conflict, post-preflight empty-destination replacement, non-empty
+`ENOTEMPTY` race recovery, runtime originals unchanged, unrelated dirty files
+unchanged, and unchanged HEAD/index.
 
 - [ ] **Step 4: Run focused tests and verify RED**
 
@@ -565,6 +589,9 @@ and verify blob and SHA-256 before constructing output.
 
 - [ ] **Step 7: Implement deterministic names and manifest**
 
+Copy the authoritative artifact to `artifact-<original-basename>`, preserving its
+basename bytes and extension; the `artifact-` prefix prevents collision with the
+generated `README.md`, including when the source itself is named `README.md`.
 Normalize lowercase identities to `[a-z0-9]+` hyphen slugs. Append the first eight
 hex characters of SHA-256 when normalization loses information or collides. Build
 the manifest object in one documented insertion order and serialize it with
@@ -584,9 +611,11 @@ On a losing `ENOTEMPTY`/existence race, inspect the destination and return idemp
 success only if every expected path and byte matches. Never delete a staging remnant
 or any caller-owned destination.
 
-- [ ] **Step 9: Run focused verification and commit**
+- [ ] **Step 9: Run focused and repository Develop verification, then commit**
 
 ```bash
+node --test scripts/tests/unit/review/co-review.test.mjs
+node scripts/task-tracker/verify-develop.mjs
 git add scripts/review/lib/archive.mjs scripts/review/lib/protocol.mjs \
   scripts/tests/fixtures/co-review-finalization-cases.mjs \
   scripts/tests/fixtures/co-review-fixture.mjs \
@@ -598,6 +627,7 @@ git commit -m "[#1268] feat: publish deterministic review archives"
 
 ```text
 node --test scripts/tests/unit/review/co-review.test.mjs
+node scripts/task-tracker/verify-develop.mjs
 ```
 
 ### Task 5: Orchestrate consensus and human-good-enough finalization
@@ -639,7 +669,11 @@ Require author-completed intervention with both final evidence sides, authentica
 login, and valid destination. Refuse active, legacy reviewer-only intervention, and
 opening zero-turn short circuit. Assert one `human-good-enough` event, immutable
 accepted state, decision basis/human/timestamp, optional unconsumed supplements,
-publication, and exit 4 if only publication fails.
+publication, and exit 4 if only publication fails. Immediately after the
+`human-good-enough` event, assert status reports `integrity.ok === true`. Before
+acceptance, assert human and JSON intervention status enumerate continue, eligible
+good-enough finalization, and no-action/return-later as three distinct choices; an
+opening zero-turn short circuit must omit or disable only good enough.
 
 - [ ] **Step 4: Run focused tests and verify RED**
 
@@ -683,11 +717,17 @@ Compose protocol status with `inspectArchive`. For unconfigured accepted state,
 report unknown destination/completion and an explicit retry containing
 `--archive-dir`. For configured state, inspect without writing and report exact
 completion/conflict. Include unresolved finding IDs, closing-owner state, latest
-budget adjustment, supplement sets, decision basis, and one copyable next command.
+budget adjustment, supplement sets, and decision basis. At
+`intervention-required`, human and JSON output must enumerate three available
+actions: continue with a copyable command, finalize good enough with a copyable
+command only when a two-sided author-completed pair exists, or make no mutation and
+return later. Outside intervention, emit the single state-appropriate next command.
 
-- [ ] **Step 9: Run focused verification and commit**
+- [ ] **Step 9: Run focused and repository Develop verification, then commit**
 
 ```bash
+node --test scripts/tests/unit/review/co-review.test.mjs
+node scripts/task-tracker/verify-develop.mjs
 git add scripts/review/co-review.mjs scripts/review/lib/protocol.mjs \
   scripts/review/lib/archive.mjs \
   scripts/tests/fixtures/co-review-finalization-cases.mjs \
@@ -700,6 +740,7 @@ git commit -m "[#1268] feat: finalize accepted co-reviews"
 
 ```text
 node --test scripts/tests/unit/review/co-review.test.mjs
+node scripts/task-tracker/verify-develop.mjs
 ```
 
 ### Task 6: Complete lifecycle help, package documentation, and release verification
@@ -767,10 +808,10 @@ name the same surface.
 
 - [ ] **Step 6: Run focused and CI-equivalent checks**
 
-Run the focused co-review suite first, then command-catalog policy, formatting,
-spelling, lint, diff whitespace, affected verification, and the issue-declared
-package lanes. Any failing baseline unrelated to #1268 must be reported with exact
-command/output rather than altered silently.
+Run the focused co-review suite first, then command-catalog policy, the repository
+Develop verification gate, formatting, spelling, lint, diff whitespace, and the
+issue-declared package lanes. Any failing baseline unrelated to #1268 must be
+reported with exact command/output rather than altered silently.
 
 - [ ] **Step 7: Commit the documentation and final verification surface**
 
@@ -790,7 +831,7 @@ npm run format:check
 npm run lint:spell
 npm run lint
 git diff --check
-npm run verify:affected
+node scripts/task-tracker/verify-develop.mjs
 npm test
 npm run test:slow
 ```
