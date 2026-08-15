@@ -9,7 +9,7 @@ export const COMMANDS = Object.freeze({
     prerequisites: [
       'Run in the Git worktree that contains the authoritative committed artifact.',
       'Choose a caller-owned Git-ignored runtime directory.',
-      'Use distinct nonblank owner and reviewer identities and a positive review-turn budget.',
+      'Use distinct non-blank owner and reviewer identities and a positive review-turn budget.',
     ],
     usage:
       'npx aitm co-review init --dir <path> --artifact <repo-path> --owner <identity> --reviewer <identity> --max-turns <N> [--import-review <file> --review-of <commit>]',
@@ -254,6 +254,17 @@ function renderCommandHelp(name) {
 
 function renderTopHelp() {
   return `co-review — model-agnostic artifact owner / external reviewer handshake
+
+Purpose: Coordinate immutable owner/reviewer artifact rounds through explicit acceptance or human interception.
+Usage: npx aitm co-review <init|status|claim|wait|handoff|continue> [command options]
+Audience: Artifact owners, external reviewers, and the human continuation authority.
+Arguments: Run npx aitm co-review help <command> for exact required and optional flags.
+Preconditions: Normal commands require a Git worktree, tracked artifact, and caller-selected ignored --dir; help requires nothing.
+Effects: Normal mutations update only local protocol state under --dir; help, status, and wait do not mutate it.
+Output: Recovery instructions, validated state, immutable hashes, budget arithmetic, and the exact next action.
+Exit codes: 0=success/help; 1=runtime/integrity/protocol refusal; 2=invalid usage; 3=bounded wait timeout.
+Examples: npx aitm co-review --help; npx aitm co-review status --dir .tmp/design-review
+Related: npx aitm help; npx aitm verify-develop
 
 WHAT
   Coordinates immutable owner responses and reviewer decisions around one authoritative committed artifact.

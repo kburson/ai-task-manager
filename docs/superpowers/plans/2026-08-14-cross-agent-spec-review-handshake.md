@@ -266,7 +266,7 @@ git commit -m "[#1266] feat: add co-review recovery help surface"
 Create a temporary Git repository helper that configures an identity, writes and
 commits `docs/artifact.md`, and ignores `.tmp/`. Add cases for fresh init, imported
 R1, exact idempotent retry, different-config refusal, same identity refusal,
-non-positive budget, nonignored/tracked directory, outside paths, unreachable commit,
+non-positive budget, not-ignored/tracked directory, outside paths, unreachable commit,
 artifact/index mismatch, lock survival, state/event schemas, and SHA-256 format.
 The core assertions are:
 
@@ -648,7 +648,7 @@ Never accept a review after used turns already equal max.
 - [ ] **Step 5: Implement additive human continuation and refocus**
 
 Only intervention state can continue. Require positive integer additional turns and
-nonblank approved-by identity. Preserve used count, add to max, compute remaining,
+non-blank approved-by identity. Preserve used count, add to max, compute remaining,
 record approval. If supplied, require focus inside runtime and distinct from every
 state/round/summary path, hash it, and record it in state/event. Return an active,
 available owner turn without altering round evidence.

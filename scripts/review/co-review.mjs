@@ -199,7 +199,7 @@ function formatStatus(state) {
     `Artifact: ${state.artifact.path} @ ${state.artifact.commit}`,
     `Budget: ${state.reviewTurnsUsed} used / ${state.maxReviewTurns} max / ${state.remainingReviewTurns} remaining`,
     `Integrity: ${state.integrity.ok ? 'ok' : 'DRIFT'}`,
-    `Next: npx aitm co-review claim --dir ${state.initialization.runtimeDir} --actor ${actor}`,
+    `Next: ${state.nextAction}`,
     '',
   ].join('\n');
 }

@@ -380,7 +380,21 @@ export function statusProtocol(options) {
       errors.push(`${error.code ?? 'git-integrity'}: ${error.message}`);
     }
   }
-  return { ...state, integrity: { ok: errors.length === 0, errors } };
+  const integrity = { ok: errors.length === 0, errors };
+  return { ...state, integrity, nextAction: nextAction(state, integrity) };
+}
+
+function nextAction(state, integrity) {
+  if (!integrity.ok) return 'preserve protocol files and escalate integrity drift to the human';
+  if (state.lifecycle === 'accepted') return 'stop; protocol accepted';
+  if (state.lifecycle === 'intervention-required') {
+    return `npx aitm co-review continue --dir ${state.initialization.runtimeDir} --additional-turns <N> --approved-by <identity> [--focus <file>]`;
+  }
+  const actor = state.roles[state.currentRole];
+  if (state.turnState === 'available') {
+    return `npx aitm co-review claim --dir ${state.initialization.runtimeDir} --actor ${actor}`;
+  }
+  return `${state.currentRole} ${actor} holds round ${state.round}; complete the role artifact and run npx aitm co-review help handoff`;
 }
 
 function assertIntegrity(options) {
@@ -694,7 +708,7 @@ export function continueProtocol({ cwd = process.cwd(), dir, additionalTurns, ap
     fail('additional-turns', String(additionalTurns), { exitCode: 2 });
   }
   if (!String(approvedBy || '').trim()) {
-    fail('approved-by', 'nonblank identity required', { exitCode: 2 });
+    fail('approved-by', 'non-blank identity required', { exitCode: 2 });
   }
   const root = repositoryRoot(cwd);
   const paths = protocolPaths(root, dir);
