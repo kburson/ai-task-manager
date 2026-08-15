@@ -14,10 +14,112 @@ export async function runCli(argv = process.argv.slice(2), io = {}) {
     writeOut(renderHelp(help.command));
     return 0;
   }
-  writeError(
-    'co-review:not-implemented; no state changed; next: run `npx aitm co-review --help`\n'
+  try {
+    const [name, ...args] = argv;
+    const { values, booleans } = parseArguments(args);
+    const protocol = await import('./lib/protocol.mjs');
+    let result;
+    if (name === 'init') {
+      assertAllowed(values, booleans, [
+        'dir',
+        'artifact',
+        'owner',
+        'reviewer',
+        'max-turns',
+        'import-review',
+        'review-of',
+      ]);
+      result = protocol.initializeProtocol({
+        cwd: io.cwd ?? process.cwd(),
+        dir: required(values, 'dir'),
+        artifact: required(values, 'artifact'),
+        owner: required(values, 'owner'),
+        reviewer: required(values, 'reviewer'),
+        maxReviewTurns: integer(values, 'max-turns'),
+        importReview: values['import-review'],
+        reviewOf: values['review-of'],
+      });
+    } else if (name === 'status') {
+      assertAllowed(values, booleans, ['dir', 'json']);
+      result = protocol.statusProtocol({
+        cwd: io.cwd ?? process.cwd(),
+        dir: required(values, 'dir'),
+      });
+      if (!booleans.has('json')) {
+        writeOut(formatStatus(result));
+        return 0;
+      }
+    } else {
+      throw usage(`unknown command ${String(name)}`);
+    }
+    writeOut(`${JSON.stringify(result, null, 2)}\n`);
+    return 0;
+  } catch (error) {
+    writeError(`${error.message}\n`);
+    return error.exitCode ?? 1;
+  }
+}
+
+function usage(detail) {
+  const error = new Error(
+    `co-review:usage: ${detail}; no state changed; next: npx aitm co-review --help`
   );
-  return 1;
+  error.exitCode = 2;
+  return error;
+}
+
+function parseArguments(args) {
+  const values = {};
+  const booleans = new Set();
+  for (let index = 0; index < args.length; index += 1) {
+    const token = args[index];
+    if (!token.startsWith('--')) throw usage(`unexpected positional argument ${token}`);
+    const name = token.slice(2);
+    if (!name || Object.hasOwn(values, name) || booleans.has(name)) {
+      throw usage(`duplicate or empty option ${token}`);
+    }
+    if (name === 'json') {
+      booleans.add(name);
+      continue;
+    }
+    const value = args[index + 1];
+    if (value === undefined || value.startsWith('--')) throw usage(`${token} requires a value`);
+    values[name] = value;
+    index += 1;
+  }
+  return { values, booleans };
+}
+
+function assertAllowed(values, booleans, names) {
+  const allowed = new Set(names);
+  for (const name of [...Object.keys(values), ...booleans]) {
+    if (!allowed.has(name)) throw usage(`option --${name} is not valid for this command`);
+  }
+}
+
+function required(values, name) {
+  if (!String(values[name] ?? '').trim()) throw usage(`--${name} is required`);
+  return values[name];
+}
+
+function integer(values, name) {
+  const value = required(values, name);
+  if (!/^[0-9]+$/.test(value)) throw usage(`--${name} must be an integer`);
+  return Number(value);
+}
+
+function formatStatus(state) {
+  const actor = state.currentRole ? state.roles[state.currentRole] : 'none';
+  return [
+    `Lifecycle: ${state.lifecycle}`,
+    `Turn: ${state.currentRole ?? 'none'} (${actor}) / ${state.turnState ?? 'terminal'}`,
+    `Round: ${state.round}`,
+    `Artifact: ${state.artifact.path} @ ${state.artifact.commit}`,
+    `Budget: ${state.reviewTurnsUsed} used / ${state.maxReviewTurns} max / ${state.remainingReviewTurns} remaining`,
+    `Integrity: ${state.integrity.ok ? 'ok' : 'DRIFT'}`,
+    `Next: npx aitm co-review claim --dir ${state.initialization.runtimeDir} --actor ${actor}`,
+    '',
+  ].join('\n');
 }
 
 const isMain = process.argv[1] && fileURLToPath(import.meta.url) === path.resolve(process.argv[1]);
