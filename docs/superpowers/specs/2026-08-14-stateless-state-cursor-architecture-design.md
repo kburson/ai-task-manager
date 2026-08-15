@@ -230,8 +230,14 @@ Resident actions are ordered, stateless methods with verify-first semantics. Eve
       kind: 'pull-request-head',
       value: snapshot.headSha.value,
     };
-    // Persist correlation intent before initiating the discoverable effect.
-    return { status: 'complete', correlation, evidence };
+    const intent = await context.recordCorrelationIntent({
+      stateVisitId: snapshot.stateVisitId,
+      actionId: this.id,
+      correlation,
+    });
+    // A concurrent writer may have won; use the verified authoritative key.
+    await context.createPullRequest({ idempotencyKey: intent.correlation });
+    return { status: 'complete', correlation: intent.correlation, evidence };
     // or { status: 'waiting', correlation, deadline }
     // or paused | failed
   },
@@ -245,15 +251,21 @@ The closed outcome set is:
 - `paused` — execution intentionally yielded without a failure;
 - `failed` — the step produced blockers or diagnostics and remains incomplete.
 
-The correlation value is captured and durably recorded as an intent before `run` initiates the effect; the provider request uses the same value as its idempotency key where supported. Later invocations read that record first; they never recompute identity from a volatile live field. The live snapshot is used only to resolve or judge freshness of the recorded correlation. An action whose effect cannot be discovered by its correlation key is invalid.
+The correlation candidate is captured and offered as an intent before `run` initiates the effect. `recordCorrelationIntent` performs a versioned compare-and-set for `(stateVisitId, actionId)`, reads back the winning record, and returns its correlation. Concurrent Cursors therefore use the same authoritative provider idempotency key even when their candidates differ. Later invocations read the winning record first; they never recompute identity from a volatile live field. The live snapshot is used only to resolve or judge freshness of the recorded correlation. An action whose effect cannot be discovered by its correlation key is invalid.
 
-A waiting action is stored in the issue body as a singleton invariant marker:
+Action progress is an append-only event family in the issue body, not a singleton wait marker:
 
 ```text
-<!-- aitm-resident-action-wait data="<base64url-json>" -->
+<!-- aitm-resident-action-event id="<event-ulid>" data="<base64url-json>" -->
 ```
 
-The decoded `aitm.resident-action-wait/v1` record contains `issue`, `state`, `actionId`, `correlation`, `phase`, `startedAt`, and `deadline`; `phase` is `intent` or `waiting`. It joins the protected marker set in `lib/body-invariants.mjs`, and every write routes through `mutateIssueBody`. Because ordered execution permits only one active resident action, a singleton is sufficient. If `run` returns `waiting` but the verified marker is absent or malformed, the step is `failed`, not dormant. Hydration compares the deadline through the injected repository clock; an unresolved wait past its deadline is reclassified as `failed` with recovery diagnostics. The Cursor processes actions in order:
+The decoded `aitm.resident-action-event/v1` record contains `eventId`, `issue`, `state`, `stateVisitId`, `actionId`, `attemptId`, `phase`, `correlation`, `ts`, optional `deadline`, and optional evidence fingerprint. `stateVisitId` is derived from the exact current `aitm-entered-<state>-N` visit marker and its timestamp after move completion; it is not merely the state name or a process-local counter. Events are keyed by `eventId` and scoped by both the specific state visit and action. Hydration folds `intent → waiting → resolved|failed|superseded` for each `(stateVisitId, actionId, attemptId)` and selects the one authoritative attempt. A crash after `intent` but before the provider call means “effect possible”: verification searches by the recorded correlation and, if absent, retries with that same idempotency key rather than minting another identity.
+
+The family is permanent audit evidence. Events are never cleared or rewritten; a new visit to the same state has a new `stateVisitId`, so prior visits remain inspectable but cannot satisfy the new visit. Within one visit/action, compare-and-set permits only one unresolved intent; an explicit `superseded` event must close it before a new attempt can be appended. Phase event IDs are deterministic for `(attemptId, phase)`, making exact retries no-ops and bounding normal storage to one event per phase per attempt.
+
+`lib/body-invariants.mjs` gains an append-only-record kind that verifies every prior `eventId` and its exact encoded bytes remain present; replacement, partial deletion, and count reduction all fail. The family is mirrored in `gh-edit-guard.MARKER_PATTERNS`. Writes route through `mutateIssueBody`/`versionedWriteBody`: on concurrent distinct appends, the losing version retry reapplies its closure to the fresh body so both records survive; on concurrent intents for the same visit/action, the fresh-base compare-and-set returns the already-recorded winner instead of overwriting it. No hot-path clear uses `allowMarkerLoss`.
+
+If `run` returns `waiting` but a verified `waiting` event with correlation and deadline is absent or malformed, the step is `failed`, not dormant. Hydration compares the deadline through the injected repository clock; an unresolved wait past its deadline appends `failed` and returns recovery diagnostics. The Cursor processes actions in order:
 
 1. call `verify` against the current snapshot;
 2. when complete, continue without calling `run`;
@@ -262,7 +274,7 @@ The decoded `aitm.resident-action-wait/v1` record contains `issue`, `state`, `ac
 5. verify the step again before treating it as complete; and
 6. stop dormant on waiting, paused, failed, or unverifiable results.
 
-No Cursor or action index is persisted. The wait marker is durable action evidence, not a program counter: on every invocation the Cursor still scans from the beginning and skips steps whose evidence remains fresh. This makes retries and crash recovery idempotent.
+No Cursor or action index is persisted. The event family is durable action evidence, not a program counter: on every invocation the Cursor still scans from the beginning and skips steps whose folded evidence remains fresh. This makes retries and crash recovery idempotent.
 
 Resident action execution is not globally serialized. Each action declares `serialization: 'correlation' | 'issue-lock'`. The default `correlation` class relies on the durable key plus a provider idempotency/deduplication primitive; an external action without provider dedup is invalid for that class. A short local mutation that cannot otherwise be made atomic may use `issue-lock`, but it must not hold the lock while waiting for CI, an agent, or another long-running provider operation.
 
@@ -343,20 +355,24 @@ async function executeCursor({ issue, cwd, trigger, requestedTarget }) {
   if (plan.matrix.applies && !plan.matrix.ok) return matrixRefused(plan.matrix);
   if (plan.noop) return moveNoop(plan);
 
-  return repository.withIssueLock(lockOptions({ issue, verb: moveContext.verb, cwd }), async () => {
-    snapshot = await repository.hydrateTask({ issue, cwd });
-    if (snapshot.currentState.value !== current.id) return concurrentDrift(snapshot);
+  const boundary = await repository.withIssueLock(
+    lockOptions({ issue, verb: moveContext.verb, cwd }),
+    async () => {
+      snapshot = await repository.hydrateTask({ issue, cwd });
+      if (snapshot.currentState.value !== current.id) return concurrentDrift(snapshot);
 
-    const gateResult = await repository.runPreMutationGate({ moveContext, snapshot, plan });
-    if (gateResult.exit != null) return gateRefused(gateResult);
+      const gateResult = await repository.runPreMutationGate({ moveContext, snapshot, plan });
+      if (gateResult.exit != null) return gateRefused(gateResult);
 
-    const move = await repository.requestTransition({ moveContext, plan, gateResult });
-    if (move.exit != null) return moveRefused(move);
+      return repository.requestTransition({ moveContext, plan, gateResult });
+    }
+  );
+  if (boundary.exit != null) return moveRefused(boundary);
 
-    snapshot = await repository.hydrateTask({ issue, cwd });
-    return actions.resume(machine.get(requestedTarget).residentActions, snapshot, {
-      trigger: 'resident-entry',
-    });
+  // Release the boundary lock before starting target resident work.
+  snapshot = await repository.hydrateTask({ issue, cwd });
+  return actions.resume(machine.get(requestedTarget).residentActions, snapshot, {
+    trigger: 'resident-entry',
   });
 }
 ```
@@ -364,6 +380,8 @@ async function executeCursor({ issue, cwd, trigger, requestedTarget }) {
 The issue-scoped lock spans the final hydration, complete pre-mutation gate, and `moveState` call. The adapter delegates to shipped `withIssueLock`, so Cursor→`moveState`, existing verb nesting, and child processes reuse the `AsyncLocalStorage`/`AITM_ISSUE_LOCK_HELD` contract automatically.
 
 `ISSUE_LOCK_STALE_MS` remains the shipped 30-minute orphan backstop; guard latency does not tune it. The implementation measures p50/p95/p99 hold time and configures a bounded retry/backoff acquisition budget at least as large as measured p95 plus jitter, subject to an operator-facing maximum. Exhausting that budget on a mutating boundary remains an honest exit 7 and the caller rehydrates before retrying. Read-only and actions-only surfaces do not acquire this boundary lock. This network cost is deliberate until a separately scoped multi-source revision-token architecture exists.
+
+An `issue-lock` resident action uses the same shipped primitive with an action-specific `verb` and acquisition profile, but it is a separate short critical section after any boundary lock has been released. On contention an actions-only invocation returns `paused` with `issue-lock-contended` and retry diagnostics; it does not report movement exit 7 because no boundary was attempted. Legacy C adapters that invoke an action inside an already-held issue lock rely on the shipped re-entrant short-circuit; D's final path does not intentionally nest them.
 
 ## Boundary and transition consistency
 
@@ -397,7 +415,7 @@ Story D moves the complete shipped `runGuardExecution` responsibility inside the
 6. lifecycle-warning timing emitted from the aggregated `warns` payload; and
 7. the sized-and-estimated Backlog warning.
 
-Its guard payload retains the shipped `{ ok, refusals: [{ id, reason, blockers? }], warns?: [{ id, warn }] }` shape. The already-evaluated result is passed to `moveState` through its dependency seam so the saga does not repeat the gate. Body-fetch failure remains exit 3; generic guard refusal remains exit 4; contiguity refusal remains exit 6; lock, Status confirmation, or sentinel failure remains exit 7; and post-commit board/marker drift remains exit 8.
+Its guard payload retains the shipped `{ ok, refusals: [{ id, reason, blockers? }], warns?: [{ id, warn }] }` shape. Today the saga override is the underscore-private `ctx._runGuardExecution`. Story D promotes this to the public production option `ctx.runGuardExecution`, with precedence `runGuardExecution ?? _runGuardExecution ?? defaultRunGuardExecution`; the underscore form remains only for test/backward compatibility. The adapter passes an already-evaluated function through the public option so the saga does not repeat the gate. Body-fetch failure remains exit 3; generic guard refusal remains exit 4; contiguity refusal remains exit 6; lock, Status confirmation, or sentinel failure remains exit 7; and post-commit board/marker drift remains exit 8.
 
 Post-commit cache and synchronization failures do not retroactively report the committed move as failed. They remain separately classified infrastructure results unless a specific operation is deliberately promoted into an action step with durable completion semantics.
 
@@ -485,6 +503,8 @@ Compatibility requirements across the split:
 - retain `registerGuard` idempotency and empty-on-direct-import characterization until the factory-backed compatibility layer replaces bootstrap;
 - retain all move saga ordering, timing-row pairs, exit codes 3/4/6/7/8, and post-commit tail isolation;
 - retain `buildCloseGatesDeps`, worktree-aware trunk resolution, and the temporary `refinementPlan` compatibility mirror;
+- mirror the append-only resident-action event family in both `body-invariants.mjs` and `gh-edit-guard.MARKER_PATTERNS`;
+- introduce public `ctx.runGuardExecution` while retaining `_runGuardExecution` only for test/backward compatibility;
 - retain `--force`, `--supersede`, `TT_SKIP_NETWORK`, and sanctioned reverse-edge behavior;
 - extend and ultimately supersede `states/states-skeleton.test.mjs` with factory-shape assertions rather than creating contradictory shape tests; and
 - keep legacy `onEnter` and new `residentActions` as distinct contracts until legacy tail removal.
@@ -520,11 +540,12 @@ The future TIA design changes which checks the Test action requests and records.
 | Snapshot partly fresh                                   | Existing state                              | Consumers of stale required fields refuse; unrelated fields may warn | Refresh named sources                       |
 | Current action waiting before deadline                  | Existing state                              | Dormant waiting with correlation                                     | Resolve external progress                   |
 | Current action waiting past deadline                    | Existing state                              | Reclassified failed                                                  | Repair/restart correlated work              |
-| Action returns waiting without verified wait marker     | Existing state                              | Failed contract                                                      | Repair marker write, then rerun             |
+| Action returns waiting without verified waiting event   | Existing state                              | Failed contract                                                      | Repair event append, then rerun             |
 | Current action paused or failed                         | Existing state                              | Dormant paused/failed                                                | Resume first incomplete step                |
 | Action effect has no durable correlation                | Existing state                              | Contract refusal                                                     | Correct action implementation               |
-| Two Cursors run one correlation-class action            | Existing state                              | Both may execute; durable key plus provider dedup must converge once | Rehydrate and resolve recorded correlation  |
-| Two Cursors run one issue-lock-class action             | Existing state                              | One runs; other receives lock contention                             | Losing Cursor rehydrates before retry       |
+| Required prior action event is missing or altered       | Existing state                              | Failed closed; provider evidence alone cannot authorize replay       | Reconcile durable event history             |
+| Two Cursors run one correlation-class action            | Existing state                              | Versioned CAS selects one key; both provider calls deduplicate on it | Rehydrate and fold append-only events       |
+| Two Cursors run one issue-lock-class action             | Existing state                              | One runs; actions-only contender returns paused with retry detail    | Losing Cursor rehydrates before retry       |
 | Gated-target issue body fetch fails                     | Existing state                              | Failed closed, exit 3                                                | Restore authoritative read, then retry      |
 | Guard returns refusal                                   | Existing state                              | Aggregated boundary refusal, exit 4 or contiguity exit 6             | Fix all reported blockers                   |
 | Guard throws or returns malformed data                  | Existing state                              | Coerced and aggregated refusal, exit 4                               | Correct guard and retry                     |
@@ -567,7 +588,7 @@ Required behaviors include:
 - reconstruction with no persisted action index;
 - verify-first step skipping and stale-evidence rerun;
 - dormant waiting, paused, and failed outcomes;
-- action completion before exit validation;
+- resident completion before exit validation on forward triggers;
 - reverse and bypass movement remains available from waiting, paused, and failed resident actions;
 - aggregate exit and entry refusals with warning preservation and thrown-guard coercion;
 - pre-mutation parity for body-fetch exit 3, contiguity refresh, gate-refused timing, dirty warning, guard context, and guard identity;
@@ -575,9 +596,12 @@ Required behaviors include:
 - target action only after confirmed entry;
 - crash recovery immediately after commit;
 - no replay of target entry guards on in-state resume;
-- Review objection remains in Review; and
+- Review objection remains in Review;
 - correlation stability when HEAD advances between run and verify;
-- protected wait-marker write/read/loss behavior with an injected clock at and beyond the deadline;
+- per-action/per-visit event folding, retention across later steps, and invalidation by a new state visit;
+- versioned intent compare-and-set under same-action and cross-action concurrency;
+- append-only exact-record protection plus the external `gh-edit-guard` mirror;
+- crash-after-intent recovery, waiting-event verification, and injected-clock behavior at and beyond the deadline;
 - interruption convergence, in-memory offline hydration, acquisition-budget contention, separate correlation-class and issue-lock-class action concurrency, boundary serialization, and compatibility parity for all sanctioned movement and escape hatches.
 
 ## Alternatives considered
