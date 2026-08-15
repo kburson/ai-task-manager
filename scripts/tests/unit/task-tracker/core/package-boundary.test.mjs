@@ -80,7 +80,9 @@ function repoRoot() {
 // package surface therefore grows by exactly four entries.
 // #871 intentionally ships one runtime lib — the base-aware cleanup planner
 // (scripts/task-tracker/lib/cleanup-base-aware.mjs) — growing the surface by one.
-const ENTRY_CEILING = 656;
+// #1266 intentionally ships the co-review entrypoint, recovery help, and protocol
+// authority, growing the measured package surface by exactly three entries.
+const ENTRY_CEILING = 659;
 
 function packedFiles() {
   const out = execFileSync('npm', ['pack', '--dry-run', '--json'], {
@@ -161,6 +163,7 @@ test('package-boundary: runtime entry points are still shipped', () => {
   for (const required of [
     'bin/cli.mjs',
     'bin/aitm.mjs',
+    'scripts/review/co-review.mjs',
     'scripts/reports/generate-value-report.mjs',
     'scripts/task-tracker/verbs/start.mjs',
     'scripts/gh/move-state.mjs',
