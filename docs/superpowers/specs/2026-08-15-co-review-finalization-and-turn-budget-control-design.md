@@ -1,5 +1,7 @@
 # Co-Review Finalization and Turn-Budget Control
 
+<!-- cspell:ignore ENOTEMPTY -->
+
 **Issue:** #1268
 
 **Status:** Approved design
@@ -457,9 +459,13 @@ documented order, line endings are LF, and the same terminal state always produc
 the same `README.md` bytes. Machine-readable data appears as canonical JSON with
 fixed key insertion order inside exactly one fenced block delimited by
 `<!-- aitm-co-review-manifest:start -->` and
-`<!-- aitm-co-review-manifest:end -->`; explanatory prose outside the block is
-fixed text. Finalization and retry parse that block and compare the recomputed
-expected tree.
+`<!-- aitm-co-review-manifest:end -->`. The exact region is, in order: the start
+marker, LF, an opening ` ```json ` fence, LF, canonical JSON ending in LF, a
+closing ` ``` ` fence, LF, and the end marker. The HTML comments delimit the
+region; the fence is its single child container. Finalization and retry locate the
+unique marker pair, require that exact wrapper grammar, extract only the bytes
+inside the fence, parse the JSON, and compare the recomputed expected tree.
+Explanatory prose outside the marked region is fixed text.
 
 ### Atomic publication and retry
 
@@ -475,14 +481,19 @@ against a complete destination validates every expected path and byte hash and
 succeeds without rewriting. Missing, extra, or different destination content
 refuses with a precise conflict diagnostic.
 
-Destination existence is checked before staging and again through the atomic rename.
-If another caller creates the destination in the preflight-to-rename window, the
-rename must fail without replacement. The losing caller validates the now-present
-destination: byte-identical output is idempotent success; missing, extra, or
-different output is a conflict. Unique staging names prevent concurrent callers
-from sharing or corrupting partial work. A failed or racing invocation may leave
-only its own named staging directory as inspection evidence; it never deletes or
-adopts another caller's staging directory.
+Destination existence is checked before staging and again through the atomic
+rename. A destination that exists at preflight, including an empty directory, is
+validated and therefore conflicts unless it is the complete byte-identical archive.
+Node's `fs.rename` has no no-replacement directory mode: if an external actor creates
+an empty destination only after preflight, the rename may replace it, and this
+narrow race is explicitly treated as equivalent to an absent destination. A
+co-review finalization caller never creates an empty destination. If a racing destination is
+non-empty, POSIX rename refuses with `ENOTEMPTY`; the losing caller then validates
+the now-present destination, treating byte-identical output as idempotent success
+and missing, extra, or different output as conflict. Unique staging names prevent
+concurrent callers from sharing or corrupting partial work. A failed or racing
+invocation may leave only its own named staging directory as inspection evidence;
+it never deletes or adopts another caller's staging directory.
 
 Finalization never deletes, edits, or relocates runtime originals. It does not
 stage, commit, push, open a pull request, edit the authoritative artifact, update
@@ -665,6 +676,8 @@ and observed failing before each production behavior is added.
 - exact retry without rewrite and precise conflicting-destination refusal;
 - unique concurrent staging paths, destination TOCTOU races, and byte-identical
   concurrent idempotency versus conflicting-output refusal;
+- pre-existing empty-destination conflict, injected post-preflight empty-destination
+  replacement, and non-empty `ENOTEMPTY` race behavior;
 - accepted state preserved when automatic publication fails, with exact exit 4 and
   acceptance-first recovery output;
 - accepted handoff without a configured destination returning exit 4 and requiring
