@@ -417,6 +417,52 @@ Top-level and command-specific help document `set-max-turns`, `supplement`, and
 turn, automatic consensus finalization, good-enough finalization, exact-byte archive
 policy, legacy behavior, refusal causes, and recovery after partial failure.
 
+The expanded API must remain fully discoverable rather than treating the new
+commands as isolated usage strings. Top-level `co-review --help` must enumerate the
+complete surface in lifecycle order:
+
+1. `init`;
+2. `status`;
+3. `claim`;
+4. `wait`;
+5. `handoff`;
+6. `set-max-turns`;
+7. `supplement`;
+8. `continue`; and
+9. `finalize`.
+
+For every command, top-level help gives its purpose, authorized caller, eligible
+lifecycle states, mutation boundary, and copyable command shape. Its shared option
+glossary explains the positional maximum on `set-max-turns`, the absolute maximum
+on `continue`, the legacy additional-turn adapter, archive destination, good-enough
+decision, focus compatibility, authenticated GitHub provenance, and agent-only
+`--actor` distinction.
+
+The lifecycle walkthrough and examples cover:
+
+- initialization with an archive destination;
+- an ordinary owner/reviewer exchange and automatic consensus finalization;
+- active increase and short-circuit decrease;
+- final reviewer changes followed by the closing owner response;
+- pausing indefinitely at intervention;
+- agent-authored supplement registration and reviewer acknowledgment;
+- bare and absolute continuation;
+- explicit human-good-enough finalization;
+- finalization retry after accepted-state publication failure; and
+- legacy continuation and explicit archive-destination recovery.
+
+Each new command's dedicated help follows the existing recovery-grade contract:
+purpose, authority, prerequisites, exact syntax, arguments, effects and explicit
+non-effects, validations, output, exit codes, transition, idempotency, examples,
+failure recovery, and next commands. Existing command help is revised wherever the
+new lifecycle changes its outcomes, especially `init`, `status`, owner and reviewer
+`handoff`, and `continue`.
+
+Package-facing self-documentation and any command enumeration must expose the same
+surface. Focused help tests assert required sections and examples, top-level and
+per-command parity, legacy option discoverability, and read-only behavior before
+initialization and outside a repository.
+
 Help reminds agents that response, review, supplement, and archive inputs are
 Markdown expected to satisfy the host repository's governance. Help parsing remains
 read-only and available before repository discovery.
