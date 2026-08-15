@@ -184,7 +184,7 @@ Forward navigation delegates to `forwardTarget`. Reverse navigation delegates to
 | Review             | Done               | Develop, Test              |
 | Done               | none               | none                       |
 
-The table is explanatory; executable truth stays in `lifecycle-policy/executable-transitions.mjs`. The Cursor validates every requested edge with `validateExecutableTransition(from, to)` and never infers an exceptional edge from array position.
+The table is explanatory; executable truth stays in `lifecycle-policy/executable-transitions.mjs`. Movement intent is resolved once through `computeTransitionPlan({ fromState, toState, flags })`, which delegates ordinary matrix decisions to lifecycle policy while preserving the shipped `force`/`supersede` bypass and no-op rules. The Cursor never infers an exceptional edge from array position or recreates this plan inline.
 
 ## Guard contract
 
@@ -213,23 +213,25 @@ Entry guards are evaluated only when attempting to enter their owning state. Res
 
 ## Resident-action contract
 
-Resident actions are ordered, stateless methods with verify-first semantics. Every externally mutating action declares a durable correlation key that `verify` can resolve, such as a branch name, PR head SHA, check-run name plus head SHA, or receipt ULID:
+Resident actions are ordered, stateless methods with verify-first semantics. Every externally mutating action declares how to record and resolve a durable correlation key, such as a branch name, the PR head SHA used at creation time, a check-run name plus submitted SHA, or a receipt ULID:
 
 ```js
 {
   id: 'test-create-pr',
 
-  correlation(snapshot) {
-    return { kind: 'pull-request-head', value: snapshot.headSha.value };
-  },
-
   async verify(snapshot, context) {
+    const correlation = snapshot.actionRecord?.correlation;
     return { status: 'complete', evidence };
     // or { status: 'incomplete', reason }
   },
 
   async run(snapshot, context) {
-    return { status: 'complete', evidence };
+    const correlation = {
+      kind: 'pull-request-head',
+      value: snapshot.headSha.value,
+    };
+    // Persist correlation intent before initiating the discoverable effect.
+    return { status: 'complete', correlation, evidence };
     // or { status: 'waiting', correlation, deadline }
     // or paused | failed
   },
@@ -243,7 +245,15 @@ The closed outcome set is:
 - `paused` — execution intentionally yielded without a failure;
 - `failed` — the step produced blockers or diagnostics and remains incomplete.
 
-An action whose effect cannot be discovered by its correlation key is invalid. Hydration resolves waiting evidence on every invocation; an unresolved wait past its deadline is reclassified as `failed` with recovery diagnostics. The Cursor processes actions in order:
+The correlation value is captured and durably recorded as an intent before `run` initiates the effect; the provider request uses the same value as its idempotency key where supported. Later invocations read that record first; they never recompute identity from a volatile live field. The live snapshot is used only to resolve or judge freshness of the recorded correlation. An action whose effect cannot be discovered by its correlation key is invalid.
+
+A waiting action is stored in the issue body as a singleton invariant marker:
+
+```text
+<!-- aitm-resident-action-wait data="<base64url-json>" -->
+```
+
+The decoded `aitm.resident-action-wait/v1` record contains `issue`, `state`, `actionId`, `correlation`, `phase`, `startedAt`, and `deadline`; `phase` is `intent` or `waiting`. It joins the protected marker set in `lib/body-invariants.mjs`, and every write routes through `mutateIssueBody`. Because ordered execution permits only one active resident action, a singleton is sufficient. If `run` returns `waiting` but the verified marker is absent or malformed, the step is `failed`, not dormant. Hydration compares the deadline through the injected repository clock; an unresolved wait past its deadline is reclassified as `failed` with recovery diagnostics. The Cursor processes actions in order:
 
 1. call `verify` against the current snapshot;
 2. when complete, continue without calling `run`;
@@ -252,7 +262,9 @@ An action whose effect cannot be discovered by its correlation key is invalid. H
 5. verify the step again before treating it as complete; and
 6. stop dormant on waiting, paused, failed, or unverifiable results.
 
-No action index is persisted. On every invocation the Cursor scans from the beginning and skips steps whose evidence remains fresh. This makes retries and crash recovery idempotent.
+No Cursor or action index is persisted. The wait marker is durable action evidence, not a program counter: on every invocation the Cursor still scans from the beginning and skips steps whose evidence remains fresh. This makes retries and crash recovery idempotent.
+
+Resident action execution is not globally serialized. Each action declares `serialization: 'correlation' | 'issue-lock'`. The default `correlation` class relies on the durable key plus a provider idempotency/deduplication primitive; an external action without provider dedup is invalid for that class. A short local mutation that cannot otherwise be made atomic may use `issue-lock`, but it must not hold the lock while waiting for CI, an agent, or another long-running provider operation.
 
 Agentic or human work can be represented by steps whose `run` returns instructions/waiting and whose `verify` detects the resulting repository evidence. A long-lived process is not required.
 
@@ -273,10 +285,14 @@ class RepositoryAdapter {
   readChecks({ issue, headSha }) {}
   readBoundWorktree({ issue, cwd }) {}
   mutateActionEvidence({ issue, mutate }) {}
-  withIssueLock(issue, operation) {}
-  requestTransition({ moveContext }) {} // delegates to moveState(ctx)
+  now() {}
+  withIssueLock({ issue, verb, projDir, sessionId, timeoutMs, retries }, operation) {}
+  runPreMutationGate({ moveContext, snapshot, plan }) {}
+  requestTransition({ moveContext, plan, gateResult }) {} // delegates to moveState(ctx)
 }
 ```
+
+`withIssueLock` delegates to the shipped function of the same name and preserves its full options object, holder diagnostics, `AsyncLocalStorage` nesting, and issue-scoped `AITM_ISSUE_LOCK_HELD` child-process re-entrancy. `now()` defaults to `Date.now` in production and is deterministic in tests.
 
 `hydrateTask` returns immutable provenance-bearing values, the five `isMoveComplete` signals, `lastKnownState`, action correlations, and per-field freshness. A boundary may proceed only when every field required by its actions and guards is authoritative and fresh; unrelated stale optional fields remain diagnostic warnings. This adjudicates partially fresh snapshots per consumer rather than treating the entire snapshot as uniformly fresh.
 
@@ -286,23 +302,24 @@ The test corpus ships one stateful in-memory adapter under `scripts/tests/helper
 
 ## Cursor triggers and execution
 
-Each invocation has one trigger. Triggers either request actions only or request exactly one target boundary:
+Each invocation has one trigger. Triggers either request resident work only or request exactly one target boundary. Only actions-only and ordinary forward triggers require the current resident actions to complete; reverse and abandonment/bypass movement must remain available specifically when resident work is incomplete.
 
-| Invocation surface                                                     | Cursor trigger    | Target selection                                                        | Boundary permitted |
-| ---------------------------------------------------------------------- | ----------------- | ----------------------------------------------------------------------- | ------------------ |
-| `/task promote`, `/task next`                                          | `advance-forward` | `forwardTarget(current)`                                                | at most one        |
-| `/task refine`                                                         | `advance-forward` | Backlog→Refine or Refine→Ready for Planning, based on its current phase | at most one        |
-| `/task plan`                                                           | `advance-forward` | Ready for Planning→Plan                                                 | at most one        |
-| `/task test`                                                           | `advance-forward` | Develop→Test after its resident work is migrated by #937                | at most one        |
-| `/task review` / `REVIEW_COMPLETE`                                     | `advance-forward` | Test→Review; in Review, action/probe mode has no target                 | at most one        |
-| `/task close`                                                          | `advance-forward` | Review→Done                                                             | at most one        |
-| `/task demote`, `/task reject`                                         | `advance-reverse` | explicit policy member of `backwardTargets(current)`                    | at most one        |
-| `/task shelve`, `/task park`, `/task cancel-plan`                      | `advance-reverse` | explicit Backlog or Ready for Planning target validated by policy       | at most one        |
-| `/task supersede`                                                      | `supersede`       | explicit `done` target with shipped bypass policy                       | at most one        |
-| `/task plan-approve`, `/task approve`, resume, bind/rebind, agent turn | `actions-only`    | none                                                                    | no                 |
-| CI/provider callback, scheduled reconciler                             | `actions-only`    | none                                                                    | no                 |
+| Invocation surface                                                     | Cursor trigger    | Target selection                                                        | Run current resident actions? | Boundary permitted |
+| ---------------------------------------------------------------------- | ----------------- | ----------------------------------------------------------------------- | ----------------------------- | ------------------ |
+| `/task promote`, `/task next`                                          | `advance-forward` | `forwardTarget(current)`                                                | yes                           | at most one        |
+| `/task refine`                                                         | `advance-forward` | Backlog→Refine or Refine→Ready for Planning, based on its current phase | yes                           | at most one        |
+| `/task plan`                                                           | `advance-forward` | Ready for Planning→Plan                                                 | yes                           | at most one        |
+| `/task test`                                                           | `advance-forward` | Develop→Test after its resident work is migrated by #937                | yes                           | at most one        |
+| `/task review` / `REVIEW_COMPLETE` while in Test                       | `advance-forward` | Test→Review                                                             | yes                           | at most one        |
+| `/task review --probe`, callback, or retry while in Review             | `actions-only`    | none                                                                    | yes                           | no                 |
+| `/task close`                                                          | `advance-forward` | Review→Done                                                             | yes                           | at most one        |
+| `/task demote`, `/task reject`                                         | `advance-reverse` | explicit policy member of `backwardTargets(current)`                    | no                            | at most one        |
+| `/task shelve`, `/task park`, `/task cancel-plan`                      | `advance-reverse` | explicit Backlog or Ready for Planning target                           | no                            | at most one        |
+| `/task supersede` or an operator-forced move                           | `bypass`          | explicit target carried by the sanctioned caller                        | no                            | at most one        |
+| `/task plan-approve`, `/task approve`, resume, bind/rebind, agent turn | `actions-only`    | none                                                                    | yes                           | no                 |
+| CI/provider callback, scheduled reconciler                             | `actions-only`    | none                                                                    | yes                           | no                 |
 
-Every requested target is normalized and checked by `validateExecutableTransition`. A Cursor never auto-selects another target after completing actions and never crosses a second boundary in the same invocation. Human approval and dedicated verb semantics therefore remain at the command surface.
+Every requested target is normalized, then `computeTransitionPlan` decides matrix applicability, bypass, no-op, and whether the guard pipeline runs. A Cursor never auto-selects another target after completing actions and never crosses a second boundary in the same invocation. Human approval and dedicated verb semantics therefore remain at the command surface.
 
 The execution algorithm is:
 
@@ -311,28 +328,29 @@ async function executeCursor({ issue, cwd, trigger, requestedTarget }) {
   let snapshot = await repository.hydrateTask({ issue, cwd });
   const current = machine.get(snapshot.currentState.value);
 
-  const actionResult = await actions.resume(current.residentActions, snapshot, { trigger });
-  if (actionResult.status !== 'complete') return dormant(actionResult);
+  if (trigger === 'actions-only' || trigger === 'advance-forward') {
+    const actionResult = await actions.resume(current.residentActions, snapshot, { trigger });
+    if (actionResult.status !== 'complete') return dormant(actionResult);
+    if (trigger === 'actions-only') return residentComplete(current.id);
+  }
 
-  if (trigger === 'actions-only') return residentComplete(current.id);
+  const moveContext = buildMoveContext(snapshot, current.id, requestedTarget, trigger);
+  const plan = computeTransitionPlan({
+    fromState: current.id,
+    toState: requestedTarget,
+    flags: moveContext.flags,
+  });
+  if (plan.matrix.applies && !plan.matrix.ok) return matrixRefused(plan.matrix);
+  if (plan.noop) return moveNoop(plan);
 
-  const edge = validateExecutableTransition(current.id, requestedTarget);
-  if (!edge.ok || edge.noop) return edgeResult(edge);
-
-  return repository.withIssueLock(issue, async () => {
+  return repository.withIssueLock(lockOptions({ issue, verb: moveContext.verb, cwd }), async () => {
     snapshot = await repository.hydrateTask({ issue, cwd });
     if (snapshot.currentState.value !== current.id) return concurrentDrift(snapshot);
 
-    const guardResult = await guards.validateAll({
-      exit: current.exitGuards,
-      entry: machine.get(requestedTarget).entryGuards,
-      snapshot,
-    });
-    if (!guardResult.ok) return boundaryRefused(current, guardResult);
+    const gateResult = await repository.runPreMutationGate({ moveContext, snapshot, plan });
+    if (gateResult.exit != null) return gateRefused(gateResult);
 
-    const move = await repository.requestTransition({
-      moveContext: buildMoveContext(snapshot, current.id, requestedTarget, trigger),
-    });
+    const move = await repository.requestTransition({ moveContext, plan, gateResult });
     if (move.exit != null) return moveRefused(move);
 
     snapshot = await repository.hydrateTask({ issue, cwd });
@@ -343,11 +361,13 @@ async function executeCursor({ issue, cwd, trigger, requestedTarget }) {
 }
 ```
 
-The issue-scoped lock spans the final hydration, aggregate guard evaluation, and `moveState` call. Existing verbs that already hold it use the re-entrant `AITM_ISSUE_LOCK_HELD`/`isIssueLockHeld(issueArg, env)` contract rather than nesting a second lock. Guard evaluation can perform Git and GitHub work, so the implementation must measure p50/p95 lock hold time and set the lock TTL above the measured p99 plus safety margin; stealing is allowed only under the existing stale-lock ownership policy. This network cost is deliberate until a separately scoped multi-source revision-token architecture exists.
+The issue-scoped lock spans the final hydration, complete pre-mutation gate, and `moveState` call. The adapter delegates to shipped `withIssueLock`, so Cursor→`moveState`, existing verb nesting, and child processes reuse the `AsyncLocalStorage`/`AITM_ISSUE_LOCK_HELD` contract automatically.
+
+`ISSUE_LOCK_STALE_MS` remains the shipped 30-minute orphan backstop; guard latency does not tune it. The implementation measures p50/p95/p99 hold time and configures a bounded retry/backoff acquisition budget at least as large as measured p95 plus jitter, subject to an operator-facing maximum. Exhausting that budget on a mutating boundary remains an honest exit 7 and the caller rehydrates before retrying. Read-only and actions-only surfaces do not acquire this boundary lock. This network cost is deliberate until a separately scoped multi-source revision-token architecture exists.
 
 ## Boundary and transition consistency
 
-A boundary crossing is approved in this order:
+A normal forward boundary crossing is approved in this order; reverse triggers skip resident completion, and `computeTransitionPlan.bypass` skips both matrix and guard gates:
 
 ```text
 current resident actions complete
@@ -367,7 +387,17 @@ The Cursor delegates transition persistence to the shipped `scripts/task-tracker
 6. `assertBoardMarkerConsistent`, enforcing the post-condition after sentinel confirmation; and
 7. `runPostCommitTail`, isolating every best-effort projection failure without changing a committed move's exit code.
 
-Guard execution moves inside the same issue lock immediately before this saga. The saga receives a flag/result showing the Cursor already evaluated guards and must not run them again. Generic guard refusal remains exit 4; contiguity refusal remains exit 6; lock, Status confirmation, or sentinel failure remains exit 7; and post-commit board/marker drift remains exit 8.
+Story D moves the complete shipped `runGuardExecution` responsibility inside the same issue lock immediately before this saga. `RepositoryAdapter.runPreMutationGate` always delegates to that refactored seam; the seam itself uses `plan.runGuardPipeline` so bypass moves skip matrix/guards without losing non-blocking warnings. It preserves all of its responsibilities, including:
+
+1. dirty-workspace warning on entry to Review;
+2. issue-body fetch with #511 fail-closed classification;
+3. complete guard-context assembly, including `fetchBlockerState`, `cfg`, `buildCloseGatesDeps`, and `lifecycleEvidence`;
+4. exit-plus-entry aggregation plus #1017 targeted `refreshPreRefineContiguity`; and
+5. guard-identity-dependent handling, including the #359 `gate-refused` timing row and contiguity banner;
+6. lifecycle-warning timing emitted from the aggregated `warns` payload; and
+7. the sized-and-estimated Backlog warning.
+
+Its guard payload retains the shipped `{ ok, refusals: [{ id, reason, blockers? }], warns?: [{ id, warn }] }` shape. The already-evaluated result is passed to `moveState` through its dependency seam so the saga does not repeat the gate. Body-fetch failure remains exit 3; generic guard refusal remains exit 4; contiguity refusal remains exit 6; lock, Status confirmation, or sentinel failure remains exit 7; and post-commit board/marker drift remains exit 8.
 
 Post-commit cache and synchronization failures do not retroactively report the committed move as failed. They remain separately classified infrastructure results unless a specific operation is deliberately promoted into an action step with durable completion semantics.
 
@@ -444,16 +474,16 @@ The reviewed design is too risky as one XL implementation. #1117 remains the arc
 | ----- | ---------------------------------------------------------------------------------------- | -------: | ------------------------------------------------------------------------------------------------------------------- |
 | A     | Topology single-sourcing and pure factory                                                |       6h | Consume `lifecycle-policy`, freeze direct-reference definitions, expose derived indexes; no runtime behavior change |
 | B     | Repository adapter, task snapshot, and in-memory test double                             |       8h | Add provenance/reconciliation/offline hydration without production Cursor routing                                   |
-| C     | Resident-action contract, Cursor, Review migration, conformance and interruption harness |      16h | Route actions-only and Review behavior while preserving movement semantics                                          |
-| D     | Locked-boundary TOCTOU correction                                                        |       8h | Move aggregate guard evaluation under `withIssueLock`, delegate to `moveState`, preserve exits and saga ordering    |
+| C     | Resident-action contract, Cursor, Review migration, conformance and interruption harness |      16h | Route actions-only and Review resident behavior; crossing delegates unchanged to the shipped host boundary          |
+| D     | Locked-boundary TOCTOU correction                                                        |       8h | Replace C's boundary adapter with the final locked pre-mutation gate and `moveState` delegation                     |
 
-Each story begins from green trunk, has focused characterization tests, and must not depend on unmerged behavior from a later story. Story D is the last prerequisite before #937 may begin.
+Each story begins from green trunk, has focused characterization tests, and must not depend on unmerged behavior from a later story. In C, the Cursor may finish resident work and request Test→Review, but a compatibility adapter delegates the entire crossing to the existing host: its current unlocked `runGuardExecution`, lock acquisition, and `moveState` behavior remain byte-for-byte unchanged. D refactors that adapter so lock acquisition moves before final hydration and the complete pre-mutation gate; only then does the final algorithm above become production. C is green and shippable without D. Story D is the last prerequisite before #937 may begin.
 
 Compatibility requirements across the split:
 
 - retain `runGuards(from, to, ctx)` result shapes, aggregation, warnings, and thrown-guard coercion;
 - retain `registerGuard` idempotency and empty-on-direct-import characterization until the factory-backed compatibility layer replaces bootstrap;
-- retain all move saga ordering, timing-row pairs, exit codes 4/6/7/8, and post-commit tail isolation;
+- retain all move saga ordering, timing-row pairs, exit codes 3/4/6/7/8, and post-commit tail isolation;
 - retain `buildCloseGatesDeps`, worktree-aware trunk resolution, and the temporary `refinementPlan` compatibility mirror;
 - retain `--force`, `--supersede`, `TT_SKIP_NETWORK`, and sanctioned reverse-edge behavior;
 - extend and ultimately supersede `states/states-skeleton.test.mjs` with factory-shape assertions rather than creating contradictory shape tests; and
@@ -490,12 +520,16 @@ The future TIA design changes which checks the Test action requests and records.
 | Snapshot partly fresh                                   | Existing state                              | Consumers of stale required fields refuse; unrelated fields may warn | Refresh named sources                       |
 | Current action waiting before deadline                  | Existing state                              | Dormant waiting with correlation                                     | Resolve external progress                   |
 | Current action waiting past deadline                    | Existing state                              | Reclassified failed                                                  | Repair/restart correlated work              |
+| Action returns waiting without verified wait marker     | Existing state                              | Failed contract                                                      | Repair marker write, then rerun             |
 | Current action paused or failed                         | Existing state                              | Dormant paused/failed                                                | Resume first incomplete step                |
 | Action effect has no durable correlation                | Existing state                              | Contract refusal                                                     | Correct action implementation               |
+| Two Cursors run one correlation-class action            | Existing state                              | Both may execute; durable key plus provider dedup must converge once | Rehydrate and resolve recorded correlation  |
+| Two Cursors run one issue-lock-class action             | Existing state                              | One runs; other receives lock contention                             | Losing Cursor rehydrates before retry       |
+| Gated-target issue body fetch fails                     | Existing state                              | Failed closed, exit 3                                                | Restore authoritative read, then retry      |
 | Guard returns refusal                                   | Existing state                              | Aggregated boundary refusal, exit 4 or contiguity exit 6             | Fix all reported blockers                   |
 | Guard throws or returns malformed data                  | Existing state                              | Coerced and aggregated refusal, exit 4                               | Correct guard and retry                     |
-| Issue lock held by another Cursor                       | Existing state                              | `IssueLockError`, exit 7                                             | Wait, then rehydrate                        |
-| Two Cursors race for one issue                          | Existing state                              | One owns lock; other refuses, exit 7                                 | Losing Cursor retries from fresh state      |
+| Boundary lock exceeds retry/backoff budget              | Existing state                              | `IssueLockError`, exit 7                                             | Wait, then rehydrate                        |
+| Two Cursors race for one boundary                       | Existing state                              | One owns lock; other may exhaust budget with exit 7                  | Losing Cursor retries from fresh state      |
 | Status write fails before confirmation                  | Source state; last-known marker compensated | exit 7                                                               | Replay saga                                 |
 | Status reaches target but sentinel is absent            | Target board, incomplete move               | exit 7                                                               | Replay to converge sentinel/evidence        |
 | Sentinel present but board/marker post-condition drifts | Explicitly inconsistent                     | exit 8                                                               | Run explicit reconcile path                 |
@@ -529,17 +563,22 @@ Required behaviors include:
 - exact three-list immutable shape for every `stateIds()` member;
 - shared reference identity without task-specific mutation;
 - alias normalization plus exact parity with `forwardTarget`, `backwardTargets`, and `validateExecutableTransition`;
+- `computeTransitionPlan` parity for ordinary, no-op, force, and supersede movement;
 - reconstruction with no persisted action index;
 - verify-first step skipping and stale-evidence rerun;
 - dormant waiting, paused, and failed outcomes;
 - action completion before exit validation;
+- reverse and bypass movement remains available from waiting, paused, and failed resident actions;
 - aggregate exit and entry refusals with warning preservation and thrown-guard coercion;
+- pre-mutation parity for body-fetch exit 3, contiguity refresh, gate-refused timing, dirty warning, guard context, and guard identity;
 - no status write on either refusal;
 - target action only after confirmed entry;
 - crash recovery immediately after commit;
 - no replay of target entry guards on in-state resume;
 - Review objection remains in Review; and
-- action correlation/deadline behavior, interruption convergence, in-memory offline hydration, lock contention, two-Cursor serialization, and compatibility parity for all sanctioned movement and escape hatches.
+- correlation stability when HEAD advances between run and verify;
+- protected wait-marker write/read/loss behavior with an injected clock at and beyond the deadline;
+- interruption convergence, in-memory offline hydration, acquisition-budget contention, separate correlation-class and issue-lock-class action concurrency, boundary serialization, and compatibility parity for all sanctioned movement and escape hatches.
 
 ## Alternatives considered
 
