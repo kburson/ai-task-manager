@@ -257,7 +257,7 @@ The correlation candidate is captured and offered as an intent before `run` init
 Action progress is an append-only, hash-chained issue-comment ledger. The issue body stores only a bounded current-visit head anchor:
 
 ```text
-<!-- aitm-resident-action-ledger-head visit="<stateVisitId>" audit="<comment-id>:sha256:<hex>" actions="<base64url-map>" -->
+<!-- aitm-resident-action-ledger-head visit="<stateVisitId>" definition="sha256:<hex>" audit="<comment-id>:sha256:<hex>" actions="<base64url-map>" -->
 
 <!-- each protected event issue comment -->
 AITM resident-action evidence. Do not edit or delete this comment.
@@ -267,25 +267,44 @@ Use `npx aitm action-ledger reconcile #N` if correction is required.
 
 The decoded `aitm.resident-action-event/v1` record contains `eventId`, `previousCommentId`, `previousHash`, `actionPreviousCommentId`, `actionPreviousHash`, `issue`, `state`, `stateVisitId`, `actionId`, `attemptId`, `phase`, `correlation`, `ts`, optional `deadline`, and optional evidence fingerprint. `stateVisitId` is derived from the exact current `aitm-entered-<state>-N` visit marker and its timestamp after move completion; it is not merely the state name or a process-local counter.
 
-`attemptId` is the one-based attempt ordinal for `(stateVisitId, actionId)`. Under the short issue lock, the appender reads the current action head: no head derives attempt 1; an open head reuses its ordinal; and a closed `failed` head derives the next ordinal. Two writers therefore cannot both create a distinct attempt N. `eventId` is the SHA-256 hash of the canonical `(repository, issue, stateVisitId, actionId, attemptId, phase)` tuple. Exact retries recompute the same ID and no-op after byte-for-byte read-back verification.
+`attemptId` is the one-based attempt ordinal for `(stateVisitId, actionId)`. Under the short issue lock, the appender derives it from the exact current action head and fresh `verify` result:
 
-The head's `actions` value is a canonical map from each action ID in the current immutable state definition to its latest `{ commentId, hash, attemptId, phase }`; its serialized size is capped at 8 KiB and validated against the factory's bounded action count before the state definition is accepted. The `audit` pair links the global history without requiring hot-path traversal. On a new state visit, the appender archives the prior map in the first event and replaces it with the new visit's bounded map. The issue-body cost is therefore bounded independently of visits and attempts. Each event comment is capped at 4 KiB; large evidence stays in its existing receipt/comment artifact and the event stores only a fingerprint.
+- no entry for an action defined in the current visit derives attempt 1;
+- open `intent` or `waiting` reuses its ordinal and correlation;
+- closed `failed` derives the next ordinal on a later retry;
+- closed `resolved` remains closed while verification is fresh, but derives the next ordinal when live evidence regresses and `verify` returns incomplete; and
+- a correction baseline carries `proof: 'unproven'` separately from `phase`; when verification remains incomplete, it derives the next ordinal from the last recorded attempt.
 
-The head uses a new `ledger-head` body invariant, not the presence-only `single` kind. Generic body mutations and `gh-edit-guard` must preserve its exact bytes. Only `advanceActionLedgerHead` may change it, under the issue lock, after verifying that the new event's global predecessor equals the exact current `audit` pair, its action predecessor equals the exact current action head, and its attempt/phase transition is monotonic. A stale, regressing, or non-advancing replacement is refused. The update is read-back verified through `mutateIssueBody`/`versionedWriteBody`.
+`unproven` is not an event phase. The finite event phases remain `intent`, `waiting`, `resolved`, and `failed`. Two writers therefore cannot both create a distinct attempt N. `eventId` is the SHA-256 hash of the canonical `(repository, issue, stateVisitId, actionId, attemptId, phase)` tuple. Exact retries recompute the same ID and no-op after byte-for-byte read-back verification.
 
-Appending an event creates and read-back-verifies the comment before advancing the head. Crash recovery scans comments newer than the recorded audit comment, newest first, within a configured page budget; it accepts only the deterministic event whose global and action predecessors equal the recorded heads, then completes the head advance. A first append establishes and verifies a genesis head before creating the event, so recovery never has to guess an unknown initial predecessor. Read-only hydration reports an orphan but writes nothing. A write-authorized Cursor repairs it; exhaustion of the orphan-search budget returns `paused: ledger-orphan-search-budget` with the explicit reconcile command.
+The head records a definition fingerprint and an `actions` map from every action ID observed during the current visit to its latest `{ commentId, hash, attemptId, phase, proof? }`. A package upgrade never prunes an entry merely because the current definition omits that action; retired entries remain until the visit changes, preserving ordinal and chain continuity across rollback. A newly defined action with no entry is a legitimate first attempt, not damaged evidence. Definition-fingerprint mismatch is diagnostic, and the next advance writes the new fingerprint while retaining the current visit's union of entries.
+
+The actual encoded head marker is capped at 8,192 characters, at most 12.5% of GitHub's 65,536-character body limit. Before any provider effect or event-comment creation, the ledger writer serializes the exact proposed runtime map, checks the marker cap, and checks that the resulting issue body is at most 57,344 characters, preserving an 8,192-character operational reserve. The factory also performs an early estimate from action count and ID lengths, but runtime preflight is authoritative. Any overrun returns `paused: ledger-head-budget` with current/proposed lengths and no external effect. The `audit` pair links global history without requiring hot-path traversal. On a new state visit, the first event records the prior head's fingerprint and global audit predecessor, then the body head replaces the old action map with the new visit's map; it does not copy the up-to-8-KiB map into a 4-KiB event. Prior action-event comments remain available to the full audit. Each event comment is capped at 4 KiB; large evidence stays in its existing receipt/comment artifact and the event stores only a fingerprint.
+
+The head uses a fourth body-invariant kind named `advance`, not the presence-only `single` kind. Its registered predicate receives `{ markerId, baseMatch, nextMatch, baseBody, nextBody }` and validates the ledger schema, exact global/action predecessors, visit rule, definition fingerprint, attempt/phase monotonicity, and actual body budgets. `mutateIssueBody` gains the narrow option `allowMarkerAdvance: ['aitm-resident-action-ledger-head']`. All other markers and the #725 large-shrink guard remain armed; the ledger path never uses blanket `allowMarkerLoss`.
+
+`advanceActionLedgerHead` calls `mutateIssueBody` with that one allow-listed marker. Both expected-head comparison and the registered advance predicate run inside the `mutate(baseBody)` callback, so every `versionedWriteBody` retry parses and validates its fresh base again rather than reusing a pre-retry head. Generic body mutations and `gh-edit-guard` must preserve the head's exact bytes. A stale, regressing, or non-advancing replacement is refused, and the successful update is read-back verified.
+
+Appending an event creates and read-back-verifies the comment before advancing the head. Crash recovery paginates all comments newer than the recorded audit comment to completion and accepts only the deterministic event whose global and action predecessors equal the recorded heads, then completes the head advance. A first append establishes and verifies a genesis head before creating the event, so recovery never has to guess an unknown initial predecessor. Read-only hydration reports an orphan but writes nothing. A write-authorized Cursor performs this mechanical recovery without human approval. Operator cancellation or a transient API failure returns `paused: ledger-orphan-scan-interrupted` and retries the same scan later; only missing, altered, or ambiguous deterministic candidates route to human-approved reconcile.
 
 The managed command guard rejects `gh issue comment` and `gh api` edit/delete operations when the target comment contains an AITM resident-action event or correction marker; an ambiguous `--edit-last`/`--delete-last` is refused unless a preflight proves the selected comment is not protected. This is defense in depth, not a claim that the GitHub web UI is immutable. Every event comment includes the visible warning above. Missing or altered current evidence fails closed, but it has a named repair path: `npx aitm action-ledger reconcile #N --accept-live --reason <text> --approved-by <human>`.
 
-`action-ledger reconcile` is a standalone maintenance command, distinct from movement `/task reconcile`; it never writes Status, movement markers, or transition timing. It runs under the issue lock, performs an explicitly paginated full audit, and requires declared human approval. It never fabricates or recreates deleted event bytes. It appends an `aitm.resident-action-ledger-correction/v1` comment containing the prior head, last verifiable ancestor, missing/altered comment IDs and hashes, operator, reason, timestamp, and fingerprints of the live provider/Git/receipt evidence inspected. It then advances the protected head to a new correction baseline and marks affected action heads `unproven`; normal verify-first execution must re-establish completion. The correction remains linked to the abandoned head for audit. This is the only path allowed to authorize live evidence after a damaged chain.
+`action-ledger reconcile` is a standalone maintenance command, distinct from movement `/task reconcile`; it never writes Status, movement markers, or transition timing. It runs under the issue lock, performs an explicitly paginated full audit, and requires declared human approval. It never fabricates or recreates deleted event bytes. It appends an `aitm.resident-action-ledger-correction/v1` comment containing the prior head, last verifiable ancestor, missing/altered comment IDs and hashes, operator, reason, timestamp, and fingerprints of the live provider/Git/receipt evidence inspected. It then advances the protected head to a new correction baseline and sets `proof: 'unproven'` on affected action heads without changing their last event phase; normal verify-first execution must re-establish completion. The correction remains linked to the abandoned head for audit. This is the only path allowed to authorize live evidence after a damaged chain.
 
 Normal hydration does not enumerate the issue timeline. It reads the bounded head, point-fetches the latest comment for only the current action, and follows at most the three links in that attempt (`intent`, optional `waiting`, terminal phase). Prior attempts and visits are irrelevant to execution and are traversed only by the explicit audit/reconcile command or scheduled integrity audit. Per phase, the acknowledged network cost is lock acquisition, event-comment creation, comment read-back, monotonic body-head update, and body read-back; stories B and C include this cost in their estimates.
 
 `withCorrelationIntent` rehydrates and confirms the requested `stateVisitId` under its short issue lock immediately before recording intent and again immediately before its provider callback; a mismatch returns `paused` with `stale-state-visit` and no provider effect.
 
-Within one visit/action, the locked append permits only one open attempt. The finite phase graph is `intent → waiting → resolved|failed` or `intent → resolved|failed`; `resolved` and `failed` close the attempt. A later write-authorized actions-only or forward invocation may begin the next ordinal after `failed`; an open `intent` is retried with the same correlation rather than superseded. A user's next `/task promote #N` therefore retries the current resident action first and challenges exit guards only after it completes. No actor emits a `superseded` phase. Events are permanent audit evidence: a new state visit has a new `stateVisitId`, so prior visits remain inspectable but cannot satisfy the new visit.
+Within one visit/action, the locked append permits only one open attempt. The finite phase graph is `intent → waiting → resolved|failed` or `intent → resolved|failed`; `resolved` and `failed` close the attempt. A later write-authorized actions-only or forward invocation applies the complete derivation table above; an open `intent` is retried with the same correlation rather than superseded. A user's next `/task promote #N` therefore retries the current resident action first and challenges exit guards only after it completes. No actor emits a `superseded` phase. Events are permanent audit evidence: a new state visit has a new `stateVisitId`, so prior visits remain inspectable but cannot satisfy the new visit.
 
-Hydration distinguishes an empty fold from a damaged one. No head anchor and no events means normal first execution, including legacy issues that predate this feature; no migration is required. Once an anchor exists, a missing predecessor, a later phase without its required earlier phase, or a hash-chain gap is damaged required evidence and fails closed. Provider evidence alone cannot silently repair that gap; only the human-approved correction path may establish a new unproven baseline from inspected live evidence.
+Hydration classifies the head against the authoritative current `stateVisitId`:
+
+- no head and no events is normal first execution, including legacy issues;
+- a head for the same visit folds the current action normally;
+- a well-formed head whose visit timestamp precedes the current authoritative entry marker is a valid empty fold for the current visit; its map remains prior-visit history until the first new event lazily fingerprints/replaces it, and no writer runs if all actions verify complete or the action list is empty; and
+- a head whose visit is later than, malformed against, or incomparable with the current authoritative visit is drift/damaged evidence and fails closed.
+
+On the first append of a new visit, the global predecessor is the prior head's `audit` pair and the action predecessor is legitimately absent. Provider evidence alone cannot silently repair damaged current-visit history; only the human-approved correction path may establish a new unproven baseline from inspected live evidence.
 
 If `run` returns `waiting` but a verified `waiting` event with correlation and deadline is absent or malformed, the step is `failed`, not dormant. Hydration is always read-only: it classifies an expired wait as failed in the immutable snapshot but writes nothing. The next write-authorized Cursor actions-only or forward invocation appends the deterministic `failed` event before returning recovery diagnostics. Read-only status, callbacks configured as observation-only, `TT_SKIP_NETWORK`, and offline hydration never append. The Cursor processes actions in order:
 
@@ -348,12 +367,13 @@ class RepositoryAdapter {
   mutateActionEvidence({ issue, mutate }) {}
   now() {}
   withIssueLock({ issue, verb, projDir, sessionId, timeoutMs, retries }, operation) {}
+  withBoundaryLock({ issue, verb, projDir, sessionId, timeoutMs, retries }, operation) {}
   runPreMutationGate({ moveContext, snapshot, plan }) {}
   requestTransition({ moveContext, plan, gateResult }) {} // delegates to moveState(ctx)
 }
 ```
 
-`withIssueLock` delegates to the shipped function of the same name and preserves its full options object, holder diagnostics, `AsyncLocalStorage` nesting, and issue-scoped `AITM_ISSUE_LOCK_HELD` child-process re-entrancy. `readActionLedger`, `appendActionEvent`, `advanceActionLedgerHead`, and `withCorrelationIntent` own the bounded current-attempt read, verified comment chain, monotonic body-head update, deterministic retry, and stale-visit rules described above. `now()` defaults to `Date.now` in production and is deterministic in tests.
+`withIssueLock` delegates to the shipped function of the same name and preserves its full options object, holder diagnostics, `AsyncLocalStorage` nesting, and issue-scoped `AITM_ISSUE_LOCK_HELD` child-process re-entrancy. `withBoundaryLock` is a provenance wrapper: it marks whether the callback began and converts `IssueLockError` to `BoundaryLockAcquireError` only when acquisition failed before callback entry. An `IssueLockError` raised inside the callback propagates with its original provenance. `readActionLedger`, `appendActionEvent`, `advanceActionLedgerHead`, and `withCorrelationIntent` own the bounded current-attempt read, verified comment chain, monotonic body-head update, deterministic retry, and stale-visit rules described above. `now()` defaults to `Date.now` in production and is deterministic in tests.
 
 `hydrateTask` returns immutable provenance-bearing values, the five `isMoveComplete` signals, `lastKnownState`, action correlations, and per-field freshness. A boundary may proceed only when every field required by its actions and guards is authoritative and fresh; unrelated stale optional fields remain diagnostic warnings. This adjudicates partially fresh snapshots per consumer rather than treating the entire snapshot as uniformly fresh.
 
@@ -388,25 +408,36 @@ The execution algorithm is:
 async function executeCursor({ issue, cwd, trigger, requestedTarget }) {
   let snapshot = await repository.hydrateTask({ issue, cwd });
   const current = machine.get(snapshot.currentState.value);
+  const moveContext =
+    trigger === 'actions-only'
+      ? null
+      : buildMoveContext(snapshot, current.id, requestedTarget, trigger);
+  const plan = moveContext
+    ? computeTransitionPlan({
+        fromState: current.id,
+        toState: requestedTarget,
+        flags: moveContext.flags,
+      })
+    : null;
 
-  if (trigger === 'actions-only' || trigger === 'advance-forward') {
+  if (
+    trigger === 'actions-only' ||
+    (trigger === 'advance-forward' && !plan.bypassResidentActions)
+  ) {
     const actionResult = await actions.resume(current.residentActions, snapshot, { trigger });
     if (actionResult.status !== 'complete') return dormant(actionResult);
     if (trigger === 'actions-only') return residentComplete(current.id);
   }
 
-  const moveContext = buildMoveContext(snapshot, current.id, requestedTarget, trigger);
-  const plan = computeTransitionPlan({
-    fromState: current.id,
-    toState: requestedTarget,
-    flags: moveContext.flags,
-  });
+  if (plan.bypassResidentActions) {
+    moveContext.skippedResidentActions = incompleteActionIds(current, snapshot);
+  }
   if (plan.matrix.applies && !plan.matrix.ok) return matrixRefused(plan.matrix);
   if (plan.noop) return moveNoop(plan);
 
   let boundary;
   try {
-    boundary = await repository.withIssueLock(
+    boundary = await repository.withBoundaryLock(
       lockOptions({ issue, verb: moveContext.verb, cwd }),
       async () => {
         snapshot = await repository.hydrateTask({ issue, cwd });
@@ -429,7 +460,7 @@ async function executeCursor({ issue, cwd, trigger, requestedTarget }) {
       }
     );
   } catch (error) {
-    if (error instanceof IssueLockError) return boundaryLockRefused(error);
+    if (error instanceof BoundaryLockAcquireError) return boundaryLockRefused(error);
     throw error;
   }
   if (boundary.kind === 'drift') return concurrentDrift(boundary);
@@ -464,6 +495,8 @@ current resident actions complete
 → target becomes current
 → target resident actions start/verify
 ```
+
+Explicit `--force` and `--supersede` are the operator escape from a permanently wedged resident action. Hydration represents ledger damage as a provenance-bearing snapshot diagnostic rather than throwing before trigger policy can run. Their transition plan sets `bypassResidentActions`; the Cursor does not require or rerun incomplete/damaged source actions and passes their IDs plus the operator intent into `moveState`, while movement fields must still be authoritative. The saga records `resident-action-bypassed` in the committed transition timing/evidence payload before Status, with source visit, skipped action IDs, ledger diagnostics, flag, actor, and reason when the command surface supplies one. It does not append `resolved` action events or claim the skipped work completed. Ordinary forward requests never bypass resident completion, and reverse movement retains its existing incomplete-work escape semantics.
 
 The Cursor delegates transition persistence to the shipped `scripts/task-tracker/lib/move-state/move-state-core.mjs::moveState(ctx)` primitive; it does not reimplement or reorder the saga. The commit boundary contains:
 
@@ -562,7 +595,7 @@ The reviewed design is too risky as one XL implementation. #1117 remains the arc
 | ----- | ----------------------------------------------------------------------------------- | -------: | ------------------------------------------------------------------------------------------------------------------- |
 | A     | Topology single-sourcing and pure factory                                           |       6h | Consume `lifecycle-policy`, freeze direct-reference definitions, expose derived indexes; no runtime behavior change |
 | B     | Repository adapter, bounded ledger reads, task snapshot, and in-memory test double  |      10h | Add provenance/reconciliation/offline hydration without production Cursor routing                                   |
-| C     | Resident actions, Cursor, ledger protection/repair, Review, and conformance harness |      20h | Route actions-only and Review resident behavior; crossing delegates unchanged to the shipped host boundary          |
+| C     | Resident actions, Cursor, ledger protection/repair, Review, and conformance harness |      24h | Route actions-only and Review resident behavior; crossing delegates unchanged to the shipped host boundary          |
 | D     | Locked-boundary TOCTOU correction                                                   |       8h | Replace C's boundary adapter with the final locked pre-mutation gate and `moveState` delegation                     |
 
 Each story begins from green trunk, has focused characterization tests, and must not depend on unmerged behavior from a later story. In C, the Cursor may finish resident work and request Test→Review, but a compatibility adapter delegates the entire crossing to the existing host: its current unlocked `runGuardExecution`, lock acquisition, and `moveState` behavior remain byte-for-byte unchanged. D refactors that adapter so lock acquisition moves before final hydration and the complete pre-mutation gate; only then does the final algorithm above become production. C is green and shippable without D. Story D is the last prerequisite before #937 may begin.
@@ -573,7 +606,7 @@ Compatibility requirements across the split:
 - retain `registerGuard` idempotency and empty-on-direct-import characterization until the factory-backed compatibility layer replaces bootstrap;
 - retain all move saga ordering, timing-row pairs, exit codes 3/4/6/7/8, and post-commit tail isolation;
 - retain `buildCloseGatesDeps`, worktree-aware trunk resolution, and the temporary `refinementPlan` compatibility mirror;
-- add the exact-value `ledger-head` invariant, ledger-specific monotonic advance primitive, `bash-guard.mjs`/managed-command comment edit-delete protection, visible warning, bounded hot reads, and audited `action-ledger reconcile` path;
+- add the `advance` invariant, narrow fresh-base `allowMarkerAdvance` path, ledger-specific monotonic advance primitive, `bash-guard.mjs`/managed-command comment edit-delete protection, visible warning, bounded hot reads, and audited `action-ledger reconcile` path; never use blanket `allowMarkerLoss` for a ledger advance;
 - introduce public `ctx.runGuardExecution` while retaining `_runGuardExecution` only for test/backward compatibility;
 - retain `--force`, `--supersede`, `TT_SKIP_NETWORK`, and sanctioned reverse-edge behavior;
 - extend and ultimately supersede `states/states-skeleton.test.mjs` with factory-shape assertions rather than creating contradictory shape tests; and
@@ -614,8 +647,13 @@ The future TIA design changes which checks the Test action requests and records.
 | Current action paused or failed                         | Existing state                              | Dormant paused/failed                                                | Resume first incomplete step                 |
 | Action effect has no durable correlation                | Existing state                              | Contract refusal                                                     | Correct action implementation                |
 | No ledger head and no events for the current visit      | Existing state                              | Normal first or legacy execution; verify first                       | Record events only if `run` is needed        |
+| Head belongs to a verified prior state visit            | Existing current state                      | Valid empty fold for current visit                                   | Lazy reset only if current action appends    |
+| Head visit is later, malformed, or incomparable         | Existing state                              | Drift/damaged evidence; failed closed                                | Inspect or reconcile the ledger              |
+| Defined current action has no head entry                | Existing state                              | Legitimate attempt 1                                                 | Verify first, then record if `run` is needed |
 | Required current action event is missing or altered     | Existing state                              | Failed closed; provider evidence cannot silently authorize replay    | Run human-approved `action-ledger reconcile` |
-| Orphan search exceeds its configured page budget        | Existing state                              | Paused `ledger-orphan-search-budget`                                 | Run `action-ledger reconcile`                |
+| Mechanical orphan scan is interrupted                   | Existing state                              | Paused `ledger-orphan-scan-interrupted`                              | Retry full scan; no human repair needed      |
+| Proposed head/body exceeds runtime budget               | Existing state                              | Paused `ledger-head-budget`; no provider effect                      | Reduce body/action definition before retry   |
+| Resolved evidence regresses within the same visit       | Existing state                              | Next ordinal begins after incomplete verification                    | Rerun with a new correlated attempt          |
 | Two Cursors run one correlation-class action            | Existing state                              | Short intent lock selects one key; provider calls deduplicate on it  | Rehydrate and fold the comment ledger        |
 | Task leaves the recorded visit before provider submit   | New durable state                           | Paused `stale-state-visit`; provider callback is not invoked         | Rehydrate the new current state              |
 | Two Cursors run one issue-lock-class action             | Existing state                              | One runs; actions-only contender returns paused with retry detail    | Losing Cursor rehydrates before retry        |
@@ -623,7 +661,7 @@ The future TIA design changes which checks the Test action requests and records.
 | Gated-target issue body fetch fails                     | Existing state                              | Failed closed, exit 3                                                | Restore authoritative read, then retry       |
 | Guard returns refusal                                   | Existing state                              | Aggregated boundary refusal, exit 4 or contiguity exit 6             | Fix all reported blockers                    |
 | Guard throws or returns malformed data                  | Existing state                              | Coerced and aggregated refusal, exit 4                               | Correct guard and retry                      |
-| Boundary lock exceeds retry/backoff budget              | Existing state                              | `IssueLockError`, exit 7                                             | Wait, then rehydrate                         |
+| Boundary acquisition exceeds retry/backoff budget       | Existing state                              | `BoundaryLockAcquireError`, exit 7                                   | Wait, then rehydrate                         |
 | Two Cursors race for one boundary                       | Existing state                              | One owns lock; other may exhaust budget with exit 7                  | Losing Cursor retries from fresh state       |
 | Boundary host returns an unknown result kind            | Existing state                              | Internal contract failure, exit 1                                    | Repair adapter/result contract               |
 | Status write fails before confirmation                  | Source state; last-known marker compensated | exit 7                                                               | Replay saga                                  |
@@ -631,7 +669,7 @@ The future TIA design changes which checks the Test action requests and records.
 | Sentinel present but board/marker post-condition drifts | Explicitly inconsistent                     | exit 8                                                               | Run explicit reconcile path                  |
 | Crash after confirmed move and before target action     | Target state                                | Process absent                                                       | Rehydrate target and start resident actions  |
 | Any post-commit tail step fails                         | Target state                                | Move succeeds; ordered `failures[]` warning                          | Repair projection separately                 |
-| `--force` or `--supersede` requested                    | Policy-defined target                       | Audited shipped bypass; saga still authoritative                     | Hydrate resulting target                     |
+| `--force` or `--supersede` bypasses wedged actions      | Policy-defined target                       | Saga records skipped IDs; no false action resolution                 | Hydrate resulting target                     |
 | `TT_SKIP_NETWORK=1` in production boundary              | Existing state                              | Offline refusal                                                      | Retry online                                 |
 | Out-of-band Status mutation                             | Drifted sources                             | Cursor refuses                                                       | `/task reconcile` by operator                |
 
@@ -676,17 +714,21 @@ Required behaviors include:
 - Review objection remains in Review;
 - correlation stability when HEAD advances between run and verify;
 - per-action/per-visit event folding, retention across later steps, and invalidation by a new state visit;
-- deterministic attempt ordinals and exact retry IDs under same-action and cross-action concurrency;
-- bounded current-visit head-map encoding and factory action-count refusal above 8 KiB;
-- exact-value `ledger-head` protection, monotonic predecessor validation, stale/regressing-head refusal, and read-back verification;
+- full attempt derivation for absent, open, failed, resolved-but-stale, and separately flagged unproven heads;
+- definition fingerprints, within-visit union retention across upgrades/rollback, and legitimate attempt 1 for newly defined actions;
+- actual 8,192-character head and 57,344-character final-body preflight before provider effects;
+- narrow `advance`/`allowMarkerAdvance` protection evaluated from every retry's fresh base while all unrelated invariants and #725 remain armed;
+- monotonic predecessor validation, stale/regressing-head refusal, and read-back verification;
 - managed CLI comment edit/delete refusal, ambiguous last-comment preflight, and visible do-not-edit guidance;
 - bounded current-attempt point reads with no unpaginated timeline fetch on hydration;
 - human-approved ledger correction that records damage and leaves affected actions unproven;
 - 4 KiB event-budget rejection before provider effects and oversized-evidence fingerprinting;
 - empty first/legacy fold acceptance versus missing-phase, altered-event, and broken-chain refusal;
 - read-only and offline hydration producing no writes, including expired-wait classification;
-- crash-after-intent, genesis-head, bounded orphan recovery, waiting-event verification, and injected-clock behavior at and beyond the deadline;
-- forward-trigger retry after failed action, invalid-boundary-result exit 1, and caught boundary `IssueLockError` exit 7;
+- crash-after-intent, genesis-head, full paginated orphan recovery, interrupted-scan retry without human repair, waiting-event verification, and injected-clock behavior at and beyond the deadline;
+- prior-visit valid-empty classification, lazy first-append replacement, and later/malformed/incomparable visit refusal;
+- forward-trigger retry after failed action plus audited force/supersede escape without false action resolution;
+- invalid-boundary-result exit 1 and acquisition-provenance-only boundary lock exit 7;
 - interruption convergence, in-memory offline hydration, action-contention pause semantics, correlation-class and issue-lock-class critical-section scope, boundary serialization, and compatibility parity for all sanctioned movement and escape hatches.
 
 ## Alternatives considered
