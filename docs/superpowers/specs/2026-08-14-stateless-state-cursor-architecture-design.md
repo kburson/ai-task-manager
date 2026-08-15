@@ -254,24 +254,38 @@ The closed outcome set is:
 
 The correlation candidate is captured and offered as an intent before `run` initiates the effect. `withCorrelationIntent` takes a short issue lock, either appends the first intent for `(stateVisitId, actionId)` or reads the verified existing open intent, then rehydrates and revalidates that exact visit immediately before invoking the provider callback. A visit mismatch returns `paused: stale-state-visit` without invoking the callback. The lock is released after provider submission/read-back, not held while waiting for completion. Concurrent Cursors therefore use the same authoritative provider idempotency key even when their candidates differ. Later invocations read the winning record first; they never recompute identity from a volatile live field. An action whose effect cannot be discovered by its correlation key is invalid.
 
-Action progress is an append-only, hash-chained issue-comment ledger. The issue body stores only a constant-size head anchor:
+Action progress is an append-only, hash-chained issue-comment ledger. The issue body stores only a bounded current-visit head anchor:
 
 ```text
-<!-- aitm-resident-action-ledger-head comment="<id>" hash="sha256:<hex>" -->
+<!-- aitm-resident-action-ledger-head visit="<stateVisitId>" audit="<comment-id>:sha256:<hex>" actions="<base64url-map>" -->
 
-<!-- each immutable issue comment -->
+<!-- each protected event issue comment -->
+AITM resident-action evidence. Do not edit or delete this comment.
+Use `npx aitm action-ledger reconcile #N` if correction is required.
 <!-- aitm-resident-action-event id="<deterministic-hash>" data="<base64url-json>" -->
 ```
 
-The decoded `aitm.resident-action-event/v1` record contains `eventId`, `previousHash`, `issue`, `state`, `stateVisitId`, `actionId`, `attemptId`, `phase`, `correlation`, `ts`, optional `deadline`, and optional evidence fingerprint. `stateVisitId` is derived from the exact current `aitm-entered-<state>-N` visit marker and its timestamp after move completion; it is not merely the state name or a process-local counter. `eventId` is the SHA-256 hash of the canonical `(repository, issue, stateVisitId, actionId, attemptId, phase)` tuple, not a ULID. Each comment is limited to 4 KiB, leaving ample margin below GitHub's per-comment limit; an event whose canonical encoding exceeds that budget is rejected before any provider effect.
+The decoded `aitm.resident-action-event/v1` record contains `eventId`, `previousCommentId`, `previousHash`, `actionPreviousCommentId`, `actionPreviousHash`, `issue`, `state`, `stateVisitId`, `actionId`, `attemptId`, `phase`, `correlation`, `ts`, optional `deadline`, and optional evidence fingerprint. `stateVisitId` is derived from the exact current `aitm-entered-<state>-N` visit marker and its timestamp after move completion; it is not merely the state name or a process-local counter.
 
-The body head anchor is registered as a `single` invariant and mirrored in `gh-edit-guard.MARKER_PATTERNS`; it is updated in place, never removed. Event comments are immutable after verified creation. Their payload hashes and `previousHash` links are verified back to the body anchor. A missing, edited, duplicated-with-different-bytes, or broken-chain event fails closed. The body cost is constant, and comment count cannot make the issue body unmovable. If one comment write would exceed 4 KiB, large evidence is stored in its existing receipt/comment artifact and the event carries only its fingerprint; there is no append-overflow path that consumes issue-body capacity.
+`attemptId` is the one-based attempt ordinal for `(stateVisitId, actionId)`. Under the short issue lock, the appender reads the current action head: no head derives attempt 1; an open head reuses its ordinal; and a closed `failed` head derives the next ordinal. Two writers therefore cannot both create a distinct attempt N. `eventId` is the SHA-256 hash of the canonical `(repository, issue, stateVisitId, actionId, attemptId, phase)` tuple. Exact retries recompute the same ID and no-op after byte-for-byte read-back verification.
 
-Appending an event takes the short issue lock, creates and read-back-verifies the immutable event comment, then advances and verifies the body head through `mutateIssueBody`/`versionedWriteBody`. Deterministic IDs make exact retries no-ops. Crash recovery handles an event comment created before its head update by finding the deterministic unanchored event, verifying its expected predecessor, and completing the head update. Read-only hydration reports such an orphan as recoverable but does not advance the head; the next write-authorized Cursor invocation performs the repair. `withCorrelationIntent` also rehydrates and confirms the requested `stateVisitId` under this lock immediately before recording intent and again immediately before its provider callback; a mismatch returns `paused` with `stale-state-visit` and no provider effect.
+The head's `actions` value is a canonical map from each action ID in the current immutable state definition to its latest `{ commentId, hash, attemptId, phase }`; its serialized size is capped at 8 KiB and validated against the factory's bounded action count before the state definition is accepted. The `audit` pair links the global history without requiring hot-path traversal. On a new state visit, the appender archives the prior map in the first event and replaces it with the new visit's bounded map. The issue-body cost is therefore bounded independently of visits and attempts. Each event comment is capped at 4 KiB; large evidence stays in its existing receipt/comment artifact and the event stores only a fingerprint.
 
-Within one visit/action, the locked append permits only one open attempt. The finite phase graph is `intent → waiting → resolved|failed` or `intent → resolved|failed`; `resolved` and `failed` close the attempt. A new attempt may begin only on a later write-authorized actions-only invocation after `failed`; an open `intent` is retried with the same correlation rather than superseded. No actor emits a `superseded` phase. Events are permanent audit evidence: a new state visit has a new `stateVisitId`, so prior visits remain inspectable but cannot satisfy the new visit.
+The head uses a new `ledger-head` body invariant, not the presence-only `single` kind. Generic body mutations and `gh-edit-guard` must preserve its exact bytes. Only `advanceActionLedgerHead` may change it, under the issue lock, after verifying that the new event's global predecessor equals the exact current `audit` pair, its action predecessor equals the exact current action head, and its attempt/phase transition is monotonic. A stale, regressing, or non-advancing replacement is refused. The update is read-back verified through `mutateIssueBody`/`versionedWriteBody`.
 
-Hydration distinguishes an empty fold from a damaged one. No head anchor and no events means normal first execution, including legacy issues that predate this feature; no migration is required. Once an anchor exists, a missing predecessor, a later phase without its required earlier phase, or a hash-chain gap is damaged required evidence and fails closed. Provider evidence alone cannot repair that gap.
+Appending an event creates and read-back-verifies the comment before advancing the head. Crash recovery scans comments newer than the recorded audit comment, newest first, within a configured page budget; it accepts only the deterministic event whose global and action predecessors equal the recorded heads, then completes the head advance. A first append establishes and verifies a genesis head before creating the event, so recovery never has to guess an unknown initial predecessor. Read-only hydration reports an orphan but writes nothing. A write-authorized Cursor repairs it; exhaustion of the orphan-search budget returns `paused: ledger-orphan-search-budget` with the explicit reconcile command.
+
+The managed command guard rejects `gh issue comment` and `gh api` edit/delete operations when the target comment contains an AITM resident-action event or correction marker; an ambiguous `--edit-last`/`--delete-last` is refused unless a preflight proves the selected comment is not protected. This is defense in depth, not a claim that the GitHub web UI is immutable. Every event comment includes the visible warning above. Missing or altered current evidence fails closed, but it has a named repair path: `npx aitm action-ledger reconcile #N --accept-live --reason <text> --approved-by <human>`.
+
+`action-ledger reconcile` is a standalone maintenance command, distinct from movement `/task reconcile`; it never writes Status, movement markers, or transition timing. It runs under the issue lock, performs an explicitly paginated full audit, and requires declared human approval. It never fabricates or recreates deleted event bytes. It appends an `aitm.resident-action-ledger-correction/v1` comment containing the prior head, last verifiable ancestor, missing/altered comment IDs and hashes, operator, reason, timestamp, and fingerprints of the live provider/Git/receipt evidence inspected. It then advances the protected head to a new correction baseline and marks affected action heads `unproven`; normal verify-first execution must re-establish completion. The correction remains linked to the abandoned head for audit. This is the only path allowed to authorize live evidence after a damaged chain.
+
+Normal hydration does not enumerate the issue timeline. It reads the bounded head, point-fetches the latest comment for only the current action, and follows at most the three links in that attempt (`intent`, optional `waiting`, terminal phase). Prior attempts and visits are irrelevant to execution and are traversed only by the explicit audit/reconcile command or scheduled integrity audit. Per phase, the acknowledged network cost is lock acquisition, event-comment creation, comment read-back, monotonic body-head update, and body read-back; stories B and C include this cost in their estimates.
+
+`withCorrelationIntent` rehydrates and confirms the requested `stateVisitId` under its short issue lock immediately before recording intent and again immediately before its provider callback; a mismatch returns `paused` with `stale-state-visit` and no provider effect.
+
+Within one visit/action, the locked append permits only one open attempt. The finite phase graph is `intent → waiting → resolved|failed` or `intent → resolved|failed`; `resolved` and `failed` close the attempt. A later write-authorized actions-only or forward invocation may begin the next ordinal after `failed`; an open `intent` is retried with the same correlation rather than superseded. A user's next `/task promote #N` therefore retries the current resident action first and challenges exit guards only after it completes. No actor emits a `superseded` phase. Events are permanent audit evidence: a new state visit has a new `stateVisitId`, so prior visits remain inspectable but cannot satisfy the new visit.
+
+Hydration distinguishes an empty fold from a damaged one. No head anchor and no events means normal first execution, including legacy issues that predate this feature; no migration is required. Once an anchor exists, a missing predecessor, a later phase without its required earlier phase, or a hash-chain gap is damaged required evidence and fails closed. Provider evidence alone cannot silently repair that gap; only the human-approved correction path may establish a new unproven baseline from inspected live evidence.
 
 If `run` returns `waiting` but a verified `waiting` event with correlation and deadline is absent or malformed, the step is `failed`, not dormant. Hydration is always read-only: it classifies an expired wait as failed in the immutable snapshot but writes nothing. The next write-authorized Cursor actions-only or forward invocation appends the deterministic `failed` event before returning recovery diagnostics. Read-only status, callbacks configured as observation-only, `TT_SKIP_NETWORK`, and offline hydration never append. The Cursor processes actions in order:
 
@@ -284,7 +298,7 @@ If `run` returns `waiting` but a verified `waiting` event with correlation and d
 
 No Cursor or action index is persisted. The event family is durable action evidence, not a program counter: on every invocation the Cursor still scans from the beginning and skips steps whose folded evidence remains fresh. This makes retries and crash recovery idempotent.
 
-Resident action execution is not globally serialized. Each action declares `serialization: 'correlation' | 'issue-lock'`. The default `correlation` class relies on the durable key plus a provider idempotency/deduplication primitive; an external action without provider dedup is invalid for that class. A short local mutation that cannot otherwise be made atomic may use `issue-lock`, but it must not hold the lock while waiting for CI, an agent, or another long-running provider operation.
+Resident action execution is not globally serialized for its full duration. Each action declares `serialization: 'correlation' | 'issue-lock'`, and both use the shipped issue-lock primitive for bounded ledger critical sections. The default `correlation` class locks only intent selection, final visit validation, provider submission/read-back, and individual event appends; completion waiting remains unlocked and provider idempotency/deduplication is mandatory. The `issue-lock` class additionally wraps one short local mutation that lacks independent deduplication. Neither class may hold the lock while waiting for CI, an agent, or another long-running provider completion. Lock-budget exhaustion in either action class returns `paused: issue-lock-contended` with holder and retry diagnostics; it is not movement exit 7 because no boundary was attempted.
 
 Agentic or human work can be represented by steps whose `run` returns instructions/waiting and whose `verify` detects the resulting repository evidence. A long-lived process is not required.
 
@@ -303,6 +317,7 @@ Actions receive a frozen, constructor-injected capability object rather than imp
   resolveCorrelation,
   withCorrelationIntent,
   appendActionEvent,
+  advanceActionLedgerHead,
   mutateActionEvidence,
   git,
   pullRequests,
@@ -312,7 +327,7 @@ Actions receive a frozen, constructor-injected capability object rather than imp
 }
 ```
 
-`now` is the injected clock. Ledger methods enforce visit checks, locks, deterministic IDs, hashes, and verified read-back. `withCorrelationIntent` is the only route to an external provider effect and holds its short action lock through final visit revalidation and provider submission/read-back. `git`, `pullRequests`, `checks`, and `receipts` are narrow provider adapters whose mutating methods require the recorded correlation/idempotency key. `instructions` emits the durable human/agent work request for a waiting action. Actions may not import `gh`, issue mutation, movement, lock, clock, or provider modules outside this capability surface.
+`now` is the injected clock. Ledger methods enforce visit checks, attempt derivation, bounded reads, locks, deterministic IDs, hashes, monotonic head advancement, and verified read-back. `withCorrelationIntent` is the only route to an external provider effect and holds its short action lock through final visit revalidation and provider submission/read-back. `git`, `pullRequests`, `checks`, and `receipts` are narrow provider adapters whose mutating methods require the recorded correlation/idempotency key. `instructions` emits the durable human/agent work request for a waiting action. Actions may not import `gh`, issue mutation, movement, lock, clock, or provider modules outside this capability surface.
 
 ## Repository adapter and offline mode
 
@@ -323,11 +338,12 @@ class RepositoryAdapter {
   hydrateTask({ issue, cwd, mode }) {}
   resolveLiveState({ issue }) {}
   readIssueBody({ issue }) {}
-  readActionLedger({ issue }) {}
+  readActionLedger({ issue, stateVisitId, actionId, maxLinks }) {}
   readGitSnapshot({ cwd }) {}
   readChecks({ issue, headSha }) {}
   readBoundWorktree({ issue, cwd }) {}
   appendActionEvent({ issue, event }) {}
+  advanceActionLedgerHead({ issue, expectedHead, event }) {}
   withCorrelationIntent({ issue, stateVisitId, actionId, correlation }, operation) {}
   mutateActionEvidence({ issue, mutate }) {}
   now() {}
@@ -337,7 +353,7 @@ class RepositoryAdapter {
 }
 ```
 
-`withIssueLock` delegates to the shipped function of the same name and preserves its full options object, holder diagnostics, `AsyncLocalStorage` nesting, and issue-scoped `AITM_ISSUE_LOCK_HELD` child-process re-entrancy. `readActionLedger`, `appendActionEvent`, and `withCorrelationIntent` own the verified comment chain, body-head update, deterministic retry, and stale-visit rules described above. `now()` defaults to `Date.now` in production and is deterministic in tests.
+`withIssueLock` delegates to the shipped function of the same name and preserves its full options object, holder diagnostics, `AsyncLocalStorage` nesting, and issue-scoped `AITM_ISSUE_LOCK_HELD` child-process re-entrancy. `readActionLedger`, `appendActionEvent`, `advanceActionLedgerHead`, and `withCorrelationIntent` own the bounded current-attempt read, verified comment chain, monotonic body-head update, deterministic retry, and stale-visit rules described above. `now()` defaults to `Date.now` in production and is deterministic in tests.
 
 `hydrateTask` returns immutable provenance-bearing values, the five `isMoveComplete` signals, `lastKnownState`, action correlations, and per-field freshness. A boundary may proceed only when every field required by its actions and guards is authoritative and fresh; unrelated stale optional fields remain diagnostic warnings. This adjudicates partially fresh snapshots per consumer rather than treating the entire snapshot as uniformly fresh.
 
@@ -388,28 +404,34 @@ async function executeCursor({ issue, cwd, trigger, requestedTarget }) {
   if (plan.matrix.applies && !plan.matrix.ok) return matrixRefused(plan.matrix);
   if (plan.noop) return moveNoop(plan);
 
-  const boundary = await repository.withIssueLock(
-    lockOptions({ issue, verb: moveContext.verb, cwd }),
-    async () => {
-      snapshot = await repository.hydrateTask({ issue, cwd });
-      if (snapshot.currentState.value !== current.id) {
-        return {
-          kind: 'drift',
-          expectedState: current.id,
-          actualState: snapshot.currentState.value,
-        };
-      }
+  let boundary;
+  try {
+    boundary = await repository.withIssueLock(
+      lockOptions({ issue, verb: moveContext.verb, cwd }),
+      async () => {
+        snapshot = await repository.hydrateTask({ issue, cwd });
+        if (snapshot.currentState.value !== current.id) {
+          return {
+            kind: 'drift',
+            expectedState: current.id,
+            actualState: snapshot.currentState.value,
+          };
+        }
 
-      const gateResult = await repository.runPreMutationGate({ moveContext, snapshot, plan });
-      if (gateResult.exit != null) {
-        return { kind: 'gate-refused', phase: 'guard', gateResult };
-      }
+        const gateResult = await repository.runPreMutationGate({ moveContext, snapshot, plan });
+        if (gateResult.exit != null) {
+          return { kind: 'gate-refused', phase: 'guard', gateResult };
+        }
 
-      const move = await repository.requestTransition({ moveContext, plan, gateResult });
-      if (move.exit != null) return { kind: 'move-refused', move };
-      return { kind: 'moved', move };
-    }
-  );
+        const move = await repository.requestTransition({ moveContext, plan, gateResult });
+        if (move.exit != null) return { kind: 'move-refused', move };
+        return { kind: 'moved', move };
+      }
+    );
+  } catch (error) {
+    if (error instanceof IssueLockError) return boundaryLockRefused(error);
+    throw error;
+  }
   if (boundary.kind === 'drift') return concurrentDrift(boundary);
   if (boundary.kind === 'gate-refused') return gateRefused(boundary);
   if (boundary.kind === 'move-refused') return moveRefused(boundary.move);
@@ -423,13 +445,13 @@ async function executeCursor({ issue, cwd, trigger, requestedTarget }) {
 }
 ```
 
-All control-flow results are discriminated. `matrixRefused` returns `{ kind: 'matrix-refused', reason, allowedTargets }`; `moveNoop` returns `{ kind: 'noop', state }`; `concurrentDrift` returns `{ kind: 'drift', expectedState, actualState }`; `gateRefused` preserves `{ kind: 'gate-refused', phase: 'guard', exit, refusals, warns }`; and `moveRefused` preserves `{ kind: 'move-refused', phase, exit, itemId, sentinelPresent, boardMoved }` plus any saga diagnostics. Only `{ kind: 'moved' }` reaches target resident execution. Gate exits 3/4/6 retain their guard phase, refusal IDs, blockers, warnings, timing, and recovery banners rather than being flattened into a move refusal.
+All control-flow results are discriminated. `matrixRefused` returns `{ kind: 'matrix-refused', reason, allowedTargets }`; `moveNoop` returns `{ kind: 'noop', state }`; `concurrentDrift` returns `{ kind: 'drift', expectedState, actualState }`; `gateRefused` preserves `{ kind: 'gate-refused', phase: 'guard', exit, refusals, warns }`; `moveRefused` preserves `{ kind: 'move-refused', phase, exit, itemId, sentinelPresent, boardMoved }` plus any saga diagnostics; and `boundaryLockRefused` returns `{ kind: 'boundary-lock-refused', phase: 'lock', exit: 7, holder, retry }`. `invalidBoundaryResult` returns `{ kind: 'invalid-boundary-result', phase: 'internal', exit: 1, reason, receivedKind }` and emits an internal-contract diagnostic. Only `{ kind: 'moved' }` reaches target resident execution. Gate exits 3/4/6 retain their guard phase, refusal IDs, blockers, warnings, timing, and recovery banners rather than being flattened into a move refusal.
 
 The issue-scoped lock spans the final hydration, complete pre-mutation gate, and `moveState` call. The adapter delegates to shipped `withIssueLock`, so Cursor→`moveState`, existing verb nesting, and child processes reuse the `AsyncLocalStorage`/`AITM_ISSUE_LOCK_HELD` contract automatically.
 
-`ISSUE_LOCK_STALE_MS` remains the shipped 30-minute orphan backstop; guard latency does not tune it. The implementation measures p50/p95/p99 hold time and configures a bounded retry/backoff acquisition budget at least as large as measured p95 plus jitter, subject to an operator-facing maximum. Exhausting that budget on a mutating boundary remains an honest exit 7 and the caller rehydrates before retrying. Read-only and actions-only surfaces do not acquire this boundary lock. This network cost is deliberate until a separately scoped multi-source revision-token architecture exists.
+`ISSUE_LOCK_STALE_MS` remains the shipped 30-minute orphan backstop; guard latency does not tune it. The implementation measures p50/p95/p99 hold time and configures a bounded retry/backoff acquisition budget at least as large as measured p95 plus jitter, subject to an operator-facing maximum. Exhausting that budget on a mutating boundary is caught and classified as exit 7, and the caller rehydrates before retrying. Read-only and actions-only surfaces do not acquire this boundary lock, although a resident action may acquire the distinct bounded ledger/action critical section defined above. This network cost is deliberate until a separately scoped multi-source revision-token architecture exists.
 
-An `issue-lock` resident action uses the same shipped primitive with an action-specific `verb` and acquisition profile, but it is a separate short critical section after any boundary lock has been released. On contention an actions-only invocation returns `paused` with `issue-lock-contended` and retry diagnostics; it does not report movement exit 7 because no boundary was attempted. Legacy C adapters that invoke an action inside an already-held issue lock rely on the shipped re-entrant short-circuit; D's final path does not intentionally nest them.
+Every ledger critical section uses the shipped primitive with an action-specific `verb` and acquisition profile after any boundary lock has been released. Correlation-class sections cover only intent/provider initiation or one event append; issue-lock-class sections may additionally cover one short local mutation. On contention either returns `paused` with `issue-lock-contended` and retry diagnostics, never movement exit 7. Legacy C adapters that invoke an action inside an already-held issue lock rely on the shipped re-entrant short-circuit; D's final path does not intentionally nest them.
 
 ## Boundary and transition consistency
 
@@ -536,12 +558,12 @@ Every resident action must pass a shared conformance suite proving that `verify`
 
 The reviewed design is too risky as one XL implementation. #1117 remains the architecture/prerequisite record and is delivered through four independently green, sequential implementation stories:
 
-| Story | Scope                                                                                    | Estimate | Behavior boundary                                                                                                   |
-| ----- | ---------------------------------------------------------------------------------------- | -------: | ------------------------------------------------------------------------------------------------------------------- |
-| A     | Topology single-sourcing and pure factory                                                |       6h | Consume `lifecycle-policy`, freeze direct-reference definitions, expose derived indexes; no runtime behavior change |
-| B     | Repository adapter, task snapshot, and in-memory test double                             |       8h | Add provenance/reconciliation/offline hydration without production Cursor routing                                   |
-| C     | Resident-action contract, Cursor, Review migration, conformance and interruption harness |      16h | Route actions-only and Review resident behavior; crossing delegates unchanged to the shipped host boundary          |
-| D     | Locked-boundary TOCTOU correction                                                        |       8h | Replace C's boundary adapter with the final locked pre-mutation gate and `moveState` delegation                     |
+| Story | Scope                                                                               | Estimate | Behavior boundary                                                                                                   |
+| ----- | ----------------------------------------------------------------------------------- | -------: | ------------------------------------------------------------------------------------------------------------------- |
+| A     | Topology single-sourcing and pure factory                                           |       6h | Consume `lifecycle-policy`, freeze direct-reference definitions, expose derived indexes; no runtime behavior change |
+| B     | Repository adapter, bounded ledger reads, task snapshot, and in-memory test double  |      10h | Add provenance/reconciliation/offline hydration without production Cursor routing                                   |
+| C     | Resident actions, Cursor, ledger protection/repair, Review, and conformance harness |      20h | Route actions-only and Review resident behavior; crossing delegates unchanged to the shipped host boundary          |
+| D     | Locked-boundary TOCTOU correction                                                   |       8h | Replace C's boundary adapter with the final locked pre-mutation gate and `moveState` delegation                     |
 
 Each story begins from green trunk, has focused characterization tests, and must not depend on unmerged behavior from a later story. In C, the Cursor may finish resident work and request Test→Review, but a compatibility adapter delegates the entire crossing to the existing host: its current unlocked `runGuardExecution`, lock acquisition, and `moveState` behavior remain byte-for-byte unchanged. D refactors that adapter so lock acquisition moves before final hydration and the complete pre-mutation gate; only then does the final algorithm above become production. C is green and shippable without D. Story D is the last prerequisite before #937 may begin.
 
@@ -551,7 +573,7 @@ Compatibility requirements across the split:
 - retain `registerGuard` idempotency and empty-on-direct-import characterization until the factory-backed compatibility layer replaces bootstrap;
 - retain all move saga ordering, timing-row pairs, exit codes 3/4/6/7/8, and post-commit tail isolation;
 - retain `buildCloseGatesDeps`, worktree-aware trunk resolution, and the temporary `refinementPlan` compatibility mirror;
-- protect the constant-size resident-action ledger head as a `single` invariant in `body-invariants.mjs` and mirror it in `gh-edit-guard.MARKER_PATTERNS`; verify the immutable comment-event hash chain through the repository adapter;
+- add the exact-value `ledger-head` invariant, ledger-specific monotonic advance primitive, `bash-guard.mjs`/managed-command comment edit-delete protection, visible warning, bounded hot reads, and audited `action-ledger reconcile` path;
 - introduce public `ctx.runGuardExecution` while retaining `_runGuardExecution` only for test/backward compatibility;
 - retain `--force`, `--supersede`, `TT_SKIP_NETWORK`, and sanctioned reverse-edge behavior;
 - extend and ultimately supersede `states/states-skeleton.test.mjs` with factory-shape assertions rather than creating contradictory shape tests; and
@@ -582,33 +604,36 @@ The future TIA design changes which checks the Test action requests and records.
 
 ## Failure matrix
 
-| Failure point                                           | Durable current state                       | Result / exit                                                        | Next invocation                             |
-| ------------------------------------------------------- | ------------------------------------------- | -------------------------------------------------------------------- | ------------------------------------------- |
-| Required snapshot field missing or stale                | Existing state                              | Failed closed                                                        | Rehydrate or repair evidence                |
-| Snapshot partly fresh                                   | Existing state                              | Consumers of stale required fields refuse; unrelated fields may warn | Refresh named sources                       |
-| Current action waiting before deadline                  | Existing state                              | Dormant waiting with correlation                                     | Resolve external progress                   |
-| Current action waiting past deadline                    | Existing state                              | Reclassified failed                                                  | Repair/restart correlated work              |
-| Action returns waiting without verified waiting event   | Existing state                              | Failed contract                                                      | Repair event append, then rerun             |
-| Current action paused or failed                         | Existing state                              | Dormant paused/failed                                                | Resume first incomplete step                |
-| Action effect has no durable correlation                | Existing state                              | Contract refusal                                                     | Correct action implementation               |
-| No ledger head and no events for the current visit      | Existing state                              | Normal first or legacy execution; verify first                       | Record events only if `run` is needed       |
-| Required prior action event is missing or altered       | Existing state                              | Failed closed; provider evidence alone cannot authorize replay       | Reconcile durable event history             |
-| Two Cursors run one correlation-class action            | Existing state                              | Short intent lock selects one key; provider calls deduplicate on it  | Rehydrate and fold the comment ledger       |
-| Task leaves the recorded visit before provider submit   | New durable state                           | Paused `stale-state-visit`; provider callback is not invoked         | Rehydrate the new current state             |
-| Two Cursors run one issue-lock-class action             | Existing state                              | One runs; actions-only contender returns paused with retry detail    | Losing Cursor rehydrates before retry       |
-| Gated-target issue body fetch fails                     | Existing state                              | Failed closed, exit 3                                                | Restore authoritative read, then retry      |
-| Guard returns refusal                                   | Existing state                              | Aggregated boundary refusal, exit 4 or contiguity exit 6             | Fix all reported blockers                   |
-| Guard throws or returns malformed data                  | Existing state                              | Coerced and aggregated refusal, exit 4                               | Correct guard and retry                     |
-| Boundary lock exceeds retry/backoff budget              | Existing state                              | `IssueLockError`, exit 7                                             | Wait, then rehydrate                        |
-| Two Cursors race for one boundary                       | Existing state                              | One owns lock; other may exhaust budget with exit 7                  | Losing Cursor retries from fresh state      |
-| Status write fails before confirmation                  | Source state; last-known marker compensated | exit 7                                                               | Replay saga                                 |
-| Status reaches target but sentinel is absent            | Target board, incomplete move               | exit 7                                                               | Replay to converge sentinel/evidence        |
-| Sentinel present but board/marker post-condition drifts | Explicitly inconsistent                     | exit 8                                                               | Run explicit reconcile path                 |
-| Crash after confirmed move and before target action     | Target state                                | Process absent                                                       | Rehydrate target and start resident actions |
-| Any post-commit tail step fails                         | Target state                                | Move succeeds; ordered `failures[]` warning                          | Repair projection separately                |
-| `--force` or `--supersede` requested                    | Policy-defined target                       | Audited shipped bypass; saga still authoritative                     | Hydrate resulting target                    |
-| `TT_SKIP_NETWORK=1` in production boundary              | Existing state                              | Offline refusal                                                      | Retry online                                |
-| Out-of-band Status mutation                             | Drifted sources                             | Cursor refuses                                                       | `/task reconcile` by operator               |
+| Failure point                                           | Durable current state                       | Result / exit                                                        | Next invocation                              |
+| ------------------------------------------------------- | ------------------------------------------- | -------------------------------------------------------------------- | -------------------------------------------- |
+| Required snapshot field missing or stale                | Existing state                              | Failed closed                                                        | Rehydrate or repair evidence                 |
+| Snapshot partly fresh                                   | Existing state                              | Consumers of stale required fields refuse; unrelated fields may warn | Refresh named sources                        |
+| Current action waiting before deadline                  | Existing state                              | Dormant waiting with correlation                                     | Resolve external progress                    |
+| Current action waiting past deadline                    | Existing state                              | Reclassified failed                                                  | Repair/restart correlated work               |
+| Action returns waiting without verified waiting event   | Existing state                              | Failed contract                                                      | Repair event append, then rerun              |
+| Current action paused or failed                         | Existing state                              | Dormant paused/failed                                                | Resume first incomplete step                 |
+| Action effect has no durable correlation                | Existing state                              | Contract refusal                                                     | Correct action implementation                |
+| No ledger head and no events for the current visit      | Existing state                              | Normal first or legacy execution; verify first                       | Record events only if `run` is needed        |
+| Required current action event is missing or altered     | Existing state                              | Failed closed; provider evidence cannot silently authorize replay    | Run human-approved `action-ledger reconcile` |
+| Orphan search exceeds its configured page budget        | Existing state                              | Paused `ledger-orphan-search-budget`                                 | Run `action-ledger reconcile`                |
+| Two Cursors run one correlation-class action            | Existing state                              | Short intent lock selects one key; provider calls deduplicate on it  | Rehydrate and fold the comment ledger        |
+| Task leaves the recorded visit before provider submit   | New durable state                           | Paused `stale-state-visit`; provider callback is not invoked         | Rehydrate the new current state              |
+| Two Cursors run one issue-lock-class action             | Existing state                              | One runs; actions-only contender returns paused with retry detail    | Losing Cursor rehydrates before retry        |
+| Either action class exhausts its lock budget            | Existing state                              | Paused `issue-lock-contended`; never movement exit 7                 | Rehydrate, then retry resident action        |
+| Gated-target issue body fetch fails                     | Existing state                              | Failed closed, exit 3                                                | Restore authoritative read, then retry       |
+| Guard returns refusal                                   | Existing state                              | Aggregated boundary refusal, exit 4 or contiguity exit 6             | Fix all reported blockers                    |
+| Guard throws or returns malformed data                  | Existing state                              | Coerced and aggregated refusal, exit 4                               | Correct guard and retry                      |
+| Boundary lock exceeds retry/backoff budget              | Existing state                              | `IssueLockError`, exit 7                                             | Wait, then rehydrate                         |
+| Two Cursors race for one boundary                       | Existing state                              | One owns lock; other may exhaust budget with exit 7                  | Losing Cursor retries from fresh state       |
+| Boundary host returns an unknown result kind            | Existing state                              | Internal contract failure, exit 1                                    | Repair adapter/result contract               |
+| Status write fails before confirmation                  | Source state; last-known marker compensated | exit 7                                                               | Replay saga                                  |
+| Status reaches target but sentinel is absent            | Target board, incomplete move               | exit 7                                                               | Replay to converge sentinel/evidence         |
+| Sentinel present but board/marker post-condition drifts | Explicitly inconsistent                     | exit 8                                                               | Run explicit reconcile path                  |
+| Crash after confirmed move and before target action     | Target state                                | Process absent                                                       | Rehydrate target and start resident actions  |
+| Any post-commit tail step fails                         | Target state                                | Move succeeds; ordered `failures[]` warning                          | Repair projection separately                 |
+| `--force` or `--supersede` requested                    | Policy-defined target                       | Audited shipped bypass; saga still authoritative                     | Hydrate resulting target                     |
+| `TT_SKIP_NETWORK=1` in production boundary              | Existing state                              | Offline refusal                                                      | Retry online                                 |
+| Out-of-band Status mutation                             | Drifted sources                             | Cursor refuses                                                       | `/task reconcile` by operator                |
 
 ## Testing strategy
 
@@ -651,13 +676,18 @@ Required behaviors include:
 - Review objection remains in Review;
 - correlation stability when HEAD advances between run and verify;
 - per-action/per-visit event folding, retention across later steps, and invalidation by a new state visit;
-- short-lock intent winner selection under same-action and cross-action concurrency;
-- constant-size body-head invariant/edit-guard protection plus immutable comment-event hash-chain verification;
+- deterministic attempt ordinals and exact retry IDs under same-action and cross-action concurrency;
+- bounded current-visit head-map encoding and factory action-count refusal above 8 KiB;
+- exact-value `ledger-head` protection, monotonic predecessor validation, stale/regressing-head refusal, and read-back verification;
+- managed CLI comment edit/delete refusal, ambiguous last-comment preflight, and visible do-not-edit guidance;
+- bounded current-attempt point reads with no unpaginated timeline fetch on hydration;
+- human-approved ledger correction that records damage and leaves affected actions unproven;
 - 4 KiB event-budget rejection before provider effects and oversized-evidence fingerprinting;
 - empty first/legacy fold acceptance versus missing-phase, altered-event, and broken-chain refusal;
 - read-only and offline hydration producing no writes, including expired-wait classification;
-- crash-after-intent and orphan-comment recovery, waiting-event verification, and injected-clock behavior at and beyond the deadline;
-- interruption convergence, in-memory offline hydration, acquisition-budget contention, separate correlation-class and issue-lock-class action concurrency, boundary serialization, and compatibility parity for all sanctioned movement and escape hatches.
+- crash-after-intent, genesis-head, bounded orphan recovery, waiting-event verification, and injected-clock behavior at and beyond the deadline;
+- forward-trigger retry after failed action, invalid-boundary-result exit 1, and caught boundary `IssueLockError` exit 7;
+- interruption convergence, in-memory offline hydration, action-contention pause semantics, correlation-class and issue-lock-class critical-section scope, boundary serialization, and compatibility parity for all sanctioned movement and escape hatches.
 
 ## Alternatives considered
 
