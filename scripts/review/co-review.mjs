@@ -67,6 +67,35 @@ export async function runCli(argv = process.argv.slice(2), io = {}) {
         timeoutSeconds: values.timeout === undefined ? 55 : number(values, 'timeout'),
       });
       if (result.status === 'timeout') exitCode = 3;
+    } else if (name === 'handoff') {
+      const cwd = io.cwd ?? process.cwd();
+      const dir = required(values, 'dir');
+      const actor = required(values, 'actor');
+      const state = protocol.statusProtocol({ cwd, dir });
+      const role = Object.entries(state.roles).find(([, identity]) => identity === actor)?.[0];
+      if (!role) throw usage(`--actor is not a configured identity: ${actor}`);
+      if (role !== 'owner') {
+        throw usage('reviewer handoff is not available yet');
+      }
+      assertAllowed(values, booleans, [
+        'dir',
+        'actor',
+        'response',
+        'artifact',
+        'commit',
+        'answers',
+        'message',
+      ]);
+      result = protocol.handoffOwner({
+        cwd,
+        dir,
+        actor,
+        response: required(values, 'response'),
+        artifact: required(values, 'artifact'),
+        commit: required(values, 'commit'),
+        answers: values.answers,
+        message: required(values, 'message'),
+      });
     } else {
       throw usage(`unknown command ${String(name)}`);
     }

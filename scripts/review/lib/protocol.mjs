@@ -23,7 +23,7 @@ export const EVENT_SCHEMA = 'aitm.co-review-event/v1';
 export class ProtocolError extends Error {
   constructor(code, detail = '', { exitCode = 1, next = '' } = {}) {
     super(
-      `co-review:${code}${detail ? `: ${detail}` : ''}; no state changed${
+      `co-review:${code}${detail ? `:${detail}` : ''}; no state changed${
         next ? `; next: ${next}` : ''
       }`
     );
@@ -214,8 +214,8 @@ function eventFor(state, type, at) {
   };
 }
 
-function appendEvent(paths, state, type, at = state.updatedAt) {
-  appendFileSync(paths.events, `${JSON.stringify(eventFor(state, type, at))}\n`);
+function appendEvent(paths, state, type, at = state.updatedAt, details = {}) {
+  appendFileSync(paths.events, `${JSON.stringify({ ...eventFor(state, type, at), ...details })}\n`);
 }
 
 function validateState(state) {
@@ -417,8 +417,175 @@ export function claimTurn({ cwd = process.cwd(), dir, actor }) {
   });
 }
 
-export function handoffOwner() {
-  fail('not-implemented', 'owner handoff');
+function exchangeArtifact(root, paths, candidate, label, disallowed = []) {
+  const artifact = digestFile(root, candidate, label);
+  const absolute = path.resolve(root, artifact.path);
+  if (!absolute.startsWith(`${paths.absolute}${path.sep}`)) {
+    fail(`${label}-outside-runtime`, artifact.path);
+  }
+  const reserved = new Set([
+    paths.state,
+    paths.events,
+    paths.lock,
+    ...disallowed.map((value) => path.resolve(root, value)),
+  ]);
+  if (reserved.has(absolute)) fail(`${label}-path-conflict`, artifact.path);
+  return artifact;
+}
+
+function uniqueFindingIds(markdown, label) {
+  const ids = [...markdown.matchAll(/\[finding:([A-Za-z0-9][A-Za-z0-9._-]*)\]/g)].map(
+    (match) => match[1]
+  );
+  const seen = new Set();
+  for (const id of ids) {
+    if (seen.has(id)) fail('duplicate-finding', `${label}:${id}`);
+    seen.add(id);
+  }
+  return ids;
+}
+
+function validateResponse(root, reviewArtifact, responseArtifact) {
+  if (!reviewArtifact) return;
+  const review = readFileSync(path.resolve(root, reviewArtifact.path), 'utf8');
+  const response = readFileSync(path.resolve(root, responseArtifact.path), 'utf8');
+  const reviewIds = uniqueFindingIds(review, 'review');
+  const responseMatches = [
+    ...response.matchAll(/\[finding:([A-Za-z0-9][A-Za-z0-9._-]*)\]\s*\[disposition:([^\]\n]+)\]/g),
+  ];
+  const responseIds = responseMatches.map((match) => match[1]);
+  const seen = new Set();
+  for (const id of responseIds) {
+    if (seen.has(id)) fail('duplicate-disposition', id);
+    seen.add(id);
+    if (!reviewIds.includes(id)) fail('unknown-finding', id);
+  }
+  for (const id of reviewIds) {
+    if (!seen.has(id)) fail('missing-disposition', id);
+  }
+  for (let index = 0; index < responseMatches.length; index += 1) {
+    const match = responseMatches[index];
+    const id = match[1];
+    const disposition = match[2].trim();
+    const allowed = new Set(['accepted', 'accepted-with-modification', 'rejected', 'deferred']);
+    if (!allowed.has(disposition)) fail('unknown-disposition', `${id}:${disposition}`);
+    const start = match.index;
+    const end = responseMatches[index + 1]?.index ?? response.length;
+    const block = response.slice(start, end);
+    if (disposition === 'rejected' && !/\[evidence:[^\]\n]+\]/.test(block)) {
+      fail('rejected-without-evidence', id);
+    }
+    if (disposition === 'deferred') {
+      if (!/\[follow-up:#\d+\]/.test(block)) fail('deferred-without-follow-up', id);
+      if (!/\[safe-boundary:[^\]\n]+\]/.test(block)) fail('deferred-without-boundary', id);
+    }
+  }
+}
+
+function committedOwnerArtifact(root, state, artifact, revision) {
+  const resolved = relativePath(root, artifact, 'artifact');
+  if (resolved.relative !== state.artifact.path) {
+    fail('wrong-artifact', `${resolved.relative}; expected ${state.artifact.path}`);
+  }
+  const commit = exactReachableCommit(root, revision);
+  const head = git(root, ['rev-parse', 'HEAD']).trim();
+  if (commit !== head) fail('commit-not-head', `${commit}; HEAD=${head}`);
+  const branch = git(root, ['branch', '--show-current']).trim();
+  if (branch !== state.branch) fail('branch-drift', `${branch}; expected ${state.branch}`);
+  const committed = git(root, ['show', `${commit}:${resolved.relative}`], {
+    buffer: true,
+    allowFailure: true,
+  });
+  if (committed === null) fail('commit-missing-artifact', `${commit}:${resolved.relative}`);
+  const worktree = readFileSync(resolved.absolute);
+  const index = git(root, ['show', `:${resolved.relative}`], { buffer: true });
+  if (!worktree.equals(committed)) fail('artifact-drift', resolved.relative);
+  if (!index.equals(committed)) fail('index-drift', resolved.relative);
+  return {
+    path: resolved.relative,
+    commit,
+    blob: git(root, ['rev-parse', `${commit}:${resolved.relative}`]).trim(),
+    sha256: digestBuffer(committed),
+  };
+}
+
+export function handoffOwner({
+  cwd = process.cwd(),
+  dir,
+  actor,
+  response,
+  artifact,
+  commit,
+  answers,
+  message,
+}) {
+  const root = repositoryRoot(cwd);
+  const paths = protocolPaths(root, dir);
+  return withMutex(paths, actor, 'owner-handoff', () => {
+    const state = assertIntegrity({ cwd: root, dir: paths.relative });
+    if (state.lifecycle !== 'active') fail('terminal', state.lifecycle);
+    if (state.roles.owner !== actor || state.currentRole !== 'owner') {
+      fail('wrong-role', `${actor}; expected owner ${state.roles.owner}`);
+    }
+    if (state.turnState !== 'claimed' || state.claim?.actor !== actor) {
+      fail('unclaimed', 'owner');
+    }
+    if (!String(message || '').trim()) fail('message-required', 'owner handoff');
+    const precedingReview = state.lastHandoff?.artifacts?.review ?? null;
+    if (precedingReview && !answers) fail('answers-required', precedingReview.path);
+    if (!precedingReview && answers) fail('unexpected-answers', answers);
+    let answeredReview = null;
+    if (precedingReview) {
+      answeredReview = digestFile(root, answers, 'answers');
+      if (
+        answeredReview.path !== precedingReview.path ||
+        answeredReview.sha256 !== precedingReview.sha256
+      ) {
+        fail('answers-mismatch', answeredReview.path);
+      }
+    }
+    const responseArtifact = exchangeArtifact(root, paths, response, 'response', [
+      state.artifact.path,
+      ...(answeredReview ? [answeredReview.path] : []),
+    ]);
+    if (state.immutableArtifacts?.[responseArtifact.path]) {
+      fail('response-already-used', responseArtifact.path);
+    }
+    validateResponse(root, answeredReview, responseArtifact);
+    const artifactRecord = committedOwnerArtifact(root, state, artifact, commit);
+    const at = new Date().toISOString();
+    const artifacts = {
+      response: responseArtifact,
+      ...(answeredReview ? { answeredReview } : {}),
+    };
+    const lastHandoff = {
+      from: 'owner',
+      to: 'reviewer',
+      at,
+      message: String(message).trim(),
+      commit: artifactRecord.commit,
+      artifact: artifactRecord,
+      artifacts,
+    };
+    const next = validateState({
+      ...state,
+      integrity: undefined,
+      revision: state.revision + 1,
+      currentRole: 'reviewer',
+      turnState: 'available',
+      round: state.round + 1,
+      claim: null,
+      artifact: artifactRecord,
+      lastHandoff,
+      immutableArtifacts: {
+        ...(state.immutableArtifacts ?? {}),
+        [responseArtifact.path]: responseArtifact,
+      },
+      updatedAt: at,
+    });
+    appendEvent(paths, next, 'owner-handoff', at, { handoff: lastHandoff });
+    return atomicStateWrite(paths, next);
+  });
 }
 
 export function handoffReviewer() {

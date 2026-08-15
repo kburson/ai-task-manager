@@ -74,6 +74,13 @@ function snapshotProtocol(root, dir) {
   };
 }
 
+function commitArtifact(root, content, message = 'revise artifact') {
+  writeFileSync(path.join(root, 'docs/artifact.md'), content);
+  git(root, 'add', 'docs/artifact.md');
+  git(root, 'commit', '-m', message);
+  return git(root, 'rev-parse', 'HEAD');
+}
+
 async function initializedProtocol({ imported = false, maxReviewTurns = 6 } = {}) {
   const api = await protocol();
   const fixture = repositoryFixture();
@@ -495,4 +502,191 @@ test('CLI routes claim and maps bounded wait timeout to exit code 3', () => {
   });
   assert.equal(claimed.status, 0, claimed.stderr);
   assert.equal(JSON.parse(claimed.stdout).turnState, 'claimed');
+});
+
+test('first owner handoff transfers a committed artifact plus immutable response', async () => {
+  const { api, root, options, initialCommit } = await initializedProtocol();
+  api.claimTurn({ cwd: root, dir: options.dir, actor: 'owner-agent' });
+  const response = `${options.dir}/r1-owner-response.md`;
+  writeFileSync(path.join(root, response), '# Owner response\n\nInitial artifact ready.\n');
+  const state = api.handoffOwner({
+    cwd: root,
+    dir: options.dir,
+    actor: 'owner-agent',
+    response,
+    artifact: options.artifact,
+    commit: initialCommit,
+    message: 'initial artifact ready',
+  });
+  assert.deepEqual(
+    {
+      currentRole: state.currentRole,
+      turnState: state.turnState,
+      round: state.round,
+    },
+    { currentRole: 'reviewer', turnState: 'available', round: 2 }
+  );
+  assert.equal(state.lastHandoff.commit, initialCommit);
+  assert.match(state.lastHandoff.artifacts.response.sha256, /^sha256:[a-f0-9]{64}$/);
+  assert.equal(state.reviewTurnsUsed, 0);
+});
+
+test('owner answers every imported finding with one supported disposition', async () => {
+  const { api, root, options } = await initializedProtocol({ imported: true });
+  api.claimTurn({ cwd: root, dir: options.dir, actor: 'owner-agent' });
+  const commit = commitArtifact(root, '# Artifact\n\nTerminal acceptance is explicit.\n');
+  const response = `${options.dir}/r2-owner-response.md`;
+  writeFileSync(
+    path.join(root, response),
+    [
+      '# Owner response',
+      '',
+      '[finding:F-001] [disposition:accepted-with-modification]',
+      'Revised section: Terminal acceptance.',
+      '',
+    ].join('\n')
+  );
+  const state = api.handoffOwner({
+    cwd: root,
+    dir: options.dir,
+    actor: 'owner-agent',
+    response,
+    artifact: options.artifact,
+    commit,
+    answers: options.importReview,
+    message: 'R2 response and revision ready',
+  });
+  assert.equal(state.currentRole, 'reviewer');
+  assert.equal(state.round, 3);
+  assert.equal(state.artifact.commit, commit);
+  assert.equal(state.lastHandoff.artifacts.answeredReview.path, options.importReview);
+});
+
+test('owner handoff rejects incomplete, invented, rejected, or deferred dispositions', async () => {
+  const cases = [
+    {
+      body: '# Response\n',
+      expected: /co-review:missing-disposition:F-001/,
+    },
+    {
+      body: '[finding:F-001] [disposition:accepted]\n[finding:F-999] [disposition:accepted]\n',
+      expected: /co-review:unknown-finding:F-999/,
+    },
+    {
+      body: '[finding:F-001] [disposition:rejected]\nNo citation.\n',
+      expected: /co-review:rejected-without-evidence:F-001/,
+    },
+    {
+      body: '[finding:F-001] [disposition:deferred]\n[follow-up:#1300]\n',
+      expected: /co-review:deferred-without-boundary:F-001/,
+    },
+  ];
+  for (const { body, expected } of cases) {
+    const { api, root, options } = await initializedProtocol({ imported: true });
+    api.claimTurn({ cwd: root, dir: options.dir, actor: 'owner-agent' });
+    const commit = commitArtifact(root, '# Artifact\n\nRevision.\n');
+    const response = `${options.dir}/response.md`;
+    writeFileSync(path.join(root, response), body);
+    const before = snapshotProtocol(root, options.dir);
+    assert.throws(
+      () =>
+        api.handoffOwner({
+          cwd: root,
+          dir: options.dir,
+          actor: 'owner-agent',
+          response,
+          artifact: options.artifact,
+          commit,
+          answers: options.importReview,
+          message: 'attempt',
+        }),
+      expected
+    );
+    assert.deepEqual(snapshotProtocol(root, options.dir), before);
+  }
+});
+
+test('owner handoff refuses wrong path, stale commit, and artifact/index drift', async () => {
+  for (const mutate of [
+    ({ call }) => ({ ...call, artifact: '.gitignore' }),
+    ({ call, initialCommit }) => ({ ...call, commit: initialCommit }),
+    ({ call, root }) => {
+      writeFileSync(path.join(root, 'docs/artifact.md'), '# Artifact\n\nDirty after commit.\n');
+      return call;
+    },
+  ]) {
+    const initialized = await initializedProtocol({ imported: true });
+    const { api, root, options, initialCommit } = initialized;
+    api.claimTurn({ cwd: root, dir: options.dir, actor: 'owner-agent' });
+    const commit = commitArtifact(root, '# Artifact\n\nRevision.\n');
+    const response = `${options.dir}/response.md`;
+    writeFileSync(path.join(root, response), '[finding:F-001] [disposition:accepted]\nRevised.\n');
+    const call = {
+      cwd: root,
+      dir: options.dir,
+      actor: 'owner-agent',
+      response,
+      artifact: options.artifact,
+      commit,
+      answers: options.importReview,
+      message: 'attempt',
+    };
+    const before = snapshotProtocol(root, options.dir);
+    assert.throws(() => api.handoffOwner(mutate({ call, root, initialCommit })), /co-review:/);
+    assert.deepEqual(snapshotProtocol(root, options.dir), before);
+  }
+});
+
+test('CLI routes the owner handoff and rejects reviewer-only flags', () => {
+  const { root, artifact, initialCommit } = repositoryFixture();
+  assert.equal(
+    runCli(
+      [
+        'init',
+        '--dir',
+        '.tmp/review',
+        '--artifact',
+        artifact,
+        '--owner',
+        'owner-agent',
+        '--reviewer',
+        'reviewer-agent',
+        '--max-turns',
+        '6',
+      ],
+      { cwd: root }
+    ).status,
+    0
+  );
+  assert.equal(
+    runCli(['claim', '--dir', '.tmp/review', '--actor', 'owner-agent'], { cwd: root }).status,
+    0
+  );
+  writeFileSync(path.join(root, '.tmp/review/response.md'), '# Response\n');
+  const handoff = runCli(
+    [
+      'handoff',
+      '--dir',
+      '.tmp/review',
+      '--actor',
+      'owner-agent',
+      '--response',
+      '.tmp/review/response.md',
+      '--artifact',
+      artifact,
+      '--commit',
+      initialCommit,
+      '--message',
+      'ready',
+    ],
+    { cwd: root }
+  );
+  assert.equal(handoff.status, 0, handoff.stderr);
+  assert.equal(JSON.parse(handoff.stdout).currentRole, 'reviewer');
+
+  const invalid = runCli(
+    ['handoff', '--dir', '.tmp/review', '--actor', 'owner-agent', '--review', 'review.md'],
+    { cwd: root }
+  );
+  assert.equal(invalid.status, 2, invalid.stderr);
 });
