@@ -588,12 +588,156 @@ export function handoffOwner({
   });
 }
 
-export function handoffReviewer() {
-  fail('not-implemented', 'reviewer handoff');
+export function handoffReviewer({
+  cwd = process.cwd(),
+  dir,
+  actor,
+  review,
+  reviewOf,
+  decision,
+  summary,
+  message,
+}) {
+  const root = repositoryRoot(cwd);
+  const paths = protocolPaths(root, dir);
+  return withMutex(paths, actor, 'reviewer-handoff', () => {
+    const state = assertIntegrity({ cwd: root, dir: paths.relative });
+    if (state.lifecycle !== 'active') fail('terminal', state.lifecycle);
+    if (state.roles.reviewer !== actor || state.currentRole !== 'reviewer') {
+      fail('wrong-role', `${actor}; expected reviewer ${state.roles.reviewer}`);
+    }
+    if (state.turnState !== 'claimed' || state.claim?.actor !== actor) {
+      fail('unclaimed', 'reviewer');
+    }
+    if (!String(message || '').trim()) fail('message-required', 'reviewer handoff');
+    if (!['accepted', 'changes-requested'].includes(decision)) {
+      fail('decision', String(decision));
+    }
+    const ownerHandoff = state.lastHandoff;
+    if (ownerHandoff?.from !== 'owner' || !ownerHandoff.commit) {
+      fail('missing-owner-handoff', state.round);
+    }
+    const exactReviewOf = exactReachableCommit(root, reviewOf);
+    if (exactReviewOf !== ownerHandoff.commit) {
+      fail('review-of', `${exactReviewOf}; expected ${ownerHandoff.commit}`);
+    }
+    if (state.reviewTurnsUsed >= state.maxReviewTurns) {
+      fail('budget-exhausted', `${state.reviewTurnsUsed}/${state.maxReviewTurns}`);
+    }
+    const reviewArtifact = exchangeArtifact(root, paths, review, 'review', [
+      state.artifact.path,
+      ...Object.keys(state.immutableArtifacts ?? {}),
+    ]);
+    if (state.immutableArtifacts?.[reviewArtifact.path]) {
+      fail('review-already-used', reviewArtifact.path);
+    }
+    uniqueFindingIds(readFileSync(path.resolve(root, reviewArtifact.path), 'utf8'), 'review');
+    const reviewTurnsUsed = state.reviewTurnsUsed + 1;
+    const remainingReviewTurns = state.maxReviewTurns - reviewTurnsUsed;
+    const finalChanges = decision === 'changes-requested' && remainingReviewTurns === 0;
+    if (summary && !finalChanges) fail('unexpected-summary', decision);
+    if (finalChanges && !summary)
+      fail('summary-required', `${reviewTurnsUsed}/${state.maxReviewTurns}`);
+    let summaryArtifact = null;
+    if (summary) {
+      summaryArtifact = exchangeArtifact(root, paths, summary, 'summary', [
+        state.artifact.path,
+        reviewArtifact.path,
+        ...Object.keys(state.immutableArtifacts ?? {}),
+      ]);
+    }
+    const at = new Date().toISOString();
+    const lifecycle =
+      decision === 'accepted' ? 'accepted' : finalChanges ? 'intervention-required' : 'active';
+    const currentRole = lifecycle === 'active' ? 'owner' : null;
+    const turnState = lifecycle === 'active' ? 'available' : null;
+    const artifacts = {
+      review: reviewArtifact,
+      ...(summaryArtifact ? { summary: summaryArtifact } : {}),
+    };
+    const lastHandoff = {
+      from: 'reviewer',
+      to: currentRole,
+      at,
+      message: String(message).trim(),
+      commit: exactReviewOf,
+      decision,
+      artifacts,
+    };
+    const immutableArtifacts = {
+      ...(state.immutableArtifacts ?? {}),
+      [reviewArtifact.path]: reviewArtifact,
+      ...(summaryArtifact ? { [summaryArtifact.path]: summaryArtifact } : {}),
+    };
+    const next = validateState({
+      ...state,
+      integrity: undefined,
+      revision: state.revision + 1,
+      lifecycle,
+      currentRole,
+      turnState,
+      round: state.round + 1,
+      claim: null,
+      reviewTurnsUsed,
+      remainingReviewTurns,
+      lastHandoff,
+      immutableArtifacts,
+      updatedAt: at,
+    });
+    appendEvent(paths, next, 'reviewer-handoff', at, { handoff: lastHandoff });
+    return atomicStateWrite(paths, next);
+  });
 }
 
-export function continueProtocol() {
-  fail('not-implemented', 'continue');
+export function continueProtocol({ cwd = process.cwd(), dir, additionalTurns, approvedBy, focus }) {
+  if (!Number.isInteger(additionalTurns) || additionalTurns < 1) {
+    fail('additional-turns', String(additionalTurns), { exitCode: 2 });
+  }
+  if (!String(approvedBy || '').trim()) {
+    fail('approved-by', 'nonblank identity required', { exitCode: 2 });
+  }
+  const root = repositoryRoot(cwd);
+  const paths = protocolPaths(root, dir);
+  return withMutex(paths, String(approvedBy).trim(), 'continue', () => {
+    const state = assertIntegrity({ cwd: root, dir: paths.relative });
+    if (state.lifecycle !== 'intervention-required') {
+      fail('continue-state', state.lifecycle);
+    }
+    let focusArtifact = null;
+    if (focus) {
+      focusArtifact = exchangeArtifact(root, paths, focus, 'focus', [
+        state.artifact.path,
+        ...Object.keys(state.immutableArtifacts ?? {}),
+      ]);
+    }
+    const at = new Date().toISOString();
+    const continuation = {
+      at,
+      additionalTurns,
+      approvedBy: String(approvedBy).trim(),
+      ...(focusArtifact ? { focus: focusArtifact } : {}),
+    };
+    const maxReviewTurns = state.maxReviewTurns + additionalTurns;
+    const next = validateState({
+      ...state,
+      integrity: undefined,
+      revision: state.revision + 1,
+      lifecycle: 'active',
+      currentRole: 'owner',
+      turnState: 'available',
+      claim: null,
+      maxReviewTurns,
+      remainingReviewTurns: maxReviewTurns - state.reviewTurnsUsed,
+      continuation,
+      immutableArtifacts: {
+        ...(state.immutableArtifacts ?? {}),
+        ...(focusArtifact ? { [focusArtifact.path]: focusArtifact } : {}),
+      },
+      updatedAt: at,
+    });
+    appendEvent(paths, next, 'continue', at, { continuation });
+    return atomicStateWrite(paths, next);
+  });
 }
 
 export async function waitForTurn({

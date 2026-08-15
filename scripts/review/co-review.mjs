@@ -74,27 +74,55 @@ export async function runCli(argv = process.argv.slice(2), io = {}) {
       const state = protocol.statusProtocol({ cwd, dir });
       const role = Object.entries(state.roles).find(([, identity]) => identity === actor)?.[0];
       if (!role) throw usage(`--actor is not a configured identity: ${actor}`);
-      if (role !== 'owner') {
-        throw usage('reviewer handoff is not available yet');
+      if (role === 'owner') {
+        assertAllowed(values, booleans, [
+          'dir',
+          'actor',
+          'response',
+          'artifact',
+          'commit',
+          'answers',
+          'message',
+        ]);
+        result = protocol.handoffOwner({
+          cwd,
+          dir,
+          actor,
+          response: required(values, 'response'),
+          artifact: required(values, 'artifact'),
+          commit: required(values, 'commit'),
+          answers: values.answers,
+          message: required(values, 'message'),
+        });
+      } else {
+        assertAllowed(values, booleans, [
+          'dir',
+          'actor',
+          'review',
+          'review-of',
+          'decision',
+          'summary',
+          'message',
+        ]);
+        result = protocol.handoffReviewer({
+          cwd,
+          dir,
+          actor,
+          review: required(values, 'review'),
+          reviewOf: required(values, 'review-of'),
+          decision: required(values, 'decision'),
+          summary: values.summary,
+          message: required(values, 'message'),
+        });
       }
-      assertAllowed(values, booleans, [
-        'dir',
-        'actor',
-        'response',
-        'artifact',
-        'commit',
-        'answers',
-        'message',
-      ]);
-      result = protocol.handoffOwner({
-        cwd,
-        dir,
-        actor,
-        response: required(values, 'response'),
-        artifact: required(values, 'artifact'),
-        commit: required(values, 'commit'),
-        answers: values.answers,
-        message: required(values, 'message'),
+    } else if (name === 'continue') {
+      assertAllowed(values, booleans, ['dir', 'additional-turns', 'approved-by', 'focus']);
+      result = protocol.continueProtocol({
+        cwd: io.cwd ?? process.cwd(),
+        dir: required(values, 'dir'),
+        additionalTurns: integer(values, 'additional-turns'),
+        approvedBy: required(values, 'approved-by'),
+        focus: values.focus,
       });
     } else {
       throw usage(`unknown command ${String(name)}`);
