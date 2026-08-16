@@ -1,4 +1,4 @@
-// @story #1052
+// @story #1052 #1279
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdtempSync, mkdirSync, writeFileSync } from 'node:fs';
@@ -14,6 +14,33 @@ import {
   runDecomposeCheck,
 } from '../../../../task-tracker/verbs/decompose-check.mjs';
 import { projectScratchDir } from '../../../../task-tracker/lib/scratch-dir.mjs';
+import {
+  parseWbsChildClaim,
+  reconcileWbsCoverage,
+} from '../../../../task-tracker/lib/decomposition-wbs-coverage.mjs';
+import { classifyDecomposition } from '../../../../task-tracker/lib/decomposition-policy.mjs';
+
+const SOURCE_PLAN = 'docs/plan.md';
+
+function wbsChild({
+  number,
+  task,
+  sourcePlan = SOURCE_PLAN,
+  sourcePlanCommit = 'child-plan-commit',
+  sourcePlanSection = task.heading,
+  title = task.title,
+} = {}) {
+  return {
+    number,
+    title,
+    body: [
+      '## Plan Metadata',
+      `- **Source-plan**: ${sourcePlan}`,
+      `- **Source-plan-commit**: ${sourcePlanCommit}`,
+      `- **Source-plan-section**: ${sourcePlanSection}`,
+    ].join('\n'),
+  };
+}
 
 function projectPlan(text) {
   const projectDir = mkdtempSync(join(projectScratchDir('test'), 'aitm-decomposition-gate-'));
@@ -30,6 +57,87 @@ function planText(taskCount = 2, verifiedCount = 2) {
     return `### Task ${number}: Part ${number}${verifier}`;
   }).join('\n\n');
 }
+
+test('parses visible WBS child provenance without trusting Generated-by', () => {
+  const task = { number: 1, title: 'Classifier', heading: '### Task 1: Classifier' };
+  assert.deepEqual(parseWbsChildClaim(wbsChild({ number: 1201, task })), {
+    number: 1201,
+    title: 'Classifier',
+    sourcePlan: SOURCE_PLAN,
+    sourcePlanCommit: 'child-plan-commit',
+    sourcePlanSection: '### Task 1: Classifier',
+  });
+});
+
+test('reconciles complete WBS coverage against content-equivalent pinned plans', async () => {
+  const acceptedPlanText = planText(6, 6);
+  const tasks = classifyDecomposition({ planText: acceptedPlanText }).tasks;
+  const reads = [];
+  const result = await reconcileWbsCoverage({
+    tasks,
+    acceptedPlanPath: SOURCE_PLAN,
+    acceptedPlanText,
+    children: tasks.map((task, index) => wbsChild({ number: 1273 + index, task })),
+    readPlanAtCommit: async (input) => {
+      reads.push(input);
+      return acceptedPlanText;
+    },
+  });
+  assert.equal(result.ok, true);
+  assert.equal(result.expectedCount, 6);
+  assert.equal(result.coveredCount, 6);
+  assert.equal(reads.length, 1, 'identical commit/path reads are cached');
+});
+
+test('reports missing, duplicate, unknown, title, path, and content contradictions', async () => {
+  const acceptedPlanText = planText(4, 4);
+  const tasks = classifyDecomposition({ planText: acceptedPlanText }).tasks;
+  const result = await reconcileWbsCoverage({
+    tasks,
+    acceptedPlanPath: SOURCE_PLAN,
+    acceptedPlanText,
+    children: [
+      wbsChild({ number: 1401, task: tasks[0] }),
+      wbsChild({ number: 1402, task: tasks[0] }),
+      wbsChild({ number: 1403, task: tasks[1], title: 'Wrong title' }),
+      wbsChild({ number: 1404, task: tasks[2], sourcePlan: 'docs/wrong.md' }),
+      wbsChild({
+        number: 1405,
+        task: tasks[2],
+        sourcePlanSection: '### Task 99: Unknown',
+      }),
+      wbsChild({ number: 1406, task: tasks[3] }),
+    ],
+    readPlanAtCommit: async ({ planPath }) =>
+      planPath === SOURCE_PLAN ? `${acceptedPlanText}\nchanged` : acceptedPlanText,
+  });
+  assert.equal(result.ok, false);
+  assert.ok(result.duplicateClaims.some((item) => /#1401.*#1402/.test(item)));
+  assert.ok(result.provenanceMismatches.some((item) => /#1403.*title/.test(item)));
+  assert.ok(result.provenanceMismatches.some((item) => /#1404.*Source-plan/.test(item)));
+  assert.ok(result.unknownSections.some((item) => /#1405.*Task 99/.test(item)));
+  assert.ok(result.blockers.some((item) => /pinned plan content differs/.test(item)));
+});
+
+test('unrelated children coexist but cannot satisfy a missing WBS task', async () => {
+  const acceptedPlanText = planText(2, 2);
+  const tasks = classifyDecomposition({ planText: acceptedPlanText }).tasks;
+  const unrelated = wbsChild({
+    number: 1500,
+    task: { title: 'Follow-on', heading: '### Task 50: Follow-on' },
+    sourcePlan: 'docs/other-plan.md',
+  });
+  const result = await reconcileWbsCoverage({
+    tasks,
+    acceptedPlanPath: SOURCE_PLAN,
+    acceptedPlanText,
+    children: [wbsChild({ number: 1501, task: tasks[0] }), unrelated],
+    readPlanAtCommit: async () => acceptedPlanText,
+  });
+  assert.equal(result.ok, false);
+  assert.deepEqual(result.missingTasks, [tasks[1].heading]);
+  assert.doesNotMatch(result.blockers.join('\n'), /#1500/);
+});
 
 function waiver() {
   return `
