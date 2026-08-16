@@ -181,3 +181,32 @@ test('end-to-end guard: correct child passes, #859 wrong-base child is refused',
   });
   assert.equal(allowed.decision, 'allow');
 });
+
+test('#1284: a custom-named epic cuts and validates a child at its exact head', () => {
+  const repo = mkdtempProjectIsolated('epic-tree-custom-authority-', 'test');
+  const git = gitFor(repo);
+  const customEpic = 'codex/1268-implementation-plan';
+  const customGraph = (n) =>
+    n === 910
+      ? { ...GRAPH[910], parentAuthoritativeBranch: customEpic }
+      : (GRAPH[n] ?? { parent: null, children: [] });
+
+  git(['branch', customEpic, 'trunk']);
+  const epicWorktree = siblingPath(repo, 'custom-epic');
+  git(['worktree', 'add', epicWorktree, customEpic]);
+  commitInWorktree(epicWorktree, 'epic.txt', 'custom epic head\n');
+  const customHead = git(['rev-parse', customEpic]);
+
+  const childWorktree = siblingPath(repo, 'custom-child');
+  const cut = cutChildWorktree({
+    issue: 910,
+    path: childWorktree,
+    deps: { graph: customGraph, git, trunk: 'trunk' },
+  });
+  assert.equal(cut.base, customEpic);
+  assert.equal(git(['merge-base', 'feature/child/910', customEpic]), customHead);
+  assert.equal(
+    computeEvaluation('feature/child/910', { graph: customGraph, git, trunk: 'trunk' }).pass,
+    true
+  );
+});

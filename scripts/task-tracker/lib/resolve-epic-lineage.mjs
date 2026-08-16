@@ -18,8 +18,10 @@
 //                  child or a nested epic, else trunk.
 //
 // The one external fact — the sub-issue graph edge for an issue — is injected as
-// `deps.graph(issue) → { parent, children }`, so this module needs neither `gh` nor
-// git and its tests run pure. `deps.trunk` overrides the trunk branch name.
+// `deps.graph(issue) → { parent, children, parentAuthoritativeBranch? }`, so this
+// module needs neither `gh` nor git and each resolution reads exactly one graph
+// node. A parent authority error is likewise carried on that node. `deps.trunk`
+// overrides the trunk branch name.
 
 import { composeBranchName, parseBranchName } from './branch-name.mjs';
 
@@ -44,16 +46,41 @@ export function resolveEpicLineage(issueOrBranch, { deps } = {}) {
   }
   const trunk = deps.trunk || 'trunk';
 
-  const { parent = null, children = [] } = deps.graph(issue) || {};
+  const node = deps.graph(issue) || {};
+  if (node.authorityError) {
+    throw new Error(`resolve-epic-lineage: ${node.authorityError}`);
+  }
+  const { parent = null, children = [] } = node;
   const role = children.length > 0 ? 'epic' : parent != null ? 'child' : 'story';
-  const branch = composeBranchName({ role, issue });
+  const canonicalBranch = composeBranchName({ role, issue });
+  if (
+    node.authoritativeBranch != null &&
+    (typeof node.authoritativeBranch !== 'string' || !node.authoritativeBranch)
+  ) {
+    throw new Error('resolve-epic-lineage: authoritative branch must be a non-empty string');
+  }
+  const branch = node.authoritativeBranch || canonicalBranch;
 
   if (role === 'story') {
     return { role, branch, epicBranch: null, parentBranch: trunk };
   }
 
-  const parentEpicBranch =
-    parent != null ? composeBranchName({ role: 'epic', issue: parent }) : null;
+  let parentEpicBranch = null;
+  if (parent != null) {
+    if (node.parentAuthorityError) {
+      throw new Error(`resolve-epic-lineage: ${node.parentAuthorityError}`);
+    }
+    if (node.parentAuthoritativeBranch != null) {
+      if (typeof node.parentAuthoritativeBranch !== 'string' || !node.parentAuthoritativeBranch) {
+        throw new Error(
+          'resolve-epic-lineage: parent authoritative branch must be a non-empty string'
+        );
+      }
+      parentEpicBranch = node.parentAuthoritativeBranch;
+    } else {
+      parentEpicBranch = composeBranchName({ role: 'epic', issue: parent });
+    }
+  }
 
   if (role === 'epic') {
     // A nested sub-epic bases on its parent epic; a root epic bases on trunk.

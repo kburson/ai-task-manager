@@ -31,6 +31,7 @@ import path from 'node:path';
 import { SCRATCH_REL_PREFIX } from './paths.mjs';
 import { currentBranch } from './fleet-registry.mjs';
 import { parseBranchName } from './lib/branch-name.mjs';
+import { resolveCurrentIssueWorktreeBranch } from './lib/issue-worktree-location.mjs';
 import { resolveEpicLineage } from './lib/resolve-epic-lineage.mjs';
 import { resolveTrunkRefSync } from './lib/trunk-ref.mjs';
 import { evaluateEpicBase } from './lib/epic-base-guard.mjs';
@@ -117,10 +118,15 @@ function isAncestor(git, ancestorRef, descendantRef) {
 // deps: { graph, git }.
 export function computeEvaluation(branch, deps) {
   try {
+    const parsed = parseBranchName(branch);
+    if (!parsed || parsed.role !== 'child') return null;
+    const childNode = deps.graph(parsed.issue) || {};
+    if (childNode.authorityError || childNode.parentAuthorityError) return null;
+    const epicIssue = Number(childNode.parent);
+    if (!Number.isInteger(epicIssue) || epicIssue <= 0) return null;
     const lineage = resolveEpicLineage(branch, { deps });
     if (lineage.role !== 'child' || !lineage.epicBranch) return null;
     const epicBranch = lineage.epicBranch;
-    const epicIssue = parseBranchName(epicBranch).issue;
     const epicParent = resolveEpicLineage(epicIssue, { deps }).parentBranch;
 
     const git = deps.git;
@@ -164,7 +170,9 @@ function realGit(projectDir) {
 // Build the graph node lookup the resolver needs, via `gh`. Synchronous shape
 // (the resolver is sync) — a failure throws and computeEvaluation returns null.
 function realGraph(projectDir) {
+  const cache = new Map();
   return (issue) => {
+    if (cache.has(issue)) return cache.get(issue);
     const cfg = JSON.parse(
       readFileSync(path.join(projectDir, '.ai-task-manager', 'task-tracker.json'), 'utf8')
     );
@@ -174,15 +182,19 @@ function realGraph(projectDir) {
         'api',
         'graphql',
         '-f',
-        `query=query { repository(owner: "${cfg.repo.split('/')[0]}", name: "${cfg.repo.split('/')[1]}") { issue(number: ${issue}) { parent { number } subIssues(first: 100) { nodes { number } } } } }`,
+        `query=query { repository(owner: "${cfg.repo.split('/')[0]}", name: "${cfg.repo.split('/')[1]}") { issue(number: ${issue}) { body parent { number body } subIssues(first: 100) { nodes { number } } } } }`,
       ],
       { cwd: projectDir, encoding: 'utf8', timeout: 5000 }
     );
     const node = JSON.parse(out)?.data?.repository?.issue ?? {};
-    return {
+    const result = {
       parent: node.parent?.number ?? null,
       children: (node.subIssues?.nodes ?? []).map((c) => Number(c.number)),
+      authoritativeBranch: resolveCurrentIssueWorktreeBranch(node.body),
+      parentAuthoritativeBranch: resolveCurrentIssueWorktreeBranch(node.parent?.body),
     };
+    cache.set(issue, result);
+    return result;
   };
 }
 
