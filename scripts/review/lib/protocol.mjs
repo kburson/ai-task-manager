@@ -18,7 +18,7 @@ import { hostname } from 'node:os';
 import path from 'node:path';
 
 import { resolveArchiveDestination } from './archive.mjs';
-import { planAbsoluteBudget } from './budget.mjs';
+import { planAbsoluteBudget, planContinuationBudget } from './budget.mjs';
 
 export const STATE_SCHEMA = 'aitm.co-review/v1';
 export const EVENT_SCHEMA = 'aitm.co-review-event/v1';
@@ -487,7 +487,7 @@ function nextAction(state, integrity) {
   if (!integrity.ok) return 'preserve protocol files and escalate integrity drift to the human';
   if (state.lifecycle === 'accepted') return 'stop; protocol accepted';
   if (state.lifecycle === 'intervention-required') {
-    return `npx aitm co-review continue --dir ${state.initialization.runtimeDir} --additional-turns <N> --approved-by <identity> [--focus <file>]`;
+    return `npx aitm co-review continue --dir ${state.initialization.runtimeDir} --max-turns <N> [--focus <file>]`;
   }
   const actor = state.roles[state.currentRole];
   if (state.turnState === 'available') {
@@ -675,9 +675,11 @@ export function handoffOwner({
       response: responseArtifact,
       ...(answeredReview ? { answeredReview } : {}),
     };
+    const lifecycle = state.remainingReviewTurns === 0 ? 'intervention-required' : 'active';
+    const currentRole = lifecycle === 'active' ? 'reviewer' : null;
     const lastHandoff = {
       from: 'owner',
-      to: 'reviewer',
+      to: currentRole,
       at,
       message: String(message).trim(),
       commit: artifactRecord.commit,
@@ -688,8 +690,9 @@ export function handoffOwner({
       ...state,
       integrity: undefined,
       revision: state.revision + 1,
-      currentRole: 'reviewer',
-      turnState: 'available',
+      lifecycle,
+      currentRole,
+      turnState: lifecycle === 'active' ? 'available' : null,
       round: state.round + 1,
       claim: null,
       artifact: artifactRecord,
@@ -753,8 +756,6 @@ export function handoffReviewer({
     const remainingReviewTurns = state.maxReviewTurns - reviewTurnsUsed;
     const finalChanges = decision === 'changes-requested' && remainingReviewTurns === 0;
     if (summary && !finalChanges) fail('unexpected-summary', decision);
-    if (finalChanges && !summary)
-      fail('summary-required', `${reviewTurnsUsed}/${state.maxReviewTurns}`);
     let summaryArtifact = null;
     if (summary) {
       summaryArtifact = exchangeArtifact(root, paths, summary, 'summary', [
@@ -764,8 +765,7 @@ export function handoffReviewer({
       ]);
     }
     const at = new Date().toISOString();
-    const lifecycle =
-      decision === 'accepted' ? 'accepted' : finalChanges ? 'intervention-required' : 'active';
+    const lifecycle = decision === 'accepted' ? 'accepted' : 'active';
     const currentRole = lifecycle === 'active' ? 'owner' : null;
     const turnState = lifecycle === 'active' ? 'available' : null;
     const artifacts = {
@@ -845,19 +845,38 @@ export function setMaxReviewTurns({ cwd = process.cwd(), dir, requestedMax, huma
   });
 }
 
-export function continueProtocol({ cwd = process.cwd(), dir, additionalTurns, approvedBy, focus }) {
-  if (!Number.isInteger(additionalTurns) || additionalTurns < 1) {
-    fail('additional-turns', String(additionalTurns), { exitCode: 2 });
-  }
-  if (!String(approvedBy || '').trim()) {
-    fail('approved-by', 'non-blank identity required', { exitCode: 2 });
+export function continueProtocol({
+  cwd = process.cwd(),
+  dir,
+  maxReviewTurns,
+  additionalTurns,
+  humanLogin,
+  focus,
+}) {
+  const approvedBy = String(humanLogin || '').trim();
+  if (!approvedBy) {
+    fail('github-login', 'non-blank authenticated login required', { exitCode: 2 });
   }
   const root = repositoryRoot(cwd);
   const paths = protocolPaths(root, dir);
-  return withMutex(paths, String(approvedBy).trim(), 'continue', () => {
+  return withMutex(paths, approvedBy, 'continue', () => {
     const state = assertIntegrity({ cwd: root, dir: paths.relative });
     if (state.lifecycle !== 'intervention-required') {
       fail('continue-state', state.lifecycle);
+    }
+    const resumeRole =
+      state.lastHandoff?.from === 'reviewer'
+        ? 'owner'
+        : state.lastHandoff?.from === 'owner'
+          ? 'reviewer'
+          : null;
+    if (!resumeRole) fail('continue-role', 'last handoff must be owner or reviewer');
+    let budget;
+    try {
+      budget = planContinuationBudget(state, { resumeRole, maxReviewTurns, additionalTurns });
+    } catch (error) {
+      if (error instanceof RangeError) fail('continue-budget', error.message, { exitCode: 2 });
+      throw error;
     }
     let focusArtifact = null;
     if (focus) {
@@ -869,21 +888,24 @@ export function continueProtocol({ cwd = process.cwd(), dir, additionalTurns, ap
     const at = new Date().toISOString();
     const continuation = {
       at,
-      additionalTurns,
-      approvedBy: String(approvedBy).trim(),
+      approvedBy,
+      resumeRole,
+      priorMax: budget.priorMax,
+      requestedMax: budget.requestedMax,
+      effectiveMax: budget.effectiveMax,
+      ...(additionalTurns === undefined ? {} : { additionalTurns }),
       ...(focusArtifact ? { focus: focusArtifact } : {}),
     };
-    const maxReviewTurns = state.maxReviewTurns + additionalTurns;
     const next = validateState({
       ...state,
       integrity: undefined,
       revision: state.revision + 1,
       lifecycle: 'active',
-      currentRole: 'owner',
+      currentRole: resumeRole,
       turnState: 'available',
       claim: null,
-      maxReviewTurns,
-      remainingReviewTurns: maxReviewTurns - state.reviewTurnsUsed,
+      maxReviewTurns: budget.effectiveMax,
+      remainingReviewTurns: budget.remainingReviewTurns,
       continuation,
       immutableArtifacts: {
         ...(state.immutableArtifacts ?? {}),

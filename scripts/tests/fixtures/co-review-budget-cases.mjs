@@ -5,7 +5,11 @@ import { existsSync, mkdirSync, readFileSync, symlinkSync, writeFileSync } from 
 import path from 'node:path';
 import test from 'node:test';
 
-import { planAbsoluteBudget, reviewBudgetFloor } from '../../review/lib/budget.mjs';
+import {
+  planAbsoluteBudget,
+  planContinuationBudget,
+  reviewBudgetFloor,
+} from '../../review/lib/budget.mjs';
 import { resolveGitHubLogin } from '../../review/lib/github-identity.mjs';
 import { resolveArchiveDestination } from '../../review/lib/archive.mjs';
 import {
@@ -50,6 +54,41 @@ test('absolute budget planning applies owner and reviewer turn floors', () => {
   ]) {
     assert.throws(() => planAbsoluteBudget(state, candidate, role), RangeError);
   }
+});
+
+test('continuation planning derives role floors and adapts legacy additional turns', () => {
+  const state = { reviewTurnsUsed: 2, maxReviewTurns: 5 };
+  assert.deepEqual(planContinuationBudget(state, { resumeRole: 'owner' }), {
+    priorMax: 5,
+    requestedMax: 2,
+    effectiveMax: 2,
+    reviewTurnsUsed: 2,
+    remainingReviewTurns: 0,
+  });
+  assert.deepEqual(planContinuationBudget(state, { resumeRole: 'reviewer' }), {
+    priorMax: 5,
+    requestedMax: 3,
+    effectiveMax: 3,
+    reviewTurnsUsed: 2,
+    remainingReviewTurns: 1,
+  });
+  assert.equal(
+    planContinuationBudget(state, { resumeRole: 'reviewer', maxReviewTurns: 1 }).effectiveMax,
+    3
+  );
+  assert.equal(
+    planContinuationBudget(state, { resumeRole: 'owner', additionalTurns: 4 }).requestedMax,
+    9
+  );
+  assert.throws(
+    () =>
+      planContinuationBudget(state, {
+        resumeRole: 'owner',
+        maxReviewTurns: 4,
+        additionalTurns: 1,
+      }),
+    /mutually exclusive/
+  );
 });
 
 test('GitHub identity resolution uses only the authenticated-login command', () => {
