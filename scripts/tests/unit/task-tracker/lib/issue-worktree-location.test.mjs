@@ -7,6 +7,7 @@ import {
   mostRecentIssueWorktreeLocation,
   parseIssueWorktreeLocations,
   recordIssueWorktreeLocationOnChange,
+  resolveCurrentIssueWorktreeBranch,
   serializeIssueWorktreeLocationMarker,
 } from '../../../../task-tracker/lib/issue-worktree-location.mjs';
 
@@ -69,4 +70,45 @@ test('AC1: body invariants reject deletion of append-only location history', () 
   }).body;
   assert.deepEqual(findLostMarkers(two, one), ['aitm-worktree-location']);
   assert.deepEqual(findLostMarkers(one, '## Body\n'), ['aitm-worktree-location']);
+});
+
+test('#1284: marker-free issues retain the canonical epic-branch fallback', () => {
+  assert.equal(resolveCurrentIssueWorktreeBranch('## Legacy epic\n'), null);
+});
+
+test('#1284: the final append-only location record is the current branch authority', () => {
+  const body = [
+    serializeIssueWorktreeLocationMarker(FIRST),
+    serializeIssueWorktreeLocationMarker({
+      ...FIRST,
+      worktreeBranch: 'codex/1268-implementation-plan',
+      ts: '2026-08-16T12:00:00.000Z',
+    }),
+  ].join('\n');
+  assert.equal(resolveCurrentIssueWorktreeBranch(body), 'codex/1268-implementation-plan');
+});
+
+test('#1284: malformed present worktree authority fails closed', () => {
+  assert.throws(
+    () =>
+      resolveCurrentIssueWorktreeBranch(
+        '<!-- aitm-worktree-location worktree="/work/epic" ts="2026-08-16T12:00:00.000Z" -->'
+      ),
+    /malformed/i
+  );
+});
+
+test('#1284: conflicting records at the current timestamp fail closed', () => {
+  const first = serializeIssueWorktreeLocationMarker({
+    ...FIRST,
+    worktreeBranch: 'codex/1268-implementation-plan',
+    ts: '2026-08-16T12:00:00.000Z',
+  });
+  const conflict = serializeIssueWorktreeLocationMarker({
+    ...FIRST,
+    worktreePath: '/work/other-epic',
+    worktreeBranch: 'codex/1268-other-plan',
+    ts: '2026-08-16T12:00:00.000Z',
+  });
+  assert.throws(() => resolveCurrentIssueWorktreeBranch(`${first}\n${conflict}`), /ambiguous/i);
 });

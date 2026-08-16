@@ -67,3 +67,35 @@ test('requires issue, path, and injected git', () => {
     /git/i
   );
 });
+
+test('#1284: child worktree uses the parent epic\'s recorded custom branch authority', () => {
+  const { calls, deps } = makeDeps();
+  const customDeps = {
+    ...deps,
+    graph: (n) =>
+      n === 905
+        ? { ...GRAPH[905], authoritativeBranch: 'codex/1268-implementation-plan' }
+        : GRAPH[n] ?? { parent: null, children: [] },
+  };
+  const result = cutChildWorktree({ issue: 910, path: '/wt/910', deps: customDeps });
+  assert.equal(result.base, 'codex/1268-implementation-plan');
+  assert.deepEqual(calls, [
+    ['worktree', 'add', '-b', 'feature/child/910', '/wt/910', 'codex/1268-implementation-plan'],
+  ]);
+});
+
+test('#1284: invalid parent branch authority makes zero mutating Git calls', () => {
+  const { calls, deps } = makeDeps();
+  const invalidDeps = {
+    ...deps,
+    graph: (n) =>
+      n === 905
+        ? { ...GRAPH[905], authorityError: 'malformed current worktree authority' }
+        : GRAPH[n] ?? { parent: null, children: [] },
+  };
+  assert.throws(
+    () => cutChildWorktree({ issue: 910, path: '/wt/910', deps: invalidDeps }),
+    /malformed current/i
+  );
+  assert.deepEqual(calls, []);
+});

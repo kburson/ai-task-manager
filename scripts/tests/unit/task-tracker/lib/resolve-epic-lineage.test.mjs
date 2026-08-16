@@ -105,3 +105,28 @@ test('rejects an unresolvable input', () => {
 test('requires an injected graph lookup', () => {
   assert.throws(() => resolveEpicLineage(905, {}), /graph/);
 });
+
+test('#1284: a child uses its parent epic\'s recorded custom branch authority', () => {
+  const custom = {
+    graph: (n) =>
+      n === 905
+        ? { ...GRAPH[905], authoritativeBranch: 'codex/1268-implementation-plan' }
+        : GRAPH[n] ?? { parent: null, children: [] },
+  };
+  assert.deepEqual(resolveEpicLineage(910, { deps: custom }), {
+    role: 'child',
+    branch: 'feature/child/910',
+    epicBranch: 'codex/1268-implementation-plan',
+    parentBranch: 'codex/1268-implementation-plan',
+  });
+});
+
+test('#1284: explicit recorded-branch authority errors propagate fail-closed', () => {
+  const unavailable = {
+    graph: (n) =>
+      n === 905
+        ? { ...GRAPH[905], authorityError: 'malformed current worktree authority' }
+        : GRAPH[n] ?? { parent: null, children: [] },
+  };
+  assert.throws(() => resolveEpicLineage(910, { deps: unavailable }), /malformed current/i);
+});
