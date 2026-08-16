@@ -234,11 +234,31 @@ function eventFor(state, type, at) {
     reviewTurnsUsed: state.reviewTurnsUsed,
     maxReviewTurns: state.maxReviewTurns,
     remainingReviewTurns: state.remainingReviewTurns,
+    ...(state.supplements === undefined
+      ? {}
+      : { supplements: supplementProjection(state.supplements) }),
   };
 }
 
 function appendEvent(paths, state, type, at = state.updatedAt, details = {}) {
   appendFileSync(paths.events, `${JSON.stringify({ ...eventFor(state, type, at), ...details })}\n`);
+}
+
+function supplementProjection(supplements) {
+  return supplements.map(({ id, path: supplementPath, sha256, targetRound, status }) => ({
+    id,
+    path: supplementPath,
+    sha256,
+    targetRound,
+    status,
+  }));
+}
+
+function safeSupplementIdSuffix(id) {
+  const suffix = Number(id.slice(2));
+  return Number.isSafeInteger(suffix) && suffix >= 1 && suffix < Number.MAX_SAFE_INTEGER
+    ? suffix
+    : null;
 }
 
 function validateState(state) {
@@ -265,6 +285,7 @@ function validateState(state) {
       if (
         !supplement ||
         !/^S-\d+$/.test(supplement.id) ||
+        safeSupplementIdSuffix(supplement.id) === null ||
         ids.has(supplement.id) ||
         typeof supplement.path !== 'string' ||
         !/^sha256:[a-f0-9]{64}$/.test(supplement.sha256) ||
@@ -338,6 +359,11 @@ function eventIntegrity(paths, state) {
           `event-projection ${field}: expected ${String(state[field])}, actual ${String(last[field])}`
         );
       }
+    }
+    const expectedSupplements =
+      state.supplements === undefined ? undefined : supplementProjection(state.supplements);
+    if (JSON.stringify(last.supplements) !== JSON.stringify(expectedSupplements)) {
+      errors.push('event-projection supplements: state differs from last event');
     }
   }
   return errors;
@@ -482,6 +508,19 @@ export function statusProtocol(options) {
       errors.push(`${error.code ?? 'artifact-error'} ${artifact.path}: ${error.message}`);
     }
   }
+  for (const supplement of state.supplements ?? []) {
+    if (supplement.status === 'consumed') continue;
+    try {
+      const actual = digestFile(root, supplement.path, 'recorded-supplement');
+      if (actual.sha256 !== supplement.sha256) {
+        errors.push(
+          `supplement-drift ${supplement.path}: expected ${supplement.sha256}, actual ${actual.sha256}`
+        );
+      }
+    } catch (error) {
+      errors.push(`supplement-drift ${supplement.path}: ${error.code ?? error.message}`);
+    }
+  }
   if (state.lifecycle === 'active' && state.currentRole === 'reviewer') {
     try {
       const worktree = digestFile(root, state.artifact.path, 'authoritative-artifact');
@@ -589,10 +628,10 @@ function supplementAcknowledgments(markdown, required) {
 }
 
 function nextSupplementId(supplements) {
-  const highest = supplements.reduce((maximum, supplement) => {
-    const suffix = Number(supplement.id.slice(2));
-    return Number.isSafeInteger(suffix) ? Math.max(maximum, suffix) : maximum;
-  }, 0);
+  const highest = supplements.reduce(
+    (maximum, supplement) => Math.max(maximum, safeSupplementIdSuffix(supplement.id)),
+    0
+  );
   return `S-${String(highest + 1).padStart(3, '0')}`;
 }
 
@@ -603,14 +642,16 @@ export function registerSupplement({ cwd = process.cwd(), dir, file, humanLogin 
   const root = repositoryRoot(cwd);
   const paths = protocolPaths(root, dir);
   return withMutex(paths, registeredBy, 'supplement', () => {
-    const state = assertIntegrity({ cwd: root, dir: paths.relative });
-    if (state.lifecycle !== 'intervention-required') fail('supplement-state', state.lifecycle);
+    const current = readProtocol({ cwd: root, dir: paths.relative });
+    if (current.lifecycle !== 'intervention-required') {
+      fail('supplement-state', current.lifecycle);
+    }
     const resolved = relativePath(root, file, 'supplement');
     if (existsSync(resolved.absolute) && lstatSync(resolved.absolute).isSymbolicLink()) {
       fail('supplement-symlink', resolved.relative);
     }
     const artifact = exchangeArtifact(root, paths, file, 'supplement');
-    const existing = (state.supplements ?? []).find(
+    const existing = (current.supplements ?? []).find(
       (supplement) => supplement.path === artifact.path
     );
     if (existing) {
@@ -618,6 +659,7 @@ export function registerSupplement({ cwd = process.cwd(), dir, file, humanLogin 
         return readProtocol({ cwd: root, dir: paths.relative });
       fail('supplement-conflict', artifact.path);
     }
+    const state = assertIntegrity({ cwd: root, dir: paths.relative });
     const at = new Date().toISOString();
     const supplement = {
       id: nextSupplementId(state.supplements ?? []),

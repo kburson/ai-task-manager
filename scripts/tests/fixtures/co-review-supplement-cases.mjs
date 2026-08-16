@@ -311,3 +311,122 @@ test('supplement CLI authenticates before mutation and status projects active su
   );
   assert.equal(invalid.status, 2);
 });
+
+test('pending and frozen supplement drift blocks continuation and reviewer mutation', async () => {
+  const pending = await reviewerTurn({ maxReviewTurns: 2 });
+  rewriteProtocolState(pending.root, pending.options.dir, interventionForReviewer);
+  const pendingFile = writeRuntimeFile(pending.root, pending.options.dir, 'pending-context');
+  register(pending.api, pending.root, pending.options.dir, pendingFile);
+  writeFileSync(path.join(pending.root, pendingFile), 'drifted pending context');
+  const pendingStatus = pending.api.statusProtocol({ cwd: pending.root, dir: pending.options.dir });
+  assert.equal(pendingStatus.integrity.ok, false);
+  assert.match(pendingStatus.integrity.errors.join('\n'), /supplement-drift/);
+  const beforePendingContinue = snapshotProtocol(pending.root, pending.options.dir);
+  assert.throws(
+    () =>
+      pending.api.continueProtocol({
+        cwd: pending.root,
+        dir: pending.options.dir,
+        maxReviewTurns: 2,
+        humanLogin: 'kendrick',
+      }),
+    (error) => error.code === 'integrity'
+  );
+  assert.deepEqual(snapshotProtocol(pending.root, pending.options.dir), beforePendingContinue);
+
+  const frozen = await reviewerTurn({ maxReviewTurns: 2 });
+  rewriteProtocolState(frozen.root, frozen.options.dir, interventionForReviewer);
+  const frozenFile = writeRuntimeFile(frozen.root, frozen.options.dir, 'frozen-context');
+  register(frozen.api, frozen.root, frozen.options.dir, frozenFile);
+  frozen.api.continueProtocol({
+    cwd: frozen.root,
+    dir: frozen.options.dir,
+    maxReviewTurns: 2,
+    humanLogin: 'kendrick',
+  });
+  frozen.api.claimTurn({ cwd: frozen.root, dir: frozen.options.dir, actor: 'reviewer-agent' });
+  writeFileSync(path.join(frozen.root, frozenFile), 'drifted frozen context');
+  const frozenStatus = frozen.api.statusProtocol({ cwd: frozen.root, dir: frozen.options.dir });
+  assert.equal(frozenStatus.integrity.ok, false);
+  assert.match(frozenStatus.integrity.errors.join('\n'), /supplement-drift/);
+  const review = writeRuntimeFile(
+    frozen.root,
+    frozen.options.dir,
+    'frozen-review.md',
+    '# Review\n[supplement:S-001]\n'
+  );
+  const beforeFrozenHandoff = snapshotProtocol(frozen.root, frozen.options.dir);
+  assert.throws(
+    () =>
+      frozen.api.handoffReviewer({
+        cwd: frozen.root,
+        dir: frozen.options.dir,
+        actor: 'reviewer-agent',
+        review,
+        reviewOf: frozen.commit,
+        decision: 'accepted',
+        message: 'review handoff',
+      }),
+    (error) => error.code === 'integrity'
+  );
+  assert.deepEqual(snapshotProtocol(frozen.root, frozen.options.dir), beforeFrozenHandoff);
+});
+
+test('supplement lifecycle projection detects tampering and validates ID suffix safety', async () => {
+  const { api, root, options } = await initializedProtocol();
+  rewriteProtocolState(root, options.dir, interventionForReviewer);
+  const file = writeRuntimeFile(root, options.dir, 'projected-context');
+  const registered = register(api, root, options.dir, file);
+  assert.deepEqual(readEvents(root, options.dir).at(-1).supplements, [
+    {
+      id: 'S-001',
+      path: file,
+      sha256: registered.supplements[0].sha256,
+      targetRound: registered.supplements[0].targetRound,
+      status: 'pending',
+    },
+  ]);
+
+  rewriteProtocolState(root, options.dir, (state) => ({
+    ...state,
+    supplements: state.supplements.map((supplement) => ({ ...supplement, status: 'consumed' })),
+  }));
+  const tampered = api.statusProtocol({ cwd: root, dir: options.dir });
+  assert.equal(tampered.integrity.ok, false);
+  assert.match(tampered.integrity.errors.join('\n'), /event-projection supplements/);
+  const beforeTamperedContinue = snapshotProtocol(root, options.dir);
+  assert.throws(
+    () =>
+      api.continueProtocol({
+        cwd: root,
+        dir: options.dir,
+        maxReviewTurns: 1,
+        humanLogin: 'kendrick',
+      }),
+    (error) => error.code === 'integrity'
+  );
+  assert.deepEqual(snapshotProtocol(root, options.dir), beforeTamperedContinue);
+
+  const huge = await initializedProtocol();
+  rewriteProtocolState(huge.root, huge.options.dir, (state) => ({
+    ...interventionForReviewer(state),
+    supplements: [
+      {
+        id: 'S-999999999999999999999999999999999999999999999999999999999999',
+        path: `${huge.options.dir}/legacy-context`,
+        sha256: `sha256:${'0'.repeat(64)}`,
+        registeredBy: 'kendrick',
+        registeredAt: state.updatedAt,
+        targetRound: state.round + 1,
+        status: 'pending',
+      },
+    ],
+  }));
+  const next = writeRuntimeFile(huge.root, huge.options.dir, 'next-context');
+  const beforeHuge = snapshotProtocol(huge.root, huge.options.dir);
+  assert.throws(
+    () => register(huge.api, huge.root, huge.options.dir, next),
+    (error) => error.code === 'invalid-state'
+  );
+  assert.deepEqual(snapshotProtocol(huge.root, huge.options.dir), beforeHuge);
+});
