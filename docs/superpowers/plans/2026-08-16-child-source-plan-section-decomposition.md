@@ -298,8 +298,9 @@ if (!result.planSelection.ok) {
 ```
 
 In `runDecomposeCheck`, set exit code 3 when the selection is invalid or the
-classification is unwaived `must-split`. In `formatDecomposeCheck`, print the
-selection diagnostic when invalid and the selected heading when applied.
+classification is `must-split` without a valid waiver. In `formatDecomposeCheck`,
+print the selection diagnostic when invalid and the selected heading when
+applied.
 
 - [ ] **Step 4: Run focused tests and confirm GREEN**
 
