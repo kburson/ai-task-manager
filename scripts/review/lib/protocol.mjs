@@ -17,6 +17,9 @@ import {
 import { hostname } from 'node:os';
 import path from 'node:path';
 
+import { resolveArchiveDestination } from './archive.mjs';
+import { planAbsoluteBudget } from './budget.mjs';
+
 export const STATE_SCHEMA = 'aitm.co-review/v1';
 export const EVENT_SCHEMA = 'aitm.co-review-event/v1';
 
@@ -249,7 +252,8 @@ function validateState(state) {
     !Number.isInteger(state.reviewTurnsUsed) ||
     !Number.isInteger(state.maxReviewTurns) ||
     state.reviewTurnsUsed < 0 ||
-    state.maxReviewTurns < 1 ||
+    state.maxReviewTurns < 0 ||
+    state.remainingReviewTurns < 0 ||
     state.remainingReviewTurns !== state.maxReviewTurns - state.reviewTurnsUsed
   ) {
     fail('invalid-state', 'schema, round, or budget invariant');
@@ -278,6 +282,9 @@ function eventIntegrity(paths, state) {
     'owner-handoff',
     'reviewer-handoff',
     'continue',
+    'budget-adjustment',
+    'supplement',
+    'human-good-enough',
   ]);
   for (let index = 0; index < events.length; index += 1) {
     const event = events[index];
@@ -340,6 +347,7 @@ export function initializeProtocol({
   maxReviewTurns,
   importReview,
   reviewOf,
+  archiveDir,
 }) {
   const normalizedOwner = String(owner || '').trim();
   const normalizedReviewer = String(reviewer || '').trim();
@@ -360,6 +368,9 @@ export function initializeProtocol({
   const root = repositoryRoot(cwd);
   const paths = protocolPaths(root, dir);
   assertIgnored(root, paths);
+  const archive = archiveDir
+    ? resolveArchiveDestination({ cwd: root, archiveDir, runtimeDir: paths.relative })
+    : null;
   const artifactRecord = assertTrackedArtifact(root, artifact);
   let importedReview = null;
   let importedCommit = null;
@@ -382,6 +393,7 @@ export function initializeProtocol({
     maxReviewTurns,
     importedReview,
     reviewOf: importedCommit,
+    ...(archive ? { archiveDir: archive.relative } : {}),
   };
 
   return withMutex(paths, 'system', 'init', () => {
@@ -790,6 +802,45 @@ export function handoffReviewer({
       updatedAt: at,
     });
     appendEvent(paths, next, 'reviewer-handoff', at, { handoff: lastHandoff });
+    return atomicStateWrite(paths, next);
+  });
+}
+
+export function setMaxReviewTurns({ cwd = process.cwd(), dir, requestedMax, humanLogin }) {
+  const approvedBy = String(humanLogin || '').trim();
+  if (!approvedBy) fail('github-login', 'non-blank authenticated login required', { exitCode: 2 });
+  if (!Number.isInteger(requestedMax) || requestedMax < 0) {
+    fail('max-turns', String(requestedMax), { exitCode: 2 });
+  }
+  const root = repositoryRoot(cwd);
+  const paths = protocolPaths(root, dir);
+  return withMutex(paths, approvedBy, 'set-max-turns', () => {
+    const state = assertIntegrity({ cwd: root, dir: paths.relative });
+    if (state.lifecycle !== 'active') fail('set-max-turns-state', state.lifecycle);
+    let adjustment;
+    try {
+      adjustment = {
+        ...planAbsoluteBudget(state, requestedMax, state.currentRole),
+        approvedBy,
+      };
+    } catch (error) {
+      if (error instanceof RangeError) fail('max-turns', error.message, { exitCode: 2 });
+      throw error;
+    }
+    if (adjustment.effectiveMax === state.maxReviewTurns) {
+      return readProtocol({ cwd: root, dir: paths.relative });
+    }
+    const at = new Date().toISOString();
+    const next = validateState({
+      ...state,
+      integrity: undefined,
+      nextAction: undefined,
+      revision: state.revision + 1,
+      maxReviewTurns: adjustment.effectiveMax,
+      remainingReviewTurns: adjustment.remainingReviewTurns,
+      updatedAt: at,
+    });
+    appendEvent(paths, next, 'budget-adjustment', at, { adjustment });
     return atomicStateWrite(paths, next);
   });
 }

@@ -29,6 +29,7 @@ export async function runCli(argv = process.argv.slice(2), io = {}) {
         'max-turns',
         'import-review',
         'review-of',
+        'archive-dir',
       ]);
       result = protocol.initializeProtocol({
         cwd: io.cwd ?? process.cwd(),
@@ -36,9 +37,10 @@ export async function runCli(argv = process.argv.slice(2), io = {}) {
         artifact: required(values, 'artifact'),
         owner: required(values, 'owner'),
         reviewer: required(values, 'reviewer'),
-        maxReviewTurns: integer(values, 'max-turns'),
+        maxReviewTurns: positiveInteger(values, 'max-turns'),
         importReview: values['import-review'],
         reviewOf: values['review-of'],
+        archiveDir: values['archive-dir'],
       });
     } else if (name === 'status') {
       assertAllowed(values, booleans, ['dir', 'json']);
@@ -128,12 +130,24 @@ export async function runCli(argv = process.argv.slice(2), io = {}) {
           message: required(values, 'message'),
         });
       }
+    } else if (name === 'set-max-turns') {
+      assertAllowed(values, booleans, ['dir', 'max-turns']);
+      const cwd = io.cwd ?? process.cwd();
+      const dir = required(values, 'dir');
+      const requestedMax = nonnegativeInteger(values, 'max-turns');
+      const resolveIdentity =
+        io.resolveGitHubLoginImpl ?? (await import('./lib/github-identity.mjs')).resolveGitHubLogin;
+      const humanLogin = resolveIdentity({
+        cwd,
+        recoveryCommand: `npx aitm co-review ${argv.join(' ')}`,
+      });
+      result = protocol.setMaxReviewTurns({ cwd, dir, requestedMax, humanLogin });
     } else if (name === 'continue') {
       assertAllowed(values, booleans, ['dir', 'additional-turns', 'approved-by', 'focus']);
       result = protocol.continueProtocol({
         cwd: io.cwd ?? process.cwd(),
         dir: required(values, 'dir'),
-        additionalTurns: integer(values, 'additional-turns'),
+        additionalTurns: positiveInteger(values, 'additional-turns'),
         approvedBy: required(values, 'approved-by'),
         focus: values.focus,
       });
@@ -190,10 +204,16 @@ function required(values, name) {
   return values[name];
 }
 
-function integer(values, name) {
+function nonnegativeInteger(values, name) {
   const value = required(values, name);
-  if (!/^[0-9]+$/.test(value)) throw usage(`--${name} must be an integer`);
+  if (!/^[0-9]+$/.test(value)) throw usage(`--${name} must be a nonnegative integer`);
   return Number(value);
+}
+
+function positiveInteger(values, name) {
+  const value = nonnegativeInteger(values, name);
+  if (value < 1) throw usage(`--${name} must be a positive integer`);
+  return value;
 }
 
 function number(values, name) {

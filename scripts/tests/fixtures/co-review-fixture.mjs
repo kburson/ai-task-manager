@@ -25,6 +25,22 @@ export function runCli(args, { cwd = temporaryRoot() } = {}) {
   });
 }
 
+export async function runCliDirect(args, options = {}) {
+  const { runCli: execute } = await import('../../review/co-review.mjs');
+  let stdout = '';
+  let stderr = '';
+  const status = await execute(args, {
+    ...options,
+    stdout(value) {
+      stdout += value;
+    },
+    stderr(value) {
+      stderr += value;
+    },
+  });
+  return { status, stdout, stderr };
+}
+
 export function runCliAsync(args, { cwd }) {
   return new Promise((resolve) => {
     const child = spawn(process.execPath, [CLI, ...args], {
@@ -80,6 +96,26 @@ export function snapshotProtocol(root, dir) {
     state: readFileSync(path.join(root, dir, 'state.json'), 'utf8'),
     events: readFileSync(path.join(root, dir, 'events.jsonl'), 'utf8'),
   };
+}
+
+export function rewriteProtocolState(root, dir, mutate) {
+  const statePath = path.join(root, dir, 'state.json');
+  const eventsPath = path.join(root, dir, 'events.jsonl');
+  const state = JSON.parse(readFileSync(statePath, 'utf8'));
+  const next = mutate(structuredClone(state));
+  const events = readEvents(root, dir);
+  events[events.length - 1] = {
+    ...events.at(-1),
+    lifecycle: next.lifecycle,
+    currentRole: next.currentRole,
+    round: next.round,
+    reviewTurnsUsed: next.reviewTurnsUsed,
+    maxReviewTurns: next.maxReviewTurns,
+    remainingReviewTurns: next.remainingReviewTurns,
+  };
+  writeFileSync(statePath, `${JSON.stringify(next, null, 2)}\n`);
+  writeFileSync(eventsPath, `${events.map((event) => JSON.stringify(event)).join('\n')}\n`);
+  return next;
 }
 
 export function commitArtifact(root, content, message = 'revise artifact') {

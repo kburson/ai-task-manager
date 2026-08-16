@@ -1,4 +1,5 @@
 // @story #1266
+// @parallel-unsafe (#1268) — imported co-review fixtures spawn Node and Git subprocesses.
 
 import assert from 'node:assert/strict';
 import {
@@ -13,6 +14,7 @@ import path from 'node:path';
 import test from 'node:test';
 
 import '../../fixtures/co-review-e2e-cases.mjs';
+import '../../fixtures/co-review-budget-cases.mjs';
 import '../../fixtures/co-review-handoff-cases.mjs';
 import {
   cleanupTemporaryRoots,
