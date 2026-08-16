@@ -84,7 +84,8 @@ function repoRoot() {
 // authority, growing the measured package surface by exactly three entries.
 // #1279 intentionally ships the WBS coverage reconciler used by the Plan-exit
 // guard, growing the measured package surface by exactly one entry.
-const ENTRY_CEILING = 660;
+// #1268 adds three required co-review runtime modules to the shipped package.
+const ENTRY_CEILING = 663;
 
 function packedFiles() {
   const out = execFileSync('npm', ['pack', '--dry-run', '--json'], {
