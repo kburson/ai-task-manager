@@ -16,6 +16,7 @@ import test from 'node:test';
 import '../../fixtures/co-review-e2e-cases.mjs';
 import '../../fixtures/co-review-budget-cases.mjs';
 import '../../fixtures/co-review-handoff-cases.mjs';
+import '../../fixtures/co-review-supplement-cases.mjs';
 import {
   cleanupTemporaryRoots,
   commitArtifact,

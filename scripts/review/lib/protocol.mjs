@@ -258,6 +258,27 @@ function validateState(state) {
   ) {
     fail('invalid-state', 'schema, round, or budget invariant');
   }
+  if (state.supplements !== undefined) {
+    if (!Array.isArray(state.supplements)) fail('invalid-state', 'supplements must be an array');
+    const ids = new Set();
+    for (const supplement of state.supplements) {
+      if (
+        !supplement ||
+        !/^S-\d+$/.test(supplement.id) ||
+        ids.has(supplement.id) ||
+        typeof supplement.path !== 'string' ||
+        !/^sha256:[a-f0-9]{64}$/.test(supplement.sha256) ||
+        typeof supplement.registeredBy !== 'string' ||
+        typeof supplement.registeredAt !== 'string' ||
+        !Number.isInteger(supplement.targetRound) ||
+        supplement.targetRound < 1 ||
+        !['pending', 'frozen', 'consumed'].includes(supplement.status)
+      ) {
+        fail('invalid-state', 'supplement invariant');
+      }
+      ids.add(supplement.id);
+    }
+  }
   return state;
 }
 
@@ -480,7 +501,10 @@ export function statusProtocol(options) {
     }
   }
   const integrity = { ok: errors.length === 0, errors };
-  return { ...state, integrity, nextAction: nextAction(state, integrity) };
+  const activeSupplements = (state.supplements ?? []).filter(
+    (supplement) => supplement.status === 'pending' || supplement.status === 'frozen'
+  );
+  return { ...state, activeSupplements, integrity, nextAction: nextAction(state, integrity) };
 }
 
 function nextAction(state, integrity) {
@@ -544,6 +568,77 @@ function exchangeArtifact(root, paths, candidate, label, disallowed = []) {
   ]);
   if (reserved.has(absolute)) fail(`${label}-path-conflict`, artifact.path);
   return artifact;
+}
+
+function frozenSupplements(state) {
+  return (state.supplements ?? []).filter((supplement) => supplement.status === 'frozen');
+}
+
+function supplementAcknowledgments(markdown, required) {
+  const requiredIds = new Set(required.map((supplement) => supplement.id));
+  const seen = new Set();
+  for (const match of markdown.matchAll(/\[supplement:(S-\d+)\]/g)) {
+    const id = match[1];
+    if (seen.has(id)) fail('duplicate-supplement', id);
+    if (!requiredIds.has(id)) fail('unknown-supplement', id);
+    seen.add(id);
+  }
+  for (const id of requiredIds) {
+    if (!seen.has(id)) fail('missing-supplement', id);
+  }
+}
+
+function nextSupplementId(supplements) {
+  const highest = supplements.reduce((maximum, supplement) => {
+    const suffix = Number(supplement.id.slice(2));
+    return Number.isSafeInteger(suffix) ? Math.max(maximum, suffix) : maximum;
+  }, 0);
+  return `S-${String(highest + 1).padStart(3, '0')}`;
+}
+
+export function registerSupplement({ cwd = process.cwd(), dir, file, humanLogin }) {
+  const registeredBy = String(humanLogin || '').trim();
+  if (!registeredBy)
+    fail('github-login', 'non-blank authenticated login required', { exitCode: 2 });
+  const root = repositoryRoot(cwd);
+  const paths = protocolPaths(root, dir);
+  return withMutex(paths, registeredBy, 'supplement', () => {
+    const state = assertIntegrity({ cwd: root, dir: paths.relative });
+    if (state.lifecycle !== 'intervention-required') fail('supplement-state', state.lifecycle);
+    const resolved = relativePath(root, file, 'supplement');
+    if (existsSync(resolved.absolute) && lstatSync(resolved.absolute).isSymbolicLink()) {
+      fail('supplement-symlink', resolved.relative);
+    }
+    const artifact = exchangeArtifact(root, paths, file, 'supplement');
+    const existing = (state.supplements ?? []).find(
+      (supplement) => supplement.path === artifact.path
+    );
+    if (existing) {
+      if (existing.sha256 === artifact.sha256)
+        return readProtocol({ cwd: root, dir: paths.relative });
+      fail('supplement-conflict', artifact.path);
+    }
+    const at = new Date().toISOString();
+    const supplement = {
+      id: nextSupplementId(state.supplements ?? []),
+      path: artifact.path,
+      sha256: artifact.sha256,
+      registeredBy,
+      registeredAt: at,
+      targetRound: state.round + 1,
+      status: 'pending',
+    };
+    const next = validateState({
+      ...state,
+      integrity: undefined,
+      nextAction: undefined,
+      revision: state.revision + 1,
+      supplements: [...(state.supplements ?? []), supplement],
+      updatedAt: at,
+    });
+    appendEvent(paths, next, 'supplement', at, { supplement });
+    return atomicStateWrite(paths, next);
+  });
 }
 
 function uniqueFindingIds(markdown, label) {
@@ -751,7 +846,9 @@ export function handoffReviewer({
     if (state.immutableArtifacts?.[reviewArtifact.path]) {
       fail('review-already-used', reviewArtifact.path);
     }
-    uniqueFindingIds(readFileSync(path.resolve(root, reviewArtifact.path), 'utf8'), 'review');
+    const reviewText = readFileSync(path.resolve(root, reviewArtifact.path), 'utf8');
+    supplementAcknowledgments(reviewText, frozenSupplements(state));
+    uniqueFindingIds(reviewText, 'review');
     const reviewTurnsUsed = state.reviewTurnsUsed + 1;
     const remainingReviewTurns = state.maxReviewTurns - reviewTurnsUsed;
     const finalChanges = decision === 'changes-requested' && remainingReviewTurns === 0;
@@ -799,6 +896,13 @@ export function handoffReviewer({
       remainingReviewTurns,
       lastHandoff,
       immutableArtifacts,
+      ...(state.supplements
+        ? {
+            supplements: state.supplements.map((supplement) =>
+              supplement.status === 'frozen' ? { ...supplement, status: 'consumed' } : supplement
+            ),
+          }
+        : {}),
       updatedAt: at,
     });
     appendEvent(paths, next, 'reviewer-handoff', at, { handoff: lastHandoff });
@@ -907,6 +1011,13 @@ export function continueProtocol({
       maxReviewTurns: budget.effectiveMax,
       remainingReviewTurns: budget.remainingReviewTurns,
       continuation,
+      ...(state.supplements
+        ? {
+            supplements: state.supplements.map((supplement) =>
+              supplement.status === 'pending' ? { ...supplement, status: 'frozen' } : supplement
+            ),
+          }
+        : {}),
       immutableArtifacts: {
         ...(state.immutableArtifacts ?? {}),
         ...(focusArtifact ? { [focusArtifact.path]: focusArtifact } : {}),
