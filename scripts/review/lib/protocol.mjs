@@ -245,13 +245,17 @@ function appendEvent(paths, state, type, at = state.updatedAt, details = {}) {
 }
 
 function supplementProjection(supplements) {
-  return supplements.map(({ id, path: supplementPath, sha256, targetRound, status }) => ({
-    id,
-    path: supplementPath,
-    sha256,
-    targetRound,
-    status,
-  }));
+  return supplements.map(
+    ({ id, path: supplementPath, sha256, registeredBy, registeredAt, targetRound, status }) => ({
+      id,
+      path: supplementPath,
+      sha256,
+      registeredBy,
+      registeredAt,
+      targetRound,
+      status,
+    })
+  );
 }
 
 function safeSupplementIdSuffix(id) {
@@ -290,7 +294,9 @@ function validateState(state) {
         typeof supplement.path !== 'string' ||
         !/^sha256:[a-f0-9]{64}$/.test(supplement.sha256) ||
         typeof supplement.registeredBy !== 'string' ||
+        !supplement.registeredBy.trim() ||
         typeof supplement.registeredAt !== 'string' ||
+        Number.isNaN(Date.parse(supplement.registeredAt)) ||
         !Number.isInteger(supplement.targetRound) ||
         supplement.targetRound < 1 ||
         !['pending', 'frozen', 'consumed'].includes(supplement.status)
@@ -562,7 +568,7 @@ function nextAction(state, integrity) {
 function assertIntegrity(options) {
   const status = statusProtocol(options);
   if (!status.integrity.ok) fail('integrity', status.integrity.errors.join('; '));
-  return status;
+  return readProtocol(options);
 }
 
 export function claimTurn({ cwd = process.cwd(), dir, actor }) {
@@ -596,7 +602,9 @@ export function claimTurn({ cwd = process.cwd(), dir, actor }) {
 function exchangeArtifact(root, paths, candidate, label, disallowed = []) {
   const artifact = digestFile(root, candidate, label);
   const absolute = path.resolve(root, artifact.path);
-  if (!absolute.startsWith(`${paths.absolute}${path.sep}`)) {
+  const runtime = realpathSync(paths.absolute);
+  const physical = realpathSync(absolute);
+  if (!physical.startsWith(`${runtime}${path.sep}`)) {
     fail(`${label}-outside-runtime`, artifact.path);
   }
   const reserved = new Set([
@@ -655,8 +663,10 @@ export function registerSupplement({ cwd = process.cwd(), dir, file, humanLogin 
       (supplement) => supplement.path === artifact.path
     );
     if (existing) {
-      if (existing.sha256 === artifact.sha256)
+      if (existing.sha256 === artifact.sha256) {
+        assertIntegrity({ cwd: root, dir: paths.relative });
         return readProtocol({ cwd: root, dir: paths.relative });
+      }
       fail('supplement-conflict', artifact.path);
     }
     const state = assertIntegrity({ cwd: root, dir: paths.relative });

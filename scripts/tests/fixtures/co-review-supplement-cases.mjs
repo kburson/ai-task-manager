@@ -130,6 +130,21 @@ test('supplement registration refuses invalid files, wrong lifecycle, and lock c
   assert.deepEqual(snapshotProtocol(root, options.dir), beforeLock);
 });
 
+test('supplement registration refuses a symlinked ancestor that escapes runtime containment', async () => {
+  const { api, root, options } = await initializedProtocol();
+  rewriteProtocolState(root, options.dir, interventionForReviewer);
+  const sibling = '.tmp/sibling-outside-runtime';
+  mkdirSync(path.join(root, sibling));
+  writeFileSync(path.join(root, sibling, 'context'), '# Escaped context\n');
+  symlinkSync(path.join(root, sibling), path.join(root, options.dir, 'linked-dir'));
+  const before = snapshotProtocol(root, options.dir);
+  assert.throws(
+    () => register(api, root, options.dir, `${options.dir}/linked-dir/context`),
+    (error) => error.code === 'supplement-outside-runtime'
+  );
+  assert.deepEqual(snapshotProtocol(root, options.dir), before);
+});
+
 test('continuation freezes supplements and reviewer handoff requires and consumes exact acknowledgments', async () => {
   const { api, root, options, commit } = await reviewerTurn({ maxReviewTurns: 2 });
   rewriteProtocolState(root, options.dir, interventionForReviewer);
@@ -145,6 +160,14 @@ test('continuation freezes supplements and reviewer handoff requires and consume
   assert.deepEqual(
     continued.supplements.map((entry) => entry.status),
     ['frozen']
+  );
+  assert.equal(Object.hasOwn(continued, 'activeSupplements'), false);
+  assert.equal(
+    Object.hasOwn(
+      JSON.parse(readFileSync(path.join(root, options.dir, 'state.json'), 'utf8')),
+      'activeSupplements'
+    ),
+    false
   );
   api.claimTurn({ cwd: root, dir: options.dir, actor: 'reviewer-agent' });
 
@@ -382,6 +405,8 @@ test('supplement lifecycle projection detects tampering and validates ID suffix 
       id: 'S-001',
       path: file,
       sha256: registered.supplements[0].sha256,
+      registeredBy: 'kendrick',
+      registeredAt: registered.updatedAt,
       targetRound: registered.supplements[0].targetRound,
       status: 'pending',
     },
@@ -407,6 +432,37 @@ test('supplement lifecycle projection detects tampering and validates ID suffix 
   );
   assert.deepEqual(snapshotProtocol(root, options.dir), beforeTamperedContinue);
 
+  const timestamp = await initializedProtocol();
+  rewriteProtocolState(timestamp.root, timestamp.options.dir, interventionForReviewer);
+  const timestampFile = writeRuntimeFile(
+    timestamp.root,
+    timestamp.options.dir,
+    'timestamp-context'
+  );
+  const timestampRegistered = register(
+    timestamp.api,
+    timestamp.root,
+    timestamp.options.dir,
+    timestampFile
+  );
+  for (const field of ['registeredBy', 'registeredAt']) {
+    rewriteProtocolState(timestamp.root, timestamp.options.dir, (state) => ({
+      ...state,
+      supplements: state.supplements.map((supplement) => ({
+        ...supplement,
+        registeredBy: field === 'registeredBy' ? 'mallory' : 'kendrick',
+        registeredAt:
+          field === 'registeredAt' ? '2000-01-01T00:00:00.000Z' : timestampRegistered.updatedAt,
+      })),
+    }));
+    const status = timestamp.api.statusProtocol({
+      cwd: timestamp.root,
+      dir: timestamp.options.dir,
+    });
+    assert.equal(status.integrity.ok, false);
+    assert.match(status.integrity.errors.join('\n'), /event-projection supplements/);
+  }
+
   const huge = await initializedProtocol();
   rewriteProtocolState(huge.root, huge.options.dir, (state) => ({
     ...interventionForReviewer(state),
@@ -429,4 +485,21 @@ test('supplement lifecycle projection detects tampering and validates ID suffix 
     (error) => error.code === 'invalid-state'
   );
   assert.deepEqual(snapshotProtocol(huge.root, huge.options.dir), beforeHuge);
+});
+
+test('an exact supplement retry validates integrity before returning the existing registration', async () => {
+  const { api, root, options } = await initializedProtocol();
+  rewriteProtocolState(root, options.dir, interventionForReviewer);
+  const file = writeRuntimeFile(root, options.dir, 'retry-context');
+  register(api, root, options.dir, file);
+  rewriteProtocolState(root, options.dir, (state) => ({
+    ...state,
+    supplements: state.supplements.map((supplement) => ({ ...supplement, status: 'consumed' })),
+  }));
+  const beforeRetry = snapshotProtocol(root, options.dir);
+  assert.throws(
+    () => register(api, root, options.dir, file),
+    (error) => error.code === 'integrity'
+  );
+  assert.deepEqual(snapshotProtocol(root, options.dir), beforeRetry);
 });
