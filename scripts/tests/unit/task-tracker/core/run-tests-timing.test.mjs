@@ -152,16 +152,18 @@ test('serializeArtifact keys files by path and carries totals + slow bucket', ()
   const art = serializeArtifact(sample(), {
     lane: 'all',
     generatedAt: '2026-07-19T00:00:00Z',
-    runnerElapsedMs: 4100,
+    runnerElapsedMs: 4800,
     poolElapsedMs: 2100,
+    subprocessPoolElapsedMs: 700,
     serialElapsedMs: 2000,
   });
-  assert.equal(art.schema, 2);
+  assert.equal(art.schema, 3);
   assert.equal(art.lane, 'all');
   assert.equal(art.generatedAt, '2026-07-19T00:00:00Z');
   assert.equal(art.count, 5);
-  assert.equal(art.elapsed.runnerMs, 4100);
+  assert.equal(art.elapsed.runnerMs, 4800);
   assert.equal(art.elapsed.poolMs, 2100);
+  assert.equal(art.elapsed.subprocessPoolMs, 700);
   assert.equal(art.elapsed.serialMs, 2000);
   assert.equal(art.sums.fileWallMs, 6000);
   assert.equal(art.sums.inProcessMs, 5440);
@@ -184,10 +186,26 @@ test('normalizeTimingArtifact preserves schema 1 wall as a sum, never actual ela
   assert.equal(normalized.sourceSchema, 1);
   assert.equal(normalized.elapsed.runnerMs, null);
   assert.equal(normalized.elapsed.poolMs, null);
+  assert.equal(normalized.elapsed.subprocessPoolMs, null);
   assert.equal(normalized.elapsed.serialMs, null);
   assert.equal(normalized.sums.fileWallMs, 9000);
   assert.equal(normalized.sums.inProcessMs, 7000);
   assert.equal(normalized.sums.estimatedSpawnIoMs, 2000);
+});
+
+test('normalizeTimingArtifact preserves schema 2 elapsed without inventing subprocess time', () => {
+  const normalized = normalizeTimingArtifact({
+    schema: 2,
+    elapsed: { runnerMs: 1250, poolMs: 1000, serialMs: 250 },
+    sums: { fileWallMs: 3000, inProcessMs: 2700, estimatedSpawnIoMs: 300 },
+  });
+  assert.equal(normalized.sourceSchema, 2);
+  assert.deepEqual(normalized.elapsed, {
+    runnerMs: 1250,
+    poolMs: 1000,
+    subprocessPoolMs: null,
+    serialMs: 250,
+  });
 });
 
 test('formatTimingReport renders a non-empty block and handles empty input', () => {
