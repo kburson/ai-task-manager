@@ -1,4 +1,4 @@
-// @story #1052 #1279
+// @story #1052 #1279 #1281
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdtempSync, mkdirSync, writeFileSync } from 'node:fs';
@@ -191,6 +191,22 @@ function context({ size = 'XL', estimate = 12, text = planText(), bodySuffix = '
   };
 }
 
+function sourceChildContext({
+  size = 'L',
+  estimate = 12.5,
+  text = planText(6, 6),
+  sourceSection = '### Task 1: Part 1',
+} = {}) {
+  const ctx = context({ size, estimate, text });
+  ctx.body = [
+    '## Plan Metadata',
+    '- **Source-plan**: docs/plan.md',
+    '- **Source-plan-commit**: accepted-plan-commit',
+    `- **Source-plan-section**: ${sourceSection}`,
+  ].join('\n');
+  return ctx;
+}
+
 function epicMarker() {
   return '\n## AITM Progress Markers\n\n<!-- aitm-issue-kind kind="epic" -->\n';
 }
@@ -275,6 +291,69 @@ test('plan exit keeps a non-epic must-split issue blocked even if child-shaped d
   const result = await decompositionPlanExitGuard.run(ctx);
   assert.equal(result.ok, false);
   assert.match(result.reason, /must-split/);
+});
+
+test('evaluator and Plan exit classify a generated child from its bounded source section', async () => {
+  const ctx = sourceChildContext();
+  ctx.deps.decomposition.fetchWbsChildren = async () => {
+    throw new Error('bounded non-epic child must not fetch epic WBS children');
+  };
+
+  const evaluated = await evaluateIssueDecomposition(ctx);
+  assert.equal(evaluated.classification.status, 'story-ok');
+  assert.equal(evaluated.classification.taskCount, 1);
+  assert.deepEqual(evaluated.planSelection, {
+    ok: true,
+    applied: true,
+    heading: '### Task 1: Part 1',
+    diagnostic: null,
+  });
+
+  const admitted = await decompositionPlanExitGuard.run(ctx);
+  assert.deepEqual(admitted, { ok: true });
+});
+
+test('Plan exit and decompose-check fail closed for an invalid requested source section', async () => {
+  const ctx = sourceChildContext({
+    size: 'M',
+    estimate: 8,
+    text: planText(1, 1),
+    sourceSection: '### Task 99: Missing',
+  });
+
+  const blocked = await decompositionPlanExitGuard.run(ctx);
+  assert.equal(blocked.ok, false);
+  assert.match(blocked.reason, /invalid Source-plan-section/);
+  assert.match(blocked.reason, /not found/);
+
+  const checked = await runDecomposeCheck({
+    issueNumber: ctx.issueNumber,
+    cfg: ctx.cfg,
+    deps: {
+      fetchIssueBody: async () => ctx.body,
+      decomposition: ctx.deps.decomposition,
+    },
+  });
+  assert.equal(checked.classification.status, 'story-ok');
+  assert.equal(checked.planSelection.ok, false);
+  assert.equal(checked.exitCode, 3);
+});
+
+test('decompose-check reports one task for a valid bounded source child', async () => {
+  const ctx = sourceChildContext();
+  const checked = await runDecomposeCheck({
+    issueNumber: ctx.issueNumber,
+    cfg: ctx.cfg,
+    deps: {
+      fetchIssueBody: async () => ctx.body,
+      decomposition: ctx.deps.decomposition,
+    },
+  });
+
+  assert.equal(checked.classification.status, 'story-ok');
+  assert.equal(checked.classification.taskCount, 1);
+  assert.equal(checked.planSelection.heading, '### Task 1: Part 1');
+  assert.equal(checked.exitCode, 0);
 });
 
 test('plan exit fails closed when epic WBS evidence cannot be read', async () => {

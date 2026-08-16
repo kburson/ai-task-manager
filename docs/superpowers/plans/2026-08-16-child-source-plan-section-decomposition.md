@@ -312,7 +312,7 @@ node --test scripts/tests/unit/task-tracker/lib/decomposition-plan-exit-gate.tes
 
 Expected: both PASS.
 
-- [ ] **Step 5: Reproduce against live #1273 read-only**
+- [ ] **Step 5: Confirm trunk-rooted fail-closed behavior, then defer live #1273 proof to parent integration**
 
 Run:
 
@@ -320,8 +320,14 @@ Run:
 npx aitm decompose-check 1273 --json
 ```
 
-Expected: `classification.status` is `story-ok`, `taskCount` is `1`, and
-`planSelection.heading` is
+Expected in the trunk-rooted #1281 worktree: exit 3 with `plan path is not a
+readable file`, because #1273's accepted source plan lives on the #1268 branch
+lineage rather than trunk. This proves the new selector fails closed when its
+source is unavailable.
+
+After #1281 is integrated into #1273's parent-based worktree, run the same
+command there. Expected: `classification.status` is `story-ok`, `taskCount` is
+`1`, and `planSelection.heading` is
 `### Task 1: Add authenticated active-session budget adjustment`.
 
 - [ ] **Step 6: Run repository verification**

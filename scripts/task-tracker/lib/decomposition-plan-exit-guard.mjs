@@ -8,9 +8,11 @@ import { getProjectDir } from '../paths.mjs';
 import { loadProjectFieldDefs } from '../project-fields.mjs';
 import {
   classifyDecomposition,
+  linkedPlanReference,
   linkedPlanPath,
   parseDecompositionWaiver,
   resolvePlanPath,
+  selectDecompositionPlanSection,
 } from './decomposition-policy.mjs';
 import { reconcileWbsCoverage } from './decomposition-wbs-coverage.mjs';
 import { parseIssueKind } from './issue-kind.mjs';
@@ -75,16 +77,25 @@ async function evaluateIssueDecompositionSnapshot({
   });
   const resolved = resolvePlanPath({ projectDir, body, overridePath: planOverride });
   const { planText, planDiagnostic } = planTextFromResolved(resolved, readFile);
+  const linkedReference = planOverride == null ? linkedPlanReference(body) : null;
+  const { planText: effectivePlanText, ...planSelection } = selectDecompositionPlanSection({
+    body,
+    planText,
+    activePlanKey: linkedReference?.key || null,
+  });
   const classification = classifyDecomposition({
     size: values.size ?? null,
     estimateHours: values.estimate ?? null,
-    planText,
+    planText: effectivePlanText,
   });
   const waiver = parseDecompositionWaiver(body);
-  const effectiveStatus =
-    classification.status === 'must-split' && waiver.ok ? 'waived' : classification.status;
+  const effectiveStatus = !planSelection.ok
+    ? 'invalid-plan-section'
+    : classification.status === 'must-split' && waiver.ok
+      ? 'waived'
+      : classification.status;
   return {
-    result: { classification, waiver, effectiveStatus, planDiagnostic, values },
+    result: { classification, waiver, effectiveStatus, planDiagnostic, planSelection, values },
     planText,
   };
 }
@@ -121,6 +132,14 @@ export const decompositionPlanExitGuard = {
       deps: ctx.deps || {},
     });
     const codes = signalCodes(result.classification);
+    if (!result.planSelection.ok) {
+      const blockers = [
+        'plan-exit-decomposition: invalid Source-plan-section',
+        result.planSelection.diagnostic,
+      ];
+      if (result.planDiagnostic?.diagnostic) blockers.push(result.planDiagnostic.diagnostic);
+      return { ok: false, reason: blockers.join('; '), blockers };
+    }
     if (result.classification.status === 'must-split') {
       if (result.waiver.ok) {
         return {
