@@ -1,9 +1,11 @@
-# Evidence Beats Trust
+# The Evidence-Over-Trust Theorem
+
+**Evidence Beats Trust**
 
 <!-- markdownlint-disable MD034 -->
 
 ![Evidence Beats Trust](assets/article-headers/article-07-header.png)
-_Part 8 of a series of articles on succeeding with Agentic AI Delivery_
+_Part 9 of a series of articles on succeeding with Agentic Agile Delivery_
 
 I do not want to trust an AI agent. I want the agent to leave enough evidence that trust is no longer the main control.
 
@@ -29,7 +31,7 @@ Agentic delivery needs observable proof, not narrative, in my experience. At min
 - What human decision was made, and when?
 - How much agent time and human review burden did the task actually consume?
 
-Without answers to those questions, I have watched AI-assisted work become a chain of persuasive narratives — plausible summaries of what happened, standing in for what can actually be verified. That is precisely the failure mode the rest of this series has been building toward since the **vibe coding hangover** I described in [article one](00-technical-product-operations.md): fast output that nobody can cheaply confirm is correct.
+Without answers to those questions, I have watched AI-assisted work become a chain of persuasive narratives — plausible summaries of what happened, standing in for what can actually be verified. That is precisely the failure mode the rest of this series has been building toward since the **vibe coding hangover** I described in [article one](02-the-backlog-governance-postulate.md): fast output that nobody can cheaply confirm is correct.
 
 Traditional SDLC ceremonies already degrade into status theater when the evidence behind them is weak — a standup where "done" means "I said it's done." Agentic AI raises the cost of that weakness sharply, in my experience. If implementation agents are producing work at a pace no human team could match, I need objective signals as the **Technical Product Owner** to decide whether a given piece of work is really ready, blocked, defective, or complete — because there is no longer time to eyeball every line before deciding.
 
@@ -70,11 +72,11 @@ Before scaling up agent-assisted delivery, I would inventory what evidence the c
 
 ## Series Link
 
-This article explains the trust mechanism I rely on. The final article, [The Adapter Future](08-adapter-future.md), explains why backlog systems and AI hosts need APIs that can carry these controls across platforms.
+This article explains the trust mechanism I rely on. The final article, [The Adapter Future](10-the-adapter-convergence.md), explains why backlog systems and AI hosts need APIs that can carry these controls across platforms.
 
 ## The AITM Pattern
 
-I introduced AITM — `@kburson/ai-task-manager` — in the [opening article](00-technical-product-operations.md#aitm-and-the-backlog-manager-pattern): the skill I built after hitting the exact wall described above one too many times. It treats evidence as a first-class product of the workflow, not an afterthought bolted onto reporting:
+I introduced AITM — `@kburson/ai-task-manager` — in the [opening article](02-the-backlog-governance-postulate.md#aitm-and-the-backlog-manager-pattern): the skill I built after hitting the exact wall described above one too many times. It treats evidence as a first-class product of the workflow, not an afterthought bolted onto reporting:
 
 - Timing logs record starts, pauses, updates, and closes as durable comment history on the issue itself.
 - Context-word counters approximate the human review burden a given task actually consumed.
@@ -92,15 +94,16 @@ Evidence is also what lets me, as the TPO/TPM, supervise at a higher altitude wi
 
 | Status      | #      | Article                                                                                    | Role In Series                                |
 | ----------- | ------ | ------------------------------------------------------------------------------------------ | --------------------------------------------- |
-|             | 00     | [The Rise Of Technical Product Operations](00-technical-product-operations.md)             | Industry thesis: Technical Product Operations |
-|             | 01     | [The Vibe Coding Hangover](01-vibe-coding-hangover.md)                                     | Failure mode: vibe slop and review debt       |
-|             | 02     | [Spec-Driven Development Is Necessary But Not Sufficient](02-spec-driven-is-not-enough.md) | Why specs need execution governance           |
-|             | 03     | [The Rise Of The Technical Product Owner](03-technical-product-owner.md)                   | Human operator: TPO/TPM as delivery architect |
-|             | 04     | [The Backlog Becomes The Control Plane](04-backlog-as-control-plane.md)                    | Backlog as executable control surface         |
-|             | 05     | [The Just-In-Time Planner](05-just-in-time-planner.md)                                     | Progressive decomposition and deep dives      |
-|             | 06     | [Context Durability Is A Feature](06-context-durability.md)                                | JIT loading and post-compaction recovery      |
-| **Current** | **07** | **[Evidence Beats Trust](07-evidence-beats-trust.md)**                                     | Evidence gates and auditability               |
-|             | 08     | [The Adapter Future](08-adapter-future.md)                                                 | Backlog and agent platform adapters           |
+|             | 01     | [The Refactoring Bloat Precursor](01-the-refactoring-bloat-precursor.md)                            | Prequel: history of AI-assisted coding before agents |
+|             | 02     | [The Rise Of Technical Product Operations](02-the-backlog-governance-postulate.md)             | Industry thesis: Technical Product Operations |
+|             | 03     | [The Vibe Coding Hangover](03-the-vibe-coding-deficiency.md)                                     | Failure mode: vibe slop and review debt       |
+|             | 04     | [Spec-Driven Development Is Necessary But Not Sufficient](04-the-spec-driven-insufficiency.md) | Why specs need execution governance           |
+|             | 05     | [The Rise Of The Technical Product Owner](05-the-product-owner-escalation.md)                   | Human operator: TPO/TPM as delivery architect |
+|             | 06     | [The Backlog Becomes The Control Plane](06-the-backlog-control-plane-conjecture.md)                    | Backlog as executable control surface         |
+|             | 07     | [The Just-In-Time Planner](07-the-just-in-time-planning-paradox.md)                                     | Progressive decomposition and deep dives      |
+|             | 08     | [Context Durability Is A Feature](08-the-context-durability-corollary.md)                                | JIT loading and post-compaction recovery      |
+| **Current** | **09** | **[Evidence Beats Trust](09-the-evidence-over-trust-theorem.md)**                                     | Evidence gates and auditability               |
+|             | 10     | [The Adapter Future](10-the-adapter-convergence.md)                                                 | Backlog and agent platform adapters           |
 
 ## LinkedIn Article Shape
 

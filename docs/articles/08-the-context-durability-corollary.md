@@ -1,9 +1,11 @@
-# Context Durability Is A Feature
+# The Context Durability Corollary
+
+**Context Durability Is A Feature**
 
 <!-- markdownlint-disable MD034 -->
 
 ![Context Durability Is A Feature](assets/article-headers/article-06-header.png)
-_Part 7 of a series of articles on succeeding with Agentic AI Delivery_
+_Part 8 of a series of articles on succeeding with Agentic Agile Delivery_
 
 ## Draft Thesis
 
@@ -103,11 +105,11 @@ That, to me, is the difference between a helpful coding chat and an agentic deli
 
 ## Series Link
 
-This article explains how I keep the process surviving long sessions. The next article, [Evidence Beats Trust](07-evidence-beats-trust.md), explains why durable process must leave durable proof.
+This article explains how I keep the process surviving long sessions. The next article, [Evidence Beats Trust](09-the-evidence-over-trust-theorem.md), explains why durable process must leave durable proof.
 
 ## AITM Perspective
 
-I introduced AITM — `@kburson/ai-task-manager` — in the [opening article](00-technical-product-operations.md#aitm-and-the-backlog-manager-pattern): the skill I built after hitting the exact wall described above one too many times. I built it to treat context as a managed resource.
+I introduced AITM — `@kburson/ai-task-manager` — in the [opening article](02-the-backlog-governance-postulate.md#aitm-and-the-backlog-manager-pattern): the skill I built after hitting the exact wall described above one too many times. I built it to treat context as a managed resource.
 
 The skill is deliberately carved into three tiers:
 
@@ -123,15 +125,16 @@ AITM's own measurements show the effect. The old monolithic skill loaded roughly
 
 | Status      | #      | Article                                                                                    | Role In Series                                |
 | ----------- | ------ | ------------------------------------------------------------------------------------------ | --------------------------------------------- |
-|             | 00     | [The Rise Of Technical Product Operations](00-technical-product-operations.md)             | Industry thesis: Technical Product Operations |
-|             | 01     | [The Vibe Coding Hangover](01-vibe-coding-hangover.md)                                     | Failure mode: vibe slop and review debt       |
-|             | 02     | [Spec-Driven Development Is Necessary But Not Sufficient](02-spec-driven-is-not-enough.md) | Why specs need execution governance           |
-|             | 03     | [The Rise Of The Technical Product Owner](03-technical-product-owner.md)                   | Human operator: TPO/TPM as delivery architect |
-|             | 04     | [The Backlog Becomes The Control Plane](04-backlog-as-control-plane.md)                    | Backlog as executable control surface         |
-|             | 05     | [The Just-In-Time Planner](05-just-in-time-planner.md)                                     | Progressive decomposition and deep dives      |
-| **Current** | **06** | **[Context Durability Is A Feature](06-context-durability.md)**                            | JIT loading and post-compaction recovery      |
-|             | 07     | [Evidence Beats Trust](07-evidence-beats-trust.md)                                         | Evidence gates and auditability               |
-|             | 08     | [The Adapter Future](08-adapter-future.md)                                                 | Backlog and agent platform adapters           |
+|             | 01     | [The Refactoring Bloat Precursor](01-the-refactoring-bloat-precursor.md)                            | Prequel: history of AI-assisted coding before agents |
+|             | 02     | [The Rise Of Technical Product Operations](02-the-backlog-governance-postulate.md)             | Industry thesis: Technical Product Operations |
+|             | 03     | [The Vibe Coding Hangover](03-the-vibe-coding-deficiency.md)                                     | Failure mode: vibe slop and review debt       |
+|             | 04     | [Spec-Driven Development Is Necessary But Not Sufficient](04-the-spec-driven-insufficiency.md) | Why specs need execution governance           |
+|             | 05     | [The Rise Of The Technical Product Owner](05-the-product-owner-escalation.md)                   | Human operator: TPO/TPM as delivery architect |
+|             | 06     | [The Backlog Becomes The Control Plane](06-the-backlog-control-plane-conjecture.md)                    | Backlog as executable control surface         |
+|             | 07     | [The Just-In-Time Planner](07-the-just-in-time-planning-paradox.md)                                     | Progressive decomposition and deep dives      |
+| **Current** | **08** | **[Context Durability Is A Feature](08-the-context-durability-corollary.md)**                            | JIT loading and post-compaction recovery      |
+|             | 09     | [Evidence Beats Trust](09-the-evidence-over-trust-theorem.md)                                         | Evidence gates and auditability               |
+|             | 10     | [The Adapter Future](10-the-adapter-convergence.md)                                                 | Backlog and agent platform adapters           |
 
 ## LinkedIn Article Shape
 

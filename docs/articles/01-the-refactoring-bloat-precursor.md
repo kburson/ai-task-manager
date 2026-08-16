@@ -1,0 +1,67 @@
+# The Refactoring Bloat Precursor
+
+**Before Agents Lived In The Clouds: A Brief History Of AI-Assisted Coding**
+
+Every "agent orchestration" conversation acts like it started in 2023. It didn't. The tooling that made AI-assisted coding thinkable — refactoring engines, lightweight editors, code-trained language models, a platform to hang all of it on — was built by hand, one grinding step at a time, for two decades before an agent ever opened a pull request. This is that lineage.
+
+## Before Copilot: the refactoring era and the tool that got too heavy
+
+JetBrains shipped ReSharper in 2004 as a Visual Studio extension for .NET developers — not a standalone editor, a plugin that sat inside Microsoft's IDE and rewired how C# and VB.NET got written. Twenty years and 2,200+ on-the-fly inspections later, JetBrains calls it their longest-standing commercial product and the most-downloaded extension in the Visual Studio Marketplace ([JetBrains: ReSharper 20 Years](https://blog.jetbrains.com/dotnet/2024/07/23/resharper-20-years/)). It's the direct ancestor of the "understand the code, not just the text" idea that every AI coding tool now takes for granted — real-time inspection, structural refactoring, navigation that follows semantics instead of grep.
+
+ReSharper never touched JavaScript in any serious way, and it was never a JetBrains IDE feature — it was bolted onto *Microsoft's* IDE. JetBrains' own IDEs (IntelliJ IDEA, WebStorm) shipped that inspection engine natively; ReSharper was JetBrains porting the same idea into somebody else's editor.
+
+And that plugin got heavy. JetBrains' own support documentation, going back to 2009-era beta notes and still open today, catalogs the complaint — Solution Wide Analysis alone could add gigabytes of memory overhead on a large solution (one cited case: 600MB without ReSharper, 2.3GB with it), and the standard fix was "turn off half the analysis, add more RAM" ([JetBrains: Visual Studio with ReSharper is slow](https://resharper-support.jetbrains.com/hc/en-us/articles/4405071760402-Visual-Studio-with-ReSharper-is-slow)). That tax on the full-IDE-plus-plugin model is not incidental to what came next — it's a direct cause. A generation of developers had it burned in that sitting a heavyweight analyzer on top of a heavyweight IDE meant your workstation ground to a crawl. That experience is a real part of why "a lightweight text editor with plugins" became an appealing category on its own, rather than "the IDE just gets more powerful."
+
+## The editor that ate the IDEs
+
+Microsoft announced Visual Studio Code at Build in April 2015, open-sourced it under MIT that November, and it graduated preview in April 2016 ([Wikipedia: Visual Studio Code](https://en.wikipedia.org/wiki/Visual_Studio_Code); [Swiftorial: History of VS Code](https://www.swiftorial.com/tutorials/development_tools/vs_code/introduction_to_vs_code/history_of_vs_code/)). It's built on Electron — a JavaScript/Chromium desktop shell — and on the Monaco editor component Microsoft had already shipped for browser-based code editing in 2013. VS Code positioned itself, and was broadly received, as a fast, free, extensible *editor* — not a competitor to the full IDEs it sat next to. IntelliJ IDEA and WebStorm (JetBrains) and Visual Studio proper (Microsoft) were IDEs in the traditional sense: project model, integrated debugger, integrated build, integrated everything. VS Code shipped thin and let extensions add the rest, which is exactly the reaction to the ReSharper-style bloat problem above — pay for the weight only in the areas you actually use.
+
+## Copilot: a GitHub product from day one
+
+Microsoft announced the GitHub acquisition in June 2018 and closed it in October 2018 ([Microsoft: Completes GitHub acquisition](https://blogs.microsoft.com/blog/2018/10/26/microsoft-completes-github-acquisition/)) — nearly three years *before* Copilot existed at all. Copilot launched as a technical preview in June 2021, branded as a GitHub product from the start, built on OpenAI's Codex model — a version of GPT-3 that OpenAI had fine-tuned specifically on source code ([OpenAI Codex, Wikipedia](https://en.wikipedia.org/wiki/OpenAI_Codex_(language_model))). Copilot was never a Microsoft product that later migrated to GitHub; it was a GitHub product whose first client happened to be a VS Code extension, because that's where the developers already were. It went GA in June 2022, and it landed in more editors over time — JetBrains IDEs, Neovim, Visual Studio proper — a genuine multi-editor spread, not a brand migration.
+
+Worth being precise about what "ran on your desktop" meant, too, because it bundles two different things. The client — the extension you installed, that read your open files and rendered the suggestion inline — always ran locally, and it was genuinely a paid product: free during the June 2021 technical preview (waitlist access, no charge), then $10/month for individuals starting at the June 2022 GA, free for verified students and popular open-source maintainers ([GitHub Blog: Introducing GitHub Copilot](https://github.blog/news-insights/product-news/introducing-github-copilot-ai-pair-programmer/); [TechCrunch: Copilot is now generally available](https://techcrunch.com/2022/06/21/copilot-githubs-ai-powered-programming-assistant-is-now-generally-available/)). But the completions themselves never ran on that desktop. The extension shipped your surrounding code to a hosted Codex model over the network and streamed the suggestion back — there was no local inference. "A paid plugin you installed in VS Code" and "a cloud-hosted GitHub service" aren't competing descriptions of two different eras; they're the client half and the compute half of the same product, true at the same time, from the first technical preview.
+
+That architecture is also the direct rebuttal to the ReSharper story above. ReSharper's failure mode was a heavyweight analyzer sitting on a workstation, eating gigabytes of RAM until the fix was "turn off half the analysis, add more RAM." Copilot never had that failure mode available to it, because the expensive part — the model — was never on the workstation in the first place. The editor-vs-IDE split happened because local tooling got too heavy; Copilot's cloud-inference client sidestepped that fight entirely by moving the weight off the desktop before it could accumulate. Two decades of "make local tooling lighter" gave way to "stop putting the heavy part locally at all."
+
+Codex — the code-specific model powering the *original* Copilot — was announced by OpenAI in July 2021, more than a year *before* ChatGPT existed. Code-specific training came first for OpenAI's own model lineage; general-purpose chat came after.
+
+Copilot's move toward "automation partner in the cloud" is dated cleanly: GitHub shipped Copilot Workspace as a technical preview in April 2024 — hand it an issue, it produces a spec, a plan, and a diff — then folded what it learned into the general-availability Copilot coding agent in 2025, which runs autonomously in its own GitHub Actions-backed sandbox, opens branches, and asks for review ([GitHub: Coding agent for GitHub Copilot](https://github.com/newsroom/press-releases/coding-agent-for-github-copilot)). That's the pairing-tool-grew-into-a-cloud-agent arc, and it happened in 2024-2025, well after the 2018 acquisition had already faded into the background.
+
+## The ChatGPT shockwave, and what it did and didn't start
+
+ChatGPT launched November 30, 2022, and hit a million users in five days ([History.com: ChatGPT released](https://www.history.com/this-day-in-history/november-30/chatgpt-released-openai)). The "stupid AI tricks" framing — marketing copy, spam bots, novelty emails — is a fair description of a lot of the public noise in that first year. But it wasn't the beginning of AI writing code. Codex-powered Copilot had already been generally available for five months when ChatGPT shipped. What ChatGPT actually did was make natural-language interaction with a capable model something a non-specialist could do from a browser tab, which is what turned "AI can write code" from a GitHub-extension niche into a mainstream, cross-industry story — accounting, law, medicine, research, and eventually software all got pulled into the same wave, just because the interface got that much more accessible. 2022 was rough for *general-purpose* chat AI; code-generation AI had already had a full year of production use by then.
+
+Worth separating two different kinds of viral, since GPT-3 (June 2020, API access) and Codex-powered Copilot (June 2021, editor extension) drove two different things. GPT-3's virality was diffuse — demos, screenshots, "look what this thing can write" — and largely confined to people with API access; it primed the cultural moment for "language models are getting good" without changing anyone's actual workflow. Copilot's reach was narrower but far stickier: it put a code-specific model directly inside the daily editing loop of everyone who installed it, which is a fundamentally different kind of adoption than a demo seen once and closed. GPT-3 primed the moment. Copilot is where the AI-assisted-coding paradigm actually landed.
+
+## 2023-2024: the field actually opens up
+
+Anysphere launched Cursor in March 2023 — a fork of VS Code with AI built into the core editing loop rather than bolted on as an extension ([Cursor, Wikipedia](https://en.wikipedia.org/wiki/Cursor_(code_editor))). By 2024 the roster — Cursor, Claude, ChatGPT, Gemini — were all genuinely live and competing on code generation. Grok is the odd one out: xAI's Grok-2 (2024) claimed frontier coding and reasoning numbers, but Grok didn't ship a dedicated coding-agent product until Grok Build, which trailed Claude Code and Codex by more than a year ([CIO Dive: xAI joins coding agent race](https://www.ciodive.com/news/xAI-coding-agents-Grok-Build/820422/)).
+
+## Anthropic's Opus line
+
+Claude Opus 4 shipped May 2024, Opus 4.1 in August 2025, Opus 4.5 in November 2025, and Opus 4.6 on February 5, 2026 — introducing a 1M-token context window in beta alongside code review, debugging, and planning capability upgrades ([hidekazu-konishi.com: Claude Release Timeline](https://hidekazu-konishi.com/entry/anthropic_claude_model_release_timeline.html)). Opus 5 followed in July 2026.
+
+## The loop closes
+
+As of ReSharper 2026.1, JetBrains extended its C# tooling beyond Visual Studio to support VS Code *and* Cursor — the tool that helped make "lightweight editor plus plugins" the dominant model is now shipping into the editors that model produced. Two decades on, refactoring-engine and AI-coding-agent lineages are converging back into the same editor surface.
+
+## Bibliography
+
+- JetBrains, ["ReSharper 20 Years!"](https://blog.jetbrains.com/dotnet/2024/07/23/resharper-20-years/), JetBrains Blog, 2024-07-23.
+- JetBrains, ["Visual Studio with ReSharper is slow"](https://resharper-support.jetbrains.com/hc/en-us/articles/4405071760402-Visual-Studio-with-ReSharper-is-slow), ReSharper Support.
+- JetBrains, ["More Performance Problems in 6.1: Slow and Excessive Memory Usage"](https://resharper-support.jetbrains.com/hc/en-us/community/posts/206666025-More-Performance-Problems-in-6-1-Slow-and-Excessive-Memory-Usage), ReSharper Support community post.
+- Wikipedia, ["Visual Studio Code"](https://en.wikipedia.org/wiki/Visual_Studio_Code).
+- Swiftorial, ["History of VS Code"](https://www.swiftorial.com/tutorials/development_tools/vs_code/introduction_to_vs_code/history_of_vs_code/).
+- Microsoft, ["Microsoft completes GitHub acquisition"](https://blogs.microsoft.com/blog/2018/10/26/microsoft-completes-github-acquisition/), Official Microsoft Blog, 2018-10-26.
+- Microsoft News, ["Microsoft to acquire GitHub for $7.5 billion"](https://news.microsoft.com/source/2018/06/04/microsoft-to-acquire-github-for-7-5-billion/), 2018-06-04.
+- Wikipedia, ["OpenAI Codex (language model)"](https://en.wikipedia.org/wiki/OpenAI_Codex_(language_model)).
+- GitHub Blog, ["Under the hood: Exploring the AI models powering GitHub Copilot"](https://github.blog/ai-and-ml/github-copilot/under-the-hood-exploring-the-ai-models-powering-github-copilot/).
+- GitHub Blog, ["Introducing GitHub Copilot: your AI pair programmer"](https://github.blog/news-insights/product-news/introducing-github-copilot-ai-pair-programmer/).
+- TechCrunch, ["Copilot, GitHub's AI-powered programming assistant, is now generally available"](https://techcrunch.com/2022/06/21/copilot-githubs-ai-powered-programming-assistant-is-now-generally-available/), 2022-06-21.
+- GitHub Newsroom, ["GitHub Introduces Coding Agent For GitHub Copilot"](https://github.com/newsroom/press-releases/coding-agent-for-github-copilot).
+- Java Code Geeks, ["GitHub Copilot Workspace & The Agentic Era"](https://www.javacodegeeks.com/2026/02/github-copilot-workspace-the-agentic-era.html), 2026-02.
+- History.com, ["ChatGPT, the generative AI chatbot, is released"](https://www.history.com/this-day-in-history/november-30/chatgpt-released-openai).
+- Wikipedia, ["Cursor (code editor)"](https://en.wikipedia.org/wiki/Cursor_(code_editor)).
+- CIO Dive, ["xAI joins crowded coding agent race with Grok Build"](https://www.ciodive.com/news/xAI-coding-agents-Grok-Build/820422/).
+- hidekazu-konishi.com, ["Anthropic Claude Model Release Timeline"](https://hidekazu-konishi.com/entry/anthropic_claude_model_release_timeline.html).

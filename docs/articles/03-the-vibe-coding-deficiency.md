@@ -1,9 +1,11 @@
-# The Vibe Coding Hangover
+# The Vibe Coding Deficiency
+
+**The Vibe Coding Hangover**
 
 <!-- markdownlint-disable MD034 -->
 
 ![The Vibe Coding Hangover](assets/article-headers/article-01-header.png)
-_Part 2 of a series of articles on succeeding with Agentic AI Delivery_
+_Part 3 of a series of articles on succeeding with Agentic Agile Delivery_
 
 We spent the first wave of AI coding asking the wrong question.
 
@@ -149,11 +151,11 @@ The future I want is not less product management. It is product management with 
 
 ## Series Link
 
-This article establishes the failure mode of unmanaged agentic delivery — the one I kept running into before I built anything to stop it. The next article, [Spec-Driven Development Is Necessary But Not Sufficient](02-spec-driven-is-not-enough.md), explains why specifications improve the situation but still need story-level execution governance.
+This article establishes the failure mode of unmanaged agentic delivery — the one I kept running into before I built anything to stop it. The next article, [Spec-Driven Development Is Necessary But Not Sufficient](04-the-spec-driven-insufficiency.md), explains why specifications improve the situation but still need story-level execution governance.
 
 ## AITM And The Backlog Manager Pattern
 
-I introduced AITM — `@kburson/ai-task-manager` — in the [opening article](00-technical-product-operations.md#aitm-and-the-backlog-manager-pattern): the skill I built after hitting the exact wall described above one too many times. The review-debt loop is not an abstraction to me. It is the thing I got tired of debugging by hand.
+I introduced AITM — `@kburson/ai-task-manager` — in the [opening article](02-the-backlog-governance-postulate.md#aitm-and-the-backlog-manager-pattern): the skill I built after hitting the exact wall described above one too many times. The review-debt loop is not an abstraction to me. It is the thing I got tired of debugging by hand.
 
 AITM starts from a simple premise: do not hand the agent a giant wish. Hand it a governed work item.
 
@@ -177,15 +179,16 @@ The human role also changes. The TPO/TPM is not merely writing prompts. They are
 
 | Status      | #      | Article                                                                                    | Role In Series                                |
 | ----------- | ------ | ------------------------------------------------------------------------------------------ | --------------------------------------------- |
-|             | 00     | [The Rise Of Technical Product Operations](00-technical-product-operations.md)             | Industry thesis: Technical Product Operations |
-| **Current** | **01** | **[The Vibe Coding Hangover](01-vibe-coding-hangover.md)**                                 | Failure mode: vibe slop and review debt       |
-|             | 02     | [Spec-Driven Development Is Necessary But Not Sufficient](02-spec-driven-is-not-enough.md) | Why specs need execution governance           |
-|             | 03     | [The Rise Of The Technical Product Owner](03-technical-product-owner.md)                   | Human operator: TPO/TPM as delivery architect |
-|             | 04     | [The Backlog Becomes The Control Plane](04-backlog-as-control-plane.md)                    | Backlog as executable control surface         |
-|             | 05     | [The Just-In-Time Planner](05-just-in-time-planner.md)                                     | Progressive decomposition and deep dives      |
-|             | 06     | [Context Durability Is A Feature](06-context-durability.md)                                | JIT loading and post-compaction recovery      |
-|             | 07     | [Evidence Beats Trust](07-evidence-beats-trust.md)                                         | Evidence gates and auditability               |
-|             | 08     | [The Adapter Future](08-adapter-future.md)                                                 | Backlog and agent platform adapters           |
+|             | 01     | [The Refactoring Bloat Precursor](01-the-refactoring-bloat-precursor.md)                            | Prequel: history of AI-assisted coding before agents |
+|             | 02     | [The Rise Of Technical Product Operations](02-the-backlog-governance-postulate.md)             | Industry thesis: Technical Product Operations |
+| **Current** | **03** | **[The Vibe Coding Hangover](03-the-vibe-coding-deficiency.md)**                                 | Failure mode: vibe slop and review debt       |
+|             | 04     | [Spec-Driven Development Is Necessary But Not Sufficient](04-the-spec-driven-insufficiency.md) | Why specs need execution governance           |
+|             | 05     | [The Rise Of The Technical Product Owner](05-the-product-owner-escalation.md)                   | Human operator: TPO/TPM as delivery architect |
+|             | 06     | [The Backlog Becomes The Control Plane](06-the-backlog-control-plane-conjecture.md)                    | Backlog as executable control surface         |
+|             | 07     | [The Just-In-Time Planner](07-the-just-in-time-planning-paradox.md)                                     | Progressive decomposition and deep dives      |
+|             | 08     | [Context Durability Is A Feature](08-the-context-durability-corollary.md)                                | JIT loading and post-compaction recovery      |
+|             | 09     | [Evidence Beats Trust](09-the-evidence-over-trust-theorem.md)                                         | Evidence gates and auditability               |
+|             | 10     | [The Adapter Future](10-the-adapter-convergence.md)                                                 | Backlog and agent platform adapters           |
 
 ## LinkedIn Article Shape
 
