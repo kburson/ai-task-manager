@@ -187,8 +187,8 @@ test('#1284: a custom-named epic cuts and validates a child at its exact head', 
   const git = gitFor(repo);
   const customEpic = 'codex/1268-implementation-plan';
   const customGraph = (n) =>
-    n === 905
-      ? { ...GRAPH[905], authoritativeBranch: customEpic }
+    n === 910
+      ? { ...GRAPH[910], parentAuthoritativeBranch: customEpic }
       : GRAPH[n] ?? { parent: null, children: [] };
 
   git(['branch', customEpic, 'trunk']);

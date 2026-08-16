@@ -18,8 +18,10 @@
 //                  child or a nested epic, else trunk.
 //
 // The one external fact — the sub-issue graph edge for an issue — is injected as
-// `deps.graph(issue) → { parent, children }`, so this module needs neither `gh` nor
-// git and its tests run pure. `deps.trunk` overrides the trunk branch name.
+// `deps.graph(issue) → { parent, children, parentAuthoritativeBranch? }`, so this
+// module needs neither `gh` nor git and each resolution reads exactly one graph
+// node. A parent authority error is likewise carried on that node. `deps.trunk`
+// overrides the trunk branch name.
 
 import { composeBranchName, parseBranchName } from './branch-name.mjs';
 
@@ -74,18 +76,7 @@ export function resolveEpicLineage(issueOrBranch, { deps } = {}) {
       }
       parentEpicBranch = node.parentAuthoritativeBranch;
     } else {
-      const parentNode = deps.graph(parent) || {};
-      if (parentNode.authorityError) {
-        throw new Error(`resolve-epic-lineage: ${parentNode.authorityError}`);
-      }
-      if (parentNode.authoritativeBranch != null) {
-        if (typeof parentNode.authoritativeBranch !== 'string' || !parentNode.authoritativeBranch) {
-          throw new Error('resolve-epic-lineage: authoritative branch must be a non-empty string');
-        }
-        parentEpicBranch = parentNode.authoritativeBranch;
-      } else {
-        parentEpicBranch = composeBranchName({ role: 'epic', issue: parent });
-      }
+      parentEpicBranch = composeBranchName({ role: 'epic', issue: parent });
     }
   }
 

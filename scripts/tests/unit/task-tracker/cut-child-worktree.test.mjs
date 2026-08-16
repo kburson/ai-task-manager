@@ -73,9 +73,11 @@ test('#1284: child worktree uses the parent epic\'s recorded custom branch autho
   const customDeps = {
     ...deps,
     graph: (n) =>
-      n === 905
-        ? { ...GRAPH[905], authoritativeBranch: 'codex/1268-implementation-plan' }
-        : GRAPH[n] ?? { parent: null, children: [] },
+      n === 910
+        ? { ...GRAPH[910], parentAuthoritativeBranch: 'codex/1268-implementation-plan' }
+        : (() => {
+            throw new Error(`unexpected graph lookup for #${n}`);
+          })(),
   };
   const result = cutChildWorktree({ issue: 910, path: '/wt/910', deps: customDeps });
   assert.equal(result.base, 'codex/1268-implementation-plan');
@@ -89,9 +91,11 @@ test('#1284: invalid parent branch authority makes zero mutating Git calls', () 
   const invalidDeps = {
     ...deps,
     graph: (n) =>
-      n === 905
-        ? { ...GRAPH[905], authorityError: 'malformed current worktree authority' }
-        : GRAPH[n] ?? { parent: null, children: [] },
+      n === 910
+        ? { ...GRAPH[910], parentAuthorityError: 'malformed current worktree authority' }
+        : (() => {
+            throw new Error(`unexpected graph lookup for #${n}`);
+          })(),
   };
   assert.throws(
     () => cutChildWorktree({ issue: 910, path: '/wt/910', deps: invalidDeps }),

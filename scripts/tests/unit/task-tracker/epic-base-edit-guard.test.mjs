@@ -122,8 +122,8 @@ test('computeEvaluation FAILS the #859 wrong-base child (cut from the fork)', ()
 test('#1284: the guard evaluates a child against its custom recorded epic branch', () => {
   const customEpic = 'codex/1268-implementation-plan';
   const customGraph = (n) =>
-    n === 905
-      ? { ...GRAPH[905], authoritativeBranch: customEpic }
+    n === 910
+      ? { ...GRAPH[910], parentAuthoritativeBranch: customEpic }
       : GRAPH[n] ?? { parent: null, children: [] };
   const calls = [];
   const git = (args) => {
@@ -142,8 +142,8 @@ test('#1284: the guard evaluates a child against its custom recorded epic branch
 test('#1284: unresolved custom authority blocks guard evaluation before Git', () => {
   const calls = [];
   const unavailableGraph = (n) =>
-    n === 905
-      ? { ...GRAPH[905], authorityError: 'malformed current worktree authority' }
+    n === 910
+      ? { ...GRAPH[910], parentAuthorityError: 'malformed current worktree authority' }
       : GRAPH[n] ?? { parent: null, children: [] };
   assert.equal(
     computeEvaluation('feature/child/910', {

@@ -41,6 +41,19 @@ test('leaf child → epic branch is its parent, base is that epic', () => {
   });
 });
 
+test('#1284: a canonical child resolves from exactly its one supplied graph node', () => {
+  const lookups = [];
+  const oneNode = {
+    graph: (n) => {
+      lookups.push(n);
+      if (n !== 910) throw new Error(`unexpected graph lookup for #${n}`);
+      return { parent: 905, children: [], parentAuthoritativeBranch: null };
+    },
+  };
+  assert.equal(resolveEpicLineage(910, { deps: oneNode }).parentBranch, 'feature/epic/905');
+  assert.deepEqual(lookups, [910]);
+});
+
 test('nested sub-epic → role epic, own branch, parent is the outer epic', () => {
   assert.deepEqual(resolveEpicLineage(911, { deps }), {
     role: 'epic',
@@ -109,9 +122,11 @@ test('requires an injected graph lookup', () => {
 test('#1284: a child uses its parent epic\'s recorded custom branch authority', () => {
   const custom = {
     graph: (n) =>
-      n === 905
-        ? { ...GRAPH[905], authoritativeBranch: 'codex/1268-implementation-plan' }
-        : GRAPH[n] ?? { parent: null, children: [] },
+      n === 910
+        ? { ...GRAPH[910], parentAuthoritativeBranch: 'codex/1268-implementation-plan' }
+        : (() => {
+            throw new Error(`unexpected graph lookup for #${n}`);
+          })(),
   };
   assert.deepEqual(resolveEpicLineage(910, { deps: custom }), {
     role: 'child',
@@ -124,9 +139,11 @@ test('#1284: a child uses its parent epic\'s recorded custom branch authority', 
 test('#1284: explicit recorded-branch authority errors propagate fail-closed', () => {
   const unavailable = {
     graph: (n) =>
-      n === 905
-        ? { ...GRAPH[905], authorityError: 'malformed current worktree authority' }
-        : GRAPH[n] ?? { parent: null, children: [] },
+      n === 910
+        ? { ...GRAPH[910], parentAuthorityError: 'malformed current worktree authority' }
+        : (() => {
+            throw new Error(`unexpected graph lookup for #${n}`);
+          })(),
   };
   assert.throws(() => resolveEpicLineage(910, { deps: unavailable }), /malformed current/i);
 });
