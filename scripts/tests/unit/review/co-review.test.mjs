@@ -1,4 +1,5 @@
 // @story #1266
+// @parallel-unsafe (#1268) — imported co-review fixtures spawn Node and Git subprocesses.
 
 import assert from 'node:assert/strict';
 import {
