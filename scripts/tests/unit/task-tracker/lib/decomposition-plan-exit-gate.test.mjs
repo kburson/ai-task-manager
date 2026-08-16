@@ -168,6 +168,20 @@ function context({ size = 'XL', estimate = 12, text = planText(), bodySuffix = '
   };
 }
 
+function epicMarker() {
+  return '\n## AITM Progress Markers\n\n<!-- aitm-issue-kind kind="epic" -->\n';
+}
+
+function completeEpicContext(taskCount = 6) {
+  const text = planText(taskCount, taskCount);
+  const ctx = context({ size: 'L', estimate: 16, text, bodySuffix: epicMarker() });
+  const tasks = classifyDecomposition({ planText: text }).tasks;
+  ctx.deps.decomposition.fetchWbsChildren = async () =>
+    tasks.map((task, index) => wbsChild({ number: 1273 + index, task }));
+  ctx.deps.decomposition.readPlanAtCommit = async () => text;
+  return ctx;
+}
+
 test('evaluator preserves the underlying must-split classification and valid waiver', async () => {
   const result = await evaluateIssueDecomposition(context({ bodySuffix: waiver() }));
   assert.equal(result.classification.status, 'must-split');
@@ -187,6 +201,41 @@ test('plan exit admits must-split with a complete waiver and preserves warning',
   const result = await decompositionPlanExitGuard.run(context({ bodySuffix: waiver() }));
   assert.equal(result.ok, true);
   assert.match(result.warn, /waiver accepted/);
+});
+
+test('plan exit admits a must-split epic with complete linked WBS coverage', async () => {
+  const result = await decompositionPlanExitGuard.run(completeEpicContext());
+  assert.equal(result.ok, true);
+  assert.match(result.warn, /WBS instantiated \(6\/6\)/);
+});
+
+test('plan exit reports exact incomplete epic WBS blockers', async () => {
+  const ctx = completeEpicContext(4);
+  const children = await ctx.deps.decomposition.fetchWbsChildren();
+  ctx.deps.decomposition.fetchWbsChildren = async () => children.slice(0, 3);
+  const result = await decompositionPlanExitGuard.run(ctx);
+  assert.equal(result.ok, false);
+  assert.ok(result.blockers.some((item) => /wbs-missing-task: ### Task 4/.test(item)));
+});
+
+test('plan exit keeps a non-epic must-split issue blocked even if child-shaped data exists', async () => {
+  const ctx = context({ size: 'L', estimate: 16, text: planText(4, 4) });
+  ctx.deps.decomposition.fetchWbsChildren = async () => {
+    throw new Error('must not fetch children for code kind');
+  };
+  const result = await decompositionPlanExitGuard.run(ctx);
+  assert.equal(result.ok, false);
+  assert.match(result.reason, /must-split/);
+});
+
+test('plan exit fails closed when epic WBS evidence cannot be read', async () => {
+  const ctx = completeEpicContext(4);
+  ctx.deps.decomposition.fetchWbsChildren = async () => {
+    throw new Error('GraphQL unavailable');
+  };
+  const result = await decompositionPlanExitGuard.run(ctx);
+  assert.equal(result.ok, false);
+  assert.match(result.reason, /wbs-evidence-unreadable: GraphQL unavailable/);
 });
 
 test('plan exit reports review-only signals without blocking', async () => {
