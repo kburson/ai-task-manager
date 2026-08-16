@@ -15,6 +15,7 @@
 
 import { execFileSync } from 'node:child_process';
 
+import { resolveCurrentIssueWorktreeBranch } from './lib/issue-worktree-location.mjs';
 import { resolveEpicLineage } from './lib/resolve-epic-lineage.mjs';
 import { wantsHelp, emitSelfDoc } from '../lib/self-doc.mjs';
 
@@ -46,7 +47,23 @@ async function realGraphNode(issue, cfg) {
   const { fetchEpicChildren } = await import('./lib/epic-children-gate.mjs');
   const parent = await fetchParentIssue({ issueNumber: issue, repo: cfg.repo });
   const children = await fetchEpicChildren({ cfg, parentEpicNumber: issue });
-  return { parent, children: (children || []).map((c) => Number(c.number)) };
+  let parentAuthoritativeBranch = null;
+  if (parent != null) {
+    const { gql, splitRepo } = await import('../gh/lib/github-projects.mjs');
+    const { owner, repoName } = splitRepo(cfg.repo);
+    const data = await gql(
+      `query($owner: String!, $repo: String!, $issue: Int!) {
+        repository(owner: $owner, name: $repo) { issue(number: $issue) { body } }
+      }`,
+      { owner, repo: repoName, issue: Number(parent) }
+    );
+    parentAuthoritativeBranch = resolveCurrentIssueWorktreeBranch(data?.repository?.issue?.body);
+  }
+  return {
+    parent,
+    children: (children || []).map((c) => Number(c.number)),
+    parentAuthoritativeBranch,
+  };
 }
 
 function realGit(projectDir) {

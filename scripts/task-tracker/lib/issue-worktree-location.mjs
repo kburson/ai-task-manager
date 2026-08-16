@@ -5,6 +5,7 @@
 import { parseMarker, serializeMarker } from './marker-grammar.mjs';
 
 export const ISSUE_WORKTREE_LOCATION_RE = /<!--\s*aitm-worktree-location\s+worktree="/i;
+const ISSUE_WORKTREE_LOCATION_MARKER_RE = /<!--\s*aitm-worktree-location\b/i;
 
 function normalizeEntry({ worktreePath, worktreeBranch, sessionId = '', ts } = {}) {
   if (!worktreePath) {
@@ -53,6 +54,39 @@ export function parseIssueWorktreeLocations(body) {
 export function mostRecentIssueWorktreeLocation(body) {
   const entries = parseIssueWorktreeLocations(body);
   return entries.length ? entries[entries.length - 1] : null;
+}
+
+// Returns the current durable branch authority, or null for legacy issues with
+// no location history. This reader is intentionally stricter than the legacy
+// history reader: a marker-like record is authority, so a malformed one must
+// not silently degrade to the synthesized canonical epic branch.
+export function resolveCurrentIssueWorktreeBranch(body) {
+  const records = [];
+  for (const line of String(body || '').split('\n')) {
+    if (!ISSUE_WORKTREE_LOCATION_MARKER_RE.test(line)) continue;
+    const parsed = parseMarker(line.trim());
+    if (!parsed || parsed.name !== 'worktree-location') {
+      throw new Error('issue-worktree-location: malformed worktree authority record');
+    }
+    const { worktree, branch, sid = '', ts } = parsed.props;
+    if (!worktree || !branch || !ts) {
+      throw new Error('issue-worktree-location: malformed worktree authority record');
+    }
+    records.push({ worktreePath: worktree, worktreeBranch: branch, sessionId: sid, ts });
+  }
+  if (!records.length) return null;
+
+  const current = records[records.length - 1];
+  for (const record of records) {
+    if (
+      record.ts === current.ts &&
+      (record.worktreePath !== current.worktreePath ||
+        record.worktreeBranch !== current.worktreeBranch)
+    ) {
+      throw new Error('issue-worktree-location: ambiguous current worktree authority record');
+    }
+  }
+  return current.worktreeBranch;
 }
 
 export function sameIssueWorktreeLocation(left, right) {
