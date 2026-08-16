@@ -143,12 +143,41 @@ export async function runCli(argv = process.argv.slice(2), io = {}) {
       });
       result = protocol.setMaxReviewTurns({ cwd, dir, requestedMax, humanLogin });
     } else if (name === 'continue') {
-      assertAllowed(values, booleans, ['dir', 'additional-turns', 'approved-by', 'focus']);
+      assertAllowed(values, booleans, [
+        'dir',
+        'max-turns',
+        'additional-turns',
+        'approved-by',
+        'focus',
+      ]);
+      if (values['max-turns'] !== undefined && values['additional-turns'] !== undefined) {
+        throw usage('--max-turns and --additional-turns are mutually exclusive');
+      }
+      const cwd = io.cwd ?? process.cwd();
+      const dir = required(values, 'dir');
+      const maxReviewTurns =
+        values['max-turns'] === undefined ? undefined : nonnegativeInteger(values, 'max-turns');
+      const additionalTurns =
+        values['additional-turns'] === undefined
+          ? undefined
+          : positiveInteger(values, 'additional-turns');
+      const resolveIdentity =
+        io.resolveGitHubLoginImpl ?? (await import('./lib/github-identity.mjs')).resolveGitHubLogin;
+      const humanLogin = resolveIdentity({
+        cwd,
+        recoveryCommand: `npx aitm co-review ${argv.join(' ')}`,
+      });
+      if (values['approved-by'] !== undefined) {
+        writeError(
+          'co-review: --approved-by is deprecated and ignored; authenticated GitHub login is recorded\n'
+        );
+      }
       result = protocol.continueProtocol({
-        cwd: io.cwd ?? process.cwd(),
-        dir: required(values, 'dir'),
-        additionalTurns: positiveInteger(values, 'additional-turns'),
-        approvedBy: required(values, 'approved-by'),
+        cwd,
+        dir,
+        maxReviewTurns,
+        additionalTurns,
+        humanLogin,
         focus: values.focus,
       });
     } else {

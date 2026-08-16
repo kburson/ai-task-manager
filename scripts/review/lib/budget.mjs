@@ -28,3 +28,20 @@ export function planAbsoluteBudget(state, requestedMax, resumeRole) {
     remainingReviewTurns: effectiveMax - reviewTurnsUsed,
   });
 }
+
+export function planContinuationBudget(
+  state,
+  { resumeRole, maxReviewTurns, additionalTurns } = {}
+) {
+  if (maxReviewTurns !== undefined && additionalTurns !== undefined) {
+    throw new RangeError('maxReviewTurns and additionalTurns are mutually exclusive');
+  }
+  const requestedMax =
+    additionalTurns === undefined
+      ? maxReviewTurns === undefined
+        ? reviewBudgetFloor(state, resumeRole)
+        : maxReviewTurns
+      : integer(additionalTurns, 'additionalTurns', 1) +
+        integer(state.maxReviewTurns, 'maxReviewTurns');
+  return planAbsoluteBudget(state, requestedMax, resumeRole);
+}
