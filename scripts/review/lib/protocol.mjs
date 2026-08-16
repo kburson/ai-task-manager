@@ -607,6 +607,15 @@ function exchangeArtifact(root, paths, candidate, label, disallowed = []) {
   if (!physical.startsWith(`${runtime}${path.sep}`)) {
     fail(`${label}-outside-runtime`, artifact.path);
   }
+  const lock = realpathSync(paths.lock);
+  if (
+    absolute === paths.lock ||
+    absolute.startsWith(`${paths.lock}${path.sep}`) ||
+    physical === lock ||
+    physical.startsWith(`${lock}${path.sep}`)
+  ) {
+    fail(`${label}-path-conflict`, artifact.path);
+  }
   const reservedPaths = [
     paths.state,
     paths.events,

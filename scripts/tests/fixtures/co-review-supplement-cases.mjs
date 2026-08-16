@@ -159,6 +159,17 @@ test('supplement registration refuses runtime aliases to protected protocol file
   }
 });
 
+test('supplement registration refuses lock-subtree files without protocol mutation', async () => {
+  const { api, root, options } = await initializedProtocol();
+  rewriteProtocolState(root, options.dir, interventionForReviewer);
+  const before = snapshotProtocol(root, options.dir);
+  assert.throws(
+    () => register(api, root, options.dir, `${options.dir}/.co-review-lock/owner.json`),
+    (error) => error.code === 'supplement-path-conflict'
+  );
+  assert.deepEqual(snapshotProtocol(root, options.dir), before);
+});
+
 test('continuation freezes supplements and reviewer handoff requires and consumes exact acknowledgments', async () => {
   const { api, root, options, commit } = await reviewerTurn({ maxReviewTurns: 2 });
   rewriteProtocolState(root, options.dir, interventionForReviewer);
