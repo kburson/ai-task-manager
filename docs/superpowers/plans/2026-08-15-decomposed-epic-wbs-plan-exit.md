@@ -220,16 +220,8 @@ export function parseWbsChildClaim(child = {}) {
     number: Number(child.number),
     title: String(child.title || '').trim(),
     sourcePlan: visibleMetadataFieldValue(child.body || '', SECTION, 'Source-plan'),
-    sourcePlanCommit: visibleMetadataFieldValue(
-      child.body || '',
-      SECTION,
-      'Source-plan-commit'
-    ),
-    sourcePlanSection: visibleMetadataFieldValue(
-      child.body || '',
-      SECTION,
-      'Source-plan-section'
-    ),
+    sourcePlanCommit: visibleMetadataFieldValue(child.body || '', SECTION, 'Source-plan-commit'),
+    sourcePlanSection: visibleMetadataFieldValue(child.body || '', SECTION, 'Source-plan-section'),
   };
 }
 
@@ -311,9 +303,7 @@ export async function reconcileWbsCoverage({
       continue;
     }
     if (candidates.length > 1) {
-      duplicateClaims.push(
-        `${task.heading} is claimed by ${candidates.map(childRef).join(', ')}`
-      );
+      duplicateClaims.push(`${task.heading} is claimed by ${candidates.map(childRef).join(', ')}`);
       continue;
     }
     const claim = candidates[0];
