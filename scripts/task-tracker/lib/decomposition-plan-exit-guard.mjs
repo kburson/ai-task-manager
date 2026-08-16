@@ -52,7 +52,7 @@ function planTextFromResolved(resolved, readFile) {
   }
 }
 
-export async function evaluateIssueDecomposition({
+async function evaluateIssueDecompositionSnapshot({
   issueNumber,
   cfg,
   body = '',
@@ -83,7 +83,15 @@ export async function evaluateIssueDecomposition({
   const waiver = parseDecompositionWaiver(body);
   const effectiveStatus =
     classification.status === 'must-split' && waiver.ok ? 'waived' : classification.status;
-  return { classification, waiver, effectiveStatus, planDiagnostic, values };
+  return {
+    result: { classification, waiver, effectiveStatus, planDiagnostic, values },
+    planText,
+  };
+}
+
+export async function evaluateIssueDecomposition(options = {}) {
+  const { result } = await evaluateIssueDecompositionSnapshot(options);
+  return result;
 }
 
 function signalCodes(classification) {
@@ -106,7 +114,7 @@ export const decompositionPlanExitGuard = {
   async run(ctx) {
     if (ctx?.toState && ctx.toState !== 'develop') return { ok: true };
     if (!ctx?.cfg || !ctx?.issueNumber) return { ok: true };
-    const result = await evaluateIssueDecomposition({
+    const { result, planText: acceptedPlanText } = await evaluateIssueDecompositionSnapshot({
       issueNumber: Number(ctx.issueNumber),
       cfg: ctx.cfg,
       body: ctx.body || '',
@@ -131,8 +139,6 @@ export const decompositionPlanExitGuard = {
         if (!acceptedPlanPath || !result.planDiagnostic?.path) {
           throw new Error(result.planDiagnostic?.diagnostic || 'accepted plan path unavailable');
         }
-        const readFile = runtime.readFile || readFileSync;
-        const acceptedPlanText = readFile(result.planDiagnostic.path, 'utf8');
         const fetchWbsChildren = runtime.fetchWbsChildren || defaultFetchWbsChildren;
         const readPlanAtCommit = runtime.readPlanAtCommit || defaultReadPlanAtCommit;
         const children = await fetchWbsChildren({

@@ -8,16 +8,8 @@ export function parseWbsChildClaim(child = {}) {
     number: Number(child.number),
     title: String(child.title || '').trim(),
     sourcePlan: visibleMetadataFieldValue(child.body || '', SECTION, 'Source-plan'),
-    sourcePlanCommit: visibleMetadataFieldValue(
-      child.body || '',
-      SECTION,
-      'Source-plan-commit'
-    ),
-    sourcePlanSection: visibleMetadataFieldValue(
-      child.body || '',
-      SECTION,
-      'Source-plan-section'
-    ),
+    sourcePlanCommit: visibleMetadataFieldValue(child.body || '', SECTION, 'Source-plan-commit'),
+    sourcePlanSection: visibleMetadataFieldValue(child.body || '', SECTION, 'Source-plan-section'),
   };
 }
 
@@ -27,6 +19,37 @@ function childRef(claim) {
 
 function unique(values) {
   return [...new Set(values)];
+}
+
+function duplicateAcceptedTaskIdentities(tasks) {
+  const byNumber = new Map();
+  const byHeading = new Map();
+  for (const task of tasks) {
+    const numbered = byNumber.get(task.number) || [];
+    numbered.push(task);
+    byNumber.set(task.number, numbered);
+    const headed = byHeading.get(task.heading) || [];
+    headed.push(task);
+    byHeading.set(task.heading, headed);
+  }
+
+  const duplicateNumbers = new Set(
+    [...byNumber.entries()].filter(([, entries]) => entries.length > 1).map(([number]) => number)
+  );
+  const duplicateHeadings = new Set(
+    [...byHeading.entries()].filter(([, entries]) => entries.length > 1).map(([heading]) => heading)
+  );
+  const blockers = [
+    ...[...duplicateNumbers].map((number) => {
+      const headings = unique(byNumber.get(number).map((task) => task.heading));
+      return `wbs-duplicate-task-number: Task ${number} appears ${byNumber.get(number).length} times (${headings.join('; ')})`;
+    }),
+    ...[...duplicateHeadings].map(
+      (heading) =>
+        `wbs-duplicate-task-heading: ${heading} appears ${byHeading.get(heading).length} times`
+    ),
+  ];
+  return { duplicateNumbers, duplicateHeadings, blockers };
 }
 
 export async function reconcileWbsCoverage({
@@ -52,6 +75,7 @@ export async function reconcileWbsCoverage({
 
   const expectedBySection = new Map(tasks.map((task) => [task.heading, task]));
   const expectedTitles = new Set(tasks.map((task) => task.title));
+  const duplicateTasks = duplicateAcceptedTaskIdentities(tasks);
   const claims = children.map(parseWbsChildClaim);
   const relevant = claims.filter(
     (claim) =>
@@ -93,15 +117,19 @@ export async function reconcileWbsCoverage({
   }
 
   for (const task of tasks) {
+    if (
+      duplicateTasks.duplicateNumbers.has(task.number) ||
+      duplicateTasks.duplicateHeadings.has(task.heading)
+    ) {
+      continue;
+    }
     const candidates = relevant.filter((claim) => claim.sourcePlanSection === task.heading);
     if (candidates.length === 0) {
       missingTasks.push(task.heading);
       continue;
     }
     if (candidates.length > 1) {
-      duplicateClaims.push(
-        `${task.heading} is claimed by ${candidates.map(childRef).join(', ')}`
-      );
+      duplicateClaims.push(`${task.heading} is claimed by ${candidates.map(childRef).join(', ')}`);
       continue;
     }
     const claim = candidates[0];
@@ -137,6 +165,7 @@ export async function reconcileWbsCoverage({
   }
 
   const blockers = unique([
+    ...duplicateTasks.blockers,
     ...missingTasks.map((heading) => `wbs-missing-task: ${heading}`),
     ...duplicateClaims.map((detail) => `wbs-duplicate-claim: ${detail}`),
     ...provenanceMismatches.map((detail) => `wbs-provenance-mismatch: ${detail}`),

@@ -89,6 +89,29 @@ test('reconciles complete WBS coverage against content-equivalent pinned plans',
   assert.equal(reads.length, 1, 'identical commit/path reads are cached');
 });
 
+test('rejects duplicate accepted task identities instead of reusing one child claim', async () => {
+  const acceptedPlanText = ['### Task 1: Repeated task', '', '### Task 1: Repeated task'].join(
+    '\n'
+  );
+  const tasks = classifyDecomposition({ planText: acceptedPlanText }).tasks;
+  assert.equal(tasks.length, 2, 'the classifier preserves duplicate tasks for validation');
+
+  const result = await reconcileWbsCoverage({
+    tasks,
+    acceptedPlanPath: SOURCE_PLAN,
+    acceptedPlanText,
+    children: [wbsChild({ number: 1301, task: tasks[0] })],
+    readPlanAtCommit: async () => acceptedPlanText,
+  });
+
+  assert.equal(result.ok, false);
+  assert.ok(
+    result.blockers.some((item) => /wbs-duplicate-task-(?:number|heading)/.test(item)),
+    result.blockers.join('\n')
+  );
+  assert.ok(result.coveredCount <= 1, 'one child claim cannot cover both duplicate tasks');
+});
+
 test('reports missing, duplicate, unknown, title, path, and content contradictions', async () => {
   const acceptedPlanText = planText(4, 4);
   const tasks = classifyDecomposition({ planText: acceptedPlanText }).tasks;
@@ -207,6 +230,32 @@ test('plan exit admits a must-split epic with complete linked WBS coverage', asy
   const result = await decompositionPlanExitGuard.run(completeEpicContext());
   assert.equal(result.ok, true);
   assert.match(result.warn, /WBS instantiated \(6\/6\)/);
+});
+
+test('plan exit reconciles the exact accepted-plan snapshot used for classification', async () => {
+  const acceptedPlanText = planText(4, 4);
+  const changedPlanText = `${acceptedPlanText}\n\nChanged after classification.`;
+  const ctx = context({
+    size: 'L',
+    estimate: 16,
+    text: acceptedPlanText,
+    bodySuffix: epicMarker(),
+  });
+  const tasks = classifyDecomposition({ planText: acceptedPlanText }).tasks;
+  let reads = 0;
+  ctx.deps.decomposition.readFile = () => {
+    reads += 1;
+    return reads === 1 ? acceptedPlanText : changedPlanText;
+  };
+  ctx.deps.decomposition.fetchWbsChildren = async () =>
+    tasks.map((task, index) => wbsChild({ number: 1601 + index, task }));
+  ctx.deps.decomposition.readPlanAtCommit = async () => acceptedPlanText;
+
+  const result = await decompositionPlanExitGuard.run(ctx);
+
+  assert.equal(result.ok, true, result.reason);
+  assert.match(result.warn, /WBS instantiated \(4\/4\)/);
+  assert.equal(reads, 1, 'one guard run consumes one accepted-plan snapshot');
 });
 
 test('plan exit reports exact incomplete epic WBS blockers', async () => {
