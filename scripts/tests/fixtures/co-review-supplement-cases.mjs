@@ -145,6 +145,20 @@ test('supplement registration refuses a symlinked ancestor that escapes runtime 
   assert.deepEqual(snapshotProtocol(root, options.dir), before);
 });
 
+test('supplement registration refuses runtime aliases to protected protocol files', async () => {
+  for (const protectedFile of ['state.json', 'events.jsonl']) {
+    const { api, root, options } = await initializedProtocol();
+    rewriteProtocolState(root, options.dir, interventionForReviewer);
+    symlinkSync('.', path.join(root, options.dir, 'alias'));
+    const before = snapshotProtocol(root, options.dir);
+    assert.throws(
+      () => register(api, root, options.dir, `${options.dir}/alias/${protectedFile}`),
+      (error) => error.code === 'supplement-path-conflict'
+    );
+    assert.deepEqual(snapshotProtocol(root, options.dir), before);
+  }
+});
+
 test('continuation freezes supplements and reviewer handoff requires and consumes exact acknowledgments', async () => {
   const { api, root, options, commit } = await reviewerTurn({ maxReviewTurns: 2 });
   rewriteProtocolState(root, options.dir, interventionForReviewer);

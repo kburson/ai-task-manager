@@ -607,13 +607,21 @@ function exchangeArtifact(root, paths, candidate, label, disallowed = []) {
   if (!physical.startsWith(`${runtime}${path.sep}`)) {
     fail(`${label}-outside-runtime`, artifact.path);
   }
-  const reserved = new Set([
+  const reservedPaths = [
     paths.state,
     paths.events,
     paths.lock,
     ...disallowed.map((value) => path.resolve(root, value)),
-  ]);
-  if (reserved.has(absolute)) fail(`${label}-path-conflict`, artifact.path);
+  ];
+  const reserved = new Set(reservedPaths);
+  const physicalReserved = new Set(
+    reservedPaths
+      .filter((reservedPath) => existsSync(reservedPath))
+      .map((reservedPath) => realpathSync(reservedPath))
+  );
+  if (reserved.has(absolute) || physicalReserved.has(physical)) {
+    fail(`${label}-path-conflict`, artifact.path);
+  }
   return artifact;
 }
 
