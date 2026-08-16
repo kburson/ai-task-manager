@@ -81,7 +81,7 @@ async function evaluateIssueDecompositionSnapshot({
   const { planText: effectivePlanText, ...planSelection } = selectDecompositionPlanSection({
     body,
     planText,
-    activePlanKey: linkedReference?.key || null,
+    activePlanKey: parseIssueKind(body) === 'epic' ? null : linkedReference?.key || null,
   });
   const classification = classifyDecomposition({
     size: values.size ?? null,

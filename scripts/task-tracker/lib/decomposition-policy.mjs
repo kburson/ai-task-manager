@@ -320,14 +320,22 @@ export function visibleMetadataFieldValue(body, heading, key) {
 
 export function visibleMetadataFieldValues(body, heading, key) {
   const lines = visibleStructuralLines(body);
-  const bounds = sectionBounds(lines, heading);
-  if (!bounds) return [];
   const wanted = String(key).toLowerCase();
-  return lines
-    .slice(bounds.start, bounds.end)
-    .map(parseMetadataField)
-    .filter((field) => field?.key.toLowerCase() === wanted)
-    .map((field) => field.value.trim());
+  const values = [];
+  let offset = 0;
+  while (offset < lines.length) {
+    const bounds = sectionBounds(lines.slice(offset), heading);
+    if (!bounds) break;
+    values.push(
+      ...lines
+        .slice(offset + bounds.start, offset + bounds.end)
+        .map(parseMetadataField)
+        .filter((field) => field?.key.toLowerCase() === wanted)
+        .map((field) => field.value.trim())
+    );
+    offset += bounds.end;
+  }
+  return values;
 }
 
 export function selectDecompositionPlanSection({

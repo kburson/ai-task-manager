@@ -280,6 +280,20 @@ test('fails closed for duplicate fields, unknown headings, and duplicate tasks',
   assert.equal(duplicateField.ok, false);
   assert.match(duplicateField.diagnostic, /duplicate Source-plan-section/);
 
+  const duplicateAcrossSections = selectDecompositionPlanSection({
+    body: [
+      metadata(['- **Source-plan-section**: ### Task 1: Deliver part 1']),
+      '## Notes',
+      'Visible prose.',
+      '## Plan Metadata',
+      '- **Source-plan-section**: ### Task 2: Deliver part 2',
+    ].join('\n'),
+    planText: taskPlan(2, 2),
+    activePlanKey: 'Source-plan',
+  });
+  assert.equal(duplicateAcrossSections.ok, false);
+  assert.match(duplicateAcrossSections.diagnostic, /duplicate Source-plan-section/);
+
   const empty = selectDecompositionPlanSection({
     body: metadata(['- **Source-plan-section**: <!-- TBD -->']),
     planText: taskPlan(2, 2),

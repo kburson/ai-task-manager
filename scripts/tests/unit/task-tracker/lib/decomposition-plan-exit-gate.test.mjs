@@ -313,6 +313,26 @@ test('evaluator and Plan exit classify a generated child from its bounded source
   assert.deepEqual(admitted, { ok: true });
 });
 
+test('evaluator preserves whole-plan WBS classification for an epic with source-section metadata', async () => {
+  const ctx = completeEpicContext();
+  ctx.body = [
+    '## Plan Metadata',
+    '- **Source-plan**: docs/plan.md',
+    '- **Source-plan-commit**: accepted-plan-commit',
+    '- **Source-plan-section**: ### Task 1: Part 1',
+    epicMarker(),
+  ].join('\n');
+
+  const evaluated = await evaluateIssueDecomposition(ctx);
+  assert.equal(evaluated.classification.status, 'must-split');
+  assert.equal(evaluated.classification.taskCount, 6);
+  assert.equal(evaluated.planSelection.applied, false);
+
+  const admitted = await decompositionPlanExitGuard.run(ctx);
+  assert.equal(admitted.ok, true);
+  assert.match(admitted.warn, /WBS instantiated \(6\/6\)/);
+});
+
 test('Plan exit and decompose-check fail closed for an invalid requested source section', async () => {
   const ctx = sourceChildContext({
     size: 'M',
@@ -339,6 +359,32 @@ test('Plan exit and decompose-check fail closed for an invalid requested source 
   assert.equal(checked.exitCode, 3);
 });
 
+test('Plan exit and decompose-check reject source-section fields split across metadata sections', async () => {
+  const ctx = sourceChildContext();
+  ctx.body = [
+    ctx.body,
+    '## Notes',
+    'Visible prose.',
+    '## Plan Metadata',
+    '- **Source-plan-section**: ### Task 2: Part 2',
+  ].join('\n');
+
+  const blocked = await decompositionPlanExitGuard.run(ctx);
+  assert.equal(blocked.ok, false);
+  assert.match(blocked.reason, /duplicate Source-plan-section/);
+
+  const checked = await runDecomposeCheck({
+    issueNumber: ctx.issueNumber,
+    cfg: ctx.cfg,
+    deps: {
+      fetchIssueBody: async () => ctx.body,
+      decomposition: ctx.deps.decomposition,
+    },
+  });
+  assert.equal(checked.planSelection.ok, false);
+  assert.equal(checked.exitCode, 3);
+});
+
 test('decompose-check reports one task for a valid bounded source child', async () => {
   const ctx = sourceChildContext();
   const checked = await runDecomposeCheck({
@@ -354,6 +400,40 @@ test('decompose-check reports one task for a valid bounded source child', async 
   assert.equal(checked.classification.taskCount, 1);
   assert.equal(checked.planSelection.heading, '### Task 1: Part 1');
   assert.equal(checked.exitCode, 0);
+});
+
+test('decompose-check keeps whole-plan classification for overrides and Plan metadata', async () => {
+  const overrideContext = sourceChildContext();
+  const explicitOverride = await runDecomposeCheck({
+    issueNumber: overrideContext.issueNumber,
+    cfg: overrideContext.cfg,
+    planOverride: 'docs/plan.md',
+    deps: {
+      fetchIssueBody: async () => overrideContext.body,
+      decomposition: overrideContext.deps.decomposition,
+    },
+  });
+  assert.equal(explicitOverride.classification.status, 'must-split');
+  assert.equal(explicitOverride.classification.taskCount, 6);
+  assert.equal(explicitOverride.planSelection.applied, false);
+
+  const planMetadataContext = context({ size: 'L', estimate: 12.5, text: planText(6, 6) });
+  planMetadataContext.body = [
+    '## Plan Metadata',
+    '- **Plan**: docs/plan.md',
+    '- **Source-plan-section**: ### Task 1: Part 1',
+  ].join('\n');
+  const planMetadata = await runDecomposeCheck({
+    issueNumber: planMetadataContext.issueNumber,
+    cfg: planMetadataContext.cfg,
+    deps: {
+      fetchIssueBody: async () => planMetadataContext.body,
+      decomposition: planMetadataContext.deps.decomposition,
+    },
+  });
+  assert.equal(planMetadata.classification.status, 'must-split');
+  assert.equal(planMetadata.classification.taskCount, 6);
+  assert.equal(planMetadata.planSelection.applied, false);
 });
 
 test('plan exit fails closed when epic WBS evidence cannot be read', async () => {
