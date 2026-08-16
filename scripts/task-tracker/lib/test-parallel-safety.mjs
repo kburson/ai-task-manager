@@ -56,6 +56,34 @@ export function spawnsSubprocess(src) {
  */
 export const PARALLEL_UNSAFE_MARKER_RE = /@parallel-unsafe\b/;
 
+export const TEST_SCHEDULING_CLASSES = Object.freeze({
+  POOLED: 'pooled',
+  SUBPROCESS: 'subprocess',
+  SERIAL: 'serial',
+});
+
+/**
+ * Classify one test source for the runner's three sequential unit phases.
+ * Explicit unsafe markers and unreadable sources remain fail-closed serial;
+ * only readable, unmarked direct subprocess users enter the reduced pool.
+ *
+ * @param {string} fullPath
+ * @param {(p: string, enc: string) => string} [read]
+ * @returns {'pooled'|'subprocess'|'serial'}
+ */
+export function testSchedulingClass(fullPath, read = readFileSync) {
+  let src;
+  try {
+    src = read(fullPath, 'utf8');
+  } catch {
+    return TEST_SCHEDULING_CLASSES.SERIAL;
+  }
+  if (PARALLEL_UNSAFE_MARKER_RE.test(src)) return TEST_SCHEDULING_CLASSES.SERIAL;
+  return spawnsSubprocess(src)
+    ? TEST_SCHEDULING_CLASSES.SUBPROCESS
+    : TEST_SCHEDULING_CLASSES.POOLED;
+}
+
 /**
  * Is this test file safe to run inside the bounded parallel pool?
  *
@@ -72,12 +100,5 @@ export const PARALLEL_UNSAFE_MARKER_RE = /@parallel-unsafe\b/;
  * @returns {boolean} true → eligible for the pool; false → run serially
  */
 export function isParallelSafe(fullPath, read = readFileSync) {
-  let src;
-  try {
-    src = read(fullPath, 'utf8');
-  } catch {
-    return false;
-  }
-  if (PARALLEL_UNSAFE_MARKER_RE.test(src)) return false;
-  return !spawnsSubprocess(src);
+  return testSchedulingClass(fullPath, read) === TEST_SCHEDULING_CLASSES.POOLED;
 }
