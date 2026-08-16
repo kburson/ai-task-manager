@@ -232,6 +232,7 @@ export async function fetchAllSubIssueNodes({
             nodes {
               id
               number
+              title
               state
               stateReason
               body
