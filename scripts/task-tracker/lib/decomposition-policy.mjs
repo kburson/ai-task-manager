@@ -299,19 +299,103 @@ export function classifyDecomposition({ size = null, estimateHours = null, planT
   };
 }
 
-export function linkedPlanPath(body = '') {
+export function linkedPlanReference(body = '') {
   for (const key of PLAN_METADATA_KEYS) {
     const value = visibleMetadataFieldValue(body, 'Plan Metadata', key);
     if (value == null) continue;
     const candidate = value.replace(/\s+@\s+[0-9a-f]{7,40}\s*$/i, '').trim();
-    if (isSubstantiveMetadataValue(candidate)) return candidate;
+    if (isSubstantiveMetadataValue(candidate)) return { key, path: candidate };
   }
   return null;
+}
+
+export function linkedPlanPath(body = '') {
+  return linkedPlanReference(body)?.path || null;
 }
 
 export function visibleMetadataFieldValue(body, heading, key) {
   const value = metadataFieldValue(visibleStructuralLines(body).join('\n'), heading, key);
   return value != null && isSubstantiveMetadataValue(value) ? value.trim() : null;
+}
+
+export function visibleMetadataFieldValues(body, heading, key) {
+  const lines = visibleStructuralLines(body);
+  const wanted = String(key).toLowerCase();
+  const values = [];
+  let offset = 0;
+  while (offset < lines.length) {
+    const bounds = sectionBounds(lines.slice(offset), heading);
+    if (!bounds) break;
+    values.push(
+      ...lines
+        .slice(offset + bounds.start, offset + bounds.end)
+        .map(parseMetadataField)
+        .filter((field) => field?.key.toLowerCase() === wanted)
+        .map((field) => field.value.trim())
+    );
+    offset += bounds.end;
+  }
+  return values;
+}
+
+export function selectDecompositionPlanSection({
+  body = '',
+  planText = '',
+  activePlanKey = null,
+} = {}) {
+  const inactive = {
+    ok: true,
+    applied: false,
+    planText: String(planText),
+    heading: null,
+    diagnostic: null,
+  };
+  if (activePlanKey !== 'Source-plan') return inactive;
+
+  const values = visibleMetadataFieldValues(body, 'Plan Metadata', 'Source-plan-section');
+  if (values.length === 0) return inactive;
+  if (values.length !== 1) {
+    return {
+      ...inactive,
+      ok: false,
+      applied: true,
+      diagnostic: 'duplicate Source-plan-section fields',
+    };
+  }
+
+  const heading = values[0];
+  if (!isSubstantiveMetadataValue(heading)) {
+    return {
+      ...inactive,
+      ok: false,
+      applied: true,
+      heading,
+      diagnostic: 'Source-plan-section is empty',
+    };
+  }
+
+  const matches = extractPlanTasks(planText).filter((task) => task.heading === heading);
+  if (matches.length !== 1) {
+    return {
+      ...inactive,
+      ok: false,
+      applied: true,
+      heading,
+      diagnostic:
+        matches.length === 0
+          ? `Source-plan-section not found: ${heading}`
+          : `Source-plan-section is ambiguous: ${heading}`,
+    };
+  }
+
+  const [task] = matches;
+  return {
+    ok: true,
+    applied: true,
+    planText: `${task.heading}\n${task.body}`,
+    heading,
+    diagnostic: null,
+  };
 }
 
 function unavailable(source, diagnostic) {
