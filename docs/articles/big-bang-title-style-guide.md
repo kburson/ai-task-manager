@@ -1,7 +1,7 @@
 # The "Big Bang Theory" Title Formula — Reference Guide
 
 A working reference for riffing article titles in this series off the
-episode-title pattern from _The Big Bang Theory_ (CBS, 2007–2019).
+episode-title pattern from *The Big Bang Theory* (CBS, 2007–2019).
 
 ## The rule, in one line
 
@@ -53,18 +53,18 @@ Two slots, always in this order:
 
 ## Worked examples from the source
 
-| Concrete noun phrase | Suffix         | Full title                          |
-| -------------------- | -------------- | ----------------------------------- |
-| Hamburger            | Postulate      | The Hamburger Postulate             |
-| Fuzzy Boots          | Corollary      | The Fuzzy Boots Corollary           |
-| Bat Jar              | Conjecture     | The Bat Jar Conjecture              |
-| Panty Piñata         | Polarization   | The Panty Piñata Polarization       |
-| Electric Can Opener  | Fluctuation    | The Electric Can Opener Fluctuation |
-| Staircase            | Implementation | The Staircase Implementation        |
-| Skank Reflex         | Analysis       | The Skank Reflex Analysis           |
-| Beta Test            | Initiation     | The Beta Test Initiation            |
-| Werewolf             | Transformation | The Werewolf Transformation         |
-| Excelsior            | Acquisition    | The Excelsior Acquisition           |
+| Concrete noun phrase | Suffix | Full title |
+|---|---|---|
+| Hamburger | Postulate | The Hamburger Postulate |
+| Fuzzy Boots | Corollary | The Fuzzy Boots Corollary |
+| Bat Jar | Conjecture | The Bat Jar Conjecture |
+| Panty Piñata | Polarization | The Panty Piñata Polarization |
+| Electric Can Opener | Fluctuation | The Electric Can Opener Fluctuation |
+| Staircase | Implementation | The Staircase Implementation |
+| Skank Reflex | Analysis | The Skank Reflex Analysis |
+| Beta Test | Initiation | The Beta Test Initiation |
+| Werewolf | Transformation | The Werewolf Transformation |
+| Excelsior | Acquisition | The Excelsior Acquisition |
 
 Note the last two rows: **"Acquisition," "Initiation," "Transformation,"
 "Implementation"** are already close enough to real software vocabulary
@@ -90,7 +90,7 @@ theory — words that already sound self-important in a standup meeting:
 The concrete-noun-phrase slot should pull from something genuinely small and
 specific inside the article — a detail from an anecdote, an artifact name,
 a tool, a moment of friction — not the article's thesis restated. The thesis
-lives in the _subhead/dek_, same as the show never explained the science pun
+lives in the *subhead/dek*, same as the show never explained the science pun
 in the title itself; the punch is in the mismatch, not the clarity.
 
 ### Quick riff pass on the current series (draft, not committed)
@@ -98,23 +98,23 @@ in the title itself; the punch is in the mismatch, not the clarity.
 For reference only — none of these replace the working titles without your
 sign-off. This is meant as a "what would it sound like" sandbox:
 
-| #   | Current working title                                   | Big-Bang-style riff                  |
-| --- | ------------------------------------------------------- | ------------------------------------ |
-| 0   | The Rise Of Technical Product Operations                | The Backlog Governance Postulate     |
-| 1   | The Vibe Coding Hangover                                | The Vibe Coding Deficiency           |
-| 2   | Spec-Driven Development Is Necessary But Not Sufficient | The Spec-Driven Insufficiency        |
-| 3   | The Rise Of The Technical Product Owner                 | The Product Owner Escalation         |
-| 4   | The Backlog Becomes The Control Plane                   | The Backlog Control-Plane Conjecture |
-| 5   | The Just-In-Time Planner                                | The Just-In-Time Planning Paradox    |
-| 6   | Context Durability Is A Feature                         | The Context Durability Corollary     |
-| 7   | Evidence Beats Trust                                    | The Evidence-Over-Trust Theorem      |
-| 8   | The Adapter Future                                      | The Adapter Convergence              |
-| 9   | Agentic Concurrency Isn't Free                          | The Agentic Concurrency Deficiency   |
-| 10  | XP's Practices Survived. Their Reasons Did Not.         | The XP Survival Anomaly              |
-| 11  | The Diff Isn't Where Your Judgment Lives Anymore        | The Diff Displacement                |
-| 12  | It's All About Perspective                              | The Second Reviewer Corollary        |
-| 13  | Two PhDs and a Mutex                                    | The Cross-Model Mutex Reverberation  |
-| —   | (this prequel)                                          | The Refactoring Bloat Precursor      |
+| # | Current working title | Big-Bang-style riff |
+|---|---|---|
+| 0 | The Rise Of Technical Product Operations | The Backlog Governance Postulate |
+| 1 | The Vibe Coding Hangover | The Vibe Coding Deficiency |
+| 2 | Spec-Driven Development Is Necessary But Not Sufficient | The Spec-Driven Insufficiency |
+| 3 | The Rise Of The Technical Product Owner | The Product Owner Escalation |
+| 4 | The Backlog Becomes The Control Plane | The Backlog Control-Plane Conjecture |
+| 5 | The Just-In-Time Planner | The Just-In-Time Planning Paradox |
+| 6 | Context Durability Is A Feature | The Context Durability Corollary |
+| 7 | Evidence Beats Trust | The Evidence-Over-Trust Theorem |
+| 8 | The Adapter Future | The Adapter Convergence |
+| 9 | Agentic Concurrency Isn't Free | The Agentic Concurrency Deficiency |
+| 10 | XP's Practices Survived. Their Reasons Did Not. | The XP Survival Anomaly |
+| 11 | The Diff Isn't Where Your Judgment Lives Anymore | The Diff Displacement |
+| 12 | It's All About Perspective | The Second Reviewer Corollary |
+| 13 | Two PhDs and a Mutex | The Cross-Model Mutex Reverberation |
+| — | (this prequel) | The Refactoring Bloat Precursor |
 
 Some of these land better than others — that's expected from a first pass.
 Use this table as raw material to riff from live, not as a proposed rename.
@@ -132,7 +132,7 @@ the two, then the normal dek/opening line continues below as usual.
 
 **The Rise Of Technical Product Operations**
 
-_A second opinion only counts if it didn't come from the same classroom._
+*A second opinion only counts if it didn't come from the same classroom.*
 ...
 ```
 

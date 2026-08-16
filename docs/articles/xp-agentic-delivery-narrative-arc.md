@@ -23,11 +23,11 @@ The full ladder, each rung solving the previous rung's failure mode and introduc
 2. **Vibe coding.** AI goes from suggesting to generating, on loose natural-language prompts, minimal human effort. Genuinely exciting — people built things they couldn't have built alone. Failure mode: unshippable. What got created often cost more to fix than to rebuild from scratch, because nobody — human or AI — had verified intent survived translation at any checkpoint.
 3. **Prompt engineering.** The industry's first fix for vibe coding's failure: tighten the prompt itself, add more explicit direction, try to keep the agent on-rails through better instruction-writing. Failure mode: still insufficient once the requested scope exceeds what fits in a reasonable context window — agents hallucinate under scope pressure regardless of how well the prompt is worded, because the problem isn't prompt clarity, it's scope size.
 4. **Spec-driven development.** The fix for prompt engineering's failure: stop trying to over-specify a single giant prompt, and instead author a detailed specification that gets broken down into smaller tasks sized to fit a context window. This is where articles 11 and 12 currently center their argument, and it's real progress — but it has its own failure mode: a farm of agents working a decomposed backlog task-by-task loses the forest for the trees. Local task correctness doesn't guarantee the sum adds up to the spec's actual intent.
-5. **Agent orchestration / Agentic Agile Delivery.** The fix for SDD's failure: don't just decompose once and release the farm — keep every agent's work legible and checked against the whole, end to end. In AITM's implementation specifically: vibe-level skills help a human draft an initial spec, that spec gets refined through cross-model co-review (the "tango" — see Article 12), a plan gets generated from the ratified spec and _also_ goes through a co-review tango (prose, structure, and feasibility checked against the spec), the ratified plan hydrates into a backlog of small, sequenced tasks, and one or more agents work that backlog along a fixed, instrumented process — a **racetrack** — that tracks and validates progress at every stage rather than releasing agents to run free.
+5. **Agent orchestration / Agentic Agile Delivery.** The fix for SDD's failure: don't just decompose once and release the farm — keep every agent's work legible and checked against the whole, end to end. In AITM's implementation specifically: vibe-level skills help a human draft an initial spec, that spec gets refined through cross-model co-review (the "tango" — see Article 12), a plan gets generated from the ratified spec and *also* goes through a co-review tango (prose, structure, and feasibility checked against the spec), the ratified plan hydrates into a backlog of small, sequenced tasks, and one or more agents work that backlog along a fixed, instrumented process — a **racetrack** — that tracks and validates progress at every stage rather than releasing agents to run free.
 
 ### AITM's specific bet, and how it differs from the alternative already in the wild
 
-Codex has been observed using an ADR-style approach: architectural decisions accumulate in a sidecar repository or database, and code gets generated from that store. AITM's bet is different: the **GitHub issue backlog is the metadata store of record**, supplemented by git commit logs and code diffs as the evidentiary trail — no separate sidecar store. Where AITM spends the most engineering effort (arguably over-engineers) is exactly the racetrack: keeping an agent on-task through every stage of delivery, and generating a detailed, demonstrable audit trail of what was planned, what was committed, and what was actually delivered, at every step. Whether the issue-backlog-as-source-of-truth bet is the _right_ architectural choice versus a sidecar ADR store is an open question the author is not claiming to have resolved — it's the path that felt right, not a proven-superior one. That epistemic honesty is worth preserving in prose, not smoothing over.
+Codex has been observed using an ADR-style approach: architectural decisions accumulate in a sidecar repository or database, and code gets generated from that store. AITM's bet is different: the **GitHub issue backlog is the metadata store of record**, supplemented by git commit logs and code diffs as the evidentiary trail — no separate sidecar store. Where AITM spends the most engineering effort (arguably over-engineers) is exactly the racetrack: keeping an agent on-task through every stage of delivery, and generating a detailed, demonstrable audit trail of what was planned, what was committed, and what was actually delivered, at every step. Whether the issue-backlog-as-source-of-truth bet is the *right* architectural choice versus a sidecar ADR store is an open question the author is not claiming to have resolved — it's the path that felt right, not a proven-superior one. That epistemic honesty is worth preserving in prose, not smoothing over.
 
 ### What this means for the co-review framing specifically
 
@@ -66,7 +66,8 @@ Headline results:
   ranging from advisory to enforced) — the contrast drawn against AITM's
   issue-backlog bet is fair, not a strawman.
 
-**Overlap check against articles 00-09** — read in full (00, 01, 02, 06, 10) or grepped for the relevant terms (all others) before writing this:
+**Overlap check against articles 00-09** — read in full (00, 01, 02, 06,
+10) or grepped for the relevant terms (all others) before writing this:
 
 - **Rungs 1-4 of the ladder are already asserted, piecemeal, in the
   existing series** — just never laid out as a single numbered
@@ -77,9 +78,9 @@ Headline results:
   mode under the "vibe slop" / review-debt framing, with its own
   bibliography (METR, Stack Overflow, GitClear, WSJ, OWASP) — that
   ground should not be re-plowed with new citations, just referenced.
-  **Implication for drafting:** the ladder should read as _connective
+  **Implication for drafting:** the ladder should read as *connective
   tissue that names the throughline already implicit across articles
-  00-02_, not as new territory. A single compact paragraph or footnote
+  00-02*, not as new territory. A single compact paragraph or footnote
   gesturing back to those articles ("if you've read this far in the
   series, rungs 1-4 are the road already walked") does more work than
   re-arguing each rung from scratch.
@@ -105,7 +106,7 @@ the series already covered (with a light backward gesture to articles
 00-02) rather than the endpoint of the climb, and to accurately name
 agent orchestration / Agentic Agile Delivery as the rung this new arc is
 actually climbing toward. Not yet done — holding per the author's own
-sequencing (validate → review arc → review 0-9 → _then_ revise prose).
+sequencing (validate → review arc → review 0-9 → *then* revise prose).
 
 ## Group Thesis
 
@@ -119,27 +120,27 @@ The pairing across all four articles: **10 makes the general claim** (practices 
 
 Six XP practices, each mapped to what happened to it under agentic delivery:
 
-| XP Practice          | Original Purpose                                                                                                                | What Happened Under Agentic Delivery                                                                                                                                                                                                                                                                          |
-| -------------------- | ------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Testing (test-first) | Design pressure — writing the test first forces confronting the interface before building it                                    | Became an **evidence artifact**, not a design instrument. Agents emit test + implementation together; the test is now a receipt, not a forcing function.                                                                                                                                                      |
-| Pair programming     | Bundled four functions at one keyboard: real-time defect detection, discipline enforcement, design dialogue, knowledge transfer | **Disaggregated.** Defect detection → CI/lint/gates. Discipline enforcement → state-machine refusal (`verify-develop.mjs`, evidence gates). Design dialogue → moved earlier and async (co-review at spec/plan stage, driver/navigator vocabulary intact). Knowledge transfer → **no replacement. The crack.** |
-| Planning game        | Customer and team negotiate scope collaboratively, iteration by iteration                                                       | Became **backlog as control plane** — the artifact the human actually reviews and holds in their head, instead of syntax. JIT planning replaces up-front exhaustive planning.                                                                                                                                 |
-| Collective ownership | Anyone can change any code; shared understanding prevents silos                                                                 | **Broken, unreplaced.** Pairing enforced this by rotation; nobody rotates through agent-generated code the same way. Nobody on the team necessarily reads what shipped.                                                                                                                                       |
-| Sustainable pace     | Protect against burnout-driven defects from overwork                                                                            | **Inverted.** Agents don't tire. The ceiling is now human review capacity, not implementation capacity — the bottleneck moved from code production to safe acceptance.                                                                                                                                        |
-| On-site customer     | A human with product authority is always available to resolve ambiguity and arbitrate                                           | Becomes the **human tiebreak / gate approver** — the role that stops two agents from reaching false consensus (see Article 12's "convergence theater" risk).                                                                                                                                                  |
+| XP Practice | Original Purpose | What Happened Under Agentic Delivery |
+| --- | --- | --- |
+| Testing (test-first) | Design pressure — writing the test first forces confronting the interface before building it | Became an **evidence artifact**, not a design instrument. Agents emit test + implementation together; the test is now a receipt, not a forcing function. |
+| Pair programming | Bundled four functions at one keyboard: real-time defect detection, discipline enforcement, design dialogue, knowledge transfer | **Disaggregated.** Defect detection → CI/lint/gates. Discipline enforcement → state-machine refusal (`verify-develop.mjs`, evidence gates). Design dialogue → moved earlier and async (co-review at spec/plan stage, driver/navigator vocabulary intact). Knowledge transfer → **no replacement. The crack.** |
+| Planning game | Customer and team negotiate scope collaboratively, iteration by iteration | Became **backlog as control plane** — the artifact the human actually reviews and holds in their head, instead of syntax. JIT planning replaces up-front exhaustive planning. |
+| Collective ownership | Anyone can change any code; shared understanding prevents silos | **Broken, unreplaced.** Pairing enforced this by rotation; nobody rotates through agent-generated code the same way. Nobody on the team necessarily reads what shipped. |
+| Sustainable pace | Protect against burnout-driven defects from overwork | **Inverted.** Agents don't tire. The ceiling is now human review capacity, not implementation capacity — the bottleneck moved from code production to safe acceptance. |
+| On-site customer | A human with product authority is always available to resolve ambiguity and arbitrate | Becomes the **human tiebreak / gate approver** — the role that stops two agents from reaching false consensus (see Article 12's "convergence theater" risk). |
 
 Practices intentionally left out of the walk (metaphor, coding standard, small releases, simple design, refactoring, continuous integration): either don't shift materially under agents, or would be a stretch to force into the six-practice frame without diluting it.
 
 ### Key reframes to hit
 
 - Not "pairing declined" — pairing's four bundled functions separated, and three were replaced while one wasn't.
-- Not "we still do TDD" — the red-green ritual survived, its _reason_ (design pressure via forced interface confrontation) evaporated. Same artifact, different function.
-- XP pairing was synchronous, real-time, human-bound, and expensive — which is why it never stuck economically at most orgs. Co-review is asynchronous and mechanized, which is why the _reviewed-by-a-second-perspective_ function of pairing might actually survive better under agents than it did under humans.
+- Not "we still do TDD" — the red-green ritual survived, its *reason* (design pressure via forced interface confrontation) evaporated. Same artifact, different function.
+- XP pairing was synchronous, real-time, human-bound, and expensive — which is why it never stuck economically at most orgs. Co-review is asynchronous and mechanized, which is why the *reviewed-by-a-second-perspective* function of pairing might actually survive better under agents than it did under humans.
 - Collective ownership is the honest crack in the piece — the practice XP most depended on for defect prevention and knowledge continuity has no agentic-era analog yet. Don't paper over this with a tidy resolution.
 
 ### Closing thread (into Article 11)
 
-The on-site customer became the human tiebreak — the role that catches false consensus before it ships. But a tiebreak only works if the human calling it still understands the codebase well enough to make the call. That's not a given, for a human _or_ an AI reviewer. Article 11 opens on exactly that question.
+The on-site customer became the human tiebreak — the role that catches false consensus before it ships. But a tiebreak only works if the human calling it still understands the codebase well enough to make the call. That's not a given, for a human *or* an AI reviewer. Article 11 opens on exactly that question.
 
 ## Article 11 — "The Diff Displacement" ("The Diff Isn't Where Your Judgment Lives Anymore") (drafted)
 
@@ -154,8 +155,8 @@ See [14-the-second-reviewer-corollary.md](14-the-second-reviewer-corollary.md).
 ### Core claims covered
 
 1. **Same-model dual review is a homogeneous ensemble.** Codex's dual-agent review is two samples from one model. Sampling twice reduces variance (catches things one pass happened to miss) but not bias, because both reviewers share the same training distribution and the same blind spots. Agreement between them is weaker evidence than it feels like.
-2. **Cross-model co-review is a heterogeneous ensemble.** AITM's co-review (currently Opus 5 vs. Codex Sol 5.6) partially decorrelates the errors. Agreement between two systems that fail _differently_ is much stronger evidence than agreement between two systems that fail the _same_ way. Delivered via a "two grad students from the same cohort" (correlated training) vs. "swap one for a student from a different program entirely" (decorrelated training) analogy, plus the mechanics of the fixed, non-swapping author/reviewer loop: the author always revises in response to feedback, the reviewer always evaluates the revision and whatever wasn't addressed, each taking in new input every turn — cycling until there's nothing left either side is willing to contest.
-3. **Convergence theater is the honest risk.** Two models can converge on a shared wrong answer, and the risk compounds across turns because both agents anchor on the accumulated review record. "Cycle until both agree" is satisfiable by mutual accommodation and reviewer fatigue, not just by the spec actually improving. XP's answer to a similar risk was the on-site customer: two developers agreeing was never the acceptance criterion, a human with product authority was. The article names the specific tell to watch for: a reviewer _withdrawing_ an objection rather than getting it resolved — that's the turn that needs a human tiebreak.
+2. **Cross-model co-review is a heterogeneous ensemble.** AITM's co-review (currently Opus 5 vs. Codex Sol 5.6) partially decorrelates the errors. Agreement between two systems that fail *differently* is much stronger evidence than agreement between two systems that fail the *same* way. Delivered via a "two grad students from the same cohort" (correlated training) vs. "swap one for a student from a different program entirely" (decorrelated training) analogy, plus the mechanics of the fixed, non-swapping author/reviewer loop: the author always revises in response to feedback, the reviewer always evaluates the revision and whatever wasn't addressed, each taking in new input every turn — cycling until there's nothing left either side is willing to contest.
+3. **Convergence theater is the honest risk.** Two models can converge on a shared wrong answer, and the risk compounds across turns because both agents anchor on the accumulated review record. "Cycle until both agree" is satisfiable by mutual accommodation and reviewer fatigue, not just by the spec actually improving. XP's answer to a similar risk was the on-site customer: two developers agreeing was never the acceptance criterion, a human with product authority was. The article names the specific tell to watch for: a reviewer *withdrawing* an objection rather than getting it resolved — that's the turn that needs a human tiebreak.
 
 ### Closing thread (into Article 13)
 
@@ -165,7 +166,7 @@ None of this is free. A co-review session that runs a dozen turns to reach conse
 
 ### Core claim to test
 
-**The un-flattened cost-of-change curve.** Beck's XP argument was that testing, refactoring, CI, and simple design **flatten the cost-of-change curve**, which is why XP could defer decisions instead of doing big design up front. The candidate counter-argument for agentic delivery: late change stopped being cheap the way it was under XP, because (a) context is no longer resident and free — it has to be reconstituted from durable artifacts, and (b) a spec defect doesn't cost one change, it cascades across an already-generated backlog of N work items that each already burned implementation tokens. If that's right, agentic delivery partially _un-flattens_ the curve, and that restores the economic case for up-front rigor — but at the spec layer, not the design-document layer XP was arguing against. Front-loaded review cost is hypothesized to be recovered, and then some, by avoiding that cascading rework.
+**The un-flattened cost-of-change curve.** Beck's XP argument was that testing, refactoring, CI, and simple design **flatten the cost-of-change curve**, which is why XP could defer decisions instead of doing big design up front. The candidate counter-argument for agentic delivery: late change stopped being cheap the way it was under XP, because (a) context is no longer resident and free — it has to be reconstituted from durable artifacts, and (b) a spec defect doesn't cost one change, it cascades across an already-generated backlog of N work items that each already burned implementation tokens. If that's right, agentic delivery partially *un-flattens* the curve, and that restores the economic case for up-front rigor — but at the spec layer, not the design-document layer XP was arguing against. Front-loaded review cost is hypothesized to be recovered, and then some, by avoiding that cascading rework.
 
 ### Back-of-envelope economics (estimates only, not measured)
 
@@ -173,7 +174,7 @@ None of this is free. A co-review session that runs a dozen turns to reach conse
 - A review turn: spec + JIT codebase sampling + analysis — tens of thousands in, a few thousand out.
 - A dozen turns: high hundreds of thousands to low millions of tokens.
 - An epic's full implementation (worktrees, test suites, debug loops, demote/rework cycles, review stages): comfortably several million tokens.
-- Implied overhead: co-review is roughly 10-20% of total epic cost. Break-even requires preventing about one story's worth of rework. That's a low bar — the interesting question isn't whether it pays off, it's _how much_ and _which failure modes it actually catches_.
+- Implied overhead: co-review is roughly 10-20% of total epic cost. Break-even requires preventing about one story's worth of rework. That's a low bar — the interesting question isn't whether it pays off, it's *how much* and *which failure modes it actually catches*.
 
 ### Measurement design (settled, execution deferred)
 
@@ -207,15 +208,15 @@ The co-review tool itself (issue #1268) is still being implemented — the exper
 
 - Epics that have gone through real co-review to date: **#1117, #1268, #1269**.
 - #1268 (the co-review tool itself) is currently in implementation, using the co-reviewed spec.
-- Candidate baseline epics for a _future_ retrospective distribution (not part of the article-13 blind experiment, but useful context and a possible follow-on measurement): #508, #727, #859, #905, #912 — all closed, all instrumented by AITM's existing signals:
+- Candidate baseline epics for a *future* retrospective distribution (not part of the article-13 blind experiment, but useful context and a possible follow-on measurement): #508, #727, #859, #905, #912 — all closed, all instrumented by AITM's existing signals:
 
-| Signal                                                 | Where it lives                 | What it proxies                 |
-| ------------------------------------------------------ | ------------------------------ | ------------------------------- |
-| `demote --rework` events per story                     | timing log / state transitions | implementation-time pivots      |
-| Defect issues spawned mid-task (`BLOCKED` annotations) | issue graph                    | scope discovered late           |
-| AC/scope edits after `aitm-plan-approved`              | issue body markers             | plan churn                      |
-| Develop→Test dwell time                                | stage entry markers            | implementation friction         |
-| Context words per delivered item                       | timing log                     | token cost per unit of delivery |
-| `Actual Session Time`                                  | project board                  | human cost                      |
+| Signal | Where it lives | What it proxies |
+| --- | --- | --- |
+| `demote --rework` events per story | timing log / state transitions | implementation-time pivots |
+| Defect issues spawned mid-task (`BLOCKED` annotations) | issue graph | scope discovered late |
+| AC/scope edits after `aitm-plan-approved` | issue body markers | plan churn |
+| Develop→Test dwell time | stage entry markers | implementation friction |
+| Context words per delivered item | timing log | token cost per unit of delivery |
+| `Actual Session Time` | project board | human cost |
 
 This baseline work is not scheduled — captured here so it isn't lost, and so a future retrospective comparison has a ready-made signal list instead of starting from scratch.
