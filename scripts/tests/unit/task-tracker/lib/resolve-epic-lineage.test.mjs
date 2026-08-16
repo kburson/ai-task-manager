@@ -119,7 +119,7 @@ test('requires an injected graph lookup', () => {
   assert.throws(() => resolveEpicLineage(905, {}), /graph/);
 });
 
-test('#1284: a child uses its parent epic\'s recorded custom branch authority', () => {
+test("#1284: a child uses its parent epic's recorded custom branch authority", () => {
   const custom = {
     graph: (n) =>
       n === 910

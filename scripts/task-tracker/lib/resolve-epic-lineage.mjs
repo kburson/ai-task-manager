@@ -72,7 +72,9 @@ export function resolveEpicLineage(issueOrBranch, { deps } = {}) {
     }
     if (node.parentAuthoritativeBranch != null) {
       if (typeof node.parentAuthoritativeBranch !== 'string' || !node.parentAuthoritativeBranch) {
-        throw new Error('resolve-epic-lineage: parent authoritative branch must be a non-empty string');
+        throw new Error(
+          'resolve-epic-lineage: parent authoritative branch must be a non-empty string'
+        );
       }
       parentEpicBranch = node.parentAuthoritativeBranch;
     } else {

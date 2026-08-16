@@ -124,7 +124,7 @@ test('#1284: the guard evaluates a child against its custom recorded epic branch
   const customGraph = (n) =>
     n === 910
       ? { ...GRAPH[910], parentAuthoritativeBranch: customEpic }
-      : GRAPH[n] ?? { parent: null, children: [] };
+      : (GRAPH[n] ?? { parent: null, children: [] });
   const calls = [];
   const git = (args) => {
     calls.push(args);
@@ -144,7 +144,7 @@ test('#1284: unresolved custom authority blocks guard evaluation before Git', ()
   const unavailableGraph = (n) =>
     n === 910
       ? { ...GRAPH[910], parentAuthorityError: 'malformed current worktree authority' }
-      : GRAPH[n] ?? { parent: null, children: [] };
+      : (GRAPH[n] ?? { parent: null, children: [] });
   assert.equal(
     computeEvaluation('feature/child/910', {
       graph: unavailableGraph,

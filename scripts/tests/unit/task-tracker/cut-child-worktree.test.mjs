@@ -68,7 +68,7 @@ test('requires issue, path, and injected git', () => {
   );
 });
 
-test('#1284: child worktree uses the parent epic\'s recorded custom branch authority', () => {
+test("#1284: child worktree uses the parent epic's recorded custom branch authority", () => {
   const { calls, deps } = makeDeps();
   const customDeps = {
     ...deps,

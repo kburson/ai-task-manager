@@ -80,7 +80,8 @@ export function resolveCurrentIssueWorktreeBranch(body) {
   for (const record of records) {
     if (
       record.ts === current.ts &&
-      (record.worktreePath !== current.worktreePath || record.worktreeBranch !== current.worktreeBranch)
+      (record.worktreePath !== current.worktreePath ||
+        record.worktreeBranch !== current.worktreeBranch)
     ) {
       throw new Error('issue-worktree-location: ambiguous current worktree authority record');
     }
