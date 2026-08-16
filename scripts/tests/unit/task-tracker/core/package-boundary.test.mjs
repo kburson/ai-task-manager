@@ -1,4 +1,4 @@
-// @story #551
+// @story #551 #1279
 // Package-boundary guard. The published tarball must ship only runtime material:
 // no test suites, no archived docs, no maintenance/report-only tooling. This test
 // runs `npm pack --dry-run --json`, inspects the entry list, and fails loudly if
@@ -82,7 +82,9 @@ function repoRoot() {
 // (scripts/task-tracker/lib/cleanup-base-aware.mjs) — growing the surface by one.
 // #1266 intentionally ships the co-review entrypoint, recovery help, and protocol
 // authority, growing the measured package surface by exactly three entries.
-const ENTRY_CEILING = 659;
+// #1279 intentionally ships the WBS coverage reconciler used by the Plan-exit
+// guard, growing the measured package surface by exactly one entry.
+const ENTRY_CEILING = 660;
 
 function packedFiles() {
   const out = execFileSync('npm', ['pack', '--dry-run', '--json'], {
