@@ -29,7 +29,9 @@ export async function runDecomposeCheck({ issueNumber, cfg, planOverride = null,
     planOverride,
     deps: deps.decomposition || {},
   });
-  const blocked = evaluated.classification.status === 'must-split' && !evaluated.waiver.ok;
+  const blocked =
+    !evaluated.planSelection.ok ||
+    (evaluated.classification.status === 'must-split' && !evaluated.waiver.ok);
   return { issueNumber: Number(issueNumber), ...evaluated, exitCode: blocked ? 3 : 0 };
 }
 
@@ -42,6 +44,11 @@ export function formatDecomposeCheck(result) {
     lines.push(`- plan: ${result.planDiagnostic.diagnostic}`);
   } else if (result.planDiagnostic?.path) {
     lines.push(`- plan: ${result.planDiagnostic.path}`);
+  }
+  if (!result.planSelection.ok) {
+    lines.push(`- source-plan-section: ${result.planSelection.diagnostic}`);
+  } else if (result.planSelection.applied) {
+    lines.push(`- source-plan-section: ${result.planSelection.heading}`);
   }
   lines.push(`- waiver: ${result.waiver.ok ? 'valid' : result.waiver.reason}`);
   return lines.join('\n');
