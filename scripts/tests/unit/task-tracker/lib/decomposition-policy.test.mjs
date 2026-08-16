@@ -1,4 +1,4 @@
-// @story #1052
+// @story #1052 #1281
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdtempSync, mkdirSync, symlinkSync, writeFileSync } from 'node:fs';
@@ -7,9 +7,11 @@ import { join } from 'node:path';
 import {
   classifyDecomposition,
   extractPlanTasks,
+  linkedPlanReference,
   linkedPlanPath,
   parseDecompositionWaiver,
   resolvePlanPath,
+  selectDecompositionPlanSection,
   visibleMetadataFieldValue,
 } from '../../../../task-tracker/lib/decomposition-policy.mjs';
 import { projectScratchDir } from '../../../../task-tracker/lib/scratch-dir.mjs';
@@ -235,6 +237,100 @@ test('linked plan metadata ignores fenced examples', () => {
 ## Plan Metadata
 - **Plan**: docs/visible.md`;
   assert.equal(linkedPlanPath(body), 'docs/visible.md');
+});
+
+test('selects exactly one bounded task from the active Source-plan', () => {
+  const planText = taskPlan(6, 6);
+  const body = [
+    '## Plan Metadata',
+    '- **Source-plan**: docs/parent.md',
+    '- **Source-plan-section**: ### Task 2: Deliver part 2',
+  ].join('\n');
+
+  assert.deepEqual(linkedPlanReference(body), {
+    key: 'Source-plan',
+    path: 'docs/parent.md',
+  });
+
+  const selected = selectDecompositionPlanSection({
+    body,
+    planText,
+    activePlanKey: 'Source-plan',
+  });
+
+  assert.equal(selected.ok, true);
+  assert.equal(selected.applied, true);
+  assert.equal(selected.heading, '### Task 2: Deliver part 2');
+  assert.equal(classifyDecomposition({ planText: selected.planText }).taskCount, 1);
+  assert.match(selected.planText, /^### Task 2: Deliver part 2/m);
+  assert.doesNotMatch(selected.planText, /Task 1|Task 3/);
+});
+
+test('fails closed for duplicate fields, unknown headings, and duplicate tasks', () => {
+  const metadata = (sections) =>
+    ['## Plan Metadata', '- **Source-plan**: docs/parent.md', ...sections].join('\n');
+  const duplicateField = selectDecompositionPlanSection({
+    body: metadata([
+      '- **Source-plan-section**: ### Task 1: Deliver part 1',
+      '- **Source-plan-section**: ### Task 2: Deliver part 2',
+    ]),
+    planText: taskPlan(2, 2),
+    activePlanKey: 'Source-plan',
+  });
+  assert.equal(duplicateField.ok, false);
+  assert.match(duplicateField.diagnostic, /duplicate Source-plan-section/);
+
+  const empty = selectDecompositionPlanSection({
+    body: metadata(['- **Source-plan-section**: <!-- TBD -->']),
+    planText: taskPlan(2, 2),
+    activePlanKey: 'Source-plan',
+  });
+  assert.equal(empty.ok, false);
+  assert.match(empty.diagnostic, /empty/);
+
+  const unknown = selectDecompositionPlanSection({
+    body: metadata(['- **Source-plan-section**: ### Task 9: Missing']),
+    planText: taskPlan(2, 2),
+    activePlanKey: 'Source-plan',
+  });
+  assert.equal(unknown.ok, false);
+  assert.match(unknown.diagnostic, /not found/);
+
+  const ambiguous = selectDecompositionPlanSection({
+    body: metadata(['- **Source-plan-section**: ### Task 1: Repeated']),
+    planText: '### Task 1: Repeated\n\n### Task 1: Repeated',
+    activePlanKey: 'Source-plan',
+  });
+  assert.equal(ambiguous.ok, false);
+  assert.match(ambiguous.diagnostic, /ambiguous/);
+});
+
+test('keeps whole-plan text when source-section scoping is inactive', () => {
+  const planText = taskPlan(4, 4);
+  const withSection = [
+    '## Plan Metadata',
+    '- **Implementation-plan**: docs/child.md',
+    '- **Source-plan**: docs/parent.md',
+    '- **Source-plan-section**: ### Task 1: Deliver part 1',
+  ].join('\n');
+  const reference = linkedPlanReference(withSection);
+  assert.deepEqual(reference, { key: 'Implementation-plan', path: 'docs/child.md' });
+
+  const implementationPlan = selectDecompositionPlanSection({
+    body: withSection,
+    planText,
+    activePlanKey: reference.key,
+  });
+  assert.equal(implementationPlan.applied, false);
+  assert.equal(implementationPlan.planText, planText);
+
+  const absentSection = selectDecompositionPlanSection({
+    body: '## Plan Metadata\n- **Source-plan**: docs/parent.md',
+    planText,
+    activePlanKey: 'Source-plan',
+  });
+  assert.equal(absentSection.applied, false);
+  assert.equal(absentSection.planText, planText);
 });
 
 test('resolvePlanPath contains paths to the repository and reports unavailable inputs', () => {
