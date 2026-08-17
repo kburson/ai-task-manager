@@ -85,7 +85,7 @@ filesystem artifact and the model explicitly.
 
 The model is not a Git emulator. Unsupported repository behavior is a test
 failure, keeping the seam narrow and preventing accidental reliance on
-unmodeled semantics. A parity test runs representative states through both the
+semantics the model does not represent. A parity test runs representative states through both the
 memory model and a real temporary repository.
 
 ### Test split

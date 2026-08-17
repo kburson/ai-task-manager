@@ -164,7 +164,7 @@ git commit -m "refactor: isolate co-review repository boundary [#1292]"
 
 - Produces: `createMemoryRepository({ root, branch, artifact, bytes })`.
 - Produces model operations `commit(path, bytes, message)` and `setIndex(path,
-  bytes)` for drift cases.
+bytes)` for drift cases.
 - Produces adapter methods identical to `REAL_REPOSITORY_BOUNDARY`.
 - Produces fixture helpers `memoryRepositoryFixture`,
   `realRepositoryFixture`, `memoryProtocol`, and `realProtocol`.
@@ -178,13 +178,10 @@ owner handoff, reviewer handoff, status, and cleanup path records:
 assert.equal(processCalls.git, 0);
 assert.equal(processCalls.nodeCli, 0);
 assert.equal(state.lifecycle, 'accepted');
-assert.deepEqual(readEvents(root, options.dir).map((row) => row.type), [
-  'init',
-  'claim',
-  'owner-handoff',
-  'claim',
-  'reviewer-handoff',
-]);
+assert.deepEqual(
+  readEvents(root, options.dir).map((row) => row.type),
+  ['init', 'claim', 'owner-handoff', 'claim', 'reviewer-handoff']
+);
 ```
 
 Add parity assertions for repository identity, ignored/untracked runtime,
@@ -222,7 +219,10 @@ public method while preserving exported classes and constants unchanged:
 
 ```js
 function bindProtocol(api, repository) {
-  const inject = (name) => (options = {}) => api[name]({ ...options, repository });
+  const inject =
+    (name) =>
+    (options = {}) =>
+      api[name]({ ...options, repository });
   return {
     ...api,
     initializeProtocol: inject('initializeProtocol'),
