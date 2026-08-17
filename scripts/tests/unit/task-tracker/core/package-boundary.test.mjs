@@ -85,7 +85,8 @@ function repoRoot() {
 // #1279 intentionally ships the WBS coverage reconciler used by the Plan-exit
 // guard, growing the measured package surface by exactly one entry.
 // #1268 adds three required co-review runtime modules to the shipped package.
-const ENTRY_CEILING = 663;
+// #1208 adds one pure scheduling seam for the bounded subprocess phase.
+const ENTRY_CEILING = 664;
 
 function packedFiles() {
   const out = execFileSync('npm', ['pack', '--dry-run', '--json'], {

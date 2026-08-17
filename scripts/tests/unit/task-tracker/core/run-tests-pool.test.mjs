@@ -16,7 +16,12 @@ import { writeFileSync, rmSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 
-import { runPool, poolConcurrency, spawnTestChild } from '../../../../run-tests-pool.mjs';
+import {
+  runPool,
+  poolConcurrency,
+  subprocessPoolConcurrency,
+  spawnTestChild,
+} from '../../../../run-tests-pool.mjs';
 import { describeSpawnResult } from '../../../../run-tests-report.mjs';
 import { mkdtempProjectIsolated } from '../../../../task-tracker/lib/scratch-dir.mjs';
 
@@ -29,6 +34,38 @@ test('poolConcurrency reserves one core and never drops below 1', () => {
   assert.equal(poolConcurrency(1), 1);
   assert.equal(poolConcurrency(0), 1);
   assert.equal(poolConcurrency(undefined), Math.max(1, os.cpus().length - 1));
+});
+
+test('subprocessPoolConcurrency is capped at two and floored at one', () => {
+  assert.equal(subprocessPoolConcurrency(10), 2);
+  assert.equal(subprocessPoolConcurrency(3), 2);
+  assert.equal(subprocessPoolConcurrency(2), 1);
+  assert.equal(subprocessPoolConcurrency(1), 1);
+  assert.equal(subprocessPoolConcurrency(Number.NaN), 1);
+  assert.equal(subprocessPoolConcurrency(undefined), Math.min(2, poolConcurrency()));
+});
+
+test('runPool honors the reduced subprocess cap and preserves input order', async () => {
+  const entries = [0, 1, 2, 3, 4, 5];
+  let active = 0;
+  let peak = 0;
+  const { results, peakConcurrency } = await runPool({
+    entries,
+    concurrency: subprocessPoolConcurrency(10),
+    runOne: async (entry) => {
+      active += 1;
+      peak = Math.max(peak, active);
+      await sleep((entries.length - entry) * 2);
+      active -= 1;
+      return entry * 10;
+    },
+  });
+  assert.equal(peak, 2);
+  assert.equal(peakConcurrency, 2);
+  assert.deepEqual(
+    results,
+    entries.map((entry) => entry * 10)
+  );
 });
 
 // ---- runPool: never exceeds the concurrency cap --------------------------
