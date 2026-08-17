@@ -6,6 +6,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { projectScratchDir } from '../../task-tracker/lib/scratch-dir.mjs';
+import { createMemoryRepository } from './co-review-memory-repository.mjs';
 
 const ROOT = path.resolve(fileURLToPath(new URL('../../../', import.meta.url)));
 const CLI = path.join(ROOT, 'scripts/review/co-review.mjs');
@@ -79,9 +80,54 @@ export function repositoryFixture() {
   };
 }
 
+export const realRepositoryFixture = repositoryFixture;
+
+export function memoryRepositoryFixture() {
+  const root = temporaryRoot();
+  const artifact = 'docs/artifact.md';
+  const bytes = Buffer.from('# Artifact\n\nRevision one.\n');
+  mkdirSync(path.join(root, 'docs'), { recursive: true });
+  writeFileSync(path.join(root, '.gitignore'), '.tmp/\n');
+  writeFileSync(path.join(root, artifact), bytes);
+  const repository = createMemoryRepository({ root, artifact, bytes });
+  return {
+    root,
+    artifact,
+    initialCommit: repository.initialCommit,
+    repository,
+    processCalls: { git: 0, nodeCli: 0 },
+  };
+}
+
 export async function protocol() {
   return import('../../review/lib/protocol.mjs');
 }
+
+function bindProtocol(api, repository) {
+  const inject =
+    (name) =>
+    (options = {}) =>
+      api[name]({ ...options, repository });
+  return {
+    ...api,
+    initializeProtocol: inject('initializeProtocol'),
+    readProtocol: inject('readProtocol'),
+    statusProtocol: inject('statusProtocol'),
+    claimTurn: inject('claimTurn'),
+    registerSupplement: inject('registerSupplement'),
+    handoffOwner: inject('handoffOwner'),
+    handoffReviewer: inject('handoffReviewer'),
+    setMaxReviewTurns: inject('setMaxReviewTurns'),
+    continueProtocol: inject('continueProtocol'),
+    waitForTurn: inject('waitForTurn'),
+  };
+}
+
+export async function memoryProtocol(repository) {
+  return bindProtocol(await protocol(), repository);
+}
+
+export const realProtocol = protocol;
 
 export function readEvents(root, dir) {
   return readFileSync(path.join(root, dir, 'events.jsonl'), 'utf8')
