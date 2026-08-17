@@ -47,7 +47,7 @@ test('isParallelSafe: pure file is pool-eligible', () => {
   assert.equal(isParallelSafe('/x/pure.test.mjs', read), true);
 });
 
-test('isParallelSafe: subprocess-spawning file runs serial', () => {
+test('isParallelSafe: subprocess-spawning file is not pure-pool eligible', () => {
   const read = () => "import { execFileSync } from 'node:child_process';";
   assert.equal(isParallelSafe('/x/coverage-close.test.mjs', read), false);
 });
@@ -102,7 +102,7 @@ test('isParallelSafe: unmarked pure file is still pool-eligible (regression guar
   assert.equal(isParallelSafe('/x/still-pure.test.mjs', read), true);
 });
 
-test('isParallelSafe: unmarked SUBPROCESS_RE-matching file is still serial (regression guard)', () => {
+test('isParallelSafe: unmarked SUBPROCESS_RE-matching file stays out of the pure pool', () => {
   const read = () => "import { execFileSync } from 'node:child_process';";
   assert.equal(isParallelSafe('/x/still-subprocess.test.mjs', read), false);
 });

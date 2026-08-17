@@ -18,12 +18,11 @@
  * oversubscribe the box. So the discriminator is deliberately narrow —
  * *does this file spawn subprocesses?* — not the broader "touches git/cwd/env".
  *
- * A file that spawns runs in the SERIAL phase (one at a time, its child gets the
- * CPU); a pure in-process file runs in the POOL. Erring toward serial is the safe
- * default: a false positive costs a little wall-time, a false negative reintroduces
- * the flake. This predicate is a #863-scoped bridge — #864 isolates the
- * integration lane and #868 physically relocates these files, after which the unit
- * lane is pure by construction and this classification converges on "all parallel".
+ * A directly detected subprocess file runs in a reduced-concurrency phase after
+ * the pure pool drains; a pure in-process file runs in the pure pool. Explicitly
+ * unsafe and unreadable files remain exclusive serial. Conservative classification
+ * costs wall time, while admitting an unsafe file to the pure pool can reintroduce
+ * the flake.
  */
 
 import { readFileSync } from 'node:fs';
@@ -33,7 +32,7 @@ import { readFileSync } from 'node:fs';
  * bare `child_process` identifier reference. A file that pulls in child_process
  * is assumed to spawn (the rare import-but-never-spawn file is harmlessly kept
  * serial). Comments mentioning the word are an accepted, conservative false
- * positive — they only cost that file a pool slot, never correctness.
+ * positive — they only move that file to the reduced pool, never correctness.
  */
 export const SUBPROCESS_RE = /(?:from\s*|require\(\s*)['"]node:child_process['"]|\bchild_process\b/;
 
@@ -87,17 +86,17 @@ export function testSchedulingClass(fullPath, read = readFileSync) {
 /**
  * Is this test file safe to run inside the bounded parallel pool?
  *
- * Pure in-process tests are safe; subprocess-spawning tests are not (they must
- * run serially so their children are not CPU-starved). A file that cannot be read
- * is treated as UNSAFE — unknown provenance defaults to the serial phase rather
- * than risk a flake. A file carrying the `@parallel-unsafe` marker is always
- * treated as UNSAFE, independent of `SUBPROCESS_RE` — it declares a hazard the
- * own-source scan cannot see (e.g. a transitive subprocess spawn via an imported
- * helper).
+ * Pure in-process tests are eligible for the original `cpus - 1` pool. Directly
+ * detected subprocess tests are not eligible for that saturated pool, but run in
+ * the reduced phase instead of exclusive serial. A file that cannot be read is
+ * treated as UNSAFE — unknown provenance defaults to the serial phase rather than
+ * risk a flake. A file carrying the `@parallel-unsafe` marker is always treated as
+ * UNSAFE, independent of `SUBPROCESS_RE` — it declares a hazard the own-source scan
+ * cannot see (e.g. a transitive subprocess spawn via an imported helper).
  *
  * @param {string} fullPath - absolute path to the `*.test.mjs` file
  * @param {(p: string, enc: string) => string} [read] - injectable reader (tests)
- * @returns {boolean} true → eligible for the pool; false → run serially
+ * @returns {boolean} true → eligible for the pure pool; false → use another phase
  */
 export function isParallelSafe(fullPath, read = readFileSync) {
   return testSchedulingClass(fullPath, read) === TEST_SCHEDULING_CLASSES.POOLED;

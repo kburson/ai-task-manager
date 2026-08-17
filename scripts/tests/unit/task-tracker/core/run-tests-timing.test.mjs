@@ -208,6 +208,26 @@ test('normalizeTimingArtifact preserves schema 2 elapsed without inventing subpr
   });
 });
 
+test('normalizeTimingArtifact preserves every schema 3 elapsed phase', () => {
+  const normalized = normalizeTimingArtifact({
+    schema: 3,
+    elapsed: {
+      runnerMs: 4800,
+      poolMs: 2100,
+      subprocessPoolMs: 700,
+      serialMs: 2000,
+    },
+    sums: { fileWallMs: 6000, inProcessMs: 5440, estimatedSpawnIoMs: 560 },
+  });
+  assert.equal(normalized.sourceSchema, 3);
+  assert.deepEqual(normalized.elapsed, {
+    runnerMs: 4800,
+    poolMs: 2100,
+    subprocessPoolMs: 700,
+    serialMs: 2000,
+  });
+});
+
 test('formatTimingReport renders a non-empty block and handles empty input', () => {
   const out = formatTimingReport(buildTimingReport(sample()));
   assert.match(out, /Test timing report/);
