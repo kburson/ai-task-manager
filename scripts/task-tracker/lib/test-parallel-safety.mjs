@@ -30,8 +30,8 @@ import { readFileSync } from 'node:fs';
 /**
  * Matches any use of `node:child_process` — the ESM import, the CJS require, or a
  * bare `child_process` identifier reference. A file that pulls in child_process
- * is assumed to spawn (the rare import-but-never-spawn file is harmlessly kept
- * serial). Comments mentioning the word are an accepted, conservative false
+ * is assumed to spawn (the rare import-but-never-spawn file is harmlessly moved
+ * to the reduced pool). Comments mentioning the word are an accepted, conservative false
  * positive — they only move that file to the reduced pool, never correctness.
  */
 export const SUBPROCESS_RE = /(?:from\s*|require\(\s*)['"]node:child_process['"]|\bchild_process\b/;
