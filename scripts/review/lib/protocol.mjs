@@ -234,11 +234,35 @@ function eventFor(state, type, at) {
     reviewTurnsUsed: state.reviewTurnsUsed,
     maxReviewTurns: state.maxReviewTurns,
     remainingReviewTurns: state.remainingReviewTurns,
+    ...(state.supplements === undefined
+      ? {}
+      : { supplements: supplementProjection(state.supplements) }),
   };
 }
 
 function appendEvent(paths, state, type, at = state.updatedAt, details = {}) {
   appendFileSync(paths.events, `${JSON.stringify({ ...eventFor(state, type, at), ...details })}\n`);
+}
+
+function supplementProjection(supplements) {
+  return supplements.map(
+    ({ id, path: supplementPath, sha256, registeredBy, registeredAt, targetRound, status }) => ({
+      id,
+      path: supplementPath,
+      sha256,
+      registeredBy,
+      registeredAt,
+      targetRound,
+      status,
+    })
+  );
+}
+
+function safeSupplementIdSuffix(id) {
+  const suffix = Number(id.slice(2));
+  return Number.isSafeInteger(suffix) && suffix >= 1 && suffix < Number.MAX_SAFE_INTEGER
+    ? suffix
+    : null;
 }
 
 function validateState(state) {
@@ -257,6 +281,30 @@ function validateState(state) {
     state.remainingReviewTurns !== state.maxReviewTurns - state.reviewTurnsUsed
   ) {
     fail('invalid-state', 'schema, round, or budget invariant');
+  }
+  if (state.supplements !== undefined) {
+    if (!Array.isArray(state.supplements)) fail('invalid-state', 'supplements must be an array');
+    const ids = new Set();
+    for (const supplement of state.supplements) {
+      if (
+        !supplement ||
+        !/^S-\d+$/.test(supplement.id) ||
+        safeSupplementIdSuffix(supplement.id) === null ||
+        ids.has(supplement.id) ||
+        typeof supplement.path !== 'string' ||
+        !/^sha256:[a-f0-9]{64}$/.test(supplement.sha256) ||
+        typeof supplement.registeredBy !== 'string' ||
+        !supplement.registeredBy.trim() ||
+        typeof supplement.registeredAt !== 'string' ||
+        Number.isNaN(Date.parse(supplement.registeredAt)) ||
+        !Number.isInteger(supplement.targetRound) ||
+        supplement.targetRound < 1 ||
+        !['pending', 'frozen', 'consumed'].includes(supplement.status)
+      ) {
+        fail('invalid-state', 'supplement invariant');
+      }
+      ids.add(supplement.id);
+    }
   }
   return state;
 }
@@ -317,6 +365,11 @@ function eventIntegrity(paths, state) {
           `event-projection ${field}: expected ${String(state[field])}, actual ${String(last[field])}`
         );
       }
+    }
+    const expectedSupplements =
+      state.supplements === undefined ? undefined : supplementProjection(state.supplements);
+    if (JSON.stringify(last.supplements) !== JSON.stringify(expectedSupplements)) {
+      errors.push('event-projection supplements: state differs from last event');
     }
   }
   return errors;
@@ -461,6 +514,19 @@ export function statusProtocol(options) {
       errors.push(`${error.code ?? 'artifact-error'} ${artifact.path}: ${error.message}`);
     }
   }
+  for (const supplement of state.supplements ?? []) {
+    if (supplement.status === 'consumed') continue;
+    try {
+      const actual = digestFile(root, supplement.path, 'recorded-supplement');
+      if (actual.sha256 !== supplement.sha256) {
+        errors.push(
+          `supplement-drift ${supplement.path}: expected ${supplement.sha256}, actual ${actual.sha256}`
+        );
+      }
+    } catch (error) {
+      errors.push(`supplement-drift ${supplement.path}: ${error.code ?? error.message}`);
+    }
+  }
   if (state.lifecycle === 'active' && state.currentRole === 'reviewer') {
     try {
       const worktree = digestFile(root, state.artifact.path, 'authoritative-artifact');
@@ -480,7 +546,10 @@ export function statusProtocol(options) {
     }
   }
   const integrity = { ok: errors.length === 0, errors };
-  return { ...state, integrity, nextAction: nextAction(state, integrity) };
+  const activeSupplements = (state.supplements ?? []).filter(
+    (supplement) => supplement.status === 'pending' || supplement.status === 'frozen'
+  );
+  return { ...state, activeSupplements, integrity, nextAction: nextAction(state, integrity) };
 }
 
 function nextAction(state, integrity) {
@@ -499,7 +568,7 @@ function nextAction(state, integrity) {
 function assertIntegrity(options) {
   const status = statusProtocol(options);
   if (!status.integrity.ok) fail('integrity', status.integrity.errors.join('; '));
-  return status;
+  return readProtocol(options);
 }
 
 export function claimTurn({ cwd = process.cwd(), dir, actor }) {
@@ -533,17 +602,112 @@ export function claimTurn({ cwd = process.cwd(), dir, actor }) {
 function exchangeArtifact(root, paths, candidate, label, disallowed = []) {
   const artifact = digestFile(root, candidate, label);
   const absolute = path.resolve(root, artifact.path);
-  if (!absolute.startsWith(`${paths.absolute}${path.sep}`)) {
+  const runtime = realpathSync(paths.absolute);
+  const physical = realpathSync(absolute);
+  if (!physical.startsWith(`${runtime}${path.sep}`)) {
     fail(`${label}-outside-runtime`, artifact.path);
   }
-  const reserved = new Set([
+  const lock = realpathSync(paths.lock);
+  if (
+    absolute === paths.lock ||
+    absolute.startsWith(`${paths.lock}${path.sep}`) ||
+    physical === lock ||
+    physical.startsWith(`${lock}${path.sep}`)
+  ) {
+    fail(`${label}-path-conflict`, artifact.path);
+  }
+  const reservedPaths = [
     paths.state,
     paths.events,
     paths.lock,
     ...disallowed.map((value) => path.resolve(root, value)),
-  ]);
-  if (reserved.has(absolute)) fail(`${label}-path-conflict`, artifact.path);
+  ];
+  const reserved = new Set(reservedPaths);
+  const physicalReserved = new Set(
+    reservedPaths
+      .filter((reservedPath) => existsSync(reservedPath))
+      .map((reservedPath) => realpathSync(reservedPath))
+  );
+  if (reserved.has(absolute) || physicalReserved.has(physical)) {
+    fail(`${label}-path-conflict`, artifact.path);
+  }
   return artifact;
+}
+
+function frozenSupplements(state) {
+  return (state.supplements ?? []).filter((supplement) => supplement.status === 'frozen');
+}
+
+function supplementAcknowledgments(markdown, required) {
+  const requiredIds = new Set(required.map((supplement) => supplement.id));
+  const seen = new Set();
+  for (const match of markdown.matchAll(/\[supplement:(S-\d+)\]/g)) {
+    const id = match[1];
+    if (seen.has(id)) fail('duplicate-supplement', id);
+    if (!requiredIds.has(id)) fail('unknown-supplement', id);
+    seen.add(id);
+  }
+  for (const id of requiredIds) {
+    if (!seen.has(id)) fail('missing-supplement', id);
+  }
+}
+
+function nextSupplementId(supplements) {
+  const highest = supplements.reduce(
+    (maximum, supplement) => Math.max(maximum, safeSupplementIdSuffix(supplement.id)),
+    0
+  );
+  return `S-${String(highest + 1).padStart(3, '0')}`;
+}
+
+export function registerSupplement({ cwd = process.cwd(), dir, file, humanLogin }) {
+  const registeredBy = String(humanLogin || '').trim();
+  if (!registeredBy)
+    fail('github-login', 'non-blank authenticated login required', { exitCode: 2 });
+  const root = repositoryRoot(cwd);
+  const paths = protocolPaths(root, dir);
+  return withMutex(paths, registeredBy, 'supplement', () => {
+    const current = readProtocol({ cwd: root, dir: paths.relative });
+    if (current.lifecycle !== 'intervention-required') {
+      fail('supplement-state', current.lifecycle);
+    }
+    const resolved = relativePath(root, file, 'supplement');
+    if (existsSync(resolved.absolute) && lstatSync(resolved.absolute).isSymbolicLink()) {
+      fail('supplement-symlink', resolved.relative);
+    }
+    const artifact = exchangeArtifact(root, paths, file, 'supplement');
+    const existing = (current.supplements ?? []).find(
+      (supplement) => supplement.path === artifact.path
+    );
+    if (existing) {
+      if (existing.sha256 === artifact.sha256) {
+        assertIntegrity({ cwd: root, dir: paths.relative });
+        return readProtocol({ cwd: root, dir: paths.relative });
+      }
+      fail('supplement-conflict', artifact.path);
+    }
+    const state = assertIntegrity({ cwd: root, dir: paths.relative });
+    const at = new Date().toISOString();
+    const supplement = {
+      id: nextSupplementId(state.supplements ?? []),
+      path: artifact.path,
+      sha256: artifact.sha256,
+      registeredBy,
+      registeredAt: at,
+      targetRound: state.round + 1,
+      status: 'pending',
+    };
+    const next = validateState({
+      ...state,
+      integrity: undefined,
+      nextAction: undefined,
+      revision: state.revision + 1,
+      supplements: [...(state.supplements ?? []), supplement],
+      updatedAt: at,
+    });
+    appendEvent(paths, next, 'supplement', at, { supplement });
+    return atomicStateWrite(paths, next);
+  });
 }
 
 function uniqueFindingIds(markdown, label) {
@@ -751,7 +915,9 @@ export function handoffReviewer({
     if (state.immutableArtifacts?.[reviewArtifact.path]) {
       fail('review-already-used', reviewArtifact.path);
     }
-    uniqueFindingIds(readFileSync(path.resolve(root, reviewArtifact.path), 'utf8'), 'review');
+    const reviewText = readFileSync(path.resolve(root, reviewArtifact.path), 'utf8');
+    supplementAcknowledgments(reviewText, frozenSupplements(state));
+    uniqueFindingIds(reviewText, 'review');
     const reviewTurnsUsed = state.reviewTurnsUsed + 1;
     const remainingReviewTurns = state.maxReviewTurns - reviewTurnsUsed;
     const finalChanges = decision === 'changes-requested' && remainingReviewTurns === 0;
@@ -799,6 +965,13 @@ export function handoffReviewer({
       remainingReviewTurns,
       lastHandoff,
       immutableArtifacts,
+      ...(state.supplements
+        ? {
+            supplements: state.supplements.map((supplement) =>
+              supplement.status === 'frozen' ? { ...supplement, status: 'consumed' } : supplement
+            ),
+          }
+        : {}),
       updatedAt: at,
     });
     appendEvent(paths, next, 'reviewer-handoff', at, { handoff: lastHandoff });
@@ -907,6 +1080,13 @@ export function continueProtocol({
       maxReviewTurns: budget.effectiveMax,
       remainingReviewTurns: budget.remainingReviewTurns,
       continuation,
+      ...(state.supplements
+        ? {
+            supplements: state.supplements.map((supplement) =>
+              supplement.status === 'pending' ? { ...supplement, status: 'frozen' } : supplement
+            ),
+          }
+        : {}),
       immutableArtifacts: {
         ...(state.immutableArtifacts ?? {}),
         ...(focusArtifact ? { [focusArtifact.path]: focusArtifact } : {}),
