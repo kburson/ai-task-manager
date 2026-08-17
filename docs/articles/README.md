@@ -39,6 +39,10 @@ the source of truth if this list ever drifts out of sync).
 14. [The Second Reviewer Corollary](14-the-second-reviewer-corollary.md) — *It's All About Perspective* (working title)
 15. The Cross-Model Mutex Reverberation — *Two PhDs and a Mutex* (working title) — cross-model co-review token economics and evidence; **deferred**, see [narrative arc](xp-agentic-delivery-narrative-arc.md)
 
+## Header Images
+
+Article header banners in [assets/article-headers](assets/article-headers/) were generated with Google Gemini, from the briefs in [assets/image-prompts](assets/image-prompts/). Confirmed via the C2PA content-credentials metadata embedded in the PNGs ("Created by Google Generative AI", SynthID watermark) — no prompt/tool record was kept in the repo at generation time.
+
 ## Research Base
 
 Start with [research-synopsis.md](research-synopsis.md) for the evidence map, source taxonomy, and article angles.

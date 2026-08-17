@@ -1,0 +1,5 @@
+flowchart LR
+    Author["Author agent\nwrites/revises spec"]
+    Reviewer["Reviewer agent\ncold read vs codebase"]
+    Author -->|"spec"| Reviewer
+    Reviewer -->|"objections"| Author

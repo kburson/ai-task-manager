@@ -4,7 +4,7 @@
 
 <!-- markdownlint-disable MD034 -->
 
-![Evidence Beats Trust](assets/article-headers/article-07-header.png)
+![Evidence Beats Trust](assets/article-headers/article-09-header.png)
 _Part 9 of a series of articles on succeeding with Agentic Agile Delivery_
 
 I do not want to trust an AI agent. I want the agent to leave enough evidence that trust is no longer the main control.
@@ -104,6 +104,10 @@ Evidence is also what lets me, as the TPO/TPM, supervise at a higher altitude wi
 |             | 08     | [Context Durability Is A Feature](08-the-context-durability-corollary.md)                                | JIT loading and post-compaction recovery      |
 | **Current** | **09** | **[Evidence Beats Trust](09-the-evidence-over-trust-theorem.md)**                                     | Evidence gates and auditability               |
 |             | 10     | [The Adapter Future](10-the-adapter-convergence.md)                                                 | Backlog and agent platform adapters           |
+|             | 11     | [Agentic Concurrency Isn't Free — And "50 Parallel Agents" Is Hyperbole](11-the-agentic-concurrency-deficiency.md) | Concurrency ceiling and coordination cost |
+|             | 12     | [XP's Practices Survived. Their Reasons Did Not.](12-the-xp-survival-anomaly.md)                | XP practices under agentic delivery                          |
+|             | 13     | [The Diff Isn't Where Your Judgment Lives Anymore](13-the-diff-displacement.md)                 | Spec review displaces code review                             |
+|             | 14     | [It's All About Perspective](14-the-second-reviewer-corollary.md)                               | Cross-model review for a genuine second opinion                |
 
 ## LinkedIn Article Shape
 

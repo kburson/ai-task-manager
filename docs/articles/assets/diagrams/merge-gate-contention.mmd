@@ -1,0 +1,10 @@
+flowchart LR
+    A1["Agent"]
+    A2["Agent"]
+    A3["Agent"]
+    Gate["Shared merge gate\ncontention + validation queue"]
+    Ceiling["Throughput ceiling\n~3-5 agents"]
+    A1 --> Gate
+    A2 --> Gate
+    A3 --> Gate
+    Gate --> Ceiling
