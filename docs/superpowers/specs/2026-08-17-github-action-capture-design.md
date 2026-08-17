@@ -55,7 +55,7 @@ npx aitm capture-actions off
 
 `on` creates a main-worktree-anchored enable marker. `off` removes only that
 marker; it preserves the captured corpus for later analysis. `status` reports
-the marker and corpus path. `summary` scans completed and incomplete records
+whether the marker exists. `summary` scans completed and incomplete records
 without modifying them.
 
 When the marker is absent, `aitm` delegates with the existing environment and
@@ -67,12 +67,14 @@ All linked worktrees share this main-worktree-anchored tree:
 
 ```text
 .tmp/aitm/action-capture/
-  enabled.json
+  enabled/kburson__ai-task-manager/issue-1295.json
   repositories/kburson__ai-task-manager/
     issue-1295/
       000001-<ulid>/
         intent.json
-        request.bin
+        argv.json
+        stdin.bin
+        request-01.bin
         outcome.json
         stdout.bin
         stderr.bin
@@ -128,15 +130,14 @@ used by the real `gh` process remain outside the corpus.
 
 The dispatcher resolves the original `gh` executable before prepending the
 shim directory and passes its absolute path in a private environment variable.
-The shim refuses recursion and executes only that resolved binary.
 
 Capture is observational and fail-open. If marker inspection, allocation, or
 record writing fails, the dispatcher or shim emits a concise warning and still
 runs the original command. The real command's stdin, stdout, stderr, signal,
 and exit status remain the source of behavior.
 
-The wrapper buffers stdin so it can hash and forward the exact request. It tees
-stdout and stderr to the caller while retaining bounded copies for safe local
+The wrapper buffers piped stdin so it can hash and forward the exact request.
+It tees stdout and stderr to the caller while retaining copies for safe local
 storage. Hashes and byte counts cover the complete streams even when raw output
 storage is omitted.
 
@@ -163,14 +164,12 @@ sequenceDiagram
 
 ## Summary output
 
-The summary reports, globally or for one issue:
+The summary reports for one active or explicitly selected issue:
 
-- invocation, call, mutation, read, succeeded, failed, and incomplete counts;
+- complete and incomplete action counts;
 - counts by mutation kind;
 - serialized manifest bytes and captured raw payload bytes;
-- redacted payload count;
-- largest records with repository, issue, sequence, action identity, kind, and
-  byte counts.
+- the largest action's sequence and byte counts.
 
 This is sufficient to estimate a future offline outbox or cloud-agent return
 package without implementing either.

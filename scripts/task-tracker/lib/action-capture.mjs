@@ -300,6 +300,41 @@ function safeMetadata(value) {
   }
 }
 
+function readableRequestFile(kind, filePath, cwd) {
+  if (!filePath || filePath === '-') return null;
+  try {
+    return { kind, bytes: readFileSync(path.resolve(cwd, filePath)) };
+  } catch {
+    return null;
+  }
+}
+
+export function collectGhRequestFiles(inputArgs, cwd = process.cwd()) {
+  const args = Array.isArray(inputArgs) ? inputArgs.map(String) : [];
+  const files = [];
+  for (let index = 0; index < args.length; index += 1) {
+    const argument = args[index];
+    if (argument === '--body-file' || argument === '--input') {
+      const entry = readableRequestFile(
+        argument === '--body-file' ? 'body-file' : 'input-file',
+        args[index + 1],
+        cwd
+      );
+      if (entry) files.push(entry);
+      index += 1;
+      continue;
+    }
+    if (['-F', '--field'].includes(argument)) {
+      const value = args[index + 1] || '';
+      const match = value.match(/^([^=]+)=@(.+)$/);
+      const entry = match ? readableRequestFile(`field-file-${match[1]}`, match[2], cwd) : null;
+      if (entry) files.push(entry);
+      index += 1;
+    }
+  }
+  return files;
+}
+
 export function beginCapturedAction(context, deps = {}) {
   const repository = String(context.repository);
   const issue = issueNumber(context.issue);

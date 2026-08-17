@@ -18,6 +18,7 @@ import {
   summarizeActionCorpus,
 } from '../../../../task-tracker/lib/action-capture.mjs';
 import { mkdtempProjectIsolated } from '../../../../task-tracker/lib/scratch-dir.mjs';
+import { runCaptureActions } from '../../../../task-tracker/capture-actions.mjs';
 
 const classify = (args, input = '') => classifyGhCall(args, Buffer.from(input));
 
@@ -328,6 +329,43 @@ test('prepares a shim environment only for an enabled active issue', () => {
   assert.equal(prepared.AITM_CAPTURE_ISSUE, '42');
   assert.equal(prepared.AITM_CAPTURE_COMMAND, 'issue-body');
   assert.match(prepared.AITM_CAPTURE_INVOCATION_ID, /^[0-9A-HJKMNP-TV-Z]{26}$/);
+});
+
+test('operator control enables, reports, summarizes, and disables the active issue corpus', () => {
+  const projectDir = sandbox();
+  mkdirSync(path.join(projectDir, '.ai-task-manager'), { recursive: true });
+  mkdirSync(path.join(projectDir, '.tmp', 'aitm', 'state'), { recursive: true });
+  writeFileSync(
+    path.join(projectDir, '.ai-task-manager', 'task-tracker.json'),
+    `${JSON.stringify({ repo: 'o/r' })}\n`
+  );
+  writeFileSync(
+    path.join(projectDir, '.tmp', 'aitm', 'state', 'task-tracker-state.json'),
+    `${JSON.stringify({ active: '#42' })}\n`
+  );
+  const output = [];
+  const deps = { cwd: projectDir, log: (line) => output.push(line) };
+
+  assert.equal(runCaptureActions(['on'], deps), 0);
+  assert.match(output.pop(), /enabled.*o\/r#42/i);
+  assert.equal(runCaptureActions(['status'], deps), 0);
+  assert.match(output.pop(), /enabled.*o\/r#42/i);
+  assert.equal(runCaptureActions(['summary', '--json'], deps), 0);
+  assert.deepEqual(JSON.parse(output.pop()), {
+    schema: ACTION_CAPTURE_SCHEMA,
+    repository: 'o/r',
+    issue: 42,
+    actions: 0,
+    complete: 0,
+    incomplete: 0,
+    byKind: {},
+    serializedBytes: 0,
+    payloadBytes: 0,
+    largestAction: null,
+  });
+  assert.equal(runCaptureActions(['off', '--issue', '42'], deps), 0);
+  assert.match(output.pop(), /disabled.*preserved/i);
+  assert.equal(isActionCaptureEnabled({ projectDir, repository: 'o/r', issue: 42 }), false);
 });
 
 test('summarizes complete and incomplete actions, serialized bytes, payload bytes, and largest action', () => {
