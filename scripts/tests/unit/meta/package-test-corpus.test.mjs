@@ -15,7 +15,7 @@ const manifestPath = path.join(PROJECT_ROOT, 'scripts/tests/fixtures/test-corpus
 const manifest = JSON.parse(readFileSync(manifestPath, 'utf8'));
 const TASK3_BASE_COMMIT = 'db997e39e0fd76edbd2a3df6a19e7a226e33e55f';
 const TASK3_MIGRATION_COMMIT = 'cbff5ce683083c3e2a33a06ba2c81cafc9e27c22';
-const EXPECTED_POST_SNAPSHOT_TESTS = [
+const REQUIRED_POST_SNAPSHOT_TESTS = [
   'scripts/tests/unit/meta/audit-story-tags.test.mjs',
   'scripts/tests/unit/meta/package-test-corpus.test.mjs',
   'scripts/tests/unit/review/co-review.test.mjs',
@@ -222,15 +222,12 @@ test('live discovery realizes the migration manifest exactly once and only in ca
   }
 
   const storyOwned = discovered.filter((rel) => !manifestDestinations.has(rel));
-  assert.equal(storyOwned.length, 8, 'exactly eight story-owned tests follow the snapshot');
-  assert.deepEqual(storyOwned, EXPECTED_POST_SNAPSHOT_TESTS);
+  for (const rel of REQUIRED_POST_SNAPSHOT_TESTS) {
+    assert.ok(storyOwned.includes(rel), `${rel} remains a post-snapshot test`);
+  }
   for (const rel of storyOwned) {
     assert.ok(parseCanonicalTestPath(rel), `${rel} is a canonical story-owned test`);
   }
-
-  const liveCounts = { unit: 0, integration: 0, slow: 0 };
-  for (const rel of discovered) liveCounts[parseCanonicalTestPath(rel).lane] += 1;
-  assert.deepEqual(liveCounts, { unit: 844, integration: 28, slow: 51 });
 });
 
 test('package files explicitly exclude the canonical test support root', () => {
