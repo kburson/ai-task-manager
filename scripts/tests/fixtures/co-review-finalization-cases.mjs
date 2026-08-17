@@ -96,11 +96,17 @@ async function acceptedConsensus(overrides = {}) {
     'owner-response.md',
     '# Owner response\n\nReady.\n'
   );
+  const responseReference = overrides.responseAlias
+    ? (() => {
+        symlinkSync('.', path.join(root, options.dir, 'alias'));
+        return `${options.dir}/alias/owner-response.md`;
+      })()
+    : response;
   api.handoffOwner({
     cwd: root,
     dir: options.dir,
     actor: owner,
-    response,
+    response: responseReference,
     artifact: options.artifact,
     commit: initialCommit,
     message: 'owner handoff',
@@ -116,7 +122,7 @@ async function acceptedConsensus(overrides = {}) {
     decision: 'accepted',
     message: 'accepted',
   });
-  return { ...fixture, state, response, review };
+  return { ...fixture, state, response: responseReference, review };
 }
 
 async function acceptedGoodEnough() {
@@ -292,6 +298,31 @@ test('archive refuses invalid consensus provenance and evidence rounds', async (
   );
 });
 
+test('archive requires exhausted changes-requested evidence for human good enough', async () => {
+  for (const mutation of ['accepted-review', 'remaining-budget']) {
+    const fixture = await acceptedGoodEnough();
+    const statePath = path.join(fixture.root, fixture.options.dir, 'state.json');
+    const eventsPath = path.join(fixture.root, fixture.options.dir, 'events.jsonl');
+    const state = JSON.parse(readFileSync(statePath, 'utf8'));
+    const events = readEvents(fixture.root, fixture.options.dir);
+    if (mutation === 'accepted-review') {
+      events.findLast((event) => event.type === 'reviewer-handoff').handoff.decision = 'accepted';
+    } else {
+      state.maxReviewTurns += 1;
+      state.remainingReviewTurns = 1;
+      events.at(-1).maxReviewTurns = state.maxReviewTurns;
+      events.at(-1).remainingReviewTurns = 1;
+    }
+    writeFileSync(statePath, `${JSON.stringify(state, null, 2)}\n`);
+    writeFileSync(eventsPath, `${events.map((event) => JSON.stringify(event)).join('\n')}\n`);
+    assert.throws(
+      () => prepareArchive(archiveOptions(fixture, `docs/reviews/${mutation}`)),
+      (error) => error.code === 'archive-evidence',
+      mutation
+    );
+  }
+});
+
 test('archive protects README and disambiguates lossy colliding identity slugs', async () => {
   const owner = 'A/B';
   const reviewer = 'a b';
@@ -331,6 +362,12 @@ test('archive preserves an arbitrary artifact basename and returns a deeply froz
       (file) => file.path === 'artifact-review.notes-v2.md'
     )
   );
+});
+
+test('archive preserves the event-recorded source path through a safe runtime alias', async () => {
+  const fixture = await acceptedConsensus({ responseAlias: true });
+  const prepared = prepareArchive(archiveOptions(fixture, 'docs/reviews/aliased-source'));
+  assert.equal(prepared.manifest.evidence.ownerResponse.sourcePath, fixture.response);
 });
 
 test('archive accepts an equivalent configured destination and refuses a different override', async () => {
@@ -394,6 +431,44 @@ test('manifest bytes are canonical, uniquely marked, LF-only, and round-trip the
   for (const forbidden of ['generatedAt', 'hostname', 'toolVersion', 'elapsedMs', 'supplements']) {
     assert.equal(text.includes(`\"${forbidden}\"`), false);
   }
+});
+
+test('manifest escapes reserved marker and fence tokens without changing parsed values', async () => {
+  const owner = 'owner <!-- aitm-co-review-manifest:start --> ```json ```';
+  const reviewer = 'reviewer <!-- aitm-co-review-manifest:end --> ```';
+  const fixture = await acceptedConsensus({ owner, reviewer });
+  const prepared = prepareArchive(archiveOptions(fixture, 'docs/reviews/reserved-values'));
+  const text = renderArchiveManifest(prepared.manifest).toString('utf8');
+  assert.equal((text.match(/aitm-co-review-manifest:start/g) ?? []).length, 1);
+  assert.equal((text.match(/aitm-co-review-manifest:end/g) ?? []).length, 1);
+  assert.equal((text.match(/```json/g) ?? []).length, 1);
+  assert.equal((text.match(/```/g) ?? []).length, 2);
+  const matched = text.match(
+    /<!-- aitm-co-review-manifest:start -->\n```json\n([\s\S]+\n)```\n<!-- aitm-co-review-manifest:end -->/
+  );
+  assert.ok(matched);
+  assert.deepEqual(JSON.parse(matched[1]), prepared.manifest);
+});
+
+test('publication and inspection reject forged prepared paths before touching siblings', async () => {
+  const fixture = await acceptedConsensus();
+  const prepared = structuredClone(
+    prepareArchive(archiveOptions(fixture, 'docs/reviews/forged-prepared'))
+  );
+  output(prepared, 'artifact').path = '../escaped-by-forged-prepared.md';
+  const escaped = path.join(
+    path.dirname(prepared.destination.absolute),
+    'escaped-by-forged-prepared.md'
+  );
+  assert.throws(
+    () => inspectArchive({ prepared }),
+    (error) => error.code === 'archive-prepared-integrity'
+  );
+  assert.throws(
+    () => publishPreparedArchive(prepared),
+    (error) => error.code === 'archive-prepared-integrity'
+  );
+  assert.equal(existsSync(escaped), false);
 });
 
 test('publication writes the manifest last, preserves inputs and Git, and retries without rewrite', async () => {

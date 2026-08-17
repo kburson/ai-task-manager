@@ -131,7 +131,7 @@ function recordedFile(root, record, label) {
       `${label} ${record.path}: expected ${record.sha256}, actual ${actual}`
     );
   }
-  return { ...record, path: resolved.relative, bytes };
+  return { ...record, bytes };
 }
 
 function committedArtifact(root, record) {
@@ -223,6 +223,9 @@ function terminalEvidence(state, events) {
   if (reviewerHandoff.commit !== ownerHandoff.artifact.commit) {
     fail('archive-evidence', 'review does not reference selected owner commit');
   }
+  if (owner.event.at !== ownerHandoff.at || reviewer.event.at !== reviewerHandoff.at) {
+    fail('archive-evidence', 'terminal evidence timestamps');
+  }
   if (
     !Number.isInteger(owner.event.round) ||
     owner.event.round < 1 ||
@@ -248,6 +251,15 @@ function terminalEvidence(state, events) {
   if (terminal.type === 'reviewer-handoff') {
     requireExactEvidence(reviewerHandoff, state.lastHandoff, 'accepting reviewer handoff');
   } else {
+    if (
+      reviewerHandoff.decision !== 'changes-requested' ||
+      state.reviewTurnsUsed !== state.maxReviewTurns ||
+      state.remainingReviewTurns !== 0 ||
+      owner.event.lifecycle !== 'intervention-required' ||
+      owner.event.remainingReviewTurns !== 0
+    ) {
+      fail('archive-evidence', 'human-good-enough requires author-completed exhaustion');
+    }
     requireExactEvidence(ownerHandoff, state.lastHandoff, 'closing owner handoff');
     requireExactEvidence(
       reviewerHandoff.artifacts.review,
@@ -466,7 +478,10 @@ function inspectExpected(destination, files) {
 }
 
 export function renderArchiveManifest(model) {
-  const json = JSON.stringify(model, null, 2);
+  const json = JSON.stringify(model, null, 2)
+    .replaceAll('aitm-co-review-manifest:start', 'aitm-co-review-manifest\\u003astart')
+    .replaceAll('aitm-co-review-manifest:end', 'aitm-co-review-manifest\\u003aend')
+    .replaceAll('`', '\\u0060');
   const text = [
     '# Co-review finalization archive',
     '',
@@ -485,11 +500,13 @@ export function renderArchiveManifest(model) {
 
 export function inspectArchive(options = {}) {
   const prepared = options.prepared ?? buildPrepared(options);
+  validatePrepared(prepared);
   return inspectExpected(prepared.destination, prepared.files);
 }
 
 export function prepareArchive(options = {}) {
   const prepared = buildPrepared(options);
+  validatePrepared(prepared);
   const inspection = inspectExpected(prepared.destination, prepared.files);
   if (inspection.status === 'conflict') {
     fail('archive-conflict', inspection.errors.join('; '));
@@ -510,8 +527,52 @@ function validatePrepared(prepared) {
   if (new Set(names).size !== 4 || !names.includes('README.md')) {
     fail('archive-prepared-integrity', 'expected exact four-path tree');
   }
+  const byKind = new Map();
+  for (const file of prepared.files) {
+    if (
+      typeof file.path !== 'string' ||
+      !file.path ||
+      file.path === '.' ||
+      file.path === '..' ||
+      path.posix.basename(file.path) !== file.path ||
+      path.win32.basename(file.path) !== file.path ||
+      !['artifact', 'review', 'response', 'manifest'].includes(file.kind) ||
+      byKind.has(file.kind)
+    ) {
+      fail('archive-prepared-integrity', `unsafe file entry ${String(file.path)}`);
+    }
+    byKind.set(file.kind, file);
+  }
+  const expectedEntries = [
+    [
+      'artifact',
+      prepared.manifest?.artifact?.archivePath,
+      prepared.manifest?.artifact?.archivedSha256,
+    ],
+    [
+      'review',
+      prepared.manifest?.evidence?.reviewerReview?.archivePath,
+      prepared.manifest?.evidence?.reviewerReview?.archivedSha256,
+    ],
+    [
+      'response',
+      prepared.manifest?.evidence?.ownerResponse?.archivePath,
+      prepared.manifest?.evidence?.ownerResponse?.archivedSha256,
+    ],
+    ['manifest', 'README.md', null],
+  ];
+  for (const [kind, expectedPath, expectedSha] of expectedEntries) {
+    const file = byKind.get(kind);
+    if (
+      !file ||
+      file.path !== expectedPath ||
+      (expectedSha !== null && file.sha256 !== expectedSha)
+    ) {
+      fail('archive-prepared-integrity', `${kind} does not match manifest`);
+    }
+  }
   for (const file of prepared.files) expectedBytes(file);
-  const manifest = prepared.files.find((file) => file.path === 'README.md');
+  const manifest = byKind.get('manifest');
   if (!expectedBytes(manifest).equals(renderArchiveManifest(prepared.manifest))) {
     fail('archive-prepared-integrity', 'manifest bytes');
   }
