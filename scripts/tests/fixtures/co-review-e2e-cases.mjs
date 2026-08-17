@@ -7,7 +7,7 @@ import test from 'node:test';
 
 import {
   commitArtifact,
-  initializedProtocol,
+  realInitializedProtocol,
   readEvents,
   repositoryFixture,
   rewriteProtocolState,
@@ -18,7 +18,7 @@ import {
 } from './co-review-fixture.mjs';
 
 async function exhaustedIntervention({ lastFrom = 'reviewer' } = {}) {
-  const initialized = await initializedProtocol();
+  const initialized = await realInitializedProtocol();
   const { root, options } = initialized;
   rewriteProtocolState(root, options.dir, (state) => ({
     ...state,

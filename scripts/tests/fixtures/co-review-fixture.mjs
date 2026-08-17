@@ -190,6 +190,16 @@ export function commitArtifact(root, content, message = 'revise artifact') {
 export async function initializedProtocol({ imported = false, maxReviewTurns = 6 } = {}) {
   const fixture = memoryRepositoryFixture();
   const api = await memoryProtocol(fixture.repository);
+  return initializeFixture({ api, fixture, imported, maxReviewTurns });
+}
+
+export async function realInitializedProtocol({ imported = false, maxReviewTurns = 6 } = {}) {
+  const fixture = repositoryFixture();
+  const api = await protocol();
+  return initializeFixture({ api, fixture, imported, maxReviewTurns });
+}
+
+function initializeFixture({ api, fixture, imported, maxReviewTurns }) {
   const options = {
     cwd: fixture.root,
     dir: '.tmp/review',
