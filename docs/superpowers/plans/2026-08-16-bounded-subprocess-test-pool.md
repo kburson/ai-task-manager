@@ -1,5 +1,7 @@
 # Bounded Subprocess Test Pool Implementation Plan
 
+<!-- cspell:words cpus -->
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Keep the complete unit lane below its fixed section ceiling by moving directly detected subprocess tests from exclusive serial execution into a separate two-worker phase without weakening fail-closed isolation.

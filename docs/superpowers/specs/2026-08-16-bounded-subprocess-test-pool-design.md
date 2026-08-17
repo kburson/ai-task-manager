@@ -1,5 +1,7 @@
 # Bounded Subprocess Test Pool Design
 
+<!-- cspell:words cpus -->
+
 ## Context
 
 Issue #1275 is blocked in Test even though every unit assertion passes: the 105-file serial unit section took 671.0s and 726.4s on consecutive runs, beyond the fixed 600-second section ceiling. The current 10-core host has 843 unit files: 738 enter the existing `cpus - 1` pool; 95 readable files directly reference `node:child_process`; 10 additional files are explicit `@parallel-unsafe` cases.
