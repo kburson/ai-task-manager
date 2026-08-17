@@ -54,6 +54,14 @@ const ROUTABLE_SELF_DOC = {
     usage:
       'aitm preflight-issue [--check-only|--check-integrity <N>] [--shape epic|sub-issue|solo|defect|stub] [--scope-file <p>] [--ac-file <p>] [--story-origin-file <p>] [--plan-metadata-file <p>] [--verification-commands-file <p>] [--reproduction-file <p>] [--root-cause-file <p>] [--fix-direction-file <p>] [--out-of-scope-file <p>] [--parent <N>] [--sub-issue-list-file <p>] [--idea-file <p>] [--priority <P>] [--size <S>] [--estimate <hours>] [--rank <n>] [--start-time <iso>] [--kind <kind>] [--changed-paths-file <p>]',
   },
+  'capture-actions': {
+    group: 'GitHub',
+    path: 'scripts/task-tracker/capture-actions.mjs',
+    synopsis: 'Control and inspect temporary, local capture of GitHub-bound task actions.',
+    audience:
+      'AI/operator running the #1295 capture experiment for the active or explicitly selected issue.',
+    usage: 'aitm capture-actions <on|off|status|summary> [--issue N] [--json]',
+  },
   'set-priority': {
     group: 'GitHub',
     path: 'scripts/gh/set-priority.mjs',
@@ -259,6 +267,11 @@ const ROUTABLE_ARGUMENTS = Object.freeze({
     argument('--kind <kind>', 'Issue kind used to filter Definition of Done items.'),
     argument('--changed-paths-file <path>', 'Changed-path evidence used for DoD filtering.'),
   ],
+  'capture-actions': [
+    argument('on|off|status|summary', 'Enable, disable, inspect, or summarize capture.'),
+    argument('--issue <N>', 'Target issue; defaults to the active bound issue.'),
+    argument('--json', 'Emit machine-readable status or summary output.'),
+  ],
   'set-priority': [
     argument('<issue#>', 'Issue to update.'),
     argument('<p0|p1|p2|p3>', 'Priority value.'),
@@ -418,6 +431,22 @@ const ROUTABLE_CONTRACTS = Object.freeze({
       'npx aitm preflight-issue --check-integrity 1023',
     ],
     relatedCommands: ['create-issue', 'evidence-markers'],
+  }),
+  'capture-actions': routableContract({
+    output: [
+      'Prints enablement status or corpus counts, serialized bytes, payload bytes, and mutation-kind totals.',
+    ],
+    exitCodes: [
+      exitCode(0, 'control or inspection completed'),
+      exitCode(1, 'configuration or local corpus operation failed'),
+      exitCode(2, 'command, issue, or repository context is invalid'),
+    ],
+    examples: [
+      'npx aitm capture-actions on',
+      'npx aitm capture-actions summary --issue 1295 --json',
+      'npx aitm capture-actions off',
+    ],
+    relatedCommands: ['status', 'issue-body'],
   }),
   'set-priority': routableContract({
     output: ['Prints each issue whose project Priority field was updated.'],

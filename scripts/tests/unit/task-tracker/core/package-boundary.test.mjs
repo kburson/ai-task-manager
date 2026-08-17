@@ -86,7 +86,9 @@ function repoRoot() {
 // guard, growing the measured package surface by exactly one entry.
 // #1268 adds three required co-review runtime modules to the shipped package.
 // #1208 adds one pure scheduling seam for the bounded subprocess phase.
-const ENTRY_CEILING = 664;
+// #1295 adds the temporary capture guide, control CLI, process shim, and capture
+// authority module. The four files are required for installed-package parity.
+const ENTRY_CEILING = 668;
 
 function packedFiles() {
   const out = execFileSync('npm', ['pack', '--dry-run', '--json'], {

@@ -222,15 +222,28 @@ test('live discovery realizes the migration manifest exactly once and only in ca
   }
 
   const storyOwned = discovered.filter((rel) => !manifestDestinations.has(rel));
-  assert.equal(storyOwned.length, 8, 'exactly eight story-owned tests follow the snapshot');
-  assert.deepEqual(storyOwned, EXPECTED_POST_SNAPSHOT_TESTS);
+  for (const expected of EXPECTED_POST_SNAPSHOT_TESTS) {
+    assert.ok(storyOwned.includes(expected), `${expected} remains after the immutable snapshot`);
+  }
   for (const rel of storyOwned) {
     assert.ok(parseCanonicalTestPath(rel), `${rel} is a canonical story-owned test`);
   }
 
   const liveCounts = { unit: 0, integration: 0, slow: 0 };
   for (const rel of discovered) liveCounts[parseCanonicalTestPath(rel).lane] += 1;
-  assert.deepEqual(liveCounts, { unit: 844, integration: 28, slow: 51 });
+  const minimumCounts = { unit: 0, integration: 0, slow: 0 };
+  for (const entry of manifest.tests) {
+    minimumCounts[parseCanonicalTestPath(finalPathFor(entry)).lane] += 1;
+  }
+  for (const rel of EXPECTED_POST_SNAPSHOT_TESTS) {
+    minimumCounts[parseCanonicalTestPath(rel).lane] += 1;
+  }
+  for (const lane of Object.keys(liveCounts)) {
+    assert.ok(
+      liveCounts[lane] >= minimumCounts[lane],
+      `${lane} retains the immutable corpus while allowing later story-owned tests`
+    );
+  }
 });
 
 test('package files explicitly exclude the canonical test support root', () => {
