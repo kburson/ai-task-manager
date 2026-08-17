@@ -88,21 +88,21 @@ the series) but a diagram's subject doesn't change. The mapping below is the cur
 article-to-diagram assignment, not a filename convention.
 
 | Article | Primary Visual                               | `.mmd` filename                    | Secondary Visual                  | `.mmd` filename                 |
-| ------- | --------------------------------------------- | ----------------------------------- | ---------------------------------- | --------------------------------- |
-| 01      | Tooling weight migration (local to cloud)    | `tooling-weight-migration.mmd`      | —                                  | —                                  |
-| 02      | Technical Product Operations operating model | `technical-product-operations.mmd`  | Syntax inversion                   | `syntax-inversion.mmd`            |
-| 03      | Vibe coding vs story-governed delivery       | `vibe-coding-hangover.mmd`          | Review debt loop                   | `review-debt-loop.mmd`            |
-| 04      | Spec/backlog/evidence stack                  | `spec-driven-is-not-enough.mmd`     | Spec-to-story lifecycle            | `spec-to-story-lifecycle.mmd`     |
-| 05      | TPO/TPM above agent fleet                    | `technical-product-owner.mmd`       | Human/agent responsibility split   | `responsibility-split.mmd`        |
-| 06      | Backlog item as contract                     | `backlog-as-control-plane.mmd`      | Board state control plane          | `board-state-control-plane.mmd`   |
-| 07      | Progressive WBS to atomic PBI                | `just-in-time-planner.mmd`          | Blocking-defect pivot loop         | `blocking-defect-pivot.mmd`       |
-| 08      | Tiered loader and post-compaction recovery   | `context-durability.mmd`            | Context authority layers           | `context-authority-layers.mmd`    |
-| 09      | Evidence-gated state machine                 | `evidence-beats-trust.mmd`          | Evidence record anatomy            | `evidence-record-anatomy.mmd`     |
-| 10      | Adapter architecture                         | `adapter-future.mmd`                | Vendor API surface map             | `vendor-api-surface.mmd`          |
-| 11      | Merge-gate contention                        | `merge-gate-contention.mmd`         | Decompose vs. shared-repo scaling  | `decompose-vs-shared-repo.mmd`    |
-| 12      | XP practice fates (mechanized/moved/broken)  | `xp-practice-fates.mmd`             | —                                  | —                                  |
-| 13      | Review scrutiny inversion (spec vs code)     | `review-scrutiny-inversion.mmd`     | —                                  | —                                  |
-| 14      | Author/reviewer review loop                  | `author-reviewer-loop.mmd`          | —                                  | —                                  |
+| ------- | -------------------------------------------- | ---------------------------------- | --------------------------------- | ------------------------------- |
+| 01      | Tooling weight migration (local to cloud)    | `tooling-weight-migration.mmd`     | —                                 | —                               |
+| 02      | Technical Product Operations operating model | `technical-product-operations.mmd` | Syntax inversion                  | `syntax-inversion.mmd`          |
+| 03      | Vibe coding vs story-governed delivery       | `vibe-coding-hangover.mmd`         | Review debt loop                  | `review-debt-loop.mmd`          |
+| 04      | Spec/backlog/evidence stack                  | `spec-driven-is-not-enough.mmd`    | Spec-to-story lifecycle           | `spec-to-story-lifecycle.mmd`   |
+| 05      | TPO/TPM above agent fleet                    | `technical-product-owner.mmd`      | Human/agent responsibility split  | `responsibility-split.mmd`      |
+| 06      | Backlog item as contract                     | `backlog-as-control-plane.mmd`     | Board state control plane         | `board-state-control-plane.mmd` |
+| 07      | Progressive WBS to atomic PBI                | `just-in-time-planner.mmd`         | Blocking-defect pivot loop        | `blocking-defect-pivot.mmd`     |
+| 08      | Tiered loader and post-compaction recovery   | `context-durability.mmd`           | Context authority layers          | `context-authority-layers.mmd`  |
+| 09      | Evidence-gated state machine                 | `evidence-beats-trust.mmd`         | Evidence record anatomy           | `evidence-record-anatomy.mmd`   |
+| 10      | Adapter architecture                         | `adapter-future.mmd`               | Vendor API surface map            | `vendor-api-surface.mmd`        |
+| 11      | Merge-gate contention                        | `merge-gate-contention.mmd`        | Decompose vs. shared-repo scaling | `decompose-vs-shared-repo.mmd`  |
+| 12      | XP practice fates (mechanized/moved/broken)  | `xp-practice-fates.mmd`            | —                                 | —                               |
+| 13      | Review scrutiny inversion (spec vs code)     | `review-scrutiny-inversion.mmd`    | —                                 | —                               |
+| 14      | Author/reviewer review loop                  | `author-reviewer-loop.mmd`         | —                                 | —                               |
 
 ## Header Image Guidance
 

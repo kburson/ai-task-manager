@@ -2,7 +2,7 @@
 
 **XP's Practices Survived. Their Reasons Did Not.**
 
-*Twelve practices, one bottleneck. The bottleneck moved — most of the practices moved with it.*
+_Twelve practices, one bottleneck. The bottleneck moved — most of the practices moved with it._
 
 <!-- markdownlint-disable MD034 -->
 
@@ -17,7 +17,7 @@ I've been building a skill for agentic agile delivery (`@kburson/ai-task-manager
 
 ## Testing: it used to be design pressure. Now it's a receipt.
 
-Test-first was never really about coverage. The whole point was that writing the test *first* forced you to think through the interface before you built the thing — the test was a design tool, and the discipline of writing it early was where the value lived.
+Test-first was never really about coverage. The whole point was that writing the test _first_ forced you to think through the interface before you built the thing — the test was a design tool, and the discipline of writing it early was where the value lived.
 
 That discipline just doesn't survive an agent that writes the test and the implementation in the same breath. There's no gap in time between "decide the interface" and "build it" for the pressure to do its work in. So what's left is the artifact — a test that proves something happened, after the fact, instead of a test that shaped a decision before it happened. AITM leans into exactly this: a story can't move forward until it points at the specific test that proves each requirement — not "tests pass" in general, but this test proves this requirement, checked automatically before the gate opens. Same ritual, red then green. Completely different job. It used to be a design instrument. Now it's a receipt.
 
@@ -26,11 +26,11 @@ That discipline just doesn't survive an agent that writes the test and the imple
 Pairing at a single keyboard bundled together four things that had no real reason to travel as a package, except that a human pair was the only tool available to do all four at once:
 
 - **Catching mistakes in real time** — mechanized. CI, lint, and gates do
-what a navigator used to do by looking over your shoulder.
+  what a navigator used to do by looking over your shoulder.
 - **Enforcing discipline** — "you don't get to skip the test" is now a
-script that exits nonzero instead of a person insisting on it. That's literally what AITM's `verify-develop.mjs` and its evidence gates are: a state machine that just refuses to move forward.
+  script that exits nonzero instead of a person insisting on it. That's literally what AITM's `verify-develop.mjs` and its evidence gates are: a state machine that just refuses to move forward.
 - **Design conversation** — this one didn't disappear, it moved earlier
-and went async. AITM's co-review tool has one agent write a spec or plan and a second agent review it, back and forth, before any implementation starts. Author and reviewer. Driver and navigator, just relocated to a different stage of the work.
+  and went async. AITM's co-review tool has one agent write a spec or plan and a second agent review it, back and forth, before any implementation starts. Author and reviewer. Driver and navigator, just relocated to a different stage of the work.
 - **Knowledge transfer** — nothing replaced it. This is the crack.
 
 That last one is worth sitting on for a second, because it's the loss an old XP hand would actually recognize. Pair rotation existed so more than one person understood any given piece of the system. Nobody rotates through agent-generated code the same way. There's a real chance nobody on the team has actually read what shipped. Three of pairing's four jobs got automated cleanly. The fourth got quietly dropped on the floor.
@@ -94,7 +94,7 @@ None of XP's twelve practices got thrown out entirely, and none of them survived
 
 Syntax gets cheaper. Intent, architecture, verification, and fit get more expensive. XP's practices were never really about process for its own sake — they were scaffolding built around a review bottleneck. That bottleneck moved. Most of the scaffolding moved with it. One piece didn't, and that's the piece worth keeping an eye on.
 
-*(One thread I'm leaving open on purpose: the human tiebreaker only works if the human still understands the codebase well enough to make the call. That's not automatic for a person, and it's not automatic for an AI reviewer either. Next up — does a single reviewer, human or AI, actually know enough to say what's safe to land, and what happens when you hand that job to two reviewers instead of one.)*
+_(One thread I'm leaving open on purpose: the human tiebreaker only works if the human still understands the codebase well enough to make the call. That's not automatic for a person, and it's not automatic for an AI reviewer either. Next up — does a single reviewer, human or AI, actually know enough to say what's safe to land, and what happens when you hand that job to two reviewers instead of one.)_
 
 ## Series Link
 
@@ -102,22 +102,22 @@ The concurrency ceiling from the last article is a symptom of the same shift XP 
 
 ## Series Roadmap
 
-| Status      | #      | Article                                                                                         | Role In Series                                          |
-| ----------- | ------ | ------------------------------------------------------------------------------------------------ | --------------------------------------------------------- |
-|             | 01     | [The Refactoring Bloat Precursor](01-the-refactoring-bloat-precursor.md)                        | Prequel: history of AI-assisted coding before agents      |
-|             | 02     | [The Rise Of Technical Product Operations](02-the-backlog-governance-postulate.md)              | Industry thesis: Technical Product Operations              |
-|             | 03     | [The Vibe Coding Hangover](03-the-vibe-coding-deficiency.md)                                    | Failure mode: vibe slop and review debt                    |
-|             | 04     | [Spec-Driven Development Is Necessary But Not Sufficient](04-the-spec-driven-insufficiency.md)  | Why specs need execution governance                        |
-|             | 05     | [The Rise Of The Technical Product Owner](05-the-product-owner-escalation.md)                   | Human operator: TPO/TPM as delivery architect               |
-|             | 06     | [The Backlog Becomes The Control Plane](06-the-backlog-control-plane-conjecture.md)             | Backlog as executable control surface                       |
-|             | 07     | [The Just-In-Time Planner](07-the-just-in-time-planning-paradox.md)                             | Progressive decomposition and deep dives                    |
-|             | 08     | [Context Durability Is A Feature](08-the-context-durability-corollary.md)                       | JIT loading and post-compaction recovery                     |
-|             | 09     | [Evidence Beats Trust](09-the-evidence-over-trust-theorem.md)                                   | Evidence gates and auditability                               |
-|             | 10     | [The Adapter Future](10-the-adapter-convergence.md)                                             | Backlog and agent platform adapters                            |
-|             | 11     | [Agentic Concurrency Isn't Free — And "50 Parallel Agents" Is Hyperbole](11-the-agentic-concurrency-deficiency.md) | Concurrency ceiling and coordination cost |
-| **Current** | **12** | **[XP's Practices Survived. Their Reasons Did Not.](12-the-xp-survival-anomaly.md)**             | XP practices under agentic delivery                          |
-|             | 13     | [The Diff Isn't Where Your Judgment Lives Anymore](13-the-diff-displacement.md)                 | Spec review displaces code review                             |
-|             | 14     | [It's All About Perspective](14-the-second-reviewer-corollary.md)                               | Cross-model review for a genuine second opinion                |
+| Status      | #      | Article                                                                                                            | Role In Series                                       |
+| ----------- | ------ | ------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------- |
+|             | 01     | [The Refactoring Bloat Precursor](01-the-refactoring-bloat-precursor.md)                                           | Prequel: history of AI-assisted coding before agents |
+|             | 02     | [The Rise Of Technical Product Operations](02-the-backlog-governance-postulate.md)                                 | Industry thesis: Technical Product Operations        |
+|             | 03     | [The Vibe Coding Hangover](03-the-vibe-coding-deficiency.md)                                                       | Failure mode: vibe slop and review debt              |
+|             | 04     | [Spec-Driven Development Is Necessary But Not Sufficient](04-the-spec-driven-insufficiency.md)                     | Why specs need execution governance                  |
+|             | 05     | [The Rise Of The Technical Product Owner](05-the-product-owner-escalation.md)                                      | Human operator: TPO/TPM as delivery architect        |
+|             | 06     | [The Backlog Becomes The Control Plane](06-the-backlog-control-plane-conjecture.md)                                | Backlog as executable control surface                |
+|             | 07     | [The Just-In-Time Planner](07-the-just-in-time-planning-paradox.md)                                                | Progressive decomposition and deep dives             |
+|             | 08     | [Context Durability Is A Feature](08-the-context-durability-corollary.md)                                          | JIT loading and post-compaction recovery             |
+|             | 09     | [Evidence Beats Trust](09-the-evidence-over-trust-theorem.md)                                                      | Evidence gates and auditability                      |
+|             | 10     | [The Adapter Future](10-the-adapter-convergence.md)                                                                | Backlog and agent platform adapters                  |
+|             | 11     | [Agentic Concurrency Isn't Free — And "50 Parallel Agents" Is Hyperbole](11-the-agentic-concurrency-deficiency.md) | Concurrency ceiling and coordination cost            |
+| **Current** | **12** | **[XP's Practices Survived. Their Reasons Did Not.](12-the-xp-survival-anomaly.md)**                               | XP practices under agentic delivery                  |
+|             | 13     | [The Diff Isn't Where Your Judgment Lives Anymore](13-the-diff-displacement.md)                                    | Spec review displaces code review                    |
+|             | 14     | [It's All About Perspective](14-the-second-reviewer-corollary.md)                                                  | Cross-model review for a genuine second opinion      |
 
 ## LinkedIn Article Shape
 
@@ -138,11 +138,11 @@ Close:
 
 ## Bibliography
 
-- Beck, Kent. *Extreme Programming Explained: Embrace Change.*
-Addison-Wesley, 1999.
+- Beck, Kent. _Extreme Programming Explained: Embrace Change._
+  Addison-Wesley, 1999.
 - AI Task Manager. "Measurement and ROI."
-https://github.com/kburson/ai-task-manager/blob/trunk/docs/introduction/measurement-and-roi.md
+  https://github.com/kburson/ai-task-manager/blob/trunk/docs/introduction/measurement-and-roi.md
 - AI Task Manager. "How AI Task Manager Keeps Agent Context Small and
-Rules Fresh." https://github.com/kburson/ai-task-manager/blob/trunk/docs/introduction/context-management-skill-architecture.md
+  Rules Fresh." https://github.com/kburson/ai-task-manager/blob/trunk/docs/introduction/context-management-skill-architecture.md
 - DORA. "State of AI-assisted Software Development 2025."
-https://dora.dev/dora-report-2025/
+  https://dora.dev/dora-report-2025/
