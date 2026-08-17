@@ -75,7 +75,7 @@ Distilled from a line-by-line editorial pass on article 01. These are mechanical
 - **Keep the narrator warm, never corrective.** Don't let a sentence carry an implicit "well, actually" tone toward the reader, even as a trailing clause. If a line reads like it's scolding someone for getting a timeline wrong, cut it.
 - **Every section earns its place with a "why this matters," not just a "what happened."** A run of dates and version numbers with no connective tissue back to the thesis reads as a changelog dump — cut it or fold it into a sentence that does have a why.
 - **Match citation depth to what the primary audience can follow.** A niche competitive-landscape detail (a rival's product timeline three products removed from the thesis) reads as noise to a PM/TPO reader, even if it's accurate.
-- **Say the object of a claim, not just the claim.** "No longer the bottleneck" needs "of what" — name the thing it's a bottleneck _in_ (e.g., "getting an idea from concept to customer"). Avoid double-negative-shaped phrasing ("stopping being") even when grammatically legal — it reads wrong.
+- **Say the object of a claim, not just the claim.** "No longer the bottleneck" needs "of what" — name the thing it's a bottleneck *in* (e.g., "getting an idea from concept to customer"). Avoid double-negative-shaped phrasing ("stopping being") even when grammatically legal — it reads wrong.
 - **Prefer warm, direct address over formal series-mechanics language.** "Here's where the rest of the series picks up," not "The series proper picks up from here." Talk to the reader, don't narrate the publishing structure at them.
 
 ## Provocation Rules
