@@ -1,6 +1,5 @@
 // @story #1266
 
-import { execFileSync } from 'node:child_process';
 import { createHash, randomUUID } from 'node:crypto';
 import {
   appendFileSync,
@@ -19,6 +18,7 @@ import path from 'node:path';
 
 import { resolveArchiveDestination } from './archive.mjs';
 import { planAbsoluteBudget, planContinuationBudget } from './budget.mjs';
+import { REAL_REPOSITORY_BOUNDARY } from './repository-boundary.mjs';
 
 export const STATE_SCHEMA = 'aitm.co-review/v1';
 export const EVENT_SCHEMA = 'aitm.co-review-event/v1';
@@ -40,24 +40,17 @@ function fail(code, detail, options) {
   throw new ProtocolError(code, detail, options);
 }
 
-function git(cwd, args, options = {}) {
+function repositoryCall(code, detail, operation) {
   try {
-    return execFileSync('git', args, {
-      cwd,
-      encoding: options.buffer ? null : 'utf8',
-      stdio: ['ignore', 'pipe', 'pipe'],
-      shell: false,
-    });
+    return operation();
   } catch (error) {
-    if (options.allowFailure) return null;
-    const detail = error.stderr?.toString().trim() || args.join(' ');
-    fail(options.code ?? 'git', detail);
+    if (error instanceof ProtocolError) throw error;
+    fail(code, error.stderr?.toString().trim() || detail);
   }
 }
 
-function repositoryRoot(cwd) {
-  const value = git(cwd, ['rev-parse', '--show-toplevel'], { code: 'not-a-repository' }).trim();
-  return realpathSync(value);
+function repositoryRoot(cwd, repository) {
+  return repositoryCall('not-a-repository', String(cwd), () => repository.repositoryRoot(cwd));
 }
 
 function relativePath(root, candidate, label) {
@@ -115,69 +108,57 @@ function digestFile(root, candidate, label = 'artifact') {
   return { path: resolved.relative, sha256: digestBuffer(readFileSync(resolved.absolute)) };
 }
 
-function assertIgnored(root, runtime) {
-  const ignored = git(root, ['check-ignore', '--quiet', '--', runtime.relative], {
-    allowFailure: true,
-  });
-  if (ignored === null) fail('runtime-not-ignored', runtime.relative);
-  const tracked = git(root, ['ls-files', '--error-unmatch', '--', runtime.relative], {
-    allowFailure: true,
-  });
-  if (tracked !== null) fail('runtime-tracked', runtime.relative);
+function assertIgnored(root, runtime, repository) {
+  const status = repositoryCall('git', runtime.relative, () =>
+    repository.runtimeStatus(root, runtime.relative)
+  );
+  if (!status.ignored) fail('runtime-not-ignored', runtime.relative);
+  if (status.tracked) fail('runtime-tracked', runtime.relative);
 }
 
-function assertTrackedArtifact(root, artifact) {
+function assertTrackedArtifact(root, artifact, repository) {
   const resolved = relativePath(root, artifact, 'artifact');
   if (!existsSync(resolved.absolute)) {
     fail('missing-artifact', resolved.relative);
   }
   if (!lstatSync(resolved.absolute).isFile()) fail('artifact-not-regular', resolved.relative);
-  if (
-    git(root, ['ls-files', '--error-unmatch', '--', resolved.relative], { allowFailure: true }) ===
-    null
-  ) {
+  const runtime = repositoryCall('git', resolved.relative, () =>
+    repository.runtimeStatus(root, resolved.relative)
+  );
+  if (!runtime.tracked) {
     fail('artifact-untracked', resolved.relative);
   }
-  const worktree = readFileSync(resolved.absolute);
-  const index = git(root, ['show', `:${resolved.relative}`], {
-    buffer: true,
-    code: 'artifact-index',
-  });
-  const head = git(root, ['show', `HEAD:${resolved.relative}`], {
-    buffer: true,
-    code: 'artifact-head',
-  });
+  const observed = repositoryCall('artifact-index', resolved.relative, () =>
+    repository.trackedArtifact(root, resolved.relative)
+  );
+  const { worktree, index, head } = observed;
   if (!worktree.equals(index) || !index.equals(head)) fail('artifact-drift', resolved.relative);
   return {
     path: resolved.relative,
-    commit: git(root, ['rev-parse', 'HEAD']).trim(),
-    blob: git(root, ['rev-parse', `HEAD:${resolved.relative}`]).trim(),
+    commit: observed.commit,
+    blob: observed.blob,
     sha256: digestBuffer(worktree),
   };
 }
 
-function exactReachableCommit(root, revision) {
-  const commit = git(root, ['rev-parse', '--verify', `${revision}^{commit}`], {
-    allowFailure: true,
-  });
-  if (commit === null) fail('git-commit', String(revision));
-  const exact = commit.trim();
-  if (git(root, ['merge-base', '--is-ancestor', exact, 'HEAD'], { allowFailure: true }) === null) {
-    fail('git-commit-unreachable', exact);
-  }
-  return exact;
+function exactReachableCommit(root, revision, repository) {
+  const observed = repositoryCall('git', String(revision), () =>
+    repository.resolveReachableCommit(root, revision)
+  );
+  if (observed.commit === null) fail('git-commit', String(revision));
+  if (!observed.reachable) fail('git-commit-unreachable', observed.commit);
+  return observed.commit;
 }
 
-function assertCommitArtifact(root, commit, artifact) {
-  const bytes = git(root, ['show', `${commit}:${artifact.path}`], {
-    buffer: true,
-    allowFailure: true,
-  });
-  if (bytes === null) fail('commit-missing-artifact', `${commit}:${artifact.path}`);
-  if (!bytes.equals(readFileSync(path.join(root, artifact.path)))) {
+function assertCommitArtifact(root, commit, artifact, repository) {
+  const observed = repositoryCall('git', `${commit}:${artifact.path}`, () =>
+    repository.committedArtifact(root, commit, artifact.path)
+  );
+  if (observed === null) fail('commit-missing-artifact', `${commit}:${artifact.path}`);
+  if (!observed.bytes.equals(readFileSync(path.join(root, artifact.path)))) {
     fail('artifact-drift', `${commit}:${artifact.path}`);
   }
-  return git(root, ['rev-parse', `${commit}:${artifact.path}`]).trim();
+  return observed.blob;
 }
 
 function readLockOwner(lock) {
@@ -379,8 +360,8 @@ function sameInitialization(state, desired) {
   return JSON.stringify(state.initialization) === JSON.stringify(desired);
 }
 
-export function readProtocol({ cwd = process.cwd(), dir }) {
-  const root = repositoryRoot(cwd);
+export function readProtocol({ cwd = process.cwd(), dir, repository = REAL_REPOSITORY_BOUNDARY }) {
+  const root = repositoryRoot(cwd, repository);
   const paths = protocolPaths(root, dir);
   if (!existsSync(paths.state)) fail('not-initialized', paths.relative);
   try {
@@ -401,6 +382,7 @@ export function initializeProtocol({
   importReview,
   reviewOf,
   archiveDir,
+  repository = REAL_REPOSITORY_BOUNDARY,
 }) {
   const normalizedOwner = String(owner || '').trim();
   const normalizedReviewer = String(reviewer || '').trim();
@@ -418,13 +400,18 @@ export function initializeProtocol({
     fail('import-exhausts-budget', 'imported R1 requires --max-turns >= 2', { exitCode: 2 });
   }
 
-  const root = repositoryRoot(cwd);
+  const root = repositoryRoot(cwd, repository);
   const paths = protocolPaths(root, dir);
-  assertIgnored(root, paths);
+  assertIgnored(root, paths, repository);
   const archive = archiveDir
-    ? resolveArchiveDestination({ cwd: root, archiveDir, runtimeDir: paths.relative })
+    ? resolveArchiveDestination({
+        cwd: root,
+        archiveDir,
+        runtimeDir: paths.relative,
+        repository,
+      })
     : null;
-  const artifactRecord = assertTrackedArtifact(root, artifact);
+  const artifactRecord = assertTrackedArtifact(root, artifact, repository);
   let importedReview = null;
   let importedCommit = null;
   if (importReview) {
@@ -433,8 +420,8 @@ export function initializeProtocol({
     if (!importAbsolute.startsWith(`${paths.absolute}${path.sep}`)) {
       fail('import-outside-runtime', importedReview.path);
     }
-    importedCommit = exactReachableCommit(root, reviewOf);
-    artifactRecord.blob = assertCommitArtifact(root, importedCommit, artifactRecord);
+    importedCommit = exactReachableCommit(root, reviewOf, repository);
+    artifactRecord.blob = assertCommitArtifact(root, importedCommit, artifactRecord, repository);
   }
 
   const initialization = {
@@ -451,7 +438,7 @@ export function initializeProtocol({
 
   return withMutex(paths, 'system', 'init', () => {
     if (existsSync(paths.state)) {
-      const existing = readProtocol({ cwd: root, dir: paths.relative });
+      const existing = readProtocol({ cwd: root, dir: paths.relative, repository });
       if (sameInitialization(existing, initialization)) return existing;
       fail('already-initialized', paths.relative);
     }
@@ -463,7 +450,7 @@ export function initializeProtocol({
       protocolId: randomUUID(),
       repositoryRoot: root,
       worktree: root,
-      branch: git(root, ['branch', '--show-current']).trim(),
+      branch: repositoryCall('git', 'repository identity', () => repository.identity(root)).branch,
       revision: 1,
       lifecycle: 'active',
       roles: { owner: initialization.owner, reviewer: initialization.reviewer },
@@ -498,8 +485,9 @@ export function initializeProtocol({
 }
 
 export function statusProtocol(options) {
-  const state = readProtocol(options);
-  const root = repositoryRoot(options.cwd ?? process.cwd());
+  const repository = options.repository ?? REAL_REPOSITORY_BOUNDARY;
+  const state = readProtocol({ ...options, repository });
+  const root = repositoryRoot(options.cwd ?? process.cwd(), repository);
   const paths = protocolPaths(root, options.dir);
   const errors = eventIntegrity(paths, state);
   for (const artifact of Object.values(state.immutableArtifacts ?? {})) {
@@ -533,12 +521,16 @@ export function statusProtocol(options) {
       if (worktree.sha256 !== state.artifact.sha256) {
         errors.push(`artifact-drift ${state.artifact.path}: owner handoff changed`);
       }
-      const head = git(root, ['rev-parse', 'HEAD']).trim();
-      if (head !== state.artifact.commit) {
-        errors.push(`branch-drift: expected ${state.artifact.commit}, actual ${head}`);
+      const identity = repositoryCall('git-integrity', 'repository identity', () =>
+        repository.identity(root)
+      );
+      if (identity.head !== state.artifact.commit) {
+        errors.push(`branch-drift: expected ${state.artifact.commit}, actual ${identity.head}`);
       }
-      const index = git(root, ['show', `:${state.artifact.path}`], { buffer: true });
-      if (digestBuffer(index) !== state.artifact.sha256) {
+      const observed = repositoryCall('git-integrity', state.artifact.path, () =>
+        repository.trackedArtifact(root, state.artifact.path)
+      );
+      if (digestBuffer(observed.index) !== state.artifact.sha256) {
         errors.push(`index-drift ${state.artifact.path}`);
       }
     } catch (error) {
@@ -571,11 +563,16 @@ function assertIntegrity(options) {
   return readProtocol(options);
 }
 
-export function claimTurn({ cwd = process.cwd(), dir, actor }) {
-  const root = repositoryRoot(cwd);
+export function claimTurn({
+  cwd = process.cwd(),
+  dir,
+  actor,
+  repository = REAL_REPOSITORY_BOUNDARY,
+}) {
+  const root = repositoryRoot(cwd, repository);
   const paths = protocolPaths(root, dir);
   return withMutex(paths, actor, 'claim', () => {
-    const state = assertIntegrity({ cwd: root, dir: paths.relative });
+    const state = assertIntegrity({ cwd: root, dir: paths.relative, repository });
     const role = Object.entries(state.roles).find(([, identity]) => identity === actor)?.[0];
     if (!role) fail('unknown-actor', String(actor));
     if (state.lifecycle !== 'active') fail('terminal', state.lifecycle);
@@ -583,7 +580,7 @@ export function claimTurn({ cwd = process.cwd(), dir, actor }) {
       fail('wrong-role', `${actor} maps to ${role}; current role is ${state.currentRole}`);
     }
     if (state.turnState === 'claimed' && state.claim?.actor === actor)
-      return readProtocol({ cwd: root, dir: paths.relative });
+      return readProtocol({ cwd: root, dir: paths.relative, repository });
     if (state.turnState !== 'available') fail('not-available', state.turnState);
     const at = new Date().toISOString();
     const next = validateState({
@@ -660,14 +657,20 @@ function nextSupplementId(supplements) {
   return `S-${String(highest + 1).padStart(3, '0')}`;
 }
 
-export function registerSupplement({ cwd = process.cwd(), dir, file, humanLogin }) {
+export function registerSupplement({
+  cwd = process.cwd(),
+  dir,
+  file,
+  humanLogin,
+  repository = REAL_REPOSITORY_BOUNDARY,
+}) {
   const registeredBy = String(humanLogin || '').trim();
   if (!registeredBy)
     fail('github-login', 'non-blank authenticated login required', { exitCode: 2 });
-  const root = repositoryRoot(cwd);
+  const root = repositoryRoot(cwd, repository);
   const paths = protocolPaths(root, dir);
   return withMutex(paths, registeredBy, 'supplement', () => {
-    const current = readProtocol({ cwd: root, dir: paths.relative });
+    const current = readProtocol({ cwd: root, dir: paths.relative, repository });
     if (current.lifecycle !== 'intervention-required') {
       fail('supplement-state', current.lifecycle);
     }
@@ -681,12 +684,12 @@ export function registerSupplement({ cwd = process.cwd(), dir, file, humanLogin 
     );
     if (existing) {
       if (existing.sha256 === artifact.sha256) {
-        assertIntegrity({ cwd: root, dir: paths.relative });
-        return readProtocol({ cwd: root, dir: paths.relative });
+        assertIntegrity({ cwd: root, dir: paths.relative, repository });
+        return readProtocol({ cwd: root, dir: paths.relative, repository });
       }
       fail('supplement-conflict', artifact.path);
     }
-    const state = assertIntegrity({ cwd: root, dir: paths.relative });
+    const state = assertIntegrity({ cwd: root, dir: paths.relative, repository });
     const at = new Date().toISOString();
     const supplement = {
       id: nextSupplementId(state.supplements ?? []),
@@ -763,30 +766,31 @@ function validateResponse(root, reviewArtifact, responseArtifact) {
   }
 }
 
-function committedOwnerArtifact(root, state, artifact, revision) {
+function committedOwnerArtifact(root, state, artifact, revision, repository) {
   const resolved = relativePath(root, artifact, 'artifact');
   if (resolved.relative !== state.artifact.path) {
     fail('wrong-artifact', `${resolved.relative}; expected ${state.artifact.path}`);
   }
-  const commit = exactReachableCommit(root, revision);
-  const head = git(root, ['rev-parse', 'HEAD']).trim();
-  if (commit !== head) fail('commit-not-head', `${commit}; HEAD=${head}`);
-  const branch = git(root, ['branch', '--show-current']).trim();
-  if (branch !== state.branch) fail('branch-drift', `${branch}; expected ${state.branch}`);
-  const committed = git(root, ['show', `${commit}:${resolved.relative}`], {
-    buffer: true,
-    allowFailure: true,
-  });
+  const commit = exactReachableCommit(root, revision, repository);
+  const identity = repositoryCall('git', 'repository identity', () => repository.identity(root));
+  if (commit !== identity.head) fail('commit-not-head', `${commit}; HEAD=${identity.head}`);
+  if (identity.branch !== state.branch) {
+    fail('branch-drift', `${identity.branch}; expected ${state.branch}`);
+  }
+  const committed = repositoryCall('git', `${commit}:${resolved.relative}`, () =>
+    repository.committedArtifact(root, commit, resolved.relative)
+  );
   if (committed === null) fail('commit-missing-artifact', `${commit}:${resolved.relative}`);
-  const worktree = readFileSync(resolved.absolute);
-  const index = git(root, ['show', `:${resolved.relative}`], { buffer: true });
-  if (!worktree.equals(committed)) fail('artifact-drift', resolved.relative);
-  if (!index.equals(committed)) fail('index-drift', resolved.relative);
+  const observed = repositoryCall('git', resolved.relative, () =>
+    repository.trackedArtifact(root, resolved.relative)
+  );
+  if (!observed.worktree.equals(committed.bytes)) fail('artifact-drift', resolved.relative);
+  if (!observed.index.equals(committed.bytes)) fail('index-drift', resolved.relative);
   return {
     path: resolved.relative,
     commit,
-    blob: git(root, ['rev-parse', `${commit}:${resolved.relative}`]).trim(),
-    sha256: digestBuffer(committed),
+    blob: committed.blob,
+    sha256: digestBuffer(committed.bytes),
   };
 }
 
@@ -799,11 +803,12 @@ export function handoffOwner({
   commit,
   answers,
   message,
+  repository = REAL_REPOSITORY_BOUNDARY,
 }) {
-  const root = repositoryRoot(cwd);
+  const root = repositoryRoot(cwd, repository);
   const paths = protocolPaths(root, dir);
   return withMutex(paths, actor, 'owner-handoff', () => {
-    const state = assertIntegrity({ cwd: root, dir: paths.relative });
+    const state = assertIntegrity({ cwd: root, dir: paths.relative, repository });
     if (state.lifecycle !== 'active') fail('terminal', state.lifecycle);
     if (state.roles.owner !== actor || state.currentRole !== 'owner') {
       fail('wrong-role', `${actor}; expected owner ${state.roles.owner}`);
@@ -833,7 +838,7 @@ export function handoffOwner({
       fail('response-already-used', responseArtifact.path);
     }
     validateResponse(root, answeredReview, responseArtifact);
-    const artifactRecord = committedOwnerArtifact(root, state, artifact, commit);
+    const artifactRecord = committedOwnerArtifact(root, state, artifact, commit, repository);
     const at = new Date().toISOString();
     const artifacts = {
       response: responseArtifact,
@@ -881,11 +886,12 @@ export function handoffReviewer({
   decision,
   summary,
   message,
+  repository = REAL_REPOSITORY_BOUNDARY,
 }) {
-  const root = repositoryRoot(cwd);
+  const root = repositoryRoot(cwd, repository);
   const paths = protocolPaths(root, dir);
   return withMutex(paths, actor, 'reviewer-handoff', () => {
-    const state = assertIntegrity({ cwd: root, dir: paths.relative });
+    const state = assertIntegrity({ cwd: root, dir: paths.relative, repository });
     if (state.lifecycle !== 'active') fail('terminal', state.lifecycle);
     if (state.roles.reviewer !== actor || state.currentRole !== 'reviewer') {
       fail('wrong-role', `${actor}; expected reviewer ${state.roles.reviewer}`);
@@ -901,7 +907,7 @@ export function handoffReviewer({
     if (ownerHandoff?.from !== 'owner' || !ownerHandoff.commit) {
       fail('missing-owner-handoff', state.round);
     }
-    const exactReviewOf = exactReachableCommit(root, reviewOf);
+    const exactReviewOf = exactReachableCommit(root, reviewOf, repository);
     if (exactReviewOf !== ownerHandoff.commit) {
       fail('review-of', `${exactReviewOf}; expected ${ownerHandoff.commit}`);
     }
@@ -979,16 +985,22 @@ export function handoffReviewer({
   });
 }
 
-export function setMaxReviewTurns({ cwd = process.cwd(), dir, requestedMax, humanLogin }) {
+export function setMaxReviewTurns({
+  cwd = process.cwd(),
+  dir,
+  requestedMax,
+  humanLogin,
+  repository = REAL_REPOSITORY_BOUNDARY,
+}) {
   const approvedBy = String(humanLogin || '').trim();
   if (!approvedBy) fail('github-login', 'non-blank authenticated login required', { exitCode: 2 });
   if (!Number.isInteger(requestedMax) || requestedMax < 0) {
     fail('max-turns', String(requestedMax), { exitCode: 2 });
   }
-  const root = repositoryRoot(cwd);
+  const root = repositoryRoot(cwd, repository);
   const paths = protocolPaths(root, dir);
   return withMutex(paths, approvedBy, 'set-max-turns', () => {
-    const state = assertIntegrity({ cwd: root, dir: paths.relative });
+    const state = assertIntegrity({ cwd: root, dir: paths.relative, repository });
     if (state.lifecycle !== 'active') fail('set-max-turns-state', state.lifecycle);
     let adjustment;
     try {
@@ -1001,7 +1013,7 @@ export function setMaxReviewTurns({ cwd = process.cwd(), dir, requestedMax, huma
       throw error;
     }
     if (adjustment.effectiveMax === state.maxReviewTurns) {
-      return readProtocol({ cwd: root, dir: paths.relative });
+      return readProtocol({ cwd: root, dir: paths.relative, repository });
     }
     const at = new Date().toISOString();
     const next = validateState({
@@ -1025,15 +1037,16 @@ export function continueProtocol({
   additionalTurns,
   humanLogin,
   focus,
+  repository = REAL_REPOSITORY_BOUNDARY,
 }) {
   const approvedBy = String(humanLogin || '').trim();
   if (!approvedBy) {
     fail('github-login', 'non-blank authenticated login required', { exitCode: 2 });
   }
-  const root = repositoryRoot(cwd);
+  const root = repositoryRoot(cwd, repository);
   const paths = protocolPaths(root, dir);
   return withMutex(paths, approvedBy, 'continue', () => {
-    const state = assertIntegrity({ cwd: root, dir: paths.relative });
+    const state = assertIntegrity({ cwd: root, dir: paths.relative, repository });
     if (state.lifecycle !== 'intervention-required') {
       fail('continue-state', state.lifecycle);
     }
@@ -1104,6 +1117,7 @@ export async function waitForTurn({
   actor,
   timeoutSeconds = 55,
   pollMilliseconds = 250,
+  repository = REAL_REPOSITORY_BOUNDARY,
 }) {
   if (!Number.isFinite(timeoutSeconds) || timeoutSeconds < 0 || timeoutSeconds > 60) {
     fail('timeout', String(timeoutSeconds), { exitCode: 2 });
@@ -1111,7 +1125,7 @@ export async function waitForTurn({
   if (!Number.isFinite(pollMilliseconds) || pollMilliseconds <= 0) {
     fail('poll-interval', String(pollMilliseconds), { exitCode: 2 });
   }
-  const first = statusProtocol({ cwd, dir });
+  const first = statusProtocol({ cwd, dir, repository });
   const role = Object.entries(first.roles).find(([, identity]) => identity === actor)?.[0];
   if (!role) fail('unknown-actor', String(actor), { exitCode: 2 });
   const deadline = Date.now() + timeoutSeconds * 1000;
@@ -1126,6 +1140,6 @@ export async function waitForTurn({
     await new Promise((resolve) =>
       setTimeout(resolve, Math.min(pollMilliseconds, Math.max(1, deadline - Date.now())))
     );
-    state = statusProtocol({ cwd, dir });
+    state = statusProtocol({ cwd, dir, repository });
   }
 }

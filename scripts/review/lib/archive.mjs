@@ -1,8 +1,9 @@
 // @story #1268
 
-import { execFileSync } from 'node:child_process';
 import { existsSync, realpathSync } from 'node:fs';
 import path from 'node:path';
+
+import { REAL_REPOSITORY_BOUNDARY } from './repository-boundary.mjs';
 
 function fail(code, detail) {
   const error = new Error(`co-review:${code}:${detail}; no state changed`);
@@ -11,22 +12,12 @@ function fail(code, detail) {
   throw error;
 }
 
-function git(cwd, args, { allowFailure = false } = {}) {
+function repositoryCall(detail, operation) {
   try {
-    return execFileSync('git', args, {
-      cwd,
-      encoding: 'utf8',
-      stdio: ['ignore', 'pipe', 'pipe'],
-      shell: false,
-    });
+    return operation();
   } catch (error) {
-    if (allowFailure) return null;
-    fail('git', error.stderr?.toString().trim() || args.join(' '));
+    fail('git', error.stderr?.toString().trim() || detail);
   }
-}
-
-function repositoryRoot(cwd) {
-  return realpathSync(git(cwd, ['rev-parse', '--show-toplevel']).trim());
 }
 
 function containedPath(root, candidate, label) {
@@ -75,16 +66,22 @@ function inside(parent, candidate) {
   );
 }
 
-export function resolveArchiveDestination({ cwd = process.cwd(), archiveDir, runtimeDir } = {}) {
-  const root = repositoryRoot(cwd);
+export function resolveArchiveDestination({
+  cwd = process.cwd(),
+  archiveDir,
+  runtimeDir,
+  repository = REAL_REPOSITORY_BOUNDARY,
+} = {}) {
+  const root = repositoryCall(String(cwd), () => repository.repositoryRoot(cwd));
   const archive = containedPath(root, archiveDir, 'archive-dir');
   const runtime = containedPath(root, runtimeDir, 'dir');
   if (inside(runtime.absolute, archive.absolute)) {
     fail('archive-runtime-conflict', archive.relative);
   }
-  if (
-    git(root, ['check-ignore', '--quiet', '--', archive.relative], { allowFailure: true }) !== null
-  ) {
+  const status = repositoryCall(archive.relative, () =>
+    repository.runtimeStatus(root, archive.relative)
+  );
+  if (status.ignored) {
     fail('archive-ignored', archive.relative);
   }
   return Object.freeze(archive);
