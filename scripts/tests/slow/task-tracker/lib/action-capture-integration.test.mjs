@@ -42,7 +42,12 @@ const input = readsStdin ? fs.readFileSync(0) : Buffer.alloc(0);
 const output = bodyAt >= 0 ? fs.readFileSync(args[bodyAt + 1]) : input;
 process.stdout.write(output);
 process.stderr.write(process.env.FAKE_GH_STDERR || '');
-process.exit(Number(process.env.FAKE_GH_EXIT || 0));
+if (process.env.FAKE_GH_SIGNAL) {
+  process.kill(process.pid, process.env.FAKE_GH_SIGNAL);
+  setTimeout(() => process.exit(99), 1000);
+} else {
+  process.exit(Number(process.env.FAKE_GH_EXIT || 0));
+}
 `
   );
   chmodSync(realGh, 0o755);
@@ -109,6 +114,23 @@ test('shim preserves piped stdin and fails open when capture metadata is invalid
   assert.equal(result.status, 0);
   assert.deepEqual(result.stdout, input);
   assert.match(result.stderr.toString(), /capture unavailable; continuing without capture/);
+});
+
+test('shim preserves a terminating signal while recording the outcome', () => {
+  const { projectDir, realGh } = fixture();
+  setActionCaptureEnabled({ projectDir, repository: 'o/r', issue: 42, enabled: true });
+  const result = spawnSync(SHIM, ['issue', 'view', '42'], {
+    cwd: projectDir,
+    env: captureEnv(projectDir, realGh, { FAKE_GH_SIGNAL: 'SIGTERM' }),
+  });
+
+  assert.equal(result.status, null);
+  assert.equal(result.signal, 'SIGTERM');
+  const issueDir = captureIssueDir({ projectDir, repository: 'o/r', issue: 42 });
+  const [actionName] = readdirSync(issueDir).filter((name) => /^\d{6}-/.test(name));
+  const outcome = JSON.parse(readFileSync(path.join(issueDir, actionName, 'outcome.json'), 'utf8'));
+  assert.equal(outcome.exitCode, null);
+  assert.equal(outcome.signal, 'SIGTERM');
 });
 
 test('shim does not wait for EOF on an unused execFile stdin pipe', async () => {

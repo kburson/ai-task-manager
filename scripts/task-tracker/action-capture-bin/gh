@@ -88,8 +88,26 @@ async function run() {
     process.stderr.write(bytes);
   });
 
+  const forwardedSignals = ['SIGINT', 'SIGTERM', 'SIGHUP'];
+  const signalHandlers = new Map(
+    forwardedSignals.map((signal) => [
+      signal,
+      () => {
+        if (child.exitCode === null && child.signalCode === null) child.kill(signal);
+      },
+    ])
+  );
+  for (const [signal, handler] of signalHandlers) process.on(signal, handler);
+  const removeSignalHandlers = () => {
+    for (const [signal, handler] of signalHandlers) process.removeListener(signal, handler);
+  };
+
   return new Promise((resolve) => {
+    let settled = false;
     child.on('error', (error) => {
+      if (settled) return;
+      settled = true;
+      removeSignalHandlers();
       finishCapture(handle, {
         exitCode: null,
         signal: null,
@@ -100,12 +118,23 @@ async function run() {
       resolve(1);
     });
     child.on('close', (code, signal) => {
+      if (settled) return;
+      settled = true;
+      removeSignalHandlers();
       finishCapture(handle, {
         exitCode: code,
         signal,
         stdout: Buffer.concat(stdout),
         stderr: Buffer.concat(stderr),
       });
+      if (signal) {
+        try {
+          process.kill(process.pid, signal);
+          return;
+        } catch (error) {
+          warning(`could not preserve gh signal ${signal}: ${error.message}`);
+        }
+      }
       resolve(Number.isInteger(code) ? code : 1);
     });
   });
