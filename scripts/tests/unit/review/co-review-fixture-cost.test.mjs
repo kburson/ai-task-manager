@@ -10,6 +10,7 @@ import {
   memoryProtocol,
   memoryRepositoryFixture,
   readEvents,
+  runCliDirect,
 } from '../../fixtures/co-review-fixture.mjs';
 
 test.afterEach(cleanupTemporaryRoots);
@@ -57,6 +58,13 @@ test('memory fixture completes a protocol without Git or Node subprocesses', asy
     ['init', 'claim', 'owner-handoff', 'claim', 'reviewer-handoff']
   );
   assert.deepEqual(fixture.processCalls, { git: 0, nodeCli: 0 });
+
+  const direct = await runCliDirect(['status', '--dir', options.dir, '--json'], {
+    cwd: fixture.root,
+    repository: fixture.repository,
+  });
+  assert.equal(direct.status, 0, direct.stderr);
+  assert.equal(JSON.parse(direct.stdout).lifecycle, 'accepted');
 });
 
 test('memory repository models identity, publication, reachability, and drift', () => {

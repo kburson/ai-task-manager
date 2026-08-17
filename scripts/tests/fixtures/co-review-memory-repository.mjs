@@ -1,7 +1,7 @@
 // @story #1292
 
 import { createHash } from 'node:crypto';
-import { realpathSync, writeFileSync } from 'node:fs';
+import { readFileSync, realpathSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 
 function oid(kind, bytes) {
@@ -91,8 +91,8 @@ export function createMemoryRepository({
       const normalized = normalize(relative);
       const headBytes = commits.get(head)?.get(normalized);
       const indexBytes = index.get(normalized);
-      const worktreeBytes = worktree.get(normalized);
-      if (!headBytes || !indexBytes || !worktreeBytes) return null;
+      const worktreeBytes = readFileSync(path.join(repositoryRoot, normalized));
+      if (!headBytes || !indexBytes) return null;
       return {
         worktree: Buffer.from(worktreeBytes),
         index: Buffer.from(indexBytes),

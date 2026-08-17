@@ -8,10 +8,10 @@ import test from 'node:test';
 import {
   commitArtifact,
   initializedProtocol,
-  repositoryFixture,
+  memoryRepositoryFixture,
   reviewerTurn,
   rewriteProtocolState,
-  runCli,
+  runCliDirect,
   snapshotProtocol,
 } from './co-review-fixture.mjs';
 
@@ -180,33 +180,36 @@ test('owner handoff refuses a symlinked response artifact', async () => {
   assert.deepEqual(snapshotProtocol(root, options.dir), before);
 });
 
-test('CLI routes the owner handoff and rejects reviewer-only flags', () => {
-  const { root, artifact, initialCommit } = repositoryFixture();
+test('CLI routes the owner handoff and rejects reviewer-only flags', async () => {
+  const { root, artifact, initialCommit } = memoryRepositoryFixture();
   assert.equal(
-    runCli(
-      [
-        'init',
-        '--dir',
-        '.tmp/review',
-        '--artifact',
-        artifact,
-        '--owner',
-        'owner-agent',
-        '--reviewer',
-        'reviewer-agent',
-        '--max-turns',
-        '6',
-      ],
-      { cwd: root }
+    (
+      await runCliDirect(
+        [
+          'init',
+          '--dir',
+          '.tmp/review',
+          '--artifact',
+          artifact,
+          '--owner',
+          'owner-agent',
+          '--reviewer',
+          'reviewer-agent',
+          '--max-turns',
+          '6',
+        ],
+        { cwd: root }
+      )
     ).status,
     0
   );
   assert.equal(
-    runCli(['claim', '--dir', '.tmp/review', '--actor', 'owner-agent'], { cwd: root }).status,
+    (await runCliDirect(['claim', '--dir', '.tmp/review', '--actor', 'owner-agent'], { cwd: root }))
+      .status,
     0
   );
   writeFileSync(path.join(root, '.tmp/review/response.md'), '# Response\n');
-  const handoff = runCli(
+  const handoff = await runCliDirect(
     [
       'handoff',
       '--dir',
@@ -227,7 +230,7 @@ test('CLI routes the owner handoff and rejects reviewer-only flags', () => {
   assert.equal(handoff.status, 0, handoff.stderr);
   assert.equal(JSON.parse(handoff.stdout).currentRole, 'reviewer');
 
-  const invalid = runCli(
+  const invalid = await runCliDirect(
     ['handoff', '--dir', '.tmp/review', '--actor', 'owner-agent', '--review', 'review.md'],
     { cwd: root }
   );
@@ -492,60 +495,66 @@ test('continuation rejects invalid approval, turns, and focus without mutation',
   }
 });
 
-test('CLI routes reviewer acceptance and human continuation flags', () => {
-  const { root, artifact, initialCommit } = repositoryFixture();
-  const common = { cwd: root };
+test('CLI routes reviewer acceptance and human continuation flags', async () => {
+  const { root, artifact, initialCommit } = memoryRepositoryFixture();
+  const common = { cwd: root, resolveGitHubLoginImpl: () => 'human' };
   assert.equal(
-    runCli(
-      [
-        'init',
-        '--dir',
-        '.tmp/review',
-        '--artifact',
-        artifact,
-        '--owner',
-        'owner-agent',
-        '--reviewer',
-        'reviewer-agent',
-        '--max-turns',
-        '1',
-      ],
-      common
+    (
+      await runCliDirect(
+        [
+          'init',
+          '--dir',
+          '.tmp/review',
+          '--artifact',
+          artifact,
+          '--owner',
+          'owner-agent',
+          '--reviewer',
+          'reviewer-agent',
+          '--max-turns',
+          '1',
+        ],
+        common
+      )
     ).status,
     0
   );
   assert.equal(
-    runCli(['claim', '--dir', '.tmp/review', '--actor', 'owner-agent'], common).status,
+    (await runCliDirect(['claim', '--dir', '.tmp/review', '--actor', 'owner-agent'], common))
+      .status,
     0
   );
   writeFileSync(path.join(root, '.tmp/review/response.md'), '# Response\n');
   assert.equal(
-    runCli(
-      [
-        'handoff',
-        '--dir',
-        '.tmp/review',
-        '--actor',
-        'owner-agent',
-        '--response',
-        '.tmp/review/response.md',
-        '--artifact',
-        artifact,
-        '--commit',
-        initialCommit,
-        '--message',
-        'ready',
-      ],
-      common
+    (
+      await runCliDirect(
+        [
+          'handoff',
+          '--dir',
+          '.tmp/review',
+          '--actor',
+          'owner-agent',
+          '--response',
+          '.tmp/review/response.md',
+          '--artifact',
+          artifact,
+          '--commit',
+          initialCommit,
+          '--message',
+          'ready',
+        ],
+        common
+      )
     ).status,
     0
   );
   assert.equal(
-    runCli(['claim', '--dir', '.tmp/review', '--actor', 'reviewer-agent'], common).status,
+    (await runCliDirect(['claim', '--dir', '.tmp/review', '--actor', 'reviewer-agent'], common))
+      .status,
     0
   );
   writeFileSync(path.join(root, '.tmp/review/review.md'), '# Review\n\nAccepted.\n');
-  const accepted = runCli(
+  const accepted = await runCliDirect(
     [
       'handoff',
       '--dir',
@@ -565,7 +574,7 @@ test('CLI routes reviewer acceptance and human continuation flags', () => {
   );
   assert.equal(accepted.status, 0, accepted.stderr);
   assert.equal(JSON.parse(accepted.stdout).lifecycle, 'accepted');
-  const refused = runCli(
+  const refused = await runCliDirect(
     ['continue', '--dir', '.tmp/review', '--additional-turns', '2', '--approved-by', 'human'],
     common
   );

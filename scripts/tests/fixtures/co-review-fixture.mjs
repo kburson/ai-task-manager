@@ -11,6 +11,12 @@ import { createMemoryRepository } from './co-review-memory-repository.mjs';
 const ROOT = path.resolve(fileURLToPath(new URL('../../../', import.meta.url)));
 const CLI = path.join(ROOT, 'scripts/review/co-review.mjs');
 const temporaryRoots = new Set();
+const memoryRepositories = new Map();
+const calls = { git: 0, nodeCli: 0 };
+
+export function processCallCounts() {
+  return { ...calls };
+}
 
 export function temporaryRoot(prefix = 'aitm-co-review-') {
   const root = mkdtempSync(path.join(projectScratchDir('test'), prefix));
@@ -19,6 +25,7 @@ export function temporaryRoot(prefix = 'aitm-co-review-') {
 }
 
 export function runCli(args, { cwd = temporaryRoot() } = {}) {
+  calls.nodeCli += 1;
   return spawnSync(process.execPath, [CLI, ...args], {
     cwd,
     encoding: 'utf8',
@@ -28,10 +35,12 @@ export function runCli(args, { cwd = temporaryRoot() } = {}) {
 
 export async function runCliDirect(args, options = {}) {
   const { runCli: execute } = await import('../../review/co-review.mjs');
+  const repository = options.repository ?? memoryRepositories.get(options.cwd);
   let stdout = '';
   let stderr = '';
   const status = await execute(args, {
     ...options,
+    ...(repository ? { repository } : {}),
     stdout(value) {
       stdout += value;
     },
@@ -43,6 +52,7 @@ export async function runCliDirect(args, options = {}) {
 }
 
 export function runCliAsync(args, { cwd }) {
+  calls.nodeCli += 1;
   return new Promise((resolve) => {
     const child = spawn(process.execPath, [CLI, ...args], {
       cwd,
@@ -60,6 +70,7 @@ export function runCliAsync(args, { cwd }) {
 }
 
 export function git(root, ...args) {
+  calls.git += 1;
   return execFileSync('git', args, { cwd: root, encoding: 'utf8' }).trim();
 }
 
@@ -90,12 +101,13 @@ export function memoryRepositoryFixture() {
   writeFileSync(path.join(root, '.gitignore'), '.tmp/\n');
   writeFileSync(path.join(root, artifact), bytes);
   const repository = createMemoryRepository({ root, artifact, bytes });
+  memoryRepositories.set(root, repository);
   return {
     root,
     artifact,
     initialCommit: repository.initialCommit,
     repository,
-    processCalls: { git: 0, nodeCli: 0 },
+    processCalls: processCallCounts(),
   };
 }
 
@@ -165,6 +177,10 @@ export function rewriteProtocolState(root, dir, mutate) {
 }
 
 export function commitArtifact(root, content, message = 'revise artifact') {
+  const repository = memoryRepositories.get(root);
+  if (repository) {
+    return repository.commit('docs/artifact.md', Buffer.from(content), message);
+  }
   writeFileSync(path.join(root, 'docs/artifact.md'), content);
   git(root, 'add', 'docs/artifact.md');
   git(root, 'commit', '-m', message);
@@ -172,8 +188,8 @@ export function commitArtifact(root, content, message = 'revise artifact') {
 }
 
 export async function initializedProtocol({ imported = false, maxReviewTurns = 6 } = {}) {
-  const api = await protocol();
-  const fixture = repositoryFixture();
+  const fixture = memoryRepositoryFixture();
+  const api = await memoryProtocol(fixture.repository);
   const options = {
     cwd: fixture.root,
     dir: '.tmp/review',
@@ -227,6 +243,9 @@ export async function reviewerTurn({ imported = false, maxReviewTurns = 6 } = {}
 }
 
 export function cleanupTemporaryRoots() {
-  for (const root of temporaryRoots) rmSync(root, { recursive: true, force: true });
+  for (const root of temporaryRoots) {
+    memoryRepositories.delete(root);
+    rmSync(root, { recursive: true, force: true });
+  }
   temporaryRoots.clear();
 }

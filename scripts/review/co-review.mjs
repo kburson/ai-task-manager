@@ -18,6 +18,7 @@ export async function runCli(argv = process.argv.slice(2), io = {}) {
     const [name, ...args] = argv;
     const { values, booleans } = parseArguments(args);
     const protocol = await import('./lib/protocol.mjs');
+    const repositoryOptions = io.repository ? { repository: io.repository } : {};
     let result;
     let exitCode = 0;
     if (name === 'init') {
@@ -41,12 +42,14 @@ export async function runCli(argv = process.argv.slice(2), io = {}) {
         importReview: values['import-review'],
         reviewOf: values['review-of'],
         archiveDir: values['archive-dir'],
+        ...repositoryOptions,
       });
     } else if (name === 'status') {
       assertAllowed(values, booleans, ['dir', 'json']);
       result = protocol.statusProtocol({
         cwd: io.cwd ?? process.cwd(),
         dir: required(values, 'dir'),
+        ...repositoryOptions,
       });
       if (!booleans.has('json')) {
         writeOut(formatStatus(result));
@@ -59,6 +62,7 @@ export async function runCli(argv = process.argv.slice(2), io = {}) {
         cwd: io.cwd ?? process.cwd(),
         dir: required(values, 'dir'),
         actor: required(values, 'actor'),
+        ...repositoryOptions,
       });
     } else if (name === 'wait') {
       assertAllowed(values, booleans, ['dir', 'actor', 'timeout']);
@@ -67,6 +71,7 @@ export async function runCli(argv = process.argv.slice(2), io = {}) {
         dir: required(values, 'dir'),
         actor: required(values, 'actor'),
         timeoutSeconds: values.timeout === undefined ? 55 : number(values, 'timeout'),
+        ...repositoryOptions,
       });
       if (result.status === 'timeout') exitCode = 3;
     } else if (name === 'handoff') {
@@ -86,7 +91,7 @@ export async function runCli(argv = process.argv.slice(2), io = {}) {
       const cwd = io.cwd ?? process.cwd();
       const dir = required(values, 'dir');
       const actor = required(values, 'actor');
-      const state = protocol.statusProtocol({ cwd, dir });
+      const state = protocol.statusProtocol({ cwd, dir, ...repositoryOptions });
       const role = Object.entries(state.roles).find(([, identity]) => identity === actor)?.[0];
       if (!role) throw usage(`--actor is not a configured identity: ${actor}`);
       if (role === 'owner') {
@@ -108,6 +113,7 @@ export async function runCli(argv = process.argv.slice(2), io = {}) {
           commit: required(values, 'commit'),
           answers: values.answers,
           message: required(values, 'message'),
+          ...repositoryOptions,
         });
       } else {
         assertAllowed(values, booleans, [
@@ -128,6 +134,7 @@ export async function runCli(argv = process.argv.slice(2), io = {}) {
           decision: required(values, 'decision'),
           summary: values.summary,
           message: required(values, 'message'),
+          ...repositoryOptions,
         });
       }
     } else if (name === 'set-max-turns') {
@@ -141,7 +148,13 @@ export async function runCli(argv = process.argv.slice(2), io = {}) {
         cwd,
         recoveryCommand: `npx aitm co-review ${argv.join(' ')}`,
       });
-      result = protocol.setMaxReviewTurns({ cwd, dir, requestedMax, humanLogin });
+      result = protocol.setMaxReviewTurns({
+        cwd,
+        dir,
+        requestedMax,
+        humanLogin,
+        ...repositoryOptions,
+      });
     } else if (name === 'supplement') {
       assertAllowed(values, booleans, ['dir', 'file']);
       const cwd = io.cwd ?? process.cwd();
@@ -153,7 +166,7 @@ export async function runCli(argv = process.argv.slice(2), io = {}) {
         cwd,
         recoveryCommand: `npx aitm co-review ${argv.join(' ')}`,
       });
-      result = protocol.registerSupplement({ cwd, dir, file, humanLogin });
+      result = protocol.registerSupplement({ cwd, dir, file, humanLogin, ...repositoryOptions });
     } else if (name === 'continue') {
       assertAllowed(values, booleans, [
         'dir',
@@ -191,6 +204,7 @@ export async function runCli(argv = process.argv.slice(2), io = {}) {
         additionalTurns,
         humanLogin,
         focus: values.focus,
+        ...repositoryOptions,
       });
     } else {
       throw usage(`unknown command ${String(name)}`);
