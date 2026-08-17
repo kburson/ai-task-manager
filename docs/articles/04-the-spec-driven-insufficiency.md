@@ -4,7 +4,7 @@
 
 <!-- markdownlint-disable MD034 -->
 
-![Spec-Driven Development Is Necessary But Not Sufficient](assets/article-headers/article-02-header.png)
+![Spec-Driven Development Is Necessary But Not Sufficient](assets/article-headers/article-04-header.png)
 _Part 4 of a series of articles on succeeding with Agentic Agile Delivery_
 
 Spec-driven development is a major step forward. But once the spec exists, I still have to manage execution.
@@ -91,6 +91,10 @@ This is also where the Technical Product Owner role becomes technical, in my exp
 |             | 08     | [Context Durability Is A Feature](08-the-context-durability-corollary.md)                                    | JIT loading and post-compaction recovery      |
 |             | 09     | [Evidence Beats Trust](09-the-evidence-over-trust-theorem.md)                                             | Evidence gates and auditability               |
 |             | 10     | [The Adapter Future](10-the-adapter-convergence.md)                                                     | Backlog and agent platform adapters           |
+|             | 11     | [Agentic Concurrency Isn't Free — And "50 Parallel Agents" Is Hyperbole](11-the-agentic-concurrency-deficiency.md) | Concurrency ceiling and coordination cost |
+|             | 12     | [XP's Practices Survived. Their Reasons Did Not.](12-the-xp-survival-anomaly.md)                | XP practices under agentic delivery                          |
+|             | 13     | [The Diff Isn't Where Your Judgment Lives Anymore](13-the-diff-displacement.md)                 | Spec review displaces code review                             |
+|             | 14     | [It's All About Perspective](14-the-second-reviewer-corollary.md)                               | Cross-model review for a genuine second opinion                |
 
 ## LinkedIn Article Shape
 

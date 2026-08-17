@@ -4,6 +4,11 @@
 
 *Twelve practices, one bottleneck. The bottleneck moved — most of the practices moved with it.*
 
+<!-- markdownlint-disable MD034 -->
+
+![XP's Practices Survived. Their Reasons Did Not.](assets/article-headers/article-12-header.png)
+_Part 12 of a series of articles on succeeding with Agentic Agile Delivery_
+
 Here's a thing about Extreme Programming that gets lost when people argue about whether it's "dead": XP was never really about the twelve practices. It was a workaround for one constraint — humans were the only reviewers available, and human review is slow, expensive, and error-prone. Test-first gave a lone developer some design pressure before the code existed. Pairing put a second human in the loop in real time. The planning game kept scope negotiated instead of assumed. Collective ownership kept knowledge from getting stuck in one person's head.
 
 Agentic AI just pulled that constraint out from under XP. But it didn't do it evenly, and that unevenness is the actual story worth telling. Some practices got mechanized outright. Some kept their shape and quietly lost their point. One lost its enforcement mechanism completely, and as far as I can tell, nothing has stepped in to replace it.
@@ -56,6 +61,29 @@ The on-site customer's whole job was resolving ambiguity with real product autho
 
 This matters more than it sounds like it should. Two models converging on the same answer isn't automatically proof the spec is right — they can converge on a shared wrong answer, and the risk gets worse the longer a review cycles, because both sides keep anchoring on their own back-and-forth. XP never treated "two developers agree" as the acceptance criterion. A human with real authority was the criterion. Same role, same job, just refereeing a different kind of pair now.
 
+Laid out together, the six practices split into three fates — not evenly:
+
+```mermaid
+flowchart LR
+    subgraph Mechanized["Mechanized"]
+        direction TB
+        Test["Testing\ndesign pressure to receipt"]
+        Catch["Catching mistakes\nCI, lint, gates"]
+        Discipline["Enforcing discipline\nscripted gates"]
+    end
+    subgraph Moved["Moved, not lost"]
+        direction TB
+        Design["Design conversation\nasync co-review"]
+        Plan["Planning game\nbacklog as living doc"]
+        Pace["Sustainable pace\nreview-capacity ceiling"]
+        Customer["On-site customer\nhuman tiebreaker"]
+    end
+    subgraph Broken["Broken, unreplaced"]
+        direction TB
+        Ownership["Collective ownership\nno rotation, no comprehension"]
+    end
+```
+
 ## What I left off the list
 
 Metaphor, coding standard, small releases, simple design, refactoring, and continuous integration aren't here because they either don't shift much under agentic delivery, or you'd have to force them to fit. That's on purpose. The six above are the ones where the original purpose visibly moved somewhere else, got mechanized, or just broke.
@@ -67,6 +95,46 @@ None of XP's twelve practices got thrown out entirely, and none of them survived
 Syntax gets cheaper. Intent, architecture, verification, and fit get more expensive. XP's practices were never really about process for its own sake — they were scaffolding built around a review bottleneck. That bottleneck moved. Most of the scaffolding moved with it. One piece didn't, and that's the piece worth keeping an eye on.
 
 *(One thread I'm leaving open on purpose: the human tiebreaker only works if the human still understands the codebase well enough to make the call. That's not automatic for a person, and it's not automatic for an AI reviewer either. Next up — does a single reviewer, human or AI, actually know enough to say what's safe to land, and what happens when you hand that job to two reviewers instead of one.)*
+
+## Series Link
+
+The concurrency ceiling from the last article is a symptom of the same shift XP had to absorb: a bottleneck moving between people. [The Agentic Concurrency Deficiency](11-the-agentic-concurrency-deficiency.md) covered the coordination side of it; this one covers the practice side. Next up: [The Diff Displacement](13-the-diff-displacement.md), on where code review's climb up the judgment ladder leaves the spec behind.
+
+## Series Roadmap
+
+| Status      | #      | Article                                                                                         | Role In Series                                          |
+| ----------- | ------ | ------------------------------------------------------------------------------------------------ | --------------------------------------------------------- |
+|             | 01     | [The Refactoring Bloat Precursor](01-the-refactoring-bloat-precursor.md)                        | Prequel: history of AI-assisted coding before agents      |
+|             | 02     | [The Rise Of Technical Product Operations](02-the-backlog-governance-postulate.md)              | Industry thesis: Technical Product Operations              |
+|             | 03     | [The Vibe Coding Hangover](03-the-vibe-coding-deficiency.md)                                    | Failure mode: vibe slop and review debt                    |
+|             | 04     | [Spec-Driven Development Is Necessary But Not Sufficient](04-the-spec-driven-insufficiency.md)  | Why specs need execution governance                        |
+|             | 05     | [The Rise Of The Technical Product Owner](05-the-product-owner-escalation.md)                   | Human operator: TPO/TPM as delivery architect               |
+|             | 06     | [The Backlog Becomes The Control Plane](06-the-backlog-control-plane-conjecture.md)             | Backlog as executable control surface                       |
+|             | 07     | [The Just-In-Time Planner](07-the-just-in-time-planning-paradox.md)                             | Progressive decomposition and deep dives                    |
+|             | 08     | [Context Durability Is A Feature](08-the-context-durability-corollary.md)                       | JIT loading and post-compaction recovery                     |
+|             | 09     | [Evidence Beats Trust](09-the-evidence-over-trust-theorem.md)                                   | Evidence gates and auditability                               |
+|             | 10     | [The Adapter Future](10-the-adapter-convergence.md)                                             | Backlog and agent platform adapters                            |
+|             | 11     | [Agentic Concurrency Isn't Free — And "50 Parallel Agents" Is Hyperbole](11-the-agentic-concurrency-deficiency.md) | Concurrency ceiling and coordination cost |
+| **Current** | **12** | **[XP's Practices Survived. Their Reasons Did Not.](12-the-xp-survival-anomaly.md)**             | XP practices under agentic delivery                          |
+|             | 13     | [The Diff Isn't Where Your Judgment Lives Anymore](13-the-diff-displacement.md)                 | Spec review displaces code review                             |
+|             | 14     | [It's All About Perspective](14-the-second-reviewer-corollary.md)                               | Cross-model review for a genuine second opinion                |
+
+## LinkedIn Article Shape
+
+Opening hook:
+
+> XP was never really about the twelve practices. It was a workaround for one constraint — humans were the only reviewers available, and human review is slow, expensive, and error-prone.
+
+Middle:
+
+- Show which practices got mechanized outright: testing, catching mistakes, enforcing discipline.
+- Show which practices moved but kept their point: design conversation, planning, sustainable pace, on-site customer.
+- Name the one practice that lost its mechanism and got nothing back: collective ownership.
+- Explain why syntax got cheaper while intent, architecture, verification, and fit got more expensive.
+
+Close:
+
+> XP's practices were never really about process for its own sake — they were scaffolding built around a review bottleneck. That bottleneck moved. Most of the scaffolding moved with it. One piece didn't, and that's the piece worth keeping an eye on.
 
 ## Bibliography
 

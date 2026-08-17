@@ -4,7 +4,7 @@
 
 <!-- markdownlint-disable MD034 -->
 
-![The Adapter Future](assets/article-headers/article-08-header.png)
+![The Adapter Future](assets/article-headers/article-10-header.png)
 _Part 10 of a series of articles on succeeding with Agentic Agile Delivery_
 
 The AI coding tool that matters most may not be the one that writes the best function. It may be the one that knows how to work a ticket.
@@ -89,6 +89,10 @@ That is how I think agentic AI becomes operationally portable instead of tool-sp
 |             | 08     | [Context Durability Is A Feature](08-the-context-durability-corollary.md)                                | JIT loading and post-compaction recovery      |
 |             | 09     | [Evidence Beats Trust](09-the-evidence-over-trust-theorem.md)                                         | Evidence gates and auditability               |
 | **Current** | **10** | **[The Adapter Future](10-the-adapter-convergence.md)**                                             | Backlog and agent platform adapters           |
+|             | 11     | [Agentic Concurrency Isn't Free — And "50 Parallel Agents" Is Hyperbole](11-the-agentic-concurrency-deficiency.md) | Concurrency ceiling and coordination cost |
+|             | 12     | [XP's Practices Survived. Their Reasons Did Not.](12-the-xp-survival-anomaly.md)                | XP practices under agentic delivery                          |
+|             | 13     | [The Diff Isn't Where Your Judgment Lives Anymore](13-the-diff-displacement.md)                 | Spec review displaces code review                             |
+|             | 14     | [It's All About Perspective](14-the-second-reviewer-corollary.md)                               | Cross-model review for a genuine second opinion                |
 
 ## LinkedIn Article Shape
 

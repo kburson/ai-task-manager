@@ -2,6 +2,11 @@
 
 **Before Agents Lived In The Clouds: A Brief History Of AI-Assisted Coding**
 
+<!-- markdownlint-disable MD034 -->
+
+![Before Agents Lived In The Clouds: A Brief History Of AI-Assisted Coding](assets/article-headers/article-01-header.png)
+_Part 1 of a series of articles on succeeding with Agentic Agile Delivery_
+
 Every "AI-assisted development" conversation acts like it started in 2023. It didn't. The tooling that made AI-assisted coding thinkable — refactoring engines, lightweight editors, code-trained language models, a platform to hang all of it on — was built by hand, one grinding step at a time, for two decades before an agent ever opened a pull request. This is that lineage.
 
 Consider this the prequel: the ground I want under your feet before I tell you what I've learned working with agentic delivery over the past year.
@@ -26,7 +31,15 @@ Microsoft built Copilot on top of that Codex model and turned it into an online 
 
 Worth being precise about what "ran on your desktop" meant, because it bundles two different things. The client — the extension you installed, that read your open files and rendered the suggestion inline — always ran locally. But the completions themselves never ran on that desktop. The extension shipped your surrounding code to a hosted Codex model over the network and streamed the suggestion back — there was no local inference. "A free plugin you installed in VS Code" and "a paid, cloud-hosted GitHub service" aren't competing descriptions of two different eras; they're the client half and the compute half of the same product, true at the same time, from the first technical preview.
 
-That architecture is also the direct rebuttal to the ReSharper story above. ReSharper's failure mode was a heavyweight analyzer sitting on a workstation, eating gigabytes of RAM until the fix was "turn off half the analysis, add more RAM." Copilot never had that failure mode available to it, because the expensive part — the model — was never on the workstation in the first place. The editor-vs-IDE split happened because local tooling got too heavy; Copilot's cloud-inference client sidestepped that fight entirely by moving the weight off the desktop before it could accumulate. Two decades of "make local tooling lighter" gave way to "stop putting the heavy part locally at all."
+That architecture is also the direct rebuttal to the ReSharper story above. ReSharper's failure mode was a heavyweight analyzer sitting on a workstation, eating gigabytes of RAM until the fix was "turn off half the analysis, add more RAM." Copilot never had that failure mode available to it, because the expensive part — the model — was never on the workstation in the first place. The editor-vs-IDE split happened because local tooling got too heavy; Copilot's cloud-inference client sidestepped that fight entirely by moving the weight off the desktop before it could accumulate. Two decades of "make local tooling lighter" gave way to "stop putting the heavy part locally at all":
+
+```mermaid
+flowchart LR
+    HeavyIDE["ReSharper era\nheavy analyzer bolted\nonto a heavy IDE"]
+    ThinEditor["VS Code era\nthin editor, plugins\ncarry the weight"]
+    CloudSplit["Copilot era\nthin client, compute\nmoved off the desktop"]
+    HeavyIDE --> ThinEditor --> CloudSplit
+```
 
 Copilot eventually evolved, moving toward "automation partner in the cloud," and that shift is dated cleanly: GitHub shipped Copilot Workspace as a technical preview in April 2024 — hand it an issue, it produces a spec, a plan, and a diff — then folded what it learned into the general-availability Copilot coding agent in 2025, which runs autonomously in its own GitHub Actions-backed sandbox, opens branches, and asks for review ([GitHub: Coding agent for GitHub Copilot](https://github.com/newsroom/press-releases/coding-agent-for-github-copilot)). That's the pairing-tool-grew-into-a-cloud-agent arc, and it happened in 2024-2025 — three years after Copilot's own 2021 launch.
 
@@ -64,6 +77,27 @@ That's the prequel: two decades of tooling that made agent-based delivery thinka
 |             | 08     | [Context Durability Is A Feature](08-the-context-durability-corollary.md)                        | JIT loading and post-compaction recovery                |
 |             | 09     | [Evidence Beats Trust](09-the-evidence-over-trust-theorem.md)                                    | Evidence gates and auditability                         |
 |             | 10     | [The Adapter Future](10-the-adapter-convergence.md)                                              | Backlog and agent platform adapters                     |
+|             | 11     | [Agentic Concurrency Isn't Free — And "50 Parallel Agents" Is Hyperbole](11-the-agentic-concurrency-deficiency.md) | Concurrency ceiling and coordination cost |
+|             | 12     | [XP's Practices Survived. Their Reasons Did Not.](12-the-xp-survival-anomaly.md)                | XP practices under agentic delivery                          |
+|             | 13     | [The Diff Isn't Where Your Judgment Lives Anymore](13-the-diff-displacement.md)                 | Spec review displaces code review                             |
+|             | 14     | [It's All About Perspective](14-the-second-reviewer-corollary.md)                               | Cross-model review for a genuine second opinion                |
+
+## LinkedIn Article Shape
+
+Opening hook:
+
+> Every "AI-assisted development" conversation acts like it started in 2023. It didn't.
+
+Middle:
+
+- Trace the refactoring-engine era (ReSharper) and the desktop-weight problem it created.
+- Show how VS Code's thin-editor-plus-plugins model was a direct reaction to that weight.
+- Explain how Copilot moved the heavy part off the desktop entirely, before ChatGPT ever existed.
+- Note the loop closing: refactoring engines now ship into the AI-native editors that model produced.
+
+Close:
+
+> Two decades of "make local tooling lighter" gave way to "stop putting the heavy part locally at all."
 
 ## Bibliography
 

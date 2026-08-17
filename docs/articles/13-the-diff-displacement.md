@@ -4,11 +4,23 @@
 
 *Code review learned to make judgment calls. The one artifact you actually wrote still isn't getting the same treatment.*
 
+<!-- markdownlint-disable MD034 -->
+
+![The Diff Isn't Where Your Judgment Lives Anymore](assets/article-headers/article-13-header.png)
+_Part 13 of a series of articles on succeeding with Agentic Agile Delivery_
+
 Code review started as a checklist — style violations, obvious bugs, missing null checks — and a linter eventually took that whole layer over. What was left for a human was the harder part: does this solve the right problem, in a way that fits how the rest of the system thinks. Agentic code review picked up right where that automation left off, and kept climbing: not just "does this pass the linter" but "should this be three functions instead of one," "does this match the pattern the codebase already committed to." That's real judgment, the kind that used to require a senior engineer, not a script.
 
 Here's where that stops mattering to you, though, if you're actually doing spec-driven development: there's no PR for you to meaningfully review at all. You didn't write the code. You wrote the spec, handed it to the agent, and it iterated the implementation, ran its own tests, and opened — or merged — the PR itself. Reading that diff line by line doesn't tell you whether your intent survived the translation. It only tells you the output looks locally clean, which the agent already checked before you got there.
 
-So the one artifact you actually authored moved up a layer, from code to spec — and the review discipline that just spent a decade climbing the ladder on code hasn't followed it there yet. That gap is where your project's real risk lives now.
+So the one artifact you actually authored moved up a layer, from code to spec — and the review discipline that just spent a decade climbing the ladder on code hasn't followed it there yet. That gap is where your project's real risk lives now:
+
+```mermaid
+flowchart TB
+    Spec["Spec\nunreviewed, treated as ground truth"]
+    Code["Code\nlinted, CI-gated, agent-reviewed"]
+    Spec --> Code
+```
 
 ## The quiet part
 
@@ -27,3 +39,47 @@ Ask an AI reviewer the same question — does this spec actually fit the codebas
 One reviewer, of either kind, is a bet that one perspective is enough. Sometimes it is. The interesting question is what you do when it isn't.
 
 Which is the obvious next move: get a second reviewer. But a second reviewer only helps if it can actually see something the first one couldn't — and that turns out to depend entirely on who you pick.
+
+## Series Link
+
+[The XP Survival Anomaly](12-the-xp-survival-anomaly.md) argued that XP's reviewing discipline moved without fully replacing itself. This article picks up that gap directly: the spec, not the diff, is where unreviewed risk actually sits now. The next piece, [The Second Reviewer Corollary](14-the-second-reviewer-corollary.md), asks what it takes to review that spec well.
+
+## Series Roadmap
+
+| Status      | #      | Article                                                                                         | Role In Series                                          |
+| ----------- | ------ | ------------------------------------------------------------------------------------------------ | --------------------------------------------------------- |
+|             | 01     | [The Refactoring Bloat Precursor](01-the-refactoring-bloat-precursor.md)                        | Prequel: history of AI-assisted coding before agents      |
+|             | 02     | [The Rise Of Technical Product Operations](02-the-backlog-governance-postulate.md)              | Industry thesis: Technical Product Operations              |
+|             | 03     | [The Vibe Coding Hangover](03-the-vibe-coding-deficiency.md)                                    | Failure mode: vibe slop and review debt                    |
+|             | 04     | [Spec-Driven Development Is Necessary But Not Sufficient](04-the-spec-driven-insufficiency.md)  | Why specs need execution governance                        |
+|             | 05     | [The Rise Of The Technical Product Owner](05-the-product-owner-escalation.md)                   | Human operator: TPO/TPM as delivery architect               |
+|             | 06     | [The Backlog Becomes The Control Plane](06-the-backlog-control-plane-conjecture.md)             | Backlog as executable control surface                       |
+|             | 07     | [The Just-In-Time Planner](07-the-just-in-time-planning-paradox.md)                             | Progressive decomposition and deep dives                    |
+|             | 08     | [Context Durability Is A Feature](08-the-context-durability-corollary.md)                       | JIT loading and post-compaction recovery                     |
+|             | 09     | [Evidence Beats Trust](09-the-evidence-over-trust-theorem.md)                                   | Evidence gates and auditability                               |
+|             | 10     | [The Adapter Future](10-the-adapter-convergence.md)                                             | Backlog and agent platform adapters                            |
+|             | 11     | [Agentic Concurrency Isn't Free — And "50 Parallel Agents" Is Hyperbole](11-the-agentic-concurrency-deficiency.md) | Concurrency ceiling and coordination cost |
+|             | 12     | [XP's Practices Survived. Their Reasons Did Not.](12-the-xp-survival-anomaly.md)                | XP practices under agentic delivery                          |
+| **Current** | **13** | **[The Diff Isn't Where Your Judgment Lives Anymore](13-the-diff-displacement.md)**               | Spec review displaces code review                             |
+|             | 14     | [It's All About Perspective](14-the-second-reviewer-corollary.md)                               | Cross-model review for a genuine second opinion                |
+
+## LinkedIn Article Shape
+
+Opening hook:
+
+> If you're actually doing spec-driven development, there's no PR for you to meaningfully review at all.
+
+Middle:
+
+- Show how code review climbed from linting to real judgment — and kept climbing.
+- Explain why reading the diff line by line no longer tells you whether your intent survived.
+- Argue the spec, not the code, is now the expensive artifact to get wrong.
+- Ask why design review still sits at "does this look reasonable on one skim" while code review kept moving.
+
+Close:
+
+> The code was never the risky part — code is cheap to regenerate, cheap to test, and now it's getting genuinely good automated review. The spec is the expensive part to get wrong, because everything downstream inherits its mistakes.
+
+## Bibliography
+
+No external sources are cited in this piece — it draws on firsthand experience running spec-driven delivery with AITM.
