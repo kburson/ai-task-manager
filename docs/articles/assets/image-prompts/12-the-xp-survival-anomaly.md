@@ -1,0 +1,3 @@
+# Image Prompt: The XP Survival Anomaly
+
+Create an editorial isometric illustration on a dark navy background, in electric-blue and amber accent lighting, contrasting two eras of the same engineering ritual: on one side a pair of translucent human silhouettes at a shared desk, on the other a single translucent agent silhouette performing the same ritual alone with a receipt-like evidence trail printing out beside it. The image should show the practice's shape surviving while its human collaborator fades from the scene. Tone: reflective, historical-meets-current. Avoid nostalgic sepia tones, robot faces, vendor logos, and any dashboard panels, UI mockups, charts, split-screen labels, or readable text of any kind — the image must be completely textless.

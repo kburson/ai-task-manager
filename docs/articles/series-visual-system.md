@@ -20,31 +20,55 @@ The series should use more visual aids rather than fewer, but the visuals must e
 
 ### Operating Model
 
-Shows roles, control surfaces, and feedback loops. Use for articles 0 and 3.
+Shows roles, control surfaces, and feedback loops. Use for articles 02 and 05.
 
 ### Failure Loop
 
-Shows how unmanaged prompting creates review debt. Use for article 1.
+Shows how unmanaged prompting creates review debt. Use for article 03.
 
 ### Layered Control
 
-Shows spec -> backlog -> agents -> evidence. Use for article 2 and 4.
+Shows spec -> backlog -> agents -> evidence. Use for articles 04 and 06.
 
 ### Progressive Decomposition
 
-Shows work breakdown from product spec to atomic PBI. Use for article 5.
+Shows work breakdown from product spec to atomic PBI. Use for article 07.
 
 ### Recovery Loop
 
-Shows compaction and reload from source-of-truth files. Use for article 6.
+Shows compaction and reload from source-of-truth files. Use for article 08.
 
 ### State Gate
 
-Shows workflow transitions and required evidence. Use for article 7.
+Shows workflow transitions and required evidence. Use for article 09.
 
 ### Adapter Map
 
-Shows portable architecture across backlog systems and agent hosts. Use for article 8.
+Shows portable architecture across backlog systems and agent hosts. Use for article 10.
+
+### Architecture Shift
+
+Shows a multi-stage migration of where the "heavy" part of a system lives. Use for article 01.
+
+### Bottleneck / Ceiling
+
+Shows parallel units converging on a shared constraint that caps throughput. Use for article 11.
+
+### Decomposition Contrast
+
+Shows a single shared-resource pool against an equivalent set of independent, boundaried pools. Use for article 11 (secondary).
+
+### Fate Map
+
+Shows a fixed set of items sorted into outcome buckets (e.g. kept, moved, lost). Use for article 12.
+
+### Scrutiny Gradient
+
+Shows two layers of the same pipeline receiving unequal review rigor. Use for article 13.
+
+### Review Loop
+
+Shows two roles exchanging revisions until neither raises a new objection. Use for article 14.
 
 ## Mermaid Conventions
 
@@ -57,17 +81,28 @@ Shows portable architecture across backlog systems and agent hosts. Use for arti
 
 ## Article Visual Inventory
 
-| Article | Primary Visual                               | Secondary Visual                 |
-| ------- | -------------------------------------------- | -------------------------------- |
-| 00      | Technical Product Operations operating model | Syntax inversion                 |
-| 01      | Vibe coding vs story-governed delivery       | Review debt loop                 |
-| 02      | Spec/backlog/evidence stack                  | Spec-to-story lifecycle          |
-| 03      | TPO/TPM above agent fleet                    | Human/agent responsibility split |
-| 04      | Backlog item as contract                     | Board state control plane        |
-| 05      | Progressive WBS to atomic PBI                | Blocking-defect pivot loop       |
-| 06      | Tiered loader and post-compaction recovery   | Context authority layers         |
-| 07      | Evidence-gated state machine                 | Evidence record anatomy          |
-| 08      | Adapter architecture                         | Vendor API surface map           |
+Diagram source filenames under [assets/diagrams](assets/diagrams/) are descriptive of
+content only — they are deliberately **not** prefixed with an article number, since
+articles get renumbered, reordered, and added to (as happened when 01 and 11-14 joined
+the series) but a diagram's subject doesn't change. The mapping below is the current
+article-to-diagram assignment, not a filename convention.
+
+| Article | Primary Visual                               | `.mmd` filename                    | Secondary Visual                  | `.mmd` filename                 |
+| ------- | -------------------------------------------- | ---------------------------------- | --------------------------------- | ------------------------------- |
+| 01      | Tooling weight migration (local to cloud)    | `tooling-weight-migration.mmd`     | —                                 | —                               |
+| 02      | Technical Product Operations operating model | `technical-product-operations.mmd` | Syntax inversion                  | `syntax-inversion.mmd`          |
+| 03      | Vibe coding vs story-governed delivery       | `vibe-coding-hangover.mmd`         | Review debt loop                  | `review-debt-loop.mmd`          |
+| 04      | Spec/backlog/evidence stack                  | `spec-driven-is-not-enough.mmd`    | Spec-to-story lifecycle           | `spec-to-story-lifecycle.mmd`   |
+| 05      | TPO/TPM above agent fleet                    | `technical-product-owner.mmd`      | Human/agent responsibility split  | `responsibility-split.mmd`      |
+| 06      | Backlog item as contract                     | `backlog-as-control-plane.mmd`     | Board state control plane         | `board-state-control-plane.mmd` |
+| 07      | Progressive WBS to atomic PBI                | `just-in-time-planner.mmd`         | Blocking-defect pivot loop        | `blocking-defect-pivot.mmd`     |
+| 08      | Tiered loader and post-compaction recovery   | `context-durability.mmd`           | Context authority layers          | `context-authority-layers.mmd`  |
+| 09      | Evidence-gated state machine                 | `evidence-beats-trust.mmd`         | Evidence record anatomy           | `evidence-record-anatomy.mmd`   |
+| 10      | Adapter architecture                         | `adapter-future.mmd`               | Vendor API surface map            | `vendor-api-surface.mmd`        |
+| 11      | Merge-gate contention                        | `merge-gate-contention.mmd`        | Decompose vs. shared-repo scaling | `decompose-vs-shared-repo.mmd`  |
+| 12      | XP practice fates (mechanized/moved/broken)  | `xp-practice-fates.mmd`            | —                                 | —                               |
+| 13      | Review scrutiny inversion (spec vs code)     | `review-scrutiny-inversion.mmd`    | —                                 | —                               |
+| 14      | Author/reviewer review loop                  | `author-reviewer-loop.mmd`         | —                                 | —                               |
 
 ## Header Image Guidance
 

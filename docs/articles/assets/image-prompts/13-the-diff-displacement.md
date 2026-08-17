@@ -1,0 +1,3 @@
+# Image Prompt: The Diff Displacement
+
+Create an editorial isometric illustration on a dark navy background, in electric-blue and amber accent lighting, showing a fully lit glowing code-review panel covered in abstract checkmark glyphs, positioned below a much dimmer, under-lit specification document panel that feeds directly into it unreviewed. The visual should communicate that scrutiny climbed to code review but has not yet reached the spec layer above it. Tone: sober, risk-aware. Avoid courtroom imagery, magnifying-glass cliches, vendor logos, and any dashboard panels, UI mockups, charts, section headers, or readable text of any kind — the image must be completely textless.

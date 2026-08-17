@@ -1,9 +1,11 @@
-# The Vibe Coding Hangover
+# The Vibe Coding Deficiency
+
+**The Vibe Coding Hangover**
 
 <!-- markdownlint-disable MD034 -->
 
-![The Vibe Coding Hangover](assets/article-headers/article-01-header.png)
-_Part 2 of a series of articles on succeeding with Agentic AI Delivery_
+![The Vibe Coding Hangover](assets/article-headers/article-03-header.png)
+_Part 3 of a series of articles on succeeding with Agentic Agile Delivery_
 
 We spent the first wave of AI coding asking the wrong question.
 
@@ -19,7 +21,7 @@ When that review burden is invisible, AI looks more productive than it really is
 
 The harsh industry term for this flavor of agentic delivery is **vibe slop**.
 
-## What "Vibe Slop" Is Actually Naming
+## What "Vibe Slop" Means
 
 **Vibe slop** is a denigrative term, and it stuck with me because it names something I have lived through directly: AI-generated code that looks shippable on the surface, then turns expensive the moment someone has to maintain, secure, test, extend, or explain it.
 
@@ -119,7 +121,7 @@ The change that mattered most for me was making the backlog item itself the work
 
 A thin story gives the implementation agent a bounded objective. Acceptance criteria tell it what matters. Dependencies tell it what must already be true. Verification commands tell it what evidence has to exist before anyone believes the work is done. Review gates tell it when generated work is actually ready for human judgment.
 
-That does not make agents less useful to me — it makes them more usable.
+That makes agents more useful to me, not less.
 
 An agent handed a giant prompt has to infer the work system on its own. An agent handed a governed story can just operate inside the one I already built.
 
@@ -149,11 +151,11 @@ The future I want is not less product management. It is product management with 
 
 ## Series Link
 
-This article establishes the failure mode of unmanaged agentic delivery — the one I kept running into before I built anything to stop it. The next article, [Spec-Driven Development Is Necessary But Not Sufficient](02-spec-driven-is-not-enough.md), explains why specifications improve the situation but still need story-level execution governance.
+That's the failure mode I want you to recognize: unmanaged agentic delivery, the one I kept running into before I built anything to stop it. Next up: [Spec-Driven Development Is Necessary But Not Sufficient](04-the-spec-driven-insufficiency.md), on why specs improve things but still need story-level execution governance.
 
 ## AITM And The Backlog Manager Pattern
 
-I introduced AITM — `@kburson/ai-task-manager` — in the [opening article](00-technical-product-operations.md#aitm-and-the-backlog-manager-pattern): the skill I built after hitting the exact wall described above one too many times. The review-debt loop is not an abstraction to me. It is the thing I got tired of debugging by hand.
+I introduced AITM — `@kburson/ai-task-manager` — in the [opening article](02-the-backlog-governance-postulate.md#aitm-and-the-backlog-manager-pattern): the skill I built after hitting the exact wall described above one too many times. The review-debt loop is not an abstraction to me. It is the thing I got tired of debugging by hand.
 
 AITM starts from a simple premise: do not hand the agent a giant wish. Hand it a governed work item.
 
@@ -175,17 +177,22 @@ The human role also changes. The TPO/TPM is not merely writing prompts. They are
 
 ## Series Roadmap
 
-| Status      | #      | Article                                                                                    | Role In Series                                |
-| ----------- | ------ | ------------------------------------------------------------------------------------------ | --------------------------------------------- |
-|             | 00     | [The Rise Of Technical Product Operations](00-technical-product-operations.md)             | Industry thesis: Technical Product Operations |
-| **Current** | **01** | **[The Vibe Coding Hangover](01-vibe-coding-hangover.md)**                                 | Failure mode: vibe slop and review debt       |
-|             | 02     | [Spec-Driven Development Is Necessary But Not Sufficient](02-spec-driven-is-not-enough.md) | Why specs need execution governance           |
-|             | 03     | [The Rise Of The Technical Product Owner](03-technical-product-owner.md)                   | Human operator: TPO/TPM as delivery architect |
-|             | 04     | [The Backlog Becomes The Control Plane](04-backlog-as-control-plane.md)                    | Backlog as executable control surface         |
-|             | 05     | [The Just-In-Time Planner](05-just-in-time-planner.md)                                     | Progressive decomposition and deep dives      |
-|             | 06     | [Context Durability Is A Feature](06-context-durability.md)                                | JIT loading and post-compaction recovery      |
-|             | 07     | [Evidence Beats Trust](07-evidence-beats-trust.md)                                         | Evidence gates and auditability               |
-|             | 08     | [The Adapter Future](08-adapter-future.md)                                                 | Backlog and agent platform adapters           |
+| Status      | #      | Article                                                                                                            | Role In Series                                       |
+| ----------- | ------ | ------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------- |
+|             | 01     | [The Refactoring Bloat Precursor](01-the-refactoring-bloat-precursor.md)                                           | Prequel: history of AI-assisted coding before agents |
+|             | 02     | [The Rise Of Technical Product Operations](02-the-backlog-governance-postulate.md)                                 | Industry thesis: Technical Product Operations        |
+| **Current** | **03** | **[The Vibe Coding Hangover](03-the-vibe-coding-deficiency.md)**                                                   | Failure mode: vibe slop and review debt              |
+|             | 04     | [Spec-Driven Development Is Necessary But Not Sufficient](04-the-spec-driven-insufficiency.md)                     | Why specs need execution governance                  |
+|             | 05     | [The Rise Of The Technical Product Owner](05-the-product-owner-escalation.md)                                      | Human operator: TPO/TPM as delivery architect        |
+|             | 06     | [The Backlog Becomes The Control Plane](06-the-backlog-control-plane-conjecture.md)                                | Backlog as executable control surface                |
+|             | 07     | [The Just-In-Time Planner](07-the-just-in-time-planning-paradox.md)                                                | Progressive decomposition and deep dives             |
+|             | 08     | [Context Durability Is A Feature](08-the-context-durability-corollary.md)                                          | JIT loading and post-compaction recovery             |
+|             | 09     | [Evidence Beats Trust](09-the-evidence-over-trust-theorem.md)                                                      | Evidence gates and auditability                      |
+|             | 10     | [The Adapter Future](10-the-adapter-convergence.md)                                                                | Backlog and agent platform adapters                  |
+|             | 11     | [Agentic Concurrency Isn't Free — And "50 Parallel Agents" Is Hyperbole](11-the-agentic-concurrency-deficiency.md) | Concurrency ceiling and coordination cost            |
+|             | 12     | [XP's Practices Survived. Their Reasons Did Not.](12-the-xp-survival-anomaly.md)                                   | XP practices under agentic delivery                  |
+|             | 13     | [The Diff Isn't Where Your Judgment Lives Anymore](13-the-diff-displacement.md)                                    | Spec review displaces code review                    |
+|             | 14     | [It's All About Perspective](14-the-second-reviewer-corollary.md)                                                  | Cross-model review for a genuine second opinion      |
 
 ## LinkedIn Article Shape
 
