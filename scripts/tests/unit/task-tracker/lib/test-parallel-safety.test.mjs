@@ -11,6 +11,7 @@ import { fileURLToPath } from 'node:url';
 import {
   spawnsSubprocess,
   isParallelSafe,
+  testSchedulingClass,
   SUBPROCESS_RE,
   PARALLEL_UNSAFE_MARKER_RE,
 } from '../../../../task-tracker/lib/test-parallel-safety.mjs';
@@ -46,7 +47,7 @@ test('isParallelSafe: pure file is pool-eligible', () => {
   assert.equal(isParallelSafe('/x/pure.test.mjs', read), true);
 });
 
-test('isParallelSafe: subprocess-spawning file runs serial', () => {
+test('isParallelSafe: subprocess-spawning file is not pure-pool eligible', () => {
   const read = () => "import { execFileSync } from 'node:child_process';";
   assert.equal(isParallelSafe('/x/coverage-close.test.mjs', read), false);
 });
@@ -56,6 +57,31 @@ test('isParallelSafe: unreadable file defaults to UNSAFE (serial)', () => {
     throw Object.assign(new Error('ENOENT'), { code: 'ENOENT' });
   };
   assert.equal(isParallelSafe('/x/missing.test.mjs', read), false);
+});
+
+test('testSchedulingClass distinguishes pooled, subprocess, and serial sources', () => {
+  assert.equal(
+    testSchedulingClass('/x/pure.test.mjs', () => "import assert from 'node:assert/strict';"),
+    'pooled'
+  );
+  assert.equal(
+    testSchedulingClass(
+      '/x/subprocess.test.mjs',
+      () => "import { execFileSync } from 'node:child_process';"
+    ),
+    'subprocess'
+  );
+  assert.equal(
+    testSchedulingClass('/x/marked.test.mjs', () => '// @parallel-unsafe\nchild_process.exec()'),
+    'serial',
+    '@parallel-unsafe must override direct child_process detection'
+  );
+  assert.equal(
+    testSchedulingClass('/x/unreadable.test.mjs', () => {
+      throw Object.assign(new Error('ENOENT'), { code: 'ENOENT' });
+    }),
+    'serial'
+  );
 });
 
 test('PARALLEL_UNSAFE_MARKER_RE is exported for reuse', () => {
@@ -76,7 +102,7 @@ test('isParallelSafe: unmarked pure file is still pool-eligible (regression guar
   assert.equal(isParallelSafe('/x/still-pure.test.mjs', read), true);
 });
 
-test('isParallelSafe: unmarked SUBPROCESS_RE-matching file is still serial (regression guard)', () => {
+test('isParallelSafe: unmarked SUBPROCESS_RE-matching file stays out of the pure pool', () => {
   const read = () => "import { execFileSync } from 'node:child_process';";
   assert.equal(isParallelSafe('/x/still-subprocess.test.mjs', read), false);
 });

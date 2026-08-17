@@ -142,6 +142,18 @@ export async function runCli(argv = process.argv.slice(2), io = {}) {
         recoveryCommand: `npx aitm co-review ${argv.join(' ')}`,
       });
       result = protocol.setMaxReviewTurns({ cwd, dir, requestedMax, humanLogin });
+    } else if (name === 'supplement') {
+      assertAllowed(values, booleans, ['dir', 'file']);
+      const cwd = io.cwd ?? process.cwd();
+      const dir = required(values, 'dir');
+      const file = required(values, 'file');
+      const resolveIdentity =
+        io.resolveGitHubLoginImpl ?? (await import('./lib/github-identity.mjs')).resolveGitHubLogin;
+      const humanLogin = resolveIdentity({
+        cwd,
+        recoveryCommand: `npx aitm co-review ${argv.join(' ')}`,
+      });
+      result = protocol.registerSupplement({ cwd, dir, file, humanLogin });
     } else if (name === 'continue') {
       assertAllowed(values, booleans, [
         'dir',
@@ -262,6 +274,15 @@ function formatStatus(state) {
       }`
     : 'none';
   const actor = state.currentRole ? state.roles[state.currentRole] : 'none';
+  const supplements = state.activeSupplements ?? [];
+  const supplementStatus = supplements.length
+    ? supplements
+        .map(
+          (supplement) =>
+            `${supplement.id} (${supplement.status}): ${supplement.path} ${supplement.sha256} Target round: ${supplement.targetRound}`
+        )
+        .join('\n  ')
+    : 'none';
   return [
     `Lifecycle: ${state.lifecycle}`,
     `Turn: ${state.currentRole ?? 'none'} (${actor}) / ${state.turnState ?? 'terminal'}`,
@@ -271,6 +292,7 @@ function formatStatus(state) {
     `Artifact: ${state.artifact.path} @ ${state.artifact.commit}`,
     `Last handoff: ${lastHandoff}`,
     `Budget: ${state.reviewTurnsUsed} used / ${state.maxReviewTurns} max / ${state.remainingReviewTurns} remaining`,
+    `Supplements: ${supplementStatus}`,
     `Integrity: ${state.integrity.ok ? 'ok' : 'DRIFT'}`,
     `Next: ${state.nextAction}`,
     '',

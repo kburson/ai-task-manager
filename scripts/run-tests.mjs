@@ -5,13 +5,14 @@
 // so the parallel-safe unit subset runs at `cpus - 1` concurrency; `spawnTestChild`
 // reshapes each async child into the same `{status,signal,error}` object
 // spawnSync gave, so failure accounting and `describeSpawnResult` are unchanged.
-// Subprocess-spawning unit files (`isParallelSafe === false`, e.g. execFileSync/
-// gh shell-outs) run SERIAL so their children aren't CPU-starved under the pool.
-// Integration and slow tests use the same serial scheduler.
+// Direct-subprocess unit files run in a separate two-worker phase after the
+// saturated pure pool drains. Explicit `@parallel-unsafe`/unreadable unit files,
+// integration files, and slow files remain one-at-a-time serial.
 //
 // Lanes (#305, canonicalized #874; sectioned #864):
-//   --lane unit           — all unit tests (parallel-safe subset pooled;
-//                           subprocess-spawning subset serial)
+//   --lane unit           — all unit tests (pure subset pooled; directly
+//                           detected subprocess subset reduced-pooled;
+//                           explicit unsafe/unreadable subset serial)
 //   --lane integration    — the integration population (serial)
 //   --lane fast (default)  — unit ∪ integration (the retained regression floor)
 //   --lane slow           — the slow lane only
@@ -33,9 +34,8 @@ import { writeFileSync, mkdirSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { TEST_RUNNER_TIMEOUT_MS } from './task-tracker/lib/process-timeouts.mjs';
-import { laneOf } from './task-tracker/lib/test-lanes.mjs';
-import { isParallelSafe } from './task-tracker/lib/test-parallel-safety.mjs';
-import { runPool, poolConcurrency, spawnTestChild } from './run-tests-pool.mjs';
+import { poolConcurrency, subprocessPoolConcurrency, spawnTestChild } from './run-tests-pool.mjs';
+import { partitionTestEntries, runTestPhases } from './run-tests-schedule.mjs';
 import {
   findMainWorktreePath,
   fleetRegistryPath,
@@ -166,49 +166,49 @@ async function runEntry(entry) {
   return { res, elapsedMs };
 }
 
-// #863 — only the parallel-safe unit subset runs concurrently at a bounded
-// `cpus - 1` pool. A unit file that spawns subprocesses
-// (`isParallelSafe === false`) would
-// have its child CPU-starved under a saturated pool and flake (exit `null` where
-// `1` was expected — the `coverage-close.test.mjs` case), so it joins the serial
-// phase alongside integration + slow. This split is intentional: unit describes
-// the behavior under test, while pool eligibility describes safe scheduling.
+// #863/#1208 — pure unit files run at the bounded `cpus - 1` pool. Direct
+// subprocess users must not overlap that saturated pool (the historic child
+// starvation flake), but can overlap each other at the fixed reduced cap after
+// the pure barrier. Explicit unsafe/unreadable files remain exclusive serial,
+// alongside integration and slow. Unit describes behavior; the scheduling
+// class describes safe execution mechanics.
 // Output is emitted in INPUT order below, so the log stays deterministic
 // regardless of which child finishes first.
 const CONCURRENCY = poolConcurrency();
+const SUBPROCESS_CONCURRENCY = subprocessPoolConcurrency();
 const runnable = files.filter((e) => !SKIP.has(e.label));
-const poolEligible = (e) => laneOf(e.label) === 'unit' && isParallelSafe(e.full);
-const unitEntries = runnable.filter(poolEligible);
-const serialEntries = runnable.filter((e) => !poolEligible(e));
+const { pooledEntries, subprocessEntries, serialEntries } = partitionTestEntries(runnable);
 
 // The aggregate remains useful observational timing, while #1157 evaluates the
 // already-distinct pool and serial execution phases as independently bounded
 // sections below.
 const sectionStart = process.hrtime.bigint();
 
-const poolStart = process.hrtime.bigint();
-const { results: unitResults, peakConcurrency } = await runPool({
-  entries: unitEntries,
-  concurrency: CONCURRENCY,
+const {
+  pooledResults,
+  subprocessResults,
+  serialResults,
+  pooledPeakConcurrency,
+  subprocessPeakConcurrency,
+  pooledElapsedMs,
+  subprocessElapsedMs,
+  serialElapsedMs,
+} = await runTestPhases({
+  pooledEntries,
+  subprocessEntries,
+  serialEntries,
+  pooledConcurrency: CONCURRENCY,
+  subprocessConcurrency: SUBPROCESS_CONCURRENCY,
   runOne: runEntry,
 });
-const poolElapsedMs = Number(process.hrtime.bigint() - poolStart) / 1e6;
-
-// Subprocess-spawning unit files plus integration and slow files run one child at
-// a time, preserving the serial semantics of the old loop for this subset.
-const serialStart = process.hrtime.bigint();
-const serialResults = [];
-for (const entry of serialEntries) {
-  serialResults.push(await runEntry(entry));
-}
-const serialElapsedMs = Number(process.hrtime.bigint() - serialStart) / 1e6;
 
 const sectionElapsedMs = Number(process.hrtime.bigint() - sectionStart) / 1e6;
 
 // Stitch results back onto their entries so emission can walk `files` in INPUT
 // order (#863 AC6 — deterministic output independent of completion order).
 const resultByLabel = new Map();
-unitEntries.forEach((e, i) => resultByLabel.set(e.label, unitResults[i]));
+pooledEntries.forEach((e, i) => resultByLabel.set(e.label, pooledResults[i]));
+subprocessEntries.forEach((e, i) => resultByLabel.set(e.label, subprocessResults[i]));
 serialEntries.forEach((e, i) => resultByLabel.set(e.label, serialResults[i]));
 
 for (const entry of files) {
@@ -248,9 +248,11 @@ for (const entry of files) {
   }
 }
 
-if (unitEntries.length) {
+if (pooledEntries.length || subprocessEntries.length) {
   console.log(
-    `\n▶ unit lane: ${unitEntries.length} parallel-safe file(s) at pool concurrency ${CONCURRENCY} (peak ${peakConcurrency}); ${serialEntries.length} subprocess-spawning unit/integration/slow file(s) serial`
+    `\n▶ unit lane: ${pooledEntries.length} pure file(s) at pool concurrency ${CONCURRENCY} (peak ${pooledPeakConcurrency}); ` +
+      `${subprocessEntries.length} direct-subprocess file(s) at pool concurrency ${SUBPROCESS_CONCURRENCY} (peak ${subprocessPeakConcurrency}); ` +
+      `${serialEntries.length} explicit-unsafe/integration/slow file(s) serial`
   );
 }
 
@@ -264,7 +266,8 @@ function writeTimingArtifact() {
       lane,
       generatedAt: new Date().toISOString(),
       runnerElapsedMs: sectionElapsedMs,
-      poolElapsedMs,
+      poolElapsedMs: pooledElapsedMs,
+      subprocessPoolElapsedMs: subprocessElapsedMs,
       serialElapsedMs,
     });
     mkdirSync(path.dirname(TIMING_ARTIFACT_PATH), { recursive: true });
@@ -280,7 +283,8 @@ if (timingReport) {
     `\n${formatTimingReport(
       buildTimingReport(timingRecords, {
         runnerElapsedMs: sectionElapsedMs,
-        poolElapsedMs,
+        poolElapsedMs: pooledElapsedMs,
+        subprocessPoolElapsedMs: subprocessElapsedMs,
         serialElapsedMs,
       })
     )}`
@@ -324,7 +328,12 @@ if (leaked.length) {
 const sectionCeilings = evaluateSections({
   lane,
   sections: [
-    { name: 'pooled', count: unitEntries.length, elapsedMs: poolElapsedMs },
+    { name: 'pooled', count: pooledEntries.length, elapsedMs: pooledElapsedMs },
+    {
+      name: 'subprocess',
+      count: subprocessEntries.length,
+      elapsedMs: subprocessElapsedMs,
+    },
     { name: 'serial', count: serialEntries.length, elapsedMs: serialElapsedMs },
   ],
 });
