@@ -71,7 +71,7 @@ flowchart TB
     AgentAdapters --> Rovo["Rovo Dev"]
 ```
 
-A workflow core that owns states, gates, evidence, and timing; a backlog adapter for each product-management system a team actually uses; an agent adapter for each AI coding host a team actually runs; a context-management layer that loads detailed rules only when needed and reloads authoritative rules after compaction, as I described in [article seven](08-the-context-durability-corollary.md); and a reporting layer that measures delivery cost, context burden, and acceleration honestly rather than as marketing.
+A workflow core that owns states, gates, evidence, and timing; a backlog adapter for each product-management system a team actually uses; an agent adapter for each AI coding host a team actually runs; a context-management layer that loads detailed rules only when needed and reloads authoritative rules after compaction, as I described in [article eight](08-the-context-durability-corollary.md); and a reporting layer that measures delivery cost, context burden, and acceleration honestly rather than as marketing.
 
 That is how I think agentic AI becomes operationally portable instead of tool-specific. The same role split I have argued throughout this series still applies across every one of those platforms: implementation agents operate inside bounded tasks, the TPO/TPM operates the backlog, sequence, gates, and exceptions, and engineering leaders provide the architecture guardrails and technical standards that bound what "acceptable" means.
 

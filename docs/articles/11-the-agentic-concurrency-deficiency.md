@@ -16,7 +16,7 @@ Three failure modes show up as soon as you push parallelism past a handful of ag
 
 **Merge contention.** Even if every individual change is independently valid, a shared trunk can only absorb them one integrated state at a time. This is exactly the classic "many writers, one branch" problem — except agentic development multiplies the write frequency by an order of magnitude compared to a human team. Merge queues and speculative merge-trains exist to manage this, but they have their own throughput ceiling: when a queued change fails, everything behind it in the queue has to be rebuilt and revalidated. More concurrent agents means a longer queue, and a longer queue means each failure costs more, not less.
 
-Put together: the practical ceiling most teams are actually landing on for *supervised parallelism against a shared codebase* is somewhere around three to five agents before a human reviewing diffs — or the CI pipeline itself — becomes the new bottleneck. Fifty agents on one repo isn't a scaling strategy. It's a demo that hasn't hit its own validation phase yet.
+Put together: the practical ceiling most teams are actually landing on for *supervised parallelism against a shared codebase* is somewhere around three to five agents before a human reviewing diffs — or the CI pipeline itself — becomes the new bottleneck on how fast work actually ships. Fifty agents on one repo isn't a scaling strategy. It's a demo that hasn't hit its own validation phase yet.
 
 ## The pattern that actually works: decompose the product, not just the work
 
@@ -37,4 +37,4 @@ You still get real horizontal throughput — the total number of agents working 
 
 Agentic concurrency has a real ceiling, and it isn't a compute problem — it's a coordination and validation problem, and it gets worse faster than most teams expect once they cross a handful of agents on a shared codebase. The teams getting genuine horizontal gains aren't the ones running the most agents against one repo. They're the ones who did the architectural work to make "more agents" actually mean "more independent units of work," rather than "more contention for the same trunk."
 
-*(As a small aside — this is the same principle we're building into AITM, our AI-native task delivery tool: sizing and scoping work into independent units before an agent ever touches it, precisely so that concurrency adds throughput instead of contention. More on that in a future post.)*
+*This is the same principle we're building into AITM, our AI-native task delivery tool: sizing and scoping work into independent units before an agent ever touches it, precisely so that concurrency adds throughput instead of contention. We'll dig into that more in a future piece.*

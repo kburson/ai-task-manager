@@ -151,7 +151,7 @@ The future I want is not less product management. It is product management with 
 
 ## Series Link
 
-This article establishes the failure mode of unmanaged agentic delivery — the one I kept running into before I built anything to stop it. The next article, [Spec-Driven Development Is Necessary But Not Sufficient](04-the-spec-driven-insufficiency.md), explains why specifications improve the situation but still need story-level execution governance.
+That's the failure mode I want you to recognize: unmanaged agentic delivery, the one I kept running into before I built anything to stop it. Next up: [Spec-Driven Development Is Necessary But Not Sufficient](04-the-spec-driven-insufficiency.md), on why specs improve things but still need story-level execution governance.
 
 ## AITM And The Backlog Manager Pattern
 

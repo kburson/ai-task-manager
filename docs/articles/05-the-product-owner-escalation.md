@@ -181,7 +181,7 @@ This is not less product management. It is more technical product ownership beca
 
 ## Series Link
 
-This article defines the human operator I became. The next article, [The Backlog Becomes The Control Plane](06-the-backlog-control-plane-conjecture.md), explains the artifact that operator uses to govern the fleet.
+I've walked through the human operator I became. Next, in [The Backlog Becomes The Control Plane](06-the-backlog-control-plane-conjecture.md), I explain the artifact that operator uses to govern the fleet.
 
 ## AITM And The Role In Practice
 

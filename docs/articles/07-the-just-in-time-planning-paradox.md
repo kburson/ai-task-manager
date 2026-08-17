@@ -109,7 +109,7 @@ flowchart TB
 
 ## Series Link
 
-This article explains how I have AITM manage planning depth. The next article, [Context Durability Is A Feature](08-the-context-durability-corollary.md), explains how AITM keeps the agent's process rules durable during long-running work.
+Here's how I have AITM manage planning depth. Next up: [Context Durability Is A Feature](08-the-context-durability-corollary.md), which covers how AITM keeps the agent's process rules durable during long-running work.
 
 ## AITM Perspective
 

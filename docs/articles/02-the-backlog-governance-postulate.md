@@ -174,7 +174,7 @@ That is the promise of Technical Product Operations, as I see it. Not more promp
 
 ## Series Link
 
-This flagship article states the industry thesis I have been building toward. The next article, [The Vibe Coding Hangover](03-the-vibe-coding-deficiency.md), starts the proof chain by examining the failure mode I ran into when AI-generated code got produced faster than I could govern it.
+This article lays out the thesis I have been building toward. Next, in [The Vibe Coding Hangover](03-the-vibe-coding-deficiency.md), I walk through the failure mode I ran into when AI-generated code got produced faster than I could govern it.
 
 ## AITM And The Backlog Manager Pattern
 
