@@ -15,8 +15,15 @@ function warning(message) {
   );
 }
 
-async function readPipedStdin() {
-  if (process.stdin.isTTY) return null;
+function expectsPipedStdin(args) {
+  return args.some((argument, index) => {
+    if (['--input', '--body-file'].includes(argument)) return args[index + 1] === '-';
+    return argument === '--input=-' || argument === '--body-file=-';
+  });
+}
+
+async function readPipedStdin(args) {
+  if (process.stdin.isTTY || !expectsPipedStdin(args)) return null;
   const chunks = [];
   for await (const chunk of process.stdin) chunks.push(Buffer.from(chunk));
   return Buffer.concat(chunks);
@@ -58,7 +65,7 @@ function finishCapture(handle, result) {
 
 async function run() {
   const args = process.argv.slice(2);
-  const stdin = await readPipedStdin();
+  const stdin = await readPipedStdin(args);
   const handle = startCapture(args, stdin);
   const realGh = requiredEnvironment('AITM_CAPTURE_REAL_GH');
   const child = spawn(realGh, args, {

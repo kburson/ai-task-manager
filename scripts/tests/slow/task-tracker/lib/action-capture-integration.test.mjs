@@ -1,7 +1,7 @@
 // @story #1295
 // cspell:ignore FWYYERKWZZZ
 import assert from 'node:assert/strict';
-import { spawn, spawnSync } from 'node:child_process';
+import { execFile, spawn, spawnSync } from 'node:child_process';
 import { chmodSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import test from 'node:test';
@@ -36,7 +36,9 @@ function fixture() {
 const fs = require('node:fs');
 const args = process.argv.slice(2);
 const bodyAt = args.indexOf('--body-file');
-const input = fs.readFileSync(0);
+const inputAt = args.indexOf('--input');
+const readsStdin = (bodyAt >= 0 && args[bodyAt + 1] === '-') || (inputAt >= 0 && args[inputAt + 1] === '-');
+const input = readsStdin ? fs.readFileSync(0) : Buffer.alloc(0);
 const output = bodyAt >= 0 ? fs.readFileSync(args[bodyAt + 1]) : input;
 process.stdout.write(output);
 process.stderr.write(process.env.FAKE_GH_STDERR || '');
@@ -107,6 +109,30 @@ test('shim preserves piped stdin and fails open when capture metadata is invalid
   assert.equal(result.status, 0);
   assert.deepEqual(result.stdout, input);
   assert.match(result.stderr.toString(), /capture unavailable; continuing without capture/);
+});
+
+test('shim does not wait for EOF on an unused execFile stdin pipe', async () => {
+  const { projectDir, realGh } = fixture();
+  setActionCaptureEnabled({ projectDir, repository: 'o/r', issue: 42, enabled: true });
+  const result = await new Promise((resolve) => {
+    execFile(
+      SHIM,
+      ['issue', 'view', '42'],
+      {
+        cwd: projectDir,
+        env: captureEnv(projectDir, realGh),
+        timeout: 1_000,
+        encoding: 'buffer',
+      },
+      (error, stdout, stderr) => resolve({ error, stdout, stderr })
+    );
+  });
+
+  assert.equal(result.error, null);
+  assert.deepEqual(result.stdout, Buffer.alloc(0));
+  assert.deepEqual(result.stderr, Buffer.alloc(0));
+  const summary = summarizeActionCorpus({ projectDir, repository: 'o/r', issue: 42 });
+  assert.equal(summary.complete, 1);
 });
 
 function runConcurrentShim(args, options) {
