@@ -1,4 +1,5 @@
 <!-- @story #1295 -->
+<!-- cspell:ignore backchannels extensionless -->
 
 # GitHub-Bound Action Capture Implementation Plan
 

@@ -1,4 +1,5 @@
 <!-- @story #1295 -->
+<!-- cspell:ignore backchannel -->
 
 # GitHub-Bound Action Capture Spike Design
 
