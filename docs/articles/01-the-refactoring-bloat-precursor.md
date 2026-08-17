@@ -4,6 +4,8 @@
 
 Every "AI-assisted development" conversation acts like it started in 2023. It didn't. The tooling that made AI-assisted coding thinkable — refactoring engines, lightweight editors, code-trained language models, a platform to hang all of it on — was built by hand, one grinding step at a time, for two decades before an agent ever opened a pull request. This is that lineage.
 
+Consider this the prequel: the ground I want under your feet before I tell you what I've learned working with agentic delivery over the past year.
+
 ## The refactoring era and the tool that got too heavy
 
 JetBrains shipped ReSharper in 2004 as a Visual Studio extension for .NET developers — not a standalone editor, a plugin that sat inside Microsoft's IDE and rewired how C# and VB.NET got written. Twenty years and 2,200+ built-in on-the-fly inspection rules later, JetBrains calls it their longest-standing commercial product and the most-downloaded extension in the Visual Studio Marketplace ([JetBrains: ReSharper 20 Years](https://blog.jetbrains.com/dotnet/2024/07/23/resharper-20-years/)). It's the direct ancestor of the "understand the code, not just the text" idea that every AI coding tool now takes for granted — real-time inspection, structural refactoring, navigation that follows semantics instead of grep.

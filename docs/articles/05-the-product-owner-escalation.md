@@ -11,7 +11,7 @@ The product owner of the AI era will not win by writing bigger prompts.
 
 They will win by writing better work.
 
-That is the uncomfortable shift I had to make. When implementation agents can produce code from issues, the quality of the backlog stops being an administrative concern. It becomes a delivery constraint. A vague story does not merely slow a human team down. It gives an agent fleet room to make plausible but divergent assumptions at machine speed.
+That is the uncomfortable shift I had to make. When implementation agents can produce code from issues, the quality of the backlog becomes a delivery constraint, not just an administrative one. A vague story does not merely slow a human team down. It gives an agent fleet room to make plausible but divergent assumptions at machine speed.
 
 I do not think agentic AI eliminates product ownership. What I have found is that it raises the technical bar for product ownership.
 
@@ -181,7 +181,7 @@ This is not less product management. It is more technical product ownership beca
 
 ## Series Link
 
-This article defines the human operator I became. The next article, [The Backlog Becomes The Control Plane](06-the-backlog-control-plane-conjecture.md), explains the artifact that operator uses to govern the fleet.
+I've walked through the human operator I became. Next, in [The Backlog Becomes The Control Plane](06-the-backlog-control-plane-conjecture.md), I explain the artifact that operator uses to govern the fleet.
 
 ## AITM And The Role In Practice
 
@@ -201,7 +201,7 @@ It gives me a way to:
 
 That makes the backlog an operational interface between product, engineering, and AI execution.
 
-I do not think every organization must use GitHub Projects forever. What I do think is that the backlog needs to become durable enough, structured enough, and evidence-aware enough to manage agentic work. Besides, I will eventually add adapters for GitLab and Bitbucket repositories, as well as other AI hosts like Grok, Cursor or whatever comes next.
+I do not think every organization must use GitHub Projects forever. What I do think is that the backlog needs to become durable enough, structured enough, and evidence-aware enough to manage agentic work.
 
 ## Series Roadmap
 

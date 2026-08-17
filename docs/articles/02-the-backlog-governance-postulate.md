@@ -15,7 +15,7 @@ Agentic AI is breaking that equation.
 
 Implementation agents can already move across languages, frameworks, file layouts, and test conventions faster than most humans can retool. They inspect a repository, mimic its patterns, draft code, run tests, respond to failures, and hand back something plausible. They are not perfect. They are good enough to shift the bottleneck, and that is the part that actually matters.
 
-The harder problem stopped being "who can write the code?" a while ago. The harder problem is:
+The harder problem shifted away from "who can write the code?" a while ago. The harder problem is:
 
 - who defines the intent clearly enough,
 - who decomposes it into safe work,
@@ -53,7 +53,7 @@ flowchart LR
     Review --> Delivery2["Accepted delivery"]
 ```
 
-For me, the question stops being "which framework lets humans type this fastest?" and becomes "which technical foundation actually fits this product's performance, operational, security, maintainability, and deployment needs?"
+For me, the question shifts from "which framework lets humans type this fastest?" to "which technical foundation actually fits this product's performance, operational, security, maintainability, and deployment needs?"
 
 That is a very different conversation to have.
 
@@ -174,7 +174,7 @@ That is the promise of Technical Product Operations, as I see it. Not more promp
 
 ## Series Link
 
-This flagship article states the industry thesis I have been building toward. The next article, [The Vibe Coding Hangover](03-the-vibe-coding-deficiency.md), starts the proof chain by examining the failure mode I ran into when AI-generated code got produced faster than I could govern it.
+This article lays out the thesis I have been building toward. Next, in [The Vibe Coding Hangover](03-the-vibe-coding-deficiency.md), I walk through the failure mode I ran into when AI-generated code got produced faster than I could govern it.
 
 ## AITM And The Backlog Manager Pattern
 

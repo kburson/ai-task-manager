@@ -60,11 +60,11 @@ Before adding another AI coding tool to the stack, I would audit the backlog it 
 
 ## Series Link
 
-This article explains the backlog as the control surface I rely on. The next article, [The Just-In-Time Planner](07-the-just-in-time-planning-paradox.md), explains how that surface decomposes large intent into atomic work at the right time.
+The backlog is the control surface I rely on for this. Next, [The Just-In-Time Planner](07-the-just-in-time-planning-paradox.md) covers how that surface decomposes large intent into atomic work at the right time.
 
 ## The AITM Pattern
 
-I introduced AITM — `@kburson/ai-task-manager` — in the [opening article](02-the-backlog-governance-postulate.md#aitm-and-the-backlog-manager-pattern): the skill I built after hitting the exact wall described above one too many times. This is the piece that treats the backlog as an actual control plane.
+I introduced AITM — `@kburson/ai-task-manager` — in the [opening article](02-the-backlog-governance-postulate.md#aitm-and-the-backlog-manager-pattern): the skill I built after hitting the exact wall described above one too many times. AITM is what actually turns the backlog into a control plane, not just a metaphor for one.
 
 AITM uses GitHub Projects as its current control plane, largely because GitHub is where a large share of open-source and enterprise engineering work already happens. The same pattern extends to other systems wherever their APIs expose enough issue, field, workflow, and comment control.
 

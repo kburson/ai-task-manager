@@ -16,7 +16,7 @@ Test-first was never really about coverage. The whole point was that writing the
 
 That discipline just doesn't survive an agent that writes the test and the implementation in the same breath. There's no gap in time between "decide the interface" and "build it" for the pressure to do its work in. So what's left is the artifact — a test that proves something happened, after the fact, instead of a test that shaped a decision before it happened. AITM leans into exactly this: a story can't move forward until it points at the specific test that proves each requirement — not "tests pass" in general, but this test proves this requirement, checked automatically before the gate opens. Same ritual, red then green. Completely different job. It used to be a design instrument. Now it's a receipt.
 
-## Pair programming: one practice, four jobs, and only one of them survived without help
+## Pair programming: one practice, four jobs, and only one job didn't survive
 
 Pairing at a single keyboard bundled together four things that had no real reason to travel as a package, except that a human pair was the only tool available to do all four at once:
 
