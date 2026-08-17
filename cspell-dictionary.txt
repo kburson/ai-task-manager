@@ -93,7 +93,6 @@ fanin
 fanout
 Flesch
 footgun
-forgeable
 Forrester
 frontmatter
 gitdir
@@ -337,7 +336,6 @@ worktree's
 worktreeinclude
 worktrees
 Worktrees
-xcresult
 Xuezhi
 zxcvbn
 Zylos
