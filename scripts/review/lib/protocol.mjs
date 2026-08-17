@@ -571,6 +571,35 @@ function assertIntegrity(options) {
   return readProtocol(options);
 }
 
+function deepFreeze(value) {
+  if (!value || typeof value !== 'object' || Object.isFrozen(value)) return value;
+  for (const child of Object.values(value)) deepFreeze(child);
+  return Object.freeze(value);
+}
+
+export function validatedArchiveSnapshot({ cwd = process.cwd(), dir } = {}) {
+  const root = repositoryRoot(cwd);
+  const paths = protocolPaths(root, dir);
+  const state = assertIntegrity({ cwd: root, dir: paths.relative });
+  let events;
+  try {
+    events = readFileSync(paths.events, 'utf8')
+      .split('\n')
+      .filter((line) => line.trim())
+      .map((line) => JSON.parse(line));
+  } catch (error) {
+    fail('events-unreadable', error.message);
+  }
+  const terminal = events.at(-1);
+  const reviewerConsensus =
+    terminal?.type === 'reviewer-handoff' && terminal?.handoff?.decision === 'accepted';
+  const humanGoodEnough = terminal?.type === 'human-good-enough';
+  if (state.lifecycle !== 'accepted' || (!reviewerConsensus && !humanGoodEnough)) {
+    fail('archive-ineligible', `${state.lifecycle}:${terminal?.type ?? 'no-events'}`);
+  }
+  return deepFreeze(structuredClone({ root, state, events }));
+}
+
 export function claimTurn({ cwd = process.cwd(), dir, actor }) {
   const root = repositoryRoot(cwd);
   const paths = protocolPaths(root, dir);
