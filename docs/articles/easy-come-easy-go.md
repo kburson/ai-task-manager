@@ -7,7 +7,7 @@
 
 _Money you didn't earn gets spent like it doesn't matter. Agentic AI just handed product managers the same windfall — in code._
 
-Gamblers have a name for it: house money. Win a hand, and those chips stop feeling like real money — so you bet bigger, dumber, faster, because losing them wouldn't cost you anything you actually earned. Behavioral economists confirmed the effect decades ago (Thaler & Johnson, 1990), but you didn't need a study to know it. Ask anyone who's ever walked out of a casino holding less than they walked in with, shrugging it off with "well, it was mostly their money anyway."
+Gamblers have a name for it: house money. Win a hand, and those chips stop feeling like real money — so you bet bigger, dumber, faster, because losing them wouldn't cost you anything you actually earned. Behavioral economists confirmed the effect decades ago (Thaler & Johnson, 1990), but you didn't need a study to know it. Ask anyone who's ever walked out of a casino holding less than they walked in with, shrugging it off with "eh — easy come, easy go."
 
 Software just got its own version of the casino floor. Building an app used to cost something real — engineers to hire, months to wait, a codebase you'd better believe you'd have to live with. Agents blow most of that away. Point a fleet of them at an updated spec and you can have a whole new application before lunch. Genuinely great. Also, structurally, a windfall — and windfalls come with exactly the psychology Thaler and Johnson described. When it stops costing you anything to lose something, you stop being careful with it.
 
