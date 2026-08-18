@@ -8,6 +8,7 @@ import {
   lstatSync,
   openSync,
   readFileSync,
+  realpathSync,
   unlinkSync,
   writeFileSync,
 } from 'node:fs';
@@ -223,7 +224,35 @@ ${renderCliCommand([
 
 After a successful handoff, follow the bounded wait discipline above.
 
-On owner rounds after a review, add \`--answers\` with the exact preceding immutable review path shown by status. Omit \`--answers\` only on the opening owner round.
+On owner rounds after a review, inspect the structured status and read the exact preceding immutable review path from \`lastHandoff.artifacts.review.path\`:
+
+\`\`\`text
+${renderCliCommand(['status', '--dir', model.runtimeDir, '--json'])}
+\`\`\`
+
+Assign that value to \`REVIEW_PATH\`, then add it to the handoff command:
+
+\`\`\`text
+${renderCliCommand([
+  'handoff',
+  '--dir',
+  model.runtimeDir,
+  '--actor',
+  model.owner,
+  '--response',
+  `${model.runtimeDir}/round-N-author-response.md`,
+  '--answers',
+  'REVIEW_PATH',
+  '--artifact',
+  model.artifact,
+  '--commit',
+  'COMMIT_SHA',
+  '--message',
+  'author response complete',
+])}
+\`\`\`
+
+Omit \`--answers\` only on the opening owner round.
 `;
 }
 
@@ -242,7 +271,7 @@ Run status, then claim only when the reviewer role is available:
 ${renderCliCommand(['claim', '--dir', model.runtimeDir, '--actor', model.reviewer])}
 \`\`\`
 
-Review the exact artifact commit recorded by the author handoff. Read every required supplement. Write a new immutable Markdown review with unique finding identifiers and an explicit accepted or changes-requested decision. When the final allowed review requests changes, include the required exhaustion summary evidence.
+Review the exact artifact commit recorded by the author handoff. Read every required supplement. Write a new immutable Markdown review with unique finding identifiers and an explicit accepted or changes-requested decision. When the final allowed review requests changes, you may include optional exhaustion summary evidence.
 
 Write each finding as \`[finding:F-001]\` using an identifier unique within the review. Acknowledge every required supplement with its exact \`[supplement:S-1]\` marker. Do not reuse or edit a prior review file.
 
@@ -268,7 +297,7 @@ ${renderCliCommand([
 
 If the lifecycle remains active after a successful handoff, follow the bounded wait discipline above.
 
-For changes requested, replace the decision with \`changes-requested\`. On the final allowed reviewer handoff, also provide \`--summary\` with the immutable exhaustion-summary path required by status and help.
+For changes requested, replace the decision with \`changes-requested\`. On the final allowed reviewer handoff, you may additionally provide optional \`--summary\` with an immutable exhaustion-summary path.
 `;
 }
 
@@ -289,7 +318,55 @@ function isExactRegularFile(destination, bytes) {
   }
 }
 
-function atomicPublish(destination, bytes, dependencies, label) {
+function captureRuntimeIdentity(runtimeAbsolute, repositoryRoot) {
+  const rootReal = realpathSync(repositoryRoot);
+  const stat = lstatSync(runtimeAbsolute);
+  const runtimeReal = realpathSync(runtimeAbsolute);
+  const relative = path.relative(rootReal, runtimeReal);
+  if (
+    !stat.isDirectory() ||
+    stat.isSymbolicLink() ||
+    relative === '..' ||
+    relative.startsWith(`..${path.sep}`) ||
+    path.isAbsolute(relative)
+  ) {
+    fail('runtime-drift', `${runtimeAbsolute} is not a stable repository directory`);
+  }
+  return Object.freeze({ rootReal, runtimeReal, device: stat.dev, inode: stat.ino });
+}
+
+function assertRuntimeStable(runtimeAbsolute, identity) {
+  try {
+    const stat = lstatSync(runtimeAbsolute);
+    const runtimeReal = realpathSync(runtimeAbsolute);
+    const relative = path.relative(identity.rootReal, runtimeReal);
+    if (
+      !stat.isDirectory() ||
+      stat.isSymbolicLink() ||
+      stat.dev !== identity.device ||
+      stat.ino !== identity.inode ||
+      runtimeReal !== identity.runtimeReal ||
+      relative === '..' ||
+      relative.startsWith(`..${path.sep}`) ||
+      path.isAbsolute(relative)
+    ) {
+      fail('runtime-drift', `${runtimeAbsolute} changed during startup publication`);
+    }
+  } catch (error) {
+    if (error.message?.startsWith('co-review:start-runtime-drift')) throw error;
+    fail('runtime-drift', `${runtimeAbsolute} changed during startup publication`);
+  }
+}
+
+function preflightPublications(publications) {
+  for (const { destination, bytes } of publications) {
+    if (existsSync(destination) && !isExactRegularFile(destination, bytes)) {
+      fail('conflict', `${destination} is conflicting or non-regular generated content`);
+    }
+  }
+}
+
+function atomicPublish(destination, bytes, dependencies, label, validateRuntime) {
   if (existsSync(destination)) {
     if (!isExactRegularFile(destination, bytes)) {
       fail('conflict', `${destination} is conflicting or non-regular generated content`);
@@ -297,6 +374,7 @@ function atomicPublish(destination, bytes, dependencies, label) {
     return;
   }
   dependencies.beforePublish?.(label);
+  validateRuntime();
   const temporary = path.join(
     path.dirname(destination),
     `.${path.basename(destination)}.${randomUUID()}.tmp`
@@ -308,6 +386,7 @@ function atomicPublish(destination, bytes, dependencies, label) {
     closeSync(descriptor);
     descriptor = undefined;
     try {
+      validateRuntime();
       linkSync(temporary, destination);
     } catch (error) {
       if (error.code !== 'EEXIST') throw error;
@@ -387,6 +466,8 @@ export function startProtocol(options = {}, dependencies = {}) {
     assertStartupState(state);
 
     const runtimeAbsolute = path.resolve(state.repositoryRoot, state.initialization.runtimeDir);
+    const runtimeIdentity = captureRuntimeIdentity(runtimeAbsolute, state.repositoryRoot);
+    const validateRuntime = () => assertRuntimeStable(runtimeAbsolute, runtimeIdentity);
     const authorAbsolute = path.join(runtimeAbsolute, FILES.author);
     const reviewerAbsolute = path.join(runtimeAbsolute, FILES.reviewer);
     const manifestAbsolute = path.join(runtimeAbsolute, FILES.manifest);
@@ -411,10 +492,23 @@ export function startProtocol(options = {}, dependencies = {}) {
       createdAt: state.createdAt,
     };
     const manifestBytes = exactJson(manifest);
+    const publications = [
+      { destination: authorAbsolute, bytes: authorBytes, label: FILES.author },
+      { destination: reviewerAbsolute, bytes: reviewerBytes, label: FILES.reviewer },
+      { destination: manifestAbsolute, bytes: manifestBytes, label: FILES.manifest },
+    ];
 
-    atomicPublish(authorAbsolute, authorBytes, dependencies, FILES.author);
-    atomicPublish(reviewerAbsolute, reviewerBytes, dependencies, FILES.reviewer);
-    atomicPublish(manifestAbsolute, manifestBytes, dependencies, FILES.manifest);
+    validateRuntime();
+    preflightPublications(publications);
+    for (const publication of publications) {
+      atomicPublish(
+        publication.destination,
+        publication.bytes,
+        dependencies,
+        publication.label,
+        validateRuntime
+      );
+    }
 
     if (
       !isExactRegularFile(authorAbsolute, authorBytes) ||

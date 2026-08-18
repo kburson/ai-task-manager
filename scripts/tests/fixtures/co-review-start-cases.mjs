@@ -1,7 +1,14 @@
 // @story #1269
 
 import assert from 'node:assert/strict';
-import { existsSync, readFileSync, symlinkSync, unlinkSync, writeFileSync } from 'node:fs';
+import {
+  existsSync,
+  readFileSync,
+  renameSync,
+  symlinkSync,
+  unlinkSync,
+  writeFileSync,
+} from 'node:fs';
 import path from 'node:path';
 import test from 'node:test';
 
@@ -17,6 +24,7 @@ import {
   memoryRepositoryFixture,
   readEvents,
   runCliDirect,
+  temporaryRoot,
 } from './co-review-fixture.mjs';
 
 function startDependencies(api, extra = {}) {
@@ -99,11 +107,16 @@ test('start delegates initialization and publishes concrete hashed handoffs befo
   }
   assert.match(author, /author-agent/);
   assert.match(author, /--response/);
+  assert.match(author, /status --dir \.tmp\/review-start --json/);
+  assert.match(author, /lastHandoff\.artifacts\.review\.path/);
+  assert.match(author, /--answers REVIEW_PATH/);
   assert.match(author, /\[finding:F-001\] \[disposition:accepted\]/);
   assert.match(author, /\[evidence:repository-path-or-command\]/);
   assert.match(reviewer, /reviewer-agent/);
   assert.match(reviewer, /--review/);
   assert.match(reviewer, /\[supplement:S-1\]/);
+  assert.match(reviewer, /optional.*--summary/i);
+  assert.doesNotMatch(reviewer, /required.*--summary/i);
   assert.equal(
     result.output,
     `AUTHOR PROMPT\nRead and follow this handoff completely, then begin:\n${result.authorHandoff.absolute}\n\n` +
@@ -190,8 +203,10 @@ test('exact start retry is event-idempotent, reconstructs one missing handoff, a
   assert.equal(readFileSync(first.authorHandoff.absolute, 'utf8'), authorBytes);
   assert.deepEqual(readEvents(fixture.root, options.dir), events);
 
+  unlinkSync(first.authorHandoff.absolute);
   writeFileSync(first.reviewerHandoff.absolute, '# changed\n');
   assert.throws(() => startProtocol(options, startDependencies(api)), /co-review:start-conflict/);
+  assert.equal(existsSync(first.authorHandoff.absolute), false);
   assert.equal(readFileSync(first.reviewerHandoff.absolute, 'utf8'), '# changed\n');
 });
 
@@ -306,6 +321,35 @@ test('startup publication never follows generated-file symlinks or overwrites a 
     readFileSync(path.join(raced.root, racedDir, 'author-handoff.md'), 'utf8'),
     '# racing writer\n'
   );
+
+  const swapped = memoryRepositoryFixture();
+  const swappedApi = await memoryProtocol(swapped.repository);
+  const swappedDir = '.tmp/swapped-start';
+  const outsideDirectory = temporaryRoot('aitm-co-review-start-outside-');
+  assert.throws(
+    () =>
+      startProtocol(
+        {
+          cwd: swapped.root,
+          dir: swappedDir,
+          artifact: swapped.artifact,
+          owner: 'author-agent',
+          reviewer: 'reviewer-agent',
+        },
+        startDependencies(swappedApi, {
+          beforePublish(name) {
+            if (name !== 'author-handoff.md') return;
+            const runtime = path.join(swapped.root, swappedDir);
+            renameSync(runtime, `${runtime}-original`);
+            symlinkSync(outsideDirectory, runtime, 'dir');
+          },
+        })
+      ),
+    /co-review:start-runtime-drift/
+  );
+  for (const generated of ['author-handoff.md', 'reviewer-handoff.md', 'start-manifest.json']) {
+    assert.equal(existsSync(path.join(outsideDirectory, generated)), false);
+  }
 });
 
 test('interactive start displays resolved configuration and cancellation mutates nothing', async () => {
