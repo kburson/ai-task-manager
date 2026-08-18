@@ -96,10 +96,27 @@ test('structured help records are the lifecycle-ordered rendering authority', ()
       page,
       new RegExp(entry.mutationBoundary.replaceAll(/[.*+?^${}()|[\]\\]/g, '\\$&'))
     );
+    const summary = [
+      `  ${name}`,
+      `    Authorized caller: ${entry.caller}`,
+      `    Lifecycle states: ${entry.lifecycleStates.join(', ')}`,
+      `    Mutation boundary: ${entry.mutationBoundary}`,
+      `    Usage: ${entry.usage}`,
+    ].join('\n');
+    assert.match(top, new RegExp(summary.replaceAll(/[.*+?^${}()|[\]\\]/g, '\\$&')));
     const offset = top.indexOf(`  ${name}`);
     assert.ok(offset > priorOffset, `${name}: lifecycle order`);
     priorOffset = offset;
   }
+});
+
+test('handoff and budget help preserve the mandatory closing owner turn', () => {
+  assert.deepEqual(COMMANDS['set-max-turns'].lifecycleStates, ['active']);
+  for (const page of [renderHelp(), renderHelp('handoff')]) {
+    assert.match(page, /final changes-requested.*active closing owner/is);
+    assert.match(page, /closing owner handoff.*intervention-required/is);
+  }
+  assert.doesNotMatch(renderHelp('set-max-turns'), /active or intervention-required/i);
 });
 
 test('top-level help covers the settled lifecycle, recovery, and governance surface', () => {

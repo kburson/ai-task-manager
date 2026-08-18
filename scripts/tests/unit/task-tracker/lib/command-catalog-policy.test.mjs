@@ -337,6 +337,9 @@ test('co-review package catalog matches every settled subcommand, flag, and dura
     coReview.exitCodes.find(({ code }) => code === 4)?.meaning ?? '',
     /acceptance.*durable.*archive publication.*pending/i
   );
+  assert.match(coReview.preconditions.join(' '), /authenticated gh identity/i);
+  assert.match(coReview.effects.join(' '), /mutex/i);
+  assert.match(coReview.effects.join(' '), /exact bytes/i);
 });
 
 test('every task verb has an explicit positional contract', () => {

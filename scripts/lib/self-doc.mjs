@@ -398,8 +398,17 @@ const ROUTABLE_ARGUMENTS = Object.freeze({
 });
 
 const exitCode = (code, meaning) => Object.freeze({ code, meaning });
-const routableContract = ({ output, exitCodes, examples, relatedCommands }) =>
+const routableContract = ({
+  preconditions,
+  effects,
+  output,
+  exitCodes,
+  examples,
+  relatedCommands,
+}) =>
   Object.freeze({
+    preconditions: preconditions ? Object.freeze(preconditions) : undefined,
+    effects: effects ? Object.freeze(effects) : undefined,
     output: Object.freeze(output),
     exitCodes: Object.freeze(exitCodes),
     examples: Object.freeze(examples),
@@ -669,8 +678,8 @@ function completeRoutableDoc(name, doc) {
     classification: 'agent-callable-standalone',
     agentCallable: true,
     arguments: Object.freeze(argumentsList),
-    preconditions: Object.freeze([doc.audience]),
-    effects: Object.freeze([doc.synopsis]),
+    preconditions: contract.preconditions ?? Object.freeze([doc.audience]),
+    effects: contract.effects ?? Object.freeze([doc.synopsis]),
     output: contract.output,
     exitCodes: contract.exitCodes,
     examples: contract.examples,

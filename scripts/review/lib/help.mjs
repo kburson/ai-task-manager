@@ -171,7 +171,7 @@ export const COMMANDS = Object.freeze({
     exits:
       '0=handoff complete; 1=protocol/Git/artifact refusal; 2=invalid or role-inapplicable flags; 4=acceptance durable; archive publication pending.',
     transition:
-      'owner -> reviewer; reviewer changes -> owner; reviewer accepted -> accepted; final reviewer changes -> intervention-required.',
+      'owner -> reviewer; reviewer changes -> owner; reviewer accepted -> accepted; final changes-requested -> active closing owner; closing owner handoff -> intervention-required.',
     idempotency: 'A completed handoff is not replayed; status reveals the already-advanced state.',
     examples: [
       'npx aitm co-review handoff --dir .tmp/design-review --actor owner-agent --response .tmp/design-review/r2-owner-response.md --artifact docs/design.md --commit abc1234 --answers .tmp/design-review/r1-review.md --message "revision ready"',
@@ -189,11 +189,11 @@ export const COMMANDS = Object.freeze({
   'set-max-turns': command({
     purpose: 'Authenticated adjustment of the absolute reviewer-turn maximum.',
     caller: 'The authenticated GitHub user exercising human budget authority.',
-    lifecycleStates: ['active', 'intervention-required'],
+    lifecycleStates: ['active'],
     mutationBoundary:
       'Authenticates first, then records one absolute budget adjustment under the mutex.',
     prerequisites: [
-      'The gh CLI is authenticated and the protocol is active or intervention-required.',
+      'The gh CLI is authenticated and the protocol is active.',
       'The requested maximum is a nonnegative integer that preserves any in-progress turn floor.',
     ],
     usage: 'npx aitm co-review set-max-turns --dir <path> --max-turns <N>',
@@ -209,7 +209,7 @@ export const COMMANDS = Object.freeze({
     output: 'Prints the effective budget, adjustment provenance, lifecycle, and exact next action.',
     exits: '0=adjusted or exact no-op; 1=identity/state/integrity/lock refusal; 2=invalid usage.',
     transition:
-      'active may remain active or enter intervention-required; intervention-required may remain paused.',
+      'Active may remain active or enter intervention-required when the adjusted budget is exhausted.',
     idempotency: 'An exact effective no-op preserves protocol bytes and emits no event.',
     examples: [
       'npx aitm co-review set-max-turns --dir .tmp/design-review --max-turns 8',
@@ -394,7 +394,14 @@ function renderCommandHelp(name) {
 function renderTopHelp() {
   const commandNames = Object.keys(COMMANDS);
   const commandTable = Object.entries(COMMANDS)
-    .map(([name, entry]) => `  ${name.padEnd(14)} ${entry.purpose}`)
+    .map(
+      ([name, entry]) => `  ${name}
+    Authorized caller: ${entry.caller}
+    Lifecycle states: ${entry.lifecycleStates.join(', ')}
+    Mutation boundary: ${entry.mutationBoundary}
+    Usage: ${entry.usage}
+    Purpose: ${entry.purpose}`
+    )
     .join('\n');
   return `co-review — model-agnostic artifact owner / external reviewer handshake
 
@@ -422,7 +429,7 @@ WHO
   If authentication fails, run gh auth login and rerun the exact recovery command.
 
 WHEN
-  init before review; status after context loss; claim before work; wait while the other role acts; handoff after immutable artifacts are complete; set-max-turns during active/intervention state; supplement and continue/finalize only at intervention; finalize after accepted publication failure; stop forever after accepted.
+  init before review; status after context loss; claim before work; wait while the other role acts; handoff after immutable artifacts are complete; set-max-turns only during active state; supplement and continue/finalize only at intervention; finalize after accepted publication failure; stop forever after accepted.
 
 WHERE
   The authoritative artifact is a tracked repository path. --dir is a caller-selected Git-ignored local directory containing state.json, events.jsonl, round artifacts, summaries, optional refocus files, and a short-lived .co-review-lock/.
@@ -432,7 +439,8 @@ HOW
 
 LIFECYCLE
   active owner -> active reviewer -> active owner ... -> accepted
-                                     final changes-requested -> intervention-required
+                                     final changes-requested -> active closing owner
+                                     closing owner handoff -> intervention-required
                                      human continue -> active owner
                                      human finalize --good-enough -> accepted
   accepted is terminal and wins over budget exhaustion on the last allowed review.
