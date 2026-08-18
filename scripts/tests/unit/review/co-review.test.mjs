@@ -16,6 +16,7 @@ import '../../fixtures/co-review-budget-cases.mjs';
 import '../../fixtures/co-review-finalization-cases.mjs';
 import '../../fixtures/co-review-handoff-cases.mjs';
 import '../../fixtures/co-review-supplement-cases.mjs';
+import { COMMANDS, renderHelp } from '../../../review/lib/help.mjs';
 import {
   cleanupTemporaryRoots,
   commitArtifact,
@@ -68,9 +69,59 @@ test('top-level help is recovery-grade and safe before initialization', async ()
   }
 });
 
+test('structured help records are the lifecycle-ordered rendering authority', () => {
+  const commandNames = [
+    'init',
+    'status',
+    'claim',
+    'wait',
+    'handoff',
+    'set-max-turns',
+    'supplement',
+    'continue',
+    'finalize',
+  ];
+  assert.deepEqual(Object.keys(COMMANDS), commandNames);
+  const top = renderHelp();
+  let priorOffset = -1;
+  for (const [name, entry] of Object.entries(COMMANDS)) {
+    assert.ok(entry.lifecycleStates.length > 0, name);
+    assert.ok(entry.mutationBoundary.length > 0, name);
+    const page = renderHelp(name);
+    assert.match(
+      page,
+      new RegExp(entry.lifecycleStates.join(', ').replaceAll(/[.*+?^${}()|[\]\\]/g, '\\$&'))
+    );
+    assert.match(
+      page,
+      new RegExp(entry.mutationBoundary.replaceAll(/[.*+?^${}()|[\]\\]/g, '\\$&'))
+    );
+    const offset = top.indexOf(`  ${name}`);
+    assert.ok(offset > priorOffset, `${name}: lifecycle order`);
+    priorOffset = offset;
+  }
+});
+
+test('top-level help covers the settled lifecycle, recovery, and governance surface', () => {
+  const page = renderHelp();
+  for (const fragment of [
+    '--archive-dir',
+    'set-max-turns',
+    'supplement',
+    '[supplement:S-001]',
+    '--good-enough',
+    'acceptance durable; archive publication pending',
+    'gh auth login',
+    'exact bytes',
+    'host repository governance',
+  ]) {
+    assert.match(page, new RegExp(fragment.replaceAll(/[.*+?^${}()|[\]\\]/g, '\\$&')));
+  }
+});
+
 test('every command has standalone recovery help in both forms', async () => {
   const emptyRoot = temporaryRoot();
-  for (const command of ['init', 'status', 'claim', 'wait', 'handoff', 'continue']) {
+  for (const command of Object.keys(COMMANDS)) {
     const canonical = await runCliDirect(['help', command], { cwd: emptyRoot });
     const flag = await runCliDirect([command, '--help'], { cwd: emptyRoot });
     assert.equal(canonical.status, 0, canonical.stderr);
@@ -87,6 +138,8 @@ test('every command has standalone recovery help in both forms', async () => {
       'Exit codes',
       'State transition',
       'Idempotency',
+      'Lifecycle states',
+      'Mutation boundary',
       'Examples',
       'Failure recovery',
       'Next commands',
