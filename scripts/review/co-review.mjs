@@ -8,7 +8,12 @@ import { fileURLToPath } from 'node:url';
 
 import { prepareArchive, publishPreparedArchive } from './lib/archive.mjs';
 import { helpRequest, renderHelp } from './lib/help.mjs';
-import { START_DEFAULTS, deriveRuntimeDir, startProtocol } from './lib/start.mjs';
+import {
+  START_DEFAULTS,
+  deriveHostArchiveDir,
+  deriveRuntimeDir,
+  startProtocol,
+} from './lib/start.mjs';
 
 const STATUS_PROJECTED_MUTATIONS = new Set([
   'init',
@@ -43,6 +48,8 @@ export async function runCli(argv = process.argv.slice(2), io = {}) {
         'max-turns',
         'wait-cycles',
         'wait-interval',
+        'issue',
+        'artifact-kind',
       ]);
       const collected = await collectStartValues(values, io, writeOut);
       if (collected.cancelled) {
@@ -58,6 +65,8 @@ export async function runCli(argv = process.argv.slice(2), io = {}) {
         maxReviewTurns: positiveInteger(collected.values, 'max-turns'),
         waitCycles: positiveInteger(collected.values, 'wait-cycles'),
         waitIntervalSeconds: positiveInteger(collected.values, 'wait-interval'),
+        issue: collected.values.issue,
+        artifactKind: collected.values['artifact-kind'],
         ...repositoryOptions,
       });
       writeOut(result.output);
@@ -409,6 +418,11 @@ async function collectStartValues(values, io, writeOut) {
       dir: await answer('dir', 'Protocol directory', derivedDir),
       owner: await answer('owner', 'Author identity'),
       reviewer: await answer('reviewer', 'Reviewer identity'),
+      issue: await answer('issue', 'Host issue number (optional; requires artifact kind)'),
+      'artifact-kind': await answer(
+        'artifact-kind',
+        'Artifact kind (spec or plan; requires host issue)'
+      ),
       'max-turns': await answer(
         'max-turns',
         'Maximum reviewer turns',
@@ -421,6 +435,10 @@ async function collectStartValues(values, io, writeOut) {
         String(START_DEFAULTS.waitIntervalSeconds)
       ),
     };
+    const hostArchive =
+      collected.issue || collected['artifact-kind']
+        ? deriveHostArchiveDir(collected.issue, collected['artifact-kind'])
+        : null;
     writeOut(
       [
         'Resolved co-review startup:',
@@ -428,6 +446,9 @@ async function collectStartValues(values, io, writeOut) {
         `  Protocol directory: ${collected.dir}`,
         `  Author: ${collected.owner}`,
         `  Reviewer: ${collected.reviewer}`,
+        `  Host issue: ${collected.issue || 'not configured'}`,
+        `  Artifact kind: ${collected['artifact-kind'] || 'not configured'}`,
+        `  Archive destination: ${hostArchive || 'not configured'}`,
         `  Maximum reviewer turns: ${collected['max-turns']}`,
         `  Wait cycles: ${collected['wait-cycles']}`,
         `  Wait interval seconds: ${collected['wait-interval']}`,
@@ -563,7 +584,9 @@ function formatStatus(state) {
 function archivePendingMessage({ dir, state, error, shellArgument }) {
   const configured = state.initialization?.archiveDir;
   const retry = `npx aitm co-review finalize --dir ${shellArgument(dir)}${
-    configured ? '' : ' --archive-dir <tracked-repo-path>'
+    configured
+      ? ` --archive-dir ${shellArgument(configured)}`
+      : ' --archive-dir <tracked-repo-path>'
   }`;
   const cause = String(error.message).replace(/; no state changed(?:; next:.*)?$/, '');
   return [

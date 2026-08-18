@@ -70,6 +70,24 @@ export function deriveRuntimeDir(artifact, creationId) {
   return path.posix.join('.tmp/co-review', `${slug}-${id}`);
 }
 
+export function deriveHostArchiveDir(issue, artifactKind) {
+  const issueText = String(issue ?? '').trim();
+  const kind = String(artifactKind ?? '').trim();
+  if (!/^[1-9][0-9]*$/.test(issueText) || !Number.isSafeInteger(Number(issueText))) {
+    fail('host-context', 'issue must be a positive decimal integer', {
+      exitCode: 2,
+      noStateChanged: true,
+    });
+  }
+  if (!['spec', 'plan'].includes(kind)) {
+    fail('host-context', 'artifact kind must be exactly spec or plan', {
+      exitCode: 2,
+      noStateChanged: true,
+    });
+  }
+  return path.posix.join('docs/superpowers/reviews', issueText, kind);
+}
+
 export function resolveStartOptions(options = {}, dependencies = {}) {
   const artifact = String(options.artifact || '').trim();
   const owner = String(options.owner || '').trim();
@@ -83,6 +101,22 @@ export function resolveStartOptions(options = {}, dependencies = {}) {
       exitCode: 2,
       noStateChanged: true,
     });
+
+  const issueText = String(options.issue ?? '').trim();
+  const artifactKind = String(options.artifactKind ?? '').trim();
+  if (Boolean(issueText) !== Boolean(artifactKind)) {
+    fail('host-context', '--issue and --artifact-kind are required together', {
+      exitCode: 2,
+      noStateChanged: true,
+    });
+  }
+  const hostArchive = issueText
+    ? {
+        issue: Number(issueText),
+        artifactKind,
+        archiveDir: deriveHostArchiveDir(issueText, artifactKind),
+      }
+    : {};
 
   const maxReviewTurns = positiveInteger(
     options.maxReviewTurns ?? START_DEFAULTS.maxReviewTurns,
@@ -104,6 +138,7 @@ export function resolveStartOptions(options = {}, dependencies = {}) {
     owner,
     reviewer,
     dir,
+    ...hostArchive,
     maxReviewTurns,
     waitCycles,
     waitIntervalSeconds,
@@ -122,6 +157,11 @@ function sharedHandoff(model) {
 - Authoritative artifact: ${inline(model.artifact)}
 - Author identity: ${inline(model.owner)}
 - Reviewer identity: ${inline(model.reviewer)}
+${
+  model.archiveDir
+    ? `- Host issue: ${model.issue}\n- Artifact kind: ${inline(model.artifactKind)}\n- Archive destination: ${inline(model.archiveDir)}`
+    : '- Host archive destination: not configured; the human coordinator must supply an explicit valid destination before finalization'
+}
 - Maximum reviewer handoffs: ${model.maxReviewTurns}
 - Waiting episode: at most ${model.waitCycles} separately observed waits of ${model.waitIntervalSeconds} seconds
 
@@ -158,6 +198,21 @@ After compaction, reread this file, run status, and resume from the last visible
 Accepted is terminal: verify status and stop forever. Intervention-required is a human decision boundary. Do not adjust the budget, continue/refocus, supplement, or finalize good-enough acceptance unless the authenticated human authorizes the existing command.
 
 Exit handling: 0 means the requested command completed (or a wait woke); 1 means runtime, Git, integrity, lock, role, or protocol refusal; 2 means invalid usage; 3 is only an ordinary bounded-wait timeout; 4 means acceptance is already durable while archive publication is pending. On exit 4, never repeat the terminal handoff—run the exact printed finalize retry.
+${
+  model.archiveDir
+    ? `
+## Terminal archive
+
+The repository host configured ${inline(model.archiveDir)} for this ${inline(model.artifactKind)} review. After acceptance, including an exit-code-4 publication failure, use this exact explicit finalization command:
+
+\`\`\`text
+${renderCliCommand(['finalize', '--dir', model.runtimeDir, '--archive-dir', model.archiveDir])}
+\`\`\`
+
+An existing complete-identical archive is success. A conflicting or mixed destination is a refusal: preserve every file and report it without rewriting evidence. Only an authenticated human may authorize the separate \`--good-enough\` path.
+`
+    : ''
+}
 `;
 }
 
@@ -175,6 +230,9 @@ function modelFor(state, settings, actor) {
     maxReviewTurns: state.maxReviewTurns,
     waitCycles: settings.waitCycles,
     waitIntervalSeconds: settings.waitIntervalSeconds,
+    issue: settings.issue,
+    artifactKind: settings.artifactKind,
+    archiveDir: state.initialization.archiveDir,
     actor,
   });
 }
@@ -445,6 +503,9 @@ export function startProtocol(options = {}, dependencies = {}) {
     resolved.waitCycles,
     '--wait-interval',
     resolved.waitIntervalSeconds,
+    ...(resolved.archiveDir
+      ? ['--issue', resolved.issue, '--artifact-kind', resolved.artifactKind]
+      : []),
   ]);
   let state;
   try {
@@ -455,6 +516,7 @@ export function startProtocol(options = {}, dependencies = {}) {
       owner: resolved.owner,
       reviewer: resolved.reviewer,
       maxReviewTurns: resolved.maxReviewTurns,
+      archiveDir: resolved.archiveDir,
       ...(options.repository ? { repository: options.repository } : {}),
     });
     state = status({
@@ -485,6 +547,15 @@ export function startProtocol(options = {}, dependencies = {}) {
       maxReviewTurns: state.maxReviewTurns,
       waitCycles: resolved.waitCycles,
       waitIntervalSeconds: resolved.waitIntervalSeconds,
+      ...(resolved.archiveDir
+        ? {
+            hostArchive: {
+              issue: resolved.issue,
+              artifactKind: resolved.artifactKind,
+              archiveDir: resolved.archiveDir,
+            },
+          }
+        : {}),
       handoffs: {
         author: { path: authorRelative, sha256: digest(authorBytes) },
         reviewer: { path: reviewerRelative, sha256: digest(reviewerBytes) },

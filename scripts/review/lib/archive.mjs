@@ -418,7 +418,7 @@ function buildPrepared({ root, state, events, archiveDir, repository = REAL_REPO
       },
     },
     normative:
-      'The accepted specification remains normative; the archived review and owner response are evidence.',
+      'The accepted artifact remains normative; the archived review and owner response are evidence.',
   };
   const manifestFile = outputFile('manifest', 'README.md', renderArchiveManifest(manifest));
   return deepFreeze({
