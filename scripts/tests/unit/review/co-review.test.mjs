@@ -155,6 +155,7 @@ test('top-level help covers the settled lifecycle, recovery, and governance surf
     'gh auth login',
     'exact bytes',
     'host repository governance',
+    'Response, review, supplement, and archive inputs are Markdown expected to satisfy host repository governance',
   ]) {
     assert.match(page, new RegExp(fragment.replaceAll(/[.*+?^${}()|[\]\\]/g, '\\$&')));
   }

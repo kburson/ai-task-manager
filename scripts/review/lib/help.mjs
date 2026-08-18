@@ -462,6 +462,7 @@ OPTION GLOSSARY
   --timeout bounded 0..60 seconds; --json machine-readable status/finalization.
 
 ARTIFACT FORMAT
+  Response, review, supplement, and archive inputs are Markdown expected to satisfy host repository governance.
   Reviewer findings: [finding:F-001]
   Owner responses:    [finding:F-001] [disposition:accepted]
   Dispositions: accepted | accepted-with-modification | rejected | deferred
