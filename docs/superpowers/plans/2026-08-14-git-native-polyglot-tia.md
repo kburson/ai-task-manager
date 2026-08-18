@@ -774,7 +774,7 @@ Node/iOS union, and learned-state deletion.
       transport and real Git repositories; never mutate a live ruleset or source
       project from the test.
 - [ ] Run
-      `node --test scripts/tests/slow/task-tracker/tia/tia-e2e.test.mjs scripts/tests/unit/task-tracker/lib/install.test.mjs scripts/tests/unit/task-tracker/lib/help.test.mjs`.
+      `node --test scripts/tests/slow/task-tracker/tia/tia-e2e.test.mjs scripts/tests/unit/task-tracker/lib/install.test.mjs scripts/tests/unit/task-tracker/verbs/help.test.mjs`.
       Expected: FAIL on missing documentation/install/doctor parity.
 - [ ] Document normal install/init, provider configuration, policy defaults,
       receipts, health meanings, repair lease, protected/cooperative guarantees,
