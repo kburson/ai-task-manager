@@ -15,6 +15,7 @@ import test from 'node:test';
 import '../../fixtures/co-review-budget-cases.mjs';
 import '../../fixtures/co-review-finalization-cases.mjs';
 import '../../fixtures/co-review-handoff-cases.mjs';
+import '../../fixtures/co-review-start-cases.mjs';
 import '../../fixtures/co-review-supplement-cases.mjs';
 import { COMMANDS, renderHelp } from '../../../review/lib/help.mjs';
 import {
@@ -71,6 +72,7 @@ test('top-level help is recovery-grade and safe before initialization', async ()
 
 test('structured help records are the lifecycle-ordered rendering authority', () => {
   const commandNames = [
+    'start',
     'init',
     'status',
     'claim',

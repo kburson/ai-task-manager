@@ -89,7 +89,8 @@ function repoRoot() {
 // #1295 adds the temporary capture guide, control CLI, process shim, and capture
 // authority module. The four files are required for installed-package parity.
 // #1292 adds the shipped co-review repository boundary used by the runtime.
-const ENTRY_CEILING = 669;
+// #1269 adds the guided co-review startup and handoff publication module.
+const ENTRY_CEILING = 670;
 
 function packedFiles() {
   const out = execFileSync('npm', ['pack', '--dry-run', '--json'], {
@@ -172,6 +173,7 @@ test('package-boundary: runtime entry points are still shipped', () => {
     'bin/aitm.mjs',
     'scripts/review/co-review.mjs',
     'scripts/review/lib/repository-boundary.mjs',
+    'scripts/review/lib/start.mjs',
     'scripts/reports/generate-value-report.mjs',
     'scripts/task-tracker/verbs/start.mjs',
     'scripts/gh/move-state.mjs',

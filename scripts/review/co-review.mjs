@@ -1,11 +1,14 @@
 #!/usr/bin/env node
 // @story #1266
 
+import { randomUUID } from 'node:crypto';
 import path from 'node:path';
+import { createInterface } from 'node:readline/promises';
 import { fileURLToPath } from 'node:url';
 
 import { prepareArchive, publishPreparedArchive } from './lib/archive.mjs';
 import { helpRequest, renderHelp } from './lib/help.mjs';
+import { START_DEFAULTS, deriveRuntimeDir, startProtocol } from './lib/start.mjs';
 
 const STATUS_PROJECTED_MUTATIONS = new Set([
   'init',
@@ -31,7 +34,35 @@ export async function runCli(argv = process.argv.slice(2), io = {}) {
     const repositoryOptions = io.repository ? { repository: io.repository } : {};
     let result;
     let exitCode = 0;
-    if (name === 'init') {
+    if (name === 'start') {
+      assertAllowed(values, booleans, [
+        'dir',
+        'artifact',
+        'owner',
+        'reviewer',
+        'max-turns',
+        'wait-cycles',
+        'wait-interval',
+      ]);
+      const collected = await collectStartValues(values, io, writeOut);
+      if (collected.cancelled) {
+        writeOut('Co-review startup cancelled; no state changed.\n');
+        return 0;
+      }
+      result = startProtocol({
+        cwd: io.cwd ?? process.cwd(),
+        dir: collected.values.dir,
+        artifact: collected.values.artifact,
+        owner: collected.values.owner,
+        reviewer: collected.values.reviewer,
+        maxReviewTurns: positiveInteger(collected.values, 'max-turns'),
+        waitCycles: positiveInteger(collected.values, 'wait-cycles'),
+        waitIntervalSeconds: positiveInteger(collected.values, 'wait-interval'),
+        ...repositoryOptions,
+      });
+      writeOut(result.output);
+      return 0;
+    } else if (name === 'init') {
       assertAllowed(values, booleans, [
         'dir',
         'artifact',
@@ -326,6 +357,87 @@ export async function runCli(argv = process.argv.slice(2), io = {}) {
   } catch (error) {
     writeError(`${error.message}\n`);
     return error.exitCode ?? 1;
+  }
+}
+
+async function collectStartValues(values, io, writeOut) {
+  const requiredMissing = ['artifact', 'owner', 'reviewer'].some(
+    (name) => !String(values[name] ?? '').trim()
+  );
+  if (!requiredMissing) {
+    return {
+      cancelled: false,
+      values: {
+        ...values,
+        'max-turns': values['max-turns'] ?? String(START_DEFAULTS.maxReviewTurns),
+        'wait-cycles': values['wait-cycles'] ?? String(START_DEFAULTS.waitCycles),
+        'wait-interval': values['wait-interval'] ?? String(START_DEFAULTS.waitIntervalSeconds),
+      },
+    };
+  }
+
+  const interactive = io.prompt || io.isTTY === true || (io.isTTY !== false && process.stdin.isTTY);
+  if (!interactive) {
+    throw usage(
+      'start requires --artifact, --owner, and --reviewer without an interactive terminal'
+    );
+  }
+
+  let readline;
+  const ask = io.prompt
+    ? async (question) => String(await io.prompt(question))
+    : async (question) => {
+        readline ??= createInterface({
+          input: io.stdin ?? process.stdin,
+          output: io.output ?? process.stdout,
+        });
+        return readline.question(question);
+      };
+  const answer = async (name, label, fallback = '') => {
+    if (String(values[name] ?? '').trim()) return String(values[name]).trim();
+    const suffix = fallback ? ` [${fallback}]` : '';
+    const entered = String(await ask(`${label}${suffix}: `)).trim();
+    return entered || fallback;
+  };
+
+  try {
+    const artifact = await answer('artifact', 'Authoritative tracked artifact');
+    if (!artifact) throw usage('artifact is required; no state changed');
+    const derivedDir = deriveRuntimeDir(artifact, randomUUID());
+    const collected = {
+      artifact,
+      dir: await answer('dir', 'Protocol directory', derivedDir),
+      owner: await answer('owner', 'Author identity'),
+      reviewer: await answer('reviewer', 'Reviewer identity'),
+      'max-turns': await answer(
+        'max-turns',
+        'Maximum reviewer turns',
+        String(START_DEFAULTS.maxReviewTurns)
+      ),
+      'wait-cycles': await answer('wait-cycles', 'Wait cycles', String(START_DEFAULTS.waitCycles)),
+      'wait-interval': await answer(
+        'wait-interval',
+        'Wait interval seconds',
+        String(START_DEFAULTS.waitIntervalSeconds)
+      ),
+    };
+    writeOut(
+      [
+        'Resolved co-review startup:',
+        `  Artifact: ${collected.artifact}`,
+        `  Protocol directory: ${collected.dir}`,
+        `  Author: ${collected.owner}`,
+        `  Reviewer: ${collected.reviewer}`,
+        `  Maximum reviewer turns: ${collected['max-turns']}`,
+        `  Wait cycles: ${collected['wait-cycles']}`,
+        `  Wait interval seconds: ${collected['wait-interval']}`,
+        '',
+      ].join('\n')
+    );
+    const confirmation = String(await ask('Create this co-review? [y/N]: ')).trim();
+    return { cancelled: !/^(?:y|yes)$/i.test(confirmation), values: collected };
+  } finally {
+    readline?.close();
   }
 }
 
