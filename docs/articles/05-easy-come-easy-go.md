@@ -1,9 +1,12 @@
 <!-- markdownlint-disable MD034 -->
-<!-- DRAFT: placement in the series undecided. Title is a working title, not a final riff. See docs/superpowers/specs/2026-08-18-easy-come-easy-go-article-design.md -->
+<!-- DRAFT: placed at series position 05, pending review. Title is a working title, not a final riff. See docs/superpowers/specs/2026-08-18-easy-come-easy-go-article-design.md -->
+<!-- TODO: no header image exists yet for this position. article-05-header.png currently belongs to the (renamed) product-owner-escalation article, now at 06. Needs new artwork before publish. -->
 
 # Easy Come, Easy Go
 
 **Regeneration Is Cheap. Hardening Isn't. Guess Which One Gets Skipped.**
+
+_Part 5 of a series of articles on succeeding with Agentic Agile Delivery_
 
 _Money you didn't earn gets spent like it doesn't matter. Agentic AI just handed product managers the same windfall — in code._
 
@@ -51,6 +54,8 @@ Line those three up and the whole thesis gets sharper. It was never "rebuilding 
 
 None of this is an argument for never rebuilding. It's an argument that the seam — the exact spot where a freshly rebuilt piece meets everything around it — is where the real work has to happen, not the place you drop new code and walk off. Before that regenerated piece gets bolted on, agents should have to actually look at what's already there and propose how to fit it in, under real oversight from someone who owns the outcome. That's the difference between the veteran's third choice and their first one: a deliberate call versus a habit nobody's watching.
 
+There's a tempting rationalization worth naming instead of dodging: maybe you never harden anything, and you still come out ahead — banking on next quarter's revisions, or next year's smarter agents, to quietly absorb the bill before anyone's forced to pay it. It's the same trick politicians play with national debt: kick it forward, market the ride, let someone else hold the note. Debt-kicking can work forever for a government, because there's a sovereign behind the currency who can always roll it over. Code has no such backstop. Nobody refinances your seams. When the bill comes due it doesn't arrive as a rollover — it shows up as an outage, a breach, or a customer who's finally had enough of the third broken release in a row. The bet might even pay off, if agents keep improving faster than the product keeps getting more complicated. But that's a wager on a trend line holding, not a fact anyone's actually checked — and nobody's volunteering to be the one who's wrong when it doesn't. Which is the actual argument for doing the seam work now, while it's still a choice you're making and not a bill somebody else already called.
+
 That only works if the backlog is actually doing its job. A well-built backlog isn't just a to-do list — it's a map. Tasks point at other tasks. Code carries comments back to the ticket that built it. An agent scoping a change doesn't have to hold the whole illegible corpus in its head; it can follow a trail of what was built alongside what, and figure out the blast radius from there. A backlog with no memory of its own history is just amnesia wearing a governance badge. One that remembers is an actual map.
 
 That map costs something to keep current, and it's worth saying the price out loud instead of pretending it's free. One project's own numbers: a full test run takes about fifteen minutes, and a task that needs a couple of those during implementation turns a thirty-minute job into a three-hour one. That's not rounding error — that's six times longer, paid specifically so the product doesn't stay in beta forever. It's exactly the bill a manager riding a cheap-regeneration high is most tempted to skip, because skipping it is free right up until the seams start showing.
@@ -58,6 +63,46 @@ That map costs something to keep current, and it's worth saying the price out lo
 Kent Beck and Martin Fowler put a name on the version of this that happens before anyone even touches the keyboard: cognitive debt (Thoughtworks Deer Valley retreat, February 2026) — the idea that discipline isn't some old-fashioned habit AI made obsolete, it's the actual precondition for using AI well. "We don't ship shit" was never really about who typed the code. It was about whether anyone was on the hook for what shipped. Agentic AI didn't retire that question. It just made it a lot cheaper to dodge.
 
 Easy come, easy go was never really about the money. It's about what you didn't have to earn to get it — and what that does to how carefully you hold onto it.
+
+## Series Link
+
+This article shows what ungoverned execution looks like once specs start moving fast enough to make regeneration cheaper than repair — the failure mode waiting on the other side of the gap the [previous article](04-the-spec-driven-insufficiency.md) named. The next article, [The Rise Of The Technical Product Owner](06-the-product-owner-escalation.md), introduces the human role whose judgment is exactly what keeps a cheap windfall from turning into a Frankenstein's monster of ungoverned seams.
+
+## Series Roadmap
+
+| Status      | #      | Article                                                                                                            | Role In Series                                       |
+| ----------- | ------ | ------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------- |
+|             | 01     | [The Refactoring Bloat Precursor](01-the-refactoring-bloat-precursor.md)                                           | Prequel: history of AI-assisted coding before agents |
+|             | 02     | [The Rise Of Technical Product Operations](02-the-backlog-governance-postulate.md)                                 | Industry thesis: Technical Product Operations        |
+|             | 03     | [The Vibe Coding Hangover](03-the-vibe-coding-deficiency.md)                                                       | Failure mode: vibe slop and review debt              |
+|             | 04     | [Spec-Driven Development Is Necessary But Not Sufficient](04-the-spec-driven-insufficiency.md)                    | Why specs need execution governance                  |
+| **Current** | **05** | **[Regeneration Is Cheap. Hardening Isn't. Guess Which One Gets Skipped.](05-easy-come-easy-go.md)**              | Failure mode: cheap regeneration without governance  |
+|             | 06     | [The Rise Of The Technical Product Owner](06-the-product-owner-escalation.md)                                     | Human operator: TPO/TPM as delivery architect        |
+|             | 07     | [The Backlog Becomes The Control Plane](07-the-backlog-control-plane-conjecture.md)                               | Backlog as executable control surface                |
+|             | 08     | [The Just-In-Time Planner](08-the-just-in-time-planning-paradox.md)                                               | Progressive decomposition and deep dives             |
+|             | 09     | [Context Durability Is A Feature](09-the-context-durability-corollary.md)                                         | JIT loading and post-compaction recovery             |
+|             | 10     | [Evidence Beats Trust](10-the-evidence-over-trust-theorem.md)                                                     | Evidence gates and auditability                      |
+|             | 11     | [The Adapter Future](11-the-adapter-convergence.md)                                                               | Backlog and agent platform adapters                  |
+|             | 12     | [Agentic Concurrency Isn't Free — And "50 Parallel Agents" Is Hyperbole](12-the-agentic-concurrency-deficiency.md) | Concurrency ceiling and coordination cost            |
+|             | 13     | [XP's Practices Survived. Their Reasons Did Not.](13-the-xp-survival-anomaly.md)                                  | XP practices under agentic delivery                  |
+|             | 14     | [The Diff Isn't Where Your Judgment Lives Anymore](14-the-diff-displacement.md)                                   | Spec review displaces code review                    |
+|             | 15     | [It's All About Perspective](15-the-second-reviewer-corollary.md)                                                 | Cross-model review for a genuine second opinion      |
+
+## LinkedIn Article Shape
+
+Opening hook:
+
+> Agentic AI just made regeneration cheaper than repair. That's a windfall — and windfalls come with the same psychology as house money at a casino.
+
+Middle:
+
+- Introduce the house money effect and the regenerate-vs-refactor fork it creates.
+- Show the rookie's slide into perpetual beta, then the veteran's three branches — same failure, banked windfall, or deliberate targeted rebuild.
+- Name the seam as the real point of failure, and the backlog as the map that lets an agent scope it.
+
+Close:
+
+> Easy come, easy go was never really about the money. It's about what you didn't have to earn to get it — and what that does to how carefully you hold onto it.
 
 ## Bibliography
 
@@ -68,4 +113,4 @@ Easy come, easy go was never really about the money. It's about what you didn't 
 - Willison, S. (April 2026). First-person essay on discarding an AI-built prototype.
 - Beck, K., & Fowler, M. — "cognitive debt" framing, Thoughtworks Deer Valley retreat (February 2026), as reported.
 
-_Working title, unplaced in the series. Full research and design context in [research-easy-come-easy-go.md](research-easy-come-easy-go.md) and [the design doc](../superpowers/specs/2026-08-18-easy-come-easy-go-article-design.md)._
+_Placed at series position 05, pending review. Full research and design context in [research-easy-come-easy-go.md](research-easy-come-easy-go.md) and [the design doc](../superpowers/specs/2026-08-18-easy-come-easy-go-article-design.md)._
