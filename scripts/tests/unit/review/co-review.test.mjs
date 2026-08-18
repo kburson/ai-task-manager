@@ -451,7 +451,9 @@ test('CLI initializes and reports human and JSON status', async () => {
     { cwd: root }
   );
   assert.equal(initialized.status, 0, initialized.stderr);
-  assert.equal(JSON.parse(initialized.stdout).reviewTurnsUsed, 0);
+  const initializedState = JSON.parse(initialized.stdout);
+  assert.equal(initializedState.reviewTurnsUsed, 0);
+  assert.match(initializedState.nextAction, /co-review claim.*owner-agent/);
 
   const human = await runCliDirect(['status', '--dir', '.tmp/review'], { cwd: root });
   assert.equal(human.status, 0, human.stderr);
@@ -617,7 +619,9 @@ test('CLI routes claim and maps bounded wait timeout to exit code 3', async () =
     cwd: root,
   });
   assert.equal(claimed.status, 0, claimed.stderr);
-  assert.equal(JSON.parse(claimed.stdout).turnState, 'claimed');
+  const claimedState = JSON.parse(claimed.stdout);
+  assert.equal(claimedState.turnState, 'claimed');
+  assert.match(claimedState.nextAction, /co-review help handoff/);
 });
 
 test('fast co-review corpus does not spawn Git or external Node', () => {
