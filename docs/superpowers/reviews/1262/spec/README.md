@@ -1,7 +1,7 @@
 # Co-review finalization archive
 
 This directory preserves the terminal evidence selected by the governed co-review protocol.
-The accepted specification remains normative; the review and owner response are evidence.
+The accepted artifact is referenced by commit and Git blob, not copied here; recover its exact bytes with `git cat-file blob <gitBlob>` or `git show <acceptedCommit>:<sourcePath>`. The accepted artifact remains normative; the review and owner response are evidence.
 
 <!-- aitm-co-review-manifest:start -->
 ```json
@@ -16,8 +16,7 @@ The accepted specification remains normative; the review and owner response are 
     "acceptedCommit": "6605bf2645e611dd6f1e72824e946194c293e8cd",
     "gitBlob": "d7506fcfdc045c259696d421262de1fbd5ee492f",
     "sha256": "sha256:f9ee74d6aaea2a54e1e434c5db29eb787051746028effdb8eed6fb36a87ff964",
-    "archivePath": "artifact-2026-08-14-repository-native-polyglot-tia-and-build-health-design.md",
-    "archivedSha256": "sha256:f9ee74d6aaea2a54e1e434c5db29eb787051746028effdb8eed6fb36a87ff964"
+    "mode": "reference"
   },
   "participants": {
     "owner": "codex",
