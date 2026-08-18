@@ -31,7 +31,7 @@ Agentic delivery needs observable proof, not narrative, in my experience. At min
 - What human decision was made, and when?
 - How much agent time and human review burden did the task actually consume?
 
-Without answers to those questions, I have watched AI-assisted work become a chain of persuasive narratives — plausible summaries of what happened, standing in for what can actually be verified. That is precisely the failure mode the rest of this series has been building toward since the **vibe coding hangover** I described in [article one](02-the-backlog-governance-postulate.md): fast output that nobody can cheaply confirm is correct.
+Without answers to those questions, I have watched AI-assisted work become a chain of persuasive narratives — plausible summaries of what happened, standing in for what can actually be verified. That is precisely the failure mode the rest of this series has been building toward since the **vibe coding hangover** I described in [article three](03-the-vibe-coding-deficiency.md): fast output that nobody can cheaply confirm is correct.
 
 Traditional SDLC ceremonies already degrade into status theater when the evidence behind them is weak — a standup where "done" means "I said it's done." Agentic AI raises the cost of that weakness sharply, in my experience. If implementation agents are producing work at a pace no human team could match, I need objective signals as the **Technical Product Owner** to decide whether a given piece of work is really ready, blocked, defective, or complete — because there is no longer time to eyeball every line before deciding.
 
