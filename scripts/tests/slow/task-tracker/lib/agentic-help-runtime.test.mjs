@@ -1,4 +1,5 @@
 // @story #1011 #1023
+// @slow-parallel-safe (uses independent project-isolated temporary directories)
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {

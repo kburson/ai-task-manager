@@ -1,4 +1,4 @@
-// @story #863
+// @story #863 #1307
 /**
  * Parallel-safety classifier for the runner's unit lane (#863).
  *
@@ -55,11 +55,41 @@ export function spawnsSubprocess(src) {
  */
 export const PARALLEL_UNSAFE_MARKER_RE = /@parallel-unsafe\b/;
 
+/**
+ * Slow tests are fail-closed serial unless their own source explicitly opts in.
+ * The required parenthesized rationale keeps the safety claim reviewable at the
+ * file that owns it instead of hiding a growing allowlist in the runner.
+ */
+export const SLOW_PARALLEL_SAFE_MARKER_RE =
+  /@slow-parallel-safe[ \t]*\([ \t]*[^\s)\r\n][^)\r\n]*\)/;
+
 export const TEST_SCHEDULING_CLASSES = Object.freeze({
   POOLED: 'pooled',
   SUBPROCESS: 'subprocess',
+  SLOW_PARALLEL: 'slow-parallel',
   SERIAL: 'serial',
 });
+
+/**
+ * Classify one slow test for the dedicated bounded phase. Opt-in is explicit;
+ * unreadable, unmarked, or conflicting unsafe sources remain serial.
+ *
+ * @param {string} fullPath
+ * @param {(p: string, enc: string) => string} [read]
+ * @returns {'slow-parallel'|'serial'}
+ */
+export function slowTestSchedulingClass(fullPath, read = readFileSync) {
+  let src;
+  try {
+    src = read(fullPath, 'utf8');
+  } catch {
+    return TEST_SCHEDULING_CLASSES.SERIAL;
+  }
+  if (PARALLEL_UNSAFE_MARKER_RE.test(src)) return TEST_SCHEDULING_CLASSES.SERIAL;
+  return SLOW_PARALLEL_SAFE_MARKER_RE.test(src)
+    ? TEST_SCHEDULING_CLASSES.SLOW_PARALLEL
+    : TEST_SCHEDULING_CLASSES.SERIAL;
+}
 
 /**
  * Classify one test source for the runner's three sequential unit phases.

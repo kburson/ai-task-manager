@@ -1,3 +1,4 @@
+// @story #861 #1307
 // Per-file test-timing model (#861, epic #859 phase 1 — Measure).
 //
 // PURE, side-effect-free helpers that turn the per-file elapsed time
@@ -97,6 +98,7 @@ export function buildTimingReport(
     runnerElapsedMs = null,
     poolElapsedMs = null,
     subprocessPoolElapsedMs = null,
+    slowPoolElapsedMs = null,
     serialElapsedMs = null,
   } = {}
 ) {
@@ -130,6 +132,7 @@ export function buildTimingReport(
       subprocessPoolMs: Number.isFinite(subprocessPoolElapsedMs)
         ? round(subprocessPoolElapsedMs)
         : null,
+      slowPoolMs: Number.isFinite(slowPoolElapsedMs) ? round(slowPoolElapsedMs) : null,
       serialMs: Number.isFinite(serialElapsedMs) ? round(serialElapsedMs) : null,
     },
     medianWallMs: round(median(list.map((r) => r.wallMs))),
@@ -196,10 +199,11 @@ export function serializeArtifact(records, meta = {}) {
     runnerElapsedMs: meta.runnerElapsedMs,
     poolElapsedMs: meta.poolElapsedMs,
     subprocessPoolElapsedMs: meta.subprocessPoolElapsedMs,
+    slowPoolElapsedMs: meta.slowPoolElapsedMs,
     serialElapsedMs: meta.serialElapsedMs,
   });
   return {
-    schema: 3,
+    schema: 4,
     generatedAt: meta.generatedAt || null,
     lane: meta.lane || null,
     count: list.length,
@@ -215,12 +219,12 @@ export function serializeArtifact(records, meta = {}) {
   };
 }
 
-// Normalize historical schemas 1/2 and current schema 3 for comparison.
+// Normalize historical schemas 1/2/3 and current schema 4 for comparison.
 // Schema 1's `totals.wallMs` was a sum of per-file wall durations, not actual
 // runner elapsed; never fabricate a phase duration from per-file sums.
 export function normalizeTimingArtifact(artifact) {
   const value = artifact && typeof artifact === 'object' ? artifact : {};
-  if (value.schema === 2 || value.schema === 3) {
+  if (value.schema === 2 || value.schema === 3 || value.schema === 4) {
     return {
       ...value,
       sourceSchema: value.schema,
@@ -228,8 +232,12 @@ export function normalizeTimingArtifact(artifact) {
         runnerMs: Number.isFinite(value.elapsed?.runnerMs) ? value.elapsed.runnerMs : null,
         poolMs: Number.isFinite(value.elapsed?.poolMs) ? value.elapsed.poolMs : null,
         subprocessPoolMs:
-          value.schema === 3 && Number.isFinite(value.elapsed?.subprocessPoolMs)
+          value.schema >= 3 && Number.isFinite(value.elapsed?.subprocessPoolMs)
             ? value.elapsed.subprocessPoolMs
+            : null,
+        slowPoolMs:
+          value.schema === 4 && Number.isFinite(value.elapsed?.slowPoolMs)
+            ? value.elapsed.slowPoolMs
             : null,
         serialMs: Number.isFinite(value.elapsed?.serialMs) ? value.elapsed.serialMs : null,
       },
@@ -244,7 +252,13 @@ export function normalizeTimingArtifact(artifact) {
     return {
       ...value,
       sourceSchema: 1,
-      elapsed: { runnerMs: null, poolMs: null, subprocessPoolMs: null, serialMs: null },
+      elapsed: {
+        runnerMs: null,
+        poolMs: null,
+        subprocessPoolMs: null,
+        slowPoolMs: null,
+        serialMs: null,
+      },
       sums: {
         fileWallMs: Number(value.totals?.wallMs) || 0,
         inProcessMs: Number(value.totals?.inProcMs) || 0,
@@ -267,7 +281,9 @@ export function formatTimingReport(report) {
         report.elapsed.poolMs
       )}  subprocess=${formatDuration(
         report.elapsed.subprocessPoolMs
-      )}  serial=${formatDuration(report.elapsed.serialMs)}`
+      )}  slow=${formatDuration(report.elapsed.slowPoolMs)}  serial=${formatDuration(
+        report.elapsed.serialMs
+      )}`
     );
   }
   lines.push(
