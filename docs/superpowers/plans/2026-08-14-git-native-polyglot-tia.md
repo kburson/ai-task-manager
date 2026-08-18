@@ -762,7 +762,7 @@ heuristics indefinitely; activation is never forced by version upgrade.
 - Modify: `bin/lib/template-manifest.mjs`
 - Modify: `scripts/lib/self-doc.mjs`
 - Modify: `scripts/tests/unit/task-tracker/lib/install.test.mjs`
-- Modify: `scripts/tests/unit/task-tracker/lib/help.test.mjs`
+- Modify: `scripts/tests/unit/task-tracker/verbs/help.test.mjs`
 - Modify: `package.json`
 
 **Tests:** In sandbox repositories, cover bootstrap, protected and cooperative
