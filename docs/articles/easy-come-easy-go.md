@@ -17,7 +17,7 @@ Simon Willison wrote about doing exactly this in April 2026 — an AI-built prot
 
 ## The fork: rebuild it, or actually fix it
 
-Here's the choice, stripped down. Spec changes — new feature, a lesson learned, a workflow that needed sharpening — and the manager picks one of two doors. Door one: send agents in to refactor what's already there. Door two: send a fresh crew at the new spec and build from zero.
+Here's the choice, stripped down. Software never sits still — new features get asked for, and defects keep turning up in whatever already shipped. Sooner or later the spec has to catch up with what's been learned. When it does, the manager picks one of two doors: send agents in to refactor what's already there, or send a fresh crew at the new spec and build from zero.
 
 Door two is almost always the easier ask, which is exactly why it's dangerous. Agents starting fresh don't know the old codebase's scars — the edge case that took three outages to find, the weird workaround nobody loves but everybody needs. They just build to spec, maybe in a different language this time, maybe with a different file layout, because why not. The spec remembers what it learned last time. The code, rebuilt from scratch, remembers nothing.
 
