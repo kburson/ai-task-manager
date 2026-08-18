@@ -30,6 +30,7 @@ export const EXECUTABLE_ENTRYPOINTS = Object.freeze([
     ['scripts/gh/update-event-fields.mjs', 'update-event-fields'],
     ['scripts/reports/generate-value-report.mjs', 'value-report'],
     ['scripts/review/co-review.mjs', 'co-review'],
+    ['scripts/task-tracker/capture-actions.mjs', 'capture-actions'],
     ['scripts/task-tracker/cut-child-worktree.mjs', 'cut-child-worktree'],
     ['scripts/task-tracker/cut-epic-branch.mjs', 'cut-epic-branch'],
     ['scripts/task-tracker/heal-backlog.mjs', 'heal-backlog'],

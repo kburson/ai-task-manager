@@ -1,6 +1,5 @@
 // @story #1268
 
-import { execFileSync } from 'node:child_process';
 import { createHash, randomUUID as systemRandomUUID } from 'node:crypto';
 import {
   existsSync,
@@ -15,6 +14,8 @@ import {
 import path from 'node:path';
 import { isDeepStrictEqual } from 'node:util';
 
+import { REAL_REPOSITORY_BOUNDARY } from './repository-boundary.mjs';
+
 function fail(code, detail) {
   const error = new Error(`co-review:${code}:${detail}; no state changed`);
   error.code = code;
@@ -22,22 +23,12 @@ function fail(code, detail) {
   throw error;
 }
 
-function git(cwd, args, { allowFailure = false, buffer = false } = {}) {
+function repositoryCall(detail, operation) {
   try {
-    return execFileSync('git', args, {
-      cwd,
-      encoding: buffer ? null : 'utf8',
-      stdio: ['ignore', 'pipe', 'pipe'],
-      shell: false,
-    });
+    return operation();
   } catch (error) {
-    if (allowFailure) return null;
-    fail('git', error.stderr?.toString().trim() || args.join(' '));
+    fail('git', error.stderr?.toString().trim() || detail);
   }
-}
-
-function repositoryRoot(cwd) {
-  return realpathSync(git(cwd, ['rev-parse', '--show-toplevel']).trim());
 }
 
 function containedPath(root, candidate, label) {
@@ -86,16 +77,22 @@ function inside(parent, candidate) {
   );
 }
 
-export function resolveArchiveDestination({ cwd = process.cwd(), archiveDir, runtimeDir } = {}) {
-  const root = repositoryRoot(cwd);
+export function resolveArchiveDestination({
+  cwd = process.cwd(),
+  archiveDir,
+  runtimeDir,
+  repository = REAL_REPOSITORY_BOUNDARY,
+} = {}) {
+  const root = repositoryCall(String(cwd), () => repository.repositoryRoot(cwd));
   const archive = containedPath(root, archiveDir, 'archive-dir');
   const runtime = containedPath(root, runtimeDir, 'dir');
   if (inside(runtime.absolute, archive.absolute)) {
     fail('archive-runtime-conflict', archive.relative);
   }
-  if (
-    git(root, ['check-ignore', '--quiet', '--', archive.relative], { allowFailure: true }) !== null
-  ) {
+  const status = repositoryCall(archive.relative, () =>
+    repository.runtimeStatus(root, archive.relative)
+  );
+  if (status.ignored) {
     fail('archive-ignored', archive.relative);
   }
   return Object.freeze(archive);
@@ -134,7 +131,7 @@ function recordedFile(root, record, label) {
   return { ...record, bytes };
 }
 
-function committedArtifact(root, record) {
+function committedArtifact(root, record, repository) {
   if (
     !record ||
     typeof record.path !== 'string' ||
@@ -144,16 +141,23 @@ function committedArtifact(root, record) {
   ) {
     fail('archive-evidence', 'authoritative artifact record');
   }
-  const bytes = git(root, ['show', `${record.commit}:${record.path}`], { buffer: true });
-  const blob = git(root, ['rev-parse', `${record.commit}:${record.path}`]).trim();
-  if (blob !== record.blob) {
-    fail('archive-artifact-blob', `${record.path}: expected ${record.blob}, actual ${blob}`);
+  const committed = repositoryCall(`${record.commit}:${record.path}`, () =>
+    repository.committedArtifact(root, record.commit, record.path)
+  );
+  if (committed === null) {
+    fail('archive-source', `${record.commit}:${record.path}`);
   }
-  const actual = digest(bytes);
+  if (committed.blob !== record.blob) {
+    fail(
+      'archive-artifact-blob',
+      `${record.path}: expected ${record.blob}, actual ${committed.blob}`
+    );
+  }
+  const actual = digest(committed.bytes);
   if (actual !== record.sha256) {
     fail('archive-artifact-sha', `${record.path}: expected ${record.sha256}, actual ${actual}`);
   }
-  return { ...record, bytes };
+  return { ...record, bytes: committed.bytes };
 }
 
 function priorEvent(events, before, type) {
@@ -329,7 +333,13 @@ function decisionModel(decision) {
   };
 }
 
-function buildPrepared({ root, state, events, archiveDir }) {
+function buildPrepared({
+  root,
+  state,
+  events,
+  archiveDir,
+  repository = REAL_REPOSITORY_BOUNDARY,
+}) {
   if (!root || !state || !Array.isArray(events) || state.lifecycle !== 'accepted') {
     fail('archive-ineligible', `${state?.lifecycle ?? 'missing-state'}`);
   }
@@ -340,19 +350,21 @@ function buildPrepared({ root, state, events, archiveDir }) {
     cwd: root,
     archiveDir: selectedArchiveDir,
     runtimeDir: state.initialization?.runtimeDir,
+    repository,
   });
   if (configured && archiveDir) {
     const configuredDestination = resolveArchiveDestination({
       cwd: root,
       archiveDir: configured,
       runtimeDir: state.initialization?.runtimeDir,
+      repository,
     });
     if (configuredDestination.absolute !== destination.absolute) {
       fail('archive-destination-mismatch', `${destination.relative}; configured ${configured}`);
     }
   }
   const evidence = terminalEvidence(state, events);
-  const artifact = committedArtifact(root, evidence.artifact);
+  const artifact = committedArtifact(root, evidence.artifact, repository);
   const response = recordedFile(root, evidence.response, 'owner-response');
   const review = recordedFile(root, evidence.review, 'reviewer-review');
   const artifactBasename = path.basename(artifact.path);
@@ -500,13 +512,13 @@ export function renderArchiveManifest(model) {
 
 export function inspectArchive(options = {}) {
   const prepared = options.prepared ?? buildPrepared(options);
-  validatePrepared(prepared);
+  validatePrepared(prepared, options.repository);
   return inspectExpected(prepared.destination, prepared.files);
 }
 
 export function prepareArchive(options = {}) {
   const prepared = buildPrepared(options);
-  validatePrepared(prepared);
+  validatePrepared(prepared, options.repository);
   const inspection = inspectExpected(prepared.destination, prepared.files);
   if (inspection.status === 'conflict') {
     fail('archive-conflict', inspection.errors.join('; '));
@@ -514,7 +526,7 @@ export function prepareArchive(options = {}) {
   return deepFreeze({ ...prepared, status: inspection.status });
 }
 
-function validatePrepared(prepared) {
+function validatePrepared(prepared, repository = REAL_REPOSITORY_BOUNDARY) {
   if (
     prepared?.schema !== 'aitm.co-review.prepared-archive/v1' ||
     !prepared.destination?.absolute ||
@@ -580,6 +592,7 @@ function validatePrepared(prepared) {
     cwd: prepared.root,
     archiveDir: prepared.destination.relative,
     runtimeDir: prepared.runtimeDir,
+    repository,
   });
   if (currentDestination.absolute !== prepared.destination.absolute) {
     fail('archive-destination-drift', prepared.destination.relative);
@@ -596,9 +609,15 @@ function publicationResult(status, prepared) {
 
 export function publishPreparedArchive(
   prepared,
-  { hooks = {}, now = Date.now, randomUUID = systemRandomUUID, pid = process.pid } = {}
+  {
+    hooks = {},
+    now = Date.now,
+    randomUUID = systemRandomUUID,
+    pid = process.pid,
+    repository = REAL_REPOSITORY_BOUNDARY,
+  } = {}
 ) {
-  validatePrepared(prepared);
+  validatePrepared(prepared, repository);
   const initial = inspectExpected(prepared.destination, prepared.files);
   if (initial.status === 'complete') return publicationResult('complete', prepared);
   if (initial.status === 'conflict') fail('archive-conflict', initial.errors.join('; '));

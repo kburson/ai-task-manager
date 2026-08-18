@@ -1,0 +1,3 @@
+# Image Prompt: The Second Reviewer Corollary
+
+Create an editorial isometric illustration on a dark navy background, in electric-blue and amber accent lighting, of two translucent agent silhouettes facing each other across a shared glowing document panel, exchanging annotated revision passes back and forth along a looping circuit-line path, with a spec artifact visibly evolving between them. Emphasize a closed, iterative exchange rather than a single reviewer or a mirrored pair. Tone: collaborative, precise, iterative. Avoid mirror-image twin robots, vendor logos, and any dashboard panels, UI mockups, charts, version labels, or readable text of any kind — the image must be completely textless.

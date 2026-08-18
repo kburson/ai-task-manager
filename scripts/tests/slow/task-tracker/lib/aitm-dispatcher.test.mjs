@@ -20,6 +20,7 @@ import {
   kind,
   groupedListing,
 } from '../../../../../bin/aitm-registry.mjs';
+import { delegate } from '../../../../../bin/aitm.mjs';
 import { findOffendingDocLines } from '../../../../task-tracker/lib/aitm-path-guard.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url)) + '/..';
@@ -82,6 +83,32 @@ test('AC3: `aitm <script-name>` routes to the exposed standalone script', () => 
   const unknown = aitm(['definitely-not-a-command']);
   assert.equal(unknown.status, 2);
   assert.match(unknown.stderr, /unknown command/);
+});
+
+test('dispatcher delegates with the action-capture environment for the selected command', () => {
+  let observed;
+  const status = delegate('/package/target.mjs', ['arg'], {
+    command: 'issue-body',
+    cwd: '/linked-worktree',
+    env: { PATH: '/usr/bin', ORIGINAL: 'yes' },
+    prepareEnv: ({ env, cwd, command }) => ({ ...env, cwd, command, CAPTURE: 'enabled' }),
+    spawn: (executable, args, options) => {
+      observed = { executable, args, options };
+      return { status: 0 };
+    },
+  });
+
+  assert.equal(status, 0);
+  assert.equal(observed.executable, process.execPath);
+  assert.deepEqual(observed.args, ['/package/target.mjs', 'arg']);
+  assert.equal(observed.options.cwd, '/linked-worktree');
+  assert.deepEqual(observed.options.env, {
+    PATH: '/usr/bin',
+    ORIGINAL: 'yes',
+    cwd: '/linked-worktree',
+    command: 'issue-body',
+    CAPTURE: 'enabled',
+  });
 });
 
 // AC4 — `aitm <name> help` and `aitm <name> ?` forward the help token; the

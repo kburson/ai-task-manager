@@ -1,5 +1,4 @@
 // @story #1266
-// @parallel-unsafe (#1268) — imported co-review fixtures spawn Node and Git subprocesses.
 
 import assert from 'node:assert/strict';
 import {
@@ -13,7 +12,6 @@ import {
 import path from 'node:path';
 import test from 'node:test';
 
-import '../../fixtures/co-review-e2e-cases.mjs';
 import '../../fixtures/co-review-budget-cases.mjs';
 import '../../fixtures/co-review-handoff-cases.mjs';
 import '../../fixtures/co-review-supplement-cases.mjs';
@@ -21,20 +19,26 @@ import {
   cleanupTemporaryRoots,
   commitArtifact,
   initializedProtocol,
-  protocol,
+  memoryProtocol,
+  memoryRepositoryFixture,
+  processCallCounts,
   readEvents,
-  repositoryFixture,
-  runCli,
+  runCliDirect,
   snapshotProtocol,
   temporaryRoot,
 } from '../../fixtures/co-review-fixture.mjs';
 
 test.afterEach(cleanupTemporaryRoots);
 
-test('top-level help is recovery-grade and safe before initialization', () => {
+async function memoryApiFixture() {
+  const fixture = memoryRepositoryFixture();
+  return { ...fixture, api: await memoryProtocol(fixture.repository) };
+}
+
+test('top-level help is recovery-grade and safe before initialization', async () => {
   const emptyRoot = temporaryRoot();
   for (const args of [['help'], ['--help']]) {
-    const result = runCli(args, { cwd: emptyRoot });
+    const result = await runCliDirect(args, { cwd: emptyRoot });
     assert.equal(result.status, 0, result.stderr);
     for (const heading of [
       'WHAT',
@@ -63,11 +67,11 @@ test('top-level help is recovery-grade and safe before initialization', () => {
   }
 });
 
-test('every command has standalone recovery help in both forms', () => {
+test('every command has standalone recovery help in both forms', async () => {
   const emptyRoot = temporaryRoot();
   for (const command of ['init', 'status', 'claim', 'wait', 'handoff', 'continue']) {
-    const canonical = runCli(['help', command], { cwd: emptyRoot });
-    const flag = runCli([command, '--help'], { cwd: emptyRoot });
+    const canonical = await runCliDirect(['help', command], { cwd: emptyRoot });
+    const flag = await runCliDirect([command, '--help'], { cwd: emptyRoot });
     assert.equal(canonical.status, 0, canonical.stderr);
     assert.equal(flag.stdout, canonical.stdout);
     for (const field of [
@@ -107,8 +111,8 @@ test('co-review is a routed agent-callable standalone command', async () => {
 });
 
 test('fresh init records owner round one and the configured budget', async () => {
-  const { initializeProtocol, STATE_SCHEMA } = await protocol();
-  const { root, artifact } = repositoryFixture();
+  const { api, root, artifact } = await memoryApiFixture();
+  const { initializeProtocol, STATE_SCHEMA } = api;
   const state = initializeProtocol({
     cwd: root,
     dir: '.tmp/review',
@@ -147,8 +151,8 @@ test('fresh init records owner round one and the configured budget', async () =>
 });
 
 test('imported review consumes reviewer turn one and starts owner round two', async () => {
-  const { initializeProtocol } = await protocol();
-  const { root, artifact, initialCommit } = repositoryFixture();
+  const { api, root, artifact, initialCommit } = await memoryApiFixture();
+  const { initializeProtocol } = api;
   mkdirSync(path.join(root, '.tmp/imported'), { recursive: true });
   writeFileSync(
     path.join(root, '.tmp/imported/r1-review.md'),
@@ -178,8 +182,8 @@ test('imported review consumes reviewer turn one and starts owner round two', as
 });
 
 test('imported review refuses a budget already exhausted by imported turn one', async () => {
-  const { initializeProtocol } = await protocol();
-  const { root, artifact, initialCommit } = repositoryFixture();
+  const { api, root, artifact, initialCommit } = await memoryApiFixture();
+  const { initializeProtocol } = api;
   mkdirSync(path.join(root, '.tmp/imported'), { recursive: true });
   writeFileSync(path.join(root, '.tmp/imported/r1-review.md'), '# Review\n');
   assert.throws(
@@ -200,8 +204,8 @@ test('imported review refuses a budget already exhausted by imported turn one', 
 });
 
 test('exact init retry is idempotent and changed configuration refuses', async () => {
-  const { initializeProtocol } = await protocol();
-  const { root, artifact } = repositoryFixture();
+  const { api, root, artifact } = await memoryApiFixture();
+  const { initializeProtocol } = api;
   const options = {
     cwd: root,
     dir: '.tmp/review',
@@ -226,7 +230,6 @@ test('exact init retry is idempotent and changed configuration refuses', async (
 });
 
 test('init fails closed on invalid roles, budget, import pair, or runtime path', async () => {
-  const { initializeProtocol } = await protocol();
   for (const mutate of [
     (options) => ({ ...options, reviewer: options.owner }),
     (options) => ({ ...options, owner: ` ${options.reviewer} ` }),
@@ -235,7 +238,8 @@ test('init fails closed on invalid roles, budget, import pair, or runtime path',
     (options) => ({ ...options, dir: 'review-state' }),
     (options) => ({ ...options, dir: '../outside' }),
   ]) {
-    const { root, artifact } = repositoryFixture();
+    const { api, root, artifact } = await memoryApiFixture();
+    const { initializeProtocol } = api;
     const options = mutate({
       cwd: root,
       dir: '.tmp/review',
@@ -252,8 +256,8 @@ test('init fails closed on invalid roles, budget, import pair, or runtime path',
 });
 
 test('init refuses artifact/index mismatch and an unreachable import commit', async () => {
-  const { initializeProtocol } = await protocol();
-  const dirty = repositoryFixture();
+  const dirty = await memoryApiFixture();
+  const { initializeProtocol } = dirty.api;
   writeFileSync(path.join(dirty.root, dirty.artifact), '# Artifact\n\nDirty.\n');
   assert.throws(
     () =>
@@ -268,12 +272,12 @@ test('init refuses artifact/index mismatch and an unreachable import commit', as
     /co-review:artifact-drift/
   );
 
-  const imported = repositoryFixture();
+  const imported = await memoryApiFixture();
   mkdirSync(path.join(imported.root, '.tmp/review'), { recursive: true });
   writeFileSync(path.join(imported.root, '.tmp/review/r1.md'), '# Review\n');
   assert.throws(
     () =>
-      initializeProtocol({
+      imported.api.initializeProtocol({
         cwd: imported.root,
         dir: '.tmp/review',
         artifact: imported.artifact,
@@ -289,8 +293,8 @@ test('init refuses artifact/index mismatch and an unreachable import commit', as
 });
 
 test('init refuses a runtime symlink that resolves outside the repository', async () => {
-  const { initializeProtocol } = await protocol();
-  const { root, artifact } = repositoryFixture();
+  const { api, root, artifact } = await memoryApiFixture();
+  const { initializeProtocol } = api;
   const outside = temporaryRoot('aitm-co-review-outside-');
   mkdirSync(path.join(root, '.tmp'), { recursive: true });
   symlinkSync(outside, path.join(root, '.tmp/review'), 'dir');
@@ -310,8 +314,8 @@ test('init refuses a runtime symlink that resolves outside the repository', asyn
 });
 
 test('surviving initialization mutex is reported and never stolen', async () => {
-  const { initializeProtocol } = await protocol();
-  const { root, artifact } = repositoryFixture();
+  const { api, root, artifact } = await memoryApiFixture();
+  const { initializeProtocol } = api;
   const lock = path.join(root, '.tmp/review/.co-review-lock');
   mkdirSync(lock, { recursive: true });
   writeFileSync(
@@ -333,9 +337,9 @@ test('surviving initialization mutex is reported and never stolen', async () => 
   assert.equal(existsSync(lock), true);
 });
 
-test('CLI initializes and reports human and JSON status', () => {
-  const { root, artifact } = repositoryFixture();
-  const initialized = runCli(
+test('CLI initializes and reports human and JSON status', async () => {
+  const { root, artifact } = memoryRepositoryFixture();
+  const initialized = await runCliDirect(
     [
       'init',
       '--dir',
@@ -354,7 +358,7 @@ test('CLI initializes and reports human and JSON status', () => {
   assert.equal(initialized.status, 0, initialized.stderr);
   assert.equal(JSON.parse(initialized.stdout).reviewTurnsUsed, 0);
 
-  const human = runCli(['status', '--dir', '.tmp/review'], { cwd: root });
+  const human = await runCliDirect(['status', '--dir', '.tmp/review'], { cwd: root });
   assert.equal(human.status, 0, human.stderr);
   assert.match(human.stdout, /Lifecycle: active/);
   assert.match(human.stdout, /Branch: trunk/);
@@ -362,27 +366,27 @@ test('CLI initializes and reports human and JSON status', () => {
   assert.match(human.stdout, /Last handoff: none/);
   assert.match(human.stdout, /Budget: 0 used \/ 6 max \/ 6 remaining/);
 
-  const json = runCli(['status', '--dir', '.tmp/review', '--json'], { cwd: root });
+  const json = await runCliDirect(['status', '--dir', '.tmp/review', '--json'], { cwd: root });
   assert.equal(json.status, 0, json.stderr);
   assert.equal(JSON.parse(json.stdout).integrity.ok, true);
 });
 
-test('CLI rejects unknown or incomplete init flags before mutation', () => {
+test('CLI rejects unknown or incomplete init flags before mutation', async () => {
   for (const args of [
     ['init', '--dir', '.tmp/review', '--unknown', 'value'],
     ['init', '--dir'],
   ]) {
-    const { root } = repositoryFixture();
-    const result = runCli(args, { cwd: root });
+    const { root } = memoryRepositoryFixture();
+    const result = await runCliDirect(args, { cwd: root });
     assert.equal(result.status, 2, result.stderr);
     assert.match(result.stderr, /co-review:usage/);
     assert.equal(existsSync(path.join(root, '.tmp/review/state.json')), false);
   }
 });
 
-test('CLI rejects unknown handoff flags before protocol discovery', () => {
-  const { root } = repositoryFixture();
-  const result = runCli(
+test('CLI rejects unknown handoff flags before protocol discovery', async () => {
+  const { root } = memoryRepositoryFixture();
+  const result = await runCliDirect(
     ['handoff', '--dir', '.tmp/missing', '--actor', 'owner-agent', '--unknown', 'value'],
     { cwd: root }
   );
@@ -485,36 +489,42 @@ test('bounded wait returns available or timeout without mutation', async () => {
   );
 });
 
-test('CLI routes claim and maps bounded wait timeout to exit code 3', () => {
-  const { root, artifact } = repositoryFixture();
+test('CLI routes claim and maps bounded wait timeout to exit code 3', async () => {
+  const { root, artifact } = memoryRepositoryFixture();
   assert.equal(
-    runCli(
-      [
-        'init',
-        '--dir',
-        '.tmp/review',
-        '--artifact',
-        artifact,
-        '--owner',
-        'owner-agent',
-        '--reviewer',
-        'reviewer-agent',
-        '--max-turns',
-        '6',
-      ],
-      { cwd: root }
+    (
+      await runCliDirect(
+        [
+          'init',
+          '--dir',
+          '.tmp/review',
+          '--artifact',
+          artifact,
+          '--owner',
+          'owner-agent',
+          '--reviewer',
+          'reviewer-agent',
+          '--max-turns',
+          '6',
+        ],
+        { cwd: root }
+      )
     ).status,
     0
   );
-  const waiting = runCli(
+  const waiting = await runCliDirect(
     ['wait', '--dir', '.tmp/review', '--actor', 'reviewer-agent', '--timeout', '0'],
     { cwd: root }
   );
   assert.equal(waiting.status, 3, waiting.stderr);
   assert.match(waiting.stdout, /"status": "timeout"/);
-  const claimed = runCli(['claim', '--dir', '.tmp/review', '--actor', 'owner-agent'], {
+  const claimed = await runCliDirect(['claim', '--dir', '.tmp/review', '--actor', 'owner-agent'], {
     cwd: root,
   });
   assert.equal(claimed.status, 0, claimed.stderr);
   assert.equal(JSON.parse(claimed.stdout).turnState, 'claimed');
+});
+
+test('fast co-review corpus does not spawn Git or external Node', () => {
+  assert.deepEqual(processCallCounts(), { git: 0, nodeCli: 0 });
 });

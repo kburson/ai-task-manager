@@ -1,0 +1,3 @@
+# Image Prompt: The Refactoring Bloat Precursor
+
+Create an editorial isometric illustration on a dark navy background showing several distinct layers of software tooling — abstracted as glowing translucent panels and circuit-line structures, not labeled boxes or icons — stacking and converging toward a single glowing arch/gateway motif at the far end, in electric-blue and amber accent lighting. The image should communicate decades of incremental engineering history stacking up to the present, not a sudden leap. Tone: historical, grounded, foundational. Avoid futuristic neon, a literal robot as the endpoint, vendor logos, and any timeline axis, era labels, section headers, UI mockups, charts, or readable text of any kind — the image must be completely textless.

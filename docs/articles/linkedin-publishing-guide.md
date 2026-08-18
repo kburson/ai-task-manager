@@ -31,7 +31,7 @@ That reads `docs/articles/` (never writes there) and produces one self-contained
 
 Useful flags:
 
-- `-- --article 05` publishes one article (also accepts the full slug). Skips the shared `_diagrams/` library render.
+- `-- --article 07` publishes one article (also accepts the full slug). Skips the shared `_diagrams/` library render.
 - `-- --skip-diagrams` does every text transform but renders no images — fast, for checking prose.
 - `-- --out <dir>` writes somewhere other than `.tmp/published`.
 - `-- --help` prints the same summary.
@@ -104,18 +104,18 @@ Bold the current article's line instead of using the table's "Current" marker. O
 
 ## Cross-Linking And Publish Order
 
-The Markdown files link to each other with relative paths (`00-technical-product-operations.md`, `#aitm-and-the-backlog-manager-pattern`, etc.). None of those resolve on LinkedIn — LinkedIn articles only accept absolute URLs, and an article's URL does not exist until after it is published.
+The Markdown files link to each other with relative paths (`02-the-backlog-governance-postulate.md`, `#aitm-and-the-backlog-manager-pattern`, etc.). None of those resolve on LinkedIn — LinkedIn articles only accept absolute URLs, and an article's URL does not exist until after it is published.
 
-Publish in series order (00 → 08) and backfill links as each subsequent article goes live:
+Publish in series order (02 → 10) and backfill links as each subsequent article goes live:
 
-1. Publish article 00 with no working links back into the series (the roadmap bullet list stays plain text for now, and the `Series Link` sentence linking forward to article 01 also stays unlinked since 01 isn't live yet).
-2. Publish article 01. Go back and edit article 00 (LinkedIn allows editing published articles) to hyperlink its forward reference and its roadmap bullet for article 01.
-3. Repeat through article 08: after each new article goes live, revisit every already-published article's roadmap list and `Series Link` sentence and add the new article's URL.
-4. After article 08 (the finale) is live, every prior article should have a fully hyperlinked roadmap list, and the whole series should be mutually cross-linked.
+1. Publish article 02 with no working links back into the series (the roadmap bullet list stays plain text for now, and the `Series Link` sentence linking forward to article 03 also stays unlinked since 03 isn't live yet).
+2. Publish article 03. Go back and edit article 02 (LinkedIn allows editing published articles) to hyperlink its forward reference and its roadmap bullet for article 03.
+3. Repeat through article 10: after each new article goes live, revisit every already-published article's roadmap list and `Series Link` sentence and add the new article's URL.
+4. After article 10 (the finale) is live, every prior article should have a fully hyperlinked roadmap list, and the whole series should be mutually cross-linked.
 
 This is the only viable order given LinkedIn's URL-after-publish constraint — do not try to pre-link forward to articles that do not exist yet.
 
-Internal anchor links (e.g. `00-technical-product-operations.md#aitm-and-the-backlog-manager-pattern`, used when a later article references AITM's introduction in article 00) should become a plain link to the target article's published URL — LinkedIn articles do not expose in-page anchors, so the fragment gets dropped and the link just goes to the top of the referenced article.
+Internal anchor links (e.g. `02-the-backlog-governance-postulate.md#aitm-and-the-backlog-manager-pattern`, used when a later article references AITM's introduction in article 02) should become a plain link to the target article's published URL — LinkedIn articles do not expose in-page anchors, so the fragment gets dropped and the link just goes to the top of the referenced article.
 
 ## Cover Images
 

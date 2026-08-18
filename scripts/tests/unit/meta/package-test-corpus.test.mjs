@@ -15,7 +15,7 @@ const manifestPath = path.join(PROJECT_ROOT, 'scripts/tests/fixtures/test-corpus
 const manifest = JSON.parse(readFileSync(manifestPath, 'utf8'));
 const TASK3_BASE_COMMIT = 'db997e39e0fd76edbd2a3df6a19e7a226e33e55f';
 const TASK3_MIGRATION_COMMIT = 'cbff5ce683083c3e2a33a06ba2c81cafc9e27c22';
-const REQUIRED_POST_SNAPSHOT_TESTS = [
+const EXPECTED_POST_SNAPSHOT_TESTS = [
   'scripts/tests/unit/meta/audit-story-tags.test.mjs',
   'scripts/tests/unit/meta/package-test-corpus.test.mjs',
   'scripts/tests/unit/review/co-review.test.mjs',
@@ -222,11 +222,26 @@ test('live discovery realizes the migration manifest exactly once and only in ca
   }
 
   const storyOwned = discovered.filter((rel) => !manifestDestinations.has(rel));
-  for (const rel of REQUIRED_POST_SNAPSHOT_TESTS) {
-    assert.ok(storyOwned.includes(rel), `${rel} remains a post-snapshot test`);
+  for (const expected of EXPECTED_POST_SNAPSHOT_TESTS) {
+    assert.ok(storyOwned.includes(expected), `${expected} remains after the immutable snapshot`);
   }
   for (const rel of storyOwned) {
     assert.ok(parseCanonicalTestPath(rel), `${rel} is a canonical story-owned test`);
+  }
+  const liveCounts = { unit: 0, integration: 0, slow: 0 };
+  for (const rel of discovered) liveCounts[parseCanonicalTestPath(rel).lane] += 1;
+  const minimumCounts = { unit: 0, integration: 0, slow: 0 };
+  for (const entry of manifest.tests) {
+    minimumCounts[parseCanonicalTestPath(finalPathFor(entry)).lane] += 1;
+  }
+  for (const rel of EXPECTED_POST_SNAPSHOT_TESTS) {
+    minimumCounts[parseCanonicalTestPath(rel).lane] += 1;
+  }
+  for (const lane of Object.keys(liveCounts)) {
+    assert.ok(
+      liveCounts[lane] >= minimumCounts[lane],
+      `${lane} retains the immutable corpus while allowing later story-owned tests`
+    );
   }
 });
 
