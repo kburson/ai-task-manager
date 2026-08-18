@@ -13,9 +13,9 @@ The accepted artifact is referenced by commit and Git blob, not copied here; rec
   },
   "artifact": {
     "sourcePath": "docs/superpowers/specs/2026-08-14-repository-native-polyglot-tia-and-build-health-design.md",
-    "acceptedCommit": "6605bf2645e611dd6f1e72824e946194c293e8cd",
-    "gitBlob": "d7506fcfdc045c259696d421262de1fbd5ee492f",
-    "sha256": "sha256:f9ee74d6aaea2a54e1e434c5db29eb787051746028effdb8eed6fb36a87ff964",
+    "acceptedCommit": "e406f31b16fbdfa30e0a474e133bd2b73432671f",
+    "gitBlob": "9bad0daf61124aec5f275775944b6cb510ac3ef7",
+    "sha256": "sha256:d78bcedba3892312ecc433f39f12ad70d428d97edf08dfbba3fb6cac6c3e31d7",
     "mode": "reference"
   },
   "participants": {

@@ -13,9 +13,9 @@ The accepted artifact is referenced by commit and Git blob, not copied here; rec
   },
   "artifact": {
     "sourcePath": "docs/superpowers/plans/2026-08-14-git-native-polyglot-tia.md",
-    "acceptedCommit": "d39e0984c7e6d62f08ade3eb17bf81cfd61bd4b3",
-    "gitBlob": "fe5197da62a6a4084d0e4caa66fcc7688d0b0fe8",
-    "sha256": "sha256:89f2dce49a42a040e25e94879c0e49f7ffae6d16008fab84290c2669e677581c",
+    "acceptedCommit": "e406f31b16fbdfa30e0a474e133bd2b73432671f",
+    "gitBlob": "982eb6288ef35247fde229306d0a723661570b2d",
+    "sha256": "sha256:425a5871c4aebf8d5b183f3a24505ff3834b5176cc5b4c73c7ce4a17e91fb6ed",
     "mode": "reference"
   },
   "participants": {

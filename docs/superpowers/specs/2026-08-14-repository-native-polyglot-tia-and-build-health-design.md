@@ -500,9 +500,9 @@ merge-group SHA.
 
 ### 10.4 Scheduled complete sanity run
 
-The default cadence is nightly. The cadence is configurable and may increase to
-two or three runs per day if measured staleness materially broadens PR selection
-or exceeds the health freshness budget.
+The default cadence is three complete runs per day. The exact schedule is
+configurable, but it must remain within the approved two-or-three-runs-per-day
+range and the health freshness budget.
 
 Runs share one concurrency group and execute every configured automation lane
 against an exact pinned `trunk` SHA.
@@ -769,7 +769,7 @@ policy decision and produces a new validated model receipt.
 
 Nightly complete results provide the counterfactual backstop. A stable failure
 outside the recorded selection for the attributable merged candidate is a
-selector escape. Aggregate nightly failure alone does not prove which PR caused
+selector escape. Aggregate scheduled-run failure alone does not prove which PR caused
 an escape; attribution requires compatible selection receipts and source
 ancestry. Unattributed failures still make health RED but do not fabricate a
 model label.
