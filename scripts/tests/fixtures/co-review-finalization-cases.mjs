@@ -24,6 +24,7 @@ import {
   initializedProtocol,
   processCallCounts,
   readEvents,
+  runCliDirect,
   snapshotProtocol,
   temporaryRoot,
 } from './co-review-fixture.mjs';
@@ -127,11 +128,16 @@ async function acceptedConsensus(overrides = {}) {
     decision: 'accepted',
     message: 'accepted',
   });
+  assert.deepEqual(state.acceptance, {
+    basis: 'reviewer-consensus',
+    at: state.lastHandoff.at,
+    reviewer,
+  });
   return { ...fixture, state, response: responseReference, review };
 }
 
-async function acceptedGoodEnough() {
-  const fixture = await initializedProtocol({ maxReviewTurns: 2 });
+async function goodEnoughReady({ archiveDir } = {}) {
+  const fixture = await initializedProtocol({ maxReviewTurns: 2, archiveDir });
   const { api, root, options, initialCommit } = fixture;
   let commit = initialCommit;
   let answeredReview = null;
@@ -186,33 +192,43 @@ async function acceptedGoodEnough() {
   const prior = JSON.parse(readFileSync(statePath, 'utf8'));
   assert.equal(prior.lifecycle, 'intervention-required');
   assert.equal(prior.round, 6);
-  const at = '2026-08-16T12:00:00.000Z';
-  const acceptance = { basis: 'human-good-enough', at, approvedBy: 'kendrick' };
-  const state = {
-    ...prior,
-    revision: prior.revision + 1,
-    lifecycle: 'accepted',
-    acceptance,
-    updatedAt: at,
-  };
-  const events = readEvents(root, options.dir);
-  events.push({
-    schema: 'aitm.co-review-event/v1',
-    protocolId: state.protocolId,
-    revision: state.revision,
-    type: 'human-good-enough',
-    at,
-    lifecycle: state.lifecycle,
-    currentRole: state.currentRole,
-    round: state.round,
-    reviewTurnsUsed: state.reviewTurnsUsed,
-    maxReviewTurns: state.maxReviewTurns,
-    remainingReviewTurns: state.remainingReviewTurns,
-    acceptance,
+  return { ...fixture, prior, finalReview, finalResponse };
+}
+
+async function acceptedGoodEnough() {
+  const fixture = await goodEnoughReady();
+  const { api, root, options, prior } = fixture;
+  const state = api.acceptGoodEnough({
+    cwd: root,
+    dir: options.dir,
+    humanLogin: 'kendrick',
+    expectedRevision: prior.revision,
   });
-  writeFileSync(statePath, `${JSON.stringify(state, null, 2)}\n`);
-  writeFileSync(eventsPath, `${events.map((event) => JSON.stringify(event)).join('\n')}\n`);
-  return { ...fixture, state, finalReview, finalResponse };
+  assert.equal(api.statusProtocol({ cwd: root, dir: options.dir }).integrity.ok, true);
+  assert.equal(
+    readEvents(root, options.dir).filter(({ type }) => type === 'human-good-enough').length,
+    1
+  );
+  return { ...fixture, state };
+}
+
+async function consensusReady({ archiveDir, dir } = {}) {
+  const fixture = await initializedProtocol({ maxReviewTurns: 2, archiveDir, dir });
+  const { api, root, options, initialCommit } = fixture;
+  api.claimTurn({ cwd: root, dir: options.dir, actor: 'owner-agent' });
+  const response = writeRuntime(root, options.dir, 'owner-response.md', '# Response\n\nReady.\n');
+  api.handoffOwner({
+    cwd: root,
+    dir: options.dir,
+    actor: 'owner-agent',
+    response,
+    artifact: options.artifact,
+    commit: initialCommit,
+    message: 'owner handoff',
+  });
+  api.claimTurn({ cwd: root, dir: options.dir, actor: 'reviewer-agent' });
+  const review = writeRuntime(root, options.dir, 'review.md', '# Review\n\nAccepted.\n');
+  return { ...fixture, review };
 }
 
 function archiveOptions(fixture, archiveDir = 'docs/reviews/session') {
@@ -233,6 +249,311 @@ function materializePrepared(destination, prepared) {
     writeFileSync(path.join(destination, file.path), Buffer.from(file.bytesBase64, 'base64'));
   }
 }
+
+test('reviewer consensus finalizes automatically and an unconfigured destination remains recoverable', async () => {
+  const configured = await consensusReady({ archiveDir: 'docs/reviews/configured' });
+  const accepted = await runCliDirect(
+    [
+      'handoff',
+      '--dir',
+      configured.options.dir,
+      '--actor',
+      'reviewer-agent',
+      '--review',
+      configured.review,
+      '--review-of',
+      configured.initialCommit,
+      '--decision',
+      'accepted',
+      '--message',
+      'accepted',
+    ],
+    { cwd: configured.root, repository: configured.repository }
+  );
+  assert.equal(accepted.status, 0, accepted.stderr);
+  assert.equal(existsSync(path.join(configured.root, 'docs/reviews/configured/README.md')), true);
+
+  const unconfigured = await consensusReady();
+  const pending = await runCliDirect(
+    [
+      'handoff',
+      '--dir',
+      unconfigured.options.dir,
+      '--actor',
+      'reviewer-agent',
+      '--review',
+      unconfigured.review,
+      '--review-of',
+      unconfigured.initialCommit,
+      '--decision',
+      'accepted',
+      '--message',
+      'accepted',
+    ],
+    { cwd: unconfigured.root, repository: unconfigured.repository }
+  );
+  assert.equal(pending.status, 4);
+  assert.match(
+    pending.stderr,
+    /^ACCEPTED: protocol state is durable; archive publication is pending/
+  );
+  assert.doesNotMatch(pending.stderr, /no state changed/);
+  assert.match(pending.stderr, /finalize --dir \.tmp\/review --archive-dir <tracked-repo-path>/);
+  assert.equal(
+    unconfigured.api.readProtocol({ cwd: unconfigured.root, dir: unconfigured.options.dir })
+      .lifecycle,
+    'accepted'
+  );
+
+  const finalized = await runCliDirect(
+    ['finalize', '--dir', unconfigured.options.dir, '--archive-dir', 'docs/reviews/recovered'],
+    { cwd: unconfigured.root, repository: unconfigured.repository }
+  );
+  assert.equal(finalized.status, 0, finalized.stderr);
+  const retried = await runCliDirect(
+    ['finalize', '--dir', unconfigured.options.dir, '--archive-dir', 'docs/reviews/recovered'],
+    { cwd: unconfigured.root, repository: unconfigured.repository }
+  );
+  assert.equal(retried.status, 0, retried.stderr);
+  assert.equal(existsSync(path.join(unconfigured.root, 'docs/reviews/recovered/README.md')), true);
+
+  const spaced = await consensusReady({ dir: '.tmp/review session' });
+  const spacedPending = await runCliDirect(
+    [
+      'handoff',
+      '--dir',
+      spaced.options.dir,
+      '--actor',
+      'reviewer-agent',
+      '--review',
+      spaced.review,
+      '--review-of',
+      spaced.initialCommit,
+      '--decision',
+      'accepted',
+      '--message',
+      'accepted',
+    ],
+    { cwd: spaced.root, repository: spaced.repository }
+  );
+  assert.equal(spacedPending.status, 4);
+  assert.match(
+    spacedPending.stderr,
+    /finalize --dir '\.tmp\/review session' --archive-dir <tracked-repo-path>/
+  );
+
+  const failed = await consensusReady({ archiveDir: 'docs/reviews/retry' });
+  const publicationFailed = await runCliDirect(
+    [
+      'handoff',
+      '--dir',
+      failed.options.dir,
+      '--actor',
+      'reviewer-agent',
+      '--review',
+      failed.review,
+      '--review-of',
+      failed.initialCommit,
+      '--decision',
+      'accepted',
+      '--message',
+      'accepted',
+    ],
+    {
+      cwd: failed.root,
+      repository: failed.repository,
+      archiveHooks: {
+        afterWrite() {
+          throw new Error('injected publication failure');
+        },
+      },
+    }
+  );
+  assert.equal(publicationFailed.status, 4);
+  assert.equal(
+    failed.api.readProtocol({ cwd: failed.root, dir: failed.options.dir }).lifecycle,
+    'accepted'
+  );
+  assert.match(publicationFailed.stderr, /finalize --dir \.tmp\/review$/m);
+});
+
+test('good-enough acceptance is revision-checked, immutable, and requires two-sided closing evidence', async () => {
+  const ready = await goodEnoughReady();
+  const before = snapshotProtocol(ready.root, ready.options.dir);
+  assert.throws(
+    () =>
+      ready.api.acceptGoodEnough({
+        cwd: ready.root,
+        dir: ready.options.dir,
+        humanLogin: 'kendrick',
+        expectedRevision: ready.prior.revision - 1,
+      }),
+    /co-review:revision/
+  );
+  assert.deepEqual(snapshotProtocol(ready.root, ready.options.dir), before);
+  const accepted = ready.api.acceptGoodEnough({
+    cwd: ready.root,
+    dir: ready.options.dir,
+    humanLogin: 'kendrick',
+    expectedRevision: ready.prior.revision,
+  });
+  assert.deepEqual(accepted.acceptance, {
+    basis: 'human-good-enough',
+    at: accepted.updatedAt,
+    approvedBy: 'kendrick',
+  });
+  const terminal = snapshotProtocol(ready.root, ready.options.dir);
+  assert.throws(
+    () => ready.api.claimTurn({ cwd: ready.root, dir: ready.options.dir, actor: 'owner-agent' }),
+    /co-review:terminal/
+  );
+  assert.deepEqual(snapshotProtocol(ready.root, ready.options.dir), terminal);
+
+  const oneSided = await initializedProtocol({ maxReviewTurns: 1 });
+  oneSided.api.setMaxReviewTurns({
+    cwd: oneSided.root,
+    dir: oneSided.options.dir,
+    requestedMax: 0,
+    humanLogin: 'kendrick',
+  });
+  oneSided.api.claimTurn({ cwd: oneSided.root, dir: oneSided.options.dir, actor: 'owner-agent' });
+  const response = writeRuntime(oneSided.root, oneSided.options.dir, 'response.md', '# Response\n');
+  oneSided.api.handoffOwner({
+    cwd: oneSided.root,
+    dir: oneSided.options.dir,
+    actor: 'owner-agent',
+    response,
+    artifact: oneSided.options.artifact,
+    commit: oneSided.initialCommit,
+    message: 'opening short circuit',
+  });
+  const shortState = oneSided.api.readProtocol({ cwd: oneSided.root, dir: oneSided.options.dir });
+  assert.throws(
+    () =>
+      oneSided.api.acceptGoodEnough({
+        cwd: oneSided.root,
+        dir: oneSided.options.dir,
+        humanLogin: 'kendrick',
+        expectedRevision: shortState.revision,
+      }),
+    /co-review:good-enough-evidence/
+  );
+  const shortJson = JSON.parse(
+    (
+      await runCliDirect(['status', '--dir', oneSided.options.dir, '--json'], {
+        cwd: oneSided.root,
+        repository: oneSided.repository,
+      })
+    ).stdout
+  );
+  assert.deepEqual(
+    shortJson.availableActions.map(({ kind }) => kind),
+    ['continue', 'no-action']
+  );
+  const shortHuman = await runCliDirect(['status', '--dir', oneSided.options.dir], {
+    cwd: oneSided.root,
+    repository: oneSided.repository,
+  });
+  assert.match(
+    shortHuman.stdout,
+    /Good enough unavailable: a two-sided evidence pair does not exist/
+  );
+});
+
+test('good-enough CLI prepares before mutation, publishes, and maps only post-acceptance failure to exit 4', async () => {
+  const ready = await goodEnoughReady({ archiveDir: 'docs/reviews/good-enough-cli' });
+  const finalized = await runCliDirect(
+    ['finalize', '--dir', ready.options.dir, '--good-enough', '--json'],
+    {
+      cwd: ready.root,
+      repository: ready.repository,
+      resolveGitHubLoginImpl: () => 'kendrick',
+    }
+  );
+  assert.equal(finalized.status, 0, finalized.stderr);
+  const output = JSON.parse(finalized.stdout);
+  assert.equal(output.state.acceptance.basis, 'human-good-enough');
+  assert.equal(output.archivePublication.status, 'published');
+  const humanStatus = await runCliDirect(['status', '--dir', ready.options.dir], {
+    cwd: ready.root,
+    repository: ready.repository,
+  });
+  assert.equal(humanStatus.status, 0, humanStatus.stderr);
+  assert.match(
+    humanStatus.stdout,
+    new RegExp(`Acceptance: human-good-enough by kendrick at ${output.state.acceptance.at}`)
+  );
+  const retried = await runCliDirect(['finalize', '--dir', ready.options.dir], {
+    cwd: ready.root,
+    repository: ready.repository,
+  });
+  assert.equal(retried.status, 0, retried.stderr);
+  assert.match(retried.stdout, /Produced: docs\/reviews\/good-enough-cli\/README\.md/);
+
+  const failed = await goodEnoughReady({ archiveDir: 'docs/reviews/good-enough-failed' });
+  const pending = await runCliDirect(['finalize', '--dir', failed.options.dir, '--good-enough'], {
+    cwd: failed.root,
+    repository: failed.repository,
+    resolveGitHubLoginImpl: () => 'kendrick',
+    archiveHooks: {
+      beforeValidate() {
+        throw new Error('injected publication failure');
+      },
+    },
+  });
+  assert.equal(pending.status, 4);
+  assert.match(pending.stderr, /^ACCEPTED: protocol state is durable/);
+  assert.equal(
+    failed.api.statusProtocol({ cwd: failed.root, dir: failed.options.dir }).integrity.ok,
+    true
+  );
+
+  const empty = temporaryRoot();
+  const invalid = await runCliDirect(
+    ['finalize', '--dir', '.tmp/missing', '--good-enough', '--unknown'],
+    {
+      cwd: empty,
+      resolveGitHubLoginImpl: () => {
+        throw new Error('identity must not run');
+      },
+    }
+  );
+  assert.equal(invalid.status, 2);
+  assert.match(invalid.stderr, /--unknown (?:requires a value|is not valid)/);
+});
+
+test('intervention and accepted status expose state-valid finalization actions and archive completion', async () => {
+  const ready = await goodEnoughReady();
+  const intervention = JSON.parse(
+    (
+      await runCliDirect(['status', '--dir', ready.options.dir, '--json'], {
+        cwd: ready.root,
+        repository: ready.repository,
+      })
+    ).stdout
+  );
+  assert.deepEqual(
+    intervention.availableActions.map(({ kind }) => kind),
+    ['continue', 'finalize-good-enough', 'no-action']
+  );
+  assert.deepEqual(intervention.unresolvedFindingIds, ['F-2']);
+  assert.equal(intervention.closingOwnerComplete, true);
+  assert.equal(intervention.terminalEvidence.reviewerReview.path, ready.finalReview);
+  assert.equal(intervention.terminalEvidence.ownerResponse.path, ready.finalResponse);
+
+  const accepted = await acceptedConsensus({ archiveDir: 'docs/reviews/status' });
+  const beforePublish = JSON.parse(
+    (
+      await runCliDirect(['status', '--dir', accepted.options.dir, '--json'], {
+        cwd: accepted.root,
+        repository: accepted.repository,
+      })
+    ).stdout
+  );
+  assert.equal(beforePublish.decisionBasis, 'reviewer-consensus');
+  assert.equal(beforePublish.archive.destination, 'docs/reviews/status');
+  assert.equal(beforePublish.archive.completion, 'absent');
+});
 
 test('archive resolves consensus evidence by events and derives stable pair-round names', async () => {
   const fixture = await acceptedConsensus();
@@ -288,6 +609,13 @@ test('archive refuses invalid consensus provenance and evidence rounds', async (
     reviewer: 'impostor',
   };
   writeFileSync(statePath, `${JSON.stringify(state, null, 2)}\n`);
+  const provenanceEventsPath = path.join(provenance.root, provenance.options.dir, 'events.jsonl');
+  const provenanceEvents = readEvents(provenance.root, provenance.options.dir);
+  provenanceEvents.at(-1).acceptance = state.acceptance;
+  writeFileSync(
+    provenanceEventsPath,
+    `${provenanceEvents.map((event) => JSON.stringify(event)).join('\n')}\n`
+  );
   assert.throws(
     () => prepareArchive(archiveOptions(provenance, 'docs/reviews/bad-provenance')),
     (error) => error.code === 'archive-evidence'

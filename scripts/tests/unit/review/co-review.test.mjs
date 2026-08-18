@@ -13,6 +13,7 @@ import path from 'node:path';
 import test from 'node:test';
 
 import '../../fixtures/co-review-budget-cases.mjs';
+import '../../fixtures/co-review-finalization-cases.mjs';
 import '../../fixtures/co-review-handoff-cases.mjs';
 import '../../fixtures/co-review-supplement-cases.mjs';
 import {

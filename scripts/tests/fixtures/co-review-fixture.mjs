@@ -131,6 +131,7 @@ function bindProtocol(api, repository) {
     registerSupplement: inject('registerSupplement'),
     handoffOwner: inject('handoffOwner'),
     handoffReviewer: inject('handoffReviewer'),
+    acceptGoodEnough: inject('acceptGoodEnough'),
     setMaxReviewTurns: inject('setMaxReviewTurns'),
     continueProtocol: inject('continueProtocol'),
     waitForTurn: inject('waitForTurn'),
@@ -195,10 +196,11 @@ export async function initializedProtocol({
   artifact = 'docs/artifact.md',
   contents = '# Artifact\n\nRevision one.\n',
   archiveDir,
+  dir = '.tmp/review',
 } = {}) {
   const fixture = memoryRepositoryFixture({ artifact, bytes: Buffer.from(contents) });
   const api = await memoryProtocol(fixture.repository);
-  return initializeFixture({ api, fixture, imported, maxReviewTurns, archiveDir });
+  return initializeFixture({ api, fixture, imported, maxReviewTurns, archiveDir, dir });
 }
 
 export async function realInitializedProtocol({ imported = false, maxReviewTurns = 6 } = {}) {
@@ -207,10 +209,17 @@ export async function realInitializedProtocol({ imported = false, maxReviewTurns
   return initializeFixture({ api, fixture, imported, maxReviewTurns });
 }
 
-function initializeFixture({ api, fixture, imported, maxReviewTurns, archiveDir }) {
+function initializeFixture({
+  api,
+  fixture,
+  imported,
+  maxReviewTurns,
+  archiveDir,
+  dir = '.tmp/review',
+}) {
   const options = {
     cwd: fixture.root,
-    dir: '.tmp/review',
+    dir,
     artifact: fixture.artifact,
     owner: 'owner-agent',
     reviewer: 'reviewer-agent',

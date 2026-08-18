@@ -4,6 +4,7 @@
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import { prepareArchive, publishPreparedArchive } from './lib/archive.mjs';
 import { helpRequest, renderHelp } from './lib/help.mjs';
 
 export async function runCli(argv = process.argv.slice(2), io = {}) {
@@ -136,6 +137,99 @@ export async function runCli(argv = process.argv.slice(2), io = {}) {
           message: required(values, 'message'),
           ...repositoryOptions,
         });
+        if (result.lifecycle === 'accepted') {
+          try {
+            const snapshot = protocol.validatedArchiveSnapshot({
+              cwd,
+              dir,
+              ...repositoryOptions,
+            });
+            const prepared = prepareArchive({
+              ...snapshot,
+              archiveDir: result.initialization.archiveDir,
+              ...repositoryOptions,
+            });
+            result = {
+              ...result,
+              archivePublication: publishPreparedArchive(prepared, {
+                hooks: io.archiveHooks,
+                ...repositoryOptions,
+              }),
+            };
+          } catch (error) {
+            exitCode = 4;
+            writeError(
+              archivePendingMessage({
+                dir,
+                state: result,
+                error,
+                shellArgument: protocol.shellArgument,
+              })
+            );
+          }
+        }
+      }
+    } else if (name === 'finalize') {
+      assertAllowed(values, booleans, ['dir', 'archive-dir', 'good-enough', 'json']);
+      const cwd = io.cwd ?? process.cwd();
+      const dir = required(values, 'dir');
+      let state;
+      let publication;
+      if (booleans.has('good-enough')) {
+        const resolveIdentity =
+          io.resolveGitHubLoginImpl ??
+          (await import('./lib/github-identity.mjs')).resolveGitHubLogin;
+        const humanLogin = resolveIdentity({
+          cwd,
+          recoveryCommand: protocol.renderCliCommand(argv),
+        });
+        const snapshot = protocol.prepareGoodEnoughSnapshot({
+          cwd,
+          dir,
+          humanLogin,
+          ...repositoryOptions,
+        });
+        const prepared = prepareArchive({
+          ...snapshot,
+          archiveDir: values['archive-dir'],
+          ...repositoryOptions,
+        });
+        state = protocol.acceptGoodEnough({
+          cwd,
+          dir,
+          humanLogin,
+          expectedRevision: snapshot.expectedRevision,
+          acceptedAt: snapshot.acceptance.at,
+          ...repositoryOptions,
+        });
+        try {
+          publication = publishPreparedArchive(prepared, {
+            hooks: io.archiveHooks,
+            ...repositoryOptions,
+          });
+        } catch (error) {
+          writeError(
+            archivePendingMessage({ dir, state, error, shellArgument: protocol.shellArgument })
+          );
+          return 4;
+        }
+      } else {
+        const snapshot = protocol.validatedArchiveSnapshot({ cwd, dir, ...repositoryOptions });
+        const prepared = prepareArchive({
+          ...snapshot,
+          archiveDir: values['archive-dir'],
+          ...repositoryOptions,
+        });
+        state = snapshot.state;
+        publication = publishPreparedArchive(prepared, {
+          hooks: io.archiveHooks,
+          ...repositoryOptions,
+        });
+      }
+      result = { state, archivePublication: publication };
+      if (!booleans.has('json')) {
+        writeOut(formatFinalization(result));
+        return 0;
       }
     } else if (name === 'set-max-turns') {
       assertAllowed(values, booleans, ['dir', 'max-turns']);
@@ -146,7 +240,7 @@ export async function runCli(argv = process.argv.slice(2), io = {}) {
         io.resolveGitHubLoginImpl ?? (await import('./lib/github-identity.mjs')).resolveGitHubLogin;
       const humanLogin = resolveIdentity({
         cwd,
-        recoveryCommand: `npx aitm co-review ${argv.join(' ')}`,
+        recoveryCommand: protocol.renderCliCommand(argv),
       });
       result = protocol.setMaxReviewTurns({
         cwd,
@@ -164,7 +258,7 @@ export async function runCli(argv = process.argv.slice(2), io = {}) {
         io.resolveGitHubLoginImpl ?? (await import('./lib/github-identity.mjs')).resolveGitHubLogin;
       const humanLogin = resolveIdentity({
         cwd,
-        recoveryCommand: `npx aitm co-review ${argv.join(' ')}`,
+        recoveryCommand: protocol.renderCliCommand(argv),
       });
       result = protocol.registerSupplement({ cwd, dir, file, humanLogin, ...repositoryOptions });
     } else if (name === 'continue') {
@@ -190,7 +284,7 @@ export async function runCli(argv = process.argv.slice(2), io = {}) {
         io.resolveGitHubLoginImpl ?? (await import('./lib/github-identity.mjs')).resolveGitHubLogin;
       const humanLogin = resolveIdentity({
         cwd,
-        recoveryCommand: `npx aitm co-review ${argv.join(' ')}`,
+        recoveryCommand: protocol.renderCliCommand(argv),
       });
       if (values['approved-by'] !== undefined) {
         writeError(
@@ -235,7 +329,7 @@ function parseArguments(args) {
     if (!name || Object.hasOwn(values, name) || booleans.has(name)) {
       throw usage(`duplicate or empty option ${token}`);
     }
-    if (name === 'json') {
+    if (name === 'json' || name === 'good-enough') {
       booleans.add(name);
       continue;
     }
@@ -297,6 +391,15 @@ function formatStatus(state) {
         )
         .join('\n  ')
     : 'none';
+  const actions = (state.availableActions ?? [])
+    .map(({ kind, command }) => `${kind}: ${command ?? 'make no mutation; return later'}`)
+    .join('\n  ');
+  const acceptanceActor = state.acceptance?.approvedBy ?? state.acceptance?.reviewer;
+  const acceptance = state.decisionBasis
+    ? `${state.decisionBasis}${acceptanceActor ? ` by ${acceptanceActor}` : ''}${
+        state.acceptance?.at ? ` at ${state.acceptance.at}` : ''
+      }`
+    : 'none';
   return [
     `Lifecycle: ${state.lifecycle}`,
     `Turn: ${state.currentRole ?? 'none'} (${actor}) / ${state.turnState ?? 'terminal'}`,
@@ -306,9 +409,48 @@ function formatStatus(state) {
     `Artifact: ${state.artifact.path} @ ${state.artifact.commit}`,
     `Last handoff: ${lastHandoff}`,
     `Budget: ${state.reviewTurnsUsed} used / ${state.maxReviewTurns} max / ${state.remainingReviewTurns} remaining`,
+    `Decision basis: ${state.decisionBasis ?? 'none'}`,
+    `Acceptance: ${acceptance}`,
+    `Archive: ${state.archive?.destination ?? 'unknown'} / ${state.archive?.completion ?? 'unknown'}`,
+    `Closing owner complete: ${state.closingOwnerComplete ? 'yes' : 'no'}`,
+    `Unresolved findings: ${state.unresolvedFindingIds?.join(', ') || 'none'}`,
+    `Terminal review: ${state.terminalEvidence?.reviewerReview?.path ?? 'none'}`,
+    `Terminal response: ${state.terminalEvidence?.ownerResponse?.path ?? 'none'}`,
+    `Latest budget adjustment: ${
+      state.latestBudgetAdjustment ? JSON.stringify(state.latestBudgetAdjustment) : 'none'
+    }`,
     `Supplements: ${supplementStatus}`,
     `Integrity: ${state.integrity.ok ? 'ok' : 'DRIFT'}`,
+    `Available actions: ${actions || 'none'}`,
+    ...(state.lifecycle === 'intervention-required' && !state.closingOwnerComplete
+      ? ['Good enough unavailable: a two-sided evidence pair does not exist.']
+      : []),
     `Next: ${state.nextAction}`,
+    '',
+  ].join('\n');
+}
+
+function archivePendingMessage({ dir, state, error, shellArgument }) {
+  const configured = state.initialization?.archiveDir;
+  const retry = `npx aitm co-review finalize --dir ${shellArgument(dir)}${
+    configured ? '' : ' --archive-dir <tracked-repo-path>'
+  }`;
+  const cause = String(error.message).replace(/; no state changed(?:; next:.*)?$/, '');
+  return [
+    'ACCEPTED: protocol state is durable; archive publication is pending',
+    `Cause: ${cause}`,
+    `Retry: ${retry}`,
+    '',
+  ].join('\n');
+}
+
+function formatFinalization({ archivePublication }) {
+  return [
+    `Archive: ${archivePublication.destination.relative}`,
+    ...archivePublication.paths.map(
+      (entry) => `Produced: ${archivePublication.destination.relative}/${entry}`
+    ),
+    'Verify the generated files, then stage and commit them through the repository workflow.',
     '',
   ].join('\n');
 }
