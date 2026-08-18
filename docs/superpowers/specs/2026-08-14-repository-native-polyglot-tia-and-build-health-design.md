@@ -50,24 +50,26 @@ The initial implementation remains deliberately conservative:
 
 ![Repository-native polyglot TIA and build-health architecture](assets/repository-native-polyglot-tia-and-build-health.svg)
 
-## 1. Verified Current-State Constraints
+## 1. Repository-Grounded Current State
 
-The design begins from the following repository-grounded facts:
+Each item carries its classification. **Implemented behavior** records
+repository behavior observed during investigation; **Approved design** records
+a recovered decision that constrains the proposal.
 
-- `scripts/task-tracker/verify-develop.mjs` currently derives changes from a
+- **Implemented behavior** — `scripts/task-tracker/verify-develop.mjs` currently derives changes from a
   diff against `HEAD` plus untracked files. It omits committed branch changes
   against `trunk`.
-- `scripts/task-tracker/lib/test-impact-selector.mjs` is JavaScript/ESM-specific.
+- **Implemented behavior** — `scripts/task-tracker/lib/test-impact-selector.mjs` is JavaScript/ESM-specific.
   It unions changed tests, direct and transitive import consumers, basename
   matching, checked-in manifest rules, and conservative lane escalation.
-- Test discovery is tied to JavaScript `*.test.mjs` files under `scripts`.
-- The observed suite at investigation time contained 897 test files: 823 unit,
+- **Implemented behavior** — Test discovery is tied to JavaScript `*.test.mjs` files under `scripts`.
+- **Implemented behavior** — The observed suite at investigation time contained 897 test files: 823 unit,
   24 integration, and 50 slow.
-- `.aitm/test-timing.json` is an ignored, overwritten local snapshot. It is not
+- **Implemented behavior** — `.aitm/test-timing.json` is an ignored, overwritten local snapshot. It is not
   durable history.
-- CI currently runs its fast lane for PRs and runs the slow lane on a schedule,
+- **Implemented behavior** — CI currently runs its fast lane for PRs and runs the slow lane on a schedule,
   manual dispatch, or selected PRs. It does not publish a durable TIA history.
-- The approved Phase 1 language-neutral seam is the fixed
+- **Approved design** — The approved Phase 1 language-neutral seam is the fixed
   `lint:affected`, `format:affected`, and `test:affected` script-label roster plus
   the stable affected-file manifest. A structured provider API remains Phase 2.
 
@@ -132,7 +134,10 @@ The local AITM ledger remains authoritative for task lifecycle state. It may
 cache health for performance, but a local cache cannot turn RED or UNKNOWN into
 GREEN.
 
-## 5. Component Architecture
+## 5. Proposed Architecture
+
+Everything in this section is classified **Approved design** unless an item is
+explicitly marked **Unresolved**.
 
 ### 5.1 Change resolver
 
@@ -288,6 +293,14 @@ Suggested location:
 ```text
 .ai-task-manager/.cache/tia/
 ```
+
+The existing `.aitm/test-timing.json` remains an **Implemented behavior** and a
+legacy measurement snapshot; this design does not silently relocate it. New
+worktree-local TIA overlays use `.ai-task-manager/.cache/tia/` because
+`.ai-task-manager/.cache/` is the repository's ignored cache namespace, kept
+separate from tracked `.ai-task-manager/` configuration. Both local stores are
+non-authoritative and deletable. Shared canonical authority remains on the
+orphan data branch and through the source-project health issue pointer.
 
 Local observations accelerate feedback in the current worktree. They may
 overlay compatible canonical data only for the current branch. They are never
@@ -460,7 +473,15 @@ and cannot shrink selection.
 
 ## 10. CI Execution Model
 
-### 10.1 Ordinary PR
+### 10.1 AITM stage ownership
+
+- **Develop owns** implementation, new or modified tests, lint, format,
+  affected tests execution, acceptance-criteria receipts, and exit guards.
+- **Test owns** pull request creation and exact-head fast CI validation.
+- The **scheduled full suite owns** the unbiased safety backstop, learning
+  source, and project-health authority input.
+
+### 10.2 Ordinary PR
 
 1. A minimal admission job reads the project-health marker and exact data
    branch record without checking out or executing candidate code.
@@ -471,13 +492,13 @@ and cannot shrink selection.
 5. Compatible historical signals add and rank candidates.
 6. CI executes the affected set and uploads the selection receipt and results.
 
-### 10.2 Merge queue
+### 10.3 Merge queue
 
 The workflow handles `merge_group` and validates the exact synthetic merge
 candidate. A PR-head result cannot be reused as proof for a different
 merge-group SHA.
 
-### 10.3 Scheduled complete sanity run
+### 10.4 Scheduled complete sanity run
 
 The default cadence is nightly. The cadence is configurable and may increase to
 two or three runs per day if measured staleness materially broadens PR selection
@@ -508,7 +529,7 @@ A failed run may retry to classify environmental or flaky behavior. A mixed
 pass/fail sequence is untrusted and remains RED. It cannot silently clear
 health.
 
-### 10.4 Release candidate
+### 10.5 Release candidate
 
 Every deployment or release candidate receives complete configured validation,
 even when ordinary PR validation was affected-only. Affected selection is a
@@ -869,23 +890,25 @@ Implementation is not complete until tests prove at least:
 No phase may weaken the deterministic floor or remove complete scheduled and
 release validation.
 
-## 20. Adopted Decisions
+## 20. Recovered Decisions
 
-- Platform-neutral core with narrow, pinned providers.
-- Static, manifest, changed-test, critical-path, and escalation rules are
+Every item in this section is classified **Approved design**.
+
+- **Approved design** — Platform-neutral core with narrow, pinned providers.
+- **Approved design** — Static, manifest, changed-test, critical-path, and escalation rules are
   non-removable.
-- Phase 0 merge-base correction precedes learned selection.
-- Affected-only ordinary PR validation plus complete scheduled and release
+- **Approved design** — Phase 0 merge-base correction precedes learned selection.
+- **Approved design** — Affected-only ordinary PR validation plus complete scheduled and release
   validation.
-- Explicit local, artifact, and canonical data layers.
-- Same-repository orphan data branch as the default canonical store.
-- Repository-native publisher using typed operations and `GITHUB_TOKEN`.
-- Persistent project-health issue pointing to exact evidence SHA.
-- Hard RED/UNKNOWN AITM work gate plus GitHub PR-admission gate.
-- Lease-bound repair PR with complete validation and post-merge GREEN proof.
-- JSON/JSONL-compatible normalized schemas and disclosure-safe Git contents.
-- Normal AITM `install` and `init` as the only required setup experience.
-- Nightly initial cadence with measured, configurable increase.
+- **Approved design** — Explicit local, artifact, and canonical data layers.
+- **Approved design** — Same-repository orphan data branch as the default canonical store.
+- **Approved design** — Repository-native publisher using typed operations and `GITHUB_TOKEN`.
+- **Approved design** — Persistent project-health issue pointing to exact evidence SHA.
+- **Approved design** — Hard RED/UNKNOWN AITM work gate plus GitHub PR-admission gate.
+- **Approved design** — Lease-bound repair PR with complete validation and post-merge GREEN proof.
+- **Approved design** — JSON/JSONL-compatible normalized schemas and disclosure-safe Git contents.
+- **Approved design** — Normal AITM `install` and `init` as the only required setup experience.
+- **Approved design** — Nightly initial cadence with measured, configurable increase.
 
 ## 21. Rejected or Superseded Decisions
 
@@ -907,19 +930,20 @@ release validation.
 - Cross-project model training in the initial version: privacy, comparability,
   and data-volume benefits are unproven.
 
-## 22. Configurable Policy Values
+## 22. Unresolved Decisions
 
 The architecture is settled; these operational values remain configuration,
-not topology decisions:
+not topology decisions. Every item is classified **Unresolved** until its
+default is selected and recorded:
 
-- scheduled sanity cadence;
-- maximum GREEN-health age before UNKNOWN;
-- artifact retention within GitHub's available limits;
-- repair-lease TTL and heartbeat interval;
-- affected-set time budget above mandatory tests;
-- provider-specific environment compatibility rules;
-- escape-rate thresholds that suspend learned augmentation; and
-- whether a project enables a future sanitized cross-project exporter.
+- **Unresolved** — scheduled sanity cadence;
+- **Unresolved** — maximum GREEN-health age before UNKNOWN;
+- **Unresolved** — artifact retention within GitHub's available limits;
+- **Unresolved** — repair-lease TTL and heartbeat interval;
+- **Unresolved** — affected-set time budget above mandatory tests;
+- **Unresolved** — provider-specific environment compatibility rules;
+- **Unresolved** — escape-rate thresholds that suspend learned augmentation; and
+- **Unresolved** — whether a project enables a future sanitized cross-project exporter.
 
 Defaults must fail safely and `aitm doctor` must report their effective values.
 
