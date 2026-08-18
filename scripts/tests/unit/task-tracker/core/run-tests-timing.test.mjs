@@ -155,15 +155,17 @@ test('serializeArtifact keys files by path and carries totals + slow bucket', ()
     runnerElapsedMs: 4800,
     poolElapsedMs: 2100,
     subprocessPoolElapsedMs: 700,
+    slowPoolElapsedMs: 600,
     serialElapsedMs: 2000,
   });
-  assert.equal(art.schema, 3);
+  assert.equal(art.schema, 4);
   assert.equal(art.lane, 'all');
   assert.equal(art.generatedAt, '2026-07-19T00:00:00Z');
   assert.equal(art.count, 5);
   assert.equal(art.elapsed.runnerMs, 4800);
   assert.equal(art.elapsed.poolMs, 2100);
   assert.equal(art.elapsed.subprocessPoolMs, 700);
+  assert.equal(art.elapsed.slowPoolMs, 600);
   assert.equal(art.elapsed.serialMs, 2000);
   assert.equal(art.sums.fileWallMs, 6000);
   assert.equal(art.sums.inProcessMs, 5440);
@@ -187,6 +189,7 @@ test('normalizeTimingArtifact preserves schema 1 wall as a sum, never actual ela
   assert.equal(normalized.elapsed.runnerMs, null);
   assert.equal(normalized.elapsed.poolMs, null);
   assert.equal(normalized.elapsed.subprocessPoolMs, null);
+  assert.equal(normalized.elapsed.slowPoolMs, null);
   assert.equal(normalized.elapsed.serialMs, null);
   assert.equal(normalized.sums.fileWallMs, 9000);
   assert.equal(normalized.sums.inProcessMs, 7000);
@@ -204,6 +207,7 @@ test('normalizeTimingArtifact preserves schema 2 elapsed without inventing subpr
     runnerMs: 1250,
     poolMs: 1000,
     subprocessPoolMs: null,
+    slowPoolMs: null,
     serialMs: 250,
   });
 });
@@ -224,6 +228,7 @@ test('normalizeTimingArtifact preserves every schema 3 elapsed phase', () => {
     runnerMs: 4800,
     poolMs: 2100,
     subprocessPoolMs: 700,
+    slowPoolMs: null,
     serialMs: 2000,
   });
 });

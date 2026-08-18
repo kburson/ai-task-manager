@@ -49,6 +49,14 @@ export function subprocessPoolConcurrency(cpus = os.cpus().length) {
 }
 
 /**
+ * Conservative cap for explicitly audited slow tests. The dedicated phase is
+ * isolated behind barriers and never admits more than two files at once.
+ */
+export function slowPoolConcurrency(cpus = os.cpus().length) {
+  return Math.min(2, poolConcurrency(cpus));
+}
+
+/**
  * Run every entry through `runOne` at bounded concurrency.
  *
  * Invariants (each is asserted by run-tests-pool.test.mjs):

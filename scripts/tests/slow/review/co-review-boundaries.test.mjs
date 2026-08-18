@@ -1,4 +1,5 @@
 // @story #1292
+// @slow-parallel-safe (uses process-local temporary repositories and injected boundaries)
 
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';

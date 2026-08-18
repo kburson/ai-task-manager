@@ -44,7 +44,7 @@ test('partitionTestEntries rejects unknown classifier output fail-closed', () =>
   );
 });
 
-test('runTestPhases preserves pure then subprocess then exclusive barriers', async () => {
+test('runTestPhases preserves pure, subprocess, slow, and exclusive barriers', async () => {
   const events = [];
   const runOne = async (entry) => {
     events.push(`start:${entry}`);
@@ -56,25 +56,29 @@ test('runTestPhases preserves pure then subprocess then exclusive barriers', asy
   const result = await runTestPhases({
     pooledEntries: ['pure-a', 'pure-b'],
     subprocessEntries: ['sub-a', 'sub-b'],
+    slowParallelEntries: ['slow-a', 'slow-b'],
     serialEntries: ['serial-a', 'serial-b'],
     pooledConcurrency: 2,
     subprocessConcurrency: 2,
+    slowParallelConcurrency: 2,
     runOne,
   });
 
   const lastPureEnd = Math.max(events.indexOf('end:pure-a'), events.indexOf('end:pure-b'));
   const firstSubStart = Math.min(events.indexOf('start:sub-a'), events.indexOf('start:sub-b'));
   const lastSubEnd = Math.max(events.indexOf('end:sub-a'), events.indexOf('end:sub-b'));
+  const firstSlowStart = Math.min(events.indexOf('start:slow-a'), events.indexOf('start:slow-b'));
+  const lastSlowEnd = Math.max(events.indexOf('end:slow-a'), events.indexOf('end:slow-b'));
   const firstSerialStart = events.indexOf('start:serial-a');
   assert.ok(lastPureEnd < firstSubStart, `pure/subprocess barrier missing: ${events.join(',')}`);
-  assert.ok(
-    lastSubEnd < firstSerialStart,
-    `subprocess/serial barrier missing: ${events.join(',')}`
-  );
+  assert.ok(lastSubEnd < firstSlowStart, `subprocess/slow barrier missing: ${events.join(',')}`);
+  assert.ok(lastSlowEnd < firstSerialStart, `slow/serial barrier missing: ${events.join(',')}`);
   assert.ok(events.indexOf('end:serial-a') < events.indexOf('start:serial-b'));
   assert.deepEqual(result.pooledResults, ['result:pure-a', 'result:pure-b']);
   assert.deepEqual(result.subprocessResults, ['result:sub-a', 'result:sub-b']);
+  assert.deepEqual(result.slowParallelResults, ['result:slow-a', 'result:slow-b']);
   assert.deepEqual(result.serialResults, ['result:serial-a', 'result:serial-b']);
   assert.equal(result.pooledPeakConcurrency, 2);
   assert.equal(result.subprocessPeakConcurrency, 2);
+  assert.equal(result.slowParallelPeakConcurrency, 2);
 });
