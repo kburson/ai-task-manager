@@ -17,12 +17,14 @@ docs/superpowers/reviews/<issue>/
 ├── README.md
 ├── spec/
 │   ├── README.md
-│   ├── <date>-<slug>-owner-response-r<round>-<actor>.md
-│   └── <date>-<slug>-acceptance-r<round>-<actor>.md
+│   ├── artifact-<artifact-basename>
+│   ├── <artifact-stem>-r<pair-round>-owner-<owner-slug>-response.md
+│   └── <artifact-stem>-r<pair-round>-reviewer-<reviewer-slug>-review.md
 └── plan/
     ├── README.md
-    ├── <date>-<slug>-owner-response-r<round>-<actor>.md
-    └── <date>-<slug>-acceptance-r<round>-<actor>.md
+    ├── artifact-<artifact-basename>
+    ├── <artifact-stem>-r<pair-round>-owner-<owner-slug>-response.md
+    └── <artifact-stem>-r<pair-round>-reviewer-<reviewer-slug>-review.md
 ```
 
 The issue-level README indexes available artifact reviews. Each artifact-kind

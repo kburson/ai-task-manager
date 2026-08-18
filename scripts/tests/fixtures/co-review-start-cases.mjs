@@ -94,6 +94,30 @@ test('start option resolution validates roles and numeric bounds before mutation
   }
 });
 
+test('guided startup never infers host context from spec- or plan-looking filenames', () => {
+  for (const artifact of [
+    'docs/2026-08-18-payment-spec.md',
+    'docs/superpowers/plans/2026-08-18-payment-plan.md',
+  ]) {
+    const resolved = resolveStartOptions(
+      { artifact, owner: 'author', reviewer: 'reviewer' },
+      { creationId: () => 'fixed' }
+    );
+    assert.equal(resolved.issue, undefined);
+    assert.equal(resolved.artifactKind, undefined);
+    assert.equal(resolved.archiveDir, undefined);
+  }
+});
+
+test('review evidence documentation declares one current generated filename grammar', () => {
+  const documentation = readFileSync(path.resolve('docs/superpowers/reviews/README.md'), 'utf8');
+  assert.match(documentation, /artifact-<artifact-basename>/);
+  assert.match(documentation, /<artifact-stem>-r<pair-round>-owner-<owner-slug>-response\.md/);
+  assert.match(documentation, /<artifact-stem>-r<pair-round>-reviewer-<reviewer-slug>-review\.md/);
+  assert.doesNotMatch(documentation, /<date>-<slug>-owner-response-r<round>-<actor>\.md/);
+  assert.doesNotMatch(documentation, /<date>-<slug>-acceptance-r<round>-<actor>\.md/);
+});
+
 test('guided host context configures deterministic spec and plan archives and handoffs', async () => {
   for (const artifactKind of ['spec', 'plan']) {
     const fixture = memoryRepositoryFixture();
