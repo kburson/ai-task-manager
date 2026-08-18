@@ -16,6 +16,7 @@ import '../../fixtures/co-review-budget-cases.mjs';
 import '../../fixtures/co-review-finalization-cases.mjs';
 import '../../fixtures/co-review-handoff-cases.mjs';
 import '../../fixtures/co-review-supplement-cases.mjs';
+import { COMMANDS, renderHelp } from '../../../review/lib/help.mjs';
 import {
   cleanupTemporaryRoots,
   commitArtifact,
@@ -68,9 +69,101 @@ test('top-level help is recovery-grade and safe before initialization', async ()
   }
 });
 
+test('structured help records are the lifecycle-ordered rendering authority', () => {
+  const commandNames = [
+    'init',
+    'status',
+    'claim',
+    'wait',
+    'handoff',
+    'set-max-turns',
+    'supplement',
+    'continue',
+    'finalize',
+  ];
+  assert.deepEqual(Object.keys(COMMANDS), commandNames);
+  const top = renderHelp();
+  let priorOffset = -1;
+  for (const [name, entry] of Object.entries(COMMANDS)) {
+    assert.ok(entry.lifecycleStates.length > 0, name);
+    assert.ok(entry.mutationBoundary.length > 0, name);
+    const page = renderHelp(name);
+    assert.match(
+      page,
+      new RegExp(entry.lifecycleStates.join(', ').replaceAll(/[.*+?^${}()|[\]\\]/g, '\\$&'))
+    );
+    assert.match(
+      page,
+      new RegExp(entry.mutationBoundary.replaceAll(/[.*+?^${}()|[\]\\]/g, '\\$&'))
+    );
+    const summary = [
+      `  ${name}`,
+      `    Authorized caller: ${entry.caller}`,
+      `    Lifecycle states: ${entry.lifecycleStates.join(', ')}`,
+      `    Mutation boundary: ${entry.mutationBoundary}`,
+      `    Usage: ${entry.usage}`,
+    ].join('\n');
+    assert.match(top, new RegExp(summary.replaceAll(/[.*+?^${}()|[\]\\]/g, '\\$&')));
+    const offset = top.indexOf(`  ${name}`);
+    assert.ok(offset > priorOffset, `${name}: lifecycle order`);
+    priorOffset = offset;
+  }
+});
+
+test('handoff and budget help preserve the mandatory closing owner turn', () => {
+  assert.deepEqual(COMMANDS['set-max-turns'].lifecycleStates, ['active']);
+  for (const page of [renderHelp(), renderHelp('handoff')]) {
+    assert.match(page, /final changes-requested.*active closing owner/is);
+    assert.match(page, /closing owner handoff.*intervention-required/is);
+  }
+  assert.doesNotMatch(renderHelp('set-max-turns'), /active or intervention-required/i);
+  assert.match(COMMANDS['set-max-turns'].effects.join(' '), /subsequent owner handoff/i);
+  assert.match(COMMANDS['set-max-turns'].transition, /lifecycle.*role.*claim.*unchanged/i);
+  assert.doesNotMatch(renderHelp('set-max-turns'), /records.*reason/i);
+});
+
+test('continuation help derives the resumed role and its minimum authorized budget', () => {
+  const continuation = COMMANDS.continue;
+  assert.match(continuation.arguments.join(' '), /bare continuation.*minimum.*resumed role/i);
+  assert.match(continuation.effects.join(' '), /last handoff.*owner.*reviewer/i);
+  assert.match(continuation.effects.join(' '), /last handoff.*reviewer.*owner/i);
+  assert.match(continuation.transition, /closing owner.*active reviewer/i);
+  assert.match(continuation.transition, /exhausted reviewer.*active owner/i);
+
+  const top = renderHelp();
+  assert.doesNotMatch(top, /summary required on final requested-changes turn/i);
+  assert.doesNotMatch(top, /reviewer supplies --summary and both agents stop/i);
+  assert.doesNotMatch(top, /exhausted budget without summary/i);
+  assert.match(top, /summary optional only on a final changes-requested review/i);
+
+  const handoff = renderHelp('handoff');
+  assert.doesNotMatch(handoff, /required interception summary/i);
+  assert.doesNotMatch(handoff, /exhausted budget, stop and escalate/i);
+  assert.match(handoff, /summary.*optional.*final changes-requested review/i);
+  assert.match(handoff, /exhausted budget.*displayed next action.*closing owner/i);
+});
+
+test('top-level help covers the settled lifecycle, recovery, and governance surface', () => {
+  const page = renderHelp();
+  for (const fragment of [
+    '--archive-dir',
+    'set-max-turns',
+    'supplement',
+    '[supplement:S-001]',
+    '--good-enough',
+    'acceptance durable; archive publication pending',
+    'gh auth login',
+    'exact bytes',
+    'host repository governance',
+    'Response, review, supplement, and archive inputs are Markdown expected to satisfy host repository governance',
+  ]) {
+    assert.match(page, new RegExp(fragment.replaceAll(/[.*+?^${}()|[\]\\]/g, '\\$&')));
+  }
+});
+
 test('every command has standalone recovery help in both forms', async () => {
   const emptyRoot = temporaryRoot();
-  for (const command of ['init', 'status', 'claim', 'wait', 'handoff', 'continue']) {
+  for (const command of Object.keys(COMMANDS)) {
     const canonical = await runCliDirect(['help', command], { cwd: emptyRoot });
     const flag = await runCliDirect([command, '--help'], { cwd: emptyRoot });
     assert.equal(canonical.status, 0, canonical.stderr);
@@ -87,6 +180,8 @@ test('every command has standalone recovery help in both forms', async () => {
       'Exit codes',
       'State transition',
       'Idempotency',
+      'Lifecycle states',
+      'Mutation boundary',
       'Examples',
       'Failure recovery',
       'Next commands',
@@ -357,7 +452,9 @@ test('CLI initializes and reports human and JSON status', async () => {
     { cwd: root }
   );
   assert.equal(initialized.status, 0, initialized.stderr);
-  assert.equal(JSON.parse(initialized.stdout).reviewTurnsUsed, 0);
+  const initializedState = JSON.parse(initialized.stdout);
+  assert.equal(initializedState.reviewTurnsUsed, 0);
+  assert.match(initializedState.nextAction, /co-review claim.*owner-agent/);
 
   const human = await runCliDirect(['status', '--dir', '.tmp/review'], { cwd: root });
   assert.equal(human.status, 0, human.stderr);
@@ -523,7 +620,9 @@ test('CLI routes claim and maps bounded wait timeout to exit code 3', async () =
     cwd: root,
   });
   assert.equal(claimed.status, 0, claimed.stderr);
-  assert.equal(JSON.parse(claimed.stdout).turnState, 'claimed');
+  const claimedState = JSON.parse(claimed.stdout);
+  assert.equal(claimedState.turnState, 'claimed');
+  assert.match(claimedState.nextAction, /co-review help handoff/);
 });
 
 test('fast co-review corpus does not spawn Git or external Node', () => {
