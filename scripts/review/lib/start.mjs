@@ -13,7 +13,7 @@ import {
 } from 'node:fs';
 import path from 'node:path';
 
-import { initializeProtocol, renderCliCommand } from './protocol.mjs';
+import { initializeProtocol, renderCliCommand, statusProtocol } from './protocol.mjs';
 
 export const START_DEFAULTS = Object.freeze({
   maxReviewTurns: 10,
@@ -132,6 +132,8 @@ ${renderCliCommand(['status', '--dir', model.runtimeDir])}
 
 Stop and report any integrity drift. Never steal or delete a protocol lock. Never edit an immutable response, review, supplement, event, manifest, or handoff file.
 
+Response, review, supplement, and archive evidence inputs are Markdown subject to host-repository governance.
+
 ## Bounded wait discipline
 
 When the other role owns the turn, make each wait a separate observed tool call:
@@ -153,6 +155,8 @@ After every call, record \`wait cycle N/${model.waitCycles}\`. Exit 3 is an ordi
 After compaction, reread this file, run status, and resume from the last visible wait-cycle marker. If the completed count is uncertain, stop and report the ambiguity instead of resetting it.
 
 Accepted is terminal: verify status and stop forever. Intervention-required is a human decision boundary. Do not adjust the budget, continue/refocus, supplement, or finalize good-enough acceptance unless the authenticated human authorizes the existing command.
+
+Exit handling: 0 means the requested command completed (or a wait woke); 1 means runtime, Git, integrity, lock, role, or protocol refusal; 2 means invalid usage; 3 is only an ordinary bounded-wait timeout; 4 means acceptance is already durable while archive publication is pending. On exit 4, never repeat the terminal handoff—run the exact printed finalize retry.
 `;
 }
 
@@ -218,6 +222,8 @@ ${renderCliCommand([
 \`\`\`
 
 After a successful handoff, follow the bounded wait discipline above.
+
+On owner rounds after a review, add \`--answers\` with the exact preceding immutable review path shown by status. Omit \`--answers\` only on the opening owner round.
 `;
 }
 
@@ -261,6 +267,8 @@ ${renderCliCommand([
 \`\`\`
 
 If the lifecycle remains active after a successful handoff, follow the bounded wait discipline above.
+
+For changes requested, replace the decision with \`changes-requested\`. On the final allowed reviewer handoff, also provide \`--summary\` with the immutable exhaustion-summary path required by status and help.
 `;
 }
 
@@ -272,12 +280,20 @@ function exactJson(value) {
   return `${JSON.stringify(value, null, 2)}\n`;
 }
 
+function isExactRegularFile(destination, bytes) {
+  try {
+    const stat = lstatSync(destination);
+    return stat.isFile() && !stat.isSymbolicLink() && readFileSync(destination, 'utf8') === bytes;
+  } catch {
+    return false;
+  }
+}
+
 function atomicPublish(destination, bytes, dependencies, label) {
   if (existsSync(destination)) {
-    if (!lstatSync(destination).isFile() || lstatSync(destination).isSymbolicLink()) {
-      fail('conflict', `${destination} is not a regular generated file`);
+    if (!isExactRegularFile(destination, bytes)) {
+      fail('conflict', `${destination} is conflicting or non-regular generated content`);
     }
-    if (readFileSync(destination, 'utf8') !== bytes) fail('conflict', destination);
     return;
   }
   dependencies.beforePublish?.(label);
@@ -295,13 +311,7 @@ function atomicPublish(destination, bytes, dependencies, label) {
       linkSync(temporary, destination);
     } catch (error) {
       if (error.code !== 'EEXIST') throw error;
-      if (
-        !lstatSync(destination).isFile() ||
-        lstatSync(destination).isSymbolicLink() ||
-        readFileSync(destination, 'utf8') !== bytes
-      ) {
-        fail('conflict', destination);
-      }
+      if (!isExactRegularFile(destination, bytes)) fail('conflict', destination);
     }
     unlinkSync(temporary);
   } catch (error) {
@@ -339,6 +349,7 @@ export function startProtocol(options = {}, dependencies = {}) {
   const resolved = resolveStartOptions(options, dependencies);
   const cwd = options.cwd ?? process.cwd();
   const initialize = dependencies.initialize ?? initializeProtocol;
+  const status = dependencies.status ?? statusProtocol;
   const retry = renderCliCommand([
     'start',
     '--artifact',
@@ -367,6 +378,12 @@ export function startProtocol(options = {}, dependencies = {}) {
       maxReviewTurns: resolved.maxReviewTurns,
       ...(options.repository ? { repository: options.repository } : {}),
     });
+    state = status({
+      cwd,
+      dir: resolved.dir,
+      ...(options.repository ? { repository: options.repository } : {}),
+    });
+    if (!state.integrity.ok) fail('integrity', state.integrity.errors.join('; '));
     assertStartupState(state);
 
     const runtimeAbsolute = path.resolve(state.repositoryRoot, state.initialization.runtimeDir);
@@ -400,9 +417,9 @@ export function startProtocol(options = {}, dependencies = {}) {
     atomicPublish(manifestAbsolute, manifestBytes, dependencies, FILES.manifest);
 
     if (
-      readFileSync(authorAbsolute, 'utf8') !== authorBytes ||
-      readFileSync(reviewerAbsolute, 'utf8') !== reviewerBytes ||
-      readFileSync(manifestAbsolute, 'utf8') !== manifestBytes
+      !isExactRegularFile(authorAbsolute, authorBytes) ||
+      !isExactRegularFile(reviewerAbsolute, reviewerBytes) ||
+      !isExactRegularFile(manifestAbsolute, manifestBytes)
     ) {
       fail('verification', 'published startup files do not match rendered bytes');
     }

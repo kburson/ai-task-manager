@@ -19,6 +19,14 @@ import {
   runCliDirect,
 } from './co-review-fixture.mjs';
 
+function startDependencies(api, extra = {}) {
+  return {
+    initialize: api.initializeProtocol,
+    status: api.statusProtocol,
+    ...extra,
+  };
+}
+
 test('start defaults and derived runtime directories are stable and unique by creation id', () => {
   assert.deepEqual(START_DEFAULTS, {
     maxReviewTurns: 10,
@@ -65,7 +73,7 @@ test('start delegates initialization and publishes concrete hashed handoffs befo
       reviewer: 'reviewer-agent',
       dir: '.tmp/review-start',
     },
-    { initialize: api.initializeProtocol }
+    startDependencies(api)
   );
 
   assert.equal(result.state.maxReviewTurns, 10);
@@ -169,25 +177,43 @@ test('exact start retry is event-idempotent, reconstructs one missing handoff, a
     reviewer: 'reviewer-agent',
     dir: '.tmp/retry-start',
   };
-  const first = startProtocol(options, { initialize: api.initializeProtocol });
+  const first = startProtocol(options, startDependencies(api));
   const events = readEvents(fixture.root, options.dir);
   const authorBytes = readFileSync(first.authorHandoff.absolute, 'utf8');
 
-  const exact = startProtocol(options, { initialize: api.initializeProtocol });
+  const exact = startProtocol(options, startDependencies(api));
   assert.equal(exact.output, first.output);
   assert.deepEqual(readEvents(fixture.root, options.dir), events);
 
   unlinkSync(first.authorHandoff.absolute);
-  startProtocol(options, { initialize: api.initializeProtocol });
+  startProtocol(options, startDependencies(api));
   assert.equal(readFileSync(first.authorHandoff.absolute, 'utf8'), authorBytes);
   assert.deepEqual(readEvents(fixture.root, options.dir), events);
 
   writeFileSync(first.reviewerHandoff.absolute, '# changed\n');
-  assert.throws(
-    () => startProtocol(options, { initialize: api.initializeProtocol }),
-    /co-review:start-conflict/
-  );
+  assert.throws(() => startProtocol(options, startDependencies(api)), /co-review:start-conflict/);
   assert.equal(readFileSync(first.reviewerHandoff.absolute, 'utf8'), '# changed\n');
+});
+
+test('exact start retry refuses protocol event-integrity drift before touching handoffs', async () => {
+  const fixture = memoryRepositoryFixture();
+  const api = await memoryProtocol(fixture.repository);
+  const options = {
+    cwd: fixture.root,
+    artifact: fixture.artifact,
+    owner: 'author-agent',
+    reviewer: 'reviewer-agent',
+    dir: '.tmp/integrity-start',
+  };
+  const dependencies = startDependencies(api);
+  const first = startProtocol(options, dependencies);
+  const authorBefore = readFileSync(first.authorHandoff.absolute, 'utf8');
+  const eventsPath = path.join(fixture.root, options.dir, 'events.jsonl');
+  const event = JSON.parse(readFileSync(eventsPath, 'utf8'));
+  writeFileSync(eventsPath, `${JSON.stringify({ ...event, revision: 99 })}\n`);
+
+  assert.throws(() => startProtocol(options, dependencies), /co-review:start-integrity/);
+  assert.equal(readFileSync(first.authorHandoff.absolute, 'utf8'), authorBefore);
 });
 
 test('post-initialization publication failure reports an explicit retry and remains recoverable', async () => {
@@ -202,19 +228,21 @@ test('post-initialization publication failure reports an explicit retry and rema
   };
   assert.throws(
     () =>
-      startProtocol(options, {
-        initialize: api.initializeProtocol,
-        beforePublish(name) {
-          if (name === 'reviewer-handoff.md') throw new Error('injected publication failure');
-        },
-      }),
+      startProtocol(
+        options,
+        startDependencies(api, {
+          beforePublish(name) {
+            if (name === 'reviewer-handoff.md') throw new Error('injected publication failure');
+          },
+        })
+      ),
     /resolved directory: \.tmp\/partial-start; next: npx aitm co-review start .*--dir \.tmp\/partial-start/
   );
   assert.equal(existsSync(path.join(fixture.root, options.dir, 'state.json')), true);
   assert.equal(existsSync(path.join(fixture.root, options.dir, 'author-handoff.md')), true);
   assert.equal(existsSync(path.join(fixture.root, options.dir, 'start-manifest.json')), false);
 
-  const recovered = startProtocol(options, { initialize: api.initializeProtocol });
+  const recovered = startProtocol(options, startDependencies(api));
   assert.equal(existsSync(recovered.reviewerHandoff.absolute), true);
   assert.equal(existsSync(path.join(fixture.root, options.dir, 'start-manifest.json')), true);
   assert.equal(readEvents(fixture.root, options.dir).length, 1);
@@ -245,9 +273,9 @@ test('startup publication never follows generated-file symlinks or overwrites a 
           owner: 'author-agent',
           reviewer: 'reviewer-agent',
         },
-        { initialize: symlinkedApi.initializeProtocol }
+        startDependencies(symlinkedApi)
       ),
-    /not a regular generated file/
+    /conflicting or non-regular generated content/
   );
   assert.equal(readFileSync(outside, 'utf8'), '# outside\n');
 
@@ -264,14 +292,13 @@ test('startup publication never follows generated-file symlinks or overwrites a 
           owner: 'author-agent',
           reviewer: 'reviewer-agent',
         },
-        {
-          initialize: racedApi.initializeProtocol,
+        startDependencies(racedApi, {
           beforePublish(name) {
             if (name === 'author-handoff.md') {
               writeFileSync(path.join(raced.root, racedDir, name), '# racing writer\n');
             }
           },
-        }
+        })
       ),
     /co-review:start-conflict/
   );
