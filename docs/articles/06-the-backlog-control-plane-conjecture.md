@@ -1,9 +1,11 @@
-# The Backlog Becomes The Control Plane
+# The Backlog Control-Plane Conjecture
+
+**The Backlog Becomes The Control Plane**
 
 <!-- markdownlint-disable MD034 -->
 
-![The Backlog Becomes The Control Plane](assets/article-headers/article-04-header.png)
-_Part 5 of a series of articles on succeeding with Agentic AI Delivery_
+![The Backlog Becomes The Control Plane](assets/article-headers/article-06-header.png)
+_Part 6 of a series of articles on succeeding with Agentic Agile Delivery_
 
 If an AI agent can implement an issue, then the issue is no longer paperwork. It is runtime input.
 
@@ -58,11 +60,11 @@ Before adding another AI coding tool to the stack, I would audit the backlog it 
 
 ## Series Link
 
-This article explains the backlog as the control surface I rely on. The next article, [The Just-In-Time Planner](05-just-in-time-planner.md), explains how that surface decomposes large intent into atomic work at the right time.
+The backlog is the control surface I rely on for this. Next, [The Just-In-Time Planner](07-the-just-in-time-planning-paradox.md) covers how that surface decomposes large intent into atomic work at the right time.
 
 ## The AITM Pattern
 
-I introduced AITM — `@kburson/ai-task-manager` — in the [opening article](00-technical-product-operations.md#aitm-and-the-backlog-manager-pattern): the skill I built after hitting the exact wall described above one too many times. This is the piece that treats the backlog as an actual control plane.
+I introduced AITM — `@kburson/ai-task-manager` — in the [opening article](02-the-backlog-governance-postulate.md#aitm-and-the-backlog-manager-pattern): the skill I built after hitting the exact wall described above one too many times. AITM is what actually turns the backlog into a control plane, not just a metaphor for one.
 
 AITM uses GitHub Projects as its current control plane, largely because GitHub is where a large share of open-source and enterprise engineering work already happens. The same pattern extends to other systems wherever their APIs expose enough issue, field, workflow, and comment control.
 
@@ -84,17 +86,22 @@ That system of record is also what lets me operate at the right altitude. I am n
 
 ## Series Roadmap
 
-| Status      | #      | Article                                                                                    | Role In Series                                |
-| ----------- | ------ | ------------------------------------------------------------------------------------------ | --------------------------------------------- |
-|             | 00     | [The Rise Of Technical Product Operations](00-technical-product-operations.md)             | Industry thesis: Technical Product Operations |
-|             | 01     | [The Vibe Coding Hangover](01-vibe-coding-hangover.md)                                     | Failure mode: vibe slop and review debt       |
-|             | 02     | [Spec-Driven Development Is Necessary But Not Sufficient](02-spec-driven-is-not-enough.md) | Why specs need execution governance           |
-|             | 03     | [The Rise Of The Technical Product Owner](03-technical-product-owner.md)                   | Human operator: TPO/TPM as delivery architect |
-| **Current** | **04** | **[The Backlog Becomes The Control Plane](04-backlog-as-control-plane.md)**                | Backlog as executable control surface         |
-|             | 05     | [The Just-In-Time Planner](05-just-in-time-planner.md)                                     | Progressive decomposition and deep dives      |
-|             | 06     | [Context Durability Is A Feature](06-context-durability.md)                                | JIT loading and post-compaction recovery      |
-|             | 07     | [Evidence Beats Trust](07-evidence-beats-trust.md)                                         | Evidence gates and auditability               |
-|             | 08     | [The Adapter Future](08-adapter-future.md)                                                 | Backlog and agent platform adapters           |
+| Status      | #      | Article                                                                                                            | Role In Series                                       |
+| ----------- | ------ | ------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------- |
+|             | 01     | [The Refactoring Bloat Precursor](01-the-refactoring-bloat-precursor.md)                                           | Prequel: history of AI-assisted coding before agents |
+|             | 02     | [The Rise Of Technical Product Operations](02-the-backlog-governance-postulate.md)                                 | Industry thesis: Technical Product Operations        |
+|             | 03     | [The Vibe Coding Hangover](03-the-vibe-coding-deficiency.md)                                                       | Failure mode: vibe slop and review debt              |
+|             | 04     | [Spec-Driven Development Is Necessary But Not Sufficient](04-the-spec-driven-insufficiency.md)                     | Why specs need execution governance                  |
+|             | 05     | [The Rise Of The Technical Product Owner](05-the-product-owner-escalation.md)                                      | Human operator: TPO/TPM as delivery architect        |
+| **Current** | **06** | **[The Backlog Becomes The Control Plane](06-the-backlog-control-plane-conjecture.md)**                            | Backlog as executable control surface                |
+|             | 07     | [The Just-In-Time Planner](07-the-just-in-time-planning-paradox.md)                                                | Progressive decomposition and deep dives             |
+|             | 08     | [Context Durability Is A Feature](08-the-context-durability-corollary.md)                                          | JIT loading and post-compaction recovery             |
+|             | 09     | [Evidence Beats Trust](09-the-evidence-over-trust-theorem.md)                                                      | Evidence gates and auditability                      |
+|             | 10     | [The Adapter Future](10-the-adapter-convergence.md)                                                                | Backlog and agent platform adapters                  |
+|             | 11     | [Agentic Concurrency Isn't Free — And "50 Parallel Agents" Is Hyperbole](11-the-agentic-concurrency-deficiency.md) | Concurrency ceiling and coordination cost            |
+|             | 12     | [XP's Practices Survived. Their Reasons Did Not.](12-the-xp-survival-anomaly.md)                                   | XP practices under agentic delivery                  |
+|             | 13     | [The Diff Isn't Where Your Judgment Lives Anymore](13-the-diff-displacement.md)                                    | Spec review displaces code review                    |
+|             | 14     | [It's All About Perspective](14-the-second-reviewer-corollary.md)                                                  | Cross-model review for a genuine second opinion      |
 
 ## LinkedIn Article Shape
 

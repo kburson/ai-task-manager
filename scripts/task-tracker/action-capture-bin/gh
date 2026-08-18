@@ -1,0 +1,143 @@
+#!/usr/bin/env node
+// @story #1295
+
+import { spawn } from 'node:child_process';
+
+import {
+  beginCapturedAction,
+  collectGhRequestFiles,
+  completeCapturedAction,
+} from '../lib/action-capture.mjs';
+
+function warning(message) {
+  process.stderr.write(
+    `[aitm] action capture unavailable; continuing without capture: ${message}\n`
+  );
+}
+
+function expectsPipedStdin(args) {
+  return args.some((argument, index) => {
+    if (['--input', '--body-file'].includes(argument)) return args[index + 1] === '-';
+    return argument === '--input=-' || argument === '--body-file=-';
+  });
+}
+
+async function readPipedStdin(args) {
+  if (process.stdin.isTTY || !expectsPipedStdin(args)) return null;
+  const chunks = [];
+  for await (const chunk of process.stdin) chunks.push(Buffer.from(chunk));
+  return Buffer.concat(chunks);
+}
+
+function requiredEnvironment(name) {
+  const value = process.env[name];
+  if (!value) throw new Error(`missing ${name}`);
+  return value;
+}
+
+function startCapture(args, stdin) {
+  try {
+    const projectDir = requiredEnvironment('AITM_CAPTURE_PROJECT_DIR');
+    return beginCapturedAction({
+      projectDir,
+      repository: requiredEnvironment('AITM_CAPTURE_REPOSITORY'),
+      issue: requiredEnvironment('AITM_CAPTURE_ISSUE'),
+      invocationId: requiredEnvironment('AITM_CAPTURE_INVOCATION_ID'),
+      command: process.env.AITM_CAPTURE_COMMAND || '',
+      args,
+      stdin: stdin || Buffer.alloc(0),
+      files: collectGhRequestFiles(args, projectDir),
+    });
+  } catch (error) {
+    warning(error.message);
+    return null;
+  }
+}
+
+function finishCapture(handle, result) {
+  if (!handle) return;
+  try {
+    completeCapturedAction(handle, result);
+  } catch (error) {
+    warning(error.message);
+  }
+}
+
+async function run() {
+  const args = process.argv.slice(2);
+  const stdin = await readPipedStdin(args);
+  const handle = startCapture(args, stdin);
+  const realGh = requiredEnvironment('AITM_CAPTURE_REAL_GH');
+  const child = spawn(realGh, args, {
+    cwd: process.cwd(),
+    env: process.env,
+    stdio: [stdin === null ? 'inherit' : 'pipe', 'pipe', 'pipe'],
+  });
+  if (stdin !== null) child.stdin.end(stdin);
+
+  const stdout = [];
+  const stderr = [];
+  child.stdout.on('data', (chunk) => {
+    const bytes = Buffer.from(chunk);
+    stdout.push(bytes);
+    process.stdout.write(bytes);
+  });
+  child.stderr.on('data', (chunk) => {
+    const bytes = Buffer.from(chunk);
+    stderr.push(bytes);
+    process.stderr.write(bytes);
+  });
+
+  const forwardedSignals = ['SIGINT', 'SIGTERM', 'SIGHUP'];
+  const signalHandlers = new Map(
+    forwardedSignals.map((signal) => [
+      signal,
+      () => {
+        if (child.exitCode === null && child.signalCode === null) child.kill(signal);
+      },
+    ])
+  );
+  for (const [signal, handler] of signalHandlers) process.on(signal, handler);
+  const removeSignalHandlers = () => {
+    for (const [signal, handler] of signalHandlers) process.removeListener(signal, handler);
+  };
+
+  return new Promise((resolve) => {
+    let settled = false;
+    child.on('error', (error) => {
+      if (settled) return;
+      settled = true;
+      removeSignalHandlers();
+      finishCapture(handle, {
+        exitCode: null,
+        signal: null,
+        stdout: Buffer.concat(stdout),
+        stderr: Buffer.concat(stderr),
+      });
+      warning(`failed to launch gh: ${error.message}`);
+      resolve(1);
+    });
+    child.on('close', (code, signal) => {
+      if (settled) return;
+      settled = true;
+      removeSignalHandlers();
+      finishCapture(handle, {
+        exitCode: code,
+        signal,
+        stdout: Buffer.concat(stdout),
+        stderr: Buffer.concat(stderr),
+      });
+      if (signal) {
+        try {
+          process.kill(process.pid, signal);
+          return;
+        } catch (error) {
+          warning(`could not preserve gh signal ${signal}: ${error.message}`);
+        }
+      }
+      resolve(Number.isInteger(code) ? code : 1);
+    });
+  });
+}
+
+process.exitCode = await run();

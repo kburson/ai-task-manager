@@ -35,6 +35,7 @@ import { realpathSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { REPO_ROOT, TASK_TRACKER_PATH, SCRIPTS, kind, groupedListing } from './aitm-registry.mjs';
+import { prepareActionCaptureEnv } from '../scripts/task-tracker/lib/action-capture.mjs';
 import { emitSelfDoc } from '../scripts/lib/self-doc.mjs';
 
 const HELP_NAMES = new Set(['help', '?', '--help', '-h', undefined, '']);
@@ -76,11 +77,26 @@ function printListing(write = (s) => process.stdout.write(s)) {
   write(out.join('\n'));
 }
 
-function delegate(targetPath, args) {
-  const res = spawnSync(process.execPath, [targetPath, ...args], {
+export function delegate(targetPath, args, options = {}) {
+  const cwd = options.cwd || process.cwd();
+  const sourceEnv = options.env || process.env;
+  const prepareEnv =
+    options.prepareEnv ||
+    ((context) =>
+      prepareActionCaptureEnv(context, {
+        warn: (message) => process.stderr.write(message),
+      }));
+  const childEnv = prepareEnv({
+    env: sourceEnv,
+    cwd,
+    command: options.command || '',
+  });
+  const spawn = options.spawn || spawnSync;
+  const res = spawn(process.execPath, [targetPath, ...args], {
     stdio: 'inherit',
     shell: false,
-    cwd: process.cwd(),
+    cwd,
+    env: childEnv,
   });
   if (res.error) {
     process.stderr.write(
@@ -104,17 +120,17 @@ export function run(argv = process.argv.slice(2)) {
     if (target) {
       // `aitm help <command>` → that command self-documents.
       if (kind(target) === 'script') {
-        return delegate(path.join(REPO_ROOT, SCRIPTS[target].path), ['help']);
+        return delegate(path.join(REPO_ROOT, SCRIPTS[target].path), ['help'], { command: target });
       }
       // A verb (or an unknown token → verbHelp falls back to the top-level
       // listing) routes through task-tracker's help renderer.
-      return delegate(TASK_TRACKER_PATH, [target, '--help']);
+      return delegate(TASK_TRACKER_PATH, [target, '--help'], { command: target });
     }
     // Bare top-level: the orchestrator command index (names-only, incl. scripts)
     // followed by the /task verb reference (topics + state map + gate model).
     emitSelfDoc('aitm');
     printListing();
-    return delegate(TASK_TRACKER_PATH, ['--help']);
+    return delegate(TASK_TRACKER_PATH, ['--help'], { command: 'help' });
   }
 
   const k = kind(name);
@@ -123,11 +139,11 @@ export function run(argv = process.argv.slice(2)) {
     // word to the help flag task-tracker recognizes (it already honors ?/-h/
     // --help). Every other arg passes through untouched.
     const forwarded = rest.length === 1 && isHelpWord(rest[0]) ? ['--help'] : rest;
-    return delegate(TASK_TRACKER_PATH, [name, ...forwarded]);
+    return delegate(TASK_TRACKER_PATH, [name, ...forwarded], { command: name });
   }
   if (k === 'script') {
     const target = path.join(REPO_ROOT, SCRIPTS[name].path);
-    return delegate(target, rest);
+    return delegate(target, rest, { command: name });
   }
 
   process.stderr.write(`aitm: unknown command "${name}"\n\n`);

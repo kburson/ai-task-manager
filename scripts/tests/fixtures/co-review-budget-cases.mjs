@@ -14,8 +14,9 @@ import { resolveGitHubLogin } from '../../review/lib/github-identity.mjs';
 import { resolveArchiveDestination } from '../../review/lib/archive.mjs';
 import {
   initializedProtocol,
+  memoryProtocol,
+  memoryRepositoryFixture,
   readEvents,
-  repositoryFixture,
   rewriteProtocolState,
   runCliDirect,
   snapshotProtocol,
@@ -131,12 +132,13 @@ test('GitHub identity failures preserve cause and print authenticate-then-rerun 
 });
 
 test('archive destination normalization accepts an uncreated tracked path without writing', async () => {
-  const { root, options } = await initializedProtocol();
+  const { root, options, repository } = await initializedProtocol();
   const before = snapshotProtocol(root, options.dir);
   const destination = resolveArchiveDestination({
     cwd: root,
     archiveDir: 'docs/superpowers/reviews/1268/session-1',
     runtimeDir: options.dir,
+    repository,
   });
   assert.equal(destination.relative, 'docs/superpowers/reviews/1268/session-1');
   assert.equal(destination.absolute, path.join(root, 'docs/superpowers/reviews/1268/session-1'));
@@ -151,16 +153,22 @@ test('archive destination refusals cannot escape, use ignored/runtime paths, or 
     { archiveDir: '.tmp/archive', expected: /archive-ignored/ },
   ];
   for (const { archiveDir, expected } of cases) {
-    const { root, options } = await initializedProtocol();
+    const { root, options, repository } = await initializedProtocol();
     const before = snapshotProtocol(root, options.dir);
     assert.throws(
-      () => resolveArchiveDestination({ cwd: root, archiveDir, runtimeDir: options.dir }),
+      () =>
+        resolveArchiveDestination({
+          cwd: root,
+          archiveDir,
+          runtimeDir: options.dir,
+          repository,
+        }),
       expected
     );
     assert.deepEqual(snapshotProtocol(root, options.dir), before);
   }
 
-  const { root, options } = await initializedProtocol();
+  const { root, options, repository } = await initializedProtocol();
   const outside = temporaryRoot('aitm-co-review-archive-outside-');
   symlinkSync(outside, path.join(root, 'docs/outside'), 'dir');
   const before = snapshotProtocol(root, options.dir);
@@ -170,6 +178,7 @@ test('archive destination refusals cannot escape, use ignored/runtime paths, or 
         cwd: root,
         archiveDir: 'docs/outside/archive',
         runtimeDir: options.dir,
+        repository,
       }),
     /path-outside-repository/
   );
@@ -178,9 +187,9 @@ test('archive destination refusals cannot escape, use ignored/runtime paths, or 
 });
 
 test('initialization records a normalized archive destination but still rejects zero', async () => {
-  const { initializeProtocol } = await import('../../review/lib/protocol.mjs');
-  const configured = repositoryFixture();
-  const state = initializeProtocol({
+  const configured = memoryRepositoryFixture();
+  const configuredApi = await memoryProtocol(configured.repository);
+  const state = configuredApi.initializeProtocol({
     cwd: configured.root,
     dir: '.tmp/review',
     artifact: configured.artifact,
@@ -191,10 +200,11 @@ test('initialization records a normalized archive destination but still rejects 
   });
   assert.equal(state.initialization.archiveDir, 'docs/reviews/session');
 
-  const zero = repositoryFixture();
+  const zero = memoryRepositoryFixture();
+  const zeroApi = await memoryProtocol(zero.repository);
   assert.throws(
     () =>
-      initializeProtocol({
+      zeroApi.initializeProtocol({
         cwd: zero.root,
         dir: '.tmp/review',
         artifact: zero.artifact,

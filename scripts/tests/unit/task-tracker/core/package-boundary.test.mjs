@@ -86,7 +86,10 @@ function repoRoot() {
 // guard, growing the measured package surface by exactly one entry.
 // #1268 adds three required co-review runtime modules to the shipped package.
 // #1208 adds one pure scheduling seam for the bounded subprocess phase.
-const ENTRY_CEILING = 664;
+// #1295 adds the temporary capture guide, control CLI, process shim, and capture
+// authority module. The four files are required for installed-package parity.
+// #1292 adds the shipped co-review repository boundary used by the runtime.
+const ENTRY_CEILING = 669;
 
 function packedFiles() {
   const out = execFileSync('npm', ['pack', '--dry-run', '--json'], {
@@ -168,6 +171,7 @@ test('package-boundary: runtime entry points are still shipped', () => {
     'bin/cli.mjs',
     'bin/aitm.mjs',
     'scripts/review/co-review.mjs',
+    'scripts/review/lib/repository-boundary.mjs',
     'scripts/reports/generate-value-report.mjs',
     'scripts/task-tracker/verbs/start.mjs',
     'scripts/gh/move-state.mjs',
