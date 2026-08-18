@@ -22,7 +22,7 @@
 
 ---
 
-### Task 1: Specify startup resolution and rendering with failing tests
+### Task 1: Build the deterministic startup core with failing tests
 
 **Files:**
 
@@ -120,7 +120,7 @@ git add scripts/review/lib/start.mjs scripts/tests/fixtures/co-review-start-case
 git commit -m "feat: define guided co-review startup [#1269]"
 ```
 
-### Task 2: Publish and recover deterministic startup materials
+#### Publish and recover deterministic startup materials
 
 **Files:**
 
@@ -187,7 +187,7 @@ git add scripts/review/lib/start.mjs scripts/tests/fixtures/co-review-start-case
 git commit -m "feat: publish co-review agent handoffs [#1269]"
 ```
 
-### Task 3: Add interactive and flagged CLI forms
+### Task 2: Add interactive and flagged CLI forms
 
 **Files:**
 
@@ -245,7 +245,7 @@ git add scripts/review/co-review.mjs scripts/review/lib/start.mjs scripts/tests/
 git commit -m "feat: add guided co-review start command [#1269]"
 ```
 
-### Task 4: Bring help and package documentation into parity
+### Task 3: Bring help and package documentation into parity
 
 **Files:**
 
@@ -283,20 +283,20 @@ git add scripts/review/lib/help.mjs scripts/lib/self-doc.mjs scripts/tests/fixtu
 git commit -m "docs: document guided co-review startup [#1269]"
 ```
 
-### Task 5: Verify, review, and deliver the exact implementation
+#### Final verification and delivery
 
 **Files:**
 
 - Verify all files changed since `origin/trunk`.
 
-- [ ] **Step 1: Run focused behavioral verification**
+- [ ] **Step 6: Run focused behavioral verification**
 
 ```bash
 node --test scripts/tests/unit/review/co-review.test.mjs
 node --test scripts/tests/unit/meta/package-test-corpus.test.mjs
 ```
 
-- [ ] **Step 2: Run governed quality verification**
+- [ ] **Step 7: Run governed quality verification**
 
 ```bash
 npm test
@@ -308,7 +308,7 @@ git diff --check
 
 Do not raise any timeout. Report a baseline, capacity, or timing failure exactly and rerun only when the governed workflow permits it.
 
-- [ ] **Step 3: Inspect the final scope and provenance**
+- [ ] **Step 8: Inspect the final scope and provenance**
 
 ```bash
 git status --short
@@ -319,10 +319,10 @@ git diff --check origin/trunk...HEAD
 
 Confirm the approved design and this plan remain committed, all generated examples are concrete, and unrelated artifacts are untouched.
 
-- [ ] **Step 4: Obtain an independent exact-SHA review**
+- [ ] **Step 9: Obtain an independent exact-SHA review**
 
 Request review of the exact HEAD against `origin/trunk`, including design/acceptance coverage, initialization delegation, retry atomicity, help/API parity, and test adequacy. Resolve every Critical, Important, and Minor finding with fresh verification and re-review.
 
-- [ ] **Step 5: Complete the governed branch workflow**
+- [ ] **Step 10: Complete the governed branch workflow**
 
 Advance #1269 through Test and Review, create its PR, require CI for the pushed SHA, record Full-Auto approval, squash-merge, verify the trunk receipt, finalize evidence, and close only after all gates pass.
