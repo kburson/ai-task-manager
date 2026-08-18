@@ -333,13 +333,7 @@ function decisionModel(decision) {
   };
 }
 
-function buildPrepared({
-  root,
-  state,
-  events,
-  archiveDir,
-  repository = REAL_REPOSITORY_BOUNDARY,
-}) {
+function buildPrepared({ root, state, events, archiveDir, repository = REAL_REPOSITORY_BOUNDARY }) {
   if (!root || !state || !Array.isArray(events) || state.lifecycle !== 'accepted') {
     fail('archive-ineligible', `${state?.lifecycle ?? 'missing-state'}`);
   }
