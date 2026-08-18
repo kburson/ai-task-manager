@@ -1,4 +1,4 @@
-// @story #863
+// @story #863 #1307
 /**
  * Bounded async worker pool for the runner (#863).
  *

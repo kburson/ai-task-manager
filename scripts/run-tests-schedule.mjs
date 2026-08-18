@@ -1,4 +1,4 @@
-// @story #1208
+// @story #1208 #1307
 /** Pure partitioning seam for the runner's sequential execution phases. */
 
 import { laneOf } from './task-tracker/lib/test-lanes.mjs';

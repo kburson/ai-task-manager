@@ -1,4 +1,4 @@
-// @story #863
+// @story #863 #1307
 /**
  * Parallel-safety classifier for the runner's unit lane (#863).
  *
