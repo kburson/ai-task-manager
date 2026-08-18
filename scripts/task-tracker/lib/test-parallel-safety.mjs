@@ -60,7 +60,8 @@ export const PARALLEL_UNSAFE_MARKER_RE = /@parallel-unsafe\b/;
  * The required parenthesized rationale keeps the safety claim reviewable at the
  * file that owns it instead of hiding a growing allowlist in the runner.
  */
-export const SLOW_PARALLEL_SAFE_MARKER_RE = /@slow-parallel-safe\s*\([^\r\n)]+\)/;
+export const SLOW_PARALLEL_SAFE_MARKER_RE =
+  /@slow-parallel-safe[ \t]*\([ \t]*[^\s)\r\n][^)\r\n]*\)/;
 
 export const TEST_SCHEDULING_CLASSES = Object.freeze({
   POOLED: 'pooled',

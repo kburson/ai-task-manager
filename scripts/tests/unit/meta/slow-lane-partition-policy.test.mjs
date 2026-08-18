@@ -42,6 +42,10 @@ test('slow concurrency is an explicit source-local opt-in that fails closed', ()
     TEST_SCHEDULING_CLASSES.SERIAL
   );
   assert.equal(
+    slowTestSchedulingClass('/x/blank-rationale.test.mjs', () => '// @slow-parallel-safe (   )'),
+    TEST_SCHEDULING_CLASSES.SERIAL
+  );
+  assert.equal(
     slowTestSchedulingClass(
       '/x/conflict.test.mjs',
       () => '// @slow-parallel-safe (isolated)\n// @parallel-unsafe (shared state)'
