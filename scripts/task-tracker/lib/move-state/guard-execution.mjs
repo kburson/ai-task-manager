@@ -142,7 +142,8 @@ export async function runGuardExecution(ctx) {
     // side-channels its resolved `refinementPlan` onto ctx; that field is
     // consumed today only by promote.mjs's inline pre-flight (which still runs
     // ahead of move-state spawn), so the in-registry assignment is harmless.
-    const deps = await buildCloseGatesDeps({ stateArg, pexec, projectDir: getProjectDir() });
+    const projectDir = getProjectDir();
+    const deps = await buildCloseGatesDeps({ stateArg, pexec, projectDir });
 
     const guardCtx = {
       issueNumber: Number(issueArg),
@@ -153,6 +154,7 @@ export async function runGuardExecution(ctx) {
       fetchBlockerState,
       cfg,
       deps,
+      projectDir,
       lifecycleEvidence,
     };
     let guardResult = await runGuards(resolvedFromState, stateArg, guardCtx);

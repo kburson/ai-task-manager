@@ -301,14 +301,14 @@ export const TIMING_EVENT_BASELINE = Object.freeze({
     ),
     timingEmitter(
       'scripts/task-tracker/lib/move-state/guard-execution.mjs',
-      220,
+      222,
       'event-call',
       "'gate-refused'",
       ['gate-refused']
     ),
     timingEmitter(
       'scripts/task-tracker/lib/move-state/guard-execution.mjs',
-      283,
+      285,
       'event-call',
       "'lifecycle-warn'",
       ['lifecycle-warn']
@@ -325,24 +325,24 @@ export const TIMING_EVENT_BASELINE = Object.freeze({
     ),
     timingEmitter(
       'scripts/task-tracker/verbs/close.mjs',
-      799,
+      817,
       'event-call',
       "'unauthorized-close'",
       ['unauthorized-close']
     ),
     timingEmitter(
       'scripts/task-tracker/verbs/close.mjs',
-      982,
+      1000,
       'event-call',
       "'closed-with-dirty-tree'",
       ['closed-with-dirty-tree']
     ),
-    timingEmitter('scripts/task-tracker/verbs/close.mjs', 1135, 'event-call', "'lifecycle-warn'", [
+    timingEmitter('scripts/task-tracker/verbs/close.mjs', 1160, 'event-call', "'lifecycle-warn'", [
       'lifecycle-warn',
     ]),
     timingEmitter(
       'scripts/task-tracker/verbs/close.mjs',
-      1303,
+      1328,
       'event-call',
       '_PEcascade.done.enter.event',
       ['issue:wrap']

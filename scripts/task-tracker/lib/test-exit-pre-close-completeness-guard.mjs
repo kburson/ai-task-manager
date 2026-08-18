@@ -13,16 +13,24 @@
 
 import { uncheckedPreCloseCheckboxes } from '../close-gate.mjs';
 import { hasAcceptedTestEvidence } from './github-records/lifecycle-gate-source.mjs';
+import { resolveDocsOnlyLaneSkipProof } from './docs-only-lane-skip-proof.mjs';
 
 export const GUARD_ID = 'test-exit-pre-close-completeness';
 
 export const testExitPreCloseCompletenessGuard = {
   id: GUARD_ID,
-  run(ctx) {
+  async run(ctx) {
     if (ctx?.toState && ctx.toState !== 'review') return { ok: true };
     if (typeof ctx?.body !== 'string') return { ok: true };
     if (hasAcceptedTestEvidence(ctx.lifecycleEvidence)) return { ok: true };
-    const stillUnticked = uncheckedPreCloseCheckboxes(ctx.body);
+    const resolveProof = ctx?.deps?.resolveDocsOnlyLaneSkipProof || resolveDocsOnlyLaneSkipProof;
+    const docsOnlyLaneSkipProven = await resolveProof({
+      body: ctx.body,
+      issueNumber: ctx.issueNumber,
+      projectDir: ctx.projectDir,
+      deps: ctx?.deps?.docsOnlyLaneSkipProof,
+    });
+    const stillUnticked = uncheckedPreCloseCheckboxes(ctx.body, { docsOnlyLaneSkipProven });
     if (stillUnticked.length === 0) return { ok: true };
     const blockers = stillUnticked.map(
       (line) => `test-to-review-incomplete: ${line} (the close gate enforces the same set)`

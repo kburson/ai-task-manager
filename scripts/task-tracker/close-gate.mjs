@@ -10,6 +10,7 @@
 import { LIFECYCLE_LABEL_SET, lifecycleSatisfaction } from './lib/lifecycle-dod.mjs';
 import { hasFullAutoApproved } from './lib/markers.mjs';
 import { isAcWaived } from './lib/issue-kind.mjs';
+import { BACKTICK_CMD_RE, classifyVerificationCommand } from './lib/verification-commands.mjs';
 import {
   hasAcceptedApprovalEvidence,
   hasAcceptedReviewEvidence,
@@ -35,7 +36,24 @@ function stripFencedBlocks(src) {
 // from `lib/lifecycle-dod.mjs`) for the lifecycle lookup so a marked box is
 // still recognized, and skip any label the mutate-guard grammar deems waived so
 // an intentionally-waived AC never blocks close.
-export function uncheckedPreCloseCheckboxes(body) {
+const DOCS_ONLY_SKIPPABLE_TEST_CLASSIFICATIONS = new Set([
+  'test-unit',
+  'test-integration',
+  'test-slow',
+  'test-fast-legacy',
+  'test-all-legacy',
+]);
+
+function isDocsOnlySkippedTestCheckbox(label) {
+  if (/<!--\s*dod:functional:tests\s*-->/i.test(label)) return true;
+  const command = label.match(BACKTICK_CMD_RE)?.[1];
+  return (
+    command != null &&
+    DOCS_ONLY_SKIPPABLE_TEST_CLASSIFICATIONS.has(classifyVerificationCommand(command))
+  );
+}
+
+export function uncheckedPreCloseCheckboxes(body, { docsOnlyLaneSkipProven = false } = {}) {
   return [...stripFencedBlocks(body).matchAll(/^- \[ \] (.+)$/gm)]
     .map((m) => m[1])
     .filter((label) => !CLOSE_OWNED_CHECKBOXES.has(label))
@@ -44,6 +62,7 @@ export function uncheckedPreCloseCheckboxes(body) {
       return !LIFECYCLE_LABEL_SET.has(clean);
     })
     .filter((label) => !isAcWaived(label))
+    .filter((label) => !docsOnlyLaneSkipProven || !isDocsOnlySkippedTestCheckbox(label))
     .map((label) => `- [ ] ${label}`);
 }
 

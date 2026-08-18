@@ -34,6 +34,7 @@ import { assertLifecycleSatisfied } from '../close-gate.mjs';
 import { deriveAndStampFunctionalDod } from '../lib/functional-dod-derive.mjs';
 import { resolveProjectDir } from '../lib/project-dir.mjs';
 import { parseIssueFieldDb } from '../issue-field-db.mjs';
+import { resolveDocsOnlyLaneSkipProof } from '../lib/docs-only-lane-skip-proof.mjs';
 import { closeLabelRemoveArgs } from '../lib/close-labels.mjs';
 import {
   decideCloseConvergence,
@@ -282,6 +283,23 @@ export function resolveEstimationOutcomeProjectDir({
     );
   }
   return resolved;
+}
+
+export async function resolvePreCloseCheckboxes({
+  body,
+  issueNumber,
+  projectDir,
+  scan,
+  resolveLaneSkipProof = resolveDocsOnlyLaneSkipProof,
+  proofDeps,
+}) {
+  const docsOnlyLaneSkipProven = await resolveLaneSkipProof({
+    body,
+    issueNumber,
+    projectDir,
+    deps: proofDeps,
+  });
+  return scan(body, { docsOnlyLaneSkipProven });
 }
 
 export async function verbClose(ctx) {
@@ -1102,7 +1120,14 @@ export async function verbClose(ctx) {
         },
       });
 
-      const unchecked = uncheckedPreCloseCheckboxes(body);
+      const unchecked = await resolvePreCloseCheckboxes({
+        body,
+        issueNumber: closeIssueNum,
+        projectDir,
+        scan: uncheckedPreCloseCheckboxes,
+        resolveLaneSkipProof: ctx.resolveDocsOnlyLaneSkipProof,
+        proofDeps: ctx.docsOnlyLaneSkipProofDeps,
+      });
       const reasons = [];
       if (unchecked.length > 0) {
         reasons.push(
