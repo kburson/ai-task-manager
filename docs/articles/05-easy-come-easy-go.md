@@ -71,22 +71,22 @@ This article shows what ungoverned execution looks like once specs start moving 
 ## Series Roadmap
 
 | Status      | #      | Article                                                                                                            | Role In Series                                       |
-| ----------- | ------ | ------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------- |
-|             | 01     | [The Refactoring Bloat Precursor](01-the-refactoring-bloat-precursor.md)                                           | Prequel: history of AI-assisted coding before agents |
-|             | 02     | [The Rise Of Technical Product Operations](02-the-backlog-governance-postulate.md)                                 | Industry thesis: Technical Product Operations        |
-|             | 03     | [The Vibe Coding Hangover](03-the-vibe-coding-deficiency.md)                                                       | Failure mode: vibe slop and review debt              |
-|             | 04     | [Spec-Driven Development Is Necessary But Not Sufficient](04-the-spec-driven-insufficiency.md)                    | Why specs need execution governance                  |
-| **Current** | **05** | **[Regeneration Is Cheap. Hardening Isn't. Guess Which One Gets Skipped.](05-easy-come-easy-go.md)**              | Failure mode: cheap regeneration without governance  |
-|             | 06     | [The Rise Of The Technical Product Owner](06-the-product-owner-escalation.md)                                     | Human operator: TPO/TPM as delivery architect        |
-|             | 07     | [The Backlog Becomes The Control Plane](07-the-backlog-control-plane-conjecture.md)                               | Backlog as executable control surface                |
-|             | 08     | [The Just-In-Time Planner](08-the-just-in-time-planning-paradox.md)                                               | Progressive decomposition and deep dives             |
-|             | 09     | [Context Durability Is A Feature](09-the-context-durability-corollary.md)                                         | JIT loading and post-compaction recovery             |
-|             | 10     | [Evidence Beats Trust](10-the-evidence-over-trust-theorem.md)                                                     | Evidence gates and auditability                      |
-|             | 11     | [The Adapter Future](11-the-adapter-convergence.md)                                                               | Backlog and agent platform adapters                  |
-|             | 12     | [Agentic Concurrency Isn't Free — And "50 Parallel Agents" Is Hyperbole](12-the-agentic-concurrency-deficiency.md) | Concurrency ceiling and coordination cost            |
-|             | 13     | [XP's Practices Survived. Their Reasons Did Not.](13-the-xp-survival-anomaly.md)                                  | XP practices under agentic delivery                  |
-|             | 14     | [The Diff Isn't Where Your Judgment Lives Anymore](14-the-diff-displacement.md)                                   | Spec review displaces code review                    |
-|             | 15     | [It's All About Perspective](15-the-second-reviewer-corollary.md)                                                 | Cross-model review for a genuine second opinion      |
+| ----------- | ------ | ------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------- |
+|             | 01     | [The Refactoring Bloat Precursor](01-the-refactoring-bloat-precursor.md) | Prequel: history of AI-assisted coding before agents |
+|             | 02     | [The Rise Of Technical Product Operations](02-the-backlog-governance-postulate.md) | Industry thesis: Technical Product Operations |
+|             | 03     | [The Vibe Coding Hangover](03-the-vibe-coding-deficiency.md) | Failure mode: vibe slop and review debt |
+|             | 04     | [Spec-Driven Development Is Necessary But Not Sufficient](04-the-spec-driven-insufficiency.md) | Why specs need execution governance |
+| **Current** | **05** | **[Regeneration Is Cheap. Hardening Isn't. Guess Which One Gets Skipped.](05-easy-come-easy-go.md)** | Failure mode: cheap regeneration without governance |
+|             | 06     | [The Rise Of The Technical Product Owner](06-the-product-owner-escalation.md) | Human operator: TPO/TPM as delivery architect |
+|             | 07     | [The Backlog Becomes The Control Plane](07-the-backlog-control-plane-conjecture.md) | Backlog as executable control surface |
+|             | 08     | [The Just-In-Time Planner](08-the-just-in-time-planning-paradox.md) | Progressive decomposition and deep dives |
+|             | 09     | [Context Durability Is A Feature](09-the-context-durability-corollary.md) | JIT loading and post-compaction recovery |
+|             | 10     | [Evidence Beats Trust](10-the-evidence-over-trust-theorem.md) | Evidence gates and auditability |
+|             | 11     | [The Adapter Future](11-the-adapter-convergence.md) | Backlog and agent platform adapters |
+|             | 12     | [Agentic Concurrency Isn't Free — And "50 Parallel Agents" Is Hyperbole](12-the-agentic-concurrency-deficiency.md) | Concurrency ceiling and coordination cost |
+|             | 13     | [XP's Practices Survived. Their Reasons Did Not.](13-the-xp-survival-anomaly.md) | XP practices under agentic delivery |
+|             | 14     | [The Diff Isn't Where Your Judgment Lives Anymore](14-the-diff-displacement.md) | Spec review displaces code review |
+|             | 15     | [It's All About Perspective](15-the-second-reviewer-corollary.md) | Cross-model review for a genuine second opinion |
 
 ## LinkedIn Article Shape
 
