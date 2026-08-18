@@ -1,6 +1,5 @@
 // @story #1266
 
-import { execFileSync } from 'node:child_process';
 import { createHash, randomUUID } from 'node:crypto';
 import {
   appendFileSync,
@@ -17,8 +16,22 @@ import {
 import { hostname } from 'node:os';
 import path from 'node:path';
 
+import { inspectArchive, resolveArchiveDestination } from './archive.mjs';
+import { planAbsoluteBudget, planContinuationBudget } from './budget.mjs';
+import { REAL_REPOSITORY_BOUNDARY } from './repository-boundary.mjs';
+
 export const STATE_SCHEMA = 'aitm.co-review/v1';
 export const EVENT_SCHEMA = 'aitm.co-review-event/v1';
+
+export function shellArgument(value) {
+  const text = String(value);
+  if (/^[A-Za-z0-9_./:@%+=,-]+$/.test(text)) return text;
+  return `'${text.replaceAll("'", `'\"'\"'`)}'`;
+}
+
+export function renderCliCommand(argv) {
+  return `npx aitm co-review ${argv.map(shellArgument).join(' ')}`;
+}
 
 export class ProtocolError extends Error {
   constructor(code, detail = '', { exitCode = 1, next = '' } = {}) {
@@ -37,24 +50,17 @@ function fail(code, detail, options) {
   throw new ProtocolError(code, detail, options);
 }
 
-function git(cwd, args, options = {}) {
+function repositoryCall(code, detail, operation) {
   try {
-    return execFileSync('git', args, {
-      cwd,
-      encoding: options.buffer ? null : 'utf8',
-      stdio: ['ignore', 'pipe', 'pipe'],
-      shell: false,
-    });
+    return operation();
   } catch (error) {
-    if (options.allowFailure) return null;
-    const detail = error.stderr?.toString().trim() || args.join(' ');
-    fail(options.code ?? 'git', detail);
+    if (error instanceof ProtocolError) throw error;
+    fail(code, error.stderr?.toString().trim() || detail);
   }
 }
 
-function repositoryRoot(cwd) {
-  const value = git(cwd, ['rev-parse', '--show-toplevel'], { code: 'not-a-repository' }).trim();
-  return realpathSync(value);
+function repositoryRoot(cwd, repository) {
+  return repositoryCall('not-a-repository', String(cwd), () => repository.repositoryRoot(cwd));
 }
 
 function relativePath(root, candidate, label) {
@@ -112,69 +118,57 @@ function digestFile(root, candidate, label = 'artifact') {
   return { path: resolved.relative, sha256: digestBuffer(readFileSync(resolved.absolute)) };
 }
 
-function assertIgnored(root, runtime) {
-  const ignored = git(root, ['check-ignore', '--quiet', '--', runtime.relative], {
-    allowFailure: true,
-  });
-  if (ignored === null) fail('runtime-not-ignored', runtime.relative);
-  const tracked = git(root, ['ls-files', '--error-unmatch', '--', runtime.relative], {
-    allowFailure: true,
-  });
-  if (tracked !== null) fail('runtime-tracked', runtime.relative);
+function assertIgnored(root, runtime, repository) {
+  const status = repositoryCall('git', runtime.relative, () =>
+    repository.runtimeStatus(root, runtime.relative)
+  );
+  if (!status.ignored) fail('runtime-not-ignored', runtime.relative);
+  if (status.tracked) fail('runtime-tracked', runtime.relative);
 }
 
-function assertTrackedArtifact(root, artifact) {
+function assertTrackedArtifact(root, artifact, repository) {
   const resolved = relativePath(root, artifact, 'artifact');
   if (!existsSync(resolved.absolute)) {
     fail('missing-artifact', resolved.relative);
   }
   if (!lstatSync(resolved.absolute).isFile()) fail('artifact-not-regular', resolved.relative);
-  if (
-    git(root, ['ls-files', '--error-unmatch', '--', resolved.relative], { allowFailure: true }) ===
-    null
-  ) {
+  const runtime = repositoryCall('git', resolved.relative, () =>
+    repository.runtimeStatus(root, resolved.relative)
+  );
+  if (!runtime.tracked) {
     fail('artifact-untracked', resolved.relative);
   }
-  const worktree = readFileSync(resolved.absolute);
-  const index = git(root, ['show', `:${resolved.relative}`], {
-    buffer: true,
-    code: 'artifact-index',
-  });
-  const head = git(root, ['show', `HEAD:${resolved.relative}`], {
-    buffer: true,
-    code: 'artifact-head',
-  });
+  const observed = repositoryCall('artifact-index', resolved.relative, () =>
+    repository.trackedArtifact(root, resolved.relative)
+  );
+  const { worktree, index, head } = observed;
   if (!worktree.equals(index) || !index.equals(head)) fail('artifact-drift', resolved.relative);
   return {
     path: resolved.relative,
-    commit: git(root, ['rev-parse', 'HEAD']).trim(),
-    blob: git(root, ['rev-parse', `HEAD:${resolved.relative}`]).trim(),
+    commit: observed.commit,
+    blob: observed.blob,
     sha256: digestBuffer(worktree),
   };
 }
 
-function exactReachableCommit(root, revision) {
-  const commit = git(root, ['rev-parse', '--verify', `${revision}^{commit}`], {
-    allowFailure: true,
-  });
-  if (commit === null) fail('git-commit', String(revision));
-  const exact = commit.trim();
-  if (git(root, ['merge-base', '--is-ancestor', exact, 'HEAD'], { allowFailure: true }) === null) {
-    fail('git-commit-unreachable', exact);
-  }
-  return exact;
+function exactReachableCommit(root, revision, repository) {
+  const observed = repositoryCall('git', String(revision), () =>
+    repository.resolveReachableCommit(root, revision)
+  );
+  if (observed.commit === null) fail('git-commit', String(revision));
+  if (!observed.reachable) fail('git-commit-unreachable', observed.commit);
+  return observed.commit;
 }
 
-function assertCommitArtifact(root, commit, artifact) {
-  const bytes = git(root, ['show', `${commit}:${artifact.path}`], {
-    buffer: true,
-    allowFailure: true,
-  });
-  if (bytes === null) fail('commit-missing-artifact', `${commit}:${artifact.path}`);
-  if (!bytes.equals(readFileSync(path.join(root, artifact.path)))) {
+function assertCommitArtifact(root, commit, artifact, repository) {
+  const observed = repositoryCall('git', `${commit}:${artifact.path}`, () =>
+    repository.committedArtifact(root, commit, artifact.path)
+  );
+  if (observed === null) fail('commit-missing-artifact', `${commit}:${artifact.path}`);
+  if (!observed.bytes.equals(readFileSync(path.join(root, artifact.path)))) {
     fail('artifact-drift', `${commit}:${artifact.path}`);
   }
-  return git(root, ['rev-parse', `${commit}:${artifact.path}`]).trim();
+  return observed.blob;
 }
 
 function readLockOwner(lock) {
@@ -231,11 +225,35 @@ function eventFor(state, type, at) {
     reviewTurnsUsed: state.reviewTurnsUsed,
     maxReviewTurns: state.maxReviewTurns,
     remainingReviewTurns: state.remainingReviewTurns,
+    ...(state.supplements === undefined
+      ? {}
+      : { supplements: supplementProjection(state.supplements) }),
   };
 }
 
 function appendEvent(paths, state, type, at = state.updatedAt, details = {}) {
   appendFileSync(paths.events, `${JSON.stringify({ ...eventFor(state, type, at), ...details })}\n`);
+}
+
+function supplementProjection(supplements) {
+  return supplements.map(
+    ({ id, path: supplementPath, sha256, registeredBy, registeredAt, targetRound, status }) => ({
+      id,
+      path: supplementPath,
+      sha256,
+      registeredBy,
+      registeredAt,
+      targetRound,
+      status,
+    })
+  );
+}
+
+function safeSupplementIdSuffix(id) {
+  const suffix = Number(id.slice(2));
+  return Number.isSafeInteger(suffix) && suffix >= 1 && suffix < Number.MAX_SAFE_INTEGER
+    ? suffix
+    : null;
 }
 
 function validateState(state) {
@@ -249,21 +267,50 @@ function validateState(state) {
     !Number.isInteger(state.reviewTurnsUsed) ||
     !Number.isInteger(state.maxReviewTurns) ||
     state.reviewTurnsUsed < 0 ||
-    state.maxReviewTurns < 1 ||
+    state.maxReviewTurns < 0 ||
+    state.remainingReviewTurns < 0 ||
     state.remainingReviewTurns !== state.maxReviewTurns - state.reviewTurnsUsed
   ) {
     fail('invalid-state', 'schema, round, or budget invariant');
   }
+  if (state.supplements !== undefined) {
+    if (!Array.isArray(state.supplements)) fail('invalid-state', 'supplements must be an array');
+    const ids = new Set();
+    for (const supplement of state.supplements) {
+      if (
+        !supplement ||
+        !/^S-\d+$/.test(supplement.id) ||
+        safeSupplementIdSuffix(supplement.id) === null ||
+        ids.has(supplement.id) ||
+        typeof supplement.path !== 'string' ||
+        !/^sha256:[a-f0-9]{64}$/.test(supplement.sha256) ||
+        typeof supplement.registeredBy !== 'string' ||
+        !supplement.registeredBy.trim() ||
+        typeof supplement.registeredAt !== 'string' ||
+        Number.isNaN(Date.parse(supplement.registeredAt)) ||
+        !Number.isInteger(supplement.targetRound) ||
+        supplement.targetRound < 1 ||
+        !['pending', 'frozen', 'consumed'].includes(supplement.status)
+      ) {
+        fail('invalid-state', 'supplement invariant');
+      }
+      ids.add(supplement.id);
+    }
+  }
   return state;
+}
+
+function readEventRecords(paths) {
+  return readFileSync(paths.events, 'utf8')
+    .split('\n')
+    .filter((line) => line.trim())
+    .map((line) => JSON.parse(line));
 }
 
 function eventIntegrity(paths, state) {
   let events;
   try {
-    const lines = readFileSync(paths.events, 'utf8')
-      .split('\n')
-      .filter((line) => line.trim());
-    events = lines.map((line) => JSON.parse(line));
+    events = readEventRecords(paths);
   } catch (error) {
     return [`events-unreadable: ${error.message}`];
   }
@@ -278,6 +325,9 @@ function eventIntegrity(paths, state) {
     'owner-handoff',
     'reviewer-handoff',
     'continue',
+    'budget-adjustment',
+    'supplement',
+    'human-good-enough',
   ]);
   for (let index = 0; index < events.length; index += 1) {
     const event = events[index];
@@ -311,6 +361,14 @@ function eventIntegrity(paths, state) {
         );
       }
     }
+    const expectedSupplements =
+      state.supplements === undefined ? undefined : supplementProjection(state.supplements);
+    if (JSON.stringify(last.supplements) !== JSON.stringify(expectedSupplements)) {
+      errors.push('event-projection supplements: state differs from last event');
+    }
+    if (JSON.stringify(last.acceptance) !== JSON.stringify(state.acceptance)) {
+      errors.push('event-projection acceptance: state differs from last event');
+    }
   }
   return errors;
 }
@@ -319,8 +377,8 @@ function sameInitialization(state, desired) {
   return JSON.stringify(state.initialization) === JSON.stringify(desired);
 }
 
-export function readProtocol({ cwd = process.cwd(), dir }) {
-  const root = repositoryRoot(cwd);
+export function readProtocol({ cwd = process.cwd(), dir, repository = REAL_REPOSITORY_BOUNDARY }) {
+  const root = repositoryRoot(cwd, repository);
   const paths = protocolPaths(root, dir);
   if (!existsSync(paths.state)) fail('not-initialized', paths.relative);
   try {
@@ -340,6 +398,8 @@ export function initializeProtocol({
   maxReviewTurns,
   importReview,
   reviewOf,
+  archiveDir,
+  repository = REAL_REPOSITORY_BOUNDARY,
 }) {
   const normalizedOwner = String(owner || '').trim();
   const normalizedReviewer = String(reviewer || '').trim();
@@ -357,10 +417,18 @@ export function initializeProtocol({
     fail('import-exhausts-budget', 'imported R1 requires --max-turns >= 2', { exitCode: 2 });
   }
 
-  const root = repositoryRoot(cwd);
+  const root = repositoryRoot(cwd, repository);
   const paths = protocolPaths(root, dir);
-  assertIgnored(root, paths);
-  const artifactRecord = assertTrackedArtifact(root, artifact);
+  assertIgnored(root, paths, repository);
+  const archive = archiveDir
+    ? resolveArchiveDestination({
+        cwd: root,
+        archiveDir,
+        runtimeDir: paths.relative,
+        repository,
+      })
+    : null;
+  const artifactRecord = assertTrackedArtifact(root, artifact, repository);
   let importedReview = null;
   let importedCommit = null;
   if (importReview) {
@@ -369,8 +437,8 @@ export function initializeProtocol({
     if (!importAbsolute.startsWith(`${paths.absolute}${path.sep}`)) {
       fail('import-outside-runtime', importedReview.path);
     }
-    importedCommit = exactReachableCommit(root, reviewOf);
-    artifactRecord.blob = assertCommitArtifact(root, importedCommit, artifactRecord);
+    importedCommit = exactReachableCommit(root, reviewOf, repository);
+    artifactRecord.blob = assertCommitArtifact(root, importedCommit, artifactRecord, repository);
   }
 
   const initialization = {
@@ -382,11 +450,12 @@ export function initializeProtocol({
     maxReviewTurns,
     importedReview,
     reviewOf: importedCommit,
+    ...(archive ? { archiveDir: archive.relative } : {}),
   };
 
   return withMutex(paths, 'system', 'init', () => {
     if (existsSync(paths.state)) {
-      const existing = readProtocol({ cwd: root, dir: paths.relative });
+      const existing = readProtocol({ cwd: root, dir: paths.relative, repository });
       if (sameInitialization(existing, initialization)) return existing;
       fail('already-initialized', paths.relative);
     }
@@ -398,7 +467,7 @@ export function initializeProtocol({
       protocolId: randomUUID(),
       repositoryRoot: root,
       worktree: root,
-      branch: git(root, ['branch', '--show-current']).trim(),
+      branch: repositoryCall('git', 'repository identity', () => repository.identity(root)).branch,
       revision: 1,
       lifecycle: 'active',
       roles: { owner: initialization.owner, reviewer: initialization.reviewer },
@@ -433,8 +502,9 @@ export function initializeProtocol({
 }
 
 export function statusProtocol(options) {
-  const state = readProtocol(options);
-  const root = repositoryRoot(options.cwd ?? process.cwd());
+  const repository = options.repository ?? REAL_REPOSITORY_BOUNDARY;
+  const state = readProtocol({ ...options, repository });
+  const root = repositoryRoot(options.cwd ?? process.cwd(), repository);
   const paths = protocolPaths(root, options.dir);
   const errors = eventIntegrity(paths, state);
   for (const artifact of Object.values(state.immutableArtifacts ?? {})) {
@@ -449,18 +519,35 @@ export function statusProtocol(options) {
       errors.push(`${error.code ?? 'artifact-error'} ${artifact.path}: ${error.message}`);
     }
   }
+  for (const supplement of state.supplements ?? []) {
+    if (supplement.status === 'consumed') continue;
+    try {
+      const actual = digestFile(root, supplement.path, 'recorded-supplement');
+      if (actual.sha256 !== supplement.sha256) {
+        errors.push(
+          `supplement-drift ${supplement.path}: expected ${supplement.sha256}, actual ${actual.sha256}`
+        );
+      }
+    } catch (error) {
+      errors.push(`supplement-drift ${supplement.path}: ${error.code ?? error.message}`);
+    }
+  }
   if (state.lifecycle === 'active' && state.currentRole === 'reviewer') {
     try {
       const worktree = digestFile(root, state.artifact.path, 'authoritative-artifact');
       if (worktree.sha256 !== state.artifact.sha256) {
         errors.push(`artifact-drift ${state.artifact.path}: owner handoff changed`);
       }
-      const head = git(root, ['rev-parse', 'HEAD']).trim();
-      if (head !== state.artifact.commit) {
-        errors.push(`branch-drift: expected ${state.artifact.commit}, actual ${head}`);
+      const identity = repositoryCall('git-integrity', 'repository identity', () =>
+        repository.identity(root)
+      );
+      if (identity.head !== state.artifact.commit) {
+        errors.push(`branch-drift: expected ${state.artifact.commit}, actual ${identity.head}`);
       }
-      const index = git(root, ['show', `:${state.artifact.path}`], { buffer: true });
-      if (digestBuffer(index) !== state.artifact.sha256) {
+      const observed = repositoryCall('git-integrity', state.artifact.path, () =>
+        repository.trackedArtifact(root, state.artifact.path)
+      );
+      if (digestBuffer(observed.index) !== state.artifact.sha256) {
         errors.push(`index-drift ${state.artifact.path}`);
       }
     } catch (error) {
@@ -468,18 +555,123 @@ export function statusProtocol(options) {
     }
   }
   const integrity = { ok: errors.length === 0, errors };
-  return { ...state, integrity, nextAction: nextAction(state, integrity) };
+  const activeSupplements = (state.supplements ?? []).filter(
+    (supplement) => supplement.status === 'pending' || supplement.status === 'frozen'
+  );
+  const events = errors.length === 0 ? readEventRecords(paths) : [];
+  const latestBudgetEvent = events.findLast((event) => event.adjustment || event.continuation);
+  const latestBudgetAdjustment =
+    latestBudgetEvent?.adjustment ?? latestBudgetEvent?.continuation ?? null;
+  const lastReviewer = events.findLast((event) => event.type === 'reviewer-handoff');
+  const lastOwner = events.findLast((event) => event.type === 'owner-handoff');
+  let unresolvedFindingIds = [];
+  if (lastReviewer?.handoff?.decision === 'changes-requested') {
+    try {
+      const reviewPath = lastReviewer.handoff.artifacts?.review?.path;
+      if (reviewPath) {
+        unresolvedFindingIds = uniqueFindingIds(
+          readFileSync(path.resolve(root, reviewPath), 'utf8'),
+          'review'
+        );
+      }
+    } catch {
+      unresolvedFindingIds = [];
+    }
+  }
+  const closingOwnerComplete = Boolean(
+    state.lifecycle === 'intervention-required' &&
+    events.at(-1)?.type === 'owner-handoff' &&
+    events.at(-1)?.handoff?.artifacts?.answeredReview
+  );
+  const terminalEvidence = {
+    reviewerReview: lastReviewer?.handoff?.artifacts?.review ?? null,
+    ownerResponse: lastOwner?.handoff?.artifacts?.response ?? null,
+  };
+  let archive = { destination: null, completion: 'unknown' };
+  if (state.lifecycle === 'accepted' && state.initialization?.archiveDir && integrity.ok) {
+    try {
+      const inspection = inspectArchive({
+        root,
+        state,
+        events,
+        archiveDir: state.initialization.archiveDir,
+        repository,
+      });
+      archive = {
+        destination: state.initialization.archiveDir,
+        completion: inspection.status === 'complete' ? 'complete-and-identical' : inspection.status,
+      };
+    } catch (error) {
+      archive = {
+        destination: state.initialization.archiveDir,
+        completion: 'conflict',
+        errors: [error.message],
+      };
+    }
+  } else if (state.initialization?.archiveDir) {
+    archive = { destination: state.initialization.archiveDir, completion: 'not-applicable' };
+  }
+  const baseNextAction = nextAction(state, integrity);
+  const runtimeDir = state.initialization.runtimeDir;
+  let availableActions = [{ kind: 'next', command: baseNextAction }];
+  let decoratedNextAction = baseNextAction;
+  if (state.lifecycle === 'intervention-required' && integrity.ok) {
+    const continueCommand = `npx aitm co-review continue --dir ${shellArgument(runtimeDir)} --max-turns <N> [--focus <file>]`;
+    availableActions = [
+      { kind: 'continue', command: continueCommand },
+      ...(closingOwnerComplete
+        ? [
+            {
+              kind: 'finalize-good-enough',
+              command: `npx aitm co-review finalize --dir ${shellArgument(runtimeDir)} --good-enough${
+                state.initialization.archiveDir ? '' : ' --archive-dir <tracked-repo-path>'
+              }`,
+            },
+          ]
+        : []),
+      { kind: 'no-action', command: null },
+    ];
+    decoratedNextAction = continueCommand;
+  } else if (
+    state.lifecycle === 'accepted' &&
+    integrity.ok &&
+    archive.completion !== 'complete-and-identical'
+  ) {
+    decoratedNextAction = `npx aitm co-review finalize --dir ${shellArgument(runtimeDir)}${
+      state.initialization.archiveDir ? '' : ' --archive-dir <tracked-repo-path>'
+    }`;
+    availableActions = [{ kind: 'finalize', command: decoratedNextAction }];
+  }
+  return {
+    ...state,
+    activeSupplements,
+    integrity,
+    decisionBasis:
+      state.acceptance?.basis ??
+      (events.at(-1)?.type === 'reviewer-handoff' && events.at(-1)?.handoff?.decision === 'accepted'
+        ? 'reviewer-consensus'
+        : events.at(-1)?.type === 'human-good-enough'
+          ? 'human-good-enough'
+          : null),
+    archive,
+    latestBudgetAdjustment,
+    terminalEvidence,
+    unresolvedFindingIds,
+    closingOwnerComplete,
+    availableActions,
+    nextAction: decoratedNextAction,
+  };
 }
 
 function nextAction(state, integrity) {
   if (!integrity.ok) return 'preserve protocol files and escalate integrity drift to the human';
   if (state.lifecycle === 'accepted') return 'stop; protocol accepted';
   if (state.lifecycle === 'intervention-required') {
-    return `npx aitm co-review continue --dir ${state.initialization.runtimeDir} --additional-turns <N> --approved-by <identity> [--focus <file>]`;
+    return `npx aitm co-review continue --dir ${shellArgument(state.initialization.runtimeDir)} --max-turns <N> [--focus <file>]`;
   }
   const actor = state.roles[state.currentRole];
   if (state.turnState === 'available') {
-    return `npx aitm co-review claim --dir ${state.initialization.runtimeDir} --actor ${actor}`;
+    return `npx aitm co-review claim --dir ${shellArgument(state.initialization.runtimeDir)} --actor ${shellArgument(actor)}`;
   }
   return `${state.currentRole} ${actor} holds round ${state.round}; complete the role artifact and run npx aitm co-review help handoff`;
 }
@@ -487,14 +679,52 @@ function nextAction(state, integrity) {
 function assertIntegrity(options) {
   const status = statusProtocol(options);
   if (!status.integrity.ok) fail('integrity', status.integrity.errors.join('; '));
-  return status;
+  return readProtocol(options);
 }
 
-export function claimTurn({ cwd = process.cwd(), dir, actor }) {
-  const root = repositoryRoot(cwd);
+function deepFreeze(value) {
+  if (!value || typeof value !== 'object' || Object.isFrozen(value)) return value;
+  for (const child of Object.values(value)) deepFreeze(child);
+  return Object.freeze(value);
+}
+
+export function validatedArchiveSnapshot({
+  cwd = process.cwd(),
+  dir,
+  repository = REAL_REPOSITORY_BOUNDARY,
+} = {}) {
+  const root = repositoryRoot(cwd, repository);
+  const paths = protocolPaths(root, dir);
+  const state = assertIntegrity({ cwd: root, dir: paths.relative, repository });
+  let events;
+  try {
+    events = readFileSync(paths.events, 'utf8')
+      .split('\n')
+      .filter((line) => line.trim())
+      .map((line) => JSON.parse(line));
+  } catch (error) {
+    fail('events-unreadable', error.message);
+  }
+  const terminal = events.at(-1);
+  const reviewerConsensus =
+    terminal?.type === 'reviewer-handoff' && terminal?.handoff?.decision === 'accepted';
+  const humanGoodEnough = terminal?.type === 'human-good-enough';
+  if (state.lifecycle !== 'accepted' || (!reviewerConsensus && !humanGoodEnough)) {
+    fail('archive-ineligible', `${state.lifecycle}:${terminal?.type ?? 'no-events'}`);
+  }
+  return deepFreeze(structuredClone({ root, state, events }));
+}
+
+export function claimTurn({
+  cwd = process.cwd(),
+  dir,
+  actor,
+  repository = REAL_REPOSITORY_BOUNDARY,
+}) {
+  const root = repositoryRoot(cwd, repository);
   const paths = protocolPaths(root, dir);
   return withMutex(paths, actor, 'claim', () => {
-    const state = assertIntegrity({ cwd: root, dir: paths.relative });
+    const state = assertIntegrity({ cwd: root, dir: paths.relative, repository });
     const role = Object.entries(state.roles).find(([, identity]) => identity === actor)?.[0];
     if (!role) fail('unknown-actor', String(actor));
     if (state.lifecycle !== 'active') fail('terminal', state.lifecycle);
@@ -502,7 +732,7 @@ export function claimTurn({ cwd = process.cwd(), dir, actor }) {
       fail('wrong-role', `${actor} maps to ${role}; current role is ${state.currentRole}`);
     }
     if (state.turnState === 'claimed' && state.claim?.actor === actor)
-      return readProtocol({ cwd: root, dir: paths.relative });
+      return readProtocol({ cwd: root, dir: paths.relative, repository });
     if (state.turnState !== 'available') fail('not-available', state.turnState);
     const at = new Date().toISOString();
     const next = validateState({
@@ -521,17 +751,118 @@ export function claimTurn({ cwd = process.cwd(), dir, actor }) {
 function exchangeArtifact(root, paths, candidate, label, disallowed = []) {
   const artifact = digestFile(root, candidate, label);
   const absolute = path.resolve(root, artifact.path);
-  if (!absolute.startsWith(`${paths.absolute}${path.sep}`)) {
+  const runtime = realpathSync(paths.absolute);
+  const physical = realpathSync(absolute);
+  if (!physical.startsWith(`${runtime}${path.sep}`)) {
     fail(`${label}-outside-runtime`, artifact.path);
   }
-  const reserved = new Set([
+  const lock = realpathSync(paths.lock);
+  if (
+    absolute === paths.lock ||
+    absolute.startsWith(`${paths.lock}${path.sep}`) ||
+    physical === lock ||
+    physical.startsWith(`${lock}${path.sep}`)
+  ) {
+    fail(`${label}-path-conflict`, artifact.path);
+  }
+  const reservedPaths = [
     paths.state,
     paths.events,
     paths.lock,
     ...disallowed.map((value) => path.resolve(root, value)),
-  ]);
-  if (reserved.has(absolute)) fail(`${label}-path-conflict`, artifact.path);
+  ];
+  const reserved = new Set(reservedPaths);
+  const physicalReserved = new Set(
+    reservedPaths
+      .filter((reservedPath) => existsSync(reservedPath))
+      .map((reservedPath) => realpathSync(reservedPath))
+  );
+  if (reserved.has(absolute) || physicalReserved.has(physical)) {
+    fail(`${label}-path-conflict`, artifact.path);
+  }
   return artifact;
+}
+
+function frozenSupplements(state) {
+  return (state.supplements ?? []).filter((supplement) => supplement.status === 'frozen');
+}
+
+function supplementAcknowledgments(markdown, required) {
+  const requiredIds = new Set(required.map((supplement) => supplement.id));
+  const seen = new Set();
+  for (const match of markdown.matchAll(/\[supplement:(S-\d+)\]/g)) {
+    const id = match[1];
+    if (seen.has(id)) fail('duplicate-supplement', id);
+    if (!requiredIds.has(id)) fail('unknown-supplement', id);
+    seen.add(id);
+  }
+  for (const id of requiredIds) {
+    if (!seen.has(id)) fail('missing-supplement', id);
+  }
+}
+
+function nextSupplementId(supplements) {
+  const highest = supplements.reduce(
+    (maximum, supplement) => Math.max(maximum, safeSupplementIdSuffix(supplement.id)),
+    0
+  );
+  return `S-${String(highest + 1).padStart(3, '0')}`;
+}
+
+export function registerSupplement({
+  cwd = process.cwd(),
+  dir,
+  file,
+  humanLogin,
+  repository = REAL_REPOSITORY_BOUNDARY,
+}) {
+  const registeredBy = String(humanLogin || '').trim();
+  if (!registeredBy)
+    fail('github-login', 'non-blank authenticated login required', { exitCode: 2 });
+  const root = repositoryRoot(cwd, repository);
+  const paths = protocolPaths(root, dir);
+  return withMutex(paths, registeredBy, 'supplement', () => {
+    const current = readProtocol({ cwd: root, dir: paths.relative, repository });
+    if (current.lifecycle !== 'intervention-required') {
+      fail('supplement-state', current.lifecycle);
+    }
+    const resolved = relativePath(root, file, 'supplement');
+    if (existsSync(resolved.absolute) && lstatSync(resolved.absolute).isSymbolicLink()) {
+      fail('supplement-symlink', resolved.relative);
+    }
+    const artifact = exchangeArtifact(root, paths, file, 'supplement');
+    const existing = (current.supplements ?? []).find(
+      (supplement) => supplement.path === artifact.path
+    );
+    if (existing) {
+      if (existing.sha256 === artifact.sha256) {
+        assertIntegrity({ cwd: root, dir: paths.relative, repository });
+        return readProtocol({ cwd: root, dir: paths.relative, repository });
+      }
+      fail('supplement-conflict', artifact.path);
+    }
+    const state = assertIntegrity({ cwd: root, dir: paths.relative, repository });
+    const at = new Date().toISOString();
+    const supplement = {
+      id: nextSupplementId(state.supplements ?? []),
+      path: artifact.path,
+      sha256: artifact.sha256,
+      registeredBy,
+      registeredAt: at,
+      targetRound: state.round + 1,
+      status: 'pending',
+    };
+    const next = validateState({
+      ...state,
+      integrity: undefined,
+      nextAction: undefined,
+      revision: state.revision + 1,
+      supplements: [...(state.supplements ?? []), supplement],
+      updatedAt: at,
+    });
+    appendEvent(paths, next, 'supplement', at, { supplement });
+    return atomicStateWrite(paths, next);
+  });
 }
 
 function uniqueFindingIds(markdown, label) {
@@ -587,30 +918,31 @@ function validateResponse(root, reviewArtifact, responseArtifact) {
   }
 }
 
-function committedOwnerArtifact(root, state, artifact, revision) {
+function committedOwnerArtifact(root, state, artifact, revision, repository) {
   const resolved = relativePath(root, artifact, 'artifact');
   if (resolved.relative !== state.artifact.path) {
     fail('wrong-artifact', `${resolved.relative}; expected ${state.artifact.path}`);
   }
-  const commit = exactReachableCommit(root, revision);
-  const head = git(root, ['rev-parse', 'HEAD']).trim();
-  if (commit !== head) fail('commit-not-head', `${commit}; HEAD=${head}`);
-  const branch = git(root, ['branch', '--show-current']).trim();
-  if (branch !== state.branch) fail('branch-drift', `${branch}; expected ${state.branch}`);
-  const committed = git(root, ['show', `${commit}:${resolved.relative}`], {
-    buffer: true,
-    allowFailure: true,
-  });
+  const commit = exactReachableCommit(root, revision, repository);
+  const identity = repositoryCall('git', 'repository identity', () => repository.identity(root));
+  if (commit !== identity.head) fail('commit-not-head', `${commit}; HEAD=${identity.head}`);
+  if (identity.branch !== state.branch) {
+    fail('branch-drift', `${identity.branch}; expected ${state.branch}`);
+  }
+  const committed = repositoryCall('git', `${commit}:${resolved.relative}`, () =>
+    repository.committedArtifact(root, commit, resolved.relative)
+  );
   if (committed === null) fail('commit-missing-artifact', `${commit}:${resolved.relative}`);
-  const worktree = readFileSync(resolved.absolute);
-  const index = git(root, ['show', `:${resolved.relative}`], { buffer: true });
-  if (!worktree.equals(committed)) fail('artifact-drift', resolved.relative);
-  if (!index.equals(committed)) fail('index-drift', resolved.relative);
+  const observed = repositoryCall('git', resolved.relative, () =>
+    repository.trackedArtifact(root, resolved.relative)
+  );
+  if (!observed.worktree.equals(committed.bytes)) fail('artifact-drift', resolved.relative);
+  if (!observed.index.equals(committed.bytes)) fail('index-drift', resolved.relative);
   return {
     path: resolved.relative,
     commit,
-    blob: git(root, ['rev-parse', `${commit}:${resolved.relative}`]).trim(),
-    sha256: digestBuffer(committed),
+    blob: committed.blob,
+    sha256: digestBuffer(committed.bytes),
   };
 }
 
@@ -623,11 +955,12 @@ export function handoffOwner({
   commit,
   answers,
   message,
+  repository = REAL_REPOSITORY_BOUNDARY,
 }) {
-  const root = repositoryRoot(cwd);
+  const root = repositoryRoot(cwd, repository);
   const paths = protocolPaths(root, dir);
   return withMutex(paths, actor, 'owner-handoff', () => {
-    const state = assertIntegrity({ cwd: root, dir: paths.relative });
+    const state = assertIntegrity({ cwd: root, dir: paths.relative, repository });
     if (state.lifecycle !== 'active') fail('terminal', state.lifecycle);
     if (state.roles.owner !== actor || state.currentRole !== 'owner') {
       fail('wrong-role', `${actor}; expected owner ${state.roles.owner}`);
@@ -657,15 +990,17 @@ export function handoffOwner({
       fail('response-already-used', responseArtifact.path);
     }
     validateResponse(root, answeredReview, responseArtifact);
-    const artifactRecord = committedOwnerArtifact(root, state, artifact, commit);
+    const artifactRecord = committedOwnerArtifact(root, state, artifact, commit, repository);
     const at = new Date().toISOString();
     const artifacts = {
       response: responseArtifact,
       ...(answeredReview ? { answeredReview } : {}),
     };
+    const lifecycle = state.remainingReviewTurns === 0 ? 'intervention-required' : 'active';
+    const currentRole = lifecycle === 'active' ? 'reviewer' : null;
     const lastHandoff = {
       from: 'owner',
-      to: 'reviewer',
+      to: currentRole,
       at,
       message: String(message).trim(),
       commit: artifactRecord.commit,
@@ -676,8 +1011,9 @@ export function handoffOwner({
       ...state,
       integrity: undefined,
       revision: state.revision + 1,
-      currentRole: 'reviewer',
-      turnState: 'available',
+      lifecycle,
+      currentRole,
+      turnState: lifecycle === 'active' ? 'available' : null,
       round: state.round + 1,
       claim: null,
       artifact: artifactRecord,
@@ -702,11 +1038,12 @@ export function handoffReviewer({
   decision,
   summary,
   message,
+  repository = REAL_REPOSITORY_BOUNDARY,
 }) {
-  const root = repositoryRoot(cwd);
+  const root = repositoryRoot(cwd, repository);
   const paths = protocolPaths(root, dir);
   return withMutex(paths, actor, 'reviewer-handoff', () => {
-    const state = assertIntegrity({ cwd: root, dir: paths.relative });
+    const state = assertIntegrity({ cwd: root, dir: paths.relative, repository });
     if (state.lifecycle !== 'active') fail('terminal', state.lifecycle);
     if (state.roles.reviewer !== actor || state.currentRole !== 'reviewer') {
       fail('wrong-role', `${actor}; expected reviewer ${state.roles.reviewer}`);
@@ -722,7 +1059,7 @@ export function handoffReviewer({
     if (ownerHandoff?.from !== 'owner' || !ownerHandoff.commit) {
       fail('missing-owner-handoff', state.round);
     }
-    const exactReviewOf = exactReachableCommit(root, reviewOf);
+    const exactReviewOf = exactReachableCommit(root, reviewOf, repository);
     if (exactReviewOf !== ownerHandoff.commit) {
       fail('review-of', `${exactReviewOf}; expected ${ownerHandoff.commit}`);
     }
@@ -736,13 +1073,13 @@ export function handoffReviewer({
     if (state.immutableArtifacts?.[reviewArtifact.path]) {
       fail('review-already-used', reviewArtifact.path);
     }
-    uniqueFindingIds(readFileSync(path.resolve(root, reviewArtifact.path), 'utf8'), 'review');
+    const reviewText = readFileSync(path.resolve(root, reviewArtifact.path), 'utf8');
+    supplementAcknowledgments(reviewText, frozenSupplements(state));
+    uniqueFindingIds(reviewText, 'review');
     const reviewTurnsUsed = state.reviewTurnsUsed + 1;
     const remainingReviewTurns = state.maxReviewTurns - reviewTurnsUsed;
     const finalChanges = decision === 'changes-requested' && remainingReviewTurns === 0;
     if (summary && !finalChanges) fail('unexpected-summary', decision);
-    if (finalChanges && !summary)
-      fail('summary-required', `${reviewTurnsUsed}/${state.maxReviewTurns}`);
     let summaryArtifact = null;
     if (summary) {
       summaryArtifact = exchangeArtifact(root, paths, summary, 'summary', [
@@ -752,8 +1089,7 @@ export function handoffReviewer({
       ]);
     }
     const at = new Date().toISOString();
-    const lifecycle =
-      decision === 'accepted' ? 'accepted' : finalChanges ? 'intervention-required' : 'active';
+    const lifecycle = decision === 'accepted' ? 'accepted' : 'active';
     const currentRole = lifecycle === 'active' ? 'owner' : null;
     const turnState = lifecycle === 'active' ? 'available' : null;
     const artifacts = {
@@ -774,6 +1110,10 @@ export function handoffReviewer({
       [reviewArtifact.path]: reviewArtifact,
       ...(summaryArtifact ? { [summaryArtifact.path]: summaryArtifact } : {}),
     };
+    const acceptance =
+      decision === 'accepted'
+        ? { basis: 'reviewer-consensus', at, reviewer: state.roles.reviewer }
+        : undefined;
     const next = validateState({
       ...state,
       integrity: undefined,
@@ -787,26 +1127,206 @@ export function handoffReviewer({
       remainingReviewTurns,
       lastHandoff,
       immutableArtifacts,
+      ...(acceptance ? { acceptance } : {}),
+      ...(state.supplements
+        ? {
+            supplements: state.supplements.map((supplement) =>
+              supplement.status === 'frozen' ? { ...supplement, status: 'consumed' } : supplement
+            ),
+          }
+        : {}),
       updatedAt: at,
     });
-    appendEvent(paths, next, 'reviewer-handoff', at, { handoff: lastHandoff });
+    appendEvent(paths, next, 'reviewer-handoff', at, {
+      handoff: lastHandoff,
+      ...(acceptance ? { acceptance } : {}),
+    });
     return atomicStateWrite(paths, next);
   });
 }
 
-export function continueProtocol({ cwd = process.cwd(), dir, additionalTurns, approvedBy, focus }) {
-  if (!Number.isInteger(additionalTurns) || additionalTurns < 1) {
-    fail('additional-turns', String(additionalTurns), { exitCode: 2 });
+function assertGoodEnoughEvidence(state, events) {
+  if (state.lifecycle !== 'intervention-required') {
+    fail('good-enough-state', state.lifecycle);
   }
-  if (!String(approvedBy || '').trim()) {
-    fail('approved-by', 'non-blank identity required', { exitCode: 2 });
+  const ownerEvent = events.at(-1);
+  let reviewerEvent = null;
+  for (let index = events.length - 2; index >= 0; index -= 1) {
+    if (events[index]?.type === 'reviewer-handoff') {
+      reviewerEvent = events[index];
+      break;
+    }
   }
-  const root = repositoryRoot(cwd);
+  const ownerHandoff = ownerEvent?.handoff;
+  const reviewerHandoff = reviewerEvent?.handoff;
+  if (
+    ownerEvent?.type !== 'owner-handoff' ||
+    ownerEvent.lifecycle !== 'intervention-required' ||
+    ownerHandoff?.from !== 'owner' ||
+    !ownerHandoff.artifacts?.response ||
+    !ownerHandoff.artifacts?.answeredReview ||
+    reviewerEvent?.type !== 'reviewer-handoff' ||
+    reviewerHandoff?.decision !== 'changes-requested' ||
+    !reviewerHandoff.artifacts?.review ||
+    ownerHandoff.artifacts.answeredReview.path !== reviewerHandoff.artifacts.review.path ||
+    ownerHandoff.artifacts.answeredReview.sha256 !== reviewerHandoff.artifacts.review.sha256 ||
+    state.reviewTurnsUsed !== state.maxReviewTurns ||
+    state.remainingReviewTurns !== 0
+  ) {
+    fail('good-enough-evidence', 'author-completed two-sided evidence pair required');
+  }
+}
+
+function acceptedGoodEnoughState(state, acceptance) {
+  return validateState({
+    ...state,
+    integrity: undefined,
+    nextAction: undefined,
+    revision: state.revision + 1,
+    lifecycle: 'accepted',
+    acceptance,
+    updatedAt: acceptance.at,
+  });
+}
+
+export function prepareGoodEnoughSnapshot({
+  cwd = process.cwd(),
+  dir,
+  humanLogin,
+  repository = REAL_REPOSITORY_BOUNDARY,
+} = {}) {
+  const approvedBy = String(humanLogin || '').trim();
+  if (!approvedBy) fail('github-login', 'non-blank authenticated login required', { exitCode: 2 });
+  const root = repositoryRoot(cwd, repository);
   const paths = protocolPaths(root, dir);
-  return withMutex(paths, String(approvedBy).trim(), 'continue', () => {
-    const state = assertIntegrity({ cwd: root, dir: paths.relative });
+  const state = assertIntegrity({ cwd: root, dir: paths.relative, repository });
+  const events = readEventRecords(paths);
+  assertGoodEnoughEvidence(state, events);
+  const acceptance = {
+    basis: 'human-good-enough',
+    at: new Date().toISOString(),
+    approvedBy,
+  };
+  const accepted = acceptedGoodEnoughState(state, acceptance);
+  const terminal = { ...eventFor(accepted, 'human-good-enough', acceptance.at), acceptance };
+  return deepFreeze({
+    root,
+    state: accepted,
+    events: [...events, terminal],
+    expectedRevision: state.revision,
+    acceptance,
+  });
+}
+
+export function acceptGoodEnough({
+  cwd = process.cwd(),
+  dir,
+  humanLogin,
+  expectedRevision,
+  acceptedAt,
+  repository = REAL_REPOSITORY_BOUNDARY,
+}) {
+  const approvedBy = String(humanLogin || '').trim();
+  if (!approvedBy) fail('github-login', 'non-blank authenticated login required', { exitCode: 2 });
+  if (!Number.isInteger(expectedRevision) || expectedRevision < 1) {
+    fail('revision', String(expectedRevision), { exitCode: 2 });
+  }
+  const root = repositoryRoot(cwd, repository);
+  const paths = protocolPaths(root, dir);
+  return withMutex(paths, approvedBy, 'human-good-enough', () => {
+    const state = assertIntegrity({ cwd: root, dir: paths.relative, repository });
+    if (state.revision !== expectedRevision) {
+      fail('revision', `${expectedRevision}; current ${state.revision}`);
+    }
+    const events = readEventRecords(paths);
+    assertGoodEnoughEvidence(state, events);
+    const at = acceptedAt ?? new Date().toISOString();
+    if (Number.isNaN(Date.parse(at))) fail('acceptance-time', String(at));
+    const acceptance = { basis: 'human-good-enough', at, approvedBy };
+    const next = acceptedGoodEnoughState(state, acceptance);
+    appendEvent(paths, next, 'human-good-enough', at, { acceptance });
+    return atomicStateWrite(paths, next);
+  });
+}
+
+export function setMaxReviewTurns({
+  cwd = process.cwd(),
+  dir,
+  requestedMax,
+  humanLogin,
+  repository = REAL_REPOSITORY_BOUNDARY,
+}) {
+  const approvedBy = String(humanLogin || '').trim();
+  if (!approvedBy) fail('github-login', 'non-blank authenticated login required', { exitCode: 2 });
+  if (!Number.isInteger(requestedMax) || requestedMax < 0) {
+    fail('max-turns', String(requestedMax), { exitCode: 2 });
+  }
+  const root = repositoryRoot(cwd, repository);
+  const paths = protocolPaths(root, dir);
+  return withMutex(paths, approvedBy, 'set-max-turns', () => {
+    const state = assertIntegrity({ cwd: root, dir: paths.relative, repository });
+    if (state.lifecycle !== 'active') fail('set-max-turns-state', state.lifecycle);
+    let adjustment;
+    try {
+      adjustment = {
+        ...planAbsoluteBudget(state, requestedMax, state.currentRole),
+        approvedBy,
+      };
+    } catch (error) {
+      if (error instanceof RangeError) fail('max-turns', error.message, { exitCode: 2 });
+      throw error;
+    }
+    if (adjustment.effectiveMax === state.maxReviewTurns) {
+      return readProtocol({ cwd: root, dir: paths.relative, repository });
+    }
+    const at = new Date().toISOString();
+    const next = validateState({
+      ...state,
+      integrity: undefined,
+      nextAction: undefined,
+      revision: state.revision + 1,
+      maxReviewTurns: adjustment.effectiveMax,
+      remainingReviewTurns: adjustment.remainingReviewTurns,
+      updatedAt: at,
+    });
+    appendEvent(paths, next, 'budget-adjustment', at, { adjustment });
+    return atomicStateWrite(paths, next);
+  });
+}
+
+export function continueProtocol({
+  cwd = process.cwd(),
+  dir,
+  maxReviewTurns,
+  additionalTurns,
+  humanLogin,
+  focus,
+  repository = REAL_REPOSITORY_BOUNDARY,
+}) {
+  const approvedBy = String(humanLogin || '').trim();
+  if (!approvedBy) {
+    fail('github-login', 'non-blank authenticated login required', { exitCode: 2 });
+  }
+  const root = repositoryRoot(cwd, repository);
+  const paths = protocolPaths(root, dir);
+  return withMutex(paths, approvedBy, 'continue', () => {
+    const state = assertIntegrity({ cwd: root, dir: paths.relative, repository });
     if (state.lifecycle !== 'intervention-required') {
       fail('continue-state', state.lifecycle);
+    }
+    const resumeRole =
+      state.lastHandoff?.from === 'reviewer'
+        ? 'owner'
+        : state.lastHandoff?.from === 'owner'
+          ? 'reviewer'
+          : null;
+    if (!resumeRole) fail('continue-role', 'last handoff must be owner or reviewer');
+    let budget;
+    try {
+      budget = planContinuationBudget(state, { resumeRole, maxReviewTurns, additionalTurns });
+    } catch (error) {
+      if (error instanceof RangeError) fail('continue-budget', error.message, { exitCode: 2 });
+      throw error;
     }
     let focusArtifact = null;
     if (focus) {
@@ -818,22 +1338,32 @@ export function continueProtocol({ cwd = process.cwd(), dir, additionalTurns, ap
     const at = new Date().toISOString();
     const continuation = {
       at,
-      additionalTurns,
-      approvedBy: String(approvedBy).trim(),
+      approvedBy,
+      resumeRole,
+      priorMax: budget.priorMax,
+      requestedMax: budget.requestedMax,
+      effectiveMax: budget.effectiveMax,
+      ...(additionalTurns === undefined ? {} : { additionalTurns }),
       ...(focusArtifact ? { focus: focusArtifact } : {}),
     };
-    const maxReviewTurns = state.maxReviewTurns + additionalTurns;
     const next = validateState({
       ...state,
       integrity: undefined,
       revision: state.revision + 1,
       lifecycle: 'active',
-      currentRole: 'owner',
+      currentRole: resumeRole,
       turnState: 'available',
       claim: null,
-      maxReviewTurns,
-      remainingReviewTurns: maxReviewTurns - state.reviewTurnsUsed,
+      maxReviewTurns: budget.effectiveMax,
+      remainingReviewTurns: budget.remainingReviewTurns,
       continuation,
+      ...(state.supplements
+        ? {
+            supplements: state.supplements.map((supplement) =>
+              supplement.status === 'pending' ? { ...supplement, status: 'frozen' } : supplement
+            ),
+          }
+        : {}),
       immutableArtifacts: {
         ...(state.immutableArtifacts ?? {}),
         ...(focusArtifact ? { [focusArtifact.path]: focusArtifact } : {}),
@@ -851,6 +1381,7 @@ export async function waitForTurn({
   actor,
   timeoutSeconds = 55,
   pollMilliseconds = 250,
+  repository = REAL_REPOSITORY_BOUNDARY,
 }) {
   if (!Number.isFinite(timeoutSeconds) || timeoutSeconds < 0 || timeoutSeconds > 60) {
     fail('timeout', String(timeoutSeconds), { exitCode: 2 });
@@ -858,7 +1389,7 @@ export async function waitForTurn({
   if (!Number.isFinite(pollMilliseconds) || pollMilliseconds <= 0) {
     fail('poll-interval', String(pollMilliseconds), { exitCode: 2 });
   }
-  const first = statusProtocol({ cwd, dir });
+  const first = statusProtocol({ cwd, dir, repository });
   const role = Object.entries(first.roles).find(([, identity]) => identity === actor)?.[0];
   if (!role) fail('unknown-actor', String(actor), { exitCode: 2 });
   const deadline = Date.now() + timeoutSeconds * 1000;
@@ -873,6 +1404,6 @@ export async function waitForTurn({
     await new Promise((resolve) =>
       setTimeout(resolve, Math.min(pollMilliseconds, Math.max(1, deadline - Date.now())))
     );
-    state = statusProtocol({ cwd, dir });
+    state = statusProtocol({ cwd, dir, repository });
   }
 }

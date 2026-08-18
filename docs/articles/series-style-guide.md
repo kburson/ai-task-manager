@@ -60,6 +60,24 @@ Avoid:
 - startup pitch phrasing,
 - overexplaining AITM internals before the reader understands the problem.
 
+## Sentence-Level Voice Rules
+
+Distilled from a line-by-line editorial pass on article 01. These are mechanical, checkable rules — apply them to every article, not just the ones that get a live read-through.
+
+- **Don't front-load the current buzzword.** Open with a term the broadest reader already recognizes ("AI-assisted development"), not this month's trade-press label ("agent orchestration"). Buzzwords date an article and narrow the audience who'll nod along with the opening line.
+- **State magnitudes precisely, and say what they count.** A raw number ("2,200+ inspections") is ambiguous between "rules the tool ships with" and "times a developer ran it." Name the unit.
+- **Narrate technical evolution in the order things actually happened, causally.** Model before product before corporate context — e.g., introduce Codex before Microsoft/GitHub, not the acquisition before the model it enabled. This isn't about correcting a misconception; it's just the clean order to tell it in.
+- **Cut detail immaterial to the thesis, even if factually true.** Deal-closing dates, pricing tiers — if a fact doesn't serve the argument, it's drag. When you cut a fact, cut its now-orphaned citation too.
+- **Attribute cost precisely.** "Paid" and "free" apply to specific halves of a product (client vs. backend service, extension vs. API). Don't let the sentence imply the wrong half is the one being charged for.
+- **Retitle a heading the moment its section's content changes.** A heading is a promise about what follows; a restructured section with a stale heading reads as sloppy even when the prose is good.
+- **Never write a sentence that's really a reply to the editor.** No "is a fair description of," no meta-commentary on the text itself. Every sentence is reader-facing prose, not a note back to whoever gave feedback.
+- **Mark capability evolution explicitly.** If a tool's later capability (autonomous agent) gets described in the same breath as its original capability (inline completion), say so — "X eventually evolved, moving toward Y" — so the reader doesn't read Y as day-one.
+- **Keep the narrator warm, never corrective.** Don't let a sentence carry an implicit "well, actually" tone toward the reader, even as a trailing clause. If a line reads like it's scolding someone for getting a timeline wrong, cut it.
+- **Every section earns its place with a "why this matters," not just a "what happened."** A run of dates and version numbers with no connective tissue back to the thesis reads as a changelog dump — cut it or fold it into a sentence that does have a why.
+- **Match citation depth to what the primary audience can follow.** A niche competitive-landscape detail (a rival's product timeline three products removed from the thesis) reads as noise to a PM/TPO reader, even if it's accurate.
+- **Say the object of a claim, not just the claim.** "No longer the bottleneck" needs "of what" — name the thing it's a bottleneck _in_ (e.g., "getting an idea from concept to customer"). Avoid double-negative-shaped phrasing ("stopping being") even when grammatically legal — it reads wrong.
+- **Prefer warm, direct address over formal series-mechanics language.** "Here's where the rest of the series picks up," not "The series proper picks up from here." Talk to the reader, don't narrate the publishing structure at them.
+
 ## Provocation Rules
 
 A good provocation should be sharp but defensible.

@@ -410,7 +410,10 @@ test('epic child enumeration exhausts every GraphQL page and refuses cursor ambi
   const nodes = await fetchAllSubIssueNodes({
     parentEpicNumber: 1209,
     repo: 'o/r',
-    gqlFn: async (_query, variables) => {
+    gqlFn: async (query, variables) => {
+      if (variables.after == null && query.includes('stateReason')) {
+        assert.match(query, /\btitle\b/);
+      }
       afters.push(variables.after);
       return {
         repository: {

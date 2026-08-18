@@ -18,15 +18,30 @@ The series treats established SDLC and agile practices as more important, not le
 
 ## Draft Sequence
 
-0. [The Rise Of Technical Product Operations](00-technical-product-operations.md)
-1. [The Vibe Coding Hangover](01-vibe-coding-hangover.md)
-2. [Spec-Driven Development Is Necessary But Not Sufficient](02-spec-driven-is-not-enough.md)
-3. [The Rise Of The Technical Product Owner](03-technical-product-owner.md)
-4. [The Backlog Becomes The Control Plane](04-backlog-as-control-plane.md)
-5. [The Just-In-Time Planner](05-just-in-time-planner.md)
-6. [Context Durability Is A Feature](06-context-durability.md)
-7. [Evidence Beats Trust](07-evidence-beats-trust.md)
-8. [The Adapter Future](08-adapter-future.md)
+Each title below is "riff title" — _working title_ (see
+[Big Bang title style guide](big-bang-title-style-guide.md) for the naming
+convention behind the riff titles; the linked article's H1/caption pair is
+the source of truth if this list ever drifts out of sync).
+
+1. [The Refactoring Bloat Precursor](01-the-refactoring-bloat-precursor.md) — _Before Agents Lived In The Clouds: A Brief History Of AI-Assisted Coding_
+2. [The Backlog Governance Postulate](02-the-backlog-governance-postulate.md) — _The Rise Of Technical Product Operations_
+3. [The Vibe Coding Deficiency](03-the-vibe-coding-deficiency.md) — _The Vibe Coding Hangover_
+4. [The Spec-Driven Insufficiency](04-the-spec-driven-insufficiency.md) — _Spec-Driven Development Is Necessary But Not Sufficient_
+5. [The Product Owner Escalation](05-the-product-owner-escalation.md) — _The Rise Of The Technical Product Owner_
+6. [The Backlog Control-Plane Conjecture](06-the-backlog-control-plane-conjecture.md) — _The Backlog Becomes The Control Plane_
+7. [The Just-In-Time Planning Paradox](07-the-just-in-time-planning-paradox.md) — _The Just-In-Time Planner_
+8. [The Context Durability Corollary](08-the-context-durability-corollary.md) — _Context Durability Is A Feature_
+9. [The Evidence-Over-Trust Theorem](09-the-evidence-over-trust-theorem.md) — _Evidence Beats Trust_
+10. [The Adapter Convergence](10-the-adapter-convergence.md) — _The Adapter Future_
+11. [The Agentic Concurrency Deficiency](11-the-agentic-concurrency-deficiency.md) — _Agentic Concurrency Isn't Free_
+12. [The XP Survival Anomaly](12-the-xp-survival-anomaly.md) — _XP's Practices Survived. Their Reasons Did Not._
+13. [The Diff Displacement](13-the-diff-displacement.md) — _The Diff Isn't Where Your Judgment Lives Anymore_ (working title)
+14. [The Second Reviewer Corollary](14-the-second-reviewer-corollary.md) — _It's All About Perspective_ (working title)
+15. The Cross-Model Mutex Reverberation — _Two PhDs and a Mutex_ (working title) — cross-model co-review token economics and evidence; **deferred**, see [narrative arc](xp-agentic-delivery-narrative-arc.md)
+
+## Header Images
+
+Article header banners in [assets/article-headers](assets/article-headers/) were generated with Google Gemini, from the briefs in [assets/image-prompts](assets/image-prompts/). Confirmed via the C2PA content-credentials metadata embedded in the PNGs ("Created by Google Generative AI", SynthID watermark) — no prompt/tool record was kept in the repo at generation time.
 
 ## Research Base
 

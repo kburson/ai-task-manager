@@ -1,9 +1,11 @@
-# Spec-Driven Development Is Necessary <br/>But Not Sufficient
+# The Spec-Driven Insufficiency
+
+**Spec-Driven Development Is Necessary But Not Sufficient**
 
 <!-- markdownlint-disable MD034 -->
 
-![Spec-Driven Development Is Necessary But Not Sufficient](assets/article-headers/article-02-header.png)
-_Part 3 of a series of articles on succeeding with Agentic AI Delivery_
+![Spec-Driven Development Is Necessary But Not Sufficient](assets/article-headers/article-04-header.png)
+_Part 4 of a series of articles on succeeding with Agentic Agile Delivery_
 
 Spec-driven development is a major step forward. But once the spec exists, I still have to manage execution.
 
@@ -63,11 +65,11 @@ If your team has adopted spec-driven tooling, I would treat that as step one, no
 
 ## Series Link
 
-This article explains why specs need an execution layer underneath them, the layer I had to build for myself. The next article, [The Rise Of The Technical Product Owner](03-technical-product-owner.md), defines the human role that operates that layer.
+This article explains why specs need an execution layer underneath them, the layer I had to build for myself. The next article, [The Rise Of The Technical Product Owner](05-the-product-owner-escalation.md), defines the human role that operates that layer.
 
 ## The AITM Pattern: Spec To Story To Evidence
 
-I introduced AITM — `@kburson/ai-task-manager` — in the [opening article](00-technical-product-operations.md#aitm-and-the-backlog-manager-pattern): the skill I built after hitting the exact wall described above one too many times. This is the piece of AITM that answers the spec-to-story gap directly.
+I introduced AITM — `@kburson/ai-task-manager` — in the [opening article](02-the-backlog-governance-postulate.md#aitm-and-the-backlog-manager-pattern): the skill I built after hitting the exact wall described above one too many times. This is the piece of AITM that answers the spec-to-story gap directly.
 
 AITM treats the backlog as the execution layer beneath the spec. The spec becomes epics, sub-issues, standalone stories, dependencies, sequence waves, estimates, and acceptance criteria. Each item then moves through a state machine — Backlog, Assigned, Refine, Plan, Develop, Test, Review, Done — and every state carries an entry gate, a state action, and an exit gate.
 
@@ -77,17 +79,22 @@ This is also where the Technical Product Owner role becomes technical, in my exp
 
 ## Series Roadmap
 
-| Status      | #      | Article                                                                                        | Role In Series                                |
-| ----------- | ------ | ---------------------------------------------------------------------------------------------- | --------------------------------------------- |
-|             | 00     | [The Rise Of Technical Product Operations](00-technical-product-operations.md)                 | Industry thesis: Technical Product Operations |
-|             | 01     | [The Vibe Coding Hangover](01-vibe-coding-hangover.md)                                         | Failure mode: vibe slop and review debt       |
-| **Current** | **02** | **[Spec-Driven Development Is Necessary But Not Sufficient](02-spec-driven-is-not-enough.md)** | Why specs need execution governance           |
-|             | 03     | [The Rise Of The Technical Product Owner](03-technical-product-owner.md)                       | Human operator: TPO/TPM as delivery architect |
-|             | 04     | [The Backlog Becomes The Control Plane](04-backlog-as-control-plane.md)                        | Backlog as executable control surface         |
-|             | 05     | [The Just-In-Time Planner](05-just-in-time-planner.md)                                         | Progressive decomposition and deep dives      |
-|             | 06     | [Context Durability Is A Feature](06-context-durability.md)                                    | JIT loading and post-compaction recovery      |
-|             | 07     | [Evidence Beats Trust](07-evidence-beats-trust.md)                                             | Evidence gates and auditability               |
-|             | 08     | [The Adapter Future](08-adapter-future.md)                                                     | Backlog and agent platform adapters           |
+| Status      | #      | Article                                                                                                            | Role In Series                                       |
+| ----------- | ------ | ------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------- |
+|             | 01     | [The Refactoring Bloat Precursor](01-the-refactoring-bloat-precursor.md)                                           | Prequel: history of AI-assisted coding before agents |
+|             | 02     | [The Rise Of Technical Product Operations](02-the-backlog-governance-postulate.md)                                 | Industry thesis: Technical Product Operations        |
+|             | 03     | [The Vibe Coding Hangover](03-the-vibe-coding-deficiency.md)                                                       | Failure mode: vibe slop and review debt              |
+| **Current** | **04** | **[Spec-Driven Development Is Necessary But Not Sufficient](04-the-spec-driven-insufficiency.md)**                 | Why specs need execution governance                  |
+|             | 05     | [The Rise Of The Technical Product Owner](05-the-product-owner-escalation.md)                                      | Human operator: TPO/TPM as delivery architect        |
+|             | 06     | [The Backlog Becomes The Control Plane](06-the-backlog-control-plane-conjecture.md)                                | Backlog as executable control surface                |
+|             | 07     | [The Just-In-Time Planner](07-the-just-in-time-planning-paradox.md)                                                | Progressive decomposition and deep dives             |
+|             | 08     | [Context Durability Is A Feature](08-the-context-durability-corollary.md)                                          | JIT loading and post-compaction recovery             |
+|             | 09     | [Evidence Beats Trust](09-the-evidence-over-trust-theorem.md)                                                      | Evidence gates and auditability                      |
+|             | 10     | [The Adapter Future](10-the-adapter-convergence.md)                                                                | Backlog and agent platform adapters                  |
+|             | 11     | [Agentic Concurrency Isn't Free — And "50 Parallel Agents" Is Hyperbole](11-the-agentic-concurrency-deficiency.md) | Concurrency ceiling and coordination cost            |
+|             | 12     | [XP's Practices Survived. Their Reasons Did Not.](12-the-xp-survival-anomaly.md)                                   | XP practices under agentic delivery                  |
+|             | 13     | [The Diff Isn't Where Your Judgment Lives Anymore](13-the-diff-displacement.md)                                    | Spec review displaces code review                    |
+|             | 14     | [It's All About Perspective](14-the-second-reviewer-corollary.md)                                                  | Cross-model review for a genuine second opinion      |
 
 ## LinkedIn Article Shape
 
@@ -116,6 +123,5 @@ Close:
 - Kiro Docs. "Feature Specs." https://kiro.dev/docs/specs/feature-specs/
 - GitHub Blog. "Assigning and completing issues with coding agent in GitHub Copilot." https://github.blog/ai-and-ml/github-copilot/assigning-and-completing-issues-with-coding-agent-in-github-copilot/
 - GitHub Docs. "Using Copilot cloud agent on GitHub." https://docs.github.com/en/copilot/how-tos/use-copilot-agents/cloud-agent/use-cloud-agent-on-github
-- Sayagh, Mohammed. "What Makes a GitHub Issue Ready for Copilot?" https://arxiv.org/abs/2512.21426
 - Atlassian. "What is backlog refinement?" https://www.atlassian.com/agile/scrum/backlog-refinement
 - Project Management Institute. "Applying work breakdown structure to the project lifecycle." https://www.pmi.org/learning/library/applying-work-breakdown-structure-project-lifecycle-6979

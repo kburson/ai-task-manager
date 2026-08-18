@@ -15,15 +15,23 @@ const parallelRecords = [
   { file: 'c.test.mjs', label: 'c.test.mjs', wallMs: 1000, inProcMs: 900, status: 0 },
 ];
 
-test('schema 2 separates actual runner/pool/serial elapsed from duration sums', () => {
+test('schema 4 separates every bounded phase elapsed from duration sums', () => {
   const artifact = serializeArtifact(parallelRecords, {
     lane: 'unit',
     runnerElapsedMs: 1250,
-    poolElapsedMs: 1000,
-    serialElapsedMs: 250,
+    poolElapsedMs: 800,
+    subprocessPoolElapsedMs: 300,
+    slowPoolElapsedMs: 100,
+    serialElapsedMs: 150,
   });
-  assert.equal(artifact.schema, 2);
-  assert.deepEqual(artifact.elapsed, { runnerMs: 1250, poolMs: 1000, serialMs: 250 });
+  assert.equal(artifact.schema, 4);
+  assert.deepEqual(artifact.elapsed, {
+    runnerMs: 1250,
+    poolMs: 800,
+    subprocessPoolMs: 300,
+    slowPoolMs: 100,
+    serialMs: 150,
+  });
   assert.equal(artifact.sums.fileWallMs, 3000);
   assert.equal(artifact.sums.inProcessMs, 2700);
   assert.equal(artifact.sums.estimatedSpawnIoMs, 300);
@@ -36,13 +44,17 @@ test('schema 2 separates actual runner/pool/serial elapsed from duration sums', 
 test('timing report labels actual elapsed, summed wall, in-process, and spawn IO', () => {
   const report = buildTimingReport(parallelRecords, {
     runnerElapsedMs: 1250,
-    poolElapsedMs: 1000,
-    serialElapsedMs: 250,
+    poolElapsedMs: 800,
+    subprocessPoolElapsedMs: 300,
+    slowPoolElapsedMs: 100,
+    serialElapsedMs: 150,
   });
   const text = formatTimingReport(report);
   assert.match(text, /actual elapsed=1\.3s/);
-  assert.match(text, /pool=1\.0s/);
-  assert.match(text, /serial=250ms/);
+  assert.match(text, /pool=800ms/);
+  assert.match(text, /subprocess=300ms/);
+  assert.match(text, /slow=100ms/);
+  assert.match(text, /serial=150ms/);
   assert.match(text, /summed file wall=3\.0s/);
   assert.match(text, /summed in-process=2\.7s/);
   assert.match(text, /estimated spawn\/IO=300ms/);

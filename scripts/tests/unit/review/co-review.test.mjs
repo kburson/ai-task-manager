@@ -12,26 +12,35 @@ import {
 import path from 'node:path';
 import test from 'node:test';
 
-import '../../fixtures/co-review-e2e-cases.mjs';
+import '../../fixtures/co-review-budget-cases.mjs';
+import '../../fixtures/co-review-finalization-cases.mjs';
 import '../../fixtures/co-review-handoff-cases.mjs';
+import '../../fixtures/co-review-supplement-cases.mjs';
+import { COMMANDS, renderHelp } from '../../../review/lib/help.mjs';
 import {
   cleanupTemporaryRoots,
   commitArtifact,
   initializedProtocol,
-  protocol,
+  memoryProtocol,
+  memoryRepositoryFixture,
+  processCallCounts,
   readEvents,
-  repositoryFixture,
-  runCli,
+  runCliDirect,
   snapshotProtocol,
   temporaryRoot,
 } from '../../fixtures/co-review-fixture.mjs';
 
 test.afterEach(cleanupTemporaryRoots);
 
-test('top-level help is recovery-grade and safe before initialization', () => {
+async function memoryApiFixture() {
+  const fixture = memoryRepositoryFixture();
+  return { ...fixture, api: await memoryProtocol(fixture.repository) };
+}
+
+test('top-level help is recovery-grade and safe before initialization', async () => {
   const emptyRoot = temporaryRoot();
   for (const args of [['help'], ['--help']]) {
-    const result = runCli(args, { cwd: emptyRoot });
+    const result = await runCliDirect(args, { cwd: emptyRoot });
     assert.equal(result.status, 0, result.stderr);
     for (const heading of [
       'WHAT',
@@ -60,11 +69,103 @@ test('top-level help is recovery-grade and safe before initialization', () => {
   }
 });
 
-test('every command has standalone recovery help in both forms', () => {
+test('structured help records are the lifecycle-ordered rendering authority', () => {
+  const commandNames = [
+    'init',
+    'status',
+    'claim',
+    'wait',
+    'handoff',
+    'set-max-turns',
+    'supplement',
+    'continue',
+    'finalize',
+  ];
+  assert.deepEqual(Object.keys(COMMANDS), commandNames);
+  const top = renderHelp();
+  let priorOffset = -1;
+  for (const [name, entry] of Object.entries(COMMANDS)) {
+    assert.ok(entry.lifecycleStates.length > 0, name);
+    assert.ok(entry.mutationBoundary.length > 0, name);
+    const page = renderHelp(name);
+    assert.match(
+      page,
+      new RegExp(entry.lifecycleStates.join(', ').replaceAll(/[.*+?^${}()|[\]\\]/g, '\\$&'))
+    );
+    assert.match(
+      page,
+      new RegExp(entry.mutationBoundary.replaceAll(/[.*+?^${}()|[\]\\]/g, '\\$&'))
+    );
+    const summary = [
+      `  ${name}`,
+      `    Authorized caller: ${entry.caller}`,
+      `    Lifecycle states: ${entry.lifecycleStates.join(', ')}`,
+      `    Mutation boundary: ${entry.mutationBoundary}`,
+      `    Usage: ${entry.usage}`,
+    ].join('\n');
+    assert.match(top, new RegExp(summary.replaceAll(/[.*+?^${}()|[\]\\]/g, '\\$&')));
+    const offset = top.indexOf(`  ${name}`);
+    assert.ok(offset > priorOffset, `${name}: lifecycle order`);
+    priorOffset = offset;
+  }
+});
+
+test('handoff and budget help preserve the mandatory closing owner turn', () => {
+  assert.deepEqual(COMMANDS['set-max-turns'].lifecycleStates, ['active']);
+  for (const page of [renderHelp(), renderHelp('handoff')]) {
+    assert.match(page, /final changes-requested.*active closing owner/is);
+    assert.match(page, /closing owner handoff.*intervention-required/is);
+  }
+  assert.doesNotMatch(renderHelp('set-max-turns'), /active or intervention-required/i);
+  assert.match(COMMANDS['set-max-turns'].effects.join(' '), /subsequent owner handoff/i);
+  assert.match(COMMANDS['set-max-turns'].transition, /lifecycle.*role.*claim.*unchanged/i);
+  assert.doesNotMatch(renderHelp('set-max-turns'), /records.*reason/i);
+});
+
+test('continuation help derives the resumed role and its minimum authorized budget', () => {
+  const continuation = COMMANDS.continue;
+  assert.match(continuation.arguments.join(' '), /bare continuation.*minimum.*resumed role/i);
+  assert.match(continuation.effects.join(' '), /last handoff.*owner.*reviewer/i);
+  assert.match(continuation.effects.join(' '), /last handoff.*reviewer.*owner/i);
+  assert.match(continuation.transition, /closing owner.*active reviewer/i);
+  assert.match(continuation.transition, /exhausted reviewer.*active owner/i);
+
+  const top = renderHelp();
+  assert.doesNotMatch(top, /summary required on final requested-changes turn/i);
+  assert.doesNotMatch(top, /reviewer supplies --summary and both agents stop/i);
+  assert.doesNotMatch(top, /exhausted budget without summary/i);
+  assert.match(top, /summary optional only on a final changes-requested review/i);
+
+  const handoff = renderHelp('handoff');
+  assert.doesNotMatch(handoff, /required interception summary/i);
+  assert.doesNotMatch(handoff, /exhausted budget, stop and escalate/i);
+  assert.match(handoff, /summary.*optional.*final changes-requested review/i);
+  assert.match(handoff, /exhausted budget.*displayed next action.*closing owner/i);
+});
+
+test('top-level help covers the settled lifecycle, recovery, and governance surface', () => {
+  const page = renderHelp();
+  for (const fragment of [
+    '--archive-dir',
+    'set-max-turns',
+    'supplement',
+    '[supplement:S-001]',
+    '--good-enough',
+    'acceptance durable; archive publication pending',
+    'gh auth login',
+    'exact bytes',
+    'host repository governance',
+    'Response, review, supplement, and archive inputs are Markdown expected to satisfy host repository governance',
+  ]) {
+    assert.match(page, new RegExp(fragment.replaceAll(/[.*+?^${}()|[\]\\]/g, '\\$&')));
+  }
+});
+
+test('every command has standalone recovery help in both forms', async () => {
   const emptyRoot = temporaryRoot();
-  for (const command of ['init', 'status', 'claim', 'wait', 'handoff', 'continue']) {
-    const canonical = runCli(['help', command], { cwd: emptyRoot });
-    const flag = runCli([command, '--help'], { cwd: emptyRoot });
+  for (const command of Object.keys(COMMANDS)) {
+    const canonical = await runCliDirect(['help', command], { cwd: emptyRoot });
+    const flag = await runCliDirect([command, '--help'], { cwd: emptyRoot });
     assert.equal(canonical.status, 0, canonical.stderr);
     assert.equal(flag.stdout, canonical.stdout);
     for (const field of [
@@ -79,6 +180,8 @@ test('every command has standalone recovery help in both forms', () => {
       'Exit codes',
       'State transition',
       'Idempotency',
+      'Lifecycle states',
+      'Mutation boundary',
       'Examples',
       'Failure recovery',
       'Next commands',
@@ -104,8 +207,8 @@ test('co-review is a routed agent-callable standalone command', async () => {
 });
 
 test('fresh init records owner round one and the configured budget', async () => {
-  const { initializeProtocol, STATE_SCHEMA } = await protocol();
-  const { root, artifact } = repositoryFixture();
+  const { api, root, artifact } = await memoryApiFixture();
+  const { initializeProtocol, STATE_SCHEMA } = api;
   const state = initializeProtocol({
     cwd: root,
     dir: '.tmp/review',
@@ -144,8 +247,8 @@ test('fresh init records owner round one and the configured budget', async () =>
 });
 
 test('imported review consumes reviewer turn one and starts owner round two', async () => {
-  const { initializeProtocol } = await protocol();
-  const { root, artifact, initialCommit } = repositoryFixture();
+  const { api, root, artifact, initialCommit } = await memoryApiFixture();
+  const { initializeProtocol } = api;
   mkdirSync(path.join(root, '.tmp/imported'), { recursive: true });
   writeFileSync(
     path.join(root, '.tmp/imported/r1-review.md'),
@@ -175,8 +278,8 @@ test('imported review consumes reviewer turn one and starts owner round two', as
 });
 
 test('imported review refuses a budget already exhausted by imported turn one', async () => {
-  const { initializeProtocol } = await protocol();
-  const { root, artifact, initialCommit } = repositoryFixture();
+  const { api, root, artifact, initialCommit } = await memoryApiFixture();
+  const { initializeProtocol } = api;
   mkdirSync(path.join(root, '.tmp/imported'), { recursive: true });
   writeFileSync(path.join(root, '.tmp/imported/r1-review.md'), '# Review\n');
   assert.throws(
@@ -197,8 +300,8 @@ test('imported review refuses a budget already exhausted by imported turn one', 
 });
 
 test('exact init retry is idempotent and changed configuration refuses', async () => {
-  const { initializeProtocol } = await protocol();
-  const { root, artifact } = repositoryFixture();
+  const { api, root, artifact } = await memoryApiFixture();
+  const { initializeProtocol } = api;
   const options = {
     cwd: root,
     dir: '.tmp/review',
@@ -223,7 +326,6 @@ test('exact init retry is idempotent and changed configuration refuses', async (
 });
 
 test('init fails closed on invalid roles, budget, import pair, or runtime path', async () => {
-  const { initializeProtocol } = await protocol();
   for (const mutate of [
     (options) => ({ ...options, reviewer: options.owner }),
     (options) => ({ ...options, owner: ` ${options.reviewer} ` }),
@@ -232,7 +334,8 @@ test('init fails closed on invalid roles, budget, import pair, or runtime path',
     (options) => ({ ...options, dir: 'review-state' }),
     (options) => ({ ...options, dir: '../outside' }),
   ]) {
-    const { root, artifact } = repositoryFixture();
+    const { api, root, artifact } = await memoryApiFixture();
+    const { initializeProtocol } = api;
     const options = mutate({
       cwd: root,
       dir: '.tmp/review',
@@ -249,8 +352,8 @@ test('init fails closed on invalid roles, budget, import pair, or runtime path',
 });
 
 test('init refuses artifact/index mismatch and an unreachable import commit', async () => {
-  const { initializeProtocol } = await protocol();
-  const dirty = repositoryFixture();
+  const dirty = await memoryApiFixture();
+  const { initializeProtocol } = dirty.api;
   writeFileSync(path.join(dirty.root, dirty.artifact), '# Artifact\n\nDirty.\n');
   assert.throws(
     () =>
@@ -265,12 +368,12 @@ test('init refuses artifact/index mismatch and an unreachable import commit', as
     /co-review:artifact-drift/
   );
 
-  const imported = repositoryFixture();
+  const imported = await memoryApiFixture();
   mkdirSync(path.join(imported.root, '.tmp/review'), { recursive: true });
   writeFileSync(path.join(imported.root, '.tmp/review/r1.md'), '# Review\n');
   assert.throws(
     () =>
-      initializeProtocol({
+      imported.api.initializeProtocol({
         cwd: imported.root,
         dir: '.tmp/review',
         artifact: imported.artifact,
@@ -286,8 +389,8 @@ test('init refuses artifact/index mismatch and an unreachable import commit', as
 });
 
 test('init refuses a runtime symlink that resolves outside the repository', async () => {
-  const { initializeProtocol } = await protocol();
-  const { root, artifact } = repositoryFixture();
+  const { api, root, artifact } = await memoryApiFixture();
+  const { initializeProtocol } = api;
   const outside = temporaryRoot('aitm-co-review-outside-');
   mkdirSync(path.join(root, '.tmp'), { recursive: true });
   symlinkSync(outside, path.join(root, '.tmp/review'), 'dir');
@@ -307,8 +410,8 @@ test('init refuses a runtime symlink that resolves outside the repository', asyn
 });
 
 test('surviving initialization mutex is reported and never stolen', async () => {
-  const { initializeProtocol } = await protocol();
-  const { root, artifact } = repositoryFixture();
+  const { api, root, artifact } = await memoryApiFixture();
+  const { initializeProtocol } = api;
   const lock = path.join(root, '.tmp/review/.co-review-lock');
   mkdirSync(lock, { recursive: true });
   writeFileSync(
@@ -330,9 +433,9 @@ test('surviving initialization mutex is reported and never stolen', async () => 
   assert.equal(existsSync(lock), true);
 });
 
-test('CLI initializes and reports human and JSON status', () => {
-  const { root, artifact } = repositoryFixture();
-  const initialized = runCli(
+test('CLI initializes and reports human and JSON status', async () => {
+  const { root, artifact } = memoryRepositoryFixture();
+  const initialized = await runCliDirect(
     [
       'init',
       '--dir',
@@ -349,9 +452,11 @@ test('CLI initializes and reports human and JSON status', () => {
     { cwd: root }
   );
   assert.equal(initialized.status, 0, initialized.stderr);
-  assert.equal(JSON.parse(initialized.stdout).reviewTurnsUsed, 0);
+  const initializedState = JSON.parse(initialized.stdout);
+  assert.equal(initializedState.reviewTurnsUsed, 0);
+  assert.match(initializedState.nextAction, /co-review claim.*owner-agent/);
 
-  const human = runCli(['status', '--dir', '.tmp/review'], { cwd: root });
+  const human = await runCliDirect(['status', '--dir', '.tmp/review'], { cwd: root });
   assert.equal(human.status, 0, human.stderr);
   assert.match(human.stdout, /Lifecycle: active/);
   assert.match(human.stdout, /Branch: trunk/);
@@ -359,27 +464,27 @@ test('CLI initializes and reports human and JSON status', () => {
   assert.match(human.stdout, /Last handoff: none/);
   assert.match(human.stdout, /Budget: 0 used \/ 6 max \/ 6 remaining/);
 
-  const json = runCli(['status', '--dir', '.tmp/review', '--json'], { cwd: root });
+  const json = await runCliDirect(['status', '--dir', '.tmp/review', '--json'], { cwd: root });
   assert.equal(json.status, 0, json.stderr);
   assert.equal(JSON.parse(json.stdout).integrity.ok, true);
 });
 
-test('CLI rejects unknown or incomplete init flags before mutation', () => {
+test('CLI rejects unknown or incomplete init flags before mutation', async () => {
   for (const args of [
     ['init', '--dir', '.tmp/review', '--unknown', 'value'],
     ['init', '--dir'],
   ]) {
-    const { root } = repositoryFixture();
-    const result = runCli(args, { cwd: root });
+    const { root } = memoryRepositoryFixture();
+    const result = await runCliDirect(args, { cwd: root });
     assert.equal(result.status, 2, result.stderr);
     assert.match(result.stderr, /co-review:usage/);
     assert.equal(existsSync(path.join(root, '.tmp/review/state.json')), false);
   }
 });
 
-test('CLI rejects unknown handoff flags before protocol discovery', () => {
-  const { root } = repositoryFixture();
-  const result = runCli(
+test('CLI rejects unknown handoff flags before protocol discovery', async () => {
+  const { root } = memoryRepositoryFixture();
+  const result = await runCliDirect(
     ['handoff', '--dir', '.tmp/missing', '--actor', 'owner-agent', '--unknown', 'value'],
     { cwd: root }
   );
@@ -482,36 +587,44 @@ test('bounded wait returns available or timeout without mutation', async () => {
   );
 });
 
-test('CLI routes claim and maps bounded wait timeout to exit code 3', () => {
-  const { root, artifact } = repositoryFixture();
+test('CLI routes claim and maps bounded wait timeout to exit code 3', async () => {
+  const { root, artifact } = memoryRepositoryFixture();
   assert.equal(
-    runCli(
-      [
-        'init',
-        '--dir',
-        '.tmp/review',
-        '--artifact',
-        artifact,
-        '--owner',
-        'owner-agent',
-        '--reviewer',
-        'reviewer-agent',
-        '--max-turns',
-        '6',
-      ],
-      { cwd: root }
+    (
+      await runCliDirect(
+        [
+          'init',
+          '--dir',
+          '.tmp/review',
+          '--artifact',
+          artifact,
+          '--owner',
+          'owner-agent',
+          '--reviewer',
+          'reviewer-agent',
+          '--max-turns',
+          '6',
+        ],
+        { cwd: root }
+      )
     ).status,
     0
   );
-  const waiting = runCli(
+  const waiting = await runCliDirect(
     ['wait', '--dir', '.tmp/review', '--actor', 'reviewer-agent', '--timeout', '0'],
     { cwd: root }
   );
   assert.equal(waiting.status, 3, waiting.stderr);
   assert.match(waiting.stdout, /"status": "timeout"/);
-  const claimed = runCli(['claim', '--dir', '.tmp/review', '--actor', 'owner-agent'], {
+  const claimed = await runCliDirect(['claim', '--dir', '.tmp/review', '--actor', 'owner-agent'], {
     cwd: root,
   });
   assert.equal(claimed.status, 0, claimed.stderr);
-  assert.equal(JSON.parse(claimed.stdout).turnState, 'claimed');
+  const claimedState = JSON.parse(claimed.stdout);
+  assert.equal(claimedState.turnState, 'claimed');
+  assert.match(claimedState.nextAction, /co-review help handoff/);
+});
+
+test('fast co-review corpus does not spawn Git or external Node', () => {
+  assert.deepEqual(processCallCounts(), { git: 0, nodeCli: 0 });
 });

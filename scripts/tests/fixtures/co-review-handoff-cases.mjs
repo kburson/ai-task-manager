@@ -8,9 +8,10 @@ import test from 'node:test';
 import {
   commitArtifact,
   initializedProtocol,
-  repositoryFixture,
+  memoryRepositoryFixture,
   reviewerTurn,
-  runCli,
+  rewriteProtocolState,
+  runCliDirect,
   snapshotProtocol,
 } from './co-review-fixture.mjs';
 
@@ -179,33 +180,36 @@ test('owner handoff refuses a symlinked response artifact', async () => {
   assert.deepEqual(snapshotProtocol(root, options.dir), before);
 });
 
-test('CLI routes the owner handoff and rejects reviewer-only flags', () => {
-  const { root, artifact, initialCommit } = repositoryFixture();
+test('CLI routes the owner handoff and rejects reviewer-only flags', async () => {
+  const { root, artifact, initialCommit } = memoryRepositoryFixture();
   assert.equal(
-    runCli(
-      [
-        'init',
-        '--dir',
-        '.tmp/review',
-        '--artifact',
-        artifact,
-        '--owner',
-        'owner-agent',
-        '--reviewer',
-        'reviewer-agent',
-        '--max-turns',
-        '6',
-      ],
-      { cwd: root }
+    (
+      await runCliDirect(
+        [
+          'init',
+          '--dir',
+          '.tmp/review',
+          '--artifact',
+          artifact,
+          '--owner',
+          'owner-agent',
+          '--reviewer',
+          'reviewer-agent',
+          '--max-turns',
+          '6',
+        ],
+        { cwd: root }
+      )
     ).status,
     0
   );
   assert.equal(
-    runCli(['claim', '--dir', '.tmp/review', '--actor', 'owner-agent'], { cwd: root }).status,
+    (await runCliDirect(['claim', '--dir', '.tmp/review', '--actor', 'owner-agent'], { cwd: root }))
+      .status,
     0
   );
   writeFileSync(path.join(root, '.tmp/review/response.md'), '# Response\n');
-  const handoff = runCli(
+  const handoff = await runCliDirect(
     [
       'handoff',
       '--dir',
@@ -226,7 +230,7 @@ test('CLI routes the owner handoff and rejects reviewer-only flags', () => {
   assert.equal(handoff.status, 0, handoff.stderr);
   assert.equal(JSON.parse(handoff.stdout).currentRole, 'reviewer');
 
-  const invalid = runCli(
+  const invalid = await runCliDirect(
     ['handoff', '--dir', '.tmp/review', '--actor', 'owner-agent', '--review', 'review.md'],
     { cwd: root }
   );
@@ -282,45 +286,83 @@ test('accepted on the final allowed reviewer turn is terminal without summary', 
         cwd: root,
         dir: options.dir,
         additionalTurns: 1,
-        approvedBy: 'human',
+        humanLogin: 'human',
       }),
     /co-review:continue-state:accepted/
   );
 });
 
-test('final changes-requested requires summary and human interception', async () => {
-  const { api, root, options, commit } = await reviewerTurn({
-    imported: true,
-    maxReviewTurns: 2,
-  });
+test('final changes-requested preserves the closing owner turn, then enters intervention', async () => {
+  const { api, root, options, commit } = await reviewerTurn({ maxReviewTurns: 1 });
   const review = `${options.dir}/final-review.md`;
   writeFileSync(path.join(root, review), '[finding:F-002] Remaining risk.\n');
-  const call = {
+  const exhaustedReview = api.handoffReviewer({
     cwd: root,
     dir: options.dir,
     actor: 'reviewer-agent',
     review,
     reviewOf: commit,
     decision: 'changes-requested',
-    message: 'human decision required',
-  };
-  const before = snapshotProtocol(root, options.dir);
-  assert.throws(() => api.handoffReviewer(call), /co-review:summary-required/);
-  assert.deepEqual(snapshotProtocol(root, options.dir), before);
-  const summary = `${options.dir}/human-summary.md`;
+    message: 'final findings',
+  });
+  assert.equal(exhaustedReview.lifecycle, 'active');
+  assert.equal(exhaustedReview.currentRole, 'owner');
+  assert.equal(exhaustedReview.turnState, 'available');
+  assert.equal(exhaustedReview.remainingReviewTurns, 0);
+  assert.equal(exhaustedReview.lastHandoff.artifacts.summary, undefined);
+
+  api.claimTurn({ cwd: root, dir: options.dir, actor: 'owner-agent' });
+  const closingCommit = commitArtifact(root, '# Artifact\n\nClosing response.\n');
+  const response = `${options.dir}/closing-owner-response.md`;
   writeFileSync(
-    path.join(root, summary),
-    '# Human summary\n\nUnresolved F-002; risk is ambiguity; recommend focusing recovery.\n'
+    path.join(root, response),
+    '[finding:F-002] [disposition:accepted]\nClosing response records the change.\n'
   );
-  const state = api.handoffReviewer({ ...call, summary });
-  assert.equal(state.lifecycle, 'intervention-required');
-  assert.equal(state.reviewTurnsUsed, 2);
-  assert.equal(state.remainingReviewTurns, 0);
-  assert.equal(state.lastHandoff.artifacts.summary.path, summary);
+  const closedCycle = api.handoffOwner({
+    cwd: root,
+    dir: options.dir,
+    actor: 'owner-agent',
+    response,
+    artifact: options.artifact,
+    commit: closingCommit,
+    answers: review,
+    message: 'closing owner response',
+  });
+  assert.equal(closedCycle.lifecycle, 'intervention-required');
+  assert.equal(closedCycle.currentRole, null);
+  assert.equal(closedCycle.turnState, null);
+  assert.equal(closedCycle.lastHandoff.from, 'owner');
   assert.throws(
     () => api.claimTurn({ cwd: root, dir: options.dir, actor: 'owner-agent' }),
     /co-review:terminal:intervention-required/
   );
+  const waited = await api.waitForTurn({
+    cwd: root,
+    dir: options.dir,
+    actor: 'owner-agent',
+    timeoutSeconds: 0,
+  });
+  assert.equal(waited.status, 'intervention-required');
+});
+
+test('an opening owner handoff after a zero-turn short circuit enters intervention', async () => {
+  const { api, root, options, initialCommit } = await initializedProtocol();
+  api.setMaxReviewTurns({ cwd: root, dir: options.dir, requestedMax: 0, humanLogin: 'kendrick' });
+  api.claimTurn({ cwd: root, dir: options.dir, actor: 'owner-agent' });
+  const response = `${options.dir}/zero-turn-response.md`;
+  writeFileSync(path.join(root, response), '# Owner response\n\nNo reviewer turn is authorized.\n');
+  const result = api.handoffOwner({
+    cwd: root,
+    dir: options.dir,
+    actor: 'owner-agent',
+    response,
+    artifact: options.artifact,
+    commit: initialCommit,
+    message: 'zero-turn short circuit',
+  });
+  assert.equal(result.lifecycle, 'intervention-required');
+  assert.equal(result.currentRole, null);
+  assert.equal(result.turnState, null);
 });
 
 test('reviewer handoff rejects implicit decision, wrong commit, duplicate findings, and drift', async () => {
@@ -367,17 +409,34 @@ test('human continuation adds turns, preserves used count, and hashes refocus', 
     summary,
     message: 'intercept',
   });
+  api.claimTurn({ cwd: root, dir: options.dir, actor: 'owner-agent' });
+  const closingCommit = commitArtifact(root, '# Artifact\n\nClosing response.\n');
+  const closingResponse = `${options.dir}/closing-response.md`;
+  writeFileSync(
+    path.join(root, closingResponse),
+    '[finding:F-002] [disposition:accepted]\nClosing response.\n'
+  );
+  api.handoffOwner({
+    cwd: root,
+    dir: options.dir,
+    actor: 'owner-agent',
+    response: closingResponse,
+    artifact: options.artifact,
+    commit: closingCommit,
+    answers: review,
+    message: 'closing response',
+  });
   const focus = `${options.dir}/refocus.md`;
   writeFileSync(path.join(root, focus), '# Refocus\n\nPrioritize recovery instructions.\n');
   const state = api.continueProtocol({
     cwd: root,
     dir: options.dir,
     additionalTurns: 3,
-    approvedBy: 'human@example',
+    humanLogin: 'human@example',
     focus,
   });
   assert.equal(state.lifecycle, 'active');
-  assert.equal(state.currentRole, 'owner');
+  assert.equal(state.currentRole, 'reviewer');
   assert.equal(state.turnState, 'available');
   assert.equal(state.reviewTurnsUsed, 1);
   assert.equal(state.maxReviewTurns, 4);
@@ -390,7 +449,7 @@ test('human continuation adds turns, preserves used count, and hashes refocus', 
         cwd: root,
         dir: options.dir,
         additionalTurns: 1,
-        approvedBy: 'human@example',
+        humanLogin: 'human@example',
       }),
     /co-review:continue-state:active/
   );
@@ -413,14 +472,22 @@ test('continuation rejects invalid approval, turns, and focus without mutation',
       summary,
       message: 'intercept',
     });
+    rewriteProtocolState(root, options.dir, (state) => ({
+      ...state,
+      lifecycle: 'intervention-required',
+      currentRole: null,
+      turnState: null,
+      claim: null,
+      lastHandoff: { ...state.lastHandoff, from: 'owner' },
+    }));
     const call = {
       cwd: root,
       dir: options.dir,
       additionalTurns: 2,
-      approvedBy: 'human',
+      humanLogin: 'human',
     };
     if (mutation === 'turns') call.additionalTurns = 0;
-    if (mutation === 'approval') call.approvedBy = '';
+    if (mutation === 'approval') call.humanLogin = '';
     if (mutation === 'focus') call.focus = summary;
     const before = snapshotProtocol(root, options.dir);
     assert.throws(() => api.continueProtocol(call), /co-review:/);
@@ -428,60 +495,66 @@ test('continuation rejects invalid approval, turns, and focus without mutation',
   }
 });
 
-test('CLI routes reviewer acceptance and human continuation flags', () => {
-  const { root, artifact, initialCommit } = repositoryFixture();
-  const common = { cwd: root };
+test('CLI routes reviewer acceptance and human continuation flags', async () => {
+  const { root, artifact, initialCommit } = memoryRepositoryFixture();
+  const common = { cwd: root, resolveGitHubLoginImpl: () => 'human' };
   assert.equal(
-    runCli(
-      [
-        'init',
-        '--dir',
-        '.tmp/review',
-        '--artifact',
-        artifact,
-        '--owner',
-        'owner-agent',
-        '--reviewer',
-        'reviewer-agent',
-        '--max-turns',
-        '1',
-      ],
-      common
+    (
+      await runCliDirect(
+        [
+          'init',
+          '--dir',
+          '.tmp/review',
+          '--artifact',
+          artifact,
+          '--owner',
+          'owner-agent',
+          '--reviewer',
+          'reviewer-agent',
+          '--max-turns',
+          '1',
+        ],
+        common
+      )
     ).status,
     0
   );
   assert.equal(
-    runCli(['claim', '--dir', '.tmp/review', '--actor', 'owner-agent'], common).status,
+    (await runCliDirect(['claim', '--dir', '.tmp/review', '--actor', 'owner-agent'], common))
+      .status,
     0
   );
   writeFileSync(path.join(root, '.tmp/review/response.md'), '# Response\n');
   assert.equal(
-    runCli(
-      [
-        'handoff',
-        '--dir',
-        '.tmp/review',
-        '--actor',
-        'owner-agent',
-        '--response',
-        '.tmp/review/response.md',
-        '--artifact',
-        artifact,
-        '--commit',
-        initialCommit,
-        '--message',
-        'ready',
-      ],
-      common
+    (
+      await runCliDirect(
+        [
+          'handoff',
+          '--dir',
+          '.tmp/review',
+          '--actor',
+          'owner-agent',
+          '--response',
+          '.tmp/review/response.md',
+          '--artifact',
+          artifact,
+          '--commit',
+          initialCommit,
+          '--message',
+          'ready',
+        ],
+        common
+      )
     ).status,
     0
   );
   assert.equal(
-    runCli(['claim', '--dir', '.tmp/review', '--actor', 'reviewer-agent'], common).status,
+    (await runCliDirect(['claim', '--dir', '.tmp/review', '--actor', 'reviewer-agent'], common))
+      .status,
     0
   );
   writeFileSync(path.join(root, '.tmp/review/review.md'), '# Review\n\nAccepted.\n');
-  const accepted = runCli(
+  const accepted = await runCliDirect(
     [
       'handoff',
       '--dir',
@@ -499,9 +572,10 @@ test('CLI routes reviewer acceptance and human continuation flags', () => {
     ],
     common
   );
-  assert.equal(accepted.status, 0, accepted.stderr);
+  assert.equal(accepted.status, 4, accepted.stderr);
+  assert.match(accepted.stderr, /^ACCEPTED: protocol state is durable/);
   assert.equal(JSON.parse(accepted.stdout).lifecycle, 'accepted');
-  const refused = runCli(
+  const refused = await runCliDirect(
     ['continue', '--dir', '.tmp/review', '--additional-turns', '2', '--approved-by', 'human'],
     common
   );

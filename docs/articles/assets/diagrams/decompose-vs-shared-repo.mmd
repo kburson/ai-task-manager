@@ -1,0 +1,12 @@
+flowchart LR
+    subgraph OneRepo["50 agents, one repo"]
+        direction LR
+        R["Shared codebase\nshared trunk"]
+    end
+    subgraph Decomposed["N modules, 5-10 agents each"]
+        direction LR
+        M1["Module A\nown trunk"]
+        M2["Module B\nown trunk"]
+        M3["Module C\nown trunk"]
+    end
+    OneRepo -.->|"decompose the product"| Decomposed

@@ -1,5 +1,6 @@
 // @story #1099
-// End-to-end publish over the real nine-article corpus, including Mermaid
+// @slow-parallel-safe (writes only its dedicated ignored publish scratch directory)
+// End-to-end publish over the real fourteen-article corpus, including Mermaid
 // rendering through headless Chromium. This lives in the slow lane on purpose:
 // it spawns the Mermaid CLI ~32 times and would otherwise eat the fast lane's
 // wall-time ceiling. Transform-level coverage is in
@@ -56,8 +57,8 @@ after(async () => {
   await rm(OUT_ROOT, { recursive: true, force: true });
 });
 
-test('the corpus is the expected nine articles', () => {
-  assert.equal(articles.length, 9);
+test('the corpus is the expected fourteen articles', () => {
+  assert.equal(articles.length, 14);
 });
 
 // AC1 — one complete folder per article.
@@ -169,7 +170,7 @@ test('AC7 each diagram placeholder names a file present in the same folder', asy
       placeholders += 1;
     }
   }
-  assert.equal(placeholders, 14, 'the corpus carries 14 in-body Mermaid fences');
+  assert.equal(placeholders, 20, 'the corpus carries 20 in-body Mermaid fences');
 });
 
 // AC8 — a single-article run touches only that article's folder.

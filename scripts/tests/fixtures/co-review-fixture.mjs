@@ -6,10 +6,17 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { projectScratchDir } from '../../task-tracker/lib/scratch-dir.mjs';
+import { createMemoryRepository } from './co-review-memory-repository.mjs';
 
 const ROOT = path.resolve(fileURLToPath(new URL('../../../', import.meta.url)));
 const CLI = path.join(ROOT, 'scripts/review/co-review.mjs');
 const temporaryRoots = new Set();
+const memoryRepositories = new Map();
+const calls = { git: 0, nodeCli: 0 };
+
+export function processCallCounts() {
+  return { ...calls };
+}
 
 export function temporaryRoot(prefix = 'aitm-co-review-') {
   const root = mkdtempSync(path.join(projectScratchDir('test'), prefix));
@@ -18,6 +25,7 @@ export function temporaryRoot(prefix = 'aitm-co-review-') {
 }
 
 export function runCli(args, { cwd = temporaryRoot() } = {}) {
+  calls.nodeCli += 1;
   return spawnSync(process.execPath, [CLI, ...args], {
     cwd,
     encoding: 'utf8',
@@ -25,7 +33,26 @@ export function runCli(args, { cwd = temporaryRoot() } = {}) {
   });
 }
 
+export async function runCliDirect(args, options = {}) {
+  const { runCli: execute } = await import('../../review/co-review.mjs');
+  const repository = options.repository ?? memoryRepositories.get(options.cwd);
+  let stdout = '';
+  let stderr = '';
+  const status = await execute(args, {
+    ...options,
+    ...(repository ? { repository } : {}),
+    stdout(value) {
+      stdout += value;
+    },
+    stderr(value) {
+      stderr += value;
+    },
+  });
+  return { status, stdout, stderr };
+}
+
 export function runCliAsync(args, { cwd }) {
+  calls.nodeCli += 1;
   return new Promise((resolve) => {
     const child = spawn(process.execPath, [CLI, ...args], {
       cwd,
@@ -43,6 +70,7 @@ export function runCliAsync(args, { cwd }) {
 }
 
 export function git(root, ...args) {
+  calls.git += 1;
   return execFileSync('git', args, { cwd: root, encoding: 'utf8' }).trim();
 }
 
@@ -63,9 +91,58 @@ export function repositoryFixture() {
   };
 }
 
+export const realRepositoryFixture = repositoryFixture;
+
+export function memoryRepositoryFixture({
+  artifact = 'docs/artifact.md',
+  bytes = Buffer.from('# Artifact\n\nRevision one.\n'),
+} = {}) {
+  const root = temporaryRoot();
+  mkdirSync(path.dirname(path.join(root, artifact)), { recursive: true });
+  writeFileSync(path.join(root, '.gitignore'), '.tmp/\n');
+  writeFileSync(path.join(root, artifact), bytes);
+  const repository = createMemoryRepository({ root, artifact, bytes });
+  memoryRepositories.set(root, repository);
+  return {
+    root,
+    artifact,
+    initialCommit: repository.initialCommit,
+    repository,
+    processCalls: processCallCounts(),
+  };
+}
+
 export async function protocol() {
   return import('../../review/lib/protocol.mjs');
 }
+
+function bindProtocol(api, repository) {
+  const inject =
+    (name) =>
+    (options = {}) =>
+      api[name]({ ...options, repository });
+  return {
+    ...api,
+    initializeProtocol: inject('initializeProtocol'),
+    readProtocol: inject('readProtocol'),
+    statusProtocol: inject('statusProtocol'),
+    validatedArchiveSnapshot: inject('validatedArchiveSnapshot'),
+    claimTurn: inject('claimTurn'),
+    registerSupplement: inject('registerSupplement'),
+    handoffOwner: inject('handoffOwner'),
+    handoffReviewer: inject('handoffReviewer'),
+    acceptGoodEnough: inject('acceptGoodEnough'),
+    setMaxReviewTurns: inject('setMaxReviewTurns'),
+    continueProtocol: inject('continueProtocol'),
+    waitForTurn: inject('waitForTurn'),
+  };
+}
+
+export async function memoryProtocol(repository) {
+  return bindProtocol(await protocol(), repository);
+}
+
+export const realProtocol = protocol;
 
 export function readEvents(root, dir) {
   return readFileSync(path.join(root, dir, 'events.jsonl'), 'utf8')
@@ -82,23 +159,72 @@ export function snapshotProtocol(root, dir) {
   };
 }
 
+export function rewriteProtocolState(root, dir, mutate) {
+  const statePath = path.join(root, dir, 'state.json');
+  const eventsPath = path.join(root, dir, 'events.jsonl');
+  const state = JSON.parse(readFileSync(statePath, 'utf8'));
+  const next = mutate(structuredClone(state));
+  const events = readEvents(root, dir);
+  events[events.length - 1] = {
+    ...events.at(-1),
+    lifecycle: next.lifecycle,
+    currentRole: next.currentRole,
+    round: next.round,
+    reviewTurnsUsed: next.reviewTurnsUsed,
+    maxReviewTurns: next.maxReviewTurns,
+    remainingReviewTurns: next.remainingReviewTurns,
+  };
+  writeFileSync(statePath, `${JSON.stringify(next, null, 2)}\n`);
+  writeFileSync(eventsPath, `${events.map((event) => JSON.stringify(event)).join('\n')}\n`);
+  return next;
+}
+
 export function commitArtifact(root, content, message = 'revise artifact') {
+  const repository = memoryRepositories.get(root);
+  if (repository) {
+    return repository.commit('docs/artifact.md', Buffer.from(content), message);
+  }
   writeFileSync(path.join(root, 'docs/artifact.md'), content);
   git(root, 'add', 'docs/artifact.md');
   git(root, 'commit', '-m', message);
   return git(root, 'rev-parse', 'HEAD');
 }
 
-export async function initializedProtocol({ imported = false, maxReviewTurns = 6 } = {}) {
-  const api = await protocol();
+export async function initializedProtocol({
+  imported = false,
+  maxReviewTurns = 6,
+  artifact = 'docs/artifact.md',
+  contents = '# Artifact\n\nRevision one.\n',
+  archiveDir,
+  dir = '.tmp/review',
+} = {}) {
+  const fixture = memoryRepositoryFixture({ artifact, bytes: Buffer.from(contents) });
+  const api = await memoryProtocol(fixture.repository);
+  return initializeFixture({ api, fixture, imported, maxReviewTurns, archiveDir, dir });
+}
+
+export async function realInitializedProtocol({ imported = false, maxReviewTurns = 6 } = {}) {
   const fixture = repositoryFixture();
+  const api = await protocol();
+  return initializeFixture({ api, fixture, imported, maxReviewTurns });
+}
+
+function initializeFixture({
+  api,
+  fixture,
+  imported,
+  maxReviewTurns,
+  archiveDir,
+  dir = '.tmp/review',
+}) {
   const options = {
     cwd: fixture.root,
-    dir: '.tmp/review',
+    dir,
     artifact: fixture.artifact,
     owner: 'owner-agent',
     reviewer: 'reviewer-agent',
     maxReviewTurns,
+    ...(archiveDir ? { archiveDir } : {}),
   };
   if (imported) {
     mkdirSync(path.join(fixture.root, options.dir), { recursive: true });
@@ -145,6 +271,9 @@ export async function reviewerTurn({ imported = false, maxReviewTurns = 6 } = {}
 }
 
 export function cleanupTemporaryRoots() {
-  for (const root of temporaryRoots) rmSync(root, { recursive: true, force: true });
+  for (const root of temporaryRoots) {
+    memoryRepositories.delete(root);
+    rmSync(root, { recursive: true, force: true });
+  }
   temporaryRoots.clear();
 }

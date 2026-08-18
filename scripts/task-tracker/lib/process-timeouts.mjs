@@ -16,8 +16,9 @@
 //     close/error into the same non-throwing `{status,signal,error}` object
 //     `spawnSync` produced, preserving the `describeSpawnResult` contract). Only
 //     PURE in-process unit files are pooled; subprocess-spawning unit files
-//     (`test-parallel-safety.mjs`), integration, and slow all run one child at a
-//     time so their own children aren't CPU-starved. No other production site
+//     (`test-parallel-safety.mjs`) and integration run one child at a time.
+//     Slow tests also default to serial; only source-local audited opt-ins enter
+//     a separate two-worker phase. No other production site
 //     should reach for `spawnSync`/`spawn` for exit-code polling.
 //
 // Classes:

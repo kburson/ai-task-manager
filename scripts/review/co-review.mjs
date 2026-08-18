@@ -4,7 +4,17 @@
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import { prepareArchive, publishPreparedArchive } from './lib/archive.mjs';
 import { helpRequest, renderHelp } from './lib/help.mjs';
+
+const STATUS_PROJECTED_MUTATIONS = new Set([
+  'init',
+  'claim',
+  'handoff',
+  'set-max-turns',
+  'supplement',
+  'continue',
+]);
 
 export async function runCli(argv = process.argv.slice(2), io = {}) {
   const writeOut = io.stdout ?? ((value) => process.stdout.write(value));
@@ -18,6 +28,7 @@ export async function runCli(argv = process.argv.slice(2), io = {}) {
     const [name, ...args] = argv;
     const { values, booleans } = parseArguments(args);
     const protocol = await import('./lib/protocol.mjs');
+    const repositoryOptions = io.repository ? { repository: io.repository } : {};
     let result;
     let exitCode = 0;
     if (name === 'init') {
@@ -29,6 +40,7 @@ export async function runCli(argv = process.argv.slice(2), io = {}) {
         'max-turns',
         'import-review',
         'review-of',
+        'archive-dir',
       ]);
       result = protocol.initializeProtocol({
         cwd: io.cwd ?? process.cwd(),
@@ -36,15 +48,18 @@ export async function runCli(argv = process.argv.slice(2), io = {}) {
         artifact: required(values, 'artifact'),
         owner: required(values, 'owner'),
         reviewer: required(values, 'reviewer'),
-        maxReviewTurns: integer(values, 'max-turns'),
+        maxReviewTurns: positiveInteger(values, 'max-turns'),
         importReview: values['import-review'],
         reviewOf: values['review-of'],
+        archiveDir: values['archive-dir'],
+        ...repositoryOptions,
       });
     } else if (name === 'status') {
       assertAllowed(values, booleans, ['dir', 'json']);
       result = protocol.statusProtocol({
         cwd: io.cwd ?? process.cwd(),
         dir: required(values, 'dir'),
+        ...repositoryOptions,
       });
       if (!booleans.has('json')) {
         writeOut(formatStatus(result));
@@ -57,6 +72,7 @@ export async function runCli(argv = process.argv.slice(2), io = {}) {
         cwd: io.cwd ?? process.cwd(),
         dir: required(values, 'dir'),
         actor: required(values, 'actor'),
+        ...repositoryOptions,
       });
     } else if (name === 'wait') {
       assertAllowed(values, booleans, ['dir', 'actor', 'timeout']);
@@ -65,6 +81,7 @@ export async function runCli(argv = process.argv.slice(2), io = {}) {
         dir: required(values, 'dir'),
         actor: required(values, 'actor'),
         timeoutSeconds: values.timeout === undefined ? 55 : number(values, 'timeout'),
+        ...repositoryOptions,
       });
       if (result.status === 'timeout') exitCode = 3;
     } else if (name === 'handoff') {
@@ -84,7 +101,7 @@ export async function runCli(argv = process.argv.slice(2), io = {}) {
       const cwd = io.cwd ?? process.cwd();
       const dir = required(values, 'dir');
       const actor = required(values, 'actor');
-      const state = protocol.statusProtocol({ cwd, dir });
+      const state = protocol.statusProtocol({ cwd, dir, ...repositoryOptions });
       const role = Object.entries(state.roles).find(([, identity]) => identity === actor)?.[0];
       if (!role) throw usage(`--actor is not a configured identity: ${actor}`);
       if (role === 'owner') {
@@ -106,6 +123,7 @@ export async function runCli(argv = process.argv.slice(2), io = {}) {
           commit: required(values, 'commit'),
           answers: values.answers,
           message: required(values, 'message'),
+          ...repositoryOptions,
         });
       } else {
         assertAllowed(values, booleans, [
@@ -126,19 +144,182 @@ export async function runCli(argv = process.argv.slice(2), io = {}) {
           decision: required(values, 'decision'),
           summary: values.summary,
           message: required(values, 'message'),
+          ...repositoryOptions,
+        });
+        if (result.lifecycle === 'accepted') {
+          try {
+            const snapshot = protocol.validatedArchiveSnapshot({
+              cwd,
+              dir,
+              ...repositoryOptions,
+            });
+            const prepared = prepareArchive({
+              ...snapshot,
+              archiveDir: result.initialization.archiveDir,
+              ...repositoryOptions,
+            });
+            result = {
+              ...result,
+              archivePublication: publishPreparedArchive(prepared, {
+                hooks: io.archiveHooks,
+                ...repositoryOptions,
+              }),
+            };
+          } catch (error) {
+            exitCode = 4;
+            writeError(
+              archivePendingMessage({
+                dir,
+                state: result,
+                error,
+                shellArgument: protocol.shellArgument,
+              })
+            );
+          }
+        }
+      }
+    } else if (name === 'finalize') {
+      assertAllowed(values, booleans, ['dir', 'archive-dir', 'good-enough', 'json']);
+      const cwd = io.cwd ?? process.cwd();
+      const dir = required(values, 'dir');
+      let state;
+      let publication;
+      if (booleans.has('good-enough')) {
+        const resolveIdentity =
+          io.resolveGitHubLoginImpl ??
+          (await import('./lib/github-identity.mjs')).resolveGitHubLogin;
+        const humanLogin = resolveIdentity({
+          cwd,
+          recoveryCommand: protocol.renderCliCommand(argv),
+        });
+        const snapshot = protocol.prepareGoodEnoughSnapshot({
+          cwd,
+          dir,
+          humanLogin,
+          ...repositoryOptions,
+        });
+        const prepared = prepareArchive({
+          ...snapshot,
+          archiveDir: values['archive-dir'],
+          ...repositoryOptions,
+        });
+        state = protocol.acceptGoodEnough({
+          cwd,
+          dir,
+          humanLogin,
+          expectedRevision: snapshot.expectedRevision,
+          acceptedAt: snapshot.acceptance.at,
+          ...repositoryOptions,
+        });
+        try {
+          publication = publishPreparedArchive(prepared, {
+            hooks: io.archiveHooks,
+            ...repositoryOptions,
+          });
+        } catch (error) {
+          writeError(
+            archivePendingMessage({ dir, state, error, shellArgument: protocol.shellArgument })
+          );
+          return 4;
+        }
+      } else {
+        const snapshot = protocol.validatedArchiveSnapshot({ cwd, dir, ...repositoryOptions });
+        const prepared = prepareArchive({
+          ...snapshot,
+          archiveDir: values['archive-dir'],
+          ...repositoryOptions,
+        });
+        state = snapshot.state;
+        publication = publishPreparedArchive(prepared, {
+          hooks: io.archiveHooks,
+          ...repositoryOptions,
         });
       }
+      result = { state, archivePublication: publication };
+      if (!booleans.has('json')) {
+        writeOut(formatFinalization(result));
+        return 0;
+      }
+    } else if (name === 'set-max-turns') {
+      assertAllowed(values, booleans, ['dir', 'max-turns']);
+      const cwd = io.cwd ?? process.cwd();
+      const dir = required(values, 'dir');
+      const requestedMax = nonnegativeInteger(values, 'max-turns');
+      const resolveIdentity =
+        io.resolveGitHubLoginImpl ?? (await import('./lib/github-identity.mjs')).resolveGitHubLogin;
+      const humanLogin = resolveIdentity({
+        cwd,
+        recoveryCommand: protocol.renderCliCommand(argv),
+      });
+      result = protocol.setMaxReviewTurns({
+        cwd,
+        dir,
+        requestedMax,
+        humanLogin,
+        ...repositoryOptions,
+      });
+    } else if (name === 'supplement') {
+      assertAllowed(values, booleans, ['dir', 'file']);
+      const cwd = io.cwd ?? process.cwd();
+      const dir = required(values, 'dir');
+      const file = required(values, 'file');
+      const resolveIdentity =
+        io.resolveGitHubLoginImpl ?? (await import('./lib/github-identity.mjs')).resolveGitHubLogin;
+      const humanLogin = resolveIdentity({
+        cwd,
+        recoveryCommand: protocol.renderCliCommand(argv),
+      });
+      result = protocol.registerSupplement({ cwd, dir, file, humanLogin, ...repositoryOptions });
     } else if (name === 'continue') {
-      assertAllowed(values, booleans, ['dir', 'additional-turns', 'approved-by', 'focus']);
+      assertAllowed(values, booleans, [
+        'dir',
+        'max-turns',
+        'additional-turns',
+        'approved-by',
+        'focus',
+      ]);
+      if (values['max-turns'] !== undefined && values['additional-turns'] !== undefined) {
+        throw usage('--max-turns and --additional-turns are mutually exclusive');
+      }
+      const cwd = io.cwd ?? process.cwd();
+      const dir = required(values, 'dir');
+      const maxReviewTurns =
+        values['max-turns'] === undefined ? undefined : nonnegativeInteger(values, 'max-turns');
+      const additionalTurns =
+        values['additional-turns'] === undefined
+          ? undefined
+          : positiveInteger(values, 'additional-turns');
+      const resolveIdentity =
+        io.resolveGitHubLoginImpl ?? (await import('./lib/github-identity.mjs')).resolveGitHubLogin;
+      const humanLogin = resolveIdentity({
+        cwd,
+        recoveryCommand: protocol.renderCliCommand(argv),
+      });
+      if (values['approved-by'] !== undefined) {
+        writeError(
+          'co-review: --approved-by is deprecated and ignored; authenticated GitHub login is recorded\n'
+        );
+      }
       result = protocol.continueProtocol({
-        cwd: io.cwd ?? process.cwd(),
-        dir: required(values, 'dir'),
-        additionalTurns: integer(values, 'additional-turns'),
-        approvedBy: required(values, 'approved-by'),
+        cwd,
+        dir,
+        maxReviewTurns,
+        additionalTurns,
+        humanLogin,
         focus: values.focus,
+        ...repositoryOptions,
       });
     } else {
       throw usage(`unknown command ${String(name)}`);
+    }
+    if (STATUS_PROJECTED_MUTATIONS.has(name)) {
+      const archivePublication = result?.archivePublication;
+      result = protocol.statusProtocol({
+        cwd: io.cwd ?? process.cwd(),
+        dir: required(values, 'dir'),
+        ...repositoryOptions,
+      });
+      if (archivePublication) result = { ...result, archivePublication };
     }
     writeOut(`${JSON.stringify(result, null, 2)}\n`);
     return exitCode;
@@ -166,7 +347,7 @@ function parseArguments(args) {
     if (!name || Object.hasOwn(values, name) || booleans.has(name)) {
       throw usage(`duplicate or empty option ${token}`);
     }
-    if (name === 'json') {
+    if (name === 'json' || name === 'good-enough') {
       booleans.add(name);
       continue;
     }
@@ -190,10 +371,16 @@ function required(values, name) {
   return values[name];
 }
 
-function integer(values, name) {
+function nonnegativeInteger(values, name) {
   const value = required(values, name);
-  if (!/^[0-9]+$/.test(value)) throw usage(`--${name} must be an integer`);
+  if (!/^[0-9]+$/.test(value)) throw usage(`--${name} must be a nonnegative integer`);
   return Number(value);
+}
+
+function positiveInteger(values, name) {
+  const value = nonnegativeInteger(values, name);
+  if (value < 1) throw usage(`--${name} must be a positive integer`);
+  return value;
 }
 
 function number(values, name) {
@@ -213,6 +400,24 @@ function formatStatus(state) {
       }`
     : 'none';
   const actor = state.currentRole ? state.roles[state.currentRole] : 'none';
+  const supplements = state.activeSupplements ?? [];
+  const supplementStatus = supplements.length
+    ? supplements
+        .map(
+          (supplement) =>
+            `${supplement.id} (${supplement.status}): ${supplement.path} ${supplement.sha256} Target round: ${supplement.targetRound}`
+        )
+        .join('\n  ')
+    : 'none';
+  const actions = (state.availableActions ?? [])
+    .map(({ kind, command }) => `${kind}: ${command ?? 'make no mutation; return later'}`)
+    .join('\n  ');
+  const acceptanceActor = state.acceptance?.approvedBy ?? state.acceptance?.reviewer;
+  const acceptance = state.decisionBasis
+    ? `${state.decisionBasis}${acceptanceActor ? ` by ${acceptanceActor}` : ''}${
+        state.acceptance?.at ? ` at ${state.acceptance.at}` : ''
+      }`
+    : 'none';
   return [
     `Lifecycle: ${state.lifecycle}`,
     `Turn: ${state.currentRole ?? 'none'} (${actor}) / ${state.turnState ?? 'terminal'}`,
@@ -222,8 +427,48 @@ function formatStatus(state) {
     `Artifact: ${state.artifact.path} @ ${state.artifact.commit}`,
     `Last handoff: ${lastHandoff}`,
     `Budget: ${state.reviewTurnsUsed} used / ${state.maxReviewTurns} max / ${state.remainingReviewTurns} remaining`,
+    `Decision basis: ${state.decisionBasis ?? 'none'}`,
+    `Acceptance: ${acceptance}`,
+    `Archive: ${state.archive?.destination ?? 'unknown'} / ${state.archive?.completion ?? 'unknown'}`,
+    `Closing owner complete: ${state.closingOwnerComplete ? 'yes' : 'no'}`,
+    `Unresolved findings: ${state.unresolvedFindingIds?.join(', ') || 'none'}`,
+    `Terminal review: ${state.terminalEvidence?.reviewerReview?.path ?? 'none'}`,
+    `Terminal response: ${state.terminalEvidence?.ownerResponse?.path ?? 'none'}`,
+    `Latest budget adjustment: ${
+      state.latestBudgetAdjustment ? JSON.stringify(state.latestBudgetAdjustment) : 'none'
+    }`,
+    `Supplements: ${supplementStatus}`,
     `Integrity: ${state.integrity.ok ? 'ok' : 'DRIFT'}`,
+    `Available actions: ${actions || 'none'}`,
+    ...(state.lifecycle === 'intervention-required' && !state.closingOwnerComplete
+      ? ['Good enough unavailable: a two-sided evidence pair does not exist.']
+      : []),
     `Next: ${state.nextAction}`,
+    '',
+  ].join('\n');
+}
+
+function archivePendingMessage({ dir, state, error, shellArgument }) {
+  const configured = state.initialization?.archiveDir;
+  const retry = `npx aitm co-review finalize --dir ${shellArgument(dir)}${
+    configured ? '' : ' --archive-dir <tracked-repo-path>'
+  }`;
+  const cause = String(error.message).replace(/; no state changed(?:; next:.*)?$/, '');
+  return [
+    'ACCEPTED: protocol state is durable; archive publication is pending',
+    `Cause: ${cause}`,
+    `Retry: ${retry}`,
+    '',
+  ].join('\n');
+}
+
+function formatFinalization({ archivePublication }) {
+  return [
+    `Archive: ${archivePublication.destination.relative}`,
+    ...archivePublication.paths.map(
+      (entry) => `Produced: ${archivePublication.destination.relative}/${entry}`
+    ),
+    'Verify the generated files, then stage and commit them through the repository workflow.',
     '',
   ].join('\n');
 }

@@ -1,4 +1,4 @@
-// @story #863
+// @story #863 #1307
 /**
  * Parallel-safety classifier for the runner's unit lane (#863).
  *
@@ -18,12 +18,11 @@
  * oversubscribe the box. So the discriminator is deliberately narrow —
  * *does this file spawn subprocesses?* — not the broader "touches git/cwd/env".
  *
- * A file that spawns runs in the SERIAL phase (one at a time, its child gets the
- * CPU); a pure in-process file runs in the POOL. Erring toward serial is the safe
- * default: a false positive costs a little wall-time, a false negative reintroduces
- * the flake. This predicate is a #863-scoped bridge — #864 isolates the
- * integration lane and #868 physically relocates these files, after which the unit
- * lane is pure by construction and this classification converges on "all parallel".
+ * A directly detected subprocess file runs in a reduced-concurrency phase after
+ * the pure pool drains; a pure in-process file runs in the pure pool. Explicitly
+ * unsafe and unreadable files remain exclusive serial. Conservative classification
+ * costs wall time, while admitting an unsafe file to the pure pool can reintroduce
+ * the flake.
  */
 
 import { readFileSync } from 'node:fs';
@@ -31,9 +30,9 @@ import { readFileSync } from 'node:fs';
 /**
  * Matches any use of `node:child_process` — the ESM import, the CJS require, or a
  * bare `child_process` identifier reference. A file that pulls in child_process
- * is assumed to spawn (the rare import-but-never-spawn file is harmlessly kept
- * serial). Comments mentioning the word are an accepted, conservative false
- * positive — they only cost that file a pool slot, never correctness.
+ * is assumed to spawn (the rare import-but-never-spawn file is harmlessly moved
+ * to the reduced pool). Comments mentioning the word are an accepted, conservative false
+ * positive — they only move that file to the reduced pool, never correctness.
  */
 export const SUBPROCESS_RE = /(?:from\s*|require\(\s*)['"]node:child_process['"]|\bchild_process\b/;
 
@@ -57,27 +56,78 @@ export function spawnsSubprocess(src) {
 export const PARALLEL_UNSAFE_MARKER_RE = /@parallel-unsafe\b/;
 
 /**
- * Is this test file safe to run inside the bounded parallel pool?
- *
- * Pure in-process tests are safe; subprocess-spawning tests are not (they must
- * run serially so their children are not CPU-starved). A file that cannot be read
- * is treated as UNSAFE — unknown provenance defaults to the serial phase rather
- * than risk a flake. A file carrying the `@parallel-unsafe` marker is always
- * treated as UNSAFE, independent of `SUBPROCESS_RE` — it declares a hazard the
- * own-source scan cannot see (e.g. a transitive subprocess spawn via an imported
- * helper).
- *
- * @param {string} fullPath - absolute path to the `*.test.mjs` file
- * @param {(p: string, enc: string) => string} [read] - injectable reader (tests)
- * @returns {boolean} true → eligible for the pool; false → run serially
+ * Slow tests are fail-closed serial unless their own source explicitly opts in.
+ * The required parenthesized rationale keeps the safety claim reviewable at the
+ * file that owns it instead of hiding a growing allowlist in the runner.
  */
-export function isParallelSafe(fullPath, read = readFileSync) {
+export const SLOW_PARALLEL_SAFE_MARKER_RE =
+  /@slow-parallel-safe[ \t]*\([ \t]*[^\s)\r\n][^)\r\n]*\)/;
+
+export const TEST_SCHEDULING_CLASSES = Object.freeze({
+  POOLED: 'pooled',
+  SUBPROCESS: 'subprocess',
+  SLOW_PARALLEL: 'slow-parallel',
+  SERIAL: 'serial',
+});
+
+/**
+ * Classify one slow test for the dedicated bounded phase. Opt-in is explicit;
+ * unreadable, unmarked, or conflicting unsafe sources remain serial.
+ *
+ * @param {string} fullPath
+ * @param {(p: string, enc: string) => string} [read]
+ * @returns {'slow-parallel'|'serial'}
+ */
+export function slowTestSchedulingClass(fullPath, read = readFileSync) {
   let src;
   try {
     src = read(fullPath, 'utf8');
   } catch {
-    return false;
+    return TEST_SCHEDULING_CLASSES.SERIAL;
   }
-  if (PARALLEL_UNSAFE_MARKER_RE.test(src)) return false;
-  return !spawnsSubprocess(src);
+  if (PARALLEL_UNSAFE_MARKER_RE.test(src)) return TEST_SCHEDULING_CLASSES.SERIAL;
+  return SLOW_PARALLEL_SAFE_MARKER_RE.test(src)
+    ? TEST_SCHEDULING_CLASSES.SLOW_PARALLEL
+    : TEST_SCHEDULING_CLASSES.SERIAL;
+}
+
+/**
+ * Classify one test source for the runner's three sequential unit phases.
+ * Explicit unsafe markers and unreadable sources remain fail-closed serial;
+ * only readable, unmarked direct subprocess users enter the reduced pool.
+ *
+ * @param {string} fullPath
+ * @param {(p: string, enc: string) => string} [read]
+ * @returns {'pooled'|'subprocess'|'serial'}
+ */
+export function testSchedulingClass(fullPath, read = readFileSync) {
+  let src;
+  try {
+    src = read(fullPath, 'utf8');
+  } catch {
+    return TEST_SCHEDULING_CLASSES.SERIAL;
+  }
+  if (PARALLEL_UNSAFE_MARKER_RE.test(src)) return TEST_SCHEDULING_CLASSES.SERIAL;
+  return spawnsSubprocess(src)
+    ? TEST_SCHEDULING_CLASSES.SUBPROCESS
+    : TEST_SCHEDULING_CLASSES.POOLED;
+}
+
+/**
+ * Is this test file safe to run inside the bounded parallel pool?
+ *
+ * Pure in-process tests are eligible for the original `cpus - 1` pool. Directly
+ * detected subprocess tests are not eligible for that saturated pool, but run in
+ * the reduced phase instead of exclusive serial. A file that cannot be read is
+ * treated as UNSAFE — unknown provenance defaults to the serial phase rather than
+ * risk a flake. A file carrying the `@parallel-unsafe` marker is always treated as
+ * UNSAFE, independent of `SUBPROCESS_RE` — it declares a hazard the own-source scan
+ * cannot see (e.g. a transitive subprocess spawn via an imported helper).
+ *
+ * @param {string} fullPath - absolute path to the `*.test.mjs` file
+ * @param {(p: string, enc: string) => string} [read] - injectable reader (tests)
+ * @returns {boolean} true → eligible for the pure pool; false → use another phase
+ */
+export function isParallelSafe(fullPath, read = readFileSync) {
+  return testSchedulingClass(fullPath, read) === TEST_SCHEDULING_CLASSES.POOLED;
 }

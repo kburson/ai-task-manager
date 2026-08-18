@@ -1,4 +1,4 @@
-// @story #1052
+// @story #1052 #1279 #1281
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdtempSync, mkdirSync, writeFileSync } from 'node:fs';
@@ -14,6 +14,33 @@ import {
   runDecomposeCheck,
 } from '../../../../task-tracker/verbs/decompose-check.mjs';
 import { projectScratchDir } from '../../../../task-tracker/lib/scratch-dir.mjs';
+import {
+  parseWbsChildClaim,
+  reconcileWbsCoverage,
+} from '../../../../task-tracker/lib/decomposition-wbs-coverage.mjs';
+import { classifyDecomposition } from '../../../../task-tracker/lib/decomposition-policy.mjs';
+
+const SOURCE_PLAN = 'docs/plan.md';
+
+function wbsChild({
+  number,
+  task,
+  sourcePlan = SOURCE_PLAN,
+  sourcePlanCommit = 'child-plan-commit',
+  sourcePlanSection = task.heading,
+  title = task.title,
+} = {}) {
+  return {
+    number,
+    title,
+    body: [
+      '## Plan Metadata',
+      `- **Source-plan**: ${sourcePlan}`,
+      `- **Source-plan-commit**: ${sourcePlanCommit}`,
+      `- **Source-plan-section**: ${sourcePlanSection}`,
+    ].join('\n'),
+  };
+}
 
 function projectPlan(text) {
   const projectDir = mkdtempSync(join(projectScratchDir('test'), 'aitm-decomposition-gate-'));
@@ -30,6 +57,110 @@ function planText(taskCount = 2, verifiedCount = 2) {
     return `### Task ${number}: Part ${number}${verifier}`;
   }).join('\n\n');
 }
+
+test('parses visible WBS child provenance without trusting Generated-by', () => {
+  const task = { number: 1, title: 'Classifier', heading: '### Task 1: Classifier' };
+  assert.deepEqual(parseWbsChildClaim(wbsChild({ number: 1201, task })), {
+    number: 1201,
+    title: 'Classifier',
+    sourcePlan: SOURCE_PLAN,
+    sourcePlanCommit: 'child-plan-commit',
+    sourcePlanSection: '### Task 1: Classifier',
+  });
+});
+
+test('reconciles complete WBS coverage against content-equivalent pinned plans', async () => {
+  const acceptedPlanText = planText(6, 6);
+  const tasks = classifyDecomposition({ planText: acceptedPlanText }).tasks;
+  const reads = [];
+  const result = await reconcileWbsCoverage({
+    tasks,
+    acceptedPlanPath: SOURCE_PLAN,
+    acceptedPlanText,
+    children: tasks.map((task, index) => wbsChild({ number: 1273 + index, task })),
+    readPlanAtCommit: async (input) => {
+      reads.push(input);
+      return acceptedPlanText;
+    },
+  });
+  assert.equal(result.ok, true);
+  assert.equal(result.expectedCount, 6);
+  assert.equal(result.coveredCount, 6);
+  assert.equal(reads.length, 1, 'identical commit/path reads are cached');
+});
+
+test('rejects duplicate accepted task identities instead of reusing one child claim', async () => {
+  const acceptedPlanText = ['### Task 1: Repeated task', '', '### Task 1: Repeated task'].join(
+    '\n'
+  );
+  const tasks = classifyDecomposition({ planText: acceptedPlanText }).tasks;
+  assert.equal(tasks.length, 2, 'the classifier preserves duplicate tasks for validation');
+
+  const result = await reconcileWbsCoverage({
+    tasks,
+    acceptedPlanPath: SOURCE_PLAN,
+    acceptedPlanText,
+    children: [wbsChild({ number: 1301, task: tasks[0] })],
+    readPlanAtCommit: async () => acceptedPlanText,
+  });
+
+  assert.equal(result.ok, false);
+  assert.ok(
+    result.blockers.some((item) => /wbs-duplicate-task-(?:number|heading)/.test(item)),
+    result.blockers.join('\n')
+  );
+  assert.ok(result.coveredCount <= 1, 'one child claim cannot cover both duplicate tasks');
+});
+
+test('reports missing, duplicate, unknown, title, path, and content contradictions', async () => {
+  const acceptedPlanText = planText(4, 4);
+  const tasks = classifyDecomposition({ planText: acceptedPlanText }).tasks;
+  const result = await reconcileWbsCoverage({
+    tasks,
+    acceptedPlanPath: SOURCE_PLAN,
+    acceptedPlanText,
+    children: [
+      wbsChild({ number: 1401, task: tasks[0] }),
+      wbsChild({ number: 1402, task: tasks[0] }),
+      wbsChild({ number: 1403, task: tasks[1], title: 'Wrong title' }),
+      wbsChild({ number: 1404, task: tasks[2], sourcePlan: 'docs/wrong.md' }),
+      wbsChild({
+        number: 1405,
+        task: tasks[2],
+        sourcePlanSection: '### Task 99: Unknown',
+      }),
+      wbsChild({ number: 1406, task: tasks[3] }),
+    ],
+    readPlanAtCommit: async ({ planPath }) =>
+      planPath === SOURCE_PLAN ? `${acceptedPlanText}\nchanged` : acceptedPlanText,
+  });
+  assert.equal(result.ok, false);
+  assert.ok(result.duplicateClaims.some((item) => /#1401.*#1402/.test(item)));
+  assert.ok(result.provenanceMismatches.some((item) => /#1403.*title/.test(item)));
+  assert.ok(result.provenanceMismatches.some((item) => /#1404.*Source-plan/.test(item)));
+  assert.ok(result.unknownSections.some((item) => /#1405.*Task 99/.test(item)));
+  assert.ok(result.blockers.some((item) => /pinned plan content differs/.test(item)));
+});
+
+test('unrelated children coexist but cannot satisfy a missing WBS task', async () => {
+  const acceptedPlanText = planText(2, 2);
+  const tasks = classifyDecomposition({ planText: acceptedPlanText }).tasks;
+  const unrelated = wbsChild({
+    number: 1500,
+    task: { title: 'Follow-on', heading: '### Task 50: Follow-on' },
+    sourcePlan: 'docs/other-plan.md',
+  });
+  const result = await reconcileWbsCoverage({
+    tasks,
+    acceptedPlanPath: SOURCE_PLAN,
+    acceptedPlanText,
+    children: [wbsChild({ number: 1501, task: tasks[0] }), unrelated],
+    readPlanAtCommit: async () => acceptedPlanText,
+  });
+  assert.equal(result.ok, false);
+  assert.deepEqual(result.missingTasks, [tasks[1].heading]);
+  assert.doesNotMatch(result.blockers.join('\n'), /#1500/);
+});
 
 function waiver() {
   return `
@@ -60,6 +191,36 @@ function context({ size = 'XL', estimate = 12, text = planText(), bodySuffix = '
   };
 }
 
+function sourceChildContext({
+  size = 'L',
+  estimate = 12.5,
+  text = planText(6, 6),
+  sourceSection = '### Task 1: Part 1',
+} = {}) {
+  const ctx = context({ size, estimate, text });
+  ctx.body = [
+    '## Plan Metadata',
+    '- **Source-plan**: docs/plan.md',
+    '- **Source-plan-commit**: accepted-plan-commit',
+    `- **Source-plan-section**: ${sourceSection}`,
+  ].join('\n');
+  return ctx;
+}
+
+function epicMarker() {
+  return '\n## AITM Progress Markers\n\n<!-- aitm-issue-kind kind="epic" -->\n';
+}
+
+function completeEpicContext(taskCount = 6) {
+  const text = planText(taskCount, taskCount);
+  const ctx = context({ size: 'L', estimate: 16, text, bodySuffix: epicMarker() });
+  const tasks = classifyDecomposition({ planText: text }).tasks;
+  ctx.deps.decomposition.fetchWbsChildren = async () =>
+    tasks.map((task, index) => wbsChild({ number: 1273 + index, task }));
+  ctx.deps.decomposition.readPlanAtCommit = async () => text;
+  return ctx;
+}
+
 test('evaluator preserves the underlying must-split classification and valid waiver', async () => {
   const result = await evaluateIssueDecomposition(context({ bodySuffix: waiver() }));
   assert.equal(result.classification.status, 'must-split');
@@ -79,6 +240,210 @@ test('plan exit admits must-split with a complete waiver and preserves warning',
   const result = await decompositionPlanExitGuard.run(context({ bodySuffix: waiver() }));
   assert.equal(result.ok, true);
   assert.match(result.warn, /waiver accepted/);
+});
+
+test('plan exit admits a must-split epic with complete linked WBS coverage', async () => {
+  const result = await decompositionPlanExitGuard.run(completeEpicContext());
+  assert.equal(result.ok, true);
+  assert.match(result.warn, /WBS instantiated \(6\/6\)/);
+});
+
+test('plan exit reconciles the exact accepted-plan snapshot used for classification', async () => {
+  const acceptedPlanText = planText(4, 4);
+  const changedPlanText = `${acceptedPlanText}\n\nChanged after classification.`;
+  const ctx = context({
+    size: 'L',
+    estimate: 16,
+    text: acceptedPlanText,
+    bodySuffix: epicMarker(),
+  });
+  const tasks = classifyDecomposition({ planText: acceptedPlanText }).tasks;
+  let reads = 0;
+  ctx.deps.decomposition.readFile = () => {
+    reads += 1;
+    return reads === 1 ? acceptedPlanText : changedPlanText;
+  };
+  ctx.deps.decomposition.fetchWbsChildren = async () =>
+    tasks.map((task, index) => wbsChild({ number: 1601 + index, task }));
+  ctx.deps.decomposition.readPlanAtCommit = async () => acceptedPlanText;
+
+  const result = await decompositionPlanExitGuard.run(ctx);
+
+  assert.equal(result.ok, true, result.reason);
+  assert.match(result.warn, /WBS instantiated \(4\/4\)/);
+  assert.equal(reads, 1, 'one guard run consumes one accepted-plan snapshot');
+});
+
+test('plan exit reports exact incomplete epic WBS blockers', async () => {
+  const ctx = completeEpicContext(4);
+  const children = await ctx.deps.decomposition.fetchWbsChildren();
+  ctx.deps.decomposition.fetchWbsChildren = async () => children.slice(0, 3);
+  const result = await decompositionPlanExitGuard.run(ctx);
+  assert.equal(result.ok, false);
+  assert.ok(result.blockers.some((item) => /wbs-missing-task: ### Task 4/.test(item)));
+});
+
+test('plan exit keeps a non-epic must-split issue blocked even if child-shaped data exists', async () => {
+  const ctx = context({ size: 'L', estimate: 16, text: planText(4, 4) });
+  ctx.deps.decomposition.fetchWbsChildren = async () => {
+    throw new Error('must not fetch children for code kind');
+  };
+  const result = await decompositionPlanExitGuard.run(ctx);
+  assert.equal(result.ok, false);
+  assert.match(result.reason, /must-split/);
+});
+
+test('evaluator and Plan exit classify a generated child from its bounded source section', async () => {
+  const ctx = sourceChildContext();
+  ctx.deps.decomposition.fetchWbsChildren = async () => {
+    throw new Error('bounded non-epic child must not fetch epic WBS children');
+  };
+
+  const evaluated = await evaluateIssueDecomposition(ctx);
+  assert.equal(evaluated.classification.status, 'story-ok');
+  assert.equal(evaluated.classification.taskCount, 1);
+  assert.deepEqual(evaluated.planSelection, {
+    ok: true,
+    applied: true,
+    heading: '### Task 1: Part 1',
+    diagnostic: null,
+  });
+
+  const admitted = await decompositionPlanExitGuard.run(ctx);
+  assert.deepEqual(admitted, { ok: true });
+});
+
+test('evaluator preserves whole-plan WBS classification for an epic with source-section metadata', async () => {
+  const ctx = completeEpicContext();
+  ctx.body = [
+    '## Plan Metadata',
+    '- **Source-plan**: docs/plan.md',
+    '- **Source-plan-commit**: accepted-plan-commit',
+    '- **Source-plan-section**: ### Task 1: Part 1',
+    epicMarker(),
+  ].join('\n');
+
+  const evaluated = await evaluateIssueDecomposition(ctx);
+  assert.equal(evaluated.classification.status, 'must-split');
+  assert.equal(evaluated.classification.taskCount, 6);
+  assert.equal(evaluated.planSelection.applied, false);
+
+  const admitted = await decompositionPlanExitGuard.run(ctx);
+  assert.equal(admitted.ok, true);
+  assert.match(admitted.warn, /WBS instantiated \(6\/6\)/);
+});
+
+test('Plan exit and decompose-check fail closed for an invalid requested source section', async () => {
+  const ctx = sourceChildContext({
+    size: 'M',
+    estimate: 8,
+    text: planText(1, 1),
+    sourceSection: '### Task 99: Missing',
+  });
+
+  const blocked = await decompositionPlanExitGuard.run(ctx);
+  assert.equal(blocked.ok, false);
+  assert.match(blocked.reason, /invalid Source-plan-section/);
+  assert.match(blocked.reason, /not found/);
+
+  const checked = await runDecomposeCheck({
+    issueNumber: ctx.issueNumber,
+    cfg: ctx.cfg,
+    deps: {
+      fetchIssueBody: async () => ctx.body,
+      decomposition: ctx.deps.decomposition,
+    },
+  });
+  assert.equal(checked.classification.status, 'story-ok');
+  assert.equal(checked.planSelection.ok, false);
+  assert.equal(checked.exitCode, 3);
+});
+
+test('Plan exit and decompose-check reject source-section fields split across metadata sections', async () => {
+  const ctx = sourceChildContext();
+  ctx.body = [
+    ctx.body,
+    '## Notes',
+    'Visible prose.',
+    '## Plan Metadata',
+    '- **Source-plan-section**: ### Task 2: Part 2',
+  ].join('\n');
+
+  const blocked = await decompositionPlanExitGuard.run(ctx);
+  assert.equal(blocked.ok, false);
+  assert.match(blocked.reason, /duplicate Source-plan-section/);
+
+  const checked = await runDecomposeCheck({
+    issueNumber: ctx.issueNumber,
+    cfg: ctx.cfg,
+    deps: {
+      fetchIssueBody: async () => ctx.body,
+      decomposition: ctx.deps.decomposition,
+    },
+  });
+  assert.equal(checked.planSelection.ok, false);
+  assert.equal(checked.exitCode, 3);
+});
+
+test('decompose-check reports one task for a valid bounded source child', async () => {
+  const ctx = sourceChildContext();
+  const checked = await runDecomposeCheck({
+    issueNumber: ctx.issueNumber,
+    cfg: ctx.cfg,
+    deps: {
+      fetchIssueBody: async () => ctx.body,
+      decomposition: ctx.deps.decomposition,
+    },
+  });
+
+  assert.equal(checked.classification.status, 'story-ok');
+  assert.equal(checked.classification.taskCount, 1);
+  assert.equal(checked.planSelection.heading, '### Task 1: Part 1');
+  assert.equal(checked.exitCode, 0);
+});
+
+test('decompose-check keeps whole-plan classification for overrides and Plan metadata', async () => {
+  const overrideContext = sourceChildContext();
+  const explicitOverride = await runDecomposeCheck({
+    issueNumber: overrideContext.issueNumber,
+    cfg: overrideContext.cfg,
+    planOverride: 'docs/plan.md',
+    deps: {
+      fetchIssueBody: async () => overrideContext.body,
+      decomposition: overrideContext.deps.decomposition,
+    },
+  });
+  assert.equal(explicitOverride.classification.status, 'must-split');
+  assert.equal(explicitOverride.classification.taskCount, 6);
+  assert.equal(explicitOverride.planSelection.applied, false);
+
+  const planMetadataContext = context({ size: 'L', estimate: 12.5, text: planText(6, 6) });
+  planMetadataContext.body = [
+    '## Plan Metadata',
+    '- **Plan**: docs/plan.md',
+    '- **Source-plan-section**: ### Task 1: Part 1',
+  ].join('\n');
+  const planMetadata = await runDecomposeCheck({
+    issueNumber: planMetadataContext.issueNumber,
+    cfg: planMetadataContext.cfg,
+    deps: {
+      fetchIssueBody: async () => planMetadataContext.body,
+      decomposition: planMetadataContext.deps.decomposition,
+    },
+  });
+  assert.equal(planMetadata.classification.status, 'must-split');
+  assert.equal(planMetadata.classification.taskCount, 6);
+  assert.equal(planMetadata.planSelection.applied, false);
+});
+
+test('plan exit fails closed when epic WBS evidence cannot be read', async () => {
+  const ctx = completeEpicContext(4);
+  ctx.deps.decomposition.fetchWbsChildren = async () => {
+    throw new Error('GraphQL unavailable');
+  };
+  const result = await decompositionPlanExitGuard.run(ctx);
+  assert.equal(result.ok, false);
+  assert.match(result.reason, /wbs-evidence-unreadable: GraphQL unavailable/);
 });
 
 test('plan exit reports review-only signals without blocking', async () => {

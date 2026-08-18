@@ -288,6 +288,64 @@ test('high-risk routed metadata enumerates parser arguments and special exits', 
   }
 });
 
+test('co-review package catalog matches every settled subcommand, flag, and durable exit', () => {
+  const coReview = commandByName('co-review');
+  for (const command of [
+    'init',
+    'status',
+    'claim',
+    'wait',
+    'handoff',
+    'set-max-turns',
+    'supplement',
+    'continue',
+    'finalize',
+  ]) {
+    assert.match(coReview.usage, new RegExp(`(?:<|\\|)${command}(?:\\||>)`), command);
+  }
+  for (const flag of [
+    '--dir <path>',
+    '--artifact <path>',
+    '--owner <identity>',
+    '--reviewer <identity>',
+    '--max-turns <N>',
+    '--import-review <file>',
+    '--review-of <sha>',
+    '--archive-dir <path>',
+    '--actor <identity>',
+    '--timeout <seconds>',
+    '--response <file>',
+    '--commit <sha>',
+    '--answers <review>',
+    '--review <file>',
+    '--decision accepted|changes-requested',
+    '--summary <file>',
+    '--message <text>',
+    '--file <path>',
+    '--additional-turns <N>',
+    '--approved-by <identity>',
+    '--focus <file>',
+    '--good-enough',
+    '--json',
+  ]) {
+    assert.ok(
+      coReview.arguments.some((argument) => argument.name === flag),
+      `co-review: ${flag}`
+    );
+  }
+  assert.match(
+    coReview.exitCodes.find(({ code }) => code === 4)?.meaning ?? '',
+    /acceptance.*durable.*archive publication.*pending/i
+  );
+  assert.match(coReview.preconditions.join(' '), /authenticated gh identity/i);
+  assert.match(coReview.effects.join(' '), /mutex/i);
+  assert.match(coReview.effects.join(' '), /exact bytes/i);
+  assert.match(
+    coReview.arguments.find(({ name }) => name === '--summary <file>')?.description ?? '',
+    /optional only on.*final changes-requested review/i
+  );
+});
+
 test('every task verb has an explicit positional contract', () => {
   assert.deepEqual(
     Object.keys(VERB_POSITIONAL_ARGUMENTS).sort(),

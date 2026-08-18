@@ -185,6 +185,94 @@ Primary sources:
 - Bitbucket Cloud REST API.
 - GitHub Copilot and Atlassian Rovo Dev examples.
 
+## The Evolutionary Ladder (2026-08-16 addition)
+
+Validation pass on the five-rung history used to frame articles 11+ (the
+"Trust Through Review" arc): AI-as-pair → vibe coding → prompt engineering →
+spec-driven development → agent orchestration / Agentic Agile Delivery. Each
+rung below is checked against a citable source, not just recollection.
+
+1. **AI-as-pair (Copilot era, 2021).** GitHub announced Copilot on June 29,
+   2021, explicitly branded "your AI pair programmer" — autocomplete-grade
+   suggestions inside a human-authored session, not autonomous generation.
+   Confirmed, no correction needed.
+2. **Vibe coding (early 2025).** The term traces to a single Andrej Karpathy
+   post on February 2, 2025, describing giving in fully to an LLM's
+   suggestions and "forgetting the code exists" — he later called it a
+   "throwaway tweet" meant for weekend/disposable projects, not production
+   work. The industry generalized it into shorthand for any loose,
+   prompt-driven build. The "unshippable / costs more to fix than rebuild"
+   failure mode is exactly what article 01 already documents as "vibe slop"
+   (review debt, GitClear churn data, WSJ's "vibe slop crisis" framing) — no
+   new sourcing needed there, article 01's existing bibliography covers it.
+   One correction: Collins Dictionary named "vibe coding" its 2025 Word of
+   the Year, which is worth citing as an industry-adoption data point in its
+   own right.
+3. **Prompt engineering (2023–2024).** Confirmed as a real, named transitional
+   phase — Gartner's 2024 workforce guidance and the emergent "promptware
+   engineering" academic literature both treat prompt-crafting as a distinct
+   discipline that preceded spec-first tooling. Article 00 already
+   pre-empts this rung with one line ("It is not prompt engineering with a
+   better title") and article 02 already states "Specification engineering
+   is replacing prompt engineering as the entry point" — so the ladder's
+   rung 3 is already asserted in the existing series, just never laid out
+   as its own numbered step. No new claim, just make the connective tissue
+   explicit rather than repeating the case for it.
+4. **Spec-driven development.** Already extensively sourced in this document
+   and in article 02's bibliography (GitHub Spec Kit, Atlassian Rovo Dev,
+   Kiro, Copilot coding agent). The "loses the forest for the trees" failure
+   mode at scale — local task correctness not summing to whole-system
+   intent — is a real, live research finding, not just an AITM-specific
+   observation: independent 2025–2026 work on multi-agent code generation
+   found that once total token budget is held constant, decomposed
+   multi-agent output is internally consistent per-contribution but
+   inconsistent across the whole (naming, ergonomics, pattern fit), and
+   uncoordinated agent swarms can silently burn budget without converging.
+   Confirmed, new citations added below.
+5. **Agent orchestration / Agentic Agile Delivery.** "Agent orchestration" is
+   confirmed as the live 2026 industry term for the rung past SDD —
+   Forrester frames it explicitly as "orchestrated SDLC agents," Devoteam's
+   2026 retrospective frames SDD itself as transitional ("the end of code as
+   the center of development?"), and a June 2026 arXiv taxonomy paper
+   ("From Prompt to Process") independently surveys six SDD-and-beyond
+   frameworks and finds the same convergence AITM bets on: persistent
+   artifacts, work contracts, traceability, and human review as the
+   mechanisms that reduce ambiguity once teams move past the isolated
+   prompt. None of the sources found use "Agentic Agile Delivery" or "Agile
+   Agentic Delivery" — that framing is the author's own branding for this
+   rung, not a term already in industry use. Keep it presented that way in
+   prose (own branding, not a borrowed term).
+
+**Context-window / hallucination-under-scope claim** (used to justify the
+prompt-engineering → SDD transition): confirmed by Chroma Research's July
+2025 "Context Rot" study — accuracy degrades non-uniformly as input length
+grows, well before a model's documented context limit, across all 18
+frontier models tested. This is the strongest available citation for
+"agents hallucinate under scope pressure" and is new to this document —
+added to the bibliography below.
+
+**Codex ADR-sidecar claim**: confirmed as a real, documented pattern —
+Codex CLI tooling and third-party write-ups describe drafting/maintaining
+Architecture Decision Records in a sidecar directory (`docs/adrs/`) that
+agents are told to consult via `AGENTS.md`, with enforcement ranging from
+"advisory" (in-context, probabilistic compliance) to "enforced" (a
+deterministic pre-change check). This is a fair, sourced contrast to AITM's
+issue-backlog-as-metadata-store bet, not a strawman.
+
+### What NOT to claim
+
+- Do not call "agent orchestration" and "Agentic Agile Delivery" synonyms in
+  prose — one is an observed industry term, the other is the author's own
+  coinage for AITM's specific agile-disciplined flavor of it.
+  "Agentic Agile Delivery" vs. "Agile Agentic Delivery" word order is still
+  undecided (see [narrative arc](xp-agentic-delivery-narrative-arc.md)).
+- Do not present the five-rung ladder as a universally agreed-upon industry
+  taxonomy — no single source lays out these exact five stages in this
+  exact order. It is a reasonable synthesis across several independently
+  confirmed claims, and articles should keep the "this is how I've watched
+  it play out" framing they already use elsewhere in the series, not cite
+  it as settled canon.
+
 ## Open Research Questions
 
 - What issue/body fields are essential for agent-ready work across GitHub, Jira, GitLab, and Bitbucket?
@@ -226,3 +314,20 @@ Primary sources:
 - AI Task Manager. "How AI Task Manager Keeps Agent Context Small and Rules Fresh." ../introduction/context-management-skill-architecture.md
 - AI Task Manager. "Cutting Context Bloat With the Just-In-Time Skill Loader." ../jit-loader-results.md
 - AI Task Manager. "Worker Context Contract." ../guides/worker-context-contract.md
+
+### Ladder & Agent Orchestration Sources (added 2026-08-16)
+
+- GitHub Blog. "Introducing GitHub Copilot: your AI pair programmer." https://github.blog/news-insights/product-news/introducing-github-copilot-ai-pair-programmer/
+- The Register. "GitHub Copilot is AI pair programming where you, the human, still have to do most of the work." https://www.theregister.com/2021/06/30/github_ai_copilot/
+- CodeRabbit. "A semantic history of vibe coding: Tweet, meme and workflow." https://www.coderabbit.ai/blog/a-semantic-history-how-the-term-vibe-coding-went-from-a-tweet-to-prod
+- Collins Dictionary. "'Vibe Coding' Named Collins Dictionary's Word of the Year 2025." https://www.newsonair.gov.in/vibe-coding-named-collins-dictionarys-word-of-the-year-2025/
+- Gartner. 2024 guidance on generative AI upskilling for engineering workforces (cited via secondary summary; primary Gartner report is paywalled — treat as directional, not a direct quote source).
+- Chroma Research (Hong, Kelly; Troynikov, Anton; Huber, Jeff). "Context Rot: How Increasing Input Tokens Impacts LLM Performance." https://www.trychroma.com/research/context-rot
+- Augment Code. "Multi-Agent Orchestration: A Practical Architecture Without the Buzzwords." https://www.augmentcode.com/guides/multi-agent-orchestration-architecture-guide
+- Galileo. "Are Your Multi-Agent Systems Failing for These 7 Reasons?" https://galileo.ai/blog/why-multi-agent-systems-fail
+- Forrester. "Agentic Software Development Takes The Lead: From Code Assistants To Orchestrated SDLC Agents." https://www.forrester.com/blogs/agentic-software-development-takes-the-lead-from-code-assistants-to-orchestrated-sdlc-agents/
+- Devoteam. "Spec-Driven Development in 2026: The end of code as the center of development?" https://www.devoteam.com/expert-view/spec-driven-development-2026/
+- Zylos Research. "Agent-Orchestrated Software Development: From Issue to Deployment." https://zylos.ai/research/2026-06-25-agent-orchestrated-software-development-issue-to-deployment/
+- arXiv (2606.04967). "From Prompt to Process: a Process Taxonomy and Comparative Assessment of Frameworks Supporting AI Software Development Agents." https://arxiv.org/abs/2606.04967
+- Codex Knowledge Base (Vaughan, Daniel). "Architecture Decision Records with Codex CLI: Automated ADR Generation, Governance, and the Agent-Architecture Gap." https://codex.danielvaughan.com/2026/04/28/codex-cli-architecture-decision-records-adr-automated-governance/
+- Mneme HQ. "How AI Coding Agents Use ADRs (Architecture Decision Records)." https://mnemehq.com/insights/how-ai-coding-agents-use-adrs/

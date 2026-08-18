@@ -118,3 +118,39 @@ test('computeEvaluation FAILS the #859 wrong-base child (cut from the fork)', ()
   const evaluation = computeEvaluation('feature/child/910', { graph, git: makeGit('f0') });
   assert.equal(evaluation.pass, false);
 });
+
+test('#1284: the guard evaluates a child against its custom recorded epic branch', () => {
+  const customEpic = 'codex/1268-implementation-plan';
+  const customGraph = (n) =>
+    n === 910
+      ? { ...GRAPH[910], parentAuthoritativeBranch: customEpic }
+      : (GRAPH[n] ?? { parent: null, children: [] });
+  const calls = [];
+  const git = (args) => {
+    calls.push(args);
+    if (args[0] === 'rev-parse' && args[1] === customEpic) return 'e1';
+    if (args[0] === 'merge-base' && args.includes('--is-ancestor')) return '';
+    if (args[0] === 'merge-base' && args[1] === customEpic && args[2] === 'trunk') return 'f0';
+    if (args[0] === 'merge-base' && args[1] === 'feature/child/910' && args[2] === customEpic)
+      return 'e1';
+    throw new Error(`unexpected git ${args.join(' ')}`);
+  };
+  assert.equal(computeEvaluation('feature/child/910', { graph: customGraph, git }).pass, true);
+  assert.ok(calls.some((args) => args.includes(customEpic)));
+});
+
+test('#1284: unresolved custom authority blocks guard evaluation before Git', () => {
+  const calls = [];
+  const unavailableGraph = (n) =>
+    n === 910
+      ? { ...GRAPH[910], parentAuthorityError: 'malformed current worktree authority' }
+      : (GRAPH[n] ?? { parent: null, children: [] });
+  assert.equal(
+    computeEvaluation('feature/child/910', {
+      graph: unavailableGraph,
+      git: (args) => calls.push(args),
+    }),
+    null
+  );
+  assert.deepEqual(calls, []);
+});

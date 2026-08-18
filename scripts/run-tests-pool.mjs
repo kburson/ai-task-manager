@@ -1,4 +1,4 @@
-// @story #863
+// @story #863 #1307
 /**
  * Bounded async worker pool for the runner (#863).
  *
@@ -38,6 +38,22 @@ import os from 'node:os';
 export function poolConcurrency(cpus = os.cpus().length) {
   const n = Number.isFinite(cpus) ? Math.floor(cpus) : 1;
   return Math.max(1, n - 1);
+}
+
+/**
+ * Conservative cap for direct-subprocess unit files. This phase runs only
+ * after the saturated pure pool drains, and never admits more than two files.
+ */
+export function subprocessPoolConcurrency(cpus = os.cpus().length) {
+  return Math.min(2, poolConcurrency(cpus));
+}
+
+/**
+ * Conservative cap for explicitly audited slow tests. The dedicated phase is
+ * isolated behind barriers and never admits more than two files at once.
+ */
+export function slowPoolConcurrency(cpus = os.cpus().length) {
+  return Math.min(2, poolConcurrency(cpus));
 }
 
 /**

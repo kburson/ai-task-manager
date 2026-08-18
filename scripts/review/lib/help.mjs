@@ -6,13 +6,16 @@ export const COMMANDS = Object.freeze({
   init: command({
     purpose: 'Create a new local co-review protocol or import one immutable reviewer round.',
     caller: 'The artifact owner or human coordinator, before either agent begins a new exchange.',
+    lifecycleStates: ['absent'],
+    mutationBoundary:
+      'Creates protocol state under the local mutex; it does not publish an evidence archive.',
     prerequisites: [
       'Run in the Git worktree that contains the authoritative committed artifact.',
       'Choose a caller-owned Git-ignored runtime directory.',
       'Use distinct non-blank owner and reviewer identities and a positive review-turn budget.',
     ],
     usage:
-      'npx aitm co-review init --dir <path> --artifact <repo-path> --owner <identity> --reviewer <identity> --max-turns <N> [--import-review <file> --review-of <commit>]',
+      'npx aitm co-review init --dir <path> --artifact <repo-path> --owner <identity> --reviewer <identity> --max-turns <N> [--archive-dir <tracked-repo-path>] [--import-review <file> --review-of <commit>]',
     arguments: [
       '--dir <path>                 Ignored local protocol directory.',
       '--artifact <repo-path>       Authoritative tracked artifact.',
@@ -21,6 +24,7 @@ export const COMMANDS = Object.freeze({
       '--max-turns <N>              Positive reviewer-response limit.',
       '--import-review <file>       Existing immutable review; requires --review-of.',
       '--review-of <commit>         Exact commit reviewed by the imported review.',
+      '--archive-dir <repo-path>    Optional tracked destination for terminal evidence.',
     ],
     effects: [
       'Creates state.json and events.jsonl under --dir through the protocol mutex.',
@@ -48,6 +52,9 @@ export const COMMANDS = Object.freeze({
   status: command({
     purpose: 'Recover the complete protocol state and verify recorded artifact integrity.',
     caller: 'Owner, reviewer, or human at any time, especially after context loss.',
+    lifecycleStates: ['active', 'intervention-required', 'accepted'],
+    mutationBoundary:
+      'Read-only; inspects protocol integrity and archive completion without writing.',
     prerequisites: ['The --dir protocol must have been initialized.'],
     usage: 'npx aitm co-review status --dir <path> [--json]',
     arguments: [
@@ -79,6 +86,8 @@ export const COMMANDS = Object.freeze({
   claim: command({
     purpose: 'Atomically claim the currently available owner or reviewer turn.',
     caller: 'Only the configured identity whose role is displayed as available by status.',
+    lifecycleStates: ['active'],
+    mutationBoundary: 'Records one claim under the local protocol mutex.',
     prerequisites: [
       'Protocol is active, integrity is clean, and the caller identity maps to the current role.',
     ],
@@ -108,6 +117,8 @@ export const COMMANDS = Object.freeze({
   wait: command({
     purpose: 'Wait briefly and read-only for one configured actor to become claimable.',
     caller: 'Owner or reviewer while the other role has the turn.',
+    lifecycleStates: ['active', 'intervention-required', 'accepted'],
+    mutationBoundary: 'Read-only polling; never acquires the protocol mutex or writes state.',
     prerequisites: ['Protocol exists and --actor is a configured identity.'],
     usage: 'npx aitm co-review wait --dir <path> --actor <identity> [--timeout <seconds>]',
     arguments: [
@@ -136,6 +147,9 @@ export const COMMANDS = Object.freeze({
   handoff: command({
     purpose: 'Validate and transfer one completed owner or reviewer turn.',
     caller: 'Only the configured identity holding the claimed current turn.',
+    lifecycleStates: ['active'],
+    mutationBoundary:
+      'Records the handoff under the mutex; reviewer consensus acceptance is durable before archive publication runs after mutex release.',
     prerequisites: [
       'Owner: committed artifact plus immutable response; answers preceding review when present.',
       'Reviewer: immutable review of exact owner commit plus explicit accepted or changes-requested decision.',
@@ -148,15 +162,16 @@ export const COMMANDS = Object.freeze({
     effects: [
       'Hashes immutable exchange artifacts, appends one handoff event, clears the claim, and transfers/terminates state.',
       'A reviewer handoff consumes exactly one review turn.',
+      'Reviewer consensus publishes the configured archive after durable acceptance; a publication failure exits 4 and prints an exact finalize retry.',
     ],
     validations: [
-      'Role/claim/round, immutable path/hash separation, finding coverage, exact Git commit/artifact/index/branch, explicit decision, budget, and required interception summary.',
+      'Role/claim/round, immutable path/hash separation, finding coverage, exact Git commit/artifact/index/branch, explicit decision, budget, and a summary optional only on the final changes-requested review.',
     ],
     output: 'Prints hashes, decision, used/max/remaining turns, lifecycle, and next command.',
     exits:
-      '0=handoff complete; 1=protocol/Git/artifact refusal; 2=invalid or role-inapplicable flags.',
+      '0=handoff complete; 1=protocol/Git/artifact refusal; 2=invalid or role-inapplicable flags; 4=acceptance durable; archive publication pending.',
     transition:
-      'owner -> reviewer; reviewer changes -> owner; reviewer accepted -> accepted; final reviewer changes -> intervention-required.',
+      'owner -> reviewer; reviewer changes -> owner; reviewer accepted -> accepted; final changes-requested -> active closing owner; closing owner handoff -> intervention-required.',
     idempotency: 'A completed handoff is not replayed; status reveals the already-advanced state.',
     examples: [
       'npx aitm co-review handoff --dir .tmp/design-review --actor owner-agent --response .tmp/design-review/r2-owner-response.md --artifact docs/design.md --commit abc1234 --answers .tmp/design-review/r1-review.md --message "revision ready"',
@@ -164,48 +179,170 @@ export const COMMANDS = Object.freeze({
       'npx aitm co-review handoff --dir .tmp/design-review --actor reviewer-agent --review .tmp/design-review/r6-review.md --review-of abc1234 --decision changes-requested --summary .tmp/design-review/r6-human-summary.md --message "human decision requested"',
     ],
     recovery:
-      'Do not edit a handed-off file. Correct only the named unaccepted input; on drift, branch change, or exhausted budget, stop and escalate.',
+      'Do not edit a handed-off file. Correct only the named unaccepted input; on drift or branch change, stop and escalate. On exhausted budget, follow the displayed next action and complete the closing owner turn before intervention.',
     next: [
       'status',
       'the displayed next-role claim',
       'continue only after intervention-required human approval',
     ],
   }),
+  'set-max-turns': command({
+    purpose: 'Authenticated adjustment of the absolute reviewer-turn maximum.',
+    caller: 'The authenticated GitHub user exercising human budget authority.',
+    lifecycleStates: ['active'],
+    mutationBoundary:
+      'Authenticates first, then records one absolute budget adjustment under the mutex.',
+    prerequisites: [
+      'The gh CLI is authenticated and the protocol is active.',
+      'The requested maximum is a nonnegative integer that preserves any in-progress turn floor.',
+    ],
+    usage: 'npx aitm co-review set-max-turns --dir <path> --max-turns <N>',
+    arguments: [
+      '--dir <path>                 Existing protocol directory.',
+      '--max-turns <N>              New absolute reviewer-response maximum; may increase or decrease.',
+    ],
+    effects: [
+      'Records authenticated actor, prior/requested/effective maximum, and timestamp.',
+      'Preserves the active lifecycle, role, and claim; an exhausted owner budget short-circuits to intervention only on the subsequent owner handoff.',
+    ],
+    validations: ['GitHub identity, lifecycle, integrity, turn floor, and mutex ownership.'],
+    output: 'Prints the effective budget, adjustment provenance, lifecycle, and exact next action.',
+    exits: '0=adjusted or exact no-op; 1=identity/state/integrity/lock refusal; 2=invalid usage.',
+    transition: 'The active lifecycle, current role, and claim remain unchanged by the adjustment.',
+    idempotency: 'An exact effective no-op preserves protocol bytes and emits no event.',
+    examples: [
+      'npx aitm co-review set-max-turns --dir .tmp/design-review --max-turns 8',
+      'npx aitm co-review set-max-turns --dir .tmp/design-review --max-turns 2',
+    ],
+    recovery:
+      'Run gh auth login if identity resolution fails, then rerun the exact printed command. Use status to inspect a closing owner or indefinite pause.',
+    next: [
+      'status',
+      'complete a preserved closing owner turn',
+      'continue or finalize after intervention',
+    ],
+  }),
+  supplement: command({
+    purpose: 'Register immutable human context while the protocol is paused for intervention.',
+    caller: 'The authenticated GitHub user supplying additional review context.',
+    lifecycleStates: ['intervention-required'],
+    mutationBoundary:
+      'Authenticates first, then records one immutable supplement hash under the mutex.',
+    prerequisites: [
+      'Lifecycle is intervention-required and the supplement is a safe regular file under --dir.',
+    ],
+    usage: 'npx aitm co-review supplement --dir <path> --file <file>',
+    arguments: [
+      '--dir <path>                 Existing protocol directory.',
+      '--file <file>                Immutable supplement file inside the runtime directory.',
+    ],
+    effects: [
+      'Appends a stable S-N supplement record with authenticated provenance and target round.',
+      'Continuation freezes pending supplements; the next reviewer output acknowledges each as [supplement:S-N].',
+    ],
+    validations: [
+      'Identity, intervention lifecycle, containment, file type/hash, uniqueness, integrity, and mutex.',
+    ],
+    output: 'Prints the supplement id, hash, target round, and intervention status.',
+    exits:
+      '0=registered or exact idempotent retry; 1=identity/state/file/integrity refusal; 2=invalid usage.',
+    transition: 'intervention-required remains intervention-required.',
+    idempotency: 'The same path and bytes return the existing registration without another event.',
+    examples: [
+      'npx aitm co-review supplement --dir .tmp/design-review --file .tmp/design-review/human-context.md',
+    ],
+    recovery:
+      'Preserve registered bytes. Correct only an unaccepted file, authenticate with gh auth login when required, and rerun.',
+    next: ['register another supplement', 'continue', 'finalize --good-enough', 'make no mutation'],
+  }),
   continue: command({
-    purpose: 'Record human approval to add reviewer turns after mandatory interception.',
-    caller: 'The human continuation authority, or an agent transcribing explicit human direction.',
+    purpose: 'Authenticated continuation after mandatory human interception.',
+    caller: 'The authenticated GitHub user exercising human continuation authority.',
+    lifecycleStates: ['intervention-required'],
+    mutationBoundary:
+      'Authenticates first, then records continuation and freezes supplements under the mutex.',
     prerequisites: [
       'Lifecycle is intervention-required and the last review/summary remain intact.',
     ],
     usage:
-      'npx aitm co-review continue --dir <path> --additional-turns <N> --approved-by <identity> [--focus <file>]',
+      'npx aitm co-review continue --dir <path> [--max-turns <N> | --additional-turns <N>] [--focus <file>]',
     arguments: [
       '--dir <path>                 Existing protocol directory.',
-      '--additional-turns <N>       Positive turns added to the existing maximum.',
-      '--approved-by <identity>     Declared human provenance; not authentication.',
+      '--max-turns <N>              New absolute maximum; bare continuation authorizes the minimum required by the resumed role.',
+      '--additional-turns <N>       Legacy positive additive form; mutually exclusive with --max-turns.',
+      '--approved-by <identity>     Deprecated and ignored; authenticated GitHub login is authoritative.',
       '--focus <file>               Optional immutable human refocus instructions.',
     ],
     effects: [
-      'Adds to max turns, preserves used turns, hashes optional focus, and returns an available owner turn.',
+      'Derives the resumed role from the last handoff: owner resumes reviewer; reviewer resumes owner.',
+      'Authorizes the resumed role minimum, freezes pending supplements, hashes optional focus, and returns that role available.',
     ],
     validations: [
-      'Intervention lifecycle, positive addition, approval identity, integrity, focus containment/separation, and mutex.',
+      'Authenticated identity, intervention lifecycle, budget form, integrity, focus containment/separation, supplements, and mutex.',
     ],
-    output: 'Prints approval/refocus provenance, cumulative budget, and owner claim command.',
+    output:
+      'Prints approval/refocus provenance, cumulative budget, resumed role, and its claim command.',
     exits: '0=continued; 1=state/integrity/lock refusal; 2=invalid usage.',
     transition:
-      'intervention-required -> active owner available; accepted remains terminal and cannot continue.',
+      'intervention after a closing owner -> active reviewer available; legacy intervention after an exhausted reviewer -> active owner available; accepted cannot continue.',
     idempotency:
       'Not replayable after success because the protocol is no longer intervention-required.',
     examples: [
-      'npx aitm co-review continue --dir .tmp/design-review --additional-turns 3 --approved-by kendrick',
-      'npx aitm co-review continue --dir .tmp/design-review --additional-turns 2 --approved-by kendrick --focus .tmp/design-review/refocus.md',
+      'npx aitm co-review continue --dir .tmp/design-review',
+      'npx aitm co-review continue --dir .tmp/design-review --max-turns 8 --focus .tmp/design-review/refocus.md',
+      'npx aitm co-review continue --dir .tmp/design-review --additional-turns 2',
     ],
     recovery:
       'If approval or focus is wrong, correct it before success. After success, do not rerun; use status.',
     next: [
-      'npx aitm co-review claim --dir <path> --actor <owner-identity>',
+      'claim with the displayed resumed-role actor command',
       'npx aitm co-review status --dir <path>',
+    ],
+  }),
+  finalize: command({
+    purpose: 'Publish terminal evidence for accepted consensus or authenticated human good enough.',
+    caller:
+      'Any operator retrying accepted publication, or the authenticated human choosing good enough.',
+    lifecycleStates: ['intervention-required', 'accepted'],
+    mutationBoundary:
+      'Accepted-session retries never mutate protocol; good enough prepares first, records terminal acceptance under the mutex, then publishes after mutex release.',
+    prerequisites: [
+      'Accepted consensus, or author-completed intervention with a two-sided closing evidence pair for --good-enough.',
+      'A configured archive destination or explicit --archive-dir tracked repository path.',
+    ],
+    usage:
+      'npx aitm co-review finalize --dir <path> [--good-enough] [--archive-dir <tracked-repo-path>] [--json]',
+    arguments: [
+      '--dir <path>                 Existing protocol directory.',
+      '--good-enough                Authenticated human terminal acceptance from eligible intervention.',
+      '--archive-dir <repo-path>    Required for legacy/unconfigured sessions; must stay inside the repository.',
+      '--json                       Emit state and publication result as JSON.',
+    ],
+    effects: [
+      'Validates and publishes deterministic exact-byte evidence without staging or committing it.',
+      'Good enough records basis, authenticated actor, timestamp, and one human-good-enough event before publication.',
+    ],
+    validations: [
+      'Lifecycle, expected revision, two-sided evidence, identity, destination containment, immutable source bytes, and archive conflicts.',
+    ],
+    output:
+      'Prints every produced repository-relative path and host repository governance guidance.',
+    exits:
+      '0=archive complete or identical; 1=protocol/evidence/destination/conflict refusal; 2=invalid usage; 4=acceptance durable; archive publication pending.',
+    transition: 'intervention-required --good-enough -> accepted; accepted remains terminal.',
+    idempotency:
+      'An identical archive retry succeeds without rewriting; conflicting output is refused.',
+    examples: [
+      'npx aitm co-review finalize --dir .tmp/design-review',
+      'npx aitm co-review finalize --dir .tmp/legacy-review --archive-dir docs/reviews/legacy',
+      'npx aitm co-review finalize --dir .tmp/design-review --good-enough',
+    ],
+    recovery:
+      'Exit 4 means acceptance is durable; preserve state and run the exact printed finalize retry. Never retry the terminal handoff.',
+    next: [
+      'verify exact bytes',
+      'stage and commit through host repository governance',
+      'stop; accepted is terminal',
     ],
   }),
 });
@@ -235,6 +372,8 @@ function renderCommandHelp(name) {
     '',
     `Purpose: ${entry.purpose}`,
     `Authorized caller: ${entry.caller}`,
+    `Lifecycle states: ${entry.lifecycleStates.join(', ')}`,
+    `Mutation boundary: ${entry.mutationBoundary}`,
     ...list('Prerequisites', entry.prerequisites),
     `Usage: ${entry.usage}`,
     ...list('Arguments', entry.arguments),
@@ -254,16 +393,27 @@ function renderCommandHelp(name) {
 }
 
 function renderTopHelp() {
+  const commandNames = Object.keys(COMMANDS);
+  const commandTable = Object.entries(COMMANDS)
+    .map(
+      ([name, entry]) => `  ${name}
+    Authorized caller: ${entry.caller}
+    Lifecycle states: ${entry.lifecycleStates.join(', ')}
+    Mutation boundary: ${entry.mutationBoundary}
+    Usage: ${entry.usage}
+    Purpose: ${entry.purpose}`
+    )
+    .join('\n');
   return `co-review — model-agnostic artifact owner / external reviewer handshake
 
 Purpose: Coordinate immutable owner/reviewer artifact rounds through explicit acceptance or human interception.
-Usage: npx aitm co-review <init|status|claim|wait|handoff|continue> [command options]
+Usage: npx aitm co-review <${commandNames.join('|')}> [command options]
 Audience: Artifact owners, external reviewers, and the human continuation authority.
 Arguments: Run npx aitm co-review help <command> for exact required and optional flags.
 Preconditions: Normal commands require a Git worktree, tracked artifact, and caller-selected ignored --dir; help requires nothing.
-Effects: Normal mutations update only local protocol state under --dir; help, status, and wait do not mutate it.
+Effects: Protocol mutations stay under --dir; terminal archive publication writes exact bytes only to a validated tracked repository destination. Help, status, and wait are read-only.
 Output: Recovery instructions, validated state, immutable hashes, budget arithmetic, and the exact next action.
-Exit codes: 0=success/help; 1=runtime/integrity/protocol refusal; 2=invalid usage; 3=bounded wait timeout.
+Exit codes: 0=success/help; 1=runtime/integrity/protocol refusal; 2=invalid usage; 3=bounded wait timeout; 4=acceptance durable; archive publication pending.
 Examples: npx aitm co-review --help; npx aitm co-review status --dir .tmp/design-review
 Related: npx aitm help; npx aitm verify-develop
 
@@ -276,11 +426,11 @@ WHY
 WHO
   owner: exclusively edits/commits the artifact and answers every finding.
   reviewer: reads the exact handoff and writes an immutable accepted or changes-requested review.
-  human: selects --max-turns and alone authorizes continuation/refocus after interception.
-  Identities are local provenance, not cryptographic authentication.
+  human: authenticates through gh before budget adjustment, supplements, continuation/refocus, or good-enough acceptance.
+  If authentication fails, run gh auth login and rerun the exact recovery command.
 
 WHEN
-  init before review; status after context loss; claim before work; wait while the other role acts; handoff only after immutable artifacts are complete; continue only after intervention-required human approval; stop forever after accepted.
+  init before review; status after context loss; claim before work; wait while the other role acts; handoff after immutable artifacts are complete; set-max-turns only during active state; supplement and continue/finalize only at intervention; finalize after accepted publication failure; stop forever after accepted.
 
 WHERE
   The authoritative artifact is a tracked repository path. --dir is a caller-selected Git-ignored local directory containing state.json, events.jsonl, round artifacts, summaries, optional refocus files, and a short-lived .co-review-lock/.
@@ -290,40 +440,43 @@ HOW
 
 LIFECYCLE
   active owner -> active reviewer -> active owner ... -> accepted
-                                     final changes-requested -> intervention-required
-                                     human continue -> active owner
+                                     final changes-requested -> active closing owner
+                                     closing owner handoff -> intervention-required
+                                     human continue -> active role implied by the last handoff
+                                     human finalize --good-enough -> accepted
   accepted is terminal and wins over budget exhaustion on the last allowed review.
 
 COMMANDS
-  init       create a fresh protocol or import an existing review
-  status     recover state, integrity, budget, and next action
-  claim      atomically claim the available configured role
-  wait       bounded read-only wait for an actor's role
-  handoff    validate owner or reviewer immutable artifacts and transfer the turn
-  continue   add human-approved turns after mandatory interception
+${commandTable}
   Run: npx aitm co-review help <command>
 
 OPTION GLOSSARY
   --dir local ignored protocol directory; --artifact authoritative tracked file;
   --owner/--reviewer configured identities; --actor exact acting identity;
-  --max-turns total reviewer responses, including imported R1;
-  --decision accepted|changes-requested; --summary required on final requested-changes turn;
-  --additional-turns additive budget; --approved-by declared human provenance;
-  --focus optional immutable human refocus file; --timeout bounded 0..60 seconds.
+  --max-turns total/absolute reviewer responses, including imported R1;
+  --archive-dir validated tracked repository destination for terminal evidence;
+  --decision accepted|changes-requested; --summary optional only on a final changes-requested review;
+  --file immutable intervention supplement; --additional-turns legacy additive budget;
+  --approved-by deprecated/ignored; authenticated gh login is authoritative;
+  --focus optional immutable human refocus file; --good-enough terminal human acceptance;
+  --timeout bounded 0..60 seconds; --json machine-readable status/finalization.
 
 ARTIFACT FORMAT
+  Response, review, supplement, and archive inputs are Markdown expected to satisfy host repository governance.
   Reviewer findings: [finding:F-001]
   Owner responses:    [finding:F-001] [disposition:accepted]
   Dispositions: accepted | accepted-with-modification | rejected | deferred
   Rejected also uses [evidence:<repo-path-or-command>].
   Deferred also uses [follow-up:#N] and [safe-boundary:<text>].
+  A reviewer acknowledges every frozen supplement as [supplement:S-001].
   A handed-off review, response, summary, or focus file is immutable.
+  Terminal archives preserve exact bytes and refuse missing, extra, changed, or conflicting evidence.
 
 EXIT CODES
-  0 success or help; 1 runtime/integrity/protocol refusal; 2 invalid usage; 3 bounded wait timeout.
+  0 success or help; 1 runtime/integrity/protocol refusal; 2 invalid usage; 3 bounded wait timeout; 4 acceptance durable; archive publication pending.
 
 FRESH EXAMPLE
-  npx aitm co-review init --dir .tmp/design-review --artifact docs/design.md --owner owner-agent --reviewer reviewer-agent --max-turns 6
+  npx aitm co-review init --dir .tmp/design-review --artifact docs/design.md --owner owner-agent --reviewer reviewer-agent --max-turns 6 --archive-dir docs/reviews/design
   npx aitm co-review claim --dir .tmp/design-review --actor owner-agent
   # Owner commits docs/design.md and writes .tmp/design-review/r1-owner-response.md
   npx aitm co-review handoff --dir <path> --actor <owner-identity> --response <response-file> --artifact <artifact-path> --commit <sha> --message <text>
@@ -335,12 +488,22 @@ FRESH EXAMPLE
 IMPORTED R1 EXAMPLE
   npx aitm co-review init --dir .tmp/1117-review --artifact docs/design.md --owner codex --reviewer claude --max-turns 6 --import-review .tmp/1117-review/r1-claude-review.md --review-of <sha>
   The imported review consumes turn 1; used=1, max=6, remaining=5.
-  # If the last allowed review requests changes, the reviewer supplies --summary and both agents stop.
-  npx aitm co-review continue --dir <path> --additional-turns <N> --approved-by <human-identity> [--focus <file>]
-  # Only explicit human approval may run continue; it adds turns and returns control to the owner.
+  # If the last allowed review requests changes, summary is optional; the owner must still claim, answer, commit, and hand off once before intervention.
+  npx aitm co-review set-max-turns --dir <path> --max-turns <N>
+  npx aitm co-review supplement --dir <path> --file <supplement-file>
+  npx aitm co-review continue --dir <path> [--max-turns <N> | --additional-turns <N>] [--focus <file>]
+  npx aitm co-review continue --dir <path> --additional-turns <N>
+  npx aitm co-review finalize --dir <path> --good-enough [--archive-dir <tracked-repo-path>]
+  # Human authority is the authenticated gh login. Bare continuation authorizes the minimum required by the role implied by the last handoff.
+
+ACCEPTED PUBLICATION RECOVERY
+  Ordinary reviewer consensus publishes automatically when --archive-dir was configured at init.
+  Exit 4 means the acceptance transition is durable but archive publication is pending.
+  Run the exact printed finalize retry; legacy accepted sessions supply --archive-dir explicitly.
+  Verify every produced path and commit through host repository governance; co-review never stages or commits.
 
 COMMON REFUSALS
-  Wrong role/claim, malformed state, missing/drifted immutable artifact, dirty index/artifact, branch/commit drift, incomplete dispositions, implicit decision, exhausted budget without summary, or surviving lock. Every refusal leaves the attempted transition unapplied and prints a recovery action.
+  Wrong role/claim, malformed state, missing/drifted immutable artifact, dirty index/artifact, branch/commit drift, incomplete dispositions, implicit decision, a summary before the final changes-requested review, or surviving lock. Every refusal leaves the attempted transition unapplied and prints a recovery action.
 
 CONTEXT-RESET CHECKLIST
   1. Run: npx aitm co-review status --dir <path>
@@ -348,8 +511,9 @@ CONTEXT-RESET CHECKLIST
   3. If available, claim with the displayed actor command.
   4. If claimed by you, complete only your role's immutable artifacts and handoff.
   5. If intervention-required, stop and ask the human; do not invent approval.
-  6. If accepted, stop; the protocol is terminal.
+  6. If accepted with pending publication, run the exact finalize retry; otherwise stop.
   7. If locked or drifted, preserve files and escalate with the printed diagnostics.
+  8. Treat generated archive files as exact bytes and use host repository governance for staging and commit.
 
 Help is safe before init and performs no repository discovery, lock acquisition, network access, or write.
 `;
