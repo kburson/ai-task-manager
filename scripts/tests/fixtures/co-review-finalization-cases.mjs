@@ -212,8 +212,8 @@ async function acceptedGoodEnough() {
   return { ...fixture, state };
 }
 
-async function consensusReady({ archiveDir } = {}) {
-  const fixture = await initializedProtocol({ maxReviewTurns: 2, archiveDir });
+async function consensusReady({ archiveDir, dir } = {}) {
+  const fixture = await initializedProtocol({ maxReviewTurns: 2, archiveDir, dir });
   const { api, root, options, initialCommit } = fixture;
   api.claimTurn({ cwd: root, dir: options.dir, actor: 'owner-agent' });
   const response = writeRuntime(root, options.dir, 'owner-response.md', '# Response\n\nReady.\n');
@@ -297,6 +297,7 @@ test('reviewer consensus finalizes automatically and an unconfigured destination
     pending.stderr,
     /^ACCEPTED: protocol state is durable; archive publication is pending/
   );
+  assert.doesNotMatch(pending.stderr, /no state changed/);
   assert.match(pending.stderr, /finalize --dir \.tmp\/review --archive-dir <tracked-repo-path>/);
   assert.equal(
     unconfigured.api.readProtocol({ cwd: unconfigured.root, dir: unconfigured.options.dir })
@@ -315,6 +316,31 @@ test('reviewer consensus finalizes automatically and an unconfigured destination
   );
   assert.equal(retried.status, 0, retried.stderr);
   assert.equal(existsSync(path.join(unconfigured.root, 'docs/reviews/recovered/README.md')), true);
+
+  const spaced = await consensusReady({ dir: '.tmp/review session' });
+  const spacedPending = await runCliDirect(
+    [
+      'handoff',
+      '--dir',
+      spaced.options.dir,
+      '--actor',
+      'reviewer-agent',
+      '--review',
+      spaced.review,
+      '--review-of',
+      spaced.initialCommit,
+      '--decision',
+      'accepted',
+      '--message',
+      'accepted',
+    ],
+    { cwd: spaced.root, repository: spaced.repository }
+  );
+  assert.equal(spacedPending.status, 4);
+  assert.match(
+    spacedPending.stderr,
+    /finalize --dir '\.tmp\/review session' --archive-dir <tracked-repo-path>/
+  );
 
   const failed = await consensusReady({ archiveDir: 'docs/reviews/retry' });
   const publicationFailed = await runCliDirect(
@@ -448,6 +474,21 @@ test('good-enough CLI prepares before mutation, publishes, and maps only post-ac
   const output = JSON.parse(finalized.stdout);
   assert.equal(output.state.acceptance.basis, 'human-good-enough');
   assert.equal(output.archivePublication.status, 'published');
+  const humanStatus = await runCliDirect(['status', '--dir', ready.options.dir], {
+    cwd: ready.root,
+    repository: ready.repository,
+  });
+  assert.equal(humanStatus.status, 0, humanStatus.stderr);
+  assert.match(
+    humanStatus.stdout,
+    new RegExp(`Acceptance: human-good-enough by kendrick at ${output.state.acceptance.at}`)
+  );
+  const retried = await runCliDirect(['finalize', '--dir', ready.options.dir], {
+    cwd: ready.root,
+    repository: ready.repository,
+  });
+  assert.equal(retried.status, 0, retried.stderr);
+  assert.match(retried.stdout, /Produced: docs\/reviews\/good-enough-cli\/README\.md/);
 
   const failed = await goodEnoughReady({ archiveDir: 'docs/reviews/good-enough-failed' });
   const pending = await runCliDirect(['finalize', '--dir', failed.options.dir, '--good-enough'], {

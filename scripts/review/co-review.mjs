@@ -158,7 +158,14 @@ export async function runCli(argv = process.argv.slice(2), io = {}) {
             };
           } catch (error) {
             exitCode = 4;
-            writeError(archivePendingMessage({ dir, state: result, error }));
+            writeError(
+              archivePendingMessage({
+                dir,
+                state: result,
+                error,
+                shellArgument: protocol.shellArgument,
+              })
+            );
           }
         }
       }
@@ -174,7 +181,7 @@ export async function runCli(argv = process.argv.slice(2), io = {}) {
           (await import('./lib/github-identity.mjs')).resolveGitHubLogin;
         const humanLogin = resolveIdentity({
           cwd,
-          recoveryCommand: `npx aitm co-review ${argv.join(' ')}`,
+          recoveryCommand: protocol.renderCliCommand(argv),
         });
         const snapshot = protocol.prepareGoodEnoughSnapshot({
           cwd,
@@ -201,7 +208,9 @@ export async function runCli(argv = process.argv.slice(2), io = {}) {
             ...repositoryOptions,
           });
         } catch (error) {
-          writeError(archivePendingMessage({ dir, state, error }));
+          writeError(
+            archivePendingMessage({ dir, state, error, shellArgument: protocol.shellArgument })
+          );
           return 4;
         }
       } else {
@@ -231,7 +240,7 @@ export async function runCli(argv = process.argv.slice(2), io = {}) {
         io.resolveGitHubLoginImpl ?? (await import('./lib/github-identity.mjs')).resolveGitHubLogin;
       const humanLogin = resolveIdentity({
         cwd,
-        recoveryCommand: `npx aitm co-review ${argv.join(' ')}`,
+        recoveryCommand: protocol.renderCliCommand(argv),
       });
       result = protocol.setMaxReviewTurns({
         cwd,
@@ -249,7 +258,7 @@ export async function runCli(argv = process.argv.slice(2), io = {}) {
         io.resolveGitHubLoginImpl ?? (await import('./lib/github-identity.mjs')).resolveGitHubLogin;
       const humanLogin = resolveIdentity({
         cwd,
-        recoveryCommand: `npx aitm co-review ${argv.join(' ')}`,
+        recoveryCommand: protocol.renderCliCommand(argv),
       });
       result = protocol.registerSupplement({ cwd, dir, file, humanLogin, ...repositoryOptions });
     } else if (name === 'continue') {
@@ -275,7 +284,7 @@ export async function runCli(argv = process.argv.slice(2), io = {}) {
         io.resolveGitHubLoginImpl ?? (await import('./lib/github-identity.mjs')).resolveGitHubLogin;
       const humanLogin = resolveIdentity({
         cwd,
-        recoveryCommand: `npx aitm co-review ${argv.join(' ')}`,
+        recoveryCommand: protocol.renderCliCommand(argv),
       });
       if (values['approved-by'] !== undefined) {
         writeError(
@@ -385,6 +394,12 @@ function formatStatus(state) {
   const actions = (state.availableActions ?? [])
     .map(({ kind, command }) => `${kind}: ${command ?? 'make no mutation; return later'}`)
     .join('\n  ');
+  const acceptanceActor = state.acceptance?.approvedBy ?? state.acceptance?.reviewer;
+  const acceptance = state.decisionBasis
+    ? `${state.decisionBasis}${acceptanceActor ? ` by ${acceptanceActor}` : ''}${
+        state.acceptance?.at ? ` at ${state.acceptance.at}` : ''
+      }`
+    : 'none';
   return [
     `Lifecycle: ${state.lifecycle}`,
     `Turn: ${state.currentRole ?? 'none'} (${actor}) / ${state.turnState ?? 'terminal'}`,
@@ -395,6 +410,7 @@ function formatStatus(state) {
     `Last handoff: ${lastHandoff}`,
     `Budget: ${state.reviewTurnsUsed} used / ${state.maxReviewTurns} max / ${state.remainingReviewTurns} remaining`,
     `Decision basis: ${state.decisionBasis ?? 'none'}`,
+    `Acceptance: ${acceptance}`,
     `Archive: ${state.archive?.destination ?? 'unknown'} / ${state.archive?.completion ?? 'unknown'}`,
     `Closing owner complete: ${state.closingOwnerComplete ? 'yes' : 'no'}`,
     `Unresolved findings: ${state.unresolvedFindingIds?.join(', ') || 'none'}`,
@@ -414,14 +430,15 @@ function formatStatus(state) {
   ].join('\n');
 }
 
-function archivePendingMessage({ dir, state, error }) {
+function archivePendingMessage({ dir, state, error, shellArgument }) {
   const configured = state.initialization?.archiveDir;
-  const retry = `npx aitm co-review finalize --dir ${dir}${
+  const retry = `npx aitm co-review finalize --dir ${shellArgument(dir)}${
     configured ? '' : ' --archive-dir <tracked-repo-path>'
   }`;
+  const cause = String(error.message).replace(/; no state changed(?:; next:.*)?$/, '');
   return [
     'ACCEPTED: protocol state is durable; archive publication is pending',
-    `Cause: ${error.message}`,
+    `Cause: ${cause}`,
     `Retry: ${retry}`,
     '',
   ].join('\n');
@@ -430,7 +447,9 @@ function archivePendingMessage({ dir, state, error }) {
 function formatFinalization({ archivePublication }) {
   return [
     `Archive: ${archivePublication.destination.relative}`,
-    ...archivePublication.paths.map((entry) => `Produced: ${entry}`),
+    ...archivePublication.paths.map(
+      (entry) => `Produced: ${archivePublication.destination.relative}/${entry}`
+    ),
     'Verify the generated files, then stage and commit them through the repository workflow.',
     '',
   ].join('\n');

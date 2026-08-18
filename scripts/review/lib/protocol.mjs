@@ -23,6 +23,16 @@ import { REAL_REPOSITORY_BOUNDARY } from './repository-boundary.mjs';
 export const STATE_SCHEMA = 'aitm.co-review/v1';
 export const EVENT_SCHEMA = 'aitm.co-review-event/v1';
 
+export function shellArgument(value) {
+  const text = String(value);
+  if (/^[A-Za-z0-9_./:@%+=,-]+$/.test(text)) return text;
+  return `'${text.replaceAll("'", `'\"'\"'`)}'`;
+}
+
+export function renderCliCommand(argv) {
+  return `npx aitm co-review ${argv.map(shellArgument).join(' ')}`;
+}
+
 export class ProtocolError extends Error {
   constructor(code, detail = '', { exitCode = 1, next = '' } = {}) {
     super(
@@ -606,14 +616,14 @@ export function statusProtocol(options) {
   let availableActions = [{ kind: 'next', command: baseNextAction }];
   let decoratedNextAction = baseNextAction;
   if (state.lifecycle === 'intervention-required' && integrity.ok) {
-    const continueCommand = `npx aitm co-review continue --dir ${runtimeDir} --max-turns <N> [--focus <file>]`;
+    const continueCommand = `npx aitm co-review continue --dir ${shellArgument(runtimeDir)} --max-turns <N> [--focus <file>]`;
     availableActions = [
       { kind: 'continue', command: continueCommand },
       ...(closingOwnerComplete
         ? [
             {
               kind: 'finalize-good-enough',
-              command: `npx aitm co-review finalize --dir ${runtimeDir} --good-enough${
+              command: `npx aitm co-review finalize --dir ${shellArgument(runtimeDir)} --good-enough${
                 state.initialization.archiveDir ? '' : ' --archive-dir <tracked-repo-path>'
               }`,
             },
@@ -627,7 +637,7 @@ export function statusProtocol(options) {
     integrity.ok &&
     archive.completion !== 'complete-and-identical'
   ) {
-    decoratedNextAction = `npx aitm co-review finalize --dir ${runtimeDir}${
+    decoratedNextAction = `npx aitm co-review finalize --dir ${shellArgument(runtimeDir)}${
       state.initialization.archiveDir ? '' : ' --archive-dir <tracked-repo-path>'
     }`;
     availableActions = [{ kind: 'finalize', command: decoratedNextAction }];
@@ -657,11 +667,11 @@ function nextAction(state, integrity) {
   if (!integrity.ok) return 'preserve protocol files and escalate integrity drift to the human';
   if (state.lifecycle === 'accepted') return 'stop; protocol accepted';
   if (state.lifecycle === 'intervention-required') {
-    return `npx aitm co-review continue --dir ${state.initialization.runtimeDir} --max-turns <N> [--focus <file>]`;
+    return `npx aitm co-review continue --dir ${shellArgument(state.initialization.runtimeDir)} --max-turns <N> [--focus <file>]`;
   }
   const actor = state.roles[state.currentRole];
   if (state.turnState === 'available') {
-    return `npx aitm co-review claim --dir ${state.initialization.runtimeDir} --actor ${actor}`;
+    return `npx aitm co-review claim --dir ${shellArgument(state.initialization.runtimeDir)} --actor ${shellArgument(actor)}`;
   }
   return `${state.currentRole} ${actor} holds round ${state.round}; complete the role artifact and run npx aitm co-review help handoff`;
 }
