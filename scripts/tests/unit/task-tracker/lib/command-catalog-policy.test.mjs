@@ -291,6 +291,7 @@ test('high-risk routed metadata enumerates parser arguments and special exits', 
 test('co-review package catalog matches every settled subcommand, flag, and durable exit', () => {
   const coReview = commandByName('co-review');
   for (const command of [
+    'start',
     'init',
     'status',
     'claim',
@@ -309,6 +310,8 @@ test('co-review package catalog matches every settled subcommand, flag, and dura
     '--owner <identity>',
     '--reviewer <identity>',
     '--max-turns <N>',
+    '--wait-cycles <N>',
+    '--wait-interval <seconds>',
     '--import-review <file>',
     '--review-of <sha>',
     '--archive-dir <path>',
