@@ -7,7 +7,9 @@
 // spawnSync gave, so failure accounting and `describeSpawnResult` are unchanged.
 // Direct-subprocess unit files run in a separate two-worker phase after the
 // saturated pure pool drains. Explicit `@parallel-unsafe`/unreadable unit files,
-// integration files, and slow files remain one-at-a-time serial.
+// integration files, and unmarked slow files remain one-at-a-time serial. A
+// small audited slow subset can opt into a separate two-worker phase with the
+// source-local `@slow-parallel-safe (rationale)` marker.
 //
 // Lanes (#305, canonicalized #874; sectioned #864):
 //   --lane unit           — all unit tests (pure subset pooled; directly
@@ -15,7 +17,8 @@
 //                           explicit unsafe/unreadable subset serial)
 //   --lane integration    — the integration population (serial)
 //   --lane fast (default)  — unit ∪ integration (the retained regression floor)
-//   --lane slow           — the slow lane only
+//   --lane slow           — the slow lane (explicit-safe subset bounded at two;
+//                           every other file serial)
 //   --lane all            — every lane; INTERNAL union for the divergence guard
 //                           and `test:coverage` only — no `test:all` script exists
 //
@@ -34,7 +37,12 @@ import { writeFileSync, mkdirSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { TEST_RUNNER_TIMEOUT_MS } from './task-tracker/lib/process-timeouts.mjs';
-import { poolConcurrency, subprocessPoolConcurrency, spawnTestChild } from './run-tests-pool.mjs';
+import {
+  poolConcurrency,
+  slowPoolConcurrency,
+  subprocessPoolConcurrency,
+  spawnTestChild,
+} from './run-tests-pool.mjs';
 import { partitionTestEntries, runTestPhases } from './run-tests-schedule.mjs';
 import {
   findMainWorktreePath,
@@ -170,14 +178,17 @@ async function runEntry(entry) {
 // subprocess users must not overlap that saturated pool (the historic child
 // starvation flake), but can overlap each other at the fixed reduced cap after
 // the pure barrier. Explicit unsafe/unreadable files remain exclusive serial,
-// alongside integration and slow. Unit describes behavior; the scheduling
-// class describes safe execution mechanics.
+// alongside integration and unmarked slow files. Slow concurrency is a
+// separate explicit opt-in; unit describes behavior while scheduling classes
+// describe safe execution mechanics.
 // Output is emitted in INPUT order below, so the log stays deterministic
 // regardless of which child finishes first.
 const CONCURRENCY = poolConcurrency();
 const SUBPROCESS_CONCURRENCY = subprocessPoolConcurrency();
+const SLOW_CONCURRENCY = slowPoolConcurrency();
 const runnable = files.filter((e) => !SKIP.has(e.label));
-const { pooledEntries, subprocessEntries, serialEntries } = partitionTestEntries(runnable);
+const { pooledEntries, subprocessEntries, slowParallelEntries, serialEntries } =
+  partitionTestEntries(runnable);
 
 // The aggregate remains useful observational timing, while #1157 evaluates the
 // already-distinct pool and serial execution phases as independently bounded
@@ -187,18 +198,23 @@ const sectionStart = process.hrtime.bigint();
 const {
   pooledResults,
   subprocessResults,
+  slowParallelResults,
   serialResults,
   pooledPeakConcurrency,
   subprocessPeakConcurrency,
+  slowParallelPeakConcurrency,
   pooledElapsedMs,
   subprocessElapsedMs,
+  slowParallelElapsedMs,
   serialElapsedMs,
 } = await runTestPhases({
   pooledEntries,
   subprocessEntries,
+  slowParallelEntries,
   serialEntries,
   pooledConcurrency: CONCURRENCY,
   subprocessConcurrency: SUBPROCESS_CONCURRENCY,
+  slowParallelConcurrency: SLOW_CONCURRENCY,
   runOne: runEntry,
 });
 
@@ -209,6 +225,7 @@ const sectionElapsedMs = Number(process.hrtime.bigint() - sectionStart) / 1e6;
 const resultByLabel = new Map();
 pooledEntries.forEach((e, i) => resultByLabel.set(e.label, pooledResults[i]));
 subprocessEntries.forEach((e, i) => resultByLabel.set(e.label, subprocessResults[i]));
+slowParallelEntries.forEach((e, i) => resultByLabel.set(e.label, slowParallelResults[i]));
 serialEntries.forEach((e, i) => resultByLabel.set(e.label, serialResults[i]));
 
 for (const entry of files) {
@@ -248,11 +265,12 @@ for (const entry of files) {
   }
 }
 
-if (pooledEntries.length || subprocessEntries.length) {
+if (pooledEntries.length || subprocessEntries.length || slowParallelEntries.length) {
   console.log(
-    `\n▶ unit lane: ${pooledEntries.length} pure file(s) at pool concurrency ${CONCURRENCY} (peak ${pooledPeakConcurrency}); ` +
+    `\n▶ scheduling: ${pooledEntries.length} pure unit file(s) at pool concurrency ${CONCURRENCY} (peak ${pooledPeakConcurrency}); ` +
       `${subprocessEntries.length} direct-subprocess file(s) at pool concurrency ${SUBPROCESS_CONCURRENCY} (peak ${subprocessPeakConcurrency}); ` +
-      `${serialEntries.length} explicit-unsafe/integration/slow file(s) serial`
+      `${slowParallelEntries.length} explicit-safe slow file(s) at pool concurrency ${SLOW_CONCURRENCY} (peak ${slowParallelPeakConcurrency}); ` +
+      `${serialEntries.length} explicit-unsafe/integration/unmarked-slow file(s) serial`
   );
 }
 
@@ -268,6 +286,7 @@ function writeTimingArtifact() {
       runnerElapsedMs: sectionElapsedMs,
       poolElapsedMs: pooledElapsedMs,
       subprocessPoolElapsedMs: subprocessElapsedMs,
+      slowPoolElapsedMs: slowParallelElapsedMs,
       serialElapsedMs,
     });
     mkdirSync(path.dirname(TIMING_ARTIFACT_PATH), { recursive: true });
@@ -285,6 +304,7 @@ if (timingReport) {
         runnerElapsedMs: sectionElapsedMs,
         poolElapsedMs: pooledElapsedMs,
         subprocessPoolElapsedMs: subprocessElapsedMs,
+        slowPoolElapsedMs: slowParallelElapsedMs,
         serialElapsedMs,
       })
     )}`
@@ -333,6 +353,11 @@ const sectionCeilings = evaluateSections({
       name: 'subprocess',
       count: subprocessEntries.length,
       elapsedMs: subprocessElapsedMs,
+    },
+    {
+      name: 'slow-parallel',
+      count: slowParallelEntries.length,
+      elapsedMs: slowParallelElapsedMs,
     },
     { name: 'serial', count: serialEntries.length, elapsedMs: serialElapsedMs },
   ],

@@ -1,4 +1,5 @@
 // @story #1099
+// @slow-parallel-safe (writes only its dedicated ignored publish scratch directory)
 // End-to-end publish over the real fourteen-article corpus, including Mermaid
 // rendering through headless Chromium. This lives in the slow lane on purpose:
 // it spawns the Mermaid CLI ~32 times and would otherwise eat the fast lane's
