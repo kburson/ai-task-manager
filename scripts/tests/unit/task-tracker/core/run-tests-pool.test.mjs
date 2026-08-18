@@ -19,6 +19,7 @@ import path from 'node:path';
 import {
   runPool,
   poolConcurrency,
+  slowPoolConcurrency,
   subprocessPoolConcurrency,
   spawnTestChild,
 } from '../../../../run-tests-pool.mjs';
@@ -43,6 +44,15 @@ test('subprocessPoolConcurrency is capped at two and floored at one', () => {
   assert.equal(subprocessPoolConcurrency(1), 1);
   assert.equal(subprocessPoolConcurrency(Number.NaN), 1);
   assert.equal(subprocessPoolConcurrency(undefined), Math.min(2, poolConcurrency()));
+});
+
+test('slowPoolConcurrency is independently capped at two and floored at one', () => {
+  assert.equal(slowPoolConcurrency(10), 2);
+  assert.equal(slowPoolConcurrency(3), 2);
+  assert.equal(slowPoolConcurrency(2), 1);
+  assert.equal(slowPoolConcurrency(1), 1);
+  assert.equal(slowPoolConcurrency(Number.NaN), 1);
+  assert.equal(slowPoolConcurrency(undefined), Math.min(2, poolConcurrency()));
 });
 
 test('runPool honors the reduced subprocess cap and preserves input order', async () => {
