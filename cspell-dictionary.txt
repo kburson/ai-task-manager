@@ -15,6 +15,8 @@ argjson
 argv
 automatable
 automations
+backtest
+backtests
 backcompat
 backpointer
 Backpointer
@@ -43,6 +45,7 @@ chokepoint
 chrono
 comparables
 conflatable
+counterfactuals
 conflates
 Connextra
 Containerfile
@@ -90,6 +93,7 @@ fanin
 fanout
 Flesch
 footgun
+forgeable
 Forrester
 frontmatter
 gitdir
@@ -168,6 +172,7 @@ overexplaining
 overinterpreted
 paywalled
 pexec
+RDBMS
 pipefail
 pkg
 prebody
@@ -238,6 +243,7 @@ SDLC
 Segoe
 sess
 shellcheck
+testmon
 sidechain
 Sidechain
 Skank
@@ -283,6 +289,7 @@ uncited
 unconfigured
 ungroomed
 unioned
+unioning
 unkeyed
 unlaned
 unlogged
@@ -330,6 +337,7 @@ worktree's
 worktreeinclude
 worktrees
 Worktrees
+xcresult
 Xuezhi
 zxcvbn
 Zylos
