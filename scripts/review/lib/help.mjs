@@ -165,7 +165,7 @@ export const COMMANDS = Object.freeze({
       'Reviewer consensus publishes the configured archive after durable acceptance; a publication failure exits 4 and prints an exact finalize retry.',
     ],
     validations: [
-      'Role/claim/round, immutable path/hash separation, finding coverage, exact Git commit/artifact/index/branch, explicit decision, budget, and required interception summary.',
+      'Role/claim/round, immutable path/hash separation, finding coverage, exact Git commit/artifact/index/branch, explicit decision, budget, and a summary optional only on the final changes-requested review.',
     ],
     output: 'Prints hashes, decision, used/max/remaining turns, lifecycle, and next command.',
     exits:
@@ -179,7 +179,7 @@ export const COMMANDS = Object.freeze({
       'npx aitm co-review handoff --dir .tmp/design-review --actor reviewer-agent --review .tmp/design-review/r6-review.md --review-of abc1234 --decision changes-requested --summary .tmp/design-review/r6-human-summary.md --message "human decision requested"',
     ],
     recovery:
-      'Do not edit a handed-off file. Correct only the named unaccepted input; on drift, branch change, or exhausted budget, stop and escalate.',
+      'Do not edit a handed-off file. Correct only the named unaccepted input; on drift or branch change, stop and escalate. On exhausted budget, follow the displayed next action and complete the closing owner turn before intervention.',
     next: [
       'status',
       'the displayed next-role claim',

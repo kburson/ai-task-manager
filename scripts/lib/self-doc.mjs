@@ -323,7 +323,7 @@ const ROUTABLE_ARGUMENTS = Object.freeze({
     argument('--answers <review>', 'Preceding immutable review answered by the owner.'),
     argument('--review <file>', 'Immutable reviewer output file.'),
     argument('--decision accepted|changes-requested', 'Explicit reviewer decision.'),
-    argument('--summary <file>', 'Human interception summary required at exhausted budget.'),
+    argument('--summary <file>', 'Optional only on the final changes-requested review.'),
     argument('--message <text>', 'Human-readable handoff message.'),
     argument('--file <path>', 'Immutable supplement registered during intervention.'),
     argument('--additional-turns <N>', 'Legacy positive reviewer turns added after interception.'),

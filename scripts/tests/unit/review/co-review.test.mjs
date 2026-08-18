@@ -135,6 +135,12 @@ test('continuation help derives the resumed role and its minimum authorized budg
   assert.doesNotMatch(top, /reviewer supplies --summary and both agents stop/i);
   assert.doesNotMatch(top, /exhausted budget without summary/i);
   assert.match(top, /summary optional only on a final changes-requested review/i);
+
+  const handoff = renderHelp('handoff');
+  assert.doesNotMatch(handoff, /required interception summary/i);
+  assert.doesNotMatch(handoff, /exhausted budget, stop and escalate/i);
+  assert.match(handoff, /summary.*optional.*final changes-requested review/i);
+  assert.match(handoff, /exhausted budget.*displayed next action.*closing owner/i);
 });
 
 test('top-level help covers the settled lifecycle, recovery, and governance surface', () => {
