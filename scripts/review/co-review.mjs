@@ -7,6 +7,15 @@ import { fileURLToPath } from 'node:url';
 import { prepareArchive, publishPreparedArchive } from './lib/archive.mjs';
 import { helpRequest, renderHelp } from './lib/help.mjs';
 
+const STATUS_PROJECTED_MUTATIONS = new Set([
+  'init',
+  'claim',
+  'handoff',
+  'set-max-turns',
+  'supplement',
+  'continue',
+]);
+
 export async function runCli(argv = process.argv.slice(2), io = {}) {
   const writeOut = io.stdout ?? ((value) => process.stdout.write(value));
   const writeError = io.stderr ?? ((value) => process.stderr.write(value));
@@ -302,6 +311,15 @@ export async function runCli(argv = process.argv.slice(2), io = {}) {
       });
     } else {
       throw usage(`unknown command ${String(name)}`);
+    }
+    if (STATUS_PROJECTED_MUTATIONS.has(name)) {
+      const archivePublication = result?.archivePublication;
+      result = protocol.statusProtocol({
+        cwd: io.cwd ?? process.cwd(),
+        dir: required(values, 'dir'),
+        ...repositoryOptions,
+      });
+      if (archivePublication) result = { ...result, archivePublication };
     }
     writeOut(`${JSON.stringify(result, null, 2)}\n`);
     return exitCode;

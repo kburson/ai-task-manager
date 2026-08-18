@@ -111,10 +111,11 @@ const ROUTABLE_SELF_DOC = {
   'co-review': {
     group: 'Workflow',
     path: 'scripts/review/co-review.mjs',
-    synopsis: 'Coordinate immutable owner/reviewer artifact rounds through explicit acceptance.',
-    audience: 'Artifact owner, external reviewer, or human continuation authority.',
+    synopsis:
+      'Coordinate immutable owner/reviewer rounds through acceptance and deterministic evidence publication.',
+    audience: 'Artifact owner, external reviewer, or authenticated human authority.',
     usage:
-      'aitm co-review <init|status|claim|wait|handoff|continue> --dir <path> [--artifact <path>] [--owner <identity>] [--reviewer <identity>] [--max-turns <N>] [--import-review <file>] [--review-of <sha>] [--actor <identity>] [--timeout <seconds>] [--response <file>] [--commit <sha>] [--answers <review>] [--review <file>] [--decision accepted|changes-requested] [--summary <file>] [--message <text>] [--additional-turns <N>] [--approved-by <identity>] [--focus <file>] [--json]',
+      'aitm co-review <init|status|claim|wait|handoff|set-max-turns|supplement|continue|finalize> --dir <path> [--artifact <path>] [--owner <identity>] [--reviewer <identity>] [--max-turns <N>] [--import-review <file>] [--review-of <sha>] [--archive-dir <path>] [--actor <identity>] [--timeout <seconds>] [--response <file>] [--commit <sha>] [--answers <review>] [--review <file>] [--decision accepted|changes-requested] [--summary <file>] [--message <text>] [--file <path>] [--additional-turns <N>] [--approved-by <identity>] [--focus <file>] [--good-enough] [--json]',
   },
   'value-report': {
     group: 'Reports',
@@ -303,14 +304,18 @@ const ROUTABLE_ARGUMENTS = Object.freeze({
     argument('--issue <N>', 'Required in final mode; binds the receipt to its issue.'),
   ],
   'co-review': [
-    argument('init|status|claim|wait|handoff|continue', 'Protocol subcommand.'),
+    argument(
+      'init|status|claim|wait|handoff|set-max-turns|supplement|continue|finalize',
+      'Protocol subcommand in lifecycle order.'
+    ),
     argument('--dir <path>', 'Caller-selected Git-ignored protocol directory.'),
     argument('--artifact <path>', 'Authoritative tracked artifact; init and owner handoff.'),
     argument('--owner <identity>', 'Configured artifact-owner identity; init only.'),
     argument('--reviewer <identity>', 'Configured external-reviewer identity; init only.'),
-    argument('--max-turns <N>', 'Positive reviewer-response budget; init only.'),
+    argument('--max-turns <N>', 'Initial or authenticated absolute reviewer-response maximum.'),
     argument('--import-review <file>', 'Existing immutable review; init with --review-of.'),
     argument('--review-of <sha>', 'Exact owner commit reviewed by import or reviewer handoff.'),
+    argument('--archive-dir <path>', 'Tracked repository destination for terminal evidence.'),
     argument('--actor <identity>', 'Configured identity claiming, waiting, or handing off.'),
     argument('--timeout <seconds>', 'Bounded wait timeout from 0 through 60; default 55.'),
     argument('--response <file>', 'Immutable owner response file.'),
@@ -318,12 +323,14 @@ const ROUTABLE_ARGUMENTS = Object.freeze({
     argument('--answers <review>', 'Preceding immutable review answered by the owner.'),
     argument('--review <file>', 'Immutable reviewer output file.'),
     argument('--decision accepted|changes-requested', 'Explicit reviewer decision.'),
-    argument('--summary <file>', 'Human interception summary required at exhausted budget.'),
+    argument('--summary <file>', 'Optional only on the final changes-requested review.'),
     argument('--message <text>', 'Human-readable handoff message.'),
-    argument('--additional-turns <N>', 'Positive reviewer turns added after interception.'),
-    argument('--approved-by <identity>', 'Declared human continuation provenance.'),
+    argument('--file <path>', 'Immutable supplement registered during intervention.'),
+    argument('--additional-turns <N>', 'Legacy positive reviewer turns added after interception.'),
+    argument('--approved-by <identity>', 'Deprecated and ignored; authenticated gh login is used.'),
     argument('--focus <file>', 'Optional immutable human refocus instructions.'),
-    argument('--json', 'Machine-readable status output.'),
+    argument('--good-enough', 'Authenticated human terminal acceptance during intervention.'),
+    argument('--json', 'Machine-readable status or finalization output.'),
   ],
   'value-report': [
     argument('--project-id <id>', 'GitHub Project id override.'),
@@ -391,8 +398,17 @@ const ROUTABLE_ARGUMENTS = Object.freeze({
 });
 
 const exitCode = (code, meaning) => Object.freeze({ code, meaning });
-const routableContract = ({ output, exitCodes, examples, relatedCommands }) =>
+const routableContract = ({
+  preconditions,
+  effects,
+  output,
+  exitCodes,
+  examples,
+  relatedCommands,
+}) =>
   Object.freeze({
+    preconditions: preconditions ? Object.freeze(preconditions) : undefined,
+    effects: effects ? Object.freeze(effects) : undefined,
     output: Object.freeze(output),
     exitCodes: Object.freeze(exitCodes),
     examples: Object.freeze(examples),
@@ -515,16 +531,29 @@ const ROUTABLE_CONTRACTS = Object.freeze({
     relatedCommands: ['test', 'run-tests'],
   }),
   'co-review': routableContract({
+    preconditions: [
+      'Normal commands run in the authoritative Git worktree; help is safe before repository discovery.',
+      'Human budget, supplement, continuation, and good-enough commands require authenticated gh identity.',
+    ],
+    effects: [
+      'Mutations update local protocol state under its mutex; terminal publication runs outside that mutex.',
+      'Evidence archives preserve exact bytes and are never staged or committed by co-review.',
+    ],
     output: [
-      'Prints recovery help, validated protocol state, immutable artifact hashes, budget arithmetic, and the exact next action.',
+      'Prints recovery help, validated protocol state, immutable hashes, budget arithmetic, archive results, and the exact next action.',
     ],
     exitCodes: [
       exitCode(0, 'help or requested protocol command completed'),
       exitCode(1, 'runtime, Git, integrity, lock, role, or protocol transition refused'),
       exitCode(2, 'subcommand or option usage is invalid'),
       exitCode(3, 'bounded wait timed out without mutating protocol state'),
+      exitCode(4, 'acceptance is durable while archive publication remains pending'),
     ],
-    examples: ['npx aitm co-review --help', 'npx aitm co-review status --dir .tmp/1117-review'],
+    examples: [
+      'npx aitm co-review --help',
+      'npx aitm co-review status --dir .tmp/1117-review',
+      'npx aitm co-review finalize --dir .tmp/1117-review --archive-dir docs/reviews/1117',
+    ],
     relatedCommands: ['status', 'verify-develop'],
   }),
   'value-report': routableContract({
@@ -649,8 +678,8 @@ function completeRoutableDoc(name, doc) {
     classification: 'agent-callable-standalone',
     agentCallable: true,
     arguments: Object.freeze(argumentsList),
-    preconditions: Object.freeze([doc.audience]),
-    effects: Object.freeze([doc.synopsis]),
+    preconditions: contract.preconditions ?? Object.freeze([doc.audience]),
+    effects: contract.effects ?? Object.freeze([doc.synopsis]),
     output: contract.output,
     exitCodes: contract.exitCodes,
     examples: contract.examples,
