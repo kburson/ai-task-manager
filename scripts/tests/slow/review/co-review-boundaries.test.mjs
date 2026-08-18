@@ -11,9 +11,11 @@ import {
   cleanupTemporaryRoots,
   commitArtifact,
   git,
+  realInitializedProtocol,
   repositoryFixture,
   temporaryRoot,
 } from '../../fixtures/co-review-fixture.mjs';
+import { prepareArchive, publishPreparedArchive } from '../../../review/lib/archive.mjs';
 import {
   createRealRepositoryBoundary,
   REAL_REPOSITORY_BOUNDARY,
@@ -175,4 +177,48 @@ test('real protocol refuses index or HEAD drift and unreachable publication comm
       }),
     /co-review:git-commit-unreachable/
   );
+});
+
+test('real repository boundary publishes one representative terminal archive', async () => {
+  const fixture = await realInitializedProtocol({ maxReviewTurns: 2 });
+  const { api, root, options, initialCommit } = fixture;
+  api.claimTurn({ cwd: root, dir: options.dir, actor: options.owner });
+  const response = `${options.dir}/owner-response.md`;
+  writeFileSync(path.join(root, response), '# Owner response\n\nReady.\n');
+  api.handoffOwner({
+    cwd: root,
+    dir: options.dir,
+    actor: options.owner,
+    response,
+    artifact: options.artifact,
+    commit: initialCommit,
+    message: 'ready for review',
+  });
+  api.claimTurn({ cwd: root, dir: options.dir, actor: options.reviewer });
+  const review = `${options.dir}/review.md`;
+  writeFileSync(path.join(root, review), '# Review\n\nAccepted.\n');
+  api.handoffReviewer({
+    cwd: root,
+    dir: options.dir,
+    actor: options.reviewer,
+    review,
+    reviewOf: initialCommit,
+    decision: 'accepted',
+    message: 'accepted',
+  });
+
+  const snapshot = api.validatedArchiveSnapshot({ cwd: root, dir: options.dir });
+  const prepared = prepareArchive({
+    ...snapshot,
+    archiveDir: 'docs/reviews/real-boundary',
+  });
+  const published = publishPreparedArchive(prepared);
+
+  assert.equal(published.status, 'published');
+  assert.deepEqual([...published.paths].sort(), [
+    'README.md',
+    'artifact-artifact.md',
+    'artifact-r3-owner-owner-agent-response.md',
+    'artifact-r3-reviewer-reviewer-agent-review.md',
+  ]);
 });

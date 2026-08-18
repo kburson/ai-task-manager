@@ -93,11 +93,12 @@ export function repositoryFixture() {
 
 export const realRepositoryFixture = repositoryFixture;
 
-export function memoryRepositoryFixture() {
+export function memoryRepositoryFixture({
+  artifact = 'docs/artifact.md',
+  bytes = Buffer.from('# Artifact\n\nRevision one.\n'),
+} = {}) {
   const root = temporaryRoot();
-  const artifact = 'docs/artifact.md';
-  const bytes = Buffer.from('# Artifact\n\nRevision one.\n');
-  mkdirSync(path.join(root, 'docs'), { recursive: true });
+  mkdirSync(path.dirname(path.join(root, artifact)), { recursive: true });
   writeFileSync(path.join(root, '.gitignore'), '.tmp/\n');
   writeFileSync(path.join(root, artifact), bytes);
   const repository = createMemoryRepository({ root, artifact, bytes });
@@ -125,6 +126,7 @@ function bindProtocol(api, repository) {
     initializeProtocol: inject('initializeProtocol'),
     readProtocol: inject('readProtocol'),
     statusProtocol: inject('statusProtocol'),
+    validatedArchiveSnapshot: inject('validatedArchiveSnapshot'),
     claimTurn: inject('claimTurn'),
     registerSupplement: inject('registerSupplement'),
     handoffOwner: inject('handoffOwner'),
@@ -187,10 +189,16 @@ export function commitArtifact(root, content, message = 'revise artifact') {
   return git(root, 'rev-parse', 'HEAD');
 }
 
-export async function initializedProtocol({ imported = false, maxReviewTurns = 6 } = {}) {
-  const fixture = memoryRepositoryFixture();
+export async function initializedProtocol({
+  imported = false,
+  maxReviewTurns = 6,
+  artifact = 'docs/artifact.md',
+  contents = '# Artifact\n\nRevision one.\n',
+  archiveDir,
+} = {}) {
+  const fixture = memoryRepositoryFixture({ artifact, bytes: Buffer.from(contents) });
   const api = await memoryProtocol(fixture.repository);
-  return initializeFixture({ api, fixture, imported, maxReviewTurns });
+  return initializeFixture({ api, fixture, imported, maxReviewTurns, archiveDir });
 }
 
 export async function realInitializedProtocol({ imported = false, maxReviewTurns = 6 } = {}) {
@@ -199,7 +207,7 @@ export async function realInitializedProtocol({ imported = false, maxReviewTurns
   return initializeFixture({ api, fixture, imported, maxReviewTurns });
 }
 
-function initializeFixture({ api, fixture, imported, maxReviewTurns }) {
+function initializeFixture({ api, fixture, imported, maxReviewTurns, archiveDir }) {
   const options = {
     cwd: fixture.root,
     dir: '.tmp/review',
@@ -207,6 +215,7 @@ function initializeFixture({ api, fixture, imported, maxReviewTurns }) {
     owner: 'owner-agent',
     reviewer: 'reviewer-agent',
     maxReviewTurns,
+    ...(archiveDir ? { archiveDir } : {}),
   };
   if (imported) {
     mkdirSync(path.join(fixture.root, options.dir), { recursive: true });

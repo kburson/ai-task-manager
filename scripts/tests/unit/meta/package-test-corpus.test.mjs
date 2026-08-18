@@ -228,7 +228,6 @@ test('live discovery realizes the migration manifest exactly once and only in ca
   for (const rel of storyOwned) {
     assert.ok(parseCanonicalTestPath(rel), `${rel} is a canonical story-owned test`);
   }
-
   const liveCounts = { unit: 0, integration: 0, slow: 0 };
   for (const rel of discovered) liveCounts[parseCanonicalTestPath(rel).lane] += 1;
   const minimumCounts = { unit: 0, integration: 0, slow: 0 };
