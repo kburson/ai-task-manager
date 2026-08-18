@@ -54,8 +54,8 @@ recorded compatibility review before TIA implementation continues.
   worktree overlays live under ignored `.ai-task-manager/.cache/tia/`.
 - Ordinary PR and merge-group runs use affected selection. Scheduled, recovery,
   repair, and release-candidate runs execute every configured lane.
-- The plan starts with these reviewed policy defaults: nightly sanity at 07:00
-  UTC; GREEN freshness limit 36 hours; Actions artifact retention 30 days;
+- The plan starts with these reviewed policy defaults: complete sanity runs at
+  07:00, 15:00, and 23:00 UTC; GREEN freshness limit 36 hours; Actions artifact retention 30 days;
   repair lease TTL 60 minutes with a 10-minute heartbeat; no time budget may
   truncate mandatory tests; optional historical additions receive a 10-minute
   budget; a confirmed stable escape suspends learned augmentation immediately;
@@ -126,9 +126,11 @@ remain injected at the orchestration boundary.
 | General availability     | All prior gates                                            | Install/init/doctor and end-to-end protected/cooperative modes pass      |
 
 Do not create GitHub issues while this plan is under review. After approval,
-decompose it into one top-level epic with child stories matching the tasks below.
-Tasks 1-3 may run before the pinned Cloud Test plan is complete; Task 4 and later
-must honor the dependency gates above.
+decompose it into independent delivery issues matching the tasks below and add
+the flat `plan:tia-build-health` membership label to each issue. Do not create an
+umbrella epic or introduce parent-completion or branch-lineage coupling. Tasks
+1-3 may run before the pinned Cloud Test plan is complete; Task 4 and later must
+honor the dependency gates above.
 
 ---
 
@@ -477,7 +479,7 @@ older than 36 hours all produce UNKNOWN or RED, never GREEN.
 - [ ] Implement a parser/renderer for the versioned
       `aitm-project-health` marker and require agreement with
       `health/status.json`, exact data SHA, source SHA, and sanity run.
-- [ ] Implement nightly 07:00 UTC concurrency against an exact pinned trunk SHA.
+- [ ] Implement 07:00, 15:00, and 23:00 UTC concurrency against an exact pinned trunk SHA.
       Execute every configured lane and publish full-scope artifacts before a
       typed GREEN/RED ledger operation.
 - [ ] Preserve the last known-good snapshot/model on RED. Treat mixed retry
@@ -766,7 +768,7 @@ heuristics indefinitely; activation is never forced by version upgrade.
 - Modify: `package.json`
 
 **Tests:** In sandbox repositories, cover bootstrap, protected and cooperative
-modes, selected PR, merge group, nightly GREEN, stale UNKNOWN, RED, lease-bound
+modes, selected PR, merge group, scheduled GREEN, stale UNKNOWN, RED, lease-bound
 repair, post-repair GREEN, invalid-head recovery, unsupported schema fallback,
 Node/iOS union, and learned-state deletion.
 
