@@ -5,6 +5,7 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import test from 'node:test';
 
+import { prepareArchive, publishPreparedArchive } from '../../../review/lib/archive.mjs';
 import {
   cleanupTemporaryRoots,
   memoryProtocol,
@@ -56,6 +57,18 @@ test('memory fixture completes a protocol without Git or Node subprocesses', asy
   assert.deepEqual(
     readEvents(fixture.root, options.dir).map(({ type }) => type),
     ['init', 'claim', 'owner-handoff', 'claim', 'reviewer-handoff']
+  );
+  assert.deepEqual(fixture.processCalls, { git: 0, nodeCli: 0 });
+
+  const snapshot = api.validatedArchiveSnapshot({ cwd: fixture.root, dir: options.dir });
+  const prepared = prepareArchive({
+    ...snapshot,
+    archiveDir: 'docs/reviews/memory-fixture',
+    repository: fixture.repository,
+  });
+  assert.equal(
+    publishPreparedArchive(prepared, { repository: fixture.repository }).status,
+    'published'
   );
   assert.deepEqual(fixture.processCalls, { git: 0, nodeCli: 0 });
 

@@ -646,7 +646,7 @@ export function publishPreparedArchive(
   try {
     renameSync(staging, prepared.destination.absolute);
   } catch (error) {
-    if (!['EEXIST', 'ENOTEMPTY'].includes(error.code)) throw error;
+    if (!['EEXIST', 'ENOTDIR', 'ENOTEMPTY'].includes(error.code)) throw error;
     const raced = inspectExpected(prepared.destination, prepared.files);
     if (raced.status === 'complete') return publicationResult('complete', prepared);
     fail('archive-conflict', raced.errors.join('; '));

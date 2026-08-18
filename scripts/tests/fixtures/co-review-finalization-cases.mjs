@@ -15,20 +15,40 @@ import path from 'node:path';
 import test from 'node:test';
 
 import {
-  inspectArchive,
-  prepareArchive,
-  publishPreparedArchive,
+  inspectArchive as inspectArchiveImpl,
+  prepareArchive as prepareArchiveImpl,
+  publishPreparedArchive as publishPreparedArchiveImpl,
   renderArchiveManifest,
 } from '../../review/lib/archive.mjs';
 import {
-  git,
-  protocol,
+  initializedProtocol,
+  processCallCounts,
   readEvents,
-  realInitializedProtocol,
-  repositoryFixture,
   snapshotProtocol,
   temporaryRoot,
 } from './co-review-fixture.mjs';
+
+const preparedRepositories = new WeakMap();
+
+function prepareArchive(options = {}) {
+  const prepared = prepareArchiveImpl(options);
+  if (options.repository) preparedRepositories.set(prepared, options.repository);
+  return prepared;
+}
+
+function inspectArchive(options = {}) {
+  return inspectArchiveImpl({
+    ...options,
+    repository: options.repository ?? preparedRepositories.get(options.prepared),
+  });
+}
+
+function publishPreparedArchive(prepared, options = {}) {
+  return publishPreparedArchiveImpl(prepared, {
+    ...options,
+    repository: options.repository ?? preparedRepositories.get(prepared),
+  });
+}
 
 function sha256(bytes) {
   return `sha256:${createHash('sha256').update(bytes).digest('hex')}`;
@@ -45,34 +65,19 @@ async function repositoryWithArtifact({
   contents = '# Artifact\n\nRevision one.\n',
   archiveDir,
 } = {}) {
-  const root = temporaryRoot('aitm-co-review-finalization-');
-  git(root, 'init', '-b', 'trunk');
-  git(root, 'config', 'user.name', 'Co Review Test');
-  git(root, 'config', 'user.email', 'co-review@example.test');
-  mkdirSync(path.dirname(path.join(root, artifact)), { recursive: true });
-  writeFileSync(path.join(root, '.gitignore'), '.tmp/\n');
-  writeFileSync(path.join(root, artifact), contents);
-  git(root, 'add', '.gitignore', artifact);
-  git(root, 'commit', '-m', 'initial artifact');
-  const api = await protocol();
-  const options = {
-    cwd: root,
-    dir: '.tmp/review',
+  return initializedProtocol({
     artifact,
-    owner: 'owner-agent',
-    reviewer: 'reviewer-agent',
+    contents,
     maxReviewTurns: 6,
-    ...(archiveDir ? { archiveDir } : {}),
-  };
-  const state = api.initializeProtocol(options);
-  return { api, root, artifact, options, state, initialCommit: git(root, 'rev-parse', 'HEAD') };
+    archiveDir,
+  });
 }
 
 async function acceptedConsensus(overrides = {}) {
   const fixture =
     overrides.artifact || overrides.contents || overrides.archiveDir
       ? await repositoryWithArtifact(overrides)
-      : await realInitializedProtocol({ maxReviewTurns: 6 });
+      : await initializedProtocol({ maxReviewTurns: 6 });
   const { api, root, options, initialCommit } = fixture;
   if (overrides.owner || overrides.reviewer) {
     const statePath = path.join(root, options.dir, 'state.json');
@@ -126,7 +131,7 @@ async function acceptedConsensus(overrides = {}) {
 }
 
 async function acceptedGoodEnough() {
-  const fixture = await realInitializedProtocol({ maxReviewTurns: 2 });
+  const fixture = await initializedProtocol({ maxReviewTurns: 2 });
   const { api, root, options, initialCommit } = fixture;
   let commit = initialCommit;
   let answeredReview = null;
@@ -214,6 +219,7 @@ function archiveOptions(fixture, archiveDir = 'docs/reviews/session') {
   return {
     ...fixture.api.validatedArchiveSnapshot({ cwd: fixture.root, dir: fixture.options.dir }),
     archiveDir,
+    repository: fixture.repository,
   };
 }
 
@@ -358,9 +364,11 @@ test('archive preserves an arbitrary artifact basename and returns a deeply froz
     snapshot.events.at(-1).handoff.decision = 'changes-requested';
   }, TypeError);
   assert.ok(
-    prepareArchive({ ...snapshot, archiveDir: 'docs/reviews/arbitrary' }).files.some(
-      (file) => file.path === 'artifact-review.notes-v2.md'
-    )
+    prepareArchive({
+      ...snapshot,
+      archiveDir: 'docs/reviews/arbitrary',
+      repository: fixture.repository,
+    }).files.some((file) => file.path === 'artifact-review.notes-v2.md')
   );
 });
 
@@ -377,11 +385,20 @@ test('archive accepts an equivalent configured destination and refuses a differe
     dir: fixture.options.dir,
   });
   assert.equal(
-    prepareArchive({ ...snapshot, archiveDir: './docs/reviews/configured' }).destination.relative,
+    prepareArchive({
+      ...snapshot,
+      archiveDir: './docs/reviews/configured',
+      repository: fixture.repository,
+    }).destination.relative,
     'docs/reviews/configured'
   );
   assert.throws(
-    () => prepareArchive({ ...snapshot, archiveDir: 'docs/reviews/different' }),
+    () =>
+      prepareArchive({
+        ...snapshot,
+        archiveDir: 'docs/reviews/different',
+        repository: fixture.repository,
+      }),
     (error) => error.code === 'archive-destination-mismatch'
   );
 });
@@ -471,13 +488,13 @@ test('publication and inspection reject forged prepared paths before touching si
   assert.equal(existsSync(escaped), false);
 });
 
-test('publication writes the manifest last, preserves inputs and Git, and retries without rewrite', async () => {
+test('publication writes the manifest last, preserves inputs and repository state, and retries without rewrite', async () => {
   const fixture = await acceptedConsensus();
   const dirty = path.join(fixture.root, 'unrelated.txt');
   writeFileSync(dirty, 'leave me alone\n');
   const beforeProtocol = snapshotProtocol(fixture.root, fixture.options.dir);
-  const beforeHead = git(fixture.root, 'rev-parse', 'HEAD');
-  const beforeIndex = git(fixture.root, 'write-tree');
+  const beforeIdentity = fixture.repository.identity(fixture.root);
+  const beforeArtifact = fixture.repository.trackedArtifact(fixture.root, fixture.options.artifact);
   const prepared = prepareArchive(archiveOptions(fixture));
   const writes = [];
   const published = publishPreparedArchive(prepared, {
@@ -500,8 +517,11 @@ test('publication writes the manifest last, preserves inputs and Git, and retrie
     );
   }
   assert.deepEqual(snapshotProtocol(fixture.root, fixture.options.dir), beforeProtocol);
-  assert.equal(git(fixture.root, 'rev-parse', 'HEAD'), beforeHead);
-  assert.equal(git(fixture.root, 'write-tree'), beforeIndex);
+  assert.deepEqual(fixture.repository.identity(fixture.root), beforeIdentity);
+  assert.deepEqual(
+    fixture.repository.trackedArtifact(fixture.root, fixture.options.artifact).index,
+    beforeArtifact.index
+  );
   assert.equal(readFileSync(dirty, 'utf8'), 'leave me alone\n');
   const beforeMtime = statSync(path.join(prepared.destination.absolute, 'README.md')).mtimeMs;
   assert.equal(publishPreparedArchive(prepared).status, 'complete');
@@ -633,4 +653,23 @@ test('publication leaves unique staging evidence on failures and handles rename 
     readFileSync(path.join(conflictPrepared.destination.absolute, 'other.md'), 'utf8'),
     'other'
   );
+
+  const fileRace = await acceptedConsensus();
+  const filePrepared = prepareArchive(archiveOptions(fileRace, 'docs/reviews/file-race'));
+  assert.throws(
+    () =>
+      publishPreparedArchive(filePrepared, {
+        hooks: {
+          beforeRename() {
+            writeFileSync(filePrepared.destination.absolute, 'raced file');
+          },
+        },
+      }),
+    (error) => error.code === 'archive-conflict'
+  );
+  assert.equal(readFileSync(filePrepared.destination.absolute, 'utf8'), 'raced file');
+});
+
+test('archive finalization corpus stays on injected in-memory repository boundaries', () => {
+  assert.deepEqual(processCallCounts(), { git: 0, nodeCli: 0 });
 });
