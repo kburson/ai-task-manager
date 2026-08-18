@@ -465,7 +465,7 @@ Purpose: Coordinate immutable owner/reviewer artifact rounds through explicit ac
 Usage: npx aitm co-review <${commandNames.join('|')}> [command options]
 Audience: Artifact owners, external reviewers, and the human continuation authority.
 Arguments: Run npx aitm co-review help <command> for exact required and optional flags.
-Preconditions: Normal commands require a Git worktree, tracked artifact, and caller-selected ignored --dir; help requires nothing.
+Preconditions: Normal commands require a Git worktree, tracked artifact, and an ignored --dir selected by the caller or derived by start; help requires nothing.
 Effects: Protocol mutations stay under --dir; terminal archive publication writes exact bytes only to a validated tracked repository destination. Help, status, and wait are read-only.
 Output: Recovery instructions, validated state, immutable hashes, budget arithmetic, and the exact next action.
 Exit codes: 0=success/help; 1=runtime/integrity/protocol refusal; 2=invalid usage; 3=bounded wait timeout; 4=acceptance durable; archive publication pending.
@@ -488,7 +488,7 @@ WHEN
   start before review; init remains the low-level primitive; status after context loss; claim before work; wait while the other role acts; handoff after immutable artifacts are complete; set-max-turns only during active state; supplement and continue/finalize only at intervention; finalize after accepted publication failure; stop forever after accepted.
 
 WHERE
-  The authoritative artifact is a tracked repository path. --dir is a caller-selected Git-ignored local directory containing state.json, events.jsonl, round artifacts, summaries, optional refocus files, and a short-lived .co-review-lock/.
+  The authoritative artifact is a tracked repository path. --dir is a caller-selected or guided-start-derived Git-ignored local directory containing state.json, events.jsonl, generated handoffs, round artifacts, summaries, optional refocus files, and a short-lived .co-review-lock/.
 
 HOW
   Every mutation validates, acquires a non-stealing directory mutex, revalidates, hashes accepted artifacts with SHA-256, appends one event, and atomically replaces state. The owner handoff proves exact commit/artifact/index equality. The reviewer handoff proves no owner-side Git drift.
