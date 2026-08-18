@@ -572,7 +572,8 @@ test('CLI routes reviewer acceptance and human continuation flags', async () => 
     ],
     common
   );
-  assert.equal(accepted.status, 0, accepted.stderr);
+  assert.equal(accepted.status, 4, accepted.stderr);
+  assert.match(accepted.stderr, /^ACCEPTED: protocol state is durable/);
   assert.equal(JSON.parse(accepted.stdout).lifecycle, 'accepted');
   const refused = await runCliDirect(
     ['continue', '--dir', '.tmp/review', '--additional-turns', '2', '--approved-by', 'human'],

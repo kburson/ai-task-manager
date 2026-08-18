@@ -131,6 +131,7 @@ function bindProtocol(api, repository) {
     registerSupplement: inject('registerSupplement'),
     handoffOwner: inject('handoffOwner'),
     handoffReviewer: inject('handoffReviewer'),
+    acceptGoodEnough: inject('acceptGoodEnough'),
     setMaxReviewTurns: inject('setMaxReviewTurns'),
     continueProtocol: inject('continueProtocol'),
     waitForTurn: inject('waitForTurn'),

@@ -142,27 +142,27 @@ test('fresh CLI workflow reaches acceptance with ordered events and terminal nex
     0
   );
   writeFileSync(path.join(root, '.tmp/review/r4-review.md'), '# Review\n\nAccepted.\n');
-  assert.equal(
-    runCli(
-      [
-        'handoff',
-        '--dir',
-        '.tmp/review',
-        '--actor',
-        'reviewer-agent',
-        '--review',
-        '.tmp/review/r4-review.md',
-        '--review-of',
-        secondCommit,
-        '--decision',
-        'accepted',
-        '--message',
-        'accepted',
-      ],
-      io
-    ).status,
-    0
+  const pendingArchive = runCli(
+    [
+      'handoff',
+      '--dir',
+      '.tmp/review',
+      '--actor',
+      'reviewer-agent',
+      '--review',
+      '.tmp/review/r4-review.md',
+      '--review-of',
+      secondCommit,
+      '--decision',
+      'accepted',
+      '--message',
+      'accepted',
+    ],
+    io
   );
+  assert.equal(pendingArchive.status, 4, pendingArchive.stderr);
+  assert.match(pendingArchive.stderr, /^ACCEPTED: protocol state is durable/);
+  assert.match(pendingArchive.stderr, /finalize --dir \.tmp\/review --archive-dir/);
   assert.deepEqual(
     readEvents(root, '.tmp/review').map(({ type }) => type),
     [
@@ -179,9 +179,12 @@ test('fresh CLI workflow reaches acceptance with ordered events and terminal nex
   );
   const status = runCli(['status', '--dir', '.tmp/review'], io);
   assert.equal(status.status, 0, status.stderr);
-  assert.match(status.stdout, /Next: stop; protocol accepted/);
+  assert.match(
+    status.stdout,
+    /Next: npx aitm co-review finalize --dir \.tmp\/review --archive-dir/
+  );
   const json = JSON.parse(runCli(['status', '--dir', '.tmp/review', '--json'], io).stdout);
-  assert.equal(json.nextAction, 'stop; protocol accepted');
+  assert.match(json.nextAction, /finalize --dir \.tmp\/review --archive-dir/);
 });
 
 test('Task 2 CLI continuation supports bare, absolute, legacy, focus, and authenticated recovery', async () => {
@@ -414,33 +417,32 @@ test('imported CLI workflow intercepts, continues with refocus, and then accepts
     0
   );
   writeFileSync(path.join(root, '.tmp/review/r5-review.md'), '# Review\n\nAccepted.\n');
-  assert.equal(
-    runCli(
-      [
-        'handoff',
-        '--dir',
-        '.tmp/review',
-        '--actor',
-        'reviewer-agent',
-        '--review',
-        '.tmp/review/r5-review.md',
-        '--review-of',
-        thirdCommit,
-        '--decision',
-        'accepted',
-        '--message',
-        'accepted',
-      ],
-      io
-    ).status,
-    0
+  const pendingArchive = runCli(
+    [
+      'handoff',
+      '--dir',
+      '.tmp/review',
+      '--actor',
+      'reviewer-agent',
+      '--review',
+      '.tmp/review/r5-review.md',
+      '--review-of',
+      thirdCommit,
+      '--decision',
+      'accepted',
+      '--message',
+      'accepted',
+    ],
+    io
   );
+  assert.equal(pendingArchive.status, 4, pendingArchive.stderr);
+  assert.match(pendingArchive.stderr, /^ACCEPTED: protocol state is durable/);
   const final = JSON.parse(runCli(['status', '--dir', '.tmp/review', '--json'], io).stdout);
   assert.equal(final.lifecycle, 'accepted');
   assert.equal(final.reviewTurnsUsed, 3);
   assert.equal(final.maxReviewTurns, 4);
   assert.equal(final.remainingReviewTurns, 1);
-  assert.equal(final.nextAction, 'stop; protocol accepted');
+  assert.match(final.nextAction, /finalize --dir \.tmp\/review --archive-dir/);
 });
 
 test('concurrent identical claims serialize to one claim event without corrupting state', async () => {
