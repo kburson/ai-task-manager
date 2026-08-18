@@ -309,6 +309,8 @@ test('co-review package catalog matches every settled subcommand, flag, and dura
     '--artifact <path>',
     '--owner <identity>',
     '--reviewer <identity>',
+    '--issue <N>',
+    '--artifact-kind <spec|plan>',
     '--max-turns <N>',
     '--wait-cycles <N>',
     '--wait-interval <seconds>',

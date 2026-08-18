@@ -1,4 +1,4 @@
-// @story #1276
+// @story #1276 #1272
 
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
@@ -374,7 +374,10 @@ test('reviewer consensus finalizes automatically and an unconfigured destination
     failed.api.readProtocol({ cwd: failed.root, dir: failed.options.dir }).lifecycle,
     'accepted'
   );
-  assert.match(publicationFailed.stderr, /finalize --dir \.tmp\/review$/m);
+  assert.match(
+    publicationFailed.stderr,
+    /finalize --dir \.tmp\/review --archive-dir docs\/reviews\/retry$/m
+  );
 });
 
 test('good-enough acceptance is revision-checked, immutable, and requires two-sided closing evidence', async () => {
@@ -553,6 +556,10 @@ test('intervention and accepted status expose state-valid finalization actions a
   assert.equal(beforePublish.decisionBasis, 'reviewer-consensus');
   assert.equal(beforePublish.archive.destination, 'docs/reviews/status');
   assert.equal(beforePublish.archive.completion, 'absent');
+  assert.match(
+    beforePublish.nextAction,
+    /finalize --dir \.tmp\/review --archive-dir docs\/reviews\/status$/
+  );
 });
 
 test('archive resolves consensus evidence by events and derives stable pair-round names', async () => {
@@ -569,6 +576,10 @@ test('archive resolves consensus evidence by events and derives stable pair-roun
   assert.equal(prepared.manifest.evidence.pairRound, 3);
   assert.equal(prepared.manifest.evidence.ownerResponse.eventRound, 2);
   assert.equal(prepared.manifest.evidence.reviewerReview.eventRound, 3);
+  assert.equal(
+    prepared.manifest.normative,
+    'The accepted artifact remains normative; the archived review and owner response are evidence.'
+  );
   assert.equal(
     output(prepared, 'artifact').sha256,
     sha256(readFileSync(path.join(fixture.root, fixture.options.artifact)))

@@ -624,7 +624,9 @@ export function statusProtocol(options) {
             {
               kind: 'finalize-good-enough',
               command: `npx aitm co-review finalize --dir ${shellArgument(runtimeDir)} --good-enough${
-                state.initialization.archiveDir ? '' : ' --archive-dir <tracked-repo-path>'
+                state.initialization.archiveDir
+                  ? ` --archive-dir ${shellArgument(state.initialization.archiveDir)}`
+                  : ' --archive-dir <tracked-repo-path>'
               }`,
             },
           ]
@@ -638,7 +640,9 @@ export function statusProtocol(options) {
     archive.completion !== 'complete-and-identical'
   ) {
     decoratedNextAction = `npx aitm co-review finalize --dir ${shellArgument(runtimeDir)}${
-      state.initialization.archiveDir ? '' : ' --archive-dir <tracked-repo-path>'
+      state.initialization.archiveDir
+        ? ` --archive-dir ${shellArgument(state.initialization.archiveDir)}`
+        : ' --archive-dir <tracked-repo-path>'
     }`;
     availableActions = [{ kind: 'finalize', command: decoratedNextAction }];
   }

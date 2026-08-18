@@ -1,4 +1,4 @@
-// @story #1269
+// @story #1269 #1272
 
 import assert from 'node:assert/strict';
 import {
@@ -14,6 +14,7 @@ import test from 'node:test';
 
 import {
   START_DEFAULTS,
+  deriveHostArchiveDir,
   deriveRuntimeDir,
   resolveStartOptions,
   startProtocol,
@@ -49,6 +50,8 @@ test('start defaults and derived runtime directories are stable and unique by cr
     deriveRuntimeDir('docs/design.md', 'creation-1'),
     deriveRuntimeDir('docs/design.md', 'creation-2')
   );
+  assert.equal(deriveHostArchiveDir('1272', 'spec'), 'docs/superpowers/reviews/1272/spec');
+  assert.equal(deriveHostArchiveDir(1272, 'plan'), 'docs/superpowers/reviews/1272/plan');
 });
 
 test('start option resolution validates roles and numeric bounds before mutation', () => {
@@ -58,6 +61,22 @@ test('start option resolution validates roles and numeric bounds before mutation
     dir: '.tmp/co-review/artifact-fixed',
     ...START_DEFAULTS,
   });
+  assert.deepEqual(
+    resolveStartOptions(
+      { ...base, issue: '1272', artifactKind: 'spec' },
+      {
+        creationId: () => 'fixed',
+      }
+    ),
+    {
+      ...base,
+      issue: 1272,
+      artifactKind: 'spec',
+      archiveDir: 'docs/superpowers/reviews/1272/spec',
+      dir: '.tmp/co-review/artifact-fixed',
+      ...START_DEFAULTS,
+    }
+  );
   for (const options of [
     { ...base, reviewer: 'author' },
     { ...base, maxReviewTurns: 0 },
@@ -65,8 +84,85 @@ test('start option resolution validates roles and numeric bounds before mutation
     { ...base, waitIntervalSeconds: 0 },
     { ...base, waitIntervalSeconds: 61 },
     { ...base, waitCycles: 1.5 },
+    { ...base, issue: '1272' },
+    { ...base, artifactKind: 'spec' },
+    { ...base, issue: '0', artifactKind: 'spec' },
+    { ...base, issue: '01272', artifactKind: 'spec' },
+    { ...base, issue: '1272', artifactKind: 'design' },
   ]) {
     assert.throws(() => resolveStartOptions(options), /co-review:start-/);
+  }
+});
+
+test('guided startup never infers host context from spec- or plan-looking filenames', () => {
+  for (const artifact of [
+    'docs/2026-08-18-payment-spec.md',
+    'docs/superpowers/plans/2026-08-18-payment-plan.md',
+  ]) {
+    const resolved = resolveStartOptions(
+      { artifact, owner: 'author', reviewer: 'reviewer' },
+      { creationId: () => 'fixed' }
+    );
+    assert.equal(resolved.issue, undefined);
+    assert.equal(resolved.artifactKind, undefined);
+    assert.equal(resolved.archiveDir, undefined);
+  }
+});
+
+test('review evidence documentation declares one current generated filename grammar', () => {
+  const documentation = readFileSync(path.resolve('docs/superpowers/reviews/README.md'), 'utf8');
+  assert.match(documentation, /artifact-<artifact-basename>/);
+  assert.match(documentation, /<artifact-stem>-r<pair-round>-owner-<owner-slug>-response\.md/);
+  assert.match(documentation, /<artifact-stem>-r<pair-round>-reviewer-<reviewer-slug>-review\.md/);
+  assert.doesNotMatch(documentation, /<date>-<slug>-owner-response-r<round>-<actor>\.md/);
+  assert.doesNotMatch(documentation, /<date>-<slug>-acceptance-r<round>-<actor>\.md/);
+});
+
+test('guided host context configures deterministic spec and plan archives and handoffs', async () => {
+  for (const artifactKind of ['spec', 'plan']) {
+    const fixture = memoryRepositoryFixture();
+    const api = await memoryProtocol(fixture.repository);
+    const dir = `.tmp/${artifactKind}-host-start`;
+    const options = {
+      cwd: fixture.root,
+      artifact: fixture.artifact,
+      owner: 'author-agent',
+      reviewer: 'reviewer-agent',
+      dir,
+      issue: '1272',
+      artifactKind,
+    };
+    const result = startProtocol(options, startDependencies(api));
+    const archiveDir = `docs/superpowers/reviews/1272/${artifactKind}`;
+    assert.equal(result.state.initialization.archiveDir, archiveDir);
+    assert.deepEqual(result.manifest.hostArchive, {
+      issue: 1272,
+      artifactKind,
+      archiveDir,
+    });
+    for (const handoffPath of [result.authorHandoff.absolute, result.reviewerHandoff.absolute]) {
+      const handoff = readFileSync(handoffPath, 'utf8');
+      assert.match(handoff, new RegExp(`Artifact kind: .*${artifactKind}`));
+      assert.match(handoff, new RegExp(archiveDir));
+      assert.match(
+        handoff,
+        new RegExp(`finalize --dir \\.tmp/${artifactKind}-host-start --archive-dir ${archiveDir}`)
+      );
+    }
+
+    const events = readEvents(fixture.root, dir);
+    const exact = startProtocol(options, startDependencies(api));
+    assert.deepEqual(exact.manifest, result.manifest);
+    assert.deepEqual(readEvents(fixture.root, dir), events);
+    assert.throws(
+      () =>
+        startProtocol(
+          { ...options, artifactKind: artifactKind === 'spec' ? 'plan' : 'spec' },
+          startDependencies(api)
+        ),
+      /co-review:already-initialized/
+    );
+    assert.deepEqual(readEvents(fixture.root, dir), events);
   }
 });
 
@@ -85,6 +181,8 @@ test('start delegates initialization and publishes concrete hashed handoffs befo
   );
 
   assert.equal(result.state.maxReviewTurns, 10);
+  assert.equal(result.state.initialization.archiveDir, undefined);
+  assert.equal(result.manifest.hostArchive, undefined);
   assert.deepEqual(
     readEvents(fixture.root, '.tmp/review-start').map(({ type }) => type),
     ['init']
@@ -166,6 +264,10 @@ test('flagged start records every numeric override in state and startup metadata
       '7',
       '--wait-interval',
       '12',
+      '--issue',
+      '1272',
+      '--artifact-kind',
+      'plan',
     ],
     { cwd: fixture.root, repository: fixture.repository }
   );
@@ -178,6 +280,12 @@ test('flagged start records every numeric override in state and startup metadata
   assert.equal(manifest.maxReviewTurns, 4);
   assert.equal(manifest.waitCycles, 7);
   assert.equal(manifest.waitIntervalSeconds, 12);
+  assert.equal(state.initialization.archiveDir, 'docs/superpowers/reviews/1272/plan');
+  assert.deepEqual(manifest.hostArchive, {
+    issue: 1272,
+    artifactKind: 'plan',
+    archiveDir: 'docs/superpowers/reviews/1272/plan',
+  });
 });
 
 test('exact start retry is event-idempotent, reconstructs one missing handoff, and refuses conflicts', async () => {
@@ -260,6 +368,35 @@ test('post-initialization publication failure reports an explicit retry and rema
   const recovered = startProtocol(options, startDependencies(api));
   assert.equal(existsSync(recovered.reviewerHandoff.absolute), true);
   assert.equal(existsSync(path.join(fixture.root, options.dir, 'start-manifest.json')), true);
+  assert.equal(readEvents(fixture.root, options.dir).length, 1);
+});
+
+test('host-configured publication recovery preserves the exact issue and artifact kind', async () => {
+  const fixture = memoryRepositoryFixture();
+  const api = await memoryProtocol(fixture.repository);
+  const options = {
+    cwd: fixture.root,
+    artifact: fixture.artifact,
+    owner: 'author-agent',
+    reviewer: 'reviewer-agent',
+    dir: '.tmp/host-partial-start',
+    issue: '1272',
+    artifactKind: 'spec',
+  };
+  assert.throws(
+    () =>
+      startProtocol(
+        options,
+        startDependencies(api, {
+          beforePublish(name) {
+            if (name === 'reviewer-handoff.md') throw new Error('injected host failure');
+          },
+        })
+      ),
+    /next: npx aitm co-review start .*--issue 1272 --artifact-kind spec/
+  );
+  const recovered = startProtocol(options, startDependencies(api));
+  assert.equal(recovered.state.initialization.archiveDir, 'docs/superpowers/reviews/1272/spec');
   assert.equal(readEvents(fixture.root, options.dir).length, 1);
 });
 
@@ -359,6 +496,8 @@ test('interactive start displays resolved configuration and cancellation mutates
     '.tmp/interactive-start',
     'author-agent',
     'reviewer-agent',
+    '1272',
+    'spec',
     '',
     '',
     '',
@@ -378,6 +517,9 @@ test('interactive start displays resolved configuration and cancellation mutates
   assert.match(questions.join('\n'), /Author identity/);
   assert.match(result.stdout, /Resolved co-review startup:/);
   assert.match(result.stdout, /Maximum reviewer turns: 10/);
+  assert.match(result.stdout, /Host issue: 1272/);
+  assert.match(result.stdout, /Artifact kind: spec/);
+  assert.match(result.stdout, /Archive destination: docs\/superpowers\/reviews\/1272\/spec/);
   assert.match(result.stdout, /AUTHOR PROMPT/);
 
   const cancelledDir = '.tmp/cancelled-start';
@@ -386,6 +528,8 @@ test('interactive start displays resolved configuration and cancellation mutates
     cancelledDir,
     'author-agent',
     'reviewer-agent',
+    '',
+    '',
     '',
     '',
     '',
@@ -434,6 +578,34 @@ test('non-interactive incomplete and invalid flagged start invocations fail befo
   assert.match(invalid.stderr, /start-wait-interval/);
   assert.match(invalid.stderr, /no state changed/);
   assert.equal(existsSync(path.join(fixture.root, '.tmp/invalid-start')), false);
+
+  for (const [suffix, hostArgs] of [
+    ['missing-kind', ['--issue', '1272']],
+    ['missing-issue', ['--artifact-kind', 'spec']],
+    ['bad-issue', ['--issue', '01272', '--artifact-kind', 'spec']],
+    ['bad-kind', ['--issue', '1272', '--artifact-kind', 'design']],
+  ]) {
+    const dir = `.tmp/${suffix}-start`;
+    const refused = await runCliDirect(
+      [
+        'start',
+        '--artifact',
+        fixture.artifact,
+        '--owner',
+        'author-agent',
+        '--reviewer',
+        'reviewer-agent',
+        '--dir',
+        dir,
+        ...hostArgs,
+      ],
+      { cwd: fixture.root, repository: fixture.repository, isTTY: false }
+    );
+    assert.equal(refused.status, 2, `${suffix}: ${refused.stderr}`);
+    assert.match(refused.stderr, /co-review:start-host-context/);
+    assert.match(refused.stderr, /no state changed/);
+    assert.equal(existsSync(path.join(fixture.root, dir)), false);
+  }
 });
 
 test('structured and top-level help fully document guided startup without hiding init', () => {
@@ -447,6 +619,9 @@ test('structured and top-level help fully document guided startup without hiding
     '--max-turns <N>',
     '--wait-cycles <N>',
     '--wait-interval <seconds>',
+    '--issue <N>',
+    '--artifact-kind <spec|plan>',
+    'docs/superpowers/reviews/<issue>/<spec|plan>/',
     '10',
     '20',
     '60',

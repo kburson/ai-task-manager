@@ -115,7 +115,7 @@ const ROUTABLE_SELF_DOC = {
       'Coordinate immutable owner/reviewer rounds through acceptance and deterministic evidence publication.',
     audience: 'Artifact owner, external reviewer, or authenticated human authority.',
     usage:
-      'aitm co-review <start|init|status|claim|wait|handoff|set-max-turns|supplement|continue|finalize> [--dir <path>] [--artifact <path>] [--owner <identity>] [--reviewer <identity>] [--max-turns <N>] [--wait-cycles <N>] [--wait-interval <seconds>] [--import-review <file>] [--review-of <sha>] [--archive-dir <path>] [--actor <identity>] [--timeout <seconds>] [--response <file>] [--commit <sha>] [--answers <review>] [--review <file>] [--decision accepted|changes-requested] [--summary <file>] [--message <text>] [--file <path>] [--additional-turns <N>] [--approved-by <identity>] [--focus <file>] [--good-enough] [--json]',
+      'aitm co-review <start|init|status|claim|wait|handoff|set-max-turns|supplement|continue|finalize> [--dir <path>] [--artifact <path>] [--owner <identity>] [--reviewer <identity>] [--issue <N> --artifact-kind <spec|plan>] [--max-turns <N>] [--wait-cycles <N>] [--wait-interval <seconds>] [--import-review <file>] [--review-of <sha>] [--archive-dir <path>] [--actor <identity>] [--timeout <seconds>] [--response <file>] [--commit <sha>] [--answers <review>] [--review <file>] [--decision accepted|changes-requested] [--summary <file>] [--message <text>] [--file <path>] [--additional-turns <N>] [--approved-by <identity>] [--focus <file>] [--good-enough] [--json]',
   },
   'value-report': {
     group: 'Reports',
@@ -315,6 +315,11 @@ const ROUTABLE_ARGUMENTS = Object.freeze({
     ),
     argument('--owner <identity>', 'Configured artifact-owner identity; start and init.'),
     argument('--reviewer <identity>', 'Configured external-reviewer identity; start and init.'),
+    argument('--issue <N>', 'Guided-start host issue; paired with --artifact-kind.'),
+    argument(
+      '--artifact-kind <spec|plan>',
+      'Guided-start host artifact kind; paired with --issue.'
+    ),
     argument('--max-turns <N>', 'Initial or authenticated absolute reviewer-response maximum.'),
     argument('--wait-cycles <N>', 'Guided-start observed waits per episode; default 20.'),
     argument('--wait-interval <seconds>', 'Guided-start seconds per wait from 1 through 60.'),
@@ -542,7 +547,7 @@ const ROUTABLE_CONTRACTS = Object.freeze({
     ],
     effects: [
       'Mutations update local protocol state under its mutex; terminal publication runs outside that mutex.',
-      'Guided start delegates initialization, then atomically publishes hashed author and reviewer handoffs inside the ignored runtime directory; it never launches agents.',
+      'Guided start delegates initialization, optionally derives docs/superpowers/reviews/<issue>/<spec|plan>/ from paired explicit host context, then atomically publishes hashed author and reviewer handoffs inside the ignored runtime directory; it never launches agents.',
       'Evidence archives preserve exact bytes and are never staged or committed by co-review.',
     ],
     output: [
@@ -558,6 +563,7 @@ const ROUTABLE_CONTRACTS = Object.freeze({
     examples: [
       'npx aitm co-review --help',
       'npx aitm co-review start --artifact docs/design.md --owner author-agent --reviewer reviewer-agent',
+      'npx aitm co-review start --artifact docs/design.md --owner author-agent --reviewer reviewer-agent --issue 1272 --artifact-kind spec',
       'npx aitm co-review status --dir .tmp/1117-review',
       'npx aitm co-review finalize --dir .tmp/1117-review --archive-dir docs/reviews/1117',
     ],
