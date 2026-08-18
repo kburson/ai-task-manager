@@ -202,14 +202,13 @@ export const COMMANDS = Object.freeze({
       '--max-turns <N>              New absolute reviewer-response maximum; may increase or decrease.',
     ],
     effects: [
-      'Records authenticated actor, prior/requested/effective maximum, reason, and timestamp.',
-      'A decrease that exhausts the budget preserves a claimed closing owner turn or enters intervention-required.',
+      'Records authenticated actor, prior/requested/effective maximum, and timestamp.',
+      'Preserves the active lifecycle, role, and claim; an exhausted owner budget short-circuits to intervention only on the subsequent owner handoff.',
     ],
     validations: ['GitHub identity, lifecycle, integrity, turn floor, and mutex ownership.'],
     output: 'Prints the effective budget, adjustment provenance, lifecycle, and exact next action.',
     exits: '0=adjusted or exact no-op; 1=identity/state/integrity/lock refusal; 2=invalid usage.',
-    transition:
-      'Active may remain active or enter intervention-required when the adjusted budget is exhausted.',
+    transition: 'The active lifecycle, current role, and claim remain unchanged by the adjustment.',
     idempotency: 'An exact effective no-op preserves protocol bytes and emits no event.',
     examples: [
       'npx aitm co-review set-max-turns --dir .tmp/design-review --max-turns 8',
@@ -269,21 +268,23 @@ export const COMMANDS = Object.freeze({
       'npx aitm co-review continue --dir <path> [--max-turns <N> | --additional-turns <N>] [--focus <file>]',
     arguments: [
       '--dir <path>                 Existing protocol directory.',
-      '--max-turns <N>              New absolute maximum; bare continuation keeps the current maximum.',
+      '--max-turns <N>              New absolute maximum; bare continuation authorizes the minimum required by the resumed role.',
       '--additional-turns <N>       Legacy positive additive form; mutually exclusive with --max-turns.',
       '--approved-by <identity>     Deprecated and ignored; authenticated GitHub login is authoritative.',
       '--focus <file>               Optional immutable human refocus instructions.',
     ],
     effects: [
-      'Preserves or adjusts the maximum, freezes pending supplements, hashes optional focus, and returns an available owner turn.',
+      'Derives the resumed role from the last handoff: owner resumes reviewer; reviewer resumes owner.',
+      'Authorizes the resumed role minimum, freezes pending supplements, hashes optional focus, and returns that role available.',
     ],
     validations: [
       'Authenticated identity, intervention lifecycle, budget form, integrity, focus containment/separation, supplements, and mutex.',
     ],
-    output: 'Prints approval/refocus provenance, cumulative budget, and owner claim command.',
+    output:
+      'Prints approval/refocus provenance, cumulative budget, resumed role, and its claim command.',
     exits: '0=continued; 1=state/integrity/lock refusal; 2=invalid usage.',
     transition:
-      'intervention-required -> active owner available; accepted remains terminal and cannot continue.',
+      'intervention after a closing owner -> active reviewer available; legacy intervention after an exhausted reviewer -> active owner available; accepted cannot continue.',
     idempotency:
       'Not replayable after success because the protocol is no longer intervention-required.',
     examples: [
@@ -294,7 +295,7 @@ export const COMMANDS = Object.freeze({
     recovery:
       'If approval or focus is wrong, correct it before success. After success, do not rerun; use status.',
     next: [
-      'npx aitm co-review claim --dir <path> --actor <owner-identity>',
+      'claim with the displayed resumed-role actor command',
       'npx aitm co-review status --dir <path>',
     ],
   }),
@@ -441,7 +442,7 @@ LIFECYCLE
   active owner -> active reviewer -> active owner ... -> accepted
                                      final changes-requested -> active closing owner
                                      closing owner handoff -> intervention-required
-                                     human continue -> active owner
+                                     human continue -> active role implied by the last handoff
                                      human finalize --good-enough -> accepted
   accepted is terminal and wins over budget exhaustion on the last allowed review.
 
@@ -454,7 +455,7 @@ OPTION GLOSSARY
   --owner/--reviewer configured identities; --actor exact acting identity;
   --max-turns total/absolute reviewer responses, including imported R1;
   --archive-dir validated tracked repository destination for terminal evidence;
-  --decision accepted|changes-requested; --summary required on final requested-changes turn;
+  --decision accepted|changes-requested; --summary optional only on a final changes-requested review;
   --file immutable intervention supplement; --additional-turns legacy additive budget;
   --approved-by deprecated/ignored; authenticated gh login is authoritative;
   --focus optional immutable human refocus file; --good-enough terminal human acceptance;
@@ -486,13 +487,13 @@ FRESH EXAMPLE
 IMPORTED R1 EXAMPLE
   npx aitm co-review init --dir .tmp/1117-review --artifact docs/design.md --owner codex --reviewer claude --max-turns 6 --import-review .tmp/1117-review/r1-claude-review.md --review-of <sha>
   The imported review consumes turn 1; used=1, max=6, remaining=5.
-  # If the last allowed review requests changes, the reviewer supplies --summary and both agents stop.
+  # If the last allowed review requests changes, summary is optional; the owner must still claim, answer, commit, and hand off once before intervention.
   npx aitm co-review set-max-turns --dir <path> --max-turns <N>
   npx aitm co-review supplement --dir <path> --file <supplement-file>
   npx aitm co-review continue --dir <path> [--max-turns <N> | --additional-turns <N>] [--focus <file>]
   npx aitm co-review continue --dir <path> --additional-turns <N>
   npx aitm co-review finalize --dir <path> --good-enough [--archive-dir <tracked-repo-path>]
-  # Human authority is the authenticated gh login. Bare continuation keeps the current maximum.
+  # Human authority is the authenticated gh login. Bare continuation authorizes the minimum required by the role implied by the last handoff.
 
 ACCEPTED PUBLICATION RECOVERY
   Ordinary reviewer consensus publishes automatically when --archive-dir was configured at init.
@@ -501,7 +502,7 @@ ACCEPTED PUBLICATION RECOVERY
   Verify every produced path and commit through host repository governance; co-review never stages or commits.
 
 COMMON REFUSALS
-  Wrong role/claim, malformed state, missing/drifted immutable artifact, dirty index/artifact, branch/commit drift, incomplete dispositions, implicit decision, exhausted budget without summary, or surviving lock. Every refusal leaves the attempted transition unapplied and prints a recovery action.
+  Wrong role/claim, malformed state, missing/drifted immutable artifact, dirty index/artifact, branch/commit drift, incomplete dispositions, implicit decision, a summary before the final changes-requested review, or surviving lock. Every refusal leaves the attempted transition unapplied and prints a recovery action.
 
 CONTEXT-RESET CHECKLIST
   1. Run: npx aitm co-review status --dir <path>

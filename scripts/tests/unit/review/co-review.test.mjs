@@ -117,6 +117,24 @@ test('handoff and budget help preserve the mandatory closing owner turn', () => 
     assert.match(page, /closing owner handoff.*intervention-required/is);
   }
   assert.doesNotMatch(renderHelp('set-max-turns'), /active or intervention-required/i);
+  assert.match(COMMANDS['set-max-turns'].effects.join(' '), /subsequent owner handoff/i);
+  assert.match(COMMANDS['set-max-turns'].transition, /lifecycle.*role.*claim.*unchanged/i);
+  assert.doesNotMatch(renderHelp('set-max-turns'), /records.*reason/i);
+});
+
+test('continuation help derives the resumed role and its minimum authorized budget', () => {
+  const continuation = COMMANDS.continue;
+  assert.match(continuation.arguments.join(' '), /bare continuation.*minimum.*resumed role/i);
+  assert.match(continuation.effects.join(' '), /last handoff.*owner.*reviewer/i);
+  assert.match(continuation.effects.join(' '), /last handoff.*reviewer.*owner/i);
+  assert.match(continuation.transition, /closing owner.*active reviewer/i);
+  assert.match(continuation.transition, /exhausted reviewer.*active owner/i);
+
+  const top = renderHelp();
+  assert.doesNotMatch(top, /summary required on final requested-changes turn/i);
+  assert.doesNotMatch(top, /reviewer supplies --summary and both agents stop/i);
+  assert.doesNotMatch(top, /exhausted budget without summary/i);
+  assert.match(top, /summary optional only on a final changes-requested review/i);
 });
 
 test('top-level help covers the settled lifecycle, recovery, and governance surface', () => {
