@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1080" viewBox="0 0 1600 1080" role="img" aria-labelledby="title description">
   <title id="title">Repository-native polyglot test impact analysis and build-health architecture</title>
-  <desc id="description">Architecture diagram showing a platform-neutral TIA core with Node and iOS providers, three evidence layers, the orphan aitm/tia-data branch, scheduled complete validation, project-health gating, and a repair lease.</desc>
+  <desc id="description">Architecture diagram showing provider selection, CI execution, metrics and evidence flow, the orphan aitm/tia-data authority branch, project-health gating, and a repair lease.</desc>
   <defs>
     <marker id="arrow" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto" markerUnits="strokeWidth">
       <path d="M0,0 L0,6 L9,3 z" fill="#334155" />
@@ -125,7 +125,7 @@
   <text x="812" y="402" text-anchor="middle" class="small">bulky data expires and is not canonical authority</text>
 
   <rect x="615" y="463" width="395" height="220" class="authority" />
-  <text x="812" y="493" text-anchor="middle" class="heading">Layer 3 · orphan branch</text>
+  <text x="812" y="493" text-anchor="middle" class="heading">Layer 3 · canonical metrics and authority</text>
   <text x="812" y="518" text-anchor="middle" class="label">refs/heads/aitm/tia-data</text>
   <text x="642" y="551" class="body">• compact canonical snapshot + digest</text>
   <text x="642" y="577" class="body">• active model + validation receipt</text>
@@ -149,7 +149,7 @@
   <text x="1095" y="138" class="section">3 · PROJECT HEALTH AND REPAIR</text>
 
   <rect x="1100" y="165" width="425" height="96" class="green" />
-  <text x="1312" y="193" text-anchor="middle" class="heading">Scheduled complete run on exact trunk SHA</text>
+  <text x="1312" y="193" text-anchor="middle" class="heading">Scheduled complete CI on exact trunk SHA</text>
   <text x="1312" y="218" text-anchor="middle" class="body">sole health and model activation event</text>
   <text x="1312" y="240" text-anchor="middle" class="small">nightly default · explicit immediate run after repair merge</text>
 
