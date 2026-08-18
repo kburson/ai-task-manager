@@ -22,9 +22,9 @@ import {
 } from '../../review/lib/archive.mjs';
 import {
   git,
-  initializedProtocol,
   protocol,
   readEvents,
+  realInitializedProtocol,
   repositoryFixture,
   snapshotProtocol,
   temporaryRoot,
@@ -72,7 +72,7 @@ async function acceptedConsensus(overrides = {}) {
   const fixture =
     overrides.artifact || overrides.contents || overrides.archiveDir
       ? await repositoryWithArtifact(overrides)
-      : await initializedProtocol({ maxReviewTurns: 6 });
+      : await realInitializedProtocol({ maxReviewTurns: 6 });
   const { api, root, options, initialCommit } = fixture;
   if (overrides.owner || overrides.reviewer) {
     const statePath = path.join(root, options.dir, 'state.json');
@@ -126,7 +126,7 @@ async function acceptedConsensus(overrides = {}) {
 }
 
 async function acceptedGoodEnough() {
-  const fixture = await initializedProtocol({ maxReviewTurns: 2 });
+  const fixture = await realInitializedProtocol({ maxReviewTurns: 2 });
   const { api, root, options, initialCommit } = fixture;
   let commit = initialCommit;
   let answeredReview = null;
