@@ -8,9 +8,10 @@ event-count drift during the authorized event-append/state-replace window while
 preserving every durable integrity refusal.
 
 **Architecture:** Refactor status inspection to retain one state/event snapshot,
-qualify only a valid one-revision event lead under a live mutex for bounded retry,
-and reuse the settled events for projection. Keep the public API synchronous and
-inject the retry wait only for deterministic tests.
+confirm any otherwise-valid N+k forward event lead against re-read state, and
+reuse the settled events for projection. Only an unchanged exact-one lead uses
+mutex-gated bounded waiting. Keep the public API synchronous and inject read/wait
+seams only for deterministic tests.
 
 **Tech stack:** Node.js ESM, synchronous filesystem protocol, `node:test`, AITM
 co-review CLI.
