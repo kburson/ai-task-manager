@@ -629,6 +629,63 @@ test('status confirms a publication that completes between state and event reads
   assert.equal(status.turnState, 'claimed');
 });
 
+test('status restarts when a second publication completes before confirmation', async () => {
+  const fixture = await initializedProtocol();
+  const statePath = path.join(fixture.root, fixture.options.dir, 'state.json');
+  const eventsPath = path.join(fixture.root, fixture.options.dir, 'events.jsonl');
+  const baseState = readFileSync(statePath, 'utf8');
+  const baseEvents = readFileSync(eventsPath, 'utf8');
+
+  fixture.api.claimTurn({
+    cwd: fixture.root,
+    dir: fixture.options.dir,
+    actor: 'owner-agent',
+  });
+  const firstState = readFileSync(statePath, 'utf8');
+  const firstEvents = readFileSync(eventsPath, 'utf8');
+  const second = fixture.api.setMaxReviewTurns({
+    cwd: fixture.root,
+    dir: fixture.options.dir,
+    requestedMax: 11,
+    humanLogin: 'kendrick',
+  });
+  const secondState = readFileSync(statePath, 'utf8');
+  const secondEvents = readFileSync(eventsPath, 'utf8');
+  writeFileSync(statePath, baseState);
+  writeFileSync(eventsPath, baseEvents);
+
+  let stateReads = 0;
+  let eventReads = 0;
+  const status = fixture.api.statusProtocol({
+    cwd: fixture.root,
+    dir: fixture.options.dir,
+    consistency: {
+      maxAttempts: 2,
+      delayMilliseconds: 0,
+      afterStateRead() {
+        stateReads += 1;
+        if (stateReads === 1) {
+          writeFileSync(statePath, firstState);
+          writeFileSync(eventsPath, firstEvents);
+        }
+      },
+      afterEventRead() {
+        eventReads += 1;
+        if (eventReads === 1) {
+          writeFileSync(statePath, secondState);
+          writeFileSync(eventsPath, secondEvents);
+        }
+      },
+    },
+  });
+
+  assert.equal(stateReads, 2);
+  assert.equal(eventReads, 2);
+  assert.equal(status.integrity.ok, true);
+  assert.equal(status.revision, second.revision);
+  assert.equal(status.maxReviewTurns, 11);
+});
+
 test('wait settles a concurrent event-append before evaluating the requested role', async () => {
   const fixture = await initializedProtocol();
   const window = stageClaimPublicationWindow(fixture);

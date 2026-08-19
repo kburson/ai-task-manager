@@ -34,11 +34,14 @@ The snapshot is returned immediately unless all of the following are true:
 For that shape, the reader first re-reads `state.json` and validates it against
 the exact event array already observed. This closes the interleaving where the
 writer acquires and releases the mutex entirely between the reader's state and
-event reads. A fully matching N+1 state is returned immediately. If state remains
-at N, only an observed mutex permits a small bounded retry. Production retries
-use a short synchronous wait because the writer is a separate process and the
-public protocol API is intentionally synchronous. Test-only injected read and
-wait functions provide deterministic seams without timing-sensitive sleeps.
+event reads. A fully matching N+1 state is returned immediately. If confirmation
+has advanced beyond N+1 because another serialized mutation completed, the
+reader restarts within the same fixed attempt budget even when neither earlier
+mutex sample was live. If state remains at N, only an observed mutex permits a
+small bounded retry. Production retries use a short synchronous wait because the
+writer is a separate process and the public protocol API is intentionally
+synchronous. Test-only injected read and wait functions provide deterministic
+seams without timing-sensitive sleeps.
 
 The successful attempt's event array is retained and reused for all downstream
 status projection. Status never re-reads the event file after deciding the
@@ -64,6 +67,8 @@ The retry path does not accept or normalize corruption.
   is reported as durable drift without a delayed retry.
 - A stale mutex: retries end at the fixed bound and the original integrity error
   is returned.
+- Continuous authorized publication can consume the fixed attempt budget; the
+  final unmatched snapshot is reported rather than accepted or normalized.
 - More than one extra event, missing events, malformed JSON, wrong schema,
   protocol-ID drift, invalid event type, reordered/duplicate revisions, projection
   drift, artifact drift, supplement drift, and Git drift never qualify.
@@ -91,8 +96,9 @@ The focused corpus will deterministically stage revision N state, revision N+1
 events, and a live mutex from a real protocol mutation. The injected retry seam
 will publish revision N+1 state between attempts. A separate injected read seam
 will publish the state and release the mutex entirely between the initial state
-and event reads. `statusProtocol` and `waitForTurn` must return healthy settled
-snapshots.
+and event reads. A third case will complete two serialized publications around
+the initial event read and require a bounded restart to the N+2 snapshot.
+`statusProtocol` and `waitForTurn` must return healthy settled snapshots.
 
 Separate cases will prove that the same one-event lead fails closed without a
 mutex and after bounded retries with a persistent mutex. Existing revision,

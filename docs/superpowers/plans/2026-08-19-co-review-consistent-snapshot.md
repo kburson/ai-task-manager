@@ -65,6 +65,12 @@ mutation that completed entirely between the state and event reads cannot be
 misreported as drift. If the confirmation remains at N and neither mutex sample
 is live, fail closed without a delayed retry.
 
+If a second serialized mutation completes before confirmation and advances state
+beyond the retained event array, restart the snapshot attempt within the same
+fixed budget even when neither earlier mutex sample was live. This restart must
+perform a fresh state/event read and must fail closed if continuous publication
+exhausts the bound.
+
 ### Step 4: Run the focused status regression
 
 Run the focused command again and require green.

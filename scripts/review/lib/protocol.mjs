@@ -417,7 +417,11 @@ function snapshotConsistency(input = {}) {
   if (afterStateRead !== undefined && typeof afterStateRead !== 'function') {
     throw new TypeError('co-review: snapshot consistency afterStateRead must be a function');
   }
-  return { maxAttempts, delayMilliseconds, wait, afterStateRead };
+  const afterEventRead = input.afterEventRead;
+  if (afterEventRead !== undefined && typeof afterEventRead !== 'function') {
+    throw new TypeError('co-review: snapshot consistency afterEventRead must be a function');
+  }
+  return { maxAttempts, delayMilliseconds, wait, afterStateRead, afterEventRead };
 }
 
 function readStatusSnapshot({ cwd, dir, repository, consistency }) {
@@ -429,6 +433,7 @@ function readStatusSnapshot({ cwd, dir, repository, consistency }) {
     const state = readProtocol({ cwd: root, dir: paths.relative, repository });
     retry.afterStateRead?.({ attempt, state, paths });
     const observed = eventIntegrity(paths, state);
+    retry.afterEventRead?.({ attempt, state, events: observed.events, paths });
     const lockedAfter = mutationLockPresent(paths);
     const eventLead = transientEventLead(state, observed.events, observed.errors);
     if (eventLead) {
@@ -436,6 +441,9 @@ function readStatusSnapshot({ cwd, dir, repository, consistency }) {
       const confirmed = eventIntegrityForRecords(observed.events, confirmedState);
       if (confirmed.errors.length === 0) {
         return { root, paths, state: confirmedState, ...confirmed };
+      }
+      if (confirmedState.revision > state.revision && attempt < retry.maxAttempts) {
+        continue;
       }
     }
     if (!eventLead || (!lockedBefore && !lockedAfter) || attempt >= retry.maxAttempts) {
