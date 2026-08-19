@@ -1,8 +1,9 @@
 # Grok Provider Adapter Design
 
 **Date:** 2026-08-18
-**Status:** Draft pending operator review (conversation-approved sections 1–5)
-**Issue:** none yet — do not commit this spec until a `[#N]` issue exists
+**Status:** Co-review round 3 (Codex changes-requested F-001–F-004)
+**Issue:** #1321
+**Branch:** `spec/grok-provider-adapter`
 **Surface:** `npx ai-task-manager install`, provider registry, `/task` under Grok Build TUI
 
 ## Problem
@@ -19,7 +20,8 @@ and misses Grok’s `~/.grok/sessions/<urlencoded-cwd>/<sid>/chat_history.jsonl`
 `.codex/hooks.json` is not a Grok hook source. Claude hook compat may fire some
 guards if `.claude/settings.json` is trusted, but session-ref and timing are wrong.
 
-There is no Grok string in the codebase and no Grok card on project 11.
+There is no Grok string in the codebase. Tracking issue is `#1321` on project 11
+(Backlog stub; Refine will decompose it).
 
 ## Goals
 
@@ -57,8 +59,8 @@ There is no Grok string in the codebase and no Grok card on project 11.
   only). Double-fire of Claude settings + `.grok/hooks` is expected unless the
   operator turns compat off. Timing must stay correct anyway.
 - Project `.grok/hooks` require folder trust (`/hooks-trust` or `--trust`).
-- Commits that land this work use a `[#N]` subject token. This spec file is not
-  committed until that issue exists.
+- Commits that land this work use a `[#N]` subject token. Tracking issue is
+  `#1321`. Spec commits on `spec/grok-provider-adapter` lead with `[#1321]`.
 - Develop-phase verification is `node scripts/task-tracker/verify-develop.mjs`,
   not `npm run test:all`.
 
@@ -99,6 +101,7 @@ live Grok session
   -> skill: .grok/skills/task -> skill/adapters/grok/SKILL.md
        -> skill/shared/router.md
   -> hooks: .grok/hooks/aitm.json
+       -> grok-wire (normalize envelope + deny)
        -> seed-check, hook-handler (idempotent), guards
   -> transcripts: $GROK_HOME/sessions/<encodeURIComponent(cwd)>/<sid>/chat_history.jsonl
   -> occupancy: .tmp/aitm/fleet/ (main-worktree-anchored)
@@ -169,10 +172,29 @@ Rules:
 
 ## Section 2 — Detection, transcripts, word-count
 
-**Session id.** `resolveSessionId` already walks the active provider’s
-`sessionIdEnvKeys`. After Grok is registered, bind, fleet, and the word-counter
-share `GROK_SESSION_ID`. Override remains `AI_TASK_MANAGER_SESSION_ID`. Missing
-env still falls back to `default-session`.
+**Session id.** Official Grok hook docs inject `GROK_SESSION_ID` into **hook**
+subprocesses only. This TUI’s `run_terminal_command` currently also exports it
+(observed `GROK_AGENT=1` plus `GROK_SESSION_ID=<sid>`), but that is not a
+documented guarantee. `resolveSessionId` for provider `grok`:
+
+1. `AI_TASK_MANAGER_SESSION_ID` if set (explicit override).
+2. `GROK_SESSION_ID` if set.
+3. Otherwise **fail closed**. Do **not** fall back to `default-session`. Print
+   that bind, occupancy, and word-count need `GROK_SESSION_ID` in the tool
+   environment. Two Grok sessions must never collapse onto one sid.
+
+Do **not** use a single “latest session” file per worktree. Two co-review
+sessions can be live in one tree; last-writer-wins would mix occupancy and
+transcripts.
+
+SessionStart still reads `sessionId` from the **hook stdin envelope** (after
+the wire adapter in section 3) for heartbeat and idempotency stamps. That hook
+sid is not a substitute for the tool-env sid on `/task` commands.
+
+Tests must include a probe with `GROK_AGENT` set and `GROK_SESSION_ID` unset:
+`/task start` / occupancy / `jsonlPath` refuse, and two such processes do not
+share a bind record. A second probe with distinct `GROK_SESSION_ID` values
+proves two sessions keep distinct bind and transcript ids.
 
 **Home.** Grok’s session tree is `$GROK_HOME/sessions`, and `GROK_HOME` defaults
 to `~/.grok`. Do **not** join `homedir()` + `.grok/sessions` when `GROK_HOME` is
@@ -222,43 +244,79 @@ to `~/.claude/projects`.
 ## Section 3 — Hooks and double-fire
 
 Grok install writes **one** project file: `.grok/hooks/aitm.json` (Codex JSON
-shape).
+shape). Matcher aliases only **select** a handler. They do not translate stdin
+or stdout. Native Grok hooks send camelCase fields (`hookEventName`,
+`sessionId`, `toolName`, `toolInput`) and snake_case event values
+(`pre_tool_use`, `session_start`). Existing AITM entrypoints read Claude fields
+(`hook_event_name`, `session_id`, `tool_name`, `tool_input`) and emit
+`{"decision":"block"}` with exit 0. Grok denies with `{"decision":"deny"}` or
+exit 2; anything else fail-opens.
 
-| Event | Matcher | Commands |
+Reproduced on this tree: `bash-guard.mjs` given a native Grok envelope for
+`rm -rf /` exits 0 with empty stdout; the Claude envelope returns
+`decision:"block"`.
+
+**Wire adapter.** `.grok/hooks/aitm.json` commands invoke a Grok-only bridge
+(for example `scripts/task-tracker/hooks/grok-wire.mjs`), not the Claude
+entrypoints directly. The bridge:
+
+1. Parses stdin and normalizes field names both ways (camelCase and
+   snake_case).
+2. Maps event values: `session_start` → `SessionStart`, `pre_tool_use` →
+   `PreToolUse`, `pre_compact` / `post_compact` likewise.
+3. Maps tool names: `run_terminal_command` → `Bash`; `search_replace` and
+   `write` → `Edit`/`Write`; `spawn_subagent` → `Agent`.
+4. Maps `toolInput` → `tool_input` (including `command` and `file_path` /
+   `path`).
+5. Calls the existing shared handler with that Claude-shaped payload.
+6. Translates stdout `decision:"block"` → `decision:"deny"` for Grok
+   PreToolUse. Exit 2 on deny. Allow stays exit 0.
+7. Timing/compact handlers read the normalized `SessionStart` /
+   `PreCompact` / `PostCompact` names and `sessionId`.
+
+Shared guard logic stays Claude-shaped. Claude and Codex hook files are
+unchanged.
+
+| Event | Matcher | Command |
 |---|---|---|
-| `SessionStart` | `startup\|resume\|clear\|compact` | worktree seed check first, then `hook-handler.mjs`, optional `memory-index.mjs` |
-| `PreCompact` / `PostCompact` | `manual\|auto` | `hook-handler.mjs` (+ memory-index on PostCompact when seeds exist) |
-| `PreToolUse` | `Bash` | `bash-guard.mjs`, `activity-guard.mjs` |
-| `PreToolUse` | `Edit\|Write\|NotebookEdit\|search_replace\|write` | `source-edit-gate.mjs`, `activity-guard.mjs` |
-| `PreToolUse` | `Agent\|Task\|spawn_subagent` | `agent-guard.mjs` |
+| `SessionStart` | `startup\|resume\|clear\|compact` | grok-wire → seed check first, then `hook-handler.mjs`, optional `memory-index.mjs` |
+| `PreCompact` / `PostCompact` | `manual\|auto` | grok-wire → `hook-handler.mjs` (+ memory-index on PostCompact when seeds exist) |
+| `PreToolUse` | `Bash` / `run_terminal_command` | grok-wire → `bash-guard.mjs`, `activity-guard.mjs` |
+| `PreToolUse` | `Edit\|Write\|NotebookEdit\|search_replace\|write` | grok-wire → `source-edit-gate.mjs`, `activity-guard.mjs` |
+| `PreToolUse` | `Agent\|Task\|spawn_subagent` | grok-wire → `agent-guard.mjs` |
 
-Grok aliases `Bash` → `run_terminal_command` and `Edit`/`Write` →
-`search_replace`. Native names are listed so a missing alias still matches.
-Command strings are the existing `node -e` entrypoints. Install patches by
-command-string identity.
+Install patches by command-string identity (the **bridge** command string).
 
 Project hooks run only if the folder is trusted. AITM does not install into
 `~/.grok/hooks`.
 
 Default Grok also loads `.claude/settings.json` when `compat.claude.hooks` is
-true. We do not write `~/.grok/config.toml`. PreToolUse guards may run twice
-(allow/deny). `hook-handler.mjs` must not flush timing twice.
+true. We do not write `~/.grok/config.toml`. Claude-compat handlers may still
+fail-open on Grok envelopes; native `.grok/hooks` plus the wire adapter are
+the fail-closed path. PreToolUse may run twice. `hook-handler.mjs` must not
+flush timing twice (idempotency below, keyed on **normalized** sid + event).
 
 **Idempotency** applies only to `hook-handler.mjs` on SessionStart / PreCompact /
 PostCompact:
 
-- Key: `(sid, hookEventName, promptId or "session", event timestamp)`
+- Key: `(sid, hookEventName, promptId or "session", event timestamp)` after
+  wire normalization
 - Stamp: atomic create under `.tmp/aitm/locks/` (main-worktree-anchored)
 - First handler flushes; a second handler with the same key exits 0
 - A later compact/resume has a new timestamp and runs
 
 This is not “SessionStart once per session forever.”
 
-Seed-check and memory-index may run twice. Guards stay fail-closed on a missing
-entrypoint (`exit 2`). Grok treats `exit 2` as deny; other crashes fail-open.
+Seed-check and memory-index may run twice. A **missing bridge/entrypoint**
+exits 2 (Grok deny). Other crashes fail-open per Grok’s contract; the bridge
+must still emit `deny` when the shared guard returned `block`.
 
 `--agent grok` still writes `.grok/hooks/aitm.json`. No Claude files means no
 double-fire; the stamp is still present.
+
+Tests pin **native Grok envelopes** (not only Claude ones) for: Bash denial,
+edit denial, agent-spawn denial, SessionStart, PreCompact, PostCompact. A
+missing-entrypoint exit-2 test is not enough.
 
 ## Section 4 — Exclusive bind and co-review
 
@@ -291,14 +349,30 @@ Handoff is explicit: stop, then the other host starts.
 **Co-review.** Two providers may share a worktree only when `npx aitm co-review`
 has an active session for that tree.
 
+Co-review `--dir` is caller-chosen and Git-ignored. There is no implicit scan
+of `.tmp/co-review/**`. Discovery is a **main-worktree-anchored index**:
+`.tmp/aitm/fleet/co-review-index.json`, keyed by `protocolId`. `start` / `init`
+register `{ protocolId, dir, worktree, owner, reviewer, lifecycle, artifact }`.
+Handoff to a terminal lifecycle, or `finalize`, marks the entry terminal so
+stale allowlists die.
+
+On **reviewer claim**, the protocol writes `pendingReviewPath` **before** any
+review file exists: `<dir>/round-<n>-reviewer-review.md` (deterministic, inside
+the registered dir). `source-edit-gate` allows a reviewer write only when the
+resolved realpath equals that `pendingReviewPath` for an **active** index entry
+whose `worktree` matches this tree. Custom `--dir` works because it is in the
+index. Two active protocols in one worktree are two index rows; each has its
+own pending path. Symlink/path escape (realpath outside the registered dir) is
+denied. Wrong role or unclaimed reviewer turn: denied. The existing `.tmp/**`
+allowlist does **not** count as the co-review exception.
+
 - The **author** is the only session that may be **bound** to the issue.
 - **Reviewers** do not `/task start #N`. If they try while the author holds it,
   exclusive bind refuses.
 - Author edits tracked files under the existing source-edit-gate (Develop+,
   deep-dive, `#1212` assignee).
-- Reviewer is unbound. `source-edit-gate` allows only the named co-review
-  review file plus the existing `.tmp/**` allowlist. Tracked source, tests, and
-  issue bodies stay denied.
+- Reviewer is unbound. Tracked source, tests, and issue bodies stay denied
+  except `pendingReviewPath` as above.
 - Co-review `--owner` / `--reviewer` remain caller-supplied identity strings,
   not GitHub assignees and not provider names.
 
@@ -325,8 +399,10 @@ Synthetic fixtures only. Do not read live `~/.grok/sessions`.
 | Registry | `getProvider('grok')`; `listProviders()` includes `grok`; detect `GROK_SESSION_ID` / `GROK_AGENT`; unknown name throws |
 | Install | no flag → all hosts; `--agent grok`; `--agent claude,grok`; second run does not duplicate hooks; subset does not delete other hosts; no `both` token |
 | Transcripts | `cwd-session-dir` resolves `encodeURIComponent(cwd)/sid/chat_history.jsonl`; missing file → `null`; counts user/assistant/tool_result; skips reasoning/system |
-| Hooks | same `(sid, event, promptId, ts)` second call is a no-op; later ts still flushes |
-| Occupancy | second sid cannot bind `#N`; pause holds; stop releases; second provider in the same worktree refused unless co-review; reviewer `/task start` refused; reviewer write to the named review file allowed; tracked source denied |
+| Hooks | native Grok envelopes: Bash deny, edit deny, agent-spawn deny, SessionStart, PreCompact, PostCompact; `block`→`deny` + exit 2; same `(sid, event, promptId, ts)` second call is a no-op; later ts still flushes |
+| Session id | `GROK_AGENT` set + `GROK_SESSION_ID` unset → bind/occupancy/jsonlPath refuse (no `default-session`); two distinct `GROK_SESSION_ID` values keep distinct binds |
+| Occupancy | second sid cannot bind `#N`; pause holds; stop releases; second provider in the same worktree refused unless co-review; reviewer `/task start` refused |
+| Co-review index | custom `--dir` registered; `pendingReviewPath` set at claim; reviewer write to that path allowed; tracked source denied; stale/terminal denied; symlink escape denied; two active protocols keep distinct paths |
 
 Develop verification: `node scripts/task-tracker/verify-develop.mjs`.
 
@@ -339,7 +415,7 @@ Develop verification: `node scripts/task-tracker/verify-develop.mjs`.
 
 ### Board shape
 
-XL epic, no parent, two children:
+Tracking stub `#1321`. At Refine: XL epic, no parent, two children:
 
 1. **Grok provider module** — registry row, install-all loop, skill, hooks,
    detection, transcripts, install/Grok docs. Ship first so this TUI can
@@ -369,20 +445,23 @@ Until child 2 lands, dogfood stays one host per worktree by convention.
 ## Implementation order
 
 1. Registry row + `listProviders()`-driven install API + Grok skill stub.
-2. `.grok/hooks/aitm.json` + hook-handler idempotency.
-3. `cwd-session-dir` + `grok-chat-v1` + `jsonlPath` dispatch.
+2. `grok-wire` adapter + `.grok/hooks/aitm.json` + hook-handler idempotency.
+3. `cwd-session-dir` + `grok-chat-v1` + `jsonlPath` dispatch + fail-closed
+   Grok sid.
 4. Occupancy store + bind/refuse/release (child 2).
-5. source-edit-gate co-review reviewer path (child 2).
+5. Co-review index + `pendingReviewPath` at claim + source-edit-gate (child 2).
 6. Docs.
 
 Child 1 is steps 1–3 and 6 (install/Grok docs). Child 2 is steps 4–5 and
-occupancy docs.
+occupancy/co-review-index docs. Tracking issue `#1321` is a Backlog stub;
+Refine decomposes it into the XL epic and two children.
 
 ## Success criteria
 
 - In a trusted Grok session in this repo, `detectProvider()` is `grok`,
   `/task` loads `skill/adapters/grok/SKILL.md`, and word-count reads this
-  session’s `chat_history.jsonl`.
+  session’s `chat_history.jsonl` when `GROK_SESSION_ID` is set.
+- Native Grok PreToolUse envelopes deny the same cases Claude blocks today.
 - `npx ai-task-manager install` with no flags writes Claude, Codex, and Grok
   files. A second run does not duplicate hooks.
 - Two sessions cannot bind the same issue. Pause keeps the bind. Stop releases
