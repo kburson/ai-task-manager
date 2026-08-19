@@ -513,14 +513,19 @@ if (isMain)
     }
     const sid = payload.session_id || currentSessionId();
     const event = payload.hook_event_name || process.argv[2];
-    if (['SessionStart', 'PreCompact', 'PostCompact'].includes(event)) {
+    const eventTimestamp = payload.event_timestamp ?? payload.eventTimestamp ?? payload.timestamp;
+    if (
+      ['SessionStart', 'PreCompact', 'PostCompact'].includes(event) &&
+      eventTimestamp != null &&
+      String(eventTimestamp).trim() !== ''
+    ) {
       try {
         const stamp = claimHookStamp({
           projectDir,
           sid,
           hookEventName: event,
           promptId: payload.prompt_id ?? payload.promptId,
-          eventTimestamp: payload.event_timestamp ?? payload.eventTimestamp ?? payload.timestamp,
+          eventTimestamp,
         });
         if (!stamp.claimed) process.exit(0);
       } catch (error) {

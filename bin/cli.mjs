@@ -47,6 +47,7 @@ import { getProvider, listProviders } from '../scripts/providers/index.mjs';
 import { emitSelfDoc, wantsHelp } from '../scripts/lib/self-doc.mjs';
 import {
   GUARD_NAMES,
+  failClosedHookBootstrapCommand,
   guardBootstrapCommand,
   hookBootstrapCommand,
 } from '../scripts/task-tracker/lib/guard-entrypoint.mjs';
@@ -490,6 +491,14 @@ export function patchCodexHooksJson(hooksPath, { memoryIndexHook = false } = {})
 }
 
 export function grokHookCommand(handlerName) {
+  return failClosedHookBootstrapCommand(
+    'scripts/task-tracker/hooks/grok-wire.mjs',
+    '--handler',
+    handlerName
+  );
+}
+
+function legacyGrokHookCommand(handlerName) {
   return `node node_modules/ai-task-manager/scripts/task-tracker/hooks/grok-wire.mjs --handler ${handlerName}`;
 }
 
@@ -504,34 +513,65 @@ export function patchGrokHooksJson(hooksPath, { memoryIndexHook = false } = {}) 
   }
   if (!config.hooks) config.hooks = {};
 
+  const specs = [
+    ['SessionStart', 'startup|resume|clear|compact', 'seed'],
+    ['SessionStart', 'startup|resume|clear|compact', 'timing'],
+    ['PreCompact', 'manual|auto', 'timing'],
+    ['PostCompact', 'manual|auto', 'timing'],
+    ...(memoryIndexHook
+      ? [
+          ['SessionStart', 'startup|resume|clear|compact', 'memory-index'],
+          ['PostCompact', 'manual|auto', 'memory-index'],
+        ]
+      : []),
+    ['PreToolUse', 'Bash', 'bash-guard'],
+    ['PreToolUse', 'Bash', 'activity-guard'],
+    ['PreToolUse', 'Edit|Write|NotebookEdit|search_replace|write', 'activity-guard'],
+    ['PreToolUse', 'Edit|Write|NotebookEdit|search_replace|write', 'source-edit-gate'],
+    ['PreToolUse', 'Agent|Task|spawn_subagent', 'agent-guard'],
+  ];
+
+  // Reconcile managed commands against their complete desired matcher set.
+  // A handler may intentionally appear more than once in one event (the
+  // activity guard covers Bash and edit matchers), so command identity removes
+  // only obsolete matchers and legacy bare-path commands.
+  for (const [event, , handlerName] of specs) {
+    if (!Array.isArray(config.hooks[event])) continue;
+    const command = grokHookCommand(handlerName);
+    const legacyCommand = legacyGrokHookCommand(handlerName);
+    const desiredMatchers = new Set(
+      specs
+        .filter(
+          ([candidateEvent, , candidateHandler]) =>
+            candidateEvent === event && candidateHandler === handlerName
+        )
+        .map(([, matcher]) => matcher)
+    );
+    config.hooks[event] = config.hooks[event].flatMap((entry) => {
+      const commands = desiredMatchers.has(entry.matcher)
+        ? [legacyCommand]
+        : [command, legacyCommand];
+      return removeHookCommands([entry], commands);
+    });
+  }
+
   function add(event, matcher, handlerName) {
     if (!Array.isArray(config.hooks[event])) config.hooks[event] = [];
     const command = grokHookCommand(handlerName);
-    if (
-      config.hooks[event].some(
-        (entry) => entry.matcher === matcher && hookEntryHasCommand(entry, command)
-      )
-    )
-      return;
+    const matches = config.hooks[event].filter(
+      (entry) => entry.matcher === matcher && hookEntryHasCommand(entry, command)
+    );
+    if (matches.length === 1) return;
+    config.hooks[event] = config.hooks[event].flatMap((entry) =>
+      entry.matcher === matcher ? removeHookCommands([entry], [command]) : [entry]
+    );
     config.hooks[event].push({
       matcher,
       hooks: [{ type: 'command', command }],
     });
   }
 
-  add('SessionStart', 'startup|resume|clear|compact', 'seed');
-  add('SessionStart', 'startup|resume|clear|compact', 'timing');
-  add('PreCompact', 'manual|auto', 'timing');
-  add('PostCompact', 'manual|auto', 'timing');
-  if (memoryIndexHook) {
-    add('SessionStart', 'startup|resume|clear|compact', 'memory-index');
-    add('PostCompact', 'manual|auto', 'memory-index');
-  }
-  add('PreToolUse', 'Bash', 'bash-guard');
-  add('PreToolUse', 'Bash', 'activity-guard');
-  add('PreToolUse', 'Edit|Write|NotebookEdit|search_replace|write', 'activity-guard');
-  add('PreToolUse', 'Edit|Write|NotebookEdit|search_replace|write', 'source-edit-gate');
-  add('PreToolUse', 'Agent|Task|spawn_subagent', 'agent-guard');
+  for (const spec of specs) add(...spec);
 
   mkdirSync(dirname(hooksPath), { recursive: true });
   writeFileSync(hooksPath, JSON.stringify(config, null, 2) + '\n', 'utf8');

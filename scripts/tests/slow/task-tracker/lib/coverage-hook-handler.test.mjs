@@ -151,6 +151,16 @@ test('normalized timing identity deduplicates exact events but admits later time
   assert.match(later.stdout, /No active task\./);
 });
 
+test('timestamp-less lifecycle events remain runnable instead of becoming session-global duplicates', () => {
+  const fx = fixture({ state: { active: null, lastActive: null } });
+  const first = spawnHookResult(fx, 'SessionStart', { promptId: 'prompt-1' });
+  const later = spawnHookResult(fx, 'SessionStart', { promptId: 'prompt-1' });
+  assert.equal(first.status, 0);
+  assert.match(first.stdout, /No active task\./);
+  assert.equal(later.status, 0);
+  assert.match(later.stdout, /No active task\./);
+});
+
 test('stamp write failure skips the timing flush and fails closed', () => {
   const fx = fixture({ state: { active: null, lastActive: null } });
   const aitmDir = path.join(fx.proj, '.tmp', 'aitm');
@@ -358,8 +368,12 @@ test('PostCompact banks a tail preserved by an unavailable PreCompact exactly on
       .join('\n') + '\n',
     'utf8'
   );
-  spawnHook(fx, 'PostCompact');
-  spawnHook(fx, 'PostCompact');
+  const postCompactIdentity = {
+    timestamp: '2026-08-19T06:32:00.000Z',
+    promptId: 'post-compact-tail',
+  };
+  spawnHookResult(fx, 'PostCompact', postCompactIdentity);
+  spawnHookResult(fx, 'PostCompact', postCompactIdentity);
   const state = JSON.parse(readFileSync(path.join(fx.proj, STATE_REL), 'utf8'));
   const marker = JSON.parse(
     readFileSync(path.join(fx.proj, '.tmp/aitm/app/codex/session-tracking/sess-test.json'), 'utf8')

@@ -116,3 +116,29 @@ export function hookBootstrapCommand(repoRelPath, ...extraArgs) {
     `import(pathToFileURL(p).href);`;
   return `node -e "${program}"`;
 }
+
+// #1324 — Grok's bridge is the security boundary for native hook envelopes.
+// Resolve it with the same node_modules-first / repo-relative fallback as the
+// other hooks, but deny (exit 2) when neither candidate exists. The inline
+// bootstrap must own this failure because Node cannot import a missing bridge
+// and therefore the bridge's own deny path would never execute.
+export function failClosedHookBootstrapCommand(repoRelPath, ...extraArgs) {
+  const candidates = JSON.stringify(entrypointCandidates(repoRelPath));
+  const argvTail = extraArgs.map((a) => JSON.stringify(String(a))).join(',');
+  const label = repoRelPath.split('/').pop();
+  const reason = `AITM Grok hook entrypoint is unavailable: ${label}`;
+  const program =
+    `const {existsSync,realpathSync}=require('fs');` +
+    `const {resolve}=require('path');` +
+    `const {pathToFileURL}=require('url');` +
+    `const c=${candidates};` +
+    `const p=c.map(x=>resolve(process.cwd(),x)).find(existsSync);` +
+    `if(!p){const r=${JSON.stringify(reason)};` +
+    `process.stdout.write(JSON.stringify({decision:'deny',reason:r}));` +
+    `process.stderr.write('aitm ${label}: hook entrypoint unresolved ` +
+    `(node_modules + repo-relative both absent) — failing closed\\n');process.exit(2);}` +
+    `const e=realpathSync(p);` +
+    `process.argv=[process.argv[0],e${argvTail ? ',' + argvTail : ''}];` +
+    `import(pathToFileURL(e).href);`;
+  return `node -e "${program}"`;
+}

@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 // @story #213
 import { strict as assert } from 'node:assert';
+import { spawnSync } from 'node:child_process';
 import { mkdtempSync, rmSync, readFileSync, mkdirSync, writeFileSync } from 'node:fs';
 import { projectScratchDir } from '../../../../task-tracker/lib/scratch-dir.mjs';
 import path from 'node:path';
@@ -9,6 +10,7 @@ import {
   guardBootstrapCommand,
   hookBootstrapCommand,
 } from '../../../../task-tracker/lib/guard-entrypoint.mjs';
+import { findMainWorktreePath } from '../../../../task-tracker/fleet-registry.mjs';
 
 const tmp = mkdtempSync(path.join(projectScratchDir('test'), 'tt-install-hooks-'));
 const settingsPath = path.join(tmp, '.claude', 'settings.json');
@@ -33,6 +35,18 @@ const UP_CMD = hookBootstrapCommand('scripts/task-tracker/hooks/on-user-prompt.m
 
 function hasCommand(entries, cmd) {
   return (entries || []).some((e) => e?.hooks?.some((h) => h.command === cmd));
+}
+
+function runInstalledCommand(command, { cwd = process.cwd(), input, env = process.env } = {}) {
+  const prefix = 'node -e "';
+  assert.ok(command.startsWith(prefix) && command.endsWith('"'), command);
+  const program = command.slice(prefix.length, -1);
+  return spawnSync(process.execPath, ['-e', program], {
+    cwd,
+    env,
+    input: JSON.stringify(input),
+    encoding: 'utf8',
+  });
 }
 
 // Test 1: fresh install registers both hooks
@@ -194,6 +208,106 @@ for (const entries of Object.values(grokHooks.hooks)) {
     'Grok timing bridge command is not duplicated within an event'
   );
 }
+
+function installedGrokCommand(event, handlerName) {
+  const command = installCli.grokHookCommand(handlerName);
+  assert.equal(
+    (grokHooks.hooks[event] ?? []).filter((entry) => hasCommand([entry], command)).length,
+    1,
+    `${event} must contain the installed ${handlerName} command`
+  );
+  return command;
+}
+
+const nativeBase = {
+  hookEventName: 'pre_tool_use',
+  sessionId: 'grok-installed-command',
+  timestamp: '2026-08-19T06:30:00.000Z',
+};
+for (const [handlerName, input, env] of [
+  [
+    'bash-guard',
+    {
+      ...nativeBase,
+      toolName: 'run_terminal_command',
+      toolInput: { command: 'rm -rf /' },
+    },
+    process.env,
+  ],
+  [
+    'source-edit-gate',
+    { ...nativeBase, toolName: 'write', toolInput: { file_path: 'README.md' } },
+    { ...process.env, AI_TASK_MANAGER_PROJECT_DIR: tmp },
+  ],
+  [
+    'agent-guard',
+    {
+      ...nativeBase,
+      toolName: 'spawn_subagent',
+      toolInput: { isolation: 'none' },
+    },
+    { ...process.env, PWD: findMainWorktreePath(process.cwd()) },
+  ],
+]) {
+  const result = runInstalledCommand(installedGrokCommand('PreToolUse', handlerName), {
+    input,
+    env,
+  });
+  assert.equal(result.status, 2, `${handlerName}: ${result.stderr}`);
+  assert.equal(JSON.parse(result.stdout).decision, 'deny', handlerName);
+}
+
+for (const [event, nativeEvent] of [
+  ['SessionStart', 'session_start'],
+  ['PreCompact', 'pre_compact'],
+  ['PostCompact', 'post_compact'],
+]) {
+  const result = runInstalledCommand(installedGrokCommand(event, 'timing'), {
+    input: {
+      hookEventName: nativeEvent,
+      sessionId: `grok-${nativeEvent}`,
+      timestamp: `2026-08-19T06:31:0${nativeEvent.length % 10}.000Z`,
+    },
+    env: { ...process.env, AI_TASK_MANAGER_PROJECT_DIR: tmp },
+  });
+  assert.equal(result.status, 0, `${event}: ${result.stderr}`);
+}
+
+const missingBridge = runInstalledCommand(installCli.grokHookCommand('bash-guard'), {
+  cwd: tmp,
+  input: {
+    ...nativeBase,
+    toolName: 'run_terminal_command',
+    toolInput: { command: 'rm -rf /' },
+  },
+});
+assert.equal(missingBridge.status, 2, missingBridge.stderr);
+assert.equal(JSON.parse(missingBridge.stdout).decision, 'deny');
+
+const staleGrokHooksPath = path.join(tmp, '.grok-stale', 'hooks', 'aitm.json');
+const bashCommand = installCli.grokHookCommand('bash-guard');
+mkdirSync(path.dirname(staleGrokHooksPath), { recursive: true });
+writeFileSync(
+  staleGrokHooksPath,
+  JSON.stringify({
+    hooks: {
+      PreToolUse: [
+        { matcher: 'obsolete-bash-matcher', hooks: [{ type: 'command', command: bashCommand }] },
+      ],
+    },
+  })
+);
+installCli.patchGrokHooksJson(staleGrokHooksPath);
+const refreshedGrokHooks = JSON.parse(readFileSync(staleGrokHooksPath, 'utf8'));
+assert.equal(
+  refreshedGrokHooks.hooks.PreToolUse.filter((entry) => hasCommand([entry], bashCommand)).length,
+  1,
+  'Grok hook refresh replaces an obsolete matcher by bridge command identity'
+);
+assert.equal(
+  refreshedGrokHooks.hooks.PreToolUse.find((entry) => hasCommand([entry], bashCommand)).matcher,
+  'Bash'
+);
 
 function grokEntries(event, matcher, handlerName) {
   const command = installCli.grokHookCommand(handlerName);

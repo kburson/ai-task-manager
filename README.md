@@ -92,7 +92,7 @@ The gap between "I've been using AI coding agents for a few weeks" and "here's w
 
 The tool has three distinct capability layers:
 
-1. **Session tracking** — bind Claude Code or Codex to a GitHub issue, auto-log time and context words, manage Kanban state hands-free
+1. **Session tracking** — bind Grok Build, Claude Code, or Codex to a GitHub issue, auto-log time and context words, manage Kanban state hands-free
 2. **Backlog orchestration** — generate a complete GitHub Projects backlog from a spec document, with epics, sub-issues, labels, sizing, stack ranking, and pickup directives
 3. **ROI reporting** — produce a financial report comparing estimated effort against measured engaged hours, with fully-burdened cost tables by US region and role
 
