@@ -17,6 +17,7 @@ import { getProvider } from '../../scripts/providers/index.mjs';
 export const SKILL_DETAIL_FILES = [
   { id: 'adapter', pkgRelPath: getProvider('claude').skillAdapterPath },
   { id: 'codex-adapter', pkgRelPath: getProvider('codex').skillAdapterPath },
+  { id: 'grok-adapter', pkgRelPath: getProvider('grok').skillAdapterPath },
   { id: 'shared', pkgRelPath: 'skill/shared/SKILL.md' },
   { id: 'pickup', pkgRelPath: 'templates/pickup-directive.md' },
 ];

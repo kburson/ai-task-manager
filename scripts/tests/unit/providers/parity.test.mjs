@@ -39,12 +39,20 @@ const EXPECTED_CLAUDE = Object.freeze({
   installTarget: '.claude/skills/task',
   stateDir: '.tmp/aitm/app/claude',
   transcriptLocator: '.claude/projects',
+  transcriptHomeEnv: null,
+  transcriptHomeDefault: null,
   transcriptLayout: 'flat',
   transcriptSchema: 'claude-message-v1',
   sessionIdEnvKeys: ['CLAUDE_CODE_SESSION_ID', 'CLAUDE_SESSION_ID'],
   detectionEnvKeys: ['CLAUDE_CODE_SESSION_ID', 'CLAUDE_SESSION_ID'],
+  sessionIdFallback: 'legacy',
   hookCapability: true,
   skillAdapterPath: 'skill/adapters/claude/SKILL.md',
+  installRecipe: {
+    writer: 'claude-settings',
+    hookTarget: '.claude/settings.json',
+    commandTarget: '.claude/commands/task.md',
+  },
 });
 
 const EXPECTED_CODEX = Object.freeze({
@@ -52,24 +60,36 @@ const EXPECTED_CODEX = Object.freeze({
   installTarget: '.agents/skills/task',
   stateDir: '.tmp/aitm/app/codex',
   transcriptLocator: '.codex/sessions',
+  transcriptHomeEnv: null,
+  transcriptHomeDefault: null,
   transcriptLayout: 'date-bucketed',
   transcriptSchema: 'codex-rollout-v1',
   sessionIdEnvKeys: ['CODEX_THREAD_ID', 'CODEX_SESSION_ID'],
   detectionEnvKeys: ['CODEX_THREAD_ID', 'CODEX_SESSION_ID', 'CODEX_HOME'],
+  sessionIdFallback: 'legacy',
   hookCapability: true,
   skillAdapterPath: 'skill/adapters/codex/SKILL.md',
+  installRecipe: {
+    writer: 'codex-hooks',
+    hookTarget: '.codex/hooks.json',
+    commandTarget: null,
+  },
 });
 
 const CAPABILITIES = [
   'installTarget',
   'stateDir',
   'transcriptLocator',
+  'transcriptHomeEnv',
+  'transcriptHomeDefault',
   'transcriptLayout',
   'transcriptSchema',
   'sessionIdEnvKeys',
   'detectionEnvKeys',
+  'sessionIdFallback',
   'hookCapability',
   'skillAdapterPath',
+  'installRecipe',
 ];
 
 const tests = [];

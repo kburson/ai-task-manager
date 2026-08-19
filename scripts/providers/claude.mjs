@@ -10,12 +10,20 @@ export const claudeAdapter = {
   installTarget: '.claude/skills/task',
   stateDir: '.tmp/aitm/app/claude',
   transcriptLocator: '.claude/projects',
+  transcriptHomeEnv: null,
+  transcriptHomeDefault: null,
   transcriptLayout: 'flat',
   transcriptSchema: 'claude-message-v1',
   sessionIdEnvKeys: ['CLAUDE_CODE_SESSION_ID', 'CLAUDE_SESSION_ID'],
   detectionEnvKeys: ['CLAUDE_CODE_SESSION_ID', 'CLAUDE_SESSION_ID'],
+  sessionIdFallback: 'legacy',
   hookCapability: true,
   skillAdapterPath: 'skill/adapters/claude/SKILL.md',
+  installRecipe: {
+    writer: 'claude-settings',
+    hookTarget: '.claude/settings.json',
+    commandTarget: '.claude/commands/task.md',
+  },
 };
 
 export default claudeAdapter;
