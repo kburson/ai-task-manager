@@ -49,12 +49,12 @@ const resumeSrc = read(path.join(root, 'resume.mjs'));
     'resume.mjs calls finalizeOrphanPause with reason: orphan-finalize'
   );
   const finalizeIdx = resumeSrc.search(/finalizeOrphanPause\(/);
-  const saveActiveIdx = resumeSrc.search(/saveState\([\s\S]*?active:\s*normalizedTarget/);
+  const saveActiveIdx = resumeSrc.search(/saveClaimedState\(ctx,\s*normalizedTarget/);
   assert.ok(finalizeIdx > 0);
   assert.ok(saveActiveIdx > 0);
   assert.ok(
     finalizeIdx < saveActiveIdx,
-    'finalizeOrphanPause must run BEFORE the saveState that binds target'
+    'finalizeOrphanPause must run BEFORE the occupancy-aware state save that binds target'
   );
 }
 

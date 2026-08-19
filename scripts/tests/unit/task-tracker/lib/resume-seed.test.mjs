@@ -53,6 +53,7 @@ function makeCtx({ rest, cfg, statePath, seedKanban }) {
       // Must be within buildRow's retroactive-ts window of real now.
       nowIso: () => new Date().toISOString(),
       seedKanban,
+      claimBindingOccupancy: () => ({ status: 'claimed' }),
     },
     posts,
   };

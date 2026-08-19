@@ -117,6 +117,7 @@ function makeCtx({ rest, seedKanban, statePath }) {
     nowIso: () => new Date().toISOString(),
     readTimingCommentBody: async () => ({ status: 'ok', body: '' }),
     seedKanban,
+    claimBindingOccupancy: () => ({ status: 'claimed' }),
   };
 }
 

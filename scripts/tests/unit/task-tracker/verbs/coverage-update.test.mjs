@@ -83,9 +83,11 @@ async function runUpdate({ statePath, rest = [], flush }) {
   try {
     await verbUpdate({
       statePath,
+      projectDir: tmpRoot,
       rest,
       drainQueueIfAny: async () => {},
       flushActiveToGH,
+      heartbeatBindingOccupancy: () => ({ status: 'updated' }),
     });
   } finally {
     console.log = realLog;
