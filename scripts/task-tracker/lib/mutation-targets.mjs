@@ -102,6 +102,14 @@ export function extractBashWriteTargets(command, projectRoot) {
   if (/\$\(|`|\b(?:eval|node|python\d*|ruby|perl)\s+(?:-[^\s]*[ec])\b/.test(text)) {
     ambiguousMutation = true;
   }
+  const unparsedWriter =
+    /\b(?:sed|perl)\b[^;&|\n]*\s-(?:[^\s]*i[^\s]*|--in-place)(?:\s|=|$)/.test(text) ||
+    /\bdd\b[^;&|\n]*\bof=/.test(text) ||
+    /\bcurl\b[^;&|\n]*(?:\s-o\s|\s--output(?:\s|=))/.test(text) ||
+    /\bwget\b[^;&|\n]*\s-O\s/.test(text) ||
+    /\bgit\s+(?:apply|checkout|restore|reset|clean|commit|merge|rebase|cherry-pick)\b/.test(text) ||
+    /\b(?:patch|rsync|ln|chmod|chown)\b/.test(text);
+  if (unparsedWriter) ambiguousMutation = true;
 
   const redirectRe = /(?<![0-9&])>>?\s*("[^"]+"|'[^']+'|[^\s;&|]+)/g;
   for (const match of text.matchAll(redirectRe)) add(match[1].replace(/^(['"])(.*)\1$/, '$2'));

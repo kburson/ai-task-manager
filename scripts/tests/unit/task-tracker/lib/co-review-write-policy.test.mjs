@@ -54,6 +54,18 @@ test('bash parser reports complete destinations and ambiguous mutations', () => 
     true
   );
   assert.equal(extractBashWriteTargets('printf x > "$TARGET"', root).ambiguousMutation, true);
+  for (const command of [
+    "sed -i 's/old/new/' src/a.mjs",
+    'dd if=input.bin of=src/output.bin',
+    'curl https://example.test/file --output src/file.bin',
+    'git apply changes.patch',
+  ]) {
+    assert.equal(
+      extractBashWriteTargets(command, root).ambiguousMutation,
+      true,
+      `${command} must not fall through as read-only`
+    );
+  }
 });
 
 function policyFixture() {
@@ -122,6 +134,14 @@ test('first creation is canonicalized through the registered parent and symlink 
   writeFileSync(elsewhere, 'x');
   symlinkSync(elsewhere, pending);
   assert.equal(evaluate().decision, 'deny');
+});
+
+test('a symlink alias to the pending artifact is not the exact granted path', () => {
+  const { projectDir, pending, evaluate } = policyFixture();
+  writeFileSync(pending, 'review', 'utf8');
+  const alias = path.join(projectDir, 'pending-alias.md');
+  symlinkSync(pending, alias);
+  assert.equal(evaluate({ targets: [alias] }).decision, 'deny');
 });
 
 test('ordinary non-authority writes are not applicable when no reviewer grant is active', () => {

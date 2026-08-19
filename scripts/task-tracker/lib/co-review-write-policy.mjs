@@ -96,7 +96,12 @@ export function evaluateCoReviewWrite(input) {
     let expected;
     try {
       expected = canonicalPending(grant);
-      if (targets.some((target) => canonicalTarget(target) !== expected)) {
+      const exactPending = path.resolve(grant.pendingReviewPath);
+      if (
+        targets.some(
+          (target) => path.resolve(target) !== exactPending || canonicalTarget(target) !== expected
+        )
+      ) {
         return deny('reviewer may write only the exact session-bound pending review artifact');
       }
     } catch (error) {
