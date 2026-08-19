@@ -89,10 +89,11 @@ export function claimOccupancy(input, options = {}) {
   const issue = issueKey(input.issue);
   const sid = String(input.sid || '').trim();
   const provider = String(input.provider || '').trim();
-  const worktreePath = path.resolve(String(input.worktreePath || input.projectDir || ''));
+  const rawWorktreePath = String(input.worktreePath || input.projectDir || '').trim();
   if (!sid) throw new TypeError('occupancy: sid is required');
   if (!provider) throw new TypeError('occupancy: provider is required');
-  if (!worktreePath) throw new TypeError('occupancy: worktreePath is required');
+  if (!rawWorktreePath) throw new TypeError('occupancy: worktreePath is required');
+  const worktreePath = path.resolve(rawWorktreePath);
   const coReviewAllowsWorktree = options.coReviewAllowsWorktree || (() => false);
 
   return withLock(file, () => {

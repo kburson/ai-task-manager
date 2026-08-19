@@ -46,6 +46,21 @@ test('claim is idempotent for the same issue and session', () => {
   assert.equal(readOccupancy(file)['1325'].boundAt, '2026-08-19T00:00:00.000Z');
 });
 
+test('claim refuses a missing worktree path instead of resolving the process cwd', () => {
+  const { file, now } = fixture();
+  assert.throws(
+    () =>
+      claimOccupancy({
+        occupancyFile: file,
+        issue: 1325,
+        sid: 'codex-a',
+        provider: 'codex',
+        now,
+      }),
+    /worktreePath is required/
+  );
+});
+
 test('one session switching issues atomically releases its prior issue', () => {
   const { file, claim } = fixture();
   claim();

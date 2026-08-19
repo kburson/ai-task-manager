@@ -7,6 +7,7 @@ import {
   releaseOccupancy,
   rollbackOccupancyClaim,
 } from './occupancy.mjs';
+import { isActiveCoReviewWorktree } from '../../review/lib/index.mjs';
 
 function identity({ projectDir, issue, now }) {
   return {
@@ -22,7 +23,9 @@ function identity({ projectDir, issue, now }) {
 export function claimBindingOccupancy(input, deps = {}) {
   const claim = deps.claimOccupancy || claimOccupancy;
   return claim(identity(input), {
-    coReviewAllowsWorktree: deps.coReviewAllowsWorktree || (() => false),
+    coReviewAllowsWorktree:
+      deps.coReviewAllowsWorktree ||
+      (({ worktreePath }) => isActiveCoReviewWorktree({ worktreePath })),
   });
 }
 
