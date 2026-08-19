@@ -200,9 +200,6 @@ export async function runSupersede({ deadIssue, byIssue, cfg, deps = {} } = {}) 
     );
   }
 
-  console.log(
-    `[task-tracker] ✓ #${deadIssue} superseded by #${byIssue} — moved to Done and closed (not planned)`
-  );
   return { status: 'superseded', deadIssue, byIssue, ts };
 }
 
@@ -212,6 +209,9 @@ export function finalizeSupersededBinding({ result, projectDir, deps = {} }) {
     projectDir,
     issue: `#${result.deadIssue}`,
   });
+  (deps.log || console.log)(
+    `[task-tracker] ✓ #${result.deadIssue} superseded by #${result.byIssue} — moved to Done and closed (not planned)`
+  );
   return result;
 }
 

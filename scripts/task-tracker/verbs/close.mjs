@@ -1444,6 +1444,8 @@ export async function verbClose(ctx) {
             console.log(`  ✓ #${child.num} closed${childSuffix}`);
           } catch (err) {
             console.warn(`  ⚠ Could not close #${child.num}: ${err.message}`);
+            process.exitCode = 1;
+            return;
           }
         }
       }

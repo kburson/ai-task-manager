@@ -107,14 +107,18 @@ test('happy path: stamps marker, moves done, comments both, closes not-planned',
 test('successful supersede releases the terminal binding before reporting success', () => {
   const calls = [];
   const result = finalizeSupersededBinding({
-    result: { status: 'superseded', deadIssue: 230 },
+    result: { status: 'superseded', deadIssue: 230, byIssue: 399 },
     projectDir: '/repo/wt',
     deps: {
       releaseTerminalIssueBinding: (input) => calls.push(input),
+      log: (message) => calls.push(message),
     },
   });
   assert.equal(result.status, 'superseded');
-  assert.deepEqual(calls, [{ projectDir: '/repo/wt', issue: '#230' }]);
+  assert.deepEqual(calls, [
+    { projectDir: '/repo/wt', issue: '#230' },
+    '[task-tracker] ✓ #230 superseded by #399 — moved to Done and closed (not planned)',
+  ]);
 });
 
 test('superseder-missing: refuses before any write', async () => {

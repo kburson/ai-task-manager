@@ -57,4 +57,8 @@ test('Done, disposition, and convergence close lanes retain the shared cleanup b
     source,
     /issue', 'close', String\(child\.num\)[\s\S]*?releaseClosedBinding\(\{[\s\S]*?issue: `#\$\{child\.num\}`/
   );
+  const cascadeFailure = source.match(
+    /catch \(err\) \{\s*console\.warn\(`\s{2}⚠ Could not close #\$\{child\.num\}: \$\{err\.message\}`\);([\s\S]*?)\n\s{10}\}/
+  )?.[1];
+  assert.match(cascadeFailure || '', /process\.exitCode = 1;[\s\S]*?return;/);
 });
