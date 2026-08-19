@@ -246,6 +246,14 @@ export function fleetPath(mainWorktreePath) {
   return path.join(mainWorktreePath, '.tmp', 'aitm', FLEET_SUBDIR, FILE.fleet);
 }
 
+// Current-session issue closures that invalidate otherwise-live
+// `active-task.json` records across sibling worktrees (#1297). This is runtime
+// authority, not tracked project configuration, and shares the main-worktree
+// fleet anchor so every linked checkout observes the same terminal record.
+export function closedBindingsPath(mainWorktreePath) {
+  return path.join(mainWorktreePath, '.tmp', 'aitm', FLEET_SUBDIR, 'closed-bindings.json');
+}
+
 export function occupancyPath(mainWorktreePath) {
   return path.join(mainWorktreePath, '.tmp', 'aitm', FLEET_SUBDIR, FILE.occupancy);
 }

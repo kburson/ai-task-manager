@@ -123,6 +123,7 @@ test('confirmed mismatch refuses with complete corrective diagnostics', () => {
   assert.match(result.reason, /Invoking worktree: \/repo \(trunk\)/);
   assert.match(result.reason, /cd '\/repo\/\.worktrees\/1166'/);
   assert.match(result.reason, /--allow-foreign-worktree/);
+  assert.match(result.reason, /fleet release-closed-binding #1166/);
 });
 
 test('absence, matching worktree, and explicit override pass unchanged', () => {

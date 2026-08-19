@@ -1,11 +1,54 @@
+import { execFile } from 'node:child_process';
+import { promisify } from 'node:util';
+
 import {
+  deregisterTask,
   findMainWorktreePath,
   fleetRegistryPath,
   readFleet,
   pruneFleet,
   effectiveKind,
 } from '../fleet-registry.mjs';
+import { GH_API_TIMEOUT_MS } from '../lib/process-timeouts.mjs';
+import { releaseIssueBindings } from '../lib/worktree-binding-lifecycle.mjs';
 import { loadState } from '../state.mjs';
+
+const pexec = promisify(execFile);
+
+async function defaultReadIssueState({ issueNumber, repo }) {
+  const { stdout } = await pexec(
+    'gh',
+    ['issue', 'view', String(issueNumber), '-R', repo, '--json', 'state', '--jq', '.state'],
+    { timeout: GH_API_TIMEOUT_MS }
+  );
+  return String(stdout || '')
+    .trim()
+    .toUpperCase();
+}
+
+export async function releaseClosedFleetBinding(ctx, deps = {}) {
+  const issueArg = ctx.rest?.[1];
+  const match = String(issueArg || '').match(/^#?(\d+)$/);
+  if (!match || ctx.rest.length !== 2) {
+    throw new Error('fleet release-closed-binding requires exactly one #N issue');
+  }
+  if (!ctx.cfg?.repo) throw new Error('fleet release-closed-binding requires cfg.repo');
+  const issueNumber = Number(match[1]);
+  const issue = `#${issueNumber}`;
+  const state = await (deps.readIssueState || defaultReadIssueState)({
+    issueNumber,
+    repo: ctx.cfg.repo,
+  });
+  if (state !== 'CLOSED') {
+    throw new Error(`fleet release-closed-binding refused: ${issue} is not CLOSED`);
+  }
+  const result = (deps.releaseIssueBindings || releaseIssueBindings)({
+    projectDir: ctx.projectDir,
+    issue,
+  });
+  (deps.deregisterTask || deregisterTask)(ctx.projectDir, issue);
+  return { issue, released: result.released };
+}
 
 export function verbFleet(ctx) {
   // #441 — dispatch on the sub-command in ctx.rest[0]. No sub-command (or an
@@ -13,6 +56,14 @@ export function verbFleet(ctx) {
   // historical `/task fleet` behavior.
   const sub = (ctx.rest?.[0] || '').toLowerCase();
   if (sub === 'prune') return fleetPrune(ctx);
+  if (sub === 'release-closed-binding') {
+    return releaseClosedFleetBinding(ctx).then((result) => {
+      console.log(
+        `Fleet binding recovery: released ${result.released.length} record(s) for ${result.issue}.`
+      );
+      return result;
+    });
+  }
   return fleetList(ctx);
 }
 

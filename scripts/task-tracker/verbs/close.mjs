@@ -9,6 +9,7 @@ import { resolveGate } from '../lib/gate-resolve.mjs';
 import { rawProjectConfig } from '../config.mjs';
 import { currentSessionId } from '../word-counter.mjs';
 import { releaseBindingOccupancy } from '../lib/occupancy-lifecycle.mjs';
+import { releaseIssueBindings } from '../lib/worktree-binding-lifecycle.mjs';
 import {
   checkDirty,
   formatSummary,
@@ -102,6 +103,7 @@ export async function resolveCloseLifecycleEvidence({
 }
 
 export function releaseClosedBinding({ ctx, projectDir, issue }) {
+  (ctx.releaseIssueBindings ?? releaseIssueBindings)({ projectDir, issue });
   try {
     (ctx.deregisterTask ?? deregisterTask)(projectDir, issue);
   } catch {

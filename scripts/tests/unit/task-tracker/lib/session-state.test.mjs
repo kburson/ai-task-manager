@@ -94,6 +94,20 @@ assert.equal(
   'kanbanState should survive a setActiveTask call that omits it (same issue)'
 );
 
+// #1297: a terminal stamp must survive ordinary same-issue state saves when a
+// close sweep could not remove the file. A later explicit reopen bind can
+// supersede it through a newer worktreeResolvedAt, but generic saves must not
+// silently erase the fail-safe marker.
+setActiveTask('sess-terminal-sticky', { issue: '#42', closedAt: '2026-08-19T15:00:00Z' }, tmp);
+setActiveTask('sess-terminal-sticky', { issue: '#42', wordsAtStart: 300 }, tmp);
+assert.equal(getActiveTask('sess-terminal-sticky', tmp).closedAt, '2026-08-19T15:00:00Z');
+setActiveTask('sess-terminal-sticky', { issue: '#43' }, tmp);
+assert.equal(
+  getActiveTask('sess-terminal-sticky', tmp).closedAt,
+  undefined,
+  'closedAt must not bleed across issues'
+);
+
 // Explicit kanbanState in the new record wins.
 setActiveTask('sess-sticky', { issue: '#42', kanbanState: 'test' }, tmp);
 assert.equal(getActiveTask('sess-sticky', tmp).kanbanState, 'test');

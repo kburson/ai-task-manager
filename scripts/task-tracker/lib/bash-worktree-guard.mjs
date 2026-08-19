@@ -206,6 +206,8 @@ export function evaluateBashWorktreeBinding({ command, bound, invoking, classifi
       `  Bound worktree: ${bound.worktreePath} (${bound.worktreeBranch})\n` +
       `  Invoking worktree: ${invoking.worktreePath} (${invoking.worktreeBranch})\n` +
       `  Run: cd ${shellQuote(bound.worktreePath)}\n` +
+      `  If ${issue} is already closed: cd ${shellQuote(bound.worktreePath)} && ` +
+      `npx aitm fleet release-closed-binding ${issue}\n` +
       'Refusing this write-or-verify command before Bash execution. ' +
       `Re-run with ${FOREIGN_WORKTREE_OVERRIDE} only for an explicit exception; ` +
       'AITM task verbs audit that override.',

@@ -2,7 +2,7 @@ import { existsSync, realpathSync } from 'node:fs';
 import path from 'node:path';
 
 import { findMainWorktreePath } from '../fleet-registry.mjs';
-import { coReviewIndexPath, occupancyPath } from '../paths.mjs';
+import { closedBindingsPath, coReviewIndexPath, occupancyPath } from '../paths.mjs';
 import {
   hasLiveReviewerClaim,
   readProtocolIndex,
@@ -58,7 +58,11 @@ export function evaluateCoReviewWrite(input) {
     );
   }
   const targets = (input.targets || []).map((target) => targetAbsolute(target, projectDir));
-  const authorityFiles = input.authorityFiles || [occupancyPath(main), coReviewIndexPath(main)];
+  const authorityFiles = input.authorityFiles || [
+    occupancyPath(main),
+    coReviewIndexPath(main),
+    closedBindingsPath(main),
+  ];
   let canonicalTargets;
   let authority;
   try {

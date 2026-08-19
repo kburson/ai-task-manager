@@ -40,8 +40,8 @@ function atomicWrite(p, payload) {
 
 // Returns the active-task record for `sid` or null when none is bound.
 // Shape: { issue, entryStartTs, wordsAtStart, kanbanState, boundAt,
-// worktreePath, worktreeBranch, worktreeResolvedAt } — any field may be missing
-// on a partially-populated or legacy file.
+// worktreePath, worktreeBranch, worktreeResolvedAt, closedAt } — any field may
+// be missing on a partially-populated or legacy file.
 export function getActiveTask(sid, projDir) {
   const p = activeTaskPath(sid, projDir);
   return normalizeCachedKanbanState(readJson(p));
@@ -65,11 +65,16 @@ export function setActiveTask(sid, record, projDir) {
   // that don't carry it. Only setSessionKanbanState / explicit refreshers
   // should mutate this field; the generic state writer (state.mjs#saveState)
   // doesn't know about it and would otherwise blow it away on every bind.
-  let stickyKanban = {};
-  if (!('kanbanState' in recordWithoutState) && record.issue != null) {
+  let stickySameIssue = {};
+  if (record.issue != null) {
     const existing = readJson(activeTaskPath(sid, projDir));
-    if (existing && existing.issue === record.issue && existing.kanbanState) {
-      stickyKanban = { kanbanState: normalizeStateId(existing.kanbanState) };
+    if (existing && existing.issue === record.issue) {
+      if (!('kanbanState' in recordWithoutState) && existing.kanbanState) {
+        stickySameIssue.kanbanState = normalizeStateId(existing.kanbanState);
+      }
+      if (!('closedAt' in recordWithoutState) && existing.closedAt) {
+        stickySameIssue.closedAt = existing.closedAt;
+      }
     }
   }
   const payload = {
@@ -77,7 +82,7 @@ export function setActiveTask(sid, record, projDir) {
     entryStartTs: record.entryStartTs ?? null,
     wordsAtStart: record.wordsAtStart ?? 0,
     boundAt: record.boundAt ?? new Date().toISOString(),
-    ...stickyKanban,
+    ...stickySameIssue,
     ...recordWithoutState,
   };
   if (typeof payload.kanbanState === 'string') {

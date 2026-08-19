@@ -473,11 +473,14 @@ export const VERB_CONTRACTS = Object.freeze({
     ['Prints per-issue migration actions and totals.']
   ),
   fleet: contract(
-    ['No active issue is required; linked worktree tracker states must be readable.'],
     [
-      'Lists bindings read-only, or prunes stale registry entries unless prune --dry-run is selected.',
+      'No active issue is required; linked worktree tracker states must be readable.',
+      'release-closed-binding additionally requires GitHub to confirm the exact issue is CLOSED.',
     ],
-    ['Prints fleet rows or the stale entries evicted or retained by prune.']
+    [
+      'Lists bindings read-only, prunes stale registry entries, or records and sweeps one confirmed-closed binding.',
+    ],
+    ['Prints fleet rows, stale-entry pruning, or the confirmed-closed binding records released.']
   ),
   occupancy: contract(
     ['An exact numeric issue and --release are required; --steal is unavailable.'],
@@ -715,7 +718,12 @@ export const VERB_POSITIONAL_ARGUMENTS = Object.freeze({
     ),
   ]),
   migrate: Object.freeze([]),
-  fleet: Object.freeze([positional('[prune]', 'Optional stale-registration pruning subcommand.')]),
+  fleet: Object.freeze([
+    positional(
+      '[prune | release-closed-binding #N]',
+      'Optional stale-registration pruning or confirmed-closed binding recovery.'
+    ),
+  ]),
   occupancy: Object.freeze([positional('--release #N', 'Issue-scoped administrative release.')]),
   log: Object.freeze([positional('#N', 'Issue number whose timing fields are recomputed.')]),
   'chore-mode': Object.freeze([
