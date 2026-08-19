@@ -49,6 +49,9 @@ function toolCall(name, rawInput) {
 }
 
 function normalizeClaudeMessage(record) {
+  if (record.type !== 'user' && record.type !== 'assistant') {
+    return { events: [], recognized: false, schema: null };
+  }
   if (record.isMeta || record.isSidechain) {
     return { events: [], recognized: true, schema: 'claude-message-v1' };
   }
