@@ -17,7 +17,7 @@
 //                     when no such file exists on disk (caller degrades to a
 //                     sid-only session-ref record — never a placeholder path).
 
-import { readdirSync } from 'node:fs';
+import { existsSync, readdirSync } from 'node:fs';
 import path from 'node:path';
 
 // Walk the bounded date-bucket tree (root → YYYY → MM → DD → files) for the
@@ -56,7 +56,7 @@ function findBySidSuffix(root, sid) {
 //   sid         — session id string
 //   homedir     — absolute homedir path
 //   projectKey  — flattened project key (used by the 'flat' layout only)
-export function resolveTranscriptPath({ adapter, sid, homedir, projectKey } = {}) {
+export function resolveTranscriptPath({ adapter, sid, homedir, projectKey, cwd, env = {} } = {}) {
   if (!adapter || !sid || !homedir) return null;
   const { transcriptLocator, transcriptLayout } = adapter;
   if (!transcriptLocator || !transcriptLayout) return null;
@@ -68,6 +68,23 @@ export function resolveTranscriptPath({ adapter, sid, homedir, projectKey } = {}
     }
     case 'date-bucketed':
       return findBySidSuffix(root, sid);
+    case 'cwd-session-dir': {
+      if (!cwd) return null;
+      const providerHome =
+        adapter.transcriptHomeEnv && env[adapter.transcriptHomeEnv]
+          ? env[adapter.transcriptHomeEnv]
+          : adapter.transcriptHomeDefault
+            ? path.join(homedir, adapter.transcriptHomeDefault)
+            : homedir;
+      const providerRoot = path.join(providerHome, transcriptLocator);
+      const file = path.join(
+        providerRoot,
+        encodeURIComponent(cwd),
+        sid,
+        'chat_history.jsonl'
+      );
+      return existsSync(file) ? file : null;
+    }
     default:
       return null;
   }
