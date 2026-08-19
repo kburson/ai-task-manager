@@ -94,7 +94,9 @@ function repoRoot() {
 // current docs-only lane-skip receipt before waiving suite-derived checkboxes.
 // #1324 adds the Grok guide, adapter, skill, wire bridge, hook-idempotency
 // authority, and provider-selection parser as six intentional runtime entries.
-const ENTRY_CEILING = 683;
+// #1297 adds the shipped closed-binding lifecycle authority used by close,
+// fleet recovery, and the worktree guard.
+const ENTRY_CEILING = 684;
 
 function packedFiles() {
   const out = execFileSync('npm', ['pack', '--dry-run', '--json'], {

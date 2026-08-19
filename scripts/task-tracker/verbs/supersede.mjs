@@ -35,6 +35,7 @@ import { mutateIssueBody } from '../lib/issue-body-mutate.mjs';
 import { addSupersededBy } from '../lib/superseded-marker.mjs';
 import { writeTerminalDisposition } from '../lib/terminal-disposition.mjs';
 import { runMoveStateHost } from '../../gh/move-state.mjs';
+import { releaseTerminalIssueBinding } from '../lib/worktree-binding-lifecycle.mjs';
 
 const pexec = promisify(execFile);
 
@@ -199,14 +200,23 @@ export async function runSupersede({ deadIssue, byIssue, cfg, deps = {} } = {}) 
     );
   }
 
-  console.log(
-    `[task-tracker] ✓ #${deadIssue} superseded by #${byIssue} — moved to Done and closed (not planned)`
-  );
   return { status: 'superseded', deadIssue, byIssue, ts };
 }
 
+export function finalizeSupersededBinding({ result, projectDir, deps = {} }) {
+  if (result?.status !== 'superseded') return result;
+  (deps.releaseTerminalIssueBinding || releaseTerminalIssueBinding)({
+    projectDir,
+    issue: `#${result.deadIssue}`,
+  });
+  (deps.log || console.log)(
+    `[task-tracker] ✓ #${result.deadIssue} superseded by #${result.byIssue} — moved to Done and closed (not planned)`
+  );
+  return result;
+}
+
 export async function verbSupersede(ctx, deps = {}) {
-  const { cfg, statePath, rest } = ctx;
+  const { cfg, statePath, rest, projectDir } = ctx;
   const s = loadState(statePath);
   const active = s.active || null;
   const { deadIssue, byIssue, byProvided } = parseArgs(rest, active);
@@ -226,6 +236,7 @@ export async function verbSupersede(ctx, deps = {}) {
       console.error(result.message || `supersede: ${result.status}`);
       process.exit(1);
     }
+    finalizeSupersededBinding({ result, projectDir, deps });
   } catch (err) {
     console.error(err.message);
     process.exit(1);

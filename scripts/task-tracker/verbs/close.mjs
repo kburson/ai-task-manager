@@ -3,12 +3,11 @@ import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 
 import { loadState, saveState, clearActive, stateFullWordMarker } from '../state.mjs';
-import { deregisterTask } from '../fleet-registry.mjs';
 import { loadSession } from '../lib/session-store.mjs';
 import { resolveGate } from '../lib/gate-resolve.mjs';
 import { rawProjectConfig } from '../config.mjs';
 import { currentSessionId } from '../word-counter.mjs';
-import { releaseBindingOccupancy } from '../lib/occupancy-lifecycle.mjs';
+import { releaseTerminalIssueBinding } from '../lib/worktree-binding-lifecycle.mjs';
 import {
   checkDirty,
   formatSummary,
@@ -102,15 +101,16 @@ export async function resolveCloseLifecycleEvidence({
 }
 
 export function releaseClosedBinding({ ctx, projectDir, issue }) {
-  try {
-    (ctx.deregisterTask ?? deregisterTask)(projectDir, issue);
-  } catch {
-    /* fleet cleanup is advisory; authoritative occupancy release is mandatory */
-  }
-  return (ctx.releaseBindingOccupancy ?? releaseBindingOccupancy)(
-    { projectDir, issue },
-    { releaseOccupancy: ctx.releaseOccupancy }
-  );
+  return releaseTerminalIssueBinding({
+    projectDir,
+    issue,
+    deps: {
+      releaseIssueBindings: ctx.releaseIssueBindings,
+      deregisterTask: ctx.deregisterTask,
+      releaseBindingOccupancy: ctx.releaseBindingOccupancy,
+      releaseOccupancy: ctx.releaseOccupancy,
+    },
+  }).occupancy;
 }
 
 // #705 — best-effort: a label-strip failure must never block or fail the
@@ -1437,17 +1437,15 @@ export async function verbClose(ctx) {
             await pexec('gh', ['issue', 'close', String(child.num), '-R', cfg.repo], {
               timeout: GH_API_TIMEOUT_MS,
             });
-            try {
-              deregisterTask(projectDir, `#${child.num}`);
-            } catch {
-              /* best-effort: cleanup; failure is non-fatal */
-            }
+            releaseClosedBinding({ ctx, projectDir, issue: `#${child.num}` });
             const childSuffix = childFlush?.delivered
               ? ` (queue: delivered ${childFlush.delivered})`
               : '';
             console.log(`  ✓ #${child.num} closed${childSuffix}`);
           } catch (err) {
             console.warn(`  ⚠ Could not close #${child.num}: ${err.message}`);
+            process.exitCode = 1;
+            return;
           }
         }
       }

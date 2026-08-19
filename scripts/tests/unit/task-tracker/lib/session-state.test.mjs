@@ -13,6 +13,7 @@ import {
   setActiveTask,
   setSessionKanbanState,
   clearActiveTask,
+  compareAndClearActiveTask,
   sessionDir,
   activeTaskPath,
 } from '../../../../task-tracker/session-state.mjs';
@@ -72,6 +73,20 @@ clearActiveTask('sess-a', tmp);
 assert.equal(getActiveTask('sess-a', tmp), null);
 assert.equal(getActiveTask('sess-b', tmp).issue, '#200', 'clearing sess-a must not affect sess-b');
 
+// #1297: terminal cleanup must compare under the same record lock used by
+// writers. A superseding bind survives; an exact stale record is removed.
+setActiveTask('sess-cas', { issue: '#1297', boundAt: '2026-08-19T14:00:00Z' }, tmp);
+assert.equal(
+  compareAndClearActiveTask('sess-cas', tmp, (candidate) => candidate.issue === '#other').status,
+  'superseded'
+);
+assert.equal(getActiveTask('sess-cas', tmp).issue, '#1297');
+assert.equal(
+  compareAndClearActiveTask('sess-cas', tmp, (candidate) => candidate.issue === '#1297').status,
+  'cleared'
+);
+assert.equal(getActiveTask('sess-cas', tmp), null);
+
 // AC: corrupt JSON read returns null (does not throw)
 const corruptPath = activeTaskPath('sess-c', tmp);
 mkdirSync(path.dirname(corruptPath), { recursive: true });
@@ -92,6 +107,20 @@ assert.equal(
   getActiveTask('sess-sticky', tmp).kanbanState,
   'develop',
   'kanbanState should survive a setActiveTask call that omits it (same issue)'
+);
+
+// #1297: a terminal stamp must survive ordinary same-issue state saves when a
+// close sweep could not remove the file. A later explicit reopen bind can
+// supersede it through a newer worktreeResolvedAt, but generic saves must not
+// silently erase the fail-safe marker.
+setActiveTask('sess-terminal-sticky', { issue: '#42', closedAt: '2026-08-19T15:00:00Z' }, tmp);
+setActiveTask('sess-terminal-sticky', { issue: '#42', wordsAtStart: 300 }, tmp);
+assert.equal(getActiveTask('sess-terminal-sticky', tmp).closedAt, '2026-08-19T15:00:00Z');
+setActiveTask('sess-terminal-sticky', { issue: '#43' }, tmp);
+assert.equal(
+  getActiveTask('sess-terminal-sticky', tmp).closedAt,
+  undefined,
+  'closedAt must not bleed across issues'
 );
 
 // Explicit kanbanState in the new record wins.

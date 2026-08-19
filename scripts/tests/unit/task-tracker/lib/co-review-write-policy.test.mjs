@@ -11,6 +11,8 @@ import {
   extractBashWriteTargets,
 } from '../../../../task-tracker/lib/mutation-targets.mjs';
 import { evaluateCoReviewWrite } from '../../../../task-tracker/lib/co-review-write-policy.mjs';
+import { findMainWorktreePath } from '../../../../task-tracker/fleet-registry.mjs';
+import { closedBindingsPath } from '../../../../task-tracker/paths.mjs';
 import { projectScratchDir } from '../../../../task-tracker/lib/scratch-dir.mjs';
 
 test('apply_patch parser extracts add, update, delete, move, and multiple targets', () => {
@@ -146,11 +148,22 @@ test('authority files and other protocol or tmp targets deny before ordinary all
   for (const target of [
     path.join(projectDir, '.tmp/aitm/fleet/occupancy.json'),
     path.join(projectDir, '.tmp/aitm/fleet/co-review-index.json'),
+    path.join(projectDir, '.tmp/aitm/fleet/closed-bindings.json'),
     path.join(dir, 'state.json'),
     path.join(projectDir, '.tmp/other.md'),
   ]) {
     assert.equal(evaluate({ targets: [target] }).decision, 'deny');
   }
+});
+
+test('terminal binding ledger is immutable even without an active reviewer grant', () => {
+  const { projectDir, evaluate } = policyFixture();
+  const result = evaluate({
+    targets: [closedBindingsPath(findMainWorktreePath(projectDir))],
+    resolveGrant: () => null,
+    readIndex: () => ({}),
+  });
+  assert.equal(result.code, 'co-review-authority-file');
 });
 
 test('malformed or ambiguous reviewer mutations fail closed', () => {

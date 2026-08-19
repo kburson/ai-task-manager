@@ -15,6 +15,7 @@ import { currentSessionId } from '../word-counter.mjs';
 import { GH_API_TIMEOUT_MS } from './process-timeouts.mjs';
 import { BoundWorktreeMissingError, resolveProjectDir } from './project-dir.mjs';
 import { fleetRegistryPath, readFleet } from '../fleet-registry.mjs';
+import { isBindingRecordClosed, readClosedBindingLedger } from './worktree-binding-lifecycle.mjs';
 
 const pexec = promisify(execFile);
 
@@ -64,6 +65,7 @@ export class ForeignWorktreeBindingError extends Error {
         `  Bound worktree: ${bound.worktreePath} (${bound.worktreeBranch})\n` +
         `  Invoking worktree: ${invoking.worktreePath} (${invoking.worktreeBranch})\n` +
         `  Run: cd ${correctiveCd}\n` +
+        `  If ${issue} is already closed: cd ${correctiveCd} && npx aitm fleet release-closed-binding ${issue}\n` +
         'Refusing before task state access. Re-run with --allow-foreign-worktree only for an explicit, audited exception.'
     );
     this.name = 'ForeignWorktreeBindingError';
@@ -150,8 +152,10 @@ export function resolveCurrentSessionWorktreeBinding({
     if (typeof value === 'string' && value.trim()) candidates.add(path.resolve(value));
   }
 
-  const mainPath = findMain(invokingDir);
+  const mainPath = (deps.resolveMain || findMain)(invokingDir, deps);
   const fleet = loadFleet(fleetRegistryPath(mainPath));
+  const closedLedger = (deps.readClosedBindings ?? readClosedBindingLedger)(mainPath);
+  const isClosed = deps.isBindingClosed ?? isBindingRecordClosed;
   for (const entry of Object.values(fleet || {})) {
     if (typeof entry?.worktreePath === 'string' && entry.worktreePath.trim()) {
       candidates.add(path.resolve(entry.worktreePath));
@@ -171,6 +175,7 @@ export function resolveCurrentSessionWorktreeBinding({
     ) {
       continue;
     }
+    if (isClosed({ record, sessionId, ledger: closedLedger })) continue;
     let identity;
     try {
       identity = resolveIdentity({ projectDir: record.worktreePath });

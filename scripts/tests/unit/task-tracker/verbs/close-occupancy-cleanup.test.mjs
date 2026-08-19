@@ -10,6 +10,7 @@ test('close releases authoritative occupancy even when fleet cleanup fails', () 
     projectDir: '/repo',
     issue: '#1325',
     ctx: {
+      releaseIssueBindings: () => ({ released: [] }),
       deregisterTask: () => {
         throw new Error('fleet unavailable');
       },
@@ -30,6 +31,7 @@ test('close cannot report success when authoritative occupancy release fails', (
         projectDir: '/repo',
         issue: '#1325',
         ctx: {
+          releaseIssueBindings: () => ({ released: [] }),
           deregisterTask: () => {},
           releaseBindingOccupancy: () => {
             throw new Error('occupancy retained');

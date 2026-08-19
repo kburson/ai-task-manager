@@ -12,6 +12,7 @@ import { existsSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync 
 import path from 'node:path';
 import { activeTaskPath, sessionDir } from './paths.mjs';
 import { normalizeStateId } from './lib/lifecycle-policy/index.mjs';
+import { withLock } from './fleet-registry.mjs';
 
 function normalizeCachedKanbanState(record) {
   if (!record || typeof record !== 'object' || typeof record.kanbanState !== 'string') {
@@ -40,8 +41,8 @@ function atomicWrite(p, payload) {
 
 // Returns the active-task record for `sid` or null when none is bound.
 // Shape: { issue, entryStartTs, wordsAtStart, kanbanState, boundAt,
-// worktreePath, worktreeBranch, worktreeResolvedAt } — any field may be missing
-// on a partially-populated or legacy file.
+// worktreePath, worktreeBranch, worktreeResolvedAt, closedAt } — any field may
+// be missing on a partially-populated or legacy file.
 export function getActiveTask(sid, projDir) {
   const p = activeTaskPath(sid, projDir);
   return normalizeCachedKanbanState(readJson(p));
@@ -59,32 +60,40 @@ export function setActiveTask(sid, record, projDir) {
   if (!record || typeof record !== 'object') {
     throw new Error('setActiveTask: record must be an object');
   }
-  const { state: _droppedState, ...recordWithoutState } = record;
-  void _droppedState;
-  // Preserve the derived `kanbanState` cache (#218 follow-up) across saves
-  // that don't carry it. Only setSessionKanbanState / explicit refreshers
-  // should mutate this field; the generic state writer (state.mjs#saveState)
-  // doesn't know about it and would otherwise blow it away on every bind.
-  let stickyKanban = {};
-  if (!('kanbanState' in recordWithoutState) && record.issue != null) {
-    const existing = readJson(activeTaskPath(sid, projDir));
-    if (existing && existing.issue === record.issue && existing.kanbanState) {
-      stickyKanban = { kanbanState: normalizeStateId(existing.kanbanState) };
+  const p = activeTaskPath(sid, projDir);
+  return withLock(p, () => {
+    const { state: _droppedState, ...recordWithoutState } = record;
+    void _droppedState;
+    // Preserve the derived `kanbanState` cache (#218 follow-up) across saves
+    // that don't carry it. Only setSessionKanbanState / explicit refreshers
+    // should mutate this field; the generic state writer (state.mjs#saveState)
+    // doesn't know about it and would otherwise blow it away on every bind.
+    let stickySameIssue = {};
+    if (record.issue != null) {
+      const existing = readJson(p);
+      if (existing && existing.issue === record.issue) {
+        if (!('kanbanState' in recordWithoutState) && existing.kanbanState) {
+          stickySameIssue.kanbanState = normalizeStateId(existing.kanbanState);
+        }
+        if (!('closedAt' in recordWithoutState) && existing.closedAt) {
+          stickySameIssue.closedAt = existing.closedAt;
+        }
+      }
     }
-  }
-  const payload = {
-    issue: record.issue ?? null,
-    entryStartTs: record.entryStartTs ?? null,
-    wordsAtStart: record.wordsAtStart ?? 0,
-    boundAt: record.boundAt ?? new Date().toISOString(),
-    ...stickyKanban,
-    ...recordWithoutState,
-  };
-  if (typeof payload.kanbanState === 'string') {
-    payload.kanbanState = normalizeStateId(payload.kanbanState);
-  }
-  atomicWrite(activeTaskPath(sid, projDir), payload);
-  return payload;
+    const payload = {
+      issue: record.issue ?? null,
+      entryStartTs: record.entryStartTs ?? null,
+      wordsAtStart: record.wordsAtStart ?? 0,
+      boundAt: record.boundAt ?? new Date().toISOString(),
+      ...stickySameIssue,
+      ...recordWithoutState,
+    };
+    if (typeof payload.kanbanState === 'string') {
+      payload.kanbanState = normalizeStateId(payload.kanbanState);
+    }
+    atomicWrite(p, payload);
+    return payload;
+  });
 }
 
 // #218 follow-up: stamps a derived `kanbanState` field onto the record. The
@@ -94,28 +103,45 @@ export function setActiveTask(sid, record, projDir) {
 // no-op when the record is absent or `kanbanState` is already current.
 export function setSessionKanbanState(sid, kanbanState, projDir) {
   const p = activeTaskPath(sid, projDir);
-  const rawExisting = readJson(p);
-  if (!rawExisting || typeof rawExisting !== 'object') return null;
-  const existing = normalizeCachedKanbanState(rawExisting);
-  const canonicalState = normalizeStateId(kanbanState);
-  if (existing.kanbanState === canonicalState && rawExisting.kanbanState === canonicalState) {
-    return existing;
-  }
-  const next = { ...existing, kanbanState: canonicalState };
-  atomicWrite(p, next);
-  return next;
+  return withLock(p, () => {
+    const rawExisting = readJson(p);
+    if (!rawExisting || typeof rawExisting !== 'object') return null;
+    const existing = normalizeCachedKanbanState(rawExisting);
+    const canonicalState = normalizeStateId(kanbanState);
+    if (existing.kanbanState === canonicalState && rawExisting.kanbanState === canonicalState) {
+      return existing;
+    }
+    const next = { ...existing, kanbanState: canonicalState };
+    atomicWrite(p, next);
+    return next;
+  });
 }
 
 // Removes the active-task file for `sid`. Idempotent — silently succeeds when
 // the file is already absent.
 export function clearActiveTask(sid, projDir) {
   const p = activeTaskPath(sid, projDir);
-  if (!existsSync(p)) return;
-  try {
+  return withLock(p, () => {
+    if (!existsSync(p)) return;
     rmSync(p);
-  } catch {
-    /* tolerate race with another writer */
+  });
+}
+
+// Atomically re-read and clear one active-task record only when the caller's
+// predicate still matches. All record writers share this lock, so a concurrent
+// issue switch or reopen cannot be overwritten or deleted by terminal cleanup.
+export function compareAndClearActiveTask(sid, projDir, predicate) {
+  if (typeof predicate !== 'function') {
+    throw new Error('compareAndClearActiveTask: predicate must be a function');
   }
+  const p = activeTaskPath(sid, projDir);
+  return withLock(p, () => {
+    const record = normalizeCachedKanbanState(readJson(p));
+    if (!record) return { status: 'absent', record: null };
+    if (!predicate(record)) return { status: 'superseded', record };
+    rmSync(p);
+    return { status: 'cleared', record };
+  });
 }
 
 // Re-export the path helpers so callers that already import session-state

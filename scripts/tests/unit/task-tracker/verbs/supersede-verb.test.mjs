@@ -5,7 +5,11 @@
 import { strict as assert } from 'node:assert';
 import { test } from 'node:test';
 
-import { parseArgs, runSupersede } from '../../../../task-tracker/verbs/supersede.mjs';
+import {
+  finalizeSupersededBinding,
+  parseArgs,
+  runSupersede,
+} from '../../../../task-tracker/verbs/supersede.mjs';
 import { parseSupersededBy } from '../../../../task-tracker/lib/superseded-marker.mjs';
 
 const CFG = { repo: 'owner/repo' };
@@ -98,6 +102,23 @@ test('happy path: stamps marker, moves done, comments both, closes not-planned',
   );
   // AC7 closed not-planned
   assert.deepEqual(calls.closeNotPlanned, [230]);
+});
+
+test('successful supersede releases the terminal binding before reporting success', () => {
+  const calls = [];
+  const result = finalizeSupersededBinding({
+    result: { status: 'superseded', deadIssue: 230, byIssue: 399 },
+    projectDir: '/repo/wt',
+    deps: {
+      releaseTerminalIssueBinding: (input) => calls.push(input),
+      log: (message) => calls.push(message),
+    },
+  });
+  assert.equal(result.status, 'superseded');
+  assert.deepEqual(calls, [
+    { projectDir: '/repo/wt', issue: '#230' },
+    '[task-tracker] ✓ #230 superseded by #399 — moved to Done and closed (not planned)',
+  ]);
 });
 
 test('superseder-missing: refuses before any write', async () => {

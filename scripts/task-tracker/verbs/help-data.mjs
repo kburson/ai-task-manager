@@ -735,12 +735,17 @@ export const VERB_REFERENCE = {
   },
   fleet: {
     topic: 'meta',
-    summary: 'Show active tasks across worktrees, or prune stale fleet registrations.',
-    usage: '/task fleet [prune [--dry-run]]',
+    summary: 'Show active tasks, prune stale registrations, or recover a confirmed-closed binding.',
+    usage: '/task fleet [prune [--dry-run] | release-closed-binding #N]',
     flags: [
       { flag: '--dry-run', desc: 'preview stale registrations without rewriting the registry' },
     ],
-    examples: ['/task fleet', '/task fleet prune --dry-run', '/task fleet prune'],
+    examples: [
+      '/task fleet',
+      '/task fleet prune --dry-run',
+      '/task fleet prune',
+      '/task fleet release-closed-binding #1297',
+    ],
   },
   occupancy: {
     topic: 'meta',

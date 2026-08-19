@@ -33,7 +33,7 @@ test('task metadata matches high-risk verb parser surfaces', () => {
   for (const expected of ['--as <duplicate|not-planned>', '--of <N>']) {
     assert.ok(argumentNames('close').includes(expected), `close: ${expected}`);
   }
-  assert.ok(argumentNames('fleet').includes('[prune]'));
+  assert.ok(argumentNames('fleet').includes('[prune | release-closed-binding #N]'));
   assert.ok(argumentNames('fleet').includes('--dry-run'));
   assert.ok(argumentNames('approve').includes('--human'));
   assert.ok(argumentNames('demote').includes('--rework "<reason>"'));

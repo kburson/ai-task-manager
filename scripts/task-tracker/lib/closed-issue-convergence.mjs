@@ -278,10 +278,6 @@ export async function runClosedIssueConvergence(input = {}, deps = {}) {
     };
   }
 
-  if (action === 'dead') {
-    return { action, status: 'untouched', steps };
-  }
-
   const callAdapter = async (
     name,
     args,
@@ -326,6 +322,11 @@ export async function runClosedIssueConvergence(input = {}, deps = {}) {
   };
 
   try {
+    if (action === 'dead') {
+      await runStep('cleanup');
+      return { action, status: 'untouched', steps };
+    }
+
     if (action === 'finalize' || action === 'noop') {
       if (action === 'finalize' || input.decision?.boardDrift) {
         await runStep('moveToDone');
