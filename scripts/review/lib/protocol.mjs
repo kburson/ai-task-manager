@@ -317,6 +317,10 @@ function eventIntegrity(paths, state) {
   } catch (error) {
     return { events: [], errors: [`events-unreadable: ${error.message}`] };
   }
+  return eventIntegrityForRecords(events, state);
+}
+
+function eventIntegrityForRecords(events, state) {
   const errors = [];
   if (events.length !== state.revision) {
     errors.push(`event-count: expected ${state.revision}, actual ${events.length}`);
@@ -409,7 +413,11 @@ function snapshotConsistency(input = {}) {
   if (typeof wait !== 'function') {
     throw new TypeError('co-review: snapshot consistency wait must be a function');
   }
-  return { maxAttempts, delayMilliseconds, wait };
+  const afterStateRead = input.afterStateRead;
+  if (afterStateRead !== undefined && typeof afterStateRead !== 'function') {
+    throw new TypeError('co-review: snapshot consistency afterStateRead must be a function');
+  }
+  return { maxAttempts, delayMilliseconds, wait, afterStateRead };
 }
 
 function readStatusSnapshot({ cwd, dir, repository, consistency }) {
@@ -419,13 +427,18 @@ function readStatusSnapshot({ cwd, dir, repository, consistency }) {
   for (let attempt = 1; ; attempt += 1) {
     const lockedBefore = mutationLockPresent(paths);
     const state = readProtocol({ cwd: root, dir: paths.relative, repository });
+    retry.afterStateRead?.({ attempt, state, paths });
     const observed = eventIntegrity(paths, state);
     const lockedAfter = mutationLockPresent(paths);
-    if (
-      !transientEventLead(state, observed.events, observed.errors) ||
-      (!lockedBefore && !lockedAfter) ||
-      attempt >= retry.maxAttempts
-    ) {
+    const eventLead = transientEventLead(state, observed.events, observed.errors);
+    if (eventLead) {
+      const confirmedState = readProtocol({ cwd: root, dir: paths.relative, repository });
+      const confirmed = eventIntegrityForRecords(observed.events, confirmedState);
+      if (confirmed.errors.length === 0) {
+        return { root, paths, state: confirmedState, ...confirmed };
+      }
+    }
+    if (!eventLead || (!lockedBefore && !lockedAfter) || attempt >= retry.maxAttempts) {
       return { root, paths, state, ...observed };
     }
     retry.wait(retry.delayMilliseconds, {

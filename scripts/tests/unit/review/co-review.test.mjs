@@ -59,6 +59,9 @@ function stageClaimPublicationWindow({ api, root, options }) {
   );
   return {
     settled,
+    publishState() {
+      writeFileSync(statePath, settledState);
+    },
     publish() {
       writeFileSync(statePath, settledState);
       rmSync(lockPath, { recursive: true });
@@ -600,6 +603,30 @@ test('status settles a concurrent event-append before reporting integrity', asyn
   assert.equal(status.revision, window.settled.revision);
   assert.equal(status.turnState, 'claimed');
   assert.equal(status.claim.actor, 'owner-agent');
+});
+
+test('status confirms a publication that completes between state and event reads', async () => {
+  const fixture = await initializedProtocol();
+  const window = stageClaimPublicationWindow(fixture);
+  window.releaseLock();
+  let stateReads = 0;
+  const status = fixture.api.statusProtocol({
+    cwd: fixture.root,
+    dir: fixture.options.dir,
+    consistency: {
+      maxAttempts: 2,
+      delayMilliseconds: 0,
+      afterStateRead() {
+        stateReads += 1;
+        if (stateReads === 1) window.publishState();
+      },
+    },
+  });
+
+  assert.equal(stateReads, 1);
+  assert.equal(status.integrity.ok, true);
+  assert.equal(status.revision, window.settled.revision);
+  assert.equal(status.turnState, 'claimed');
 });
 
 test('wait settles a concurrent event-append before evaluating the requested role', async () => {

@@ -31,11 +31,14 @@ The snapshot is returned immediately unless all of the following are true:
 4. the protocol mutex directory is present, showing an authorized mutation may
    still be publishing its state.
 
-Only that shape receives a small bounded retry. Production retries use a short
-synchronous wait because the writer is a separate process and the public protocol
-API is intentionally synchronous. A test-only injected wait function provides a
-deterministic seam: it can publish the staged state between attempts without
-timing-sensitive sleeps.
+For that shape, the reader first re-reads `state.json` and validates it against
+the exact event array already observed. This closes the interleaving where the
+writer acquires and releases the mutex entirely between the reader's state and
+event reads. A fully matching N+1 state is returned immediately. If state remains
+at N, only an observed mutex permits a small bounded retry. Production retries
+use a short synchronous wait because the writer is a separate process and the
+public protocol API is intentionally synchronous. Test-only injected read and
+wait functions provide deterministic seams without timing-sensitive sleeps.
 
 The successful attempt's event array is retained and reused for all downstream
 status projection. Status never re-reads the event file after deciding the
@@ -57,7 +60,8 @@ the writer creates.
 
 The retry path does not accept or normalize corruption.
 
-- No mutex: a one-event lead is reported immediately as durable drift.
+- No mutex: after the immediate state confirmation remains at N, a one-event lead
+  is reported as durable drift without a delayed retry.
 - A stale mutex: retries end at the fixed bound and the original integrity error
   is returned.
 - More than one extra event, missing events, malformed JSON, wrong schema,
@@ -85,8 +89,10 @@ mandatory stop rule for durable drift.
 
 The focused corpus will deterministically stage revision N state, revision N+1
 events, and a live mutex from a real protocol mutation. The injected retry seam
-will publish revision N+1 state between attempts. Both `statusProtocol` and
-`waitForTurn` must return a healthy settled snapshot.
+will publish revision N+1 state between attempts. A separate injected read seam
+will publish the state and release the mutex entirely between the initial state
+and event reads. `statusProtocol` and `waitForTurn` must return healthy settled
+snapshots.
 
 Separate cases will prove that the same one-event lead fails closed without a
 mutex and after bounded retries with a persistent mutex. Existing revision,

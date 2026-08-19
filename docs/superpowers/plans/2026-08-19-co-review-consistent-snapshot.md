@@ -59,6 +59,12 @@ directory. Use a small fixed retry count and delay. Expose an injected synchrono
 wait function for deterministic tests; the default uses a bounded synchronous
 wait suitable for a separate writer process.
 
+Before relying on either mutex sample, re-read state and validate it against the
+exact observed event array. Accept a fully matching N+1 state immediately so a
+mutation that completed entirely between the state and event reads cannot be
+misreported as drift. If the confirmation remains at N and neither mutex sample
+is live, fail closed without a delayed retry.
+
 ### Step 4: Run the focused status regression
 
 Run the focused command again and require green.
