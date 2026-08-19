@@ -97,7 +97,6 @@ const READ_ONLY_COMMANDS = new Set([
   'du',
   'echo',
   'false',
-  'file',
   'grep',
   'head',
   'jq',
@@ -142,7 +141,7 @@ function readOnlySegment(words) {
   if (command === 'git') {
     if (words[index + 1] === '--no-pager') index += 1;
     const dangerousOption = words.some((word) =>
-      /^(?:-O$|--output(?:=|$)|--ext-diff$|--textconv$|--filters$|--exec(?:=|$)|--open-files-in-pager(?:=|$))/.test(
+      /^(?:-O|--output(?:=|$)|--ext-diff$|--textconv$|--filters$|--exec(?:=|$)|--open-files-in-pager(?:=|$))/.test(
         word
       )
     );
@@ -174,6 +173,13 @@ export function extractBashWriteTargets(command, projectRoot) {
   };
 
   if (/\$\(|`|\b(?:eval|node|python\d*|ruby|perl)\s+(?:-[^\s]*[ec])\b/.test(text)) {
+    ambiguousMutation = true;
+  }
+  // Reviewer Bash is intentionally a single-command grammar. Shell composition,
+  // input/process substitution, backgrounding, and fd-prefixed redirects are
+  // denied even when the leading command is read-only; target extraction cannot
+  // prove every nested command or descriptor destination.
+  if (/[&|;<()\r\n]/.test(text) || /(?:^|\s)(?:[0-9]+|&)>>?/.test(text)) {
     ambiguousMutation = true;
   }
   const redirectRe = /(?<![0-9&])>>?\s*("[^"]+"|'[^']+'|[^\s;&|]+)/g;

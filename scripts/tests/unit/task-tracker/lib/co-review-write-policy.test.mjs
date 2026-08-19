@@ -43,11 +43,11 @@ test('apply_patch parser rejects malformed, unsupported, empty, and traversing p
   }
 });
 
-test('bash parser reports complete destinations and ambiguous mutations', () => {
+test('bash parser reports destinations and rejects shell composition or unknown mutations', () => {
   const root = '/repo';
   assert.deepEqual(extractBashWriteTargets('printf x > .tmp/review.md && touch src/a', root), {
     targets: ['/repo/.tmp/review.md', '/repo/src/a'],
-    ambiguousMutation: false,
+    ambiguousMutation: true,
   });
   assert.equal(
     extractBashWriteTargets('node -e "writeFileSync(x,y)"', root).ambiguousMutation,
@@ -72,6 +72,14 @@ test('bash parser reports complete destinations and ambiguous mutations', () => 
     'sort -o src/a.mjs input.txt',
     'uniq input.txt src/a.mjs',
     'rg --hostname-bin=./mutator needle src',
+    'cat missing 1> src/clobber.txt',
+    'cat missing 2> src/clobber.txt',
+    'cat missing &> src/clobber.txt',
+    'cat package.json & dd if=/dev/zero of=src/clobber.txt',
+    "cat package.json & sed -i.bak 's/a/b/' src/a.mjs",
+    'git grep -Ovim needle',
+    'file -C -m src/payload.magic',
+    'cat <(dd if=/dev/zero of=src/clobber.txt)',
   ]) {
     assert.equal(
       extractBashWriteTargets(command, root).ambiguousMutation,
