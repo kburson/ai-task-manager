@@ -12,6 +12,7 @@ import {
   readOccupancy,
   releaseOccupancy,
   rollbackOccupancyClaim,
+  touchOccupancy,
 } from '../../../../task-tracker/lib/occupancy.mjs';
 
 function fixture() {
@@ -121,6 +122,41 @@ test('heartbeat updates only an exact session claim', () => {
     () => heartbeatOccupancy({ occupancyFile: file, issue: 1325, sid: 'other', now }),
     /occupancy: heartbeat refused/
   );
+});
+
+test('SessionStart touch atomically adopts an absent row and heartbeats an exact row', () => {
+  const { file, now } = fixture();
+  const input = {
+    occupancyFile: file,
+    issue: 1325,
+    sid: 'codex-a',
+    provider: 'codex',
+    worktreePath: '/repo/wt-a',
+    now,
+  };
+  const adopted = touchOccupancy(input);
+  assert.equal(adopted.status, 'claimed');
+  const touched = touchOccupancy(input);
+  assert.equal(touched.status, 'updated');
+  assert.equal(readOccupancy(file)['1325'].lastHeartbeatAt, '2026-08-19T00:00:01.000Z');
+});
+
+test('SessionStart touch cannot adopt over an existing issue holder', () => {
+  const { file, now, claim } = fixture();
+  claim();
+  assert.throws(
+    () =>
+      touchOccupancy({
+        occupancyFile: file,
+        issue: 1325,
+        sid: 'other',
+        provider: 'grok',
+        worktreePath: '/repo/wt-b',
+        now,
+      }),
+    (error) => error.code === 'occupancy-issue-held'
+  );
+  assert.equal(readOccupancy(file)['1325'].sid, 'codex-a');
 });
 
 test('release is exact-session scoped while force release is issue scoped', () => {

@@ -131,6 +131,16 @@ export function claimOccupancy(input, options = {}) {
       held.provider === provider &&
       path.resolve(held.worktreePath) === worktreePath
     ) {
+      if (options.heartbeatExisting) {
+        const after = clone(before);
+        after[issue] = { ...held, lastHeartbeatAt: isoNow(input) };
+        writeOccupancy(file, after);
+        return {
+          status: 'updated',
+          row: clone(after[issue]),
+          occupancyFile: file,
+        };
+      }
       return { status: 'unchanged', row: clone(held), occupancyFile: file };
     }
 
@@ -161,6 +171,10 @@ export function claimOccupancy(input, options = {}) {
       claimed: clone(after),
     };
   });
+}
+
+export function touchOccupancy(input, options = {}) {
+  return claimOccupancy(input, { ...options, heartbeatExisting: true });
 }
 
 export function rollbackOccupancyClaim(claim) {

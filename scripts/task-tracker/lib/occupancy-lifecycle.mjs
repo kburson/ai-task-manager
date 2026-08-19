@@ -6,6 +6,7 @@ import {
   heartbeatOccupancy,
   releaseOccupancy,
   rollbackOccupancyClaim,
+  touchOccupancy,
 } from './occupancy.mjs';
 import { isActiveCoReviewWorktree } from '../../review/lib/index.mjs';
 
@@ -40,6 +41,15 @@ export function heartbeatBindingOccupancy(input, deps = {}) {
     issue,
     sid: currentSessionId(),
     now,
+  });
+}
+
+export function touchBindingOccupancy(input, deps = {}) {
+  const touch = deps.touchOccupancy || touchOccupancy;
+  return touch(identity(input), {
+    coReviewAllowsWorktree:
+      deps.coReviewAllowsWorktree ||
+      (({ worktreePath }) => isActiveCoReviewWorktree({ worktreePath })),
   });
 }
 
