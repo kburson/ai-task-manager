@@ -239,6 +239,15 @@ function archiveOptions(fixture, archiveDir = 'docs/reviews/session') {
   };
 }
 
+function unreachableRepository(fixture) {
+  return {
+    ...fixture.repository,
+    resolveReachableCommit(_root, revision) {
+      return { commit: revision, reachable: false };
+    },
+  };
+}
+
 function output(prepared, kind) {
   return prepared.files.find((file) => file.kind === kind);
 }
@@ -248,6 +257,16 @@ function materializePrepared(destination, prepared) {
   for (const file of prepared.files) {
     writeFileSync(path.join(destination, file.path), Buffer.from(file.bytesBase64, 'base64'));
   }
+}
+
+function legacyCopyPrepared(prepared) {
+  const legacy = structuredClone(prepared);
+  delete legacy.manifest.artifact.mode;
+  const manifest = output(legacy, 'manifest');
+  const bytes = renderArchiveManifest(legacy.manifest);
+  manifest.bytesBase64 = bytes.toString('base64');
+  manifest.sha256 = sha256(bytes);
+  return legacy;
 }
 
 test('reviewer consensus finalizes automatically and an unconfigured destination remains recoverable', async () => {
@@ -562,16 +581,23 @@ test('intervention and accepted status expose state-valid finalization actions a
   );
 });
 
-test('archive resolves consensus evidence by events and derives stable pair-round names', async () => {
+test('reachable artifacts use reference mode while preserving terminal evidence', async () => {
   const fixture = await acceptedConsensus();
   const prepared = prepareArchive(archiveOptions(fixture));
   assert.equal(prepared.status, 'absent');
   assert.deepEqual(prepared.files.map((file) => file.path).sort(), [
     'README.md',
-    'artifact-artifact.md',
     'artifact-r3-owner-owner-agent-response.md',
     'artifact-r3-reviewer-reviewer-agent-review.md',
   ]);
+  assert.equal(prepared.manifest.artifact.mode, 'reference');
+  assert.equal(prepared.manifest.artifact.archivePath, undefined);
+  assert.equal(prepared.manifest.artifact.archivedSha256, undefined);
+  assert.equal(output(prepared, 'artifact'), undefined);
+  assert.match(
+    renderArchiveManifest(prepared.manifest).toString('utf8'),
+    new RegExp(`git cat-file blob ${prepared.manifest.artifact.gitBlob}`)
+  );
   assert.equal(prepared.manifest.decision.basis, 'reviewer-consensus');
   assert.equal(prepared.manifest.evidence.pairRound, 3);
   assert.equal(prepared.manifest.evidence.ownerResponse.eventRound, 2);
@@ -580,8 +606,22 @@ test('archive resolves consensus evidence by events and derives stable pair-roun
     prepared.manifest.normative,
     'The accepted artifact remains normative; the archived review and owner response are evidence.'
   );
+});
+
+test('unreachable accepted commits retain copy mode with exact artifact bytes', async () => {
+  const fixture = await acceptedConsensus();
+  const repository = unreachableRepository(fixture);
+  const prepared = prepareArchive({
+    ...archiveOptions(fixture, 'docs/reviews/copy-fallback'),
+    repository,
+  });
+  const artifact = output(prepared, 'artifact');
+  assert.equal(prepared.manifest.artifact.mode, 'copy');
+  assert.ok(artifact);
+  assert.equal(prepared.manifest.artifact.archivePath, artifact.path);
+  assert.equal(prepared.manifest.artifact.archivedSha256, artifact.sha256);
   assert.equal(
-    output(prepared, 'artifact').sha256,
+    artifact.sha256,
     sha256(readFileSync(path.join(fixture.root, fixture.options.artifact)))
   );
 });
@@ -680,7 +720,11 @@ test('archive protects README and disambiguates lossy colliding identity slugs',
   const prepared = prepareArchive(archiveOptions(fixture, 'docs/reviews/readme-source'));
   const ownerDigest = createHash('sha256').update(owner).digest('hex').slice(0, 8);
   const reviewerDigest = createHash('sha256').update(reviewer).digest('hex').slice(0, 8);
-  assert.ok(prepared.files.some((file) => file.path === 'artifact-README.md'));
+  assert.equal(prepared.manifest.artifact.sourcePath, 'docs/README.md');
+  assert.equal(
+    prepared.files.some((file) => file.path === 'artifact-README.md'),
+    false
+  );
   assert.ok(
     prepared.files.some((file) => file.path.includes(`owner-a-b-${ownerDigest}-response.md`))
   );
@@ -702,12 +746,15 @@ test('archive preserves an arbitrary artifact basename and returns a deeply froz
   assert.throws(() => {
     snapshot.events.at(-1).handoff.decision = 'changes-requested';
   }, TypeError);
-  assert.ok(
-    prepareArchive({
-      ...snapshot,
-      archiveDir: 'docs/reviews/arbitrary',
-      repository: fixture.repository,
-    }).files.some((file) => file.path === 'artifact-review.notes-v2.md')
+  const prepared = prepareArchive({
+    ...snapshot,
+    archiveDir: 'docs/reviews/arbitrary',
+    repository: fixture.repository,
+  });
+  assert.equal(prepared.manifest.artifact.sourcePath, 'docs/review.notes-v2.md');
+  assert.equal(
+    prepared.files.some((file) => file.path === 'artifact-review.notes-v2.md'),
+    false
   );
 });
 
@@ -811,7 +858,7 @@ test('publication and inspection reject forged prepared paths before touching si
   const prepared = structuredClone(
     prepareArchive(archiveOptions(fixture, 'docs/reviews/forged-prepared'))
   );
-  output(prepared, 'artifact').path = '../escaped-by-forged-prepared.md';
+  output(prepared, 'review').path = '../escaped-by-forged-prepared.md';
   const escaped = path.join(
     path.dirname(prepared.destination.absolute),
     'escaped-by-forged-prepared.md'
@@ -825,6 +872,75 @@ test('publication and inspection reject forged prepared paths before touching si
     (error) => error.code === 'archive-prepared-integrity'
   );
   assert.equal(existsSync(escaped), false);
+});
+
+test('prepared validation refuses forged reference and copy artifact guarantees', async () => {
+  const referenceFixture = await acceptedConsensus();
+  const reference = prepareArchive(
+    archiveOptions(referenceFixture, 'docs/reviews/forged-reference')
+  );
+  const referenceCases = [
+    ['acceptedCommit', '0'.repeat(40), 'archive-source'],
+    ['sourcePath', 'docs/missing.md', 'archive-source'],
+    ['gitBlob', '0'.repeat(40), 'archive-artifact-blob'],
+    ['sha256', `sha256:${'0'.repeat(64)}`, 'archive-artifact-sha'],
+    ['archivePath', 'artifact-artifact.md', 'archive-prepared-integrity'],
+  ];
+  for (const [field, value, code] of referenceCases) {
+    const forged = structuredClone(reference);
+    forged.manifest.artifact[field] = value;
+    assert.throws(
+      () => inspectArchive({ prepared: forged, repository: referenceFixture.repository }),
+      (error) => error.code === code,
+      field
+    );
+  }
+
+  const copyFixture = await acceptedConsensus();
+  const repository = unreachableRepository(copyFixture);
+  const copy = prepareArchive({
+    ...archiveOptions(copyFixture, 'docs/reviews/forged-copy'),
+    repository,
+  });
+  const forgedCopy = structuredClone(copy);
+  forgedCopy.manifest.artifact.gitBlob = '0'.repeat(40);
+  assert.throws(
+    () => inspectArchive({ prepared: forgedCopy, repository }),
+    (error) => error.code === 'archive-artifact-blob'
+  );
+});
+
+test('prepared validation binds every copied archive entry to its recorded source digest', async () => {
+  const fixture = await acceptedConsensus();
+  const repository = unreachableRepository(fixture);
+  const copy = prepareArchive({
+    ...archiveOptions(fixture, 'docs/reviews/forged-copy-bytes'),
+    repository,
+  });
+  const manifestEntry = {
+    artifact: (prepared) => prepared.manifest.artifact,
+    review: (prepared) => prepared.manifest.evidence.reviewerReview,
+    response: (prepared) => prepared.manifest.evidence.ownerResponse,
+  };
+
+  for (const kind of Object.keys(manifestEntry)) {
+    const forged = structuredClone(copy);
+    const file = output(forged, kind);
+    const bytes = Buffer.from(`forged ${kind}\n`);
+    file.bytesBase64 = bytes.toString('base64');
+    file.sha256 = sha256(bytes);
+    manifestEntry[kind](forged).archivedSha256 = file.sha256;
+    const manifest = output(forged, 'manifest');
+    const manifestBytes = renderArchiveManifest(forged.manifest);
+    manifest.bytesBase64 = manifestBytes.toString('base64');
+    manifest.sha256 = sha256(manifestBytes);
+
+    assert.throws(
+      () => inspectArchive({ prepared: forged, repository }),
+      (error) => error.code === 'archive-prepared-integrity',
+      kind
+    );
+  }
 });
 
 test('publication writes the manifest last, preserves inputs and repository state, and retries without rewrite', async () => {
@@ -871,6 +987,57 @@ test('publication writes the manifest last, preserves inputs and repository stat
   assert.equal(inspectArchive({ prepared }).status, 'complete');
 });
 
+test('copy publication preserves artifact and both evidence files with manifest last', async () => {
+  const fixture = await acceptedConsensus();
+  const repository = unreachableRepository(fixture);
+  const prepared = prepareArchive({
+    ...archiveOptions(fixture, 'docs/reviews/copy-publication'),
+    repository,
+  });
+  const writes = [];
+  assert.equal(
+    publishPreparedArchive(prepared, {
+      repository,
+      hooks: { afterWrite: ({ relative }) => writes.push(relative) },
+    }).status,
+    'published'
+  );
+  assert.equal(writes.at(-1), 'README.md');
+  assert.deepEqual(prepared.files.map((file) => file.kind).sort(), [
+    'artifact',
+    'manifest',
+    'response',
+    'review',
+  ]);
+  for (const kind of ['artifact', 'review', 'response']) {
+    const file = output(prepared, kind);
+    assert.deepEqual(
+      readFileSync(path.join(prepared.destination.absolute, file.path)),
+      Buffer.from(file.bytesBase64, 'base64')
+    );
+  }
+  assert.equal(inspectArchive({ prepared, repository }).status, 'complete');
+});
+
+test('an exact legacy copy archive pins its existing mode and is never rewritten', async () => {
+  const fixture = await acceptedConsensus();
+  const copyRepository = unreachableRepository(fixture);
+  const destination = 'docs/reviews/legacy-copy';
+  const legacy = legacyCopyPrepared(
+    prepareArchive({ ...archiveOptions(fixture, destination), repository: copyRepository })
+  );
+  materializePrepared(legacy.destination.absolute, legacy);
+  const readme = path.join(legacy.destination.absolute, 'README.md');
+  const beforeMtime = statSync(readme).mtimeMs;
+
+  const prepared = prepareArchive(archiveOptions(fixture, destination));
+  assert.equal(prepared.status, 'complete');
+  assert.equal(prepared.manifest.artifact.mode, undefined);
+  assert.ok(output(prepared, 'artifact'));
+  assert.equal(publishPreparedArchive(prepared).status, 'complete');
+  assert.equal(statSync(readme).mtimeMs, beforeMtime);
+});
+
 test('archive inspection refuses active state and every missing, extra, or different destination', async () => {
   const active = await repositoryWithArtifact();
   assert.throws(
@@ -908,7 +1075,7 @@ test('publication leaves unique staging evidence on failures and handles rename 
   const failed = await acceptedConsensus();
   const prepared = prepareArchive(archiveOptions(failed, 'docs/reviews/failure'));
   for (const [uuid, failRelative] of [
-    ['11111111-1111-4111-8111-111111111111', output(prepared, 'artifact').path],
+    ['11111111-1111-4111-8111-111111111111', output(prepared, 'review').path],
     ['22222222-2222-4222-8222-222222222222', 'README.md'],
   ]) {
     assert.throws(

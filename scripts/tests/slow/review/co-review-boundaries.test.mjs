@@ -216,9 +216,17 @@ test('real repository boundary publishes one representative terminal archive', a
   const published = publishPreparedArchive(prepared);
 
   assert.equal(published.status, 'published');
+  assert.equal(prepared.manifest.artifact.mode, 'reference');
+  assert.equal(prepared.manifest.artifact.sourcePath, options.artifact);
+  assert.equal(prepared.manifest.artifact.acceptedCommit, initialCommit);
+  assert.equal(
+    prepared.manifest.artifact.gitBlob,
+    REAL_REPOSITORY_BOUNDARY.committedArtifact(root, initialCommit, options.artifact).blob
+  );
+  assert.match(prepared.manifest.artifact.sha256, /^sha256:[a-f0-9]{64}$/);
+  assert.equal('archivePath' in prepared.manifest.artifact, false);
   assert.deepEqual([...published.paths].sort(), [
     'README.md',
-    'artifact-artifact.md',
     'artifact-r3-owner-owner-agent-response.md',
     'artifact-r3-reviewer-reviewer-agent-review.md',
   ]);

@@ -333,6 +333,30 @@ function decisionModel(decision) {
   };
 }
 
+function canReferenceArtifact(root, artifact, repository) {
+  const resolved = repositoryCall(artifact.commit, () =>
+    repository.resolveReachableCommit(root, artifact.commit)
+  );
+  return resolved.commit === artifact.commit && resolved.reachable === true;
+}
+
+function artifactManifest(artifact, mode, artifactFile) {
+  const common = {
+    ...(mode === 'legacy-copy' ? {} : { mode }),
+    sourcePath: artifact.path,
+    acceptedCommit: artifact.commit,
+    gitBlob: artifact.blob,
+    sha256: artifact.sha256,
+  };
+  return mode !== 'reference'
+    ? {
+        ...common,
+        archivePath: artifactFile.path,
+        archivedSha256: artifactFile.sha256,
+      }
+    : common;
+}
+
 function buildPrepared({ root, state, events, archiveDir, repository = REAL_REPOSITORY_BOUNDARY }) {
   if (!root || !state || !Array.isArray(events) || state.lifecycle !== 'accepted') {
     fail('archive-ineligible', `${state?.lifecycle ?? 'missing-state'}`);
@@ -374,62 +398,69 @@ function buildPrepared({ root, state, events, archiveDir, repository = REAL_REPO
   const artifactFile = outputFile('artifact', artifactOutput, artifact.bytes);
   const reviewFile = outputFile('review', reviewOutput, review.bytes);
   const responseFile = outputFile('response', responseOutput, response.bytes);
-  const manifest = {
-    schema: 'aitm.co-review.archive/v1',
-    protocol: {
-      id: state.protocolId,
-      schema: state.schema,
-    },
-    artifact: {
-      sourcePath: artifact.path,
-      acceptedCommit: artifact.commit,
-      gitBlob: artifact.blob,
-      sha256: artifact.sha256,
-      archivePath: artifactFile.path,
-      archivedSha256: artifactFile.sha256,
-    },
-    participants: {
-      owner: state.roles.owner,
-      reviewer: state.roles.reviewer,
-    },
-    decision: decisionModel(evidence.decision),
-    budget: {
-      reviewTurnsUsed: state.reviewTurnsUsed,
-      maxReviewTurns: state.maxReviewTurns,
-      remainingReviewTurns: state.remainingReviewTurns,
-    },
-    evidence: {
-      pairRound: evidence.pairRound,
-      ownerResponse: {
-        identity: state.roles.owner,
-        eventRound: evidence.ownerEvent.round,
-        sourcePath: response.path,
-        sourceSha256: response.sha256,
-        archivePath: responseFile.path,
-        archivedSha256: responseFile.sha256,
+  function candidate(mode) {
+    const manifest = {
+      schema: 'aitm.co-review.archive/v1',
+      protocol: {
+        id: state.protocolId,
+        schema: state.schema,
       },
-      reviewerReview: {
-        identity: state.roles.reviewer,
-        eventRound: evidence.reviewerEvent.round,
-        sourcePath: review.path,
-        sourceSha256: review.sha256,
-        archivePath: reviewFile.path,
-        archivedSha256: reviewFile.sha256,
+      artifact: artifactManifest(artifact, mode, artifactFile),
+      participants: {
+        owner: state.roles.owner,
+        reviewer: state.roles.reviewer,
       },
-    },
-    normative:
-      'The accepted artifact remains normative; the archived review and owner response are evidence.',
-  };
-  const manifestFile = outputFile('manifest', 'README.md', renderArchiveManifest(manifest));
-  return deepFreeze({
-    schema: 'aitm.co-review.prepared-archive/v1',
-    root,
-    protocolId: state.protocolId,
-    runtimeDir: state.initialization?.runtimeDir,
-    destination,
-    manifest,
-    files: [artifactFile, reviewFile, responseFile, manifestFile],
-  });
+      decision: decisionModel(evidence.decision),
+      budget: {
+        reviewTurnsUsed: state.reviewTurnsUsed,
+        maxReviewTurns: state.maxReviewTurns,
+        remainingReviewTurns: state.remainingReviewTurns,
+      },
+      evidence: {
+        pairRound: evidence.pairRound,
+        ownerResponse: {
+          identity: state.roles.owner,
+          eventRound: evidence.ownerEvent.round,
+          sourcePath: response.path,
+          sourceSha256: response.sha256,
+          archivePath: responseFile.path,
+          archivedSha256: responseFile.sha256,
+        },
+        reviewerReview: {
+          identity: state.roles.reviewer,
+          eventRound: evidence.reviewerEvent.round,
+          sourcePath: review.path,
+          sourceSha256: review.sha256,
+          archivePath: reviewFile.path,
+          archivedSha256: reviewFile.sha256,
+        },
+      },
+      normative:
+        'The accepted artifact remains normative; the archived review and owner response are evidence.',
+    };
+    const manifestFile = outputFile('manifest', 'README.md', renderArchiveManifest(manifest));
+    const files = [
+      ...(mode === 'reference' ? [] : [artifactFile]),
+      reviewFile,
+      responseFile,
+      manifestFile,
+    ];
+    return deepFreeze({
+      schema: 'aitm.co-review.prepared-archive/v1',
+      root,
+      protocolId: state.protocolId,
+      runtimeDir: state.initialization?.runtimeDir,
+      destination,
+      manifest,
+      files,
+    });
+  }
+
+  const candidates = [candidate('reference'), candidate('copy'), candidate('legacy-copy')];
+  for (const prepared of candidates) {
+    if (inspectExpected(destination, prepared.files).status === 'complete') return prepared;
+  }
+  return canReferenceArtifact(root, artifact, repository) ? candidates[0] : candidates[1];
 }
 
 function expectedBytes(file) {
@@ -493,6 +524,9 @@ export function renderArchiveManifest(model) {
     '',
     'This directory preserves the terminal evidence selected by the governed co-review protocol.',
     'The accepted specification remains normative; the review and owner response are evidence.',
+    ...(model.artifact?.mode === 'reference'
+      ? [`Recover the accepted artifact with \`git cat-file blob ${model.artifact.gitBlob}\`.`]
+      : []),
     '',
     '<!-- aitm-co-review-manifest:start -->',
     '```json',
@@ -521,17 +555,26 @@ export function prepareArchive(options = {}) {
 }
 
 function validatePrepared(prepared, repository = REAL_REPOSITORY_BOUNDARY) {
+  const mode = prepared?.manifest?.artifact?.mode;
+  const legacyCopy = mode === undefined;
+  const expectedKinds =
+    mode === 'reference'
+      ? ['review', 'response', 'manifest']
+      : mode === 'copy' || legacyCopy
+        ? ['artifact', 'review', 'response', 'manifest']
+        : null;
   if (
     prepared?.schema !== 'aitm.co-review.prepared-archive/v1' ||
     !prepared.destination?.absolute ||
     !Array.isArray(prepared.files) ||
-    prepared.files.length !== 4
+    !expectedKinds ||
+    prepared.files.length !== expectedKinds.length
   ) {
     fail('archive-prepared-integrity', 'invalid prepared model');
   }
   const names = prepared.files.map((file) => file.path);
-  if (new Set(names).size !== 4 || !names.includes('README.md')) {
-    fail('archive-prepared-integrity', 'expected exact four-path tree');
+  if (new Set(names).size !== expectedKinds.length || !names.includes('README.md')) {
+    fail('archive-prepared-integrity', 'expected exact mode-specific path tree');
   }
   const byKind = new Map();
   for (const file of prepared.files) {
@@ -542,19 +585,65 @@ function validatePrepared(prepared, repository = REAL_REPOSITORY_BOUNDARY) {
       file.path === '..' ||
       path.posix.basename(file.path) !== file.path ||
       path.win32.basename(file.path) !== file.path ||
-      !['artifact', 'review', 'response', 'manifest'].includes(file.kind) ||
+      !expectedKinds.includes(file.kind) ||
       byKind.has(file.kind)
     ) {
       fail('archive-prepared-integrity', `unsafe file entry ${String(file.path)}`);
     }
     byKind.set(file.kind, file);
   }
+  const artifactKeys = Object.keys(prepared.manifest?.artifact || {}).sort();
+  const expectedArtifactKeys = [
+    'acceptedCommit',
+    ...(mode === 'copy' || legacyCopy ? ['archivePath', 'archivedSha256'] : []),
+    'gitBlob',
+    ...(legacyCopy ? [] : ['mode']),
+    'sha256',
+    'sourcePath',
+  ].sort();
+  if (!isDeepStrictEqual(artifactKeys, expectedArtifactKeys)) {
+    fail('archive-prepared-integrity', 'artifact manifest shape');
+  }
+  committedArtifact(
+    prepared.root,
+    {
+      path: prepared.manifest.artifact.sourcePath,
+      commit: prepared.manifest.artifact.acceptedCommit,
+      blob: prepared.manifest.artifact.gitBlob,
+      sha256: prepared.manifest.artifact.sha256,
+    },
+    repository
+  );
+  if (
+    (mode === 'copy' || legacyCopy) &&
+    prepared.manifest.artifact.sha256 !== prepared.manifest.artifact.archivedSha256
+  ) {
+    fail('archive-prepared-integrity', 'artifact copy differs from accepted source');
+  }
+  const evidenceSources = [
+    ['review', prepared.manifest?.evidence?.reviewerReview],
+    ['response', prepared.manifest?.evidence?.ownerResponse],
+  ];
+  for (const [kind, evidence] of evidenceSources) {
+    recordedFile(
+      prepared.root,
+      { path: evidence?.sourcePath, sha256: evidence?.sourceSha256 },
+      `${kind}-source`
+    );
+    if (evidence.sourceSha256 !== evidence.archivedSha256) {
+      fail('archive-prepared-integrity', `${kind} copy differs from recorded source`);
+    }
+  }
   const expectedEntries = [
-    [
-      'artifact',
-      prepared.manifest?.artifact?.archivePath,
-      prepared.manifest?.artifact?.archivedSha256,
-    ],
+    ...(mode === 'copy' || legacyCopy
+      ? [
+          [
+            'artifact',
+            prepared.manifest?.artifact?.archivePath,
+            prepared.manifest?.artifact?.archivedSha256,
+          ],
+        ]
+      : []),
     [
       'review',
       prepared.manifest?.evidence?.reviewerReview?.archivePath,
