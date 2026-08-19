@@ -342,13 +342,13 @@ function canReferenceArtifact(root, artifact, repository) {
 
 function artifactManifest(artifact, mode, artifactFile) {
   const common = {
-    mode,
+    ...(mode === 'legacy-copy' ? {} : { mode }),
     sourcePath: artifact.path,
     acceptedCommit: artifact.commit,
     gitBlob: artifact.blob,
     sha256: artifact.sha256,
   };
-  return mode === 'copy'
+  return mode !== 'reference'
     ? {
         ...common,
         archivePath: artifactFile.path,
@@ -392,73 +392,75 @@ function buildPrepared({ root, state, events, archiveDir, repository = REAL_REPO
   const artifactOutput = `artifact-${artifactBasename}`;
   const responseOutput = `${artifactStem}-r${evidence.pairRound}-owner-${slugs.owner}-response.md`;
   const reviewOutput = `${artifactStem}-r${evidence.pairRound}-reviewer-${slugs.reviewer}-review.md`;
-  const mode = canReferenceArtifact(root, artifact, repository) ? 'reference' : 'copy';
-  const paths = [
-    'README.md',
-    ...(mode === 'copy' ? [artifactOutput] : []),
-    responseOutput,
-    reviewOutput,
-  ];
+  const paths = ['README.md', artifactOutput, responseOutput, reviewOutput];
   if (new Set(paths).size !== paths.length) fail('archive-name-conflict', paths.join(', '));
 
   const artifactFile = outputFile('artifact', artifactOutput, artifact.bytes);
   const reviewFile = outputFile('review', reviewOutput, review.bytes);
   const responseFile = outputFile('response', responseOutput, response.bytes);
-  const manifest = {
-    schema: 'aitm.co-review.archive/v1',
-    protocol: {
-      id: state.protocolId,
-      schema: state.schema,
-    },
-    artifact: artifactManifest(artifact, mode, artifactFile),
-    participants: {
-      owner: state.roles.owner,
-      reviewer: state.roles.reviewer,
-    },
-    decision: decisionModel(evidence.decision),
-    budget: {
-      reviewTurnsUsed: state.reviewTurnsUsed,
-      maxReviewTurns: state.maxReviewTurns,
-      remainingReviewTurns: state.remainingReviewTurns,
-    },
-    evidence: {
-      pairRound: evidence.pairRound,
-      ownerResponse: {
-        identity: state.roles.owner,
-        eventRound: evidence.ownerEvent.round,
-        sourcePath: response.path,
-        sourceSha256: response.sha256,
-        archivePath: responseFile.path,
-        archivedSha256: responseFile.sha256,
+  function candidate(mode) {
+    const manifest = {
+      schema: 'aitm.co-review.archive/v1',
+      protocol: {
+        id: state.protocolId,
+        schema: state.schema,
       },
-      reviewerReview: {
-        identity: state.roles.reviewer,
-        eventRound: evidence.reviewerEvent.round,
-        sourcePath: review.path,
-        sourceSha256: review.sha256,
-        archivePath: reviewFile.path,
-        archivedSha256: reviewFile.sha256,
+      artifact: artifactManifest(artifact, mode, artifactFile),
+      participants: {
+        owner: state.roles.owner,
+        reviewer: state.roles.reviewer,
       },
-    },
-    normative:
-      'The accepted artifact remains normative; the archived review and owner response are evidence.',
-  };
-  const manifestFile = outputFile('manifest', 'README.md', renderArchiveManifest(manifest));
-  const files = [
-    ...(mode === 'copy' ? [artifactFile] : []),
-    reviewFile,
-    responseFile,
-    manifestFile,
-  ];
-  return deepFreeze({
-    schema: 'aitm.co-review.prepared-archive/v1',
-    root,
-    protocolId: state.protocolId,
-    runtimeDir: state.initialization?.runtimeDir,
-    destination,
-    manifest,
-    files,
-  });
+      decision: decisionModel(evidence.decision),
+      budget: {
+        reviewTurnsUsed: state.reviewTurnsUsed,
+        maxReviewTurns: state.maxReviewTurns,
+        remainingReviewTurns: state.remainingReviewTurns,
+      },
+      evidence: {
+        pairRound: evidence.pairRound,
+        ownerResponse: {
+          identity: state.roles.owner,
+          eventRound: evidence.ownerEvent.round,
+          sourcePath: response.path,
+          sourceSha256: response.sha256,
+          archivePath: responseFile.path,
+          archivedSha256: responseFile.sha256,
+        },
+        reviewerReview: {
+          identity: state.roles.reviewer,
+          eventRound: evidence.reviewerEvent.round,
+          sourcePath: review.path,
+          sourceSha256: review.sha256,
+          archivePath: reviewFile.path,
+          archivedSha256: reviewFile.sha256,
+        },
+      },
+      normative:
+        'The accepted artifact remains normative; the archived review and owner response are evidence.',
+    };
+    const manifestFile = outputFile('manifest', 'README.md', renderArchiveManifest(manifest));
+    const files = [
+      ...(mode === 'reference' ? [] : [artifactFile]),
+      reviewFile,
+      responseFile,
+      manifestFile,
+    ];
+    return deepFreeze({
+      schema: 'aitm.co-review.prepared-archive/v1',
+      root,
+      protocolId: state.protocolId,
+      runtimeDir: state.initialization?.runtimeDir,
+      destination,
+      manifest,
+      files,
+    });
+  }
+
+  const candidates = [candidate('reference'), candidate('copy'), candidate('legacy-copy')];
+  for (const prepared of candidates) {
+    if (inspectExpected(destination, prepared.files).status === 'complete') return prepared;
+  }
+  return canReferenceArtifact(root, artifact, repository) ? candidates[0] : candidates[1];
 }
 
 function expectedBytes(file) {
@@ -554,10 +556,11 @@ export function prepareArchive(options = {}) {
 
 function validatePrepared(prepared, repository = REAL_REPOSITORY_BOUNDARY) {
   const mode = prepared?.manifest?.artifact?.mode;
+  const legacyCopy = mode === undefined;
   const expectedKinds =
     mode === 'reference'
       ? ['review', 'response', 'manifest']
-      : mode === 'copy'
+      : mode === 'copy' || legacyCopy
         ? ['artifact', 'review', 'response', 'manifest']
         : null;
   if (
@@ -592,9 +595,9 @@ function validatePrepared(prepared, repository = REAL_REPOSITORY_BOUNDARY) {
   const artifactKeys = Object.keys(prepared.manifest?.artifact || {}).sort();
   const expectedArtifactKeys = [
     'acceptedCommit',
-    ...(mode === 'copy' ? ['archivePath', 'archivedSha256'] : []),
+    ...(mode === 'copy' || legacyCopy ? ['archivePath', 'archivedSha256'] : []),
     'gitBlob',
-    'mode',
+    ...(legacyCopy ? [] : ['mode']),
     'sha256',
     'sourcePath',
   ].sort();
@@ -612,7 +615,7 @@ function validatePrepared(prepared, repository = REAL_REPOSITORY_BOUNDARY) {
     repository
   );
   const expectedEntries = [
-    ...(mode === 'copy'
+    ...(mode === 'copy' || legacyCopy
       ? [
           [
             'artifact',

@@ -259,6 +259,16 @@ function materializePrepared(destination, prepared) {
   }
 }
 
+function legacyCopyPrepared(prepared) {
+  const legacy = structuredClone(prepared);
+  delete legacy.manifest.artifact.mode;
+  const manifest = output(legacy, 'manifest');
+  const bytes = renderArchiveManifest(legacy.manifest);
+  manifest.bytesBase64 = bytes.toString('base64');
+  manifest.sha256 = sha256(bytes);
+  return legacy;
+}
+
 test('reviewer consensus finalizes automatically and an unconfigured destination remains recoverable', async () => {
   const configured = await consensusReady({ archiveDir: 'docs/reviews/configured' });
   const accepted = await runCliDirect(
@@ -974,6 +984,25 @@ test('copy publication preserves artifact and both evidence files with manifest 
     );
   }
   assert.equal(inspectArchive({ prepared, repository }).status, 'complete');
+});
+
+test('an exact legacy copy archive pins its existing mode and is never rewritten', async () => {
+  const fixture = await acceptedConsensus();
+  const copyRepository = unreachableRepository(fixture);
+  const destination = 'docs/reviews/legacy-copy';
+  const legacy = legacyCopyPrepared(
+    prepareArchive({ ...archiveOptions(fixture, destination), repository: copyRepository })
+  );
+  materializePrepared(legacy.destination.absolute, legacy);
+  const readme = path.join(legacy.destination.absolute, 'README.md');
+  const beforeMtime = statSync(readme).mtimeMs;
+
+  const prepared = prepareArchive(archiveOptions(fixture, destination));
+  assert.equal(prepared.status, 'complete');
+  assert.equal(prepared.manifest.artifact.mode, undefined);
+  assert.ok(output(prepared, 'artifact'));
+  assert.equal(publishPreparedArchive(prepared).status, 'complete');
+  assert.equal(statSync(readme).mtimeMs, beforeMtime);
 });
 
 test('archive inspection refuses active state and every missing, extra, or different destination', async () => {
