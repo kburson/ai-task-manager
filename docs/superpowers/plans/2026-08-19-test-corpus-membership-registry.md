@@ -82,7 +82,10 @@ test-impact manifest.
   - `recordPathForTestPath(testPath: string): string`
   - `finalizedFrozenPaths(manifest: object): string[]`
   - `loadPostSnapshotRecords({ projectRoot, registryRoot? }): { records, errors,
-rootPresent }`
+misplacedRecords, rootPresent }`, where `errors` contains unreadable,
+    invalid-JSON, schema, key, and path failures, while `misplacedRecords`
+    contains valid records stored at a location other than
+    `recordPathForTestPath(path)`.
 
 - [ ] **Step 1: Write a failing module-boundary test**
 
@@ -172,12 +175,32 @@ assert.deepEqual(
   }),
   ['scripts/tests/integration/lib/a.test.mjs']
 );
+
+assert.throws(
+  () =>
+    finalizedFrozenPaths({
+      tests: [
+        { newPath: 'scripts/tests/unit/lib/a.test.mjs' },
+        { newPath: 'scripts/tests/integration/lib/a.test.mjs' },
+      ],
+      laneCorrections: [
+        {
+          migrationPath: 'scripts/tests/unit/lib/a.test.mjs',
+          finalPath: 'scripts/tests/integration/lib/a.test.mjs',
+        },
+      ],
+    }),
+  /duplicate finalized frozen path/
+);
 ```
 
 Use isolated projects to prove a valid record loads and these independent
 records fail closed with their physical file named in `errors`: invalid JSON,
-extra key, wrong schema, noncanonical path, physical-path mismatch, duplicate
-declared path, and a registry root that is a file rather than a directory.
+extra key, wrong schema, noncanonical path, duplicate declared path, and a
+registry root that is a file rather than a directory. Prove separately that a
+valid record stored at the wrong physical path appears in `misplacedRecords`
+with both `recordFile` and `expectedRecordFile`, and does not appear in
+`errors`.
 
 - [ ] **Step 6: Run the focused test and observe RED**
 
@@ -220,10 +243,12 @@ export function finalizedFrozenPaths(manifest) {
 
 The loader must recursively enumerate only `.json` files in sorted POSIX order,
 parse each file independently, require sorted keys to equal `['path', 'schema']`,
-require integer schema `1`, validate canonical `path`, require physical location
-to equal `recordPathForTestPath(path)`, and collect all errors rather than
-throwing on the first malformed record. Return `rootPresent: false` for an absent
-root and a named error for an unreadable/non-directory root.
+require integer schema `1`, and validate canonical `path`. After those checks,
+compare the physical location with `recordPathForTestPath(path)` and append a
+`{ recordFile, expectedRecordFile, path }` entry to `misplacedRecords` on
+mismatch. Collect malformed `errors` and `misplacedRecords` independently rather
+than throwing on the first bad record. Return `rootPresent: false` for an absent
+root and a named malformed error for an unreadable/non-directory root.
 
 - [ ] **Step 8: Run focused tests and observe GREEN**
 
@@ -255,11 +280,12 @@ git commit -m "test(corpus): add strict membership record loader [#1263]"
 - Consumes: validated frozen paths and loader results from Task 1.
 - Produces:
   - `reconcileCorpusMembership({ discovered, frozenPaths, records,
-recordErrors? }): MembershipResult`
+recordErrors?, misplacedRecords? }): MembershipResult`
   - `formatCorpusMembershipErrors(result): string`
   - `MembershipResult` contains `ok`, `noncanonicalDiscoveredPaths`,
     `undeclaredPaths`, `missingPaths`, `duplicatePaths`, `overlapPaths`,
-    `malformedRecords`, and derived `{ all, unit, integration, slow }` counts.
+    `malformedRecords`, `misplacedRecords`, and derived
+    `{ all, unit, integration, slow }` counts.
 
 - [ ] **Step 1: Write failing synthetic reconciliation tests**
 
@@ -291,6 +317,7 @@ Add independent RED cases for:
 - missing frozen destination;
 - duplicate record declaration;
 - record/frozen overlap;
+- a valid record stored at the wrong deterministic location;
 - noncanonical discovery path; and
 - a loader error even when path sets otherwise match.
 
@@ -327,18 +354,22 @@ Represent each missing entry with its authority:
 { path, authority: 'record', recordFile: '<deterministic record path>' }
 ```
 
-`ok` is true only when every error/delta collection is empty. Counts derive from
-canonical discovery through `parseCanonicalTestPath()` and never from authored
-numbers.
+Copy `recordErrors` into `malformedRecords` and preserve `misplacedRecords` as a
+distinct result collection. `ok` is true only when every error/delta collection,
+including both of those collections, is empty. Counts derive from canonical
+discovery through `parseCanonicalTestPath()` and never from authored numbers.
 
 - [ ] **Step 4: Implement deterministic diagnostics**
 
-Render sections in this order: malformed records, noncanonical layout,
-duplicates, frozen overlaps, undeclared additions, and missing declarations.
-For canonical undeclared paths, call `recordPathForTestPath()` only after
-classification succeeds. For missing frozen paths, say to restore/repair the
-frozen destination; for missing record paths, name the record to remove or
-repair. The formatter performs no writes.
+Render sections in this order: malformed records, misplaced records,
+noncanonical layout, duplicates, frozen overlaps, undeclared additions, and
+missing declarations. Each misplaced entry names `recordFile` and
+`expectedRecordFile` and says to move or repair that record; it is never rendered
+as malformed, undeclared, or a test-layout failure. For canonical undeclared
+paths, call `recordPathForTestPath()` only after classification succeeds. For
+missing frozen paths, say to restore/repair the frozen destination; for missing
+record paths, name the record to remove or repair. The formatter performs no
+writes.
 
 - [ ] **Step 5: Run focused tests and observe GREEN**
 
@@ -396,6 +427,7 @@ test('live canonical discovery equals frozen destinations union post-snapshot re
     frozenPaths,
     records: loaded.records,
     recordErrors: loaded.errors,
+    misplacedRecords: loaded.misplacedRecords,
   });
   assert.equal(result.ok, true, formatCorpusMembershipErrors(result));
 });
@@ -643,7 +675,7 @@ Expected: all discovered test files pass in their canonical lanes.
 
 ```bash
 shasum -a 256 scripts/tests/fixtures/test-corpus-pre-move.json
-node --input-type=module -e "import {readFileSync} from 'node:fs'; import {discoverTestFiles} from './scripts/task-tracker/lib/discover-test-files.mjs'; import {finalizedFrozenPaths,loadPostSnapshotRecords,reconcileCorpusMembership} from './scripts/tests/lib/test-corpus-membership.mjs'; const root=process.cwd(); const frozen=finalizedFrozenPaths(JSON.parse(readFileSync('./scripts/tests/fixtures/test-corpus-pre-move.json','utf8'))); const loaded=loadPostSnapshotRecords({projectRoot:root}); const result=reconcileCorpusMembership({discovered:discoverTestFiles({projectRoot:root}),frozenPaths:frozen,records:loaded.records,recordErrors:loaded.errors}); if(!result.ok) process.exit(1); console.log(JSON.stringify(result.counts));"
+node --input-type=module -e "import {readFileSync} from 'node:fs'; import {discoverTestFiles} from './scripts/task-tracker/lib/discover-test-files.mjs'; import {finalizedFrozenPaths,loadPostSnapshotRecords,reconcileCorpusMembership} from './scripts/tests/lib/test-corpus-membership.mjs'; const root=process.cwd(); const frozen=finalizedFrozenPaths(JSON.parse(readFileSync('./scripts/tests/fixtures/test-corpus-pre-move.json','utf8'))); const loaded=loadPostSnapshotRecords({projectRoot:root}); const result=reconcileCorpusMembership({discovered:discoverTestFiles({projectRoot:root}),frozenPaths:frozen,records:loaded.records,recordErrors:loaded.errors,misplacedRecords:loaded.misplacedRecords}); if(!result.ok) process.exit(1); console.log(JSON.stringify(result.counts));"
 ```
 
 Expected: frozen hash remains
@@ -676,8 +708,9 @@ gate.
 - Story boundary: no interface or record contains `introducedBy` or reads
   `@story`.
 - Type consistency: loader records always use `{ recordFile, schema, path }`;
-  reconciliation consumes those fields and accepts loader errors as
-  `recordErrors`.
+  reconciliation consumes those fields, accepts malformed loader `errors` as
+  `recordErrors`, and carries `{ recordFile, expectedRecordFile, path }`
+  `misplacedRecords` without collapsing them into malformed diagnostics.
 - Placeholder scan: no `TBD`, `TODO`, deferred implementation, or unnamed error
   handling remains.
 - Scope: no general corpus CLI, selector algorithm change, tombstones, generated
