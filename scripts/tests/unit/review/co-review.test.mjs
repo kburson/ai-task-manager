@@ -1,4 +1,4 @@
-// @story #1266
+// @story #1266 #1322
 
 import assert from 'node:assert/strict';
 import {
@@ -13,6 +13,7 @@ import path from 'node:path';
 import test from 'node:test';
 
 import '../../fixtures/co-review-budget-cases.mjs';
+import '../../fixtures/co-review-consistency-cases.mjs';
 import '../../fixtures/co-review-finalization-cases.mjs';
 import '../../fixtures/co-review-handoff-cases.mjs';
 import '../../fixtures/co-review-start-cases.mjs';

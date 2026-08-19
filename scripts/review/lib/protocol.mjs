@@ -22,6 +22,9 @@ import { REAL_REPOSITORY_BOUNDARY } from './repository-boundary.mjs';
 
 export const STATE_SCHEMA = 'aitm.co-review/v1';
 export const EVENT_SCHEMA = 'aitm.co-review-event/v1';
+const SNAPSHOT_MAX_ATTEMPTS = 5;
+const SNAPSHOT_RETRY_DELAY_MS = 10;
+const SNAPSHOT_WAIT_SIGNAL = new Int32Array(new SharedArrayBuffer(4));
 
 export function shellArgument(value) {
   const text = String(value);
@@ -312,8 +315,12 @@ function eventIntegrity(paths, state) {
   try {
     events = readEventRecords(paths);
   } catch (error) {
-    return [`events-unreadable: ${error.message}`];
+    return { events: [], errors: [`events-unreadable: ${error.message}`] };
   }
+  return eventIntegrityForRecords(events, state);
+}
+
+function eventIntegrityForRecords(events, state) {
   const errors = [];
   if (events.length !== state.revision) {
     errors.push(`event-count: expected ${state.revision}, actual ${events.length}`);
@@ -345,32 +352,169 @@ function eventIntegrity(paths, state) {
       errors.push(`event-type revision ${expectedRevision}: ${String(event.type)}`);
     }
   }
-  const last = events.at(-1);
-  if (last?.revision === state.revision) {
-    for (const field of [
-      'lifecycle',
-      'currentRole',
-      'round',
-      'reviewTurnsUsed',
-      'maxReviewTurns',
-      'remainingReviewTurns',
-    ]) {
-      if (last[field] !== state[field]) {
-        errors.push(
-          `event-projection ${field}: expected ${String(state[field])}, actual ${String(last[field])}`
-        );
-      }
-    }
-    const expectedSupplements =
-      state.supplements === undefined ? undefined : supplementProjection(state.supplements);
-    if (JSON.stringify(last.supplements) !== JSON.stringify(expectedSupplements)) {
-      errors.push('event-projection supplements: state differs from last event');
-    }
-    if (JSON.stringify(last.acceptance) !== JSON.stringify(state.acceptance)) {
-      errors.push('event-projection acceptance: state differs from last event');
+  errors.push(...eventProjectionErrors(events, state));
+  return { events, errors };
+}
+
+function eventProjectionErrors(events, state, { requireEvent = false } = {}) {
+  const event = events[state.revision - 1];
+  if (event?.revision !== state.revision) {
+    return requireEvent
+      ? [`event-projection revision ${state.revision}: corresponding event unavailable`]
+      : [];
+  }
+  const errors = [];
+  for (const field of [
+    'lifecycle',
+    'currentRole',
+    'round',
+    'reviewTurnsUsed',
+    'maxReviewTurns',
+    'remainingReviewTurns',
+  ]) {
+    if (event[field] !== state[field]) {
+      errors.push(
+        `event-projection ${field}: expected ${String(state[field])}, actual ${String(event[field])}`
+      );
     }
   }
+  const expectedSupplements =
+    state.supplements === undefined ? undefined : supplementProjection(state.supplements);
+  if (JSON.stringify(event.supplements) !== JSON.stringify(expectedSupplements)) {
+    errors.push('event-projection supplements: state differs from corresponding event');
+  }
+  if (JSON.stringify(event.acceptance) !== JSON.stringify(state.acceptance)) {
+    errors.push('event-projection acceptance: state differs from corresponding event');
+  }
   return errors;
+}
+
+function mutationLockPresent(paths) {
+  try {
+    return lstatSync(paths.lock).isDirectory();
+  } catch {
+    return false;
+  }
+}
+
+function validForwardEventLead(state, events, errors) {
+  return (
+    errors.length === 1 &&
+    errors[0] === `event-count: expected ${state.revision}, actual ${events.length}` &&
+    events.length > state.revision
+  );
+}
+
+function validBackwardEventLag(state, events, errors) {
+  return (
+    errors.length === 1 &&
+    errors[0] === `event-count: expected ${state.revision}, actual ${events.length}` &&
+    events.length < state.revision
+  );
+}
+
+function snapshotConsistency(input = {}) {
+  const maxAttempts = input.maxAttempts ?? SNAPSHOT_MAX_ATTEMPTS;
+  const delayMilliseconds = input.delayMilliseconds ?? SNAPSHOT_RETRY_DELAY_MS;
+  if (!Number.isInteger(maxAttempts) || maxAttempts < 1 || maxAttempts > 20) {
+    throw new TypeError('co-review: snapshot consistency maxAttempts must be 1..20');
+  }
+  if (!Number.isFinite(delayMilliseconds) || delayMilliseconds < 0 || delayMilliseconds > 100) {
+    throw new TypeError('co-review: snapshot consistency delayMilliseconds must be 0..100');
+  }
+  const wait =
+    input.wait ??
+    ((milliseconds) => {
+      if (milliseconds > 0) Atomics.wait(SNAPSHOT_WAIT_SIGNAL, 0, 0, milliseconds);
+    });
+  if (typeof wait !== 'function') {
+    throw new TypeError('co-review: snapshot consistency wait must be a function');
+  }
+  const afterStateRead = input.afterStateRead;
+  if (afterStateRead !== undefined && typeof afterStateRead !== 'function') {
+    throw new TypeError('co-review: snapshot consistency afterStateRead must be a function');
+  }
+  const afterEventRead = input.afterEventRead;
+  if (afterEventRead !== undefined && typeof afterEventRead !== 'function') {
+    throw new TypeError('co-review: snapshot consistency afterEventRead must be a function');
+  }
+  const beforeStateRead = input.beforeStateRead;
+  if (beforeStateRead !== undefined && typeof beforeStateRead !== 'function') {
+    throw new TypeError('co-review: snapshot consistency beforeStateRead must be a function');
+  }
+  return {
+    maxAttempts,
+    delayMilliseconds,
+    wait,
+    beforeStateRead,
+    afterStateRead,
+    afterEventRead,
+  };
+}
+
+function readStatusSnapshot({ cwd, dir, repository, consistency }) {
+  const root = repositoryRoot(cwd, repository);
+  const paths = protocolPaths(root, dir);
+  const retry = snapshotConsistency(consistency);
+  let pendingState;
+  for (let attempt = 1; ; attempt += 1) {
+    retry.beforeStateRead?.({ attempt, paths });
+    const lockedBefore = mutationLockPresent(paths);
+    const state = readProtocol({ cwd: root, dir: paths.relative, repository });
+    retry.afterStateRead?.({ attempt, state, paths });
+    const observed = eventIntegrity(paths, state);
+    retry.afterEventRead?.({ attempt, state, events: observed.events, paths });
+    const lockedAfter = mutationLockPresent(paths);
+    if (pendingState) {
+      const pending = eventIntegrityForRecords(observed.events, pendingState);
+      if (
+        pending.errors.length > 0 &&
+        !validForwardEventLead(pendingState, pending.events, pending.errors)
+      ) {
+        return { root, paths, state: pendingState, ...pending };
+      }
+      pendingState = undefined;
+    }
+    const eventLead = validForwardEventLead(state, observed.events, observed.errors);
+    if (eventLead) {
+      const confirmedState = readProtocol({ cwd: root, dir: paths.relative, repository });
+      const confirmed = eventIntegrityForRecords(observed.events, confirmedState);
+      if (confirmed.errors.length === 0) {
+        return { root, paths, state: confirmedState, ...confirmed };
+      }
+      if (confirmedState.revision > state.revision) {
+        const confirmationForward = validForwardEventLead(
+          confirmedState,
+          confirmed.events,
+          confirmed.errors
+        );
+        if (confirmationForward && attempt < retry.maxAttempts) continue;
+        if (
+          validBackwardEventLag(confirmedState, confirmed.events, confirmed.errors) &&
+          attempt < retry.maxAttempts
+        ) {
+          pendingState = confirmedState;
+          continue;
+        }
+        return { root, paths, state: confirmedState, ...confirmed };
+      }
+    }
+    const singleEventLead = observed.events.length === state.revision + 1;
+    if (
+      !eventLead ||
+      !singleEventLead ||
+      (!lockedBefore && !lockedAfter) ||
+      attempt >= retry.maxAttempts
+    ) {
+      return { root, paths, state, ...observed };
+    }
+    retry.wait(retry.delayMilliseconds, {
+      attempt,
+      state,
+      events: observed.events,
+      paths,
+    });
+  }
 }
 
 function sameInitialization(state, desired) {
@@ -503,10 +647,17 @@ export function initializeProtocol({
 
 export function statusProtocol(options) {
   const repository = options.repository ?? REAL_REPOSITORY_BOUNDARY;
-  const state = readProtocol({ ...options, repository });
-  const root = repositoryRoot(options.cwd ?? process.cwd(), repository);
-  const paths = protocolPaths(root, options.dir);
-  const errors = eventIntegrity(paths, state);
+  const {
+    root,
+    state,
+    events: snapshotEvents,
+    errors,
+  } = readStatusSnapshot({
+    cwd: options.cwd ?? process.cwd(),
+    dir: options.dir,
+    repository,
+    consistency: options.consistency,
+  });
   for (const artifact of Object.values(state.immutableArtifacts ?? {})) {
     try {
       const actual = digestFile(root, artifact.path, 'recorded-artifact');
@@ -558,7 +709,7 @@ export function statusProtocol(options) {
   const activeSupplements = (state.supplements ?? []).filter(
     (supplement) => supplement.status === 'pending' || supplement.status === 'frozen'
   );
-  const events = errors.length === 0 ? readEventRecords(paths) : [];
+  const events = errors.length === 0 ? snapshotEvents : [];
   const latestBudgetEvent = events.findLast((event) => event.adjustment || event.continuation);
   const latestBudgetAdjustment =
     latestBudgetEvent?.adjustment ?? latestBudgetEvent?.continuation ?? null;
@@ -1386,6 +1537,7 @@ export async function waitForTurn({
   timeoutSeconds = 55,
   pollMilliseconds = 250,
   repository = REAL_REPOSITORY_BOUNDARY,
+  consistency,
 }) {
   if (!Number.isFinite(timeoutSeconds) || timeoutSeconds < 0 || timeoutSeconds > 60) {
     fail('timeout', String(timeoutSeconds), { exitCode: 2 });
@@ -1393,7 +1545,7 @@ export async function waitForTurn({
   if (!Number.isFinite(pollMilliseconds) || pollMilliseconds <= 0) {
     fail('poll-interval', String(pollMilliseconds), { exitCode: 2 });
   }
-  const first = statusProtocol({ cwd, dir, repository });
+  const first = statusProtocol({ cwd, dir, repository, consistency });
   const role = Object.entries(first.roles).find(([, identity]) => identity === actor)?.[0];
   if (!role) fail('unknown-actor', String(actor), { exitCode: 2 });
   const deadline = Date.now() + timeoutSeconds * 1000;
@@ -1408,6 +1560,6 @@ export async function waitForTurn({
     await new Promise((resolve) =>
       setTimeout(resolve, Math.min(pollMilliseconds, Math.max(1, deadline - Date.now())))
     );
-    state = statusProtocol({ cwd, dir, repository });
+    state = statusProtocol({ cwd, dir, repository, consistency });
   }
 }
