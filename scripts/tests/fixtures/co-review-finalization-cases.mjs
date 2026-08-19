@@ -910,6 +910,39 @@ test('prepared validation refuses forged reference and copy artifact guarantees'
   );
 });
 
+test('prepared validation binds every copied archive entry to its recorded source digest', async () => {
+  const fixture = await acceptedConsensus();
+  const repository = unreachableRepository(fixture);
+  const copy = prepareArchive({
+    ...archiveOptions(fixture, 'docs/reviews/forged-copy-bytes'),
+    repository,
+  });
+  const manifestEntry = {
+    artifact: (prepared) => prepared.manifest.artifact,
+    review: (prepared) => prepared.manifest.evidence.reviewerReview,
+    response: (prepared) => prepared.manifest.evidence.ownerResponse,
+  };
+
+  for (const kind of Object.keys(manifestEntry)) {
+    const forged = structuredClone(copy);
+    const file = output(forged, kind);
+    const bytes = Buffer.from(`forged ${kind}\n`);
+    file.bytesBase64 = bytes.toString('base64');
+    file.sha256 = sha256(bytes);
+    manifestEntry[kind](forged).archivedSha256 = file.sha256;
+    const manifest = output(forged, 'manifest');
+    const manifestBytes = renderArchiveManifest(forged.manifest);
+    manifest.bytesBase64 = manifestBytes.toString('base64');
+    manifest.sha256 = sha256(manifestBytes);
+
+    assert.throws(
+      () => inspectArchive({ prepared: forged, repository }),
+      (error) => error.code === 'archive-prepared-integrity',
+      kind
+    );
+  }
+});
+
 test('publication writes the manifest last, preserves inputs and repository state, and retries without rewrite', async () => {
   const fixture = await acceptedConsensus();
   const dirty = path.join(fixture.root, 'unrelated.txt');

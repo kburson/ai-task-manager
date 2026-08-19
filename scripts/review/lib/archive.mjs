@@ -614,6 +614,26 @@ function validatePrepared(prepared, repository = REAL_REPOSITORY_BOUNDARY) {
     },
     repository
   );
+  if (
+    (mode === 'copy' || legacyCopy) &&
+    prepared.manifest.artifact.sha256 !== prepared.manifest.artifact.archivedSha256
+  ) {
+    fail('archive-prepared-integrity', 'artifact copy differs from accepted source');
+  }
+  const evidenceSources = [
+    ['review', prepared.manifest?.evidence?.reviewerReview],
+    ['response', prepared.manifest?.evidence?.ownerResponse],
+  ];
+  for (const [kind, evidence] of evidenceSources) {
+    recordedFile(
+      prepared.root,
+      { path: evidence?.sourcePath, sha256: evidence?.sourceSha256 },
+      `${kind}-source`
+    );
+    if (evidence.sourceSha256 !== evidence.archivedSha256) {
+      fail('archive-prepared-integrity', `${kind} copy differs from recorded source`);
+    }
+  }
   const expectedEntries = [
     ...(mode === 'copy' || legacyCopy
       ? [
