@@ -140,11 +140,7 @@ function readOnlySegment(words) {
   if (words[index] !== command || /^[A-Za-z_][A-Za-z0-9_]*=/.test(words[index])) return false;
   if (command === 'git') {
     if (words[index + 1] === '--no-pager') index += 1;
-    const dangerousOption = words.some((word) =>
-      /^(?:-O|--output(?:=|$)|--ext-diff$|--textconv$|--filters$|--exec(?:=|$)|--open-files-in-pager(?:=|$))/.test(
-        word
-      )
-    );
+    const dangerousOption = words.some((word) => /^(?:-O|--(?:te|fi|op|ou|ex))/.test(word));
     return !dangerousOption && READ_ONLY_GIT_SUBCOMMANDS.has(words[index + 1]);
   }
   if (command === 'rg') {
@@ -182,7 +178,7 @@ export function extractBashWriteTargets(command, projectRoot) {
   if (/[&|;<()\r\n]/.test(text) || /(?:^|\s)(?:[0-9]+|&)>>?/.test(text)) {
     ambiguousMutation = true;
   }
-  const redirectRe = /(?<![0-9&])>>?\s*("[^"]+"|'[^']+'|[^\s;&|]+)/g;
+  const redirectRe = />>?\s*("[^"]+"|'[^']+'|[^\s;&|]+)/g;
   for (const match of text.matchAll(redirectRe)) add(match[1].replace(/^(['"])(.*)\1$/, '$2'));
 
   const segments = text.split(/&&|\|\||(?<!\|)\|(?!\|)|[;\n]/);

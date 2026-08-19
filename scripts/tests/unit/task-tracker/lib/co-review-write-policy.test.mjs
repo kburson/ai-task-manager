@@ -80,12 +80,18 @@ test('bash parser reports destinations and rejects shell composition or unknown 
     'git grep -Ovim needle',
     'file -C -m src/payload.magic',
     'cat <(dd if=/dev/zero of=src/clobber.txt)',
+    'git cat-file --textcon HEAD:package.json',
+    'git cat-file --fil HEAD:package.json',
+    'git grep --open-files-in-page=false name -- package.json',
   ]) {
     assert.equal(
       extractBashWriteTargets(command, root).ambiguousMutation,
       true,
       `${command} must not fall through as read-only`
     );
+  }
+  for (const command of ['printf x2> src/clobber.txt', 'echo hello2>src/clobber.txt']) {
+    assert.deepEqual(extractBashWriteTargets(command, root).targets, ['/repo/src/clobber.txt']);
   }
   for (const command of ['git status --short', 'git diff --stat', 'rg needle src', 'cat src/a']) {
     assert.equal(
