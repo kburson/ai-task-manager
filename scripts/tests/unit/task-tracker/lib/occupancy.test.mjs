@@ -1,8 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdtempSync, mkdirSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
 import path from 'node:path';
+
+import { projectScratchDir } from '../../../../task-tracker/lib/scratch-dir.mjs';
 
 import {
   claimOccupancy,
@@ -14,7 +15,7 @@ import {
 } from '../../../../task-tracker/lib/occupancy.mjs';
 
 function fixture() {
-  const root = mkdtempSync(path.join(tmpdir(), 'aitm-occupancy-'));
+  const root = mkdtempSync(path.join(projectScratchDir('test'), 'aitm-occupancy-'));
   const file = path.join(root, '.tmp', 'aitm', 'fleet', 'occupancy.json');
   const now = (() => {
     let tick = 0;

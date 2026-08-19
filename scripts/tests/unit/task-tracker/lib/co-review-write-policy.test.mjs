@@ -1,7 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdtempSync, mkdirSync, symlinkSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
 import path from 'node:path';
 
 import {
@@ -10,6 +9,7 @@ import {
   extractBashWriteTargets,
 } from '../../../../task-tracker/lib/mutation-targets.mjs';
 import { evaluateCoReviewWrite } from '../../../../task-tracker/lib/co-review-write-policy.mjs';
+import { projectScratchDir } from '../../../../task-tracker/lib/scratch-dir.mjs';
 
 test('apply_patch parser extracts add, update, delete, move, and multiple targets', () => {
   const patchText = `*** Begin Patch
@@ -56,7 +56,7 @@ test('bash parser reports complete destinations and ambiguous mutations', () => 
 });
 
 function policyFixture() {
-  const projectDir = mkdtempSync(path.join(tmpdir(), 'aitm-review-policy-'));
+  const projectDir = mkdtempSync(path.join(projectScratchDir('test'), 'aitm-review-policy-'));
   const dir = path.join(projectDir, '.tmp', 'review-protocol');
   mkdirSync(dir, { recursive: true });
   const pending = path.join(dir, 'round-2-reviewer-review.md');

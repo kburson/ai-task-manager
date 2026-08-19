@@ -1,8 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdtempSync, mkdirSync } from 'node:fs';
-import { tmpdir } from 'node:os';
 import path from 'node:path';
+
+import { projectScratchDir } from '../../../task-tracker/lib/scratch-dir.mjs';
 
 import {
   isActiveCoReviewWorktree,
@@ -14,7 +15,7 @@ import {
 } from '../../../review/lib/index.mjs';
 
 function fixture() {
-  const worktree = mkdtempSync(path.join(tmpdir(), 'aitm-review-index-'));
+  const worktree = mkdtempSync(path.join(projectScratchDir('test'), 'aitm-review-index-'));
   const dir = path.join(worktree, '.tmp', 'custom-review');
   mkdirSync(dir, { recursive: true });
   const indexFile = path.join(worktree, '.tmp', 'aitm', 'fleet', 'co-review-index.json');
