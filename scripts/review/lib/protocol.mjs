@@ -569,7 +569,6 @@ export function statusProtocol(options) {
   const repository = options.repository ?? REAL_REPOSITORY_BOUNDARY;
   const {
     root,
-    paths,
     state,
     events: snapshotEvents,
     errors,
