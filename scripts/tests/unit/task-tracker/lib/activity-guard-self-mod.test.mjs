@@ -71,8 +71,8 @@ test('interlock fires ahead of the .tmp carve-out, chore-mode bypass, and state 
   // call must precede the `.tmp` carve-out, the isChoreModeActive bypass, and
   // the isAllowed state check. If a refactor reorders these, this test fails.
   const src = readFileSync(GUARD_SRC, 'utf8');
-  const idxInterlock = src.indexOf('isInstalledGuardPath(target)');
-  const idxTmp = src.indexOf("target.startsWith('.tmp/')");
+  const idxInterlock = src.indexOf('isInstalledGuardPath(candidate)');
+  const idxTmp = src.indexOf("candidate.startsWith('.tmp/')");
   const idxChore = src.indexOf('isChoreModeActive(projectRoot)');
   const idxAllowed = src.indexOf('isAllowed(state, activityClass)');
 
