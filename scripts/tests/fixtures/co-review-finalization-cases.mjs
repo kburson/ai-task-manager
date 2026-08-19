@@ -562,16 +562,23 @@ test('intervention and accepted status expose state-valid finalization actions a
   );
 });
 
-test('archive resolves consensus evidence by events and derives stable pair-round names', async () => {
+test('reachable artifacts use reference mode while preserving terminal evidence', async () => {
   const fixture = await acceptedConsensus();
   const prepared = prepareArchive(archiveOptions(fixture));
   assert.equal(prepared.status, 'absent');
   assert.deepEqual(prepared.files.map((file) => file.path).sort(), [
     'README.md',
-    'artifact-artifact.md',
     'artifact-r3-owner-owner-agent-response.md',
     'artifact-r3-reviewer-reviewer-agent-review.md',
   ]);
+  assert.equal(prepared.manifest.artifact.mode, 'reference');
+  assert.equal(prepared.manifest.artifact.archivePath, undefined);
+  assert.equal(prepared.manifest.artifact.archivedSha256, undefined);
+  assert.equal(output(prepared, 'artifact'), undefined);
+  assert.match(
+    renderArchiveManifest(prepared.manifest).toString('utf8'),
+    new RegExp(`git cat-file blob ${prepared.manifest.artifact.gitBlob}`)
+  );
   assert.equal(prepared.manifest.decision.basis, 'reviewer-consensus');
   assert.equal(prepared.manifest.evidence.pairRound, 3);
   assert.equal(prepared.manifest.evidence.ownerResponse.eventRound, 2);
@@ -580,8 +587,27 @@ test('archive resolves consensus evidence by events and derives stable pair-roun
     prepared.manifest.normative,
     'The accepted artifact remains normative; the archived review and owner response are evidence.'
   );
+});
+
+test('unreachable accepted commits retain copy mode with exact artifact bytes', async () => {
+  const fixture = await acceptedConsensus();
+  const repository = {
+    ...fixture.repository,
+    resolveReachableCommit(_root, revision) {
+      return { commit: revision, reachable: false };
+    },
+  };
+  const prepared = prepareArchive({
+    ...archiveOptions(fixture, 'docs/reviews/copy-fallback'),
+    repository,
+  });
+  const artifact = output(prepared, 'artifact');
+  assert.equal(prepared.manifest.artifact.mode, 'copy');
+  assert.ok(artifact);
+  assert.equal(prepared.manifest.artifact.archivePath, artifact.path);
+  assert.equal(prepared.manifest.artifact.archivedSha256, artifact.sha256);
   assert.equal(
-    output(prepared, 'artifact').sha256,
+    artifact.sha256,
     sha256(readFileSync(path.join(fixture.root, fixture.options.artifact)))
   );
 });
@@ -680,7 +706,11 @@ test('archive protects README and disambiguates lossy colliding identity slugs',
   const prepared = prepareArchive(archiveOptions(fixture, 'docs/reviews/readme-source'));
   const ownerDigest = createHash('sha256').update(owner).digest('hex').slice(0, 8);
   const reviewerDigest = createHash('sha256').update(reviewer).digest('hex').slice(0, 8);
-  assert.ok(prepared.files.some((file) => file.path === 'artifact-README.md'));
+  assert.equal(prepared.manifest.artifact.sourcePath, 'docs/README.md');
+  assert.equal(
+    prepared.files.some((file) => file.path === 'artifact-README.md'),
+    false
+  );
   assert.ok(
     prepared.files.some((file) => file.path.includes(`owner-a-b-${ownerDigest}-response.md`))
   );
@@ -702,12 +732,15 @@ test('archive preserves an arbitrary artifact basename and returns a deeply froz
   assert.throws(() => {
     snapshot.events.at(-1).handoff.decision = 'changes-requested';
   }, TypeError);
-  assert.ok(
-    prepareArchive({
-      ...snapshot,
-      archiveDir: 'docs/reviews/arbitrary',
-      repository: fixture.repository,
-    }).files.some((file) => file.path === 'artifact-review.notes-v2.md')
+  const prepared = prepareArchive({
+    ...snapshot,
+    archiveDir: 'docs/reviews/arbitrary',
+    repository: fixture.repository,
+  });
+  assert.equal(prepared.manifest.artifact.sourcePath, 'docs/review.notes-v2.md');
+  assert.equal(
+    prepared.files.some((file) => file.path === 'artifact-review.notes-v2.md'),
+    false
   );
 });
 
@@ -811,7 +844,7 @@ test('publication and inspection reject forged prepared paths before touching si
   const prepared = structuredClone(
     prepareArchive(archiveOptions(fixture, 'docs/reviews/forged-prepared'))
   );
-  output(prepared, 'artifact').path = '../escaped-by-forged-prepared.md';
+  output(prepared, 'review').path = '../escaped-by-forged-prepared.md';
   const escaped = path.join(
     path.dirname(prepared.destination.absolute),
     'escaped-by-forged-prepared.md'
@@ -908,7 +941,7 @@ test('publication leaves unique staging evidence on failures and handles rename 
   const failed = await acceptedConsensus();
   const prepared = prepareArchive(archiveOptions(failed, 'docs/reviews/failure'));
   for (const [uuid, failRelative] of [
-    ['11111111-1111-4111-8111-111111111111', output(prepared, 'artifact').path],
+    ['11111111-1111-4111-8111-111111111111', output(prepared, 'review').path],
     ['22222222-2222-4222-8222-222222222222', 'README.md'],
   ]) {
     assert.throws(

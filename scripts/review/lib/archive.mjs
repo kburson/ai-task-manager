@@ -333,6 +333,30 @@ function decisionModel(decision) {
   };
 }
 
+function canReferenceArtifact(root, artifact, repository) {
+  const resolved = repositoryCall(artifact.commit, () =>
+    repository.resolveReachableCommit(root, artifact.commit)
+  );
+  return resolved.commit === artifact.commit && resolved.reachable === true;
+}
+
+function artifactManifest(artifact, mode, artifactFile) {
+  const common = {
+    mode,
+    sourcePath: artifact.path,
+    acceptedCommit: artifact.commit,
+    gitBlob: artifact.blob,
+    sha256: artifact.sha256,
+  };
+  return mode === 'copy'
+    ? {
+        ...common,
+        archivePath: artifactFile.path,
+        archivedSha256: artifactFile.sha256,
+      }
+    : common;
+}
+
 function buildPrepared({ root, state, events, archiveDir, repository = REAL_REPOSITORY_BOUNDARY }) {
   if (!root || !state || !Array.isArray(events) || state.lifecycle !== 'accepted') {
     fail('archive-ineligible', `${state?.lifecycle ?? 'missing-state'}`);
@@ -368,7 +392,13 @@ function buildPrepared({ root, state, events, archiveDir, repository = REAL_REPO
   const artifactOutput = `artifact-${artifactBasename}`;
   const responseOutput = `${artifactStem}-r${evidence.pairRound}-owner-${slugs.owner}-response.md`;
   const reviewOutput = `${artifactStem}-r${evidence.pairRound}-reviewer-${slugs.reviewer}-review.md`;
-  const paths = ['README.md', artifactOutput, responseOutput, reviewOutput];
+  const mode = canReferenceArtifact(root, artifact, repository) ? 'reference' : 'copy';
+  const paths = [
+    'README.md',
+    ...(mode === 'copy' ? [artifactOutput] : []),
+    responseOutput,
+    reviewOutput,
+  ];
   if (new Set(paths).size !== paths.length) fail('archive-name-conflict', paths.join(', '));
 
   const artifactFile = outputFile('artifact', artifactOutput, artifact.bytes);
@@ -380,14 +410,7 @@ function buildPrepared({ root, state, events, archiveDir, repository = REAL_REPO
       id: state.protocolId,
       schema: state.schema,
     },
-    artifact: {
-      sourcePath: artifact.path,
-      acceptedCommit: artifact.commit,
-      gitBlob: artifact.blob,
-      sha256: artifact.sha256,
-      archivePath: artifactFile.path,
-      archivedSha256: artifactFile.sha256,
-    },
+    artifact: artifactManifest(artifact, mode, artifactFile),
     participants: {
       owner: state.roles.owner,
       reviewer: state.roles.reviewer,
@@ -421,6 +444,12 @@ function buildPrepared({ root, state, events, archiveDir, repository = REAL_REPO
       'The accepted artifact remains normative; the archived review and owner response are evidence.',
   };
   const manifestFile = outputFile('manifest', 'README.md', renderArchiveManifest(manifest));
+  const files = [
+    ...(mode === 'copy' ? [artifactFile] : []),
+    reviewFile,
+    responseFile,
+    manifestFile,
+  ];
   return deepFreeze({
     schema: 'aitm.co-review.prepared-archive/v1',
     root,
@@ -428,7 +457,7 @@ function buildPrepared({ root, state, events, archiveDir, repository = REAL_REPO
     runtimeDir: state.initialization?.runtimeDir,
     destination,
     manifest,
-    files: [artifactFile, reviewFile, responseFile, manifestFile],
+    files,
   });
 }
 
@@ -493,6 +522,9 @@ export function renderArchiveManifest(model) {
     '',
     'This directory preserves the terminal evidence selected by the governed co-review protocol.',
     'The accepted specification remains normative; the review and owner response are evidence.',
+    ...(model.artifact?.mode === 'reference'
+      ? [`Recover the accepted artifact with \`git cat-file blob ${model.artifact.gitBlob}\`.`]
+      : []),
     '',
     '<!-- aitm-co-review-manifest:start -->',
     '```json',
@@ -521,17 +553,25 @@ export function prepareArchive(options = {}) {
 }
 
 function validatePrepared(prepared, repository = REAL_REPOSITORY_BOUNDARY) {
+  const mode = prepared?.manifest?.artifact?.mode;
+  const expectedKinds =
+    mode === 'reference'
+      ? ['review', 'response', 'manifest']
+      : mode === 'copy'
+        ? ['artifact', 'review', 'response', 'manifest']
+        : null;
   if (
     prepared?.schema !== 'aitm.co-review.prepared-archive/v1' ||
     !prepared.destination?.absolute ||
     !Array.isArray(prepared.files) ||
-    prepared.files.length !== 4
+    !expectedKinds ||
+    prepared.files.length !== expectedKinds.length
   ) {
     fail('archive-prepared-integrity', 'invalid prepared model');
   }
   const names = prepared.files.map((file) => file.path);
-  if (new Set(names).size !== 4 || !names.includes('README.md')) {
-    fail('archive-prepared-integrity', 'expected exact four-path tree');
+  if (new Set(names).size !== expectedKinds.length || !names.includes('README.md')) {
+    fail('archive-prepared-integrity', 'expected exact mode-specific path tree');
   }
   const byKind = new Map();
   for (const file of prepared.files) {
@@ -542,7 +582,7 @@ function validatePrepared(prepared, repository = REAL_REPOSITORY_BOUNDARY) {
       file.path === '..' ||
       path.posix.basename(file.path) !== file.path ||
       path.win32.basename(file.path) !== file.path ||
-      !['artifact', 'review', 'response', 'manifest'].includes(file.kind) ||
+      !expectedKinds.includes(file.kind) ||
       byKind.has(file.kind)
     ) {
       fail('archive-prepared-integrity', `unsafe file entry ${String(file.path)}`);
@@ -550,11 +590,15 @@ function validatePrepared(prepared, repository = REAL_REPOSITORY_BOUNDARY) {
     byKind.set(file.kind, file);
   }
   const expectedEntries = [
-    [
-      'artifact',
-      prepared.manifest?.artifact?.archivePath,
-      prepared.manifest?.artifact?.archivedSha256,
-    ],
+    ...(mode === 'copy'
+      ? [
+          [
+            'artifact',
+            prepared.manifest?.artifact?.archivePath,
+            prepared.manifest?.artifact?.archivedSha256,
+          ],
+        ]
+      : []),
     [
       'review',
       prepared.manifest?.evidence?.reviewerReview?.archivePath,
@@ -576,6 +620,18 @@ function validatePrepared(prepared, repository = REAL_REPOSITORY_BOUNDARY) {
     ) {
       fail('archive-prepared-integrity', `${kind} does not match manifest`);
     }
+  }
+  if (mode === 'reference') {
+    committedArtifact(
+      prepared.root,
+      {
+        path: prepared.manifest.artifact.sourcePath,
+        commit: prepared.manifest.artifact.acceptedCommit,
+        blob: prepared.manifest.artifact.gitBlob,
+        sha256: prepared.manifest.artifact.sha256,
+      },
+      repository
+    );
   }
   for (const file of prepared.files) expectedBytes(file);
   const manifest = byKind.get('manifest');
