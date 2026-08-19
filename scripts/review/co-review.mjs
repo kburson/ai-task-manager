@@ -14,6 +14,9 @@ import {
   deriveRuntimeDir,
   startProtocol,
 } from './lib/start.mjs';
+import { detectProvider } from '../providers/index.mjs';
+import { FALLBACK_SESSION_ID, resolveSessionId } from '../task-tracker/lib/session-id.mjs';
+import { markProtocolLifecycle, recordReviewerClaim, registerProtocol } from './lib/index.mjs';
 
 const STATUS_PROJECTED_MUTATIONS = new Set([
   'init',
@@ -108,10 +111,34 @@ export async function runCli(argv = process.argv.slice(2), io = {}) {
       if (!result.integrity.ok) exitCode = 1;
     } else if (name === 'claim') {
       assertAllowed(values, booleans, ['dir', 'actor']);
+      const cwd = io.cwd ?? process.cwd();
+      const dir = required(values, 'dir');
+      const actor = required(values, 'actor');
+      const state = protocol.statusProtocol({ cwd, dir, ...repositoryOptions });
+      const role = Object.entries(state.roles).find(([, identity]) => identity === actor)?.[0];
+      if (role === 'reviewer') {
+        const env = io.env ?? process.env;
+        const provider = detectProvider({ env });
+        const sid = resolveSessionId({ env });
+        if (!sid || sid === FALLBACK_SESSION_ID) {
+          const error = new Error(
+            `${provider.name} requires a real provider session id for a reviewer claim`
+          );
+          error.code = 'provider-session-id-required';
+          throw error;
+        }
+        (io.recordReviewerClaim ?? recordReviewerClaim)({
+          projectDir: cwd,
+          protocolId: state.protocolId,
+          provider: provider.name,
+          sid,
+          round: state.round,
+        });
+      }
       result = protocol.claimTurn({
-        cwd: io.cwd ?? process.cwd(),
-        dir: required(values, 'dir'),
-        actor: required(values, 'actor'),
+        cwd,
+        dir,
+        actor,
         ...repositoryOptions,
       });
     } else if (name === 'wait') {
@@ -360,6 +387,22 @@ export async function runCli(argv = process.argv.slice(2), io = {}) {
         ...repositoryOptions,
       });
       if (archivePublication) result = { ...result, archivePublication };
+      if (name === 'init') {
+        (io.registerProtocol ?? registerProtocol)({
+          projectDir: result.repositoryRoot,
+          state: result,
+        });
+      } else {
+        (io.registerProtocol ?? registerProtocol)({
+          projectDir: result.repositoryRoot,
+          state: result,
+        });
+        (io.markProtocolLifecycle ?? markProtocolLifecycle)({
+          projectDir: result.repositoryRoot,
+          protocolId: result.protocolId,
+          lifecycle: result.lifecycle,
+        });
+      }
     }
     writeOut(`${JSON.stringify(result, null, 2)}\n`);
     return exitCode;

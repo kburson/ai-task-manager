@@ -8,6 +8,7 @@ import { loadSession } from '../lib/session-store.mjs';
 import { resolveGate } from '../lib/gate-resolve.mjs';
 import { rawProjectConfig } from '../config.mjs';
 import { currentSessionId } from '../word-counter.mjs';
+import { releaseBindingOccupancy } from '../lib/occupancy-lifecycle.mjs';
 import {
   checkDirty,
   formatSummary,
@@ -98,6 +99,18 @@ export async function resolveCloseLifecycleEvidence({
     hasAcceptedApprovalEvidence(lifecycleEvidence, { provenance: 'full-auto' });
   if (!approvalAccepted) throw new Error('directory-approval-evidence-missing');
   return lifecycleEvidence;
+}
+
+export function releaseClosedBinding({ ctx, projectDir, issue }) {
+  try {
+    (ctx.deregisterTask ?? deregisterTask)(projectDir, issue);
+  } catch {
+    /* fleet cleanup is advisory; authoritative occupancy release is mandatory */
+  }
+  return (ctx.releaseBindingOccupancy ?? releaseBindingOccupancy)(
+    { projectDir, issue },
+    { releaseOccupancy: ctx.releaseOccupancy }
+  );
 }
 
 // #705 — best-effort: a label-strip failure must never block or fail the
@@ -415,13 +428,13 @@ export async function verbClose(ctx) {
         warn: (msg) => console.error(`[task-tracker] warn: ${msg}`),
       },
     });
+    releaseClosedBinding({ ctx, projectDir, issue: closeTarget });
     // Clear local active-task state so a subsequent bind is clean.
     try {
       clearActive(statePath);
     } catch {
       /* best-effort; a residual active pointer is harmless */
     }
-    deregisterTask(projectDir, closeTarget);
     console.log(
       `Closed ${closeTarget} as ${result.reason}` +
         (result.of ? ` (duplicate of ${result.of})` : '') +
@@ -692,12 +705,8 @@ export async function verbClose(ctx) {
         return;
       }
       await stripCloseLabels({ pexec, cfg, issueNum: closeIssueNum });
+      releaseClosedBinding({ ctx, projectDir, issue: closeTarget });
       clearActive(statePath);
-      try {
-        deregisterTask(projectDir, closeTarget);
-      } catch {
-        /* best-effort: cleanup; failure is non-fatal */
-      }
       console.log(
         `${closeTarget} board was Done but the GitHub issue was still OPEN — closed it now; local state and fleet cleaned up.`
       );
@@ -785,12 +794,8 @@ export async function verbClose(ctx) {
             });
           },
           cleanup: async () => {
+            releaseClosedBinding({ ctx, projectDir, issue: closeTarget });
             if (!ctx.preserveActiveOnConvergence) clearActive(statePath);
-            try {
-              deregisterTask(projectDir, closeTarget);
-            } catch {
-              /* best-effort: cleanup; failure is non-fatal */
-            }
             return { ok: true };
           },
           reopenIssue: async () => {
@@ -1684,12 +1689,8 @@ export async function verbClose(ctx) {
     }
     await stripCloseLabels({ pexec, cfg, issueNum: closeIssueNum });
   }
+  releaseClosedBinding({ ctx, projectDir, issue: s.active });
   clearActive(statePath);
-  try {
-    deregisterTask(projectDir, s.active);
-  } catch {
-    /* best-effort: cleanup; failure is non-fatal */
-  }
   // #385 — branch on the structured result. A genuine board-move failure must
   // NOT be reported as a clean "Closed": the issue was just closed on GitHub
   // (the explicit `gh issue close` above), but if the board never reached

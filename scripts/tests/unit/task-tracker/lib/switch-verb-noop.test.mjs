@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 // @story #833
+// cspell:ignore heartbeated
 // Self-bind no-op — behavioral test that drives `verbSwitch` with a stubbed ctx.
 //
 // #833 makes a re-bind to the already-active, never-paused issue a TRUE no-op:
@@ -122,6 +123,52 @@ test('cross-issue switch flushes switch-out on the outgoing issue plus one incom
   );
   assert.equal(postCalls.length, 1, 'exactly one incoming bind row on the new issue');
   assert.equal(postCalls[0].issue, '#833');
+});
+
+test('a post-save switch failure restores both prior state and occupancy', async () => {
+  const caseDir = path.join(base, 'd-rollback');
+  const { ctx, statePath } = makeCtx(caseDir);
+  const seed = {
+    active: '#700',
+    lastActive: '#700',
+    entryStartTs: '2026-07-14T09:00:00.000Z',
+    wordsAtEntryStart: 10,
+    lastWordMarker: 700,
+  };
+  saveState(seed, statePath);
+  const claim = { status: 'moved', before: { 700: {} }, claimed: { 833: {} } };
+  let rolledBack = null;
+  ctx.claimBindingOccupancy = () => claim;
+  ctx.rollbackBindingOccupancy = (received) => {
+    rolledBack = received;
+    return { status: 'rolled-back' };
+  };
+  ctx.safePostTiming = async () => {
+    throw new Error('timing unavailable');
+  };
+
+  await assert.rejects(() => verbSwitch(ctx, '#833'), /timing unavailable/);
+  assert.equal(loadState(statePath).active, '#700', 'prior binding restored');
+  assert.equal(loadState(statePath).entryStartTs, seed.entryStartTs, 'prior span restored');
+  assert.equal(rolledBack, claim, 'occupancy claim rolled back');
+});
+
+test('a superseded occupancy rollback preserves the target state to avoid split authority', async () => {
+  const caseDir = path.join(base, 'e-superseded');
+  const { ctx, statePath } = makeCtx(caseDir);
+  saveState({ active: '#700', lastActive: '#700', lastWordMarker: 700 }, statePath);
+  ctx.claimBindingOccupancy = () => ({ status: 'moved' });
+  ctx.rollbackBindingOccupancy = () => ({ status: 'superseded' });
+  ctx.safePostTiming = async () => {
+    throw new Error('timing unavailable');
+  };
+
+  await assert.rejects(() => verbSwitch(ctx, '#833'), /timing unavailable/);
+  assert.equal(
+    loadState(statePath).active,
+    '#833',
+    'state remains aligned to the concurrently heartbeated target occupancy'
+  );
 });
 
 test.after(() => {

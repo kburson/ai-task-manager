@@ -210,36 +210,36 @@ export const TIMING_EVENT_BASELINE = Object.freeze({
     ),
     timingEmitter(
       'scripts/task-tracker/hook-handler.mjs',
-      165,
+      166,
       'event-call',
       "'pre-compact-flush'",
       ['pre-compact-flush']
     ),
     timingEmitter(
       'scripts/task-tracker/hook-handler.mjs',
-      211,
+      212,
       'event-call',
       "'post-compact-resume'",
       ['post-compact-resume']
     ),
     timingEmitter(
       'scripts/task-tracker/hook-handler.mjs',
-      273,
+      274,
       'event-spec',
       "'session-end-recovery'",
       ['session-end-recovery']
     ),
     timingEmitter(
       'scripts/task-tracker/hook-handler.mjs',
-      286,
+      287,
       'event-spec',
       "'pause:orphan-recovery'",
       ['pause:orphan-recovery']
     ),
-    timingEmitter('scripts/task-tracker/hook-handler.mjs', 295, 'event-spec', "'resumed'", [
+    timingEmitter('scripts/task-tracker/hook-handler.mjs', 296, 'event-spec', "'resumed'", [
       'resumed',
     ]),
-    timingEmitter('scripts/task-tracker/hook-handler.mjs', 473, 'event-call', "'session-start'", [
+    timingEmitter('scripts/task-tracker/hook-handler.mjs', 479, 'event-call', "'session-start'", [
       'session-start',
     ]),
     timingEmitter('scripts/task-tracker/hooks/on-ask.mjs', 184, 'event-call', "'paused'", [
@@ -325,24 +325,24 @@ export const TIMING_EVENT_BASELINE = Object.freeze({
     ),
     timingEmitter(
       'scripts/task-tracker/verbs/close.mjs',
-      817,
+      822,
       'event-call',
       "'unauthorized-close'",
       ['unauthorized-close']
     ),
     timingEmitter(
       'scripts/task-tracker/verbs/close.mjs',
-      1000,
+      1005,
       'event-call',
       "'closed-with-dirty-tree'",
       ['closed-with-dirty-tree']
     ),
-    timingEmitter('scripts/task-tracker/verbs/close.mjs', 1160, 'event-call', "'lifecycle-warn'", [
+    timingEmitter('scripts/task-tracker/verbs/close.mjs', 1165, 'event-call', "'lifecycle-warn'", [
       'lifecycle-warn',
     ]),
     timingEmitter(
       'scripts/task-tracker/verbs/close.mjs',
-      1328,
+      1333,
       'event-call',
       '_PEcascade.done.enter.event',
       ['issue:wrap']
@@ -378,17 +378,17 @@ export const TIMING_EVENT_BASELINE = Object.freeze({
     timingEmitter('scripts/task-tracker/verbs/reject.mjs', 71, 'event-call', "'rejected:develop'", [
       'rejected:develop',
     ]),
-    timingEmitter('scripts/task-tracker/verbs/resume.mjs', 183, 'event-call', "'resumed'", [
+    timingEmitter('scripts/task-tracker/verbs/resume.mjs', 235, 'event-call', "'resumed'", [
       'resumed',
     ]),
     timingEmitter(
       'scripts/task-tracker/verbs/resume.mjs',
-      394,
+      459,
       'event-call',
       "'pause:auto-detected-gap'",
       ['pause:auto-detected-gap']
     ),
-    timingEmitter('scripts/task-tracker/verbs/resume.mjs', 417, 'event-call', 'bindEvent', [
+    timingEmitter('scripts/task-tracker/verbs/resume.mjs', 482, 'event-call', 'bindEvent', [
       'start',
       'resumed',
     ]),
@@ -407,15 +407,15 @@ export const TIMING_EVENT_BASELINE = Object.freeze({
     timingEmitter('scripts/task-tracker/verbs/review.mjs', 1374, 'event-call', "'gate-refused'", [
       'gate-refused',
     ]),
-    timingEmitter('scripts/task-tracker/verbs/stop.mjs', 47, 'flush-call', "'stop'", ['stop']),
-    timingEmitter('scripts/task-tracker/verbs/switch.mjs', 104, 'flush-call', 'eventSlug', [
+    timingEmitter('scripts/task-tracker/verbs/stop.mjs', 48, 'flush-call', "'stop'", ['stop']),
+    timingEmitter('scripts/task-tracker/verbs/switch.mjs', 117, 'flush-call', 'eventSlug', [
       'switch-out:#1007',
     ]),
-    timingEmitter('scripts/task-tracker/verbs/switch.mjs', 221, 'event-call', 'bindEvent', [
+    timingEmitter('scripts/task-tracker/verbs/switch.mjs', 235, 'event-call', 'bindEvent', [
       'start',
       'resumed',
     ]),
-    timingEmitter('scripts/task-tracker/verbs/update.mjs', 21, 'flush-call', "'update'", [
+    timingEmitter('scripts/task-tracker/verbs/update.mjs', 22, 'flush-call', "'update'", [
       'update',
     ]),
   ]),

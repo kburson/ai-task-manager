@@ -108,6 +108,7 @@ assert.equal(
         ts: new Date().toISOString(),
         post: postFailure,
       }),
+      heartbeatBindingOccupancy: () => ({ status: 'updated' }),
     });
   } finally {
     console.log = originalLog;
@@ -160,6 +161,7 @@ for (const [name, verb, expectedPrefix] of [
         ts: new Date().toISOString(),
         post: postFailure,
       }),
+      heartbeatBindingOccupancy: () => ({ status: 'updated' }),
     });
   } finally {
     console.log = originalLog;

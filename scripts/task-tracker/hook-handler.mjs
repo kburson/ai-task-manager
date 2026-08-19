@@ -42,6 +42,7 @@ import {
 } from './fleet-registry.mjs';
 import { getProjectDir, sessionDir } from './paths.mjs';
 import { claimHookStamp } from './lib/hook-idempotency.mjs';
+import { touchBindingOccupancy } from './lib/occupancy-lifecycle.mjs';
 
 const pexec = promisify(execFile);
 
@@ -413,6 +414,11 @@ async function onSessionStart(sid) {
 
   // Active task — session closed without /task pause; recover unlogged wall time
   const nowTs = new Date().toISOString();
+  touchBindingOccupancy({
+    projectDir,
+    issue: s.active,
+    now: () => nowTs,
+  });
   const wallMin = s.entryStartTs
     ? Math.round((Date.now() - new Date(s.entryStartTs).getTime()) / 60000)
     : 0;

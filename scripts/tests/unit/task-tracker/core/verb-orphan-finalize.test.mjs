@@ -48,13 +48,15 @@ const resumeSrc = read(path.join(root, 'resume.mjs'));
     /finalizeOrphanPause\([\s\S]*?reason:\s*['"]orphan-finalize['"]/,
     'resume.mjs calls finalizeOrphanPause with reason: orphan-finalize'
   );
-  const finalizeIdx = resumeSrc.search(/finalizeOrphanPause\(/);
-  const saveActiveIdx = resumeSrc.search(/saveState\([\s\S]*?active:\s*normalizedTarget/);
+  const claimIdx = resumeSrc.search(/const occupancyClaim = claimForBind\(ctx, normalizedTarget\)/);
+  const finalizeIdx = resumeSrc.indexOf('finalizeOrphanPause(', claimIdx);
+  const saveActiveIdx = resumeSrc.indexOf('active: normalizedTarget', finalizeIdx);
+  assert.ok(claimIdx > 0);
   assert.ok(finalizeIdx > 0);
   assert.ok(saveActiveIdx > 0);
   assert.ok(
-    finalizeIdx < saveActiveIdx,
-    'finalizeOrphanPause must run BEFORE the saveState that binds target'
+    claimIdx < finalizeIdx && finalizeIdx < saveActiveIdx,
+    'occupancy claim must precede finalizeOrphanPause and the state save that binds target'
   );
 }
 

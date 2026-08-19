@@ -55,4 +55,8 @@ Only `chat_history.jsonl` is counted. AITM recognizes visible user and assistant
 
 ## Safety boundary
 
-Use one editing provider per worktree. Grok's native Bash, edit, and agent hooks share the same AITM guards as Claude and Codex after envelope normalization. A missing bridge or named handler denies the operation because policy could not run; a crash inside an existing shared handler preserves the package's documented diagnostic fail-open behavior.
+AITM enforces one editing provider per worktree with local authoritative occupancy. A second session cannot bind the same issue, pause retains the claim, and successful stop or close releases it. There is no TTL steal; after inspection, use `npx aitm occupancy --release #N` for issue-scoped recovery. Cross-clone coordination remains outside this local authority boundary.
+
+Grok's native Bash, edit, and agent hooks share the same AITM guards as Claude and Codex after envelope normalization. A missing bridge or named handler denies the operation because policy could not run; a crash inside an existing shared handler preserves the package's documented diagnostic fail-open behavior.
+
+Co-review reviewers stay unbound. A claimed reviewer session may write only its exact pending review artifact. Edit, Write, `apply_patch`, and Bash reject tracked source, authority files, other protocol or `.tmp/**` paths, mixed or malformed patches, ambiguous shell mutations, and symlink drift before ordinary scratch or chore allowances.

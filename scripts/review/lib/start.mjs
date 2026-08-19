@@ -15,6 +15,7 @@ import {
 import path from 'node:path';
 
 import { initializeProtocol, renderCliCommand, statusProtocol } from './protocol.mjs';
+import { registerProtocol } from './index.mjs';
 
 export const START_DEFAULTS = Object.freeze({
   maxReviewTurns: 10,
@@ -588,6 +589,11 @@ export function startProtocol(options = {}, dependencies = {}) {
     ) {
       fail('verification', 'published startup files do not match rendered bytes');
     }
+
+    (dependencies.registerProtocol ?? registerProtocol)({
+      projectDir: state.repositoryRoot,
+      state,
+    });
 
     return {
       state,

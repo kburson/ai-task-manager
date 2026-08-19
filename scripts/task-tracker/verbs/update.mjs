@@ -7,9 +7,10 @@ import {
   countWords,
 } from '../word-counter.mjs';
 import { timingPostWarningSuffix } from '../lib/timing-post-outcome.mjs';
+import { heartbeatBindingOccupancy } from '../lib/occupancy-lifecycle.mjs';
 
 export async function verbUpdate(ctx) {
-  const { statePath, rest, drainQueueIfAny, flushActiveToGH } = ctx;
+  const { statePath, projectDir, rest, drainQueueIfAny, flushActiveToGH } = ctx;
   await drainQueueIfAny();
   const s = loadState(statePath);
   if (!s.active || s.active === 'discover') {
@@ -35,6 +36,10 @@ export async function verbUpdate(ctx) {
       totalActiveMinutes,
     },
     statePath
+  );
+  (ctx.heartbeatBindingOccupancy ?? heartbeatBindingOccupancy)(
+    { projectDir, issue: s.active, now: () => ts },
+    { heartbeatOccupancy: ctx.heartbeatOccupancy }
   );
   const wallNote = deltaWallMin !== deltaMin ? ` (wall ${deltaWallMin})` : '';
   console.log(

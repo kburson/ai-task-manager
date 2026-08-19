@@ -499,6 +499,11 @@ if (_isMain)
           await verbFleet(ctx);
           break;
         }
+        case 'occupancy': {
+          const { verbOccupancy } = await import('./verbs/occupancy.mjs');
+          await verbOccupancy(ctx);
+          break;
+        }
         case 'approve': {
           const { verbApprove } = await import('./verbs/approve.mjs');
           await verbApprove(ctx.rest, ctx.cfg);

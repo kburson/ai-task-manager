@@ -44,6 +44,32 @@ the worktree from the epic head with `cut-child-worktree.mjs`; do not base it on
 trunk. Follow the normal `/task` state verbs. Record storage changes where
 authority lives, not which lifecycle gates are required.
 
+## Local occupancy and co-review
+
+AITM enforces that one issue is occupied by one session, and one editing
+provider uses a worktree, through a main-worktree-anchored occupancy store. A
+second session cannot bind the same issue. A different provider cannot bind another issue in the same worktree
+unless a live, integrity-valid co-review protocol explicitly permits that
+worktree. Use separate seeded worktrees for ordinary parallel work.
+
+`/task pause` retains the occupancy claim so another session cannot take over
+while the owner is temporarily away. A successful `/task stop` or `/task close`
+releases the claim. Occupancy has no TTL and cannot be stolen. After inspecting
+an abandoned claim, an operator may release only that issue:
+
+```bash
+npx aitm occupancy --release #N
+```
+
+Co-review reviewers remain unbound: they do not run `/task start #N`. When the
+reviewer claims a turn, AITM records the exact provider, real session id, and
+pending review artifact in a main-anchored index. Edit, Write, `apply_patch`,
+and Bash may write only that exact pending review artifact for that exact
+provider/session. Mixed targets, tracked source, other `.tmp/**` files,
+occupancy/index files, protocol state, malformed patches, ambiguous shell
+writers, and symlink drift fail closed. The index never grants access by
+itself; every decision revalidates the live protocol state and event integrity.
+
 ## Identify the authority source
 
 AITM resolves each issue through the contract-source boundary:
@@ -190,6 +216,8 @@ messages and webhooks can reduce latency but cannot replace the durable record.
 Before a governed mutation:
 
 - [ ] The command is running from the bound, seeded worktree.
+- [ ] The issue/session occupancy is current, or the actor is an unbound
+      reviewer holding the exact pending-artifact grant.
 - [ ] GitHub authentication and repository correlation are valid.
 - [ ] The directory, schema, hashes, active grant, authority epoch, contract
       epoch, and record-chain head validate.

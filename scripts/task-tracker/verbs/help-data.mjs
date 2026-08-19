@@ -742,6 +742,13 @@ export const VERB_REFERENCE = {
     ],
     examples: ['/task fleet', '/task fleet prune --dry-run', '/task fleet prune'],
   },
+  occupancy: {
+    topic: 'meta',
+    summary: 'Administratively release one authoritative local occupancy claim.',
+    usage: '/task occupancy --release #N',
+    flags: [{ flag: '--release #N', desc: 'release exactly one issue-scoped local claim' }],
+    examples: ['/task occupancy --release #1325'],
+  },
   log: {
     topic: 'meta',
     summary: 'Re-compute and write Engaged/Session/Review/Plan for an issue.',
