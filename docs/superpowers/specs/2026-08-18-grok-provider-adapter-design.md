@@ -1,7 +1,7 @@
 # Grok Provider Adapter Design
 
 **Date:** 2026-08-18
-**Status:** Co-review round 3 (Codex changes-requested F-001–F-004)
+**Status:** Co-review round 5 (Codex changes-requested F-005, F-006)
 **Issue:** #1321
 **Branch:** `spec/grok-provider-adapter`
 **Surface:** `npx ai-task-manager install`, provider registry, `/task` under Grok Build TUI
@@ -134,7 +134,11 @@ runs a process binds work.
 | hook file | `.grok/hooks/aitm.json` (declared on the adapter) |
 
 Detection order: **grok → codex → claude**. Claude remains the no-signal
-fallback. A live Grok TUI always exports `GROK_SESSION_ID`.
+fallback. Grok **hook** processes receive `GROK_SESSION_ID` by contract. Grok
+**tool** processes may export it in the current TUI (observed) but that is
+undocumented; AITM must test for it and refuse sid-dependent operations when
+it is absent (section 2). Do not assert that a live TUI always exports the
+sid to `/task`.
 
 Each adapter exposes an install recipe (skill stub writer + hook writer) so
 `bin/cli.mjs` does not switch on host names. Claude still writes
@@ -353,18 +357,46 @@ Co-review `--dir` is caller-chosen and Git-ignored. There is no implicit scan
 of `.tmp/co-review/**`. Discovery is a **main-worktree-anchored index**:
 `.tmp/aitm/fleet/co-review-index.json`, keyed by `protocolId`. `start` / `init`
 register `{ protocolId, dir, worktree, owner, reviewer, lifecycle, artifact }`.
-Handoff to a terminal lifecycle, or `finalize`, marks the entry terminal so
-stale allowlists die.
+`owner` / `reviewer` remain identity strings, not sessions. Handoff to a
+terminal lifecycle, or `finalize`, marks the entry terminal so stale grants
+die.
 
-On **reviewer claim**, the protocol writes `pendingReviewPath` **before** any
-review file exists: `<dir>/round-<n>-reviewer-review.md` (deterministic, inside
-the registered dir). `source-edit-gate` allows a reviewer write only when the
-resolved realpath equals that `pendingReviewPath` for an **active** index entry
-whose `worktree` matches this tree. Custom `--dir` works because it is in the
-index. Two active protocols in one worktree are two index rows; each has its
-own pending path. Symlink/path escape (realpath outside the registered dir) is
-denied. Wrong role or unclaimed reviewer turn: denied. The existing `.tmp/**`
-allowlist does **not** count as the co-review exception.
+On **reviewer claim**, fail closed unless `detectProvider()` +
+`resolveSessionId()` yield a real provider and sid (same rule as section 2).
+The claim writes onto the index row, atomically:
+
+- `pendingReviewPath` = `<dir>/round-<n>-reviewer-review.md` (file need not
+  exist yet)
+- `claimedRole` = `reviewer`
+- `claimedProvider` = resolved provider name
+- `claimedSid` = resolved session id
+
+The PreToolUse grant is an exact match against live protocol integrity:
+
+`{ protocolId, role: reviewer, claimedProvider, claimedSid, worktree, pendingReviewPath }`
+
+The invoking session’s provider and sid must equal `claimedProvider` /
+`claimedSid`. Worktree-only or path-only matching is forbidden. Another
+sid or provider in the same tree is denied even if it can see the file.
+
+**First write vs later writes.** The review file does not exist at claim.
+Canonicalize as `join(realpath(registeredDir), basename(pendingReviewPath))`.
+After the file exists, require `realpath(target) ===` that path and reject
+symlink or containment drift.
+
+**Authority files.** `source-edit-gate` and `bash-guard` deny Edit/Write and
+Bash mutation of these paths **before** chore-mode and **before** the
+`.tmp/**` allowlist:
+
+- `.tmp/aitm/fleet/occupancy.json`
+- `.tmp/aitm/fleet/co-review-index.json`
+- every file under a registered protocol `dir` except the matching
+  `pendingReviewPath` for the invoking `{provider, sid}`
+
+A reviewer cannot mint a grant by editing the index. Protocol
+`state.json` / `events.jsonl` / handoff files stay denied. The `.tmp/**`
+carve-out is not the co-review exception and does not cover authority
+files.
 
 - The **author** is the only session that may be **bound** to the issue.
 - **Reviewers** do not `/task start #N`. If they try while the author holds it,
@@ -402,7 +434,7 @@ Synthetic fixtures only. Do not read live `~/.grok/sessions`.
 | Hooks | native Grok envelopes: Bash deny, edit deny, agent-spawn deny, SessionStart, PreCompact, PostCompact; `block`→`deny` + exit 2; same `(sid, event, promptId, ts)` second call is a no-op; later ts still flushes |
 | Session id | `GROK_AGENT` set + `GROK_SESSION_ID` unset → bind/occupancy/jsonlPath refuse (no `default-session`); two distinct `GROK_SESSION_ID` values keep distinct binds |
 | Occupancy | second sid cannot bind `#N`; pause holds; stop releases; second provider in the same worktree refused unless co-review; reviewer `/task start` refused |
-| Co-review index | custom `--dir` registered; `pendingReviewPath` set at claim; reviewer write to that path allowed; tracked source denied; stale/terminal denied; symlink escape denied; two active protocols keep distinct paths |
+| Co-review index | custom `--dir` registered; claim stores `{claimedProvider, claimedSid, pendingReviewPath}`; other sid/provider in the same tree denied; claimed sid allowed only for its pending file; other `.tmp/**` denied during the grant; Edit/Write and Bash against index/protocol authority denied (ahead of chore-mode and `.tmp/**`); first-file create via parent realpath+basename; later realpath drift denied; stale/terminal denied |
 
 Develop verification: `node scripts/task-tracker/verify-develop.mjs`.
 
