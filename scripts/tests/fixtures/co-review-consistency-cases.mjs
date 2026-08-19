@@ -63,6 +63,7 @@ function stageTwoPublications(fixture) {
   return {
     statePath,
     eventsPath,
+    baseState,
     firstState,
     firstEvents,
     second,
@@ -178,6 +179,99 @@ test('status confirms multiple publications between the initial state and event 
   assert.equal(status.integrity.ok, true);
   assert.equal(status.revision, staged.second.revision);
   assert.equal(status.maxReviewTurns, 11);
+});
+
+test('status refuses projection drift in an earlier state even when the final pair matches', async () => {
+  const fixture = await initializedProtocol();
+  const staged = stageTwoPublications(fixture);
+  const drifted = JSON.parse(staged.baseState);
+  drifted.maxReviewTurns -= 1;
+  drifted.remainingReviewTurns -= 1;
+  writeFileSync(staged.statePath, `${JSON.stringify(drifted, null, 2)}\n`);
+
+  const status = fixture.api.statusProtocol({
+    cwd: fixture.root,
+    dir: fixture.options.dir,
+    consistency: {
+      maxAttempts: 2,
+      delayMilliseconds: 0,
+      afterStateRead() {
+        writeFileSync(staged.statePath, staged.secondState);
+        writeFileSync(staged.eventsPath, staged.secondEvents);
+      },
+    },
+  });
+
+  assert.equal(status.integrity.ok, false);
+  assert.match(status.integrity.errors.join('\n'), /event-projection maxReviewTurns/);
+});
+
+test('status refuses projection drift in a partially confirmed state', async () => {
+  const fixture = await initializedProtocol();
+  const staged = stageTwoPublications(fixture);
+  const drifted = JSON.parse(staged.firstState);
+  drifted.maxReviewTurns -= 1;
+  drifted.remainingReviewTurns -= 1;
+  let stateReads = 0;
+  const status = fixture.api.statusProtocol({
+    cwd: fixture.root,
+    dir: fixture.options.dir,
+    consistency: {
+      maxAttempts: 2,
+      delayMilliseconds: 0,
+      afterStateRead() {
+        stateReads += 1;
+        writeFileSync(staged.statePath, staged.firstState);
+        writeFileSync(staged.eventsPath, staged.firstEvents);
+      },
+      afterEventRead() {
+        writeFileSync(staged.statePath, `${JSON.stringify(drifted, null, 2)}\n`);
+      },
+    },
+  });
+
+  assert.equal(stateReads, 1);
+  assert.equal(status.integrity.ok, false);
+  assert.match(status.integrity.errors.join('\n'), /event-projection maxReviewTurns/);
+});
+
+test('status carries state-ahead projection proof across a restart', async () => {
+  const fixture = await initializedProtocol();
+  const staged = stageTwoPublications(fixture);
+  const drifted = JSON.parse(staged.secondState);
+  drifted.maxReviewTurns -= 1;
+  drifted.remainingReviewTurns -= 1;
+  let stateReads = 0;
+  let eventReads = 0;
+  const status = fixture.api.statusProtocol({
+    cwd: fixture.root,
+    dir: fixture.options.dir,
+    consistency: {
+      maxAttempts: 2,
+      delayMilliseconds: 0,
+      afterStateRead() {
+        stateReads += 1;
+        if (stateReads === 1) {
+          writeFileSync(staged.statePath, staged.firstState);
+          writeFileSync(staged.eventsPath, staged.firstEvents);
+        } else {
+          writeFileSync(staged.statePath, staged.secondState);
+          writeFileSync(staged.eventsPath, staged.secondEvents);
+        }
+      },
+      afterEventRead() {
+        eventReads += 1;
+        if (eventReads === 1) {
+          writeFileSync(staged.statePath, `${JSON.stringify(drifted, null, 2)}\n`);
+          writeFileSync(staged.eventsPath, staged.secondEvents);
+        }
+      },
+    },
+  });
+
+  assert.equal(stateReads, 2);
+  assert.equal(status.integrity.ok, false);
+  assert.match(status.integrity.errors.join('\n'), /event-projection maxReviewTurns/);
 });
 
 test('wait settles a concurrent event-append before evaluating the requested role', async () => {

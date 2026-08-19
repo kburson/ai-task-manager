@@ -22,6 +22,9 @@ Introduce a bounded, lock-aware consistent-snapshot reader inside
 
 Each attempt reads and validates `state.json`, reads `events.jsonl` once, and
 evaluates the complete existing event-integrity rules against those exact bytes.
+Whenever the retained array contains an event at the sampled state's revision,
+that corresponding event—not merely the final event—is compared to the state's
+lifecycle, role, round, budget, supplement, and acceptance projection.
 Forward confirmation is considered only when all of the following are true:
 
 1. the only integrity error is `event-count`;
@@ -42,6 +45,14 @@ cannot publish multiple events before its state replacement. Production waits
 are synchronous because the writer is a separate process and the public protocol
 API is intentionally synchronous. Test-only injected read and wait functions
 provide deterministic seams without timing-sensitive sleeps.
+
+A confirmation state that is ahead of the retained array is carried into the
+next attempt. Before that attempt can proceed or accept a newer snapshot, the
+carried state must match its corresponding newly retained event. A partially
+confirmed state within the retained array may restart only when its sole
+integrity error is still the forward event-count mismatch. Projection drift at
+any sampled revision is therefore durable evidence and cannot be healed by a
+later matching state/event pair.
 
 The successful attempt's event array is retained and reused for all downstream
 status projection. Status never re-reads the event file after deciding the
@@ -69,6 +80,8 @@ The retry path does not accept or normalize corruption.
   is returned.
 - Continuous authorized publication can consume the fixed attempt budget; the
   final unmatched snapshot is reported rather than accepted or normalized.
+- Every sampled or carried state must match the retained event at its own
+  revision before publication progress can be inferred.
 - An unmatched multi-event lead with unchanged confirmation, missing events,
   malformed JSON, wrong schema, protocol-ID drift, invalid event type,
   reordered/duplicate revisions, projection drift, artifact drift, supplement
@@ -102,6 +115,10 @@ the initial event read and require a bounded restart to the N+2 snapshot. A
 fourth will complete both publications inside the first read gap and confirm the
 exact N+2 state against retained N+2 events.
 `statusProtocol` and `waitForTurn` must return healthy settled snapshots.
+
+Adversarial cases will corrupt projection fields in the initial state, a partial
+confirmation, and a state-ahead confirmation. A later matching N+k pair must not
+erase any of those earlier integrity errors.
 
 Separate cases will prove that the same one-event lead fails closed without a
 mutex and after bounded retries with a persistent mutex. Existing revision,

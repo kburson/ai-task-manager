@@ -77,6 +77,14 @@ the confirmed state must match the complete retained projection. An unmatched
 multi-event lead with unchanged state must fail immediately; live-lock waiting
 remains exclusive to an unchanged exact one-event lead.
 
+Compare every sampled state to the retained event at that state's own revision,
+not only to the array's final event. Restart a partially confirmed state only
+when its sole remaining error is the forward count mismatch. When confirmation
+state is ahead of the retained events, carry it into the next attempt and require
+it to match its corresponding newly observed event before accepting any newer
+snapshot. Add regressions proving later matching pairs cannot heal initial,
+partial-confirmation, or state-ahead projection drift.
+
 ### Step 4: Run the focused status regression
 
 Run the focused command again and require green.

@@ -352,32 +352,41 @@ function eventIntegrityForRecords(events, state) {
       errors.push(`event-type revision ${expectedRevision}: ${String(event.type)}`);
     }
   }
-  const last = events.at(-1);
-  if (last?.revision === state.revision) {
-    for (const field of [
-      'lifecycle',
-      'currentRole',
-      'round',
-      'reviewTurnsUsed',
-      'maxReviewTurns',
-      'remainingReviewTurns',
-    ]) {
-      if (last[field] !== state[field]) {
-        errors.push(
-          `event-projection ${field}: expected ${String(state[field])}, actual ${String(last[field])}`
-        );
-      }
-    }
-    const expectedSupplements =
-      state.supplements === undefined ? undefined : supplementProjection(state.supplements);
-    if (JSON.stringify(last.supplements) !== JSON.stringify(expectedSupplements)) {
-      errors.push('event-projection supplements: state differs from last event');
-    }
-    if (JSON.stringify(last.acceptance) !== JSON.stringify(state.acceptance)) {
-      errors.push('event-projection acceptance: state differs from last event');
+  errors.push(...eventProjectionErrors(events, state));
+  return { events, errors };
+}
+
+function eventProjectionErrors(events, state, { requireEvent = false } = {}) {
+  const event = events[state.revision - 1];
+  if (event?.revision !== state.revision) {
+    return requireEvent
+      ? [`event-projection revision ${state.revision}: corresponding event unavailable`]
+      : [];
+  }
+  const errors = [];
+  for (const field of [
+    'lifecycle',
+    'currentRole',
+    'round',
+    'reviewTurnsUsed',
+    'maxReviewTurns',
+    'remainingReviewTurns',
+  ]) {
+    if (event[field] !== state[field]) {
+      errors.push(
+        `event-projection ${field}: expected ${String(state[field])}, actual ${String(event[field])}`
+      );
     }
   }
-  return { events, errors };
+  const expectedSupplements =
+    state.supplements === undefined ? undefined : supplementProjection(state.supplements);
+  if (JSON.stringify(event.supplements) !== JSON.stringify(expectedSupplements)) {
+    errors.push('event-projection supplements: state differs from corresponding event');
+  }
+  if (JSON.stringify(event.acceptance) !== JSON.stringify(state.acceptance)) {
+    errors.push('event-projection acceptance: state differs from corresponding event');
+  }
+  return errors;
 }
 
 function mutationLockPresent(paths) {
@@ -428,6 +437,7 @@ function readStatusSnapshot({ cwd, dir, repository, consistency }) {
   const root = repositoryRoot(cwd, repository);
   const paths = protocolPaths(root, dir);
   const retry = snapshotConsistency(consistency);
+  let pendingState;
   for (let attempt = 1; ; attempt += 1) {
     const lockedBefore = mutationLockPresent(paths);
     const state = readProtocol({ cwd: root, dir: paths.relative, repository });
@@ -435,6 +445,15 @@ function readStatusSnapshot({ cwd, dir, repository, consistency }) {
     const observed = eventIntegrity(paths, state);
     retry.afterEventRead?.({ attempt, state, events: observed.events, paths });
     const lockedAfter = mutationLockPresent(paths);
+    if (pendingState) {
+      const pendingErrors = eventProjectionErrors(observed.events, pendingState, {
+        requireEvent: true,
+      });
+      if (pendingErrors.length > 0) {
+        return { root, paths, state: pendingState, events: observed.events, errors: pendingErrors };
+      }
+      pendingState = undefined;
+    }
     const eventLead = validForwardEventLead(state, observed.events, observed.errors);
     if (eventLead) {
       const confirmedState = readProtocol({ cwd: root, dir: paths.relative, repository });
@@ -442,8 +461,18 @@ function readStatusSnapshot({ cwd, dir, repository, consistency }) {
       if (confirmed.errors.length === 0) {
         return { root, paths, state: confirmedState, ...confirmed };
       }
-      if (confirmedState.revision > state.revision && attempt < retry.maxAttempts) {
-        continue;
+      if (confirmedState.revision > state.revision) {
+        const confirmationForward = validForwardEventLead(
+          confirmedState,
+          confirmed.events,
+          confirmed.errors
+        );
+        if (confirmationForward && attempt < retry.maxAttempts) continue;
+        if (confirmedState.revision > observed.events.length && attempt < retry.maxAttempts) {
+          pendingState = confirmedState;
+          continue;
+        }
+        return { root, paths, state: confirmedState, ...confirmed };
       }
     }
     const singleEventLead = observed.events.length === state.revision + 1;
