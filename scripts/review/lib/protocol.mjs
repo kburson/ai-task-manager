@@ -22,6 +22,9 @@ import { REAL_REPOSITORY_BOUNDARY } from './repository-boundary.mjs';
 
 export const STATE_SCHEMA = 'aitm.co-review/v1';
 export const EVENT_SCHEMA = 'aitm.co-review-event/v1';
+const SNAPSHOT_MAX_ATTEMPTS = 5;
+const SNAPSHOT_RETRY_DELAY_MS = 10;
+const SNAPSHOT_WAIT_SIGNAL = new Int32Array(new SharedArrayBuffer(4));
 
 export function shellArgument(value) {
   const text = String(value);
@@ -312,7 +315,7 @@ function eventIntegrity(paths, state) {
   try {
     events = readEventRecords(paths);
   } catch (error) {
-    return [`events-unreadable: ${error.message}`];
+    return { events: [], errors: [`events-unreadable: ${error.message}`] };
   }
   const errors = [];
   if (events.length !== state.revision) {
@@ -370,7 +373,68 @@ function eventIntegrity(paths, state) {
       errors.push('event-projection acceptance: state differs from last event');
     }
   }
-  return errors;
+  return { events, errors };
+}
+
+function mutationLockPresent(paths) {
+  try {
+    return lstatSync(paths.lock).isDirectory();
+  } catch {
+    return false;
+  }
+}
+
+function transientEventLead(state, events, errors) {
+  return (
+    errors.length === 1 &&
+    errors[0] === `event-count: expected ${state.revision}, actual ${state.revision + 1}` &&
+    events.length === state.revision + 1
+  );
+}
+
+function snapshotConsistency(input = {}) {
+  const maxAttempts = input.maxAttempts ?? SNAPSHOT_MAX_ATTEMPTS;
+  const delayMilliseconds = input.delayMilliseconds ?? SNAPSHOT_RETRY_DELAY_MS;
+  if (!Number.isInteger(maxAttempts) || maxAttempts < 1 || maxAttempts > 20) {
+    throw new TypeError('co-review: snapshot consistency maxAttempts must be 1..20');
+  }
+  if (!Number.isFinite(delayMilliseconds) || delayMilliseconds < 0 || delayMilliseconds > 100) {
+    throw new TypeError('co-review: snapshot consistency delayMilliseconds must be 0..100');
+  }
+  const wait =
+    input.wait ??
+    ((milliseconds) => {
+      if (milliseconds > 0) Atomics.wait(SNAPSHOT_WAIT_SIGNAL, 0, 0, milliseconds);
+    });
+  if (typeof wait !== 'function') {
+    throw new TypeError('co-review: snapshot consistency wait must be a function');
+  }
+  return { maxAttempts, delayMilliseconds, wait };
+}
+
+function readStatusSnapshot({ cwd, dir, repository, consistency }) {
+  const root = repositoryRoot(cwd, repository);
+  const paths = protocolPaths(root, dir);
+  const retry = snapshotConsistency(consistency);
+  for (let attempt = 1; ; attempt += 1) {
+    const lockedBefore = mutationLockPresent(paths);
+    const state = readProtocol({ cwd: root, dir: paths.relative, repository });
+    const observed = eventIntegrity(paths, state);
+    const lockedAfter = mutationLockPresent(paths);
+    if (
+      !transientEventLead(state, observed.events, observed.errors) ||
+      (!lockedBefore && !lockedAfter) ||
+      attempt >= retry.maxAttempts
+    ) {
+      return { root, paths, state, ...observed };
+    }
+    retry.wait(retry.delayMilliseconds, {
+      attempt,
+      state,
+      events: observed.events,
+      paths,
+    });
+  }
 }
 
 function sameInitialization(state, desired) {
@@ -503,10 +567,18 @@ export function initializeProtocol({
 
 export function statusProtocol(options) {
   const repository = options.repository ?? REAL_REPOSITORY_BOUNDARY;
-  const state = readProtocol({ ...options, repository });
-  const root = repositoryRoot(options.cwd ?? process.cwd(), repository);
-  const paths = protocolPaths(root, options.dir);
-  const errors = eventIntegrity(paths, state);
+  const {
+    root,
+    paths,
+    state,
+    events: snapshotEvents,
+    errors,
+  } = readStatusSnapshot({
+    cwd: options.cwd ?? process.cwd(),
+    dir: options.dir,
+    repository,
+    consistency: options.consistency,
+  });
   for (const artifact of Object.values(state.immutableArtifacts ?? {})) {
     try {
       const actual = digestFile(root, artifact.path, 'recorded-artifact');
@@ -558,7 +630,7 @@ export function statusProtocol(options) {
   const activeSupplements = (state.supplements ?? []).filter(
     (supplement) => supplement.status === 'pending' || supplement.status === 'frozen'
   );
-  const events = errors.length === 0 ? readEventRecords(paths) : [];
+  const events = errors.length === 0 ? snapshotEvents : [];
   const latestBudgetEvent = events.findLast((event) => event.adjustment || event.continuation);
   const latestBudgetAdjustment =
     latestBudgetEvent?.adjustment ?? latestBudgetEvent?.continuation ?? null;
@@ -1386,6 +1458,7 @@ export async function waitForTurn({
   timeoutSeconds = 55,
   pollMilliseconds = 250,
   repository = REAL_REPOSITORY_BOUNDARY,
+  consistency,
 }) {
   if (!Number.isFinite(timeoutSeconds) || timeoutSeconds < 0 || timeoutSeconds > 60) {
     fail('timeout', String(timeoutSeconds), { exitCode: 2 });
@@ -1393,7 +1466,7 @@ export async function waitForTurn({
   if (!Number.isFinite(pollMilliseconds) || pollMilliseconds <= 0) {
     fail('poll-interval', String(pollMilliseconds), { exitCode: 2 });
   }
-  const first = statusProtocol({ cwd, dir, repository });
+  const first = statusProtocol({ cwd, dir, repository, consistency });
   const role = Object.entries(first.roles).find(([, identity]) => identity === actor)?.[0];
   if (!role) fail('unknown-actor', String(actor), { exitCode: 2 });
   const deadline = Date.now() + timeoutSeconds * 1000;
@@ -1408,6 +1481,6 @@ export async function waitForTurn({
     await new Promise((resolve) =>
       setTimeout(resolve, Math.min(pollMilliseconds, Math.max(1, deadline - Date.now())))
     );
-    state = statusProtocol({ cwd, dir, repository });
+    state = statusProtocol({ cwd, dir, repository, consistency });
   }
 }
