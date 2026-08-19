@@ -172,7 +172,7 @@ Treat repository and protocol state as authoritative after chat loss or compacti
 ${renderCliCommand(['status', '--dir', model.runtimeDir])}
 \`\`\`
 
-Stop and report any integrity drift. Never steal or delete a protocol lock. Never edit an immutable response, review, supplement, event, manifest, or handoff file.
+An integrity refusal can be transient only during authorized snapshot publication, while a mutation publishes an event and its matching state. If status or wait exits 1 with an integrity diagnostic, run one settled status re-read after the command returns. If that re-read is healthy, continue from its reported state. If the mismatch persists, preserve every protocol file, report the exact diagnostic, and stop. Never steal or delete a protocol lock. Never edit an immutable response, review, supplement, event, manifest, or handoff file.
 
 Response, review, supplement, and archive evidence inputs are Markdown subject to host-repository governance.
 
@@ -192,7 +192,7 @@ ${renderCliCommand([
 ])}
 \`\`\`
 
-After every call, record \`wait cycle N/${model.waitCycles}\`. Exit 3 is an ordinary timeout; wait again only while the cycle count remains. Exit 0 is a wake event: run status and act on the reported state. Exit 1 or 2 is a refusal: report the exact diagnostic and stop. After cycle ${model.waitCycles} times out, run status, report it to the human, and stop without starting another batch. A successful handoff starts a new waiting episode for the role that handed off.
+After every call, record \`wait cycle N/${model.waitCycles}\`. Exit 3 is an ordinary timeout; wait again only while the cycle count remains. Exit 0 is a wake event: run status and act on the reported state. Exit 2 or a non-integrity exit 1 is a refusal: report the exact diagnostic and stop. For an integrity exit 1, follow the one-time settled re-read rule above. After cycle ${model.waitCycles} times out, run status, report it to the human, and stop without starting another batch. A successful handoff starts a new waiting episode for the role that handed off.
 
 After compaction, reread this file, run status, and resume from the last visible wait-cycle marker. If the completed count is uncertain, stop and report the ambiguity instead of resetting it.
 

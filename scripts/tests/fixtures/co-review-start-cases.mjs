@@ -201,6 +201,10 @@ test('start delegates initialization and publishes concrete hashed handoffs befo
     assert.match(bytes, /wait cycle N\/20/);
     assert.match(bytes, /compaction/i);
     assert.match(bytes, /--timeout 60/);
+    assert.match(bytes, /snapshot publication/i);
+    assert.match(bytes, /one settled status re-read/i);
+    assert.match(bytes, /mismatch persists/i);
+    assert.match(bytes, /continue from its reported state/i);
     assert.doesNotMatch(bytes, /<[^>]+>/);
   }
   assert.match(author, /author-agent/);
