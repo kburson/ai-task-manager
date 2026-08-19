@@ -49,8 +49,10 @@
 - Create: `scripts/providers/grok.mjs`
 - Modify: `scripts/providers/index.mjs`
 - Create: `skill/adapters/grok/SKILL.md`
+- Modify: `bin/lib/stamp-skill-version.mjs`
 - Modify: `scripts/tests/unit/providers/registry.test.mjs`
 - Modify: `scripts/tests/unit/providers/parity.test.mjs`
+- Modify: `scripts/tests/unit/providers/skill-version-stamp.test.mjs`
 
 **Interfaces:**
 
@@ -58,6 +60,7 @@
 - `ProviderAdapter.transcriptSchema` adds `'grok-chat-v1'`.
 - Add `transcriptHomeEnv: string | null`, `transcriptHomeDefault: string | null`, `sessionIdFallback: 'legacy' | 'required'`, and `installRecipe: { writer: 'claude-settings' | 'codex-hooks' | 'grok-hooks'; hookTarget: string | null; commandTarget: string | null }`.
 - `listProviders()` returns `['grok', 'codex', 'claude']`; `detectProvider()` uses that exact precedence.
+- `SKILL_DETAIL_FILES` adds `{ id: 'grok-adapter', pkgRelPath: getProvider('grok').skillAdapterPath }` and contains exactly five entries.
 
 - [ ] **Step 1: Add failing Grok registry and parity tests**
 
@@ -74,14 +77,29 @@ assert.throws(() => getProvider('unknown'), /Known providers: grok, codex, claud
 
 Extend both existing adapter baselines with the four new fields so Claude and Codex parity is explicit.
 
+Add failing skill-version assertions that pin the new closed-list entry and the
+install-time stamp behavior:
+
+```js
+const grokEntry = SKILL_DETAIL_FILES.find((entry) => entry.id === 'grok-adapter');
+assert.equal(grokEntry.pkgRelPath, getProvider('grok').skillAdapterPath);
+assert.equal(SKILL_DETAIL_FILES.length, 5);
+```
+
+Use a temporary package tree with `skill/adapters/grok/SKILL.md`, call
+`stampAllSkillVersions`, and assert the Grok result is `stamped` and the copied
+skill contains `<!-- aitm-skill-version: 1.2.3 -->`.
+
 - [ ] **Step 2: Run the registry tests and verify RED**
 
 ```bash
 node scripts/tests/unit/providers/registry.test.mjs
 node scripts/tests/unit/providers/parity.test.mjs
+node scripts/tests/unit/providers/skill-version-stamp.test.mjs
 ```
 
-Expected: failures because `grok.mjs` and the expanded adapter properties do not exist.
+Expected: failures because `grok.mjs`, the expanded adapter properties, and the
+`grok-adapter` stamp entry do not exist.
 
 - [ ] **Step 3: Expand the adapter typedef and existing rows**
 
@@ -130,16 +148,20 @@ export const grokAdapter = {
 
 Import it first in `scripts/providers/index.mjs` and freeze the registry in Grok/Codex/Claude order.
 
-- [ ] **Step 5: Add the thin Grok skill adapter**
+- [ ] **Step 5: Add the thin Grok skill adapter and version stamp**
 
 Mirror the Codex load-once pattern with `grok-adapter` as the sentinel id, route to `skill/shared/router.md`, set `user-invocable: true`, and state only these host facts: `.grok/skills/task`, `.grok/hooks`, native `/task`, project trust, and no assumption that `.codex/hooks.json` loads.
+
+Add the matching `grok-adapter` row to `SKILL_DETAIL_FILES` using
+`getProvider('grok').skillAdapterPath`. Keep the existing four rows unchanged.
 
 - [ ] **Step 6: Run focused tests and commit**
 
 ```bash
 node scripts/tests/unit/providers/registry.test.mjs
 node scripts/tests/unit/providers/parity.test.mjs
-git add scripts/providers skill/adapters/grok/SKILL.md scripts/tests/unit/providers/registry.test.mjs scripts/tests/unit/providers/parity.test.mjs
+node scripts/tests/unit/providers/skill-version-stamp.test.mjs
+git add scripts/providers skill/adapters/grok/SKILL.md bin/lib/stamp-skill-version.mjs scripts/tests/unit/providers/registry.test.mjs scripts/tests/unit/providers/parity.test.mjs scripts/tests/unit/providers/skill-version-stamp.test.mjs
 git commit -m "[#1321] feat: register the Grok provider adapter"
 ```
 
@@ -280,18 +302,24 @@ const normalized = normalizeGrokEnvelope({
   sessionId: 'grok-sid',
   toolName: 'run_terminal_command',
   toolInput: { command: 'rm -rf /' },
-  eventTimestamp: '2026-08-18T20:00:00.000Z',
+  timestamp: '2026-08-18T20:00:00.000Z',
+  promptId: 'prompt-1',
 });
 assert.equal(normalized.hook_event_name, 'PreToolUse');
 assert.equal(normalized.session_id, 'grok-sid');
 assert.equal(normalized.tool_name, 'Bash');
+assert.equal(normalized.event_timestamp, '2026-08-18T20:00:00.000Z');
+assert.equal(normalized.prompt_id, 'prompt-1');
 assert.deepEqual(translateGrokDecision({ code: 0, stdout: '{"decision":"block","reason":"x"}' }), {
   code: 2,
   stdout: '{"decision":"deny","reason":"x"}',
 });
 ```
 
-Cover `search_replace`, `write`, `spawn_subagent`, SessionStart, PreCompact, PostCompact, malformed input, missing handler, allow, block, and handler crash.
+This native-envelope case must use only `timestamp` and `promptId`, with no
+`eventTimestamp`. Cover `search_replace`, `write`, `spawn_subagent`, SessionStart,
+PreCompact, PostCompact, malformed input, missing handler, allow, block, and
+handler crash.
 
 - [ ] **Step 2: Run the hook tests and verify RED**
 
@@ -320,11 +348,31 @@ const TOOLS = Object.freeze({
 });
 ```
 
+Normalize the common identity fields without dropping either host spelling:
+
+```js
+session_id: input.sessionId ?? input.session_id,
+prompt_id: input.promptId ?? input.prompt_id,
+event_timestamp: input.timestamp ?? input.eventTimestamp ?? input.event_timestamp,
+```
+
 Resolve handlers from a frozen name-to-package-relative-path map, spawn Node with the normalized JSON on stdin, and preserve stdout/stderr separately.
 
 - [ ] **Step 4: Translate shared decisions and generate the full Grok hook table**
 
-Parse handler stdout only when non-empty JSON. Convert exactly `decision: 'block'` to `decision: 'deny'` and exit 2. Write SessionStart, PreCompact, PostCompact, Bash, edit, and agent entries using bridge command identity; include memory-index entries only when the existing seed opt-in is active.
+Parse handler stdout only when non-empty JSON. Convert exactly `decision: 'block'` to `decision: 'deny'` and exit 2. Write SessionStart, PreCompact, PostCompact, Bash, edit, and agent entries using bridge command identity; include memory-index entries only when the existing seed opt-in is active. Pin these exact matcher strings in the generated hook table and installer tests:
+
+```text
+SessionStart: startup|resume|clear|compact
+PreCompact: manual|auto
+PostCompact: manual|auto
+Bash: Bash
+edits: Edit|Write|NotebookEdit|search_replace|write
+agent: Agent|Task|spawn_subagent
+```
+
+`Bash` relies on Grok's alias for `run_terminal_command`; do not replace the
+matcher with the native tool name.
 
 - [ ] **Step 5: Prove installed commands are idempotent and native envelopes deny**
 
