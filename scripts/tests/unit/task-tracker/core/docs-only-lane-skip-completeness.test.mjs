@@ -1,4 +1,5 @@
 // @story #1317
+// @story #1319
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
@@ -9,9 +10,10 @@ import { resolvePreCloseCheckboxes } from '../../../../task-tracker/verbs/close.
 const SUITE_VC = '- [ ] `npm run test:slow` <!-- id=2 -->';
 const TESTS_DOD =
   '- [ ] All automated tests pass <!-- aitm-verified cmd="`npm test` `npm run test:slow`" --> <!-- dod:functional:tests -->';
+const CHECKBOXES_DOD = '- [ ] Issue body checkboxes ticked <!-- dod:functional:checkboxes -->';
 const TARGETED_VC = '- [ ] `node --test scripts/tests/unit/focused.test.mjs` <!-- id=3 -->';
 const OTHER = '- [ ] Publish the release notes';
-const BODY = [SUITE_VC, TESTS_DOD, TARGETED_VC, OTHER].join('\n');
+const BODY = [SUITE_VC, TESTS_DOD, CHECKBOXES_DOD, TARGETED_VC, OTHER].join('\n');
 
 const DOCS_SKIP = {
   reason: 'docs-only-diff',
@@ -20,7 +22,7 @@ const DOCS_SKIP = {
   lanes: ['test-unit', 'test-integration', 'test-slow'],
 };
 
-test('proof-gated scanner waives only complete-suite VC and tests DoD boxes', () => {
+test('proof-gated scanner waives suite, tests DoD, and derived aggregate boxes', () => {
   assert.deepEqual(uncheckedPreCloseCheckboxes(BODY, { docsOnlyLaneSkipProven: true }), [
     TARGETED_VC,
     OTHER,
@@ -28,10 +30,17 @@ test('proof-gated scanner waives only complete-suite VC and tests DoD boxes', ()
 });
 
 test('scanner preserves byte-identical default-deny behavior without proof', () => {
-  assert.deepEqual(uncheckedPreCloseCheckboxes(BODY), [SUITE_VC, TESTS_DOD, TARGETED_VC, OTHER]);
+  assert.deepEqual(uncheckedPreCloseCheckboxes(BODY), [
+    SUITE_VC,
+    TESTS_DOD,
+    CHECKBOXES_DOD,
+    TARGETED_VC,
+    OTHER,
+  ]);
   assert.deepEqual(uncheckedPreCloseCheckboxes(BODY, { docsOnlyLaneSkipProven: false }), [
     SUITE_VC,
     TESTS_DOD,
+    CHECKBOXES_DOD,
     TARGETED_VC,
     OTHER,
   ]);

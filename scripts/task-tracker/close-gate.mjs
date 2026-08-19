@@ -44,8 +44,9 @@ const DOCS_ONLY_SKIPPABLE_TEST_CLASSIFICATIONS = new Set([
   'test-all-legacy',
 ]);
 
-function isDocsOnlySkippedTestCheckbox(label) {
+function isDocsOnlyLaneSkipCheckbox(label) {
   if (/<!--\s*dod:functional:tests\s*-->/i.test(label)) return true;
+  if (/<!--\s*dod:functional:checkboxes\s*-->/i.test(label)) return true;
   const command = label.match(BACKTICK_CMD_RE)?.[1];
   return (
     command != null &&
@@ -62,7 +63,7 @@ export function uncheckedPreCloseCheckboxes(body, { docsOnlyLaneSkipProven = fal
       return !LIFECYCLE_LABEL_SET.has(clean);
     })
     .filter((label) => !isAcWaived(label))
-    .filter((label) => !docsOnlyLaneSkipProven || !isDocsOnlySkippedTestCheckbox(label))
+    .filter((label) => !docsOnlyLaneSkipProven || !isDocsOnlyLaneSkipCheckbox(label))
     .map((label) => `- [ ] ${label}`);
 }
 
