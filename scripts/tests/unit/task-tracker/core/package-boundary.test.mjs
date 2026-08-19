@@ -92,7 +92,9 @@ function repoRoot() {
 // #1269 adds the guided co-review startup and handoff publication module.
 // #1317 adds one shared proof resolver so Test exit and close validate the same
 // current docs-only lane-skip receipt before waiving suite-derived checkboxes.
-const ENTRY_CEILING = 671;
+// #1324 adds the Grok guide, adapter, skill, wire bridge, hook-idempotency
+// authority, and provider-selection parser as six intentional runtime entries.
+const ENTRY_CEILING = 677;
 
 function packedFiles() {
   const out = execFileSync('npm', ['pack', '--dry-run', '--json'], {
