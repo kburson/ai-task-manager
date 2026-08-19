@@ -1,7 +1,13 @@
 # Co-review finalization archive
 
 This directory preserves the terminal evidence selected by the governed co-review protocol.
-The accepted specification remains normative; the review and owner response are evidence.
+The accepted plan remains normative and is referenced by immutable Git identity;
+the review and owner response are evidence.
+
+Accepted artifact: [`docs/superpowers/plans/2026-08-18-grok-provider-adapter.md`](../../../plans/2026-08-18-grok-provider-adapter.md)
+at commit `617dc0398a43fd1efaeab049476dbc26b7ff3c3c`.
+Recover the exact accepted bytes with
+`git cat-file blob f2c6640720b2b1e1e62d752fe6854e70ba282a19`.
 
 <!-- aitm-co-review-manifest:start -->
 ```json
@@ -12,12 +18,11 @@ The accepted specification remains normative; the review and owner response are 
     "schema": "aitm.co-review/v1"
   },
   "artifact": {
+    "mode": "reference",
     "sourcePath": "docs/superpowers/plans/2026-08-18-grok-provider-adapter.md",
     "acceptedCommit": "617dc0398a43fd1efaeab049476dbc26b7ff3c3c",
     "gitBlob": "f2c6640720b2b1e1e62d752fe6854e70ba282a19",
-    "sha256": "sha256:f73b42b6eac04bbb2078aa0f085d33690dd5a9589bcd714ada0abb3db3d315e2",
-    "archivePath": "artifact-2026-08-18-grok-provider-adapter.md",
-    "archivedSha256": "sha256:f73b42b6eac04bbb2078aa0f085d33690dd5a9589bcd714ada0abb3db3d315e2"
+    "sha256": "sha256:f73b42b6eac04bbb2078aa0f085d33690dd5a9589bcd714ada0abb3db3d315e2"
   },
   "participants": {
     "owner": "codex",
@@ -53,7 +58,7 @@ The accepted specification remains normative; the review and owner response are 
       "archivedSha256": "sha256:d55f63d602b3e9350fdf7b23f1a12ff01dd3a027bd0221ecd4a31b6b9a6aab71"
     }
   },
-  "normative": "The accepted artifact remains normative; the archived review and owner response are evidence."
+  "normative": "The accepted artifact remains normative at its source path and pinned Git identity; the archived review and owner response are evidence."
 }
 ```
 <!-- aitm-co-review-manifest:end -->

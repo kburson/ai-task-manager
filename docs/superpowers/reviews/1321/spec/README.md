@@ -1,7 +1,13 @@
 # Co-review finalization archive
 
 This directory preserves the terminal evidence selected by the governed co-review protocol.
-The accepted specification remains normative; the review and owner response are evidence.
+The accepted specification remains normative and is referenced by immutable Git identity;
+the review and owner response are evidence.
+
+Accepted artifact: [`docs/superpowers/specs/2026-08-18-grok-provider-adapter-design.md`](../../../specs/2026-08-18-grok-provider-adapter-design.md)
+at commit `5fa6e0b425e4239fcd803e338babb247fafc670c`.
+Recover the exact accepted bytes with
+`git cat-file blob 53bbee2e3964bdca273ca6c8e291d04222a431b5`.
 
 <!-- aitm-co-review-manifest:start -->
 ```json
@@ -12,12 +18,11 @@ The accepted specification remains normative; the review and owner response are 
     "schema": "aitm.co-review/v1"
   },
   "artifact": {
+    "mode": "reference",
     "sourcePath": "docs/superpowers/specs/2026-08-18-grok-provider-adapter-design.md",
     "acceptedCommit": "5fa6e0b425e4239fcd803e338babb247fafc670c",
     "gitBlob": "53bbee2e3964bdca273ca6c8e291d04222a431b5",
-    "sha256": "sha256:5f45b159aeef144573525b3736899c2774c009e1b99d2e4e825b70619bb6fa18",
-    "archivePath": "artifact-2026-08-18-grok-provider-adapter-design.md",
-    "archivedSha256": "sha256:5f45b159aeef144573525b3736899c2774c009e1b99d2e4e825b70619bb6fa18"
+    "sha256": "sha256:5f45b159aeef144573525b3736899c2774c009e1b99d2e4e825b70619bb6fa18"
   },
   "participants": {
     "owner": "grok",
@@ -53,7 +58,7 @@ The accepted specification remains normative; the review and owner response are 
       "archivedSha256": "sha256:7c5abcda1b7fbbb33a7d43c02de26cca5f5dce424c5c0b8f6bfc101c711aade4"
     }
   },
-  "normative": "The accepted artifact remains normative; the archived review and owner response are evidence."
+  "normative": "The accepted artifact remains normative at its source path and pinned Git identity; the archived review and owner response are evidence."
 }
 ```
 <!-- aitm-co-review-manifest:end -->
