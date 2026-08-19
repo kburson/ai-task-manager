@@ -2,7 +2,6 @@ import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 
 import {
-  deregisterTask,
   findMainWorktreePath,
   fleetRegistryPath,
   readFleet,
@@ -10,7 +9,7 @@ import {
   effectiveKind,
 } from '../fleet-registry.mjs';
 import { GH_API_TIMEOUT_MS } from '../lib/process-timeouts.mjs';
-import { releaseIssueBindings } from '../lib/worktree-binding-lifecycle.mjs';
+import { releaseTerminalIssueBinding } from '../lib/worktree-binding-lifecycle.mjs';
 import { loadState } from '../state.mjs';
 
 const pexec = promisify(execFile);
@@ -42,12 +41,12 @@ export async function releaseClosedFleetBinding(ctx, deps = {}) {
   if (state !== 'CLOSED') {
     throw new Error(`fleet release-closed-binding refused: ${issue} is not CLOSED`);
   }
-  const result = (deps.releaseIssueBindings || releaseIssueBindings)({
+  const result = (deps.releaseTerminalIssueBinding || releaseTerminalIssueBinding)({
     projectDir: ctx.projectDir,
     issue,
+    deps,
   });
-  (deps.deregisterTask || deregisterTask)(ctx.projectDir, issue);
-  return { issue, released: result.released };
+  return { issue, released: result.bindings.released };
 }
 
 export function verbFleet(ctx) {

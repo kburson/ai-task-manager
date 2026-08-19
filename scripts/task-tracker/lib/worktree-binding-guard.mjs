@@ -152,7 +152,7 @@ export function resolveCurrentSessionWorktreeBinding({
     if (typeof value === 'string' && value.trim()) candidates.add(path.resolve(value));
   }
 
-  const mainPath = findMain(invokingDir);
+  const mainPath = (deps.resolveMain || findMain)(invokingDir, deps);
   const fleet = loadFleet(fleetRegistryPath(mainPath));
   const closedLedger = (deps.readClosedBindings ?? readClosedBindingLedger)(mainPath);
   const isClosed = deps.isBindingClosed ?? isBindingRecordClosed;

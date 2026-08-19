@@ -43,6 +43,7 @@ function makeDeps(overrides = {}) {
     moves: [],
     comments: [],
     closes: [],
+    releases: [],
   };
   const deps = {
     issueExists: async ({ issueNumber }) => {
@@ -67,6 +68,9 @@ function makeDeps(overrides = {}) {
     },
     closeNotPlanned: async ({ issueNumber }) => {
       calls.closes.push(issueNumber);
+    },
+    releaseTerminalIssueBinding: (input) => {
+      calls.releases.push(input);
     },
     now,
     ...overrides.deps,
@@ -196,7 +200,7 @@ function stateFile(active) {
 }
 
 function runVerb(rest, deps, active = null) {
-  const ctx = { cfg, statePath: stateFile(active), rest };
+  const ctx = { cfg, statePath: stateFile(active), rest, projectDir: '/repo/wt' };
   const realExit = process.exit;
   const realErr = process.stderr.write.bind(process.stderr);
   const realOut = process.stdout.write.bind(process.stdout);

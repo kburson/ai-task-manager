@@ -33,8 +33,13 @@ deregistration removes candidate information. The operation:
 1. records the terminal timestamp;
 2. enumerates the invoking checkout, the main checkout, configured project
    paths, fleet worktrees, and every linked Git worktree;
-3. clears only current-session `active-task.json` records whose issue exactly
-   matches the closed issue.
+3. under the same per-record lock used by binding writers, compare-and-clears
+   only current-session `active-task.json` records whose issue and effective
+   bind timestamp are still covered by the closure.
+
+Main-worktree discovery for terminal authority is strict. If Git cannot
+identify the authoritative first worktree, release stops before publishing a
+ledger entry; it never falls back to a linked checkout.
 
 The ledger is the fail-safe half of the design: if a path disappears or a
 cleanup is interrupted, the guard still excludes the terminal record. The
@@ -76,10 +81,14 @@ command never releases a binding for an open issue.
 
 ## Atomicity and failure behavior
 
-Terminal-ledger writes are atomic and serialized with a local lock. The ledger
-is written before records are removed. A ledger write or authoritative
-occupancy release failure remains a close failure; fleet deregistration stays
-advisory. Record removal is idempotent and issue-matched, so retries are safe.
+Terminal-ledger writes are atomic and serialized with a local lock. Ledger
+entries are deeply validated and malformed state fails closed. The ledger is
+written before records are removed. Binding writers and terminal cleanup share
+each active-record lock, so a concurrent issue switch or post-reopen bind wins
+instead of being overwritten. A ledger write or authoritative occupancy
+release failure remains a close failure; fleet deregistration stays advisory.
+Record removal is idempotent and issue-and-timestamp matched, so retries are
+safe.
 
 ## Compatibility
 
@@ -94,6 +103,8 @@ advisory. Record removal is idempotent and issue-matched, so retries are safe.
 ## Verification
 
 Focused tests cover terminal election, mixed live/closed candidates,
-closed-only resolution, all-worktree cleanup, close-lane delegation, recovery
+closed-only resolution, concurrent rebind preservation, strict authority
+resolution, malformed-ledger refusal, all-worktree cleanup, normal,
+disposition, convergence, cascade, and supersede terminal paths, recovery
 refusal/success, and the user-facing corrective command. The repository fast
 and slow suites remain the final regression gates.

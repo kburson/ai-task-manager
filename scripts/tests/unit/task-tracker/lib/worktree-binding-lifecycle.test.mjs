@@ -8,6 +8,7 @@ import {
   markClosedBinding,
   readClosedBindingLedger,
   releaseIssueBindings,
+  resolveBindingAuthorityMain,
 } from '../../../../task-tracker/lib/worktree-binding-lifecycle.mjs';
 import { resolveCurrentSessionWorktreeBinding } from '../../../../task-tracker/lib/worktree-binding-guard.mjs';
 import { closedBindingsPath } from '../../../../task-tracker/paths.mjs';
@@ -35,6 +36,29 @@ test('terminal ledger persists atomically at the main fleet authority path', (t)
   assert.equal(existsSync(ledgerPath), true);
   assert.equal(JSON.parse(readFileSync(ledgerPath, 'utf8')).schema, 1);
   assert.deepEqual(readClosedBindingLedger(root), ledger());
+});
+
+test('malformed terminal entries fail closed instead of reviving a binding', (t) => {
+  const root = mkdtempProjectIsolated('closed-binding-invalid-');
+  t.after(() => rmSync(root, { recursive: true, force: true }));
+  const target = closedBindingsPath(root);
+  const invalid = { schema: 1, sessions: { session: { '#1297': {} } } };
+  assert.throws(
+    () =>
+      readClosedBindingLedger(root, {
+        pathExists: () => true,
+        readFile: () => JSON.stringify(invalid),
+      }),
+    /invalid-entry/
+  );
+  assert.equal(target.endsWith('closed-bindings.json'), true);
+});
+
+test('terminal authority refuses a fallback linked-worktree anchor', () => {
+  assert.throws(
+    () => resolveBindingAuthorityMain('/repo/wt', { listGitWorktrees: () => [] }),
+    /main-worktree-unavailable/
+  );
 });
 
 test('terminal timestamp closes only records that were bound before it', () => {
@@ -137,14 +161,12 @@ test('release marks terminal authority then clears every matching worktree only'
         order.push(`mark:${input.issue}`);
         return ledger();
       },
-      getActiveTask: (_sid, candidate) => records.get(candidate) ?? null,
-      setActiveTask: (_sid, record, candidate) => {
-        order.push(`stamp:${candidate}`);
-        records.set(candidate, record);
-      },
-      clearActiveTask: (_sid, candidate) => {
-        order.push(`clear:${candidate}`);
+      compareAndClearActiveTask: (_sid, candidate, predicate) => {
+        const record = records.get(candidate) ?? null;
+        order.push(`compare:${candidate}`);
+        if (!record || !predicate(record)) return { status: 'superseded', record };
         records.delete(candidate);
+        return { status: 'cleared', record };
       },
     },
   });
@@ -157,7 +179,34 @@ test('release marks terminal authority then clears every matching worktree only'
   assert.equal(records.has('/repo/wt-a'), false);
   assert.equal(records.has('/repo/wt-b'), false);
   assert.equal(order[0], 'mark:#1297');
-  assert.ok(order.indexOf('stamp:/repo/wt-a') < order.indexOf('clear:/repo/wt-a'));
+  assert.ok(order.includes('compare:/repo/wt-a'));
+});
+
+test('release CAS preserves a concurrent rebind to another issue or a reopened issue', () => {
+  const records = new Map([
+    ['/repo/wt-other', { issue: '#1298', boundAt: '2026-08-19T14:00:00.000Z' }],
+    ['/repo/wt-reopen', { issue: '#1297', worktreeResolvedAt: '2026-08-19T16:00:00.000Z' }],
+  ]);
+  const result = releaseIssueBindings({
+    projectDir: '/repo/wt-reopen',
+    issue: '#1297',
+    sessionId: 'session',
+    closedAt: CLOSED_AT,
+    deps: {
+      resolveMain: () => '/repo',
+      collectCandidates: () => [...records.keys()],
+      markClosedBinding: () => ledger(),
+      compareAndClearActiveTask: (_sid, candidate, predicate) => {
+        const record = records.get(candidate);
+        if (!predicate(record)) return { status: 'superseded', record };
+        records.delete(candidate);
+        return { status: 'cleared', record };
+      },
+    },
+  });
+  assert.deepEqual(result.released, []);
+  assert.equal(records.get('/repo/wt-other').issue, '#1298');
+  assert.equal(records.get('/repo/wt-reopen').issue, '#1297');
 });
 
 test('clearing live B cannot resurrect terminal A', () => {

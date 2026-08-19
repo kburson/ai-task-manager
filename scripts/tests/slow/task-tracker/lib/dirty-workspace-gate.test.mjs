@@ -54,6 +54,10 @@ function makeGitShim(sandbox, porcelain) {
     `#!/usr/bin/env node
 import fs from 'node:fs';
 const args = process.argv.slice(2);
+if (args[0] === 'worktree' && args[1] === 'list') {
+  fs.writeSync(1, \`worktree \${process.cwd()}\\n\\n\`);
+  process.exit(0);
+}
 const i = args.indexOf('status');
 if (i >= 0 && args.slice(i).some(a => a.startsWith('--porcelain'))) {
   fs.writeSync(1, ${JSON.stringify(porcelain)});

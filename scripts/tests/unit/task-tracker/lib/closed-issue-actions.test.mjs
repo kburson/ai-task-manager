@@ -43,14 +43,14 @@ function actionDeps({ fail = null } = {}) {
   };
 }
 
-test('dead is a true no-op and leaves every mutation adapter untouched', async () => {
+test('dead leaves issue and board untouched but releases confirmed-terminal bindings', async () => {
   const { calls, deps } = actionDeps();
   const result = await runClosedIssueConvergence(
     { decision: { action: 'dead' }, issueNumber: 925, boardState: 'review' },
     deps
   );
-  assert.deepEqual(result, { action: 'dead', status: 'untouched', steps: [] });
-  assert.deepEqual(calls, []);
+  assert.deepEqual(result, { action: 'dead', status: 'untouched', steps: ['cleanup'] });
+  assert.deepEqual(calls, ['cleanup']);
 });
 
 test('finalize runs the existing housekeeping order before cleanup', async () => {

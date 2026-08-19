@@ -53,4 +53,8 @@ test('Done, disposition, and convergence close lanes retain the shared cleanup b
   const calls = source.match(/releaseClosedBinding\(\{ ctx, projectDir, issue:/g) ?? [];
   assert.ok(calls.length >= 4, 'every terminal close lane calls the shared cleanup boundary');
   assert.match(source, /releaseIssueBindings/);
+  assert.match(
+    source,
+    /issue', 'close', String\(child\.num\)[\s\S]*?releaseClosedBinding\(\{[\s\S]*?issue: `#\$\{child\.num\}`/
+  );
 });

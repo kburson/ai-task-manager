@@ -13,6 +13,7 @@ import {
   setActiveTask,
   setSessionKanbanState,
   clearActiveTask,
+  compareAndClearActiveTask,
   sessionDir,
   activeTaskPath,
 } from '../../../../task-tracker/session-state.mjs';
@@ -71,6 +72,20 @@ assert.equal(getActiveTask('sess-b', tmp).issue, '#200');
 clearActiveTask('sess-a', tmp);
 assert.equal(getActiveTask('sess-a', tmp), null);
 assert.equal(getActiveTask('sess-b', tmp).issue, '#200', 'clearing sess-a must not affect sess-b');
+
+// #1297: terminal cleanup must compare under the same record lock used by
+// writers. A superseding bind survives; an exact stale record is removed.
+setActiveTask('sess-cas', { issue: '#1297', boundAt: '2026-08-19T14:00:00Z' }, tmp);
+assert.equal(
+  compareAndClearActiveTask('sess-cas', tmp, (candidate) => candidate.issue === '#other').status,
+  'superseded'
+);
+assert.equal(getActiveTask('sess-cas', tmp).issue, '#1297');
+assert.equal(
+  compareAndClearActiveTask('sess-cas', tmp, (candidate) => candidate.issue === '#1297').status,
+  'cleared'
+);
+assert.equal(getActiveTask('sess-cas', tmp), null);
 
 // AC: corrupt JSON read returns null (does not throw)
 const corruptPath = activeTaskPath('sess-c', tmp);

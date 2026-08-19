@@ -8,15 +8,11 @@ import { execFileSync } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 
-import {
-  findMainWorktreePath,
-  fleetRegistryPath,
-  readFleet,
-  withLock,
-} from '../fleet-registry.mjs';
+import { deregisterTask, fleetRegistryPath, readFleet, withLock } from '../fleet-registry.mjs';
 import { closedBindingsPath } from '../paths.mjs';
-import { clearActiveTask, getActiveTask, setActiveTask } from '../session-state.mjs';
+import { compareAndClearActiveTask } from '../session-state.mjs';
 import { currentSessionId } from '../word-counter.mjs';
+import { releaseBindingOccupancy } from './occupancy-lifecycle.mjs';
 import { GIT_TIMEOUT_MS } from './process-timeouts.mjs';
 
 export const CLOSED_BINDINGS_SCHEMA = 1;
@@ -54,6 +50,19 @@ export function readClosedBindingLedger(mainWorktreePath, deps = {}) {
   }
   if (value?.schema !== CLOSED_BINDINGS_SCHEMA || !object(value.sessions)) {
     throw new Error('closed-bindings:invalid-schema');
+  }
+  for (const [sessionId, entries] of Object.entries(value.sessions)) {
+    if (!sessionId || !object(entries)) throw new Error('closed-bindings:invalid-session');
+    for (const [issue, entry] of Object.entries(entries)) {
+      if (normalizeBindingIssue(issue) !== issue || !object(entry)) {
+        throw new Error('closed-bindings:invalid-entry');
+      }
+      try {
+        timestamp(entry.closedAt, 'entry-closed-at');
+      } catch {
+        throw new Error('closed-bindings:invalid-entry');
+      }
+    }
   }
   return value;
 }
@@ -128,9 +137,21 @@ function listGitWorktrees(projectDir) {
   );
 }
 
+export function resolveBindingAuthorityMain(projectDir, deps = {}) {
+  let linked;
+  try {
+    linked = (deps.listGitWorktrees || listGitWorktrees)(projectDir);
+  } catch (error) {
+    throw new Error(`closed-bindings:main-worktree-unavailable: ${error?.message || error}`);
+  }
+  const main = linked?.[0];
+  if (!main) throw new Error('closed-bindings:main-worktree-unavailable');
+  return path.resolve(main);
+}
+
 export function collectBindingCandidateWorktrees({ projectDir, deps = {} } = {}) {
-  const findMain = deps.findMain || findMainWorktreePath;
-  const mainWorktreePath = findMain(projectDir);
+  const resolveMain = deps.resolveMain || deps.findMain || resolveBindingAuthorityMain;
+  const mainWorktreePath = resolveMain(projectDir, deps);
   const candidates = new Set([path.resolve(projectDir), path.resolve(mainWorktreePath)]);
   const env = deps.env || process.env;
   for (const variable of ['AI_TASK_MANAGER_PROJECT_DIR', 'TASK_TRACKER_PROJECT_DIR']) {
@@ -166,8 +187,8 @@ export function releaseIssueBindings({
   const issueRef = normalizeBindingIssue(issue);
   if (!issueRef) throw new Error('closed-bindings:issue');
   if (!sessionId) throw new Error('closed-bindings:session');
-  const findMain = deps.findMain || findMainWorktreePath;
-  const mainWorktreePath = findMain(projectDir);
+  const resolveMain = deps.resolveMain || deps.findMain || resolveBindingAuthorityMain;
+  const mainWorktreePath = resolveMain(projectDir, deps);
   const collected = deps.collectCandidates
     ? { mainWorktreePath, candidates: deps.collectCandidates({ projectDir, deps }) }
     : collectBindingCandidateWorktrees({ projectDir, deps });
@@ -175,22 +196,31 @@ export function releaseIssueBindings({
     ? collected.candidates
     : [...collected.candidates];
   const mark = deps.markClosedBinding || markClosedBinding;
-  mark({ mainWorktreePath, sessionId, issue: issueRef, closedAt }, deps);
+  const ledger = mark({ mainWorktreePath, sessionId, issue: issueRef, closedAt }, deps);
 
-  const readActive = deps.getActiveTask || getActiveTask;
-  const stampActive = deps.setActiveTask || setActiveTask;
-  const clearActive = deps.clearActiveTask || clearActiveTask;
+  const compareAndClear = deps.compareAndClearActiveTask || compareAndClearActiveTask;
   const released = [];
   for (const candidate of candidates) {
-    const record = readActive(sessionId, candidate);
-    if (normalizeBindingIssue(record?.issue) !== issueRef) continue;
-    stampActive(sessionId, { ...record, closedAt }, candidate);
-    clearActive(sessionId, candidate);
-    const residual = readActive(sessionId, candidate);
-    if (normalizeBindingIssue(residual?.issue) === issueRef) {
-      throw new Error(`closed-bindings:release-failed:${candidate}`);
-    }
-    released.push(candidate);
+    const result = compareAndClear(sessionId, candidate, (record) => {
+      if (normalizeBindingIssue(record?.issue) !== issueRef) return false;
+      return isBindingRecordClosed({ record, sessionId, ledger });
+    });
+    if (result?.status === 'cleared') released.push(candidate);
   }
   return { issue: issueRef, closedAt, mainWorktreePath, released };
+}
+
+export function releaseTerminalIssueBinding({ projectDir, issue, deps = {} } = {}) {
+  const bindings = (deps.releaseIssueBindings || releaseIssueBindings)({ projectDir, issue });
+  try {
+    (deps.deregisterTask || deregisterTask)(projectDir, issue);
+  } catch {
+    // Fleet registration is advisory. Terminal ledger and occupancy authority
+    // determine whether guarded work may continue.
+  }
+  const occupancy = (deps.releaseBindingOccupancy || releaseBindingOccupancy)(
+    { projectDir, issue },
+    { releaseOccupancy: deps.releaseOccupancy }
+  );
+  return { bindings, occupancy };
 }

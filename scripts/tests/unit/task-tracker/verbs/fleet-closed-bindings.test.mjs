@@ -7,6 +7,7 @@ import { releaseClosedFleetBinding } from '../../../../task-tracker/verbs/fleet.
 function fixture(state = 'CLOSED') {
   const released = [];
   const deregistered = [];
+  const occupancy = [];
   return {
     ctx: {
       projectDir: '/repo/wt',
@@ -20,9 +21,14 @@ function fixture(state = 'CLOSED') {
         return { released: ['/repo/wt', '/repo/other'] };
       },
       deregisterTask: (...args) => deregistered.push(args),
+      releaseBindingOccupancy: (input) => {
+        occupancy.push(input);
+        return { status: 'released' };
+      },
     },
     released,
     deregistered,
+    occupancy,
   };
 }
 
@@ -32,6 +38,17 @@ test('verified recovery releases a confirmed closed issue without an override', 
   assert.deepEqual(result, { issue: '#1297', released: ['/repo/wt', '/repo/other'] });
   assert.deepEqual(input.released, [{ projectDir: '/repo/wt', issue: '#1297' }]);
   assert.deepEqual(input.deregistered, [['/repo/wt', '#1297']]);
+  assert.deepEqual(input.occupancy, [{ projectDir: '/repo/wt', issue: '#1297' }]);
+});
+
+test('advisory fleet cleanup cannot turn an authoritative recovery into failure', async () => {
+  const input = fixture();
+  input.deps.deregisterTask = () => {
+    throw new Error('fleet unavailable');
+  };
+  const result = await releaseClosedFleetBinding(input.ctx, input.deps);
+  assert.equal(result.issue, '#1297');
+  assert.equal(input.occupancy.length, 1);
 });
 
 test('recovery refuses to release a binding for an open issue', async () => {
