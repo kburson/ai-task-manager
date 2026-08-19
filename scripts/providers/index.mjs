@@ -11,12 +11,14 @@
 
 import { claudeAdapter } from './claude.mjs';
 import { codexAdapter } from './codex.mjs';
+import { grokAdapter } from './grok.mjs';
 
 // Registration order doubles as detection priority — more specific signals
 // (codex) are checked before fallback signals (claude). Preserves the
 // pre-#203 `aiAppName()` precedence where CODEX_SESSION_ID/CODEX_HOME
 // wins when both providers' env vars are set simultaneously.
 const REGISTRY = Object.freeze({
+  grok: grokAdapter,
   codex: codexAdapter,
   claude: claudeAdapter,
 });

@@ -55,30 +55,28 @@ export function markerDir() {
 }
 
 export function jsonlPath(sid) {
-  // The flat path (env override → local session-transcripts → Claude's homedir
-  // fallback) is the historical resolution and stays authoritative when it
-  // points at a real file. This preserves Claude behavior byte-for-byte.
-  const flat = path.join(transcriptDir(), `${sid}.jsonl`);
-  if (existsSync(flat)) return flat;
-  // #477 — providers whose transcripts are not flat-addressable (Codex's
-  // date-bucketed `rollout-<ts>-<sid>.jsonl`) resolve through the adapter's
-  // declarative `transcriptLayout` descriptor. Dispatch lives in the resolver,
-  // not here, so the recording path carries no per-provider branching.
   const adapter = getProvider(aiAppName());
-  if (adapter.transcriptLayout === 'date-bucketed') {
+  const flat = path.join(transcriptDir(), `${sid}.jsonl`);
+  if (adapter.sessionIdFallback === 'legacy' && existsSync(flat)) return flat;
+  if (adapter.transcriptLayout !== 'flat') {
     const resolved = resolveTranscriptPath({
       adapter,
       sid,
       homedir: homedir(),
       projectKey: projectKey(),
+      cwd: projectDir(),
+      env: process.env,
     });
-    // Date-bucketed paths are only knowable from an on-disk file (the rollout
-    // filename carries an unpredictable timestamp prefix). When none exists,
-    // return '' so the caller records a sid-only session-ref rather than a
-    // deterministic-but-wrong placeholder path (#477 AC5). `countWords('')`
-    // short-circuits to zero, so the word-count path is unaffected.
     return resolved || '';
   }
+  // The flat path (env override → local session-transcripts → Claude's homedir
+  // fallback) is the historical resolution and stays authoritative when it
+  // points at a real file. This preserves Claude behavior byte-for-byte.
+  if (existsSync(flat)) return flat;
+  // #477 — providers whose transcripts are not flat-addressable (Codex's
+  // date-bucketed `rollout-<ts>-<sid>.jsonl`) resolve through the adapter's
+  // declarative `transcriptLayout` descriptor. Dispatch lives in the resolver,
+  // not here, so the recording path carries no per-provider branching.
   // Flat layouts (Claude) are deterministic without the file — return the
   // computed path even when it does not exist yet; the transcript appears here
   // later in the session. This preserves #476 behavior byte-for-byte.

@@ -224,14 +224,14 @@ test('install --link-mode stub writes skill, settings, templates and is idempote
   const target = scratch('cli-install-');
   const home = scratch('cli-home-');
   const env = { ...process.env, HOME: home };
-  const r1 = run(['install', '--target', target, '--agent', 'both', '--link-mode', 'stub'], {
+  const r1 = run(['install', '--target', target, '--agent', 'all', '--link-mode', 'stub'], {
     env,
   });
   assert.equal(r1.status, 0, r1.stderr);
   assert.ok(existsSync(join(target, '.claude', 'settings.json')), 'claude settings written');
   assert.ok(existsSync(join(target, '.codex', 'hooks.json')), 'codex hooks written');
   assert.ok(existsSync(join(target, '.ai-task-manager')), 'templates dir written');
-  const r2 = run(['install', '--target', target, '--agent', 'both', '--link-mode', 'stub'], {
+  const r2 = run(['install', '--target', target, '--agent', 'all', '--link-mode', 'stub'], {
     env,
   });
   assert.equal(r2.status, 0, r2.stderr); // second run exercises the "unchanged" branches

@@ -32,6 +32,17 @@ import { detectProvider, getProvider, listProviders } from '../../providers/inde
 export const ORCHESTRATOR_ENV_KEY = 'AI_TASK_MANAGER_SESSION_ID';
 export const FALLBACK_SESSION_ID = 'default-session';
 
+export class SessionIdRequiredError extends Error {
+  constructor(adapter) {
+    const keys = adapter.sessionIdEnvKeys.join(' or ');
+    super(
+      `${adapter.name} requires ${keys} in the tool environment for bind, occupancy, and word-count operations`
+    );
+    this.name = 'SessionIdRequiredError';
+    this.code = 'provider-session-id-required';
+  }
+}
+
 // Returns the ordered list of env keys consulted for sid resolution, given
 // the current provider registry. Exposed so tests can pin precedence without
 // invoking the full resolver.
@@ -53,6 +64,16 @@ export function sessionIdEnvKeys(env = process.env) {
 export function resolveSessionId(opts = {}) {
   const env = opts.env || process.env;
   const fallback = opts.fallback || FALLBACK_SESSION_ID;
+  const explicit = env[ORCHESTRATOR_ENV_KEY];
+  if (typeof explicit === 'string' && explicit.length > 0) return explicit;
+  const activeAdapter = detectProvider({ env });
+  if (activeAdapter.sessionIdFallback === 'required') {
+    for (const key of activeAdapter.sessionIdEnvKeys) {
+      const value = env[key];
+      if (typeof value === 'string' && value.length > 0) return value;
+    }
+    throw new SessionIdRequiredError(activeAdapter);
+  }
   for (const key of sessionIdEnvKeys(env)) {
     const v = env[key];
     if (typeof v === 'string' && v.length > 0) return v;

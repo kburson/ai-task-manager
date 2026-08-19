@@ -49,6 +49,9 @@ function toolCall(name, rawInput) {
 }
 
 function normalizeClaudeMessage(record) {
+  if (record.type !== 'user' && record.type !== 'assistant') {
+    return { events: [], recognized: false, schema: null };
+  }
   if (record.isMeta || record.isSidechain) {
     return { events: [], recognized: true, schema: 'claude-message-v1' };
   }
@@ -112,13 +115,42 @@ function normalizeCodexPayload(payload) {
   return { events: [], recognized: false, schema: null };
 }
 
+function normalizeGrokRecord(record) {
+  const schema = 'grok-chat-v1';
+  if (record.type === 'reasoning' || record.type === 'system') {
+    return { events: [], recognized: true, schema };
+  }
+  if (record.type === 'tool_result') {
+    return {
+      events: [{ kind: 'tool-result', text: textContent(record.content) }],
+      recognized: true,
+      schema,
+    };
+  }
+  if (record.type === 'user' || record.type === 'assistant') {
+    const events = [];
+    const text = textContent(record.content);
+    if (text) events.push({ kind: 'text', text });
+    if (record.type === 'assistant' && Array.isArray(record.tool_calls)) {
+      for (const call of record.tool_calls) {
+        if (!call || typeof call !== 'object') continue;
+        const name = call.name ?? call.function?.name;
+        const input = call.arguments ?? call.input ?? call.function?.arguments;
+        events.push(toolCall(name, input));
+      }
+    }
+    return { events, recognized: true, schema };
+  }
+  return { events: [], recognized: false, schema: null };
+}
+
 export function normalizeTranscriptRecord(record) {
   if (!record || typeof record !== 'object') {
     return { events: [], recognized: false, schema: null };
   }
   if (record.type === 'response_item') return normalizeCodexPayload(record.payload);
-  if (record.type === 'user' || record.type === 'assistant') return normalizeClaudeMessage(record);
-  return { events: [], recognized: false, schema: null };
+  if (record.message) return normalizeClaudeMessage(record);
+  return normalizeGrokRecord(record);
 }
 
 export function collectTranscriptStringLeaves(value) {

@@ -55,12 +55,28 @@ test('getProvider("codex") returns the codex adapter', () => {
   assert.equal(getProvider('codex'), codexAdapter);
 });
 
-test('getProvider("nope") throws a descriptive error', () => {
-  assert.throws(() => getProvider('nope'), /Unknown provider 'nope'/);
+test('getProvider("grok") returns the Grok adapter', () => {
+  assert.equal(getProvider('grok').name, 'grok');
 });
 
-test('listProviders enumerates both registered names', () => {
-  assert.deepEqual(listProviders().sort(), ['claude', 'codex']);
+test('getProvider("nope") throws with the ordered provider list', () => {
+  assert.throws(() => getProvider('nope'), /Known providers: grok, codex, claude/);
+});
+
+test('listProviders enumerates registered names in detection order', () => {
+  assert.deepEqual(listProviders(), ['grok', 'codex', 'claude']);
+});
+
+test('detectProvider returns grok when GROK_SESSION_ID is set', () => {
+  assert.equal(detectProvider({ env: { GROK_SESSION_ID: 'g-1' } }).name, 'grok');
+});
+
+test('detectProvider returns grok when GROK_AGENT is set', () => {
+  assert.equal(detectProvider({ env: { GROK_AGENT: '1' } }).name, 'grok');
+});
+
+test('detectProvider gives grok precedence over codex', () => {
+  assert.equal(detectProvider({ env: { GROK_AGENT: '1', CODEX_THREAD_ID: 'c-1' } }).name, 'grok');
 });
 
 test('detectProvider returns codex when CODEX_SESSION_ID is set', () => {
@@ -88,29 +104,37 @@ test('detectProvider defaults to claude with no signals', () => {
   assert.equal(adapter.name, 'claude');
 });
 
-test('claude adapter enumerates all six capabilities', () => {
+test('claude adapter enumerates the expanded capabilities', () => {
   for (const key of [
     'installTarget',
     'stateDir',
     'transcriptLocator',
+    'transcriptHomeEnv',
+    'transcriptHomeDefault',
     'transcriptSchema',
     'sessionIdEnvKeys',
+    'sessionIdFallback',
     'hookCapability',
     'skillAdapterPath',
+    'installRecipe',
   ]) {
     assert.ok(key in claudeAdapter, `claude adapter missing capability: ${key}`);
   }
 });
 
-test('codex adapter enumerates all six capabilities', () => {
+test('codex adapter enumerates the expanded capabilities', () => {
   for (const key of [
     'installTarget',
     'stateDir',
     'transcriptLocator',
+    'transcriptHomeEnv',
+    'transcriptHomeDefault',
     'transcriptSchema',
     'sessionIdEnvKeys',
+    'sessionIdFallback',
     'hookCapability',
     'skillAdapterPath',
+    'installRecipe',
   ]) {
     assert.ok(key in codexAdapter, `codex adapter missing capability: ${key}`);
   }

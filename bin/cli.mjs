@@ -29,6 +29,7 @@ import {
   updateAgentsFile,
 } from '../scripts/task-tracker/codex-superpowers.mjs';
 import { stampAllSkillVersions } from './lib/stamp-skill-version.mjs';
+import { parseProviderSelection } from './lib/provider-selection.mjs';
 import { TEMPLATE_FILES, memorySeedFiles } from './lib/template-manifest.mjs';
 import {
   parseMemorySeedFlag,
@@ -42,10 +43,11 @@ import { runInteractive, STATUS_ORDER, STATUS_LABELS } from './lib/memory-resync
 import { writeIfChanged } from '../scripts/task-tracker/lib/write-if-changed.mjs';
 import { CLAUDE_BASH_ALLOWLIST } from './lib/claude-bash-allowlist.mjs';
 import { PREFERENCE_DEFAULTS } from '../scripts/task-tracker/config.mjs';
-import { getProvider } from '../scripts/providers/index.mjs';
+import { getProvider, listProviders } from '../scripts/providers/index.mjs';
 import { emitSelfDoc, wantsHelp } from '../scripts/lib/self-doc.mjs';
 import {
   GUARD_NAMES,
+  failClosedHookBootstrapCommand,
   guardBootstrapCommand,
   hookBootstrapCommand,
 } from '../scripts/task-tracker/lib/guard-entrypoint.mjs';
@@ -488,6 +490,100 @@ export function patchCodexHooksJson(hooksPath, { memoryIndexHook = false } = {})
   writeFileSync(hooksPath, JSON.stringify(config, null, 2) + '\n', 'utf8');
 }
 
+export function grokHookCommand(handlerName) {
+  return failClosedHookBootstrapCommand(
+    'scripts/task-tracker/hooks/grok-wire.mjs',
+    '--handler',
+    handlerName
+  );
+}
+
+function legacyGrokHookCommand(handlerName) {
+  return `node node_modules/ai-task-manager/scripts/task-tracker/hooks/grok-wire.mjs --handler ${handlerName}`;
+}
+
+export function patchGrokHooksJson(hooksPath, { memoryIndexHook = false } = {}) {
+  let config = {};
+  if (existsSync(hooksPath)) {
+    try {
+      config = JSON.parse(readFileSync(hooksPath, 'utf8'));
+    } catch {
+      /* ignore */
+    }
+  }
+  if (!config.hooks) config.hooks = {};
+
+  const requiredSpecs = [
+    ['SessionStart', 'startup|resume|clear|compact', 'seed'],
+    ['SessionStart', 'startup|resume|clear|compact', 'timing'],
+    ['PreCompact', 'manual|auto', 'timing'],
+    ['PostCompact', 'manual|auto', 'timing'],
+    ['PreToolUse', 'Bash', 'bash-guard'],
+    ['PreToolUse', 'Bash', 'activity-guard'],
+    ['PreToolUse', 'Edit|Write|NotebookEdit|search_replace|write', 'activity-guard'],
+    ['PreToolUse', 'Edit|Write|NotebookEdit|search_replace|write', 'source-edit-gate'],
+    ['PreToolUse', 'Agent|Task|spawn_subagent', 'agent-guard'],
+  ];
+  const memorySpecs = [
+    ['SessionStart', 'startup|resume|clear|compact', 'memory-index'],
+    ['PostCompact', 'manual|auto', 'memory-index'],
+  ];
+  const existingMemorySpecs = memorySpecs.filter(([event, , handlerName]) => {
+    const entries = Array.isArray(config.hooks[event]) ? config.hooks[event] : [];
+    return entries.some(
+      (entry) =>
+        hookEntryHasCommand(entry, grokHookCommand(handlerName)) ||
+        hookEntryHasCommand(entry, legacyGrokHookCommand(handlerName))
+    );
+  });
+  const specs = [...requiredSpecs, ...(memoryIndexHook ? memorySpecs : existingMemorySpecs)];
+
+  // Reconcile managed commands against their complete desired matcher set.
+  // A handler may intentionally appear more than once in one event (the
+  // activity guard covers Bash and edit matchers), so command identity removes
+  // only obsolete matchers and legacy bare-path commands.
+  for (const [event, , handlerName] of specs) {
+    if (!Array.isArray(config.hooks[event])) continue;
+    const command = grokHookCommand(handlerName);
+    const legacyCommand = legacyGrokHookCommand(handlerName);
+    const desiredMatchers = new Set(
+      specs
+        .filter(
+          ([candidateEvent, , candidateHandler]) =>
+            candidateEvent === event && candidateHandler === handlerName
+        )
+        .map(([, matcher]) => matcher)
+    );
+    config.hooks[event] = config.hooks[event].flatMap((entry) => {
+      const commands = desiredMatchers.has(entry.matcher)
+        ? [legacyCommand]
+        : [command, legacyCommand];
+      return removeHookCommands([entry], commands);
+    });
+  }
+
+  function add(event, matcher, handlerName) {
+    if (!Array.isArray(config.hooks[event])) config.hooks[event] = [];
+    const command = grokHookCommand(handlerName);
+    const matches = config.hooks[event].filter(
+      (entry) => entry.matcher === matcher && hookEntryHasCommand(entry, command)
+    );
+    if (matches.length === 1) return;
+    config.hooks[event] = config.hooks[event].flatMap((entry) =>
+      entry.matcher === matcher ? removeHookCommands([entry], [command]) : [entry]
+    );
+    config.hooks[event].push({
+      matcher,
+      hooks: [{ type: 'command', command }],
+    });
+  }
+
+  for (const spec of specs) add(...spec);
+
+  mkdirSync(dirname(hooksPath), { recursive: true });
+  writeFileSync(hooksPath, JSON.stringify(config, null, 2) + '\n', 'utf8');
+}
+
 function patchGitignore(targetDir) {
   const gitignorePath = join(targetDir, '.gitignore');
   const entries = [
@@ -648,21 +744,34 @@ function codexStub() {
   ].join('\n');
 }
 
-function installClaude(targetDir, linkMode, { memoryIndexHook = false } = {}) {
+function grokStub() {
+  return [
+    '---',
+    'name: task',
+    'description: Bind Grok work sessions to GitHub issues and track governed delivery.',
+    'user-invocable: true',
+    '---',
+    '',
+    '# Task',
+    '',
+    'Load and follow the canonical Grok adapter instructions from:',
+    '',
+    `\`node_modules/ai-task-manager/${getProvider('grok').skillAdapterPath}\``,
+    '',
+  ].join('\n');
+}
+
+function installClaude(targetDir, linkMode, { memoryIndexHook = false, adapter } = {}) {
   step('Claude Code files');
-  const skillDest = join(targetDir, getProvider('claude').installTarget);
+  const skillDest = join(targetDir, adapter.installTarget);
   if (linkMode === 'symlink') {
-    replaceWithSymlink(
-      skillDest,
-      join(PKG_ROOT, dirname(getProvider('claude').skillAdapterPath)),
-      'Skill'
-    );
+    replaceWithSymlink(skillDest, join(PKG_ROOT, dirname(adapter.skillAdapterPath)), 'Skill');
   } else {
     installStub(join(skillDest, 'SKILL.md'), claudeStub(), 'Skill');
   }
 
   installStub(
-    join(targetDir, '.claude', 'commands', 'task.md'),
+    join(targetDir, adapter.installRecipe.commandTarget),
     [
       'Invoke the `task` skill to handle this request. Pass along any arguments: $ARGUMENTS',
       '',
@@ -688,28 +797,50 @@ function installClaude(targetDir, linkMode, { memoryIndexHook = false } = {}) {
   // Lifecycle hooks are only installed when the active provider supports them.
   // Routed through `adapter.hookCapability` to remove the prior hard-coded
   // claude/codex fork at this call site (#203).
-  if (getProvider('claude').hookCapability) {
-    patchSettingsJson(join(targetDir, '.claude', 'settings.json'), { memoryIndexHook });
-    ok(`Settings ${dim('.claude/settings.json')}`);
+  if (adapter.hookCapability) {
+    patchSettingsJson(join(targetDir, adapter.installRecipe.hookTarget), { memoryIndexHook });
+    ok(`Settings ${dim(adapter.installRecipe.hookTarget)}`);
   }
 }
 
-function installCodex(targetDir, linkMode, { memoryIndexHook = false } = {}) {
+function installCodex(targetDir, linkMode, { memoryIndexHook = false, adapter } = {}) {
   step('Codex files');
-  const skillDest = join(targetDir, getProvider('codex').installTarget);
+  const skillDest = join(targetDir, adapter.installTarget);
   if (linkMode === 'symlink') {
-    replaceWithSymlink(
-      skillDest,
-      join(PKG_ROOT, dirname(getProvider('codex').skillAdapterPath)),
-      'Skill'
-    );
+    replaceWithSymlink(skillDest, join(PKG_ROOT, dirname(adapter.skillAdapterPath)), 'Skill');
   } else {
     installStub(join(skillDest, 'SKILL.md'), codexStub(), 'Skill');
   }
-  if (getProvider('codex').hookCapability) {
-    patchCodexHooksJson(join(targetDir, '.codex', 'hooks.json'), { memoryIndexHook });
-    ok(`Hooks ${dim('.codex/hooks.json')}`);
+  if (adapter.hookCapability) {
+    patchCodexHooksJson(join(targetDir, adapter.installRecipe.hookTarget), { memoryIndexHook });
+    ok(`Hooks ${dim(adapter.installRecipe.hookTarget)}`);
   }
+}
+
+function installGrok(targetDir, linkMode, { memoryIndexHook = false, adapter } = {}) {
+  step('Grok files');
+  const skillDest = join(targetDir, adapter.installTarget);
+  if (linkMode === 'symlink') {
+    replaceWithSymlink(skillDest, join(PKG_ROOT, dirname(adapter.skillAdapterPath)), 'Skill');
+  } else {
+    installStub(join(skillDest, 'SKILL.md'), grokStub(), 'Skill');
+  }
+  if (adapter.hookCapability) {
+    patchGrokHooksJson(join(targetDir, adapter.installRecipe.hookTarget), { memoryIndexHook });
+    ok(`Hooks ${dim(adapter.installRecipe.hookTarget)}`);
+  }
+}
+
+const INSTALL_WRITERS = Object.freeze({
+  'claude-settings': installClaude,
+  'codex-hooks': installCodex,
+  'grok-hooks': installGrok,
+});
+
+export function installProvider(adapter, targetDir, linkMode, options = {}) {
+  const writer = INSTALL_WRITERS[adapter.installRecipe.writer];
+  if (!writer) throw new Error(`Unsupported install writer: ${adapter.installRecipe.writer}`);
+  writer(targetDir, linkMode, { ...options, adapter });
 }
 
 function setupCodexSuperpowers(targetDir, { globalAgents = false } = {}) {
@@ -966,15 +1097,17 @@ async function cmdInstall(args) {
   const targetArg = parseOption(args, '--target');
   if (targetArg) targetDir = resolve(targetArg);
 
-  const agent = parseOption(args, '--agent', 'both');
+  let selectedNames;
+  try {
+    selectedNames = parseProviderSelection(args, listProviders());
+  } catch (error) {
+    err(error.message);
+    process.exit(1);
+  }
   const linkMode = parseOption(args, '--link-mode', 'stub');
   const enableCodexSuperpowers =
     hasFlag(args, '--codex-superpowers') || hasFlag(args, '--codex-superpowers-global');
   const globalCodexSuperpowers = hasFlag(args, '--codex-superpowers-global');
-  if (!['claude', 'codex', 'both'].includes(agent)) {
-    err(`Unknown --agent value "${agent}". Expected claude or codex.`);
-    process.exit(1);
-  }
   if (!['stub', 'symlink'].includes(linkMode)) {
     err(`Unknown --link-mode ${linkMode}. Expected stub or symlink.`);
     process.exit(1);
@@ -1013,12 +1146,11 @@ async function cmdInstall(args) {
   const memorySeedCount = await installMemorySeed(targetDir, args);
   const memoryIndexHook = memorySeedCount > 0;
 
-  if (agent === 'claude' || agent === 'both')
-    installClaude(targetDir, linkMode, { memoryIndexHook });
-  if (agent === 'codex' || agent === 'both') {
-    installCodex(targetDir, linkMode, { memoryIndexHook });
+  for (const providerName of selectedNames) {
+    installProvider(getProvider(providerName), targetDir, linkMode, { memoryIndexHook });
   }
-  if ((agent === 'codex' || agent === 'both') && enableCodexSuperpowers) {
+  const codexSelected = selectedNames.includes('codex');
+  if (codexSelected && enableCodexSuperpowers) {
     setupCodexSuperpowers(targetDir, { globalAgents: globalCodexSuperpowers });
   }
   installTemplates(targetDir);
@@ -1029,7 +1161,7 @@ async function cmdInstall(args) {
   console.log(`  ${bold('Next step')} ${dim('- configure your GitHub project:')}`);
   console.log('');
   console.log(`     ${cyan(bold('npx ai-task-manager init'))}`);
-  if ((agent === 'codex' || agent === 'both') && !enableCodexSuperpowers) {
+  if (codexSelected && !enableCodexSuperpowers) {
     console.log('');
     console.log(bgYellow(bold('  Optional: Codex workflow bootstrap                        ')));
     console.log(bgYellow('  Enable Superpowers skills for Codex agents:               '));

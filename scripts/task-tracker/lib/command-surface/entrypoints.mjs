@@ -110,6 +110,7 @@ export const EXECUTABLE_ENTRYPOINTS = Object.freeze([
       'scripts/task-tracker/epic-base-edit-guard.mjs',
       'scripts/task-tracker/hook-handler.mjs',
       'scripts/task-tracker/hooks/codex-prompt-timestamp.mjs',
+      'scripts/task-tracker/hooks/grok-wire.mjs',
       'scripts/task-tracker/hooks/memory-index.mjs',
       'scripts/task-tracker/hooks/on-ask.mjs',
       'scripts/task-tracker/hooks/on-stop.mjs',

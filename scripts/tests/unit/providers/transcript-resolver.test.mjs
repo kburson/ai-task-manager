@@ -14,6 +14,7 @@ import path from 'node:path';
 import { resolveTranscriptPath } from '../../../providers/transcript-resolver.mjs';
 import { claudeAdapter } from '../../../providers/claude.mjs';
 import { codexAdapter } from '../../../providers/codex.mjs';
+import { grokAdapter } from '../../../providers/grok.mjs';
 import { serializeSessionRefMarker } from '../../../task-tracker/lib/session-ref.mjs';
 import { mkdtempProjectIsolated } from '../../../task-tracker/lib/scratch-dir.mjs';
 
@@ -58,6 +59,58 @@ test('date-bucketed layout: returns null when no matching file exists', () => {
   const home = mkdtempProjectIsolated('codex-miss-');
   const resolved = resolveTranscriptPath({ adapter: codexAdapter, sid: SID, homedir: home });
   assert.equal(resolved, null);
+});
+
+test('cwd-session-dir layout treats GROK_HOME as the provider home itself', () => {
+  const home = mkdtempProjectIsolated('grok-resolve-');
+  const grokHome = path.join(home, 'custom-grok-home');
+  const cwd = '/Users/person/Project With Spaces';
+  const file = path.join(grokHome, 'sessions', encodeURIComponent(cwd), SID, 'chat_history.jsonl');
+  mkdirSync(path.dirname(file), { recursive: true });
+  writeFileSync(file, '{"type":"user","content":"hello"}\n', 'utf8');
+  assert.equal(
+    resolveTranscriptPath({
+      adapter: grokAdapter,
+      sid: SID,
+      homedir: '/must-not-prefix-grok-home',
+      cwd,
+      env: { GROK_HOME: grokHome },
+    }),
+    file
+  );
+});
+
+test('cwd-session-dir layout defaults Grok home beneath homedir', () => {
+  const home = mkdtempProjectIsolated('grok-default-home-');
+  const cwd = '/work/default-grok';
+  const file = path.join(
+    home,
+    '.grok',
+    'sessions',
+    encodeURIComponent(cwd),
+    SID,
+    'chat_history.jsonl'
+  );
+  mkdirSync(path.dirname(file), { recursive: true });
+  writeFileSync(file, '{}\n', 'utf8');
+  assert.equal(
+    resolveTranscriptPath({ adapter: grokAdapter, sid: SID, homedir: home, cwd, env: {} }),
+    file
+  );
+});
+
+test('cwd-session-dir layout returns null instead of selecting another session', () => {
+  const home = mkdtempProjectIsolated('grok-miss-');
+  assert.equal(
+    resolveTranscriptPath({
+      adapter: grokAdapter,
+      sid: SID,
+      homedir: home,
+      cwd: '/work/missing',
+      env: {},
+    }),
+    null
+  );
 });
 
 test('missing adapter / sid / homedir → null', () => {

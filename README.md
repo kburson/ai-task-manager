@@ -2,7 +2,7 @@
 
 **Turn your AI coding sessions into measurable, managed engineering work.**
 
-AI Task Manager lets Claude Code and Codex share the same GitHub issue/project workflow. It binds every AI session to a GitHub issue, tracks time and context automatically, orchestrates full project backlogs from a spec, and generates stakeholder-ready ROI reports.
+AI Task Manager lets Claude Code, Codex, and Grok share the same GitHub issue/project workflow. It binds every AI session to a GitHub issue, tracks time and context automatically, orchestrates full project backlogs from a spec, and generates stakeholder-ready ROI reports.
 
 > **Your AI is drowning in context it never reads.** We cut cold-start skill load by 75% with a just-in-time loader — capability stayed flat, the tax disappeared. → [How we killed context bloat with JIT Skill Loading](docs/jit-loader-results.md)
 
@@ -29,7 +29,7 @@ As soon as the shape of the skill is stabilized we will publish it as an npm pac
 - **Node.js 22+** — minimum supported runtime; Node 25 is preferred for cloud development environments
 - **GitHub CLI (`gh`)** — [install](https://cli.github.com) and run `gh auth login`
 - **jq** — `brew install jq` / `apt install jq` / `winget install jqlang.jq`
-- **Claude Code and/or Codex** — install whichever agent you plan to use
+- **Claude Code, Codex, and/or Grok** — install whichever agents you plan to use
 - A **GitHub Projects V2** board. `init` can use an existing linked board, link an existing user/org board, or create a new board with AI Task Manager-compatible workflow fields.
 
 ### Install & Configure
@@ -92,7 +92,7 @@ The gap between "I've been using AI coding agents for a few weeks" and "here's w
 
 The tool has three distinct capability layers:
 
-1. **Session tracking** — bind Claude Code or Codex to a GitHub issue, auto-log time and context words, manage Kanban state hands-free
+1. **Session tracking** — bind Grok Build, Claude Code, or Codex to a GitHub issue, auto-log time and context words, manage Kanban state hands-free
 2. **Backlog orchestration** — generate a complete GitHub Projects backlog from a spec document, with epics, sub-issues, labels, sizing, stack ranking, and pickup directives
 3. **ROI reporting** — produce a financial report comparing estimated effort against measured engaged hours, with fully-burdened cost tables by US region and role
 
@@ -154,20 +154,30 @@ Most `/task` verbs are not meant for you to type. They're the vocabulary the AI 
 
 ## Install Targets
 
-By default, install targets both Claude Code and Codex. Pass `--agent` to limit to one:
+By default, install targets all registered providers: Claude Code, Codex, and Grok. Pass `--agent` repeatedly or use a comma-separated value to install an additive subset:
 
 ```bash
-npx ai-task-manager install               # both (default)
+npx ai-task-manager install               # all registered providers (default)
+npx ai-task-manager install --agent all   # explicit form of the default
 npx ai-task-manager install --agent claude
 npx ai-task-manager install --agent codex
+npx ai-task-manager install --agent grok
+npx ai-task-manager install --agent claude,grok
+npx ai-task-manager install --agent claude --agent codex
 ```
+
+The former `--agent both` alias is removed and rejected. Name the desired providers or use `all` so the selection remains accurate as the registry grows. Installing a subset is additive: it does not remove or rewrite unselected provider files.
 
 The installer writes stable skill stubs by default:
 
 - Claude Code: `.claude/skills/task/SKILL.md`
 - Codex: `.agents/skills/task/SKILL.md`
 - Codex hooks: `.codex/hooks.json`
+- Grok: `.grok/skills/task/SKILL.md`
+- Grok hooks: `.grok/hooks/aitm.json`
 - Shared templates and runtime state: `.ai-task-manager/`
+
+Grok projects must be trusted before project hooks run. See the [Grok provider guide](docs/guides/grok-provider.md) for hook trust, session identity, and transcript behavior.
 
 ### Optional Codex Superpowers Bootstrap
 

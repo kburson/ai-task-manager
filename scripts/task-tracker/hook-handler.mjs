@@ -41,6 +41,7 @@ import {
   readFleet,
 } from './fleet-registry.mjs';
 import { getProjectDir, sessionDir } from './paths.mjs';
+import { claimHookStamp } from './lib/hook-idempotency.mjs';
 
 const pexec = promisify(execFile);
 
@@ -512,6 +513,26 @@ if (isMain)
     }
     const sid = payload.session_id || currentSessionId();
     const event = payload.hook_event_name || process.argv[2];
+    const eventTimestamp = payload.event_timestamp ?? payload.eventTimestamp ?? payload.timestamp;
+    if (
+      ['SessionStart', 'PreCompact', 'PostCompact'].includes(event) &&
+      eventTimestamp != null &&
+      String(eventTimestamp).trim() !== ''
+    ) {
+      try {
+        const stamp = claimHookStamp({
+          projectDir,
+          sid,
+          hookEventName: event,
+          promptId: payload.prompt_id ?? payload.promptId,
+          eventTimestamp,
+        });
+        if (!stamp.claimed) process.exit(0);
+      } catch (error) {
+        console.error(`[task-tracker-hook] ${event}: hook stamp claim failed: ${error.message}`);
+        process.exit(1);
+      }
+    }
     try {
       if (event === 'PreCompact') await onPreCompact(sid);
       else if (event === 'PostCompact') await onPostCompact(sid);

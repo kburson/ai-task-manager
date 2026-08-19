@@ -9,12 +9,47 @@ import { mkdtempSync, writeFileSync, utimesSync } from 'node:fs';
 import path from 'node:path';
 import { projectScratchDir } from '../../../../task-tracker/lib/scratch-dir.mjs';
 
-import {
+import * as sessionIdModule from '../../../../task-tracker/lib/session-id.mjs';
+
+const {
   FALLBACK_SESSION_ID,
   ORCHESTRATOR_ENV_KEY,
+  SessionIdRequiredError,
   resolveSessionId,
   sessionIdEnvKeys,
-} from '../../../../task-tracker/lib/session-id.mjs';
+} = sessionIdModule;
+
+test('SessionIdRequiredError is exported for fail-closed providers', () => {
+  assert.equal(typeof SessionIdRequiredError, 'function');
+});
+
+test('Grok uses an explicit orchestrator override', () => {
+  assert.equal(
+    resolveSessionId({ env: { AI_TASK_MANAGER_SESSION_ID: 'override', GROK_AGENT: '1' } }),
+    'override'
+  );
+});
+
+test('Grok uses GROK_SESSION_ID when present', () => {
+  assert.equal(resolveSessionId({ env: { GROK_AGENT: '1', GROK_SESSION_ID: 'g-2' } }), 'g-2');
+});
+
+test('Grok refuses before scanning legacy provider keys or transcripts', () => {
+  let scanned = false;
+  assert.throws(
+    () =>
+      resolveSessionId({
+        env: { GROK_AGENT: '1', CLAUDE_SESSION_ID: 'wrong' },
+        transcriptDir: () => {
+          scanned = true;
+          return '/must-not-scan';
+        },
+      }),
+    (error) =>
+      error.code === 'provider-session-id-required' && /GROK_SESSION_ID/.test(error.message)
+  );
+  assert.equal(scanned, false);
+});
 
 test('orchestrator env var wins over everything', () => {
   const env = {

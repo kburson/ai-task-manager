@@ -10,12 +10,20 @@ export const codexAdapter = {
   installTarget: '.agents/skills/task',
   stateDir: '.tmp/aitm/app/codex',
   transcriptLocator: '.codex/sessions',
+  transcriptHomeEnv: null,
+  transcriptHomeDefault: null,
   transcriptLayout: 'date-bucketed',
   transcriptSchema: 'codex-rollout-v1',
   sessionIdEnvKeys: ['CODEX_THREAD_ID', 'CODEX_SESSION_ID'],
   detectionEnvKeys: ['CODEX_THREAD_ID', 'CODEX_SESSION_ID', 'CODEX_HOME'],
+  sessionIdFallback: 'legacy',
   hookCapability: true,
   skillAdapterPath: 'skill/adapters/codex/SKILL.md',
+  installRecipe: {
+    writer: 'codex-hooks',
+    hookTarget: '.codex/hooks.json',
+    commandTarget: null,
+  },
 };
 
 export default codexAdapter;

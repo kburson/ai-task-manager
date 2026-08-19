@@ -4,12 +4,16 @@
 // stampSkillVersion writes the version marker correctly.
 
 import { strict as assert } from 'node:assert';
-import { writeFileSync, readFileSync, rmSync } from 'node:fs';
-import { join } from 'node:path';
+import { mkdirSync, writeFileSync, readFileSync, rmSync } from 'node:fs';
+import { dirname, join } from 'node:path';
 
 import { mkdtempOutsideRepo } from '../../../task-tracker/lib/scratch-dir.mjs';
 import { getProvider } from '../../../providers/index.mjs';
-import { SKILL_DETAIL_FILES, stampSkillVersion } from '../../../../bin/lib/stamp-skill-version.mjs';
+import {
+  SKILL_DETAIL_FILES,
+  stampAllSkillVersions,
+  stampSkillVersion,
+} from '../../../../bin/lib/stamp-skill-version.mjs';
 
 const tests = [];
 function test(name, fn) {
@@ -28,11 +32,17 @@ test('SKILL_DETAIL_FILES includes codex-adapter entry', () => {
   );
 });
 
-test('SKILL_DETAIL_FILES has 4 entries', () => {
+test('SKILL_DETAIL_FILES includes grok-adapter entry', () => {
+  const entry = SKILL_DETAIL_FILES.find((f) => f.id === 'grok-adapter');
+  assert.ok(entry, 'grok-adapter entry missing from SKILL_DETAIL_FILES');
+  assert.strictEqual(entry.pkgRelPath, getProvider('grok').skillAdapterPath);
+});
+
+test('SKILL_DETAIL_FILES has 5 entries', () => {
   assert.strictEqual(
     SKILL_DETAIL_FILES.length,
-    4,
-    `expected 4 entries, got ${SKILL_DETAIL_FILES.length}`
+    5,
+    `expected 5 entries, got ${SKILL_DETAIL_FILES.length}`
   );
 });
 
@@ -100,6 +110,30 @@ test('stampSkillVersion returns missing when file absent', () => {
   const r = stampSkillVersion('/tmp/__nonexistent_aitm_test_file__.md', '1.0.0');
   assert.strictEqual(r.changed, false);
   assert.strictEqual(r.reason, 'missing');
+});
+
+test('stampAllSkillVersions stamps the installed Grok adapter', () => {
+  const dir = mkdtempOutsideRepo('aitm-stamp-all-grok-test-');
+  const priorForceStamp = process.env.AITM_FORCE_STAMP;
+  try {
+    for (const entry of SKILL_DETAIL_FILES) {
+      const file = join(dir, entry.pkgRelPath);
+      mkdirSync(dirname(file), { recursive: true });
+      writeFileSync(file, `# ${entry.id}\n`, 'utf8');
+    }
+    process.env.AITM_FORCE_STAMP = '1';
+    const result = stampAllSkillVersions({ pkgRoot: dir, version: '1.2.3' });
+    const grok = result.results.find((entry) => entry.id === 'grok-adapter');
+    assert.equal(grok?.reason, 'stamped');
+    assert.match(
+      readFileSync(join(dir, getProvider('grok').skillAdapterPath), 'utf8'),
+      /<!-- aitm-skill-version: 1\.2\.3 -->/
+    );
+  } finally {
+    if (priorForceStamp === undefined) delete process.env.AITM_FORCE_STAMP;
+    else process.env.AITM_FORCE_STAMP = priorForceStamp;
+    rmSync(dir, { recursive: true, force: true });
+  }
 });
 
 // ---- Run ----

@@ -482,7 +482,23 @@ The skill is delivered as a just-in-time loader to minimize context burden. Thre
 | First commit / commit-trail troubleshooting                                         | `rules/commit-trail.md`      |
 | Hook-output diagnosis                                                               | `rules/hooks.md`             |
 
-Both Claude and Codex adapters point at the same router; Tier-2 rule files are tool-agnostic. Tool-specific divergence (e.g. how the agent surfaces a `PROMPT_REQUIRED:` line) stays in the adapter `SKILL.md`.
+Claude, Codex, and Grok adapters point at the same router; Tier-2 rule files are tool-agnostic. Tool-specific divergence (e.g. how the agent surfaces a `PROMPT_REQUIRED:` line) stays in the adapter `SKILL.md`.
+
+### Provider adapter contract
+
+Provider behavior is declared by pure-data modules under `scripts/providers/`. Registration and detection order is Grok, Codex, then Claude; Claude remains the no-signal fallback.
+
+| Provider | Adapter      | Skill target          | Hook target             | Transcript layout                             | Session identity                                                 |
+| -------- | ------------ | --------------------- | ----------------------- | --------------------------------------------- | ---------------------------------------------------------------- |
+| Grok     | `grok.mjs`   | `.grok/skills/task`   | `.grok/hooks/aitm.json` | `cwd-session-dir` under `$GROK_HOME/sessions` | `GROK_SESSION_ID` is required in the tool environment            |
+| Codex    | `codex.mjs`  | `.agents/skills/task` | `.codex/hooks.json`     | `date-bucketed` rollout files                 | `CODEX_THREAD_ID`, then `CODEX_SESSION_ID`, with legacy fallback |
+| Claude   | `claude.mjs` | `.claude/skills/task` | `.claude/settings.json` | `flat` project/session JSONL                  | Claude session keys with legacy fallback                         |
+
+The default installer iterates every registered provider. Explicit repeated or comma-separated `--agent` values select an additive subset; call sites dispatch on each adapter's `installRecipe.writer` rather than its name.
+
+Grok native hooks use camel-case envelope fields and snake-case event values. `scripts/task-tracker/hooks/grok-wire.mjs` normalizes those values into the existing shared-handler shape and translates a shared `block` decision into Grok's `deny` protocol. Missing bridge/handler paths fail closed. An existing shared handler crash keeps the documented diagnostic fail-open boundary.
+
+Grok transcript resolution never scans for the latest session. The required session id selects exactly `$GROK_HOME/sessions/<encoded-cwd>/<sid>/chat_history.jsonl`; absence produces a sid-only, zero-count state.
 
 After `/clear` or `/compact`, sentinels are wiped from context and the router reloads on the next `/task` call; only the Tier-2 rule files needed by the next verb reload — unrelated rules stay unloaded. Budget targets (asserted by `scripts/tests/unit/task-tracker/core/measure-context.test.mjs`): idle ≤1,500 tokens, invoked ≤8,000 tokens, active ≤12,000 tokens. Measurement tool: `scripts/task-tracker/measure-context.mjs [--idle | --invoked | --active [N] | --all]`.
 
