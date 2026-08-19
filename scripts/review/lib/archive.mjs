@@ -589,6 +589,28 @@ function validatePrepared(prepared, repository = REAL_REPOSITORY_BOUNDARY) {
     }
     byKind.set(file.kind, file);
   }
+  const artifactKeys = Object.keys(prepared.manifest?.artifact || {}).sort();
+  const expectedArtifactKeys = [
+    'acceptedCommit',
+    ...(mode === 'copy' ? ['archivePath', 'archivedSha256'] : []),
+    'gitBlob',
+    'mode',
+    'sha256',
+    'sourcePath',
+  ].sort();
+  if (!isDeepStrictEqual(artifactKeys, expectedArtifactKeys)) {
+    fail('archive-prepared-integrity', 'artifact manifest shape');
+  }
+  committedArtifact(
+    prepared.root,
+    {
+      path: prepared.manifest.artifact.sourcePath,
+      commit: prepared.manifest.artifact.acceptedCommit,
+      blob: prepared.manifest.artifact.gitBlob,
+      sha256: prepared.manifest.artifact.sha256,
+    },
+    repository
+  );
   const expectedEntries = [
     ...(mode === 'copy'
       ? [
@@ -620,18 +642,6 @@ function validatePrepared(prepared, repository = REAL_REPOSITORY_BOUNDARY) {
     ) {
       fail('archive-prepared-integrity', `${kind} does not match manifest`);
     }
-  }
-  if (mode === 'reference') {
-    committedArtifact(
-      prepared.root,
-      {
-        path: prepared.manifest.artifact.sourcePath,
-        commit: prepared.manifest.artifact.acceptedCommit,
-        blob: prepared.manifest.artifact.gitBlob,
-        sha256: prepared.manifest.artifact.sha256,
-      },
-      repository
-    );
   }
   for (const file of prepared.files) expectedBytes(file);
   const manifest = byKind.get('manifest');

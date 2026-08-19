@@ -239,6 +239,15 @@ function archiveOptions(fixture, archiveDir = 'docs/reviews/session') {
   };
 }
 
+function unreachableRepository(fixture) {
+  return {
+    ...fixture.repository,
+    resolveReachableCommit(_root, revision) {
+      return { commit: revision, reachable: false };
+    },
+  };
+}
+
 function output(prepared, kind) {
   return prepared.files.find((file) => file.kind === kind);
 }
@@ -591,12 +600,7 @@ test('reachable artifacts use reference mode while preserving terminal evidence'
 
 test('unreachable accepted commits retain copy mode with exact artifact bytes', async () => {
   const fixture = await acceptedConsensus();
-  const repository = {
-    ...fixture.repository,
-    resolveReachableCommit(_root, revision) {
-      return { commit: revision, reachable: false };
-    },
-  };
+  const repository = unreachableRepository(fixture);
   const prepared = prepareArchive({
     ...archiveOptions(fixture, 'docs/reviews/copy-fallback'),
     repository,
@@ -860,6 +864,42 @@ test('publication and inspection reject forged prepared paths before touching si
   assert.equal(existsSync(escaped), false);
 });
 
+test('prepared validation refuses forged reference and copy artifact guarantees', async () => {
+  const referenceFixture = await acceptedConsensus();
+  const reference = prepareArchive(
+    archiveOptions(referenceFixture, 'docs/reviews/forged-reference')
+  );
+  const referenceCases = [
+    ['acceptedCommit', '0'.repeat(40), 'archive-source'],
+    ['sourcePath', 'docs/missing.md', 'archive-source'],
+    ['gitBlob', '0'.repeat(40), 'archive-artifact-blob'],
+    ['sha256', `sha256:${'0'.repeat(64)}`, 'archive-artifact-sha'],
+    ['archivePath', 'artifact-artifact.md', 'archive-prepared-integrity'],
+  ];
+  for (const [field, value, code] of referenceCases) {
+    const forged = structuredClone(reference);
+    forged.manifest.artifact[field] = value;
+    assert.throws(
+      () => inspectArchive({ prepared: forged, repository: referenceFixture.repository }),
+      (error) => error.code === code,
+      field
+    );
+  }
+
+  const copyFixture = await acceptedConsensus();
+  const repository = unreachableRepository(copyFixture);
+  const copy = prepareArchive({
+    ...archiveOptions(copyFixture, 'docs/reviews/forged-copy'),
+    repository,
+  });
+  const forgedCopy = structuredClone(copy);
+  forgedCopy.manifest.artifact.gitBlob = '0'.repeat(40);
+  assert.throws(
+    () => inspectArchive({ prepared: forgedCopy, repository }),
+    (error) => error.code === 'archive-artifact-blob'
+  );
+});
+
 test('publication writes the manifest last, preserves inputs and repository state, and retries without rewrite', async () => {
   const fixture = await acceptedConsensus();
   const dirty = path.join(fixture.root, 'unrelated.txt');
@@ -902,6 +942,38 @@ test('publication writes the manifest last, preserves inputs and repository stat
     beforeMtime
   );
   assert.equal(inspectArchive({ prepared }).status, 'complete');
+});
+
+test('copy publication preserves artifact and both evidence files with manifest last', async () => {
+  const fixture = await acceptedConsensus();
+  const repository = unreachableRepository(fixture);
+  const prepared = prepareArchive({
+    ...archiveOptions(fixture, 'docs/reviews/copy-publication'),
+    repository,
+  });
+  const writes = [];
+  assert.equal(
+    publishPreparedArchive(prepared, {
+      repository,
+      hooks: { afterWrite: ({ relative }) => writes.push(relative) },
+    }).status,
+    'published'
+  );
+  assert.equal(writes.at(-1), 'README.md');
+  assert.deepEqual(prepared.files.map((file) => file.kind).sort(), [
+    'artifact',
+    'manifest',
+    'response',
+    'review',
+  ]);
+  for (const kind of ['artifact', 'review', 'response']) {
+    const file = output(prepared, kind);
+    assert.deepEqual(
+      readFileSync(path.join(prepared.destination.absolute, file.path)),
+      Buffer.from(file.bytesBase64, 'base64')
+    );
+  }
+  assert.equal(inspectArchive({ prepared, repository }).status, 'complete');
 });
 
 test('archive inspection refuses active state and every missing, extra, or different destination', async () => {
