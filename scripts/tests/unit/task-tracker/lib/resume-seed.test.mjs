@@ -46,6 +46,8 @@ function makeCtx({
   seedKanban,
   claimBindingOccupancy = () => ({ status: 'claimed' }),
   drainQueueIfAny = async () => {},
+  safePostTiming,
+  rollbackBindingOccupancy,
 }) {
   const posts = [];
   return {
@@ -56,14 +58,63 @@ function makeCtx({
       projectDir: tmp,
       role: 'agent',
       drainQueueIfAny,
-      safePostTiming: async (issue, row) => posts.push({ issue, row }),
+      safePostTiming: safePostTiming ?? (async (issue, row) => posts.push({ issue, row })),
       // Must be within buildRow's retroactive-ts window of real now.
       nowIso: () => new Date().toISOString(),
       seedKanban,
       claimBindingOccupancy,
+      rollbackBindingOccupancy,
     },
     posts,
   };
+}
+
+// Test 5: a downstream timing failure rolls back both occupancy and local binding.
+{
+  const SID = 'resume-seed-timing-rollback';
+  process.env.AI_TASK_MANAGER_SESSION_ID = SID;
+  const statePath = writeState({ active: null, lastActive: null });
+  const claim = { status: 'claimed' };
+  let rolledBack = null;
+  const { ctx } = makeCtx({
+    rest: ['#1001'],
+    cfg: {},
+    statePath,
+    seedKanban: async () => {},
+    claimBindingOccupancy: () => claim,
+    rollbackBindingOccupancy: (received) => {
+      rolledBack = received;
+      return { status: 'rolled-back' };
+    },
+    safePostTiming: async () => {
+      throw new Error('timing unavailable');
+    },
+  });
+
+  await assert.rejects(() => verbResume(ctx), /timing unavailable/);
+  assert.equal(loadState(statePath).active, null, 'failed bind restores prior local state');
+  assert.equal(rolledBack, claim, 'failed bind rolls back exact occupancy claim');
+}
+
+// Test 6: a concurrent occupancy heartbeat wins; state remains aligned to that target.
+{
+  const SID = 'resume-seed-timing-superseded';
+  process.env.AI_TASK_MANAGER_SESSION_ID = SID;
+  const statePath = writeState({ active: null, lastActive: null });
+  const { ctx } = makeCtx({
+    rest: ['#1002'],
+    cfg: {},
+    statePath,
+    seedKanban: async () => {},
+    claimBindingOccupancy: () => ({ status: 'claimed' }),
+    rollbackBindingOccupancy: () => ({ status: 'superseded' }),
+    safePostTiming: async () => {
+      throw new Error('timing unavailable');
+    },
+  });
+
+  await assert.rejects(() => verbResume(ctx), /timing unavailable/);
+  assert.equal(loadState(statePath).active, '#1002', 'superseded target authority is preserved');
 }
 
 // Test 4: a conflicting occupancy claim refuses before queue/timing/marker work.

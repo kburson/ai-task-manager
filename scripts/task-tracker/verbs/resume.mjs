@@ -1,3 +1,5 @@
+import { isDeepStrictEqual } from 'node:util';
+
 import {
   loadState,
   saveState,
@@ -52,6 +54,31 @@ function rollbackClaim(ctx, claim) {
   return (ctx.rollbackBindingOccupancy ?? rollbackBindingOccupancy)(claim, {
     rollbackOccupancyClaim: ctx.rollbackOccupancyClaim,
   });
+}
+
+function rollbackFailedBind(ctx, { claim, priorState, savedState }, originalError) {
+  const recoveryErrors = [];
+  let rollbackResult;
+  try {
+    rollbackResult = rollbackClaim(ctx, claim);
+  } catch (rollbackError) {
+    recoveryErrors.push(rollbackError);
+  }
+  if (savedState && rollbackResult?.status === 'rolled-back') {
+    try {
+      const current = loadState(ctx.statePath);
+      if (isDeepStrictEqual(current, savedState)) saveState(priorState, ctx.statePath);
+    } catch (restoreError) {
+      recoveryErrors.push(restoreError);
+    }
+  }
+  if (recoveryErrors.length) {
+    throw new AggregateError(
+      [originalError, ...recoveryErrors],
+      `resume failed and authority rollback was incomplete: ${originalError.message}`
+    );
+  }
+  throw originalError;
 }
 
 // #475 AC2 — idle span of a pause window in whole seconds. Returns 0 when no
@@ -130,6 +157,7 @@ export async function verbResume(ctx) {
     let carriedMarker;
     let idleSec;
     let resumeDesc;
+    let savedState = null;
     try {
       const resolveBinding = ctx.resolveWorktreeBinding ?? resolveWorktreeBinding;
       const binding = resolveBinding({ projectDir, now: nowIso });
@@ -154,77 +182,75 @@ export async function verbResume(ctx) {
       idleSec = computePauseIdleSec(s.pausedAtTs, ts);
       carriedMarker = advanceWordMarker(s.lastWordMarker, wordsAtStart);
       resumeDesc = s.pauseReasonText || role || 'task resumed';
-      saveState(
-        {
-          ...s,
-          active: s.lastActive,
-          entryStartTs: ts,
-          wordsAtEntryStart: wordsAtStart,
-          paused: undefined,
-          pausedAtTs: null,
-          pauseReasonSlug: null,
-          pauseReasonText: null,
-          lastWordMarker: carriedMarker,
-          lastFullWordMarker: resumeBank.fullMarker,
-          ...binding,
-        },
-        statePath
-      );
-    } catch (error) {
-      rollbackClaim(ctx, occupancyClaim);
-      throw error;
-    }
-    const fullWordsAtStart = resumeBank.fullMarkerAvailable ? resumeBank.fullMarker : null;
-    try {
-      setTaskStatus(projectDir, s.lastActive, 'active');
-    } catch {
-      /* best-effort: failure must not abort the primary operation */
-    }
-    if (sid && cfg?.repo) {
-      const seed = ctx.seedKanban ?? seedSessionKanbanFromBody;
+      savedState = {
+        ...s,
+        active: s.lastActive,
+        entryStartTs: ts,
+        wordsAtEntryStart: wordsAtStart,
+        paused: undefined,
+        pausedAtTs: null,
+        pauseReasonSlug: null,
+        pauseReasonText: null,
+        lastWordMarker: carriedMarker,
+        lastFullWordMarker: resumeBank.fullMarker,
+        ...binding,
+      };
+      saveState(savedState, statePath);
+      savedState = loadState(statePath);
+      const fullWordsAtStart = resumeBank.fullMarkerAvailable ? resumeBank.fullMarker : null;
       try {
-        const seeded = await seed({
-          sid,
-          issue: s.lastActive,
-          projDir: projectDir,
-          repo: cfg.repo,
-        });
-        // #673 — Pickup Directive only applies once an issue has reached
-        // Plan; route earlier-state issues back to the state walk instead.
-        if (seeded?.kanbanState && !isPickupDirectiveEligible(seeded.kanbanState)) {
-          console.log(formatPickupDirectiveDeferredBanner(s.lastActive, seeded.kanbanState));
-        }
-        // #935 — warn when binding to a review-state issue whose Agent Review
-        // has not been run; names `/task review` as the in-place remediation.
-        if (seeded?.reviewRemediationHint) console.log(seeded.reviewRemediationHint);
-      } catch (err) {
-        process.stderr.write(
-          `[resume] ${s.lastActive}: kanbanState seed failed (${err.name || 'Error'}): ${err.message}\n`
-        );
-        process.stderr.write(
-          `  Repair: node scripts/task-tracker/task-tracker.mjs reconcile accept-live ${String(s.lastActive).replace(/^#/, '')}\n`
-        );
+        setTaskStatus(projectDir, s.lastActive, 'active');
+      } catch {
+        /* best-effort: failure must not abort the primary operation */
       }
+      if (sid && cfg?.repo) {
+        const seed = ctx.seedKanban ?? seedSessionKanbanFromBody;
+        try {
+          const seeded = await seed({
+            sid,
+            issue: s.lastActive,
+            projDir: projectDir,
+            repo: cfg.repo,
+          });
+          // #673 — Pickup Directive only applies once an issue has reached
+          // Plan; route earlier-state issues back to the state walk instead.
+          if (seeded?.kanbanState && !isPickupDirectiveEligible(seeded.kanbanState)) {
+            console.log(formatPickupDirectiveDeferredBanner(s.lastActive, seeded.kanbanState));
+          }
+          // #935 — warn when binding to a review-state issue whose Agent Review
+          // has not been run; names `/task review` as the in-place remediation.
+          if (seeded?.reviewRemediationHint) console.log(seeded.reviewRemediationHint);
+        } catch (err) {
+          process.stderr.write(
+            `[resume] ${s.lastActive}: kanbanState seed failed (${err.name || 'Error'}): ${err.message}\n`
+          );
+          process.stderr.write(
+            `  Repair: node scripts/task-tracker/task-tracker.mjs reconcile accept-live ${String(s.lastActive).replace(/^#/, '')}\n`
+          );
+        }
+      }
+      const { buildRow } = await import('../gh-timing-comment.mjs');
+      const row = buildRow({
+        ts,
+        event: 'resumed',
+        activeSec: 0,
+        idleSec,
+        deltaWords: 0,
+        wordMarker: carriedMarker,
+        fullWordMarker: fullWordsAtStart,
+        description: resumeDesc,
+      });
+      await safePostTiming(s.lastActive, row);
+      // #758 — same out-of-band Status-drift audit on the no-arg resume path.
+      await runMoveInvariantAudit({
+        issueNumber: String(s.lastActive).replace(/^#/, ''),
+        cfg,
+      });
+      console.log(`Resumed ${s.lastActive}.`);
+      return;
+    } catch (error) {
+      rollbackFailedBind(ctx, { claim: occupancyClaim, priorState: s, savedState }, error);
     }
-    const { buildRow } = await import('../gh-timing-comment.mjs');
-    const row = buildRow({
-      ts,
-      event: 'resumed',
-      activeSec: 0,
-      idleSec,
-      deltaWords: 0,
-      wordMarker: carriedMarker,
-      fullWordMarker: fullWordsAtStart,
-      description: resumeDesc,
-    });
-    await safePostTiming(s.lastActive, row);
-    // #758 — same out-of-band Status-drift audit on the no-arg resume path.
-    await runMoveInvariantAudit({
-      issueNumber: String(s.lastActive).replace(/^#/, ''),
-      cfg,
-    });
-    console.log(`Resumed ${s.lastActive}.`);
-    return;
   }
 
   // #N path: unrestricted rebind to a specific issue (pause OR stop, or fresh bind)
@@ -271,6 +297,7 @@ export async function verbResume(ctx) {
   let resumeBank;
   let carriedMarker;
   let idleSec;
+  let savedState = null;
   try {
     const resolveBinding = ctx.resolveWorktreeBinding ?? resolveWorktreeBinding;
     const binding = resolveBinding({ projectDir, now: nowIso });
@@ -293,190 +320,188 @@ export async function verbResume(ctx) {
     const wordsAtStart = resumeBank.marker;
     idleSec = computePauseIdleSec(s.pausedAtTs, ts);
     carriedMarker = advanceWordMarker(s.lastWordMarker, wordsAtStart);
-    saveState(
-      {
-        ...s,
-        active: normalizedTarget,
-        lastActive: normalizedTarget,
-        entryStartTs: ts,
-        wordsAtEntryStart: wordsAtStart,
-        paused: undefined,
-        pausedAtTs: null,
-        lastWordMarker: carriedMarker,
-        lastFullWordMarker: resumeBank.fullMarker,
-        ...binding,
-      },
-      statePath
-    );
-  } catch (error) {
-    rollbackClaim(ctx, occupancyClaim);
-    throw error;
-  }
-  const fullWordsAtStart = resumeBank.fullMarkerAvailable ? resumeBank.fullMarker : null;
-  try {
-    setTaskStatus(projectDir, normalizedTarget, 'active');
-  } catch {
-    /* best-effort: failure must not abort the primary operation */
-  }
-  try {
-    registerTask(projectDir, normalizedTarget, projectDir, currentBranch(projectDir));
-  } catch {
-    /* best-effort: failure must not abort the primary operation */
-  }
-  if (sid && cfg?.repo) {
-    const seed = ctx.seedKanban ?? seedSessionKanbanFromBody;
+    savedState = {
+      ...s,
+      active: normalizedTarget,
+      lastActive: normalizedTarget,
+      entryStartTs: ts,
+      wordsAtEntryStart: wordsAtStart,
+      paused: undefined,
+      pausedAtTs: null,
+      lastWordMarker: carriedMarker,
+      lastFullWordMarker: resumeBank.fullMarker,
+      ...binding,
+    };
+    saveState(savedState, statePath);
+    savedState = loadState(statePath);
+    const fullWordsAtStart = resumeBank.fullMarkerAvailable ? resumeBank.fullMarker : null;
     try {
-      const seeded = await seed({
-        sid,
-        issue: normalizedTarget,
-        projDir: projectDir,
+      setTaskStatus(projectDir, normalizedTarget, 'active');
+    } catch {
+      /* best-effort: failure must not abort the primary operation */
+    }
+    try {
+      registerTask(projectDir, normalizedTarget, projectDir, currentBranch(projectDir));
+    } catch {
+      /* best-effort: failure must not abort the primary operation */
+    }
+    if (sid && cfg?.repo) {
+      const seed = ctx.seedKanban ?? seedSessionKanbanFromBody;
+      try {
+        const seeded = await seed({
+          sid,
+          issue: normalizedTarget,
+          projDir: projectDir,
+          repo: cfg.repo,
+        });
+        // #673 — Pickup Directive only applies once an issue has reached
+        // Plan; route earlier-state issues back to the state walk instead.
+        if (seeded?.kanbanState && !isPickupDirectiveEligible(seeded.kanbanState)) {
+          console.log(formatPickupDirectiveDeferredBanner(normalizedTarget, seeded.kanbanState));
+        }
+        // #935 — warn when binding to a review-state issue whose Agent Review has
+        // not been run; names `/task review` as the in-place remediation.
+        if (seeded?.reviewRemediationHint) console.log(seeded.reviewRemediationHint);
+      } catch (err) {
+        process.stderr.write(
+          `[resume] ${normalizedTarget}: kanbanState seed failed (${err.name || 'Error'}): ${err.message}\n`
+        );
+        process.stderr.write(
+          `  Repair: node scripts/task-tracker/task-tracker.mjs reconcile accept-live ${String(normalizedTarget).replace(/^#/, '')}\n`
+        );
+      }
+    }
+    // #482 — the first-ever bind of an issue must record a `start` row, not
+    // `resumed` (you cannot resume without a prior start/pause). Discriminate by
+    // whether the issue already has timing-log history; a genuine resume (history
+    // present, or this #N resume follows a pause) keeps `resumed`.
+    const gh = await import('../gh-timing-comment.mjs');
+    const { buildRow } = gh;
+    const readTimingCommentBody = ctx.readTimingCommentBody ?? gh.readTimingCommentBody;
+    let hasTimingHistory = false;
+    let tcBody = '';
+    let readStatus = null;
+    let tcResult = null;
+    if (cfg?.repo) {
+      // #568 — findTimingComment does `issueNumber.replace('#','')`, so it needs a
+      // STRING. Passing a Number made `.replace` throw, so every #N-path read
+      // returned `status:'error'` → fail-closed to `resumed` → the fresh-bind
+      // downgrade never fired (the orphan-`resumed` half of the #480 bug this fix
+      // exists to kill). Pass the bare issue string.
+      tcResult = await readTimingCommentBody({
+        issueNumber: String(normalizedTarget).replace(/^#/, ''),
         repo: cfg.repo,
       });
-      // #673 — Pickup Directive only applies once an issue has reached
-      // Plan; route earlier-state issues back to the state walk instead.
-      if (seeded?.kanbanState && !isPickupDirectiveEligible(seeded.kanbanState)) {
-        console.log(formatPickupDirectiveDeferredBanner(normalizedTarget, seeded.kanbanState));
-      }
-      // #935 — warn when binding to a review-state issue whose Agent Review has
-      // not been run; names `/task review` as the in-place remediation.
-      if (seeded?.reviewRemediationHint) console.log(seeded.reviewRemediationHint);
-    } catch (err) {
-      process.stderr.write(
-        `[resume] ${normalizedTarget}: kanbanState seed failed (${err.name || 'Error'}): ${err.message}\n`
-      );
-      process.stderr.write(
-        `  Repair: node scripts/task-tracker/task-tracker.mjs reconcile accept-live ${String(normalizedTarget).replace(/^#/, '')}\n`
-      );
+      tcBody = gh.bodyOf(tcResult);
+      readStatus = tcResult?.status ?? null;
+      hasTimingHistory = timingCommentHasRows(tcBody);
     }
-  }
-  // #482 — the first-ever bind of an issue must record a `start` row, not
-  // `resumed` (you cannot resume without a prior start/pause). Discriminate by
-  // whether the issue already has timing-log history; a genuine resume (history
-  // present, or this #N resume follows a pause) keeps `resumed`.
-  const gh = await import('../gh-timing-comment.mjs');
-  const { buildRow } = gh;
-  const readTimingCommentBody = ctx.readTimingCommentBody ?? gh.readTimingCommentBody;
-  let hasTimingHistory = false;
-  let tcBody = '';
-  let readStatus = null;
-  let tcResult = null;
-  if (cfg?.repo) {
-    // #568 — findTimingComment does `issueNumber.replace('#','')`, so it needs a
-    // STRING. Passing a Number made `.replace` throw, so every #N-path read
-    // returned `status:'error'` → fail-closed to `resumed` → the fresh-bind
-    // downgrade never fired (the orphan-`resumed` half of the #480 bug this fix
-    // exists to kill). Pass the bare issue string.
-    tcResult = await readTimingCommentBody({
-      issueNumber: String(normalizedTarget).replace(/^#/, ''),
-      repo: cfg.repo,
+    // #534 — the #N path is the dominant cold-re-pickup orphan site. Resolve the
+    // re-engagement against the issue's own open interruption so a return is never
+    // emitted without a pair. #568 — `resumed` is the sole closer: an open
+    // `pause:<r>`, `switch-out:#X`, or session-end `idle` all close to `resumed`.
+    // Fresh issue → `start`; history-no-opener → benign `resumed`.
+    let bindEvent = resolveBindEvent({
+      hasTimingHistory,
+      paused: !!s.pausedAtTs,
+      timingBody: cfg?.repo ? tcBody : null,
+      readStatus,
     });
-    tcBody = gh.bodyOf(tcResult);
-    readStatus = tcResult?.status ?? null;
-    hasTimingHistory = timingCommentHasRows(tcBody);
-  }
-  // #534 — the #N path is the dominant cold-re-pickup orphan site. Resolve the
-  // re-engagement against the issue's own open interruption so a return is never
-  // emitted without a pair. #568 — `resumed` is the sole closer: an open
-  // `pause:<r>`, `switch-out:#X`, or session-end `idle` all close to `resumed`.
-  // Fresh issue → `start`; history-no-opener → benign `resumed`.
-  let bindEvent = resolveBindEvent({
-    hasTimingHistory,
-    paused: !!s.pausedAtTs,
-    timingBody: cfg?.repo ? tcBody : null,
-    readStatus,
-  });
-  // #534 AC5/AC7 — orphan-pairing guard. Never post a re-engagement with no
-  // open interruption AND no prior `start` to pair against.
-  // #568 — downgrade to `start` ONLY on positive confirmation the log is empty
-  // (a successful read of zero rows). On a read error, or whenever data rows
-  // already exist, never manufacture a `start` — that is exactly the
-  // duplicate-start the append guard now refuses (and would crash the bind).
-  const guard = assertPairedReengagement(tcBody, bindEvent);
-  if (!guard.ok && readStatus !== 'error' && !timingCommentHasRows(tcBody)) {
-    process.stderr.write(`[resume] ${normalizedTarget}: ${guard.reason}; downgrading to start\n`);
-    bindEvent = 'start';
-  }
-  const isStart = bindEvent === 'start';
-  // #981 — a session that dies without running its exit path (timeout, closed
-  // terminal, context end) leaves the prior row unclosed; writing `resumed`
-  // straight over that gap makes `computePhaseCloseDelta` read the ENTIRE
-  // elapsed span as active on the next `<phase>:completed` row (the #880/#879
-  // defect class). Insert a synthetic departure row first so the gap
-  // reclassifies as idle — `buildBackdatedDepartureRow` can only ever emit a
-  // zero-delta marker row, never fabricate active time.
-  if (cfg?.repo && !isStart && readStatus !== 'error') {
-    let gap = detectUnmarkedDepartureGap(tcBody, ts);
-    if (gap) {
-      const collectResumeActivityEvidence =
-        ctx.collectResumeActivityEvidence ?? defaultCollectResumeActivityEvidence;
-      let activityEvidence;
-      try {
-        activityEvidence = await collectResumeActivityEvidence({
-          issueNumber: Number(String(normalizedTarget).replace(/^#/, '')),
-          projectDir,
-          comments: tcResult?.comments ?? [],
-        });
-      } catch {
-        activityEvidence = { status: 'unknown', timestamps: [] };
-      }
+    // #534 AC5/AC7 — orphan-pairing guard. Never post a re-engagement with no
+    // open interruption AND no prior `start` to pair against.
+    // #568 — downgrade to `start` ONLY on positive confirmation the log is empty
+    // (a successful read of zero rows). On a read error, or whenever data rows
+    // already exist, never manufacture a `start` — that is exactly the
+    // duplicate-start the append guard now refuses (and would crash the bind).
+    const guard = assertPairedReengagement(tcBody, bindEvent);
+    if (!guard.ok && readStatus !== 'error' && !timingCommentHasRows(tcBody)) {
+      process.stderr.write(`[resume] ${normalizedTarget}: ${guard.reason}; downgrading to start\n`);
+      bindEvent = 'start';
+    }
+    const isStart = bindEvent === 'start';
+    // #981 — a session that dies without running its exit path (timeout, closed
+    // terminal, context end) leaves the prior row unclosed; writing `resumed`
+    // straight over that gap makes `computePhaseCloseDelta` read the ENTIRE
+    // elapsed span as active on the next `<phase>:completed` row (the #880/#879
+    // defect class). Insert a synthetic departure row first so the gap
+    // reclassifies as idle — `buildBackdatedDepartureRow` can only ever emit a
+    // zero-delta marker row, never fabricate active time.
+    if (cfg?.repo && !isStart && readStatus !== 'error') {
+      let gap = detectUnmarkedDepartureGap(tcBody, ts);
+      if (gap) {
+        const collectResumeActivityEvidence =
+          ctx.collectResumeActivityEvidence ?? defaultCollectResumeActivityEvidence;
+        let activityEvidence;
+        try {
+          activityEvidence = await collectResumeActivityEvidence({
+            issueNumber: Number(String(normalizedTarget).replace(/^#/, '')),
+            projectDir,
+            comments: tcResult?.comments ?? [],
+          });
+        } catch {
+          activityEvidence = { status: 'unknown', timestamps: [] };
+        }
 
-      if (activityEvidence?.status === 'found') {
-        gap = detectUnmarkedDepartureGap(tcBody, ts, SUSPICIOUS_GAP_SEC, {
-          activityTimestamps: activityEvidence.timestamps,
+        if (activityEvidence?.status === 'found') {
+          gap = detectUnmarkedDepartureGap(tcBody, ts, SUSPICIOUS_GAP_SEC, {
+            activityTimestamps: activityEvidence.timestamps,
+          });
+        } else if (activityEvidence?.status !== 'none') {
+          process.stderr.write(
+            `[resume] ${normalizedTarget}: same-issue activity evidence unavailable; refusing to synthesize idle time\n`
+          );
+          gap = null;
+        }
+      }
+      if (gap) {
+        const departureRow = gh.buildBackdatedDepartureRow({
+          ts: gap.syntheticTs,
+          event: 'pause:auto-detected-gap',
+          wordMarker: gap.wordMarker,
+          fullWordMarker: gap.fullWordMarker,
+          description: `resume after a ${Math.round(gap.gapSec / 3600)}h gap with no departure row — synthetic departure inserted per #981 so the gap reclassifies as idle`,
+          // #1104 — `gap.syntheticTs` is a UTC-normalized instant, so it carries no
+          // offset worth preserving. This row lands one second after `gap.lastRowTs`
+          // and is read alongside it, so it renders at THAT row's offset; otherwise
+          // a heal run from another machine inserts an apparent time jump that never
+          // happened. No offset on the neighbor → null → local-zone fallback.
+          offsetMin: timingTimestampOffsetMin(gap.lastRowTs),
         });
-      } else if (activityEvidence?.status !== 'none') {
-        process.stderr.write(
-          `[resume] ${normalizedTarget}: same-issue activity evidence unavailable; refusing to synthesize idle time\n`
-        );
-        gap = null;
+        await safePostTiming(normalizedTarget, departureRow);
       }
     }
-    if (gap) {
-      const departureRow = gh.buildBackdatedDepartureRow({
-        ts: gap.syntheticTs,
-        event: 'pause:auto-detected-gap',
-        wordMarker: gap.wordMarker,
-        fullWordMarker: gap.fullWordMarker,
-        description: `resume after a ${Math.round(gap.gapSec / 3600)}h gap with no departure row — synthetic departure inserted per #981 so the gap reclassifies as idle`,
-        // #1104 — `gap.syntheticTs` is a UTC-normalized instant, so it carries no
-        // offset worth preserving. This row lands one second after `gap.lastRowTs`
-        // and is read alongside it, so it renders at THAT row's offset; otherwise
-        // a heal run from another machine inserts an apparent time jump that never
-        // happened. No offset on the neighbor → null → local-zone fallback.
-        offsetMin: timingTimestampOffsetMin(gap.lastRowTs),
-      });
-      await safePostTiming(normalizedTarget, departureRow);
-    }
-  }
-  const suppressBindEvent = shouldSuppressActiveBindEvent({
-    timingBody: tcBody,
-    readStatus,
-    paused: !!s.pausedAtTs,
-    nowTs: ts,
-  });
-  if (!suppressBindEvent) {
-    const row = buildRow({
-      ts,
-      event: bindEvent,
-      activeSec: 0,
-      idleSec,
-      deltaWords: 0,
-      wordMarker: carriedMarker,
-      fullWordMarker: fullWordsAtStart,
-      description: role ?? (isStart ? 'task started' : 'task resumed'),
+    const suppressBindEvent = shouldSuppressActiveBindEvent({
+      timingBody: tcBody,
+      readStatus,
+      paused: !!s.pausedAtTs,
+      nowTs: ts,
     });
-    await safePostTiming(normalizedTarget, row);
+    if (!suppressBindEvent) {
+      const row = buildRow({
+        ts,
+        event: bindEvent,
+        activeSec: 0,
+        idleSec,
+        deltaWords: 0,
+        wordMarker: carriedMarker,
+        fullWordMarker: fullWordsAtStart,
+        description: role ?? (isStart ? 'task started' : 'task resumed'),
+      });
+      await safePostTiming(normalizedTarget, row);
+    }
+    // #758 — audit the just-bound issue for out-of-band Status drift (a raw-API /
+    // wrapper move that never wrote the move-complete sentinel). Best-effort: it
+    // prints a warning + recommended reconcile on drift and never blocks the bind.
+    await runMoveInvariantAudit({
+      issueNumber: String(normalizedTarget).replace(/^#/, ''),
+      cfg,
+    });
+    console.log(
+      suppressBindEvent
+        ? `Bound ${normalizedTarget} (live timing span already active; no duplicate reengagement row).`
+        : `${isStart ? 'Started' : 'Resumed'} ${normalizedTarget}.`
+    );
+  } catch (error) {
+    rollbackFailedBind(ctx, { claim: occupancyClaim, priorState: s, savedState }, error);
   }
-  // #758 — audit the just-bound issue for out-of-band Status drift (a raw-API /
-  // wrapper move that never wrote the move-complete sentinel). Best-effort: it
-  // prints a warning + recommended reconcile on drift and never blocks the bind.
-  await runMoveInvariantAudit({
-    issueNumber: String(normalizedTarget).replace(/^#/, ''),
-    cfg,
-  });
-  console.log(
-    suppressBindEvent
-      ? `Bound ${normalizedTarget} (live timing span already active; no duplicate reengagement row).`
-      : `${isStart ? 'Started' : 'Resumed'} ${normalizedTarget}.`
-  );
 }

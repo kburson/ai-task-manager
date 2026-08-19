@@ -140,6 +140,7 @@ test('a post-save switch failure restores both prior state and occupancy', async
   ctx.claimBindingOccupancy = () => claim;
   ctx.rollbackBindingOccupancy = (received) => {
     rolledBack = received;
+    return { status: 'rolled-back' };
   };
   ctx.safePostTiming = async () => {
     throw new Error('timing unavailable');
@@ -149,6 +150,24 @@ test('a post-save switch failure restores both prior state and occupancy', async
   assert.equal(loadState(statePath).active, '#700', 'prior binding restored');
   assert.equal(loadState(statePath).entryStartTs, seed.entryStartTs, 'prior span restored');
   assert.equal(rolledBack, claim, 'occupancy claim rolled back');
+});
+
+test('a superseded occupancy rollback preserves the target state to avoid split authority', async () => {
+  const caseDir = path.join(base, 'e-superseded');
+  const { ctx, statePath } = makeCtx(caseDir);
+  saveState({ active: '#700', lastActive: '#700', lastWordMarker: 700 }, statePath);
+  ctx.claimBindingOccupancy = () => ({ status: 'moved' });
+  ctx.rollbackBindingOccupancy = () => ({ status: 'superseded' });
+  ctx.safePostTiming = async () => {
+    throw new Error('timing unavailable');
+  };
+
+  await assert.rejects(() => verbSwitch(ctx, '#833'), /timing unavailable/);
+  assert.equal(
+    loadState(statePath).active,
+    '#833',
+    'state remains aligned to the concurrently heartbeated target occupancy'
+  );
 });
 
 test.after(() => {

@@ -162,7 +162,7 @@ export async function verbSwitch(ctx, target) {
       ...binding,
     };
     saveState(newState, statePath);
-    savedTargetState = newState;
+    savedTargetState = loadState(statePath);
     // #218: state hydration removed — the issue body's `aitm-last-known-state`
     // marker is the source of truth; preflight reads it on demand.
     try {
@@ -289,20 +289,21 @@ export async function verbSwitch(ctx, target) {
     }
   } catch (error) {
     const recoveryErrors = [];
-    if (savedTargetState) {
+    let rollbackResult;
+    try {
+      rollbackResult = (ctx.rollbackBindingOccupancy ?? rollbackBindingOccupancy)(claim, {
+        rollbackOccupancyClaim: ctx.rollbackOccupancyClaim,
+      });
+    } catch (rollbackError) {
+      recoveryErrors.push(rollbackError);
+    }
+    if (savedTargetState && rollbackResult?.status === 'rolled-back') {
       try {
         const current = loadState(statePath);
         if (isDeepStrictEqual(current, savedTargetState)) saveState(priorState, statePath);
       } catch (restoreError) {
         recoveryErrors.push(restoreError);
       }
-    }
-    try {
-      (ctx.rollbackBindingOccupancy ?? rollbackBindingOccupancy)(claim, {
-        rollbackOccupancyClaim: ctx.rollbackOccupancyClaim,
-      });
-    } catch (rollbackError) {
-      recoveryErrors.push(rollbackError);
     }
     if (recoveryErrors.length) {
       throw new AggregateError(

@@ -105,6 +105,24 @@ test('an active co-review predicate permits different providers on different iss
   assert.deepEqual(Object.keys(readOccupancy(file)).sort(), ['1325', '1326']);
 });
 
+test('co-review sharing receives every other occupant and caps the worktree at two sessions', () => {
+  const { claim } = fixture();
+  claim();
+  const allowsPairOnly = ({ occupants }) => occupants.length === 1;
+  claim(
+    { issue: 1326, sid: 'grok-b', provider: 'grok' },
+    { coReviewAllowsWorktree: allowsPairOnly }
+  );
+  assert.throws(
+    () =>
+      claim(
+        { issue: 1327, sid: 'codex-c', provider: 'codex' },
+        { coReviewAllowsWorktree: allowsPairOnly }
+      ),
+    (error) => error.code === 'occupancy-worktree-held'
+  );
+});
+
 test('corrupt authority data fails closed', () => {
   const { file, claim } = fixture();
   mkdirSync(path.dirname(file), { recursive: true });

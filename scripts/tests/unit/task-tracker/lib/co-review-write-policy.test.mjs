@@ -59,11 +59,27 @@ test('bash parser reports complete destinations and ambiguous mutations', () => 
     'dd if=input.bin of=src/output.bin',
     'curl https://example.test/file --output src/file.bin',
     'git apply changes.patch',
+    'git switch other',
+    'git stash push',
+    'git pull',
+    'find src -type f -delete',
+    'tar -xf payload.tar',
+    'PATH=/tmp rg needle src',
+    '/tmp/rg needle src',
+    'git diff --output=src/a.mjs',
+    "git -c alias.diff='reset --hard' diff",
   ]) {
     assert.equal(
       extractBashWriteTargets(command, root).ambiguousMutation,
       true,
       `${command} must not fall through as read-only`
+    );
+  }
+  for (const command of ['git status --short', 'git diff --stat', 'rg needle src', 'cat src/a']) {
+    assert.equal(
+      extractBashWriteTargets(command, root).ambiguousMutation,
+      false,
+      `${command} is an explicitly read-only reviewer command`
     );
   }
 });

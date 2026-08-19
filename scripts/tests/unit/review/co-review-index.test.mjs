@@ -209,6 +209,7 @@ test('occupancy sharing is limited to the exact live reviewer provider session',
     indexFile,
     worktreePath: state.worktree,
     existing: { provider: 'codex', sid: 'author-sid' },
+    occupants: [{ provider: 'codex', sid: 'author-sid' }],
     requested: { provider: 'grok', sid: 'grok-reviewer-sid' },
     statusProtocol: () => live,
   };
@@ -217,6 +218,13 @@ test('occupancy sharing is limited to the exact live reviewer provider session',
     allowsCoReviewOccupancy({
       ...occupancy,
       requested: { provider: 'grok', sid: 'unrelated-third-session' },
+    }),
+    false
+  );
+  assert.equal(
+    allowsCoReviewOccupancy({
+      ...occupancy,
+      occupants: [occupancy.existing, { provider: 'grok', sid: 'reviewer-from-another-protocol' }],
     }),
     false
   );

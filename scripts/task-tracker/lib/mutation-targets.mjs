@@ -88,6 +88,75 @@ function absoluteTarget(candidate, projectRoot) {
   return path.resolve(projectRoot, value);
 }
 
+const READ_ONLY_COMMANDS = new Set([
+  'basename',
+  'cat',
+  'cut',
+  'df',
+  'dirname',
+  'du',
+  'echo',
+  'false',
+  'file',
+  'grep',
+  'head',
+  'jq',
+  'ls',
+  'printf',
+  'pwd',
+  'readlink',
+  'realpath',
+  'rg',
+  'sort',
+  'stat',
+  'tail',
+  'test',
+  'tr',
+  'true',
+  'uniq',
+  'wc',
+  'which',
+]);
+
+const READ_ONLY_GIT_SUBCOMMANDS = new Set([
+  'blame',
+  'cat-file',
+  'cherry',
+  'describe',
+  'diff',
+  'for-each-ref',
+  'grep',
+  'log',
+  'ls-files',
+  'merge-base',
+  'rev-parse',
+  'shortlog',
+  'show',
+  'status',
+]);
+
+function readOnlySegment(words) {
+  if (words.length === 0) return true;
+  let index = 0;
+  const command = path.basename(words[index] || '');
+  if (!command) return true;
+  if (words[index] !== command || /^[A-Za-z_][A-Za-z0-9_]*=/.test(words[index])) return false;
+  if (command === 'git') {
+    if (words[index + 1] === '--no-pager') index += 1;
+    const dangerousOption = words.some((word) =>
+      /^(?:--output(?:=|$)|--ext-diff$|--textconv$|--exec(?:=|$)|--open-files-in-pager(?:=|$))/.test(
+        word
+      )
+    );
+    return !dangerousOption && READ_ONLY_GIT_SUBCOMMANDS.has(words[index + 1]);
+  }
+  if (command === 'rg' && words.some((word) => word === '--pre' || word.startsWith('--pre='))) {
+    return false;
+  }
+  if (READ_ONLY_COMMANDS.has(command)) return true;
+  return ['tee', 'touch', 'mkdir', 'rmdir', 'rm', 'truncate'].includes(command);
+}
+
 export function extractBashWriteTargets(command, projectRoot) {
   const text = String(command || '');
   const root = path.resolve(projectRoot || process.cwd());
@@ -102,25 +171,17 @@ export function extractBashWriteTargets(command, projectRoot) {
   if (/\$\(|`|\b(?:eval|node|python\d*|ruby|perl)\s+(?:-[^\s]*[ec])\b/.test(text)) {
     ambiguousMutation = true;
   }
-  const unparsedWriter =
-    /\b(?:sed|perl)\b[^;&|\n]*\s-(?:[^\s]*i[^\s]*|--in-place)(?:\s|=|$)/.test(text) ||
-    /\bdd\b[^;&|\n]*\bof=/.test(text) ||
-    /\bcurl\b[^;&|\n]*(?:\s-o\s|\s--output(?:\s|=))/.test(text) ||
-    /\bwget\b[^;&|\n]*\s-O\s/.test(text) ||
-    /\bgit\s+(?:apply|checkout|restore|reset|clean|commit|merge|rebase|cherry-pick)\b/.test(text) ||
-    /\b(?:patch|rsync|ln|chmod|chown)\b/.test(text);
-  if (unparsedWriter) ambiguousMutation = true;
-
   const redirectRe = /(?<![0-9&])>>?\s*("[^"]+"|'[^']+'|[^\s;&|]+)/g;
   for (const match of text.matchAll(redirectRe)) add(match[1].replace(/^(['"])(.*)\1$/, '$2'));
 
-  const segments = text.split(/&&|\|\||[;\n]/);
+  const segments = text.split(/&&|\|\||(?<!\|)\|(?!\|)|[;\n]/);
   for (const segment of segments) {
     const words = shellWords(segment);
     if (!words) {
       ambiguousMutation = true;
       continue;
     }
+    if (!readOnlySegment(words)) ambiguousMutation = true;
     const tee = words.findIndex((word) => path.basename(word) === 'tee');
     if (tee >= 0) {
       for (const word of words.slice(tee + 1)) if (!word.startsWith('-')) add(word);
@@ -135,6 +196,7 @@ export function extractBashWriteTargets(command, projectRoot) {
       ['cp', 'mv', 'install'].includes(path.basename(word))
     );
     if (copyIndex >= 0) {
+      ambiguousMutation = true;
       const operands = words.slice(copyIndex + 1).filter((word) => !word.startsWith('-'));
       if (operands.length < 2) ambiguousMutation = true;
       else add(operands.at(-1));

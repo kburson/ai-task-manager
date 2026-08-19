@@ -107,14 +107,16 @@ export function claimOccupancy(input, options = {}) {
       );
     }
 
-    const worktreeHolder = Object.values(before).find(
+    const worktreeHolders = Object.values(before).filter(
       (row) => path.resolve(row.worktreePath) === worktreePath && row.sid !== sid
     );
+    const worktreeHolder = worktreeHolders[0];
     if (
       worktreeHolder &&
       !coReviewAllowsWorktree({
         worktreePath,
         existing: clone(worktreeHolder),
+        occupants: clone(worktreeHolders),
         requested: { issue: Number(issue), sid, provider, worktreePath },
       })
     ) {

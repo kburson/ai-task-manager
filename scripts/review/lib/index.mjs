@@ -236,7 +236,14 @@ export function allowsCoReviewOccupancy(input) {
   const provider = String(input.requested?.provider || '').trim();
   const sid = String(input.requested?.sid || '').trim();
   const statusProtocol = input.statusProtocol || defaultStatusProtocol;
-  if (!provider || !sid || provider === String(input.existing?.provider || '').trim()) return false;
+  if (
+    !provider ||
+    !sid ||
+    input.occupants?.length !== 1 ||
+    provider === String(input.existing?.provider || '').trim()
+  ) {
+    return false;
+  }
   return Object.values(rows).some(
     (row) =>
       row.lifecycle === 'active' &&
