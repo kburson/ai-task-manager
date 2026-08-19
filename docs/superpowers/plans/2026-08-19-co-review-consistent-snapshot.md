@@ -173,4 +173,4 @@ review, and Full-Auto final approval.
 
 Push the exact reviewed branch, open a PR to `trunk`, wait for exact-SHA CI, merge
 through the PR, verify the feature SHA is reachable from `origin/trunk`, and close
-#1322 through the governed Done workflow.
+issue #1322 through the governed Done workflow.
