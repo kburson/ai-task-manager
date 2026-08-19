@@ -56,6 +56,8 @@ export function markerDir() {
 
 export function jsonlPath(sid) {
   const adapter = getProvider(aiAppName());
+  const flat = path.join(transcriptDir(), `${sid}.jsonl`);
+  if (adapter.sessionIdFallback === 'legacy' && existsSync(flat)) return flat;
   if (adapter.transcriptLayout !== 'flat') {
     const resolved = resolveTranscriptPath({
       adapter,
@@ -70,7 +72,6 @@ export function jsonlPath(sid) {
   // The flat path (env override → local session-transcripts → Claude's homedir
   // fallback) is the historical resolution and stays authoritative when it
   // points at a real file. This preserves Claude behavior byte-for-byte.
-  const flat = path.join(transcriptDir(), `${sid}.jsonl`);
   if (existsSync(flat)) return flat;
   // #477 — providers whose transcripts are not flat-addressable (Codex's
   // date-bucketed `rollout-<ts>-<sid>.jsonl`) resolve through the adapter's
