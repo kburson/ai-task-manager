@@ -388,11 +388,11 @@ function mutationLockPresent(paths) {
   }
 }
 
-function transientEventLead(state, events, errors) {
+function validForwardEventLead(state, events, errors) {
   return (
     errors.length === 1 &&
-    errors[0] === `event-count: expected ${state.revision}, actual ${state.revision + 1}` &&
-    events.length === state.revision + 1
+    errors[0] === `event-count: expected ${state.revision}, actual ${events.length}` &&
+    events.length > state.revision
   );
 }
 
@@ -435,7 +435,7 @@ function readStatusSnapshot({ cwd, dir, repository, consistency }) {
     const observed = eventIntegrity(paths, state);
     retry.afterEventRead?.({ attempt, state, events: observed.events, paths });
     const lockedAfter = mutationLockPresent(paths);
-    const eventLead = transientEventLead(state, observed.events, observed.errors);
+    const eventLead = validForwardEventLead(state, observed.events, observed.errors);
     if (eventLead) {
       const confirmedState = readProtocol({ cwd: root, dir: paths.relative, repository });
       const confirmed = eventIntegrityForRecords(observed.events, confirmedState);
@@ -446,7 +446,13 @@ function readStatusSnapshot({ cwd, dir, repository, consistency }) {
         continue;
       }
     }
-    if (!eventLead || (!lockedBefore && !lockedAfter) || attempt >= retry.maxAttempts) {
+    const singleEventLead = observed.events.length === state.revision + 1;
+    if (
+      !eventLead ||
+      !singleEventLead ||
+      (!lockedBefore && !lockedAfter) ||
+      attempt >= retry.maxAttempts
+    ) {
       return { root, paths, state, ...observed };
     }
     retry.wait(retry.delayMilliseconds, {

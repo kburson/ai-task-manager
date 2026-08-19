@@ -54,22 +54,28 @@ projection.
 
 ### Step 3: Qualify only the authorized transient shape
 
-Retry only when the sole error is a one-revision event lead and the mutex is a
-directory. Use a small fixed retry count and delay. Expose an injected synchronous
-wait function for deterministic tests; the default uses a bounded synchronous
-wait suitable for a separate writer process.
+Consider confirmation only when the sole error is an otherwise-valid forward
+event lead. Re-read state against the retained events. Use a small fixed retry
+count and delay. Expose injected read and synchronous wait functions for
+deterministic tests; the default wait is suitable for a separate writer process.
 
 Before relying on either mutex sample, re-read state and validate it against the
-exact observed event array. Accept a fully matching N+1 state immediately so a
-mutation that completed entirely between the state and event reads cannot be
-misreported as drift. If the confirmation remains at N and neither mutex sample
-is live, fail closed without a delayed retry.
+exact observed event array. Accept a fully matching N+k state immediately so
+serialized mutations that completed entirely between the state and event reads
+cannot be misreported as drift. If the confirmation remains at N and neither
+mutex sample is live, fail closed without a delayed retry.
 
 If a second serialized mutation completes before confirmation and advances state
 beyond the retained event array, restart the snapshot attempt within the same
 fixed budget even when neither earlier mutex sample was live. This restart must
 perform a fresh state/event read and must fail closed if continuous publication
 exhausts the bound.
+
+Generalize exact confirmation to N+k when multiple serialized mutations complete
+inside the first state/event read gap. Every retained event must remain valid and
+the confirmed state must match the complete retained projection. An unmatched
+multi-event lead with unchanged state must fail immediately; live-lock waiting
+remains exclusive to an unchanged exact one-event lead.
 
 ### Step 4: Run the focused status regression
 

@@ -22,26 +22,26 @@ Introduce a bounded, lock-aware consistent-snapshot reader inside
 
 Each attempt reads and validates `state.json`, reads `events.jsonl` once, and
 evaluates the complete existing event-integrity rules against those exact bytes.
-The snapshot is returned immediately unless all of the following are true:
+Forward confirmation is considered only when all of the following are true:
 
 1. the only integrity error is `event-count`;
-2. the event file leads state by exactly one revision;
+2. the event file leads state by one or more revisions; and
 3. every observed event still passes schema, protocol-ID, type, and ordinal
-   revision validation; and
-4. the protocol mutex directory is present, showing an authorized mutation may
-   still be publishing its state.
+   revision validation.
 
-For that shape, the reader first re-reads `state.json` and validates it against
-the exact event array already observed. This closes the interleaving where the
-writer acquires and releases the mutex entirely between the reader's state and
-event reads. A fully matching N+1 state is returned immediately. If confirmation
-has advanced beyond N+1 because another serialized mutation completed, the
-reader restarts within the same fixed attempt budget even when neither earlier
-mutex sample was live. If state remains at N, only an observed mutex permits a
-small bounded retry. Production retries use a short synchronous wait because the
-writer is a separate process and the public protocol API is intentionally
-synchronous. Test-only injected read and wait functions provide deterministic
-seams without timing-sensitive sleeps.
+For that shape, the reader re-reads `state.json` and validates it against the
+exact event array already observed. This closes interleavings where one or more
+writers acquire and release the mutex entirely between the reader's state and
+event reads. A fully matching N+k state is returned immediately. If confirmation
+has advanced beyond the retained event array because another serialized mutation
+completed, the reader restarts within the same fixed attempt budget even when
+neither earlier mutex sample was live. If state remains at N, only an exact
+one-event lead with an observed mutex permits a small bounded wait and retry. An
+unchanged multi-event lead fails immediately because one authorized mutation
+cannot publish multiple events before its state replacement. Production waits
+are synchronous because the writer is a separate process and the public protocol
+API is intentionally synchronous. Test-only injected read and wait functions
+provide deterministic seams without timing-sensitive sleeps.
 
 The successful attempt's event array is retained and reused for all downstream
 status projection. Status never re-reads the event file after deciding the
@@ -56,8 +56,8 @@ mutation preflights. A new combined state/event file would be a broader storage
 migration.
 
 The selected design changes only the read boundary, preserves the existing file
-format and synchronous callers, and recognizes exactly the one interleaving that
-the writer creates.
+format and synchronous callers, and recognizes the bounded publication
+interleavings that serialized writers create.
 
 ## Fail-closed Boundaries
 
@@ -69,9 +69,10 @@ The retry path does not accept or normalize corruption.
   is returned.
 - Continuous authorized publication can consume the fixed attempt budget; the
   final unmatched snapshot is reported rather than accepted or normalized.
-- More than one extra event, missing events, malformed JSON, wrong schema,
-  protocol-ID drift, invalid event type, reordered/duplicate revisions, projection
-  drift, artifact drift, supplement drift, and Git drift never qualify.
+- An unmatched multi-event lead with unchanged confirmation, missing events,
+  malformed JSON, wrong schema, protocol-ID drift, invalid event type,
+  reordered/duplicate revisions, projection drift, artifact drift, supplement
+  drift, and Git drift never qualify.
 - The reader never steals, deletes, or rewrites the mutex or protocol files.
 
 Mutation preflights continue to use the same full integrity validation. The new
@@ -97,7 +98,9 @@ events, and a live mutex from a real protocol mutation. The injected retry seam
 will publish revision N+1 state between attempts. A separate injected read seam
 will publish the state and release the mutex entirely between the initial state
 and event reads. A third case will complete two serialized publications around
-the initial event read and require a bounded restart to the N+2 snapshot.
+the initial event read and require a bounded restart to the N+2 snapshot. A
+fourth will complete both publications inside the first read gap and confirm the
+exact N+2 state against retained N+2 events.
 `statusProtocol` and `waitForTurn` must return healthy settled snapshots.
 
 Separate cases will prove that the same one-event lead fails closed without a
