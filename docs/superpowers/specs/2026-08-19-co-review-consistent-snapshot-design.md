@@ -33,7 +33,7 @@ Forward confirmation is considered only when all of the following are true:
    revision validation.
 
 For that shape, the reader re-reads `state.json` and validates it against the
-exact event array already observed. This closes interleavings where one or more
+exact event array already observed. This closes interleaving cases where one or more
 writers acquire and release the mutex entirely between the reader's state and
 event reads. A fully matching N+k state is returned immediately. If confirmation
 has advanced beyond the retained event array because another serialized mutation
@@ -71,7 +71,7 @@ migration.
 
 The selected design changes only the read boundary, preserves the existing file
 format and synchronous callers, and recognizes the bounded publication
-interleavings that serialized writers create.
+interleaving cases that serialized writers create.
 
 ## Fail-closed Boundaries
 
