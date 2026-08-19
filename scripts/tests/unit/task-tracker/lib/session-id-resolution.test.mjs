@@ -31,10 +31,7 @@ test('Grok uses an explicit orchestrator override', () => {
 });
 
 test('Grok uses GROK_SESSION_ID when present', () => {
-  assert.equal(
-    resolveSessionId({ env: { GROK_AGENT: '1', GROK_SESSION_ID: 'g-2' } }),
-    'g-2'
-  );
+  assert.equal(resolveSessionId({ env: { GROK_AGENT: '1', GROK_SESSION_ID: 'g-2' } }), 'g-2');
 });
 
 test('Grok refuses before scanning legacy provider keys or transcripts', () => {

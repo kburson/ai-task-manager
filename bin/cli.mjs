@@ -718,11 +718,7 @@ function installClaude(targetDir, linkMode, { memoryIndexHook = false, adapter }
   step('Claude Code files');
   const skillDest = join(targetDir, adapter.installTarget);
   if (linkMode === 'symlink') {
-    replaceWithSymlink(
-      skillDest,
-      join(PKG_ROOT, dirname(adapter.skillAdapterPath)),
-      'Skill'
-    );
+    replaceWithSymlink(skillDest, join(PKG_ROOT, dirname(adapter.skillAdapterPath)), 'Skill');
   } else {
     installStub(join(skillDest, 'SKILL.md'), claudeStub(), 'Skill');
   }
@@ -764,11 +760,7 @@ function installCodex(targetDir, linkMode, { memoryIndexHook = false, adapter } 
   step('Codex files');
   const skillDest = join(targetDir, adapter.installTarget);
   if (linkMode === 'symlink') {
-    replaceWithSymlink(
-      skillDest,
-      join(PKG_ROOT, dirname(adapter.skillAdapterPath)),
-      'Skill'
-    );
+    replaceWithSymlink(skillDest, join(PKG_ROOT, dirname(adapter.skillAdapterPath)), 'Skill');
   } else {
     installStub(join(skillDest, 'SKILL.md'), codexStub(), 'Skill');
   }

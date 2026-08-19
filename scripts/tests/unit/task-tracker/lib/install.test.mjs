@@ -16,9 +16,9 @@ const pexec = promisify(execFile);
 const __dir = path.dirname(fileURLToPath(import.meta.url)) + '/..';
 const ROOT = path.resolve(__dir, '../../../..');
 const CLI = path.join(ROOT, 'bin', 'cli.mjs');
-const providerSelectionModule = await import(
-  '../../../../../bin/lib/provider-selection.mjs'
-).catch(() => null);
+const providerSelectionModule = await import('../../../../../bin/lib/provider-selection.mjs').catch(
+  () => null
+);
 assert.ok(providerSelectionModule, 'provider-selection module must exist');
 const { parseProviderSelection } = providerSelectionModule;
 const KNOWN_PROVIDERS = ['grok', 'codex', 'claude'];
@@ -27,10 +27,7 @@ assert.deepEqual(parseProviderSelection([], KNOWN_PROVIDERS), KNOWN_PROVIDERS);
 assert.deepEqual(parseProviderSelection(['--agent', 'all'], KNOWN_PROVIDERS), KNOWN_PROVIDERS);
 assert.deepEqual(parseProviderSelection(['--agent', 'grok'], KNOWN_PROVIDERS), ['grok']);
 assert.deepEqual(
-  parseProviderSelection(
-    ['--agent', 'claude,grok', '--agent', 'codex'],
-    KNOWN_PROVIDERS
-  ),
+  parseProviderSelection(['--agent', 'claude,grok', '--agent', 'codex'], KNOWN_PROVIDERS),
   ['claude', 'grok', 'codex']
 );
 assert.throws(
@@ -54,9 +51,7 @@ const memoryTarget = mkdtempSync(path.join(projectScratchDir('test'), 'install-m
 const memoryNoneTarget = mkdtempSync(
   path.join(projectScratchDir('test'), 'install-memory-none-test-')
 );
-const grokOnlyTarget = mkdtempSync(
-  path.join(projectScratchDir('test'), 'install-grok-only-test-')
-);
+const grokOnlyTarget = mkdtempSync(path.join(projectScratchDir('test'), 'install-grok-only-test-'));
 const fakeHome = mkdtempSync(
   path.join(projectScratchDir('test'), 'install-codex-superpowers-home-')
 );

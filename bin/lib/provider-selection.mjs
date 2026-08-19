@@ -19,9 +19,7 @@ export function parseProviderSelection(args, knownProviders) {
   const selected = [...new Set(values)];
   const unknown = selected.filter((value) => !knownProviders.includes(value));
   if (unknown.length) {
-    throw new Error(
-      `Unknown --agent ${unknown.join(', ')}; known: ${knownProviders.join(', ')}`
-    );
+    throw new Error(`Unknown --agent ${unknown.join(', ')}; known: ${knownProviders.join(', ')}`);
   }
   return selected;
 }

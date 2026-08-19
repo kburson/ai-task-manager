@@ -15,8 +15,16 @@ const settingsPath = path.join(tmp, '.claude', 'settings.json');
 const grokHooksPath = path.join(tmp, '.grok', 'hooks', 'aitm.json');
 const { patchSettingsJson } = installCli;
 
-assert.equal(typeof installCli.patchGrokHooksJson, 'function', 'Grok hook patcher must be exported');
-assert.equal(typeof installCli.grokHookCommand, 'function', 'Grok hook command helper must be exported');
+assert.equal(
+  typeof installCli.patchGrokHooksJson,
+  'function',
+  'Grok hook patcher must be exported'
+);
+assert.equal(
+  typeof installCli.grokHookCommand,
+  'function',
+  'Grok hook command helper must be exported'
+);
 
 // #869 — lifecycle hooks register via the node_modules-first / repo-relative
 // bootstrap shim, matching cli.mjs. Compute the expected commands the same way.
@@ -160,7 +168,10 @@ assert.equal(
 
 writeFileSync(
   grokHooksPath,
-  JSON.stringify({ custom: { preserve: true }, hooks: { CustomEvent: [{ command: 'user-hook' }] } }),
+  JSON.stringify({
+    custom: { preserve: true },
+    hooks: { CustomEvent: [{ command: 'user-hook' }] },
+  }),
   'utf8'
 );
 installCli.patchGrokHooksJson(grokHooksPath);

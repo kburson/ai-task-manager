@@ -22,9 +22,9 @@ import {
 } from '../../../../task-tracker/hook-handler.mjs';
 import { SUSPICIOUS_GAP_SEC } from '../../../../task-tracker/lib/bind-event.mjs';
 
-const hookIdempotency = await import(
-  '../../../../task-tracker/lib/hook-idempotency.mjs'
-).catch(() => null);
+const hookIdempotency = await import('../../../../task-tracker/lib/hook-idempotency.mjs').catch(
+  () => null
+);
 assert.ok(hookIdempotency, 'hook idempotency module must exist');
 const { claimHookStamp, hookStampKey } = hookIdempotency;
 

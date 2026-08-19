@@ -83,7 +83,14 @@ test('cwd-session-dir layout treats GROK_HOME as the provider home itself', () =
 test('cwd-session-dir layout defaults Grok home beneath homedir', () => {
   const home = mkdtempProjectIsolated('grok-default-home-');
   const cwd = '/work/default-grok';
-  const file = path.join(home, '.grok', 'sessions', encodeURIComponent(cwd), SID, 'chat_history.jsonl');
+  const file = path.join(
+    home,
+    '.grok',
+    'sessions',
+    encodeURIComponent(cwd),
+    SID,
+    'chat_history.jsonl'
+  );
   mkdirSync(path.dirname(file), { recursive: true });
   writeFileSync(file, '{}\n', 'utf8');
   assert.equal(

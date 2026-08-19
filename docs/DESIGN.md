@@ -488,11 +488,11 @@ Claude, Codex, and Grok adapters point at the same router; Tier-2 rule files are
 
 Provider behavior is declared by pure-data modules under `scripts/providers/`. Registration and detection order is Grok, Codex, then Claude; Claude remains the no-signal fallback.
 
-| Provider | Adapter | Skill target | Hook target | Transcript layout | Session identity |
-| -------- | ------- | ------------ | ----------- | ----------------- | ---------------- |
-| Grok | `grok.mjs` | `.grok/skills/task` | `.grok/hooks/aitm.json` | `cwd-session-dir` under `$GROK_HOME/sessions` | `GROK_SESSION_ID` is required in the tool environment |
-| Codex | `codex.mjs` | `.agents/skills/task` | `.codex/hooks.json` | `date-bucketed` rollout files | `CODEX_THREAD_ID`, then `CODEX_SESSION_ID`, with legacy fallback |
-| Claude | `claude.mjs` | `.claude/skills/task` | `.claude/settings.json` | `flat` project/session JSONL | Claude session keys with legacy fallback |
+| Provider | Adapter      | Skill target          | Hook target             | Transcript layout                             | Session identity                                                 |
+| -------- | ------------ | --------------------- | ----------------------- | --------------------------------------------- | ---------------------------------------------------------------- |
+| Grok     | `grok.mjs`   | `.grok/skills/task`   | `.grok/hooks/aitm.json` | `cwd-session-dir` under `$GROK_HOME/sessions` | `GROK_SESSION_ID` is required in the tool environment            |
+| Codex    | `codex.mjs`  | `.agents/skills/task` | `.codex/hooks.json`     | `date-bucketed` rollout files                 | `CODEX_THREAD_ID`, then `CODEX_SESSION_ID`, with legacy fallback |
+| Claude   | `claude.mjs` | `.claude/skills/task` | `.claude/settings.json` | `flat` project/session JSONL                  | Claude session keys with legacy fallback                         |
 
 The default installer iterates every registered provider. Explicit repeated or comma-separated `--agent` values select an additive subset; call sites dispatch on each adapter's `installRecipe.writer` rather than its name.
 

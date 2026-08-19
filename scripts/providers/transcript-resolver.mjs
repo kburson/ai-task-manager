@@ -77,12 +77,7 @@ export function resolveTranscriptPath({ adapter, sid, homedir, projectKey, cwd, 
             ? path.join(homedir, adapter.transcriptHomeDefault)
             : homedir;
       const providerRoot = path.join(providerHome, transcriptLocator);
-      const file = path.join(
-        providerRoot,
-        encodeURIComponent(cwd),
-        sid,
-        'chat_history.jsonl'
-      );
+      const file = path.join(providerRoot, encodeURIComponent(cwd), sid, 'chat_history.jsonl');
       return existsSync(file) ? file : null;
     }
     default:

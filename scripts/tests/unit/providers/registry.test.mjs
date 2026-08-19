@@ -76,10 +76,7 @@ test('detectProvider returns grok when GROK_AGENT is set', () => {
 });
 
 test('detectProvider gives grok precedence over codex', () => {
-  assert.equal(
-    detectProvider({ env: { GROK_AGENT: '1', CODEX_THREAD_ID: 'c-1' } }).name,
-    'grok'
-  );
+  assert.equal(detectProvider({ env: { GROK_AGENT: '1', CODEX_THREAD_ID: 'c-1' } }).name, 'grok');
 });
 
 test('detectProvider returns codex when CODEX_SESSION_ID is set', () => {

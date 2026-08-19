@@ -520,8 +520,7 @@ if (isMain)
           sid,
           hookEventName: event,
           promptId: payload.prompt_id ?? payload.promptId,
-          eventTimestamp:
-            payload.event_timestamp ?? payload.eventTimestamp ?? payload.timestamp,
+          eventTimestamp: payload.event_timestamp ?? payload.eventTimestamp ?? payload.timestamp,
         });
         if (!stamp.claimed) process.exit(0);
       } catch (error) {
