@@ -184,5 +184,48 @@ for (const entries of Object.values(grokHooks.hooks)) {
   );
 }
 
+function grokEntries(event, matcher, handlerName) {
+  const command = installCli.grokHookCommand(handlerName);
+  return (grokHooks.hooks[event] ?? []).filter(
+    (entry) => entry.matcher === matcher && hasCommand([entry], command)
+  );
+}
+
+for (const [event, matcher, handlerName] of [
+  ['SessionStart', 'startup|resume|clear|compact', 'seed'],
+  ['SessionStart', 'startup|resume|clear|compact', 'timing'],
+  ['PreCompact', 'manual|auto', 'timing'],
+  ['PostCompact', 'manual|auto', 'timing'],
+  ['PreToolUse', 'Bash', 'bash-guard'],
+  ['PreToolUse', 'Bash', 'activity-guard'],
+  ['PreToolUse', 'Edit|Write|NotebookEdit|search_replace|write', 'activity-guard'],
+  ['PreToolUse', 'Edit|Write|NotebookEdit|search_replace|write', 'source-edit-gate'],
+  ['PreToolUse', 'Agent|Task|spawn_subagent', 'agent-guard'],
+]) {
+  assert.equal(
+    grokEntries(event, matcher, handlerName).length,
+    1,
+    `${event} ${matcher} must register ${handlerName} exactly once`
+  );
+}
+
+const memoryGrokHooksPath = path.join(tmp, '.grok-memory', 'hooks', 'aitm.json');
+installCli.patchGrokHooksJson(memoryGrokHooksPath, { memoryIndexHook: true });
+installCli.patchGrokHooksJson(memoryGrokHooksPath, { memoryIndexHook: true });
+const memoryGrokHooks = JSON.parse(readFileSync(memoryGrokHooksPath, 'utf8'));
+const memoryCommand = installCli.grokHookCommand('memory-index');
+for (const [event, matcher] of [
+  ['SessionStart', 'startup|resume|clear|compact'],
+  ['PostCompact', 'manual|auto'],
+]) {
+  assert.equal(
+    (memoryGrokHooks.hooks[event] ?? []).filter(
+      (entry) => entry.matcher === matcher && hasCommand([entry], memoryCommand)
+    ).length,
+    1,
+    `${event} memory-index bridge command must be idempotent`
+  );
+}
+
 rmSync(tmp, { recursive: true });
 console.log('install-hooks.test.mjs: all passed');

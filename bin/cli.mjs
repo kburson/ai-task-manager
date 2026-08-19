@@ -507,13 +507,19 @@ export function patchGrokHooksJson(hooksPath, { memoryIndexHook = false } = {}) 
   function add(event, matcher, handlerName) {
     if (!Array.isArray(config.hooks[event])) config.hooks[event] = [];
     const command = grokHookCommand(handlerName);
-    if (config.hooks[event].some((entry) => hookEntryHasCommand(entry, command))) return;
+    if (
+      config.hooks[event].some(
+        (entry) => entry.matcher === matcher && hookEntryHasCommand(entry, command)
+      )
+    )
+      return;
     config.hooks[event].push({
       matcher,
       hooks: [{ type: 'command', command }],
     });
   }
 
+  add('SessionStart', 'startup|resume|clear|compact', 'seed');
   add('SessionStart', 'startup|resume|clear|compact', 'timing');
   add('PreCompact', 'manual|auto', 'timing');
   add('PostCompact', 'manual|auto', 'timing');
@@ -521,6 +527,11 @@ export function patchGrokHooksJson(hooksPath, { memoryIndexHook = false } = {}) 
     add('SessionStart', 'startup|resume|clear|compact', 'memory-index');
     add('PostCompact', 'manual|auto', 'memory-index');
   }
+  add('PreToolUse', 'Bash', 'bash-guard');
+  add('PreToolUse', 'Bash', 'activity-guard');
+  add('PreToolUse', 'Edit|Write|NotebookEdit|search_replace|write', 'activity-guard');
+  add('PreToolUse', 'Edit|Write|NotebookEdit|search_replace|write', 'source-edit-gate');
+  add('PreToolUse', 'Agent|Task|spawn_subagent', 'agent-guard');
 
   mkdirSync(dirname(hooksPath), { recursive: true });
   writeFileSync(hooksPath, JSON.stringify(config, null, 2) + '\n', 'utf8');
