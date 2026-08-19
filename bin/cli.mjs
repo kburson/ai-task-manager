@@ -513,23 +513,30 @@ export function patchGrokHooksJson(hooksPath, { memoryIndexHook = false } = {}) 
   }
   if (!config.hooks) config.hooks = {};
 
-  const specs = [
+  const requiredSpecs = [
     ['SessionStart', 'startup|resume|clear|compact', 'seed'],
     ['SessionStart', 'startup|resume|clear|compact', 'timing'],
     ['PreCompact', 'manual|auto', 'timing'],
     ['PostCompact', 'manual|auto', 'timing'],
-    ...(memoryIndexHook
-      ? [
-          ['SessionStart', 'startup|resume|clear|compact', 'memory-index'],
-          ['PostCompact', 'manual|auto', 'memory-index'],
-        ]
-      : []),
     ['PreToolUse', 'Bash', 'bash-guard'],
     ['PreToolUse', 'Bash', 'activity-guard'],
     ['PreToolUse', 'Edit|Write|NotebookEdit|search_replace|write', 'activity-guard'],
     ['PreToolUse', 'Edit|Write|NotebookEdit|search_replace|write', 'source-edit-gate'],
     ['PreToolUse', 'Agent|Task|spawn_subagent', 'agent-guard'],
   ];
+  const memorySpecs = [
+    ['SessionStart', 'startup|resume|clear|compact', 'memory-index'],
+    ['PostCompact', 'manual|auto', 'memory-index'],
+  ];
+  const existingMemorySpecs = memorySpecs.filter(([event, , handlerName]) => {
+    const entries = Array.isArray(config.hooks[event]) ? config.hooks[event] : [];
+    return entries.some(
+      (entry) =>
+        hookEntryHasCommand(entry, grokHookCommand(handlerName)) ||
+        hookEntryHasCommand(entry, legacyGrokHookCommand(handlerName))
+    );
+  });
+  const specs = [...requiredSpecs, ...(memoryIndexHook ? memorySpecs : existingMemorySpecs)];
 
   // Reconcile managed commands against their complete desired matcher set.
   // A handler may intentionally appear more than once in one event (the

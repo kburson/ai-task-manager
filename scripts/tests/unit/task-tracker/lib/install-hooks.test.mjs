@@ -309,6 +309,42 @@ assert.equal(
   'Bash'
 );
 
+const legacyMemoryHooksPath = path.join(tmp, '.grok-legacy-memory', 'hooks', 'aitm.json');
+const legacyMemoryCommand =
+  'node node_modules/ai-task-manager/scripts/task-tracker/hooks/grok-wire.mjs --handler memory-index';
+const currentMemoryCommand = installCli.grokHookCommand('memory-index');
+mkdirSync(path.dirname(legacyMemoryHooksPath), { recursive: true });
+writeFileSync(
+  legacyMemoryHooksPath,
+  JSON.stringify({
+    hooks: {
+      PostCompact: [
+        {
+          matcher: 'manual|auto',
+          hooks: [{ type: 'command', command: legacyMemoryCommand }],
+        },
+      ],
+    },
+  })
+);
+installCli.patchGrokHooksJson(legacyMemoryHooksPath, { memoryIndexHook: false });
+const refreshedMemoryHooks = JSON.parse(readFileSync(legacyMemoryHooksPath, 'utf8'));
+assert.equal(
+  hasCommand(refreshedMemoryHooks.hooks.PostCompact, legacyMemoryCommand),
+  false,
+  'normal reinstall removes the obsolete bare memory-index command'
+);
+assert.equal(
+  hasCommand(refreshedMemoryHooks.hooks.PostCompact, currentMemoryCommand),
+  true,
+  'normal reinstall migrates an existing optional memory-index hook to the safe bootstrap'
+);
+assert.equal(
+  hasCommand(refreshedMemoryHooks.hooks.SessionStart, currentMemoryCommand),
+  false,
+  'normal reinstall does not add a second optional memory-index event without opt-in'
+);
+
 function grokEntries(event, matcher, handlerName) {
   const command = installCli.grokHookCommand(handlerName);
   return (grokHooks.hooks[event] ?? []).filter(
