@@ -13,7 +13,7 @@
 
 import { strict as assert } from 'node:assert';
 import { test, before, after } from 'node:test';
-import { execFileSync } from 'node:child_process';
+import { execFileSync, spawnSync } from 'node:child_process';
 import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, rmSync, chmodSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -115,6 +115,55 @@ function spawnHook(fx, event, { sid = 'sess-test', rawStdin } = {}) {
   }
   return out;
 }
+
+function spawnHookResult(fx, event, { sid = 'sess-test', timestamp, promptId } = {}) {
+  return spawnSync('node', [HOOK], {
+    input: JSON.stringify({
+      hook_event_name: event,
+      session_id: sid,
+      event_timestamp: timestamp,
+      prompt_id: promptId,
+    }),
+    env: fx.env,
+    encoding: 'utf8',
+  });
+}
+
+test('normalized timing identity deduplicates exact events but admits later timestamps', () => {
+  const fx = fixture({ state: { active: null, lastActive: null } });
+  const first = spawnHookResult(fx, 'SessionStart', {
+    timestamp: '2026-08-19T05:00:00.000Z',
+    promptId: 'prompt-1',
+  });
+  const duplicate = spawnHookResult(fx, 'SessionStart', {
+    timestamp: '2026-08-19T05:00:00.000Z',
+    promptId: 'prompt-1',
+  });
+  const later = spawnHookResult(fx, 'SessionStart', {
+    timestamp: '2026-08-19T05:00:01.000Z',
+    promptId: 'prompt-1',
+  });
+  assert.equal(first.status, 0);
+  assert.match(first.stdout, /No active task\./);
+  assert.equal(duplicate.status, 0);
+  assert.equal(duplicate.stdout, '');
+  assert.equal(later.status, 0);
+  assert.match(later.stdout, /No active task\./);
+});
+
+test('stamp write failure skips the timing flush and fails closed', () => {
+  const fx = fixture({ state: { active: null, lastActive: null } });
+  const aitmDir = path.join(fx.proj, '.tmp', 'aitm');
+  mkdirSync(aitmDir, { recursive: true });
+  writeFileSync(path.join(aitmDir, 'locks'), 'not-a-directory', 'utf8');
+  const result = spawnHookResult(fx, 'SessionStart', {
+    timestamp: '2026-08-19T05:00:00.000Z',
+    promptId: 'prompt-1',
+  });
+  assert.notEqual(result.status, 0);
+  assert.equal(result.stdout, '');
+  assert.match(result.stderr, /hook stamp.*fail/i);
+});
 
 const pastTs = '2020-01-01T00:00:00.000Z';
 
@@ -326,7 +375,7 @@ test('PostCompact banks a tail preserved by an unavailable PreCompact exactly on
   assert.equal(marker.wordsFull, 203);
   assert.deepEqual(
     rows.map((row) => row.fullWordMarker),
-    ['—', '203', '203']
+    ['—', '203']
   );
 });
 
