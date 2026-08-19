@@ -90,7 +90,9 @@ function repoRoot() {
 // authority module. The four files are required for installed-package parity.
 // #1292 adds the shipped co-review repository boundary used by the runtime.
 // #1269 adds the guided co-review startup and handoff publication module.
-const ENTRY_CEILING = 670;
+// #1317 adds one shared proof resolver so Test exit and close validate the same
+// current docs-only lane-skip receipt before waiving suite-derived checkboxes.
+const ENTRY_CEILING = 671;
 
 function packedFiles() {
   const out = execFileSync('npm', ['pack', '--dry-run', '--json'], {

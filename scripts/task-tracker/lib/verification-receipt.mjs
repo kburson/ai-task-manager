@@ -322,6 +322,15 @@ export function requiredTestReceiptClassifications(receipt) {
   return TEST_RECEIPT_REQUIRED.filter((classification) => !dropped.has(classification));
 }
 
+export function hasEarnedDocsOnlyLaneSkip(receipt) {
+  const laneSkip = receipt?.laneSkip;
+  if (!laneSkip || typeof laneSkip !== 'object' || Array.isArray(laneSkip)) return false;
+  if (laneSkip.reason !== 'docs-only-diff') return false;
+  if (!docsKindDropsTests(laneSkip.kind, laneSkip.changedPaths)) return false;
+  const dropped = new Set(Array.isArray(laneSkip.lanes) ? laneSkip.lanes : []);
+  return DROPPABLE_LANE_CLASSIFICATIONS.every((classification) => dropped.has(classification));
+}
+
 export function validateVerificationReceipt({
   receipt,
   expectedIssue,

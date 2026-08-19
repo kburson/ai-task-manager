@@ -125,7 +125,7 @@ test('shared Test and Review transition guards consume accepted directory eviden
 
   const reviewCtx = { ...ctx, toState: 'review' };
   assert.deepEqual(testExitDodVerifiedGuard.run(reviewCtx), { ok: true });
-  assert.deepEqual(testExitPreCloseCompletenessGuard.run(reviewCtx), { ok: true });
+  assert.deepEqual(await testExitPreCloseCompletenessGuard.run(reviewCtx), { ok: true });
 
   const withoutEvidence = developExitSandboxProofGuard.run({
     ...ctx,
