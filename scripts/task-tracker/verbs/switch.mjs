@@ -1,3 +1,5 @@
+import { isDeepStrictEqual } from 'node:util';
+
 import {
   saveState,
   loadState,
@@ -45,6 +47,8 @@ export async function verbSwitch(ctx, target) {
     console.error(`invalid issue ref: ${target}`);
     process.exit(1);
   }
+  const priorState = loadState(statePath);
+  let savedTargetState = null;
   const claim = (ctx.claimBindingOccupancy ?? claimBindingOccupancy)(
     { projectDir, issue: target, now: nowIso },
     {
@@ -56,7 +60,7 @@ export async function verbSwitch(ctx, target) {
     const resolveBinding = ctx.resolveWorktreeBinding ?? resolveWorktreeBinding;
     const binding = resolveBinding({ projectDir, now: nowIso });
     await drainQueueIfAny();
-    const s = loadState(statePath);
+    const s = priorState;
     // #833 — self-bind no-op. Rebinding to the already-active, never-paused issue
     // (`previous === target`, no open pause) never actually stopped work, so there
     // is nothing to resume. Emit ZERO timing rows — neither the outgoing flush nor
@@ -158,6 +162,7 @@ export async function verbSwitch(ctx, target) {
       ...binding,
     };
     saveState(newState, statePath);
+    savedTargetState = newState;
     // #218: state hydration removed — the issue body's `aitm-last-known-state`
     // marker is the source of truth; preflight reads it on demand.
     try {
@@ -283,9 +288,28 @@ export async function verbSwitch(ctx, target) {
       /* best-effort: failure must not abort the primary operation */
     }
   } catch (error) {
-    (ctx.rollbackBindingOccupancy ?? rollbackBindingOccupancy)(claim, {
-      rollbackOccupancyClaim: ctx.rollbackOccupancyClaim,
-    });
+    const recoveryErrors = [];
+    if (savedTargetState) {
+      try {
+        const current = loadState(statePath);
+        if (isDeepStrictEqual(current, savedTargetState)) saveState(priorState, statePath);
+      } catch (restoreError) {
+        recoveryErrors.push(restoreError);
+      }
+    }
+    try {
+      (ctx.rollbackBindingOccupancy ?? rollbackBindingOccupancy)(claim, {
+        rollbackOccupancyClaim: ctx.rollbackOccupancyClaim,
+      });
+    } catch (rollbackError) {
+      recoveryErrors.push(rollbackError);
+    }
+    if (recoveryErrors.length) {
+      throw new AggregateError(
+        [error, ...recoveryErrors],
+        `switch failed and authority rollback was incomplete: ${error.message}`
+      );
+    }
     throw error;
   }
 }

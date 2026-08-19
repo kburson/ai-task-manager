@@ -144,6 +144,49 @@ test('a symlink alias to the pending artifact is not the exact granted path', ()
   assert.equal(evaluate({ targets: [alias] }).decision, 'deny');
 });
 
+test('symlink aliases cannot bypass authority or protocol-file protection', () => {
+  const { projectDir, dir, rows, evaluate } = policyFixture();
+  const authority = path.join(projectDir, '.tmp', 'authority.json');
+  const authorityAlias = path.join(projectDir, '.tmp', 'authority-alias.json');
+  const protocolFile = path.join(dir, 'state.json');
+  const protocolAlias = path.join(projectDir, '.tmp', 'protocol-alias.json');
+  writeFileSync(authority, '{}', 'utf8');
+  writeFileSync(protocolFile, '{}', 'utf8');
+  symlinkSync(authority, authorityAlias);
+  symlinkSync(protocolFile, protocolAlias);
+
+  const common = {
+    resolveGrant: () => null,
+    readIndex: () => rows,
+    statusProtocol: () => ({ lifecycle: 'active', integrity: { ok: true }, currentRole: 'owner' }),
+  };
+  assert.equal(
+    evaluate({ ...common, authorityFiles: [authority], targets: [authorityAlias] }).code,
+    'co-review-authority-file'
+  );
+  assert.equal(evaluate({ ...common, targets: [protocolAlias] }).decision, 'deny');
+});
+
+test('an inert reviewer index claim does not block the author after handoff', () => {
+  const { projectDir, rows, evaluate } = policyFixture();
+  assert.equal(
+    evaluate({
+      targets: [path.join(projectDir, 'src/a.mjs')],
+      resolveGrant: () => null,
+      readIndex: () => rows,
+      statusProtocol: () => ({
+        protocolId: 'p1',
+        lifecycle: 'active',
+        integrity: { ok: true },
+        currentRole: 'owner',
+        turnState: 'available',
+        claim: null,
+      }),
+    }).decision,
+    'not-applicable'
+  );
+});
+
 test('ordinary non-authority writes are not applicable when no reviewer grant is active', () => {
   const { projectDir, evaluate } = policyFixture();
   assert.equal(

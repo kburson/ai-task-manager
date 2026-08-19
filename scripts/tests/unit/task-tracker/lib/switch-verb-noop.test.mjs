@@ -124,6 +124,33 @@ test('cross-issue switch flushes switch-out on the outgoing issue plus one incom
   assert.equal(postCalls[0].issue, '#833');
 });
 
+test('a post-save switch failure restores both prior state and occupancy', async () => {
+  const caseDir = path.join(base, 'd-rollback');
+  const { ctx, statePath } = makeCtx(caseDir);
+  const seed = {
+    active: '#700',
+    lastActive: '#700',
+    entryStartTs: '2026-07-14T09:00:00.000Z',
+    wordsAtEntryStart: 10,
+    lastWordMarker: 700,
+  };
+  saveState(seed, statePath);
+  const claim = { status: 'moved', before: { 700: {} }, claimed: { 833: {} } };
+  let rolledBack = null;
+  ctx.claimBindingOccupancy = () => claim;
+  ctx.rollbackBindingOccupancy = (received) => {
+    rolledBack = received;
+  };
+  ctx.safePostTiming = async () => {
+    throw new Error('timing unavailable');
+  };
+
+  await assert.rejects(() => verbSwitch(ctx, '#833'), /timing unavailable/);
+  assert.equal(loadState(statePath).active, '#700', 'prior binding restored');
+  assert.equal(loadState(statePath).entryStartTs, seed.entryStartTs, 'prior span restored');
+  assert.equal(rolledBack, claim, 'occupancy claim rolled back');
+});
+
 test.after(() => {
   try {
     rmSync(base, { recursive: true, force: true });

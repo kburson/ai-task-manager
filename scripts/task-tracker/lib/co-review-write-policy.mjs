@@ -3,7 +3,11 @@ import path from 'node:path';
 
 import { findMainWorktreePath } from '../fleet-registry.mjs';
 import { coReviewIndexPath, occupancyPath } from '../paths.mjs';
-import { readProtocolIndex, resolveReviewerGrant } from '../../review/lib/index.mjs';
+import {
+  hasLiveReviewerClaim,
+  readProtocolIndex,
+  resolveReviewerGrant,
+} from '../../review/lib/index.mjs';
 
 function inside(parent, candidate) {
   const relative = path.relative(parent, candidate);
@@ -23,9 +27,15 @@ function canonicalPending(grant) {
 }
 
 function canonicalTarget(target) {
-  if (existsSync(target)) return realpathSync(target);
-  const parent = realpathSync(path.dirname(target));
-  return path.join(parent, path.basename(target));
+  const suffix = [];
+  let cursor = path.resolve(target);
+  while (!existsSync(cursor)) {
+    const parent = path.dirname(cursor);
+    if (parent === cursor) throw new Error(`no existing ancestor for ${target}`);
+    suffix.unshift(path.basename(cursor));
+    cursor = parent;
+  }
+  return path.join(realpathSync(cursor), ...suffix);
 }
 
 function deny(reason, code = 'co-review-write-denied') {
@@ -48,11 +58,20 @@ export function evaluateCoReviewWrite(input) {
     );
   }
   const targets = (input.targets || []).map((target) => targetAbsolute(target, projectDir));
-  const authority = new Set([
-    path.resolve(occupancyPath(main)),
-    path.resolve(coReviewIndexPath(main)),
-  ]);
-  if (targets.some((target) => authority.has(target))) {
+  const authorityFiles = input.authorityFiles || [occupancyPath(main), coReviewIndexPath(main)];
+  let canonicalTargets;
+  let authority;
+  try {
+    canonicalTargets = targets.map(canonicalTarget);
+    authority = new Set(
+      authorityFiles.flatMap((file) => [path.resolve(file), canonicalTarget(path.resolve(file))])
+    );
+  } catch (error) {
+    return deny(`co-review target canonicalization failed: ${error.message}`);
+  }
+  if (
+    targets.some((target, index) => authority.has(target) || authority.has(canonicalTargets[index]))
+  ) {
     return deny(
       'co-review authority files are immutable to guarded tools',
       'co-review-authority-file'
@@ -62,11 +81,22 @@ export function evaluateCoReviewWrite(input) {
   const worktreeRows = Object.values(rows).filter(
     (row) => path.resolve(row.worktree) === worktreePath
   );
-  const protocolTarget = targets.some((target) =>
-    worktreeRows.some((row) => inside(path.resolve(row.dir), target))
-  );
+  let protocolTarget;
+  try {
+    protocolTarget = targets.some((target, index) =>
+      worktreeRows.some(
+        (row) =>
+          inside(path.resolve(row.dir), target) ||
+          inside(canonicalTarget(path.resolve(row.dir)), canonicalTargets[index])
+      )
+    );
+  } catch (error) {
+    return deny(`co-review protocol canonicalization failed: ${error.message}`);
+  }
   const visibleReviewerClaim = worktreeRows.some(
-    (row) => row.lifecycle === 'active' && row.claimedRole === 'reviewer' && row.claimedSid
+    (row) =>
+      row.lifecycle === 'active' &&
+      hasLiveReviewerClaim({ row, statusProtocol: input.statusProtocol })
   );
 
   let grant;

@@ -168,6 +168,29 @@ function liveActive(row, statusProtocol) {
     : null;
 }
 
+function liveReviewerClaim(row, statusProtocol) {
+  const live = liveActive(row, statusProtocol);
+  if (
+    !live ||
+    row.claimedRole !== 'reviewer' ||
+    !row.claimedProvider ||
+    !row.claimedSid ||
+    !row.pendingReviewPath ||
+    live.currentRole !== 'reviewer' ||
+    live.turnState !== 'claimed' ||
+    live.claim?.role !== 'reviewer' ||
+    live.claim?.actor !== row.reviewer
+  ) {
+    return null;
+  }
+  return live;
+}
+
+export function hasLiveReviewerClaim(input) {
+  const statusProtocol = input.statusProtocol || defaultStatusProtocol;
+  return Boolean(liveReviewerClaim(input.row, statusProtocol));
+}
+
 export function resolveReviewerGrant(input) {
   const file = fileFor(input);
   const rows = readProtocolIndex(file);
@@ -186,16 +209,8 @@ export function resolveReviewerGrant(input) {
     ) {
       continue;
     }
-    const live = liveActive(row, statusProtocol);
-    if (
-      !live ||
-      live.currentRole !== 'reviewer' ||
-      live.turnState !== 'claimed' ||
-      live.claim?.role !== 'reviewer' ||
-      live.claim?.actor !== row.reviewer
-    ) {
-      continue;
-    }
+    const live = liveReviewerClaim(row, statusProtocol);
+    if (!live) continue;
     return Object.freeze({ ...clone(row), liveRevision: live.revision, round: live.round });
   }
   return null;
@@ -211,5 +226,23 @@ export function isActiveCoReviewWorktree(input) {
       row.lifecycle === 'active' &&
       path.resolve(row.worktree) === worktreePath &&
       Boolean(liveActive(row, statusProtocol))
+  );
+}
+
+export function allowsCoReviewOccupancy(input) {
+  const file = fileFor(input);
+  const rows = readProtocolIndex(file);
+  const worktreePath = path.resolve(input.worktreePath || input.projectDir || process.cwd());
+  const provider = String(input.requested?.provider || '').trim();
+  const sid = String(input.requested?.sid || '').trim();
+  const statusProtocol = input.statusProtocol || defaultStatusProtocol;
+  if (!provider || !sid || provider === String(input.existing?.provider || '').trim()) return false;
+  return Object.values(rows).some(
+    (row) =>
+      row.lifecycle === 'active' &&
+      path.resolve(row.worktree) === worktreePath &&
+      row.claimedProvider === provider &&
+      row.claimedSid === sid &&
+      Boolean(liveReviewerClaim(row, statusProtocol))
   );
 }

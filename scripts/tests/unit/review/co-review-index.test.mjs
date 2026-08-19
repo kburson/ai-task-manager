@@ -7,6 +7,7 @@ import path from 'node:path';
 import { projectScratchDir } from '../../../task-tracker/lib/scratch-dir.mjs';
 
 import {
+  allowsCoReviewOccupancy,
   isActiveCoReviewWorktree,
   markProtocolLifecycle,
   readProtocolIndex,
@@ -184,6 +185,57 @@ test('active co-review worktree is derived from live protocol integrity', () => 
       indexFile,
       worktreePath: state.worktree,
       statusProtocol: () => ({ ...state, lifecycle: 'accepted' }),
+    }),
+    false
+  );
+});
+
+test('occupancy sharing is limited to the exact live reviewer provider session', () => {
+  const { indexFile, state } = fixture();
+  registerProtocol({ indexFile, state });
+  recordReviewerClaim({
+    indexFile,
+    protocolId: state.protocolId,
+    provider: 'grok',
+    sid: 'grok-reviewer-sid',
+    round: 2,
+  });
+  const live = {
+    ...state,
+    turnState: 'claimed',
+    claim: { role: 'reviewer', actor: 'Reviewer' },
+  };
+  const occupancy = {
+    indexFile,
+    worktreePath: state.worktree,
+    existing: { provider: 'codex', sid: 'author-sid' },
+    requested: { provider: 'grok', sid: 'grok-reviewer-sid' },
+    statusProtocol: () => live,
+  };
+  assert.equal(allowsCoReviewOccupancy(occupancy), true);
+  assert.equal(
+    allowsCoReviewOccupancy({
+      ...occupancy,
+      requested: { provider: 'grok', sid: 'unrelated-third-session' },
+    }),
+    false
+  );
+  assert.equal(
+    allowsCoReviewOccupancy({
+      ...occupancy,
+      requested: { provider: 'codex', sid: 'another-author-session' },
+    }),
+    false
+  );
+  assert.equal(
+    allowsCoReviewOccupancy({
+      ...occupancy,
+      statusProtocol: () => ({
+        ...live,
+        currentRole: 'owner',
+        turnState: 'available',
+        claim: null,
+      }),
     }),
     false
   );

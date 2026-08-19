@@ -39,7 +39,14 @@ function writeState(obj) {
   return p;
 }
 
-function makeCtx({ rest, cfg, statePath, seedKanban }) {
+function makeCtx({
+  rest,
+  cfg,
+  statePath,
+  seedKanban,
+  claimBindingOccupancy = () => ({ status: 'claimed' }),
+  drainQueueIfAny = async () => {},
+}) {
   const posts = [];
   return {
     ctx: {
@@ -48,15 +55,39 @@ function makeCtx({ rest, cfg, statePath, seedKanban }) {
       statePath,
       projectDir: tmp,
       role: 'agent',
-      drainQueueIfAny: async () => {},
+      drainQueueIfAny,
       safePostTiming: async (issue, row) => posts.push({ issue, row }),
       // Must be within buildRow's retroactive-ts window of real now.
       nowIso: () => new Date().toISOString(),
       seedKanban,
-      claimBindingOccupancy: () => ({ status: 'claimed' }),
+      claimBindingOccupancy,
     },
     posts,
   };
+}
+
+// Test 4: a conflicting occupancy claim refuses before queue/timing/marker work.
+{
+  const SID = 'resume-seed-conflict';
+  process.env.AI_TASK_MANAGER_SESSION_ID = SID;
+  const statePath = writeState({ active: null, lastActive: null });
+  let drainCalls = 0;
+  const { ctx } = makeCtx({
+    rest: ['#1000'],
+    cfg: {},
+    statePath,
+    seedKanban: async () => {},
+    claimBindingOccupancy: () => {
+      throw new Error('occupancy held');
+    },
+    drainQueueIfAny: async () => {
+      drainCalls += 1;
+    },
+  });
+
+  await assert.rejects(() => verbResume(ctx), /occupancy held/);
+  assert.equal(drainCalls, 0, 'occupancy refusal precedes queue mutation');
+  assert.equal(loadState(statePath).active, null, 'occupancy refusal leaves state unchanged');
 }
 
 // Test 1: fresh bind from null-active seeds the session kanban cache via the seam.

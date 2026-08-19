@@ -48,17 +48,10 @@ function claimForBind(ctx, issue) {
   );
 }
 
-function saveClaimedState(ctx, issue, state) {
-  const claim = claimForBind(ctx, issue);
-  try {
-    saveState(state, ctx.statePath);
-    return claim;
-  } catch (error) {
-    (ctx.rollbackBindingOccupancy ?? rollbackBindingOccupancy)(claim, {
-      rollbackOccupancyClaim: ctx.rollbackOccupancyClaim,
-    });
-    throw error;
-  }
+function rollbackClaim(ctx, claim) {
+  return (ctx.rollbackBindingOccupancy ?? rollbackBindingOccupancy)(claim, {
+    rollbackOccupancyClaim: ctx.rollbackOccupancyClaim,
+  });
 }
 
 // #475 AC2 — idle span of a pause window in whole seconds. Returns 0 when no
@@ -119,7 +112,6 @@ export async function verbResume(ctx) {
 
   if (!target || !/^#?\d+$/.test(String(target))) {
     // No-arg path: require s.paused === true
-    await drainQueueIfAny();
     const s = loadState(statePath);
     if (!s.paused) {
       console.log(
@@ -131,43 +123,58 @@ export async function verbResume(ctx) {
       console.log('no previous task on record.');
       return;
     }
-    const resolveBinding = ctx.resolveWorktreeBinding ?? resolveWorktreeBinding;
-    const binding = resolveBinding({ projectDir, now: nowIso });
-    // Inline the lastActive-bind logic (previously in verbStart)
+    const occupancyClaim = claimForBind(ctx, s.lastActive);
+    let ts;
+    let sid;
+    let resumeBank;
+    let carriedMarker;
+    let idleSec;
+    let resumeDesc;
     try {
-      const sidPre = currentSessionId();
-      if (sidPre) {
-        await finalizeOrphanPause({ sid: sidPre, reason: 'orphan-finalize', projDir: projectDir });
+      const resolveBinding = ctx.resolveWorktreeBinding ?? resolveWorktreeBinding;
+      const binding = resolveBinding({ projectDir, now: nowIso });
+      await drainQueueIfAny();
+      // Inline the lastActive-bind logic (previously in verbStart)
+      try {
+        const sidPre = currentSessionId();
+        if (sidPre) {
+          await finalizeOrphanPause({
+            sid: sidPre,
+            reason: 'orphan-finalize',
+            projDir: projectDir,
+          });
+        }
+      } catch {
+        /* never block resume on finalize failure */
       }
-    } catch {
-      /* never block resume on finalize failure */
+      ts = nowIso();
+      sid = currentSessionId();
+      resumeBank = bankResumeTranscriptTail(s, sid, s.lastActive);
+      const wordsAtStart = resumeBank.marker;
+      idleSec = computePauseIdleSec(s.pausedAtTs, ts);
+      carriedMarker = advanceWordMarker(s.lastWordMarker, wordsAtStart);
+      resumeDesc = s.pauseReasonText || role || 'task resumed';
+      saveState(
+        {
+          ...s,
+          active: s.lastActive,
+          entryStartTs: ts,
+          wordsAtEntryStart: wordsAtStart,
+          paused: undefined,
+          pausedAtTs: null,
+          pauseReasonSlug: null,
+          pauseReasonText: null,
+          lastWordMarker: carriedMarker,
+          lastFullWordMarker: resumeBank.fullMarker,
+          ...binding,
+        },
+        statePath
+      );
+    } catch (error) {
+      rollbackClaim(ctx, occupancyClaim);
+      throw error;
     }
-    const ts = nowIso();
-    const sid = currentSessionId();
-    const resumeBank = bankResumeTranscriptTail(s, sid, s.lastActive);
-    const wordsAtStart = resumeBank.marker;
     const fullWordsAtStart = resumeBank.fullMarkerAvailable ? resumeBank.fullMarker : null;
-    // #475 AC2 — idle span of the pause window = resume_ts − pausedAtTs.
-    const idleSec = computePauseIdleSec(s.pausedAtTs, ts);
-    // #475 AC1 — carry the durable marker forward across the pause.
-    const carriedMarker = advanceWordMarker(s.lastWordMarker, wordsAtStart);
-    // #1142 — every return from an interruption uses the canonical `resumed`
-    // boundary. The pause reason remains available to humans in Description.
-    const resumeDesc = s.pauseReasonText || role || 'task resumed';
-    saveClaimedState(ctx, s.lastActive, {
-      ...s,
-      active: s.lastActive,
-      entryStartTs: ts,
-      wordsAtEntryStart: wordsAtStart,
-      paused: undefined,
-      pausedAtTs: null,
-      // #534 — interruption closed; clear the persisted pause reason.
-      pauseReasonSlug: null,
-      pauseReasonText: null,
-      lastWordMarker: carriedMarker,
-      lastFullWordMarker: resumeBank.fullMarker,
-      ...binding,
-    });
     try {
       setTaskStatus(projectDir, s.lastActive, 'active');
     } catch {
@@ -238,9 +245,15 @@ export async function verbResume(ctx) {
     return;
   }
   if (ownIssue === normalizedTarget) {
-    const resolveBinding = ctx.resolveWorktreeBinding ?? resolveWorktreeBinding;
-    const binding = resolveBinding({ projectDir, now: nowIso });
-    saveClaimedState(ctx, normalizedTarget, { ...s, ...binding });
+    const occupancyClaim = claimForBind(ctx, normalizedTarget);
+    try {
+      const resolveBinding = ctx.resolveWorktreeBinding ?? resolveWorktreeBinding;
+      const binding = resolveBinding({ projectDir, now: nowIso });
+      saveState({ ...s, ...binding }, statePath);
+    } catch (error) {
+      rollbackClaim(ctx, occupancyClaim);
+      throw error;
+    }
     try {
       const register = ctx.registerTask ?? registerTask;
       const branch = (ctx.currentBranch ?? currentBranch)(projectDir);
@@ -252,43 +265,54 @@ export async function verbResume(ctx) {
     return;
   }
 
-  const resolveBinding = ctx.resolveWorktreeBinding ?? resolveWorktreeBinding;
-  const binding = resolveBinding({ projectDir, now: nowIso });
-
-  await drainQueueIfAny();
+  const occupancyClaim = claimForBind(ctx, normalizedTarget);
+  let ts;
+  let sid;
+  let resumeBank;
+  let carriedMarker;
+  let idleSec;
   try {
-    const sidPre = currentSessionId();
-    if (sidPre) {
-      await finalizeOrphanPause({
-        sid: sidPre,
-        reason: 'orphan-finalize',
-        projDir: projectDir,
-      });
+    const resolveBinding = ctx.resolveWorktreeBinding ?? resolveWorktreeBinding;
+    const binding = resolveBinding({ projectDir, now: nowIso });
+    await drainQueueIfAny();
+    try {
+      const sidPre = currentSessionId();
+      if (sidPre) {
+        await finalizeOrphanPause({
+          sid: sidPre,
+          reason: 'orphan-finalize',
+          projDir: projectDir,
+        });
+      }
+    } catch {
+      /* never block resume on a finalize failure */
     }
-  } catch {
-    /* never block resume on a finalize failure */
+    ts = nowIso();
+    sid = currentSessionId();
+    resumeBank = bankResumeTranscriptTail(s, sid, normalizedTarget);
+    const wordsAtStart = resumeBank.marker;
+    idleSec = computePauseIdleSec(s.pausedAtTs, ts);
+    carriedMarker = advanceWordMarker(s.lastWordMarker, wordsAtStart);
+    saveState(
+      {
+        ...s,
+        active: normalizedTarget,
+        lastActive: normalizedTarget,
+        entryStartTs: ts,
+        wordsAtEntryStart: wordsAtStart,
+        paused: undefined,
+        pausedAtTs: null,
+        lastWordMarker: carriedMarker,
+        lastFullWordMarker: resumeBank.fullMarker,
+        ...binding,
+      },
+      statePath
+    );
+  } catch (error) {
+    rollbackClaim(ctx, occupancyClaim);
+    throw error;
   }
-  const ts = nowIso();
-  const sid = currentSessionId();
-  const resumeBank = bankResumeTranscriptTail(s, sid, normalizedTarget);
-  const wordsAtStart = resumeBank.marker;
   const fullWordsAtStart = resumeBank.fullMarkerAvailable ? resumeBank.fullMarker : null;
-  // #475 AC2 — idle span of the pause window (if this #N resume follows a pause).
-  const idleSec = computePauseIdleSec(s.pausedAtTs, ts);
-  // #475 AC1 — carry the durable marker forward across the rebind.
-  const carriedMarker = advanceWordMarker(s.lastWordMarker, wordsAtStart);
-  saveClaimedState(ctx, normalizedTarget, {
-    ...s,
-    active: normalizedTarget,
-    lastActive: normalizedTarget,
-    entryStartTs: ts,
-    wordsAtEntryStart: wordsAtStart,
-    paused: undefined,
-    pausedAtTs: null,
-    lastWordMarker: carriedMarker,
-    lastFullWordMarker: resumeBank.fullMarker,
-    ...binding,
-  });
   try {
     setTaskStatus(projectDir, normalizedTarget, 'active');
   } catch {

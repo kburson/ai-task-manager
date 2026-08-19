@@ -8,7 +8,7 @@ import {
   rollbackOccupancyClaim,
   touchOccupancy,
 } from './occupancy.mjs';
-import { isActiveCoReviewWorktree } from '../../review/lib/index.mjs';
+import { allowsCoReviewOccupancy } from '../../review/lib/index.mjs';
 
 function identity({ projectDir, issue, now }) {
   return {
@@ -25,8 +25,7 @@ export function claimBindingOccupancy(input, deps = {}) {
   const claim = deps.claimOccupancy || claimOccupancy;
   return claim(identity(input), {
     coReviewAllowsWorktree:
-      deps.coReviewAllowsWorktree ||
-      (({ worktreePath }) => isActiveCoReviewWorktree({ worktreePath })),
+      deps.coReviewAllowsWorktree || ((occupancy) => allowsCoReviewOccupancy(occupancy)),
   });
 }
 
@@ -48,8 +47,7 @@ export function touchBindingOccupancy(input, deps = {}) {
   const touch = deps.touchOccupancy || touchOccupancy;
   return touch(identity(input), {
     coReviewAllowsWorktree:
-      deps.coReviewAllowsWorktree ||
-      (({ worktreePath }) => isActiveCoReviewWorktree({ worktreePath })),
+      deps.coReviewAllowsWorktree || ((occupancy) => allowsCoReviewOccupancy(occupancy)),
   });
 }
 
