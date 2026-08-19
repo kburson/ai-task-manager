@@ -85,12 +85,16 @@ tested by that path.
 The live corpus is valid only when:
 
 ```text
-discoverTestFiles()
+noncanonical(discoverTestFiles()) = empty
+
+canonical(discoverTestFiles())
   = finalized frozen migration destinations
-  union post-snapshot membership-record paths
+    union post-snapshot membership-record paths
 ```
 
-Equality is exact set equality, not a minimum or count comparison.
+The second clause is exact set equality, not a minimum or count comparison. A
+noncanonical discovered path fails the first clause as a layout error and never
+enters membership reconciliation or record-path diagnostics.
 
 ## Authority Boundaries
 
@@ -195,8 +199,8 @@ not change membership. The record stays untouched while the path stays the
 same.
 
 This is the normal case for shared tests. A later story can extend an integration
-test across another boundary and add its own `@story` tag without acquiring or
-rewriting the introducing story's record.
+test across another boundary and add its own `@story` tag without changing the
+membership record because the test path did not change.
 
 ### Delete a test
 
