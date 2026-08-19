@@ -1,7 +1,7 @@
 # Grok Provider Adapter Design
 
 **Date:** 2026-08-18
-**Status:** Co-review round 9 (Codex changes-requested F-008)
+**Status:** Co-review round 11 (Codex changes-requested F-009)
 **Issue:** #1321
 **Branch:** `spec/grok-provider-adapter`
 **Surface:** `npx ai-task-manager install`, provider registry, `/task` under Grok Build TUI
@@ -117,21 +117,21 @@ runs a process binds work.
 
 `scripts/providers/grok.mjs` (pure data):
 
-| Field | Value |
-|---|---|
-| `name` | `grok` |
-| `installTarget` | `.grok/skills/task` |
-| `skillAdapterPath` | `skill/adapters/grok/SKILL.md` |
-| `stateDir` | `.tmp/aitm/app/grok` |
-| `transcriptLocator` | `sessions` (relative to Grok home, not `homedir()`) |
-| `transcriptHomeEnv` | `GROK_HOME` |
+| Field                   | Value                                                     |
+| ----------------------- | --------------------------------------------------------- |
+| `name`                  | `grok`                                                    |
+| `installTarget`         | `.grok/skills/task`                                       |
+| `skillAdapterPath`      | `skill/adapters/grok/SKILL.md`                            |
+| `stateDir`              | `.tmp/aitm/app/grok`                                      |
+| `transcriptLocator`     | `sessions` (relative to Grok home, not `homedir()`)       |
+| `transcriptHomeEnv`     | `GROK_HOME`                                               |
 | `transcriptHomeDefault` | `.grok` (joined to `homedir()` when the env var is unset) |
-| `transcriptLayout` | `cwd-session-dir` (new) |
-| `transcriptSchema` | `grok-chat-v1` (new) |
-| `sessionIdEnvKeys` | `['GROK_SESSION_ID']` |
-| `detectionEnvKeys` | `['GROK_SESSION_ID', 'GROK_AGENT']` |
-| `hookCapability` | `true` |
-| hook file | `.grok/hooks/aitm.json` (declared on the adapter) |
+| `transcriptLayout`      | `cwd-session-dir` (new)                                   |
+| `transcriptSchema`      | `grok-chat-v1` (new)                                      |
+| `sessionIdEnvKeys`      | `['GROK_SESSION_ID']`                                     |
+| `detectionEnvKeys`      | `['GROK_SESSION_ID', 'GROK_AGENT']`                       |
+| `hookCapability`        | `true`                                                    |
+| hook file               | `.grok/hooks/aitm.json` (declared on the adapter)         |
 
 Detection order: **grok → codex → claude**. Claude remains the no-signal
 fallback. Grok **hook** processes receive `GROK_SESSION_ID` by contract. Grok
@@ -160,11 +160,11 @@ repo stops treating Grok as Codex.
 
 ### Install API
 
-| Invocation | Effect |
-|---|---|
-| no `--agent` / `--agent all` | every registered provider |
-| `--agent grok` | Grok only (additive) |
-| `--agent claude,grok` or repeated `--agent` | that subset (additive) |
+| Invocation                                  | Effect                    |
+| ------------------------------------------- | ------------------------- |
+| no `--agent` / `--agent all`                | every registered provider |
+| `--agent grok`                              | Grok only (additive)      |
+| `--agent claude,grok` or repeated `--agent` | that subset (additive)    |
 
 Rules:
 
@@ -228,13 +228,13 @@ not run for Grok.
 **Schema `grok-chat-v1`.** Count `chat_history.jsonl` only. `updates.jsonl` is
 the ACP resume stream (chunks, hook executions) and would double-count.
 
-| `type` | Count? |
-|---|---|
-| `user` | yes — string or `[{type:"text", text}]` |
-| `assistant` | yes — same; `tool_calls` become tool-chip events, no body double-count |
-| `tool_result` | tool-result text |
-| `reasoning` | no — `encrypted_content` only |
-| `system` | no — same as Codex skipping `system`/`developer` |
+| `type`        | Count?                                                                 |
+| ------------- | ---------------------------------------------------------------------- |
+| `user`        | yes — string or `[{type:"text", text}]`                                |
+| `assistant`   | yes — same; `tool_calls` become tool-chip events, no body double-count |
+| `tool_result` | tool-result text                                                       |
+| `reasoning`   | no — `encrypted_content` only                                          |
+| `system`      | no — same as Codex skipping `system`/`developer`                       |
 
 `normalizeTranscriptRecord` stays filesystem-free. Claude envelopes keep
 `message.content`. Grok puts `content` on the record. Discriminate on shape
@@ -281,13 +281,13 @@ entrypoints directly. The bridge:
 Shared guard logic stays Claude-shaped. Claude and Codex hook files are
 unchanged.
 
-| Event | Matcher | Command |
-|---|---|---|
-| `SessionStart` | `startup\|resume\|clear\|compact` | grok-wire → seed check first, then `hook-handler.mjs`, optional `memory-index.mjs` |
-| `PreCompact` / `PostCompact` | `manual\|auto` | grok-wire → `hook-handler.mjs` (+ memory-index on PostCompact when seeds exist) |
-| `PreToolUse` | `Bash` / `run_terminal_command` | grok-wire → `bash-guard.mjs`, `activity-guard.mjs` |
-| `PreToolUse` | `Edit\|Write\|NotebookEdit\|search_replace\|write` | grok-wire → `source-edit-gate.mjs`, `activity-guard.mjs` |
-| `PreToolUse` | `Agent\|Task\|spawn_subagent` | grok-wire → `agent-guard.mjs` |
+| Event                        | Matcher                                            | Command                                                                            |
+| ---------------------------- | -------------------------------------------------- | ---------------------------------------------------------------------------------- |
+| `SessionStart`               | `startup\|resume\|clear\|compact`                  | grok-wire → seed check first, then `hook-handler.mjs`, optional `memory-index.mjs` |
+| `PreCompact` / `PostCompact` | `manual\|auto`                                     | grok-wire → `hook-handler.mjs` (+ memory-index on PostCompact when seeds exist)    |
+| `PreToolUse`                 | `Bash` / `run_terminal_command`                    | grok-wire → `bash-guard.mjs`, `activity-guard.mjs`                                 |
+| `PreToolUse`                 | `Edit\|Write\|NotebookEdit\|search_replace\|write` | grok-wire → `source-edit-gate.mjs`, `activity-guard.mjs`                           |
+| `PreToolUse`                 | `Agent\|Task\|spawn_subagent`                      | grok-wire → `agent-guard.mjs`                                                      |
 
 Install patches by command-string identity (the **bridge** command string).
 
@@ -441,16 +441,16 @@ Out: listed under Non-goals.
 
 Synthetic fixtures only. Do not read live `~/.grok/sessions`.
 
-| Area | Pins |
-|---|---|
-| Registry | `getProvider('grok')`; `listProviders()` includes `grok`; detect `GROK_SESSION_ID` / `GROK_AGENT`; unknown name throws |
-| Install | no flag → all hosts; `--agent grok`; `--agent claude,grok`; second run does not duplicate hooks; subset does not delete other hosts; no `both` token |
-| Transcripts | `cwd-session-dir` resolves `encodeURIComponent(cwd)/sid/chat_history.jsonl`; missing file → `null`; counts user/assistant/tool_result; skips reasoning/system |
-| Hooks | native Grok envelopes: Bash deny, edit deny, agent-spawn deny, SessionStart, PreCompact, PostCompact; `block`→`deny` + exit 2; same `(sid, event, promptId, ts)` second call is a no-op; later ts still flushes |
-| Session id | `GROK_AGENT` set + `GROK_SESSION_ID` unset → bind/occupancy/jsonlPath refuse (no `default-session`); two distinct `GROK_SESSION_ID` values keep distinct binds |
-| Occupancy | second sid cannot bind `#N`; pause holds; stop releases; second provider in the same worktree refused unless co-review; reviewer `/task start` refused |
-| Co-review index | custom `--dir` registered; claim stores `{claimedProvider, claimedSid, pendingReviewPath}`; other sid/provider in the same tree denied; claimed sid allowed only for its pending file; other `.tmp/**` denied during the grant; Edit/Write/`apply_patch` and Bash against index/protocol authority denied (ahead of chore-mode and `.tmp/**`); first-file create via parent realpath+basename; later realpath drift denied; stale/terminal denied |
-| Codex `apply_patch` | native envelope: pending-file-only patch allowed for claimed sid; tracked-source and authority-file patches denied; mixed pending+source patch denied as a whole; malformed/unparseable patch denied (not `tool-not-gated`); Edit/Write/Bash cases unchanged |
+| Area                | Pins                                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Registry            | `getProvider('grok')`; `listProviders()` includes `grok`; detect `GROK_SESSION_ID` / `GROK_AGENT`; unknown name throws                                                                                                                                                                                                                                                                                                                            |
+| Install             | no flag → all hosts; `--agent grok`; `--agent claude,grok`; second run does not duplicate hooks; subset does not delete other hosts; no `both` token                                                                                                                                                                                                                                                                                              |
+| Transcripts         | `cwd-session-dir` resolves `encodeURIComponent(cwd)/sid/chat_history.jsonl`; missing file → `null`; counts user/assistant/tool_result; skips reasoning/system                                                                                                                                                                                                                                                                                     |
+| Hooks               | native Grok envelopes: Bash deny, edit deny, agent-spawn deny, SessionStart, PreCompact, PostCompact; `block`→`deny` + exit 2; same `(sid, event, promptId, ts)` second call is a no-op; later ts still flushes                                                                                                                                                                                                                                   |
+| Session id          | `GROK_AGENT` set + `GROK_SESSION_ID` unset → bind/occupancy/jsonlPath refuse (no `default-session`); two distinct `GROK_SESSION_ID` values keep distinct binds                                                                                                                                                                                                                                                                                    |
+| Occupancy           | second sid cannot bind `#N`; pause holds; stop releases; second provider in the same worktree refused unless co-review; reviewer `/task start` refused                                                                                                                                                                                                                                                                                            |
+| Co-review index     | custom `--dir` registered; claim stores `{claimedProvider, claimedSid, pendingReviewPath}`; other sid/provider in the same tree denied; claimed sid allowed only for its pending file; other `.tmp/**` denied during the grant; Edit/Write/`apply_patch` and Bash against index/protocol authority denied (ahead of chore-mode and `.tmp/**`); first-file create via parent realpath+basename; later realpath drift denied; stale/terminal denied |
+| Codex `apply_patch` | native envelope: pending-file-only patch allowed for claimed sid; tracked-source and authority-file patches denied; mixed pending+source patch denied as a whole; malformed/unparseable patch denied (not `tool-not-gated`); Edit/Write/Bash cases unchanged                                                                                                                                                                                      |
 
 Develop verification: `node scripts/task-tracker/verify-develop.mjs`.
 
