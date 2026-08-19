@@ -1,7 +1,7 @@
 # Grok Provider Adapter Design
 
 **Date:** 2026-08-18
-**Status:** Co-review round 7 (Codex changes-requested F-007)
+**Status:** Co-review round 9 (Codex changes-requested F-008)
 **Issue:** #1321
 **Branch:** `spec/grok-provider-adapter`
 **Surface:** `npx ai-task-manager install`, provider registry, `/task` under Grok Build TUI
@@ -389,7 +389,7 @@ symlink or containment drift.
 `apply_patch`**. Codex `.codex/hooks.json` already matches `apply_patch`;
 today the handler returns `tool-not-gated` and activity-guard exits as an
 unknown tool. That is a live reviewer bypass. `apply_patch` must be gated
-the same as Edit/Write, host-agnostically.
+the same as Edit/Write, independently of host.
 
 **`apply_patch` contract.** Fail-closed: extract and canonicalize every
 file target in the patch (create, update, delete, rename, multi-file).
