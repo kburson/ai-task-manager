@@ -4,7 +4,7 @@ import { strict as assert } from 'node:assert';
 import { mkdtempSync, rmSync, readFileSync, mkdirSync, writeFileSync } from 'node:fs';
 import { projectScratchDir } from '../../../../task-tracker/lib/scratch-dir.mjs';
 import path from 'node:path';
-import { patchSettingsJson } from '../../../../../bin/cli.mjs';
+import * as installCli from '../../../../../bin/cli.mjs';
 import {
   guardBootstrapCommand,
   hookBootstrapCommand,
@@ -12,6 +12,11 @@ import {
 
 const tmp = mkdtempSync(path.join(projectScratchDir('test'), 'tt-install-hooks-'));
 const settingsPath = path.join(tmp, '.claude', 'settings.json');
+const grokHooksPath = path.join(tmp, '.grok', 'hooks', 'aitm.json');
+const { patchSettingsJson } = installCli;
+
+assert.equal(typeof installCli.patchGrokHooksJson, 'function', 'Grok hook patcher must be exported');
+assert.equal(typeof installCli.grokHookCommand, 'function', 'Grok hook command helper must be exported');
 
 // #869 — lifecycle hooks register via the node_modules-first / repo-relative
 // bootstrap shim, matching cli.mjs. Compute the expected commands the same way.
@@ -47,6 +52,7 @@ assert.equal(upMatches.length, 1, 'UserPromptSubmit hook not duplicated on re-in
 
 // Test 3: user pre-existing hooks for the same events are preserved
 mkdirSync(path.dirname(settingsPath), { recursive: true });
+mkdirSync(path.dirname(grokHooksPath), { recursive: true });
 writeFileSync(
   settingsPath,
   JSON.stringify(
@@ -151,6 +157,32 @@ assert.equal(
   1,
   'stop-audit hook is idempotent across re-installs'
 );
+
+writeFileSync(
+  grokHooksPath,
+  JSON.stringify({ custom: { preserve: true }, hooks: { CustomEvent: [{ command: 'user-hook' }] } }),
+  'utf8'
+);
+installCli.patchGrokHooksJson(grokHooksPath);
+installCli.patchGrokHooksJson(grokHooksPath);
+const grokHooks = JSON.parse(readFileSync(grokHooksPath, 'utf8'));
+assert.deepEqual(grokHooks.custom, { preserve: true }, 'Grok hook patch preserves unrelated JSON');
+assert.deepEqual(
+  grokHooks.hooks.CustomEvent,
+  [{ command: 'user-hook' }],
+  'Grok hook patch preserves unrelated event entries'
+);
+const timingCommand = installCli.grokHookCommand('timing');
+const grokTimingEntries = Object.values(grokHooks.hooks)
+  .flat()
+  .filter((entry) => hasCommand([entry], timingCommand));
+assert.ok(grokTimingEntries.length > 0, 'Grok hook patch registers timing through the bridge');
+for (const entries of Object.values(grokHooks.hooks)) {
+  assert.ok(
+    entries.filter((entry) => hasCommand([entry], timingCommand)).length <= 1,
+    'Grok timing bridge command is not duplicated within an event'
+  );
+}
 
 rmSync(tmp, { recursive: true });
 console.log('install-hooks.test.mjs: all passed');

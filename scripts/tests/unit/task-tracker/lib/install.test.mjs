@@ -16,6 +16,32 @@ const pexec = promisify(execFile);
 const __dir = path.dirname(fileURLToPath(import.meta.url)) + '/..';
 const ROOT = path.resolve(__dir, '../../../..');
 const CLI = path.join(ROOT, 'bin', 'cli.mjs');
+const providerSelectionModule = await import(
+  '../../../../../bin/lib/provider-selection.mjs'
+).catch(() => null);
+assert.ok(providerSelectionModule, 'provider-selection module must exist');
+const { parseProviderSelection } = providerSelectionModule;
+const KNOWN_PROVIDERS = ['grok', 'codex', 'claude'];
+
+assert.deepEqual(parseProviderSelection([], KNOWN_PROVIDERS), KNOWN_PROVIDERS);
+assert.deepEqual(parseProviderSelection(['--agent', 'all'], KNOWN_PROVIDERS), KNOWN_PROVIDERS);
+assert.deepEqual(parseProviderSelection(['--agent', 'grok'], KNOWN_PROVIDERS), ['grok']);
+assert.deepEqual(
+  parseProviderSelection(
+    ['--agent', 'claude,grok', '--agent', 'codex'],
+    KNOWN_PROVIDERS
+  ),
+  ['claude', 'grok', 'codex']
+);
+assert.throws(
+  () => parseProviderSelection(['--agent', 'both'], KNOWN_PROVIDERS),
+  /grok, codex, claude/
+);
+assert.throws(() => parseProviderSelection(['--agent', 'x'], KNOWN_PROVIDERS), /Unknown --agent/);
+assert.throws(
+  () => parseProviderSelection(['--agent', 'all', '--agent', 'grok'], KNOWN_PROVIDERS),
+  /cannot be mixed/
+);
 
 const target = mkdtempSync(path.join(projectScratchDir('test'), 'install-test-'));
 const legacyTarget = mkdtempSync(
@@ -27,6 +53,9 @@ const codexTarget = mkdtempSync(
 const memoryTarget = mkdtempSync(path.join(projectScratchDir('test'), 'install-memory-test-'));
 const memoryNoneTarget = mkdtempSync(
   path.join(projectScratchDir('test'), 'install-memory-none-test-')
+);
+const grokOnlyTarget = mkdtempSync(
+  path.join(projectScratchDir('test'), 'install-grok-only-test-')
 );
 const fakeHome = mkdtempSync(
   path.join(projectScratchDir('test'), 'install-codex-superpowers-home-')
@@ -121,8 +150,10 @@ try {
   // Agent stubs installed
   const claudeSkill = path.join(target, '.claude', 'skills', 'task', 'SKILL.md');
   const codexSkill = path.join(target, '.agents', 'skills', 'task', 'SKILL.md');
+  const grokSkill = path.join(target, '.grok', 'skills', 'task', 'SKILL.md');
   assert.ok(existsSync(claudeSkill), 'Claude SKILL.md missing');
   assert.ok(existsSync(codexSkill), 'Codex SKILL.md missing');
+  assert.ok(existsSync(grokSkill), 'Grok SKILL.md missing from default all-provider install');
   assert.match(
     readFileSync(claudeSkill, 'utf8'),
     /skill\/adapters\/claude\/SKILL\.md/,
@@ -132,6 +163,37 @@ try {
     readFileSync(codexSkill, 'utf8'),
     /skill\/adapters\/codex\/SKILL\.md/,
     'Codex stub must point to adapter'
+  );
+  assert.match(
+    readFileSync(grokSkill, 'utf8'),
+    /skill\/adapters\/grok\/SKILL\.md/,
+    'Grok stub must point to adapter'
+  );
+
+  mkdirSync(path.join(grokOnlyTarget, '.claude'), { recursive: true });
+  mkdirSync(path.join(grokOnlyTarget, '.codex'), { recursive: true });
+  const preservedClaude = '{"custom":"claude"}\n';
+  const preservedCodex = '{"custom":"codex"}\n';
+  writeFileSync(path.join(grokOnlyTarget, '.claude', 'settings.json'), preservedClaude, 'utf8');
+  writeFileSync(path.join(grokOnlyTarget, '.codex', 'hooks.json'), preservedCodex, 'utf8');
+  await pexec('node', [CLI, 'install', '--target', grokOnlyTarget, '--agent', 'grok']);
+  assert.equal(
+    readFileSync(path.join(grokOnlyTarget, '.claude', 'settings.json'), 'utf8'),
+    preservedClaude,
+    'Grok-only install must preserve Claude settings byte-for-byte'
+  );
+  assert.equal(
+    readFileSync(path.join(grokOnlyTarget, '.codex', 'hooks.json'), 'utf8'),
+    preservedCodex,
+    'Grok-only install must preserve Codex hooks byte-for-byte'
+  );
+  assert.ok(
+    existsSync(path.join(grokOnlyTarget, '.grok', 'skills', 'task', 'SKILL.md')),
+    'Grok-only install must create the Grok skill'
+  );
+  await assert.rejects(
+    pexec('node', [CLI, 'install', '--target', grokOnlyTarget, '--agent', 'both']),
+    /grok, codex, claude/
   );
   const codexSkillBody = readFileSync(codexSkill, 'utf8');
   assert.match(
@@ -574,5 +636,6 @@ try {
   rmSync(codexTarget, { recursive: true, force: true });
   rmSync(memoryTarget, { recursive: true, force: true });
   rmSync(memoryNoneTarget, { recursive: true, force: true });
+  rmSync(grokOnlyTarget, { recursive: true, force: true });
   rmSync(fakeHome, { recursive: true, force: true });
 }
