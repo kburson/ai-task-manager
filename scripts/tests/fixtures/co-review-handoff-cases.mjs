@@ -497,7 +497,11 @@ test('continuation rejects invalid approval, turns, and focus without mutation',
 
 test('CLI routes reviewer acceptance and human continuation flags', async () => {
   const { root, artifact, initialCommit } = memoryRepositoryFixture();
-  const common = { cwd: root, resolveGitHubLoginImpl: () => 'human' };
+  const common = {
+    cwd: root,
+    env: { CLAUDE_SESSION_ID: 'co-review-cli-reviewer-session' },
+    resolveGitHubLoginImpl: () => 'human',
+  };
   assert.equal(
     (
       await runCliDirect(
