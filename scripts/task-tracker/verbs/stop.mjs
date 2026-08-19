@@ -3,6 +3,7 @@ import { setTaskStatus } from '../fleet-registry.mjs';
 import { bodyOf } from '../gh-timing-comment.mjs';
 import { isTerminalReviewHandoffOpen } from '../lib/terminal-review-handoff.mjs';
 import { timingPostWarningSuffix } from '../lib/timing-post-outcome.mjs';
+import { releaseBindingOccupancy } from '../lib/occupancy-lifecycle.mjs';
 
 export async function verbStop(ctx) {
   const {
@@ -62,6 +63,10 @@ export async function verbStop(ctx) {
   } catch {
     /* best-effort: failure must not abort the primary operation */
   }
+  (ctx.releaseBindingOccupancy ?? releaseBindingOccupancy)(
+    { projectDir, issue: s.active },
+    { releaseOccupancy: ctx.releaseOccupancy }
+  );
   console.log(
     `Stopped ${s.active}: +${deltaMin} active min${wallNote}, +${deltaWords} words${timingPostWarningSuffix(post)}. Use "/task resume <N>" to return to it later.`
   );

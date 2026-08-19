@@ -8,6 +8,7 @@ import { loadSession } from '../lib/session-store.mjs';
 import { resolveGate } from '../lib/gate-resolve.mjs';
 import { rawProjectConfig } from '../config.mjs';
 import { currentSessionId } from '../word-counter.mjs';
+import { releaseBindingOccupancy } from '../lib/occupancy-lifecycle.mjs';
 import {
   checkDirty,
   formatSummary,
@@ -422,6 +423,10 @@ export async function verbClose(ctx) {
       /* best-effort; a residual active pointer is harmless */
     }
     deregisterTask(projectDir, closeTarget);
+    (ctx.releaseBindingOccupancy ?? releaseBindingOccupancy)(
+      { projectDir, issue: closeTarget },
+      { releaseOccupancy: ctx.releaseOccupancy }
+    );
     console.log(
       `Closed ${closeTarget} as ${result.reason}` +
         (result.of ? ` (duplicate of ${result.of})` : '') +
@@ -695,6 +700,10 @@ export async function verbClose(ctx) {
       clearActive(statePath);
       try {
         deregisterTask(projectDir, closeTarget);
+        (ctx.releaseBindingOccupancy ?? releaseBindingOccupancy)(
+          { projectDir, issue: closeTarget },
+          { releaseOccupancy: ctx.releaseOccupancy }
+        );
       } catch {
         /* best-effort: cleanup; failure is non-fatal */
       }
@@ -788,6 +797,10 @@ export async function verbClose(ctx) {
             if (!ctx.preserveActiveOnConvergence) clearActive(statePath);
             try {
               deregisterTask(projectDir, closeTarget);
+              (ctx.releaseBindingOccupancy ?? releaseBindingOccupancy)(
+                { projectDir, issue: closeTarget },
+                { releaseOccupancy: ctx.releaseOccupancy }
+              );
             } catch {
               /* best-effort: cleanup; failure is non-fatal */
             }
@@ -1687,6 +1700,10 @@ export async function verbClose(ctx) {
   clearActive(statePath);
   try {
     deregisterTask(projectDir, s.active);
+    (ctx.releaseBindingOccupancy ?? releaseBindingOccupancy)(
+      { projectDir, issue: s.active },
+      { releaseOccupancy: ctx.releaseOccupancy }
+    );
   } catch {
     /* best-effort: cleanup; failure is non-fatal */
   }

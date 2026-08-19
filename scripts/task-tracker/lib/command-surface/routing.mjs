@@ -251,6 +251,10 @@ export const ROUTE_IDENTITIES = Object.freeze(
       dispatch: 'verbs/fleet.mjs',
     },
     {
+      verb: 'occupancy',
+      dispatch: 'verbs/occupancy.mjs',
+    },
+    {
       verb: 'report',
       dispatch: 'verbs/report.mjs',
     },

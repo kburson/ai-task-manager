@@ -479,6 +479,13 @@ export const VERB_CONTRACTS = Object.freeze({
     ],
     ['Prints fleet rows or the stale entries evicted or retained by prune.']
   ),
+  occupancy: contract(
+    ['An exact numeric issue and --release are required; --steal is unavailable.'],
+    [
+      'Releases one main-worktree-anchored local occupancy claim without changing issue lifecycle state.',
+    ],
+    ['Prints the released provider, session prefix, and worktree, or reports that no claim exists.']
+  ),
   log: contract(
     ['The numbered issue and its timing event history must exist.'],
     ['Recomputes and writes Engaged, Session, Review, and Plan timing fields.'],
@@ -570,6 +577,7 @@ export const VERB_RELATED_COMMANDS = Object.freeze({
   config: Object.freeze(['status', 'migrate']),
   migrate: Object.freeze(['config', 'board']),
   fleet: Object.freeze(['status', 'board']),
+  occupancy: Object.freeze(['fleet', 'stop']),
   log: Object.freeze(['status', 'words-count']),
   'chore-mode': Object.freeze(['status', 'update']),
   help: Object.freeze(['status', 'config']),
@@ -708,6 +716,7 @@ export const VERB_POSITIONAL_ARGUMENTS = Object.freeze({
   ]),
   migrate: Object.freeze([]),
   fleet: Object.freeze([positional('[prune]', 'Optional stale-registration pruning subcommand.')]),
+  occupancy: Object.freeze([positional('--release #N', 'Issue-scoped administrative release.')]),
   log: Object.freeze([positional('#N', 'Issue number whose timing fields are recomputed.')]),
   'chore-mode': Object.freeze([
     positional('<on ["reason"]|off|status>', 'Chore-mode operation and optional on-reason.'),

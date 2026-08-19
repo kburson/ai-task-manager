@@ -35,6 +35,31 @@ import {
 } from '../lib/pickup-directive-gate.mjs';
 import { runMoveInvariantAudit } from '../lib/verify-move-invariants.mjs';
 import { resolveWorktreeBinding } from '../lib/worktree-binding.mjs';
+import { claimBindingOccupancy, rollbackBindingOccupancy } from '../lib/occupancy-lifecycle.mjs';
+
+function claimForBind(ctx, issue) {
+  const claim = ctx.claimBindingOccupancy ?? claimBindingOccupancy;
+  return claim(
+    { projectDir: ctx.projectDir, issue, now: ctx.nowIso },
+    {
+      coReviewAllowsWorktree: ctx.coReviewAllowsWorktree,
+      claimOccupancy: ctx.claimOccupancy,
+    }
+  );
+}
+
+function saveClaimedState(ctx, issue, state) {
+  const claim = claimForBind(ctx, issue);
+  try {
+    saveState(state, ctx.statePath);
+    return claim;
+  } catch (error) {
+    (ctx.rollbackBindingOccupancy ?? rollbackBindingOccupancy)(claim, {
+      rollbackOccupancyClaim: ctx.rollbackOccupancyClaim,
+    });
+    throw error;
+  }
+}
 
 // #475 AC2 — idle span of a pause window in whole seconds. Returns 0 when no
 // `pausedAtTs` was recorded (e.g. resuming after a stop rather than a pause, or
@@ -129,23 +154,20 @@ export async function verbResume(ctx) {
     // #1142 — every return from an interruption uses the canonical `resumed`
     // boundary. The pause reason remains available to humans in Description.
     const resumeDesc = s.pauseReasonText || role || 'task resumed';
-    saveState(
-      {
-        ...s,
-        active: s.lastActive,
-        entryStartTs: ts,
-        wordsAtEntryStart: wordsAtStart,
-        paused: undefined,
-        pausedAtTs: null,
-        // #534 — interruption closed; clear the persisted pause reason.
-        pauseReasonSlug: null,
-        pauseReasonText: null,
-        lastWordMarker: carriedMarker,
-        lastFullWordMarker: resumeBank.fullMarker,
-        ...binding,
-      },
-      statePath
-    );
+    saveClaimedState(ctx, s.lastActive, {
+      ...s,
+      active: s.lastActive,
+      entryStartTs: ts,
+      wordsAtEntryStart: wordsAtStart,
+      paused: undefined,
+      pausedAtTs: null,
+      // #534 — interruption closed; clear the persisted pause reason.
+      pauseReasonSlug: null,
+      pauseReasonText: null,
+      lastWordMarker: carriedMarker,
+      lastFullWordMarker: resumeBank.fullMarker,
+      ...binding,
+    });
     try {
       setTaskStatus(projectDir, s.lastActive, 'active');
     } catch {
@@ -218,7 +240,7 @@ export async function verbResume(ctx) {
   if (ownIssue === normalizedTarget) {
     const resolveBinding = ctx.resolveWorktreeBinding ?? resolveWorktreeBinding;
     const binding = resolveBinding({ projectDir, now: nowIso });
-    saveState({ ...s, ...binding }, statePath);
+    saveClaimedState(ctx, normalizedTarget, { ...s, ...binding });
     try {
       const register = ctx.registerTask ?? registerTask;
       const branch = (ctx.currentBranch ?? currentBranch)(projectDir);
@@ -255,21 +277,18 @@ export async function verbResume(ctx) {
   const idleSec = computePauseIdleSec(s.pausedAtTs, ts);
   // #475 AC1 — carry the durable marker forward across the rebind.
   const carriedMarker = advanceWordMarker(s.lastWordMarker, wordsAtStart);
-  saveState(
-    {
-      ...s,
-      active: normalizedTarget,
-      lastActive: normalizedTarget,
-      entryStartTs: ts,
-      wordsAtEntryStart: wordsAtStart,
-      paused: undefined,
-      pausedAtTs: null,
-      lastWordMarker: carriedMarker,
-      lastFullWordMarker: resumeBank.fullMarker,
-      ...binding,
-    },
-    statePath
-  );
+  saveClaimedState(ctx, normalizedTarget, {
+    ...s,
+    active: normalizedTarget,
+    lastActive: normalizedTarget,
+    entryStartTs: ts,
+    wordsAtEntryStart: wordsAtStart,
+    paused: undefined,
+    pausedAtTs: null,
+    lastWordMarker: carriedMarker,
+    lastFullWordMarker: resumeBank.fullMarker,
+    ...binding,
+  });
   try {
     setTaskStatus(projectDir, normalizedTarget, 'active');
   } catch {
