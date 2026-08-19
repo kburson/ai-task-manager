@@ -265,6 +265,10 @@ test('npm pack excludes the test corpus while retaining required runtime files a
     'package/scripts/reports/regional-rates.json',
     'package/scripts/providers/grok.mjs',
     'package/scripts/task-tracker/hooks/grok-wire.mjs',
+    'package/scripts/task-tracker/lib/occupancy.mjs',
+    'package/scripts/review/lib/index.mjs',
+    'package/scripts/task-tracker/lib/co-review-write-policy.mjs',
+    'package/scripts/task-tracker/lib/mutation-targets.mjs',
     'package/skill/adapters/grok/SKILL.md',
     'package/docs/guides/grok-provider.md',
   ]) {
@@ -277,6 +281,9 @@ test('live discovery includes the focused Grok provider tests', () => {
   for (const required of [
     'scripts/tests/unit/task-tracker/hooks/grok-wire.test.mjs',
     'scripts/tests/unit/task-tracker/lib/word-counter-grok.test.mjs',
+    'scripts/tests/unit/task-tracker/lib/occupancy.test.mjs',
+    'scripts/tests/unit/review/co-review-index.test.mjs',
+    'scripts/tests/unit/task-tracker/lib/co-review-write-policy.test.mjs',
   ]) {
     assert.ok(discovered.has(required), `${required} must remain in the canonical test corpus`);
   }

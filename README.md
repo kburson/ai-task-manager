@@ -243,6 +243,7 @@ Beyond the five daily-driver commands in the quickstart above, this is the fulle
 | `/task shelve <reason>`           | Return Refine or Ready for Planning work to Backlog and clear active refinement evidence             |
 | `/task park <reason>`             | Compatibility alias for `/task shelve`                                                               |
 | `/task fleet`                     | Show all active tasks across parallel agent worktrees                                                |
+| `/task occupancy --release #N`    | Administratively release one inspected, abandoned local occupancy claim                              |
 | `/task config`                    | List all config values with sources                                                                  |
 | `/task config <key> <value>`      | Set a config value project-locally                                                                   |
 | `/task config init`               | Interactive interview — review and set all config values                                             |
@@ -493,6 +494,12 @@ The fleet command shows all active tasks across parallel worktrees:
 /task fleet
 ```
 
+Binding also claims local authoritative occupancy: one issue per session and
+one editing provider per worktree. Pause retains the claim; successful stop or
+close releases it. There is no TTL or steal operation. Co-review is the only
+same-worktree exception, and its reviewer stays unbound with write access only
+to the exact session-bound pending review artifact.
+
 ### Orchestration Directive (add to `CLAUDE.md`)
 
 ```
@@ -633,13 +640,17 @@ Default to `/compact`. It summarizes your session, keeps hooks active, and costs
 /clear
 ```
 
-### One Session Per Workspace
+### One Editing Session Per Workspace
 
-The state file (`.ai-task-manager/task-tracker-state.json`) is workspace-scoped. Two simultaneous agent sessions in the same directory will corrupt each other's word-count baseline. Timing (minutes) stays correct; only Delta Words is affected.
+AITM stores authoritative local occupancy at the main worktree. A second session
+cannot bind the same issue, and a second editing provider cannot share the
+worktree outside an active integrity-valid co-review. Pause holds occupancy;
+stop and close release it. Reviewers remain unbound and can write only their
+named pending review artifact.
 
-**Rule:** only run `/task` commands from one session at a time. Treat any second session as read-only.
-
-> **In progress:** [#1048](https://github.com/kburson/ai-task-manager/issues/1048) is delivering exclusive, GitHub-native work leases so two agents (e.g. Claude Code and Codex, or two worktrees) can no longer silently corrupt each other's baseline. Once it lands, binding an issue that's already leased elsewhere will fail closed with a clear conflict instead of quietly desyncing Delta Words — GitHub issue comments become the durable authority instead of the local per-workspace state file.
+This is machine-local authority. [#1048](https://github.com/kburson/ai-task-manager/issues/1048)
+continues to track the separate cross-clone/GitHub lease gap; local occupancy
+does not claim to coordinate the same login across two machines.
 
 ---
 

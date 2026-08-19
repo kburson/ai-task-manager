@@ -62,3 +62,24 @@ test('architecture docs declare Grok adapter, hooks, transcript layout, and requ
   assert.match(design, /cwd-session-dir/);
   assert.match(design, /GROK_SESSION_ID/);
 });
+
+test('occupancy and co-review authority surfaces ship with operator guidance', () => {
+  for (const relPath of [
+    'scripts/task-tracker/lib/occupancy.mjs',
+    'scripts/review/lib/index.mjs',
+    'scripts/task-tracker/lib/co-review-write-policy.mjs',
+    'scripts/task-tracker/lib/mutation-targets.mjs',
+  ]) {
+    assert.ok(existsSync(path.join(PROJECT_ROOT, relPath)), `${relPath} must ship`);
+  }
+  const coordination = readFileSync(
+    path.join(PROJECT_ROOT, 'docs/guides/github-native-coordination.md'),
+    'utf8'
+  );
+  assert.match(coordination, /one issue.*one session/is);
+  assert.match(coordination, /pause.*retain/is);
+  assert.match(coordination, /stop.*release/is);
+  assert.match(coordination, /occupancy --release #N/i);
+  assert.match(coordination, /reviewer.*unbound/is);
+  assert.match(coordination, /pending review artifact/i);
+});

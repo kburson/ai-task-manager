@@ -104,6 +104,7 @@ group below.
 | `config`     | List config values, set one, or run the interactive interview.                  |
 | `migrate`    | Migrate repo issues into the selected/configured project.                       |
 | `fleet`      | Show active tasks across worktrees, or prune stale fleet registrations.         |
+| `occupancy`  | Release one inspected local occupancy claim; no steal or TTL recovery exists.   |
 | `log`        | Re-compute and write Engaged/Session/Review/Plan for an issue.                  |
 | `chore-mode` | Toggle chore-mode so unrelated edits are allowed past the source-edit gate.     |
 | `help`       | Show the top-level help, or a full per-verb reference with `/task help <verb>`. |
@@ -398,6 +399,25 @@ Location: `.ai-task-manager/task-fleet.json` in the **main worktree** (gitignore
 ```
 
 Each agent worktree discovers the main worktree path via `git worktree list --porcelain` (first entry). Falls back to `projectDir` in single-worktree setups — the registry still works, it just lives alongside the state file.
+
+## Occupancy and Co-Review Authority
+
+The fleet registry is observational. Binding authority is a separate,
+fail-closed `.tmp/aitm/fleet/occupancy.json` store anchored in the main
+worktree. Rows are keyed by issue and contain the exact session, provider,
+worktree, bind timestamp, and heartbeat. Claims and rollback use the fleet lock
+and atomic rename. One session may move its claim between issues; another
+session cannot bind the held issue. Pause retains occupancy, while successful
+stop and close release it. Recovery is explicit `/task occupancy --release #N`;
+there is no TTL reap or steal.
+
+`.tmp/aitm/fleet/co-review-index.json` projects registered protocol identity,
+lifecycle, and the exact reviewer provider/session/pending path. The live
+protocol state and events remain authoritative: guards re-run integrity before
+using the index. Reviewers remain unbound. Edit, Write, `apply_patch`, and Bash
+evaluate every mutation target before chore mode or `.tmp/**` allowances and
+permit only the exact session-bound pending artifact. Authority files, mixed
+targets, malformed or ambiguous mutations, and symlink drift deny.
 
 ## Timing Comment Structure
 
