@@ -47,12 +47,15 @@ API is intentionally synchronous. Test-only injected read and wait functions
 provide deterministic seams without timing-sensitive sleeps.
 
 A confirmation state that is ahead of the retained array is carried into the
-next attempt. Before that attempt can proceed or accept a newer snapshot, the
-carried state must match its corresponding newly retained event. A partially
-confirmed state within the retained array may restart only when its sole
-integrity error is still the forward event-count mismatch. Projection drift at
-any sampled revision is therefore durable evidence and cannot be healed by a
-later matching state/event pair.
+next attempt only when its sole observed error is the backward event-count
+mismatch expected from reading state after a newer event snapshot. Any schema,
+protocol-ID, type, revision, or available projection error refuses immediately.
+Before the next attempt can proceed or accept a newer snapshot, the carried state
+must pass the full event-integrity contract against the newly retained array; a
+forward count mismatch is the only permitted remainder. A partially confirmed
+state within the retained array may likewise restart only when its sole integrity
+error is the forward event-count mismatch. Integrity drift at any sampled
+revision cannot be healed by a later matching state/event pair.
 
 The successful attempt's event array is retained and reused for all downstream
 status projection. Status never re-reads the event file after deciding the
@@ -81,7 +84,8 @@ The retry path does not accept or normalize corruption.
 - Continuous authorized publication can consume the fixed attempt budget; the
   final unmatched snapshot is reported rather than accepted or normalized.
 - Every sampled or carried state must match the retained event at its own
-  revision before publication progress can be inferred.
+  revision, protocol identity, and complete event contract before publication
+  progress can be inferred.
 - An unmatched multi-event lead with unchanged confirmation, missing events,
   malformed JSON, wrong schema, protocol-ID drift, invalid event type,
   reordered/duplicate revisions, projection drift, artifact drift, supplement
@@ -119,6 +123,7 @@ exact N+2 state against retained N+2 events.
 Adversarial cases will corrupt projection fields in the initial state, a partial
 confirmation, and a state-ahead confirmation. A later matching N+k pair must not
 erase any of those earlier integrity errors.
+State-ahead protocol-ID drift must also refuse before the carry path can restart.
 
 Separate cases will prove that the same one-event lead fails closed without a
 mutex and after bounded retries with a persistent mutex. Existing revision,

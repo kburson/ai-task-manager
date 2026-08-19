@@ -274,6 +274,47 @@ test('status carries state-ahead projection proof across a restart', async () =>
   assert.match(status.integrity.errors.join('\n'), /event-projection maxReviewTurns/);
 });
 
+test('status refuses protocol drift in a state-ahead confirmation', async () => {
+  const fixture = await initializedProtocol();
+  const staged = stageTwoPublications(fixture);
+  const drifted = JSON.parse(staged.secondState);
+  drifted.protocolId = '00000000-0000-4000-8000-000000000001';
+  let attempts = 0;
+  let eventReads = 0;
+  const status = fixture.api.statusProtocol({
+    cwd: fixture.root,
+    dir: fixture.options.dir,
+    consistency: {
+      maxAttempts: 2,
+      delayMilliseconds: 0,
+      beforeStateRead({ attempt }) {
+        attempts += 1;
+        if (attempt === 2) {
+          writeFileSync(staged.statePath, staged.secondState);
+          writeFileSync(staged.eventsPath, staged.secondEvents);
+        }
+      },
+      afterStateRead({ attempt }) {
+        if (attempt === 1) {
+          writeFileSync(staged.statePath, staged.firstState);
+          writeFileSync(staged.eventsPath, staged.firstEvents);
+        }
+      },
+      afterEventRead() {
+        eventReads += 1;
+        if (eventReads === 1) {
+          writeFileSync(staged.statePath, `${JSON.stringify(drifted, null, 2)}\n`);
+          writeFileSync(staged.eventsPath, staged.secondEvents);
+        }
+      },
+    },
+  });
+
+  assert.equal(attempts, 1);
+  assert.equal(status.integrity.ok, false);
+  assert.match(status.integrity.errors.join('\n'), /event-protocol/);
+});
+
 test('wait settles a concurrent event-append before evaluating the requested role', async () => {
   const fixture = await initializedProtocol();
   const window = stageClaimPublicationWindow(fixture);

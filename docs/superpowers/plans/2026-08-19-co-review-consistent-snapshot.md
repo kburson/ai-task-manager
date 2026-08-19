@@ -85,6 +85,12 @@ it to match its corresponding newly observed event before accepting any newer
 snapshot. Add regressions proving later matching pairs cannot heal initial,
 partial-confirmation, or state-ahead projection drift.
 
+Permit state-ahead carry only when the confirmation's sole error is the backward
+count mismatch. On the next attempt, validate the carried state with the full
+event schema, protocol-ID, type, ordinal revision, count, and projection contract;
+only a valid forward count mismatch may remain. Add protocol-ID drift coverage so
+a later healthy pair cannot clear already-observed identity evidence.
+
 ### Step 4: Run the focused status regression
 
 Run the focused command again and require green.

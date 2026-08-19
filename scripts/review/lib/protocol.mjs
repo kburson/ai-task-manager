@@ -405,6 +405,14 @@ function validForwardEventLead(state, events, errors) {
   );
 }
 
+function validBackwardEventLag(state, events, errors) {
+  return (
+    errors.length === 1 &&
+    errors[0] === `event-count: expected ${state.revision}, actual ${events.length}` &&
+    events.length < state.revision
+  );
+}
+
 function snapshotConsistency(input = {}) {
   const maxAttempts = input.maxAttempts ?? SNAPSHOT_MAX_ATTEMPTS;
   const delayMilliseconds = input.delayMilliseconds ?? SNAPSHOT_RETRY_DELAY_MS;
@@ -430,7 +438,18 @@ function snapshotConsistency(input = {}) {
   if (afterEventRead !== undefined && typeof afterEventRead !== 'function') {
     throw new TypeError('co-review: snapshot consistency afterEventRead must be a function');
   }
-  return { maxAttempts, delayMilliseconds, wait, afterStateRead, afterEventRead };
+  const beforeStateRead = input.beforeStateRead;
+  if (beforeStateRead !== undefined && typeof beforeStateRead !== 'function') {
+    throw new TypeError('co-review: snapshot consistency beforeStateRead must be a function');
+  }
+  return {
+    maxAttempts,
+    delayMilliseconds,
+    wait,
+    beforeStateRead,
+    afterStateRead,
+    afterEventRead,
+  };
 }
 
 function readStatusSnapshot({ cwd, dir, repository, consistency }) {
@@ -439,6 +458,7 @@ function readStatusSnapshot({ cwd, dir, repository, consistency }) {
   const retry = snapshotConsistency(consistency);
   let pendingState;
   for (let attempt = 1; ; attempt += 1) {
+    retry.beforeStateRead?.({ attempt, paths });
     const lockedBefore = mutationLockPresent(paths);
     const state = readProtocol({ cwd: root, dir: paths.relative, repository });
     retry.afterStateRead?.({ attempt, state, paths });
@@ -446,11 +466,12 @@ function readStatusSnapshot({ cwd, dir, repository, consistency }) {
     retry.afterEventRead?.({ attempt, state, events: observed.events, paths });
     const lockedAfter = mutationLockPresent(paths);
     if (pendingState) {
-      const pendingErrors = eventProjectionErrors(observed.events, pendingState, {
-        requireEvent: true,
-      });
-      if (pendingErrors.length > 0) {
-        return { root, paths, state: pendingState, events: observed.events, errors: pendingErrors };
+      const pending = eventIntegrityForRecords(observed.events, pendingState);
+      if (
+        pending.errors.length > 0 &&
+        !validForwardEventLead(pendingState, pending.events, pending.errors)
+      ) {
+        return { root, paths, state: pendingState, ...pending };
       }
       pendingState = undefined;
     }
@@ -468,7 +489,10 @@ function readStatusSnapshot({ cwd, dir, repository, consistency }) {
           confirmed.errors
         );
         if (confirmationForward && attempt < retry.maxAttempts) continue;
-        if (confirmedState.revision > observed.events.length && attempt < retry.maxAttempts) {
+        if (
+          validBackwardEventLag(confirmedState, confirmed.events, confirmed.errors) &&
+          attempt < retry.maxAttempts
+        ) {
           pendingState = confirmedState;
           continue;
         }
