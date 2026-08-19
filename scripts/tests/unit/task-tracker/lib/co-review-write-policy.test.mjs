@@ -68,6 +68,10 @@ test('bash parser reports complete destinations and ambiguous mutations', () => 
     '/tmp/rg needle src',
     'git diff --output=src/a.mjs',
     "git -c alias.diff='reset --hard' diff",
+    'git grep -O vim needle',
+    'sort -o src/a.mjs input.txt',
+    'uniq input.txt src/a.mjs',
+    'rg --hostname-bin=./mutator needle src',
   ]) {
     assert.equal(
       extractBashWriteTargets(command, root).ambiguousMutation,

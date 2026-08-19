@@ -107,13 +107,11 @@ const READ_ONLY_COMMANDS = new Set([
   'readlink',
   'realpath',
   'rg',
-  'sort',
   'stat',
   'tail',
   'test',
   'tr',
   'true',
-  'uniq',
   'wc',
   'which',
 ]);
@@ -144,14 +142,21 @@ function readOnlySegment(words) {
   if (command === 'git') {
     if (words[index + 1] === '--no-pager') index += 1;
     const dangerousOption = words.some((word) =>
-      /^(?:--output(?:=|$)|--ext-diff$|--textconv$|--exec(?:=|$)|--open-files-in-pager(?:=|$))/.test(
+      /^(?:-O$|--output(?:=|$)|--ext-diff$|--textconv$|--filters$|--exec(?:=|$)|--open-files-in-pager(?:=|$))/.test(
         word
       )
     );
     return !dangerousOption && READ_ONLY_GIT_SUBCOMMANDS.has(words[index + 1]);
   }
-  if (command === 'rg' && words.some((word) => word === '--pre' || word.startsWith('--pre='))) {
-    return false;
+  if (command === 'rg') {
+    const commandOption = words.some(
+      (word) =>
+        word === '--pre' ||
+        word.startsWith('--pre=') ||
+        word === '--hostname-bin' ||
+        word.startsWith('--hostname-bin=')
+    );
+    if (commandOption) return false;
   }
   if (READ_ONLY_COMMANDS.has(command)) return true;
   return ['tee', 'touch', 'mkdir', 'rmdir', 'rm', 'truncate'].includes(command);
