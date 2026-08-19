@@ -340,6 +340,45 @@ test('runHook allowlists .tmp without needing a bound issue or signals', async (
   assert.equal(touched, true);
 });
 
+test('native apply_patch envelope parses every target before reviewer policy', async () => {
+  let observed;
+  const result = await runHook(
+    {
+      tool_name: 'apply_patch',
+      tool_input: {
+        patch:
+          '*** Begin Patch\n*** Add File: .tmp/review.md\n+x\n*** Update File: src/a.mjs\n@@\n-x\n+y\n*** End Patch',
+      },
+    },
+    {
+      projectDir: PROJECT_DIR,
+      evaluateCoReviewWrite: (input) => {
+        observed = input;
+        return { decision: 'deny', code: 'mixed', reason: 'mixed targets denied' };
+      },
+    }
+  );
+  assert.deepEqual(observed.targets, ['.tmp/review.md', 'src/a.mjs']);
+  assert.equal(result.decision, 'block');
+  assert.equal(result.code, 'mixed');
+});
+
+test('malformed native apply_patch envelope fails closed before ordinary allowances', async () => {
+  const result = await runHook(
+    { tool_name: 'apply_patch', tool_input: { patch: 'not a patch' } },
+    {
+      projectDir: PROJECT_DIR,
+      evaluateCoReviewWrite: ({ parseError }) => ({
+        decision: parseError ? 'deny' : 'not-applicable',
+        code: 'malformed',
+        reason: 'malformed patch denied',
+      }),
+    }
+  );
+  assert.equal(result.decision, 'block');
+  assert.equal(result.code, 'malformed');
+});
+
 // ── #658 regression: deep-dive marker grammar detection ────────────────────
 //
 // The gate used to detect markers with `body.includes('<!-- aitm-deep-dive-posted:')`,

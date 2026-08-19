@@ -35,6 +35,10 @@ import { loadConfig } from './config.mjs';
 import { normalizeStateId } from './lib/lifecycle-policy/index.mjs';
 import { ownershipDecision } from './lib/ownership-policy.mjs';
 import { fetchAssignmentSnapshot } from './lib/assignment-snapshot.mjs';
+import { detectProvider } from '../providers/index.mjs';
+import { resolveSessionId } from './lib/session-id.mjs';
+import { extractApplyPatchTargets } from './lib/mutation-targets.mjs';
+import { evaluateCoReviewWrite } from './lib/co-review-write-policy.mjs';
 
 const pexec = promisify(execFile);
 
@@ -55,7 +59,7 @@ const POST_DEVELOP_STATES = new Set(['test', 'review', 'done']);
 const DEEP_DIVE_POSTED_MARKER = 'aitm-deep-dive-posted';
 const DEEP_DIVE_COMPLETE_MARKER = 'aitm-deep-dive-complete';
 
-const GATED_TOOLS = new Set(['Edit', 'Write', 'NotebookEdit']);
+export const GATED_TOOLS = new Set(['Edit', 'Write', 'NotebookEdit', 'apply_patch']);
 
 // Normalises a `file_path` from the tool payload into a project-relative
 // path. Absolute paths are made relative to `projectDir` when possible;
@@ -395,11 +399,53 @@ export async function runHook(payload, deps = {}) {
     'projectDir' in deps ? deps.projectDir : findProjectDir(payload?.cwd || process.cwd());
   if (!projectDir) return { decision: 'allow', reason: 'no-project-dir' };
 
-  const filePath =
-    payload?.tool_input?.file_path ||
-    payload?.tool_input?.notebook_path ||
-    payload?.tool_input?.path ||
-    '';
+  let parseError = null;
+  let targets = [];
+  if (toolName === 'apply_patch') {
+    try {
+      targets = (deps.extractApplyPatchTargets || extractApplyPatchTargets)(
+        payload?.tool_input?.patch || payload?.tool_input?.input || payload?.tool_input?.text || ''
+      );
+    } catch (error) {
+      parseError = error;
+    }
+  } else {
+    const filePath =
+      payload?.tool_input?.file_path ||
+      payload?.tool_input?.notebook_path ||
+      payload?.tool_input?.path ||
+      '';
+    if (filePath) targets = [filePath];
+  }
+
+  const env = deps.env || process.env;
+  const provider = (deps.detectProvider || detectProvider)({ env }).name;
+  let sid = null;
+  try {
+    sid = (deps.resolveSessionId || resolveSessionId)({ env });
+  } catch {
+    // The policy uses a missing sid as a non-matching reviewer identity and
+    // still protects every authority/protocol target.
+  }
+  const coReview = (deps.evaluateCoReviewWrite || evaluateCoReviewWrite)({
+    projectDir,
+    worktreePath: projectDir,
+    provider,
+    sid,
+    toolName,
+    targets,
+    parseError,
+    indexFile: deps.indexFile,
+    readIndex: deps.readIndex,
+    resolveGrant: deps.resolveGrant,
+    statusProtocol: deps.statusProtocol,
+  });
+  if (coReview.decision === 'deny') {
+    return { decision: 'block', code: coReview.code, reason: `[task-tracker] ${coReview.reason}` };
+  }
+  if (coReview.decision === 'allow') {
+    return { decision: 'allow', reason: coReview.reason };
+  }
 
   const choreModeActive = (deps.isChoreModeActive || isChoreModeActive)(projectDir);
   const boundIssue = (deps.loadBoundIssue || loadBoundIssue)(projectDir);
@@ -418,19 +464,26 @@ export async function runHook(payload, deps = {}) {
     }
   }
 
-  return decideSourceEdit({
-    toolName,
-    filePath,
-    projectDir,
-    boundIssue,
-    choreModeActive,
-    issueState: signals.state,
-    hasPostedMarker: signals.hasPostedMarker,
-    hasCompleteMarker: signals.hasCompleteMarker,
-    assignees: signals.assignees,
-    currentUser: signals.currentUser,
-    policy: (deps.loadPolicy || loadPolicy)(projectDir),
-  });
+  const policy = (deps.loadPolicy || loadPolicy)(projectDir);
+  let allowedResult = { decision: 'allow', reason: 'all-mutation-targets-allowed' };
+  for (const filePath of targets.length ? targets : ['']) {
+    const result = decideSourceEdit({
+      toolName: toolName === 'apply_patch' ? 'Edit' : toolName,
+      filePath,
+      projectDir,
+      boundIssue,
+      choreModeActive,
+      issueState: signals.state,
+      hasPostedMarker: signals.hasPostedMarker,
+      hasCompleteMarker: signals.hasCompleteMarker,
+      assignees: signals.assignees,
+      currentUser: signals.currentUser,
+      policy,
+    });
+    if (result.decision === 'block') return result;
+    allowedResult = result;
+  }
+  return allowedResult;
 }
 
 async function main() {

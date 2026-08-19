@@ -42,6 +42,10 @@ import { buildReason as buildReasonCore } from './lib/activity-block-reason.mjs'
 import { readBoundState } from './lib/bound-state.mjs';
 import { isChoreModeActive } from './lib/chore-mode.mjs';
 import { isInstalledGuardPath } from './lib/installed-guard-path.mjs';
+import { detectProvider } from '../providers/index.mjs';
+import { resolveSessionId } from './lib/session-id.mjs';
+import { extractApplyPatchTargets, extractBashWriteTargets } from './lib/mutation-targets.mjs';
+import { evaluateCoReviewWrite } from './lib/co-review-write-policy.mjs';
 
 // ---------------------------------------------------------------------------
 // Read stdin payload
@@ -75,6 +79,47 @@ try {
 }
 
 const policy = loadPolicy(projectRoot);
+
+let coReviewTargets = [];
+let coReviewParseError = null;
+let coReviewAmbiguous = false;
+if (toolName === 'Edit' || toolName === 'Write' || toolName === 'NotebookEdit') {
+  const candidate = toolInput?.file_path ?? toolInput?.notebook_path ?? '';
+  if (candidate) coReviewTargets = [candidate];
+} else if (toolName === 'apply_patch') {
+  try {
+    coReviewTargets = extractApplyPatchTargets(
+      toolInput?.patch || toolInput?.input || toolInput?.text || ''
+    );
+  } catch (error) {
+    coReviewParseError = error;
+  }
+} else if (toolName === 'Bash') {
+  const parsed = extractBashWriteTargets(toolInput?.command || '', projectRoot);
+  coReviewTargets = parsed.targets;
+  coReviewAmbiguous = parsed.ambiguousMutation;
+}
+if (['Edit', 'Write', 'NotebookEdit', 'apply_patch', 'Bash'].includes(toolName)) {
+  const provider = detectProvider().name;
+  let sid = null;
+  try {
+    sid = resolveSessionId();
+  } catch {
+    // Missing provider identity remains non-matching and authority stays denied.
+  }
+  const coReview = evaluateCoReviewWrite({
+    projectDir: projectRoot,
+    worktreePath: projectRoot,
+    provider,
+    sid,
+    toolName,
+    targets: coReviewTargets,
+    parseError: coReviewParseError,
+    ambiguousMutation: coReviewAmbiguous,
+  });
+  if (coReview.decision === 'deny') block(`[task-tracker] ${coReview.reason}`);
+  if (coReview.decision === 'allow') process.exit(0);
+}
 const { activeIssue, state: recordedState } = readBoundState(projectRoot);
 // When no task is bound (paused or never started), ignore the residual
 // `state` field from the last active task. Otherwise editing infra/meta
@@ -89,12 +134,27 @@ const state = activeIssue ? recordedState : null;
 // ---------------------------------------------------------------------------
 
 let activityClass;
+let activityClasses;
 let target;
 
-if (toolName === 'Edit' || toolName === 'Write' || toolName === 'NotebookEdit') {
-  const filePath = toolInput?.file_path ?? toolInput?.notebook_path ?? '';
-  if (typeof filePath !== 'string' || !filePath) process.exit(0);
-  target = normalizePath(filePath, projectRoot);
+if (
+  toolName === 'Edit' ||
+  toolName === 'Write' ||
+  toolName === 'NotebookEdit' ||
+  toolName === 'apply_patch'
+) {
+  const filePaths =
+    toolName === 'apply_patch'
+      ? coReviewTargets
+      : [toolInput?.file_path ?? toolInput?.notebook_path ?? ''];
+  if (
+    !filePaths.length ||
+    filePaths.some((filePath) => typeof filePath !== 'string' || !filePath)
+  ) {
+    process.exit(0);
+  }
+  const normalizedTargets = filePaths.map((filePath) => normalizePath(filePath, projectRoot));
+  target = normalizedTargets.join(', ');
   // #659 AC2 — installed-guard self-modification interlock. A write whose
   // resolved path lands inside an installed guard tree (a `node_modules/`
   // segment leading to the ai-task-manager `scripts/` dir) is refused
@@ -104,9 +164,10 @@ if (toolName === 'Edit' || toolName === 'Write' || toolName === 'NotebookEdit') 
   // self-editing because this interlock has already returned. The package's
   // own dev checkout (no `node_modules/` ancestor) is unaffected and stays
   // editable via its repo-root path.
-  if (isInstalledGuardPath(target)) {
+  const installedTarget = normalizedTargets.find((candidate) => isInstalledGuardPath(candidate));
+  if (installedTarget) {
     block(
-      `Refusing to edit an installed guard file: ${target}\n` +
+      `Refusing to edit an installed guard file: ${installedTarget}\n` +
         `  Files under an installed \`node_modules/.../scripts\` guard tree are off-limits to the Edit/Write/NotebookEdit tools they gate (self-modification interlock, #659).\n` +
         `  This refusal is unconditional — neither develop state nor chore-mode grants a bypass. Edit the package in its own source checkout and reinstall; never hand-edit the installed copy.`
     );
@@ -116,8 +177,13 @@ if (toolName === 'Edit' || toolName === 'Write' || toolName === 'NotebookEdit') 
   // .tmp/gh/ (issue body scratch), .tmp/plan/ (create-issue fragments),
   // .tmp/heal/ (heal/repair scratch), .tmp/inspect/ (ad-hoc scripts).
   // Bypass classification so scratch writes are permitted in every kanban state.
-  if (target === '.tmp' || target.startsWith('.tmp/')) process.exit(0);
-  activityClass = classifyEdit(target, policy);
+  if (
+    normalizedTargets.every((candidate) => candidate === '.tmp' || candidate.startsWith('.tmp/'))
+  ) {
+    process.exit(0);
+  }
+  activityClasses = normalizedTargets.map((candidate) => classifyEdit(candidate, policy));
+  activityClass = activityClasses[0];
 } else if (toolName === 'Bash') {
   const command = toolInput?.command ?? '';
   if (typeof command !== 'string' || !command) process.exit(0);
@@ -148,15 +214,20 @@ if (isChoreModeActive(projectRoot)) process.exit(0);
 
 // Active task bound but no kanban state recorded → drift. Refuse all write
 // activity classes and point at reconcile. READ_* still passes.
-if (activeIssue && state == null && activityClass !== 'READ_*') {
+if (
+  activeIssue &&
+  state == null &&
+  (activityClasses || [activityClass]).some((value) => value !== 'READ_*')
+) {
   block(buildReason({ activityClass, target, state, activeIssue, toolName }));
 }
 
-if (isAllowed(state, activityClass)) {
+const refusedClass = (activityClasses || [activityClass]).find((value) => !isAllowed(state, value));
+if (!refusedClass) {
   process.exit(0);
 }
 
-block(buildReason({ activityClass, target, state, activeIssue, toolName }));
+block(buildReason({ activityClass: refusedClass, target, state, activeIssue, toolName }));
 
 // ---------------------------------------------------------------------------
 // Helpers
