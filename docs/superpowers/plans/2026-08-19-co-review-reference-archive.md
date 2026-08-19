@@ -23,10 +23,12 @@
 ### Task 1: Mode selection and prepared archive shapes
 
 **Files:**
+
 - Modify: `scripts/tests/fixtures/co-review-finalization-cases.mjs`
 - Modify: `scripts/review/lib/archive.mjs`
 
 **Interfaces:**
+
 - Consumes: `repository.resolveReachableCommit(root, revision)` and the already validated committed artifact record.
 - Produces: a prepared archive whose `manifest.artifact.mode` is `reference` or `copy`; reference mode has three files and copy mode has four.
 
@@ -39,7 +41,10 @@ const prepared = prepareArchive(archiveOptions(fixture));
 assert.equal(prepared.manifest.artifact.mode, 'reference');
 assert.equal(prepared.manifest.artifact.archivePath, undefined);
 assert.equal(prepared.manifest.artifact.archivedSha256, undefined);
-assert.equal(prepared.files.some((file) => file.kind === 'artifact'), false);
+assert.equal(
+  prepared.files.some((file) => file.kind === 'artifact'),
+  false
+);
 assert.deepEqual(prepared.files.map((file) => file.kind).sort(), [
   'manifest',
   'response',
@@ -68,10 +73,7 @@ const prepared = prepareArchive({
 });
 assert.equal(prepared.manifest.artifact.mode, 'copy');
 assert.ok(prepared.files.some((file) => file.kind === 'artifact'));
-assert.equal(
-  output(prepared, 'artifact').sha256,
-  prepared.manifest.artifact.archivedSha256
-);
+assert.equal(output(prepared, 'artifact').sha256, prepared.manifest.artifact.archivedSha256);
 ```
 
 - [ ] **Step 3: Run the focused tests and verify the expected failures**
@@ -141,10 +143,12 @@ git commit -m '[#1314] feat: select reference or copy co-review archives'
 ### Task 2: Mode-aware integrity and atomic publication
 
 **Files:**
+
 - Modify: `scripts/tests/fixtures/co-review-finalization-cases.mjs`
 - Modify: `scripts/review/lib/archive.mjs`
 
 **Interfaces:**
+
 - Consumes: the Task 1 prepared candidates and `committedArtifact(root, record, repository)`.
 - Produces: `validatePrepared(prepared, repository)` accepting exactly the safe file set for the manifest mode and revalidating reference metadata before filesystem publication.
 
@@ -154,11 +158,10 @@ Publish a reference candidate and assert:
 
 ```js
 assert.equal(publishPreparedArchive(prepared).status, 'published');
-assert.deepEqual(readdirSync(prepared.destination.absolute).sort(), [
-  'README.md',
-  output(prepared, 'response').path,
-  output(prepared, 'review').path,
-].sort());
+assert.deepEqual(
+  readdirSync(prepared.destination.absolute).sort(),
+  ['README.md', output(prepared, 'response').path, output(prepared, 'review').path].sort()
+);
 assert.equal(inspectArchive({ prepared, repository: fixture.repository }).status, 'complete');
 ```
 
@@ -184,9 +187,10 @@ const legacyCopy = mode === undefined;
 if (!['reference', 'copy'].includes(mode) && !legacyCopy) {
   fail('archive-prepared-integrity', 'artifact mode');
 }
-const expectedKinds = mode === 'reference'
-  ? ['review', 'response', 'manifest']
-  : ['artifact', 'review', 'response', 'manifest'];
+const expectedKinds =
+  mode === 'reference'
+    ? ['review', 'response', 'manifest']
+    : ['artifact', 'review', 'response', 'manifest'];
 ```
 
 Require exactly one safe basename per expected kind, no extra kinds, and exact path/digest agreement. For reference mode, call `committedArtifact` with the manifest record and reject any mismatch before destination inspection. For copy and legacy-copy, retain the existing artifact-file digest checks.
@@ -220,10 +224,12 @@ git commit -m '[#1314] fix: verify mode-aware archive publication'
 ### Task 3: Legacy archive pinning and full regression proof
 
 **Files:**
+
 - Modify: `scripts/tests/fixtures/co-review-finalization-cases.mjs`
 - Modify: `scripts/review/lib/archive.mjs`
 
 **Interfaces:**
+
 - Consumes: deterministic reference/current-copy candidates from Tasks 1-2.
 - Produces: recognition-only legacy-copy candidate selection when the existing destination exactly matches pre-#1314 bytes.
 
@@ -258,9 +264,7 @@ for (const candidate of [referencePrepared, copyPrepared, legacyCopyPrepared]) {
     return candidate;
   }
 }
-return canReferenceArtifact(root, artifact, repository)
-  ? referencePrepared
-  : copyPrepared;
+return canReferenceArtifact(root, artifact, repository) ? referencePrepared : copyPrepared;
 ```
 
 The legacy candidate must preserve the historical manifest object and rendered bytes exactly. It is never returned for an absent destination.
