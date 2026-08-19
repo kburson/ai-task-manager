@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 // @story #833
+// cspell:ignore heartbeated
 // Self-bind no-op — behavioral test that drives `verbSwitch` with a stubbed ctx.
 //
 // #833 makes a re-bind to the already-active, never-paused issue a TRUE no-op:

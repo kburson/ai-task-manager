@@ -1,4 +1,5 @@
 // @story #1325
+// cspell:ignore Ovim textcon
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdtempSync, mkdirSync, symlinkSync, writeFileSync } from 'node:fs';

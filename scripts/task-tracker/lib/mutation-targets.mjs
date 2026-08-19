@@ -1,3 +1,4 @@
+// cspell:ignore backgrounding shortlog
 import path from 'node:path';
 
 export class MutationParseError extends Error {
