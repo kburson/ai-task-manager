@@ -1,7 +1,7 @@
 # Grok Provider Adapter Design
 
 **Date:** 2026-08-18
-**Status:** Co-review round 5 (Codex changes-requested F-005, F-006)
+**Status:** Co-review round 7 (Codex changes-requested F-007)
 **Issue:** #1321
 **Branch:** `spec/grok-provider-adapter`
 **Surface:** `npx ai-task-manager install`, provider registry, `/task` under Grok Build TUI
@@ -384,9 +384,24 @@ Canonicalize as `join(realpath(registeredDir), basename(pendingReviewPath))`.
 After the file exists, require `realpath(target) ===` that path and reject
 symlink or containment drift.
 
-**Authority files.** `source-edit-gate` and `bash-guard` deny Edit/Write and
-Bash mutation of these paths **before** chore-mode and **before** the
-`.tmp/**` allowlist:
+**Gated mutation tools.** `source-edit-gate` `GATED_TOOLS` and the matching
+`activity-guard` paths are `Edit`, `Write`, `NotebookEdit`, **and
+`apply_patch`**. Codex `.codex/hooks.json` already matches `apply_patch`;
+today the handler returns `tool-not-gated` and activity-guard exits as an
+unknown tool. That is a live reviewer bypass. `apply_patch` must be gated
+the same as Edit/Write, host-agnostically.
+
+**`apply_patch` contract.** Fail-closed: extract and canonicalize every
+file target in the patch (create, update, delete, rename, multi-file).
+During a reviewer claim, allow the patch only when **every** mutation is
+exactly the session-bound `pendingReviewPath`. Deny mixed patches as a
+whole. Deny any patch that touches tracked source, occupancy/index, or
+other protocol files. If the envelope cannot be parsed unambiguously,
+deny — do not treat it as an unknown tool.
+
+**Authority files.** `source-edit-gate`, `activity-guard`, and `bash-guard`
+deny Edit/Write/`apply_patch` and Bash mutation of these paths **before**
+chore-mode and **before** the `.tmp/**` allowlist:
 
 - `.tmp/aitm/fleet/occupancy.json`
 - `.tmp/aitm/fleet/co-review-index.json`
@@ -434,7 +449,8 @@ Synthetic fixtures only. Do not read live `~/.grok/sessions`.
 | Hooks | native Grok envelopes: Bash deny, edit deny, agent-spawn deny, SessionStart, PreCompact, PostCompact; `block`→`deny` + exit 2; same `(sid, event, promptId, ts)` second call is a no-op; later ts still flushes |
 | Session id | `GROK_AGENT` set + `GROK_SESSION_ID` unset → bind/occupancy/jsonlPath refuse (no `default-session`); two distinct `GROK_SESSION_ID` values keep distinct binds |
 | Occupancy | second sid cannot bind `#N`; pause holds; stop releases; second provider in the same worktree refused unless co-review; reviewer `/task start` refused |
-| Co-review index | custom `--dir` registered; claim stores `{claimedProvider, claimedSid, pendingReviewPath}`; other sid/provider in the same tree denied; claimed sid allowed only for its pending file; other `.tmp/**` denied during the grant; Edit/Write and Bash against index/protocol authority denied (ahead of chore-mode and `.tmp/**`); first-file create via parent realpath+basename; later realpath drift denied; stale/terminal denied |
+| Co-review index | custom `--dir` registered; claim stores `{claimedProvider, claimedSid, pendingReviewPath}`; other sid/provider in the same tree denied; claimed sid allowed only for its pending file; other `.tmp/**` denied during the grant; Edit/Write/`apply_patch` and Bash against index/protocol authority denied (ahead of chore-mode and `.tmp/**`); first-file create via parent realpath+basename; later realpath drift denied; stale/terminal denied |
+| Codex `apply_patch` | native envelope: pending-file-only patch allowed for claimed sid; tracked-source and authority-file patches denied; mixed pending+source patch denied as a whole; malformed/unparseable patch denied (not `tool-not-gated`); Edit/Write/Bash cases unchanged |
 
 Develop verification: `node scripts/task-tracker/verify-develop.mjs`.
 
