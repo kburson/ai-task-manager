@@ -10,7 +10,8 @@
 //                          `guard-bootstrap.mjs` is a deprecation shim that
 //                          re-exports `bootstrapGuards` from here.
 //   runGuards(from,to,ctx) — executed at EVERY transition by the callers below,
-//                          iterating `GUARDS[from].exit` then `GUARDS[to].entry`.
+//                          by default iterating `GUARDS[from].exit` then
+//                          `GUARDS[to].entry`.
 //
 // Call sites that invoke `runGuards` (the enforcement surface): `move-state.mjs`
 // (the single state-mutator, line ~345), `promote.mjs`, `close.mjs`, and
