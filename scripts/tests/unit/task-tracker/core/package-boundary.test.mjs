@@ -98,7 +98,10 @@ function repoRoot() {
 // fleet recovery, and the worktree guard.
 // #1354 accounts for the intentionally shipped Codex guide
 // (`docs/guides/codex-unattended-token-burn.md`) from trunk commit b6548b0c.
-const ENTRY_CEILING = 685;
+// #1356 ships one runtime helper (`scripts/task-tracker/lib/stamp-receipt-reuse.mjs`)
+// so dod-stamp/ac-stamp can reuse a valid exact-SHA Test receipt instead of
+// re-running the suite. Exact packed surface grows by one.
+const ENTRY_CEILING = 686;
 
 function packedFiles() {
   const out = execFileSync('npm', ['pack', '--dry-run', '--json'], {

@@ -14,7 +14,7 @@ Enforced by `/task close` and `move-state.mjs <issue> done`; bypassing is a proc
 
 0. **Bootstrap is fail-closed.** If the required steps below do not all succeed, STOP and report `STATUS: BLOCKED bootstrap-step-<N>: <reason>` before editing source.
 1. **Deep Dive before any code.** Append it and run `/task ensureChecked "Deep dive complete"` before editing any source file; the `source-edit-gate` hook enforces this (`.tmp/**` exempt). Unrelated edits need `chore-mode on "<reason>"`.
-2. **Verify every DoD/AC item individually.** In Develop/Test, run its `aitm-verified cmd="…"` command (also listed under `### Verification Commands`), then check the box. In Review, reuse the Test receipt — do not re-run standard lanes (`npm test`, `npm run test:slow`, `npm run test:all`). Never bulk-check.
+2. **Verify every DoD/AC item individually.** Run the verifier in Develop/Test; Review reuses the Test receipt (no standard-lane rerun). Never bulk-check.
 3. **All pre-close checkboxes ticked before close.** `/task close` (and move-to-Done) refuses any unchecked pre-close `- [ ]`. No env override.
 4. **Move to Done is gated.** `move-state.mjs <issue> done` refuses on unchecked boxes; the normal path is `/task close`.
 5. **Agents MUST NOT run `/task review` or `/task close`. The terminal agent action is reporting `CODE_COMPLETE`.** `/task review` is an orchestrator action; `/task close` is human.
