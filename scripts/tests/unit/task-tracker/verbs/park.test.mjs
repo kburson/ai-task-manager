@@ -25,11 +25,13 @@ test('Park strict argv accepts the Shelve owner-removal flag', () => {
     issueNumber: 848,
     reason: 'premise falsified',
     removeOwner: false,
+    refreshStaleBlockers: false,
   });
   assert.deepEqual(parseArgs(['848', '--reason=deprioritized', '--remove-owner']), {
     issueNumber: 848,
     reason: 'deprioritized',
     removeOwner: true,
+    refreshStaleBlockers: false,
   });
 });
 

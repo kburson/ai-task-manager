@@ -247,7 +247,12 @@ export function verifyLegacyRefinementSnapshotForBlockerRefresh(body, { labels }
 
   try {
     const historicalLabels = Array.isArray(labels)
-      ? labels.filter((label) => String(label || '').trim().toLowerCase() !== 'blocked')
+      ? labels.filter(
+          (label) =>
+            String(label || '')
+              .trim()
+              .toLowerCase() !== 'blocked'
+        )
       : labels;
     const inputs = legacyRefinementInputs(body, historicalLabels, {
       durableProvenance: snapshot.provenance,
