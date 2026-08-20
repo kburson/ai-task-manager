@@ -315,6 +315,7 @@ export async function runMoveStateHost({
     issueArg,
     stateArg,
     resolvedFromState,
+    verbContext: AITM_VERB_CONTEXT,
     demoteFlag,
     demoteReason,
     outOfBandReason,

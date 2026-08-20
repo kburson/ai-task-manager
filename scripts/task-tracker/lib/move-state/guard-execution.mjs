@@ -43,11 +43,30 @@ export async function buildCloseGatesDeps({ stateArg, pexec, projectDir } = {}) 
   return { closeGates: { resolveTrunkRef: makeCloseTrunkRefResolver({ inWorktree }) } };
 }
 
+// Shelve deliberately withdraws refined work instead of advancing it. Only
+// the authenticated R4P → Backlog demotion may omit the source state's
+// forward-admission exit guards; target entry guards remain authoritative.
+// Every missing or different signal preserves the complete pipeline.
+export function deriveGuardPhasePolicy({ verbContext, demoteFlag, fromState, toState } = {}) {
+  const isShelveR4pDemotion =
+    verbContext === 'shelve' &&
+    demoteFlag === true &&
+    fromState === 'ready-for-plan' &&
+    toState === 'backlog';
+
+  return {
+    includeExitGuards: !isShelveR4pDemotion,
+    includeEntryGuards: true,
+  };
+}
+
 export async function runGuardExecution(ctx) {
   const {
     issueArg,
     stateArg,
     resolvedFromState,
+    verbContext,
+    demoteFlag,
     plan,
     forceFlag,
     supersedeFlag,
@@ -157,7 +176,13 @@ export async function runGuardExecution(ctx) {
       projectDir,
       lifecycleEvidence,
     };
-    let guardResult = await runGuards(resolvedFromState, stateArg, guardCtx);
+    const guardPhasePolicy = deriveGuardPhasePolicy({
+      verbContext,
+      demoteFlag,
+      fromState: resolvedFromState,
+      toState: stateArg,
+    });
+    let guardResult = await runGuards(resolvedFromState, stateArg, guardCtx, guardPhasePolicy);
 
     // #1017 — a just-created issue can briefly return a stale body snapshot
     // without its verified Backlog marker. Only when contiguity objects on one
