@@ -6,6 +6,7 @@
 
 import { createHash } from 'node:crypto';
 
+import { parseBlockedByStrict } from './blocked-marker.mjs';
 import { parseMarker, serializeMarker } from './marker-grammar.mjs';
 import { parseRefinementSnapshot } from './refinement-snapshot.mjs';
 
@@ -97,6 +98,21 @@ function recordMigrationEvidence(record) {
   return migrationEvidence(record);
 }
 
+function migrationEvidenceMatchesProtectedMarker(body, options) {
+  const evidence = migrationEvidence(options);
+  if (!evidence.migration) return evidence;
+  const protectedRefs = parseBlockedByStrict(body);
+  if (
+    protectedRefs.length !== evidence.liveBlockedBy.length ||
+    protectedRefs.some((ref, index) => ref !== evidence.liveBlockedBy[index])
+  ) {
+    throw new Error(
+      'refinement-history: migration liveBlockedBy refs do not match the protected blocker marker'
+    );
+  }
+  return evidence;
+}
+
 export function refinementBodyFingerprints(body) {
   const durableSectionFingerprint = (heading) =>
     sha256(
@@ -168,7 +184,7 @@ function sourceEvidence({
     refinementSnapshotProvenance: snapshot.provenance,
     refinementSnapshotFields: snapshot.fields,
     sourceBodyFingerprint: refinementSourceBodyFingerprint(body),
-    ...migrationEvidence({ migration, liveBlockedBy }),
+    ...migrationEvidenceMatchesProtectedMarker(body, { migration, liveBlockedBy }),
   };
 }
 

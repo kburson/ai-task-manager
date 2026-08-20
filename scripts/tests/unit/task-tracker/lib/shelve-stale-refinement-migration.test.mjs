@@ -265,6 +265,47 @@ test('migration history refuses missing, malformed, duplicate, or non-canonical 
   }
 });
 
+test('migration history refuses caller blocker refs that contradict the protected body marker', () => {
+  const body = legacySnapshot({ liveBlockers: [1212] });
+
+  assert.throws(
+    () => migrationHistoryRecord({ body, liveBlockedBy: [1213] }),
+    /protected blocker|liveBlockedBy/i
+  );
+
+  const record = migrationHistoryRecord({ body, liveBlockedBy: [1212] });
+  assert.equal(
+    refinementHistoryMatchesSource(record, {
+      ...HISTORY_SOURCE,
+      body,
+      liveBlockedBy: [1213],
+    }),
+    false
+  );
+});
+
+test('migration history fails closed on malformed or duplicate protected body markers', () => {
+  const validBody = legacySnapshot({ liveBlockers: [1212] });
+  const validRecord = migrationHistoryRecord({ body: validBody, liveBlockedBy: [1212] });
+  const duplicate = validBody.replace(
+    '<!-- aitm-blocked-by refs="#1212" -->',
+    '<!-- aitm-blocked-by refs="#1212" -->\n<!-- aitm-blocked-by refs="#1213" -->'
+  );
+  const malformed = validBody.replace('refs="#1212"', 'refs="#1212,garbage"');
+
+  for (const body of [duplicate, malformed]) {
+    assert.throws(() => migrationHistoryRecord({ body, liveBlockedBy: [1212] }), /blocked marker/i);
+    assert.equal(
+      refinementHistoryMatchesSource(validRecord, {
+        ...HISTORY_SOURCE,
+        body,
+        liveBlockedBy: [1212],
+      }),
+      false
+    );
+  }
+});
+
 test('migration blocker evidence is digest-authenticated and source-matched', () => {
   const record = migrationHistoryRecord();
   const altered = { ...record, liveBlockedBy: [1212, 1214] };
