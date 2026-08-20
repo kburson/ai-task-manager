@@ -14,11 +14,11 @@ Related: [settings-guide.md](./settings-guide.md) (Codex bootstrap), [context-ma
 
 Codex does **not** re-bill the on-disk session file at full price on every tool call. Three different objects get confused:
 
-| Object | What it is | What it costs |
-|---|---|---|
-| On-disk session JSONL | Append-only log under `~/.codex/sessions/` | Free. Local disk. |
-| Live model window | Compacted prompt, capped by the model context (Sol ~258k–272k tokens) | Sent on **every model step**. |
-| Prefix cache | Exact-prefix reuse of that live window | Matching prefix billed at the cached-input rate (~0.1×). New tail billed full price. |
+| Object                | What it is                                                            | What it costs                                                                        |
+| --------------------- | --------------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
+| On-disk session JSONL | Append-only log under `~/.codex/sessions/`                            | Free. Local disk.                                                                    |
+| Live model window     | Compacted prompt, capped by the model context (Sol ~258k–272k tokens) | Sent on **every model step**.                                                        |
+| Prefix cache          | Exact-prefix reuse of that live window                                | Matching prefix billed at the cached-input rate (~0.1×). New tail billed full price. |
 
 A measured 18-hour Sol run on this machine (2026-08-19/20):
 
@@ -36,11 +36,11 @@ GPT-5.6 cache lifetime is 30 minutes, refreshed on reuse. Continuous tool loopin
 
 ### What does not save tokens
 
-| Change | Effect |
-|---|---|
-| `hide_agent_reasoning = true` | Hides thinking in the UI. The model still thinks. Tokens still count. |
-| Making chat glib | Modest. Overnight chat was ~20k words vs 221M input. |
-| `personality = "none"` | Removes the personality block. The 60-second commentary cadence stays. |
+| Change                                      | Effect                                                                  |
+| ------------------------------------------- | ----------------------------------------------------------------------- |
+| `hide_agent_reasoning = true`               | Hides thinking in the UI. The model still thinks. Tokens still count.   |
+| Making chat glib                            | Modest. Overnight chat was ~20k words vs 221M input.                    |
+| `personality = "none"`                      | Removes the personality block. The 60-second commentary cadence stays.  |
 | Switching effort mid-flight on a fat thread | Does not shrink the existing window. Adds a config change on top of it. |
 
 ### Do not starve defect work
@@ -59,11 +59,11 @@ GPT-5.6-Sol + medium is a strong default for normal coding. It is the wrong cut 
 
 All of these are **outside the repo**:
 
-| File | Role |
-|---|---|
-| `~/.codex/config.toml` | Model, effort, verbosity, personality, desktop UI. Top-level keys apply to new Desktop chat windows. |
-| `~/.codex/AGENTS.md` | Global user instructions (this machine’s Codex). Currently may be empty. |
-| `~/.codex/sessions/YYYY/MM/DD/rollout-*.jsonl` | Append-only logs. Do not hand-edit. Measure only. |
+| File                                           | Role                                                                                                 |
+| ---------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| `~/.codex/config.toml`                         | Model, effort, verbosity, personality, desktop UI. Top-level keys apply to new Desktop chat windows. |
+| `~/.codex/AGENTS.md`                           | Global user instructions (this machine’s Codex). Currently may be empty.                             |
+| `~/.codex/sessions/YYYY/MM/DD/rollout-*.jsonl` | Append-only logs. Do not hand-edit. Measure only.                                                    |
 
 Do **not** put an always-on “never narrate” rule in this repo’s `AGENTS.md`. AITM requires skill-load sentinels (`aitm-skill-loaded:…`) in the chat, and interactive sessions still need readable updates.
 
@@ -250,17 +250,16 @@ The lock named `01a0…lock` matches `rollout-…-01a0….jsonl`. Subagent threa
 
 ```bash
 python3 - <<'PY'
-import json, time
-from pathlib import Path
+import json, os, time
 from collections import Counter
 
 # Paste the rollout path you care about:
-p = Path.home() / "codex/sessions/YYYY/MM/DD/rollout-….jsonl"
+p = os.path.join(os.environ["HOME"], ".codex/sessions/YYYY/MM/DD/rollout-….jsonl")
 # Example:
-# p = Path("/Users/you/.codex/sessions/2026/08/20/rollout-2026-08-20T07-02-29-01a01f0d-21c3-7572-b3db-9a7a77bef773.jsonl")
+# p = "/Users/you/.codex/sessions/2026/08/20/rollout-2026-08-20T07-02-29-01a01f0d-21c3-7572-b3db-9a7a77bef773.jsonl"
 
 raw_words = 0
-with p.open("rb") as f:
+with open(p, "rb") as f:
     for chunk in iter(lambda: f.read(1 << 20), b""):
         raw_words += len(chunk.split())
 
@@ -271,7 +270,7 @@ last_usage = total_usage = None
 event_types = Counter()
 first_ts = last_ts = None
 
-with p.open(errors="replace") as f:
+with open(p, errors="replace") as f:
     for line in f:
         n_lines += 1
         line = line.strip()
@@ -295,17 +294,18 @@ with p.open(errors="replace") as f:
             m = payload.get("message") or ""
             first_user = first_user or m
             words_user += len(m.split())
-        elif et == "agent_message":
+        if et == "agent_message":
             m = payload.get("message") or ""
             last_agent = m
             words_agent += len(m.split())
-        elif et == "token_count":
+        if et == "token_count":
             info = payload.get("info") or {}
             last_usage = info.get("last_token_usage") or last_usage
             total_usage = info.get("total_token_usage") or total_usage
 
+st = os.stat(p)
 print("file", p)
-print("bytes", p.stat().st_size, "mtime", time.strftime("%H:%M:%S", time.localtime(p.stat().st_mtime)))
+print("bytes", st.st_size, "mtime", time.ctime(st.st_mtime))
 print("lines", n_lines, "bad_json_lines", n_bad)
 print("raw wc-words", raw_words)
 print("span", first_ts, "->", last_ts)
@@ -346,13 +346,13 @@ Do these in order. Skip any that would drop High on a live defect thread.
 
 ## Quick reference
 
-| Want | Do | Where |
-|---|---|---|
-| Shorter visible chat | `model_verbosity = "low"` + gated `AGENTS.md` block | `~/.codex/config.toml` (Settings → Open config.toml), `~/.codex/AGENTS.md` |
-| Terse personality | `personality = "pragmatic"` in config, and `/personality pragmatic` in the new window’s composer | config + composer |
-| Mechanical babysit | New window, then `/model` → Medium | that window only |
-| Defect epic | Keep High. New **window** per child. Restart prompt in that composer. | Desktop |
-| Hide thinking in the UI | `hide_agent_reasoning = true` | config (no token save) |
-| See this window’s cost | `/status` in that composer, plus the JSONL snapshot | Step 5 |
-| Kill a 12-hour window | Pause it → restart prompt → **new chat window** | do not `/compact` as the only move |
-| CLI `--profile` | Not used. Desktop ignores it. | — |
+| Want                    | Do                                                                                               | Where                                                                      |
+| ----------------------- | ------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------- |
+| Shorter visible chat    | `model_verbosity = "low"` + gated `AGENTS.md` block                                              | `~/.codex/config.toml` (Settings → Open config.toml), `~/.codex/AGENTS.md` |
+| Terse personality       | `personality = "pragmatic"` in config, and `/personality pragmatic` in the new window’s composer | config + composer                                                          |
+| Mechanical babysit      | New window, then `/model` → Medium                                                               | that window only                                                           |
+| Defect epic             | Keep High. New **window** per child. Restart prompt in that composer.                            | Desktop                                                                    |
+| Hide thinking in the UI | `hide_agent_reasoning = true`                                                                    | config (no token save)                                                     |
+| See this window’s cost  | `/status` in that composer, plus the JSONL snapshot                                              | Step 5                                                                     |
+| Kill a 12-hour window   | Pause it → restart prompt → **new chat window**                                                  | do not `/compact` as the only move                                         |
+| CLI `--profile`         | Not used. Desktop ignores it.                                                                    | —                                                                          |

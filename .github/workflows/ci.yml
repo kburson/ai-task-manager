@@ -14,6 +14,10 @@
 # `workflow_dispatch` or by applying the `ci-slow` label to a PR. Do NOT collapse
 # the two lanes back into one: paying the slow-lane cost on every push is the
 # regression this split prevents.
+#
+# Docs-only PRs skip `npm test` but still run format + lint. A PR is docs-only
+# when every changed file is under `docs/`, ends in `.md`, or is `.gitignore`,
+# or when it carries the `docs-only` label. Trunk pushes always run tests.
 
 name: CI
 
@@ -69,7 +73,30 @@ jobs:
       # needs no maintainer $HOME memory dir (unlike the maintainer's `--mode diff`).
       - name: Memory-seed index parity (#728)
         run: node scripts/inspect/ai-memory-parity.mjs --mode index
+      - name: Classify docs-only pull request
+        id: scope
+        if: github.event_name == 'pull_request'
+        run: |
+          set -euo pipefail
+          files=$(git diff --name-only trunk...HEAD)
+          echo "Changed files:"
+          echo "$files"
+          if [ -z "$files" ]; then
+            echo "docs_only=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          if echo "$files" | grep -Eqv '^(docs/|.+\.md$|\.gitignore$)'; then
+            echo "docs_only=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "docs_only=true" >> "$GITHUB_OUTPUT"
+          fi
       - name: Unit + integration tests
+        if: >-
+          github.event_name != 'pull_request' ||
+          (
+            steps.scope.outputs.docs_only != 'true' &&
+            !contains(github.event.pull_request.labels.*.name, 'docs-only')
+          )
         run: npm test
 
   slow:
