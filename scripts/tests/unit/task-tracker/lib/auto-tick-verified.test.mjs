@@ -121,6 +121,45 @@ const EXACT_SHA = '0123456789abcdef0123456789abcdef01234567';
   assert.match(body, /sha="sandbox"/, 'omitted sha retains the sandbox sentinel');
 }
 
+// --- #1344: an explicit commit refreshes a checked declaration/proof hybrid -
+{
+  const checkedHybrid = [
+    '## Verification Commands',
+    '',
+    '- [x] `npm test` <!-- id=1 --> <!-- aitm-verified cmd="npm test" exit="0" sha="sandbox" ts="2026-08-19T00:00:00.000Z" -->',
+    '',
+    '## Acceptance Criteria',
+    '',
+    '- [x] checked provenance proof <!-- aitm-verified exit="0" sha="sandbox" ts="2026-08-19T00:00:00.000Z" evidence="sandbox exit 0 (npm test)" key="abcdef12" vc-list="vc:1" worktree="/bound" branch="feature/1343" bound-issue="1343" -->',
+    '',
+  ].join('\n');
+  const green = [{ command: 'npm test', passed: true, exit: 0 }];
+  const failed = [{ command: 'npm test', passed: false, exit: 1 }];
+
+  const refreshed = autoTickVerified(checkedHybrid, green, '2026-08-20T00:00:00.000Z', {
+    sha: EXACT_SHA,
+  });
+  const acLine = refreshed.body
+    .split('\n')
+    .find((line) => line.includes('checked provenance proof'));
+  assert.match(acLine, new RegExp(`sha="${EXACT_SHA}"`), 'checked proof receives exact SHA');
+  assert.match(acLine, /branch="feature\/1343"/, 'checked proof retains branch provenance');
+  assert.match(acLine, /bound-issue="1343"/, 'checked proof retains issue provenance');
+  assert.deepEqual(
+    refreshed.tickedAc,
+    [],
+    'a refreshed checked AC is not reported as newly ticked'
+  );
+
+  const legacy = autoTickVerified(checkedHybrid, green, '2026-08-20T00:00:00.000Z');
+  assert.equal(legacy.body, checkedHybrid, 'omitted SHA leaves checked legacy proof unchanged');
+
+  const red = autoTickVerified(checkedHybrid, failed, '2026-08-20T00:00:00.000Z', {
+    sha: EXACT_SHA,
+  });
+  assert.equal(red.body, checkedHybrid, 'failed command never refreshes checked proof');
+}
+
 // --- #1344: a supplied malformed commit refuses instead of falling back ----
 {
   assert.throws(

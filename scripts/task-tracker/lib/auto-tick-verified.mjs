@@ -54,9 +54,10 @@ const VC_HEADING_RE = /^#{1,6}\s+Verification Commands\b/i;
 const FUNCTIONAL_HEADING_RE = /^#{1,6}\s+Functional\b/i;
 const AC_HEADING_RE = /^#{1,6}\s+Acceptance Criteria\b/i;
 const SHA_RE = /^[0-9a-f]{7,40}$/i;
-// Capture the unchecked-box prefix so we can flip the marker in place while
-// preserving leading whitespace and the label that follows.
-const UNCHECKED_RE = /^(\s*- \[) (\]\s+)(.*)$/;
+// Capture the checkbox prefix so unchecked items can be flipped and checked
+// declaration/proof hybrids can be refreshed by an explicit exact-SHA run.
+// Legacy sentinel calls continue to ignore checked items.
+const CHECKBOX_RE = /^(\s*- \[)([ x])(\]\s+)(.*)$/;
 
 // Extract the commands declared on a Functional item's label.
 // #418 — routed through the shared dual-form extractor so a consolidated
@@ -113,9 +114,9 @@ export function autoTickVerified(body, results = [], now = new Date().toISOStrin
   const vcItems = parseVerificationCommands(source);
   const lines = source.split('\n');
   let section = null; // 'vc' | 'functional' | 'ac' | null
-  // Keyed Functional lines ticked this run; their evidence markers are upserted
-  // after the line scan so `stampEvidenceMarker` re-locates against the final
-  // (box-flipped) body. `{ key, cmd }`.
+  // Keyed Functional lines ticked or refreshed this run; their evidence markers
+  // are upserted after the line scan so `stampEvidenceMarker` re-locates against
+  // the final (box-flipped) body. `{ key, cmd }`.
   const pendingEvidence = [];
 
   for (let i = 0; i < lines.length; i += 1) {
@@ -131,9 +132,11 @@ export function autoTickVerified(body, results = [], now = new Date().toISOStrin
 
     if (!section) continue;
 
-    const box = line.match(UNCHECKED_RE);
+    const box = line.match(CHECKBOX_RE);
     if (!box) continue;
-    const [, open, close, rest] = box;
+    const [, open, mark, close, rest] = box;
+    const alreadyChecked = mark === 'x';
+    if (alreadyChecked && requestedSha === undefined) continue;
 
     if (section === 'vc') {
       const cmd = rest.match(BACKTICK_CMD_RE)?.[1] ?? null;
@@ -143,7 +146,7 @@ export function autoTickVerified(body, results = [], now = new Date().toISOStrin
           runProps(now, `sandbox exit 0 (${cmd})`, { cmd, sha: evidenceSha })
         );
         lines[i] = `${open}x${close}${flipped}`;
-        tickedVc.push(cmd);
+        if (!alreadyChecked) tickedVc.push(cmd);
       }
       continue;
     }
@@ -180,7 +183,7 @@ export function autoTickVerified(body, results = [], now = new Date().toISOStrin
           runProps(now, `sandbox exit 0 (${cmds.join(', ')})`, { sha: evidenceSha })
         );
         lines[i] = `${open}x${close}${flipped}`;
-        tickedAc.push(stripProofMarkers(rest));
+        if (!alreadyChecked) tickedAc.push(stripProofMarkers(rest));
       }
       continue;
     }
@@ -214,7 +217,7 @@ export function autoTickVerified(body, results = [], now = new Date().toISOStrin
         );
         lines[i] = `${open}x${close}${flipped}`;
       }
-      tickedFunctional.push(stripProofMarkers(rest));
+      if (!alreadyChecked) tickedFunctional.push(stripProofMarkers(rest));
     }
   }
 
