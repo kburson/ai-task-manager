@@ -66,6 +66,11 @@ test('task metadata matches high-risk verb parser surfaces', () => {
   );
   assert.ok(shelveRefresh, 'shelve: missing stale-blocker migration flag');
   assert.match(shelveRefresh.description, /schema-1.*blocker migration/i);
+  assert.equal(
+    argumentNames('park').includes('--refresh-stale-blockers'),
+    false,
+    'park: must not expose Shelve-only stale-blocker migration'
+  );
 });
 
 test('documented examples use parser-valid aliases and enumerated issue kinds', () => {

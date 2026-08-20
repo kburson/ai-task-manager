@@ -18,18 +18,20 @@ export const SHELVE_USAGE =
   'Usage: shelve <N> --reason <text> [--remove-owner] [--refresh-stale-blockers]';
 
 function usageFor(verb) {
-  return `Usage: ${verb} <N> --reason <text> [--remove-owner] [--refresh-stale-blockers]`;
+  const migrationFlag = verb === 'shelve' ? ' [--refresh-stale-blockers]' : '';
+  return `Usage: ${verb} <N> --reason <text> [--remove-owner]${migrationFlag}`;
 }
 
 export function parseArgs(rest = [], { verb = 'shelve' } = {}) {
   const usage = usageFor(verb);
   const argv = rest.map(String);
+  const allowsRefreshStaleBlockers = verb === 'shelve';
   const refreshCount = argv.filter((arg) => arg === '--refresh-stale-blockers').length;
-  if (refreshCount > 1) {
+  if (allowsRefreshStaleBlockers && refreshCount > 1) {
     throw new StrictArgvError('duplicate flag: --refresh-stale-blockers', { usage });
   }
   const parsed = parseStrict(argv, {
-    flags: ['--remove-owner', '--refresh-stale-blockers'],
+    flags: ['--remove-owner', ...(allowsRefreshStaleBlockers ? ['--refresh-stale-blockers'] : [])],
     options: ['--reason'],
     positionals: { min: 1, max: 1 },
     usage,
@@ -40,7 +42,8 @@ export function parseArgs(rest = [], { verb = 'shelve' } = {}) {
     issueNumber: Number(issue[1]),
     reason: parsed.values['--reason'] ?? null,
     removeOwner: parsed.values['--remove-owner'] === true,
-    refreshStaleBlockers: parsed.values['--refresh-stale-blockers'] === true,
+    refreshStaleBlockers:
+      allowsRefreshStaleBlockers && parsed.values['--refresh-stale-blockers'] === true,
   };
 }
 

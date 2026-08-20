@@ -478,6 +478,9 @@ function sourceRefusal(snapshot, { gateAssignee, currentUser, refreshStaleBlocke
   if (!recorded || recorded !== snapshot.state) {
     return { status: 'drift-refused', recorded, live: snapshot.state };
   }
+  if (refreshStaleBlockers && snapshot.state !== 'ready-for-plan') {
+    return { status: 'migration-source-refused', from: snapshot.state };
+  }
   const policy = actionPolicyFor('shelve', snapshot.state);
   if (!policy.ok) return { status: 'invalid-source-refused', from: snapshot.state };
   const ownerRefusal = ownershipRefusal(snapshot, { gateAssignee, currentUser });
@@ -538,6 +541,9 @@ export async function runShelveTransaction({
     return {
       status: snapshot.issueState === 'CLOSED' ? 'closed-issue-refused' : 'issue-state-refused',
     };
+  }
+  if (refreshStaleBlockers && snapshot.state !== 'ready-for-plan') {
+    return { status: 'migration-source-refused', from: snapshot.state };
   }
   const gateAssignee = cfg.preferences?.gateAssigneeMatch ?? true;
   let currentUser = null;

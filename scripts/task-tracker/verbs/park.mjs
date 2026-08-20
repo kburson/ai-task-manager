@@ -5,11 +5,21 @@
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { LEGAL_FROM, SHELVE_TARGET, parseArgs, runShelve, verbShelveAs } from './shelve.mjs';
+import {
+  LEGAL_FROM,
+  SHELVE_TARGET,
+  parseArgs as parseShelveArgs,
+  runShelve,
+  verbShelveAs,
+} from './shelve.mjs';
 import { defaultRunMoveState } from '../lib/shelve-transaction.mjs';
 
 export const PARK_TARGET = SHELVE_TARGET;
-export { LEGAL_FROM, parseArgs, defaultRunMoveState };
+export { LEGAL_FROM, defaultRunMoveState };
+
+export function parseArgs(rest = []) {
+  return parseShelveArgs(rest, { verb: 'park' });
+}
 
 export function runPark(options = {}) {
   return runShelve(options);

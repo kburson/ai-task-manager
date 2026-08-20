@@ -500,6 +500,48 @@ test('Shelve refreshes the exact legacy blocker-only snapshot and retains every 
   assert.equal(parseShelveJournal(h.store.body).refreshStaleBlockers, true);
 });
 
+test('legacy blocker refresh refuses a Refine source before history or mutation', async () => {
+  const h = harness({ state: 'refine', legacyBlockers: [1212] });
+  h.store.body = writeLastKnownState(h.store.body, 'refine', '2026-08-12T00:00:00.000Z');
+
+  const result = await runShelveTransaction({
+    issueNumber: 1215,
+    reason: 'Refresh only the legacy blocker evidence',
+    refreshStaleBlockers: true,
+    cfg: CFG,
+    deps: h.deps,
+  });
+
+  assert.deepEqual(result, { status: 'migration-source-refused', from: 'refine' });
+  assert.deepEqual(h.calls, []);
+  assert.equal(parseRefinementHistory(h.store.body).length, 0);
+});
+
+test('legacy blocker refresh refuses a Refine source before resuming its journal', async () => {
+  const h = harness({
+    state: 'ready-for-plan',
+    legacyBlockers: [1212],
+    failOnce: 'move-status',
+  });
+  const migrationIntent = {
+    issueNumber: 1215,
+    reason: 'Refresh only the legacy blocker evidence',
+    refreshStaleBlockers: true,
+    cfg: CFG,
+    deps: h.deps,
+  };
+  const first = await runShelveTransaction(migrationIntent);
+  assert.equal(first.status, 'recovery-pending', JSON.stringify(first));
+  const callsBeforeRetry = h.calls.length;
+  h.store.state = 'refine';
+  h.store.body = writeLastKnownState(h.store.body, 'refine', '2026-08-12T00:00:00.000Z');
+
+  const retry = await runShelveTransaction(migrationIntent);
+
+  assert.deepEqual(retry, { status: 'migration-source-refused', from: 'refine' });
+  assert.equal(h.calls.length, callsBeforeRetry);
+});
+
 test('legacy blocker refresh refuses every divergent carrier before it records history', async () => {
   for (const options of [
     { labels: [...LABELS] },
