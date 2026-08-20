@@ -16,6 +16,7 @@ import { mutateIssueBody } from '../lib/issue-body-mutate.mjs';
 import { headSha, nowIso, runVerifiers } from '../lib/evidence-runner.mjs';
 import { findEvidenceAc, stampAcEvidenceAndReconcile } from '../lib/ac-evidence.mjs';
 import { assertVerifierStateAllowed } from '../lib/verifier-state-gate.mjs';
+import { decideStampExecutionFromEnv } from '../lib/stamp-receipt-reuse.mjs';
 import { captureEvidenceProvenance } from '../lib/evidence-provenance.mjs';
 import {
   readDirectoryContract,
@@ -69,6 +70,73 @@ export async function verbAcStamp(ctx) {
       `[task-tracker] ac-stamp: AC "${target.label}" carries no verifier command. Add one (e.g. \`<!-- aitm-verified cmd="\\\`npm test\\\`" -->\`) before stamping.`
     );
     process.exit(1);
+  }
+
+  const decision = await decideStampExecutionFromEnv({
+    commands: target.evidenceCommands,
+    body,
+    issueNumber: issueNum,
+    cfg,
+    pexec,
+    projectDir,
+    deps: ctx.deps,
+  });
+  if (decision.action === 'refuse') {
+    console.error(`[task-tracker] ac-stamp: ${decision.message}`);
+    process.exit(1);
+  }
+  if (decision.action === 'reuse') {
+    const sha = decision.receipt?.commitSha || (await headSha(pexec));
+    const ts = decision.receipt?.completedAt || nowIso(ctx.deps);
+    const canonicalCmd = String(target.evidenceCommands[0] || '').replace(/^`+|`+$/g, '');
+    const executionContext = captureEvidenceProvenance({
+      projectDir,
+      boundIssue: issueNum,
+    });
+    console.log(
+      `[task-tracker] ac-stamp on ${s.active}: reusing Test receipt ${decision.receipt?.receiptId}; standard commands were not rerun.`
+    );
+    if (directory) {
+      await writeDirectoryContractOperation({
+        repository: cfg.repo,
+        issue: Number(issueNum),
+        issueBody: body,
+        action: 'record-evidence',
+        kind: 'acceptanceCriteria',
+        logicalId: target.logicalId,
+        evidence: {
+          command: canonicalCmd,
+          result: 'passed',
+          sha,
+          ts,
+          executionContext,
+        },
+        pexec,
+        deps: ctx.deps?.contractWrite,
+      });
+      console.log(
+        `[task-tracker] ✓ ac-stamp on ${s.active}: accepted Delivery Contract evidence for ${target.logicalId} (sha=${sha}).`
+      );
+      return;
+    }
+    await mutateIssueBody({
+      issueNumber: issueNum,
+      repo: cfg.repo,
+      deps: { pexec },
+      evidenceStamp: true,
+      mutate: (base) =>
+        stampAcEvidenceAndReconcile(base, label, {
+          cmd: canonicalCmd,
+          sha,
+          ts,
+          exit: 0,
+          ...executionContext,
+        }),
+    });
+    console.log(
+      `[task-tracker] ✓ ac-stamp on ${s.active}: evidence stamped from Test receipt (sha=${sha}).`
+    );
+    return;
   }
 
   const gate = await assertVerifierStateAllowed({
