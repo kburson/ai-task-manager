@@ -3,6 +3,7 @@
 **Story:** #1344
 **Status:** Approved by Full-Auto authority
 **Blocks:** #1343, transitively #1263
+**Delivered:** PR #1345, trunk `082286e709065f402b7704f00a309d1c60515fc0`
 
 ## Problem
 
