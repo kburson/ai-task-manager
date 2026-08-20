@@ -44,6 +44,7 @@ const ENTRY_HISTORY_REVERSE_EDGES = Object.freeze([
 ]);
 
 const TIMING_HISTORY_REVERSE_EDGES = Object.freeze([
+  'ready-for-plan->backlog',
   'plan->ready-for-plan',
   'test->develop',
   'review->test',

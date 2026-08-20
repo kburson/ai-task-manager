@@ -229,6 +229,24 @@ test('fails an unsanctioned reverse stage transition (develop → refine)', () =
   );
 });
 
+test('passes a Ready for Planning Shelve reset followed by refinement back to Ready for Planning', () => {
+  const res = validate(
+    logCtx(
+      [
+        [T(0), 'ready-for-plan:started'],
+        [T(1), 'demoted:backlog'],
+        [T(2), 'backlog:created'],
+        [T(3), 'refine:started'],
+        [T(4), 'refine:completed'],
+        [T(5), 'ready-for-plan:started'],
+      ],
+      entered('backlog', 'refine', 'ready-for-plan')
+    )
+  );
+  assert.equal(res.pass, true, JSON.stringify(res.failures));
+  assert.deepEqual(res.failures, []);
+});
+
 test('passes the sanctioned reverse edge test→develop (failed sandbox rework)', () => {
   const res = validate(
     logCtx(
