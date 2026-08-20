@@ -8,6 +8,12 @@ import {
   verifyRefinementSnapshot,
   verifyLegacyRefinementSnapshotForBlockerRefresh,
 } from '../../../../task-tracker/lib/refinement-snapshot.mjs';
+import {
+  appendRefinementHistory,
+  buildRefinementHistoryRecord,
+  parseRefinementHistory,
+  refinementHistoryMatchesSource,
+} from '../../../../task-tracker/lib/refinement-history.mjs';
 
 const TS = '2026-08-20T12:00:00.000Z';
 const RATIONALE = {
@@ -60,6 +66,46 @@ function legacySnapshot({ liveBlockers = [], snapshotBlockedBy = '' } = {}) {
     })
   );
   return `${body.trimEnd()}\n<!-- aitm-refinement-snapshot schema="1" digest="${digest}" provenance="${provenance}" priority="P1" size="M" estimate="8" rank="4" blocked-by="${snapshotBlockedBy}" ts="${TS}" -->\n`;
+}
+
+const HISTORY_SOURCE = {
+  title: 'Refresh stale blocker evidence',
+  fields: { priority: 'P1', size: 'M', estimate: 8, rank: 4 },
+  labels: ['BLOCKED', 'enhancement'],
+  previousOwner: 'alice',
+  sourceState: 'ready-for-plan',
+};
+
+function migrationHistoryRecord(overrides = {}) {
+  return buildRefinementHistoryRecord({
+    tx: 'tx-1341-migration',
+    issueNumber: 1341,
+    body: legacySnapshot({ liveBlockers: [1212, 1213] }),
+    reason: 'Refresh stale blocker evidence',
+    baseSha: '1341abc000000000000000000000000000000000',
+    createdAt: TS,
+    migration: 'legacy-blocker-refresh',
+    liveBlockedBy: [1212, 1213],
+    ...HISTORY_SOURCE,
+    ...overrides,
+  });
+}
+
+function sealedHistoryBody(record, rewrite) {
+  const changed = rewrite({
+    ...record,
+    liveBlockedBy: record.liveBlockedBy && [...record.liveBlockedBy],
+  });
+  const { digest: _digest, ...payload } = changed;
+  const digest = sha256(JSON.stringify(payload));
+  const sealed = { ...payload, digest };
+  return historyBodyWithDigest(sealed, digest);
+}
+
+function historyBodyWithDigest(record, digest = record.digest) {
+  const sealed = { ...record, digest };
+  const encoded = Buffer.from(JSON.stringify(sealed), 'utf8').toString('base64url');
+  return `<!-- aitm-refinement-history schema="1" tx="${sealed.tx}" digest="${digest}" payload="${encoded}" -->`;
 }
 
 test('accepts valid schema-1 core evidence whose only mismatch is a non-empty live blocker marker', () => {
@@ -178,4 +224,75 @@ test('refuses an empty live blocker set', () => {
   assert.equal(verified.legacyCoreValid, true);
   assert.equal(verified.blockerOnlyMismatch, false);
   assert.match(verified.reason, /non-empty/i);
+});
+
+test('migration history records explicitly authenticate the legacy blocker refresh and canonical live blockers', () => {
+  const record = migrationHistoryRecord();
+
+  assert.equal(record.migration, 'legacy-blocker-refresh');
+  assert.deepEqual(record.liveBlockedBy, [1212, 1213]);
+  assert.deepEqual(parseRefinementHistory(appendRefinementHistory('', record)), [record]);
+});
+
+test('migration history refuses missing, malformed, duplicate, or non-canonical live blocker evidence', () => {
+  for (const overrides of [
+    { liveBlockedBy: undefined },
+    { liveBlockedBy: [] },
+    { liveBlockedBy: ['1212'] },
+    { liveBlockedBy: [0] },
+    { liveBlockedBy: [1212, 1212] },
+    { liveBlockedBy: [1213, 1212] },
+  ]) {
+    assert.throws(
+      () => migrationHistoryRecord(overrides),
+      /migration.*liveBlockedBy|liveBlockedBy.*migration/i
+    );
+  }
+
+  const record = migrationHistoryRecord();
+  for (const rewrite of [
+    (candidate) => ({ ...candidate, migration: 'other-refresh' }),
+    (candidate) => {
+      delete candidate.liveBlockedBy;
+      return candidate;
+    },
+    (candidate) => ({ ...candidate, liveBlockedBy: [1212, 1212] }),
+  ]) {
+    assert.throws(
+      () => parseRefinementHistory(sealedHistoryBody(record, rewrite)),
+      /migration evidence|liveBlockedBy/i
+    );
+  }
+});
+
+test('migration blocker evidence is digest-authenticated and source-matched', () => {
+  const record = migrationHistoryRecord();
+  const altered = { ...record, liveBlockedBy: [1212, 1214] };
+
+  assert.throws(() => parseRefinementHistory(historyBodyWithDigest(altered)), /digest/i);
+  const [resealed] = parseRefinementHistory(sealedHistoryBody(record, () => altered));
+  assert.equal(
+    refinementHistoryMatchesSource(record, {
+      ...HISTORY_SOURCE,
+      body: legacySnapshot({ liveBlockers: [1212, 1213] }),
+      liveBlockedBy: [1212, 1213],
+    }),
+    true
+  );
+  assert.equal(
+    refinementHistoryMatchesSource(resealed, {
+      ...HISTORY_SOURCE,
+      body: legacySnapshot({ liveBlockers: [1212, 1213] }),
+      liveBlockedBy: [1212, 1213],
+    }),
+    false
+  );
+  assert.equal(
+    refinementHistoryMatchesSource(resealed, {
+      ...HISTORY_SOURCE,
+      body: legacySnapshot({ liveBlockers: [1212, 1214] }),
+      liveBlockedBy: [1212, 1214],
+    }),
+    false
+  );
 });

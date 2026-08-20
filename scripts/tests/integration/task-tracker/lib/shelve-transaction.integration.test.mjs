@@ -485,7 +485,9 @@ test('a partial failure remains journaled and an identical retry resumes without
   });
   assert.equal(first.status, 'recovery-pending');
   assert.equal(first.phase, 'fields-cleared');
-  assert.equal(parseRefinementHistory(h.store.body).length, 1);
+  const [partialRecord] = parseRefinementHistory(h.store.body);
+  assert.equal(partialRecord.migration, undefined);
+  const partialDigest = partialRecord.digest;
 
   const second = await runShelveTransaction({
     issueNumber: 1215,
@@ -495,7 +497,8 @@ test('a partial failure remains journaled and an identical retry resumes without
     deps: h.deps,
   });
   assert.equal(second.status, 'shelved', JSON.stringify(second));
-  assert.equal(parseRefinementHistory(h.store.body).length, 1);
+  const [replayedRecord] = parseRefinementHistory(h.store.body);
+  assert.equal(replayedRecord.digest, partialDigest);
 });
 
 test('a landed active-evidence write with a lost response resumes from its exact durable transform', async () => {
