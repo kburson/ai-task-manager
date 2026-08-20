@@ -1,7 +1,7 @@
 # Shelve R4P Backward Guard Scope Design
 
-**Story:** #1343  
-**Status:** Approved by Full-Auto authority  
+**Story:** #1343
+**Status:** Approved by Full-Auto authority
 **Blocks:** #1263 live recovery of #1335
 
 ## Problem
