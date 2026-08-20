@@ -106,7 +106,7 @@ article-to-diagram assignment, not a filename convention.
 
 ## Header Image Guidance
 
-Updated: all nine articles now ship with a header banner (`assets/article-headers/article-0N-header.png`), so this is no longer an optional embellishment — it is the series' delivered visual identity, generated from the briefs in [assets/image-prompts](assets/image-prompts/). The banners share a consistent illustrated style: dark navy/charcoal base, electric-blue and amber accent lighting, a human operator at a control desk with branching code/data paths flowing out to a fleet of translucent, stylized agent silhouettes. It should support the article theme without replacing the in-body diagram.
+Updated: all articles except the still-pending position 05 (see [README.md](README.md)) now ship with a header banner (`assets/article-headers/article-0N-header.png`), so this is no longer an optional embellishment — it is the series' delivered visual identity, generated from the briefs in [assets/image-prompts](assets/image-prompts/). The banners share a consistent illustrated style: dark navy/charcoal base, electric-blue and amber accent lighting, a human operator at a control desk with branching code/data paths flowing out to a fleet of translucent, stylized agent silhouettes. It should support the article theme without replacing the in-body diagram.
 
 Good header concepts:
 
