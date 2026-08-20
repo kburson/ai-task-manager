@@ -88,6 +88,7 @@ export async function runMoveStateHost({
   reviewAuthority = null,
   lifecycleEvidence = null,
   shelveBackwardGuardCapability = null,
+  _observeGuardPhasePolicy = null,
 } = {}) {
   const { name: resolvedTailProfile } = resolveTailProfile(tailProfile);
   reviewAuthority = resolveReviewAuthority(reviewAuthority);
@@ -349,6 +350,7 @@ export async function runMoveStateHost({
     tailProfile: resolvedTailProfile,
     reviewAuthority,
     lifecycleEvidence,
+    _observeGuardPhasePolicy,
   };
 
   // #559 — guard-execution concern: the dirty-workspace warn, the universal

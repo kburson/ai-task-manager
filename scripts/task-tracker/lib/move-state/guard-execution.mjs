@@ -89,6 +89,16 @@ export async function runGuardExecution(ctx) {
     backlogMoveWarning,
     lifecycleEvidence,
   } = ctx;
+  const guardPhasePolicy = deriveGuardPhasePolicy({
+    verbContext,
+    shelveBackwardGuardAuthorized,
+    demoteFlag,
+    fromState: resolvedFromState,
+    toState: stateArg,
+  });
+  if (typeof ctx._observeGuardPhasePolicy === 'function') {
+    ctx._observeGuardPhasePolicy(Object.freeze({ ...guardPhasePolicy }));
+  }
 
   // Gate 1: dirty-workspace warning on move to review. Non-blocking — move still proceeds.
   if (stateArg === 'review' && process.env.TT_SKIP_DIRTY_CHECK !== '1') {
@@ -184,13 +194,6 @@ export async function runGuardExecution(ctx) {
       projectDir,
       lifecycleEvidence,
     };
-    const guardPhasePolicy = deriveGuardPhasePolicy({
-      verbContext,
-      shelveBackwardGuardAuthorized,
-      demoteFlag,
-      fromState: resolvedFromState,
-      toState: stateArg,
-    });
     let guardResult = await runGuards(resolvedFromState, stateArg, guardCtx, guardPhasePolicy);
 
     // #1017 — a just-created issue can briefly return a stale body snapshot

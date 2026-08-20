@@ -500,6 +500,57 @@ test('Shelve refreshes the exact legacy blocker-only snapshot and retains every 
   assert.equal(parseShelveJournal(h.store.body).refreshStaleBlockers, true);
 });
 
+test('legacy blocker refresh retries a #1335-style failed move without duplicating history or losing carriers', async () => {
+  const h = harness({
+    state: 'ready-for-plan',
+    legacyBlockers: [1212, 1213],
+    failOnce: 'move-status',
+  });
+  const migrationIntent = {
+    issueNumber: 1215,
+    reason: 'Refresh only the legacy blocker evidence',
+    refreshStaleBlockers: true,
+    cfg: CFG,
+    deps: h.deps,
+  };
+
+  const first = await runShelveTransaction(migrationIntent);
+
+  assert.deepEqual(
+    { status: first.status, phase: first.phase },
+    { status: 'recovery-pending', phase: 'fields-cleared' }
+  );
+  const [partialRecord] = parseRefinementHistory(h.store.body);
+  assert.equal(parseRefinementHistory(h.store.body).length, 1);
+  assert.equal(partialRecord.migration, 'legacy-blocker-refresh');
+  assert.deepEqual(partialRecord.liveBlockedBy, [1212, 1213]);
+  assert.deepEqual(activeFieldsAfterShelve(h.store.body), {
+    priority: null,
+    size: null,
+    estimate: null,
+    rank: null,
+  });
+  assert.doesNotMatch(
+    h.store.body,
+    /aitm-refine-complete|aitm-refinement-rationale|aitm-refinement-snapshot/
+  );
+  assert.match(h.store.body, /aitm-blocked-by refs="#1212,#1213"/);
+  assert.deepEqual(h.store.labels, ['BLOCKED', ...LABELS]);
+  assert.equal(h.store.blockedBy, '#1212, #1213');
+
+  const retry = await runShelveTransaction(migrationIntent);
+
+  assert.equal(retry.status, 'shelved', JSON.stringify(retry));
+  const replayedHistory = parseRefinementHistory(h.store.body);
+  assert.equal(replayedHistory.length, 1);
+  assert.equal(replayedHistory[0].digest, partialRecord.digest);
+  assert.deepEqual(replayedHistory[0].liveBlockedBy, [1212, 1213]);
+  assert.match(h.store.body, /aitm-blocked-by refs="#1212,#1213"/);
+  assert.deepEqual(h.store.labels, ['BLOCKED', ...LABELS]);
+  assert.equal(h.store.blockedBy, '#1212, #1213');
+  assert.equal(h.store.state, 'backlog');
+});
+
 test('legacy blocker refresh refuses a Refine source before history or mutation', async () => {
   const h = harness({ state: 'refine', legacyBlockers: [1212] });
   h.store.body = writeLastKnownState(h.store.body, 'refine', '2026-08-12T00:00:00.000Z');
