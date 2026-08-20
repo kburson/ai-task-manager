@@ -542,6 +542,34 @@ test('legacy blocker refresh refuses a Refine source before resuming its journal
   assert.equal(h.calls.length, callsBeforeRetry);
 });
 
+test('legacy blocker refresh resumes a landed Backlog status phase after its journal response is lost', async () => {
+  const h = harness({
+    state: 'ready-for-plan',
+    legacyBlockers: [1212],
+    failAfterPhase: 'status-backlog',
+  });
+  const migrationIntent = {
+    issueNumber: 1215,
+    reason: 'Refresh only the legacy blocker evidence',
+    refreshStaleBlockers: true,
+    cfg: CFG,
+    deps: h.deps,
+  };
+
+  const first = await runShelveTransaction(migrationIntent);
+  assert.deepEqual(
+    { status: first.status, phase: first.phase },
+    { status: 'recovery-pending', phase: 'fields-cleared' }
+  );
+  assert.equal(h.store.state, 'backlog');
+  assert.equal(parseShelveJournal(h.store.body).phase, 'status-backlog');
+
+  const retry = await runShelveTransaction(migrationIntent);
+
+  assert.equal(retry.status, 'shelved', JSON.stringify(retry));
+  assert.equal(parseShelveJournal(h.store.body).phase, 'verified');
+});
+
 test('legacy blocker refresh refuses every divergent carrier before it records history', async () => {
   for (const options of [
     { labels: [...LABELS] },

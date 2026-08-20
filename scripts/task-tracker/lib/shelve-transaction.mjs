@@ -505,6 +505,20 @@ function sourceRefusal(snapshot, { gateAssignee, currentUser, refreshStaleBlocke
   return null;
 }
 
+function migrationJournalStateRefusal(snapshot, journal, record) {
+  if (!journal.refreshStaleBlockers) return null;
+  if (journal.from !== 'ready-for-plan' || record.sourceState !== 'ready-for-plan') {
+    return { status: 'migration-source-refused', from: snapshot.state };
+  }
+  const statusBacklogIndex = SHELVE_PHASES.indexOf('status-backlog');
+  const journalPhaseIndex = SHELVE_PHASES.indexOf(journal.phase);
+  const expectedState = journalPhaseIndex < statusBacklogIndex ? 'ready-for-plan' : 'backlog';
+  if (snapshot.state !== expectedState) {
+    return { status: 'migration-source-refused', from: snapshot.state };
+  }
+  return null;
+}
+
 export async function runShelveTransaction({
   issueNumber,
   reason,
@@ -542,7 +556,28 @@ export async function runShelveTransaction({
       status: snapshot.issueState === 'CLOSED' ? 'closed-issue-refused' : 'issue-state-refused',
     };
   }
-  if (refreshStaleBlockers && snapshot.state !== 'ready-for-plan') {
+  let journal = parseShelveJournal(snapshot.body);
+  if (journal?.phase === 'verified' && actionPolicyFor('shelve', snapshot.state).ok) {
+    currentHistory(snapshot.body, journal);
+    journal = null;
+  }
+  let record = null;
+  if (journal) {
+    if (
+      journal.issueNumber !== issueNumber ||
+      journal.intentDigest !== requestedIntent ||
+      journal.removeOwner !== Boolean(removeOwner) ||
+      journal.refreshStaleBlockers !== Boolean(refreshStaleBlockers)
+    ) {
+      return { status: 'retry-intent-refused', phase: journal.phase };
+    }
+    record = currentHistory(snapshot.body, journal);
+    if (Boolean(record.migration) !== journal.refreshStaleBlockers) {
+      return { status: 'retry-intent-refused', phase: journal.phase };
+    }
+    const stateRefusal = migrationJournalStateRefusal(snapshot, journal, record);
+    if (stateRefusal) return stateRefusal;
+  } else if (refreshStaleBlockers && snapshot.state !== 'ready-for-plan') {
     return { status: 'migration-source-refused', from: snapshot.state };
   }
   const gateAssignee = cfg.preferences?.gateAssigneeMatch ?? true;
@@ -556,24 +591,7 @@ export async function runShelveTransaction({
   }
   const ownerRefusal = ownershipRefusal(snapshot, { gateAssignee, currentUser });
   if (ownerRefusal) return ownerRefusal;
-  let journal = parseShelveJournal(snapshot.body);
-  if (journal?.phase === 'verified' && actionPolicyFor('shelve', snapshot.state).ok) {
-    currentHistory(snapshot.body, journal);
-    journal = null;
-  }
   if (journal) {
-    if (
-      journal.issueNumber !== issueNumber ||
-      journal.intentDigest !== requestedIntent ||
-      journal.removeOwner !== Boolean(removeOwner) ||
-      journal.refreshStaleBlockers !== Boolean(refreshStaleBlockers)
-    ) {
-      return { status: 'retry-intent-refused', phase: journal.phase };
-    }
-    const record = currentHistory(snapshot.body, journal);
-    if (Boolean(record.migration) !== journal.refreshStaleBlockers) {
-      return { status: 'retry-intent-refused', phase: journal.phase };
-    }
     const carrierRefusal = record.migration
       ? migrationCarrierRefusal(snapshot, record.liveBlockedBy)
       : null;
