@@ -431,7 +431,7 @@ function canonicalBlockedByText(refs) {
 }
 
 function migrationCarrierRefusal(snapshot, liveBlockedBy) {
-  if (!snapshot.labels?.some((label) => String(label).trim().toLowerCase() === 'blocked')) {
+  if (!snapshot.labels?.some((label) => label === 'BLOCKED')) {
     return 'migration requires the BLOCKED label';
   }
   let protectedRefs;

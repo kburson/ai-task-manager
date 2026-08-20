@@ -733,6 +733,26 @@ test('legacy blocker refresh refuses every divergent carrier before it records h
   }
 });
 
+test('legacy blocker refresh refuses a lowercase noncanonical BLOCKED label before history', async () => {
+  const h = harness({
+    state: 'ready-for-plan',
+    legacyBlockers: [1212],
+    labels: ['blocked', ...LABELS],
+  });
+
+  const result = await runShelveTransaction({
+    issueNumber: 1215,
+    reason: 'Refresh only the legacy blocker evidence',
+    refreshStaleBlockers: true,
+    cfg: CFG,
+    deps: h.deps,
+  });
+
+  assert.equal(result.status, 'migration-carriers-refused', JSON.stringify(result));
+  assert.deepEqual(h.calls, []);
+  assert.equal(parseRefinementHistory(h.store.body).length, 0);
+});
+
 test('Shelve refuses a retry that changes the legacy blocker refresh intent', async () => {
   const h = harness({
     state: 'ready-for-plan',
