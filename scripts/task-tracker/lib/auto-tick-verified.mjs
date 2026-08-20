@@ -7,8 +7,9 @@
 // forcing manual box-ticking between Test and Close to satisfy the review/close
 // gates the verb already had the evidence to satisfy.
 //
-// `autoTickVerified(body, results)` ticks exactly the boxes backed by passing
-// machine evidence:
+// `autoTickVerified(body, results, now, options)` ticks exactly the boxes backed
+// by passing machine evidence. `options.sha` may identify the exact tested
+// commit; callers that omit it retain the legacy `sandbox` sentinel:
 //   - `## Verification Commands`: a `- [ ] \`cmd\`` whose command exited 0.
 //   - `#### Functional (verified at Test)`: an item that carries ≥1
 //     `aitm-verified-by` command AND whose every referenced command passed.
@@ -52,9 +53,11 @@ const HEADING_RE = /^#{1,6}\s+/;
 const VC_HEADING_RE = /^#{1,6}\s+Verification Commands\b/i;
 const FUNCTIONAL_HEADING_RE = /^#{1,6}\s+Functional\b/i;
 const AC_HEADING_RE = /^#{1,6}\s+Acceptance Criteria\b/i;
-// Capture the unchecked-box prefix so we can flip the marker in place while
-// preserving leading whitespace and the label that follows.
-const UNCHECKED_RE = /^(\s*- \[) (\]\s+)(.*)$/;
+const SHA_RE = /^[0-9a-f]{7,40}$/i;
+// Capture the checkbox prefix so unchecked items can be flipped and checked
+// declaration/proof hybrids can be refreshed by an explicit exact-SHA run.
+// Legacy sentinel calls continue to ignore checked items.
+const CHECKBOX_RE = /^(\s*- \[)([ x])(\]\s+)(.*)$/;
 
 // Extract the commands declared on a Functional item's label.
 // #418 — routed through the shared dual-form extractor so a consolidated
@@ -71,20 +74,29 @@ function evidenceCommands(label, vcItems = []) {
 // `mutateIssueBody` accepts the resulting body. `sha="sandbox"` is the
 // documented sentinel meaning "evidence is the green sandbox exit code in hand
 // at tick time, not a stored artifact reachable by URL"; the vestigial
-// `proof="none"` sentinel is dropped. `exit="0"` records the passing exit code.
-// Callers pass `now` (ISO string) for determinism; defaults to now.
+// `proof="none"` sentinel is dropped. A validated explicit SHA replaces only
+// this sentinel. `exit="0"` records the passing exit code. Callers pass `now`
+// (ISO string) for determinism; defaults to now.
 //
 // `cmd` is included only when the line carries no existing `aitm-verified`
 // declaration — `upsertProofMarker` preserves a present declaration's cmd, so
 // re-seeding it would be redundant. VC entries have no declaration, so they
 // always seed cmd.
-function runProps(now, evidence, { cmd } = {}) {
-  const props = { exit: '0', sha: 'sandbox', ts: now, evidence };
+function runProps(now, evidence, { cmd, sha = 'sandbox' } = {}) {
+  const props = { exit: '0', sha, ts: now, evidence };
   if (cmd != null) props.cmd = cmd;
   return props;
 }
 
-export function autoTickVerified(body, results = [], now = new Date().toISOString()) {
+export function autoTickVerified(body, results = [], now = new Date().toISOString(), options = {}) {
+  const requestedSha = options?.sha;
+  if (
+    requestedSha !== undefined &&
+    (typeof requestedSha !== 'string' || !SHA_RE.test(requestedSha))
+  ) {
+    throw new TypeError('autoTickVerified: sha must be a 7–40 hexadecimal commit SHA');
+  }
+  const evidenceSha = requestedSha ?? 'sandbox';
   const source = String(body || '');
   const passed = new Set(
     (Array.isArray(results) ? results : [])
@@ -102,9 +114,9 @@ export function autoTickVerified(body, results = [], now = new Date().toISOStrin
   const vcItems = parseVerificationCommands(source);
   const lines = source.split('\n');
   let section = null; // 'vc' | 'functional' | 'ac' | null
-  // Keyed Functional lines ticked this run; their evidence markers are upserted
-  // after the line scan so `stampEvidenceMarker` re-locates against the final
-  // (box-flipped) body. `{ key, cmd }`.
+  // Keyed Functional lines ticked or refreshed this run; their evidence markers
+  // are upserted after the line scan so `stampEvidenceMarker` re-locates against
+  // the final (box-flipped) body. `{ key, cmd }`.
   const pendingEvidence = [];
 
   for (let i = 0; i < lines.length; i += 1) {
@@ -120,16 +132,21 @@ export function autoTickVerified(body, results = [], now = new Date().toISOStrin
 
     if (!section) continue;
 
-    const box = line.match(UNCHECKED_RE);
+    const box = line.match(CHECKBOX_RE);
     if (!box) continue;
-    const [, open, close, rest] = box;
+    const [, open, mark, close, rest] = box;
+    const alreadyChecked = mark === 'x';
+    if (alreadyChecked && requestedSha === undefined) continue;
 
     if (section === 'vc') {
       const cmd = rest.match(BACKTICK_CMD_RE)?.[1] ?? null;
       if (cmd && passed.has(cmd)) {
-        const flipped = upsertProofMarker(rest, runProps(now, `sandbox exit 0 (${cmd})`, { cmd }));
+        const flipped = upsertProofMarker(
+          rest,
+          runProps(now, `sandbox exit 0 (${cmd})`, { cmd, sha: evidenceSha })
+        );
         lines[i] = `${open}x${close}${flipped}`;
-        tickedVc.push(cmd);
+        if (!alreadyChecked) tickedVc.push(cmd);
       }
       continue;
     }
@@ -163,10 +180,10 @@ export function autoTickVerified(body, results = [], now = new Date().toISOStrin
       if (cmds.length > 0 && cmds.every((c) => passed.has(c))) {
         const flipped = upsertProofMarker(
           rest,
-          runProps(now, `sandbox exit 0 (${cmds.join(', ')})`)
+          runProps(now, `sandbox exit 0 (${cmds.join(', ')})`, { sha: evidenceSha })
         );
         lines[i] = `${open}x${close}${flipped}`;
-        tickedAc.push(stripProofMarkers(rest));
+        if (!alreadyChecked) tickedAc.push(stripProofMarkers(rest));
       }
       continue;
     }
@@ -196,11 +213,11 @@ export function autoTickVerified(body, results = [], now = new Date().toISOStrin
         // so the declaration's command survives unchanged (no second marker).
         const flipped = upsertProofMarker(
           rest,
-          runProps(now, `sandbox exit 0 (${cmds.join(', ')})`)
+          runProps(now, `sandbox exit 0 (${cmds.join(', ')})`, { sha: evidenceSha })
         );
         lines[i] = `${open}x${close}${flipped}`;
       }
-      tickedFunctional.push(stripProofMarkers(rest));
+      if (!alreadyChecked) tickedFunctional.push(stripProofMarkers(rest));
     }
   }
 
@@ -208,7 +225,7 @@ export function autoTickVerified(body, results = [], now = new Date().toISOStrin
   for (const ev of pendingEvidence) {
     outBody = stampEvidenceMarker(outBody, ev.key, {
       cmd: ev.cmd,
-      sha: 'sandbox',
+      sha: evidenceSha,
       ts: now,
       exit: 0,
     });

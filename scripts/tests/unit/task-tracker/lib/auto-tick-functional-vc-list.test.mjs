@@ -15,6 +15,7 @@ import { autoTickVerified } from '../../../../task-tracker/lib/auto-tick-verifie
 import { renderVcSection } from '../../../../task-tracker/lib/vc-emit.mjs';
 
 const NOW = '2026-07-14T00:00:00.000Z';
+const EXACT_SHA = 'fedcba9876543210fedcba9876543210fedcba98';
 
 // VC ids 1,2,3. A Functional subsection whose `tests` line cites a single id and
 // whose `lint` line cites a two-id run.
@@ -89,4 +90,18 @@ test('#806 auto-tick leaves a Functional line citing a nonexistent id untouched 
   );
   const line = out.body.split('\n').find((l) => l.includes('dod:functional:tests'));
   assert.match(line, /^- \[ \]/, 'an unresolvable vc-list citation ticks nothing');
+});
+
+test('#1344 auto-tick records an explicit tested commit on keyed Functional proof', () => {
+  const results = [
+    { command: 'node --test a.test.mjs', passed: true, exit: 0 },
+    { command: 'npm run lint', passed: true, exit: 0 },
+    { command: 'npm run format:check', passed: true, exit: 0 },
+  ];
+  const out = autoTickVerified(body(), results, NOW, { sha: EXACT_SHA });
+  const testsLine = out.body.split('\n').find((line) => line.includes('dod:functional:tests'));
+  const lintLine = out.body.split('\n').find((line) => line.includes('dod:functional:lint'));
+
+  assert.match(testsLine, new RegExp(`sha="${EXACT_SHA}"`));
+  assert.match(lintLine, new RegExp(`sha="${EXACT_SHA}"`));
 });

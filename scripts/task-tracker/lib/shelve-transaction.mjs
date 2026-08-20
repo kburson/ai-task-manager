@@ -4,7 +4,7 @@ import { execFile } from 'node:child_process';
 import { createHash, randomUUID } from 'node:crypto';
 import { promisify } from 'node:util';
 
-import { runMoveStateHost } from '../../gh/move-state.mjs';
+import { runMoveStateHost, SHELVE_BACKWARD_GUARD_CAPABILITY } from '../../gh/move-state.mjs';
 import { isIssueLockHeld } from '../issue-mutator-lock.mjs';
 import { clearProjectFieldValue, gql, splitRepo } from '../../gh/lib/github-projects.mjs';
 import { readLastKnownState } from '../gh-timing-comment.mjs';
@@ -159,8 +159,8 @@ async function defaultClearBoardFields({ cfg, snapshot }) {
   }
 }
 
-export function defaultRunMoveState({ issueNumber, reason }) {
-  return runMoveStateHost({
+export function defaultRunMoveState({ issueNumber, reason }, { host = runMoveStateHost } = {}) {
+  return host({
     argv: [
       process.execPath,
       'move-state.mjs',
@@ -171,6 +171,7 @@ export function defaultRunMoveState({ issueNumber, reason }) {
       String(reason),
     ],
     env: { ...process.env, AITM_INTERNAL: '1', AITM_VERB_CONTEXT: 'shelve' },
+    shelveBackwardGuardCapability: SHELVE_BACKWARD_GUARD_CAPABILITY,
   });
 }
 

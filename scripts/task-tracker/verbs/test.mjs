@@ -1064,7 +1064,7 @@ export async function runVerbTest({
     // whose `aitm-verified-by` command(s) all passed. Judgment items (no
     // command marker) and the Lifecycle section are left untouched. Reached
     // only on the green path, so a red result ticks nothing.
-    const autoTick = autoTickVerified(stamped, results);
+    const autoTick = autoTickVerified(stamped, results, ts, { sha });
     stamped = autoTick.body;
     if (stamped !== body) {
       // #295 — re-run the full stamp+autoTick fold on FRESH base.
@@ -1085,7 +1085,7 @@ export async function runVerbTest({
           const tIdx = STAGES.indexOf('test');
           const lIdx = latestM ? STAGES.indexOf(latestM.stage) : -1;
           if (lIdx < tIdx) next = stampEntryMarker(next, 'test', ts);
-          return autoTickVerified(next, results).body;
+          return autoTickVerified(next, results, ts, { sha }).body;
         },
       });
     }

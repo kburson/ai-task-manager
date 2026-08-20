@@ -5,6 +5,7 @@ import { execFileSync } from 'node:child_process';
 import { appendFileSync, rmSync } from 'node:fs';
 import test from 'node:test';
 
+import { autoTickVerified } from '../../../../task-tracker/lib/auto-tick-verified.mjs';
 import { auditEvidenceBranchReachability } from '../../../../task-tracker/lib/evidence-branch-reachability.mjs';
 import { developExitCodeCompleteGuard } from '../../../../task-tracker/lib/develop-exit-code-complete-guard.mjs';
 import { developExitSandboxProofGuard } from '../../../../task-tracker/lib/develop-exit-sandbox-proof-guard.mjs';
@@ -133,6 +134,44 @@ test('accepts legacy proof and receipts with no provenance without probing Git (
   });
   assert.equal(result.ok, true, result.reasons.join('\n'));
   assert.equal(probes, 0);
+});
+
+test('#1344 auto-tick keeps provenance incomplete with the legacy sentinel and reachable with an explicit SHA', async (t) => {
+  const repo = initDivergedRepo();
+  t.after(() => rmSync(repo.projectDir, { recursive: true, force: true }));
+  const command = 'node --test focused.test.mjs';
+  const source = [
+    '## Verification Commands',
+    '',
+    `- [ ] \`${command}\` <!-- id=1 -->`,
+    '',
+    '## Acceptance Criteria',
+    '',
+    `- [ ] provenance-bearing AC <!-- aitm-verified vc-list="vc:1" sha="${repo.bound}" worktree="${repo.projectDir}" branch="${BOUND_BRANCH}" bound-issue="${ISSUE}" -->`,
+    '',
+  ].join('\n');
+  const results = [{ command, passed: true, exit: 0 }];
+
+  const legacy = autoTickVerified(source, results, NOW);
+  const legacyAudit = await auditEvidenceBranchReachability({
+    body: legacy.body,
+    issueNumber: ISSUE,
+    projectDir: repo.projectDir,
+  });
+  assert.equal(legacyAudit.ok, false);
+  assert.match(legacyAudit.reasons.join('\n'), /evidence-branch-provenance-incomplete/);
+
+  const exact = autoTickVerified(source, results, NOW, { sha: repo.bound });
+  const exactAudit = await auditEvidenceBranchReachability({
+    body: exact.body,
+    issueNumber: ISSUE,
+    projectDir: repo.projectDir,
+  });
+  assert.equal(exactAudit.ok, true, exactAudit.reasons.join('\n'));
+  const acLine = exact.body.split('\n').find((line) => line.includes('provenance-bearing AC'));
+  assert.match(acLine, new RegExp(`sha="${repo.bound}"`));
+  assert.match(acLine, new RegExp(`branch="${BOUND_BRANCH}"`));
+  assert.match(acLine, new RegExp(`bound-issue="${ISSUE}"`));
 });
 
 test('uses Git ancestry even when the recorded worktree directory no longer exists (AC4)', async () => {

@@ -43,11 +43,38 @@ export async function buildCloseGatesDeps({ stateArg, pexec, projectDir } = {}) 
   return { closeGates: { resolveTrunkRef: makeCloseTrunkRefResolver({ inWorktree }) } };
 }
 
+// Shelve deliberately withdraws refined work instead of advancing it. Only
+// the authenticated R4P → Backlog demotion may omit the source state's
+// forward-admission exit guards; target entry guards remain authoritative.
+// Every missing or different signal preserves the complete pipeline.
+export function deriveGuardPhasePolicy({
+  verbContext,
+  shelveBackwardGuardAuthorized,
+  demoteFlag,
+  fromState,
+  toState,
+} = {}) {
+  const isShelveR4pDemotion =
+    verbContext === 'shelve' &&
+    shelveBackwardGuardAuthorized === true &&
+    demoteFlag === true &&
+    fromState === 'ready-for-plan' &&
+    toState === 'backlog';
+
+  return {
+    includeExitGuards: !isShelveR4pDemotion,
+    includeEntryGuards: true,
+  };
+}
+
 export async function runGuardExecution(ctx) {
   const {
     issueArg,
     stateArg,
     resolvedFromState,
+    verbContext,
+    shelveBackwardGuardAuthorized,
+    demoteFlag,
     plan,
     forceFlag,
     supersedeFlag,
@@ -62,6 +89,16 @@ export async function runGuardExecution(ctx) {
     backlogMoveWarning,
     lifecycleEvidence,
   } = ctx;
+  const guardPhasePolicy = deriveGuardPhasePolicy({
+    verbContext,
+    shelveBackwardGuardAuthorized,
+    demoteFlag,
+    fromState: resolvedFromState,
+    toState: stateArg,
+  });
+  if (typeof ctx._observeGuardPhasePolicy === 'function') {
+    ctx._observeGuardPhasePolicy(Object.freeze({ ...guardPhasePolicy }));
+  }
 
   // Gate 1: dirty-workspace warning on move to review. Non-blocking — move still proceeds.
   if (stateArg === 'review' && process.env.TT_SKIP_DIRTY_CHECK !== '1') {
@@ -157,7 +194,7 @@ export async function runGuardExecution(ctx) {
       projectDir,
       lifecycleEvidence,
     };
-    let guardResult = await runGuards(resolvedFromState, stateArg, guardCtx);
+    let guardResult = await runGuards(resolvedFromState, stateArg, guardCtx, guardPhasePolicy);
 
     // #1017 — a just-created issue can briefly return a stale body snapshot
     // without its verified Backlog marker. Only when contiguity objects on one
