@@ -46,6 +46,13 @@ issue-specific `### Verification Commands` section.
 Never bulk-check. Never check preemptively. "It looks done" is not
 verification.
 
+**Stage ownership (#1356).** In Develop/Test, run the declared verifier.
+In Review, reuse the exact-SHA Test receipt — do not re-run `npm test`,
+`npm run test:slow`, or `npm run test:all`. `dod-stamp` / `ac-stamp` of
+standard lanes no-op when that receipt matches HEAD. Missing/stale/red
+receipt → demote and `/task test`, never spawn the suite from Review.
+Named finding only: `/task review --probe "<command>"`.
+
 ## Rule 3 — All pre-close checkboxes ticked
 
 Before `/task close` or moving to Done, every user-verifiable `- [ ]` in

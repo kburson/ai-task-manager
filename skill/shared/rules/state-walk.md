@@ -1,4 +1,4 @@
-<!-- aitm-skill-version: 1.1.0 -->
+<!-- aitm-skill-version: 1.2.0 -->
 <!-- aitm-rule-id: state-movement -->
 
 # rules/state-walk.md
@@ -6,7 +6,7 @@
 Tier-2. Loaded JIT on `/task promote`, `/task demote`, `/task next`, `/task reconcile`. On first read, emit:
 
 ```
-aitm-skill-loaded:rules/state-walk:1.1.0
+aitm-skill-loaded:rules/state-walk:1.2.0
 ```
 
 ## 8-state model
@@ -36,7 +36,7 @@ a user-facing `/task` alias or another lifecycle state. See
 
 `/task plan-approve #N`, `/task approve #N`, and `/task reject #N --reason "..."` remain first-class — they are gate verbs, not state-walking verbs.
 
-`/task dod-stamp <key>` is a Test/Review-stage helper, not a state-walking verb. It runs the verifier declared on a Functional DoD item and stamps an evidence marker that unlocks the corresponding `/task check` tick. See `rules/functional-dod.md` for the full contract.
+`/task dod-stamp <key>` is a Test-stage helper, not a state-walking verb. It runs the verifier declared on a Functional DoD item **only when no valid exact-SHA Test receipt already covers that HEAD**; otherwise it stamps from the receipt. Review must not spawn standard lanes — reuse or refuse (demote + `/task test`). See `rules/functional-dod.md`.
 
 `/task ac-stamp <label>` and `/task test` are Develop/Test-stage helpers, not state-walking verbs. `ac-stamp` runs the verifier command(s) declared on an Acceptance Criteria item and stamps genuine execution-proof evidence (exit/sha/ts/key) onto that AC. `test` runs the full Verification Commands suite in a fresh sandbox worktree and, on an all-green result, auto-ticks passing checkboxes/DoD items and moves the issue to Test. Neither advances the kanban board on its own the way `promote`/`demote`/`close` do.
 
