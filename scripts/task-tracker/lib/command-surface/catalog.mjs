@@ -121,9 +121,12 @@ export const VERB_CONTRACTS = Object.freeze({
     ],
     [
       'Appends an immutable refinement-history snapshot before invalidating active refinement, planning, and execution evidence.',
+      'The explicit --refresh-stale-blockers intent authorizes only the schema-1 blocker migration; it is not a general stale-snapshot repair.',
       'Clears Priority, Size, Estimate, and Rank, moves Status to Backlog, and optionally removes the verified sole owner through one recoverable phase journal.',
     ],
-    ['Prints the verified Shelve transaction id or a phase-specific recovery refusal.'],
+    [
+      'Prints the verified Shelve transaction id, identifying an explicit schema-1 stale-blocker migration when used, or a phase-specific recovery refusal.',
+    ],
     [MOVE_REFUSAL, ...PREFLIGHT_TARGET_EXITS]
   ),
   park: contract(
