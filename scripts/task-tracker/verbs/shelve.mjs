@@ -14,16 +14,24 @@ import { runShelveTransaction } from '../lib/shelve-transaction.mjs';
 const SHELVE_POLICY = actionPolicyFor('shelve');
 export const SHELVE_TARGET = SHELVE_POLICY.target;
 export const LEGAL_FROM = new Set(SHELVE_POLICY.allowedStates);
-export const SHELVE_USAGE = 'Usage: shelve <N> --reason <text> [--remove-owner]';
+export const SHELVE_USAGE =
+  'Usage: shelve <N> --reason <text> [--remove-owner] [--refresh-stale-blockers]';
 
 function usageFor(verb) {
-  return `Usage: ${verb} <N> --reason <text> [--remove-owner]`;
+  const migrationFlag = verb === 'shelve' ? ' [--refresh-stale-blockers]' : '';
+  return `Usage: ${verb} <N> --reason <text> [--remove-owner]${migrationFlag}`;
 }
 
 export function parseArgs(rest = [], { verb = 'shelve' } = {}) {
   const usage = usageFor(verb);
-  const parsed = parseStrict(rest.map(String), {
-    flags: ['--remove-owner'],
+  const argv = rest.map(String);
+  const allowsRefreshStaleBlockers = verb === 'shelve';
+  const refreshCount = argv.filter((arg) => arg === '--refresh-stale-blockers').length;
+  if (allowsRefreshStaleBlockers && refreshCount > 1) {
+    throw new StrictArgvError('duplicate flag: --refresh-stale-blockers', { usage });
+  }
+  const parsed = parseStrict(argv, {
+    flags: ['--remove-owner', ...(allowsRefreshStaleBlockers ? ['--refresh-stale-blockers'] : [])],
     options: ['--reason'],
     positionals: { min: 1, max: 1 },
     usage,
@@ -34,10 +42,19 @@ export function parseArgs(rest = [], { verb = 'shelve' } = {}) {
     issueNumber: Number(issue[1]),
     reason: parsed.values['--reason'] ?? null,
     removeOwner: parsed.values['--remove-owner'] === true,
+    refreshStaleBlockers:
+      allowsRefreshStaleBlockers && parsed.values['--refresh-stale-blockers'] === true,
   };
 }
 
-export async function runShelve({ issueNumber, reason, removeOwner = false, cfg, deps = {} } = {}) {
+export async function runShelve({
+  issueNumber,
+  reason,
+  removeOwner = false,
+  refreshStaleBlockers = false,
+  cfg,
+  deps = {},
+} = {}) {
   const why = String(reason || '').trim();
   if (!why) return { status: 'reason-required' };
   if (!Number.isInteger(issueNumber) || issueNumber <= 0) {
@@ -46,7 +63,14 @@ export async function runShelve({ issueNumber, reason, removeOwner = false, cfg,
   if (!cfg?.repo || !cfg?.projectId) throw new Error('shelve: cfg is required');
   (deps.assertBound || assertBoundToIssue)(issueNumber);
   const runTransaction = deps.runTransaction || runShelveTransaction;
-  return runTransaction({ issueNumber, reason: why, removeOwner: Boolean(removeOwner), cfg, deps });
+  return runTransaction({
+    issueNumber,
+    reason: why,
+    removeOwner: Boolean(removeOwner),
+    refreshStaleBlockers: Boolean(refreshStaleBlockers),
+    cfg,
+    deps,
+  });
 }
 
 export async function verbShelveAs(displayVerb, rest, cfg, deps = {}) {
@@ -79,8 +103,9 @@ export async function verbShelveAs(displayVerb, rest, cfg, deps = {}) {
   }
 
   if (result.status === 'shelved') {
+    const migration = args.refreshStaleBlockers ? '; schema-1 stale-blocker migration' : '';
     process.stdout.write(
-      `${displayVerb}: #${args.issueNumber} ${result.from} → backlog; refinement history ${result.tx}\n`
+      `${displayVerb}: #${args.issueNumber} ${result.from} → backlog; refinement history ${result.tx}${migration}\n`
     );
     return;
   }

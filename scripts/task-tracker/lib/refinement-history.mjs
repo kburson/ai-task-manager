@@ -6,11 +6,13 @@
 
 import { createHash } from 'node:crypto';
 
+import { parseBlockedByStrict } from './blocked-marker.mjs';
 import { parseMarker, serializeMarker } from './marker-grammar.mjs';
 import { parseRefinementSnapshot } from './refinement-snapshot.mjs';
 
 export const REFINEMENT_HISTORY_SCHEMA = 'aitm.refinement-history/v1';
 export const REFINEMENT_HISTORY_MARKER_RE = /<!--\s*aitm-refinement-history\s+[^>]*?-->/g;
+export const LEGACY_BLOCKER_REFRESH_MIGRATION = 'legacy-blocker-refresh';
 const SHELVE_JOURNAL_MARKER_RE = /<!--\s*aitm-shelve-transaction\s+[^>]*?-->/g;
 const BODY_VERSION_MARKER_RE = /<!--\s*aitm-body-version(?::\s*\d+|\s+version="\d+")\s*-->/g;
 
@@ -63,6 +65,54 @@ function canonicalLabels(labels) {
   return [...new Set(labels.map((label) => String(label || '').trim()).filter(Boolean))].sort();
 }
 
+function migrationEvidence({ migration, liveBlockedBy } = {}) {
+  if (migration === undefined && liveBlockedBy === undefined) return {};
+  if (migration !== LEGACY_BLOCKER_REFRESH_MIGRATION) {
+    throw new Error(
+      'refinement-history: migration evidence has an unknown or missing discriminator'
+    );
+  }
+  if (!Array.isArray(liveBlockedBy) || liveBlockedBy.length === 0) {
+    throw new Error('refinement-history: migration evidence requires non-empty liveBlockedBy refs');
+  }
+  for (let index = 0; index < liveBlockedBy.length; index += 1) {
+    const ref = liveBlockedBy[index];
+    if (!Number.isSafeInteger(ref) || ref <= 0) {
+      throw new Error(
+        'refinement-history: migration evidence requires positive numeric liveBlockedBy refs'
+      );
+    }
+    if (index > 0 && liveBlockedBy[index - 1] >= ref) {
+      throw new Error(
+        'refinement-history: migration evidence requires canonical unique liveBlockedBy refs'
+      );
+    }
+  }
+  return { migration, liveBlockedBy: [...liveBlockedBy] };
+}
+
+function recordMigrationEvidence(record) {
+  const hasMigration = Object.hasOwn(record || {}, 'migration');
+  const hasLiveBlockedBy = Object.hasOwn(record || {}, 'liveBlockedBy');
+  if (!hasMigration && !hasLiveBlockedBy) return {};
+  return migrationEvidence(record);
+}
+
+function migrationEvidenceMatchesProtectedMarker(body, options) {
+  const evidence = migrationEvidence(options);
+  if (!evidence.migration) return evidence;
+  const protectedRefs = parseBlockedByStrict(body);
+  if (
+    protectedRefs.length !== evidence.liveBlockedBy.length ||
+    protectedRefs.some((ref, index) => ref !== evidence.liveBlockedBy[index])
+  ) {
+    throw new Error(
+      'refinement-history: migration liveBlockedBy refs do not match the protected blocker marker'
+    );
+  }
+  return evidence;
+}
+
 export function refinementBodyFingerprints(body) {
   const durableSectionFingerprint = (heading) =>
     sha256(
@@ -99,7 +149,16 @@ function refinementSourceBodyFingerprint(body) {
   return sha256(normalizedText(source));
 }
 
-function sourceEvidence({ title = '', body, fields, labels, previousOwner, sourceState } = {}) {
+function sourceEvidence({
+  title = '',
+  body,
+  fields,
+  labels,
+  previousOwner,
+  sourceState,
+  migration,
+  liveBlockedBy,
+} = {}) {
   const snapshot = parseRefinementSnapshot(body);
   if (!snapshot) throw new Error('refinement-history: current refinement snapshot is missing');
   const activeFields = {
@@ -125,6 +184,7 @@ function sourceEvidence({ title = '', body, fields, labels, previousOwner, sourc
     refinementSnapshotProvenance: snapshot.provenance,
     refinementSnapshotFields: snapshot.fields,
     sourceBodyFingerprint: refinementSourceBodyFingerprint(body),
+    ...migrationEvidenceMatchesProtectedMarker(body, { migration, liveBlockedBy }),
   };
 }
 
@@ -134,8 +194,19 @@ function sourceDigest(issueNumber, evidence) {
 
 export function refinementHistoryMatchesSource(record, source = {}) {
   try {
-    const evidence = sourceEvidence(source);
-    return record?.sourceDigest === sourceDigest(record?.issueNumber, evidence);
+    const migration = recordMigrationEvidence(record);
+    const evidence = sourceEvidence({
+      ...source,
+      migration: migration.migration,
+      liveBlockedBy: migration.migration ? source.liveBlockedBy : undefined,
+    });
+    const liveBlockersMatch =
+      !migration.migration ||
+      (migration.liveBlockedBy.length === evidence.liveBlockedBy.length &&
+        migration.liveBlockedBy.every((ref, index) => ref === evidence.liveBlockedBy[index]));
+    return (
+      liveBlockersMatch && record?.sourceDigest === sourceDigest(record?.issueNumber, evidence)
+    );
   } catch {
     return false;
   }
@@ -162,6 +233,8 @@ export function buildRefinementHistoryRecord({
   sourceState = null,
   baseSha,
   createdAt,
+  migration,
+  liveBlockedBy,
 } = {}) {
   const why = String(reason || '').trim();
   if (!tx || !Number.isInteger(Number(issueNumber)) || !why) {
@@ -181,6 +254,8 @@ export function buildRefinementHistoryRecord({
     labels,
     previousOwner,
     sourceState,
+    migration,
+    liveBlockedBy,
   });
   const record = {
     schema: REFINEMENT_HISTORY_SCHEMA,
@@ -196,6 +271,7 @@ export function buildRefinementHistoryRecord({
 }
 
 function serializeRecord(record) {
+  recordMigrationEvidence(record);
   if (recordDigest(record) !== record.digest) {
     throw new Error('refinement-history: record digest does not match payload');
   }
@@ -230,6 +306,7 @@ export function parseRefinementHistory(body) {
     ) {
       throw new Error('refinement-history: digest verification failed');
     }
+    recordMigrationEvidence(record);
     if (seen.has(record.tx))
       throw new Error(`refinement-history: duplicate transaction ${record.tx}`);
     seen.add(record.tx);

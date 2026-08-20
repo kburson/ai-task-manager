@@ -224,3 +224,74 @@ export function verifyRefinementSnapshot(body, { labels, allowPlanProjection = f
     return { ok: false, reason: error.message, snapshot };
   }
 }
+
+// Migration-only verifier for #1341. It intentionally leaves ordinary snapshot
+// verification unchanged: a later governed blocker must remain stale to every
+// ordinary caller. The `BLOCKED` label is excluded only here because its
+// governed addition is part of the same blocker evidence being refreshed.
+export function verifyLegacyRefinementSnapshotForBlockerRefresh(body, { labels } = {}) {
+  const snapshot = parseRefinementSnapshot(body);
+  let legacyCoreValid = false;
+  const refused = (reason, extra = {}) => ({
+    ok: false,
+    reason,
+    snapshot,
+    legacyCoreValid,
+    blockerOnlyMismatch: false,
+    ...extra,
+  });
+  if (!snapshot) return refused('missing or malformed refinement snapshot');
+  if (snapshot.schema !== LEGACY_REFINEMENT_SNAPSHOT_SCHEMA) {
+    return refused('legacy blocker refresh requires a schema-1 refinement snapshot');
+  }
+
+  try {
+    const historicalLabels = Array.isArray(labels)
+      ? labels.filter(
+          (label) =>
+            String(label || '')
+              .trim()
+              .toLowerCase() !== 'blocked'
+        )
+      : labels;
+    const inputs = legacyRefinementInputs(body, historicalLabels, {
+      durableProvenance: snapshot.provenance,
+    });
+    const snapshotFieldsMatch = REQUIRED_FIELDS.every(
+      (field) => snapshot.fields[field] === inputs.fields[field]
+    );
+    if (
+      inputs.provenance !== snapshot.provenance ||
+      digestInputs(inputs) !== snapshot.digest ||
+      !snapshotFieldsMatch
+    ) {
+      return refused('stale refinement snapshot');
+    }
+    legacyCoreValid = true;
+
+    const liveBlockers = parseBlockedByStrict(body);
+    const snapshotBlockers = snapshotBlockedByRefs(snapshot.fields.blockedBy);
+    const current = {
+      legacyCoreValid,
+      blockerOnlyMismatch: false,
+      liveBlockers,
+      snapshotBlockers,
+    };
+    if (liveBlockers.length === 0) {
+      return refused('legacy blocker refresh requires a non-empty live blocker set', current);
+    }
+    if (snapshotBlockers.length !== 0) {
+      return refused('legacy blocker refresh requires an unblocked schema-1 snapshot', current);
+    }
+    return {
+      ok: true,
+      snapshot,
+      legacyCoreValid,
+      blockerOnlyMismatch: true,
+      liveBlockers,
+      snapshotBlockers,
+    };
+  } catch (error) {
+    return refused(error.message);
+  }
+}

@@ -106,6 +106,9 @@ test('Shelve policy is legal only from Refine or Ready for Planning', () => {
 test('immutable refinement history captures required pre-invalidation provenance', () => {
   const record = historyRecord();
   assert.equal(record.schema, 'aitm.refinement-history/v1');
+  assert.equal(Object.hasOwn(record, 'migration'), false);
+  assert.equal(Object.hasOwn(record, 'liveBlockedBy'), false);
+  assert.equal(record.digest, '4c890f2dff28dab5df84e5a27bb29dbdabf502e897e6c7d0be078fa6343c5617');
   assert.deepEqual(record.fields, {
     priority: 'P1',
     size: 'M',

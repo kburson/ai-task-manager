@@ -59,18 +59,106 @@ test('Shelve exports the Backlog target and Refine/R4P source boundary', () => {
   assert.deepEqual([...LEGAL_FROM], ['refine', 'ready-for-plan']);
 });
 
-test('strict Shelve argv accepts explicit optional owner removal', () => {
+test('strict Shelve argv accepts one explicit stale-blocker refresh flag', () => {
   assert.deepEqual(parseArgs(['#1215', '--reason', 'stale refinement']), {
     issueNumber: 1215,
     reason: 'stale refinement',
     removeOwner: false,
+    refreshStaleBlockers: false,
   });
   assert.deepEqual(parseArgs(['1215', '--reason=stale refinement', '--remove-owner']), {
     issueNumber: 1215,
     reason: 'stale refinement',
     removeOwner: true,
+    refreshStaleBlockers: false,
   });
-  assert.throws(() => parseArgs(['1215', '--unexpected']), /unrecognized argument/);
+  assert.deepEqual(
+    parseArgs(['1215', '--reason', 'stale refinement', '--refresh-stale-blockers']),
+    {
+      issueNumber: 1215,
+      reason: 'stale refinement',
+      removeOwner: false,
+      refreshStaleBlockers: true,
+    }
+  );
+});
+
+test('strict Shelve argv refuses a duplicate stale-blocker refresh flag', () => {
+  assert.throws(
+    () =>
+      parseArgs([
+        '1215',
+        '--reason',
+        'stale refinement',
+        '--refresh-stale-blockers',
+        '--refresh-stale-blockers',
+      ]),
+    /duplicate flag: --refresh-stale-blockers/
+  );
+});
+
+test('runShelve preserves ordinary transaction intent when no migration flag is supplied', async () => {
+  const calls = [];
+  const result = await runShelve({
+    issueNumber: 1215,
+    reason: '  stale refinement  ',
+    removeOwner: true,
+    cfg: CFG,
+    deps: {
+      assertBound: (issue) => calls.push(['bound', issue]),
+      runTransaction: async (args) => {
+        calls.push(['transaction', args]);
+        return { status: 'shelved', from: 'refine', to: 'backlog' };
+      },
+    },
+  });
+  assert.equal(result.status, 'shelved');
+  assert.deepEqual(calls[0], ['bound', 1215]);
+  assert.equal(calls[1][1].issueNumber, 1215);
+  assert.equal(calls[1][1].reason, 'stale refinement');
+  assert.equal(calls[1][1].removeOwner, true);
+  assert.equal(calls[1][1].refreshStaleBlockers, false);
+  assert.equal(calls[1][1].cfg, CFG);
+  assert.ok(calls[1][1].deps);
+});
+
+test('runShelve threads explicit stale-blocker migration intent into the transaction', async () => {
+  let received;
+  const result = await runShelve({
+    issueNumber: 1215,
+    reason: 'stale refinement',
+    refreshStaleBlockers: true,
+    cfg: CFG,
+    deps: {
+      assertBound: () => {},
+      runTransaction: async (args) => {
+        received = args;
+        return { status: 'shelved', from: 'ready-for-plan', to: 'backlog' };
+      },
+    },
+  });
+  assert.equal(result.status, 'shelved');
+  assert.equal(received.refreshStaleBlockers, true);
+});
+
+test('Shelve reports the explicit stale-blocker migration in its success audit output', async () => {
+  const result = await captureVerb(() =>
+    verbShelve(['1215', '--reason', 'stale refinement', '--refresh-stale-blockers'], CFG, {
+      withIssueLock: async (_options, fn) => fn(),
+      assertBound: () => {},
+      runTransaction: async (args) => {
+        assert.equal(args.refreshStaleBlockers, true);
+        return { status: 'shelved', from: 'ready-for-plan', to: 'backlog', tx: 'tx-1215' };
+      },
+    })
+  );
+  assert.match(result.stdout, /#1215 ready-for-plan → backlog/);
+  assert.match(result.stdout, /schema-1 stale-blocker migration/i);
+  assert.equal(result.exitCode, undefined);
+});
+
+test('strict Shelve argv retains deterministic unknown-argument refusal', () => {
+  assert.throws(() => parseArgs(['1215', '--unexpected']), /unrecognized argument: --unexpected/);
   assert.throws(() => parseArgs(['1215', '1216', '--reason', 'x']), /unexpected positional/);
 });
 
@@ -91,30 +179,6 @@ test('runShelve refuses blank reasons before binding, network, or writes', async
   });
   assert.deepEqual(result, { status: 'reason-required' });
   assert.equal(called, false);
-});
-
-test('runShelve preserves one transaction authority and threads exact intent', async () => {
-  const calls = [];
-  const result = await runShelve({
-    issueNumber: 1215,
-    reason: '  stale refinement  ',
-    removeOwner: true,
-    cfg: CFG,
-    deps: {
-      assertBound: (issue) => calls.push(['bound', issue]),
-      runTransaction: async (args) => {
-        calls.push(['transaction', args]);
-        return { status: 'shelved', from: 'refine', to: 'backlog' };
-      },
-    },
-  });
-  assert.equal(result.status, 'shelved');
-  assert.deepEqual(calls[0], ['bound', 1215]);
-  assert.equal(calls[1][1].issueNumber, 1215);
-  assert.equal(calls[1][1].reason, 'stale refinement');
-  assert.equal(calls[1][1].removeOwner, true);
-  assert.equal(calls[1][1].cfg, CFG);
-  assert.ok(calls[1][1].deps);
 });
 
 test('park is only a compatibility alias for the same Shelve transaction', async () => {

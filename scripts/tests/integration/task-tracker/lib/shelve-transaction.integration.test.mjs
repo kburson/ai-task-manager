@@ -1,12 +1,13 @@
 // @story #1215
-import test from 'node:test';
 import assert from 'node:assert/strict';
+import test from 'node:test';
 
 import { writeLastKnownState } from '../../../../task-tracker/gh-timing-comment.mjs';
-import { parseBodyVersion, stampBodyVersion } from '../../../../task-tracker/lib/body-version.mjs';
-import { stampRefinementSnapshot } from '../../../../task-tracker/lib/refinement-snapshot.mjs';
+import {
+  stampRefinementSnapshot,
+  verifyLegacyRefinementSnapshotForBlockerRefresh,
+} from '../../../../task-tracker/lib/refinement-snapshot.mjs';
 import { computeStageDurations } from '../../../../task-tracker/timing-rollup.mjs';
-import { stripBodyVersion } from '../../../../task-tracker/lib/versioned-issue-write.mjs';
 import {
   SHELVE_PHASES,
   activeFieldsAfterShelve,
@@ -14,173 +15,7 @@ import {
   runShelveTransaction,
 } from '../../../../task-tracker/lib/shelve-transaction.mjs';
 import { parseRefinementHistory } from '../../../../task-tracker/lib/refinement-history.mjs';
-
-const CFG = {
-  repo: 'owner/repo',
-  projectId: 'PVT_target',
-  fieldIds: {
-    priority: 'FIELD_priority',
-    size: 'FIELD_size',
-    estimate: 'FIELD_estimate',
-    rank: 'FIELD_rank',
-  },
-};
-const FIELD_DEFS = [
-  { key: 'priority', name: 'Priority', type: 'single_select' },
-  { key: 'size', name: 'Size', type: 'single_select' },
-  { key: 'estimate', name: 'Estimate', type: 'number' },
-  { key: 'rank', name: 'Rank', type: 'number' },
-  { key: 'blockedBy', name: 'Blocked By', type: 'text' },
-];
-const LABELS = ['kind:code', 'area:backlog'];
-
-function initialBody(state = 'refine') {
-  let body = writeLastKnownState(
-    `<!-- aitm-refinement-rationale: {"size":"M","estimate":"4","priority":"P1","rank":2,"rationale":"current"} -->
-<!-- aitm-refine-complete ts="2026-08-12T00:00:00.000Z" -->
-<!-- aitm-estimation-forecast-ready schema="2" id="forecast-1" -->
-<!-- aitm-deep-dive-complete ts="2026-08-12T00:01:00.000Z" -->
-
-## User Story
-
-As a steward I want shelving to be recoverable.
-
-## Scope
-
-This integration fixture has enough durable scope to build a current snapshot.
-
-## Plan Metadata
-
-- **Depends On**: #1213
-- **Execution Order**: 5
-
-## Acceptance Criteria
-
-- [x] Shelve safely <!-- aitm-verified vc-list="vc:6" sha="abc1234" ts="2026-08-12T00:02:00.000Z" exit="0" -->
-
-<!-- aitm-fields: {"schema":1,"values":{"priority":"P1","size":"M","estimate":4,"rank":2,"blockedBy":"#1213"}} -->
-`,
-    state,
-    '2026-08-12T00:00:00.000Z'
-  );
-  body = body.replace(
-    /^(<!--\s*aitm-last-known-state[^>]*?-->)/,
-    '$1\n<!-- aitm-body-version version="7" -->'
-  );
-  if (state === 'ready-for-plan') {
-    body = body.replace(
-      '<!-- aitm-body-version version="7" -->',
-      `<!-- aitm-body-version version="7" -->
-<!-- aitm-entered-refine ts="2026-08-12T00:00:00.000Z" -->
-<!-- aitm-entered-ready-for-plan ts="2026-08-12T01:00:00.000Z" -->
-<!-- aitm-entered-plan ts="2026-08-12T02:00:00.000Z" -->
-<!-- aitm-entered-ready-for-plan-2 ts="2026-08-12T03:00:00.000Z" -->
-<!-- aitm-stage-rollup: {"schema":2,"perStageSec":{"backlog":0,"refine":3600,"ready-for-plan":3600,"plan":3600,"develop":0,"test":0,"review":0,"done":0},"totalSec":10800,"visits":[{"stage":"refine","visit":1,"durationSec":3600},{"stage":"ready-for-plan","visit":1,"durationSec":3600},{"stage":"plan","visit":1,"durationSec":3600},{"stage":"ready-for-plan","visit":2,"durationSec":0}]} -->`
-    );
-  }
-  return stampRefinementSnapshot(body, {
-    labels: LABELS,
-    ts: '2026-08-12T00:00:00.000Z',
-  });
-}
-
-function harness({
-  state = 'refine',
-  issueState = 'OPEN',
-  assignees = ['alice'],
-  failOnce = null,
-  failAfterPhase = null,
-  failAfterMutation = null,
-  failAfterClearFields = false,
-  failAfterMove = false,
-  failAfterOwner = false,
-  onFetch = null,
-  beforeFirstMutation = null,
-} = {}) {
-  const store = {
-    issueState,
-    title: 'Shelve story',
-    body: initialBody(state),
-    labels: [...LABELS],
-    state,
-    fields: { priority: 'P1', size: 'M', estimate: 4, rank: 2 },
-    assignees: [...assignees],
-  };
-  const calls = [];
-  let failure = failOnce;
-  let fetchCount = 0;
-  let mutationCount = 0;
-
-  function maybeFail(name) {
-    if (failure === name) {
-      failure = null;
-      throw new Error(`injected:${name}`);
-    }
-  }
-
-  const deps = {
-    assertIssueLockHeld: () => {},
-    now: () => '2026-08-12T00:05:00.000Z',
-    makeTx: () => 'tx-1215',
-    getBaseSha: async () => 'c02bdd3e00000000000000000000000000000000',
-    loadProjectFieldDefs: () => FIELD_DEFS,
-    resolveLogin: async () => 'alice',
-    fetchSnapshot: async () => {
-      fetchCount += 1;
-      await onFetch?.({ store, fetchCount });
-      return structuredClone(store);
-    },
-    mutateBody: async ({ mutate }) => {
-      maybeFail('mutate-body');
-      mutationCount += 1;
-      if (mutationCount === 1) await beforeFirstMutation?.({ store });
-      const nextVersion = parseBodyVersion(store.body) + 1;
-      store.body = stampBodyVersion(await mutate(stripBodyVersion(store.body)), nextVersion);
-      const phase = parseShelveJournal(store.body)?.phase || 'none';
-      calls.push(['body', phase]);
-      if (failAfterMutation === mutationCount) {
-        failAfterMutation = null;
-        throw new Error(`transport failed after mutation ${mutationCount} landed`);
-      }
-      if (failAfterPhase === phase) {
-        failAfterPhase = null;
-        throw new Error(`injected:after-${phase}`);
-      }
-      return { body: store.body };
-    },
-    clearBoardFields: async () => {
-      maybeFail('clear-fields');
-      store.fields = { priority: null, size: null, estimate: null, rank: null };
-      calls.push(['fields-cleared']);
-      if (failAfterClearFields) {
-        failAfterClearFields = false;
-        throw new Error('transport failed after board fields landed');
-      }
-    },
-    runMoveState: async () => {
-      maybeFail('move-status');
-      store.state = 'backlog';
-      store.body = writeLastKnownState(store.body, 'backlog', '2026-08-12T00:06:00.000Z');
-      calls.push(['status-backlog']);
-      if (failAfterMove) {
-        failAfterMove = false;
-        throw new Error('transport failed after Status landed');
-      }
-      return 0;
-    },
-    removeOwner: async () => {
-      maybeFail('remove-owner');
-      store.assignees = [];
-      calls.push(['owner-removed']);
-      if (failAfterOwner) {
-        failAfterOwner = false;
-        throw new Error('transport failed after owner removal landed');
-      }
-      return { status: 'unassigned' };
-    },
-  };
-  return { store, calls, deps };
-}
+import { CFG, LABELS, harness } from './shelve-transaction.fixture.mjs';
 
 function restoreRefinementCycle(store) {
   store.state = 'refine';
@@ -485,7 +320,9 @@ test('a partial failure remains journaled and an identical retry resumes without
   });
   assert.equal(first.status, 'recovery-pending');
   assert.equal(first.phase, 'fields-cleared');
-  assert.equal(parseRefinementHistory(h.store.body).length, 1);
+  const [partialRecord] = parseRefinementHistory(h.store.body);
+  assert.equal(partialRecord.migration, undefined);
+  const partialDigest = partialRecord.digest;
 
   const second = await runShelveTransaction({
     issueNumber: 1215,
@@ -495,7 +332,8 @@ test('a partial failure remains journaled and an identical retry resumes without
     deps: h.deps,
   });
   assert.equal(second.status, 'shelved', JSON.stringify(second));
-  assert.equal(parseRefinementHistory(h.store.body).length, 1);
+  const [replayedRecord] = parseRefinementHistory(h.store.body);
+  assert.equal(replayedRecord.digest, partialDigest);
 });
 
 test('a landed active-evidence write with a lost response resumes from its exact durable transform', async () => {
@@ -635,6 +473,165 @@ test('a retry with different reason or remove-owner intent refuses without furth
   });
   assert.equal(differentOwnerIntent.status, 'retry-intent-refused');
   assert.equal(h.calls.length, beforeCalls);
+});
+
+test('Shelve refreshes the exact legacy blocker-only snapshot and retains every blocker carrier', async () => {
+  const h = harness({ state: 'ready-for-plan', legacyBlockers: [1212, 1213] });
+  const verified = verifyLegacyRefinementSnapshotForBlockerRefresh(h.store.body, {
+    labels: h.store.labels,
+  });
+  assert.equal(verified.ok, true, verified.reason);
+
+  const result = await runShelveTransaction({
+    issueNumber: 1215,
+    reason: 'Refresh only the legacy blocker evidence',
+    refreshStaleBlockers: true,
+    cfg: CFG,
+    deps: h.deps,
+  });
+
+  assert.equal(result.status, 'shelved', JSON.stringify(result));
+  const [record] = parseRefinementHistory(h.store.body);
+  assert.equal(record.migration, 'legacy-blocker-refresh');
+  assert.deepEqual(record.liveBlockedBy, [1212, 1213]);
+  assert.match(h.store.body, /aitm-blocked-by refs="#1212,#1213"/);
+  assert.deepEqual(h.store.labels, ['BLOCKED', ...LABELS]);
+  assert.equal(h.store.blockedBy, '#1212, #1213');
+  assert.equal(parseShelveJournal(h.store.body).refreshStaleBlockers, true);
+});
+
+test('legacy blocker refresh refuses a Refine source before history or mutation', async () => {
+  const h = harness({ state: 'refine', legacyBlockers: [1212] });
+  h.store.body = writeLastKnownState(h.store.body, 'refine', '2026-08-12T00:00:00.000Z');
+
+  const result = await runShelveTransaction({
+    issueNumber: 1215,
+    reason: 'Refresh only the legacy blocker evidence',
+    refreshStaleBlockers: true,
+    cfg: CFG,
+    deps: h.deps,
+  });
+
+  assert.deepEqual(result, { status: 'migration-source-refused', from: 'refine' });
+  assert.deepEqual(h.calls, []);
+  assert.equal(parseRefinementHistory(h.store.body).length, 0);
+});
+
+test('legacy blocker refresh refuses a Refine source before resuming its journal', async () => {
+  const h = harness({
+    state: 'ready-for-plan',
+    legacyBlockers: [1212],
+    failOnce: 'move-status',
+  });
+  const migrationIntent = {
+    issueNumber: 1215,
+    reason: 'Refresh only the legacy blocker evidence',
+    refreshStaleBlockers: true,
+    cfg: CFG,
+    deps: h.deps,
+  };
+  const first = await runShelveTransaction(migrationIntent);
+  assert.equal(first.status, 'recovery-pending', JSON.stringify(first));
+  const callsBeforeRetry = h.calls.length;
+  h.store.state = 'refine';
+  h.store.body = writeLastKnownState(h.store.body, 'refine', '2026-08-12T00:00:00.000Z');
+
+  const retry = await runShelveTransaction(migrationIntent);
+
+  assert.deepEqual(retry, { status: 'migration-source-refused', from: 'refine' });
+  assert.equal(h.calls.length, callsBeforeRetry);
+});
+
+test('legacy blocker refresh resumes a landed Backlog status phase after its journal response is lost', async () => {
+  const h = harness({
+    state: 'ready-for-plan',
+    legacyBlockers: [1212],
+    failAfterPhase: 'status-backlog',
+  });
+  const migrationIntent = {
+    issueNumber: 1215,
+    reason: 'Refresh only the legacy blocker evidence',
+    refreshStaleBlockers: true,
+    cfg: CFG,
+    deps: h.deps,
+  };
+
+  const first = await runShelveTransaction(migrationIntent);
+  assert.deepEqual(
+    { status: first.status, phase: first.phase },
+    { status: 'recovery-pending', phase: 'fields-cleared' }
+  );
+  assert.equal(h.store.state, 'backlog');
+  assert.equal(parseShelveJournal(h.store.body).phase, 'status-backlog');
+
+  const retry = await runShelveTransaction(migrationIntent);
+
+  assert.equal(retry.status, 'shelved', JSON.stringify(retry));
+  assert.equal(parseShelveJournal(h.store.body).phase, 'verified');
+});
+
+test('legacy blocker refresh refuses every divergent carrier before it records history', async () => {
+  for (const options of [
+    { labels: [...LABELS] },
+    { projectBlockedBy: '#1212' },
+    { projectBlockedBy: '#1213, #1212' },
+    { projectBlockedBy: '#1212,#1213' },
+  ]) {
+    const h = harness({ state: 'ready-for-plan', legacyBlockers: [1212, 1213], ...options });
+    const result = await runShelveTransaction({
+      issueNumber: 1215,
+      reason: 'Refresh only the legacy blocker evidence',
+      refreshStaleBlockers: true,
+      cfg: CFG,
+      deps: h.deps,
+    });
+    assert.equal(result.status, 'migration-carriers-refused', JSON.stringify(result));
+    assert.deepEqual(h.calls, []);
+    assert.equal(parseRefinementHistory(h.store.body).length, 0);
+  }
+});
+
+test('legacy blocker refresh refuses a lowercase noncanonical BLOCKED label before history', async () => {
+  const h = harness({
+    state: 'ready-for-plan',
+    legacyBlockers: [1212],
+    labels: ['blocked', ...LABELS],
+  });
+
+  const result = await runShelveTransaction({
+    issueNumber: 1215,
+    reason: 'Refresh only the legacy blocker evidence',
+    refreshStaleBlockers: true,
+    cfg: CFG,
+    deps: h.deps,
+  });
+
+  assert.equal(result.status, 'migration-carriers-refused', JSON.stringify(result));
+  assert.deepEqual(h.calls, []);
+  assert.equal(parseRefinementHistory(h.store.body).length, 0);
+});
+
+test('Shelve refuses a retry that changes the legacy blocker refresh intent', async () => {
+  const h = harness({
+    state: 'ready-for-plan',
+    legacyBlockers: [1212],
+    failOnce: 'move-status',
+  });
+  const migrationIntent = {
+    issueNumber: 1215,
+    reason: 'Refresh only the legacy blocker evidence',
+    refreshStaleBlockers: true,
+    cfg: CFG,
+    deps: h.deps,
+  };
+  const first = await runShelveTransaction(migrationIntent);
+  assert.equal(first.status, 'recovery-pending', JSON.stringify(first));
+  const beforeRetryCalls = h.calls.length;
+
+  const retry = await runShelveTransaction({ ...migrationIntent, refreshStaleBlockers: false });
+
+  assert.equal(retry.status, 'retry-intent-refused');
+  assert.equal(h.calls.length, beforeRetryCalls);
 });
 
 test('unreadable or missing configured-project state fails closed before mutation', async () => {

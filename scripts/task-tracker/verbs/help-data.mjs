@@ -174,16 +174,23 @@ export const VERB_REFERENCE = {
     topic: 'board',
     summary:
       'Return Refine or Ready for Planning work to Backlog with immutable refinement history.',
-    usage: '/task shelve <N> --reason "<text>" [--remove-owner]',
+    usage: '/task shelve <N> --reason "<text>" [--remove-owner] [--refresh-stale-blockers]',
     flags: [
       { flag: '--reason <text>', desc: 'required shelving provenance' },
       { flag: '--remove-owner', desc: 'also remove the verified sole owner' },
+      {
+        flag: '--refresh-stale-blockers',
+        desc: 'authorize only the schema-1 blocker migration; not a general stale-snapshot repair',
+      },
     ],
     exitCodes: [
       { code: 2, meaning: 'missing reason or malformed issue number' },
       { code: 4, meaning: 'source, evidence, or exact read-back refused' },
     ],
-    examples: ['/task shelve 1215 --reason "refinement is no longer current"'],
+    examples: [
+      '/task shelve 1215 --reason "refinement is no longer current"',
+      '/task shelve 1215 --reason "blocker added after schema-1 refinement" --refresh-stale-blockers',
+    ],
   },
   'cancel-plan': {
     topic: 'board',

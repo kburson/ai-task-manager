@@ -125,6 +125,18 @@ test('(e) per-verb help names the requested verb and shows exit codes', () => {
   }
 });
 
+test('Shelve help documents the narrow schema-1 stale-blocker migration', () => {
+  const out = capture(() => verbHelp('shelve'));
+  assert.match(out, /--refresh-stale-blockers/);
+  assert.match(out, /schema-1 blocker migration/i);
+  assert.match(out, /not a general stale-snapshot repair/i);
+});
+
+test('Park help omits the Shelve-only stale-blocker migration flag', () => {
+  const out = capture(() => verbHelp('park'));
+  assert.doesNotMatch(out, /refresh-stale-blockers/);
+});
+
 test('(f) the aitm wrapper routes every user-facing help form to verbHelp', () => {
   // `aitm help` / bare `aitm` → orchestrator index PLUS the /task verb
   // reference (topics + state map + gate model) appended.
