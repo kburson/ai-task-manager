@@ -47,9 +47,16 @@ export async function buildCloseGatesDeps({ stateArg, pexec, projectDir } = {}) 
 // the authenticated R4P → Backlog demotion may omit the source state's
 // forward-admission exit guards; target entry guards remain authoritative.
 // Every missing or different signal preserves the complete pipeline.
-export function deriveGuardPhasePolicy({ verbContext, demoteFlag, fromState, toState } = {}) {
+export function deriveGuardPhasePolicy({
+  verbContext,
+  shelveBackwardGuardAuthorized,
+  demoteFlag,
+  fromState,
+  toState,
+} = {}) {
   const isShelveR4pDemotion =
     verbContext === 'shelve' &&
+    shelveBackwardGuardAuthorized === true &&
     demoteFlag === true &&
     fromState === 'ready-for-plan' &&
     toState === 'backlog';
@@ -66,6 +73,7 @@ export async function runGuardExecution(ctx) {
     stateArg,
     resolvedFromState,
     verbContext,
+    shelveBackwardGuardAuthorized,
     demoteFlag,
     plan,
     forceFlag,
@@ -178,6 +186,7 @@ export async function runGuardExecution(ctx) {
     };
     const guardPhasePolicy = deriveGuardPhasePolicy({
       verbContext,
+      shelveBackwardGuardAuthorized,
       demoteFlag,
       fromState: resolvedFromState,
       toState: stateArg,

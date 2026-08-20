@@ -68,6 +68,12 @@ import { commitPlanExitOwnershipClaim } from '../task-tracker/lib/plan-exit-owne
 const pexec = promisify(execFile);
 const __dir = path.dirname(fileURLToPath(import.meta.url));
 
+// Opaque in-process authority for the authenticated Shelve transaction. A
+// caller-controlled environment value cannot reproduce Symbol identity; only
+// trusted code that deliberately imports this capability can request the
+// narrow R4P → Backlog source-exit exception.
+export const SHELVE_BACKWARD_GUARD_CAPABILITY = Symbol('aitm.shelve-backward-guard');
+
 // #755 — the whole host body lives here and RETURNS a numeric exit code (0 =
 // success). Inputs default to the live process so the CLI shim and the spawn
 // tests behave exactly as before; verbs override `argv`/`env` to drive an
@@ -81,6 +87,7 @@ export async function runMoveStateHost({
   tailProfile = 'task-owner',
   reviewAuthority = null,
   lifecycleEvidence = null,
+  shelveBackwardGuardCapability = null,
 } = {}) {
   const { name: resolvedTailProfile } = resolveTailProfile(tailProfile);
   reviewAuthority = resolveReviewAuthority(reviewAuthority);
@@ -316,6 +323,8 @@ export async function runMoveStateHost({
     stateArg,
     resolvedFromState,
     verbContext: AITM_VERB_CONTEXT,
+    shelveBackwardGuardAuthorized:
+      shelveBackwardGuardCapability === SHELVE_BACKWARD_GUARD_CAPABILITY,
     demoteFlag,
     demoteReason,
     outOfBandReason,

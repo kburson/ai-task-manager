@@ -5,6 +5,8 @@ import test from 'node:test';
 import { blockedByGuard } from '../../../../task-tracker/lib/blocked-by-guard.mjs';
 import { childCannotLeadEpicExitGuard } from '../../../../task-tracker/lib/child-cannot-lead-epic-exit-guard.mjs';
 import * as guardExecution from '../../../../task-tracker/lib/move-state/guard-execution.mjs';
+import * as shelveTransaction from '../../../../task-tracker/lib/shelve-transaction.mjs';
+import * as moveStateHost from '../../../../gh/move-state.mjs';
 
 async function freshRegistry() {
   return import(`../../../../task-tracker/lib/guard-registry.mjs?t=${Date.now()}-${Math.random()}`);
@@ -108,6 +110,7 @@ test('Shelve backward guard policy requires the exact authenticated transition s
       name: 'exact Shelve R4P demotion to Backlog omits only source exit guards',
       input: {
         verbContext: 'shelve',
+        shelveBackwardGuardAuthorized: true,
         demoteFlag: true,
         fromState: 'ready-for-plan',
         toState: 'backlog',
@@ -115,8 +118,19 @@ test('Shelve backward guard policy requires the exact authenticated transition s
       expected: { includeExitGuards: false, includeEntryGuards: true },
     },
     {
+      name: 'caller-controlled Shelve context without in-process authority retains the full pipeline',
+      input: {
+        verbContext: 'shelve',
+        demoteFlag: true,
+        fromState: 'ready-for-plan',
+        toState: 'backlog',
+      },
+      expected: { includeExitGuards: true, includeEntryGuards: true },
+    },
+    {
       name: 'missing Shelve context retains the full pipeline',
       input: {
+        shelveBackwardGuardAuthorized: true,
         demoteFlag: true,
         fromState: 'ready-for-plan',
         toState: 'backlog',
@@ -127,6 +141,7 @@ test('Shelve backward guard policy requires the exact authenticated transition s
       name: 'different verb context retains the full pipeline',
       input: {
         verbContext: 'demote',
+        shelveBackwardGuardAuthorized: true,
         demoteFlag: true,
         fromState: 'ready-for-plan',
         toState: 'backlog',
@@ -137,6 +152,7 @@ test('Shelve backward guard policy requires the exact authenticated transition s
       name: 'missing demote flag retains the full pipeline',
       input: {
         verbContext: 'shelve',
+        shelveBackwardGuardAuthorized: true,
         demoteFlag: false,
         fromState: 'ready-for-plan',
         toState: 'backlog',
@@ -147,6 +163,7 @@ test('Shelve backward guard policy requires the exact authenticated transition s
       name: 'different source retains the full pipeline',
       input: {
         verbContext: 'shelve',
+        shelveBackwardGuardAuthorized: true,
         demoteFlag: true,
         fromState: 'refine',
         toState: 'backlog',
@@ -157,6 +174,7 @@ test('Shelve backward guard policy requires the exact authenticated transition s
       name: 'different target retains the full pipeline',
       input: {
         verbContext: 'shelve',
+        shelveBackwardGuardAuthorized: true,
         demoteFlag: true,
         fromState: 'ready-for-plan',
         toState: 'plan',
@@ -195,6 +213,7 @@ test('normal forward R4P to Plan still refuses open blockers and parent sequenci
     },
     deriveGuardPhasePolicy({
       verbContext: 'promote',
+      shelveBackwardGuardAuthorized: false,
       demoteFlag: false,
       fromState: 'ready-for-plan',
       toState: 'plan',
@@ -208,4 +227,48 @@ test('normal forward R4P to Plan still refuses open blockers and parent sequenci
   );
   assert.match(result.refusals[0].reason, /blockers are open: #1334/);
   assert.match(result.refusals[1].reason, /parent #1263 not admitted to plan/);
+});
+
+test('caller-controlled Shelve environment cannot omit R4P exits without in-process authority', async () => {
+  const { registerGuard, runGuards } = await freshRegistry();
+  registerGuard('ready-for-plan', 'exit', blockedByGuard);
+
+  const result = await runGuards(
+    'ready-for-plan',
+    'backlog',
+    openBlockerContext(),
+    guardExecution.deriveGuardPhasePolicy({
+      verbContext: 'shelve',
+      demoteFlag: true,
+      fromState: 'ready-for-plan',
+      toState: 'backlog',
+    })
+  );
+
+  assert.equal(result.ok, false);
+  assert.deepEqual(
+    result.refusals.map(({ id }) => id),
+    ['blocked-by-not-done']
+  );
+});
+
+test('default Shelve mover supplies the opaque in-process guard authority', async () => {
+  const capability = moveStateHost.SHELVE_BACKWARD_GUARD_CAPABILITY;
+  assert.equal(typeof capability, 'symbol', 'move-state must expose an opaque capability token');
+
+  let seen = null;
+  const exit = await shelveTransaction.defaultRunMoveState(
+    { issueNumber: 1335, reason: 'refresh stale blockers' },
+    {
+      host: async (options) => {
+        seen = options;
+        return 0;
+      },
+    }
+  );
+
+  assert.equal(exit, 0);
+  assert.equal(seen.shelveBackwardGuardCapability, capability);
+  assert.equal(seen.env.AITM_VERB_CONTEXT, 'shelve');
+  assert.ok(seen.argv.includes('--demote'));
 });
