@@ -27,17 +27,17 @@ the source of truth if this list ever drifts out of sync).
 2. [The Backlog Governance Postulate](02-the-backlog-governance-postulate.md) — _The Rise Of Technical Product Operations_
 3. [The Vibe Coding Deficiency](03-the-vibe-coding-deficiency.md) — _The Vibe Coding Hangover_
 4. [The Spec-Driven Insufficiency](04-the-spec-driven-insufficiency.md) — _Spec-Driven Development Is Necessary But Not Sufficient_
-5. [The Product Owner Escalation](05-the-product-owner-escalation.md) — _The Rise Of The Technical Product Owner_
-6. [The Backlog Control-Plane Conjecture](06-the-backlog-control-plane-conjecture.md) — _The Backlog Becomes The Control Plane_
-7. [The Just-In-Time Planning Paradox](07-the-just-in-time-planning-paradox.md) — _The Just-In-Time Planner_
-8. [The Context Durability Corollary](08-the-context-durability-corollary.md) — _Context Durability Is A Feature_
-9. [The Evidence-Over-Trust Theorem](09-the-evidence-over-trust-theorem.md) — _Evidence Beats Trust_
-10. [The Adapter Convergence](10-the-adapter-convergence.md) — _The Adapter Future_
-11. [The Agentic Concurrency Deficiency](11-the-agentic-concurrency-deficiency.md) — _Agentic Concurrency Isn't Free_
-12. [The XP Survival Anomaly](12-the-xp-survival-anomaly.md) — _XP's Practices Survived. Their Reasons Did Not._
-13. [The Diff Displacement](13-the-diff-displacement.md) — _The Diff Isn't Where Your Judgment Lives Anymore_ (working title)
-14. [The Second Reviewer Corollary](14-the-second-reviewer-corollary.md) — _It's All About Perspective_ (working title)
-15. The Cross-Model Mutex Reverberation — _Two PhDs and a Mutex_ (working title) — cross-model co-review token economics and evidence; **deferred**, see [narrative arc](xp-agentic-delivery-narrative-arc.md)
+5. [Easy Come, Easy Go](05-easy-come-easy-go.md) — _Regeneration Is Cheap. Hardening Isn't. Guess Which One Gets Skipped._ (working title, series placement provisional; see [design doc](../superpowers/specs/2026-08-18-easy-come-easy-go-article-design.md))
+6. [The Product Owner Escalation](06-the-product-owner-escalation.md) — _The Rise Of The Technical Product Owner_
+7. [The Backlog Control-Plane Conjecture](07-the-backlog-control-plane-conjecture.md) — _The Backlog Becomes The Control Plane_
+8. [The Just-In-Time Planning Paradox](08-the-just-in-time-planning-paradox.md) — _The Just-In-Time Planner_
+9. [The Context Durability Corollary](09-the-context-durability-corollary.md) — _Context Durability Is A Feature_
+10. [The Evidence-Over-Trust Theorem](10-the-evidence-over-trust-theorem.md) — _Evidence Beats Trust_
+11. [The Adapter Convergence](11-the-adapter-convergence.md) — _The Adapter Future_
+12. [The Agentic Concurrency Deficiency](12-the-agentic-concurrency-deficiency.md) — _Agentic Concurrency Isn't Free — And "50 Parallel Agents" Is Hyperbole_
+13. [The XP Survival Anomaly](13-the-xp-survival-anomaly.md) — _XP's Practices Survived. Their Reasons Did Not._
+14. [The Diff Displacement](14-the-diff-displacement.md) — _The Diff Isn't Where Your Judgment Lives Anymore_
+15. [The Second Reviewer Corollary](15-the-second-reviewer-corollary.md) — _It's All About Perspective_
 
 ## Header Images
 

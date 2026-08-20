@@ -2,7 +2,7 @@
 
 <!-- markdownlint-disable MD034 -->
 
-How to take the nine finished articles in this folder from Markdown source to nine published LinkedIn long-form Articles, cross-linked, with working cover images and rendered diagrams.
+How to take the fifteen finished articles in this folder from Markdown source to fifteen published LinkedIn long-form Articles, cross-linked, with working cover images and rendered diagrams.
 
 ## Why This Guide Exists
 
@@ -136,7 +136,7 @@ The publisher needs no special handling for any of this: `renderInline` emits an
 
 ## Per-Article Publish Checklist
 
-Run `npm run publish:articles` once, then for each of the 9 articles, in series order:
+Run `npm run publish:articles` once, then for each of the 15 articles, in series order:
 
 1. Open that article's `article.html` in a browser. Select all, copy.
 2. Paste into LinkedIn's article editor. Stripping, heading levels, emphasis, lists, blockquotes, the roadmap bullet list, and hyperlinks all survive the paste.

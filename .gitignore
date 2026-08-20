@@ -39,6 +39,14 @@ coverage/
 # already ignored wholesale via the `.tmp/` rule above: state, queue, fleet,
 # cache, orchestrator.lock, locks/, sessions/, gates/, and per-app (app/claude,
 # app/codex) trees. No per-file rules needed here.
+#
+# /.db/ is not SQLite authority (ADR 0002 / #1048). #1217's Assigned → Ready
+# for Planning journal still writes
+# `<main>/.db/aitm/ready-for-plan-migration.json` from
+# ready-for-plan-migration-freeze.mjs if the migrate command is re-applied.
+# Ignore the tree so that journal (or a stray empty project.sqlite) cannot
+# dirty git status. cf003ad1 removed this rule; restore it.
+/.db/
 # ai-task-manager — local/runtime artifacts (do not commit)
 .claude/worktrees/
 .claude/settings.local.json

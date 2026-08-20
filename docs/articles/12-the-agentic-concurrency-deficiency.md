@@ -4,8 +4,8 @@
 
 <!-- markdownlint-disable MD034 -->
 
-![Agentic Concurrency Isn't Free — And "50 Parallel Agents" Is Hyperbole](assets/article-headers/article-11-header.png)
-_Part 11 of a series of articles on succeeding with Agentic Agile Delivery_
+![Agentic Concurrency Isn't Free — And "50 Parallel Agents" Is Hyperbole](assets/article-headers/article-12-header.png)
+_Part 12 of a series of articles on succeeding with Agentic Agile Delivery_
 
 Scroll through enough AI coding content and you'll find the same promise on repeat: spin up dozens of agents, point them at your codebase, and watch a month of work finish overnight. Fifty parallel agents, one repo, linear speedup. It's a compelling pitch, and it's mostly hyperbole.
 
@@ -74,7 +74,7 @@ _This is the same principle we're building into AITM, our AI-native task deliver
 
 ## Series Link
 
-This piece opens a second wave of the series, moving from architecture and adapters into the day-to-day mechanics of running agentic delivery at scale. It follows [The Adapter Future](10-the-adapter-convergence.md) and leads into [The XP Survival Anomaly](12-the-xp-survival-anomaly.md), which asks what's left of Extreme Programming's practices once agents take over the reviewing.
+This piece opens a second wave of the series, moving from architecture and adapters into the day-to-day mechanics of running agentic delivery at scale. It follows [The Adapter Future](11-the-adapter-convergence.md) and leads into [XP's Practices Survived. Their Reasons Did Not.](13-the-xp-survival-anomaly.md), which asks what's left of Extreme Programming's practices once agents take over the reviewing.
 
 ## Series Roadmap
 
@@ -84,16 +84,17 @@ This piece opens a second wave of the series, moving from architecture and adapt
 |             | 02     | [The Rise Of Technical Product Operations](02-the-backlog-governance-postulate.md)                                     | Industry thesis: Technical Product Operations        |
 |             | 03     | [The Vibe Coding Hangover](03-the-vibe-coding-deficiency.md)                                                           | Failure mode: vibe slop and review debt              |
 |             | 04     | [Spec-Driven Development Is Necessary But Not Sufficient](04-the-spec-driven-insufficiency.md)                         | Why specs need execution governance                  |
-|             | 05     | [The Rise Of The Technical Product Owner](05-the-product-owner-escalation.md)                                          | Human operator: TPO/TPM as delivery architect        |
-|             | 06     | [The Backlog Becomes The Control Plane](06-the-backlog-control-plane-conjecture.md)                                    | Backlog as executable control surface                |
-|             | 07     | [The Just-In-Time Planner](07-the-just-in-time-planning-paradox.md)                                                    | Progressive decomposition and deep dives             |
-|             | 08     | [Context Durability Is A Feature](08-the-context-durability-corollary.md)                                              | JIT loading and post-compaction recovery             |
-|             | 09     | [Evidence Beats Trust](09-the-evidence-over-trust-theorem.md)                                                          | Evidence gates and auditability                      |
-|             | 10     | [The Adapter Future](10-the-adapter-convergence.md)                                                                    | Backlog and agent platform adapters                  |
-| **Current** | **11** | **[Agentic Concurrency Isn't Free — And "50 Parallel Agents" Is Hyperbole](11-the-agentic-concurrency-deficiency.md)** | Concurrency ceiling and coordination cost            |
-|             | 12     | [XP's Practices Survived. Their Reasons Did Not.](12-the-xp-survival-anomaly.md)                                       | XP practices under agentic delivery                  |
-|             | 13     | [The Diff Isn't Where Your Judgment Lives Anymore](13-the-diff-displacement.md)                                        | Spec review displaces code review                    |
-|             | 14     | [It's All About Perspective](14-the-second-reviewer-corollary.md)                                                      | Cross-model review for a genuine second opinion      |
+|             | 05     | [Regeneration Is Cheap. Hardening Isn't. Guess Which One Gets Skipped.](05-easy-come-easy-go.md)                       | Failure mode: cheap regeneration without governance  |
+|             | 06     | [The Rise Of The Technical Product Owner](06-the-product-owner-escalation.md)                                          | Human operator: TPO/TPM as delivery architect        |
+|             | 07     | [The Backlog Becomes The Control Plane](07-the-backlog-control-plane-conjecture.md)                                    | Backlog as executable control surface                |
+|             | 08     | [The Just-In-Time Planner](08-the-just-in-time-planning-paradox.md)                                                    | Progressive decomposition and deep dives             |
+|             | 09     | [Context Durability Is A Feature](09-the-context-durability-corollary.md)                                              | JIT loading and post-compaction recovery             |
+|             | 10     | [Evidence Beats Trust](10-the-evidence-over-trust-theorem.md)                                                          | Evidence gates and auditability                      |
+|             | 11     | [The Adapter Future](11-the-adapter-convergence.md)                                                                    | Backlog and agent platform adapters                  |
+| **Current** | **12** | **[Agentic Concurrency Isn't Free — And "50 Parallel Agents" Is Hyperbole](12-the-agentic-concurrency-deficiency.md)** | Concurrency ceiling and coordination cost            |
+|             | 13     | [XP's Practices Survived. Their Reasons Did Not.](13-the-xp-survival-anomaly.md)                                       | XP practices under agentic delivery                  |
+|             | 14     | [The Diff Isn't Where Your Judgment Lives Anymore](14-the-diff-displacement.md)                                        | Spec review displaces code review                    |
+|             | 15     | [It's All About Perspective](15-the-second-reviewer-corollary.md)                                                      | Cross-model review for a genuine second opinion      |
 
 ## LinkedIn Article Shape
 
