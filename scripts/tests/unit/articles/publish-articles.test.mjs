@@ -1,10 +1,13 @@
 // @story #1099
-// Transform-level tests for the article publisher. No filesystem writes and no
-// Mermaid rendering happen here — this is the fast lane. The end-to-end run
+// Transform-level tests for the article publisher. They may create and clean
+// repository-local scratch fixtures, but never write the production corpus or
+// render Mermaid — this is the fast lane. The end-to-end run
 // over the real corpus (including rendering) lives in
 // tests/slow/publish-articles-e2e.test.mjs.
 
 import assert from 'node:assert/strict';
+import { mkdtemp, rm, writeFile } from 'node:fs/promises';
+import path from 'node:path';
 import test from 'node:test';
 
 import { buildCompanionPost, parseShapeSection } from '../../../articles/lib/companion-post.mjs';
@@ -15,9 +18,10 @@ import {
   toPlainText,
 } from '../../../articles/lib/markdown-to-html.mjs';
 import { parseArticle } from '../../../articles/lib/parse-article.mjs';
-import { convertArticle } from '../../../articles/lib/publish.mjs';
+import { convertArticle, listArticles } from '../../../articles/lib/publish.mjs';
 import { cellToPlainTitle, roadmapToBullets } from '../../../articles/lib/roadmap.mjs';
 import { applyStripRules } from '../../../articles/lib/strip-rules.mjs';
+import { projectScratchDir } from '../../../task-tracker/lib/scratch-dir.mjs';
 
 const SLUG = '99-fixture-article';
 
@@ -79,6 +83,33 @@ Close:
 function convertFixture() {
   return convertArticle({ source: FIXTURE, slug: SLUG });
 }
+
+test('listArticles excludes sources marked DRAFT in their leading comment preamble', async () => {
+  const articlesDir = await mkdtemp(path.join(projectScratchDir('test'), 'publish-articles-'));
+  try {
+    await Promise.all([
+      writeFile(path.join(articlesDir, '03-third.md'), '# Third fixture\n'),
+      writeFile(
+        path.join(articlesDir, '02-draft.md'),
+        '<!-- markdownlint-disable MD034 -->\n<!-- DRAFT: pending review -->\n# Draft fixture\n'
+      ),
+      writeFile(path.join(articlesDir, '01-first.md'), '# First fixture\n'),
+      writeFile(
+        path.join(articlesDir, '04-comment-after-content.md'),
+        '# Publishable fixture\n\n<!-- DRAFT: pending review -->\n'
+      ),
+    ]);
+
+    const articles = await listArticles(articlesDir);
+
+    assert.deepEqual(
+      articles.map((article) => article.file),
+      ['01-first.md', '03-third.md', '04-comment-after-content.md']
+    );
+  } finally {
+    await rm(articlesDir, { recursive: true, force: true });
+  }
+});
 
 test('parseArticle lifts title and banner and splits sections', () => {
   const parsed = parseArticle(FIXTURE);
