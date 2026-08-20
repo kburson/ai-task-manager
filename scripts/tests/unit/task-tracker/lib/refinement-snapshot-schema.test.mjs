@@ -21,7 +21,8 @@ function sha256(value) {
   return createHash('sha256').update(value).digest('hex');
 }
 
-function refinedBody({ blocker = null, blockedField = null } = {}) {
+function refinedBody({ blockers = [], blockedField = null } = {}) {
+  const refs = blockers.map((blocker) => `#${blocker}`).join(',');
   return `<!-- aitm-refinement-rationale: ${JSON.stringify(RATIONALE)} -->
 
 ## Scope
@@ -41,13 +42,13 @@ Implement the governed R4P boundary.
 
 - [ ] Acceptance criteria met.
 
-${blocker ? `<!-- aitm-blocked-by refs="#${blocker}" -->\n` : ''}<!-- aitm-fields: {"schema":1,"values":{"priority":"P1","size":"M","estimate":8,"rank":4,"blockedBy":${JSON.stringify(blockedField)}}} -->
+${refs ? `<!-- aitm-blocked-by refs="${refs}" -->\n` : ''}<!-- aitm-fields: {"schema":1,"values":{"priority":"P1","size":"M","estimate":8,"rank":4,"blockedBy":${JSON.stringify(blockedField)}}} -->
 `;
 }
 
-function legacySnapshot({ blocker = null } = {}) {
-  const blockedBy = blocker ? `#${blocker}` : null;
-  const body = refinedBody({ blocker, blockedField: blockedBy });
+function legacySnapshot({ blockers = [], serializedBlockedBy } = {}) {
+  const blockedBy = blockers.length ? blockers.map((blocker) => `#${blocker}`).join(',') : null;
+  const body = refinedBody({ blockers, blockedField: blockedBy });
   const provenance = sha256(JSON.stringify(RATIONALE));
   const digest = sha256(
     JSON.stringify({
@@ -55,11 +56,11 @@ function legacySnapshot({ blocker = null } = {}) {
       acceptanceCriteria: '- [ ] Snapshot is current.\n- [ ] Plan cancellation is recoverable.',
       fields: { priority: 'P1', size: 'M', estimate: 8, rank: 4, blockedBy },
       dependencies: '- **Depends On**: #1212',
-      labels: blocker ? ['blocked', 'enhancement'] : ['enhancement'],
+      labels: blockers.length ? ['blocked', 'enhancement'] : ['enhancement'],
       provenance,
     })
   );
-  return `${body.trimEnd()}\n<!-- aitm-refinement-snapshot schema="1" digest="${digest}" provenance="${provenance}" priority="P1" size="M" estimate="8" rank="4" blocked-by="${blockedBy ?? ''}" ts="${TS}" -->\n`;
+  return `${body.trimEnd()}\n<!-- aitm-refinement-snapshot schema="1" digest="${digest}" provenance="${provenance}" priority="P1" size="M" estimate="8" rank="4" blocked-by="${serializedBlockedBy ?? blockedBy ?? ''}" ts="${TS}" -->\n`;
 }
 
 test('schema-1 unblocked snapshots retain their original dependency digest semantics', () => {
@@ -69,7 +70,7 @@ test('schema-1 unblocked snapshots retain their original dependency digest seman
 });
 
 test('schema-1 blocked snapshots require matching live protected-marker evidence', () => {
-  const legacy = legacySnapshot({ blocker: 1212 });
+  const legacy = legacySnapshot({ blockers: [1212] });
   assert.equal(verifyRefinementSnapshot(legacy, { labels: ['BLOCKED', 'enhancement'] }).ok, true);
   assert.equal(
     verifyRefinementSnapshot(legacy.replace('refs="#1212"', 'refs="#1213"'), {
@@ -79,8 +80,19 @@ test('schema-1 blocked snapshots require matching live protected-marker evidence
   );
 });
 
+test('schema-1 blocker comparison preserves semantically equivalent legacy spacing', () => {
+  const legacy = legacySnapshot({
+    blockers: [11, 12],
+    serializedBlockedBy: '#11, #12',
+  });
+  const verified = verifyRefinementSnapshot(legacy, {
+    labels: ['BLOCKED', 'enhancement'],
+  });
+  assert.equal(verified.ok, true, verified.reason);
+});
+
 test('schema-2 snapshots use only the protected blocker marker as dependency authority', () => {
-  const stamped = stampRefinementSnapshot(refinedBody({ blocker: 1212 }), {
+  const stamped = stampRefinementSnapshot(refinedBody({ blockers: [1212] }), {
     labels: ['BLOCKED', 'enhancement'],
     ts: TS,
   });
@@ -92,8 +104,20 @@ test('schema-2 snapshots use only the protected blocker marker as dependency aut
   );
 });
 
+test('schema-2 snapshot blocker property must match the live protected marker', () => {
+  const stamped = stampRefinementSnapshot(refinedBody({ blockers: [1212] }), {
+    labels: ['BLOCKED', 'enhancement'],
+    ts: TS,
+  });
+  const tampered = stamped.replace('blocked-by="#1212"', 'blocked-by="#99"');
+  assert.equal(
+    verifyRefinementSnapshot(tampered, { labels: ['BLOCKED', 'enhancement'] }).ok,
+    false
+  );
+});
+
 test('refinement snapshots reject malformed and duplicate protected blocker markers', () => {
-  const stamped = stampRefinementSnapshot(refinedBody({ blocker: 1212 }), {
+  const stamped = stampRefinementSnapshot(refinedBody({ blockers: [1212] }), {
     labels: ['BLOCKED', 'enhancement'],
     ts: TS,
   });

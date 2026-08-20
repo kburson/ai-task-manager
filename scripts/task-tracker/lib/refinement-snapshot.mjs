@@ -61,6 +61,11 @@ function canonicalBlockedBy(body) {
   return refs.length ? refs.map((number) => `#${number}`).join(',') : null;
 }
 
+function snapshotBlockedByRefs(value) {
+  if (value === null || value === undefined || value === '') return [];
+  return parseBlockedByStrict(serializeMarker('blocked-by', { refs: value }));
+}
+
 function legacyRefinementInputs(body, labels, { durableProvenance, durableFields } = {}) {
   const withoutMarker = String(body || '').replace(REFINEMENT_SNAPSHOT_MARKER_RE, '');
   const scope = rootSection(withoutMarker, 'Scope');
@@ -209,7 +214,9 @@ export function verifyRefinementSnapshot(body, { labels, allowPlanProjection = f
     if (digest !== snapshot.digest) {
       return { ok: false, reason: 'stale refinement snapshot', snapshot };
     }
-    if (legacy && canonicalBlockedBy(body) !== snapshot.fields.blockedBy) {
+    const liveBlockers = parseBlockedByStrict(body);
+    const snapshotBlockers = snapshotBlockedByRefs(snapshot.fields.blockedBy);
+    if (JSON.stringify(liveBlockers) !== JSON.stringify(snapshotBlockers)) {
       return { ok: false, reason: 'stale refinement snapshot', snapshot };
     }
     return { ok: true, snapshot };
