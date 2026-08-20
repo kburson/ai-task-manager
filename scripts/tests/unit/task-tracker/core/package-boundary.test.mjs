@@ -98,7 +98,11 @@ function repoRoot() {
 // fleet recovery, and the worktree guard.
 // #1354 accounts for the intentionally shipped Codex guide
 // (`docs/guides/codex-unattended-token-burn.md`) from trunk commit b6548b0c.
-const ENTRY_CEILING = 685;
+// #1356 ships `scripts/task-tracker/lib/stamp-receipt-reuse.mjs` and, at operator
+// direction, restores development headroom: 900. Measured surface at this raise
+// is 686. Path exclusions and required-entry assertions remain the controlling
+// guardrails; the count is a coarse tripwire, not an exact inventory.
+const ENTRY_CEILING = 900;
 
 function packedFiles() {
   const out = execFileSync('npm', ['pack', '--dry-run', '--json'], {

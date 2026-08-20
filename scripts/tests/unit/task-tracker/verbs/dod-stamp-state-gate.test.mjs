@@ -21,6 +21,10 @@ import { verbDodStamp } from '../../../../task-tracker/verbs/dod-stamp.mjs';
 import { verbAcStamp } from '../../../../task-tracker/verbs/ac-stamp.mjs';
 import { projectScratchDir } from '../../../../task-tracker/lib/scratch-dir.mjs';
 import { pexecGithubBodyStore } from '../../../helpers/pexec-body-store.mjs';
+import {
+  createVerificationReceipt,
+  upsertVerificationReceipt,
+} from '../../../../task-tracker/lib/verification-receipt.mjs';
 
 const RESTRICTED_CMD = 'npm run test:all';
 const AC_LABEL = 'full suite must pass';
@@ -93,12 +97,48 @@ function hashish(s) {
   return h;
 }
 
-function makePexec({ body, verifierCalled }) {
+const RECEIPT_SHA = 'a'.repeat(40);
+
+function greenTestReceipt() {
+  return createVerificationReceipt({
+    issueNumber: 778,
+    stage: 'test',
+    fingerprint: {
+      commitSha: RECEIPT_SHA,
+      environment: {
+        node: process.version,
+        platform: `${process.platform}-${process.arch}`,
+        lockfileHash: `sha256:${'a'.repeat(64)}`,
+        configHashes: { 'package.json': `sha256:${'b'.repeat(64)}` },
+        sandbox: { kind: 'worktree', identity: '/sandbox', clean: true },
+      },
+    },
+    commands: [
+      ['lint-full', 'lint'],
+      ['format-full', 'format:check'],
+      ['test-unit', 'test:unit'],
+      ['test-integration', 'test:integration'],
+      ['test-slow', 'test:slow'],
+    ].map(([classification, script]) => ({
+      classification,
+      command: 'npm',
+      args: ['run', script],
+      exitCode: 0,
+      durationMs: 10,
+    })),
+    now: () => '2026-08-01T18:00:00.000Z',
+  });
+}
+
+function makePexec({ body, verifierCalled, headSha = 'abc1234' }) {
   return async (bin, args = [], options = {}) => {
     const gh = pexecGithubBodyStore({ bin, args, options, fallbackBody: body ?? '' });
     if (gh) return gh;
     if (bin === 'git') {
       if (args.includes('status')) return { stdout: '', stderr: '' };
+      if (args.includes('HEAD') && !args.includes('--short')) {
+        return { stdout: `${headSha}\n`, stderr: '' };
+      }
       return { stdout: 'abc1234\n', stderr: '' };
     }
     if (bin === 'npm') {
@@ -212,6 +252,63 @@ test('ac-stamp: proceeds normally once in test state', async () => {
   );
   assert.equal(r.exitCode, null);
   assert.equal(verifierCalled.ran, true);
+});
+
+test('dod-stamp tests: Review + valid receipt reuses and does not spawn npm', async () => {
+  const body = upsertVerificationReceipt(bodyWithDod(), greenTestReceipt());
+  const storeFile = path.join(tmpRoot, 'body-store-review-reuse.md');
+  writeFileSync(storeFile, body);
+  process.env.AITM_FAKE_BODY_FILE = storeFile;
+  const verifierCalled = {};
+  const r = await runVerb(
+    verbDodStamp,
+    baseCtx({
+      statePath: stateFile('#781'),
+      rest: ['tests'],
+      pexec: makePexec({ body, verifierCalled, headSha: RECEIPT_SHA }),
+      deps: { getLiveState: async () => 'review' },
+    })
+  );
+  assert.equal(r.exitCode, null);
+  assert.equal(verifierCalled.ran, undefined);
+});
+
+test('dod-stamp tests: Review + stale receipt refuses and does not spawn npm', async () => {
+  const body = upsertVerificationReceipt(bodyWithDod(), greenTestReceipt());
+  const storeFile = path.join(tmpRoot, 'body-store-review-stale.md');
+  writeFileSync(storeFile, body);
+  process.env.AITM_FAKE_BODY_FILE = storeFile;
+  const verifierCalled = {};
+  const r = await runVerb(
+    verbDodStamp,
+    baseCtx({
+      statePath: stateFile('#782'),
+      rest: ['tests'],
+      pexec: makePexec({ body, verifierCalled, headSha: 'c'.repeat(40) }),
+      deps: { getLiveState: async () => 'review' },
+    })
+  );
+  assert.equal(r.exitCode, 1);
+  assert.equal(verifierCalled.ran, undefined);
+});
+
+test('dod-stamp tests: Test + valid receipt reuses and does not spawn npm', async () => {
+  const body = upsertVerificationReceipt(bodyWithDod(), greenTestReceipt());
+  const storeFile = path.join(tmpRoot, 'body-store-test-reuse.md');
+  writeFileSync(storeFile, body);
+  process.env.AITM_FAKE_BODY_FILE = storeFile;
+  const verifierCalled = {};
+  const r = await runVerb(
+    verbDodStamp,
+    baseCtx({
+      statePath: stateFile('#783'),
+      rest: ['tests'],
+      pexec: makePexec({ body, verifierCalled, headSha: RECEIPT_SHA }),
+      deps: { getLiveState: async () => 'test' },
+    })
+  );
+  assert.equal(r.exitCode, null);
+  assert.equal(verifierCalled.ran, undefined);
 });
 
 console.log('dod-stamp-state-gate.test.mjs: defined');

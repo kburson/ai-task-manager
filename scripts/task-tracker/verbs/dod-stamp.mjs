@@ -21,6 +21,7 @@ import {
   stampEvidenceAndReconcile,
 } from '../lib/functional-dod-evidence.mjs';
 import { assertVerifierStateAllowed } from '../lib/verifier-state-gate.mjs';
+import { decideStampExecutionFromEnv } from '../lib/stamp-receipt-reuse.mjs';
 import { captureEvidenceProvenance } from '../lib/evidence-provenance.mjs';
 import {
   readDirectoryContract,
@@ -86,6 +87,75 @@ export async function verbDodStamp(ctx) {
       `[task-tracker] dod-stamp: \`dod:functional:${key}\` line carries no verifier command. Add one (e.g. \`<!-- aitm-verified cmd="\\\`npm test\\\`" -->\`) before stamping.`
     );
     process.exit(1);
+  }
+
+  const decision = await decideStampExecutionFromEnv({
+    commands: target.evidenceCommands,
+    body,
+    issueNumber: issueNum,
+    cfg,
+    pexec,
+    projectDir,
+    deps: ctx.deps,
+  });
+  if (decision.action === 'refuse') {
+    console.error(`[task-tracker] dod-stamp ${key}: ${decision.message}`);
+    process.exit(1);
+  }
+  if (decision.action === 'reuse') {
+    const sha = decision.receipt?.commitSha || (await headSha(pexec));
+    const ts = decision.receipt?.completedAt || nowIso(ctx.deps);
+    const executedCommands = target.evidenceCommands.map((cmd) =>
+      String(cmd).replace(/^`+|`+$/g, '')
+    );
+    const canonicalCmd = executedCommands[0] || '';
+    const executionContext = captureEvidenceProvenance({
+      projectDir,
+      boundIssue: issueNum,
+    });
+    console.log(
+      `[task-tracker] dod-stamp ${key} on ${s.active}: reusing Test receipt ${decision.receipt?.receiptId}; standard commands were not rerun.`
+    );
+    if (directory) {
+      await writeDirectoryContractOperation({
+        repository: cfg.repo,
+        issue: Number(issueNum),
+        issueBody: body,
+        action: 'record-evidence',
+        kind: 'definitionOfDone',
+        logicalId: target.logicalId,
+        evidence: {
+          commands: executedCommands,
+          result: 'passed',
+          sha,
+          ts,
+          executionContext,
+        },
+        pexec,
+        deps: ctx.deps?.contractWrite,
+      });
+      console.log(
+        `[task-tracker] ✓ dod-stamp ${key} on ${s.active}: accepted Delivery Contract evidence (sha=${sha}).`
+      );
+      return;
+    }
+    await mutateIssueBody({
+      issueNumber: issueNum,
+      repo: cfg.repo,
+      deps: { pexec },
+      evidenceStamp: true,
+      mutate: (base) =>
+        stampEvidenceAndReconcile(
+          base,
+          key,
+          { cmd: canonicalCmd, sha, ts, exit: 0, ...executionContext },
+          executedCommands
+        ),
+    });
+    console.log(
+      `[task-tracker] ✓ dod-stamp ${key} on ${s.active}: run-props upserted onto the dod:functional:${key} line's aitm-verified marker (sha=${sha}).`
+    );
+    return;
   }
 
   const gate = await assertVerifierStateAllowed({

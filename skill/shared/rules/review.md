@@ -1,4 +1,4 @@
-<!-- aitm-skill-version: 1.0.0 -->
+<!-- aitm-skill-version: 1.1.0 -->
 <!-- aitm-rule-id: review -->
 
 # rules/review.md
@@ -6,7 +6,7 @@
 Tier-2. Loaded JIT on `/task review`. On first read, emit:
 
 ```
-aitm-skill-loaded:rules/review:1.0.0
+aitm-skill-loaded:rules/review:1.1.0
 ```
 
 ## Agent terminal step
@@ -22,10 +22,13 @@ Stop. Do not run `/task close`. Do not infer human approval from passing tests o
 
 ## Pre-review verification (mandatory, in order)
 
-1. **Per-AC verification.** For every `- [ ]` in the issue body's Acceptance Criteria, verify by inspection AND by running the relevant test/build/command. Tick each with `/task ensureChecked "<exact label>"`. No bulk-checking.
-2. **Per-DoD verification.** Same rule for the Definition of Done items. The Functional DoD subsection is gated by the evidence-marker contract — see `rules/functional-dod.md`. Stamp every stampable key with `/task dod-stamp <key>` before batch-ticking; `acs` and `checkboxes` are derived by `/task close` and refuse manual ticks.
-3. **`aitm-verified-by` markers.** Every AC must carry one or more `aitm-verified-by` HTML comment markers. Non-standard commands named by those markers must appear under the issue-specific `### Verification Commands` section. Standard DoD commands (`npm test`, `npm run test:all`, `npm run lint`, `npm run format:check`) may be referenced by markers but must NOT be duplicated in `### Verification Commands`.
-4. **Run `/task review #N`.**
+Review does **not** own the test suite. `/task test` already ran standard lanes and wrote an exact-SHA receipt. Do not re-run `npm test`, `npm run test:slow`, `npm run test:all`, or `dod-stamp tests` here.
+
+1. **Confirm the Test receipt.** `/task test #N` no-ops when a valid exact-SHA receipt matches HEAD. If it refuses (missing/stale/red), demote and re-Test — do not spawn the suite from Review.
+2. **Per-AC / Per-DoD ticks.** Tick remaining boxes from existing receipt evidence (`/task dod-stamp` / `/task ac-stamp` reuse a matching receipt and must not spawn). Never bulk-check. `acs` and `checkboxes` are derived by `/task close`.
+3. **`aitm-verified-by` markers.** Every AC must carry one or more `aitm-verified-by` HTML comment markers. Non-standard commands named by those markers must appear under `### Verification Commands`. Standard DoD commands may be referenced by markers but must NOT be duplicated there.
+4. **Named finding only:** `/task review #N --probe "<command>"` is the only Review-stage command execution.
+5. **Run `/task review #N`.**
 
 For epics: `/task review` refuses if any sub-issue is not already in Review. Drive every sub-issue to Review first.
 

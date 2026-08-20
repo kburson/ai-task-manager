@@ -1,11 +1,11 @@
-<!-- aitm-skill-version: 1.1.0 -->
+<!-- aitm-skill-version: 1.2.0 -->
 
 # rules/functional-dod.md
 
 Tier-2. Loaded JIT on the first `/task check`, `/task dod-stamp`, or `/task close` of a session. On first read, emit:
 
 ```
-aitm-skill-loaded:rules/functional-dod:1.1.0
+aitm-skill-loaded:rules/functional-dod:1.2.0
 ```
 
 ## The contract
@@ -19,13 +19,13 @@ running the verifier.
 
 Five canonical keys, two classes:
 
-| Key          | Class     | How the marker appears                                                  |
-| ------------ | --------- | ----------------------------------------------------------------------- |
-| `tests`      | stampable | `/task dod-stamp tests` runs `npm run test:all` and stamps on exit-zero |
-| `lint`       | stampable | `/task dod-stamp lint` runs the declared lint+format chain              |
-| `commits`    | stampable | `/task dod-stamp commits` runs the declared commit-trail verifier       |
-| `acs`        | derived   | `/task close` derives from "all AC checkboxes ticked" — auto-stamped    |
-| `checkboxes` | derived   | `/task close` derives from "all non-self non-lifecycle boxes ticked"    |
+| Key          | Class     | How the marker appears                                                                                                                                                            |
+| ------------ | --------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `tests`      | stampable | `/task dod-stamp tests` runs the declared test lanes in **Test** and stamps on exit-zero. A valid exact-SHA Test receipt matching HEAD is reused; Review never re-runs the suite. |
+| `lint`       | stampable | `/task dod-stamp lint` runs the declared lint+format chain                                                                                                                        |
+| `commits`    | stampable | `/task dod-stamp commits` runs the declared commit-trail verifier                                                                                                                 |
+| `acs`        | derived   | `/task close` derives from "all AC checkboxes ticked" — auto-stamped                                                                                                              |
+| `checkboxes` | derived   | `/task close` derives from "all non-self non-lifecycle boxes ticked"                                                                                                              |
 
 ## Use the batch path. Stamp first.
 
