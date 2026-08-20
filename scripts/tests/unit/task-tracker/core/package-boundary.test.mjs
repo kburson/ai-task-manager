@@ -98,10 +98,12 @@ function repoRoot() {
 // fleet recovery, and the worktree guard.
 // #1354 accounts for the intentionally shipped Codex guide
 // (`docs/guides/codex-unattended-token-burn.md`) from trunk commit b6548b0c.
-// #1356 ships one runtime helper (`scripts/task-tracker/lib/stamp-receipt-reuse.mjs`)
-// so dod-stamp/ac-stamp can reuse a valid exact-SHA Test receipt instead of
-// re-running the suite. Exact packed surface grows by one.
-const ENTRY_CEILING = 686;
+// #1356 ships `scripts/task-tracker/lib/stamp-receipt-reuse.mjs` and, at operator
+// direction, restores development headroom: 750. Measured surface at this raise
+// is 686. 750 stays 47 below the 797-entry pre-tightening surface, so a
+// re-shipped test suite still blows the gate; one-file runtime additions no
+// longer require a ceiling PR of their own.
+const ENTRY_CEILING = 750;
 
 function packedFiles() {
   const out = execFileSync('npm', ['pack', '--dry-run', '--json'], {
