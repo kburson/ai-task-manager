@@ -3,6 +3,7 @@
 **Story:** #1343
 **Status:** Approved by Full-Auto authority
 **Blocks:** #1263 live recovery of #1335
+**Delivered:** PR #1345, trunk `082286e709065f402b7704f00a309d1c60515fc0`
 
 ## Problem
 
