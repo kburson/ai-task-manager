@@ -252,7 +252,14 @@ export function verifyLegacyRefinementSnapshotForBlockerRefresh(body, { labels }
     const inputs = legacyRefinementInputs(body, historicalLabels, {
       durableProvenance: snapshot.provenance,
     });
-    if (inputs.provenance !== snapshot.provenance || digestInputs(inputs) !== snapshot.digest) {
+    const snapshotFieldsMatch = REQUIRED_FIELDS.every(
+      (field) => snapshot.fields[field] === inputs.fields[field]
+    );
+    if (
+      inputs.provenance !== snapshot.provenance ||
+      digestInputs(inputs) !== snapshot.digest ||
+      !snapshotFieldsMatch
+    ) {
       return refused('stale refinement snapshot');
     }
     legacyCoreValid = true;

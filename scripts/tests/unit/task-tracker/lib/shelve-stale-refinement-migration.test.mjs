@@ -131,6 +131,25 @@ test('refuses changed active refinement fields as unrelated staleness', () => {
   assert.match(verified.reason, /stale refinement snapshot/i);
 });
 
+test('refuses schema-1 snapshot marker field tampering', () => {
+  const legacy = legacySnapshot({ liveBlockers: [1212] });
+
+  for (const tampered of [
+    legacy.replace('priority="P1"', 'priority="P2"'),
+    legacy.replace('size="M"', 'size="L"'),
+    legacy.replace('estimate="8"', 'estimate="13"'),
+    legacy.replace('rank="4"', 'rank="5"'),
+  ]) {
+    const verified = verifyLegacyRefinementSnapshotForBlockerRefresh(tampered, {
+      labels: ['BLOCKED', 'enhancement'],
+    });
+    assert.equal(verified.ok, false);
+    assert.equal(verified.legacyCoreValid, false);
+    assert.equal(verified.blockerOnlyMismatch, false);
+    assert.match(verified.reason, /stale refinement snapshot/i);
+  }
+});
+
 test('refuses malformed or duplicate live blocker markers', () => {
   const legacy = legacySnapshot({ liveBlockers: [1212] });
   const duplicate = legacy.replace(
