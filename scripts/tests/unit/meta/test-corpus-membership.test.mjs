@@ -1,9 +1,11 @@
 // @story #1263
 import assert from 'node:assert/strict';
-import { mkdirSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { test } from 'node:test';
+import { fileURLToPath } from 'node:url';
 
+import { discoverTestFiles } from '../../../task-tracker/lib/discover-test-files.mjs';
 import {
   finalizedFrozenPaths,
   formatCorpusMembershipErrors,
@@ -13,6 +15,8 @@ import {
   recordPathForTestPath,
 } from '../../lib/test-corpus-membership.mjs';
 import { mkdtempProjectIsolated } from '../../../task-tracker/lib/scratch-dir.mjs';
+
+const PROJECT_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../../..');
 
 function writeRecord(projectRoot, recordFile, value) {
   const absolute = path.join(projectRoot, recordFile);
@@ -25,6 +29,26 @@ function writeRawRecord(projectRoot, recordFile, value) {
   mkdirSync(path.dirname(absolute), { recursive: true });
   writeFileSync(absolute, value);
 }
+
+test('live canonical discovery equals frozen destinations union post-snapshot records', () => {
+  const discovered = discoverTestFiles({ projectRoot: PROJECT_ROOT });
+  const frozenManifest = JSON.parse(
+    readFileSync(
+      path.join(PROJECT_ROOT, 'scripts/tests/fixtures/test-corpus-pre-move.json'),
+      'utf8'
+    )
+  );
+  const frozenPaths = finalizedFrozenPaths(frozenManifest);
+  const loaded = loadPostSnapshotRecords({ projectRoot: PROJECT_ROOT });
+  const result = reconcileCorpusMembership({
+    discovered,
+    frozenPaths,
+    records: loaded.records,
+    recordErrors: loaded.errors,
+    misplacedRecords: loaded.misplacedRecords,
+  });
+  assert.equal(result.ok, true, formatCorpusMembershipErrors(result));
+});
 
 test('maps only canonical test paths to deterministic membership records', () => {
   assert.equal(

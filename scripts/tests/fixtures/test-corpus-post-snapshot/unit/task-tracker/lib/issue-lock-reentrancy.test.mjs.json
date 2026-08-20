@@ -1,0 +1,4 @@
+{
+  "schema": 1,
+  "path": "scripts/tests/unit/task-tracker/lib/issue-lock-reentrancy.test.mjs"
+}

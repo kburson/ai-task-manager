@@ -1,4 +1,4 @@
-// @story #876
+// @story #876 #1263
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { execFileSync, spawnSync } from 'node:child_process';
@@ -15,16 +15,6 @@ const manifestPath = path.join(PROJECT_ROOT, 'scripts/tests/fixtures/test-corpus
 const manifest = JSON.parse(readFileSync(manifestPath, 'utf8'));
 const TASK3_BASE_COMMIT = 'db997e39e0fd76edbd2a3df6a19e7a226e33e55f';
 const TASK3_MIGRATION_COMMIT = 'cbff5ce683083c3e2a33a06ba2c81cafc9e27c22';
-const EXPECTED_POST_SNAPSHOT_TESTS = [
-  'scripts/tests/unit/meta/audit-story-tags.test.mjs',
-  'scripts/tests/unit/meta/package-test-corpus.test.mjs',
-  'scripts/tests/unit/review/co-review.test.mjs',
-  'scripts/tests/unit/task-tracker/core/run-tests-schedule.test.mjs',
-  'scripts/tests/unit/task-tracker/lib/cleanup-base-aware.test.mjs',
-  'scripts/tests/unit/task-tracker/lib/issue-lock-reentrancy.test.mjs',
-  'scripts/tests/unit/task-tracker/lib/test-corpus-paths.test.mjs',
-  'scripts/tests/unit/task-tracker/verbs/promote-test-delegation.test.mjs',
-];
 const EXPECTED_LANE_CORRECTION = {
   oldPath: 'scripts/task-tracker/lib/trunk-ref.integration.test.mjs',
   migrationPath: 'scripts/tests/unit/task-tracker/lib/trunk-ref.integration.test.mjs',
@@ -198,12 +188,11 @@ test('the intentional lane correction retains its exact post-migration Git renam
   assert.equal(output, `${renameStatus}\t${correction.migrationPath}\t${correction.finalPath}`);
 });
 
-test('live discovery realizes the migration manifest exactly once and only in canonical lanes', () => {
+test('live discovery realizes every frozen destination in its final canonical lane', () => {
   const discovered = discoverTestFiles({ projectRoot: PROJECT_ROOT });
   const live = new Set(discovered);
   assert.equal(live.size, discovered.length, 'live discovery has no duplicate path');
 
-  const manifestDestinations = new Set(manifest.tests.map(finalPathFor));
   for (const entry of manifest.tests) {
     const finalPath = finalPathFor(entry);
     assert.ok(existsSync(path.join(PROJECT_ROOT, finalPath)), `${finalPath} exists`);
@@ -219,29 +208,6 @@ test('live discovery realizes the migration manifest exactly once and only in ca
     assert.ok(parsed, `${finalPath} is canonical`);
     assert.equal(parsed.lane, correction?.toLane ?? entry.lane, `${finalPath} has its final lane`);
     assert.equal(path.posix.basename(finalPath), entry.basename);
-  }
-
-  const storyOwned = discovered.filter((rel) => !manifestDestinations.has(rel));
-  for (const expected of EXPECTED_POST_SNAPSHOT_TESTS) {
-    assert.ok(storyOwned.includes(expected), `${expected} remains after the immutable snapshot`);
-  }
-  for (const rel of storyOwned) {
-    assert.ok(parseCanonicalTestPath(rel), `${rel} is a canonical story-owned test`);
-  }
-  const liveCounts = { unit: 0, integration: 0, slow: 0 };
-  for (const rel of discovered) liveCounts[parseCanonicalTestPath(rel).lane] += 1;
-  const minimumCounts = { unit: 0, integration: 0, slow: 0 };
-  for (const entry of manifest.tests) {
-    minimumCounts[parseCanonicalTestPath(finalPathFor(entry)).lane] += 1;
-  }
-  for (const rel of EXPECTED_POST_SNAPSHOT_TESTS) {
-    minimumCounts[parseCanonicalTestPath(rel).lane] += 1;
-  }
-  for (const lane of Object.keys(liveCounts)) {
-    assert.ok(
-      liveCounts[lane] >= minimumCounts[lane],
-      `${lane} retains the immutable corpus while allowing later story-owned tests`
-    );
   }
 });
 
@@ -273,18 +239,5 @@ test('npm pack excludes the test corpus while retaining required runtime files a
     'package/docs/guides/grok-provider.md',
   ]) {
     assert.ok(packed.has(required), `npm pack retains required runtime asset: ${required}`);
-  }
-});
-
-test('live discovery includes the focused Grok provider tests', () => {
-  const discovered = new Set(discoverTestFiles({ projectRoot: PROJECT_ROOT }));
-  for (const required of [
-    'scripts/tests/unit/task-tracker/hooks/grok-wire.test.mjs',
-    'scripts/tests/unit/task-tracker/lib/word-counter-grok.test.mjs',
-    'scripts/tests/unit/task-tracker/lib/occupancy.test.mjs',
-    'scripts/tests/unit/review/co-review-index.test.mjs',
-    'scripts/tests/unit/task-tracker/lib/co-review-write-policy.test.mjs',
-  ]) {
-    assert.ok(discovered.has(required), `${required} must remain in the canonical test corpus`);
   }
 });
