@@ -1,4 +1,4 @@
-// @story #310 #1089
+// @story #310 #1089 #1344
 // Unit tests for scripts/task-tracker/verbs/test.mjs — the sandboxed /task test
 // runner (#137). All I/O is stubbed; no real worktree, npm, or gh.
 
@@ -174,7 +174,7 @@ test('verbTest #270: gate-first flow stamps dod-verified BEFORE moveState (no po
         return { status: 'ok' };
       },
       postComment: async () => {},
-      getHeadSha: async () => 'sha12345',
+      getHeadSha: async () => '5a12345deadbeef',
       createWorktree: async () => {},
       removeWorktree: async () => {},
       npmCi: async () => {},
