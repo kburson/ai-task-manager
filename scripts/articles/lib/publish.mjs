@@ -30,13 +30,28 @@ export const ARTICLE_HTML = 'article.html';
 export const COMPANION_POST = 'companion-post.txt';
 export const DRIFT_REPORT = 'diagram-drift-report.txt';
 
+function hasLeadingDraftMarker(source) {
+  let remaining = source;
+  while (true) {
+    const comment = remaining.match(/^\s*(<!--[\s\S]*?-->)/);
+    if (!comment) return false;
+    if (comment[1].startsWith('<!-- DRAFT:')) return true;
+    remaining = remaining.slice(comment[0].length);
+  }
+}
+
 /** Every publishable article file in `docs/articles/`, in series order. */
 export async function listArticles(articlesDir) {
-  const entries = await readdir(articlesDir);
-  return entries
-    .filter((name) => ARTICLE_FILE_RE.test(name))
-    .sort()
-    .map((name) => ({
+  const names = (await readdir(articlesDir)).filter((name) => ARTICLE_FILE_RE.test(name)).sort();
+  const candidates = await Promise.all(
+    names.map(async (name) => ({
+      name,
+      source: await readFile(path.join(articlesDir, name), 'utf8'),
+    }))
+  );
+  return candidates
+    .filter((candidate) => !hasLeadingDraftMarker(candidate.source))
+    .map(({ name }) => ({
       file: name,
       slug: name.replace(/\.md$/, ''),
       number: name.slice(0, 2),
