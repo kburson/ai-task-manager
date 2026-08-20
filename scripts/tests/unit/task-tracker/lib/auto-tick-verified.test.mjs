@@ -39,6 +39,7 @@ const ALL_GREEN = [
   { command: 'npm run lint', passed: true, exit: 0 },
   { command: 'npm run format:check', passed: true, exit: 0 },
 ];
+const EXACT_SHA = '0123456789abcdef0123456789abcdef01234567';
 
 // --- all-green: VC boxes + command-backed Functional items ticked -----------
 {
@@ -87,6 +88,47 @@ const ALL_GREEN = [
   assert.ok(
     body.includes('ts="2026-06-12T17:30:00.000Z"'),
     'ts carries the injected now timestamp'
+  );
+}
+
+// --- #1344: an explicit tested commit is written across VC and AC proof -----
+{
+  const source = [
+    '## Verification Commands',
+    '',
+    '- [ ] `npm test` <!-- id=1 -->',
+    '',
+    '## Acceptance Criteria',
+    '',
+    '- [ ] exact commit proof <!-- aitm-verified vc-list="vc:1" -->',
+    '',
+  ].join('\n');
+  const { body } = autoTickVerified(
+    source,
+    [{ command: 'npm test', passed: true, exit: 0 }],
+    '2026-08-20T00:00:00.000Z',
+    { sha: EXACT_SHA }
+  );
+  const vcLine = body.split('\n').find((line) => line.includes('`npm test`'));
+  const acLine = body.split('\n').find((line) => line.includes('exact commit proof'));
+  assert.match(vcLine, new RegExp(`sha="${EXACT_SHA}"`), 'VC proof records the tested commit');
+  assert.match(acLine, new RegExp(`sha="${EXACT_SHA}"`), 'AC proof records the tested commit');
+}
+
+// --- #1344: callers that omit an exact commit retain the legacy sentinel ----
+{
+  const { body } = autoTickVerified(fixtureBody(), ALL_GREEN, '2026-08-20T00:00:00.000Z', {});
+  assert.match(body, /sha="sandbox"/, 'omitted sha retains the sandbox sentinel');
+}
+
+// --- #1344: a supplied malformed commit refuses instead of falling back ----
+{
+  assert.throws(
+    () =>
+      autoTickVerified(fixtureBody(), ALL_GREEN, '2026-08-20T00:00:00.000Z', {
+        sha: 'not-a-commit',
+      }),
+    /sha must be a 7–40 hexadecimal commit SHA/i
   );
 }
 
