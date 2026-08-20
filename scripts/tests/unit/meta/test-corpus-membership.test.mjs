@@ -6,8 +6,10 @@ import { test } from 'node:test';
 
 import {
   finalizedFrozenPaths,
+  formatCorpusMembershipErrors,
   loadPostSnapshotRecords,
   POST_SNAPSHOT_REGISTRY_ROOT,
+  reconcileCorpusMembership,
   recordPathForTestPath,
 } from '../../lib/test-corpus-membership.mjs';
 import { mkdtempProjectIsolated } from '../../../task-tracker/lib/scratch-dir.mjs';
@@ -196,4 +198,221 @@ test('separates a valid record at the wrong location from malformed records', ()
   assert.deepEqual(loaded.errors, []);
   assert.deepEqual(loaded.misplacedRecords, [{ recordFile, expectedRecordFile, path: testPath }]);
   assert.deepEqual(loaded.records, [{ recordFile, schema: 1, path: testPath }]);
+});
+
+test('reconciles an exact canonical corpus and derives lane counts from discovery', () => {
+  const exact = reconcileCorpusMembership({
+    discovered: [
+      'scripts/tests/unit/lib/frozen.test.mjs',
+      'scripts/tests/integration/lib/new.test.mjs',
+    ],
+    frozenPaths: ['scripts/tests/unit/lib/frozen.test.mjs'],
+    records: [
+      {
+        recordFile: `${POST_SNAPSHOT_REGISTRY_ROOT}/integration/lib/new.test.mjs.json`,
+        schema: 1,
+        path: 'scripts/tests/integration/lib/new.test.mjs',
+      },
+    ],
+  });
+
+  assert.equal(exact.ok, true);
+  assert.deepEqual(exact.noncanonicalDiscoveredPaths, []);
+  assert.deepEqual(exact.undeclaredPaths, []);
+  assert.deepEqual(exact.missingPaths, []);
+  assert.deepEqual(exact.duplicatePaths, []);
+  assert.deepEqual(exact.overlapPaths, []);
+  assert.deepEqual(exact.malformedRecords, []);
+  assert.deepEqual(exact.misplacedRecords, []);
+  assert.deepEqual(exact.counts, { all: 2, unit: 1, integration: 1, slow: 0 });
+});
+
+test('reports canonical discovered paths missing from both membership authorities', () => {
+  const undeclaredPath = 'scripts/tests/unit/lib/undeclared.test.mjs';
+  const result = reconcileCorpusMembership({
+    discovered: [undeclaredPath],
+    frozenPaths: [],
+    records: [],
+  });
+
+  assert.equal(result.ok, false);
+  assert.deepEqual(result.undeclaredPaths, [undeclaredPath]);
+  assert.match(formatCorpusMembershipErrors(result), new RegExp(undeclaredPath));
+  assert.match(
+    formatCorpusMembershipErrors(result),
+    new RegExp(recordPathForTestPath(undeclaredPath))
+  );
+});
+
+test('reports record declarations whose canonical tests are missing from discovery', () => {
+  const stalePath = 'scripts/tests/integration/lib/stale.test.mjs';
+  const recordFile = recordPathForTestPath(stalePath);
+  const result = reconcileCorpusMembership({
+    discovered: [],
+    frozenPaths: [],
+    records: [{ recordFile, schema: 1, path: stalePath }],
+  });
+
+  assert.equal(result.ok, false);
+  assert.deepEqual(result.missingPaths, [{ path: stalePath, authority: 'record', recordFile }]);
+  assert.match(formatCorpusMembershipErrors(result), new RegExp(stalePath));
+  assert.match(formatCorpusMembershipErrors(result), new RegExp(recordFile));
+});
+
+test('keeps a missing frozen destination distinct from a missing record declaration', () => {
+  const frozenPath = 'scripts/tests/slow/lib/frozen.test.mjs';
+  const result = reconcileCorpusMembership({
+    discovered: [],
+    frozenPaths: [frozenPath],
+    records: [],
+  });
+
+  assert.equal(result.ok, false);
+  assert.deepEqual(result.missingPaths, [
+    { path: frozenPath, authority: 'frozen', recordFile: null },
+  ]);
+  assert.match(formatCorpusMembershipErrors(result), /restore or repair the frozen destination/);
+});
+
+test('reports every record file that declares a duplicate logical path', () => {
+  const duplicatePath = 'scripts/tests/unit/lib/duplicate.test.mjs';
+  const firstRecordFile = `${POST_SNAPSHOT_REGISTRY_ROOT}/unit/lib/duplicate-a.test.mjs.json`;
+  const secondRecordFile = `${POST_SNAPSHOT_REGISTRY_ROOT}/unit/lib/duplicate-b.test.mjs.json`;
+  const result = reconcileCorpusMembership({
+    discovered: [duplicatePath],
+    frozenPaths: [],
+    records: [
+      { recordFile: secondRecordFile, schema: 1, path: duplicatePath },
+      { recordFile: firstRecordFile, schema: 1, path: duplicatePath },
+    ],
+  });
+
+  assert.equal(result.ok, false);
+  assert.deepEqual(result.duplicatePaths, [
+    { path: duplicatePath, recordFiles: [firstRecordFile, secondRecordFile] },
+  ]);
+  const diagnostics = formatCorpusMembershipErrors(result);
+  assert.ok(diagnostics.indexOf(firstRecordFile) < diagnostics.indexOf(secondRecordFile));
+});
+
+test('reports records that overlap a frozen membership authority', () => {
+  const overlapPath = 'scripts/tests/unit/lib/frozen.test.mjs';
+  const recordFile = recordPathForTestPath(overlapPath);
+  const result = reconcileCorpusMembership({
+    discovered: [],
+    frozenPaths: [overlapPath],
+    records: [{ recordFile, schema: 1, path: overlapPath }],
+  });
+
+  assert.equal(result.ok, false);
+  assert.deepEqual(result.overlapPaths, [{ path: overlapPath, recordFiles: [recordFile] }]);
+  assert.deepEqual(result.missingPaths, [
+    { path: overlapPath, authority: 'frozen', recordFile: null },
+    { path: overlapPath, authority: 'record', recordFile },
+  ]);
+  assert.match(formatCorpusMembershipErrors(result), new RegExp(overlapPath));
+  assert.match(formatCorpusMembershipErrors(result), new RegExp(recordFile));
+});
+
+test('keeps a valid but misplaced record separate from malformed records', () => {
+  const testPath = 'scripts/tests/integration/lib/misplaced.test.mjs';
+  const misplacedRecord = {
+    recordFile: `${POST_SNAPSHOT_REGISTRY_ROOT}/unit/lib/misplaced.test.mjs.json`,
+    expectedRecordFile: recordPathForTestPath(testPath),
+    path: testPath,
+  };
+  const result = reconcileCorpusMembership({
+    discovered: [testPath],
+    frozenPaths: [],
+    records: [{ recordFile: misplacedRecord.recordFile, schema: 1, path: testPath }],
+    misplacedRecords: [misplacedRecord],
+  });
+
+  assert.equal(result.ok, false);
+  assert.deepEqual(result.malformedRecords, []);
+  assert.deepEqual(result.misplacedRecords, [misplacedRecord]);
+  const diagnostics = formatCorpusMembershipErrors(result);
+  assert.match(diagnostics, new RegExp(misplacedRecord.recordFile));
+  assert.match(diagnostics, new RegExp(misplacedRecord.expectedRecordFile));
+  assert.match(diagnostics, /move or repair that record/);
+});
+
+test('reports noncanonical discovery as a layout failure without proposing a record path', () => {
+  const noncanonicalPath = 'scripts/gh/misplaced.test.mjs';
+  const result = reconcileCorpusMembership({
+    discovered: [noncanonicalPath],
+    frozenPaths: [],
+    records: [],
+  });
+
+  assert.equal(result.ok, false);
+  assert.deepEqual(result.noncanonicalDiscoveredPaths, [noncanonicalPath]);
+  const diagnostics = formatCorpusMembershipErrors(result);
+  assert.match(diagnostics, /test-tree-layout\.test\.mjs/);
+  assert.match(diagnostics, /No membership record can be created/);
+  assert.doesNotMatch(diagnostics, /test-corpus-post-snapshot\/scripts\/gh/);
+});
+
+test('fails closed when the record loader reports malformed records despite matching paths', () => {
+  const testPath = 'scripts/tests/unit/lib/valid.test.mjs';
+  const malformedRecord = {
+    recordFile: `${POST_SNAPSHOT_REGISTRY_ROOT}/unit/lib/bad.test.mjs.json`,
+    error: 'test-corpus-membership: invalid JSON',
+  };
+  const result = reconcileCorpusMembership({
+    discovered: [testPath],
+    frozenPaths: [testPath],
+    records: [],
+    recordErrors: [malformedRecord],
+  });
+
+  assert.equal(result.ok, false);
+  assert.deepEqual(result.malformedRecords, [malformedRecord]);
+  const diagnostics = formatCorpusMembershipErrors(result);
+  assert.match(diagnostics, new RegExp(malformedRecord.recordFile));
+  assert.match(diagnostics, /invalid JSON/);
+});
+
+test('formats every diagnostic collection in deterministic plan order', () => {
+  const noncanonicalPath = 'scripts/gh/misplaced.test.mjs';
+  const duplicatePath = 'scripts/tests/unit/lib/duplicate.test.mjs';
+  const frozenPath = 'scripts/tests/slow/lib/frozen.test.mjs';
+  const undeclaredPath = 'scripts/tests/integration/lib/undeclared.test.mjs';
+  const stalePath = 'scripts/tests/unit/lib/stale.test.mjs';
+  const firstRecordFile = `${POST_SNAPSHOT_REGISTRY_ROOT}/unit/lib/a.test.mjs.json`;
+  const secondRecordFile = `${POST_SNAPSHOT_REGISTRY_ROOT}/unit/lib/z.test.mjs.json`;
+  const misplacedRecord = {
+    recordFile: `${POST_SNAPSHOT_REGISTRY_ROOT}/unit/lib/misplaced.test.mjs.json`,
+    expectedRecordFile: recordPathForTestPath('scripts/tests/slow/lib/misplaced.test.mjs'),
+    path: 'scripts/tests/slow/lib/misplaced.test.mjs',
+  };
+  const diagnostics = formatCorpusMembershipErrors({
+    malformedRecords: [
+      { recordFile: secondRecordFile, error: 'bad schema' },
+      { recordFile: firstRecordFile, error: 'bad JSON' },
+    ],
+    misplacedRecords: [misplacedRecord],
+    noncanonicalDiscoveredPaths: [noncanonicalPath],
+    duplicatePaths: [{ path: duplicatePath, recordFiles: [secondRecordFile, firstRecordFile] }],
+    overlapPaths: [{ path: frozenPath, recordFiles: [secondRecordFile] }],
+    undeclaredPaths: [undeclaredPath],
+    missingPaths: [
+      { path: stalePath, authority: 'record', recordFile: recordPathForTestPath(stalePath) },
+      { path: frozenPath, authority: 'frozen', recordFile: null },
+    ],
+  });
+
+  const headings = [
+    'Malformed membership records:',
+    'Misplaced membership records:',
+    'Noncanonical discovered test files:',
+    'Duplicate membership declarations:',
+    'Post-snapshot records overlapping frozen destinations:',
+    'Undeclared test files:',
+    'Declared tests missing from disk:',
+  ];
+  for (let index = 1; index < headings.length; index += 1) {
+    assert.ok(diagnostics.indexOf(headings[index - 1]) < diagnostics.indexOf(headings[index]));
+  }
+  assert.ok(diagnostics.indexOf(firstRecordFile) < diagnostics.indexOf(secondRecordFile));
 });
