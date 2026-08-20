@@ -125,6 +125,8 @@ npx ai-task-manager install --codex-superpowers
 
 AITM looks for Superpowers under `~/.claude/plugins/cache/claude-plugins-official/superpowers/<version>/skills`. If found, it mirrors the supported skills and appends a marked AITM block to the repo `AGENTS.md`; existing content is preserved and repeat runs update the same block. Use `--codex-superpowers-global` only when you explicitly want to update `~/.codex/AGENTS.md` instead.
 
+For long unattended Codex Desktop runs, token burn is dominated by step count and the live window, not chat wordiness. Operator steps (top-level `~/.codex/config.toml`, gated silence rule in `~/.codex/AGENTS.md`, new chat windows with a restart prompt, JSONL measurement) are in [codex-unattended-token-burn.md](./codex-unattended-token-burn.md). Do not drop High reasoning on assigned defect work to save tokens. The Desktop app does not use `codex --profile`.
+
 If the Superpowers cache is missing, AITM continues without it. Install Superpowers in Claude Code first, then rerun the same command. The AITM task skill remains repo-local at `.agents/skills/task/SKILL.md`.
 
 ---
