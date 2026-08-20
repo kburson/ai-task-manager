@@ -68,6 +68,20 @@ test('history-only edges remain distinct and never authorize executable movement
   }
 });
 
+test('Shelve from Ready for Planning is sanctioned timing history without widening action scope', () => {
+  assert.equal(isTimingHistoryEdge('ready-for-plan', 'backlog'), true);
+  assert.deepEqual(actionPolicyFor('shelve', 'ready-for-plan'), {
+    ok: true,
+    kind: 'allowed',
+    action: 'shelve',
+    currentState: 'ready-for-plan',
+    allowedStates: ['refine', 'ready-for-plan'],
+    target: 'backlog',
+    requires: 'reason',
+  });
+  assert.equal(actionPolicyFor('shelve', 'plan').kind, 'refused');
+});
+
 test('action policy returns frozen allowed, refused, unknown, and bootstrap outcomes', () => {
   assert.deepEqual(actionPolicyFor('test', 'develop'), {
     ok: true,

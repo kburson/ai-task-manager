@@ -12,7 +12,7 @@ const ENTRY_REVERSE_EDGES = new Set([
   '6>5',
 ]);
 
-const TIMING_REVERSE_EDGES = new Set(['3>2', '5>4', '6>4', '6>5', '7>5']);
+const TIMING_REVERSE_EDGES = new Set(['2>0', '3>2', '5>4', '6>4', '6>5', '7>5']);
 // Historical Assigned/On Deck occupied index 1 before #1211. Readers project
 // that evidence to R4P (index 2), so the old backlog→Assigned→Refine sequence
 // appears as 0→2→1→3 after normalization and must remain readable.
