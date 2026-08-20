@@ -8,10 +8,11 @@
 import { createHash } from 'node:crypto';
 
 import { parseIssueFieldDb } from '../issue-field-db.mjs';
-import { parseBlockedBy } from './blocked-marker.mjs';
+import { parseBlockedByStrict } from './blocked-marker.mjs';
 import { parseMarker, serializeMarker } from './marker-grammar.mjs';
 
-export const REFINEMENT_SNAPSHOT_SCHEMA = '1';
+export const REFINEMENT_SNAPSHOT_SCHEMA = '2';
+const LEGACY_REFINEMENT_SNAPSHOT_SCHEMA = '1';
 export const REFINEMENT_SNAPSHOT_MARKER_RE = /<!--\s*aitm-refinement-snapshot\s+[^>]*?-->/gi;
 
 const REQUIRED_FIELDS = Object.freeze(['priority', 'size', 'estimate', 'rank']);
@@ -42,7 +43,7 @@ function normalizedLabels(labels) {
   return values;
 }
 
-function requiredFieldValues(body) {
+function requiredFieldValues(body, { includeBlockedBy = false } = {}) {
   const parsed = parseIssueFieldDb(body);
   if (!parsed.ok) fail(`fields-${parsed.reason}`);
   const values = {};
@@ -51,12 +52,38 @@ function requiredFieldValues(body) {
     if (value === null || value === undefined || value === '') fail(`field-${key}`);
     values[key] = value;
   }
+  if (includeBlockedBy) values.blockedBy = parsed.values.blockedBy ?? null;
   return values;
 }
 
 function canonicalBlockedBy(body) {
-  const refs = parseBlockedBy(body);
+  const refs = parseBlockedByStrict(body);
   return refs.length ? refs.map((number) => `#${number}`).join(',') : null;
+}
+
+function legacyRefinementInputs(body, labels, { durableProvenance, durableFields } = {}) {
+  const withoutMarker = String(body || '').replace(REFINEMENT_SNAPSHOT_MARKER_RE, '');
+  const scope = rootSection(withoutMarker, 'Scope');
+  if (scope.length < 12) fail('scope');
+  const acceptanceCriteria = rootSection(withoutMarker, 'Acceptance Criteria');
+  if (!/^- \[[ x]\]\s+\S+/m.test(acceptanceCriteria)) fail('acceptance-criteria');
+  const planMetadata = rootSection(withoutMarker, 'Plan Metadata');
+  const fieldValues =
+    durableFields || requiredFieldValues(withoutMarker, { includeBlockedBy: true });
+  const dependencies =
+    planMetadata
+      .split('\n')
+      .filter((line) => /\*\*(?:Depends On|Blocked By)\*\*/i.test(line))
+      .map((line) => line.trim())
+      .join('\n') || `blockedBy=${JSON.stringify(fieldValues.blockedBy)}`;
+  return {
+    scope,
+    acceptanceCriteria,
+    fields: fieldValues,
+    dependencies,
+    labels: normalizedLabels(labels),
+    provenance: provenanceDigest(withoutMarker, durableProvenance),
+  };
 }
 
 function provenanceDigest(body, fallback) {
@@ -134,7 +161,7 @@ export function parseRefinementSnapshot(body) {
   if (!parsed || parsed.name !== 'refinement-snapshot') return null;
   const { schema, digest, provenance, priority, size, estimate, rank, ts } = parsed.props || {};
   if (
-    schema !== REFINEMENT_SNAPSHOT_SCHEMA ||
+    ![LEGACY_REFINEMENT_SNAPSHOT_SCHEMA, REFINEMENT_SNAPSHOT_SCHEMA].includes(schema) ||
     !/^[0-9a-f]{64}$/.test(digest || '') ||
     !/^[0-9a-f]{64}$/.test(provenance || '') ||
     !Number.isFinite(Date.parse(ts || '')) ||
@@ -163,20 +190,26 @@ export function verifyRefinementSnapshot(body, { labels, allowPlanProjection = f
   const snapshot = parseRefinementSnapshot(body);
   if (!snapshot) return { ok: false, reason: 'missing or malformed refinement snapshot' };
   try {
+    const legacy = snapshot.schema === LEGACY_REFINEMENT_SNAPSHOT_SCHEMA;
     const durableFields = allowPlanProjection
       ? {
-          ...requiredFieldValues(body),
+          ...requiredFieldValues(body, { includeBlockedBy: legacy }),
           size: snapshot.fields.size,
           estimate: snapshot.fields.estimate,
+          ...(legacy ? { blockedBy: snapshot.fields.blockedBy } : {}),
         }
       : undefined;
+    const inputBuilder = legacy ? legacyRefinementInputs : refinementInputs;
     const digest = digestInputs(
-      refinementInputs(body, labels, {
+      inputBuilder(body, labels, {
         durableProvenance: snapshot.provenance,
         ...(durableFields ? { durableFields } : {}),
       })
     );
     if (digest !== snapshot.digest) {
+      return { ok: false, reason: 'stale refinement snapshot', snapshot };
+    }
+    if (legacy && canonicalBlockedBy(body) !== snapshot.fields.blockedBy) {
       return { ok: false, reason: 'stale refinement snapshot', snapshot };
     }
     return { ok: true, snapshot };

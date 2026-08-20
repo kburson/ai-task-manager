@@ -22,6 +22,8 @@ The protected `aitm-blocked-by` body marker is the canonical dependency input fo
 
 `refinement-snapshot.mjs` will parse the marker, normalize positive blocker numbers in deterministic order, include them in the snapshot digest, and serialize the same list into the snapshot's `blocked-by` property. Existing unblocked issues continue to serialize `blocked-by=""`.
 
+Marker-authoritative snapshots use schema 2 so persisted schema-1 evidence is not silently reinterpreted under a new digest algorithm. Verification retains the original schema-1 dependency calculation for backward compatibility, then requires the serialized legacy blocker value to agree with the live protected marker. New stamps always use schema 2.
+
 The existing synchronization contract remains unchanged: `block` and `unblock` maintain the `BLOCKED` label, `Blocked By` project field, and body marker together. This change does not add a fourth blocker authority.
 
 ## Lifecycle Behavior
@@ -42,7 +44,7 @@ No bypass is added for Plan, Develop, Test, Review, or Done. Sequential WIP and 
 
 ## Error Handling
 
-Malformed or ambiguous blocker markers continue to fail through the existing protected-marker and blocker synchronization paths. Snapshot verification remains fail-closed: changing the blocker marker or `BLOCKED` label after refinement makes the snapshot stale until refinement is completed again.
+Malformed or ambiguous blocker markers fail closed at every authorization consumer. The strict reader requires either no marker or exactly one complete marker containing only unique positive issue refs. Snapshot verification remains fail-closed: changing the blocker marker or `BLOCKED` label after refinement makes the snapshot stale until refinement is completed again.
 
 ## Verification
 

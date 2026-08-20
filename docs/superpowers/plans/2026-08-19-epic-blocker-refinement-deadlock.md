@@ -11,6 +11,7 @@
 ## Global Constraints
 
 - Preserve atomic synchronization of the `BLOCKED` label, `Blocked By` project field, and `aitm-blocked-by` body marker.
+- Preserve persisted schema-1 refinement evidence; new marker-authoritative snapshots use schema 2 rather than changing schema-1 digest semantics.
 - Keep `blockedByGuard` on Ready for Planning, Plan, Develop, Test, and Review exits.
 - Do not allow an open blocker to authorize Plan or execution.
 - Keep sequential WIP, rank, parent-child contiguity, and epic terminal gates unchanged.
@@ -70,7 +71,7 @@ Remove the `blockedByGuard` imports and exit-list entries only from `states/back
 
 - [ ] **Step 6: Make the protected marker the snapshot dependency source**
 
-Import `parseBlockedBy` into `refinement-snapshot.mjs`. Normalize its result as `#N` comma-separated text, use that value in the hashed `dependencies` input, and serialize it into the refinement snapshot marker's `blocked-by` property. Do not read dependency prose from Plan Metadata and do not add blocker data to the hidden field database.
+Import the strict protected-marker reader into `refinement-snapshot.mjs`. Normalize its result as `#N` comma-separated text, use that value in the hashed `dependencies` input, and serialize it into a schema-2 refinement snapshot marker's `blocked-by` property. Retain exact schema-1 verification for persisted snapshots and require their serialized blocker value to agree with the live protected marker. Do not use dependency prose from Plan Metadata for schema-2 evidence and do not add blocker data to the hidden field database.
 
 - [ ] **Step 7: Run focused tests and observe GREEN**
 
@@ -113,5 +114,5 @@ git commit -m "fix(workflow): allow blocked children to complete refinement [#13
 - The protected blocker marker is the only dependency source used by refinement snapshots.
 - Blocked work can reach Ready for Planning but cannot leave it while the blocker is open.
 - Parent epic admission and next-child selection consume one consistent dependency representation.
-- No new bypass, hidden field, schema, or configuration is introduced.
+- No new bypass, hidden field, or configuration is introduced; the schema-2 boundary preserves schema-1 compatibility instead of reinterpreting existing evidence.
 - No `TBD`, `TODO`, deferred behavior, or unrelated nomenclature change is included.

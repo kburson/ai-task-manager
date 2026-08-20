@@ -101,6 +101,17 @@ test('blockedByGuard: missing fetchBlockerState → ok (fail-open)', async () =>
   assert.deepEqual(r, { ok: true });
 });
 
+test('blockedByGuard: malformed blocker evidence refuses fail-closed', async () => {
+  const r = await blockedByGuard.run(
+    makeCtx({
+      body: 'x\n<!-- aitm-blocked-by refs="#5,garbage" -->\n',
+      stateMap: { 5: 'done' },
+    })
+  );
+  assert.equal(r.ok, false);
+  assert.match(r.reason, /blocked marker/i);
+});
+
 // ── bootstrap registration ───────────────────────────────────────────────────
 
 test('bootstrap: guard starts at Ready for Planning exit and has no entry slots', () => {

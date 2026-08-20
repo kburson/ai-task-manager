@@ -125,6 +125,28 @@ test('blocked R4P child stays current for epic admission but waits for its prede
   assert.equal(findNextEligibleChild([predecessorDone, blockedChild]).number, 12);
 });
 
+test('configured-project mapping rejects ambiguous blocker markers', () => {
+  const ambiguous = refinementBody({ blocker: 11, rank: 2 }).replace(
+    '<!-- aitm-blocked-by refs="#11" -->',
+    '<!-- aitm-blocked-by refs="#11" -->\n<!-- aitm-blocked-by refs="#12" -->'
+  );
+  const [mapped] = mapSubIssueNodes(
+    [
+      projectNode({
+        number: 12,
+        status: 'Ready for Planning',
+        rank: 2,
+        body: ambiguous,
+        labels: ['BLOCKED', 'enhancement'],
+      }),
+    ],
+    cfg.projectId
+  );
+
+  assert.equal(mapped.hasCurrentRefinement, false);
+  assert.match(mapped.childEvidenceError, /blocked marker/i);
+});
+
 test('configured-project child mapping carries current refinement and terminal evidence', () => {
   const [ready, abandoned] = mapSubIssueNodes(
     [

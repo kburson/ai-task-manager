@@ -63,7 +63,7 @@ test('refinement snapshot records and validates current scope, AC, fields, depen
     ts: TS,
   });
   assert.match(marker, /aitm-refinement-snapshot/);
-  assert.match(marker, /schema="1"/);
+  assert.match(marker, /schema="2"/);
 
   const stamped = stampRefinementSnapshot(body, {
     labels: ['team-ready', 'enhancement'],
