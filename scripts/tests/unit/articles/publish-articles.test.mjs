@@ -1,6 +1,7 @@
 // @story #1099
-// Transform-level tests for the article publisher. No filesystem writes and no
-// Mermaid rendering happen here — this is the fast lane. The end-to-end run
+// Transform-level tests for the article publisher. They may create and clean
+// repository-local scratch fixtures, but never write the production corpus or
+// render Mermaid — this is the fast lane. The end-to-end run
 // over the real corpus (including rendering) lives in
 // tests/slow/publish-articles-e2e.test.mjs.
 
