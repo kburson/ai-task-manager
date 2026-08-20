@@ -160,8 +160,62 @@ test('reports each malformed record by its physical file without stopping the sc
   );
   assert.deepEqual(
     loaded.records.map(({ path: recordPath }) => recordPath),
-    ['scripts/tests/unit/lib/duplicate.test.mjs', validPath]
+    [
+      'scripts/tests/unit/lib/duplicate.test.mjs',
+      validPath,
+      'scripts/tests/unit/lib/duplicate.test.mjs',
+    ]
   );
+  assert.deepEqual(loaded.misplacedRecords, [
+    {
+      recordFile: duplicateSecond,
+      expectedRecordFile: recordPathForTestPath('scripts/tests/unit/lib/duplicate.test.mjs'),
+      path: 'scripts/tests/unit/lib/duplicate.test.mjs',
+    },
+  ]);
+});
+
+test('retains valid duplicate loader records for duplicate, misplaced, and overlap diagnostics', () => {
+  const projectRoot = mkdtempProjectIsolated('test-corpus-membership-duplicate-reconciliation-');
+  const testPath = 'scripts/tests/unit/lib/duplicate.test.mjs';
+  const firstRecordFile = recordPathForTestPath(testPath);
+  const secondRecordFile = `${POST_SNAPSHOT_REGISTRY_ROOT}/unit/lib/z-duplicate.test.mjs.json`;
+  writeRecord(projectRoot, firstRecordFile, { schema: 1, path: testPath });
+  writeRecord(projectRoot, secondRecordFile, { schema: 1, path: testPath });
+
+  const loaded = loadPostSnapshotRecords({ projectRoot });
+  assert.deepEqual(loaded.records, [
+    { recordFile: firstRecordFile, schema: 1, path: testPath },
+    { recordFile: secondRecordFile, schema: 1, path: testPath },
+  ]);
+  assert.deepEqual(
+    loaded.errors.map(({ recordFile }) => recordFile),
+    [secondRecordFile]
+  );
+  assert.deepEqual(loaded.misplacedRecords, [
+    { recordFile: secondRecordFile, expectedRecordFile: firstRecordFile, path: testPath },
+  ]);
+
+  const result = reconcileCorpusMembership({
+    discovered: [testPath],
+    frozenPaths: [testPath],
+    records: loaded.records,
+    recordErrors: loaded.errors,
+    misplacedRecords: loaded.misplacedRecords,
+  });
+  assert.deepEqual(result.duplicatePaths, [
+    { path: testPath, recordFiles: [firstRecordFile, secondRecordFile] },
+  ]);
+  assert.deepEqual(result.overlapPaths, [
+    { path: testPath, recordFiles: [firstRecordFile, secondRecordFile] },
+  ]);
+  assert.deepEqual(
+    result.malformedRecords.map(({ recordFile }) => recordFile),
+    [secondRecordFile]
+  );
+  assert.deepEqual(result.misplacedRecords, [
+    { recordFile: secondRecordFile, expectedRecordFile: firstRecordFile, path: testPath },
+  ]);
 });
 
 test('reports a present registry root that is not a directory as malformed', () => {
@@ -374,31 +428,47 @@ test('fails closed when the record loader reports malformed records despite matc
 });
 
 test('formats every diagnostic collection in deterministic plan order', () => {
-  const noncanonicalPath = 'scripts/gh/misplaced.test.mjs';
-  const duplicatePath = 'scripts/tests/unit/lib/duplicate.test.mjs';
-  const frozenPath = 'scripts/tests/slow/lib/frozen.test.mjs';
-  const undeclaredPath = 'scripts/tests/integration/lib/undeclared.test.mjs';
-  const stalePath = 'scripts/tests/unit/lib/stale.test.mjs';
+  const noncanonicalA = 'scripts/gh/a-misplaced.test.mjs';
+  const noncanonicalZ = 'scripts/gh/z-misplaced.test.mjs';
+  const duplicateA = 'scripts/tests/unit/lib/a-duplicate.test.mjs';
+  const duplicateZ = 'scripts/tests/unit/lib/z-duplicate.test.mjs';
+  const overlapA = 'scripts/tests/slow/lib/a-overlap.test.mjs';
+  const overlapZ = 'scripts/tests/slow/lib/z-overlap.test.mjs';
+  const undeclaredA = 'scripts/tests/integration/lib/a-undeclared.test.mjs';
+  const undeclaredZ = 'scripts/tests/integration/lib/z-undeclared.test.mjs';
+  const missingA = 'scripts/tests/unit/lib/a-missing.test.mjs';
+  const missingZ = 'scripts/tests/unit/lib/z-missing.test.mjs';
   const firstRecordFile = `${POST_SNAPSHOT_REGISTRY_ROOT}/unit/lib/a.test.mjs.json`;
   const secondRecordFile = `${POST_SNAPSHOT_REGISTRY_ROOT}/unit/lib/z.test.mjs.json`;
-  const misplacedRecord = {
-    recordFile: `${POST_SNAPSHOT_REGISTRY_ROOT}/unit/lib/misplaced.test.mjs.json`,
-    expectedRecordFile: recordPathForTestPath('scripts/tests/slow/lib/misplaced.test.mjs'),
-    path: 'scripts/tests/slow/lib/misplaced.test.mjs',
+  const misplacedA = {
+    recordFile: `${POST_SNAPSHOT_REGISTRY_ROOT}/unit/lib/a-misplaced.test.mjs.json`,
+    expectedRecordFile: recordPathForTestPath('scripts/tests/slow/lib/a-misplaced.test.mjs'),
+    path: 'scripts/tests/slow/lib/a-misplaced.test.mjs',
+  };
+  const misplacedZ = {
+    recordFile: `${POST_SNAPSHOT_REGISTRY_ROOT}/unit/lib/z-misplaced.test.mjs.json`,
+    expectedRecordFile: recordPathForTestPath('scripts/tests/slow/lib/z-misplaced.test.mjs'),
+    path: 'scripts/tests/slow/lib/z-misplaced.test.mjs',
   };
   const diagnostics = formatCorpusMembershipErrors({
     malformedRecords: [
       { recordFile: secondRecordFile, error: 'bad schema' },
       { recordFile: firstRecordFile, error: 'bad JSON' },
     ],
-    misplacedRecords: [misplacedRecord],
-    noncanonicalDiscoveredPaths: [noncanonicalPath],
-    duplicatePaths: [{ path: duplicatePath, recordFiles: [secondRecordFile, firstRecordFile] }],
-    overlapPaths: [{ path: frozenPath, recordFiles: [secondRecordFile] }],
-    undeclaredPaths: [undeclaredPath],
+    misplacedRecords: [misplacedZ, misplacedA],
+    noncanonicalDiscoveredPaths: [noncanonicalZ, noncanonicalA],
+    duplicatePaths: [
+      { path: duplicateZ, recordFiles: [secondRecordFile, firstRecordFile] },
+      { path: duplicateA, recordFiles: [secondRecordFile, firstRecordFile] },
+    ],
+    overlapPaths: [
+      { path: overlapZ, recordFiles: [secondRecordFile, firstRecordFile] },
+      { path: overlapA, recordFiles: [secondRecordFile, firstRecordFile] },
+    ],
+    undeclaredPaths: [undeclaredZ, undeclaredA],
     missingPaths: [
-      { path: stalePath, authority: 'record', recordFile: recordPathForTestPath(stalePath) },
-      { path: frozenPath, authority: 'frozen', recordFile: null },
+      { path: missingZ, authority: 'record', recordFile: recordPathForTestPath(missingZ) },
+      { path: missingA, authority: 'frozen', recordFile: null },
     ],
   });
 
@@ -415,4 +485,12 @@ test('formats every diagnostic collection in deterministic plan order', () => {
     assert.ok(diagnostics.indexOf(headings[index - 1]) < diagnostics.indexOf(headings[index]));
   }
   assert.ok(diagnostics.indexOf(firstRecordFile) < diagnostics.indexOf(secondRecordFile));
+  assert.ok(
+    diagnostics.indexOf(misplacedA.recordFile) < diagnostics.indexOf(misplacedZ.recordFile)
+  );
+  assert.ok(diagnostics.indexOf(noncanonicalA) < diagnostics.indexOf(noncanonicalZ));
+  assert.ok(diagnostics.indexOf(duplicateA) < diagnostics.indexOf(duplicateZ));
+  assert.ok(diagnostics.indexOf(overlapA) < diagnostics.indexOf(overlapZ));
+  assert.ok(diagnostics.indexOf(undeclaredA) < diagnostics.indexOf(undeclaredZ));
+  assert.ok(diagnostics.indexOf(missingA) < diagnostics.indexOf(missingZ));
 });

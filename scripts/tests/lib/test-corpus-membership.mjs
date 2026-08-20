@@ -118,10 +118,10 @@ export function loadPostSnapshotRecords({
     }
     if (declaredPaths.has(record.path)) {
       errors.push(malformedError(recordFile, `duplicate declared path: ${record.path}`));
-      continue;
+    } else {
+      declaredPaths.add(record.path);
     }
 
-    declaredPaths.add(record.path);
     const normalizedRecord = { recordFile, schema: record.schema, path: record.path };
     records.push(normalizedRecord);
     const expectedRecordFile = recordPathForTestPath(record.path);
