@@ -96,7 +96,9 @@ function repoRoot() {
 // authority, and provider-selection parser as six intentional runtime entries.
 // #1297 adds the shipped closed-binding lifecycle authority used by close,
 // fleet recovery, and the worktree guard.
-const ENTRY_CEILING = 684;
+// #1354 accounts for the intentionally shipped Codex guide
+// (`docs/guides/codex-unattended-token-burn.md`) from trunk commit b6548b0c.
+const ENTRY_CEILING = 685;
 
 function packedFiles() {
   const out = execFileSync('npm', ['pack', '--dry-run', '--json'], {
