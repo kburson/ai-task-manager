@@ -1,4 +1,4 @@
-// @story #1216
+// @story #1216 #1339
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
@@ -33,9 +33,8 @@ function currentChild(number, state, rank, extra = {}) {
   };
 }
 
-function refinementBody() {
-  return stampRefinementSnapshot(
-    `## Scope
+function refinementBody({ blocker = null, rank = 1 } = {}) {
+  const body = `## Scope
 
 Keep one current refinement snapshot.
 
@@ -47,19 +46,29 @@ Keep one current refinement snapshot.
 
 - [ ] Current refinement remains verifiable
 
-<!-- aitm-refinement-rationale: {"size":"S","estimate":"1","priority":"P1","rank":1,"rationale":"current"} -->
-<!-- aitm-fields: {"schema":1,"values":{"priority":"P1","size":"S","estimate":1,"rank":1,"blockedBy":null}} -->`,
-    { labels: ['enhancement'], ts: '2026-08-12T00:00:00.000Z' }
-  );
+<!-- aitm-refinement-rationale: {"size":"S","estimate":"1","priority":"P1","rank":${rank},"rationale":"current"} -->
+${blocker ? `<!-- aitm-blocked-by refs="#${blocker}" -->\n` : ''}<!-- aitm-fields: {"schema":1,"values":{"priority":"P1","size":"S","estimate":1,"rank":${rank},"blockedBy":null}} -->`;
+  return stampRefinementSnapshot(body, {
+    labels: blocker ? ['BLOCKED', 'enhancement'] : ['enhancement'],
+    ts: '2026-08-12T00:00:00.000Z',
+  });
 }
 
-function projectNode({ number, issueState = 'OPEN', stateReason = null, status, rank, body }) {
+function projectNode({
+  number,
+  issueState = 'OPEN',
+  stateReason = null,
+  status,
+  rank,
+  body,
+  labels = ['enhancement'],
+}) {
   return {
     number,
     state: issueState,
     stateReason,
     body,
-    labels: { nodes: [{ name: 'enhancement' }], pageInfo: { hasNextPage: false } },
+    labels: { nodes: labels.map((name) => ({ name })), pageInfo: { hasNextPage: false } },
     projectItems: {
       nodes: [
         {
@@ -75,6 +84,68 @@ function projectNode({ number, issueState = 'OPEN', stateReason = null, status, 
     },
   };
 }
+
+test('blocked R4P child stays current for epic admission but waits for its predecessor', async () => {
+  const [blockedChild] = mapSubIssueNodes(
+    [
+      projectNode({
+        number: 12,
+        status: 'Ready for Planning',
+        rank: 2,
+        body: refinementBody({ blocker: 11, rank: 2 }),
+        labels: ['BLOCKED', 'enhancement'],
+      }),
+    ],
+    cfg.projectId
+  );
+
+  assert.deepEqual(blockedChild.blockedBy, [11]);
+  assert.equal(blockedChild.hasCurrentRefinement, true);
+
+  const admission = await planEpicDevelopChildrenGate({
+    cfg,
+    issueNumber: 1209,
+    deps: fetchChildren([currentChild(11, 'ready-for-plan', 1), blockedChild]),
+  });
+  assert.equal(admission.ok, true);
+
+  assert.equal(
+    findNextEligibleChild([currentChild(11, 'ready-for-plan', 1), blockedChild]).number,
+    11
+  );
+
+  const predecessorDone = {
+    number: 11,
+    state: 'done',
+    boardState: 'done',
+    rank: 1,
+    issueState: 'closed',
+    closeReason: 'completed',
+  };
+  assert.equal(findNextEligibleChild([predecessorDone, blockedChild]).number, 12);
+});
+
+test('configured-project mapping rejects ambiguous blocker markers', () => {
+  const ambiguous = refinementBody({ blocker: 11, rank: 2 }).replace(
+    '<!-- aitm-blocked-by refs="#11" -->',
+    '<!-- aitm-blocked-by refs="#11" -->\n<!-- aitm-blocked-by refs="#12" -->'
+  );
+  const [mapped] = mapSubIssueNodes(
+    [
+      projectNode({
+        number: 12,
+        status: 'Ready for Planning',
+        rank: 2,
+        body: ambiguous,
+        labels: ['BLOCKED', 'enhancement'],
+      }),
+    ],
+    cfg.projectId
+  );
+
+  assert.equal(mapped.hasCurrentRefinement, false);
+  assert.match(mapped.childEvidenceError, /blocked marker/i);
+});
 
 test('configured-project child mapping carries current refinement and terminal evidence', () => {
   const [ready, abandoned] = mapSubIssueNodes(

@@ -1,7 +1,8 @@
 // Universal blocked-by-not-done exit-guard (#286, parent epic #280).
 //
-// Registers at every exit slot in the guard-registry (backlog, refine, ready-for-plan, plan,
-// develop, test, review — done has no exit slot). When invoked, the guard:
+// Registers at every delivery exit slot from Ready for Planning through Review;
+// Backlog and Refine deliberately permit blocked work to be shaped and parked.
+// When invoked, the guard:
 //
 //   1. Reads the active issue's body for the `aitm-blocked-by` marker.
 //   2. Looks up each blocker's kanban state via `ctx.fetchBlockerState(n)`.
@@ -30,7 +31,7 @@
 // (issue number + current state are prefixed by the state-mover when it
 // formats the final `BLOCKED:` line — see scripts/gh/move-state.mjs.)
 
-import { parseBlockedBy } from './blocked-marker.mjs';
+import { parseBlockedByStrict } from './blocked-marker.mjs';
 
 export const GUARD_ID = 'blocked-by-not-done';
 
@@ -54,12 +55,17 @@ export const blockedByGuard = {
       return { ok: false, reason: `${GUARD_ID}: missing ctx` };
     }
     const { body = '', fetchBlockerState } = ctx;
+    let refs;
+    try {
+      refs = parseBlockedByStrict(body);
+    } catch (error) {
+      return { ok: false, reason: error.message };
+    }
     if (typeof fetchBlockerState !== 'function') {
       // No way to resolve blocker states — fail open (no refusal) rather than
       // hard-block every transition when callers haven't wired the lookup yet.
       return { ok: true };
     }
-    const refs = parseBlockedBy(body);
     if (refs.length === 0) return { ok: true };
 
     const openBlockers = [];

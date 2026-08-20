@@ -33,7 +33,7 @@
 //   `closeReason` (#888). Gates read `state`.
 
 import { gql, splitRepo } from './github-projects.mjs';
-import { parseBlockedBy } from '../../task-tracker/lib/blocked-marker.mjs';
+import { parseBlockedByStrict } from '../../task-tracker/lib/blocked-marker.mjs';
 import {
   hasUnauthorizedCloseRecoveryMarker,
   readUnauthorizedCloseRecovery,
@@ -503,10 +503,17 @@ export function mapSubIssueNodes(subs, cfgOrProjectId) {
     const closeReason = normalizeCloseReason(sub);
     const issueClosed = String(sub.state || '').toUpperCase() === 'CLOSED';
     const labels = sub.labels;
-    const blockedBy = parseBlockedBy(sub.body);
+    let blockedBy = null;
     let childEvidenceError = null;
+    try {
+      blockedBy = parseBlockedByStrict(sub.body);
+    } catch (error) {
+      childEvidenceError = error.message;
+    }
     let hasCurrentRefinement = false;
-    if (recoveryMarkerPresent && !recovery)
+    if (childEvidenceError) {
+      // Strict blocker evidence is required before any child can be admitted.
+    } else if (recoveryMarkerPresent && !recovery)
       childEvidenceError = 'unauthorized-close recovery marker malformed';
     else if (projectMatches.length > 1)
       childEvidenceError = 'configured project membership ambiguous';

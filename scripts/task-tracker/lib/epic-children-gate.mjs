@@ -2,7 +2,7 @@
 
 import { defaultFetchSiblings } from '../../gh/lib/wave-admission.mjs';
 import { splitRepo, gql } from '../../gh/lib/github-projects.mjs';
-import { parseBlockedBy } from './blocked-marker.mjs';
+import { parseBlockedByStrict } from './blocked-marker.mjs';
 import { parseRefinementSnapshot } from './refinement-snapshot.mjs';
 import { normalizeStateId } from './lifecycle-policy/index.mjs';
 
@@ -357,7 +357,7 @@ export async function enrichChildrenWithBlockedBy({ children = [], cfg, deps = {
         const body = await fetchBody({ issueNumber: child.number, cfg });
         return {
           ...child,
-          blockedBy: parseBlockedBy(body),
+          blockedBy: parseBlockedByStrict(body),
           hasCurrentRefinement: Boolean(parseRefinementSnapshot(body)),
         };
       } catch (error) {

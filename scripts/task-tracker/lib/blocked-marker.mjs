@@ -29,6 +29,9 @@ const MARKER_RE =
 // Presence-only probe used by isBlocked — matches either grammar, does not
 // require a non-empty list.
 const MARKER_PRESENT_RE = /<!--\s*aitm-blocked-by(?::|\s+refs=")/i;
+const MARKER_CANDIDATE_RE = /<!--\s*aitm-blocked-by\b[^>]*?-->/gi;
+const STRICT_MARKER_RE =
+  /^<!--\s*aitm-blocked-by(?::\s*([^>]*?)|\s+refs="((?:[^"]|&quot;)*)")\s*-->$/i;
 
 // Normalizes a `refs` argument (number | number[]) into a sorted, deduped array
 // of positive integers. Non-positive / non-integer / NaN values are dropped.
@@ -68,6 +71,36 @@ export function parseBlockedBy(body) {
   // m[1] = legacy colon CSV branch; m[2] = new `refs="..."` branch.
   const raw = m[1] != null ? m[1] : unescapeValue(m[2] ?? '');
   return normalizeRefs(raw.split(','));
+}
+
+/**
+ * Strict reader for lifecycle authorization surfaces. Unlike the tolerant
+ * migration reader above, this rejects ambiguous markers and any ref token
+ * that would otherwise disappear during normalization.
+ *
+ * @param {string} body issue body text
+ * @returns {number[]} sorted, unique, positive blocker issue numbers
+ * @throws {Error} when blocker evidence is malformed or ambiguous
+ */
+export function parseBlockedByStrict(body) {
+  const src = String(body ?? '');
+  const candidates = [...src.matchAll(MARKER_CANDIDATE_RE)].map((match) => match[0]);
+  if (candidates.length === 0) {
+    if (/<!--\s*aitm-blocked-by\b/i.test(src)) throw new Error('blocked marker malformed');
+    return [];
+  }
+  if (candidates.length !== 1) throw new Error('blocked marker ambiguous: multiple markers');
+
+  const match = candidates[0].match(STRICT_MARKER_RE);
+  if (!match) throw new Error('blocked marker malformed');
+  const raw = match[1] != null ? match[1] : unescapeValue(match[2] ?? '');
+  const tokens = raw.split(',').map((token) => token.trim());
+  if (tokens.length === 0 || tokens.some((token) => !/^#?[1-9]\d*$/.test(token))) {
+    throw new Error('blocked marker malformed: invalid ref list');
+  }
+  const refs = normalizeRefs(tokens);
+  if (refs.length !== tokens.length) throw new Error('blocked marker malformed: duplicate refs');
+  return refs;
 }
 
 /**

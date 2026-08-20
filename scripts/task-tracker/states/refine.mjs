@@ -4,7 +4,6 @@
 // fields (Rank, Labels, Start time). Exit-gates enforce the
 // R4P-entry contract via the #276 body + board adapters.
 
-import { blockedByGuard } from '../lib/blocked-by-guard.mjs';
 import { planEntryFieldsBody, planEntryFieldsBoard } from '../lib/guard-adapters-entry-fields.mjs';
 import { contiguityEntryGuard } from '../lib/contiguity-entry-guard.mjs';
 import { refineExitCompleteMarkerGuard } from '../lib/refine-exit-complete-marker-guard.mjs';
@@ -29,7 +28,6 @@ export default Object.freeze({
     // #450 — stub TBD placeholders must be replaced before advancing to plan.
     refineExitStubPlaceholderGuard,
     refinementSnapshotGuard,
-    blockedByGuard,
     planEntryFieldsBody,
     planEntryFieldsBoard,
     // #432 — hard-refuse if ## User Story is missing or still a placeholder.

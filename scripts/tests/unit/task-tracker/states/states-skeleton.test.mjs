@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// @story #309 #1025
+// @story #309 #1025 #1339
 // State-object skeleton tests (#292, parent epic #259).
 //
 // Asserts each `scripts/task-tracker/states/<state>.mjs` module exports the
@@ -76,6 +76,26 @@ describe('states-skeleton: per-state container shape', () => {
 
   it('done is terminal: no exit guards', () => {
     assert.equal(STATES.done.exitGuards.length, 0);
+  });
+
+  it('enforces open blockers only when work leaves Ready for Planning or later', () => {
+    for (const name of ['backlog', 'refine']) {
+      const ids = STATES[name].exitGuards.map((guard) => guard.id);
+      assert.equal(
+        ids.includes('blocked-by-not-done'),
+        false,
+        `${name} must allow blocked work to be shaped and parked`
+      );
+    }
+
+    for (const name of ['ready-for-plan', 'plan', 'develop', 'test', 'review']) {
+      const ids = STATES[name].exitGuards.map((guard) => guard.id);
+      assert.equal(
+        ids.includes('blocked-by-not-done'),
+        true,
+        `${name} must keep blocked work out of active delivery`
+      );
+    }
   });
 });
 
