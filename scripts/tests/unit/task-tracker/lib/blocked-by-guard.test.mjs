@@ -1,6 +1,6 @@
-// @story #309
+// @story #309 #1339
 // Tests for scripts/task-tracker/lib/blocked-by-guard.mjs and the
-// guard-bootstrap that registers it at every exit slot (#286).
+// guard-bootstrap that registers it at delivery exit slots (#286, #1339).
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -103,11 +103,12 @@ test('blockedByGuard: missing fetchBlockerState → ok (fail-open)', async () =>
 
 // ── bootstrap registration ───────────────────────────────────────────────────
 
-test('bootstrap: guard registered at all 6 exit slots, no entry slots', () => {
+test('bootstrap: guard starts at Ready for Planning exit and has no entry slots', () => {
   bootstrapGuards();
   for (const state of EXIT_STATES) {
     const ids = GUARDS[state].exit.map((g) => g.id);
-    assert.ok(ids.includes(GUARD_ID), `missing exit guard at ${state}`);
+    const shouldGuard = !['backlog', 'refine'].includes(state);
+    assert.equal(ids.includes(GUARD_ID), shouldGuard, `unexpected exit guard policy at ${state}`);
     const entryIds = GUARDS[state].entry.map((g) => g.id);
     assert.ok(!entryIds.includes(GUARD_ID), `unexpected entry guard at ${state}`);
   }

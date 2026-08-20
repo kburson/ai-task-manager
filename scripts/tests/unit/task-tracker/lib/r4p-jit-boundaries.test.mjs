@@ -1,4 +1,4 @@
-// @story #1213
+// @story #1213 #1339
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
@@ -27,6 +27,7 @@ function refinedBody({
   state = 'refine',
   scope = 'Implement the governed R4P boundary.',
   rank = 4,
+  blocker = null,
 } = {}) {
   return [
     `<!-- aitm-last-known-state state="${state}" ts="2026-08-12T11:00:00.000Z" -->`,
@@ -49,6 +50,7 @@ function refinedBody({
     '',
     '- [ ] Acceptance criteria met.',
     '',
+    ...(blocker ? [`<!-- aitm-blocked-by refs="#${blocker}" -->`, ''] : []),
     `<!-- aitm-fields: {"schema":1,"values":{"priority":"P1","size":"M","estimate":8,"rank":${rank},"blockedBy":null}} -->`,
     '',
   ].join('\n');
@@ -93,6 +95,25 @@ test('refinement snapshot fails closed when refinement inputs or labels become s
     false
   );
   assert.equal(verifyRefinementSnapshot(stamped, { labels: ['bug'] }).ok, false);
+});
+
+test('refinement snapshot records the protected blocker marker as dependency authority', () => {
+  const stamped = stampRefinementSnapshot(refinedBody({ blocker: 1212 }), {
+    labels: ['BLOCKED', 'enhancement'],
+    ts: TS,
+  });
+  const verified = verifyRefinementSnapshot(stamped, {
+    labels: ['enhancement', 'BLOCKED'],
+  });
+
+  assert.equal(verified.ok, true);
+  assert.equal(verified.snapshot.fields.blockedBy, '#1212');
+
+  const stale = verifyRefinementSnapshot(stamped.replace('refs="#1212"', 'refs="#1213"'), {
+    labels: ['BLOCKED', 'enhancement'],
+  });
+  assert.equal(stale.ok, false);
+  assert.equal(stale.reason, 'stale refinement snapshot');
 });
 
 test('the Refine success hook may remove transient rationale without invalidating the durable snapshot', async () => {

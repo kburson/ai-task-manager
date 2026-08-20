@@ -49,9 +49,9 @@
 //
 //   State    | Entry guards                          | Exit guards
 //   ---------|---------------------------------------|------------------------------------------------------------
-//   backlog  | contiguity                            | blocked-by, discuss-unresolved
+//   backlog  | contiguity                            | discuss-unresolved
 //   refine   | contiguity, child-parent-state,       | refine-exit-complete-marker, refine-exit-stub-placeholder,
-//            | user-story-warn (non-blocking)        | blocked-by, plan-entry-fields (body + board adapters),
+//            | user-story-warn (non-blocking)        | plan-entry-fields (body + board adapters),
 //            |                                       | user-story-block
 //   ready-   | contiguity                            | blocked-by, epic-children-r4p, sequential-wip,
 //   for-plan |                                       | child-parent-state, child-cannot-lead-epic

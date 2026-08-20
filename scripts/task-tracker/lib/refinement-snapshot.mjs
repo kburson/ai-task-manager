@@ -8,6 +8,7 @@
 import { createHash } from 'node:crypto';
 
 import { parseIssueFieldDb } from '../issue-field-db.mjs';
+import { parseBlockedBy } from './blocked-marker.mjs';
 import { parseMarker, serializeMarker } from './marker-grammar.mjs';
 
 export const REFINEMENT_SNAPSHOT_SCHEMA = '1';
@@ -50,8 +51,12 @@ function requiredFieldValues(body) {
     if (value === null || value === undefined || value === '') fail(`field-${key}`);
     values[key] = value;
   }
-  values.blockedBy = parsed.values.blockedBy ?? null;
   return values;
+}
+
+function canonicalBlockedBy(body) {
+  const refs = parseBlockedBy(body);
+  return refs.length ? refs.map((number) => `#${number}`).join(',') : null;
 }
 
 function provenanceDigest(body, fallback) {
@@ -77,14 +82,11 @@ function refinementInputs(body, labels, { durableProvenance, durableFields } = {
   if (scope.length < 12) fail('scope');
   const acceptanceCriteria = rootSection(withoutMarker, 'Acceptance Criteria');
   if (!/^- \[[ x]\]\s+\S+/m.test(acceptanceCriteria)) fail('acceptance-criteria');
-  const planMetadata = rootSection(withoutMarker, 'Plan Metadata');
-  const fieldValues = durableFields || requiredFieldValues(withoutMarker);
-  const dependencies =
-    planMetadata
-      .split('\n')
-      .filter((line) => /\*\*(?:Depends On|Blocked By)\*\*/i.test(line))
-      .map((line) => line.trim())
-      .join('\n') || `blockedBy=${JSON.stringify(fieldValues.blockedBy)}`;
+  const fieldValues = {
+    ...(durableFields || requiredFieldValues(withoutMarker)),
+    blockedBy: canonicalBlockedBy(withoutMarker),
+  };
+  const dependencies = `blockedBy=${JSON.stringify(fieldValues.blockedBy)}`;
   return {
     scope,
     acceptanceCriteria,
@@ -104,7 +106,7 @@ export function buildRefinementSnapshotMarker(body, { labels, ts } = {}) {
   if (!Number.isFinite(Date.parse(timestamp))) fail('timestamp');
   const inputs = refinementInputs(body, labels);
   const digest = digestInputs(inputs);
-  const fields = requiredFieldValues(body);
+  const fields = inputs.fields;
   return serializeMarker('refinement-snapshot', {
     schema: REFINEMENT_SNAPSHOT_SCHEMA,
     digest,
