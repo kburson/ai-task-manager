@@ -123,6 +123,16 @@ test('accepts valid schema-1 core evidence whose only mismatch is a non-empty li
   assert.equal(verifyRefinementSnapshot(body, { labels }).ok, false);
 });
 
+test('the legacy verifier intentionally leaves carrier agreement to the Shelve transaction', () => {
+  const verified = verifyLegacyRefinementSnapshotForBlockerRefresh(
+    legacySnapshot({ liveBlockers: [1212, 1213] }),
+    { labels: ['enhancement'] }
+  );
+
+  assert.equal(verified.ok, true, verified.reason);
+  assert.deepEqual(verified.liveBlockers, [1212, 1213]);
+});
+
 test('refuses a legacy snapshot that was already serialized as blocked', () => {
   const verified = verifyLegacyRefinementSnapshotForBlockerRefresh(
     legacySnapshot({ liveBlockers: [1212], snapshotBlockedBy: '#1212' }),

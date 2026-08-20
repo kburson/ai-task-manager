@@ -18,7 +18,11 @@ import { actionPolicyFor, normalizeStateId } from './lifecycle-policy/index.mjs'
 import { parseMarker, serializeMarker } from './marker-grammar.mjs';
 import { canonicalLogins, ownershipDecision } from './ownership-policy.mjs';
 import { hasExecutionProof, stripExecutionProof } from './proof-marker.mjs';
-import { verifyRefinementSnapshot } from './refinement-snapshot.mjs';
+import {
+  verifyLegacyRefinementSnapshotForBlockerRefresh,
+  verifyRefinementSnapshot,
+} from './refinement-snapshot.mjs';
+import { parseBlockedByStrict } from './blocked-marker.mjs';
 import {
   appendRefinementHistory,
   buildRefinementHistoryRecord,
@@ -57,15 +61,16 @@ function sha256(value) {
   return createHash('sha256').update(String(value)).digest('hex');
 }
 
-function intentDigest(reason, removeOwner) {
-  return sha256(
-    JSON.stringify({ reason: String(reason).trim(), removeOwner: Boolean(removeOwner) })
-  );
+function intentDigest(reason, removeOwner, refreshStaleBlockers) {
+  const intent = { reason: String(reason).trim(), removeOwner: Boolean(removeOwner) };
+  if (refreshStaleBlockers) intent.refreshStaleBlockers = true;
+  return sha256(JSON.stringify(intent));
 }
 
 function fieldValue(node) {
   if (node?.number !== undefined && node?.number !== null) return node.number;
   if (node?.name !== undefined && node?.name !== null) return node.name;
+  if (node?.text !== undefined && node?.text !== null) return node.text;
   return null;
 }
 
@@ -99,6 +104,7 @@ async function defaultFetchSnapshot({ issueNumber, cfg }) {
           fieldValues(first:100){nodes{
             ... on ProjectV2ItemFieldNumberValue{number field{... on ProjectV2FieldCommon{id}}}
             ... on ProjectV2ItemFieldSingleSelectValue{name field{... on ProjectV2FieldCommon{id}}}
+            ... on ProjectV2ItemFieldTextValue{text field{... on ProjectV2FieldCommon{id}}}
           } pageInfo{hasNextPage}}
         } pageInfo{hasNextPage}}
       }}
@@ -124,6 +130,7 @@ async function defaultFetchSnapshot({ issueNumber, cfg }) {
     if (!fieldId) throw new Error(`shelve: configured project field id is missing for ${key}`);
     fields[key] = fieldValue(nodes.find((node) => node?.field?.id === fieldId));
   }
+  const blockedByFieldId = fieldIdFor(cfg, 'blockedBy');
   return {
     itemId: item.id,
     issueState: issue.state,
@@ -133,6 +140,9 @@ async function defaultFetchSnapshot({ issueNumber, cfg }) {
     assignees: canonicalLogins(issue.assignees?.nodes || []),
     state,
     fields,
+    blockedBy: blockedByFieldId
+      ? fieldValue(nodes.find((node) => node?.field?.id === blockedByFieldId))
+      : undefined,
   };
 }
 
@@ -236,7 +246,7 @@ export function shelveEvidenceIsInvalidated(body) {
 }
 
 function serializeJournal(journal) {
-  return serializeMarker('shelve-transaction', {
+  const props = {
     schema: '1',
     tx: journal.tx,
     issue: journal.issueNumber,
@@ -247,7 +257,9 @@ function serializeJournal(journal) {
     'evidence-digest': journal.evidenceDigest,
     'remove-owner': String(journal.removeOwner),
     'previous-owner': journal.previousOwner || '',
-  });
+  };
+  if (journal.refreshStaleBlockers) props['refresh-stale-blockers'] = 'true';
+  return serializeMarker('shelve-transaction', props);
 }
 
 export function parseShelveJournal(body) {
@@ -269,7 +281,8 @@ export function parseShelveJournals(body) {
       !SHELVE_PHASES.includes(props.phase) ||
       !/^[0-9a-f]{64}$/.test(props['intent-digest'] || '') ||
       !/^[0-9a-f]{64}$/.test(props['history-digest'] || '') ||
-      !/^[0-9a-f]{64}$/.test(props['evidence-digest'] || '')
+      !/^[0-9a-f]{64}$/.test(props['evidence-digest'] || '') ||
+      (Object.hasOwn(props, 'refresh-stale-blockers') && props['refresh-stale-blockers'] !== 'true')
     ) {
       throw new Error('shelve: malformed transaction journal');
     }
@@ -285,6 +298,7 @@ export function parseShelveJournals(body) {
       evidenceDigest: props['evidence-digest'],
       removeOwner: props['remove-owner'] === 'true',
       previousOwner: props['previous-owner'] || null,
+      refreshStaleBlockers: props['refresh-stale-blockers'] === 'true',
     });
   }
   return journals;
@@ -399,7 +413,7 @@ function defaultAssertIssueLockHeld(issueNumber) {
   }
 }
 
-function sourceMatchArgs(snapshot) {
+function sourceMatchArgs(snapshot, record) {
   const owners = canonicalLogins(snapshot.assignees);
   return {
     title: snapshot.title,
@@ -408,7 +422,34 @@ function sourceMatchArgs(snapshot) {
     labels: snapshot.labels,
     previousOwner: owners.length === 1 ? owners[0] : null,
     sourceState: snapshot.state,
+    ...(record?.migration ? { liveBlockedBy: record.liveBlockedBy } : {}),
   };
+}
+
+function canonicalBlockedByText(refs) {
+  return refs.map((ref) => `#${ref}`).join(', ');
+}
+
+function migrationCarrierRefusal(snapshot, liveBlockedBy) {
+  if (!snapshot.labels?.some((label) => String(label).trim().toLowerCase() === 'blocked')) {
+    return 'migration requires the BLOCKED label';
+  }
+  let protectedRefs;
+  try {
+    protectedRefs = parseBlockedByStrict(snapshot.body);
+  } catch (error) {
+    return error.message;
+  }
+  if (
+    protectedRefs.length !== liveBlockedBy.length ||
+    protectedRefs.some((ref, index) => ref !== liveBlockedBy[index])
+  ) {
+    return 'migration protected blocker marker changed';
+  }
+  if (snapshot.blockedBy !== canonicalBlockedByText(liveBlockedBy)) {
+    return 'migration Project Blocked By field disagrees with the protected blocker marker';
+  }
+  return null;
 }
 
 function ownershipRefusal(snapshot, { gateAssignee, currentUser } = {}) {
@@ -432,7 +473,7 @@ function ownershipRefusal(snapshot, { gateAssignee, currentUser } = {}) {
   return null;
 }
 
-function sourceRefusal(snapshot, { gateAssignee, currentUser } = {}) {
+function sourceRefusal(snapshot, { gateAssignee, currentUser, refreshStaleBlockers } = {}) {
   const recorded = readLastKnownState(snapshot.body).state;
   if (!recorded || recorded !== snapshot.state) {
     return { status: 'drift-refused', recorded, live: snapshot.state };
@@ -445,9 +486,18 @@ function sourceRefusal(snapshot, { gateAssignee, currentUser } = {}) {
   if (!parsedFields.ok || !sameFields(parsedFields.values, snapshot.fields)) {
     return { status: 'fields-refused' };
   }
-  const currentSnapshot = verifyRefinementSnapshot(snapshot.body, { labels: snapshot.labels });
-  if (!currentSnapshot.ok) {
-    return { status: 'snapshot-refused', reason: currentSnapshot.reason };
+  if (refreshStaleBlockers) {
+    const migrated = verifyLegacyRefinementSnapshotForBlockerRefresh(snapshot.body, {
+      labels: snapshot.labels,
+    });
+    if (!migrated.ok) return { status: 'snapshot-refused', reason: migrated.reason };
+    const carrierRefusal = migrationCarrierRefusal(snapshot, migrated.liveBlockers);
+    if (carrierRefusal) return { status: 'migration-carriers-refused', reason: carrierRefusal };
+  } else {
+    const currentSnapshot = verifyRefinementSnapshot(snapshot.body, { labels: snapshot.labels });
+    if (!currentSnapshot.ok) {
+      return { status: 'snapshot-refused', reason: currentSnapshot.reason };
+    }
   }
   return null;
 }
@@ -456,6 +506,7 @@ export async function runShelveTransaction({
   issueNumber,
   reason,
   removeOwner = false,
+  refreshStaleBlockers = false,
   cfg,
   deps = {},
 } = {}) {
@@ -480,7 +531,7 @@ export async function runShelveTransaction({
   const now = deps.now || (() => new Date().toISOString());
   const makeTx = deps.makeTx || randomUUID;
   const resolveLogin = deps.resolveLogin || defaultResolveLogin;
-  const requestedIntent = intentDigest(why, removeOwner);
+  const requestedIntent = intentDigest(why, removeOwner, refreshStaleBlockers);
 
   let snapshot = await fetchSnapshot({ issueNumber, cfg });
   if (snapshot.issueState !== 'OPEN') {
@@ -508,13 +559,23 @@ export async function runShelveTransaction({
     if (
       journal.issueNumber !== issueNumber ||
       journal.intentDigest !== requestedIntent ||
-      journal.removeOwner !== Boolean(removeOwner)
+      journal.removeOwner !== Boolean(removeOwner) ||
+      journal.refreshStaleBlockers !== Boolean(refreshStaleBlockers)
     ) {
       return { status: 'retry-intent-refused', phase: journal.phase };
     }
-    currentHistory(snapshot.body, journal);
+    const record = currentHistory(snapshot.body, journal);
+    if (Boolean(record.migration) !== journal.refreshStaleBlockers) {
+      return { status: 'retry-intent-refused', phase: journal.phase };
+    }
+    const carrierRefusal = record.migration
+      ? migrationCarrierRefusal(snapshot, record.liveBlockedBy)
+      : null;
+    if (carrierRefusal) {
+      return { status: 'recovery-pending', phase: journal.phase, error: carrierRefusal };
+    }
   } else {
-    let refusal = sourceRefusal(snapshot, { gateAssignee, currentUser });
+    let refusal = sourceRefusal(snapshot, { gateAssignee, currentUser, refreshStaleBlockers });
     if (refusal) return refusal;
 
     // Re-fetch the complete source immediately before building durable history.
@@ -526,8 +587,12 @@ export async function runShelveTransaction({
         status: snapshot.issueState === 'CLOSED' ? 'closed-issue-refused' : 'issue-state-refused',
       };
     }
-    refusal = sourceRefusal(snapshot, { gateAssignee, currentUser });
+    refusal = sourceRefusal(snapshot, { gateAssignee, currentUser, refreshStaleBlockers });
     if (refusal) return refusal;
+
+    const migration = refreshStaleBlockers
+      ? verifyLegacyRefinementSnapshotForBlockerRefresh(snapshot.body, { labels: snapshot.labels })
+      : null;
 
     const owners = canonicalLogins(snapshot.assignees);
     const sourceBody = stripBodyVersion(snapshot.body);
@@ -544,6 +609,9 @@ export async function runShelveTransaction({
       sourceState: snapshot.state,
       baseSha: await getBaseSha(),
       createdAt: now(),
+      ...(migration
+        ? { migration: 'legacy-blocker-refresh', liveBlockedBy: migration.liveBlockers }
+        : {}),
     });
     const historyBody = appendRefinementHistory(sourceBody, record);
     journal = {
@@ -556,6 +624,7 @@ export async function runShelveTransaction({
       evidenceDigest: evidenceStateDigest(invalidateShelveEvidence(historyBody)),
       removeOwner: Boolean(removeOwner),
       previousOwner: owners[0] || null,
+      refreshStaleBlockers: Boolean(refreshStaleBlockers),
     };
     try {
       snapshot = await mutateAndFetch({
@@ -594,7 +663,9 @@ export async function runShelveTransaction({
     }
     Object.assign(journal, readBack);
     const readBackRecord = currentHistory(snapshot.body, journal);
-    if (!refinementHistoryMatchesSource(readBackRecord, sourceMatchArgs(snapshot))) {
+    if (
+      !refinementHistoryMatchesSource(readBackRecord, sourceMatchArgs(snapshot, readBackRecord))
+    ) {
       return {
         status: 'recovery-pending',
         phase: journal.phase,
@@ -608,7 +679,11 @@ export async function runShelveTransaction({
     if (SHELVE_PHASES.indexOf(journal.phase) < SHELVE_PHASES.indexOf('active-evidence-cleared')) {
       snapshot = await fetchSnapshot({ issueNumber, cfg });
       const record = currentHistory(snapshot.body, journal);
-      if (!refinementHistoryMatchesSource(record, sourceMatchArgs(snapshot))) {
+      const carrierRefusal = record.migration
+        ? migrationCarrierRefusal(snapshot, record.liveBlockedBy)
+        : null;
+      if (carrierRefusal) throw new Error(`shelve: ${carrierRefusal}`);
+      if (!refinementHistoryMatchesSource(record, sourceMatchArgs(snapshot, record))) {
         if (exactLandedEvidenceTransform(snapshot, record, journal)) {
           await advanceJournal(context, 'active-evidence-cleared');
         } else {
@@ -637,6 +712,11 @@ export async function runShelveTransaction({
 
     if (SHELVE_PHASES.indexOf(journal.phase) < SHELVE_PHASES.indexOf('fields-cleared')) {
       snapshot = await fetchSnapshot({ issueNumber, cfg });
+      const record = currentHistory(snapshot.body, journal);
+      const carrierRefusal = record.migration
+        ? migrationCarrierRefusal(snapshot, record.liveBlockedBy)
+        : null;
+      if (carrierRefusal) throw new Error(`shelve: ${carrierRefusal}`);
       await clearBoardFields({ issueNumber, cfg, snapshot });
       snapshot = await mutateAndFetch({
         ...context,
@@ -652,6 +732,12 @@ export async function runShelveTransaction({
     }
 
     if (SHELVE_PHASES.indexOf(journal.phase) < SHELVE_PHASES.indexOf('status-backlog')) {
+      snapshot = await fetchSnapshot({ issueNumber, cfg });
+      const record = currentHistory(snapshot.body, journal);
+      const carrierRefusal = record.migration
+        ? migrationCarrierRefusal(snapshot, record.liveBlockedBy)
+        : null;
+      if (carrierRefusal) throw new Error(`shelve: ${carrierRefusal}`);
       let moveError = null;
       try {
         const exitCode = await runMoveState({ issueNumber, reason: why, cfg });
@@ -667,6 +753,12 @@ export async function runShelveTransaction({
     }
 
     if (SHELVE_PHASES.indexOf(journal.phase) < SHELVE_PHASES.indexOf('owner-updated')) {
+      snapshot = await fetchSnapshot({ issueNumber, cfg });
+      const record = currentHistory(snapshot.body, journal);
+      const carrierRefusal = record.migration
+        ? migrationCarrierRefusal(snapshot, record.liveBlockedBy)
+        : null;
+      if (carrierRefusal) throw new Error(`shelve: ${carrierRefusal}`);
       if (removeOwner && journal.previousOwner) {
         const result = await removeOwnerFn({
           issueNumber,
@@ -687,6 +779,9 @@ export async function runShelveTransaction({
 
     snapshot = await fetchSnapshot({ issueNumber, cfg });
     const record = currentHistory(snapshot.body, journal);
+    const carrierRefusal = record.migration
+      ? migrationCarrierRefusal(snapshot, record.liveBlockedBy)
+      : null;
     const expectedOwners = removeOwner || !journal.previousOwner ? [] : [journal.previousOwner];
     if (
       snapshot.issueState !== 'OPEN' ||
@@ -694,7 +789,8 @@ export async function runShelveTransaction({
       !fieldsCleared(snapshot.fields) ||
       !shelveBodyIsInvalidated(snapshot.body) ||
       !sameLabels(canonicalLogins(snapshot.assignees), expectedOwners) ||
-      !verifyPreserved(snapshot, record)
+      !verifyPreserved(snapshot, record) ||
+      carrierRefusal
     ) {
       throw new Error('shelve: final exact read-back failed');
     }
