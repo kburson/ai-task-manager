@@ -87,8 +87,14 @@ test('enumerates only JSON records in sorted POSIX order', () => {
   const projectRoot = mkdtempProjectIsolated('test-corpus-membership-order-');
   const posixFirstPath = 'scripts/tests/unit/lib/z.test.mjs';
   const posixSecondPath = 'scripts/tests/unit/lib/ä.test.mjs';
-  writeRecord(projectRoot, recordPathForTestPath(posixSecondPath), { schema: 1, path: posixSecondPath });
-  writeRecord(projectRoot, recordPathForTestPath(posixFirstPath), { schema: 1, path: posixFirstPath });
+  writeRecord(projectRoot, recordPathForTestPath(posixSecondPath), {
+    schema: 1,
+    path: posixSecondPath,
+  });
+  writeRecord(projectRoot, recordPathForTestPath(posixFirstPath), {
+    schema: 1,
+    path: posixFirstPath,
+  });
   writeRawRecord(projectRoot, `${POST_SNAPSHOT_REGISTRY_ROOT}/unit/lib/ignored.txt`, 'ignored\n');
 
   assert.deepEqual(
@@ -114,21 +120,42 @@ test('reports each malformed record by its physical file without stopping the sc
     path: 'scripts/tests/unit/lib/extra-key.test.mjs',
     extra: true,
   });
-  writeRecord(projectRoot, wrongSchema, { schema: 2, path: 'scripts/tests/unit/lib/wrong-schema.test.mjs' });
-  writeRecord(projectRoot, noncanonicalPath, { schema: 1, path: 'scripts/gh/noncanonical.test.mjs' });
-  writeRecord(projectRoot, duplicateFirst, { schema: 1, path: 'scripts/tests/unit/lib/duplicate.test.mjs' });
-  writeRecord(projectRoot, duplicateSecond, { schema: 1, path: 'scripts/tests/unit/lib/duplicate.test.mjs' });
+  writeRecord(projectRoot, wrongSchema, {
+    schema: 2,
+    path: 'scripts/tests/unit/lib/wrong-schema.test.mjs',
+  });
+  writeRecord(projectRoot, noncanonicalPath, {
+    schema: 1,
+    path: 'scripts/gh/noncanonical.test.mjs',
+  });
+  writeRecord(projectRoot, duplicateFirst, {
+    schema: 1,
+    path: 'scripts/tests/unit/lib/duplicate.test.mjs',
+  });
+  writeRecord(projectRoot, duplicateSecond, {
+    schema: 1,
+    path: 'scripts/tests/unit/lib/duplicate.test.mjs',
+  });
 
   const loaded = loadPostSnapshotRecords({ projectRoot });
   assert.deepEqual(
     loaded.errors.map(({ recordFile }) => recordFile),
     [invalidJson, duplicateSecond, extraKey, noncanonicalPath, wrongSchema].sort()
   );
-  assert.match(loaded.errors.find(({ recordFile }) => recordFile === invalidJson).error, /invalid JSON/);
+  assert.match(
+    loaded.errors.find(({ recordFile }) => recordFile === invalidJson).error,
+    /invalid JSON/
+  );
   assert.match(loaded.errors.find(({ recordFile }) => recordFile === extraKey).error, /keys/);
   assert.match(loaded.errors.find(({ recordFile }) => recordFile === wrongSchema).error, /schema/);
-  assert.match(loaded.errors.find(({ recordFile }) => recordFile === noncanonicalPath).error, /noncanonical test path/);
-  assert.match(loaded.errors.find(({ recordFile }) => recordFile === duplicateSecond).error, /duplicate declared path/);
+  assert.match(
+    loaded.errors.find(({ recordFile }) => recordFile === noncanonicalPath).error,
+    /noncanonical test path/
+  );
+  assert.match(
+    loaded.errors.find(({ recordFile }) => recordFile === duplicateSecond).error,
+    /duplicate declared path/
+  );
   assert.deepEqual(
     loaded.records.map(({ path: recordPath }) => recordPath),
     ['scripts/tests/unit/lib/duplicate.test.mjs', validPath]

@@ -46,7 +46,9 @@ function listJsonFiles(projectRoot, directory, errors, isRegistryRoot = false) {
     errors.push({
       recordFile: posixRelative(projectRoot, directory),
       error: `test-corpus-membership: ${
-        isRegistryRoot ? 'registry root is unreadable or not a directory' : 'unreadable registry directory'
+        isRegistryRoot
+          ? 'registry root is unreadable or not a directory'
+          : 'unreadable registry directory'
       }: ${error.message}`,
     });
     return [];
@@ -68,7 +70,10 @@ function malformedError(recordFile, error) {
   return { recordFile, error: `test-corpus-membership: ${error}` };
 }
 
-export function loadPostSnapshotRecords({ projectRoot, registryRoot = POST_SNAPSHOT_REGISTRY_ROOT }) {
+export function loadPostSnapshotRecords({
+  projectRoot,
+  registryRoot = POST_SNAPSHOT_REGISTRY_ROOT,
+}) {
   const root = path.join(projectRoot, registryRoot);
   if (!existsSync(root)) {
     return { records: [], errors: [], misplacedRecords: [], rootPresent: false };
@@ -88,7 +93,9 @@ export function loadPostSnapshotRecords({ projectRoot, registryRoot = POST_SNAPS
     try {
       record = JSON.parse(readFileSync(absoluteRecordFile, 'utf8'));
     } catch (error) {
-      errors.push(malformedError(recordFile, `invalid JSON or unreadable record: ${error.message}`));
+      errors.push(
+        malformedError(recordFile, `invalid JSON or unreadable record: ${error.message}`)
+      );
       continue;
     }
 
@@ -106,9 +113,7 @@ export function loadPostSnapshotRecords({ projectRoot, registryRoot = POST_SNAPS
       continue;
     }
     if (typeof record.path !== 'string' || !parseCanonicalTestPath(record.path)) {
-      errors.push(
-        malformedError(recordFile, `noncanonical test path: ${String(record.path)}`)
-      );
+      errors.push(malformedError(recordFile, `noncanonical test path: ${String(record.path)}`));
       continue;
     }
     if (declaredPaths.has(record.path)) {
