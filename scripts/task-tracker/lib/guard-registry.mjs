@@ -23,11 +23,12 @@
 // `run` may be sync OR async — `runGuards` awaits the result either way, so
 // guards that shell out to git/gh can coexist with pure-data guards.
 //
-// runGuards is async. It iterates `GUARDS[fromState].exit` then
-// `GUARDS[toState].entry`, awaiting each `run(ctx)`. Refusals are aggregated
-// across both lists; there is no short-circuit. A guard that throws is
-// treated as a refusal whose `reason` is the stringified error — one buggy
-// guard must not crash the whole pipeline.
+// runGuards is async. By default it iterates `GUARDS[fromState].exit` then
+// `GUARDS[toState].entry`, awaiting each `run(ctx)`. Callers may disable either
+// phase explicitly while retaining the other. Refusals are aggregated across
+// the selected lists; there is no short-circuit. A guard that throws is treated
+// as a refusal whose `reason` is the stringified error — one buggy guard must
+// not crash the whole pipeline.
 //
 // registerGuard is idempotent on `guard.id`: re-registering the same id is a
 // no-op (returns false). Unknown state or unknown kind throw.
@@ -146,7 +147,12 @@ async function invoke(guard, ctx) {
   }
 }
 
-export async function runGuards(fromState, toState, ctx) {
+export async function runGuards(
+  fromState,
+  toState,
+  ctx,
+  { includeExitGuards = true, includeEntryGuards = true } = {}
+) {
   const refusals = [];
   const warns = [];
   const fromSlot = GUARDS[fromState];
@@ -164,12 +170,12 @@ export async function runGuards(fromState, toState, ctx) {
   // Unknown states are *not* fatal here — runGuards is called from already-
   // validated state transitions. If a caller passes an unknown state we treat
   // it as "no guards" rather than throwing, so transition logging stays clean.
-  if (fromSlot) {
+  if (includeExitGuards && fromSlot) {
     for (const g of fromSlot.exit) {
       consume(g, await invoke(g, ctx));
     }
   }
-  if (toSlot) {
+  if (includeEntryGuards && toSlot) {
     for (const g of toSlot.entry) {
       consume(g, await invoke(g, ctx));
     }
