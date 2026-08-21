@@ -63,4 +63,3 @@ Write regression tests first at four boundaries:
 - Do not implement #939's governed PR delivery design.
 - Do not weaken immutable-artifact, role, session, lock, archive, or command-shape checks.
 - Do not add shell wrappers such as `cd`, `git -C`, or composed commands to the reviewer allowlist.
-
