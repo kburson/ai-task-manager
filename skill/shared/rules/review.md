@@ -22,10 +22,10 @@ Stop. Do not run `/task close`. Do not infer human approval from passing tests o
 
 ## Pre-review verification (mandatory, in order)
 
-Review does **not** own the test suite. `/task test` already ran standard lanes and wrote an exact-SHA receipt. Do not re-run `npm test`, `npm run test:slow`, `npm run test:all`, or `dod-stamp tests` here.
+Review does **not** own verifier execution. `/task test` already ran the declared commands and wrote an exact-SHA receipt. Invoking `dod-stamp` or `ac-stamp` in Review may only reuse a validated matching receipt; if reuse is unavailable, the stamp must refuse without spawning. `/task review --probe` for a named finding is the sole Review-stage execution path.
 
 1. **Confirm the Test receipt.** `/task test #N` no-ops when a valid exact-SHA receipt matches HEAD. If it refuses (missing/stale/red), demote and re-Test — do not spawn the suite from Review.
-2. **Per-AC / Per-DoD ticks.** Tick remaining boxes from existing receipt evidence (`/task dod-stamp` / `/task ac-stamp` reuse a matching receipt and must not spawn). Never bulk-check. `acs` and `checkboxes` are derived by `/task close`.
+2. **Per-AC / Per-DoD ticks.** Tick remaining boxes from existing receipt evidence (`/task dod-stamp` / `/task ac-stamp` validate and reuse a matching receipt; they never execute in Review). Never bulk-check. `acs` and `checkboxes` are derived by `/task close`.
 3. **`aitm-verified-by` markers.** Every AC must carry one or more `aitm-verified-by` HTML comment markers. Non-standard commands named by those markers must appear under `### Verification Commands`. Standard DoD commands may be referenced by markers but must NOT be duplicated there.
 4. **Named finding only:** `/task review #N --probe "<command>"` is the only Review-stage command execution.
 5. **Run `/task review #N`.**
