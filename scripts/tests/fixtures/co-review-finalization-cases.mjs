@@ -317,7 +317,12 @@ test('reviewer consensus finalizes automatically and an unconfigured destination
     /^ACCEPTED: protocol state is durable; archive publication is pending/
   );
   assert.doesNotMatch(pending.stderr, /no state changed/);
-  assert.match(pending.stderr, /finalize --dir \.tmp\/review --archive-dir <tracked-repo-path>/);
+  assert.equal(
+    pending.stderr.includes(
+      `finalize --dir ${path.join(unconfigured.root, '.tmp/review')} --archive-dir <tracked-repo-path>`
+    ),
+    true
+  );
   assert.equal(
     unconfigured.api.readProtocol({ cwd: unconfigured.root, dir: unconfigured.options.dir })
       .lifecycle,
@@ -356,9 +361,11 @@ test('reviewer consensus finalizes automatically and an unconfigured destination
     { cwd: spaced.root, repository: spaced.repository }
   );
   assert.equal(spacedPending.status, 4);
-  assert.match(
-    spacedPending.stderr,
-    /finalize --dir '\.tmp\/review session' --archive-dir <tracked-repo-path>/
+  assert.equal(
+    spacedPending.stderr.includes(
+      `finalize --dir '${path.join(spaced.root, '.tmp/review session')}' --archive-dir <tracked-repo-path>`
+    ),
+    true
   );
 
   const failed = await consensusReady({ archiveDir: 'docs/reviews/retry' });
@@ -393,9 +400,11 @@ test('reviewer consensus finalizes automatically and an unconfigured destination
     failed.api.readProtocol({ cwd: failed.root, dir: failed.options.dir }).lifecycle,
     'accepted'
   );
-  assert.match(
-    publicationFailed.stderr,
-    /finalize --dir \.tmp\/review --archive-dir docs\/reviews\/retry$/m
+  assert.equal(
+    publicationFailed.stderr.includes(
+      `finalize --dir ${path.join(failed.root, '.tmp/review')} --archive-dir docs/reviews/retry`
+    ),
+    true
   );
 });
 
@@ -577,7 +586,10 @@ test('intervention and accepted status expose state-valid finalization actions a
   assert.equal(beforePublish.archive.completion, 'absent');
   assert.match(
     beforePublish.nextAction,
-    /finalize --dir \.tmp\/review --archive-dir docs\/reviews\/status$/
+    new RegExp(
+      `finalize --dir ${path.resolve(accepted.root, accepted.options.dir)} ` +
+        '--archive-dir docs/reviews/status$'
+    )
   );
 });
 

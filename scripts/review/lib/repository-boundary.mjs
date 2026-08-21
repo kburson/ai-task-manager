@@ -24,6 +24,11 @@ export function createRealRepositoryBoundary({ execFileSyncImpl = execFileSync }
       return realpathSync(run(cwd, ['rev-parse', '--show-toplevel']).trim());
     },
 
+    commonDirectory(root) {
+      const observed = run(root, ['rev-parse', '--git-common-dir']).trim();
+      return realpathSync(path.resolve(root, observed));
+    },
+
     runtimeStatus(root, relative) {
       return {
         ignored:

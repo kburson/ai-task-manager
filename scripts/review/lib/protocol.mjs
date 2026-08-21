@@ -19,6 +19,7 @@ import path from 'node:path';
 import { inspectArchive, resolveArchiveDestination } from './archive.mjs';
 import { planAbsoluteBudget, planContinuationBudget } from './budget.mjs';
 import { REAL_REPOSITORY_BOUNDARY } from './repository-boundary.mjs';
+import { resolveRuntimeRoot, RuntimeRootError } from './runtime-root.mjs';
 
 export const STATE_SCHEMA = 'aitm.co-review/v1';
 export const EVENT_SCHEMA = 'aitm.co-review-event/v1';
@@ -64,6 +65,29 @@ function repositoryCall(code, detail, operation) {
 
 function repositoryRoot(cwd, repository) {
   return repositoryCall('not-a-repository', String(cwd), () => repository.repositoryRoot(cwd));
+}
+
+function protocolRoot(cwd, dir, repository) {
+  try {
+    return resolveRuntimeRoot({ cwd, dir, repository }).root;
+  } catch (error) {
+    if (error instanceof RuntimeRootError) fail(error.code, error.detail);
+    throw error;
+  }
+}
+
+function assertRecordedRoot(state, root) {
+  for (const [label, candidate] of [
+    ['repositoryRoot', state.repositoryRoot],
+    ['worktree', state.worktree],
+  ]) {
+    try {
+      if (realpathSync(candidate) !== root) fail('repository-identity', `${label}=${candidate}`);
+    } catch (error) {
+      if (error instanceof ProtocolError) throw error;
+      fail('repository-identity', `${label}=${candidate}`);
+    }
+  }
 }
 
 function relativePath(root, candidate, label) {
@@ -453,7 +477,7 @@ function snapshotConsistency(input = {}) {
 }
 
 function readStatusSnapshot({ cwd, dir, repository, consistency }) {
-  const root = repositoryRoot(cwd, repository);
+  const root = protocolRoot(cwd, dir, repository);
   const paths = protocolPaths(root, dir);
   const retry = snapshotConsistency(consistency);
   let pendingState;
@@ -522,11 +546,13 @@ function sameInitialization(state, desired) {
 }
 
 export function readProtocol({ cwd = process.cwd(), dir, repository = REAL_REPOSITORY_BOUNDARY }) {
-  const root = repositoryRoot(cwd, repository);
+  const root = protocolRoot(cwd, dir, repository);
   const paths = protocolPaths(root, dir);
   if (!existsSync(paths.state)) fail('not-initialized', paths.relative);
   try {
-    return validateState(JSON.parse(readFileSync(paths.state, 'utf8')));
+    const state = validateState(JSON.parse(readFileSync(paths.state, 'utf8')));
+    assertRecordedRoot(state, root);
+    return state;
   } catch (error) {
     if (error instanceof ProtocolError) throw error;
     fail('invalid-state', error.message);
@@ -763,7 +789,7 @@ export function statusProtocol(options) {
     archive = { destination: state.initialization.archiveDir, completion: 'not-applicable' };
   }
   const baseNextAction = nextAction(state, integrity);
-  const runtimeDir = state.initialization.runtimeDir;
+  const runtimeDir = path.resolve(state.repositoryRoot, state.initialization.runtimeDir);
   let availableActions = [{ kind: 'next', command: baseNextAction }];
   let decoratedNextAction = baseNextAction;
   if (state.lifecycle === 'intervention-required' && integrity.ok) {
@@ -819,14 +845,15 @@ export function statusProtocol(options) {
 }
 
 function nextAction(state, integrity) {
+  const runtimeDir = path.resolve(state.repositoryRoot, state.initialization.runtimeDir);
   if (!integrity.ok) return 'preserve protocol files and escalate integrity drift to the human';
   if (state.lifecycle === 'accepted') return 'stop; protocol accepted';
   if (state.lifecycle === 'intervention-required') {
-    return `npx aitm co-review continue --dir ${shellArgument(state.initialization.runtimeDir)} --max-turns <N> [--focus <file>]`;
+    return `npx aitm co-review continue --dir ${shellArgument(runtimeDir)} --max-turns <N> [--focus <file>]`;
   }
   const actor = state.roles[state.currentRole];
   if (state.turnState === 'available') {
-    return `npx aitm co-review claim --dir ${shellArgument(state.initialization.runtimeDir)} --actor ${shellArgument(actor)}`;
+    return `npx aitm co-review claim --dir ${shellArgument(runtimeDir)} --actor ${shellArgument(actor)}`;
   }
   return `${state.currentRole} ${actor} holds round ${state.round}; complete the role artifact and run npx aitm co-review help handoff`;
 }
@@ -848,7 +875,7 @@ export function validatedArchiveSnapshot({
   dir,
   repository = REAL_REPOSITORY_BOUNDARY,
 } = {}) {
-  const root = repositoryRoot(cwd, repository);
+  const root = protocolRoot(cwd, dir, repository);
   const paths = protocolPaths(root, dir);
   const state = assertIntegrity({ cwd: root, dir: paths.relative, repository });
   let events;
@@ -876,7 +903,7 @@ export function claimTurn({
   actor,
   repository = REAL_REPOSITORY_BOUNDARY,
 }) {
-  const root = repositoryRoot(cwd, repository);
+  const root = protocolRoot(cwd, dir, repository);
   const paths = protocolPaths(root, dir);
   return withMutex(paths, actor, 'claim', () => {
     const state = assertIntegrity({ cwd: root, dir: paths.relative, repository });
@@ -974,7 +1001,7 @@ export function registerSupplement({
   const registeredBy = String(humanLogin || '').trim();
   if (!registeredBy)
     fail('github-login', 'non-blank authenticated login required', { exitCode: 2 });
-  const root = repositoryRoot(cwd, repository);
+  const root = protocolRoot(cwd, dir, repository);
   const paths = protocolPaths(root, dir);
   return withMutex(paths, registeredBy, 'supplement', () => {
     const current = readProtocol({ cwd: root, dir: paths.relative, repository });
@@ -1112,7 +1139,7 @@ export function handoffOwner({
   message,
   repository = REAL_REPOSITORY_BOUNDARY,
 }) {
-  const root = repositoryRoot(cwd, repository);
+  const root = protocolRoot(cwd, dir, repository);
   const paths = protocolPaths(root, dir);
   return withMutex(paths, actor, 'owner-handoff', () => {
     const state = assertIntegrity({ cwd: root, dir: paths.relative, repository });
@@ -1195,7 +1222,7 @@ export function handoffReviewer({
   message,
   repository = REAL_REPOSITORY_BOUNDARY,
 }) {
-  const root = repositoryRoot(cwd, repository);
+  const root = protocolRoot(cwd, dir, repository);
   const paths = protocolPaths(root, dir);
   return withMutex(paths, actor, 'reviewer-handoff', () => {
     const state = assertIntegrity({ cwd: root, dir: paths.relative, repository });
@@ -1352,7 +1379,7 @@ export function prepareGoodEnoughSnapshot({
 } = {}) {
   const approvedBy = String(humanLogin || '').trim();
   if (!approvedBy) fail('github-login', 'non-blank authenticated login required', { exitCode: 2 });
-  const root = repositoryRoot(cwd, repository);
+  const root = protocolRoot(cwd, dir, repository);
   const paths = protocolPaths(root, dir);
   const state = assertIntegrity({ cwd: root, dir: paths.relative, repository });
   const events = readEventRecords(paths);
@@ -1386,7 +1413,7 @@ export function acceptGoodEnough({
   if (!Number.isInteger(expectedRevision) || expectedRevision < 1) {
     fail('revision', String(expectedRevision), { exitCode: 2 });
   }
-  const root = repositoryRoot(cwd, repository);
+  const root = protocolRoot(cwd, dir, repository);
   const paths = protocolPaths(root, dir);
   return withMutex(paths, approvedBy, 'human-good-enough', () => {
     const state = assertIntegrity({ cwd: root, dir: paths.relative, repository });
@@ -1416,7 +1443,7 @@ export function setMaxReviewTurns({
   if (!Number.isInteger(requestedMax) || requestedMax < 0) {
     fail('max-turns', String(requestedMax), { exitCode: 2 });
   }
-  const root = repositoryRoot(cwd, repository);
+  const root = protocolRoot(cwd, dir, repository);
   const paths = protocolPaths(root, dir);
   return withMutex(paths, approvedBy, 'set-max-turns', () => {
     const state = assertIntegrity({ cwd: root, dir: paths.relative, repository });
@@ -1462,7 +1489,7 @@ export function continueProtocol({
   if (!approvedBy) {
     fail('github-login', 'non-blank authenticated login required', { exitCode: 2 });
   }
-  const root = repositoryRoot(cwd, repository);
+  const root = protocolRoot(cwd, dir, repository);
   const paths = protocolPaths(root, dir);
   return withMutex(paths, approvedBy, 'continue', () => {
     const state = assertIntegrity({ cwd: root, dir: paths.relative, repository });

@@ -7,6 +7,7 @@ import test from 'node:test';
 
 import {
   cleanupTemporaryRoots,
+  git,
   realRepositoryFixture,
   runCli,
 } from '../../../fixtures/co-review-fixture.mjs';
@@ -62,9 +63,13 @@ function runGuard(root, command) {
   });
 }
 
-test('live reviewer command passes the guard and reaches accepted archived state', async () => {
+test('foreign-cwd reviewer command passes the guard and reaches accepted archived state', async () => {
   const fixture = realRepositoryFixture();
+  const worktree = path.join(fixture.root, '.tmp', 'linked-review-worktree');
+  mkdirSync(path.dirname(worktree), { recursive: true });
+  git(fixture.root, 'worktree', 'add', '-b', 'guard-reviewer-branch', worktree);
   const dir = '.tmp/co-review/boundary-1365';
+  const runtime = path.join(worktree, dir);
   const archiveDir = 'docs/superpowers/reviews/1365/boundary-fixture';
   mkdirSync(path.join(fixture.root, 'node_modules'), { recursive: true });
   mkdirSync(path.join(fixture.root, 'bin'), { recursive: true });
@@ -96,12 +101,12 @@ test('live reviewer command passes the guard and reaches accepted archived state
       '--archive-dir',
       archiveDir,
     ],
-    fixture.root
+    worktree
   );
-  successfulCli(['claim', '--dir', dir, '--actor', 'owner-agent'], fixture.root);
+  successfulCli(['claim', '--dir', dir, '--actor', 'owner-agent'], worktree);
 
   const response = `${dir}/round-1-owner-response.md`;
-  writeFileSync(path.join(fixture.root, response), '# Owner response\n\nReady for review.\n');
+  writeFileSync(path.join(worktree, response), '# Owner response\n\nReady for review.\n');
   successfulCli(
     [
       'handoff',
@@ -118,28 +123,28 @@ test('live reviewer command passes the guard and reaches accepted archived state
       '--message',
       'owner handoff complete',
     ],
-    fixture.root
+    worktree
   );
-  successfulCli(['claim', '--dir', dir, '--actor', 'reviewer-agent'], fixture.root);
+  successfulCli(['claim', '--dir', dir, '--actor', 'reviewer-agent'], worktree);
 
   const review = `${dir}/round-2-reviewer-review.md`;
-  writeFileSync(path.join(fixture.root, review), '# Review\n\nDecision: accepted.\n');
+  writeFileSync(path.join(worktree, review), '# Review\n\nDecision: accepted.\n');
   const message =
     'review complete: accepted with 4 refinement findings ' +
     '(F-001 squash token completeness is the only load-bearing one)';
   const command = [
     'npx aitm co-review handoff',
-    `--dir ${dir}`,
+    `--dir ${runtime}`,
     '--actor reviewer-agent',
-    `--review ${review}`,
+    `--review ${path.join(worktree, review)}`,
     `--review-of ${fixture.initialCommit}`,
     '--decision accepted',
     `--message '${message}'`,
   ].join(' ');
 
   for (const allowed of [
-    `npx aitm co-review status --dir ${dir}`,
-    `npx aitm co-review status --dir ${dir} --json`,
+    `npx aitm co-review status --dir ${runtime}`,
+    `npx aitm co-review status --dir ${runtime} --json`,
     'npx aitm co-review help handoff',
   ]) {
     const inspection = await runGuard(fixture.root, allowed);
@@ -148,17 +153,18 @@ test('live reviewer command passes the guard and reaches accepted archived state
   }
 
   for (const denied of [
-    `npx aitm co-review handoff --dir ${dir} --actor owner-agent ` +
-      `--review ${review} --review-of ${fixture.initialCommit} ` +
+    `npx aitm co-review handoff --dir ${runtime} --actor owner-agent ` +
+      `--review ${path.join(worktree, review)} --review-of ${fixture.initialCommit} ` +
       '--decision accepted --message "review complete"',
-    `npx aitm co-review handoff --dir ${dir} --actor reviewer-agent ` +
-      `--review ${review} --review-of ${fixture.initialCommit} ` +
+    `npx aitm co-review handoff --dir ${runtime} --actor reviewer-agent ` +
+      `--review ${path.join(worktree, review)} --review-of ${fixture.initialCommit} ` +
       '--decision accepted --message "review complete" && touch owned',
-    `npx aitm co-review status --dir ".tmp/co-\\review/boundary-1365"`,
-    `npx aitm co-review finalize --dir ${dir}`,
+    `npx aitm co-review status --dir "${runtime}/../escape"`,
+    `npx aitm co-review finalize --dir ${runtime}`,
   ]) {
     const refusal = await runGuard(fixture.root, denied);
     assert.equal(refusal.status, 0, refusal.stderr);
+    assert.notEqual(refusal.stdout, '', denied);
     const decision = JSON.parse(refusal.stdout);
     assert.equal(decision.decision, 'block', denied);
   }

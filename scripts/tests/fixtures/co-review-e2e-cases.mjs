@@ -162,7 +162,10 @@ test('fresh CLI workflow reaches acceptance with ordered events and terminal nex
   );
   assert.equal(pendingArchive.status, 4, pendingArchive.stderr);
   assert.match(pendingArchive.stderr, /^ACCEPTED: protocol state is durable/);
-  assert.match(pendingArchive.stderr, /finalize --dir \.tmp\/review --archive-dir/);
+  assert.match(
+    pendingArchive.stderr,
+    new RegExp(`finalize --dir ${path.resolve(root, '.tmp/review')} --archive-dir`)
+  );
   assert.deepEqual(
     readEvents(root, '.tmp/review').map(({ type }) => type),
     [
@@ -181,10 +184,13 @@ test('fresh CLI workflow reaches acceptance with ordered events and terminal nex
   assert.equal(status.status, 0, status.stderr);
   assert.match(
     status.stdout,
-    /Next: npx aitm co-review finalize --dir \.tmp\/review --archive-dir/
+    new RegExp(`Next: npx aitm co-review finalize --dir ${path.resolve(root, '.tmp/review')} `)
   );
   const json = JSON.parse(runCli(['status', '--dir', '.tmp/review', '--json'], io).stdout);
-  assert.match(json.nextAction, /finalize --dir \.tmp\/review --archive-dir/);
+  assert.match(
+    json.nextAction,
+    new RegExp(`finalize --dir ${path.resolve(root, '.tmp/review')} --archive-dir`)
+  );
 });
 
 test('Task 2 CLI continuation supports bare, absolute, legacy, focus, and authenticated recovery', async () => {
@@ -452,7 +458,10 @@ test('imported CLI workflow intercepts, continues with refocus, and then accepts
   assert.equal(final.reviewTurnsUsed, 3);
   assert.equal(final.maxReviewTurns, 4);
   assert.equal(final.remainingReviewTurns, 1);
-  assert.match(final.nextAction, /finalize --dir \.tmp\/review --archive-dir/);
+  assert.match(
+    final.nextAction,
+    new RegExp(`finalize --dir ${path.resolve(root, '.tmp/review')} --archive-dir`)
+  );
 });
 
 test('concurrent identical claims serialize to one claim event without corrupting state', async () => {

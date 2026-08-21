@@ -146,7 +146,7 @@ test('guided host context configures deterministic spec and plan archives and ha
       assert.match(handoff, new RegExp(archiveDir));
       assert.match(
         handoff,
-        new RegExp(`finalize --dir \\.tmp/${artifactKind}-host-start --archive-dir ${archiveDir}`)
+        new RegExp(`finalize --dir ${path.resolve(fixture.root, dir)} --archive-dir ${archiveDir}`)
       );
     }
 
@@ -195,6 +195,7 @@ test('start delegates initialization and publishes concrete hashed handoffs befo
   }
   const author = readFileSync(result.authorHandoff.absolute, 'utf8');
   const reviewer = readFileSync(result.reviewerHandoff.absolute, 'utf8');
+  const runtimeAbsolute = path.resolve(fixture.root, '.tmp/review-start');
   for (const bytes of [author, reviewer]) {
     assert.match(bytes, new RegExp(result.state.protocolId));
     assert.match(bytes, new RegExp(path.resolve(fixture.root, '.tmp/review-start')));
@@ -209,13 +210,17 @@ test('start delegates initialization and publishes concrete hashed handoffs befo
   }
   assert.match(author, /author-agent/);
   assert.match(author, /--response/);
-  assert.match(author, /status --dir \.tmp\/review-start --json/);
+  assert.match(author, new RegExp(`status --dir ${runtimeAbsolute} --json`));
+  assert.match(author, new RegExp(`--response ${runtimeAbsolute}/round-N-author-response\\.md`));
   assert.match(author, /lastHandoff\.artifacts\.review\.path/);
   assert.match(author, /--answers REVIEW_PATH/);
   assert.match(author, /\[finding:F-001\] \[disposition:accepted\]/);
   assert.match(author, /\[evidence:repository-path-or-command\]/);
   assert.match(reviewer, /reviewer-agent/);
   assert.match(reviewer, /--review/);
+  assert.match(reviewer, new RegExp(`--review ${runtimeAbsolute}/round-N-reviewer-review\\.md`));
+  assert.doesNotMatch(author, /--dir \.tmp\/review-start/);
+  assert.doesNotMatch(reviewer, /--dir \.tmp\/review-start/);
   assert.match(reviewer, /\[supplement:S-1\]/);
   assert.match(reviewer, /optional.*--summary/i);
   assert.doesNotMatch(reviewer, /required.*--summary/i);
