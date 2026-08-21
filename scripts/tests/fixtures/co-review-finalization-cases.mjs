@@ -317,7 +317,12 @@ test('reviewer consensus finalizes automatically and an unconfigured destination
     /^ACCEPTED: protocol state is durable; archive publication is pending/
   );
   assert.doesNotMatch(pending.stderr, /no state changed/);
-  assert.match(pending.stderr, /finalize --dir \.tmp\/review --archive-dir <tracked-repo-path>/);
+  assert.equal(
+    pending.stderr.includes(
+      `finalize --dir ${path.join(unconfigured.root, '.tmp/review')} --archive-dir <tracked-repo-path>`
+    ),
+    true
+  );
   assert.equal(
     unconfigured.api.readProtocol({ cwd: unconfigured.root, dir: unconfigured.options.dir })
       .lifecycle,
@@ -393,9 +398,11 @@ test('reviewer consensus finalizes automatically and an unconfigured destination
     failed.api.readProtocol({ cwd: failed.root, dir: failed.options.dir }).lifecycle,
     'accepted'
   );
-  assert.match(
-    publicationFailed.stderr,
-    /finalize --dir \.tmp\/review --archive-dir docs\/reviews\/retry$/m
+  assert.equal(
+    publicationFailed.stderr.includes(
+      `finalize --dir ${path.join(failed.root, '.tmp/review')} --archive-dir docs/reviews/retry`
+    ),
+    true
   );
 });
 

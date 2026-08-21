@@ -236,7 +236,6 @@ export async function runCli(argv = process.argv.slice(2), io = {}) {
             exitCode = 4;
             writeError(
               archivePendingMessage({
-                dir,
                 state: result,
                 error,
                 shellArgument: protocol.shellArgument,
@@ -285,7 +284,7 @@ export async function runCli(argv = process.argv.slice(2), io = {}) {
           });
         } catch (error) {
           writeError(
-            archivePendingMessage({ dir, state, error, shellArgument: protocol.shellArgument })
+            archivePendingMessage({ state, error, shellArgument: protocol.shellArgument })
           );
           return 4;
         }
@@ -624,9 +623,10 @@ function formatStatus(state) {
   ].join('\n');
 }
 
-function archivePendingMessage({ dir, state, error, shellArgument }) {
+function archivePendingMessage({ state, error, shellArgument }) {
   const configured = state.initialization?.archiveDir;
-  const retry = `npx aitm co-review finalize --dir ${shellArgument(dir)}${
+  const runtimeDir = path.resolve(state.repositoryRoot, state.initialization.runtimeDir);
+  const retry = `npx aitm co-review finalize --dir ${shellArgument(runtimeDir)}${
     configured
       ? ` --archive-dir ${shellArgument(configured)}`
       : ' --archive-dir <tracked-repo-path>'
