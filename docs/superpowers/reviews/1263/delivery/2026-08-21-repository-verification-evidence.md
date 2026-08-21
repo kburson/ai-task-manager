@@ -1,5 +1,7 @@
 # Test Corpus Membership Registry Delivery Evidence
 
+<!-- cspell:ignore QFNBVANDMA PKZRJG -->
+
 Issue [#1338](https://github.com/kburson/ai-task-manager/issues/1338) records the
 final repository verification for epic
 [#1263](https://github.com/kburson/ai-task-manager/issues/1263). This document is
