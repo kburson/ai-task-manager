@@ -324,6 +324,8 @@ You are the configured reviewer ${inline(model.reviewer)}. Preserve role separat
 ${sharedHandoff(model)}
 ## Reviewer turn
 
+While your live provider/session owns this reviewer claim, AITM narrowly authorizes the generated co-review status command, co-review help handoff, and your exact reviewer handoff. Arbitrary Bash remains blocked. A mismatch in runtime, actor, review path, reviewed commit, decision, summary boundary, provider, or session is a refusal; correct the command from current status rather than bypassing the guard.
+
 Run status, then claim only when the reviewer role is available:
 
 \`\`\`text
