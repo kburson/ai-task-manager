@@ -138,6 +138,9 @@ recoverable phase:
   recovery receipt that names the observed external delivery.
 
 No `--force`, `--steal`, or unchecked receipt-acceptance mode is provided.
+Every first emission and re-emission reruns the live delivery preflight. A
+pending intent authorizes no mutation by itself; it must still agree with the
+current PR head, accepted review SHA, checks, ownership, and configuration.
 
 ### Structured action output
 
@@ -231,6 +234,9 @@ Schema 1 records:
   "headRef": "codex/939-full-auto-merge",
   "expectedHeadSha": "40-hex",
   "mergeMethod": "squash",
+  "attributionTokens": ["#939"],
+  "commitTitle": "[#939] deterministic title",
+  "commitMessage": "Deterministic bounded delivery message",
   "commitTitleSha256": "64-hex",
   "commitMessageSha256": "64-hex",
   "provider": "codex",
@@ -241,9 +247,16 @@ Schema 1 records:
 
 The visible comment explains that delivery is pending and names the PR and
 expected head. A hidden `aitm-delivery-intent` marker carries canonical JSON.
-The full commit title and message remain in the structured action output and a
-project scratch artifact; their hashes in the issue record prove which bytes
-were authorized without posting a potentially long squash message twice.
+The authoritative record stores the exact bounded commit title, commit message,
+and sorted attribution-token set. Their hashes provide an integrity check; they
+are not a substitute for recoverable bytes. The same strings are re-emitted in
+the structured action output after AITM verifies their hashes. Local scratch may
+cache the record but is never required to reconstruct it.
+
+The deterministic message is intentionally bounded. It carries the validated
+issue tokens and delivery provenance, not a copy of every source commit body.
+This keeps the issue comment below GitHub limits while preserving the tokens the
+message-based attribution engine requires.
 
 Only one pending intent may exist for an issue. A new PR head never updates the
 old intent in place. AITM records it as superseded and creates a new intent only
