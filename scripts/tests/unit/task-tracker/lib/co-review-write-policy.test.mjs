@@ -360,6 +360,7 @@ function policyFixture() {
       reviewerCommand: { recognized: false, reason: 'not-co-review' },
       readIndex: () => rows,
       resolveGrant: () => grant,
+      resolveRuntimeRoot: () => ({ callerRoot: projectDir, root: projectDir }),
       ...overrides,
     });
   return { projectDir, dir, pending, grant, rows, evaluate };
@@ -466,6 +467,59 @@ test('a recognized command cannot cross provider-session ownership', () => {
     targets: [],
     ambiguousMutation: true,
     reviewerCommand: matchingHandoff(fixture),
+  });
+  assert.equal(result.decision, 'deny');
+  assert.match(result.reason, /different provider session/);
+});
+
+test('foreign-cwd reviewer command resolves authority from its target runtime', () => {
+  const fixture = policyFixture();
+  const foreignCaller = path.join(fixture.projectDir, 'foreign-caller');
+  mkdirSync(foreignCaller, { recursive: true });
+  let resolutionInput;
+  const result = fixture.evaluate({
+    worktreePath: foreignCaller,
+    toolName: 'Bash',
+    targets: [],
+    ambiguousMutation: true,
+    reviewerCommand: matchingHandoff(fixture),
+    resolveRuntimeRoot: () => ({ callerRoot: foreignCaller, root: fixture.projectDir }),
+    resolveGrant: (input) => {
+      resolutionInput = input;
+      return fixture.grant;
+    },
+  });
+  assert.equal(result.reason, 'session-bound-co-review-command');
+  assert.equal(resolutionInput.runtimeDir, fixture.dir);
+  assert.equal(resolutionInput.runtimeRoot, fixture.projectDir);
+});
+
+test('foreign-cwd command targeting a live reviewer claim cannot fall through', () => {
+  const fixture = policyFixture();
+  const foreignCaller = path.join(fixture.projectDir, 'foreign-caller');
+  mkdirSync(foreignCaller, { recursive: true });
+  const result = fixture.evaluate({
+    worktreePath: foreignCaller,
+    sid: 'wrong-session',
+    toolName: 'Bash',
+    targets: [],
+    ambiguousMutation: false,
+    reviewerCommand: {
+      recognized: true,
+      kind: 'status',
+      runtimeDir: fixture.dir,
+      json: false,
+    },
+    resolveRuntimeRoot: () => ({ callerRoot: foreignCaller, root: fixture.projectDir }),
+    resolveGrant: () => null,
+    statusProtocol: () => ({
+      protocolId: 'p1',
+      lifecycle: 'active',
+      integrity: { ok: true },
+      currentRole: 'reviewer',
+      turnState: 'claimed',
+      claim: { role: 'reviewer', actor: 'claude' },
+    }),
   });
   assert.equal(result.decision, 'deny');
   assert.match(result.reason, /different provider session/);

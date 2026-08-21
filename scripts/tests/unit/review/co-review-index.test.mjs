@@ -174,6 +174,38 @@ test('grant resolution requires live integrity and a matching durable claim', ()
   );
 });
 
+test('grant resolution targets the command runtime before verifying its worktree', () => {
+  const { indexFile, state, dir } = fixture();
+  registerProtocol({ indexFile, state });
+  recordReviewerClaim({
+    indexFile,
+    protocolId: state.protocolId,
+    provider: 'grok',
+    sid: 'grok-reviewer-sid',
+    round: 2,
+  });
+  const live = {
+    ...state,
+    turnState: 'claimed',
+    claim: { role: 'reviewer', actor: 'Reviewer' },
+    lastHandoff: {
+      from: 'owner',
+      commit: '0123456789012345678901234567890123456789',
+    },
+  };
+  const grant = resolveReviewerGrant({
+    indexFile,
+    worktreePath: '/different/caller/worktree',
+    runtimeDir: dir,
+    runtimeRoot: state.worktree,
+    provider: 'grok',
+    sid: 'grok-reviewer-sid',
+    statusProtocol: () => live,
+  });
+  assert.equal(grant.protocolId, state.protocolId);
+  assert.equal(grant.worktree, state.worktree);
+});
+
 test('active co-review worktree is derived from live protocol integrity', () => {
   const { indexFile, state } = fixture();
   registerProtocol({ indexFile, state });

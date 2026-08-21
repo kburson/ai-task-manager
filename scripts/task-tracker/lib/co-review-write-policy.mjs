@@ -8,6 +8,8 @@ import {
   readProtocolIndex,
   resolveReviewerGrant,
 } from '../../review/lib/index.mjs';
+import { REAL_REPOSITORY_BOUNDARY } from '../../review/lib/repository-boundary.mjs';
+import { resolveRuntimeRoot as defaultResolveRuntimeRoot } from '../../review/lib/runtime-root.mjs';
 
 function inside(parent, candidate) {
   const relative = path.relative(parent, candidate);
@@ -108,9 +110,35 @@ export function evaluateCoReviewWrite(input) {
     );
   }
 
-  const worktreeRows = Object.values(rows).filter(
-    (row) => path.resolve(row.worktree) === worktreePath
-  );
+  let commandRuntime = null;
+  let commandRoot = null;
+  if (
+    input.reviewerCommand?.recognized &&
+    ['status', 'reviewer-handoff'].includes(input.reviewerCommand.kind)
+  ) {
+    try {
+      commandRuntime = canonicalCommandPath(input.reviewerCommand.runtimeDir, projectDir);
+      const resolveRuntime = input.resolveRuntimeRoot || defaultResolveRuntimeRoot;
+      commandRoot = resolveRuntime({
+        cwd: projectDir,
+        dir: input.reviewerCommand.runtimeDir,
+        repository: input.repository || REAL_REPOSITORY_BOUNDARY,
+      }).root;
+    } catch (error) {
+      return deny(`co-review command runtime could not be validated: ${error.message}`);
+    }
+  }
+
+  let worktreeRows;
+  try {
+    worktreeRows = Object.values(rows).filter((row) =>
+      commandRuntime
+        ? canonicalTarget(path.resolve(row.dir)) === commandRuntime
+        : path.resolve(row.worktree) === worktreePath
+    );
+  } catch (error) {
+    return deny(`co-review runtime authority could not be canonicalized: ${error.message}`);
+  }
   let protocolTarget;
   try {
     protocolTarget = targets.some((target, index) =>
@@ -134,6 +162,8 @@ export function evaluateCoReviewWrite(input) {
     grant = (input.resolveGrant || resolveReviewerGrant)({
       indexFile,
       worktreePath,
+      anyWorktree: true,
+      ...(commandRuntime ? { runtimeDir: commandRuntime, runtimeRoot: commandRoot } : {}),
       provider: input.provider,
       sid: input.sid,
       statusProtocol: input.statusProtocol,
@@ -185,7 +215,8 @@ export function evaluateCoReviewWrite(input) {
     targets.length > 0 ||
     input.ambiguousMutation ||
     ['Edit', 'Write', 'NotebookEdit', 'apply_patch'].includes(input.toolName);
-  if (visibleReviewerClaim && mutationAttempt) {
+  const reviewerLifecycleCommand = Boolean(commandRuntime && input.reviewerCommand?.recognized);
+  if (visibleReviewerClaim && (mutationAttempt || reviewerLifecycleCommand)) {
     return deny('an active reviewer claim belongs to a different provider session');
   }
   if (protocolTarget) {
