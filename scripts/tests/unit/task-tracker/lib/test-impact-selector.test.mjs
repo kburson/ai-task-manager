@@ -1,10 +1,12 @@
-// @story #1089
+// @story #1089 #1263
 import assert from 'node:assert/strict';
+import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, test } from 'node:test';
 
 import { selectAffectedTests } from '../../../../task-tracker/lib/test-impact-selector.mjs';
+import { mkdtempProjectIsolated } from '../../../../task-tracker/lib/scratch-dir.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(HERE, '../../../../..');
@@ -28,6 +30,47 @@ function signals(result, testPath) {
     .filter((entry) => entry.test === testPath)
     .map(({ signal }) => signal)
     .sort();
+}
+
+const CHEAP_MEMBERSHIP_TEST = 'scripts/tests/unit/meta/test-corpus-membership.test.mjs';
+const EXPENSIVE_PACKAGE_TEST = 'scripts/tests/unit/meta/package-test-corpus.test.mjs';
+const CORPUS_DISCOVERED = [
+  CHEAP_MEMBERSHIP_TEST,
+  EXPENSIVE_PACKAGE_TEST,
+  'scripts/tests/unit/lib/live.test.mjs',
+  'scripts/tests/integration/lib/live.test.mjs',
+  'scripts/tests/slow/lib/live.test.mjs',
+];
+const CHECKED_IN_MANIFEST = JSON.parse(
+  readFileSync(path.join(ROOT, 'scripts/task-tracker/test-impact-manifest.json'), 'utf8')
+);
+
+function writeFixture(projectRoot, relativePath) {
+  const absolutePath = path.join(projectRoot, relativePath);
+  mkdirSync(path.dirname(absolutePath), { recursive: true });
+  writeFileSync(absolutePath, '// selection fixture\n');
+}
+
+function corpusSelectionProject(t) {
+  const projectRoot = mkdtempProjectIsolated('test-impact-corpus-');
+  for (const testPath of CORPUS_DISCOVERED) writeFixture(projectRoot, testPath);
+  t.after(() => rmSync(projectRoot, { recursive: true, force: true }));
+  return projectRoot;
+}
+
+function selectCorpus(projectDir, changedPaths) {
+  return selectAffectedTests({
+    projectDir,
+    changedPaths,
+    manifest: CHECKED_IN_MANIFEST,
+    discoveredTests: CORPUS_DISCOVERED,
+  });
+}
+
+function manifestReasons(result, testPath) {
+  return result.reasons
+    .filter(({ signal, test: selected }) => signal === 'manifest' && selected === testPath)
+    .map(({ reason }) => reason);
 }
 
 describe('hybrid affected-test selection', () => {
@@ -222,4 +265,97 @@ describe('manifest fail-closed validation', () => {
       assert.throws(() => select(['package.json'], manifest), expected);
     });
   }
+});
+
+describe('checked-in corpus membership selection', () => {
+  test('a test content edit selects itself and the cheap membership guard', (t) => {
+    const projectRoot = corpusSelectionProject(t);
+    const changed = 'scripts/tests/unit/lib/live.test.mjs';
+
+    const result = selectCorpus(projectRoot, [changed]);
+
+    assert.deepEqual(result.tests, [changed, CHEAP_MEMBERSHIP_TEST].sort());
+    assert.ok(signals(result, changed).includes('changed-test'));
+    assert.deepEqual(manifestReasons(result, CHEAP_MEMBERSHIP_TEST), [
+      'test corpus membership authority change',
+    ]);
+    assert.equal(result.escalated, false);
+  });
+
+  test('a deleted integration test adds the cheap guard and retains its former lane', (t) => {
+    const projectRoot = corpusSelectionProject(t);
+    const deleted = 'scripts/tests/integration/lib/deleted.test.mjs';
+
+    const result = selectCorpus(projectRoot, [deleted]);
+
+    assert.ok(result.tests.includes(CHEAP_MEMBERSHIP_TEST));
+    assert.deepEqual(result.lanes, ['integration']);
+    assert.equal(result.escalated, true);
+    assert.ok(
+      result.reasons.some(({ changedPath, signal }) => {
+        return changedPath === deleted && signal === 'deleted-test-lane';
+      })
+    );
+    assert.deepEqual(manifestReasons(result, CHEAP_MEMBERSHIP_TEST), [
+      'test corpus membership authority change',
+    ]);
+  });
+
+  for (const change of ['added', 'modified', 'deleted']) {
+    test(`${change} registry JSON selects the cheap guard without lane escalation`, (t) => {
+      const projectRoot = corpusSelectionProject(t);
+      const record = `scripts/tests/fixtures/test-corpus-post-snapshot/unit/lib/${change}.test.mjs.json`;
+      if (change !== 'deleted') writeFixture(projectRoot, record);
+
+      const result = selectCorpus(projectRoot, [record]);
+
+      assert.deepEqual(result.tests, [CHEAP_MEMBERSHIP_TEST]);
+      assert.deepEqual(result.lanes, []);
+      assert.equal(result.escalated, false);
+      assert.deepEqual(manifestReasons(result, CHEAP_MEMBERSHIP_TEST), [
+        'test corpus membership authority change',
+      ]);
+    });
+  }
+
+  test('a rename selects the cheap guard while the old path retains former-lane escalation', (t) => {
+    const projectRoot = corpusSelectionProject(t);
+    const oldPath = 'scripts/tests/integration/lib/renamed.test.mjs';
+    const newPath = 'scripts/tests/unit/lib/live.test.mjs';
+
+    const result = selectCorpus(projectRoot, [oldPath, newPath]);
+
+    assert.ok(result.tests.includes(newPath));
+    assert.ok(result.tests.includes(CHEAP_MEMBERSHIP_TEST));
+    assert.deepEqual(result.lanes, ['integration']);
+    assert.equal(result.escalated, true);
+    assert.ok(
+      result.reasons.some(({ changedPath, signal }) => {
+        return changedPath === oldPath && signal === 'deleted-test-lane';
+      })
+    );
+    assert.deepEqual(
+      result.reasons
+        .filter(({ signal, test: selected }) => {
+          return signal === 'manifest' && selected === CHEAP_MEMBERSHIP_TEST;
+        })
+        .map(({ changedPath }) => changedPath),
+      [oldPath, newPath].sort()
+    );
+  });
+
+  test('the frozen pre-move authority selects both corpus guards', (t) => {
+    const projectRoot = corpusSelectionProject(t);
+
+    const result = selectCorpus(projectRoot, ['scripts/tests/fixtures/test-corpus-pre-move.json']);
+
+    assert.deepEqual(result.tests, [CHEAP_MEMBERSHIP_TEST, EXPENSIVE_PACKAGE_TEST].sort());
+    assert.deepEqual(manifestReasons(result, CHEAP_MEMBERSHIP_TEST), [
+      'frozen test corpus authority change',
+    ]);
+    assert.deepEqual(manifestReasons(result, EXPENSIVE_PACKAGE_TEST), [
+      'frozen test corpus authority change',
+    ]);
+    assert.equal(result.escalated, false);
+  });
 });
