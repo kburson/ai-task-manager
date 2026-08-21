@@ -14,6 +14,7 @@ const temporaryRoots = new Set();
 const memoryRepositories = new Map();
 const calls = { git: 0, nodeCli: 0 };
 const SYNTHETIC_REVIEWER_ENV = Object.freeze({
+  AI_TASK_MANAGER_SESSION_ID: 'co-review-fixture-session',
   GROK_AGENT: '1',
   GROK_SESSION_ID: 'co-review-fixture-session',
 });

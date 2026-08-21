@@ -277,29 +277,28 @@ test('imported CLI workflow intercepts, continues with refocus, and then accepts
     path.join(root, '.tmp/review/r1-review.md'),
     '[finding:F-001] Clarify acceptance.\n'
   );
-  assert.equal(
-    runCli(
-      [
-        'init',
-        '--dir',
-        '.tmp/review',
-        '--artifact',
-        artifact,
-        '--owner',
-        'owner-agent',
-        '--reviewer',
-        'reviewer-agent',
-        '--max-turns',
-        '2',
-        '--import-review',
-        '.tmp/review/r1-review.md',
-        '--review-of',
-        initialCommit,
-      ],
-      io
-    ).status,
-    0
+  const initialized = runCli(
+    [
+      'init',
+      '--dir',
+      '.tmp/review',
+      '--artifact',
+      artifact,
+      '--owner',
+      'owner-agent',
+      '--reviewer',
+      'reviewer-agent',
+      '--max-turns',
+      '2',
+      '--import-review',
+      '.tmp/review/r1-review.md',
+      '--review-of',
+      initialCommit,
+    ],
+    io
   );
+  assert.equal(initialized.status, 0);
+  const protocolId = JSON.parse(initialized.stdout).protocolId;
   assert.equal(runCli(['claim', '--dir', '.tmp/review', '--actor', 'owner-agent'], io).status, 0);
   const secondCommit = commitArtifact(root, '# Artifact\n\nExplicit acceptance.\n');
   writeFileSync(
@@ -329,10 +328,21 @@ test('imported CLI workflow intercepts, continues with refocus, and then accepts
     ).status,
     0
   );
-  assert.equal(
-    runCli(['claim', '--dir', '.tmp/review', '--actor', 'reviewer-agent'], io).status,
-    0
+  const previousOrchestratorSid = process.env.AI_TASK_MANAGER_SESSION_ID;
+  process.env.AI_TASK_MANAGER_SESSION_ID = 'host-orchestrator-session';
+  let reviewerClaim;
+  try {
+    reviewerClaim = runCli(['claim', '--dir', '.tmp/review', '--actor', 'reviewer-agent'], io);
+  } finally {
+    if (previousOrchestratorSid === undefined) delete process.env.AI_TASK_MANAGER_SESSION_ID;
+    else process.env.AI_TASK_MANAGER_SESSION_ID = previousOrchestratorSid;
+  }
+  assert.equal(reviewerClaim.status, 0, reviewerClaim.stderr);
+  const index = JSON.parse(
+    readFileSync(path.join(root, '.tmp/aitm/fleet/co-review-index.json'), 'utf8')
   );
+  assert.equal(index[protocolId].claimedProvider, 'grok');
+  assert.equal(index[protocolId].claimedSid, 'co-review-fixture-session');
   writeFileSync(path.join(root, '.tmp/review/r3-review.md'), '[finding:F-002] Refocus help.\n');
   writeFileSync(path.join(root, '.tmp/review/summary.md'), '# Summary\n\nRefocus help recovery.\n');
   assert.equal(
