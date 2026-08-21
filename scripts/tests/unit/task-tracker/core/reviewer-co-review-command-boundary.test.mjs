@@ -1,7 +1,7 @@
 // @story #1365
 import assert from 'node:assert/strict';
-import { spawn } from 'node:child_process';
-import { mkdirSync, writeFileSync } from 'node:fs';
+import { spawn, spawnSync } from 'node:child_process';
+import { mkdirSync, symlinkSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import test from 'node:test';
 
@@ -12,6 +12,7 @@ import {
 } from '../../../fixtures/co-review-fixture.mjs';
 
 const GUARD = path.resolve('scripts/task-tracker/bash-guard.mjs');
+const AITM_BIN = path.resolve('bin/aitm.mjs');
 const REVIEWER_ENV = {
   ...process.env,
   AI_TASK_MANAGER_SESSION_ID: 'reviewer-command-boundary-1365',
@@ -23,6 +24,17 @@ test.afterEach(cleanupTemporaryRoots);
 
 function successfulCli(args, root) {
   const result = runCli(args, { cwd: root, env: REVIEWER_ENV });
+  assert.equal(result.status, 0, result.stderr);
+  return JSON.parse(result.stdout);
+}
+
+function successfulNpx(args, root) {
+  const result = spawnSync('npx', ['aitm', 'co-review', ...args], {
+    cwd: root,
+    encoding: 'utf8',
+    env: { ...REVIEWER_ENV, npm_config_offline: 'true' },
+    shell: false,
+  });
   assert.equal(result.status, 0, result.stderr);
   return JSON.parse(result.stdout);
 }
@@ -54,8 +66,19 @@ test('live reviewer command passes the guard and reaches accepted archived state
   const fixture = realRepositoryFixture();
   const dir = '.tmp/co-review/boundary-1365';
   const archiveDir = 'docs/superpowers/reviews/1365/boundary-fixture';
-  mkdirSync(path.join(fixture.root, 'node_modules', '.bin'), { recursive: true });
-  writeFileSync(path.join(fixture.root, 'node_modules', '.bin', 'aitm'), '#!/usr/bin/env node\n');
+  mkdirSync(path.join(fixture.root, 'node_modules'), { recursive: true });
+  mkdirSync(path.join(fixture.root, 'bin'), { recursive: true });
+  symlinkSync('..', path.join(fixture.root, 'node_modules', 'ai-task-manager'), 'dir');
+  symlinkSync(AITM_BIN, path.join(fixture.root, 'bin', 'aitm.mjs'), 'file');
+  writeFileSync(
+    path.join(fixture.root, 'package.json'),
+    `${JSON.stringify({
+      name: '@kburson/ai-task-manager',
+      version: '1.0.0',
+      type: 'module',
+      bin: { aitm: 'bin/aitm.mjs' },
+    })}\n`
+  );
 
   successfulCli(
     [
@@ -140,7 +163,7 @@ test('live reviewer command passes the guard and reaches accepted archived state
   assert.equal(guard.status, 0, guard.stderr);
   assert.equal(guard.stdout, '');
 
-  const accepted = successfulCli(
+  const accepted = successfulNpx(
     [
       'handoff',
       '--dir',

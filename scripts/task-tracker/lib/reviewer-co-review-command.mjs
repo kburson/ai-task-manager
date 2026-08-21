@@ -1,5 +1,8 @@
-import { existsSync } from 'node:fs';
+import { existsSync, readFileSync, realpathSync } from 'node:fs';
 import path from 'node:path';
+
+const AITM_PACKAGE_NAME = '@kburson/ai-task-manager';
+const AITM_BIN_PATH = 'bin/aitm.mjs';
 
 const SHELL_META = new Set([
   '\0',
@@ -34,6 +37,22 @@ const HANDOFF_VALUE_FLAGS = new Set([
 
 function reject(reason) {
   return { recognized: false, reason };
+}
+
+function hasLocalAitm(projectDir, exists) {
+  if (exists(path.join(projectDir, 'node_modules', '.bin', 'aitm'))) return true;
+
+  const packageAlias = path.join(projectDir, 'node_modules', 'ai-task-manager');
+  try {
+    if (realpathSync(packageAlias) !== realpathSync(projectDir)) return false;
+    const manifest = JSON.parse(readFileSync(path.join(packageAlias, 'package.json'), 'utf8'));
+    if (manifest.name !== AITM_PACKAGE_NAME || manifest.bin?.aitm !== AITM_BIN_PATH) {
+      return false;
+    }
+    return exists(path.join(packageAlias, AITM_BIN_PATH));
+  } catch {
+    return false;
+  }
 }
 
 function shellWords(input) {
@@ -100,8 +119,7 @@ function options(words, valueFlags, booleanFlags = new Set()) {
 export function classifyReviewerCoReviewCommand(command, config = {}) {
   const projectDir = path.resolve(config.projectDir || process.cwd());
   const exists = config.exists || existsSync;
-  const localAitm = path.join(projectDir, 'node_modules', '.bin', 'aitm');
-  if (!exists(localAitm)) return reject('local-aitm-unavailable');
+  if (!hasLocalAitm(projectDir, exists)) return reject('local-aitm-unavailable');
 
   const words = shellWords(String(command || ''));
   if (!words || words.length < 4) return reject('not-one-literal-command');

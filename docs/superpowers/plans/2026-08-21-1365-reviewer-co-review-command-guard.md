@@ -12,7 +12,10 @@
 
 - Recognize only `npx aitm co-review status --dir <runtime> [--json]`, `npx aitm co-review help handoff`, and reviewer `npx aitm co-review handoff ...`.
 - Accept exactly one literal shell command with no pipes, redirects, composition, expansion, environment prefixes, wrappers, alternate executables, unknown flags, or duplicate flags.
-- Require the repository-local AITM executable so `npx` cannot install or resolve a remote package.
+- Require either an installed `node_modules/.bin/aitm` entry or the verified
+  dogfood `node_modules/ai-task-manager` self-link with the expected local
+  package manifest and bin target, so `npx` cannot install or resolve a remote
+  package.
 - Compare runtime, actor, pending review, reviewed owner-handoff commit, decision, optional summary, provider, and session with live protocol authority.
 - Keep co-review protocol validation authoritative for locking, state rereads, integrity, findings, supplements, budget, decision semantics, events, state, and archive writes.
 - Keep direct reviewer writes limited to the exact session-bound pending review artifact.
@@ -166,9 +169,11 @@ test('reviewer command classifier rejects every broader shell and CLI form', () 
 Create `scripts/task-tracker/lib/reviewer-co-review-command.mjs` with this closed parser:
 
 ```js
-import { existsSync } from 'node:fs';
+import { existsSync, readFileSync, realpathSync } from 'node:fs';
 import path from 'node:path';
 
+const AITM_PACKAGE_NAME = '@kburson/ai-task-manager';
+const AITM_BIN_PATH = 'bin/aitm.mjs';
 const SHELL_META_RE = /[\0\r\n;&|<>`$*?{}()[\]~]/;
 const HANDOFF_VALUE_FLAGS = new Set([
   'dir',
@@ -182,6 +187,22 @@ const HANDOFF_VALUE_FLAGS = new Set([
 
 function reject(reason) {
   return { recognized: false, reason };
+}
+
+function hasLocalAitm(projectDir, exists) {
+  if (exists(path.join(projectDir, 'node_modules', '.bin', 'aitm'))) return true;
+  const packageAlias = path.join(projectDir, 'node_modules', 'ai-task-manager');
+  try {
+    if (realpathSync(packageAlias) !== realpathSync(projectDir)) return false;
+    const manifest = JSON.parse(readFileSync(path.join(packageAlias, 'package.json'), 'utf8'));
+    return (
+      manifest.name === AITM_PACKAGE_NAME &&
+      manifest.bin?.aitm === AITM_BIN_PATH &&
+      exists(path.join(packageAlias, AITM_BIN_PATH))
+    );
+  } catch {
+    return false;
+  }
 }
 
 function shellWords(input) {
@@ -248,8 +269,7 @@ function options(words, valueFlags, booleanFlags = new Set()) {
 export function classifyReviewerCoReviewCommand(command, config = {}) {
   const projectDir = path.resolve(config.projectDir || process.cwd());
   const exists = config.exists || existsSync;
-  const localAitm = path.join(projectDir, 'node_modules', '.bin', 'aitm');
-  if (!exists(localAitm)) return reject('local-aitm-unavailable');
+  if (!hasLocalAitm(projectDir, exists)) return reject('local-aitm-unavailable');
 
   const words = shellWords(String(command || ''));
   if (!words || words.length < 4) return reject('not-one-literal-command');
@@ -567,8 +587,8 @@ Create `scripts/tests/unit/task-tracker/core/reviewer-co-review-command-boundary
 ```js
 // @story #1365
 import assert from 'node:assert/strict';
-import { spawn } from 'node:child_process';
-import { mkdirSync, writeFileSync } from 'node:fs';
+import { spawn, spawnSync } from 'node:child_process';
+import { mkdirSync, symlinkSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import test from 'node:test';
 
@@ -579,6 +599,7 @@ import {
 } from '../../../fixtures/co-review-fixture.mjs';
 
 const GUARD = path.resolve('scripts/task-tracker/bash-guard.mjs');
+const AITM_BIN = path.resolve('bin/aitm.mjs');
 const REVIEWER_ENV = {
   ...process.env,
   AI_TASK_MANAGER_SESSION_ID: 'reviewer-command-boundary-1365',
@@ -590,6 +611,17 @@ test.afterEach(cleanupTemporaryRoots);
 
 function successfulCli(args, root) {
   const result = runCli(args, { cwd: root, env: REVIEWER_ENV });
+  assert.equal(result.status, 0, result.stderr);
+  return JSON.parse(result.stdout);
+}
+
+function successfulNpx(args, root) {
+  const result = spawnSync('npx', ['aitm', 'co-review', ...args], {
+    cwd: root,
+    encoding: 'utf8',
+    env: { ...REVIEWER_ENV, npm_config_offline: 'true' },
+    shell: false,
+  });
   assert.equal(result.status, 0, result.stderr);
   return JSON.parse(result.stdout);
 }
@@ -621,8 +653,19 @@ test('live reviewer command passes the guard and reaches accepted archived state
   const fixture = realRepositoryFixture();
   const dir = '.tmp/co-review/boundary-1365';
   const archiveDir = 'docs/superpowers/reviews/1365/boundary-fixture';
-  mkdirSync(path.join(fixture.root, 'node_modules', '.bin'), { recursive: true });
-  writeFileSync(path.join(fixture.root, 'node_modules', '.bin', 'aitm'), '#!/usr/bin/env node\n');
+  mkdirSync(path.join(fixture.root, 'node_modules'), { recursive: true });
+  mkdirSync(path.join(fixture.root, 'bin'), { recursive: true });
+  symlinkSync('..', path.join(fixture.root, 'node_modules', 'ai-task-manager'), 'dir');
+  symlinkSync(AITM_BIN, path.join(fixture.root, 'bin', 'aitm.mjs'), 'file');
+  writeFileSync(
+    path.join(fixture.root, 'package.json'),
+    `${JSON.stringify({
+      name: '@kburson/ai-task-manager',
+      version: '1.0.0',
+      type: 'module',
+      bin: { aitm: 'bin/aitm.mjs' },
+    })}\n`
+  );
 
   successfulCli(
     [
@@ -682,7 +725,7 @@ test('live reviewer command passes the guard and reaches accepted archived state
   assert.equal(guard.status, 0, guard.stderr);
   assert.equal(guard.stdout, '');
 
-  const accepted = successfulCli(
+  const accepted = successfulNpx(
     [
       'handoff',
       '--dir',

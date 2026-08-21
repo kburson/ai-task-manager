@@ -120,6 +120,42 @@ function classifierFixture() {
   return { projectDir, localBin, classify };
 }
 
+test('reviewer command classifier recognizes the sanctioned dogfood self-link topology', () => {
+  const projectDir = mkdtempSync(
+    path.join(projectScratchDir('test'), 'aitm-review-command-self-link-')
+  );
+  mkdirSync(path.join(projectDir, 'node_modules'), { recursive: true });
+  mkdirSync(path.join(projectDir, 'bin'), { recursive: true });
+  symlinkSync('..', path.join(projectDir, 'node_modules', 'ai-task-manager'), 'dir');
+  writeFileSync(path.join(projectDir, 'bin', 'aitm.mjs'), '#!/usr/bin/env node\n', 'utf8');
+  writeFileSync(
+    path.join(projectDir, 'package.json'),
+    `${JSON.stringify({
+      name: '@kburson/ai-task-manager',
+      bin: { aitm: 'bin/aitm.mjs' },
+    })}\n`,
+    'utf8'
+  );
+
+  assert.deepEqual(
+    classifyReviewerCoReviewCommand('npx aitm co-review help handoff', { projectDir }),
+    { recognized: true, kind: 'help-handoff' }
+  );
+
+  writeFileSync(
+    path.join(projectDir, 'package.json'),
+    `${JSON.stringify({
+      name: '@kburson/ai-task-manager',
+      bin: { aitm: 'bin/not-aitm.mjs' },
+    })}\n`,
+    'utf8'
+  );
+  assert.deepEqual(
+    classifyReviewerCoReviewCommand('npx aitm co-review help handoff', { projectDir }),
+    { recognized: false, reason: 'local-aitm-unavailable' }
+  );
+});
+
 test('reviewer command classifier accepts only the generated lifecycle forms', () => {
   const { classify } = classifierFixture();
   assert.deepEqual(classify('npx aitm co-review status --dir .tmp/co-review/p1'), {

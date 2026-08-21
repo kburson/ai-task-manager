@@ -100,8 +100,11 @@ Every recognized command must satisfy all of these conditions:
 - no `eval`, inline Node/Python/Ruby/Perl, aliases, or command substitution;
 - no unrecognized, abbreviated, duplicated, or conflicting flags;
 - literal paths with no traversal components;
-- the repository-local AITM executable is present, so `npx` cannot resolve or
-  install a remote package.
+- local AITM resolution is proven either by an installed
+  `node_modules/.bin/aitm` entry or by the sanctioned dogfood
+  `node_modules/ai-task-manager` self-link resolving to the current worktree
+  with the expected package name, `bin.aitm` manifest entry, and local bin
+  target; therefore `npx` cannot resolve or install a remote package.
 
 The parser returns one of:
 
@@ -237,7 +240,10 @@ occurred.
 - reject shell composition, redirects, substitutions, expansions, environment
   prefixes, wrappers, and alternate executables;
 - reject non-literal, traversing, or out-of-runtime paths;
-- reject the `npx` entrypoint when the local AITM executable is unavailable.
+- accept both sanctioned local package topologies and reject the `npx`
+  entrypoint when neither is valid;
+- exercise the exact permitted `npx aitm ...` reviewer handoff through the
+  seeded self-link topology rather than substituting a direct CLI call.
 
 ### Policy tests
 
