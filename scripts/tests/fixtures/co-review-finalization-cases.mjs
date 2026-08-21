@@ -361,9 +361,11 @@ test('reviewer consensus finalizes automatically and an unconfigured destination
     { cwd: spaced.root, repository: spaced.repository }
   );
   assert.equal(spacedPending.status, 4);
-  assert.match(
-    spacedPending.stderr,
-    /finalize --dir '\.tmp\/review session' --archive-dir <tracked-repo-path>/
+  assert.equal(
+    spacedPending.stderr.includes(
+      `finalize --dir '${path.join(spaced.root, '.tmp/review session')}' --archive-dir <tracked-repo-path>`
+    ),
+    true
   );
 
   const failed = await consensusReady({ archiveDir: 'docs/reviews/retry' });
