@@ -221,6 +221,8 @@ test('start delegates initialization and publishes concrete hashed handoffs befo
   assert.doesNotMatch(reviewer, /required.*--summary/i);
   assert.match(reviewer, /narrowly authorizes.*status.*help handoff.*reviewer handoff/is);
   assert.match(reviewer, /arbitrary Bash remains blocked/i);
+  assert.match(reviewer, /ordinary quoted prose.*supported/i);
+  assert.match(reviewer, /dynamic shell expressions.*remain blocked/i);
   assert.match(reviewer, /live provider.*session.*claim/i);
   assert.equal(
     result.output,

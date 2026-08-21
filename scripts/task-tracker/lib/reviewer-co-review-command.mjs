@@ -5,9 +5,6 @@ const AITM_PACKAGE_NAME = '@kburson/ai-task-manager';
 const AITM_BIN_PATH = 'bin/aitm.mjs';
 
 const SHELL_META = new Set([
-  '\0',
-  '\r',
-  '\n',
   ';',
   '&',
   '|',
@@ -25,6 +22,8 @@ const SHELL_META = new Set([
   ']',
   '~',
 ]);
+const DOUBLE_QUOTE_EXPANSION = new Set(['`', '$']);
+const DOUBLE_QUOTE_ESCAPES = new Set(['`', '$', '"', '\\']);
 const HANDOFF_VALUE_FLAGS = new Set([
   'dir',
   'actor',
@@ -37,6 +36,11 @@ const HANDOFF_VALUE_FLAGS = new Set([
 
 function reject(reason) {
   return { recognized: false, reason };
+}
+
+function isControlCharacter(character) {
+  const codePoint = character.codePointAt(0);
+  return codePoint <= 0x1f || codePoint === 0x7f;
 }
 
 function hasLocalAitm(projectDir, exists) {
@@ -56,14 +60,16 @@ function hasLocalAitm(projectDir, exists) {
 }
 
 function shellWords(input) {
-  if ([...input].some((character) => SHELL_META.has(character))) return null;
   const words = [];
   let word = '';
   let quote = '';
   let escaped = false;
   let started = false;
   for (const character of input) {
+    if (isControlCharacter(character)) return null;
     if (escaped) {
+      if (quote === '"' && !DOUBLE_QUOTE_ESCAPES.has(character)) return null;
+      if (!quote && SHELL_META.has(character)) return null;
       word += character;
       escaped = false;
       started = true;
@@ -71,11 +77,14 @@ function shellWords(input) {
       escaped = true;
     } else if (quote) {
       if (character === quote) quote = '';
+      else if (quote === '"' && DOUBLE_QUOTE_EXPANSION.has(character)) return null;
       else word += character;
       started = true;
     } else if (character === "'" || character === '"') {
       quote = character;
       started = true;
+    } else if (SHELL_META.has(character)) {
+      return null;
     } else if (/\s/.test(character)) {
       if (started) words.push(word);
       word = '';
