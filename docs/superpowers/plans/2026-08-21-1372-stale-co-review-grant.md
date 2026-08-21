@@ -1,5 +1,7 @@
 # Stale Co-Review Grant Repair Implementation Plan
 
+<!-- cspell:ignore ENOENT -->
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Allow an exact live reviewer grant to resolve despite an unrelated stale index row while preserving fail-closed validation for a stale matching grant.
