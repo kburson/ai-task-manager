@@ -267,6 +267,18 @@ test('Develop does not reuse a Test receipt', () => {
   assert.equal(result.action, 'run');
 });
 
+test('Done refuses uncovered execution without suggesting an unavailable demotion', () => {
+  const result = resolve({
+    commands: ['npm run lint'],
+    liveState: 'done',
+    receipt: null,
+    headSha: SHA,
+  });
+  assert.equal(result.action, 'refuse');
+  assert.match(result.message, /Done evidence is immutable/i);
+  assert.doesNotMatch(result.message, /demote|\/task test/i);
+});
+
 test('skill and pickup docs no longer order Review-stage standard-lane reruns', () => {
   const files = [
     'skill/shared/rules/review.md',
@@ -285,6 +297,16 @@ test('skill and pickup docs no longer order Review-stage standard-lane reruns', 
     readFileSync(path.join(REPO_ROOT, 'skill/shared/rules/review.md'), 'utf8'),
     /Invoking `dod-stamp` or `ac-stamp` in Review may only reuse/i
   );
+  const reviewRule = readFileSync(path.join(REPO_ROOT, 'skill/shared/rules/review.md'), 'utf8');
+  assert.match(reviewRule, /aitm-skill-version: 1\.2\.0/);
+  assert.match(reviewRule, /aitm-skill-loaded:rules\/review:1\.2\.0/);
+  const functionalDodRule = readFileSync(
+    path.join(REPO_ROOT, 'skill/shared/rules/functional-dod.md'),
+    'utf8'
+  );
+  assert.match(functionalDodRule, /all Review-stage stamps only reuse validated Test evidence/i);
+  assert.match(functionalDodRule, /aitm-skill-version: 1\.3\.0/);
+  assert.match(functionalDodRule, /aitm-skill-loaded:rules\/functional-dod:1\.3\.0/);
   for (const rel of [
     'templates/pickup-directive.md',
     '.ai-task-manager/templates/pickup-directive.md',

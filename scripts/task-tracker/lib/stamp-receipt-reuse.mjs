@@ -132,7 +132,16 @@ export function resolveStampExecution({
     return { action: 'reuse' };
   }
 
-  if (liveState === 'review' || liveState === 'done') {
+  if (liveState === 'done') {
+    return {
+      action: 'refuse',
+      message:
+        `verifier command(s) [${list.join(', ')}] cannot run in \`done\`. ` +
+        `Done evidence is immutable; verifier execution is refused.`,
+    };
+  }
+
+  if (liveState === 'review') {
     return {
       action: 'refuse',
       message:

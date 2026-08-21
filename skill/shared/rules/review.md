@@ -1,4 +1,4 @@
-<!-- aitm-skill-version: 1.1.0 -->
+<!-- aitm-skill-version: 1.2.0 -->
 <!-- aitm-rule-id: review -->
 
 # rules/review.md
@@ -6,7 +6,7 @@
 Tier-2. Loaded JIT on `/task review`. On first read, emit:
 
 ```
-aitm-skill-loaded:rules/review:1.1.0
+aitm-skill-loaded:rules/review:1.2.0
 ```
 
 ## Agent terminal step
