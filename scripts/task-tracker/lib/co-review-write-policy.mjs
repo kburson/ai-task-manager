@@ -38,6 +38,32 @@ function canonicalTarget(target) {
   return path.join(realpathSync(cursor), ...suffix);
 }
 
+function canonicalCommandPath(value, projectDir) {
+  return canonicalTarget(targetAbsolute(value, projectDir));
+}
+
+function reviewerCommandMismatch(command, grant, projectDir) {
+  if (!command?.recognized) return 'unrecognized';
+  if (command.kind === 'help-handoff') return null;
+
+  const runtime = canonicalCommandPath(command.runtimeDir, projectDir);
+  const grantedRuntime = canonicalTarget(path.resolve(grant.dir));
+  if (runtime !== grantedRuntime) return 'runtime';
+  if (command.kind === 'status') return null;
+  if (command.kind !== 'reviewer-handoff') return 'kind';
+  if (command.actor !== grant.reviewer) return 'actor';
+  if (canonicalCommandPath(command.reviewPath, projectDir) !== canonicalPending(grant)) {
+    return 'review';
+  }
+  if (command.reviewOf !== grant.ownerHandoffCommit) return 'review-of';
+  if (!['accepted', 'changes-requested'].includes(command.decision)) return 'decision';
+  if (command.summaryPath) {
+    const summary = canonicalCommandPath(command.summaryPath, projectDir);
+    if (!inside(grantedRuntime, summary)) return 'summary';
+  }
+  return null;
+}
+
 function deny(reason, code = 'co-review-write-denied') {
   return { decision: 'deny', reason, code };
 }
@@ -121,6 +147,17 @@ export function evaluateCoReviewWrite(input) {
 
   if (input.parseError) return deny(`mutation target parsing failed: ${input.parseError.message}`);
   if (grant) {
+    if (input.toolName === 'Bash' && input.reviewerCommand?.recognized) {
+      try {
+        const mismatch = reviewerCommandMismatch(input.reviewerCommand, grant, projectDir);
+        if (!mismatch) {
+          return { decision: 'allow', reason: 'session-bound-co-review-command', grant };
+        }
+        return deny(`reviewer co-review command disagrees with live authority: ${mismatch}`);
+      } catch (error) {
+        return deny(`reviewer co-review command canonicalization failed: ${error.message}`);
+      }
+    }
     if (input.toolName === 'Bash' && targets.length === 0 && !input.ambiguousMutation) {
       return { decision: 'not-applicable', reason: 'reviewer-bash-read-only' };
     }

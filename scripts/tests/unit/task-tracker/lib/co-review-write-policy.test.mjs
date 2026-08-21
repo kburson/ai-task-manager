@@ -219,10 +219,13 @@ function policyFixture() {
     protocolId: 'p1',
     dir,
     worktree: projectDir,
+    reviewer: 'claude',
+    lifecycle: 'active',
     pendingReviewPath: pending,
     claimedRole: 'reviewer',
     claimedProvider: 'grok',
     claimedSid: 'sid-1',
+    ownerHandoffCommit: '0123456789012345678901234567890123456789',
   };
   const rows = { p1: grant };
   const evaluate = (overrides = {}) =>
@@ -233,12 +236,119 @@ function policyFixture() {
       sid: 'sid-1',
       toolName: 'Write',
       targets: [pending],
+      reviewerCommand: { recognized: false, reason: 'not-co-review' },
       readIndex: () => rows,
       resolveGrant: () => grant,
       ...overrides,
     });
   return { projectDir, dir, pending, grant, rows, evaluate };
 }
+
+function matchingHandoff({ dir, pending, grant }) {
+  return {
+    recognized: true,
+    kind: 'reviewer-handoff',
+    runtimeDir: dir,
+    actor: grant.reviewer,
+    reviewPath: pending,
+    reviewOf: grant.ownerHandoffCommit,
+    decision: 'accepted',
+    summaryPath: null,
+    message: 'review complete',
+  };
+}
+
+test('matching reviewer status, help, and handoff commands use the session grant', () => {
+  const fixture = policyFixture();
+  const status = fixture.evaluate({
+    toolName: 'Bash',
+    targets: [],
+    ambiguousMutation: true,
+    reviewerCommand: {
+      recognized: true,
+      kind: 'status',
+      runtimeDir: fixture.dir,
+      json: false,
+    },
+  });
+  assert.equal(status.reason, 'session-bound-co-review-command');
+
+  const help = fixture.evaluate({
+    toolName: 'Bash',
+    targets: [],
+    ambiguousMutation: true,
+    reviewerCommand: { recognized: true, kind: 'help-handoff' },
+  });
+  assert.equal(help.reason, 'session-bound-co-review-command');
+
+  const handoff = fixture.evaluate({
+    toolName: 'Bash',
+    targets: [],
+    ambiguousMutation: true,
+    reviewerCommand: matchingHandoff(fixture),
+  });
+  assert.equal(handoff.reason, 'session-bound-co-review-command');
+});
+
+test('reviewer command fields must agree exactly with live authority', () => {
+  const fixture = policyFixture();
+  const base = matchingHandoff(fixture);
+  const mutations = [
+    { runtimeDir: path.join(fixture.projectDir, '.tmp', 'other') },
+    { actor: 'codex' },
+    { reviewPath: path.join(fixture.dir, 'other.md') },
+    { reviewOf: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa' },
+    {
+      decision: 'changes-requested',
+      summaryPath: path.join(fixture.projectDir, 'outside.md'),
+    },
+  ];
+  for (const mutation of mutations) {
+    const result = fixture.evaluate({
+      toolName: 'Bash',
+      targets: [],
+      ambiguousMutation: true,
+      reviewerCommand: { ...base, ...mutation },
+    });
+    assert.equal(result.decision, 'deny');
+  }
+});
+
+test('authority targets deny before an otherwise matching reviewer command', () => {
+  const fixture = policyFixture();
+  const authorityFile = path.join(fixture.projectDir, '.tmp/aitm/fleet/co-review-index.json');
+  const result = fixture.evaluate({
+    toolName: 'Bash',
+    targets: [authorityFile],
+    authorityFiles: [authorityFile],
+    ambiguousMutation: false,
+    reviewerCommand: matchingHandoff(fixture),
+  });
+  assert.equal(result.code, 'co-review-authority-file');
+});
+
+test('a recognized command cannot cross provider-session ownership', () => {
+  const fixture = policyFixture();
+  const result = fixture.evaluate({
+    toolName: 'Bash',
+    provider: 'codex',
+    sid: 'other-session',
+    resolveGrant: () => null,
+    statusProtocol: () => ({
+      protocolId: 'p1',
+      lifecycle: 'active',
+      integrity: { ok: true },
+      currentRole: 'reviewer',
+      turnState: 'claimed',
+      claim: { role: 'reviewer', actor: 'claude' },
+    }),
+    targets: [],
+    ambiguousMutation: true,
+    reviewerCommand: matchingHandoff(fixture),
+  });
+  assert.equal(result.decision, 'deny');
+  assert.match(result.reason, /different provider session/);
+});
 
 test('exact pending artifact is allowed only for the claimed provider session', () => {
   const { pending, evaluate } = policyFixture();

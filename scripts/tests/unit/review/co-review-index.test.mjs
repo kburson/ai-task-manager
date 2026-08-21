@@ -134,6 +134,10 @@ test('grant resolution requires live integrity and a matching durable claim', ()
     ...state,
     turnState: 'claimed',
     claim: { role: 'reviewer', actor: 'Reviewer' },
+    lastHandoff: {
+      from: 'owner',
+      commit: '0123456789012345678901234567890123456789',
+    },
   };
   const statusProtocol = () => live;
   const grant = resolveReviewerGrant({
@@ -147,6 +151,7 @@ test('grant resolution requires live integrity and a matching durable claim', ()
     grant.pendingReviewPath,
     path.join(state.worktree, '.tmp/custom-review/round-2-reviewer-review.md')
   );
+  assert.equal(grant.ownerHandoffCommit, live.lastHandoff.commit);
   assert.equal(
     resolveReviewerGrant({
       indexFile,
