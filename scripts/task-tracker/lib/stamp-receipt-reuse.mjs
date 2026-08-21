@@ -3,17 +3,37 @@
 // A valid exact-SHA Test receipt already owns standard lanes. Re-executing
 // them in Test (after the sandbox) or Review is wasted wall-clock.
 
-import { parseVerificationReceipt } from './verification-receipt.mjs';
+import {
+  buildVerificationFingerprint,
+  parseVerificationReceipt,
+  requiredTestReceiptClassifications,
+  validateVerificationReceipt,
+} from './verification-receipt.mjs';
+import { splitCmd } from './evidence-runner.mjs';
 import { defaultGetLiveState } from './verifier-state-gate.mjs';
 
 const SUITE_COMMAND_RE = /^(?:npm\s+test|npm\s+run\s+test(?::(?:all|slow|unit|integration))?)$/;
 const RESTRICTED_BEFORE_TEST_RE = /\bnpm\s+run\s+test:(all|slow)\b/;
+const KNOWN_STATES = new Set([
+  'backlog',
+  'assigned',
+  'refine',
+  'ready-for-plan',
+  'plan',
+  'develop',
+  'test',
+  'review',
+  'done',
+]);
 
-function normalizeCommand(cmd) {
+function stripCommand(cmd) {
   return String(cmd || '')
     .trim()
-    .replace(/^`+|`+$/g, '')
-    .replace(/\s+/g, ' ');
+    .replace(/^`+|`+$/g, '');
+}
+
+function normalizeCommand(cmd) {
+  return stripCommand(cmd).replace(/\s+/g, ' ');
 }
 
 function greenByClassification(receipt, classification) {
@@ -24,7 +44,7 @@ function greenByClassification(receipt, classification) {
 }
 
 function exactCommandGreen(receipt, command) {
-  const tokens = normalizeCommand(command).split(' ');
+  const tokens = splitCmd(stripCommand(command));
   if (tokens.length === 0 || tokens[0] === '') return false;
   const [bin, ...args] = tokens;
   return (receipt?.commands || []).some(
@@ -43,7 +63,8 @@ export function isStandardSuiteCommand(cmd) {
 
 export function commandCoveredByReceipt(cmd, receipt) {
   if (!receipt || !Array.isArray(receipt.commands)) return false;
-  const command = normalizeCommand(cmd);
+  const literalCommand = stripCommand(cmd);
+  const command = normalizeCommand(literalCommand);
   if (command === 'npm test') {
     return (
       greenByClassification(receipt, 'test-unit') &&
@@ -65,7 +86,7 @@ export function commandCoveredByReceipt(cmd, receipt) {
     'npm run test:slow': 'test-slow',
   }[command];
   if (classified) return greenByClassification(receipt, classified);
-  return exactCommandGreen(receipt, command);
+  return exactCommandGreen(receipt, literalCommand);
 }
 
 function receiptMatchesHead(receipt, headSha) {
@@ -86,25 +107,47 @@ export function resolveStampExecution({
   liveState,
   receipt = null,
   headSha = '',
+  issueNumber,
+  fingerprint,
 } = {}) {
-  const list = (Array.isArray(commands) ? commands : []).map(normalizeCommand).filter(Boolean);
-  const hasSuite = list.some(isStandardSuiteCommand);
-  const matched = receiptMatchesHead(receipt, headSha);
+  const list = (Array.isArray(commands) ? commands : []).map(stripCommand).filter(Boolean);
+  const validation = validateVerificationReceipt({
+    receipt,
+    expectedIssue: Number(issueNumber),
+    expectedStage: 'test',
+    fingerprint,
+    required: requiredTestReceiptClassifications(receipt),
+  });
+  const matched =
+    fingerprint?.commitSha === headSha && receiptMatchesHead(receipt, headSha) && validation.ok;
 
-  if (matched && allCovered(list, receipt)) {
+  if (!KNOWN_STATES.has(liveState)) {
+    return {
+      action: 'refuse',
+      message: `live issue state is unavailable or unknown; verifier execution is refused until state authority is restored.`,
+    };
+  }
+
+  if (['test', 'review', 'done'].includes(liveState) && matched && allCovered(list, receipt)) {
     return { action: 'reuse' };
   }
 
-  if (liveState === 'review' || liveState === 'done') {
-    if (hasSuite) {
-      return {
-        action: 'refuse',
-        message:
-          `standard suite command(s) [${list.filter(isStandardSuiteCommand).join(', ')}] ` +
-          `cannot run in \`${liveState}\`. Demote and run \`/task test\` to produce a ` +
-          `valid exact-SHA Test receipt, then retry.`,
-      };
-    }
+  if (liveState === 'done') {
+    return {
+      action: 'refuse',
+      message:
+        `verifier command(s) [${list.join(', ')}] cannot run in \`done\`. ` +
+        `Done evidence is immutable; verifier execution is refused.`,
+    };
+  }
+
+  if (liveState === 'review') {
+    return {
+      action: 'refuse',
+      message:
+        `verifier command(s) [${list.join(', ')}] cannot run in \`${liveState}\`. ` +
+        `Demote and run \`/task test\` to produce a valid exact-SHA Test receipt, then retry.`,
+    };
   }
 
   if (liveState !== 'test' && liveState !== 'review' && liveState !== 'done') {
@@ -134,28 +177,28 @@ export async function decideStampExecutionFromEnv({
 } = {}) {
   const receipt = parseVerificationReceipt(body, 'test');
   let headSha = '';
+  let fingerprint = null;
   try {
     const { stdout } = await pexec('git', ['rev-parse', 'HEAD'], { cwd: projectDir });
     headSha = String(stdout || '').trim();
+    const buildFingerprint = deps.buildFingerprint || buildVerificationFingerprint;
+    fingerprint = await buildFingerprint({ projectDir, commitSha: headSha });
   } catch {
     headSha = '';
+    fingerprint = null;
   }
-  const reuse = resolveStampExecution({
-    commands,
-    liveState: 'test',
-    receipt,
-    headSha,
-  });
-  if (reuse.action === 'reuse') {
-    return { live: 'test', receipt, headSha, action: 'reuse' };
-  }
-
   let live = null;
   try {
     const getLiveState = deps.getLiveState || defaultGetLiveState;
     live = await getLiveState({ issueNumber, cfg });
   } catch {
-    return { live: null, receipt, headSha, action: 'run' };
+    return {
+      live: null,
+      receipt,
+      headSha,
+      action: 'refuse',
+      message: 'live issue state could not be resolved; verifier execution is refused.',
+    };
   }
   return {
     live,
@@ -166,6 +209,8 @@ export async function decideStampExecutionFromEnv({
       liveState: live,
       receipt,
       headSha,
+      issueNumber,
+      fingerprint,
     }),
   };
 }

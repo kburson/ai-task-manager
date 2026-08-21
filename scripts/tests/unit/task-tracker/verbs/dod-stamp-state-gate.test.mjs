@@ -13,9 +13,9 @@
 // shares the same `assertVerifierStateAllowed` gate.
 
 import { strict as assert } from 'node:assert';
-import { test, before, after } from 'node:test';
+import { after, afterEach, before, test } from 'node:test';
 import path from 'node:path';
-import { mkdtempSync, mkdirSync, writeFileSync, rmSync, chmodSync } from 'node:fs';
+import { chmodSync, mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 
 import { verbDodStamp } from '../../../../task-tracker/verbs/dod-stamp.mjs';
 import { verbAcStamp } from '../../../../task-tracker/verbs/ac-stamp.mjs';
@@ -29,24 +29,24 @@ import {
 const RESTRICTED_CMD = 'npm run test:all';
 const AC_LABEL = 'full suite must pass';
 
-function bodyWithDod() {
+function bodyWithDod(command = RESTRICTED_CMD) {
   return [
     '## Definition of Done',
     '',
     '#### Functional (verified at Test)',
     '',
-    `- [ ] All automated tests pass <!-- aitm-verified cmd="\`${RESTRICTED_CMD}\`" --> <!-- dod:functional:tests -->`,
+    `- [ ] All automated tests pass <!-- aitm-verified cmd="\`${command}\`" --> <!-- dod:functional:tests -->`,
     '- [ ] Lint and format checks pass <!-- dod:functional:lint -->',
     '- [ ] Acceptance criteria met <!-- dod:functional:acs -->',
     '',
   ].join('\n');
 }
 
-function bodyWithAc() {
+function bodyWithAc(command = RESTRICTED_CMD) {
   return [
     '## Acceptance Criteria',
     '',
-    `- [ ] ${AC_LABEL} <!-- aitm-verified cmd="\`${RESTRICTED_CMD}\`" -->`,
+    `- [ ] ${AC_LABEL} <!-- aitm-verified cmd="\`${command}\`" -->`,
     '',
   ].join('\n');
 }
@@ -86,6 +86,10 @@ after(() => {
   }
 });
 
+afterEach(() => {
+  delete process.env.AITM_FAKE_BODY_FILE;
+});
+
 function stateFile(active) {
   const p = path.join(tmpRoot, `state-${Math.abs(hashish(active))}.json`);
   writeFileSync(p, JSON.stringify({ active, lastActive: active }));
@@ -99,20 +103,24 @@ function hashish(s) {
 
 const RECEIPT_SHA = 'a'.repeat(40);
 
-function greenTestReceipt() {
-  return createVerificationReceipt({
-    issueNumber: 778,
-    stage: 'test',
-    fingerprint: {
-      commitSha: RECEIPT_SHA,
-      environment: {
-        node: process.version,
-        platform: `${process.platform}-${process.arch}`,
-        lockfileHash: `sha256:${'a'.repeat(64)}`,
-        configHashes: { 'package.json': `sha256:${'b'.repeat(64)}` },
-        sandbox: { kind: 'worktree', identity: '/sandbox', clean: true },
-      },
+function testFingerprint(commitSha = RECEIPT_SHA) {
+  return {
+    commitSha,
+    environment: {
+      node: process.version,
+      platform: `${process.platform}-${process.arch}`,
+      lockfileHash: `sha256:${'a'.repeat(64)}`,
+      configHashes: { 'package.json': `sha256:${'b'.repeat(64)}` },
+      sandbox: { kind: 'worktree', identity: '/sandbox', clean: true },
     },
+  };
+}
+
+function greenTestReceipt({ issueNumber = 778, executionContext } = {}) {
+  return createVerificationReceipt({
+    issueNumber,
+    stage: 'test',
+    fingerprint: testFingerprint(),
     commands: [
       ['lint-full', 'lint'],
       ['format-full', 'format:check'],
@@ -126,6 +134,7 @@ function greenTestReceipt() {
       exitCode: 0,
       durationMs: 10,
     })),
+    executionContext,
     now: () => '2026-08-01T18:00:00.000Z',
   });
 }
@@ -172,11 +181,15 @@ async function runVerb(fn, ctx) {
   }
 }
 
-const baseCtx = (over) => ({
+const baseCtx = (over = {}) => ({
   cfg: { repo: 'o/r' },
   projectDir: tmpRoot,
-  deps: { now: () => '2026-07-05T00:00:00.000Z' },
   ...over,
+  deps: {
+    now: () => '2026-07-05T00:00:00.000Z',
+    buildFingerprint: ({ commitSha }) => testFingerprint(commitSha),
+    ...(over.deps || {}),
+  },
 });
 
 test('dod-stamp tests: refuses in develop, verifier never runs', async () => {
@@ -255,7 +268,15 @@ test('ac-stamp: proceeds normally once in test state', async () => {
 });
 
 test('dod-stamp tests: Review + valid receipt reuses and does not spawn npm', async () => {
-  const body = upsertVerificationReceipt(bodyWithDod(), greenTestReceipt());
+  const executionContext = {
+    worktreePath: '/test-sandbox',
+    branch: 'sandbox-branch',
+    boundIssue: 781,
+  };
+  const body = upsertVerificationReceipt(
+    bodyWithDod(),
+    greenTestReceipt({ issueNumber: 781, executionContext })
+  );
   const storeFile = path.join(tmpRoot, 'body-store-review-reuse.md');
   writeFileSync(storeFile, body);
   process.env.AITM_FAKE_BODY_FILE = storeFile;
@@ -271,10 +292,14 @@ test('dod-stamp tests: Review + valid receipt reuses and does not spawn npm', as
   );
   assert.equal(r.exitCode, null);
   assert.equal(verifierCalled.ran, undefined);
+  const persisted = readFileSync(storeFile, 'utf8');
+  assert.match(persisted, /worktree="\/test-sandbox"/);
+  assert.match(persisted, /branch="sandbox-branch"/);
+  assert.match(persisted, /bound-issue="781"/);
 });
 
 test('dod-stamp tests: Review + stale receipt refuses and does not spawn npm', async () => {
-  const body = upsertVerificationReceipt(bodyWithDod(), greenTestReceipt());
+  const body = upsertVerificationReceipt(bodyWithDod(), greenTestReceipt({ issueNumber: 782 }));
   const storeFile = path.join(tmpRoot, 'body-store-review-stale.md');
   writeFileSync(storeFile, body);
   process.env.AITM_FAKE_BODY_FILE = storeFile;
@@ -293,7 +318,7 @@ test('dod-stamp tests: Review + stale receipt refuses and does not spawn npm', a
 });
 
 test('dod-stamp tests: Test + valid receipt reuses and does not spawn npm', async () => {
-  const body = upsertVerificationReceipt(bodyWithDod(), greenTestReceipt());
+  const body = upsertVerificationReceipt(bodyWithDod(), greenTestReceipt({ issueNumber: 783 }));
   const storeFile = path.join(tmpRoot, 'body-store-test-reuse.md');
   writeFileSync(storeFile, body);
   process.env.AITM_FAKE_BODY_FILE = storeFile;
@@ -309,6 +334,109 @@ test('dod-stamp tests: Test + valid receipt reuses and does not spawn npm', asyn
   );
   assert.equal(r.exitCode, null);
   assert.equal(verifierCalled.ran, undefined);
+  const persisted = readFileSync(storeFile, 'utf8');
+  assert.doesNotMatch(persisted, /worktree="/);
+  assert.doesNotMatch(persisted, /branch="/);
+  assert.doesNotMatch(persisted, /bound-issue="/);
+});
+
+test('ac-stamp: Review + valid receipt reuses Test provenance and does not spawn npm', async () => {
+  const executionContext = {
+    worktreePath: '/test-sandbox-ac',
+    branch: 'sandbox-ac-branch',
+    boundIssue: 784,
+  };
+  const body = upsertVerificationReceipt(
+    bodyWithAc(),
+    greenTestReceipt({ issueNumber: 784, executionContext })
+  );
+  const storeFile = path.join(tmpRoot, 'body-store-ac-review-reuse.md');
+  writeFileSync(storeFile, body);
+  process.env.AITM_FAKE_BODY_FILE = storeFile;
+  const verifierCalled = {};
+  const r = await runVerb(
+    verbAcStamp,
+    baseCtx({
+      statePath: stateFile('#784'),
+      rest: [AC_LABEL],
+      pexec: makePexec({ body, verifierCalled, headSha: RECEIPT_SHA }),
+      deps: { getLiveState: async () => 'review' },
+    })
+  );
+  assert.equal(r.exitCode, null);
+  assert.equal(verifierCalled.ran, undefined);
+  const persisted = readFileSync(storeFile, 'utf8');
+  assert.match(persisted, /worktree="\/test-sandbox-ac"/);
+  assert.match(persisted, /branch="sandbox-ac-branch"/);
+  assert.match(persisted, /bound-issue="784"/);
+});
+
+test('Review + uncovered lint refuses on both stamp surfaces without spawning npm', async () => {
+  const cases = [
+    { fn: verbDodStamp, issue: 785, body: bodyWithDod('npm run lint'), rest: ['tests'] },
+    { fn: verbAcStamp, issue: 786, body: bodyWithAc('npm run lint'), rest: [AC_LABEL] },
+  ];
+  for (const item of cases) {
+    const verifierCalled = {};
+    const r = await runVerb(
+      item.fn,
+      baseCtx({
+        statePath: stateFile(`#${item.issue}`),
+        rest: item.rest,
+        pexec: makePexec({ body: item.body, verifierCalled, headSha: RECEIPT_SHA }),
+        deps: { getLiveState: async () => 'review' },
+      })
+    );
+    assert.equal(r.exitCode, 1, String(item.issue));
+    assert.equal(verifierCalled.ran, undefined, String(item.issue));
+  }
+});
+
+test('Review + issue-mismatched receipt refuses on both stamp surfaces', async () => {
+  const cases = [
+    { fn: verbDodStamp, issue: 787, body: bodyWithDod(), rest: ['tests'] },
+    { fn: verbAcStamp, issue: 788, body: bodyWithAc(), rest: [AC_LABEL] },
+  ];
+  for (const item of cases) {
+    const body = upsertVerificationReceipt(item.body, greenTestReceipt({ issueNumber: 999 }));
+    const verifierCalled = {};
+    const r = await runVerb(
+      item.fn,
+      baseCtx({
+        statePath: stateFile(`#${item.issue}`),
+        rest: item.rest,
+        pexec: makePexec({ body, verifierCalled, headSha: RECEIPT_SHA }),
+        deps: { getLiveState: async () => 'review' },
+      })
+    );
+    assert.equal(r.exitCode, 1, String(item.issue));
+    assert.equal(verifierCalled.ran, undefined, String(item.issue));
+  }
+});
+
+test('unavailable live state refuses on both stamp surfaces', async () => {
+  const cases = [
+    { fn: verbDodStamp, issue: 789, body: bodyWithDod('npm run lint'), rest: ['tests'] },
+    { fn: verbAcStamp, issue: 790, body: bodyWithAc('npm run lint'), rest: [AC_LABEL] },
+  ];
+  for (const item of cases) {
+    const verifierCalled = {};
+    const r = await runVerb(
+      item.fn,
+      baseCtx({
+        statePath: stateFile(`#${item.issue}`),
+        rest: item.rest,
+        pexec: makePexec({ body: item.body, verifierCalled, headSha: RECEIPT_SHA }),
+        deps: {
+          getLiveState: async () => {
+            throw new Error('state unavailable');
+          },
+        },
+      })
+    );
+    assert.equal(r.exitCode, 1, String(item.issue));
+    assert.equal(verifierCalled.ran, undefined, String(item.issue));
+  }
 });
 
 console.log('dod-stamp-state-gate.test.mjs: defined');

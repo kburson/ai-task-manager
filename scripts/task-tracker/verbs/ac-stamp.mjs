@@ -89,10 +89,7 @@ export async function verbAcStamp(ctx) {
     const sha = decision.receipt?.commitSha || (await headSha(pexec));
     const ts = decision.receipt?.completedAt || nowIso(ctx.deps);
     const canonicalCmd = String(target.evidenceCommands[0] || '').replace(/^`+|`+$/g, '');
-    const executionContext = captureEvidenceProvenance({
-      projectDir,
-      boundIssue: issueNum,
-    });
+    const executionContext = decision.receipt?.executionContext;
     console.log(
       `[task-tracker] ac-stamp on ${s.active}: reusing Test receipt ${decision.receipt?.receiptId}; standard commands were not rerun.`
     );
@@ -109,7 +106,7 @@ export async function verbAcStamp(ctx) {
           result: 'passed',
           sha,
           ts,
-          executionContext,
+          ...(executionContext ? { executionContext } : {}),
         },
         pexec,
         deps: ctx.deps?.contractWrite,
@@ -130,7 +127,7 @@ export async function verbAcStamp(ctx) {
           sha,
           ts,
           exit: 0,
-          ...executionContext,
+          ...(executionContext || {}),
         }),
     });
     console.log(
