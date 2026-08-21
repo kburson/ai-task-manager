@@ -2,7 +2,7 @@
 // cspell:ignore Ovim textcon
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, mkdirSync, symlinkSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdtempSync, mkdirSync, symlinkSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 
 import {
@@ -10,6 +10,7 @@ import {
   extractApplyPatchTargets,
   extractBashWriteTargets,
 } from '../../../../task-tracker/lib/mutation-targets.mjs';
+import { classifyReviewerCoReviewCommand } from '../../../../task-tracker/lib/reviewer-co-review-command.mjs';
 import { evaluateCoReviewWrite } from '../../../../task-tracker/lib/co-review-write-policy.mjs';
 import { findMainWorktreePath } from '../../../../task-tracker/fleet-registry.mjs';
 import { closedBindingsPath } from '../../../../task-tracker/paths.mjs';
@@ -103,6 +104,110 @@ test('bash parser reports destinations and rejects shell composition or unknown 
       `${command} is an explicitly read-only reviewer command`
     );
   }
+});
+
+function classifierFixture() {
+  const projectDir = mkdtempSync(path.join(projectScratchDir('test'), 'aitm-review-command-'));
+  const localBin = path.join(projectDir, 'node_modules', '.bin', 'aitm');
+  mkdirSync(path.dirname(localBin), { recursive: true });
+  writeFileSync(localBin, '#!/usr/bin/env node\n', 'utf8');
+  const classify = (command, overrides = {}) =>
+    classifyReviewerCoReviewCommand(command, {
+      projectDir,
+      exists: existsSync,
+      ...overrides,
+    });
+  return { projectDir, localBin, classify };
+}
+
+test('reviewer command classifier accepts only the generated lifecycle forms', () => {
+  const { classify } = classifierFixture();
+  assert.deepEqual(classify('npx aitm co-review status --dir .tmp/co-review/p1'), {
+    recognized: true,
+    kind: 'status',
+    runtimeDir: '.tmp/co-review/p1',
+    json: false,
+  });
+  assert.deepEqual(classify('npx aitm co-review status --json --dir .tmp/co-review/p1'), {
+    recognized: true,
+    kind: 'status',
+    runtimeDir: '.tmp/co-review/p1',
+    json: true,
+  });
+  assert.deepEqual(classify('npx aitm co-review help handoff'), {
+    recognized: true,
+    kind: 'help-handoff',
+  });
+
+  const handoff = classify(
+    'npx aitm co-review handoff --dir .tmp/co-review/p1 --actor claude ' +
+      '--review .tmp/co-review/p1/round-2-reviewer-review.md ' +
+      '--review-of 0123456789012345678901234567890123456789 ' +
+      '--decision accepted --message "review complete"'
+  );
+  assert.deepEqual(handoff, {
+    recognized: true,
+    kind: 'reviewer-handoff',
+    runtimeDir: '.tmp/co-review/p1',
+    actor: 'claude',
+    reviewPath: '.tmp/co-review/p1/round-2-reviewer-review.md',
+    reviewOf: '0123456789012345678901234567890123456789',
+    decision: 'accepted',
+    summaryPath: null,
+    message: 'review complete',
+  });
+
+  assert.deepEqual(
+    classify(
+      'npx aitm co-review handoff --summary .tmp/co-review/p1/summary.md ' +
+        '--decision changes-requested --review-of abc123 --message "changes requested" ' +
+        '--review .tmp/co-review/p1/round-2-reviewer-review.md --actor claude ' +
+        '--dir .tmp/co-review/p1'
+    ),
+    {
+      recognized: true,
+      kind: 'reviewer-handoff',
+      runtimeDir: '.tmp/co-review/p1',
+      actor: 'claude',
+      reviewPath: '.tmp/co-review/p1/round-2-reviewer-review.md',
+      reviewOf: 'abc123',
+      decision: 'changes-requested',
+      summaryPath: '.tmp/co-review/p1/summary.md',
+      message: 'changes requested',
+    }
+  );
+});
+
+test('reviewer command classifier rejects every broader shell and CLI form', () => {
+  const { classify, localBin } = classifierFixture();
+  const rejected = [
+    'npx aitm co-review status --dir .tmp/co-review/p1 && touch owned',
+    'npx aitm co-review status --dir .tmp/co-review/p1 > .tmp/status.json',
+    'npx aitm co-review status --dir "$RUNTIME"',
+    'npx aitm co-review status --dir $(pwd)',
+    'PATH=/bin npx aitm co-review status --dir .tmp/co-review/p1',
+    'bash -lc "npx aitm co-review status --dir .tmp/co-review/p1"',
+    'node scripts/review/co-review.mjs status --dir .tmp/co-review/p1',
+    './node_modules/.bin/aitm co-review status --dir .tmp/co-review/p1',
+    'npx aitm close 1365',
+    'npx aitm co-review claim --dir .tmp/co-review/p1 --actor claude',
+    'npx aitm co-review help status',
+    'npx aitm co-review status --dir .tmp/co-review/p1 --dir .tmp/co-review/p2',
+    'npx aitm co-review status --dir ../outside',
+    'npx aitm co-review handoff --dir .tmp/co-review/p1 --actor claude',
+    'npx aitm co-review handoff --dir .tmp/co-review/p1 --actor claude ' +
+      '--review .tmp/co-review/p1/r.md --review-of abc --decision maybe ' +
+      '--message review',
+  ];
+  for (const command of rejected) {
+    assert.equal(classify(command).recognized, false, command);
+  }
+  assert.equal(
+    classify('npx aitm co-review status --dir .tmp/co-review/p1', {
+      exists: (candidate) => candidate !== localBin,
+    }).recognized,
+    false
+  );
 });
 
 function policyFixture() {
