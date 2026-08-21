@@ -2,8 +2,8 @@
 
 <!-- cspell:ignore ENOENT prefiltering -->
 
-**Issue:** #1372  
-**Status:** Approved for implementation under Full-Auto authorization  
+**Issue:** #1372
+**Status:** Approved for implementation under Full-Auto authorization
 **Reviewers:** Codex author, Claude reviewer
 
 ## Context
