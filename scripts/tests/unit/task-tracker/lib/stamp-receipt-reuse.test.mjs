@@ -310,6 +310,14 @@ test('skill and pickup docs no longer order Review-stage standard-lane reruns', 
   for (const rel of [
     'templates/pickup-directive.md',
     '.ai-task-manager/templates/pickup-directive.md',
+  ]) {
+    assert.match(
+      readFileSync(path.join(REPO_ROOT, rel), 'utf8'),
+      /Review stamps reuse a valid Test receipt or refuse; they never execute/i,
+      rel
+    );
+  }
+  for (const rel of [
     'templates/references/pickup-directive-rationale.md',
     '.ai-task-manager/templates/references/pickup-directive-rationale.md',
   ]) {
