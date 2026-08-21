@@ -2,7 +2,7 @@
 
 - **Issue:** #1365
 - **Date:** 2026-08-21
-- **Status:** Approved in discussion; awaiting written-spec review
+- **Status:** Approved
 - **Branch:** `codex/1365-reviewer-bash-guard`
 
 ## Problem
@@ -288,6 +288,10 @@ defect. After #1365 is integrated:
 This sacrifices reuse of one completed review to preserve actor provenance,
 Git integrity, and the self-link invariant.
 
+Fresh #939 review is a post-integration continuation of #939, not a pre-close
+acceptance condition for #1365. The fixture-backed boundary regression below
+is the defect's executable proof.
+
 ## Documentation
 
 Update the co-review operator documentation and generated reviewer handoff to
@@ -305,10 +309,10 @@ exposing secrets.
    agree with live protocol authority.
 3. Arbitrary `npx`, other AITM/co-review verbs, ambiguous shell, wrong-session
    commands, authority writes, and non-pending direct writes remain denied.
-4. The real co-review boundary regression reaches durable accepted state and
+4. A different provider or session cannot use the claimed reviewer's command
+   allowance.
+5. The real co-review boundary regression reaches durable accepted state and
    archive publication through the reviewer command path.
-5. The old #939 review is not impersonated or imported; a fresh Claude review
-   proves the repaired workflow after integration.
 
 ## Scope
 
