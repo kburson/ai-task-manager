@@ -2,7 +2,14 @@
 // cspell:ignore Ovim textcon
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { existsSync, mkdtempSync, mkdirSync, symlinkSync, writeFileSync } from 'node:fs';
+import {
+  existsSync,
+  mkdtempSync,
+  mkdirSync,
+  rmSync,
+  symlinkSync,
+  writeFileSync,
+} from 'node:fs';
 import path from 'node:path';
 
 import {
@@ -410,6 +417,60 @@ test('matching reviewer status, help, and handoff commands use the session grant
     reviewerCommand: matchingHandoff(fixture),
   });
   assert.equal(handoff.reason, 'session-bound-co-review-command');
+});
+
+test('unrelated stale index row cannot deny a matching reviewer status command', () => {
+  const { projectDir, dir, grant } = policyFixture();
+  const staleWorktree = mkdtempSync(path.join(projectScratchDir('test'), 'aitm-stale-policy-'));
+  const staleDir = path.join(staleWorktree, '.tmp', 'stale-review');
+  mkdirSync(staleDir, { recursive: true });
+  const healthy = {
+    ...grant,
+    owner: 'codex',
+    artifact: 'docs/plan.md',
+  };
+  const stale = {
+    ...healthy,
+    protocolId: 'stale',
+    dir: staleDir,
+    worktree: staleWorktree,
+    pendingReviewPath: path.join(staleDir, 'round-2-reviewer-review.md'),
+    claimedProvider: 'claude',
+    claimedSid: 'unrelated-session',
+  };
+  const rows = { stale, p1: healthy };
+  const indexFile = path.join(projectDir, '.tmp', 'aitm', 'fleet', 'co-review-index.json');
+  mkdirSync(path.dirname(indexFile), { recursive: true });
+  writeFileSync(indexFile, `${JSON.stringify(rows)}\n`);
+  rmSync(staleDir, { recursive: true });
+  const live = {
+    protocolId: 'p1',
+    lifecycle: 'active',
+    integrity: { ok: true },
+    currentRole: 'reviewer',
+    turnState: 'claimed',
+    claim: { role: 'reviewer', actor: 'claude' },
+    lastHandoff: { from: 'owner', commit: healthy.ownerHandoffCommit },
+  };
+
+  const result = evaluateCoReviewWrite({
+    projectDir,
+    worktreePath: projectDir,
+    provider: 'grok',
+    sid: 'sid-1',
+    toolName: 'Bash',
+    targets: [],
+    ambiguousMutation: true,
+    reviewerCommand: { recognized: true, kind: 'status', runtimeDir: dir, json: false },
+    indexFile,
+    readIndex: () => rows,
+    authorityFiles: [],
+    resolveRuntimeRoot: () => ({ callerRoot: projectDir, root: projectDir }),
+    statusProtocol: () => live,
+  });
+
+  assert.equal(result.decision, 'allow');
+  assert.equal(result.reason, 'session-bound-co-review-command');
 });
 
 test('reviewer command fields must agree exactly with live authority', () => {

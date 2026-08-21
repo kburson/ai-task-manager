@@ -211,15 +211,15 @@ export function resolveReviewerGrant(input) {
   for (const row of Object.values(rows)) {
     if (
       row.lifecycle !== 'active' ||
+      row.claimedRole !== 'reviewer' ||
+      row.claimedProvider !== provider ||
+      row.claimedSid !== sid ||
+      !row.pendingReviewPath ||
       (runtimeDir
         ? realpathSync(path.resolve(row.dir)) !== runtimeDir ||
           !runtimeRoot ||
           realpathSync(path.resolve(row.worktree)) !== runtimeRoot
-        : !input.anyWorktree && path.resolve(row.worktree) !== worktreePath) ||
-      row.claimedRole !== 'reviewer' ||
-      row.claimedProvider !== provider ||
-      row.claimedSid !== sid ||
-      !row.pendingReviewPath
+        : !input.anyWorktree && path.resolve(row.worktree) !== worktreePath)
     ) {
       continue;
     }
