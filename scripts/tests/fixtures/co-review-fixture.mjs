@@ -13,6 +13,11 @@ const CLI = path.join(ROOT, 'scripts/review/co-review.mjs');
 const temporaryRoots = new Set();
 const memoryRepositories = new Map();
 const calls = { git: 0, nodeCli: 0 };
+const SYNTHETIC_REVIEWER_ENV = Object.freeze({
+  AI_TASK_MANAGER_SESSION_ID: 'co-review-fixture-session',
+  GROK_AGENT: '1',
+  GROK_SESSION_ID: 'co-review-fixture-session',
+});
 
 export function processCallCounts() {
   return { ...calls };
@@ -24,11 +29,16 @@ export function temporaryRoot(prefix = 'aitm-co-review-') {
   return root;
 }
 
-export function runCli(args, { cwd = temporaryRoot() } = {}) {
+function spawnedCliEnv(env) {
+  return env ?? { ...process.env, ...SYNTHETIC_REVIEWER_ENV };
+}
+
+export function runCli(args, { cwd = temporaryRoot(), env } = {}) {
   calls.nodeCli += 1;
   return spawnSync(process.execPath, [CLI, ...args], {
     cwd,
     encoding: 'utf8',
+    env: spawnedCliEnv(env),
     shell: false,
   });
 }
@@ -51,11 +61,12 @@ export async function runCliDirect(args, options = {}) {
   return { status, stdout, stderr };
 }
 
-export function runCliAsync(args, { cwd }) {
+export function runCliAsync(args, { cwd, env } = {}) {
   calls.nodeCli += 1;
   return new Promise((resolve) => {
     const child = spawn(process.execPath, [CLI, ...args], {
       cwd,
+      env: spawnedCliEnv(env),
       stdio: ['ignore', 'pipe', 'pipe'],
       shell: false,
     });
