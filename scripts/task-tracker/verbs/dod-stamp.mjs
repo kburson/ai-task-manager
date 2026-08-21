@@ -109,10 +109,7 @@ export async function verbDodStamp(ctx) {
       String(cmd).replace(/^`+|`+$/g, '')
     );
     const canonicalCmd = executedCommands[0] || '';
-    const executionContext = captureEvidenceProvenance({
-      projectDir,
-      boundIssue: issueNum,
-    });
+    const executionContext = decision.receipt?.executionContext;
     console.log(
       `[task-tracker] dod-stamp ${key} on ${s.active}: reusing Test receipt ${decision.receipt?.receiptId}; standard commands were not rerun.`
     );
@@ -129,7 +126,7 @@ export async function verbDodStamp(ctx) {
           result: 'passed',
           sha,
           ts,
-          executionContext,
+          ...(executionContext ? { executionContext } : {}),
         },
         pexec,
         deps: ctx.deps?.contractWrite,
@@ -148,7 +145,7 @@ export async function verbDodStamp(ctx) {
         stampEvidenceAndReconcile(
           base,
           key,
-          { cmd: canonicalCmd, sha, ts, exit: 0, ...executionContext },
+          { cmd: canonicalCmd, sha, ts, exit: 0, ...(executionContext || {}) },
           executedCommands
         ),
     });

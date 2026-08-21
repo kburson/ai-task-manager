@@ -1,11 +1,11 @@
-<!-- aitm-skill-version: 1.2.0 -->
+<!-- aitm-skill-version: 1.3.0 -->
 
 # rules/functional-dod.md
 
 Tier-2. Loaded JIT on the first `/task check`, `/task dod-stamp`, or `/task close` of a session. On first read, emit:
 
 ```
-aitm-skill-loaded:rules/functional-dod:1.2.0
+aitm-skill-loaded:rules/functional-dod:1.3.0
 ```
 
 ## The contract
@@ -26,6 +26,10 @@ Five canonical keys, two classes:
 | `commits`    | stampable | `/task dod-stamp commits` runs the declared commit-trail verifier                                                                                                                 |
 | `acs`        | derived   | `/task close` derives from "all AC checkboxes ticked" — auto-stamped                                                                                                              |
 | `checkboxes` | derived   | `/task close` derives from "all non-self non-lifecycle boxes ticked"                                                                                                              |
+
+All Review-stage stamps only reuse validated Test evidence or refuse; they
+never execute a declared verifier. `/task review --probe` for a named finding
+is the sole Review-stage execution path.
 
 ## Use the batch path. Stamp first.
 

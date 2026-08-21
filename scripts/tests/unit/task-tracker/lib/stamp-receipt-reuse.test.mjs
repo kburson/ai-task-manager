@@ -8,6 +8,7 @@ import { test } from 'node:test';
 import { createVerificationReceipt } from '../../../../task-tracker/lib/verification-receipt.mjs';
 import {
   commandCoveredByReceipt,
+  decideStampExecutionFromEnv,
   resolveStampExecution,
 } from '../../../../task-tracker/lib/stamp-receipt-reuse.mjs';
 
@@ -51,6 +52,14 @@ function greenTestReceipt({ sha = SHA, slowExit = 0 } = {}) {
   });
 }
 
+function resolve(overrides = {}) {
+  return resolveStampExecution({
+    issueNumber: 1356,
+    fingerprint: fingerprint(),
+    ...overrides,
+  });
+}
+
 test('npm test is covered only when unit and integration are green', () => {
   const receipt = greenTestReceipt();
   assert.equal(commandCoveredByReceipt('npm test', receipt), true);
@@ -65,8 +74,46 @@ test('npm test is not covered when a required lane is red', () => {
   assert.equal(commandCoveredByReceipt('npm test', receipt), true);
 });
 
+test('focused command coverage uses shell-aware argument tokenization', () => {
+  const receipt = greenTestReceipt();
+  receipt.commands.push({
+    classification: 'focused-receipt-reuse',
+    command: 'node',
+    args: ['--test', '--test-name-pattern=receipt reuse', 'scripts/tests/example.test.mjs'],
+    exitCode: 0,
+    durationMs: 10,
+  });
+
+  assert.equal(
+    commandCoveredByReceipt(
+      "node --test --test-name-pattern='receipt reuse' scripts/tests/example.test.mjs",
+      receipt
+    ),
+    true
+  );
+});
+
+test('focused command matching preserves whitespace inside quoted arguments', () => {
+  const receipt = greenTestReceipt();
+  receipt.commands.push({
+    classification: 'focused-whitespace',
+    command: 'node',
+    args: ['--test', '--test-name-pattern=receipt  reuse', 'scripts/tests/example.test.mjs'],
+    exitCode: 0,
+    durationMs: 10,
+  });
+
+  assert.equal(
+    commandCoveredByReceipt(
+      "node --test --test-name-pattern='receipt  reuse' scripts/tests/example.test.mjs",
+      receipt
+    ),
+    true
+  );
+});
+
 test('Review + valid receipt covering standard lanes → reuse', () => {
-  const result = resolveStampExecution({
+  const result = resolve({
     commands: ['npm test', 'npm run test:slow'],
     liveState: 'review',
     receipt: greenTestReceipt(),
@@ -76,7 +123,7 @@ test('Review + valid receipt covering standard lanes → reuse', () => {
 });
 
 test('Review + sha-mismatch receipt → refuse, do not run', () => {
-  const result = resolveStampExecution({
+  const result = resolve({
     commands: ['npm test', 'npm run test:slow'],
     liveState: 'review',
     receipt: greenTestReceipt({ sha: OTHER_SHA }),
@@ -88,7 +135,7 @@ test('Review + sha-mismatch receipt → refuse, do not run', () => {
 });
 
 test('Review + missing receipt → refuse, do not run', () => {
-  const result = resolveStampExecution({
+  const result = resolve({
     commands: ['npm test'],
     liveState: 'review',
     receipt: null,
@@ -99,7 +146,7 @@ test('Review + missing receipt → refuse, do not run', () => {
 });
 
 test('Test + valid receipt covering standard lanes → reuse', () => {
-  const result = resolveStampExecution({
+  const result = resolve({
     commands: ['npm test', 'npm run test:slow'],
     liveState: 'test',
     receipt: greenTestReceipt(),
@@ -109,7 +156,7 @@ test('Test + valid receipt covering standard lanes → reuse', () => {
 });
 
 test('Test + no covering receipt → run', () => {
-  const result = resolveStampExecution({
+  const result = resolve({
     commands: ['npm test', 'npm run test:slow'],
     liveState: 'test',
     receipt: null,
@@ -119,7 +166,7 @@ test('Test + no covering receipt → run', () => {
 });
 
 test('Develop + test:slow → refuse without treating it as Review', () => {
-  const result = resolveStampExecution({
+  const result = resolve({
     commands: ['npm run test:slow'],
     liveState: 'develop',
     receipt: null,
@@ -127,6 +174,109 @@ test('Develop + test:slow → refuse without treating it as Review', () => {
   });
   assert.equal(result.action, 'refuse');
   assert.doesNotMatch(result.message, /demote/i);
+});
+
+test('Review refuses a receipt whose issue or canonical command identity is invalid', () => {
+  const receipt = greenTestReceipt();
+  receipt.issue = 999;
+  receipt.commands.find(({ classification }) => classification === 'test-unit').args = [
+    'run',
+    'not-unit',
+  ];
+
+  const result = resolve({
+    commands: ['npm test'],
+    liveState: 'review',
+    receipt,
+    headSha: SHA,
+  });
+
+  assert.equal(result.action, 'refuse');
+  assert.match(result.message, /valid exact-SHA Test receipt/i);
+});
+
+test('Review refuses malformed and fingerprint-invalid receipts independently', () => {
+  const malformed = greenTestReceipt();
+  malformed.schema = 'not-a-verification-receipt';
+  const fingerprintInvalid = greenTestReceipt();
+  const wrongFingerprint = fingerprint();
+  wrongFingerprint.environment.configHashes['package.json'] = `sha256:${'c'.repeat(64)}`;
+
+  for (const [name, receipt, currentFingerprint] of [
+    ['malformed', malformed, fingerprint()],
+    ['fingerprint-invalid', fingerprintInvalid, wrongFingerprint],
+  ]) {
+    const result = resolve({
+      commands: ['npm test'],
+      liveState: 'review',
+      receipt,
+      headSha: SHA,
+      fingerprint: currentFingerprint,
+    });
+    assert.equal(result.action, 'refuse', name);
+  }
+});
+
+test('Review refuses uncovered lint and focused commands instead of executing them', () => {
+  for (const command of [
+    'npm run lint',
+    "node --test --test-name-pattern='receipt reuse' scripts/tests/example.test.mjs",
+  ]) {
+    const result = resolve({
+      commands: [command],
+      liveState: 'review',
+      receipt: null,
+      headSha: SHA,
+    });
+    assert.equal(result.action, 'refuse', command);
+    assert.match(result.message, /demote/i);
+  }
+});
+
+test('unknown live state refuses verifier execution', async () => {
+  const result = await decideStampExecutionFromEnv({
+    commands: ['npm run lint'],
+    body: '',
+    issueNumber: 1356,
+    cfg: { repo: 'o/r' },
+    projectDir: '/project',
+    pexec: async (bin, args) => {
+      assert.equal(bin, 'git');
+      assert.deepEqual(args, ['rev-parse', 'HEAD']);
+      return { stdout: `${SHA}\n`, stderr: '' };
+    },
+    deps: {
+      buildFingerprint: () => fingerprint(),
+      getLiveState: async () => {
+        throw new Error('state unavailable');
+      },
+    },
+  });
+
+  assert.equal(result.action, 'refuse');
+  assert.match(result.message, /state/i);
+});
+
+test('Develop does not reuse a Test receipt', () => {
+  const result = resolve({
+    commands: ['npm run lint'],
+    liveState: 'develop',
+    receipt: greenTestReceipt(),
+    headSha: SHA,
+  });
+  assert.equal(result.action, 'run');
+});
+
+test('Done refuses uncovered execution without suggesting an unavailable demotion', () => {
+  const result = resolve({
+    commands: ['npm run lint'],
+    liveState: 'done',
+    receipt: null,
+    headSha: SHA,
+  });
+  assert.equal(result.action, 'refuse');
+  assert.match(result.message, /Done evidence is immutable/i);
+  assert.doesNotMatch(result.message, /demote|\/task test/i);
 });
 
 test('skill and pickup docs no longer order Review-stage standard-lane reruns', () => {
@@ -143,4 +293,38 @@ test('skill and pickup docs no longer order Review-stage standard-lane reruns', 
     readFileSync(path.join(REPO_ROOT, 'skill/shared/rules/review.md'), 'utf8'),
     /verify by inspection AND by running the relevant test\/build\/command/i
   );
+  assert.match(
+    readFileSync(path.join(REPO_ROOT, 'skill/shared/rules/review.md'), 'utf8'),
+    /Invoking `dod-stamp` or `ac-stamp` in Review may only reuse/i
+  );
+  const reviewRule = readFileSync(path.join(REPO_ROOT, 'skill/shared/rules/review.md'), 'utf8');
+  assert.match(reviewRule, /aitm-skill-version: 1\.2\.0/);
+  assert.match(reviewRule, /aitm-skill-loaded:rules\/review:1\.2\.0/);
+  const functionalDodRule = readFileSync(
+    path.join(REPO_ROOT, 'skill/shared/rules/functional-dod.md'),
+    'utf8'
+  );
+  assert.match(functionalDodRule, /all Review-stage stamps only reuse validated Test evidence/i);
+  assert.match(functionalDodRule, /aitm-skill-version: 1\.3\.0/);
+  assert.match(functionalDodRule, /aitm-skill-loaded:rules\/functional-dod:1\.3\.0/);
+  for (const rel of [
+    'templates/pickup-directive.md',
+    '.ai-task-manager/templates/pickup-directive.md',
+  ]) {
+    assert.match(
+      readFileSync(path.join(REPO_ROOT, rel), 'utf8'),
+      /Test stamps reuse its receipt\. Review stamps reuse or refuse; never execute/i,
+      rel
+    );
+  }
+  for (const rel of [
+    'templates/references/pickup-directive-rationale.md',
+    '.ai-task-manager/templates/references/pickup-directive-rationale.md',
+  ]) {
+    assert.match(
+      readFileSync(path.join(REPO_ROOT, rel), 'utf8'),
+      /After `\/task test` writes a valid receipt,\s*Test-stage stamps reuse it/i,
+      rel
+    );
+  }
 });

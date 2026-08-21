@@ -134,11 +134,15 @@ async function runVerb(ctx) {
   }
 }
 
-const baseCtx = (over) => ({
+const baseCtx = (over = {}) => ({
   cfg: { repo: 'o/r' },
   projectDir: tmpRoot,
-  deps: { now: () => '2026-06-29T00:00:00.000Z' },
   ...over,
+  deps: {
+    now: () => '2026-06-29T00:00:00.000Z',
+    getLiveState: async () => 'test',
+    ...(over.deps || {}),
+  },
 });
 
 test('no active task → exit 1', async () => {
