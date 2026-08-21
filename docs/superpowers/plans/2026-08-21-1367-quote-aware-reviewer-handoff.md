@@ -22,10 +22,12 @@
 ### Task 1: Quote-Aware Classifier
 
 **Files:**
+
 - Modify: `scripts/tests/unit/task-tracker/lib/co-review-write-policy.test.mjs`
 - Modify: `scripts/task-tracker/lib/reviewer-co-review-command.mjs`
 
 **Interfaces:**
+
 - Consumes: `classifyReviewerCoReviewCommand(command, { projectDir, exists })` and its existing structured results.
 - Produces: unchanged classifier result shapes; only quote-context recognition changes.
 
@@ -50,8 +52,8 @@ assert.equal(
 );
 
 const literalSingleQuoted = classify(
-  "npx aitm co-review handoff --dir .tmp/co-review/p1 --actor claude " +
-    "--review .tmp/co-review/p1/round-2-reviewer-review.md " +
+  'npx aitm co-review handoff --dir .tmp/co-review/p1 --actor claude ' +
+    '--review .tmp/co-review/p1/round-2-reviewer-review.md ' +
     "--review-of abc --decision accepted --message 'literal $USER $(pwd) `date`'"
 );
 assert.equal(literalSingleQuoted.recognized, true);
@@ -88,7 +90,24 @@ Replace the global raw-input scan with explicit context sets and validate within
 
 ```js
 const CONTROL_CHARACTERS = new Set(['\0', '\r', '\n']);
-const SHELL_META = new Set([';', '&', '|', '<', '>', '`', '$', '*', '?', '{', '}', '(', ')', '[', ']', '~']);
+const SHELL_META = new Set([
+  ';',
+  '&',
+  '|',
+  '<',
+  '>',
+  '`',
+  '$',
+  '*',
+  '?',
+  '{',
+  '}',
+  '(',
+  ')',
+  '[',
+  ']',
+  '~',
+]);
 const DOUBLE_QUOTE_EXPANSION = new Set(['`', '$']);
 
 function shellWords(input) {
@@ -153,9 +172,11 @@ git commit -m "[#1367] fix: honor quotes in reviewer handoff prose"
 ### Task 2: Real Guard-to-CLI Persistence Proof
 
 **Files:**
+
 - Modify: `scripts/tests/unit/task-tracker/core/reviewer-co-review-command-boundary.test.mjs`
 
 **Interfaces:**
+
 - Consumes: real `bash-guard.mjs`, local self-linked `npx aitm`, and co-review protocol fixture.
 - Produces: proof that punctuated message bytes pass the guard and persist exactly in terminal state.
 
@@ -220,11 +241,13 @@ git commit -m "[#1367] test: prove punctuated reviewer handoff"
 ### Task 3: Reviewer Guidance and Full Verification
 
 **Files:**
+
 - Modify: `scripts/review/lib/start.mjs`
 - Modify: `scripts/tests/fixtures/co-review-start-cases.mjs`
 - Modify: `docs/guides/github-native-coordination.md`
 
 **Interfaces:**
+
 - Consumes: generated reviewer handoff prose and the existing start fixture assertions.
 - Produces: one operator-visible description matching the implemented quote boundary.
 

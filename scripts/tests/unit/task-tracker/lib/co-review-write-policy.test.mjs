@@ -209,8 +209,8 @@ test('reviewer command classifier accepts only the generated lifecycle forms', (
   );
 
   const literalSingleQuoted = classify(
-    "npx aitm co-review handoff --dir .tmp/co-review/p1 --actor claude " +
-      "--review .tmp/co-review/p1/round-2-reviewer-review.md " +
+    'npx aitm co-review handoff --dir .tmp/co-review/p1 --actor claude ' +
+      '--review .tmp/co-review/p1/round-2-reviewer-review.md ' +
       "--review-of abc --decision accepted --message 'literal $USER $(pwd) `date`'"
   );
   assert.equal(literalSingleQuoted.recognized, true);

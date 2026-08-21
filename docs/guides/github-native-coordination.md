@@ -72,6 +72,11 @@ must agree with the live runtime, reviewer, pending review, owner-handoff commit
 bounded decision fields, provider, and session; the co-review CLI then
 revalidates and mutates under its protocol mutex.
 
+Ordinary quoted prose in the reviewer handoff message is supported, including
+inert punctuation such as parentheses. Single-quoted content is literal data;
+unescaped `$` or backticks inside double quotes remain expansion-capable and
+are refused. Dynamic shell expressions and composed commands remain blocked.
+
 No generic `npx`, AITM, or Bash allowance exists. Mixed targets, tracked source,
 other `.tmp/**` files, occupancy/index files, protocol state, malformed patches,
 shell composition or expansion, alternate executables, wrong-session commands,
