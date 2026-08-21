@@ -789,7 +789,7 @@ export function statusProtocol(options) {
     archive = { destination: state.initialization.archiveDir, completion: 'not-applicable' };
   }
   const baseNextAction = nextAction(state, integrity);
-  const runtimeDir = state.initialization.runtimeDir;
+  const runtimeDir = path.resolve(state.repositoryRoot, state.initialization.runtimeDir);
   let availableActions = [{ kind: 'next', command: baseNextAction }];
   let decoratedNextAction = baseNextAction;
   if (state.lifecycle === 'intervention-required' && integrity.ok) {
@@ -845,14 +845,15 @@ export function statusProtocol(options) {
 }
 
 function nextAction(state, integrity) {
+  const runtimeDir = path.resolve(state.repositoryRoot, state.initialization.runtimeDir);
   if (!integrity.ok) return 'preserve protocol files and escalate integrity drift to the human';
   if (state.lifecycle === 'accepted') return 'stop; protocol accepted';
   if (state.lifecycle === 'intervention-required') {
-    return `npx aitm co-review continue --dir ${shellArgument(state.initialization.runtimeDir)} --max-turns <N> [--focus <file>]`;
+    return `npx aitm co-review continue --dir ${shellArgument(runtimeDir)} --max-turns <N> [--focus <file>]`;
   }
   const actor = state.roles[state.currentRole];
   if (state.turnState === 'available') {
-    return `npx aitm co-review claim --dir ${shellArgument(state.initialization.runtimeDir)} --actor ${shellArgument(actor)}`;
+    return `npx aitm co-review claim --dir ${shellArgument(runtimeDir)} --actor ${shellArgument(actor)}`;
   }
   return `${state.currentRole} ${actor} holds round ${state.round}; complete the role artifact and run npx aitm co-review help handoff`;
 }

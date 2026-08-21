@@ -35,7 +35,10 @@ test('real repository boundary normalizes repository observations', () => {
   const { root, initialCommit } = repositoryFixture();
 
   assert.equal(REAL_REPOSITORY_BOUNDARY.repositoryRoot(root), realpathSync(root));
-  assert.equal(REAL_REPOSITORY_BOUNDARY.commonDirectory(root), realpathSync(path.join(root, '.git')));
+  assert.equal(
+    REAL_REPOSITORY_BOUNDARY.commonDirectory(root),
+    realpathSync(path.join(root, '.git'))
+  );
   assert.deepEqual(REAL_REPOSITORY_BOUNDARY.runtimeStatus(root, '.tmp/review'), {
     ignored: true,
     tracked: false,
@@ -130,9 +133,11 @@ test('absolute runtime keeps linked-worktree integrity and reviewer handoff from
     commit: reviewedCommit,
     message: 'ready for review',
   });
+  const runtime = path.join(linked, dir);
+  const available = statusProtocol({ cwd: main.root, dir: runtime });
+  assert.match(available.nextAction, new RegExp(`claim --dir ${runtime} --actor reviewer-agent`));
   claimTurn({ cwd: linked, dir, actor: 'reviewer-agent' });
 
-  const runtime = path.join(linked, dir);
   const status = statusProtocol({ cwd: main.root, dir: runtime });
   assert.equal(status.integrity.ok, true, status.integrity.errors.join('\n'));
   assert.equal(status.repositoryRoot, realpathSync(linked));

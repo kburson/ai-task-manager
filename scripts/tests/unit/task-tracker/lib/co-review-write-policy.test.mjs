@@ -158,6 +158,8 @@ test('reviewer command classifier recognizes the sanctioned dogfood self-link to
 
 test('reviewer command classifier accepts only the generated lifecycle forms', () => {
   const { classify } = classifierFixture();
+  const absoluteRuntime = '/repo/.worktrees/939/.tmp/co-review/p1';
+  const absoluteReview = `${absoluteRuntime}/round-2-reviewer-review.md`;
   assert.deepEqual(classify('npx aitm co-review status --dir .tmp/co-review/p1'), {
     recognized: true,
     kind: 'status',
@@ -174,6 +176,30 @@ test('reviewer command classifier accepts only the generated lifecycle forms', (
     recognized: true,
     kind: 'help-handoff',
   });
+  assert.deepEqual(classify(`npx aitm co-review status --dir ${absoluteRuntime}`), {
+    recognized: true,
+    kind: 'status',
+    runtimeDir: absoluteRuntime,
+    json: false,
+  });
+  assert.deepEqual(
+    classify(
+      `npx aitm co-review handoff --dir ${absoluteRuntime} --actor claude ` +
+        `--review ${absoluteReview} --review-of abc --decision accepted ` +
+        '--message "review complete"'
+    ),
+    {
+      recognized: true,
+      kind: 'reviewer-handoff',
+      runtimeDir: absoluteRuntime,
+      actor: 'claude',
+      reviewPath: absoluteReview,
+      reviewOf: 'abc',
+      decision: 'accepted',
+      summaryPath: null,
+      message: 'review complete',
+    }
+  );
 
   const handoff = classify(
     'npx aitm co-review handoff --dir .tmp/co-review/p1 --actor claude ' +

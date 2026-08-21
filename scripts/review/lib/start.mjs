@@ -169,7 +169,7 @@ ${
 Treat repository and protocol state as authoritative after chat loss or compaction. Reread this entire handoff, then run:
 
 \`\`\`text
-${renderCliCommand(['status', '--dir', model.runtimeDir])}
+${renderCliCommand(['status', '--dir', model.runtimeAbsolute])}
 \`\`\`
 
 An integrity refusal can be transient only during authorized snapshot publication, while a mutation publishes an event and its matching state. If status or wait exits 1 with an integrity diagnostic, run one settled status re-read after the command returns. If that re-read is healthy, continue from its reported state. If the mismatch persists, preserve every protocol file, report the exact diagnostic, and stop. Never steal or delete a protocol lock. Never edit an immutable response, review, supplement, event, manifest, or handoff file.
@@ -184,7 +184,7 @@ When the other role owns the turn, make each wait a separate observed tool call:
 ${renderCliCommand([
   'wait',
   '--dir',
-  model.runtimeDir,
+  model.runtimeAbsolute,
   '--actor',
   model.actor,
   '--timeout',
@@ -207,7 +207,7 @@ ${
 The repository host configured ${inline(model.archiveDir)} for this ${inline(model.artifactKind)} review. After acceptance, including an exit-code-4 publication failure, use this exact explicit finalization command:
 
 \`\`\`text
-${renderCliCommand(['finalize', '--dir', model.runtimeDir, '--archive-dir', model.archiveDir])}
+${renderCliCommand(['finalize', '--dir', model.runtimeAbsolute, '--archive-dir', model.archiveDir])}
 \`\`\`
 
 An existing complete-identical archive is success. A conflicting or mixed destination is a refusal: preserve every file and report it without rewriting evidence. Only an authenticated human may authorize the separate \`--good-enough\` path.
@@ -250,7 +250,7 @@ ${sharedHandoff(model)}
 Run status, then claim only when the owner role is available:
 
 \`\`\`text
-${renderCliCommand(['claim', '--dir', model.runtimeDir, '--actor', model.owner])}
+${renderCliCommand(['claim', '--dir', model.runtimeAbsolute, '--actor', model.owner])}
 \`\`\`
 
 Read the complete immutable reviewer document for the current round. Verify every finding against repository evidence. Write one response marker and an allowed disposition for every finding: accepted, accepted-with-modification, rejected, or deferred. Rejection requires an evidence marker. Deferral requires a governed follow-up issue and a safe-boundary marker.
@@ -267,11 +267,11 @@ When changes are required, edit and commit only ${inline(model.artifact)}. Befor
 ${renderCliCommand([
   'handoff',
   '--dir',
-  model.runtimeDir,
+  model.runtimeAbsolute,
   '--actor',
   model.owner,
   '--response',
-  `${model.runtimeDir}/round-N-author-response.md`,
+  `${model.runtimeAbsolute}/round-N-author-response.md`,
   '--artifact',
   model.artifact,
   '--commit',
@@ -286,7 +286,7 @@ After a successful handoff, follow the bounded wait discipline above.
 On owner rounds after a review, inspect the structured status and read the exact preceding immutable review path from \`lastHandoff.artifacts.review.path\`:
 
 \`\`\`text
-${renderCliCommand(['status', '--dir', model.runtimeDir, '--json'])}
+${renderCliCommand(['status', '--dir', model.runtimeAbsolute, '--json'])}
 \`\`\`
 
 Assign that value to \`REVIEW_PATH\`, then add it to the handoff command:
@@ -295,11 +295,11 @@ Assign that value to \`REVIEW_PATH\`, then add it to the handoff command:
 ${renderCliCommand([
   'handoff',
   '--dir',
-  model.runtimeDir,
+  model.runtimeAbsolute,
   '--actor',
   model.owner,
   '--response',
-  `${model.runtimeDir}/round-N-author-response.md`,
+  `${model.runtimeAbsolute}/round-N-author-response.md`,
   '--answers',
   'REVIEW_PATH',
   '--artifact',
@@ -329,7 +329,7 @@ While your live provider/session owns this reviewer claim, AITM narrowly authori
 Run status, then claim only when the reviewer role is available:
 
 \`\`\`text
-${renderCliCommand(['claim', '--dir', model.runtimeDir, '--actor', model.reviewer])}
+${renderCliCommand(['claim', '--dir', model.runtimeAbsolute, '--actor', model.reviewer])}
 \`\`\`
 
 Review the exact artifact commit recorded by the author handoff. Read every required supplement. Write a new immutable Markdown review with unique finding identifiers and an explicit accepted or changes-requested decision. When the final allowed review requests changes, you may include optional exhaustion summary evidence.
@@ -342,11 +342,11 @@ Use the concrete current review path, reviewed commit, decision, optional summar
 ${renderCliCommand([
   'handoff',
   '--dir',
-  model.runtimeDir,
+  model.runtimeAbsolute,
   '--actor',
   model.reviewer,
   '--review',
-  `${model.runtimeDir}/round-N-reviewer-review.md`,
+  `${model.runtimeAbsolute}/round-N-reviewer-review.md`,
   '--review-of',
   'COMMIT_SHA',
   '--decision',

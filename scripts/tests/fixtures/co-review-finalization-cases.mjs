@@ -577,7 +577,10 @@ test('intervention and accepted status expose state-valid finalization actions a
   assert.equal(beforePublish.archive.completion, 'absent');
   assert.match(
     beforePublish.nextAction,
-    /finalize --dir \.tmp\/review --archive-dir docs\/reviews\/status$/
+    new RegExp(
+      `finalize --dir ${path.resolve(accepted.root, accepted.options.dir)} ` +
+        '--archive-dir docs/reviews/status$'
+    )
   );
 });
 

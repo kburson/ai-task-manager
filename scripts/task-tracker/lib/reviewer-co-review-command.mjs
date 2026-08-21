@@ -100,7 +100,7 @@ function shellWords(input) {
 }
 
 function literalPath(value) {
-  if (!value || value.includes('\\') || path.isAbsolute(value)) return false;
+  if (!value || value.includes('\\')) return false;
   const segments = value.split('/');
   return !segments.includes('.') && !segments.includes('..');
 }
