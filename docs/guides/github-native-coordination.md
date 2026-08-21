@@ -62,13 +62,21 @@ npx aitm occupancy --release #N
 ```
 
 Co-review reviewers remain unbound: they do not run `/task start #N`. When the
-reviewer claims a turn, AITM records the exact provider, real session id, and
-pending review artifact in a main-anchored index. Edit, Write, `apply_patch`,
-and Bash may write only that exact pending review artifact for that exact
-provider/session. Mixed targets, tracked source, other `.tmp/**` files,
-occupancy/index files, protocol state, malformed patches, ambiguous shell
-writers, and symlink drift fail closed. The index never grants access by
-itself; every decision revalidates the live protocol state and event integrity.
+reviewer claims a turn, AITM records the exact provider, real session id,
+pending review artifact, and live protocol authority in a main-anchored index.
+Edit, Write, and `apply_patch` may write only that exact pending review artifact
+for that exact provider/session. Bash additionally recognizes only the
+generated `npx aitm co-review status --dir <runtime> [--json]`,
+`npx aitm co-review help handoff`, and exact reviewer-handoff forms. The command
+must agree with the live runtime, reviewer, pending review, owner-handoff commit,
+bounded decision fields, provider, and session; the co-review CLI then
+revalidates and mutates under its protocol mutex.
+
+No generic `npx`, AITM, or Bash allowance exists. Mixed targets, tracked source,
+other `.tmp/**` files, occupancy/index files, protocol state, malformed patches,
+shell composition or expansion, alternate executables, wrong-session commands,
+and symlink drift fail closed. The index never grants access by itself; every
+decision revalidates live protocol state and event integrity.
 
 ## Identify the authority source
 

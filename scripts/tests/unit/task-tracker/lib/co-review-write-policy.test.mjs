@@ -2,7 +2,7 @@
 // cspell:ignore Ovim textcon
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, mkdirSync, symlinkSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdtempSync, mkdirSync, symlinkSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 
 import {
@@ -10,6 +10,7 @@ import {
   extractApplyPatchTargets,
   extractBashWriteTargets,
 } from '../../../../task-tracker/lib/mutation-targets.mjs';
+import { classifyReviewerCoReviewCommand } from '../../../../task-tracker/lib/reviewer-co-review-command.mjs';
 import { evaluateCoReviewWrite } from '../../../../task-tracker/lib/co-review-write-policy.mjs';
 import { findMainWorktreePath } from '../../../../task-tracker/fleet-registry.mjs';
 import { closedBindingsPath } from '../../../../task-tracker/paths.mjs';
@@ -105,6 +106,146 @@ test('bash parser reports destinations and rejects shell composition or unknown 
   }
 });
 
+function classifierFixture() {
+  const projectDir = mkdtempSync(path.join(projectScratchDir('test'), 'aitm-review-command-'));
+  const localBin = path.join(projectDir, 'node_modules', '.bin', 'aitm');
+  mkdirSync(path.dirname(localBin), { recursive: true });
+  writeFileSync(localBin, '#!/usr/bin/env node\n', 'utf8');
+  const classify = (command, overrides = {}) =>
+    classifyReviewerCoReviewCommand(command, {
+      projectDir,
+      exists: existsSync,
+      ...overrides,
+    });
+  return { projectDir, localBin, classify };
+}
+
+test('reviewer command classifier recognizes the sanctioned dogfood self-link topology', () => {
+  const projectDir = mkdtempSync(
+    path.join(projectScratchDir('test'), 'aitm-review-command-self-link-')
+  );
+  mkdirSync(path.join(projectDir, 'node_modules'), { recursive: true });
+  mkdirSync(path.join(projectDir, 'bin'), { recursive: true });
+  symlinkSync('..', path.join(projectDir, 'node_modules', 'ai-task-manager'), 'dir');
+  writeFileSync(path.join(projectDir, 'bin', 'aitm.mjs'), '#!/usr/bin/env node\n', 'utf8');
+  writeFileSync(
+    path.join(projectDir, 'package.json'),
+    `${JSON.stringify({
+      name: '@kburson/ai-task-manager',
+      bin: { aitm: 'bin/aitm.mjs' },
+    })}\n`,
+    'utf8'
+  );
+
+  assert.deepEqual(
+    classifyReviewerCoReviewCommand('npx aitm co-review help handoff', { projectDir }),
+    { recognized: true, kind: 'help-handoff' }
+  );
+
+  writeFileSync(
+    path.join(projectDir, 'package.json'),
+    `${JSON.stringify({
+      name: '@kburson/ai-task-manager',
+      bin: { aitm: 'bin/not-aitm.mjs' },
+    })}\n`,
+    'utf8'
+  );
+  assert.deepEqual(
+    classifyReviewerCoReviewCommand('npx aitm co-review help handoff', { projectDir }),
+    { recognized: false, reason: 'local-aitm-unavailable' }
+  );
+});
+
+test('reviewer command classifier accepts only the generated lifecycle forms', () => {
+  const { classify } = classifierFixture();
+  assert.deepEqual(classify('npx aitm co-review status --dir .tmp/co-review/p1'), {
+    recognized: true,
+    kind: 'status',
+    runtimeDir: '.tmp/co-review/p1',
+    json: false,
+  });
+  assert.deepEqual(classify('npx aitm co-review status --json --dir .tmp/co-review/p1'), {
+    recognized: true,
+    kind: 'status',
+    runtimeDir: '.tmp/co-review/p1',
+    json: true,
+  });
+  assert.deepEqual(classify('npx aitm co-review help handoff'), {
+    recognized: true,
+    kind: 'help-handoff',
+  });
+
+  const handoff = classify(
+    'npx aitm co-review handoff --dir .tmp/co-review/p1 --actor claude ' +
+      '--review .tmp/co-review/p1/round-2-reviewer-review.md ' +
+      '--review-of 0123456789012345678901234567890123456789 ' +
+      '--decision accepted --message "review complete"'
+  );
+  assert.deepEqual(handoff, {
+    recognized: true,
+    kind: 'reviewer-handoff',
+    runtimeDir: '.tmp/co-review/p1',
+    actor: 'claude',
+    reviewPath: '.tmp/co-review/p1/round-2-reviewer-review.md',
+    reviewOf: '0123456789012345678901234567890123456789',
+    decision: 'accepted',
+    summaryPath: null,
+    message: 'review complete',
+  });
+
+  assert.deepEqual(
+    classify(
+      'npx aitm co-review handoff --summary .tmp/co-review/p1/summary.md ' +
+        '--decision changes-requested --review-of abc123 --message "changes requested" ' +
+        '--review .tmp/co-review/p1/round-2-reviewer-review.md --actor claude ' +
+        '--dir .tmp/co-review/p1'
+    ),
+    {
+      recognized: true,
+      kind: 'reviewer-handoff',
+      runtimeDir: '.tmp/co-review/p1',
+      actor: 'claude',
+      reviewPath: '.tmp/co-review/p1/round-2-reviewer-review.md',
+      reviewOf: 'abc123',
+      decision: 'changes-requested',
+      summaryPath: '.tmp/co-review/p1/summary.md',
+      message: 'changes requested',
+    }
+  );
+});
+
+test('reviewer command classifier rejects every broader shell and CLI form', () => {
+  const { classify, localBin } = classifierFixture();
+  const rejected = [
+    'npx aitm co-review status --dir .tmp/co-review/p1 && touch owned',
+    'npx aitm co-review status --dir .tmp/co-review/p1 > .tmp/status.json',
+    'npx aitm co-review status --dir "$RUNTIME"',
+    'npx aitm co-review status --dir $(pwd)',
+    'PATH=/bin npx aitm co-review status --dir .tmp/co-review/p1',
+    'bash -lc "npx aitm co-review status --dir .tmp/co-review/p1"',
+    'node scripts/review/co-review.mjs status --dir .tmp/co-review/p1',
+    './node_modules/.bin/aitm co-review status --dir .tmp/co-review/p1',
+    'npx aitm close 1365',
+    'npx aitm co-review claim --dir .tmp/co-review/p1 --actor claude',
+    'npx aitm co-review help status',
+    'npx aitm co-review status --dir .tmp/co-review/p1 --dir .tmp/co-review/p2',
+    'npx aitm co-review status --dir ../outside',
+    'npx aitm co-review handoff --dir .tmp/co-review/p1 --actor claude',
+    'npx aitm co-review handoff --dir .tmp/co-review/p1 --actor claude ' +
+      '--review .tmp/co-review/p1/r.md --review-of abc --decision maybe ' +
+      '--message review',
+  ];
+  for (const command of rejected) {
+    assert.equal(classify(command).recognized, false, command);
+  }
+  assert.equal(
+    classify('npx aitm co-review status --dir .tmp/co-review/p1', {
+      exists: (candidate) => candidate !== localBin,
+    }).recognized,
+    false
+  );
+});
+
 function policyFixture() {
   const projectDir = mkdtempSync(path.join(projectScratchDir('test'), 'aitm-review-policy-'));
   const dir = path.join(projectDir, '.tmp', 'review-protocol');
@@ -114,10 +255,13 @@ function policyFixture() {
     protocolId: 'p1',
     dir,
     worktree: projectDir,
+    reviewer: 'claude',
+    lifecycle: 'active',
     pendingReviewPath: pending,
     claimedRole: 'reviewer',
     claimedProvider: 'grok',
     claimedSid: 'sid-1',
+    ownerHandoffCommit: '0123456789012345678901234567890123456789',
   };
   const rows = { p1: grant };
   const evaluate = (overrides = {}) =>
@@ -128,12 +272,119 @@ function policyFixture() {
       sid: 'sid-1',
       toolName: 'Write',
       targets: [pending],
+      reviewerCommand: { recognized: false, reason: 'not-co-review' },
       readIndex: () => rows,
       resolveGrant: () => grant,
       ...overrides,
     });
   return { projectDir, dir, pending, grant, rows, evaluate };
 }
+
+function matchingHandoff({ dir, pending, grant }) {
+  return {
+    recognized: true,
+    kind: 'reviewer-handoff',
+    runtimeDir: dir,
+    actor: grant.reviewer,
+    reviewPath: pending,
+    reviewOf: grant.ownerHandoffCommit,
+    decision: 'accepted',
+    summaryPath: null,
+    message: 'review complete',
+  };
+}
+
+test('matching reviewer status, help, and handoff commands use the session grant', () => {
+  const fixture = policyFixture();
+  const status = fixture.evaluate({
+    toolName: 'Bash',
+    targets: [],
+    ambiguousMutation: true,
+    reviewerCommand: {
+      recognized: true,
+      kind: 'status',
+      runtimeDir: fixture.dir,
+      json: false,
+    },
+  });
+  assert.equal(status.reason, 'session-bound-co-review-command');
+
+  const help = fixture.evaluate({
+    toolName: 'Bash',
+    targets: [],
+    ambiguousMutation: true,
+    reviewerCommand: { recognized: true, kind: 'help-handoff' },
+  });
+  assert.equal(help.reason, 'session-bound-co-review-command');
+
+  const handoff = fixture.evaluate({
+    toolName: 'Bash',
+    targets: [],
+    ambiguousMutation: true,
+    reviewerCommand: matchingHandoff(fixture),
+  });
+  assert.equal(handoff.reason, 'session-bound-co-review-command');
+});
+
+test('reviewer command fields must agree exactly with live authority', () => {
+  const fixture = policyFixture();
+  const base = matchingHandoff(fixture);
+  const mutations = [
+    { runtimeDir: path.join(fixture.projectDir, '.tmp', 'other') },
+    { actor: 'codex' },
+    { reviewPath: path.join(fixture.dir, 'other.md') },
+    { reviewOf: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa' },
+    {
+      decision: 'changes-requested',
+      summaryPath: path.join(fixture.projectDir, 'outside.md'),
+    },
+  ];
+  for (const mutation of mutations) {
+    const result = fixture.evaluate({
+      toolName: 'Bash',
+      targets: [],
+      ambiguousMutation: true,
+      reviewerCommand: { ...base, ...mutation },
+    });
+    assert.equal(result.decision, 'deny');
+  }
+});
+
+test('authority targets deny before an otherwise matching reviewer command', () => {
+  const fixture = policyFixture();
+  const authorityFile = path.join(fixture.projectDir, '.tmp/aitm/fleet/co-review-index.json');
+  const result = fixture.evaluate({
+    toolName: 'Bash',
+    targets: [authorityFile],
+    authorityFiles: [authorityFile],
+    ambiguousMutation: false,
+    reviewerCommand: matchingHandoff(fixture),
+  });
+  assert.equal(result.code, 'co-review-authority-file');
+});
+
+test('a recognized command cannot cross provider-session ownership', () => {
+  const fixture = policyFixture();
+  const result = fixture.evaluate({
+    toolName: 'Bash',
+    provider: 'codex',
+    sid: 'other-session',
+    resolveGrant: () => null,
+    statusProtocol: () => ({
+      protocolId: 'p1',
+      lifecycle: 'active',
+      integrity: { ok: true },
+      currentRole: 'reviewer',
+      turnState: 'claimed',
+      claim: { role: 'reviewer', actor: 'claude' },
+    }),
+    targets: [],
+    ambiguousMutation: true,
+    reviewerCommand: matchingHandoff(fixture),
+  });
+  assert.equal(result.decision, 'deny');
+  assert.match(result.reason, /different provider session/);
+});
 
 test('exact pending artifact is allowed only for the claimed provider session', () => {
   const { pending, evaluate } = policyFixture();

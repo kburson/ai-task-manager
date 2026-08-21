@@ -211,7 +211,17 @@ export function resolveReviewerGrant(input) {
     }
     const live = liveReviewerClaim(row, statusProtocol);
     if (!live) continue;
-    return Object.freeze({ ...clone(row), liveRevision: live.revision, round: live.round });
+    const ownerHandoffCommit =
+      live.lastHandoff?.from === 'owner' && typeof live.lastHandoff.commit === 'string'
+        ? live.lastHandoff.commit
+        : null;
+    if (!ownerHandoffCommit) continue;
+    return Object.freeze({
+      ...clone(row),
+      liveRevision: live.revision,
+      round: live.round,
+      ownerHandoffCommit,
+    });
   }
   return null;
 }

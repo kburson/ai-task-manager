@@ -219,6 +219,9 @@ test('start delegates initialization and publishes concrete hashed handoffs befo
   assert.match(reviewer, /\[supplement:S-1\]/);
   assert.match(reviewer, /optional.*--summary/i);
   assert.doesNotMatch(reviewer, /required.*--summary/i);
+  assert.match(reviewer, /narrowly authorizes.*status.*help handoff.*reviewer handoff/is);
+  assert.match(reviewer, /arbitrary Bash remains blocked/i);
+  assert.match(reviewer, /live provider.*session.*claim/i);
   assert.equal(
     result.output,
     `AUTHOR PROMPT\nRead and follow this handoff completely, then begin:\n${result.authorHandoff.absolute}\n\n` +
