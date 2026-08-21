@@ -4,7 +4,6 @@ import path from 'node:path';
 const AITM_PACKAGE_NAME = '@kburson/ai-task-manager';
 const AITM_BIN_PATH = 'bin/aitm.mjs';
 
-const CONTROL_CHARACTERS = new Set(['\0', '\r', '\n']);
 const SHELL_META = new Set([
   ';',
   '&',
@@ -24,6 +23,7 @@ const SHELL_META = new Set([
   '~',
 ]);
 const DOUBLE_QUOTE_EXPANSION = new Set(['`', '$']);
+const DOUBLE_QUOTE_ESCAPES = new Set(['`', '$', '"', '\\']);
 const HANDOFF_VALUE_FLAGS = new Set([
   'dir',
   'actor',
@@ -36,6 +36,11 @@ const HANDOFF_VALUE_FLAGS = new Set([
 
 function reject(reason) {
   return { recognized: false, reason };
+}
+
+function isControlCharacter(character) {
+  const codePoint = character.codePointAt(0);
+  return codePoint <= 0x1f || codePoint === 0x7f;
 }
 
 function hasLocalAitm(projectDir, exists) {
@@ -61,8 +66,9 @@ function shellWords(input) {
   let escaped = false;
   let started = false;
   for (const character of input) {
-    if (CONTROL_CHARACTERS.has(character)) return null;
+    if (isControlCharacter(character)) return null;
     if (escaped) {
+      if (quote === '"' && !DOUBLE_QUOTE_ESCAPES.has(character)) return null;
       if (!quote && SHELL_META.has(character)) return null;
       word += character;
       escaped = false;

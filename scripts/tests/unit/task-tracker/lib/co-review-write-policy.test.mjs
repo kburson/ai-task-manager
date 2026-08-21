@@ -208,6 +208,14 @@ test('reviewer command classifier accepts only the generated lifecycle forms', (
       '(F-001 squash token completeness is the only load-bearing one)'
   );
 
+  const doubleQuotedPunctuation = classify(
+    'npx aitm co-review handoff --dir .tmp/co-review/p1 --actor claude ' +
+      '--review .tmp/co-review/p1/round-2-reviewer-review.md ' +
+      '--review-of abc --decision accepted --message "review complete (F-001) [accepted]"'
+  );
+  assert.equal(doubleQuotedPunctuation.recognized, true);
+  assert.equal(doubleQuotedPunctuation.message, 'review complete (F-001) [accepted]');
+
   const literalSingleQuoted = classify(
     'npx aitm co-review handoff --dir .tmp/co-review/p1 --actor claude ' +
       '--review .tmp/co-review/p1/round-2-reviewer-review.md ' +
@@ -266,6 +274,25 @@ test('reviewer command classifier rejects every broader shell and CLI form', () 
     'npx aitm co-review handoff --dir .tmp/co-review/p1 --actor claude ' +
       '--review .tmp/co-review/p1/r.md --review-of abc --decision accepted ' +
       '--message review(F-001)',
+    'npx aitm co-review status --dir ".tmp/co-\\review/p1"',
+    'npx aitm co-review handoff --dir .tmp/co-review/p1 --actor claude ' +
+      '--review ".tmp/co-review/p1/round-2-\\reviewer-review.md" ' +
+      '--review-of abc --decision accepted --message review',
+    'npx aitm co-review handoff --dir .tmp/co-review/p1 --actor claude ' +
+      '--review .tmp/co-review/p1/r.md --summary ".tmp/co-review/p1/\\summary.md" ' +
+      '--review-of abc --decision changes-requested --message review',
+    'npx aitm co-review handoff --dir .tmp/co-review/p1 --actor claude ' +
+      '--review .tmp/co-review/p1/r.md --review-of abc --decision accepted ' +
+      '--message "review\tcomplete"',
+    'npx aitm co-review handoff --dir .tmp/co-review/p1 --actor claude ' +
+      '--review .tmp/co-review/p1/r.md --review-of abc --decision accepted ' +
+      '--message "review\u0007complete"',
+    'npx aitm co-review handoff --dir .tmp/co-review/p1 --actor claude ' +
+      '--review .tmp/co-review/p1/r.md --review-of abc --decision accepted ' +
+      '--message "review\u001bcomplete"',
+    'npx aitm co-review handoff --dir .tmp/co-review/p1 --actor claude ' +
+      '--review .tmp/co-review/p1/r.md --review-of abc --decision accepted ' +
+      '--message "review\u007fcomplete"',
   ];
   for (const command of rejected) {
     assert.equal(classify(command).recognized, false, command);

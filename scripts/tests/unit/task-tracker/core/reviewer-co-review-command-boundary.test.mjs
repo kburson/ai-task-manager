@@ -28,8 +28,8 @@ function successfulCli(args, root) {
   return JSON.parse(result.stdout);
 }
 
-function successfulNpx(args, root) {
-  const result = spawnSync('npx', ['aitm', 'co-review', ...args], {
+function successfulBash(command, root) {
+  const result = spawnSync('bash', ['-c', command], {
     cwd: root,
     encoding: 'utf8',
     env: { ...REVIEWER_ENV, npm_config_offline: 'true' },
@@ -154,6 +154,7 @@ test('live reviewer command passes the guard and reaches accepted archived state
     `npx aitm co-review handoff --dir ${dir} --actor reviewer-agent ` +
       `--review ${review} --review-of ${fixture.initialCommit} ` +
       '--decision accepted --message "review complete" && touch owned',
+    `npx aitm co-review status --dir ".tmp/co-\\review/boundary-1365"`,
     `npx aitm co-review finalize --dir ${dir}`,
   ]) {
     const refusal = await runGuard(fixture.root, denied);
@@ -166,24 +167,7 @@ test('live reviewer command passes the guard and reaches accepted archived state
   assert.equal(guard.status, 0, guard.stderr);
   assert.equal(guard.stdout, '');
 
-  const accepted = successfulNpx(
-    [
-      'handoff',
-      '--dir',
-      dir,
-      '--actor',
-      'reviewer-agent',
-      '--review',
-      review,
-      '--review-of',
-      fixture.initialCommit,
-      '--decision',
-      'accepted',
-      '--message',
-      message,
-    ],
-    fixture.root
-  );
+  const accepted = successfulBash(command, fixture.root);
   assert.equal(accepted.lifecycle, 'accepted');
   assert.equal(accepted.archive.completion, 'complete-and-identical');
   assert.equal(accepted.archivePublication.status, 'published');
