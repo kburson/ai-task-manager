@@ -2,7 +2,7 @@
 
 **Issue:** #939
 **Date:** 2026-08-21
-**Status:** Approved in discussion; awaiting written-spec review
+**Status:** Approved in discussion; revised after filename feedback; awaiting written-spec review
 **Branch:** `codex/939-full-auto-merge`
 
 ## Problem
