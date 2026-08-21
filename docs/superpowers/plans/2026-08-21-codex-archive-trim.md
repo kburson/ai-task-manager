@@ -23,10 +23,12 @@ The command must use `CODEX_HOME` when provided, otherwise `~/.codex`.
 ### Task 1: Cleanup Policy Tests
 
 **Files:**
+
 - Create: `/Users/kpburson/.codex/tools/trim-archive/trim-archive.test.mjs`
 - Create: `/Users/kpburson/.codex/bin/trim-archive`
 
 **Interfaces:**
+
 - Produces executable command: `/Users/kpburson/.codex/bin/trim-archive --trash <days> --delete <days> [--dry-run] [--verbose]`
 
 - [ ] **Step 1: Write tests that create temporary archive/quarantine directories**
@@ -58,9 +60,11 @@ Expected: prints a summary and changes no archived session files.
 ### Task 2: Scheduled Cleanup
 
 **Files:**
+
 - No repository files.
 
 **Interfaces:**
+
 - Consumes executable command: `/Users/kpburson/.codex/bin/trim-archive --trash 14 --delete 21`
 - Produces Codex automation named `Trim archived Codex sessions`
 
