@@ -104,6 +104,7 @@ async function evaluate(input) {
   const { GIT_TIMEOUT_MS } = await import('./lib/process-timeouts.mjs');
   const { configPath } = await import('./paths.mjs');
   const { extractBashWriteTargets } = await import('./lib/mutation-targets.mjs');
+  const { classifyReviewerCoReviewCommand } = await import('./lib/reviewer-co-review-command.mjs');
   const { evaluateCoReviewWrite } = await import('./lib/co-review-write-policy.mjs');
   const { detectProvider } = await import('../providers/index.mjs');
   const { resolveSessionId } = await import('./lib/session-id.mjs');
@@ -127,6 +128,9 @@ async function evaluate(input) {
   const claudeDir = join(homeDir, '.claude');
 
   const coReviewTargets = extractBashWriteTargets(command, projectRoot);
+  const reviewerCommand = classifyReviewerCoReviewCommand(command, {
+    projectDir: projectRoot,
+  });
   const provider = detectProvider().name;
   let sid = null;
   try {
@@ -142,6 +146,7 @@ async function evaluate(input) {
     toolName: 'Bash',
     targets: coReviewTargets.targets,
     ambiguousMutation: coReviewTargets.ambiguousMutation,
+    reviewerCommand,
   });
   if (coReview.decision === 'deny') block(`[task-tracker] ${coReview.reason}`);
 
