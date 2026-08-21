@@ -193,6 +193,29 @@ test('reviewer command classifier accepts only the generated lifecycle forms', (
     message: 'review complete',
   });
 
+  const punctuated = classify(
+    'npx aitm co-review handoff --dir .tmp/co-review/p1 --actor claude ' +
+      '--review .tmp/co-review/p1/round-2-reviewer-review.md ' +
+      '--review-of 0123456789012345678901234567890123456789 ' +
+      '--decision accepted ' +
+      "--message 'review complete: accepted with 4 refinement findings " +
+      "(F-001 squash token completeness is the only load-bearing one)'"
+  );
+  assert.equal(punctuated.recognized, true);
+  assert.equal(
+    punctuated.message,
+    'review complete: accepted with 4 refinement findings ' +
+      '(F-001 squash token completeness is the only load-bearing one)'
+  );
+
+  const literalSingleQuoted = classify(
+    "npx aitm co-review handoff --dir .tmp/co-review/p1 --actor claude " +
+      "--review .tmp/co-review/p1/round-2-reviewer-review.md " +
+      "--review-of abc --decision accepted --message 'literal $USER $(pwd) `date`'"
+  );
+  assert.equal(literalSingleQuoted.recognized, true);
+  assert.equal(literalSingleQuoted.message, 'literal $USER $(pwd) `date`');
+
   assert.deepEqual(
     classify(
       'npx aitm co-review handoff --summary .tmp/co-review/p1/summary.md ' +
@@ -234,6 +257,15 @@ test('reviewer command classifier rejects every broader shell and CLI form', () 
     'npx aitm co-review handoff --dir .tmp/co-review/p1 --actor claude ' +
       '--review .tmp/co-review/p1/r.md --review-of abc --decision maybe ' +
       '--message review',
+    'npx aitm co-review handoff --dir .tmp/co-review/p1 --actor claude ' +
+      '--review .tmp/co-review/p1/r.md --review-of abc --decision accepted ' +
+      '--message "review for $USER"',
+    'npx aitm co-review handoff --dir .tmp/co-review/p1 --actor claude ' +
+      '--review .tmp/co-review/p1/r.md --review-of abc --decision accepted ' +
+      '--message "review from `whoami`"',
+    'npx aitm co-review handoff --dir .tmp/co-review/p1 --actor claude ' +
+      '--review .tmp/co-review/p1/r.md --review-of abc --decision accepted ' +
+      '--message review(F-001)',
   ];
   for (const command of rejected) {
     assert.equal(classify(command).recognized, false, command);
