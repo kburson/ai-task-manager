@@ -124,6 +124,9 @@ test('live reviewer command passes the guard and reaches accepted archived state
 
   const review = `${dir}/round-2-reviewer-review.md`;
   writeFileSync(path.join(fixture.root, review), '# Review\n\nDecision: accepted.\n');
+  const message =
+    'review complete: accepted with 4 refinement findings ' +
+    '(F-001 squash token completeness is the only load-bearing one)';
   const command = [
     'npx aitm co-review handoff',
     `--dir ${dir}`,
@@ -131,7 +134,7 @@ test('live reviewer command passes the guard and reaches accepted archived state
     `--review ${review}`,
     `--review-of ${fixture.initialCommit}`,
     '--decision accepted',
-    '--message "review complete"',
+    `--message '${message}'`,
   ].join(' ');
 
   for (const allowed of [
@@ -177,11 +180,12 @@ test('live reviewer command passes the guard and reaches accepted archived state
       '--decision',
       'accepted',
       '--message',
-      'review complete',
+      message,
     ],
     fixture.root
   );
   assert.equal(accepted.lifecycle, 'accepted');
   assert.equal(accepted.archive.completion, 'complete-and-identical');
   assert.equal(accepted.archivePublication.status, 'published');
+  assert.equal(accepted.lastHandoff.message, message);
 });
