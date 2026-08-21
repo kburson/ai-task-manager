@@ -2,14 +2,7 @@
 // cspell:ignore Ovim textcon
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {
-  existsSync,
-  mkdtempSync,
-  mkdirSync,
-  rmSync,
-  symlinkSync,
-  writeFileSync,
-} from 'node:fs';
+import { existsSync, mkdtempSync, mkdirSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 
 import {
