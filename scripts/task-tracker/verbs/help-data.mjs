@@ -829,7 +829,7 @@ export const STATE_TRANSITIONS = [
 export const GATE_EVIDENCE_MODEL = [
   {
     heading: 'AC evidence',
-    body: 'Each Acceptance Criterion binds a targeted verifier via `aitm-verified cmd="…"`. `/task ac-stamp "<label>"` RUNS that command and, on exit 0, writes the `aitm-ac-evidence:<key>` marker. `/task ensureChecked` refuses to tick a verifier-bound AC until that evidence marker exists.',
+    body: 'Each demonstrable Acceptance Criterion cites targeted root Verification Command IDs via `aitm-verified vc-list="vc:N"`. `/task ac-stamp "<label>"` RUNS the cited commands and, on exit 0, writes the `aitm-ac-evidence:<key>` marker. `/task ensureChecked` refuses to tick a verifier-bound AC until that evidence marker exists.',
   },
   {
     heading: 'Checkbox-proof gate',

@@ -40,7 +40,8 @@ The pickup directive enforces:
 
 - Deep-dive checkpoint with `<!-- aitm-deep-dive-complete: <ts> -->` marker before any code edits (Plan state).
 - Per-AC verification with `/task ensureChecked "<label>"`, never bulk-checking.
-- `aitm-verified-by` HTML comment markers on each AC.
+- `aitm-verified vc-list="vc:N"` citations from each demonstrable AC into the
+  root Verification Commands section (or an honest non-demonstrable opt-out).
 
 ## `{discuss}` brainstorming trigger (#405, #486)
 

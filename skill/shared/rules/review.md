@@ -26,7 +26,7 @@ Review does **not** own verifier execution. `/task test` already ran the declare
 
 1. **Confirm the Test receipt.** `/task test #N` no-ops when a valid exact-SHA receipt matches HEAD. If it refuses (missing/stale/red), demote and re-Test — do not spawn the suite from Review.
 2. **Per-AC / Per-DoD ticks.** Tick remaining boxes from existing receipt evidence (`/task dod-stamp` / `/task ac-stamp` validate and reuse a matching receipt; they never execute in Review). Never bulk-check. `acs` and `checkboxes` are derived by `/task close`.
-3. **`aitm-verified-by` markers.** Every AC must carry one or more `aitm-verified-by` HTML comment markers. Non-standard commands named by those markers must appear under `### Verification Commands`. Standard DoD commands may be referenced by markers but must NOT be duplicated there.
+3. **Current AC citations.** Every demonstrable AC must carry an `aitm-verified vc-list="vc:N"` citation, and every cited ID must resolve under the root `## Verification Commands` section. An honestly non-demonstrable AC carries its explicit opt-out instead. Functional DoD items retain their own command declarations.
 4. **Named finding only:** `/task review #N --probe "<command>"` is the only Review-stage command execution.
 5. **Run `/task review #N`.**
 

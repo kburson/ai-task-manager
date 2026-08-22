@@ -54,9 +54,11 @@ anchor so a reviewer can name the single authoritative source:
 
 - **Creating issues** (`issue-create`) → `rules/create-issue.md`.
   The shape menu (`stub|epic|sub-issue|solo|defect`), the required `./.tmp/plan/`
-  fragments, the deterministic refusal contracts, binding each Acceptance
-  Criterion to an `aitm-verified cmd="…"` marker under `### Verification Commands`, and
-  the never-promote-untracked-work rule all live there. Loads JIT on `/task new`.
+  fragments (including `user-story.md` for non-stub shapes), the deterministic
+  refusal contracts, binding each Acceptance Criterion to an
+  `aitm-verified vc-list="vc:N"` marker that cites the root `## Verification
+Commands`, and the never-promote-untracked-work rule all live there. Loads JIT
+  on `/task new`.
 - **Review & approve** (`review`) → `rules/review.md`. Field units
   (board `Estimate` in hours, timing fields in minutes — normalize before any
   comparison), the Full-Auto approve footnote, and the Review-Notes → Drivers

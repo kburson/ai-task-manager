@@ -240,6 +240,7 @@ Log planning and design sessions against a dedicated **planning issue**, not the
 npx aitm create-issue \
   --shape solo \
   --title "Planning: <epic title>" \
+  --user-story-file ./.tmp/gh/planning-user-story.md \
   --scope-file ./.tmp/gh/planning-scope.md \
   --ac-file ./.tmp/gh/planning-acs.md \
   --story-origin-file ./.tmp/gh/planning-origin.md \

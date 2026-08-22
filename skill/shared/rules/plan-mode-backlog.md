@@ -72,6 +72,7 @@ npx aitm create-issue \
   --title "<title>" \
   # The epic title prefix `🧑‍🧒‍🧒 [Epic] ` is stamped automatically when the
   # epic gains its first child (sub-issue link); do not hand-type a prefix.
+  --user-story-file ./.tmp/plan/user-story.md \
   --scope-file ./.tmp/plan/scope.md \
   --ac-file ./.tmp/plan/acs.md \
   --story-origin-file ./.tmp/plan/story-origin.md \
@@ -96,13 +97,14 @@ If the helper exits non-zero, STOP. Either the issue was never created (gh failu
 For each sub-issue in document order:
 
 1. Infer purpose labels from scope.
-2. Stage `./.tmp/plan/scope.md`, `./.tmp/plan/acs.md`, `./.tmp/plan/story-origin.md`, and optional `./.tmp/plan/plan-meta.md`.
+2. Stage `./.tmp/plan/user-story.md`, `./.tmp/plan/scope.md`, `./.tmp/plan/acs.md`, `./.tmp/plan/story-origin.md`, and optional `./.tmp/plan/plan-meta.md`.
 3. Create + tether:
 
 ```bash
 npx aitm create-issue \
   --shape sub-issue \
   --title "<title>" \
+  --user-story-file ./.tmp/plan/user-story.md \
   --scope-file ./.tmp/plan/scope.md \
   --ac-file ./.tmp/plan/acs.md \
   --story-origin-file ./.tmp/plan/story-origin.md \

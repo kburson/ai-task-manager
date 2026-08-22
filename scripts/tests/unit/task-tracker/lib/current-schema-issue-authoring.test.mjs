@@ -3,7 +3,7 @@
 // the same required fragment contract at the create-issue and preflight seams.
 
 import { execFile } from 'node:child_process';
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { promisify } from 'node:util';
 import { fileURLToPath } from 'node:url';
@@ -17,6 +17,8 @@ import { projectScratchDir } from '../../../../task-tracker/lib/scratch-dir.mjs'
 const pexec = promisify(execFile);
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const PREFLIGHT = path.resolve(HERE, '../../../../task-tracker/preflight-issue.mjs');
+const CREATE_ISSUE = path.resolve(HERE, '../../../../gh/create-issue.mjs');
+const REPO_ROOT = path.resolve(HERE, '../../../../..');
 
 function fixture() {
   const dir = mkdtempSync(path.join(projectScratchDir('test'), 'aitm-current-authoring-'));
@@ -174,6 +176,65 @@ describe('current-schema Acceptance Criterion verifier authoring', () => {
       }
     } finally {
       rmSync(files.dir, { recursive: true, force: true });
+    }
+  });
+});
+
+describe('current-schema public authoring contract', () => {
+  test('create-issue and preflight help advertise --user-story-file', async () => {
+    for (const script of [CREATE_ISSUE, PREFLIGHT]) {
+      const { stdout } = await pexec(process.execPath, [script, '--help']);
+      assert.match(stdout, /--user-story-file <path>/, script);
+    }
+  });
+
+  test('shared and provider guidance require story fragments and vc-list AC citations', () => {
+    const shared = readFileSync(path.join(REPO_ROOT, 'skill/shared/rules/create-issue.md'), 'utf8');
+    assert.match(shared, /user-story\.md/);
+    assert.match(shared, /aitm-verified vc-list="vc:N"/);
+    assert.doesNotMatch(shared, /Acceptance Criterion[\s\S]{0,160}aitm-verified cmd=/);
+
+    for (const provider of ['codex', 'claude', 'grok']) {
+      const adapter = readFileSync(
+        path.join(REPO_ROOT, `skill/adapters/${provider}/SKILL.md`),
+        'utf8'
+      );
+      assert.match(adapter, /user-story\.md/, provider);
+      assert.match(adapter, /aitm-verified vc-list="vc:N"/, provider);
+      assert.doesNotMatch(adapter, /Acceptance Criterion[\s\S]{0,160}aitm-verified cmd=/);
+    }
+  });
+
+  test('pickup, review, and workflow guidance expose only the current AC citation contract', () => {
+    const currentContractSurfaces = [
+      'templates/pickup-directive.md',
+      'templates/references/deep-dive-procedure.md',
+      'templates/references/pickup-directive-rationale.md',
+      'templates/references/status-reporting.md',
+      'skill/shared/rules/bind.md',
+      'skill/shared/rules/review.md',
+      'docs/guides/workflow.md',
+    ];
+
+    for (const relativePath of currentContractSurfaces) {
+      const contents = readFileSync(path.join(REPO_ROOT, relativePath), 'utf8');
+      assert.match(contents, /aitm-verified vc-list="vc:(?:N|\d+)"/, relativePath);
+      assert.doesNotMatch(contents, /aitm-verified-by/, relativePath);
+      assert.doesNotMatch(
+        contents,
+        /Acceptance Criterion[\s\S]{0,200}aitm-verified cmd=/,
+        relativePath
+      );
+    }
+
+    for (const relativePath of [
+      'skill/shared/rules/plan-mode-backlog.md',
+      'docs/guides/cloud-development-environments.md',
+      'docs/guides/ai-value-framework.md',
+      'docs/guides/workflow.md',
+    ]) {
+      const contents = readFileSync(path.join(REPO_ROOT, relativePath), 'utf8');
+      assert.match(contents, /--user-story-file/, relativePath);
     }
   });
 });

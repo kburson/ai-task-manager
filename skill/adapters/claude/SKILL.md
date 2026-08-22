@@ -35,7 +35,7 @@ Run from the project root, or set `AI_TASK_MANAGER_PROJECT_DIR` first.
 
 ## Creating issues
 
-Make issues only through `scripts/gh/create-issue.mjs --shape stub|epic|sub-issue|solo|defect` — never `gh issue create`. The shape menu, required `./.tmp/plan/` fragments, the deterministic refusal contracts (`assignee-required`, `priority-required-at-groom`), binding each Acceptance Criterion to an `aitm-verified cmd="…"` marker listed under `### Verification Commands`, and the never-promote-a-"suggested task"-chip rule all live in `rules/create-issue.md` (loads JIT on `/task new`).
+Make issues only through `scripts/gh/create-issue.mjs --shape stub|epic|sub-issue|solo|defect` — never `gh issue create`. The shape menu, required `./.tmp/plan/` fragments (including `user-story.md` for non-stub shapes), the deterministic refusal contracts (`assignee-required`, `priority-required-at-groom`), binding each Acceptance Criterion to an `aitm-verified vc-list="vc:N"` marker that cites the root `## Verification Commands`, and the never-promote-a-"suggested task"-chip rule all live in `rules/create-issue.md` (loads JIT on `/task new`).
 
 ## Review & approve details
 
