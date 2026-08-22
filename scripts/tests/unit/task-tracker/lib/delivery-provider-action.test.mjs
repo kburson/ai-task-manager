@@ -383,8 +383,8 @@ test('provider action preserves the exact authorized intent bytes', () => {
   );
 });
 
-test('provider action accepts every merge method authorized by configuration', () => {
-  for (const mergeMethod of ['merge', 'squash', 'rebase']) {
+test('provider action accepts every delivery-verifiable merge method authorized by configuration', () => {
+  for (const mergeMethod of ['merge', 'squash']) {
     const input = snapshot();
     input.config.fullAutoMerge.mergeMethod = mergeMethod;
     const preflight = validateDeliveryPreflight(input);
@@ -408,6 +408,13 @@ test('provider action accepts every merge method authorized by configuration', (
 
     assert.equal(buildProviderAction(intent).mergeMethod, mergeMethod);
   }
+});
+
+test('delivery preflight refuses configured rebase before an action can be authorized', () => {
+  const input = snapshot();
+  input.config.fullAutoMerge.mergeMethod = 'rebase';
+
+  expectPreflightCategory(input, 'merge-method-unverifiable');
 });
 
 test('provider action emission re-hashes intent text and rejects recovered drift', () => {

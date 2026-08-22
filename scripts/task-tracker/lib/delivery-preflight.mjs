@@ -160,6 +160,7 @@ function validateConfiguration(config) {
   if (!config.repositoryMergeMethods.includes(resolved.mergeMethod)) {
     fail('merge-method-not-allowed');
   }
+  if (resolved.mergeMethod === 'rebase') fail('merge-method-unverifiable');
   return resolved;
 }
 

@@ -226,15 +226,17 @@ function validateIntent(intent) {
   ) {
     throw deliveryError('commit-hash-mismatch');
   }
-  if (!intent.commitTitle.startsWith(`[#${intent.issueNumber}]`)) {
-    throw deliveryError('commit-title-attribution');
-  }
-  if (
-    !intent.commitMessage.includes(`PR #${intent.prNumber}`) ||
-    !intent.commitMessage.includes(intent.expectedHeadSha) ||
-    intent.attributionTokens.some((token) => !intent.commitMessage.includes(`[${token}]`))
-  ) {
-    throw deliveryError('commit-message-correlation');
+  if (intent.provider !== 'external') {
+    if (!intent.commitTitle.startsWith(`[#${intent.issueNumber}]`)) {
+      throw deliveryError('commit-title-attribution');
+    }
+    if (
+      !intent.commitMessage.includes(`PR #${intent.prNumber}`) ||
+      !intent.commitMessage.includes(intent.expectedHeadSha) ||
+      intent.attributionTokens.some((token) => !intent.commitMessage.includes(`[${token}]`))
+    ) {
+      throw deliveryError('commit-message-correlation');
+    }
   }
   assertBoundedString(intent.provider, MAX_FIELD_BYTES, 'provider');
   assertBoundedString(intent.sessionId, MAX_FIELD_BYTES, 'session-id');

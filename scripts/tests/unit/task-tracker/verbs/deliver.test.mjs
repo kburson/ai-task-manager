@@ -3,6 +3,7 @@
 // cspell:ignore NDEKTSV RRFFQ
 
 import { strict as assert } from 'node:assert';
+import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
 
@@ -213,8 +214,16 @@ function makeHarness(options = {}) {
         .map(({ body }) => body.match(/^<!-- aitm-delivery-intent (.+) -->/))
         .find(Boolean);
       const parsed = intent === undefined ? null : JSON.parse(intent[1]);
-      const commitTitle = parsed?.commitTitle ?? authorizedCommitTitle;
-      const commitMessage = parsed?.commitMessage ?? authorizedCommitMessage;
+      const commitTitle =
+        options.historyCommitTitle ??
+        parsed?.commitTitle ??
+        authorizedCommitTitle ??
+        '[#939] Governed PR delivery';
+      const commitMessage =
+        options.historyCommitMessage ??
+        parsed?.commitMessage ??
+        authorizedCommitMessage ??
+        `PR #1400\nSource: ${HEAD}\n\nAttribution: [#939]`;
       if (options.historyBytesMismatch) {
         return { parents: ['d'.repeat(40)], commitTitle, commitMessage: 'wrong bytes' };
       }
@@ -321,6 +330,42 @@ test('first open-PR call posts one exact intent before emitting one action and e
   assert.equal(posted, renderDeliveryIntentComment(parsedIntent));
   assert.equal(output, serializeProviderActionRequired((await deliver(makeHarness())).action));
   assert.equal(exitCode, 20);
+});
+
+test('configured rebase refuses before durable intent or provider action output', async () => {
+  const harness = makeHarness();
+  const rebaseCfg = cfg();
+  rebaseCfg.fullAutoMerge.mergeMethod = 'rebase';
+  let exitCode = null;
+  let output = '';
+
+  await assert.rejects(
+    () =>
+      verbDeliver(
+        {
+          rest: ['#939'],
+          cfg: rebaseCfg,
+          statePath: '/injected/state.json',
+        },
+        {
+          loadTrackerState: () => trackerState(),
+          deliverDeps: harness.deps,
+          writeOutput(line) {
+            output = line;
+          },
+          setExitCode(code) {
+            exitCode = code;
+          },
+        }
+      ),
+    /delivery-preflight:merge-method-unverifiable/
+  );
+
+  assert.equal(harness.calls.createIssueComment, 0);
+  assert.equal(harness.data.comments.length, 0);
+  assert.equal(harness.calls.fetchOriginTrunk, 0);
+  assert.equal(output, '');
+  assert.equal(exitCode, null);
 });
 
 test('lost POST response reconciles the server-visible dedupe key without posting again', async () => {
@@ -449,6 +494,15 @@ test('merged verification rejects an indistinguishable live-history merge method
   const harness = makeHarness({ prMergeMethod: null, historyMergeMethod: 'unknown' });
   await mergePendingIntent(harness);
   await assert.rejects(() => deliver(harness), /delivery-verification:merge-method-unknown/);
+  assert.equal(harness.calls.createIssueComment, 1);
+});
+
+test('ordinary delivery still requires live merge bytes to equal the prior authorization', async () => {
+  const harness = makeHarness({ historyBytesMismatch: true });
+  await mergePendingIntent(harness);
+
+  await assert.rejects(() => deliver(harness), /delivery-verification:merge-commit-bytes/);
+
   assert.equal(harness.calls.createIssueComment, 1);
 });
 
@@ -592,6 +646,52 @@ test('already-merged external recovery appends an external intent and receipt wi
     ['intent:post', 'receipt:post']
   );
 });
+
+test('external recovery records observed merge bytes instead of synthesizing provider bytes', async () => {
+  const historyCommitTitle = 'Merge pull request #1400 from codex/939-full-auto-merge';
+  const historyCommitMessage = 'GitHub default merge message for the historical pull request.';
+  const harness = makeHarness({
+    prState: 'MERGED',
+    historyCommitTitle,
+    historyCommitMessage,
+  });
+
+  const result = await deliver(harness);
+
+  assert.equal(result.status, 'delivered');
+  assert.equal(result.recovery, true);
+  assert.equal(result.intent.provider, 'external');
+  assert.equal(result.intent.commitTitle, historyCommitTitle);
+  assert.equal(result.intent.commitMessage, historyCommitMessage);
+  assert.equal(
+    result.intent.commitTitleSha256,
+    createHash('sha256').update(historyCommitTitle).digest('hex')
+  );
+  assert.equal(
+    result.intent.commitMessageSha256,
+    createHash('sha256').update(historyCommitMessage).digest('hex')
+  );
+  const repeated = await deliver(harness);
+  assert.equal(repeated.status, 'already-delivered');
+  assert.equal(repeated.intent.commitTitle, historyCommitTitle);
+  assert.equal(repeated.intent.commitMessage, historyCommitMessage);
+  assert.equal(harness.calls.createIssueComment, 2);
+});
+
+for (const [label, observedBytes] of [
+  ['empty-title', { historyCommitTitle: '' }],
+  ['control-character-title', { historyCommitTitle: 'invalid\u0000title' }],
+  ['control-character-message', { historyCommitMessage: 'invalid\u0000message' }],
+]) {
+  test(`external recovery refuses ${label} observed commit bytes before writing`, async () => {
+    const harness = makeHarness({ prState: 'MERGED', ...observedBytes });
+
+    await assert.rejects(() => deliver(harness), /delivery-records:commit-(?:title|message)/);
+
+    assert.equal(harness.calls.createIssueComment, 0);
+    assert.equal(harness.data.comments.length, 0);
+  });
+}
 
 test('failed first external recovery writes nothing and a corrected retry succeeds', async () => {
   const harness = makeHarness({ prState: 'MERGED', fetchFailure: true });

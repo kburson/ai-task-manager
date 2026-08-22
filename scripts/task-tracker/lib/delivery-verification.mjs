@@ -4,6 +4,7 @@
 import { createHash } from 'node:crypto';
 
 import { validateProviderAction } from './delivery-provider-action.mjs';
+import { buildDeliveryIntent } from './delivery-records.mjs';
 
 const SHA_RE = /^[0-9a-f]{40}$/;
 const HASH_RE = /^[0-9a-f]{64}$/;
@@ -21,6 +22,24 @@ const VERIFICATION_INPUT_KEYS = [
   'pullRequest',
   'recovery',
   'testReceiptSha',
+];
+const EXTERNAL_VERIFICATION_INPUT_KEYS = VERIFICATION_INPUT_KEYS.filter(
+  (key) => !['intent', 'intentCreatedAt', 'recovery'].includes(key)
+).concat('intentInput');
+const EXTERNAL_INTENT_INPUT_KEYS = [
+  'attributionTokens',
+  'baseRef',
+  'clientCreatedAt',
+  'expectedHeadSha',
+  'headRef',
+  'intentId',
+  'issueNumber',
+  'mergeMethod',
+  'prNumber',
+  'provider',
+  'repository',
+  'sessionId',
+  'supersedesIntentId',
 ];
 const EVIDENCE_INPUT_KEYS = [
   'branchDisposition',
@@ -88,10 +107,10 @@ function sha256(value) {
   return createHash('sha256').update(value).digest('hex');
 }
 
-function assertAuthorityShas(input) {
+function assertAuthorityShas(input, intent) {
   const authorities = [
     input.pullRequest?.headRefOid,
-    input.intent?.expectedHeadSha,
+    intent?.expectedHeadSha,
     input.localHeadSha,
     input.testReceiptSha,
     input.acceptedReviewSha,
@@ -130,7 +149,7 @@ function assertMergedPullRequest(pullRequest, intent) {
   return { mergeCommitSha: sha, mergedAt: pullRequest.mergedAt };
 }
 
-function classifyMergeMethod(inspection, intent, mergeSha) {
+function classifyMergeMethod(inspection, expectedHeadSha, mergeSha) {
   if (
     !hasExactKeys(inspection, ['commitMessage', 'commitTitle', 'parents']) ||
     !Array.isArray(inspection.parents) ||
@@ -140,34 +159,29 @@ function classifyMergeMethod(inspection, intent, mergeSha) {
   ) {
     throw verificationError('merge-method-evidence');
   }
-  if (
-    inspection.commitTitle !== intent.commitTitle ||
-    inspection.commitMessage !== intent.commitMessage
-  ) {
-    throw verificationError('merge-commit-bytes');
-  }
-  if (inspection.parents.length === 2 && inspection.parents[1] === intent.expectedHeadSha) {
+  if (inspection.parents.length === 2 && inspection.parents[1] === expectedHeadSha) {
     return 'merge';
   }
-  if (inspection.parents.length === 1 && mergeSha !== intent.expectedHeadSha) return 'squash';
+  if (inspection.parents.length === 1 && mergeSha !== expectedHeadSha) return 'squash';
   return 'unknown';
 }
 
-export async function verifyDeliveredPullRequest(input = {}) {
-  if (!hasExactKeys(input, VERIFICATION_INPUT_KEYS)) throw verificationError('input-keys');
+function assertVerificationFunctions(input) {
   if (
     typeof input.fetchOriginTrunk !== 'function' ||
     typeof input.isAncestor !== 'function' ||
     typeof input.inspectMergeCommit !== 'function' ||
-    typeof input.attributingCommits !== 'function' ||
-    typeof input.recovery !== 'boolean'
+    typeof input.attributingCommits !== 'function'
   ) {
     throw verificationError('input');
   }
-  assertAuthorityShas(input);
-  const { intent, pullRequest } = input;
+}
+
+async function verifyLiveDelivery(input, intent, { requireAuthorizedBytes, recovery }) {
+  assertAuthorityShas(input, intent);
+  const { pullRequest } = input;
   const merged = assertMergedPullRequest(pullRequest, intent);
-  if (!input.recovery) {
+  if (!recovery) {
     if (!isCanonicalInstant(input.intentCreatedAt)) throw verificationError('intent-created-at');
     if (Date.parse(merged.mergedAt) < Date.parse(input.intentCreatedAt)) {
       throw verificationError('merge-before-intent');
@@ -196,21 +210,44 @@ export async function verifyDeliveredPullRequest(input = {}) {
     inspection = await input.inspectMergeCommit({
       mergeCommitSha: merged.mergeCommitSha,
       expectedHeadSha: intent.expectedHeadSha,
-      authorizedCommitTitle: intent.commitTitle,
-      authorizedCommitMessage: intent.commitMessage,
+      ...(requireAuthorizedBytes
+        ? {
+            authorizedCommitTitle: intent.commitTitle,
+            authorizedCommitMessage: intent.commitMessage,
+          }
+        : {}),
     });
   } catch (error) {
     throw verificationError('merge-method-evidence', error);
   }
-  const observedMergeMethod = classifyMergeMethod(inspection, intent, merged.mergeCommitSha);
+  const observedMergeMethod = classifyMergeMethod(
+    inspection,
+    intent.expectedHeadSha,
+    merged.mergeCommitSha
+  );
   if (observedMergeMethod === 'unknown') throw verificationError('merge-method-unknown');
   if (observedMergeMethod !== intent.mergeMethod) throw verificationError('merge-method');
+  if (
+    requireAuthorizedBytes &&
+    (inspection.commitTitle !== intent.commitTitle ||
+      inspection.commitMessage !== intent.commitMessage)
+  ) {
+    throw verificationError('merge-commit-bytes');
+  }
+
+  const verifiedIntent = requireAuthorizedBytes
+    ? intent
+    : buildDeliveryIntent({
+        ...intent,
+        commitTitle: inspection.commitTitle,
+        commitMessage: inspection.commitMessage,
+      });
 
   if (typeof pullRequest.headRefDeleted !== 'boolean') {
     throw verificationError('branch-disposition');
   }
 
-  for (const token of intent.attributionTokens ?? []) {
+  for (const token of verifiedIntent.attributionTokens ?? []) {
     const issueNumber = Number(String(token).replace(/^#/, ''));
     let commits;
     try {
@@ -224,21 +261,50 @@ export async function verifyDeliveredPullRequest(input = {}) {
   }
 
   return deepFreeze({
+    intent: verifiedIntent,
     receiptInput: {
-      intentId: intent.intentId,
-      issueNumber: intent.issueNumber,
-      prNumber: intent.prNumber,
-      expectedHeadSha: intent.expectedHeadSha,
+      intentId: verifiedIntent.intentId,
+      issueNumber: verifiedIntent.issueNumber,
+      prNumber: verifiedIntent.prNumber,
+      expectedHeadSha: verifiedIntent.expectedHeadSha,
       mergeCommitSha: merged.mergeCommitSha,
-      baseRef: intent.baseRef,
-      mergeMethod: intent.mergeMethod,
+      baseRef: verifiedIntent.baseRef,
+      mergeMethod: verifiedIntent.mergeMethod,
       verifiedTrunkRef,
-      provider: intent.provider,
-      sessionId: intent.sessionId,
+      provider: verifiedIntent.provider,
+      sessionId: verifiedIntent.sessionId,
       verifiedAt: merged.mergedAt,
     },
-    recovery: input.recovery,
+    recovery,
     branchDisposition: pullRequest.headRefDeleted ? 'deleted' : 'retained',
+  });
+}
+
+export async function verifyDeliveredPullRequest(input = {}) {
+  if (!hasExactKeys(input, VERIFICATION_INPUT_KEYS)) throw verificationError('input-keys');
+  assertVerificationFunctions(input);
+  if (typeof input.recovery !== 'boolean') throw verificationError('input');
+  return verifyLiveDelivery(input, input.intent, {
+    requireAuthorizedBytes: true,
+    recovery: input.recovery,
+  });
+}
+
+export async function verifyExternalDeliveredPullRequest(input = {}) {
+  if (!hasExactKeys(input, EXTERNAL_VERIFICATION_INPUT_KEYS)) {
+    throw verificationError('input-keys');
+  }
+  assertVerificationFunctions(input);
+  if (
+    !hasExactKeys(input.intentInput, EXTERNAL_INTENT_INPUT_KEYS) ||
+    input.intentInput.provider !== 'external' ||
+    input.intentInput.supersedesIntentId !== null
+  ) {
+    throw verificationError('input');
+  }
+  return verifyLiveDelivery(input, input.intentInput, {
+    requireAuthorizedBytes: false,
+    recovery: true,
   });
 }
 

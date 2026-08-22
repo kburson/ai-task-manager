@@ -30,7 +30,10 @@ import {
   buildProviderAction,
   serializeProviderActionRequired,
 } from '../lib/delivery-provider-action.mjs';
-import { verifyDeliveredPullRequest } from '../lib/delivery-verification.mjs';
+import {
+  verifyDeliveredPullRequest,
+  verifyExternalDeliveredPullRequest,
+} from '../lib/delivery-verification.mjs';
 import { attributingCommits as defaultAttributingCommits } from '../lib/commit-attribution.mjs';
 
 const pexec = promisify(execFile);
@@ -110,6 +113,8 @@ function buildIntentFromPreflight({
   provider,
   sessionId,
   clientCreatedAt,
+  commitTitle = preflight.commitText.commitTitle,
+  commitMessage = preflight.commitText.commitMessage,
 }) {
   return buildDeliveryIntent({
     intentId,
@@ -122,12 +127,30 @@ function buildIntentFromPreflight({
     expectedHeadSha: preflight.expectedHeadSha,
     mergeMethod: preflight.mergeMethod,
     attributionTokens: preflight.commitText.attributionTokens,
-    commitTitle: preflight.commitText.commitTitle,
-    commitMessage: preflight.commitText.commitMessage,
+    commitTitle,
+    commitMessage,
     provider,
     sessionId,
     clientCreatedAt,
   });
+}
+
+function buildExternalIntentInput({ preflight, cfg, intentId, sessionId, clientCreatedAt }) {
+  return {
+    intentId,
+    supersedesIntentId: null,
+    issueNumber: preflight.issue.number,
+    repository: cfg.repo,
+    prNumber: preflight.pr.number,
+    baseRef: preflight.pr.baseRefName,
+    headRef: preflight.pr.headRefName,
+    expectedHeadSha: preflight.expectedHeadSha,
+    mergeMethod: preflight.mergeMethod,
+    attributionTokens: preflight.commitText.attributionTokens,
+    provider: 'external',
+    sessionId,
+    clientCreatedAt,
+  };
 }
 
 async function readProjection({ deps, issueNumber, context }) {
@@ -391,6 +414,12 @@ export async function runDeliver({ issueNumber, cfg, state, deps = {} } = {}) {
         provider: liveIntent.record.provider,
         sessionId: liveIntent.record.sessionId,
         clientCreatedAt: liveIntent.record.clientCreatedAt,
+        ...(recovery
+          ? {
+              commitTitle: liveIntent.record.commitTitle,
+              commitMessage: liveIntent.record.commitMessage,
+            }
+          : {}),
       });
       if (authorizedIntentBytes(expected) !== authorizedIntentBytes(liveIntent.record)) {
         throw deliverError('intent-divergence');
@@ -398,20 +427,15 @@ export async function runDeliver({ issueNumber, cfg, state, deps = {} } = {}) {
     }
     if (liveIntent === null) {
       recovery = true;
-      const recoveryIntent = buildIntentFromPreflight({
-        preflight,
-        cfg,
-        intentId: createIntentId(),
-        supersedesIntentId: null,
-        provider: 'external',
-        sessionId: sessionId(),
-        clientCreatedAt: pullRequests[0].mergedAt,
-      });
-      const verified = await verifyDeliveredPullRequest({
-        intent: recoveryIntent,
-        intentCreatedAt: pullRequests[0].mergedAt,
+      const verified = await verifyExternalDeliveredPullRequest({
+        intentInput: buildExternalIntentInput({
+          preflight,
+          cfg,
+          intentId: createIntentId(),
+          sessionId: sessionId(),
+          clientCreatedAt: pullRequests[0].mergedAt,
+        }),
         pullRequest: pullRequests[0],
-        recovery: true,
         localHeadSha,
         testReceiptSha,
         acceptedReviewSha,
@@ -420,6 +444,7 @@ export async function runDeliver({ issueNumber, cfg, state, deps = {} } = {}) {
         inspectMergeCommit: requiredDependency(deps, 'inspectMergeCommit'),
         attributingCommits: requiredDependency(deps, 'attributingCommits'),
       });
+      const recoveryIntent = verified.intent;
       liveIntent = await appendIntent({
         deps,
         issueNumber,

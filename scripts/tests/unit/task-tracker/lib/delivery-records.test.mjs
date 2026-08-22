@@ -160,6 +160,26 @@ test('builders produce exact versioned schemas, hashes, and deeply frozen values
   assertDeepFrozen(receipt);
 });
 
+test('external recovery intent retains strict observed history bytes without provider correlation', () => {
+  const commitTitle = 'Merge pull request #1400 from codex/939-full-auto-merge';
+  const commitMessage = 'GitHub default merge message for the historical pull request.';
+  const intent = buildDeliveryIntent(
+    intentInput({ provider: 'external', commitTitle, commitMessage })
+  );
+
+  assert.equal(intent.commitTitle, commitTitle);
+  assert.equal(intent.commitMessage, commitMessage);
+  assert.equal(intent.commitTitleSha256, createHash('sha256').update(commitTitle).digest('hex'));
+  assert.equal(
+    intent.commitMessageSha256,
+    createHash('sha256').update(commitMessage).digest('hex')
+  );
+  assert.throws(
+    () => buildDeliveryIntent(intentInput({ commitTitle, commitMessage })),
+    /delivery-records:commit-title-attribution/
+  );
+});
+
 test('intent and receipt records round trip every supported merge method', () => {
   for (const mergeMethod of ['merge', 'squash', 'rebase']) {
     const intent = buildDeliveryIntent(intentInput({ mergeMethod }));
