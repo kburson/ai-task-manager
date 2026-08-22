@@ -22,7 +22,10 @@ import {
   renderDeliveryIntentComment,
   renderDeliveryReceiptComment,
 } from '../lib/delivery-records.mjs';
-import { validateDeliveryPreflight } from '../lib/delivery-preflight.mjs';
+import {
+  validateDeliveryPreflight,
+  validateMergedDeliveryPreflight,
+} from '../lib/delivery-preflight.mjs';
 import {
   buildProviderAction,
   serializeProviderActionRequired,
@@ -199,16 +202,26 @@ async function verifyAndFinalize({
   matchingReceipt,
   pullRequest,
   recovery,
+  localHeadSha,
+  testReceiptSha,
+  acceptedReviewSha,
+  verified,
 }) {
-  const verification = await verifyDeliveredPullRequest({
-    intent: liveIntent.record,
-    intentCreatedAt: liveIntent.createdAt,
-    pullRequest,
-    recovery,
-    fetchOriginTrunk: requiredDependency(deps, 'fetchOriginTrunk'),
-    isAncestor: requiredDependency(deps, 'isAncestor'),
-    attributingCommits: requiredDependency(deps, 'attributingCommits'),
-  });
+  const verification =
+    verified ??
+    (await verifyDeliveredPullRequest({
+      intent: liveIntent.record,
+      intentCreatedAt: liveIntent.createdAt,
+      pullRequest,
+      recovery,
+      localHeadSha,
+      testReceiptSha,
+      acceptedReviewSha,
+      fetchOriginTrunk: requiredDependency(deps, 'fetchOriginTrunk'),
+      isAncestor: requiredDependency(deps, 'isAncestor'),
+      inspectMergeCommit: requiredDependency(deps, 'inspectMergeCommit'),
+      attributingCommits: requiredDependency(deps, 'attributingCommits'),
+    }));
   const receipt = buildDeliveryReceipt(verification.receiptInput);
   if (matchingReceipt !== null) {
     if (canonicalRecordJson(matchingReceipt.record) !== canonicalRecordJson(receipt)) {
@@ -313,6 +326,7 @@ export async function runDeliver({ issueNumber, cfg, state, deps = {} } = {}) {
       fetchPullRequest({ repository: cfg.repo, prNumber: Number(number) })
     )
   );
+  const mergedPullRequest = pullRequests.length === 1 && pullRequestMerged(pullRequests[0]);
   const prNumber = pullRequests.length === 1 ? pullRequests[0].number : null;
   const checks =
     prNumber === null
@@ -322,12 +336,15 @@ export async function runDeliver({ issueNumber, cfg, state, deps = {} } = {}) {
           prNumber,
           expectedHeadSha: localHeadSha,
         });
+  const commitSubjectsPromise = mergedPullRequest
+    ? Promise.resolve(pullRequests[0].sourceCommitSubjects)
+    : listCommitSubjects({ range: 'origin/trunk..HEAD' });
   const [testReceiptSha, acceptedReviewSha, repositoryMergeMethods, commitSubjects, dirtyPaths] =
     await Promise.all([
       resolveTestReceiptSha({ issue, issueNumber, expectedHeadSha: localHeadSha }),
       resolveAcceptedReviewSha({ issue, issueNumber, expectedHeadSha: localHeadSha }),
       fetchRepositoryMergeMethods({ repository: cfg.repo }),
-      listCommitSubjects({ range: 'origin/trunk..HEAD' }),
+      commitSubjectsPromise,
       listDirtyPaths({ issueNumber }),
     ]);
   const assignee =
@@ -352,20 +369,8 @@ export async function runDeliver({ issueNumber, cfg, state, deps = {} } = {}) {
     config: deliveryConfig,
     commitSubjects,
   };
-  const mergedPullRequest = pullRequests.length === 1 && pullRequestMerged(pullRequests[0]);
   const preflight = mergedPullRequest
-    ? validateDeliveryPreflight({
-        ...preflightInput,
-        pullRequests: [
-          {
-            ...pullRequests[0],
-            state: 'OPEN',
-            isDraft: false,
-            mergeable: 'MERGEABLE',
-            headRefOid: localHeadSha,
-          },
-        ],
-      })
+    ? validateMergedDeliveryPreflight(preflightInput)
     : validateDeliveryPreflight(preflightInput);
   const context = {
     repository: cfg.repo,
@@ -377,6 +382,20 @@ export async function runDeliver({ issueNumber, cfg, state, deps = {} } = {}) {
   if (mergedPullRequest) {
     let liveIntent = live;
     let recovery = liveIntent?.record.provider === 'external';
+    if (liveIntent !== null) {
+      const expected = buildIntentFromPreflight({
+        preflight,
+        cfg,
+        intentId: liveIntent.record.intentId,
+        supersedesIntentId: liveIntent.record.supersedesIntentId,
+        provider: liveIntent.record.provider,
+        sessionId: liveIntent.record.sessionId,
+        clientCreatedAt: liveIntent.record.clientCreatedAt,
+      });
+      if (authorizedIntentBytes(expected) !== authorizedIntentBytes(liveIntent.record)) {
+        throw deliverError('intent-divergence');
+      }
+    }
     if (liveIntent === null) {
       recovery = true;
       const recoveryIntent = buildIntentFromPreflight({
@@ -388,12 +407,39 @@ export async function runDeliver({ issueNumber, cfg, state, deps = {} } = {}) {
         sessionId: sessionId(),
         clientCreatedAt: pullRequests[0].mergedAt,
       });
+      const verified = await verifyDeliveredPullRequest({
+        intent: recoveryIntent,
+        intentCreatedAt: pullRequests[0].mergedAt,
+        pullRequest: pullRequests[0],
+        recovery: true,
+        localHeadSha,
+        testReceiptSha,
+        acceptedReviewSha,
+        fetchOriginTrunk: requiredDependency(deps, 'fetchOriginTrunk'),
+        isAncestor: requiredDependency(deps, 'isAncestor'),
+        inspectMergeCommit: requiredDependency(deps, 'inspectMergeCommit'),
+        attributingCommits: requiredDependency(deps, 'attributingCommits'),
+      });
       liveIntent = await appendIntent({
         deps,
         issueNumber,
         repository: cfg.repo,
         context,
         intent: recoveryIntent,
+      });
+      return verifyAndFinalize({
+        deps,
+        issueNumber,
+        repository: cfg.repo,
+        context,
+        liveIntent,
+        matchingReceipt: null,
+        pullRequest: pullRequests[0],
+        recovery,
+        localHeadSha,
+        testReceiptSha,
+        acceptedReviewSha,
+        verified,
       });
     }
     return verifyAndFinalize({
@@ -405,6 +451,9 @@ export async function runDeliver({ issueNumber, cfg, state, deps = {} } = {}) {
       matchingReceipt: initial.projection.matchingReceipt,
       pullRequest: pullRequests[0],
       recovery,
+      localHeadSha,
+      testReceiptSha,
+      acceptedReviewSha,
     });
   }
   if (initial.projection.matchingReceipt !== null) {
@@ -579,12 +628,15 @@ export function createDefaultDeliverDeps(ctx, { exec = pexec } = {}) {
         '-R',
         ctx.cfg.repo,
         '--json',
-        'number,state,isDraft,baseRefName,headRefName,headRefOid,headRepository,headRepositoryOwner,mergeable,mergedAt,mergeCommit,statusCheckRollup',
+        'number,state,isDraft,baseRefName,headRefName,headRefOid,headRepository,headRepositoryOwner,mergeable,mergedAt,mergeCommit,statusCheckRollup,commits',
       ]);
       prRollups.set(Number(prNumber), pr.statusCheckRollup);
       delete pr.statusCheckRollup;
+      pr.sourceCommitSubjects = Array.isArray(pr.commits)
+        ? pr.commits.map(({ messageHeadline }) => messageHeadline)
+        : null;
+      delete pr.commits;
       pr.merged = String(pr.state || '').toUpperCase() === 'MERGED';
-      pr.mergeMethod = null;
       pr.headRefDeleted = false;
       if (pr.merged && typeof pr.headRefName === 'string' && pr.headRefName.length > 0) {
         const headOwner = pr.headRepositoryOwner?.login || owner;
@@ -658,6 +710,24 @@ export function createDefaultDeliverDeps(ctx, { exec = pexec } = {}) {
         if (error?.code === 1) return false;
         throw error;
       }
+    },
+    async inspectMergeCommit({ mergeCommitSha }) {
+      const { stdout } = await run('git', ['cat-file', 'commit', mergeCommitSha]);
+      const raw = String(stdout || '');
+      const separator = raw.indexOf('\n\n');
+      if (separator < 0) throw deliverError('merge-commit-object');
+      const headers = raw.slice(0, separator).split('\n');
+      const message = raw.slice(separator + 2).replace(/\n$/, '');
+      const [commitTitle, ...bodyLines] = message.split('\n');
+      const commitMessage =
+        bodyLines[0] === '' ? bodyLines.slice(1).join('\n') : bodyLines.join('\n');
+      return {
+        parents: headers
+          .filter((line) => line.startsWith('parent '))
+          .map((line) => line.slice('parent '.length)),
+        commitTitle,
+        commitMessage,
+      };
     },
     async attributingCommits(issueNumber, options) {
       return defaultAttributingCommits(issueNumber, { cwd: ctx.projectDir, ...options });

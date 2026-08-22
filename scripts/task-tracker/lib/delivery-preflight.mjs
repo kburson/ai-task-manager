@@ -95,11 +95,17 @@ function validateLineage(lineage, baseRef) {
   }
 }
 
-function validatePullRequest(pullRequests, binding, baseRef) {
+function validatePullRequest(pullRequests, binding, baseRef, { merged = false } = {}) {
   if (!Array.isArray(pullRequests) || pullRequests.length !== 1) fail('pull-request-count');
   const pr = pullRequests[0];
   if (!isPlainObject(pr) || !isPositiveInteger(pr.number)) fail('pull-request-count');
-  if (pr.state !== 'OPEN') fail('pull-request-not-open');
+  if (merged) {
+    if (pr.merged !== true && String(pr.state || '').toUpperCase() !== 'MERGED') {
+      fail('pull-request-not-merged');
+    }
+  } else if (pr.state !== 'OPEN') {
+    fail('pull-request-not-open');
+  }
   if (pr.isDraft !== false) fail('pull-request-draft');
   if (pr.baseRefName !== baseRef) fail('pull-request-base');
   if (pr.headRefName !== binding.branch) fail('pull-request-head');
@@ -157,12 +163,12 @@ function validateConfiguration(config) {
   return resolved;
 }
 
-export function validateDeliveryPreflight(input = {}) {
+function validatePreflight(input, { merged = false } = {}) {
   if (!hasExactKeys(input, INPUT_KEYS)) fail('input');
   validateIssueAndBinding(input.issue, input.binding, input.config);
   const baseRef = trunkBaseRef(input.config);
   validateLineage(input.lineage, baseRef);
-  const pr = validatePullRequest(input.pullRequests, input.binding, baseRef);
+  const pr = validatePullRequest(input.pullRequests, input.binding, baseRef, { merged });
   validateExactHead({
     localHeadSha: input.localHeadSha,
     remoteHeadSha: pr.headRefOid,
@@ -170,7 +176,7 @@ export function validateDeliveryPreflight(input = {}) {
     acceptedReviewSha: input.acceptedReviewSha,
   });
   if (!Array.isArray(input.dirtyPaths) || input.dirtyPaths.length > 0) fail('dirty-overlap');
-  if (pr.mergeable !== 'MERGEABLE') fail('mergeability');
+  if (!merged && pr.mergeable !== 'MERGEABLE') fail('mergeability');
   validateChecks(input.checks, input.localHeadSha);
   const resolved = validateConfiguration(input.config);
 
@@ -194,4 +200,12 @@ export function validateDeliveryPreflight(input = {}) {
     mergeMethod: resolved.mergeMethod,
     commitText,
   });
+}
+
+export function validateDeliveryPreflight(input = {}) {
+  return validatePreflight(input);
+}
+
+export function validateMergedDeliveryPreflight(input = {}) {
+  return validatePreflight(input, { merged: true });
 }

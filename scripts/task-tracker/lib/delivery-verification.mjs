@@ -1,22 +1,37 @@
 // @story #939
 // Independent live verification for governed pull-request delivery.
 
+import { createHash } from 'node:crypto';
+
+import { validateProviderAction } from './delivery-provider-action.mjs';
+
 const SHA_RE = /^[0-9a-f]{40}$/;
+const HASH_RE = /^[0-9a-f]{64}$/;
 const REPOSITORY_RE = /^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/;
+const MERGE_METHODS = new Set(['merge', 'squash', 'rebase']);
 const VERIFICATION_INPUT_KEYS = [
+  'acceptedReviewSha',
   'attributingCommits',
   'fetchOriginTrunk',
+  'inspectMergeCommit',
   'intent',
   'intentCreatedAt',
   'isAncestor',
+  'localHeadSha',
   'pullRequest',
   'recovery',
+  'testReceiptSha',
 ];
 const EVIDENCE_INPUT_KEYS = [
   'branchDisposition',
   'ciRunUrl',
   'closeResult',
+  'commitMessage',
+  'commitMessageSha256',
+  'commitTitle',
+  'commitTitleSha256',
   'issueNumber',
+  'mergeMethod',
   'mergeSha',
   'prNumber',
   'providerAction',
@@ -69,6 +84,24 @@ function mergeCommitSha(pullRequest) {
   return null;
 }
 
+function sha256(value) {
+  return createHash('sha256').update(value).digest('hex');
+}
+
+function assertAuthorityShas(input) {
+  const authorities = [
+    input.pullRequest?.headRefOid,
+    input.intent?.expectedHeadSha,
+    input.localHeadSha,
+    input.testReceiptSha,
+    input.acceptedReviewSha,
+  ];
+  if (authorities.some((sha) => typeof sha !== 'string' || !SHA_RE.test(sha))) {
+    throw verificationError('authority-sha');
+  }
+  if (new Set(authorities).size !== 1) throw verificationError('authority-sha-mismatch');
+}
+
 function assertMergedPullRequest(pullRequest, intent) {
   if (!isPlainObject(pullRequest) || !isPlainObject(intent)) {
     throw verificationError('input');
@@ -97,16 +130,41 @@ function assertMergedPullRequest(pullRequest, intent) {
   return { mergeCommitSha: sha, mergedAt: pullRequest.mergedAt };
 }
 
+function classifyMergeMethod(inspection, intent, mergeSha) {
+  if (
+    !hasExactKeys(inspection, ['commitMessage', 'commitTitle', 'parents']) ||
+    !Array.isArray(inspection.parents) ||
+    inspection.parents.some((parent) => typeof parent !== 'string' || !SHA_RE.test(parent)) ||
+    typeof inspection.commitTitle !== 'string' ||
+    typeof inspection.commitMessage !== 'string'
+  ) {
+    throw verificationError('merge-method-evidence');
+  }
+  if (
+    inspection.commitTitle !== intent.commitTitle ||
+    inspection.commitMessage !== intent.commitMessage
+  ) {
+    throw verificationError('merge-commit-bytes');
+  }
+  if (inspection.parents.length === 2 && inspection.parents[1] === intent.expectedHeadSha) {
+    return 'merge';
+  }
+  if (inspection.parents.length === 1 && mergeSha !== intent.expectedHeadSha) return 'squash';
+  return 'unknown';
+}
+
 export async function verifyDeliveredPullRequest(input = {}) {
   if (!hasExactKeys(input, VERIFICATION_INPUT_KEYS)) throw verificationError('input-keys');
   if (
     typeof input.fetchOriginTrunk !== 'function' ||
     typeof input.isAncestor !== 'function' ||
+    typeof input.inspectMergeCommit !== 'function' ||
     typeof input.attributingCommits !== 'function' ||
     typeof input.recovery !== 'boolean'
   ) {
     throw verificationError('input');
   }
+  assertAuthorityShas(input);
   const { intent, pullRequest } = input;
   const merged = assertMergedPullRequest(pullRequest, intent);
   if (!input.recovery) {
@@ -132,6 +190,25 @@ export async function verifyDeliveredPullRequest(input = {}) {
     throw verificationError('trunk-reachability', error);
   }
   if (reachable !== true) throw verificationError('trunk-reachability');
+
+  let inspection;
+  try {
+    inspection = await input.inspectMergeCommit({
+      mergeCommitSha: merged.mergeCommitSha,
+      expectedHeadSha: intent.expectedHeadSha,
+      authorizedCommitTitle: intent.commitTitle,
+      authorizedCommitMessage: intent.commitMessage,
+    });
+  } catch (error) {
+    throw verificationError('merge-method-evidence', error);
+  }
+  const observedMergeMethod = classifyMergeMethod(inspection, intent, merged.mergeCommitSha);
+  if (observedMergeMethod === 'unknown') throw verificationError('merge-method-unknown');
+  if (observedMergeMethod !== intent.mergeMethod) throw verificationError('merge-method');
+
+  if (typeof pullRequest.headRefDeleted !== 'boolean') {
+    throw verificationError('branch-disposition');
+  }
 
   for (const token of intent.attributionTokens ?? []) {
     const issueNumber = Number(String(token).replace(/^#/, ''));
@@ -161,19 +238,8 @@ export async function verifyDeliveredPullRequest(input = {}) {
       verifiedAt: merged.mergedAt,
     },
     recovery: input.recovery,
-    branchDisposition: pullRequest.headRefDeleted === true ? 'deleted' : 'retained',
+    branchDisposition: pullRequest.headRefDeleted ? 'deleted' : 'retained',
   });
-}
-
-function validProviderAction(value) {
-  if (!isPlainObject(value) || Reflect.ownKeys(value).some((key) => typeof key !== 'string')) {
-    return false;
-  }
-  try {
-    return JSON.stringify(value) !== undefined && Object.keys(value).length > 0;
-  } catch {
-    return false;
-  }
 }
 
 function validHttpsUrl(value) {
@@ -196,7 +262,41 @@ export function buildDeliveryRealPrEvidence(input = {}) {
   }
   if (!SHA_RE.test(input.sourceSha)) throw evidenceError('source-sha');
   if (!SHA_RE.test(input.mergeSha)) throw evidenceError('merge-sha');
-  if (!validProviderAction(input.providerAction)) throw evidenceError('provider-action');
+  if (!MERGE_METHODS.has(input.mergeMethod)) throw evidenceError('merge-method');
+  if (typeof input.commitTitle !== 'string' || input.commitTitle.length === 0) {
+    throw evidenceError('commit-title');
+  }
+  if (typeof input.commitMessage !== 'string' || input.commitMessage.length === 0) {
+    throw evidenceError('commit-message');
+  }
+  if (
+    !HASH_RE.test(input.commitTitleSha256) ||
+    sha256(input.commitTitle) !== input.commitTitleSha256
+  ) {
+    throw evidenceError('commit-title-hash');
+  }
+  if (
+    !HASH_RE.test(input.commitMessageSha256) ||
+    sha256(input.commitMessage) !== input.commitMessageSha256
+  ) {
+    throw evidenceError('commit-message-hash');
+  }
+  try {
+    validateProviderAction(input.providerAction);
+  } catch (error) {
+    throw evidenceError('provider-action', error);
+  }
+  if (
+    input.providerAction.repository !== input.repository ||
+    input.providerAction.issueNumber !== input.issueNumber ||
+    input.providerAction.prNumber !== input.prNumber ||
+    input.providerAction.expectedHeadSha !== input.sourceSha ||
+    input.providerAction.mergeMethod !== input.mergeMethod ||
+    input.providerAction.commitTitle !== input.commitTitle ||
+    input.providerAction.commitMessage !== input.commitMessage
+  ) {
+    throw evidenceError('provider-action-correlation');
+  }
   if (typeof input.receiptCommentId !== 'string' || input.receiptCommentId.length === 0) {
     throw evidenceError('receipt-comment-id');
   }

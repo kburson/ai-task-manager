@@ -61,6 +61,7 @@ function makeHarness(options = {}) {
     fetchRequiredChecks: 0,
     fetchOriginTrunk: 0,
     isAncestor: 0,
+    inspectMergeCommit: 0,
     attributingCommits: [],
     terminalTiming: 0,
     terminalBoard: 0,
@@ -86,12 +87,16 @@ function makeHarness(options = {}) {
       ],
     },
     commitSubjects: options.commitSubjects ?? ['[#939] Add governed delivery intent verb'],
+    prCommitSubjects: options.prCommitSubjects ??
+      options.commitSubjects ?? ['[#939] Add governed delivery intent verb'],
     prState: options.prState ?? 'OPEN',
     prHead: options.prHead ?? null,
     mergeCommitSha: options.mergeCommitSha === undefined ? MERGE_HEAD : options.mergeCommitSha,
     mergedAt: options.mergedAt ?? MERGED_AT,
     prMergeMethod: options.prMergeMethod === undefined ? 'squash' : options.prMergeMethod,
     headRefDeleted: options.headRefDeleted ?? false,
+    fetchFailure: options.fetchFailure ?? false,
+    historyMergeMethod: options.historyMergeMethod ?? 'squash',
   };
   let intentIdIndex = 0;
 
@@ -143,6 +148,7 @@ function makeHarness(options = {}) {
         mergedAt: data.prState === 'MERGED' ? data.mergedAt : null,
         mergeMethod: data.prState === 'MERGED' ? data.prMergeMethod : null,
         headRefDeleted: data.headRefDeleted,
+        sourceCommitSubjects: [...data.prCommitSubjects],
       };
     },
     async fetchRequiredChecks({ prNumber, expectedHeadSha }) {
@@ -187,13 +193,46 @@ function makeHarness(options = {}) {
       calls.fetchOriginTrunk += 1;
       assert.equal(remote, 'origin');
       assert.equal(branch, 'trunk');
-      if (options.fetchFailure) throw new Error('fetch unavailable');
+      if (data.fetchFailure) throw new Error('fetch unavailable');
     },
     async isAncestor({ ancestor, descendant }) {
       calls.isAncestor += 1;
       assert.equal(ancestor, data.mergeCommitSha);
       assert.equal(descendant, 'origin/trunk');
       return options.mergeReachable ?? true;
+    },
+    async inspectMergeCommit({
+      mergeCommitSha,
+      expectedHeadSha,
+      authorizedCommitTitle,
+      authorizedCommitMessage,
+    }) {
+      calls.inspectMergeCommit += 1;
+      assert.equal(mergeCommitSha, data.mergeCommitSha);
+      const intent = data.comments
+        .map(({ body }) => body.match(/^<!-- aitm-delivery-intent (.+) -->/))
+        .find(Boolean);
+      const parsed = intent === undefined ? null : JSON.parse(intent[1]);
+      const commitTitle = parsed?.commitTitle ?? authorizedCommitTitle;
+      const commitMessage = parsed?.commitMessage ?? authorizedCommitMessage;
+      if (options.historyBytesMismatch) {
+        return { parents: ['d'.repeat(40)], commitTitle, commitMessage: 'wrong bytes' };
+      }
+      if (data.historyMergeMethod === 'merge') {
+        return {
+          parents: ['d'.repeat(40), expectedHeadSha],
+          commitTitle,
+          commitMessage,
+        };
+      }
+      if (data.historyMergeMethod === 'squash') {
+        return { parents: ['d'.repeat(40)], commitTitle, commitMessage };
+      }
+      return {
+        parents: ['d'.repeat(40), 'e'.repeat(40), 'f'.repeat(40)],
+        commitTitle,
+        commitMessage,
+      };
     },
     async attributingCommits(issueNumber, { refs }) {
       calls.attributingCommits.push(issueNumber);
@@ -235,8 +274,8 @@ function makeHarness(options = {}) {
   return { calls, data, deps };
 }
 
-async function mergePendingIntent(harness) {
-  const pending = await deliver(harness);
+async function mergePendingIntent(harness, overrides = {}) {
+  const pending = await deliver(harness, overrides);
   assert.equal(pending.status, 'action-required');
   harness.data.prState = 'MERGED';
   return pending;
@@ -373,15 +412,64 @@ test('merged verification rejects the wrong recorded pre-merge head', async () =
   const harness = makeHarness();
   await mergePendingIntent(harness);
   harness.data.prHead = NEXT_HEAD;
-  await assert.rejects(() => deliver(harness), /delivery-verification:expected-head-sha/);
+  await assert.rejects(() => deliver(harness), /delivery-preflight:head-mismatch/);
   assert.equal(harness.calls.createIssueComment, 1);
 });
+
+for (const authority of ['local', 'test', 'review']) {
+  test(`merged delivery refuses a ${authority} SHA disagreement without appending a receipt`, async () => {
+    const harness = makeHarness();
+    await mergePendingIntent(harness);
+    harness.data.prHead = HEAD;
+    if (authority === 'local') harness.data.head = NEXT_HEAD;
+    if (authority === 'test') harness.data.testReceiptSha = NEXT_HEAD;
+    if (authority === 'review') harness.data.acceptedReviewSha = NEXT_HEAD;
+
+    await assert.rejects(() => deliver(harness), /(?:delivery-preflight|delivery-verification):/);
+    assert.equal(harness.calls.createIssueComment, 1);
+    assert.equal(harness.data.comments.length, 1);
+  });
+}
 
 test('merged verification rejects an exposed merge-method mismatch', async () => {
   const harness = makeHarness({ prMergeMethod: 'merge' });
   await mergePendingIntent(harness);
   await assert.rejects(() => deliver(harness), /delivery-verification:merge-method/);
   assert.equal(harness.calls.createIssueComment, 1);
+});
+
+test('merged verification rejects a live-history merge-method mismatch', async () => {
+  const harness = makeHarness({ prMergeMethod: null, historyMergeMethod: 'merge' });
+  await mergePendingIntent(harness);
+  await assert.rejects(() => deliver(harness), /delivery-verification:merge-method/);
+  assert.equal(harness.calls.createIssueComment, 1);
+});
+
+test('merged verification rejects an indistinguishable live-history merge method', async () => {
+  const harness = makeHarness({ prMergeMethod: null, historyMergeMethod: 'unknown' });
+  await mergePendingIntent(harness);
+  await assert.rejects(() => deliver(harness), /delivery-verification:merge-method-unknown/);
+  assert.equal(harness.calls.createIssueComment, 1);
+});
+
+test('configured merge verifies an exact two-parent live-history shape', async () => {
+  const harness = makeHarness({ prMergeMethod: null, historyMergeMethod: 'merge' });
+  const mergeCfg = cfg();
+  mergeCfg.fullAutoMerge.mergeMethod = 'merge';
+  await mergePendingIntent(harness, { cfg: mergeCfg });
+  const result = await deliver(harness, { cfg: mergeCfg });
+  assert.equal(result.status, 'delivered');
+  assert.equal(result.receipt.mergeMethod, 'merge');
+});
+
+test('merged verification rejects unknown branch disposition observations', async () => {
+  for (const observed of [undefined, null, 'false', 0]) {
+    const harness = makeHarness();
+    await mergePendingIntent(harness);
+    harness.data.headRefDeleted = observed;
+    await assert.rejects(() => deliver(harness), /delivery-verification:branch-disposition/);
+    assert.equal(harness.calls.createIssueComment, 1);
+  }
 });
 
 test('merged verification fails closed when the authoritative trunk fetch fails', async () => {
@@ -505,6 +593,34 @@ test('already-merged external recovery appends an external intent and receipt wi
   );
 });
 
+test('failed first external recovery writes nothing and a corrected retry succeeds', async () => {
+  const harness = makeHarness({ prState: 'MERGED', fetchFailure: true });
+
+  await assert.rejects(() => deliver(harness), /delivery-verification:fetch-origin-trunk/);
+  assert.equal(harness.calls.createIssueComment, 0);
+  assert.equal(harness.data.comments.length, 0);
+
+  harness.data.fetchFailure = false;
+  const retried = await deliver(harness);
+  assert.equal(retried.status, 'delivered');
+  assert.equal(retried.recovery, true);
+  assert.equal(harness.calls.createIssueComment, 2);
+});
+
+test('external recovery derives required attribution from PR history when post-merge range is empty', async () => {
+  const harness = makeHarness({
+    prState: 'MERGED',
+    commitSubjects: [],
+    prCommitSubjects: ['[#939] Top-level work', '[#1274] Child work'],
+  });
+
+  const result = await deliver(harness);
+
+  assert.equal(result.status, 'delivered');
+  assert.deepEqual(result.intent.attributionTokens, ['#1274', '#939']);
+  assert.deepEqual(harness.calls.attributingCommits, [1274, 939]);
+});
+
 test('repeated external recovery re-verifies as already delivered without timestamp reclassification', async () => {
   const harness = makeHarness({ prState: 'MERGED' });
   const recovered = await deliver(harness);
@@ -613,6 +729,7 @@ test('default live PR snapshot records a server-confirmed deleted source branch'
           mergedAt: MERGED_AT,
           mergeCommit: { oid: MERGE_HEAD },
           statusCheckRollup: [],
+          commits: [{ messageHeadline: '[#939] PR source evidence' }],
           headRepository: { name: 'ai-task-manager' },
           headRepositoryOwner: { login: 'kburson' },
         }),
@@ -636,8 +753,44 @@ test('default live PR snapshot records a server-confirmed deleted source branch'
   const pullRequest = await deps.fetchPullRequest({ prNumber: 1400 });
 
   assert.equal(pullRequest.headRefDeleted, true);
+  assert.deepEqual(pullRequest.sourceCommitSubjects, ['[#939] PR source evidence']);
   assert.deepEqual(commands[1], [
     'gh',
     ['api', 'repos/kburson/ai-task-manager/git/ref/heads/codex/939-full-auto-merge'],
   ]);
+});
+
+test('default merge-history inspector returns exact parents and authorized commit bytes', async () => {
+  const exec = async (command, args) => {
+    assert.equal(command, 'git');
+    assert.deepEqual(args, ['cat-file', 'commit', MERGE_HEAD]);
+    return {
+      stdout:
+        `tree ${'1'.repeat(40)}\n` +
+        `parent ${'d'.repeat(40)}\n` +
+        `parent ${HEAD}\n` +
+        'author Example <example@example.com> 1 +0000\n' +
+        'committer Example <example@example.com> 1 +0000\n\n' +
+        `[#939] Governed PR delivery\n\nPR #1400\nSource: ${HEAD}\n\nAttribution: [#939]\n`,
+    };
+  };
+  const deps = createDefaultDeliverDeps(
+    {
+      cfg: cfg(),
+      projectDir: '/injected/project',
+      async getIssueBoardState() {
+        return 'Review';
+      },
+    },
+    { exec }
+  );
+
+  assert.deepEqual(
+    await deps.inspectMergeCommit({ mergeCommitSha: MERGE_HEAD, expectedHeadSha: HEAD }),
+    {
+      parents: ['d'.repeat(40), HEAD],
+      commitTitle: '[#939] Governed PR delivery',
+      commitMessage: `PR #1400\nSource: ${HEAD}\n\nAttribution: [#939]`,
+    }
+  );
 });
