@@ -76,6 +76,19 @@ function makeCtx(statePath, dir, over = {}) {
     // The real approval reconciler is covered by approve-timing-boundary and
     // requires a populated Review timing log that these legacy fixtures omit.
     reconcileReviewApprovedTiming: async () => ({ status: 'present' }),
+    loadCloseDeliveryBody: async () => APPROVED_BODY,
+    locateAuthoritySource: () => ({ kind: 'legacy-body/v1' }),
+    loadCloseDeliveryGateInput: async () => ({
+      issueNumber: 5,
+      lineage: { parentIssueNumber: null, deliveryTarget: 'trunk' },
+      branch: 'feature/5',
+      acceptedSha: 'a'.repeat(40),
+      localHeadSha: 'a'.repeat(40),
+      pullRequests: [],
+      records: null,
+    }),
+    resolveReviewAuthorization: () => ({ mode: 'human', standing: true, source: 'test' }),
+    requireDeliveryReceipt: () => ({ skipped: false, receipt: {} }),
     ...over,
   };
   ctx.issueBodyMutator ??= {

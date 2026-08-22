@@ -1159,9 +1159,6 @@ export async function verbClose(ctx) {
     return;
   }
 
-  if (await refuseDeliveryGate()) return;
-  await drainQueueOnce();
-
   let dirtyAuditRow = null;
   // #655 — `?? ctx.closeBody` lets a SKIP_NETWORK fixture seed the live body the
   // `!SKIP_NETWORK` block would otherwise fetch, so the review:approved emission
@@ -1511,6 +1508,9 @@ export async function verbClose(ctx) {
       );
     }
   }
+
+  if (await refuseDeliveryGate()) return;
+  await drainQueueOnce();
 
   if (!SKIP_NETWORK && closeIssueNum) {
     const subNums = await fetchSubIssues(closeIssueNum);
