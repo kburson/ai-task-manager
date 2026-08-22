@@ -1,5 +1,7 @@
 # Governed PR Delivery Implementation Plan
 
+<!-- cspell:ignore NDEKTSV RRFFQ -->
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Add a re-entrant `/task deliver` transaction that authorizes and verifies exact-head provider-mediated PR delivery before `/task close` may perform terminal mutations.

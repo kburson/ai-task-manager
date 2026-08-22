@@ -1,5 +1,7 @@
 # #1380 Inherited Provider Delivery Contract Review
 
+<!-- cspell:ignore reattribute -->
+
 ## Review boundary
 
 - Base: `2eb7b96af3f61b48a42241f07c58823554d51e8a`

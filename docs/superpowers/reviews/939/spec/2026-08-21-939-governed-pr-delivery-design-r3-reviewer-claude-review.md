@@ -1,5 +1,7 @@
 # Round 2 Reviewer Review
 
+<!-- cspell:ignore underspecified -->
+
 **Reviewer:** claude
 **Artifact:** `docs/superpowers/specs/2026-08-21-939-governed-pr-delivery-design.md`
 **Reviewed commit:** `31b14b4dd7e34224b2be6e24b8008d0231799088`
