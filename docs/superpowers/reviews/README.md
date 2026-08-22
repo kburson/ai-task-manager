@@ -70,7 +70,7 @@ publish only to the deterministic sibling
 `<kind>-recovery-<protocol-id>`. The recovery sibling is independently immutable;
 it does not replace or rewrite the occupied primary archive.
 
-The occupied primary is never edited to add a backlink. To determine authority
+The occupied primary is never edited to add a back link. To determine authority
 and recency, readers compare each archive's `decision.at` and the recorded
 recovery relationship, then follow the recovered archive's configured-destination
 link back to the first-published archive.

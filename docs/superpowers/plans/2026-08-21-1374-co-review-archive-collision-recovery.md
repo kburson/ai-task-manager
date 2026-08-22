@@ -1,5 +1,7 @@
 # Co-Review Archive Collision Recovery Implementation Plan
 
+<!-- cspell:ignore ENOENT -->
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Prevent new co-review protocols from reserving occupied archive leaves and give legacy accepted protocols one deterministic, auditable recovery publication path.
@@ -498,7 +500,7 @@ Add a `Collision recovery` section to `docs/superpowers/reviews/README.md` expla
 
 - `<issue>/<kind>` is the first-published archive, not necessarily the newest accepted design;
 - `<kind>-recovery-<protocol-id>` is an independently immutable sibling, not a replacement;
-- the occupied primary is never edited to add a backlink;
+- the occupied primary is never edited to add a back link;
 - readers compare `decision.at` and the recovery relationship, then follow the recovered archive's configured-destination link.
 
 - [ ] **Step 7: Run focused and CLI help verification**

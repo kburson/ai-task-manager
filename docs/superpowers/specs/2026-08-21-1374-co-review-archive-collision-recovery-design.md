@@ -173,7 +173,7 @@ Add cases proving:
 
 ## Documentation
 
-`docs/superpowers/reviews/README.md` will state that the primary `<issue>/<kind>` directory is the first published archive, not necessarily the newest accepted design, and that a collision-recovery sibling is independently preserved evidence rather than a replacement. It will direct readers to compare manifest `decision.at` values and follow the recovered archive's configured-destination link. Both directories remain independently immutable evidence; the primary archive is never edited merely to add a backlink.
+`docs/superpowers/reviews/README.md` will state that the primary `<issue>/<kind>` directory is the first published archive, not necessarily the newest accepted design, and that a collision-recovery sibling is independently preserved evidence rather than a replacement. It will direct readers to compare manifest `decision.at` values and follow the recovered archive's configured-destination link. Both directories remain independently immutable evidence; the primary archive is never edited merely to add a back link.
 
 ## Rollout
 
