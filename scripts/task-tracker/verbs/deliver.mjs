@@ -4,7 +4,7 @@
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 
-import { splitRepo } from '../../gh/lib/github-projects.mjs';
+import { gql, splitRepo } from '../../gh/lib/github-projects.mjs';
 import { loadState } from '../state.mjs';
 import { currentSessionId, aiAppName } from '../word-counter.mjs';
 import { fetchParentIssueStrict } from '../lib/fetch-parent-issue.mjs';
@@ -15,6 +15,12 @@ import { parseVerificationReceipt } from '../lib/verification-receipt.mjs';
 import { createRecordId } from '../lib/github-records/record-envelope.mjs';
 import { canonicalRecordJson } from '../lib/github-records/canonical-json.mjs';
 import { resolveReviewAuthorization } from '../lib/gate-resolve.mjs';
+import { locateAuthoritySource } from '../lib/github-records/authority-locator.mjs';
+import {
+  hasAcceptedApprovalEvidence,
+  hasAcceptedReviewEvidence,
+  resolveLifecycleGateEvidence,
+} from '../lib/github-records/lifecycle-gate-source.mjs';
 import { loadSession } from '../lib/session-store.mjs';
 import { rawProjectConfig } from '../config.mjs';
 import {
@@ -378,6 +384,7 @@ export async function runDeliver({ issueNumber, cfg, state, deps = {} } = {}) {
     'resolveReviewAuthorization'
   )({
     issue,
+    issueNumber,
     expectedHeadSha: localHeadSha,
     acceptedReviewSha,
   });
@@ -585,21 +592,62 @@ export function createDefaultDeliverDeps(ctx, { exec = pexec } = {}) {
     return JSON.parse(String(stdout || 'null'));
   };
   const { owner, repoName } = splitRepo(ctx.cfg.repo);
+  const directoryEvidence = new Map();
+  const resolveDirectoryEvidence = async ({ issue, issueNumber, expectedHeadSha }) => {
+    const source = (ctx.locateAuthoritySource || locateAuthoritySource)({
+      issueBody: issue.body,
+    });
+    if (source.kind !== 'github-records/v1') return null;
+    const key = `${issueNumber}:${expectedHeadSha}`;
+    if (!directoryEvidence.has(key)) {
+      directoryEvidence.set(
+        key,
+        (ctx.resolveLifecycleEvidence || resolveLifecycleGateEvidence)({
+          repository: ctx.cfg.repo,
+          issue: Number(issueNumber),
+          issueBody: issue.body,
+          expectedSha: expectedHeadSha,
+          graphql:
+            ctx.graphql ||
+            (({ query, variables }) => gql(query, variables).then((data) => ({ data }))),
+          readContractRecord: ctx.readContractRecord,
+          deps: ctx.listIssueRecords ? { listIssueRecords: ctx.listIssueRecords } : undefined,
+        })
+      );
+    }
+    return directoryEvidence.get(key);
+  };
 
   return {
-    resolveReviewAuthorization({ issue, expectedHeadSha, acceptedReviewSha }) {
+    async resolveReviewAuthorization({ issue, issueNumber, expectedHeadSha, acceptedReviewSha }) {
+      const lifecycleEvidence = await resolveDirectoryEvidence({
+        issue,
+        issueNumber,
+        expectedHeadSha,
+      });
       const approval = parseReviewApprovedMarker(issue.body);
       return resolveReviewAuthorization({
         session: loadSession(currentSessionId()),
         projectConfig: rawProjectConfig(),
         acceptedHeadSha: acceptedReviewSha === expectedHeadSha ? expectedHeadSha : null,
         humanApprovalEvidence:
-          approval && !approval.fullAuto
-            ? { accepted: true, approvedSha: approval.approvedSha }
-            : null,
-        fullAutoApprovalEvidence: approval?.fullAuto
-          ? { accepted: true, approvedSha: approval.approvedSha }
-          : null,
+          lifecycleEvidence &&
+          hasAcceptedApprovalEvidence(lifecycleEvidence, { provenance: 'human' })
+            ? {
+                accepted: true,
+                approvedSha: lifecycleEvidence.expectedSha,
+                source: 'directory-human-evidence',
+              }
+            : approval && !approval.fullAuto
+              ? { accepted: true, approvedSha: approval.approvedSha }
+              : null,
+        fullAutoApprovalEvidence:
+          lifecycleEvidence &&
+          hasAcceptedApprovalEvidence(lifecycleEvidence, { provenance: 'full-auto' })
+            ? { accepted: true, approvedSha: lifecycleEvidence.expectedSha }
+            : approval?.fullAuto
+              ? { accepted: true, approvedSha: approval.approvedSha }
+              : null,
       });
     },
     async fetchIssue({ issueNumber }) {
@@ -648,7 +696,15 @@ export function createDefaultDeliverDeps(ctx, { exec = pexec } = {}) {
     async resolveTestReceiptSha({ issue }) {
       return parseVerificationReceipt(issue.body, 'test')?.commitSha ?? null;
     },
-    async resolveAcceptedReviewSha({ issue }) {
+    async resolveAcceptedReviewSha({ issue, issueNumber, expectedHeadSha }) {
+      const lifecycleEvidence = await resolveDirectoryEvidence({
+        issue,
+        issueNumber,
+        expectedHeadSha,
+      });
+      if (lifecycleEvidence) {
+        return hasAcceptedReviewEvidence(lifecycleEvidence) ? lifecycleEvidence.expectedSha : null;
+      }
       const reviewReceipt = parseVerificationReceipt(issue.body, 'review');
       if (reviewReceipt?.commitSha) return reviewReceipt.commitSha;
       if (!isAgentReviewComplete(issue.body)) return null;

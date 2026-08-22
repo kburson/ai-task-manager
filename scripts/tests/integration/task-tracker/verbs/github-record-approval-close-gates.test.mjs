@@ -13,6 +13,7 @@ import {
 import { assertLifecycleSatisfied } from '../../../../task-tracker/close-gate.mjs';
 import { reviewExitReviewApprovedGuard } from '../../../../task-tracker/lib/review-exit-review-approved-guard.mjs';
 import { runApprove } from '../../../../task-tracker/verbs/approve.mjs';
+import { createDefaultDeliverDeps } from '../../../../task-tracker/verbs/deliver.mjs';
 import { resolveCloseLifecycleEvidence } from '../../../../task-tracker/verbs/close.mjs';
 import { projectScratchDir } from '../../../../task-tracker/lib/scratch-dir.mjs';
 
@@ -258,5 +259,60 @@ test('close fails closed when accepted directory Review or Approval evidence is 
         },
       }),
     /directory-approval-evidence-missing/
+  );
+});
+
+test('deliver resolves marker-free exact-head directory approval authority', async () => {
+  const projection = acceptedEvidence();
+  const deps = createDefaultDeliverDeps(
+    {
+      cfg: { repo: 'owner/repo', trunkRef: 'trunk' },
+      projectDir: '/repo',
+      getIssueBoardState: async () => 'Review',
+      locateAuthoritySource: () => ({ kind: 'github-records/v1' }),
+      resolveLifecycleEvidence: async () => projection,
+    },
+    { exec: async () => ({ stdout: '' }) }
+  );
+  const issue = { number: 1144, body: 'directory body without approval marker' };
+  assert.equal(
+    await deps.resolveAcceptedReviewSha({ issue, issueNumber: 1144, expectedHeadSha: SHA }),
+    SHA
+  );
+  assert.deepEqual(
+    await deps.resolveReviewAuthorization({
+      issue,
+      issueNumber: 1144,
+      expectedHeadSha: SHA,
+      acceptedReviewSha: SHA,
+    }),
+    { mode: 'human', standing: true, source: 'directory-human-evidence' }
+  );
+
+  const stale = { ...projection, expectedSha: 'b'.repeat(40) };
+  const staleDeps = createDefaultDeliverDeps(
+    {
+      cfg: { repo: 'owner/repo', trunkRef: 'trunk' },
+      projectDir: '/repo',
+      getIssueBoardState: async () => 'Review',
+      locateAuthoritySource: () => ({ kind: 'github-records/v1' }),
+      resolveLifecycleEvidence: async () => stale,
+    },
+    { exec: async () => ({ stdout: '' }) }
+  );
+  assert.equal(
+    await staleDeps.resolveAcceptedReviewSha({ issue, issueNumber: 1144, expectedHeadSha: SHA }),
+    null
+  );
+  assert.equal(
+    (
+      await staleDeps.resolveReviewAuthorization({
+        issue,
+        issueNumber: 1144,
+        expectedHeadSha: SHA,
+        acceptedReviewSha: null,
+      })
+    ).mode,
+    'missing'
   );
 });

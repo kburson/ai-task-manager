@@ -235,9 +235,7 @@ export async function runApprove({ issueNumber, cfg, projectDir, deps = {}, huma
         body,
         key: 'passed-final-review',
       }).alreadyTicked;
-      const priorApproval = parseReviewApprovedMarker(body);
-      const humanOverride =
-        Boolean(human) || (preTickedByHuman && priorApproval?.fullAuto !== true);
+      const humanOverride = Boolean(human) || (preTickedByHuman && !hasApprovalMarker(body));
       const auto = humanOverride ? { fired: false, signals: '' } : detect();
       const authoritySource = (deps.locateAuthoritySource || locateAuthoritySource)({
         issueBody: body,

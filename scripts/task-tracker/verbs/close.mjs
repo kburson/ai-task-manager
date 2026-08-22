@@ -546,6 +546,27 @@ export async function verbClose(ctx) {
   });
   const configuredReviewAuthority = configuredReviewToDoneGate ? 'human-gate' : 'gate-bypassed';
   let resolvedReviewAuthorization = null;
+  let closeLifecycleEvidenceLoaded = false;
+  let cachedCloseLifecycleEvidence = null;
+  const loadCloseLifecycleEvidence = async (body) => {
+    if (closeLifecycleEvidenceLoaded) return cachedCloseLifecycleEvidence;
+    cachedCloseLifecycleEvidence = await resolveCloseLifecycleEvidence({
+      body,
+      issueNumber: closeIssueNum,
+      repository: cfg.repo,
+      projectDir,
+      deps: {
+        locateAuthoritySource: ctx.locateAuthoritySource,
+        getHeadSha: ctx.getHeadSha,
+        resolveLifecycleEvidence: ctx.resolveLifecycleEvidence,
+        graphql: ctx.graphql,
+        readContractRecord: ctx.readContractRecord,
+        listIssueRecords: ctx.listIssueRecords,
+      },
+    });
+    closeLifecycleEvidenceLoaded = true;
+    return cachedCloseLifecycleEvidence;
+  };
   const terminalReviewAuthority = () => {
     if (resolvedReviewAuthorization?.mode === 'human') return 'human-gate';
     if (resolvedReviewAuthorization?.mode === 'full-auto') return 'gate-bypassed';
@@ -579,6 +600,7 @@ export async function verbClose(ctx) {
       body: deliveryBody,
       ctx,
     });
+    const lifecycleEvidence = await loadCloseLifecycleEvidence(deliveryBody);
     const approval = parseReviewApprovedMarker(deliveryBody);
     const authorization = (ctx.resolveReviewAuthorization || resolveReviewAuthorization)({
       session: loadSession(currentSessionId()),
@@ -586,12 +608,22 @@ export async function verbClose(ctx) {
       acceptedHeadSha:
         gateInput.acceptedSha === gateInput.localHeadSha ? gateInput.localHeadSha : null,
       humanApprovalEvidence:
-        approval && !approval.fullAuto
-          ? { accepted: true, approvedSha: approval.approvedSha }
-          : null,
-      fullAutoApprovalEvidence: approval?.fullAuto
-        ? { accepted: true, approvedSha: approval.approvedSha }
-        : null,
+        lifecycleEvidence && hasAcceptedApprovalEvidence(lifecycleEvidence, { provenance: 'human' })
+          ? {
+              accepted: true,
+              approvedSha: lifecycleEvidence.expectedSha,
+              source: 'directory-human-evidence',
+            }
+          : approval && !approval.fullAuto
+            ? { accepted: true, approvedSha: approval.approvedSha }
+            : null,
+      fullAutoApprovalEvidence:
+        lifecycleEvidence &&
+        hasAcceptedApprovalEvidence(lifecycleEvidence, { provenance: 'full-auto' })
+          ? { accepted: true, approvedSha: lifecycleEvidence.expectedSha }
+          : approval?.fullAuto
+            ? { accepted: true, approvedSha: approval.approvedSha }
+            : null,
     });
     if (authorization.mode === 'missing') {
       throw new Error('review-authorization-missing');
@@ -1288,20 +1320,7 @@ export async function verbClose(ctx) {
         console.warn(`[task-tracker] Functional DoD derivation skipped: ${err.message}`);
       }
 
-      closeLifecycleEvidence = await resolveCloseLifecycleEvidence({
-        body,
-        issueNumber: closeIssueNum,
-        repository: cfg.repo,
-        projectDir,
-        deps: {
-          locateAuthoritySource: ctx.locateAuthoritySource,
-          getHeadSha: ctx.getHeadSha,
-          resolveLifecycleEvidence: ctx.resolveLifecycleEvidence,
-          graphql: ctx.graphql,
-          readContractRecord: ctx.readContractRecord,
-          listIssueRecords: ctx.listIssueRecords,
-        },
-      });
+      closeLifecycleEvidence = await loadCloseLifecycleEvidence(body);
 
       const unchecked = await resolvePreCloseCheckboxes({
         body,

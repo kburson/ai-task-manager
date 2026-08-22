@@ -15,6 +15,30 @@ import { resolveReviewAuthorization } from '../../../../task-tracker/lib/gate-re
 
 const HEAD = 'a'.repeat(40);
 
+function directoryEvidence() {
+  const authority = { contractEpoch: 3, coordinatorGrantId: 'grant-3', authorityEpoch: 7 };
+  const entry = (recordId, evidenceKind, result, provenance) => ({
+    recordId,
+    recordType: 'review-result',
+    evidenceKind,
+    result,
+    contractEpoch: 3,
+    commitSha: HEAD,
+    provenance,
+    authority: { grantId: 'grant-3', epoch: 7 },
+  });
+  return {
+    sourceKind: 'github-records/v1',
+    expectedSha: HEAD,
+    evidence: [
+      entry('review-1', 'review', 'passed', 'agent'),
+      entry('approval-1', 'approval', 'approved', 'human'),
+    ],
+    acceptedRecordIds: ['review-1', 'approval-1'],
+    authority,
+  };
+}
+
 test('finalize passes the configured tail profile and explicit review authority', async () => {
   const run = await runClose({ convergenceTailProfile: 'background-convergence' });
 
@@ -57,6 +81,34 @@ test('stale close approval refuses after fresh Test and Agent Review evidence', 
   });
   assert.equal(refreshed.exitCode, 0);
   assert.equal(refreshed.calls.movesToDone.length, 1);
+});
+
+test('close consumes marker-free exact-head directory human authority', async () => {
+  const run = await runClose({
+    gateReviewToDone: false,
+    lifecycleEvidence: directoryEvidence(),
+    useInjectedReviewAuthorization: false,
+  });
+  assert.equal(run.exitCode, 0);
+  assert.equal(run.calls.movesToDone[0].options.reviewAuthority, 'human-gate');
+  assert.equal(run.calls.mutations, 0, 'directory authority must not create a body marker');
+});
+
+test('close fails closed for stale or malformed marker-free directory authority', async () => {
+  const current = directoryEvidence();
+  for (const lifecycleEvidence of [
+    { ...current, expectedSha: 'b'.repeat(40) },
+    { sourceKind: 'github-records/v1', expectedSha: HEAD },
+  ]) {
+    const run = await runClose({
+      gateReviewToDone: false,
+      lifecycleEvidence,
+      useInjectedReviewAuthorization: false,
+    });
+    assert.equal(run.exitCode, 1);
+    assert.equal(run.calls.movesToDone.length, 0);
+    assert.equal(run.calls.mutations, 0);
+  }
 });
 
 for (const [name, convergenceTailProfile] of [

@@ -54,7 +54,11 @@ export function resolveReviewAuthorization({
     });
   }
   if (currentEvidence(humanApprovalEvidence, acceptedHeadSha)) {
-    return Object.freeze({ mode: 'human', standing: true, source: 'human-evidence' });
+    const source =
+      humanApprovalEvidence.source === 'directory-human-evidence'
+        ? 'directory-human-evidence'
+        : 'human-evidence';
+    return Object.freeze({ mode: 'human', standing: true, source });
   }
   return Object.freeze({ mode: 'missing', standing: false, source: 'none' });
 }

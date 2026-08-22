@@ -63,6 +63,8 @@ export async function runClose({
   deliveryRefusal = null,
   reviewAuthorization = { mode: 'human', standing: true, source: 'test-evidence' },
   reviewAuthorizationResolver = null,
+  useInjectedReviewAuthorization = true,
+  lifecycleEvidence = null,
   force = false,
 } = {}) {
   const dir = mkdtempSync(join(projectScratchDir('test'), 'aitm-925-close-wiring-'));
@@ -226,6 +228,11 @@ export async function runClose({
       deregisterTask: () => {},
       releaseBindingOccupancy: () => ({ status: 'released' }),
       loadCloseDeliveryBody: async () => liveBody,
+      locateAuthoritySource: lifecycleEvidence
+        ? () => ({ kind: 'github-records/v1' })
+        : () => ({ kind: 'legacy-body/v1' }),
+      getHeadSha: async () => 'a'.repeat(40),
+      resolveLifecycleEvidence: async () => lifecycleEvidence,
       loadCloseDeliveryGateInput: async () => ({
         issueNumber: 925,
         lineage: { parentIssueNumber: null, deliveryTarget: 'trunk' },
@@ -235,7 +242,11 @@ export async function runClose({
         pullRequests: [],
         records: null,
       }),
-      resolveReviewAuthorization: reviewAuthorizationResolver ?? (() => reviewAuthorization),
+      ...(useInjectedReviewAuthorization
+        ? {
+            resolveReviewAuthorization: reviewAuthorizationResolver ?? (() => reviewAuthorization),
+          }
+        : {}),
       requireDeliveryReceipt: () => {
         if (deliveryRefusal) throw deliveryRefusal;
         return { skipped: false, receipt: {} };

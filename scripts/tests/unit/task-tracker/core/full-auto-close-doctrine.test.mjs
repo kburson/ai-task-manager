@@ -211,3 +211,49 @@ test('runApprove remains the audited producer of Full-Auto approval evidence', a
   assert.match(written, new RegExp(`aitm-review-approved[^>]*approved-sha="${OTHER_HEAD}"`));
   assert.doesNotMatch(written, new RegExp(`approved-sha="${HEAD}"`));
 });
+
+test('stale human approval cannot be silently rebound after head drift', async () => {
+  const staleHumanBody = [
+    '- [ ] Agent Review Passed <!-- aitm-verified gate="agent-review" ts="2026-08-22T01:00:00Z" sha="sandbox" validators="body-sections" result="pass" -->',
+    '- [x] Final Review Passed',
+    `<!-- aitm-review-approved ts="2026-08-22T00:00:00Z" approved-sha="${HEAD}" -->`,
+  ].join('\n');
+
+  const approveOnNewHead = async ({ human }) => {
+    let written = staleHumanBody;
+    const result = await runApprove({
+      issueNumber: human ? 942 : 941,
+      cfg: { repo: 'o/r' },
+      projectDir: process.cwd(),
+      human,
+      deps: {
+        assertBound: () => {},
+        getBoardState: async () => 'review',
+        fetchIssueBody: async () => written,
+        getHeadSha: async () => OTHER_HEAD,
+        detectFullAuto: () => ({ fired: true, signals: 'session=1' }),
+        fetchComments: async () => [],
+        fetchProjectValues: async () => ({}),
+        deriveDrivers: () => [],
+        promptDrivers: async () => [],
+        postComment: async () => {},
+        mutateIssueBody: async ({ mutate }) => {
+          written = mutate(written);
+          return { status: 'ok', body: written };
+        },
+        reconcileReviewApprovedTiming: async () => {},
+      },
+    });
+    return { result, written };
+  };
+
+  const automated = await approveOnNewHead({ human: false });
+  assert.equal(automated.result.fullAuto, true);
+  assert.match(automated.written, /full-auto="yes"/);
+  assert.match(automated.written, new RegExp(`approved-sha="${OTHER_HEAD}"`));
+
+  const explicitHuman = await approveOnNewHead({ human: true });
+  assert.equal(explicitHuman.result.fullAuto, false);
+  assert.doesNotMatch(explicitHuman.written, /full-auto="yes"/);
+  assert.match(explicitHuman.written, new RegExp(`approved-sha="${OTHER_HEAD}"`));
+});
