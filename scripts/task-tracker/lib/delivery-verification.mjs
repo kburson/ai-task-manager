@@ -133,20 +133,25 @@ function assertMergedPullRequest(pullRequest, intent) {
   if (pullRequest.headRefOid !== intent.expectedHeadSha) {
     throw verificationError('expected-head-sha');
   }
-  const exposedMethod = pullRequest.mergeMethod;
-  if (
-    exposedMethod !== null &&
-    exposedMethod !== undefined &&
-    String(exposedMethod).toLowerCase() !== intent.mergeMethod
-  ) {
-    throw verificationError('merge-method');
+  let mergeMethodObservation = null;
+  if (pullRequest.mergeMethod !== null && pullRequest.mergeMethod !== undefined) {
+    if (
+      typeof pullRequest.mergeMethod !== 'string' ||
+      !MERGE_METHODS.has(pullRequest.mergeMethod)
+    ) {
+      throw verificationError('merge-method-observation');
+    }
+    mergeMethodObservation = pullRequest.mergeMethod;
+    if (mergeMethodObservation !== intent.mergeMethod) {
+      throw verificationError('merge-method');
+    }
   }
   const sha = mergeCommitSha(pullRequest);
   if (typeof sha !== 'string' || !SHA_RE.test(sha)) {
     throw verificationError('merge-commit-sha');
   }
   if (!isCanonicalInstant(pullRequest.mergedAt)) throw verificationError('merged-at');
-  return { mergeCommitSha: sha, mergedAt: pullRequest.mergedAt };
+  return { mergeCommitSha: sha, mergedAt: pullRequest.mergedAt, mergeMethodObservation };
 }
 
 function classifyMergeMethod(inspection, expectedHeadSha, mergeSha) {
@@ -162,7 +167,9 @@ function classifyMergeMethod(inspection, expectedHeadSha, mergeSha) {
   if (inspection.parents.length === 2 && inspection.parents[1] === expectedHeadSha) {
     return 'merge';
   }
-  if (inspection.parents.length === 1 && mergeSha !== expectedHeadSha) return 'squash';
+  if (inspection.parents.length === 1 && mergeSha !== expectedHeadSha) {
+    return 'rewritten-one-parent';
+  }
   return 'unknown';
 }
 
@@ -220,11 +227,18 @@ async function verifyLiveDelivery(input, intent, { requireAuthorizedBytes, recov
   } catch (error) {
     throw verificationError('merge-method-evidence', error);
   }
-  const observedMergeMethod = classifyMergeMethod(
+  let observedMergeMethod = classifyMergeMethod(
     inspection,
     intent.expectedHeadSha,
     merged.mergeCommitSha
   );
+  if (observedMergeMethod === 'rewritten-one-parent') {
+    observedMergeMethod =
+      (requireAuthorizedBytes && intent.mergeMethod === 'squash') ||
+      (!requireAuthorizedBytes && merged.mergeMethodObservation === 'squash')
+        ? 'squash'
+        : 'unknown';
+  }
   if (observedMergeMethod === 'unknown') throw verificationError('merge-method-unknown');
   if (observedMergeMethod !== intent.mergeMethod) throw verificationError('merge-method');
   if (

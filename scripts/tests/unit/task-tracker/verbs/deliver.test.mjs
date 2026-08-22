@@ -136,7 +136,7 @@ function makeHarness(options = {}) {
     async fetchPullRequest({ prNumber }) {
       calls.fetchPullRequest += 1;
       assert.equal(prNumber, 1400);
-      return {
+      const pullRequest = {
         number: 1400,
         state: data.prState,
         merged: data.prState === 'MERGED',
@@ -147,10 +147,13 @@ function makeHarness(options = {}) {
         mergeable: data.prState === 'OPEN' ? 'MERGEABLE' : 'UNKNOWN',
         mergeCommit: data.mergeCommitSha === null ? null : { oid: data.mergeCommitSha },
         mergedAt: data.prState === 'MERGED' ? data.mergedAt : null,
-        mergeMethod: data.prState === 'MERGED' ? data.prMergeMethod : null,
         headRefDeleted: data.headRefDeleted,
         sourceCommitSubjects: [...data.prCommitSubjects],
       };
+      if (!options.omitPrMergeMethod) {
+        pullRequest.mergeMethod = data.prState === 'MERGED' ? data.prMergeMethod : null;
+      }
+      return pullRequest;
     },
     async fetchRequiredChecks({ prNumber, expectedHeadSha }) {
       calls.fetchRequiredChecks += 1;
@@ -645,6 +648,78 @@ test('already-merged external recovery appends an external intent and receipt wi
     harness.calls.events.filter((event) => event.endsWith(':post')),
     ['intent:post', 'receipt:post']
   );
+});
+
+for (const observation of [
+  { label: 'missing', options: { omitPrMergeMethod: true } },
+  { label: 'null', options: { prMergeMethod: null } },
+]) {
+  test(`external recovery refuses ambiguous one-parent rewritten history with ${observation.label} method observation`, async () => {
+    const harness = makeHarness({
+      prState: 'MERGED',
+      historyMergeMethod: 'squash',
+      ...observation.options,
+    });
+
+    await assert.rejects(() => deliver(harness), /delivery-verification:merge-method-unknown/);
+
+    assert.equal(harness.calls.createIssueComment, 0);
+    assert.equal(harness.data.comments.length, 0);
+  });
+}
+
+test('external recovery strictly rejects malformed provider merge-method evidence', async () => {
+  const harness = makeHarness({
+    prState: 'MERGED',
+    historyMergeMethod: 'squash',
+    prMergeMethod: 'SQUASH',
+  });
+
+  await assert.rejects(() => deliver(harness), /delivery-verification:merge-method-observation/);
+
+  assert.equal(harness.calls.createIssueComment, 0);
+  assert.equal(harness.data.comments.length, 0);
+});
+
+test('external recovery rejects a provider method observation that mismatches configuration', async () => {
+  const harness = makeHarness({
+    prState: 'MERGED',
+    historyMergeMethod: 'squash',
+    prMergeMethod: 'rebase',
+  });
+
+  await assert.rejects(() => deliver(harness), /delivery-verification:merge-method$/);
+
+  assert.equal(harness.calls.createIssueComment, 0);
+  assert.equal(harness.data.comments.length, 0);
+});
+
+test('external recovery structurally verifies a two-parent merge without provider method evidence', async () => {
+  const harness = makeHarness({
+    prState: 'MERGED',
+    historyMergeMethod: 'merge',
+    omitPrMergeMethod: true,
+  });
+  const mergeCfg = cfg();
+  mergeCfg.fullAutoMerge.mergeMethod = 'merge';
+
+  const result = await deliver(harness, { cfg: mergeCfg });
+
+  assert.equal(result.status, 'delivered');
+  assert.equal(result.receipt.mergeMethod, 'merge');
+  assert.equal(harness.calls.createIssueComment, 2);
+});
+
+test('ordinary prior-intent squash remains verifiable without provider method evidence', async () => {
+  const harness = makeHarness({ omitPrMergeMethod: true });
+  await mergePendingIntent(harness);
+
+  const result = await deliver(harness);
+
+  assert.equal(result.status, 'delivered');
+  assert.equal(result.recovery, false);
+  assert.equal(result.receipt.mergeMethod, 'squash');
+  assert.equal(harness.calls.createIssueComment, 2);
 });
 
 test('external recovery records observed merge bytes instead of synthesizing provider bytes', async () => {
