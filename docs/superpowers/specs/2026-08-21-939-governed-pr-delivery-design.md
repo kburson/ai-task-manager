@@ -226,7 +226,9 @@ Schema 1 records:
 ```json
 {
   "schema": 1,
+  "state": "pending",
   "intentId": "01...",
+  "supersedesIntentId": null,
   "issueNumber": 939,
   "repository": "owner/repo",
   "prNumber": 1234,
@@ -241,7 +243,7 @@ Schema 1 records:
   "commitMessageSha256": "64-hex",
   "provider": "codex",
   "sessionId": "provider-session-id",
-  "createdAt": "ISO-8601"
+  "clientCreatedAt": "ISO-8601-diagnostic-only"
 }
 ```
 
@@ -251,16 +253,37 @@ The authoritative record stores the exact bounded commit title, commit message,
 and sorted attribution-token set. Their hashes provide an integrity check; they
 are not a substitute for recoverable bytes. The same strings are re-emitted in
 the structured action output after AITM verifies their hashes. Local scratch may
-cache the record but is never required to reconstruct it.
+cache the record but is never required to reconstruct it. `clientCreatedAt` is
+diagnostic only. The GitHub issue comment's server-assigned `created_at` is the
+authoritative intent-creation timestamp and is retained with the parsed record;
+no delivery decision compares a GitHub timestamp with a local wall clock.
 
 The deterministic message is intentionally bounded. It carries the validated
 issue tokens and delivery provenance, not a copy of every source commit body.
 This keeps the issue comment below GitHub limits while preserving the tokens the
 message-based attribution engine requires.
 
-Only one pending intent may exist for an issue. A new PR head never updates the
-old intent in place. AITM records it as superseded and creates a new intent only
-after fresh Test, review, and check evidence covers the new SHA.
+Only one effective pending intent may exist for an issue. `state` is an
+immutable serialized discriminator and is `pending` on creation.
+`supersedesIntentId` is null for the first intent and names the immediately
+prior live intent for a replacement. A reader loads every valid marker in
+GitHub comment order, rejects duplicate intent IDs, cycles, missing targets,
+forked supersession, and more than one unreferenced pending tip, and projects
+every referenced intent to effective state `superseded`. The single valid
+unreferenced tip is the live pending intent. Thus a later append changes the
+projection without editing or deleting the earlier comment.
+
+Intent creation is reconciled before any POST. The deterministic dedupe key is
+`repository + issueNumber + prNumber + expectedHeadSha`. If a live pending
+intent has that key and every authorized byte (base/head refs, merge method,
+attribution tokens, commit text and hashes) agrees, a retry adopts its existing
+comment and `intentId` and re-emits the same action. The same key with divergent
+authorized bytes is a hard conflict. A different head may append a replacement
+whose `supersedesIntentId` names the current live intent only after fresh Test,
+review, and check evidence covers the new SHA. This lookup-before-create rule
+makes a successful POST with a lost response idempotent: the retry discovers
+and adopts the server-visible record rather than minting a second pending
+intent.
 
 ## Provider Action
 
@@ -297,8 +320,10 @@ AITM finalizes an intent only after all of these checks pass:
    `origin/trunk`.
 7. Message-based attribution on `origin/trunk` contains the top-level issue and
    every required child token.
-8. The observed merge happened after the intent was created, unless this is an
-   explicitly classified already-merged recovery receipt.
+8. GitHub's server-assigned PR `merged_at` is not earlier than the intent
+   comment's GitHub server-assigned `created_at`, unless this is an explicitly
+   classified already-merged recovery receipt. Local timestamps never
+   participate in this comparison.
 
 The completion record is another append-only issue comment:
 
@@ -323,6 +348,15 @@ The completion record is another append-only issue comment:
 The hidden `aitm-delivery-receipt` marker is accepted only through the same
 versioned GitHub-record parser used by the close gate. Malformed, duplicated,
 conflicting, or head-mismatched records fail closed.
+
+After receipt creation, delivery also owns remote-head disposition. The
+provider action either performs the configured exact-head remote branch cleanup
+through its sanctioned tool or records that the branch was retained; remote
+cleanup is never inferred from repository defaults and is not a close gate.
+Local branch and worktree cleanup belongs to the host orchestrator's ordinary
+branch-finishing workflow after `/task close` succeeds. It must prove trunk
+reachability, a clean issue worktree, and worktree provenance before removal.
+`/task close` never removes the worktree from which it is running.
 
 ## `/task close` After Delivery
 
@@ -421,6 +455,10 @@ Neither provider output nor local cache may override a conflicting authority.
 - deterministic provider-action JSON and commit-message hashes;
 - merge-method and child-attribution preservation;
 - intent/receipt parsing, conflict detection, and supersession;
+- live-intent projection rejects missing/cyclic/forked supersession and adopts
+  one exact dedupe-key/authorized-bytes match after a lost create response;
+- delivery time ordering compares GitHub comment `created_at` with PR
+  `merged_at` and ignores the diagnostic local timestamp;
 - stale-head, wrong-base, draft, ambiguous-PR, and non-green-check refusals;
 - close-gate decision with missing, valid, malformed, and mismatched receipts.
 
@@ -432,6 +470,8 @@ Neither provider output nor local cache may override a conflicting authority.
 - merged exact head fetches `origin/trunk` and writes one receipt;
 - repeated delivery is idempotent;
 - changed head never reuses the old intent;
+- same-head create retry adopts the existing intent, while divergent bytes on
+  the same dedupe key fail closed;
 - child-to-epic delivery skips provider PR action;
 - `close` never calls the retired Full-Auto merge executor.
 
@@ -449,7 +489,9 @@ Review/off-trunk
 ```
 
 It asserts that terminal timing, Done, Delivered, and issue closure are absent
-until after the delivery receipt exists.
+until after the delivery receipt exists. It also asserts that remote branch
+disposition is recorded by delivery and local worktree cleanup occurs only in
+the post-close host branch-finishing workflow.
 
 ### Real-PR verification
 
