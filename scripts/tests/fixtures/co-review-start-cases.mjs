@@ -158,7 +158,7 @@ test('guided host context configures deterministic spec and plan archives and ha
     const events = readEvents(fixture.root, dir);
     const archive = path.join(fixture.root, archiveDir);
     mkdirSync(path.dirname(archive), { recursive: true });
-    writeFileSync(archive, '# later publication\n');
+    symlinkSync(path.join(fixture.root, 'docs'), archive);
     const exact = startProtocol(options, startDependencies(api));
     assert.deepEqual(exact.manifest, result.manifest);
     assert.deepEqual(exact.state, result.state);

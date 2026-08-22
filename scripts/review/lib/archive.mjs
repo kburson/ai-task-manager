@@ -66,6 +66,7 @@ function containedPath(root, candidate, label) {
   return {
     absolute: physical,
     relative: physicalRelative.split(path.sep).join('/'),
+    lexicalRelative: relative.split(path.sep).join('/'),
   };
 }
 

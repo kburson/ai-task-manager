@@ -624,7 +624,7 @@ export function initializeProtocol({
     maxReviewTurns,
     importedReview,
     reviewOf: importedCommit,
-    ...(archive ? { archiveDir: archive.relative } : {}),
+    ...(archive ? { archiveDir: archive.lexicalRelative } : {}),
   };
 
   return withMutex(paths, 'system', 'init', () => {
