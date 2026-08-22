@@ -50,6 +50,16 @@ function writeFragment(dir, name, value) {
   return target;
 }
 
+function normalizeWebAcceptanceCriteria(value) {
+  return String(value || '')
+    .split('\n')
+    .map((line) => {
+      if (!/^\s*- \[[ x]\]/.test(line) || /<!--\s*aitm-/.test(line)) return line;
+      return `${line} <!-- aitm-non-demonstrable -->`;
+    })
+    .join('\n');
+}
+
 function defaultRenderDefect(input) {
   const dir = mkdtempSync(path.join(projectScratchDir('gh', input.projectDir), 'web-defect-'));
   try {
@@ -125,9 +135,10 @@ export async function normalizeWebDefectIssue({ issue, projectDir, renderDefect 
   const reproduction =
     first(sections, ['steps to reproduce', 'reproduction']) ||
     'Reproduce the confirmed behavior described in Scope before implementing the fix.';
-  const acceptanceCriteria =
+  const acceptanceCriteria = normalizeWebAcceptanceCriteria(
     first(sections, ['acceptance criteria']) ||
-    '- [ ] The confirmed defect no longer reproduces and targeted regression coverage passes.';
+      '- [ ] The confirmed defect no longer reproduces and targeted regression coverage passes.'
+  );
   const input = {
     projectDir,
     title,

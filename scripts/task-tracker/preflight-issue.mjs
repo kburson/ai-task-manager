@@ -53,6 +53,10 @@ import { wantsHelp, emitSelfDoc } from '../lib/self-doc.mjs';
 import { verifyIssueBody } from '../gh/lib/issue-body-verifier.mjs';
 import { stripKnownPrefix } from '../gh/lib/kind-prefix.mjs';
 import { buildUserStoryLines } from './lib/user-story-author.mjs';
+import {
+  findAcsWithLegacyVerificationForm,
+  findAcsWithoutVerifierOrInvalidTag,
+} from './lib/body-invariants.mjs';
 
 const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
 const PACKAGE_TEMPLATES_DIR = path.resolve(SCRIPT_DIR, '..', '..', 'templates');
@@ -538,6 +542,30 @@ function emitShape(args, dodPath, root) {
         idx === -1
           ? spliceVcSection(finalBody, vcSection, '')
           : spliceVcSection(finalBody.slice(0, idx), vcSection, finalBody.slice(idx));
+    }
+  }
+  if (shape !== 'stub') {
+    const citationOffenders = findAcsWithLegacyVerificationForm(finalBody);
+    const citationLines = new Set(citationOffenders.map((offender) => offender.lineIndex));
+    const demonstrabilityOffenders = findAcsWithoutVerifierOrInvalidTag(finalBody).filter(
+      (offender) => !citationLines.has(offender.lineIndex)
+    );
+    const declarationOffenders = [
+      ...new Map(
+        [...citationOffenders, ...demonstrabilityOffenders].map((offender) => [
+          `${offender.lineIndex}:${offender.reason}`,
+          offender,
+        ])
+      ).values(),
+    ];
+    if (declarationOffenders.length > 0) {
+      process.stderr.write('preflight-issue: ac-verifier-contract\n');
+      for (const offender of declarationOffenders) {
+        process.stderr.write(
+          `  line ${offender.lineIndex + 1}: ${offender.reason}: ${offender.label}\n`
+        );
+      }
+      process.exit(2);
     }
   }
   // #494, #500, #923, #865 — `--kind <audit|research|spike|epic|docs-only>`

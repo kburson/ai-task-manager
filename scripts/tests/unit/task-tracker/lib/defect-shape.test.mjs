@@ -40,7 +40,10 @@ function defectArgs(overrides = {}) {
       'As an AITM operator\nI want active work to remain active\nSo that timing records stay truthful'
     ),
     'scope-file': fragment('scope.md', 'Resume classifies active issue work as idle.'),
-    'ac-file': fragment('acs.md', '- [ ] Active work is never synthesized as idle.'),
+    'ac-file': fragment(
+      'acs.md',
+      '- [ ] Active work is never synthesized as idle. <!-- aitm-non-demonstrable -->'
+    ),
     'story-origin-file': fragment(
       'story-origin.md',
       '- kind: code\n- discovered-during: local-work'
@@ -222,7 +225,10 @@ test('web defect normalization maps form fields through the same renderer and st
   assert.match(captured.userStory, /As an AITM operator affected by a confirmed defect/);
   assert.equal(captured.scope, 'Resume classifies active issue work as idle.');
   assert.match(captured.reproduction, /Leave an active timing span open/);
-  assert.equal(captured.acceptanceCriteria, '- [ ] Active work remains active.');
+  assert.equal(
+    captured.acceptanceCriteria,
+    '- [ ] Active work remains active. <!-- aitm-non-demonstrable -->'
+  );
   assert.equal(captured.priority, 'P1');
   assert.equal(captured.size, 'S');
   assert.equal(captured.estimate, '4');

@@ -126,6 +126,58 @@ describe('current-schema User Story authoring', () => {
   });
 });
 
+describe('current-schema Acceptance Criterion verifier authoring', () => {
+  test('creation rejects legacy, empty, missing, and dangling verifier declarations', async () => {
+    const files = fixture();
+    const vc = path.join(files.dir, 'verification-commands.md');
+    writeFileSync(vc, 'node --test x.test.mjs\n', 'utf8');
+    const cases = [
+      ['<!-- aitm-verified cmd="`node --test x.test.mjs`" -->', 'backtick-embedded-cmd'],
+      ['<!-- aitm-verified cmd="vc:1" -->', 'ordinal-cmd-citation'],
+      ['<!-- aitm-verified vc-list="" -->', 'empty-vc-list'],
+      ['<!-- aitm-verified vc-list="vc:99" -->', 'dangling-vc-list'],
+      ['<!-- aitm-verified -->', 'missing-vc-list'],
+    ];
+    try {
+      for (const [marker, reason] of cases) {
+        writeFileSync(files.ac, `- [ ] The body is complete. ${marker}\n`, 'utf8');
+        const result = await preflight([
+          ...shapeArgs('solo', files),
+          '--verification-commands-file',
+          vc,
+        ]);
+        assert.equal(result.code, 2, `${reason}\n${result.stderr}`);
+        assert.match(result.stderr, /preflight-issue: ac-verifier-contract/);
+        assert.match(result.stderr, new RegExp(reason));
+      }
+    } finally {
+      rmSync(files.dir, { recursive: true, force: true });
+    }
+  });
+
+  test('creation accepts resolvable vc-list citations and non-demonstrable ACs', async () => {
+    const files = fixture();
+    const vc = path.join(files.dir, 'verification-commands.md');
+    writeFileSync(vc, 'node --test x.test.mjs\n', 'utf8');
+    try {
+      for (const marker of [
+        '<!-- aitm-verified vc-list="vc:1" -->',
+        '<!-- aitm-non-demonstrable -->',
+      ]) {
+        writeFileSync(files.ac, `- [ ] The body is complete. ${marker}\n`, 'utf8');
+        const result = await preflight([
+          ...shapeArgs('solo', files),
+          '--verification-commands-file',
+          vc,
+        ]);
+        assert.equal(result.code, 0, result.stderr);
+      }
+    } finally {
+      rmSync(files.dir, { recursive: true, force: true });
+    }
+  });
+});
+
 test('create-issue forwards --user-story-file before the remaining non-stub fragments', () => {
   const flags = buildShapeFlags({
     shape: 'solo',
