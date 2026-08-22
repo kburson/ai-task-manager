@@ -544,6 +544,84 @@ test('reviewer consensus retries an occupied eligible primary through its determ
   );
 });
 
+test('reviewer consensus preparation conflicts expose no archive retry', async () => {
+  for (const mutation of ['same-protocol', 'ineligible-foreign', 'recovery-conflict']) {
+    const occupied = await acceptedConsensus();
+    const occupiedPrepared = prepareArchive(
+      archiveOptions(occupied, 'docs/reviews/occupied-source')
+    );
+    const current = await consensusReady({ archiveDir: 'docs/reviews/configured' });
+    const currentState = current.api.readProtocol({ cwd: current.root, dir: current.options.dir });
+    const configuredAbsolute = path.join(current.root, 'docs/reviews/configured');
+    const recoveryDir = `docs/reviews/configured-recovery-${currentState.protocolId}`;
+    materializePrepared(configuredAbsolute, occupiedPrepared);
+
+    if (mutation === 'same-protocol') {
+      const manifest = structuredClone(occupiedPrepared.manifest);
+      manifest.protocol.id = currentState.protocolId;
+      replaceArchiveManifestJson(configuredAbsolute, JSON.stringify(manifest, null, 2));
+    } else if (mutation === 'ineligible-foreign') {
+      unlinkSync(path.join(configuredAbsolute, output(occupiedPrepared, 'review').path));
+    } else {
+      const recoveryAbsolute = path.join(current.root, recoveryDir);
+      mkdirSync(recoveryAbsolute, { recursive: true });
+      writeFileSync(path.join(recoveryAbsolute, 'conflict.md'), 'preserve this conflict\n');
+    }
+
+    const accepted = await runCliDirect(
+      [
+        'handoff',
+        '--dir',
+        current.options.dir,
+        '--actor',
+        'reviewer-agent',
+        '--review',
+        current.review,
+        '--review-of',
+        current.initialCommit,
+        '--decision',
+        'accepted',
+        '--message',
+        'accepted',
+      ],
+      { cwd: current.root, repository: current.repository }
+    );
+
+    assert.equal(accepted.status, 4, mutation);
+    assert.match(
+      accepted.stderr,
+      /^ACCEPTED: protocol state is durable; archive publication is pending/,
+      mutation
+    );
+    assert.doesNotMatch(accepted.stderr, /\nRetry:/, mutation);
+    assert.doesNotMatch(
+      accepted.stderr,
+      /--archive-dir docs\/reviews\/configured(?:\n|$)/,
+      mutation
+    );
+    assert.equal(
+      current.api.readProtocol({ cwd: current.root, dir: current.options.dir }).lifecycle,
+      'accepted',
+      mutation
+    );
+
+    const status = JSON.parse(
+      (
+        await runCliDirect(['status', '--dir', current.options.dir, '--json'], {
+          cwd: current.root,
+          repository: current.repository,
+        })
+      ).stdout
+    );
+    assert.equal(status.archive.completion, 'conflict', mutation);
+    assert.equal(
+      status.availableActions.some(({ kind }) => kind === 'finalize'),
+      false,
+      mutation
+    );
+  }
+});
+
 test('good-enough acceptance is revision-checked, immutable, and requires two-sided closing evidence', async () => {
   const ready = await goodEnoughReady();
   const before = snapshotProtocol(ready.root, ready.options.dir);

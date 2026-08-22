@@ -645,7 +645,8 @@ function formatStatus(state) {
 }
 
 function archivePendingMessage({ state, error, prepared, shellArgument }) {
-  const destination = prepared?.destination.relative ?? state.initialization?.archiveDir;
+  const configuredArchiveDir = state.initialization?.archiveDir;
+  const destination = prepared?.destination.relative ?? configuredArchiveDir;
   const runtimeDir = path.resolve(state.repositoryRoot, state.initialization.runtimeDir);
   const retry = `npx aitm co-review finalize --dir ${shellArgument(runtimeDir)}${
     destination
@@ -656,7 +657,9 @@ function archivePendingMessage({ state, error, prepared, shellArgument }) {
   return [
     'ACCEPTED: protocol state is durable; archive publication is pending',
     `Cause: ${cause}`,
-    `Retry: ${retry}`,
+    ...(prepared || !configuredArchiveDir
+      ? [`Retry: ${retry}`]
+      : ['Archive publication is blocked; inspect status for safe actions.']),
     '',
   ].join('\n');
 }
