@@ -16,7 +16,11 @@ import {
 import { hostname } from 'node:os';
 import path from 'node:path';
 
-import { inspectArchive, resolveArchiveDestination } from './archive.mjs';
+import {
+  assertArchiveDestinationAbsent,
+  inspectArchive,
+  resolveArchiveDestination,
+} from './archive.mjs';
 import { planAbsoluteBudget, planContinuationBudget } from './budget.mjs';
 import { REAL_REPOSITORY_BOUNDARY } from './repository-boundary.mjs';
 import { resolveRuntimeRoot, RuntimeRootError } from './runtime-root.mjs';
@@ -630,6 +634,7 @@ export function initializeProtocol({
       fail('already-initialized', paths.relative);
     }
     if (existsSync(paths.events)) fail('orphaned-events', paths.relative);
+    if (archive) assertArchiveDestinationAbsent(archive);
     const at = new Date().toISOString();
     const imported = Boolean(importedReview);
     const state = validateState({

@@ -98,6 +98,26 @@ export function resolveArchiveDestination({
   return Object.freeze(archive);
 }
 
+export function assertArchiveDestinationAbsent(destination) {
+  let info;
+  try {
+    info = lstatSync(destination.absolute);
+  } catch (error) {
+    if (error?.code === 'ENOENT') return;
+    fail('archive-destination-occupied', `${destination.relative}: unreadable: ${error.message}`);
+  }
+  const kind = info.isSymbolicLink()
+    ? 'symlink'
+    : info.isDirectory()
+      ? readdirSync(destination.absolute).length === 0
+        ? 'empty-directory'
+        : 'directory'
+      : info.isFile()
+        ? 'file'
+        : 'special-entry';
+  fail('archive-destination-occupied', `${destination.relative}: ${kind}`);
+}
+
 function digest(bytes) {
   return `sha256:${createHash('sha256').update(bytes).digest('hex')}`;
 }
