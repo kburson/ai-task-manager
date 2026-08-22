@@ -239,6 +239,44 @@ test('receipt comments round trip when bounded payload strings contain delivery 
   assert.deepEqual(parsed.record, receipt);
 });
 
+test('intent comments reject a second inline hidden delivery marker', () => {
+  const intent = buildDeliveryIntent(intentInput());
+  const receipt = buildDeliveryReceipt(receiptInput());
+  const secondMarker = renderDeliveryReceiptComment(receipt).split('\n')[0];
+
+  assert.throws(
+    () =>
+      parseDeliveryComment(
+        {
+          id: 'IC_duplicate_inline_intent',
+          body: `${renderDeliveryIntentComment(intent)} ${secondMarker}`,
+          createdAt: '2026-08-22T01:02:03.000Z',
+        },
+        context
+      ),
+    /delivery-records:malformed-marker/
+  );
+});
+
+test('receipt comments reject a second inline hidden delivery marker', () => {
+  const intent = buildDeliveryIntent(intentInput());
+  const receipt = buildDeliveryReceipt(receiptInput());
+  const secondMarker = renderDeliveryIntentComment(intent).split('\n')[0];
+
+  assert.throws(
+    () =>
+      parseDeliveryComment(
+        {
+          id: 'IC_duplicate_inline_receipt',
+          body: `${renderDeliveryReceiptComment(receipt)} ${secondMarker}`,
+          createdAt: '2026-08-22T01:02:03.000Z',
+        },
+        context
+      ),
+    /delivery-records:malformed-marker/
+  );
+});
+
 test('builders reject extra keys, malformed identities, unbounded strings, and invalid SHAs', () => {
   for (const input of [
     intentInput({ extra: true }),
@@ -437,4 +475,28 @@ test('projection rejects orphaned, mismatched, duplicate, and conflicting receip
   ]) {
     assert.throws(() => projectDeliveryRecords(records), error);
   }
+});
+
+test('receipt authority follows comment order while retaining superseded-intent receipts', () => {
+  const intent = parsedIntent();
+  const receipt = parsedReceipt();
+
+  assert.throws(() => projectDeliveryRecords([receipt, intent]), /delivery-records:receipt-order/);
+  assert.equal(projectDeliveryRecords([intent, receipt]).matchingReceipt.id, receipt.id);
+
+  const replacement = parsedIntent(
+    {
+      intentId: '01ARZ3NDEKTSV4RRFFQ69G5FAW',
+      supersedesIntentId: intent.record.intentId,
+      expectedHeadSha: 'c'.repeat(40),
+      commitMessage: `PR #1400 source ${'c'.repeat(40)}\n\n[#939]`,
+      clientCreatedAt: '2026-08-22T00:07:00.000Z',
+    },
+    { id: 'IC_recovery', createdAt: '2026-08-22T00:08:00.000Z' }
+  );
+  const recoveryProjection = projectDeliveryRecords([intent, receipt, replacement]);
+
+  assert.equal(recoveryProjection.liveIntent.id, replacement.id);
+  assert.equal(recoveryProjection.matchingReceipt, null);
+  assert.deepEqual(recoveryProjection.receipts, [receipt]);
 });

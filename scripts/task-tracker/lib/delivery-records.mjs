@@ -372,6 +372,9 @@ function parseMarker(body) {
   }
   const match = body.match(/^<!-- (aitm-delivery-(intent|receipt)) ([^\r\n]+) -->/);
   if (match === null) throw deliveryError('malformed-marker');
+  if (MISPLACED_MARKER_RE.test(body.slice(match[0].length))) {
+    throw deliveryError('malformed-marker');
+  }
   const recordJson = match[3];
   if (Buffer.byteLength(recordJson, 'utf8') > MAX_RECORD_JSON_BYTES) {
     throw deliveryError('record-too-large');
@@ -502,6 +505,17 @@ function validateReceipts(receipts, intentsById) {
   return byIntentId;
 }
 
+function validateReceiptOrder(records) {
+  const seenIntentIds = new Set();
+  for (const { record } of records) {
+    if (record.schema === INTENT_SCHEMA) {
+      seenIntentIds.add(record.intentId);
+    } else if (!seenIntentIds.has(record.intentId)) {
+      throw deliveryError('receipt-order');
+    }
+  }
+}
+
 export function projectDeliveryRecords(records) {
   if (!Array.isArray(records) || records.length > MAX_RECORDS) {
     throw deliveryError('project-input');
@@ -517,6 +531,7 @@ export function projectDeliveryRecords(records) {
   const receipts = copies.filter(({ record }) => record.schema === RECEIPT_SCHEMA);
   const graph = validateIntentGraph(intents);
   const receiptsByIntentId = validateReceipts(receipts, graph.byId);
+  validateReceiptOrder(copies);
   const projectedIntents = intents.map((parsed) =>
     deepFreeze({
       ...parsed,
