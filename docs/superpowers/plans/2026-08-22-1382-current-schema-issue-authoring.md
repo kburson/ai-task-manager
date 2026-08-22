@@ -11,7 +11,7 @@
 ## Global Constraints
 
 - Never call `gh issue create` directly; all behavior stays behind `npx aitm create-issue` and `preflight-issue`.
-- Epic, sub-issue, solo, and defect shapes require `--user-story-file`; stub shape retains its intentional placeholders.
+- Epic, sub-issue, solo, and defect shapes require `--user-story-file`; stub shape retains its intentional sparse body without a User Story section.
 - The user-story fragment has exactly three non-empty lines beginning `As a`, `I want to`, and `So that`, with no heading and no template placeholder.
 - Root Acceptance Criteria use only `<!-- aitm-verified vc-list="vc:N" -->` or the existing explicit non-demonstrable/waiver forms; Functional DoD items retain literal `cmd` declarations.
 - Validate `vc-list` only after Verification Commands are assembled.
@@ -64,7 +64,7 @@ assert.match(valid.stdout, /As a task author\nI want to create a complete issue 
 assert.doesNotMatch(valid.stdout, /\[who wants to accomplish something\]/);
 
 assert.equal(stub.code, 0, stub.stderr);
-assert.match(stub.stdout, /As a \[who wants to accomplish something\]/);
+assert.doesNotMatch(stub.stdout, /^## User Story$/m);
 ```
 
 Cover malformed fragments with two lines, four lines, a heading, and each canonical template placeholder. Add a pure forwarding assertion:
