@@ -77,3 +77,25 @@ aliases were not adopted because they are not fields in
 TDD evidence: the strengthened parity assertion failed on the missing exit-code
 coupling, then passed after the rule change. The complete Task 1-6 aggregate
 remained green at 132 tests.
+
+## Second review fix: envelope classification and exact predicates
+
+The rule now defines two valid envelopes and one invalid class without overlap:
+
+- Exit 20 plus exactly one action line permits at most one provider call.
+- Non-20 plus zero action lines never invokes a provider and follows the actual
+  result, including the exit-0 verified-receipt path to close.
+- Every crossed or malformed exit/action-line combination retries once for live
+  reconciliation and then fails closed if it remains mismatched.
+
+This preserves the required post-provider reconciliation: an external merge can
+be followed by exit 0 with an `AITM_DELIVERY_RESULT` carrying a verified receipt,
+after which close may proceed.
+
+The host-side validation wording now reproduces every authoritative predicate
+from `delivery-provider-action.mjs`: exact repository and SHA expressions, the
+complete trim/delimiter/dot-dot/whitespace/forbidden-character ref rules, and
+the exact commit-title and commit-message attribution tokens.
+
+TDD evidence: the expanded parity assertions failed against the prior ambiguous
+envelope and paraphrased predicates, then passed after the rule was made exact.

@@ -10,12 +10,22 @@ one declared external action, and AITM independently verifies the live result.
 
 ## Host contract
 
-1. Run `npx aitm deliver #N` and preserve its stdout and exit status. A provider
-   action is authorized only when both the exit status is exactly `20` and
-   stdout contains exactly one `AITM_PROVIDER_ACTION_REQUIRED:` JSON line.
-   Any other exit/output combination is invalid and must not invoke a provider.
-   Rerun `deliver` once to reconcile live state; if the invalid combination
-   repeats, fail closed and leave the intent pending.
+1. Run `npx aitm deliver #N` and preserve its stdout and exit status. Classify
+   the result into exactly one envelope:
+   - **Provider-action envelope:** exit `20` with exactly one
+     `AITM_PROVIDER_ACTION_REQUIRED:` JSON line. This is the only envelope that
+     permits the remaining provider-action steps, and it authorizes at most one
+     provider call.
+   - **Non-action envelope:** non-`20` with zero action lines. This envelope never
+     invokes a provider; obey the command's actual result. In particular, exit
+     `0` with one `AITM_DELIVERY_RESULT:` whose status is `delivered` or
+     `already-delivered` and whose receipt is present and live-verified may
+     continue to `npx aitm close #N`. A stable refusal or other result stops at
+     that result.
+   - **Mismatched envelope:** exit `20` with zero or multiple action lines, or
+     non-`20` with one or multiple action lines. Never invoke a provider. Retry
+     once by rerunning `deliver` to reconcile live state; if the envelope is
+     still mismatched, fail closed and leave the intent pending.
 2. Parse only the single `AITM_PROVIDER_ACTION_REQUIRED:` line and preserve all
    parsed string bytes. Require a plain JSON object with exactly these 12 keys:
    `action`, `baseRef`, `commitMessage`, `commitTitle`, `expectedHeadSha`,
@@ -27,12 +37,18 @@ one declared external action, and AITM independently verifies the live result.
    - `issueNumber` and `prNumber` are positive safe integers.
    - The remaining nine values are strings.
    - `action` is exactly `github.merge-pull-request`.
-   - `intentId` is an uppercase canonical ULID; `repository` is `owner/name`;
-     `expectedHeadSha` is 40 lowercase hexadecimal characters; `baseRef` and
-     `headRef` are valid non-empty Git refs; and `mergeMethod` is exactly one of
-     `merge`, `squash`, or `rebase`.
-   - `commitTitle` and `commitMessage` are non-empty, and retain the issue, PR,
-     and expected-head attribution required by the emitted action.
+   - `intentId` matches `^[0-7][0-9A-HJKMNP-TV-Z]{25}$`.
+   - `repository` matches exactly
+     `^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$`.
+   - `expectedHeadSha` matches `^[0-9a-f]{40}$`.
+   - Each of `baseRef` and `headRef` is non-empty and equal its own `trim()`
+     result; must not start or end with `/`; must not contain `//` or `..`; and
+     must not contain `~`, `^`, `:`, `?`, `*`, `[`, `\`, or whitespace.
+   - `mergeMethod` is exactly one of `merge`, `squash`, or `rebase`.
+   - `commitTitle` is non-empty and starts with exactly
+     `[#${issueNumber}]`.
+   - `commitMessage` is non-empty and contains both exact tokens
+     `PR #${prNumber}` and `${expectedHeadSha}`.
 4. Look up that action in the active provider adapter's `externalActions` map.
    Continue only when its `adapterContract` is `skill` and
    `expectedHeadSha === true`. A missing, `null`, or unavailable integration is

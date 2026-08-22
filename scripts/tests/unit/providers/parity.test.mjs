@@ -199,9 +199,23 @@ test('#939: provider adapters own sanctioned integration wording', () => {
 
 test('#939: delivery rule is an exact, fail-closed host contract', () => {
   const rule = readFileSync(path.join(REPO_ROOT, 'skill/shared/rules/deliver.md'), 'utf8');
-  assert.match(rule, /exit status is exactly `20`/i);
-  assert.match(rule, /only when both[\s\S]*exactly `20`[\s\S]*exactly one/i);
-  assert.match(rule, /any other exit\/output combination[\s\S]*must not invoke/i);
+  assert.match(
+    rule,
+    /provider-action envelope[\s\S]*exit `20`[\s\S]*exactly one[\s\S]*at most one\s+provider call/i
+  );
+  assert.match(
+    rule,
+    /non-action envelope[\s\S]*non-`20`[\s\S]*zero action lines[\s\S]*never\s+invokes a provider[\s\S]*obey/i
+  );
+  assert.match(
+    rule,
+    /mismatched envelope[\s\S]*exit `20` with zero or multiple action lines[\s\S]*non-`20` with one or multiple action lines/i
+  );
+  assert.match(rule, /retry\s+once[\s\S]*fail closed/i);
+  assert.match(
+    rule,
+    /exit\s+`0`[\s\S]*AITM_DELIVERY_RESULT:[\s\S]*verified[\s\S]*continue to `npx aitm close #N`/i
+  );
   assert.match(rule, /parse only the single `AITM_PROVIDER_ACTION_REQUIRED:` line/i);
   const actionKeys = [
     'action',
@@ -223,6 +237,19 @@ test('#939: delivery rule is an exact, fail-closed host contract', () => {
   assert.match(rule, /`issueNumber` and `prNumber`[\s\S]*positive safe integers/i);
   assert.match(rule, /remaining[\s\S]*strings/i);
   assert.match(rule, /unknown[\s\S]*missing[\s\S]*refuse/i);
+  assert.ok(rule.includes('^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$'));
+  assert.match(rule, /equal its own `trim\(\)`[\s\S]*result/i);
+  assert.match(rule, /must not start or end with `\/`/i);
+  assert.match(rule, /must not contain `\/\/` or `\.\.`/i);
+  for (const forbidden of ['`~`', '`^`', '`:`', '`?`', '`*`', '`[`', '`\\`']) {
+    assert.match(rule, new RegExp(forbidden.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
+  }
+  assert.match(rule, /whitespace/);
+  assert.match(rule, /`commitTitle`[\s\S]*starts with exactly\s+`\[#\$\{issueNumber\}\]`/i);
+  assert.match(
+    rule,
+    /`commitMessage`[\s\S]*contains both exact tokens\s+`PR #\$\{prNumber\}` and `\$\{expectedHeadSha\}`/i
+  );
   assert.doesNotMatch(rule, /pullRequestNumber/);
   assert.match(rule, /never[^\n]*shell/i);
   assert.match(rule, /success, refusal, timeout, or ambiguity/i);
