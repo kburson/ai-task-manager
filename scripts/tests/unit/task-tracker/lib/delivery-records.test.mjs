@@ -8,6 +8,7 @@ import { canonicalRecordJson } from '../../../../task-tracker/lib/github-records
 import {
   buildDeliveryIntent,
   buildDeliveryReceipt,
+  MAX_DELIVERY_REPOSITORY_BYTES,
   parseDeliveryComment,
   projectDeliveryRecords,
   renderDeliveryIntentComment,
@@ -200,6 +201,44 @@ test('comments contain one canonical marker and preserve authoritative server me
   assertDeepFrozen(parsed);
 });
 
+test('intent comments round trip when bounded payload strings contain delivery marker names', () => {
+  const intent = buildDeliveryIntent(
+    intentInput({
+      provider: 'codex-aitm-delivery-intent',
+      sessionId: 'session-aitm-delivery-receipt',
+    })
+  );
+  const parsed = parseDeliveryComment(
+    {
+      id: 'IC_marker_names_intent',
+      body: renderDeliveryIntentComment(intent),
+      createdAt: '2026-08-22T01:02:03.000Z',
+    },
+    context
+  );
+
+  assert.deepEqual(parsed.record, intent);
+});
+
+test('receipt comments round trip when bounded payload strings contain delivery marker names', () => {
+  const receipt = buildDeliveryReceipt(
+    receiptInput({
+      provider: 'codex-aitm-delivery-intent',
+      sessionId: 'session-aitm-delivery-receipt',
+    })
+  );
+  const parsed = parseDeliveryComment(
+    {
+      id: 'IC_marker_names_receipt',
+      body: renderDeliveryReceiptComment(receipt),
+      createdAt: '2026-08-22T01:02:03.000Z',
+    },
+    context
+  );
+
+  assert.deepEqual(parsed.record, receipt);
+});
+
 test('builders reject extra keys, malformed identities, unbounded strings, and invalid SHAs', () => {
   for (const input of [
     intentInput({ extra: true }),
@@ -224,6 +263,16 @@ test('builders reject extra keys, malformed identities, unbounded strings, and i
   ]) {
     assert.throws(() => buildDeliveryReceipt(input), /delivery-records:/);
   }
+});
+
+test('repository names accept the normal form and reject more than 256 UTF-8 bytes', () => {
+  assert.equal(buildDeliveryIntent(intentInput()).repository, repository);
+  const overBoundRepository = `${'a'.repeat(MAX_DELIVERY_REPOSITORY_BYTES)}/r`;
+
+  assert.throws(
+    () => buildDeliveryIntent(intentInput({ repository: overBoundRepository })),
+    /delivery-records:repository/
+  );
 });
 
 test('parser rejects malformed marker-like comments and noncanonical record bytes', () => {
@@ -340,6 +389,20 @@ test('projection rejects duplicate IDs, missing links, cycles, forks, and multip
   ]) {
     assert.throws(() => projectDeliveryRecords(records), error);
   }
+});
+
+test('projection rejects a replacement that names an intent appearing later in comment order', () => {
+  const firstId = '01ARZ3NDEKTSV4RRFFQ69G5FAV';
+  const secondId = '01ARZ3NDEKTSV4RRFFQ69G5FAW';
+  const thirdId = '01ARZ3NDEKTSV4RRFFQ69G5FAX';
+  const first = parsedIntent({ intentId: firstId });
+  const third = parsedIntent({ intentId: thirdId, supersedesIntentId: secondId });
+  const second = parsedIntent({ intentId: secondId, supersedesIntentId: firstId });
+
+  assert.throws(
+    () => projectDeliveryRecords([first, third, second]),
+    /delivery-records:supersession-order/
+  );
 });
 
 test('projection rejects same-key divergent authorized bytes', () => {

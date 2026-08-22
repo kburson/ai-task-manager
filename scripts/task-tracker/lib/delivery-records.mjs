@@ -8,7 +8,8 @@ const INTENT_SCHEMA = 'aitm.delivery-intent/v1';
 const RECEIPT_SCHEMA = 'aitm.delivery-receipt/v1';
 const INTENT_MARKER = 'aitm-delivery-intent';
 const RECEIPT_MARKER = 'aitm-delivery-receipt';
-const MARKER_LIKE_RE = /aitm-delivery-(?:intent|receipt)/g;
+const HIDDEN_MARKER_RE = /^<!--\s*aitm-delivery-(?:intent|receipt)(?=\s)/gm;
+const MISPLACED_MARKER_RE = /<!--\s*aitm-delivery-(?:intent|receipt)(?=\s)/;
 const SHA_RE = /^[0-9a-f]{40}$/;
 const HASH_RE = /^[0-9a-f]{64}$/;
 const ULID_RE = /^[0-7][0-9A-HJKMNP-TV-Z]{25}$/;
@@ -20,6 +21,9 @@ const MAX_FIELD_BYTES = 1024;
 const MAX_TITLE_BYTES = 256;
 const MAX_RECORDS = 4096;
 const MAX_ATTRIBUTION_TOKENS = 256;
+
+/** Maximum UTF-8 bytes retained for the durable `owner/repository` identity. */
+export const MAX_DELIVERY_REPOSITORY_BYTES = 256;
 
 const INTENT_KEYS = [
   'attributionTokens',
@@ -152,7 +156,11 @@ function assertHash(value, category) {
 }
 
 function assertRepository(value) {
-  if (typeof value !== 'string' || !REPOSITORY_RE.test(value)) {
+  if (
+    typeof value !== 'string' ||
+    Buffer.byteLength(value, 'utf8') > MAX_DELIVERY_REPOSITORY_BYTES ||
+    !REPOSITORY_RE.test(value)
+  ) {
     throw deliveryError('repository');
   }
 }
@@ -354,13 +362,16 @@ function parseMarker(body) {
   if (Buffer.byteLength(body, 'utf8') > MAX_COMMENT_BODY_BYTES) {
     throw deliveryError('comment-too-large');
   }
-  const markerLikes = [...body.matchAll(MARKER_LIKE_RE)];
-  if (markerLikes.length === 0) return null;
-  if (markerLikes.length !== 1 || markerLikes[0].index !== 5) {
+  const hiddenMarkers = [...body.matchAll(HIDDEN_MARKER_RE)];
+  if (hiddenMarkers.length === 0) {
+    if (MISPLACED_MARKER_RE.test(body)) throw deliveryError('malformed-marker');
+    return null;
+  }
+  if (hiddenMarkers.length !== 1 || hiddenMarkers[0].index !== 0) {
     throw deliveryError('malformed-marker');
   }
   const match = body.match(/^<!-- (aitm-delivery-(intent|receipt)) ([^\r\n]+) -->/);
-  if (match === null || match[1] !== markerLikes[0][0]) throw deliveryError('malformed-marker');
+  if (match === null) throw deliveryError('malformed-marker');
   const recordJson = match[3];
   if (Buffer.byteLength(recordJson, 'utf8') > MAX_RECORD_JSON_BYTES) {
     throw deliveryError('record-too-large');
@@ -454,6 +465,13 @@ function validateIntentGraph(intents) {
   const referenced = new Set(successors.keys());
   const live = intents.filter(({ record }) => !referenced.has(record.intentId));
   if (live.length > 1) throw deliveryError('multiple-live-intents');
+  let chronologicalLiveIntentId = null;
+  for (const { record } of intents) {
+    if (record.supersedesIntentId !== chronologicalLiveIntentId) {
+      throw deliveryError('supersession-order');
+    }
+    chronologicalLiveIntentId = record.intentId;
+  }
   return { byId, referenced, liveIntent: live[0] ?? null };
 }
 
