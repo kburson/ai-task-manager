@@ -16,15 +16,19 @@ import { createRecordId } from '../lib/github-records/record-envelope.mjs';
 import { canonicalRecordJson } from '../lib/github-records/canonical-json.mjs';
 import {
   buildDeliveryIntent,
+  buildDeliveryReceipt,
   parseDeliveryComment,
   projectDeliveryRecords,
   renderDeliveryIntentComment,
+  renderDeliveryReceiptComment,
 } from '../lib/delivery-records.mjs';
 import { validateDeliveryPreflight } from '../lib/delivery-preflight.mjs';
 import {
   buildProviderAction,
   serializeProviderActionRequired,
 } from '../lib/delivery-provider-action.mjs';
+import { verifyDeliveredPullRequest } from '../lib/delivery-verification.mjs';
+import { attributingCommits as defaultAttributingCommits } from '../lib/commit-attribution.mjs';
 
 const pexec = promisify(execFile);
 const SHA_RE = /^[0-9a-f]{40}$/;
@@ -144,6 +148,113 @@ function exactReadback(comments, intent, body) {
   });
 }
 
+function exactReceiptReadback(comments, receipt, body) {
+  return comments.some((comment) => {
+    if (comment?.body !== body) return false;
+    const parsed = parseDeliveryComment(comment, {
+      repository: receipt.repository,
+      issueNumber: receipt.record.issueNumber,
+      prNumber: receipt.record.prNumber,
+    });
+    return parsed?.record?.intentId === receipt.record.intentId;
+  });
+}
+
+function pullRequestMerged(pullRequest) {
+  return (
+    pullRequest?.merged === true || String(pullRequest?.state || '').toUpperCase() === 'MERGED'
+  );
+}
+
+async function appendIntent({ deps, issueNumber, repository, context, intent }) {
+  const body = renderDeliveryIntentComment(intent);
+  let createError = null;
+  try {
+    await requiredDependency(deps, 'createIssueComment')({ issueNumber, repository, body });
+  } catch (error) {
+    createError = error;
+  }
+  const readback = await readProjection({ deps, issueNumber, context });
+  if (
+    readback.projection.liveIntent?.record.intentId !== intent.intentId ||
+    !exactReadback(readback.comments, intent, body)
+  ) {
+    if (createError !== null) throw deliverError('comment-create-ambiguous', createError);
+    throw deliverError('comment-readback');
+  }
+  if (
+    authorizedIntentBytes(readback.projection.liveIntent.record) !== authorizedIntentBytes(intent)
+  ) {
+    throw deliverError('intent-divergence');
+  }
+  return readback.projection.liveIntent;
+}
+
+async function verifyAndFinalize({
+  deps,
+  issueNumber,
+  repository,
+  context,
+  liveIntent,
+  matchingReceipt,
+  pullRequest,
+  recovery,
+}) {
+  const verification = await verifyDeliveredPullRequest({
+    intent: liveIntent.record,
+    intentCreatedAt: liveIntent.createdAt,
+    pullRequest,
+    recovery,
+    fetchOriginTrunk: requiredDependency(deps, 'fetchOriginTrunk'),
+    isAncestor: requiredDependency(deps, 'isAncestor'),
+    attributingCommits: requiredDependency(deps, 'attributingCommits'),
+  });
+  const receipt = buildDeliveryReceipt(verification.receiptInput);
+  if (matchingReceipt !== null) {
+    if (canonicalRecordJson(matchingReceipt.record) !== canonicalRecordJson(receipt)) {
+      throw deliverError('receipt-divergence');
+    }
+    return {
+      status: 'already-delivered',
+      intent: liveIntent.record,
+      receipt: matchingReceipt.record,
+      action: null,
+      recovery,
+      branchDisposition: verification.branchDisposition,
+    };
+  }
+
+  const receiptBody = renderDeliveryReceiptComment(receipt);
+  let createError = null;
+  try {
+    await requiredDependency(
+      deps,
+      'createIssueComment'
+    )({ issueNumber, repository, body: receiptBody });
+  } catch (error) {
+    createError = error;
+  }
+  const readback = await readProjection({ deps, issueNumber, context });
+  const readbackReceipt = readback.projection.matchingReceipt;
+  const receiptWithContext = { repository, record: receipt };
+  if (
+    readbackReceipt === null ||
+    canonicalRecordJson(readbackReceipt.record) !== canonicalRecordJson(receipt) ||
+    !exactReceiptReadback(readback.comments, receiptWithContext, receiptBody)
+  ) {
+    if (createError !== null) throw deliverError('receipt-create-ambiguous', createError);
+    throw deliverError('receipt-readback');
+  }
+  return {
+    status: 'delivered',
+    intent: liveIntent.record,
+    receipt: readbackReceipt.record,
+    action: null,
+    recovery,
+    branchDisposition: verification.branchDisposition,
+  };
+}
+
 function requiredDependency(deps, name) {
   const dependency = deps?.[name];
   if (typeof dependency !== 'function') throw deliverError(`missing-dependency:${name}`);
@@ -228,7 +339,7 @@ export async function runDeliver({ issueNumber, cfg, state, deps = {} } = {}) {
     assignee,
     repositoryMergeMethods,
   };
-  const preflight = validateDeliveryPreflight({
+  const preflightInput = {
     issue,
     binding: bindingFromState({ branch, state }),
     lineage,
@@ -240,7 +351,22 @@ export async function runDeliver({ issueNumber, cfg, state, deps = {} } = {}) {
     dirtyPaths,
     config: deliveryConfig,
     commitSubjects,
-  });
+  };
+  const mergedPullRequest = pullRequests.length === 1 && pullRequestMerged(pullRequests[0]);
+  const preflight = mergedPullRequest
+    ? validateDeliveryPreflight({
+        ...preflightInput,
+        pullRequests: [
+          {
+            ...pullRequests[0],
+            state: 'OPEN',
+            isDraft: false,
+            mergeable: 'MERGEABLE',
+            headRefOid: localHeadSha,
+          },
+        ],
+      })
+    : validateDeliveryPreflight(preflightInput);
   const context = {
     repository: cfg.repo,
     issueNumber,
@@ -248,8 +374,41 @@ export async function runDeliver({ issueNumber, cfg, state, deps = {} } = {}) {
   };
   const initial = await readProjection({ deps, issueNumber, context });
   const live = initial.projection.liveIntent;
+  if (mergedPullRequest) {
+    let liveIntent = live;
+    let recovery = liveIntent?.record.provider === 'external';
+    if (liveIntent === null) {
+      recovery = true;
+      const recoveryIntent = buildIntentFromPreflight({
+        preflight,
+        cfg,
+        intentId: createIntentId(),
+        supersedesIntentId: null,
+        provider: 'external',
+        sessionId: sessionId(),
+        clientCreatedAt: pullRequests[0].mergedAt,
+      });
+      liveIntent = await appendIntent({
+        deps,
+        issueNumber,
+        repository: cfg.repo,
+        context,
+        intent: recoveryIntent,
+      });
+    }
+    return verifyAndFinalize({
+      deps,
+      issueNumber,
+      repository: cfg.repo,
+      context,
+      liveIntent,
+      matchingReceipt: initial.projection.matchingReceipt,
+      pullRequest: pullRequests[0],
+      recovery,
+    });
+  }
   if (initial.projection.matchingReceipt !== null) {
-    throw deliverError('receipt-verification-required');
+    throw deliverError('receipt-on-open-pr');
   }
 
   if (live?.record.expectedHeadSha === preflight.expectedHeadSha) {
@@ -281,39 +440,18 @@ export async function runDeliver({ issueNumber, cfg, state, deps = {} } = {}) {
     sessionId: sessionId(),
     clientCreatedAt: now(),
   });
-  const body = renderDeliveryIntentComment(intent);
-  let createError = null;
-  try {
-    await requiredDependency(
-      deps,
-      'createIssueComment'
-    )({
-      issueNumber,
-      repository: cfg.repo,
-      body,
-    });
-  } catch (error) {
-    createError = error;
-  }
-
-  const readback = await readProjection({ deps, issueNumber, context });
-  if (
-    readback.projection.liveIntent?.record.intentId !== intent.intentId ||
-    !exactReadback(readback.comments, intent, body)
-  ) {
-    if (createError !== null) throw deliverError('comment-create-ambiguous', createError);
-    throw deliverError('comment-readback');
-  }
-  if (
-    authorizedIntentBytes(readback.projection.liveIntent.record) !== authorizedIntentBytes(intent)
-  ) {
-    throw deliverError('intent-divergence');
-  }
+  const readbackIntent = await appendIntent({
+    deps,
+    issueNumber,
+    repository: cfg.repo,
+    context,
+    intent,
+  });
 
   return {
     status: 'action-required',
-    intent: readback.projection.liveIntent.record,
-    action: buildProviderAction(readback.projection.liveIntent.record),
+    intent: readbackIntent.record,
+    action: buildProviderAction(readbackIntent.record),
   };
 }
 
@@ -441,10 +579,24 @@ export function createDefaultDeliverDeps(ctx, { exec = pexec } = {}) {
         '-R',
         ctx.cfg.repo,
         '--json',
-        'number,state,isDraft,baseRefName,headRefName,headRefOid,mergeable,statusCheckRollup',
+        'number,state,isDraft,baseRefName,headRefName,headRefOid,headRepository,headRepositoryOwner,mergeable,mergedAt,mergeCommit,statusCheckRollup',
       ]);
       prRollups.set(Number(prNumber), pr.statusCheckRollup);
       delete pr.statusCheckRollup;
+      pr.merged = String(pr.state || '').toUpperCase() === 'MERGED';
+      pr.mergeMethod = null;
+      pr.headRefDeleted = false;
+      if (pr.merged && typeof pr.headRefName === 'string' && pr.headRefName.length > 0) {
+        const headOwner = pr.headRepositoryOwner?.login || owner;
+        const headRepo = pr.headRepository?.name || repoName;
+        const encodedRef = pr.headRefName.split('/').map(encodeURIComponent).join('/');
+        try {
+          await run('gh', ['api', `repos/${headOwner}/${headRepo}/git/ref/heads/${encodedRef}`]);
+        } catch (error) {
+          if (!/\b404\b/.test(`${error?.message || ''}\n${error?.stderr || ''}`)) throw error;
+          pr.headRefDeleted = true;
+        }
+      }
       return pr;
     },
     async fetchRequiredChecks({ prNumber, expectedHeadSha }) {
@@ -494,6 +646,21 @@ export function createDefaultDeliverDeps(ctx, { exec = pexec } = {}) {
         '-f',
         `body=${body}`,
       ]);
+    },
+    async fetchOriginTrunk({ remote, branch }) {
+      await run('git', ['fetch', remote, branch]);
+    },
+    async isAncestor({ ancestor, descendant }) {
+      try {
+        await run('git', ['merge-base', '--is-ancestor', ancestor, descendant]);
+        return true;
+      } catch (error) {
+        if (error?.code === 1) return false;
+        throw error;
+      }
+    },
+    async attributingCommits(issueNumber, options) {
+      return defaultAttributingCommits(issueNumber, { cwd: ctx.projectDir, ...options });
     },
     async getAuthenticatedLogin() {
       const { stdout } = await run('gh', ['api', 'user', '--jq', '.login']);
