@@ -1398,6 +1398,79 @@ test('recovery rejects a configured lexical leaf symlink and keeps recorded nami
   assert.equal(existsSync(path.join(current.root, physicalRecovery)), false);
 });
 
+test('ordinary publication refuses symlinked-parent retargeting without outside writes', async () => {
+  const fixture = await acceptedConsensus();
+  const lexicalParent = path.join(fixture.root, 'docs/reviews/archive-alias');
+  const physicalParent = path.join(fixture.root, 'docs/reviews/archive-physical');
+  const outsideParent = `${fixture.root}-ordinary-archive-outside`;
+  mkdirSync(physicalParent, { recursive: true });
+  mkdirSync(outsideParent, { recursive: true });
+  writeFileSync(path.join(outsideParent, 'sentinel.txt'), 'preserve outside bytes\n');
+  symlinkSync(physicalParent, lexicalParent, 'dir');
+  const prepared = prepareArchive(archiveOptions(fixture, 'docs/reviews/archive-alias/ordinary'));
+  const outsideBefore = snapshotDirectory(outsideParent);
+
+  assert.throws(
+    () =>
+      publishPreparedArchive(prepared, {
+        hooks: {
+          beforeRename() {
+            unlinkSync(lexicalParent);
+            symlinkSync(outsideParent, lexicalParent, 'dir');
+          },
+        },
+      }),
+    (error) => error.code === 'archive-destination-drift'
+  );
+  assert.deepEqual(snapshotDirectory(outsideParent), outsideBefore);
+  assert.equal(existsSync(path.join(outsideParent, 'ordinary')), false);
+  assert.equal(
+    readdirSync(outsideParent).some((name) => name.includes('.aitm-staging-')),
+    false
+  );
+});
+
+test('recovered publication refuses symlinked-parent retargeting without outside writes', async () => {
+  const occupied = await acceptedConsensus();
+  const occupiedPrepared = prepareArchive(archiveOptions(occupied, 'docs/reviews/source'));
+  const lexicalParentRelative = 'docs/reviews/recovery-alias';
+  const configuredDir = `${lexicalParentRelative}/configured`;
+  const current = await acceptedConsensus({ archiveDir: configuredDir });
+  const lexicalParent = path.join(current.root, lexicalParentRelative);
+  const physicalParent = path.join(current.root, 'docs/reviews/recovery-physical');
+  const configuredPhysical = path.join(physicalParent, 'configured');
+  const outsideParent = `${current.root}-recovery-archive-outside`;
+  mkdirSync(physicalParent, { recursive: true });
+  materializePrepared(configuredPhysical, occupiedPrepared);
+  mkdirSync(outsideParent, { recursive: true });
+  writeFileSync(path.join(outsideParent, 'sentinel.txt'), 'preserve outside bytes\n');
+  symlinkSync(physicalParent, lexicalParent, 'dir');
+  const recoveryDir = `${configuredDir}-recovery-${current.state.protocolId}`;
+  const prepared = prepareArchive(archiveOptions(current, recoveryDir));
+  const occupiedBefore = snapshotDirectory(configuredPhysical);
+  const outsideBefore = snapshotDirectory(outsideParent);
+
+  assert.throws(
+    () =>
+      publishPreparedArchive(prepared, {
+        hooks: {
+          beforeRename() {
+            unlinkSync(lexicalParent);
+            symlinkSync(outsideParent, lexicalParent, 'dir');
+          },
+        },
+      }),
+    (error) => error.code === 'archive-destination-drift'
+  );
+  assert.deepEqual(snapshotDirectory(configuredPhysical), occupiedBefore);
+  assert.deepEqual(snapshotDirectory(outsideParent), outsideBefore);
+  assert.equal(existsSync(path.join(outsideParent, path.basename(recoveryDir))), false);
+  assert.equal(
+    readdirSync(outsideParent).some((name) => name.includes('.aitm-staging-')),
+    false
+  );
+});
+
 test('a complete foreign v1 archive permits only the deterministic recovery sibling', async () => {
   const fixture = await foreignArchiveRecoveryFixture();
   const { occupied, occupiedPrepared, current, configuredAbsolute, recoveryDir, recoveryOptions } =
@@ -1801,7 +1874,7 @@ test('publication revalidates destination containment before its first write', a
 
   assert.throws(
     () => publishPreparedArchive(prepared),
-    (error) => error.code === 'path-outside-repository'
+    (error) => error.code === 'archive-destination-drift'
   );
   assert.deepEqual(readdirSync(outside), []);
 });

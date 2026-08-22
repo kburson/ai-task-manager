@@ -124,7 +124,7 @@ export function assertArchiveDestinationAbsent(destination, { readdir = readdirS
     kind = info.isSymbolicLink()
       ? 'symlink'
       : info.isDirectory()
-        ? readdir(destination.absolute).length === 0
+        ? readdir(destination.physicalAbsolute).length === 0
           ? 'empty-directory'
           : 'directory'
         : info.isFile()
@@ -327,7 +327,7 @@ export function inspectForeignArchive({ root, destination, currentProtocolId }) 
 
   let entries;
   try {
-    entries = readdirSync(destination.absolute, { withFileTypes: true });
+    entries = readdirSync(destination.physicalAbsolute, { withFileTypes: true });
   } catch (error) {
     fail('archive-foreign-directory', `${destination.relative}: ${error.message}`);
   }
@@ -337,7 +337,7 @@ export function inspectForeignArchive({ root, destination, currentProtocolId }) 
   }
   let readmeBytes;
   try {
-    readmeBytes = readFileSync(path.join(destination.absolute, 'README.md'));
+    readmeBytes = readFileSync(path.join(destination.physicalAbsolute, 'README.md'));
   } catch (error) {
     fail('archive-foreign-file-set', `README.md: ${error.message}`);
   }
@@ -460,7 +460,7 @@ export function inspectForeignArchive({ root, destination, currentProtocolId }) 
   for (const [archivePath, expectedDigest] of digests) {
     let bytes;
     try {
-      bytes = readFileSync(path.join(destination.absolute, archivePath));
+      bytes = readFileSync(path.join(destination.physicalAbsolute, archivePath));
     } catch (error) {
       fail('archive-foreign-file-set', `${archivePath}: ${error.message}`);
     }
@@ -500,7 +500,7 @@ function recordedFile(root, record, label) {
     fail('archive-source', `${label} ${record.path}: ${error.message}`);
   }
   if (!info.isFile() || info.isSymbolicLink()) fail('archive-source', `${label} ${record.path}`);
-  const bytes = readFileSync(resolved.absolute);
+  const bytes = readFileSync(resolved.physicalAbsolute);
   const actual = digest(bytes);
   if (actual !== record.sha256) {
     fail(
@@ -888,7 +888,18 @@ function expectedBytes(file) {
 }
 
 function inspectExpected(destination, files) {
-  if (!existsSync(destination.absolute)) {
+  let info;
+  try {
+    info = lstatSync(destination.absolute);
+  } catch (error) {
+    if (error?.code !== 'ENOENT') {
+      return deepFreeze({
+        status: 'conflict',
+        destination,
+        paths: files.map((file) => file.path).sort(),
+        errors: [`destination unreadable: ${error.message}`],
+      });
+    }
     return deepFreeze({
       status: 'absent',
       destination,
@@ -899,10 +910,9 @@ function inspectExpected(destination, files) {
   const errors = [];
   let entries = [];
   try {
-    const info = lstatSync(destination.absolute);
     if (!info.isDirectory() || info.isSymbolicLink())
       errors.push('destination is not a regular directory');
-    else entries = readdirSync(destination.absolute, { withFileTypes: true });
+    else entries = readdirSync(destination.physicalAbsolute, { withFileTypes: true });
   } catch (error) {
     errors.push(`destination unreadable: ${error.message}`);
   }
@@ -918,7 +928,7 @@ function inspectExpected(destination, files) {
   for (const file of files) {
     if (!actualNames.includes(file.path)) continue;
     try {
-      const actual = readFileSync(path.join(destination.absolute, file.path));
+      const actual = readFileSync(path.join(destination.physicalAbsolute, file.path));
       if (!actual.equals(expectedBytes(file))) errors.push(`different: ${file.path}`);
     } catch (error) {
       errors.push(`unreadable: ${file.path}: ${error.message}`);
@@ -1106,12 +1116,24 @@ function validatePrepared(prepared, repository = REAL_REPOSITORY_BOUNDARY) {
   if (!expectedBytes(manifest).equals(renderArchiveManifest(prepared.manifest))) {
     fail('archive-prepared-integrity', 'manifest bytes');
   }
-  const currentDestination = resolveArchiveDestination({
-    cwd: prepared.root,
-    archiveDir: prepared.destination.relative,
-    runtimeDir: prepared.runtimeDir,
-    repository,
-  });
+  validateDestinationMapping(prepared, repository);
+}
+
+function validateDestinationMapping(prepared, repository = REAL_REPOSITORY_BOUNDARY) {
+  let currentDestination;
+  try {
+    currentDestination = resolveArchiveDestination({
+      cwd: prepared.root,
+      archiveDir: prepared.destination.relative,
+      runtimeDir: prepared.runtimeDir,
+      repository,
+    });
+  } catch (error) {
+    if (['path-outside-repository', 'path-resolution'].includes(error?.code)) {
+      fail('archive-destination-drift', prepared.destination.relative);
+    }
+    throw error;
+  }
   if (
     currentDestination.absolute !== prepared.destination.absolute ||
     currentDestination.physicalAbsolute !== prepared.destination.physicalAbsolute
@@ -1186,7 +1208,8 @@ export function publishPreparedArchive(
   if (initial.status === 'complete') return publicationResult('complete', prepared);
   if (initial.status === 'conflict') fail('archive-conflict', initial.errors.join('; '));
 
-  const parent = path.dirname(prepared.destination.absolute);
+  validateDestinationMapping(prepared, repository);
+  const parent = path.dirname(prepared.destination.physicalAbsolute);
   mkdirSync(parent, { recursive: true });
   const protocol = String(prepared.protocolId).replace(/[^a-zA-Z0-9.-]+/g, '-');
   const staging = path.join(
@@ -1203,19 +1226,21 @@ export function publishPreparedArchive(
     hooks.afterWrite?.({
       relative: file.path,
       staging,
-      destination: prepared.destination.absolute,
+      destination: prepared.destination.physicalAbsolute,
     });
   }
-  hooks.beforeValidate?.({ staging, destination: prepared.destination.absolute });
+  hooks.beforeValidate?.({ staging, destination: prepared.destination.physicalAbsolute });
   const staged = inspectExpected(
-    { absolute: staging, relative: path.basename(staging) },
+    { absolute: staging, physicalAbsolute: staging, relative: path.basename(staging) },
     prepared.files
   );
   if (staged.status !== 'complete') fail('archive-staging-invalid', staged.errors.join('; '));
-  hooks.beforeRename?.({ staging, destination: prepared.destination.absolute });
+  hooks.beforeRename?.({ staging, destination: prepared.destination.physicalAbsolute });
+  validateDestinationMapping(prepared, repository);
   validateRecoveryAuthorization(prepared, repository);
+  validateDestinationMapping(prepared, repository);
   try {
-    renameSync(staging, prepared.destination.absolute);
+    renameSync(staging, prepared.destination.physicalAbsolute);
   } catch (error) {
     if (!['EEXIST', 'ENOTDIR', 'ENOTEMPTY'].includes(error.code)) throw error;
     const raced = inspectExpected(prepared.destination, prepared.files);
