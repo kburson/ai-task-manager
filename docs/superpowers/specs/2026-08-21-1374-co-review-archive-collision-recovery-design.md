@@ -42,7 +42,8 @@ The accepted #939 runtime `62212b77-b7e7-402c-8136-c1b231283cd2` is the concrete
 `initializeProtocol` will perform a read-only occupancy check after exact-retry detection and before writing `events.jsonl` or `state.json`.
 
 - If the protocol already exists and its initialization bytes match, exact retry retains current behavior. A later published archive must not make retry fail.
-- For a genuinely new protocol, the configured archive path must not exist. A file, symlink, empty directory, non-empty directory, or unreadable entry all refuse with `archive-destination-occupied` before protocol mutation.
+- For a genuinely new protocol, the configured archive leaf must not exist. The parent `<issue>/` directory may already exist; only the derived `<spec|plan>` leaf is reserved. A file, symlink, empty directory, non-empty directory, or unreadable entry at that leaf refuses with `archive-destination-occupied` before protocol mutation.
+- An empty leaf deliberately refuses rather than being treated as absent. Ordinary publication atomically renames a staging directory into an absent leaf; accepting or removing an existing empty directory would either defer the same conflict until finalization or destroy unexplained filesystem state. The refusal distinguishes an empty leaf so the host can investigate and remove it through normal repository governance when it is proven disposable.
 - The check is inside the initialization mutex. It cannot prevent an unrelated process from creating the archive after initialization; accepted-session recovery remains necessary for that race and for legacy runtimes.
 
 This rule applies to both guided `start` and direct `init`, because both route through `initializeProtocol`.
@@ -55,10 +56,12 @@ Recovery is eligible only when the configured destination is a complete co-revie
 2. require a regular `README.md` containing exactly one canonical `aitm-co-review-manifest` block;
 3. parse schema `aitm.co-review.archive/v1`;
 4. require `manifest.protocol.id` to differ from the accepted runtime's protocol ID;
-5. re-render the manifest and require byte-identical `README.md` content;
+5. validate the required v1 manifest fields while tolerating documented optional v1 fields;
 6. derive the exact expected evidence and optional artifact-copy filenames from the manifest;
 7. require no missing, extra, non-regular, or symlink entries; and
 8. recompute every archived SHA-256 digest and require the manifest values to match.
+
+Foreign eligibility does not re-render the old manifest with the current serializer. The manifest block is parsed from its recorded bytes, and its required structure plus self-recorded file digests authenticate the preserved evidence. This keeps recovery compatible with valid legacy v1 archives whose JSON key order, whitespace, escaping, or optional fields differ from the current renderer. Unknown required structure, unsupported schema versions, invalid paths, and digest disagreement still fail closed.
 
 A partial archive, corrupt archive, unrecognized directory, same-protocol mismatch, or tampered manifest remains a hard conflict. Recovery cannot be used to route around corruption of the current protocol's own archive.
 
@@ -86,19 +89,25 @@ The recovery destination then passes the same containment, ignored-path, runtime
 
 ### 4. Recovered archives carry explicit provenance
 
-Ordinary archive bytes remain unchanged. A recovered archive adds this manifest object:
+Ordinary archive bytes remain unchanged. `recovery` is an optional, version-tolerated v1 field. It is absent—not `null`—for ordinary archives. For a recovered archive it is appended after the existing `normative` key without reordering any existing manifest keys, and its own keys are emitted in the fixed order shown below. All v1 readers and validators must tolerate this optional object while continuing to require the existing v1 fields.
+
+A recovered archive adds this manifest object:
 
 ```json
 {
   "recovery": {
     "configuredDestination": "docs/superpowers/reviews/939/spec",
     "occupiedProtocolId": "1dcbcbad-40c3-4810-8dbe-fd430ea29628",
-    "recoveryDestination": "docs/superpowers/reviews/939/spec-recovery-62212b77-b7e7-402c-8136-c1b231283cd2"
+    "recoveryDestination": "docs/superpowers/reviews/939/spec-recovery-62212b77-b7e7-402c-8136-c1b231283cd2",
+    "occupiedAcceptedAt": "2026-08-21T16:30:32.732Z",
+    "relationship": "newer-than-occupied"
   }
 }
 ```
 
-This provenance is derived entirely from validated protocol state and the canonical foreign manifest. It does not depend on operator prose and does not mutate the accepted runtime.
+`relationship` is derived by comparing the current decision timestamp with the occupied manifest's decision timestamp and is one of `newer-than-occupied`, `older-than-occupied`, or `same-time-as-occupied`. This provenance is derived entirely from validated protocol state and the foreign manifest. It does not depend on operator prose and does not mutate the accepted runtime.
+
+The recovered archive's rendered prose explicitly links the configured archive and states both acceptance timestamps and the derived relationship. Directory placement therefore communicates publication order, not authority or recency: the canonical `<issue>/<kind>` path is the first published archive, while a recovery sibling may contain a later superseding design. Readers determine recency from `decision.at` and the recovery relationship rather than from the directory name.
 
 ### 5. Status treats recovered publication as terminally complete
 
@@ -106,7 +115,7 @@ For an accepted protocol with a configured archive:
 
 1. Inspect the configured destination against the current protocol's expected bytes.
 2. If it is complete and identical, report the existing `complete-and-identical` result.
-3. If it is a canonical foreign archive, derive and inspect the deterministic recovery destination.
+3. If it is an eligible complete foreign archive, derive and inspect the deterministic recovery destination.
 4. If the recovered archive is complete and identical, report it as the effective archive destination with `completion: complete-and-identical` and include the configured destination as recovery provenance.
 5. If the recovery destination is absent, expose one `finalize` action containing its exact path.
 6. If either destination is ineligible or the recovery destination conflicts, report a conflict and no unsafe alternate path.
@@ -159,11 +168,12 @@ Add cases proving:
 6. arbitrary paths, same-protocol corruption, partial archives, corrupt manifests, symlinks, and conflicting recovery paths remain refused;
 7. a recovery retry is idempotent and does not rewrite archive files;
 8. status reports the exact recovery command before publication and the recovered destination after publication; and
-9. ordinary configured, unconfigured, reference-mode, copy-mode, and legacy-copy finalization remain byte-compatible.
+9. a structurally valid legacy v1 foreign manifest with different JSON whitespace or key order remains recoverable when all recorded file digests match; and
+10. ordinary configured, unconfigured, reference-mode, copy-mode, and legacy-copy finalization remain byte-compatible.
 
 ## Documentation
 
-`docs/superpowers/reviews/README.md` will state that the primary `<issue>/<kind>` directory is the first accepted archive and that a collision-recovery sibling is a preserved later protocol, not a replacement. Both directories remain independently immutable evidence.
+`docs/superpowers/reviews/README.md` will state that the primary `<issue>/<kind>` directory is the first published archive, not necessarily the newest accepted design, and that a collision-recovery sibling is independently preserved evidence rather than a replacement. It will direct readers to compare manifest `decision.at` values and follow the recovered archive's configured-destination link. Both directories remain independently immutable evidence; the primary archive is never edited merely to add a backlink.
 
 ## Rollout
 
