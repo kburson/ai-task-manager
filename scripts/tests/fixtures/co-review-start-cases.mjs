@@ -13,6 +13,7 @@ import {
 import path from 'node:path';
 import test from 'node:test';
 
+import { assertArchiveDestinationAbsent } from '../../review/lib/archive.mjs';
 import {
   START_DEFAULTS,
   deriveHostArchiveDir,
@@ -234,6 +235,31 @@ test('direct init applies configured archive occupancy refusal before protocol c
   );
   assert.equal(existsSync(path.join(fixture.root, dir, 'state.json')), false);
   assert.equal(existsSync(path.join(fixture.root, dir, 'events.jsonl')), false);
+});
+
+test('archive occupancy translates unreadable directory enumeration', () => {
+  const root = temporaryRoot('aitm-co-review-unreadable-archive-');
+  const absolute = path.join(root, 'docs/reviews/unreadable');
+  mkdirSync(absolute, { recursive: true });
+  writeFileSync(path.join(absolute, 'preserve.md'), 'preserve\n');
+  const injected = Object.assign(new Error('injected enumeration refusal'), { code: 'EACCES' });
+
+  assert.throws(
+    () =>
+      assertArchiveDestinationAbsent(
+        { absolute, relative: 'docs/reviews/unreadable' },
+        {
+          readdir() {
+            throw injected;
+          },
+        }
+      ),
+    (error) =>
+      error !== injected &&
+      error.code === 'archive-destination-occupied' &&
+      /docs\/reviews\/unreadable: unreadable: injected enumeration refusal/.test(error.message)
+  );
+  assert.equal(readFileSync(path.join(absolute, 'preserve.md'), 'utf8'), 'preserve\n');
 });
 
 test('start delegates initialization and publishes concrete hashed handoffs before thin output', async () => {

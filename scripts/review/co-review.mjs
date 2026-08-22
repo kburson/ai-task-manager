@@ -251,10 +251,12 @@ export async function runCli(argv = process.argv.slice(2), io = {}) {
             exitCode = 4;
             writeError(
               archivePendingMessage({
-                state: result,
                 error,
-                prepared,
-                shellArgument: protocol.shellArgument,
+                retryCommand: currentArchiveRetry(protocol, {
+                  cwd,
+                  dir,
+                  ...repositoryOptions,
+                }),
               })
             );
           }
@@ -301,10 +303,12 @@ export async function runCli(argv = process.argv.slice(2), io = {}) {
         } catch (error) {
           writeError(
             archivePendingMessage({
-              state,
               error,
-              prepared,
-              shellArgument: protocol.shellArgument,
+              retryCommand: currentArchiveRetry(protocol, {
+                cwd,
+                dir,
+                ...repositoryOptions,
+              }),
             })
           );
           return 4;
@@ -644,21 +648,22 @@ function formatStatus(state) {
   ].join('\n');
 }
 
-function archivePendingMessage({ state, error, prepared, shellArgument }) {
-  const configuredArchiveDir = state.initialization?.archiveDir;
-  const destination = prepared?.destination.relative ?? configuredArchiveDir;
-  const runtimeDir = path.resolve(state.repositoryRoot, state.initialization.runtimeDir);
-  const retry = `npx aitm co-review finalize --dir ${shellArgument(runtimeDir)}${
-    destination
-      ? ` --archive-dir ${shellArgument(destination)}`
-      : ' --archive-dir <tracked-repo-path>'
-  }`;
+function currentArchiveRetry(protocol, options) {
+  try {
+    return protocol.statusProtocol(options).availableActions.find(({ kind }) => kind === 'finalize')
+      ?.command;
+  } catch {
+    return null;
+  }
+}
+
+function archivePendingMessage({ error, retryCommand }) {
   const cause = String(error.message).replace(/; no state changed(?:; next:.*)?$/, '');
   return [
     'ACCEPTED: protocol state is durable; archive publication is pending',
     `Cause: ${cause}`,
-    ...(prepared || !configuredArchiveDir
-      ? [`Retry: ${retry}`]
+    ...(retryCommand
+      ? [`Retry: ${retryCommand}`]
       : ['Archive publication is blocked; inspect status for safe actions.']),
     '',
   ].join('\n');

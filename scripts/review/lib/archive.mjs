@@ -16,6 +16,8 @@ import { isDeepStrictEqual } from 'node:util';
 
 import { REAL_REPOSITORY_BOUNDARY } from './repository-boundary.mjs';
 
+const PROTOCOL_SCHEMA = 'aitm.co-review/v1';
+
 function fail(code, detail) {
   const error = new Error(`co-review:${code}:${detail}; no state changed`);
   error.code = code;
@@ -53,8 +55,8 @@ function containedPath(root, candidate, label) {
     suffix.unshift(path.basename(existing));
     existing = parent;
   }
-  const physical = path.resolve(realpathSync(existing), ...suffix);
-  const physicalRelative = path.relative(root, physical);
+  const physicalAbsolute = path.resolve(realpathSync(existing), ...suffix);
+  const physicalRelative = path.relative(root, physicalAbsolute);
   if (
     !physicalRelative ||
     physicalRelative === '..' ||
@@ -63,10 +65,13 @@ function containedPath(root, candidate, label) {
   ) {
     fail('path-outside-repository', `${label}=${candidate}`);
   }
+  const lexicalRelative = relative.split(path.sep).join('/');
   return {
-    absolute: physical,
-    relative: physicalRelative.split(path.sep).join('/'),
-    lexicalRelative: relative.split(path.sep).join('/'),
+    absolute,
+    relative: lexicalRelative,
+    lexicalRelative,
+    physicalAbsolute,
+    physicalRelative: physicalRelative.split(path.sep).join('/'),
   };
 }
 
@@ -87,11 +92,11 @@ export function resolveArchiveDestination({
   const root = repositoryCall(String(cwd), () => repository.repositoryRoot(cwd));
   const archive = containedPath(root, archiveDir, 'archive-dir');
   const runtime = containedPath(root, runtimeDir, 'dir');
-  if (inside(runtime.absolute, archive.absolute)) {
+  if (inside(runtime.physicalAbsolute, archive.physicalAbsolute)) {
     fail('archive-runtime-conflict', archive.relative);
   }
   const status = repositoryCall(archive.relative, () =>
-    repository.runtimeStatus(root, archive.relative)
+    repository.runtimeStatus(root, archive.physicalRelative)
   );
   if (status.ignored) {
     fail('archive-ignored', archive.relative);
@@ -106,7 +111,7 @@ export function deriveRecoveryArchiveDir(configuredArchiveDir, protocolId) {
   return `${String(configuredArchiveDir).replace(/\/$/, '')}-recovery-${protocolId}`;
 }
 
-export function assertArchiveDestinationAbsent(destination) {
+export function assertArchiveDestinationAbsent(destination, { readdir = readdirSync } = {}) {
   let info;
   try {
     info = lstatSync(destination.absolute);
@@ -114,15 +119,20 @@ export function assertArchiveDestinationAbsent(destination) {
     if (error?.code === 'ENOENT') return;
     fail('archive-destination-occupied', `${destination.relative}: unreadable: ${error.message}`);
   }
-  const kind = info.isSymbolicLink()
-    ? 'symlink'
-    : info.isDirectory()
-      ? readdirSync(destination.absolute).length === 0
-        ? 'empty-directory'
-        : 'directory'
-      : info.isFile()
-        ? 'file'
-        : 'special-entry';
+  let kind;
+  try {
+    kind = info.isSymbolicLink()
+      ? 'symlink'
+      : info.isDirectory()
+        ? readdir(destination.absolute).length === 0
+          ? 'empty-directory'
+          : 'directory'
+        : info.isFile()
+          ? 'file'
+          : 'special-entry';
+  } catch (error) {
+    fail('archive-destination-occupied', `${destination.relative}: unreadable: ${error.message}`);
+  }
   fail('archive-destination-occupied', `${destination.relative}: ${kind}`);
 }
 
@@ -178,6 +188,7 @@ function safeRecordedPath(value, label) {
       !value.split(/[\\/]/).some((segment) => !segment || segment === '.' || segment === '..'),
     `${label} path`
   );
+  return value;
 }
 
 function validDigest(value) {
@@ -199,7 +210,7 @@ function validateForeignEvidence(record, label) {
   return archivePath;
 }
 
-function validateOptionalRecovery(recovery) {
+function validateOptionalRecovery(recovery, { manifest, destination }) {
   if (recovery === undefined) return;
   requireForeign(objectModel(recovery), 'recovery record');
   for (const field of [
@@ -222,13 +233,80 @@ function validateOptionalRecovery(recovery) {
     ),
     'recovery relationship'
   );
-  safeRecordedPath(recovery.configuredDestination, 'recovery configured destination');
-  safeRecordedPath(recovery.recoveryDestination, 'recovery destination');
+  const configuredDestination = safeRecordedPath(
+    recovery.configuredDestination,
+    'recovery configured destination'
+  );
+  const recoveryDestination = safeRecordedPath(
+    recovery.recoveryDestination,
+    'recovery destination'
+  );
+  requireForeign(
+    recovery.occupiedProtocolId.toLowerCase() !== manifest.protocol.id.toLowerCase(),
+    'recovery same protocol'
+  );
+  requireForeign(
+    recoveryDestination === deriveRecoveryArchiveDir(configuredDestination, manifest.protocol.id),
+    'recovery deterministic destination'
+  );
+  requireForeign(recoveryDestination === destination.relative, 'recovery directory correspondence');
+  requireForeign(
+    recovery.relationship ===
+      compareDecisionTimes(manifest.decision.at, recovery.occupiedAcceptedAt),
+    'recovery temporal relationship'
+  );
+}
+
+function validateForeignRelationships(manifest, destination) {
+  requireForeign(manifest.protocol.schema === PROTOCOL_SCHEMA, 'protocol schema');
+  requireForeign(
+    manifest.participants.owner !== manifest.participants.reviewer,
+    'distinct participants'
+  );
+  requireForeign(
+    manifest.evidence.ownerResponse.identity === manifest.participants.owner,
+    'owner evidence identity'
+  );
+  requireForeign(
+    manifest.evidence.reviewerReview.identity === manifest.participants.reviewer,
+    'reviewer evidence identity'
+  );
+  if (manifest.decision.basis === 'reviewer-consensus') {
+    requireForeign(
+      manifest.decision.reviewer === manifest.participants.reviewer,
+      'consensus reviewer identity'
+    );
+    requireForeign(
+      manifest.evidence.ownerResponse.eventRound < manifest.evidence.reviewerReview.eventRound,
+      'consensus evidence order'
+    );
+  } else {
+    requireForeign(
+      manifest.evidence.reviewerReview.eventRound < manifest.evidence.ownerResponse.eventRound,
+      'good-enough evidence order'
+    );
+    requireForeign(
+      manifest.budget.reviewTurnsUsed === manifest.budget.maxReviewTurns &&
+        manifest.budget.remainingReviewTurns === 0,
+      'good-enough exhausted budget'
+    );
+  }
+  requireForeign(
+    manifest.evidence.pairRound ===
+      Math.max(
+        manifest.evidence.ownerResponse.eventRound,
+        manifest.evidence.reviewerReview.eventRound
+      ),
+    'evidence pair round relationship'
+  );
+  validateOptionalRecovery(manifest.recovery, { manifest, destination });
 }
 
 export function inspectForeignArchive({ root, destination, currentProtocolId }) {
   const repositoryRoot = path.resolve(String(root ?? ''));
-  const destinationAbsolute = path.resolve(String(destination?.absolute ?? ''));
+  const destinationAbsolute = path.resolve(
+    String(destination?.physicalAbsolute ?? destination?.absolute ?? '')
+  );
   if (
     !root ||
     !destination?.absolute ||
@@ -299,6 +377,12 @@ export function inspectForeignArchive({ root, destination, currentProtocolId }) 
       manifest.artifact.sha256 === manifest.artifact.archivedSha256,
       'artifact digest disagreement'
     );
+  } else {
+    requireForeign(manifest.artifact.archivePath === undefined, 'reference artifact archive path');
+    requireForeign(
+      manifest.artifact.archivedSha256 === undefined,
+      'reference artifact archived digest'
+    );
   }
 
   requireForeign(
@@ -337,13 +421,15 @@ export function inspectForeignArchive({ root, destination, currentProtocolId }) 
       manifest.budget.maxReviewTurns,
     'budget relationship'
   );
+  requireForeign(manifest.budget.maxReviewTurns >= 1, 'budget maximum');
+  requireForeign(manifest.budget.reviewTurnsUsed >= 1, 'budget reviewer evidence');
   requireForeign(
     Number.isInteger(manifest.evidence.pairRound) && manifest.evidence.pairRound >= 1,
     'evidence pair round'
   );
   const responsePath = validateForeignEvidence(manifest.evidence.ownerResponse, 'owner response');
   const reviewPath = validateForeignEvidence(manifest.evidence.reviewerReview, 'reviewer review');
-  validateOptionalRecovery(manifest.recovery);
+  validateForeignRelationships(manifest, destination);
 
   const required = [
     'README.md',
@@ -370,6 +456,7 @@ export function inspectForeignArchive({ root, destination, currentProtocolId }) 
     [reviewPath, manifest.evidence.reviewerReview.archivedSha256],
     ...(mode === 'reference' ? [] : [[artifactPath, manifest.artifact.archivedSha256]]),
   ];
+  const actualDigests = { 'README.md': digest(readmeBytes) };
   for (const [archivePath, expectedDigest] of digests) {
     let bytes;
     try {
@@ -378,6 +465,7 @@ export function inspectForeignArchive({ root, destination, currentProtocolId }) 
       fail('archive-foreign-file-set', `${archivePath}: ${error.message}`);
     }
     const actualDigest = digest(bytes);
+    actualDigests[archivePath] = actualDigest;
     if (actualDigest !== expectedDigest) {
       fail(
         'archive-foreign-digest',
@@ -389,6 +477,8 @@ export function inspectForeignArchive({ root, destination, currentProtocolId }) 
     manifest,
     protocolId: manifest.protocol.id,
     acceptedAt: manifest.decision.at,
+    paths: actual,
+    digests: actualDigests,
   });
 }
 
@@ -773,6 +863,14 @@ function buildPrepared({ root, state, events, archiveDir, repository = REAL_REPO
       destination,
       manifest,
       files,
+      ...(occupied
+        ? {
+            recoveryAuthorization: {
+              configuredDestination,
+              foreignArchive: occupied,
+            },
+          }
+        : {}),
     });
   }
 
@@ -902,6 +1000,13 @@ function validatePrepared(prepared, repository = REAL_REPOSITORY_BOUNDARY) {
   ) {
     fail('archive-prepared-integrity', 'invalid prepared model');
   }
+  if (prepared.manifest.protocol?.id !== prepared.protocolId) {
+    fail('archive-prepared-integrity', 'protocol identity');
+  }
+  if (Boolean(prepared.manifest.recovery) !== Boolean(prepared.recoveryAuthorization)) {
+    fail('archive-prepared-integrity', 'recovery authorization shape');
+  }
+  validateRecoveryAuthorization(prepared, repository);
   const names = prepared.files.map((file) => file.path);
   if (new Set(names).size !== expectedKinds.length || !names.includes('README.md')) {
     fail('archive-prepared-integrity', 'expected exact mode-specific path tree');
@@ -1007,8 +1112,54 @@ function validatePrepared(prepared, repository = REAL_REPOSITORY_BOUNDARY) {
     runtimeDir: prepared.runtimeDir,
     repository,
   });
-  if (currentDestination.absolute !== prepared.destination.absolute) {
+  if (
+    currentDestination.absolute !== prepared.destination.absolute ||
+    currentDestination.physicalAbsolute !== prepared.destination.physicalAbsolute
+  ) {
     fail('archive-destination-drift', prepared.destination.relative);
+  }
+}
+
+function validateRecoveryAuthorization(prepared, repository = REAL_REPOSITORY_BOUNDARY) {
+  const authorization = prepared?.recoveryAuthorization;
+  if (!authorization) return;
+  const recordedDestination = authorization.configuredDestination;
+  if (!recordedDestination?.relative || !authorization.foreignArchive) {
+    fail('archive-prepared-integrity', 'invalid recovery authorization');
+  }
+  const currentDestination = resolveArchiveDestination({
+    cwd: prepared.root,
+    archiveDir: recordedDestination.relative,
+    runtimeDir: prepared.runtimeDir,
+    repository,
+  });
+  if (
+    currentDestination.absolute !== recordedDestination.absolute ||
+    currentDestination.physicalAbsolute !== recordedDestination.physicalAbsolute
+  ) {
+    fail('archive-foreign-authorization-drift', recordedDestination.relative);
+  }
+  const currentForeign = inspectForeignArchive({
+    root: prepared.root,
+    destination: currentDestination,
+    currentProtocolId: prepared.protocolId,
+  });
+  if (!isDeepStrictEqual(currentForeign, authorization.foreignArchive)) {
+    fail('archive-foreign-authorization-drift', recordedDestination.relative);
+  }
+  const expectedRecovery = {
+    configuredDestination: currentDestination.relative,
+    occupiedProtocolId: currentForeign.protocolId,
+    recoveryDestination: prepared.destination.relative,
+    occupiedAcceptedAt: currentForeign.acceptedAt,
+    relationship: compareDecisionTimes(prepared.manifest.decision.at, currentForeign.acceptedAt),
+  };
+  if (
+    deriveRecoveryArchiveDir(currentDestination.relative, prepared.protocolId) !==
+      prepared.destination.relative ||
+    !isDeepStrictEqual(prepared.manifest.recovery, expectedRecovery)
+  ) {
+    fail('archive-foreign-authorization-drift', recordedDestination.relative);
   }
 }
 
@@ -1062,6 +1213,7 @@ export function publishPreparedArchive(
   );
   if (staged.status !== 'complete') fail('archive-staging-invalid', staged.errors.join('; '));
   hooks.beforeRename?.({ staging, destination: prepared.destination.absolute });
+  validateRecoveryAuthorization(prepared, repository);
   try {
     renameSync(staging, prepared.destination.absolute);
   } catch (error) {
