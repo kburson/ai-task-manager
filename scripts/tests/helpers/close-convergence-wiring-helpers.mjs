@@ -64,6 +64,8 @@ export async function runClose({
   reviewAuthorization = { mode: 'human', standing: true, source: 'test-evidence' },
   reviewAuthorizationResolver = null,
   useInjectedReviewAuthorization = true,
+  useInjectedDeliveryGateInput = true,
+  useInjectedDeliveryReceipt = true,
   lifecycleEvidence = null,
   force = false,
 } = {}) {
@@ -94,14 +96,27 @@ export async function runClose({
   };
   captureCalls?.(calls);
   const projectConfig = {
-    cfg: { repo: 'o/r' },
+    cfg: {
+      repo: 'o/r',
+      trunkRef: 'trunk',
+      fullAutoMerge: { mechanism: 'local-trunk-lane', operatorAuthorized: true },
+    },
     statePath,
     projectDir: dir,
     SKIP_NETWORK: false,
     uncheckedPreCloseCheckboxes: () => [],
     nowIso: () => new Date().toISOString(),
-    pexec: async (_command, args = []) => {
+    pexec: async (command, args = []) => {
       calls.networkCalls += 1;
+      if (command === 'git' && args[0] === 'branch') {
+        return { stdout: 'trunk\n', stderr: '' };
+      }
+      if (command === 'git' && args[0] === 'rev-parse') {
+        return { stdout: `${'a'.repeat(40)}\n`, stderr: '' };
+      }
+      if (command === 'gh' && args[0] === 'pr' && args[1] === 'list') {
+        return { stdout: '[]', stderr: '' };
+      }
       if (args[0] === 'issue' && args[1] === 'view' && args.includes('body')) {
         calls.bodyReads += 1;
         if (bodyReadError) throw bodyReadError;
@@ -233,24 +248,33 @@ export async function runClose({
         : () => ({ kind: 'legacy-body/v1' }),
       getHeadSha: async () => 'a'.repeat(40),
       resolveLifecycleEvidence: async () => lifecycleEvidence,
-      loadCloseDeliveryGateInput: async () => ({
-        issueNumber: 925,
-        lineage: { parentIssueNumber: null, deliveryTarget: 'trunk' },
-        branch: 'feature/925',
-        acceptedSha: 'a'.repeat(40),
-        localHeadSha: 'a'.repeat(40),
-        pullRequests: [],
-        records: null,
-      }),
+      resolveCloseParentIssue: async () => null,
+      ...(useInjectedDeliveryGateInput
+        ? {
+            loadCloseDeliveryGateInput: async () => ({
+              issueNumber: 925,
+              lineage: { parentIssueNumber: null, deliveryTarget: 'trunk' },
+              branch: 'feature/925',
+              acceptedSha: 'a'.repeat(40),
+              localHeadSha: 'a'.repeat(40),
+              pullRequests: [],
+              records: null,
+            }),
+          }
+        : {}),
       ...(useInjectedReviewAuthorization
         ? {
             resolveReviewAuthorization: reviewAuthorizationResolver ?? (() => reviewAuthorization),
           }
         : {}),
-      requireDeliveryReceipt: () => {
-        if (deliveryRefusal) throw deliveryRefusal;
-        return { skipped: false, receipt: {} };
-      },
+      ...(useInjectedDeliveryReceipt
+        ? {
+            requireDeliveryReceipt: () => {
+              if (deliveryRefusal) throw deliveryRefusal;
+              return { skipped: false, receipt: {} };
+            },
+          }
+        : {}),
     });
     return {
       result,

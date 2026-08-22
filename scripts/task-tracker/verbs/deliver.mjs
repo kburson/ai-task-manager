@@ -335,6 +335,10 @@ export async function runDeliver({ issueNumber, cfg, state, deps = {} } = {}) {
   const getLocalHeadSha = requiredDependency(deps, 'getLocalHeadSha');
   const resolveTestReceiptSha = requiredDependency(deps, 'resolveTestReceiptSha');
   const resolveAcceptedReviewSha = requiredDependency(deps, 'resolveAcceptedReviewSha');
+  const resolveAgentReviewPassed =
+    typeof deps.resolveAgentReviewPassed === 'function'
+      ? deps.resolveAgentReviewPassed
+      : async () => issue.agentReviewPassed === true;
   const listPullRequests = requiredDependency(deps, 'listPullRequests');
   const fetchPullRequest = requiredDependency(deps, 'fetchPullRequest');
   const fetchRequiredChecks = requiredDependency(deps, 'fetchRequiredChecks');
@@ -371,14 +375,21 @@ export async function runDeliver({ issueNumber, cfg, state, deps = {} } = {}) {
   const commitSubjectsPromise = mergedPullRequest
     ? Promise.resolve(pullRequests[0].sourceCommitSubjects)
     : listCommitSubjects({ range: 'origin/trunk..HEAD' });
-  const [testReceiptSha, acceptedReviewSha, repositoryMergeMethods, commitSubjects, dirtyPaths] =
-    await Promise.all([
-      resolveTestReceiptSha({ issue, issueNumber, expectedHeadSha: localHeadSha }),
-      resolveAcceptedReviewSha({ issue, issueNumber, expectedHeadSha: localHeadSha }),
-      fetchRepositoryMergeMethods({ repository: cfg.repo }),
-      commitSubjectsPromise,
-      listDirtyPaths({ issueNumber }),
-    ]);
+  const [
+    testReceiptSha,
+    acceptedReviewSha,
+    agentReviewPassed,
+    repositoryMergeMethods,
+    commitSubjects,
+    dirtyPaths,
+  ] = await Promise.all([
+    resolveTestReceiptSha({ issue, issueNumber, expectedHeadSha: localHeadSha }),
+    resolveAcceptedReviewSha({ issue, issueNumber, expectedHeadSha: localHeadSha }),
+    resolveAgentReviewPassed({ issue, issueNumber, expectedHeadSha: localHeadSha }),
+    fetchRepositoryMergeMethods({ repository: cfg.repo }),
+    commitSubjectsPromise,
+    listDirtyPaths({ issueNumber }),
+  ]);
   const reviewAuthorization = await requiredDependency(
     deps,
     'resolveReviewAuthorization'
@@ -398,7 +409,7 @@ export async function runDeliver({ issueNumber, cfg, state, deps = {} } = {}) {
     repositoryMergeMethods,
   };
   const preflightInput = {
-    issue: { ...issue, reviewAuthorization },
+    issue: { ...issue, agentReviewPassed, reviewAuthorization },
     binding: bindingFromState({ branch, state }),
     lineage,
     pullRequests,
@@ -626,26 +637,26 @@ export function createDefaultDeliverDeps(ctx, { exec = pexec } = {}) {
         expectedHeadSha,
       });
       const approval = parseReviewApprovedMarker(issue.body);
+      const directoryLane = lifecycleEvidence !== null;
       return resolveReviewAuthorization({
         session: loadSession(currentSessionId()),
         projectConfig: rawProjectConfig(),
         acceptedHeadSha: acceptedReviewSha === expectedHeadSha ? expectedHeadSha : null,
         humanApprovalEvidence:
-          lifecycleEvidence &&
-          hasAcceptedApprovalEvidence(lifecycleEvidence, { provenance: 'human' })
+          directoryLane && hasAcceptedApprovalEvidence(lifecycleEvidence, { provenance: 'human' })
             ? {
                 accepted: true,
                 approvedSha: lifecycleEvidence.expectedSha,
                 source: 'directory-human-evidence',
               }
-            : approval && !approval.fullAuto
+            : !directoryLane && approval && !approval.fullAuto
               ? { accepted: true, approvedSha: approval.approvedSha }
               : null,
         fullAutoApprovalEvidence:
-          lifecycleEvidence &&
+          directoryLane &&
           hasAcceptedApprovalEvidence(lifecycleEvidence, { provenance: 'full-auto' })
             ? { accepted: true, approvedSha: lifecycleEvidence.expectedSha }
-            : approval?.fullAuto
+            : !directoryLane && approval?.fullAuto
               ? { accepted: true, approvedSha: approval.approvedSha }
               : null,
       });
@@ -710,6 +721,16 @@ export function createDefaultDeliverDeps(ctx, { exec = pexec } = {}) {
       if (!isAgentReviewComplete(issue.body)) return null;
       const markerSha = parseTestStartedMarker(issue.body)?.sha;
       return SHA_RE.test(markerSha || '') ? markerSha : null;
+    },
+    async resolveAgentReviewPassed({ issue, issueNumber, expectedHeadSha }) {
+      const lifecycleEvidence = await resolveDirectoryEvidence({
+        issue,
+        issueNumber,
+        expectedHeadSha,
+      });
+      return lifecycleEvidence
+        ? hasAcceptedReviewEvidence(lifecycleEvidence)
+        : isAgentReviewComplete(issue.body);
     },
     async listPullRequests({ headRef }) {
       return json('gh', [

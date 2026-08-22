@@ -15,6 +15,11 @@ import { resolveReviewAuthorization } from '../../../../task-tracker/lib/gate-re
 
 const HEAD = 'a'.repeat(40);
 
+function testReceiptMarker(commitSha = HEAD) {
+  const data = Buffer.from(JSON.stringify({ stage: 'test', commitSha })).toString('base64url');
+  return `<!-- aitm-verification-receipt stage="test" data="${data}" -->`;
+}
+
 function directoryEvidence() {
   const authority = { contractEpoch: 3, coordinatorGrantId: 'grant-3', authorityEpoch: 7 };
   const entry = (recordId, evidenceKind, result, provenance) => ({
@@ -94,16 +99,59 @@ test('close consumes marker-free exact-head directory human authority', async ()
   assert.equal(run.calls.mutations, 0, 'directory authority must not create a body marker');
 });
 
+test('production close derives accepted head from marker-free directory Review evidence', async () => {
+  const run = await runClose({
+    gateReviewToDone: false,
+    body: `${closeBody()}\n${testReceiptMarker()}`,
+    lifecycleEvidence: directoryEvidence(),
+    useInjectedReviewAuthorization: false,
+    useInjectedDeliveryGateInput: false,
+    useInjectedDeliveryReceipt: false,
+  });
+
+  assert.equal(run.exitCode, 0);
+  assert.equal(run.calls.movesToDone[0].options.reviewAuthority, 'human-gate');
+  assert.equal(run.calls.mutations, 0, 'directory authority must remain marker-free');
+});
+
+test('production close refuses directory Review without directory Approval despite body approval', async () => {
+  const evidence = directoryEvidence();
+  evidence.evidence = evidence.evidence.filter(({ evidenceKind }) => evidenceKind === 'review');
+  evidence.acceptedRecordIds = ['review-1'];
+  const bodyApproval = `<!-- aitm-review-approved ts="2026-08-22T00:00:00Z" approved-sha="${HEAD}" -->`;
+  const run = await runClose({
+    gateReviewToDone: false,
+    body: `${closeBody({ agentReview: ' ' })}\n${testReceiptMarker()}\n${bodyApproval}`,
+    lifecycleEvidence: evidence,
+    useInjectedReviewAuthorization: false,
+    useInjectedDeliveryGateInput: false,
+    useInjectedDeliveryReceipt: false,
+  });
+
+  assert.equal(run.exitCode, 1);
+  assert.equal(run.calls.movesToDone.length, 0);
+  assert.equal(run.calls.mutations, 0);
+});
+
 test('close fails closed for stale or malformed marker-free directory authority', async () => {
   const current = directoryEvidence();
+  const missingReview = {
+    ...current,
+    evidence: current.evidence.filter(({ evidenceKind }) => evidenceKind === 'approval'),
+    acceptedRecordIds: ['approval-1'],
+  };
   for (const lifecycleEvidence of [
     { ...current, expectedSha: 'b'.repeat(40) },
     { sourceKind: 'github-records/v1', expectedSha: HEAD },
+    missingReview,
   ]) {
     const run = await runClose({
       gateReviewToDone: false,
+      body: `${closeBody()}\n${testReceiptMarker()}`,
       lifecycleEvidence,
       useInjectedReviewAuthorization: false,
+      useInjectedDeliveryGateInput: false,
+      useInjectedDeliveryReceipt: false,
     });
     assert.equal(run.exitCode, 1);
     assert.equal(run.calls.movesToDone.length, 0);

@@ -80,7 +80,15 @@ function closeBaseRef(cfg) {
   );
 }
 
-async function loadCloseDeliveryGateInput({ issueNumber, cfg, projectDir, pexec, body, ctx }) {
+async function loadCloseDeliveryGateInput({
+  issueNumber,
+  cfg,
+  projectDir,
+  pexec,
+  body,
+  lifecycleEvidence,
+  ctx,
+}) {
   const [{ stdout: branchOut }, { stdout: headOut }, parentIssueNumber] = await Promise.all([
     pexec('git', ['branch', '--show-current'], { cwd: projectDir }),
     pexec('git', ['rev-parse', 'HEAD'], { cwd: projectDir }),
@@ -91,11 +99,16 @@ async function loadCloseDeliveryGateInput({ issueNumber, cfg, projectDir, pexec,
   ]);
   const branch = String(branchOut || '').trim();
   const localHeadSha = String(headOut || '').trim();
+  const directoryLane = lifecycleEvidence !== null;
   const acceptedSha = resolveAcceptedDeliveryHead({
     localHeadSha,
     testReceiptSha: parseVerificationReceipt(body, 'test')?.commitSha ?? null,
-    reviewReceiptSha: parseVerificationReceipt(body, 'review')?.commitSha ?? null,
-    agentReviewPassed: isAgentReviewComplete(body),
+    reviewReceiptSha: directoryLane
+      ? lifecycleEvidence.expectedSha
+      : (parseVerificationReceipt(body, 'review')?.commitSha ?? null),
+    agentReviewPassed: directoryLane
+      ? hasAcceptedReviewEvidence(lifecycleEvidence)
+      : isAgentReviewComplete(body),
   });
   const { stdout: prOut } = await pexec(
     'gh',
@@ -592,36 +605,37 @@ export async function verbClose(ctx) {
           );
           return JSON.parse(String(stdout || '{}')).body ?? '';
         })();
+    const lifecycleEvidence = await loadCloseLifecycleEvidence(deliveryBody);
     const gateInput = await (ctx.loadCloseDeliveryGateInput || loadCloseDeliveryGateInput)({
       issueNumber: Number(closeIssueNum),
       cfg,
       projectDir,
       pexec,
       body: deliveryBody,
+      lifecycleEvidence,
       ctx,
     });
-    const lifecycleEvidence = await loadCloseLifecycleEvidence(deliveryBody);
     const approval = parseReviewApprovedMarker(deliveryBody);
+    const directoryLane = lifecycleEvidence !== null;
     const authorization = (ctx.resolveReviewAuthorization || resolveReviewAuthorization)({
       session: loadSession(currentSessionId()),
       projectConfig: rawProjectConfig(),
       acceptedHeadSha:
         gateInput.acceptedSha === gateInput.localHeadSha ? gateInput.localHeadSha : null,
       humanApprovalEvidence:
-        lifecycleEvidence && hasAcceptedApprovalEvidence(lifecycleEvidence, { provenance: 'human' })
+        directoryLane && hasAcceptedApprovalEvidence(lifecycleEvidence, { provenance: 'human' })
           ? {
               accepted: true,
               approvedSha: lifecycleEvidence.expectedSha,
               source: 'directory-human-evidence',
             }
-          : approval && !approval.fullAuto
+          : !directoryLane && approval && !approval.fullAuto
             ? { accepted: true, approvedSha: approval.approvedSha }
             : null,
       fullAutoApprovalEvidence:
-        lifecycleEvidence &&
-        hasAcceptedApprovalEvidence(lifecycleEvidence, { provenance: 'full-auto' })
+        directoryLane && hasAcceptedApprovalEvidence(lifecycleEvidence, { provenance: 'full-auto' })
           ? { accepted: true, approvedSha: lifecycleEvidence.expectedSha }
-          : approval?.fullAuto
+          : !directoryLane && approval?.fullAuto
             ? { accepted: true, approvedSha: approval.approvedSha }
             : null,
     });
