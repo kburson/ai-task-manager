@@ -19,5 +19,6 @@
 // @property {boolean}       hookCapability    Whether the provider supports lifecycle hooks (SessionStart, PreCompact, etc.).
 // @property {string}        skillAdapterPath  Path to the canonical adapter SKILL.md (relative to the installed package root).
 // @property {{writer: ('claude-settings'|'codex-hooks'|'grok-hooks'), hookTarget: string | null, commandTarget: string | null}} installRecipe Declarative installer writer and targets.
+// @property {Record<string, ({adapterContract: 'skill', expectedHeadSha: true} | null)>} externalActions Declarative host-owned actions. `null` is an explicit unsupported capability; call sites must inspect the capability rather than branch on provider name.
 
 export {};

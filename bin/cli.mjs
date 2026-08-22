@@ -691,7 +691,7 @@ export function claudeStub() {
   ].join('\n');
 }
 
-function codexStub() {
+export function codexStub() {
   return [
     '---',
     'name: task',

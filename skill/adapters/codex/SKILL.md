@@ -31,6 +31,7 @@ Codex-specific conventions:
 - Codex hooks are installed under `.codex/hooks.json`; project-local hooks require a trusted project and may need `/hooks` review before they run.
 - Respect Codex sandbox and approval requirements. If a `gh`, `git push`, or networked script fails because credentials or network access are sandboxed, rerun with the required approval instead of bypassing the task workflow.
 - Do not assume Claude hooks or `.claude/settings.json` are available unless Claude is among the selected providers.
+- For `github.merge-pull-request`, use only the sanctioned GitHub `merge_pull_request` integration exposed to the Codex host. It must accept the exact expected head SHA and the other bytes required by `rules/deliver.md`; unavailable means `missing-capability`, never a shell fallback.
 
 Primary command form — invoke through the `aitm` orchestrator, never by a
 support script's `node_modules/ai-task-manager/scripts/...` filepath:

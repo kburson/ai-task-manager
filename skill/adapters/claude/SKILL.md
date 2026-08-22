@@ -21,6 +21,7 @@ Claude-specific conventions:
 - Claude hook settings run direct Node commands from `node_modules/ai-task-manager/scripts/task-tracker/`.
 - **Worktree seeding (#869):** in a fresh `git worktree`, `node_modules` may be absent — the skill reads below would fail, or module resolution would silently fall through to the parent checkout. The SessionStart hook runs `scripts/task-tracker/ensure-worktree-seeded.mjs` to inspect and self-heal the `ai-task-manager` self-link before any other hook resolves a `node_modules` path. The reachable `.claude/skills/task/SKILL.md` stub also carries a `## Step 0` self-heal command as a backstop for the case where this packaged copy is itself unreachable.
 - The status line remains Claude-specific and reads `.ai-task-manager/task-tracker-state.json` with a legacy `.claude/task-tracker-state.json` fallback.
+- For `github.merge-pull-request`, use only the sanctioned GitHub MCP `merge_pull_request` integration. It must accept the exact expected head SHA and the other bytes required by `rules/deliver.md`; unavailable means `missing-capability`, never a shell fallback.
 
 Command examples run through the `aitm` orchestrator (the form a user types):
 

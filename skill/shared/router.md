@@ -44,10 +44,12 @@ The post-bind metadata fetch (`gh issue view`), reopen-if-closed, and Pickup-Dir
 
 Load the rule file ONLY when its verb is about to run. If the sentinel `aitm-skill-loaded:rules/<name>:<version>` is already in context, skip the read.
 
+<!-- prettier-ignore -->
 | Verb / situation                                                         | Rule file                                                                 |
-| ------------------------------------------------------------------------ | ------------------------------------------------------------------------- |
+| --- | --- |
 | `/task #N`, `/task resume #N`                                            | `rules/bind.md` (+ load `.ai-task-manager/templates/pickup-directive.md`) |
 | `/task review #N`                                                        | `rules/review.md`                                                         |
+| `/task deliver #N` | `rules/deliver.md` |
 | `/task close #N`, `/task close --force`                                  | `rules/close.md`                                                          |
 | `/task promote`, `/task demote`, `/task next`, `/task reconcile`         | `rules/state-walk.md`                                                     |
 | `/task new` (issue creation, any state)                                  | `rules/create-issue.md`                                                   |

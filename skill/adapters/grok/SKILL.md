@@ -22,3 +22,4 @@ Grok-specific host facts:
 - Project hooks install under `.grok/hooks` and require project trust.
 - Use Grok's native `/task` command surface.
 - Do not assume `.codex/hooks.json` is loaded.
+- `github.merge-pull-request` is `missing-capability` for this adapter. Leave the delivery intent pending unless this adapter later declares an equivalent sanctioned integration; never use a shell fallback.

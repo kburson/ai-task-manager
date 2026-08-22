@@ -24,6 +24,12 @@ export const codexAdapter = {
     hookTarget: '.codex/hooks.json',
     commandTarget: null,
   },
+  externalActions: {
+    'github.merge-pull-request': {
+      adapterContract: 'skill',
+      expectedHeadSha: true,
+    },
+  },
 };
 
 export default codexAdapter;
