@@ -11,6 +11,9 @@ import {
   closeBody,
   runClose,
 } from '../../../helpers/close-convergence-wiring-helpers.mjs';
+import { resolveReviewAuthorization } from '../../../../task-tracker/lib/gate-resolve.mjs';
+
+const HEAD = 'a'.repeat(40);
 
 test('finalize passes the configured tail profile and explicit review authority', async () => {
   const run = await runClose({ convergenceTailProfile: 'background-convergence' });
@@ -25,8 +28,35 @@ test('finalize passes the configured tail profile and explicit review authority'
   const defaultProfile = await runClose();
   assert.equal(defaultProfile.calls.movesToDone[0].options.tailProfile, 'task-owner');
 
-  const bypassed = await runClose({ gateReviewToDone: false });
-  assert.equal(bypassed.calls.movesToDone[0].options.reviewAuthority, 'gate-bypassed');
+  const humanWithDisabledPolicy = await runClose({
+    gateReviewToDone: false,
+    reviewAuthorization: { mode: 'human', standing: true, source: 'human-evidence' },
+  });
+  assert.equal(humanWithDisabledPolicy.calls.movesToDone[0].options.reviewAuthority, 'human-gate');
+
+  const fullAuto = await runClose({
+    gateReviewToDone: false,
+    reviewAuthorization: { mode: 'full-auto', standing: true, source: 'session' },
+  });
+  assert.equal(fullAuto.calls.movesToDone[0].options.reviewAuthority, 'gate-bypassed');
+});
+
+test('stale close approval refuses after fresh Test and Agent Review evidence', async () => {
+  const stale = await runClose({
+    gateReviewToDone: false,
+    body: `${closeBody()}\n<!-- aitm-review-approved ts="2026-08-22T00:00:00Z" approved-sha="${'b'.repeat(40)}" full-auto="yes" signals="session=1" -->`,
+    reviewAuthorizationResolver: (input) => resolveReviewAuthorization(input),
+  });
+  assert.equal(stale.exitCode, 1);
+  assert.equal(stale.calls.movesToDone.length, 0);
+
+  const refreshed = await runClose({
+    gateReviewToDone: false,
+    body: `${closeBody()}\n<!-- aitm-review-approved ts="2026-08-22T00:00:00Z" approved-sha="${HEAD}" full-auto="yes" signals="session=1" -->`,
+    reviewAuthorizationResolver: (input) => resolveReviewAuthorization(input),
+  });
+  assert.equal(refreshed.exitCode, 0);
+  assert.equal(refreshed.calls.movesToDone.length, 1);
 });
 
 for (const [name, convergenceTailProfile] of [

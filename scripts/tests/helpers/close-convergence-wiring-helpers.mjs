@@ -61,6 +61,8 @@ export async function runClose({
   captureFinalState,
   initialState = baseState(),
   deliveryRefusal = null,
+  reviewAuthorization = { mode: 'human', standing: true, source: 'test-evidence' },
+  reviewAuthorizationResolver = null,
   force = false,
 } = {}) {
   const dir = mkdtempSync(join(projectScratchDir('test'), 'aitm-925-close-wiring-'));
@@ -212,6 +214,7 @@ export async function runClose({
           error: null,
         };
       },
+      reconcileReviewApprovedTiming: async () => ({ status: 'posted' }),
       writeTerminalDisposition: async () => {
         calls.terminalDispositions += 1;
         return { status: 'ok' };
@@ -232,11 +235,7 @@ export async function runClose({
         pullRequests: [],
         records: null,
       }),
-      resolveReviewAuthorization: () => ({
-        mode: 'human',
-        standing: true,
-        source: 'test-evidence',
-      }),
+      resolveReviewAuthorization: reviewAuthorizationResolver ?? (() => reviewAuthorization),
       requireDeliveryReceipt: () => {
         if (deliveryRefusal) throw deliveryRefusal;
         return { skipped: false, receipt: {} };

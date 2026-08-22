@@ -19,6 +19,7 @@ import { durableWordMarkers } from '../state.mjs';
 import {
   buildReviewApprovedMarker,
   hasReviewApprovedMarker,
+  parseReviewApprovedMarker,
   removeReviewApprovedMarker,
   insertReviewApprovedMarker,
   insertFullAutoFootnote,
@@ -226,11 +227,17 @@ export async function runApprove({ issueNumber, cfg, projectDir, deps = {}, huma
     { issue: issueNumber, verb: 'approve', projDir: projectDir || getProjectDir() },
     async () => {
       const body = await fetchIssueBody({ issueNumber, repo: cfg.repo });
+      const approvedSha = await (deps.getHeadSha || defaultGetHeadSha)({ projectDir });
+      if (!/^[0-9a-f]{40}$/.test(String(approvedSha || ''))) {
+        throw new Error('approve: current HEAD must be a complete 40-character lowercase SHA');
+      }
       const preTickedByHuman = lifecycleItemState({
         body,
         key: 'passed-final-review',
       }).alreadyTicked;
-      const humanOverride = preTickedByHuman || Boolean(human);
+      const priorApproval = parseReviewApprovedMarker(body);
+      const humanOverride =
+        Boolean(human) || (preTickedByHuman && priorApproval?.fullAuto !== true);
       const auto = humanOverride ? { fired: false, signals: '' } : detect();
       const authoritySource = (deps.locateAuthoritySource || locateAuthoritySource)({
         issueBody: body,
@@ -238,7 +245,7 @@ export async function runApprove({ issueNumber, cfg, projectDir, deps = {}, huma
       if (authoritySource.kind === 'github-records/v1') {
         let lifecycleEvidence;
         try {
-          const expectedSha = await (deps.getHeadSha || defaultGetHeadSha)({ projectDir });
+          const expectedSha = approvedSha;
           lifecycleEvidence = await (deps.resolveLifecycleEvidence || resolveLifecycleGateEvidence)(
             {
               repository: cfg.repo,
@@ -271,8 +278,11 @@ export async function runApprove({ issueNumber, cfg, projectDir, deps = {}, huma
         body,
         key: 'passed-final-review',
       });
+      const approval = parseReviewApprovedMarker(body);
+      const approvalCurrent = approval?.approvedSha === approvedSha;
       const staleApprovalCarriers =
-        hasApprovalMarker(body) && approvalState.labelFound && !approvalState.alreadyTicked;
+        hasApprovalMarker(body) &&
+        (!approvalCurrent || (approvalState.labelFound && !approvalState.alreadyTicked));
       if (hasApprovalMarker(body) && !staleApprovalCarriers) {
         const markers = durableWordMarkers(projectDir || getProjectDir());
         await reconcileTiming({
@@ -347,8 +357,8 @@ export async function runApprove({ issueNumber, cfg, projectDir, deps = {}, huma
         });
         const freshCarriersAreStale =
           hasApprovalMarker(base) &&
-          freshApprovalState.labelFound &&
-          !freshApprovalState.alreadyTicked;
+          (parseReviewApprovedMarker(base)?.approvedSha !== approvedSha ||
+            (freshApprovalState.labelFound && !freshApprovalState.alreadyTicked));
         if (hasApprovalMarker(base) && !freshCarriersAreStale) return base;
         const approvalBase = freshCarriersAreStale ? removeStaleApprovalCarriers(base) : base;
         // #480 — single consolidated marker: the full-auto audit props ride on
@@ -358,7 +368,7 @@ export async function runApprove({ issueNumber, cfg, projectDir, deps = {}, huma
         let updated = insertApprovalMarker(
           approvalBase,
           ts,
-          auto.fired ? { fullAuto: true, signals: auto.signals } : {}
+          auto.fired ? { approvedSha, fullAuto: true, signals: auto.signals } : { approvedSha }
         );
         if (auto.fired) {
           updated = insertFullAutoFootnote(updated, { ts, signals: auto.signals });
@@ -373,7 +383,7 @@ export async function runApprove({ issueNumber, cfg, projectDir, deps = {}, huma
       let updated = insertApprovalMarker(
         diagnosticBase,
         ts,
-        auto.fired ? { fullAuto: true, signals: auto.signals } : {}
+        auto.fired ? { approvedSha, fullAuto: true, signals: auto.signals } : { approvedSha }
       );
       if (auto.fired) {
         updated = insertFullAutoFootnote(updated, { ts, signals: auto.signals });
@@ -453,6 +463,7 @@ export async function runApprove({ issueNumber, cfg, projectDir, deps = {}, huma
       return {
         status: 'approved',
         ts,
+        approvedSha,
         fullAuto: auto.fired,
         signals: auto.signals,
         drivers,

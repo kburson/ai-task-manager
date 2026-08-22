@@ -30,6 +30,7 @@ const AGENT_REVIEW_PASSED =
 
 const cfg = { repo: 'o/r' };
 const FIXED_TS = '2026-05-10T00:00:00Z';
+const APPROVED_SHA = 'a'.repeat(40);
 
 function makeDeps(overrides = {}) {
   const calls = { writes: [], bodies: [], stateLookups: 0, comments: [] };
@@ -62,6 +63,7 @@ function makeDeps(overrides = {}) {
         calls.stateLookups++;
         return overrides.state ?? 'review';
       },
+      getHeadSha: async () => APPROVED_SHA,
       nowIso: () => FIXED_TS,
       // Isolate baseline tests from ambient env (e.g. TT_FULL_AUTO=1 in
       // sandbox). Tests that exercise the full-auto path inject their own
@@ -104,7 +106,7 @@ function makeDeps(overrides = {}) {
   assert.equal(r.status, 'approved');
   assert.equal(r.ts, FIXED_TS);
   assert.equal(calls.writes.length, 1);
-  assert.match(getBody(), /<!-- aitm-review-approved ts="2026-05-10T00:00:00Z" -->/);
+  assert.match(getBody(), new RegExp(`aitm-review-approved[^>]*approved-sha="${APPROVED_SHA}"`));
 }
 
 // 3. second call is idempotent
@@ -137,7 +139,10 @@ function makeDeps(overrides = {}) {
 {
   const { deps, getBody } = makeDeps({ initialBody: '## AC\n- [x] x\n' });
   await runApprove({ issueNumber: 58, cfg, deps });
-  assert.match(getBody(), /<!-- aitm-review-approved ts="2026-05-10T00:00:00Z" -->\s*$/);
+  assert.match(
+    getBody(),
+    new RegExp(`aitm-review-approved[^>]*approved-sha="${APPROVED_SHA}"[^>]*-->\\s*$`)
+  );
 }
 
 // 6. pure helpers

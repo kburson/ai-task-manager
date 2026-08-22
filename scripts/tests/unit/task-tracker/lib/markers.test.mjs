@@ -14,6 +14,7 @@ import {
   insertPlanApprovedMarker,
   REVIEW_APPROVED_RE,
   buildReviewApprovedMarker,
+  parseReviewApprovedMarker,
   hasReviewApprovedMarker,
   insertReviewApprovedMarker,
   DEEP_DIVE_COMPLETE_RE,
@@ -29,6 +30,7 @@ import {
 } from '../../../../task-tracker/lib/markers.mjs';
 
 const TS = '2026-05-11T12:00:00Z';
+const APPROVED_SHA = 'a'.repeat(40);
 
 function verificationReceipt(stage, receiptId, supersedes = null) {
   return {
@@ -115,6 +117,57 @@ function verificationReceipt(stage, receiptId, supersedes = null) {
 
   // Idempotent: re-insert leaves body unchanged.
   assert.equal(insertReviewApprovedMarker(out, TS), out);
+}
+
+// ── #939 review approval is exact-head authority ─────────────────────────────
+{
+  const human = buildReviewApprovedMarker(TS, { approvedSha: APPROVED_SHA });
+  assert.equal(human, `<!-- aitm-review-approved ts="${TS}" approved-sha="${APPROVED_SHA}" -->`);
+  assert.deepEqual(parseReviewApprovedMarker(human), {
+    ts: TS,
+    approvedSha: APPROVED_SHA,
+    fullAuto: false,
+    signals: '',
+  });
+  assert.equal(
+    parseReviewApprovedMarker(`<!-- aitm-review-approved ts="${TS}" -->`).approvedSha,
+    null,
+    'legacy SHA-less approval remains readable but cannot become exact-head authority'
+  );
+  for (const approvedSha of ['', 'abc', 'A'.repeat(40), `${APPROVED_SHA}0`]) {
+    assert.throws(
+      () => buildReviewApprovedMarker(TS, { approvedSha }),
+      /approvedSha.*40-character lowercase SHA/
+    );
+  }
+  assert.equal(
+    parseReviewApprovedMarker(
+      `<!-- aitm-review-approved ts="${TS}" approved-sha="${APPROVED_SHA}" extra="x" -->`
+    ),
+    null,
+    'unknown properties are not canonical approval evidence'
+  );
+  assert.equal(
+    parseReviewApprovedMarker(
+      `<!-- aitm-review-approved ts="${TS}" approved-sha="${APPROVED_SHA}" full-auto="true" signals="env=1" -->`
+    ),
+    null,
+    'new SHA-bound evidence accepts only the canonical full-auto value'
+  );
+  assert.equal(
+    parseReviewApprovedMarker(
+      `<!-- aitm-review-approved ts="not-a-time" approved-sha="${APPROVED_SHA}" -->`
+    ),
+    null,
+    'new SHA-bound evidence requires a canonical UTC timestamp'
+  );
+  assert.equal(
+    parseReviewApprovedMarker(
+      `<!-- aitm-review-approved ts="${TS}" approved-sha="${APPROVED_SHA}" approved-sha="${'b'.repeat(40)}" -->`
+    ),
+    null,
+    'duplicate properties cannot override canonical approval evidence'
+  );
 }
 
 // ── #1024: fenced marker examples do not suppress genuine insertion ─────────

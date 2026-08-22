@@ -21,13 +21,14 @@ export function resolveGate(name, { session = null, projectConfig = {} } = {}) {
   return DEFAULTS[name] ?? true;
 }
 
-function currentEvidence(value) {
+function currentEvidence(value, acceptedHeadSha) {
   return (
+    /^[0-9a-f]{40}$/.test(String(acceptedHeadSha || '')) &&
     value !== null &&
     typeof value === 'object' &&
     !Array.isArray(value) &&
     value.accepted === true &&
-    value.currentHead === true
+    value.approvedSha === acceptedHeadSha
   );
 }
 
@@ -38,20 +39,21 @@ function currentEvidence(value) {
 export function resolveReviewAuthorization({
   session = null,
   projectConfig = {},
+  acceptedHeadSha = null,
   humanApprovalEvidence = null,
   fullAutoApprovalEvidence = null,
 } = {}) {
   const sessionValue = session?.gates?.reviewToDone;
   const sessionDecides = sessionValue === true || sessionValue === false;
   const gateEnabled = resolveGate('reviewToDone', { session, projectConfig });
-  if (!gateEnabled && currentEvidence(fullAutoApprovalEvidence)) {
+  if (!gateEnabled && currentEvidence(fullAutoApprovalEvidence, acceptedHeadSha)) {
     return Object.freeze({
       mode: 'full-auto',
       standing: true,
       source: sessionDecides ? 'session' : 'project',
     });
   }
-  if (currentEvidence(humanApprovalEvidence)) {
+  if (currentEvidence(humanApprovalEvidence, acceptedHeadSha)) {
     return Object.freeze({ mode: 'human', standing: true, source: 'human-evidence' });
   }
   return Object.freeze({ mode: 'missing', standing: false, source: 'none' });

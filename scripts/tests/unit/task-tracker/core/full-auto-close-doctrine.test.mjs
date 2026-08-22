@@ -11,15 +11,17 @@ import { validateDeliveryPreflight } from '../../../../task-tracker/lib/delivery
 import { runApprove } from '../../../../task-tracker/verbs/approve.mjs';
 
 const HEAD = 'a'.repeat(40);
+const OTHER_HEAD = 'b'.repeat(40);
 
-function evidence(accepted = true) {
-  return { accepted, currentHead: true };
+function evidence(accepted = true, approvedSha = HEAD) {
+  return { accepted, approvedSha };
 }
 
 function decision(session, projectConfig = {}, human = null, fullAuto = evidence()) {
   return resolveReviewAuthorization({
     session,
     projectConfig,
+    acceptedHeadSha: HEAD,
     humanApprovalEvidence: human,
     fullAutoApprovalEvidence: fullAuto,
   });
@@ -57,12 +59,24 @@ test('auto both/review provide repeatable standing authority; off and reset revo
 
 test('approval evidence must be current-head and genuine human approval remains independent', () => {
   const session = applyChoice({ gates: {}, lastPromptedParent: null }, 'off');
-  assert.equal(decision(session, {}, { accepted: true, currentHead: false }, null).mode, 'missing');
+  assert.equal(decision(session, {}, evidence(true, OTHER_HEAD), null).mode, 'missing');
   assert.deepEqual(decision(session, {}, evidence(), null), {
     mode: 'human',
     standing: true,
     source: 'human-evidence',
   });
+});
+
+test('fresh Test and Agent Review cannot rebind an approval from an older head', () => {
+  const session = applyChoice({ gates: {}, lastPromptedParent: null }, 'review');
+  const stale = decision(session, {}, null, evidence(true, OTHER_HEAD));
+  assert.equal(stale.mode, 'missing');
+  const value = preflight();
+  value.issue.reviewAuthorization = stale;
+  assert.throws(() => validateDeliveryPreflight(value), /approval-evidence/);
+
+  value.issue.reviewAuthorization = decision(session, {}, null, evidence(true, HEAD));
+  assert.equal(validateDeliveryPreflight(value).expectedHeadSha, HEAD);
 });
 
 test('stale Full-Auto body evidence cannot survive auto off or reset', () => {
@@ -138,7 +152,8 @@ test('Full-Auto changes only review authorization; delivery safety gates still r
 
 test('runApprove remains the audited producer of Full-Auto approval evidence', async () => {
   let written = '';
-  const body = [
+  let approvedHead = HEAD;
+  let body = [
     '- [ ] Agent Review Passed <!-- aitm-verified gate="agent-review" ts="2026-08-22T00:00:00Z" sha="sandbox" validators="body-sections" result="pass" -->',
     '- [ ] Passed final human review',
   ].join('\n');
@@ -150,15 +165,49 @@ test('runApprove remains the audited producer of Full-Auto approval evidence', a
       assertBound: () => {},
       getBoardState: async () => 'review',
       fetchIssueBody: async () => body,
+      getHeadSha: async () => approvedHead,
       detectFullAuto: () => ({ fired: true, signals: 'session=1' }),
       fetchComments: async () => [],
       fetchProjectValues: async () => ({}),
       deriveDrivers: () => [],
       postComment: async () => {},
-      mutateIssueBody: async ({ mutate }) => ({ status: 'ok', body: (written = mutate(body)) }),
+      mutateIssueBody: async ({ mutate }) => {
+        written = mutate(body);
+        body = written;
+        return { status: 'ok', body };
+      },
       reconcileReviewApprovedTiming: async () => {},
     },
   });
   assert.equal(result.fullAuto, true);
+  assert.match(written, new RegExp(`aitm-review-approved[^>]*approved-sha="${HEAD}"`));
   assert.match(written, /aitm-review-approved[^>]*full-auto="yes"/);
+
+  approvedHead = OTHER_HEAD;
+  const refreshed = await runApprove({
+    issueNumber: 940,
+    cfg: { repo: 'o/r' },
+    projectDir: process.cwd(),
+    deps: {
+      assertBound: () => {},
+      getBoardState: async () => 'review',
+      fetchIssueBody: async () => body,
+      getHeadSha: async () => approvedHead,
+      detectFullAuto: () => ({ fired: true, signals: 'session=1' }),
+      fetchComments: async () => [],
+      fetchProjectValues: async () => ({}),
+      deriveDrivers: () => [],
+      postComment: async () => {},
+      mutateIssueBody: async ({ mutate }) => {
+        written = mutate(body);
+        body = written;
+        return { status: 'ok', body };
+      },
+      reconcileReviewApprovedTiming: async () => {},
+    },
+  });
+  assert.equal(refreshed.status, 'approved');
+  assert.equal(refreshed.fullAuto, true);
+  assert.match(written, new RegExp(`aitm-review-approved[^>]*approved-sha="${OTHER_HEAD}"`));
+  assert.doesNotMatch(written, new RegExp(`approved-sha="${HEAD}"`));
 });

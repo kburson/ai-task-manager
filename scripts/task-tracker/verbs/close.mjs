@@ -545,11 +545,19 @@ export async function verbClose(ctx) {
     projectConfig: rawProjectConfig(),
   });
   const configuredReviewAuthority = configuredReviewToDoneGate ? 'human-gate' : 'gate-bypassed';
+  let resolvedReviewAuthorization = null;
+  const terminalReviewAuthority = () => {
+    if (resolvedReviewAuthorization?.mode === 'human') return 'human-gate';
+    if (resolvedReviewAuthorization?.mode === 'full-auto') return 'gate-bypassed';
+    return configuredReviewAuthority;
+  };
+  const terminalReviewGateBypassed = () => terminalReviewAuthority() === 'gate-bypassed';
 
   // #939 — resolve the receipt gate lazily after non-terminal convergence
   // inspection, but before any path performs a new terminal mutation.
   const ensureDeliveryAuthorized = async () => {
-    if (SKIP_NETWORK || !closeIssueNum) return;
+    if (SKIP_NETWORK || !closeIssueNum) return resolvedReviewAuthorization;
+    if (resolvedReviewAuthorization) return resolvedReviewAuthorization;
     const deliveryBody = ctx.loadCloseDeliveryBody
       ? await ctx.loadCloseDeliveryBody({
           issueNumber: Number(closeIssueNum),
@@ -572,19 +580,26 @@ export async function verbClose(ctx) {
       ctx,
     });
     const approval = parseReviewApprovedMarker(deliveryBody);
-    const currentHead = gateInput.acceptedSha === gateInput.localHeadSha;
     const authorization = (ctx.resolveReviewAuthorization || resolveReviewAuthorization)({
       session: loadSession(currentSessionId()),
       projectConfig: rawProjectConfig(),
+      acceptedHeadSha:
+        gateInput.acceptedSha === gateInput.localHeadSha ? gateInput.localHeadSha : null,
       humanApprovalEvidence:
-        approval && !approval.fullAuto ? { accepted: true, currentHead } : null,
-      fullAutoApprovalEvidence: approval?.fullAuto ? { accepted: true, currentHead } : null,
+        approval && !approval.fullAuto
+          ? { accepted: true, approvedSha: approval.approvedSha }
+          : null,
+      fullAutoApprovalEvidence: approval?.fullAuto
+        ? { accepted: true, approvedSha: approval.approvedSha }
+        : null,
     });
     if (authorization.mode === 'missing') {
       throw new Error('review-authorization-missing');
     }
     const receiptGate = ctx.requireDeliveryReceipt || requireDeliveryReceipt;
     receiptGate(gateInput);
+    resolvedReviewAuthorization = authorization;
+    return authorization;
   };
   const refuseDeliveryGate = async () => {
     try {
@@ -769,7 +784,8 @@ export async function verbClose(ctx) {
             );
           }
 
-          fullAuto = configuredFullAuto;
+          if (await refuseDeliveryGate()) return;
+          fullAuto = terminalReviewGateBypassed();
           integrity = deriveClosedIssueIntegrity({
             body: convergeBody,
             fullAuto,
@@ -810,6 +826,7 @@ export async function verbClose(ctx) {
 
     if (decision.action === 'close-issue') {
       if (await refuseDeliveryGate()) return;
+      fullAuto = terminalReviewGateBypassed();
       await drainQueueOnce();
       // Board reads Done but the issue is still OPEN — the Projects auto-close
       // workflow did not fire. Close the primary explicitly. On failure, surface
@@ -821,7 +838,7 @@ export async function verbClose(ctx) {
           cfg,
           hasApprovalMarker: hasReviewApprovedMarker(convergeBody),
           issueBody: convergeBody,
-          reviewGateBypassed: configuredFullAuto,
+          reviewGateBypassed: fullAuto,
           lastWordMarker: s.lastWordMarker,
           lastFullWordMarker: stateFullWordMarker(s),
           ctx,
@@ -869,6 +886,9 @@ export async function verbClose(ctx) {
 
     if (['dead', 'finalize', 'aberration', 'noop'].includes(decision.action)) {
       if (['finalize', 'noop'].includes(decision.action) && (await refuseDeliveryGate())) return;
+      if (['finalize', 'noop'].includes(decision.action)) {
+        fullAuto = terminalReviewGateBypassed();
+      }
       await drainQueueOnce();
       const convergence = await runClosedIssueConvergence(
         {
@@ -887,7 +907,7 @@ export async function verbClose(ctx) {
             const moveResult = await runMoveStateDone(closeTarget, {
               silent: true,
               tailProfile: convergenceTailProfile,
-              reviewAuthority: configuredReviewAuthority,
+              reviewAuthority: terminalReviewAuthority(),
             });
             if (!moveResult.ok && !moveResult.benign) {
               const postBoardState = await getIssueBoardState(closeTarget);
@@ -1107,7 +1127,7 @@ export async function verbClose(ctx) {
   // emission can predicate on it. True iff the review→done gate was explicitly
   // disabled (session/project override), which carries its own
   // `aitm-gate-bypassed` audit row.
-  let reviewGateBypassed = configuredReviewAuthority === 'gate-bypassed';
+  let reviewGateBypassed = terminalReviewGateBypassed();
   if (process.env.TT_SKIP_DIRTY_CHECK !== '1') {
     const answerIdx = rest.indexOf('--answer');
     const answerArg = answerIdx >= 0 ? String(rest[answerIdx + 1] || '').toLowerCase() : '';
@@ -1208,9 +1228,8 @@ export async function verbClose(ctx) {
       // derived-DoD stamping so chain-integrity sees the freshly-ticked
       // keys. The session/project `gateReviewToDone` toggle still lives in
       // close.mjs because it controls audit emission, not guard logic.
-      const _resolvedReviewGate = configuredReviewToDoneGate;
-      reviewGateBypassed = !_resolvedReviewGate; // #655 — hoist for the row gate
-      if (!_resolvedReviewGate) {
+      reviewGateBypassed = terminalReviewGateBypassed(); // #655 — hoist for the row gate
+      if (reviewGateBypassed) {
         // #516 — the review-gate bypass is recorded as a body audit marker
         // (`aitm-gate-bypassed`), not a ⏱ Timing Log row. The bypass consumes no
         // distinct wall-clock; its time is already counted inside Review. The
@@ -1361,7 +1380,7 @@ export async function verbClose(ctx) {
         });
 
         const refusals = (guardResult.refusals || []).filter(
-          (r) => !(r.id === 'review-exit-review-approved' && !_resolvedReviewGate)
+          (r) => !(r.id === 'review-exit-review-approved' && reviewGateBypassed)
         );
 
         const approvedRefusal = refusals.find((r) => r.id === 'review-exit-review-approved');
@@ -1706,7 +1725,7 @@ export async function verbClose(ctx) {
     const forcedMove = await runMoveStateDone(s.active, {
       silent: true,
       extraArgs: ['--force'],
-      reviewAuthority: configuredReviewAuthority,
+      reviewAuthority: terminalReviewAuthority(),
     });
     // Same swallow-vs-surface rule as the post-close move (#435): re-read the
     // board and only refuse when the move genuinely failed AND the board is not
@@ -1749,7 +1768,7 @@ export async function verbClose(ctx) {
   if (!force && !SKIP_NETWORK && closeIssueNum) {
     const preMove = await runMoveStateDone(s.active, {
       silent: true,
-      reviewAuthority: configuredReviewAuthority,
+      reviewAuthority: terminalReviewAuthority(),
     });
     const preBoardState =
       preMove && !preMove.ok && !preMove.benign
@@ -1815,7 +1834,7 @@ export async function verbClose(ctx) {
   // as success and produces no warning.
   const moveResult = await runMoveStateDone(s.active, {
     silent: true,
-    reviewAuthority: configuredReviewAuthority,
+    reviewAuthority: terminalReviewAuthority(),
   });
   const lifecycleTickResult = await reconcileLifecycleBoxes({
     cfg,

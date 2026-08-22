@@ -589,13 +589,17 @@ export function createDefaultDeliverDeps(ctx, { exec = pexec } = {}) {
   return {
     resolveReviewAuthorization({ issue, expectedHeadSha, acceptedReviewSha }) {
       const approval = parseReviewApprovedMarker(issue.body);
-      const currentHead = acceptedReviewSha === expectedHeadSha;
       return resolveReviewAuthorization({
         session: loadSession(currentSessionId()),
         projectConfig: rawProjectConfig(),
+        acceptedHeadSha: acceptedReviewSha === expectedHeadSha ? expectedHeadSha : null,
         humanApprovalEvidence:
-          approval && !approval.fullAuto ? { accepted: true, currentHead } : null,
-        fullAutoApprovalEvidence: approval?.fullAuto ? { accepted: true, currentHead } : null,
+          approval && !approval.fullAuto
+            ? { accepted: true, approvedSha: approval.approvedSha }
+            : null,
+        fullAutoApprovalEvidence: approval?.fullAuto
+          ? { accepted: true, approvedSha: approval.approvedSha }
+          : null,
       });
     },
     async fetchIssue({ issueNumber }) {
