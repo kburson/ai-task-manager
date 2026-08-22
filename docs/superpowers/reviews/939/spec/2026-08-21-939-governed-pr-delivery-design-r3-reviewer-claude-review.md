@@ -11,7 +11,7 @@ Fresh independent review; no prior-protocol findings imported. The design is
 architecturally sound, repository-compatible, and correctly grounded in the
 current implementation. I re-verified the core premise against
 `scripts/task-tracker/verbs/close.mjs`: terminal timing is flushed
-(`runLogIssueTime`, `flushCloseTimingOrThrow`) *before* the Full-Auto
+(`runLogIssueTime`, `flushCloseTimingOrThrow`) _before_ the Full-Auto
 merge-enable block (`enableFullAutoMergeForClose`), so a merge refusal today
 genuinely strands terminal-looking audit evidence on an open, undelivered
 issue — exactly as the Problem section claims.
@@ -40,14 +40,14 @@ already partially implied by AC6 and the decomposition list.
 can strand sibling attribution.** The deterministic squash message is described
 as carrying "the validated attribution tokens required by the current commit
 trail, including child tokens for an epic" (spec ~L210-213), and AC6 promises
-"all required `[#N]` attribution tokens." But a squash collapses the *entire*
+"all required `[#N]` attribution tokens." But a squash collapses the _entire_
 branch range into one trunk commit. If any commit in that range carries a
 `[#N]` token that is neither the top-level issue nor an epic child (e.g. a
 defect fixed mid-branch that was not isolated onto its own PR), that token
 disappears from `origin/trunk`, later breaking that token's own
 `close`/`commit-trace` `origin/trunk` guard, which greps trunk for `[#N]`.
 Repo convention (worktree-per-rung defect isolation) mitigates this in the
-sanctioned path, but the spec should define "required tokens" as *every* `[#N]`
+sanctioned path, but the spec should define "required tokens" as _every_ `[#N]`
 present in the squashed commit range — computed from the range, not from
 issue+children — so the guarantee is total rather than convention-dependent.
 This is the only finding touching a load-bearing invariant.
@@ -57,7 +57,7 @@ fragile.** "The observed merge happened after the intent was created"
 (spec ~L300-301) compares the intent's local `createdAt` ISO stamp against the
 GitHub-reported merge time. Those come from different clocks; skew or coarse
 time resolution can make a legitimate self-initiated merge appear to predate
-its intent and force the code down the already-merged *recovery* branch
+its intent and force the code down the already-merged _recovery_ branch
 unnecessarily. Prefer the intent comment's GitHub-server timestamp (same clock
 as the merge event) for the ordering test, or treat expected-head-SHA equality
 plus post-intent PR state as sufficient and drop strict wall-clock ordering.
@@ -81,7 +81,7 @@ cleanup procedure would close the loop. Nit.
 Accepted. The transaction boundary, exact-head protection, provider-portability
 via the declarative `externalActions` capability, fail-closed recovery, and the
 explicit authority split are the strongest repository-compatible answer to
-#939, and the design correctly declines the weaker reorder-in-`close` and
+issue #939, and the design correctly declines the weaker reorder-in-`close` and
 auto-merge-primary alternatives. F-001 is the only finding touching a
 load-bearing invariant; it is a specification tightening covered in spirit by
 AC6 and should be nailed down in Refine, not re-architected. F-002 through

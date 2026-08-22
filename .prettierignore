@@ -10,3 +10,4 @@ docs/postmortems/
 docs/ai-memory/
 docs/superpowers/reviews/**/README.md
 .ai-task-manager/memory/
+.superpowers/
