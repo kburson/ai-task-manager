@@ -339,8 +339,13 @@ git commit -m "[#939] Verify and receipt delivered pull requests"
 **Files:**
 
 - Create: `scripts/task-tracker/lib/close-delivery-receipt.mjs`
+- Modify: `scripts/task-tracker/lib/gate-resolve.mjs`
+- Modify: `scripts/task-tracker/lib/delivery-preflight.mjs`
+- Modify: `scripts/task-tracker/verbs/deliver.mjs`
 - Modify: `scripts/task-tracker/verbs/close.mjs`
 - Modify: `scripts/task-tracker/lib/full-auto-merge-execute.mjs`
+- Create: `scripts/tests/unit/task-tracker/core/full-auto-close-doctrine.test.mjs`
+- Modify: `scripts/tests/unit/task-tracker/verbs/deliver.test.mjs`
 - Create: `scripts/tests/unit/task-tracker/verbs/close-delivery-receipt.test.mjs`
 - Modify: `scripts/tests/unit/task-tracker/lib/full-auto-merge-execute.test.mjs`
 - Modify: `scripts/tests/unit/task-tracker/verbs/close-convergence-wiring.test.mjs`
@@ -349,45 +354,61 @@ git commit -m "[#939] Verify and receipt delivered pull requests"
 
 - Consumes: Task 1 projected records, accepted exact SHA, live PR, and existing `origin/trunk` attribution guard.
 - Produces: `requireDeliveryReceipt({ issueNumber, lineage, branch, acceptedSha, pullRequests, records })` returning `{ skipped, receipt }` or a stable fail-closed refusal.
+- Produces: `resolveReviewAuthorization({ session, projectConfig, humanApprovalEvidence, fullAutoApprovalEvidence })` from `gate-resolve.mjs`, returning a frozen `{ mode: 'human'|'full-auto'|'missing', standing, source }` decision shared by `deliver` and `close`.
 - Removes every PR merge/enable call from `verbClose`; `close` retains only receipt verification, trunk attribution, and terminal workflow mutation.
 
-- [ ] **Step 1: Write failing close-gate tests**
+- [ ] **Step 1: Write failing close-gate and Full-Auto doctrine tests**
 
 Assert missing/malformed/duplicate/conflicting/mismatched receipts block; a valid exact-head receipt passes; child-to-epic and authorized no-PR local lane skip the PR receipt gate; and live PR ambiguity fails closed. Add a source-wiring assertion that `close.mjs` contains neither `enableFullAutoMergeForClose(` nor a provider-action wait/retry.
 
-- [ ] **Step 2: Run the close test and verify it fails**
+Create `full-auto-close-doctrine.test.mjs` as the AC8 contract. Drive the real `applyChoice`, `resolveGate`, `runApprove`, `validateDeliveryPreflight`, and injected `verbClose` boundaries and assert:
+
+- `auto both` and `auto review` establish standing authorization for autonomous review approval, `deliver`, and `close` without emitting a human approval prompt;
+- the same authorization remains valid across repeated delivery/close retries while the session override remains enabled;
+- `auto off` revokes it, and `auto reset` removes the session authority so project policy is resolved afresh rather than reusing stale Full-Auto evidence;
+- a genuine current-head human approval remains independently valid;
+- Full-Auto suppresses only the redundant rubber-stamp prompt: Agent Review/Test evidence, exact-head equality, CI, clean-worktree, audit, provider capability, delivery receipt, live-trunk attribution, and every terminal-ordering guard still refuse independently when invalid.
+
+- [ ] **Step 2: Run the close and doctrine tests and verify they fail**
 
 ```bash
 node --test scripts/tests/unit/task-tracker/verbs/close-delivery-receipt.test.mjs
+node --test scripts/tests/unit/task-tracker/core/full-auto-close-doctrine.test.mjs
 ```
 
-Expected: FAIL because the receipt gate is absent.
+Expected: FAIL because the receipt gate and shared standing-authorization decision are absent and the doctrine test file does not yet exist.
 
 - [ ] **Step 3: Insert the receipt gate before terminal effects**
 
 After ordinary Review approval/body gates but before `emitReviewToDoneClosePair`, time rollup, queue flush, estimation outcome, Done, disposition, issue close, or binding release, load/project delivery comments and require a receipt whose `expectedHeadSha` equals the exact accepted SHA. Then retain the existing `origin/trunk` attribution guard as independent proof.
 
-- [ ] **Step 4: Retire the legacy PR executor path**
+- [ ] **Step 4: Implement and consume standing review authorization**
+
+Add `resolveReviewAuthorization` beside `resolveGate` as the single pure decision boundary. It must resolve the live session override before project defaults, require current-head approval evidence, treat a disabled Review gate as standing Full-Auto authorization, and never convert missing/unknown state into authorization. `auto off` must require human evidence; `auto reset` must clear the session source and re-evaluate project policy. Thread the decision into `validateDeliveryPreflight` and `verbClose`. The callers must return a stable refusal when the decision is `missing`; they must not emit `PROMPT_REQUIRED: review-approval` when it is `full-auto`. `runApprove` remains the audited producer of current-head Full-Auto approval evidence.
+
+- [ ] **Step 5: Retire the legacy PR executor path**
 
 Remove the `enableFullAutoMergeForClose` import and call from `close.mjs`. Keep only the linked-worktree trunk-ref helper needed by attribution. Make direct use of `full-auto-merge-execute.mjs` return a retired-mechanism refusal for PR mutation while preserving the non-PR `local-trunk-lane` decision surface required by legacy callers.
 
-- [ ] **Step 5: Prove terminal ordering**
+- [ ] **Step 6: Prove terminal ordering and preserved safety gates**
 
 Extend injected close tests so every receipt refusal leaves terminal timing, queue flush, estimation outcome, Done, Delivered, issue closure, and binding release call counts at zero. A valid receipt must reach those effects in existing order.
 
-- [ ] **Step 6: Run Task 5 tests**
+Run the doctrine test against refusal fixtures for dirty worktree, stale/missing Test or Agent Review evidence, head mismatch, non-green checks, unavailable provider capability, missing receipt, failed audit persistence, and failed trunk attribution. Each must remain a refusal in Full-Auto, with zero terminal mutations.
+
+- [ ] **Step 7: Run Task 5 tests**
 
 ```bash
-node --test scripts/tests/unit/task-tracker/verbs/close-delivery-receipt.test.mjs scripts/tests/unit/task-tracker/lib/full-auto-merge-execute.test.mjs scripts/tests/unit/task-tracker/verbs/close-convergence-wiring.test.mjs
+node --test scripts/tests/unit/task-tracker/core/full-auto-close-doctrine.test.mjs scripts/tests/unit/task-tracker/verbs/deliver.test.mjs scripts/tests/unit/task-tracker/verbs/close-delivery-receipt.test.mjs scripts/tests/unit/task-tracker/lib/full-auto-merge-execute.test.mjs scripts/tests/unit/task-tracker/verbs/close-convergence-wiring.test.mjs
 ```
 
 Expected: PASS.
 
-- [ ] **Step 7: Commit Task 5**
+- [ ] **Step 8: Commit Task 5**
 
 ```bash
-git add scripts/task-tracker/lib/close-delivery-receipt.mjs scripts/task-tracker/verbs/close.mjs scripts/task-tracker/lib/full-auto-merge-execute.mjs scripts/tests/unit/task-tracker/verbs/close-delivery-receipt.test.mjs scripts/tests/unit/task-tracker/lib/full-auto-merge-execute.test.mjs scripts/tests/unit/task-tracker/verbs/close-convergence-wiring.test.mjs
-git commit -m "[#939] Gate close on verified delivery receipts"
+git add scripts/task-tracker/lib/close-delivery-receipt.mjs scripts/task-tracker/lib/gate-resolve.mjs scripts/task-tracker/lib/delivery-preflight.mjs scripts/task-tracker/verbs/deliver.mjs scripts/task-tracker/verbs/close.mjs scripts/task-tracker/lib/full-auto-merge-execute.mjs scripts/tests/unit/task-tracker/core/full-auto-close-doctrine.test.mjs scripts/tests/unit/task-tracker/verbs/deliver.test.mjs scripts/tests/unit/task-tracker/verbs/close-delivery-receipt.test.mjs scripts/tests/unit/task-tracker/lib/full-auto-merge-execute.test.mjs scripts/tests/unit/task-tracker/verbs/close-convergence-wiring.test.mjs
+git commit -m "[#939] Gate close on delivery and standing authorization"
 ```
 
 ### Task 6: Provider capability adapters and shared delivery rule
