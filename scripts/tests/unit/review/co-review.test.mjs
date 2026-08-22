@@ -164,6 +164,26 @@ test('top-level help covers the settled lifecycle, recovery, and governance surf
   }
 });
 
+test('structured and top-level help explain archive collision prevention and recovery', () => {
+  const prevention = 'New configured archive leaves must be absent before initialization.';
+  const deterministic =
+    'Legacy accepted collisions recover only at <configured>-recovery-<protocol-id>.';
+  const eligibility =
+    'The configured archive must validate as a complete different-protocol v1 archive.';
+  const refusal = 'Arbitrary --archive-dir overrides and every overwrite remain refused.';
+
+  assert.match(COMMANDS.start.validations.join(' '), new RegExp(prevention));
+  assert.match(COMMANDS.init.validations.join(' '), new RegExp(prevention));
+  assert.match(COMMANDS.status.validations.join(' '), new RegExp(eligibility));
+  assert.match(COMMANDS.finalize.validations.join(' '), new RegExp(refusal));
+
+  for (const page of [renderHelp(), renderHelp('finalize')]) {
+    for (const statement of [prevention, deterministic, eligibility, refusal]) {
+      assert.match(page, new RegExp(statement.replaceAll(/[.*+?^${}()|[\]\\]/g, '\\$&')));
+    }
+  }
+});
+
 test('every command has standalone recovery help in both forms', async () => {
   const emptyRoot = temporaryRoot();
   for (const command of Object.keys(COMMANDS)) {

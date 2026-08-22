@@ -648,6 +648,120 @@ test('intervention and accepted status expose state-valid finalization actions a
   );
 });
 
+test('accepted status exposes deterministic foreign-archive recovery before and after publication', async () => {
+  const fixture = await foreignArchiveRecoveryFixture();
+  const { current, configuredAbsolute, recoveryDir } = fixture;
+  const runtime = path.resolve(current.root, current.options.dir);
+  const protocolBefore = snapshotProtocol(current.root, current.options.dir);
+  const occupiedBefore = snapshotDirectory(configuredAbsolute);
+  const finalizeCommand = `npx aitm co-review finalize --dir ${runtime} --archive-dir ${recoveryDir}`;
+
+  const before = JSON.parse(
+    (
+      await runCliDirect(['status', '--dir', current.options.dir, '--json'], {
+        cwd: current.root,
+        repository: current.repository,
+      })
+    ).stdout
+  );
+  assert.deepEqual(before.archive, {
+    destination: recoveryDir,
+    configuredDestination: 'docs/reviews/configured',
+    completion: 'absent',
+    recovery: true,
+  });
+  assert.deepEqual(before.availableActions, [{ kind: 'finalize', command: finalizeCommand }]);
+  assert.equal(before.nextAction, finalizeCommand);
+  assert.deepEqual(snapshotProtocol(current.root, current.options.dir), protocolBefore);
+  assert.deepEqual(snapshotDirectory(configuredAbsolute), occupiedBefore);
+
+  const finalized = await runCliDirect(
+    ['finalize', '--dir', current.options.dir, '--archive-dir', recoveryDir],
+    { cwd: current.root, repository: current.repository }
+  );
+  assert.equal(finalized.status, 0, finalized.stderr);
+  assert.match(finalized.stdout, new RegExp(`^Archive: ${recoveryDir}\\n`));
+  assert.deepEqual(snapshotProtocol(current.root, current.options.dir), protocolBefore);
+  assert.deepEqual(snapshotDirectory(configuredAbsolute), occupiedBefore);
+
+  const after = JSON.parse(
+    (
+      await runCliDirect(['status', '--dir', current.options.dir, '--json'], {
+        cwd: current.root,
+        repository: current.repository,
+      })
+    ).stdout
+  );
+  assert.deepEqual(after.archive, {
+    destination: recoveryDir,
+    configuredDestination: 'docs/reviews/configured',
+    completion: 'complete-and-identical',
+    recovery: true,
+  });
+  assert.equal(
+    after.availableActions.some(({ kind }) => kind === 'finalize'),
+    false
+  );
+  assert.equal(after.nextAction, 'stop; protocol accepted');
+  assert.deepEqual(snapshotProtocol(current.root, current.options.dir), protocolBefore);
+  assert.deepEqual(snapshotDirectory(configuredAbsolute), occupiedBefore);
+});
+
+test('accepted status refuses corrupt, ineligible, and conflicting recovery paths', async () => {
+  for (const mutation of ['same-protocol', 'ineligible-foreign', 'recovery-conflict']) {
+    const fixture = await foreignArchiveRecoveryFixture();
+    const { occupiedPrepared, current, configuredAbsolute, recoveryDir } = fixture;
+
+    if (mutation === 'same-protocol') {
+      const manifest = structuredClone(occupiedPrepared.manifest);
+      manifest.protocol.id = current.state.protocolId;
+      replaceArchiveManifestJson(configuredAbsolute, JSON.stringify(manifest, null, 2));
+    } else if (mutation === 'ineligible-foreign') {
+      unlinkSync(path.join(configuredAbsolute, output(occupiedPrepared, 'review').path));
+    } else {
+      const recoveryAbsolute = path.join(current.root, recoveryDir);
+      mkdirSync(recoveryAbsolute, { recursive: true });
+      writeFileSync(path.join(recoveryAbsolute, 'conflict.md'), 'preserve this conflict\n');
+    }
+
+    const protocolBefore = snapshotProtocol(current.root, current.options.dir);
+    const occupiedBefore = snapshotDirectory(configuredAbsolute);
+    const recoveryAbsolute = path.join(current.root, recoveryDir);
+    const recoveryBefore = existsSync(recoveryAbsolute)
+      ? snapshotDirectory(recoveryAbsolute)
+      : null;
+    const status = JSON.parse(
+      (
+        await runCliDirect(['status', '--dir', current.options.dir, '--json'], {
+          cwd: current.root,
+          repository: current.repository,
+        })
+      ).stdout
+    );
+
+    assert.equal(status.archive.destination, 'docs/reviews/configured', mutation);
+    assert.equal(status.archive.completion, 'conflict', mutation);
+    assert.ok(status.archive.errors.length > 0, mutation);
+    assert.equal(
+      status.availableActions.some(({ kind }) => kind === 'finalize'),
+      false,
+      mutation
+    );
+    assert.doesNotMatch(
+      status.availableActions.map(({ command }) => command).join('\n'),
+      /--archive-dir/,
+      mutation
+    );
+    assert.deepEqual(snapshotProtocol(current.root, current.options.dir), protocolBefore, mutation);
+    assert.deepEqual(snapshotDirectory(configuredAbsolute), occupiedBefore, mutation);
+    assert.deepEqual(
+      existsSync(recoveryAbsolute) ? snapshotDirectory(recoveryAbsolute) : null,
+      recoveryBefore,
+      mutation
+    );
+  }
+});
+
 test('reachable artifacts use reference mode while preserving terminal evidence', async () => {
   const fixture = await acceptedConsensus();
   const prepared = prepareArchive(archiveOptions(fixture));

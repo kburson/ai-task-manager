@@ -18,6 +18,7 @@ import path from 'node:path';
 
 import {
   assertArchiveDestinationAbsent,
+  deriveRecoveryArchiveDir,
   inspectArchive,
   resolveArchiveDestination,
 } from './archive.mjs';
@@ -771,23 +772,63 @@ export function statusProtocol(options) {
   };
   let archive = { destination: null, completion: 'unknown' };
   if (state.lifecycle === 'accepted' && state.initialization?.archiveDir && integrity.ok) {
+    const configured = state.initialization.archiveDir;
     try {
-      const inspection = inspectArchive({
+      const configuredInspection = inspectArchive({
         root,
         state,
         events,
-        archiveDir: state.initialization.archiveDir,
+        archiveDir: configured,
         repository,
       });
+      if (configuredInspection.status !== 'conflict') {
+        archive = {
+          destination: configured,
+          completion:
+            configuredInspection.status === 'complete'
+              ? 'complete-and-identical'
+              : configuredInspection.status,
+        };
+      } else {
+        const recovery = deriveRecoveryArchiveDir(configured, state.protocolId);
+        try {
+          const recoveryInspection = inspectArchive({
+            root,
+            state,
+            events,
+            archiveDir: recovery,
+            repository,
+          });
+          if (recoveryInspection.status === 'absent' || recoveryInspection.status === 'complete') {
+            archive = {
+              destination: recovery,
+              configuredDestination: configured,
+              completion:
+                recoveryInspection.status === 'complete'
+                  ? 'complete-and-identical'
+                  : recoveryInspection.status,
+              recovery: true,
+            };
+          } else {
+            archive = {
+              destination: configured,
+              completion: 'conflict',
+              errors: [...configuredInspection.errors, ...recoveryInspection.errors],
+            };
+          }
+        } catch (recoveryError) {
+          archive = {
+            destination: configured,
+            completion: 'conflict',
+            errors: [...configuredInspection.errors, recoveryError.message],
+          };
+        }
+      }
+    } catch (configuredError) {
       archive = {
-        destination: state.initialization.archiveDir,
-        completion: inspection.status === 'complete' ? 'complete-and-identical' : inspection.status,
-      };
-    } catch (error) {
-      archive = {
-        destination: state.initialization.archiveDir,
+        destination: configured,
         completion: 'conflict',
-        errors: [error.message],
+        errors: [configuredError.message],
       };
     }
   } else if (state.initialization?.archiveDir) {
@@ -816,14 +857,10 @@ export function statusProtocol(options) {
       { kind: 'no-action', command: null },
     ];
     decoratedNextAction = continueCommand;
-  } else if (
-    state.lifecycle === 'accepted' &&
-    integrity.ok &&
-    archive.completion !== 'complete-and-identical'
-  ) {
+  } else if (state.lifecycle === 'accepted' && integrity.ok && archive.completion === 'absent') {
     decoratedNextAction = `npx aitm co-review finalize --dir ${shellArgument(runtimeDir)}${
-      state.initialization.archiveDir
-        ? ` --archive-dir ${shellArgument(state.initialization.archiveDir)}`
+      archive.destination
+        ? ` --archive-dir ${shellArgument(archive.destination)}`
         : ' --archive-dir <tracked-repo-path>'
     }`;
     availableActions = [{ kind: 'finalize', command: decoratedNextAction }];

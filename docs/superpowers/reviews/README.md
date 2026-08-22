@@ -61,6 +61,20 @@ extra, mixed-kind, or conflicting destination content refuses without rewriting
 evidence. Historical manually archived evidence may predate this generated grammar;
 its artifact-kind directory and recorded hashes remain authoritative.
 
+## Collision recovery
+
+The configured `<issue>/<kind>` archive is the first-published archive at that
+leaf, not necessarily the newest accepted design. If a legacy accepted protocol
+finds that leaf occupied by a complete different-protocol v1 archive, it may
+publish only to the deterministic sibling
+`<kind>-recovery-<protocol-id>`. The recovery sibling is independently immutable;
+it does not replace or rewrite the occupied primary archive.
+
+The occupied primary is never edited to add a backlink. To determine authority
+and recency, readers compare each archive's `decision.at` and the recorded
+recovery relationship, then follow the recovered archive's configured-destination
+link back to the first-published archive.
+
 ## Authority and fidelity
 
 Review evidence never amends or supersedes its linked specification or plan. A
