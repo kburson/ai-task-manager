@@ -178,14 +178,26 @@ test('fetchParentIssueStrict returns the live parent and propagates lookup failu
   );
 });
 
-test('close passes issue identity into Full-Auto merge preparation', () => {
+test('close no longer imports or calls the legacy PR executor', () => {
   const source = readFileSync(
     new URL('../../../../task-tracker/verbs/close.mjs', import.meta.url),
     'utf8'
   );
-  const callStart = source.indexOf('enableFullAutoMergeForClose({');
-  const callEnd = source.indexOf('});', callStart);
-  assert.match(source.slice(callStart, callEnd), /issueNumber:\s*closeIssueNum/);
+  assert.doesNotMatch(source, /enableFullAutoMergeForClose/);
+  assert.match(source, /requireDeliveryReceipt/);
+});
+
+test('enableFullAutoMergeForClose: provider action refuses direct execution', async () => {
+  const px = fakePexec({ 'gh pr list --head b': '[{"number":939}]' });
+  const r = await enableFullAutoMergeForClose({
+    cfg: { fullAutoMerge: { mechanism: 'provider-action', mergeMethod: 'squash' } },
+    branch: 'b',
+    isFullAuto: true,
+    pexec: px,
+  });
+  assert.equal(r.status, 'fail-closed');
+  assert.match(r.message, /provider-action|required|deliver/i);
+  assert.equal(px.calls.filter((call) => call.args.includes('merge')).length, 0);
 });
 
 test('enableFullAutoMergeForClose: retired gh-auto-merge fails closed without merge execution', async () => {

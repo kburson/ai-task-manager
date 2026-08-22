@@ -14,6 +14,9 @@ import { parseReviewApprovedMarker, parseTestStartedMarker } from '../lib/marker
 import { parseVerificationReceipt } from '../lib/verification-receipt.mjs';
 import { createRecordId } from '../lib/github-records/record-envelope.mjs';
 import { canonicalRecordJson } from '../lib/github-records/canonical-json.mjs';
+import { resolveReviewAuthorization } from '../lib/gate-resolve.mjs';
+import { loadSession } from '../lib/session-store.mjs';
+import { rawProjectConfig } from '../config.mjs';
 import {
   buildDeliveryIntent,
   buildDeliveryReceipt,
@@ -370,6 +373,15 @@ export async function runDeliver({ issueNumber, cfg, state, deps = {} } = {}) {
       commitSubjectsPromise,
       listDirtyPaths({ issueNumber }),
     ]);
+  const reviewAuthorization = await (
+    deps.resolveReviewAuthorization ??
+    (({ issue }) =>
+      Object.freeze({
+        mode: issue.approvalEvidence ?? 'missing',
+        standing: ['human', 'full-auto'].includes(issue.approvalEvidence),
+        source: issue.approvalEvidence ? 'legacy-evidence' : 'none',
+      }))
+  )({ issue, expectedHeadSha: localHeadSha, acceptedReviewSha });
   const assignee =
     typeof cfg.assignee === 'string' && cfg.assignee !== '@me' && cfg.assignee.length > 0
       ? cfg.assignee
@@ -380,7 +392,7 @@ export async function runDeliver({ issueNumber, cfg, state, deps = {} } = {}) {
     repositoryMergeMethods,
   };
   const preflightInput = {
-    issue,
+    issue: { ...issue, reviewAuthorization },
     binding: bindingFromState({ branch, state }),
     lineage,
     pullRequests,
@@ -578,6 +590,17 @@ export function createDefaultDeliverDeps(ctx, { exec = pexec } = {}) {
   const { owner, repoName } = splitRepo(ctx.cfg.repo);
 
   return {
+    resolveReviewAuthorization({ issue, expectedHeadSha, acceptedReviewSha }) {
+      const approval = parseReviewApprovedMarker(issue.body);
+      const currentHead = acceptedReviewSha === expectedHeadSha;
+      return resolveReviewAuthorization({
+        session: loadSession(currentSessionId()),
+        projectConfig: rawProjectConfig(),
+        humanApprovalEvidence:
+          approval && !approval.fullAuto ? { accepted: true, currentHead } : null,
+        fullAutoApprovalEvidence: approval?.fullAuto ? { accepted: true, currentHead } : null,
+      });
+    },
     async fetchIssue({ issueNumber }) {
       const [issue, projectState] = await Promise.all([
         json('gh', [

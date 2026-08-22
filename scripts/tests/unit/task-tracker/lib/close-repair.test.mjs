@@ -109,6 +109,18 @@ function buildCtx({ statePath, rest, sideEffects }) {
     getIssueBoardState: async () => 'done',
     getIssueClosedState: async () => true,
     uncheckedPreCloseCheckboxes: () => [],
+    loadCloseDeliveryBody: async () => CLOSE_BODY,
+    loadCloseDeliveryGateInput: async () => ({
+      issueNumber: 708,
+      lineage: { parentIssueNumber: null, deliveryTarget: 'trunk' },
+      branch: 'feature/708',
+      acceptedSha: 'a'.repeat(40),
+      localHeadSha: 'a'.repeat(40),
+      pullRequests: [],
+      records: null,
+    }),
+    resolveReviewAuthorization: () => ({ mode: 'full-auto', standing: true, source: 'test' }),
+    requireDeliveryReceipt: () => ({ skipped: false, receipt: {} }),
   };
 }
 

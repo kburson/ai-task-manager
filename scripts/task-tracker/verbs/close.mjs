@@ -4,7 +4,7 @@ import { promisify } from 'node:util';
 
 import { loadState, saveState, clearActive, stateFullWordMarker } from '../state.mjs';
 import { loadSession } from '../lib/session-store.mjs';
-import { resolveGate } from '../lib/gate-resolve.mjs';
+import { resolveGate, resolveReviewAuthorization } from '../lib/gate-resolve.mjs';
 import { rawProjectConfig } from '../config.mjs';
 import { currentSessionId } from '../word-counter.mjs';
 import { releaseTerminalIssueBinding } from '../lib/worktree-binding-lifecycle.mjs';
@@ -20,15 +20,22 @@ import { readLastKnownState } from '../gh-timing-comment.mjs';
 import { assertVerbHomeState } from '../lib/verb-home-state-guard.mjs';
 import { runDispose } from '../lib/close-disposition.mjs';
 import { writeTerminalDisposition } from '../lib/terminal-disposition.mjs';
-import { hasReviewApprovedMarker, readPlanApprovedForecastRecordId } from '../lib/markers.mjs';
+import {
+  hasReviewApprovedMarker,
+  parseReviewApprovedMarker,
+  parseTestStartedMarker,
+  readPlanApprovedForecastRecordId,
+} from '../lib/markers.mjs';
 import { runGuards } from '../lib/guard-registry.mjs';
 import '../lib/guard-bootstrap.mjs';
-import { isFullAuto } from '../lib/human-reviewer-audit.mjs';
 import {
   detectLinkedWorktree,
   makeCloseTrunkRefResolver,
-  enableFullAutoMergeForClose,
 } from '../lib/full-auto-merge-execute.mjs';
+import { fetchParentIssueStrict } from '../lib/fetch-parent-issue.mjs';
+import { parseVerificationReceipt } from '../lib/verification-receipt.mjs';
+import { parseDeliveryComment, projectDeliveryRecords } from '../lib/delivery-records.mjs';
+import { requireDeliveryReceipt } from '../lib/close-delivery-receipt.mjs';
 import { tickLifecycleItem } from '../lib/lifecycle-dod.mjs';
 import { assertLifecycleSatisfied } from '../close-gate.mjs';
 import { deriveAndStampFunctionalDod } from '../lib/functional-dod-derive.mjs';
@@ -61,6 +68,83 @@ import {
 import { gql } from '../../gh/lib/github-projects.mjs';
 
 const closePexec = promisify(execFile);
+
+function closeBaseRef(cfg) {
+  return (
+    String(cfg?.trunkRef || 'trunk')
+      .split('/')
+      .at(-1) || 'trunk'
+  );
+}
+
+async function loadCloseDeliveryGateInput({ issueNumber, cfg, projectDir, pexec, body, ctx }) {
+  const [{ stdout: branchOut }, { stdout: headOut }, parentIssueNumber] = await Promise.all([
+    pexec('git', ['branch', '--show-current'], { cwd: projectDir }),
+    pexec('git', ['rev-parse', 'HEAD'], { cwd: projectDir }),
+    (ctx.resolveCloseParentIssue || fetchParentIssueStrict)({
+      issueNumber,
+      repo: cfg.repo,
+    }),
+  ]);
+  const branch = String(branchOut || '').trim();
+  const localHeadSha = String(headOut || '').trim();
+  const acceptedSha =
+    parseVerificationReceipt(body, 'review')?.commitSha ??
+    parseVerificationReceipt(body, 'test')?.commitSha ??
+    parseTestStartedMarker(body)?.sha ??
+    null;
+  const { stdout: prOut } = await pexec(
+    'gh',
+    [
+      'pr',
+      'list',
+      '-R',
+      cfg.repo,
+      '--head',
+      branch,
+      '--state',
+      'all',
+      '--json',
+      'number,state,mergedAt,headRefName,headRefOid,baseRefName',
+    ],
+    { timeout: GH_API_TIMEOUT_MS }
+  );
+  const pullRequests = JSON.parse(String(prOut || '[]')).map((pr) => ({
+    ...pr,
+    merged: String(pr.state || '').toUpperCase() === 'MERGED',
+  }));
+  const baseRef = closeBaseRef(cfg);
+  const lineage = {
+    parentIssueNumber,
+    deliveryTarget: parentIssueNumber === null ? baseRef : `epic/${parentIssueNumber}`,
+    localTrunkLaneAuthorized:
+      cfg.fullAutoMerge?.mechanism === 'local-trunk-lane' &&
+      cfg.fullAutoMerge?.operatorAuthorized === true,
+  };
+  let records = null;
+  if (parentIssueNumber === null && pullRequests.length > 0) {
+    if (pullRequests.length !== 1) {
+      records = { intents: [], receipts: [], liveIntent: null, matchingReceipt: null };
+    } else {
+      const { stdout: commentsOut } = await pexec(
+        'gh',
+        ['api', '--paginate', '--slurp', `repos/${cfg.repo}/issues/${issueNumber}/comments`],
+        { timeout: GH_API_TIMEOUT_MS }
+      );
+      const pages = JSON.parse(String(commentsOut || '[]'));
+      const comments = (Array.isArray(pages) ? pages.flat() : []).map((comment) => ({
+        id: String(comment.id),
+        body: comment.body,
+        createdAt: comment.created_at,
+      }));
+      const context = { repository: cfg.repo, issueNumber, prNumber: pullRequests[0].number };
+      records = projectDeliveryRecords(
+        comments.map((comment) => parseDeliveryComment(comment, context)).filter(Boolean)
+      );
+    }
+  }
+  return { issueNumber, lineage, branch, acceptedSha, localHeadSha, pullRequests, records };
+}
 
 function defaultLifecycleGraphql({ query, variables }) {
   return gql(query, variables).then((data) => ({ data }));
@@ -376,6 +460,7 @@ export async function verbClose(ctx) {
 
   const closeTarget = target || s.active || '';
   const closeIssueNum = closeTarget.replace(/^#/, '');
+  const force = rest.includes('--force');
   // #708 — `--repair` forces the full atomic close pipeline even when the board
   // is already Done / the issue already CLOSED (e.g. a PR closing-reference
   // auto-closed it out-of-band), so the timing flush, lifecycle-box ticking, and
@@ -448,6 +533,61 @@ export async function verbClose(ctx) {
     projectConfig: rawProjectConfig(),
   });
   const configuredReviewAuthority = configuredReviewToDoneGate ? 'human-gate' : 'gate-bypassed';
+
+  // #939 — resolve the receipt gate lazily after non-terminal convergence
+  // inspection, but before any path performs a new terminal mutation.
+  const ensureDeliveryAuthorized = async () => {
+    if (SKIP_NETWORK || !closeIssueNum) return;
+    const deliveryBody = ctx.loadCloseDeliveryBody
+      ? await ctx.loadCloseDeliveryBody({
+          issueNumber: Number(closeIssueNum),
+          repository: cfg.repo,
+        })
+      : await (async () => {
+          const { stdout } = await pexec(
+            'gh',
+            ['issue', 'view', closeIssueNum, '-R', cfg.repo, '--json', 'body'],
+            { timeout: GH_API_TIMEOUT_MS }
+          );
+          return JSON.parse(String(stdout || '{}')).body ?? '';
+        })();
+    const gateInput = await (ctx.loadCloseDeliveryGateInput || loadCloseDeliveryGateInput)({
+      issueNumber: Number(closeIssueNum),
+      cfg,
+      projectDir,
+      pexec,
+      body: deliveryBody,
+      ctx,
+    });
+    const approval = parseReviewApprovedMarker(deliveryBody);
+    const currentHead = gateInput.acceptedSha === gateInput.localHeadSha;
+    const authorization = (ctx.resolveReviewAuthorization || resolveReviewAuthorization)({
+      session: loadSession(currentSessionId()),
+      projectConfig: rawProjectConfig(),
+      humanApprovalEvidence:
+        approval && !approval.fullAuto ? { accepted: true, currentHead } : null,
+      fullAutoApprovalEvidence: approval?.fullAuto ? { accepted: true, currentHead } : null,
+    });
+    if (authorization.mode === 'missing') {
+      throw new Error('review-authorization-missing');
+    }
+    const receiptGate = ctx.requireDeliveryReceipt || requireDeliveryReceipt;
+    receiptGate(gateInput);
+  };
+  const refuseDeliveryGate = async () => {
+    try {
+      await ensureDeliveryAuthorized();
+      return false;
+    } catch (error) {
+      console.error(
+        `[task-tracker] ⛔ Refusing to close ${closeTarget}: ${error.message}. ` +
+          'Run `/task deliver` until a verified exact-head receipt exists, then retry.'
+      );
+      process.exitCode = 1;
+      return true;
+    }
+  };
+
   const outcomeRuntimeFactory = ctx.createEstimationOutcomeWriter ?? createEstimationOutcomeRuntime;
   const issueWorkspaceResolver =
     ctx.resolveIssueWorkspace ??
@@ -657,6 +797,7 @@ export async function verbClose(ctx) {
     }
 
     if (decision.action === 'close-issue') {
+      if (await refuseDeliveryGate()) return;
       // Board reads Done but the issue is still OPEN — the Projects auto-close
       // workflow did not fire. Close the primary explicitly. On failure, surface
       // it and exit non-zero WITHOUT clearing local state so a re-run recovers.
@@ -714,6 +855,7 @@ export async function verbClose(ctx) {
     }
 
     if (['dead', 'finalize', 'aberration', 'noop'].includes(decision.action)) {
+      if (['finalize', 'noop'].includes(decision.action) && (await refuseDeliveryGate())) return;
       const convergence = await runClosedIssueConvergence(
         {
           decision,
@@ -1018,7 +1160,6 @@ export async function verbClose(ctx) {
     }
   }
 
-  const force = rest.includes('--force');
   if (!SKIP_NETWORK) {
     try {
       const { stdout } = await pexec(
@@ -1301,6 +1442,8 @@ export async function verbClose(ctx) {
     }
   }
 
+  if (await refuseDeliveryGate()) return;
+
   if (!SKIP_NETWORK && closeIssueNum) {
     const subNums = await fetchSubIssues(closeIssueNum);
     if (subNums.length > 0) {
@@ -1515,47 +1658,6 @@ export async function verbClose(ctx) {
     console.log(
       `[task-tracker] queue: delivered ${flushResult.delivered}, pending 0 for ${closeTarget}.`
     );
-  }
-  // #908 — complete the fallible Full-Auto merge preparation before writing
-  // immutable completion evidence. A retry after a merge refusal must not leave
-  // an outcome for work that never became eligible for Done.
-  if (isFullAuto() && !force && !SKIP_NETWORK && closeIssueNum) {
-    let closeBranch = '';
-    try {
-      const { stdout: br } = await pexec('git', ['rev-parse', '--abbrev-ref', 'HEAD'], {});
-      closeBranch = String(br || '').trim();
-    } catch {
-      // no branch resolvable — treated as no-PR (inert) below
-    }
-    const fam = await enableFullAutoMergeForClose({
-      cfg,
-      branch: closeBranch,
-      issueNumber: closeIssueNum,
-      isFullAuto: isFullAuto(),
-      pexec,
-    });
-    if (fam.status === 'fail-closed') {
-      console.error(`[task-tracker] ⛔ Refusing to close ${closeTarget}: ${fam.message}`);
-      console.error(
-        `   Issue left OPEN — configure \`fullAutoMerge\` and re-run \`/task close ${closeTarget}\`.`
-      );
-      process.exitCode = 1;
-      return;
-    }
-    if (fam.status === 'exec-failed') {
-      console.error(
-        `[task-tracker] ✗ Failed to enable auto-merge for ${closeTarget}: ${fam.message}\n` +
-          `Local state left intact — re-run \`/task close ${closeTarget}\` once resolved.`
-      );
-      process.exitCode = 1;
-      return;
-    }
-    if (fam.status === 'enabled') {
-      console.log(
-        `[task-tracker] ✓ Enabled GitHub auto-merge on PR #${fam.prNumber} for ${closeTarget} ` +
-          `(\`gh ${fam.argv.join(' ')}\`); GitHub merges once required checks pass.`
-      );
-    }
   }
   try {
     await ensureCloseEstimationOutcome({

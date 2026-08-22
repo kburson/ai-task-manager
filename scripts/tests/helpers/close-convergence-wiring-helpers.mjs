@@ -60,6 +60,8 @@ export async function runClose({
   captureCalls,
   captureFinalState,
   initialState = baseState(),
+  deliveryRefusal = null,
+  force = false,
 } = {}) {
   const dir = mkdtempSync(join(projectScratchDir('test'), 'aitm-925-close-wiring-'));
   const statePath = join(dir, 'state.json');
@@ -174,7 +176,7 @@ export async function runClose({
   let result;
   try {
     result = await verbClose({
-      rest: ['#925'],
+      rest: force ? ['#925', '--force'] : ['#925'],
       projectConfig,
       timingRecorder,
       stateRunner,
@@ -209,6 +211,25 @@ export async function runClose({
         };
       },
       writeTerminalDisposition: async () => ({ status: 'ok' }),
+      loadCloseDeliveryBody: async () => liveBody,
+      loadCloseDeliveryGateInput: async () => ({
+        issueNumber: 925,
+        lineage: { parentIssueNumber: null, deliveryTarget: 'trunk' },
+        branch: 'feature/925',
+        acceptedSha: 'a'.repeat(40),
+        localHeadSha: 'a'.repeat(40),
+        pullRequests: [],
+        records: null,
+      }),
+      resolveReviewAuthorization: () => ({
+        mode: 'human',
+        standing: true,
+        source: 'test-evidence',
+      }),
+      requireDeliveryReceipt: () => {
+        if (deliveryRefusal) throw deliveryRefusal;
+        return { skipped: false, receipt: {} };
+      },
     });
     return {
       result,

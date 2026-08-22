@@ -84,7 +84,14 @@ function validateIssueAndBinding(issue, binding, config) {
     fail('issue-owner');
   }
   if (issue.agentReviewPassed !== true) fail('agent-review-evidence');
-  if (!['human', 'full-auto'].includes(issue.approvalEvidence)) fail('approval-evidence');
+  const authorization = issue.reviewAuthorization;
+  const authorizedByDecision =
+    isPlainObject(authorization) &&
+    authorization.standing === true &&
+    ['human', 'full-auto'].includes(authorization.mode);
+  if (!authorizedByDecision && !['human', 'full-auto'].includes(issue.approvalEvidence)) {
+    fail('approval-evidence');
+  }
   if (typeof binding.branch !== 'string' || binding.branch.length === 0) fail('input');
 }
 

@@ -80,6 +80,18 @@ async function runConverge({ issueBody, timingBody }) {
     },
     readTimingCommentBody: async () => ({ status: 'found', body: timingBody, error: null }),
     tickLifecycleOnClose: async () => ({ ok: true }),
+    loadCloseDeliveryBody: async () => issueBody,
+    loadCloseDeliveryGateInput: async () => ({
+      issueNumber: 5,
+      lineage: { parentIssueNumber: null, deliveryTarget: 'trunk' },
+      branch: 'feature/5',
+      acceptedSha: 'a'.repeat(40),
+      localHeadSha: 'a'.repeat(40),
+      pullRequests: [],
+      records: null,
+    }),
+    resolveReviewAuthorization: () => ({ mode: 'human', standing: true, source: 'test' }),
+    requireDeliveryReceipt: () => ({ skipped: false, receipt: {} }),
   };
   const prevSkip = process.env.TT_SKIP_DIRTY_CHECK;
   process.env.TT_SKIP_DIRTY_CHECK = '1';
