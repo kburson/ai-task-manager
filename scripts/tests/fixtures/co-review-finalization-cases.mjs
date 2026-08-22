@@ -9,6 +9,7 @@ import {
   readdirSync,
   statSync,
   symlinkSync,
+  unlinkSync,
   writeFileSync,
 } from 'node:fs';
 import path from 'node:path';
@@ -257,6 +258,60 @@ function materializePrepared(destination, prepared) {
   for (const file of prepared.files) {
     writeFileSync(path.join(destination, file.path), Buffer.from(file.bytesBase64, 'base64'));
   }
+}
+
+function snapshotDirectory(directory) {
+  return Object.fromEntries(
+    readdirSync(directory, { withFileTypes: true })
+      .sort((left, right) => left.name.localeCompare(right.name))
+      .map((entry) => [
+        entry.name,
+        entry.isFile() && !entry.isSymbolicLink()
+          ? readFileSync(path.join(directory, entry.name)).toString('base64')
+          : `${entry.isSymbolicLink() ? 'symlink' : entry.isDirectory() ? 'directory' : 'other'}`,
+      ])
+  );
+}
+
+function replaceArchiveManifestJson(directory, json) {
+  const readme = path.join(directory, 'README.md');
+  const text = readFileSync(readme, 'utf8');
+  const marker =
+    /(<!-- aitm-co-review-manifest:start -->\n```json\n)[\s\S]*?(\n```\n<!-- aitm-co-review-manifest:end -->)/g;
+  assert.equal([...text.matchAll(marker)].length, 1);
+  writeFileSync(
+    readme,
+    text.replace(marker, (_match, before, after) => `${before}${json}${after}`)
+  );
+}
+
+async function foreignArchiveRecoveryFixture({ legacyCopy = false } = {}) {
+  const occupied = await acceptedConsensus();
+  const ordinaryPrepared = prepareArchive({
+    ...archiveOptions(occupied, 'docs/reviews/occupied-source'),
+    ...(legacyCopy ? { repository: unreachableRepository(occupied) } : {}),
+  });
+  const occupiedPrepared = legacyCopy ? legacyCopyPrepared(ordinaryPrepared) : ordinaryPrepared;
+  assert.equal(Object.hasOwn(occupiedPrepared.manifest, 'recovery'), false);
+
+  await new Promise((resolve) => setTimeout(resolve, 2));
+  const current = await acceptedConsensus({ archiveDir: 'docs/reviews/configured' });
+  const configuredAbsolute = path.join(current.root, 'docs/reviews/configured');
+  materializePrepared(configuredAbsolute, occupiedPrepared);
+  const recoveryDir = `docs/reviews/configured-recovery-${current.state.protocolId}`;
+  const recoveryOptions = {
+    ...current.api.validatedArchiveSnapshot({ cwd: current.root, dir: current.options.dir }),
+    archiveDir: recoveryDir,
+    repository: current.repository,
+  };
+  return {
+    occupied,
+    occupiedPrepared,
+    current,
+    configuredAbsolute,
+    recoveryDir,
+    recoveryOptions,
+  };
 }
 
 function legacyCopyPrepared(prepared) {
@@ -799,6 +854,122 @@ test('archive accepts an equivalent configured destination and refuses a differe
       }),
     (error) => error.code === 'archive-destination-mismatch'
   );
+});
+
+test('a complete foreign v1 archive permits only the deterministic recovery sibling', async () => {
+  const fixture = await foreignArchiveRecoveryFixture();
+  const { occupied, occupiedPrepared, current, configuredAbsolute, recoveryDir, recoveryOptions } =
+    fixture;
+  const protocolBefore = snapshotProtocol(current.root, current.options.dir);
+  const runtimeBefore = snapshotDirectory(path.join(current.root, current.options.dir));
+  const occupiedBefore = snapshotDirectory(configuredAbsolute);
+  const recovered = prepareArchive(recoveryOptions);
+
+  assert.equal(recovered.destination.relative, recoveryDir);
+  assert.deepEqual(recovered.manifest.recovery, {
+    configuredDestination: 'docs/reviews/configured',
+    occupiedProtocolId: occupied.state.protocolId,
+    recoveryDestination: recoveryDir,
+    occupiedAcceptedAt: occupied.state.acceptance.at,
+    relationship: 'newer-than-occupied',
+  });
+  assert.equal(Object.hasOwn(occupiedPrepared.manifest, 'recovery'), false);
+  const readme = output(recovered, 'manifest');
+  const readmeText = Buffer.from(readme.bytesBase64, 'base64').toString('utf8');
+  assert.match(readmeText, /\[configured archive\]\(\.\.\/configured\/README\.md\)/);
+  assert.match(readmeText, new RegExp(occupied.state.acceptance.at.replaceAll('.', '\\.')));
+  assert.match(readmeText, new RegExp(current.state.acceptance.at.replaceAll('.', '\\.')));
+  assert.match(readmeText, /newer-than-occupied/);
+
+  assert.equal(publishPreparedArchive(recovered).status, 'published');
+  assert.deepEqual(snapshotProtocol(current.root, current.options.dir), protocolBefore);
+  assert.deepEqual(snapshotDirectory(path.join(current.root, current.options.dir)), runtimeBefore);
+  assert.deepEqual(snapshotDirectory(configuredAbsolute), occupiedBefore);
+  const beforeMtime = statSync(path.join(recovered.destination.absolute, 'README.md')).mtimeMs;
+  assert.equal(publishPreparedArchive(prepareArchive(recoveryOptions)).status, 'complete');
+  assert.equal(
+    statSync(path.join(recovered.destination.absolute, 'README.md')).mtimeMs,
+    beforeMtime
+  );
+  assert.deepEqual(snapshotProtocol(current.root, current.options.dir), protocolBefore);
+  assert.deepEqual(snapshotDirectory(path.join(current.root, current.options.dir)), runtimeBefore);
+  assert.deepEqual(snapshotDirectory(configuredAbsolute), occupiedBefore);
+});
+
+test('foreign archive recovery refuses every unsafe mutation without changing preserved bytes', async () => {
+  for (const mutation of [
+    'arbitrary-destination',
+    'same-protocol',
+    'partial-archive',
+    'extra-file',
+    'corrupt-manifest',
+    'digest-mismatch',
+    'symlink-entry',
+    'conflicting-recovery-destination',
+  ]) {
+    const fixture = await foreignArchiveRecoveryFixture();
+    const { occupiedPrepared, current, configuredAbsolute, recoveryDir, recoveryOptions } = fixture;
+    let options = recoveryOptions;
+    let recoveryBefore = null;
+
+    if (mutation === 'arbitrary-destination') {
+      options = { ...recoveryOptions, archiveDir: `${recoveryDir}-arbitrary` };
+    } else if (mutation === 'same-protocol') {
+      const manifest = structuredClone(occupiedPrepared.manifest);
+      manifest.protocol.id = current.state.protocolId;
+      replaceArchiveManifestJson(configuredAbsolute, JSON.stringify(manifest, null, 2));
+    } else if (mutation === 'partial-archive') {
+      unlinkSync(path.join(configuredAbsolute, output(occupiedPrepared, 'review').path));
+    } else if (mutation === 'extra-file') {
+      writeFileSync(path.join(configuredAbsolute, 'extra.md'), 'unrecorded\n');
+    } else if (mutation === 'corrupt-manifest') {
+      replaceArchiveManifestJson(configuredAbsolute, '{ invalid');
+    } else if (mutation === 'digest-mismatch') {
+      writeFileSync(
+        path.join(configuredAbsolute, output(occupiedPrepared, 'review').path),
+        '# Review\n\nTampered.\n'
+      );
+    } else if (mutation === 'symlink-entry') {
+      const reviewPath = path.join(configuredAbsolute, output(occupiedPrepared, 'review').path);
+      unlinkSync(reviewPath);
+      symlinkSync(output(occupiedPrepared, 'response').path, reviewPath);
+    } else if (mutation === 'conflicting-recovery-destination') {
+      const recoveryAbsolute = path.join(current.root, recoveryDir);
+      mkdirSync(recoveryAbsolute, { recursive: true });
+      writeFileSync(path.join(recoveryAbsolute, 'conflict.md'), 'preserve this conflict\n');
+      recoveryBefore = snapshotDirectory(recoveryAbsolute);
+    }
+
+    const protocolBefore = snapshotProtocol(current.root, current.options.dir);
+    const occupiedBefore = snapshotDirectory(configuredAbsolute);
+    assert.throws(() => prepareArchive(options), /co-review:archive-/, mutation);
+    assert.deepEqual(snapshotProtocol(current.root, current.options.dir), protocolBefore, mutation);
+    assert.deepEqual(snapshotDirectory(configuredAbsolute), occupiedBefore, mutation);
+    if (recoveryBefore) {
+      assert.deepEqual(
+        snapshotDirectory(path.join(current.root, recoveryDir)),
+        recoveryBefore,
+        mutation
+      );
+    }
+  }
+});
+
+test('foreign archive recovery accepts legacy v1 manifest JSON whitespace and key order', async () => {
+  const fixture = await foreignArchiveRecoveryFixture({ legacyCopy: true });
+  const { occupiedPrepared, configuredAbsolute, recoveryOptions } = fixture;
+  assert.equal(occupiedPrepared.manifest.artifact.mode, undefined);
+  assert.ok(output(occupiedPrepared, 'artifact'));
+  const reordered = Object.fromEntries(Object.entries(occupiedPrepared.manifest).reverse());
+  replaceArchiveManifestJson(configuredAbsolute, JSON.stringify(reordered, null, 4));
+  const matched = readFileSync(path.join(configuredAbsolute, 'README.md'), 'utf8').match(
+    /<!-- aitm-co-review-manifest:start -->\n```json\n([\s\S]*?\n)```\n<!-- aitm-co-review-manifest:end -->/
+  );
+  assert.ok(matched);
+  assert.deepEqual(JSON.parse(matched[1]), occupiedPrepared.manifest);
+
+  const recovered = prepareArchive(recoveryOptions);
+  assert.equal(recovered.destination.relative, recoveryOptions.archiveDir);
 });
 
 test('publication revalidates destination containment before its first write', async () => {
