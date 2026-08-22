@@ -6,7 +6,11 @@ import path from 'node:path';
 import { createInterface } from 'node:readline/promises';
 import { fileURLToPath } from 'node:url';
 
-import { prepareArchive, publishPreparedArchive } from './lib/archive.mjs';
+import {
+  deriveRecoveryArchiveDir,
+  prepareArchive,
+  publishPreparedArchive,
+} from './lib/archive.mjs';
 import { helpRequest, renderHelp } from './lib/help.mjs';
 import {
   START_DEFAULTS,
@@ -214,17 +218,28 @@ export async function runCli(argv = process.argv.slice(2), io = {}) {
           ...repositoryOptions,
         });
         if (result.lifecycle === 'accepted') {
+          let prepared;
           try {
             const snapshot = protocol.validatedArchiveSnapshot({
               cwd,
               dir,
               ...repositoryOptions,
             });
-            const prepared = prepareArchive({
-              ...snapshot,
-              archiveDir: result.initialization.archiveDir,
-              ...repositoryOptions,
-            });
+            try {
+              prepared = prepareArchive({
+                ...snapshot,
+                archiveDir: result.initialization.archiveDir,
+                ...repositoryOptions,
+              });
+            } catch (configuredError) {
+              const configuredArchiveDir = result.initialization.archiveDir;
+              if (!configuredArchiveDir) throw configuredError;
+              prepared = prepareArchive({
+                ...snapshot,
+                archiveDir: deriveRecoveryArchiveDir(configuredArchiveDir, result.protocolId),
+                ...repositoryOptions,
+              });
+            }
             result = {
               ...result,
               archivePublication: publishPreparedArchive(prepared, {
@@ -236,9 +251,12 @@ export async function runCli(argv = process.argv.slice(2), io = {}) {
             exitCode = 4;
             writeError(
               archivePendingMessage({
-                state: result,
                 error,
-                shellArgument: protocol.shellArgument,
+                retryCommand: currentArchiveRetry(protocol, {
+                  cwd,
+                  dir,
+                  ...repositoryOptions,
+                }),
               })
             );
           }
@@ -284,7 +302,14 @@ export async function runCli(argv = process.argv.slice(2), io = {}) {
           });
         } catch (error) {
           writeError(
-            archivePendingMessage({ state, error, shellArgument: protocol.shellArgument })
+            archivePendingMessage({
+              error,
+              retryCommand: currentArchiveRetry(protocol, {
+                cwd,
+                dir,
+                ...repositoryOptions,
+              }),
+            })
           );
           return 4;
         }
@@ -623,19 +648,23 @@ function formatStatus(state) {
   ].join('\n');
 }
 
-function archivePendingMessage({ state, error, shellArgument }) {
-  const configured = state.initialization?.archiveDir;
-  const runtimeDir = path.resolve(state.repositoryRoot, state.initialization.runtimeDir);
-  const retry = `npx aitm co-review finalize --dir ${shellArgument(runtimeDir)}${
-    configured
-      ? ` --archive-dir ${shellArgument(configured)}`
-      : ' --archive-dir <tracked-repo-path>'
-  }`;
+function currentArchiveRetry(protocol, options) {
+  try {
+    return protocol.statusProtocol(options).availableActions.find(({ kind }) => kind === 'finalize')
+      ?.command;
+  } catch {
+    return null;
+  }
+}
+
+function archivePendingMessage({ error, retryCommand }) {
   const cause = String(error.message).replace(/; no state changed(?:; next:.*)?$/, '');
   return [
     'ACCEPTED: protocol state is durable; archive publication is pending',
     `Cause: ${cause}`,
-    `Retry: ${retry}`,
+    ...(retryCommand
+      ? [`Retry: ${retryCommand}`]
+      : ['Archive publication is blocked; inspect status for safe actions.']),
     '',
   ].join('\n');
 }

@@ -3,6 +3,7 @@
 import assert from 'node:assert/strict';
 import {
   existsSync,
+  mkdirSync,
   readFileSync,
   renameSync,
   symlinkSync,
@@ -12,6 +13,7 @@ import {
 import path from 'node:path';
 import test from 'node:test';
 
+import { assertArchiveDestinationAbsent } from '../../review/lib/archive.mjs';
 import {
   START_DEFAULTS,
   deriveHostArchiveDir,
@@ -150,10 +152,19 @@ test('guided host context configures deterministic spec and plan archives and ha
       );
     }
 
+    const statePath = path.join(fixture.root, dir, 'state.json');
+    const eventsPath = path.join(fixture.root, dir, 'events.jsonl');
+    const state = readFileSync(statePath, 'utf8');
+    const eventBytes = readFileSync(eventsPath, 'utf8');
     const events = readEvents(fixture.root, dir);
+    const archive = path.join(fixture.root, archiveDir);
+    mkdirSync(path.dirname(archive), { recursive: true });
+    symlinkSync(path.join(fixture.root, 'docs'), archive);
     const exact = startProtocol(options, startDependencies(api));
     assert.deepEqual(exact.manifest, result.manifest);
-    assert.deepEqual(readEvents(fixture.root, dir), events);
+    assert.deepEqual(exact.state, result.state);
+    assert.equal(readFileSync(statePath, 'utf8'), state);
+    assert.equal(readFileSync(eventsPath, 'utf8'), eventBytes);
     assert.throws(
       () =>
         startProtocol(
@@ -164,6 +175,91 @@ test('guided host context configures deterministic spec and plan archives and ha
     );
     assert.deepEqual(readEvents(fixture.root, dir), events);
   }
+});
+
+test('guided start refuses every occupied configured archive leaf before protocol creation', async () => {
+  for (const occupied of ['empty-directory', 'non-empty-directory', 'file', 'symlink']) {
+    const fixture = memoryRepositoryFixture();
+    const api = await memoryProtocol(fixture.repository);
+    const archive = path.join(fixture.root, 'docs/superpowers/reviews/1272/spec');
+    mkdirSync(path.dirname(archive), { recursive: true });
+    if (occupied === 'empty-directory') mkdirSync(archive);
+    if (occupied === 'non-empty-directory') {
+      mkdirSync(archive);
+      writeFileSync(path.join(archive, 'README.md'), '# prior archive\n');
+    }
+    if (occupied === 'file') writeFileSync(archive, 'occupied\n');
+    if (occupied === 'symlink') symlinkSync(path.join(fixture.root, 'docs'), archive);
+
+    const dir = `.tmp/occupied-${occupied}`;
+    assert.throws(
+      () =>
+        startProtocol(
+          {
+            cwd: fixture.root,
+            artifact: fixture.artifact,
+            owner: 'author-agent',
+            reviewer: 'reviewer-agent',
+            dir,
+            issue: '1272',
+            artifactKind: 'spec',
+          },
+          startDependencies(api)
+        ),
+      (error) => error.code === 'archive-destination-occupied'
+    );
+    assert.equal(existsSync(path.join(fixture.root, dir, 'state.json')), false);
+    assert.equal(existsSync(path.join(fixture.root, dir, 'events.jsonl')), false);
+  }
+});
+
+test('direct init applies configured archive occupancy refusal before protocol creation', async () => {
+  const fixture = memoryRepositoryFixture();
+  const api = await memoryProtocol(fixture.repository);
+  const archive = path.join(fixture.root, 'docs/reviews/occupied');
+  mkdirSync(archive, { recursive: true });
+  const dir = '.tmp/direct-occupied';
+
+  assert.throws(
+    () =>
+      api.initializeProtocol({
+        cwd: fixture.root,
+        dir,
+        artifact: fixture.artifact,
+        owner: 'author-agent',
+        reviewer: 'reviewer-agent',
+        maxReviewTurns: 2,
+        archiveDir: 'docs/reviews/occupied',
+      }),
+    (error) => error.code === 'archive-destination-occupied'
+  );
+  assert.equal(existsSync(path.join(fixture.root, dir, 'state.json')), false);
+  assert.equal(existsSync(path.join(fixture.root, dir, 'events.jsonl')), false);
+});
+
+test('archive occupancy translates unreadable directory enumeration', () => {
+  const root = temporaryRoot('aitm-co-review-unreadable-archive-');
+  const absolute = path.join(root, 'docs/reviews/unreadable');
+  mkdirSync(absolute, { recursive: true });
+  writeFileSync(path.join(absolute, 'preserve.md'), 'preserve\n');
+  const injected = Object.assign(new Error('injected enumeration refusal'), { code: 'EACCES' });
+
+  assert.throws(
+    () =>
+      assertArchiveDestinationAbsent(
+        { absolute, relative: 'docs/reviews/unreadable' },
+        {
+          readdir() {
+            throw injected;
+          },
+        }
+      ),
+    (error) =>
+      error !== injected &&
+      error.code === 'archive-destination-occupied' &&
+      /docs\/reviews\/unreadable: unreadable: injected enumeration refusal/.test(error.message)
+  );
+  assert.equal(readFileSync(path.join(absolute, 'preserve.md'), 'utf8'), 'preserve\n');
 });
 
 test('start delegates initialization and publishes concrete hashed handoffs before thin output', async () => {

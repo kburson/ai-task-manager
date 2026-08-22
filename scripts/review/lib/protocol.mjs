@@ -16,7 +16,12 @@ import {
 import { hostname } from 'node:os';
 import path from 'node:path';
 
-import { inspectArchive, resolveArchiveDestination } from './archive.mjs';
+import {
+  assertArchiveDestinationAbsent,
+  deriveRecoveryArchiveDir,
+  inspectArchive,
+  resolveArchiveDestination,
+} from './archive.mjs';
 import { planAbsoluteBudget, planContinuationBudget } from './budget.mjs';
 import { REAL_REPOSITORY_BOUNDARY } from './repository-boundary.mjs';
 import { resolveRuntimeRoot, RuntimeRootError } from './runtime-root.mjs';
@@ -620,7 +625,7 @@ export function initializeProtocol({
     maxReviewTurns,
     importedReview,
     reviewOf: importedCommit,
-    ...(archive ? { archiveDir: archive.relative } : {}),
+    ...(archive ? { archiveDir: archive.lexicalRelative } : {}),
   };
 
   return withMutex(paths, 'system', 'init', () => {
@@ -630,6 +635,7 @@ export function initializeProtocol({
       fail('already-initialized', paths.relative);
     }
     if (existsSync(paths.events)) fail('orphaned-events', paths.relative);
+    if (archive) assertArchiveDestinationAbsent(archive);
     const at = new Date().toISOString();
     const imported = Boolean(importedReview);
     const state = validateState({
@@ -766,23 +772,63 @@ export function statusProtocol(options) {
   };
   let archive = { destination: null, completion: 'unknown' };
   if (state.lifecycle === 'accepted' && state.initialization?.archiveDir && integrity.ok) {
+    const configured = state.initialization.archiveDir;
     try {
-      const inspection = inspectArchive({
+      const configuredInspection = inspectArchive({
         root,
         state,
         events,
-        archiveDir: state.initialization.archiveDir,
+        archiveDir: configured,
         repository,
       });
+      if (configuredInspection.status !== 'conflict') {
+        archive = {
+          destination: configured,
+          completion:
+            configuredInspection.status === 'complete'
+              ? 'complete-and-identical'
+              : configuredInspection.status,
+        };
+      } else {
+        const recovery = deriveRecoveryArchiveDir(configured, state.protocolId);
+        try {
+          const recoveryInspection = inspectArchive({
+            root,
+            state,
+            events,
+            archiveDir: recovery,
+            repository,
+          });
+          if (recoveryInspection.status === 'absent' || recoveryInspection.status === 'complete') {
+            archive = {
+              destination: recovery,
+              configuredDestination: configured,
+              completion:
+                recoveryInspection.status === 'complete'
+                  ? 'complete-and-identical'
+                  : recoveryInspection.status,
+              recovery: true,
+            };
+          } else {
+            archive = {
+              destination: configured,
+              completion: 'conflict',
+              errors: [...configuredInspection.errors, ...recoveryInspection.errors],
+            };
+          }
+        } catch (recoveryError) {
+          archive = {
+            destination: configured,
+            completion: 'conflict',
+            errors: [...configuredInspection.errors, recoveryError.message],
+          };
+        }
+      }
+    } catch (configuredError) {
       archive = {
-        destination: state.initialization.archiveDir,
-        completion: inspection.status === 'complete' ? 'complete-and-identical' : inspection.status,
-      };
-    } catch (error) {
-      archive = {
-        destination: state.initialization.archiveDir,
+        destination: configured,
         completion: 'conflict',
-        errors: [error.message],
+        errors: [configuredError.message],
       };
     }
   } else if (state.initialization?.archiveDir) {
@@ -814,11 +860,12 @@ export function statusProtocol(options) {
   } else if (
     state.lifecycle === 'accepted' &&
     integrity.ok &&
-    archive.completion !== 'complete-and-identical'
+    (archive.completion === 'absent' ||
+      (!state.initialization?.archiveDir && archive.completion === 'unknown'))
   ) {
     decoratedNextAction = `npx aitm co-review finalize --dir ${shellArgument(runtimeDir)}${
-      state.initialization.archiveDir
-        ? ` --archive-dir ${shellArgument(state.initialization.archiveDir)}`
+      archive.destination
+        ? ` --archive-dir ${shellArgument(archive.destination)}`
         : ' --archive-dir <tracked-repo-path>'
     }`;
     availableActions = [{ kind: 'finalize', command: decoratedNextAction }];

@@ -16,6 +16,8 @@ import { isDeepStrictEqual } from 'node:util';
 
 import { REAL_REPOSITORY_BOUNDARY } from './repository-boundary.mjs';
 
+const PROTOCOL_SCHEMA = 'aitm.co-review/v1';
+
 function fail(code, detail) {
   const error = new Error(`co-review:${code}:${detail}; no state changed`);
   error.code = code;
@@ -53,8 +55,8 @@ function containedPath(root, candidate, label) {
     suffix.unshift(path.basename(existing));
     existing = parent;
   }
-  const physical = path.resolve(realpathSync(existing), ...suffix);
-  const physicalRelative = path.relative(root, physical);
+  const physicalAbsolute = path.resolve(realpathSync(existing), ...suffix);
+  const physicalRelative = path.relative(root, physicalAbsolute);
   if (
     !physicalRelative ||
     physicalRelative === '..' ||
@@ -63,9 +65,13 @@ function containedPath(root, candidate, label) {
   ) {
     fail('path-outside-repository', `${label}=${candidate}`);
   }
+  const lexicalRelative = relative.split(path.sep).join('/');
   return {
-    absolute: physical,
-    relative: physicalRelative.split(path.sep).join('/'),
+    absolute,
+    relative: lexicalRelative,
+    lexicalRelative,
+    physicalAbsolute,
+    physicalRelative: physicalRelative.split(path.sep).join('/'),
   };
 }
 
@@ -86,11 +92,11 @@ export function resolveArchiveDestination({
   const root = repositoryCall(String(cwd), () => repository.repositoryRoot(cwd));
   const archive = containedPath(root, archiveDir, 'archive-dir');
   const runtime = containedPath(root, runtimeDir, 'dir');
-  if (inside(runtime.absolute, archive.absolute)) {
+  if (inside(runtime.physicalAbsolute, archive.physicalAbsolute)) {
     fail('archive-runtime-conflict', archive.relative);
   }
   const status = repositoryCall(archive.relative, () =>
-    repository.runtimeStatus(root, archive.relative)
+    repository.runtimeStatus(root, archive.physicalRelative)
   );
   if (status.ignored) {
     fail('archive-ignored', archive.relative);
@@ -98,8 +104,382 @@ export function resolveArchiveDestination({
   return Object.freeze(archive);
 }
 
+export function deriveRecoveryArchiveDir(configuredArchiveDir, protocolId) {
+  if (!/^[0-9a-f-]{36}$/i.test(String(protocolId))) {
+    fail('archive-recovery-protocol', String(protocolId));
+  }
+  return `${String(configuredArchiveDir).replace(/\/$/, '')}-recovery-${protocolId}`;
+}
+
+export function assertArchiveDestinationAbsent(destination, { readdir = readdirSync } = {}) {
+  let info;
+  try {
+    info = lstatSync(destination.absolute);
+  } catch (error) {
+    if (error?.code === 'ENOENT') return;
+    fail('archive-destination-occupied', `${destination.relative}: unreadable: ${error.message}`);
+  }
+  let kind;
+  try {
+    kind = info.isSymbolicLink()
+      ? 'symlink'
+      : info.isDirectory()
+        ? readdir(destination.physicalAbsolute).length === 0
+          ? 'empty-directory'
+          : 'directory'
+        : info.isFile()
+          ? 'file'
+          : 'special-entry';
+  } catch (error) {
+    fail('archive-destination-occupied', `${destination.relative}: unreadable: ${error.message}`);
+  }
+  fail('archive-destination-occupied', `${destination.relative}: ${kind}`);
+}
+
 function digest(bytes) {
   return `sha256:${createHash('sha256').update(bytes).digest('hex')}`;
+}
+
+function parseArchiveManifest(readmeBytes) {
+  const text = readmeBytes.toString('utf8');
+  const matches = [
+    ...text.matchAll(
+      /<!-- aitm-co-review-manifest:start -->\n```json\n([\s\S]*?\n)```\n<!-- aitm-co-review-manifest:end -->/g
+    ),
+  ];
+  if (matches.length !== 1) fail('archive-foreign-manifest', `marker-count=${matches.length}`);
+  let manifest;
+  try {
+    manifest = JSON.parse(matches[0][1]);
+  } catch (error) {
+    fail('archive-foreign-manifest', error.message);
+  }
+  return manifest;
+}
+
+function objectModel(value) {
+  return value !== null && typeof value === 'object' && !Array.isArray(value);
+}
+
+function requireForeign(condition, detail) {
+  if (!condition) fail('archive-foreign-manifest', detail);
+}
+
+function safeArchiveBasename(value, label) {
+  requireForeign(
+    typeof value === 'string' &&
+      value &&
+      value !== '.' &&
+      value !== '..' &&
+      path.posix.basename(value) === value &&
+      path.win32.basename(value) === value,
+    `${label} path`
+  );
+  return value;
+}
+
+function safeRecordedPath(value, label) {
+  requireForeign(
+    typeof value === 'string' &&
+      value &&
+      !path.posix.isAbsolute(value) &&
+      !path.win32.isAbsolute(value) &&
+      !path.win32.parse(value).root &&
+      !value.split(/[\\/]/).some((segment) => !segment || segment === '.' || segment === '..'),
+    `${label} path`
+  );
+  return value;
+}
+
+function validDigest(value) {
+  return /^sha256:[a-f0-9]{64}$/.test(value);
+}
+
+function validateForeignEvidence(record, label) {
+  requireForeign(objectModel(record), `${label} record`);
+  requireForeign(
+    typeof record.identity === 'string' && record.identity.trim(),
+    `${label} identity`
+  );
+  requireForeign(Number.isInteger(record.eventRound) && record.eventRound >= 1, `${label} round`);
+  safeRecordedPath(record.sourcePath, `${label} source`);
+  requireForeign(validDigest(record.sourceSha256), `${label} source digest`);
+  const archivePath = safeArchiveBasename(record.archivePath, `${label} archive`);
+  requireForeign(validDigest(record.archivedSha256), `${label} archived digest`);
+  requireForeign(record.sourceSha256 === record.archivedSha256, `${label} digest disagreement`);
+  return archivePath;
+}
+
+function validateOptionalRecovery(recovery, { manifest, destination }) {
+  if (recovery === undefined) return;
+  requireForeign(objectModel(recovery), 'recovery record');
+  for (const field of [
+    'configuredDestination',
+    'occupiedProtocolId',
+    'recoveryDestination',
+    'occupiedAcceptedAt',
+    'relationship',
+  ]) {
+    requireForeign(typeof recovery[field] === 'string' && recovery[field], `recovery ${field}`);
+  }
+  requireForeign(
+    /^[0-9a-f-]{36}$/i.test(recovery.occupiedProtocolId),
+    'recovery occupied protocol'
+  );
+  requireForeign(!Number.isNaN(Date.parse(recovery.occupiedAcceptedAt)), 'recovery accepted at');
+  requireForeign(
+    ['newer-than-occupied', 'older-than-occupied', 'same-time-as-occupied'].includes(
+      recovery.relationship
+    ),
+    'recovery relationship'
+  );
+  const configuredDestination = safeRecordedPath(
+    recovery.configuredDestination,
+    'recovery configured destination'
+  );
+  const recoveryDestination = safeRecordedPath(
+    recovery.recoveryDestination,
+    'recovery destination'
+  );
+  requireForeign(
+    recovery.occupiedProtocolId.toLowerCase() !== manifest.protocol.id.toLowerCase(),
+    'recovery same protocol'
+  );
+  requireForeign(
+    recoveryDestination === deriveRecoveryArchiveDir(configuredDestination, manifest.protocol.id),
+    'recovery deterministic destination'
+  );
+  requireForeign(recoveryDestination === destination.relative, 'recovery directory correspondence');
+  requireForeign(
+    recovery.relationship ===
+      compareDecisionTimes(manifest.decision.at, recovery.occupiedAcceptedAt),
+    'recovery temporal relationship'
+  );
+}
+
+function validateForeignRelationships(manifest, destination) {
+  requireForeign(manifest.protocol.schema === PROTOCOL_SCHEMA, 'protocol schema');
+  requireForeign(
+    manifest.participants.owner !== manifest.participants.reviewer,
+    'distinct participants'
+  );
+  requireForeign(
+    manifest.evidence.ownerResponse.identity === manifest.participants.owner,
+    'owner evidence identity'
+  );
+  requireForeign(
+    manifest.evidence.reviewerReview.identity === manifest.participants.reviewer,
+    'reviewer evidence identity'
+  );
+  if (manifest.decision.basis === 'reviewer-consensus') {
+    requireForeign(
+      manifest.decision.reviewer === manifest.participants.reviewer,
+      'consensus reviewer identity'
+    );
+    requireForeign(
+      manifest.evidence.ownerResponse.eventRound < manifest.evidence.reviewerReview.eventRound,
+      'consensus evidence order'
+    );
+  } else {
+    requireForeign(
+      manifest.evidence.reviewerReview.eventRound < manifest.evidence.ownerResponse.eventRound,
+      'good-enough evidence order'
+    );
+    requireForeign(
+      manifest.budget.reviewTurnsUsed === manifest.budget.maxReviewTurns &&
+        manifest.budget.remainingReviewTurns === 0,
+      'good-enough exhausted budget'
+    );
+  }
+  requireForeign(
+    manifest.evidence.pairRound ===
+      Math.max(
+        manifest.evidence.ownerResponse.eventRound,
+        manifest.evidence.reviewerReview.eventRound
+      ),
+    'evidence pair round relationship'
+  );
+  validateOptionalRecovery(manifest.recovery, { manifest, destination });
+}
+
+export function inspectForeignArchive({ root, destination, currentProtocolId }) {
+  const repositoryRoot = path.resolve(String(root ?? ''));
+  const destinationAbsolute = path.resolve(
+    String(destination?.physicalAbsolute ?? destination?.absolute ?? '')
+  );
+  if (
+    !root ||
+    !destination?.absolute ||
+    destinationAbsolute === repositoryRoot ||
+    !inside(repositoryRoot, destinationAbsolute)
+  ) {
+    fail('archive-foreign-directory', String(destination?.relative));
+  }
+  let directory;
+  try {
+    directory = lstatSync(destination.absolute);
+  } catch (error) {
+    fail('archive-foreign-directory', `${destination.relative}: ${error.message}`);
+  }
+  if (!directory.isDirectory() || directory.isSymbolicLink()) {
+    fail('archive-foreign-directory', destination.relative);
+  }
+
+  let entries;
+  try {
+    entries = readdirSync(destination.physicalAbsolute, { withFileTypes: true });
+  } catch (error) {
+    fail('archive-foreign-directory', `${destination.relative}: ${error.message}`);
+  }
+  const readmeEntry = entries.find((entry) => entry.name === 'README.md');
+  if (!readmeEntry?.isFile() || readmeEntry.isSymbolicLink()) {
+    fail('archive-foreign-file-set', 'README.md');
+  }
+  let readmeBytes;
+  try {
+    readmeBytes = readFileSync(path.join(destination.physicalAbsolute, 'README.md'));
+  } catch (error) {
+    fail('archive-foreign-file-set', `README.md: ${error.message}`);
+  }
+  const manifest = parseArchiveManifest(readmeBytes);
+
+  requireForeign(objectModel(manifest), 'root object');
+  requireForeign(manifest.schema === 'aitm.co-review.archive/v1', 'schema');
+  for (const field of ['protocol', 'artifact', 'participants', 'decision', 'budget', 'evidence']) {
+    requireForeign(objectModel(manifest[field]), `${field} object`);
+  }
+  requireForeign(typeof manifest.normative === 'string' && manifest.normative, 'normative');
+  requireForeign(/^[0-9a-f-]{36}$/i.test(manifest.protocol.id), 'protocol id');
+  requireForeign(
+    typeof manifest.protocol.schema === 'string' && manifest.protocol.schema,
+    'protocol schema'
+  );
+  requireForeign(
+    manifest.protocol.id.toLowerCase() !== String(currentProtocolId).toLowerCase(),
+    'same protocol'
+  );
+
+  const hasArtifactMode = Object.hasOwn(manifest.artifact, 'mode');
+  const mode = hasArtifactMode ? manifest.artifact.mode : 'legacy-copy';
+  requireForeign(
+    ['reference', 'copy'].includes(mode) || (!hasArtifactMode && mode === 'legacy-copy'),
+    'artifact mode'
+  );
+  safeRecordedPath(manifest.artifact.sourcePath, 'artifact source');
+  requireForeign(/^[a-f0-9]{40}$/.test(manifest.artifact.acceptedCommit), 'artifact commit');
+  requireForeign(/^[a-f0-9]{40}$/.test(manifest.artifact.gitBlob), 'artifact blob');
+  requireForeign(validDigest(manifest.artifact.sha256), 'artifact digest');
+  let artifactPath = null;
+  if (mode !== 'reference') {
+    artifactPath = safeArchiveBasename(manifest.artifact.archivePath, 'artifact archive');
+    requireForeign(validDigest(manifest.artifact.archivedSha256), 'artifact archived digest');
+    requireForeign(
+      manifest.artifact.sha256 === manifest.artifact.archivedSha256,
+      'artifact digest disagreement'
+    );
+  } else {
+    requireForeign(manifest.artifact.archivePath === undefined, 'reference artifact archive path');
+    requireForeign(
+      manifest.artifact.archivedSha256 === undefined,
+      'reference artifact archived digest'
+    );
+  }
+
+  requireForeign(
+    typeof manifest.participants.owner === 'string' && manifest.participants.owner.trim(),
+    'owner participant'
+  );
+  requireForeign(
+    typeof manifest.participants.reviewer === 'string' && manifest.participants.reviewer.trim(),
+    'reviewer participant'
+  );
+  requireForeign(manifest.decision.lifecycle === 'accepted', 'decision lifecycle');
+  requireForeign(
+    ['reviewer-consensus', 'human-good-enough'].includes(manifest.decision.basis),
+    'decision basis'
+  );
+  requireForeign(
+    typeof manifest.decision.at === 'string' &&
+      manifest.decision.at &&
+      !Number.isNaN(Date.parse(manifest.decision.at)),
+    'decision at'
+  );
+  requireForeign(
+    manifest.decision.basis === 'reviewer-consensus'
+      ? typeof manifest.decision.reviewer === 'string' && manifest.decision.reviewer.trim()
+      : typeof manifest.decision.approvedBy === 'string' && manifest.decision.approvedBy.trim(),
+    'decision actor'
+  );
+  for (const field of ['reviewTurnsUsed', 'maxReviewTurns', 'remainingReviewTurns']) {
+    requireForeign(
+      Number.isInteger(manifest.budget[field]) && manifest.budget[field] >= 0,
+      `budget ${field}`
+    );
+  }
+  requireForeign(
+    manifest.budget.reviewTurnsUsed + manifest.budget.remainingReviewTurns ===
+      manifest.budget.maxReviewTurns,
+    'budget relationship'
+  );
+  requireForeign(manifest.budget.maxReviewTurns >= 1, 'budget maximum');
+  requireForeign(manifest.budget.reviewTurnsUsed >= 1, 'budget reviewer evidence');
+  requireForeign(
+    Number.isInteger(manifest.evidence.pairRound) && manifest.evidence.pairRound >= 1,
+    'evidence pair round'
+  );
+  const responsePath = validateForeignEvidence(manifest.evidence.ownerResponse, 'owner response');
+  const reviewPath = validateForeignEvidence(manifest.evidence.reviewerReview, 'reviewer review');
+  validateForeignRelationships(manifest, destination);
+
+  const required = [
+    'README.md',
+    responsePath,
+    reviewPath,
+    ...(mode === 'reference' ? [] : [artifactPath]),
+  ];
+  requireForeign(new Set(required).size === required.length, 'duplicate archive paths');
+  const actual = entries.map((entry) => entry.name).sort();
+  const expected = [...required].sort();
+  if (!isDeepStrictEqual(actual, expected)) {
+    fail(
+      'archive-foreign-file-set',
+      `expected ${expected.join(', ')}; actual ${actual.join(', ')}`
+    );
+  }
+  for (const entry of entries) {
+    if (!entry.isFile() || entry.isSymbolicLink()) {
+      fail('archive-foreign-file-set', `non-file ${entry.name}`);
+    }
+  }
+  const digests = [
+    [responsePath, manifest.evidence.ownerResponse.archivedSha256],
+    [reviewPath, manifest.evidence.reviewerReview.archivedSha256],
+    ...(mode === 'reference' ? [] : [[artifactPath, manifest.artifact.archivedSha256]]),
+  ];
+  const actualDigests = { 'README.md': digest(readmeBytes) };
+  for (const [archivePath, expectedDigest] of digests) {
+    let bytes;
+    try {
+      bytes = readFileSync(path.join(destination.physicalAbsolute, archivePath));
+    } catch (error) {
+      fail('archive-foreign-file-set', `${archivePath}: ${error.message}`);
+    }
+    const actualDigest = digest(bytes);
+    actualDigests[archivePath] = actualDigest;
+    if (actualDigest !== expectedDigest) {
+      fail(
+        'archive-foreign-digest',
+        `${archivePath}: expected ${expectedDigest}, actual ${actualDigest}`
+      );
+    }
+  }
+  return deepFreeze({
+    manifest,
+    protocolId: manifest.protocol.id,
+    acceptedAt: manifest.decision.at,
+    paths: actual,
+    digests: actualDigests,
+  });
 }
 
 function deepFreeze(value) {
@@ -120,7 +500,7 @@ function recordedFile(root, record, label) {
     fail('archive-source', `${label} ${record.path}: ${error.message}`);
   }
   if (!info.isFile() || info.isSymbolicLink()) fail('archive-source', `${label} ${record.path}`);
-  const bytes = readFileSync(resolved.absolute);
+  const bytes = readFileSync(resolved.physicalAbsolute);
   const actual = digest(bytes);
   if (actual !== record.sha256) {
     fail(
@@ -357,6 +737,13 @@ function artifactManifest(artifact, mode, artifactFile) {
     : common;
 }
 
+function compareDecisionTimes(currentAcceptedAt, occupiedAcceptedAt) {
+  const difference = Date.parse(currentAcceptedAt) - Date.parse(occupiedAcceptedAt);
+  if (difference > 0) return 'newer-than-occupied';
+  if (difference < 0) return 'older-than-occupied';
+  return 'same-time-as-occupied';
+}
+
 function buildPrepared({ root, state, events, archiveDir, repository = REAL_REPOSITORY_BOUNDARY }) {
   if (!root || !state || !Array.isArray(events) || state.lifecycle !== 'accepted') {
     fail('archive-ineligible', `${state?.lifecycle ?? 'missing-state'}`);
@@ -370,17 +757,29 @@ function buildPrepared({ root, state, events, archiveDir, repository = REAL_REPO
     runtimeDir: state.initialization?.runtimeDir,
     repository,
   });
-  if (configured && archiveDir) {
-    const configuredDestination = resolveArchiveDestination({
-      cwd: root,
-      archiveDir: configured,
-      runtimeDir: state.initialization?.runtimeDir,
-      repository,
-    });
-    if (configuredDestination.absolute !== destination.absolute) {
-      fail('archive-destination-mismatch', `${destination.relative}; configured ${configured}`);
-    }
+  const configuredDestination = configured
+    ? resolveArchiveDestination({
+        cwd: root,
+        archiveDir: configured,
+        runtimeDir: state.initialization?.runtimeDir,
+        repository,
+      })
+    : null;
+  const expectedRecovery = configured
+    ? deriveRecoveryArchiveDir(configuredDestination.relative, state.protocolId)
+    : null;
+  const isConfigured = configuredDestination?.absolute === destination.absolute;
+  const isRecovery = expectedRecovery === destination.relative;
+  if (configuredDestination && !isConfigured && !isRecovery) {
+    fail('archive-destination-mismatch', `${destination.relative}; configured ${configured}`);
   }
+  const occupied = isRecovery
+    ? inspectForeignArchive({
+        root,
+        destination: configuredDestination,
+        currentProtocolId: state.protocolId,
+      })
+    : null;
   const evidence = terminalEvidence(state, events);
   const artifact = committedArtifact(root, evidence.artifact, repository);
   const response = recordedFile(root, evidence.response, 'owner-response');
@@ -437,6 +836,17 @@ function buildPrepared({ root, state, events, archiveDir, repository = REAL_REPO
       },
       normative:
         'The accepted artifact remains normative; the archived review and owner response are evidence.',
+      ...(occupied
+        ? {
+            recovery: {
+              configuredDestination: configuredDestination.relative,
+              occupiedProtocolId: occupied.protocolId,
+              recoveryDestination: destination.relative,
+              occupiedAcceptedAt: occupied.acceptedAt,
+              relationship: compareDecisionTimes(evidence.decision.at, occupied.acceptedAt),
+            },
+          }
+        : {}),
     };
     const manifestFile = outputFile('manifest', 'README.md', renderArchiveManifest(manifest));
     const files = [
@@ -453,6 +863,14 @@ function buildPrepared({ root, state, events, archiveDir, repository = REAL_REPO
       destination,
       manifest,
       files,
+      ...(occupied
+        ? {
+            recoveryAuthorization: {
+              configuredDestination,
+              foreignArchive: occupied,
+            },
+          }
+        : {}),
     });
   }
 
@@ -470,7 +888,18 @@ function expectedBytes(file) {
 }
 
 function inspectExpected(destination, files) {
-  if (!existsSync(destination.absolute)) {
+  let info;
+  try {
+    info = lstatSync(destination.absolute);
+  } catch (error) {
+    if (error?.code !== 'ENOENT') {
+      return deepFreeze({
+        status: 'conflict',
+        destination,
+        paths: files.map((file) => file.path).sort(),
+        errors: [`destination unreadable: ${error.message}`],
+      });
+    }
     return deepFreeze({
       status: 'absent',
       destination,
@@ -481,10 +910,9 @@ function inspectExpected(destination, files) {
   const errors = [];
   let entries = [];
   try {
-    const info = lstatSync(destination.absolute);
     if (!info.isDirectory() || info.isSymbolicLink())
       errors.push('destination is not a regular directory');
-    else entries = readdirSync(destination.absolute, { withFileTypes: true });
+    else entries = readdirSync(destination.physicalAbsolute, { withFileTypes: true });
   } catch (error) {
     errors.push(`destination unreadable: ${error.message}`);
   }
@@ -500,7 +928,7 @@ function inspectExpected(destination, files) {
   for (const file of files) {
     if (!actualNames.includes(file.path)) continue;
     try {
-      const actual = readFileSync(path.join(destination.absolute, file.path));
+      const actual = readFileSync(path.join(destination.physicalAbsolute, file.path));
       if (!actual.equals(expectedBytes(file))) errors.push(`different: ${file.path}`);
     } catch (error) {
       errors.push(`unreadable: ${file.path}: ${error.message}`);
@@ -526,6 +954,16 @@ export function renderArchiveManifest(model) {
     'The accepted specification remains normative; the review and owner response are evidence.',
     ...(model.artifact?.mode === 'reference'
       ? [`Recover the accepted artifact with \`git cat-file blob ${model.artifact.gitBlob}\`.`]
+      : []),
+    ...(model.recovery
+      ? [
+          '',
+          `This archive is a deterministic recovery sibling of the [configured archive](${path.posix.relative(
+            model.recovery.recoveryDestination,
+            `${model.recovery.configuredDestination}/README.md`
+          )}).`,
+          `The recovered protocol was accepted at ${model.decision.at}; the occupied protocol was accepted at ${model.recovery.occupiedAcceptedAt}; relationship: ${model.recovery.relationship}.`,
+        ]
       : []),
     '',
     '<!-- aitm-co-review-manifest:start -->',
@@ -572,6 +1010,13 @@ function validatePrepared(prepared, repository = REAL_REPOSITORY_BOUNDARY) {
   ) {
     fail('archive-prepared-integrity', 'invalid prepared model');
   }
+  if (prepared.manifest.protocol?.id !== prepared.protocolId) {
+    fail('archive-prepared-integrity', 'protocol identity');
+  }
+  if (Boolean(prepared.manifest.recovery) !== Boolean(prepared.recoveryAuthorization)) {
+    fail('archive-prepared-integrity', 'recovery authorization shape');
+  }
+  validateRecoveryAuthorization(prepared, repository);
   const names = prepared.files.map((file) => file.path);
   if (new Set(names).size !== expectedKinds.length || !names.includes('README.md')) {
     fail('archive-prepared-integrity', 'expected exact mode-specific path tree');
@@ -671,14 +1116,72 @@ function validatePrepared(prepared, repository = REAL_REPOSITORY_BOUNDARY) {
   if (!expectedBytes(manifest).equals(renderArchiveManifest(prepared.manifest))) {
     fail('archive-prepared-integrity', 'manifest bytes');
   }
+  validateDestinationMapping(prepared, repository);
+}
+
+function validateDestinationMapping(prepared, repository = REAL_REPOSITORY_BOUNDARY) {
+  let currentDestination;
+  try {
+    currentDestination = resolveArchiveDestination({
+      cwd: prepared.root,
+      archiveDir: prepared.destination.relative,
+      runtimeDir: prepared.runtimeDir,
+      repository,
+    });
+  } catch (error) {
+    if (['path-outside-repository', 'path-resolution'].includes(error?.code)) {
+      fail('archive-destination-drift', prepared.destination.relative);
+    }
+    throw error;
+  }
+  if (
+    currentDestination.absolute !== prepared.destination.absolute ||
+    currentDestination.physicalAbsolute !== prepared.destination.physicalAbsolute
+  ) {
+    fail('archive-destination-drift', prepared.destination.relative);
+  }
+}
+
+function validateRecoveryAuthorization(prepared, repository = REAL_REPOSITORY_BOUNDARY) {
+  const authorization = prepared?.recoveryAuthorization;
+  if (!authorization) return;
+  const recordedDestination = authorization.configuredDestination;
+  if (!recordedDestination?.relative || !authorization.foreignArchive) {
+    fail('archive-prepared-integrity', 'invalid recovery authorization');
+  }
   const currentDestination = resolveArchiveDestination({
     cwd: prepared.root,
-    archiveDir: prepared.destination.relative,
+    archiveDir: recordedDestination.relative,
     runtimeDir: prepared.runtimeDir,
     repository,
   });
-  if (currentDestination.absolute !== prepared.destination.absolute) {
-    fail('archive-destination-drift', prepared.destination.relative);
+  if (
+    currentDestination.absolute !== recordedDestination.absolute ||
+    currentDestination.physicalAbsolute !== recordedDestination.physicalAbsolute
+  ) {
+    fail('archive-foreign-authorization-drift', recordedDestination.relative);
+  }
+  const currentForeign = inspectForeignArchive({
+    root: prepared.root,
+    destination: currentDestination,
+    currentProtocolId: prepared.protocolId,
+  });
+  if (!isDeepStrictEqual(currentForeign, authorization.foreignArchive)) {
+    fail('archive-foreign-authorization-drift', recordedDestination.relative);
+  }
+  const expectedRecovery = {
+    configuredDestination: currentDestination.relative,
+    occupiedProtocolId: currentForeign.protocolId,
+    recoveryDestination: prepared.destination.relative,
+    occupiedAcceptedAt: currentForeign.acceptedAt,
+    relationship: compareDecisionTimes(prepared.manifest.decision.at, currentForeign.acceptedAt),
+  };
+  if (
+    deriveRecoveryArchiveDir(currentDestination.relative, prepared.protocolId) !==
+      prepared.destination.relative ||
+    !isDeepStrictEqual(prepared.manifest.recovery, expectedRecovery)
+  ) {
+    fail('archive-foreign-authorization-drift', recordedDestination.relative);
   }
 }
 
@@ -705,7 +1208,8 @@ export function publishPreparedArchive(
   if (initial.status === 'complete') return publicationResult('complete', prepared);
   if (initial.status === 'conflict') fail('archive-conflict', initial.errors.join('; '));
 
-  const parent = path.dirname(prepared.destination.absolute);
+  validateDestinationMapping(prepared, repository);
+  const parent = path.dirname(prepared.destination.physicalAbsolute);
   mkdirSync(parent, { recursive: true });
   const protocol = String(prepared.protocolId).replace(/[^a-zA-Z0-9.-]+/g, '-');
   const staging = path.join(
@@ -722,18 +1226,21 @@ export function publishPreparedArchive(
     hooks.afterWrite?.({
       relative: file.path,
       staging,
-      destination: prepared.destination.absolute,
+      destination: prepared.destination.physicalAbsolute,
     });
   }
-  hooks.beforeValidate?.({ staging, destination: prepared.destination.absolute });
+  hooks.beforeValidate?.({ staging, destination: prepared.destination.physicalAbsolute });
   const staged = inspectExpected(
-    { absolute: staging, relative: path.basename(staging) },
+    { absolute: staging, physicalAbsolute: staging, relative: path.basename(staging) },
     prepared.files
   );
   if (staged.status !== 'complete') fail('archive-staging-invalid', staged.errors.join('; '));
-  hooks.beforeRename?.({ staging, destination: prepared.destination.absolute });
+  hooks.beforeRename?.({ staging, destination: prepared.destination.physicalAbsolute });
+  validateDestinationMapping(prepared, repository);
+  validateRecoveryAuthorization(prepared, repository);
+  validateDestinationMapping(prepared, repository);
   try {
-    renameSync(staging, prepared.destination.absolute);
+    renameSync(staging, prepared.destination.physicalAbsolute);
   } catch (error) {
     if (!['EEXIST', 'ENOTDIR', 'ENOTEMPTY'].includes(error.code)) throw error;
     const raced = inspectExpected(prepared.destination, prepared.files);

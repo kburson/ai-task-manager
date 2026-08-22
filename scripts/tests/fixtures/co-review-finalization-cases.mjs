@@ -6,9 +6,11 @@ import {
   existsSync,
   mkdirSync,
   readFileSync,
+  readlinkSync,
   readdirSync,
   statSync,
   symlinkSync,
+  unlinkSync,
   writeFileSync,
 } from 'node:fs';
 import path from 'node:path';
@@ -259,6 +261,100 @@ function materializePrepared(destination, prepared) {
   }
 }
 
+function snapshotDirectory(directory) {
+  return Object.fromEntries(
+    readdirSync(directory, { withFileTypes: true })
+      .sort((left, right) => left.name.localeCompare(right.name))
+      .map((entry) => [
+        entry.name,
+        entry.isFile() && !entry.isSymbolicLink()
+          ? readFileSync(path.join(directory, entry.name)).toString('base64')
+          : `${entry.isSymbolicLink() ? 'symlink' : entry.isDirectory() ? 'directory' : 'other'}`,
+      ])
+  );
+}
+
+function replaceArchiveManifestJson(directory, json) {
+  const readme = path.join(directory, 'README.md');
+  const text = readFileSync(readme, 'utf8');
+  const marker =
+    /(<!-- aitm-co-review-manifest:start -->\n```json\n)[\s\S]*?(\n```\n<!-- aitm-co-review-manifest:end -->)/g;
+  assert.equal([...text.matchAll(marker)].length, 1);
+  writeFileSync(
+    readme,
+    text.replace(marker, (_match, before, after) => `${before}${json}${after}`)
+  );
+}
+
+async function foreignArchiveRecoveryFixture({
+  legacyCopy = false,
+  occupied: suppliedOccupied,
+} = {}) {
+  const occupied = suppliedOccupied ?? (await acceptedConsensus());
+  const ordinaryPrepared = prepareArchive({
+    ...archiveOptions(occupied, 'docs/reviews/occupied-source'),
+    ...(legacyCopy ? { repository: unreachableRepository(occupied) } : {}),
+  });
+  const occupiedPrepared = legacyCopy ? legacyCopyPrepared(ordinaryPrepared) : ordinaryPrepared;
+  assert.equal(Object.hasOwn(occupiedPrepared.manifest, 'recovery'), false);
+
+  await new Promise((resolve) => setTimeout(resolve, 2));
+  const current = await acceptedConsensus({ archiveDir: 'docs/reviews/configured' });
+  const configuredAbsolute = path.join(current.root, 'docs/reviews/configured');
+  materializePrepared(configuredAbsolute, occupiedPrepared);
+  const recoveryDir = `docs/reviews/configured-recovery-${current.state.protocolId}`;
+  const recoveryOptions = {
+    ...current.api.validatedArchiveSnapshot({ cwd: current.root, dir: current.options.dir }),
+    archiveDir: recoveryDir,
+    repository: current.repository,
+  };
+  return {
+    occupied,
+    occupiedPrepared,
+    current,
+    configuredAbsolute,
+    recoveryDir,
+    recoveryOptions,
+  };
+}
+
+async function nestedForeignArchiveRecoveryFixture() {
+  const first = await acceptedConsensus();
+  const firstPrepared = prepareArchive(archiveOptions(first, 'docs/reviews/first-source'));
+  const nestedConfiguredDir = 'docs/reviews/nested-configured';
+  const nested = await acceptedConsensus({ archiveDir: nestedConfiguredDir });
+  materializePrepared(path.join(nested.root, nestedConfiguredDir), firstPrepared);
+  const nestedRecoveryDir = `${nestedConfiguredDir}-recovery-${nested.state.protocolId}`;
+  const nestedPrepared = prepareArchive(archiveOptions(nested, nestedRecoveryDir));
+  assert.equal(nestedPrepared.manifest.recovery.recoveryDestination, nestedRecoveryDir);
+
+  const current = await acceptedConsensus({ archiveDir: nestedRecoveryDir });
+  const configuredAbsolute = path.join(current.root, nestedRecoveryDir);
+  materializePrepared(configuredAbsolute, nestedPrepared);
+  const recoveryDir = `${nestedRecoveryDir}-recovery-${current.state.protocolId}`;
+  return {
+    nestedPrepared,
+    current,
+    configuredAbsolute,
+    recoveryDir,
+    recoveryOptions: archiveOptions(current, recoveryDir),
+  };
+}
+
+function assertForeignManifestRefused(fixture, manifest, name) {
+  const { current, configuredAbsolute, recoveryOptions } = fixture;
+  replaceArchiveManifestJson(configuredAbsolute, JSON.stringify(manifest, null, 2));
+  const protocolBefore = snapshotProtocol(current.root, current.options.dir);
+  const occupiedBefore = snapshotDirectory(configuredAbsolute);
+  assert.throws(
+    () => prepareArchive(recoveryOptions),
+    (error) => error.code === 'archive-foreign-manifest',
+    name
+  );
+  assert.deepEqual(snapshotProtocol(current.root, current.options.dir), protocolBefore, name);
+  assert.deepEqual(snapshotDirectory(configuredAbsolute), occupiedBefore, name);
+}
+
 function legacyCopyPrepared(prepared) {
   const legacy = structuredClone(prepared);
   delete legacy.manifest.artifact.mode;
@@ -327,6 +423,36 @@ test('reviewer consensus finalizes automatically and an unconfigured destination
     unconfigured.api.readProtocol({ cwd: unconfigured.root, dir: unconfigured.options.dir })
       .lifecycle,
     'accepted'
+  );
+  const unconfiguredRuntime = path.join(unconfigured.root, '.tmp/review');
+  const placeholderFinalizeCommand =
+    `npx aitm co-review finalize --dir ${unconfiguredRuntime} ` +
+    '--archive-dir <tracked-repo-path>';
+  const unconfiguredStatus = await runCliDirect(
+    ['status', '--dir', unconfigured.options.dir, '--json'],
+    { cwd: unconfigured.root, repository: unconfigured.repository }
+  );
+  assert.equal(unconfiguredStatus.status, 0, unconfiguredStatus.stderr);
+  const unconfiguredJson = JSON.parse(unconfiguredStatus.stdout);
+  assert.deepEqual(unconfiguredJson.archive, { destination: null, completion: 'unknown' });
+  assert.deepEqual(unconfiguredJson.availableActions, [
+    { kind: 'finalize', command: placeholderFinalizeCommand },
+  ]);
+  assert.equal(unconfiguredJson.nextAction, placeholderFinalizeCommand);
+  const unconfiguredHuman = await runCliDirect(['status', '--dir', unconfigured.options.dir], {
+    cwd: unconfigured.root,
+    repository: unconfigured.repository,
+  });
+  assert.equal(unconfiguredHuman.status, 0, unconfiguredHuman.stderr);
+  assert.match(unconfiguredHuman.stdout, /Archive: unknown \/ unknown/);
+  assert.match(
+    unconfiguredHuman.stdout,
+    new RegExp(
+      `Available actions: finalize: ${placeholderFinalizeCommand.replaceAll(
+        /[.*+?^${}()|[\]\\]/g,
+        '\\$&'
+      )}`
+    )
   );
 
   const finalized = await runCliDirect(
@@ -406,6 +532,135 @@ test('reviewer consensus finalizes automatically and an unconfigured destination
     ),
     true
   );
+});
+
+test('reviewer consensus retries an occupied eligible primary through its deterministic recovery sibling', async () => {
+  const occupied = await acceptedConsensus();
+  const occupiedPrepared = prepareArchive(archiveOptions(occupied, 'docs/reviews/occupied-source'));
+  const current = await consensusReady({ archiveDir: 'docs/reviews/configured' });
+  const currentState = current.api.readProtocol({ cwd: current.root, dir: current.options.dir });
+  const configuredAbsolute = path.join(current.root, 'docs/reviews/configured');
+  const recoveryDir = `docs/reviews/configured-recovery-${currentState.protocolId}`;
+  const runtimeDir = path.join(current.root, current.options.dir);
+  materializePrepared(configuredAbsolute, occupiedPrepared);
+
+  const accepted = await runCliDirect(
+    [
+      'handoff',
+      '--dir',
+      current.options.dir,
+      '--actor',
+      'reviewer-agent',
+      '--review',
+      current.review,
+      '--review-of',
+      current.initialCommit,
+      '--decision',
+      'accepted',
+      '--message',
+      'accepted',
+    ],
+    {
+      cwd: current.root,
+      repository: current.repository,
+      archiveHooks: {
+        afterWrite() {
+          throw new Error('injected recovery publication failure');
+        },
+      },
+    }
+  );
+
+  assert.equal(accepted.status, 4);
+  assert.match(
+    accepted.stderr,
+    new RegExp(
+      `Retry: npx aitm co-review finalize --dir ${runtimeDir} --archive-dir ${recoveryDir}\\n$`
+    )
+  );
+  assert.doesNotMatch(accepted.stderr, /--archive-dir docs\/reviews\/configured(?:\n|$)/);
+  assert.equal(
+    current.api.readProtocol({ cwd: current.root, dir: current.options.dir }).lifecycle,
+    'accepted'
+  );
+});
+
+test('reviewer consensus preparation conflicts expose no archive retry', async () => {
+  for (const mutation of ['same-protocol', 'ineligible-foreign', 'recovery-conflict']) {
+    const occupied = await acceptedConsensus();
+    const occupiedPrepared = prepareArchive(
+      archiveOptions(occupied, 'docs/reviews/occupied-source')
+    );
+    const current = await consensusReady({ archiveDir: 'docs/reviews/configured' });
+    const currentState = current.api.readProtocol({ cwd: current.root, dir: current.options.dir });
+    const configuredAbsolute = path.join(current.root, 'docs/reviews/configured');
+    const recoveryDir = `docs/reviews/configured-recovery-${currentState.protocolId}`;
+    materializePrepared(configuredAbsolute, occupiedPrepared);
+
+    if (mutation === 'same-protocol') {
+      const manifest = structuredClone(occupiedPrepared.manifest);
+      manifest.protocol.id = currentState.protocolId;
+      replaceArchiveManifestJson(configuredAbsolute, JSON.stringify(manifest, null, 2));
+    } else if (mutation === 'ineligible-foreign') {
+      unlinkSync(path.join(configuredAbsolute, output(occupiedPrepared, 'review').path));
+    } else {
+      const recoveryAbsolute = path.join(current.root, recoveryDir);
+      mkdirSync(recoveryAbsolute, { recursive: true });
+      writeFileSync(path.join(recoveryAbsolute, 'conflict.md'), 'preserve this conflict\n');
+    }
+
+    const accepted = await runCliDirect(
+      [
+        'handoff',
+        '--dir',
+        current.options.dir,
+        '--actor',
+        'reviewer-agent',
+        '--review',
+        current.review,
+        '--review-of',
+        current.initialCommit,
+        '--decision',
+        'accepted',
+        '--message',
+        'accepted',
+      ],
+      { cwd: current.root, repository: current.repository }
+    );
+
+    assert.equal(accepted.status, 4, mutation);
+    assert.match(
+      accepted.stderr,
+      /^ACCEPTED: protocol state is durable; archive publication is pending/,
+      mutation
+    );
+    assert.doesNotMatch(accepted.stderr, /\nRetry:/, mutation);
+    assert.doesNotMatch(
+      accepted.stderr,
+      /--archive-dir docs\/reviews\/configured(?:\n|$)/,
+      mutation
+    );
+    assert.equal(
+      current.api.readProtocol({ cwd: current.root, dir: current.options.dir }).lifecycle,
+      'accepted',
+      mutation
+    );
+
+    const status = JSON.parse(
+      (
+        await runCliDirect(['status', '--dir', current.options.dir, '--json'], {
+          cwd: current.root,
+          repository: current.repository,
+        })
+      ).stdout
+    );
+    assert.equal(status.archive.completion, 'conflict', mutation);
+    assert.equal(
+      status.availableActions.some(({ kind }) => kind === 'finalize'),
+      false,
+      mutation
+    );
+  }
 });
 
 test('good-enough acceptance is revision-checked, immutable, and requires two-sided closing evidence', async () => {
@@ -553,6 +808,193 @@ test('good-enough CLI prepares before mutation, publishes, and maps only post-ac
   assert.match(invalid.stderr, /--unknown (?:requires a value|is not valid)/);
 });
 
+test('recovered good-enough publication failure retries the deterministic sibling', async () => {
+  const occupied = await acceptedConsensus();
+  const occupiedPrepared = prepareArchive(archiveOptions(occupied, 'docs/reviews/occupied-source'));
+  const configuredDir = 'docs/reviews/good-enough-recovery';
+  const failed = await goodEnoughReady({ archiveDir: configuredDir });
+  materializePrepared(path.join(failed.root, configuredDir), occupiedPrepared);
+  const recoveryDir = `${configuredDir}-recovery-${failed.prior.protocolId}`;
+  const pending = await runCliDirect(
+    ['finalize', '--dir', failed.options.dir, '--good-enough', '--archive-dir', recoveryDir],
+    {
+      cwd: failed.root,
+      repository: failed.repository,
+      resolveGitHubLoginImpl: () => 'kendrick',
+      archiveHooks: {
+        beforeValidate() {
+          throw new Error('injected recovered publication failure');
+        },
+      },
+    }
+  );
+
+  assert.equal(pending.status, 4);
+  const runtime = path.resolve(failed.root, failed.options.dir);
+  assert.match(
+    pending.stderr,
+    new RegExp(
+      `Retry: npx aitm co-review finalize --dir ${runtime.replaceAll(
+        /[.*+?^${}()|[\]\\]/g,
+        '\\$&'
+      )} --archive-dir ${recoveryDir}\n`
+    )
+  );
+  assert.doesNotMatch(
+    pending.stderr,
+    new RegExp(
+      `Retry: .* --archive-dir ${configuredDir.replaceAll(/[.*+?^${}()|[\]\\]/g, '\\$&')}\n`
+    )
+  );
+  assert.equal(
+    failed.api.readProtocol({ cwd: failed.root, dir: failed.options.dir }).lifecycle,
+    'accepted'
+  );
+});
+
+test('consensus configured rename races print only the status-derived recovery retry', async () => {
+  const occupied = await acceptedConsensus();
+  const occupiedPrepared = prepareArchive(archiveOptions(occupied, 'docs/reviews/source'));
+  const configuredDir = 'docs/reviews/consensus-race';
+  const current = await consensusReady({ archiveDir: configuredDir });
+  const state = current.api.readProtocol({ cwd: current.root, dir: current.options.dir });
+  const recoveryDir = `${configuredDir}-recovery-${state.protocolId}`;
+  const configuredAbsolute = path.join(current.root, configuredDir);
+  const pending = await runCliDirect(
+    [
+      'handoff',
+      '--dir',
+      current.options.dir,
+      '--actor',
+      'reviewer-agent',
+      '--review',
+      current.review,
+      '--review-of',
+      current.initialCommit,
+      '--decision',
+      'accepted',
+      '--message',
+      'accepted',
+    ],
+    {
+      cwd: current.root,
+      repository: current.repository,
+      archiveHooks: {
+        beforeRename() {
+          materializePrepared(configuredAbsolute, occupiedPrepared);
+        },
+      },
+    }
+  );
+
+  assert.equal(pending.status, 4);
+  assert.match(pending.stderr, new RegExp(`Retry: .* --archive-dir ${recoveryDir}\\n`));
+  assert.doesNotMatch(pending.stderr, new RegExp(`Retry: .* --archive-dir ${configuredDir}\\n`));
+  assert.equal(
+    current.api.readProtocol({ cwd: current.root, dir: current.options.dir }).lifecycle,
+    'accepted'
+  );
+});
+
+test('good-enough configured rename races print only the status-derived recovery retry', async () => {
+  const occupied = await acceptedConsensus();
+  const occupiedPrepared = prepareArchive(archiveOptions(occupied, 'docs/reviews/source'));
+  const configuredDir = 'docs/reviews/good-enough-race';
+  const current = await goodEnoughReady({ archiveDir: configuredDir });
+  const recoveryDir = `${configuredDir}-recovery-${current.prior.protocolId}`;
+  const configuredAbsolute = path.join(current.root, configuredDir);
+  const pending = await runCliDirect(['finalize', '--dir', current.options.dir, '--good-enough'], {
+    cwd: current.root,
+    repository: current.repository,
+    resolveGitHubLoginImpl: () => 'kendrick',
+    archiveHooks: {
+      beforeRename() {
+        materializePrepared(configuredAbsolute, occupiedPrepared);
+      },
+    },
+  });
+
+  assert.equal(pending.status, 4);
+  assert.match(pending.stderr, new RegExp(`Retry: .* --archive-dir ${recoveryDir}\\n`));
+  assert.doesNotMatch(pending.stderr, new RegExp(`Retry: .* --archive-dir ${configuredDir}\\n`));
+  assert.equal(
+    current.api.readProtocol({ cwd: current.root, dir: current.options.dir }).lifecycle,
+    'accepted'
+  );
+});
+
+test('consensus recovery rename races suppress unsafe retries', async () => {
+  const occupied = await acceptedConsensus();
+  const occupiedPrepared = prepareArchive(archiveOptions(occupied, 'docs/reviews/source'));
+  const configuredDir = 'docs/reviews/consensus-recovery-race';
+  const current = await consensusReady({ archiveDir: configuredDir });
+  const state = current.api.readProtocol({ cwd: current.root, dir: current.options.dir });
+  const recoveryDir = `${configuredDir}-recovery-${state.protocolId}`;
+  const recoveryAbsolute = path.join(current.root, recoveryDir);
+  materializePrepared(path.join(current.root, configuredDir), occupiedPrepared);
+  const pending = await runCliDirect(
+    [
+      'handoff',
+      '--dir',
+      current.options.dir,
+      '--actor',
+      'reviewer-agent',
+      '--review',
+      current.review,
+      '--review-of',
+      current.initialCommit,
+      '--decision',
+      'accepted',
+      '--message',
+      'accepted',
+    ],
+    {
+      cwd: current.root,
+      repository: current.repository,
+      archiveHooks: {
+        beforeRename() {
+          mkdirSync(recoveryAbsolute);
+          writeFileSync(path.join(recoveryAbsolute, 'preserve.md'), 'preserve\n');
+        },
+      },
+    }
+  );
+
+  assert.equal(pending.status, 4);
+  assert.doesNotMatch(pending.stderr, /\nRetry:/);
+  assert.match(pending.stderr, /inspect status for safe actions/);
+  assert.equal(readFileSync(path.join(recoveryAbsolute, 'preserve.md'), 'utf8'), 'preserve\n');
+});
+
+test('good-enough recovery rename races suppress unsafe retries', async () => {
+  const occupied = await acceptedConsensus();
+  const occupiedPrepared = prepareArchive(archiveOptions(occupied, 'docs/reviews/source'));
+  const configuredDir = 'docs/reviews/good-enough-recovery-race';
+  const current = await goodEnoughReady({ archiveDir: configuredDir });
+  const recoveryDir = `${configuredDir}-recovery-${current.prior.protocolId}`;
+  const recoveryAbsolute = path.join(current.root, recoveryDir);
+  materializePrepared(path.join(current.root, configuredDir), occupiedPrepared);
+  const pending = await runCliDirect(
+    ['finalize', '--dir', current.options.dir, '--good-enough', '--archive-dir', recoveryDir],
+    {
+      cwd: current.root,
+      repository: current.repository,
+      resolveGitHubLoginImpl: () => 'kendrick',
+      archiveHooks: {
+        beforeRename() {
+          mkdirSync(recoveryAbsolute);
+          writeFileSync(path.join(recoveryAbsolute, 'preserve.md'), 'preserve\n');
+        },
+      },
+    }
+  );
+
+  assert.equal(pending.status, 4);
+  assert.doesNotMatch(pending.stderr, /\nRetry:/);
+  assert.match(pending.stderr, /inspect status for safe actions/);
+  assert.equal(readFileSync(path.join(recoveryAbsolute, 'preserve.md'), 'utf8'), 'preserve\n');
+});
+
 test('intervention and accepted status expose state-valid finalization actions and archive completion', async () => {
   const ready = await goodEnoughReady();
   const intervention = JSON.parse(
@@ -591,6 +1033,120 @@ test('intervention and accepted status expose state-valid finalization actions a
         '--archive-dir docs/reviews/status$'
     )
   );
+});
+
+test('accepted status exposes deterministic foreign-archive recovery before and after publication', async () => {
+  const fixture = await foreignArchiveRecoveryFixture();
+  const { current, configuredAbsolute, recoveryDir } = fixture;
+  const runtime = path.resolve(current.root, current.options.dir);
+  const protocolBefore = snapshotProtocol(current.root, current.options.dir);
+  const occupiedBefore = snapshotDirectory(configuredAbsolute);
+  const finalizeCommand = `npx aitm co-review finalize --dir ${runtime} --archive-dir ${recoveryDir}`;
+
+  const before = JSON.parse(
+    (
+      await runCliDirect(['status', '--dir', current.options.dir, '--json'], {
+        cwd: current.root,
+        repository: current.repository,
+      })
+    ).stdout
+  );
+  assert.deepEqual(before.archive, {
+    destination: recoveryDir,
+    configuredDestination: 'docs/reviews/configured',
+    completion: 'absent',
+    recovery: true,
+  });
+  assert.deepEqual(before.availableActions, [{ kind: 'finalize', command: finalizeCommand }]);
+  assert.equal(before.nextAction, finalizeCommand);
+  assert.deepEqual(snapshotProtocol(current.root, current.options.dir), protocolBefore);
+  assert.deepEqual(snapshotDirectory(configuredAbsolute), occupiedBefore);
+
+  const finalized = await runCliDirect(
+    ['finalize', '--dir', current.options.dir, '--archive-dir', recoveryDir],
+    { cwd: current.root, repository: current.repository }
+  );
+  assert.equal(finalized.status, 0, finalized.stderr);
+  assert.match(finalized.stdout, new RegExp(`^Archive: ${recoveryDir}\\n`));
+  assert.deepEqual(snapshotProtocol(current.root, current.options.dir), protocolBefore);
+  assert.deepEqual(snapshotDirectory(configuredAbsolute), occupiedBefore);
+
+  const after = JSON.parse(
+    (
+      await runCliDirect(['status', '--dir', current.options.dir, '--json'], {
+        cwd: current.root,
+        repository: current.repository,
+      })
+    ).stdout
+  );
+  assert.deepEqual(after.archive, {
+    destination: recoveryDir,
+    configuredDestination: 'docs/reviews/configured',
+    completion: 'complete-and-identical',
+    recovery: true,
+  });
+  assert.equal(
+    after.availableActions.some(({ kind }) => kind === 'finalize'),
+    false
+  );
+  assert.equal(after.nextAction, 'stop; protocol accepted');
+  assert.deepEqual(snapshotProtocol(current.root, current.options.dir), protocolBefore);
+  assert.deepEqual(snapshotDirectory(configuredAbsolute), occupiedBefore);
+});
+
+test('accepted status refuses corrupt, ineligible, and conflicting recovery paths', async () => {
+  for (const mutation of ['same-protocol', 'ineligible-foreign', 'recovery-conflict']) {
+    const fixture = await foreignArchiveRecoveryFixture();
+    const { occupiedPrepared, current, configuredAbsolute, recoveryDir } = fixture;
+
+    if (mutation === 'same-protocol') {
+      const manifest = structuredClone(occupiedPrepared.manifest);
+      manifest.protocol.id = current.state.protocolId;
+      replaceArchiveManifestJson(configuredAbsolute, JSON.stringify(manifest, null, 2));
+    } else if (mutation === 'ineligible-foreign') {
+      unlinkSync(path.join(configuredAbsolute, output(occupiedPrepared, 'review').path));
+    } else {
+      const recoveryAbsolute = path.join(current.root, recoveryDir);
+      mkdirSync(recoveryAbsolute, { recursive: true });
+      writeFileSync(path.join(recoveryAbsolute, 'conflict.md'), 'preserve this conflict\n');
+    }
+
+    const protocolBefore = snapshotProtocol(current.root, current.options.dir);
+    const occupiedBefore = snapshotDirectory(configuredAbsolute);
+    const recoveryAbsolute = path.join(current.root, recoveryDir);
+    const recoveryBefore = existsSync(recoveryAbsolute)
+      ? snapshotDirectory(recoveryAbsolute)
+      : null;
+    const status = JSON.parse(
+      (
+        await runCliDirect(['status', '--dir', current.options.dir, '--json'], {
+          cwd: current.root,
+          repository: current.repository,
+        })
+      ).stdout
+    );
+
+    assert.equal(status.archive.destination, 'docs/reviews/configured', mutation);
+    assert.equal(status.archive.completion, 'conflict', mutation);
+    assert.ok(status.archive.errors.length > 0, mutation);
+    assert.equal(
+      status.availableActions.some(({ kind }) => kind === 'finalize'),
+      false,
+      mutation
+    );
+    assert.doesNotMatch(
+      status.availableActions.map(({ command }) => command).join('\n'),
+      /--archive-dir/,
+      mutation
+    );
+    assert.deepEqual(snapshotProtocol(current.root, current.options.dir), protocolBefore, mutation);
+    assert.deepEqual(snapshotDirectory(configuredAbsolute), occupiedBefore, mutation);
+    assert.deepEqual(
+      existsSync(recoveryAbsolute) ? snapshotDirectory(recoveryAbsolute) : null,
+      recoveryBefore,
+      mutation
+    );
+  }
 });
 
 test('reachable artifacts use reference mode while preserving terminal evidence', async () => {
@@ -801,6 +1357,515 @@ test('archive accepts an equivalent configured destination and refuses a differe
   );
 });
 
+test('recovery rejects a configured lexical leaf symlink and keeps recorded naming', async () => {
+  const occupied = await acceptedConsensus();
+  const occupiedPrepared = prepareArchive(archiveOptions(occupied, 'docs/reviews/source'));
+  const configuredDir = 'docs/reviews/configured-link';
+  const physicalDir = 'docs/reviews/physical-target';
+  const current = await acceptedConsensus({ archiveDir: configuredDir });
+  const configuredAbsolute = path.join(current.root, configuredDir);
+  const physicalAbsolute = path.join(current.root, physicalDir);
+  materializePrepared(physicalAbsolute, occupiedPrepared);
+  symlinkSync(physicalAbsolute, configuredAbsolute, 'dir');
+  const physicalBefore = snapshotDirectory(physicalAbsolute);
+  const linkBefore = readlinkSync(configuredAbsolute);
+  const lexicalRecovery = `${configuredDir}-recovery-${current.state.protocolId}`;
+  const physicalRecovery = `${physicalDir}-recovery-${current.state.protocolId}`;
+
+  assert.throws(
+    () => prepareArchive(archiveOptions(current, lexicalRecovery)),
+    (error) => error.code === 'archive-foreign-directory'
+  );
+  assert.throws(
+    () => prepareArchive(archiveOptions(current, physicalRecovery)),
+    (error) => error.code === 'archive-destination-mismatch'
+  );
+
+  const status = current.api.statusProtocol({
+    cwd: current.root,
+    dir: current.options.dir,
+    repository: current.repository,
+  });
+  assert.equal(status.archive.destination, configuredDir);
+  assert.equal(status.archive.completion, 'conflict');
+  assert.equal(
+    status.availableActions.some(({ kind }) => kind === 'finalize'),
+    false
+  );
+  assert.equal(readlinkSync(configuredAbsolute), linkBefore);
+  assert.deepEqual(snapshotDirectory(physicalAbsolute), physicalBefore);
+  assert.equal(existsSync(path.join(current.root, lexicalRecovery)), false);
+  assert.equal(existsSync(path.join(current.root, physicalRecovery)), false);
+});
+
+test('ordinary publication refuses symlinked-parent retargeting without outside writes', async () => {
+  const fixture = await acceptedConsensus();
+  const lexicalParent = path.join(fixture.root, 'docs/reviews/archive-alias');
+  const physicalParent = path.join(fixture.root, 'docs/reviews/archive-physical');
+  const outsideParent = `${fixture.root}-ordinary-archive-outside`;
+  mkdirSync(physicalParent, { recursive: true });
+  mkdirSync(outsideParent, { recursive: true });
+  writeFileSync(path.join(outsideParent, 'sentinel.txt'), 'preserve outside bytes\n');
+  symlinkSync(physicalParent, lexicalParent, 'dir');
+  const prepared = prepareArchive(archiveOptions(fixture, 'docs/reviews/archive-alias/ordinary'));
+  const outsideBefore = snapshotDirectory(outsideParent);
+
+  assert.throws(
+    () =>
+      publishPreparedArchive(prepared, {
+        hooks: {
+          beforeRename() {
+            unlinkSync(lexicalParent);
+            symlinkSync(outsideParent, lexicalParent, 'dir');
+          },
+        },
+      }),
+    (error) => error.code === 'archive-destination-drift'
+  );
+  assert.deepEqual(snapshotDirectory(outsideParent), outsideBefore);
+  assert.equal(existsSync(path.join(outsideParent, 'ordinary')), false);
+  assert.equal(
+    readdirSync(outsideParent).some((name) => name.includes('.aitm-staging-')),
+    false
+  );
+});
+
+test('recovered publication refuses symlinked-parent retargeting without outside writes', async () => {
+  const occupied = await acceptedConsensus();
+  const occupiedPrepared = prepareArchive(archiveOptions(occupied, 'docs/reviews/source'));
+  const lexicalParentRelative = 'docs/reviews/recovery-alias';
+  const configuredDir = `${lexicalParentRelative}/configured`;
+  const current = await acceptedConsensus({ archiveDir: configuredDir });
+  const lexicalParent = path.join(current.root, lexicalParentRelative);
+  const physicalParent = path.join(current.root, 'docs/reviews/recovery-physical');
+  const configuredPhysical = path.join(physicalParent, 'configured');
+  const outsideParent = `${current.root}-recovery-archive-outside`;
+  mkdirSync(physicalParent, { recursive: true });
+  materializePrepared(configuredPhysical, occupiedPrepared);
+  mkdirSync(outsideParent, { recursive: true });
+  writeFileSync(path.join(outsideParent, 'sentinel.txt'), 'preserve outside bytes\n');
+  symlinkSync(physicalParent, lexicalParent, 'dir');
+  const recoveryDir = `${configuredDir}-recovery-${current.state.protocolId}`;
+  const prepared = prepareArchive(archiveOptions(current, recoveryDir));
+  const occupiedBefore = snapshotDirectory(configuredPhysical);
+  const outsideBefore = snapshotDirectory(outsideParent);
+
+  assert.throws(
+    () =>
+      publishPreparedArchive(prepared, {
+        hooks: {
+          beforeRename() {
+            unlinkSync(lexicalParent);
+            symlinkSync(outsideParent, lexicalParent, 'dir');
+          },
+        },
+      }),
+    (error) => error.code === 'archive-destination-drift'
+  );
+  assert.deepEqual(snapshotDirectory(configuredPhysical), occupiedBefore);
+  assert.deepEqual(snapshotDirectory(outsideParent), outsideBefore);
+  assert.equal(existsSync(path.join(outsideParent, path.basename(recoveryDir))), false);
+  assert.equal(
+    readdirSync(outsideParent).some((name) => name.includes('.aitm-staging-')),
+    false
+  );
+});
+
+test('a complete foreign v1 archive permits only the deterministic recovery sibling', async () => {
+  const fixture = await foreignArchiveRecoveryFixture();
+  const { occupied, occupiedPrepared, current, configuredAbsolute, recoveryDir, recoveryOptions } =
+    fixture;
+  const protocolBefore = snapshotProtocol(current.root, current.options.dir);
+  const runtimeBefore = snapshotDirectory(path.join(current.root, current.options.dir));
+  const occupiedBefore = snapshotDirectory(configuredAbsolute);
+  const recovered = prepareArchive(recoveryOptions);
+
+  assert.equal(recovered.destination.relative, recoveryDir);
+  assert.deepEqual(recovered.manifest.recovery, {
+    configuredDestination: 'docs/reviews/configured',
+    occupiedProtocolId: occupied.state.protocolId,
+    recoveryDestination: recoveryDir,
+    occupiedAcceptedAt: occupied.state.acceptance.at,
+    relationship: 'newer-than-occupied',
+  });
+  assert.equal(Object.hasOwn(occupiedPrepared.manifest, 'recovery'), false);
+  const readme = output(recovered, 'manifest');
+  const readmeText = Buffer.from(readme.bytesBase64, 'base64').toString('utf8');
+  assert.match(readmeText, /\[configured archive\]\(\.\.\/configured\/README\.md\)/);
+  assert.match(readmeText, new RegExp(occupied.state.acceptance.at.replaceAll('.', '\\.')));
+  assert.match(readmeText, new RegExp(current.state.acceptance.at.replaceAll('.', '\\.')));
+  assert.match(readmeText, /newer-than-occupied/);
+
+  assert.equal(publishPreparedArchive(recovered).status, 'published');
+  assert.deepEqual(snapshotProtocol(current.root, current.options.dir), protocolBefore);
+  assert.deepEqual(snapshotDirectory(path.join(current.root, current.options.dir)), runtimeBefore);
+  assert.deepEqual(snapshotDirectory(configuredAbsolute), occupiedBefore);
+  const beforeMtime = statSync(path.join(recovered.destination.absolute, 'README.md')).mtimeMs;
+  assert.equal(publishPreparedArchive(prepareArchive(recoveryOptions)).status, 'complete');
+  assert.equal(
+    statSync(path.join(recovered.destination.absolute, 'README.md')).mtimeMs,
+    beforeMtime
+  );
+  assert.deepEqual(snapshotProtocol(current.root, current.options.dir), protocolBefore);
+  assert.deepEqual(snapshotDirectory(path.join(current.root, current.options.dir)), runtimeBefore);
+  assert.deepEqual(snapshotDirectory(configuredAbsolute), occupiedBefore);
+});
+
+test('recovery publication revalidates foreign authorization before staging', async () => {
+  const fixture = await foreignArchiveRecoveryFixture();
+  const { occupiedPrepared, current, configuredAbsolute, recoveryOptions } = fixture;
+  const prepared = prepareArchive(recoveryOptions);
+  unlinkSync(path.join(configuredAbsolute, output(occupiedPrepared, 'review').path));
+  const configuredAfterRemoval = snapshotDirectory(configuredAbsolute);
+  const protocolBefore = snapshotProtocol(current.root, current.options.dir);
+  const stagingPrefix = `.${path.basename(prepared.destination.absolute)}.aitm-staging-`;
+
+  assert.throws(
+    () => publishPreparedArchive(prepared),
+    (error) => error.code.startsWith('archive-foreign-')
+  );
+  assert.equal(existsSync(prepared.destination.absolute), false);
+  assert.equal(
+    readdirSync(path.dirname(prepared.destination.absolute)).some((name) =>
+      name.startsWith(stagingPrefix)
+    ),
+    false
+  );
+  assert.deepEqual(snapshotProtocol(current.root, current.options.dir), protocolBefore);
+  assert.deepEqual(snapshotDirectory(configuredAbsolute), configuredAfterRemoval);
+});
+
+test('recovery publication rejects changed foreign authorization immediately before rename', async () => {
+  const fixture = await foreignArchiveRecoveryFixture();
+  const { current, configuredAbsolute, recoveryOptions } = fixture;
+  const prepared = prepareArchive(recoveryOptions);
+  const replacement = await acceptedConsensus();
+  const replacementPrepared = prepareArchive(
+    archiveOptions(replacement, 'docs/reviews/replacement-source')
+  );
+  const protocolBefore = snapshotProtocol(current.root, current.options.dir);
+  let replacementSnapshot;
+
+  assert.throws(
+    () =>
+      publishPreparedArchive(prepared, {
+        hooks: {
+          beforeRename() {
+            materializePrepared(configuredAbsolute, replacementPrepared);
+            replacementSnapshot = snapshotDirectory(configuredAbsolute);
+          },
+        },
+      }),
+    (error) => error.code.startsWith('archive-foreign-')
+  );
+  assert.equal(existsSync(prepared.destination.absolute), false);
+  assert.deepEqual(snapshotProtocol(current.root, current.options.dir), protocolBefore);
+  assert.deepEqual(snapshotDirectory(configuredAbsolute), replacementSnapshot);
+  assert.equal(
+    readdirSync(path.dirname(prepared.destination.absolute)).some((name) =>
+      name.startsWith(`.${path.basename(prepared.destination.absolute)}.aitm-staging-`)
+    ),
+    true
+  );
+});
+
+test('foreign archive recovery refuses every unsafe mutation without changing preserved bytes', async () => {
+  for (const mutation of [
+    'arbitrary-destination',
+    'same-protocol',
+    'partial-archive',
+    'extra-file',
+    'corrupt-manifest',
+    'digest-mismatch',
+    'symlink-entry',
+    'conflicting-recovery-destination',
+  ]) {
+    const fixture = await foreignArchiveRecoveryFixture();
+    const { occupiedPrepared, current, configuredAbsolute, recoveryDir, recoveryOptions } = fixture;
+    let options = recoveryOptions;
+    let recoveryBefore = null;
+
+    if (mutation === 'arbitrary-destination') {
+      options = { ...recoveryOptions, archiveDir: `${recoveryDir}-arbitrary` };
+    } else if (mutation === 'same-protocol') {
+      const manifest = structuredClone(occupiedPrepared.manifest);
+      manifest.protocol.id = current.state.protocolId;
+      replaceArchiveManifestJson(configuredAbsolute, JSON.stringify(manifest, null, 2));
+    } else if (mutation === 'partial-archive') {
+      unlinkSync(path.join(configuredAbsolute, output(occupiedPrepared, 'review').path));
+    } else if (mutation === 'extra-file') {
+      writeFileSync(path.join(configuredAbsolute, 'extra.md'), 'unrecorded\n');
+    } else if (mutation === 'corrupt-manifest') {
+      replaceArchiveManifestJson(configuredAbsolute, '{ invalid');
+    } else if (mutation === 'digest-mismatch') {
+      writeFileSync(
+        path.join(configuredAbsolute, output(occupiedPrepared, 'review').path),
+        '# Review\n\nTampered.\n'
+      );
+    } else if (mutation === 'symlink-entry') {
+      const reviewPath = path.join(configuredAbsolute, output(occupiedPrepared, 'review').path);
+      unlinkSync(reviewPath);
+      symlinkSync(output(occupiedPrepared, 'response').path, reviewPath);
+    } else if (mutation === 'conflicting-recovery-destination') {
+      const recoveryAbsolute = path.join(current.root, recoveryDir);
+      mkdirSync(recoveryAbsolute, { recursive: true });
+      writeFileSync(path.join(recoveryAbsolute, 'conflict.md'), 'preserve this conflict\n');
+      recoveryBefore = snapshotDirectory(recoveryAbsolute);
+    }
+
+    const protocolBefore = snapshotProtocol(current.root, current.options.dir);
+    const occupiedBefore = snapshotDirectory(configuredAbsolute);
+    assert.throws(() => prepareArchive(options), /co-review:archive-/, mutation);
+    assert.deepEqual(snapshotProtocol(current.root, current.options.dir), protocolBefore, mutation);
+    assert.deepEqual(snapshotDirectory(configuredAbsolute), occupiedBefore, mutation);
+    if (recoveryBefore) {
+      assert.deepEqual(
+        snapshotDirectory(path.join(current.root, recoveryDir)),
+        recoveryBefore,
+        mutation
+      );
+    }
+  }
+});
+
+test('foreign archive validator rejects ambiguous identity, mode, and date fields', async (t) => {
+  const mutations = [
+    {
+      name: 'uppercase-current-protocol',
+      mutate(manifest, current) {
+        const uppercase = current.state.protocolId.toUpperCase();
+        assert.notEqual(uppercase, current.state.protocolId);
+        manifest.protocol.id = uppercase;
+      },
+    },
+    {
+      name: 'artifact-mode-null',
+      legacyCopy: true,
+      mutate(manifest) {
+        manifest.artifact.mode = null;
+      },
+    },
+    {
+      name: 'artifact-mode-legacy-copy',
+      legacyCopy: true,
+      mutate(manifest) {
+        manifest.artifact.mode = 'legacy-copy';
+      },
+    },
+    {
+      name: 'decision-at-null',
+      mutate(manifest) {
+        manifest.decision.at = null;
+      },
+    },
+    {
+      name: 'decision-at-empty',
+      mutate(manifest) {
+        manifest.decision.at = '';
+      },
+    },
+    {
+      name: 'decision-at-number',
+      mutate(manifest) {
+        manifest.decision.at = 0;
+      },
+    },
+  ];
+
+  for (const { name, legacyCopy = false, mutate } of mutations) {
+    await t.test(name, async () => {
+      const fixture = await foreignArchiveRecoveryFixture({ legacyCopy });
+      const manifest = structuredClone(fixture.occupiedPrepared.manifest);
+      mutate(manifest, fixture.current);
+      assertForeignManifestRefused(fixture, manifest, name);
+    });
+  }
+});
+
+test('foreign archive validator rejects serializer-impossible ordinary relationships', async (t) => {
+  const mutations = [
+    {
+      name: 'unsupported-protocol-schema',
+      mutate(manifest) {
+        manifest.protocol.schema = 'aitm.co-review/v2';
+      },
+    },
+    {
+      name: 'participants-not-distinct',
+      mutate(manifest) {
+        manifest.participants.reviewer = manifest.participants.owner;
+      },
+    },
+    {
+      name: 'owner-evidence-identity-mismatch',
+      mutate(manifest) {
+        manifest.evidence.ownerResponse.identity = 'different-owner';
+      },
+    },
+    {
+      name: 'reviewer-evidence-identity-mismatch',
+      mutate(manifest) {
+        manifest.evidence.reviewerReview.identity = 'different-reviewer';
+      },
+    },
+    {
+      name: 'consensus-reviewer-mismatch',
+      mutate(manifest) {
+        manifest.decision.reviewer = 'different-reviewer';
+      },
+    },
+    {
+      name: 'pair-round-mismatch',
+      mutate(manifest) {
+        manifest.evidence.pairRound += 1;
+      },
+    },
+    {
+      name: 'consensus-round-order',
+      mutate(manifest) {
+        manifest.evidence.ownerResponse.eventRound =
+          manifest.evidence.reviewerReview.eventRound + 1;
+        manifest.evidence.pairRound = manifest.evidence.ownerResponse.eventRound;
+      },
+    },
+  ];
+
+  for (const { name, mutate } of mutations) {
+    await t.test(name, async () => {
+      const fixture = await foreignArchiveRecoveryFixture();
+      const manifest = structuredClone(fixture.occupiedPrepared.manifest);
+      mutate(manifest);
+      assertForeignManifestRefused(fixture, manifest, name);
+    });
+  }
+
+  await t.test('good-enough-requires-exhausted-budget', async () => {
+    const occupied = await acceptedGoodEnough();
+    const fixture = await foreignArchiveRecoveryFixture({ occupied });
+    const manifest = structuredClone(fixture.occupiedPrepared.manifest);
+    manifest.budget.maxReviewTurns += 1;
+    manifest.budget.remainingReviewTurns = 1;
+    assertForeignManifestRefused(fixture, manifest, 'good-enough-requires-exhausted-budget');
+  });
+
+  await t.test('good-enough-round-order', async () => {
+    const occupied = await acceptedGoodEnough();
+    const fixture = await foreignArchiveRecoveryFixture({ occupied });
+    const manifest = structuredClone(fixture.occupiedPrepared.manifest);
+    manifest.evidence.reviewerReview.eventRound = manifest.evidence.ownerResponse.eventRound + 1;
+    manifest.evidence.pairRound = manifest.evidence.reviewerReview.eventRound;
+    assertForeignManifestRefused(fixture, manifest, 'good-enough-round-order');
+  });
+});
+
+test('foreign archive validator rejects serializer-impossible recovery provenance', async (t) => {
+  const pathMutations = [
+    ['configuredDestination', '/docs/reviews/original'],
+    ['configuredDestination', 'C:\\docs\\reviews\\original'],
+    ['configuredDestination', 'C:docs\\reviews\\original'],
+    ['configuredDestination', 'docs/reviews/../original'],
+    ['configuredDestination', 'docs/reviews/./original'],
+    ['configuredDestination', 'docs//reviews/original'],
+    ['configuredDestination', 'docs\\..\\original'],
+    ['recoveryDestination', '/docs/reviews/recovered'],
+    ['recoveryDestination', 'C:\\docs\\reviews\\recovered'],
+    ['recoveryDestination', 'C:docs\\reviews\\recovered'],
+    ['recoveryDestination', 'docs/reviews/../recovered'],
+    ['recoveryDestination', 'docs/reviews/./recovered'],
+    ['recoveryDestination', 'docs//reviews/recovered'],
+    ['recoveryDestination', 'docs\\..\\recovered'],
+  ];
+  for (const [field, value] of pathMutations) {
+    await t.test(`${field}-${value}`, async () => {
+      const fixture = await nestedForeignArchiveRecoveryFixture();
+      const manifest = structuredClone(fixture.nestedPrepared.manifest);
+      manifest.recovery[field] = value;
+      assertForeignManifestRefused(fixture, manifest, `${field}-${value}`);
+    });
+  }
+
+  const semanticMutations = [
+    {
+      name: 'occupied-protocol-equals-current',
+      mutate(manifest) {
+        manifest.recovery.occupiedProtocolId = manifest.protocol.id;
+      },
+    },
+    {
+      name: 'wrong-deterministic-suffix',
+      mutate(manifest) {
+        manifest.recovery.recoveryDestination += '-wrong';
+      },
+    },
+    {
+      name: 'inspected-directory-mismatch',
+      mutate(manifest) {
+        manifest.recovery.configuredDestination = 'docs/reviews/different-primary';
+        manifest.recovery.recoveryDestination = `docs/reviews/different-primary-recovery-${manifest.protocol.id}`;
+      },
+    },
+    {
+      name: 'equal-time-labeled-newer',
+      mutate(manifest) {
+        manifest.recovery.occupiedAcceptedAt = manifest.decision.at;
+        manifest.recovery.relationship = 'newer-than-occupied';
+      },
+    },
+    {
+      name: 'newer-time-labeled-older',
+      mutate(manifest) {
+        manifest.recovery.occupiedAcceptedAt = new Date(
+          Date.parse(manifest.decision.at) - 1_000
+        ).toISOString();
+        manifest.recovery.relationship = 'older-than-occupied';
+      },
+    },
+    {
+      name: 'older-time-labeled-newer',
+      mutate(manifest) {
+        manifest.recovery.occupiedAcceptedAt = new Date(
+          Date.parse(manifest.decision.at) + 1_000
+        ).toISOString();
+        manifest.recovery.relationship = 'newer-than-occupied';
+      },
+    },
+  ];
+  for (const { name, mutate } of semanticMutations) {
+    await t.test(name, async () => {
+      const fixture = await nestedForeignArchiveRecoveryFixture();
+      const manifest = structuredClone(fixture.nestedPrepared.manifest);
+      mutate(manifest);
+      assertForeignManifestRefused(fixture, manifest, name);
+    });
+  }
+});
+
+test('foreign archive validator accepts a serializer-produced recovered archive', async () => {
+  const fixture = await nestedForeignArchiveRecoveryFixture();
+
+  assert.equal(
+    prepareArchive(fixture.recoveryOptions).destination.relative,
+    fixture.recoveryOptions.archiveDir
+  );
+});
+
+test('foreign archive recovery accepts legacy v1 manifest JSON whitespace and key order', async () => {
+  const fixture = await foreignArchiveRecoveryFixture({ legacyCopy: true });
+  const { occupiedPrepared, configuredAbsolute, recoveryOptions } = fixture;
+  assert.equal(occupiedPrepared.manifest.artifact.mode, undefined);
+  assert.ok(output(occupiedPrepared, 'artifact'));
+  const reordered = Object.fromEntries(Object.entries(occupiedPrepared.manifest).reverse());
+  replaceArchiveManifestJson(configuredAbsolute, JSON.stringify(reordered, null, 4));
+  const matched = readFileSync(path.join(configuredAbsolute, 'README.md'), 'utf8').match(
+    /<!-- aitm-co-review-manifest:start -->\n```json\n([\s\S]*?\n)```\n<!-- aitm-co-review-manifest:end -->/
+  );
+  assert.ok(matched);
+  assert.deepEqual(JSON.parse(matched[1]), occupiedPrepared.manifest);
+
+  const recovered = prepareArchive(recoveryOptions);
+  assert.equal(recovered.destination.relative, recoveryOptions.archiveDir);
+});
+
 test('publication revalidates destination containment before its first write', async () => {
   const fixture = await acceptedConsensus();
   const prepared = prepareArchive(archiveOptions(fixture, 'docs/reviews/archive'));
@@ -809,7 +1874,7 @@ test('publication revalidates destination containment before its first write', a
 
   assert.throws(
     () => publishPreparedArchive(prepared),
-    (error) => error.code === 'path-outside-repository'
+    (error) => error.code === 'archive-destination-drift'
   );
   assert.deepEqual(readdirSync(outside), []);
 });
