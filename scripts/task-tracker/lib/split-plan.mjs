@@ -44,6 +44,14 @@ function renderScope(input, task) {
     .trim();
 }
 
+function renderUserStory(input, task) {
+  return [
+    'As a governed delivery agent',
+    `I want to deliver ${taskLabel(task)} from the pinned source plan`,
+    `So that issue #${input.sourceIssue} advances through traceable execution`,
+  ].join('\n');
+}
+
 function renderAcceptanceCriteria(task) {
   const refs = task.commands.map((_, index) => `vc:${index + 1}`).join(' ');
   return `- [ ] Deliver ${JSON.stringify(task.heading)} exactly as specified in the pinned source plan. <!-- aitm-verified vc-list="${refs}" -->`;
@@ -98,6 +106,7 @@ export function buildSplitProposals(input = {}) {
       kind: task.kind,
       heading: task.heading,
     },
+    userStory: renderUserStory(input, task),
     scope: renderScope(input, task),
     acceptanceCriteria: renderAcceptanceCriteria(task),
     storyOrigin: renderStoryOrigin(input, task),
@@ -121,6 +130,7 @@ export async function writeProposalFragments({
   const taskDir = path.join(scratchDir, `task-${String(proposal.task.number).padStart(3, '0')}`);
   mkdirSync(taskDir, { recursive: true });
   const paths = {
+    userStory: path.join(taskDir, 'user-story.md'),
     scope: path.join(taskDir, 'scope.md'),
     ac: path.join(taskDir, 'acs.md'),
     storyOrigin: path.join(taskDir, 'story-origin.md'),
@@ -128,6 +138,7 @@ export async function writeProposalFragments({
     verificationCommands: path.join(taskDir, 'verification-commands.txt'),
   };
   await Promise.all([
+    writeFile(paths.userStory, withFinalNewline(proposal.userStory), 'utf8'),
     writeFile(paths.scope, withFinalNewline(proposal.scope), 'utf8'),
     writeFile(paths.ac, withFinalNewline(proposal.acceptanceCriteria), 'utf8'),
     writeFile(paths.storyOrigin, withFinalNewline(proposal.storyOrigin), 'utf8'),
@@ -142,6 +153,8 @@ export async function writeProposalFragments({
     ...paths,
     creatorArgs: [
       ...proposal.creatorArgs,
+      '--user-story-file',
+      paths.userStory,
       '--scope-file',
       paths.scope,
       '--ac-file',

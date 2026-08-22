@@ -58,7 +58,8 @@ table. The per-level recursion is the design.
 
 ## How to construct a nested sub-epic
 
-1. Draft scope/AC/plan-meta files in `./.tmp/gh/` per the standard
+1. Draft User Story, Scope, Acceptance Criteria, Story Origin, and optional
+   Plan Metadata files in `./.tmp/gh/` per the standard
    `create-issue.mjs --shape epic` workflow.
 2. Create with `--parent <root-epic-#>`. The wrapper tethers to the project
    board and writes the `addSubIssue` link in one transaction.

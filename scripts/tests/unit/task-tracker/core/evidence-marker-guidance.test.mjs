@@ -21,10 +21,14 @@ for (const rel of docs) {
   const body = readFileSync(abs, 'utf8');
   assert.match(
     body,
-    /aitm-verified cmd="…"/,
-    `${rel} documents consolidated aitm-verified cmd="…" markers`
+    /aitm-verified vc-list="vc:N"/,
+    `${rel} documents current aitm-verified vc-list="vc:N" citations`
   );
-  assert.match(body, /Verification\s+Commands/, `${rel} mentions Verification Commands`);
+  assert.match(
+    body,
+    /Verification\s+Commands|root commands/,
+    `${rel} identifies the root Verification Commands contract`
+  );
 }
 
 // #491 relocated the verbose AC↔Verification-Commands guidance out of the
@@ -34,13 +38,13 @@ for (const rel of ['templates/references/pickup-directive-rationale.md']) {
   const body = readFileSync(path.join(root, rel), 'utf8');
   assert.match(
     body,
-    /Acceptance Criteria[\s\S]+aitm-verified cmd="…"[\s\S]+Verification Commands/i,
-    `${rel} links AC evidence markers to Verification Commands`
+    /Acceptance Criteria[\s\S]+aitm-verified vc-list="vc:N"[\s\S]+Verification Commands/i,
+    `${rel} links AC evidence citations to Verification Commands`
   );
   assert.match(
     body,
-    /standard or non-standard.*must appear.*Verification Commands/is,
-    `${rel} requires every command — standard or non-standard — in issue-specific Verification Commands (#326 / #231)`
+    /cited ID must[\s\S]+root[\s\S]+Verification Commands/is,
+    `${rel} requires every cited ID to resolve in root Verification Commands`
   );
 }
 

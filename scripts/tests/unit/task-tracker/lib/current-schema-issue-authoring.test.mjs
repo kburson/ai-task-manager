@@ -229,6 +229,7 @@ describe('current-schema public authoring contract', () => {
 
     for (const relativePath of [
       'skill/shared/rules/plan-mode-backlog.md',
+      'skill/shared/rules/block.md',
       'docs/guides/cloud-development-environments.md',
       'docs/guides/ai-value-framework.md',
       'docs/guides/workflow.md',

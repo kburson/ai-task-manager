@@ -62,8 +62,8 @@ test('AC2/AC4: create-issue prose is fully present in rules/create-issue.md', ()
     'Stub shape',
     'assignee-required',
     'priority-required-at-groom',
-    'aitm-verified cmd=', // AC↔evidence binding guidance
-    '### Verification', // Verification Commands reference
+    'aitm-verified vc-list=', // AC↔evidence binding guidance
+    '## Verification', // Verification Commands reference
     'spawn_task', // never-promote-a-chip rule
   ]) {
     assert.ok(ci.includes(kept), `${CREATE_ISSUE} is missing relocated guidance "${kept}".`);

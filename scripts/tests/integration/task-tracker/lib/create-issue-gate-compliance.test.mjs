@@ -60,12 +60,16 @@ function runDryRun() {
     'gate-compliance fixture',
     '--shape',
     'sub-issue',
+    '--user-story-file',
+    path.join(FIXTURE_DIR, 'user-story.md'),
     '--scope-file',
     path.join(FIXTURE_DIR, 'scope.md'),
     '--ac-file',
     path.join(FIXTURE_DIR, 'ac.md'),
     '--story-origin-file',
     path.join(FIXTURE_DIR, 'story-origin.md'),
+    '--verification-commands-file',
+    path.join(FIXTURE_DIR, 'verification-commands.md'),
     '--plan-metadata-file',
     path.join(FIXTURE_DIR, 'plan-meta.md'),
     '--parent',
@@ -184,20 +188,9 @@ test('create-issue.mjs --dry-run body is gate-compliant', async (t) => {
         fetchBody: async () => body,
       },
     });
-    // #523 — the Demonstrable-AC exit gate refuses ACs that carry no
-    // `aitm-verified cmd="…"` verifier. Verifier binding is workflow-deferred:
-    // a verifier references a targeted test file that does not exist at
-    // creation, so it is bound during refine/plan, not by create-issue.mjs.
-    // Mirror gate 2's rationale deferral — allow ONLY refine-exit-demonstrable
-    // refusals, never a board-shape refusal.
-    assert.equal(r.ok, false, 'expected demonstrable-AC deferral');
-    const allowed = ['refine-exit-demonstrable'];
-    const offending = (r.blockers || []).filter((b) => !allowed.some((a) => b.startsWith(a)));
-    assert.deepEqual(
-      offending,
-      [],
-      `unexpected non-demonstrable blockers: ${JSON.stringify(offending)}`
-    );
+    // #1382 — current-schema creation requires every demonstrable AC to cite
+    // an existing root Verification Command, so no AC binding is deferred.
+    assert.equal(r.ok, true, `unexpected Refine blockers: ${JSON.stringify(r.blockers)}`);
   });
 
   await t.test('gate 4 — Plan → Develop entry (planDeepDiveGate)', () => {
