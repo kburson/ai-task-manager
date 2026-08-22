@@ -15,6 +15,7 @@ const HASH_RE = /^[0-9a-f]{64}$/;
 const ULID_RE = /^[0-7][0-9A-HJKMNP-TV-Z]{25}$/;
 const REPOSITORY_RE = /^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/;
 const ATTRIBUTION_TOKEN_RE = /^#[1-9][0-9]*$/;
+const MERGE_METHODS = ['merge', 'squash', 'rebase'];
 const MAX_COMMENT_BODY_BYTES = 1024 * 1024;
 const MAX_RECORD_JSON_BYTES = 256 * 1024;
 const MAX_FIELD_BYTES = 1024;
@@ -196,6 +197,7 @@ function assertAttributionTokens(tokens, issueNumber) {
 }
 
 function validateIntent(intent) {
+  if (!MERGE_METHODS.includes(intent?.mergeMethod)) throw deliveryError('merge-method');
   canonicalRecordJson(intent);
   if (!hasExactlyKeys(intent, INTENT_KEYS)) throw deliveryError('intent-keys');
   if (intent.schema !== INTENT_SCHEMA) throw deliveryError('intent-schema');
@@ -211,7 +213,6 @@ function validateIntent(intent) {
   assertRef(intent.baseRef, 'base-ref');
   assertRef(intent.headRef, 'head-ref');
   assertSha(intent.expectedHeadSha, 'expected-head-sha');
-  if (intent.mergeMethod !== 'squash') throw deliveryError('merge-method');
   assertAttributionTokens(intent.attributionTokens, intent.issueNumber);
   assertBoundedString(intent.commitTitle, MAX_TITLE_BYTES, 'commit-title');
   assertBoundedString(intent.commitMessage, MAX_DELIVERY_COMMIT_MESSAGE_BYTES, 'commit-message', {
@@ -242,6 +243,7 @@ function validateIntent(intent) {
 }
 
 function validateReceipt(receipt) {
+  if (!MERGE_METHODS.includes(receipt?.mergeMethod)) throw deliveryError('merge-method');
   canonicalRecordJson(receipt);
   if (!hasExactlyKeys(receipt, RECEIPT_KEYS)) throw deliveryError('receipt-keys');
   if (receipt.schema !== RECEIPT_SCHEMA) throw deliveryError('receipt-schema');
@@ -252,7 +254,6 @@ function validateReceipt(receipt) {
   assertSha(receipt.expectedHeadSha, 'expected-head-sha');
   assertSha(receipt.mergeCommitSha, 'merge-commit-sha');
   assertRef(receipt.baseRef, 'base-ref');
-  if (receipt.mergeMethod !== 'squash') throw deliveryError('merge-method');
   if (receipt.verifiedTrunkRef !== `origin/${receipt.baseRef}`) {
     throw deliveryError('verified-trunk-ref');
   }

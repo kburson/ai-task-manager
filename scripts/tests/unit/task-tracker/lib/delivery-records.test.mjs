@@ -160,6 +160,45 @@ test('builders produce exact versioned schemas, hashes, and deeply frozen values
   assertDeepFrozen(receipt);
 });
 
+test('intent and receipt records round trip every supported merge method', () => {
+  for (const mergeMethod of ['merge', 'squash', 'rebase']) {
+    const intent = buildDeliveryIntent(intentInput({ mergeMethod }));
+    const receipt = buildDeliveryReceipt(receiptInput({ mergeMethod }));
+    const parsedIntentRecord = parseDeliveryComment(
+      {
+        id: `IC_intent_${mergeMethod}`,
+        body: renderDeliveryIntentComment(intent),
+        createdAt: '2026-08-22T00:01:00.000Z',
+      },
+      context
+    );
+    const parsedReceiptRecord = parseDeliveryComment(
+      {
+        id: `IC_receipt_${mergeMethod}`,
+        body: renderDeliveryReceiptComment(receipt),
+        createdAt: '2026-08-22T00:06:00.000Z',
+      },
+      context
+    );
+
+    assert.equal(parsedIntentRecord.record.mergeMethod, mergeMethod);
+    assert.equal(parsedReceiptRecord.record.mergeMethod, mergeMethod);
+  }
+});
+
+test('intent and receipt records reject merge methods outside the supported set', () => {
+  for (const mergeMethod of ['', 'fast-forward', null, undefined]) {
+    assert.throws(
+      () => buildDeliveryIntent(intentInput({ mergeMethod })),
+      /delivery-records:merge-method/
+    );
+    assert.throws(
+      () => buildDeliveryReceipt(receiptInput({ mergeMethod })),
+      /delivery-records:merge-method/
+    );
+  }
+});
+
 test('comments contain one canonical marker and preserve authoritative server metadata', () => {
   const intent = buildDeliveryIntent(intentInput());
   const receipt = buildDeliveryReceipt(receiptInput());

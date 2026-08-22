@@ -1,9 +1,9 @@
 #!/usr/bin/env node
 // @story #908 (epic #912)
 // vc:1 — the impure executor WIRES the pure policy into the close flow: it
-// detects a linked worktree, resolves the open PR, and either enables
-// GitHub-native auto-merge or fails CLOSED — all via an injected `pexec`, so the
-// wiring is provable without git/gh.
+// detects a linked worktree, resolves the open PR, and fails CLOSED for the
+// retired auto-merge mechanism without executing it — all via an injected
+// `pexec`, so the wiring is provable without git/gh.
 
 import { strict as assert } from 'node:assert';
 import { readFileSync } from 'node:fs';
@@ -188,10 +188,9 @@ test('close passes issue identity into Full-Auto merge preparation', () => {
   assert.match(source.slice(callStart, callEnd), /issueNumber:\s*closeIssueNum/);
 });
 
-test('enableFullAutoMergeForClose: gh-auto-merge configured → enables auto-merge (--auto), never bare merge', async () => {
+test('enableFullAutoMergeForClose: retired gh-auto-merge fails closed without merge execution', async () => {
   const px = fakePexec({
     'gh pr list --head b': '[{"number":907}]',
-    'gh pr merge 907 --auto --merge': '',
   });
   const r = await enableFullAutoMergeForClose({
     cfg: { repo: 'o/r', fullAutoMerge: { mechanism: 'gh-auto-merge' } },
@@ -199,12 +198,10 @@ test('enableFullAutoMergeForClose: gh-auto-merge configured → enables auto-mer
     isFullAuto: true,
     pexec: px,
   });
-  assert.equal(r.status, 'enabled');
-  assert.equal(r.prNumber, 907);
-  assert.deepEqual(r.argv, ['pr', 'merge', '907', '--auto', '--merge']);
-  const mergeCall = px.calls.find((c) => c.args.includes('merge') && c.args[0] === 'pr');
-  assert.ok(mergeCall.args.includes('--auto'), 'must ENABLE auto-merge, not merge now');
-  assert.ok(mergeCall.args.includes('-R') && mergeCall.args.includes('o/r'));
+  assert.equal(r.status, 'fail-closed');
+  assert.match(r.message, /full-auto-merge-retired-mechanism/);
+  assert.match(r.message, /provider-action/);
+  assert.equal(px.calls.filter((call) => call.args.includes('merge')).length, 0);
 });
 
 test('enableFullAutoMergeForClose: local-trunk-lane authorized → local-lane (no gh merge)', async () => {
@@ -219,7 +216,7 @@ test('enableFullAutoMergeForClose: local-trunk-lane authorized → local-lane (n
   assert.ok(!px.calls.some((c) => c.args.includes('--auto')));
 });
 
-test('enableFullAutoMergeForClose: gh enable errors → exec-failed (issue kept OPEN by caller)', async () => {
+test('enableFullAutoMergeForClose: retired gh route is never reached', async () => {
   const px = fakePexec({
     'gh pr list --head b': '[{"number":7}]',
     'gh pr merge 7 --auto --merge': new Error('branch protection: no required checks'),
@@ -230,6 +227,7 @@ test('enableFullAutoMergeForClose: gh enable errors → exec-failed (issue kept 
     isFullAuto: true,
     pexec: px,
   });
-  assert.equal(r.status, 'exec-failed');
-  assert.match(r.message, /branch protection/);
+  assert.equal(r.status, 'fail-closed');
+  assert.match(r.message, /full-auto-merge-retired-mechanism/);
+  assert.equal(px.calls.filter((call) => call.args.includes('merge')).length, 0);
 });

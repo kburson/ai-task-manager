@@ -107,9 +107,9 @@ export const DEFAULTS = {
   // #1091 — governed GitHub issue that stores versioned estimation rubric
   // snapshots. Zero explicitly means the adaptive rubric is not configured.
   estimationRubricIssue: 0,
-  // #1202 — structured opt-in for the Full-Auto close integration lane.
-  // Null deliberately preserves the fail-closed default; a project-local
-  // object must explicitly select and authorize a mechanism.
+  // #939/#1202 — structured opt-in for provider delivery or the explicitly
+  // authorized local-trunk lane. Null deliberately preserves the fail-closed
+  // default; a project-local object must select and authorize a mechanism.
   fullAutoMerge: null,
 };
 
