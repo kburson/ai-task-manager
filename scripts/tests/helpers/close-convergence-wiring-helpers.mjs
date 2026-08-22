@@ -71,6 +71,7 @@ export async function runClose({
   const calls = {
     boardReads: 0,
     bodyReads: 0,
+    bindingReleases: 0,
     childSnapshots: 0,
     closeSnapshotReads: 0,
     drains: 0,
@@ -85,6 +86,7 @@ export async function runClose({
     reopens: 0,
     timingReads: 0,
     timingRows: [],
+    terminalDispositions: 0,
   };
   captureCalls?.(calls);
   const projectConfig = {
@@ -210,7 +212,16 @@ export async function runClose({
           error: null,
         };
       },
-      writeTerminalDisposition: async () => ({ status: 'ok' }),
+      writeTerminalDisposition: async () => {
+        calls.terminalDispositions += 1;
+        return { status: 'ok' };
+      },
+      releaseIssueBindings: () => {
+        calls.bindingReleases += 1;
+        return { released: [] };
+      },
+      deregisterTask: () => {},
+      releaseBindingOccupancy: () => ({ status: 'released' }),
       loadCloseDeliveryBody: async () => liveBody,
       loadCloseDeliveryGateInput: async () => ({
         issueNumber: 925,

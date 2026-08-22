@@ -416,18 +416,39 @@ test('board-Done open-issue convergence refuses GitHub close when terminal timin
   assert.equal(run.exitCode, 1);
 });
 
-test('delivery receipt refusal precedes every terminal close effect', async () => {
-  const run = await runClose({
-    closeSnapshot: { issueClosed: false, stateReason: null },
-    gateReviewToDone: false,
-    force: true,
-    deliveryRefusal: new Error('close-delivery-receipt:missing'),
-  });
+for (const category of [
+  'input',
+  'lineage',
+  'missing',
+  'malformed',
+  'duplicate',
+  'conflicting',
+  'ambiguous-pr',
+  'not-merged',
+  'branch-mismatch',
+  'base-mismatch',
+  'head-mismatch',
+  'issue-mismatch',
+  'pr-mismatch',
+  'merge-commit-missing',
+  'merge-commit-mismatch',
+]) {
+  test(`delivery receipt ${category} refusal precedes every specified side effect`, async () => {
+    const run = await runClose({
+      closeSnapshot: { issueClosed: false, stateReason: null },
+      gateReviewToDone: false,
+      force: true,
+      deliveryRefusal: new Error(`close-delivery-receipt:${category}`),
+    });
 
-  assert.equal(run.exitCode, 1);
-  assert.equal(run.calls.timingRows.length, 0);
-  assert.equal(run.calls.flushes, 0);
-  assert.equal(run.calls.logIssueTime, 0);
-  assert.equal(run.calls.movesToDone.length, 0);
-  assert.equal(run.calls.issueCloses, 0);
-});
+    assert.equal(run.exitCode, 1);
+    assert.equal(run.calls.drains, 0);
+    assert.equal(run.calls.timingRows.length, 0);
+    assert.equal(run.calls.flushes, 0);
+    assert.equal(run.calls.logIssueTime, 0);
+    assert.equal(run.calls.movesToDone.length, 0);
+    assert.equal(run.calls.issueCloses, 0);
+    assert.equal(run.calls.terminalDispositions, 0);
+    assert.equal(run.calls.bindingReleases, 0);
+  });
+}

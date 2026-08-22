@@ -25,6 +25,25 @@ function frozenResult(value) {
   return Object.freeze(value);
 }
 
+export function resolveAcceptedDeliveryHead({
+  localHeadSha,
+  testReceiptSha,
+  reviewReceiptSha = null,
+  agentReviewPassed,
+} = {}) {
+  if (
+    !SHA_RE.test(localHeadSha || '') ||
+    !SHA_RE.test(testReceiptSha || '') ||
+    agentReviewPassed !== true ||
+    testReceiptSha !== localHeadSha ||
+    (reviewReceiptSha !== null &&
+      (!SHA_RE.test(reviewReceiptSha || '') || reviewReceiptSha !== localHeadSha))
+  ) {
+    fail('accepted-evidence');
+  }
+  return reviewReceiptSha ?? testReceiptSha;
+}
+
 export function requireDeliveryReceipt({
   issueNumber,
   lineage,
@@ -63,6 +82,7 @@ export function requireDeliveryReceipt({
   if (pr.headRefName !== branch) fail('branch-mismatch');
   if (pr.headRefOid !== acceptedSha) fail('head-mismatch');
   if (pr.baseRefName !== lineage.deliveryTarget) fail('base-mismatch');
+  if (!SHA_RE.test(pr.mergeCommitSha || '')) fail('merge-commit-missing');
 
   if (!isObject(records) || !Array.isArray(records.intents) || !Array.isArray(records.receipts)) {
     fail('malformed');
@@ -87,6 +107,7 @@ export function requireDeliveryReceipt({
   if (receipt.issueNumber !== issueNumber) fail('issue-mismatch');
   if (receipt.prNumber !== pr.number) fail('pr-mismatch');
   if (receipt.expectedHeadSha !== acceptedSha) fail('head-mismatch');
+  if (receipt.mergeCommitSha !== pr.mergeCommitSha) fail('merge-commit-mismatch');
   if (receipt.baseRef !== lineage.deliveryTarget) fail('base-mismatch');
   if (receipt.result !== 'delivered') fail('malformed');
   return frozenResult({ skipped: false, receipt });

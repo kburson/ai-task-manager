@@ -89,9 +89,7 @@ function validateIssueAndBinding(issue, binding, config) {
     isPlainObject(authorization) &&
     authorization.standing === true &&
     ['human', 'full-auto'].includes(authorization.mode);
-  if (!authorizedByDecision && !['human', 'full-auto'].includes(issue.approvalEvidence)) {
-    fail('approval-evidence');
-  }
+  if (!authorizedByDecision) fail('approval-evidence');
   if (typeof binding.branch !== 'string' || binding.branch.length === 0) fail('input');
 }
 

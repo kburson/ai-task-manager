@@ -23,9 +23,9 @@ import { writeTerminalDisposition } from '../lib/terminal-disposition.mjs';
 import {
   hasReviewApprovedMarker,
   parseReviewApprovedMarker,
-  parseTestStartedMarker,
   readPlanApprovedForecastRecordId,
 } from '../lib/markers.mjs';
+import { isAgentReviewComplete } from '../lib/agent-review/review-gate.mjs';
 import { runGuards } from '../lib/guard-registry.mjs';
 import '../lib/guard-bootstrap.mjs';
 import {
@@ -35,7 +35,10 @@ import {
 import { fetchParentIssueStrict } from '../lib/fetch-parent-issue.mjs';
 import { parseVerificationReceipt } from '../lib/verification-receipt.mjs';
 import { parseDeliveryComment, projectDeliveryRecords } from '../lib/delivery-records.mjs';
-import { requireDeliveryReceipt } from '../lib/close-delivery-receipt.mjs';
+import {
+  requireDeliveryReceipt,
+  resolveAcceptedDeliveryHead,
+} from '../lib/close-delivery-receipt.mjs';
 import { tickLifecycleItem } from '../lib/lifecycle-dod.mjs';
 import { assertLifecycleSatisfied } from '../close-gate.mjs';
 import { deriveAndStampFunctionalDod } from '../lib/functional-dod-derive.mjs';
@@ -88,11 +91,12 @@ async function loadCloseDeliveryGateInput({ issueNumber, cfg, projectDir, pexec,
   ]);
   const branch = String(branchOut || '').trim();
   const localHeadSha = String(headOut || '').trim();
-  const acceptedSha =
-    parseVerificationReceipt(body, 'review')?.commitSha ??
-    parseVerificationReceipt(body, 'test')?.commitSha ??
-    parseTestStartedMarker(body)?.sha ??
-    null;
+  const acceptedSha = resolveAcceptedDeliveryHead({
+    localHeadSha,
+    testReceiptSha: parseVerificationReceipt(body, 'test')?.commitSha ?? null,
+    reviewReceiptSha: parseVerificationReceipt(body, 'review')?.commitSha ?? null,
+    agentReviewPassed: isAgentReviewComplete(body),
+  });
   const { stdout: prOut } = await pexec(
     'gh',
     [
@@ -105,13 +109,14 @@ async function loadCloseDeliveryGateInput({ issueNumber, cfg, projectDir, pexec,
       '--state',
       'all',
       '--json',
-      'number,state,mergedAt,headRefName,headRefOid,baseRefName',
+      'number,state,mergedAt,mergeCommit,headRefName,headRefOid,baseRefName',
     ],
     { timeout: GH_API_TIMEOUT_MS }
   );
   const pullRequests = JSON.parse(String(prOut || '[]')).map((pr) => ({
     ...pr,
     merged: String(pr.state || '').toUpperCase() === 'MERGED',
+    mergeCommitSha: pr.mergeCommit?.oid ?? null,
   }));
   const baseRef = closeBaseRef(cfg);
   const lineage = {
@@ -417,6 +422,12 @@ export async function verbClose(ctx) {
     projectConfig;
   const { rest } = ctx;
   const { drainQueueIfAny, flushAndForgetQueueFor, safePostTiming } = timingRecorder;
+  let queueDrained = false;
+  const drainQueueOnce = async () => {
+    if (queueDrained) return;
+    await drainQueueIfAny();
+    queueDrained = true;
+  };
   const flushQueueFor =
     timingRecorder.flushQueueFor ??
     flushAndForgetQueueFor ??
@@ -453,7 +464,6 @@ export async function verbClose(ctx) {
   // observe it and the two call sites can never drift apart. Falls back to the
   // module helper when the ctx does not inject one (production).
   const reconcileLifecycleBoxes = ctx.tickLifecycleOnClose || tickLifecycleOnClose;
-  await drainQueueIfAny();
   const initialState = loadState(statePath);
   const target = rest.find((a) => /^#\d+$/.test(a));
   let s = initialState;
@@ -479,6 +489,7 @@ export async function verbClose(ctx) {
     saveState(s, statePath);
   }
   if (!closeTarget) {
+    await drainQueueOnce();
     console.log('no active task');
     return;
   }
@@ -490,6 +501,7 @@ export async function verbClose(ctx) {
   // and return here, before any shared gate state below is read.
   const asIdx = rest.indexOf('--as');
   if (asIdx !== -1) {
+    await drainQueueOnce();
     const disposition = rest[asIdx + 1];
     const ofIdx = rest.indexOf('--of');
     const ofRef = ofIdx !== -1 ? rest[ofIdx + 1] : '';
@@ -798,6 +810,7 @@ export async function verbClose(ctx) {
 
     if (decision.action === 'close-issue') {
       if (await refuseDeliveryGate()) return;
+      await drainQueueOnce();
       // Board reads Done but the issue is still OPEN — the Projects auto-close
       // workflow did not fire. Close the primary explicitly. On failure, surface
       // it and exit non-zero WITHOUT clearing local state so a re-run recovers.
@@ -856,6 +869,7 @@ export async function verbClose(ctx) {
 
     if (['dead', 'finalize', 'aberration', 'noop'].includes(decision.action)) {
       if (['finalize', 'noop'].includes(decision.action) && (await refuseDeliveryGate())) return;
+      await drainQueueOnce();
       const convergence = await runClosedIssueConvergence(
         {
           decision,
@@ -1073,10 +1087,14 @@ export async function verbClose(ctx) {
   }
 
   if (closeTarget === 'discover') {
+    await drainQueueOnce();
     console.log('Discarded discovery bucket.');
     saveState({ ...s, active: null, discoverBucket: null }, statePath);
     return;
   }
+
+  if (await refuseDeliveryGate()) return;
+  await drainQueueOnce();
 
   let dirtyAuditRow = null;
   // #655 — `?? ctx.closeBody` lets a SKIP_NETWORK fixture seed the live body the
@@ -1441,8 +1459,6 @@ export async function verbClose(ctx) {
       );
     }
   }
-
-  if (await refuseDeliveryGate()) return;
 
   if (!SKIP_NETWORK && closeIssueNum) {
     const subNums = await fetchSubIssues(closeIssueNum);

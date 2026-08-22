@@ -4,7 +4,6 @@
 //
 //   - detect a linked worktree (so the close-attribution query can target
 //     `origin/trunk` and never touch the shared local `trunk` ref);
-//   - resolve the open PR for legacy callers;
 //   - fail CLOSED when a caller requests provider-mediated PR mutation.
 //
 // Every side effect funnels through an injected `pexec(cmd, args, opts)` so the
@@ -61,17 +60,14 @@ export async function resolveOpenPrNumber({ branch, cfg = {}, pexec } = {}) {
 //
 //   { status: 'skipped-not-full-auto' }  interactive close — unchanged behavior
 //   { status: 'skipped-parent-branch' }  child/nested epic delivers to its parent branch
-//   { status: 'skipped-no-pr' }          no open PR for the branch — local close path
-//   { status: 'fail-closed', message }   PR present under Full-Auto but `fullAutoMerge`
+//   { status: 'fail-closed', message }   Full-Auto but `fullAutoMerge`
 //                                         is unconfigured/invalid → caller HALTS, issue
 //                                         stays OPEN (actionable message names the key)
 //   { status: 'local-lane', prNumber }   operator-authorized no-PR local-trunk lane
 export async function enableFullAutoMergeForClose({
   cfg = {},
-  branch,
   issueNumber,
   isFullAuto,
-  pexec,
   resolveParentIssue = fetchParentIssueStrict,
 } = {}) {
   if (!isFullAuto) return { status: 'skipped-not-full-auto' };
@@ -95,14 +91,11 @@ export async function enableFullAutoMergeForClose({
     }
   }
 
-  const prNumber = await resolveOpenPrNumber({ branch, cfg, pexec });
-  if (prNumber == null) return { status: 'skipped-no-pr' };
-
-  const plan = planFullAutoMerge({ prNumber, cfg });
+  const plan = planFullAutoMerge({ cfg });
   if (!plan.ok) return { status: 'fail-closed', message: plan.message };
 
   if (plan.mechanism === 'local-trunk-lane') {
-    return { status: 'local-lane', prNumber };
+    return { status: 'local-lane', prNumber: null };
   }
 
   return {

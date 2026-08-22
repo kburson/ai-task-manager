@@ -28,7 +28,7 @@ function snapshot() {
       projectState: 'Review',
       assignees: ['kburson'],
       agentReviewPassed: true,
-      approvalEvidence: 'full-auto',
+      reviewAuthorization: { mode: 'full-auto', standing: true, source: 'test' },
     },
     binding: {
       issueNumber: 939,
@@ -181,7 +181,7 @@ const REFUSALS = [
     name: 'missing human or Full-Auto approval evidence',
     category: 'approval-evidence',
     mutate: (input) => {
-      input.issue.approvalEvidence = null;
+      input.issue.reviewAuthorization = { mode: 'missing', standing: false, source: 'none' };
     },
   },
   {

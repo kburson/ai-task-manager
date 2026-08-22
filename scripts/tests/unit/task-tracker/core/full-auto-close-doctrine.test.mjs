@@ -65,6 +65,18 @@ test('approval evidence must be current-head and genuine human approval remains 
   });
 });
 
+test('stale Full-Auto body evidence cannot survive auto off or reset', () => {
+  for (const session of [
+    applyChoice({ gates: {}, lastPromptedParent: null }, 'off'),
+    applyChoice(applyChoice({ gates: {}, lastPromptedParent: null }, 'both'), 'reset'),
+  ]) {
+    const value = preflight();
+    value.issue.approvalEvidence = 'full-auto';
+    value.issue.reviewAuthorization = decision(session, { gateReviewToDone: true });
+    assert.throws(() => validateDeliveryPreflight(value), /approval-evidence/);
+  }
+});
+
 function preflight() {
   return {
     issue: {

@@ -373,15 +373,14 @@ export async function runDeliver({ issueNumber, cfg, state, deps = {} } = {}) {
       commitSubjectsPromise,
       listDirtyPaths({ issueNumber }),
     ]);
-  const reviewAuthorization = await (
-    deps.resolveReviewAuthorization ??
-    (({ issue }) =>
-      Object.freeze({
-        mode: issue.approvalEvidence ?? 'missing',
-        standing: ['human', 'full-auto'].includes(issue.approvalEvidence),
-        source: issue.approvalEvidence ? 'legacy-evidence' : 'none',
-      }))
-  )({ issue, expectedHeadSha: localHeadSha, acceptedReviewSha });
+  const reviewAuthorization = await requiredDependency(
+    deps,
+    'resolveReviewAuthorization'
+  )({
+    issue,
+    expectedHeadSha: localHeadSha,
+    acceptedReviewSha,
+  });
   const assignee =
     typeof cfg.assignee === 'string' && cfg.assignee !== '@me' && cfg.assignee.length > 0
       ? cfg.assignee
@@ -543,7 +542,6 @@ export async function runDeliver({ issueNumber, cfg, state, deps = {} } = {}) {
 
 function normalizeIssue(issue, projectState) {
   const body = String(issue?.body || '');
-  const approval = parseReviewApprovedMarker(body);
   return {
     number: Number(issue?.number),
     state: issue?.state,
@@ -552,7 +550,6 @@ function normalizeIssue(issue, projectState) {
       ? issue.assignees.map(({ login }) => login).filter(Boolean)
       : [],
     agentReviewPassed: isAgentReviewComplete(body),
-    approvalEvidence: approval ? (approval.fullAuto ? 'full-auto' : 'human') : null,
     body,
   };
 }

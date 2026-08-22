@@ -8,7 +8,10 @@ import {
   buildDeliveryReceipt,
   projectDeliveryRecords,
 } from '../../../../task-tracker/lib/delivery-records.mjs';
-import { requireDeliveryReceipt } from '../../../../task-tracker/lib/close-delivery-receipt.mjs';
+import {
+  requireDeliveryReceipt,
+  resolveAcceptedDeliveryHead,
+} from '../../../../task-tracker/lib/close-delivery-receipt.mjs';
 
 const HEAD = 'a'.repeat(40);
 const MERGE = 'b'.repeat(40);
@@ -70,6 +73,7 @@ function input(overrides = {}) {
         headRefName: 'codex/939-full-auto-merge',
         headRefOid: HEAD,
         baseRefName: 'trunk',
+        mergeCommitSha: MERGE,
       },
     ],
     records: validRecords(),
@@ -82,6 +86,36 @@ test('valid exact-head delivery receipt authorizes close', () => {
   assert.equal(result.skipped, false);
   assert.equal(result.receipt.expectedHeadSha, HEAD);
   assert.ok(Object.isFrozen(result));
+});
+
+test('accepted delivery head requires current Test and Agent Review evidence', () => {
+  assert.equal(
+    resolveAcceptedDeliveryHead({
+      localHeadSha: HEAD,
+      testReceiptSha: HEAD,
+      reviewReceiptSha: HEAD,
+      agentReviewPassed: true,
+    }),
+    HEAD
+  );
+  for (const overrides of [
+    { testReceiptSha: null },
+    { agentReviewPassed: false },
+    { testReceiptSha: 'c'.repeat(40) },
+    { reviewReceiptSha: 'c'.repeat(40) },
+  ]) {
+    assert.throws(
+      () =>
+        resolveAcceptedDeliveryHead({
+          localHeadSha: HEAD,
+          testReceiptSha: HEAD,
+          reviewReceiptSha: null,
+          agentReviewPassed: true,
+          ...overrides,
+        }),
+      /accepted-evidence/
+    );
+  }
 });
 
 test('missing, malformed, duplicate, conflicting, and mismatched receipt evidence fails closed', () => {
@@ -105,6 +139,18 @@ test('missing, malformed, duplicate, conflicting, and mismatched receipt evidenc
       { pullRequests: [{ ...input().pullRequests[0], merged: false, state: 'OPEN' }] },
     ],
     ['ambiguous-pr', { pullRequests: [...input().pullRequests, ...input().pullRequests] }],
+    [
+      'merge-commit-missing',
+      { pullRequests: [{ ...input().pullRequests[0], mergeCommitSha: null }] },
+    ],
+    [
+      'merge-commit-missing',
+      { pullRequests: [{ ...input().pullRequests[0], mergeCommitSha: 'short' }] },
+    ],
+    [
+      'merge-commit-mismatch',
+      { pullRequests: [{ ...input().pullRequests[0], mergeCommitSha: 'd'.repeat(40) }] },
+    ],
   ];
   for (const [category, overrides] of cases) {
     assert.throws(() => requireDeliveryReceipt(input(overrides)), new RegExp(category));
@@ -146,5 +192,8 @@ test('close contains no PR mutation or provider-action wait/retry path', () => {
   );
   assert.doesNotMatch(source, /enableFullAutoMergeForClose\s*\(/);
   assert.doesNotMatch(source, /AITM_PROVIDER_ACTION_REQUIRED|provider-action.*(?:wait|retry)/i);
+  assert.doesNotMatch(source, /parseTestStartedMarker/);
+  assert.match(source, /number,state,mergedAt,mergeCommit,headRefName,headRefOid,baseRefName/);
+  assert.match(source, /mergeCommitSha:\s*pr\.mergeCommit\?\.oid\s*\?\?\s*null/);
   assert.match(source, /ctx\.requireDeliveryReceipt\s*\|\|\s*requireDeliveryReceipt/);
 });

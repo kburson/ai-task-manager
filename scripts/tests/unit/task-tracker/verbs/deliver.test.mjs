@@ -102,6 +102,9 @@ function makeHarness(options = {}) {
   let intentIdIndex = 0;
 
   const deps = {
+    resolveReviewAuthorization() {
+      return Object.freeze({ mode: 'full-auto', standing: true, source: 'test' });
+    },
     async fetchIssue() {
       return {
         number: 939,
@@ -109,7 +112,6 @@ function makeHarness(options = {}) {
         projectState: 'Review',
         assignees: ['kburson'],
         agentReviewPassed: true,
-        approvalEvidence: 'full-auto',
         body: 'governed issue body',
       };
     },
