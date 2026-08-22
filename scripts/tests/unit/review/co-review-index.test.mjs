@@ -1,7 +1,7 @@
 // @story #1325
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, mkdirSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, rmSync } from 'node:fs';
 import path from 'node:path';
 
 import { projectScratchDir } from '../../../task-tracker/lib/scratch-dir.mjs';
@@ -204,6 +204,84 @@ test('grant resolution targets the command runtime before verifying its worktree
   });
   assert.equal(grant.protocolId, state.protocolId);
   assert.equal(grant.worktree, state.worktree);
+});
+
+test('unrelated stale active row cannot block an exact healthy reviewer grant', () => {
+  const { indexFile, state, dir } = fixture();
+  const staleWorktree = mkdtempSync(path.join(projectScratchDir('test'), 'aitm-stale-index-'));
+  const staleDir = path.join(staleWorktree, '.tmp', 'stale-review');
+  mkdirSync(staleDir, { recursive: true });
+  registerProtocol({
+    indexFile,
+    state: {
+      ...state,
+      protocolId: 'stale-protocol',
+      repositoryRoot: staleWorktree,
+      worktree: staleWorktree,
+      roles: { owner: 'StaleOwner', reviewer: 'StaleReviewer' },
+      initialization: { runtimeDir: '.tmp/stale-review' },
+    },
+  });
+  recordReviewerClaim({
+    indexFile,
+    protocolId: 'stale-protocol',
+    provider: 'claude',
+    sid: 'unrelated-session',
+    round: 2,
+  });
+  registerProtocol({ indexFile, state });
+  recordReviewerClaim({
+    indexFile,
+    protocolId: state.protocolId,
+    provider: 'grok',
+    sid: 'grok-reviewer-sid',
+    round: 2,
+  });
+  rmSync(staleDir, { recursive: true });
+  const live = {
+    ...state,
+    turnState: 'claimed',
+    claim: { role: 'reviewer', actor: 'Reviewer' },
+    lastHandoff: {
+      from: 'owner',
+      commit: '0123456789012345678901234567890123456789',
+    },
+  };
+
+  const grant = resolveReviewerGrant({
+    indexFile,
+    runtimeDir: dir,
+    runtimeRoot: state.worktree,
+    provider: 'grok',
+    sid: 'grok-reviewer-sid',
+    statusProtocol: () => live,
+  });
+  assert.equal(grant.protocolId, state.protocolId);
+});
+
+test('identity-matching stale runtime remains fail-closed', () => {
+  const { indexFile, state, dir } = fixture();
+  registerProtocol({ indexFile, state });
+  recordReviewerClaim({
+    indexFile,
+    protocolId: state.protocolId,
+    provider: 'grok',
+    sid: 'grok-reviewer-sid',
+    round: 2,
+  });
+  rmSync(dir, { recursive: true });
+  assert.throws(
+    () =>
+      resolveReviewerGrant({
+        indexFile,
+        runtimeDir: state.worktree,
+        runtimeRoot: state.worktree,
+        provider: 'grok',
+        sid: 'grok-reviewer-sid',
+        statusProtocol: () => null,
+      }),
+    /ENOENT/
+  );
 });
 
 test('active co-review worktree is derived from live protocol integrity', () => {
