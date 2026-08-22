@@ -174,6 +174,7 @@ function safeRecordedPath(value, label) {
       value &&
       !path.posix.isAbsolute(value) &&
       !path.win32.isAbsolute(value) &&
+      !path.win32.parse(value).root &&
       !value.split(/[\\/]/).some((segment) => !segment || segment === '.' || segment === '..'),
     `${label} path`
   );
