@@ -6,7 +6,11 @@ import path from 'node:path';
 import { createInterface } from 'node:readline/promises';
 import { fileURLToPath } from 'node:url';
 
-import { prepareArchive, publishPreparedArchive } from './lib/archive.mjs';
+import {
+  deriveRecoveryArchiveDir,
+  prepareArchive,
+  publishPreparedArchive,
+} from './lib/archive.mjs';
 import { helpRequest, renderHelp } from './lib/help.mjs';
 import {
   START_DEFAULTS,
@@ -214,17 +218,28 @@ export async function runCli(argv = process.argv.slice(2), io = {}) {
           ...repositoryOptions,
         });
         if (result.lifecycle === 'accepted') {
+          let prepared;
           try {
             const snapshot = protocol.validatedArchiveSnapshot({
               cwd,
               dir,
               ...repositoryOptions,
             });
-            const prepared = prepareArchive({
-              ...snapshot,
-              archiveDir: result.initialization.archiveDir,
-              ...repositoryOptions,
-            });
+            try {
+              prepared = prepareArchive({
+                ...snapshot,
+                archiveDir: result.initialization.archiveDir,
+                ...repositoryOptions,
+              });
+            } catch (configuredError) {
+              const configuredArchiveDir = result.initialization.archiveDir;
+              if (!configuredArchiveDir) throw configuredError;
+              prepared = prepareArchive({
+                ...snapshot,
+                archiveDir: deriveRecoveryArchiveDir(configuredArchiveDir, result.protocolId),
+                ...repositoryOptions,
+              });
+            }
             result = {
               ...result,
               archivePublication: publishPreparedArchive(prepared, {
@@ -238,6 +253,7 @@ export async function runCli(argv = process.argv.slice(2), io = {}) {
               archivePendingMessage({
                 state: result,
                 error,
+                prepared,
                 shellArgument: protocol.shellArgument,
               })
             );

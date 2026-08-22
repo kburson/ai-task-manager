@@ -493,6 +493,57 @@ test('reviewer consensus finalizes automatically and an unconfigured destination
   );
 });
 
+test('reviewer consensus retries an occupied eligible primary through its deterministic recovery sibling', async () => {
+  const occupied = await acceptedConsensus();
+  const occupiedPrepared = prepareArchive(archiveOptions(occupied, 'docs/reviews/occupied-source'));
+  const current = await consensusReady({ archiveDir: 'docs/reviews/configured' });
+  const currentState = current.api.readProtocol({ cwd: current.root, dir: current.options.dir });
+  const configuredAbsolute = path.join(current.root, 'docs/reviews/configured');
+  const recoveryDir = `docs/reviews/configured-recovery-${currentState.protocolId}`;
+  const runtimeDir = path.join(current.root, current.options.dir);
+  materializePrepared(configuredAbsolute, occupiedPrepared);
+
+  const accepted = await runCliDirect(
+    [
+      'handoff',
+      '--dir',
+      current.options.dir,
+      '--actor',
+      'reviewer-agent',
+      '--review',
+      current.review,
+      '--review-of',
+      current.initialCommit,
+      '--decision',
+      'accepted',
+      '--message',
+      'accepted',
+    ],
+    {
+      cwd: current.root,
+      repository: current.repository,
+      archiveHooks: {
+        afterWrite() {
+          throw new Error('injected recovery publication failure');
+        },
+      },
+    }
+  );
+
+  assert.equal(accepted.status, 4);
+  assert.match(
+    accepted.stderr,
+    new RegExp(
+      `Retry: npx aitm co-review finalize --dir ${runtimeDir} --archive-dir ${recoveryDir}\\n$`
+    )
+  );
+  assert.doesNotMatch(accepted.stderr, /--archive-dir docs\/reviews\/configured(?:\n|$)/);
+  assert.equal(
+    current.api.readProtocol({ cwd: current.root, dir: current.options.dir }).lifecycle,
+    'accepted'
+  );
+});
+
 test('good-enough acceptance is revision-checked, immutable, and requires two-sided closing evidence', async () => {
   const ready = await goodEnoughReady();
   const before = snapshotProtocol(ready.root, ready.options.dir);
