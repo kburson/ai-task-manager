@@ -313,7 +313,7 @@ test('skill and pickup docs no longer order Review-stage standard-lane reruns', 
   ]) {
     assert.match(
       readFileSync(path.join(REPO_ROOT, rel), 'utf8'),
-      /Test stamps reuse its receipt\. Review stamps reuse or refuse; never execute/i,
+      /Run in Develop\/Test; Review only reuses receipts\. Never bulk-check/i,
       rel
     );
   }
