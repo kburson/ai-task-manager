@@ -58,3 +58,22 @@ governed issue #939 from base
 No implementation blocker. Task 7 must still confirm that the live host exposes
 the named sanctioned integration before attempting the real provider action;
 the shared rule fails closed when it does not.
+
+## Review fix: provider-action authorization boundary
+
+The Task 6 review found that the first rule version coupled provider invocation
+to the marker line but did not also require the command's dedicated exit code.
+The rule now authorizes an external action only when `deliver` exits exactly 20
+and stdout contains exactly one action line. Every other exit/output combination
+forbids provider invocation, triggers one live-state reconciliation rerun, and
+fails closed if the invalid result repeats.
+
+The rule also mirrors the authoritative action object's exact 12-key schema and
+types before capability lookup. It uses the emitted field names `prNumber`,
+`mergeMethod`, `commitTitle`, and `commitMessage`; the review prompt's descriptive
+aliases were not adopted because they are not fields in
+`delivery-provider-action.mjs`.
+
+TDD evidence: the strengthened parity assertion failed on the missing exit-code
+coupling, then passed after the rule change. The complete Task 1-6 aggregate
+remained green at 132 tests.

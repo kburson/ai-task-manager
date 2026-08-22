@@ -199,12 +199,31 @@ test('#939: provider adapters own sanctioned integration wording', () => {
 
 test('#939: delivery rule is an exact, fail-closed host contract', () => {
   const rule = readFileSync(path.join(REPO_ROOT, 'skill/shared/rules/deliver.md'), 'utf8');
+  assert.match(rule, /exit status is exactly `20`/i);
+  assert.match(rule, /only when both[\s\S]*exactly `20`[\s\S]*exactly one/i);
+  assert.match(rule, /any other exit\/output combination[\s\S]*must not invoke/i);
   assert.match(rule, /parse only the single `AITM_PROVIDER_ACTION_REQUIRED:` line/i);
-  assert.match(rule, /expectedHeadSha/);
-  assert.match(
-    rule,
-    /repository[\s\S]*prNumber[\s\S]*mergeMethod[\s\S]*commitTitle[\s\S]*commitMessage/
-  );
+  const actionKeys = [
+    'action',
+    'baseRef',
+    'commitMessage',
+    'commitTitle',
+    'expectedHeadSha',
+    'headRef',
+    'intentId',
+    'issueNumber',
+    'mergeMethod',
+    'prNumber',
+    'repository',
+    'schema',
+  ];
+  for (const key of actionKeys) assert.match(rule, new RegExp(`\\b${key}\\b`));
+  assert.match(rule, /exactly (?:these|the following) 12 keys/i);
+  assert.match(rule, /`schema`[\s\S]*integer[\s\S]*exactly `1`/i);
+  assert.match(rule, /`issueNumber` and `prNumber`[\s\S]*positive safe integers/i);
+  assert.match(rule, /remaining[\s\S]*strings/i);
+  assert.match(rule, /unknown[\s\S]*missing[\s\S]*refuse/i);
+  assert.doesNotMatch(rule, /pullRequestNumber/);
   assert.match(rule, /never[^\n]*shell/i);
   assert.match(rule, /success, refusal, timeout, or ambiguity/i);
   assert.match(rule, /live-verified delivery receipt/i);
