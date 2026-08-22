@@ -34,11 +34,13 @@
 ### Task 1: Refuse Occupied Configured Archive Leaves Before Initialization
 
 **Files:**
+
 - Modify: `scripts/tests/fixtures/co-review-start-cases.mjs`
 - Modify: `scripts/review/lib/archive.mjs`
 - Modify: `scripts/review/lib/protocol.mjs`
 
 **Interfaces:**
+
 - Consumes: `resolveArchiveDestination({ cwd, archiveDir, runtimeDir, repository })`.
 - Produces: `assertArchiveDestinationAbsent(destination)` which returns normally only when the physical archive leaf is absent and otherwise throws `archive-destination-occupied` with the entry type.
 
@@ -163,10 +165,12 @@ git commit -m "[#1374] Refuse occupied co-review archive leaves"
 ### Task 2: Validate Foreign Archives and Publish Deterministic Recovery Siblings
 
 **Files:**
+
 - Modify: `scripts/tests/fixtures/co-review-finalization-cases.mjs`
 - Modify: `scripts/review/lib/archive.mjs`
 
 **Interfaces:**
+
 - Produces: `deriveRecoveryArchiveDir(configuredArchiveDir, protocolId) -> string`.
 - Produces: `inspectForeignArchive({ root, destination, currentProtocolId }) -> { manifest, protocolId, acceptedAt }`; throws on any structural, path, schema, file-set, symlink, or digest violation.
 - Changes: `prepareArchive(options)` accepts the exact derived recovery sibling only after foreign validation and adds immutable recovery provenance to the prepared manifest.
@@ -179,10 +183,7 @@ Create an accepted foreign protocol, prepare its ordinary archive, and materiali
 const occupied = await acceptedConsensus();
 const occupiedPrepared = prepareArchive(archiveOptions(occupied, 'docs/reviews/occupied-source'));
 const current = await acceptedConsensus({ archiveDir: 'docs/reviews/configured' });
-materializePrepared(
-  path.join(current.root, 'docs/reviews/configured'),
-  occupiedPrepared
-);
+materializePrepared(path.join(current.root, 'docs/reviews/configured'), occupiedPrepared);
 const recoveryDir = `docs/reviews/configured-recovery-${current.state.protocolId}`;
 const recovered = prepareArchive({
   ...current.api.validatedArchiveSnapshot({ cwd: current.root, dir: current.options.dir }),
@@ -257,7 +258,7 @@ Expected: FAIL with `archive-destination-mismatch` for the derived sibling becau
 
 Add:
 
-```js
+````js
 export function deriveRecoveryArchiveDir(configuredArchiveDir, protocolId) {
   if (!/^[0-9a-f-]{36}$/i.test(String(protocolId))) {
     fail('archive-recovery-protocol', String(protocolId));
@@ -267,9 +268,11 @@ export function deriveRecoveryArchiveDir(configuredArchiveDir, protocolId) {
 
 function parseArchiveManifest(readmeBytes) {
   const text = readmeBytes.toString('utf8');
-  const matches = [...text.matchAll(
-    /<!-- aitm-co-review-manifest:start -->\n```json\n([\s\S]*?\n)```\n<!-- aitm-co-review-manifest:end -->/g
-  )];
+  const matches = [
+    ...text.matchAll(
+      /<!-- aitm-co-review-manifest:start -->\n```json\n([\s\S]*?\n)```\n<!-- aitm-co-review-manifest:end -->/g
+    ),
+  ];
   if (matches.length !== 1) fail('archive-foreign-manifest', `marker-count=${matches.length}`);
   let manifest;
   try {
@@ -279,7 +282,7 @@ function parseArchiveManifest(readmeBytes) {
   }
   return manifest;
 }
-```
+````
 
 The regex authenticates the one canonical marker block but does not compare the foreign README against current rendered bytes.
 
@@ -315,7 +318,11 @@ if (configuredDestination && !isConfigured && !isRecovery) {
   fail('archive-destination-mismatch', `${destination.relative}; configured ${configured}`);
 }
 const occupied = isRecovery
-  ? inspectForeignArchive({ root, destination: configuredDestination, currentProtocolId: state.protocolId })
+  ? inspectForeignArchive({
+      root,
+      destination: configuredDestination,
+      currentProtocolId: state.protocolId,
+    })
   : null;
 ```
 
@@ -334,7 +341,8 @@ const manifest = {
   decision: decisionModel(evidence.decision),
   budget: budgetModel(state),
   evidence: evidenceModel,
-  normative: 'The accepted artifact remains normative; the archived review and owner response are evidence.',
+  normative:
+    'The accepted artifact remains normative; the archived review and owner response are evidence.',
   ...(occupied
     ? {
         recovery: {
@@ -384,6 +392,7 @@ git commit -m "[#1374] Add deterministic co-review archive recovery"
 ### Task 3: Expose Recovery Through Status, CLI Help, and Documentation
 
 **Files:**
+
 - Modify: `scripts/tests/fixtures/co-review-finalization-cases.mjs`
 - Modify: `scripts/tests/unit/review/co-review.test.mjs`
 - Modify: `scripts/review/lib/protocol.mjs`
@@ -392,6 +401,7 @@ git commit -m "[#1374] Add deterministic co-review archive recovery"
 - Modify: `docs/superpowers/reviews/README.md`
 
 **Interfaces:**
+
 - Consumes: `deriveRecoveryArchiveDir` and `inspectArchive` from `archive.mjs`.
 - Produces: accepted status whose `archive.destination` is the effective ordinary or recovery directory, with `configuredDestination` retained as provenance when recovery applies.
 - Preserves: `finalize --dir ... --archive-dir ...` as the only publication command surface.
@@ -407,10 +417,12 @@ assert.deepEqual(status.archive, {
   completion: 'absent',
   recovery: true,
 });
-assert.deepEqual(status.availableActions, [{
-  kind: 'finalize',
-  command: `npx aitm co-review finalize --dir ${absoluteRuntime} --archive-dir ${recoveryDir}`,
-}]);
+assert.deepEqual(status.availableActions, [
+  {
+    kind: 'finalize',
+    command: `npx aitm co-review finalize --dir ${absoluteRuntime} --archive-dir ${recoveryDir}`,
+  },
+]);
 ```
 
 After publication, assert `completion: 'complete-and-identical'`, the same effective destination, no finalize action, and protocol state/events byte identity.
@@ -434,9 +446,10 @@ In accepted status handling:
 ```js
 try {
   const configuredInspection = inspectArchive({ ...snapshot, archiveDir: configured, repository });
-  archive = configuredInspection.status === 'complete'
-    ? { destination: configured, completion: 'complete-and-identical' }
-    : { destination: configured, completion: configuredInspection.status };
+  archive =
+    configuredInspection.status === 'complete'
+      ? { destination: configured, completion: 'complete-and-identical' }
+      : { destination: configured, completion: configuredInspection.status };
 } catch (configuredError) {
   const recovery = deriveRecoveryArchiveDir(configured, state.protocolId);
   try {
@@ -445,9 +458,10 @@ try {
       destination: recovery,
       configuredDestination: configured,
       recovery: true,
-      completion: recoveryInspection.status === 'complete'
-        ? 'complete-and-identical'
-        : recoveryInspection.status,
+      completion:
+        recoveryInspection.status === 'complete'
+          ? 'complete-and-identical'
+          : recoveryInspection.status,
     };
   } catch (recoveryError) {
     archive = {
@@ -511,9 +525,11 @@ git commit -m "[#1374] Surface co-review archive recovery"
 ### Task 4: Verify the Complete #1374 Delivery
 
 **Files:**
+
 - Verify only; modify implementation or tests only if a verifier exposes a defect.
 
 **Interfaces:**
+
 - Consumes: the complete prevention, recovery, status, CLI, and documentation behavior from Tasks 1-3.
 - Produces: exact command evidence for every #1374 Acceptance Criterion and Functional Definition-of-Done item.
 
