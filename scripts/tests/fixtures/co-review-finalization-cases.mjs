@@ -955,6 +955,114 @@ test('foreign archive recovery refuses every unsafe mutation without changing pr
   }
 });
 
+test('foreign archive validator rejects ambiguous identity, mode, date, and recovery paths', async (t) => {
+  const validRecovery = (manifest) => ({
+    configuredDestination: 'docs/reviews/original',
+    occupiedProtocolId: manifest.protocol.id,
+    recoveryDestination: 'docs/reviews/original-recovery-prior',
+    occupiedAcceptedAt: manifest.decision.at,
+    relationship: 'newer-than-occupied',
+  });
+  const mutations = [
+    {
+      name: 'uppercase-current-protocol',
+      mutate(manifest, current) {
+        const uppercase = current.state.protocolId.toUpperCase();
+        assert.notEqual(uppercase, current.state.protocolId);
+        manifest.protocol.id = uppercase;
+      },
+    },
+    {
+      name: 'artifact-mode-null',
+      legacyCopy: true,
+      mutate(manifest) {
+        manifest.artifact.mode = null;
+      },
+    },
+    {
+      name: 'artifact-mode-legacy-copy',
+      legacyCopy: true,
+      mutate(manifest) {
+        manifest.artifact.mode = 'legacy-copy';
+      },
+    },
+    {
+      name: 'decision-at-null',
+      mutate(manifest) {
+        manifest.decision.at = null;
+      },
+    },
+    {
+      name: 'decision-at-empty',
+      mutate(manifest) {
+        manifest.decision.at = '';
+      },
+    },
+    {
+      name: 'decision-at-number',
+      mutate(manifest) {
+        manifest.decision.at = 0;
+      },
+    },
+    ...[
+      ['configuredDestination', '/docs/reviews/original'],
+      ['configuredDestination', 'C:\\docs\\reviews\\original'],
+      ['configuredDestination', 'docs/reviews/../original'],
+      ['configuredDestination', 'docs/reviews/./original'],
+      ['configuredDestination', 'docs//reviews/original'],
+      ['configuredDestination', 'docs\\..\\original'],
+      ['recoveryDestination', '/docs/reviews/recovered'],
+      ['recoveryDestination', 'C:\\docs\\reviews\\recovered'],
+      ['recoveryDestination', 'docs/reviews/../recovered'],
+      ['recoveryDestination', 'docs/reviews/./recovered'],
+      ['recoveryDestination', 'docs//reviews/recovered'],
+      ['recoveryDestination', 'docs\\..\\recovered'],
+    ].map(([field, value]) => ({
+      name: `recovery-${field}-${value}`,
+      mutate(manifest) {
+        manifest.recovery = validRecovery(manifest);
+        manifest.recovery[field] = value;
+      },
+    })),
+  ];
+
+  for (const { name, legacyCopy = false, mutate } of mutations) {
+    await t.test(name, async () => {
+      const fixture = await foreignArchiveRecoveryFixture({ legacyCopy });
+      const { occupiedPrepared, current, configuredAbsolute, recoveryOptions } = fixture;
+      const manifest = structuredClone(occupiedPrepared.manifest);
+      mutate(manifest, current);
+      replaceArchiveManifestJson(configuredAbsolute, JSON.stringify(manifest, null, 2));
+      const protocolBefore = snapshotProtocol(current.root, current.options.dir);
+      const occupiedBefore = snapshotDirectory(configuredAbsolute);
+
+      assert.throws(
+        () => prepareArchive(recoveryOptions),
+        (error) => error.code === 'archive-foreign-manifest',
+        name
+      );
+      assert.deepEqual(snapshotProtocol(current.root, current.options.dir), protocolBefore, name);
+      assert.deepEqual(snapshotDirectory(configuredAbsolute), occupiedBefore, name);
+    });
+  }
+});
+
+test('foreign archive validator accepts safe nested optional recovery destinations', async () => {
+  const fixture = await foreignArchiveRecoveryFixture();
+  const { occupiedPrepared, configuredAbsolute, recoveryOptions } = fixture;
+  const manifest = structuredClone(occupiedPrepared.manifest);
+  manifest.recovery = {
+    configuredDestination: 'docs/reviews/original',
+    occupiedProtocolId: manifest.protocol.id,
+    recoveryDestination: 'docs/reviews/original-recovery-prior',
+    occupiedAcceptedAt: manifest.decision.at,
+    relationship: 'newer-than-occupied',
+  };
+  replaceArchiveManifestJson(configuredAbsolute, JSON.stringify(manifest, null, 2));
+
+  assert.equal(prepareArchive(recoveryOptions).destination.relative, recoveryOptions.archiveDir);
+});
+
 test('foreign archive recovery accepts legacy v1 manifest JSON whitespace and key order', async () => {
   const fixture = await foreignArchiveRecoveryFixture({ legacyCopy: true });
   const { occupiedPrepared, configuredAbsolute, recoveryOptions } = fixture;

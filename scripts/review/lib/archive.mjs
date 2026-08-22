@@ -221,6 +221,8 @@ function validateOptionalRecovery(recovery) {
     ),
     'recovery relationship'
   );
+  safeRecordedPath(recovery.configuredDestination, 'recovery configured destination');
+  safeRecordedPath(recovery.recoveryDestination, 'recovery destination');
 }
 
 export function inspectForeignArchive({ root, destination, currentProtocolId }) {
@@ -273,10 +275,17 @@ export function inspectForeignArchive({ root, destination, currentProtocolId }) 
     typeof manifest.protocol.schema === 'string' && manifest.protocol.schema,
     'protocol schema'
   );
-  requireForeign(manifest.protocol.id !== currentProtocolId, 'same protocol');
+  requireForeign(
+    manifest.protocol.id.toLowerCase() !== String(currentProtocolId).toLowerCase(),
+    'same protocol'
+  );
 
-  const mode = manifest.artifact.mode ?? 'legacy-copy';
-  requireForeign(['reference', 'copy', 'legacy-copy'].includes(mode), 'artifact mode');
+  const hasArtifactMode = Object.hasOwn(manifest.artifact, 'mode');
+  const mode = hasArtifactMode ? manifest.artifact.mode : 'legacy-copy';
+  requireForeign(
+    ['reference', 'copy'].includes(mode) || (!hasArtifactMode && mode === 'legacy-copy'),
+    'artifact mode'
+  );
   safeRecordedPath(manifest.artifact.sourcePath, 'artifact source');
   requireForeign(/^[a-f0-9]{40}$/.test(manifest.artifact.acceptedCommit), 'artifact commit');
   requireForeign(/^[a-f0-9]{40}$/.test(manifest.artifact.gitBlob), 'artifact blob');
@@ -304,7 +313,12 @@ export function inspectForeignArchive({ root, destination, currentProtocolId }) 
     ['reviewer-consensus', 'human-good-enough'].includes(manifest.decision.basis),
     'decision basis'
   );
-  requireForeign(!Number.isNaN(Date.parse(manifest.decision.at)), 'decision at');
+  requireForeign(
+    typeof manifest.decision.at === 'string' &&
+      manifest.decision.at &&
+      !Number.isNaN(Date.parse(manifest.decision.at)),
+    'decision at'
+  );
   requireForeign(
     manifest.decision.basis === 'reviewer-consensus'
       ? typeof manifest.decision.reviewer === 'string' && manifest.decision.reviewer.trim()
