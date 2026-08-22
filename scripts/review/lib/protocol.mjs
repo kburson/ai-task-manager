@@ -857,7 +857,12 @@ export function statusProtocol(options) {
       { kind: 'no-action', command: null },
     ];
     decoratedNextAction = continueCommand;
-  } else if (state.lifecycle === 'accepted' && integrity.ok && archive.completion === 'absent') {
+  } else if (
+    state.lifecycle === 'accepted' &&
+    integrity.ok &&
+    (archive.completion === 'absent' ||
+      (!state.initialization?.archiveDir && archive.completion === 'unknown'))
+  ) {
     decoratedNextAction = `npx aitm co-review finalize --dir ${shellArgument(runtimeDir)}${
       archive.destination
         ? ` --archive-dir ${shellArgument(archive.destination)}`

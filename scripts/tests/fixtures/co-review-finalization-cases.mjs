@@ -383,6 +383,36 @@ test('reviewer consensus finalizes automatically and an unconfigured destination
       .lifecycle,
     'accepted'
   );
+  const unconfiguredRuntime = path.join(unconfigured.root, '.tmp/review');
+  const placeholderFinalizeCommand =
+    `npx aitm co-review finalize --dir ${unconfiguredRuntime} ` +
+    '--archive-dir <tracked-repo-path>';
+  const unconfiguredStatus = await runCliDirect(
+    ['status', '--dir', unconfigured.options.dir, '--json'],
+    { cwd: unconfigured.root, repository: unconfigured.repository }
+  );
+  assert.equal(unconfiguredStatus.status, 0, unconfiguredStatus.stderr);
+  const unconfiguredJson = JSON.parse(unconfiguredStatus.stdout);
+  assert.deepEqual(unconfiguredJson.archive, { destination: null, completion: 'unknown' });
+  assert.deepEqual(unconfiguredJson.availableActions, [
+    { kind: 'finalize', command: placeholderFinalizeCommand },
+  ]);
+  assert.equal(unconfiguredJson.nextAction, placeholderFinalizeCommand);
+  const unconfiguredHuman = await runCliDirect(['status', '--dir', unconfigured.options.dir], {
+    cwd: unconfigured.root,
+    repository: unconfigured.repository,
+  });
+  assert.equal(unconfiguredHuman.status, 0, unconfiguredHuman.stderr);
+  assert.match(unconfiguredHuman.stdout, /Archive: unknown \/ unknown/);
+  assert.match(
+    unconfiguredHuman.stdout,
+    new RegExp(
+      `Available actions: finalize: ${placeholderFinalizeCommand.replaceAll(
+        /[.*+?^${}()|[\]\\]/g,
+        '\\$&'
+      )}`
+    )
+  );
 
   const finalized = await runCliDirect(
     ['finalize', '--dir', unconfigured.options.dir, '--archive-dir', 'docs/reviews/recovered'],
@@ -606,6 +636,50 @@ test('good-enough CLI prepares before mutation, publishes, and maps only post-ac
   );
   assert.equal(invalid.status, 2);
   assert.match(invalid.stderr, /--unknown (?:requires a value|is not valid)/);
+});
+
+test('recovered good-enough publication failure retries the deterministic sibling', async () => {
+  const occupied = await acceptedConsensus();
+  const occupiedPrepared = prepareArchive(archiveOptions(occupied, 'docs/reviews/occupied-source'));
+  const configuredDir = 'docs/reviews/good-enough-recovery';
+  const failed = await goodEnoughReady({ archiveDir: configuredDir });
+  materializePrepared(path.join(failed.root, configuredDir), occupiedPrepared);
+  const recoveryDir = `${configuredDir}-recovery-${failed.prior.protocolId}`;
+  const pending = await runCliDirect(
+    ['finalize', '--dir', failed.options.dir, '--good-enough', '--archive-dir', recoveryDir],
+    {
+      cwd: failed.root,
+      repository: failed.repository,
+      resolveGitHubLoginImpl: () => 'kendrick',
+      archiveHooks: {
+        beforeValidate() {
+          throw new Error('injected recovered publication failure');
+        },
+      },
+    }
+  );
+
+  assert.equal(pending.status, 4);
+  const runtime = path.resolve(failed.root, failed.options.dir);
+  assert.match(
+    pending.stderr,
+    new RegExp(
+      `Retry: npx aitm co-review finalize --dir ${runtime.replaceAll(
+        /[.*+?^${}()|[\]\\]/g,
+        '\\$&'
+      )} --archive-dir ${recoveryDir}\n`
+    )
+  );
+  assert.doesNotMatch(
+    pending.stderr,
+    new RegExp(
+      `Retry: .* --archive-dir ${configuredDir.replaceAll(/[.*+?^${}()|[\]\\]/g, '\\$&')}\n`
+    )
+  );
+  assert.equal(
+    failed.api.readProtocol({ cwd: failed.root, dir: failed.options.dir }).lifecycle,
+    'accepted'
+  );
 });
 
 test('intervention and accepted status expose state-valid finalization actions and archive completion', async () => {

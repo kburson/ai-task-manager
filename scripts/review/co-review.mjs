@@ -284,7 +284,12 @@ export async function runCli(argv = process.argv.slice(2), io = {}) {
           });
         } catch (error) {
           writeError(
-            archivePendingMessage({ state, error, shellArgument: protocol.shellArgument })
+            archivePendingMessage({
+              state,
+              error,
+              prepared,
+              shellArgument: protocol.shellArgument,
+            })
           );
           return 4;
         }
@@ -623,12 +628,12 @@ function formatStatus(state) {
   ].join('\n');
 }
 
-function archivePendingMessage({ state, error, shellArgument }) {
-  const configured = state.initialization?.archiveDir;
+function archivePendingMessage({ state, error, prepared, shellArgument }) {
+  const destination = prepared?.destination.relative ?? state.initialization?.archiveDir;
   const runtimeDir = path.resolve(state.repositoryRoot, state.initialization.runtimeDir);
   const retry = `npx aitm co-review finalize --dir ${shellArgument(runtimeDir)}${
-    configured
-      ? ` --archive-dir ${shellArgument(configured)}`
+    destination
+      ? ` --archive-dir ${shellArgument(destination)}`
       : ' --archive-dir <tracked-repo-path>'
   }`;
   const cause = String(error.message).replace(/; no state changed(?:; next:.*)?$/, '');
