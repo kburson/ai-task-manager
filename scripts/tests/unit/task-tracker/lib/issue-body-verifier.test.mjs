@@ -213,12 +213,17 @@ test('verifyIssueBody: tolerates lifecycle marker blocks between sections', () =
 
 test('round-trip: preflight --shape sub-issue output passes verifyIssueBody', () => {
   const tmp = mkdtempSync(join(projectScratchDir('test'), 'aitm-rt-'));
+  const storyFile = join(tmp, 'story.md');
   const scopeFile = join(tmp, 'scope.md');
   const acFile = join(tmp, 'ac.md');
   const originFile = join(tmp, 'origin.md');
   const pmFile = join(tmp, 'pm.md');
+  writeFileSync(
+    storyFile,
+    'As a task author\nI want canonical issue rendering\nSo that body verification succeeds\n'
+  );
   writeFileSync(scopeFile, 'Scope text here.\n');
-  writeFileSync(acFile, '- [ ] Something works\n');
+  writeFileSync(acFile, '- [ ] Something works <!-- aitm-non-demonstrable -->\n');
   writeFileSync(originFile, '- **kind**: code\n');
   writeFileSync(
     pmFile,
@@ -231,6 +236,8 @@ test('round-trip: preflight --shape sub-issue output passes verifyIssueBody', ()
       preflightScript,
       '--shape',
       'sub-issue',
+      '--user-story-file',
+      storyFile,
       '--scope-file',
       scopeFile,
       '--ac-file',

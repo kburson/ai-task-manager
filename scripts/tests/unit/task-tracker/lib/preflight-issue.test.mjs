@@ -26,19 +26,33 @@ const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..
 function makeFixture(acBody) {
   const dir = mkdtempSync(path.join(projectScratchDir('test'), 'aitm-preflight-test-'));
   const ac = path.join(dir, 'ac.md');
+  const story = path.join(dir, 'story.md');
   const scope = path.join(dir, 'scope.md');
   const origin = path.join(dir, 'origin.md');
   const meta = path.join(dir, 'meta.md');
   writeFileSync(ac, acBody, 'utf8');
+  writeFileSync(
+    story,
+    'As a task author\nI want to render a governed issue\nSo that the focused contract can be verified\n',
+    'utf8'
+  );
   writeFileSync(scope, 'Scope.\n', 'utf8');
   writeFileSync(origin, '- kind: code\n', 'utf8');
   writeFileSync(meta, 'Metadata.\n', 'utf8');
-  return { dir, ac, scope, origin, meta };
+  return { dir, ac, story, scope, origin, meta };
 }
 
 async function runPreflight(args, options = {}) {
+  const forwarded = [...args];
+  const shapeIndex = forwarded.indexOf('--shape');
+  const shape = shapeIndex >= 0 ? forwarded[shapeIndex + 1] : null;
+  if (shape && shape !== 'stub' && !forwarded.includes('--user-story-file')) {
+    const scopeIndex = forwarded.indexOf('--scope-file');
+    const story = path.join(path.dirname(forwarded[scopeIndex + 1]), 'story.md');
+    forwarded.splice(scopeIndex, 0, '--user-story-file', story);
+  }
   try {
-    const { stdout, stderr } = await pexec('node', [SCRIPT, ...args], options);
+    const { stdout, stderr } = await pexec('node', [SCRIPT, ...forwarded], options);
     return { code: 0, stdout, stderr };
   } catch (err) {
     return { code: err.code ?? 1, stdout: err.stdout ?? '', stderr: err.stderr ?? '' };

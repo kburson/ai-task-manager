@@ -54,6 +54,7 @@ function defaultRenderDefect(input) {
   const dir = mkdtempSync(path.join(projectScratchDir('gh', input.projectDir), 'web-defect-'));
   try {
     const files = {
+      story: writeFragment(dir, 'user-story.md', input.userStory),
       scope: writeFragment(dir, 'scope.md', input.scope),
       ac: writeFragment(dir, 'acs.md', input.acceptanceCriteria),
       origin: writeFragment(dir, 'story-origin.md', input.storyOrigin),
@@ -69,6 +70,8 @@ function defaultRenderDefect(input) {
       'defect',
       '--title',
       input.title,
+      '--user-story-file',
+      files.story,
       '--scope-file',
       files.scope,
       '--ac-file',
@@ -128,6 +131,10 @@ export async function normalizeWebDefectIssue({ issue, projectDir, renderDefect 
   const input = {
     projectDir,
     title,
+    userStory:
+      'As an AITM operator affected by a confirmed defect\n' +
+      'I want the confirmed defect corrected\n' +
+      'So that the expected behavior is restored with regression protection',
     scope,
     reproduction,
     acceptanceCriteria,

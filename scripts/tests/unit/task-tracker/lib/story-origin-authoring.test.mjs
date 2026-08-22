@@ -21,19 +21,33 @@ const PREFLIGHT = path.resolve(HERE, '../../../../task-tracker/preflight-issue.m
 function fixture() {
   const dir = mkdtempSync(path.join(projectScratchDir('test'), 'aitm-story-origin-'));
   const scope = path.join(dir, 'scope.md');
+  const story = path.join(dir, 'story.md');
   const ac = path.join(dir, 'ac.md');
   const origin = path.join(dir, 'origin.md');
   const plan = path.join(dir, 'plan.md');
   writeFileSync(scope, 'Render the split metadata shape.\n', 'utf8');
+  writeFileSync(
+    story,
+    'As a task author\nI want to preserve issue provenance\nSo that creation records authoritative metadata\n',
+    'utf8'
+  );
   writeFileSync(ac, '- [ ] Split shape renders. <!-- aitm-non-demonstrable -->\n', 'utf8');
   writeFileSync(origin, '- kind: code\n- discovered-during: #883\n', 'utf8');
   writeFileSync(plan, '- size: S\n- estimate: 2\n', 'utf8');
-  return { dir, scope, ac, origin, plan };
+  return { dir, story, scope, ac, origin, plan };
 }
 
 async function preflight(args) {
+  const forwarded = [...args];
+  const shapeIndex = forwarded.indexOf('--shape');
+  const shape = shapeIndex >= 0 ? forwarded[shapeIndex + 1] : null;
+  if (shape && shape !== 'stub' && !forwarded.includes('--user-story-file')) {
+    const scopeIndex = forwarded.indexOf('--scope-file');
+    const story = path.join(path.dirname(forwarded[scopeIndex + 1]), 'story.md');
+    forwarded.splice(scopeIndex, 0, '--user-story-file', story);
+  }
   try {
-    const { stdout, stderr } = await pexec('node', [PREFLIGHT, ...args], {
+    const { stdout, stderr } = await pexec('node', [PREFLIGHT, ...forwarded], {
       maxBuffer: 10 * 1024 * 1024,
     });
     return { code: 0, stdout, stderr };
@@ -223,6 +237,7 @@ describe('create-issue shaped flag forwarding (#892)', () => {
   it('forwards Story Origin and omits absent Plan Metadata', () => {
     const flags = buildShapeFlags({
       shape: 'solo',
+      'user-story-file': 'story.md',
       'scope-file': 'scope.md',
       'ac-file': 'ac.md',
       'story-origin-file': 'origin.md',
@@ -230,6 +245,8 @@ describe('create-issue shaped flag forwarding (#892)', () => {
     assert.deepEqual(flags, [
       '--shape',
       'solo',
+      '--user-story-file',
+      'story.md',
       '--scope-file',
       'scope.md',
       '--ac-file',
@@ -242,6 +259,7 @@ describe('create-issue shaped flag forwarding (#892)', () => {
   it('still forwards optional early Plan Metadata', () => {
     const flags = buildShapeFlags({
       shape: 'solo',
+      'user-story-file': 'story.md',
       'scope-file': 'scope.md',
       'ac-file': 'ac.md',
       'story-origin-file': 'origin.md',
@@ -254,6 +272,7 @@ describe('create-issue shaped flag forwarding (#892)', () => {
   it('forwards optional exact verification commands', () => {
     const flags = buildShapeFlags({
       shape: 'solo',
+      'user-story-file': 'story.md',
       'scope-file': 'scope.md',
       'ac-file': 'ac.md',
       'story-origin-file': 'origin.md',

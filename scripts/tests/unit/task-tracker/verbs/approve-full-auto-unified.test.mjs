@@ -153,12 +153,17 @@ function makeDeps(overrides = {}) {
   const { projectScratchDir } = await import('../../../../task-tracker/lib/scratch-dir.mjs');
   const path = await import('node:path');
   const dir = mkdtempSync(path.join(projectScratchDir('test'), 'preflight-test-'));
+  const storyFile = path.join(dir, 'story.md');
   const scopeFile = path.join(dir, 'scope.md');
   const acFile = path.join(dir, 'ac.md');
   const originFile = path.join(dir, 'origin.md');
   const planFile = path.join(dir, 'plan.md');
+  writeFileSync(
+    storyFile,
+    'As a task reviewer\nI want the approval footnote placed correctly\nSo that autonomous review remains auditable\n'
+  );
   writeFileSync(scopeFile, 'Scope text.\n');
-  writeFileSync(acFile, '- [ ] one\n');
+  writeFileSync(acFile, '- [ ] one <!-- aitm-non-demonstrable -->\n');
   writeFileSync(originFile, '- **kind**: code\n');
   writeFileSync(planFile, '- **Size:** S\n- **Estimate:** 1h\n- **Priority:** P2\n- **Rank:** —\n');
   const rendered = execFileSync(
@@ -167,6 +172,8 @@ function makeDeps(overrides = {}) {
       'scripts/task-tracker/preflight-issue.mjs',
       '--shape',
       'solo',
+      '--user-story-file',
+      storyFile,
       '--scope-file',
       scopeFile,
       '--ac-file',

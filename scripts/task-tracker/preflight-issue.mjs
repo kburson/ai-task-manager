@@ -22,7 +22,7 @@
 //   node preflight-issue.mjs                    # tail block only
 //   node preflight-issue.mjs --check-only       # verify templates, no stdout
 //   node preflight-issue.mjs --shape <shape> \
-//        --scope-file <p> --ac-file <p> --story-origin-file <p> \
+//        --user-story-file <p> --scope-file <p> --ac-file <p> --story-origin-file <p> \
 //        [--plan-metadata-file <p>] \
 //        [--verification-commands-file <p>] \
 //        [--parent <N>] [--sub-issue-list-file <p>]
@@ -52,6 +52,7 @@ import { filterDodForKindAndDiff } from './lib/dod-kind-filter.mjs';
 import { wantsHelp, emitSelfDoc } from '../lib/self-doc.mjs';
 import { verifyIssueBody } from '../gh/lib/issue-body-verifier.mjs';
 import { stripKnownPrefix } from '../gh/lib/kind-prefix.mjs';
+import { buildUserStoryLines } from './lib/user-story-author.mjs';
 
 const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
 const PACKAGE_TEMPLATES_DIR = path.resolve(SCRIPT_DIR, '..', '..', 'templates');
@@ -196,6 +197,21 @@ export function normalizeAcceptanceCriteria(value) {
     return line;
   });
   return out.join('\n');
+}
+
+export function normalizeUserStoryFragment(value) {
+  const lines = String(value || '')
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean);
+  if (lines.length !== 3 || lines.some((line) => /^#{1,6}\s+/.test(line))) {
+    throw new TypeError('expected exactly three heading-free Connextra lines');
+  }
+  return buildUserStoryLines({
+    asA: lines[0],
+    iWant: lines[1],
+    soThat: lines[2],
+  }).join('\n');
 }
 
 // Plan Metadata label emphasis (#416, fixed in #488). Delegates to the shared
@@ -368,11 +384,20 @@ function emitShape(args, dodPath, root) {
       plan_metadata: '',
     };
   } else {
-    const required = ['scope-file', 'ac-file', 'story-origin-file'];
+    const required = ['user-story-file', 'scope-file', 'ac-file', 'story-origin-file'];
     for (const flag of required) {
       if (typeof args[flag] !== 'string') die(`--${flag} required with --shape`);
     }
+    let userStory;
+    try {
+      userStory = normalizeUserStoryFragment(
+        readFileOrDie(args['user-story-file'], '--user-story-file')
+      );
+    } catch (err) {
+      die(`--user-story-file ${err.message}`);
+    }
     rawFills = {
+      user_story: userStory,
       scope: readFileOrDie(args['scope-file'], '--scope-file').trim(),
       story_origin: readFileOrDie(args['story-origin-file'], '--story-origin-file').trim(),
       acceptance_criteria: readFileOrDie(args['ac-file'], '--ac-file').trim(),

@@ -35,6 +35,10 @@ function defectArgs(overrides = {}) {
     shape: 'defect',
     title: 'resume invents idle time',
     label: [],
+    'user-story-file': fragment(
+      'user-story.md',
+      'As an AITM operator\nI want active work to remain active\nSo that timing records stay truthful'
+    ),
     'scope-file': fragment('scope.md', 'Resume classifies active issue work as idle.'),
     'ac-file': fragment('acs.md', '- [ ] Active work is never synthesized as idle.'),
     'story-origin-file': fragment(
@@ -66,6 +70,7 @@ test('defect shape forwards the governed solo inputs plus defect-specific render
   assert.deepEqual(flags.slice(0, 2), ['--shape', 'defect']);
   for (const [flag, value] of [
     ['--title', args.title],
+    ['--user-story-file', args['user-story-file']],
     ['--scope-file', args['scope-file']],
     ['--ac-file', args['ac-file']],
     ['--story-origin-file', args['story-origin-file']],
@@ -90,6 +95,8 @@ test('defect dry-run renders a real User Story, diagnostic sections, and governe
       'defect',
       '--title',
       args.title,
+      '--user-story-file',
+      args['user-story-file'],
       '--scope-file',
       args['scope-file'],
       '--ac-file',
@@ -101,8 +108,8 @@ test('defect dry-run renders a real User Story, diagnostic sections, and governe
     { cwd: ROOT, encoding: 'utf8' }
   );
 
-  assert.match(rendered, /## User Story\n\nAs an AITM operator affected by a confirmed defect/);
-  assert.match(rendered, /I want resume invents idle time corrected/);
+  assert.match(rendered, /## User Story\n\nAs an AITM operator/);
+  assert.match(rendered, /I want active work to remain active/);
   assert.doesNotMatch(rendered, /\[who wants|\[what they want|TBD/);
   for (const heading of [
     '## Scope',
@@ -212,6 +219,7 @@ test('web defect normalization maps form fields through the same renderer and st
 
   assert.equal(result.status, 'normalized');
   assert.equal(captured.title, 'resume invents idle time');
+  assert.match(captured.userStory, /As an AITM operator affected by a confirmed defect/);
   assert.equal(captured.scope, 'Resume classifies active issue work as idle.');
   assert.match(captured.reproduction, /Leave an active timing span open/);
   assert.equal(captured.acceptanceCriteria, '- [ ] Active work remains active.');
