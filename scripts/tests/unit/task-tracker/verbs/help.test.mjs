@@ -137,6 +137,16 @@ test('Park help omits the Shelve-only stale-blocker migration flag', () => {
   assert.doesNotMatch(out, /refresh-stale-blockers/);
 });
 
+test('Deliver help documents the re-entrant Review-only provider handoff', () => {
+  const out = capture(() => verbHelp('deliver'));
+  assert.match(out, /Review-only/i);
+  assert.match(out, /re-entrant/i);
+  assert.match(out, /no lifecycle transition/i);
+  assert.match(out, /exact-head/i);
+  assert.match(out, /20\s+provider action required/i);
+  assert.match(out, /npx aitm deliver #N/);
+});
+
 test('(f) the aitm wrapper routes every user-facing help form to verbHelp', () => {
   // `aitm help` / bare `aitm` → orchestrator index PLUS the /task verb
   // reference (topics + state map + gate model) appended.

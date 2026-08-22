@@ -355,6 +355,13 @@ export const VERB_REFERENCE = {
       '/task review 667 --probe "node --test path/to/focused.test.mjs"',
     ],
   },
+  deliver: {
+    topic: 'board',
+    summary: 'Review-only, re-entrant exact-head delivery handoff with no lifecycle transition.',
+    usage: '/task deliver #N',
+    exitCodes: [{ code: 20, meaning: 'provider action required' }],
+    examples: ['/task deliver 939', 'npx aitm deliver #N'],
+  },
   reject: {
     topic: 'board',
     summary: 'Reject an issue under review (returns it for rework). Reason required.',

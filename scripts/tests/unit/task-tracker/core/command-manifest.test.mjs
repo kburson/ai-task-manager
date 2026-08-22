@@ -15,6 +15,7 @@ import {
   routeIdentityForVerb,
 } from '../../../../task-tracker/lib/command-surface/routing.mjs';
 import { VERBS, parseVerbs, groupedListing } from '../../../../../bin/aitm-registry.mjs';
+import { PREFLIGHT_MODE } from '../../../../task-tracker/task-tracker.mjs';
 
 test('routing identities contain only canonical verb and dispatch metadata', () => {
   assert.ok(ROUTE_IDENTITIES.length > 0);
@@ -65,4 +66,15 @@ test('catalog verb names equal the dispatch switch case labels', () => {
     [...parseVerbs()].sort(),
     'dispatch switch and canonical catalog routing identities have drifted'
   );
+});
+
+test('deliver is a directly routed target-required verb', () => {
+  const route = routeIdentityForVerb('deliver');
+  assert.deepEqual(route, {
+    verb: 'deliver',
+    dispatch: 'verbs/deliver.mjs',
+  });
+  assert.equal(commandByName('deliver').routing, 'verbs/deliver.mjs');
+  assert.equal(routeIdentityForCommand('deliver'), route);
+  assert.equal(PREFLIGHT_MODE.deliver, 'target-required');
 });

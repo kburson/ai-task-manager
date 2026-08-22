@@ -95,6 +95,10 @@ export const ROUTE_IDENTITIES = Object.freeze(
       dispatch: 'verbs/review.mjs',
     },
     {
+      verb: 'deliver',
+      dispatch: 'verbs/deliver.mjs',
+    },
+    {
       verb: 'close',
       dispatch: 'verbs/close.mjs',
     },

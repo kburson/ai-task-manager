@@ -245,6 +245,19 @@ export const VERB_CONTRACTS = Object.freeze({
       ...PREFLIGHT_TARGET_EXITS,
     ]
   ),
+  deliver: contract(
+    [
+      'The target must remain open in Review with a running binding, accepted exact-head Test and review evidence, one current-branch pull request, and green checks.',
+      'Every retry re-reads live issue, pull-request, check, repository-setting, commit-range, and server-timestamped comment evidence before acting.',
+    ],
+    [
+      'Appends or reconciles one exact-head delivery intent and emits a sanctioned provider action; performs no lifecycle transition.',
+    ],
+    [
+      'Prints the byte-stable provider action, an explicit child-lineage result, or a fail-closed diagnostic; recover with npx aitm deliver #N.',
+    ],
+    [exit(20, 'provider action required'), ...PREFLIGHT_TARGET_EXITS]
+  ),
   reject: contract(
     ['The target must be in Review, a reason is required, and preflight checks must pass.'],
     ['Records the rejection reason and returns the issue to Develop for rework.'],
@@ -548,7 +561,8 @@ export const VERB_RELATED_COMMANDS = Object.freeze({
   'decompose-check': Object.freeze(['split-plan', 'plan', 'promote']),
   'split-plan': Object.freeze(['decompose-check', 'create-issue']),
   approve: Object.freeze(['review', 'reject', 'close']),
-  review: Object.freeze(['approve', 'reject', 'close']),
+  review: Object.freeze(['approve', 'deliver', 'reject', 'close']),
+  deliver: Object.freeze(['review', 'close']),
   reject: Object.freeze(['review', 'demote']),
   test: Object.freeze(['review', 'demote', 'promote']),
   reconcile: Object.freeze(['board', 'status', 'promote']),
@@ -633,6 +647,9 @@ export const VERB_POSITIONAL_ARGUMENTS = Object.freeze({
   ]),
   approve: Object.freeze([positional('#N', 'Required issue number whose review is approved.')]),
   review: Object.freeze([positional('#N', 'Issue number to move through the review gate.')]),
+  deliver: Object.freeze([
+    positional('#N', 'Required Review-state issue whose exact pull-request head is delivered.'),
+  ]),
   reject: Object.freeze([positional('#N', 'Issue number whose review is rejected.')]),
   test: Object.freeze([positional('#N', 'Issue number verified in the sandbox.')]),
   reconcile: Object.freeze([
