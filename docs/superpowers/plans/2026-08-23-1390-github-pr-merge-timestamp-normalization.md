@@ -75,7 +75,7 @@ Run:
 
 ```bash
 node --test scripts/tests/unit/task-tracker/verbs/deliver-default-deps.test.mjs
-node --test scripts/tests/unit/task-tracker/lib/delivery-verification.test.mjs
+node --test scripts/tests/unit/task-tracker/verbs/deliver.test.mjs
 npm run lint
 npm run format:check
 git diff --check
