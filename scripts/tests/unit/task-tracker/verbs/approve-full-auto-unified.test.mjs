@@ -160,7 +160,7 @@ function makeDeps(overrides = {}) {
   const planFile = path.join(dir, 'plan.md');
   writeFileSync(
     storyFile,
-    'As a task reviewer\nI want the approval footnote placed correctly\nSo that autonomous review remains auditable\n'
+    'As a task reviewer\nI want to place the approval footnote correctly\nSo that autonomous review remains auditable\n'
   );
   writeFileSync(scopeFile, 'Scope text.\n');
   writeFileSync(acFile, '- [ ] one <!-- aitm-non-demonstrable -->\n');

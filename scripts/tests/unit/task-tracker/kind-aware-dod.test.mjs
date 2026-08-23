@@ -49,7 +49,7 @@ function makeFixture(kind = 'code') {
   writeFileSync(scope, 'Scope.\n', 'utf8');
   writeFileSync(
     story,
-    'As a task author\nI want kind-aware issue bodies\nSo that each issue carries the correct verification floor\n',
+    'As a task author\nI want to create kind-aware issue bodies\nSo that each issue carries the correct verification floor\n',
     'utf8'
   );
   writeFileSync(ac, '- [ ] Something happens. <!-- aitm-verified vc-list="vc:1" -->\n', 'utf8');

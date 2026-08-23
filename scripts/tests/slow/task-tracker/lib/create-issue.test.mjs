@@ -26,7 +26,10 @@ const CANONICAL_TAIL = [
   '## Plan Metadata',
   '',
   '## Acceptance Criteria',
-  '- [ ] something',
+  '- [ ] something <!-- aitm-verified vc-list="vc:1" -->',
+  '',
+  '## Verification Commands',
+  '- [ ] `node --test x.test.mjs` <!-- id=1 -->',
   '',
   '### Definition of Done',
   '',
@@ -40,6 +43,14 @@ const CANONICAL_TAIL = [
   '> Follow: `.ai-task-manager/templates/pickup-directive.md`',
   '',
 ].join('\n');
+
+function canonicalBody(scope) {
+  return (
+    '## User Story\n\nAs a task author\nI want to test issue creation\nSo that downstream behavior stays deterministic\n\n' +
+    `## Scope\n${scope}\n` +
+    CANONICAL_TAIL
+  );
+}
 
 function setup({ withProjectId = true, tetherExitCode = 0, ghCreateOverride = null } = {}) {
   const temp = mkdtempSync(join(projectScratchDir('test'), 'aitm-create-'));
@@ -104,10 +115,7 @@ function readLines(file) {
 test('happy path: creates, tethers, substitutes placeholders', () => {
   const ctx = setup();
   const bodyFile = join(ctx.temp, 'body.md');
-  writeFileSync(
-    bodyFile,
-    '## Scope\nIssue <this-issue-#> closes <parent-epic-#>.\n' + CANONICAL_TAIL
-  );
+  writeFileSync(bodyFile, canonicalBody('Issue <this-issue-#> closes <parent-epic-#>.'));
 
   const result = spawnSync(
     'node',
@@ -172,7 +180,7 @@ test('happy path: creates, tethers, substitutes placeholders', () => {
 test('explicit --assignee is forwarded to gh issue create', () => {
   const ctx = setup();
   const bodyFile = join(ctx.temp, 'body.md');
-  writeFileSync(bodyFile, '## Scope\nx\n' + CANONICAL_TAIL);
+  writeFileSync(bodyFile, canonicalBody('x'));
 
   const result = spawnSync(
     'node',
@@ -198,7 +206,7 @@ test('explicit --assignee is forwarded to gh issue create', () => {
 test('missing projectId: exits non-zero before calling gh', () => {
   const ctx = setup({ withProjectId: false });
   const bodyFile = join(ctx.temp, 'body.md');
-  writeFileSync(bodyFile, '## Scope\nx\n' + CANONICAL_TAIL);
+  writeFileSync(bodyFile, canonicalBody('x'));
 
   const result = spawnSync('node', [script, '--title', 'test', '--body-file', bodyFile], {
     encoding: 'utf8',
@@ -219,7 +227,7 @@ test('missing projectId: exits non-zero before calling gh', () => {
 test('tether failure: prints recovery command and exits non-zero', () => {
   const ctx = setup({ tetherExitCode: 7 });
   const bodyFile = join(ctx.temp, 'body.md');
-  writeFileSync(bodyFile, '## Scope\nno placeholders here\n' + CANONICAL_TAIL);
+  writeFileSync(bodyFile, canonicalBody('no placeholders here'));
 
   const result = spawnSync(
     'node',
@@ -246,7 +254,7 @@ test('tether failure: prints recovery command and exits non-zero', () => {
 test('--parent flag forwards to project-tether', () => {
   const ctx = setup();
   const bodyFile = join(ctx.temp, 'body.md');
-  writeFileSync(bodyFile, '## Scope\nno placeholders\n' + CANONICAL_TAIL);
+  writeFileSync(bodyFile, canonicalBody('no placeholders'));
 
   const result = spawnSync(
     'node',
@@ -272,7 +280,7 @@ test('--parent flag forwards to project-tether', () => {
 test('--no-tether: skips tether step entirely', () => {
   const ctx = setup({ withProjectId: false });
   const bodyFile = join(ctx.temp, 'body.md');
-  writeFileSync(bodyFile, '## Scope\nx\n' + CANONICAL_TAIL);
+  writeFileSync(bodyFile, canonicalBody('x'));
 
   const result = spawnSync(
     'node',

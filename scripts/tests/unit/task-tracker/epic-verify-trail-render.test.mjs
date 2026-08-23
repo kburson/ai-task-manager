@@ -155,7 +155,7 @@ describe('#900 AC3: verify-epic-trail resolves the epic from the active session'
       writeFileSync(scope, 'Scope.\n', 'utf8');
       writeFileSync(
         story,
-        'As an epic owner\nI want child delivery trails verified\nSo that the epic closes with attributable commits\n',
+        'As an epic owner\nI want to verify child delivery trails\nSo that the epic closes with attributable commits\n',
         'utf8'
       );
       writeFileSync(ac, '- [ ] X. <!-- aitm-verified vc-list="vc:1" -->\n', 'utf8');

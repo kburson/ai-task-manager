@@ -24,7 +24,10 @@ const CANONICAL_TAIL = [
   '## Plan Metadata',
   '',
   '## Acceptance Criteria',
-  '- [ ] something',
+  '- [ ] something <!-- aitm-verified vc-list="vc:1" -->',
+  '',
+  '## Verification Commands',
+  '- [ ] `node --test x.test.mjs` <!-- id=1 -->',
   '',
   '### Definition of Done',
   '',
@@ -103,7 +106,11 @@ exit 1
 `;
   const ctx = setup({ ghCreateOverride: partialSuccessGh });
   const bodyFile = join(ctx.temp, 'body.md');
-  writeFileSync(bodyFile, '## Scope\nx\n' + CANONICAL_TAIL);
+  writeFileSync(
+    bodyFile,
+    '## User Story\n\nAs a task author\nI want to test partial success\nSo that recovery remains deterministic\n\n## Scope\nx\n' +
+      CANONICAL_TAIL
+  );
 
   const result = spawnSync(
     'node',
@@ -146,7 +153,11 @@ exit 1
 `;
   const ctx = setup({ ghCreateOverride: genuineFailGh });
   const bodyFile = join(ctx.temp, 'body.md');
-  writeFileSync(bodyFile, '## Scope\nx\n' + CANONICAL_TAIL);
+  writeFileSync(
+    bodyFile,
+    '## User Story\n\nAs a task author\nI want to test genuine failure\nSo that recovery remains deterministic\n\n## Scope\nx\n' +
+      CANONICAL_TAIL
+  );
 
   const result = spawnSync(
     'node',

@@ -61,7 +61,7 @@ function makeFixture() {
   writeFileSync(scope, 'Scope.\n', 'utf8');
   writeFileSync(
     story,
-    'As a documentation author\nI want diff-aware issue bodies\nSo that verification matches the files changed\n',
+    'As a documentation author\nI want to create diff-aware issue bodies\nSo that verification matches the files changed\n',
     'utf8'
   );
   writeFileSync(ac, '- [ ] Something happens. <!-- aitm-verified vc-list="vc:1" -->\n', 'utf8');

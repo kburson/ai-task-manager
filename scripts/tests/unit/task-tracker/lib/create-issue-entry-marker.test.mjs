@@ -18,6 +18,12 @@ const script = join(repoRoot, 'scripts/gh/create-issue.mjs');
 
 // Minimal canonical body that passes the issue-body verifier.
 const CANONICAL_BODY = [
+  '## User Story',
+  '',
+  'As a task author',
+  'I want to create a canonical issue',
+  'So that entry-marker behavior is tested downstream',
+  '',
   '## Scope',
   'Test scope.',
   '',
@@ -27,7 +33,10 @@ const CANONICAL_BODY = [
   '## Plan Metadata',
   '',
   '## Acceptance Criteria',
-  '- [ ] something',
+  '- [ ] something <!-- aitm-verified vc-list="vc:1" -->',
+  '',
+  '## Verification Commands',
+  '- [ ] `node --test x.test.mjs` <!-- id=1 -->',
   '',
   '### Definition of Done',
   '',
