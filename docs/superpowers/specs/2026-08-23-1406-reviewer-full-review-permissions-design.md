@@ -1,8 +1,7 @@
 # SHA-Bound Co-Review Orchestration Design
 
 **Issue:** #1406
-**Status:** Revised after round-6 reviewer confirmation; pending round-7
-validation
+**Status:** Accepted in manual round 7; accepted should-fix items incorporated
 **Date:** 2026-08-23
 
 ## Review Context
@@ -20,9 +19,9 @@ substantive review. Automating that relay does not require constraining either
 agent to a shell-command keyhole.
 
 Commit `04cd9dfe` and its manual review describe the superseded
-capability-policy approach. The next review must evaluate this reframed
-specification from its new commit rather than accepting or amending that older
-design.
+capability-policy approach. Manual round 7 accepted the reframed architecture
+at `f7b28588` with three non-blocking should-fix items. This revision
+incorporates those items without changing the accepted authority model.
 
 ## Problem
 
@@ -352,22 +351,25 @@ retry.
 - Remove ambiguity-based and destination-completeness refusals.
 - Remove the strict #1369 cross-worktree lifecycle classifier and exception.
 - Keep every ordinary Bash guard in its current order.
-- Require lifecycle commands to originate from the canonical review worktree;
-  do not early-exit or expand path scope for co-review commands.
+- Do not recognize or classify co-review lifecycle commands after retirement.
+  The Bash guard's only co-review obligation is to avoid an early exit or path
+  scope expansion; canonical-worktree enforcement belongs to the protocol.
 
 ### `runtime-root.mjs` and `protocol.mjs`
 
 - Change `resolveRuntimeRoot()` from a linked-worktree resolver into the
-  one-worktree boundary. Resolve both canonical caller and runtime roots, then
-  refuse unless `callerRoot === root`; delete the same-common-directory
-  acceptance branch.
+  one-worktree boundary. Resolve the canonical caller root and derive the
+  target runtime root from the runtime path's nearest existing ancestor so a
+  not-yet-created runtime is still checked. Refuse unless
+  `callerRoot === root`; delete the same-common-directory acceptance branch.
 - Remove the now-unused `commonDirectory()` operation from
   `REAL_REPOSITORY_BOUNDARY`, its memory fixture, and its focused boundary
   tests.
-- Keep `protocolRoot()` as the single protocol entry point that converts this
-  mismatch into a `repository-identity` refusal. Every status, claim, wait,
-  handoff, intervention, finalization, and archive-snapshot command therefore
-  crosses the same caller-root check.
+- Route initialization through `protocolRoot()` instead of calling
+  `repositoryRoot(cwd)` directly. Keep `protocolRoot()` as the single protocol
+  entry point that converts a mismatch into a `repository-identity` refusal.
+  Initialization, status, claim, wait, handoff, intervention, finalization, and
+  archive-snapshot commands therefore cross the same caller-root check.
 - Continue applying `assertRecordedRoot()` so the surviving root also equals
   both `state.repositoryRoot` and `state.worktree`.
 - Preserve the existing reviewer-turn integrity check that refuses when
@@ -415,6 +417,17 @@ authority.
 - State plainly that routing and continuation do not constitute human semantic
   approval; preserve existing command provenance and approval markers.
 - Do not change protocol or terminal archive schemas in #1406.
+
+### Operator guidance
+
+- Update `docs/guides/github-native-coordination.md` and
+  `docs/guides/grok-provider.md` to remove the exact-pending-review-artifact
+  capability policy and describe normal repository capabilities, cooperative
+  reviewer role separation, the one-worktree protocol boundary, and immutable
+  SHA-bound evidence.
+- Update provider/documentation coverage assertions to match the retired
+  modules and replacement guidance. Historical specifications, plans, reviews,
+  and evidence remain immutable.
 
 ## Failure Handling
 
@@ -501,10 +514,11 @@ commit touching any tracked path besides the authoritative artifact. They must
 also prove that ignored runtime evidence does not count as tracked drift.
 
 Runtime-root tests must exercise both sibling-linked-worktree and main-root to
-nested-worktree calls. Every protocol verb must inherit the
-`callerRoot === runtimeRoot` refusal through `protocolRoot()`; no special Bash
-shape may bypass it. Imported-review tests must refuse a reachable ancestor and
-accept only `review-of === HEAD` at initialization.
+nested-worktree calls, including initialization when the target runtime folder
+does not exist yet. Every protocol verb, including initialization, must inherit
+the `callerRoot === runtimeRoot` refusal through `protocolRoot()`; no special
+Bash shape may bypass it. Imported-review tests must refuse a reachable ancestor
+and accept only `review-of === HEAD` at initialization.
 
 Repository-boundary contract tests must cover `trackedChanges()` and
 `changedPathsBetween()` in both the real Git boundary and the in-memory fixture,
@@ -545,6 +559,9 @@ Run the full relay without copying substantive content through a human prompt:
     accepted handoff, and succeeds through the exact archive-finalization retry.
     Archive output after acceptance is exempt from pre-handoff tracked-state
     checks.
+12. Initialization from the main root into a nested linked worktree runtime, or
+    from one sibling worktree into another, is refused before protocol files are
+    created, including when the requested runtime folder does not yet exist.
 
 ### Human-authority semantics
 
@@ -557,11 +574,16 @@ create human semantic-approval evidence.
 
 Remove or rewrite reviewer mutation-parser and co-review write-policy tests.
 Update `scripts/tests/fixtures/test-corpus-post-snapshot/**` and
-`scripts/tests/unit/meta/test-corpus-membership.test.mjs` expectations. Add a
-net-new `scripts/task-tracker/test-impact-manifest.json` rule whose sources
-cover the Bash guard, activity guard, source-edit gate, runtime-root resolver,
-repository boundary, co-review protocol, archive path, and handoff generator,
-and whose tests cover the new load-bearing integration and focused regressions.
+`scripts/tests/unit/meta/test-corpus-membership.test.mjs` expectations. Remove
+the retired-module required-asset assertions from
+`scripts/tests/unit/meta/package-test-corpus.test.mjs` and
+`scripts/tests/unit/providers/coverage-provider-adapter.test.mjs`; update the
+latter's operator-guidance assertion for the replacement model. Add a net-new
+`scripts/task-tracker/test-impact-manifest.json` rule whose sources cover the
+Bash guard, activity guard, source-edit gate, runtime-root resolver, repository
+boundary, co-review protocol, archive path, handoff generator, and updated
+operator guides, and whose tests cover the new load-bearing integration and
+focused regressions.
 
 Run focused red/green tests, then the fast suite, slow suite, lint,
 documentation lint, spelling, and formatting before Test admission.
