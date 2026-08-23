@@ -48,10 +48,10 @@ The deep-dive section must include:
   review:
 
   ```markdown
-  ### Verification Commands
+  ## Verification Commands
 
-  - [ ] `node --test scripts/tests/unit/task-tracker/lib/config.test.mjs`
-  - [ ] `node --test scripts/tests/unit/task-tracker/lib/state.test.mjs`
+  - [ ] `node --test scripts/tests/unit/task-tracker/lib/config.test.mjs` <!-- id=1 -->
+  - [ ] `node --test scripts/tests/unit/task-tracker/lib/state.test.mjs` <!-- id=2 -->
   ```
 
   Do not add words like `PASS`; the checked box is the proof.
@@ -63,23 +63,23 @@ The deep-dive section must include:
   that a later autofix would still change:
 
   ```markdown
-  ### Verification Commands
+  ## Verification Commands
 
-  - [ ] `npm run lint`
-  - [ ] `npm run format:check`
-  - [ ] `npm run test:all`
+  - [ ] `npm run lint` <!-- id=1 -->
+  - [ ] `npm run format:check` <!-- id=2 -->
+  - [ ] `npm run test:all` <!-- id=3 -->
   ```
 
   Bind each Acceptance Criterion to its proof command with an inline
   marker:
 
   ```markdown
-  - [ ] Config loads from project root. <!-- aitm-verified-by: `node --test scripts/tests/unit/task-tracker/lib/config.test.mjs` -->
+  - [ ] Config loads from project root. <!-- aitm-verified vc-list="vc:1" -->
   ```
 
-  If an AC is proved by a standard DoD command, reference that command in
-  the marker but do not duplicate the command under `### Verification
-Commands`.
+  Every cited `vc:N` must resolve to an `id=N` entry under the single root
+  `## Verification Commands` section. Functional DoD items keep their own
+  literal command declarations; ACs never use that declaration grammar.
 
 - **Identified risks** beyond the Scope.
 - **Sibling sub-issues to spawn** (if any).
@@ -119,17 +119,19 @@ edit`/`gh issue create` whose body embeds a banned heading inside a
 During deep dive, you discover a new AC: "Refusal message must name the
 offending heading + line number." Do NOT add it to the appendix. Instead:
 
-1. Append the AC to the root-level `## Acceptance Criteria` section with
-   an `aitm-verified cmd="…"` marker bound to a test file:
+1. Append the command to the root-level `## Verification Commands` section
+   with a stable ID, then append the AC to the root-level
+   `## Acceptance Criteria` section with a citation to that ID:
 
    ```
-   - [ ] **Refusal names heading + line.** ... <!-- aitm-verified cmd="`node --test scripts/tests/unit/task-tracker/lib/gh-edit-guard-body.test.mjs`" -->
+   - [ ] `node --test scripts/tests/unit/task-tracker/lib/gh-edit-guard-body.test.mjs` <!-- id=4 -->
+   - [ ] **Refusal names heading + line.** ... <!-- aitm-verified vc-list="vc:4" -->
    ```
 
 2. In the appendix prose, reference the root entry without a checkbox:
 
-   > Verification: see `### Acceptance Criteria` above ("Refusal names
-   > heading + line") and the corresponding `### Verification Commands`
+   > Verification: see `## Acceptance Criteria` above ("Refusal names
+   > heading + line") and the corresponding `## Verification Commands`
    > entry.
 
 This keeps the gate's view authoritative and prevents wrong-target

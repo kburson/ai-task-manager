@@ -11,6 +11,38 @@ import {
   closeBody,
   runClose,
 } from '../../../helpers/close-convergence-wiring-helpers.mjs';
+import { resolveReviewAuthorization } from '../../../../task-tracker/lib/gate-resolve.mjs';
+
+const HEAD = 'a'.repeat(40);
+
+function testReceiptMarker(commitSha = HEAD) {
+  const data = Buffer.from(JSON.stringify({ stage: 'test', commitSha })).toString('base64url');
+  return `<!-- aitm-verification-receipt stage="test" data="${data}" -->`;
+}
+
+function directoryEvidence() {
+  const authority = { contractEpoch: 3, coordinatorGrantId: 'grant-3', authorityEpoch: 7 };
+  const entry = (recordId, evidenceKind, result, provenance) => ({
+    recordId,
+    recordType: 'review-result',
+    evidenceKind,
+    result,
+    contractEpoch: 3,
+    commitSha: HEAD,
+    provenance,
+    authority: { grantId: 'grant-3', epoch: 7 },
+  });
+  return {
+    sourceKind: 'github-records/v1',
+    expectedSha: HEAD,
+    evidence: [
+      entry('review-1', 'review', 'passed', 'agent'),
+      entry('approval-1', 'approval', 'approved', 'human'),
+    ],
+    acceptedRecordIds: ['review-1', 'approval-1'],
+    authority,
+  };
+}
 
 test('finalize passes the configured tail profile and explicit review authority', async () => {
   const run = await runClose({ convergenceTailProfile: 'background-convergence' });
@@ -25,8 +57,106 @@ test('finalize passes the configured tail profile and explicit review authority'
   const defaultProfile = await runClose();
   assert.equal(defaultProfile.calls.movesToDone[0].options.tailProfile, 'task-owner');
 
-  const bypassed = await runClose({ gateReviewToDone: false });
-  assert.equal(bypassed.calls.movesToDone[0].options.reviewAuthority, 'gate-bypassed');
+  const humanWithDisabledPolicy = await runClose({
+    gateReviewToDone: false,
+    reviewAuthorization: { mode: 'human', standing: true, source: 'human-evidence' },
+  });
+  assert.equal(humanWithDisabledPolicy.calls.movesToDone[0].options.reviewAuthority, 'human-gate');
+
+  const fullAuto = await runClose({
+    gateReviewToDone: false,
+    reviewAuthorization: { mode: 'full-auto', standing: true, source: 'session' },
+  });
+  assert.equal(fullAuto.calls.movesToDone[0].options.reviewAuthority, 'gate-bypassed');
+});
+
+test('stale close approval refuses after fresh Test and Agent Review evidence', async () => {
+  const stale = await runClose({
+    gateReviewToDone: false,
+    body: `${closeBody()}\n<!-- aitm-review-approved ts="2026-08-22T00:00:00Z" approved-sha="${'b'.repeat(40)}" full-auto="yes" signals="session=1" -->`,
+    reviewAuthorizationResolver: (input) => resolveReviewAuthorization(input),
+  });
+  assert.equal(stale.exitCode, 1);
+  assert.equal(stale.calls.movesToDone.length, 0);
+
+  const refreshed = await runClose({
+    gateReviewToDone: false,
+    body: `${closeBody()}\n<!-- aitm-review-approved ts="2026-08-22T00:00:00Z" approved-sha="${HEAD}" full-auto="yes" signals="session=1" -->`,
+    reviewAuthorizationResolver: (input) => resolveReviewAuthorization(input),
+  });
+  assert.equal(refreshed.exitCode, 0);
+  assert.equal(refreshed.calls.movesToDone.length, 1);
+});
+
+test('close consumes marker-free exact-head directory human authority', async () => {
+  const run = await runClose({
+    gateReviewToDone: false,
+    lifecycleEvidence: directoryEvidence(),
+    useInjectedReviewAuthorization: false,
+  });
+  assert.equal(run.exitCode, 0);
+  assert.equal(run.calls.movesToDone[0].options.reviewAuthority, 'human-gate');
+  assert.equal(run.calls.mutations, 0, 'directory authority must not create a body marker');
+});
+
+test('production close derives accepted head from marker-free directory Review evidence', async () => {
+  const run = await runClose({
+    gateReviewToDone: false,
+    body: `${closeBody()}\n${testReceiptMarker()}`,
+    lifecycleEvidence: directoryEvidence(),
+    useInjectedReviewAuthorization: false,
+    useInjectedDeliveryGateInput: false,
+    useInjectedDeliveryReceipt: false,
+  });
+
+  assert.equal(run.exitCode, 0);
+  assert.equal(run.calls.movesToDone[0].options.reviewAuthority, 'human-gate');
+  assert.equal(run.calls.mutations, 0, 'directory authority must remain marker-free');
+});
+
+test('production close refuses directory Review without directory Approval despite body approval', async () => {
+  const evidence = directoryEvidence();
+  evidence.evidence = evidence.evidence.filter(({ evidenceKind }) => evidenceKind === 'review');
+  evidence.acceptedRecordIds = ['review-1'];
+  const bodyApproval = `<!-- aitm-review-approved ts="2026-08-22T00:00:00Z" approved-sha="${HEAD}" -->`;
+  const run = await runClose({
+    gateReviewToDone: false,
+    body: `${closeBody({ agentReview: ' ' })}\n${testReceiptMarker()}\n${bodyApproval}`,
+    lifecycleEvidence: evidence,
+    useInjectedReviewAuthorization: false,
+    useInjectedDeliveryGateInput: false,
+    useInjectedDeliveryReceipt: false,
+  });
+
+  assert.equal(run.exitCode, 1);
+  assert.equal(run.calls.movesToDone.length, 0);
+  assert.equal(run.calls.mutations, 0);
+});
+
+test('close fails closed for stale or malformed marker-free directory authority', async () => {
+  const current = directoryEvidence();
+  const missingReview = {
+    ...current,
+    evidence: current.evidence.filter(({ evidenceKind }) => evidenceKind === 'approval'),
+    acceptedRecordIds: ['approval-1'],
+  };
+  for (const lifecycleEvidence of [
+    { ...current, expectedSha: 'b'.repeat(40) },
+    { sourceKind: 'github-records/v1', expectedSha: HEAD },
+    missingReview,
+  ]) {
+    const run = await runClose({
+      gateReviewToDone: false,
+      body: `${closeBody()}\n${testReceiptMarker()}`,
+      lifecycleEvidence,
+      useInjectedReviewAuthorization: false,
+      useInjectedDeliveryGateInput: false,
+      useInjectedDeliveryReceipt: false,
+    });
+    assert.equal(run.exitCode, 1);
+    assert.equal(run.calls.movesToDone.length, 0);
+    assert.equal(run.calls.mutations, 0);
+  }
 });
 
 for (const [name, convergenceTailProfile] of [

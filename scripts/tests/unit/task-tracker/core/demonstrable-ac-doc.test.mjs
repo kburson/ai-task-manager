@@ -19,7 +19,7 @@ test('workflow.md documents the Demonstrable-AC Standard', () => {
 
 test('workflow.md explains the verifier-or-invalid-tag rule and the test:all exclusion', () => {
   const md = readFileSync(DOC, 'utf8');
-  assert.match(md, /aitm-verified cmd=/);
+  assert.match(md, /aitm-verified vc-list="vc:1"/);
   assert.match(md, /invalid — non-demonstrable/);
   assert.match(md, /test:all/);
 });

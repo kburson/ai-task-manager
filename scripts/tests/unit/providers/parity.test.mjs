@@ -26,10 +26,16 @@
 // drift signal we want a future contributor to see immediately.
 
 import { strict as assert } from 'node:assert';
+import { readFileSync } from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 import { getProvider } from '../../../providers/index.mjs';
 import { claudeAdapter } from '../../../providers/claude.mjs';
 import { codexAdapter } from '../../../providers/codex.mjs';
+import { claudeStub, codexStub } from '../../../../bin/cli.mjs';
+
+const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../../..');
 
 // ---- Expected values (canonical baseline; update only when a capability
 // intentionally changes for that provider). ----
@@ -53,6 +59,12 @@ const EXPECTED_CLAUDE = Object.freeze({
     hookTarget: '.claude/settings.json',
     commandTarget: '.claude/commands/task.md',
   },
+  externalActions: {
+    'github.merge-pull-request': {
+      adapterContract: 'skill',
+      expectedHeadSha: true,
+    },
+  },
 });
 
 const EXPECTED_CODEX = Object.freeze({
@@ -74,6 +86,12 @@ const EXPECTED_CODEX = Object.freeze({
     hookTarget: '.codex/hooks.json',
     commandTarget: null,
   },
+  externalActions: {
+    'github.merge-pull-request': {
+      adapterContract: 'skill',
+      expectedHeadSha: true,
+    },
+  },
 });
 
 const CAPABILITIES = [
@@ -90,6 +108,7 @@ const CAPABILITIES = [
   'hookCapability',
   'skillAdapterPath',
   'installRecipe',
+  'externalActions',
 ];
 
 const tests = [];
@@ -143,6 +162,98 @@ test('parity: full claude adapter object matches expected baseline', () => {
 
 test('parity: full codex adapter object matches expected baseline', () => {
   assert.deepStrictEqual({ ...codexAdapter }, { ...EXPECTED_CODEX });
+});
+
+test('#939: shared router discovers the deliver JIT rule and installed stubs reach it', () => {
+  const router = readFileSync(path.join(REPO_ROOT, 'skill/shared/router.md'), 'utf8');
+  const rule = readFileSync(path.join(REPO_ROOT, 'skill/shared/rules/deliver.md'), 'utf8');
+  assert.match(router, /`\/task deliver #N`\s*\|\s*`rules\/deliver\.md`/);
+  assert.match(rule, /aitm-skill-loaded:rules\/deliver:1\.0\.0/);
+  for (const installed of ['.agents/skills/task/SKILL.md', '.claude/skills/task/SKILL.md']) {
+    assert.match(
+      readFileSync(path.join(REPO_ROOT, installed), 'utf8'),
+      /node_modules\/ai-task-manager\/skill\/adapters\/(?:codex|claude)\/SKILL\.md/
+    );
+  }
+});
+
+test('#939: checked-in Claude and Codex skills equal installer-generated stubs', () => {
+  assert.equal(
+    readFileSync(path.join(REPO_ROOT, '.claude/skills/task/SKILL.md'), 'utf8'),
+    claudeStub()
+  );
+  assert.equal(
+    readFileSync(path.join(REPO_ROOT, '.agents/skills/task/SKILL.md'), 'utf8'),
+    codexStub()
+  );
+});
+
+test('#939: provider adapters own sanctioned integration wording', () => {
+  const codex = readFileSync(path.join(REPO_ROOT, 'skill/adapters/codex/SKILL.md'), 'utf8');
+  const claude = readFileSync(path.join(REPO_ROOT, 'skill/adapters/claude/SKILL.md'), 'utf8');
+  const grok = readFileSync(path.join(REPO_ROOT, 'skill/adapters/grok/SKILL.md'), 'utf8');
+  assert.match(codex, /github\.merge-pull-request[\s\S]*merge_pull_request/);
+  assert.match(claude, /github\.merge-pull-request[\s\S]*merge_pull_request/);
+  assert.match(grok, /github\.merge-pull-request[\s\S]*missing-capability/);
+});
+
+test('#939: delivery rule is an exact, fail-closed host contract', () => {
+  const rule = readFileSync(path.join(REPO_ROOT, 'skill/shared/rules/deliver.md'), 'utf8');
+  assert.match(
+    rule,
+    /provider-action envelope[\s\S]*exit `20`[\s\S]*exactly one[\s\S]*at most one\s+provider call/i
+  );
+  assert.match(
+    rule,
+    /non-action envelope[\s\S]*non-`20`[\s\S]*zero action lines[\s\S]*never\s+invokes a provider[\s\S]*obey/i
+  );
+  assert.match(
+    rule,
+    /mismatched envelope[\s\S]*exit `20` with zero or multiple action lines[\s\S]*non-`20` with one or multiple action lines/i
+  );
+  assert.match(rule, /retry\s+once[\s\S]*fail closed/i);
+  assert.match(
+    rule,
+    /exit\s+`0`[\s\S]*AITM_DELIVERY_RESULT:[\s\S]*verified[\s\S]*continue to `npx aitm close #N`/i
+  );
+  assert.match(rule, /parse only the single `AITM_PROVIDER_ACTION_REQUIRED:` line/i);
+  const actionKeys = [
+    'action',
+    'baseRef',
+    'commitMessage',
+    'commitTitle',
+    'expectedHeadSha',
+    'headRef',
+    'intentId',
+    'issueNumber',
+    'mergeMethod',
+    'prNumber',
+    'repository',
+    'schema',
+  ];
+  for (const key of actionKeys) assert.match(rule, new RegExp(`\\b${key}\\b`));
+  assert.match(rule, /exactly (?:these|the following) 12 keys/i);
+  assert.match(rule, /`schema`[\s\S]*integer[\s\S]*exactly `1`/i);
+  assert.match(rule, /`issueNumber` and `prNumber`[\s\S]*positive safe integers/i);
+  assert.match(rule, /remaining[\s\S]*strings/i);
+  assert.match(rule, /unknown[\s\S]*missing[\s\S]*refuse/i);
+  assert.ok(rule.includes('^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$'));
+  assert.match(rule, /equal its own `trim\(\)`[\s\S]*result/i);
+  assert.match(rule, /must not start or end with `\/`/i);
+  assert.match(rule, /must not contain `\/\/` or `\.\.`/i);
+  for (const forbidden of ['`~`', '`^`', '`:`', '`?`', '`*`', '`[`', '`\\`']) {
+    assert.match(rule, new RegExp(forbidden.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
+  }
+  assert.match(rule, /whitespace/);
+  assert.match(rule, /`commitTitle`[\s\S]*starts with exactly\s+`\[#\$\{issueNumber\}\]`/i);
+  assert.match(
+    rule,
+    /`commitMessage`[\s\S]*contains both exact tokens\s+`PR #\$\{prNumber\}` and `\$\{expectedHeadSha\}`/i
+  );
+  assert.doesNotMatch(rule, /pullRequestNumber/);
+  assert.match(rule, /never[^\n]*shell/i);
+  assert.match(rule, /success, refusal, timeout, or ambiguity/i);
+  assert.match(rule, /live-verified delivery receipt/i);
 });
 
 // ---- Run. ----

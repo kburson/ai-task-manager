@@ -24,6 +24,7 @@
     "output/**",
     "docs/postmortems/**",
     "docs/ai-memory/**",
-    ".ai-task-manager/memory/**"
+    ".ai-task-manager/memory/**",
+    ".superpowers/**"
   ]
 }

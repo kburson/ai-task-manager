@@ -4,6 +4,22 @@ This directory contains executable implementation plans derived from approved
 specs. Plans are written for agents that may have little local context: they
 name files, interfaces, tests, verification commands, and commit boundaries.
 
+## Filename convention
+
+When an implementation plan is created for an existing GitHub issue, its
+filename must include that issue number:
+
+```text
+YYYY-MM-DD-<issue-id>-<slug>.md
+```
+
+Example: `2026-08-21-939-governed-pr-delivery.md`.
+
+Do not invent an issue number for pre-issue planning. This requirement applies
+whenever the implementing issue exists when the plan is created, making the
+artifact-to-issue relationship visible in directory listings and search
+results.
+
 Once a plan is referenced by a GitHub issue, PR, release note, or child issue,
 treat it as an audit artifact:
 

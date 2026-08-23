@@ -41,7 +41,7 @@ const PLACEHOLDER_RE = /<this-issue-#>|<parent-epic-#>/;
 const VALID_SHAPES = new Set(['epic', 'sub-issue', 'solo', 'defect', 'stub']);
 
 function usage() {
-  return `Usage: create-issue.mjs --title <t> (--body-file <path> | --shape epic|sub-issue|solo|defect --scope-file <p> --ac-file <p> --story-origin-file <p> [--plan-metadata-file <p>] [--verification-commands-file <p>] [--reproduction-file <p>] [--root-cause-file <p>] [--fix-direction-file <p>] [--out-of-scope-file <p>] [--sub-issue-list-file <p>] | --shape stub [--idea-file <p>]) [--label <l> ...] [--priority p0|p1|p2] [--size XS|S|M|L|XL] [--estimate <hours>] [--rank <n>] [--parent <N>] [--assignee <a>] [--allow-duplicate-child] [--dry-run] [--no-tether] [--no-placeholder-substitution] [--internal]`;
+  return `Usage: create-issue.mjs --title <t> (--body-file <path> | --shape epic|sub-issue|solo|defect --user-story-file <p> --scope-file <p> --ac-file <p> --story-origin-file <p> [--plan-metadata-file <p>] [--verification-commands-file <p>] [--reproduction-file <p>] [--root-cause-file <p>] [--fix-direction-file <p>] [--out-of-scope-file <p>] [--sub-issue-list-file <p>] | --shape stub [--idea-file <p>]) [--label <l> ...] [--priority p0|p1|p2] [--size XS|S|M|L|XL] [--estimate <hours>] [--rank <n>] [--parent <N>] [--assignee <a>] [--allow-duplicate-child] [--dry-run] [--no-tether] [--no-placeholder-substitution] [--internal]`;
 }
 
 function parseArgs(argv) {
@@ -133,7 +133,7 @@ function validateArgs(args) {
     // the Refine stage fills; Story Origin is synthesized and Plan Metadata stays
     // empty until planning, so section files are not required for a stub.
     if (args.shape !== 'stub') {
-      for (const flag of ['scope-file', 'ac-file', 'story-origin-file']) {
+      for (const flag of ['user-story-file', 'scope-file', 'ac-file', 'story-origin-file']) {
         if (typeof args[flag] !== 'string') die(`--${flag} required with --shape`, 2);
       }
     }
@@ -156,6 +156,8 @@ export function buildShapeFlags(args) {
     if (typeof args['idea-file'] === 'string') flags.push('--idea-file', args['idea-file']);
   } else {
     flags.push(
+      '--user-story-file',
+      args['user-story-file'],
       '--scope-file',
       args['scope-file'],
       '--ac-file',

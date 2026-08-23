@@ -22,7 +22,7 @@
 //   node preflight-issue.mjs                    # tail block only
 //   node preflight-issue.mjs --check-only       # verify templates, no stdout
 //   node preflight-issue.mjs --shape <shape> \
-//        --scope-file <p> --ac-file <p> --story-origin-file <p> \
+//        --user-story-file <p> --scope-file <p> --ac-file <p> --story-origin-file <p> \
 //        [--plan-metadata-file <p>] \
 //        [--verification-commands-file <p>] \
 //        [--parent <N>] [--sub-issue-list-file <p>]
@@ -52,6 +52,11 @@ import { filterDodForKindAndDiff } from './lib/dod-kind-filter.mjs';
 import { wantsHelp, emitSelfDoc } from '../lib/self-doc.mjs';
 import { verifyIssueBody } from '../gh/lib/issue-body-verifier.mjs';
 import { stripKnownPrefix } from '../gh/lib/kind-prefix.mjs';
+import { validateExactUserStoryLines } from './lib/user-story-author.mjs';
+import {
+  findAcsWithLegacyVerificationForm,
+  findAcsWithoutVerifierOrInvalidTag,
+} from './lib/body-invariants.mjs';
 
 const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
 const PACKAGE_TEMPLATES_DIR = path.resolve(SCRIPT_DIR, '..', '..', 'templates');
@@ -196,6 +201,10 @@ export function normalizeAcceptanceCriteria(value) {
     return line;
   });
   return out.join('\n');
+}
+
+export function normalizeUserStoryFragment(value) {
+  return validateExactUserStoryLines(value).join('\n');
 }
 
 // Plan Metadata label emphasis (#416, fixed in #488). Delegates to the shared
@@ -368,11 +377,20 @@ function emitShape(args, dodPath, root) {
       plan_metadata: '',
     };
   } else {
-    const required = ['scope-file', 'ac-file', 'story-origin-file'];
+    const required = ['user-story-file', 'scope-file', 'ac-file', 'story-origin-file'];
     for (const flag of required) {
       if (typeof args[flag] !== 'string') die(`--${flag} required with --shape`);
     }
+    let userStory;
+    try {
+      userStory = normalizeUserStoryFragment(
+        readFileOrDie(args['user-story-file'], '--user-story-file')
+      );
+    } catch (err) {
+      die(`--user-story-file ${err.message}`);
+    }
     rawFills = {
+      user_story: userStory,
       scope: readFileOrDie(args['scope-file'], '--scope-file').trim(),
       story_origin: readFileOrDie(args['story-origin-file'], '--story-origin-file').trim(),
       acceptance_criteria: readFileOrDie(args['ac-file'], '--ac-file').trim(),
@@ -515,6 +533,30 @@ function emitShape(args, dodPath, root) {
           : spliceVcSection(finalBody.slice(0, idx), vcSection, finalBody.slice(idx));
     }
   }
+  if (shape !== 'stub') {
+    const citationOffenders = findAcsWithLegacyVerificationForm(finalBody);
+    const citationLines = new Set(citationOffenders.map((offender) => offender.lineIndex));
+    const demonstrabilityOffenders = findAcsWithoutVerifierOrInvalidTag(finalBody).filter(
+      (offender) => !citationLines.has(offender.lineIndex)
+    );
+    const declarationOffenders = [
+      ...new Map(
+        [...citationOffenders, ...demonstrabilityOffenders].map((offender) => [
+          `${offender.lineIndex}:${offender.reason}`,
+          offender,
+        ])
+      ).values(),
+    ];
+    if (declarationOffenders.length > 0) {
+      process.stderr.write('preflight-issue: ac-verifier-contract\n');
+      for (const offender of declarationOffenders) {
+        process.stderr.write(
+          `  line ${offender.lineIndex + 1}: ${offender.reason}: ${offender.label}\n`
+        );
+      }
+      process.exit(2);
+    }
+  }
   // #494, #500, #923, #865 — `--kind <audit|research|spike|epic|docs-only>`
   // stamps the issue-kind marker at creation. The no-commit kinds route onto the
   // deliverable-evidence lane; commit-bearing `docs-only` keeps the commit trail
@@ -526,11 +568,13 @@ function emitShape(args, dodPath, root) {
   if (stampKindMarker) {
     finalBody = setIssueKindMarker(finalBody, kind);
   }
-  const bodyVerification = verifyIssueBody(finalBody);
-  if (!bodyVerification.ok) {
-    die(
-      `rendered ${shape} body failed canonical verification: ${bodyVerification.missing.join('; ')}`
-    );
+  if (shape !== 'stub') {
+    const bodyVerification = verifyIssueBody(finalBody);
+    if (!bodyVerification.ok) {
+      die(
+        `rendered ${shape} body failed canonical verification: ${bodyVerification.missing.join('; ')}`
+      );
+    }
   }
   process.stdout.write(finalBody);
   // #298 AC3 — emit `aitm-fields` trailer block from seed values forwarded

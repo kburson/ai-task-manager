@@ -23,8 +23,8 @@ unless the caller passes `evidenceStamp: true`.
 
 Only four sanctioned, in-repo stampers ever pass that flag:
 
-- `ac-stamp` — runs an AC line's declared `aitm-verified cmd="…"` verifier and
-  stamps the result.
+- `ac-stamp` — resolves an AC line's `aitm-verified vc-list="vc:N"` citation,
+  runs the cited root Verification Command, and stamps the result.
 - `dod-stamp` — the Functional Definition-of-Done equivalent.
 - the close pipeline — auto-stamps the two derived DoD keys (`acs`, `checkboxes`)
   from the body itself.

@@ -54,12 +54,12 @@ For each item:
   output).
 - Run the standard DoD command checkboxes: `npm run test:all` (both
   fast and slow lanes), `npm run lint`, and `npm run format:check`.
-- Verify every relevant issue-specific command in `### Verification
+- Verify every relevant issue-specific command in `## Verification
 Commands` has been run successfully, its output read, and its checkbox
   checked.
-- Verify every Acceptance Criterion has at least one `aitm-verified cmd="…"`
-  marker and that every non-standard command named there appears under
-  `### Verification Commands`.
+- Verify every Acceptance Criterion has an `aitm-verified vc-list="vc:N"`
+  citation (or an honest `aitm-non-demonstrable` opt-out) and every cited ID
+  resolves under the root `## Verification Commands` section.
 - Verify that all issue body checkboxes are ticked — this item is
   self-referential and must be the last box checked.
 - Mark each verified item with `/task ensureChecked "<label>"`.

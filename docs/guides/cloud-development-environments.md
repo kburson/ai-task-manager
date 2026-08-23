@@ -44,6 +44,7 @@ Create issues through AI Task Manager, not direct GitHub CLI issue creation:
 npx aitm create-issue \
   --shape solo \
   --title "Feature: ..." \
+  --user-story-file ./.tmp/gh/user-story.md \
   --scope-file ./.tmp/gh/scope.md \
   --ac-file ./.tmp/gh/acs.md \
   --story-origin-file ./.tmp/gh/story-origin.md

@@ -30,6 +30,7 @@ const AGENT_REVIEW_PASSED =
 
 const cfg = { repo: 'o/r' };
 const FIXED_TS = '2026-06-29T00:00:00Z';
+const APPROVED_SHA = 'a'.repeat(40);
 
 // Isolated project dir so withIssueLock writes its lock under scratch, not the
 // live worktree.
@@ -92,6 +93,7 @@ function makeDeps(overrides = {}) {
         return { status: next !== before ? 'ok' : 'no-op', body };
       },
       getBoardState: async () => overrides.state ?? 'review',
+      getHeadSha: async () => APPROVED_SHA,
       nowIso: () => FIXED_TS,
       detectFullAuto: () => overrides.auto ?? { fired: false, signals: '' },
       postComment: async ({ body: b }) => {
@@ -161,7 +163,7 @@ test('runApprove: wrong-state when not in review', async () => {
 });
 
 test('runApprove: already-approved when marker present', async () => {
-  const marked = `${REVIEW_BODY.replace('- [ ] Passed final human review', '- [x] Passed final human review')}\n<!-- aitm-review-approved ts="${FIXED_TS}" -->\n`;
+  const marked = `${REVIEW_BODY.replace('- [ ] Passed final human review', '- [x] Passed final human review')}\n<!-- aitm-review-approved ts="${FIXED_TS}" approved-sha="${APPROVED_SHA}" -->\n`;
   const { r, calls } = await run({ initialBody: marked });
   assert.equal(r.status, 'already-approved');
   assert.equal(calls.writes.length, 0);
@@ -174,7 +176,7 @@ test('runApprove: human path with drivers posts Review Notes', async () => {
   assert.equal(r.fullAuto, false);
   assert.equal(r.notesSource, 'human');
   assert.equal(calls.comments.length, 1);
-  assert.match(getBody(), /<!-- aitm-review-approved ts="2026-06-29T00:00:00Z" -->/);
+  assert.match(getBody(), new RegExp(`aitm-review-approved[^>]*approved-sha="${APPROVED_SHA}"`));
   assert.match(getBody(), /- \[x\] Passed final human review/);
 });
 
@@ -335,6 +337,7 @@ const okVerbDeps = {
   fetchIssueBody: async () => REVIEW_BODY,
   mutateIssueBody: async ({ mutate }) => ({ status: 'ok', body: mutate(REVIEW_BODY) }),
   getBoardState: async () => 'review',
+  getHeadSha: async () => APPROVED_SHA,
   nowIso: () => FIXED_TS,
   detectFullAuto: () => ({ fired: false, signals: '' }),
   postComment: async () => {},
@@ -402,7 +405,7 @@ test('verbApprove: approved → stdout, no exit', async () => {
 test('verbApprove: already-approved → stdout, no exit', async () => {
   delete process.env.TT_SKIP_NETWORK;
   const n = nextIssue();
-  const marked = `${REVIEW_BODY.replace('- [ ] Passed final human review', '- [x] Passed final human review')}\n<!-- aitm-review-approved ts="${FIXED_TS}" -->\n`;
+  const marked = `${REVIEW_BODY.replace('- [ ] Passed final human review', '- [x] Passed final human review')}\n<!-- aitm-review-approved ts="${FIXED_TS}" approved-sha="${APPROVED_SHA}" -->\n`;
   const r = await runVerb([String(n)], { ...okVerbDeps, fetchIssueBody: async () => marked });
   assert.equal(r.exitCode, null);
   assert.match(r.stdout, /already has a review-approval marker/);

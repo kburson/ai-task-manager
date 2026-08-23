@@ -50,10 +50,24 @@ function writeFragment(dir, name, value) {
   return target;
 }
 
+function normalizeWebAcceptanceCriteria(value) {
+  return String(value || '')
+    .split('\n')
+    .map((line) => {
+      if (/^\s*- \[[ x]\]/.test(line)) return line;
+      const numbered = line.match(/^(\s*)\d+\.\s+(.+)$/);
+      if (numbered) return `${numbered[1]}- [ ] ${numbered[2]}`;
+      const bullet = line.match(/^(\s*)-\s+(?!\[)(.+)$/);
+      return bullet ? `${bullet[1]}- [ ] ${bullet[2]}` : line;
+    })
+    .join('\n');
+}
+
 function defaultRenderDefect(input) {
   const dir = mkdtempSync(path.join(projectScratchDir('gh', input.projectDir), 'web-defect-'));
   try {
     const files = {
+      story: writeFragment(dir, 'user-story.md', input.userStory),
       scope: writeFragment(dir, 'scope.md', input.scope),
       ac: writeFragment(dir, 'acs.md', input.acceptanceCriteria),
       origin: writeFragment(dir, 'story-origin.md', input.storyOrigin),
@@ -69,6 +83,8 @@ function defaultRenderDefect(input) {
       'defect',
       '--title',
       input.title,
+      '--user-story-file',
+      files.story,
       '--scope-file',
       files.scope,
       '--ac-file',
@@ -122,12 +138,17 @@ export async function normalizeWebDefectIssue({ issue, projectDir, renderDefect 
   const reproduction =
     first(sections, ['steps to reproduce', 'reproduction']) ||
     'Reproduce the confirmed behavior described in Scope before implementing the fix.';
-  const acceptanceCriteria =
+  const acceptanceCriteria = normalizeWebAcceptanceCriteria(
     first(sections, ['acceptance criteria']) ||
-    '- [ ] The confirmed defect no longer reproduces and targeted regression coverage passes.';
+      '- [ ] The confirmed defect no longer reproduces and targeted regression coverage passes.'
+  );
   const input = {
     projectDir,
     title,
+    userStory:
+      'As an AITM operator affected by a confirmed defect\n' +
+      'I want the confirmed defect corrected\n' +
+      'So that the expected behavior is restored with regression protection',
     scope,
     reproduction,
     acceptanceCriteria,

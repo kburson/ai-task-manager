@@ -17,7 +17,12 @@ If the sentinel is already present in context, do not re-read.
 Full-Auto does not leave a newly discovered local defect untracked. Before applying the parent blocker protocol, create the defect through the sanctioned shape and capture its issue number:
 
 ```bash
-npx aitm create-issue --shape defect <required-and-optional-fragment-flags>
+npx aitm create-issue --shape defect \
+  --user-story-file ./.tmp/plan/user-story.md \
+  --scope-file ./.tmp/plan/scope.md \
+  --ac-file ./.tmp/plan/acs.md \
+  --story-origin-file ./.tmp/plan/story-origin.md \
+  <optional-defect-fragment-flags>
 npx aitm block <A> --by <B>
 ```
 

@@ -22,7 +22,8 @@ const APPROVED = '2026-08-06T05:58:36Z';
 const STALE_APPROVED = '2026-08-06T05:57:10Z';
 const CLOSE_PAUSE = '2026-08-06T12:50:17Z';
 const CLOSED = '2026-08-06T12:50:44Z';
-const APPROVAL_MARKER = `<!-- aitm-review-approved ts="${APPROVED}" -->`;
+const APPROVED_SHA = 'a'.repeat(40);
+const APPROVAL_MARKER = `<!-- aitm-review-approved ts="${APPROVED}" approved-sha="${APPROVED_SHA}" -->`;
 const AGENT_REVIEW_PASSED =
   '- [ ] Agent Review Passed <!-- aitm-verified gate="agent-review" ts="2026-08-06T05:58:14Z" sha="sandbox" validators="body-sections" result="pass" -->';
 
@@ -264,6 +265,7 @@ function approveDeps({ initialBody, reconciliations }) {
       return { status: body === before ? 'no-op' : 'ok', body };
     },
     getBoardState: async () => 'review',
+    getHeadSha: async () => APPROVED_SHA,
     nowIso: () => APPROVED,
     detectFullAuto: () => ({ fired: true, signals: 'env=1' }),
     postComment: async () => {},
@@ -347,7 +349,9 @@ test('runApprove refreshes stale Full-Auto approval carriers after lifecycle inv
     assert.match(refreshed, /- \[x\] Final Review Passed/);
     assert.match(
       refreshed,
-      new RegExp(`<!-- aitm-review-approved ts="${APPROVED}" full-auto="yes" signals="env=1" -->`)
+      new RegExp(
+        `aitm-review-approved[^>]*approved-sha="${APPROVED_SHA}"[^>]*full-auto="yes"[^>]*signals="env=1"`
+      )
     );
     assert.doesNotMatch(refreshed, new RegExp(STALE_APPROVED));
     assert.equal((refreshed.match(/aitm-review-approved/g) || []).length, 2);

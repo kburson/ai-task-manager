@@ -45,5 +45,9 @@
   "gateAnalysisToDevelopment": true,
   "gateReviewToDone": true,
   "gatePlanRefineWip": false,
-  "fieldDisposition": "PVTSSF_lAHOABCEY84BXillzhZHqZA"
+  "fieldDisposition": "PVTSSF_lAHOABCEY84BXillzhZHqZA",
+  "fullAutoMerge": {
+    "mechanism": "provider-action",
+    "mergeMethod": "squash"
+  }
 }

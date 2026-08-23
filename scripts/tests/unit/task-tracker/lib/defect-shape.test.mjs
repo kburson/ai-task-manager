@@ -35,8 +35,15 @@ function defectArgs(overrides = {}) {
     shape: 'defect',
     title: 'resume invents idle time',
     label: [],
+    'user-story-file': fragment(
+      'user-story.md',
+      'As an AITM operator\nI want to keep active work active\nSo that timing records stay truthful'
+    ),
     'scope-file': fragment('scope.md', 'Resume classifies active issue work as idle.'),
-    'ac-file': fragment('acs.md', '- [ ] Active work is never synthesized as idle.'),
+    'ac-file': fragment(
+      'acs.md',
+      '- [ ] Active work is never synthesized as idle. <!-- aitm-non-demonstrable -->'
+    ),
     'story-origin-file': fragment(
       'story-origin.md',
       '- kind: code\n- discovered-during: local-work'
@@ -66,6 +73,7 @@ test('defect shape forwards the governed solo inputs plus defect-specific render
   assert.deepEqual(flags.slice(0, 2), ['--shape', 'defect']);
   for (const [flag, value] of [
     ['--title', args.title],
+    ['--user-story-file', args['user-story-file']],
     ['--scope-file', args['scope-file']],
     ['--ac-file', args['ac-file']],
     ['--story-origin-file', args['story-origin-file']],
@@ -90,6 +98,8 @@ test('defect dry-run renders a real User Story, diagnostic sections, and governe
       'defect',
       '--title',
       args.title,
+      '--user-story-file',
+      args['user-story-file'],
       '--scope-file',
       args['scope-file'],
       '--ac-file',
@@ -101,8 +111,8 @@ test('defect dry-run renders a real User Story, diagnostic sections, and governe
     { cwd: ROOT, encoding: 'utf8' }
   );
 
-  assert.match(rendered, /## User Story\n\nAs an AITM operator affected by a confirmed defect/);
-  assert.match(rendered, /I want resume invents idle time corrected/);
+  assert.match(rendered, /## User Story\n\nAs an AITM operator/);
+  assert.match(rendered, /I want to keep active work active/);
   assert.doesNotMatch(rendered, /\[who wants|\[what they want|TBD/);
   for (const heading of [
     '## Scope',
@@ -212,6 +222,7 @@ test('web defect normalization maps form fields through the same renderer and st
 
   assert.equal(result.status, 'normalized');
   assert.equal(captured.title, 'resume invents idle time');
+  assert.match(captured.userStory, /As an AITM operator affected by a confirmed defect/);
   assert.equal(captured.scope, 'Resume classifies active issue work as idle.');
   assert.match(captured.reproduction, /Leave an active timing span open/);
   assert.equal(captured.acceptanceCriteria, '- [ ] Active work remains active.');
@@ -223,20 +234,19 @@ test('web defect normalization maps form fields through the same renderer and st
   assert.ok(Object.isFrozen(result));
 });
 
-test('web defect normalization default path renders the canonical defect body', async () => {
-  const result = await normalizeWebDefectIssue({
-    issue: {
-      title: '🐞 [BUG] resume invents idle time',
-      body: WEB_FORM_BODY,
-      labels: ['bug'],
-      created_at: '2026-08-04T12:00:00Z',
-    },
-    projectDir: ROOT,
-  });
-  assert.equal(result.status, 'normalized');
-  assert.match(result.body, /## Reproduction/);
-  assert.match(result.body, /## Definition of Done/);
-  assert.match(result.body, /aitm-body-version version="1"/);
+test('web defect normalization refuses default ACs without honest verifier evidence', async () => {
+  await assert.rejects(
+    normalizeWebDefectIssue({
+      issue: {
+        title: '🐞 [BUG] resume invents idle time',
+        body: WEB_FORM_BODY,
+        labels: ['bug'],
+        created_at: '2026-08-04T12:00:00Z',
+      },
+      projectDir: ROOT,
+    }),
+    /preflight-issue --shape failed|Command failed/
+  );
 });
 
 test('web normalization is a fixed point and excludes non-bug and beta-report issues', async () => {

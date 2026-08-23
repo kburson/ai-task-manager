@@ -63,6 +63,7 @@ Backward-compat read paths accept the legacy `aitm-groom-*` forms; write paths e
 npx aitm create-issue \
   --shape solo \
   --title "Feature: ..." \
+  --user-story-file ./.tmp/gh/user-story.md \
   --scope-file ./.tmp/gh/scope.md \
   --ac-file ./.tmp/gh/acs.md \
   --story-origin-file ./.tmp/gh/story-origin.md \
@@ -545,7 +546,7 @@ All issues are created in Backlog — no exceptions (#272). `scripts/gh/create-i
 
 Every Acceptance Criterion must be _demonstrable_: bound to a concrete check a machine can run, or honestly marked as not checkable. The Refine→Ready for Planning exit gate (`lib/refine-to-plan-gate.mjs`, walker `findAcsWithoutVerifierOrInvalidTag` in `lib/body-invariants.mjs`) refuses promotion and emits one `refine-exit-demonstrable:` blocker per offending AC until every AC line satisfies one of:
 
-- **Targeted verifier.** The AC carries an `aitm-verified cmd="…"` declaration naming at least one specific command — e.g. `<!-- aitm-verified cmd="\`node --test scripts/tests/unit/task-tracker/foo.test.mjs\`" -->`. The command must exercise _that AC_, not the whole suite.
+- **Targeted verifier.** The AC cites one or more stable IDs from the single root `## Verification Commands` section — e.g. a command line ending `<!-- id=1 -->` is referenced by `<!-- aitm-verified vc-list="vc:1" -->`. Every cited command must exercise _that AC_, not merely the whole suite.
 - **Honest opt-out.** The AC line carries an `<!-- aitm-non-demonstrable -->` marker. Use this only for genuinely unverifiable assertions (subjective quality goals, external-process facts); it is an explicit, grep-able admission, not an escape hatch for laziness. (Before #891, this was a plain prose tag — `invalid — non-demonstrable` — matched as an unanchored substring against the visible label, which made prose that merely _discussed_ the tag falsely count as an opt-out; the marker form closes that gap. Legacy bodies are migrated by `scripts/maintenance/migrate-non-demonstrable-tag-position.mjs`.)
 
 `npm run test:all` is the **regression floor**, not an AC verifier. An AC whose only declared command is `test:all` is rejected (`reason: test-all-verifier`) — it proves nothing specific to that criterion. Bind a targeted test instead, or add the opt-out marker. This standard exists because a vague AC cannot be honestly ticked: the #516 fabrication incident showed that ACs without a concrete verifier invite forged evidence. Demonstrability at the Refine gate is the upstream defense.
@@ -589,11 +590,11 @@ Tenets 1 and 2 are a tension held on purpose: act by default, but stop at the ed
 
 `scripts/gh/create-issue.mjs --shape <shape>` picks how much ceremony is required at creation. Every shape lands in Backlog with the standard Definition-of-Done + Pickup-Directive + Verification-Commands tail; they differ only in what the author must supply up front.
 
-- **`stub`** — the fast idea-capture path (#426). Requires only `--title`; takes an optional `--idea-file <path>` whose free text seeds the Scope section. Scope and Acceptance Criteria remain Refine placeholders; Story Origin records the resolved kind immediately, and Plan Metadata stays empty until planning. **Do not** set Size or Estimate on a stub — those are planning fields, not creation-time provenance.
-- **`solo`** — full ceremony up front. Requires `--scope-file`, `--ac-file`, and `--story-origin-file`; `--plan-metadata-file` is optional when planning output is already known.
-- **`defect`** — governed local bug-story intake. Invoke `npx aitm create-issue --shape defect` with the same required Scope, Acceptance Criteria, and Story Origin fragments as `solo`; diagnostic reproduction, root-cause, fix-direction, and out-of-scope fragments are optional. The wrapper adds the `bug` label and canonical `🐞 [BUG]` prefix idempotently. A GitHub web form submission carrying the `bug` label is normalized through this same renderer when its body is not already canonical.
-- **`epic`** — a parent/XL story; same Story Origin requirement as solo.
-- **`sub-issue`** — a child story; same Story Origin requirement plus `--parent <N>`, recorded inside Story Origin.
+- **`stub`** — the fast idea-capture path (#426). Requires only `--title`; takes an optional `--idea-file <path>` whose free text seeds the Scope section. Scope and Acceptance Criteria remain Refine placeholders, and no User Story section is emitted; Story Origin records the resolved kind immediately, and Plan Metadata stays empty until planning. **Do not** set Size or Estimate on a stub — those are planning fields, not creation-time provenance.
+- **`solo`** — full ceremony up front. Requires `--user-story-file`, `--scope-file`, `--ac-file`, and `--story-origin-file`; `--plan-metadata-file` is optional when planning output is already known.
+- **`defect`** — governed local bug-story intake. Invoke `npx aitm create-issue --shape defect` with the same required User Story, Scope, Acceptance Criteria, and Story Origin fragments as `solo`; diagnostic reproduction, root-cause, fix-direction, and out-of-scope fragments are optional. The wrapper adds the `bug` label and canonical `🐞 [BUG]` prefix idempotently. A GitHub web form submission carrying the `bug` label is normalized through this same renderer when its body is not already canonical.
+- **`epic`** — a parent/XL story; same User Story and Story Origin requirements as solo.
+- **`sub-issue`** — a child story; same User Story and Story Origin requirements plus `--parent <N>`, recorded inside Story Origin.
 
 A stub deliberately fails the Refine→Ready for Planning gate until Refine supplies substantive ACs. Plan Metadata becomes mandatory at Plan→Develop, the first point where planning output must exist.
 
@@ -1032,6 +1033,7 @@ Log planning and design sessions against a dedicated planning issue, not the imp
 npx aitm create-issue \
   --shape solo \
   --title "Planning: <epic title>" \
+  --user-story-file ./.tmp/gh/planning-user-story.md \
   --scope-file ./.tmp/gh/planning-scope.md \
   --ac-file ./.tmp/gh/planning-acs.md \
   --story-origin-file ./.tmp/gh/planning-origin.md \

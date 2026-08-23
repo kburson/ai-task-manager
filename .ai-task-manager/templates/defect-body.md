@@ -8,9 +8,7 @@ policy defaults when omitted.
 
 ## User Story
 
-As an AITM operator affected by a confirmed defect
-I want {{defect_summary}} corrected
-So that the expected behavior is restored with regression protection
+{{user_story}}
 
 ## Scope
 

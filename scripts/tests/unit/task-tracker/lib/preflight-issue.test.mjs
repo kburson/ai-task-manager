@@ -26,19 +26,44 @@ const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..
 function makeFixture(acBody) {
   const dir = mkdtempSync(path.join(projectScratchDir('test'), 'aitm-preflight-test-'));
   const ac = path.join(dir, 'ac.md');
+  const story = path.join(dir, 'story.md');
   const scope = path.join(dir, 'scope.md');
+  const vc = path.join(dir, 'vc.md');
   const origin = path.join(dir, 'origin.md');
   const meta = path.join(dir, 'meta.md');
-  writeFileSync(ac, acBody, 'utf8');
+  const currentAcBody = acBody
+    .split('\n')
+    .map((line) => {
+      if (!/^\s*- \[[ x]\]/.test(line) || /<!--\s*aitm-/.test(line)) return line;
+      return `${line} <!-- aitm-non-demonstrable -->`;
+    })
+    .join('\n');
+  writeFileSync(ac, currentAcBody, 'utf8');
+  writeFileSync(
+    story,
+    'As a task author\nI want to render a governed issue\nSo that the focused contract can be verified\n',
+    'utf8'
+  );
   writeFileSync(scope, 'Scope.\n', 'utf8');
+  writeFileSync(vc, 'npm run lint\n', 'utf8');
   writeFileSync(origin, '- kind: code\n', 'utf8');
   writeFileSync(meta, 'Metadata.\n', 'utf8');
-  return { dir, ac, scope, origin, meta };
+  return { dir, ac, story, scope, vc, origin, meta };
 }
 
 async function runPreflight(args, options = {}) {
+  const forwarded = [...args];
+  const shapeIndex = forwarded.indexOf('--shape');
+  const shape = shapeIndex >= 0 ? forwarded[shapeIndex + 1] : null;
+  if (shape && shape !== 'stub' && !forwarded.includes('--user-story-file')) {
+    const scopeIndex = forwarded.indexOf('--scope-file');
+    const fixtureDir = path.dirname(forwarded[scopeIndex + 1]);
+    const story = path.join(fixtureDir, 'story.md');
+    forwarded.splice(scopeIndex, 0, '--user-story-file', story);
+    forwarded.push('--verification-commands-file', path.join(fixtureDir, 'vc.md'));
+  }
   try {
-    const { stdout, stderr } = await pexec('node', [SCRIPT, ...args], options);
+    const { stdout, stderr } = await pexec('node', [SCRIPT, ...forwarded], options);
     return { code: 0, stdout, stderr };
   } catch (err) {
     return { code: err.code ?? 1, stdout: err.stdout ?? '', stderr: err.stderr ?? '' };
@@ -72,8 +97,8 @@ describe('preflight-issue --shape lint wiring', () => {
     }
   });
 
-  it('accepts a clean AC with a single backtick-quoted command', async () => {
-    const acBody = '- [ ] Good. <!-- aitm-verified cmd="`npm run lint`" -->\n';
+  it('accepts a clean AC with a current vc-list citation', async () => {
+    const acBody = '- [ ] Good. <!-- aitm-verified vc-list="vc:1" -->\n';
     const fx = makeFixture(acBody);
     try {
       const r = await runPreflight([
@@ -91,8 +116,7 @@ describe('preflight-issue --shape lint wiring', () => {
         fx.meta,
       ]);
       assert.equal(r.code, 0, `stderr: ${r.stderr}`);
-      // #419 — the preflight-emitted Functional DoD tail carries the
-      // consolidated declaration form; #468 retired the legacy reader.
+      // Functional DoD remains the only section that carries literal commands.
       assert.match(r.stdout, /aitm-verified cmd=/);
       const lifecycle = r.stdout.indexOf('### Lifecycle (verified at Review)');
       const agentReview = r.stdout.indexOf('- [ ] Agent Review Passed');

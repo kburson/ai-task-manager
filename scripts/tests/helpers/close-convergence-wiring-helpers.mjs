@@ -60,6 +60,14 @@ export async function runClose({
   captureCalls,
   captureFinalState,
   initialState = baseState(),
+  deliveryRefusal = null,
+  reviewAuthorization = { mode: 'human', standing: true, source: 'test-evidence' },
+  reviewAuthorizationResolver = null,
+  useInjectedReviewAuthorization = true,
+  useInjectedDeliveryGateInput = true,
+  useInjectedDeliveryReceipt = true,
+  lifecycleEvidence = null,
+  force = false,
 } = {}) {
   const dir = mkdtempSync(join(projectScratchDir('test'), 'aitm-925-close-wiring-'));
   const statePath = join(dir, 'state.json');
@@ -69,6 +77,7 @@ export async function runClose({
   const calls = {
     boardReads: 0,
     bodyReads: 0,
+    bindingReleases: 0,
     childSnapshots: 0,
     closeSnapshotReads: 0,
     drains: 0,
@@ -83,17 +92,31 @@ export async function runClose({
     reopens: 0,
     timingReads: 0,
     timingRows: [],
+    terminalDispositions: 0,
   };
   captureCalls?.(calls);
   const projectConfig = {
-    cfg: { repo: 'o/r' },
+    cfg: {
+      repo: 'o/r',
+      trunkRef: 'trunk',
+      fullAutoMerge: { mechanism: 'local-trunk-lane', operatorAuthorized: true },
+    },
     statePath,
     projectDir: dir,
     SKIP_NETWORK: false,
     uncheckedPreCloseCheckboxes: () => [],
     nowIso: () => new Date().toISOString(),
-    pexec: async (_command, args = []) => {
+    pexec: async (command, args = []) => {
       calls.networkCalls += 1;
+      if (command === 'git' && args[0] === 'branch') {
+        return { stdout: 'trunk\n', stderr: '' };
+      }
+      if (command === 'git' && args[0] === 'rev-parse') {
+        return { stdout: `${'a'.repeat(40)}\n`, stderr: '' };
+      }
+      if (command === 'gh' && args[0] === 'pr' && args[1] === 'list') {
+        return { stdout: '[]', stderr: '' };
+      }
       if (args[0] === 'issue' && args[1] === 'view' && args.includes('body')) {
         calls.bodyReads += 1;
         if (bodyReadError) throw bodyReadError;
@@ -174,7 +197,7 @@ export async function runClose({
   let result;
   try {
     result = await verbClose({
-      rest: ['#925'],
+      rest: force ? ['#925', '--force'] : ['#925'],
       projectConfig,
       timingRecorder,
       stateRunner,
@@ -208,7 +231,50 @@ export async function runClose({
           error: null,
         };
       },
-      writeTerminalDisposition: async () => ({ status: 'ok' }),
+      reconcileReviewApprovedTiming: async () => ({ status: 'posted' }),
+      writeTerminalDisposition: async () => {
+        calls.terminalDispositions += 1;
+        return { status: 'ok' };
+      },
+      releaseIssueBindings: () => {
+        calls.bindingReleases += 1;
+        return { released: [] };
+      },
+      deregisterTask: () => {},
+      releaseBindingOccupancy: () => ({ status: 'released' }),
+      loadCloseDeliveryBody: async () => liveBody,
+      locateAuthoritySource: lifecycleEvidence
+        ? () => ({ kind: 'github-records/v1' })
+        : () => ({ kind: 'legacy-body/v1' }),
+      getHeadSha: async () => 'a'.repeat(40),
+      resolveLifecycleEvidence: async () => lifecycleEvidence,
+      resolveCloseParentIssue: async () => null,
+      ...(useInjectedDeliveryGateInput
+        ? {
+            loadCloseDeliveryGateInput: async () => ({
+              issueNumber: 925,
+              lineage: { parentIssueNumber: null, deliveryTarget: 'trunk' },
+              branch: 'feature/925',
+              acceptedSha: 'a'.repeat(40),
+              localHeadSha: 'a'.repeat(40),
+              pullRequests: [],
+              records: null,
+            }),
+          }
+        : {}),
+      ...(useInjectedReviewAuthorization
+        ? {
+            resolveReviewAuthorization: reviewAuthorizationResolver ?? (() => reviewAuthorization),
+          }
+        : {}),
+      ...(useInjectedDeliveryReceipt
+        ? {
+            requireDeliveryReceipt: () => {
+              if (deliveryRefusal) throw deliveryRefusal;
+              return { skipped: false, receipt: {} };
+            },
+          }
+        : {}),
     });
     return {
       result,

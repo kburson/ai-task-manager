@@ -20,6 +20,9 @@ export const grokAdapter = {
     hookTarget: '.grok/hooks/aitm.json',
     commandTarget: null,
   },
+  externalActions: {
+    'github.merge-pull-request': null,
+  },
 };
 
 export default grokAdapter;

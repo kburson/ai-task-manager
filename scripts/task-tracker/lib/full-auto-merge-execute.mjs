@@ -1,18 +1,14 @@
 // @story #908 (epic #912)
-// Impure EXECUTOR that wires the pure `full-auto-merge.mjs` policy into the close
-// verb. `full-auto-merge.mjs` decides (mechanism, argv, trunk ref); this module
-// performs the side effects the close verb needs and nothing more:
+// Legacy adapter retained for linked-worktree attribution and local-lane
+// classification. Provider-mediated PR delivery no longer executes here:
 //
 //   - detect a linked worktree (so the close-attribution query can target
 //     `origin/trunk` and never touch the shared local `trunk` ref);
-//   - resolve the open PR for the branch being closed;
-//   - enable GitHub-native auto-merge (`gh pr merge <N> --auto --<method>`), or
-//     fail CLOSED with the pure layer's actionable message.
+//   - fail CLOSED when a caller requests provider-mediated PR mutation.
 //
 // Every side effect funnels through an injected `pexec(cmd, args, opts)` so the
-// wiring is unit-testable without git/gh. The close verb owns the control-flow
-// consequences (halt vs continue); this module only reports a discriminated
-// status.
+// The close verb imports only the linked-worktree helpers. The legacy exported
+// classifier remains unit-testable for callers that have not migrated yet.
 
 import { planFullAutoMerge, resolveCloseTrunkRef } from './full-auto-merge.mjs';
 import { fetchParentIssueStrict } from './fetch-parent-issue.mjs';
@@ -59,26 +55,19 @@ export async function resolveOpenPrNumber({ branch, cfg = {}, pexec } = {}) {
   }
 }
 
-// Enable GitHub-native auto-merge for the close flow. Called after the close
-// gates pass. Discriminated result (the close verb owns the reaction):
+// Legacy close-time executor retained only as a classification surface. PR
+// mutation is retired; provider-mediated delivery is owned by `/task deliver`.
 //
 //   { status: 'skipped-not-full-auto' }  interactive close — unchanged behavior
 //   { status: 'skipped-parent-branch' }  child/nested epic delivers to its parent branch
-//   { status: 'skipped-no-pr' }          no open PR for the branch — local close path
-//   { status: 'fail-closed', message }   PR present under Full-Auto but `fullAutoMerge`
+//   { status: 'fail-closed', message }   Full-Auto but `fullAutoMerge`
 //                                         is unconfigured/invalid → caller HALTS, issue
 //                                         stays OPEN (actionable message names the key)
-//   { status: 'local-lane', prNumber }   operator-authorized no-PR local-trunk lane →
-//                                         caller runs its existing merge-to-trunk path
-//   { status: 'enabled', prNumber, argv } auto-merge enabled via the permitted `--auto`
-//                                         command (GitHub merges once checks pass)
-//   { status: 'exec-failed', prNumber, argv, message }  the `gh` enable call errored
+//   { status: 'local-lane', prNumber }   operator-authorized no-PR local-trunk lane
 export async function enableFullAutoMergeForClose({
   cfg = {},
-  branch,
   issueNumber,
   isFullAuto,
-  pexec,
   resolveParentIssue = fetchParentIssueStrict,
 } = {}) {
   if (!isFullAuto) return { status: 'skipped-not-full-auto' };
@@ -102,29 +91,16 @@ export async function enableFullAutoMergeForClose({
     }
   }
 
-  const prNumber = await resolveOpenPrNumber({ branch, cfg, pexec });
-  if (prNumber == null) return { status: 'skipped-no-pr' };
-
-  const plan = planFullAutoMerge({ prNumber, cfg });
+  const plan = planFullAutoMerge({ cfg });
   if (!plan.ok) return { status: 'fail-closed', message: plan.message };
 
   if (plan.mechanism === 'local-trunk-lane') {
-    return { status: 'local-lane', prNumber };
+    return { status: 'local-lane', prNumber: null };
   }
 
-  // gh-auto-merge: execute the classifier-permitted `--auto` ENABLE. This does
-  // not merge now; GitHub performs the merge once required checks pass.
-  const argv = [...plan.argv];
-  if (cfg.repo) argv.push('-R', cfg.repo);
-  try {
-    await pexec('gh', argv, {});
-    return { status: 'enabled', prNumber, argv: plan.argv };
-  } catch (err) {
-    return {
-      status: 'exec-failed',
-      prNumber,
-      argv: plan.argv,
-      message: err?.message || String(err),
-    };
-  }
+  return {
+    status: 'fail-closed',
+    message:
+      'full-auto-merge-direct-executor-retired: PR mutation is owned by the host provider action; run `/task deliver #N`',
+  };
 }

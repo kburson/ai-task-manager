@@ -8,6 +8,12 @@ import {
 } from '../../../../gh/verify-open-issue-bodies.mjs';
 
 const CANONICAL_BODY = [
+  '## User Story',
+  '',
+  'As a task author',
+  'I want to create a canonical issue',
+  'So that the open-issue audit accepts it',
+  '',
   '## Scope',
   '',
   'Some scope text.',
@@ -22,7 +28,11 @@ const CANONICAL_BODY = [
   '',
   '## Acceptance Criteria',
   '',
-  '- [ ] Something works',
+  '- [ ] Something works <!-- aitm-verified vc-list="vc:1" -->',
+  '',
+  '## Verification Commands',
+  '',
+  '- [ ] `node --test x.test.mjs` <!-- id=1 -->',
   '',
   '### Definition of Done',
   '',

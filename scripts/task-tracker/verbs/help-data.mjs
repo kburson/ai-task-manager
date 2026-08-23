@@ -355,6 +355,13 @@ export const VERB_REFERENCE = {
       '/task review 667 --probe "node --test path/to/focused.test.mjs"',
     ],
   },
+  deliver: {
+    topic: 'board',
+    summary: 'Review-only, re-entrant exact-head delivery handoff with no lifecycle transition.',
+    usage: '/task deliver #N',
+    exitCodes: [{ code: 20, meaning: 'provider action required' }],
+    examples: ['/task deliver 939', 'npx aitm deliver #N'],
+  },
   reject: {
     topic: 'board',
     summary: 'Reject an issue under review (returns it for rework). Reason required.',
@@ -822,7 +829,7 @@ export const STATE_TRANSITIONS = [
 export const GATE_EVIDENCE_MODEL = [
   {
     heading: 'AC evidence',
-    body: 'Each Acceptance Criterion binds a targeted verifier via `aitm-verified cmd="…"`. `/task ac-stamp "<label>"` RUNS that command and, on exit 0, writes the `aitm-ac-evidence:<key>` marker. `/task ensureChecked` refuses to tick a verifier-bound AC until that evidence marker exists.',
+    body: 'Each demonstrable Acceptance Criterion cites targeted root Verification Command IDs via `aitm-verified vc-list="vc:N"`. `/task ac-stamp "<label>"` RUNS the cited commands and, on exit 0, writes the `aitm-ac-evidence:<key>` marker. `/task ensureChecked` refuses to tick a verifier-bound AC until that evidence marker exists.',
   },
   {
     heading: 'Checkbox-proof gate',

@@ -31,6 +31,7 @@ const AGENT_REVIEW_PASSED =
 
 const cfg = { repo: 'o/r' };
 const FIXED_TS = '2026-05-10T00:00:00Z';
+const APPROVED_SHA = 'a'.repeat(40);
 
 function makeDeps(overrides = {}) {
   const calls = { writes: [], bodies: [], stateLookups: 0, comments: [] };
@@ -63,6 +64,7 @@ function makeDeps(overrides = {}) {
         calls.stateLookups++;
         return overrides.state ?? 'review';
       },
+      getHeadSha: async () => APPROVED_SHA,
       nowIso: () => FIXED_TS,
       // Isolate baseline tests from ambient env (e.g. TT_FULL_AUTO=1 in
       // sandbox). Tests that exercise the full-auto path inject their own
@@ -148,7 +150,9 @@ function makeDeps(overrides = {}) {
   // marker; the separate aitm-full-auto-approved marker is no longer written.
   assert.match(
     getBody(),
-    /<!-- aitm-review-approved ts="2026-05-10T00:00:00Z" full-auto="yes" signals="env=1,tty=0,ci=0" -->/
+    new RegExp(
+      `aitm-review-approved[^>]*approved-sha="${APPROVED_SHA}"[^>]*full-auto="yes"[^>]*signals="env=1,tty=0,ci=0"`
+    )
   );
   assert.doesNotMatch(getBody(), /aitm-full-auto-approved/);
   // #161 / D4 — visible footnote also present.

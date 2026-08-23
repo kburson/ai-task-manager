@@ -20,6 +20,7 @@ import { fileURLToPath } from 'node:url';
 import { getProvider, listProviders, detectProvider } from '../../../providers/index.mjs';
 import { claudeAdapter } from '../../../providers/claude.mjs';
 import { codexAdapter } from '../../../providers/codex.mjs';
+import { grokAdapter } from '../../../providers/grok.mjs';
 
 const __dir = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(__dir, '../../../..');
@@ -57,6 +58,27 @@ test('getProvider("codex") returns the codex adapter', () => {
 
 test('getProvider("grok") returns the Grok adapter', () => {
   assert.equal(getProvider('grok').name, 'grok');
+});
+
+test('#939: capable adapters declare the exact-head GitHub merge action contract', () => {
+  const contract = {
+    adapterContract: 'skill',
+    expectedHeadSha: true,
+  };
+  assert.deepEqual(codexAdapter.externalActions?.['github.merge-pull-request'], contract);
+  assert.deepEqual(claudeAdapter.externalActions?.['github.merge-pull-request'], contract);
+});
+
+test('#939: incapable adapters explicitly declare the GitHub merge action unsupported', () => {
+  assert.equal(grokAdapter.externalActions?.['github.merge-pull-request'], null);
+});
+
+test('#939: deliver implementation remains provider-neutral', () => {
+  const src = readFileSync(
+    path.join(REPO_ROOT, 'scripts', 'task-tracker', 'verbs', 'deliver.mjs'),
+    'utf8'
+  );
+  assert.doesNotMatch(src, /(?:claude|codex|grok)Adapter|provider\.name\s*===/i);
 });
 
 test('getProvider("nope") throws with the ordered provider list', () => {

@@ -56,6 +56,18 @@ function makeCtx(statePath, dir, over = {}) {
     uncheckedPreCloseCheckboxes: () => [],
     nowIso: () => new Date().toISOString(),
     reconcileReviewApprovedTiming: async () => ({ status: 'present' }),
+    loadCloseDeliveryBody: async () => APPROVED_BODY,
+    loadCloseDeliveryGateInput: async () => ({
+      issueNumber: 5,
+      lineage: { parentIssueNumber: null, deliveryTarget: 'trunk' },
+      branch: 'feature/5',
+      acceptedSha: 'a'.repeat(40),
+      localHeadSha: 'a'.repeat(40),
+      pullRequests: [],
+      records: null,
+    }),
+    resolveReviewAuthorization: () => ({ mode: 'full-auto', standing: true, source: 'test' }),
+    requireDeliveryReceipt: () => ({ skipped: false, receipt: {} }),
     ...over,
   };
 }

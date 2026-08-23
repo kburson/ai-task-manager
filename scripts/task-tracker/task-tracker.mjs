@@ -66,6 +66,7 @@ export const PREFLIGHT_MODE = {
   unassign: 'target-required',
   plan: 'target-required',
   test: 'target-required',
+  deliver: 'target-required',
   reconcile: 'target-required',
   check: 'target-optional',
   ensureChecked: 'target-optional',
@@ -367,6 +368,11 @@ if (_isMain)
         case 'review': {
           const { verbReview } = await import('./verbs/review.mjs');
           await verbReview(ctx);
+          break;
+        }
+        case 'deliver': {
+          const { verbDeliver } = await import('./verbs/deliver.mjs');
+          await verbDeliver(ctx);
           break;
         }
         case 'reject': {

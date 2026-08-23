@@ -92,7 +92,7 @@ function isCanonicalInstant(value) {
   return Number.isFinite(timestamp) && new Date(timestamp).toISOString() === value;
 }
 
-function normalizeGitHubInstant(value) {
+export function normalizeGitHubInstant(value) {
   if (typeof value !== 'string') return null;
   const match = /^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2})(?:\.(\d{1,3}))?Z$/.exec(value);
   if (match === null) return null;

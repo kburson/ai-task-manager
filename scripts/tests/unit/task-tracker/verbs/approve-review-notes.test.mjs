@@ -11,6 +11,7 @@ import { runApprove } from '../../../../task-tracker/verbs/approve.mjs';
 // about the refusal path live in approve-agent-review-complete.test.mjs.
 const AGENT_REVIEW_PASSED =
   '\n- [ ] Agent Review Passed <!-- aitm-verified gate="agent-review" ts="2026-05-10T00:00:00Z" sha="sandbox" validators="body-sections" result="pass" -->\n';
+const APPROVED_SHA = 'a'.repeat(40);
 
 function makeDeps({ tty, env = {}, drivers = [], comments = [], fields = {} } = {}) {
   const posted = [];
@@ -36,6 +37,7 @@ function makeDeps({ tty, env = {}, drivers = [], comments = [], fields = {} } = 
       return { status: next !== before ? 'ok' : 'no-op', body };
     },
     getBoardState: async () => 'review',
+    getHeadSha: async () => APPROVED_SHA,
     nowIso: () => '2026-05-17T00:00:00Z',
     detectFullAuto: () => {
       if (env.TT_FULL_AUTO === '1') return { fired: true, signals: 'env=1,tty=0,ci=0' };

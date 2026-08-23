@@ -13,6 +13,7 @@ Canonical heading order (the parity test enforces this):
 
 Placeholders (substituted by preflight-issue.mjs --shape solo):
 {{title}} Issue title (verbatim)
+{{user_story}} Complete three-line Connextra User Story (verbatim)
 {{scope}} Scope text from the spec (verbatim)
 {{acceptance_criteria}} AC checkboxes, one per line, `- [ ] <text>`
 {{story_origin}} Story Origin block (kind, provenance, relationships, size guess)
@@ -25,9 +26,7 @@ against the current state of the repo, not at creation time. See SKILL.md:355.
 
 ## User Story
 
-As a [who wants to accomplish something]
-I want to [what they want to accomplish]
-So that [why they want to accomplish that thing]
+{{user_story}}
 
 ## Scope
 

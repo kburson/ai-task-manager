@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 // @story #1144
+// cspell:ignore NDEKTSV RRFFQ
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -13,6 +14,7 @@ import {
 import { assertLifecycleSatisfied } from '../../../../task-tracker/close-gate.mjs';
 import { reviewExitReviewApprovedGuard } from '../../../../task-tracker/lib/review-exit-review-approved-guard.mjs';
 import { runApprove } from '../../../../task-tracker/verbs/approve.mjs';
+import { createDefaultDeliverDeps, runDeliver } from '../../../../task-tracker/verbs/deliver.mjs';
 import { resolveCloseLifecycleEvidence } from '../../../../task-tracker/verbs/close.mjs';
 import { projectScratchDir } from '../../../../task-tracker/lib/scratch-dir.mjs';
 
@@ -110,6 +112,80 @@ function approveDeps({ body = LEGACY_REVIEW_BODY, evidence, fullAuto = false } =
       promptDrivers: async () => [],
       reconcileReviewApprovedTiming: async () => ({ status: 'posted' }),
     },
+  };
+}
+
+function runDirectoryDeliver({ projection, body = 'directory body without approval marker' }) {
+  const cfg = {
+    repo: 'owner/repo',
+    assignee: 'owner',
+    trunkRef: 'origin/trunk',
+    fullAutoMerge: { mechanism: 'provider-action', mergeMethod: 'squash' },
+  };
+  const writes = [];
+  const comments = [];
+  const defaults = createDefaultDeliverDeps({
+    cfg,
+    projectDir: '/repo',
+    locateAuthoritySource: () => ({ kind: 'github-records/v1' }),
+    resolveLifecycleEvidence: async () => projection,
+  });
+  const deps = {
+    ...defaults,
+    fetchIssue: async () => ({
+      number: 1144,
+      state: 'OPEN',
+      projectState: 'Review',
+      assignees: ['owner'],
+      agentReviewPassed: false,
+      body,
+    }),
+    resolveLineage: async () => ({ parentIssueNumber: null, deliveryTarget: 'trunk' }),
+    getCurrentBranch: async () => 'codex/1144-directory-delivery',
+    getLocalHeadSha: async () => SHA,
+    resolveTestReceiptSha: async () => SHA,
+    listPullRequests: async () => [{ number: 1400 }],
+    fetchPullRequest: async () => ({
+      number: 1400,
+      state: 'OPEN',
+      merged: false,
+      isDraft: false,
+      baseRefName: 'trunk',
+      headRefName: 'codex/1144-directory-delivery',
+      headRefOid: SHA,
+      mergeable: 'MERGEABLE',
+      sourceCommitSubjects: ['[#1144] Directory delivery'],
+    }),
+    fetchRequiredChecks: async () => ({
+      readable: true,
+      required: [{ name: 'ci', headSha: SHA, status: 'COMPLETED', conclusion: 'SUCCESS' }],
+    }),
+    fetchRepositoryMergeMethods: async () => ['squash'],
+    listCommitSubjects: async () => ['[#1144] Directory delivery'],
+    listDirtyPaths: async () => [],
+    listIssueComments: async () => structuredClone(comments),
+    createIssueComment: async ({ body: comment }) => {
+      writes.push(comment);
+      comments.push({
+        id: 'comment-1',
+        body: comment,
+        createdAt: '2026-08-22T14:00:01.000Z',
+      });
+      return { id: 'comment-1' };
+    },
+    now: () => '2026-08-22T14:00:00.000Z',
+    createIntentId: () => '01ARZ3NDEKTSV4RRFFQ69G5FAV',
+    providerId: () => 'codex',
+    sessionId: () => 'session-1144',
+  };
+  return {
+    writes,
+    result: runDeliver({
+      issueNumber: 1144,
+      cfg,
+      state: { active: '#1144', entryStartTs: '2026-08-22T13:00:00.000Z' },
+      deps,
+    }),
   };
 }
 
@@ -259,4 +335,101 @@ test('close fails closed when accepted directory Review or Approval evidence is 
       }),
     /directory-approval-evidence-missing/
   );
+});
+
+test('deliver resolves marker-free exact-head directory approval authority', async () => {
+  const projection = acceptedEvidence();
+  const deps = createDefaultDeliverDeps(
+    {
+      cfg: { repo: 'owner/repo', trunkRef: 'trunk' },
+      projectDir: '/repo',
+      getIssueBoardState: async () => 'Review',
+      locateAuthoritySource: () => ({ kind: 'github-records/v1' }),
+      resolveLifecycleEvidence: async () => projection,
+    },
+    { exec: async () => ({ stdout: '' }) }
+  );
+  const issue = { number: 1144, body: 'directory body without approval marker' };
+  assert.equal(
+    await deps.resolveAcceptedReviewSha({ issue, issueNumber: 1144, expectedHeadSha: SHA }),
+    SHA
+  );
+  assert.deepEqual(
+    await deps.resolveReviewAuthorization({
+      issue,
+      issueNumber: 1144,
+      expectedHeadSha: SHA,
+      acceptedReviewSha: SHA,
+    }),
+    { mode: 'human', standing: true, source: 'directory-human-evidence' }
+  );
+
+  const stale = { ...projection, expectedSha: 'b'.repeat(40) };
+  const staleDeps = createDefaultDeliverDeps(
+    {
+      cfg: { repo: 'owner/repo', trunkRef: 'trunk' },
+      projectDir: '/repo',
+      getIssueBoardState: async () => 'Review',
+      locateAuthoritySource: () => ({ kind: 'github-records/v1' }),
+      resolveLifecycleEvidence: async () => stale,
+    },
+    { exec: async () => ({ stdout: '' }) }
+  );
+  assert.equal(
+    await staleDeps.resolveAcceptedReviewSha({ issue, issueNumber: 1144, expectedHeadSha: SHA }),
+    null
+  );
+  assert.equal(
+    (
+      await staleDeps.resolveReviewAuthorization({
+        issue,
+        issueNumber: 1144,
+        expectedHeadSha: SHA,
+        acceptedReviewSha: null,
+      })
+    ).mode,
+    'missing'
+  );
+});
+
+test('runDeliver consumes marker-free exact-head directory Review and Approval evidence', async () => {
+  const run = runDirectoryDeliver({ projection: acceptedEvidence() });
+
+  assert.equal((await run.result).status, 'action-required');
+  assert.equal(run.writes.length, 1);
+});
+
+test('runDeliver refuses directory authority without accepted exact-head Review evidence', async () => {
+  const current = acceptedEvidence();
+  const missingReview = {
+    ...current,
+    evidence: current.evidence.filter(({ evidenceKind }) => evidenceKind === 'approval'),
+    acceptedRecordIds: ['approval-1'],
+  };
+  for (const projection of [
+    missingReview,
+    { sourceKind: 'github-records/v1', expectedSha: SHA },
+    { ...current, expectedSha: 'b'.repeat(40) },
+  ]) {
+    const run = runDirectoryDeliver({ projection });
+    await assert.rejects(
+      run.result,
+      /delivery-preflight:(?:agent-review-evidence|approval-evidence)/
+    );
+    assert.equal(run.writes.length, 0);
+  }
+});
+
+test('runDeliver never hybridizes directory Review with legacy body Approval', async () => {
+  const current = acceptedEvidence();
+  const reviewOnly = {
+    ...current,
+    evidence: current.evidence.filter(({ evidenceKind }) => evidenceKind === 'review'),
+    acceptedRecordIds: ['review-1'],
+  };
+  const body = `<!-- aitm-review-approved ts="2026-08-22T00:00:00Z" approved-sha="${SHA}" -->`;
+  const run = runDirectoryDeliver({ projection: reviewOnly, body });
+
+  await assert.rejects(run.result, /delivery-preflight:approval-evidence/);
+  assert.equal(run.writes.length, 0);
 });

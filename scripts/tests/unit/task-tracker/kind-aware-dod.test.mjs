@@ -40,19 +40,23 @@ const CONTRACT_DOC = path.join(REPO_ROOT, 'skill', 'shared', 'rules', 'functiona
 
 function makeFixture(kind = 'code') {
   const dir = mkdtempSync(path.join(projectScratchDir('test'), 'kind-aware-dod-'));
+  const story = path.join(dir, 'story.md');
   const scope = path.join(dir, 'scope.md');
   const ac = path.join(dir, 'ac.md');
+  const vc = path.join(dir, 'vc.md');
   const origin = path.join(dir, 'origin.md');
   const meta = path.join(dir, 'meta.md');
   writeFileSync(scope, 'Scope.\n', 'utf8');
   writeFileSync(
-    ac,
-    '- [ ] Something happens. <!-- aitm-verified cmd="`node --test x.mjs`" -->\n',
+    story,
+    'As a task author\nI want to create kind-aware issue bodies\nSo that each issue carries the correct verification floor\n',
     'utf8'
   );
+  writeFileSync(ac, '- [ ] Something happens. <!-- aitm-verified vc-list="vc:1" -->\n', 'utf8');
+  writeFileSync(vc, 'node --test x.mjs\n', 'utf8');
   writeFileSync(origin, `- **kind**: ${kind}\n`, 'utf8');
   writeFileSync(meta, '- **Size**: M\n', 'utf8');
-  return { dir, scope, ac, origin, meta };
+  return { dir, story, scope, ac, vc, origin, meta };
 }
 
 async function runPreflight(args) {
@@ -70,10 +74,14 @@ function subIssueArgs(fx, extra = []) {
     'sub-issue',
     '--parent',
     '1',
+    '--user-story-file',
+    fx.story,
     '--scope-file',
     fx.scope,
     '--ac-file',
     fx.ac,
+    '--verification-commands-file',
+    fx.vc,
     '--story-origin-file',
     fx.origin,
     '--plan-metadata-file',
@@ -256,10 +264,14 @@ describe('AC6: code-kind back-compat', () => {
           '--shape',
           shapeArgs[0],
           ...shapeArgs.slice(1),
+          '--user-story-file',
+          fx.story,
           '--scope-file',
           fx.scope,
           '--ac-file',
           fx.ac,
+          '--verification-commands-file',
+          fx.vc,
           '--story-origin-file',
           fx.origin,
           '--plan-metadata-file',

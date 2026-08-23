@@ -4,7 +4,7 @@ import { promisify } from 'node:util';
 
 import { loadState, saveState, clearActive, stateFullWordMarker } from '../state.mjs';
 import { loadSession } from '../lib/session-store.mjs';
-import { resolveGate } from '../lib/gate-resolve.mjs';
+import { resolveGate, resolveReviewAuthorization } from '../lib/gate-resolve.mjs';
 import { rawProjectConfig } from '../config.mjs';
 import { currentSessionId } from '../word-counter.mjs';
 import { releaseTerminalIssueBinding } from '../lib/worktree-binding-lifecycle.mjs';
@@ -20,15 +20,25 @@ import { readLastKnownState } from '../gh-timing-comment.mjs';
 import { assertVerbHomeState } from '../lib/verb-home-state-guard.mjs';
 import { runDispose } from '../lib/close-disposition.mjs';
 import { writeTerminalDisposition } from '../lib/terminal-disposition.mjs';
-import { hasReviewApprovedMarker, readPlanApprovedForecastRecordId } from '../lib/markers.mjs';
+import {
+  hasReviewApprovedMarker,
+  parseReviewApprovedMarker,
+  readPlanApprovedForecastRecordId,
+} from '../lib/markers.mjs';
+import { isAgentReviewComplete } from '../lib/agent-review/review-gate.mjs';
 import { runGuards } from '../lib/guard-registry.mjs';
 import '../lib/guard-bootstrap.mjs';
-import { isFullAuto } from '../lib/human-reviewer-audit.mjs';
 import {
   detectLinkedWorktree,
   makeCloseTrunkRefResolver,
-  enableFullAutoMergeForClose,
 } from '../lib/full-auto-merge-execute.mjs';
+import { fetchParentIssueStrict } from '../lib/fetch-parent-issue.mjs';
+import { parseVerificationReceipt } from '../lib/verification-receipt.mjs';
+import { parseDeliveryComment, projectDeliveryRecords } from '../lib/delivery-records.mjs';
+import {
+  requireDeliveryReceipt,
+  resolveAcceptedDeliveryHead,
+} from '../lib/close-delivery-receipt.mjs';
 import { tickLifecycleItem } from '../lib/lifecycle-dod.mjs';
 import { assertLifecycleSatisfied } from '../close-gate.mjs';
 import { deriveAndStampFunctionalDod } from '../lib/functional-dod-derive.mjs';
@@ -61,6 +71,98 @@ import {
 import { gql } from '../../gh/lib/github-projects.mjs';
 
 const closePexec = promisify(execFile);
+
+function closeBaseRef(cfg) {
+  return (
+    String(cfg?.trunkRef || 'trunk')
+      .split('/')
+      .at(-1) || 'trunk'
+  );
+}
+
+async function loadCloseDeliveryGateInput({
+  issueNumber,
+  cfg,
+  projectDir,
+  pexec,
+  body,
+  lifecycleEvidence,
+  ctx,
+}) {
+  const [{ stdout: branchOut }, { stdout: headOut }, parentIssueNumber] = await Promise.all([
+    pexec('git', ['branch', '--show-current'], { cwd: projectDir }),
+    pexec('git', ['rev-parse', 'HEAD'], { cwd: projectDir }),
+    (ctx.resolveCloseParentIssue || fetchParentIssueStrict)({
+      issueNumber,
+      repo: cfg.repo,
+    }),
+  ]);
+  const branch = String(branchOut || '').trim();
+  const localHeadSha = String(headOut || '').trim();
+  const directoryLane = lifecycleEvidence !== null;
+  const acceptedSha = resolveAcceptedDeliveryHead({
+    localHeadSha,
+    testReceiptSha: parseVerificationReceipt(body, 'test')?.commitSha ?? null,
+    reviewReceiptSha: directoryLane
+      ? lifecycleEvidence.expectedSha
+      : (parseVerificationReceipt(body, 'review')?.commitSha ?? null),
+    agentReviewPassed: directoryLane
+      ? hasAcceptedReviewEvidence(lifecycleEvidence)
+      : isAgentReviewComplete(body),
+  });
+  const { stdout: prOut } = await pexec(
+    'gh',
+    [
+      'pr',
+      'list',
+      '-R',
+      cfg.repo,
+      '--head',
+      branch,
+      '--state',
+      'all',
+      '--json',
+      'number,state,mergedAt,mergeCommit,headRefName,headRefOid,baseRefName',
+    ],
+    { timeout: GH_API_TIMEOUT_MS }
+  );
+  const pullRequests = JSON.parse(String(prOut || '[]')).map((pr) => ({
+    ...pr,
+    merged: String(pr.state || '').toUpperCase() === 'MERGED',
+    mergeCommitSha: pr.mergeCommit?.oid ?? null,
+  }));
+  const baseRef = closeBaseRef(cfg);
+  const lineage = {
+    parentIssueNumber,
+    deliveryTarget: parentIssueNumber === null ? baseRef : `epic/${parentIssueNumber}`,
+    localTrunkLaneAuthorized:
+      cfg.fullAutoMerge?.mechanism === 'local-trunk-lane' &&
+      cfg.fullAutoMerge?.operatorAuthorized === true,
+  };
+  let records = null;
+  if (parentIssueNumber === null && pullRequests.length > 0) {
+    if (pullRequests.length !== 1) {
+      records = { intents: [], receipts: [], liveIntent: null, matchingReceipt: null };
+    } else {
+      const { stdout: commentsOut } = await pexec(
+        'gh',
+        ['api', '--paginate', '--slurp', `repos/${cfg.repo}/issues/${issueNumber}/comments`],
+        { timeout: GH_API_TIMEOUT_MS }
+      );
+      const pages = JSON.parse(String(commentsOut || '[]'));
+      const comments = (Array.isArray(pages) ? pages.flat() : []).map((comment) => ({
+        id: String(comment.id),
+        body: comment.body,
+        createdAt: comment.created_at,
+      }));
+      const context = { repository: cfg.repo, issueNumber, prNumber: pullRequests[0].number };
+      records = projectDeliveryRecords(
+        comments.map((comment) => parseDeliveryComment(comment, context)).filter(Boolean)
+      );
+    }
+  }
+  return { issueNumber, lineage, branch, acceptedSha, localHeadSha, pullRequests, records };
+}
 
 function defaultLifecycleGraphql({ query, variables }) {
   return gql(query, variables).then((data) => ({ data }));
@@ -333,6 +435,12 @@ export async function verbClose(ctx) {
     projectConfig;
   const { rest } = ctx;
   const { drainQueueIfAny, flushAndForgetQueueFor, safePostTiming } = timingRecorder;
+  let queueDrained = false;
+  const drainQueueOnce = async () => {
+    if (queueDrained) return;
+    await drainQueueIfAny();
+    queueDrained = true;
+  };
   const flushQueueFor =
     timingRecorder.flushQueueFor ??
     flushAndForgetQueueFor ??
@@ -369,13 +477,13 @@ export async function verbClose(ctx) {
   // observe it and the two call sites can never drift apart. Falls back to the
   // module helper when the ctx does not inject one (production).
   const reconcileLifecycleBoxes = ctx.tickLifecycleOnClose || tickLifecycleOnClose;
-  await drainQueueIfAny();
   const initialState = loadState(statePath);
   const target = rest.find((a) => /^#\d+$/.test(a));
   let s = initialState;
 
   const closeTarget = target || s.active || '';
   const closeIssueNum = closeTarget.replace(/^#/, '');
+  const force = rest.includes('--force');
   // #708 — `--repair` forces the full atomic close pipeline even when the board
   // is already Done / the issue already CLOSED (e.g. a PR closing-reference
   // auto-closed it out-of-band), so the timing flush, lifecycle-box ticking, and
@@ -394,6 +502,7 @@ export async function verbClose(ctx) {
     saveState(s, statePath);
   }
   if (!closeTarget) {
+    await drainQueueOnce();
     console.log('no active task');
     return;
   }
@@ -405,6 +514,7 @@ export async function verbClose(ctx) {
   // and return here, before any shared gate state below is read.
   const asIdx = rest.indexOf('--as');
   if (asIdx !== -1) {
+    await drainQueueOnce();
     const disposition = rest[asIdx + 1];
     const ofIdx = rest.indexOf('--of');
     const ofRef = ofIdx !== -1 ? rest[ofIdx + 1] : '';
@@ -448,6 +558,109 @@ export async function verbClose(ctx) {
     projectConfig: rawProjectConfig(),
   });
   const configuredReviewAuthority = configuredReviewToDoneGate ? 'human-gate' : 'gate-bypassed';
+  let resolvedReviewAuthorization = null;
+  let closeLifecycleEvidenceLoaded = false;
+  let cachedCloseLifecycleEvidence = null;
+  const loadCloseLifecycleEvidence = async (body) => {
+    if (closeLifecycleEvidenceLoaded) return cachedCloseLifecycleEvidence;
+    cachedCloseLifecycleEvidence = await resolveCloseLifecycleEvidence({
+      body,
+      issueNumber: closeIssueNum,
+      repository: cfg.repo,
+      projectDir,
+      deps: {
+        locateAuthoritySource: ctx.locateAuthoritySource,
+        getHeadSha: ctx.getHeadSha,
+        resolveLifecycleEvidence: ctx.resolveLifecycleEvidence,
+        graphql: ctx.graphql,
+        readContractRecord: ctx.readContractRecord,
+        listIssueRecords: ctx.listIssueRecords,
+      },
+    });
+    closeLifecycleEvidenceLoaded = true;
+    return cachedCloseLifecycleEvidence;
+  };
+  const terminalReviewAuthority = () => {
+    if (resolvedReviewAuthorization?.mode === 'human') return 'human-gate';
+    if (resolvedReviewAuthorization?.mode === 'full-auto') return 'gate-bypassed';
+    return configuredReviewAuthority;
+  };
+  const terminalReviewGateBypassed = () => terminalReviewAuthority() === 'gate-bypassed';
+
+  // #939 — resolve the receipt gate lazily after non-terminal convergence
+  // inspection, but before any path performs a new terminal mutation.
+  const ensureDeliveryAuthorized = async () => {
+    if (SKIP_NETWORK || !closeIssueNum) return resolvedReviewAuthorization;
+    if (resolvedReviewAuthorization) return resolvedReviewAuthorization;
+    const deliveryBody = ctx.loadCloseDeliveryBody
+      ? await ctx.loadCloseDeliveryBody({
+          issueNumber: Number(closeIssueNum),
+          repository: cfg.repo,
+        })
+      : await (async () => {
+          const { stdout } = await pexec(
+            'gh',
+            ['issue', 'view', closeIssueNum, '-R', cfg.repo, '--json', 'body'],
+            { timeout: GH_API_TIMEOUT_MS }
+          );
+          return JSON.parse(String(stdout || '{}')).body ?? '';
+        })();
+    const lifecycleEvidence = await loadCloseLifecycleEvidence(deliveryBody);
+    const gateInput = await (ctx.loadCloseDeliveryGateInput || loadCloseDeliveryGateInput)({
+      issueNumber: Number(closeIssueNum),
+      cfg,
+      projectDir,
+      pexec,
+      body: deliveryBody,
+      lifecycleEvidence,
+      ctx,
+    });
+    const approval = parseReviewApprovedMarker(deliveryBody);
+    const directoryLane = lifecycleEvidence !== null;
+    const authorization = (ctx.resolveReviewAuthorization || resolveReviewAuthorization)({
+      session: loadSession(currentSessionId()),
+      projectConfig: rawProjectConfig(),
+      acceptedHeadSha:
+        gateInput.acceptedSha === gateInput.localHeadSha ? gateInput.localHeadSha : null,
+      humanApprovalEvidence:
+        directoryLane && hasAcceptedApprovalEvidence(lifecycleEvidence, { provenance: 'human' })
+          ? {
+              accepted: true,
+              approvedSha: lifecycleEvidence.expectedSha,
+              source: 'directory-human-evidence',
+            }
+          : !directoryLane && approval && !approval.fullAuto
+            ? { accepted: true, approvedSha: approval.approvedSha }
+            : null,
+      fullAutoApprovalEvidence:
+        directoryLane && hasAcceptedApprovalEvidence(lifecycleEvidence, { provenance: 'full-auto' })
+          ? { accepted: true, approvedSha: lifecycleEvidence.expectedSha }
+          : !directoryLane && approval?.fullAuto
+            ? { accepted: true, approvedSha: approval.approvedSha }
+            : null,
+    });
+    if (authorization.mode === 'missing') {
+      throw new Error('review-authorization-missing');
+    }
+    const receiptGate = ctx.requireDeliveryReceipt || requireDeliveryReceipt;
+    receiptGate(gateInput);
+    resolvedReviewAuthorization = authorization;
+    return authorization;
+  };
+  const refuseDeliveryGate = async () => {
+    try {
+      await ensureDeliveryAuthorized();
+      return false;
+    } catch (error) {
+      console.error(
+        `[task-tracker] ⛔ Refusing to close ${closeTarget}: ${error.message}. ` +
+          'Run `/task deliver` until a verified exact-head receipt exists, then retry.'
+      );
+      process.exitCode = 1;
+      return true;
+    }
+  };
+
   const outcomeRuntimeFactory = ctx.createEstimationOutcomeWriter ?? createEstimationOutcomeRuntime;
   const issueWorkspaceResolver =
     ctx.resolveIssueWorkspace ??
@@ -617,7 +830,8 @@ export async function verbClose(ctx) {
             );
           }
 
-          fullAuto = configuredFullAuto;
+          if (await refuseDeliveryGate()) return;
+          fullAuto = terminalReviewGateBypassed();
           integrity = deriveClosedIssueIntegrity({
             body: convergeBody,
             fullAuto,
@@ -657,6 +871,9 @@ export async function verbClose(ctx) {
     }
 
     if (decision.action === 'close-issue') {
+      if (await refuseDeliveryGate()) return;
+      fullAuto = terminalReviewGateBypassed();
+      await drainQueueOnce();
       // Board reads Done but the issue is still OPEN — the Projects auto-close
       // workflow did not fire. Close the primary explicitly. On failure, surface
       // it and exit non-zero WITHOUT clearing local state so a re-run recovers.
@@ -667,7 +884,7 @@ export async function verbClose(ctx) {
           cfg,
           hasApprovalMarker: hasReviewApprovedMarker(convergeBody),
           issueBody: convergeBody,
-          reviewGateBypassed: configuredFullAuto,
+          reviewGateBypassed: fullAuto,
           lastWordMarker: s.lastWordMarker,
           lastFullWordMarker: stateFullWordMarker(s),
           ctx,
@@ -714,6 +931,11 @@ export async function verbClose(ctx) {
     }
 
     if (['dead', 'finalize', 'aberration', 'noop'].includes(decision.action)) {
+      if (['finalize', 'noop'].includes(decision.action) && (await refuseDeliveryGate())) return;
+      if (['finalize', 'noop'].includes(decision.action)) {
+        fullAuto = terminalReviewGateBypassed();
+      }
+      await drainQueueOnce();
       const convergence = await runClosedIssueConvergence(
         {
           decision,
@@ -731,7 +953,7 @@ export async function verbClose(ctx) {
             const moveResult = await runMoveStateDone(closeTarget, {
               silent: true,
               tailProfile: convergenceTailProfile,
-              reviewAuthority: configuredReviewAuthority,
+              reviewAuthority: terminalReviewAuthority(),
             });
             if (!moveResult.ok && !moveResult.benign) {
               const postBoardState = await getIssueBoardState(closeTarget);
@@ -931,6 +1153,7 @@ export async function verbClose(ctx) {
   }
 
   if (closeTarget === 'discover') {
+    await drainQueueOnce();
     console.log('Discarded discovery bucket.');
     saveState({ ...s, active: null, discoverBucket: null }, statePath);
     return;
@@ -947,7 +1170,7 @@ export async function verbClose(ctx) {
   // emission can predicate on it. True iff the review→done gate was explicitly
   // disabled (session/project override), which carries its own
   // `aitm-gate-bypassed` audit row.
-  let reviewGateBypassed = configuredReviewAuthority === 'gate-bypassed';
+  let reviewGateBypassed = terminalReviewGateBypassed();
   if (process.env.TT_SKIP_DIRTY_CHECK !== '1') {
     const answerIdx = rest.indexOf('--answer');
     const answerArg = answerIdx >= 0 ? String(rest[answerIdx + 1] || '').toLowerCase() : '';
@@ -1018,7 +1241,6 @@ export async function verbClose(ctx) {
     }
   }
 
-  const force = rest.includes('--force');
   if (!SKIP_NETWORK) {
     try {
       const { stdout } = await pexec(
@@ -1049,9 +1271,8 @@ export async function verbClose(ctx) {
       // derived-DoD stamping so chain-integrity sees the freshly-ticked
       // keys. The session/project `gateReviewToDone` toggle still lives in
       // close.mjs because it controls audit emission, not guard logic.
-      const _resolvedReviewGate = configuredReviewToDoneGate;
-      reviewGateBypassed = !_resolvedReviewGate; // #655 — hoist for the row gate
-      if (!_resolvedReviewGate) {
+      reviewGateBypassed = terminalReviewGateBypassed(); // #655 — hoist for the row gate
+      if (reviewGateBypassed) {
         // #516 — the review-gate bypass is recorded as a body audit marker
         // (`aitm-gate-bypassed`), not a ⏱ Timing Log row. The bypass consumes no
         // distinct wall-clock; its time is already counted inside Review. The
@@ -1110,20 +1331,7 @@ export async function verbClose(ctx) {
         console.warn(`[task-tracker] Functional DoD derivation skipped: ${err.message}`);
       }
 
-      closeLifecycleEvidence = await resolveCloseLifecycleEvidence({
-        body,
-        issueNumber: closeIssueNum,
-        repository: cfg.repo,
-        projectDir,
-        deps: {
-          locateAuthoritySource: ctx.locateAuthoritySource,
-          getHeadSha: ctx.getHeadSha,
-          resolveLifecycleEvidence: ctx.resolveLifecycleEvidence,
-          graphql: ctx.graphql,
-          readContractRecord: ctx.readContractRecord,
-          listIssueRecords: ctx.listIssueRecords,
-        },
-      });
+      closeLifecycleEvidence = await loadCloseLifecycleEvidence(body);
 
       const unchecked = await resolvePreCloseCheckboxes({
         body,
@@ -1202,7 +1410,7 @@ export async function verbClose(ctx) {
         });
 
         const refusals = (guardResult.refusals || []).filter(
-          (r) => !(r.id === 'review-exit-review-approved' && !_resolvedReviewGate)
+          (r) => !(r.id === 'review-exit-review-approved' && reviewGateBypassed)
         );
 
         const approvedRefusal = refusals.find((r) => r.id === 'review-exit-review-approved');
@@ -1300,6 +1508,9 @@ export async function verbClose(ctx) {
       );
     }
   }
+
+  if (await refuseDeliveryGate()) return;
+  await drainQueueOnce();
 
   if (!SKIP_NETWORK && closeIssueNum) {
     const subNums = await fetchSubIssues(closeIssueNum);
@@ -1516,47 +1727,6 @@ export async function verbClose(ctx) {
       `[task-tracker] queue: delivered ${flushResult.delivered}, pending 0 for ${closeTarget}.`
     );
   }
-  // #908 — complete the fallible Full-Auto merge preparation before writing
-  // immutable completion evidence. A retry after a merge refusal must not leave
-  // an outcome for work that never became eligible for Done.
-  if (isFullAuto() && !force && !SKIP_NETWORK && closeIssueNum) {
-    let closeBranch = '';
-    try {
-      const { stdout: br } = await pexec('git', ['rev-parse', '--abbrev-ref', 'HEAD'], {});
-      closeBranch = String(br || '').trim();
-    } catch {
-      // no branch resolvable — treated as no-PR (inert) below
-    }
-    const fam = await enableFullAutoMergeForClose({
-      cfg,
-      branch: closeBranch,
-      issueNumber: closeIssueNum,
-      isFullAuto: isFullAuto(),
-      pexec,
-    });
-    if (fam.status === 'fail-closed') {
-      console.error(`[task-tracker] ⛔ Refusing to close ${closeTarget}: ${fam.message}`);
-      console.error(
-        `   Issue left OPEN — configure \`fullAutoMerge\` and re-run \`/task close ${closeTarget}\`.`
-      );
-      process.exitCode = 1;
-      return;
-    }
-    if (fam.status === 'exec-failed') {
-      console.error(
-        `[task-tracker] ✗ Failed to enable auto-merge for ${closeTarget}: ${fam.message}\n` +
-          `Local state left intact — re-run \`/task close ${closeTarget}\` once resolved.`
-      );
-      process.exitCode = 1;
-      return;
-    }
-    if (fam.status === 'enabled') {
-      console.log(
-        `[task-tracker] ✓ Enabled GitHub auto-merge on PR #${fam.prNumber} for ${closeTarget} ` +
-          `(\`gh ${fam.argv.join(' ')}\`); GitHub merges once required checks pass.`
-      );
-    }
-  }
   try {
     await ensureCloseEstimationOutcome({
       issueNumber: closeIssueNum,
@@ -1588,7 +1758,7 @@ export async function verbClose(ctx) {
     const forcedMove = await runMoveStateDone(s.active, {
       silent: true,
       extraArgs: ['--force'],
-      reviewAuthority: configuredReviewAuthority,
+      reviewAuthority: terminalReviewAuthority(),
     });
     // Same swallow-vs-surface rule as the post-close move (#435): re-read the
     // board and only refuse when the move genuinely failed AND the board is not
@@ -1631,7 +1801,7 @@ export async function verbClose(ctx) {
   if (!force && !SKIP_NETWORK && closeIssueNum) {
     const preMove = await runMoveStateDone(s.active, {
       silent: true,
-      reviewAuthority: configuredReviewAuthority,
+      reviewAuthority: terminalReviewAuthority(),
     });
     const preBoardState =
       preMove && !preMove.ok && !preMove.benign
@@ -1697,7 +1867,7 @@ export async function verbClose(ctx) {
   // as success and produces no warning.
   const moveResult = await runMoveStateDone(s.active, {
     silent: true,
-    reviewAuthority: configuredReviewAuthority,
+    reviewAuthority: terminalReviewAuthority(),
   });
   const lifecycleTickResult = await reconcileLifecycleBoxes({
     cfg,

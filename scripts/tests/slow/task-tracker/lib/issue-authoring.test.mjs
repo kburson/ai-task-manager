@@ -29,8 +29,16 @@ function fixtureDir() {
     join(PACKAGE_TEMPLATES, 'definition-of-done.md'),
     join(dir, '.ai-task-manager/templates/definition-of-done.md')
   );
+  writeFileSync(
+    join(dir, 'story.md'),
+    'As a workflow author\nI want to render canonical issue shapes\nSo that provider output stays structurally equivalent\n'
+  );
   writeFileSync(join(dir, 'scope.md'), 'A short scope paragraph.\n');
-  writeFileSync(join(dir, 'acs.md'), '- [ ] First criterion\n- [ ] Second criterion\n');
+  writeFileSync(
+    join(dir, 'acs.md'),
+    '- [ ] First criterion <!-- aitm-verified vc-list="vc:1" -->\n- [ ] Second criterion <!-- aitm-verified vc-list="vc:1" -->\n'
+  );
+  writeFileSync(join(dir, 'verification-commands.md'), 'node --test fixture.test.mjs\n');
   writeFileSync(join(dir, 'origin.md'), '- **kind**: code\n- **size-guess**: S\n');
   writeFileSync(
     join(dir, 'meta.md'),
@@ -46,6 +54,8 @@ function runDryRun(shape, extraArgs = [], cwd) {
     `parity ${shape}`,
     '--shape',
     shape,
+    '--user-story-file',
+    join(cwd, 'story.md'),
     '--scope-file',
     join(cwd, 'scope.md'),
     '--ac-file',
@@ -54,6 +64,8 @@ function runDryRun(shape, extraArgs = [], cwd) {
     join(cwd, 'origin.md'),
     '--plan-metadata-file',
     join(cwd, 'meta.md'),
+    '--verification-commands-file',
+    join(cwd, 'verification-commands.md'),
     '--dry-run',
     ...extraArgs,
   ];
@@ -92,6 +104,7 @@ test('solo shape: canonical structure', () => {
   const dir = fixtureDir();
   const body = runDryRun('solo', [], dir);
   assertCanonicalOrder(body, 'solo');
+  assert.match(body, /^## User Story\b/m);
   assert.doesNotMatch(body, /\*\*Parent epic:\*\*/);
 });
 
@@ -99,6 +112,7 @@ test('sub-issue shape: canonical structure + parent line', () => {
   const dir = fixtureDir();
   const body = runDryRun('sub-issue', ['--parent', '42'], dir);
   assertCanonicalOrder(body, 'sub-issue');
+  assert.match(body, /^## User Story\b/m);
   assert.match(body, /- \*\*parent\*\*: #42/);
   assert.doesNotMatch(body, /\*\*Parent epic:\*\*/);
 });
@@ -107,6 +121,7 @@ test('epic shape: canonical structure', () => {
   const dir = fixtureDir();
   const body = runDryRun('epic', [], dir);
   assertCanonicalOrder(body, 'epic');
+  assert.match(body, /^## User Story\b/m);
 });
 
 test('#272: --status flag is rejected on shape-based creation', () => {
@@ -122,6 +137,8 @@ test('#272: --status flag is rejected on shape-based creation', () => {
       'gate test',
       '--shape',
       'solo',
+      '--user-story-file',
+      join(dir, 'story.md'),
       '--scope-file',
       join(dir, 'scope.md'),
       '--ac-file',
@@ -152,6 +169,7 @@ test('stub shape: canonical structure without scope/ac/plan-metadata files', () 
   const body = res.stdout;
   assertCanonicalOrder(body, 'stub');
   assert.match(body, /^## Verification Commands\s*$/m);
+  assert.doesNotMatch(body, /^## User Story\b/m);
   assert.doesNotMatch(body, /\*\*Parent epic:\*\*/);
   // Scope/AC placeholders remain; Story Origin is real and Plan Metadata empty.
   assert.match(body, /Stub — describe the work at Refine\./);
@@ -189,6 +207,8 @@ test('sub-issue shape requires --parent', () => {
       'no parent',
       '--shape',
       'sub-issue',
+      '--user-story-file',
+      join(dir, 'story.md'),
       '--scope-file',
       join(dir, 'scope.md'),
       '--ac-file',

@@ -24,6 +24,12 @@ export const claudeAdapter = {
     hookTarget: '.claude/settings.json',
     commandTarget: '.claude/commands/task.md',
   },
+  externalActions: {
+    'github.merge-pull-request': {
+      adapterContract: 'skill',
+      expectedHeadSha: true,
+    },
+  },
 };
 
 export default claudeAdapter;

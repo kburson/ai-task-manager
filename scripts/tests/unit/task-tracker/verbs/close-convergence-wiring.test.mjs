@@ -355,19 +355,16 @@ test('v1 estimation outcome is required before the terminal Done move', () => {
   assert.ok(terminalMove > outcome, 'outcome must be durable before the non-force Done move');
 });
 
-test('fallible merge preparation precedes the outcome; Done precedes Delivered disposition', () => {
+test('receipt authorization precedes outcome; Done precedes Delivered disposition', () => {
   const source = readFileSync(
     new URL('../../../../task-tracker/verbs/close.mjs', import.meta.url),
     'utf8'
   );
-  const merge = source.indexOf(
-    'enableFullAutoMergeForClose({',
-    source.indexOf('await emitReviewToDoneClosePair')
-  );
-  const outcome = source.indexOf('ensureCloseEstimationOutcome({', merge);
+  const receipt = source.indexOf('if (await refuseDeliveryGate()) return;');
+  const outcome = source.indexOf('ensureCloseEstimationOutcome({', receipt);
   const terminalMove = source.indexOf('if (!force && !SKIP_NETWORK && closeIssueNum) {', outcome);
   const delivered = source.indexOf('writeDeliveredOrRefuse({', terminalMove);
-  assert.ok(merge > 0 && outcome > merge, 'merge preparation must finish before outcome');
+  assert.ok(receipt > 0 && outcome > receipt, 'receipt authorization must finish before outcome');
   assert.ok(terminalMove > outcome, 'outcome must be durable before Done');
   assert.ok(delivered > terminalMove, 'Delivered must be written only after Done');
 });
@@ -418,3 +415,40 @@ test('board-Done open-issue convergence refuses GitHub close when terminal timin
   assert.equal(run.calls.issueCloses, 0);
   assert.equal(run.exitCode, 1);
 });
+
+for (const category of [
+  'input',
+  'lineage',
+  'missing',
+  'malformed',
+  'duplicate',
+  'conflicting',
+  'ambiguous-pr',
+  'not-merged',
+  'branch-mismatch',
+  'base-mismatch',
+  'head-mismatch',
+  'issue-mismatch',
+  'pr-mismatch',
+  'merge-commit-missing',
+  'merge-commit-mismatch',
+]) {
+  test(`delivery receipt ${category} refusal precedes every specified side effect`, async () => {
+    const run = await runClose({
+      closeSnapshot: { issueClosed: false, stateReason: null },
+      gateReviewToDone: false,
+      force: true,
+      deliveryRefusal: new Error(`close-delivery-receipt:${category}`),
+    });
+
+    assert.equal(run.exitCode, 1);
+    assert.equal(run.calls.drains, 0);
+    assert.equal(run.calls.timingRows.length, 0);
+    assert.equal(run.calls.flushes, 0);
+    assert.equal(run.calls.logIssueTime, 0);
+    assert.equal(run.calls.movesToDone.length, 0);
+    assert.equal(run.calls.issueCloses, 0);
+    assert.equal(run.calls.terminalDispositions, 0);
+    assert.equal(run.calls.bindingReleases, 0);
+  });
+}

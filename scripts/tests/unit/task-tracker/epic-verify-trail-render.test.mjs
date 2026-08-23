@@ -146,12 +146,20 @@ describe('#900 AC3: verify-epic-trail resolves the epic from the active session'
   describe('epic-kind preflight render', () => {
     it('renders the epic-trail DoD line + a VC entry whose command has no forbidden < / > token', async () => {
       const dir = mkdtempSync(path.join(projectScratchDir('test'), 'epic-trail-render-'));
+      const story = path.join(dir, 'story.md');
       const scope = path.join(dir, 'scope.md');
       const ac = path.join(dir, 'ac.md');
+      const vc = path.join(dir, 'vc.md');
       const origin = path.join(dir, 'origin.md');
       const meta = path.join(dir, 'meta.md');
       writeFileSync(scope, 'Scope.\n', 'utf8');
-      writeFileSync(ac, '- [ ] X. <!-- aitm-verified cmd="`node --test x.mjs`" -->\n', 'utf8');
+      writeFileSync(
+        story,
+        'As an epic owner\nI want to verify child delivery trails\nSo that the epic closes with attributable commits\n',
+        'utf8'
+      );
+      writeFileSync(ac, '- [ ] X. <!-- aitm-verified vc-list="vc:1" -->\n', 'utf8');
+      writeFileSync(vc, 'node --test x.mjs\n', 'utf8');
       writeFileSync(origin, '- **kind**: epic\n', 'utf8');
       writeFileSync(meta, '- **Size**: M\n', 'utf8');
       try {
@@ -162,10 +170,14 @@ describe('#900 AC3: verify-epic-trail resolves the epic from the active session'
           // resolveRenderKind reads args.kind, not shape — epic kind is explicit.
           '--kind',
           'epic',
+          '--user-story-file',
+          story,
           '--scope-file',
           scope,
           '--ac-file',
           ac,
+          '--verification-commands-file',
+          vc,
           '--story-origin-file',
           origin,
           '--plan-metadata-file',

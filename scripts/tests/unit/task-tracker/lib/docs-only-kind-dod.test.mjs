@@ -52,19 +52,23 @@ const RUNTIME_DOD_TEXT = readFileSync(RUNTIME_DOD, 'utf8').replace(/\s+$/, '');
 
 function makeFixture() {
   const dir = mkdtempSync(path.join(projectScratchDir('test'), 'docs-only-kind-dod-'));
+  const story = path.join(dir, 'story.md');
   const scope = path.join(dir, 'scope.md');
   const ac = path.join(dir, 'ac.md');
+  const vc = path.join(dir, 'vc.md');
   const origin = path.join(dir, 'origin.md');
   const meta = path.join(dir, 'meta.md');
   writeFileSync(scope, 'Scope.\n', 'utf8');
   writeFileSync(
-    ac,
-    '- [ ] Something happens. <!-- aitm-verified cmd="`node --test x.mjs`" -->\n',
+    story,
+    'As a documentation author\nI want to create diff-aware issue bodies\nSo that verification matches the files changed\n',
     'utf8'
   );
+  writeFileSync(ac, '- [ ] Something happens. <!-- aitm-verified vc-list="vc:1" -->\n', 'utf8');
+  writeFileSync(vc, 'node --test x.mjs\n', 'utf8');
   writeFileSync(origin, '- **kind**: docs-only\n', 'utf8');
   writeFileSync(meta, '- **Size**: S\n', 'utf8');
-  return { dir, scope, ac, origin, meta };
+  return { dir, story, scope, ac, vc, origin, meta };
 }
 
 function writeChangedPaths(fx, paths) {
@@ -88,10 +92,14 @@ function subIssueArgs(fx, extra = []) {
     'sub-issue',
     '--parent',
     '1',
+    '--user-story-file',
+    fx.story,
     '--scope-file',
     fx.scope,
     '--ac-file',
     fx.ac,
+    '--verification-commands-file',
+    fx.vc,
     '--story-origin-file',
     fx.origin,
     '--plan-metadata-file',

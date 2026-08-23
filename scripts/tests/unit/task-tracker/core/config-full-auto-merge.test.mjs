@@ -33,8 +33,8 @@ test('AC1/AC3: fullAutoMerge is nullable by default and explicit project policy 
     assert.equal(resolveMergeMechanism(absent).ok, false);
 
     const configured = {
-      mechanism: 'local-trunk-lane',
-      operatorAuthorized: true,
+      mechanism: 'provider-action',
+      mergeMethod: 'squash',
     };
     writeFileSync(fx.projectPath, JSON.stringify({ fullAutoMerge: configured }));
 
@@ -43,7 +43,8 @@ test('AC1/AC3: fullAutoMerge is nullable by default and explicit project policy 
     assert.equal(loaded._sources.fullAutoMerge, 'project');
     assert.deepEqual(resolveMergeMechanism(loaded), {
       ok: true,
-      mechanism: 'local-trunk-lane',
+      mechanism: 'provider-action',
+      mergeMethod: 'squash',
     });
     assert.match(formatConfig(loaded), /fullAutoMerge/);
   } finally {
@@ -55,8 +56,8 @@ test('AC2: sanctioned config setter persists an object and rejects malformed val
   const fx = fixture();
   try {
     const raw = JSON.stringify({
-      mechanism: 'local-trunk-lane',
-      operatorAuthorized: true,
+      mechanism: 'provider-action',
+      mergeMethod: 'squash',
     });
     const written = setConfigValue('fullAutoMerge', raw, fx);
     assert.deepEqual(written, JSON.parse(raw));

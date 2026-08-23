@@ -22,3 +22,8 @@ Grok-specific host facts:
 - Project hooks install under `.grok/hooks` and require project trust.
 - Use Grok's native `/task` command surface.
 - Do not assume `.codex/hooks.json` is loaded.
+- `github.merge-pull-request` is `missing-capability` for this adapter. Leave the delivery intent pending unless this adapter later declares an equivalent sanctioned integration; never use a shell fallback.
+
+## Creating issues
+
+Make issues only through `scripts/gh/create-issue.mjs --shape stub|epic|sub-issue|solo|defect` — never `gh issue create`. Non-stub shapes require the `./.tmp/plan/user-story.md` fragment alongside Scope, Acceptance Criteria, and Story Origin. Bind each Acceptance Criterion to an `aitm-verified vc-list="vc:N"` marker that cites the root `## Verification Commands`; the complete contract lives in `rules/create-issue.md` and loads JIT on `/task new`.

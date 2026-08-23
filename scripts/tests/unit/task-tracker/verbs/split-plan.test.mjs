@@ -52,6 +52,8 @@ test('builds one deterministic child proposal per numbered task', () => {
   const proposals = buildSplitProposals(input());
   assert.equal(proposals.length, 2);
   assert.equal(proposals[0].title, 'Classifier');
+  assert.match(proposals[0].userStory, /^As a governed delivery agent$/m);
+  assert.match(proposals[0].userStory, /Task 1: Classifier/);
   assert.deepEqual(proposals[0].verificationCommands, ['node --test classifier.test.mjs']);
   assert.match(proposals[0].planMetadata, /\*\*Parent-epic\*\*: #1048/);
   assert.match(proposals[0].planMetadata, /\*\*Nested-epic\*\*: #1052/);
@@ -108,6 +110,7 @@ test('writes canonical deterministic fragments for sanctioned creation', async (
     const [proposal] = buildSplitProposals(input());
     const paths = await writeProposalFragments({ proposal, scratchDir });
     assert.equal(path.basename(path.dirname(paths.scope)), 'task-001');
+    assert.equal(readFileSync(paths.userStory, 'utf8'), `${proposal.userStory}\n`);
     assert.equal(readFileSync(paths.scope, 'utf8'), `${proposal.scope}\n`);
     assert.equal(readFileSync(paths.ac, 'utf8'), `${proposal.acceptanceCriteria}\n`);
     assert.equal(readFileSync(paths.storyOrigin, 'utf8'), `${proposal.storyOrigin}\n`);
@@ -116,7 +119,9 @@ test('writes canonical deterministic fragments for sanctioned creation', async (
       readFileSync(paths.verificationCommands, 'utf8'),
       'node --test classifier.test.mjs\n'
     );
-    assert.deepEqual(paths.creatorArgs.slice(-10), [
+    assert.deepEqual(paths.creatorArgs.slice(-12), [
+      '--user-story-file',
+      paths.userStory,
       '--scope-file',
       paths.scope,
       '--ac-file',

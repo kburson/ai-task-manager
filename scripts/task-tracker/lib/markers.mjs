@@ -197,14 +197,38 @@ export function readPlanApprovedForecastRecordId(body) {
 export const REVIEW_APPROVED_RE =
   /<!--\s*aitm-review-approved(?::\s*[^>]*?|\s+ts="[^"]*"[^>]*?)\s*-->/i;
 
+function hasControlCharacters(value) {
+  return [...String(value)].some((character) => {
+    const code = character.codePointAt(0);
+    return code <= 31 || code === 127;
+  });
+}
+
 // #480 — the consolidated review-approved marker now optionally carries the
 // full-auto approval audit props. `full-auto="yes" signals="<env=…>"` collapse
 // what used to be a separate `aitm-full-auto-approved` marker + visible footnote
 // into a single marker. Pass `{ fullAuto: true, signals }` from the approve verb
 // when no human reviewed the work.
-export function buildReviewApprovedMarker(ts, { fullAuto = false, signals = '' } = {}) {
+export function buildReviewApprovedMarker(
+  ts,
+  { approvedSha = undefined, fullAuto = false, signals = '' } = {}
+) {
   const props = { ts };
+  if (approvedSha !== undefined) {
+    if (!/^[0-9a-f]{40}$/.test(String(approvedSha))) {
+      throw new TypeError(
+        'buildReviewApprovedMarker: approvedSha must be a 40-character lowercase SHA'
+      );
+    }
+    if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{3})?Z$/.test(String(ts))) {
+      throw new TypeError('buildReviewApprovedMarker: ts must be a canonical UTC timestamp');
+    }
+    props['approved-sha'] = approvedSha;
+  }
   if (fullAuto) {
+    if (typeof signals !== 'string' || signals.length > 1024 || hasControlCharacters(signals)) {
+      throw new TypeError('buildReviewApprovedMarker: signals must be bounded printable text');
+    }
     props['full-auto'] = 'yes';
     props.signals = signals || '';
   }
@@ -230,7 +254,8 @@ export function removeReviewApprovedMarker(body) {
 const REVIEW_APPROVED_FULL_AUTO_RE =
   /<!--\s*aitm-review-approved\s+[^>]*\bfull-auto="(?:yes|true)"[^>]*-->/i;
 
-// Decode a consolidated review-approved marker to `{ ts, fullAuto, signals }`,
+// Decode a consolidated review-approved marker to
+// `{ ts, approvedSha, fullAuto, signals }`,
 // or null when absent. Uses the generic marker parser so prop order is
 // irrelevant.
 export function parseReviewApprovedMarker(body) {
@@ -239,12 +264,41 @@ export function parseReviewApprovedMarker(body) {
   const parsed = parseMarker(m[0]);
   if (!parsed) {
     const legacyTs = m[0].match(/aitm-review-approved\s*:\s*([^>]*?)\s*-->/i)?.[1]?.trim();
-    return { ts: legacyTs || '', fullAuto: false, signals: '' };
+    return { ts: legacyTs || '', approvedSha: null, fullAuto: false, signals: '' };
   }
+  const attributeNames = [...m[0].matchAll(/\s+([a-zA-Z0-9_-]+)="/g)].map((match) => match[1]);
+  if (new Set(attributeNames).size !== attributeNames.length) return null;
   const props = parsed.props || {};
+  const keys = Object.keys(props);
+  const fullAuto = props['full-auto'] === 'yes' || props['full-auto'] === 'true';
+  const allowed = fullAuto
+    ? ['approved-sha', 'full-auto', 'signals', 'ts']
+    : ['approved-sha', 'ts'];
+  if (keys.some((key) => !allowed.includes(key))) return null;
+  if (
+    fullAuto &&
+    (typeof props.signals !== 'string' ||
+      props.signals.length > 1024 ||
+      hasControlCharacters(props.signals))
+  ) {
+    return null;
+  }
+  if (props['full-auto'] !== undefined && !fullAuto) return null;
+  const approvedSha = /^[0-9a-f]{40}$/.test(props['approved-sha'] || '')
+    ? props['approved-sha']
+    : null;
+  if (props['approved-sha'] !== undefined && approvedSha === null) return null;
+  if (
+    approvedSha !== null &&
+    (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{3})?Z$/.test(props.ts || '') ||
+      (props['full-auto'] !== undefined && props['full-auto'] !== 'yes'))
+  ) {
+    return null;
+  }
   return {
     ts: props.ts || '',
-    fullAuto: props['full-auto'] === 'yes' || props['full-auto'] === 'true',
+    approvedSha,
+    fullAuto,
     signals: props.signals || '',
   };
 }

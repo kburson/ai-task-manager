@@ -67,6 +67,18 @@ async function runConverge({ boardState, reconcileSpy }) {
       getIssueClosedState: async () => true,
     },
     tickLifecycleOnClose: reconcileSpy,
+    loadCloseDeliveryBody: async () => '<!-- delivery-test-body -->',
+    loadCloseDeliveryGateInput: async () => ({
+      issueNumber: 5,
+      lineage: { parentIssueNumber: null, deliveryTarget: 'trunk' },
+      branch: 'feature/5',
+      acceptedSha: 'a'.repeat(40),
+      localHeadSha: 'a'.repeat(40),
+      pullRequests: [],
+      records: null,
+    }),
+    resolveReviewAuthorization: () => ({ mode: 'human', standing: true, source: 'test' }),
+    requireDeliveryReceipt: () => ({ skipped: false, receipt: {} }),
   };
   const prevSkip = process.env.TT_SKIP_DIRTY_CHECK;
   process.env.TT_SKIP_DIRTY_CHECK = '1';

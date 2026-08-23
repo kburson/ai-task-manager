@@ -116,7 +116,11 @@ function cliSetup() {
     JSON.stringify({ repo: 'kburson/ai-task-manager', projectId: 'PVT_TEST' }, null, 2)
   );
   writeFileSync(join(temp, 'scope.md'), 'Some scope text.\n');
-  writeFileSync(join(temp, 'ac.md'), '- [ ] first criterion\n');
+  writeFileSync(
+    join(temp, 'story.md'),
+    'As a task author\nI want to prevent duplicate children\nSo that epic scope stays unambiguous\n'
+  );
+  writeFileSync(join(temp, 'ac.md'), '- [ ] first criterion <!-- aitm-non-demonstrable -->\n');
   writeFileSync(join(temp, 'origin.md'), '- kind: code\n');
   writeFileSync(join(temp, 'plan.md'), 'key: value\n');
   return temp;
@@ -131,6 +135,8 @@ function runCreate(temp, { title, siblings, extraArgs = [] }) {
       title,
       '--shape',
       'sub-issue',
+      '--user-story-file',
+      join(temp, 'story.md'),
       '--scope-file',
       join(temp, 'scope.md'),
       '--ac-file',
