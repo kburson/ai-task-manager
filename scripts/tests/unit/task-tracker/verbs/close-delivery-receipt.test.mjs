@@ -1,4 +1,4 @@
-// @story #939
+// @story #939 #1401
 import { strict as assert } from 'node:assert';
 import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
@@ -16,6 +16,7 @@ import {
 const HEAD = 'a'.repeat(40);
 const MERGE = 'b'.repeat(40);
 const HISTORICAL_HEAD = 'c'.repeat(40);
+const LATER_HEAD = 'd'.repeat(40);
 // cspell:disable-next-line
 const INTENT_ID = '01ARZ3NDEKTSV4RRFFQ69G5FAV';
 
@@ -124,10 +125,10 @@ test('#1395 close refuses zero or multiple accepted-head PR matches', () => {
   );
 });
 
-test('accepted delivery head requires current Test and Agent Review evidence', () => {
+test('#1401 matching Test and Review determine the accepted head after local HEAD advances', () => {
   assert.equal(
     resolveAcceptedDeliveryHead({
-      localHeadSha: HEAD,
+      localHeadSha: LATER_HEAD,
       testReceiptSha: HEAD,
       reviewReceiptSha: HEAD,
       agentReviewPassed: true,
@@ -135,15 +136,16 @@ test('accepted delivery head requires current Test and Agent Review evidence', (
     HEAD
   );
   for (const overrides of [
+    { localHeadSha: null },
     { testReceiptSha: null },
     { agentReviewPassed: false },
-    { testReceiptSha: 'c'.repeat(40) },
-    { reviewReceiptSha: 'c'.repeat(40) },
+    { testReceiptSha: 'short' },
+    { reviewReceiptSha: HISTORICAL_HEAD },
   ]) {
     assert.throws(
       () =>
         resolveAcceptedDeliveryHead({
-          localHeadSha: HEAD,
+          localHeadSha: LATER_HEAD,
           testReceiptSha: HEAD,
           reviewReceiptSha: null,
           agentReviewPassed: true,
