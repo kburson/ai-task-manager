@@ -1,11 +1,4 @@
-import {
-  existsSync,
-  mkdirSync,
-  readFileSync,
-  realpathSync,
-  renameSync,
-  writeFileSync,
-} from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { isDeepStrictEqual } from 'node:util';
 
@@ -191,58 +184,6 @@ function liveReviewerClaim(row, statusProtocol) {
     return null;
   }
   return live;
-}
-
-export function hasLiveReviewerClaim(input) {
-  const statusProtocol = input.statusProtocol || defaultStatusProtocol;
-  return Boolean(liveReviewerClaim(input.row, statusProtocol));
-}
-
-export function resolveReviewerGrant(input) {
-  const file = fileFor(input);
-  const rows = readProtocolIndex(file);
-  const worktreePath = path.resolve(input.worktreePath || input.projectDir || process.cwd());
-  const runtimeDir = input.runtimeDir ? realpathSync(path.resolve(input.runtimeDir)) : null;
-  const runtimeRoot = input.runtimeRoot ? realpathSync(path.resolve(input.runtimeRoot)) : null;
-  const provider = String(input.provider || '').trim();
-  const sid = String(input.sid || '').trim();
-  const statusProtocol = input.statusProtocol || defaultStatusProtocol;
-  const candidates = [];
-  for (const row of Object.values(rows)) {
-    if (
-      row.lifecycle !== 'active' ||
-      row.claimedRole !== 'reviewer' ||
-      row.claimedProvider !== provider ||
-      row.claimedSid !== sid ||
-      !row.pendingReviewPath ||
-      (runtimeDir
-        ? realpathSync(path.resolve(row.dir)) !== runtimeDir ||
-          !runtimeRoot ||
-          realpathSync(path.resolve(row.worktree)) !== runtimeRoot
-        : !input.anyWorktree && path.resolve(row.worktree) !== worktreePath)
-    ) {
-      continue;
-    }
-    const live = liveReviewerClaim(row, statusProtocol);
-    if (!live) continue;
-    const ownerHandoffCommit =
-      live.lastHandoff?.from === 'owner' && typeof live.lastHandoff.commit === 'string'
-        ? live.lastHandoff.commit
-        : null;
-    if (!ownerHandoffCommit) continue;
-    candidates.push(
-      Object.freeze({
-        ...clone(row),
-        liveRevision: live.revision,
-        round: live.round,
-        ownerHandoffCommit,
-      })
-    );
-  }
-  if (candidates.length > 1) {
-    throw new Error(`co-review-index: ambiguous reviewer grant for ${runtimeDir ?? worktreePath}`);
-  }
-  return candidates[0] ?? null;
 }
 
 export function isActiveCoReviewWorktree(input) {
