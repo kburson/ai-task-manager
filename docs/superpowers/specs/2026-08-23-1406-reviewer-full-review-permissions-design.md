@@ -1,7 +1,7 @@
 # Reviewer Full Review Permissions Design
 
-**Issue:** #1406  
-**Status:** Approved design, pending written-spec review  
+**Issue:** #1406
+**Status:** Approved design, pending written-spec review
 **Date:** 2026-08-23
 
 ## Problem
