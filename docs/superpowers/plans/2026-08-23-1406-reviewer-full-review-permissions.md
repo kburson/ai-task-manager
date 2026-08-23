@@ -80,6 +80,15 @@ before `/task plan-approve #1406`; it is not an implementation task.
 - [ ] Confirm #1381 remains the sole convergence and end-to-end acceptance
       story; do not create individual successor issues for #1365, #1369, or
       observed guard failures.
+- [ ] Before mutating #1406, obtain explicit human acknowledgment that replacing
+      its `Scope` and `Acceptance Criteria` will intentionally stale the current
+      `aitm-refinement-snapshot` and create a one-way lifecycle door. Forward
+      Plan approval and delivery remain available, but no current governed verb
+      can then cancel or shelve #1406, return it to Refine, or mint a refreshed
+      snapshot. Do not rewrite the snapshot marker, bypass marker protection, or
+      claim that a rollback path exists. If the human does not accept that loss
+      of governed backward recovery, stop before hydrating #1406 and replan the
+      hydration mechanism.
 - [ ] Return to this #1406 worktree and resume #1406. Its current issue body
       still describes the superseded Bash-only/direct-write-confinement model.
       Replace its `User Story`, `Scope`, `Fix Direction`, `Out of Scope`,
@@ -114,15 +123,6 @@ before `/task plan-approve #1406`; it is not an implementation task.
       integration, documentation checks, fast suite, slow suite, lint, and
       formatting. Verify every preserved `vc-list` resolves to the intended
       stable IDs before plan approval.
-- [ ] Record that rewriting `Scope` and `Acceptance Criteria` intentionally
-      makes the existing `aitm-refinement-snapshot` stale. This does not block
-      the forward Plan-stage approval path, but `/task cancel-plan #1406` and
-      `/task shelve #1406` will refuse until refinement is refreshed. Do not
-      rewrite the snapshot marker through `issue-body` or bypass marker
-      protection. If cancellation or shelving becomes necessary, demote one
-      governed state edge at a time back to Refine, rerun `/task refine` against
-      the hydrated body to mint a current snapshot, then re-enter and re-review
-      Plan before continuing.
 - [ ] Invoke `/task plan-approve #1406` only after both issue-body updates are
       durable and independently checked. Do not implement, push, deliver,
       merge, promote, approve, or close as part of this gate.
