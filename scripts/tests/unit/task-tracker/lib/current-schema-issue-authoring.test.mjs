@@ -190,11 +190,24 @@ describe('current-schema public authoring contract', () => {
     try {
       const rendered = await preflight(shapeArgs('solo', files));
       assert.equal(rendered.code, 0, rendered.stderr);
+      const misplacedStory = rendered.stdout.replace(
+        /(## User Story[\s\S]*?)(## Scope[\s\S]*?)(?=## Story Origin)/,
+        '$2$1'
+      );
       const invalidBodies = [
         rendered.stdout.replace(/## User Story[\s\S]*?(?=## Scope)/, ''),
+        misplacedStory,
         rendered.stdout.replace(
           '<!-- aitm-non-demonstrable -->',
           '<!-- aitm-verified cmd="`node --test x.test.mjs`" -->'
+        ),
+        rendered.stdout.replace(
+          '<!-- aitm-non-demonstrable -->',
+          '<!-- aitm-verified vc-list="" -->'
+        ),
+        rendered.stdout.replace(
+          '<!-- aitm-non-demonstrable -->',
+          '<!-- aitm-verified vc-list="vc:99" -->'
         ),
       ];
       for (const body of invalidBodies) {

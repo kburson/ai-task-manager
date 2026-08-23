@@ -86,6 +86,19 @@ test('verifyIssueBody: requires a complete current-schema User Story', () => {
   }
 });
 
+test('verifyIssueBody: requires User Story to be the first H2 section', () => {
+  const misplaced = CANONICAL_BODY.replace(
+    /(## User Story[\s\S]*?)(## Scope[\s\S]*?)(?=## Story Origin)/,
+    '$2$1'
+  );
+  const res = verifyIssueBody(misplaced);
+  assert.equal(res.ok, false);
+  assert.ok(
+    res.missing.some((item) => /first H2/.test(item)),
+    JSON.stringify(res.missing)
+  );
+});
+
 test('verifyIssueBody: rejects legacy and missing AC verifier declarations', () => {
   for (const body of [
     CANONICAL_BODY.replace(

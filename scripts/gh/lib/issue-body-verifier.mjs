@@ -78,6 +78,11 @@ export function verifyIssueBody(body) {
     if (!check.regex.test(body)) missing.push(check.name);
   }
 
+  const firstH2 = body.match(/^##\s+\S.*$/m);
+  if (USER_STORY_REGEX.test(body) && firstH2 && !USER_STORY_REGEX.test(firstH2[0])) {
+    missing.push('## User Story must be the first H2 section');
+  }
+
   if (USER_STORY_REGEX.test(body)) {
     const match = body.match(USER_STORY_REGEX);
     const start = match.index + match[0].length;
