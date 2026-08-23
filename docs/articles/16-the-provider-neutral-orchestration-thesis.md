@@ -192,5 +192,5 @@ Close:
 - Preserve the skeptical caveat: provider neutrality increases orchestration complexity, review cost, and failure modes.
 - Avoid implying all providers are equally good for every role.
 - Avoid vendor-war framing.
-- Do not overclaim market uniqueness; say "the public examples I found mostly center a provider or framework," not "nobody else is doing this."
+- Do not over claim market uniqueness; say "the public examples I found mostly center a provider or framework," not "nobody else is doing this."
 - Tie the piece back to story-governed delivery: specifications define intent; stories carry bounded executable work; gates require evidence; humans own fit, sequencing, risk, and acceptance.
