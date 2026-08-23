@@ -75,8 +75,12 @@ export function requireDeliveryReceipt({
   }
 
   if (!SHA_RE.test(acceptedSha || '')) fail('head-mismatch');
-  if (!Array.isArray(pullRequests) || pullRequests.length !== 1) fail('ambiguous-pr');
-  const pr = pullRequests[0];
+  if (!Array.isArray(pullRequests)) fail('ambiguous-pr');
+  const exactHeadPullRequests = pullRequests.filter(
+    (pullRequest) => isObject(pullRequest) && pullRequest.headRefOid === acceptedSha
+  );
+  if (exactHeadPullRequests.length !== 1) fail('ambiguous-pr');
+  const pr = exactHeadPullRequests[0];
   if (!isObject(pr) || !Number.isSafeInteger(pr.number) || pr.number <= 0) fail('ambiguous-pr');
   if (pr.merged !== true && String(pr.state || '').toUpperCase() !== 'MERGED') fail('not-merged');
   if (pr.headRefName !== branch) fail('branch-mismatch');
