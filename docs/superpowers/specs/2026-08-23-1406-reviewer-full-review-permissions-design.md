@@ -1,7 +1,7 @@
 # SHA-Bound Co-Review Orchestration Design
 
 **Issue:** #1406
-**Status:** Revised after round-4 changes requested; pending round-5 reviewer
+**Status:** Revised after round-6 reviewer confirmation; pending round-7
 validation
 **Date:** 2026-08-23
 
@@ -106,6 +106,8 @@ commands is not.
   provider-specific private APIs. A human may still start each persistent
   interactive session and give it the thin runtime handoff.
 - Adding reviewer-claim TTL, heartbeat, release, or reassignment in #1406.
+- Supporting multi-file implementation review or adding a declared mutable-path
+  set. #1406 retains the protocol's single-authoritative-artifact model.
 - Adding repository-wide snapshot state or changing the existing protocol or
   archive schemas.
 - Hot-patching or reusing the active #1381 constrained runtime.
@@ -136,18 +138,26 @@ commit is not equivalent because dependencies, generated files, configuration,
 and untracked state can differ.
 
 At every owner or reviewer handoff, the canonical worktree must have no staged
-or unstaged tracked changes. After runtime initialization, the tracked diff
-between successive artifact commits may contain only the authoritative artifact
-path. During author revision that artifact is the only tracked file the role
-contract permits to change. The owner makes no tracked edits while the reviewer
-owns the turn. Protocol responses, reviews, state, timing evidence, and locks
-remain under the ignored co-review runtime and do not enter the tracked diff.
+or unstaged tracked changes. This protocol reviews one authoritative artifact;
+after runtime initialization, the tracked diff from
+`state.artifact.commit`—the predecessor commit retained until the next owner
+handoff succeeds—to the proposed commit may contain only that artifact path.
+During author revision that artifact is the only tracked file the role contract
+permits to change. The owner makes no tracked edits while the reviewer owns the
+turn. Protocol responses, reviews, state, timing evidence, and locks remain
+under the ignored co-review runtime and do not enter the tracked diff.
 
 Any other tracked path, mismatched `HEAD`, different physical worktree, or dirty
 tracked state refuses handoff. Working-tree drift remains diagnostic evidence,
 but it cannot silently change the review target. The operator restores the
 canonical worktree or begins a new conforming round; it never substitutes a
 different worktree.
+
+Imported review evidence follows the same baseline rule. `--import-review`
+requires its immutable `review-of` commit to equal canonical worktree `HEAD` at
+initialization. A merely reachable ancestor is refused rather than allowing
+changes between the imported commit and initialization `HEAD` to escape the
+first artifact-only diff.
 
 ### Role and session authority
 
@@ -226,11 +236,12 @@ review invariant selected for #1406: both participants must inspect and verify
 the same physical checkout, not merely Git objects with the same commit name.
 
 Generated handoffs therefore direct both sessions to the canonical review
-worktree before status, claim, wait, inspection, or handoff. Ordinary path and
-worktree guards refuse cross-worktree execution. No co-review-specific Bash
-transport exemption remains, and evidence produced from another worktree
-cannot advance or accept the protocol. #1406 deliberately supersedes the #1369
-cross-worktree handoff behavior for authoritative review.
+worktree before status, claim, wait, inspection, or handoff. The protocol—not
+ordinary Bash path or worktree policy—enforces
+`callerRoot === runtimeRoot === state.repositoryRoot` for every command. No
+co-review-specific Bash transport exemption remains, and evidence produced from
+another worktree cannot advance or accept the protocol. #1406 deliberately
+supersedes the #1369 cross-worktree handoff behavior for authoritative review.
 
 An advisory Edit/Write path tripwire is also deliberately omitted. It would
 retain claim-aware guard coupling without creating authority. Role guidance,
@@ -299,8 +310,15 @@ reported state. Exit 2 or a non-integrity exit 1 is a refusal and stops the
 episode. Integrity exit 1 follows the existing one-time settled re-read rule,
 then stops if integrity remains invalid. After the last timeout, the role runs
 status, reports the stall to the human, and stops without silently starting a
-new batch. A successful handoff starts a new bounded episode for the role that
+new batch. Exhausting the configurable 20-minute default is an expected
+operational checkpoint during a long peer turn, not evidence that the review
+failed. A successful handoff starts a new bounded episode for the role that
 handed off.
+
+Exit 4 after a terminal accepted handoff means acceptance is already durable
+but archive publication remains pending. Neither role repeats the terminal
+handoff. The operator preserves state and runs only the exact printed finalize
+retry.
 
 ## Architecture Changes
 
@@ -337,6 +355,25 @@ handed off.
 - Require lifecycle commands to originate from the canonical review worktree;
   do not early-exit or expand path scope for co-review commands.
 
+### `runtime-root.mjs` and `protocol.mjs`
+
+- Change `resolveRuntimeRoot()` from a linked-worktree resolver into the
+  one-worktree boundary. Resolve both canonical caller and runtime roots, then
+  refuse unless `callerRoot === root`; delete the same-common-directory
+  acceptance branch.
+- Remove the now-unused `commonDirectory()` operation from
+  `REAL_REPOSITORY_BOUNDARY`, its memory fixture, and its focused boundary
+  tests.
+- Keep `protocolRoot()` as the single protocol entry point that converts this
+  mismatch into a `repository-identity` refusal. Every status, claim, wait,
+  handoff, intervention, finalization, and archive-snapshot command therefore
+  crosses the same caller-root check.
+- Continue applying `assertRecordedRoot()` so the surviving root also equals
+  both `state.repositoryRoot` and `state.worktree`.
+- Preserve the existing reviewer-turn integrity check that refuses when
+  canonical worktree `HEAD !== state.artifact.commit`; do not add a duplicate
+  reviewer-only HEAD mechanism.
+
 ### Retired capability-policy modules
 
 Delete `co-review-write-policy.mjs` and the original `mutation-targets.mjs`
@@ -355,9 +392,21 @@ authority.
 
 - Preserve SHA, blob, digest, role, provider/session, lock, round, decision,
   budget, and archive validation.
-- Use the existing recorded repository root and successive artifact commits to
-  validate the canonical physical worktree, clean tracked state, exact `HEAD`,
-  and artifact-only inter-round tracked diff.
+- Extend `REAL_REPOSITORY_BOUNDARY` with `trackedChanges(root)`, implemented by
+  tracked-only Git status, and `changedPathsBetween(root, from, to)`, implemented
+  by a committed name-only diff. Extend `memoryRepositoryFixture` with matching
+  zero-subprocess operations and focused assertions.
+- At owner and reviewer handoff, re-run `assertIgnored()` and require
+  `trackedChanges(root)` to be empty. Runtime evidence remains ignored and is
+  excluded because untracked files are not part of that operation.
+- At owner handoff, use existing `state.artifact.commit` as the predecessor and
+  require `changedPathsBetween(root, state.artifact.commit, proposedCommit)` to
+  contain only `state.artifact.path`.
+- During imported-review initialization, require `importedCommit` to equal
+  `repository.identity(root).head`; refuse an ancestor import even when artifact
+  bytes happen to match.
+- Use the existing reviewer-turn integrity path to validate exact `HEAD` and
+  artifact worktree/index bytes.
 - Update author and reviewer handoffs to describe normal capabilities and
   direct file-based relay rather than arbitrary Bash prohibition.
 - Require both roles to start in the canonical worktree. Require the reviewer
@@ -372,8 +421,8 @@ authority.
 - Wrong artifact, commit, blob, digest, actor, provider, session, round,
   review path, or decision refuses the protocol mutation with no state change.
 - Wrong physical worktree, mismatched `HEAD`, dirty tracked state, or a
-  non-artifact tracked path between successive artifact commits refuses
-  handoff with no state change.
+  non-artifact tracked path from `state.artifact.commit` to the proposed commit
+  refuses handoff with no state change.
 - Repeating the same handoff with identical evidence is idempotent; conflicting
   reuse is refused.
 - Artifact advancement never inherits approval from the previous commit.
@@ -382,7 +431,8 @@ authority.
 - A reviewer command is never refused merely because arbitrary shell effects
   are ambiguous.
 - A command issued from another worktree remains subject to ordinary path and
-  worktree refusal and cannot become authoritative co-review evidence.
+  worktree policy where recognized, but the protocol-level caller-root check is
+  the authoritative refusal and cannot be bypassed by an unbound session.
 - Index, protocol, lock, or archive corruption remains a protocol refusal for
   lifecycle commands; it does not remove ordinary repository capabilities.
 - A dead reviewer session may leave the protocol turn claimed, but it no longer
@@ -391,6 +441,11 @@ authority.
   design exists.
 - No recovery path may impersonate a reviewer, rewrite immutable evidence, or
   silently convert agent review into human approval.
+- The tracked-state and artifact-only checks apply to protocol handoffs.
+  Terminal archive publication occurs only after durable acceptance and may
+  create the configured non-ignored archive destination; it is explicitly
+  outside the pre-handoff cleanliness rule. Exit 4 recovery finalizes that same
+  archive and never reopens or repeats the accepted handoff.
 
 ## Test Strategy
 
@@ -445,6 +500,16 @@ worktree, mismatched `HEAD`, staged or unstaged tracked drift, and an inter-roun
 commit touching any tracked path besides the authoritative artifact. They must
 also prove that ignored runtime evidence does not count as tracked drift.
 
+Runtime-root tests must exercise both sibling-linked-worktree and main-root to
+nested-worktree calls. Every protocol verb must inherit the
+`callerRoot === runtimeRoot` refusal through `protocolRoot()`; no special Bash
+shape may bypass it. Imported-review tests must refuse a reachable ancestor and
+accept only `review-of === HEAD` at initialization.
+
+Repository-boundary contract tests must cover `trackedChanges()` and
+`changedPathsBetween()` in both the real Git boundary and the in-memory fixture,
+while preserving the fixture's zero Git and zero Node subprocess assertion.
+
 ### Automated two-session acceptance
 
 Run the full relay without copying substantive content through a human prompt:
@@ -473,6 +538,13 @@ Run the full relay without copying substantive content through a human prompt:
 9. Each role's wait episode records every timeout cycle, wakes on exit 0, and
    stops with status plus a human-visible stall report after its configured
    cycle limit. Integrity refusal follows the one-time settled re-read rule.
+10. An imported review whose `review-of` is a reachable ancestor of canonical
+    `HEAD` is refused; an exact-HEAD import preserves that commit as the first
+    artifact-only diff baseline.
+11. Terminal acceptance that exits 4 remains durable, does not repeat the
+    accepted handoff, and succeeds through the exact archive-finalization retry.
+    Archive output after acceptance is exempt from pre-handoff tracked-state
+    checks.
 
 ### Human-authority semantics
 
@@ -487,9 +559,9 @@ Remove or rewrite reviewer mutation-parser and co-review write-policy tests.
 Update `scripts/tests/fixtures/test-corpus-post-snapshot/**` and
 `scripts/tests/unit/meta/test-corpus-membership.test.mjs` expectations. Add a
 net-new `scripts/task-tracker/test-impact-manifest.json` rule whose sources
-cover the Bash guard, activity guard, source-edit gate, co-review protocol and
-handoff generator, and whose tests cover the new load-bearing integration and
-focused regressions.
+cover the Bash guard, activity guard, source-edit gate, runtime-root resolver,
+repository boundary, co-review protocol, archive path, and handoff generator,
+and whose tests cover the new load-bearing integration and focused regressions.
 
 Run focused red/green tests, then the fast suite, slow suite, lint,
 documentation lint, spelling, and formatting before Test admission.
@@ -506,6 +578,8 @@ an individual finding:
 - claim liveness depends on protocol integrity;
 - provider chat startup and wake-up remain host-adapter responsibilities;
 - strong adversarial tamper evidence would require external or OS authority;
+- multi-file implementation review would require an explicit declared mutable
+  path set rather than weakening the single-artifact boundary;
 - repository snapshot review may eventually use a dedicated detached reviewer
   worktree, but such a design is non-authoritative under #1406; and
 - existing constrained runtimes must never be reused as acceptance evidence.
