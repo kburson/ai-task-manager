@@ -1,0 +1,133 @@
+// @story #1397
+import { strict as assert } from 'node:assert';
+import { test } from 'node:test';
+
+import * as closeModule from '../../../../task-tracker/verbs/close.mjs';
+import {
+  buildDeliveryIntent,
+  buildDeliveryReceipt,
+  renderDeliveryIntentComment,
+  renderDeliveryReceiptComment,
+} from '../../../../task-tracker/lib/delivery-records.mjs';
+
+const HEAD = 'a'.repeat(40);
+const HISTORICAL_HEAD = 'b'.repeat(40);
+const MERGE = 'c'.repeat(40);
+// cspell:disable-next-line
+const INTENT_ID = '01ARZ3NDEKTSV4RRFFQ69G5FAV';
+
+function body() {
+  const data = Buffer.from(JSON.stringify({ stage: 'test', commitSha: HEAD })).toString(
+    'base64url'
+  );
+  return (
+    '- [x] Agent Review Passed <!-- aitm-verified gate="agent-review" result="pass" -->\n' +
+    `<!-- aitm-verification-receipt stage="test" data="${data}" -->`
+  );
+}
+
+function deliveryComments() {
+  const intent = buildDeliveryIntent({
+    intentId: INTENT_ID,
+    supersedesIntentId: null,
+    issueNumber: 1397,
+    repository: 'kburson/ai-task-manager',
+    prNumber: 1400,
+    baseRef: 'trunk',
+    headRef: 'codex/939-full-auto-merge',
+    expectedHeadSha: HEAD,
+    mergeMethod: 'squash',
+    attributionTokens: ['#1397'],
+    commitTitle: '[#1397] Governed PR delivery',
+    commitMessage: `PR #1400\nSource: ${HEAD}\n\nAttribution: [#1397]`,
+    provider: 'codex',
+    sessionId: 'session-1',
+    clientCreatedAt: '2026-08-23T00:00:00.000Z',
+  });
+  const receipt = buildDeliveryReceipt({
+    intentId: INTENT_ID,
+    issueNumber: 1397,
+    prNumber: 1400,
+    expectedHeadSha: HEAD,
+    mergeCommitSha: MERGE,
+    baseRef: 'trunk',
+    mergeMethod: 'squash',
+    verifiedTrunkRef: 'origin/trunk',
+    provider: 'codex',
+    sessionId: 'session-1',
+    verifiedAt: '2026-08-23T00:02:00.000Z',
+  });
+  return [
+    {
+      id: 1,
+      body: renderDeliveryIntentComment(intent),
+      created_at: '2026-08-23T00:00:01.000Z',
+    },
+    {
+      id: 2,
+      body: renderDeliveryReceiptComment(receipt),
+      created_at: '2026-08-23T00:02:01.000Z',
+    },
+  ];
+}
+
+function pullRequest(number, headRefOid, mergeCommitSha = MERGE) {
+  return {
+    number,
+    state: 'MERGED',
+    mergedAt: '2026-08-23T00:02:00Z',
+    mergeCommit: { oid: mergeCommitSha },
+    headRefName: 'codex/939-full-auto-merge',
+    headRefOid,
+    baseRefName: 'trunk',
+  };
+}
+
+async function load(pullRequests) {
+  let commentReads = 0;
+  const pexec = async (command, args) => {
+    if (command === 'git' && args[0] === 'branch') return { stdout: 'codex/939-full-auto-merge\n' };
+    if (command === 'git' && args[0] === 'rev-parse') return { stdout: `${HEAD}\n` };
+    if (command === 'gh' && args[0] === 'pr') return { stdout: JSON.stringify(pullRequests) };
+    if (command === 'gh' && args[0] === 'api') {
+      commentReads += 1;
+      return { stdout: JSON.stringify([deliveryComments()]) };
+    }
+    throw new Error(`unexpected command: ${command} ${args.join(' ')}`);
+  };
+  const result = await closeModule.loadCloseDeliveryGateInput({
+    issueNumber: 1397,
+    cfg: { repo: 'kburson/ai-task-manager', trunkRef: 'origin/trunk' },
+    projectDir: '/injected/project',
+    pexec,
+    body: body(),
+    lifecycleEvidence: null,
+    ctx: { resolveCloseParentIssue: async () => null },
+  });
+  return { result, commentReads };
+}
+
+test('#1397 projects delivery records under the unique accepted-head PR in either order', async () => {
+  const current = pullRequest(1400, HEAD);
+  const historical = pullRequest(1396, HISTORICAL_HEAD, 'd'.repeat(40));
+  for (const pullRequests of [
+    [historical, current],
+    [current, historical],
+  ]) {
+    const { result, commentReads } = await load(pullRequests);
+    assert.equal(commentReads, 1);
+    assert.equal(result.records.liveIntent.record.prNumber, 1400);
+    assert.equal(result.records.matchingReceipt.record.expectedHeadSha, HEAD);
+  }
+});
+
+test('#1397 does not read comments for zero or duplicate accepted-head candidates', async () => {
+  for (const pullRequests of [
+    [pullRequest(1396, HISTORICAL_HEAD)],
+    [pullRequest(1400, HEAD), pullRequest(1401, HEAD)],
+  ]) {
+    const { result, commentReads } = await load(pullRequests);
+    assert.equal(commentReads, 0);
+    assert.equal(result.records.matchingReceipt, null);
+  }
+});

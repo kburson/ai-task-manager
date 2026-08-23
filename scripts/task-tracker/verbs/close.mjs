@@ -80,7 +80,7 @@ function closeBaseRef(cfg) {
   );
 }
 
-async function loadCloseDeliveryGateInput({
+export async function loadCloseDeliveryGateInput({
   issueNumber,
   cfg,
   projectDir,
@@ -141,9 +141,13 @@ async function loadCloseDeliveryGateInput({
   };
   let records = null;
   if (parentIssueNumber === null && pullRequests.length > 0) {
-    if (pullRequests.length !== 1) {
+    const exactHeadPullRequests = pullRequests.filter(
+      (pullRequest) => pullRequest.headRefOid === acceptedSha
+    );
+    if (exactHeadPullRequests.length !== 1) {
       records = { intents: [], receipts: [], liveIntent: null, matchingReceipt: null };
     } else {
+      const selectedPullRequest = exactHeadPullRequests[0];
       const { stdout: commentsOut } = await pexec(
         'gh',
         ['api', '--paginate', '--slurp', `repos/${cfg.repo}/issues/${issueNumber}/comments`],
@@ -155,7 +159,7 @@ async function loadCloseDeliveryGateInput({
         body: comment.body,
         createdAt: comment.created_at,
       }));
-      const context = { repository: cfg.repo, issueNumber, prNumber: pullRequests[0].number };
+      const context = { repository: cfg.repo, issueNumber, prNumber: selectedPullRequest.number };
       records = projectDeliveryRecords(
         comments.map((comment) => parseDeliveryComment(comment, context)).filter(Boolean)
       );
