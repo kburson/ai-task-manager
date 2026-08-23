@@ -11,7 +11,7 @@
 ## Global Constraints
 
 - Preserve strict canonical timestamp validation in `delivery-verification.mjs`.
-- Do not rewrite intent `01M0PC83J1G7N2T7DZK0DJDCGC` or fabricate a delivery receipt.
+- Do not rewrite the existing delivery intent or fabricate a delivery receipt.
 - Do not issue a second merge action for PR #1385.
 - Restrict production changes to the GitHub pull-request adapter boundary.
 

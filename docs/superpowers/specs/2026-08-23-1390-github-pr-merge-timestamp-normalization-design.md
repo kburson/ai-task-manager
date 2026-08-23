@@ -16,7 +16,7 @@ The delivery verifier remains unchanged. It continues rejecting any noncanonical
 
 1. Relax `isCanonicalInstant` in delivery verification. This would admit multiple internal spellings and weaken immutable record ordering.
 2. Normalize inside `verifyLiveDelivery`. This would mix provider repair into domain validation and conceal malformed internal callers.
-3. Special-case the existing PR or fabricate a receipt. This would bypass live evidence and make recovery unauditable.
+3. Special-case the existing PR or fabricate a receipt. This would bypass live evidence and make recovery impossible to audit.
 
 ## Data Flow
 
@@ -29,7 +29,7 @@ The delivery verifier remains unchanged. It continues rejecting any noncanonical
 
 Focused default-dependency tests will reproduce GitHub's whole-second value and require `.000Z` output. A separate test will provide a malformed merged timestamp and require fail-closed rejection. Existing delivery-verification tests remain green and continue proving that noncanonical internal inputs are rejected.
 
-The live acceptance is recovery of intent `01M0PC83J1G7N2T7DZK0DJDCGC` for PR #1385: `/task deliver #1389` must observe merge commit `7c508fb6258390c577ad1091fa4827500e4e70e4`, write the receipt, and never emit a second merge action.
+The live acceptance is recovery of the existing intent for PR #1385: `/task deliver #1389` must observe merge commit `7c508fb6258390c577ad1091fa4827500e4e70e4`, write the receipt, and never emit a second merge action.
 
 ## Scope Boundaries
 
