@@ -332,6 +332,7 @@ test('start delegates initialization and publishes concrete hashed handoffs befo
   assert.match(reviewer, /normal repository inspection, test, build, and Bash capabilities/i);
   assert.match(reviewer, /same canonical physical worktree/i);
   assert.match(reviewer, /never edit or commit the authoritative artifact/i);
+  assert.match(reviewer, /Create only the new review file/i);
   assert.match(reviewer, /write.*review.*Edit.*Write.*apply_patch/is);
   assert.match(reviewer, /start.*turn timer immediately/i);
   assert.match(reviewer, /without an unrelated bound task/i);

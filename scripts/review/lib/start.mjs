@@ -330,7 +330,7 @@ You are the configured reviewer ${inline(model.reviewer)}. Preserve role separat
 ${sharedHandoff(model)}
 ## Reviewer turn
 
-Run every protocol and repository command from the canonical worktree above. The co-review claim establishes reviewer provenance; it does not grant or remove ordinary tool capabilities. Use normal repository inspection, test, build, and Bash capabilities under the installed ordinary guards. Preserve role separation: never edit or commit the authoritative artifact or prior evidence. To write the new review file under the ignored runtime, use a direct file-writing tool: Edit, Write, or apply_patch. Begin without an unrelated bound task and start the turn timer immediately.
+Run every protocol and repository command from the canonical worktree above. The co-review claim establishes reviewer provenance; it does not grant or remove ordinary tool capabilities. Use normal repository inspection, test, build, and Bash capabilities under the installed ordinary guards. Preserve role separation: never edit or commit the authoritative artifact or prior evidence. Create only the new review file under the ignored runtime. To write that review file, use a direct file-writing tool: Edit, Write, or apply_patch. Begin without an unrelated bound task and start the turn timer immediately.
 
 Run status, then claim only when the reviewer role is available:
 
