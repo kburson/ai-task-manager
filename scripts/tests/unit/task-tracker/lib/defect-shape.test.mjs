@@ -225,10 +225,7 @@ test('web defect normalization maps form fields through the same renderer and st
   assert.match(captured.userStory, /As an AITM operator affected by a confirmed defect/);
   assert.equal(captured.scope, 'Resume classifies active issue work as idle.');
   assert.match(captured.reproduction, /Leave an active timing span open/);
-  assert.equal(
-    captured.acceptanceCriteria,
-    '- [ ] Active work remains active.'
-  );
+  assert.equal(captured.acceptanceCriteria, '- [ ] Active work remains active.');
   assert.equal(captured.priority, 'P1');
   assert.equal(captured.size, 'S');
   assert.equal(captured.estimate, '4');

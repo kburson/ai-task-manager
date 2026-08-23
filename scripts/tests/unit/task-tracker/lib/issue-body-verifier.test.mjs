@@ -79,7 +79,10 @@ test('verifyIssueBody: requires a complete current-schema User Story', () => {
   ]) {
     const res = verifyIssueBody(body);
     assert.equal(res.ok, false);
-    assert.ok(res.missing.some((item) => /User Story/.test(item)), JSON.stringify(res.missing));
+    assert.ok(
+      res.missing.some((item) => /User Story/.test(item)),
+      JSON.stringify(res.missing)
+    );
   }
 });
 
